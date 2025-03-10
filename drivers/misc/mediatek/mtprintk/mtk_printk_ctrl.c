@@ -30,7 +30,6 @@
  * 1: uart printk enable
  * 2: uart printk always enable
  */
-
 static struct proc_dir_entry *entry;
 
 
@@ -117,6 +116,10 @@ EXPORT_SYMBOL_GPL(update_uartlog_status);
 
 
 #if IS_ENABLED(CONFIG_LOG_TOO_MUCH_WARNING)
+struct thread_parameter {
+	int thread_start_delay;
+	int poll_delay;
+};
 static int detect_count = CONFIG_LOG_TOO_MUCH_DETECT_COUNT;
 static bool logmuch_enable;
 static int logmuch_exit;
@@ -202,6 +205,7 @@ EXPORT_SYMBOL_GPL(get_detect_count);
 
 static int logmuch_dump_thread(void *arg)
 {
+	struct thread_parameter *thread_data = (struct thread_parameter *)arg;
 	/* unsigned long flags; */
 	struct sched_param param = {
 		.sched_priority = 99
@@ -219,13 +223,14 @@ static int logmuch_dump_thread(void *arg)
 	sched_setscheduler(current, SCHED_FIFO, &param);
 	log_much = kmalloc(log_much_len, GFP_KERNEL);
 	if (log_much == NULL) {
+		kfree(thread_data);
 		proc_remove(logmuch_entry);
 		pr_notice("printk: failed to create 0x%x log_much memory.\n", log_much_len);
-		return 1;
+		return -1;
 	}
 
 	/* don't detect boot up phase*/
-	wait_event_interruptible_timeout(logmuch_thread_exit, logmuch_exit == 1, 60 * HZ);
+	wait_event_interruptible_timeout(logmuch_thread_exit, logmuch_exit == 1, thread_data->thread_start_delay * HZ);
 
 	while (1) {
 		if (log_much == NULL)
@@ -237,7 +242,7 @@ static int logmuch_dump_thread(void *arg)
 			detect_count_after_effect_flag = false;
 			detect_count = detect_count_after;
 		}
-		wait_event_interruptible_timeout(logmuch_thread_exit, logmuch_exit == 1, 5 * HZ);
+		wait_event_interruptible_timeout(logmuch_thread_exit, logmuch_exit == 1, thread_data->poll_delay * HZ);
 		if (logmuch_enable == false || detect_count <= 0)
 			continue;
 
@@ -271,6 +276,7 @@ static int logmuch_dump_thread(void *arg)
 		}
 	}
 	pr_notice("[log_much] logmuch_Detect dump thread exit.\n");
+	kfree(thread_data);
 	logmuch_exit = 0;
 	return 0;
 }
@@ -422,10 +428,11 @@ static const struct proc_ops mt_printk_ctrl_fops = {
 	.proc_release = single_release,
 };
 
-static int __init mt_printk_ctrl_init(void)
+int mt_printk_ctrl_early_init(int start_delay, int poll_delay)
 {
 #if IS_ENABLED(CONFIG_LOG_TOO_MUCH_WARNING)
 	static struct task_struct *hd_thread;
+	struct thread_parameter *thread_data;
 #endif
 
 	entry = proc_create("mtprintk", 0664, NULL, &mt_printk_ctrl_fops);
@@ -436,19 +443,42 @@ static int __init mt_printk_ctrl_init(void)
 	logmuch_entry = proc_create("log_much", 0444, NULL, &log_much_ops);
 	if (!logmuch_entry) {
 		pr_notice("printk: failed to create proc log_much entry\n");
-		return 1;
+		return -ENOMEM;
 	}
 
-	hd_thread = kthread_create(logmuch_dump_thread, NULL, "logmuch_detect");
-	if (hd_thread)
-		wake_up_process(hd_thread);
+	thread_data = kmalloc(sizeof(*thread_data), GFP_KERNEL);
+	if(!thread_data) {
+		proc_remove(logmuch_entry);
+		return -ENOMEM;
+	}
+	thread_data->thread_start_delay = start_delay;
+	thread_data->poll_delay = poll_delay;
+	hd_thread = kthread_create(logmuch_dump_thread, thread_data, "logmuch_detect");
+	if (IS_ERR(hd_thread)) {
+		kfree(thread_data);
+		proc_remove(logmuch_entry);
+		return PTR_ERR(hd_thread);
+	}
+
+	wake_up_process(hd_thread);
+#else
+	pr_info("%s, start_deley: %d, poll_deley: %d.\n",__func__, start_delay, poll_delay);
 #endif
 	return 0;
 }
+EXPORT_SYMBOL_GPL(mt_printk_ctrl_early_init);
 
+static int __init mt_printk_ctrl_init(void)
+{
+	if (mt_printk_ctrl_early_init(60, 5) < 0) {
+		pr_err("%s is failed!\n", __func__);
+		return -1;
+	}
+	return 0;
+}
 
 #ifdef MODULE
-static void __exit mt_printk_ctrl_exit(void)
+void mt_printk_ctrl_early_exit(void)
 {
 	if (entry)
 		proc_remove(entry);
@@ -467,8 +497,13 @@ static void __exit mt_printk_ctrl_exit(void)
 			ssleep(5);
 	}
 #endif
-pr_notice("log_much exit.");
+	pr_notice("log_much exit.");
+}
+EXPORT_SYMBOL_GPL(mt_printk_ctrl_early_exit);
 
+static void __exit mt_printk_ctrl_exit(void)
+{
+	mt_printk_ctrl_early_exit();
 }
 
 module_init(mt_printk_ctrl_init);

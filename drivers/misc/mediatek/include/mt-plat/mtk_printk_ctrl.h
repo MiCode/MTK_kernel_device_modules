@@ -14,6 +14,14 @@ void update_uartlog_status(bool new_value, int value);
 void set_logtoomuch_enable(void);
 void set_logtoomuch_disable(void);
 bool get_logtoomuch_status(void);
+int mt_printk_ctrl_early_init(int start_delay, int poll_delay);
+#ifdef MODULE
+void mt_printk_ctrl_early_exit(void);
+#else
+void mt_printk_ctrl_early_exit(void)
+{
+}
+#endif
 #else
 static inline void set_detect_count(int val)
 {
@@ -44,6 +52,14 @@ bool get_logtoomuch_status(void)
 	return false;
 }
 
+int mt_printk_ctrl_early_init(int start_delay, int poll_delay)
+{
+	return 0;
+}
+
+void mt_printk_ctrl_early_exit(void)
+{
+}
 #endif
 
 #endif
