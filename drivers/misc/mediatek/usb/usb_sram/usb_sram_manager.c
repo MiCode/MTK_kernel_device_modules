@@ -560,12 +560,19 @@ static ssize_t dbg_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct mtk_usb_sram *manager = g_manager;
-	int cnt = 0, i;
+	int size = PAGE_SIZE;
+	int cnt, total_cnt = 0, i;
 
-	for (i = 0; i < manager->block_num; i++)
-		cnt += sprintf(buf + cnt, "%s\n", decode_block(&manager->blocks[i]));
+	for (i = 0; i < manager->block_num; i++) {
+		cnt = snprintf(buf + total_cnt, size - total_cnt,
+			"%s\n", decode_block(&manager->blocks[i]));
+		if (cnt > 0 && cnt < size)
+			total_cnt += cnt;
+		else
+			break;
+	}
 
-	return cnt;
+	return total_cnt;
 }
 
 static DEVICE_ATTR_RW(dbg);
