@@ -368,15 +368,17 @@ void ssusb_set_mode(struct otg_switch_mtk *otg_sx, enum usb_role role)
 
 	dev_info(ssusb->dev, "%s %s\n", __func__, usb_role_string(role));
 
+	mutex_lock(&otg_sx->otg_lock);
+
 	otg_sx->latest_role = role;
 
 	if (otg_sx->op_mode != MTU3_DR_OPERATION_DUAL) {
 		dev_info(ssusb->dev, "op_mode %d, skip set role\n", otg_sx->op_mode);
-		return;
+		goto exit;
 	}
 
 	if (ssusb->dr_mode != USB_DR_MODE_OTG)
-		return;
+		goto exit;
 
 	/*
 	 * USB offload is support but driver not prob done
@@ -384,13 +386,13 @@ void ssusb_set_mode(struct otg_switch_mtk *otg_sx, enum usb_role role)
 	 */
 	if (role == USB_ROLE_HOST && ssusb->offload_support && !ssusb->offload) {
 		dev_info(ssusb->dev, "offload not ready\n");
-		return;
+		goto exit;
 	}
 
 	work_data = kzalloc(sizeof(struct dr_work_data_mtk), GFP_ATOMIC);
 	if (!work_data) {
 		dev_err(ssusb->dev, "allocate work data fail.\n");
-		return;
+		goto exit;
 	}
 	work_data->otg_sx = otg_sx;
 
@@ -401,6 +403,9 @@ void ssusb_set_mode(struct otg_switch_mtk *otg_sx, enum usb_role role)
 
 	work_data->desired_role = role;
 	queue_work(otg_sx->wq, &work_data->dr_work);
+
+exit:
+	mutex_unlock(&otg_sx->otg_lock);
 }
 
 static int ssusb_id_notifier(struct notifier_block *nb,
@@ -409,9 +414,7 @@ static int ssusb_id_notifier(struct notifier_block *nb,
 	struct otg_switch_mtk *otg_sx =
 		container_of(nb, struct otg_switch_mtk, id_nb);
 
-	mutex_lock(&otg_sx->otg_lock);
 	ssusb_set_mode(otg_sx, event ? USB_ROLE_HOST : USB_ROLE_DEVICE);
-	mutex_unlock(&otg_sx->otg_lock);
 
 	return NOTIFY_DONE;
 }
@@ -454,9 +457,7 @@ void ssusb_mode_switch(struct ssusb_mtk *ssusb, int to_host)
 {
 	struct otg_switch_mtk *otg_sx = &ssusb->otg_switch;
 
-	mutex_lock(&otg_sx->otg_lock);
 	ssusb_set_mode(otg_sx, to_host ? USB_ROLE_HOST : USB_ROLE_DEVICE);
-	mutex_unlock(&otg_sx->otg_lock);
 }
 
 void ssusb_set_force_mode(struct ssusb_mtk *ssusb,
@@ -487,9 +488,7 @@ static int ssusb_role_sw_set(struct usb_role_switch *sw, enum usb_role role)
 	struct ssusb_mtk *ssusb = usb_role_switch_get_drvdata(sw);
 	struct otg_switch_mtk *otg_sx = &ssusb->otg_switch;
 
-	mutex_lock(&otg_sx->otg_lock);
 	ssusb_set_mode(otg_sx, role);
-	mutex_unlock(&otg_sx->otg_lock);
 
 	return 0;
 }
@@ -540,9 +539,7 @@ static int ssusb_role_sw_register(struct otg_switch_mtk *otg_sx)
 	if (IS_ERR(otg_sx->role_sw))
 		return PTR_ERR(otg_sx->role_sw);
 
-	mutex_lock(&otg_sx->otg_lock);
 	ssusb_set_mode(otg_sx, otg_sx->default_role);
-	mutex_unlock(&otg_sx->otg_lock);
 
 	return 0;
 }
