@@ -1651,6 +1651,11 @@ static void mml_sys_taskdone(struct mml_comp *comp, struct mml_task *task,
 
 		mml_mmp(dlo, MMPROFILE_FLAG_PULSE, task->dlo_size, status1);
 	}
+
+	if (mml_dbgtp_dump && cfg->dbgtp) {
+		mml_dbgtp_config_dump(comp->sysid, comp->base);
+		sys_debug_dump(comp);
+	}
 }
 
 static const struct mml_comp_hw_ops sys_hw_ops = {

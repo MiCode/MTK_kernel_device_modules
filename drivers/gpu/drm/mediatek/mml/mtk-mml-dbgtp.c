@@ -12,6 +12,9 @@
 int mml_dbgtp_msg;
 module_param(mml_dbgtp_msg, int, 0644);
 
+int mml_dbgtp_dump;
+module_param(mml_dbgtp_dump, int, 0644);
+
 #define dbgtp_msg(fmt, args...) \
 do { \
 	if (mml_dbgtp_msg) \

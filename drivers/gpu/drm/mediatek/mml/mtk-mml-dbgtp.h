@@ -11,6 +11,8 @@
 
 #include "mtk_disp_dbgtp.h"
 
+extern int mml_dbgtp_dump;
+
 /*
  * mml_dbgtp_register - register disp dbgtp driver functions.
  *
