@@ -384,6 +384,15 @@ static struct port_t md_ccci_ports[] = {
 		(PORT_F_WITH_CHAR_NODE|PORT_F_CH_TRAFFIC|PORT_F_DUMP_RAW_DATA),
 		&char_port_ops, 50, "ttyCMIPC9",},
 
+	{CCCI_IDC_WIFI_CHANNEL_TX, CCCI_IDC_WIFI_CHANNEL_RX,
+		1, 1, 0xFF, 0xFF, MD1_NORMAL_HIF,
+		PORT_F_WITH_CHAR_NODE,
+		&char_port_ops, 51, "ccci_idc_wifi",},
+	{CCCI_IDC_BT_CHANNEL_TX, CCCI_IDC_BT_CHANNEL_RX,
+		1, 1, 0xFF, 0xFF, MD1_NORMAL_HIF,
+		PORT_F_WITH_CHAR_NODE,
+		&char_port_ops, 52, "ccci_idc_bt",},
+
 	/* IPC char port minor= minor idx + CCCI_IPC_MINOR_BASE(100) */
 	{CCCI_IPC_TX, CCCI_IPC_RX, 1, 1, 0xFF, 0xFF,
 		MD1_NORMAL_HIF, PORT_F_WITH_CHAR_NODE,
