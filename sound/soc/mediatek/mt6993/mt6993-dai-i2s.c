@@ -231,6 +231,8 @@ struct mtk_afe_i2s_priv {
 	int ip_mode;
 	int slave_mode;
 	int lpbk_mode;
+	int mclk_en;
+	int vlp_domain;
 };
 
 /* this enum is merely for mtk_afe_i2s_priv & mtk_base_etdm_data declare */
@@ -2628,10 +2630,18 @@ static int mtk_i2s_en_event(struct snd_soc_dapm_widget *w,
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
+		if (i2s_priv->vlp_domain == 0)
+			/* set audio Vcore request before AUD_1/AUD_2 select to apll for mt6993 bug */
+			regmap_update_bits(afe->regmap, AFE_SPM_CONTROL_REQ,
+					   AFE_VCORE_REQ_MASK_SFT, 0x1 << AFE_VCORE_REQ_SFT);
 		mt6993_afe_gpio_request(afe, true, i2s_priv->id, 0);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
 		mt6993_afe_gpio_request(afe, false, i2s_priv->id, 0);
+		if (i2s_priv->vlp_domain == 0)
+			/* release audio Vcore request before AUD_1/AUD_2 select to 26M */
+			regmap_update_bits(afe->regmap, AFE_SPM_CONTROL_REQ,
+					   AFE_VCORE_REQ_MASK_SFT, 0x0 << AFE_VCORE_REQ_SFT);
 		break;
 	default:
 		break;
@@ -3267,14 +3277,14 @@ static int mtk_afe_i2s_mclk_connect(struct snd_soc_dapm_widget *source,
 
 	if (get_i2s_id_by_name(afe, sink->name) ==
 	    get_i2s_id_by_name(afe, source->name))
-		return (i2s_priv->mclk_rate > 0) ? 1 : 0;
+		return ((i2s_priv->mclk_en && i2s_priv->mclk_rate)> 0) ? 1 : 0;
 
 	/* check if share i2s need mclk */
 	if (i2s_priv->share_i2s_id < 0)
 		return 0;
 
 	if (i2s_priv->share_i2s_id == get_i2s_id_by_name(afe, source->name))
-		return (i2s_priv->mclk_rate > 0) ? 1 : 0;
+		return ((i2s_priv->mclk_en && i2s_priv->mclk_rate) > 0) ? 1 : 0;
 
 	return 0;
 }
@@ -5315,6 +5325,9 @@ static int etdm_parse_dt(struct mtk_base_afe *afe)
 	unsigned int sync_in[I2S_IN_NUM];
 	unsigned int ip_mode[I2S_IN_NUM];
 	unsigned int slave_mode_in[I2S_IN_NUM];
+	unsigned int mclk_en[I2S_IN_NUM];
+	unsigned int vlp_domain[I2S_IN_NUM];
+
 	struct {
 		char *name;
 		unsigned int val;
@@ -5406,24 +5419,69 @@ static int etdm_parse_dt(struct mtk_base_afe *afe)
 		}
 	}
 
+	/* get etdm use mclk */
+	ret = of_property_read_u32_array(afe->dev->of_node, "etdm-in-mclk", mclk_en, I2S_IN_NUM);
+	if (ret) {
+		dev_info(afe->dev, "%s() failed to read etdm-in-slave-mode\n", __func__);
+		//return -EINVAL;
+	} else {
+		for (i = 0; i < I2S_IN_NUM; i++) {
+			i2s_priv = afe_priv->dai_priv[MT6993_DAI_I2S_IN0 + i];
+			i2s_priv->mclk_en= mclk_en[i];
+		}
+	}
+
+	ret = of_property_read_u32_array(afe->dev->of_node, "etdm-out-mclk", mclk_en, I2S_OUT_NUM);
+	if (ret) {
+		dev_info(afe->dev, "%s() failed to read etdm-out-slave-mode\n", __func__);
+		//return -EINVAL;
+	} else {
+		for (i = 0; i < I2S_OUT_NUM; i++) {
+			i2s_priv = afe_priv->dai_priv[MT6993_DAI_I2S_OUT0 + i];
+			i2s_priv->mclk_en = mclk_en[i];
+		}
+	}
+
+	/* get etdm vlp mode */
+	ret = of_property_read_u32_array(afe->dev->of_node, "etdm-vlp", vlp_domain, I2S_IN_NUM);
+	if (ret) {
+		dev_info(afe->dev, "%s() failed to read etdm-vlpe\n", __func__);
+		//return -EINVAL;
+	} else {
+		for (i = 0; i < I2S_IN_NUM; i++) {
+			i2s_priv = afe_priv->dai_priv[MT6993_DAI_I2S_IN0 + i];
+			i2s_priv->vlp_domain = vlp_domain[i];
+		}
+		for (i = 0; i < I2S_OUT_NUM; i++) {
+			i2s_priv = afe_priv->dai_priv[MT6993_DAI_I2S_OUT0 + i];
+			i2s_priv->vlp_domain = vlp_domain[i];
+		}
+	}
+
+
 	for (i = 0; i < I2S_IN_NUM; i++) {
 		i2s_priv = afe_priv->dai_priv[MT6993_DAI_I2S_IN0 + i];
-		dev_info(afe->dev, "%s() I2SIN%d (%d), ch_num=%d sync=%d ip_mode=%d slave_mode=%d\n", __func__,
+		dev_info(afe->dev, "%s() I2SIN%d (%d), ch_num=%d sync=%d ip_mode=%d slave_mode=%d mclk_en=%d vlp_domain=%d\n",
+				__func__,
 				i,
 				MT6993_DAI_I2S_IN0 + i,
 				i2s_priv->ch_num,
 				i2s_priv->sync,
 				i2s_priv->ip_mode,
-				i2s_priv->slave_mode);
+				i2s_priv->slave_mode,
+				i2s_priv->mclk_en,
+				i2s_priv->vlp_domain);
 	}
 	for (i = 0; i < I2S_OUT_NUM; i++) {
 		i2s_priv = afe_priv->dai_priv[MT6993_DAI_I2S_OUT0 + i];
-		dev_info(afe->dev, "%s() I2SOUT%d (%d), ch_num=%d sync=%d slave_mode=%d\n", __func__,
+		dev_info(afe->dev, "%s() I2SOUT%d (%d), ch_num=%d sync=%d slave_mode=%d mclk_en=%d\n",
+				__func__,
 				i,
 				MT6993_DAI_I2S_OUT0 + i,
 				i2s_priv->ch_num,
 				i2s_priv->sync,
-				i2s_priv->slave_mode);
+				i2s_priv->slave_mode,
+				i2s_priv->mclk_en);
 	}
 
 	for (i = 0; i < ARRAY_SIZE(of_be_table); i++) {

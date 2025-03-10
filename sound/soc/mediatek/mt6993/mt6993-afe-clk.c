@@ -741,6 +741,10 @@ int mt6993_mck_enable(struct mtk_base_afe *afe, int mck_id, int rate)
 	m_sel_id = mck_div[mck_id].m_sel_id;
 	div_clk_id = mck_div[mck_id].div_clk_id;
 
+	/* set audio Vcore request before AUD_1/AUD_2 select to apll for mt6993 bug */
+	regmap_update_bits(afe->regmap, AFE_SPM_CONTROL_REQ,
+			   AFE_VCORE_REQ_MASK_SFT, 0x1 << AFE_VCORE_REQ_SFT);
+
 	ret = clk_prepare_enable(afe_priv->clk[apll_clk_id]);
 	if (ret) {
 		dev_info(afe->dev, "%s clk_prepare_enable %s fail %d\n",
@@ -839,6 +843,11 @@ int mt6993_mck_disable(struct mtk_base_afe *afe, int mck_id, int rate)
 
 	if (m_sel_id >= 0)
 		clk_disable_unprepare(afe_priv->clk[m_sel_id]);
+
+	/* releae audio Vcore request after AUD_1/AUD_2 select to 26M */
+	regmap_update_bits(afe->regmap, AFE_SPM_CONTROL_REQ,
+			   AFE_VCORE_REQ_MASK_SFT, 0x0 << AFE_VCORE_REQ_SFT);
+
 	return 0;
 }
 

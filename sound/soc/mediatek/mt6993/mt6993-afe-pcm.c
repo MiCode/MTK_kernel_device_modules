@@ -7075,9 +7075,7 @@ static int mt6993_afe_runtime_suspend(struct device *dev)
 
 	regmap_write(afe->regmap, AUDIO_TOP_CON4, 0x3fff);
 
-	/* reset audio 26M/Vcore request */
-	regmap_update_bits(afe->regmap, AFE_SPM_CONTROL_REQ,
-			   AFE_VCORE_REQ_MASK_SFT, 0x0 << AFE_VCORE_REQ_SFT);
+	/* reset audio 26M request */
 	regmap_update_bits(afe->regmap, AFE_SPM_CONTROL_REQ,
 			   AFE_SRCCLKENA_REQ_MASK_SFT, 0x0 << AFE_SRCCLKENA_REQ_SFT);
 
@@ -7110,9 +7108,7 @@ static int mt6993_afe_runtime_resume(struct device *dev)
 	regcache_cache_only(afe->regmap, false);
 	regcache_sync(afe->regmap);
 
-	/* set audio 26M/Vcore request */
-	regmap_update_bits(afe->regmap, AFE_SPM_CONTROL_REQ,
-			   AFE_VCORE_REQ_MASK_SFT, 0x1 << AFE_VCORE_REQ_SFT);
+	/* set audio 26M request */
 	regmap_update_bits(afe->regmap, AFE_SPM_CONTROL_REQ,
 			   AFE_SRCCLKENA_REQ_MASK_SFT, 0x1 << AFE_SRCCLKENA_REQ_SFT);
 
