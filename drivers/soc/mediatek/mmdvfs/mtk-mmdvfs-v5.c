@@ -47,11 +47,7 @@ static bool mmup_ena;
 static u8 step_idx;
 static int dpsw_thr;
 
-struct mmdvfs_debug_user {
-	s8 vote_opp;
-};
-
-static struct mmdvfs_debug_user *vcp_user;
+static struct mmdvfs_debug_user *user; // {mmup_force_clock, vcp_set_rate}
 
 static phys_addr_t mmdvfs_mmup_iova;
 static phys_addr_t mmdvfs_mmup_pa;
@@ -277,20 +273,6 @@ enable_vcp_end:
 }
 EXPORT_SYMBOL_GPL(mtk_mmdvfs_enable_vcp);
 
-void mmdvfs_record_user(const u32 user, const u32 rc, const u32 level)
-{
-	u64 ns = sched_clock(), sec = ns / 1000000000, usec = (ns / 1000) % 1000000;
-	u32 cnt;
-
-	if (DRAM_VCP_BASE && user < DRAM_USR_NUM_MAX) {
-		cnt = readl(DRAM_USR_IDX(user)) % DRAM_REC_CNT;
-		writel(DRAM_ENC_USR(rc, level, usec), DRAM_USR_VAL(user, cnt));
-		writel(sec, DRAM_USR_SEC(user, cnt));
-		writel((cnt + 1) % DRAM_REC_CNT, DRAM_USR_IDX(user));
-	}
-}
-EXPORT_SYMBOL_GPL(mmdvfs_record_user);
-
 static inline void mmdvfs_check_vcp_power(void)
 {
 	int i;
@@ -385,36 +367,37 @@ ipi_send_end:
 
 	return ret;
 }
-EXPORT_SYMBOL(mmdvfs_hfrp_ipi_send);
+EXPORT_SYMBOL_GPL(mmdvfs_hfrp_ipi_send);
 
 static int mmdvfs_vcp_set_rate(const char *val, const struct kernel_param *kp)
 {
-	int idx = 0, opp = 0, mux_id = 0, ret, last;
+	int idx = 0, opp = 0, ret, last;
 
-	ret = sscanf(val, "%d %d", &mux_id, &opp);
-	if (ret != 2 || mux_id >= mmdvfs_data->mux_num) {
+	ret = sscanf(val, "%d %d", &idx, &opp);
+	if (ret != 2 || idx >= mmdvfs_data->mux_num) {
 		MMDVFS_DBG("failed:%d idx:%d opp:%d mux_num:%d", ret, idx, opp, mmdvfs_data->mux_num);
 		return -EINVAL;
 	}
-	idx = mux_id + step_idx;
 
-	last = vcp_user[mux_id].vote_opp;
+	last = user[idx].vote_opp;
 
-	mtk_mmdvfs_enable_vcp(true, idx);
+	mtk_mmdvfs_enable_vcp(true, idx + step_idx);
 
-	if ((mmdvfs_data->mux[mux_id].rc == 1) && dpsw_thr && opp >= 0 && opp < dpsw_thr &&
+	if ((mmdvfs_data->mux[idx].rc == 1) && dpsw_thr && opp >= 0 && opp < dpsw_thr &&
 		(last < 0 || last >= dpsw_thr))
 		mtk_vmm_ctrl_dbg_use(true);
 
 	ret = mmdvfs_hfrp_ipi_send(FUNC_MMDVFS_VCP_SET_RATE, idx, opp, NULL, true);
-	if(!ret)
-		vcp_user[mux_id].vote_opp = opp;
+	if(!ret) {
+		user[idx].vote_opp = opp;
+		mmdvfs_record_cmd_user(DRAM_CMD_VCP_IDX + idx, MAX_LEVEL, opp);
+	}
 
-	if ((mmdvfs_data->mux[mux_id].rc == 1) && dpsw_thr && (opp < 0 || opp >= dpsw_thr) &&
+	if ((mmdvfs_data->mux[idx].rc == 1) && dpsw_thr && (opp < 0 || opp >= dpsw_thr) &&
 		last >= 0 && last < dpsw_thr)
 		mtk_vmm_ctrl_dbg_use(false);
 
-	mtk_mmdvfs_enable_vcp(false, idx);
+	mtk_mmdvfs_enable_vcp(false, idx + step_idx);
 
 	return ret;
 }
@@ -427,36 +410,29 @@ MODULE_PARM_DESC(vcp_set_rate, "set rate from dummy vcp user by ipi");
 
 static int mmdvfs_force_clock(const char *val, const struct kernel_param *kp)
 {
-	int all = 0, idx = 0, lvl = 0, ret;
+	int all = 0, idx = 0, opp = 0, ret = 0;
+	u8 lvl;
 
-	ret = sscanf(val, "%d %d %d", &all, &idx, &lvl);
-	if (ret != 3) {
-		MMDVFS_DBG("failed:%d all:%d idx:%d lvl:%d", ret, all, idx, lvl);
+	ret = sscanf(val, "%d %d %d", &idx, &opp, &all);
+	if (ret != 3 || idx >= mmdvfs_data->mux_num) {
+		MMDVFS_DBG("failed:%d idx:%d opp:%d all:%d", ret, idx, opp, all);
 		return -EINVAL;
 	}
 
-	mtk_mmdvfs_enable_vcp(true, mmdvfs_data->user_num);
+	mtk_mmdvfs_enable_vcp(true, idx + step_idx);
 
-	if (!all) { // mux
-		if (idx >= mmdvfs_data->mux_num) {
-			MMDVFS_DBG("invalid idx:%d mux_num:%hhu all:%d", idx, mmdvfs_data->mux_num, all);
-			ret = -EINVAL;
-			goto force_clock_end;
-		}
-
+	lvl = opp < 0 ? MAX_LEVEL : OPP2LEVEL(mmdvfs_data->mux[idx].rc, opp);
+	if (!all) // mux
 		ret = mmdvfs_hfrp_ipi_send(FUNC_MMDVFS_FORCE_CLOCK, idx, lvl, NULL, false);
-	} else { // rc
-		if (idx >= mmdvfs_data->rc_num) {
-			MMDVFS_DBG("invalid idx:%d rc_num:%hhu all:%d", idx, mmdvfs_data->rc_num, all);
-			ret = -EINVAL;
-			goto force_clock_end;
-		}
+	else // rc
+		ret = mmdvfs_hfrp_ipi_send(FUNC_MMDVFS_FORCE_CLOCK_RC, mmdvfs_data->mux[idx].rc, lvl, NULL, false);
 
-		ret = mmdvfs_hfrp_ipi_send(FUNC_MMDVFS_FORCE_CLOCK_RC, idx, lvl, NULL, false);
+	if (!ret) {
+		user[idx].force_opp = opp;
+		mmdvfs_record_cmd_user(DRAM_CMD_VCP_IDX + idx, opp, MAX_LEVEL);
 	}
 
-force_clock_end:
-	mtk_mmdvfs_enable_vcp(false, mmdvfs_data->user_num);
+	mtk_mmdvfs_enable_vcp(false, idx + step_idx);
 	return ret;
 }
 
@@ -642,6 +618,35 @@ static int mmdvfs_vcp_init(void)
 		vcp_A_register_notify_ex(MMDVFS_VCP_FEATURE_ID, &mmdvfs_mmup_notifier);
 
 	return 0;
+}
+
+void mmdvfs_record_cmd_user(const u8 usr, const u8 idx, const u8 lvl)
+{
+	u64 ns = sched_clock(), sec = ns / 1000000000, usec = (ns / 1000) % 1000000;
+	u32 cnt;
+
+	if (!DRAM_VCP_BASE || usr >= DRAM_CMD_NUM)
+		return;
+
+	cnt = readl(DRAM_CMD_IDX(usr)) % MEM_REC_CNT;
+	writel(sec, DRAM_CMD_SEC(usr, cnt));
+	writel(MEM_ENC_VAL(idx, lvl, usec), DRAM_CMD_VAL(usr, cnt));
+	writel((cnt + 1) % MEM_REC_CNT, DRAM_CMD_IDX(usr));
+}
+EXPORT_SYMBOL_GPL(mmdvfs_record_cmd_user);
+
+static inline void mmdvfs_record_user(const u8 usr, const u8 idx, const u8 lvl)
+{
+	u64 ns = sched_clock(), sec = ns / 1000000000, usec = (ns / 1000) % 1000000;
+	u32 cnt;
+
+	if (!DRAM_VCP_BASE || usr >= DRAM_USR_NUM)
+		return;
+
+	cnt = readl(DRAM_USR_IDX(usr)) % MEM_REC_CNT;
+	writel(sec, DRAM_USR_SEC(usr, cnt));
+	writel(MEM_ENC_VAL(idx, lvl, usec), DRAM_USR_VAL(usr, cnt));
+	writel((cnt + 1) % MEM_REC_CNT, DRAM_USR_IDX(usr));
 }
 
 static int mmdvfs_set_rate(struct clk_hw *hw, unsigned long rate, unsigned long parent_rate)
@@ -865,8 +870,12 @@ static inline int mmdvfs_debug_parse_user(struct mmdvfs_debug_user **_user, u8 c
 		return -ENOMEM;
 
 	*_user = user;
-	for (i = 0; i < count; i++)
+	for (i = 0; i < count; i++) {
+		user[i].id = i;
+		user[i].rc = mmdvfs_data->mux[i].rc;
+		user[i].force_opp = OPP_NAG;
 		user[i].vote_opp = OPP_NAG;
+	}
 
 	return 0;
 }
@@ -889,7 +898,7 @@ int mmdvfs_mux_probe(struct platform_device *pdev)
 	ret = mmdvfs_parse_vcore_level(node);
 
 	ret = of_property_read_u8(node, "mediatek,step-idx", &step_idx);
-	mmdvfs_debug_parse_user(&vcp_user, mmdvfs_data->mux_num);
+	mmdvfs_debug_parse_user(&user, mmdvfs_data->mux_num);
 
 	ret = mmdvfs_get_rc_base(mmdvfs_data);
 
@@ -900,7 +909,7 @@ int mmdvfs_mux_probe(struct platform_device *pdev)
 
 	return ret;
 }
-EXPORT_SYMBOL(mmdvfs_mux_probe);
+EXPORT_SYMBOL_GPL(mmdvfs_mux_probe);
 
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("MediaTek MMDVFS");

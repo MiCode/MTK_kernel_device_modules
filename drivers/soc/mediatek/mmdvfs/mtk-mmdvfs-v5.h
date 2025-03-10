@@ -78,6 +78,15 @@ struct mmdvfs_user {
 	int vcp_power;
 };
 
+struct mmdvfs_debug_user {
+	u8 id;
+	u8 rc;
+	const char *name;
+	struct clk *clk;
+	s8 force_opp;
+	s8 vote_opp;
+};
+
 struct mmdvfs_ops {
 	int (*dfs_vote_by_xpu)(const u8 user_id, const u8 level);
 	int (*dvfsrc_rg_dump)(void);
@@ -108,6 +117,6 @@ int mmdvfs_force_vcore_notify(const u32 val);
 int mmdvfs_force_step(const u8 idx, const s8 opp);
 int mmdvfs_dump_dvfsrc_rg(void);
 int mmdvfs_dump_dvfsrc_record(void);
-void mmdvfs_record_user(const u32 user, const u32 rc, const u32 level);
+void mmdvfs_record_cmd_user(const u8 usr, const u8 idx, const u8 lvl);
 #endif
 

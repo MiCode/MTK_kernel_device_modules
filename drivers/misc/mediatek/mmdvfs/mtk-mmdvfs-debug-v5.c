@@ -57,15 +57,6 @@ static u8 *fmeter_type;
 static int dpsw_thr;
 static bool met_freerun;
 
-struct mmdvfs_debug_user {
-	u8 id;
-	u8 rc;
-	const char *name;
-	struct clk *clk;
-	s8 force_opp;
-	s8 vote_opp;
-};
-
 static u8 user_count;
 static struct mmdvfs_debug_user *user;
 static u8 step_count, *step_idx;
@@ -98,8 +89,10 @@ int mmdvfs_debug_force_step(const u8 idx, const s8 opp)
 		mtk_vmm_ctrl_dbg_use(true);
 
 	ret = mmdvfs_force_step(idx, opp);
-	if (!ret)
+	if (!ret) {
 		user[step_idx[idx]].force_opp = opp;
+		mmdvfs_record_cmd_user(step_idx[idx], opp, MAX_LEVEL);
+	}
 
 	if ((user[step_idx[idx]].rc == 1) && dpsw_thr && (opp < 0 || opp >= dpsw_thr) &&
 		last >= 0 && last < dpsw_thr)
@@ -130,8 +123,10 @@ int mmdvfs_debug_vote_step(const u8 idx, const s8 opp)
 		mtk_vmm_ctrl_dbg_use(true);
 
 	ret = clk_set_rate(user[step_idx[idx]].clk, mmdvfs_user_get_freq_by_opp(user[step_idx[idx]].id, opp));
-	if (!ret)
+	if (!ret) {
 		user[step_idx[idx]].vote_opp = opp;
+		mmdvfs_record_cmd_user(step_idx[idx], MAX_LEVEL, opp);
+	}
 
 	if ((user[step_idx[idx]].rc == 1) && dpsw_thr && (opp < 0 || opp >= dpsw_thr) &&
 		last >= 0 && last < dpsw_thr)
@@ -188,8 +183,10 @@ static int mmdvfs_debug_v5_ap_set_rate(const char *val, const struct kernel_para
 		mtk_vmm_ctrl_dbg_use(true);
 
 	ret = clk_set_rate(user[idx].clk, mmdvfs_user_get_freq_by_opp(user[idx].id, opp));
-	if (!ret)
+	if (!ret) {
 		user[idx].vote_opp = opp;
+		mmdvfs_record_cmd_user(idx, MAX_LEVEL, opp);
+	}
 
 	if ((user[idx].rc == 1) && dpsw_thr && (opp < 0 || opp >= dpsw_thr) &&
 		last >= 0 && last < dpsw_thr)
@@ -214,6 +211,7 @@ static int mmdvfs_debug_freerun(const char *val, const struct kernel_param *kp)
 	for (i = 0; i < user_count; i++)
 		if (user && user[i].rc == idx) {
 			user[i].vote_opp = OPP_NAG;
+			mmdvfs_record_cmd_user(i, MAX_LEVEL, OPP_NAG);
 			ret = clk_set_rate(user[i].clk, mmdvfs_user_get_freq_by_opp(user[i].id, OPP_NAG));
 		}
 
@@ -265,38 +263,48 @@ static int mmdvfs_debug_dump_volt_freq(struct seq_file *file)
 	return 0;
 }
 
+#define MEM_PRINT(SEC, VAL, i, file, name, idx_name, lvl_name) \
+	do { \
+		u32 sec = readl(SEC); \
+		u32 val = readl(VAL); \
+		if (!sec && !MEM_DEC_USEC(val)) \
+			continue; \
+		mmdvfs_seq_print(file, "[%6u.%06u] " name ":%2d " idx_name ":%2u " lvl_name ":%2u", \
+			sec, MEM_DEC_USEC(val), i, MEM_DEC_IDX(val), MEM_DEC_LVL(val)); \
+	} while (0)
+
+#define MEM_PRINT_LOOP(NUM, IDX, SEC, VAL, file, desc, ...) \
+	do { \
+		mmdvfs_seq_print(file, desc); \
+		for (i = 0; i < NUM; i++) { \
+			int j, k = readl(IDX(i)) % MEM_REC_CNT; \
+			for (j = k; j < MEM_REC_CNT; j++) \
+				MEM_PRINT(SEC(i, j), VAL(i, j), i, file, ##__VA_ARGS__); \
+			for (j = 0; j < k; j++) \
+				MEM_PRINT(SEC(i, j), VAL(i, j), i, file, ##__VA_ARGS__); \
+		} \
+	} while (0)
+
 static int mmdvfs_debug_v5_status_dump(struct seq_file *file)
 {
-	u32 val;
-	int i, j, k, ret;
+	int i, ret;
 
 	ret = mmdvfs_debug_dump_volt_freq(file);
 
 	if (DRAM_VCP_BASE) {
-		// user vote history
-		for (i = 0; i < DRAM_USR_NUM_MAX; i++) {
-			k = readl(DRAM_USR_IDX(i)) % DRAM_REC_CNT;
-			for (j = k; j < DRAM_REC_CNT; j++) {
-				val = readl(DRAM_USR_VAL(i, j));
-				if (!readl(DRAM_USR_SEC(i, j)) && !DRAM_DEC_USR_USEC(val))
-					continue;
-				mmdvfs_seq_print(file, "[%5u.%3u] user:%u pwr:%u lvl:%u", readl(DRAM_USR_SEC(i, j)),
-					DRAM_DEC_USR_USEC(val), i, DRAM_DEC_USR_PWR(val), DRAM_DEC_USR_LVL(val));
-			}
-			for (j = 0; j < k; j++) {
-				val = readl(DRAM_USR_VAL(i, j));
-				if (!readl(DRAM_USR_SEC(i, j)) && !DRAM_DEC_USR_USEC(val))
-					continue;
-				mmdvfs_seq_print(file, "[%5u.%3u] user:%u pwr:%u lvl:%u", readl(DRAM_USR_SEC(i, j)),
-					DRAM_DEC_USR_USEC(val), i, DRAM_DEC_USR_PWR(val), DRAM_DEC_USR_LVL(val));
-			}
-		}
+		MEM_PRINT_LOOP(DRAM_USR_NUM, DRAM_USR_IDX, DRAM_USR_SEC, DRAM_USR_VAL,
+			file, "lvl history of usr from ap and vcp", "usr", "pwr", "lvl");
+
+		MEM_PRINT_LOOP(DRAM_CMD_NUM, DRAM_CMD_IDX, DRAM_CMD_SEC, DRAM_CMD_VAL,
+			file, "opp history of cmd from ap and vcp", "cmd", "force", "vote");
 	}
 
-	if (user)
+	if (user) {
+		mmdvfs_seq_print(file, "opp status of cmd from ap");
 		for (i = 0; i < user_count; i++)
-			mmdvfs_seq_print(file, "user:%d id:%hhu name:%8s rc:%hhu force:%hhd vote:%hhd",
-				i, user[i].id, user[i].name, user[i].rc, user[i].force_opp, user[i].vote_opp);
+			mmdvfs_seq_print(file, "usr:%hhu name:%8s mux:%d pwr:%hhu force:%hhu vote:%hhu",
+				user[i].id, user[i].name, i, user[i].rc, user[i].force_opp, user[i].vote_opp);
+	}
 
 	mtk_mmdvfs_enable_vcp(true, user ? user[0].id : 0);
 	mmdvfs_mmup_cb_mutex_lock();
@@ -304,85 +312,36 @@ static int mmdvfs_debug_v5_status_dump(struct seq_file *file)
 	if (!ret || !unlikely(SRAM_BASE)) {
 		mmdvfs_mmup_cb_mutex_unlock();
 		mtk_mmdvfs_enable_vcp(false, user ? user[0].id : 0);
-		mmdvfs_seq_print(file, "mmup_cb_ready:%d mmup_sram:%#lx", ret, (unsigned long)(void *)SRAM_BASE);
+		mmdvfs_seq_print(file, "mmup_cb_ready:%d SRAM_BASE:%#lx", ret, (unsigned long)(void *)SRAM_BASE);
 		return 0;
 	}
 
-	mmdvfs_seq_print(file, "mmup_sram:%#lx", (unsigned long)(void *)SRAM_BASE);
+	// xpc: mmpc, cpc, dpc
+	MEM_PRINT_LOOP(SRAM_XPC_CNT, SRAM_XPC_IDX, SRAM_XPC_SEC, SRAM_XPC_VAL,
+		file, "lvl history of xpc from mmup", "xpc", "", "lvl");
+	// irq: vcore dvs, vmm dvs, vdisp dvs, vmm dfs, vdisp dfs
+	MEM_PRINT_LOOP(SRAM_IRQ_CNT, SRAM_IRQ_IDX, SRAM_IRQ_SEC, SRAM_IRQ_VAL,
+		file, "lvl history of irq from mmup", "irq", "", "lvl");
+	// pwr: vcore, vmm, vdisp
+	MEM_PRINT_LOOP(SRAM_PWR_CNT, SRAM_PWR_IDX, SRAM_PWR_SEC, SRAM_PWR_VAL,
+		file, "lvl history of pwr from mmup", "pwr", "", "lvl");
+	// clk: vcore, vmm, vdisp, cam, hop
+	MEM_PRINT_LOOP(SRAM_CLK_CNT, SRAM_CLK_IDX, SRAM_CLK_SEC, SRAM_CLK_VAL,
+		file, "lvl history of clk from mmup", "clk", "", "lvl");
+	// ceil: vcore, vmm, vdisp
+	MEM_PRINT_LOOP(SRAM_CEIL_CNT, SRAM_CEIL_IDX, SRAM_CEIL_SEC, SRAM_CEIL_VAL,
+		file, "lvl history of ceil from mmup", "ceil", "", "lvl");
 
-	// mmpc, cpc, dpc
-	for (i = 0; i < SRAM_XPC_CNT; i++) {
-		k = readl(SRAM_XPC_IDX(i)) % SRAM_REC_CNT;
-		for (j = k; j < SRAM_REC_CNT; j++) {
-			val = readl(SRAM_XPC_VAL(i, j));
-			mmdvfs_seq_print(file, "[%5u.%3u] (%d, %d) xpc:%u lvl:%u", readl(SRAM_XPC_SEC(i, j)),
-				SRAM_DEC_USEC(val), i, j, SRAM_DEC_IDX(val), SRAM_DEC_LVL(val));
-		}
-		for (j = 0; j < k; j++) {
-			val = readl(SRAM_XPC_VAL(i, j));
-			mmdvfs_seq_print(file, "[%5u.%3u] (%d, %d) xpc:%u lvl:%u", readl(SRAM_XPC_SEC(i, j)),
-				SRAM_DEC_USEC(val), i, j, SRAM_DEC_IDX(val), SRAM_DEC_LVL(val));
-		}
-	}
+	// prof
+	mmdvfs_seq_print(file, "ns profile status from mmup");
+	for (i = 0; i < SRAM_PROF_CNT; i++) {
+		u32 sec = readl(SRAM_PROF_SEC(i));
+		u32 val = readl(SRAM_PROF_VAL(i));
 
-	// vcore dvs, vmm dvs, vdisp dvs, vmm dfs, vdisp dfs
-	for (i = 0; i < SRAM_IRQ_CNT; i++) {
-		k = readl(SRAM_IRQ_IDX(i)) % SRAM_REC_CNT;
-		for (j = k; j < SRAM_REC_CNT; j++) {
-			val = readl(SRAM_IRQ_VAL(i, j));
-			mmdvfs_seq_print(file, "[%5u.%3u] (%d, %d) irq:%u lvl:%u", readl(SRAM_IRQ_SEC(i, j)),
-				SRAM_DEC_USEC(val), i, j, SRAM_DEC_IDX(val), SRAM_DEC_LVL(val));
-		}
-		for (j = 0; j < k; j++) {
-			val = readl(SRAM_IRQ_VAL(i, j));
-			mmdvfs_seq_print(file, "[%5u.%3u] (%d, %d) irq:%u lvl:%u", readl(SRAM_IRQ_SEC(i, j)),
-				SRAM_DEC_USEC(val), i, j, SRAM_DEC_IDX(val), SRAM_DEC_LVL(val));
-		}
-	}
-
-	// vcore, vmm, vdisp
-	for (i = 0; i < SRAM_PWR_CNT; i++) {
-		k = readl(SRAM_PWR_IDX(i)) % SRAM_REC_CNT;
-		for (j = k; j < SRAM_REC_CNT; j++) {
-			val = readl(SRAM_PWR_VAL(i, j));
-			mmdvfs_seq_print(file, "[%5u.%3u] (%d, %d) pwr:%u lvl:%u", readl(SRAM_PWR_SEC(i, j)),
-				SRAM_DEC_USEC(val), i, j, SRAM_DEC_IDX(val), SRAM_DEC_LVL(val));
-		}
-		for (j = 0; j < k; j++) {
-			val = readl(SRAM_PWR_VAL(i, j));
-			mmdvfs_seq_print(file, "[%5u.%3u] (%d, %d) pwr:%u lvl:%u", readl(SRAM_PWR_SEC(i, j)),
-				SRAM_DEC_USEC(val), i, j, SRAM_DEC_IDX(val), SRAM_DEC_LVL(val));
-		}
-	}
-
-	// vcore, vmm, vdisp, cam, hop
-	for (i = 0; i < SRAM_CLK_CNT; i++) {
-		k = readl(SRAM_CLK_IDX(i)) % SRAM_REC_CNT;
-		for (j = k; j < SRAM_REC_CNT; j++) {
-			val = readl(SRAM_CLK_VAL(i, j));
-			mmdvfs_seq_print(file, "[%5u.%3u] (%d, %d) clk:%u lvl:%u", readl(SRAM_CLK_SEC(i, j)),
-				SRAM_DEC_USEC(val), i, j, SRAM_DEC_IDX(val), SRAM_DEC_LVL(val));
-		}
-		for (j = 0; j < k; j++) {
-			val = readl(SRAM_CLK_VAL(i, j));
-			mmdvfs_seq_print(file, "[%5u.%3u] (%d, %d) clk:%u lvl:%u", readl(SRAM_CLK_SEC(i, j)),
-				SRAM_DEC_USEC(val), i, j, SRAM_DEC_IDX(val), SRAM_DEC_LVL(val));
-		}
-	}
-
-	// vcore, vmm, vdisp
-	for (i = 0; i < SRAM_CEIL_CNT; i++) {
-		k = readl(SRAM_CEIL_IDX(i)) % SRAM_REC_CNT;
-		for (j = k; j < SRAM_REC_CNT; j++) {
-			val = readl(SRAM_CEIL_VAL(i, j));
-			mmdvfs_seq_print(file, "[%5u.%3u] (%d, %d) idx:%u ceil:%u", readl(SRAM_CEIL_SEC(i, j)),
-				SRAM_DEC_USEC(val), i, j, SRAM_DEC_IDX(val), SRAM_DEC_LVL(val));
-		}
-		for (j = 0; j < k; j++) {
-			val = readl(SRAM_CEIL_VAL(i, j));
-			mmdvfs_seq_print(file, "[%5u.%3u] (%d, %d) idx:%u ceil:%u", readl(SRAM_CEIL_SEC(i, j)),
-				SRAM_DEC_USEC(val), i, j, SRAM_DEC_IDX(val), SRAM_DEC_LVL(val));
-		}
+		if (!sec && !MEM_DEC_USEC(val))
+			continue;
+		mmdvfs_seq_print(file, "[%6u.] prof:%2d idx:%2u lvl:%2u dur:%u",
+			sec, i, MEM_DEC_IDX(val), MEM_DEC_LVL(val), MEM_DEC_USEC(val));
 	}
 
 	mmdvfs_mmup_cb_mutex_unlock();
@@ -705,6 +664,7 @@ static int mmdvfs_debug_user_probe(struct platform_device *pdev)
 		opp = user[i].rc ? 1 : 3;
 		ret = clk_set_rate(user[i].clk, mmdvfs_user_get_freq_by_opp(user[i].id, opp));
 		user[i].vote_opp = opp;
+		mmdvfs_record_cmd_user(i, MAX_LEVEL, opp);
 	}
 
 	return ret;
