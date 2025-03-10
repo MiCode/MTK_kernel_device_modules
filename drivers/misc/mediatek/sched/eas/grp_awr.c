@@ -276,6 +276,7 @@ void grp_awr_update_grp_awr_util(void)
 
 	if (grp_awr_init_finished == false)
 		return;
+	irq_log_store();
 	for_each_possible_cpu(cpu_idx) {
 		for (grp_idx = 0; grp_idx < GROUP_ID_RECORD_MAX; grp_idx++)
 			if(userdefined_pcpu_pgrp_act_rto_cap[cpu_idx][grp_idx] == -1)
@@ -290,7 +291,7 @@ void grp_awr_update_grp_awr_util(void)
 		for (grp_idx = 0; grp_idx < GROUP_ID_RECORD_MAX; grp_idx++)
 			pger_pgrp_u[map_cpu_ger[cpu_idx]][grp_idx] = 0;
 	}
-
+	irq_log_store();
 	for_each_possible_cpu(cpu_idx) {
 		for (grp_idx = 0; grp_idx < GROUP_ID_RECORD_MAX; grp_idx++) {
 			pcpu_pgrp_u[cpu_idx][grp_idx] =
@@ -310,7 +311,7 @@ void grp_awr_update_grp_awr_util(void)
 			}
 		}
 	}
-
+	irq_log_store();
 	if (trace_sugov_ext_pger_pgrp_u_enabled()) {
 		for_each_possible_cpu(cpu_idx) {
 			if (map_cpu_ger[cpu_idx] == tmp)
@@ -322,7 +323,7 @@ void grp_awr_update_grp_awr_util(void)
 				margin_for_min_opp[cpu_idx]);
 		}
 	}
-
+	irq_log_store();
 	for (grp_idx = 0; grp_idx < GROUP_ID_RECORD_MAX; grp_idx++) {
 		pgrp_parallel_u[grp_idx] =
 			clamp_val(flt_get_max_group(grp_idx), 0, SCHED_CAPACITY_SCALE);
@@ -331,7 +332,7 @@ void grp_awr_update_grp_awr_util(void)
 		else
 			pgrp_hint[grp_idx] = flt_get_gp_hint(grp_idx);
 	}
-
+	irq_log_store();
 	if (trace_sugov_ext_pgrp_hint_enabled())
 		trace_sugov_ext_pgrp_hint(pgrp_hint);
 
@@ -339,7 +340,7 @@ void grp_awr_update_grp_awr_util(void)
 		pcpu_o_u[cpu_idx] = flt_get_cpu_o(cpu_idx);
 		set_grp_high_freq(cpu_idx, false);
 	}
-
+	irq_log_store();
 	if (grp_awr_update_group_util_hook)
 		grp_awr_update_group_util_hook(FLT_NR_CPUS, GROUP_ID_RECORD_MAX,
 			pcpu_pgrp_u, pger_pgrp_u, pgrp_hint,
@@ -347,7 +348,7 @@ void grp_awr_update_grp_awr_util(void)
 			gas_enable, pcpu_pgrp_wetin, pcpu_grp_wetin_sum, pcpu_pgrp_tar_u_grp_m,
 			pcpu_o_u, margin_for_min_opp, converge_thr_cap, grp_margin,
 			cap_min, pgrp_tar_u_m, cpu_tar_util, 3, weighting, pgrp_parallel_u);
-
+	irq_log_store();
 	if (weighting) {
 		for (cpu_idx = 0; cpu_idx < FLT_NR_CPUS; cpu_idx++)
 			if (cpu_tar_util[cpu_idx] > cap_max[cpu_idx] && gas_enable)
@@ -357,7 +358,7 @@ void grp_awr_update_grp_awr_util(void)
 			if (gas_enable)
 				set_grp_high_freq(map_cpu_ger[cpu_idx], true);
 	}
-
+	irq_log_store();
 	if (trace_sugov_ext_pcpu_pgrp_u_rto_marg_enabled()) {
 		for_each_possible_cpu(cpu_idx)
 			trace_sugov_ext_pcpu_pgrp_u_rto_marg(cpu_idx, pcpu_pgrp_u[cpu_idx],

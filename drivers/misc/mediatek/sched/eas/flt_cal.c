@@ -835,6 +835,7 @@ static void flt_update_task_ravg(struct task_struct *p, struct rq *rq, int event
 	s64 delta = 0;
 	int group_id = -1;
 
+	irq_log_store();
 	if (!fsrq->window_start || fts->mark_start >= wallclock)
 		return;
 
@@ -862,6 +863,7 @@ static void flt_update_task_ravg(struct task_struct *p, struct rq *rq, int event
 		return;
 
 	lockdep_assert_rq_held(rq);
+	irq_log_store();
 	old_window_start = update_window_start(rq, wallclock, event);
 
 	if (!fts->mark_start)
@@ -870,13 +872,16 @@ static void flt_update_task_ravg(struct task_struct *p, struct rq *rq, int event
 	group_id = get_grp_id(p);
 	if (trace_sched_update_task_ravg_enabled())
 		trace_sched_update_task_ravg(rq, p, wallclock, event, fsrq, fts, group_id, irqtime);
-
+	irq_log_store();
 	update_task_demand(p, rq, event, wallclock);
+	irq_log_store();
 	update_cpu_busy_time(p, rq, event, wallclock, irqtime);
 done:
 	fts->last_update_time += delta << 10;
 	fts->mark_start = wallclock;
+	irq_log_store();
 	run_flt_irq_work(old_window_start, rq);
+	irq_log_store();
 }
 
 static void flt_init_new_task_load(struct task_struct *p)
@@ -953,9 +958,10 @@ static int flt_sync_all_cpu(void)
 	u32 *gp_widx;
 
 	wallclock = get_current_time();
+	irq_log_store();
 	for_each_possible_cpu(cpu) {
 		rq = cpu_rq(cpu);
-
+		irq_log_store();
 		raw_spin_rq_lock(rq);
 		fsrq = &per_cpu(flt_rq, cpu);
 		delta = wallclock - fsrq->window_start;
@@ -964,8 +970,10 @@ static int flt_sync_all_cpu(void)
 		if (rq->nr_running == 0)
 			memset(fsrq->group_nr_running, 0, sizeof(fsrq->group_nr_running));
 		raw_spin_rq_unlock(rq);
+		irq_log_store();
 	}
 
+	irq_log_store();
 	for (grp_idx = 0; grp_idx < GROUP_ID_RECORD_MAX; ++grp_idx) {
 		sum = 0;
 		for_each_possible_cpu(cpu) {
@@ -992,7 +1000,7 @@ static int flt_sync_all_cpu(void)
 			}
 		}
 	}
-
+	irq_log_store();
 	if (flt_getnid() == FLT_GP_NID) {
 		for_each_possible_cpu(cpu) {
 			rq = cpu_rq(cpu);
@@ -1006,7 +1014,7 @@ static int flt_sync_all_cpu(void)
 				WRITE_ONCE(fsrq->group_util_ratio[grp_idx], sum);
 			}
 		}
-
+		irq_log_store();
 		for_each_possible_cpu(cpu) {
 			rq = cpu_rq(cpu);
 			fsrq = &per_cpu(flt_rq, cpu);
@@ -1036,7 +1044,7 @@ static int flt_sync_all_cpu(void)
 				WRITE_ONCE(fsrq->group_raw_util_ratio[grp_idx], sum);
 			}
 		}
-
+		irq_log_store();
 		for_each_possible_cpu(cpu) {
 			rq = cpu_rq(cpu);
 			fsrq = &per_cpu(flt_rq, cpu);
@@ -1055,6 +1063,7 @@ static int flt_sync_all_cpu(void)
 			}
 		}
 	}
+	irq_log_store();
 	for (grp_idx = 0; grp_idx < GROUP_ID_RECORD_MAX; ++grp_idx) {
 		for_each_possible_cpu(cpu) {
 			rq = cpu_rq(cpu);
@@ -1062,7 +1071,7 @@ static int flt_sync_all_cpu(void)
 			rt_total[grp_idx] += READ_ONCE(fsrq->group_util_history[0][grp_idx]);
 		}
 	}
-
+	irq_log_store();
 	for_each_possible_cpu(cpu) {
 		rq = cpu_rq(cpu);
 		fsrq = &per_cpu(flt_rq, cpu);
@@ -1136,15 +1145,22 @@ static void flt_irq_workfn(struct irq_work *irq_work)
 	u64 wc;
 	unsigned long flags;
 
+	irq_log_store();
+
 	flt_sync_all_cpu();
 
+	irq_log_store();
 #if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
 	if (get_grp_dvfs_ctrl()) {
+		irq_log_store();
 		update_active_ratio_all();
+		irq_log_store();
 		grp_awr_update_grp_awr_util();
+		irq_log_store();
 	}
 	flt_set_preferred_gear();
 #endif
+	irq_log_store();
 	wc = get_current_time();
 
 	spin_lock_irqsave(&sched_ravg_window_lock, flags);
@@ -1155,6 +1171,7 @@ static void flt_irq_workfn(struct irq_work *irq_work)
 		flt_init_window_dep();
 	}
 	spin_unlock_irqrestore(&sched_ravg_window_lock, flags);
+	irq_log_store();
 }
 
 static void flt_init_once(void)
@@ -1230,12 +1247,14 @@ void flt_android_rvh_try_to_wake_up(void *unused, struct task_struct *p)
 	struct rq *rq = cpu_rq(task_cpu(p));
 	struct rq_flags rf;
 	u64 wallclock;
-
 	if (unlikely(flt_get_mode() == FLT_MODE_0))
 		return;
+	irq_log_store();
 	rq_lock_irqsave(rq, &rf);
 	wallclock = get_current_time();
+	irq_log_store();
 	flt_update_task_ravg(rq->curr, rq, TASK_UPDATE, wallclock, 0);
+	irq_log_store();
 	flt_update_task_ravg(p, rq, TASK_WAKE, wallclock, 0);
 	rq_unlock_irqrestore(rq, &rf);
 }
@@ -1248,7 +1267,7 @@ void flt_android_rvh_tick_entry(void *unused, struct rq *rq)
 	lockdep_assert_rq_held(rq);
 	if (unlikely(flt_get_mode() == FLT_MODE_0))
 		return;
-
+	irq_log_store();
 	if (unlikely(update_flt_tul && get_eas_hook())) {
 		res = flt_tul();
 		if (res == 0)
@@ -1256,8 +1275,9 @@ void flt_android_rvh_tick_entry(void *unused, struct rq *rq)
 	}
 	set_window_start(rq);
 	wallclock = get_current_time();
-
+	irq_log_store();
 	flt_update_task_ravg(rq->curr, rq, TASK_UPDATE, wallclock, 0);
+	irq_log_store();
 }
 
 void flt_android_rvh_schedule(void *unused,
@@ -1267,13 +1287,18 @@ void flt_android_rvh_schedule(void *unused,
 
 	if (unlikely(flt_get_mode() == FLT_MODE_0))
 		return;
-
+	irq_log_store();
 	wallclock = get_current_time();
 	if (likely(prev != next)) {
+		irq_log_store();
 		flt_update_task_ravg(prev, rq, PUT_PREV_TASK, wallclock, 0);
+		irq_log_store();
 		flt_update_task_ravg(next, rq, PICK_NEXT_TASK, wallclock, 0);
+		irq_log_store();
 	} else {
+		irq_log_store();
 		flt_update_task_ravg(prev, rq, TASK_UPDATE, wallclock, 0);
+		irq_log_store();
 	}
 }
 
