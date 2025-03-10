@@ -918,9 +918,9 @@ s32 mml_subcomp_init(struct platform_device *comp_pdev,
 
 s32 mml_comp_init_larb(struct mml_comp *comp, struct device *dev)
 {
-	struct platform_device *larb_pdev;
-	struct of_phandle_args larb_args;
-	struct resource res;
+	struct platform_device *larb_pdev, *larb_pdev2;
+	struct of_phandle_args larb_args, larb_args2;
+	struct resource res, res2;
 
 	/* parse larb node and port from dts */
 	if (of_property_read_u8(dev->of_node, "larb-idx", &comp->larb_idx))
@@ -946,6 +946,24 @@ s32 mml_comp_init_larb(struct mml_comp *comp, struct device *dev)
 	}
 	/* larb dev for smi api */
 	comp->larb_dev = &larb_pdev->dev;
+
+	if (of_parse_phandle_with_fixed_args(dev->of_node, "mediatek,larb2",
+		1, 0, &larb_args2)) {
+		mml_msg("%s fail to parse mediatek,larb2 comp %u %s",
+			__func__, comp->id,
+			comp->name ? comp->name : "");
+	} else {
+		if (!of_address_to_resource(larb_args2.np, 0, &res2))
+			comp->larb_base2 = res2.start;
+
+		larb_pdev2 = of_find_device_by_node(larb_args2.np);
+		of_node_put(larb_args2.np);
+		if (WARN_ON(!larb_pdev2))
+			mml_log("%s no larb 2 and defer", __func__);
+
+		/* second larb dev for smi api */
+		comp->larb_dev2 = &larb_pdev2->dev;
+	}
 
 	/* also do mmqos and mmdvfs since dma component do init here */
 #ifndef MML_FPGA
@@ -1005,10 +1023,23 @@ s32 mml_comp_pw_enable(struct mml_comp *comp, const s8 mode, bool pw_by_mminfra)
 		ret = mtk_smi_larb_enable(comp->larb_dev);
 		if (ret)
 			mml_err("%s mtk_smi_larb_enable fail ret:%d", __func__, ret);
+		if (comp->larb_dev2) {
+			mml_msg("%s mtk_smi_larb_enable larb_dev2", __func__);
+			ret = mtk_smi_larb_enable(comp->larb_dev2);
+			if (ret)
+				mml_err("%s mtk_smi_larb_enable larb_dev2 fail ret:%d",
+					__func__, ret);
+		}
 	} else {
 		ret = pm_runtime_resume_and_get(comp->larb_dev);
 		if (ret)
 			mml_err("%s enable fail ret:%d", __func__, ret);
+		if (comp->larb_dev2) {
+			ret = pm_runtime_resume_and_get(comp->larb_dev2);
+			if (ret)
+				mml_err("%s enable larb_dev2 fail ret:%d",
+					__func__, ret);
+		}
 	}
 #endif
 
@@ -1042,8 +1073,23 @@ s32 mml_comp_pw_disable(struct mml_comp *comp, const s8 mode, bool pw_by_mminfra
 		ret = mtk_smi_larb_disable(comp->larb_dev);
 		if (ret)
 			mml_err("%s mtk_smi_larb_disable fail ret:%d", __func__, ret);
+		if (comp->larb_dev2) {
+			mml_msg("%s mtk_smi_larb_disable larb_dev2", __func__);
+			ret = mtk_smi_larb_disable(comp->larb_dev2);
+			if (ret)
+				mml_err("%s mtk_smi_larb_disable larb_dev2 fail ret:%d",
+					__func__, ret);
+		}
 	} else {
-		pm_runtime_put_sync(comp->larb_dev);
+		ret = pm_runtime_put_sync(comp->larb_dev);
+		if (ret)
+			mml_err("%s disable fail ret:%d", __func__, ret);
+		if (comp->larb_dev2) {
+			ret = pm_runtime_put_sync(comp->larb_dev2);
+			if (ret)
+				mml_err("%s disable larb_dev2 fail ret:%d",
+					__func__, ret);
+		}
 	}
 #endif
 

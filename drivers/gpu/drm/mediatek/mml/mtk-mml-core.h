@@ -918,7 +918,9 @@ struct mml_comp {
 	phys_addr_t base_pa;
 	struct clk *clks[2];
 	struct device *larb_dev;
+	struct device *larb_dev2;
 	phys_addr_t larb_base;
+	phys_addr_t larb_base2;
 	u32 larb_port;
 	u8 larb_idx;
 	s32 pw_cnt;

@@ -415,10 +415,18 @@ static s32 sys_init(struct mml_comp *comp, struct mml_task *task,
 		/* disable ultra in srt mode to avoid occupy bw */
 		cmdq_pkt_write(pkt, NULL,
 			comp->larb_base + SMI_LARB_DISABLE_ULTRA, 0xffffffff, U32_MAX);
+		if (comp->larb_base2)
+			cmdq_pkt_write(pkt, NULL,
+				comp->larb_base2 + SMI_LARB_DISABLE_ULTRA,
+				0xffffffff, U32_MAX);
 	} else if (cfg->info.mode == MML_MODE_DIRECT_LINK) {
 		/* enable ultra */
 		cmdq_pkt_write(pkt, NULL,
 			comp->larb_base + SMI_LARB_DISABLE_ULTRA, 0x0, U32_MAX);
+		if (comp->larb_base2)
+			cmdq_pkt_write(pkt, NULL,
+				comp->larb_base2 + SMI_LARB_DISABLE_ULTRA,
+				0x0, U32_MAX);
 
 		/* assign ddp path if underrun addon dump */
 		sys->ddp_path[ccfg->pipe] = cfg->path[ccfg->pipe];
@@ -427,6 +435,10 @@ static s32 sys_init(struct mml_comp *comp, struct mml_task *task,
 		/* enable ultra */
 		cmdq_pkt_write(pkt, NULL,
 			comp->larb_base + SMI_LARB_DISABLE_ULTRA, 0x0, U32_MAX);
+		if (comp->larb_base2)
+			cmdq_pkt_write(pkt, NULL,
+				comp->larb_base2 + SMI_LARB_DISABLE_ULTRA,
+				0x0, U32_MAX);
 	}
 #endif
 
