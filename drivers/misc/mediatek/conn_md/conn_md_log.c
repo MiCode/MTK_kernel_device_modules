@@ -18,7 +18,10 @@ int __conn_md_log_print(const char *str, ...)
 	len = vsnprintf(temp_sring, DBG_LOG_STR_SIZE, str, args);
 	va_end(args);
 
-	pr_info("[%s] len=(%d)", temp_sring, len);
+	if (len >= 0)
+		pr_info("[%s]", temp_sring);
+	else
+		pr_info("[%s] log print error, len = %d", __func__, len);
 
 	return 0;
 }
