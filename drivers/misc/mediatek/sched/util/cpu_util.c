@@ -143,7 +143,10 @@ int mtk_effective_cpu_util_total(int cpu, struct task_struct *p, int dst_cpu, in
 		cpu_util_cfs = mtk_cpu_util_next(cpu, NULL, -1, runnable_boost);
 
 #if IS_ENABLED(CONFIG_MTK_CPUFREQ_SUGOV_EXT)
-	cpu_util_eff = mtk_effective_cpu_util(cpu, cpu_util_cfs, p, min, max);
+	if (sg_cpumask)
+		cpu_util_eff = mtk_effective_cpu_util(cpu, cpu_util_cfs, (struct task_struct *)UINTPTR_MAX, min, max);
+	else
+		cpu_util_eff = mtk_effective_cpu_util(cpu, cpu_util_cfs, p, min, max);
 #else
 	cpu_util_eff = effective_cpu_util(cpu, cpu_util_cfs, min, max);
 #endif
