@@ -21,6 +21,10 @@ void ged_gpu_memsys_feature_enable(unsigned int idx);
 
 GED_ERROR ged_gpu_memsys_exit(void);
 
+#if !IS_ENABLED(CONFIG_MTK_GPU_LEGACY) /* MTK_GPU_EB_SUPPORT */
+GED_ERROR ged_gpu_aximon_init(void);
+GED_ERROR ged_gpu_aximon_exit(void);
+#endif /* MTK_GPU_EB_SUPPORT */
 
 #endif /* __GED_GPU_MEMSYS_H__ */
 

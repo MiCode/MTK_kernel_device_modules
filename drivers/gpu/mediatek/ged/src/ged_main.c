@@ -837,9 +837,15 @@ static int ged_pdrv_probe(struct platform_device *pdev)
 #endif /*MTK_GPU_SLC_POLICY */
 
 #if defined(MTK_GPU_MEMSYS_UTIL)
-	if (unlikely(ged_gpu_memsys_init() != GED_OK)) {
+	if (unlikely(ged_gpu_memsys_init() != GED_OK))
 		GED_LOGE("Failed to init GPU MEMSYS!\n");
-	}
+#endif /* MTK_GPU_MEMSYS_UTIL */
+
+#if defined(MTK_GPU_MEMSYS_UTIL)
+#if !IS_ENABLED(CONFIG_MTK_GPU_LEGACY) /* MTK_GPU_EB_SUPPORT */
+	if (unlikely(ged_gpu_aximon_init() != GED_OK))
+		GED_LOGE("Failed to init GPU MEMSYS!\n");
+#endif /* MTK_GPU_EB_SUPPORT */
 #endif /* MTK_GPU_MEMSYS_UTIL */
 
 #if !IS_ENABLED(CONFIG_MTK_ENABLE_GMO) /* GED_BUFFER_LOG_DISABLE */
@@ -943,6 +949,9 @@ static void ged_pdrv_remove(struct platform_device *pdev)
 #endif /*MTK_GPU_SLC_POLICY */
 
 #if defined(MTK_GPU_MEMSYS_UTIL)
+#if !IS_ENABLED(CONFIG_MTK_GPU_LEGACY) /* MTK_GPU_EB_SUPPORT */
+	ged_gpu_aximon_exit();
+#endif /* MTK_GPU_EB_SUPPORT */
 	ged_gpu_memsys_exit();
 #endif /*MTK_GPU_MEMSYS_UTIL */
 

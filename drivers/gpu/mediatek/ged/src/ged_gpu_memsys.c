@@ -13,12 +13,17 @@
 #include <ged_type.h>
 #include <ged_base.h>
 #include <ged_gpu_memsys.h>
-
+#if !IS_ENABLED(CONFIG_MTK_GPU_LEGACY) /* MTK_GPU_EB_SUPPORT */
+#include <gpufreq_v2.h>
+#endif /* MTK_GPU_EB_SUPPORT */
 
 #if defined(MTK_GPU_MEMSYS_UTIL)
 static phys_addr_t g_counter_pa, g_counter_va;
 static unsigned int g_counter_size;
 static struct gpu_memsys_stat *g_memsys_stat;
+#if !IS_ENABLED(CONFIG_MTK_GPU_LEGACY) /* MTK_GPU_EB_SUPPORT */
+static bool g_hrt_debug_enabled;
+#endif /* MTK_GPU_EB_SUPPORT */
 
 static GED_ERROR gpu_memsys_sysram_init(void)
 {
@@ -116,6 +121,39 @@ GED_ERROR ged_gpu_memsys_exit(void)
 {
 	/*Do Nothing*/
 	return GED_OK;
+}
+
+#if !IS_ENABLED(CONFIG_MTK_GPU_LEGACY) /* MTK_GPU_EB_SUPPORT */
+GED_ERROR ged_gpu_aximon_init(void)
+{
+	struct device_node *chosen_node;
+	const char *name = NULL;
+	int ret;
+
+	/* get mtk_fabric_hrt_debug device node from dts */
+	chosen_node = of_find_node_by_path("/chosen");
+	if (chosen_node) {
+		ret = of_property_read_string_index(chosen_node, "mtk_fabric_hrt_debug", 0, &name);
+		if (!ret && (!strncmp("on", name, sizeof("on"))))
+			g_hrt_debug_enabled = true;
+		else
+			g_hrt_debug_enabled = false;
 	}
+
+	if (g_hrt_debug_enabled)
+		gpufreq_set_mfgsys_config(CONFIG_AXI_MON, FEAT_ENABLE);
+
+	GED_LOGI("[GPU_DEBUG_UTIL]%s aximonitor init status : %u\n",
+		__func__, g_hrt_debug_enabled);
+
+	return GED_OK;
+}
+
+GED_ERROR ged_gpu_aximon_exit(void)
+{
+	/*Do Nothing*/
+	return GED_OK;
+}
+#endif /* MTK_GPU_EB_SUPPORT */
 #endif /* MTK_GPU_MEMSYS_UTIL */
 
