@@ -108,7 +108,6 @@
 			<&ufs1cfg_ao_clk UFS1AO_UNIPRO_SYS_UFS>,
 			<&ufs1cfg_ao_clk UFS1AO_UNIPRO_SAP_UFS>,
 			<&ufs1cfg_ao_clk UFS1AO_U_PHY_SAP_UFS>,
-			<&ufs1cfg_ao_clk UFS1AO_U_PHY_TOP_AHB_S_BUSCK_UFS>,
 			<&ufs1cfg_ao_clk UFS1AO_UFSHCI_UFS_UFS>,
 			<&ufs1cfg_ao_clk UFS1AO_UFSHCI_AES_UFS>;
 	};
@@ -120,7 +119,6 @@
 			<&ufs0cfg_ao_clk UFS0AO_UNIPRO_SYS_UFS>,
 			<&ufs0cfg_ao_clk UFS0AO_UNIPRO_SAP_UFS>,
 			<&ufs0cfg_ao_clk UFS0AO_U_PHY_SAP_UFS>,
-			<&ufs0cfg_ao_clk UFS0AO_U_PHY_TOP_AHB_S_BUSCK_UFS>,
 			<&ufs0cfg_ao_clk UFS0AO_UFSHCI_UFS_UFS>,
 			<&ufs0cfg_ao_clk UFS0AO_UFSHCI_AES_UFS>;
 	};

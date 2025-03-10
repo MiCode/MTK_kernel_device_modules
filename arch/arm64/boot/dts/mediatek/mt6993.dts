@@ -5839,7 +5839,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<&ufs0cfg_ao_clk UFS0AO_UNIPRO_SYS_UFS>,
 				<&ufs0cfg_ao_clk UFS0AO_UNIPRO_SAP_UFS>,
 				<&ufs0cfg_ao_clk UFS0AO_U_PHY_SAP_UFS>,
-				<&ufs0cfg_ao_clk UFS0AO_U_PHY_TOP_AHB_S_BUSCK_UFS>,
 				<&ufs0cfg_ao_clk UFS0AO_UFSHCI_UFS_UFS>,
 				<&ufs0cfg_ao_clk UFS0AO_UFSHCI_AES_UFS>;
 
@@ -5853,13 +5852,11 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"unipro_sys",
 				"unipro_sap",
 				"ufs_phy_sap",
-				"ufs_phy_ahb",
 				"ufshci_ufs",
 				"ufshci_aes";
 
 			freq-table-hz =
 				<273000000 499200000>,
-				<0 0>,
 				<0 0>,
 				<0 0>,
 				<0 0>,
@@ -5933,7 +5930,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<&ufs1cfg_ao_clk UFS1AO_UNIPRO_SYS_UFS>,
 				<&ufs1cfg_ao_clk UFS1AO_UNIPRO_SAP_UFS>,
 				<&ufs1cfg_ao_clk UFS1AO_U_PHY_SAP_UFS>,
-				<&ufs1cfg_ao_clk UFS1AO_U_PHY_TOP_AHB_S_BUSCK_UFS>,
 				<&ufs1cfg_ao_clk UFS1AO_UFSHCI_UFS_UFS>,
 				<&ufs1cfg_ao_clk UFS1AO_UFSHCI_AES_UFS>;
 
@@ -5947,13 +5943,11 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"unipro_sys",
 				"unipro_sap",
 				"ufs_phy_sap",
-				"ufs_phy_ahb",
 				"ufshci_ufs",
 				"ufshci_aes";
 
 			freq-table-hz =
 				<273000000 499200000>,
-				<0 0>,
 				<0 0>,
 				<0 0>,
 				<0 0>,
