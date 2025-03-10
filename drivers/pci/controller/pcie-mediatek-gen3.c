@@ -200,6 +200,8 @@
 #define PCIE_MSI_SET_ADDR_HI_BASE	0xc80
 #define PCIE_MSI_SET_ADDR_HI_OFFSET	0x04
 
+#define PCIE_TX_CREDIT_0_REG		0xd30
+#define PCIE_TX_CREDIT_1_REG		0xd34
 #define PHY_ERR_DEBUG_LANE0		0xD40
 
 #define PCIE_MSI_GRP2_SET_OFFSET	0xDC0
@@ -2089,6 +2091,11 @@ static void mtk_pcie_monitor_mac(struct mtk_pcie_port *port)
 		mtk_pcie_mac_dbg_set_partition(port, PCIE_DEBUG_SEL_PARTITION(0x5, 0x5, 0x5, 0x5));
 		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x08, 0x09, 0x0a, 0x0b));
 		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x0c, 0x0d, 0x0e, 0x0f));
+		mtk_pcie_mac_dbg_set_partition(port, PCIE_DEBUG_SEL_PARTITION(0x7, 0x7, 0x7, 0x7));
+		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x8, 0xa, 0xe, 0xf));
+		mtk_pcie_mac_dbg_set_partition(port, PCIE_DEBUG_SEL_PARTITION(0x9, 0x9, 0x9, 0x9));
+		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x25, 0x26, 0xb6, 0xb7));
+		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0xb8, 0xb9, 0xba, 0xbb));
 		mtk_pcie_mac_dbg_set_partition(port, PCIE_DEBUG_SEL_PARTITION(0xc, 0xc, 0xc, 0xc));
 		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x45, 0x47, 0x48, 0x49));
 		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x4a, 0x4b, 0x4c, 0x4d));
@@ -2096,7 +2103,7 @@ static void mtk_pcie_monitor_mac(struct mtk_pcie_port *port)
 		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x5c, 0x5d, 0x5e, 0x0));
 	}
 
-	pr_info("Port%d, ltssm reg:%#x, link sta:%#x, power sta:%#x, LP ctrl:%#x, DIS LP STS0:%#x, DIS LP STS1:%#x, IP basic sta:%#x, int sta:%#x, msi set0 sta: %#x, msi set1 sta: %#x, axi err add:%#x, axi err info:%#x, spm res ack=%#x, adt pending sta:=%#x, err addr_l=%#x, err addr_h=%#x, err info=%#x, IF_CTRL=%#x, phy err=%#x, tag_id=%#x\n",
+	pr_info("Port%d, ltssm reg:%#x, link sta:%#x, power sta:%#x, LP ctrl:%#x, DIS LP STS0:%#x, DIS LP STS1:%#x, IP basic sta:%#x, int sta:%#x, msi set0 sta: %#x, msi set1 sta: %#x, axi err add:%#x, axi err info:%#x, spm res ack=%#x, adt pending sta:=%#x, err addr_l=%#x, err addr_h=%#x, err info=%#x, IF_CTRL=%#x, tx_credit0=%#x, tx_credit1=%#x, phy err=%#x, tag_id=%#x\n",
 		port->port_num,
 		readl_relaxed(port->base + PCIE_LTSSM_STATUS_REG),
 		readl_relaxed(port->base + PCIE_LINK_STATUS_REG),
@@ -2119,6 +2126,8 @@ static void mtk_pcie_monitor_mac(struct mtk_pcie_port *port)
 		readl_relaxed(port->base + PCIE_ERR_ADDR_H),
 		readl_relaxed(port->base + PCIE_ERR_INFO),
 		readl_relaxed(port->base + PCIE_AXI_IF_CTRL),
+		readl_relaxed(port->base + PCIE_TX_CREDIT_0_REG),
+		readl_relaxed(port->base + PCIE_TX_CREDIT_1_REG),
 		readl_relaxed(port->base + PHY_ERR_DEBUG_LANE0),
 		readl_relaxed(port->base + PCIE_ULTRA_SETTING_REG));
 
