@@ -134,11 +134,9 @@ static void ssusb_hwrscs_req_v2_v3(struct ssusb_mtk *ssusb,
 	struct arm_smccc_res res;
 	void __iomem *ibase = ssusb->ippc_base;
 	u32 spm_ctrl, value, spm_msk = SSUSB_SPM_REQ_MSK;
-	u32 offload_req = 0;
 	u32 smc_req = -1;
 	int ret;
 	bool vcore_req_support = (ssusb->hwrscs_vers == SSUSB_HWRECS_V3);
-
 
 	dev_info(ssusb->dev, "%s state = %d\n", __func__, state);
 
@@ -168,29 +166,29 @@ static void ssusb_hwrscs_req_v2_v3(struct ssusb_mtk *ssusb,
 	switch (state) {
 	case MTU3_STATE_POWER_OFF:
 		spm_ctrl &= ~spm_msk;
+		if (of_device_is_compatible(ssusb->dev->of_node, "mediatek,mt6993-mtu3"))
+			spm_ctrl &= ~SSUSB_SPM_VCORE_EN;
 		break;
 	case MTU3_STATE_POWER_ON:
 		spm_ctrl |= spm_msk;
 		break;
-	case MTU3_STATE_OFFLOAD_IDLE:
-		/* set apsrc, ddren and emi to hw mode */
-		offload_req |= SSUSB_SPM_REQ_DRAM_HW;
-		fallthrough;
 	case MTU3_STATE_OFFLOAD:
-		offload_req |= (SSUSB_SPM_INFRE_REQ | SSUSB_SPM_VRF18_REQ);
-		if (vcore_req_support)
-			offload_req |= SSUSB_SPM_VCORE_EN;
+		spm_ctrl |= SSUSB_SPM_REQ_OFFLOAD_MSK;
+		spm_ctrl &= ~(SSUSB_SPM_REQ_OFFLOAD_MSK ^ spm_msk);
 		/* set apsrc=0 and ddren=1, inform peri not to protect bus */
-		if (state == MTU3_STATE_OFFLOAD &&
-			of_device_is_compatible(ssusb->dev->of_node, "mediatek,mt6899-mtu3"))
-			offload_req |= SSUSB_SPM_DDR_EN;
-		fallthrough;
+		if (of_device_is_compatible(ssusb->dev->of_node, "mediatek,mt6899-mtu3"))
+			spm_ctrl |= SSUSB_SPM_DDR_EN;
+		break;
 	case MTU3_STATE_OFFLOAD_EX:
-		/* no need dram in any offload mode */
-		spm_msk &= ~SSUSB_SPM_REQ_DRAM_SW;
-		offload_req |= SSUSB_SPM_SRCCLKENA;
-		spm_ctrl |= offload_req;
-		spm_ctrl = ~(offload_req ^ spm_msk);
+		spm_ctrl |= SSUSB_SPM_REQ_OFFLOAD_EX_MSK;
+		spm_ctrl &= ~(SSUSB_SPM_REQ_OFFLOAD_EX_MSK ^ spm_msk);
+		if (of_device_is_compatible(ssusb->dev->of_node, "mediatek,mt6993-mtu3"))
+			spm_ctrl |= SSUSB_SPM_VCORE_EN;
+		break;
+	case MTU3_STATE_OFFLOAD_IDLE:
+		spm_ctrl |= SSUSB_SPM_REQ_OFFLOAD_IDLE_MSK;
+		spm_ctrl &= ~(SSUSB_SPM_REQ_OFFLOAD_IDLE_MSK ^ (spm_msk | SSUSB_SPM_FORCE_HW_REQ_MSK));
+		spm_msk &= ~(spm_msk ^ (SSUSB_SPM_FORCE_HW_REQ_MSK >> 8));
 		break;
 	case MTU3_STATE_RESUME:
 		spm_ctrl |= spm_msk;
@@ -1751,9 +1749,11 @@ static int mtu3_resume_common(struct device *dev, pm_message_t msg)
 	case SSUSB_OFFLOAD_MODE_D_SS:
 		goto resume;
 	case SSUSB_OFFLOAD_MODE_S:
+	case SSUSB_OFFLOAD_MODE_S_EX:
 		ssusb_host_u3_resume(ssusb);
 		fallthrough;
 	case SSUSB_OFFLOAD_MODE_S_SS:
+	case SSUSB_OFFLOAD_MODE_S_SS_EX:
 		ssusb_set_power_state(ssusb, MTU3_STATE_POWER_ON);
 		goto resume;
 	default:
