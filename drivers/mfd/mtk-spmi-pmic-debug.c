@@ -32,6 +32,10 @@
 #define MT6688_CHIP_REV_E3		3
 
 #define MTK_SPMI_DBG			0
+#ifdef BUF_SIZE
+#undef BUF_SIZE
+#endif
+#define BUF_SIZE			15
 
 struct mutex dump_mutex;
 
@@ -106,8 +110,9 @@ static ssize_t pmic_access_show(struct device *dev,
 	struct mtk_spmi_pmic_debug_data *data = dev_get_drvdata(dev);
 
 	dev_info(dev, "0x%x\n", data->reg_value);
-	return sprintf(buf, "0x%x\n", data->reg_value);
+	return snprintf(buf, BUF_SIZE, "0x%x\n", data->reg_value);
 }
+#undef BUF_SIZE
 
 static ssize_t pmic_access_store(struct device *dev,
 				 struct device_attribute *attr,
@@ -591,7 +596,7 @@ EXPORT_SYMBOL_GPL(mtk_spmi_pmic_get_debug_rg_info);
 int mtk_spmi_pmic_dump_rg_data(u8 slvid, u32 *rdata, enum dump_rg rg_name)
 {
 	struct regmap *regmap;
-	struct spmi_pmic_dump_rg_info info;
+	struct spmi_pmic_dump_rg_info *info;
 	int ret = 0;
 	unsigned long flags = 0;
 	unsigned int val = 0;
@@ -601,27 +606,27 @@ int mtk_spmi_pmic_dump_rg_data(u8 slvid, u32 *rdata, enum dump_rg rg_name)
 		return -1;
 	}
 
-	info = mtk_spmi_pmic_debug[slvid]->dump_rg_info;
+	info = &mtk_spmi_pmic_debug[slvid]->dump_rg_info;
 	regmap = mtk_spmi_pmic_debug[slvid]->regmap;
-	raw_spin_lock_irqsave(&info.spin_lock, flags);
+	raw_spin_lock_irqsave(&info->spin_lock, flags);
 	switch (rg_name) {
 	case RGS_NPKT_CCLP_ERR:
-		if (info.npkt_cclp_err == 0) {
+		if (info->npkt_cclp_err == 0) {
 			pr_info("%s: rg addr is not in dtsi\n", __func__);
 			break;
 		}
-		ret |= regmap_read(regmap, info.npkt_cclp_err, &val);
+		ret |= regmap_read(regmap, info->npkt_cclp_err, &val);
 		if (rdata != NULL)
 			*rdata = val;
-		ret |= regmap_write(regmap, info.npkt_cclp_clr, 1);
-		ret |= regmap_write(regmap, info.npkt_cclp_clr, 0);
+		ret |= regmap_write(regmap, info->npkt_cclp_clr, 1);
+		ret |= regmap_write(regmap, info->npkt_cclp_clr, 0);
 		break;
 	default:
 		pr_info("%s: rg_name is not defined\n", __func__);
 		ret |= -1;
 		break;
 	}
-	raw_spin_unlock_irqrestore(&info.spin_lock, flags);
+	raw_spin_unlock_irqrestore(&info->spin_lock, flags);
 
 	return ret;
 }

@@ -296,6 +296,10 @@ unlock_efuse:
 }
 
 #if EFUSE_ECID_SYSFS
+#ifdef BUF_SIZE
+#undef BUF_SIZE
+#endif
+#define BUF_SIZE	20
 /* Create sysfs entry for lbat throttling ext */
 static ssize_t efuse_pmic_ecid_show(struct device *dev,
 				    struct device_attribute *attr,
@@ -311,14 +315,15 @@ static ssize_t efuse_pmic_ecid_show(struct device *dev,
 
 	for (slvid = 0; slvid < MAX_PMIC_SIZE; ++slvid) {
 		if (efuse->pmic_name[slvid] != NULL) {
-			ptr += sprintf(ptr, "%s:", efuse->pmic_name[slvid]);
+			ptr += snprintf(ptr, BUF_SIZE, "%s:", efuse->pmic_name[slvid]);
 			for (i = 0; i < EFUSE_ECID_SIZE; ++i)
-				ptr += sprintf(ptr, "%X ", efuse->pmic_ecid[slvid][i]);
-			ptr += sprintf(ptr, "\n");
+				ptr += snprintf(ptr, BUF_SIZE, "%X ", efuse->pmic_ecid[slvid][i]);
+			ptr += snprintf(ptr, BUF_SIZE, "\n");
 		}
 	}
 	return strlen(buf);
 }
+#undef BUF_SIZE
 
 static DEVICE_ATTR_RO(efuse_pmic_ecid);
 

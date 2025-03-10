@@ -8,6 +8,11 @@
 #include <linux/platform_device.h>
 #include <linux/regmap.h>
 
+#ifdef BUF_SIZE
+#undef BUF_SIZE
+#endif
+#define BUF_SIZE	15
+
 struct extbuck_consumer_data {
 	struct mutex lock;
 	struct regmap *regmap;
@@ -21,8 +26,9 @@ static ssize_t extbuck_access_show(struct device *dev,
 	struct extbuck_consumer_data *data = dev_get_drvdata(dev);
 
 	dev_info(dev, "[%s] 0x%x\n", __func__, data->reg_value);
-	return sprintf(buf, "0x%x\n", data->reg_value);
+	return snprintf(buf, BUF_SIZE, "0x%x\n", data->reg_value);
 }
+#undef BUF_SIZE
 
 static ssize_t extbuck_access_store(struct device *dev,
 				    struct device_attribute *attr,
