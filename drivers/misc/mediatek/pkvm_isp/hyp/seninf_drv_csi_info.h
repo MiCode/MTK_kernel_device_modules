@@ -1,0 +1,68 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+/*
+ * Copyright (c) 2025 MediaTek Inc.
+ */
+
+#ifndef __SENINF_DRV_CSI_INFO_H__
+#define __SENINF_DRV_CSI_INFO_H__
+
+#include "secure_port.h"
+
+#undef DAPC_EN
+
+typedef enum {
+	SENINF_OUTMUX0  = 0x0,
+	SENINF_OUTMUX1  = 0x1,
+	SENINF_OUTMUX2  = 0x2,
+	SENINF_OUTMUX3  = 0x3,
+	SENINF_OUTMUX4  = 0x4,
+	SENINF_OUTMUX5  = 0x5,
+	SENINF_OUTMUX6  = 0x6,
+	SENINF_OUTMUX7  = 0x7,
+	SENINF_OUTMUX8  = 0x8,
+	SENINF_OUTMUX9  = 0x9,
+	SENINF_OUTMUX_NUM,
+	SENINF_OUTMUX_ERROR = 0xFF,
+} SENINF_OUTMUX_ENUM;
+
+typedef enum {
+	SENINF_ASYNC_0,
+	SENINF_ASYNC_1,
+	SENINF_ASYNC_2,
+	SENINF_ASYNC_3,
+	SENINF_ASYNC_4,
+	SENINF_ASYNC_5,
+	SENINF_ASYNC_NUM,
+	SENINF_ASYNC_ENUM_ERROR = 0xF,
+} SENINF_ASYNC_ENUM;
+
+typedef enum {  // 0:CSI2(2.5G), 3: parallel, 8:NCSI2(1.5G)
+	CSI2                = 0x0,  /* 2.5G support */
+	TEST_MODEL          = 0x1,
+	CCIR656             = 0x2,
+	PARALLEL_SENSOR     = 0x3,
+	SERIAL_SENSOR       = 0x4,
+	HD_TV               = 0x5,
+	EXT_CSI2_OUT1       = 0x6,
+	EXT_CSI2_OUT2       = 0x7,
+	MIPI_SENSOR         = 0x8,  /* 1.5G support */
+	VIRTUAL_CHANNEL_1   = 0x9,
+	VIRTUAL_CHANNEL_2   = 0xA,
+	VIRTUAL_CHANNEL_3   = 0xB,
+	VIRTUAL_CHANNEL_4   = 0xC,
+	VIRTUAL_CHANNEL_5   = 0xD,
+	VIRTUAL_CHANNEL_6   = 0xE,
+} SENINF_SOURCE_ENUM;
+
+typedef enum {
+	CUSTOM_CFG_SECURE_NONE,
+	CUSTOM_CFG_SECURE_M0
+} CUSTOM_CFG_SECURE;
+
+typedef struct {
+	CUSTOM_CFG_CSI_PORT port;
+	SENINF_ASYNC_ENUM seninf;
+	SENINF_SOURCE_ENUM srcType;
+} SENINF_CSI_INFO;
+
+#endif
