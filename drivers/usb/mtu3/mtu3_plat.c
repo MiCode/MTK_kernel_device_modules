@@ -189,7 +189,8 @@ static void ssusb_hwrscs_req_v2_v3(struct ssusb_mtk *ssusb,
 		/* no need dram in any offload mode */
 		spm_msk &= ~SSUSB_SPM_REQ_DRAM_SW;
 		offload_req |= SSUSB_SPM_SRCCLKENA;
-		spm_ctrl = offload_req;
+		spm_ctrl |= offload_req;
+		spm_ctrl = ~(offload_req ^ spm_msk);
 		break;
 	case MTU3_STATE_RESUME:
 		spm_ctrl |= spm_msk;
@@ -1637,6 +1638,10 @@ static int mtu3_suspend_common(struct device *dev, pm_message_t msg)
 	ssusb->offload_mode = ssusb_offload_get_mode(ssusb->offload);
 
 	dev_info(ssusb->dev, "%s offload_mode %d\n", __func__, ssusb->offload_mode);
+	if (ssusb->offload_mode != SSUSB_OFFLOAD_MODE_NONE && ssusb->wakeup_irq > 0) {
+		dev_pm_clear_wake_irq(ssusb->dev);
+		dev_info(ssusb->dev, "clear wakeup irq %d\n", ssusb->wakeup_irq);
+	}
 
 	switch (ssusb->offload_mode) {
 	case SSUSB_OFFLOAD_MODE_D:
@@ -1732,6 +1737,12 @@ static int mtu3_resume_common(struct device *dev, pm_message_t msg)
 
 	dev_info(ssusb->dev, "%s offload_mode %d\n",
 		__func__, ssusb->offload_mode);
+	if (ssusb->offload_mode != SSUSB_OFFLOAD_MODE_NONE && ssusb->wakeup_irq > 0) {
+		if (dev_pm_set_dedicated_wake_irq_reverse(dev, ssusb->wakeup_irq))
+			dev_info(ssusb->dev, "failed to set wakeup irq %d\n", ssusb->wakeup_irq);
+		else
+			dev_info(ssusb->dev, "wakeup irq %d\n", ssusb->wakeup_irq);
+	}
 
 	switch (ssusb->offload_mode) {
 	case SSUSB_OFFLOAD_MODE_D:
