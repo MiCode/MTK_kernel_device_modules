@@ -12,6 +12,9 @@
 #include <linux/regulator/consumer.h>
 #include <linux/soc/mediatek/mtk_dvfsrc.h>
 #include <linux/soc/mediatek/mtk_sip_svc.h>
+#if IS_ENABLED(CONFIG_MTK_DRAMC)
+#include <soc/mediatek/dramc.h>
+#endif
 
 #include "dvfsrc-helper.h"
 #include "dvfsrc-common.h"
@@ -1250,6 +1253,63 @@ static u64 dvfsrc_query_dvfs_time(struct mtk_dvfsrc *dvfsrc)
 	return dvfs_time_us;
 }
 
+static char *dvfsrc_dump_therm_idx_mt6993(struct mtk_dvfsrc *dvfsrc, char *p, u32 size)
+{
+	char *buff_end = p + size;
+	u32 data_rate = 0;
+	int vcore_uv = 0;
+
+	if (dvfsrc->vcore_power)
+		vcore_uv = regulator_get_voltage(dvfsrc->vcore_power);
+
+#if IS_ENABLED(CONFIG_MTK_DRAMC)
+	data_rate = mtk_dramc_get_data_rate();
+#endif
+	p += snprintf(p, buff_end - p, "%s", "[v/d/f/op/s_r/b_r/sta]=");
+
+	p += snprintf(p, buff_end - p, "%d/%d/%d/%d",
+		vcore_uv, data_rate, dvfsrc->force_opp_idx,
+		dvfsrc_read(dvfsrc, DVFSRC_TARGET_LEVEL, 0x0));
+
+	p += snprintf(p, buff_end - p, "/%x,%x,%x,%x,%x,%x,%x,%x",
+		dvfsrc_read(dvfsrc, DVFSRC_SW_REQ1, 0x0),
+		dvfsrc_read(dvfsrc, DVFSRC_SW_REQ1, 0x4),
+		dvfsrc_read(dvfsrc, DVFSRC_SW_REQ1, 0x8),
+		dvfsrc_read(dvfsrc, DVFSRC_SW_REQ1, 0xC),
+		dvfsrc_read(dvfsrc, DVFSRC_SW_REQ1, 0x10),
+		dvfsrc_read(dvfsrc, DVFSRC_SW_REQ1, 0x14),
+		dvfsrc_read(dvfsrc, DVFSRC_SW_REQ1, 0x18),
+		dvfsrc_read(dvfsrc, DVFSRC_SW_REQ1, 0x1C));
+
+	p += snprintf(p, buff_end - p, "%x,%x,%x,%x",
+		dvfsrc_read(dvfsrc, DVFSRC_BASIC_CONTROL, 0x5F8),
+		dvfsrc_read(dvfsrc, DVFSRC_BASIC_CONTROL, 0x5FC),
+		dvfsrc_read(dvfsrc, DVFSRC_BASIC_CONTROL, 0x600),
+		dvfsrc_read(dvfsrc, DVFSRC_BASIC_CONTROL, 0x604));
+
+	p += snprintf(p, buff_end - p, "/%d,%d,%d,%d,%d,%d,%d",
+		dvfsrc_read(dvfsrc, DVFSRC_SW_BW_0, 0x0),
+		dvfsrc_read(dvfsrc, DVFSRC_SW_BW_0, 0x4),
+		dvfsrc_read(dvfsrc, DVFSRC_SW_BW_0, 0x8),
+		dvfsrc_read(dvfsrc, DVFSRC_SW_BW_0, 0xC),
+		dvfsrc_read(dvfsrc, DVFSRC_SW_BW_0, 0x10),
+		dvfsrc_read(dvfsrc, DVFSRC_SW_BW_0, 0x14),
+		dvfsrc_read(dvfsrc, DVFSRC_SW_BW_0, 0x18));
+
+	p += snprintf(p, buff_end - p, "/%x,%x,%x,%x,%x,%x,%x,%x,%x\n",
+		dvfsrc_read(dvfsrc, DVFSRC_BASIC_CONTROL, 0x294),
+		dvfsrc_read(dvfsrc, DVFSRC_BASIC_CONTROL, 0x29C),
+		dvfsrc_read(dvfsrc, DVFSRC_BASIC_CONTROL, 0x2BC),
+		dvfsrc_read(dvfsrc, DVFSRC_BASIC_CONTROL, 0x2C0),
+		dvfsrc_read(dvfsrc, DVFSRC_BASIC_CONTROL, 0x5E8),
+		dvfsrc_read(dvfsrc, DVFSRC_BASIC_CONTROL, 0x78C),
+		dvfsrc_read(dvfsrc, DVFSRC_BASIC_CONTROL, 0x790),
+		dvfsrc_read(dvfsrc, DVFSRC_BASIC_CONTROL, 0x794),
+		dvfsrc_read(dvfsrc, DVFSRC_BASIC_CONTROL, 0xB90));
+
+	return p;
+}
+
 const struct dvfsrc_config mt6779_dvfsrc_config = {
 	.ip_version = 0, /*mt6779 series*/
 	.regs = mt6779_regs,
@@ -1363,4 +1423,5 @@ const struct dvfsrc_config mt6993_dvfsrc_config = {
 	.set_ddr_ceiling = dvfsrc_set_ceiling_6993_ddr_opp,
 	.set_vcore_avs = dvfsrc_set_vcore_avs,
 	.dump_vcore_avs_zone = dvfsrc_dump_vcore_avs_zone,
+	.dump_therm_info = dvfsrc_dump_therm_idx_mt6993,
 };

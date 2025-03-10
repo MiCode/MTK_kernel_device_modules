@@ -448,6 +448,23 @@ static ssize_t vcore_avs_zone_dump_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(vcore_avs_zone_dump);
 
+static ssize_t dvfsrc_therm_info_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	char *p = buf;
+	ssize_t dump_size = PAGE_SIZE - 1;
+	const struct dvfsrc_config *config;
+	struct mtk_dvfsrc *dvfsrc = dev_get_drvdata(dev);
+
+	config = dvfsrc->dvd->config;
+
+	if (config->dump_therm_info)
+		p = config->dump_therm_info(dvfsrc, p, dump_size - (p - buf));
+
+	return p - buf;
+}
+static DEVICE_ATTR_RO(dvfsrc_therm_info);
+
 static struct attribute *dvfsrc_sysfs_attrs[] = {
 	&dev_attr_dvfsrc_req_bw.attr,
 	&dev_attr_dvfsrc_req_hrtbw.attr,
@@ -504,6 +521,13 @@ int dvfsrc_register_sysfs(struct device *dev)
 			      &dev_attr_dvfsrc_req_emi_opp.attr, NULL);
 		if (err)
 			dev_info(dvfsrc->dev, "can't create emi_req sysfs file\n");
+	}
+
+	if (dvfsrc->dvd->therm_info_en) {
+		err = sysfs_add_file_to_group(&dev->kobj,
+			      &dev_attr_dvfsrc_therm_info.attr, NULL);
+		if (err)
+			dev_info(dvfsrc->dev, "can't create therm_info sysfs file\n");
 	}
 
 	ret = sysfs_create_link(&dev->parent->kobj, &dev->kobj,
