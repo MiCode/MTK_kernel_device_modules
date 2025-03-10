@@ -1177,16 +1177,18 @@ occur_err:
 static inline void dpmaif_updata_max_bat_skb_cnt(struct dpmaif_rx_queue *rxq)
 {
 	unsigned int max_bat_skb_cnt = 0;
-	unsigned int chk_reg_addr;
 
 	if (g_plat_inf == 6993)
-		chk_reg_addr = NRL2_DPMAIF_DL_RESERVE_AO_RW;
+		max_bat_skb_cnt = DPMA_READ_PD_MISC(NRL2_DPMAIF_AP_MISC_CODA_VER);
 	else
-		chk_reg_addr = NRL2_DPMAIF_DL_RESERVE_RW;
+		max_bat_skb_cnt = DPMA_READ_PD_DL(NRL2_DPMAIF_DL_RESERVE_RW);
 
-	max_bat_skb_cnt = DPMA_READ_PD_DL(chk_reg_addr);
 	if (max_bat_skb_cnt & DPMAIF_DL_MAX_BAT_SKB_CNT_STS) {
-		DPMA_WRITE_PD_DL(chk_reg_addr,
+		if (g_plat_inf == 6993)
+			DPMA_WRITE_PD_MISC(NRL2_DPMAIF_AP_MISC_CODA_VER,
+				(max_bat_skb_cnt & (~DPMAIF_DL_MAX_BAT_SKB_CNT_STS)));
+		else
+			DPMA_WRITE_PD_DL(NRL2_DPMAIF_DL_RESERVE_RW,
 				(max_bat_skb_cnt & (~DPMAIF_DL_MAX_BAT_SKB_CNT_STS)));
 
 		max_bat_skb_cnt = ((max_bat_skb_cnt & DPMAIF_DL_MAX_BAT_SKB_CNT_MSK) >> 16);
