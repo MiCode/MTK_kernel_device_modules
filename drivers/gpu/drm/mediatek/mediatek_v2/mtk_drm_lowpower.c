@@ -1579,8 +1579,6 @@ static void mtk_drm_destroy_async_cb(struct mtk_drm_async_cb *cb,
 
 void mtk_drm_clear_async_cb_list(struct drm_crtc *crtc)
 {
-	struct sched_param hi_param = {.sched_priority = 87 };
-	struct sched_param lo_param = {.sched_priority = 0 };
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_drm_idlemgr *idlemgr = mtk_crtc->idlemgr;
 	struct mtk_drm_private *priv = NULL;
@@ -1594,8 +1592,6 @@ void mtk_drm_clear_async_cb_list(struct drm_crtc *crtc)
 
 	while (atomic_read(&idlemgr->async_cb_pending) > 0) {
 		if (adjusted == false) {
-			sched_setscheduler(idlemgr->async_handler_task,
-					SCHED_RR, &hi_param);
 			adjusted = true;
 			CRTC_MMP_MARK((int)drm_crtc_index(crtc), idle_async_cb,
 				0xffffffff, atomic_read(&idlemgr->async_cb_pending));
@@ -1606,8 +1602,6 @@ void mtk_drm_clear_async_cb_list(struct drm_crtc *crtc)
 		usleep_range(50, 100);
 	}
 	if (adjusted == true) {
-		sched_setscheduler(idlemgr->async_handler_task,
-				SCHED_NORMAL, &lo_param);
 		CRTC_MMP_MARK((int)drm_crtc_index(crtc), idle_async_cb,
 			0xffffffff, atomic_read(&idlemgr->async_cb_pending));
 		DDPINFO("%s: async count:%d, pending:%d\n",
@@ -1618,12 +1612,15 @@ void mtk_drm_clear_async_cb_list(struct drm_crtc *crtc)
 
 static int mtk_drm_async_handler_thread(void *data)
 {
+	struct sched_param param = {.sched_priority = 87 };
 	struct drm_crtc *crtc = (struct drm_crtc *)data;
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_drm_idlemgr *idlemgr = mtk_crtc->idlemgr;
 	struct mtk_drm_async_cb *cb = NULL;
 	unsigned long flags = 0;
 	int ret = 0;
+
+	sched_setscheduler(current, SCHED_RR, &param);
 
 	while (!kthread_should_stop()) {
 		ret = wait_event_interruptible(idlemgr->async_handler_wq,
