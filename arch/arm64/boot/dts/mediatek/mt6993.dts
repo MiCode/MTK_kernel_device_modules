@@ -9536,8 +9536,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		dfd_soc: dfd-soc {
 			compatible = "mediatek,dfd_soc";
 			enabled = <1>;
-			dfd-timeout = <0x1000>;
-			dfd-timeout-debug = <0x1000>;
+			dfd-timeout = <0x2dc7>;
+			dfd-timeout-debug = <0x2dc7>;
 			buf-length = <0xa00000>;
 			buf-length-debug = <0x1c00000>;
 			buf-addr-align = <0x400000>;
