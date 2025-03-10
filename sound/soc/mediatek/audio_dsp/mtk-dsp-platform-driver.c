@@ -2,6 +2,7 @@
 //
 // Copyright (c) 2018 MediaTek Inc.
 
+#include "mtk-dsp-common_define.h"
 #include <linux/dma-mapping.h>
 #include <linux/module.h>
 #include <linux/string.h>
@@ -1189,11 +1190,14 @@ void mtk_dsp_handler(struct mtk_base_dsp *dsp,
 		mtk_dsp_dl_consume_handler(dsp, ipi_msg, id);
 		break;
 	case AUDIO_DSP_TASK_GET_LATENCY:
-		adsp_task_set_latency(get_dspdaiid_by_dspscene(ipi_msg->task_scene),
-				      ipi_msg->param1, ipi_msg->param2);
+		adsp_task_set_latency(id, ipi_msg->param1, ipi_msg->param2);
+		if (id == AUDIO_TASK_PLAYBACK_ID)
+			update_memif_cpu_qos(id);
 		break;
 	case AUDIO_DSP_TASK_GET_IRQ_PERIOD:
-		adsp_task_set_irq(get_dspdaiid_by_dspscene(ipi_msg->task_scene), ipi_msg->param1);
+		adsp_task_set_irq(id, ipi_msg->param1);
+		if (id == AUDIO_TASK_PLAYBACK_ID)
+			update_memif_cpu_qos(id);
 		break;
 	default:
 		break;
@@ -1500,6 +1504,13 @@ static int mtk_dsp_pcm_hw_prepare(struct snd_soc_component *component,
 			 sizeof(dsp_mem->msg_atod_share_buf.phy_addr),
 			 0,
 			 (char *)&dsp_mem->msg_atod_share_buf.phy_addr);
+
+	/* update playback task pcm and playback config pcm qos */
+	if (id == AUDIO_TASK_PLAYBACK_ID && adsp_task_get_latency_support()) {
+		update_memif_cpu_qos(id);
+		update_pcm_cpu_qos(substream, id);
+	}
+
 	return ret;
 }
 

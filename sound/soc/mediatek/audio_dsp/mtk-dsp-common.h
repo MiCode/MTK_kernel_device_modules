@@ -100,6 +100,9 @@ int request_slc(int id);
 int release_slc(int id);
 #endif
 
+void update_pcm_cpu_qos(struct snd_pcm_substream *substream, const int task_id);
+void update_memif_cpu_qos(const int task_id);
+
 int mtk_adsp_allocate_mem(struct snd_pcm_substream *substream,
 			  unsigned int size);
 int mtk_adsp_free_mem(struct snd_pcm_substream *substream);

@@ -286,6 +286,48 @@ int release_slc(int id)
 EXPORT_SYMBOL(release_slc);
 #endif
 
+void update_pcm_cpu_qos(struct snd_pcm_substream *substream, const int task_id)
+{
+	struct snd_pcm_runtime *runtime = substream->runtime;
+	int usecs;
+	int dynamic_rate = get_dsp_task_attr(task_id, ADSP_TASK_ATTR_LATENCY_RATE);
+	int dynamic_irq = get_dsp_task_attr(task_id, ADSP_TASK_ATTR_LATENCY_IRQNUM);
+	int dynamic_frame = get_dsp_task_attr(task_id, ADSP_TASK_ATTR_LATENCY_FRAME);
+
+	if (!runtime)
+		return;
+
+	runtime->rate = dynamic_rate;
+	runtime->period_size = dynamic_irq;
+	runtime->periods = dynamic_frame / dynamic_irq;
+	usecs = (750000 / runtime->rate) * runtime->period_size;
+	usecs += ((750000 % runtime->rate) * runtime->period_size) / runtime->rate;
+
+	if (cpu_latency_qos_request_active(&substream->latency_pm_qos_req))
+		cpu_latency_qos_remove_request(&substream->latency_pm_qos_req);
+	if (usecs >= 0)
+		cpu_latency_qos_add_request(&substream->latency_pm_qos_req,
+					    usecs);
+}
+EXPORT_SYMBOL(update_pcm_cpu_qos);
+
+void update_memif_cpu_qos(const int task_id)
+{
+	struct mtk_base_afe *afe = get_afe_base();
+	struct mtk_base_afe_memif *dl_memif, *ref_memif;
+
+	if (!afe)
+		return;
+
+	dl_memif = &afe->memif[get_afememdl_by_afe_taskid(task_id)];
+	ref_memif = &afe->memif[get_afememref_by_afe_taskid(task_id)];
+	if (dl_memif && dl_memif->substream)
+		update_pcm_cpu_qos(dl_memif->substream, task_id);
+	if (ref_memif && ref_memif->substream)
+		update_pcm_cpu_qos(ref_memif->substream, task_id);
+}
+EXPORT_SYMBOL(update_memif_cpu_qos);
+
 static void *ipi_recv_private;
 void *get_ipi_recv_private(void)
 {
