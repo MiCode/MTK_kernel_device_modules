@@ -64,3 +64,11 @@ filegroup(
         "**/*.h",
     ]),
 )
+
+ddk_headers(
+   name = "headers",
+   hdrs = [
+           "mtk-scp-ultra-common.h",
+   ],
+   includes = ["."],
+)

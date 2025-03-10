@@ -1,0 +1,90 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "snd-soc-mt6991-afe",
+    srcs = [
+        "mt6991-afe-pcm.c",
+        "mt6991-afe-clk.c",
+        "mt6991-afe-clk.h",
+        "mt6991-afe-gpio.c",
+        "mt6991-afe-gpio.h",
+        "mt6991-dai-adda.c",
+        "mt6991-afe-control.c",
+        "mt6991-dai-i2s.c",
+        "mt6991-dai-hw-gain.c",
+        "mt6991-dai-src.c",
+        "mt6991-dai-pcm.c",
+        "mt6991-dai-hostless.c",
+        "mt6991-misc-control.c",
+        "mt6991-dai-tdm.c",
+        "mt6991-afe-cm.c",
+        "mt6991-afe-cm.h",
+        "mt6991-afe-common.h",
+        "mt6991-reg.h",
+        "mt6991-interconnection.h",
+    ],
+    includes = [
+        ".",
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pbm",
+        "-I$(DEVICE_MODULES_PATH)/sound/soc/mediatek/audio_dsp",
+        "-I$(DEVICE_MODULES_PATH)/sound/soc/mediatek/ultrasound/ultra_scp",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sched/eas",
+        "-I$(srctree)/kernel/",
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/sound/soc/mediatek/common:ddk_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/sound/soc/codecs:ddk_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/pbm:pbm_headers".format(kernel_version),
+        "//kernel_device_modules-{}/sound/soc/mediatek/ultrasound/ultra_scp:headers".format(kernel_version),
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/audio_ipi:audio_ipi".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/pbm:mtk_peak_power_budget".format(kernel_version),
+        "//kernel_device_modules-{}/sound/soc/mediatek/audio_dsp:snd-soc-audiodsp-common".format(kernel_version),
+        "//kernel_device_modules-{}/sound/soc/mediatek/common:snd-soc-mtk-common".format(kernel_version),
+        "//kernel_device_modules-{}/sound/soc/mediatek/ultrasound/ultra_scp:snd-soc-mtk-scp-ultra".format(kernel_version),
+        "//kernel_device_modules-{}/sound/soc/codecs:snd-soc-mt6681".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/sched:scheduler".format(kernel_version),
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "mt6991-mt6681",
+    srcs = [
+        "mt6991-mt6681.c",
+        "mt6991-afe-common.h",
+        "mt6991-afe-clk.h",
+        "mt6991-afe-gpio.h",
+        "mt6991-reg.h",
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/sound/soc/mediatek/common:ddk_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/sound/soc/codecs:ddk_public_headers".format(kernel_version),
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/audio_ipi:audio_ipi".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/pbm:mtk_peak_power_budget".format(kernel_version),
+        "//kernel_device_modules-{}/sound/soc/mediatek/mt6991:snd-soc-mt6991-afe".format(kernel_version),
+        "//kernel_device_modules-{}/sound/soc/mediatek/common:snd-soc-mtk-common".format(kernel_version),
+        "//kernel_device_modules-{}/sound/soc/mediatek/common:mtk-afe-external".format(kernel_version),
+        "//kernel_device_modules-{}/sound/soc/mediatek/common:mtk-sp-spk-amp".format(kernel_version),
+        "//kernel_device_modules-{}/sound/soc/codecs:snd-soc-mt6681".format(kernel_version),
+        "//kernel_device_modules-{}/sound/soc/codecs:mt6681-accdet".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/mfd:mt6681-core".format(kernel_version),
+    ],
+)

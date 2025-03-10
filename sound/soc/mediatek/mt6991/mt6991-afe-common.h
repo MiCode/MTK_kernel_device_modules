@@ -15,7 +15,6 @@
 #include "mtk-base-afe.h"
 #include "mtk-sp-spk-amp.h"
 #include "mtk-afe-external.h"
-#include "mtk-dsp-mem-control.h"
 
 // #define IS_FPGA_EARLY_PORTING
 #ifndef IS_FPGA_EARLY_PORTING

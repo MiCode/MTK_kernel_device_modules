@@ -45,7 +45,7 @@
 
 // ALPS08709395: AudioQOS, set VIP
 #include <linux/sched/cputime.h>
-#include <sched.h>
+#include <sched/sched.h>
 #include "vip.h"
 
 #if IS_ENABLED(CONFIG_NEBULA_SND_PASSTHROUGH)
