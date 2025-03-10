@@ -1855,6 +1855,11 @@
 		version = <612>;
 	};
 
+	vip_engine: vip-engine {
+		compatible = "mediatek,vip-engine";
+		vip-enable = <1>;
+	};
+
 	perf_tracker_info: perf-tracker-info {
 		compatible = "mediatek,perf-tracker-info";
 		/* C, E, U F, U V */
