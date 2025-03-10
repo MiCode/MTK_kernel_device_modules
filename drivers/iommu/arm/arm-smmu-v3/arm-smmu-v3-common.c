@@ -402,12 +402,17 @@ int arm_smmu_device_hw_probe(struct arm_smmu_device *smmu)
 	smmu->evtq.max_stalls = FIELD_GET(IDR5_STALL_MAX, reg);
 
 	/* Page sizes */
-	if (reg & IDR5_GRAN64K)
-		smmu->pgsize_bitmap |= SZ_64K | SZ_2M | SZ_512M;
-	if (reg & IDR5_GRAN16K)
-		smmu->pgsize_bitmap |= SZ_16K | SZ_2M | SZ_32M;
-	if (reg & IDR5_GRAN4K)
-		smmu->pgsize_bitmap |= SZ_4K | SZ_64K | SZ_2M | SZ_1G;
+	if (smmu->impl && smmu->impl->smmu_gran4k_only &&
+	    smmu->impl->smmu_gran4k_only(smmu)) {
+		smmu->pgsize_bitmap = SZ_4K;
+	} else {
+		if (reg & IDR5_GRAN64K)
+			smmu->pgsize_bitmap |= SZ_64K | SZ_2M | SZ_512M;
+		if (reg & IDR5_GRAN16K)
+			smmu->pgsize_bitmap |= SZ_16K | SZ_2M | SZ_32M;
+		if (reg & IDR5_GRAN4K)
+			smmu->pgsize_bitmap |= SZ_4K | SZ_64K | SZ_2M | SZ_1G;
+	}
 
 	/* Input address size */
 	if (FIELD_GET(IDR5_VAX, reg) == IDR5_VAX_52_BIT)

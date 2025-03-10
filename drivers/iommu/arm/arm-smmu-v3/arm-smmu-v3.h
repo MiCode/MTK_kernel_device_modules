@@ -390,6 +390,7 @@ struct arm_smmu_impl {
 	void (*fault_dump)(struct arm_smmu_device *smmu);
 	bool (*skip_shutdown)(struct arm_smmu_device *smmu);
 	bool (*skip_sync_timeout)(struct arm_smmu_device *smmu);
+	bool (*smmu_gran4k_only)(struct arm_smmu_device *smmu);
 	struct io_pgtable_ops* (*alloc_io_pgtable_ops)(enum io_pgtable_fmt fmt,
 						       struct io_pgtable_cfg *cfg,
 						       void *cookie);

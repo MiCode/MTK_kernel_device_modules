@@ -2619,6 +2619,13 @@ static bool mtk_smmu_skip_sync_timeout(struct arm_smmu_device *smmu)
 	return ret;
 }
 
+static bool mtk_smmu_gran4k_only(struct arm_smmu_device *smmu)
+{
+	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
+
+	return data->gran4k_only;
+}
+
 struct io_pgtable_ops *mtk_alloc_io_pgtable_ops(enum io_pgtable_fmt fmt,
 			struct io_pgtable_cfg *cfg,
 			void *cookie)
@@ -2721,6 +2728,7 @@ static const struct arm_smmu_impl mtk_smmu_impl = {
 	.fault_dump = mtk_smmu_fault_dump,
 	.skip_shutdown = mtk_smmu_skip_shutdown,
 	.skip_sync_timeout = mtk_smmu_skip_sync_timeout,
+	.smmu_gran4k_only = mtk_smmu_gran4k_only,
 	.alloc_io_pgtable_ops = mtk_alloc_io_pgtable_ops,
 	.free_io_pgtable_ops = mtk_free_io_pgtable_ops,
 	.smmu_mem_share = mtk_smmu_share_mem_to_hyp,
@@ -2880,6 +2888,7 @@ static void mtk_smmu_parse_driver_properties(struct mtk_smmu_data *data)
 {
 	struct arm_smmu_device *smmu = &data->smmu;
 	u32 prefetch, irq_disable, ssid_enable, tcu_qos, val, gid;
+	struct device_node *node;
 	int ret;
 
 	/* parse tcu prefetch config */
@@ -2950,6 +2959,16 @@ static void mtk_smmu_parse_driver_properties(struct mtk_smmu_data *data)
 	if (of_property_read_bool(smmu->dev->of_node, "mtk,power-awake") &&
 	    !MTK_SMMU_HAS_FLAG(data->plat_data, SMMU_CLK_AO_EN))
 		data->power_awake = true;
+
+	node = of_parse_phandle(smmu->dev->of_node, "mtk,trans-granule", 0);
+	if (node) {
+		ret = of_property_read_u32(node, "mtk,gran4k-only", &val);
+		if (!ret) {
+			data->gran4k_only = (val == 1);
+			dev_info(smmu->dev, "parse gran4k-only:%d\n", val);
+		}
+		of_node_put(node);
+	}
 }
 
 static int mtk_smmu_config_translation(struct mtk_smmu_data *data)

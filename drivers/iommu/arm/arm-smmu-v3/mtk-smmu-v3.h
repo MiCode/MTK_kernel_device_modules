@@ -684,6 +684,7 @@ struct mtk_smmu_data {
 	bool				axslc;
 	bool				ssid_enabled;
 	bool				ela_support;
+	bool				gran4k_only;
 	u32				*smi_com_base;
 	u32				smi_com_base_cnt;
 	bool				irq_disable;
