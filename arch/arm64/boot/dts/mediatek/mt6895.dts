@@ -173,6 +173,7 @@
 			rcupdate.rcu_expedited=1 transparent_hugepage=never \
 			8250.nr_uarts=2 \
 			vmalloc=400M swiotlb=noforce allow_file_spec_access \
+			android_arch_task_struct_size=512 \
 			firmware_class.path=/vendor/firmware";
 		kaslr-seed = <0 0>;
 	};
@@ -1171,12 +1172,13 @@
 				"ccu_i";
 		};
 
-		eas_info: eas_info {
+		eas_info: eas-info {
 			compatible = "mediatek,eas-info";
 			csram-base = <0x0011bc00>;
 			/* L, BL, B, CCI */
 			offs-thermal-limit = <0x1208 0x120c 0x1210 0x1214>;
 			offs-cap = <0xfa0>;
+			legacy-api-support = <1>;
 		};
 
 		lkg: lkg@00114400 {
