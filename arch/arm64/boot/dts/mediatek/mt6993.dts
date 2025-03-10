@@ -3047,131 +3047,131 @@
 		};
 		pmsr-ocla-mux-list {
 			pmsr_ocla_mux_0: pmsr-ocla-mux-0 {
-				sig-sel = <0>;
+				sig-sel = <7>;
 				bit-sel = <0>;
 			};
 			pmsr_ocla_mux_1: pmsr-ocla-mux-1 {
-				sig-sel = <0>;
+				sig-sel = <7>;
 				bit-sel = <1>;
 			};
 			pmsr_ocla_mux_2: pmsr-ocla-mux-2 {
-				sig-sel = <0>;
+				sig-sel = <7>;
 				bit-sel = <2>;
 			};
 			pmsr_ocla_mux_3: pmsr-ocla-mux-3 {
-				sig-sel = <0>;
+				sig-sel = <7>;
 				bit-sel = <3>;
 			};
 			pmsr_ocla_mux_4: pmsr-ocla-mux-4 {
-				sig-sel = <0>;
+				sig-sel = <7>;
 				bit-sel = <4>;
 			};
 			pmsr_ocla_mux_5: pmsr-ocla-mux-5 {
-				sig-sel = <0>;
+				sig-sel = <7>;
 				bit-sel = <5>;
 			};
 			pmsr_ocla_mux_6: pmsr-ocla-mux-6 {
-				sig-sel = <0>;
+				sig-sel = <7>;
 				bit-sel = <6>;
 			};
 			pmsr_ocla_mux_7: pmsr-ocla-mux-7 {
-				sig-sel = <0>;
+				sig-sel = <7>;
 				bit-sel = <7>;
 			};
 			pmsr_ocla_mux_8: pmsr-ocla-mux-8 {
-				sig-sel = <0>;
+				sig-sel = <7>;
 				bit-sel = <8>;
 			};
 			pmsr_ocla_mux_9: pmsr-ocla-mux-9 {
-				sig-sel = <0>;
+				sig-sel = <7>;
 				bit-sel = <9>;
 			};
 			pmsr_ocla_mux_10: pmsr-ocla-mux-10 {
-				sig-sel = <0>;
+				sig-sel = <7>;
 				bit-sel = <10>;
 			};
 			pmsr_ocla_mux_11: pmsr-ocla-mux-11 {
-				sig-sel = <0>;
+				sig-sel = <7>;
 				bit-sel = <11>;
 			};
 			pmsr_ocla_mux_12: pmsr-ocla-mux-12 {
-				sig-sel = <0>;
+				sig-sel = <7>;
 				bit-sel = <12>;
 			};
 			pmsr_ocla_mux_13: pmsr-ocla-mux-13 {
-				sig-sel = <0>;
+				sig-sel = <7>;
 				bit-sel = <13>;
 			};
 			pmsr_ocla_mux_14: pmsr-ocla-mux-14 {
-				sig-sel = <0>;
+				sig-sel = <7>;
 				bit-sel = <14>;
 			};
 			pmsr_ocla_mux_15: pmsr-ocla-mux-15 {
-				sig-sel = <0>;
+				sig-sel = <7>;
 				bit-sel = <15>;
 			};
 			pmsr_ocla_mux_16: pmsr-ocla-mux-16 {
-				sig-sel = <0>;
+				sig-sel = <7>;
 				bit-sel = <16>;
 			};
 			pmsr_ocla_mux_17: pmsr-ocla-mux-17 {
-				sig-sel = <0>;
+				sig-sel = <7>;
 				bit-sel = <17>;
 			};
 			pmsr_ocla_mux_18: pmsr-ocla-mux-18 {
-				sig-sel = <0>;
+				sig-sel = <7>;
 				bit-sel = <18>;
 			};
 			pmsr_ocla_mux_19: pmsr-ocla-mux-19 {
-				sig-sel = <0>;
+				sig-sel = <7>;
 				bit-sel = <19>;
 			};
 			pmsr_ocla_mux_20: pmsr-ocla-mux-20 {
-				sig-sel = <0>;
+				sig-sel = <7>;
 				bit-sel = <20>;
 			};
 			pmsr_ocla_mux_21: pmsr-ocla-mux-21 {
-				sig-sel = <0>;
+				sig-sel = <7>;
 				bit-sel = <21>;
 			};
 			pmsr_ocla_mux_22: pmsr-ocla-mux-22 {
-				sig-sel = <0>;
+				sig-sel = <7>;
 				bit-sel = <22>;
 			};
 			pmsr_ocla_mux_23: pmsr-ocla-mux-23 {
-				sig-sel = <0>;
+				sig-sel = <7>;
 				bit-sel = <23>;
 			};
 			pmsr_ocla_mux_24: pmsr-ocla-mux-24 {
-				sig-sel = <0>;
+				sig-sel = <7>;
 				bit-sel = <24>;
 			};
 			pmsr_ocla_mux_25: pmsr-ocla-mux-25 {
-				sig-sel = <0>;
+				sig-sel = <7>;
 				bit-sel = <25>;
 			};
 			pmsr_ocla_mux_26: pmsr-ocla-mux-26 {
-				sig-sel = <0>;
+				sig-sel = <7>;
 				bit-sel = <26>;
 			};
 			pmsr_ocla_mux_27: pmsr-ocla-mux-27 {
-				sig-sel = <0>;
+				sig-sel = <7>;
 				bit-sel = <27>;
 			};
 			pmsr_ocla_mux_28: pmsr-ocla-mux-28 {
-				sig-sel = <0>;
-				bit-sel = <28>;
+				sig-sel = <7>;
+				bit-sel = <29>;
 			};
 			pmsr_ocla_mux_29: pmsr-ocla-mux-29 {
-				sig-sel = <0>;
+				sig-sel = <6>;
 				bit-sel = <29>;
 			};
 			pmsr_ocla_mux_30: pmsr-ocla-mux-30 {
-				sig-sel = <0>;
+				sig-sel = <7>;
 				bit-sel = <30>;
 			};
 			pmsr_ocla_mux_31: pmsr-ocla-mux-31 {
-				sig-sel = <0>;
+				sig-sel = <7>;
 				bit-sel = <31>;
 			};
 			pmsr_ocla_mux_32: pmsr-ocla-mux-32 {
