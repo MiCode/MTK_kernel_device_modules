@@ -597,119 +597,119 @@ void Intr_Number_to_Name(struct mtk_battery *gm, char *intr_name, unsigned int i
 
 	switch (intr_no) {
 	case FG_INTR_0:
-		ret = sprintf(intr_name, "FG_INTR_INIT");
+		ret = snprintf(intr_name, MAX_FG_INTR_NAME_LEN, "FG_INTR_INIT");
 		break;
 
 	case FG_INTR_TIMER_UPDATE:
-		ret = sprintf(intr_name, "FG_INTR_TIMER_UPDATE");
+		ret = snprintf(intr_name, MAX_FG_INTR_NAME_LEN, "FG_INTR_TIMER_UPDATE");
 		break;
 
 	case FG_INTR_BAT_CYCLE:
-		ret = sprintf(intr_name, "FG_INTR_BAT_CYCLE");
+		ret = snprintf(intr_name, MAX_FG_INTR_NAME_LEN, "FG_INTR_BAT_CYCLE");
 		break;
 
 	case FG_INTR_CHARGER_OUT:
-		ret = sprintf(intr_name, "FG_INTR_CHARGER_OUT");
+		ret = snprintf(intr_name, MAX_FG_INTR_NAME_LEN, "FG_INTR_CHARGER_OUT");
 		break;
 
 	case FG_INTR_CHARGER_IN:
-		ret = sprintf(intr_name, "FG_INTR_CHARGER_IN");
+		ret = snprintf(intr_name, MAX_FG_INTR_NAME_LEN, "FG_INTR_CHARGER_IN");
 		break;
 
 	case FG_INTR_FG_TIME:
-		ret = sprintf(intr_name, "FG_INTR_FG_TIME");
+		ret = snprintf(intr_name, MAX_FG_INTR_NAME_LEN, "FG_INTR_FG_TIME");
 		break;
 
 	case FG_INTR_BAT_INT1_HT:
-		ret = sprintf(intr_name, "FG_INTR_COULOMB_HT");
+		ret = snprintf(intr_name, MAX_FG_INTR_NAME_LEN, "FG_INTR_COULOMB_HT");
 		break;
 
 	case FG_INTR_BAT_INT1_LT:
-		ret = sprintf(intr_name, "FG_INTR_COULOMB_LT");
+		ret = snprintf(intr_name, MAX_FG_INTR_NAME_LEN, "FG_INTR_COULOMB_LT");
 		break;
 
 	case FG_INTR_BAT_INT2_HT:
-		ret = sprintf(intr_name, "FG_INTR_UISOC_HT");
+		ret = snprintf(intr_name, MAX_FG_INTR_NAME_LEN, "FG_INTR_UISOC_HT");
 		break;
 
 	case FG_INTR_BAT_INT2_LT:
-		ret = sprintf(intr_name, "FG_INTR_UISOC_LT");
+		ret = snprintf(intr_name, MAX_FG_INTR_NAME_LEN, "FG_INTR_UISOC_LT");
 		break;
 
 	case FG_INTR_BAT_TMP_HT:
-		ret = sprintf(intr_name, "FG_INTR_BAT_TEMP_HT");
+		ret = snprintf(intr_name, MAX_FG_INTR_NAME_LEN, "FG_INTR_BAT_TEMP_HT");
 		break;
 
 	case FG_INTR_BAT_TMP_LT:
-		ret = sprintf(intr_name, "FG_INTR_BAT_TEMP_LT");
+		ret = snprintf(intr_name, MAX_FG_INTR_NAME_LEN, "FG_INTR_BAT_TEMP_LT");
 		break;
 
 	case FG_INTR_BAT_TIME_INT:
-		ret = sprintf(intr_name, "FG_INTR_BAT_TIME_INT");
+		ret = snprintf(intr_name, MAX_FG_INTR_NAME_LEN, "FG_INTR_BAT_TIME_INT");
 		break;
 
 	case FG_INTR_NAG_C_DLTV:
-		ret = sprintf(intr_name, "FG_INTR_NAFG_VOLTAGE");
+		ret = snprintf(intr_name, MAX_FG_INTR_NAME_LEN, "FG_INTR_NAFG_VOLTAGE");
 		break;
 
 	case FG_INTR_FG_ZCV:
-		ret = sprintf(intr_name, "FG_INTR_FG_ZCV");
+		ret = snprintf(intr_name, MAX_FG_INTR_NAME_LEN, "FG_INTR_FG_ZCV");
 		break;
 
 	case FG_INTR_SHUTDOWN:
-		ret = sprintf(intr_name, "FG_INTR_SHUTDOWN");
+		ret = snprintf(intr_name, MAX_FG_INTR_NAME_LEN, "FG_INTR_SHUTDOWN");
 		break;
 
 	case FG_INTR_RESET_NVRAM:
-		ret = sprintf(intr_name, "FG_INTR_RESET_NVRAM");
+		ret = snprintf(intr_name, MAX_FG_INTR_NAME_LEN, "FG_INTR_RESET_NVRAM");
 		break;
 
 	case FG_INTR_BAT_PLUGOUT:
-		ret = sprintf(intr_name, "FG_INTR_BAT_PLUGOUT");
+		ret = snprintf(intr_name, MAX_FG_INTR_NAME_LEN, "FG_INTR_BAT_PLUGOUT");
 		break;
 
 	case FG_INTR_IAVG:
-		ret = sprintf(intr_name, "FG_INTR_IAVG");
+		ret = snprintf(intr_name, MAX_FG_INTR_NAME_LEN, "FG_INTR_IAVG");
 		break;
 
 	case FG_INTR_VBAT2_L:
-		ret = sprintf(intr_name, "FG_INTR_VBAT2_L");
+		ret = snprintf(intr_name, MAX_FG_INTR_NAME_LEN, "FG_INTR_VBAT2_L");
 		break;
 
 	case FG_INTR_VBAT2_H:
-		ret = sprintf(intr_name, "FG_INTR_VBAT2_H");
+		ret = snprintf(intr_name, MAX_FG_INTR_NAME_LEN, "FG_INTR_VBAT2_H");
 		break;
 
 	case FG_INTR_CHR_FULL:
-		ret = sprintf(intr_name, "FG_INTR_CHR_FULL");
+		ret = snprintf(intr_name, MAX_FG_INTR_NAME_LEN, "FG_INTR_CHR_FULL");
 		break;
 
 	case FG_INTR_DLPT_SD:
-		ret = sprintf(intr_name, "FG_INTR_DLPT_SD");
+		ret = snprintf(intr_name, MAX_FG_INTR_NAME_LEN, "FG_INTR_DLPT_SD");
 		break;
 
 	case FG_INTR_BAT_TMP_C_HT:
-		ret = sprintf(intr_name, "FG_INTR_BAT_TMP_C_HT");
+		ret = snprintf(intr_name, MAX_FG_INTR_NAME_LEN, "FG_INTR_BAT_TMP_C_HT");
 		break;
 
 	case FG_INTR_BAT_TMP_C_LT:
-		ret = sprintf(intr_name, "FG_INTR_BAT_TMP_C_LT");
+		ret = snprintf(intr_name, MAX_FG_INTR_NAME_LEN, "FG_INTR_BAT_TMP_C_LT");
 		break;
 
 	case FG_INTR_BAT_INT1_CHECK:
-		ret = sprintf(intr_name, "FG_INTR_COULOMB_C");
+		ret = snprintf(intr_name, MAX_FG_INTR_NAME_LEN, "FG_INTR_COULOMB_C");
 		break;
 
 	case FG_INTR_KERNEL_CMD:
-		ret = sprintf(intr_name, "FG_INTR_KERNEL_CMD");
+		ret = snprintf(intr_name, MAX_FG_INTR_NAME_LEN, "FG_INTR_KERNEL_CMD");
 		break;
 
 	case FG_INTR_BAT_INT2_CHECK:
-		ret = sprintf(intr_name, "FG_INTR_BAT_INT2_CHECK");
+		ret = snprintf(intr_name, MAX_FG_INTR_NAME_LEN, "FG_INTR_BAT_INT2_CHECK");
 		break;
 
 	default:
-		ret = sprintf(intr_name, "FG_INTR_UNKNOWN");
+		ret = snprintf(intr_name, MAX_FG_INTR_NAME_LEN, "FG_INTR_UNKNOWN");
 		bm_err(gm, "[%s] unknown intr %d\n", __func__, intr_no);
 		break;
 	}
@@ -2006,7 +2006,7 @@ static ssize_t Battery_Temperature_show(
 	bm_err(gm, "%s, %d %d\n", __func__, gm->battery_temp,
 		gm->fixed_bat_tmp);
 
-	return sprintf(buf, "%d\n", gm->fixed_bat_tmp);
+	return snprintf(buf, PAGE_SIZE, "%d\n", gm->fixed_bat_tmp);
 }
 
 static ssize_t Battery_Temperature_store(
@@ -2061,7 +2061,7 @@ static ssize_t UI_SOC_show(
 	bm_err(gm, "%s: %d %d\n",
 		__func__,
 		gm->ui_soc, gm->fixed_uisoc);
-	return sprintf(buf, "%d\n", gm->fixed_uisoc);
+	return snprintf(buf, PAGE_SIZE, "%d\n", gm->fixed_uisoc);
 
 }
 
@@ -2100,7 +2100,7 @@ static ssize_t uisoc_update_type_show(
 	bm_trace(gm, "[FG]%s:%d\n", __func__,
 		gm->fg_cust_data.uisoc_update_type);
 
-	return sprintf(buf, "%d\n", gm->fg_cust_data.uisoc_update_type);
+	return snprintf(buf, PAGE_SIZE, "%d\n", gm->fg_cust_data.uisoc_update_type);
 }
 
 static ssize_t uisoc_update_type_store(
@@ -2153,7 +2153,7 @@ static ssize_t disable_nafg_show(
 
 	bm_trace(gm, "%s,[FG] show nafg disable : %d\n", __func__,
 		gm->cmd_disable_nafg);
-	return sprintf(buf, "%d\n", gm->cmd_disable_nafg);
+	return snprintf(buf, PAGE_SIZE, "%d\n", gm->cmd_disable_nafg);
 }
 
 static ssize_t disable_nafg_store(
@@ -2203,7 +2203,7 @@ static ssize_t ntc_disable_nafg_show(
 	gm = gauge->gm;
 
 	bm_trace(gm, "[FG]%s: %d\n", __func__, gm->ntc_disable_nafg);
-	return sprintf(buf, "%d\n", gm->ntc_disable_nafg);
+	return snprintf(buf, PAGE_SIZE, "%d\n", gm->ntc_disable_nafg);
 }
 
 static ssize_t ntc_disable_nafg_store(
@@ -2259,7 +2259,7 @@ static ssize_t FG_meter_resistance_show(
 	bm_trace(gm, "[FG] show com_fg_meter_resistance : %d\n",
 		gm->fg_cust_data.com_fg_meter_resistance);
 
-	return sprintf(buf, "%d\n", gm->fg_cust_data.com_fg_meter_resistance);
+	return snprintf(buf, PAGE_SIZE, "%d\n", gm->fg_cust_data.com_fg_meter_resistance);
 }
 
 static ssize_t FG_meter_resistance_store(
@@ -2307,7 +2307,7 @@ static ssize_t FG_daemon_log_level_show(
 		"[FG] show FG_daemon_log_level : %d\n",
 		gm->fg_cust_data.daemon_log_level);
 
-	return sprintf(buf, "%d\n", gm->fg_cust_data.daemon_log_level);
+	return snprintf(buf, PAGE_SIZE, "%d\n", gm->fg_cust_data.daemon_log_level);
 }
 
 static ssize_t FG_daemon_log_level_store(
@@ -2356,7 +2356,7 @@ static ssize_t FG_daemon_disable_show(
 	gm = gauge->gm;
 
 	bm_trace(gm, "%s[FG] show FG disable : %d\n", __func__, gm->disableGM30);
-	return sprintf(buf, "%d\n", gm->disableGM30);
+	return snprintf(buf, PAGE_SIZE, "%d\n", gm->disableGM30);
 }
 
 static ssize_t FG_daemon_disable_store(
@@ -2402,7 +2402,7 @@ static ssize_t FG_Battery_CurrentConsumption_show(
 	bm_err(gm, "%s[EM] FG_Battery_CurrentConsumption : %d .1mA\n", __func__,
 		ret_value);
 
-	return sprintf(buf, "%d\n", ret_value);
+	return snprintf(buf, PAGE_SIZE, "%d\n", ret_value);
 }
 
 static ssize_t FG_Battery_CurrentConsumption_store(
@@ -2431,7 +2431,7 @@ static ssize_t Power_On_Voltage_show(
 
 	ret_value = 3450;
 	bm_err(gm, "[EM] Power_On_Voltage : %d\n", ret_value);
-	return sprintf(buf, "%u\n", ret_value);
+	return snprintf(buf, PAGE_SIZE, "%u\n", ret_value);
 
 }
 
@@ -2461,7 +2461,7 @@ static ssize_t Power_Off_Voltage_show(
 
 	ret_value = 3400;
 	bm_err(gm, "[EM] Power_Off_Voltage : %d\n", ret_value);
-	return sprintf(buf, "%u\n", ret_value);
+	return snprintf(buf, PAGE_SIZE, "%u\n", ret_value);
 }
 
 static ssize_t Power_Off_Voltage_store(
@@ -2493,7 +2493,7 @@ static ssize_t shutdown_condition_enable_show(
 		"[FG] %s : %d\n",
 		__func__,
 		get_shutdown_cond_flag(gm));
-	return sprintf(buf, "%d\n", get_shutdown_cond_flag(gm));
+	return snprintf(buf, PAGE_SIZE, "%d\n", get_shutdown_cond_flag(gm));
 }
 
 static ssize_t shutdown_condition_enable_store(
@@ -2535,7 +2535,7 @@ static ssize_t reset_battery_cycle_show(
 	bm_trace(gm, "[FG] %s : %d\n",
 		__func__,
 		gm->is_reset_battery_cycle);
-	return sprintf(buf, "%d\n", gm->is_reset_battery_cycle);
+	return snprintf(buf, PAGE_SIZE, "%d\n", gm->is_reset_battery_cycle);
 
 }
 
@@ -2584,7 +2584,7 @@ static ssize_t reset_aging_factor_show(
 	bm_trace(gm, "[FG] %s : %d\n",
 		__func__,
 		gm->is_reset_aging_factor);
-	return sprintf(buf, "%d\n", gm->is_reset_aging_factor);
+	return snprintf(buf, PAGE_SIZE, "%d\n", gm->is_reset_aging_factor);
 }
 
 static ssize_t reset_aging_factor_store(
@@ -2633,7 +2633,7 @@ static ssize_t BAT_EC_show(
 
 	bm_err(gm, "[%s] into\n", __func__);
 
-	return sprintf(buf, "%d:%d\n", gm->BAT_EC_cmd, gm->BAT_EC_param);
+	return snprintf(buf, PAGE_SIZE, "%d:%d\n", gm->BAT_EC_cmd, gm->BAT_EC_param);
 }
 
 static ssize_t BAT_EC_store(
@@ -2703,7 +2703,7 @@ static ssize_t BAT_NO_PROP_TIMEOUT_show(
 	bm_trace(gm, "[FG] %s : %d\n",
 		__func__,
 		gm->no_prop_timeout_control);
-	return sprintf(buf, "%d\n",
+	return snprintf(buf, PAGE_SIZE, "%d\n",
 		gm->no_prop_timeout_control);
 }
 
@@ -2932,7 +2932,7 @@ static ssize_t BatteryNotify_show(struct device *dev,
 	gauge = dev_get_drvdata(dev);
 	gm = gauge->gm;
 
-	return sprintf(buf, "%u\n", gm->notify_code);
+	return snprintf(buf, PAGE_SIZE, "%u\n", gm->notify_code);
 }
 
 static ssize_t BatteryNotify_store(struct device *dev,
@@ -5612,7 +5612,7 @@ void fg_update_sw_iavg(struct mtk_battery *gm)
 
 int wakeup_fg_daemon(struct mtk_battery *gm, unsigned int flow_state, int cmd, int para1)
 {
-	char intr_name[32];
+	char intr_name[MAX_FG_INTR_NAME_LEN];
 	struct afw_header *fgd_msg;
 	int size = AFW_MSG_HEADER_LEN + sizeof(flow_state);
 

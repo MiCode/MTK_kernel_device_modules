@@ -802,6 +802,8 @@ struct battery_temperature_table {
 	unsigned int bif_ntc_r;
 };
 
+#define MAX_FG_INTR_NAME_LEN 32
+
 enum Fg_interrupt_flags {
 	FG_INTR_0 = 0,
 	FG_INTR_TIMER_UPDATE  = 1,

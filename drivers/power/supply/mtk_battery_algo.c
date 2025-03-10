@@ -1291,92 +1291,92 @@ void fgr_error_calibration2(struct mtk_battery *gm, int intr_no)
 void fgr_int_end_flow(struct mtk_battery *gm, unsigned int intr_no)
 {
 	int curr_temp, vbat;
-	char intr_name[32];
+	char intr_name[MAX_FG_INTR_NAME_LEN];
 	struct mtk_battery_algo *algo;
 	int ret = 0;
 
 	algo = &gm->algo;
 	switch (intr_no) {
 	case FG_INTR_0:
-		ret = sprintf(intr_name, "FG_INTR_INIT");
+		ret = snprintf(intr_name, MAX_FG_INTR_NAME_LEN, "FG_INTR_INIT");
 		break;
 	case FG_INTR_TIMER_UPDATE:
-		ret = sprintf(intr_name, "FG_INTR_TIMER_UPDATE");
+		ret = snprintf(intr_name, MAX_FG_INTR_NAME_LEN, "FG_INTR_TIMER_UPDATE");
 		break;
 	case FG_INTR_BAT_CYCLE:
-		ret = sprintf(intr_name, "FG_INTR_BAT_CYCLE");
+		ret = snprintf(intr_name, MAX_FG_INTR_NAME_LEN, "FG_INTR_BAT_CYCLE");
 		break;
 	case FG_INTR_CHARGER_OUT:
-		ret = sprintf(intr_name, "FG_INTR_CHARGER_OUT");
+		ret = snprintf(intr_name, MAX_FG_INTR_NAME_LEN, "FG_INTR_CHARGER_OUT");
 		break;
 	case FG_INTR_CHARGER_IN:
-		ret = sprintf(intr_name, "FG_INTR_CHARGER_IN");
+		ret = snprintf(intr_name, MAX_FG_INTR_NAME_LEN, "FG_INTR_CHARGER_IN");
 		break;
 	case FG_INTR_FG_TIME:
-		ret = sprintf(intr_name, "FG_INTR_FG_TIME");
+		ret = snprintf(intr_name, MAX_FG_INTR_NAME_LEN, "FG_INTR_FG_TIME");
 		break;
 	case FG_INTR_BAT_INT1_HT:
-		ret = sprintf(intr_name, "FG_INTR_COULOMB_HT");
+		ret = snprintf(intr_name, MAX_FG_INTR_NAME_LEN, "FG_INTR_COULOMB_HT");
 		break;
 	case FG_INTR_BAT_INT1_LT:
-		ret = sprintf(intr_name, "FG_INTR_COULOMB_LT");
+		ret = snprintf(intr_name, MAX_FG_INTR_NAME_LEN, "FG_INTR_COULOMB_LT");
 		break;
 	case FG_INTR_BAT_INT2_HT:
-		ret = sprintf(intr_name, "FG_INTR_UISOC_HT");
+		ret = snprintf(intr_name, MAX_FG_INTR_NAME_LEN, "FG_INTR_UISOC_HT");
 		break;
 	case FG_INTR_BAT_INT2_LT:
-		ret = sprintf(intr_name, "FG_INTR_UISOC_LT");
+		ret = snprintf(intr_name, MAX_FG_INTR_NAME_LEN, "FG_INTR_UISOC_LT");
 		break;
 	case FG_INTR_BAT_TMP_HT:
-		ret = sprintf(intr_name, "FG_INTR_BAT_TEMP_HT");
+		ret = snprintf(intr_name, MAX_FG_INTR_NAME_LEN, "FG_INTR_BAT_TEMP_HT");
 		break;
 	case FG_INTR_BAT_TMP_LT:
-		ret = sprintf(intr_name, "FG_INTR_BAT_TEMP_LT");
+		ret = snprintf(intr_name, MAX_FG_INTR_NAME_LEN, "FG_INTR_BAT_TEMP_LT");
 		break;
 	case FG_INTR_BAT_TIME_INT:
-		ret = sprintf(intr_name, "FG_INTR_BAT_TIME_INT");
+		ret = snprintf(intr_name, MAX_FG_INTR_NAME_LEN, "FG_INTR_BAT_TIME_INT");
 		break;
 	case FG_INTR_NAG_C_DLTV:
-		ret = sprintf(intr_name, "FG_INTR_NAFG_VOLTAGE");
+		ret = snprintf(intr_name, MAX_FG_INTR_NAME_LEN, "FG_INTR_NAFG_VOLTAGE");
 		break;
 	case FG_INTR_FG_ZCV:
-		ret = sprintf(intr_name, "FG_INTR_FG_ZCV");
+		ret = snprintf(intr_name, MAX_FG_INTR_NAME_LEN, "FG_INTR_FG_ZCV");
 		break;
 	case FG_INTR_SHUTDOWN:
-		ret = sprintf(intr_name, "FG_INTR_SHUTDOWN");
+		ret = snprintf(intr_name, MAX_FG_INTR_NAME_LEN, "FG_INTR_SHUTDOWN");
 		break;
 	case FG_INTR_RESET_NVRAM:
-		ret = sprintf(intr_name, "FG_INTR_RESET_NVRAM");
+		ret = snprintf(intr_name, MAX_FG_INTR_NAME_LEN, "FG_INTR_RESET_NVRAM");
 		break;
 	case FG_INTR_BAT_PLUGOUT:
-		ret = sprintf(intr_name, "FG_INTR_BAT_PLUGOUT");
+		ret = snprintf(intr_name, MAX_FG_INTR_NAME_LEN, "FG_INTR_BAT_PLUGOUT");
 		break;
 	case FG_INTR_IAVG:
-		ret = sprintf(intr_name, "FG_INTR_IAVG");
+		ret = snprintf(intr_name, MAX_FG_INTR_NAME_LEN, "FG_INTR_IAVG");
 		break;
 	case FG_INTR_VBAT2_L:
-		ret = sprintf(intr_name, "FG_INTR_VBAT2_L");
+		ret = snprintf(intr_name, MAX_FG_INTR_NAME_LEN, "FG_INTR_VBAT2_L");
 		break;
 	case FG_INTR_VBAT2_H:
-		ret = sprintf(intr_name, "FG_INTR_VBAT2_H");
+		ret = snprintf(intr_name, MAX_FG_INTR_NAME_LEN, "FG_INTR_VBAT2_H");
 		break;
 	case FG_INTR_CHR_FULL:
-		ret = sprintf(intr_name, "FG_INTR_CHR_FULL");
+		ret = snprintf(intr_name, MAX_FG_INTR_NAME_LEN, "FG_INTR_CHR_FULL");
 		break;
 	case FG_INTR_DLPT_SD:
-		ret = sprintf(intr_name, "FG_INTR_DLPT_SD");
+		ret = snprintf(intr_name, MAX_FG_INTR_NAME_LEN, "FG_INTR_DLPT_SD");
 		break;
 	case FG_INTR_BAT_TMP_C_HT:
-		ret = sprintf(intr_name, "FG_INTR_BAT_TMP_C_HT");
+		ret = snprintf(intr_name, MAX_FG_INTR_NAME_LEN, "FG_INTR_BAT_TMP_C_HT");
 		break;
 	case FG_INTR_BAT_TMP_C_LT:
-		ret = sprintf(intr_name, "FG_INTR_BAT_TMP_C_LT");
+		ret = snprintf(intr_name, MAX_FG_INTR_NAME_LEN, "FG_INTR_BAT_TMP_C_LT");
 		break;
 	case FG_INTR_BAT_INT1_CHECK:
-		ret = sprintf(intr_name, "FG_INTR_COULOMB_C");
+		ret = snprintf(intr_name, MAX_FG_INTR_NAME_LEN, "FG_INTR_COULOMB_C");
 		break;
 	default:
-		ret = sprintf(intr_name, "FG_INTR_UNKNOWN");
+		ret = snprintf(intr_name, MAX_FG_INTR_NAME_LEN, "FG_INTR_UNKNOWN");
 		bm_err(gm, "[Intr_Number_to_Name] unknown intr %d\n",
 			intr_no);
 		break;

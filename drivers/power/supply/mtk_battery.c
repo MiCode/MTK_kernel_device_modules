@@ -1657,18 +1657,18 @@ void reload_battery_zcv_table(
 	//reload ZCV TABLE BY VAL
 	for (i = 0; i < fg_table_cust_data->active_table_number; i++) {
 		if (select_zcv == 0)
-			ret = sprintf(node_name, "battery%d_profile_t%d_num", bat_id, i);
+			ret = snprintf(node_name, 50, "battery%d_profile_t%d_num", bat_id, i);
 		else
-			ret = sprintf(node_name, "battery%d_profile_t%d_cycle%d_num", bat_id, i, select_zcv);
+			ret = snprintf(node_name, 50, "battery%d_profile_t%d_cycle%d_num", bat_id, i, select_zcv);
 		if (ret >= 0)
 			fg_read_dts_val(gm, np, node_name,
 				&(fg_table_cust_data->fg_profile[i].size), 1);
 
 		/* compatiable with old dtsi table*/
 		if (select_zcv == 0)
-			ret = sprintf(node_name, "battery%d_profile_t%d_col", bat_id, i);
+			ret = snprintf(node_name, 50, "battery%d_profile_t%d_col", bat_id, i);
 		else
-			ret = sprintf(node_name, "battery%d_profile_t%d_cycle%d_col", bat_id, i, select_zcv);
+			ret = snprintf(node_name, 50, "battery%d_profile_t%d_cycle%d_col", bat_id, i, select_zcv);
 		if (ret >= 0) {
 			ret = fg_read_dts_val(gm, np, node_name, &(column), 1);
 			if (ret == -1)
@@ -1683,9 +1683,9 @@ void reload_battery_zcv_table(
 			column = 3;
 		}
 		if (select_zcv == 0)
-			ret = sprintf(node_name, "battery%d_profile_t%d", bat_id, i);
+			ret = snprintf(node_name, 50, "battery%d_profile_t%d", bat_id, i);
 		else
-			ret = sprintf(node_name, "battery%d_profile_t%d_cycle%d", bat_id, i, select_zcv);
+			ret = snprintf(node_name, 50, "battery%d_profile_t%d_cycle%d", bat_id, i, select_zcv);
 		if (ret >= 0)
 			fg_custom_parse_table(gm, np, node_name,
 				fg_table_cust_data->fg_profile[i].fg_profile, column);
@@ -2206,7 +2206,7 @@ void fg_custom_init_from_dts(struct platform_device *dev,
 
 	/* battery temperature, TEMPERATURE_T0 ~ T9 */
 	for (i = 0; i < fg_table_cust_data->active_table_number; i++) {
-		ret = sprintf(node_name, "TEMPERATURE_T%d", i);
+		ret = snprintf(node_name, 50, "TEMPERATURE_T%d", i);
 		if (ret >= 0)
 			fg_read_dts_val(gm, np, node_name,
 				&(fg_table_cust_data->fg_profile[i].temperature), 1);
@@ -2262,12 +2262,12 @@ void fg_custom_init_from_dts(struct platform_device *dev,
 	}
 
 	if (bat_id >= 0 && bat_id < TOTAL_BATTERY_NUMBER) {
-		ret = sprintf(node_name, "Q_MAX_SYS_VOLTAGE_BAT%d", bat_id);
+		ret = snprintf(node_name, 50, "Q_MAX_SYS_VOLTAGE_BAT%d", bat_id);
 		if (ret  >= 0)
 			fg_read_dts_val(gm, np, node_name,
 				&(fg_cust_data->q_max_sys_voltage), UNIT_TRANS_10);
 
-		ret = sprintf(node_name, "PSEUDO1_IQ_OFFSET_BAT%d", bat_id);
+		ret = snprintf(node_name, 50, "PSEUDO1_IQ_OFFSET_BAT%d", bat_id);
 		if (ret >= 0)
 			fg_read_dts_val(gm, np, node_name,
 				&(fg_cust_data->pseudo1_iq_offset), UNIT_TRANS_100);
@@ -2421,13 +2421,13 @@ void fg_custom_init_from_dts(struct platform_device *dev,
 
 
 	for (i = 0; i < fg_table_cust_data->active_table_number; i++) {
-		ret = sprintf(node_name, "battery%d_profile_t%d_num", bat_id, i);
+		ret = snprintf(node_name, 50, "battery%d_profile_t%d_num", bat_id, i);
 		if (ret >= 0)
 			fg_read_dts_val(gm, np, node_name,
 				&(fg_table_cust_data->fg_profile[i].size), 1);
 
 		/* compatiable with old dtsi table*/
-		ret = sprintf(node_name, "battery%d_profile_t%d_col", bat_id, i);
+		ret = snprintf(node_name, 50, "battery%d_profile_t%d_col", bat_id, i);
 		if (ret >= 0) {
 			ret = fg_read_dts_val(gm, np, node_name, &(column), 1);
 			if (ret == -1)
@@ -2442,7 +2442,7 @@ void fg_custom_init_from_dts(struct platform_device *dev,
 			column = 3;
 		}
 
-		ret = sprintf(node_name, "battery%d_profile_t%d", bat_id, i);
+		ret = snprintf(node_name, 50, "battery%d_profile_t%d", bat_id, i);
 		if (ret >= 0)
 			fg_custom_parse_table(gm, np, node_name,
 				fg_table_cust_data->fg_profile[i].fg_profile, column);
