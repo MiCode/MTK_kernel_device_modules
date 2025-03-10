@@ -96,10 +96,14 @@ void mml_update_status_to_tppa(const struct mml_frame_info *info)
 		cg0 |= (1 << 24);  // RSZ2
 		cg0 |= (1 << 25);  // WROT2
 	}
-	if (info->mode == MML_MODE_DIRECT_LINK)
+	if (info->mode == MML_MODE_DIRECT_LINK) {
 		cg1 |= (1 << 8);  // RROT0
+		cg1 |= (1 << 9);  // RROT1
+	}
 	else if (info->mode == MML_MODE_MML_DECOUPLE)
-		cg0 |= (1 << 3);  // RDMA0
+		cg1 |= (1 << 8);  // RROT0
+	else if (info->mode == MML_MODE_MML_DECOUPLE2)
+		cg0 |= (1 << 15);  // RDMA1
 
 	cg_con0 = cg0;
 	cg_con1 = cg1;
