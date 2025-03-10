@@ -46,7 +46,7 @@
 // ALPS08709395: AudioQOS, set VIP
 #ifndef SKIP_VIP
 #include <linux/sched/cputime.h>
-#include <sched.h>
+#include <sched/sched.h>
 #include "vip.h"
 #endif
 
