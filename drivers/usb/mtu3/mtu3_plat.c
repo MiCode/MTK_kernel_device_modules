@@ -113,21 +113,6 @@ static void ssusb_hwrscs_req(struct ssusb_mtk *ssusb,
 			smc_req, 0, 0, 0, 0, 0, 0, &res);
 }
 
-static void ssusb_wla_init(struct ssusb_mtk *ssusb)
-{
-	if (!ssusb->clkgate || !ssusb->peri_wla)
-		return;
-
-	regmap_update_bits(ssusb->clkgate, REQ_GATE8, 0xF, 0xF);
-
-	regmap_update_bits(ssusb->peri_wla, PERI_RES_REQ_EN5,
-						1 << ssusb->peri_wla_oft, 1 << ssusb->peri_wla_oft);
-	regmap_update_bits(ssusb->peri_wla, PERI_RES_REQ_EN6,
-						1 << ssusb->peri_wla_oft, 1 << ssusb->peri_wla_oft);
-	regmap_update_bits(ssusb->peri_wla, PERI_RES_REQ_EN7,
-						1 << ssusb->peri_wla_oft, 1 << ssusb->peri_wla_oft);
-}
-
 static void ssusb_hwrscs_req_v2_v3(struct ssusb_mtk *ssusb,
 	enum mtu3_power_state state)
 {
@@ -151,9 +136,6 @@ static void ssusb_hwrscs_req_v2_v3(struct ssusb_mtk *ssusb,
 		regmap_update_bits(ssusb->clkgate, REQ_GATE6, 0xF, 0xF);
 		regmap_update_bits(ssusb->clkgate, REQ_GATE7, 0xF, 0xF);
 	}
-
-	if (ssusb->peri_wla)
-		ssusb_wla_init(ssusb);
 
 	spm_ctrl = mtu3_readl(ibase, U3D_SSUSB_SPM_CTRL_V2);
 
@@ -493,37 +475,6 @@ static int ssusb_dp_switch_of_property_parse(struct ssusb_mtk *ssusb,
 			ssusb->dp_switch_oft);
 
 	return PTR_ERR_OR_ZERO(ssusb->dp_switch);
-}
-
-static int ssusb_peri_wla_of_property_parse(struct ssusb_mtk *ssusb,
-				struct device_node *dn)
-{
-	struct of_phandle_args args;
-	struct platform_device *pdev;
-	int ret;
-
-	/* clkgate is optional */
-	if (!of_property_read_bool(dn, "mediatek,peri-usb-wla"))
-		return 0;
-
-	ret = of_parse_phandle_with_fixed_args(dn,
-		"mediatek,peri-usb-wla", 1, 0, &args);
-
-	if (ret)
-		return ret;
-
-	pdev = of_find_device_by_node(args.np);
-	if (!pdev)
-		return -ENODEV;
-
-	ssusb->peri_wla = device_node_to_regmap(args.np);
-
-	if (!ssusb->peri_wla)
-		return -ENODEV;
-
-	ssusb->peri_wla_oft = args.args[0];
-
-	return PTR_ERR_OR_ZERO(ssusb->peri_wla);
 }
 
 static int ssusb_clkgate_of_property_parse(struct ssusb_mtk *ssusb,
@@ -1247,10 +1198,6 @@ get_phy:
 	ret = ssusb_ao_cfg_of_property_parse(ssusb, node);
 	if (ret)
 		dev_info(dev, "failed to parse usb ao cfg\n");
-
-	ret = ssusb_peri_wla_of_property_parse(ssusb, node);
-	if (ret)
-		dev_info(dev, "failed to parse peri wla property\n");
 
 	ssusb->wakeup_irq = platform_get_irq_byname_optional(pdev, "wakeup");
 	if (ssusb->wakeup_irq == -EPROBE_DEFER)

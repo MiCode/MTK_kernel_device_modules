@@ -380,9 +380,6 @@ struct ssusb_mtk {
 	u32 clkgate_oft;
 	/* usb bus related address */
 	struct regmap *usb_mbist;
-	/* peri wla*/
-	struct regmap *peri_wla;
-	u32 peri_wla_oft;
 	/* usb power domain */
 	struct device *genpd_u2;
 	struct device *genpd_u3;

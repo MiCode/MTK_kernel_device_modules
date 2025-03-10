@@ -30,12 +30,6 @@
 #define REQ_GATE5		0x84
 #define REQ_GATE6		0x88
 #define REQ_GATE7		0x8C
-#define REQ_GATE8		0x90
-
-/* PERI WLA REQ */
-#define PERI_RES_REQ_EN5	0x84
-#define PERI_RES_REQ_EN6	0x90
-#define PERI_RES_REQ_EN7	0x94
 
 /* --------------- SSUSB_DEV REGISTER DEFINITION --------------- */
 
