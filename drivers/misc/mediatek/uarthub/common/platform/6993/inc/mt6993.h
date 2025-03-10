@@ -103,6 +103,7 @@ int uarthub_get_uart_src_clk_info_mt6993(void);
 int uarthub_get_spm_sys_timer_mt6993(uint32_t *hi, uint32_t *lo);
 #endif
 int uarthub_get_uart_mux_info_mt6993(void);
+int uarthub_get_adsp_uart_mux_info_mt6993(void);
 int uarthub_get_uarthub_mux_info_mt6993(void);
 
 int uarthub_inband_enable_ctrl_mt6993(int enable);

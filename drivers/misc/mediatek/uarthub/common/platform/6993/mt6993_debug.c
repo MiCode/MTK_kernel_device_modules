@@ -4,6 +4,7 @@
  */
 #include <linux/kernel.h>
 #include <linux/regmap.h>
+#include <linux/sched/clock.h>
 
 #include "clk-mt6993-fmeter.h"
 #include "clk-fmeter.h"
@@ -116,6 +117,17 @@ uint32_t uarthub_get_debug_fifo_cur_mt6993(unsigned int dev_index, unsigned int 
 			return UART_CMM_FIFO_DUMP_CRTL_GET_uart_cmm_txfifo_waddr(UART_CMM_FIFO_DUMP_CRTL_ADDR);
 	} else
 		return 0;
+}
+
+int uarthub_get_adsp_uart_mux_info_mt6993(void)
+{
+	if (!topckgen_base_remap_addr_mt6993) {
+		pr_notice("[%s] topckgen_base_remap_addr_mt6993 is NULL\n", __func__);
+		return -1;
+	}
+
+	return (UARTHUB_REG_READ_BIT(topckgen_base_remap_addr_mt6993 + CLK_CFG_ADSP_UARTHUB,
+		CLK_CFG_ADSP_UARTHUB_SEL_MASK) >> CLK_CFG_ADSP_UARTHUB_SEL_SHIFT);
 }
 
 int uarthub_get_uart_mux_info_mt6993(void)
@@ -388,7 +400,7 @@ int uarthub_dump_uartip_debug_info_mt6993(
 
 int uarthub_dump_intfhub_debug_info_mt6993(const char *tag)
 {
-	int val = 0;
+	int val = 0, val1 = 0, val2 = 0;
 	unsigned char dmp_info_buf[DBG_LOG_LEN];
 	int len = 0;
 	int ret = 0;
@@ -470,30 +482,25 @@ int uarthub_dump_intfhub_debug_info_mt6993(const char *tag)
 			len += ret;
 	}
 
-	val = uarthub_get_uart_mux_info_mt6993();
+	val = uarthub_get_uarthub_mux_info_mt6993();
+	val1 = uarthub_get_uart_mux_info_mt6993();
+	val2 = uarthub_get_adsp_uart_mux_info_mt6993();
 	if (val >= 0) {
 		/* the expect value is 0x2 */
 		ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
-			",UART_MUX=[0x%x(%s)]", val,
-			((val == 0) ? "26M" : ((val == 1) ? "52M" :
-				((val == 2) ? "104M" : "208M"))));
+			",HUB/UART/ADSP_MUX=[0x%x(%s)-0x%x(%s)-0x%x(%s)]", val,
+			((val == 0) ? "26M" : ((val == 1) ? "104M" : "208M")), val1,
+			((val1 == 0) ? "26M" : ((val1 == 1) ? "52M" :
+				((val1 == 2) ? "104M" : "208M"))), val2,
+			((val2 == 0) ? "26M" : ((val2 == 1) ? "104M" : "208M")));
 		if (ret > 0)
 			len += ret;
 	}
 
-	val = uarthub_get_uarthub_mux_info_mt6993();
-	if (val >= 0) {
-		/* the expect value is 0x1 */
-		ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
-			",HUB_MUX=[0x%x(%s)]", val,
-			((val == 0) ? "26M" : ((val == 1) ? "104M" : "208M")));
-		if (ret > 0)
-			len += ret;
-	}
-
-	ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len, ",HUB/UART_CLK=[%d/%d]",
+	ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len, ",HUB/UART/ADSP_CLK=[%d-%d-%d]",
 		mt_get_fmeter_freq(FM_UARTHUB_B_CK, CKGEN),
-		mt_get_fmeter_freq(FM_UART_CK, CKGEN));
+		mt_get_fmeter_freq(FM_UART_CK, CKGEN),
+		mt_get_fmeter_freq(F_FADSP_UARTHUB_BCLK_CK, CKGEN));
 	if (ret > 0)
 		len += ret;
 
@@ -869,7 +876,7 @@ int uarthub_dump_extend_debug_info_mt6993(const char *tag)
 	if (fifo_cur_r0 != 0)
 		separate_pos = len + ((fifo_cur_r0 * 3) - 1);
 	ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
-		"%s%02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X]",
+		"%s%02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X",
 		((fifo_cur_r0 == 0) ? "|" : ""),
 		UARTHUB_DEBUG_GET_DEBUG_FIFO_16_BYTES(fifo_data_r0, 0),
 		UARTHUB_DEBUG_GET_DEBUG_FIFO_16_BYTES(fifo_data_r0, 8),
@@ -912,7 +919,7 @@ int uarthub_dump_extend_debug_info_mt6993(const char *tag)
 	if (fifo_cur_r2 != 0)
 		separate_pos = len + ((fifo_cur_r2 * 3) - 1);
 	ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
-		"%s%02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X]",
+		"%s%02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X",
 		((fifo_cur_r2 == 0) ? "|" : ""),
 		UARTHUB_DEBUG_GET_DEBUG_FIFO_16_BYTES(fifo_data_r2, 0),
 		UARTHUB_DEBUG_GET_DEBUG_FIFO_16_BYTES(fifo_data_r2, 8),
@@ -955,7 +962,7 @@ int uarthub_dump_extend_debug_info_mt6993(const char *tag)
 	if (fifo_cur_rcmm != 0)
 		separate_pos = len + ((fifo_cur_rcmm * 3) - 1);
 	ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
-		"%s%02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X]",
+		"%s%02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X",
 		((fifo_cur_rcmm == 0) ? "|" : ""),
 		UARTHUB_DEBUG_GET_DEBUG_FIFO_16_BYTES(fifo_data_rcmm, 0),
 		UARTHUB_DEBUG_GET_DEBUG_FIFO_16_BYTES(fifo_data_rcmm, 8),
@@ -1255,6 +1262,8 @@ int uarthub_dump_debug_tx_rx_count_mt6993(const char *tag, int trigger_point)
 	unsigned char dmp_info_buf[DBG_LOG_LEN];
 	int len = 0;
 	int ret = 0;
+	static uint64_t dump_ts;
+	uint32_t dump_nsec = 0;
 
 	if (trigger_point != DUMP0 && trigger_point != DUMP1) {
 		pr_notice("[%s] trigger_point = %d is invalid\n", __func__, trigger_point);
@@ -1263,10 +1272,12 @@ int uarthub_dump_debug_tx_rx_count_mt6993(const char *tag, int trigger_point)
 
 	if (trigger_point == DUMP1 && pre_trigger_point == 0) {
 		len = 0;
+		dump_nsec = do_div(dump_ts, 1000000000);
 #if !(UARTHUB_SUPPORT_FPGA)
 		ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
-			"[%s][%s], dump0, GPIO[mode-dir-out-pu-pd]=[R:%d-%s-%s-%d-%d,T:%d-%s-%s-%d-%d,BT_RST:%d-%s-%s-%d-%d]",
+			"[%s][%s], dump0[%5lu.%06lu], GPIO[mode-dir-out-pu-pd]=[R:%d-%s-%s-%d-%d,T:%d-%s-%s-%d-%d,BT_RST:%d-%s-%s-%d-%d]",
 			def_tag, ((tag == NULL) ? "null" : tag),
+			(unsigned long)dump_ts, (unsigned long)(dump_nsec/1000),
 			gpio_base_addr.rx_mode.gpio_value,
 			((gpio_base_addr.rx_dir.gpio_value == 0) ? "IN" : "OUT"),
 			((gpio_base_addr.rx_dataout.gpio_value == 0) ? "LOW" : "HIGH"),
@@ -1293,8 +1304,9 @@ int uarthub_dump_debug_tx_rx_count_mt6993(const char *tag, int trigger_point)
 			len += ret;
 #else
 		ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
-			"[%s][%s] pcnt=[R:%d-%d-%d,T:%d-%d-%d]",
+			"[%s][%s], dump0[%5lu.%06lu], pcnt=[R:%d-%d-%d,T:%d-%d-%d]",
 			def_tag, ((tag == NULL) ? "null" : tag),
+			(unsigned long)dump_ts, (unsigned long)(dump_nsec/1000),
 			cur_rx_pkt_cnt_d0, cur_rx_pkt_cnt_d1, cur_rx_pkt_cnt_d2,
 			cur_tx_pkt_cnt_d0, cur_tx_pkt_cnt_d1, cur_tx_pkt_cnt_d2);
 		if (ret > 0)
@@ -1346,6 +1358,8 @@ int uarthub_dump_debug_tx_rx_count_mt6993(const char *tag, int trigger_point)
 
 		pr_info("%s\n", dmp_info_buf);
 	}
+
+	dump_ts = sched_clock();
 
 	if (uarthub_is_apb_bus_clk_enable_mt6993() == 0) {
 		pr_notice("[%s] apb bus clk disable\n", __func__);
@@ -1447,10 +1461,12 @@ int uarthub_dump_debug_tx_rx_count_mt6993(const char *tag, int trigger_point)
 
 	if (trigger_point != DUMP0) {
 		len = 0;
+		dump_nsec = do_div(dump_ts, 1000000000);
 #if !(UARTHUB_SUPPORT_FPGA)
 		ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
-			"[%s][%s], dump1, GPIO[mode-dir-out-pu-pd]=[R:%d-%s-%s-%d-%d,T:%d-%s-%s-%d-%d,BT_RST:%d-%s-%s-%d-%d]",
+			"[%s][%s], dump1[%5lu.%06lu], GPIO[mode-dir-out-pu-pd]=[R:%d-%s-%s-%d-%d,T:%d-%s-%s-%d-%d,BT_RST:%d-%s-%s-%d-%d]",
 			def_tag, ((tag == NULL) ? "null" : tag),
+			(unsigned long)dump_ts, (unsigned long)(dump_nsec/1000),
 			gpio_base_addr.rx_mode.gpio_value,
 			((gpio_base_addr.rx_dir.gpio_value == 0) ? "IN" : "OUT"),
 			((gpio_base_addr.rx_dataout.gpio_value == 0) ? "LOW" : "HIGH"),
@@ -1477,8 +1493,9 @@ int uarthub_dump_debug_tx_rx_count_mt6993(const char *tag, int trigger_point)
 			len += ret;
 #else
 		ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
-			"[%s][%s] pcnt=[R:%d-%d-%d,T:%d-%d-%d]",
+			"[%s][%s], dump1[%5lu.%06lu], pcnt=[R:%d-%d-%d,T:%d-%d-%d]",
 			def_tag, ((tag == NULL) ? "null" : tag),
+			(unsigned long)dump_ts, (unsigned long)(dump_nsec/1000),
 			cur_rx_pkt_cnt_d0, cur_rx_pkt_cnt_d1, cur_rx_pkt_cnt_d2,
 			cur_tx_pkt_cnt_d0, cur_tx_pkt_cnt_d1, cur_tx_pkt_cnt_d2);
 		if (ret > 0)
@@ -1538,7 +1555,7 @@ int uarthub_dump_debug_tx_rx_count_mt6993(const char *tag, int trigger_point)
 
 int uarthub_dump_debug_clk_info_mt6993(const char *tag)
 {
-	int val = 0;
+	int val = 0, val1 = 0, val2 = 0;
 #if !(UARTHUB_SUPPORT_FPGA)
 	int spm_res_uarthub = 0, spm_res_internal = 0;
 	int topckgen_cg = 0, peri_cg = 0;
@@ -1683,30 +1700,25 @@ int uarthub_dump_debug_clk_info_mt6993(const char *tag)
 			len += ret;
 	}
 
-	val = uarthub_get_uart_mux_info_mt6993();
+	val = uarthub_get_uarthub_mux_info_mt6993();
+	val1 = uarthub_get_uart_mux_info_mt6993();
+	val2 = uarthub_get_adsp_uart_mux_info_mt6993();
 	if (val >= 0) {
 		/* the expect value is 0x2 */
 		ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
-			",UART_MUX=[0x%x(%s)]", val,
-			((val == 0) ? "26M" : ((val == 1) ? "52M" :
-				((val == 2) ? "104M" : "208M"))));
+			",HUB/UART/ADSP_MUX=[0x%x(%s)-0x%x(%s)-0x%x(%s)]", val,
+			((val == 0) ? "26M" : ((val == 1) ? "104M" : "208M")), val1,
+			((val1 == 0) ? "26M" : ((val1 == 1) ? "52M" :
+				((val1 == 2) ? "104M" : "208M"))), val2,
+			((val2 == 0) ? "26M" : ((val2 == 1) ? "104M" : "208M")));
 		if (ret > 0)
 			len += ret;
 	}
 
-	val = uarthub_get_uarthub_mux_info_mt6993();
-	if (val >= 0) {
-		/* the expect value is 0x1 */
-		ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
-			",HUB_MUX=[0x%x(%s)]", val,
-			((val == 0) ? "26M" : ((val == 1) ? "104M" : "208M")));
-		if (ret > 0)
-			len += ret;
-	}
-
-	ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len, ",HUB/UART_CLK=[%d/%d]",
+	ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len, ",HUB/UART/ADSP_CLK=[%d-%d-%d]",
 		mt_get_fmeter_freq(FM_UARTHUB_B_CK, CKGEN),
-		mt_get_fmeter_freq(FM_UART_CK, CKGEN));
+		mt_get_fmeter_freq(FM_UART_CK, CKGEN),
+		mt_get_fmeter_freq(F_FADSP_UARTHUB_BCLK_CK, CKGEN));
 	if (ret > 0)
 		len += ret;
 
@@ -1818,7 +1830,7 @@ int uarthub_dump_debug_byte_cnt_info_mt6993(const char *tag)
 	int dev0_sta = 0, dev1_sta = 0, dev2_sta = 0;
 	unsigned char dmp_info_buf[DBG_LOG_LEN];
 	int len = 0;
-	int val = 0;
+	int val = 0, val1 = 0, val2 = 0;
 	int ret = 0;
 	int debug_monitor_sel = 0;
 	int tx_monitor[4] = { 0 };
@@ -1898,30 +1910,25 @@ int uarthub_dump_debug_byte_cnt_info_mt6993(const char *tag)
 			len += ret;
 	}
 
-	val = uarthub_get_uart_mux_info_mt6993();
+	val = uarthub_get_uarthub_mux_info_mt6993();
+	val1 = uarthub_get_uart_mux_info_mt6993();
+	val2 = uarthub_get_adsp_uart_mux_info_mt6993();
 	if (val >= 0) {
 		/* the expect value is 0x2 */
 		ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
-			",UART_MUX=[0x%x(%s)]", val,
-			((val == 0) ? "26M" : ((val == 1) ? "52M" :
-				((val == 2) ? "104M" : "208M"))));
+			",HUB/UART/ADSP_MUX=[0x%x(%s)-0x%x(%s)-0x%x(%s)]", val,
+			((val == 0) ? "26M" : ((val == 1) ? "104M" : "208M")), val1,
+			((val1 == 0) ? "26M" : ((val1 == 1) ? "52M" :
+				((val1 == 2) ? "104M" : "208M"))), val2,
+			((val2 == 0) ? "26M" : ((val2 == 1) ? "104M" : "208M")));
 		if (ret > 0)
 			len += ret;
 	}
 
-	val = uarthub_get_uarthub_mux_info_mt6993();
-	if (val >= 0) {
-		/* the expect value is 0x1 */
-		ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
-			",HUB_MUX=[0x%x(%s)]", val,
-			((val == 0) ? "26M" : ((val == 1) ? "104M" : "208M")));
-		if (ret > 0)
-			len += ret;
-	}
-
-	ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len, ",HUB/UART_CLK=[%d/%d]",
+	ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len, ",HUB/UART/ADSP_CLK=[%d-%d-%d]",
 		mt_get_fmeter_freq(FM_UARTHUB_B_CK, CKGEN),
-		mt_get_fmeter_freq(FM_UART_CK, CKGEN));
+		mt_get_fmeter_freq(FM_UART_CK, CKGEN),
+		mt_get_fmeter_freq(F_FADSP_UARTHUB_BCLK_CK, CKGEN));
 	if (ret > 0)
 		len += ret;
 
