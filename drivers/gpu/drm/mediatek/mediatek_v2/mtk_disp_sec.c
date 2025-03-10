@@ -522,7 +522,7 @@ static int disp_mtee_probe(struct platform_device *pdev)
 	void **ret;
 	struct device *dev = &pdev->dev;
 	struct platform_device *drm_pdev;
-	struct platform_device *plat_dev;
+	struct platform_device *plat_dev = pdev;
 	struct mtk_drm_private *private;
 	struct drm_device *drm;
 
