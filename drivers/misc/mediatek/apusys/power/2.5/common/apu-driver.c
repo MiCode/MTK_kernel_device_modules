@@ -106,8 +106,6 @@ void apu_device_set_opp(enum DVFS_USER user, uint8_t opp)
 		return;
 
 	/* restrict opp in current spec */
-	if (opp < 0)
-		opp = 0;
 	if (opp > ad->df->profile->max_state - 1)
 		opp = ad->df->profile->max_state - 1;
 

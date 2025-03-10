@@ -377,7 +377,10 @@ static noinline int _update_v_f_2_opp(struct apu_dev *ad, unsigned long v, int o
 	struct dev_pm_opp *pm_opp = NULL;
 	unsigned long freq = 0;
 
-	freq = apu_opp2freq_n_df(ad, opp) + 1;
+	freq = apu_opp2freq_n_df(ad, opp);
+	if (freq != ULONG_MAX)
+		freq += 1;
+
 	pm_opp = dev_pm_opp_find_freq_floor(ad->dev, &freq);
 	if (IS_ERR(pm_opp))
 		return PTR_ERR(pm_opp);

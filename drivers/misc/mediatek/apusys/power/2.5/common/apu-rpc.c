@@ -68,18 +68,17 @@ static int _check_if_rpc_alive(struct apu_dev *ad)
 	int bit_offset = 26;
 
 	/* #1 [31:26] is dummy register area for testing read/write */
-	bit_offset = 26;
 	val_a = apu_readl(rpc_reg + RPC_TOP_SEL);
 
 	/* #2 purposely write 0x3a << 26 */
-	val_b = val_a | (0x3a << bit_offset);
+	val_b = val_a | (0xE8000000);
 	apu_writel(val_b, (rpc_reg + RPC_TOP_SEL));
 
 	/* #3 read back TOP_SEL */
 	val_b = apu_readl(rpc_reg + RPC_TOP_SEL);
 
 	/* #4 clear bit[31:26] as 0 */
-	apu_clearl(0x3F << bit_offset, (rpc_reg + RPC_TOP_SEL));
+	apu_clearl(0xFC000000, (rpc_reg + RPC_TOP_SEL));
 	ret = ((val_b >> bit_offset) & 0x3f) == 0x3a ? 1 : 0;
 
 	arpc_warn(ad->dev, "[%s] before TOP_SEL 0x%x, after TOP_SEL 0x%x\n",

@@ -70,11 +70,13 @@ void apu_power_cb_unregister(enum POWER_CALLBACK_USER user)
 {
 	struct power_callback_device *pwr_dev = _find_cb_by_user(user);
 
-	mutex_lock(&power_device_list_mtx);
-	/* remove from device link list */
-	list_del_init(&pwr_dev->list);
-	kfree(pwr_dev);
-	mutex_unlock(&power_device_list_mtx);
+	if (pwr_dev != NULL){
+		mutex_lock(&power_device_list_mtx);
+		/* remove from device link list */
+		list_del_init(&pwr_dev->list);
+		kfree(pwr_dev);
+		mutex_unlock(&power_device_list_mtx);
+	}
 }
 
 #if IS_ENABLED(CONFIG_PM)
