@@ -733,7 +733,6 @@ static uint32_t g_od_udma_merge_lines_cand[] = {
 	1, 2, 4, 6, 8, 10, 12, 14, 16,
 };
 
-#define MIN(a,b) (((a)<(b))?(a):(b))
 
 
 static unsigned char lookup[16] = {
@@ -804,7 +803,7 @@ static void mtk_oddmr_tuning_cfg(struct mtk_ddp_comp *comp,
 static void mtk_oddmr_set_dmr_enable_dual(struct mtk_ddp_comp *comp, uint32_t enable,
 		struct cmdq_pkt *handle);
 static void mtk_oddmr_dmr_common_init(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg);
-static void mtk_oddmr_dmr_smi_dual(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg);
+//static void mtk_oddmr_dmr_smi_dual(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg);
 static int mtk_oddmr_dmr_dbv_lookup(unsigned int dbv, struct mtk_drm_dmr_cfg_info *cfg_info,
 	unsigned int *dbv_table_idx, unsigned int *dbv_node);
 static int mtk_oddmr_dmr_fps_lookup(unsigned int fps, struct mtk_drm_dmr_cfg_info *cfg_info,
@@ -835,7 +834,7 @@ static void mtk_oddmr_dbi_gain_cfg(struct mtk_ddp_comp *comp,
 		struct mtk_drm_dbi_cfg_info *cfg_info, unsigned int gain_ratio);
 static int mtk_dbi_scp_set_semaphore_noirq(struct mtk_ddp_comp *comp, bool lock);
 
-static void mtk_oddmr_dbi_smi_dual(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg);
+//static void mtk_oddmr_dbi_smi_dual(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg);
 static inline struct mtk_disp_oddmr *comp_to_oddmr(struct mtk_ddp_comp *comp);
 static int mtk_oddmr_dmr_enable(struct mtk_ddp_comp *comp, bool en);
 static int mtk_oddmr_create_workqueue(struct mtk_disp_oddmr *oddmr_data);
@@ -854,9 +853,8 @@ static inline unsigned int mtk_oddmr_read(struct mtk_ddp_comp *comp,
 	if (oddmr_data->data->dbi_version >= MTK_DBI_V2 || oddmr_data->data->od_version >= MTK_OD_V2)
 		max_offset = 0x20000;
 
-		if (offset >= max_offset || (offset % 4) != 0) {
-			DDPPR_ERR("%s: invalid addr 0x%x\n",
-					__func__, offset);
+	if (offset >= max_offset || (offset % 4) != 0) {
+		DDPPR_ERR("%s: invalid addr 0x%x\n",__func__, offset);
 		return 0;
 	}
 
@@ -1258,7 +1256,6 @@ static int disp_oddmr_get_slc_uid(enum DISP_ODDMR_SLC_IDX idx)
 static int disp_oddmr_slc_request(struct mtk_ddp_comp *comp, enum DISP_ODDMR_SLC_IDX idx)
 {
 	struct slbc_gid_data data = {0};
-	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
 	int uid, gid;
 	int ret = -1;
 
@@ -1284,7 +1281,6 @@ static int disp_oddmr_slc_request(struct mtk_ddp_comp *comp, enum DISP_ODDMR_SLC
 
 static int disp_oddmr_slc_valid(struct mtk_ddp_comp *comp, enum DISP_ODDMR_SLC_IDX idx)
 {
-	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
 	int uid;
 	int ret = -1;
 
@@ -1305,7 +1301,6 @@ static int disp_oddmr_slc_valid(struct mtk_ddp_comp *comp, enum DISP_ODDMR_SLC_I
 
 static int disp_oddmr_slc_invalid(struct mtk_ddp_comp *comp, enum DISP_ODDMR_SLC_IDX idx)
 {
-	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
 	int uid;
 	int ret = -1;
 
@@ -2000,7 +1995,6 @@ static void mtk_oddmr_od_srt_cal(struct mtk_ddp_comp *comp, int en)
 static void mtk_oddmr_dbi_srt_cal(struct mtk_ddp_comp *comp, int en)
 {
 	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
-	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 	unsigned int table_size = oddmr_data->dbi_data.table_size;
 	uint32_t vrefresh;
 	uint32_t srt = 0;
@@ -2253,27 +2247,6 @@ static void mtk_oddmr_od_prepare(struct mtk_ddp_comp *comp, struct cmdq_pkt *han
 		else
 			mtk_oddmr_write(comp, 1, DISP_ODDMR_TOP_CRP_BYPSS, NULL);
 	}
-}
-
-static void mtk_oddmr_spr2rgb_prepare(struct mtk_ddp_comp *comp)
-{
-	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
-
-	ODDMRAPI_LOG("+\n");
-	if (oddmr_data->data->dbi_version == MTK_DBI_V2 || oddmr_data->data->od_version >= MTK_OD_V2) {
-		if (oddmr_data->data->need_bypass_shadow == true)
-			mtk_oddmr_write(comp, 3,
-				MT6991_DISP_ODDMR_SPR_SHADOW_CTRL, NULL);
-		else
-			mtk_oddmr_write(comp, 0,
-				MT6991_DISP_ODDMR_SPR_SHADOW_CTRL, NULL);
-	}
-	if (oddmr_data->data->od_version >= MTK_OD_V2)
-		mtk_oddmr_write_cpu(comp, 1,
-				MT6991_DISP_ODDMR_REG_SPR_COMP_EN);
-	else
-		mtk_oddmr_write_cpu(comp, 1,
-			DISP_ODDMR_REG_SPR_COMP_EN);
 }
 
 static void mtk_oddmr_top_prepare(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
@@ -2600,10 +2573,8 @@ static void mtk_oddmr_first_cfg(struct mtk_ddp_comp *comp,
 	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
 	struct mtk_ddp_comp *out_comp = NULL;
 	int crtc_idx;
-	struct drm_display_mode *mode;
 	unsigned int postalign_en;
 	bool dmr_support, od_support, dbi_support;
-	uint32_t value = 0, mask = 0;
 
 	DDPMSG("%s+\n", __func__);
 	dmr_support = oddmr_data->primary_data->dmr_support;
@@ -3170,8 +3141,8 @@ static void mtk_oddmr_dbi_config(struct mtk_ddp_comp *comp, struct cmdq_pkt *han
 					mask = 0;
 					SET_VAL_MASK(value, mask, 1, MT6991_REG_DBI_V_CROP_EN_R);
 					SET_VAL_MASK(value, mask, 0, MT6991_REG_DBI_V_ST_R);
-					SET_VAL_MASK(value, mask, oddmr_data->roi_height +
-						top_overhead_v + bot_overhead_v,
+					SET_VAL_MASK(value, mask, (oddmr_data->roi_height +
+						top_overhead_v + bot_overhead_v),
 						MT6991_REG_DBI_V_LENGTH_R);
 					mtk_oddmr_write(comp, value,
 						MT6991_DISP_ODDMR_REG_DBI_V_CROP_EN_R, handle);
@@ -3179,8 +3150,8 @@ static void mtk_oddmr_dbi_config(struct mtk_ddp_comp *comp, struct cmdq_pkt *han
 					mask = 0;
 					SET_VAL_MASK(value, mask, 1, MT6991_REG_DBI_V_CROP_EN_G);
 					SET_VAL_MASK(value, mask, 0, MT6991_REG_DBI_V_ST_G);
-					SET_VAL_MASK(value, mask, oddmr_data->roi_height +
-						top_overhead_v + bot_overhead_v,
+					SET_VAL_MASK(value, mask, (oddmr_data->roi_height +
+						top_overhead_v + bot_overhead_v),
 						MT6991_REG_DBI_V_LENGTH_G);
 					mtk_oddmr_write(comp, value,
 						MT6991_DISP_ODDMR_REG_DBI_V_CROP_EN_G, handle);
@@ -3188,8 +3159,8 @@ static void mtk_oddmr_dbi_config(struct mtk_ddp_comp *comp, struct cmdq_pkt *han
 					mask = 0;
 					SET_VAL_MASK(value, mask, 1, MT6991_REG_DBI_V_CROP_EN_B);
 					SET_VAL_MASK(value, mask, 0, MT6991_REG_DBI_V_ST_B);
-					SET_VAL_MASK(value, mask, oddmr_data->roi_height +
-						top_overhead_v + bot_overhead_v,
+					SET_VAL_MASK(value, mask, (oddmr_data->roi_height +
+						top_overhead_v + bot_overhead_v),
 						MT6991_REG_DBI_V_LENGTH_B);
 					mtk_oddmr_write(comp, value,
 						MT6991_DISP_ODDMR_REG_DBI_V_CROP_EN_B, handle);
@@ -3329,7 +3300,6 @@ static void mtk_oddmr_od_config(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *cmdq_handle1 = NULL;
 	struct cmdq_client *client = NULL;
 	bool od_support;
-	unsigned int postalign_en = 0;
 	uint32_t value = 0, mask = 0;
 
 
@@ -3514,7 +3484,6 @@ static void mtk_oddmr_config(struct mtk_ddp_comp *comp,
 	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 	unsigned int postalign_en = 0;
-	uint32_t value = 0, mask = 0;
 	bool dmr_support, od_support;
 
 	if (!comp->mtk_crtc || !comp->mtk_crtc->panel_ext || oddmr_data == NULL) {
@@ -4897,27 +4866,27 @@ static void mtk_oddmr_od_smi_dual(struct mtk_ddp_comp *comp, struct cmdq_pkt *pk
 	}
 }
 
-static void mtk_oddmr_dmr_smi_dual(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg)
-{
-	mtk_oddmr_dmr_smi(comp, pkg);
-	if (comp->mtk_crtc->is_dual_pipe) {
-		struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
-		struct mtk_ddp_comp *comp1 = oddmr_data->companion;
+//static void mtk_oddmr_dmr_smi_dual(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg)
+//{
+//	mtk_oddmr_dmr_smi(comp, pkg);
+//	if (comp->mtk_crtc->is_dual_pipe) {
+//		struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
+//		struct mtk_ddp_comp *comp1 = oddmr_data->companion;
 
-		mtk_oddmr_dmr_smi(comp1, pkg);
-	}
-}
+//		mtk_oddmr_dmr_smi(comp1, pkg);
+//	}
+//}
 
-static void mtk_oddmr_dbi_smi_dual(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg)
-{
-	mtk_oddmr_dbi_smi(comp, pkg);
-	if (comp->mtk_crtc->is_dual_pipe) {
-		struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
-		struct mtk_ddp_comp *comp1 = oddmr_data->companion;
+//static void mtk_oddmr_dbi_smi_dual(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg)
+//{
+//	mtk_oddmr_dbi_smi(comp, pkg);
+//	if (comp->mtk_crtc->is_dual_pipe) {
+//		struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
+//		struct mtk_ddp_comp *comp1 = oddmr_data->companion;
 
-		mtk_oddmr_dbi_smi(comp1, pkg);
-	}
-}
+//		mtk_oddmr_dbi_smi(comp1, pkg);
+//	}
+//}
 
 static void mtk_oddmr_od_set_res_udma_dual(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg)
 {
@@ -5468,11 +5437,6 @@ static unsigned int mtk_oddmr_dmr_binset_check(struct mtk_ddp_comp *comp, unsign
 	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
 	struct mtk_drm_dmr_cfg_info *dmr_cfg_data;
 	struct mtk_drm_oddmr_binset_info *dmr_binset;
-	unsigned int dbv_table_idx = 0;
-	unsigned int dbv_node = 0;
-	unsigned int fps_table_idx = 0;
-	unsigned int fps_node = 0;
-	dma_addr_t addr = 0;
 	unsigned int new_bin_idx;
 	unsigned int cur_binset_idx;
 	unsigned int cur_bin_idx;
@@ -6860,9 +6824,9 @@ static void mtk_oddmr_od_table_chg_by_timing(struct mtk_ddp_comp *comp, struct c
 {
 	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
 	struct mtk_ddp_comp *comp1;
-	struct mtk_disp_oddmr *oddmr1_data;
+	struct mtk_disp_oddmr *oddmr1_data = NULL;
 	uint32_t weight[3] = {0};
-	int table_idx,ret;
+	int table_idx = 0,ret = 0;
 	uint32_t od_fps_mode = oddmr_data->primary_data->od_fps_mode;
 	int od_update_sram_last = 0;
 	bool check_force_flip = false;
@@ -6964,9 +6928,6 @@ static void mtk_oddmr_od_table_chg_by_timing(struct mtk_ddp_comp *comp, struct c
 static void mtk_oddmr_od_table_chg(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
 	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
-	struct mtk_ddp_comp *comp1;
-	struct mtk_disp_oddmr *oddmr1_data;
-	int table_idx,ret;
 	struct mtk_oddmr_timing *current_timing = &oddmr_data->primary_data->current_timing;
 	struct mtk_oddmr_timing *od_content_timing = &oddmr_data->primary_data->od_content_timing;
 
@@ -7208,7 +7169,6 @@ static void mtk_oddmr_set_dmr_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 		struct cmdq_pkt *handle)
 {
 	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
-	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
 	struct mtk_ddp_comp *output_comp = NULL;
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 	uint32_t reg_val;
@@ -7816,7 +7776,7 @@ static void disp_oddmr_on_start_of_frame(struct mtk_ddp_comp *comp)
 static void disp_oddmr_sof_handle(struct mtk_ddp_comp *comp)
 {
 	uint32_t weight[3] = {0};
-	int ret = 0, sel = 0;
+	int sel = 0;
 	bool frame_req_trig;
 	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
 	atomic_t *od_weight_trigger = &oddmr_data->primary_data->od_weight_trigger;
@@ -7944,7 +7904,7 @@ static int disp_oddmr_sof_kthread(void *data)
 					disp_oddmr_sof_handle(comp);
 			}
 		} else
-			ODDMRLOW_LOG("sof_irq_available already 1, skip\n", ret);
+			ODDMRLOW_LOG("sof_irq_available already 1,ret = %d, skip\n", ret);
 		atomic_set(&oddmr_data->primary_data->sof_irq_available, 0);
 	}
 	return 0;
@@ -8008,7 +7968,6 @@ static int mtk_oddmr_od_init(struct mtk_ddp_comp *comp, void *data)
 {
 	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
 	struct mtk_oddmr_od_param *od_param = &oddmr_data->primary_data->od_param;
-	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
 	struct mtk_drm_crtc *mtk_crtc;
 	int ret, idx, table_idx, pm_ret = 0;
 	struct cmdq_client *client = NULL;
@@ -8300,7 +8259,6 @@ static int mtk_oddmr_od_user_gain(struct mtk_ddp_comp *comp, void *data)
 
 static void mtk_oddmr_dmr_common_init(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg)
 {
-	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
 
 	ODDMRAPI_LOG("+\n");
 	/* top */
@@ -8309,7 +8267,6 @@ static void mtk_oddmr_dmr_common_init(struct mtk_ddp_comp *comp, struct cmdq_pkt
 
 static void mtk_oddmr_dbi_common_init(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg)
 {
-	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
 
 	ODDMRAPI_LOG("+\n");
 	/* top */
@@ -8317,17 +8274,17 @@ static void mtk_oddmr_dbi_common_init(struct mtk_ddp_comp *comp, struct cmdq_pkt
 }
 
 
-static void mtk_oddmr_dmr_common_init_dual(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg)
-{
-	ODDMRAPI_LOG("+\n");
-	mtk_oddmr_dmr_common_init(comp, pkg);
-	if (comp->mtk_crtc->is_dual_pipe) {
-		struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
-		struct mtk_ddp_comp *comp1 = oddmr_data->companion;
+//static void mtk_oddmr_dmr_common_init_dual(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg)
+//{
+//	ODDMRAPI_LOG("+\n");
+//	mtk_oddmr_dmr_common_init(comp, pkg);
+//	if (comp->mtk_crtc->is_dual_pipe) {
+//		struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
+//		struct mtk_ddp_comp *comp1 = oddmr_data->companion;
 
-		mtk_oddmr_dmr_common_init(comp1, pkg);
-	}
-}
+//		mtk_oddmr_dmr_common_init(comp1, pkg);
+//	}
+//}
 
 static void mtk_oddmr_dmr_static_cfg(struct mtk_ddp_comp *comp,
 		struct cmdq_pkt *pkg, struct mtk_drm_dmr_static_cfg *static_cfg_data)
@@ -8613,7 +8570,6 @@ static int mtk_oddmr_get_dmr_cfg_data(struct mtk_ddp_comp *comp,
 	int change_log=10;
 	int table_log = 10;
 	struct mtk_drm_dmr_cfg_info *dmr_cfg_data;
-	unsigned int dmr_bin_index = 0;
 
 	ODDMRAPI_LOG("+\n");
 	dmr_cfg_data = &oddmr_data->primary_data->dmr_multi_bin[bin_index - 1];
@@ -9971,13 +9927,10 @@ static int mtk_oddmr_dmr_binset_init (struct mtk_ddp_comp *comp,
 static int mtk_oddmr_dmr_init(struct mtk_ddp_comp *comp, struct mtk_drm_dmr_cfg_info *cfg_info)
 {
 	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
-	struct mtk_drm_crtc *mtk_crtc;
 	struct mtk_drm_dmr_cfg_info *dmr_cfg_data = NULL;
 	int ret = 0;
-	dma_addr_t addr = 0;
 	struct mtk_oddmr_panelid expect_panel_id = {0};
 	struct mtk_drm_oddmr_binset_info *dmr_binset = NULL;
-	unsigned int cur_bin_idx;
 	unsigned int cur_dbv;
 	int i = 0;
 	static unsigned int load_bin_num;
@@ -10119,7 +10072,6 @@ static int mtk_oddmr_reg_tuning_init(struct mtk_ddp_comp *comp, struct mtk_drm_o
 	void *data[20] = {0};
 	int index = 0;
 	int size;
-	int i = 0;
 	struct mtk_drm_oddmr_reg_tuning *reg_tuning_info = &oddmr_data->primary_data->oddmr_reg_tuning_info;
 	unsigned int reg_tuning_en = 0;
 
@@ -10293,8 +10245,6 @@ bool mtk_drm_dbi_backup(struct drm_crtc *crtc, void *get_phys, void *get_virt,
 	unsigned int *tmp_addr;
 	unsigned int *tmp_addr1;
 	unsigned int i;
-	void *table_addr;
-	unsigned int j;
 	static bool mem_maped;
 	static bool mem_init;
 	unsigned int map_size;
@@ -10880,8 +10830,7 @@ static int mtk_oddmr_od_read_sw_reg(struct mtk_ddp_comp *comp, void* data,
 		ret = mtk_oddmr_od_status_read(comp, table_idx, sw_reg, &oddmr_data->primary_data->current_timing);
 	else
 		ret = mtk_oddmr_od_tuning_read(comp, table_idx, sw_reg, pparam); 
-	ODDMRFLOW_LOG("reg 0x%x 0x%x 0x%x+\n", sw_reg->reg, sw_reg->val);
-out:
+	ODDMRFLOW_LOG("reg 0x%x 0x%x+\n", sw_reg->reg, sw_reg->val);
 	return ret;
 }
 
@@ -10911,7 +10860,6 @@ static int mtk_oddmr_od_write_sw_reg(struct mtk_ddp_comp *comp, void* data,
 		ret = mtk_oddmr_od_sram_write(comp, table_idx, sw_reg, pparam);
 	else
 		ret = mtk_oddmr_od_tuning_write(comp, table_idx, sw_reg, pparam);
-out:
 	return ret;
 }
 
@@ -11415,10 +11363,10 @@ static int mtk_oddmr_pq_ioctl_transact(struct mtk_ddp_comp *comp,
 	case PQ_ODDMR_DBI_GET_SCP_LIFECYCLE:
 #if !IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_CM4_SUPPORT)
 		ret = 0;
-		DDPMSG("%s, %llx\n", __func__, (unsigned long)(oddmr_data->dbi_data.spm_base));
-		DDPMSG("%s, %llx\n", __func__, (unsigned long)(oddmr_data->dbi_data.scp_lifecycle));
-		DDPMSG("%s, %llx\n", __func__, (unsigned long)(oddmr_data->dbi_data.scp_lifecycle_size));
-		DDPMSG("%s, %llx\n", __func__, (unsigned long)(oddmr_data->dbi_data.support_scp));
+		DDPMSG("%s, %lx\n", __func__, (unsigned long)(oddmr_data->dbi_data.spm_base));
+		DDPMSG("%s, %lx\n", __func__, (unsigned long)(oddmr_data->dbi_data.scp_lifecycle));
+		DDPMSG("%s, %lx\n", __func__, (unsigned long)(oddmr_data->dbi_data.scp_lifecycle_size));
+		DDPMSG("%s, %lx\n", __func__, (unsigned long)(oddmr_data->dbi_data.support_scp));
 		if(!oddmr_data->dbi_data.scp_lifecycle_size){
 			DDPMSG("%s, scp_lifecycle_size is null\n", __func__);
 			return -1;
@@ -11433,7 +11381,7 @@ static int mtk_oddmr_pq_ioctl_transact(struct mtk_ddp_comp *comp,
 			oddmr_data->dbi_data.scp_lifecycle =
 				(void *)(share_lifecycle_offset + get_mem_virt(SCP_DBI_MEM_ID));
 
-			DDPMSG("%s, get semaphore %llx\n", __func__, (unsigned long)(*((void **)params)));
+			DDPMSG("%s, get semaphore %lx\n", __func__, (unsigned long)(*((void **)params)));
 			if (copy_to_user(*((void **)params),
 				oddmr_data->dbi_data.scp_lifecycle, oddmr_data->dbi_data.scp_lifecycle_size)) {
 				DDPPR_ERR("%s:%d, copy_to_user fail\n", __func__, __LINE__);
@@ -11727,8 +11675,8 @@ static int mtk_oddmr_set_partial_update(struct mtk_ddp_comp *comp,
 					mask = 0;
 					SET_VAL_MASK(value, mask, 1, MT6991_REG_DBI_V_CROP_EN_R);
 					SET_VAL_MASK(value, mask, 0, MT6991_REG_DBI_V_ST_R);
-					SET_VAL_MASK(value, mask, partial_roi.height +
-							top_overhead_v + bot_overhead_v,
+					SET_VAL_MASK(value, mask, (partial_roi.height +
+							top_overhead_v + bot_overhead_v),
 						MT6991_REG_DBI_V_LENGTH_R);
 					mtk_oddmr_write(comp, value,
 						MT6991_DISP_ODDMR_REG_DBI_V_CROP_EN_R, handle);
@@ -11736,8 +11684,8 @@ static int mtk_oddmr_set_partial_update(struct mtk_ddp_comp *comp,
 					mask = 0;
 					SET_VAL_MASK(value, mask, 1, MT6991_REG_DBI_V_CROP_EN_G);
 					SET_VAL_MASK(value, mask, 0, MT6991_REG_DBI_V_ST_G);
-					SET_VAL_MASK(value, mask, partial_roi.height +
-						top_overhead_v + bot_overhead_v,
+					SET_VAL_MASK(value, mask, (partial_roi.height +
+						top_overhead_v + bot_overhead_v),
 						MT6991_REG_DBI_V_LENGTH_G);
 					mtk_oddmr_write(comp, value,
 						MT6991_DISP_ODDMR_REG_DBI_V_CROP_EN_G, handle);
@@ -11745,8 +11693,8 @@ static int mtk_oddmr_set_partial_update(struct mtk_ddp_comp *comp,
 					mask = 0;
 					SET_VAL_MASK(value, mask, 1, MT6991_REG_DBI_V_CROP_EN_B);
 					SET_VAL_MASK(value, mask, 0, MT6991_REG_DBI_V_ST_B);
-					SET_VAL_MASK(value, mask, partial_roi.height +
-						top_overhead_v + bot_overhead_v,
+					SET_VAL_MASK(value, mask, (partial_roi.height +
+						top_overhead_v + bot_overhead_v),
 						MT6991_REG_DBI_V_LENGTH_B);
 					mtk_oddmr_write(comp, value,
 						MT6991_DISP_ODDMR_REG_DBI_V_CROP_EN_B, handle);
@@ -12260,12 +12208,10 @@ static int mtk_disp_oddmr_probe(struct platform_device *pdev)
 	struct mtk_disp_oddmr *oddmr_data;
 	enum mtk_ddp_comp_id comp_id;
 	int ret, irq_num, ret_scp;
-	struct sched_param param = {.sched_priority = 85 };
-	struct cpumask mask;
 	struct device_node *smp_node = NULL;
 	struct platform_device *spm_pdev = NULL;
 	struct resource *res = NULL;
-	int count = 0, idx;
+	int count = 0;
 
 	DDPMSG("%s+\n", __func__);
 	oddmr_data = devm_kzalloc(dev, sizeof(*oddmr_data), GFP_KERNEL);
