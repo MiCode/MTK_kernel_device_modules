@@ -23,8 +23,16 @@ static unsigned int hid_debug;
 module_param(hid_debug, uint, 0644);
 MODULE_PARM_DESC(hid_debug, "Enable/Disable HID Offload debug log");
 
+static unsigned int hid_debug_sync;
+module_param(hid_debug_sync, uint, 0644);
+MODULE_PARM_DESC(hid_debug_sync, "Enable/Disable HID Offload sync log");
+
 #define hid_dbg(fmt, args...) do { \
 		if (hid_debug > 0) \
+			pr_info("UO, [HID] %s(%d) " fmt, __func__, __LINE__, ## args); \
+	} while (0)
+#define hid_dbg_sync(fmt, args...) do { \
+		if (hid_debug_sync > 0) \
 			pr_info("UO, [HID] %s(%d) " fmt, __func__, __LINE__, ## args); \
 	} while (0)
 #define hid_info(fmt, args...) \
@@ -32,14 +40,54 @@ MODULE_PARM_DESC(hid_debug, "Enable/Disable HID Offload debug log");
 #define hid_err(fmt, args...) \
 	pr_info("UO, [HID ERROR] %s(%d) " fmt, __func__, __LINE__, ## args)
 
-/* sync_flag bit defined*/
+/** synchornization bits defined
+ *
+ * @ NEED_OFFLOAD: if hid driver dequeued before
+ * @ AP_QUEUE:     if hid driver enqueued before
+ * @ ON_RESET:     if hid offloading was on resetting
+ */
 #define HID_NEED_OFFLOAD    0
 #define HID_DSP_RUNNING     1
 #define HID_AP_QUEUE        2
-#define HID_DSP_ABNORMAL    3
-#define HID_ON_RESETING     4
+#define HID_ON_RESET        3
 
-#define HID_EP_NAME_LEN  30
+#define wait_condition(condition, timeout) ({ struct timespec64 ref, cur;\
+	ktime_get_ts64(&ref); \
+	cur = ref; \
+	while (!condition && (cur.tv_nsec - ref.tv_nsec) < timeout) { \
+		mdelay(1); \
+		ktime_get_ts64(&cur); \
+	} \
+	(condition) ? 0 : -ETIMEDOUT; \
+})
+
+#define wait_reset_done(hid, timeout_ns) \
+	(wait_condition((test_bit(HID_ON_RESET, &hid->sync_flag) == 0), timeout_ns) == 0)
+
+/* counter bit defined */
+#define HID_GIVEBACK_CNT_MASK	GENMASK(3, 0)
+#define HID_GIVEBACK_CNT_SHIFT	(0)
+#define HID_PAYLOAD_CNT_MASK	GENMASK(7, 4)
+#define HID_PAYLOAD_CNT_SHIFT	(4)
+
+#define get_cnt(hid, item) \
+	((atomic_read(&hid->cnt) & HID_##item##_CNT_MASK) >> HID_##item##_CNT_SHIFT)
+#define add_cnt(hid, item) \
+	atomic_add((0x1U << HID_##item##_CNT_SHIFT) & HID_##item##_CNT_MASK, &hid->cnt)
+#define sub_cnt(hid, item) \
+	atomic_sub((0x1U << HID_##item##_CNT_SHIFT) & HID_##item##_CNT_MASK, &hid->cnt)
+#define set_cnt(hid, item, value) \
+	atomic_set(&hid->cnt, ((value) << HID_##item##_CNT_SHIFT) & HID_##item##_CNT_MASK)
+
+#define GIVEBACK_COMPLTETE	 2
+#define HID_EP_NAME_LEN      30
+#define UO_HID_EP_NUM        2
+#define UO_HID_WAKEUP_TIME   1000
+#define UO_HID_WAIT_RESET_NS 1000000
+
+static DECLARE_COMPLETION(hid_dequeue_done);
+struct workqueue_struct *wq;
+
 struct hid_ep_info {
 	char name[HID_EP_NAME_LEN];
 	struct usb_interface_descriptor intf_desc;
@@ -48,23 +96,19 @@ struct hid_ep_info {
 	int dir;
 	unsigned int slot_id;
 	unsigned int ep_id;
-	struct delayed_work giveback_work;
 	struct uo_buffer *buf_payload;
 
-	/* current ring info reported from dsp*/
-	union xhci_trb *cur_enqueue;
-	unsigned int cycle_state;
-
-	/* synchronization item */
+	/* synchronization */
 	unsigned long sync_flag;
-	unsigned int irq_total_cnt;
-	struct list_head payload_list;
+	atomic_t cnt;
 	spinlock_t lock;
-	struct mutex ring_lock;
 
-	/* wait ipi_msg from dsp */
-	struct completion *wait_dsp;
+	struct list_head payload_list;
+	struct delayed_work giveback;
 };
+
+static struct hid_ep_info hid_ep[UO_HID_EP_NUM];
+#define get_hid_ep(dir) (dir ? &hid_ep[1] : &hid_ep[0])
 
 /* store payload info from dsp */
 struct dsp_payload {
@@ -74,86 +118,653 @@ struct dsp_payload {
 	struct list_head list;
 };
 
-#define UO_HID_EP_NUM   2
-#define UO_HID_DEQUEUE_WAIT 500
-#define UO_HID_WAKEUP_TIME 1000
-static struct hid_ep_info hid_ep[UO_HID_EP_NUM];
-static struct workqueue_struct *giveback_wq;
-static struct wakeup_source *hid_wake_lock;
-static DECLARE_COMPLETION(hid_dequeue_done);
-
+/* xhci helper */
 static void xhci_mtk_trace_init(void);
-
-static void hid_giveback_urb(struct work_struct *work_struct);
-static void hid_dump_ep(struct hid_ep_info *hid, const char *tag);
-static void hid_dump_xhci(struct hid_ep_info *hid, const char *tag);
-static void hid_clean_buf(bool is_in);
-
-static int xhci_hid_ep_ctx_control(struct hid_ep_info *hid,
-		struct xhci_ep_ctx *new_ctx, bool reconfigure);
-static int xhci_hid_move_deq(struct hid_ep_info *hid,
-	struct xhci_segment *new_seg, union xhci_trb *new_deq, int new_cycle);
-static int xhci_stop_hid_ep(struct hid_ep_info *hid);
 static int xhci_realloc_hid_ring(struct hid_ep_info *hid, enum uo_provider_type id);
 static struct xhci_ring *xhci_get_hid_tr_ring(struct hid_ep_info *hid);
-static struct xhci_virt_device *xhci_get_hid_virt_dev(struct hid_ep_info *hid);
-static struct xhci_ep_ctx *xhci_get_hid_ep_ctx(struct hid_ep_info *hid, bool in_ctx);
-static int xhci_hid_move_enq(struct hid_ep_info *hid, union xhci_trb *new_enq, int new_cycle);
-static dma_addr_t xhci_trb_to_dma(struct hid_ep_info *hid, void *target_virt);
-static union xhci_trb *xhci_trb_to_virt(struct hid_ep_info *hid, dma_addr_t phy);
-static int xhci_get_ep_state(struct xhci_ep_ctx *ctx);
 
-static struct hid_ep_info *get_hid_ep(int dir)
-{
-	return dir ? &hid_ep[1] : &hid_ep[0];
-}
+/* urb/payload helper */
+static void giveback_hid(struct work_struct *work_struct);
+static void giveback_urb(struct urb *urb, int actual_length, int status);
+static struct dsp_payload *new_payload(int length);
+static void free_payload(struct dsp_payload *payload);
+static void clear_payload_list(struct hid_ep_info *ep);
+static bool is_hid_urb(struct urb *urb, struct usb_interface_descriptor *intf_desc,
+	struct usb_endpoint_descriptor *ep_desc);
 
-static struct hid_ep_info *get_hid_ep_safe(int dir, int slot, int ep)
+/* hid ep helper */
+static void hid_dump_ep(struct hid_ep_info *hid, const char *tag);
+static void hid_lock(struct hid_ep_info *hid, const char *tag);
+static void hid_unlock(struct hid_ep_info *hid, const char *tag);
+static inline struct hid_ep_info *get_hid_ep_safe(int dir, int slot, int ep)
 {
 	struct hid_ep_info *hid;
 
-	hid = dir ? &hid_ep[1] : &hid_ep[0];
-	if ((hid->slot_id != slot) || (hid->ep_id != ep))
+	hid = get_hid_ep(dir);
+	return ((hid->slot_id != slot) || (hid->ep_id != ep)) ? NULL : hid;
+}
+
+/* flow control */
+static int start_dsp(struct hid_ep_info *hid);
+static void stop_dsp(struct hid_ep_info *hid, bool inform_dsp);
+static void hid_offload_reset(struct hid_ep_info *hid);
+
+/**
+ * hid_trace_dequeue - trace killed urb & init hid_ep_info
+ *
+ * called when hid driver kill urb, might sleep, do not hold lock here
+ */
+static void hid_trace_dequeue(void *unused, struct urb *urb)
+{
+	struct hid_ep_info *hid;
+	int dir, cnt;
+
+	if (uodev->policy.hid_disable_offload || !uodev->is_streaming)
+		return;
+
+	dir = usb_endpoint_dir_in(&urb->ep->desc);
+	hid = get_hid_ep(dir);
+
+	if (is_hid_urb(urb, &hid->intf_desc, &hid->ep_desc)) {
+
+		/* to check if previous round finished or not
+		 * example: hold key would cause duration between dsp irq too long,
+		 *          a dequeue event might be involved between them
+		 */
+		if (test_bit(HID_DSP_RUNNING, &hid->sync_flag)) {
+			/* fix me: why we don't need to clear HID_AP_ENQUEUE here ?? */
+			hid_dump_ep(hid, "<HID Dequeue Ignore>");
+			goto ignore;
+		}
+
+		/* wait until preivious round finish */
+		hid_dbg("wait reset for %d ns.....\n", UO_HID_WAIT_RESET_NS);
+		if (!wait_reset_done(hid, UO_HID_WAIT_RESET_NS)) {
+			uo_mbrain_update(UO_PHASE_HID_START, UO_ERROR_TIMEOUT);
+			hid_dump_ep(hid, "<HID Dequeue ERROR>");
+			hid_err("wait reset timeout, Not Support HID Offloading\n");
+			return;
+		}
+		hid_dbg("reset done.....\n");
+
+		set_bit(HID_NEED_OFFLOAD, &hid->sync_flag);
+		hid->urb = urb;
+		hid->dir = dir;
+		hid->slot_id = urb->dev->slot_id;
+		hid->ep_id = xhci_get_endpoint_index_(&hid->ep_desc);
+		cnt = snprintf(hid->name, HID_EP_NAME_LEN, "hid_ep(dir%d slot%d ep%d)",
+			hid->dir, hid->slot_id, hid->ep_id);
+		if (!cnt)
+			hid_dbg("hid name might be weird\n");
+		hid_dump_ep(hid, "<HID Dequeue>");
+		hid_dbg("start offloading urb %p\n", hid->urb);
+	}
+ignore:
+	complete(&hid_dequeue_done);
+}
+
+/**
+ * usb_offload_trace_hid_enqueue - determine to skip enqueue or not
+ *
+ * called when hid driver submit urb
+ * it would giveback to hid driver if there's any stored payload before
+ */
+bool usb_offload_trace_hid_enqueue(struct xhci_hcd *xhci, struct urb *urb)
+{
+	struct usb_interface_descriptor intf_desc;
+	struct usb_endpoint_descriptor ep_desc;
+	struct hid_ep_info *hid;
+	int delay_ms = 3;
+
+	if (!is_hid_urb(urb, &intf_desc, &ep_desc))
+		return false;
+
+	hid = get_hid_ep_safe(usb_endpoint_dir_in(&urb->ep->desc),
+			urb->dev->slot_id, xhci_get_endpoint_index_(&urb->ep->desc));
+	if (unlikely(!hid))
+		return false;
+
+	/* do not make decision while previous round was resetting */
+	hid_dbg("wait reset for %d ns.....\n", UO_HID_WAIT_RESET_NS);
+	if (!wait_reset_done(hid, 1000000)) {
+		uo_mbrain_update(UO_PHASE_HID_ONGOING, UO_ERROR_TIMEOUT);
+		hid_dump_ep(hid, "<AP Enqueue ERROR>");
+		hid_err("%s wait reset timeout, do not skip\n", hid->name);
+		/* todo: shall we skip it or not ??? */
+		return false;
+	}
+	hid_dbg("reset done.....\n");
+
+	/* we can fully trust the flags now */
+	if (!test_bit(HID_NEED_OFFLOAD, &hid->sync_flag)) {
+		hid_info("%s not offloading, do not skip urb %p\n", hid->name, urb);
+		return false;
+	}
+
+	hid_lock(hid, __func__);
+	set_bit(HID_AP_QUEUE, &hid->sync_flag);
+	hid->urb = urb;
+	hid_dump_ep(hid, "<AP Enqueue>");
+	hid_unlock(hid, __func__);
+
+	hid_info("skip urb %p\n", urb);
+
+	if (get_cnt(hid, PAYLOAD) > 0) {
+		hid_dbg("giveback begin after %d ms\n", delay_ms);
+		queue_delayed_work(wq, &hid->giveback, msecs_to_jiffies(delay_ms));
+	}
+
+	return true;
+}
+
+/**
+ * hid_dsp_irq - likes a ISR of irq from dsp (carried by ipi message)
+ *
+ * handle information from dsp interrupt
+ * it would giveback to hid driver if there's any skipped urb before
+ */
+static int hid_dsp_irq(struct hid_ep_info *hid, struct usb_offload_urb_complete *urb_complete)
+{
+	struct dsp_payload *payload;
+	bool giveback = false;
+	int delay_ms = 0;
+	int ret = 0;
+
+	hid_info("buffer:0x%llx actual_length:%d status:0x%x more_complete:%d\n",
+		urb_complete->urb_start_addr, urb_complete->actual_length,
+		urb_complete->status, urb_complete->more_complete);
+
+	hid_dump_ep(hid, "<DSP IRQ Start>");
+
+	/* create a new payload */
+	payload = new_payload(urb_complete->actual_length);
+	if (payload) {
+		payload->actual_length = urb_complete->actual_length;
+		if ((unsigned long long)hid->buf_payload->phys == urb_complete->urb_start_addr) {
+			memcpy(payload->data, (void *)hid->buf_payload->virt, payload->actual_length);
+			payload->status = 0;
+		} else {
+			hid_err("buffer unmatch, phy:0x%llx\n", urb_complete->urb_start_addr);
+			payload->data = NULL;
+			payload->status = -EPROTO;
+		}
+		hid_info("new payload!! (length:%d status:0x%x)\n", payload->actual_length, payload->status);
+	} else {
+		hid_err("fail allocating payload\n");
+		uo_mbrain_update(UO_PHASE_HID_ONGOING, UO_ERROR_INSUFFICIENT_SPACE);
+		goto error;
+	}
+
+	hid_lock(hid, __func__);
+
+	/* update synchronization */
+	list_add_tail(&payload->list, &hid->payload_list);
+	add_cnt(hid, PAYLOAD);
+	if (!urb_complete->more_complete)
+		clear_bit(HID_DSP_RUNNING, &hid->sync_flag);
+	giveback = (test_bit(HID_AP_QUEUE, &hid->sync_flag) != 0);
+
+	hid_dump_ep(hid, "<DSP IRQ End>");
+	hid_unlock(hid, __func__);
+
+	if (uodev->dev->power.wakeup)
+		__pm_wakeup_event(uodev->dev->power.wakeup, UO_HID_WAKEUP_TIME);
+
+	/* if there's skipped urb, giveback it */
+	if (giveback) {
+		hid_dbg("giveback begin after %d ms\n", delay_ms);
+		queue_delayed_work(wq, &hid->giveback, msecs_to_jiffies(delay_ms));
+	}
+error:
+	return ret;
+}
+
+static void giveback_urb(struct urb *urb, int actual_length, int status)
+{
+	struct usb_hcd *hcd = bus_to_hcd(urb->dev->bus);
+	int ret;
+
+	hid_info("giveback urb:%p length:%d status:%d\n", urb, actual_length, status);
+	ret = usb_hcd_link_urb_to_ep(hcd, urb);
+	if (unlikely(ret < 0))
+		hid_err("link urb error:%d\n", ret);
+	urb->unlinked = 0;
+	urb->actual_length = actual_length;
+	usb_hcd_unlink_urb_from_ep(hcd, urb);
+	usb_hcd_giveback_urb(hcd, urb, status);
+}
+
+static void giveback_hid(struct work_struct *work_struct)
+{
+	struct hid_ep_info *hid = container_of(
+		work_struct, struct hid_ep_info, giveback.work);
+	struct dsp_payload *payload;
+	bool press_complete;
+	struct urb *urb;
+
+	hid_lock(hid, __func__);
+	hid_dump_ep(hid, "<Start Giveback Check>");
+
+	/* fetch first payload on list */
+	if (!list_empty(&hid->payload_list)) {
+		payload = list_first_entry(&hid->payload_list, struct dsp_payload, list);
+		if (!payload) {
+			hid_err("payload is NULL");
+			uo_mbrain_update(UO_PHASE_HID_ONGOING, UO_ERROR_ABNORMAL_BEHAVIOR);
+			hid_unlock(hid, __func__);
+			return;
+		}
+		list_del(&payload->list);
+	} else {
+		hid_err("payload_list is empty");
+		uo_mbrain_update(UO_PHASE_HID_ONGOING, UO_ERROR_ABNORMAL_BEHAVIOR);
+		hid_unlock(hid, __func__);
+		return;
+	}
+
+	/* update synchronization */
+	clear_bit(HID_AP_QUEUE, &hid->sync_flag);
+	sub_cnt(hid, PAYLOAD);
+	add_cnt(hid, GIVEBACK);
+	hid_dbg("payload:%p actual_length:%d status:%d\n", payload,
+		payload->actual_length, payload->status);
+	hid_dump_ep(hid, "<Finish Giveback Check>");
+	press_complete = (get_cnt(hid, GIVEBACK) == GIVEBACK_COMPLTETE);
+	urb = hid->urb;
+	hid_unlock(hid, __func__);
+
+	if (payload->actual_length && payload->data != NULL)
+		memcpy(urb->transfer_buffer, payload->data, payload->actual_length);
+
+	if (press_complete) {
+		hid_info("KEY-PRESS COMPLETE!!!!!\n");
+
+		/* to prevent from hid driver submitted next urb prior to final stage,
+		 * resetting was required to run before giveback
+		 */
+		hid_offload_reset(hid);
+	}
+	giveback_urb(urb, payload->actual_length, payload->status);
+	free_payload(payload);
+}
+
+/**
+ * hid_offload_reset - final stage of 1 time hid offloading
+ *
+ * lock wouldn't be held in the end, but next time when hid killed urb,
+ * we should monitor HID_ON_RESET bit to check if previous round finished
+ */
+static void hid_offload_reset(struct hid_ep_info *hid)
+{
+	bool giveback = false;
+	bool inform_dsp = false;
+
+	/* update synchorization */
+	hid_lock(hid, __func__);
+	set_bit(HID_ON_RESET, &hid->sync_flag);
+	inform_dsp = test_bit(HID_DSP_RUNNING, &hid->sync_flag);
+	hid_dump_ep(hid, "<HID RESET Start>");
+	if (test_bit(HID_AP_QUEUE, &hid->sync_flag)){
+		clear_payload_list(hid);
+		clear_bit(HID_AP_QUEUE, &hid->sync_flag);
+		giveback = true;
+	}
+	hid_unlock(hid, __func__);
+
+	stop_dsp(hid, inform_dsp);
+
+	/* giveback urb with error status if there's still skipped urb */
+	if (giveback)
+		giveback_urb(hid->urb, 0, -EPERM);
+
+	hid->urb = NULL;
+	hid->dir = 0;
+	hid->slot_id = 0;
+	hid->ep_id = 0;
+	set_cnt(hid, GIVEBACK, 0);
+	clear_bit(HID_ON_RESET, &hid->sync_flag);
+	clear_bit(HID_NEED_OFFLOAD, &hid->sync_flag);
+	hid_dump_ep(hid, "<HID RESET End>");
+}
+
+/**
+ * usb_offload_hid_start
+ *
+ * called when usb_offload.ko entered suspend state
+ */
+int usb_offload_hid_start(void)
+{
+	struct hid_ep_info *hid;
+	int i;
+
+	if (uodev->policy.hid_disable_offload)
+		return 0;
+
+	/* prevent from hid dequeue processes took too long */
+	if (!wait_for_completion_timeout(&hid_dequeue_done,	msecs_to_jiffies(500))) {
+		hid_err("wait dequeue timeout\n");
+		return -ETIMEDOUT;
+	}
+
+	for (i = 0; i < UO_HID_EP_NUM; i++) {
+		hid = &hid_ep[i];
+		if (test_bit(HID_NEED_OFFLOAD, &hid->sync_flag)) {
+
+			/* to check if previous round finished or not */
+			if (test_bit(HID_DSP_RUNNING, &hid->sync_flag)) {
+				hid_info("dsp was still running\n");
+				continue;
+			}
+
+			/* inform dsp to start hid offloading */
+			if (start_dsp(hid)) {
+				clear_bit(HID_NEED_OFFLOAD, &hid->sync_flag);
+				hid_info("fail to start dsp, HID WASN'T Offloading!!\n");
+				continue;
+			} else
+				hid_info("success to start dsp, HID WAS Offloading!!\n");
+
+			hid_dump_ep(hid, "<Suspend>");
+		}
+	}
+
+	return 0;
+}
+
+/**
+ * usb_offload_hid_finish
+ *
+ * called when usb_offload.ko leaved suspend state
+ */
+void usb_offload_hid_finish(void)
+{
+	struct hid_ep_info *hid;
+	unsigned long giveback_cnt, payload_cnt;
+	bool reset;
+	int i;
+
+	if (uodev->policy.hid_disable_offload)
+		return;
+
+	/* prevent from there's any ipi message behind */
+	wait_condition((false), 200000);
+
+	for (i = 0; i < UO_HID_EP_NUM; i++) {
+		hid = &hid_ep[i];
+		reset = false;
+
+		if (!test_bit(HID_NEED_OFFLOAD, &hid->sync_flag))
+			continue;
+
+		giveback_cnt = get_cnt(hid, GIVEBACK);
+		payload_cnt = get_cnt(hid, PAYLOAD);
+
+		if (payload_cnt > 0)
+			hid_dump_ep(hid, "<Resume: Wait AP Enqueue>");
+		else if (giveback_cnt > GIVEBACK_COMPLTETE) {
+			uo_mbrain_update(UO_PHASE_HID_ONGOING, UO_ERROR_ABNORMAL_BEHAVIOR);
+			hid_dump_ep(hid, "<Resume: Abnormal Count>");
+			reset = true;
+		} else if (giveback_cnt == GIVEBACK_COMPLTETE)
+			hid_dump_ep(hid, "<Resume: Press Complete Before>");
+		else if (giveback_cnt == 0) {
+			hid_dump_ep(hid, "<Resume: User Didn't Press>");
+			reset = true;
+		} else
+			hid_dump_ep(hid, "<Resume: Wait DSP IRQ>");
+
+		if (reset)
+			hid_offload_reset(hid);
+	}
+}
+
+/**
+ * usb_offload_hid_finish
+ *
+ * called when usb_offload.ko issued DISABLE_STREAM
+ */
+void usb_offload_hid_stop(void)
+{
+	struct hid_ep_info *hid;
+	int i;
+
+	if (uodev->policy.hid_disable_offload)
+		return;
+
+	for (i = 0; i < UO_HID_EP_NUM; i++) {
+		hid = &hid_ep[i];
+
+		/* prevent from hid offloading was on resetting */
+		if (!wait_reset_done(hid, UO_HID_WAIT_RESET_NS)) {
+			hid_dump_ep(hid, "<HID Stop ERROR>");
+			hid_err("wait reset timeout, may cause chaos\n");
+		}
+
+		/* if dsp was still running, reset hid offloading */
+		if (test_bit(HID_DSP_RUNNING, &hid->sync_flag)) {
+			hid_dump_ep(&hid_ep[i], "<Force Stop DSP>");
+			hid_offload_reset(hid);
+		}
+	}
+}
+
+/**
+ * start_dsp - pre-processing stage
+ *
+ * inform dsp driver to start offloading hid packets and
+ * handle xhci resources to be compliance to ap/dsp view
+ */
+static int start_dsp(struct hid_ep_info *hid)
+{
+	struct usb_offload_urb_msg msg = {0};
+	struct xhci_ring *ring;
+	struct uo_buffer *buf;
+	unsigned int urb_size;
+
+	ring = xhci_get_hid_tr_ring(hid);
+	if (unlikely(!ring)) {
+		hid_err("%s fail to get original ring\n", hid->name);
+		return -EINVAL;
+	}
+
+	/* move trasnfer ring on ap/dsp view */
+	buf = uob_search(UO_STRUCT_TRRING, ring->first_seg->dma);
+	if (!buf) {
+		/* put trasnfer ring on lp-seneitive memory */
+		if (xhci_realloc_hid_ring(hid, usb_offload_mem_type_lp()) < 0) {
+			uo_mbrain_update(UO_PHASE_HID_START, UO_ERROR_ALLOC_TR_FAIL);
+			return -ENOMEM;
+		}
+
+		/* old one would be freed, get new one */
+		ring = xhci_get_hid_tr_ring(hid);
+		if (unlikely(!ring)) {
+			uo_mbrain_update(UO_PHASE_HID_START, UO_ERROR_ALLOC_TR_FAIL);
+			hid_err("%s fail to get new ring\n", hid->name);
+			return -EINVAL;
+		}
+	}
+
+	/* allocate data buffer on ap/dsp view */
+	urb_size = (unsigned int)hid->urb->transfer_buffer_length;
+	hid->buf_payload = uob_get_empty(UO_STRUCT_URB);
+	if (unlikely(!hid->buf_payload) ||
+		mtk_offload_alloc_mem(hid->buf_payload, urb_size, USB_OFFLOAD_TRB_SEGMENT_SIZE,
+			usb_offload_mem_type_lp(), UO_STRUCT_URB, false) < 0) {
+		uo_mbrain_update(UO_PHASE_HID_START, UO_ERROR_ALLOC_URB_FAIL);
+		return -ENOMEM;
+	}
+
+	/* fill message */
+	memcpy(&msg.intf_desc, &hid->intf_desc, sizeof(hid->intf_desc));
+	memcpy(&msg.ep_desc, &hid->ep_desc, sizeof(hid->ep_desc));
+	msg.slot_id = hid->slot_id;
+	msg.enable = true;
+	msg.direction = (unsigned char)hid->dir;
+	msg.urb_size = (unsigned int)hid->urb->transfer_buffer_length;
+	msg.urb_start_addr = (unsigned long long)hid->buf_payload->phys;
+	msg.first_trb = (unsigned long long)ring->first_seg->dma;
+	msg.cycle_state = (unsigned char)ring->cycle_state;
+
+	/* inform dsp to start */
+	if (!usb_offload_send_ipi_msg(UOI_ENABLE_HID, &msg, sizeof(struct usb_offload_urb_msg))) {
+		uo_mbrain_update(UO_PHASE_HID_START, UO_ERROR_SUCCESS);
+		set_bit(HID_DSP_RUNNING, &hid->sync_flag);
+		return 0;
+	} else {
+		uo_mbrain_update(UO_PHASE_HID_START, UO_ERROR_IPI_FAIL);
+		clear_bit(HID_DSP_RUNNING, &hid->sync_flag);
+		return -EOPNOTSUPP;
+	}
+}
+
+/**
+ * stop_dsp - post-processing stage
+ *
+ * inform dsp driver to stop offloading hid packets and
+ * recycle xhci resources which we arranged before
+ */
+static void stop_dsp(struct hid_ep_info *hid, bool inform_dsp)
+{
+	struct usb_offload_urb_msg msg = {0};
+	struct xhci_hcd *xhci = uodev->xhci;
+	struct xhci_virt_device *virt_dev;
+
+	/* it's unnecessary to issue stop to dsp while it had already finished */
+	if (inform_dsp) {
+		/* fill message */
+		msg.slot_id = hid->slot_id;
+		msg.enable = false;
+		msg.direction = (unsigned char)hid->dir;
+		msg.urb_size = 0;
+		msg.urb_start_addr = 0;
+		msg.first_trb = 0;
+
+		/* inform dsp to stop */
+		if (!usb_offload_send_ipi_msg(UOI_ENABLE_HID, &msg, sizeof(struct usb_offload_urb_msg))) {
+			clear_bit(HID_DSP_RUNNING, &hid->sync_flag);
+			hid_dump_ep(hid, "<End DSP>");
+		}
+	}
+
+	/* stop endpoint first */
+	virt_dev = uodev->xhci->devs[hid->slot_id];
+	if (virt_dev &&
+		xhci_stop_endpoint_sync_(xhci, &virt_dev->eps[hid->ep_id], 0, GFP_ATOMIC) < 0)
+		hid_err("fail to stop endpoint\n");
+
+	/* UO_PROV_NUM would identify as moving transfer ring back to ap view */
+	xhci_realloc_hid_ring(hid, UO_PROV_NUM);
+
+	/* release urb */
+	if (mtk_offload_free_mem(hid->buf_payload))
+		hid_err("fail freeing hid buf\n");
+}
+
+void usb_offload_hid_probe(void)
+{
+	struct hid_ep_info *hid;
+	int i, cnt;
+
+	wq = create_singlethread_workqueue("uo_hid_giveback");
+
+	for (i = 0; i < UO_HID_EP_NUM; i++) {
+		hid = &hid_ep[i];
+		hid->dir = i;
+		INIT_DELAYED_WORK(&hid->giveback, giveback_hid);
+		INIT_LIST_HEAD(&hid->payload_list);
+		spin_lock_init(&hid->lock);
+		cnt = snprintf(hid->name, HID_EP_NAME_LEN, "hid_ep(dir%d slot? ep?)",
+			hid->dir);
+		if (!cnt)
+			hid_dbg("hid name might be weird\n");
+	}
+
+	xhci_mtk_trace_init();
+}
+
+static void hid_dump_ep(struct hid_ep_info *hid, const char *tag)
+{
+	hid_info("%s %s flag(need:%d dsp_run:%d queue:%d rst:%d) cnt(give:%lu payload:%lu)\n",
+		tag, hid->name,
+		test_bit(HID_NEED_OFFLOAD, &hid->sync_flag),
+		test_bit(HID_DSP_RUNNING, &hid->sync_flag),
+		test_bit(HID_AP_QUEUE, &hid->sync_flag),
+		test_bit(HID_ON_RESET, &hid->sync_flag),
+		get_cnt(hid, GIVEBACK), get_cnt(hid, PAYLOAD));
+}
+
+static void hid_lock(struct hid_ep_info *hid, const char *tag)
+{
+	hid_dbg_sync("%s wait lock\n", tag);
+	spin_lock(&hid->lock);
+	hid_dbg_sync("%s get lock\n", tag);
+}
+
+static void hid_unlock(struct hid_ep_info *hid, const char *tag)
+{
+	spin_unlock(&hid->lock);
+	hid_dbg_sync("%s release lock\n", tag);
+}
+
+static int xhci_realloc_hid_ring(struct hid_ep_info *hid, enum uo_provider_type id)
+{
+	return xhci_mtk_realloc_transfer_ring(hid->slot_id, hid->ep_id, id, false);
+}
+
+static struct xhci_ring *xhci_get_hid_tr_ring(struct hid_ep_info *hid)
+{
+	struct xhci_hcd *xhci = uodev->xhci;
+	struct xhci_virt_device *virt_dev;
+
+	virt_dev = xhci->devs[hid->slot_id];
+	if (unlikely(!virt_dev))
 		return NULL;
-	else
-		return hid;
+
+	return virt_dev->eps[hid->ep_id].ring;
 }
 
-static void hid_ep_lock(struct hid_ep_info *hid, const char *tag)
+static void xhci_mtk_trace_init(void)
 {
-	if (uodev->policy.hid_disable_sync)
-		return;
-
-	hid_dbg("%s wait lock\n", tag);
-	spin_lock_irq(&hid->lock);
-	hid_dbg("%s hold lock\n", tag);
-}
-static void hid_ep_unlock(struct hid_ep_info *hid, const char *tag)
-{
-	if (uodev->policy.hid_disable_sync)
-		return;
-
-	spin_unlock_irq(&hid->lock);
-	hid_dbg("%s release lock\n", tag);
+	WARN_ON(register_trace_xhci_urb_dequeue_(hid_trace_dequeue, NULL));
 }
 
-static void hid_ring_lock(struct hid_ep_info *hid, const char *tag)
+static struct dsp_payload *new_payload(int length)
 {
-	if (uodev->policy.hid_disable_sync)
-		return;
+	struct dsp_payload *payload;
 
-	hid_dbg("%s wait ring\n", tag);
-	mutex_lock(&hid->ring_lock);
-	hid_dbg("%s hold ring\n", tag);
+	payload = kzalloc(sizeof(struct dsp_payload), GFP_ATOMIC);
+	if (!payload)
+		return NULL;
+
+	payload->data = kzalloc(length, GFP_ATOMIC);
+	if (!payload->data) {
+		kfree(payload);
+		return NULL;
+	}
+
+	INIT_LIST_HEAD(&payload->list);
+	return payload;
 }
 
-static void hid_ring_unlock(struct hid_ep_info *hid, const char *tag)
+static void free_payload(struct dsp_payload *payload)
 {
-	if (uodev->policy.hid_disable_sync)
+	if (!payload)
 		return;
 
-	mutex_unlock(&hid->ring_lock);
-	hid_dbg("%s release ring\n", tag);
+	kfree(payload->data);
+	kfree(payload);
+}
+
+static void clear_payload_list(struct hid_ep_info *hid)
+{
+	struct dsp_payload *pos, *next;
+
+	list_for_each_entry_safe(pos, next, &hid->payload_list, list) {
+		list_del(&pos->list);
+		free_payload(pos);
+		sub_cnt(hid, PAYLOAD);
+	}
 }
 
 static bool is_hid_urb(struct urb *urb, struct usb_interface_descriptor *intf_desc,
@@ -190,471 +801,7 @@ static bool is_hid_urb(struct urb *urb, struct usb_interface_descriptor *intf_de
 			break;
 		}
 	}
-
 	return found_hid_req;
-}
-
-static void hid_trace_dequeue(void *unused, struct urb *urb)
-{
-	struct hid_ep_info *hid;
-	int dir, cnt;
-
-	if (uodev->policy.hid_disable_offload)
-		return;
-
-	if (!uodev->is_streaming) {
-		hid_dbg("no streaming, no need offloading\n");
-		return;
-	}
-
-	dir = usb_endpoint_dir_in(&urb->ep->desc);
-	hid = get_hid_ep(dir);
-
-	if (is_hid_urb(urb, &hid->intf_desc, &hid->ep_desc)) {
-		/* hid_ep_lock(hid, "<HID Dequeue>"); */
-		clear_bit(HID_AP_QUEUE, &hid->sync_flag);
-		set_bit(HID_NEED_OFFLOAD, &hid->sync_flag);
-		hid->urb = urb;
-		hid->dir = dir;
-		hid->slot_id = urb->dev->slot_id;
-		hid->ep_id = xhci_get_endpoint_index_(&hid->ep_desc);
-		cnt = snprintf(hid->name, HID_EP_NAME_LEN, "hid_ep(dir%d slot%d ep%d)",
-			hid->dir, hid->slot_id, hid->ep_id);
-		if (!cnt)
-			hid_dbg("hid name might be weird\n");
-		clear_bit(HID_DSP_ABNORMAL, &hid->sync_flag);
-		hid_dump_ep(hid, "<HID Dequeue>");
-		/* hid_ep_unlock(hid, "<HID Dequeue>"); */
-	}
-
-	complete(&hid_dequeue_done);
-}
-
-bool xhci_mtk_skip_hid_urb(struct xhci_hcd *xhci, struct urb *urb)
-{
-	struct usb_interface_descriptor intf_desc;
-	struct usb_endpoint_descriptor ep_desc;
-	struct hid_ep_info *hid;
-	int dir, ret;
-	bool skip = false, giveback;
-
-	if (uodev->policy.hid_disable_offload)
-		goto NOT_SKIP_URB;
-
-	dir = usb_endpoint_dir_in(&urb->ep->desc);
-	if (is_hid_urb(urb, &intf_desc, &ep_desc)) {
-		hid = get_hid_ep_safe(dir, urb->dev->slot_id,
-					xhci_get_endpoint_index_(&urb->ep->desc));
-		giveback = false;
-		if (unlikely(!hid))
-			goto NOT_SKIP_URB;
-		hid_ep_lock(hid, "<AP Enqueue>");
-		if (!test_bit(HID_NEED_OFFLOAD, &hid->sync_flag)) {
-			hid_ep_unlock(hid, "<AP Enqueue>");
-			hid_dbg("%s do not skip\n", hid->name);
-			goto NOT_SKIP_URB;
-		}
-
-		/* if ring was on resetting, don't let urb queued into XHC */
-		if (test_bit(HID_ON_RESETING, &hid->sync_flag)) {
-			hid_info("%s on resetting\n", hid->name);
-			goto FORCE_SKIP;
-		}
-
-		if (!test_bit(HID_DSP_RUNNING, &hid->sync_flag) && list_empty(&hid->payload_list)) {
-			hid_ep_unlock(hid, "<AP Enqueue>");
-			hid_dbg("%s no need to skip\n", hid->name);
-			goto NOT_SKIP_URB;
-		}
-
-FORCE_SKIP:
-		set_bit(HID_AP_QUEUE, &hid->sync_flag);
-		hid->urb = urb;
-
-		skip = true;
-		giveback = !list_empty(&hid->payload_list);
-		hid_dump_ep(hid, "<AP Enqueue>");
-		hid_ep_unlock(hid, "<AP Enqueue>");
-		ret = usb_hcd_link_urb_to_ep(bus_to_hcd(urb->dev->bus), urb);
-		if (unlikely(ret))
-			hid_err("link urb error:%d\n", ret);
-
-		if (giveback)
-			queue_delayed_work(giveback_wq, &hid->giveback_work, msecs_to_jiffies(3));
-	}
-NOT_SKIP_URB:
-	return skip;
-}
-
-static int hid_dsp_irq(struct hid_ep_info *hid, struct usb_offload_urb_complete *urb_complete)
-{
-	struct uo_buffer *buf;
-	struct dsp_payload *payload;
-	bool ap_queue;
-	int ret = 0;
-
-	if (urb_complete->status != 0) {
-		hid_err("unexpected status:%d\n", urb_complete->status);
-		return 0;
-	}
-
-	buf = hid->buf_payload;
-	hid_ep_lock(hid, "<DSP IRQ>");
-	hid->irq_total_cnt++;
-	if (urb_complete->more_complete)
-		set_bit(HID_DSP_RUNNING, &hid->sync_flag);
-	else
-		clear_bit(HID_DSP_RUNNING, &hid->sync_flag);
-	ap_queue = test_bit(HID_AP_QUEUE, &hid->sync_flag);
-
-	hid->cur_enqueue = xhci_trb_to_virt(hid, (dma_addr_t)urb_complete->cur_trb);
-	hid->cycle_state = urb_complete->cycle_state;
-	if (!hid->cur_enqueue) {
-		set_bit(HID_DSP_ABNORMAL, &hid->sync_flag);
-		hid_ep_unlock(hid, "<DSP IRQ>");
-		hid_err("fail translating from phy:0x%llx is NULL\n", urb_complete->cur_trb);
-		return -EPROTO;
-	}
-
-	/* new irq completed on dsp, add new payload to list */
-	payload = kzalloc(sizeof(struct dsp_payload), GFP_ATOMIC);
-	if (!payload) {
-		hid_ep_unlock(hid, "<DSP IRQ>");
-		hid_err("fail allocating payload\n");
-		return -ENOMEM;
-	}
-	payload->actual_length = urb_complete->actual_length;
-
-	if ((unsigned long long)buf->phys == urb_complete->urb_start_addr) {
-		payload->data = kzalloc(payload->actual_length, GFP_ATOMIC);
-		if (!payload->data) {
-			kfree(payload);
-			return -ENOMEM;
-		}
-		memcpy(payload->data, (void *)buf->virt, payload->actual_length);
-		payload->status = 0;
-	} else {
-		hid_err("buffer unmatch, phy:0x%llx\n", urb_complete->urb_start_addr);
-		payload->data = NULL;
-		payload->status = -EPROTO;
-	}
-
-	list_add_tail(&payload->list, &hid->payload_list);
-
-	hid_ep_unlock(hid, "<DSP IRQ>");
-	hid_dbg("payload:%p actual_length:%d status:%d\n", payload,
-		payload->actual_length, payload->status);
-
-	hid_dump_ep(hid, "<DSP IRQ>");
-	hid_dump_xhci(hid, "<DSP IRQ>");
-
-	__pm_wakeup_event(hid_wake_lock, UO_HID_WAKEUP_TIME);
-
-	/* if hid has submitted urb and we skipped it, giveback immediately now*/
-	if (ap_queue)
-		queue_delayed_work(giveback_wq, &hid->giveback_work, msecs_to_jiffies(0));
-	return ret;
-}
-
-static void hid_giveback_urb(struct work_struct *work_struct)
-{
-	struct hid_ep_info *hid = container_of(work_struct, struct hid_ep_info, giveback_work.work);
-	struct usb_hcd	*hcd = bus_to_hcd(hid->urb->dev->bus);
-	struct dsp_payload *payload;
-	struct xhci_ring *ring;
-	struct urb *urb;
-	bool dsp_abnormal;
-	int status;
-
-	hid_ep_lock(hid, "<Finish Giveback>");
-	if (list_empty(&hid->payload_list)) {
-		hid_err("payload_list is empty");
-		hid_ring_unlock(hid, "<Finish Giveback>");
-		goto error;
-	}
-
-	payload = list_first_entry(&hid->payload_list, struct dsp_payload, list);
-	if (!payload) {
-		hid_err("payload is NULL");
-		hid_ring_unlock(hid, "<Finish Giveback>");
-		goto error;
-	}
-	/* successfully fetch a payload from list */
-	clear_bit(HID_AP_QUEUE, &hid->sync_flag);
-	list_del(&payload->list);
-	hid_dbg("payload:%p actual_length:%d status:%d\n", payload,
-		payload->actual_length, payload->status);
-
-	urb = hid->urb;
-	/* unlinked=0 was set in usb_hcd_unlink_urb_to_ep which we did not call */
-	urb->unlinked = 0;
-	urb->actual_length = payload->actual_length;
-	if (payload->actual_length && payload->data != NULL)
-		memcpy(urb->transfer_buffer, payload->data, payload->actual_length);
-	status = payload->status;
-
-	if (!test_bit(HID_DSP_RUNNING, &hid->sync_flag) && list_empty(&hid->payload_list)) {
-		dsp_abnormal = test_bit(HID_DSP_ABNORMAL, &hid->sync_flag);
-		clear_bit(HID_NEED_OFFLOAD, &hid->sync_flag);
-		hid->irq_total_cnt = 0;
-		hid_ep_unlock(hid, "<Finish Giveback>");
-
-		hid_info("complete a key-press action on dsp\n");
-		hid_clean_buf(hid->dir);
-		hid_ring_lock(hid, "<Finish Giveback>");
-		xhci_stop_hid_ep(hid);
-		if (uodev->policy.hid_tr_switch) {
-			xhci_realloc_hid_ring(hid, usb_offload_mem_type());
-		} else if (!dsp_abnormal && xhci_hid_move_enq(hid, hid->cur_enqueue, hid->cycle_state)) {
-			ring = xhci_get_hid_tr_ring(hid);
-			if (unlikely(!ring)) {
-				hid_ring_unlock(hid, "<Finish Giveback>");
-				goto error;
-			}
-			hid_info("%s ring was abnormal, reset whole ring\n", hid->name);
-			xhci_stop_hid_ep(hid);
-			xhci_initialize_ring_info_(ring, 1);
-			hid->cur_enqueue = ring->enqueue;
-			hid->cycle_state = ring->cycle_state;
-			xhci_hid_move_deq(hid, ring->enq_seg, ring->enqueue, ring->cycle_state);
-		}
-		hid_ring_unlock(hid, "<Finish Giveback>");
-	} else {
-		hid_ep_unlock(hid, "<Finish Giveback>");
-		hid_dump_xhci(hid, "<Finish Giveback>");
-	}
-
-	usb_hcd_unlink_urb_from_ep(hcd, urb);
-	usb_hcd_giveback_urb(hcd, urb, status);
-	hid_dump_ep(hid, "<Finish Giveback>");
-
-	kfree(payload->data);
-	kfree(payload);
-error:
-	return;
-}
-
-static void hid_update_ep_info(struct hid_ep_info *hid, struct usb_offload_xhci_ep *xhci_ep_info)
-{
-	hid->cur_enqueue = xhci_trb_to_virt(hid, (dma_addr_t)xhci_ep_info->cur_trb);
-	hid->cycle_state = xhci_ep_info->cycle_state;
-
-	if (hid->wait_dsp)
-		complete(hid->wait_dsp);
-}
-
-/* audio_send_ipi_msg might sleep, do not call during holding spinlock */
-static int usb_offload_prepare_send_urb_msg(struct hid_ep_info *hid, bool enable, int need_ack)
-{
-	struct usb_offload_urb_msg msg = {0};
-	int ret = 0, urb_size;
-	struct xhci_ring *ring;
-
-	if (!test_bit(HID_NEED_OFFLOAD, &hid->sync_flag)) {
-		hid_err("hid:%p does not need offloading\n", hid);
-		ret = 0;
-		goto error;
-	}
-
-	ring = xhci_get_hid_tr_ring(hid);
-	if (unlikely(!ring)) {
-		ret = -EINVAL;
-		goto error;
-	}
-
-	memcpy(&msg.intf_desc, &hid->intf_desc, sizeof(hid->intf_desc));
-	memcpy(&msg.ep_desc, &hid->ep_desc, sizeof(hid->ep_desc));
-	msg.slot_id = hid->slot_id;
-	msg.enable = enable;
-	msg.direction = (unsigned char)hid->dir;
-
-	if (enable) {
-		if (test_bit(HID_DSP_RUNNING, &hid->sync_flag)) {
-			hid_info("hid eq has already been submitted on dsp size\n");
-			ret = 0;
-			goto error;
-		}
-
-		hid->cur_enqueue = ring->enqueue;
-
-		hid->buf_payload = uob_get_empty(UO_STRUCT_URB);
-		if (!hid->buf_payload) {
-			ret = -ENOMEM;
-			goto error;
-		}
-
-		urb_size = (unsigned int)hid->urb->transfer_buffer_length;
-		ret = mtk_offload_alloc_mem(hid->buf_payload, urb_size, USB_OFFLOAD_TRB_SEGMENT_SIZE,
-					usb_offload_mem_type_lp(), UO_STRUCT_URB, false);
-		if (ret) {
-			hid_err("%s fail allocate hid-offload urb\n", hid->name);
-			goto error;
-		}
-		msg.urb_size = (unsigned int)hid->urb->transfer_buffer_length;
-		msg.urb_start_addr = (unsigned long long)hid->buf_payload->phys;
-		msg.first_trb = (unsigned long long)ring->first_seg->dma;
-		msg.cycle_state = (unsigned char)ring->cycle_state;
-		hid_dump_xhci(hid, "<Start DSP>");
-	} else {
-		msg.urb_size = 0;
-		msg.urb_start_addr = 0;
-		msg.first_trb = 0;
-		hid_dump_xhci(hid, "<End DSP>");
-	}
-
-	hid_info("[urb_msg] en:%d dir:%d slot:%d phy:0x%llx sz:%d 1st_trb:0x%llx\n",
-		msg.enable,	msg.direction, msg.slot_id,
-		msg.urb_start_addr,	msg.urb_size, msg.first_trb);
-
-	ret = usb_offload_send_ipi_msg(UOI_ENABLE_HID, &msg, sizeof(struct usb_offload_urb_msg));
-	if (!ret) {
-		if (enable) {
-			hid_dump_ep(hid, "<Start DSP>");
-			set_bit(HID_DSP_RUNNING, &hid->sync_flag);
-		} else {
-			clear_bit(HID_DSP_RUNNING, &hid->sync_flag);
-			hid_dump_ep(hid, "<End DSP>");
-		}
-	}
-error:
-	return ret;
-
-}
-
-static int xhci_hid_move_deq(struct hid_ep_info *hid,
-	struct xhci_segment *new_seg, union xhci_trb *new_deq, int new_cycle)
-{
-	struct xhci_hcd *xhci = uodev->xhci;
-	struct xhci_virt_device *virt_dev;
-	struct xhci_virt_ep *ep;
-	struct xhci_ring *ring;
-	struct xhci_command *cmd;
-	u32 trb_sct = 0;
-	dma_addr_t addr;
-	int ret, count = 0;
-
-	virt_dev = xhci_get_hid_virt_dev(hid);
-	if (unlikely(!virt_dev)) {
-		hid_err("%s virt_dev is NULL\n", hid->name);
-		return -EINVAL;
-	}
-	ep = &virt_dev->eps[hid->ep_id];
-
-	ring = xhci_get_hid_tr_ring(hid);
-	if (unlikely(!ring)) {
-		hid_err("%s ring is NULL\n", hid->name);
-		return -EINVAL;
-	}
-
-	addr = xhci_trb_virt_to_dma_(new_seg, new_deq);
-	if (addr == 0) {
-		hid_err("Can't find dma of new dequeue ptr\n");
-		return -EINVAL;
-	}
-
-	if ((ep->ep_state & SET_DEQ_PENDING)) {
-		hid_info("Set TR Deq already pending, don't submit for 0x%p\n", &addr);
-		return -EBUSY;
-	}
-
-	cmd = xhci_alloc_command_(xhci, false, GFP_ATOMIC);
-	if (!cmd) {
-		hid_err("Can't alloc Set TR Deq cmd 0x%p\n", &addr);
-		return -ENOMEM;
-	}
-
-	if (hid->urb->stream_id)
-		trb_sct = SCT_FOR_TRB(SCT_PRI_TR);
-
-	ret = xhci_vendor_queue_command_(xhci, cmd,
-		lower_32_bits(addr) | trb_sct | new_cycle,
-		upper_32_bits(addr), STREAM_ID_FOR_TRB(hid->urb->stream_id),
-		SLOT_ID_FOR_TRB(hid->slot_id) | EP_ID_FOR_TRB(hid->ep_id) |
-		TRB_TYPE(TRB_SET_DEQ), false);
-	if (ret < 0) {
-		xhci_free_command_(xhci, cmd);
-		return ret;
-	}
-	ep->queued_deq_seg = new_seg;
-	ep->queued_deq_ptr = new_deq;
-	ep->ep_state |= SET_DEQ_PENDING;
-	xhci_ring_cmd_db_(xhci);
-
-	while ((ep->ep_state & SET_DEQ_PENDING) && count < 10000) {
-		mdelay(1);
-		count++;
-	}
-
-	if ((ep->ep_state & SET_DEQ_PENDING) && count == 10000)
-		hid_err("timeout for waiting set_tr_dequeue cmd\n");
-	else {
-		hid_info("Successful Set TR Deq Ptr cmd, deq = 0x%llx\n",
-			xhci_trb_to_dma(hid, new_deq));
-		ring->dequeue = new_deq;
-		ring->deq_seg = new_seg;
-	}
-
-	hid_dump_xhci(hid, "<Move Dequeue>");
-	return 0;
-}
-
-
-static void hid_reset(struct hid_ep_info *hid)
-{
-	struct usb_hcd	*hcd = bus_to_hcd(hid->urb->dev->bus);
-	struct xhci_ring *ring;
-	int ret;
-
-	ring = xhci_get_hid_tr_ring(hid);
-	if (unlikely(!ring))
-		return;
-
-	/* inform dsp to stop hid offloading */
-	hid->wait_dsp = kmalloc(sizeof(struct completion), GFP_ATOMIC);
-	if (!hid->wait_dsp)
-		return;
-	init_completion(hid->wait_dsp);
-	usb_offload_prepare_send_urb_msg(hid, false, AUDIO_IPI_MSG_BYPASS_ACK);
-
-	/* wait dsp to send back last trb which was lastset queued */
-	ret = wait_for_completion_timeout(hid->wait_dsp, msecs_to_jiffies(5000));
-	kfree(hid->wait_dsp);
-	hid->wait_dsp = NULL;
-
-	hid_ring_lock(hid, "<HID Reset>");
-	xhci_stop_hid_ep(hid);
-
-	if (uodev->policy.hid_tr_switch) {
-		xhci_realloc_hid_ring(hid, usb_offload_mem_type());
-	} else {
-		if (!ret) {
-			xhci_initialize_ring_info_(ring, 1);
-			hid->cur_enqueue = ring->enqueue;
-			hid->cycle_state = ring->cycle_state;
-		} else
-			xhci_hid_move_enq(hid, hid->cur_enqueue, hid->cycle_state);
-
-		xhci_hid_move_deq(hid, ring->enq_seg, ring->enqueue, ring->cycle_state);
-	}
-	hid_ring_unlock(hid, "<HID Reset>");
-
-	hid_clean_buf(hid->dir);
-	clear_bit(HID_ON_RESETING, &hid->sync_flag);
-	clear_bit(HID_NEED_OFFLOAD, &hid->sync_flag);
-	hid->irq_total_cnt = 0;
-
-	hid_dump_ep(hid, "<HID RESET>");
-
-	/* directlly giveback if there's still urb requeset during resetting */
-	if (test_bit(HID_AP_QUEUE, &hid->sync_flag)) {
-		clear_bit(HID_AP_QUEUE, &hid->sync_flag);
-		hid_dump_ep(hid, "<Force Giveback>");
-		hid->urb->unlinked = 0;
-		hid->urb->actual_length = 0;
-		usb_hcd_unlink_urb_from_ep(hcd, hid->urb);
-		usb_hcd_giveback_urb(hcd, hid->urb, -EPERM);
-	}
-
 }
 
 void usb_offload_ipi_hid_handler(void *param)
@@ -679,18 +826,18 @@ void usb_offload_ipi_hid_handler(void *param)
 		if (ipi_msg->payload_size != sizeof(struct usb_offload_urb_complete)) {
 			hid_err("wrong payload size, msg_id:0x%x payload_size:%d\n",
 				ipi_msg->msg_id, ipi_msg->payload_size);
+			uo_mbrain_update(UO_PHASE_HID_ONGOING, UO_ERROR_ABNORMAL_BEHAVIOR);
 			goto error;
 		} else
 			memcpy(&urb_complete, (void *)ipi_msg->payload, sizeof(urb_complete));
 
 		direction = urb_complete.direction;
 		slot = urb_complete.slot_id;
-		/* minus 1 to fit ap xhci view */
-		ep = urb_complete.ep_id - 1;
+		ep = urb_complete.ep_id - 1; /* minus 1 to fit ap xhci view */
 
-		hid_info("[xhci irq] slot:%d ep:%d dir:%d urb:0x%llx act:%d more:%d sta:%d cur:0x%llx\n",
-			slot, ep, direction, urb_complete.urb_start_addr, urb_complete.actual_length,
-			urb_complete.more_complete,	urb_complete.status, urb_complete.cur_trb);
+		hid_dbg("[xhci irq] slot:%d ep:%d dir:%d length:%d more:%d sta:%d\n",
+			slot, ep, direction, urb_complete.actual_length,
+			urb_complete.more_complete,	urb_complete.status);
 
 		hid = get_hid_ep_safe(direction, slot, ep);
 		if (unlikely(!hid)) {
@@ -700,490 +847,10 @@ void usb_offload_ipi_hid_handler(void *param)
 		hid_dsp_irq(hid, &urb_complete);
 		break;
 	}
-	case AUD_USB_MSG_D2A_XHCI_EP_INFO:
-	{
-		struct usb_offload_xhci_ep xhci_ep_info;
-
-		if (ipi_msg->payload_size != sizeof(struct usb_offload_xhci_ep)) {
-			hid_err("wrong payload size, msg_id:0x%x payload_size:%d\n",
-				ipi_msg->msg_id, ipi_msg->payload_size);
-			goto error;
-		} else
-			memcpy(&xhci_ep_info, (void *)ipi_msg->payload, sizeof(xhci_ep_info));
-
-		direction = xhci_ep_info.direction;
-		slot = xhci_ep_info.slot_id;
-		/* minus 1 to fit ap xhci view */
-		ep = xhci_ep_info.ep_id - 1;
-
-		hid_info("[xhci_ep] slot:%d ep:%d dir:%d cur:0x%llx cycle:%d\n",
-			slot, ep, direction, xhci_ep_info.cur_trb, xhci_ep_info.cycle_state);
-
-		hid = get_hid_ep_safe(direction, slot, ep);
-		if (unlikely(!hid)) {
-			hid_err("can't find hid, dir:%d slot:%d ep:%d\n", direction, slot, ep);
-			break;
-		}
-		hid_update_ep_info(hid, &xhci_ep_info);
-		break;
-	}
 	default:
 		break;
 	}
 
 error:
 	return;
-}
-
-int usb_offload_hid_start(void)
-{
-	struct hid_ep_info *hid;
-	struct xhci_ep_ctx *out_ep_ctx;
-	struct xhci_ring *ring;
-	struct uo_buffer *buf;
-	bool need_offload;
-	int i, ret;
-
-	if (uodev->policy.hid_disable_offload)
-		return 0;
-
-	if (!wait_for_completion_timeout(&hid_dequeue_done,
-		msecs_to_jiffies(UO_HID_DEQUEUE_WAIT))) {
-		hid_err("wait dequeue timeout\n");
-		return -ETIMEDOUT;
-	}
-
-	for (i = 0; i < UO_HID_EP_NUM; i++) {
-		hid = &hid_ep[i];
-		hid_ep_lock(hid, "<AP Suspend>");
-		need_offload = test_bit(HID_NEED_OFFLOAD, &hid->sync_flag) &&
-					!test_bit(HID_DSP_RUNNING, &hid->sync_flag);
-		if (need_offload) {
-			out_ep_ctx = xhci_get_hid_ep_ctx(hid, false);
-			if (unlikely(!out_ep_ctx)) {
-				hid_ep_unlock(hid, "<AP Suspend>");
-				continue;
-			}
-
-			ring = xhci_get_hid_tr_ring(hid);
-			if (unlikely(!ring)) {
-				hid_ep_unlock(hid, "<AP Suspend>");
-				continue;
-			}
-
-			buf = uob_search(UO_STRUCT_TRRING, ring->first_seg->dma);
-			hid_ep_unlock(hid, "<AP Suspend>");
-			hid_ring_lock(hid, "<AP Suspend>");
-			if (!buf || uodev->policy.hid_tr_switch) {
-				hid_info("hid transfer ring isn't under managed\n");
-				ret = xhci_realloc_hid_ring(hid, usb_offload_mem_type_lp());
-				if (ret) {
-					hid_err("fail to re-allocate hid ring\n");
-					uo_mbrain_update(UO_PHASE_HID_START, UO_ERROR_ALLOC_TR_FAIL);
-				}
-			} else {
-				ret = xhci_hid_ep_ctx_control(hid, out_ep_ctx, true);
-				if (ret)
-					hid_err("fail to re-configure hid ep\n");
-			}
-
-			if (ret == 0) {
-				hid_ring_unlock(hid, "<AP Suspend>");
-				/* inform dsp to start hid offloading */
-				if (usb_offload_prepare_send_urb_msg(hid, true, AUDIO_IPI_MSG_NEED_ACK)) {
-					clear_bit(HID_NEED_OFFLOAD, &hid->sync_flag);
-					uo_mbrain_update(UO_PHASE_HID_START, UO_ERROR_IPI_FAIL);
-					hid_info("HID Not Offloading!!!\n");
-				} else {
-					hid_info("HID Offloading!!!\n");
-					uo_mbrain_update(UO_PHASE_HID_START, UO_ERROR_SUCCESS);
-				}
-			} else {
-				hid_info("HID Not Offloading!!!\n");
-				clear_bit(HID_NEED_OFFLOAD, &hid->sync_flag);
-				hid_ring_unlock(hid, "<Fail to Start>");
-			}
-
-		} else
-			hid_ep_unlock(hid, "<AP Suspend>");
-	}
-
-	return 0;
-}
-
-void usb_offload_hid_finish(void)
-{
-	struct hid_ep_info *hid;
-	struct timespec64 ref, cur;
-	int i, irq_total;
-	long timeout = 200000; /* 200ms */
-
-	if (uodev->policy.hid_disable_offload)
-		return;
-
-	for (i = 0; i < UO_HID_EP_NUM; i++) {
-		hid = &hid_ep[i];
-		if (test_bit(HID_NEED_OFFLOAD, &hid->sync_flag)) {
-			ktime_get_ts64(&ref);
-			cur = ref;
-			while (!hid->irq_total_cnt && (cur.tv_nsec - ref.tv_nsec) < timeout) {
-				mdelay(1);
-				ktime_get_ts64(&cur);
-			}
-
-			hid_ep_lock(hid, "<AP Resume>");
-			irq_total = hid->irq_total_cnt;
-			if (!irq_total)
-				set_bit(HID_ON_RESETING, &hid->sync_flag);
-			hid_ep_unlock(hid, "<AP Resume>");
-
-			if (!irq_total) {
-				hid_dump_ep(&hid_ep[i], "<User Not Press>");
-				hid_reset(hid);
-			}
-		}
-	}
-
-	reinit_completion(&hid_dequeue_done);
-}
-
-void usb_offload_hid_stop(void)
-{
-	struct hid_ep_info *hid;
-	int i;
-
-	if (uodev->policy.hid_disable_offload)
-		return;
-
-	for (i = 0; i < UO_HID_EP_NUM; i++) {
-		hid = &hid_ep[i];
-		if (test_bit(HID_DSP_RUNNING, &hid->sync_flag)) {
-			hid_dump_ep(&hid_ep[i], "<Force Stop DSP>");
-			hid_reset(hid);
-		}
-	}
-
-}
-
-void usb_offload_hid_probe(void)
-{
-	struct hid_ep_info *hid;
-	int i, cnt;
-
-	giveback_wq = create_singlethread_workqueue("uo_hid_giveback");
-	for (i = 0; i < UO_HID_EP_NUM; i++) {
-		hid = &hid_ep[i];
-		hid->dir = i;
-		hid->wait_dsp = NULL;
-		INIT_DELAYED_WORK(&hid->giveback_work, hid_giveback_urb);
-		INIT_LIST_HEAD(&hid->payload_list);
-		spin_lock_init(&hid->lock);
-		mutex_init(&hid->ring_lock);
-		cnt = snprintf(hid->name, HID_EP_NAME_LEN, "hid_ep(dir%d slot? ep?)",
-			hid->dir);
-		if (!cnt)
-			hid_dbg("hid name might be weird\n");
-	}
-
-	hid_wake_lock = wakeup_source_register(NULL, "usb hid wakelock");
-
-	xhci_mtk_trace_init();
-}
-
-static void hid_dump_ep(struct hid_ep_info *hid, const char *tag)
-{
-	struct dsp_payload *pos;
-	int count = 0;
-
-	list_for_each_entry(pos, &hid->payload_list, list) {
-		count ++;
-	}
-
-	hid_info("%s %s need:%d dsp:%d queue:%d payload:%d irq:%d rst:%d\n",
-		tag, hid->name,
-		test_bit(HID_NEED_OFFLOAD, &hid->sync_flag),
-		test_bit(HID_DSP_RUNNING, &hid->sync_flag),
-		test_bit(HID_AP_QUEUE, &hid->sync_flag),
-		count, hid->irq_total_cnt,
-		test_bit(HID_ON_RESETING, &hid->sync_flag));
-}
-
-static void hid_clean_buf(bool is_in)
-{
-	struct hid_ep_info *hid;
-
-	hid = get_hid_ep(is_in);
-	if (!hid)
-		return;
-
-	if (mtk_offload_free_mem(hid->buf_payload))
-		hid_err("fail freeing hid buf, dir:%d\n", is_in);
-}
-
-static void hid_dump_xhci(struct hid_ep_info *hid, const char *tag)
-{
-	struct xhci_ring *ring;
-	struct xhci_virt_device *virt_dev;
-	struct xhci_ep_ctx *ep_ctx;
-
-	virt_dev = xhci_get_hid_virt_dev(hid);
-	if (unlikely(!virt_dev))
-		return;
-	ep_ctx = xhci_get_hid_ep_ctx(hid, false);
-	if (unlikely(!ep_ctx))
-		return;
-	ring = xhci_get_hid_tr_ring(hid);
-	if (unlikely(!ring))
-		return;
-
-	hid_info("%s %s [xhci_ep_ctx] deq:0x%llx\n", tag, hid->name, ep_ctx->deq);
-
-	hid_info("%s %s [xhci_ring] enq:trb:0x%llx deq:trb:0x%llx cycle:%d\n",
-		tag, hid->name,	xhci_trb_to_dma(hid, ring->enqueue),
-		xhci_trb_to_dma(hid, ring->dequeue), ring->cycle_state);
-
-	hid_info("%s %s [hid_ep_info] cur_enq:0x%llx cycle:%d\n",
-		tag, hid->name,	xhci_trb_to_dma(hid, hid->cur_enqueue),	hid->cycle_state);
-}
-
-static int xhci_hid_ep_ctx_control(struct hid_ep_info *hid,
-		struct xhci_ep_ctx *new_ctx, bool reconfigure)
-{
-	struct xhci_hcd *xhci = uodev->xhci;
-	struct usb_hcd *hcd = xhci->main_hcd;
-	struct xhci_virt_device *virt_dev;
-	struct xhci_ep_ctx *in_ep_ctx;
-	struct xhci_input_control_ctx *ctrl_ctx;
-	unsigned int ep_id;
-	int ret = 0;
-
-	if (!new_ctx) {
-		hid_err("%s virtual device is NULL\n", hid->name);
-		ret = -EINVAL;
-		goto error;
-	}
-
-	virt_dev = xhci_get_hid_virt_dev(hid);
-	if (unlikely(!virt_dev)) {
-		ret = -EINVAL;
-		goto error;
-	}
-	ep_id = hid->ep_id;
-	in_ep_ctx = xhci_get_hid_ep_ctx(hid, true);
-	if (unlikely(!in_ep_ctx)) {
-		ret = -1;
-		goto error;
-	}
-
-	/* assign new_ctx to input ctx */
-	in_ep_ctx->ep_info  = new_ctx->ep_info;
-	in_ep_ctx->ep_info2 = new_ctx->ep_info2;
-	in_ep_ctx->deq      = new_ctx->deq;
-	in_ep_ctx->tx_info  = new_ctx->tx_info;
-	if (xhci->quirks & XHCI_MTK_HOST) {
-		in_ep_ctx->reserved[0] = new_ctx->reserved[0];
-		in_ep_ctx->reserved[1] = new_ctx->reserved[1];
-	}
-
-	ctrl_ctx = (struct xhci_input_control_ctx *)virt_dev->in_ctx->bytes;
-	ctrl_ctx->add_flags = cpu_to_le32(BIT(ep_id + 1));
-	if (reconfigure) {
-		ctrl_ctx->drop_flags = cpu_to_le32(BIT(ep_id + 1));
-		ret = xhci_check_bandwidth_(hcd, virt_dev->udev);
-	} else {
-		/* Todo: maybe we need evaluate_context someday ? */
-		ctrl_ctx->drop_flags = 0;
-	}
-error:
-	return ret;
-}
-
-static int xhci_realloc_hid_ring(struct hid_ep_info *hid, enum uo_provider_type id)
-{
-	return xhci_mtk_realloc_transfer_ring(hid->slot_id, hid->ep_id, id, false);
-}
-
-static int xhci_get_ep_state(struct xhci_ep_ctx *ctx)
-{
-	if (!ctx)
-		return -EINVAL;
-
-	return (ctx->ep_info & EP_STATE_MASK);
-}
-
-static dma_addr_t xhci_trb_to_dma(struct hid_ep_info *hid, void *virt)
-{
-	struct xhci_ring *ring;
-	struct xhci_segment *seg;
-	union xhci_trb *trb = (union xhci_trb *)virt;
-	dma_addr_t phy;
-
-	ring = xhci_get_hid_tr_ring(hid);
-	if (unlikely(!ring))
-		return 0;
-	seg = ring->first_seg;
-	do {
-		/* if phy does not equal to 0, trb lies on this segment */
-		phy = xhci_trb_virt_to_dma_(seg, trb);
-		if (phy)
-			return phy;
-		seg = seg->next;
-	} while(seg && seg != ring->first_seg);
-
-	return 0;
-}
-
-static union xhci_trb *xhci_trb_to_virt(struct hid_ep_info *hid, dma_addr_t phy)
-{
-	struct xhci_ring *ring;
-	struct xhci_segment *seg;
-	dma_addr_t seg_start, seg_end;
-	void *virt;
-
-	ring = xhci_get_hid_tr_ring(hid);
-	if (unlikely(!ring))
-		return NULL;
-
-	seg = ring->first_seg;
-	do {
-		virt = seg->trbs;
-		seg_start = seg->dma;
-		seg_end = seg->dma + (USB_OFFLOAD_TRBS_PER_SEGMENT * sizeof(union xhci_trb));
-		if (phy >= seg_start && phy < seg_end)
-			return (union xhci_trb *)(virt + (phy - seg_start));
-		seg = seg->next;
-	} while (seg && seg != ring->first_seg);
-
-	return NULL;
-}
-
-static int xhci_hid_move_enq(struct hid_ep_info *hid, union xhci_trb *new_enq, int new_cycle)
-{
-	struct xhci_ring *ring;
-	struct xhci_segment *seg;
-	struct xhci_segment *old_enq_seg;
-	union xhci_trb *old_enqueue;
-	dma_addr_t phy;
-	bool found = false;
-	u32 old_cycle;
-	int ret;
-
-	hid_dbg("%s ep_state:%d\n", hid->name,
-		xhci_get_ep_state(xhci_get_hid_ep_ctx(hid, false)));
-
-	ring = xhci_get_hid_tr_ring(hid);
-	if (unlikely(!ring)) {
-		ret = -EINVAL;
-		goto error;
-	}
-	old_enq_seg = ring->enq_seg;
-	old_enqueue = ring->enqueue;
-	old_cycle = ring->cycle_state;
-
-	/* check if enq_seq also needed updated */
-	seg = ring->enq_seg;
-	do {
-		phy = xhci_trb_virt_to_dma_(seg, new_enq);
-		if (phy) {
-			ring->enq_seg = seg;
-			found = true;
-			break;
-		}
-	} while (seg && seg != old_enq_seg);
-
-	if (found) {
-		ring->enqueue = new_enq;
-		ring->cycle_state = new_cycle;
-		ring->enq_seg = seg;
-		hid_info("%s enq:0x%llx->0x%llx cycle:%d->%d\n",
-			hid->name, xhci_trb_to_dma(hid, old_enqueue),
-			xhci_trb_to_dma(hid, ring->enqueue),
-			old_cycle, ring->cycle_state);
-		hid_dump_xhci(hid, "<Move Enqueue>");
-		ret = 0;
-	} else {
-		hid_err("%s fail updating enqueue pointer\n", hid->name);
-		ret = -EINVAL;
-		goto error;
-	}
-
-error:
-	return ret;
-}
-
-static struct xhci_virt_device *xhci_get_hid_virt_dev(struct hid_ep_info *hid)
-{
-	return uodev->xhci->devs[hid->slot_id];
-}
-
-static struct xhci_ep_ctx *xhci_get_hid_ep_ctx(struct hid_ep_info *hid, bool in_ctx)
-{
-	struct xhci_hcd *xhci = uodev->xhci;
-	struct xhci_virt_device *virt_dev;
-
-	virt_dev = xhci_get_hid_virt_dev(hid);
-	if (unlikely(!virt_dev))
-		return NULL;
-
-	if (in_ctx)
-		return xhci_get_ep_ctx__(xhci, virt_dev->in_ctx, hid->ep_id);
-	else
-		return xhci_get_ep_ctx__(xhci, virt_dev->out_ctx, hid->ep_id);
-}
-
-static struct xhci_ring *xhci_get_hid_tr_ring(struct hid_ep_info *hid)
-{
-	struct xhci_hcd *xhci = uodev->xhci;
-	struct xhci_virt_device *virt_dev;
-
-	virt_dev = xhci->devs[hid->slot_id];
-	if (unlikely(!virt_dev))
-		return NULL;
-
-	return virt_dev->eps[hid->ep_id].ring;
-}
-
-/* do not call it while holding spinlock, xhci_alloc_command_ might sleep */
-static int xhci_stop_hid_ep(struct hid_ep_info *hid)
-{
-	struct xhci_hcd *xhci = uodev->xhci;
-	struct xhci_command *command;
-	struct xhci_ep_ctx *ctx;
-	int ret = 0, pre_state;
-
-	ctx = xhci_get_hid_ep_ctx(hid, false);
-	pre_state = xhci_get_ep_state(ctx);
-
-	/* if command->completion was allocated, set_tr_deq would not follow stop_endpoint */
-	command = xhci_alloc_command_(xhci, true, GFP_ATOMIC);
-	if (!command) {
-		ret = -ENOMEM;
-		goto error;
-	}
-
-	xhci_queue_stop_endpoint_(xhci, command, hid->slot_id, hid->ep_id, 0);
-	xhci_ring_cmd_db_(xhci);
-
-	/* wait stopping ep done */
-	wait_for_completion(command->completion);
-
-	switch (command->status) {
-	case COMP_SUCCESS:
-		hid_info("%s success stopping ep, ep_state:%d->%d\n",
-			hid->name, pre_state, xhci_get_ep_state(ctx));
-		break;
-	default:
-		hid_err("%s unexpected during stopping ep, status:%d\n",
-			hid->name, command->status);
-		break;
-	}
-	xhci_free_command_(uodev->xhci, command);
-error:
-	hid_dbg("ret:%d\n", ret);
-	return ret;
-}
-
-static void xhci_mtk_trace_init(void)
-{
-	WARN_ON(register_trace_xhci_urb_dequeue_(hid_trace_dequeue, NULL));
 }

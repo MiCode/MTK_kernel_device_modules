@@ -248,8 +248,6 @@ struct usb_offload_urb_complete {
 	unsigned long long urb_start_addr;
 	unsigned int actual_length;
 	unsigned char more_complete;
-	unsigned long long cur_trb;
-	unsigned char cycle_state;
 	int status;
 };
 
@@ -459,7 +457,7 @@ void usb_offload_hid_probe(void);
 int usb_offload_hid_start(void);
 void usb_offload_hid_finish(void);
 void usb_offload_hid_stop(void);
-bool xhci_mtk_skip_hid_urb(struct xhci_hcd *xhci, struct urb *urb);
+bool usb_offload_trace_hid_enqueue(struct xhci_hcd *xhci, struct urb *urb);
 
 /****
  * ipi senter & receiver related
@@ -516,6 +514,7 @@ enum uo_mbrain_phase {
 	UO_PHASE_ENABLE_STREAM,
 	UO_PHASE_DISABLE_STREAM,
 	UO_PHASE_HID_START,
+	UO_PHASE_HID_ONGOING,
 };
 
 enum uo_mbrain_error {
@@ -528,6 +527,8 @@ enum uo_mbrain_error {
 	UO_ERROR_NO_DEV_CONNECTED,
 	UO_ERROR_INSUFFICIENT_SPACE,
 	UO_ERROR_RSV_REGION_ISSUE,
+	UO_ERROR_TIMEOUT,
+	UO_ERROR_ABNORMAL_BEHAVIOR,
 };
 
 struct uo_mbrain {

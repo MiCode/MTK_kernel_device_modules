@@ -1899,6 +1899,37 @@ static int xhci_mtk_ep_ctx_control(struct xhci_hcd *xhci, struct xhci_virt_devic
 	return ret;
 }
 
+static int xhci_mtk_soft_reset_ep(struct xhci_hcd *xhci, u32 slot, u32 ep)
+{
+	struct xhci_command *command;
+	u32 trb_slot_id = SLOT_ID_FOR_TRB(slot);
+	u32 trb_ep_index = EP_INDEX_FOR_TRB(ep);
+	u32 type = TRB_TYPE(TRB_RESET_EP);
+	int ret = 0;
+
+	command = xhci_alloc_command_(xhci, true, GFP_ATOMIC);
+	if (!command) {
+		USB_OFFLOAD_ERR("fail to allocate xhci_command\n");
+		return -ENOMEM;
+	}
+
+	type |= TRB_TSP; /* for soft reset */
+
+	ret = xhci_vendor_queue_command_(xhci, command, 0, 0, 0,
+		trb_slot_id | trb_ep_index | type , false);
+	if (ret) {
+		USB_OFFLOAD_ERR("fail to queue reset endpoint for slot %d ep %d, ret:%d\n",
+			slot, ep, ret);
+		return ret;
+	}
+
+	wait_for_completion(command->completion);
+	xhci_free_command_(uodev->xhci, command);
+	USB_OFFLOAD_ERR("complete reset endpoint for slot %d ep %d\n", slot, ep);
+
+	return 0;
+}
+
 static void xhci_mtk_ring_check(struct xhci_ring *ring)
 {
 	dma_addr_t first_dma, link_dma, point_dma;
@@ -1924,7 +1955,6 @@ static void xhci_mtk_ring_check(struct xhci_ring *ring)
 	}
 }
 
-/* realloc transfer ring, placing on adsp/ap-view memory (sram or dram) */
 int xhci_mtk_realloc_transfer_ring(unsigned int slot_id, unsigned int ep_id,
 	enum uo_provider_type type, bool is_rsv)
 {
@@ -1957,15 +1987,21 @@ int xhci_mtk_realloc_transfer_ring(unsigned int slot_id, unsigned int ep_id,
 	old_ring = virt_dev->eps[ep_id].ring;
 	max_packet = old_ring->bounce_buf_len;
 	ring_type = old_ring->type;
-	new_ring = xhci_mtk_alloc_ring(xhci, num_segs, cycle_state, ring_type,
-		max_packet, GFP_NOIO, type, is_rsv);
+
+	if (type == UO_PROV_NUM)
+		new_ring = xhci_ring_alloc_(xhci, 2, 1, ring_type, max_packet, GFP_ATOMIC);
+	else
+		new_ring = xhci_mtk_alloc_ring(xhci, num_segs, cycle_state, ring_type,
+			max_packet, GFP_ATOMIC, type, is_rsv);
+
 	if (!new_ring) {
 		USB_OFFLOAD_ERR("fail to allocate ring\n");
 		ret = -ENOMEM;
 		goto error;
 	}
-	USB_OFFLOAD_INFO("[slot:%d ep:%d] new_ring:(phy:0x%llx) old_ring:(phy:0x%llx)\n",
-		slot_id, ep_id, new_ring->first_seg->dma, old_ring->first_seg->dma);
+	USB_OFFLOAD_INFO("[slot:%d ep:%d] new_ring:(phy:0x%llx) old_ring:(phy:0x%llx) ep_state:%d\n",
+		slot_id, ep_id, new_ring->first_seg->dma, old_ring->first_seg->dma,
+		out_ep_ctx->ep_info & EP_STATE_MASK);
 	mdelay(5);
 	xhci_mtk_ring_check(new_ring);
 	virt_dev->eps[ep_id].new_ring = new_ring;
@@ -1980,6 +2016,16 @@ int xhci_mtk_realloc_transfer_ring(unsigned int slot_id, unsigned int ep_id,
 		USB_OFFLOAD_ERR("fail to send RECONFIGURE_ENDPOINT\n");
 		goto error;
 	}
+	USB_OFFLOAD_INFO("[slot:%d ep:%d] ep_state:0x%x\n",
+		slot_id, ep_id,	out_ep_ctx->ep_info & EP_STATE_MASK);
+
+	/* fix me: we only handle STOPPED state ?? */
+	if ((out_ep_ctx->ep_info & EP_STATE_MASK) == EP_STATE_STOPPED) {
+		if (xhci_mtk_soft_reset_ep(xhci, slot_id, ep_id))
+			USB_OFFLOAD_ERR("fail to send RESET_ENDPOINT, ep_state:0x%x\n",
+				out_ep_ctx->ep_info & EP_STATE_MASK);
+	}
+
 	return ret;
 error:
 	USB_OFFLOAD_ERR("fail to reallocate, ring was still on AP viewed only\n");
@@ -2807,7 +2853,7 @@ static struct xhci_vendor_ops xhci_mtk_vendor_ops = {
 	.alloc_interrupter = xhci_mtk_alloc_interrupter,
 	.free_interrupter = xhci_mtk_free_interrupter,
 	.is_streaming = xhci_mtk_is_streaming,
-	.usb_offload_skip_urb = xhci_mtk_skip_hid_urb,
+	.usb_offload_skip_urb = usb_offload_trace_hid_enqueue,
 	.usb_offload_connect = sound_usb_connect,
 	.usb_offload_disconnect = sound_usb_disconnect,
 };
