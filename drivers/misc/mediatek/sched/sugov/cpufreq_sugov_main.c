@@ -734,8 +734,6 @@ EXPORT_SYMBOL(sugov_grp_awr_update_cpu_tar_util_hook);
 static void sugov_get_util(struct sugov_cpu *sg_cpu, struct cpumask *sg_cpumask, unsigned long boost,
 		unsigned long *min,unsigned long *max, int curr_task_uclamp)
 {
-	sg_cpu->bw_min = *min;
-
 #if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
 	if (sugov_grp_awr_update_cpu_tar_util_hook && grp_dvfs_ctrl_mode)
 		sugov_grp_awr_update_cpu_tar_util_hook(sg_cpu->cpu);
@@ -743,6 +741,8 @@ static void sugov_get_util(struct sugov_cpu *sg_cpu, struct cpumask *sg_cpumask,
 
 	sg_cpu->util = mtk_effective_cpu_util_total(sg_cpu->cpu, NULL, -1, 1, min, max,
 			NULL, NULL, sg_cpumask, boost, curr_task_uclamp);
+
+	sg_cpu->bw_min = *min;
 }
 
 /**
