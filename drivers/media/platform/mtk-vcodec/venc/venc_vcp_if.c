@@ -31,6 +31,7 @@
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 #include "vcp_status.h"
 #endif
+#include "mtk_irq_mon.h"
 
 #ifdef CONFIG_MTK_ENG_BUILD
 #define IPI_TIMEOUT_MS          (10000U)
@@ -820,16 +821,19 @@ static int venc_vcp_ipi_isr(unsigned int id, void *prdata, void *data, unsigned 
 	struct mtk_vcodec_msg_node *mq_node;
 	unsigned long flags;
 
+	irq_log_store();
 	msg = (struct venc_vcu_ipi_msg_common *)obj->share_buf;
 
 	// add to ipi msg list
 	spin_lock_irqsave(&dev->mq.lock, flags);
+	irq_log_store();
 	if (!list_empty(&dev->mq.nodes)) {
 		mq_node = list_entry(dev->mq.nodes.next, struct mtk_vcodec_msg_node, list);
 		memcpy(&mq_node->ipi_data, obj, sizeof(struct share_obj));
 		list_move_tail(&mq_node->list, &dev->mq.head);
 		atomic_inc(&dev->mq.cnt);
 		spin_unlock_irqrestore(&dev->mq.lock, flags);
+		irq_log_store();
 		mtk_v4l2_debug(8, "push ipi_id %x msg_id %x, ml_cnt %d",
 			obj->id, msg->msg_id, atomic_read(&dev->mq.cnt));
 		wake_up(&dev->mq.wq);
@@ -846,9 +850,11 @@ static int venc_vcp_ipi_isr(unsigned int id, void *prdata, void *data, unsigned 
 				i, msg->ctx_id, msg->msg_id, (unsigned long)msg->ap_inst_addr, msg->status);
 			i++;
 		}
+		irq_log_store();
 		spin_unlock_irqrestore(&dev->mq.lock, flags);
 	}
 
+	irq_log_store();
 	return 0;
 }
 
