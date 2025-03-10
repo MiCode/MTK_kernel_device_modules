@@ -22,8 +22,8 @@ struct aod_scp_ipi_receive_info {
 	unsigned int aod_id;
 };
 
-static int CFG_DISPLAY_WIDTH;      //(1080)
-static int CFG_DISPLAY_HEIGHT;     //(2340)
+static int CFG_DISPLAY_WIDTH;
+static int CFG_DISPLAY_HEIGHT;
 static int CFG_DISPLAY_VREFRESH;
 
 /* Set 1 to trigger AOD SCP in doze active mode
@@ -75,6 +75,8 @@ struct disp_frame_config {
 	unsigned int ulps_wakeup_prd;
 	unsigned int layer_info_addr[6];
 	unsigned int digits_addr[10];
+	unsigned int frame_w;
+	unsigned int frame_h;
 };
 
 struct disp_module_backup_info {
@@ -264,7 +266,7 @@ void mtk_prepare_config_map(void)
 
 	memset(input[0], 0, sizeof(struct disp_input_config));
 	input[0]->layer	= 0;
-	input[0]->layer_en	= 1;
+	input[0]->layer_en	= 0;	/* for background color */
 	input[0]->fmt		= OVL_INPUT_FORMAT_BGRA8888;
 	input[0]->addr		= dram_preloader_res_mem;
 	input[0]->src_x		= 0;
@@ -310,6 +312,8 @@ void mtk_prepare_config_map(void)
 
 	frame0->interval = 1000;
 	frame0->ulps_wakeup_prd = aod_scp_ulps_wakeup_prd;
+	frame0->frame_h = CFG_DISPLAY_HEIGHT;
+	frame0->frame_w = CFG_DISPLAY_WIDTH;
 
 	/* PA for SCP. */
 	frame0->layer_info_addr[0] = scp_get_reserve_mem_phys(SCP_AOD_MEM_ID) +
@@ -495,7 +499,7 @@ int mtk_aod_scp_doze_update(int doze)
 		mtk_prepare_config_map();
 
 #if (AO_MODE)
-		DDPMSG("%s: into doze active, trigger aod scp on!\n", __func__);
+		DDPMSG("%s: before doze suspend, trigger aod scp on!\n", __func__);
 		mtk_aod_scp_set_semaphore_noirq(0);
 		mtk_aod_scp_ipi_send(0);
 		mdelay(10000);
@@ -503,7 +507,7 @@ int mtk_aod_scp_doze_update(int doze)
 		mtk_aod_scp_ipi_send(1);
 		mtk_aod_scp_set_semaphore_noirq(1);
 	} else {
-		DDPMSG("%s: into doze suspend, notify aod scp off!\n", __func__);
+		DDPMSG("%s: not in doze mode, notify aod scp off!\n", __func__);
 		mtk_aod_scp_ipi_send(1);
 		mtk_aod_scp_set_semaphore_noirq(1);
 		AOD_STAT_CLR(AOD_STAT_ACTIVE);
