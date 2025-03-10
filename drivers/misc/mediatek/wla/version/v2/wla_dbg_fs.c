@@ -3,6 +3,7 @@
  * Copyright (c) 2023 MediaTek Inc.
  */
 #include <linux/module.h>
+#include <linux/string.h>
 
 #include <wla_dbg_sysfs.h>
 #include "wla.h"
@@ -180,8 +181,8 @@ static ssize_t wla_mon_read(char *ToUserBuf,
 
 	switch (node->type) {
 	case TYPE_CH_CNT: {
-		uint32_t cnt;
-		uint32_t req_low, hws1_req, slc_ddren_low;
+		uint32_t cnt = 0;
+		uint32_t req_low = 0, hws1_req = 0, slc_ddren_low = 0;
 
 		num = wla_mon_get_ch_hw_max();
 		for (idx = 0; idx < num; idx++) {
@@ -222,7 +223,7 @@ static ssize_t wla_mon_read(char *ToUserBuf,
 		break;
 	}
 	case TYPE_DDR_STA_MUX: {
-		unsigned int mux;
+		unsigned int mux = 0;
 
 		num = wla_mon_get_ddr_sta_mux_hw_max();
 		for (idx = 1; idx <= num; idx++) {
@@ -235,7 +236,7 @@ static ssize_t wla_mon_read(char *ToUserBuf,
 		break;
 	}
 	case TYPE_PT_STA_MUX: {
-		unsigned int mux;
+		unsigned int mux = 0;
 
 		num = wla_mon_get_pt_sta_mux_hw_max();
 		for (idx = 1; idx <= num; idx++) {
@@ -248,7 +249,7 @@ static ssize_t wla_mon_read(char *ToUserBuf,
 		break;
 	}
 	case TYPE_VLC_MUX: {
-		struct wla_mon_mux_sel mux_sel;
+		struct wla_mon_mux_sel mux_sel = {0};
 
 		num = wla_mon_get_vlc_mux_hw_max();
 		for (idx = 0; idx < num; idx++) {
@@ -262,7 +263,7 @@ static ssize_t wla_mon_read(char *ToUserBuf,
 		break;
 	}
 	case TYPE_TFC_MUX: {
-		struct wla_mon_mux_sel mux_sel;
+		struct wla_mon_mux_sel mux_sel = {0};
 
 		num = wla_mon_get_tfc_mux_hw_max();
 		for (idx = 0; idx < num; idx++) {
@@ -276,7 +277,7 @@ static ssize_t wla_mon_read(char *ToUserBuf,
 		break;
 	}
 	case TYPE_PMSR_OCLA_MUX: {
-		struct wla_mon_mux_sel mux_sel;
+		struct wla_mon_mux_sel mux_sel = {0};
 
 		num = wla_mon_get_pmsr_ocla_mux_hw_max();
 		for (idx = 0; idx < num; idx++) {
@@ -302,77 +303,165 @@ static ssize_t wla_mon_write(char *FromUserBuf,
 {
 	struct WLA_DBG_NODE *node =
 				(struct WLA_DBG_NODE *)priv;
-	unsigned int para1;
+	unsigned int para1 = 0;
+	char *token;
+	char *str = FromUserBuf;
+	const char *delim = " ";
 	int ret;
 
-	if (!FromUserBuf || !node)
+	if (!str || !node)
 		return -EINVAL;
 
 	switch (node->type) {
 	case TYPE_START:
 		/* para1: win_len_sec */
-		if (kstrtouint(FromUserBuf, 10, &para1))
+		if (kstrtouint(str, 10, &para1))
 			return -EINVAL;
 		ret = wla_mon_start(para1);
 		if (ret)
 			pr_info("input must <= 150s\n");
 		break;
 	case TYPE_MON_SEL: {
-		/* para1: channel */
-		struct wla_mon_ch_setting ch_set;
+		struct wla_mon_ch_setting ch_set = {0};
 
-		if (sscanf(FromUserBuf, "%d %d %d %x",
-						&para1, &ch_set.mux.sig_sel,
-						&ch_set.mux.bit_sel, &ch_set.trig_type) != 4)
+		/* para1: channel */
+		token = strsep(&str, delim);
+		if (!token)
 			return -EINVAL;
+		if (kstrtouint(token, 10, &para1))
+			return -EINVAL;
+
+		token = strsep(&str, delim);
+		if (!token)
+			return -EINVAL;
+		if (kstrtouint(token, 10, &ch_set.mux.sig_sel))
+			return -EINVAL;
+
+		token = strsep(&str, delim);
+		if (!token)
+			return -EINVAL;
+		if (kstrtouint(token, 10, &ch_set.mux.bit_sel))
+			return -EINVAL;
+
+		token = strsep(&str, delim);
+		if (!token)
+			return -EINVAL;
+		if (kstrtouint(token, 16, &ch_set.trig_type))
+			return -EINVAL;
+
 		wla_mon_ch_sel(para1, &ch_set);
 		break;
 	}
 	case TYPE_DDR_STA_MUX: {
-		/* para1: status_n */
-		unsigned int mux;
+		unsigned int mux = 0;
 
-		if (sscanf(FromUserBuf, "%d %x", &para1, &mux) != 2)
+		/* para1: status_n */
+		token = strsep(&str, delim);
+		if (!token)
 			return -EINVAL;
+		if (kstrtouint(token, 10, &para1))
+			return -EINVAL;
+
+		token = strsep(&str, delim);
+		if (!token)
+			return -EINVAL;
+		if (kstrtouint(token, 16, &mux))
+			return -EINVAL;
+
 		wla_mon_set_ddr_sta_mux(para1, mux);
 		break;
 	}
 	case TYPE_PT_STA_MUX: {
-		/* para1: status_n */
-		unsigned int mux;
+		unsigned int mux = 0;
 
-		if (sscanf(FromUserBuf, "%d %x", &para1, &mux) != 2)
+		/* para1: status_n */
+		token = strsep(&str, delim);
+		if (!token)
 			return -EINVAL;
+		if (kstrtouint(token, 10, &para1))
+			return -EINVAL;
+
+		token = strsep(&str, delim);
+		if (!token)
+			return -EINVAL;
+		if (kstrtouint(token, 16, &mux))
+			return -EINVAL;
+
 		wla_mon_set_pt_sta_mux(para1, mux);
 		break;
 	}
 	case TYPE_VLC_MUX: {
-		struct wla_mon_mux_sel mux_sel;
+		struct wla_mon_mux_sel mux_sel = {0};
 
 		/* para1: mux_n */
-		if (sscanf(FromUserBuf, "%d %d %d", &para1, &mux_sel.sig_sel,
-				&mux_sel.bit_sel) != 3)
+		token = strsep(&str, delim);
+		if (!token)
 			return -EINVAL;
+		if (kstrtouint(token, 10, &para1))
+			return -EINVAL;
+
+		token = strsep(&str, delim);
+		if (!token)
+			return -EINVAL;
+		if (kstrtouint(token, 10, &mux_sel.sig_sel))
+			return -EINVAL;
+
+		token = strsep(&str, delim);
+		if (!token)
+			return -EINVAL;
+		if (kstrtouint(token, 10, &mux_sel.bit_sel))
+			return -EINVAL;
+
 		wla_mon_set_vlc_mux(para1, &mux_sel);
 		break;
 	}
 	case TYPE_TFC_MUX: {
-		struct wla_mon_mux_sel mux_sel;
+		struct wla_mon_mux_sel mux_sel = {0};
 
 		/* para1: mux_n */
-		if (sscanf(FromUserBuf, "%d %d %d", &para1, &mux_sel.sig_sel,
-				&mux_sel.bit_sel) != 3)
+		token = strsep(&str, delim);
+		if (!token)
 			return -EINVAL;
+		if (kstrtouint(token, 10, &para1))
+			return -EINVAL;
+
+		token = strsep(&str, delim);
+		if (!token)
+			return -EINVAL;
+		if (kstrtouint(token, 10, &mux_sel.sig_sel))
+			return -EINVAL;
+
+		token = strsep(&str, delim);
+		if (!token)
+			return -EINVAL;
+		if (kstrtouint(token, 10, &mux_sel.bit_sel))
+			return -EINVAL;
+
 		wla_mon_set_tfc_mux(para1, &mux_sel);
 		break;
 	}
 	case TYPE_PMSR_OCLA_MUX: {
-		struct wla_mon_mux_sel mux_sel;
+		struct wla_mon_mux_sel mux_sel = {0};
 
 		/* para1: mux_n */
-		if (sscanf(FromUserBuf, "%d %d %d", &para1, &mux_sel.sig_sel,
-				&mux_sel.bit_sel) != 3)
+		token = strsep(&str, delim);
+		if (!token)
 			return -EINVAL;
+		if (kstrtouint(token, 10, &para1))
+			return -EINVAL;
+
+		token = strsep(&str, delim);
+		if (!token)
+			return -EINVAL;
+		if (kstrtouint(token, 10, &mux_sel.sig_sel))
+			return -EINVAL;
+
+		token = strsep(&str, delim);
+		if (!token)
+			return -EINVAL;
+		if (kstrtouint(token, 10, &mux_sel.bit_sel))
+			return -EINVAL;
+
 		wla_mon_set_pmsr_ocla_mux(para1, &mux_sel);
 		break;
 	}
@@ -390,7 +479,8 @@ static ssize_t wla_group_read(char *ToUserBuf,
 	char *p = ToUserBuf;
 	struct WLA_DBG_NODE *node =
 			(struct WLA_DBG_NODE *)priv;
-	unsigned int grp, grp_num, data;
+	unsigned int grp, grp_num;
+	unsigned int data = 0;
 	uint64_t master;
 	int ret;
 
@@ -452,13 +542,25 @@ static ssize_t wla_group_write(char *FromUserBuf,
 {
 	struct WLA_DBG_NODE *node =
 				(struct WLA_DBG_NODE *)priv;
-	unsigned int grp;
-	uint64_t para;
+	unsigned int grp = 0;
+	uint64_t para = 0;
+	char *token;
+	char *str = FromUserBuf;
+	const char *delim = " ";
 
-	if (!FromUserBuf || !node)
+	if (!str || !node)
 		return -EINVAL;
 
-	if (sscanf(FromUserBuf, "%d %llx", &grp, &para) != 2)
+	token = strsep(&str, delim);
+	if (!token)
+		return -EINVAL;
+	if (kstrtouint(token, 10, &grp))
+		return -EINVAL;
+
+	token = strsep(&str, delim);
+	if (!token)
+		return -EINVAL;
+	if (kstrtoull(token, 16, &para))
 		return -EINVAL;
 
 	switch (node->type) {
@@ -526,7 +628,7 @@ static ssize_t wla_lbc_read(char *ToUserBuf,
 		break;
 	}
 	case TYPE_LBC_SHU0_LVL: {
-		struct wla_lbc_lvl_arr lv;
+		struct wla_lbc_lvl_arr lv = {0};
 		int ret;
 
 		ret = wla_get_lbc_lb_lvl(&lv, 0);
@@ -540,7 +642,7 @@ static ssize_t wla_lbc_read(char *ToUserBuf,
 		break;
 	}
 	case TYPE_LBC_SHU1_LVL: {
-		struct wla_lbc_lvl_arr lv;
+		struct wla_lbc_lvl_arr lv = {0};
 		int ret;
 
 		ret = wla_get_lbc_lb_lvl(&lv, 1);
@@ -572,7 +674,7 @@ static ssize_t wla_lbc_write(char *FromUserBuf,
 
 	switch (node->type) {
 	case TYPE_LBC_SHUCLR_CNT: {
-		unsigned int val;
+		unsigned int val = 0;
 
 		if (kstrtouint(FromUserBuf, 16, &val))
 			return -EINVAL;
@@ -581,7 +683,7 @@ static ssize_t wla_lbc_write(char *FromUserBuf,
 		break;
 	}
 	case TYPE_LBC_SHUETR_THRES: {
-		unsigned int val;
+		unsigned int val = 0;
 
 		if (kstrtouint(FromUserBuf, 16, &val))
 			return -EINVAL;
@@ -590,7 +692,7 @@ static ssize_t wla_lbc_write(char *FromUserBuf,
 		break;
 	}
 	case TYPE_LBC_SHUEXT_THRES: {
-		unsigned int val;
+		unsigned int val = 0;
 
 		if (kstrtouint(FromUserBuf, 16, &val))
 			return -EINVAL;
@@ -599,7 +701,7 @@ static ssize_t wla_lbc_write(char *FromUserBuf,
 		break;
 	}
 	case TYPE_LBC_URG_MASK: {
-		uint64_t mask;
+		uint64_t mask = 0;
 
 		if (kstrtoull(FromUserBuf, 16, &mask))
 			return -EINVAL;
@@ -608,11 +710,21 @@ static ssize_t wla_lbc_write(char *FromUserBuf,
 		break;
 	}
 	case TYPE_LBC_SHU0_LVL: {
-		struct wla_lbc_lvl_arr lv;
+		struct wla_lbc_lvl_arr lv = {0};
+		char *str = FromUserBuf;
+		char *token;
+		const char *delim = " ";
+		unsigned int i = 0;
 
-		if (sscanf(FromUserBuf, "%x %x %x %x %x %x %x %x",
-			&lv.lvl[0], &lv.lvl[1], &lv.lvl[2], &lv.lvl[3],
-			&lv.lvl[4], &lv.lvl[5], &lv.lvl[6], &lv.lvl[7]) != 8)
+		while ((token = strsep(&str, delim)) != NULL) {
+			if (kstrtouint(token, 16, &lv.lvl[i]))
+				return -EINVAL;
+
+			if (++i >= 8)
+				break;
+		}
+
+		if (i != 8)
 			return -EINVAL;
 
 		wla_set_lbc_lb_lvl(&lv, 0);
@@ -623,11 +735,21 @@ static ssize_t wla_lbc_write(char *FromUserBuf,
 		break;
 	}
 	case TYPE_LBC_SHU1_LVL: {
-		struct wla_lbc_lvl_arr lv;
+		struct wla_lbc_lvl_arr lv = {0};
+		char *str = FromUserBuf;
+		char *token;
+		const char *delim = " ";
+		unsigned int i = 0;
 
-		if (sscanf(FromUserBuf, "%x %x %x %x %x %x %x %x",
-			&lv.lvl[0], &lv.lvl[1], &lv.lvl[2], &lv.lvl[3],
-			&lv.lvl[4], &lv.lvl[5], &lv.lvl[6], &lv.lvl[7]) != 8)
+		while ((token = strsep(&str, delim)) != NULL) {
+			if (kstrtouint(token, 16, &lv.lvl[i]))
+				return -EINVAL;
+
+			if (++i >= 8)
+				break;
+		}
+
+		if (i != 8)
 			return -EINVAL;
 
 		wla_set_lbc_lb_lvl(&lv, 1);
@@ -682,7 +804,7 @@ static ssize_t wla_plc_write(char *FromUserBuf,
 {
 	struct WLA_DBG_NODE *node =
 				(struct WLA_DBG_NODE *)priv;
-	unsigned int val;
+	unsigned int val = 0;
 
 	if (!FromUserBuf || !node)
 		return -EINVAL;
@@ -769,7 +891,7 @@ static ssize_t wla_tfc_write(char *FromUserBuf,
 
 	switch (node->type) {
 	case TYPE_TFC_HIGHBOUND: {
-		unsigned int val;
+		unsigned int val = 0;
 
 		if (kstrtouint(FromUserBuf, 16, &val))
 			return -EINVAL;
@@ -778,7 +900,7 @@ static ssize_t wla_tfc_write(char *FromUserBuf,
 		break;
 	}
 	case TYPE_TFC_YLW_TIMEOUT: {
-		unsigned int val;
+		unsigned int val = 0;
 
 		if (kstrtouint(FromUserBuf, 16, &val))
 			return -EINVAL;
@@ -787,7 +909,7 @@ static ssize_t wla_tfc_write(char *FromUserBuf,
 		break;
 	}
 	case TYPE_TFC_REQ_MASK: {
-		uint64_t mask;
+		uint64_t mask = 0;
 
 		if (kstrtoull(FromUserBuf, 16, &mask))
 			return -EINVAL;
@@ -796,7 +918,7 @@ static ssize_t wla_tfc_write(char *FromUserBuf,
 		break;
 	}
 	case TYPE_TFC_URG_MASK: {
-		uint64_t mask;
+		uint64_t mask = 0;
 
 		if (kstrtoull(FromUserBuf, 16, &mask))
 			return -EINVAL;
@@ -826,7 +948,7 @@ static ssize_t wla_dbg_latch_read(char *ToUserBuf,
 
 	switch (node->type) {
 	case TYPE_LAT_SEL: {
-		unsigned int sel;
+		unsigned int sel = 0;
 
 		num = wla_get_dbg_latch_hw_max();
 		for (idx = 0; idx < num; idx++) {
@@ -839,7 +961,7 @@ static ssize_t wla_dbg_latch_read(char *ToUserBuf,
 		break;
 	}
 	case TYPE_LAT_STA_MUX: {
-		unsigned int mux;
+		unsigned int mux = 0;
 
 		num = wla_get_dbg_lat_ddr_sta_mux_hw_max();
 		for (idx = 1; idx <= num; idx++) {
@@ -864,28 +986,41 @@ static ssize_t wla_dbg_latch_write(char *FromUserBuf,
 {
 	struct WLA_DBG_NODE *node =
 				(struct WLA_DBG_NODE *)priv;
-	unsigned int para1;
+	unsigned int para1 = 0, para2 = 0;
+	char *token;
+	char *str = FromUserBuf;
+	const char *delim = " ";
 
-	if (!FromUserBuf || !node)
+	if (!str || !node)
+		return -EINVAL;
+
+	token = strsep(&str, delim);
+	if (!token)
+		return -EINVAL;
+	if (kstrtouint(token, 10, &para1))
+		return -EINVAL;
+
+	token = strsep(&str, delim);
+	if (!token)
+		return -EINVAL;
+	if (kstrtouint(token, 16, &para2))
 		return -EINVAL;
 
 	switch (node->type) {
 	case TYPE_LAT_SEL: {
-		/* para1: latch num */
-		unsigned int sel;
-
-		if (sscanf(FromUserBuf, "%d %x", &para1, &sel) != 2)
-			return -EINVAL;
-		wla_set_dbg_latch_sel(para1, sel);
+		/*
+		 * para1: latch num
+		 * para2: latch sel
+		 */
+		wla_set_dbg_latch_sel(para1, para2);
 		break;
 	}
 	case TYPE_LAT_STA_MUX: {
-		/* para1: status_n */
-		unsigned int mux;
-
-		if (sscanf(FromUserBuf, "%d %x", &para1, &mux) != 2)
-			return -EINVAL;
-		wla_set_dbg_lat_ddr_sta_mux(para1, mux);
+		/*
+		 * para1: ddr_sta_num
+		 * para2: ddr_sta_mux
+		 */
+		wla_set_dbg_lat_ddr_sta_mux(para1, para2);
 		break;
 	}
 	default:
@@ -898,7 +1033,7 @@ static ssize_t wla_dbg_latch_write(char *FromUserBuf,
 
 static ssize_t wla_ddren_bypass_write(char *FromUserBuf, size_t sz, void *priv)
 {
-	unsigned int bypass;
+	unsigned int bypass = 1;
 
 	if (!FromUserBuf)
 		return -EINVAL;
@@ -916,7 +1051,7 @@ static ssize_t wla_ddren_bypass_write(char *FromUserBuf, size_t sz, void *priv)
 static ssize_t wla_ddren_bypass_read(char *ToUserBuf, size_t sz, void *priv)
 {
 	char *p = ToUserBuf;
-	unsigned int bypass;
+	unsigned int bypass = 1;
 
 	if (!p)
 		return -EINVAL;
@@ -929,7 +1064,7 @@ static ssize_t wla_ddren_bypass_read(char *ToUserBuf, size_t sz, void *priv)
 
 static ssize_t wla_rglt2p0_bypass_write(char *FromUserBuf, size_t sz, void *priv)
 {
-	unsigned int bypass;
+	unsigned int bypass = 1;
 
 	if (!FromUserBuf)
 		return -EINVAL;
@@ -947,7 +1082,7 @@ static ssize_t wla_rglt2p0_bypass_write(char *FromUserBuf, size_t sz, void *priv
 static ssize_t wla_rglt2p0_bypass_read(char *ToUserBuf, size_t sz, void *priv)
 {
 	char *p = ToUserBuf;
-	unsigned int bypass;
+	unsigned int bypass = 1;
 
 	if (!p)
 		return -EINVAL;
@@ -960,7 +1095,7 @@ static ssize_t wla_rglt2p0_bypass_read(char *ToUserBuf, size_t sz, void *priv)
 
 static ssize_t wla_ddren_force_on_write(char *FromUserBuf, size_t sz, void *priv)
 {
-	unsigned int force_on;
+	unsigned int force_on = 1;
 
 	if (!FromUserBuf)
 		return -EINVAL;
@@ -978,7 +1113,7 @@ static ssize_t wla_ddren_force_on_write(char *FromUserBuf, size_t sz, void *priv
 static ssize_t wla_ddren_force_on_read(char *ToUserBuf, size_t sz, void *priv)
 {
 	char *p = ToUserBuf;
-	unsigned int force_on;
+	unsigned int force_on = 1;
 	int ret;
 
 	if (!p)
