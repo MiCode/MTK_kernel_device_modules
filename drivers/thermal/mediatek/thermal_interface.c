@@ -25,6 +25,7 @@
 #include <linux/types.h>
 #include <linux/debugfs.h>
 #include <linux/thermal.h>
+#include <linux/interconnect.h>
 #include <soc/mediatek/dramc.h>
 
 #include <linux/io.h>
@@ -131,6 +132,7 @@ EXPORT_SYMBOL(plat_vtskin_info);
 static struct md_info md_info_data;
 static struct pid_info pid_info_data;
 static u32 bat_type;
+struct icc_path *icc_thermal;
 
 static DEFINE_MUTEX(pid_info_lock);
 
@@ -2099,7 +2101,8 @@ static ssize_t thermal_hint_store(struct kobject *kobj,
 	struct kobj_attribute *attr, const char *buf, size_t count)
 {
 	char cmd[20];
-	unsigned int enable;
+	static int enable;
+	static int icc_enable;
 
 	if (sscanf(buf, "%12s %u", cmd, &enable) == 2) {
 		if (strncmp(cmd, "thermal_hint", 12) == 0) {
@@ -2109,6 +2112,14 @@ static ssize_t thermal_hint_store(struct kobject *kobj,
 
 				thermal_hint_callback(enable);
 				tm_data.thermal_hint = enable;
+			}
+			if ((icc_thermal) && icc_enable != enable) {
+				if (enable)
+					icc_set_bw(icc_thermal, 0, 0xFFFFFFFF);
+				else
+					icc_set_bw(icc_thermal, 0, 0x0);
+
+				icc_enable = enable;
 			}
 			return count;
 		}
@@ -2761,6 +2772,12 @@ static int therm_intf_probe(struct platform_device *pdev)
 	tm_data.cpu_cluster_num = max_perf_domain + 1;
 	dev_info(&pdev->dev, "cpu_cluster_num = %d\n", tm_data.cpu_cluster_num);
 
+	icc_thermal = devm_of_icc_get(&pdev->dev, "icc-thermal");
+	if (IS_ERR(icc_thermal)) {
+		dev_info(&pdev->dev, "Failed to get icc-thermal\n");
+		icc_thermal = NULL;
+	}
+
 	ret = sysfs_create_group(kernel_kobj, &thermal_attr_group);
 	if (ret) {
 		dev_err(&pdev->dev, "failed to create thermal sysfs, ret=%d!\n", ret);
@@ -2832,6 +2849,9 @@ static int therm_intf_probe(struct platform_device *pdev)
 
 static void therm_intf_remove(struct platform_device *pdev)
 {
+	if (icc_thermal)
+		icc_set_bw(icc_thermal, 0, 0x0);
+
 	therm_intf_debugfs_exit();
 	sysfs_remove_group(kernel_kobj, &thermal_attr_group);
 
