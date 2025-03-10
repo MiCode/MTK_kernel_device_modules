@@ -13763,8 +13763,10 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			break;
 		}
 
+		mutex_lock(&dsi->conn.dev->mode_config.mutex);
 		if (list_empty(&dsi->conn.modes)) {
 			DDPPR_ERR("%s, dsi->conn.modes NULL list, break\n", __func__);
+			mutex_unlock(&dsi->conn.dev->mode_config.mutex);
 			break;
 		}
 
@@ -13773,6 +13775,7 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 
 			if (max_mode == NULL) {
 				DDPPR_ERR("%s, max_mode is NULL, break\n", __func__);
+				mutex_unlock(&dsi->conn.dev->mode_config.mutex);
 				break;
 			}
 			if (drm_mode_vrefresh(max_mode) > vrefresh) {
@@ -13780,6 +13783,7 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 				*mode = max_mode;
 			}
 		}
+		mutex_unlock(&dsi->conn.dev->mode_config.mutex);
 	}
 		break;
 	case DSI_GET_MODE_CONT:
