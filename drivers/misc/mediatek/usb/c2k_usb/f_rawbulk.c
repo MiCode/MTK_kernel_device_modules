@@ -104,7 +104,7 @@ int rawbulk_function_setup(struct usb_function *f, const struct
 		if ((ctrl->bRequestType & USB_TYPE_MASK) == USB_TYPE_VENDOR) {
 			if (ctrl->bRequestType & USB_DIR_IN) {	/* 0xC0 */
 				/* return ID */
-				if(sprintf(req->buf, "CBP_8.2") < 0)
+				if(snprintf(req->buf, 8, "CBP_8.2") < 0)
 					value = 0;
 				else
 					value = 1;
