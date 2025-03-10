@@ -13335,6 +13335,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 						<&dvfsrc_freq_opp1>,
 						<&dvfsrc_freq_opp2>,
 						<&dvfsrc_freq_opp3>,
+						<&dvfsrc_freq_opp3>,
 						<&dvfsrc_freq_opp4>,
 						<&dvfsrc_freq_opp5>,
 						<&dvfsrc_freq_opp6>,
