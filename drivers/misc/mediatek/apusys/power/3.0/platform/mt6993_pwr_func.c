@@ -90,15 +90,15 @@ static void limit_opp_to_all_devices(int opp)
 
 }
 
-void mt6993_aputop_opp_limit(struct aputop_func_param *aputop,
+void mt6993_aputop_opp_limit(int upper_opp, int low_opp,
 		enum apu_opp_limit_type type)
 {
 	int vpu_max, vpu_min, dla_max, dla_min;
 
-	vpu_max = aputop->param1;
-	vpu_min = aputop->param2;
-	dla_max = aputop->param3;
-	dla_min = aputop->param4;
+	vpu_max = upper_opp;
+	vpu_min = low_opp;
+	dla_max = upper_opp;
+	dla_min = low_opp;
 	_opp_limiter(vpu_max, vpu_min, dla_max, dla_min, type);
 }
 
@@ -470,7 +470,7 @@ out:
 }
 #endif
 
-void request_opp_table(void)
+void mt6993_request_opp_table(void)
 {
 	struct aputop_rpmsg_data rpmsg_data;
 
@@ -485,7 +485,6 @@ void request_opp_table(void)
 	rpmsg_data.data0 = 1; // pseudo data
 	aputop_send_rpmsg(&rpmsg_data, 100);
 }
-EXPORT_SYMBOL(request_opp_table);
 
 static void save_opp_table(struct tiny_dvfs_opp_tbl *tbl, int start_index)
 {

@@ -37,6 +37,7 @@ enum aputop_func_id {
 	APUTOP_FUNC_GET_MBRAIN_DATA,
 	APUTOP_FUNC_FEATURE_OPTION_0, /* 12 */
 	APUTOP_FUNC_FEATURE_OPTION_1,
+	APUTOP_FUNC_APU_THROTTLE,
 	APUTOP_FUNC_MAX_ID,
 };
 
@@ -179,5 +180,6 @@ static inline void apu_clearl(const unsigned int val,
 #else
 #define apupw_aee_warn(module, reason)
 #endif
+int apu_sw_throttle(int *request_id, unsigned long state);
 
 #endif

@@ -140,7 +140,7 @@ struct tiny_dvfs_opp_tbl {
 };
 extern int opp_level_pll_freq[OPP_TABLE_SIZE];
 
-void mt6993_aputop_opp_limit(struct aputop_func_param *aputop,
+void mt6993_aputop_opp_limit(int upper_opp, int low_opp,
 		enum apu_opp_limit_type type);
 #if IS_ENABLED(CONFIG_DEBUG_FS)
 int mt6993_apu_top_dbg_open(struct inode *inode, struct file *file);
@@ -151,5 +151,8 @@ ssize_t mt6993_apu_top_dbg_write(
 int mt6993_init_remote_data_sync(void __iomem *reg_base);
 int mt6993_drv_cfg_remote_sync(struct aputop_func_param *aputop);
 int mt6993_apu_top_rpmsg_cb(int cmd, void *data, int len, void *priv, u32 src);
-void request_opp_table(void);
+/* new function for freq upper and lower limit */
+int mt6993_set_freq_limit(int upper_limit, int lower_limit,
+		int *request_id, int calltype);
+void mt6993_request_opp_table(void);
 #endif // MT6993_APUPWR_PROT_H__

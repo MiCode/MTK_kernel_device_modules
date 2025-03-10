@@ -14,7 +14,7 @@
 #include <linux/of_platform.h>
 #include <linux/platform_device.h>
 #include <linux/pm.h>
-// for thermal node
+// for thermal node & apu_sw_power throttle
 #include <linux/kernel.h>
 #include <linux/kobject.h>
 #include <linux/sysfs.h>
@@ -22,6 +22,7 @@
 #include <linux/uaccess.h>
 #include <linux/proc_fs.h>
 #include <linux/seq_file.h>
+#include <linux/timer.h>
 // end
 #include "apusys_secure.h"
 #include "aputop_rpmsg.h"
@@ -34,12 +35,30 @@
 #define LOCAL_DBG	(1)
 #define RPC_ALIVE_DBG	(0)
 #define SMC_APUSYS_PWR_DUMP	(0)
+#define TIMER_RDY	(0)
+#define CLIENT_NUM	(6)
 
 static uint32_t mbox_data;
 
 static struct apu_power apupw = {
 	.env = MP,
 };
+
+static int global_upper_limit = USER_MAX_OPP_VAL - 1;
+static int global_lower_limit = USER_MIN_OPP_VAL + 1;
+static struct mutex lock;
+static int sys_request_id = 5; // for sysfs input
+static int limit_debug_request_id = 4; // for Limit_HAL cmd input
+static int first_dump;
+
+struct client_work {
+	int lower_limit;
+	int upper_limit;
+	int request_id;
+	struct list_head list;
+};
+
+static LIST_HEAD(client_list);
 
 #define _DOMAIN(_idx, _phy_addr, _size) \
 	apupw.reg_name[_idx] = #_idx; \
@@ -342,11 +361,403 @@ static int mt6993_apu_top_off(struct device *dev)
 	return 0;
 }
 
-static int opp_proc_show(struct seq_file *m, void *v)
+#if TIMER_RDY
+static struct timer_list limit_timer;
+static int limit_timer_active;
+static int last_upper_limit = -1;
+static int last_lower_limit = -1;
+static int last_upper_request_id = -1;
+static int last_lower_request_id = -1;
+
+static void limit_timer_callback(struct timer_list *t)
+{
+	if (global_upper_limit == last_upper_limit &&
+	    global_lower_limit == last_lower_limit) {
+		pr_info("Frequency limit has been active for more than 100ms:\n"
+			"\t\tupper_limit=%d (from user %d), lower_limit=%d (from user %d)\n",
+			global_upper_limit, last_upper_request_id,
+			global_lower_limit, last_lower_request_id);
+		mod_timer(&limit_timer, jiffies + msecs_to_jiffies(100));
+	} else {
+		limit_timer_active = 0;
+	}
+}
+#endif
+
+/* for apu_sw_throttle update upper/lower bounds */
+static int mt6993_update_bounds(void)
+{
+	int new_upper_limit = USER_MAX_OPP_VAL - 1;
+	int new_lower_limit = USER_MIN_OPP_VAL + 1;
+	int irregular_limits[CLIENT_NUM];
+	int irregular_count = 0;
+	int skip = 0;
+	struct client_work *cw;
+
+	list_for_each_entry(cw, &client_list, list) {
+		if (cw->upper_limit > new_upper_limit)
+			new_upper_limit = cw->upper_limit;
+		if (cw->lower_limit < new_lower_limit)
+			new_lower_limit = cw->lower_limit;
+	}
+
+	/* Skip irregular lower_limit and reset new lower_limits */
+	if (new_lower_limit < new_upper_limit) {
+		pr_info("%s: lower_limit %d cannot be greater than upper_limit %d, Error.\n",
+				__func__, new_lower_limit, new_upper_limit);
+		list_for_each_entry(cw, &client_list, list) {
+			if (cw->lower_limit == new_lower_limit) {
+				irregular_limits[irregular_count++] = new_lower_limit;
+				pr_info("%s: skip modify lower_limit here.\n", __func__);
+			}
+		}
+
+		new_upper_limit = USER_MAX_OPP_VAL - 1;
+		new_lower_limit = USER_MIN_OPP_VAL + 1;
+		list_for_each_entry(cw, &client_list, list) {
+			skip = 0;
+			for (int i = 0; i < irregular_count; i++) {
+				if (cw->lower_limit == irregular_limits[i]) {
+					skip = 1;
+					break;
+				}
+			}
+			if (skip)
+				continue;
+			if (cw->upper_limit > new_upper_limit)
+				new_upper_limit = cw->upper_limit;
+			if (cw->lower_limit < new_lower_limit)
+				new_lower_limit = cw->lower_limit;
+		}
+		pr_info("%s: Now new_upper_limit = %d, new_lower_limit = %d\n",
+				__func__, new_upper_limit, new_lower_limit);
+	}
+
+	if (new_upper_limit == global_upper_limit && new_lower_limit == global_lower_limit) {
+		pr_info("%s: bounds not changed.\n", __func__);
+		return -EAGAIN;
+	}
+
+#if TIMER_RDY
+	// Reset the timer
+	if (limit_timer_active)
+		del_timer(&limit_timer);
+
+	if (new_upper_limit > global_lower_limit) {
+		last_upper_limit = new_upper_limit;
+		last_upper_request_id = cw->request_id;
+	}
+
+	if (new_lower_limit < global_upper_limit) {
+		last_lower_limit = new_lower_limit;
+		last_lower_request_id = cw->request_id;
+	}
+
+	limit_timer_active = 1;
+	mod_timer(&limit_timer, jiffies + msecs_to_jiffies(100));
+#endif
+
+	global_upper_limit = new_upper_limit;
+	global_lower_limit = new_lower_limit;
+
+	return 0;
+}
+
+#if LOCAL_DBG
+static void mt6993_verify_bounds(void)
+{
+	struct client_work *cw;
+	int expected_lower_limit = USER_MIN_OPP_VAL + 1;
+	int expected_upper_limit = USER_MAX_OPP_VAL - 1;
+	int irregular_limits[CLIENT_NUM];
+	int irregular_count = 0;
+	int skip;
+
+	list_for_each_entry(cw, &client_list, list) {
+		if (cw->lower_limit < expected_lower_limit)
+			expected_lower_limit = cw->lower_limit;
+		if (cw->upper_limit > expected_upper_limit)
+			expected_upper_limit = cw->upper_limit;
+	}
+
+	if (expected_lower_limit < expected_upper_limit) {
+		list_for_each_entry(cw, &client_list, list) {
+			if (cw->lower_limit == expected_lower_limit)
+				irregular_limits[irregular_count++] = expected_lower_limit;
+		}
+
+		expected_lower_limit = USER_MIN_OPP_VAL + 1;
+		expected_upper_limit = USER_MAX_OPP_VAL - 1;
+
+		list_for_each_entry(cw, &client_list, list) {
+			skip = 0;
+			for (int i = 0; i < irregular_count; i++) {
+				if (cw->lower_limit == irregular_limits[i]) {
+					skip = 1;
+					break;
+				}
+			}
+			if (skip)
+				continue;
+			if (cw->lower_limit < expected_lower_limit)
+				expected_lower_limit = cw->lower_limit;
+			if (cw->upper_limit > expected_upper_limit)
+				expected_upper_limit = cw->upper_limit;
+		}
+	}
+
+	if (expected_lower_limit != global_lower_limit || expected_upper_limit != global_upper_limit) {
+		pr_info("%s: Limit inconsistency detected: expected lower %d, upper %d, but got lower %d, upper %d\n",
+				__func__, expected_lower_limit, expected_upper_limit,
+				global_lower_limit, global_upper_limit);
+	}
+
+}
+#endif
+
+/* maintain nodes & judge final upper_limit & lower_limit to APU */
+int mt6993_set_freq_limit(int upper_limit, int lower_limit, int *request_id, int calltype)
+{
+	struct client_work *cw;
+	bool found = false;
+	int ret;
+	int type = calltype;
+
+	// mapping user opp to real opp
+	if (calltype == 1) {
+		upper_limit = upper_limit + THERMAL_OPP_OFS;
+		lower_limit = lower_limit + THERMAL_OPP_OFS;
+	} else
+		upper_limit = upper_limit + THERMAL_OPP_OFS;
+
+	// real opp range is from 0 to 15
+	if ((lower_limit > USER_MIN_OPP_VAL || lower_limit < USER_MAX_OPP_VAL) ||
+		(upper_limit > USER_MIN_OPP_VAL || upper_limit < USER_MAX_OPP_VAL)) {
+		pr_info("%s: Error, limits out of range: lower_limit (%d), upper_limit (%d)\n",
+				__func__, lower_limit, upper_limit);
+		if (lower_limit > USER_MIN_OPP_VAL) {
+			lower_limit = USER_MIN_OPP_VAL;
+			pr_info("%s: setting lower_limit to %d\n",
+				__func__, lower_limit);
+			}
+		else
+			return -ERANGE;
+	}
+
+	if (lower_limit < upper_limit) {
+		pr_info("%s: Error, upper_limit (%d) cannot be bigger than lower_limit (%d)\n",
+				__func__, lower_limit, upper_limit);
+		return -EINVAL;
+	}
+
+	mutex_lock(&lock);
+	list_for_each_entry(cw, &client_list, list) {
+		if (cw->request_id == *request_id) {
+			found = true;
+			break;
+		}
+	}
+
+	if (found) {
+		/* update existing nodes values */
+		cw->lower_limit = lower_limit;
+		cw->upper_limit = upper_limit;
+		pr_info("%s: updated existing node, and request_id is %d\n",
+				__func__, *request_id);
+		} else {
+			cw = kmalloc(sizeof(*cw), GFP_KERNEL);
+		if (!cw) {
+			mutex_unlock(&lock);
+			return -ENOMEM;
+		}
+		cw->lower_limit = lower_limit;
+		cw->upper_limit = upper_limit;
+		/* record id number */
+		cw->request_id = *request_id;
+		list_add(&cw->list, &client_list);
+		pr_info("%s: added new node, and request_id is %d\n", __func__, cw->request_id);
+	}
+
+	ret = mt6993_update_bounds();
+	if (ret == 0 && type == 1) {
+#if LOCAL_DBG
+		pr_info("%s: input from apu_throttle, detected bounds changed, sending to apu\n", __func__);
+#endif
+		mt6993_aputop_opp_limit(global_upper_limit, global_lower_limit, 1);
+	} else if (ret == 0 && type == 0) {
+#if LOCAL_DBG
+		pr_info("%s: input from sysfs, detected bounds changed, sending to apu\n", __func__);
+#endif
+		mt6993_aputop_opp_limit(global_upper_limit, global_lower_limit, 2);
+	} else {
+#if LOCAL_DBG
+		pr_info("%s: detected bounds not changed, skip sending to apu\n", __func__);
+#endif
+		mutex_unlock(&lock);
+		return -EINVAL;
+	}
+
+#if LOCAL_DBG
+	mt6993_verify_bounds();
+#endif
+	mutex_unlock(&lock);
+
+	return ret;
+}
+
+static int mt6993_client_input_show(struct seq_file *m, void *v)
+{
+	struct client_work *cw;
+
+	mutex_lock(&lock);
+
+	if (list_empty(&client_list)) {
+		seq_puts(m, "Client list is empty\n");
+	} else {
+		list_for_each_entry(cw, &client_list, list) {
+			seq_printf(m, "\nRequest ID: %d\nLower Limit: %d\nUpper Limit: %d\n\n",
+				cw->request_id, cw->lower_limit, cw->upper_limit);
+		}
+	}
+
+	seq_printf(m, "Global Lower Limit now is: %d\n", global_lower_limit);
+	seq_printf(m, "Global Upper Limit now is: %d\n", global_upper_limit);
+
+	mutex_unlock(&lock);
+
+	return 0;
+}
+
+static void mt6993_prepare_freq_input(int upper_limit, int lower_limit, int *opp_max, int *opp_min)
+{
+	int tmp_opp_min = -1;
+	int tmp_opp_max = -1;
+
+	/* if opp table is not dump, request opp tbl first */
+	if (!first_dump) {
+		mt6993_request_opp_table();
+		first_dump = 1;
+	}
+
+	for (int i = OPP_TABLE_SIZE-1; i >= 0; i--) {
+		int freq = opp_level_pll_freq[i];
+
+		if (freq >= lower_limit) {
+			tmp_opp_min = i;
+			break;
+		}
+	}
+
+	for (int i = 0; i < OPP_TABLE_SIZE; i++) {
+		int freq = opp_level_pll_freq[i];
+
+		if (freq <= upper_limit) {
+			tmp_opp_max = i;
+			break;
+		}
+	}
+
+	if (upper_limit == lower_limit)
+		tmp_opp_min = tmp_opp_max;
+
+	if (lower_limit < opp_level_pll_freq[OPP_TABLE_SIZE-1])
+		tmp_opp_min = 15 - THERMAL_OPP_OFS; // set to opp15
+
+	if (upper_limit > opp_level_pll_freq[0])
+		tmp_opp_max = USER_MAX_OPP_VAL; // set to opp0
+
+	if (tmp_opp_min < tmp_opp_max) {
+		pr_info("%s: opp_max=%d, opp_min=%d\n , lower limit cannot be greater than upper limit!\n",
+				__func__, tmp_opp_max, tmp_opp_min);
+	} else {
+		pr_info("%s: opp_max=%d, opp_min=%d\n", __func__, tmp_opp_max, tmp_opp_min);
+		*opp_max = tmp_opp_max;
+		*opp_min = tmp_opp_min;
+	}
+
+}
+
+static ssize_t mt6993_handle_client_input(struct file *file, const char __user *buf, size_t count, loff_t *ppos)
+{
+	int lower_limit, upper_limit;
+	int ret;
+	int opp_max, opp_min;
+	char *input, *token;
+
+	input = kzalloc(count + 1, GFP_KERNEL);
+	if (!input)
+		return -ENOMEM;
+
+	if (copy_from_user(input, buf, count)) {
+		kfree(input);
+		return -EFAULT;
+	}
+
+	token = strsep(&input, " ");
+	if (!token) {
+		ret = -EINVAL;
+		goto out;
+	}
+
+	ret = kstrtoint(token, 0, &upper_limit);
+	if (ret)
+		goto out;
+
+	token = strsep(&input, " ");
+	if (!token) {
+		ret = -EINVAL;
+		goto out;
+	}
+
+	ret = kstrtoint(token, 0, &lower_limit);
+	if (ret)
+		goto out;
+
+	token = strsep(&input, " ");
+	if (token && *token != '\0' && *token != '\n') {
+		ret = -EINVAL;
+		goto out;
+	}
+
+	if (lower_limit > upper_limit) {
+		pr_debug("Upper limit is smaller than lower limit. Adjusting values.\n");
+		ret = -EINVAL;
+		goto out;
+	}
+
+	mt6993_prepare_freq_input(upper_limit, lower_limit, &opp_max, &opp_min);
+	ret = mt6993_set_freq_limit(opp_max, opp_min, &sys_request_id, 1);
+	if (ret)
+		goto out;
+
+	if (sys_request_id != -1)
+		pr_info("Generated request_id: %d\n", sys_request_id);
+
+	ret = count;
+
+out:
+	kfree(input);
+	return ret;
+}
+
+static int mt6993_client_input_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, mt6993_client_input_show, NULL);
+}
+
+static const struct proc_ops client_input_ops = {
+	.proc_open    = mt6993_client_input_open,
+	.proc_read    = seq_read,
+	.proc_write   = mt6993_handle_client_input,
+	.proc_lseek   = seq_lseek,
+	.proc_release = single_release,
+};
+
+static int mt6993_opp_proc_show(struct seq_file *m, void *v)
 {
 	int i;
 
-	request_opp_table();
+	mt6993_request_opp_table();
 	seq_puts(m, "APU Support Frequency points(Unit is KHZ):\n");
 	for (i = 0; i < ARRAY_SIZE(opp_level_pll_freq); i++) {
 		if (opp_level_pll_freq[i] == 0)
@@ -362,7 +773,7 @@ static int opp_proc_show(struct seq_file *m, void *v)
 
 static int opp_proc_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, opp_proc_show, NULL);
+	return single_open(file, mt6993_opp_proc_show, NULL);
 }
 
 static const struct proc_ops opp_proc_ops = {
@@ -402,7 +813,9 @@ static int mt6993_apu_top_pb(struct platform_device *pdev)
 	}
 
 	mt6993_init_remote_data_sync(apupw.regs[apu_md32_mbox]);
-
+	// init lock
+	mutex_init(&lock);
+	// init apudvfs proc
 	apudvfs_dir = proc_mkdir("apudvfs", NULL);
 	if (!apudvfs_dir)
 		return -ENOMEM;
@@ -412,12 +825,22 @@ static int mt6993_apu_top_pb(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
+	if (!proc_create("user_limit", 0644, apudvfs_dir, &client_input_ops)) {
+		remove_proc_entry("apudvfs", NULL);
+		return -ENOMEM;
+	}
+
+#if TIMER_RDY
+	timer_setup(&limit_timer, limit_timer_callback, 0);
+#endif
+
 	return ret;
 }
 
 static int mt6993_apu_top_rm(struct platform_device *pdev)
 {
 	int idx;
+	struct client_work *cw, *tmp;
 
 	pr_info("%s +\n", __func__);
 	if (apupw.env < MP)
@@ -425,6 +848,22 @@ static int mt6993_apu_top_rm(struct platform_device *pdev)
 	for (idx = 0; idx < APUPW_MAX_REGS; idx++)
 		iounmap(apupw.regs[idx]);
 	pr_info("%s -\n", __func__);
+
+	mutex_lock(&lock);
+	list_for_each_entry_safe(cw, tmp, &client_list, list) {
+		list_del(&cw->list);
+		kfree(cw);
+	}
+	mutex_unlock(&lock);
+	mutex_destroy(&lock);
+	// rm client input and apudvfs opp table
+	remove_proc_entry("user_limit", apudvfs_dir);
+	remove_proc_entry("apu_opp_table", apudvfs_dir);
+	remove_proc_entry("apudvfs", NULL);
+
+#if TIMER_RDY
+	del_timer(&limit_timer);
+#endif
 
 	return 0;
 }
@@ -455,6 +894,9 @@ static int mt6993_apu_top_func_return_val(int func_id, char *buf)
 static int mt6993_apu_top_func(struct platform_device *pdev,
 		enum aputop_func_id func_id, struct aputop_func_param *aputop)
 {
+	int dla_max, dla_min;
+	int request_id = -1;
+
 	pr_info("%s func_id : %d\n", __func__, aputop->func_id);
 
 	switch (aputop->func_id) {
@@ -467,10 +909,14 @@ static int mt6993_apu_top_func(struct platform_device *pdev,
 		break;
 #endif
 	case APUTOP_FUNC_OPP_LIMIT_HAL:
-		mt6993_aputop_opp_limit(aputop, OPP_LIMIT_HAL);
+		dla_max = aputop->param3;
+		dla_min = aputop->param4;
+		mt6993_set_freq_limit(dla_max, dla_min, &limit_debug_request_id, 1);
 		break;
 	case APUTOP_FUNC_OPP_LIMIT_DBG:
-		mt6993_aputop_opp_limit(aputop, OPP_LIMIT_DEBUG);
+		dla_max = aputop->param3;
+		dla_min = aputop->param4;
+		mt6993_set_freq_limit(dla_max, dla_min, &limit_debug_request_id, 1);
 		break;
 	case APUTOP_FUNC_DUMP_REG:
 		aputop_dump_pwr_reg(&pdev->dev);
@@ -491,6 +937,14 @@ static int mt6993_apu_top_func(struct platform_device *pdev,
 #endif
 	case APUTOP_FUNC_GET_UP_DATA:
 		plat_get_up_drv_data(aputop);
+		break;
+	/* throttle from thermal & PT, calltype = 0 */
+	case APUTOP_FUNC_APU_THROTTLE:
+		dla_max = aputop->param1;
+		dla_min = USER_MIN_OPP_VAL;
+		request_id = aputop->param3;
+		mt6993_set_freq_limit(dla_max, dla_min, &request_id, 0);
+		aputop->param3 = request_id;
 		break;
 	default:
 		pr_info("%s invalid func_id : %d\n", __func__, aputop->func_id);

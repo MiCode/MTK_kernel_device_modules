@@ -20,6 +20,7 @@
 #include "aputop_log.h"
 #include "aputop_rpmsg.h"
 #include <apu_top_entry.h>
+#include <mtk_apu_power_throttling.h>
 
 const struct apupwr_plat_data *pwr_data;
 
@@ -120,6 +121,7 @@ static int aputop_pwr_off_rpm_cb(struct device *dev)
 
 static int apu_top_probe(struct platform_device *pdev)
 {
+	int ret;
 	dev_info(&pdev->dev, "%s +\n", __func__);
 	pwr_data = of_device_get_match_data(&pdev->dev);
 
@@ -134,6 +136,24 @@ static int apu_top_probe(struct platform_device *pdev)
 	g_apupw_drv_ver = 3;
 
 	pm_runtime_enable(&pdev->dev);
+
+	ret = register_pt_low_battery_apu_cb(apu_sw_throttle);
+	if (ret) {
+		pr_info("%s Failed to register low battery callback: %d\n", __func__ ,ret);
+		//return ret; // Uncomment after PT callback enable
+	}
+
+	ret = register_pt_over_current_apu_cb(apu_sw_throttle);
+	if (ret) {
+		pr_info("%s Failed to register over current callback: %d\n", __func__ ,ret);
+		//return ret;
+	}
+
+	ret = register_pt_battery_percent_apu_cb(apu_sw_throttle);
+	if (ret) {
+		pr_info("%s Failed to register battery percent callback: %d\n", __func__ ,ret);
+		//return ret;
+	}
 
 	return pwr_data->plat_aputop_pb(pdev);
 }
@@ -391,3 +411,29 @@ uint32_t apu_boot_host(void)
 	return ret;
 }
 EXPORT_SYMBOL(apu_boot_host);
+
+int apu_sw_throttle(int *request_id, unsigned long state)
+{
+
+	struct aputop_func_param aputop;
+	int ret = 0;
+
+	memset(&aputop, -1, sizeof(struct aputop_func_param));
+
+	if (pwr_data->apu_sw_throttle_enable == 0) {
+		pr_info("%s: APU throttling isn't supported in this platform\n", __func__);
+		goto out;
+	}
+
+	aputop.func_id = APUTOP_FUNC_APU_THROTTLE;
+	aputop.param1 = state; //dla_max
+	pr_info("%s: state is %ld\n", __func__, state);
+
+	aputop.param3 = *request_id; // request_id
+	pr_info("%s: request_id is %d\n", __func__, *request_id);
+	ret = pwr_data->plat_aputop_func(NULL, aputop.func_id, &aputop);
+	if (ret < 0)
+		ret = 0;
+out:
+	return ret;
+}
