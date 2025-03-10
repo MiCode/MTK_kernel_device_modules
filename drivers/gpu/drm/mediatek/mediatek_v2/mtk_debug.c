@@ -5715,18 +5715,31 @@ test_done1:
 		priv->mtk_dbgtp_sta.dbgtp_prd_trig_en = dump_en;
 		priv->mtk_dbgtp_sta.need_update = true;
 		DDPMSG("%d %s\n", __LINE__, opt);
-	} else if (strncmp(opt, "dbgtp_switch:", 12) == 0) {
+	} else if (strncmp(opt, "dbgtp_switch:", 13) == 0) {
 		struct mtk_drm_private *priv = drm_dev->dev_private;
 		int ret = 0;
 		unsigned int value = 0;
 
-		ret = sscanf(opt + 12, "%d\n", &value);
+		ret = sscanf(opt + 13, "%d\n", &value);
 		if (ret <= 0) {
 			DDPMSG("%d error to parse cmd %s\n", __LINE__, opt);
 			return;
 		}
 
 		priv->mtk_dbgtp_sta.dbgtp_switch = value;
+		DDPMSG("%d %s\n", __LINE__, opt);
+	} else if (strncmp(opt, "dbgtp_timeout:", 14) == 0) {
+		struct mtk_drm_private *priv = drm_dev->dev_private;
+		int ret = 0;
+		unsigned int value = 0;
+
+		ret = sscanf(opt + 14, "%d\n", &value);
+		if (ret <= 0) {
+			DDPMSG("%d error to parse cmd %s\n", __LINE__, opt);
+			return;
+		}
+
+		priv->mtk_dbgtp_sta.dbgtp_timeout_en = value;
 		DDPMSG("%d %s\n", __LINE__, opt);
 	} else if (strncmp(opt, "dbgtp_prd_dump:", 15) == 0) {
 		struct mtk_drm_private *priv = drm_dev->dev_private;

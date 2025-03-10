@@ -26041,6 +26041,10 @@ unsigned int mtk_drm_primary_display_get_debug_state(
 			  "cmd" : "vdo"), hrt_lp_switch_get());
 
 	len += scnprintf(stringbuf + len, buf_len - len,
+					"TS:0x%llx, NTS:0x%llx\n",
+					(u64)arch_timer_read_counter(), (u64)sched_clock());
+
+	len += scnprintf(stringbuf + len, buf_len - len,
 		"================================================\n\n");
 
 	return len;
