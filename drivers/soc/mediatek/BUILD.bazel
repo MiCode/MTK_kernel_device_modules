@@ -122,6 +122,16 @@ define_mgk_ddk_ko(
     ],
 )
 
+
+define_mgk_ddk_ko(
+    name = "mtk-socinfo",
+
+    srcs = ["mtk-socinfo.c"],
+
+    hdrs = glob(["**/*.h"]),
+
+)
+
 ddk_headers (
         name = "soc_mediatek_headers",
         hdrs = glob(["**/*.h"]),

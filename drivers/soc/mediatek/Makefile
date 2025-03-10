@@ -23,4 +23,3 @@ obj-$(CONFIG_DEVICE_MODULES_MTK_DEVAPC) += devapc/
 # obj-$(CONFIG_MTK_DEVMPU) += devmpu/
 obj-$(CONFIG_MTK_MMDVFS) += mmdvfs/
 obj-$(CONFIG_DEVICE_MODULES_MTK_MMSYS_MUTEX) += mtk-mutex.o
-obj-$(CONFIG_MTK_SOCINFO) += mtk-socinfo.o
