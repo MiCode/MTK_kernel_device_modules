@@ -1174,12 +1174,6 @@
 		#clock-cells = <1>;
 	};
 
-	pericfg_ao_sec_clk: clock-controller@16630000 {
-		compatible = "mediatek,mt6993-pericfg_ao_sec", "syscon";
-		reg = <0 0x16630000 0 0x1000>;
-		#clock-cells = <1>;
-	};
-
 	pericfg_ao_clk: clock-controller@16640000 {
 		compatible = "mediatek,mt6993-pericfg_ao", "syscon";
 		reg = <0 0x16640000 0 0x1000>;
@@ -5623,7 +5617,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,hwrscs-vers = <2>;
 			mediatek,clkgate = <&usb0cfg_ao_sec_clk 0x13>;
 			mediatek,usb-mbist = <&usbcfg_ao_mbist_clk>;
-			mediatek,peri-usb-wla = <&pericfg_ao_sec_clk 21>;
 			mediatek,vs-voter = <&mt6661_4 0x1787 0x01 1>;
 			mediatek,uds = <&usb_dp_selector 19>;
 			usb-role-switch;
