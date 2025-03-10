@@ -1,7 +1,6 @@
 load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
 load("@mgk_info//:kernel_version.bzl","kernel_version")
 load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
-load("@mgk_info//:kernel_version.bzl", "kernel_version",)
 
 config_setting(
     name = "trustonic_tee",
@@ -128,6 +127,7 @@ define_mgk_ddk_ko(
         "mtk-mml.h",
         "mailbox/cmdq-sec.h",
         "**/*.h",
+        "mtk_dpc.h"
     ]),
     local_defines = select({
             "@mgk_internal//:mgk_internal_setting" : [
@@ -251,6 +251,7 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/sound/soc/mediatek/common:ddk_public_headers".format(kernel_version),
         "//kernel_device_modules-{}/drivers/clk/mediatek:headers".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/scp/include:scp_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/dpc:ddk_public_headers".format(kernel_version),
     ],
     conditional_srcs = {
         "CONFIG_TRUSTONIC_TEE_SUPPORT": {
@@ -295,6 +296,79 @@ define_mgk_ddk_ko(
             ],
         },
     },
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_disp_sec",
+    srcs = [],
+    conditional_srcs = {
+        "CONFIG_MTK_TRUSTED_MEMORY_SUBSYSTEM": {
+            True: ["mtk_disp_sec.c"],
+        },
+    },
+    hdrs = glob([
+        "**/*.h",
+    ]),
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmp/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/dma-buf/heaps/",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mmp/src:mmprofile".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/tinysys_scmi:tinysys-scmi".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mtk-interconnect:mtk-icc-core".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mml:mtk-mml".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/slbc:mtk_slbc".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/dma-buf/heaps:system_heap".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/dma-buf/heaps:mtk_sec_heap".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:mtk-cmdq-drv-ext".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:cmdq-sec-drv".format(kernel_version),
+        ":mediatek-drm",
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/dpc:ddk_public_headers".format(kernel_version),
+    ],
+    includes = ["."],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_aod_scp",
+    srcs = [],
+    conditional_srcs = {
+        "CONFIG_MTK_TINYSYS_SCP_CM4_SUPPORT": {
+            True: ["mtk_aod_scp.c"],
+        },
+    },
+    hdrs = glob([
+        "**/*.h",
+    ]),
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmp/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/dma-buf/heaps/",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mmp/src:mmprofile".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/tinysys_scmi:tinysys-scmi".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mtk-interconnect:mtk-icc-core".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mml:mtk-mml".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/slbc:mtk_slbc".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/dma-buf/heaps:system_heap".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:mtk-cmdq-drv-ext".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/scp/rv:scp".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/soc/mediatek:mtk_tinysys_ipi".format(kernel_version),
+        ":mediatek-drm",
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/dpc:ddk_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/scp/include:scp_public_headers".format(kernel_version),
+    ],
+    includes = ["."],
 )
 
 define_mgk_ddk_ko(

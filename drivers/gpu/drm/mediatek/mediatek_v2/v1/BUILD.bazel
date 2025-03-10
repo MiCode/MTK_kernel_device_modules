@@ -232,6 +232,7 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/sound/soc/mediatek/common:ddk_public_headers".format(kernel_version),
         "//kernel_device_modules-{}/drivers/clk/mediatek:headers".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/scp/include:scp_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/dpc:ddk_public_headers".format(kernel_version),
     ],
     conditional_srcs = {
         "CONFIG_DRM_MEDIATEK_DEBUG_FS": {

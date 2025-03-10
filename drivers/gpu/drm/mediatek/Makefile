@@ -35,4 +35,4 @@ mediatek-drm-hdmi-objs := mtk_cec.o \
 obj-$(CONFIG_DRM_MEDIATEK_HDMI) += mediatek-drm-hdmi.o
 endif
 
-obj-$(CONFIG_MTK_DPC) += dpc/
+#obj-$(CONFIG_MTK_DPC) += dpc/

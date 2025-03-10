@@ -47,7 +47,11 @@ define_mgk_ddk_ko(
     copts = [
         "-I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/dpc",
         "-I$(DEVICE_MODULES_PATH)/drivers/iommu/",
-        "-I$(DEVICE_MODULES_PATH)/drivers/iommu/arm/arm-smmu-v3/",],
+        "-I$(DEVICE_MODULES_PATH)/drivers/iommu/arm/arm-smmu-v3/",
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/dpc:ddk_public_headers".format(kernel_version),
+    ],
 )
 
 define_mgk_ddk_ko(
@@ -117,7 +121,7 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/misc/mediatek/tinysys_scmi:ddk_public_headers".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/iommu:iommu_misc_headers".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/smi:smi_dbg_headers".format(kernel_version),
-
+        "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/dpc:ddk_public_headers".format(kernel_version),
     ],
 )
 
@@ -230,6 +234,6 @@ platforms = [
         "//kernel_device_modules-{}/drivers/misc/mediatek/tinysys_scmi:ddk_public_headers".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/iommu:iommu_misc_headers".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/smi:smi_dbg_headers".format(kernel_version),
-
+        "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/dpc:ddk_public_headers".format(kernel_version),
     ],
 ) for p in platforms]

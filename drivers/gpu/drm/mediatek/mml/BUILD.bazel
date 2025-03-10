@@ -91,6 +91,7 @@ define_mgk_ddk_ko(
         "slbc_ops.h",
         "tinysys-scmi.h",
         "mtk-mminfra-util.h",
+        "mtk_dpc.h",
     ]),
 
     local_defines = select({
@@ -144,6 +145,7 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:ddk_public_headers".format(kernel_version),
         "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:ddk_public_headers".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/tinysys_scmi:ddk_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/dpc:ddk_public_headers".format(kernel_version),
         "//kernel_device_modules-{}/drivers/media/platform/mtk-vcodec:headers".format(kernel_version),
     ],
 )
