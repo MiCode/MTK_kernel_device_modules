@@ -21,8 +21,8 @@
 #include "game.h"
 #include "engine_cooler/game_ec.h"
 #include "frame_interpolate/frame_interpolate.h"
-#include "sched/common.h"
-#include "sched/eas/eas_plus.h"
+#include "common.h"
+#include "eas/eas_plus.h"
 #include "kernel_core_ctrl.h"
 
 static struct task_struct *kGame_task;

@@ -10,8 +10,8 @@
 #include <trace/hooks/sched.h>
 #include <linux/sched/cputime.h>
 #include <sched/sched.h>
-#include "sched/common.h"
-#include "sched/eas/eas_plus.h"
+#include "common.h"
+#include "eas/eas_plus.h"
 #include "kernel_core_ctrl.h"
 
 int set_cpus_allowed_ptr_by_kernel(struct task_struct *p, const struct cpumask *new_mask)

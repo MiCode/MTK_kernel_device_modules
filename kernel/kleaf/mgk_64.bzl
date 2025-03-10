@@ -568,6 +568,7 @@ mgk_64_kleaf_device_modules_srcs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/wpe/isp_6s:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/performance/sbe:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/ssc:srcs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/performance/game:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/performance/fpsgo_v8:ddk_srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/performance/fpsgo_v3:ddk_srcs".format(kernel_version),
 ]
@@ -1341,6 +1342,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/ssc:mtk-ssc".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/ssc/debug/v1:mtk-ssc-dbg-v1".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/ssc/debug/v2:mtk-ssc-dbg-v2".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/performance/game:mtk_game".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/task_turbo:vip_engine".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/performance:frs".format(kernel_version),
 ]
@@ -1697,7 +1699,7 @@ mgk_64_device_modules = [
     "drivers/misc/mediatek/pkvm_mgmt/pkvm_mgmt.ko",
     "drivers/misc/mediatek/pkvm_tmem/pkvm_tmem.ko",
     "drivers/misc/mediatek/pkvm_mkp/pkvm_mkp.ko",
-    "drivers/misc/mediatek/performance/game/mtk_game.ko",
+    #"drivers/misc/mediatek/performance/game/mtk_game.ko",
     #"drivers/misc/mediatek/power_throttling/mtk_md_power_throttling.ko",
     #"drivers/misc/mediatek/qos/mtk_qos.ko",
     #"drivers/misc/mediatek/sched/cpufreq_sugov_ext.ko",
