@@ -702,7 +702,7 @@ static int mtu3_gadget_pullup(struct usb_gadget *gadget, int is_on)
 {
 	struct mtu3 *mtu = gadget_to_mtu3(gadget);
 	unsigned long flags;
-	struct otg_switch_mtk *otg_sx = otg_sx = &mtu->ssusb->otg_switch;
+	struct otg_switch_mtk *otg_sx = &mtu->ssusb->otg_switch;
 	bool setmode = false;
 
 	dev_info(mtu->dev, "%s (%s) for %sactive device\n", __func__,
