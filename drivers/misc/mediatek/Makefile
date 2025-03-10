@@ -33,7 +33,6 @@ obj-$(CONFIG_MTK_LENS)      += lens/
 #obj-$(CONFIG_MTK_FLASHLIGHT) += flashlight/
 #obj-$(CONFIG_MTK_V4L2_FLASHLIGHT) += flashlight/v4l2/
 obj-$(CONFIG_MMSTAT_TRACER) += mmstat/
-obj-$(CONFIG_MTK_LPM_LEGACY) += lpm_legacy/
 obj-$(CONFIG_MTK_SSC_MODULE) += ssc/
 obj-$(CONFIG_MTK_SWPM_MODULE) += swpm/
 obj-$(CONFIG_MTK_SWPM_MODULE_LEGACY) += swpm_legacy/
