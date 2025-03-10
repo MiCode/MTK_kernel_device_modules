@@ -22325,6 +22325,156 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_99>;
 		aiseg-sw-sync-token-pool-100 =
 			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_100>;
+		pkt-reuse-sw-sync-token-pool-0 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_0>;
+		pkt-reuse-sw-sync-token-pool-1 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_1>;
+		pkt-reuse-sw-sync-token-pool-2 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_2>;
+		pkt-reuse-sw-sync-token-pool-3 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_3>;
+		pkt-reuse-sw-sync-token-pool-4 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_4>;
+		pkt-reuse-sw-sync-token-pool-5 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_5>;
+		pkt-reuse-sw-sync-token-pool-6 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_6>;
+		pkt-reuse-sw-sync-token-pool-7 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_7>;
+		pkt-reuse-sw-sync-token-pool-8 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_8>;
+		pkt-reuse-sw-sync-token-pool-9 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_9>;
+		pkt-reuse-sw-sync-token-pool-10 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_10>;
+		pkt-reuse-sw-sync-token-pool-11 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_11>;
+		pkt-reuse-sw-sync-token-pool-12 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_12>;
+		pkt-reuse-sw-sync-token-pool-13 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_13>;
+		pkt-reuse-sw-sync-token-pool-14 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_14>;
+		pkt-reuse-sw-sync-token-pool-15 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_15>;
+		pkt-reuse-sw-sync-token-pool-16 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_16>;
+		pkt-reuse-sw-sync-token-pool-17 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_17>;
+		pkt-reuse-sw-sync-token-pool-18 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_18>;
+		pkt-reuse-sw-sync-token-pool-19 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_19>;
+		pkt-reuse-sw-sync-token-pool-20 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_20>;
+		pkt-reuse-sw-sync-token-pool-21 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_21>;
+		pkt-reuse-sw-sync-token-pool-22 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_22>;
+		pkt-reuse-sw-sync-token-pool-23 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_23>;
+		pkt-reuse-sw-sync-token-pool-24 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_24>;
+		pkt-reuse-sw-sync-token-pool-25 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_25>;
+		pkt-reuse-sw-sync-token-pool-26 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_26>;
+		pkt-reuse-sw-sync-token-pool-27 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_27>;
+		pkt-reuse-sw-sync-token-pool-28 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_28>;
+		pkt-reuse-sw-sync-token-pool-29 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_29>;
+		pkt-reuse-sw-sync-token-pool-30 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_30>;
+		pkt-reuse-sw-sync-token-pool-31 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_31>;
+		pkt-reuse-sw-sync-token-pool-32 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_32>;
+		pkt-reuse-sw-sync-token-pool-33 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_33>;
+		pkt-reuse-sw-sync-token-pool-34 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_34>;
+		pkt-reuse-sw-sync-token-pool-35 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_35>;
+		pkt-reuse-sw-sync-token-pool-36 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_36>;
+		pkt-reuse-sw-sync-token-pool-37 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_37>;
+		pkt-reuse-sw-sync-token-pool-38 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_38>;
+		pkt-reuse-sw-sync-token-pool-39 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_39>;
+		pkt-reuse-sw-sync-token-pool-40 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_40>;
+		pkt-reuse-sw-sync-token-pool-41 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_41>;
+		pkt-reuse-sw-sync-token-pool-42 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_42>;
+		pkt-reuse-sw-sync-token-pool-43 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_43>;
+		pkt-reuse-sw-sync-token-pool-44 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_44>;
+		pkt-reuse-sw-sync-token-pool-45 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_45>;
+		pkt-reuse-sw-sync-token-pool-46 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_46>;
+		pkt-reuse-sw-sync-token-pool-47 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_47>;
+		pkt-reuse-sw-sync-token-pool-48 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_48>;
+		pkt-reuse-sw-sync-token-pool-49 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_49>;
+		pkt-reuse-sw-sync-token-pool-50 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_50>;
+		pkt-reuse-sw-sync-token-pool-51 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_51>;
+		pkt-reuse-sw-sync-token-pool-52 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_52>;
+		pkt-reuse-sw-sync-token-pool-53 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_53>;
+		pkt-reuse-sw-sync-token-pool-54 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_54>;
+		pkt-reuse-sw-sync-token-pool-55 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_55>;
+		pkt-reuse-sw-sync-token-pool-56 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_56>;
+		pkt-reuse-sw-sync-token-pool-57 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_57>;
+		pkt-reuse-sw-sync-token-pool-58 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_58>;
+		pkt-reuse-sw-sync-token-pool-59 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_59>;
+		pkt-reuse-sw-sync-token-pool-60 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_60>;
+		pkt-reuse-sw-sync-token-pool-61 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_61>;
+		pkt-reuse-sw-sync-token-pool-62 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_62>;
+		pkt-reuse-sw-sync-token-pool-63 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_63>;
+		pkt-reuse-sw-sync-token-pool-64 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_64>;
+		pkt-reuse-sw-sync-token-pool-65 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_65>;
+		pkt-reuse-sw-sync-token-pool-66 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_66>;
+		pkt-reuse-sw-sync-token-pool-67 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_67>;
+		pkt-reuse-sw-sync-token-pool-68 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_68>;
+		pkt-reuse-sw-sync-token-pool-69 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_69>;
+		pkt-reuse-sw-sync-token-pool-70 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_70>;
+		pkt-reuse-sw-sync-token-pool-71 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_71>;
+		pkt-reuse-sw-sync-token-pool-72 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_72>;
+		pkt-reuse-sw-sync-token-pool-73 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_73>;
+		pkt-reuse-sw-sync-token-pool-74 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_74>;
 		sw-sync-token-tzmp-isp-wait =
 			/bits/ 16 <CMDQ_SYNC_TOKEN_TZMP_ISP_WAIT>;
 		sw-sync-token-tzmp-isp-set =
