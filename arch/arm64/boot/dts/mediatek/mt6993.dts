@@ -4807,6 +4807,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			nr-header-row = <4>;
 			chip-id-offset = <0x38>;
 			check-pattern-offset = <0x20>;
+			bypass-check-dfd-status = <1>; /* This property allows bypassing DFD status check */
 			dfd-disable-efuse = <25 22>;
 			/* dfd-disable-efuse = <(-1) (-1)>; */
 			dfd_cache: dfd-cache {
