@@ -108,6 +108,9 @@ module_param(mml_binning, int, 0644);
 int mml_shadow = 1;
 module_param(mml_shadow, int, 0644);
 
+int mml_perf_pry;
+module_param(mml_perf_pry, int, 0644);
+
 struct path_node {
 	u8 eng;
 	u8 next0;
@@ -1664,6 +1667,10 @@ static enum mml_mode tp_query_mode(struct mml_dev *mml, struct mml_frame_info *i
 
 check_dc_tput:
 	if (mml_isdc(mode)) {
+		if (info->perf_pry || mml_perf_pry) {
+			*reason = mml_query_performance_prioritize;
+			mode = MML_MODE_NOT_SUPPORT;
+		}
 		/* dl mode not support, check if dc support */
 		if (!tp_check_tput_dc(info, tp, panel_width, panel_height, info_cache)) {
 			*reason = mml_query_tp;
@@ -1671,7 +1678,8 @@ check_dc_tput:
 		}
 	} else if (mml_opp_check) {
 		/* dl mode support, compare opp with dc */
-		if (tp_check_tput_dc(info, tp, panel_width, panel_height, info_cache) &&
+		if (!(info->perf_pry || mml_perf_pry) &&
+			tp_check_tput_dc(info, tp, panel_width, panel_height, info_cache) &&
 			info_cache && info_cache->dl_opp > info_cache->dc_opp) {
 			*reason = mml_query_lowpower;
 			mode = MML_MODE_MML_DECOUPLE;

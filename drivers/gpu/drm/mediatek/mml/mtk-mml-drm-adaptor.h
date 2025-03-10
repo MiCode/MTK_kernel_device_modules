@@ -45,7 +45,8 @@ enum mml_query_mode_reason {
 	mml_query_dc_off,
 	mml_query_tp,
 	mml_query_lowpower,
-	mml_query_not_support,
+	mml_query_performance_prioritize,
+	mml_query_not_support, /* 25 */
 };
 
 struct mml_drm_param {

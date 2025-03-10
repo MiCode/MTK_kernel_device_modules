@@ -261,6 +261,7 @@ struct mml_frame_info {
 	uint8_t ovlsys_id;
 	int32_t mutex_src;	/* ddp source component id */
 	bool alpha;	/* alpha channel preserve */
+	bool perf_pry; /* performance mode */
 };
 
 struct mml_frame_size {
