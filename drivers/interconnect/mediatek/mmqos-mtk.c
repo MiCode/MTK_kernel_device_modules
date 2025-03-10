@@ -652,7 +652,8 @@ static void start_write_bw(void)
 	u32 orig = 0;
 
 	// for hfrp timeout debug
-	readl_relaxed(gmmqos->hfrp_base + HFRP_DUMMY);
+	if (gmmqos->hfrp_base)
+		readl_relaxed(gmmqos->hfrp_base + HFRP_DUMMY);
 	readl_relaxed(gmmqos->mminfra_base + MMINFRA_DUMMY);
 #if IS_ENABLED(CONFIG_MTK_MMQOS_VCP)
 	//enable vcp
