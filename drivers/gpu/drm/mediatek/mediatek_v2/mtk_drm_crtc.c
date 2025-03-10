@@ -1435,8 +1435,9 @@ void mtk_drm_crtc_mini_dump(struct drm_crtc *crtc)
 		return;
 	}
 
-	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL && !priv->pwr_node) {
-		mtk_drm_pm_ctrl(priv, DISP_PM_GET);
+	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
+		if (!priv->pwr_node)
+			mtk_drm_pm_ctrl(priv, DISP_PM_GET);
 		mtk_vidle_user_power_keep(DISP_VIDLE_USER_DPC_DUMP);
 	}
 
@@ -1604,9 +1605,10 @@ void mtk_drm_crtc_mini_dump(struct drm_crtc *crtc)
 	}
 
 done_return:
-	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL && !priv->pwr_node) {
+	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
 		mtk_vidle_user_power_release(DISP_VIDLE_USER_DPC_DUMP);
-		mtk_drm_pm_ctrl(priv, DISP_PM_PUT);
+		if (!priv->pwr_node)
+			mtk_drm_pm_ctrl(priv, DISP_PM_PUT);
 	}
 
 	return;
@@ -1629,8 +1631,9 @@ void mtk_drm_crtc_dump(struct drm_crtc *crtc)
 		return;
 	}
 
-	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL && !priv->pwr_node) {
-		mtk_drm_pm_ctrl(priv, DISP_PM_GET);
+	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
+		if (!priv->pwr_node)
+			mtk_drm_pm_ctrl(priv, DISP_PM_GET);
 		mtk_vidle_user_power_keep(DISP_VIDLE_USER_DPC_DUMP);
 	}
 
@@ -1931,9 +1934,10 @@ void mtk_drm_crtc_dump(struct drm_crtc *crtc)
 	}
 
 done_return:
-	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL && !priv->pwr_node) {
+	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
 		mtk_vidle_user_power_release(DISP_VIDLE_USER_DPC_DUMP);
-		mtk_drm_pm_ctrl(priv, DISP_PM_PUT);
+		if (!priv->pwr_node)
+			mtk_drm_pm_ctrl(priv, DISP_PM_PUT);
 	}
 
 	return;
@@ -1990,8 +1994,10 @@ void mtk_drm_crtc_dump_vr_rg(struct drm_crtc *crtc)
 		return;
 
 	mtk_crtc = to_mtk_crtc(crtc);
-	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL && !priv->pwr_node) {
-		mtk_drm_pm_ctrl(priv, DISP_PM_GET);
+
+	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
+		if (!priv->pwr_node)
+			mtk_drm_pm_ctrl(priv, DISP_PM_GET);
 		mtk_vidle_user_power_keep(DISP_VIDLE_USER_DPC_DUMP);
 	}
 	priv->ovlsys_data->config_dump_analysis(mtk_crtc->ovlsys0_regs, true);
@@ -2017,8 +2023,9 @@ void mtk_drm_crtc_mini_analysis(struct drm_crtc *crtc)
 		return;
 	}
 
-	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL && !priv->pwr_node) {
-		mtk_drm_pm_ctrl(priv, DISP_PM_GET);
+	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
+		if (!priv->pwr_node)
+			mtk_drm_pm_ctrl(priv, DISP_PM_GET);
 		mtk_vidle_user_power_keep(DISP_VIDLE_USER_DPC_DUMP);
 	}
 
@@ -2222,9 +2229,10 @@ void mtk_drm_crtc_mini_analysis(struct drm_crtc *crtc)
 	}
 
 done_return:
-	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL && !priv->pwr_node) {
+	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
 		mtk_vidle_user_power_release(DISP_VIDLE_USER_DPC_DUMP);
-		mtk_drm_pm_ctrl(priv, DISP_PM_PUT);
+		if (!priv->pwr_node)
+			mtk_drm_pm_ctrl(priv, DISP_PM_PUT);
 	}
 
 	return;
@@ -2246,8 +2254,9 @@ void mtk_drm_crtc_analysis(struct drm_crtc *crtc)
 		return;
 	}
 
-	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL && !priv->pwr_node) {
-		mtk_drm_pm_ctrl(priv, DISP_PM_GET);
+	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
+		if (!priv->pwr_node)
+			mtk_drm_pm_ctrl(priv, DISP_PM_GET);
 		mtk_vidle_user_power_keep(DISP_VIDLE_USER_DPC_DUMP);
 	}
 
@@ -2601,9 +2610,10 @@ void mtk_drm_crtc_analysis(struct drm_crtc *crtc)
 	}
 
 done_return:
-	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL && !priv->pwr_node) {
+	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
 		mtk_vidle_user_power_release(DISP_VIDLE_USER_DPC_DUMP);
-		mtk_drm_pm_ctrl(priv, DISP_PM_PUT);
+		if (!priv->pwr_node)
+			mtk_drm_pm_ctrl(priv, DISP_PM_PUT);
 	}
 
 	return;

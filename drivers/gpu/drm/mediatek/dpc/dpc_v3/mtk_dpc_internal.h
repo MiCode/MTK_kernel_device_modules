@@ -563,6 +563,7 @@ struct mtk_dpc {
 	void (*power_keep_by_gce)(struct cmdq_pkt *pkt, const u32 user, const u16 gpr, struct cmdq_poll_reuse *reuse);
 	void (*power_release_by_gce)(struct cmdq_pkt *pkt, const u32 user);
 	void (*config)(const u32 subsys, bool en);
+	void (*analysis)(void);
 };
 
 #endif

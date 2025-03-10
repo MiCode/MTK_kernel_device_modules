@@ -835,7 +835,7 @@ static void mtk_vdisp_analysis(void)
 
 static const struct mtk_vdisp_funcs funcs = {
 	.genpd_put = mtk_vdisp_genpd_put,
-	.vlp_disp_vote = mtk_vdisp_vlp_disp_vote,
+//	.vlp_disp_vote = mtk_vdisp_vlp_disp_vote,
 	.poll_power_cnt = mtk_vdisp_poll_power_cnt,
 	.sent_aod_scp_sema = mtk_sent_aod_scp_sema,
 	.set_clk = mtk_vdisp_set_clk,
