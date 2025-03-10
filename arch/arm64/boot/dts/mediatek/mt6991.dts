@@ -10146,6 +10146,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			root-dev = <&vdisp_ao>;
 			mminfra-pwr-idx = <MMINFRA_MT6991_PWR_MM1>;
 			mminfra-pwr-type = <MMINFRA_MT6991_TYPE_DISP>;
+			operating-points-v2 = <&opp_table_disp>;
 		};
 
 		mipi_tx_config0: mipi-tx-config@130b0000 {
