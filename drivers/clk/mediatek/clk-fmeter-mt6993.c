@@ -369,7 +369,12 @@ uint32_t cm_read(enum DOMAIN_BASE domain, uint32_t ofs) {
 }
 
 void cm_write(uint32_t val, enum DOMAIN_BASE domain, uint32_t ofs) {
-	FQMTR_WRITEL((uint32_t)val, fqmtr_remap(domain, ofs));
+	void __iomem *remap = fqmtr_remap(domain, ofs);
+
+	if(!remap)
+		return;
+
+	FQMTR_WRITEL((uint32_t)val, remap);
 	return;
 }
 
