@@ -41,6 +41,7 @@ static inline void __iomem *mmdvfs_get_mmup_sram(void) { return; }
 
 #define MEM_OBJ_CNT		(2)
 #define MEM_REC_CNT		(8)
+#define MEM_OPP_CNT		(8)
 
 #define DRAM_MMUP_BASE		mmdvfs_get_mmup_base(NULL)
 #define DRAM_VCP_BASE		mmdvfs_get_vcp_base(NULL)
@@ -55,7 +56,10 @@ static inline void __iomem *mmdvfs_get_mmup_sram(void) { return; }
 #define DRAM_CMD_IDX(x)		(DRAM_VCP_BASE + 0x4 * (272 + (x))) // DRAM_CMD_NUM
 #define DRAM_CMD_SEC(x, y)	(DRAM_VCP_BASE + 0x4 * (272 + DRAM_CMD_NUM + MEM_OBJ_CNT * (MEM_REC_CNT * x + y) + 0))
 #define DRAM_CMD_VAL(x, y)	(DRAM_VCP_BASE + 0x4 * (272 + DRAM_CMD_NUM + MEM_OBJ_CNT * (MEM_REC_CNT * x + y) + 1))
-// 680
+
+/* mbrain : u64(2) * DRAM_USR_NUM * MEM_OPP_CNT = 256 */
+#define DRAM_USR_TOTAL(x, y)	(DRAM_VCP_BASE + 0x4 * (680 + MEM_OBJ_CNT * (MEM_OPP_CNT * (x) + (y))))
+// 936
 
 #define DRAM_SRAM_OFFSET	(DRAM_VCP_BASE + 0xffc)
 
@@ -94,6 +98,7 @@ enum {
 #define SRAM_CEIL_CNT		(3) // vcore, vmm, vdisp
 #define SRAM_XPC_CNT		(3) // mmpc, cpc, dpc
 #define SRAM_PROF_CNT		(9) // PROFILE_NUM
+#define SRAM_PWR_TOTAL_CNT	(4) // vcore, vmm, vdisp, cam
 
 #define SRAM_IRQ_IDX(x)		(SRAM_BASE + 4 * (0 + x))
 #define SRAM_PWR_IDX(x)		(SRAM_BASE + 4 * (5 + x))
@@ -119,7 +124,12 @@ enum {
 
 #define SRAM_PROF_SEC(x)	(SRAM_BASE + 4 * (330 + MEM_OBJ_CNT * (x) + 0))
 #define SRAM_PROF_VAL(x)	(SRAM_BASE + 4 * (330 + MEM_OBJ_CNT * (x) + 1))
-// 350
+
+/* mbrain : u64(2) * SRAM_PWR_TOTAL_CNT * MEM_OPP_CNT = 64 */
+#define SRAM_PWR_TOTAL(x, y)	(SRAM_BASE + 4 * (350 + MEM_OBJ_CNT * (MEM_OPP_CNT * (x) + (y))))
+/* mbrain : u64(2) * SRAM_XPC_CNT * MEM_OPP_CNT = 48 */
+#define SRAM_USR_TOTAL(x, y)	(SRAM_BASE + 4 * (414 + MEM_OBJ_CNT * (MEM_OPP_CNT * (x) + (y)))) //mmpc, cpc, dpc
+//462
 
 #endif
 

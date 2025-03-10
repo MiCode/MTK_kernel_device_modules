@@ -38,6 +38,7 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/misc/mediatek/smi:mtk-smi-dbg".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv:vcp_status".format(kernel_version),
         "//kernel_device_modules-{}/drivers/soc/mediatek:mtk_tinysys_ipi".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mmdvfs:mtk-mmdvfs-debug".format(kernel_version),
     ] +
     (["//kernel_device_modules-{}/drivers/misc/mediatek/vmm:mtk-vmm-notifier-mt6993".format(kernel_version)] if glob(["mmdvfs-mt6993.c"]) else ([
       "//kernel_device_modules-{}/drivers/misc/mediatek/vmm:mtk-vmm-notifier".format(kernel_version)])),
@@ -48,6 +49,7 @@ define_mgk_ddk_ko(
     ],
     copts = [
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmdvfs",
     ],
     hdrs = glob(["**/*.h"]),
     includes = ["."],

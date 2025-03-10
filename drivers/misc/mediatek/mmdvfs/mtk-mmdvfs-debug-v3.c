@@ -1001,14 +1001,13 @@ static struct mmdvfs_res_mbrain_debug_ops mmdvfs_mbrain_ops = {
 	.get_data = mmdvfs_mbrain_get_sys_res_data,
 };
 
-struct mmdvfs_res_mbrain_debug_ops *get_mmdvfs_mbrain_dbg_ops(void)
+static struct mmdvfs_res_mbrain_debug_ops *get_mmdvfs_mbrain_dbg_ops_v3(void)
 {
 	if (!MEM_BASE)
 		return NULL;
 
 	return &mmdvfs_mbrain_ops;
 }
-EXPORT_SYMBOL_GPL(get_mmdvfs_mbrain_dbg_ops);
 
 static void mmdvfs_debug_work(struct work_struct *work)
 {
@@ -1216,6 +1215,7 @@ static struct mmdvfs_debug_ops mmdvfs_debug_v3_ops = {
 	.vote_step_fp = mmdvfs_debug_v3_set_vote_step,
 	.status_dump_fp = mmdvfs_debug_v3_status_dump,
 	.force_vcore_fp = mmdvfs_debug_v3_force_vcore,
+	.mmdvfs_mbrain_fp = get_mmdvfs_mbrain_dbg_ops_v3,
 };
 
 static int mmdvfs_debug_probe(struct platform_device *pdev)

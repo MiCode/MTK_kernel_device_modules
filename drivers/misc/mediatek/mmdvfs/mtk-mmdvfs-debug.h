@@ -10,6 +10,7 @@
 
 #define MAX_OPP		(8)
 #define MMDVFS_RES_DATA_MODULE_ID	8
+#define MMDVFS_RES_USR_DATA_MODULE_ID	10
 #define MMDVFS_RES_DATA_VERSION		0
 
 struct mmdvfs_res_mbrain_header {
@@ -23,6 +24,12 @@ struct mmdvfs_opp_record {
 	uint64_t opp_duration[MAX_OPP];
 };
 
+struct mmdvfs_record_opp {
+	uint64_t sec;
+	uint64_t usec;
+	uint8_t opp;
+};
+
 enum {
 	MMDVFS_POWER_0,
 	MMDVFS_POWER_1,
@@ -31,16 +38,33 @@ enum {
 	MMDVFS_OPP_RECORD_NUM
 };
 
+enum {
+	MMDVFS_USER_0,
+	MMDVFS_USER_1,
+	MMDVFS_USER_2,
+	MMDVFS_USER_3,
+	MMDVFS_USER_4,
+	MMDVFS_USER_5,
+	MMDVFS_USER_6,
+	MMDVFS_USER_7,
+	MMDVFS_USER_8,
+	MMDVFS_USER_9,
+	MMDVFS_USER_10,
+	MMDVFS_USER_11,
+	MMDVFS_USER_12,
+	MMDVFS_USER_13,
+	MMDVFS_USER_14,
+	MMDVFS_USER_15,
+	MMDVFS_USER_OPP_RECORD_NUM
+};
+
 struct mmdvfs_res_mbrain_debug_ops {
 	unsigned int (*get_length)(void);
 	int (*get_data)(void *address, uint32_t size);
 };
 
-#if IS_ENABLED(CONFIG_MTK_MMDVFS_VCP)
 struct mmdvfs_res_mbrain_debug_ops *get_mmdvfs_mbrain_dbg_ops(void);
-#else
-static inline struct mmdvfs_res_mbrain_debug_ops *get_mmdvfs_mbrain_dbg_ops(void) { return NULL; }
-#endif
+struct mmdvfs_res_mbrain_debug_ops *get_mmdvfs_mbrain_usr_dbg_ops(void);
 void mtk_mmdvfs_debug_release_step0(void);
 void mtk_mmdvfs_debug_ulposc_enable(const bool enable);
 int mtk_mmdvfs_debug_force_vcore_notify(const u32 val);
@@ -58,6 +82,8 @@ struct mmdvfs_debug_ops {
 	int (*vote_step_fp)(const char *val, const struct kernel_param *kp);
 	int (*status_dump_fp)(struct seq_file *file);
 	int (*force_vcore_fp)(const u32 val);
+	struct mmdvfs_res_mbrain_debug_ops *(*mmdvfs_mbrain_fp)(void);
+	struct mmdvfs_res_mbrain_debug_ops *(*mmdvfs_mbrain_usr_fp)(void);
 	int (*ap_set_rate_fp)(const char *val, const struct kernel_param *kp);
 };
 void mmdvfs_debug_ops_set(struct mmdvfs_debug_ops *_ops);

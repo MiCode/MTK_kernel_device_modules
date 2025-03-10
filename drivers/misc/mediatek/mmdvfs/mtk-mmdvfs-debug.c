@@ -28,6 +28,28 @@ int mtk_mmdvfs_debug_force_vcore_notify(const u32 val)
 }
 EXPORT_SYMBOL_GPL(mtk_mmdvfs_debug_force_vcore_notify);
 
+struct mmdvfs_res_mbrain_debug_ops *get_mmdvfs_mbrain_usr_dbg_ops(void)
+{
+	if (!ops.mmdvfs_mbrain_usr_fp) {
+		pr_notice("[mmdvfs_dbg][dbg]%s:%d: without fp\n", __func__, __LINE__);
+		return NULL;
+	}
+
+	return ops.mmdvfs_mbrain_usr_fp();
+}
+EXPORT_SYMBOL_GPL(get_mmdvfs_mbrain_usr_dbg_ops);
+
+struct mmdvfs_res_mbrain_debug_ops *get_mmdvfs_mbrain_dbg_ops(void)
+{
+	if (!ops.mmdvfs_mbrain_fp) {
+		pr_notice("[mmdvfs_dbg][dbg]%s:%d: without fp\n", __func__, __LINE__);
+		return NULL;
+	}
+
+	return ops.mmdvfs_mbrain_fp();
+}
+EXPORT_SYMBOL_GPL(get_mmdvfs_mbrain_dbg_ops);
+
 int mmdvfs_debug_status_dump(struct seq_file *file)
 {
 	if (!ops.status_dump_fp) {

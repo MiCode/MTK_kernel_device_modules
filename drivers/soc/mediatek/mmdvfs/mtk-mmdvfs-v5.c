@@ -30,6 +30,7 @@
 #include "mtk-mmdebug-vcp.h"
 #include "mtk-mmdvfs-v5.h"
 
+#include "mtk-mmdvfs-debug.h"
 #include "mtk-mmdvfs-v5-memory.h"
 
 #define OPP_NAG	(-1)
@@ -154,6 +155,12 @@ inline u64 mmdvfs_user_get_freq_by_opp(const u8 idx, const s8 opp)
 	return mmdvfs_data->mux[mux].freq[lvl];
 }
 EXPORT_SYMBOL_GPL(mmdvfs_user_get_freq_by_opp);
+
+inline s8 mmdvfs_get_level_to_opp(const u8 rc, const s8 lvl)
+{
+	return OPP2LEVEL(rc, lvl);
+}
+EXPORT_SYMBOL_GPL(mmdvfs_get_level_to_opp);
 
 int mmdvfs_dump_dvfsrc_rg(void)
 {
@@ -635,9 +642,54 @@ void mmdvfs_record_cmd_user(const u8 usr, const u8 idx, const u8 lvl)
 }
 EXPORT_SYMBOL_GPL(mmdvfs_record_cmd_user);
 
+#ifndef CONFIG_64BIT
+static inline u64 readq(const void __iomem *addr)
+{
+	u32 low, high;
+
+	low = readl(addr);
+	high = readl(addr + 4);
+
+	return ((u64)high << 32) | low;
+}
+
+static inline void writeq(u64 value, void __iomem *addr)
+{
+	writel((u32)value, addr);
+	writel((u32)(value >> 32), addr + 4);
+}
+#endif
+
+static void mmdvfs_record_mbrain_data(const u8 user, const u32 rc, const u8 lvl,
+	const u64 sec, const u64 usec, const u64 us)
+{
+	static struct mmdvfs_record_opp rec[MMDVFS_USER_OPP_RECORD_NUM];
+	u64 total = 0;
+	u32 val = 0;
+	int i;
+
+	if (!rec[user].sec && !rec[user].usec) {
+		i = (readl(DRAM_USR_IDX(user)) - 1 + MEM_REC_CNT) % MEM_REC_CNT;
+		val = readl(DRAM_USR_VAL(user, i));
+		rec[user].sec = readl(DRAM_USR_SEC(user, i));
+		rec[user].usec = MEM_DEC_USEC(val);
+		rec[user].opp = OPP2LEVEL(rc, MEM_DEC_LVL(val));
+	}
+
+	if (rec[user].sec || rec[user].usec) {
+		total = readq(DRAM_USR_TOTAL(user, rec[user].opp));
+		total += (us - (rec[user].sec * 1000000 + rec[user].usec)) / 1000;
+		writeq(total, DRAM_USR_TOTAL(user, rec[user].opp));
+	}
+
+	rec[user].sec = sec;
+	rec[user].usec = usec;
+	rec[user].opp = OPP2LEVEL(rc, lvl);
+}
+
 static inline void mmdvfs_record_user(const u8 usr, const u8 idx, const u8 lvl)
 {
-	u64 ns = sched_clock(), sec = ns / 1000000000, usec = (ns / 1000) % 1000000;
+	u64 ns = sched_clock(), sec = ns / 1000000000, usec = (ns / 1000) % 1000000, us = ns / 1000;
 	u32 cnt;
 
 	if (!DRAM_VCP_BASE || usr >= DRAM_USR_NUM)
@@ -647,6 +699,9 @@ static inline void mmdvfs_record_user(const u8 usr, const u8 idx, const u8 lvl)
 	writel(sec, DRAM_USR_SEC(usr, cnt));
 	writel(MEM_ENC_VAL(idx, lvl, usec), DRAM_USR_VAL(usr, cnt));
 	writel((cnt + 1) % MEM_REC_CNT, DRAM_USR_IDX(usr));
+
+	//only record real user
+	mmdvfs_record_mbrain_data(usr, idx, lvl, sec, usec, us);
 }
 
 static int mmdvfs_set_rate(struct clk_hw *hw, unsigned long rate, unsigned long parent_rate)
