@@ -479,7 +479,6 @@ dump:
 
 	engine_get_reg_status(ctrl, NULL);
 	dump_fifo_idx(hwz, NULL, 0);
-	engine_gear_get_status(&hwz->gear_ctrl, NULL);
 
 	/*
 	 * Try to restore
