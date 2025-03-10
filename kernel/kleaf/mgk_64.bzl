@@ -566,6 +566,7 @@ mgk_64_kleaf_device_modules_srcs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/performance/sbe:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/ssc:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/performance/fpsgo_v8:ddk_srcs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/performance/fpsgo_v3:ddk_srcs".format(kernel_version),
 ]
 
 mgk_64_kleaf_device_modules_kconfigs = [
@@ -1325,6 +1326,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/sched:scheduler".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/performance/sbe:mtk_sbe".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/performance/fpsgo_v8:mtk_fpsgo_v8".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/performance/fpsgo_v3:mtk_fpsgo_v3".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/sched:mtk_core_ctl".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/ssc:mtk-ssc".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/ssc/debug/v1:mtk-ssc-dbg-v1".format(kernel_version),
@@ -1678,7 +1680,7 @@ mgk_64_device_modules = [
     # "drivers/misc/mediatek/cg_ppt/mtk_cg_peak_power_throttling.ko",
     #"drivers/misc/mediatek/perf_common/mtk_perf_common.ko",
     #"drivers/misc/mediatek/performance/fpsgo_v8/mtk_fpsgo_v8.ko",
-    "drivers/misc/mediatek/performance/fpsgo_v3/mtk_fpsgo_v3.ko",
+    #"drivers/misc/mediatek/performance/fpsgo_v3/mtk_fpsgo_v3.ko",
     "drivers/misc/mediatek/performance/frs/frs.ko",
     #"drivers/misc/mediatek/performance/sbe/mtk_sbe.ko",
     "drivers/misc/mediatek/pkvm_mgmt/pkvm_mgmt.ko",
