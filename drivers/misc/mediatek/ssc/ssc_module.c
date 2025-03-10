@@ -390,7 +390,7 @@ static int __init ssc_init(void)
 		pr_info("[SSC] get SCMI info fail\n");
 		goto SKIP_SCMI;
 	}
-	ret = of_property_read_u32(tinfo->sdev->dev.of_node, "scmi_ssc", &ssc_scmi_feature_id);
+	ret = of_property_read_u32(tinfo->sdev->dev.of_node, "scmi-ssc", &ssc_scmi_feature_id);
 
 	pr_info("[SSC] ssc scmi id = %d\n", ssc_scmi_feature_id);
 
