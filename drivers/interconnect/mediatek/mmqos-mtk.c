@@ -2608,9 +2608,9 @@ int mtk_mmqos_v2_probe(struct platform_device *pdev)
 			of_property_read_u32(pdev->dev.of_node,
 				"mmpc-total-pmqos-bw", &gmmqos->mmpc_total_pmqos_bw);
 			of_property_read_u32(pdev->dev.of_node, "mminfra-base", &mminfra_base_tmp);
-			of_property_read_u32(pdev->dev.of_node, "hfrp-base", &hfrp_base_temp);
+			if (!of_property_read_u32(pdev->dev.of_node, "hfrp-base", &hfrp_base_temp))
+				gmmqos->hfrp_base = ioremap(hfrp_base_temp, 0x1000);
 			gmmqos->mminfra_base = ioremap(mminfra_base_tmp, 0x1000);
-			gmmqos->hfrp_base = ioremap(hfrp_base_temp, 0x1000);
 			MMQOS_DBG("vmmrc base=%#x, range=%#x, mask=%#x, sw_en=%#x, on table=%#x, mminfra_base=%#x",
 				base_tmp, range, gmmqos->apmcu_mask_offset, gmmqos->mmpc_sw_en_all_on,
 				gmmqos->apmcu_on_bw_offset, mminfra_base_tmp);
