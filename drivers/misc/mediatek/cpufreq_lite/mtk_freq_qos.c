@@ -19,7 +19,7 @@
 #include "mtk_freq_qos.h"
 
 #define DEBUG 0
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 7, 0))
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(6, 13, 0))
 #define FREQ_QOS_VH_EXISTS 1
 #else
 #define FREQ_QOS_VH_EXISTS 0
@@ -29,10 +29,37 @@
 #include <trace/hooks/power.h>
 #endif
 
+static DEFINE_SPINLOCK(mtk_freq_qos_buf_lock);
 static DECLARE_HASHTABLE(mtk_freq_qos_ht, FREQ_QOS_HT_SHIFT_BIT);
 static struct mtk_freq_qos_req *mtk_freq_req;
 static struct control_mapping *control_group_master;
 struct cpufreq_policy *ptr_cpufreq_policy[MAX_NR_POLICY];
+static struct mtk_freq_qos_circ_buf circ_buf;
+static char *record_type_str[3] = {"ADD", "UPDATE", "REMOVE"};
+
+static void mtk_freq_qos_write_buf(struct mtk_freq_qos_data *freq_req, int type)
+{
+	struct mtk_freq_qos_record *record;
+	unsigned long flags;
+
+	spin_lock_irqsave(&mtk_freq_qos_buf_lock, flags);
+	record = &circ_buf.buf[circ_buf.head];
+	circ_buf.head = (circ_buf.head + 1) & (FREQ_QOS_CIRC_BUF_SIZE - 1);
+	if (circ_buf.tail == circ_buf.head)
+		circ_buf.tail = (circ_buf.tail + 1) & (FREQ_QOS_CIRC_BUF_SIZE - 1);
+	spin_unlock_irqrestore(&mtk_freq_qos_buf_lock, flags);
+
+	strscpy(record->caller_info1, freq_req->caller_info1, sizeof(record->caller_info1));
+	strscpy(record->caller_info2, freq_req->caller_info2, sizeof(record->caller_info2));
+	record->min_value = freq_req->min_value;
+	record->max_value = freq_req->max_value;
+	if (type == FREQ_QOS_REMOVE)
+		record->ts = jiffies;
+	else
+		record->ts = freq_req->last_update;
+	record->cpu = freq_req->cpu;
+	record->type = type;
+}
 
 static struct mtk_freq_qos_data *find_and_update_req_data(
 	struct freq_qos_request *req, int value)
@@ -136,6 +163,7 @@ static void find_and_remove_req_data(struct freq_qos_request *req)
 			cpu = cpumask_last(policy->related_cpus);
 			cpufreq_cpu_put(policy);
 		}
+		mtk_freq_qos_write_buf(freq_req, FREQ_QOS_REMOVE);
 		kfree(freq_req);
 		pr_info("%s: freq_req %lu removed\n", __func__, (unsigned long)req);
 	} else
@@ -198,6 +226,7 @@ void mtk_freq_qos_add_request(void *data, struct freq_constraints *qos,
 		mtk_freq_req[policy_idx].last_max_req = freq_req;
 
 	freq_req->last_update = jiffies;
+	mtk_freq_qos_write_buf(freq_req, FREQ_QOS_ADD);
 #if DEBUG
 	pr_info("%s: %lu: %s: cpu: %d, t: %lu, Add done\n",
 		__func__, (unsigned long)freq_req->req, freq_req->caller_info2,
@@ -242,6 +271,7 @@ void mtk_freq_qos_update_request(void *data, struct freq_qos_request *req, int v
 		mtk_freq_req[policy_idx].last_max_req = freq_req;
 
 	freq_req->last_update = jiffies;
+	mtk_freq_qos_write_buf(freq_req, FREQ_QOS_UPDATE);
 #if DEBUG
 	if (req->type == FREQ_QOS_MIN)
 		pr_info("%s: %d: %lu: key: %lu, freq_req: %lu, min_key: %lu",
@@ -275,7 +305,9 @@ static int mtk_freq_qos_notifier_min(struct notifier_block *nb,
 
 	cur_req = *(container_of(nb, struct mtk_freq_qos_req, nb_min));
 	if (!cur_req.last_min_req) {
+#if DEBUG
 		pr_info("%s: No last req\n", __func__);
+#endif
 		return 0;
 	}
 
@@ -295,7 +327,9 @@ static int mtk_freq_qos_notifier_max(struct notifier_block *nb,
 
 	cur_req = *(container_of(nb, struct mtk_freq_qos_req, nb_max));
 	if (!cur_req.last_max_req) {
+#if DEBUG
 		pr_info("%s: No last req\n", __func__);
+#endif
 		return 0;
 	}
 
@@ -361,7 +395,9 @@ static int mtk_freq_limit_notifier_register(void) {
 	int cpu, policy_idx = 0, ret = 0, nr_policy = 0;
 
 	nr_policy = get_nr_policy();
+#if DEBUG
 	pr_info("%s: nr_policy: %d\n", __func__, nr_policy);
+#endif
 	mtk_freq_req = kcalloc(nr_policy, sizeof(struct mtk_freq_qos_req), GFP_KERNEL);
 	if (!mtk_freq_req) {
 		pr_info("%s: Failed to allocate memory for mtk_freq_req.\n", __func__);
@@ -374,7 +410,9 @@ static int mtk_freq_limit_notifier_register(void) {
 			continue;
 
 		policy_idx = control_group_master[cpu].policy_idx;
+#if DEBUG
 		pr_info("%s: cpu%d: policy_idx: %d\n", __func__, cpu, policy_idx);
+#endif
 		mtk_freq_req[policy_idx].nb_min.notifier_call
 			= mtk_freq_qos_notifier_min;
 		mtk_freq_req[policy_idx].nb_max.notifier_call
@@ -763,10 +801,10 @@ static int freq_req_tbl_proc_show(struct seq_file *m, void *v)
 	int key;
 	unsigned long cur_time = jiffies;
 
-	seq_printf(m, "%10s, %10s, %10s, %2s, %21s, %45s, %60s\n",
+	seq_printf(m, "%10s, %10s, %10s, %3s, %21s, %45s, %60s\n",
 				"Request", "Min Value", "Max Value", "CPU", "Last Time(ms)", "Caller1", "Caller2");
 	hash_for_each(mtk_freq_qos_ht, key, cur_req, req_node) {
-		seq_printf(m, "%10p, %10d, %10d, %2d, %21d, %45s, %60s\n",
+		seq_printf(m, "%10p, %10d, %10d, %3d, %21d, %45s, %60s\n",
 				(void *)cur_req->req,
 				cur_req->min_value, cur_req->max_value,
 				cur_req->cpu, jiffies_to_msecs(cur_time - cur_req->last_update),
@@ -776,6 +814,46 @@ static int freq_req_tbl_proc_show(struct seq_file *m, void *v)
 	return 0;
 }
 PROC_FOPS_RO(freq_req_tbl);
+
+/*
+ * Dump freq QoS request record from circular buffer
+ */
+static void print_record(struct seq_file *m, int i, unsigned long cur_time)
+{
+	seq_printf(m, "%10s, %10d, %10d, %3d, %21d, %45s, %60s\n",
+			record_type_str[circ_buf.buf[i].type],
+			circ_buf.buf[i].min_value,
+			circ_buf.buf[i].max_value,
+			circ_buf.buf[i].cpu,
+			jiffies_to_msecs(cur_time - circ_buf.buf[i].ts),
+			circ_buf.buf[i].caller_info1,
+			circ_buf.buf[i].caller_info2);
+}
+static int freq_req_buf_proc_show(struct seq_file *m, void *v)
+{
+	int i;
+	unsigned long cur_time = jiffies;
+
+	seq_printf(m, "%10s, %10s, %10s, %3s, %21s, %45s, %60s\n",
+				"Type", "Min Value", "Max Value", "CPU", "Last Time(ms)", "Caller1", "Caller2");
+	if (circ_buf.tail == circ_buf.head) {
+		// buffer empty
+		return 0;
+	} else if (circ_buf.tail < circ_buf.head) {
+		// buffer not full
+		for (i = circ_buf.tail; i < circ_buf.head; i++)
+			print_record(m, i, cur_time);
+	} else {
+		// buffer full
+		for (i = circ_buf.tail; i < FREQ_QOS_CIRC_BUF_SIZE; i++)
+			print_record(m, i, cur_time);
+		for (i = 0; i < circ_buf.head; i++)
+			print_record(m, i, cur_time);
+	}
+
+	return 0;
+}
+PROC_FOPS_RO(freq_req_buf);
 
 static void create_debug_fs(void)
 {
@@ -795,6 +873,7 @@ static void create_debug_fs(void)
 		PROC_ENTRY(max_dominant),
 		PROC_ENTRY(freq_req),
 		PROC_ENTRY(freq_req_tbl),
+		PROC_ENTRY(freq_req_buf),
 	};
 
 	freq_dir = proc_mkdir("mtk_freq_qos", NULL);
@@ -820,10 +899,19 @@ int mtk_freq_qos_init(void)
 		return -ENOMEM;
 	}
 
+	circ_buf.buf = kcalloc(FREQ_QOS_CIRC_BUF_SIZE, sizeof(struct mtk_freq_qos_record), GFP_KERNEL);
+	if (!circ_buf.buf) {
+		pr_info("%s: Failed to allocate circ_buf.buf\n", __func__);
+		ret = -ENOMEM;
+		goto err_free_mem_master;
+	}
+	circ_buf.head = 0;
+	circ_buf.tail = 0;
+
 	ret = mtk_freq_limit_notifier_register();
 	if (ret) {
 		pr_info("%s: failed to register notifier\n", __func__);
-		goto err_free_mem;
+		goto err_free_mem_buf;
 	}
 
 #if FREQ_QOS_VH_EXISTS
@@ -831,21 +919,21 @@ int mtk_freq_qos_init(void)
 	if (ret) {
 		pr_info("register android_vh_freq_qos_add_request failed\n");
 		ret = -EINVAL;
-		goto err_free_mem;
+		goto err_free_mem_buf;
 	}
 
 	ret = register_trace_android_vh_freq_qos_update_request(mtk_freq_qos_update_request, NULL);
 	if (ret) {
 		pr_info("register android_vh_freq_qos_update_request failed\n");
 		ret = -EINVAL;
-		goto err_free_mem;
+		goto err_free_mem_buf;
 	}
 
 	ret = register_trace_android_vh_freq_qos_remove_request(mtk_freq_qos_remove_request, NULL);
 	if (ret) {
 		pr_info("register android_vh_freq_qos_remove_request failed\n");
 		ret = -EINVAL;
-		goto err_free_mem;
+		goto err_free_mem_buf;
 	}
 #endif
 
@@ -854,7 +942,9 @@ int mtk_freq_qos_init(void)
 
 	return 0;
 
-err_free_mem:
+err_free_mem_buf:
+	kfree(circ_buf.buf);
+err_free_mem_master:
 	kfree(control_group_master);
 
 	return ret;

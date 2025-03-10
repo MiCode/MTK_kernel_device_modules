@@ -40,6 +40,28 @@ struct control_mapping {
     int policy_idx;
 };
 
+enum mtk_freq_qos_record_type {
+	FREQ_QOS_ADD,
+	FREQ_QOS_UPDATE,
+	FREQ_QOS_REMOVE,
+};
+
+struct mtk_freq_qos_record {
+	char caller_info1[KSYM_SYMBOL_LEN];
+	char caller_info2[KSYM_SYMBOL_LEN];
+	s32 min_value;
+	s32 max_value;
+	unsigned long ts;
+	unsigned int cpu;
+	int type;
+};
+
+struct mtk_freq_qos_circ_buf {
+	struct mtk_freq_qos_record *buf;
+	int head;
+	int tail;
+};
+
 void mtk_freq_qos_add_request(void *data, struct freq_constraints *qos,
     struct freq_qos_request * req, enum freq_qos_req_type type,
     int value, int ret);
@@ -51,3 +73,4 @@ int mtk_freq_qos_init(void);
 #define FREQ_QOS_HT_SHIFT_BIT    6 /* 64 */
 #define FREQ_QOS_HT_SZ           BIT(FREQ_QOS_HT_SHIFT_BIT)
 #define MAX_NR_POLICY            8
+#define FREQ_QOS_CIRC_BUF_SIZE   64
