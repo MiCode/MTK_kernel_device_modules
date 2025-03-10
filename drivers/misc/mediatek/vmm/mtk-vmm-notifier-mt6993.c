@@ -282,12 +282,28 @@ static int vmm_locked_buck_ctrl(bool enable)
 
 int mtk_vmm_ctrl_dbg_use(bool enable)
 {
-	int ret = 0;
+	int vote_val;
+	int ret;
 
-	mutex_lock(&ctrl_mutex);
-	ISP_LOGI("dbg_use en: %u\n", enable);
-	ret = vmm_locked_buck_ctrl(enable);
-	mutex_unlock(&ctrl_mutex);
+	ISP_LOGI("[%s][%d] vmm mtk_vmm_ctrl_dbg_use[%u]", __func__, __LINE__, enable);
+
+	vote_val = MUX_PARSE_VOTE(0, enable);
+	ISP_LOGI("vote: 0x%0x", vote_val);
+	ret = hwccf_irq_multi_voter_ctrl(MM_HWCCF, HW_CCF_BACKUP_GRP_0, HWCCF_VOTE,
+					vote_val | BIT(VMM_DBG_EN_BIT));
+	if (ret) {
+		ISP_LOGE("HWCCF_voter_ctrl fail, ret: %d", ret);
+		clkchk_external_dump();
+	}
+
+	vote_val = MUX_PARSE_UNVOTE(enable, 0);
+	ISP_LOGI("unvote: 0x%0x", vote_val);
+	ret = hwccf_irq_multi_voter_ctrl(MM_HWCCF, HW_CCF_BACKUP_GRP_0, HWCCF_UNVOTE,
+					vote_val | BIT(VMM_DBG_EN_BIT));
+	if (ret) {
+		ISP_LOGE("HWCCF_voter_ctrl fail, ret: %d", ret);
+		clkchk_external_dump();
+	}
 
 	return ret;
 }
