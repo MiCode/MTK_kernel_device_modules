@@ -324,6 +324,7 @@ void engine_dec_init(struct engine_control_t *ctrl, bool src_snoop);
 void engine_setup_enc_main_fifo(struct engine_control_t *ctrl, phys_addr_t addr, unsigned int sz_bits);
 void engine_setup_enc_second_fifo(struct engine_control_t *ctrl, phys_addr_t addr, unsigned int sz_bits);
 void engine_setup_dec_fifo(struct engine_control_t *ctrl, unsigned int id, phys_addr_t addr, unsigned int sz_bits);
+void engine_reset_all_indices(struct engine_control_t *ctrl);
 
 void engine_enc_debug_sel(struct engine_control_t *ctrl, uint32_t reg_val);
 void engine_enc_debug_show(struct engine_control_t *ctrl);

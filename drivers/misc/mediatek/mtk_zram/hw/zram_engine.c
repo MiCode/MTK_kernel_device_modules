@@ -2037,6 +2037,10 @@ static int zram_engine_setup_fifos(struct zram_engine_t *hwz, bool reset_idx)
 		}
 	}
 
+	/* Reset engine all fifo indices */
+	if (reset_idx)
+		engine_reset_all_indices(&hwz->ctrl);
+
 	/* Setup fifos successfully. */
 	return 0;
 

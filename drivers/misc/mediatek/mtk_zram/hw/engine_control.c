@@ -724,6 +724,62 @@ void engine_setup_dec_fifo(struct engine_control_t *ctrl, unsigned int id, phys_
 	pr_info("%s: ID(%u) REG(%lx) VAL(%x)\n", __func__, id, (unsigned long)reg, (uint32_t)reg_val);
 }
 
+static void engine_reset_enc_indices(struct engine_control_t *ctrl)
+{
+	/* Do warm reset & wait for idle */
+	engine_enc_reset(ctrl);
+	engine_enc_wait_idle(ctrl);
+
+	/* 1. Change to offset index mode */
+	zram_writel(0x1, ctrl->zram_enc_base + ZRAM_ENC_CONTROL);
+
+	/* 2. Update offset indices */
+	zram_writel(0x0, ctrl->zram_enc_base + ZRAM_ENC_CMD_MAIN_FIFO_OFFSET_INDEX);
+	zram_writel(0x0, ctrl->zram_enc_base + ZRAM_ENC_CMD_MAIN_FIFO_WRITE_INDEX);
+	zram_writel(0x0, ctrl->zram_enc_base + ZRAM_ENC_CMD_SECOND_FIFO_OFFSET_INDEX);
+	zram_writel(0x0, ctrl->zram_enc_base + ZRAM_ENC_CMD_SECOND_FIFO_WRITE_INDEX);
+
+	/* 3. Engine start */
+	zram_writel(ENGINE_START_MASK, ctrl->zram_enc_base + ZRAM_ENC_CMD_MAIN_FIFO_WRITE_INDEX);
+	engine_enc_wait_idle(ctrl);
+
+	/* 4. Back to complete index mode */
+	zram_writel(0x0, ctrl->zram_enc_base + ZRAM_ENC_CONTROL);
+	engine_enc_wait_idle(ctrl);
+}
+
+static void engine_reset_dec_indices(struct engine_control_t *ctrl)
+{
+	int i;
+
+	/* Do warm reset & wait for idle */
+	engine_dec_reset(ctrl);
+	engine_dec_wait_idle(ctrl);
+
+	/* 1. Change to offset index mode */
+	zram_writel(0x1, ctrl->zram_dec_base + ZRAM_DEC_CONTROL);
+
+	/* 2. Update offset indices */
+	for (i = 0; i < MAX_DCOMP_NR; i++) {
+		zram_writel(0x0, ctrl->zram_dec_base + ZRAM_DEC_CMD_FIFO_0_OFFSET_INDEX + (i * 4));
+		zram_writel(0x0, ctrl->zram_dec_base + ZRAM_DEC_CMD_FIFO_0_WRITE_INDEX + (i * 4));
+	}
+
+	/* 3. Engine start */
+	zram_writel(ENGINE_START_MASK, ctrl->zram_dec_base + ZRAM_DEC_CMD_FIFO_0_WRITE_INDEX);
+	engine_dec_wait_idle(ctrl);
+
+	/* 4. Back to complete index mode */
+	zram_writel(0x0, ctrl->zram_dec_base + ZRAM_DEC_CONTROL);
+	engine_dec_wait_idle(ctrl);
+}
+
+void engine_reset_all_indices(struct engine_control_t *ctrl)
+{
+	engine_reset_enc_indices(ctrl);
+	engine_reset_dec_indices(ctrl);
+}
+
 void engine_enc_debug_sel(struct engine_control_t *ctrl, uint32_t reg_val)
 {
 	void __iomem *reg = ctrl->zram_enc_base + ZRAM_ENC_DEBUG_CON;
