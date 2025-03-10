@@ -1290,7 +1290,6 @@ static void mtk_disp_spr_config_overhead_v(struct mtk_ddp_comp *comp,
 
 int mtk_spr_check_postalign_status(struct mtk_drm_crtc *mtk_crtc)
 {
-	struct mtk_drm_private *priv;
 	struct mtk_ddp_comp *postalign_comp;
 	unsigned int postalign_cfg;
 	void __iomem *baddr;
@@ -1298,19 +1297,16 @@ int mtk_spr_check_postalign_status(struct mtk_drm_crtc *mtk_crtc)
 	if(!mtk_crtc)
 		return -1;
 
-	priv = mtk_crtc->base.dev->dev_private;
-	if(priv == NULL)
+	postalign_comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_POSTALIGN, 0);
+	if (!postalign_comp)
 		return -1;
-	if(priv->data->mmsys_id == MMSYS_MT6989 ||
-		priv->data->mmsys_id == MMSYS_MT6991) {
-		postalign_comp = priv->ddp_comp[DDP_COMPONENT_POSTALIGN0];
-		baddr = postalign_comp->regs;
-		postalign_cfg = readl(baddr + MT6989_DISP_REG_POSTALIGN0_CFG);
-		if(postalign_cfg&MT6989_RELAY_MODE)
-			return 1;
-		else
-			return 0;
-	}
+	baddr = postalign_comp->regs;
+	postalign_cfg = readl(baddr + MT6989_DISP_REG_POSTALIGN0_CFG);
+	if(postalign_cfg & MT6989_RELAY_MODE)
+		return 1;
+	else
+		return 0;
+
 	return -1;
 }
 

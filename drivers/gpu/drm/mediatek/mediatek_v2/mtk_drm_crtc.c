@@ -3395,6 +3395,21 @@ int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level,
 	return ret;
 }
 
+static void mtk_drm_spr_notify(struct drm_crtc *crtc, struct cmdq_pkt *handle,
+	unsigned int spr_status)
+{
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_ddp_comp *comp = NULL;
+
+	DDPINFO("%s: spr_status=%d\n", __func__, spr_status);
+	atomic_set(&mtk_crtc->get_data_type, DBI_GET_RAW_TYPE_FRAME_NUM);
+	comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_DBI_COUNT, 0);
+	if (!comp)
+		return;
+	mtk_ddp_comp_io_cmd(comp, handle, DISP_SPR_SWITCH, &spr_status);
+}
+
 static void mtk_drm_spr_switch_cb(struct cmdq_cb_data data)
 {
 	struct mtk_cmdq_cb_data *cb_data = data.data;
@@ -3430,10 +3445,6 @@ int mtk_drm_switch_spr(struct drm_crtc *crtc, unsigned int en,
 		goto out;
 	}
 
-	/* if spr need switch, must notify dbi firstly */
-	if(params && params->is_support_dbi)
-		atomic_set(&mtk_crtc->get_data_type, DBI_GET_RAW_TYPE_FRAME_NUM);
-
 	mtk_state = to_mtk_crtc_state(crtc->state);
 	if (!crtc->state->active &&
 		mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE]) {
@@ -3446,6 +3457,7 @@ int mtk_drm_switch_spr(struct drm_crtc *crtc, unsigned int en,
 
 	if (!(mtk_crtc->enabled)) {
 		mtk_crtc->spr_is_on = en;
+		mtk_drm_spr_notify(crtc, NULL, en);
 		ret = -EINVAL;
 		goto out;
 	}
@@ -3497,6 +3509,7 @@ int mtk_drm_switch_spr(struct drm_crtc *crtc, unsigned int en,
 			}
 
 			mtk_crtc->spr_is_on = en;
+			mtk_drm_spr_notify(crtc, cmdq_handle, en);
 			mtk_crtc->spr_switch_type = params->spr_params.spr_switch_type;
 			if (mtk_crtc->spr_switch_type == SPR_SWITCH_TYPE1) {
 				if (mtk_crtc_with_sub_path(crtc, mtk_crtc->ddp_mode))
@@ -3547,6 +3560,7 @@ int mtk_drm_switch_spr(struct drm_crtc *crtc, unsigned int en,
 		if (params && params->spr_params.enable == 1 &&
 			params->spr_params.relay == 0) {
 			mtk_crtc->spr_is_on = en;
+			mtk_drm_spr_notify(crtc, handle, en);
 			mtk_crtc->spr_switch_type = params->spr_params.spr_switch_type;
 			if (mtk_crtc->spr_switch_type == SPR_SWITCH_TYPE1) {
 				if (mtk_crtc_with_sub_path(crtc, mtk_crtc->ddp_mode))
