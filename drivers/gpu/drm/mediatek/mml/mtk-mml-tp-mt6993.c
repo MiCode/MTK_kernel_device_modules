@@ -638,6 +638,14 @@ static inline bool engine_input(u32 id)
 		id == MML1_DLI0;
 }
 
+static inline bool engine_input_dma(u32 id)
+{
+	return id == MML2_RDMA1 ||
+		id == MML2_RROT0 ||
+		id == MML2_RROT1 ||
+		id == MML1_RDMA2;
+}
+
 /* check if engine is output dma engine */
 static inline bool engine_output(u32 id)
 {
@@ -666,7 +674,7 @@ static inline bool engine_region_pq(u32 id)
 /* check if engine is dma engine */
 static inline bool engine_dma(u32 id)
 {
-	return engine_input(id) || engine_output(id) || id == MML0_FG0;
+	return engine_input_dma(id) || engine_output(id) || id == MML0_FG0;
 }
 
 static inline bool engine_tdshp(u32 id)

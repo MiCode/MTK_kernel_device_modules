@@ -246,8 +246,8 @@ struct mml_sys {
 
 	/* store the bit to enable aid_sel for specific component */
 	u16 aid_sel_regs[MML_MAX_AID_COMPS];
-	u16 aid_sel_reg_bit[MML_MAX_AID_COMPS];
-	u16 aid_sel_reg_mask[MML_MAX_AID_COMPS];
+	u32 aid_sel_reg_bit[MML_MAX_AID_COMPS];
+	u32 aid_sel_reg_mask[MML_MAX_AID_COMPS];
 	u8 aid_sel[MML_MAX_COMPONENTS];
 
 	/* register for racing mode select ready signal */
@@ -709,7 +709,7 @@ static void sys_config_aid_sel_bits(struct mml_comp *comp, struct mml_task *task
 
 	for (i = 0; i < path->aid_eng_cnt; i++) {
 		u8 aid_idx = sys->aid_sel[path->aid_engine_ids[i]];
-		u16 aid_bit = cfg->info.src.secure ? sys->aid_sel_reg_bit[aid_idx] : 0;
+		u32 aid_bit = cfg->info.src.secure ? sys->aid_sel_reg_bit[aid_idx] : 0;
 
 		cmdq_pkt_write(pkt, NULL, comp->base_pa + sys->aid_sel_regs[aid_idx],
 			aid_bit, sys->aid_sel_reg_mask[aid_idx]);
@@ -727,7 +727,7 @@ static void sys_config_aid_sel_bits_sys(struct mml_comp *comp, struct mml_task *
 
 	for (i = 0; i < path->aid_engine_sys[comp->sysid].cnt; i++) {
 		u8 aid_idx = sys->aid_sel[path->aid_engine_sys[comp->sysid].ids[i]];
-		u16 aid_bit = cfg->info.src.secure ? sys->aid_sel_reg_bit[aid_idx] : 0;
+		u32 aid_bit = cfg->info.src.secure ? sys->aid_sel_reg_bit[aid_idx] : 0;
 
 		cmdq_pkt_write(pkt, NULL, comp->base_pa + sys->aid_sel_regs[aid_idx],
 			aid_bit, sys->aid_sel_reg_mask[aid_idx]);
@@ -1806,8 +1806,8 @@ static int sys_comp_init(struct device *dev, struct mml_sys *sys,
 			}
 			sys->aid_sel[comp_id] = (u8)i / 4;
 			sys->aid_sel_regs[i / 4] = (u16)value;
-			sys->aid_sel_reg_bit[i / 4] = (u16)selbit;
-			sys->aid_sel_reg_mask[i / 4] = (u16)selmask;
+			sys->aid_sel_reg_bit[i / 4] = selbit;
+			sys->aid_sel_reg_mask[i / 4] = selmask;
 		}
 	} else if (sys->data->aidsel_mode == MML_AIDSEL_ENGINE) {
 		cnt = of_property_count_u32_elems(node, "aid-sel-engine");
