@@ -19502,8 +19502,21 @@ void mtk_drm_crtc_plane_update(struct drm_crtc *crtc, struct drm_plane *plane,
 	/* following statement is for disable all layers during suspend */
 
 		if (mtk_crtc->is_dual_pipe) {
-			struct mtk_plane_state plane_state_l;
-			struct mtk_plane_state plane_state_r;
+			struct mtk_plane_state *plane_state_l = NULL;
+			struct mtk_plane_state *plane_state_r = NULL;
+
+			plane_state_l = kzalloc(sizeof(struct mtk_plane_state), GFP_KERNEL);
+			if (plane_state_l == NULL) {
+				DDPPR_ERR("%s: allocate plane_state_l fail\n", __func__);
+				return;
+			}
+
+			plane_state_r = kzalloc(sizeof(struct mtk_plane_state), GFP_KERNEL);
+			if (plane_state_r == NULL) {
+				DDPPR_ERR("%s: allocate plane_state_r fail\n", __func__);
+				kfree(plane_state_l);
+				return;
+			}
 
 			if (plane_state->comp_state.comp_id == 0) {
 				if (comp)
@@ -19513,20 +19526,26 @@ void mtk_drm_crtc_plane_update(struct drm_crtc *crtc, struct drm_plane *plane,
 			}
 
 			mtk_drm_layer_dispatch_to_dual_pipe(mtk_crtc, priv->data->mmsys_id,
-				plane_state, &plane_state_l, &plane_state_r,
+				plane_state, plane_state_l, plane_state_r,
 				crtc->state->adjusted_mode.hdisplay);
 
-			comp = priv->ddp_comp[plane_state_r.comp_state.comp_id];
+			comp = priv->ddp_comp[plane_state_r->comp_state.comp_id];
 			mtk_ddp_comp_layer_config(comp, plane_index,
-						&plane_state_r, cmdq_handle);
+						plane_state_r, cmdq_handle);
 			DDPINFO("%s+D comp_id:%d, comp_id:%d\n",
 				__func__, comp->id,
-				plane_state_r.comp_state.comp_id);
+				plane_state_r->comp_state.comp_id);
 
-			comp = mtk_crtc_get_plane_comp(crtc, &plane_state_l);
+			comp = mtk_crtc_get_plane_comp(crtc, plane_state_l);
 
-			mtk_ddp_comp_layer_config(comp, plane_index, &plane_state_l,
+			mtk_ddp_comp_layer_config(comp, plane_index, plane_state_l,
 						  cmdq_handle);
+			DDPINFO("%s+D comp_id:%d, comp_id:%d\n",
+				__func__, comp->id,
+				plane_state_l->comp_state.comp_id);
+
+			kfree(plane_state_l);
+			kfree(plane_state_r);
 		}  else {
 			comp = mtk_crtc_get_plane_comp(crtc, plane_state);
 

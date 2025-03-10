@@ -497,7 +497,7 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 	unsigned int plane_index = to_crtc_plane_index(plane->index);
 	bool skip_update = 0;
 	unsigned int crtc_index = 0;
-	char dbg_msg[512] = {0};
+	char *dbg_msg = NULL;
 	int written = 0;
 	bool plane_visible = plane->state->visible;
 	struct total_tile_overhead_v to_v_info;
@@ -523,10 +523,7 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 	}
 
 	if (mtk_disp_get_dump_prop_enable()) {
-		int i = 0;
-		int written = 0;
-		char *dbg_msg = NULL;
-
+		written = 0;
 		dbg_msg = kzalloc(1024, GFP_KERNEL);
 		if (dbg_msg) {
 			written = scnprintf(dbg_msg, 1024,
@@ -756,12 +753,19 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 		mtk_plane_state->pending.mml_mode);
 
 	if (mtk_disp_get_logger_enable()){
-		written = scnprintf(dbg_msg, 512, "prop_val:");
-		for (i = 0; i < PLANE_PROP_MAX; i++) {
-			written += scnprintf(dbg_msg + written, 512 - written, "[%d]%d ",
-						i, (unsigned int)mtk_plane_state->pending.prop_val[i]);
+		written = 0;
+		dbg_msg = kzalloc(512, GFP_KERNEL);
+		if (dbg_msg) {
+			written = scnprintf(dbg_msg, 512, "prop_val:");
+			for (i = 0; i < PLANE_PROP_MAX; i++) {
+				written += scnprintf(dbg_msg + written, 512 - written, "[%d]%d ",
+							i, (unsigned int)mtk_plane_state->pending.prop_val[i]);
+			}
+			DDPINFO("%s\n", dbg_msg);
+			kfree(dbg_msg);
+		} else {
+			DDPPR_ERR("%s: Failed to allocate prop dbg msg\n");
 		}
-		DDPINFO("%s\n", dbg_msg);
 	}
 
 	if (use_union_fence) {
