@@ -77,6 +77,21 @@ static ssize_t mnoc_cmd_qos_start_store(struct device *dev,
 {
 	unsigned int cmd_id, sub_cmd_id;
 	unsigned int dev_type, devcore, boost;
+	char meta_buf[256] = {0};
+	int ret = 0;
+
+	if (count + 1 >= 256) {
+		LOG_ERR("User input too large %zu\n", count);
+		return -EINVAL;
+	}
+
+	ret = copy_from_user(meta_buf, buf, count);
+	if (ret) {
+		LOG_ERR("copy_from_user failed (%d)\n", ret);
+		return ret;
+	}
+
+	meta_buf[count] = '\0';
 
 	if (sscanf(buf, "%d %d %d %d %d", &cmd_id, &sub_cmd_id,
 		&dev_type, &devcore, &boost) == 4) {
@@ -109,6 +124,21 @@ static ssize_t mnoc_cmd_qos_suspend_store(struct device *dev,
 {
 	unsigned int cmd_id, sub_cmd_id;
 	unsigned int dev_type, devcore;
+	char meta_buf[256] = {0};
+	int ret = 0;
+
+	if (count + 1 >= 256) {
+		LOG_ERR("User input too large %zu\n", count);
+		return -EINVAL;
+	}
+
+	ret = copy_from_user(meta_buf, buf, count);
+	if (ret) {
+		LOG_ERR("copy_from_user failed (%d)\n", ret);
+		return ret;
+	}
+
+	meta_buf[count] = '\0';
 
 	if (sscanf(buf, "%d %d %d %d", &cmd_id, &sub_cmd_id,
 		   &dev_type, &devcore) == 4) {
@@ -140,6 +170,21 @@ static ssize_t mnoc_cmd_qos_end_store(struct device *dev,
 {
 	unsigned int cmd_id, sub_cmd_id;
 	unsigned int dev_type, devcore;
+	char meta_buf[256] = {0};
+	int ret = 0;
+
+	if (count + 1 >= 256) {
+		LOG_ERR("User input too large %zu\n", count);
+		return -EINVAL;
+	}
+
+	ret = copy_from_user(meta_buf, buf, count);
+	if (ret) {
+		LOG_ERR("copy_from_user failed (%d)\n", ret);
+		return ret;
+	}
+
+	meta_buf[count] = '\0';
 
 	if (sscanf(buf, "%d %d %d %d", &cmd_id, &sub_cmd_id,
 		&dev_type, &devcore) == 4) {
@@ -149,6 +194,7 @@ static ssize_t mnoc_cmd_qos_end_store(struct device *dev,
 		LOG_ERR("%s input order is wrong\n", __func__);
 		return -EINVAL;
 	}
+
 	return count;
 }
 static DEVICE_ATTR_RW(mnoc_cmd_qos_end);
@@ -160,6 +206,21 @@ static ssize_t mnoc_apu_qos_bw_store(struct device *dev,
 {
 	unsigned int core_id, avg_bw, peak_bw;
 	struct apu_mnoc *p_mnoc = dev_get_drvdata(dev);
+	char meta_buf[256] = {0};
+	int ret = 0;
+
+	if (count + 1 >= 256) {
+		LOG_ERR("User input too large %zu\n", count);
+		return -EINVAL;
+	}
+
+	ret = copy_from_user(meta_buf, buf, count);
+	if (ret) {
+		LOG_ERR("copy_from_user failed (%d)\n", ret);
+		return ret;
+	}
+
+	meta_buf[count] = '\0';
 
 	if (!p_mnoc || !p_mnoc->engines) {
 		dev_info(dev, "%s not get apu_mnoc or engine counter\n",
