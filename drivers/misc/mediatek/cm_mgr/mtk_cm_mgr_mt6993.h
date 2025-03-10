@@ -34,4 +34,6 @@ struct tag_chipid {
 	u32 sw_ver;
 };
 
+extern void check_cm_mgr_status_mt6993(unsigned int cluster, unsigned int freq,
+					   unsigned int idx);
 #endif /* __MTK_CM_MGR_PLATFORM_H__ */

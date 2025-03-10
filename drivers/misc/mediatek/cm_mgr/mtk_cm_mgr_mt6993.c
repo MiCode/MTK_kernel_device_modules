@@ -364,7 +364,7 @@ static int cm_mgr_check_dram_type(void)
 	return ret;
 }
 
-static void check_cm_mgr_status_mt6993(unsigned int cluster, unsigned int freq,
+void check_cm_mgr_status_mt6993(unsigned int cluster, unsigned int freq,
 					   unsigned int idx)
 {
 	// unsigned int bcpu_opp_max;
@@ -550,8 +550,8 @@ static int platform_cm_mgr_probe(struct platform_device *pdev)
 		goto ERROR;
 	}
 
-	local_hk.cm_mgr_get_perfs = cm_mgr_get_perfs_mt6993;
-	local_hk.check_cm_mgr_status = check_cm_mgr_status_mt6993;
+	// local_hk.cm_mgr_get_perfs = cm_mgr_get_perfs_mt6993;
+	// local_hk.check_cm_mgr_status = check_cm_mgr_status_mt6993;
 
 	cm_mgr_register_hook(&local_hk);
 	dev_pm_genpd_set_performance_state(&pdev->dev, 0);
