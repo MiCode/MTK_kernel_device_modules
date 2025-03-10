@@ -17,6 +17,7 @@
 #include <linux/of_irq.h>
 #include <linux/platform_device.h>
 #include <linux/pm_domain.h>
+#include <linux/pm_opp.h>
 #include <linux/pm_runtime.h>
 #include <linux/suspend.h>
 #include <linux/sched/clock.h>
@@ -87,6 +88,8 @@ module_param(mask_busy_irq, int, 0644);
 
 static void __iomem *dpc_base;
 static struct mtk_dpc *g_priv;
+static int step_size = 1;
+static unsigned long *g_urate_freq_steps;
 
 /* debug emi violation */
 static void __iomem *mmpc_emi_req;
@@ -923,16 +926,16 @@ static void dpc_enable_v3(const u8 en)
 
 static u8 bw_to_level_v3(const u32 total_bw)
 {
-	if (total_bw > 6988)
-		return 4;
-	else if (total_bw > 5129)
-		return 3;
-	else if (total_bw > 4076)
-		return 2;
-	else if (total_bw > 3057)
-		return 1;
-	else
-		return 0;
+	int i;
+
+	for (i = 0 ; i < step_size ; i++)
+		if (total_bw <= g_urate_freq_steps[i])
+			return i;
+
+	mtk_dprec_logger_pr(DPREC_LOGGER_ERROR, "total_bw:%u > max_bw:%lu\n",
+		total_bw, g_urate_freq_steps[step_size - 1]);
+
+	return step_size - 1;
 }
 
 static u8 dpc_max_dvfs_level(void)
@@ -2449,6 +2452,27 @@ err_dump:
 	BUG_ON(1);
 }
 
+static void dpc_get_avail_urate_freq(struct device *dev)
+{
+	int i = 0;
+	struct dev_pm_opp *opp;
+	unsigned long freq;
+
+	dev_pm_opp_of_add_table(dev);
+	step_size = dev_pm_opp_get_opp_count(dev);
+	g_urate_freq_steps = kcalloc(step_size, sizeof(unsigned long), GFP_KERNEL);
+	freq = 0;
+	while (!IS_ERR(opp = dev_pm_opp_find_freq_ceil(dev, &freq))) {
+		if (i >= step_size)
+			break;
+		g_urate_freq_steps[i] = (freq / 1000000) * 16 * g_priv->ch_bw_urate / 100;
+		DPCFUNC("g_urate_freq_steps[%d] = %lu", i, g_urate_freq_steps[i]);
+		freq++;
+		i++;
+		dev_pm_opp_put(opp);
+	}
+}
+
 static bool dpc_is_power_on_v2(void)
 {
 	if (!g_priv->dispvcore_chk)
@@ -3091,6 +3115,8 @@ static int mtk_dpc_probe_v3(struct platform_device *pdev)
 	if (IS_ERR(priv->fs))
 		DPCERR("debugfs_create_file failed:%ld", PTR_ERR(priv->fs));
 #endif
+	dpc_get_avail_urate_freq(dev);
+
 	dpc_mmp_init();
 
 	funcs_v3.dpc_duration_update = priv->duration_update;
