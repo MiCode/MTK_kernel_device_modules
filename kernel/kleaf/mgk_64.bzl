@@ -160,7 +160,7 @@ mgk_64_kleaf_modules = [
 ]
 
 mgk_64_kleaf_eng_modules = [
-    "//vendor/mediatek/tests/kernel/ktf_testcase:ktf_testcase",
+    # "//vendor/mediatek/tests/kernel/ktf_testcase:ktf_testcase",
     "//vendor/mediatek/tests/kernel/ktf_testcase/ccmni:ktf_ccmni_ut",
     "//vendor/mediatek/tests/kernel/ktf_testcase/efuse/efuse_ut:ktf_efuse_ut",
     "//vendor/mediatek/tests/kernel/ktf_testcase/example:ktf_hello",
@@ -178,6 +178,7 @@ mgk_64_kleaf_eng_modules = [
     "//vendor/mediatek/tests/kernel/ktf_testcase/dma_buf:ktf_dma_buf",
     "//vendor/mediatek/tests/kernel/ktf_testcase/emi_slc:ktf_emi_slc_ut",
     "//vendor/mediatek/tests/kernel/ktf_testcase/flashlight:ktf_flashlight",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/fpsgo:ktf_fpsgo",
     "//vendor/mediatek/tests/kernel/ktf_testcase/i2c/i2c_ait:ktf_i2c_ait",
     "//vendor/mediatek/tests/kernel/ktf_testcase/i2c:ktf_i2c",
     "//vendor/mediatek/tests/kernel/ktf_testcase/keyboard:ktf_keyboard",
@@ -253,7 +254,7 @@ mgk_64_kleaf_eng_modules = [
 ]
 
 mgk_64_kleaf_userdebug_modules = [
-    "//vendor/mediatek/tests/kernel/ktf_testcase:ktf_testcase",
+    # "//vendor/mediatek/tests/kernel/ktf_testcase:ktf_testcase",
     "//vendor/mediatek/tests/kernel/ktf_testcase/ccmni:ktf_ccmni_ut",
     "//vendor/mediatek/tests/kernel/ktf_testcase/efuse/efuse_ut:ktf_efuse_ut",
     "//vendor/mediatek/tests/kernel/ktf_testcase/example:ktf_hello",
@@ -271,6 +272,7 @@ mgk_64_kleaf_userdebug_modules = [
     "//vendor/mediatek/tests/kernel/ktf_testcase/dma_buf:ktf_dma_buf",
     "//vendor/mediatek/tests/kernel/ktf_testcase/emi_slc:ktf_emi_slc_ut",
     "//vendor/mediatek/tests/kernel/ktf_testcase/flashlight:ktf_flashlight",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/fpsgo:ktf_fpsgo",
     "//vendor/mediatek/tests/kernel/ktf_testcase/i2c/i2c_ait:ktf_i2c_ait",
     "//vendor/mediatek/tests/kernel/ktf_testcase/i2c:ktf_i2c",
     "//vendor/mediatek/tests/kernel/ktf_testcase/keyboard:ktf_keyboard",
