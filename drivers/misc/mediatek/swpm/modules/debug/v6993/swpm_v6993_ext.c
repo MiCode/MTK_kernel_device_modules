@@ -263,7 +263,7 @@ static int swpm_get_data_from_sram(void)
 
 	do {
 		if (last_req_data_time != 0) { // last_req_data_time = 0 is first request
-			if (ktime_to_ms((ktime_sub(ktime_get(),
+			if (ktime_to_ms((ktime_sub(ktime_get_real(),
 							last_req_data_time))) <= 500) {
 				break;
 			}
@@ -310,7 +310,7 @@ static int swpm_get_data_from_sram(void)
 
 			writel(0, &share_idx_ctrl_ext->read_lock);
 
-			last_req_data_time = ktime_get();
+			last_req_data_time = ktime_get_real();
 			swpm_unlock(&swpm_get_sram_data_mutex);
 		}
 	} while(0);

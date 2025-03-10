@@ -362,7 +362,7 @@ static ssize_t swpm_sp_ddr_idx_read(char *ToUser, size_t sz, void *priv)
 	}
 
 	ret = sync_latest_data();
-	sync_time = ktime_to_ns(ktime_get());
+	sync_time = ktime_to_ns(ktime_get_real());
 	sync_time_s = sync_time / 1000000000;
 	sync_time_ms = (sync_time / 1000) % 1000000;
 	if (!ret) {
