@@ -947,7 +947,7 @@ struct mml_comp {
 	enum mml_sys_id sysid;
 	void __iomem *base;
 	phys_addr_t base_pa;
-	struct clk *clks[2];
+	struct clk *clks[3];
 	struct device *larb_dev;
 	struct device *larb_dev2;
 	phys_addr_t larb_base;
