@@ -10594,6 +10594,7 @@ void mtk_crtc_enable_iommu_runtime(struct mtk_drm_crtc *mtk_crtc,
 			priv->data->mmsys_id == MMSYS_MT6879 ||
 //			priv->data->mmsys_id == MMSYS_MT6895 ||
 			priv->data->mmsys_id == MMSYS_MT6835 ||
+			priv->data->mmsys_id == MMSYS_MT6855 ||
 			priv->data->mmsys_id == MMSYS_MT6886) {
 			/*set smi_larb_sec_con reg as 1*/
 			mtk_crtc_exec_atf_prebuilt_instr(mtk_crtc, handle);
@@ -14677,7 +14678,8 @@ void mtk_crtc_prepare_instr(struct drm_crtc *crtc)
 		priv->data->mmsys_id == MMSYS_MT6879 ||
 //		priv->data->mmsys_id == MMSYS_MT6895 ||
 		priv->data->mmsys_id == MMSYS_MT6886 ||
-		priv->data->mmsys_id == MMSYS_MT6835) {
+		priv->data->mmsys_id == MMSYS_MT6835 ||
+		priv->data->mmsys_id == MMSYS_MT6855) {
 		handle = cmdq_pkt_create(mtk_crtc->gce_obj.client[CLIENT_CFG]);
 
 		if (!handle) {
