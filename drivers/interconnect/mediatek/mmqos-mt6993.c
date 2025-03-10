@@ -54,6 +54,7 @@ static const struct mtk_node_desc node_descs_mt6993[] = {
 	// port0: larb54, 1, 37, 50, 56, 61
 	DEFINE_MNODE(DISP_larb54,  SLAVE_LARB(54),  0,   false, 0x0, MASTER_COMMON_PORT(0, 0)),
 	DEFINE_MNODE(DISP_larb1,   SLAVE_LARB(1),   0,   false, 0x0, MASTER_COMMON_PORT(0, 0)),
+	DEFINE_MNODE(DISP_larb23,  SLAVE_LARB(23),  0,   false, 0x0, MASTER_COMMON_PORT(0, 8)), // larb1 fake
 	DEFINE_MNODE(DISP_larb37,  SLAVE_LARB(37),  0,   false, 0x0, MASTER_COMMON_PORT(0, 0)),
 	DEFINE_MNODE(DISP_larb50,  SLAVE_LARB(50),  0,   false, 0x0, MASTER_COMMON_PORT(0, 0)),
 	DEFINE_MNODE(MML_larb56,   SLAVE_LARB(56),  0,   false, 0x0, MASTER_COMMON_PORT(0, 8)), // DC
@@ -63,6 +64,7 @@ static const struct mtk_node_desc node_descs_mt6993[] = {
 	DEFINE_MNODE(DISP_larb33,  SLAVE_LARB(33),  0,   false, 0x0, MASTER_COMMON_PORT(0, 1)),
 	DEFINE_MNODE(DISP_larb20,  SLAVE_LARB(20),  0,   false, 0x0, MASTER_COMMON_PORT(0, 1)),
 	DEFINE_MNODE(DISP_larb35,  SLAVE_LARB(35),  0,   false, 0x0, MASTER_COMMON_PORT(0, 1)),
+	DEFINE_MNODE(DISP_larb63,  SLAVE_LARB(63),  0,   false, 0x0, MASTER_COMMON_PORT(0, 7)), // larb35 fake
 	DEFINE_MNODE(DISP_larb53,  SLAVE_LARB(53),  0,   false, 0x0, MASTER_COMMON_PORT(0, 1)),
 	DEFINE_MNODE(MML_larb2,    SLAVE_LARB(2),   0,   false, 0x0, MASTER_COMMON_PORT(0, 7)), // DC
 	// port2: larb42 for mini-mdp
@@ -83,6 +85,7 @@ static const struct mtk_node_desc node_descs_mt6993[] = {
 	// port0: larb55, 0, 36, 51, 3, 60
 	DEFINE_MNODE(DISP_larb55, SLAVE_LARB(55), 0,   false, 0x0, MASTER_COMMON_PORT(1, 0)),
 	DEFINE_MNODE(DISP_larb0,  SLAVE_LARB(0),  0,   false, 0x0, MASTER_COMMON_PORT(1, 0)),
+	DEFINE_MNODE(DISP_larb62, SLAVE_LARB(62), 0,   false, 0x0, MASTER_COMMON_PORT(1, 7)), // larb0 fake
 	DEFINE_MNODE(DISP_larb36, SLAVE_LARB(36), 0,   false, 0x0, MASTER_COMMON_PORT(1, 0)),
 	DEFINE_MNODE(DISP_larb51, SLAVE_LARB(51), 0,   false, 0x0, MASTER_COMMON_PORT(1, 0)),
 	DEFINE_MNODE(MML_larb3,   SLAVE_LARB(3),  0,   false, 0x0, MASTER_COMMON_PORT(1, 7)), // DC
@@ -91,6 +94,7 @@ static const struct mtk_node_desc node_descs_mt6993[] = {
 	DEFINE_MNODE(DISP_larb32, SLAVE_LARB(32), 0,   false, 0x0, MASTER_COMMON_PORT(1, 1)),
 	DEFINE_MNODE(DISP_larb21, SLAVE_LARB(21), 0,   false, 0x0, MASTER_COMMON_PORT(1, 1)),
 	DEFINE_MNODE(DISP_larb34, SLAVE_LARB(34), 0,   false, 0x0, MASTER_COMMON_PORT(1, 1)),
+	DEFINE_MNODE(DISP_larb31, SLAVE_LARB(31), 0,   false, 0x0, MASTER_COMMON_PORT(1, 8)), // larb34 fake
 	DEFINE_MNODE(DISP_larb52, SLAVE_LARB(52), 0,   false, 0x0, MASTER_COMMON_PORT(1, 1)),
 	DEFINE_MNODE(MML_larb57,  SLAVE_LARB(57), 0,   false, 0x0, MASTER_COMMON_PORT(1, 8)), // DC
 	DEFINE_MNODE(MML_larb59,  SLAVE_LARB(59), 0,   false, 0x0, MASTER_COMMON_PORT(1, 1)), // larb57 IR
@@ -123,6 +127,9 @@ static const struct mtk_node_desc node_descs_mt6993[] = {
 		MASTER_LARB_PORT(SMMU_L0_P7_OVL_EXDMA7_STASH),              5, true,  0x0, SLAVE_LARB(0)),
 	DEFINE_MNODE(ovl_fake_eng0_larb0_8,
 		MASTER_LARB_PORT(SMMU_L0_P8_OVL_FAKE_ENG0),                 8, false, 0x0, SLAVE_LARB(0)),
+	/* LARB0 -> larb62 fake */
+	DEFINE_MNODE(ovl_fake_eng0_larb62_8,
+		MASTER_LARB_PORT(MTK_SMMU_PORT_ID(62, 8)),                  8, false, 0x0, SLAVE_LARB(62)),
 	/* LARB1 */
 	DEFINE_MNODE(ovl_exdma3_hdr_larb1_0,
 		MASTER_LARB_PORT(SMMU_L1_P0_OVL_EXDMA3_HDR),                5, false, 0x0, SLAVE_LARB(1)),
@@ -142,6 +149,9 @@ static const struct mtk_node_desc node_descs_mt6993[] = {
 		MASTER_LARB_PORT(SMMU_L1_P7_OVL_EXDMA6_STASH),              5, true,  0x0, SLAVE_LARB(1)),
 	DEFINE_MNODE(ovl_fake_eng1_larb1_8,
 		MASTER_LARB_PORT(SMMU_L1_P8_OVL_FAKE_ENG1),                 8, false, 0x0, SLAVE_LARB(1)),
+	/* LARB1 -> larb23 fake */
+	DEFINE_MNODE(ovl_fake_eng1_larb23_8,
+		MASTER_LARB_PORT(MTK_SMMU_PORT_ID(23, 8)),                  8, false, 0x0, SLAVE_LARB(23)),
 	/* LARB2 */
 	DEFINE_MNODE(mdp_rdma2_larb2_4,
 		MASTER_LARB_PORT(SMMU_L2_P4_MDP_RDMA2),                     8, false, 0x0, SLAVE_LARB(2)),
@@ -441,6 +451,9 @@ static const struct mtk_node_desc node_descs_mt6993[] = {
 		MASTER_LARB_PORT(SMMU_L34_P7_OVL_EXDMA7_STASH),             5, true,  0x0, SLAVE_LARB(34)),
 	DEFINE_MNODE(ovl_fake_eng0_larb34_8,
 		MASTER_LARB_PORT(SMMU_L34_P8_OVL_FAKE_ENG0),                8, false, 0x0, SLAVE_LARB(34)),
+	/* LARB34 -> larb31 fake */
+	DEFINE_MNODE(ovl_fake_eng0_larb31_8,
+		MASTER_LARB_PORT(MTK_SMMU_PORT_ID(31, 8)),                  8, false, 0x0, SLAVE_LARB(31)),
 	/* LARB35 */
 	DEFINE_MNODE(ovl_exdma3_hdr_larb35_0,
 		MASTER_LARB_PORT(SMMU_L35_P0_OVL_EXDMA3_HDR),               5, false, 0x0, SLAVE_LARB(35)),
@@ -460,6 +473,9 @@ static const struct mtk_node_desc node_descs_mt6993[] = {
 		MASTER_LARB_PORT(SMMU_L35_P7_OVL_EXDMA6_STASH),             5, true,  0x0, SLAVE_LARB(35)),
 	DEFINE_MNODE(ovl_fake_eng1_larb35_8,
 		MASTER_LARB_PORT(SMMU_L35_P8_OVL_FAKE_ENG1),                8, false, 0x0, SLAVE_LARB(35)),
+	/* LARB35 -> larb63 fake */
+	DEFINE_MNODE(ovl_fake_eng1_larb63_8,
+		MASTER_LARB_PORT(MTK_SMMU_PORT_ID(63, 8)),                  8, false, 0x0, SLAVE_LARB(63)),
 	/* LARB36 */
 	DEFINE_MNODE(ovl_exdma4_hdr_larb36_0,
 		MASTER_LARB_PORT(SMMU_L36_P0_OVL_EXDMA4_HDR),               5, false, 0x0, SLAVE_LARB(36)),
@@ -827,8 +843,12 @@ static const struct mtk_mmqos_desc mmqos_desc_mt6993 = {
 		{ HRT_MAX_BWL, HRT_MAX_BWL, HRT_NONE, SRT_VENC, HRT_NONE,
 			HRT_CAM, HRT_CAM, SRT_MML, SRT_MML},
 	},
-	.report_bw_larbs = {SLAVE_LARB(58), SLAVE_LARB(59),},
-	.report_bw_real_larbs = {SLAVE_LARB(56), SLAVE_LARB(57),},
+	.report_bw_larbs = {SLAVE_LARB(58), SLAVE_LARB(59),
+		SLAVE_LARB(62), SLAVE_LARB(23),
+		SLAVE_LARB(31), SLAVE_LARB(63),},
+	.report_bw_real_larbs = {SLAVE_LARB(56), SLAVE_LARB(57),
+		SLAVE_LARB(0), SLAVE_LARB(1),
+		SLAVE_LARB(34), SLAVE_LARB(35),},
 	.disp_virt_larbs = { },
 	.freq_mode = BY_VMMRC,
 };
