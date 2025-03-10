@@ -347,7 +347,7 @@ static ssize_t modify_gpu_throttle_freq_store(struct device *dev,
 		return -EINVAL;
 	}
 	buf += len;
-	if (table_idx > max_tb_num) {
+	if (table_idx > max_tb_num - 1) {
 		dev_info(dev, "Invalid table_idx: %u\n", table_idx);
 		return -EINVAL;
 	}

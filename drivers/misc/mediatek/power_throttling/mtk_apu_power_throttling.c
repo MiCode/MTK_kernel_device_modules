@@ -43,7 +43,7 @@ static struct apu_pt_priv apu_pt_info[POWER_THROTTLING_TYPE_MAX] = {
 #if IS_ENABLED(CONFIG_MTK_LOW_BATTERY_POWER_THROTTLING)
 static void apu_pt_low_battery_cb(enum LOW_BATTERY_LEVEL_TAG level, void *data)
 {
-	int ret = 0, id = 0;
+	int ret = 0, id = 1;
 	int opp_limit;
 
 	if (!pt_apu_drv_inited)
@@ -71,7 +71,7 @@ static void apu_pt_low_battery_cb(enum LOW_BATTERY_LEVEL_TAG level, void *data)
 #if IS_ENABLED(CONFIG_MTK_BATTERY_OC_POWER_THROTTLING)
 static void apu_pt_over_current_cb(enum BATTERY_OC_LEVEL_TAG level, void *data)
 {
-	int ret = 0, id = 0;
+	int ret = 0, id = 2;
 	int opp_limit;
 
 	if (!pt_apu_drv_inited)
@@ -99,7 +99,7 @@ static void apu_pt_over_current_cb(enum BATTERY_OC_LEVEL_TAG level, void *data)
 #if IS_ENABLED(CONFIG_MTK_BATTERY_PERCENT_THROTTLING)
 static void apu_pt_battery_percent_cb(enum BATTERY_PERCENT_LEVEL_TAG level)
 {
-	int ret = 0, id = 0;
+	int ret = 0, id = 3;
 	int opp_limit;
 
 	if (!pt_apu_drv_inited)
