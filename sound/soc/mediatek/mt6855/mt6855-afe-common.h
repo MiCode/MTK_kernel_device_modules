@@ -17,7 +17,6 @@
 
 //#define SKIP_SB
 #define SKIP_SB_VOW
-#define SKIP_SB_BTCVSD
 #define SKIP_SB_ULTRA
 
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
