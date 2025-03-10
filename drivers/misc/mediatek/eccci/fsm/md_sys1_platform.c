@@ -8,13 +8,16 @@
 #include <linux/interrupt.h>
 #include <linux/irq.h>
 #include <linux/module.h>
+#include <linux/mfd/mt6661/registers.h>
 #include <linux/of.h>
 #include <linux/of_fdt.h>
 #include <linux/of_irq.h>
 #include <linux/of_address.h>
 #include <linux/of_platform.h>
 #include <linux/regmap.h>
+#include <linux/regulator/consumer.h>
 #include <linux/sched/clock.h>
+#include <linux/spmi.h>
 #include "ccci_config.h"
 #include "ccci_common_config.h"
 #include <linux/clk.h>
@@ -27,8 +30,6 @@
 #ifdef FEATURE_INFORM_NFC_VSIM_CHANGE
 #include <mach/mt6605.h>
 #endif
-
-#include <linux/regulator/consumer.h> /* for MD PMIC */
 
 #include "ccci_core.h"
 #include "modem_sys.h"
@@ -1861,6 +1862,71 @@ int md_cd_vcore_config(unsigned int hold_req)
 	return 0;
 }
 
+#define VOTER_MD_BIT (0x1 << 3)
+void md1_rf_voter_enable(void)
+{
+	struct device_node *np_pmic_slave3 = NULL;
+	struct device_node *np_pmic_slave6 = NULL;
+	struct platform_device *pmic_pdev_slave3 = NULL;
+	struct platform_device *pmic_pdev_slave6 = NULL;
+	struct regmap *map_slave3 = NULL;
+	struct regmap *map_slave6 = NULL;
+	int ret = -1;
+
+	CCCI_NORMAL_LOG(0, TAG, "[POWER ON]%s start\n", __func__);
+
+	np_pmic_slave3 = of_find_node_by_name(NULL, "mt6661-3");
+	np_pmic_slave6 = of_find_node_by_name(NULL, "mt6661-6");
+	if (!np_pmic_slave3 || !np_pmic_slave6) {
+		CCCI_ERROR_LOG(0, TAG, "[POWER ON]%s:pmic slave3 or slave6 node not found\n",
+			__func__);
+		return;
+	}
+
+	pmic_pdev_slave3 = of_find_device_by_node(np_pmic_slave3->child);
+	pmic_pdev_slave6 = of_find_device_by_node(np_pmic_slave6->child);
+	if (!pmic_pdev_slave3 || !pmic_pdev_slave6) {
+		CCCI_ERROR_LOG(0, TAG, "[POWER ON]%s:pmic slave3 or slave6 child device not found\n",
+			__func__);
+		return;
+	}
+
+	/* get regmap */
+	map_slave3 = dev_get_regmap(pmic_pdev_slave3->dev.parent, NULL);
+	map_slave6 = dev_get_regmap(pmic_pdev_slave6->dev.parent, NULL);
+	if (!map_slave3 || !map_slave6) {
+		CCCI_ERROR_LOG(0, TAG, "[POWER ON]%s:get regmap slave3 or slave6 fail\n",
+			__func__);
+		return;
+	}
+
+	// set VS1 voter
+	ret = regmap_write(map_slave3, MT6661_BUCK5_VOTER0_CON0_SET, VOTER_MD_BIT);
+	if (ret < 0) {
+		CCCI_ERROR_LOG(0, TAG, "[POWER ON]%s:set VS1 voter fail, ret:%d\n",
+			__func__, ret);
+		return;
+	}
+
+	// set VS2_2 voter
+	ret = regmap_write(map_slave6, MT6661_BUCK6_VOTER0_CON0_SET, VOTER_MD_BIT);
+	if (ret < 0) {
+		CCCI_ERROR_LOG(0, TAG, "[POWER ON]%s:set VS2_2 voter fail, ret:%d\n",
+			__func__, ret);
+		return;
+	}
+
+	// set VS3_2 voter
+	ret = regmap_write(map_slave6, MT6661_BUCK5_VOTER0_CON0_SET, VOTER_MD_BIT);
+	if (ret < 0) {
+		CCCI_ERROR_LOG(0, TAG, "[POWER ON]%s:set VS3_2 voter fail, ret:%d\n",
+			__func__, ret);
+		return;
+	}
+
+	CCCI_NORMAL_LOG(0, TAG, "[POWER ON]%s end success\n", __func__);
+}
+
 #define PMRC_REG 0x190
 void md1_set_rf_pmic_lp(struct platform_device *plat_dev)
 {
@@ -2168,7 +2234,11 @@ static int md_cd_power_on(struct ccci_modem *md)
 	/* step 4: md DPSW set */
 	md_cd_dpsw_setting(md);
 
-	/* step 5: set md rf pmic lp */
+	/* step 5: md voter enable, only for mt6661 pmic project */
+	if (ap_plat_info == 6993)
+		md1_rf_voter_enable();
+
+	/* step 6: set md rf pmic lp, only for mt6661 pmic project */
 	if ((ap_plat_info == 6993) && !md_cd_plat_val_ptr.md_first_power_on)
 		md1_set_rf_pmic_lp(md->plat_dev);
 
