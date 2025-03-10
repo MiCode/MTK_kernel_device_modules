@@ -157,13 +157,13 @@ static void send_boost_cmd(int cmd, int enable)
 		node->_util_ta = boost_ta;
 		node->_util_fg = boost_fg;
 		node->_cpufreq_c0 =
-			(policy_num > 0 && freq_to_set[0].min != cpu_opp_tbl[0][opp_count[0]-1]) ?
+			(policy_num > 0 && freq_to_set[0].min >= cpu_opp_tbl[0][opp_count[0]-1]) ?
 			freq_to_set[0].min : -1;
 		node->_cpufreq_c1 =
-			(policy_num > 1 && freq_to_set[1].min != cpu_opp_tbl[1][opp_count[1]-1]) ?
+			(policy_num > 1 && freq_to_set[1].min >= cpu_opp_tbl[1][opp_count[1]-1]) ?
 			freq_to_set[1].min : -1;
 		node->_cpufreq_c2 =
-			(policy_num > 2 && freq_to_set[2].min != cpu_opp_tbl[2][opp_count[2]-1]) ?
+			(policy_num > 2 && freq_to_set[2].min >= cpu_opp_tbl[2][opp_count[2]-1]) ?
 			freq_to_set[2].min : -1;
 		node->_boost_up = boost_up;
 		node->_boost_down = boost_down;
