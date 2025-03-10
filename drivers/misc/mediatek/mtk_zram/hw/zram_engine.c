@@ -21,6 +21,8 @@
 #include <linux/pm.h>
 #include <linux/pm_runtime.h>
 
+#include <linux/psi.h>
+
 #include <linux/mutex.h>
 #include <linux/delay.h>
 #include <asm-generic/rwonce.h>
@@ -1109,6 +1111,7 @@ static void dump_pending_comp_cmds(struct zram_engine_t *hwz)
 static int comp_post_process(void *data)
 {
 	struct zram_engine_t *hwz = data;
+	unsigned long pflags;
 	uint32_t processed, total_processed;
 	uint32_t hang_detect, suspect_hang;
 	int cnt;
@@ -1144,6 +1147,9 @@ static int comp_post_process(void *data)
 #ifndef FPGA_EMULATION
 		WARN_ON(engine_gear_enable_clock_disable_irq(&hwz->ctrl, &hwz->gear_ctrl, true) != 0);
 #endif
+
+		/* Start of memory stall section - it's ok for current usage as zram swap. */
+		psi_memstall_enter(&pflags);
 
 		/* Reset total_processed */
 		total_processed = 0;
@@ -1213,6 +1219,9 @@ repeat:
 			dump_fifo_idx(hwz, NULL, 0);
 			engine_gear_get_status(&hwz->gear_ctrl, NULL);
 		}
+
+		/* End of memory stall section */
+		psi_memstall_leave(&pflags);
 
 #ifndef FPGA_EMULATION
 		/*
