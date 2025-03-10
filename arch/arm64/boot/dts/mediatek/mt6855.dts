@@ -261,6 +261,7 @@
 	mtk_ssc: mtk_ssc@1c01f000 {
 		compatible = "mediatek,ssc";
 		safe-vlogic-uv = <600000>;
+		ssc-enable = <1>;
 	};
 	camsys_main_clk: syscon@1a000000 {
 		compatible = "mediatek,mt6855-camsys_main", "syscon";
