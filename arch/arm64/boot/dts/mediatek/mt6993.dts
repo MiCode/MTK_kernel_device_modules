@@ -2392,6 +2392,16 @@
 		interrupts = <GIC_SPI 821 IRQ_TYPE_LEVEL_HIGH 0>;
 	};
 
+	pbus@1c001000 {
+		compatible = "mediatek,pbus";
+		reg = <0 0x1c001000 0 0x0310>,
+			<0 0x1c001000 0 0x0310>;
+		interrupts = <GIC_SPI 602 IRQ_TYPE_LEVEL_HIGH 0>,
+			<GIC_SPI 603 IRQ_TYPE_LEVEL_HIGH 0>;
+		interrupt-names = "pbus-vlp-irq",
+			"pbus-vcore-irq";
+	};
+
 	swpm: swpm {
 		compatible = "mediatek,mtk-swpm";
 		pmu-support = <0>;
