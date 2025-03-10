@@ -18201,6 +18201,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			boot-trip-temp = <58000>;
 			boot-release-temp = <51000>;
 			boot-core-num = <4>;
+			interconnects = <&dvfsrc MT6873_MASTER_MCU_4 &dvfsrc MT6873_SLAVE_DDR_EMI>;
+			interconnect-names = "icc-thermal";
 		};
 
 		mt6661_5_temp: mt6661-5-temp {
