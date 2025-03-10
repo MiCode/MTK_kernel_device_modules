@@ -1335,10 +1335,6 @@ struct mtk_drm_crtc {
 	wait_queue_head_t mode_switch_end_wq;
 	atomic_t singal_for_mode_switch;
 
-	struct task_struct *lpc_kick_idle_task;
-	wait_queue_head_t lpc_kick_idle_wq;
-	atomic_t lpc_hwvsync_on;
-
 	struct drm_crtc_state *old_mode_switch_state;
 
 	//discrete

@@ -454,7 +454,7 @@ void mtk_dsi_lpc_te_irq_en(struct mtk_drm_crtc *mtk_crtc,
 	dsi_lpc_te_irq_en = true;
 }
 void mtk_dsi_lpc_interrupt_enable(struct mtk_drm_crtc *mtk_crtc,
-	struct mtk_ddp_comp *comp, bool irq_disable)
+	struct mtk_ddp_comp *comp, bool en)
 {
 	int index = 0;
 	unsigned int lpc_te_con0_val = 0;
@@ -466,10 +466,21 @@ void mtk_dsi_lpc_interrupt_enable(struct mtk_drm_crtc *mtk_crtc,
 		return;
 	}
 
+	if (en) {
+		DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
+
+		if (!mtk_crtc->enabled) {
+			DDPMSG("%s crtc is disable\n", __func__);
+			DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
+			return;
+		}
+		mtk_drm_idlemgr_kick(__func__, &mtk_crtc->base, 0);
+		mtk_vidle_user_power_keep(DISP_VIDLE_USER_CRTC);
+	}
+
 	lpc_te_con0_val = readl(comp->regs + DSI_LPC_TE_CON0(index));
 
-	//if (mtk_crtc->hwvsync_en) {
-	if (atomic_read(&mtk_crtc->lpc_hwvsync_on)) {
+	if (mtk_crtc->hwvsync_en) {
 		inten |= REPORTED_RESYNC_INT_EN;
 		lpc_te_con0_val |= DSI_LPC_HW_VSYNC_ON;
 	} else {
@@ -484,7 +495,10 @@ void mtk_dsi_lpc_interrupt_enable(struct mtk_drm_crtc *mtk_crtc,
 	writel(0, comp->regs + DSI_LPC_INTEN(index));
 	writel(inten, comp->regs + DSI_LPC_INTEN(index));
 
-	if (!irq_disable) {
+	if (en) {
+		mtk_vidle_user_power_release(DISP_VIDLE_USER_CRTC);
+		DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
+
 		DDPINFO("%s,[%d]inten:0x%x,lpc_te_con0_val:0x%x\n", __func__, index, inten, lpc_te_con0_val);
 		DRM_MMP_MARK(dsi_lpc, HW_VSYNC_ON_CONFIG, lpc_te_con0_val);
 		drm_trace_tag_value("lpc_hwvsync_on", lpc_te_con0_val);
@@ -651,7 +665,7 @@ static int mtk_dsi_lpc_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle
 		break;
 	case DSI_LPC_IRQ_EN:
 	{
-		mtk_dsi_lpc_interrupt_enable(mtk_crtc, comp, false);
+		mtk_dsi_lpc_interrupt_enable(mtk_crtc, comp, true);
 	}
 		break;
 	case DSI_LPC_PANEL_PARAMS:
@@ -765,7 +779,7 @@ static irqreturn_t mtk_dsi_lpc_irq_handler(int irq, void *dev_id)
 				DRM_MMP_MARK(dsi_lpc, IRQ_DISABLE, 0);
 
 				mtk_crtc->hwvsync_en = 0;
-				mtk_dsi_lpc_interrupt_enable(mtk_crtc, comp, true);
+				mtk_dsi_lpc_interrupt_enable(mtk_crtc, comp, false);
 			} else
 				mtk_crtc_vblank_irq_for_lpc_resync(&mtk_crtc->base);
 		}

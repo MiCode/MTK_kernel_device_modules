@@ -9230,8 +9230,12 @@ int mtk_drm_hwvsync_on_ioctl(struct drm_device *dev, void *data,
 	mtk_crtc->hwvsync_en = 1;
 
 	if (mtk_dsi_lpc_en(mtk_crtc)) {
-		atomic_set(&mtk_crtc->lpc_hwvsync_on, 1);
-		wake_up_interruptible(&mtk_crtc->lpc_kick_idle_wq);
+		struct mtk_ddp_comp *comp = mtk_ddp_comp_request_output_lpc(mtk_crtc);
+
+		if (comp)
+			mtk_ddp_comp_io_cmd(comp, NULL, DSI_LPC_IRQ_EN, NULL);
+		else
+			return -EFAULT;
 	}
 
 	return ret;

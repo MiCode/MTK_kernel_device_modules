@@ -22878,47 +22878,6 @@ static int mtk_drm_mode_switch_thread(void *data)
 	return 0;
 }
 
-static int mtk_drm_lpc_kick_idle_thread(void *data)
-{
-	int ret = 0;
-	struct mtk_drm_crtc *mtk_crtc = (struct mtk_drm_crtc *) data;
-	struct drm_crtc *crtc = &mtk_crtc->base;
-	struct mtk_ddp_comp *comp = mtk_ddp_comp_request_output_lpc(mtk_crtc);
-
-	struct sched_param param = {.sched_priority = 87};
-
-	sched_setscheduler(current, SCHED_RR, &param);
-
-	while (1) {
-		ret = wait_event_interruptible(mtk_crtc->lpc_kick_idle_wq,
-			atomic_read(&mtk_crtc->lpc_hwvsync_on));
-
-		DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
-
-		if (!mtk_crtc->enabled) {
-			DDPMSG("%s,slepted\n", __func__);
-			DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
-			return 0;
-		}
-
-		mtk_drm_idlemgr_kick(__func__, &mtk_crtc->base, 0);
-		mtk_vidle_user_power_keep(DISP_VIDLE_USER_CRTC);
-
-		if (comp)
-			mtk_ddp_comp_io_cmd(comp, NULL, DSI_LPC_IRQ_EN, NULL);
-
-		mtk_vidle_user_power_release(DISP_VIDLE_USER_CRTC);
-		DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
-
-		atomic_set(&mtk_crtc->lpc_hwvsync_on, 0);
-
-		if (kthread_should_stop())
-			break;
-	}
-
-	return 0;
-}
-
 static int mtk_drm_cwb_init(struct drm_crtc *crtc)
 {
 #define LEN 50
@@ -23854,15 +23813,6 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 
 	if (priv->data->ovl_exdma_rule)
 		mtk_drm_crtc_init_bind_comp(mtk_crtc);
-
-	if (priv->data->support_lpc) {
-		mtk_crtc->lpc_kick_idle_task = kthread_create(
-				mtk_drm_lpc_kick_idle_thread, mtk_crtc, "lpc_kick_idle_task");
-			atomic_set(&mtk_crtc->lpc_hwvsync_on, 0);
-			init_waitqueue_head(&mtk_crtc->lpc_kick_idle_wq);
-			wake_up_process(mtk_crtc->lpc_kick_idle_task);
-
-	}
 
 	DDPMSG("%s-CRTC%d create successfully\n", __func__,
 		priv->num_pipes - 1);
