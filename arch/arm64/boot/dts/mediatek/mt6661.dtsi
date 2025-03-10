@@ -74,6 +74,8 @@
 						    MT6661_RG_TOP_CFG_RSV1_1_SHIFT
 						    MT6661_GPIO_PULLSEL0_1_SHIFT
 						    MT6661_GPIO_PULLSEL0_2_SHIFT>;
+			rgs-npkt-cclp-err = <MT6661_RGS_NPKT_CCLP_ERR>;
+			rgs-npkt-cclp-clr = <MT6661_RGS_NPKT_CCLP_CLR>;
 		};
 
 		mt6661_4_efuse: mt6661-4-efuse {
@@ -399,6 +401,8 @@
 						    MT6661_RG_TOP_CFG_RSV1_1_SHIFT
 						    MT6661_GPIO_PULLSEL0_1_SHIFT
 						    MT6661_GPIO_PULLSEL0_2_SHIFT>;
+			rgs-npkt-cclp-err = <MT6661_RGS_NPKT_CCLP_ERR>;
+			rgs-npkt-cclp-clr = <MT6661_RGS_NPKT_CCLP_CLR>;
 		};
 
 		mt6661_3_efuse: mt6661-3-efuse {
@@ -704,6 +708,8 @@
 						    MT6661_RG_TOP_CFG_RSV1_1_SHIFT
 						    MT6661_GPIO_PULLSEL0_1_SHIFT
 						    MT6661_GPIO_PULLSEL0_2_SHIFT>;
+			rgs-npkt-cclp-err = <MT6661_RGS_NPKT_CCLP_ERR>;
+			rgs-npkt-cclp-clr = <MT6661_RGS_NPKT_CCLP_CLR>;
 		};
 
                 mt6661_5_auxadc: mt6661-5-auxadc {
@@ -1208,6 +1214,8 @@
 						    MT6661_RG_TOP_CFG_RSV1_1_SHIFT
 						    MT6661_GPIO_PULLSEL0_1_SHIFT
 						    MT6661_GPIO_PULLSEL0_2_SHIFT>;
+			rgs-npkt-cclp-err = <MT6661_RGS_NPKT_CCLP_ERR>;
+			rgs-npkt-cclp-clr = <MT6661_RGS_NPKT_CCLP_CLR>;
 		};
 
                 mt6661_6_auxadc: mt6661-6-auxadc {
