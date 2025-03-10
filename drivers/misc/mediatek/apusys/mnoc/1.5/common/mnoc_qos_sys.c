@@ -25,7 +25,7 @@ static ssize_t mnoc_apu_qos_boost_show(struct kobject *kobj,
 {
 	int ret = 0;
 #if MNOC_QOS_BOOST_ENABLE
-	ret = sprintf(buf, "apu_qos_boost_flag = %d\n", apu_qos_boost_flag);
+	ret = snprintf(buf, PAGE_SIZE, "apu_qos_boost_flag = %d\n", apu_qos_boost_flag);
 #endif
 	return ret;
 }
@@ -93,7 +93,7 @@ static ssize_t mnoc_cmd_qos_start_store(struct device *dev,
 
 	meta_buf[count] = '\0';
 
-	if (sscanf(buf, "%d %d %d %d %d", &cmd_id, &sub_cmd_id,
+	if (sscanf(meta_buf, "%d %d %d %d %d", &cmd_id, &sub_cmd_id,
 		&dev_type, &devcore, &boost) == 4) {
 		apu_cmd_qos_start((uint64_t)cmd_id, (uint64_t)sub_cmd_id,
 				  dev_type, devcore, boost);
@@ -140,7 +140,7 @@ static ssize_t mnoc_cmd_qos_suspend_store(struct device *dev,
 
 	meta_buf[count] = '\0';
 
-	if (sscanf(buf, "%d %d %d %d", &cmd_id, &sub_cmd_id,
+	if (sscanf(meta_buf, "%d %d %d %d", &cmd_id, &sub_cmd_id,
 		   &dev_type, &devcore) == 4) {
 		apu_cmd_qos_suspend((uint64_t)cmd_id, (uint64_t)sub_cmd_id,
 				    dev_type, devcore);
@@ -186,7 +186,7 @@ static ssize_t mnoc_cmd_qos_end_store(struct device *dev,
 
 	meta_buf[count] = '\0';
 
-	if (sscanf(buf, "%d %d %d %d", &cmd_id, &sub_cmd_id,
+	if (sscanf(meta_buf, "%d %d %d %d", &cmd_id, &sub_cmd_id,
 		&dev_type, &devcore) == 4) {
 		apu_cmd_qos_end((uint64_t)cmd_id, (uint64_t)sub_cmd_id,
 				dev_type, devcore);
@@ -228,7 +228,7 @@ static ssize_t mnoc_apu_qos_bw_store(struct device *dev,
 		return -EINVAL;
 	}
 
-	if (sscanf(buf, "%d %d %d", &core_id, &avg_bw, &peak_bw) == 3)
+	if (sscanf(meta_buf, "%d %d %d", &core_id, &avg_bw, &peak_bw) == 3)
 		if (core_id < nr_apu_qos_engine) {
 			dev_info(dev, "set core %d, avb_bw %d, peak_bw %d ret %d\n",
 					core_id, avg_bw, peak_bw,
