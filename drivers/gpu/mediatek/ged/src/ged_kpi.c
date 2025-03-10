@@ -49,7 +49,7 @@
 #endif /* MTK_GPU_BM_2 */
 #include <ged_dcs.h>
 
-#if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK) && !IS_ENABLED(CONFIG_MTK_GPU_LEGACY) && !IS_ENABLED(CONFIG_MTK_GPU_MT6855_SUPPORT)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK) && !IS_ENABLED(CONFIG_MTK_GPU_MT6855_SUPPORT)
 #include "mtk_drm_arr.h"
 #endif
 
@@ -2894,7 +2894,7 @@ GED_ERROR ged_kpi_system_init(void)
 		return GED_ERROR_FAIL;
 	}
 
-#if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK) && !IS_ENABLED(CONFIG_MTK_GPU_LEGACY) && !IS_ENABLED(CONFIG_MTK_GPU_MT6855_SUPPORT)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK) && !IS_ENABLED(CONFIG_MTK_GPU_MT6855_SUPPORT)
 	drm_register_fps_chg_callback(ged_dfrc_fps_limit_cb);
 #endif
 	g_max_core_num = gpufreq_get_core_num();
@@ -2939,7 +2939,7 @@ void ged_kpi_system_exit(void)
 		ged_kpi_iterator_delete_func, NULL);
 	spin_unlock_irqrestore(&gs_hashtableLock, ulIRQFlags);
 	destroy_workqueue(g_psWorkQueue);
-#if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK) && !IS_ENABLED(CONFIG_MTK_GPU_LEGACY) && !IS_ENABLED(CONFIG_MTK_GPU_MT6855_SUPPORT)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK) && !IS_ENABLED(CONFIG_MTK_GPU_MT6855_SUPPORT)
 	drm_unregister_fps_chg_callback(ged_dfrc_fps_limit_cb);
 #endif
 	destroy_workqueue(g_FenceWorkQueue);
