@@ -206,7 +206,7 @@ static ssize_t proc_debug_attr_write(struct file *flip,
 	const char __user *buffer, size_t count, loff_t *f_pos)
 {
 	int ret;
-	char key[PROC_WRITE_BUFSIZE] = {0}, meta_buf[PROC_WRITE_BUFSIZE] = {0};
+	char meta_buf[PROC_WRITE_BUFSIZE] = {0};
 	unsigned int val;
 
 	if (count + 1 >= PROC_WRITE_BUFSIZE)
@@ -219,26 +219,19 @@ static ssize_t proc_debug_attr_write(struct file *flip,
 	}
 
 	meta_buf[count] = '\0';
-
-	ret = sscanf(meta_buf, "%s %d", key, &val);
-	if (!ret) {
-		HWLOGR_ERR("sscanf failed (%d)\n", ret);
+	ret = kstrtouint(meta_buf, PROC_WRITE_BUFSIZE, &val);
+	if (ret) {
+		HWLOGR_ERR("kstrtouint failed (%d)\n", ret);
 		goto out;
 	}
 
-	HWLOGR_INFO("key: %s, val: %u\n", key, val);
-
-	if (!strcmp(key, "r_ofs")) {
-		// logger_v2_set_r_ofs(val);
-	} else if (!strcmp(key, "w_ofs")) {
-		// logger_v2_set_w_ofs(val);
-	} else if (!strcmp(key, "log_lv")) {
-		if (val < DBG_LOG_ERR || val > DBG_LOG_DEBUG) {
-			HWLOGR_ERR("set g_hw_logger_log_lv failed (%u)\n", val);
-		} else {
-			g_hw_logger_log_lv = val;
-		}
+	if (val < DBG_LOG_ERR || val > DBG_LOG_DEBUG) {
+		HWLOGR_ERR("set g_hw_logger_log_lv failed (%u)\n", val);
+	} else {
+		g_hw_logger_log_lv = val;
+		HWLOGR_INFO("g_hw_logger_log_lv: %u\n", g_hw_logger_log_lv);
 	}
+
 out:
 	return count;
 }
