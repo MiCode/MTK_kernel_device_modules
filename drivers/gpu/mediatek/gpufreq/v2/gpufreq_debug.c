@@ -1003,6 +1003,12 @@ static ssize_t mfgsys_config_proc_write(struct file *file,
 				val = FEAT_ENABLE;
 			else if (sysfs_streq(input_val, "disable"))
 				val = FEAT_DISABLE;
+		} else if (sysfs_streq(input_target, "axi_mon")) {
+			target = CONFIG_AXI_MON;
+			if (sysfs_streq(input_val, "enable"))
+				val = FEAT_ENABLE;
+			else if (sysfs_streq(input_val, "disable"))
+				val = FEAT_DISABLE;
 		} else if (sysfs_streq(input_target, "dcs")) {
 			target = CONFIG_DCS;
 			ret = kstrtouint(input_val, 16, &val);
