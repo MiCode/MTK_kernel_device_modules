@@ -3988,7 +3988,7 @@ static struct LCD_setting_table cmd_set_fps_60hz[] =  {
 	{0x02,{0x8A, 0x11}},//60Hz
 };
 
-static struct LCD_setting_table cmd_set_fps_120hz_mte[] =  {
+static struct LCD_setting_table cmd_set_fps_mte[] =  {
 	{0x02,{0xFE, 0x00}},
 	{0x02,{0xF1, 0xA6}},
 	{0x02,{0xFE, 0x40}},
@@ -4021,7 +4021,7 @@ static struct LCD_setting_table cmd_set_fps_120hz_mte[] =  {
 	{0x02, {0x8A, 0x11}},
 };
 
-static struct LCD_setting_table cmd_set_fps_120hz_360te[] =  {
+static struct LCD_setting_table cmd_set_fps_360te[] =  {
 	{0x02,{0xFE, 0x00}},
 	{0x02,{0xF1, 0xA6}},
 	{0x02,{0xFE, 0x40}},
