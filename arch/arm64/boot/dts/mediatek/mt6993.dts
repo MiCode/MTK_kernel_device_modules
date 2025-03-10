@@ -9294,13 +9294,13 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			bw-table-bw = <4100 1800 100>;
 
 			interconnects =
-				<&mmqos MASTER_LARB_PORT(SMMU_L0_P8_OVL_FAKE_ENG0)
+				<&mmqos MASTER_LARB_PORT(MTK_SMMU_PORT_ID(62, 8))
 					&mmqos SLAVE_COMMON(1)>,
-				<&mmqos MASTER_LARB_PORT(SMMU_L1_P8_OVL_FAKE_ENG1)
+				<&mmqos MASTER_LARB_PORT(MTK_SMMU_PORT_ID(23, 8))
 					&mmqos SLAVE_COMMON(0)>,
-				<&mmqos MASTER_LARB_PORT(SMMU_L34_P8_OVL_FAKE_ENG0)
+				<&mmqos MASTER_LARB_PORT(MTK_SMMU_PORT_ID(31, 8))
 					&mmqos SLAVE_COMMON(1)>,
-				<&mmqos MASTER_LARB_PORT(SMMU_L35_P8_OVL_FAKE_ENG1)
+				<&mmqos MASTER_LARB_PORT(MTK_SMMU_PORT_ID(63, 8))
 					&mmqos SLAVE_COMMON(0)>;
 			interconnect-names = "fake_eng_0", "fake_eng_1", "fake_eng_2", "fake_eng_3";
 		};
