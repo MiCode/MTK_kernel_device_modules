@@ -198,6 +198,10 @@ EXPORT_SYMBOL(wla_get_rglt2p0_bypass);
 
 void wla_set_ddren_force_on(unsigned int force_on)
 {
+	unsigned int runtime_switch_en = !force_on;
+
+	/* workaround: notify sspm slc driver to switch to force_on or not */
+	wla_write_field(WLAPM_CLK_CTRL0, runtime_switch_en, BIT(2));
 	wla_write_field(WLAPM_DDREN_CTRL0, force_on, WLAPM_DDREN_FORCE_ON);
 }
 EXPORT_SYMBOL(wla_set_ddren_force_on);
