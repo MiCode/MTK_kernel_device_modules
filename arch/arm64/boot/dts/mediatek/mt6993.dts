@@ -11554,6 +11554,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mminfra-pwr-idx = <MMINFRA_MT6993_PWR_MM2>;
 			mminfra-pwr-type = <MMINFRA_MT6993_TYPE_DISP>;
 			event-vote-hwccf = /bits/ 16 <CMDQ_SYNC_TOKEN_DPC_VOTE_HWCCF>;
+			operating-points-v2 = <&opp_table_disp>;
 		};
 /*
 		mipi_tx_config0: mipi-tx-config@130b0000 {
