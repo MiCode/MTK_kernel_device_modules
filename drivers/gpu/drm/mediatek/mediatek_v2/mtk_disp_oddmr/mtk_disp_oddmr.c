@@ -4463,15 +4463,18 @@ static int _mtk_oddmr_od_table_lookup(struct mtk_disp_oddmr *oddmr_data,
 		ODDMRFLOW_LOG("not find table!\n");
 		idx = -1;
 	}
-	ODDMRFLOW_LOG("table_idx %d\n", idx);
+	ODDMRFLOW_LOG("expected table%d\n", idx);
 	return idx;
 }
 /*
  *table_idx: output table_idx found
- *return 0: state cur sram, 1: flip sram, 2: update sram table
+ *return 0: state cur sram (current sram matches or another sram is still updating)
+ *       1: flip sram (another sram matches)
+ *		 2: update sram table (both srams do not match)
+ *       3: force flip sram (in content fps mode, avoid sram keep updating)
  */
 static int mtk_oddmr_od_table_lookup(struct mtk_disp_oddmr *oddmr_data,
-		struct mtk_oddmr_timing *cur_timing, int *table_idx)
+		struct mtk_oddmr_timing *cur_timing, int *table_idx, bool check_force_flip)
 {
 	struct mtk_oddmr_od_param *od_param = &oddmr_data->primary_data->od_param;
 	int tmp_table_idx, tmp1_table_idx, tmp_sram_idx, ret;
@@ -4506,17 +4509,18 @@ static int mtk_oddmr_od_table_lookup(struct mtk_disp_oddmr *oddmr_data,
 	(cur_timing->bl_level >= od_param->od_tables[tmp_table_idx]->table_basic_info.min_dbv) &&
 	(cur_timing->bl_level <= od_param->od_tables[tmp_table_idx]->table_basic_info.max_dbv)))) {
 		*table_idx = tmp_table_idx;
+		ODDMRFLOW_LOG("No change: use table%d\n", *table_idx);
 		return 0;
 	}
 	//if od in updating, used old table before updata table finish
 	if (oddmr_data->primary_data->od_state == ODDMR_TABLE_UPDATING) {
-		ODDMRFLOW_LOG("ODDMR_TABLE_UPDATING\n");
 		*table_idx = tmp_table_idx;
+		ODDMRFLOW_LOG("TABLE_UPDATING: use table%d\n", *table_idx);
 		if (oddmr_data->data->od_version >= MTK_OD_V2)
 			oddmr_data->od_update_sram = 1;
 		return 0;
 	}
-	ODDMRFLOW_LOG("%d\n", __LINE__);
+
 	/* second best just flip sram */
 	if ((IS_TABLE_VALID(tmp1_table_idx, od_param->valid_table)) &&
 	(cur_timing->vrefresh >= od_param->od_tables[tmp1_table_idx]->table_basic_info.min_fps) &&
@@ -4526,20 +4530,29 @@ static int mtk_oddmr_od_table_lookup(struct mtk_disp_oddmr *oddmr_data,
 	(cur_timing->bl_level >= od_param->od_tables[tmp1_table_idx]->table_basic_info.min_dbv) &&
 	(cur_timing->bl_level <= od_param->od_tables[tmp1_table_idx]->table_basic_info.max_dbv)))) {
 		*table_idx = tmp1_table_idx;
+		ODDMRFLOW_LOG("Flip sram: use table%d\n", *table_idx);
 		CRTC_MMP_MARK(0, oddmr_ctl, 0xf, tmp1_table_idx);
 		return 1;
 	}
-	ODDMRFLOW_LOG("%d\n", __LINE__);
 
 	/* worst case should update table */
 	ret = _mtk_oddmr_od_table_lookup(oddmr_data,cur_timing);
 	if (ret >= 0 && oddmr_data->data->is_od_table_bl_chg) {
+		//In content fps mode, force sram flip instead of updating sram again,
+		//if sram was just updated previously but now both srams do not match.
+		if (check_force_flip) {
+			*table_idx = tmp1_table_idx;
+			ODDMRFLOW_LOG("Force flip sram: use table%d\n", *table_idx);
+			CRTC_MMP_MARK(0, oddmr_ctl, 0xe, tmp1_table_idx);
+			return 3;
+		}
+
 		*table_idx = tmp_table_idx; //used table not change before updata table finish
 		od_param->updata_dram_table = ret;
-		ODDMRFLOW_LOG("update table fps %u, vrefresh %u, table_idx %d sram(%d %d)\n",
+		ODDMRFLOW_LOG("update table fps %u, vrefresh %u, table_idx %d sram(%d %d); use table%d\n",
 				cur_timing->vrefresh, cur_timing->vrefresh,
 				ret, oddmr_data->od_data.od_dram_sel[0],
-				oddmr_data->od_data.od_dram_sel[1]);
+				oddmr_data->od_data.od_dram_sel[1], *table_idx);
 		CRTC_MMP_MARK(0, oddmr_ctl, 0xc, tmp_table_idx);
 		return 2;
 	}
@@ -5390,7 +5403,7 @@ static void mtk_oddmr_od_timing_chg_dual(struct mtk_ddp_comp *comp,
 
 	ODDMRAPI_LOG("+\n");
 	if (oddmr_data->primary_data->od_state >= ODDMR_INIT_DONE) {
-		ret = mtk_oddmr_od_table_lookup(oddmr_data, timing, &table_idx);
+		ret = mtk_oddmr_od_table_lookup(oddmr_data, timing, &table_idx, false);
 		if (ret >= 0) {
 			if ((timing->mode_chg_index & MODE_DSI_RES) &&
 			(od_param->od_basic_info.basic_param.resolution_switch_mode == 1)) {
@@ -5656,7 +5669,8 @@ static void mtk_oddmr_od_bl_chg(struct mtk_ddp_comp *comp, uint32_t bl_level, st
 
 	if (oddmr_data->primary_data->od_state >= ODDMR_INIT_DONE) {
 		ODDMRAPI_LOG("+\n");
-		ret = mtk_oddmr_od_table_lookup(oddmr_data, &oddmr_data->primary_data->current_timing, &table_idx);
+		ret = mtk_oddmr_od_table_lookup(oddmr_data, &oddmr_data->primary_data->current_timing,
+			&table_idx, false);
 		ODDMRAPI_LOG("od_bl_change, %d\n", ret);
 		if (ret >= 0)
 			oddmr_data->od_force_off = false;
@@ -6845,12 +6859,21 @@ static void mtk_oddmr_od_table_chg_by_timing(struct mtk_ddp_comp *comp, struct c
 	uint32_t weight[3] = {0};
 	int table_idx,ret;
 	uint32_t od_fps_mode = oddmr_data->primary_data->od_fps_mode;
+	int od_update_sram_last = 0;
+	bool check_force_flip = false;
+	static unsigned int old_vrefresh, old_bl_level;
 
+	ODDMRAPI_LOG("+\n");
+	if (oddmr_data->data->od_version >= MTK_OD_V2) {
+		od_update_sram_last = oddmr_data->od_update_sram;
+		oddmr_data->od_update_sram = 0;
+	}
 	if (current_timing->old_vrefresh != current_timing->vrefresh ||
 		current_timing->old_bl_level != current_timing->bl_level) {
-		ODDMRAPI_LOG("+\n");
-		ret = mtk_oddmr_od_table_lookup(oddmr_data, current_timing, &table_idx);
-		ODDMRLOW_LOG("od_table_chg_ret, %d\n", ret);
+		check_force_flip = (oddmr_data->data->od_version >= MTK_OD_V2) && (od_fps_mode == 1) &&
+			(od_update_sram_last == 1); //check if need force flip in mtk_oddmr_od_table_lookup.
+		ret = mtk_oddmr_od_table_lookup(oddmr_data, current_timing, &table_idx, check_force_flip);
+		ODDMRLOW_LOG("od_table_chg_ret %d, check_force_flip %d\n", ret, check_force_flip);
 		if (comp->mtk_crtc->is_dual_pipe) {
 			comp1 = oddmr_data->companion;
 			oddmr1_data = comp_to_oddmr(comp1);
@@ -6861,18 +6884,26 @@ static void mtk_oddmr_od_table_chg_by_timing(struct mtk_ddp_comp *comp, struct c
 				mtk_oddmr_od_flip(comp, handle);
 				if (comp->mtk_crtc->is_dual_pipe)
 					mtk_oddmr_od_flip(comp1, handle);
-
 				current_timing->old_vrefresh = current_timing->vrefresh;
 				current_timing->old_bl_level = current_timing->bl_level;
 			} else if (oddmr_data->data->is_od_table_bl_chg && ret == 2) {
 				if (oddmr_data->data->od_version >= MTK_OD_V2)
 					oddmr_data->od_update_sram = 1;
-				//TODO:update table work queue(table pq sram) mt6985 no need
 				oddmr_data->primary_data->update_table_work.data = (void *)comp;
 				queue_work(oddmr_data->primary_data->oddmr_wq, &oddmr_data->primary_data->update_table_work.task);
+				old_vrefresh = current_timing->vrefresh;
+				old_bl_level = current_timing->bl_level;
 			} else if (ret == 0) {
+				//current table is best choice, or sram is updating
 				current_timing->old_vrefresh = current_timing->vrefresh;
 				current_timing->old_bl_level = current_timing->bl_level;
+			} else if (ret == 3) {
+				// force flip sram
+				mtk_oddmr_od_flip(comp, handle);
+				if (comp->mtk_crtc->is_dual_pipe)
+					mtk_oddmr_od_flip(comp1, handle);
+				current_timing->old_vrefresh = old_vrefresh;
+				current_timing->old_bl_level = old_bl_level;
 			}
 
 			mtk_oddmr_od_gain_lookup(comp, current_timing->vrefresh,
@@ -6916,6 +6947,9 @@ static void mtk_oddmr_od_table_chg_by_timing(struct mtk_ddp_comp *comp, struct c
 			mtk_oddmr_set_od_weight_dual(comp, weight, handle);
 		}
 	}
+	ODDMRAPI_LOG("old_vrefresh %d, vrefresh %d, old_bl_level %d, bl_level %d\n",
+			current_timing->old_vrefresh, current_timing->vrefresh,
+			current_timing->old_bl_level, current_timing->bl_level);
 }
 
 /*
@@ -7129,7 +7163,7 @@ static void mtk_oddmr_set_od_enable_dual(struct mtk_ddp_comp *comp, uint32_t ena
 	struct mtk_ddp_comp *comp1;
 	struct mtk_disp_oddmr *oddmr1_data;
 	bool sec_on, en;
-	int od_update_sram_last;
+	int od_update_sram_last = 0;
 
 	ODDMRAPI_LOG("+\n");
 	sec_on = comp->mtk_crtc->sec_on;
@@ -7143,23 +7177,26 @@ static void mtk_oddmr_set_od_enable_dual(struct mtk_ddp_comp *comp, uint32_t ena
 	if (comp->mtk_crtc->is_dual_pipe)
 		en = en && !oddmr1_data->od_force_off;
 
-	if (oddmr_data->data->od_version >= MTK_OD_V2) {
+	if (oddmr_data->data->od_version >= MTK_OD_V2 &&
+		oddmr_data->primary_data->od_state >= ODDMR_INIT_DONE)
 		od_update_sram_last = oddmr_data->od_update_sram;
-		oddmr_data->od_update_sram = 0;
-	}
 
+	// od_update_sram = 1 means OD will or still update sram table
 	if(en && oddmr_data->primary_data->od_state >= ODDMR_INIT_DONE)
-		mtk_oddmr_od_table_chg(comp, handle);
-	// mtk_oddmr_set_od_enable will use od_update_sram info from mtk_oddmr_od_table_chg
-	// g_oddmr_priv->od_update_sram = 1 means OD will or still update sram table
+		mtk_oddmr_od_table_chg(comp, handle); //will update od_update_sram
+	else if (oddmr_data->primary_data->od_state == ODDMR_INIT_DONE) //!=ODDMR_TABLE_UPDATING
+		oddmr_data->od_update_sram = 0;
+
+	// mtk_oddmr_set_od_enable will close top_clk if od_update_sram = 0
 	mtk_oddmr_set_od_enable(comp, enable, force_config, handle);
 	if (comp->mtk_crtc->is_dual_pipe)
 		mtk_oddmr_set_od_enable(comp1, enable, force_config, handle);
 
+	//updating sram done, top_clk can be closed
 	if (oddmr_data->data->od_version == MTK_OD_V2  &&
 			od_update_sram_last == 1 && oddmr_data->od_update_sram == 0 &&
 			!oddmr_data->dmr_enable)
-		mtk_oddmr_set_top_clk_force(comp, 0, handle); //updating sram done, top_clk can be closed
+		mtk_oddmr_set_top_clk_force(comp, 0, handle);
 }
 
 static void mtk_oddmr_set_dmr_enable(struct mtk_ddp_comp *comp, uint32_t enable,
