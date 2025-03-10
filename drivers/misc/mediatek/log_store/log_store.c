@@ -46,6 +46,9 @@ extern void register_bootprof_write_log(void (*fn)(char *str, size_t str_len));
 #define READ_KERNEL_LOG_SIZE 0x20000
 #endif
 
+/* make sure 'sizeof(log_emmc_header) + MAX_LOG_INDEX_NUM * sizeof(emmc_log) < block_size' */
+#define MAX_LOG_INDEX_NUM (320U)
+
 static struct sram_log_header *sram_header;
 static int sram_log_store_status = BUFF_NOT_READY;
 static int dram_log_store_status = BUFF_NOT_READY;
@@ -61,6 +64,7 @@ static bool early_log_disable;
 #if IS_ENABLED(CONFIG_MTK_LOG_STORE_BOOTPROF)
 struct log_store_partition *expdb_logstore;
 static struct task_struct *write_expdb_thread;
+static u32 header_index_max = 0x20;
 
 
 DECLARE_WAIT_QUEUE_HEAD(wait_queue);
@@ -335,13 +339,13 @@ static int log_store_to_emmc(char *buffer, size_t write_len, u32 log_type)
 			log_config.end = pEmmc.offset;
 			log_config.type = log_type;
 			index_offset = sizeof(struct log_emmc_header) +
-				(pEmmc.reserve_flag[LOG_INDEX] % HEADER_INDEX_MAX)* sizeof(struct emmc_log);
+				(pEmmc.reserve_flag[LOG_INDEX] % header_index_max)* sizeof(struct emmc_log);
 
 			if (sram_header->reserve[SRAM_EXPDB_VER] != pEmmc.reserve_flag[EXPDB_SIZE_VER])
 				pEmmc.reserve_flag[EXPDB_SIZE_VER] = sram_header->reserve[SRAM_EXPDB_VER];
 
 			pEmmc.reserve_flag[LOG_INDEX] += 1;
-			pEmmc.reserve_flag[LOG_INDEX] = pEmmc.reserve_flag[LOG_INDEX] % HEADER_INDEX_MAX;
+			pEmmc.reserve_flag[LOG_INDEX] = pEmmc.reserve_flag[LOG_INDEX] % header_index_max;
 
 			ret = partition_block_rw(expdb_logstore->bdev, 1, expdb_logstore->logindex_offset, 0,
 					&pEmmc, sizeof(struct log_emmc_header));
@@ -993,6 +997,10 @@ int log_store_late_init(void)
 			memset(expdb_logstore, 0, sizeof(struct log_store_partition));
 			expdb_logstore->bootlog_size = EMMC_BOOTPROF_DEFAULT_SIZE;
 			expdb_logstore->logstore_size = sram_header->reserve[SRAM_EXPDB_VER] & (~VERSION_MASK);
+			if (expdb_logstore->logstore_size >= 0x400000)
+				header_index_max = ((expdb_logstore->logstore_size >> 16) > MAX_LOG_INDEX_NUM) ?
+					MAX_LOG_INDEX_NUM : (expdb_logstore->logstore_size >> 16);
+
 			write_expdb_thread = kthread_create(write_expdb_thread_fn, NULL ,"log_store_thread");
 			if (write_expdb_thread)
 				wake_up_process(write_expdb_thread);
