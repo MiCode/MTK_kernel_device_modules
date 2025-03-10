@@ -2444,7 +2444,7 @@ static void init_peripheral_ep
 
 	INIT_LIST_HEAD(&ep->req_list);
 
-	sprintf(ep->name, "ep%d%s", epnum,
+	snprintf(ep->name, sizeof(ep->name), "ep%d%s", epnum,
 		(!epnum || hw_ep->is_shared_fifo)
 			? "" : (is_in ? "in" : "out"));
 

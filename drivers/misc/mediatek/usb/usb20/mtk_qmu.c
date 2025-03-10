@@ -400,7 +400,7 @@ void gpd_switch_to_dram(struct device *dev)
 	if (Tx_gpd_Offset[index] != Tx_gpd_Offset_dram) {
 		static char string[64];
 
-		sprintf(string, "offset<%p, %p>\n",
+		snprintf(string, sizeof(string), "offset<%p, %p>\n",
 				(void *)(uintptr_t)Tx_gpd_Offset[index],
 				(void *)(uintptr_t)Tx_gpd_Offset_dram);
 		QMU_ERR("%s\n", string);
@@ -1655,7 +1655,7 @@ finished:
 		/* must use static string for AEE usage */
 		static char string[MUSB_HOST_QMU_AEE_STR_SZ];
 
-		sprintf(string, "USB20_HOST, RXQ<%d> ERR, CSR:%x", epnum, val);
+		snprintf(string, sizeof(string), "USB20_HOST, RXQ<%d> ERR, CSR:%x", epnum, val);
 		QMU_ERR("%s\n", string);
 #if IS_ENABLED(CONFIG_MEDIATEK_SOLUTION)
 		{
@@ -1781,7 +1781,7 @@ finished:
 		/* must use static string for AEE usage */
 		static char string[MUSB_HOST_QMU_AEE_STR_SZ];
 
-		sprintf(string, "USB20_HOST, TXQ<%d> ERR, CSR:%x", epnum, val);
+		snprintf(string, sizeof(string), "USB20_HOST, TXQ<%d> ERR, CSR:%x", epnum, val);
 		QMU_ERR("%s\n", string);
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 		aee_kernel_warning(string, string);

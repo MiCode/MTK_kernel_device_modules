@@ -2137,7 +2137,7 @@ static ssize_t mode_show
 	int ret = -EINVAL;
 
 	spin_lock_irqsave(&musb->lock, flags);
-	ret = sprintf(buf, "%s\n", otg_state_string(musb->xceiv->otg->state));
+	ret = snprintf(buf, 64, "%s\n", otg_state_string(musb->xceiv->otg->state));
 	spin_unlock_irqrestore(&musb->lock, flags);
 
 	return ret;
@@ -2211,7 +2211,7 @@ static ssize_t vbus_show
 	vbus = musb_platform_get_vbus_status(musb);
 	spin_unlock_irqrestore(&musb->lock, flags);
 
-	return sprintf(buf, "Vbus %s, timeout %lu msec\n"
+	return snprintf(buf, 128, "Vbus %s, timeout %lu msec\n"
 		, vbus ? "on" : "off", val);
 }
 

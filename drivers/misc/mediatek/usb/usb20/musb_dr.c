@@ -425,7 +425,7 @@ static ssize_t cmode_show(struct device *dev,
 	struct musb *mtk_musb = dev_get_drvdata(dev);
 	struct otg_switch_mtk *otg_sx = mtk_musb->otg_sx;
 
-	return sprintf(buf, "%d\n", otg_sx->op_mode);
+	return snprintf(buf, 16, "%d\n", otg_sx->op_mode);
 }
 static DEVICE_ATTR_RW(cmode);
 
