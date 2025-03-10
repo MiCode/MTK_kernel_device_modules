@@ -220,7 +220,7 @@ static ssize_t test_cmd_show(struct device *dev, struct device_attribute *attr, 
 	dev_info(dev, "======%s=====\n", __func__);
 	dev_info(dev, "@output: %s\n", tester.output);
 
-	return sprintf(buf, "%s", tester.output);
+	return snprintf(buf, PAGE_SIZE, "%s", tester.output);
 }
 
 static int u_tester_create_sysfs(struct u_logger *logger)
