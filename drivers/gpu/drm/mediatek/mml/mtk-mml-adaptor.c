@@ -105,6 +105,7 @@ void task_move_to_destroy(struct kref *kref)
 void frame_config_destroy(struct mml_frame_config *cfg)
 {
 	struct mml_task *task, *tmp;
+	struct mml_retrig_task *retg_task, *tmp_retg_task;
 
 	mml_msg("[adpt]%s frame config %p task cnt (%u %u %hhu)",
 		__func__, cfg, cfg->await_task_cnt, cfg->run_task_cnt, cfg->done_task_cnt);
@@ -126,7 +127,7 @@ void frame_config_destroy(struct mml_frame_config *cfg)
 			/* unable to handling error,
 			 * print error but not destroy
 			 */
-			mml_err("[adpt]busy task:%p", task);
+			mml_err("[adpt]busy task %p job %u", task, task->job.jobid);
 			kref_put(&task->ref, task_move_to_destroy);
 		}
 	}
@@ -134,6 +135,22 @@ void frame_config_destroy(struct mml_frame_config *cfg)
 	list_for_each_entry_safe(task, tmp, &cfg->done_tasks, entry) {
 		list_del_init(&task->entry);
 		kref_put(&task->ref, task_move_to_destroy);
+	}
+
+	if (WARN_ON(!list_empty(&cfg->retg_tasks))) {
+		mml_err("[adpt]still busy retrigger tasks during destroy config %p", cfg);
+		list_for_each_entry_safe(retg_task, tmp_retg_task, &cfg->retg_tasks, entry) {
+			mml_err("[adpt]busy retg task %p job %u", retg_task, retg_task->jobid);
+			list_del_init(&retg_task->entry);
+			cmdq_pkt_destroy(retg_task->pkt_retrigger);
+			kfree(retg_task);
+		}
+	}
+
+	list_for_each_entry_safe(retg_task, tmp_retg_task, &cfg->retg_idle_tasks, entry) {
+		list_del_init(&retg_task->entry);
+		cmdq_pkt_destroy(retg_task->pkt_retrigger);
+		kfree(retg_task);
 	}
 
 	cfg->cfg_ops->put(cfg);

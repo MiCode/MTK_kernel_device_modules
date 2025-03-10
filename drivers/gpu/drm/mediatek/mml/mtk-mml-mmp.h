@@ -42,6 +42,7 @@ struct mml_mmp_events_t {
 	mmp_event query_mode;
 	mmp_event query_layer;
 	mmp_event submit;
+	mmp_event retrigger;
 	mmp_event config;
 	mmp_event flush;
 	mmp_event submit_cb;
@@ -100,6 +101,7 @@ struct mml_mmp_events_t {
 	mmp_event underrun;
 
 	/* events for couple */
+	mmp_event racing_sync;
 	mmp_event racing_enter;
 	mmp_event racing_stop;
 	mmp_event racing_stop_sync;

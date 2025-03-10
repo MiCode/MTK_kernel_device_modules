@@ -2090,6 +2090,14 @@ static s32 rrot_wait(struct mml_comp *comp, struct mml_task *task,
 	return 0;
 }
 
+static s32 rrot_wait_retrigger(struct mml_comp *comp, struct mml_retrig_task *retg_task,
+		     struct mml_comp_config *ccfg, u32 idx)
+{
+	/* wait rdma frame done */
+	cmdq_pkt_wfe(retg_task->pkt_retrigger, comp_to_rrot(comp)->event_eof);
+	return 0;
+}
+
 static void rrot_backup_crc(struct mml_comp *comp, struct mml_task *task,
 	struct mml_comp_config *ccfg)
 {
@@ -2269,6 +2277,7 @@ static const struct mml_comp_config_ops rrot_cfg_ops = {
 	.wait = rrot_wait,
 	.post = rrot_post,
 	.reframe = rrot_reconfig_frame,
+	.wait_retrigger = rrot_wait_retrigger,
 };
 
 static void rrot_init_frame_done_event(struct mml_comp *comp, u32 event)

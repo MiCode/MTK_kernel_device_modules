@@ -2048,9 +2048,11 @@ static void mtk_drm_idlemgr_disable_crtc(struct drm_crtc *crtc)
 				"dis_addon", 5, perf_string, false);
 	/* 3. disconnect addon module and recover config */
 	mtk_crtc_disconnect_addon_module(crtc);
-	if (crtc_state) {
+	if (crtc_state &&
+		!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MML_DLRETRIGGER)) {
 		crtc_state->lye_state.mml_ir_lye = 0;
 		crtc_state->lye_state.mml_dl_lye = 0;
+		DDPINFO("%s clear mml lye\n", __func__);
 	}
 
 	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
@@ -2349,16 +2351,8 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 
 	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
 				"connect_addon", 14, perf_string, true);
-	/* 9. connect addon module and config
-	 *    skip mml addon connect if kick idle by atomic commit
-	 */
-	if (crtc_state->lye_state.mml_ir_lye || crtc_state->lye_state.mml_dl_lye) {
-		mtk_crtc_addon_connector_connect(crtc, NULL);
-#if defined(DISP_BWM20_ENABLE)
-		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BWM20))
-			mtk_crtc_bwm_enable(crtc, NULL);
-#endif
-	} else if ((crtc_state->prop_val[CRTC_PROP_OUTPUT_ENABLE] == 1) && (crtc_id == 0)) {
+	/* 9. connect addon module and config */
+	if ((crtc_state->prop_val[CRTC_PROP_OUTPUT_ENABLE] == 1) && (crtc_id == 0)) {
 		DDPINFO("%s, is cwb, skip it\n", __func__);
 		mtk_crtc_connect_addon_module(crtc, true);
 	} else {

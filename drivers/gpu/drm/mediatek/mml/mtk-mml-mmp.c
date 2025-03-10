@@ -27,6 +27,7 @@ void mml_mmp_init(void)
 	mml_mmp_events.query_mode = mmprofile_register_event(parent, "query_mode");
 	mml_mmp_events.query_layer = mmprofile_register_event(parent, "query_layer");
 	mml_mmp_events.submit = mmprofile_register_event(parent, "submit");
+	mml_mmp_events.retrigger = mmprofile_register_event(parent, "retrigger");
 	mml_mmp_events.config = mmprofile_register_event(parent, "config");
 	mml_mmp_events.flush = mmprofile_register_event(parent, "flush");
 	mml_mmp_events.submit_cb = mmprofile_register_event(parent, "submit_cb");
@@ -85,6 +86,7 @@ void mml_mmp_init(void)
 	mml_mmp_events.underrun = mmprofile_register_event(parent, "underrun");
 
 	parent = mml_mmp_events.couple;
+	mml_mmp_events.racing_sync = mmprofile_register_event(parent, "racing_sync");
 	mml_mmp_events.racing_enter = mmprofile_register_event(parent, "racing_enter");
 	mml_mmp_events.racing_stop = mmprofile_register_event(parent, "racing_stop");
 	mml_mmp_events.racing_stop_sync = mmprofile_register_event(parent, "racing_stop_sync");
