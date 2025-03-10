@@ -7423,6 +7423,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				MML2_WROT0 MML_WROT0_AIDSEL 0x1 0x3
 				MML2_WROT1 MML_WROT1_AIDSEL 0x1 0x3>;
 			mediatek,larb = <&smi_larb56 MTK_M4U_TO_PORT(SMMU_L56_P13_MDP_FAKE_ENG0)>;
+			mediatek,larb2 = <&smi_larb57 MTK_M4U_TO_PORT(SMMU_L57_P8_MDP_FAKE_ENG1)>;
 
 			/* dvfs */
 			operating-points-v2 = <&opp_table_disp>;
