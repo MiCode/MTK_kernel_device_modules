@@ -55,6 +55,9 @@ struct mtk_usb_sram {
 	u32 upd_bit;
 	u32 pdn_bit;
 
+	void __iomem *dcm_sel;
+	u32 dcm_mask;
+
 	spinlock_t block_lock;
 	size_t block_size;
 	int block_num;
@@ -68,6 +71,7 @@ struct mtk_usb_sram {
 
 static struct mtk_usb_sram *g_manager;
 static void bus_clk_pdn(bool on);
+static void dcm_select(bool on);
 
 #define INFO_MAX_LEN 500
 static char parse_info[INFO_MAX_LEN];
@@ -280,8 +284,10 @@ next_block:
 		dev_info(manager->dev, "allocate [%s]\n", parse_region_info(region));
 
 		spin_lock(&manager->list_lock);
-		if (list_empty(&manager->region_list))
+		if (list_empty(&manager->region_list)) {
 			bus_clk_pdn(false);
+			dcm_select(false);
+		}
 		list_add_tail(&region->list, &manager->region_list);
 		dump_region(manager);
 		spin_unlock(&manager->list_lock);
@@ -307,8 +313,10 @@ static int _mtk_usb_sram_free(struct mtk_usb_sram *manager, struct mtk_usb_sram_
 
 	spin_lock(&manager->list_lock);
 	list_del(&region->list);
-	if (list_empty(&manager->region_list))
+	if (list_empty(&manager->region_list)) {
 		bus_clk_pdn(true);
+		dcm_select(true);
+	}
 	dump_region(manager);
 	spin_unlock(&manager->list_lock);
 
@@ -378,6 +386,27 @@ static void *allocate_for_offload(dma_addr_t *phys_addr, unsigned int size, int 
 static int free_for_offload(dma_addr_t phys_addr)
 {
 	return mtk_usb_sram_free(phys_addr);
+}
+
+static void dcm_select(bool on)
+{
+	struct mtk_usb_sram *manager = g_manager;
+	void __iomem *operation;
+	u32 value;
+
+	if (manager->dcm_sel == NULL || manager->dcm_mask == 0)
+		return;
+
+	operation = manager->dcm_sel;
+	value = readl(operation);
+	if (on)
+		value |= manager->dcm_mask;
+	else
+		value &= ~(manager->dcm_mask);
+	writel(value, operation);
+
+	dev_info(manager->dev, "%s on:%d operation:0x%llx value:0x%x\n",
+		__func__, on, virt_to_phys(operation), readl(manager->dcm_sel));
 }
 
 static void bus_clk_pdn(bool on)
@@ -586,8 +615,10 @@ static const struct attribute_group usb_sram_group = {
 	.attrs = usb_sram_attrs,
 };
 
+#define DCM_SEL_INFO_COUNT	2
 static void usb_sram_dts_parse(struct device_node *node, struct mtk_usb_sram *manager)
 {
+	u32 dcm_sel_info[DCM_SEL_INFO_COUNT];
 	u32 block_size;
 
 	if (!node || !manager)
@@ -599,6 +630,17 @@ static void usb_sram_dts_parse(struct device_node *node, struct mtk_usb_sram *ma
 	manager->block_size = (size_t)block_size;
 
 	allow_request = of_property_read_bool(node, "allow-request");
+
+
+	/* dcm select */
+	manager->dcm_sel = NULL;
+	manager->dcm_mask = 0;
+
+	if (!device_property_read_u32_array(manager->dev, "dcm-sel", dcm_sel_info, DCM_SEL_INFO_COUNT)) {
+		manager->dcm_sel = ioremap((phys_addr_t)(uintptr_t)dcm_sel_info[0], sizeof(u32));
+		manager->dcm_mask = dcm_sel_info[1];
+	}
+
 }
 
 static int usb_sram_probe(struct platform_device *pdev)
@@ -710,6 +752,10 @@ static void usb_sram_remove(struct platform_device *pdev)
 	if (manager->clk_upd) {
 		iounmap(manager->clk_upd);
 		manager->clk_upd = NULL;
+	}
+	if (manager->dcm_sel) {
+		iounmap(manager->dcm_sel);
+		manager->dcm_sel = NULL;
 	}
 }
 
