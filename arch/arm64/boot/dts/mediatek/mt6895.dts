@@ -661,9 +661,9 @@
 		interconnect-names = "fpsgo-perf-bw";
 		required-opps = <&dvfsrc_freq_opp0>;
 
-		gcc_enable = <1>;
-		fbt_cpu_mask = <255 128 15 127>;
-		sbe_resceue_enable = <1>;
+		gcc-enable = <1>;
+		fbt-cpu-mask = <255 128 15 127 240 112>;
+		sbe-resceue-enable = <1>;
 	};
 
 	mcupm: mcupm@c540000 {
