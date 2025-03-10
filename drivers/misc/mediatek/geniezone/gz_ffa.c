@@ -105,6 +105,8 @@ static void ffa_mem_list_dump(void)
 	struct ffa_mem_record_table __maybe_unused *mem_record;
 
 	list_head = ffa_mem_list_lock();
+	if (!list_head)
+		goto err_unlock;
 	for (iterator = list_head->next; iterator != list_head; iterator = iterator->next) {
 		mem_record = list_entry(iterator, struct ffa_mem_record_table, list);
 		/* FFA_DEBUG("[DUMP] handle=0x%lx mem_region=0x%lx, meta_data=0x%lx\n",
@@ -113,6 +115,7 @@ static void ffa_mem_list_dump(void)
 		 *				mem_record->meta_data);
 		 */
 	}
+err_unlock:
 	ffa_mem_list_unlock();
 }
 
@@ -464,6 +467,10 @@ static int ffa_memory_share_read(struct args *args)
 	handle = args->arg[1];
 
 	list_head = ffa_mem_list_lock();
+	if (!list_head) {
+		ffa_mem_list_unlock();
+		return -1;
+	}
 
 	for (iterator = list_head->next; iterator != list_head; iterator = iterator->next) {
 		mem_record = list_entry(iterator, struct ffa_mem_record_table, list);
