@@ -48,6 +48,9 @@ endif
 ifneq ($(wildcard $(src)/mt6789/Makefile),)
 obj-$(CONFIG_DEVICE_MODULES_SND_SOC_MT6789) += mt6789/
 endif
+ifneq ($(wildcard $(src)/mt6895/Makefile),)
+obj-$(CONFIG_DEVICE_MODULES_SND_SOC_MT6895) += mt6895/
+endif
 ifneq ($(wildcard $(src)/mt6855/Makefile),)
 obj-$(CONFIG_DEVICE_MODULES_SND_SOC_MT6855) += mt6855/
 endif
