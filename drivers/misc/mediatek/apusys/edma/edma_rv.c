@@ -283,7 +283,7 @@ static void edma_ipi_deinit(void)
 static ssize_t loglv_show(struct kobject *kobj, struct kobj_attribute *attr,
 			char *buf)
 {
-	return sprintf(buf, "%d\n", loglv);
+	return snprintf(buf, PAGE_SIZE, "%d\n", loglv);
 }
 
 static ssize_t loglv_store(struct kobject *kobj, struct kobj_attribute *attr,
