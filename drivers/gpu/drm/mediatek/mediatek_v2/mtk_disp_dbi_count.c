@@ -539,7 +539,8 @@ void mtk_crtc_dbi_count_cfg(struct mtk_drm_crtc *mtk_crtc, struct mtk_crtc_state
 			mtk_crtc->dbi_trigger = true;
 			mtk_dbi_hw_count_trigger(dbi_count,
 				crtc_state->cmdq_handle, slice_num,
-					mtk_crtc->dbi_data.slice_idx, 5000, count_data->count_buffer.iova);
+					mtk_crtc->dbi_data.slice_idx,
+					count_data->current_freq * 1000, count_data->count_buffer.iova);
 			mtk_crtc->dbi_data.slice_idx++;
 			CRTC_MMP_MARK(crtc_index, dbi_trigger, (unsigned long)mtk_crtc->dbi_data.slice_idx,
 				(unsigned long)mtk_crtc->dbi_data.slice_num);
@@ -562,9 +563,6 @@ void mtk_crtc_dbi_count_cfg(struct mtk_drm_crtc *mtk_crtc, struct mtk_crtc_state
 		mod_timer(&dbi_timer->base, jiffies + msecs_to_jiffies(sec*1000));
 	}
 	DBI_SPIN_UNLOCK(&dbi_timer->lock, __func__, __LINE__, flags);
-
-	atomic_set(&mtk_crtc->dbi_data.new_frame_arrival, 1);
-	wake_up_all(&mtk_crtc->dbi_data.new_frame_wq);
 
 }
 
@@ -607,15 +605,48 @@ void mtk_crtc_dbi_count_init(struct mtk_drm_crtc *mtk_crtc)
 {
 	spin_lock_init(&mtk_crtc->dbi_data.dbi_timer.lock);
 
-	atomic_set(&mtk_crtc->dbi_data.new_frame_arrival, 1);
 	mtk_crtc->dbi_data.support = 1;
 	mtk_crtc->dbi_data.dbi_timer.mtk_crtc = mtk_crtc;
 	init_waitqueue_head(&mtk_crtc->dbi_data.dbi_event.event_wq);
 	spin_lock_init(&mtk_crtc->dbi_data.dbi_event.lock);
 
-	init_waitqueue_head(&mtk_crtc->dbi_data.new_frame_wq);
+	init_waitqueue_head(&mtk_crtc->dbi_data.idle_count_info.wait_wq);
+	for(int i = 0; i < MAX_CHECK_FENCE_NUM; i++)
+		atomic_set(&mtk_crtc->dbi_data.idle_count_info.update[i], 0);
+
 	init_waitqueue_head(&mtk_crtc->dbi_data.disable_finish_wq);
 
+}
+
+void mtk_dbi_idle_count_insert_wb_fence(struct mtk_drm_crtc *mtk_crtc, unsigned int fence)
+{
+	struct mtk_disp_dbi_idle_count *info = &mtk_crtc->dbi_data.idle_count_info;
+
+	if(!mtk_crtc->dbi_data.support)
+		return;
+
+	info->fence_idx[info->idx] = fence;
+	atomic_set(&info->update[info->idx], 0);
+	info->idx++;
+	if(info->idx == MAX_CHECK_FENCE_NUM)
+		info->idx = 0;
+	info->insert = true;
+
+}
+
+void mtk_dbi_idle_count_update_wb_fence(struct mtk_drm_crtc *mtk_crtc)
+{
+	struct mtk_disp_dbi_idle_count *info = &mtk_crtc->dbi_data.idle_count_info;
+
+	if(!mtk_crtc->dbi_data.support)
+		return;
+
+	if(info->insert) {
+		info->insert = false;
+		for(int i=0; i< MAX_CHECK_FENCE_NUM;i++)
+			atomic_set(&info->update[i], 1);
+		wake_up_all(&info->wait_wq);
+	}
 }
 
 int mtk_dbi_count_wait_event(struct mtk_ddp_comp *comp, void *data)
@@ -660,11 +691,24 @@ int mtk_dbi_count_wait_new_frame(struct mtk_ddp_comp *comp, void *data)
 {
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 	int ret = 0;
-	unsigned int *event = data;
+	unsigned int *fence_idx = data;
+	unsigned int *out = data;
+	struct mtk_disp_dbi_idle_count *info = &mtk_crtc->dbi_data.idle_count_info;
+	int i=0;
 
-	wait_event_interruptible_timeout(mtk_crtc->dbi_data.new_frame_wq,
-		atomic_read(&mtk_crtc->dbi_data.new_frame_arrival), msecs_to_jiffies(10000));
-	*event = atomic_read(&mtk_crtc->dbi_data.new_frame_arrival);
+	DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
+	for(i=0;i<MAX_CHECK_FENCE_NUM;i++){
+		if(info->fence_idx[i] == *fence_idx)
+			break;
+	}
+	DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
+
+	if(i == MAX_CHECK_FENCE_NUM)
+		return -1;
+
+	wait_event_interruptible_timeout(info->wait_wq,
+		atomic_read(&info->update[i]), msecs_to_jiffies(20000));
+	*out = atomic_read(&info->update[i]);
 
 	return 0;
 }
@@ -881,7 +925,7 @@ struct dbi_count_block_info mtk_dbi_count_get_block_info(uint32_t block_h, uint3
 {
 	struct dbi_count_block_info  ret = { 0 };
 
-	if((block_h == 2) && (block_v == 1)) {
+	if((block_h == 1) && (block_v == 1)) {
 		ret.block_h = 2;
 		ret.block_v = 1;
 		ret.channel = 4;
@@ -891,7 +935,7 @@ struct dbi_count_block_info mtk_dbi_count_get_block_info(uint32_t block_h, uint3
 		ret.block_v = 1;
 		ret.channel = 3;
 		return ret;
-	} else if((block_h == 2) && (block_v == 1)){
+	} else if((block_h == 2) && (block_v == 2)){
 		ret.block_h = 2;
 		ret.block_v = 2;
 		ret.channel = 3;
@@ -990,9 +1034,36 @@ int mtk_dbi_count_check_buffer(struct mtk_ddp_comp *comp, void *data)
 	return 0;
 }
 
+int mtk_dbi_count_set_freq(struct mtk_ddp_comp *comp, void *data)
+{
+	int *freq = data;
+	struct mtk_disp_dbi_count *dbi_count = comp_to_dbi_count(comp);
+
+	DBI_COUNT_INFO("+++ %d\n", *freq);
+	dbi_count->current_freq = *freq;
+
+	return 0;
+}
+
+int mtk_dbi_count_set_temp(struct mtk_ddp_comp *comp, void *data)
+{
+	int *temp = data;
+	struct mtk_disp_dbi_count *dbi_count = comp_to_dbi_count(comp);
+
+	if(*temp != dbi_count->current_temp){
+		DBI_COUNT_INFO("+++ %d\n", *temp);
+		dbi_count->current_temp = *temp;
+		dbi_count->temp_chg = true;
+	}
+
+	return 0;
+}
+
 int mtk_dbi_count_load_buffer(struct mtk_ddp_comp *comp,void *data)
 {
-	int fd = *(int *)data;
+	int *param = (int *)data;
+	int fd = param[0];
+	int size = param[1];
 	int ret;
 	struct drm_crtc *crtc = &comp->mtk_crtc->base;
 	struct mtk_disp_dbi_count *dbi_count = comp_to_dbi_count(comp);
@@ -1018,10 +1089,10 @@ int mtk_dbi_count_load_buffer(struct mtk_ddp_comp *comp,void *data)
 		DDPMSG("%s: fail to dmabuf_to_iova : %d\n", __func__, ret);
 		return -1;
 	}
-
+	dbi_buf->size = size;
 	dbi_buf->used = 1;
 
-	DBI_COUNT_INFO("iova map success, iova: %llx\n", dbi_buf->iova);
+	DBI_COUNT_INFO("iova map success, iova: %llx, size:%d\n", dbi_buf->iova, dbi_buf->size);
 
 	return 0;
 }
@@ -1134,7 +1205,7 @@ int mtk_dbi_curve_interpolate(struct mtk_dbi_curve_2d *curve, uint32_t x)
 }
 
 static void mtk_dbi_update_count_gain(struct mtk_ddp_comp *comp,
-	struct cmdq_pkt *handle, uint32_t dbv, uint32_t fps, uint32_t temp)
+	struct cmdq_pkt *handle, uint32_t dbv, uint32_t fps, int temp)
 {
 	struct mtk_disp_dbi_count *dbi_count = comp_to_dbi_count(comp);
 	struct mtk_dbi_count_hw_param *count_param = &dbi_count->count_cfg.count_cfg.hw_count_param[0];
@@ -1146,6 +1217,8 @@ static void mtk_dbi_update_count_gain(struct mtk_ddp_comp *comp,
 
 	if(dbi_count->status < DBI_COUNT_SW_INIT)
 		return;
+
+	DBI_COUNT_INFO("dbv/fps/temp %d/%d/%d", dbv, fps, temp);
 
 	temp += count_helper->hw_count_temp_offset;
 
@@ -1229,6 +1302,11 @@ static void mtk_dbi_hw_count_trigger(struct mtk_ddp_comp *comp,
 			mtk_dbi_count_write_mask(comp, dbi_count->buffer_cfg.buf_reg_list.value[i],
 				dbi_count->buffer_cfg.buf_reg_list.addr[i],
 				dbi_count->buffer_cfg.buf_reg_list.mask[i], handle);
+	}
+	if(dbi_count->temp_chg) {
+		dbi_count->temp_chg = false;
+		mtk_dbi_update_count_gain(comp, handle,
+			dbi_count->current_bl, dbi_count->current_fps, dbi_count->current_temp);
 	}
 
 	if(dbi_count->irq_num && dbi_count->data->irq_handler) {
@@ -1392,7 +1470,8 @@ static void mtk_dbi_count_config(struct mtk_ddp_comp *comp,
 		mtk_dbi_set_reg_by_mode(comp, handle,&dbi_count->count_cfg.count_dfmt_cfg, mode_idx);
 
 		//update hw count gain
-		mtk_dbi_update_count_gain(comp, handle, dbi_count->current_bl, dbi_count->current_fps, 25);
+		mtk_dbi_update_count_gain(comp, handle,
+			dbi_count->current_bl, dbi_count->current_fps, dbi_count->current_temp);
 
 		// set count mode
 		mtk_dbi_set_reg_by_mode(comp, handle,
@@ -1430,6 +1509,7 @@ int mtk_dbi_count_analysis(struct mtk_ddp_comp *comp)
 	DDPDUMP("dbi_count current_bl %d\n", dbi_count->current_bl);
 	DDPDUMP("dbi_count current_fps %d\n", dbi_count->current_fps);
 	DDPDUMP("dbi_count current_freq %d\n", dbi_count->current_freq);
+	DDPDUMP("dbi_count current_fmt 0x%x\n", dbi_count->data_fmt);
 
 	return 0;
 }
@@ -1509,6 +1589,20 @@ static void mtk_dbi_count_srt_cal(struct mtk_ddp_comp *comp, int en, int slice_n
 		dbi_count->qos_srt = 0;
 }
 
+int mtk_dbi_count_get_mode_by_fmt(struct mtk_dbi_count_helper *helper, enum MTK_PANEL_SPR_MODE data_fmt)
+{
+
+	if(data_fmt == MTK_PANEL_RGBG_BGRG_TYPE)
+		return helper->dfmt_bgrg_mode_index;
+	else if(data_fmt == MTK_PANEL_BGRG_RGBG_TYPE)
+		return helper->dfmt_bgrg_mode_index;
+	else if(data_fmt == MTK_PANEL_SPR_OFF_TYPE)
+		return helper->dfmt_rgb_mode_index;
+
+	DDPMSG("%s:%d, fail %d\n", __func__, __LINE__, data_fmt);
+	return -1;
+}
+
 int mtk_dbi_count_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		enum mtk_ddp_io_cmd cmd, void *params)
 {
@@ -1521,6 +1615,29 @@ int mtk_dbi_count_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	priv = comp->mtk_crtc->base.dev->dev_private;
 
 	switch (cmd) {
+	case DISP_SPR_SWITCH:
+	{
+		unsigned int spr_on = *(unsigned int *)params;
+		int mode_idx;
+
+		if(spr_on)
+			dbi_count->data_fmt = comp->mtk_crtc->panel_ext->params->spr_params.spr_format_type;
+		else
+			dbi_count->data_fmt = MTK_PANEL_SPR_OFF_TYPE;
+
+		if(!handle)
+			break;
+
+		if(dbi_count->status < DBI_COUNT_SW_INIT)
+			break;
+
+		mode_idx = mtk_dbi_count_get_mode_by_fmt(&dbi_count->count_cfg.count_helper,
+			dbi_count->data_fmt);
+		if(mode_idx >= 0)
+			mtk_dbi_set_reg_by_mode(comp, handle,&dbi_count->count_cfg.count_dfmt_cfg, mode_idx);
+
+	}
+		break;
 	case PQ_FILL_COMP_PIPE_INFO:
 	{
 		struct drm_display_mode *mode;
@@ -1528,11 +1645,12 @@ int mtk_dbi_count_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		mode = mtk_crtc_get_display_mode_by_comp(__func__, &comp->mtk_crtc->base, comp, false);
 		dbi_count->current_fps = drm_mode_vrefresh(mode);
 	}
-	break;
+		break;
 	case DISP_BL_CHG:
 	{
 		dbi_count->current_bl = *(uint32_t *)params;
-		mtk_dbi_update_count_gain(comp, handle, dbi_count->current_bl, dbi_count->current_fps, 25);
+		mtk_dbi_update_count_gain(comp, handle,
+			dbi_count->current_bl, dbi_count->current_fps, dbi_count->current_temp);
 	}
 		break;
 
@@ -1569,7 +1687,8 @@ int mtk_dbi_count_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		struct mtk_oddmr_timing *timing = (struct mtk_oddmr_timing *)params;
 
 		dbi_count->current_fps = timing->vrefresh;
-		mtk_dbi_update_count_gain(comp, handle, dbi_count->current_bl, dbi_count->current_fps, 25);
+		mtk_dbi_update_count_gain(comp, handle,
+			dbi_count->current_bl, dbi_count->current_fps, dbi_count->current_temp);
 	}
 		break;
 
@@ -2236,10 +2355,33 @@ static int mtk_dbi_count_pq_ioctl_transact(struct mtk_ddp_comp *comp,
 	case PQ_DBI_COUNT_LOAD_BUFFER_CFG:
 		ret = mtk_dbi_count_load_buffer_cfg(comp, (struct mtk_dbi_count_buf_cfg *)params);
 		break;
+	case PQ_DBI_COUNT_SET_FREQ:
+		ret = mtk_dbi_count_set_freq(comp, params);
+		break;
+	case PQ_DBI_COUNT_SET_TEMP:
+		ret = mtk_dbi_count_set_temp(comp, params);
+		break;
 	default:
 		break;
 	}
 	return ret;
+}
+
+static void mtk_dbi_count_first_cfg(struct mtk_ddp_comp *comp,
+		struct mtk_ddp_config *cfg, struct cmdq_pkt *handle)
+{
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	struct mtk_disp_dbi_count *dbi_count = comp_to_dbi_count(comp);
+
+	DDPMSG("%s+\n", __func__);
+
+	if((comp->mtk_crtc->panel_ext->params->spr_params.enable == 1) &&
+		(comp->mtk_crtc->panel_ext->params->spr_params.relay == 0))
+		dbi_count->data_fmt = comp->mtk_crtc->panel_ext->params->spr_params.spr_format_type;
+	else
+		dbi_count->data_fmt = MTK_PANEL_SPR_OFF_TYPE;
+
+	DDPMSG("%s data_fmt %d-\n", __func__, dbi_count->data_fmt);
 }
 
 static const struct mtk_ddp_comp_funcs mtk_disp_dbi_count_funcs = {
@@ -2250,6 +2392,7 @@ static const struct mtk_ddp_comp_funcs mtk_disp_dbi_count_funcs = {
 	.unprepare = mtk_dbi_count_unprepare,
 	.io_cmd = mtk_dbi_count_io_cmd,
 	.pq_ioctl_transact = mtk_dbi_count_pq_ioctl_transact,
+	.first_cfg = mtk_dbi_count_first_cfg,
 };
 
 

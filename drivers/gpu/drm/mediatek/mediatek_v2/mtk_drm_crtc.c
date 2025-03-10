@@ -69,8 +69,9 @@
 #include "mtk_disp_spr.h"
 #include "mtk_dsi_lpc.h"
 #include "mtk_dp.h"
-#include "mtk_disp_dbi_count.h"
 #include "mtk_disp_dbgtp.h"
+#include "mtk_disp_dbi_count.h"
+
 
 /* *****Panel_Master*********** */
 #include "mtk_fbconfig_kdebug.h"
@@ -20446,6 +20447,9 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 			DDPPR_ERR("failed to flush gce_cb threaded\n");
 	}
 
+	/* dbi idle count */
+	mtk_dbi_idle_count_update_wb_fence(mtk_crtc);
+
 	/* For DL write-back path */
 	/* wait WDMA frame done and disconnect immediately */
 	if (state->prop_val[CRTC_PROP_OUTPUT_ENABLE]
@@ -20475,7 +20479,6 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 			return 0;
 		}
 		*/
-		atomic_set(&mtk_crtc->dbi_data.new_frame_arrival, 0);
 
 		mtk_crtc_pkt_create(&handle, crtc, client);
 		if (!handle) {
@@ -20496,6 +20499,8 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 		wb_cb_data->wb_scn = mtk_crtc_wb_get_scn(state);
 		CRTC_MMP_MARK(crtc_index, wbBmpDump, (unsigned long)handle,
 							wb_cb_data->wb_fence_idx);
+		/* dbi idle count */
+		mtk_dbi_idle_count_insert_wb_fence(mtk_crtc, wb_cb_data->wb_fence_idx);
 		if (cmdq_pkt_flush_threaded(handle, mtk_drm_wb_cb, wb_cb_data) < 0)
 			DDPPR_ERR("failed to flush gce_cb threaded\n");
 	} else if (state->prop_val[CRTC_PROP_OUTPUT_ENABLE]

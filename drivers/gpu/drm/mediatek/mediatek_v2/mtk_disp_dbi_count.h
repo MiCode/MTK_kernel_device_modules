@@ -12,8 +12,6 @@
 #include "mtk_drm_drv.h"
 #include "mtk_disp_oddmr/mtk_disp_oddmr.h"
 
-
-
 struct mtk_dbi_dma_buf {
 	struct dma_buf *dmabuf;
 	struct dma_buf_attachment *attach;
@@ -55,9 +53,11 @@ struct mtk_disp_dbi_count {
 	int current_count_mode;
 	uint32_t current_bl;
 	uint32_t current_fps;
-	uint32_t current_temp;
-	uint32_t current_freq;
+	int current_temp;
+	bool temp_chg;
+	int current_freq;
 	atomic_t buffer_full;
+	uint32_t data_fmt;
 	struct mtk_dbi_dma_buf count_buffer;
 	struct mtk_dbi_count_buf_cfg buffer_cfg;
 	struct mtk_drm_dbi_cfg_info count_cfg;
@@ -93,6 +93,9 @@ int mtk_dbi_count_check_buffer(struct mtk_ddp_comp *comp, void *data);
 void mtk_dbi_count_bypass(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle);
 void mtk_oddmr_dbi_udma_off(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle);
+
+void mtk_dbi_idle_count_insert_wb_fence(struct mtk_drm_crtc *mtk_crtc, unsigned int fence);
+void mtk_dbi_idle_count_update_wb_fence(struct mtk_drm_crtc *mtk_crtc);
 
 
 #endif

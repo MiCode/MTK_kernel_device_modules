@@ -37587,7 +37587,8 @@ static irqreturn_t mtk_disp_mutex_irq_handler(int irq, void *dev_id)
 				irq_time_index++;
 			}
 
-			if(mtk_crtc0 && atomic_read(&mtk_crtc0->get_data_type)) {
+			if(mtk_crtc0 && atomic_read(&mtk_crtc0->get_data_type) &&
+				(m_id == 0)) {
 				temp = mtk_spr_check_postalign_status(mtk_crtc0);
 				if(temp >= 0)
 					atomic_set(&mtk_crtc0->postalign_relay, temp);

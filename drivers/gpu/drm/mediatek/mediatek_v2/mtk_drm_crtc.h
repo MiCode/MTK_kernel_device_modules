@@ -1088,9 +1088,18 @@ struct mtk_tui_ovl_stat {
 	unsigned int blender_id;
 };
 
-/* dbi temp */
+/* dbi count */
 #define to_dbi_timer(x) container_of(x, struct mtk_dbi_timer, base)
 #define to_dbi_worker(x) container_of(x, struct mtk_dbi_timer, base)
+
+#define MAX_CHECK_FENCE_NUM (5)
+struct mtk_disp_dbi_idle_count {
+	uint32_t idx;
+	bool insert;
+	uint32_t fence_idx[MAX_CHECK_FENCE_NUM];
+	atomic_t update[MAX_CHECK_FENCE_NUM];
+	struct wait_queue_head wait_wq;
+};
 
 struct mtk_dbi_timer {
 	struct timer_list base;
@@ -1121,8 +1130,7 @@ struct dbi_count_data {
 	int fence_unreleased;
 	struct mtk_dbi_timer dbi_timer;
 	struct mtk_dbi_event dbi_event;
-	atomic_t new_frame_arrival;
-	struct wait_queue_head new_frame_wq;
+	struct mtk_disp_dbi_idle_count idle_count_info;
 };
 
 /**
