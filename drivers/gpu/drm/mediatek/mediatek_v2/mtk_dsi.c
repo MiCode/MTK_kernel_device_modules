@@ -2956,7 +2956,7 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 
 		fill_rate = mmsys_clk * 96 * dli_relay_1tnp * dsi_buf_bpp * 1000 / compress_rate / buffer_unit;
 
-		ultra_low_fifo_us = DIV_ROUND_UP(buf_con * 1000 * 7, consume_rate * 10);
+		ultra_low_fifo_us = DIV_ROUND_UP(buf_con * 1000 * 8, consume_rate * 10);
 		ultra_low_fifo_us = (ultra_low_fifo_us >= 35) ? ultra_low_fifo_us : 35;
 		ultra_high_fifo_us = ultra_low_fifo_us + 1;
 
@@ -2975,7 +2975,7 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 		urgent_lo = urgent_lo < (u32)buf_con ? urgent_lo : (u32)buf_con;
 
 		if (mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base)) {
-			output_valid_us = ultra_low_fifo_us + 10;
+			output_valid_us = ultra_low_fifo_us + 5;
 			output_valid = DIV_ROUND_UP(output_valid_us * consume_rate, 1000);
 			output_valid = output_valid < (u32)buf_con ? output_valid : (u32)buf_con;
 		}
