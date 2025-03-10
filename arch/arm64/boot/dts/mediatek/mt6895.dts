@@ -5718,6 +5718,7 @@
 			compatible = "mediatek,mailbox-gce-sec";
 			reg = <0 0x1e980000 0 0x4000>;
 			#mbox-cells = <3>;
+			mtee-supply = <&mtee>;
 			mboxes = <&gce 15 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>;
 			power-domains = <&scpsys MT6895_POWER_DOMAIN_MM_INFRA>;
 			unprepare_in_idle;
@@ -5762,6 +5763,7 @@
 			compatible = "mediatek,mailbox-gce-sec";
 			reg = <0 0x1e990000 0 0x4000>;
 			#mbox-cells = <3>;
+			mtee-supply = <&mtee>;
 			unprepare_in_idle;
 			mboxes = <&gce_m 15 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>;
 			power-domains = <&scpsys MT6895_POWER_DOMAIN_MM_INFRA>;
