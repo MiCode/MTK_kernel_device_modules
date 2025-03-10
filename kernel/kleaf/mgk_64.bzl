@@ -497,6 +497,7 @@ mgk_64_kleaf_device_modules_srcs = [
     "//kernel_device_modules-{}/sound/soc/codecs:srcs".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/codecs/richtek:srcs".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/codecs/tfa98xx:srcs".format(kernel_version),
+    "//kernel_device_modules-{}/sound/soc/mediatek/mt6855:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mminfra:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/vmm:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/camera_mem:srcs".format(kernel_version),
@@ -716,6 +717,7 @@ mgk_64_kleaf_device_modules_kconfigs = [
     "//kernel_device_modules-{}/sound/soc/codecs:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/codecs/richtek:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/codecs/tfa98xx:ddk_kconfigs".format(kernel_version),
+	"//kernel_device_modules-{}/sound/soc/mediatek/mt6855:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mminfra:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/vmm:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/tinysys_scmi:ddk_kconfigs".format(kernel_version),
@@ -1262,6 +1264,8 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/sound/soc/codecs:snd-soc-mt6368".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/codecs:snd-soc-mt6369".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/codecs:snd-soc-mt6681".format(kernel_version),
+    "//kernel_device_modules-{}/sound/soc/mediatek/mt6855:snd-soc-mt6855-afe".format(kernel_version),
+    "//kernel_device_modules-{}/sound/soc/mediatek/mt6855:mt6855-mt6369".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/codecs:mt6681-accdet".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/codecs/richtek:snd-soc-rt5512".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/codecs/richtek:richtek_spm_cls".format(kernel_version),
@@ -1913,8 +1917,6 @@ mgk_64_platform_device_modules = {
     "sound/soc/mediatek/mt6993/snd-soc-mt6993-afe.ko": "mt6993",
     "sound/soc/mediatek/mt6789/mt6789-mt6366.ko": "mt6789",
     "sound/soc/mediatek/mt6789/snd-soc-mt6789-afe.ko": "mt6789",
-    "sound/soc/mediatek/mt6855/snd-soc-mt6855-afe.ko": "mt6855",
-    "sound/soc/mediatek/mt6855/mt6855-mt6369.ko": "mt6855",
 
 
 }
