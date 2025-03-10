@@ -1927,6 +1927,8 @@ mgk_64_platform_device_modules = {
     #"sound/soc/mediatek/mt6993/snd-soc-mt6993-afe.ko": "mt6993",
     "sound/soc/mediatek/mt6789/mt6789-mt6366.ko": "mt6789",
     "sound/soc/mediatek/mt6789/snd-soc-mt6789-afe.ko": "mt6789",
+    "sound/soc/mediatek/mt6895/mt6895-mt6368.ko": "mt6895",
+    "sound/soc/mediatek/mt6895/snd-soc-mt6895-afe.ko": "mt6895",
 
 
 }
