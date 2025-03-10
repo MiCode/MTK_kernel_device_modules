@@ -78,8 +78,6 @@ TMEM_PRIV int page_alloc_v2(struct secure_heap_page *sec_heap,
 struct dma_buf *tmem_page_alloc(struct dma_heap *heap, ulong len, u32 fd_flags,
 		u64 heap_flags);
 
-TMEM_PRIV int page_bzero(struct mtk_sec_heap_buffer *buffer);
-
 TMEM_PRIV int page_free(struct secure_heap_page *sec_heap,
 		struct mtk_sec_heap_buffer *buffer);
 

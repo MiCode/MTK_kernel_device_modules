@@ -507,24 +507,6 @@ free_buffer:
 	return ERR_PTR(ret);
 }
 
-TMEM_PRIV int page_bzero(struct mtk_sec_heap_buffer *buffer)
-{
-	struct sg_table *sgt = &buffer->sg_table;
-	struct sg_page_iter piter;
-	struct page *p;
-	void *vaddr;
-	int ret = 0;
-
-	for_each_sgtable_page(sgt, &piter, 0) {
-		p = sg_page_iter_page(&piter);
-		vaddr = kmap_atomic(p);
-		memset(vaddr, 0, PAGE_SIZE);
-		kunmap_atomic(vaddr);
-	}
-
-	return ret;
-}
-
 TMEM_PRIV int page_free(struct secure_heap_page *sec_heap,
 		struct mtk_sec_heap_buffer *buffer)
 {
@@ -584,13 +566,13 @@ TMEM_PRIV int page_free_v2(struct secure_heap_page *sec_heap,
 			// pr_debug("bitmap[%#x]:%#x, offset:%#x\n", idx, bitmap[idx], offset);
 			++page_count;
 		}
-		/* clean buffer in el2 */
+		memset(page_address(pmm_page), 0, page_size(pmm_page));
 		__free_pages(pmm_page, get_order(PAGE_SIZE));
 	}
 	kfree(buffer->ssheap);
 
 	/* Zero the buffer pages before adding back to the pool */
-	page_bzero(buffer);
+	/* clean buffer in el2 */
 
 	table = &buffer->sg_table;
 	for_each_sgtable_sg(table, sg, i) {
