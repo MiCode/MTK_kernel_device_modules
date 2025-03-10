@@ -16,8 +16,8 @@
 #include <trace/hooks/sched.h>
 #include <linux/hrtimer.h>
 #include <linux/ktime.h>
-#include <perf_tracker_trace.h>
-#include <perf_tracker_internal.h>
+#include "perf_tracker_trace.h"
+#include "perf_tracker_internal.h"
 #include "mtk_qos_common.h"
 #include <mtk_qos_share.h>
 

@@ -5,8 +5,8 @@
 #include <linux/percpu.h>
 #include <asm/sysreg.h>
 
-#include <perf_tracker_trace.h>
-#include <perf_tracker_internal.h>
+#include "perf_tracker_trace.h"
+#include "perf_tracker_internal.h"
 
 
 #if IS_ENABLED(CONFIG_ARM64_AMU_EXTN)

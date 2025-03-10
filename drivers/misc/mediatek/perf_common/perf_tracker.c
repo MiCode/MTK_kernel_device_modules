@@ -12,7 +12,7 @@
 #endif
 
 #define CREATE_TRACE_POINTS
-#include <perf_tracker_trace.h>
+#include "perf_tracker_trace.h"
 
 #if IS_ENABLED(CONFIG_MTK_QOS_FRAMEWORK)
 #include <mtk_qos_sram.h>
@@ -28,7 +28,7 @@
 #endif
 
 #include <perf_tracker.h>
-#include <perf_tracker_internal.h>
+#include "perf_tracker_internal.h"
 
 #include "sugov/cpufreq.h"
 #if IS_ENABLED(CONFIG_MTK_GEARLESS_SUPPORT)

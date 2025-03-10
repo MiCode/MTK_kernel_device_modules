@@ -11,7 +11,7 @@
 #include <linux/string.h>
 #include <linux/types.h>
 #include <linux/tracepoint.h>
-#include <perf_tracker_internal.h>
+#include "perf_tracker_internal.h"
 
 TRACE_EVENT(perf_index_s,
 	TP_PROTO(

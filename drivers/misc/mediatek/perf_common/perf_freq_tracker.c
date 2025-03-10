@@ -7,8 +7,8 @@
 #include <linux/hashtable.h>
 #include <linux/slab.h>
 #include <linux/stacktrace.h>
-#include <perf_tracker_internal.h>
-#include <perf_tracker_trace.h>
+#include "perf_tracker_internal.h"
+#include "perf_tracker_trace.h"
 
 
 #define CALLER_START_IDX 4
