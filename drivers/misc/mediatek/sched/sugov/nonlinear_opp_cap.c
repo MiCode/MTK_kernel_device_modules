@@ -3424,6 +3424,7 @@ int mtk_effective_cpu_util_with_uclamp(int util, int cpu,
 		unsigned long max_util_curr_eff = ULONG_MAX;
 		int flg_curr_task = -1, flg_exit_state = -1, flg_pid = -1;
 		unsigned long umax = 0;
+		int cpu_util_mgn = util;
 
 		rq = cpu_rq(cpu);
 
@@ -3449,11 +3450,11 @@ int mtk_effective_cpu_util_with_uclamp(int util, int cpu,
 		rcu_read_unlock();
 
 		umax = min_t(unsigned long, max_util_curr, rq->uclamp[UCLAMP_MAX].value);
-		umax = (umax * util_scale) >> SCHED_CAPACITY_SHIFT;
 		util = min_t(unsigned long, util, umax);
 
 		if (trace_sugov_ext_curr_task_uclamp_enabled())
 			trace_sugov_ext_curr_task_uclamp(cpu, flg_pid, flg_curr_task, flg_exit_state,
+				util, cpu_util_mgn,
 				max_util_curr, max_util_curr_eff, rq->uclamp[UCLAMP_MAX].value);
 	} else {
 		util = sugov_effective_cpu_perf_clamp(util, min, max);

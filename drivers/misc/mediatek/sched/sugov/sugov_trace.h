@@ -880,34 +880,45 @@ TRACE_EVENT(sched_update_cpu_capacity,
 );
 
 TRACE_EVENT(sugov_ext_curr_task_uclamp,
-	TP_PROTO(int cpu, int pid, int flg_curr_tas, int flg_exit_state, unsigned long task_uclamp,
-		unsigned long task_uclamp_eff, int rq_uclamp),
-	TP_ARGS(cpu, pid, flg_curr_tas, flg_exit_state, task_uclamp,
-		task_uclamp_eff, rq_uclamp),
+	TP_PROTO(int cpu, int pid, int flg_curr_tas, int flg_exit_state,
+		int cpu_util_clp, int cpu_util_mgn,
+		unsigned long task_uclamp, unsigned long task_uclamp_eff, int rq_uclamp),
+
+	TP_ARGS(cpu, pid, flg_curr_tas, flg_exit_state,
+		cpu_util_clp, cpu_util_mgn, task_uclamp, task_uclamp_eff, rq_uclamp),
+
 	TP_STRUCT__entry(
 		__field(int, cpu)
 		__field(int, pid)
 		__field(int, flg_curr_tas)
 		__field(int, flg_exit_state)
+		__field(int, cpu_util_clp)
+		__field(int, cpu_util_mgn)
 		__field(unsigned long, task_uclamp)
 		__field(unsigned long, task_uclamp_eff)
 		__field(int, rq_uclamp)
 	),
+
 	TP_fast_assign(
 		__entry->cpu = cpu;
 		__entry->pid = pid;
 		__entry->flg_curr_tas = flg_curr_tas;
 		__entry->flg_exit_state = flg_exit_state;
+		__entry->cpu_util_clp = cpu_util_clp;
+		__entry->cpu_util_mgn = cpu_util_mgn;
 		__entry->task_uclamp = task_uclamp;
 		__entry->task_uclamp_eff = task_uclamp_eff;
 		__entry->rq_uclamp = rq_uclamp;
 	),
+
 	TP_printk(
-		"cpu=%d pid=%d flg_curr_task=%d flg_exit_state=%d task_uclamp=%lu task_uclamp_eff=%lu rq_uclamp=%d",
+		"cpu=%d pid=%5d flg_curr_task=%d flg_exit_state=%d cpu_util_clp=%4d cpu_util_mgn=%4d task_max_clamp_max=%4lu task_max_uclamp_eff=%4lu rq_max_clamp=%4d",
 		__entry->cpu,
 		__entry->pid,
 		__entry->flg_curr_tas,
 		__entry->flg_exit_state,
+		__entry->cpu_util_clp,
+		__entry->cpu_util_mgn,
 		__entry->task_uclamp,
 		__entry->task_uclamp_eff,
 		__entry->rq_uclamp)
