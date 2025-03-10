@@ -651,6 +651,10 @@ struct mtk_panel_params {
 	/*vdo ltpo*/
 	unsigned int ltpo_vm_enable;
 	unsigned int ltpo_vm_minimum_fps;
+
+	/* update by ddic*/
+	unsigned int cur_skip_vblank;
+	unsigned int cur_te_duration;
 };
 
 struct mtk_panel_ext {

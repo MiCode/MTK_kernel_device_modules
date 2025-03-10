@@ -203,6 +203,8 @@ struct mtk_dsi {
 	spinlock_t cmdq_pg_lock;
 	unsigned int last_cmdq_pg;
 	unsigned int cur_cmdq_pg;
+	/* change te by ddic */
+	bool cur_panel_param_changed;
 };
 
 enum dsi_porch_type;

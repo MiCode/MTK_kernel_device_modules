@@ -4673,10 +4673,34 @@ static void mipi_dsi_dcs_write_gce2(struct mtk_dsi *dsi, struct cmdq_pkt *dummy,
 static void mtk_dsi_cmdq_pack_gce(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 					struct mtk_ddic_dsi_cmd *para_table);
 
+static void mtk_update_panel_param(struct mtk_drm_crtc *mtk_crtc, struct mtk_dsi *dsi)
+{
+	struct mtk_panel_params *params = dsi->ext->params;
+
+	if ((dsi->cur_panel_param_changed) ||
+		((params->cur_te_duration != 0) && (params->real_te_duration != params->cur_te_duration))) {
+		mtk_vidle_update_dt_by_period(&mtk_crtc->base, params->cur_te_duration, params->cur_skip_vblank);
+
+		if (mtk_dsi_lpc_en(mtk_crtc)) {
+			struct mtk_ddp_comp *comp = mtk_ddp_comp_request_output_lpc(mtk_crtc);
+
+			if (comp)
+				mtk_ddp_comp_io_cmd(comp, NULL, DSI_LPC_PANEL_PARAMS, params);
+		}
+		DDPINFO("%s,skip_vblank:%d->%d, duration:%d->%d\n", __func__,
+			params->skip_vblank, params->cur_skip_vblank,
+			params->real_te_duration, params->cur_te_duration);
+
+		dsi->cur_panel_param_changed = true;
+	} else
+		dsi->cur_panel_param_changed = false;
+}
 static void mtk_output_en_doze_switch(struct mtk_dsi *dsi)
 {
 	bool doze_enabled = mtk_dsi_doze_state(dsi);
 	struct mtk_panel_funcs *panel_funcs;
+	struct drm_crtc *crtc = dsi->encoder.crtc;
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(dsi->encoder.crtc);
 
 	if (!dsi->output_en)
 		return;
@@ -4713,9 +4737,20 @@ static void mtk_output_en_doze_switch(struct mtk_dsi *dsi)
 		if (doze_enabled && panel_funcs->doze_enable_start)
 			panel_funcs->doze_enable_start(dsi->panel, dsi,
 				mipi_dsi_dcs_write_gce2, NULL);
-		else if (!doze_enabled && panel_funcs->doze_disable)
+		else if (!doze_enabled && panel_funcs->doze_disable) {
 			panel_funcs->doze_disable(dsi->panel, dsi,
 				mipi_dsi_dcs_write_gce2, NULL);
+
+			if (dsi->cur_panel_param_changed) {
+				/*
+				 * if changed skip_vblank and real_te_duration by ddic command,
+				 * please update cur_skip_vblank and cur_te_duration in panel driver.
+				 * eg. ext->params->cur_skip_vblank = new_skip_vblank;
+				 *	  ext->params->cur_te_duration = new_te_duration;
+				 */
+				mtk_update_panel_param(mtk_crtc, dsi);
+			}
+		}
 	}
 
 	/* Display mode switch */
@@ -4744,9 +4779,6 @@ static void mtk_output_en_doze_switch(struct mtk_dsi *dsi)
 
 		/* Update RDMA golden setting after switch */
 		{
-			struct drm_crtc *crtc = dsi->encoder.crtc;
-			struct mtk_drm_crtc *mtk_crtc =
-			    to_mtk_crtc(dsi->encoder.crtc);
 			unsigned int i, j;
 			struct cmdq_pkt *handle;
 			struct mtk_ddp_comp *comp;
@@ -4784,9 +4816,17 @@ static void mtk_output_en_doze_switch(struct mtk_dsi *dsi)
 						MTK_MIPI_DSI_GCE_BLOCKING_FLUSH;
 		panel_funcs->doze_enable_v2(dsi->panel, dsi,
 					mtk_mipi_dsi_cmd, NULL, &cmd_opt);
-	} else if (doze_enabled && panel_funcs->doze_enable)
+	} else if (doze_enabled && panel_funcs->doze_enable) {
 		panel_funcs->doze_enable(dsi->panel, dsi,
 			mipi_dsi_dcs_write_gce2, NULL);
+		/*
+		 * if changed skip_vblank and real_te_duration by ddic command,
+		 * please update cur_skip_vblank and cur_te_duration in panel driver.
+		 * eg. ext->params->cur_skip_vblank = new_skip_vblank;
+		 *	  ext->params->cur_te_duration = new_te_duration;
+		 */
+		mtk_update_panel_param(mtk_crtc, dsi);
+	}
 
 	if (dsi->driver_data->dsi_cmd_v2_en && doze_enabled && panel_funcs->doze_area_v2) {
 		struct mtk_dsi_cmd_option cmd_opt = { 0 };
@@ -5799,9 +5839,17 @@ static void mtk_output_dsi_enable(struct mtk_dsi *dsi,
 				ext->funcs->doze_enable_v2(dsi->panel, dsi,
 					mtk_mipi_dsi_cmd, NULL, &cmd_opt);
 			} else if (ext && ext->funcs
-				&& ext->funcs->doze_enable)
+				&& ext->funcs->doze_enable) {
 				ext->funcs->doze_enable(dsi->panel, dsi,
 					mipi_dsi_dcs_write_gce2, NULL);
+				/*
+				 * if changed skip_vblank and real_te_duration by ddic command,
+				 * please update cur_skip_vblank and cur_te_duration in panel driver.
+				 * eg. ext->params->cur_skip_vblank = new_skip_vblank;
+				 *	  ext->params->cur_te_duration = new_te_duration;
+				 */
+				mtk_update_panel_param(mtk_crtc, dsi);
+			}
 
 			if (dsi->driver_data && dsi->driver_data->dsi_cmd_v2_en &&
 				ext && ext->funcs && ext->funcs->doze_area_v2) {
@@ -5828,9 +5876,20 @@ static void mtk_output_dsi_enable(struct mtk_dsi *dsi,
 			ext->funcs->doze_disable_v2(dsi->panel, dsi,
 					mtk_mipi_dsi_cmd, NULL, &cmd_opt);
 			} else if (ext && ext->funcs
-				&& ext->funcs->doze_disable)
+				&& ext->funcs->doze_disable) {
 				ext->funcs->doze_disable(dsi->panel, dsi,
 					mipi_dsi_dcs_write_gce2, NULL);
+
+				if (dsi->cur_panel_param_changed) {
+					/*
+					 * if changed skip_vblank and real_te_duration by ddic command,
+					 * please update cur_skip_vblank and cur_te_duration in panel driver.
+					 * eg. ext->params->cur_skip_vblank = new_skip_vblank;
+					 *	  ext->params->cur_te_duration = new_te_duration;
+					 */
+					mtk_update_panel_param(mtk_crtc, dsi);
+				}
+			}
 		}
 	}
 

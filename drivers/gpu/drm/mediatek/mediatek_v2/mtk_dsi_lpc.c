@@ -519,8 +519,10 @@ void mtk_dsi_lpc_update_panel_params(struct mtk_drm_crtc *mtk_crtc,
 	int index = 0;
 	unsigned int lpc_te_con0_val = 0;
 	unsigned long dsi_lpc_fake_te_prd = 0;
-	unsigned int real_te_duration;
+	unsigned int real_te_duration = 0;
+	unsigned int skip_vblank = 0;
 	unsigned int te_num_mask = 0x0003FF00;//DSI_LPC_TE_NUM REG_FLD_MSB_LSB(17, 8)
+	int reg_val = 0;
 
 	index = mtk_dsi_lpc_unit(mtk_crtc);
 	if (index < 0) {
@@ -537,12 +539,20 @@ void mtk_dsi_lpc_update_panel_params(struct mtk_drm_crtc *mtk_crtc,
 	lpc_te_con0_val &= ~DSI_LPC_HW_VSYNC_ON;
 
 	lpc_te_con0_val &= ~te_num_mask;
-	lpc_te_con0_val |= (params->skip_vblank << 8) & te_num_mask;
-	real_te_duration = params->real_te_duration;
+
+	if (cmdq_handle) {
+		skip_vblank = params->skip_vblank;
+		real_te_duration = params->real_te_duration;
+	} else {
+		skip_vblank = params->cur_skip_vblank;
+		real_te_duration = params->cur_te_duration;
+	}
+
+	lpc_te_con0_val |= (skip_vblank << 8) & te_num_mask;
 	dsi_lpc_fake_te_prd = real_te_duration * 26;
 
 	if (cmdq_handle) {
-		int reg_val = readl(comp->regs + DSI_LPC_CONFIG(index));
+		reg_val = DSI_LPC_UNIT_EN;
 
 		cmdq_pkt_write(cmdq_handle, comp->cmdq_base,
 			comp->regs_pa+ DSI_LPC_TE_CON0(index), lpc_te_con0_val, ~0);
@@ -560,7 +570,7 @@ void mtk_dsi_lpc_update_panel_params(struct mtk_drm_crtc *mtk_crtc,
 		cmdq_pkt_write(cmdq_handle, comp->cmdq_base,
 			comp->regs_pa+ DSI_LPC_TE_CON0(index), lpc_te_con0_val | DSI_LPC_HW_VSYNC_ON, ~0);
 	} else {
-		int reg_val = readl(comp->regs + DSI_LPC_CONFIG(index));
+		reg_val = DSI_LPC_UNIT_EN;
 
 		writel(lpc_te_con0_val, comp->regs + DSI_LPC_TE_CON0(index));
 		writel(dsi_lpc_fake_te_prd, comp->regs+ DSI_LPC_TE_CON1(index));
@@ -574,8 +584,8 @@ void mtk_dsi_lpc_update_panel_params(struct mtk_drm_crtc *mtk_crtc,
 		writel(lpc_te_con0_val | DSI_LPC_HW_VSYNC_ON, comp->regs + DSI_LPC_TE_CON0(index));
 	}
 
-	DDPINFO("%s,[%d]lpc_te_con0_val:0x%x,real_te_duration:%d\n", __func__,
-		index, lpc_te_con0_val, real_te_duration);
+	DDPINFO("%s,[%d]lpc_te_con0_val:0x%x,real_te_duration:%d,cmdq:%p\n", __func__,
+		index, lpc_te_con0_val, real_te_duration, cmdq_handle);
 	DRM_MMP_MARK(dsi_lpc, lpc_te_con0_val,real_te_duration);
 	drm_trace_tag_value("lpc_te_con0_val", lpc_te_con0_val);
 	drm_trace_tag_value("real_te_duration", real_te_duration);
