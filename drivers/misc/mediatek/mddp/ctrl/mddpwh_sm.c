@@ -711,6 +711,10 @@ static int32_t mddpw_drv_notify_info(
 	struct mddp_app_t       *app;
 	int32_t                 ipc_send_status = 0;
 
+	MDDP_S_LOG(MDDP_LL_WARN,
+		"%s: v%u,len%u,num%u\n",
+		__func__, wifi_notify->version,wifi_notify->buf_len,wifi_notify->info_num);
+
 	// Send WIFI Notify to MD
 	app = mddp_get_app_inst(MDDP_APP_TYPE_WH);
 
@@ -750,6 +754,10 @@ static int32_t mddpw_drv_notify_info_v1(
 	struct mddp_md_msg_t    *md_msg;
 	struct mddp_app_t       *app;
 	int32_t                 ipc_send_status = 0;
+
+	MDDP_S_LOG(MDDP_LL_WARN,
+		"%s: v%u,len%u,num%u\n",
+		__func__, wifi_notify_v1->version,wifi_notify_v1->buf_len,wifi_notify_v1->info_num);
 
 	// Send WIFI Notify to MD
 	app = mddp_get_app_inst(MDDP_APP_TYPE_WH);

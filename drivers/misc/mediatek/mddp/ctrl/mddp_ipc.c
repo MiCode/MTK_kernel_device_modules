@@ -210,6 +210,9 @@ int32_t mddp_ipc_send_md(
 	if (msg->data_len > 0)
 		memcpy(tx_ctrl_msg.buf, &msg->data, msg->data_len);
 
+	if (tx_ctrl_msg.msg_id == IPC_MSG_ID_WFPM_DRV_NOTIFY)
+		MDDP_C_LOG(MDDP_LL_WARN, "%s: msg%u,len%u\n", __func__, tx_ctrl_msg.msg_id, tx_ctrl_msg.buf_len);
+
 	ret = mtk_ccci_send_data(mddp_ipc_tty_port_s, (char *)&tx_ctrl_msg,
 			MDFPM_CTRL_MSG_HEADER_SZ + msg->data_len);
 
