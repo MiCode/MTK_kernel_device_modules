@@ -2472,6 +2472,10 @@ static ssize_t dvfs_async_ratio_show(struct kobject *kobj,
 				"[dvfs_async]: perf model ver(%d)\n",
 				ged_dvfs_get_async_perf_model());
 	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"[dvfs_async]: oppnum_eachmask(%d),async_oppnum(%d),async_id_threshold(%d)\n",
+				ged_dvfs_get_async_oppnum_eachmask(),ged_dvfs_get_async_oppnum(),
+						ged_dvfs_get_async_id_threshold());
+	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
 				"[dvfs_lb_async]: enable LB async(%d), perf_diff_th(%d)\n",
 				ged_dvfs_get_lb_async_ratio_support(), ged_dvfs_get_lb_async_perf_diff());
 

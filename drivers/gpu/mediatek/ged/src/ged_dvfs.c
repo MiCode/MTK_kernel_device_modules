@@ -1348,47 +1348,52 @@ bool ged_dvfs_gpu_freq_commit(unsigned long ui32NewFreqID,
 		if (policy_api_sync_flag == 0)
 			g_last_commit_before_api_boost = ui32NewFreqID;
 
-		trace_tracing_mark_write(5566, "gpu_freq",
-			(long long) div_u64(ged_get_cur_stack_freq(), 1000));
+		if ((is_fdvfs_enable() & POLICY_MODE_V2) && (eCommitType == GED_DVFS_EB_DESIRE_COMMIT))
+			ged_log_buf_print(ghLogBuf_DVFS,
+			"[GED_K] v2 & eCommitType = GED_DVFS_EB_DESIRE_COMMIT bypass log ");
+		else {
+			trace_tracing_mark_write(5566, "gpu_freq",
+				(long long) div_u64(ged_get_cur_stack_freq(), 1000));
 
-		sc_freq_diff = ged_get_cur_stack_out_freq() > 0 ?
-			ged_get_cur_stack_out_freq() - ged_get_cur_real_stack_freq() : 0;
-		top_freq_diff = ged_get_cur_top_out_freq() > 0 ?
-			ged_get_cur_top_out_freq() - ged_get_cur_top_freq() : 0;
-		sc_avg_freq_diff = ged_get_cur_stack_avg_freq() > 0 ?
-			ged_get_cur_stack_avg_freq() - ged_get_cur_real_stack_freq() : 0;
+			sc_freq_diff = ged_get_cur_stack_out_freq() > 0 ?
+				ged_get_cur_stack_out_freq() - ged_get_cur_real_stack_freq() : 0;
+			top_freq_diff = ged_get_cur_top_out_freq() > 0 ?
+				ged_get_cur_top_out_freq() - ged_get_cur_top_freq() : 0;
+			sc_avg_freq_diff = ged_get_cur_stack_avg_freq() > 0 ?
+				ged_get_cur_stack_avg_freq() - ged_get_cur_real_stack_freq() : 0;
 
-		trace_GPU_DVFS__Frequency(div_u64(ged_get_cur_stack_freq(), 1000),
-			div_u64(ged_get_cur_real_stack_freq(), 1000),
-			div_u64(ged_get_cur_top_freq(), 1000),
-			div_s64(sc_freq_diff, 1000),
-			div_s64(top_freq_diff, 1000),
-			div_s64(sc_avg_freq_diff, 1000));
+			trace_GPU_DVFS__Frequency(div_u64(ged_get_cur_stack_freq(), 1000),
+				div_u64(ged_get_cur_real_stack_freq(), 1000),
+				div_u64(ged_get_cur_top_freq(), 1000),
+				div_s64(sc_freq_diff, 1000),
+				div_s64(top_freq_diff, 1000),
+				div_s64(sc_avg_freq_diff, 1000));
 
-		trace_tracing_mark_write(5566, "gpu_freq_ceil",
-			(long long) div_u64(ged_get_freq_by_idx(ui32CeilingID), 1000));
-		trace_tracing_mark_write(5566, "gpu_freq_floor",
-			(long long) div_u64(ged_get_freq_by_idx(ui32FloorID), 1000));
-		trace_tracing_mark_write(5566, "limitter_ceil",
-			ged_get_cur_limiter_ceil());
-		trace_tracing_mark_write(5566, "limitter_floor",
-			ged_get_cur_limiter_floor());
-		if (ged_get_cur_limiter_ceil() == LIMIT_POWERHAL) {
-			trace_tracing_mark_write(5566, "limitter_ceil_pid",
-				g_cust_upbound_freq_id_info.pid);
-			trace_tracing_mark_write(5566, "limitter_ceil_id",
-				g_cust_upbound_freq_id_info.user_id);
-			trace_tracing_mark_write(5566, "limitter_ceil_cus_val",
-				g_cust_upbound_freq_id_info.value);
-		}
+			trace_tracing_mark_write(5566, "gpu_freq_ceil",
+				(long long) div_u64(ged_get_freq_by_idx(ui32CeilingID), 1000));
+			trace_tracing_mark_write(5566, "gpu_freq_floor",
+				(long long) div_u64(ged_get_freq_by_idx(ui32FloorID), 1000));
+			trace_tracing_mark_write(5566, "limitter_ceil",
+				ged_get_cur_limiter_ceil());
+			trace_tracing_mark_write(5566, "limitter_floor",
+				ged_get_cur_limiter_floor());
+			if (ged_get_cur_limiter_ceil() == LIMIT_POWERHAL) {
+				trace_tracing_mark_write(5566, "limitter_ceil_pid",
+					g_cust_upbound_freq_id_info.pid);
+				trace_tracing_mark_write(5566, "limitter_ceil_id",
+					g_cust_upbound_freq_id_info.user_id);
+				trace_tracing_mark_write(5566, "limitter_ceil_cus_val",
+					g_cust_upbound_freq_id_info.value);
+			}
 
-		if (ged_get_cur_limiter_floor() == LIMIT_POWERHAL) {
-			trace_tracing_mark_write(5566, "limitter_floor_pid",
-				g_cust_boost_freq_id_info.pid);
-			trace_tracing_mark_write(5566, "limitter_floor_id",
-				g_cust_boost_freq_id_info.user_id);
-			trace_tracing_mark_write(5566, "limitter_floor_cus_val",
-				g_cust_boost_freq_id_info.value);
+			if (ged_get_cur_limiter_floor() == LIMIT_POWERHAL) {
+				trace_tracing_mark_write(5566, "limitter_floor_pid",
+					g_cust_boost_freq_id_info.pid);
+				trace_tracing_mark_write(5566, "limitter_floor_id",
+					g_cust_boost_freq_id_info.user_id);
+				trace_tracing_mark_write(5566, "limitter_floor_cus_val",
+					g_cust_boost_freq_id_info.value);
+			}
 		}
 		trace_tracing_mark_write(5566, "commit_type", eCommitType);
 		if (dcs_get_adjust_support() % 2 != 0) {
@@ -1540,44 +1545,48 @@ bool ged_dvfs_gpu_freq_dual_commit(unsigned long stackNewFreqID,
 	if (policy_api_sync_flag == 0)
 		g_last_commit_before_api_boost = stackNewFreqID;
 
-	trace_tracing_mark_write(5566, "gpu_freq",
-		(long long) div_u64(ged_get_cur_stack_freq(), 1000));
+	if ((is_fdvfs_enable() & POLICY_MODE_V2) && (eCommitType == GED_DVFS_EB_DESIRE_COMMIT))
+		ged_log_buf_print(ghLogBuf_DVFS,"[GED_K] v2 & eCommitType = GED_DVFS_EB_DESIRE_COMMIT bypass log ");
+	else {
+		trace_tracing_mark_write(5566, "gpu_freq",
+			(long long) div_u64(ged_get_cur_stack_freq(), 1000));
 
-	sc_freq_diff = ged_get_cur_stack_out_freq() > 0 ?
-		ged_get_cur_stack_out_freq() - ged_get_cur_real_stack_freq() : 0;
-	top_freq_diff = ged_get_cur_top_out_freq() > 0 ?
-		ged_get_cur_top_out_freq() - ged_get_cur_top_freq() : 0;
-	sc_avg_freq_diff = ged_get_cur_stack_avg_freq() > 0 ?
-		ged_get_cur_stack_avg_freq() - ged_get_cur_real_stack_freq() : 0;
+		sc_freq_diff = ged_get_cur_stack_out_freq() > 0 ?
+			ged_get_cur_stack_out_freq() - ged_get_cur_real_stack_freq() : 0;
+		top_freq_diff = ged_get_cur_top_out_freq() > 0 ?
+			ged_get_cur_top_out_freq() - ged_get_cur_top_freq() : 0;
+		sc_avg_freq_diff = ged_get_cur_stack_avg_freq() > 0 ?
+			ged_get_cur_stack_avg_freq() - ged_get_cur_real_stack_freq() : 0;
 
-	trace_GPU_DVFS__Frequency(div_u64(ged_get_cur_stack_freq(), 1000),
-		div_u64(ged_get_cur_real_stack_freq(), 1000), div_u64(ged_get_cur_top_freq(), 1000),
-		div_s64(sc_freq_diff, 1000), div_s64(top_freq_diff, 1000),div_s64(sc_avg_freq_diff, 1000));
+		trace_GPU_DVFS__Frequency(div_u64(ged_get_cur_stack_freq(), 1000),
+			div_u64(ged_get_cur_real_stack_freq(), 1000), div_u64(ged_get_cur_top_freq(), 1000),
+			div_s64(sc_freq_diff, 1000), div_s64(top_freq_diff, 1000),div_s64(sc_avg_freq_diff, 1000));
 
-	trace_tracing_mark_write(5566, "gpu_freq_ceil",
-		(long long) div_u64(ged_get_freq_by_idx(ui32CeilingID), 1000));
-	trace_tracing_mark_write(5566, "gpu_freq_floor",
-		(long long) div_u64(ged_get_freq_by_idx(ui32FloorID), 1000));
-	trace_tracing_mark_write(5566, "limitter_ceil",
-		ged_get_cur_limiter_ceil());
-	trace_tracing_mark_write(5566, "limitter_floor",
-		ged_get_cur_limiter_floor());
-	if (ged_get_cur_limiter_ceil() == LIMIT_POWERHAL) {
-		trace_tracing_mark_write(5566, "limitter_ceil_pid",
-			g_cust_upbound_freq_id_info.pid);
-		trace_tracing_mark_write(5566, "limitter_ceil_id",
-			g_cust_upbound_freq_id_info.user_id);
-		trace_tracing_mark_write(5566, "limitter_ceil_cus_val",
-			g_cust_upbound_freq_id_info.value);
-	}
+		trace_tracing_mark_write(5566, "gpu_freq_ceil",
+			(long long) div_u64(ged_get_freq_by_idx(ui32CeilingID), 1000));
+		trace_tracing_mark_write(5566, "gpu_freq_floor",
+			(long long) div_u64(ged_get_freq_by_idx(ui32FloorID), 1000));
+		trace_tracing_mark_write(5566, "limitter_ceil",
+			ged_get_cur_limiter_ceil());
+		trace_tracing_mark_write(5566, "limitter_floor",
+			ged_get_cur_limiter_floor());
+		if (ged_get_cur_limiter_ceil() == LIMIT_POWERHAL) {
+			trace_tracing_mark_write(5566, "limitter_ceil_pid",
+				g_cust_upbound_freq_id_info.pid);
+			trace_tracing_mark_write(5566, "limitter_ceil_id",
+				g_cust_upbound_freq_id_info.user_id);
+			trace_tracing_mark_write(5566, "limitter_ceil_cus_val",
+				g_cust_upbound_freq_id_info.value);
+		}
 
-	if (ged_get_cur_limiter_floor() == LIMIT_POWERHAL) {
-		trace_tracing_mark_write(5566, "limitter_floor_pid",
-			g_cust_boost_freq_id_info.pid);
-		trace_tracing_mark_write(5566, "limitter_floor_id",
-			g_cust_boost_freq_id_info.user_id);
-		trace_tracing_mark_write(5566, "limitter_floor_cus_val",
-			g_cust_boost_freq_id_info.value);
+		if (ged_get_cur_limiter_floor() == LIMIT_POWERHAL) {
+			trace_tracing_mark_write(5566, "limitter_floor_pid",
+				g_cust_boost_freq_id_info.pid);
+			trace_tracing_mark_write(5566, "limitter_floor_id",
+				g_cust_boost_freq_id_info.user_id);
+			trace_tracing_mark_write(5566, "limitter_floor_cus_val",
+				g_cust_boost_freq_id_info.value);
+		}
 	}
 	if (eCommitType != GED_DVFS_EB_DESIRE_COMMIT)
 		trace_tracing_mark_write(5566, "commit_type", eCommitType);
@@ -2048,7 +2057,7 @@ static unsigned int calculate_performance(struct async_counter *counters, unsign
 		perf = div64_u64(PERF_SCAL * COEFF_SCAL * counters->gpuactive, perf);
 	} else if (g_async_pmodel_ver == 4) {
 		perf = (counters->mcu * async_coeff_4[4] +
-			counters->iter * async_coeff_4[5] +
+			counters->iter * async_coeff_4[5] +
 			counters->tiler * async_coeff_4[6]) * ratio / RATIO_SCAL +
 			(counters->mcu * async_coeff_4[7]) * ratio * ratio / RATIO_SCAL / RATIO_SCAL +
 			(counters->mcu * async_coeff_4[0] +
@@ -2185,7 +2194,7 @@ static int ged_async_ratio_perf_model(int oppidx, int tar_freq, bool is_decreasi
 		adjust_ratio = div_u64(RATIO_SCAL * ged_get_top_freq_by_virt_opp(oppidx + 1),
 						ged_get_top_freq_by_virt_opp(oppidx));
 		perf_improve = calculate_performance(&asyncCounter, adjust_ratio);
-		if (perf_improve > 100 || perf_improve == 0) {
+		if (perf_improve >= 100 || perf_improve == 0) {
 			GED_LOGD_IF(ASYNC_LOG_LEVEL,
 				"[DVFS_ASYNC] - %s: perf_improve(%d) is unreasonable\n",
 				__func__, perf_improve);
@@ -2311,6 +2320,10 @@ static bool determine_async_policy(int cur_opp_id, int ui32NewFreqID)
 // if only one opp for DCS, no need to consider async_ratio when new freq ID in DCS
 static bool check_async_policy_needed(int cur_opp_id, int ui32NewFreqID)
 {
+	// no async ratio opp
+	if (g_async_id_threshold == (unsigned int)ged_get_min_oppidx_real())
+		return false;
+
 	// only one opp for DCS
 	if (g_oppnum_eachmask == 1 && ui32NewFreqID > ged_get_min_oppidx_real())
 		return false;
@@ -4315,6 +4328,21 @@ void ged_dvfs_notify_power_off(void)
 int ged_dvfs_get_async_perf_model(void)
 {
 	return g_async_pmodel_ver;
+}
+
+int ged_dvfs_get_async_oppnum(void)
+{
+	return g_min_async_oppnum;
+}
+
+int ged_dvfs_get_async_oppnum_eachmask(void)
+{
+	return g_oppnum_eachmask;
+}
+
+int ged_dvfs_get_async_id_threshold(void)
+{
+	return g_async_id_threshold;
 }
 
 void ged_dvfs_set_async_perf_model(int version)
