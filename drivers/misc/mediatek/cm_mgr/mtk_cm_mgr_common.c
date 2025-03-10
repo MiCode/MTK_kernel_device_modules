@@ -997,6 +997,21 @@ ERROR:
 }
 EXPORT_SYMBOL_GPL(cm_mgr_check_dts_setting);
 
+static void cm_delay_work(struct delayed_work *work, unsigned long delay)
+{
+
+	/*
+	 * 1. cancel
+	 * 2. check return : 0 --> return, > 0 -->  delay work
+	 */
+
+	int ret = cancel_delayed_work(work);
+
+	if (!ret)
+		return;
+	cm_delay_work(work, delay);
+}
+
 void cm_mgr_update_dram_by_cpu_opp(int cpu_opp)
 {
 	int dram_opp = 0;
@@ -1008,7 +1023,7 @@ void cm_mgr_update_dram_by_cpu_opp(int cpu_opp)
 	    cm_mgr_blank_status == 1) {
 		if (cm_mgr_cpu_to_dram_opp != cm_mgr_num_perf) {
 			cm_mgr_cpu_to_dram_opp = cm_mgr_num_perf;
-			schedule_delayed_work(&cm_mgr_work, 1);
+			cm_delay_work(&cm_mgr_work, 1);
 		}
 		return;
 	}
@@ -1016,7 +1031,7 @@ void cm_mgr_update_dram_by_cpu_opp(int cpu_opp)
 	if (!cm_mgr_cpu_map_dram_enable) {
 		if (cm_mgr_cpu_to_dram_opp != cm_mgr_num_perf) {
 			cm_mgr_cpu_to_dram_opp = cm_mgr_num_perf;
-			schedule_delayed_work(&cm_mgr_work, 1);
+			cm_delay_work(&cm_mgr_work, 1);
 		}
 		return;
 	}
@@ -1025,7 +1040,7 @@ void cm_mgr_update_dram_by_cpu_opp(int cpu_opp)
 		dram_opp = cm_mgr_cpu_opp_to_dram[cpu_opp];
 
 	cm_mgr_cpu_to_dram_opp = dram_opp;
-	schedule_delayed_work(&cm_mgr_work, 1);
+	cm_delay_work(&cm_mgr_work, 1);
 }
 EXPORT_SYMBOL_GPL(cm_mgr_update_dram_by_cpu_opp);
 
@@ -1052,7 +1067,7 @@ static void cm_mgr_cpu_frequency_tracer(void *ignore, unsigned int frequency,
 	if (!cm_mgr_cpu_map_dram_enable) {
 		if (cm_work_flag && cm_mgr_cpu_to_dram_opp != cm_mgr_num_perf) {
 			cm_mgr_cpu_to_dram_opp = cm_mgr_num_perf;
-			schedule_delayed_work(&cm_mgr_work, 1);
+			cm_delay_work(&cm_mgr_work, 1);
 		}
 		return;
 	}
