@@ -597,7 +597,7 @@ static ssize_t vcp_mobile_log_show(struct device *kobj,
 
 	stat = (vcp_A_logger_inited && VCP_A_log_ctl->enable) ? 1 : 0;
 
-	return sprintf(buf, "[VCP A] mobile log is %s\n",
+	return snprintf(buf, PAGE_SIZE, "[VCP A] mobile log is %s\n",
 			(stat == 0x1) ? "enabled" : "disabled");
 }
 
@@ -628,7 +628,7 @@ static ssize_t vcp_A_logger_wakeup_AP_show(struct device *kobj,
 
 	stat = (vcp_A_logger_inited && vcp_A_logger_wakeup_ap) ? 1 : 0;
 
-	return sprintf(buf, "[VCP A] logger wakeup AP is %s\n",
+	return snprintf(buf, PAGE_SIZE, "[VCP A] logger wakeup AP is %s\n",
 			(stat == 0x1) ? "enabled" : "disabled");
 }
 

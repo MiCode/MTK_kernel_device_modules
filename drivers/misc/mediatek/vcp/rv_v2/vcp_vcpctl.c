@@ -23,9 +23,31 @@ static ssize_t vcpctl_store(struct device *kobj
 	int magic, type, op;
 	struct vcpctl_cmd_s cmd;
 	char *prompt = "[VCPCTL]:";
+	char *input_copy, *token;
+	int values[3];
+	int i = 0;
 
-	if (sscanf(buf, "%d %d %d", &magic, &type, &op) != 3)
+	input_copy = kstrdup(buf, GFP_KERNEL);
+	if (!input_copy)
+		return -ENOMEM;
+
+	while ((token = strsep(&input_copy, " ")) != NULL && i < 3) {
+		if (kstrtoint(token, 10, &values[i]) != 0) {
+			kfree(input_copy);
+			return -EINVAL;
+		}
+		i++;
+	}
+
+	kfree(input_copy);
+
+	if (i != 3)
 		return -EINVAL;
+
+	magic = values[0];
+	type = values[1];
+	op = values[2];
+
 	pr_notice("%s %d %d %d\n", prompt, magic, type, op);
 
 	if (magic != 666)
