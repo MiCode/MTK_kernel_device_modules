@@ -92,25 +92,25 @@ static ssize_t opp_logs_show(struct kobject *kobj,
 		ged_dvfs_query_opp_cost(report, ui32FqCount, false, &last_ts) == 0) {
 		cur_idx = gpufreq_get_cur_oppidx(TARGET_DEFAULT);
 		cur_idx = (cur_idx > g_real_minfreq_idx)? g_real_minfreq_idx: cur_idx;
-		len = sprintf(buf, "Last TS: %llu\n", last_ts);
-		len += sprintf(buf + len, "GPU Freq(MHz)  Time(ms)\n");
+		len = scnprintf(buf, PAGE_SIZE, "Last TS: %llu\n", last_ts);
+		len += scnprintf(buf + len, PAGE_SIZE - len, "GPU Freq(MHz)  Time(ms)\n");
 
 		for (i = 0; i < ui32FqCount; i++) {
 			if (i == cur_idx)
-				len += sprintf(buf + len, "*");
+				len += scnprintf(buf + len, PAGE_SIZE - len, "*");
 			else
-				len += sprintf(buf + len, " ");
+				len += scnprintf(buf + len, PAGE_SIZE - len, " ");
 
-			len += sprintf(buf + len, "%4u    ",
+			len += scnprintf(buf + len, PAGE_SIZE - len, "%4u    ",
 					gpufreq_get_freq_by_idx(TARGET_DEFAULT, i) / 1000);
 
 			/* truncate to ms */
-			len += sprintf(buf + len, "%llu\n", report[i].ui64Active);
+			len += scnprintf(buf + len, PAGE_SIZE - len, "%llu\n", report[i].ui64Active);
 		}
 	} else {
-		len = sprintf(buf, "Not Supported.\n");
+		len = scnprintf(buf, PAGE_SIZE - len, "Not Supported.\n");
 		if (len < 0)
-			GED_LOGE("sprintf failed to write to buffer!\n");
+			GED_LOGE("scnprintf failed to write to buffer!\n");
 	}
 
 	if (report != NULL)
