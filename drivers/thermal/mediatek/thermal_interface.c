@@ -2105,6 +2105,8 @@ static ssize_t boot_status_show(struct kobject *kobj,
 		tm_data.boot.sensor,    tm_data.boot.temp_at_boot,
 		tm_data.boot.trip_temp, tm_data.boot.release_temp,
 		tm_data.boot.thermal_core_num,tm_data.boot.core_status);
+	if (len < 0)
+		pr_info("%s: snprintf error %d\n", __func__, len);
 
 	return len;
 }
