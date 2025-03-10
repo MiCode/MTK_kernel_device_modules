@@ -1,4 +1,5 @@
 load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
 
 package(
     default_visibility = [
@@ -18,6 +19,11 @@ filegroup(
     srcs = glob([
         "**/*.h",
     ]),
+)
+
+ddk_headers(
+    name = "btif_drv_headers",
+    hdrs = glob(["**/*.h"])
 )
 
 define_mgk_ddk_ko(
