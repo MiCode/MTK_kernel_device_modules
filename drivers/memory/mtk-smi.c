@@ -6073,14 +6073,17 @@ EXPORT_SYMBOL_GPL(mtk_smi_get_if_in_use);
 int mtk_smi_put_if_in_use(struct device *dev)
 {
 	struct mtk_smi *smi = get_smi_from_dev(dev);
-	int ret;
 
 	if (unlikely(!dev))
 		return -EINVAL;
 
-	ret = queue_work(smi_pd_ctrl_wq, &smi->pd_work);
-	if (ret < 0)
-		dev_notice(dev, "queue_work fail ret=%d\n", ret);
+	if (queue_work(smi_pd_ctrl_wq, &smi->pd_work))
+		return 0;
+
+	if (atomic_dec_return(&smi->ref_count) <= 0) {
+		dev_notice(dev, "unbalanced ref_cnt\n");
+		return -EINVAL;
+	}
 
 	return 0;
 }
