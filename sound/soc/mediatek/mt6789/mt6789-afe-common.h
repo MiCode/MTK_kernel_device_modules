@@ -25,9 +25,6 @@
 #define AUDIO_AEE(message) WARN_ON(true)
 #endif
 
-#define SKIP_SB
-#define SKIP_SB_VOW
-
 enum {
 	MT6789_MEMIF_DL1,
 	MT6789_MEMIF_DL12,

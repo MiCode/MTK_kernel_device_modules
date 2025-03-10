@@ -3748,6 +3748,11 @@ struct mt6358_codec_ops {
 	int (*adda_dl_gain_control)(bool mute);
 };
 
+enum {
+	VOW_SCP_FIFO = 0,
+	VOW_STANDALONE_CODEC = 1
+};
+
 struct mt6358_priv {
 	struct device *dev;
 	struct regmap *regmap;
