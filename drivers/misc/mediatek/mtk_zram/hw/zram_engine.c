@@ -695,45 +695,56 @@ static void dcomp_process_completed_cmd(struct zram_engine_t *hwz,
 }
 
 /* Return the number of processed dcomp cmds */
-static inline uint32_t dcomp_post_processing_cmds(struct zram_engine_t *hwz)
+static uint32_t dcomp_post_processing_cmds(struct zram_engine_t *hwz, struct hwfifo *fifo)
+{
+	uint32_t start, end, index, entry;
+	uint32_t fifo_processed = 0;
+
+	start = fifo->complete_idx;
+	end = dcomp_fifo_HtS_complete_index(fifo);
+
+	/* Add memory barrier to make sure we can get the correct range */
+	rmb();
+
+	if (start != fifo->pp_prev_end)
+		pr_info("%s: unexpected start(0x%x), not (0x%x)", __func__, start, fifo->pp_prev_end);
+
+	for (index = start; index != end; index = (index + 1) & ENGINE_DCOMP_FIFO_ENTRY_CARRY_MASK) {
+		entry = index & ENGINE_DCOMP_FIFO_ENTRY_MASK;
+		dcomp_process_completed_cmd(hwz, fifo, entry);
+		atomic_dec(&hwz->dcomp_cnt);
+		update_dcomp_fifo_complete_index(fifo);
+		fifo_processed++;
+	}
+
+	fifo->pp_prev_end = end;
+
+	return fifo_processed;
+}
+
+/* Return the total number of processed fifo dcomp cmds */
+static inline uint32_t dcomp_fifos_post_processing_cmds(struct zram_engine_t *hwz)
 {
 	struct hwfifo *fifo;
 	int cpu;
-	uint32_t start, end, index, entry;
 	uint32_t processed = 0;
 
 	/* Post-processing cmds */
 	for (cpu = MAX_DCOMP_NR - 1; cpu >= 0; cpu--) {
 		fifo = &hwz->dcomp_fifo[cpu];
 
-		/* Add memory barrier to make sure we can get the correct range */
-		rmb();
-
-		start = fifo->complete_idx;
-		end = dcomp_fifo_HtS_complete_index(fifo);
-
+		/*
+		 * write_idx may be updated somewhere concurrently during post-process.
+		 * Call smp_rmb() to make sure we can perceive the update here.
+		 */
 		smp_rmb();
 
 		/* fifo is empty. Continue with the next one */
 		if (dcomp_fifo_empty(fifo))
 			continue;
 
-		/* The wake up is premature. Continue with the next one */
-		if (start == end)
-			continue;
-
-		if (start != fifo->pp_prev_end)
-			pr_info("%s: unexpected start(0x%x), not (0x%x)", __func__, start, fifo->pp_prev_end);
-
-		for (index = start; index != end; index = (index + 1) & ENGINE_DCOMP_FIFO_ENTRY_CARRY_MASK) {
-			entry = index & ENGINE_DCOMP_FIFO_ENTRY_MASK;
-			dcomp_process_completed_cmd(hwz, fifo, entry);
-			atomic_dec(&hwz->dcomp_cnt);
-			update_dcomp_fifo_complete_index(fifo);
-			processed++;
-		}
-
-		fifo->pp_prev_end = end;
+		/* Start processing cmds */
+		processed += dcomp_post_processing_cmds(hwz, fifo);
 	}
 
 	return processed;
@@ -772,6 +783,7 @@ static int dcomp_post_process(void *data)
 	uint32_t processed, total_processed;
 	uint32_t hang_detect, suspect_hang;
 	int cnt;
+	static bool warn_on_cnt_underflow = true;
 	DEFINE_WAIT(wait);
 
 	current->flags |= PF_MEMALLOC;
@@ -816,7 +828,7 @@ static int dcomp_post_process(void *data)
 
 repeat:
 		/* Processing cmds */
-		processed = dcomp_post_processing_cmds(hwz);
+		processed = dcomp_fifos_post_processing_cmds(hwz);
 
 		/* Update total_processed */
 		total_processed += processed;
@@ -858,10 +870,14 @@ repeat:
 		if (cnt > 0) {
 			goto repeat;
 		} else if (cnt < 0) {
-			WARN_ON_ONCE(1);
-			engine_get_reg_status(&hwz->ctrl, NULL);
-			dump_fifo_idx(hwz, NULL, 0);
-			engine_gear_get_status(&hwz->gear_ctrl, NULL);
+			/* Show warning & dump information once to avoid log flooding */
+			if (READ_ONCE(warn_on_cnt_underflow)) {
+				WARN_ON(1);
+				engine_get_reg_status(&hwz->ctrl, NULL);
+				dump_fifo_idx(hwz, NULL, 0);
+				engine_gear_get_status(&hwz->gear_ctrl, NULL);
+				WRITE_ONCE(warn_on_cnt_underflow, false);
+			}
 		}
 
 #ifndef FPGA_EMULATION
@@ -1426,25 +1442,18 @@ next_dcmd:
 	WARN_ON(engine_gear_enable_clock(&hwz->ctrl, &hwz->gear_ctrl) != 0);
 #endif
 
-	/* Increment the number of decompression request */
-	if (atomic_inc_return(&hwz->dcomp_cnt) == 1) {
-
-		/* Wake up gear level adjusting thread to set up default gear if necessary */
-		if (!GlaDecset(&gla_flags)) {
-			SetGlaDecset(&gla_flags);
-			SetGlaNotify(&gla_flags);
-			wake_up(&hwz->gla_wait);
-		}
-
-		/* Remember to wake up post-process */
-		wake_up_pp = true;
-	}
-
 	/* Query entry and fill request */
 	entry = dcomp_fifo_write_entry(fifo);
 	valid = hwz->ops->fill_decompression_info(fifo, entry, src, slen, page, pp_info,
 						true, zspool_to_hwcomp_buffer);
 	update_dcomp_fifo_write_index(fifo);
+
+	/*
+	 * Increment the number of decompression request after update hw write index
+	 * and remember to wake up post-process.
+	 */
+	if (atomic_inc_return(&hwz->dcomp_cnt) == 1)
+		wake_up_pp = true;
 
 	/* Try next cmd if necessary */
 	if (!valid)

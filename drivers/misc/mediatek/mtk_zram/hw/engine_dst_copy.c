@@ -67,10 +67,7 @@ static void __dcomp_process_completed_cmd(struct hwfifo *fifo, uint32_t entry, b
 		hwcomp_decompress_post_process(err, pp_info);
 
 	/* Restore fixed buffer */
-	if (hw_priv->val != 0)
-		cmdp->word_2_value = hw_priv->val;
-	else
-		WARN_ON(1);
+	cmdp->word_2_value = hw_priv->val;
 
 	/* Post-process is finished. */
 	reset_cmd_after_decompression(cmdp);
@@ -215,7 +212,6 @@ static bool fill_decompression_info(struct hwfifo *fifo, uint32_t entry,
 {
 	struct decompress_cmd *cmdp = DCOMP_CMD(fifo, entry);
 	struct dcomp_pp_info *pp_info = DCOMP_CMPL(fifo, entry);
-	dcomp_src_t *hw_priv = DCOMP_PRIV(fifo, entry);
 	void *src_va;
 	uint32_t hash_value = 0;
 	int ret;
@@ -236,13 +232,6 @@ static bool fill_decompression_info(struct hwfifo *fifo, uint32_t entry,
 		pr_info("%s: failed to setup src buffers.\n", __func__);
 		return false;
 	}
-
-	/*
-	 * Offset: 0x10 ~ 0x18 will be cleared to 0 after HW processes the DCMD.
-	 * We use fixed buffer indicated by SRC_ADDR_a to store compressed data,
-	 * and we don't want to miss it after the decompression. So keep it here.
-	 */
-	hw_priv->val = cmdp->word_2_value;
 
 	/* Initialize decompress cmd */
 	update_cmd_before_decompression(cmdp, page, slen, hash_value, false, false, async);
@@ -303,6 +292,7 @@ static int fill_dcomp_fifo_src_buffers(struct hwfifo *fifo, int id)
 	uint32_t entry;
 	uint32_t *src_addr;
 	int bit = ENGINE_MAX_BUF_IDX;
+	dcomp_src_t *hw_priv;
 
 	if (!fifo)
 		return -EINVAL;
@@ -328,6 +318,17 @@ static int fill_dcomp_fifo_src_buffers(struct hwfifo *fifo, int id)
 	if (fifo->priv == NULL) {
 		pr_info("%s: failed to allocate private buffer.\n", __func__);
 		goto error;
+	}
+
+	/*
+	 * Offset: 0x10 ~ 0x18 will be cleared to 0 after HW processes the DCMD.
+	 * We use fixed buffer indicated by SRC_ADDR_a to store compressed data,
+	 * and we don't want to miss it after the decompression. So keep it here.
+	 */
+	for (entry = 0; entry < fifo->size; entry++) {
+		cmdp = DCOMP_CMD(fifo, entry);
+		hw_priv = DCOMP_PRIV(fifo, entry);
+		hw_priv->val = cmdp->word_2_value;
 	}
 
 #ifdef ZRAM_ENGINE_DEBUG
