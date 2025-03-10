@@ -118,7 +118,7 @@ int btif_dump_array(const char *string, const char *p_buf, int len)
 	pr_info("========dump %s start <length:%d>========\n", string, len);
 	p_str = &str[0];
 	for (idx = 0; idx < len; idx++, p_buf++) {
-		if (sprintf(p_str, "%02x ", *p_buf) < 0)
+		if (snprintf(p_str, sizeof(str) - (p_str - str), "%02x ", *p_buf) < 0)
 			return -1;
 		p_str += 3;
 		if ((BTIF_LENGTH_PER_LINE - 1) == (idx % BTIF_LENGTH_PER_LINE)) {

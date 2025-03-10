@@ -2991,7 +2991,7 @@ int btif_dump_data(const char *p_buf, int len)
 
 	p_str = &str[0];
 	for (idx = 0; idx < len; idx++, p_buf++) {
-		if (sprintf(p_str, "%02x ", *p_buf) < 0) {
+		if (snprintf(p_str, sizeof(str) - (p_str - str), "%02x ", *p_buf) < 0) {
 			BTIF_INFO_FUNC("sprintf error");
 			return -1;
 		}
