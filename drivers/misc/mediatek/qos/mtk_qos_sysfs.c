@@ -14,7 +14,7 @@
 static ssize_t qos_bound_enable_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
-	return sprintf(buf, "%d\n", is_qos_bound_enabled());
+	return snprintf(buf, PAGE_SIZE, "%d\n", is_qos_bound_enabled());
 }
 static ssize_t qos_bound_enable_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
@@ -33,7 +33,7 @@ static DEVICE_ATTR_RW(qos_bound_enable);
 static ssize_t qos_force_polling_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
-	return sprintf(buf, " test\n");
+	return snprintf(buf, PAGE_SIZE, " test\n");
 }
 
 static ssize_t qos_force_polling_store(struct device *dev,
@@ -58,7 +58,7 @@ static ssize_t qos_evt_tri_dbg_show(struct device *dev,
 
 	for (i=0; i<NR_TRI; i++) {
 		evt_tri_dbg_tbl[i] = qos_share_sram_read_dbg(i * 4);
-		ptr += sprintf(ptr, "evt_tri_dbg[%d] = %d\n", i, evt_tri_dbg_tbl[i]);
+		ptr += snprintf(ptr, PAGE_SIZE - (ptr - buf), "evt_tri_dbg[%d] = %d\n", i, evt_tri_dbg_tbl[i]);
 	}
 	return ptr - buf;
 }
@@ -79,7 +79,7 @@ static DEVICE_ATTR_RW(qos_evt_tri_dbg);
 static ssize_t qos_bound_stress_enable_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
-	return sprintf(buf, "%d\n", is_qos_bound_stress_enabled());
+	return snprintf(buf, PAGE_SIZE, "%d\n", is_qos_bound_stress_enabled());
 }
 static ssize_t qos_bound_stress_enable_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
@@ -98,7 +98,7 @@ static DEVICE_ATTR_RW(qos_bound_stress_enable);
 static ssize_t qos_bound_log_enable_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
-	return sprintf(buf, "%d\n", is_qos_bound_log_enabled());
+	return snprintf(buf, PAGE_SIZE, "%d\n", is_qos_bound_log_enabled());
 }
 static ssize_t qos_bound_log_enable_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
@@ -120,7 +120,7 @@ static ssize_t qos_bound_status_show(struct device *dev,
 	unsigned int qos_bound_count = get_qos_bound_count();
 	unsigned int *qos_bound_buf = get_qos_bound_buf();
 
-	return sprintf(buf, "count: %d, free: %d, cong: %d, full: %d\n",
+	return snprintf(buf, PAGE_SIZE, "count: %d, free: %d, cong: %d, full: %d\n",
 			qos_bound_count, qos_bound_buf[0],
 			qos_bound_buf[1], qos_bound_buf[2]);
 }
