@@ -845,8 +845,10 @@ static void vow_service_Init(void)
 		vowserv.digital_gain_val = (VOW_GAIN_0DB << 6) + VOW_GAIN_0DB; // CH2 | CH1
 		/* set meaningless default value to platform identifier and version */
 		memset(vowserv.google_engine_arch, 0, VOW_ENGINE_INFO_LENGTH_BYTE);
-		if (sprintf(vowserv.google_engine_arch, "12345678-1234-1234-1234-123456789012") < 0)
-			VOWDRV_DEBUG("%s(), sprintf fail", __func__);
+		if (snprintf(vowserv.google_engine_arch, sizeof(vowserv.google_engine_arch),
+			     "12345678-1234-1234-1234-123456789012") < 0) {
+			VOWDRV_DEBUG("%s(), snprintf fail", __func__);
+		}
 		vowserv.google_engine_version = DEFAULT_GOOGLE_ENGINE_VER;
 		memset(vowserv.alexa_engine_version, 0, VOW_ENGINE_INFO_LENGTH_BYTE);
 	} else {
