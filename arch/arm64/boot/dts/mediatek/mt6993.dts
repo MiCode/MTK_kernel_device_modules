@@ -4843,7 +4843,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		};
 
 		curve_adj: curve-adjust@51c5838 {
-			reg = <0 0x051c5838 0x280>;
+			reg = <0 0x051c5838 0 0x280>;
 		};
 
 		apdma: dma-controller@16520000 {
