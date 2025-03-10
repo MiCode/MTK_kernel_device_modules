@@ -236,7 +236,7 @@ static void periodic_debug_handler(struct work_struct *work)
 	for_each_cluster(cluster, index) {
 		max_cpus[index] = cluster->max_cpus;
 		min_cpus[index] = cluster->min_cpus;
-		boost[index] = cluster->boost;
+		boost[index] = cluster->boost || cluster->boost_by_freq || cluster->boost_by_wlan;
 		need_cpus[index] = cluster->need_cpus;
 		assist_cpus[index] = cluster->nr_assist;
 	}
@@ -839,12 +839,11 @@ static void set_freq_min_thres(struct cluster_data *cluster, unsigned int val)
 {
 	unsigned int old_thresh;
 	unsigned long flags;
-	unsigned int cid = cluster->cluster_id;
 
 	spin_lock_irqsave(&core_ctl_state_lock, flags);
-	old_thresh = freq_thres[cid];
+	old_thresh = cluster->freq_thres;
 	if (old_thresh != val)
-		freq_thres[cid] = val;
+		cluster->freq_thres = val;
 	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
 }
 
@@ -1661,9 +1660,7 @@ static ssize_t store_freq_min_thres(struct cluster_data *state,
 
 static ssize_t show_freq_min_thres(const struct cluster_data *state, char *buf)
 {
-	unsigned int cid = state->cluster_id;
-
-	return scnprintf(buf, PAGE_SIZE, "%lu\n", freq_thres[cid]);
+	return scnprintf(buf, PAGE_SIZE, "%lu\n", state->freq_thres);
 }
 
 static ssize_t show_thermal_up_thres(const struct cluster_data *state, char *buf)
