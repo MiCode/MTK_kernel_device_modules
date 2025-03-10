@@ -95,6 +95,24 @@ define_mgk_ddk_ko(
 )
 
 define_mgk_ddk_ko(
+    name = "device-apc-mt6855",
+    out = "device-apc-mt6855.ko",
+    srcs = [
+        "devapc-mt6855.c"
+    ],
+    hdrs = glob([
+        "**/devapc-mt6855.h",
+        "**/devapc-mtk-multi-ao.h"
+    ]),
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/soc/mediatek/devapc:device-apc-common".format(kernel_version)
+    ],
+    local_defines = [
+        "DBG_ENABLE=1"
+    ],
+)
+
+define_mgk_ddk_ko(
     name = "device-apc-mt6895",
     out = "device-apc-mt6895.ko",
     srcs = [
