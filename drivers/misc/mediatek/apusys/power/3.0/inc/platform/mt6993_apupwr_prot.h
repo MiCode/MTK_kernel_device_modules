@@ -52,6 +52,11 @@
  */
 #define APU_ARE_ETRY_DEPUTY_ADDR        SPARE_DBG_REG19
 
+/*
+ * Apu cooler usage
+ */
+#define APU_COOLING_UNLIMITED_STATE	(0)
+#define APU_COOLING_MAX_STATE		(USER_MIN_OPP_VAL - USER_MAX_OPP_VAL)
 
 enum {
 	APUPWR_DBG_DEV_CTL = 0,

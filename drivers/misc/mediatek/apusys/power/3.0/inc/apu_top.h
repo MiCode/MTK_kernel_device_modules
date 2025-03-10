@@ -49,6 +49,11 @@ struct aputop_func_param {
 	int param4;
 };
 
+struct apupwr_func_priv {
+	bool apu_cdev_enable;
+	bool apu_sw_throttle_enable;
+};
+
 struct apupwr_plat_data {
 	const char *plat_name;
 	int (*plat_aputop_on)(struct device *dev);

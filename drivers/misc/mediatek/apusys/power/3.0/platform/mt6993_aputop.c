@@ -13,6 +13,7 @@
 #include <linux/of_address.h>
 #include <linux/of_platform.h>
 #include <linux/platform_device.h>
+#include <linux/thermal.h>
 #include <linux/pm.h>
 // for thermal node & apu_sw_power throttle
 #include <linux/kernel.h>
@@ -31,6 +32,7 @@
 #include "mt6993_apupwr.h"
 #include "mt6993_apupwr_prot.h"
 #include "mt6993_apupwr_ce.h"
+#include "aputop_cdev.h"
 
 #define LOCAL_DBG	(1)
 #define RPC_ALIVE_DBG	(0)
@@ -753,6 +755,20 @@ static const struct proc_ops client_input_ops = {
 	.proc_release = single_release,
 };
 
+void mt6993_activate_apu_cooling_device(struct platform_device *pdev)
+{
+	struct apu_cooling_device *apu_cdev = (struct apu_cooling_device *)platform_get_drvdata(pdev);
+
+	if (apu_cdev->status == APUCDEV_NOT_READY){
+		apu_cdev->target_state = APU_COOLING_UNLIMITED_STATE;
+		apu_cdev->unlimite_state = APU_COOLING_UNLIMITED_STATE;
+		apu_cdev->max_state = APU_COOLING_MAX_STATE;
+		apu_cdev->status = APUCDEV_READY;
+		thermal_cooling_device_update(apu_cdev->cdev);
+		pr_info("%s: %s ready.\n", __func__, apu_cdev->name);
+	}
+}
+
 static int mt6993_opp_proc_show(struct seq_file *m, void *v)
 {
 	int i;
@@ -811,6 +827,8 @@ static int mt6993_apu_top_pb(struct platform_device *pdev)
 				(apupw.regs[apu_rpc] + APU_RPC_INTF_PWR_RDY),
 				val, (val & 0x1UL), 50, 10000);
 	}
+
+	mt6993_activate_apu_cooling_device(pdev);
 
 	mt6993_init_remote_data_sync(apupw.regs[apu_md32_mbox]);
 	// init lock

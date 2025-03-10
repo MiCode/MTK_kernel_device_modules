@@ -15,10 +15,12 @@
 #include <linux/pm_wakeup.h>
 #endif
 #include <linux/uaccess.h>
+#include <linux/thermal.h>
 
 #include "apu_top.h"
 #include "aputop_log.h"
 #include "aputop_rpmsg.h"
+#include "aputop_cdev.h"
 #include <apu_top_entry.h>
 #include <mtk_apu_power_throttling.h>
 
@@ -26,6 +28,7 @@ const struct apupwr_plat_data *pwr_data;
 
 struct platform_device *this_pdev;
 static struct apupwr_dbg aputop_dbg;
+static struct apupwr_func_priv *aputop_func_priv;
 static int aputop_func_sel;
 static DEFINE_MUTEX(aputop_func_mtx);
 #if IS_ENABLED(CONFIG_PM_SLEEP)
@@ -119,9 +122,69 @@ static int aputop_pwr_off_rpm_cb(struct device *dev)
 	return ret;
 }
 
-static int apu_top_probe(struct platform_device *pdev)
+static int aputop_cdev_probe(struct platform_device *pdev)
+{
+	int ret = 0;
+	struct device *dev = &pdev->dev;
+	struct apu_cooling_device *apu_cdev;
+
+	apu_cdev = devm_kzalloc(dev, sizeof(*apu_cdev), GFP_KERNEL);
+	if (!apu_cdev)
+		return -ENOMEM;
+
+	if(aputop_func_priv->apu_cdev_enable){
+		ret = init_apu_cooling_device(dev, apu_cdev);
+		if (ret){
+			dev_notice(dev, "failed to init apu cooler!\n");
+			return ret;
+		}
+	}else
+		apu_cdev->status = APUCDEV_UNVALID;
+
+	platform_set_drvdata(pdev, apu_cdev);
+	return ret;
+}
+
+void aputop_cdev_rm(struct platform_device *pdev)
+{
+	struct apu_cooling_device *apu_cdev;
+
+	apu_cdev = (struct apu_cooling_device *)platform_get_drvdata(pdev);
+	if(apu_cdev->status != APUCDEV_UNVALID)
+		thermal_cooling_device_unregister(apu_cdev->cdev);
+	platform_set_drvdata(pdev, NULL);
+}
+
+void aputop_parse_dts(struct platform_device *pdev)
+{
+	struct device_node *np = pdev->dev.of_node;
+
+	aputop_func_priv = devm_kzalloc(&pdev->dev, sizeof(*aputop_func_priv), GFP_KERNEL);
+	aputop_func_priv->apu_cdev_enable = of_property_read_bool(np, "apu-cdev-enable");
+	aputop_func_priv->apu_sw_throttle_enable = of_property_read_bool(np, "apu-sw-throttle-enable");
+}
+
+int register_pt_callbacks(void)
 {
 	int ret;
+
+	ret = register_pt_low_battery_apu_cb(apu_sw_throttle);
+	if (ret)
+		pr_info("%s Failed to register low battery callback: %d\n", __func__ , ret);
+
+	ret = register_pt_over_current_apu_cb(apu_sw_throttle);
+	if (ret)
+		pr_info("%s Failed to register over current callback: %d\n", __func__ , ret);
+
+	ret = register_pt_battery_percent_apu_cb(apu_sw_throttle);
+	if (ret)
+		pr_info("%s Failed to register battery percent callback: %d\n", __func__ , ret);
+
+	return ret;
+}
+
+static int apu_top_probe(struct platform_device *pdev)
+{
 	dev_info(&pdev->dev, "%s +\n", __func__);
 	pwr_data = of_device_get_match_data(&pdev->dev);
 
@@ -130,30 +193,16 @@ static int apu_top_probe(struct platform_device *pdev)
 
 	dev_info(&pdev->dev, "%s %s\n", __func__, pwr_data->plat_name);
 
+	aputop_parse_dts(pdev);
+
 	apu_pwr_wake_init();
 
 	this_pdev = pdev;
 	g_apupw_drv_ver = 3;
 
 	pm_runtime_enable(&pdev->dev);
-
-	ret = register_pt_low_battery_apu_cb(apu_sw_throttle);
-	if (ret) {
-		pr_info("%s Failed to register low battery callback: %d\n", __func__ ,ret);
-		//return ret; // Uncomment after PT callback enable
-	}
-
-	ret = register_pt_over_current_apu_cb(apu_sw_throttle);
-	if (ret) {
-		pr_info("%s Failed to register over current callback: %d\n", __func__ ,ret);
-		//return ret;
-	}
-
-	ret = register_pt_battery_percent_apu_cb(apu_sw_throttle);
-	if (ret) {
-		pr_info("%s Failed to register battery percent callback: %d\n", __func__ ,ret);
-		//return ret;
-	}
+	register_pt_callbacks();
+	aputop_cdev_probe(pdev);
 
 	return pwr_data->plat_aputop_pb(pdev);
 }
@@ -165,6 +214,7 @@ static void apu_top_remove(struct platform_device *pdev)
 
 	dev_info(&pdev->dev, "%s %s\n", __func__, pwr_data->plat_name);
 	pwr_data->plat_aputop_rm(pdev);
+	aputop_cdev_rm(pdev);
 	pm_runtime_disable(&pdev->dev);
 	apu_pwr_wake_exit();
 }
@@ -420,7 +470,7 @@ int apu_sw_throttle(int *request_id, unsigned long state)
 
 	memset(&aputop, -1, sizeof(struct aputop_func_param));
 
-	if (pwr_data->apu_sw_throttle_enable == 0) {
+	if (!aputop_func_priv->apu_sw_throttle_enable) {
 		pr_info("%s: APU throttling isn't supported in this platform\n", __func__);
 		goto out;
 	}
