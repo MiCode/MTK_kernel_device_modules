@@ -1,0 +1,8 @@
+config MTK_MBRAINK_MT6993
+	tristate "Specify Mediatek MBRAINK Platform is MT6993"
+	depends on MTK_MBRAINK
+	help
+	  Select MediaTek MBraink Module Platform is MT6993
+	  for android MBrain feature.
+	  Set Y to select this feature for specific platform-mt6993.
+	  If unsure, set N to disable.

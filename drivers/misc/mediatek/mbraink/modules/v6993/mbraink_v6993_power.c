@@ -37,10 +37,6 @@
 #define MAX_SPMI_CURR_CLAMPING_CNT 128
 #endif
 
-#if IS_ENABLED(CONFIG_DEVICE_MODULES_REGULATOR_RT6160)
-#include <rt6160.h>
-#endif
-
 #if IS_ENABLED(CONFIG_MFD_MTK_SPMI_PMIC)
 #include <mtk-spmi-pmic-debug.h>
 #define MAX_SPMI_GLITCH_ID spmi_glitch_idx_cnt
@@ -755,33 +751,6 @@ static int mbraink_v6993_power_get_spmi_info(
 	return ret;
 }
 
-static int mbraink_v6993_power_get_uvlo_info(
-	struct mbraink_uvlo_struct_data *mbraink_uvlo_data)
-{
-	int num = 0;
-	int i = 0;
-	int ret = 0;
-	struct rt6160_error rt6160_err;
-
-	if (mbraink_uvlo_data == NULL) {
-		pr_info("mbraink_uvlo_data is null\n");
-		return -1;
-	}
-
-	num = rt6160_get_chip_num();
-	num = (num > MAX_PMIC_UVLO_SZ) ? MAX_PMIC_UVLO_SZ : num;
-
-	mbraink_uvlo_data->uvlo_count = num;
-	for (i = 0; i < num; i++) {
-		rt6160_get_error_cnt(i, &rt6160_err);
-		mbraink_uvlo_data->uvlo_err_data[i].ot = rt6160_err.ot;
-		mbraink_uvlo_data->uvlo_err_data[i].uv = rt6160_err.uv;
-		mbraink_uvlo_data->uvlo_err_data[i].oc = rt6160_err.oc;
-	}
-
-	return ret;
-}
-
 static int mbraink_v6993_power_get_pmic_voltage_info(
 	struct mbraink_pmic_voltage_info *pmicVoltageInfo)
 {
@@ -1248,7 +1217,7 @@ static struct mbraink_power_ops mbraink_v6993_power_ops = {
 	.getScpTaskInfo = mbraink_v6993_power_get_scp_task_info,
 	.getModemInfo = mbraink_v6993_power_get_modem_info,
 	.getSpmiInfo = mbraink_v6993_power_get_spmi_info,
-	.getUvloInfo = mbraink_v6993_power_get_uvlo_info,
+	.getUvloInfo = NULL,
 	.getPmicVoltageInfo = mbraink_v6993_power_get_pmic_voltage_info,
 	.suspendprepare = mbraink_v6993_power_suspend_prepare,
 	.postsuspend = mbraink_v6993_power_post_suspend,

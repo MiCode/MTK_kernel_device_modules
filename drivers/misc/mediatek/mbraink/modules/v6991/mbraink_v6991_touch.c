@@ -7,7 +7,7 @@
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <mbraink_modules_ops_def.h>
-#include <GT9895/ghost_touch.h>
+#include <ghost_touch.h>
 
 #include "mbraink_v6991_touch.h"
 

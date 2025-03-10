@@ -12,7 +12,10 @@
 #include <linux/pid.h>
 
 #include "mbraink_ioctl_struct_def.h"
+
+#if IS_ENABLED(CONFIG_GRT_HYPERVISOR)
 #include <mbraink_auto_ioctl_struct_def.h>
+#endif
 
 #define IOC_MAGIC	'k'
 

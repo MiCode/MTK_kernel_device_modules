@@ -1,5 +1,7 @@
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/mbraink/bridge/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/mbraink/perf/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/mbraink/modules/v6991/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/mbraink/modules/v6993/Kconfig"
 
 config MTK_MBRAINK
 	tristate "MTK MBRAINK support"
@@ -19,15 +21,6 @@ config MTK_MBRAINK_MT6989
 	  Set Y to select this feature for specific platform-mt6989.
 	  If unsure, set N to disable.
 
-config MTK_MBRAINK_MT6991
-	tristate "Specify Mediatek MBRAINK Platform is MT6991"
-	depends on MTK_MBRAINK
-	help
-	  Select MediaTek MBraink Module Platform is MT6991
-	  for android MBrain feature.
-	  Set Y to select this feature for specific platform-mt6991.
-	  If unsure, set N to disable.
-
 config MTK_MBRAINK_MT8678
 	tristate "Specify Mediatek MBRAINK Platform is MT8678"
 	depends on MTK_MBRAINK
@@ -45,13 +38,4 @@ config MTK_MBRAINK_MT6899
 	  Select MediaTek MBraink Module Platform is MT6899
 	  for android MBrain feature.
 	  Set Y to select this feature for specific platform-mt6899.
-	  If unsure, set N to disable.
-
-config MTK_MBRAINK_MT6993
-	tristate "Specify Mediatek MBRAINK Platform is MT6993"
-	depends on MTK_MBRAINK
-	help
-	  Select MediaTek MBraink Module Platform is MT6993
-	  for android MBrain feature.
-	  Set Y to select this feature for specific platform-mt6993.
 	  If unsure, set N to disable.

@@ -44,19 +44,19 @@ subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/input/touchscreen/
 
 subdir-ccflags-y += -Wformat
 
-obj-${CONFIG_MTK_MBRAINK} += mtk_mbraink.o
+#obj-${CONFIG_MTK_MBRAINK} += mtk_mbraink.o
 obj-${CONFIG_MTK_MBRAINK} += modules/
 
-mtk_mbraink-objs += mbraink_power.o mbraink_video.o mbraink_process.o mbraink.o mbraink_memory.o mbraink_gpu.o mbraink_audio.o mbraink_cpufreq.o mbraink_battery.o mbraink_pmu.o mbraink_gps.o mbraink_wifi.o mbraink_usb.o mbraink_touch.o
+#mtk_mbraink-objs += mbraink_power.o mbraink_video.o mbraink_process.o mbraink.o mbraink_memory.o mbraink_gpu.o mbraink_audio.o mbraink_cpufreq.o mbraink_battery.o mbraink_pmu.o mbraink_gps.o mbraink_wifi.o mbraink_usb.o mbraink_touch.o
 
-ifeq ($(CONFIG_MTK_MBRAINK_MT8678),m)
-mtk_mbraink-objs += mbraink_auto/mbraink_auto.o
+#ifeq ($(CONFIG_MTK_MBRAINK_MT8678),m)
+#mtk_mbraink-objs += mbraink_auto/mbraink_auto.o
 
-ifeq ($(CONFIG_GRT_HYPERVISOR),m)
-mtk_mbraink-objs += mbraink_auto/mbraink_hypervisor_virtio.o mbraink_auto/mbraink_hypervisor.o
+#ifeq ($(CONFIG_GRT_HYPERVISOR),m)
+#mtk_mbraink-objs += mbraink_auto/mbraink_hypervisor_virtio.o mbraink_auto/mbraink_hypervisor.o
 
-subdir-ccflags-y += -I$(srctree)/kernel/
-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/vhost/	\
-			 -I$(KERNEL_SRC)/drivers/vhost/
-endif
-endif
+#subdir-ccflags-y += -I$(srctree)/kernel/
+#ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/vhost/	\
+#			 -I$(KERNEL_SRC)/drivers/vhost/
+#endif
+#endif

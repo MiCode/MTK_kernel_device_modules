@@ -32,7 +32,7 @@ static unsigned int sys_res_temp_buffer_index;
 static unsigned int sys_res_last_suspend_diff_buffer_index;
 static unsigned int sys_res_last_diff_buffer_index;
 
-struct mbraink_sys_res_group_info sys_res_group_info[NR_SPM_GRP] = {
+struct mbraink_sys_res_group_info sys_res_group_info[SWPM_MAIN_RES_NUM] = {
 	{0, 0,  0, 20},
 	{0, 0,  0, 20},
 	{0, 0,  0, 20},
@@ -69,7 +69,7 @@ static int get_sys_res_group_info(struct mbraink_sys_res_group_info *grouplist_i
 	out1 = 0;
 	out2 = 0;
 	out3 = 0;
-	group_info = &grouplist_info[DDREN_REQ];
+	group_info = &grouplist_info[SWPM_PSP_MAIN_RES_DDREN];
 	ret = get_res_group_info(SWPM_PSP_MAIN_RES_DDREN, &out1, &out2, &out3);
 	if (ret) {
 		pr_info("[Mbraink][SPM] get_res_group_info DDREN_REQ fail (%d)\n", ret);
@@ -84,7 +84,7 @@ static int get_sys_res_group_info(struct mbraink_sys_res_group_info *grouplist_i
 	out1 = 0;
 	out2 = 0;
 	out3 = 0;
-	group_info = &(grouplist_info[APSRC_REQ]);
+	group_info = &(grouplist_info[SWPM_PSP_MAIN_RES_APSRC]);
 	ret = get_res_group_info(SWPM_PSP_MAIN_RES_APSRC, &out1, &out2, &out3);
 	if (ret) {
 		pr_info("[Mbraink][SPM] get_res_group_info APSRC_REQ fail (%d)\n", ret);
@@ -99,7 +99,7 @@ static int get_sys_res_group_info(struct mbraink_sys_res_group_info *grouplist_i
 	out1 = 0;
 	out2 = 0;
 	out3 = 0;
-	group_info = &(grouplist_info[EMI_REQ]);
+	group_info = &(grouplist_info[SWPM_PSP_MAIN_RES_EMI]);
 	ret = get_res_group_info(SWPM_PSP_MAIN_RES_EMI, &out1, &out2, &out3);
 	if (ret) {
 		pr_info("[Mbraink][SPM] get_res_group_info EMI_REQ fail (%d)\n", ret);
@@ -114,7 +114,7 @@ static int get_sys_res_group_info(struct mbraink_sys_res_group_info *grouplist_i
 	out1 = 0;
 	out2 = 0;
 	out3 = 0;
-	group_info = &(grouplist_info[MAINPLL_REQ]);
+	group_info = &(grouplist_info[SWPM_PSP_MAIN_RES_MAINPLL]);
 	ret = get_res_group_info(SWPM_PSP_MAIN_RES_MAINPLL, &out1, &out2, &out3);
 	if (ret) {
 		pr_info("[Mbraink][SPM] get_res_group_info MAINPLL_REQ fail (%d)\n", ret);
@@ -129,7 +129,7 @@ static int get_sys_res_group_info(struct mbraink_sys_res_group_info *grouplist_i
 	out1 = 0;
 	out2 = 0;
 	out3 = 0;
-	group_info = &(grouplist_info[INFRA_REQ]);
+	group_info = &(grouplist_info[SWPM_PSP_MAIN_RES_INFRA]);
 	ret = get_res_group_info(SWPM_PSP_MAIN_RES_INFRA, &out1, &out2, &out3);
 	if (ret) {
 		pr_info("[Mbraink][SPM] get_res_group_info INFRA_REQ fail (%d)\n", ret);
@@ -144,7 +144,7 @@ static int get_sys_res_group_info(struct mbraink_sys_res_group_info *grouplist_i
 	out1 = 0;
 	out2 = 0;
 	out3 = 0;
-	group_info = &(grouplist_info[F26M_REQ]);
+	group_info = &(grouplist_info[SWPM_PSP_MAIN_RES_26M]);
 	ret = get_res_group_info(SWPM_PSP_MAIN_RES_26M, &out1, &out2, &out3);
 	if (ret) {
 		pr_info("[Mbraink][SPM] get_res_group_info F26M_REQ fail (%d)\n", ret);
@@ -159,7 +159,7 @@ static int get_sys_res_group_info(struct mbraink_sys_res_group_info *grouplist_i
 	out1 = 0;
 	out2 = 0;
 	out3 = 0;
-	group_info = &(grouplist_info[PMIC_REQ]);
+	group_info = &(grouplist_info[SWPM_PSP_MAIN_RES_PMIC]);
 	ret = get_res_group_info(SWPM_PSP_MAIN_RES_PMIC, &out1, &out2, &out3);
 	if (ret) {
 		pr_info("[Mbraink][SPM] get_res_group_info PMIC_REQ fail (%d)\n", ret);
@@ -174,7 +174,7 @@ static int get_sys_res_group_info(struct mbraink_sys_res_group_info *grouplist_i
 	out1 = 0;
 	out2 = 0;
 	out3 = 0;
-	group_info = &(grouplist_info[VCORE_REQ]);
+	group_info = &(grouplist_info[SWPM_PSP_MAIN_RES_VCORE]);
 	ret = get_res_group_info(SWPM_PSP_MAIN_RES_VCORE, &out1, &out2, &out3);
 	if (ret) {
 		pr_info("[Mbraink][SPM] get_res_group_info VCORE_REQ fail (%d)\n", ret);
@@ -189,7 +189,7 @@ static int get_sys_res_group_info(struct mbraink_sys_res_group_info *grouplist_i
 	out1 = 0;
 	out2 = 0;
 	out3 = 0;
-	group_info = &(grouplist_info[RC_REQ]);
+	group_info = &(grouplist_info[SWPM_PSP_MAIN_RES_RC_REQ]);
 	ret = get_res_group_info(SWPM_PSP_MAIN_RES_RC_REQ, &out1, &out2, &out3);
 	if (ret) {
 		pr_info("[Mbraink][SPM] get_res_group_info RC_REQ fail (%d)\n", ret);
@@ -204,7 +204,7 @@ static int get_sys_res_group_info(struct mbraink_sys_res_group_info *grouplist_i
 	out1 = 0;
 	out2 = 0;
 	out3 = 0;
-	group_info = &(grouplist_info[PLL_EN]);
+	group_info = &(grouplist_info[SWPM_PSP_MAIN_RES_PLL_EN]);
 	ret = get_res_group_info(SWPM_PSP_MAIN_RES_PLL_EN, &out1, &out2, &out3);
 	if (ret) {
 		pr_info("[Mbraink][SPM] get_res_group_info PLL_EN fail (%d)\n", ret);
@@ -219,7 +219,7 @@ static int get_sys_res_group_info(struct mbraink_sys_res_group_info *grouplist_i
 	out1 = 0;
 	out2 = 0;
 	out3 = 0;
-	group_info = &(grouplist_info[PWR_OFF]);
+	group_info = &(grouplist_info[SWPM_PSP_MAIN_RES_PWR_OFF]);
 	ret = get_res_group_info(SWPM_PSP_MAIN_RES_PWR_OFF, &out1, &out2, &out3);
 	if (ret) {
 		pr_info("[Mbraink][SPM] get_res_group_info PWR_OFF fail (%d)\n", ret);
@@ -234,7 +234,7 @@ static int get_sys_res_group_info(struct mbraink_sys_res_group_info *grouplist_i
 	out1 = 0;
 	out2 = 0;
 	out3 = 0;
-	group_info = &(grouplist_info[PWR_ACT]);
+	group_info = &(grouplist_info[SWPM_PSP_MAIN_RES_PWR_ACT]);
 	ret = get_res_group_info(SWPM_PSP_MAIN_RES_PWR_ACT, &out1, &out2, &out3);
 	if (ret) {
 		pr_info("[Mbraink][SPM] get_res_group_info PWR_ACT fail (%d)\n", ret);
@@ -249,7 +249,7 @@ static int get_sys_res_group_info(struct mbraink_sys_res_group_info *grouplist_i
 	out1 = 0;
 	out2 = 0;
 	out3 = 0;
-	group_info = &(grouplist_info[SYS_STA]);
+	group_info = &(grouplist_info[SWPM_PSP_MAIN_RES_SYS_STA]);
 	ret = get_res_group_info(SWPM_PSP_MAIN_RES_SYS_STA, &out1, &out2, &out3);
 	if (ret) {
 		pr_info("[Mbraink][SPM] get_res_group_info SYS_STA fail (%d)\n", ret);
@@ -594,7 +594,7 @@ static void mbraink_sys_res_set_threshold(unsigned int val)
 	if (val > 100)
 		val = 100;
 
-	for (i = 0; i < NR_SPM_GRP; i++)
+	for (i = 0; i < SWPM_MAIN_RES_NUM; i++)
 		sys_res_group_info[i].threshold = val;
 }
 

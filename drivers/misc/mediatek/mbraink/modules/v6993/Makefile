@@ -76,11 +76,11 @@ endif
 
 subdir-ccflags-y += -Wformat
 
-BUILD_MBRAINK_MODULE_NAME=mtk_mbraink_v6993
-obj-${CONFIG_MTK_MBRAINK_MT6991} += ${BUILD_MBRAINK_MODULE_NAME}.o
+#BUILD_MBRAINK_MODULE_NAME=mtk_mbraink_v6993
+#obj-${CONFIG_MTK_MBRAINK_MT6991} += ${BUILD_MBRAINK_MODULE_NAME}.o
 
-${BUILD_MBRAINK_MODULE_NAME}-objs += mbraink_v6993.o mbraink_v6993_memory.o mbraink_v6993_audio.o mbraink_v6993_battery.o mbraink_v6993_power.o mbraink_v6993_gpu.o mbraink_v6993_gps.o mbraink_v6993_wifi.o mbraink_v6993_camera.o mbraink_v6993_pmu.o mbraink_v6993_touch.o
+#${BUILD_MBRAINK_MODULE_NAME}-objs += mbraink_v6993.o mbraink_v6993_memory.o mbraink_v6993_audio.o mbraink_v6993_battery.o mbraink_v6993_power.o mbraink_v6993_gpu.o mbraink_v6993_gps.o mbraink_v6993_wifi.o mbraink_v6993_camera.o mbraink_v6993_pmu.o mbraink_v6993_touch.o
 
-ifeq ($(CONFIG_MTK_SWPM_MODULE),$(filter $(CONFIG_MTK_SWPM_MODULE),m))
-${BUILD_MBRAINK_MODULE_NAME}-objs += mbraink_sys_res_plat.o mbraink_sys_res_mbrain_plat.o mbraink_sys_res.o mbraink_sys_res_mbrain_dbg.o
-endif
+#ifeq ($(CONFIG_MTK_SWPM_MODULE),$(filter $(CONFIG_MTK_SWPM_MODULE),m))
+#${BUILD_MBRAINK_MODULE_NAME}-objs += mbraink_sys_res_plat.o mbraink_sys_res_mbrain_plat.o mbraink_sys_res.o mbraink_sys_res_mbrain_dbg.o
+#endif

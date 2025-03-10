@@ -16,7 +16,7 @@ enum {
 	LAST_SUSPEND_STATS = 2,
 };
 
-static int group_release[NR_SPM_GRP] = {
+static int group_release[SWPM_MAIN_RES_NUM] = {
 	MBRAINK_NOT_RELEASE,
 	MBRAINK_RELEASE_GROUP,
 	MBRAINK_NOT_RELEASE,
@@ -358,7 +358,7 @@ static int mbraink_get_over_threshold_num(void *address, uint32_t size,
 							MBRAINK_SYS_RES_SIG_SUSPEND_RATIO,
 							sig_index);
 
-			if (i == PWR_OFF) {
+			if (i == SWPM_PSP_MAIN_RES_PWR_OFF) {
 				if (ratio > threshold[k])
 					continue;
 			} else {
@@ -431,10 +431,11 @@ int mbraink_sys_res_mbrain_plat_init(void)
 {
 	int i = 0;
 
-	for (i = 0; i < NR_SPM_GRP; i++) {
+	for (i = 0; i < SWPM_MAIN_RES_NUM; i++) {
 		if (group_release[i] && sys_res_group_info[i].group_num != 0) {
-			if (i == DDREN_REQ || i == APSRC_REQ || i == EMI_REQ || i == INFRA_REQ ||
-				i == F26M_REQ || i == VCORE_REQ)
+			if (i == SWPM_PSP_MAIN_RES_DDREN || i == SWPM_PSP_MAIN_RES_APSRC ||
+				i == SWPM_PSP_MAIN_RES_EMI || i == SWPM_PSP_MAIN_RES_INFRA ||
+				i == SWPM_PSP_MAIN_RES_26M || i == SWPM_PSP_MAIN_RES_VCORE)
 				sys_res_grp_num += 1;
 			sys_res_sig_num += sys_res_group_info[i].group_num;
 		}
