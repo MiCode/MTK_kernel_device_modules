@@ -400,10 +400,10 @@ static int mml_check_scaling_ratio(const struct mml_rect *crop,
 		comp_h = compose->height;
 	}
 
-	if ((crop_w / comp_w) > limit->h_scale_down_max ||
-	    (crop_h / comp_h) > limit->v_scale_down_max ||
-	    (comp_w / crop_w) > limit->h_scale_up_max ||
-	    (comp_h / crop_h) > limit->v_scale_up_max)
+	if (crop_w > comp_w * limit->h_scale_down_max ||
+	    crop_h > comp_h * limit->v_scale_down_max ||
+	    comp_w > crop_w * limit->h_scale_up_max ||
+	    comp_h > crop_h * limit->v_scale_up_max)
 		return -ERANGE;
 	return 0;
 }
@@ -424,9 +424,9 @@ static int mml_m2m_start_streaming(struct vb2_queue *q, unsigned int count)
 	out_streaming = vb2_is_streaming(v4l2_m2m_get_src_vq(ctx->m2m_ctx));
 	cap_streaming = vb2_is_streaming(v4l2_m2m_get_dst_vq(ctx->m2m_ctx));
 
-	/* Check to see if scaling ratio is within supported range */
 	if ((V4L2_TYPE_IS_OUTPUT(q->type) && cap_streaming) ||
 	    (V4L2_TYPE_IS_CAPTURE(q->type) && out_streaming)) {
+		/* Check to see if scaling ratio is within supported range */
 		ret = mml_check_scaling_ratio(&dest->crop.r,
 					      &dest->compose,
 					      ctx->param.rotation,
@@ -1420,7 +1420,23 @@ static int mml_m2m_s_selection(struct file *file, void *fh,
 	dest = ctx_get_submit_dest(ctx, 0);
 
 	if (m2m_target_is_crop(s->target)) {
-		v4l2_rect_to_mml_rect(&r, &dest->crop.r);
+		struct mml_rect crop;
+
+		v4l2_rect_to_mml_rect(&r, &crop);
+		if (vb2_is_streaming(v4l2_m2m_get_dst_vq(ctx->m2m_ctx))) {
+			/* Check to see if scaling ratio is within supported range */
+			ret = mml_check_scaling_ratio(&crop,
+						      &dest->compose,
+						      ctx->param.rotation,
+						      ctx->limit);
+			if (ret) {
+				mml_err("[m2m]%s out of scaling range crop(%u,%u) compose(%u,%u)",
+					__func__, r.width, r.height,
+					dest->compose.width, dest->compose.height);
+				return ret;
+			}
+		}
+		dest->crop.r = crop;
 	} else {
 		v4l2_rect_to_mml_rect(&r, &dest->compose);
 		dest->data.width = r.width;
@@ -1695,10 +1711,11 @@ static int m2m_set_orientation(struct mml_frame_dest *dest,
 
 static s32 m2m_set_submit(struct mml_m2m_ctx *mctx, struct mml_submit *submit)
 {
-	int ret = 0;
 	struct device *mmu_dev;
 	struct vb2_queue *src_vq, *dst_vq;
 	struct mml_m2m_param *param;
+	struct mml_frame_dest *dest = &submit->info.dest[0];
+	int ret;
 
 	mutex_lock(&mctx->param_mutex);
 	if (list_empty(&mctx->params)) {
@@ -1709,18 +1726,29 @@ static s32 m2m_set_submit(struct mml_m2m_ctx *mctx, struct mml_submit *submit)
 
 	param = list_first_entry(&mctx->params, struct mml_m2m_param, entry);
 
-	ret = m2m_set_orientation(&submit->info.dest[0],
-		param->rotation, param->hflip, param->vflip);
+	ret = m2m_set_orientation(dest, param->rotation, param->hflip, param->vflip);
 	if (ret < 0)
 		goto unlock_param;
+
+	/* Check to see if scaling ratio is within supported range */
+	ret = mml_check_scaling_ratio(&dest->crop.r,
+				      &dest->compose,
+				      param->rotation,
+				      mctx->limit);
+	if (ret) {
+		mml_err("[m2m]%s out of scaling range crop(%u,%u) compose(%u,%u)",
+			__func__, dest->crop.r.width, dest->crop.r.height,
+			dest->compose.width, dest->compose.height);
+		goto unlock_param;
+	}
 
 	mmu_dev = mml_get_mmu_dev(mctx->ctx.mml, param->secure);
 	submit->info.src.secure = param->secure;
 	src_vq = v4l2_m2m_get_vq(mctx->m2m_ctx, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE);
 	src_vq->dev = mmu_dev;
 
-	submit->info.dest[0].pq_config = param->pq_submit.pq_config;
-	submit->info.dest[0].data.secure = param->secure;
+	dest->pq_config = param->pq_submit.pq_config;
+	dest->data.secure = param->secure;
 	dst_vq = v4l2_m2m_get_vq(mctx->m2m_ctx, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE);
 	dst_vq->dev = mmu_dev;
 	submit->info.dest_cnt = 1;
