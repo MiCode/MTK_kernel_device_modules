@@ -557,7 +557,7 @@ static int mdw_mem_ioctl_map(struct mdw_fpriv *mpriv,
 	struct mdw_mem_map *map = NULL;
 
 	dbuf = dma_buf_get(args->in.map.handle);
-	if (!dbuf) {
+	if (IS_ERR_OR_NULL(dbuf)) {
 		mdw_drv_err("can't get dbuf by handle(%llu)\n", args->in.map.handle);
 		return -EINVAL;
 	}

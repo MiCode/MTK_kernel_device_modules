@@ -266,6 +266,11 @@ static struct apu_sysmem_map *apu_sysmem_map(struct apu_sysmem_allocator *alloca
 	uint a_SLC_DC_EN;
 
 	/* get dmabuf's ref */
+	if (IS_ERR_OR_NULL(dbuf)) {
+		apu_sysmem_err("dbuf is error or null 0x%llx", (uint64_t) dbuf);
+		goto out;
+	}
+	/* get dmabuf's ref */
 	get_dma_buf(dbuf);
 
 	/* new map */
