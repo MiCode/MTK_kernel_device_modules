@@ -47,6 +47,8 @@ void init_drm_mmp_event(void)
 		mmprofile_register_event(g_DRM_MMP_Events.ovl, "OVL2_2L");
 	g_DRM_MMP_Events.ovl3_2l =
 		mmprofile_register_event(g_DRM_MMP_Events.ovl, "OVL3_2L");
+	g_DRM_MMP_Events.dbgtp =
+		mmprofile_register_event(g_DRM_MMP_Events.IRQ, "DBGTP");
 	g_DRM_MMP_Events.rdma =
 		mmprofile_register_event(g_DRM_MMP_Events.IRQ, "RDMA");
 	g_DRM_MMP_Events.rdma0 =

@@ -26,6 +26,7 @@ struct DRM_MMP_Events {
 	mmp_event ovl1_2l;
 	mmp_event ovl2_2l;
 	mmp_event ovl3_2l;
+	mmp_event dbgtp;
 	mmp_event rdma;
 	mmp_event rdma0;
 	mmp_event rdma1;

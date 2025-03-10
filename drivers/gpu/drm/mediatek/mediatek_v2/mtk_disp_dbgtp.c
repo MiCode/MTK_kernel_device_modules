@@ -311,8 +311,6 @@ void mtk_dbgtp_fifo_mon_config(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *c
 			REG_FLD_VAL((DISP_FIFO_MON3_INT_EN), priv->mtk_dbgtp_sta.fifo_mon_en[3]));
 	cmdq_pkt_write(cmdq_handle, dbgtp_comp->cmdq_base,
 			dbgtp_comp->regs_pa + DISP_DBG_FIFO_MON_INTEN, value, ~0x0);
-	cmdq_pkt_write(cmdq_handle, dbgtp_comp->cmdq_base,
-			dbgtp_comp->regs_pa + DISP_DBG_FIFO_MON_UP_INTEN, value, ~0x0);
 }
 
 /* Just for mt6993*/
@@ -347,8 +345,6 @@ void mtk_dbgtp_fifo_mon_set_trig_threshold(struct mtk_drm_crtc *mtk_crtc, struct
 			REG_FLD_VAL((DISP_FIFO_MON3_INT_EN), priv->mtk_dbgtp_sta.fifo_mon_en[3]));
 	cmdq_pkt_write(cmdq_handle, dbgtp_comp->cmdq_base,
 			dbgtp_comp->regs_pa + DISP_DBG_FIFO_MON_INTEN, value, ~0x0);
-	cmdq_pkt_write(cmdq_handle, dbgtp_comp->cmdq_base,
-			dbgtp_comp->regs_pa + DISP_DBG_FIFO_MON_UP_INTEN, value, ~0x0);
 }
 
 void mtk_dbgtp_all_setting_dump(struct mtk_drm_private *priv)
@@ -902,7 +898,7 @@ void mtk_dbgtp_default_cfg_load(struct mtk_drm_private *priv)
 	priv->mtk_dbgtp_sta.dbgtp_dpc_mon_cfg = 0x10FFE;
 
 	/* fifo mon default setting */
-	priv->mtk_dbgtp_sta.fifo_mon_en[0] = 1;
+	priv->mtk_dbgtp_sta.fifo_mon_en[0] = 0;
 	priv->mtk_dbgtp_sta.fifo_mon_trig_thrd[0] = 5;
 
 	/* dispsys default setting */
@@ -2239,14 +2235,90 @@ static const struct component_ops mtk_disp_dbgtp_component_ops = {
 	.unbind = mtk_disp_dbgtp_unbind,
 };
 
+static irqreturn_t mtk_disp_dbgtp_irq_handler(int irq, void *dev_id)
+{
+	struct mtk_disp_ovl *priv = dev_id;
+	struct mtk_ddp_comp *dbgtp = NULL;
+	struct mtk_drm_private *drv_priv = NULL;
+	struct mtk_drm_crtc *mtk_crtc = NULL;
+	unsigned int val = 0;
+	unsigned int ret = 0;
+	static DEFINE_RATELIMIT_STATE(isr_ratelimit, 1 * HZ, 4);
+
+	if (IS_ERR_OR_NULL(priv))
+		return IRQ_NONE;
+
+	dbgtp = dbgtp_comp;
+	if (IS_ERR_OR_NULL(dbgtp))
+		return IRQ_NONE;
+
+	if (mtk_drm_top_clk_isr_get(dbgtp) == false) {
+		DDPIRQ("%s, top clk off\n", __func__);
+		return IRQ_NONE;
+	}
+
+	val = readl(dbgtp->regs + DISP_DBG_FIFO_MON_INTSTA);
+	if (!val) {
+		ret = IRQ_NONE;
+		goto out;
+	}
+
+	DRM_MMP_MARK(IRQ, dbgtp->regs_pa, val);
+	DDPMSG("%s irq, val:0x%x\n", mtk_dump_comp_str(dbgtp), val);
+
+	if (val & (1 << 0)) {
+		DDPMSG("[IRQ] %s: 0 trigger start\n", mtk_dump_comp_str(dbgtp));
+		DRM_MMP_MARK(dbgtp, val, 0);
+		writel(0xf, dbgtp->regs + DISP_DBG_FIFO_MON_INT_CLR);
+		writel(0, dbgtp->regs + DISP_DBG_FIFO_MON_INT_CLR);
+	}
+
+	if (val & (1 << 1)) {
+		DDPMSG("[IRQ] %s: 1 trigger start\n", mtk_dump_comp_str(dbgtp));
+		DRM_MMP_MARK(dbgtp, val, 1);
+		writel(0xf, dbgtp->regs + DISP_DBG_FIFO_MON_INT_CLR);
+		writel(0, dbgtp->regs + DISP_DBG_FIFO_MON_INT_CLR);
+	}
+
+	if (val & (1 << 2)) {
+		DDPMSG("[IRQ] %s: 2 trigger start\n", mtk_dump_comp_str(dbgtp));
+		DRM_MMP_MARK(dbgtp, val, 2);
+		writel(0xf, dbgtp->regs + DISP_DBG_FIFO_MON_INT_CLR);
+		writel(0, dbgtp->regs + DISP_DBG_FIFO_MON_INT_CLR);
+	}
+
+	if (val & (1 << 3)) {
+		DDPMSG("[IRQ] %s: 3 trigger start\n", mtk_dump_comp_str(dbgtp));
+		DRM_MMP_MARK(dbgtp, val, 3);
+		writel(0xf, dbgtp->regs + DISP_DBG_FIFO_MON_INT_CLR);
+		writel(0, dbgtp->regs + DISP_DBG_FIFO_MON_INT_CLR);
+	}
+
+	ret = IRQ_HANDLED;
+
+out:
+	mtk_drm_top_clk_isr_put(dbgtp);
+
+	return ret;
+}
+
 static int mtk_disp_dbgtp_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct mtk_disp_dbgtp *priv;
 	enum mtk_ddp_comp_id comp_id;
-	int ret;
+	int ret = 0;
+	int irq = 0;
 
 	DDPMSG("%s+\n", __func__);
+
+
+	irq = platform_get_irq(pdev, 0);
+	if (irq < 0) {
+		dev_err(&pdev->dev, "failed to request dbgtp irq resource\n");
+		ret = -EPROBE_DEFER;
+		return ret;
+	}
 
 	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
 	if (priv == NULL)
@@ -2272,10 +2344,21 @@ static int mtk_disp_dbgtp_probe(struct platform_device *pdev)
 	mtk_ddp_comp_pm_enable(&priv->ddp_comp);
 	dbgtp_comp = &priv->ddp_comp;
 
+	ret = devm_request_irq(dev, irq, mtk_disp_dbgtp_irq_handler,
+			       IRQF_TRIGGER_NONE | IRQF_SHARED, dev_name(dev),
+			       priv);
+	if (ret < 0) {
+		DDPAEE("%s:%d, failed to request irq:%d ret:%d comp_id:%d\n",
+				__func__, __LINE__,
+				irq, ret, comp_id);
+		return ret;
+	}
+
 	ret = component_add(dev, &mtk_disp_dbgtp_component_ops);
 	if (ret != 0) {
 		dev_err(dev, "Failed to add component: %d\n", ret);
 		mtk_ddp_comp_pm_disable(&priv->ddp_comp);
+		return ret;
 	}
 	DDPMSG("%s-\n", __func__);
 
