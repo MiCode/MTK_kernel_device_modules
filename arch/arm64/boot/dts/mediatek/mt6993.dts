@@ -12114,6 +12114,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			//dma-coherent;
 			mtk,tcu-qos = <5>;
 			mtk,slc-gid = <7>;
+			mtk,trans-granule = <&mtk_smmu_granule>;
 
 			iommu-groups {
 				soc_iommu_group_0: soc-iommu-group-common {
@@ -12397,6 +12398,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mtk,stash-mode = <3>;
 			//mtk,power-awake;
 			mtk,slc-gid = <7>;
+			mtk,trans-granule = <&mtk_smmu_granule>;
 
 			iommu-groups {
 				apu_iommu_group_0: apu-iommu-group-code {
@@ -12442,6 +12444,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mtk,smmu-ela;
 			mtk,power-awake;
 			mtk,slc-gid = <8>;
+			mtk,trans-granule = <&mtk_smmu_granule>;
 
 			iommu-groups {
 				mm_iommu_group_0: mm-iommu-group-common {
@@ -12563,6 +12566,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				       <2 5 0>;
 			//dma-coherent;
 			mtk,tcu-qos = <5>;
+			mtk,trans-granule = <&mtk_smmu_granule>;
 		};
 
 		jpgenc0: jpgenc@39230000 {
@@ -16416,6 +16420,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 		mtk-smmu-qos {
 			compatible = "mediatek,smmu-qos";
+		};
+
+		mtk_smmu_granule: mtk-smmu-granule {
+			mtk,gran4k-only = <0>;
 		};
 
 		mkp {
