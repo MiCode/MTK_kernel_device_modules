@@ -184,7 +184,7 @@ static u32 mml_log_idx;
 static u32 mml_log_end;
 
 static atomic_t mml_task_ref = ATOMIC_INIT(0);
-int mml_task_check_cnt = 16;
+int mml_task_check_cnt = 64;
 module_param(mml_task_check_cnt, int, 0644);
 
 void mml_save_log_record(const char *fmt, ...)
