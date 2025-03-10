@@ -9035,6 +9035,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					/bits/ 16 <CMDQ_SYNC_TOKEN_PREBUILT_MDP_LOCK>,
 					/bits/ 16 <CMDQ_SYNC_TOKEN_PREBUILT_MML_LOCK>,
 					/bits/ 16 <CMDQ_SYNC_TOKEN_PREBUILT_DISP_LOCK>,
+					/bits/ 16 <CMDQ_SYNC_TOKEN_DPC_VOTE_HWCCF>,
 					/bits/ 16 <CMDQ_SYNC_TOKEN_MML_MML_STOP>,
 					/bits/ 16 <CMDQ_SYNC_TOKEN_MML_DISP_DONE_EVENT>;
 			mboxes = <&gce 13 0 CMDQ_THR_PRIO_HIGHEST>;
@@ -11539,6 +11540,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			vidle-mask = <0x0>;
 			mminfra-pwr-idx = <MMINFRA_MT6993_PWR_MM2>;
 			mminfra-pwr-type = <MMINFRA_MT6993_TYPE_DISP>;
+			event-vote-hwccf = /bits/ 16 <CMDQ_SYNC_TOKEN_DPC_VOTE_HWCCF>;
 		};
 /*
 		mipi_tx_config0: mipi-tx-config@130b0000 {
