@@ -358,7 +358,10 @@ int mdw_rv_dev_run_cmd(struct mdw_fpriv *mpriv, struct mdw_rv_cmd *rc)
 	int ret = 0;
 	struct mdw_rv_dev *mrdev = (struct mdw_rv_dev *)mpriv->mdev->dev_specific;
 
-	mdw_trace_begin("apumdw:dev_run|cmd:0x%llx/0x%llx", rc->c->uid, rc->c->kid);
+	mdw_trace_begin("apumdw:dev_run|cmd:uid(0x%llx) inf_id(0x%08x,0x%08x)",
+			rc->c->uid,
+			(uint32_t)(rc->c->inference_id >> 32),
+			(uint32_t)(rc->c->inference_id & 0xFFFFFFFF));
 
 	mdw_drv_debug("pid(%d) run cmd(0x%llx/0x%llx) dva(0x%llx) size(%llu)\n",
 		task_pid_nr(current), rc->c->kid, rc->c->inference_id,

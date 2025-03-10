@@ -500,7 +500,9 @@ static void mdw_cmd_release(struct kref *ref)
 	struct mdw_fpriv *mpriv = c->mpriv;
 
 	mdw_cmd_show(c, mdw_drv_debug);
-	mdw_trace_begin("apumdw:cmd_release|c:0x%llx", c->kid);
+	mdw_trace_begin("apumdw:cmd_release|inf_id(0x%08x,0x%08x)",
+			 (uint32_t)(c->inference_id >> 32),
+			 (uint32_t)(c->inference_id & 0xFFFFFFFF));
 	mutex_lock(&mpriv->mdev->mctl_mtx);
 	mdw_cmd_unvoke_map(c);
 	mutex_unlock(&mpriv->mdev->mctl_mtx);
@@ -788,7 +790,10 @@ static int mdw_cmd_complete(struct mdw_cmd *c, int ipi_ret)
 	int ret = 0;
 
 	ts1 = sched_clock();
-	mdw_trace_begin("apumdw:cmd_complete|cmd:0x%llx/0x%llx", c->uid, c->kid);
+	mdw_trace_begin("apumdw:cmd_complete|cmd:uid(0x%llx) inf_id(0x%08x,0x%08x)",
+			 c->uid,
+			 (uint32_t)(c->inference_id >> 32),
+			 (uint32_t)(c->inference_id & 0xFFFFFFFF));
 	mutex_lock(&c->mtx);
 	ts2 = sched_clock();
 	c->enter_complt_time = ts2 - ts1;
