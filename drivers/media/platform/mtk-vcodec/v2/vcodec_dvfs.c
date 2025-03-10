@@ -502,27 +502,24 @@ static bool mtk_vcodec_has_active_inst(struct mtk_vcodec_dev *dev, int codec_typ
 {
 	struct list_head *item = 0;
 	struct vcodec_inst *inst;
-	struct list_head *dvfs_inst;
+	struct list_head *dvfs_inst = 0;
 
-	if (codec_type == MTK_INST_DECODER) {
+	if (codec_type == MTK_INST_DECODER)
 		dvfs_inst = &dev->vdec_dvfs_inst;
-	} else if(codec_type == MTK_INST_ENCODER) {
+	else if(codec_type == MTK_INST_ENCODER)
 		dvfs_inst = &dev->venc_dvfs_inst;
-	}
 
-	{
-		if (!list_empty(dvfs_inst)){
-			list_for_each(item, dvfs_inst) {
-				if(IS_ERR_OR_NULL(item)) {
-					mtk_vcodec_dvfs_qos_log(true, "%s [VDVFS][%s] find null in item in list!\n",
-						__func__, (codec_type == MTK_INST_DECODER)?"VDEC":"VENC");
-					INIT_LIST_HEAD(dvfs_inst);
-					break;
-				}
-				inst = list_entry(item, struct vcodec_inst, list);
-				if(inst->is_active)
-					return true;
+	if ((dvfs_inst) && (!list_empty(dvfs_inst))) {
+		list_for_each(item, dvfs_inst) {
+			if(IS_ERR_OR_NULL(item)) {
+				mtk_vcodec_dvfs_qos_log(true, "%s [VDVFS][%s] find null in item in list!\n",
+					__func__, (codec_type == MTK_INST_DECODER)?"VDEC":"VENC");
+				INIT_LIST_HEAD(dvfs_inst);
+				break;
 			}
+			inst = list_entry(item, struct vcodec_inst, list);
+			if(inst->is_active)
+				return true;
 		}
 	}
 
@@ -535,7 +532,7 @@ static bool mtk_vcodec_has_single_inst(struct mtk_vcodec_dev *dev, int codec_typ
 {
 	struct list_head *item = 0;
 	struct vcodec_inst *inst;
-	struct list_head *dvfs_inst;
+	struct list_head *dvfs_inst = 0;
 	int count = 0;
 
 	if (codec_type == MTK_INST_DECODER)
@@ -543,7 +540,7 @@ static bool mtk_vcodec_has_single_inst(struct mtk_vcodec_dev *dev, int codec_typ
 	else if(codec_type == MTK_INST_ENCODER)
 		dvfs_inst = &dev->venc_dvfs_inst;
 
-	if (!list_empty(dvfs_inst)){
+	if ((dvfs_inst) && (!list_empty(dvfs_inst))) {
 		list_for_each(item, dvfs_inst) {
 			if(IS_ERR_OR_NULL(item)) {
 				mtk_vcodec_dvfs_qos_log(true, "%s [VDVFS][%s] find null in item in list!\n",
