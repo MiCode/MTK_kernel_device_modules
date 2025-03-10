@@ -205,6 +205,7 @@
 		mediatek,larbs-uisp = <&smi_larb27>;
 		scp-dvfs-supply = <&scp_dvfs>;
 		apu-supply = <&apusys_aov>;
+		sensor-i2c = <&i2c2 &i2c4 &i2c9>;
 		ulposc-support;
 		base = <0x1c204000>;
 		ver = "v2";
@@ -12219,7 +12220,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			<0x0>, /* mbox1 */
 			<0x0>, /* mbox2 */
 			<0x0>, /* mbox3 */
-			<0x4000>, /* mbox4, for AOV, IRQF_NO_SUSPEND */
+			<0x0>, /* mbox4 */
 			<0x0>; /* mbox5 */
 
 			core-0 = "enable";
