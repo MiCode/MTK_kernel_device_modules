@@ -194,6 +194,10 @@ int lastbus_dump(int force_dump)
 		}
 
 		base = ioremap(m->base, ((0x408 + m->num_ports * 4) / 0x100 + 1) * 0x100);
+		if (base == NULL) {
+			pr_info("Error: Failed to remap monitor[%d]: base is NULL\n", i);
+			continue;
+		}
 		value = readl(base);
 		is_timeout = value & LASTBUS_TIMEOUT;
 
@@ -425,6 +429,10 @@ static int lastbus_set_by_num(unsigned int bus_num, unsigned int time_scale)
 
 	m = &my_cfg_lastbus.monitors[bus_num];
 	base = ioremap(m->base, ((0x408 + m->num_ports * 4) / 0x100 + 1) * 0x100);
+	if (base == NULL) {
+		pr_info("Error: Failed to remap monitor[%d]: base is NULL\n", bus_num);
+		return 1;
+	}
 	lastbus_init_monitor_v1(m, time_scale, my_cfg_lastbus.timeout_type, base);
 	pr_info("Set new timeout threshold of %s to %d us.\n", m->name,
 		revert_timeout(m->bus_freq_mhz, readl(base) >> TIMEOUT_THRES_SHIFT));
