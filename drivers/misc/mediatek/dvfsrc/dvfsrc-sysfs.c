@@ -246,7 +246,7 @@ static ssize_t dvfsrc_num_opps_show(struct device *dev,
 {
 	struct mtk_dvfsrc *dvfsrc = dev_get_drvdata(dev);
 
-	return sprintf(buf, "%d\n", dvfsrc->opp_desc->num_opp);
+	return snprintf(buf, PAGE_SIZE, "%d\n", dvfsrc->opp_desc->num_opp);
 }
 static DEVICE_ATTR_RO(dvfsrc_num_opps);
 
@@ -261,14 +261,14 @@ static ssize_t dvfsrc_get_dvfs_time_show(struct device *dev,
 	config = dvfsrc->dvd->config;
 
 	if (dvfsrc->force_opp_idx >= dvfsrc->opp_desc->num_opp)
-		return sprintf(buf, "Not in force mode\n");
+		return snprintf(buf, PAGE_SIZE, "Not in force mode\n");
 
 	if (config->query_dvfs_time)
 		dvfs_time_us = config->query_dvfs_time(dvfsrc);
 	else
-		return sprintf(buf, "Not Suuport query\n");
+		return snprintf(buf, PAGE_SIZE, "Not Suuport query\n");
 
-	return sprintf(buf, "dvfs_time = %llu us\n", dvfs_time_us);
+	return snprintf(buf, PAGE_SIZE, "dvfs_time = %llu us\n", dvfs_time_us);
 }
 DEVICE_ATTR_RO(dvfsrc_get_dvfs_time);
 
@@ -277,7 +277,7 @@ static inline ssize_t dvfsrc_qos_mode_show(struct device *dev,
 {
 	struct mtk_dvfsrc *dvfsrc = dev_get_drvdata(dev);
 
-	return sprintf(buf, "%d\n", dvfsrc->qos_mode);
+	return snprintf(buf, PAGE_SIZE, "%d\n", dvfsrc->qos_mode);
 }
 
 static inline ssize_t dvfsrc_qos_mode_store(struct device *dev,
@@ -306,7 +306,7 @@ static inline ssize_t dvfsrc_qosmm_mode_show(struct device *dev,
 {
 	struct mtk_dvfsrc *dvfsrc = dev_get_drvdata(dev);
 
-	return sprintf(buf, "%x\n", dvfsrc->qos_mm_mode);
+	return snprintf(buf, PAGE_SIZE, "%x\n", dvfsrc->qos_mm_mode);
 }
 
 static inline ssize_t dvfsrc_qosmm_mode_store(struct device *dev,
