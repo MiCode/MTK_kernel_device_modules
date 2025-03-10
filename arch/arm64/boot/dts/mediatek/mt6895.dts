@@ -8035,7 +8035,7 @@
 		};
 
 		vdec@16000000 {
-			compatible = "mediatek,mt6895-vcodec-dec";
+			compatible = "mediatek,vcodec-dec";
 			mediatek,platform = "platform:mt6895";
 			mediatek,ipm = <2>;
 			reg = <0 0x16000000 0 0x1000>,	/* VDEC_BASE */
@@ -8385,7 +8385,7 @@
 			clock-names = "MT_CG_VENC0",
 				"MT_CG_VENC1";
 			operating-points-v2 = <&opp_table_venc>;
-			dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+			mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 			port_arg_num = <3>;
 
 			port-def = <0 M4U_LARB7_PORT0 0>,
@@ -8688,7 +8688,9 @@
 				"path_jpegenc_q_table",
 				"path_jpegenc_bsdma";
 			operating-points-v2 = <&opp_table_venc>;
-			dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+			mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+			support-34bits = <0>;
+			interconnect-num = <4>;
 		};
 
 		jpgdec0@17040000 {
@@ -8699,7 +8701,7 @@
 					<GIC_SPI 421 IRQ_TYPE_LEVEL_HIGH 0>;
 			mediatek,larbs = <&smi_larb7>;
 			operating-points-v2 = <&opp_table_venc>;
-			dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+			mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 			clocks = <&venc_gcon_clk CLK_VEN1_CKE3_JPGDEC>,
 					<&venc_gcon_clk CLK_VEN1_CKE4_JPGDEC_C1>;
 			clock-names = "MT_CG_VENC_JPGDEC",
@@ -8754,7 +8756,9 @@
 				"path_jpegenc_q_table",
 				"path_jpegenc_bsdma";
 			operating-points-v2 = <&opp_table_venc>;
-			dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+			mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+			support-34bits = <0>;
+			interconnect-num = <4>;
 		};
 
 		mbist@17860000 {
@@ -8769,7 +8773,10 @@
 			reg = <0 0x1ea00000 0 0x40000>, /* tcm */
 				  <0 0x1ec24000 0 0x1000>, /* cfg */
 				  <0 0x1ec30000 0 0x1000>, /* cfg core0 */
+			      <0 0x1ec32000 0 0x1000>, /* intc core0 */
+			      <0 0x1ec37000 0 0x1000>, /* pwr ctrl */
 				  <0 0x1ec40000 0 0x1000>, /* cfg core1 */
+				  <0 0x1ec51000 0 0x1000>, /* bus dbg */
 				  <0 0x1ec52000 0 0x1000>, /* bus tracker dbg */
 				  <0 0x1ec60000 0 0x40000>, /* llc dbg */
 				  <0 0x1eca5000 0 0x4>, /* cfg_sec dbg */
@@ -8798,7 +8805,10 @@
 			reg-names = "vcp_sram_base",
 					"vcp_cfgreg",
 					"vcp_cfgreg_core0",
+				    "vcp_intc_core0",
+				    "vcp_pwr_ctl",
 					"vcp_cfgreg_core1",
+					"vcp_bus_debug",
 					"vcp_bus_tracker",
 					"vcp_l1creg",
 					"vcp_cfgreg_sec",
@@ -8844,44 +8854,50 @@
 			iommus = <&mdp_iommu M4U_LARB33_VIDEO_UP_256MB1>;
 			mediatek,smi = <&smi_mdp_common &smi_sysram_subcommon4>;
 
-			core_0 = "enable";
-			vcp_sramSize = <0x00040000>;
-			vcp_dramSize = <0x00800000>;
-			core_nums = <1>;	/* core number */
+			core-0 = "enable";
+			vcp-hwvoter = "disable";
+			vcp-sram-size = <0x00040000>;
+			vcp-dram-size = <0x00800000>;
+			core-nums = <1>;	/* core number */
 			twohart = <1>;		/* two hart arch */
-			femter_ck = <10>;	/* clk table fmeter f_fmmup_ck */
-			mbox_count = <5>;
+			fmeter-ck = <10>;	/* clk table fmeter f_fmmup_ck */
+			fmeter-type = <3>;
+			mbox-count = <5>;
 			/* id, mbox, send_size*/
-			send_table =
+			send-table =
 			< 0 0 18>,/* IPI_OUT_VDEC_1 */
 			< 2 1  2>,/* IPI_OUT_C_SLEEP_0 */
 			< 3 1  1>,/* IPI_OUT_TEST_0 */
-			< 9 2 18>,/* IPI_OUT_VENC_0 */
-			<11 2  4>,/* IPI_OUT_VCP_MPOOL_0 */
-			<13 3  2>,/* IPI_OUT_C_SLEEP_1 */
-			<14 3  1>,/* IPI_OUT_TEST_1 */
-			<15 3  6>,/* IPI_OUT_LOGGER_CTRL */
-			<16 3  2>,/* IPI_OUT_VCPCTL_1 */
-			<21 4  4>;/* IPI_OUT_VCP_MPOOL_1 */
+			<16 2 18>,/* IPI_OUT_VENC_0 */
+			<12 2  4>,/* IPI_OUT_VCP_MPOOL_0 */
+			<20 3  2>,/* IPI_OUT_C_SLEEP_1 */
+			<21 3  1>,/* IPI_OUT_TEST_1 */
+			<22 3  6>,/* IPI_OUT_LOGGER_CTRL_0 */
+			<23 3  2>,/* IPI_OUT_VCPCTL_1 */
+			<28 4  4>;/* IPI_OUT_VCP_MPOOL_1 */
 
 			/* id, mbox, recv_size, recv_opt */
-			recv_table =
+			recv-table =
 			< 1 0 18 0>,/* IPI_IN_VDEC_1 */
 			< 2 1  1 1>,/* IPI_OUT_C_SLEEP_0 */
 			< 4 1 10 0>,/* IPI_IN_VCP_ERROR_INFO_0 */
 			< 5 1  1 0>,/* IPI_IN_VCP_READY_0 */
 			< 6 1  2 0>,/* IPI_IN_VCP_RAM_DUMP_0 */
-			<10 2 18 0>,/* IPI_IN_VENC_0 */
-			<12 2  4 0>,/* IPI_IN_VCP_MPOOL_0 */
-			<13 3  1 1>,/* IPI_OUT_C_SLEEP_1 */
-			<17 3 10 0>,/* IPI_IN_VCP_ERROR_INFO_1 */
-			<18 3  6 0>,/* IPI_IN_LOGGER_CTRL */
-			<19 3  1 0>,/* IPI_IN_VCP_READY_1 */
-			<20 3  2 0>,/* IPI_IN_VCP_RAM_DUMP_1 */
-			<22 4  4 0>;/* IPI_IN_VCP_MPOOL_1 */
+			<9 2 18 0>,/* IPI_IN_VENC_0 */
+			<11 2  4 0>,/* IPI_IN_VCP_MPOOL_0 */
+			<20 3  1 1>,/* IPI_OUT_C_SLEEP_1 */
+			<24 3 10 0>,/* IPI_IN_VCP_ERROR_INFO_1 */
+			<25 3  6 0>,/* IPI_IN_LOGGER_CTRL_0 */
+			<26 3  1 0>,/* IPI_IN_VCP_READY_1 */
+			<27 3  2 0>,/* IPI_IN_VCP_RAM_DUMP_1 */
+			<29 4  4 0>;/* IPI_IN_VCP_MPOOL_1 */
 
-			vcp_mem_key = "mediatek,reserve-memory-vcp_share";
-			vcp_mem_tbl = <0 0x78000>, /* VDEC_MEM_ID 480KB */
+			vcp-mem-key = "mediatek,reserve-memory-vcp_share";
+			vcp-secure-dump = <0>;   /* enable dump via secure world*/
+			vcp-secure-dump-size = <0x200000>;
+			vcp-secure-dump-offset = <0x600000>;
+			vcp-sec-dump-key = "mediatek,me_vcp_reserved";
+			vcp-mem-tbl = <0 0x78000>, /* VDEC_MEM_ID 480KB */
 					  <1 0x8000>, /* VENC_MEM_ID 32KB */
 					  <2 0x180000>, /* LOGGER 1MB 512KB*/
 					  <3 0x400>, /* VDEC_SET_PROP_MEM_ID 1KB */
@@ -8897,21 +8913,21 @@
 			clock-names = "mmup-sel", "mmup-clk", "mmup-26m";
 		};
 
-		vcp_io2: vcp_iommu_vdec {
+		vcp_io2: vcp-iommu-vdec {
 			compatible =  "mediatek,vcp-io-vdec";
 			vcp-support = <2>;
 			dma-ranges = <0x1 0x0 0x1 0x0 0x1 0x0>;
 			iommus = <&mdp_iommu M4U_LARB33_VIDEO_UP_512MB1>;
 		};
 
-		vcp_io3: vcp_iommu_venc {
+		vcp_io3: vcp-iommu-venc {
 			compatible =  "mediatek,vcp-io-venc";
 			vcp-support = <3>;
 			dma-ranges = <0x1 0x0 0x1 0x0 0x1 0x0>;
 			iommus = <&mdp_iommu M4U_LARB33_VIDEO_UP_512MB2>;
 		};
 
-		vcp_io4: vcp_iommu_work {
+		vcp_io4: vcp-iommu-work {
 			compatible = "mediatek,vcp-io-work";
 			vcp-support = <4>;
 			dma-ranges = <0x1 0x0 0x1 0x0 0x1 0x0>;
