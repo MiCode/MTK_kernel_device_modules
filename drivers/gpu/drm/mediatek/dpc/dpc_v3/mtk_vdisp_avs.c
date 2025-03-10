@@ -295,9 +295,8 @@ void mtk_vdisp_avs_query_aging_val(struct device *dev)
 		goto release_vcp;
 	}
 
-	if ((VDISP_SHRMEM_BITWISE_VAL &
-		(BIT(VDISP_AVS_AGING_ENABLE_BIT) | BIT(VDISP_AVS_ENABLE_BIT))) !=
-		(BIT(VDISP_AVS_AGING_ENABLE_BIT) | BIT(VDISP_AVS_ENABLE_BIT))) {
+	if ((VDISP_SHRMEM_BITWISE_VAL & BIT(VDISP_AVS_AGING_ENABLE_BIT)) !=
+		BIT(VDISP_AVS_AGING_ENABLE_BIT)) {
 		VDISPDBG("aging disabled, skip");
 		goto release_vcp;
 	}
