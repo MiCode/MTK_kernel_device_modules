@@ -164,6 +164,7 @@ static void ged_eb_work_cb(struct work_struct *psWork)
 		desire_ipi_cnt++;
 		if (is_fdvfs_enable() & POLICY_MODE_V2) {
 			mutex_lock(&gsPolicyLock);
+			dcs_set_setting_dirty();
 			if (psEBEvent->idx[1] == GOV_MASK_DEBUG && psEBEvent->idx[0] != 0)
 				dcs_set_fix_core_mask(psEBEvent->idx[1], psEBEvent->idx[0]);
 			else
@@ -458,6 +459,7 @@ static void ged_eb_sysram_debug_data_write(void)
 				case GPU_EB_LOG_DUMP_PRESERVE2:
 				case GPU_EB_LOG_DUMP_PRESERVE3:
 				case GPU_EB_LOG_DUMP_PRESERVE4:
+				case GPU_EB_LOG_DUMP_MASK_CONTROL1:
 					tmp_multi =	mtk_gpueb_sysram_multi_read(
 							fdvfs_v2_rb_table[dbg_cnt].addr + tmp_head);
 					if (fdvfs_v2_rb_table[dbg_cnt].data_count == 1) {
@@ -513,6 +515,18 @@ static void ged_eb_sysram_debug_data_write(void)
 						dbg_data2[i] = tmp_multi.twoVar.var2;
 					}
 					break;
+				case GPU_EB_LOG_DUMP_MASK_CONTROL2:
+					tmp_multi =	mtk_gpueb_sysram_multi_read(
+							fdvfs_v2_rb_table[dbg_cnt].addr + tmp_head);
+					if (fdvfs_v2_rb_table[dbg_cnt].data_count == 1)
+						dbg_data3[i] = tmp_multi.oneVar.var1;
+					break;
+				case GPU_EB_LOG_DUMP_MASK_CONTROL3:
+					tmp_multi =	mtk_gpueb_sysram_multi_read(
+							fdvfs_v2_rb_table[dbg_cnt].addr + tmp_head);
+					if (fdvfs_v2_rb_table[dbg_cnt].data_count == 1)
+						dbg_data4[i] = tmp_multi.oneVar.var1;
+					break;
 				default:
 					break;
 				}
@@ -563,6 +577,9 @@ static void ged_eb_sysram_debug_data_write(void)
 				break;
 			case GPU_EB_LOG_DUMP_STACK_FREQ2:
 				trace_GPU_DVFS__EBRB_FREQ2(dbg_data, dbg_data2);
+				break;
+			case GPU_EB_LOG_DUMP_MASK_CONTROL3:
+				trace_GPU_DVFS__EBRB_Policy__Mask_Control(dbg_data, dbg_data2, dbg_data3, dbg_data4);
 				break;
 			default:
 				break;

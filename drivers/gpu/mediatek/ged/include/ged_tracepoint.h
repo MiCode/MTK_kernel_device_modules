@@ -2422,6 +2422,42 @@ TRACE_EVENT(GPU_DVFS__EBRB_FREQ2,
 
 );
 
+TRACE_EVENT(GPU_DVFS__EBRB_Policy__Mask_Control,
+	TP_PROTO(const unsigned int *arg, const unsigned int *arg2, const unsigned int *arg3, const unsigned int *arg4),
+	TP_ARGS(arg, arg2, arg3, arg4),
+
+	TP_STRUCT__entry(
+		__field(unsigned int, u0)__field(unsigned int, u1)__field(unsigned int, u2)__field(unsigned int, u3)
+		__field(unsigned int, u4)__field(unsigned int, u5)__field(unsigned int, u6)__field(unsigned int, u7)
+		__field(unsigned int, r0)__field(unsigned int, r1)__field(unsigned int, r2)__field(unsigned int, r3)
+		__field(unsigned int, r4)__field(unsigned int, r5)__field(unsigned int, r6)__field(unsigned int, r7)
+		__field(unsigned int, v0)__field(unsigned int, v1)__field(unsigned int, v2)__field(unsigned int, v3)
+		__field(unsigned int, v4)__field(unsigned int, v5)__field(unsigned int, v6)__field(unsigned int, v7)
+		__field(unsigned int, c0)__field(unsigned int, c1)__field(unsigned int, c2)__field(unsigned int, c3)
+		__field(unsigned int, c4)__field(unsigned int, c5)__field(unsigned int, c6)__field(unsigned int, c7)
+	),
+	TP_fast_assign(
+		__entry->u0 = arg[0];__entry->u1 = arg[1];__entry->u2 = arg[2];__entry->u3 = arg[3];
+		__entry->u4 = arg[4];__entry->u5 = arg[5];__entry->u6 = arg[6];__entry->u7 = arg[7];
+		__entry->r0 = arg2[0];__entry->r1 = arg2[1];__entry->r2 = arg2[2];__entry->r3 = arg2[3];
+		__entry->r4 = arg2[4];__entry->r5 = arg2[5];__entry->r6 = arg2[6];__entry->r7 = arg2[7];
+		__entry->v0 = arg3[0];__entry->v1 = arg3[1];__entry->v2 = arg3[2];__entry->v3 = arg3[3];
+		__entry->v4 = arg3[4];__entry->v5 = arg3[5];__entry->v6 = arg3[6];__entry->v7 = arg3[7];
+		__entry->c0 = arg4[0];__entry->c1 = arg4[1];__entry->c2 = arg4[2];__entry->c3 = arg4[3];
+		__entry->c4 = arg4[4];__entry->c5 = arg4[5];__entry->c6 = arg4[6];__entry->c7 = arg4[7];
+	),
+
+	TP_printk("u0=%u|%u|%u|%u u1=%u|%u|%u|%u u2=%u|%u|%u|%u u3=%u|%u|%u|%u u4=%u|%u|%u|%u u5=%u|%u|%u|%u u6=%u|%u|%u|%u u7=%u|%u|%u|%u",
+		__entry->u0, __entry->r0, __entry->v0, __entry->c0,
+		__entry->u1, __entry->r1, __entry->v1, __entry->c1,
+		__entry->u2, __entry->r2, __entry->v2, __entry->c2,
+		__entry->u3, __entry->r3, __entry->v3, __entry->c3,
+		__entry->u4, __entry->r4, __entry->v4, __entry->c4,
+		__entry->u5, __entry->r5, __entry->v5, __entry->c5,
+		__entry->u6, __entry->r6, __entry->v6, __entry->c6,
+		__entry->u7, __entry->r7, __entry->v7, __entry->c7)
+);
+
 #endif /* _TRACE_GED_H */
 
 

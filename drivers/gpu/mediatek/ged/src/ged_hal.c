@@ -847,6 +847,8 @@ static ssize_t eb_dvfs_policy_show(struct kobject *kobj,
 				ipi_data->u.set_para.arg[2]);
 		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
 				"Ignore notify: %u\n",ipi_data->u.set_para.arg[3]);
+		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"method3 cnt: %u\n",ipi_data->u.set_para.arg[4]);
 	}
 
 	/* 0:ultra_low_step_size, 1:ultra_high_step_size, 2:lb_target_mode,

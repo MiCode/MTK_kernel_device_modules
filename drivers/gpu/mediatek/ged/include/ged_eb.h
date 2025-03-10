@@ -976,12 +976,12 @@ GEN("GPU_DVFS__TWO_ARG_PRESERVE", GPU_EB_LOG_DUMP_PRESERVE2, 2, "dbg2_1 | dbg2_2
 GEN("GPU_DVFS__THREE_ARG_PRESERVE", GPU_EB_LOG_DUMP_PRESERVE3, 3, "dbg3_1 | dbg3_2 | dbg3_3") \
 GEN("GPU_DVFS__FOUR_ARG_PRESERVE", GPU_EB_LOG_DUMP_PRESERVE4, 4, "dbg4_1 | dbg4_2 | dbg4_3 | dbg4_4") \
 GEN("EBRB_FREQ2", GPU_EB_LOG_DUMP_STACK_FREQ2, 2, "d_top | d_avg_stack") \
+GEN("Policy__Mask_Control", GPU_EB_LOG_DUMP_MASK_CONTROL1, 2, "ipi_cnt | write_gov_cnt") \
+GEN("Policy__Mask_Control", GPU_EB_LOG_DUMP_MASK_CONTROL2, 1, "ipi_expected_mask") \
+GEN("Policy__Mask_Control", GPU_EB_LOG_DUMP_MASK_CONTROL3, 1, "reg_expected_mask") \
  GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE5, 2, "dbg5_1 | dbg5_2") \
  GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE6, 2, "dbg6_1 | dbg6_2") \
- GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE7, 2, "dbg7_1 | dbg7_2") \
- GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE8, 2, "dbg8_1 | dbg8_2") \
- GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE9, 2, "dbg9_1 | dbg9_2") \
-GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE10, 2, "dbg10_1 | dbg10_2")
+GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE7, 2, "dbg7_1 | dbg7_2")
 
 // sysram
 #define GPU_FDVFS_V2_COUNTER_LIST \

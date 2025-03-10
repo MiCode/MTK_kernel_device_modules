@@ -212,9 +212,6 @@ void dcs_init_dts_with_eb(void)
 
 		g_has_gov_support = ipi_data.u.set_para.arg[0];
 		g_gov_enable = ipi_data.u.set_para.arg[1];
-
-		if (g_gov_enable)
-			ged_eb_dvfs_task(EB_DCS_CORE_NUM, 0);
 	}
 }
 
@@ -226,7 +223,7 @@ int dcs_get_dcs_opp_setting(void)
 int dcs_get_cur_core_num(void)
 {
 	if (is_fdvfs_enable() & POLICY_MODE_V2) {
-		if (g_gov_enable) {
+		if (dcs_get_gov_enable()) {
 			unsigned int gov_mask_num = mtk_gpueb_sysram_read(fdvfs_v2_table[DCS_GOV_CORE_NUM].addr);
 
 			if (gov_mask_num > 0)
@@ -253,7 +250,7 @@ int dcs_set_core_mask(unsigned int core_mask, unsigned int core_num, int commit_
 	if (is_fdvfs_enable() & POLICY_MODE_V2) {
 		mtk_gpueb_sysram_write(fdvfs_v2_table[GPU_DEBUG].addr, g_fix_core_num);
 		mtk_gpueb_sysram_write(fdvfs_v2_table[GPU_LOWPWR_ENABLE].addr, g_lowpwr_mode);
-		if (g_gov_enable)
+		if (dcs_get_gov_enable())
 			return ret;
 	}
 
@@ -293,7 +290,7 @@ int dcs_set_fix_core_mask(gov_mask_config_t config, unsigned int core_mask)
 {
 	int ret = GED_OK;
 
-	if (g_gov_enable && (is_fdvfs_enable() & POLICY_MODE_V2))
+	if (dcs_get_gov_enable() && (is_fdvfs_enable() & POLICY_MODE_V2))
 		return ret;
 
 	mutex_lock(&g_DCS_lock);
@@ -400,7 +397,7 @@ int dcs_restore_max_core_mask(void)
 	if (is_fdvfs_enable() & POLICY_MODE_V2) {
 		mtk_gpueb_sysram_write(fdvfs_v2_table[GPU_DEBUG].addr, g_fix_core_num);
 		mtk_gpueb_sysram_write(fdvfs_v2_table[GPU_LOWPWR_ENABLE].addr, g_lowpwr_mode);
-		if (g_gov_enable)
+		if (dcs_get_gov_enable())
 			return ret;
 	}
 
@@ -441,11 +438,18 @@ void dcs_enable(int enable)
 
 	mutex_lock(&g_DCS_lock);
 
+	g_setting_dirty = true;
 	if (enable) {
 		g_dcs_enable = enable;
-		g_setting_dirty = true;
-	}
-	else {
+		if (dcs_get_gov_enable()) {
+			ged_eb_dvfs_task(EB_DCS_CORE_NUM, 0);
+
+			ged_dvfs_set_gpu_core_mask_fp(g_core_mask_table[0].mask);
+			g_cur_core_num = g_max_core_num;
+			trace_GPU_DVFS__Policy__DCS(g_max_core_num, g_cur_core_num, g_fix_core_num, g_lowpwr_mode);
+			trace_GPU_DVFS__Policy__DCS__Detail(g_core_mask_table[0].mask);
+		}
+	} else {
 		if (g_fix_core_num > 0)
 			ged_dvfs_set_gpu_core_mask_fp(g_fix_core_mask);
 		else
@@ -583,7 +587,10 @@ unsigned int dcs_get_gov_support(void) {
 }
 
 unsigned int dcs_get_gov_enable(void) {
-	return g_gov_enable;
+	if (g_dcs_enable)
+		return g_gov_enable;
+	else
+		return 0;
 }
 
 void dcs_set_gov_enable(unsigned int enable, unsigned int src)
@@ -603,7 +610,7 @@ void dcs_set_gov_enable(unsigned int enable, unsigned int src)
 	g_setting_dirty = true;
 	g_gov_src = src;
 
-	if (g_gov_enable) {
+	if (dcs_get_gov_enable()) {
 
 		if (g_core_mask_table == NULL)
 			return;
@@ -633,8 +640,8 @@ ssize_t get_get_gov_support_dump(char *buf, int sz, ssize_t pos)
 	int length;
 
 	length = scnprintf(buf + pos, sz - pos,
-			"support:%u enable:%u(%u) (enable will restore to 0 if platform not support)\n",
-			dcs_get_gov_support(), dcs_get_gov_enable(), ged_dvfs_get_gov_mask_enable());
+			"support:%u enable:%u(%u)(%u) (enable will restore to 0 if platform not support)\n",
+			dcs_get_gov_support(), dcs_get_gov_enable(), g_gov_enable, ged_dvfs_get_gov_mask_enable());
 
 	pos += length;
 
@@ -672,7 +679,7 @@ void dcs_set_lowpwr(int enable)
 
 	if (is_fdvfs_enable() & POLICY_MODE_V2) {
 		mtk_gpueb_sysram_write(fdvfs_v2_table[GPU_LOWPWR_ENABLE].addr, g_lowpwr_mode);
-		if (g_gov_enable)
+		if (dcs_get_gov_enable())
 			goto done_unlock;
 	}
 
