@@ -112,6 +112,32 @@ enum {
 	IDX_AH8X
 };
 
+/* DL Frame History related */
+#define VENDOR_DL_RX_FRAME_HISTORY	0xD0B9
+#define DL_RX_FRAME_INDEX_OFFSET	16
+#define VENDOR_DL_RX_FRAME_INFO_0	0xD0BA
+#define VENDOR_DL_RX_FRAME_INFO_1	0xD0BB
+
+#define VENDOR_DL_TX_FRAME_HISTORY	0xD0BD
+#define DL_TX_FRAME_INDEX_OFFSET	16
+#define VENDOR_DL_TX_FRAME_INFO_0	0xD0BE
+#define VENDOR_DL_TX_FRAME_INFO_1	0xD0BF
+
+#define DL_FRAME_MAX		8
+enum {
+	TYPE_DATA = 0x1,
+	TYPE_AFC =  0x2,
+	TYPE_NAC =  0x3,
+};
+#define DL_TC_OFFSET		5
+#define DL_PROMOTED_OFFSET	6
+#define DL_CREQ_OFFSET		7
+#define DL_RREQ_OFFSET		0
+
+/* REG_UFS_MMIO_DBG_UIC_RESULT */
+#define DBG_UIC_READY	BIT(4)
+#define REG_UIC_RESULT	UFS_MASK(0xF, 0)
+
 struct tm_cmd_struct {
 	u8 lun;
 	u8 tag;
@@ -206,6 +232,7 @@ int ufs_mtk_dbg_tp_register(struct ufs_hba *hba);
 void ufs_mtk_dbg_tp_unregister(struct ufs_hba *hba);
 int ufs_mtk_dbg_register(struct ufs_hba *hba);
 extern void ufs_mtk_dbg_dump(struct ufs_hba *hba, u32 latest_cnt);
+void ufs_mtk_dbg_l2_dump(struct ufs_hba *hba);
 int ufs_mtk_cali_hold(void);
 int ufs_mtk_cali_release(void);
 int ufs_mtk_dbg_cmd_hist_enable(struct ufs_mtk_dbg *mdbg);
@@ -227,6 +254,7 @@ void ufs_mtk_eh_unipro_set_lpm(struct ufs_hba *hba, int ret);
 #define ufs_mtk_aee_warning(...)
 #define ufs_mtk_dbg_cmd_hist_disable(...)
 #define ufs_mtk_dbg_dump(...)
+#define ufs_mtk_dbg_l2_dump(...)
 #define ufs_mtk_dbg_register(...)
 #define ufs_mtk_eh_abort(...)
 #define ufs_mtk_eh_err_cnt(...)

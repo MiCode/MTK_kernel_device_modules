@@ -2597,6 +2597,7 @@ static void ufs_mtk_dbg_register_dump(struct ufs_hba *hba)
 				"UFSHCI (0x2800): ");
 	}
 
+	ufs_mtk_dbg_l2_dump(hba);
 
 	ufs_mtk_dbg_dump(hba, 100);
 

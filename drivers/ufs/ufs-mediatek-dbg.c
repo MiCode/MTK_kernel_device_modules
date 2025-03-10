@@ -12,6 +12,7 @@
 #include <linux/debugfs.h>
 #include <linux/delay.h>
 #include <linux/device.h>
+#include <linux/iopoll.h>
 #include <linux/of_address.h>
 #include <linux/platform_device.h>
 #include <linux/module.h>
@@ -1518,6 +1519,195 @@ out:
 }
 EXPORT_SYMBOL_GPL(ufs_mtk_dbg_phy_enable);
 #endif
+
+static void ufshcd_l2_frame_decode(struct ufs_hba *hba, bool tx,
+	u8 index, u32 type, u64 info)
+{
+	u64 promoted = 0;
+	char pstr[20] = { 0 };
+
+	type = (type >> (index * 2)) & 0x3;
+	info = (info >> (index * 8)) & 0xff;
+
+	switch (type) {
+	case TYPE_DATA:
+		dev_err(hba->dev, "[DATA] TC: %lld, frame sequence: %lld",
+			(info >> DL_TC_OFFSET) & 0x1, (info & 0x1f));
+		break;
+	case TYPE_AFC:
+		if (tx) {
+			promoted = (info >> DL_PROMOTED_OFFSET) & 0x1;
+			snprintf(pstr, sizeof(pstr),
+				"Promoted: %lld, ", promoted);
+		}
+		dev_err(hba->dev, "[AFC] Creq: %lld, %sTC: %lld, frame sequence: %lld",
+			(info >> DL_CREQ_OFFSET) & 0x1, pstr,
+			(info >> DL_TC_OFFSET) & 0x1, (info & 0x1f));
+		break;
+	case TYPE_NAC:
+		dev_err(hba->dev, "[NAC] Rreq: %lld",
+			(info >> DL_RREQ_OFFSET) & 0x1);
+		break;
+	default:
+		dev_err(hba->dev, "[UNKNOWN] Unknown frame type: %u", type);
+		break;
+	}
+}
+
+int ufshcd_uic_backdoor(struct ufs_hba *hba, struct uic_command *uic_cmd)
+{
+	u32 cmd, result;
+	int ret = 0;
+
+	uic_cmd->argument2 = uic_cmd->argument2 & (~CONFIG_RESULT_CODE_MASK);
+	switch (uic_cmd->command) {
+	case UIC_CMD_DME_SET:
+		cmd = 0x2;
+		break;
+	case UIC_CMD_DME_GET:
+		cmd = 0x1;
+		break;
+	default:
+		ret = -EINVAL;
+		goto out;
+	}
+
+	ufshcd_writel(hba, uic_cmd->argument1, REG_UFS_MMIO_DBG_UIC_ID);
+	if (uic_cmd->command == UIC_CMD_DME_SET) {
+		ufshcd_writel(hba, uic_cmd->argument3,
+			REG_UFS_MMIO_DBG_UIC_WR_VAL);
+	}
+	ufshcd_writel(hba, cmd, REG_UFS_MMIO_DBG_UIC_CMD);
+
+	/* Poll every 100us, up to a maximum of 100ms */
+	ret = read_poll_timeout_atomic(ufshcd_readl, result,
+		result & DBG_UIC_READY, 100, 100 * 1000,
+		false, hba, REG_UFS_MMIO_DBG_UIC_RESULT);
+
+	/* Timeout */
+	if (ret) {
+		dev_err(hba->dev,
+			"uic cmd 0x%x with arg3 0x%x completion timeout\n",
+			uic_cmd->command, uic_cmd->argument3);
+		goto out;
+	}
+
+	if (uic_cmd->command == UIC_CMD_DME_GET) {
+		uic_cmd->argument3 = ufshcd_readl(hba,
+			REG_UFS_MMIO_DBG_UIC_RD_VAL);
+	}
+	uic_cmd->argument2 |= (result & REG_UIC_RESULT);
+
+	return 0;
+
+out:
+	dev_err(hba->dev, "(%s) attr-id 0x%x error code %d\n",
+		__func__, UIC_GET_ATTR_ID(uic_cmd->argument1), ret);
+
+	return ret;
+}
+
+static int ufshcd_dme_get_attr_backdoor(struct ufs_hba *hba,
+	u32 attr_sel, u32 *mib_val)
+{
+	struct uic_command uic_cmd = {
+		.command = UIC_CMD_DME_GET,
+		.argument1 = attr_sel,
+	};
+
+	int ret;
+
+	ret = ufshcd_uic_backdoor(hba, &uic_cmd);
+	if (ret) {
+		dev_err(hba->dev, "dme-get: attr-id 0x%x error code %d\n",
+			UIC_GET_ATTR_ID(attr_sel), ret);
+	}
+
+	if (mib_val && !ret)
+		*mib_val = uic_cmd.argument3;
+
+	return ret;
+}
+
+void ufs_mtk_dbg_l2_dump(struct ufs_hba *hba)
+{
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+	int err, i, j;
+	u8 dl_tx_idx, dl_rx_idx;
+	u32 dl_tx_history = 0, dl_rx_history = 0;
+	u32 dl_tx_info_0 = 0, dl_tx_info_1 = 0;
+	u32 dl_rx_info_0 = 0, dl_rx_info_1 = 0;
+	u64 dl_tx_info = 0, dl_rx_info = 0;
+
+	if (host->ip_ver < IP_VER_MT6899)
+		return;
+
+	err = ufshcd_dme_get_attr_backdoor(hba,
+		UIC_ARG_MIB(VENDOR_DL_RX_FRAME_HISTORY), &dl_rx_history);
+	if (err) {
+		dev_err(hba->dev, "VENDOR_DL_RX_FRAME_HISTORY, err:%d", err);
+		return;
+	}
+	dev_err(hba->dev, "VENDOR_DL_RX_FRAME_HISTORY: 0x%x\n", dl_rx_history);
+
+	err = ufshcd_dme_get_attr_backdoor(hba,
+		UIC_ARG_MIB(VENDOR_DL_RX_FRAME_INFO_0), &dl_rx_info_0);
+	if (err) {
+		dev_err(hba->dev, "VENDOR_DL_RX_FRAME_INFO_0, err:%d", err);
+		return;
+	}
+	dev_err(hba->dev, "VENDOR_DL_RX_FRAME_INFO_0: 0x%x\n", dl_rx_info_0);
+
+	err = ufshcd_dme_get_attr_backdoor(hba,
+		UIC_ARG_MIB(VENDOR_DL_RX_FRAME_INFO_1), &dl_rx_info_1);
+	if (err) {
+		dev_err(hba->dev, "VENDOR_DL_RX_FRAME_INFO_1, err:%d", err);
+		return;
+	}
+	dev_err(hba->dev, "VENDOR_DL_RX_FRAME_INFO_1: 0x%x\n", dl_rx_info_1);
+
+	err = ufshcd_dme_get_attr_backdoor(hba,
+		UIC_ARG_MIB(VENDOR_DL_TX_FRAME_HISTORY), &dl_tx_history);
+	if (err) {
+		dev_err(hba->dev, "VENDOR_DL_TX_FRAME_HISTORY, err:%d", err);
+		return;
+	}
+	dev_err(hba->dev, "VENDOR_DL_TX_FRAME_HISTORY: 0x%x\n", dl_tx_history);
+
+	err = ufshcd_dme_get_attr_backdoor(hba,
+		UIC_ARG_MIB(VENDOR_DL_TX_FRAME_INFO_0), &dl_tx_info_0);
+	if (err) {
+		dev_err(hba->dev, "VENDOR_DL_TX_FRAME_INFO_0, err:%d", err);
+		return;
+	}
+	dev_err(hba->dev, "VENDOR_DL_TX_FRAME_INFO_0: 0x%x\n", dl_tx_info_0);
+
+	err = ufshcd_dme_get_attr_backdoor(hba,
+		UIC_ARG_MIB(VENDOR_DL_TX_FRAME_INFO_1), &dl_tx_info_1);
+	if (err) {
+		dev_err(hba->dev, "VENDOR_DL_TX_FRAME_INFO_1, err:%d", err);
+		return;
+	}
+	dev_err(hba->dev, "VENDOR_DL_TX_FRAME_INFO_1: 0x%x\n", dl_tx_info_1);
+
+
+	dev_err(hba->dev, "== DL TX Frame History ==");
+	dl_tx_idx = (dl_tx_history >> DL_TX_FRAME_INDEX_OFFSET);
+	dl_tx_info = ((u64)dl_rx_info_1 << 32) | dl_rx_info_0;
+	for (i = 0; i < DL_FRAME_MAX; i++) {
+		j = (i + dl_tx_idx) % DL_FRAME_MAX;
+		ufshcd_l2_frame_decode(hba, true, j, dl_tx_history, dl_tx_info);
+	}
+
+	dev_err(hba->dev, "== DL RX Frame History ==");
+	dl_rx_idx = (dl_rx_history >> DL_RX_FRAME_INDEX_OFFSET);
+	dl_rx_info = ((u64)dl_tx_info_1 << 32) | dl_tx_info_0;
+	for (i = 0; i < DL_FRAME_MAX; i++) {
+		j = (i + dl_rx_idx) % DL_FRAME_MAX;
+		ufshcd_l2_frame_decode(hba, false, j, dl_rx_history, dl_rx_info);
+	}
+}
+EXPORT_SYMBOL_GPL(ufs_mtk_dbg_l2_dump);
 
 static void probe_ufshcd_clk_gating(void *data, const char *dev_name,
 				    int state)
