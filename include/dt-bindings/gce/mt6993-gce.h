@@ -1248,9 +1248,14 @@
 /* check CABC setup finish */
 #define CMDQ_SYNC_TOKEN_CABC_EOF			644
 
-/*VFP period token for Msync*/
+/* VFP period token for Msync*/
 #define CMDQ_SYNC_TOKEN_VFP_PERIOD			645
-/* SW sync token for dual display */
+/* check vdo mode CABC setup finish */
+#define CMDQ_SYNC_TOKEN_VDO_MODE_CABC_EOF               646
+
+/* SW sync token for HWCCF voting mutex control */
+#define CMDQ_SYNC_TOKEN_DPC_VOTE_HWCCF			647
+
 #define CMDQ_SYNC_TOKEN_CONFIG_DIRTY_1			694
 #define CMDQ_SYNC_TOKEN_STREAM_EOF_1			695
 #define CMDQ_SYNC_TOKEN_ESD_EOF_1			696
