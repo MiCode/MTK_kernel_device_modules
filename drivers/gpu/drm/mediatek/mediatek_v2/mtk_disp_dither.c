@@ -553,8 +553,6 @@ void disp_dither_set_param(struct mtk_ddp_comp *comp,
 			struct cmdq_pkt *handle,
 			bool relay, uint32_t mode)
 {
-	struct mtk_disp_dither *dither_data = comp_to_dither(comp);
-	struct mtk_disp_dither_primary *primary_data = dither_data->primary_data;
 	bool bypass = relay;
 	uint32_t dither_mode = 0x00003000 | (0x1 << mode);
 

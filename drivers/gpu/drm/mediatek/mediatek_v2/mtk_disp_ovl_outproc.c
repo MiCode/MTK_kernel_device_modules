@@ -356,22 +356,22 @@ static void mtk_ovl_outproc_layer_config(struct mtk_ddp_comp *comp, unsigned int
 	DDPDBG("%s+ %s\n", __func__, mtk_dump_comp_str(comp));
 }
 
-static void
-mtk_ovl_outproc_addon_rsz_config(struct mtk_ddp_comp *comp, enum mtk_ddp_comp_id prev,
-			 enum mtk_ddp_comp_id next, struct mtk_rect rsz_src_roi,
-			 struct mtk_rect rsz_dst_roi, struct cmdq_pkt *handle)
-{
-	struct mtk_disp_ovl_outproc *outproc = comp_to_ovl_outproc(comp);
-	const u16 *regs = outproc->data->regs;
+//static void
+//mtk_ovl_outproc_addon_rsz_config(struct mtk_ddp_comp *comp, enum mtk_ddp_comp_id prev,
+//			 enum mtk_ddp_comp_id next, struct mtk_rect rsz_src_roi,
+//			 struct mtk_rect rsz_dst_roi, struct cmdq_pkt *handle)
+//{
+//	struct mtk_disp_ovl_outproc *outproc = comp_to_ovl_outproc(comp);
+//	const u16 *regs = outproc->data->regs;
 
-	if (prev == -1) {
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			       comp->regs_pa + regs[OVL_OUTPROC_ROI_SIZE],
-			       rsz_src_roi.height << 16 | rsz_src_roi.width,
-			       ~0);
-		_store_bg_roi(comp, rsz_src_roi.height, rsz_src_roi.width);
-	}
-}
+//	if (prev == -1) {
+//		cmdq_pkt_write(handle, comp->cmdq_base,
+//			       comp->regs_pa + regs[OVL_OUTPROC_ROI_SIZE],
+//			       rsz_src_roi.height << 16 | rsz_src_roi.width,
+//			       ~0);
+//		_store_bg_roi(comp, rsz_src_roi.height, rsz_src_roi.width);
+//	}
+//}
 
 static void mtk_ovl_outproc_addon_config(struct mtk_ddp_comp *comp,
 				 enum mtk_ddp_comp_id prev,
@@ -380,8 +380,6 @@ static void mtk_ovl_outproc_addon_config(struct mtk_ddp_comp *comp,
 				 struct cmdq_pkt *handle)
 {
 	unsigned int width, height;
-	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
-	struct drm_crtc *crtc = &mtk_crtc->base;
 	struct mtk_disp_ovl_outproc *outproc = comp_to_ovl_outproc(comp);
 	const u16 *regs = outproc->data->regs;
 

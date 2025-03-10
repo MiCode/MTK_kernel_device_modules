@@ -3745,7 +3745,7 @@ void mt6993_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 	struct mtk_drm_private *priv = drm->dev_private;
 	unsigned int sodi_req_val = 0, sodi_req_mask = 0;
 	unsigned int emi_req_val = 0, emi_req_mask = 0;
-	unsigned int val, val_mask;
+	unsigned int val = 0, val_mask = 0;
 	bool en = *((bool *)data);
 
 	if (id == DDP_COMPONENT_ID_MAX) { /* config when top clk on */
@@ -3932,7 +3932,7 @@ void mt6993_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 void mt6993_mtk_wla_config(struct drm_device *drm, struct cmdq_pkt *handle)
 {
 	struct mtk_drm_private *priv = drm->dev_private;
-	unsigned int val, val_mask;
+	unsigned int val = 0, val_mask = 0;
 
 	if (handle == NULL) {
 		if (priv->side_config_regs) {

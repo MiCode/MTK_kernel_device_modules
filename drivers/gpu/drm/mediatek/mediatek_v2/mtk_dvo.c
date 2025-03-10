@@ -422,7 +422,6 @@ static void mtk_dp_dvo_destroy_conn_enc(struct mtk_dp_dvo *dp_dvo)
 static void mtk_dp_dvo_start(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle)
 {
-	void __iomem *baddr = comp->regs;
 	struct mtk_dp_dvo *dp_dvo = comp_to_dp_dvo(comp);
 
 	DPTXFUNC();
@@ -533,7 +532,6 @@ EXPORT_SYMBOL(mtk_dp_dvo_unprepare_clk);
 
 void mtk_dp_dvo_PatternGenEn(bool enable)
 {
-	uint32_t reg_val;
 
 	if (enable) {
 		// pattern gen open
@@ -584,7 +582,6 @@ void mtk_dvo_video_clock(struct mtk_dp_dvo *dp_dvo)
 	int ret = 0;
 	struct mtk_drm_crtc *mtk_crtc;
 	struct mtk_drm_private *priv;
-	void *base;
 
 	DPTXFUNC();
 	if (dp_dvo == NULL) {
@@ -650,7 +647,6 @@ static void mtk_dp_dvo_golden_setting(struct mtk_ddp_comp *comp,
 					    struct cmdq_pkt *handle)
 {
 	struct mtk_dp_dvo *dp_dvo = comp_to_dp_dvo(comp);
-	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 	unsigned int pixel_clk_rate, threshold_unit, bpp, consume_rate;
 	unsigned int fifo_size = 5569;
 	unsigned int ultra_high_fifo_us, ultra_low_fifo_us;
@@ -749,12 +745,9 @@ static void mtk_dp_dvo_config(struct mtk_ddp_comp *comp,
 	unsigned int vpw = 0;
 	unsigned int vfp = 0, vbp = 0;
 	unsigned int vtotal = 0;
-	unsigned int bg_left = 0, bg_right = 0;
-	unsigned int bg_top = 0, bg_bot = 0;
 	unsigned int rw_times = 0;
 	unsigned int vblank_time = 0, prefetch_time = 0, config_time = 0;
 	u32 val = 0, line_time = 0;
-	u32 dp_vfp_mutex = 0;
 
 	DPTXFUNC();
 	DPTXMSG("%s w %d, h, %d, clock %d, fps %d!\n",
@@ -1142,7 +1135,6 @@ static int mtk_dvo_probe(struct platform_device *pdev)
 	const struct of_device_id *of_id;
 	struct resource *mem;
 	int ret;
-	struct device_node *node;
 
 	DPTXMSG("%s+\n", __func__);
 	dp_dvo = devm_kzalloc(dev, sizeof(*dp_dvo), GFP_KERNEL);

@@ -585,6 +585,8 @@ unsigned int mtk_disp_get_channel_idx(enum CHANNEL_TYPE type, unsigned int i)
 	case CHANNEL_HRT_WRITE:
 		idx = i * 4 + 3;//3,7,11,15
 		break;
+	default:
+		break;
 	}
 
 	return idx;
@@ -1188,18 +1190,12 @@ void mtk_disp_hrt_mmclk_request_mt6765(struct mtk_drm_crtc *mtk_crtc, unsigned i
 
 void mtk_disp_channel_srt_bw(struct mtk_drm_crtc *mtk_crtc)
 {
-	struct drm_crtc *crtc = &mtk_crtc->base;
-	struct mtk_drm_private *priv = crtc->dev->dev_private;
-
 	__mtk_disp_channel_srt_bw(mtk_crtc);
 	mtk_disp_channel_srt_write_bw(mtk_crtc);
 }
 
 void mtk_disp_clear_channel_srt_bw(struct mtk_drm_crtc *mtk_crtc)
 {
-	struct drm_crtc *crtc = &mtk_crtc->base;
-	struct mtk_drm_private *priv = crtc->dev->dev_private;
-
 	__mtk_disp_clear_channel_srt_bw(mtk_crtc);
 	mtk_disp_clear_channel_srt_write_bw(mtk_crtc);
 }

@@ -136,8 +136,8 @@ static void mtk_dli_async_addon_config_mt6993(struct mtk_ddp_comp *comp,
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 	struct mtk_drm_private *priv;
 	struct mtk_disp_dli_async *dli = comp_to_dli_async(comp);
-	u32 dli_in_relay_size, width, height;
-	u8 pipe;
+	u32 dli_in_relay_size, width = 0, height = 0;
+	u8 pipe = 0;
 
 	DDPINFO("%s+\n", __func__);
 
@@ -282,8 +282,6 @@ static void mtk_dli_async_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handl
 
 static void mtk_dli_async_prepare(struct mtk_ddp_comp *comp)
 {
-	struct mtk_disp_dli_async *dli = comp_to_dli_async(comp);
-
 	DDPINFO("%s\n", __func__);
 	mtk_ddp_comp_clk_prepare(comp);
 

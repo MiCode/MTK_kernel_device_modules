@@ -237,9 +237,7 @@ int notify_uevent_user(struct notify_dev *sdev, int state)
 }
 void dptx_shutdown(void)
 {
-	int ret;
-	void *base;
-
+	int ret = 0;
 	g_mtk_dp->shutdown = 1;
 	DPTXMSG("unprepare dptx shutdown\n");
 	if (g_mtk_dp->priv->pwr_node) {
@@ -1609,7 +1607,7 @@ void mdrv_DPTx_ColorSet(int bpc, int format)
 		DPTXERR("%s: dp not initial\n", __func__);
 		return;
 	}
-	DPTXMSG("adb set bpc:%d format:%d\n", __func__, bpc, format);
+	DPTXMSG("%sadb set bpc:%d format:%d\n", __func__, bpc, format);
 	// bpc 0/1/2/3/4: 6/8/10/12/16
 	// format 0/1/2/3/4 RGB/YUV422/YUV420/YONLY/RAW
 	g_mtk_dp->info.depth = bpc;
@@ -1690,7 +1688,7 @@ void mdrv_DPTx_StopSentSDP(struct mtk_dp *mtk_dp)
 
 void mdrv_DPTx_put_device(void)
 {
-	int pm_ret;
+	int pm_ret = 0;
 	void *base;
 
 	if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6991) {
@@ -1722,15 +1720,15 @@ void mdrv_DPTx_put_device(void)
 				mtk_vidle_mminfra_on_off(false);
 			else
 				pm_runtime_put_sync(g_mtk_dp->priv->dpc_dev);
-
 			DPTXMSG("%s successfully disable dpc\n", __func__);
 		}
 	} else {
-		if (g_mtk_dp->info.bPatternGen)
+		if (g_mtk_dp->info.bPatternGen) {
 			if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6993)
 				mhal_DVO_VideoClock(false, g_mtk_dp->info.resolution);
 			else
 				mhal_DPTx_VideoClock(false, g_mtk_dp->info.resolution);
+		}
 	}
 
 	mtk_dp_vsvoter_clr(g_mtk_dp);
@@ -4365,7 +4363,7 @@ void mtk_dp_fake_plugin(unsigned int status, unsigned int bpc)
 void mtk_dp_HPDInterruptSet(int bstatus)
 {
 	void *base;
-	int ret;
+	int ret = 0;
 	unsigned int value;
 
 	if (g_mtk_dp == NULL) {

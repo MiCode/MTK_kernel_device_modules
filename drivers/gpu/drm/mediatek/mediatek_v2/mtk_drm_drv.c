@@ -965,7 +965,6 @@ static void mtk_atomic_aod_scp_ipi(struct drm_crtc *crtc, bool prepare)
 {
 	struct mtk_crtc_state *mtk_state;
 	unsigned int ulps_wakeup_prd = 0;
-	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 
 	if (!aod_scp_flag || !aod_scp_ipi.send_ipi || !aod_scp_ipi.module_backup ||
 		!crtc) {
@@ -2458,9 +2457,7 @@ static int mtk_disp_get_ovlsys_reg_mt6993(struct platform_device *pdev,
 {
 	struct resource *mem;
 	struct device *dev = &pdev->dev;
-	struct platform_device *side_pdev;
 	struct device *side_dev = NULL;
-	struct device_node *side_node = NULL;
 	int ret = 0;
 
 
@@ -2580,9 +2577,7 @@ static int mtk_disp_get_ovlsys_reg_mt6991(struct platform_device *pdev,
 {
 	struct resource *mem;
 	struct device *dev = &pdev->dev;
-	struct platform_device *side_pdev;
 	struct device *side_dev = NULL;
-	struct device_node *side_node = NULL;
 	int ret = 0;
 
 
@@ -10159,7 +10154,6 @@ static int mtk_drm_kms_init(struct drm_device *drm)
 
 	return 0;
 
-err_unset_dma_parms:
 	if (private->dma_parms_allocated)
 		dma_dev->dma_parms = NULL;
 put_dma_dev:
@@ -10317,7 +10311,7 @@ static int mtk_drm_se_plane_config(struct mtk_drm_crtc *mtk_crtc)
 		    mtk_crtc->se_plane[i].state.comp_state.comp_id != 0) {
 			comp = mtk_crtc_get_plane_comp(&mtk_crtc->base,
 				&mtk_crtc->se_plane[i].state);
-			DDPINFO("se crtc%d i%d comp%d,layer%d,size(%d %d %d %d)addr0x%lx\n",
+			DDPINFO("se crtc%d i%d comp%d,layer%d,size(%d %d %d %d)addr0x%llx\n",
 				index, i, mtk_crtc->se_plane[i].state.comp_state.comp_id,
 				mtk_crtc->se_plane[i].state.comp_state.lye_id,
 				mtk_crtc->se_plane[i].state.pending.dst_x,
@@ -10394,7 +10388,6 @@ static int mtk_drm_set_ovl_layer(struct drm_device *dev, void *data,
 	int index = 0, crtc_id = 0;
 	struct mtk_crtc_se_plane *se_plane;
 	u64 sys_time;
-	struct mtk_ddp_comp *comp = NULL;
 #ifdef CONFIG_MTK_ULTRARVC_SUPPORT
 		static bool ultrarvc_start = true;
 #endif
@@ -10602,7 +10595,7 @@ static int mtk_drm_map_dma_buf(struct drm_device *dev, void *data,
 
 	dma_map->mva = mva;
 
-	DDPINFO("dma fd is %d mva 0x%lx\n", dma_map->fd, dma_map->mva);
+	DDPINFO("dma fd is %d mva 0x%llx\n", dma_map->fd, dma_map->mva);
 
 	list_add_tail(&map_list->list, &dma_map_list.list);
 
@@ -12551,16 +12544,12 @@ static int mtk_drm_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct mtk_drm_private *private;
-	struct resource *mem;
 	struct device_node *node;
 	struct component_match *match = NULL;
 	unsigned int dispsys_num = 0, ovlsys_num = 0, pq_path_sel = 1;
 	unsigned int mmlsys_num = 0;
 	int ret, len;
 	int i;
-	struct platform_device *side_pdev;
-	struct device *side_dev = NULL;
-	struct device_node *side_node = NULL;
 	struct device_node *aod_scp_node = NULL;
 	struct device_node *disp_plat_dbg_node = pdev->dev.of_node;
 	const __be32 *ranges = NULL;
@@ -12655,7 +12644,7 @@ static int mtk_drm_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
-SKIP_SIDE_DISP:
+//SKIP_SIDE_DISP:
 
 	if (private->data->get_ovlsys_reg)
 		ret = private->data->get_ovlsys_reg(pdev, private, dispsys_num);
@@ -12665,7 +12654,7 @@ SKIP_SIDE_DISP:
 	if (ret)
 		return ret;
 
-SKIP_OVLSYS_CONFIG:
+//SKIP_OVLSYS_CONFIG:
 
 	if (private->mmlsys_num == 0)
 		goto SKIP_MMLSYS_CONFIG;

@@ -217,7 +217,7 @@ static const unsigned int mt6789_mutex_sof[DDP_MUTEX_SOF_MAX] = {
 const struct mtk_disp_ddp_data mt6789_ddp_driver_data = {
 	.mutex_mod = mt6789_mutex_mod,
 	.mutex_sof = mt6789_mutex_sof,
-	.mutex_mod_reg = MT6789_DISP_MUTEX0_MOD0,
+	.mutex_mod_reg = {MT6789_DISP_MUTEX0_MOD0},
 	.mutex_sof_reg = MT6789_DISP_MUTEX0_SOF,
 	.disp_mutex_total = DISP_MUTEX_TOTAL,
 };

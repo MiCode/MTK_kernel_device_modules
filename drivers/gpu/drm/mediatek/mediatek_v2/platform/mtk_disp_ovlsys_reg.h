@@ -6,7 +6,8 @@
 #ifndef __MTK_DISP_OVLSYS_REG_H__
 #define __MTK_DISP_OVLSYS_REG_H__
 
-#define REG_NOT_SUPPORT (0xFFFF)
+//#define REG_NOT_SUPPORT (0xFFFF)
+#include "mtk_ovl_exdma_reg.h"
 
 enum disp_ovlsys_register {
 	/*AID Setting*/

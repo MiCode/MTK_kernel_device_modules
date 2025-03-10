@@ -897,7 +897,6 @@ static void mtk_ovl_update_hrt_usage(struct mtk_drm_crtc *mtk_crtc,
 	struct mtk_disp_ovl *ovl = comp_to_ovl(comp);
 	unsigned int lye_id = plane_state->comp_state.lye_id;
 	unsigned int ext_lye_id = plane_state->comp_state.ext_lye_id;
-	int crtc_idx = drm_crtc_index(&mtk_crtc->base);
 	unsigned int fmt;
 	unsigned int phy_id = 0;
 

@@ -416,7 +416,6 @@ static int disp_gamma_set_lut(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, int lock, struct DISP_GAMMA_LUT_T *user_gamma_lut)
 {
 	struct mtk_disp_gamma *gamma = comp_to_gamma(comp);
-	struct mtk_disp_gamma_primary *primary_data = gamma->primary_data;
 	int i, ret = 0;
 
 	DDPINFO("%s: Set module(%d) lut\n", __func__, comp->id);

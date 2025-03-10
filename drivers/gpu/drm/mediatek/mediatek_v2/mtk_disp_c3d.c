@@ -421,6 +421,8 @@ static bool disp_c3d_flush_3dlut_sram(struct mtk_ddp_comp *comp, enum C3D_CMDQ_T
 			}
 		}
 		break;
+	default:
+		break;
 	}
 
 	return true;
@@ -712,8 +714,6 @@ static void disp_c3d_bypass(struct mtk_ddp_comp *comp, int bypass,
 static int disp_c3d_user_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	unsigned int cmd, void *data)
 {
-	struct mtk_disp_c3d *c3d_data = comp_to_c3d(comp);
-
 	C3DFLOW_LOG("cmd: %d\n", cmd);
 	switch (cmd) {
 	default:
@@ -949,7 +949,6 @@ static int disp_c3d_act_get_bin_num(struct mtk_ddp_comp *comp, void *data)
 static int disp_c3d_act_get_lut_bit(struct mtk_ddp_comp *comp, void *data)
 {
 	int ret = 0;
-	struct mtk_disp_c3d *c3d_data = comp_to_c3d(comp);
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 	int *c3d_lut_bit = (int *)data;
 	struct pq_common_data *pq_data = mtk_crtc->pq_data;
@@ -965,7 +964,6 @@ int disp_c3d_cfg_set_lut(struct mtk_ddp_comp *comp,
 {
 	struct mtk_disp_c3d *c3d = comp_to_c3d(comp);
 	struct mtk_disp_c3d_primary *primary_data = c3d->primary_data;
-	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 	struct DISP_C3D_LUT *c3d_lut = (struct DISP_C3D_LUT *) data;
 	int ret = 0;
 

@@ -1794,7 +1794,7 @@
 #define MT6993_DISP_MUTEX0_SOF	0x30
 #define MT6993_DISP_MUTEX_RST	0x2C
 
-#define REG_NOT_SUPPORT (0xFFFF)
+//#define REG_NOT_SUPPORT (0xFFFF)
 
 #define MT6993_OVLSYS_BYPASS_MUX_SHADOW	0x400
 #define MT6993_OVLSYS_CROSSBAR_CON 0x408
@@ -2464,8 +2464,8 @@
 #define MT6993_DISP_REG_OVLSYS_SMI_LARB0_GREQ 0x330
 #define MT6993_DISP_REG_OVLSYS_SMI_LARB1_GREQ 0x334
 
-#define DISP_REG_CONFIG_MMSYS_CG_CON0_MT6993 0xA60
-#define DISP_REG_CONFIG_MMSYS_CG_CON1_MT6993 0xA6C
+#define MT6993_DISP_REG_CONFIG_MMSYS_CG_CON0 0xA60
+#define MT6993_DISP_REG_CONFIG_MMSYS_CG_CON1 0xA6C
 
 #define MT6993_DISP_REG_CONFIG_DL_VALID_0 0xA38
 #define MT6993_DISP_REG_CONFIG_DL_VALID_1 0xA3C
@@ -2480,8 +2480,8 @@
 #define MT6993_DISP_REG_CONFIG_SMI_LARB0_GREQ 0x8DC
 #define MT6993_DISP_REG_CONFIG_SMI_LARB1_GREQ 0x8E0
 
-#define DISP_REG_CONFIG_MMSYS_CG_CON0_MT6993 0xA64
-#define DISP_REG_CONFIG_MMSYS_CG_CON1_MT6993 0xA70
+#define MT6993_DISP1_REG_CONFIG_MMSYS_CG_CON0 0xA64
+#define MT6993_DISP1_REG_CONFIG_MMSYS_CG_CON1 0xA70
 
 #define MT6993_DISP1_REG_CONFIG_DL_VALID_0 0xA3C
 #define MT6993_DISP1_REG_CONFIG_DL_VALID_1 0xA40
@@ -9415,7 +9415,7 @@ const struct mtk_disp_ddp_data mt6768_ddp_driver_data = {
 const struct mtk_disp_ddp_data mt6761_ddp_driver_data = {
 	.mutex_mod = mt6761_mutex_mod,
 	.mutex_sof = mt6761_mutex_sof,
-	.mutex_mod_reg = MT6761_DISP_MUTEX0_MOD0,
+	.mutex_mod_reg = {MT6761_DISP_MUTEX0_MOD0},
 	.mutex_sof_reg = MT6761_DISP_MUTEX0_SOF,
 	.disp_mutex_total = DISP_MUTEX_TOTAL,
 };
@@ -9423,7 +9423,7 @@ const struct mtk_disp_ddp_data mt6761_ddp_driver_data = {
 const struct mtk_disp_ddp_data mt6765_ddp_driver_data = {
 	.mutex_mod = mt6765_mutex_mod,
 	.mutex_sof = mt6765_mutex_sof,
-	.mutex_mod_reg = MT6765_DISP_MUTEX0_MOD0,
+	.mutex_mod_reg = {MT6765_DISP_MUTEX0_MOD0},
 	.mutex_sof_reg = MT6765_DISP_MUTEX0_SOF,
 	.disp_mutex_total = DISP_MUTEX_TOTAL,
 };
@@ -9576,7 +9576,7 @@ static const struct mtk_disp_ddp_data mt6877_ddp_driver_data = {
 static const struct mtk_disp_ddp_data mt6781_ddp_driver_data = {
 	.mutex_mod = mt6781_mutex_mod,
 	.mutex_sof = mt6781_mutex_sof,
-	.mutex_mod_reg = MT6781_DISP_MUTEX0_MOD0,
+	.mutex_mod_reg = {MT6781_DISP_MUTEX0_MOD0},
 	.mutex_sof_reg = MT6781_DISP_MUTEX0_SOF,
 	.disp_mutex_total = DISP_MUTEX_TOTAL,
 };
@@ -14630,22 +14630,22 @@ static char *ddp_signal_0_mt6781(int bit)
 	}
 }
 
-static char *ddp_signal_1_mt6781(int bit)
-{
-	switch (bit) {
-	case 0:
-		return
-			"THP_LMT_DSI0_TO_DSI0";
-	case 1:
-		return
-			"DISP_DSC_WRAP0_MOUT_OUT0_TO_DISP_WDMA0_SEL_IN4";
-	case 2:
-		return
-			"DISP_DSC_WRAP0_MOUT_OUT1_TO_DSI0_SEL_IN2";
-	default:
-		return NULL;
-	}
-}
+//static char *ddp_signal_1_mt6781(int bit)
+//{
+//	switch (bit) {
+//	case 0:
+//		return
+//			"THP_LMT_DSI0_TO_DSI0";
+//	case 1:
+//		return
+//			"DISP_DSC_WRAP0_MOUT_OUT0_TO_DISP_WDMA0_SEL_IN4";
+//	case 2:
+//		return
+//			"DISP_DSC_WRAP0_MOUT_OUT1_TO_DSI0_SEL_IN2";
+//	default:
+//		return NULL;
+//	}
+//}
 
 static char *ddp_signal_1_mt6879(int bit)
 {
@@ -27533,6 +27533,7 @@ static int mtk_ddp_disp0_disp_mdp_rsz0_mout_sel_MT6993(enum mtk_ddp_comp_id cur,
 	case DDP_COMPONENT_PQ0_OUT_CB2:
 	case DDP_COMPONENT_SYS_B_PQ0_OUT_CB2:
 		value = MT6993_DISP_MDP_RSZ0_TO_PQ_OUT_CB_in2;
+		break;
 	default:
 		value = -1;
 		return value;
@@ -36835,7 +36836,6 @@ void mtk_disp_mutex_remove_comp(struct mtk_disp_mutex *mutex,
 	unsigned int reg, reg1;
 	void __iomem *reg_addr;
 	void __iomem *reg_addr1 = NULL;
-	unsigned int mmsys_id = 0;
 
 	if (&ddp->mutex[mutex->id] != mutex)
 		DDPAEE("%s:%d, invalid mutex:(%p,%p) id:%d\n",
@@ -42137,7 +42137,7 @@ void mmsys_config_dump_analysis_mt6991(void __iomem *config_regs, int sys_id)
 		}
 	}
 
-	reg = readl_relaxed(config_regs + DISP_REG_CONFIG_MMSYS_CG_CON1_MT6989);
+	reg = readl_relaxed(config_regs + DISP_REG_CONFIG_MMSYS_CG_CON1_MT6991);
 	for (bit = 0; bit < 32; bit++) {
 		if ((reg & (1 << bit)) == 0) {
 			name = ddp_clock_mt6991(1, bit, sys_id);
@@ -42467,7 +42467,7 @@ void mmsys_config_dump_analysis_mt6993(void __iomem *config_regs, int sys_id)
 			readl_relaxed(config_regs + MT6993_DISP_REG_CONFIG_DL_READY_3);
 	}
 
-	reg = readl_relaxed(config_regs + DISP_REG_CONFIG_MMSYS_CG_CON0_MT6993);
+	reg = readl_relaxed(config_regs + MT6993_DISP_REG_CONFIG_MMSYS_CG_CON0);
 	for (bit = 0; bit < 32; bit++) {
 		if ((reg & (1 << bit)) == 0) {
 			name = ddp_clock_mt6993(0, bit, sys_id);
@@ -42477,7 +42477,7 @@ void mmsys_config_dump_analysis_mt6993(void __iomem *config_regs, int sys_id)
 		}
 	}
 
-	reg = readl_relaxed(config_regs + DISP_REG_CONFIG_MMSYS_CG_CON1_MT6989);
+	reg = readl_relaxed(config_regs + MT6993_DISP_REG_CONFIG_MMSYS_CG_CON1);
 	for (bit = 0; bit < 32; bit++) {
 		if ((reg & (1 << bit)) == 0) {
 			name = ddp_clock_mt6993(1, bit, sys_id);

@@ -519,7 +519,6 @@ int mtk_dbgtp_dump(struct mtk_ddp_comp *comp)
 void mtk_dbgtp_all_regs_dump(struct mtk_drm_private *priv)
 {
 	void __iomem *regs = NULL;
-	int i = 0;
 
 	mtk_dbgtp_dump(dbgtp_comp);
 	DDPDUMP(">>>>>>>>>>>>>>>> dispsys   <<<<<<<<<<<<<<<<\n");
@@ -1260,7 +1259,6 @@ void mtk_dbgtp_dispsys_config(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cm
 {
 	unsigned int value = 0;
 	unsigned int i = 0;
-	unsigned int j = 0;
 	bool dbgtp_dispsys_en = false;
 	bool dbgtp_dispsys_update = false;
 	resource_size_t config_regs_pa = 0;
@@ -1566,8 +1564,6 @@ void mtk_dbgtp_ovlsys_smi_mon_config(struct mtk_drm_crtc *mtk_crtc, struct cmdq_
 	unsigned int smi_mon_dump_sel = 0;
 	unsigned int smi_mon_portid = 0;
 	unsigned int smi_mon_cg_ctl = 0;
-	unsigned int mon_con_addr = 0;
-	unsigned int mon_sel_addr = 0;
 	unsigned int val = 0;
 	unsigned int mask = 0;
 
@@ -1816,8 +1812,6 @@ void mtk_dbgtp_mmlsys_smi_mon_config(struct cmdq_pkt *cmdq_handle, struct cmdq_b
 	unsigned int smi_mon_dump_sel = 0;
 	unsigned int smi_mon_portid = 0;
 	unsigned int smi_mon_cg_ctl = 0;
-	unsigned int mon_con_addr = 0;
-	unsigned int mon_sel_addr = 0;
 	unsigned int val = 0;
 	unsigned int mask = 0;
 
@@ -2373,10 +2367,10 @@ static void mtk_disp_dbgtp_remove(struct platform_device *pdev)
 	mtk_ddp_comp_pm_disable(&priv->ddp_comp);
 }
 
-static struct dbgtp_funcs dbgtp_functions = {
-	.dbgtp_mmlsys_config = mtk_dbgtp_mmlsys_config,
-	.dbgtp_mmlsys_config_dump = mtk_dbgtp_dump_mmlsys_regs,
-};
+//static struct dbgtp_funcs dbgtp_functions = {
+//	.dbgtp_mmlsys_config = mtk_dbgtp_mmlsys_config,
+//	.dbgtp_mmlsys_config_dump = mtk_dbgtp_dump_mmlsys_regs,
+//};
 
 static const struct mtk_disp_dbgtp_data mt6993_dbgtp_driver_data = {
 	.is_support_34bits = true,

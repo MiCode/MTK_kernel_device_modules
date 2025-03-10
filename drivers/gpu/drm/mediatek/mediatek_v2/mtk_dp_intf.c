@@ -1130,7 +1130,6 @@ static void mtk_dp_intf_config(struct mtk_ddp_comp *comp,
 	unsigned int rw_times = 0;
 	unsigned int vblank_time = 0, prefetch_time = 0, config_time = 0;
 	u32 val = 0, line_time = 0;
-	u32 dp_vfp_mutex = 0;
 
 	DPTXMSG("%s w %d, h, %d, clock %d, fps %d!\n",
 			__func__, cfg->w, cfg->h, cfg->clock, cfg->vrefresh);

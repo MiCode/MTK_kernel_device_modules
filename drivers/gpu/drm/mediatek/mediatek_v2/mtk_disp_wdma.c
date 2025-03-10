@@ -631,7 +631,6 @@ static void wdma_aid_sel_manual_mt6991(struct mtk_ddp_comp *comp, struct cmdq_pk
 static void wdma_aid_sel_manual_mt6993(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
 	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
-	struct mtk_disp_wdma *wdma = comp_to_wdma(comp);
 	resource_size_t mmsys_reg = priv->side_config_regs_pa;
 
 	switch (comp->id) {
@@ -669,7 +668,6 @@ static int mtk_wdma_store_sec_state(struct mtk_disp_wdma *wdma, int state)
 
 static void wdma_sec_set_larb(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle, bool sec)
 {
-	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
 	struct mtk_disp_wdma *wdma = comp_to_wdma(comp);
 	resource_size_t larb_ctl_dummy = wdma->data->check_wdma_sec_reg(comp);
 
@@ -719,7 +717,7 @@ static void wdma_sec_set_mt6991(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 	struct mtk_disp_wdma *wdma = comp_to_wdma(comp);
 	resource_size_t mmsys_reg = priv->ovlsys1_regs_pa;
 	unsigned int aid_sel_offset = wdma->data->aid_sel(comp);
-	u32 value, mask;
+	u32 value = 0, mask = 0;
 
 	if (!aid_sel_offset)
 		return;
@@ -743,7 +741,6 @@ static void wdma_sec_set_mt6993(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 static void wdma_aid_config_mt6989(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle, bool sec)
 {
 	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
-	struct mtk_disp_wdma *wdma = comp_to_wdma(comp);
 	resource_size_t mmsys_reg = priv->side_config_regs_pa;
 
 	mtk_ddp_write(comp, sec ? 0 : 0x1, WDMA_SECURITY_DISABLE, handle);
@@ -759,7 +756,6 @@ static void wdma_aid_config_mt6989(struct mtk_ddp_comp *comp, struct cmdq_pkt *h
 static void wdma_aid_config_mt6991(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle, bool sec)
 {
 	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
-	struct mtk_disp_wdma *wdma = comp_to_wdma(comp);
 	resource_size_t mmsys_reg = priv->side_config_regs_pa;
 
 	switch (comp->id) {
@@ -792,7 +788,6 @@ static void wdma_aid_config_mt6991(struct mtk_ddp_comp *comp, struct cmdq_pkt *h
 static void wdma_aid_config_mt6993(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle, bool sec)
 {
 	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
-	struct mtk_disp_wdma *wdma = comp_to_wdma(comp);
 	resource_size_t mmsys_reg = priv->side_config_regs_pa;
 
 	switch (comp->id) {
@@ -849,10 +844,6 @@ static void mtk_wdma_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 	const struct mtk_disp_wdma_data *data = wdma->data;
 	unsigned int inten;
 	bool en = 1;
-	unsigned int aid_sel_offset = 0;
-	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
-	resource_size_t mmsys_reg = priv->config_regs_pa;
-	int crtc_idx = drm_crtc_index(&comp->mtk_crtc->base);
 
 	if (wdma->info_data->is_support_ufbc) {
 		inten = REG_FLD_VAL(INTEN_FLD_FME_CPL_INTEN, 1);
@@ -1444,12 +1435,7 @@ static int wdma_config_yuv420(struct mtk_ddp_comp *comp,
 	/* unsigned int v_size = 0; */
 	unsigned int stride = dstPitch;
 	int has_v = 1;
-	unsigned int aid_sel_offset = 0;
-	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
-	resource_size_t mmsys_reg = priv->config_regs_pa;
 	struct mtk_disp_wdma *wdma = comp_to_wdma(comp);
-	resource_size_t larb_ctl_dummy = 0;
-	unsigned int value = 0, mask = 0;
 
 	if (!wdma || !wdma->data) {
 		DDPPR_ERR("Invalid address, %s,%d\n", __FILE__, __LINE__);
@@ -1629,11 +1615,7 @@ static void mtk_wdma_config(struct mtk_ddp_comp *comp,
 	struct golden_setting_context *gsc;
 	u32 sec;
 	unsigned int frame_cnt = cfg_info->count + 1;
-	unsigned int aid_sel_offset = 0;
 	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
-	resource_size_t mmsys_reg = priv->config_regs_pa;
-	resource_size_t larb_ctl_dummy = 0;
-	unsigned int value = 0, mask = 0;
 
 	if (crtc_idx >= MAX_CRTC) {
 		DDPPR_ERR("%s, invalid crtc:%u\n", __func__, crtc_idx);
@@ -1794,9 +1776,7 @@ static void mtk_wdma_addon_config(struct mtk_ddp_comp *comp,
 	int hact, vtotal, vact, vrefresh, bpp;
 	bool is_secure;
 	struct golden_setting_context *gsc;
-	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
-	resource_size_t mmsys_reg = priv->config_regs_pa;
 
 	comp->fb = addon_config->addon_wdma_config.fb;
 	if (!comp->fb) {
@@ -2550,7 +2530,6 @@ static int mtk_disp_wdma_bind(struct device *dev, struct device *master,
 	struct mtk_drm_private *private = drm_dev->dev_private;
 	struct mtk_ddp_comp *comp = &priv->ddp_comp;
 	int ret;
-	char buf[64];
 
 	ret = mtk_ddp_comp_register(drm_dev, &priv->ddp_comp);
 	if (ret < 0) {

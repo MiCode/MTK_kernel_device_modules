@@ -735,7 +735,6 @@ void mhal_DPTx_PG_HorizontalRamping(struct mtk_dp *mtk_dp, BYTE BGR,
 {
 	DWORD Ramp = 0x3FFF;
 
-	ColorDepth = 0x0000;
 
 	msWriteByteMask(mtk_dp, REG_3038_DP_ENCODER0_P0 + 1, BIT(3), BIT(3));
 	msWriteByteMask(mtk_dp, REG_31B0_DP_ENCODER0_P0, BIT(5), MASKBIT(6:4));
@@ -1831,14 +1830,14 @@ UINT8 mhal_DPTx_AuxRead_Bytes(struct mtk_dp *mtk_dp, BYTE ubCmd,
 	unsigned int WaitReplyCount = AuxWaitReplyLpCntNum;
 	u32 aux_state = 0;
 
-	if (mtk_dp->fake_comeplete_irq && (ubCmd == AUX_CMD_NATIVE_R))
+	if (mtk_dp->fake_comeplete_irq && (ubCmd == AUX_CMD_NATIVE_R)) {
 		if (mtk_dp->cfg_ver == 2)
 			msWrite4ByteMask(mtk_dp, REG_36F4_AUX_TX_P0,
 				1<<IDLE_TO_PRECHARGE_DATA_ONE_EN_AUX_TX_P0_FLDMASK_POS,
 				IDLE_TO_PRECHARGE_DATA_ONE_EN_AUX_TX_P0_FLDMASK);
 		else
 			msWriteByteMask(mtk_dp, REG_3614_AUX_TX_P0, 0x18, MASKBIT(6 : 0));
-
+	}
 	msWriteByte(mtk_dp, REG_3640_AUX_TX_P0, 0x7F);
 	udelay(AUX_WRITE_READ_WAIT_TIME);
 
@@ -2641,7 +2640,6 @@ void mhal_DPTx_hw_phy_set_param(struct mtk_dp *mtk_dp, BYTE MAX_LANECOUNT)
 	UINT32 usb_info;
 	UINT32 usb_info_bit19;
 	UINT32 usb_info_bit18;
-	void *base;
 
 	//phy threshold refine
 	msPhyWrite4ByteMask(mtk_dp, 0x8, 0x00 , BIT(0)|BIT(1));
@@ -2717,8 +2715,6 @@ void mhal_DPTx_PHYSetting(struct mtk_dp *mtk_dp, BYTE MAX_LANECOUNT)
 		mhal_DPTx_hw_phy_set_param(mtk_dp, MAX_LANECOUNT);
 		mhal_DPTx_PhyDPowerOn(mtk_dp);
 	} else {
-		uint32_t value = 0;
-		uint8_t mask = 0x3F;
 
 		msWrite4ByteMask(mtk_dp,
 			DP_TX_TOP_PWR_STATE,
@@ -2817,7 +2813,7 @@ void mhal_DPTx_SSCOnOffSetting(struct mtk_dp *mtk_dp, bool bENABLE)
 void mhal_DPTx_SafeModeSetting(struct mtk_dp *mtk_dp)
 {
 	unsigned long long TU_value_fixed;
-	unsigned long long M_value;
+	unsigned long long M_value = 0;
 	unsigned int shift = 1;
 	unsigned int rgb_num = 24;
 	unsigned int fixed_point;

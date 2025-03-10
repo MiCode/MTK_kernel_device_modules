@@ -6,6 +6,8 @@
 #ifndef _MTK_DRM_HELPER_H_
 #define _MTK_DRM_HELPER_H_
 
+#include <linux/device.h>
+
 enum DISP_HELPER_STAGE {
 	DISP_HELPER_STAGE_NORMAL = 0,
 	DISP_HELPER_STAGE_BRING_UP

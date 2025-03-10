@@ -1093,8 +1093,6 @@ static void disp_tdshp_bypass(struct mtk_ddp_comp *comp, int bypass,
 static int disp_tdshp_user_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	unsigned int cmd, void *data)
 {
-	struct mtk_disp_tdshp *tdshp = comp_to_tdshp(comp);
-
 	DDPINFO("%s, cmd: %d\n", __func__, cmd);
 	switch (cmd) {
 	default:
@@ -1136,8 +1134,6 @@ static void disp_tdshp_init_primary_data(struct mtk_ddp_comp *comp)
 	struct mtk_disp_tdshp *tdshp_data = comp_to_tdshp(comp);
 	struct mtk_disp_tdshp *companion_data = comp_to_tdshp(tdshp_data->companion);
 	struct mtk_disp_tdshp_primary *primary_data = tdshp_data->primary_data;
-	struct mtk_ddp_comp *aal_comp;
-	struct mtk_disp_aal *aal_data = NULL;
 
 	if (tdshp_data->is_right_pipe) {
 		kfree(tdshp_data->primary_data);

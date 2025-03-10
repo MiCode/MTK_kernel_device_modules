@@ -385,8 +385,6 @@ static void disp_aal_set_interrupt(struct mtk_ddp_comp *comp,
 	int enable, struct cmdq_pkt *handle)
 {
 	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
-	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
-	struct pq_common_data *pq_data = mtk_crtc->pq_data;
 	int bypass;
 
 	if (!aal_data->primary_data->aal_fo->mtk_aal_support) {
@@ -1080,7 +1078,6 @@ static int disp_aal_update_dre3_sram(struct mtk_ddp_comp *comp,
 
 static void disp_aal_write_dre3_curve_full(struct mtk_ddp_comp *comp)
 {
-	void __iomem *dre3_va = disp_aal_dre3_va(comp);
 	uint32_t reg_value = 0, reg_mask = 0;
 	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
 	struct mtk_ddp_comp *dmdp_aal = aal_data->comp_dmdp_aal;
@@ -2096,7 +2093,6 @@ static int disp_aal_set_clarity_reg(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, struct DISP_CLARITY_REG *clarity_regs)
 {
 	int ret = 0;
-	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
 	phys_addr_t dre3_pa = disp_aal_dre3_pa(comp);
 
 	if (clarity_regs == NULL)
@@ -2360,7 +2356,6 @@ int disp_aal_act_set_ess20_spect_param(struct mtk_ddp_comp *comp, void *data)
 int disp_aal_act_init_dre30(struct mtk_ddp_comp *comp, void *data)
 {
 	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
-	struct DISP_DRE30_INIT *init_dre3;
 
 	if (aal_data->primary_data->aal_fo->mtk_dre30_support) {
 		AALFLOW_LOG("\n");

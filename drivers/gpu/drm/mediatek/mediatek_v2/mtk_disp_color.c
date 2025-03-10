@@ -1259,8 +1259,6 @@ static int disp_color_frame_config(struct mtk_ddp_comp *comp,
 static int disp_color_user_cmd(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, unsigned int cmd, void *data)
 {
-	struct mtk_disp_color *color = comp_to_color(comp);
-
 	DDPINFO("%s: cmd: %d\n", __func__, cmd);
 	switch (cmd) {
 	case PQ_SET_WINDOW:

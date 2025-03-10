@@ -81,7 +81,7 @@ static void disp_ccorr_multiply_3x3(struct mtk_ddp_comp *comp,
 	struct mtk_disp_ccorr_primary *primary_data = ccorr_data->primary_data;
 	int temp_Result;
 	int signedCcorrCoef[3][3];
-	int i, j, k;
+	int i, j;
 
 	for (i = 0; i < 3; i += 1) {
 		DDPINFO("inputCcorrCoef[%d][0-2] = {%d, %d, %d}\n", i,

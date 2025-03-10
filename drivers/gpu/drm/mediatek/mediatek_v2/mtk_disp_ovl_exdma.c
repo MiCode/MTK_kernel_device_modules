@@ -717,7 +717,6 @@ static void mtk_ovl_update_hrt_usage(struct mtk_drm_crtc *mtk_crtc,
 	struct mtk_disp_ovl_exdma *ovl = comp_to_ovl_exdma(comp);
 	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
 	struct drm_plane_state *state = &plane_state->base;
-	unsigned int ext_lye_id = plane_state->comp_state.ext_lye_id;
 	struct drm_framebuffer *fb = state->fb;
 	unsigned int fmt = 0;
 	unsigned int phy_id = 0;
@@ -810,7 +809,6 @@ static void mtk_ovl_exdma_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 	struct mtk_drm_crtc *mtk_crtc;
 	struct mtk_drm_private *priv;
 	struct mtk_crtc_state *crtc_state = NULL;
-	unsigned int cmp_id = DDP_COMPONENT_ID_MAX;
 
 	mtk_crtc = comp->mtk_crtc;
 	crtc = &mtk_crtc->base;
@@ -1983,7 +1981,6 @@ static void write_ext_layer_addr_cmdq(struct mtk_ddp_comp *comp,
 				      dma_addr_t addr)
 {
 	struct mtk_disp_ovl_exdma *exdma = comp_to_ovl_exdma(comp);
-	const u16 *regs = exdma->data->regs;
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + OVL_EXDMA_ELX_ADDR(exdma, id),
@@ -2302,7 +2299,6 @@ static void mtk_ovl_exdma_stash_config(struct mtk_ddp_comp *comp, struct cmdq_pk
 	const u16 *regs = exdma->data->regs;
 	const u32 *reg_fld = exdma->data->reg_fld;
 	unsigned int value = 0, mask = 0;
-	struct mtk_crtc_state *mtk_crtc_state;
 	unsigned int decompr_en = 0;
 	unsigned int pref_line_lead = 0;
 	unsigned int hdr_pref_l_lead = 0;
@@ -3354,7 +3350,6 @@ mtk_ovl_exdma_addon_rsz_config(struct mtk_ddp_comp *comp, enum mtk_ddp_comp_id p
 	struct mtk_drm_crtc *mtk_crtc;
 	struct drm_crtc *crtc;
 	struct mtk_crtc_state *crtc_state = NULL;
-	unsigned int cmp_id = DDP_COMPONENT_ID_MAX;
 	struct mtk_disp_ovl_exdma *exdma = comp_to_ovl_exdma(comp);
 	const u16 *regs = exdma->data->regs;
 
@@ -3407,7 +3402,6 @@ static void mtk_ovl_exdma_addon_config(struct mtk_ddp_comp *comp,
 	struct mtk_drm_crtc *mtk_crtc;
 	struct drm_crtc *crtc;
 	struct mtk_crtc_state *crtc_state = NULL;
-	unsigned int cmp_id = DDP_COMPONENT_ID_MAX;
 	struct mtk_disp_ovl_exdma *exdma = comp_to_ovl_exdma(comp);
 	const u16 *regs = exdma->data->regs;
 	const u32 *reg_fld = exdma->data->reg_fld;
@@ -3542,7 +3536,6 @@ static void mtk_ovl_exdma_config_begin(struct mtk_ddp_comp *comp, struct cmdq_pk
 	struct drm_crtc *crtc = &mtk_crtc->base;
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	struct mtk_crtc_state *crtc_state = NULL;
-	unsigned int cmp_id = DDP_COMPONENT_ID_MAX;
 
 
 	if (!comp->mtk_crtc)
@@ -3861,7 +3854,6 @@ static int mtk_ovl_replace_bootup_mva(struct mtk_ddp_comp *comp,
 	int ret = 0;
 	unsigned int aid_sel_offset = 0;
 	resource_size_t mmsys_reg = 0;
-	dma_addr_t addr_offset = 0;
 
 	if (unlikely(!(comp && comp->mtk_crtc))) {
 		DDPPR_ERR("%s invalid comp or mtk_crtc\n", __func__);
@@ -4617,7 +4609,6 @@ void mtk_ovl_exdma_dump_golden_setting(struct mtk_ddp_comp *comp)
 {
 	void __iomem *baddr = comp->regs;
 	unsigned long rg0 = 0, rg1 = 0, rg2 = 0, rg3 = 0, rg4 = 0;
-	int i = 0;
 	unsigned int value;
 	struct mtk_disp_ovl_exdma *exdma = comp_to_ovl_exdma(comp);
 	const u16 *regs = exdma->data->regs;
@@ -4774,8 +4765,6 @@ void mtk_ovl_exdma_dump_golden_setting(struct mtk_ddp_comp *comp)
 
 int mtk_ovl_exdma_dump(struct mtk_ddp_comp *comp)
 {
-	struct mtk_disp_ovl_exdma *exdma = comp_to_ovl_exdma(comp);
-	const u16 *regs = exdma->data->regs;
 	void __iomem *baddr = comp->regs;
 	int i;
 	int offset;
@@ -4926,8 +4915,6 @@ static void ovl_dump_layer_info(struct mtk_ddp_comp *comp, int layer,
 
 	Lx_base = baddr;
 	if (is_ext_layer) {
-		int idx = layer + 1;
-
 		addr = read_ext_layer_addr(comp, layer);
 
 		con = readl(OVL_EXDMA_ELX_CON(exdma, layer) + Lx_base);
@@ -5104,9 +5091,6 @@ static void
 mtk_ovl_exdma_config_trigger(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkt,
 		       enum mtk_ddp_comp_trigger_flag flag)
 {
-	struct mtk_disp_ovl_exdma *exdma = comp_to_ovl_exdma(comp);
-	const u16 *regs = exdma->data->regs;
-
 	switch (flag) {
 	case MTK_TRIG_FLAG_PRE_TRIGGER:
 	{

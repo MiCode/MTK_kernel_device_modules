@@ -148,7 +148,7 @@ void drm_trace_tag_name_begin(const char *name)
 	}
 }
 
-void drm_trace_tag_name_end(const char */*name*/)
+void drm_trace_tag_name_end(const char *name)
 {
 	if (g_trace_log) {
 		mtk_drm_print_trace("E|%d\n", DRM_TRACE_ID);

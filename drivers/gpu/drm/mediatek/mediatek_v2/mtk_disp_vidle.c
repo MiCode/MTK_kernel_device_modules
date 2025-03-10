@@ -113,34 +113,34 @@ void mtk_vidle_flag_init(void *_crtc)
 	}
 }
 
-static unsigned int mtk_vidle_check(unsigned int vidle_item)
-{
-	return mtk_disp_vidle_flag.vidle_en & vidle_item;
-}
+//static unsigned int mtk_vidle_check(unsigned int vidle_item)
+//{
+//	return mtk_disp_vidle_flag.vidle_en & vidle_item;
+//}
 
-static void mtk_vidle_dt_enable(unsigned int en)
-{
-	if (disp_dpc_driver.dpc_group_enable == NULL)
-		return;
+//static void mtk_vidle_dt_enable(unsigned int en)
+//{
+//	if (disp_dpc_driver.dpc_group_enable == NULL)
+//		return;
 
-	disp_dpc_driver.dpc_group_enable(DPC_DISP_VIDLE_MTCMOS,
-		(en && mtk_vidle_check(DISP_VIDLE_MTCMOS_DT_EN)));
-	disp_dpc_driver.dpc_group_enable(DPC_DISP_VIDLE_MTCMOS_DISP1,
-		(en && mtk_vidle_check(DISP_VIDLE_MTCMOS_DT_EN)));
+//	disp_dpc_driver.dpc_group_enable(DPC_DISP_VIDLE_MTCMOS,
+//		(en && mtk_vidle_check(DISP_VIDLE_MTCMOS_DT_EN)));
+//	disp_dpc_driver.dpc_group_enable(DPC_DISP_VIDLE_MTCMOS_DISP1,
+//		(en && mtk_vidle_check(DISP_VIDLE_MTCMOS_DT_EN)));
 
-	disp_dpc_driver.dpc_group_enable(DPC_DISP_VIDLE_MMINFRA_OFF,
-		(en && mtk_vidle_check(DISP_VIDLE_MMINFRA_DT_EN)));
-	disp_dpc_driver.dpc_group_enable(DPC_DISP_VIDLE_INFRA_OFF,
-		(en && mtk_vidle_check(DISP_VIDLE_MMINFRA_DT_EN)));
+//	disp_dpc_driver.dpc_group_enable(DPC_DISP_VIDLE_MMINFRA_OFF,
+//		(en && mtk_vidle_check(DISP_VIDLE_MMINFRA_DT_EN)));
+//	disp_dpc_driver.dpc_group_enable(DPC_DISP_VIDLE_INFRA_OFF,
+//		(en && mtk_vidle_check(DISP_VIDLE_MMINFRA_DT_EN)));
 
-	disp_dpc_driver.dpc_group_enable(DPC_DISP_VIDLE_VDISP_DVFS,
-		(en && mtk_vidle_check(DISP_VIDLE_DVFS_DT_EN)));
+//	disp_dpc_driver.dpc_group_enable(DPC_DISP_VIDLE_VDISP_DVFS,
+//		(en && mtk_vidle_check(DISP_VIDLE_DVFS_DT_EN)));
 
-	disp_dpc_driver.dpc_group_enable(DPC_DISP_VIDLE_HRT_BW,
-		(en && mtk_vidle_check(DISP_VIDLE_QOS_DT_EN)));
-	disp_dpc_driver.dpc_group_enable(DPC_DISP_VIDLE_SRT_BW,
-		(en && mtk_vidle_check(DISP_VIDLE_QOS_DT_EN)));
-}
+//	disp_dpc_driver.dpc_group_enable(DPC_DISP_VIDLE_HRT_BW,
+//		(en && mtk_vidle_check(DISP_VIDLE_QOS_DT_EN)));
+//	disp_dpc_driver.dpc_group_enable(DPC_DISP_VIDLE_SRT_BW,
+//		(en && mtk_vidle_check(DISP_VIDLE_QOS_DT_EN)));
+//}
 
 void mtk_vidle_clear_wfe_event(enum mtk_vidle_voter_user user, struct cmdq_pkt *pkt, int event)
 {

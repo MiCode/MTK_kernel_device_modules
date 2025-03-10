@@ -91,7 +91,6 @@ void mtk_vdisp_ao_dump(struct mtk_ddp_comp *comp)
 	void __iomem *baddr = comp->regs;
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 	struct mtk_drm_private *priv = NULL;
-	int i = 0;
 
 	if (!baddr) {
 		DDPDUMP("%s, %s is NULL!\n", __func__, mtk_dump_comp_str(comp));
@@ -387,7 +386,7 @@ void mtk_vdisp_ao_irq_config_MT6993(struct drm_device *drm)
 		} else
 			SET_VAL_MASK(value, mask, g_priv->data->irq_cfg[i].value, CPU_INTSEL_BIT_MT6993_H);
 
-		DDPINFO("%s,%d:offset:0x%x,value:%d\n", __func__, i,
+		DDPINFO("%s,%d:offset:0x%x,value:%d,%d\n", __func__, i,
 			g_priv->data->irq_cfg[i].offset, g_priv->data->irq_cfg[i].value, value);
 
 		writel(value, vdisp_ao_base + g_priv->data->irq_cfg[i].offset);
@@ -445,21 +444,21 @@ void mtk_vdisp_ao_qos_config_MT6993(struct drm_device *drm)
 	//cwb need hrt_write
 	value = hrt_r_hrt_w_value;
 	writel(value, vdisp_ao_base + DISP_REG_VDISP_AO_MMQOS_SUBCOM0_MT6993);
-	DDPINFO("set subcom0 hrt_r, hrt_w, value=0x%llx\n", value);
+	DDPINFO("set subcom0 hrt_r, hrt_w, value=0x%x\n", value);
 
 	//only when od on can chg srt_write to hrt_write
 	value = hrt_r_srt_w_value;
 	writel(value, vdisp_ao_base + DISP_REG_VDISP_AO_MMQOS_SUBCOM1_MT6993);
-	DDPINFO("set subcom1 hrt_r, srt_w, value=0x%llx\n", value);
+	DDPINFO("set subcom1 hrt_r, srt_w, value=0x%x\n", value);
 
 	value = hrt_r_srt_w_value;
 	writel(value, vdisp_ao_base + DISP_REG_VDISP_AO_MMQOS_SUBCOM2_MT6993);
-	DDPINFO("set subcom2 hrt_r, srt_w, value=0x%llx\n", value);
+	DDPINFO("set subcom2 hrt_r, srt_w, value=0x%x\n", value);
 
 	//cwb need hrt_write
 	value = hrt_r_hrt_w_value;
 	writel(value, vdisp_ao_base + DISP_REG_VDISP_AO_MMQOS_SUBCOM3_MT6993);
-	DDPINFO("set subcom3 hrt_r, hrt_w, value=0x%llx\n", value);
+	DDPINFO("set subcom3 hrt_r, hrt_w, value=0x%x\n", value);
 }
 
 static int mtk_vdisp_ao_probe(struct platform_device *pdev)

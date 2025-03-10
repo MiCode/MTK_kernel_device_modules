@@ -184,7 +184,6 @@ static void ovl_dump_bld_layer_info(struct mtk_ddp_comp *comp, int layer)
 	/*  enum UNIFIED_COLOR_FMT fmt; */
 	void __iomem *baddr = comp->regs;
 	void __iomem *Lx_base;
-	static const char * const pixel_src[] = { "mem", "color", "ufod", "pq" };
 	struct mtk_disp_ovl_blender *bld = comp_to_ovl_blender(comp);
 	const u16 *regs = bld->data->regs;
 	const u32 *reg_fld = bld->data->reg_fld;
@@ -437,7 +436,6 @@ void bld_enable_mt6993(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle, bool 
 static void mtk_ovl_blender_config_begin(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle, const u32 idx)
 {
 	struct mtk_disp_ovl_blender *bld = comp_to_ovl_blender(comp);
-	const u16 *regs = bld->data->regs;
 
 	DDPINFO("%s,%s\n", __func__, mtk_dump_comp_str_id(comp->id));
 
@@ -493,7 +491,6 @@ static void mtk_ovl_blender_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *ha
 {
 	struct mtk_disp_ovl_blender *bld = comp_to_ovl_blender(comp);
 	const u16 *regs = bld->data->regs;
-	const u32 *reg_fld = bld->data->reg_fld;
 
 	DDPDBG("%s+ %s\n", __func__, mtk_dump_comp_str(comp));
 

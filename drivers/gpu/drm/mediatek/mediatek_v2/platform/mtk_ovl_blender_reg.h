@@ -6,7 +6,8 @@
 #ifndef __MTK_DISP_OVL_BLENDER_REG_H__
 #define __MTK_DISP_OVL_BLENDER_REG_H__
 
-#define REG_NOT_SUPPORT (0xFFF)
+#include "mtk_ovl_exdma_reg.h"
+//#define REG_NOT_SUPPORT (0xFFF)
 
 enum disp_ovl_bld_register{
 	OVL_BLD_STA,

@@ -555,7 +555,7 @@ int DAL_Printf(const char *fmt, ...)
 #endif
 
 	DAL_UNLOCK();
-err_DAL_Print:
+
 	return 0;
 }
 EXPORT_SYMBOL(DAL_Printf);
