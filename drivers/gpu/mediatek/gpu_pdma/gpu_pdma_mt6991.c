@@ -387,12 +387,18 @@ static int reset_ccmd_hw(struct pdma_device *pdma_dev,
 static int ccmd_context_init(
 	struct ccmd_context *ccmd_ctx, u32 kctx_id, u32 cid, u32 mode)
 {
-	struct pdma_device *pdma_dev = ccmd_ctx->pdma_dev;
+	struct pdma_device *pdma_dev;
 	gfp_t gfp = (GFP_HIGHUSER | __GFP_ZERO);
 	dma_addr_t dma_addr;
 
 	if (!ccmd_ctx || cid == CCMD_UNSUPPORTED_CID || mode >= UNSUPPORTED_MODE) {
 		pr_info("NULL pointer or invalid CID (%u)(%u)", cid, mode);
+		return -EINVAL;
+	}
+
+	pdma_dev = ccmd_ctx->pdma_dev;
+	if (!pdma_dev) {
+		pr_info("Invalid pointer to pdma device\n");
 		return -EINVAL;
 	}
 
@@ -429,7 +435,7 @@ static int ccmd_context_init(
 #ifdef CCMD_DEBUG_MODE
 	ccmd_ctx->cid_reg_base = pdma_dev->reg_base;
 #else
-	ccmd_ctx->cid_reg_base = pdma_dev->reg_base + 0x10000 + (0x4000 * cid);
+	ccmd_ctx->cid_reg_base = pdma_dev->reg_base + 0x10000 + (0x4000ULL * cid);
 #endif
 	/* user gets available cid, so init ccmd_context */
 	list_add(&ccmd_ctx->entry, &pdma_dev->ctx_list);
@@ -460,8 +466,10 @@ static u32 getCCMDCid(struct pdma_device *pdma_dev, unsigned int mode)
 	u32 index;
 	u32 cid = CCMD_UNSUPPORTED_CID;
 
-	if (!pdma_dev)
+	if (!pdma_dev) {
 		pr_info("Invalid pointer to pdma device\n");
+		return cid;
+	}
 
 	lockdep_assert_held(&pdma_dev->pdma_device_lock);
 
@@ -492,8 +500,10 @@ static void releaseCCMDCid(struct pdma_device *pdma_dev, u32 cid, u32 mode)
 {
 	u32 cid_mask = 1 << cid;
 
-	if (!pdma_dev)
+	if (!pdma_dev) {
 		pr_info("Invalid pointer to pdma device\n");
+		return;
+	}
 
 	lockdep_assert_held(&pdma_dev->pdma_device_lock);
 
@@ -657,11 +667,12 @@ static long gpu_pdma_unlocked_ioctl(struct file *filp, unsigned int cmd,
 	struct pdma_hw_lock hw_lock;
 	struct pdma_rw_ptr rw_ptr;
 	struct ccmd_context *ccmd_ctx = filp->private_data;
-	struct pdma_device *pdma_dev = ccmd_ctx->pdma_dev;
+	struct pdma_device *pdma_dev;
 
 	if (!ccmd_ctx)
 		return -EBADF;
 
+	pdma_dev = ccmd_ctx->pdma_dev;
 	if (!pdma_dev)
 		return -ENODEV;
 
@@ -901,10 +912,12 @@ static ssize_t gpu_pdma_show(struct device *dev,
 	u32 used_pbha_cnt = 0;
 	struct pdma_device *pdma_dev = get_PDMA_Device();
 	struct list_head *entry, *tmp, *pbha_entry, *pbha_tmp;
-	u32 available_pbha_cnt = (1 << pdma_dev->extended_pbha_bits)-CCMD_RESERVED_PBHA_NUM;
+	u32 available_pbha_cnt;
 
 	if (!pdma_dev)
 		return -ENODEV;
+
+	available_pbha_cnt = (1 << pdma_dev->extended_pbha_bits)-CCMD_RESERVED_PBHA_NUM;
 
 	mutex_lock(&pdma_dev->pdma_device_lock);
 
