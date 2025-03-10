@@ -143,7 +143,6 @@ int mdla_ipi_recv(int type_0, int type_1, u64 *val)
 	if (wait_for_completion_interruptible_timeout(
 			&mdla_tx_rpm_dev.ack,
 			msecs_to_jiffies(10)) == 0) {
-		mutex_unlock(&mdla_ipi_mtx);
 		mdla_err("%s: timeout\n", __func__);
 		ret = -1;
 		goto out;
