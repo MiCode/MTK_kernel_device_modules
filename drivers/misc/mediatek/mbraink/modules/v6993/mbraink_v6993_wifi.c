@@ -500,7 +500,7 @@ void mbraink_v6993_get_wifi_wakeupinfo_data(int current_idx,
 	int loop = 0;
 	int cnt = 0;
 
-	memset(wakeupinfo_buffer, 0, sizeof(struct mbraink_wifi2mbr_rxtxperf_data));
+	memset(wakeupinfo_buffer, 0, sizeof(struct mbraink_wifi2mbr_wakeupinfo_data));
 
 	do {
 		ret = mbraink_bridge_wifi_get_data(MBR2WIFI_WIFI_WKUP_REASON,
