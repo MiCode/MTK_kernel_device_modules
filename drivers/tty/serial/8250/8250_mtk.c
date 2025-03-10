@@ -2710,35 +2710,44 @@ static int __maybe_unused mtk8250_runtime_suspend(struct device *dev)
 		dev_dbg(dev, "[%s]:data->line[%d], skip disable clock\n",
 			__func__, data->line);
 	} else {
-		atomic_dec(&data->uart_clk_count);
-		dev_dbg(dev, "[%s]:data->line[%d], uart_clk_count[%d]\n",
-			__func__, data->line, atomic_read(&data->uart_clk_count));
-		/* wait until UART in idle status */
-		while
-			(serial_in(up, MTK_UART_DEBUG0));
-		clk_disable_unprepare(data->bus_clk);
+		if (atomic_read(&data->uart_clk_count) == 0U) {
+			dev_dbg(dev, "%s clock count is 0\n", __func__);
+		} else {
+			atomic_dec(&data->uart_clk_count);
+			dev_dbg(dev, "[%s]:data->line[%d], uart_clk_count[%d]\n",
+				__func__, data->line, atomic_read(&data->uart_clk_count));
+			/* wait until UART in idle status */
+			while
+				(serial_in(up, MTK_UART_DEBUG0));
+
+			clk_disable_unprepare(data->bus_clk);
+		}
 	}
+
 	return 0;
 }
+
 
 static int __maybe_unused mtk8250_runtime_resume(struct device *dev)
 {
 	struct mtk8250_data *data = dev_get_drvdata(dev);
 	int err;
 
-	if (data->support_hub && (atomic_read(&data->uart_clk_count)) > 0) {
-		dev_dbg(dev, "[%s]:data->line[%d], skip disable clock\n",
-			__func__, data->line);
-		return 0;
-	}
-	err = clk_prepare_enable(data->bus_clk);
-	if (err) {
-		dev_dbg(dev, "Can't enable bus clock\n");
-		return err;
-	}
-	atomic_inc(&data->uart_clk_count);
-	dev_dbg(dev, "[%s]:data->line[%d], uart_clk_count[%d]\n",
+	if (atomic_read(&data->uart_clk_count) > 0U) {
+		if (data->support_hub)
+			dev_dbg(dev, "[%s]:data->line[%d], skip disable clock\n",
+				__func__, data->line);
+	} else {
+		err = clk_prepare_enable(data->bus_clk);
+		if (err) {
+			dev_dbg(dev, "Can't enable bus clock\n");
+			return err;
+		}
+		atomic_inc(&data->uart_clk_count);
+		dev_dbg(dev, "[%s]:data->line[%d], uart_clk_count[%d]\n",
 			__func__, data->line, atomic_read(&data->uart_clk_count));
+	}
+
 	return 0;
 }
 
@@ -2746,14 +2755,12 @@ static void
 mtk8250_do_pm(struct uart_port *port, unsigned int state, unsigned int old)
 {
 	unsigned char efr = 0;
-	int ret;
 	struct uart_8250_port *up = up_to_u8250p(port);
 
-	if (!state) {
-		ret = pm_runtime_get_sync(port->dev);
-		if (ret)
-			dev_dbg(port->dev, "8250 do PM get sync fail!");
-	}
+	if (!state)
+		if (!mtk8250_runtime_resume(port->dev))
+			pm_runtime_get_sync(port->dev);
+
 	serial8250_rpm_get(up);
 
 	if (up->capabilities & UART_CAP_SLEEP) {
@@ -2773,11 +2780,9 @@ mtk8250_do_pm(struct uart_port *port, unsigned int state, unsigned int old)
 
 	serial8250_rpm_put(up);
 
-	if (state) {
-		ret = pm_runtime_put_sync_suspend(port->dev);
-		if (ret)
-			dev_dbg(port->dev, "8250 do PM put sync fail!");
-	}
+	if (state)
+		if (!pm_runtime_put_sync_suspend(port->dev))
+			mtk8250_runtime_suspend(port->dev);
 }
 
 #ifndef CONFIG_FPGA_EARLY_PORTING
@@ -3008,6 +3013,11 @@ static int mtk8250_wakeup_probe_of(struct platform_device *pdev, struct uart_por
 		pr_info("Request wakeup_irq[%d] failed rc = %d!", data->wakeup_irq, ret);
 		return -1;
 	}
+
+	ret = enable_irq_wake(data->wakeup_irq);
+	if (ret)
+		pr_info("Enable wakeup_irq[%d] failed rc = %d!", data->wakeup_irq, ret);
+
 	return 0;
 }
 
