@@ -17,11 +17,16 @@
 #define PMIC_CURR_CLAMPING_BUF_SIZE     ((PMIC_CURR_CLAMPING_CNT_NUM * SPMI_MAX_SLAVE_ID) + 1)
 #define SPMI_MIN_SLAVE_ID               2
 
+#define SPMI_PMIC_DEBUG_RG_NUM          9
+#define SPMI_PMIC_DEBUG_RG_BUF_SIZE     ((SPMI_PMIC_DEBUG_RG_NUM * SPMI_MAX_SLAVE_ID) + 1)
+#define UCHAR_MAX                       255U
+
 extern void mtk_spmi_pmic_get_glitch_cnt(u16 *buf);
 extern void mtk_spmi_pmic_get_parity_err_cnt(u16 *buf);
 extern void mtk_spmi_pmic_get_pre_ot_cnt(u16 *buf);
 extern void mtk_spmi_pmic_get_pre_lvsys_cnt(u16 *buf);
 extern void mtk_spmi_pmic_get_current_clamping_cnt(u16 *buf);
+extern void mtk_spmi_pmic_get_debug_rg_info(u32 *buf);
 
 MODULE_AUTHOR("HS Chien <HS.Chien@mediatek.com>");
 MODULE_DESCRIPTION("Debug driver for MediaTek SPMI PMIC");

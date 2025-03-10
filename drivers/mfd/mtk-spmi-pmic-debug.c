@@ -56,6 +56,14 @@ struct pmic_curr_clamping_info {
 	unsigned int cnt_clr_mask;
 	unsigned int cnt_clr_shift;
 };
+
+struct spmi_pmic_debug_rg_info {
+	unsigned int enable;
+	unsigned int dbg_reg_addr[SPMI_PMIC_DEBUG_RG_NUM];
+	unsigned int dbg_reg_mask[SPMI_PMIC_DEBUG_RG_NUM];
+	unsigned int dbg_reg_shift[SPMI_PMIC_DEBUG_RG_NUM];
+};
+
 struct mtk_spmi_pmic_debug_data {
 	struct device *dev;
 	struct mutex lock;
@@ -76,6 +84,7 @@ struct mtk_spmi_pmic_debug_data {
 	struct pmic_pre_ot_info pre_ot_info;
 	struct pmic_pre_lvsys_info pre_lvsys_info;
 	struct pmic_curr_clamping_info curr_clamping_info;
+	struct spmi_pmic_debug_rg_info debug_rg_info;
 };
 
 static struct mtk_spmi_pmic_debug_data *mtk_spmi_pmic_debug[SPMI_MAX_SLAVE_ID];
@@ -407,7 +416,7 @@ void mtk_spmi_pmic_get_pre_ot_cnt(u16 *buf)
 		     i < PMIC_PRE_OT_BUF_SIZE; i += PMIC_PRE_OT_CNT_NUM) {
 			pr_info("\n%s SLVID(0x%x), pre_ot_cnt: ",
 				__func__, (i-1) / PMIC_PRE_OT_CNT_NUM);
-			for (j = i; j < j + PMIC_PRE_OT_CNT_NUM; j++)
+			for (j = i; j < i + PMIC_PRE_OT_CNT_NUM; j++)
 				pr_info("%d ", pre_ot_cnt[j]);
 		}
 	}
@@ -455,7 +464,7 @@ void mtk_spmi_pmic_get_pre_lvsys_cnt(u16 *buf)
 		     i < PMIC_PRE_LVSYS_BUF_SIZE; i += PMIC_PRE_LVSYS_CNT_NUM) {
 			pr_info("\n%s SLVID(0x%x), pre_lvsys_cnt: ",
 				__func__, (i-1) / PMIC_PRE_LVSYS_CNT_NUM);
-			for (j = i; j < j + PMIC_PRE_LVSYS_CNT_NUM; j++)
+			for (j = i; j < i + PMIC_PRE_LVSYS_CNT_NUM; j++)
 				pr_info("%d ", pre_lvsys_cnt[j]);
 		}
 	}
@@ -506,7 +515,7 @@ void mtk_spmi_pmic_get_current_clamping_cnt(u16 *buf)
 		     i < PMIC_CURR_CLAMPING_BUF_SIZE; i += PMIC_CURR_CLAMPING_CNT_NUM) {
 			pr_info("\n%s SLVID(0x%x), curr_clamping_cnt: ",
 				__func__, (i-1) / PMIC_CURR_CLAMPING_CNT_NUM);
-			for (j = i; j < j + PMIC_CURR_CLAMPING_CNT_NUM; j++)
+			for (j = i; j < i + PMIC_CURR_CLAMPING_CNT_NUM; j++)
 				pr_info("%d ", curr_clamping_cnt[j]);
 		}
 	}
@@ -514,11 +523,67 @@ void mtk_spmi_pmic_get_current_clamping_cnt(u16 *buf)
 }
 EXPORT_SYMBOL_GPL(mtk_spmi_pmic_get_current_clamping_cnt);
 
+void mtk_spmi_pmic_get_debug_rg_info(unsigned int *buf)
+{
+	struct regmap *regmap;
+	struct spmi_pmic_debug_rg_info info;
+	int ret = 0;
+	unsigned int i = 0, j = 0, val = 0, debug_rg_addr_data[SPMI_PMIC_DEBUG_RG_BUF_SIZE] = {0};
+	unsigned char mask = 0;
+	const char mt6661_spmi_pmic_dbg_rgs[][30] = MT6661_SPMI_PMIC_DBG_RGS;
+	const char mt6667_spmi_pmic_dbg_rgs[][30] = MT6667_SPMI_PMIC_DBG_RGS;
+
+	/* idx 0 for version info */
+	debug_rg_addr_data[PMIC_MBRAIN_VER_INFO_IDX] = 1;
+	mutex_lock(&dump_mutex);
+	for (i = SPMI_MIN_SLAVE_ID; i < SPMI_MAX_SLAVE_ID; i++) {
+		if (!mtk_spmi_pmic_debug[i])
+			continue;
+		info = mtk_spmi_pmic_debug[i]->debug_rg_info;
+		if (info.enable) {
+			regmap = mtk_spmi_pmic_debug[i]->regmap;
+			if (buf == NULL)
+				pr_info("\n%s SLVID(0x%x), debug_rg_addr_data:\n",
+					__func__, i);
+			/* read spmi pmic debug rg data */
+			for (j = 0; j < SPMI_PMIC_DEBUG_RG_NUM; j++) {
+				ret = regmap_read(regmap, info.dbg_reg_addr[j], &val);
+				if (ret)
+					pr_info("regmap read error: addr = 0x%x\n",
+						info.dbg_reg_addr[j]);
+				debug_rg_addr_data[SPMI_PMIC_DEBUG_RG_NUM*i+j+1] |= (info.dbg_reg_addr[j] << 16);
+				mask = (info.dbg_reg_mask[j] << info.dbg_reg_shift[j]);
+				debug_rg_addr_data[SPMI_PMIC_DEBUG_RG_NUM*i+j+1] |= (mask << 8);
+				debug_rg_addr_data[SPMI_PMIC_DEBUG_RG_NUM*i+j+1] |= val;
+				if (buf == NULL) {
+					if (mtk_spmi_pmic_debug[i]->cid == 0x61)
+						pr_info("RG: %s, addr: 0x%x, mask:0x%x, data:0x%x\n",
+							mt6661_spmi_pmic_dbg_rgs[j],
+							info.dbg_reg_addr[j],
+							mask,
+							val);
+					else if (mtk_spmi_pmic_debug[i]->cid == 0x67)
+						pr_info("RG: %s, addr: 0x%x, mask:0x%x, data:0x%x\n",
+							mt6667_spmi_pmic_dbg_rgs[j],
+							info.dbg_reg_addr[j],
+							mask,
+							val);
+				}
+			}
+		}
+	}
+	if (buf != NULL)
+		memcpy(buf, debug_rg_addr_data, SPMI_PMIC_DEBUG_RG_BUF_SIZE * sizeof(unsigned int));
+	mutex_unlock(&dump_mutex);
+}
+EXPORT_SYMBOL_GPL(mtk_spmi_pmic_get_debug_rg_info);
+
 static int mtk_spmi_debug_parse_dt(struct device *dev, struct mtk_spmi_pmic_debug_data *data)
 {
 	struct device_node *node_parent, *node;
 	int i = 0, err;
 	u32 reg[2] = {0}, cid_addr[3] = {0}, buf[3] = {0}, cc_buf[PMIC_CURR_CLAMPING_CNT_NUM] = {0};
+	u32 dbg_buf[SPMI_PMIC_DEBUG_RG_NUM] = {0};
 
 	if (!dev || !dev->of_node || !dev->parent->of_node)
 		return -ENODEV;
@@ -654,6 +719,41 @@ static int mtk_spmi_debug_parse_dt(struct device *dev, struct mtk_spmi_pmic_debu
 		}
 	}
 
+	err = of_property_read_u32(node, "spmi-pmic-debug-rg-enable",
+				   &(data->debug_rg_info.enable));
+	if (err)
+		dev_info(dev, "%s slvid 0x%x does not have 'spmi-pmic-debug-rg-enable' property\n",
+			 __func__, data->usid);
+	if (data->debug_rg_info.enable) {
+		err = of_property_read_u32_array(node, "spmi-pmic-debug-rg-addr",
+						 dbg_buf, ARRAY_SIZE(dbg_buf));
+		if (err)
+			dev_info(dev, "%s slvid 0x%x does not have 'spmi-pmic-debug-rg-addr' property\n",
+				 __func__, data->usid);
+		else {
+			for (i = 0; i < SPMI_PMIC_DEBUG_RG_NUM; i++)
+				data->debug_rg_info.dbg_reg_addr[i] = dbg_buf[i];
+		}
+		err = of_property_read_u32_array(node, "spmi-pmic-debug-rg-mask",
+						 dbg_buf, ARRAY_SIZE(dbg_buf));
+		if (err)
+			dev_info(dev, "%s slvid 0x%x does not have 'spmi-pmic-debug-rg-mask' property\n",
+				 __func__, data->usid);
+		else {
+			for (i = 0; i < SPMI_PMIC_DEBUG_RG_NUM; i++)
+				data->debug_rg_info.dbg_reg_mask[i] = dbg_buf[i];
+		}
+		err = of_property_read_u32_array(node, "spmi-pmic-debug-rg-shift",
+						 dbg_buf, ARRAY_SIZE(dbg_buf));
+		if (err)
+			dev_info(dev, "%s slvid 0x%x does not have 'spmi-pmic-debug-rg-shift' property\n",
+				 __func__, data->usid);
+		else {
+			for (i = 0; i < SPMI_PMIC_DEBUG_RG_NUM; i++)
+				data->debug_rg_info.dbg_reg_shift[i] = dbg_buf[i];
+		}
+	}
+
 	return data->usid;
 }
 
@@ -666,6 +766,7 @@ static int mtk_spmi_pmic_debug_probe(struct platform_device *pdev)
 	u16 pre_ot_buf[PMIC_PRE_OT_BUF_SIZE] = {0};
 	u16 pre_lvsys_buf[PMIC_PRE_LVSYS_BUF_SIZE] = {0};
 	u16 cc_buf[PMIC_CURR_CLAMPING_BUF_SIZE] = {0};
+	u32 dbg_buf[SPMI_PMIC_DEBUG_RG_BUF_SIZE] = {0};
 #endif
 
 	data = devm_kzalloc(&pdev->dev, sizeof(struct mtk_spmi_pmic_debug_data),
@@ -703,6 +804,11 @@ static int mtk_spmi_pmic_debug_probe(struct platform_device *pdev)
 	mtk_spmi_pmic_get_current_clamping_cnt(cc_buf);
 	for (i = 0; i < PMIC_CURR_CLAMPING_BUF_SIZE; i++)
 		dev_info(&pdev->dev, "cc_buf[%d]: %d\n", i, cc_buf[i]);
+	mtk_spmi_pmic_get_debug_rg_info(dbg_buf);
+	for (i = 0; i < SPMI_PMIC_DEBUG_RG_BUF_SIZE; i++)
+		dev_info(&pdev->dev, "dbg_buf[%d]: %x\n", i, dbg_buf[i]);
+	pr_info("dump spmi pmic dbg rg info...\n");
+	mtk_spmi_pmic_get_debug_rg_info(NULL);
 #endif
 
 	return ret;

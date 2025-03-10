@@ -661,4 +661,44 @@
 #define MT6661_RG_BUCK6_OC_STS_CNT_MASK                                   (0xff)
 #define MT6661_RG_BUCK6_OC_STS_CNT_SHIFT                                  (0)
 
+/* SPMI PMIC Debug Register */
+#define MT6661_RG_SMT_SPMI_M_SCL_ADDR                                     (0xc4)
+#define MT6661_RG_SMT_SPMI_M_SCL_MASK                                     (0x1)
+#define MT6661_RG_SMT_SPMI_M_SCL_SHIFT                                    (4)
+#define MT6661_RG_SMT_SPMI_M_SDA_ADDR                                     (0xc4)
+#define MT6661_RG_SMT_SPMI_M_SDA_MASK                                     (0x1)
+#define MT6661_RG_SMT_SPMI_M_SDA_SHIFT                                    (5)
+#define MT6661_RG_OCTL_SPMI_M_SDA_ADDR                                    (0x14e)
+#define MT6661_RG_OCTL_SPMI_M_SDA_MASK                                    (0x1f)
+#define MT6661_RG_OCTL_SPMI_M_SDA_SHIFT                                   (2)
+#define MT6661_GPIO_PULLEN0_1_ADDR                                        (0x14e)
+#define MT6661_GPIO_PULLEN0_1_MASK                                        (0x1)
+#define MT6661_GPIO_PULLEN0_1_SHIFT                                       (0)
+#define MT6661_GPIO_PULLEN0_2_ADDR                                        (0x14e)
+#define MT6661_GPIO_PULLEN0_2_MASK                                        (0x1)
+#define MT6661_GPIO_PULLEN0_2_SHIFT                                       (1)
+#define MT6661_RG_TOP_CFG_RSV1_0_ADDR                                     (0x151)
+#define MT6661_RG_TOP_CFG_RSV1_0_MASK                                     (0x1)
+#define MT6661_RG_TOP_CFG_RSV1_0_SHIFT                                    (4)
+#define MT6661_RG_TOP_CFG_RSV1_1_ADDR                                     (0x151)
+#define MT6661_RG_TOP_CFG_RSV1_1_MASK                                     (0x1)
+#define MT6661_RG_TOP_CFG_RSV1_1_SHIFT                                    (5)
+#define MT6661_GPIO_PULLSEL0_1_ADDR                                       (0x94)
+#define MT6661_GPIO_PULLSEL0_1_MASK                                       (0x1)
+#define MT6661_GPIO_PULLSEL0_1_SHIFT                                      (1)
+#define MT6661_GPIO_PULLSEL0_2_ADDR                                       (0x94)
+#define MT6661_GPIO_PULLSEL0_2_MASK                                       (0x1)
+#define MT6661_GPIO_PULLSEL0_2_SHIFT                                      (2)
+#define MT6661_SPMI_PMIC_DBG_RGS {                                        \
+	"RG_SMT_SPMI_M_SCL",                                              \
+	"RG_SMT_SPMI_M_SDA",                                              \
+	"RG_OCTL_SPMI_M_SDA",                                             \
+	"GPIO_PULLEN0_1",                                                 \
+	"GPIO_PULLEN0_2",                                                 \
+	"RG_TOP_CFG_RSV1_0",                                              \
+	"RG_TOP_CFG_RSV1_1",                                              \
+	"GPIO_PULLSEL0_1",                                                \
+	"GPIO_PULLSEL0_2"                                                 \
+}
+
 #endif /* __MFD_MT6661_REGISTERS_H__ */
