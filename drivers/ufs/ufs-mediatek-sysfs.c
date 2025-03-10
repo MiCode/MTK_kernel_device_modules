@@ -30,7 +30,7 @@
 #define PA_SCRAMBLING		0x1585
 
 #define EYEMON_PRINTF(out, len, fmt, args...) \
-	(len += sprintf(out+len, fmt, ##args))
+	(len += snprintf(out+len, PAGE_SIZE - len, fmt, ##args))
 
 static DEFINE_SEMAPHORE(eyemon_sem, 1);
 
@@ -695,14 +695,22 @@ static ssize_t clkscale_control_show(struct device *dev,
 
 	value = atomic_read((&host->clkscale_control));
 
-	size += sprintf(buf + size, "current: %d\n", value);
-	size += sprintf(buf + size, "===== control manual =====\n");
-	size += sprintf(buf + size, "0: free run\n");
-	size += sprintf(buf + size, "1: scale down\n");
-	size += sprintf(buf + size, "2: scale up\n");
-	size += sprintf(buf + size, "3: scale down and frobid change\n");
-	size += sprintf(buf + size, "4: scale up and frobid change\n");
-	size += sprintf(buf + size, "5: allow change and free run\n");
+	size += snprintf(buf + size, PAGE_SIZE - size,
+		"current: %d\n", value);
+	size += snprintf(buf + size, PAGE_SIZE - size,
+		"===== control manual =====\n");
+	size += snprintf(buf + size, PAGE_SIZE - size,
+		"0: free run\n");
+	size += snprintf(buf + size, PAGE_SIZE - size,
+		"1: scale down\n");
+	size += snprintf(buf + size, PAGE_SIZE - size,
+		"2: scale up\n");
+	size += snprintf(buf + size, PAGE_SIZE - size,
+		"3: scale down and forbid change\n");
+	size += snprintf(buf + size, PAGE_SIZE - size,
+		"4: scale up and forbid change\n");
+	size += snprintf(buf + size, PAGE_SIZE - size,
+		"5: allow change and free run\n");
 
 	return size;
 }
@@ -910,7 +918,7 @@ static ssize_t smp_affinity_show(struct device *dev,
 		mask = desc->pending_mask;
 #endif
 
-	return sprintf(buf, "%*pb\n", cpumask_pr_args(mask));
+	return snprintf(buf, PAGE_SIZE, "%*pb\n", cpumask_pr_args(mask));
 }
 
 static ssize_t smp_affinity_store(struct device *dev,
@@ -964,7 +972,7 @@ static ssize_t dbg_tp_unregister_show(struct device *dev,
 	int value;
 
 	value = atomic_read(&host->dbg_tp_unregister);
-	size += sprintf(buf + size, "%d\n", value);
+	size += snprintf(buf + size, PAGE_SIZE, "%d\n", value);
 
 	return size;
 }
@@ -1000,7 +1008,7 @@ static ssize_t skip_blocktag_show(struct device *dev,
 	int value;
 
 	value = atomic_read((&host->skip_btag));
-	size += sprintf(buf + size, "%d\n", value);
+	size += snprintf(buf + size, PAGE_SIZE, "%d\n", value);
 
 	return size;
 }
