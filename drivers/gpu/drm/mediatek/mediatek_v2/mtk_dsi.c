@@ -11150,11 +11150,10 @@ static int _mtk_mipi_dsi_cmd(struct mtk_drm_crtc *mtk_crtc, struct mtk_dsi *dsi,
 	int ret = 0;
 	struct cmdq_pkt *handle = NULL;
 	struct mtk_cmdq_cb_data *cb_data;
-	bool is_cmd_mode = false;
+	//bool is_cmd_mode = true; /* only support cmd mode */
 	int index = drm_crtc_index(&mtk_crtc->base);
 
 	DDPDSI_CMD("%s ++ flags:0x%x\n", __func__, flags);
-
 	if (flags & MTK_MIPI_DSI_CMD_BY_CPU) {
 		CRTC_MMP_MARK(index, ddic_cmd_v2_tag, 3, (unsigned long)cmd_msg);
 		DDPDSI_CMD("%s, by CPU\n", __func__);
@@ -11185,12 +11184,6 @@ static int _mtk_mipi_dsi_cmd(struct mtk_drm_crtc *mtk_crtc, struct mtk_dsi *dsi,
 	}
 
 	CRTC_MMP_MARK(index, ddic_cmd_v2_tag, (unsigned long)handle, (unsigned long)cmd_msg);
-	is_cmd_mode = mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base);
-	if (!is_cmd_mode) {
-		DDPPR_ERR("%s not support vdo mode\n", __func__);
-		return -EINVAL;
-	}
-
 	if ((flags & MTK_MIPI_DSI_GCE_USE_DSI_CMD_EVENT) || (flags & MTK_MIPI_DSI_CMD_EXTERNAL)) {
 		CRTC_MMP_MARK(index, ddic_cmd_v2_tag, 8, (unsigned long)cmd_msg);
 		if (mtk_crtc_with_sub_path(&mtk_crtc->base, mtk_crtc->ddp_mode))
@@ -11198,11 +11191,10 @@ static int _mtk_mipi_dsi_cmd(struct mtk_drm_crtc *mtk_crtc, struct mtk_dsi *dsi,
 		else
 			mtk_crtc_wait_frame_done(mtk_crtc, handle, DDP_FIRST_PATH, 0);
 
-		if (is_cmd_mode) {
-			CRTC_MMP_MARK(index, ddic_cmd_v2_tag, 9, (unsigned long)cmd_msg);
-			cmdq_pkt_clear_event(handle, mtk_crtc->gce_obj.event[EVENT_STREAM_BLOCK]);
-			cmdq_pkt_wfe(handle, mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
-		}
+		/*only support cmd mode */
+		//CRTC_MMP_MARK(index, ddic_cmd_v2_tag, 9, (unsigned long)cmd_msg);
+		cmdq_pkt_clear_event(handle, mtk_crtc->gce_obj.event[EVENT_STREAM_BLOCK]);
+		cmdq_pkt_wfe(handle, mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
 		DDPDSI_CMD("%s,wait GCE EVENT\n", __func__);
 	}
 
@@ -11213,11 +11205,10 @@ transfer_cmd:
 		return ret;
 	}
 	if ((flags & MTK_MIPI_DSI_GCE_USE_DSI_CMD_EVENT) || (flags & MTK_MIPI_DSI_CMD_EXTERNAL)) {
-		if (is_cmd_mode) {
-			CRTC_MMP_MARK(index, ddic_cmd_v2_tag, 11, (unsigned long)cmd_msg);
-			cmdq_pkt_set_event(handle, mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
-			cmdq_pkt_set_event(handle, mtk_crtc->gce_obj.event[EVENT_STREAM_BLOCK]);
-		}
+		/*only support cmd mode */
+		CRTC_MMP_MARK(index, ddic_cmd_v2_tag, 11, (unsigned long)cmd_msg);
+		cmdq_pkt_set_event(handle, mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
+		cmdq_pkt_set_event(handle, mtk_crtc->gce_obj.event[EVENT_STREAM_BLOCK]);
 		DDPDSI_CMD("%s,set GCE EVENT\n", __func__);
 	}
 	if (flags & MTK_MIPI_DSI_GCE_BLOCKING_FLUSH) {
@@ -11254,7 +11245,7 @@ int mtk_mipi_dsi_cmd(void *dsi, void *handle, struct mtk_dsi_cmd_option *cmd_opt
 	struct mtk_ddp_comp *output_comp;
 	struct mtk_drm_crtc *mtk_crtc = NULL;
 	struct drm_crtc *crtc = NULL;
-	bool is_cmd_mode;
+	bool is_cmd_mode = false;
 	int ret;
 	u32 flags = 0;
 	int index = 0;
@@ -11309,6 +11300,12 @@ int mtk_mipi_dsi_cmd(void *dsi, void *handle, struct mtk_dsi_cmd_option *cmd_opt
 		crtc = &mtk_crtc->base;
 		private = crtc->dev->dev_private;
 		DDPDSI_CMD("%s in7\n", __func__);
+	}
+
+	is_cmd_mode = mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base);
+	if (!is_cmd_mode) {
+		DDPPR_ERR("%s not support vdo mode\n", __func__);
+		return -EINVAL;
 	}
 
 	ret = mtk_check_cmd_msg(mtk_dsi, cmd_opt, cmd_msg);
