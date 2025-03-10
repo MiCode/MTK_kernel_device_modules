@@ -9367,8 +9367,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<GIC_SPI 834 IRQ_TYPE_LEVEL_HIGH 0>, /* apinfra_mem_intf irq */
 				<GIC_SPI 863 IRQ_TYPE_LEVEL_HIGH 0>, /* apinfra_int irq */
 				<GIC_SPI 831 IRQ_TYPE_LEVEL_HIGH 0>, /* apinfra_mmu irq */
-				<GIC_SPI 967 IRQ_TYPE_LEVEL_HIGH 0>, /* apinfra_hash irq */
-				<GIC_SPI 968 IRQ_TYPE_LEVEL_HIGH 0>, /* apinfra_hash_ctrl irq */
+				<2 7 IRQ_TYPE_LEVEL_HIGH 0>, /* apinfra_hash irq */
+				<2 8 IRQ_TYPE_LEVEL_HIGH 0>, /* apinfra_hash_ctrl irq */
 				<GIC_SPI 279 IRQ_TYPE_EDGE_RISING 0>, /* peri irq */
 				<GIC_SPI 806 IRQ_TYPE_LEVEL_HIGH 0>, /* vlp irq */
 				<GIC_SPI 546 IRQ_TYPE_LEVEL_HIGH 0>, /* adsp irq */
