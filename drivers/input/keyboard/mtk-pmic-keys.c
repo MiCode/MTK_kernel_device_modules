@@ -267,6 +267,8 @@ enum mtk_pmic_keys_lp_mode {
 static struct platform_device *ktf_pmic_pdev;
 static struct mtk_pmic_keys *ktf_pmic_key;
 static atomic_t last_key_status = ATOMIC_INIT(0);
+static bool need_reset_home;
+
 static void mtk_pmic_keys_lp_reset_setup(struct mtk_pmic_keys *keys,
 		const struct mtk_pmic_regs *pmic_regs)
 {
@@ -311,6 +313,22 @@ static void mtk_pmic_keys_lp_reset_setup(struct mtk_pmic_keys *keys,
 			dev_dbg(keys->dev,
 				"regmap_update_bits fail LP_ONEKEY: %d\n", ret);
 		}
+		if (need_reset_home == true) {
+			ret = regmap_update_bits(keys->regmap, pmic_rst_reg,
+				   pwrkey_rst_shift << RST_PWRKEY_HOME_MODE,
+				   0);
+			if (ret < 0) {
+				dev_dbg(keys->dev,
+					"regmap_update_bits fail LP_ONEKEY: %d\n", ret);
+			}
+			ret = regmap_update_bits(keys->regmap, pmic_rst_reg,
+				   pwrkey_rst_shift << RST_PWRKEY_HOME2_MODE,
+				   0);
+			if (ret < 0) {
+				dev_dbg(keys->dev,
+					"regmap_update_bits fail LP_ONEKEY: %d\n", ret);
+			}
+		}
 		ret = regmap_update_bits(keys->regmap, pmic_rst_para_reg,
 				   homekey_rst_shift,
 				   RST_PWRKEY_MODE);
@@ -326,6 +344,22 @@ static void mtk_pmic_keys_lp_reset_setup(struct mtk_pmic_keys *keys,
 		if (ret < 0) {
 			dev_dbg(keys->dev,
 				"regmap_update_bits fail LP_TWOKEY_HOMEKEY: %d\n", ret);
+		}
+		if (need_reset_home == true) {
+			ret = regmap_update_bits(keys->regmap, pmic_rst_reg,
+				   pwrkey_rst_shift << RST_PWRKEY_HOME_MODE,
+				   pwrkey_rst_shift << RST_PWRKEY_HOME_MODE);
+			if (ret < 0) {
+				dev_dbg(keys->dev,
+					"regmap_update_bits fail LP_TWOKEY_HOMEKEY: %d\n", ret);
+			}
+			ret = regmap_update_bits(keys->regmap, pmic_rst_reg,
+				   pwrkey_rst_shift << RST_PWRKEY_HOME2_MODE,
+				   0);
+			if (ret < 0) {
+				dev_dbg(keys->dev,
+					"regmap_update_bits fail LP_TWOKEY_HOMEKEY: %d\n", ret);
+			}
 		}
 		ret = regmap_update_bits(keys->regmap, pmic_rst_para_reg,
 				   homekey_rst_shift,
@@ -343,6 +377,22 @@ static void mtk_pmic_keys_lp_reset_setup(struct mtk_pmic_keys *keys,
 			dev_dbg(keys->dev,
 				"regmap_update_bits fail LP_TWOKEY_HOMEKEY2: %d\n", ret);
 		}
+		if (need_reset_home == true) {
+			ret = regmap_update_bits(keys->regmap, pmic_rst_reg,
+				   pwrkey_rst_shift << RST_PWRKEY_HOME_MODE,
+				   0);
+			if (ret < 0) {
+				dev_dbg(keys->dev,
+					"regmap_update_bits fail LP_TWOKEY_HOMEKEY2: %d\n", ret);
+			}
+			ret = regmap_update_bits(keys->regmap, pmic_rst_reg,
+				   pwrkey_rst_shift << RST_PWRKEY_HOME2_MODE,
+				   pwrkey_rst_shift << RST_PWRKEY_HOME2_MODE);
+			if (ret < 0) {
+				dev_dbg(keys->dev,
+					"regmap_update_bits fail LP_TWOKEY_HOMEKEY2: %d\n", ret);
+			}
+		}
 		ret = regmap_update_bits(keys->regmap, pmic_rst_para_reg,
 				   homekey_rst_shift,
 				   RST_PWRKEY_HOME2_MODE << pmic_regs->homekey_rst_shift);
@@ -358,6 +408,22 @@ static void mtk_pmic_keys_lp_reset_setup(struct mtk_pmic_keys *keys,
 		if (ret < 0) {
 			dev_dbg(keys->dev,
 				"regmap_update_bits fail LP_DISABLE: %d\n", ret);
+		}
+		if (need_reset_home == true) {
+			ret = regmap_update_bits(keys->regmap, pmic_rst_reg,
+				   pwrkey_rst_shift << RST_PWRKEY_HOME_MODE,
+				   0);
+			if (ret < 0) {
+				dev_dbg(keys->dev,
+					"regmap_update_bits fail LP_DISABLE: %d\n", ret);
+			}
+			ret = regmap_update_bits(keys->regmap, pmic_rst_reg,
+				   pwrkey_rst_shift << RST_PWRKEY_HOME2_MODE,
+				   0);
+			if (ret < 0) {
+				dev_dbg(keys->dev,
+					"regmap_update_bits fail LP_DISABLE: %d\n", ret);
+			}
 		}
 		ret = regmap_update_bits(keys->regmap, pmic_rst_para_reg,
 				   homekey_rst_shift,
@@ -685,6 +751,9 @@ static int mtk_pmic_keys_probe(struct platform_device *pdev)
 		release_irq_interval = 3;
 	else
 		release_irq_interval = 2;
+	need_reset_home = false;
+	if(strncmp(of_id->compatible, "mediatek,mt6661-keys", 20) == 0)
+		need_reset_home = true;
 	ktf_pmic_key = keys;
 	if (keycount > MTK_PMIC_MAX_KEY_COUNT) {
 		dev_err(keys->dev, "too many keys defined (%d)\n", keycount);
