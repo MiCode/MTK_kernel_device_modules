@@ -1310,6 +1310,48 @@ int mtk_spr_check_postalign_status(struct mtk_drm_crtc *mtk_crtc)
 	return -1;
 }
 
+unsigned int mtk_spr_get_format(struct mtk_drm_crtc *mtk_crtc)
+{
+	struct mtk_ddp_comp *comp = NULL;
+	struct mtk_disp_spr *spr;
+	void __iomem *spr_baddr = NULL;
+	unsigned int spr_hw_enable, spr_hw_relay;
+	unsigned int ret;
+
+	if (!(mtk_crtc->enabled)) {
+		DDPINFO("%s:%d, slepted\n", __func__, __LINE__);
+		return MTK_PANEL_SPR_OFF_TYPE;
+	}
+
+	comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_SPR, 0);
+	if (!comp)
+		return MTK_PANEL_SPR_OFF_TYPE;
+
+	/* read SPR status*/
+	spr_baddr = comp->regs;
+	spr = comp_to_spr(comp);
+	if (spr->data->version == MTK_SPR_V3) {
+		if (spr->spr_ip_type == DISP_MTK_SPR) {
+			spr_baddr += spr->data->mtk_spr_ip_addr_offset;
+			spr_hw_enable = DISP_REG_GET_FIELD(MT6991_CON_FLD_SPR_EN,
+					spr_baddr + MT6991_DISP_MTK_SPR_REG_SPR_EN);
+			spr_hw_relay = DISP_REG_GET_FIELD(MT6991_CON_FLD_DISP_SPR_RELAY_MODE,
+					spr_baddr + MT6991_DISP_MTK_SPR_REG_SPR_EN);
+		} else if (spr->spr_ip_type == DISP_NVT_SPR) {
+			spr_hw_enable = DISP_REG_GET_FIELD(CON_FLD_SPR_EN,
+					spr_baddr + DISP_REG_SPR_EN);
+			spr_hw_relay = DISP_REG_GET_FIELD(CON_FLD_DISP_SPR_RELAY_MODE,
+					spr_baddr + DISP_REG_SPR_EN);
+		}
+	}
+	if (spr_hw_enable == 1 && spr_hw_relay == 0)
+		ret = comp->mtk_crtc->panel_ext->params->spr_params.spr_format_type;
+	else
+		ret = MTK_PANEL_SPR_OFF_TYPE;
+
+	return ret;
+}
+
 static void mtk_spr_config_V2(struct mtk_ddp_comp *comp,
 				 struct mtk_ddp_config *cfg,
 				 struct cmdq_pkt *handle)

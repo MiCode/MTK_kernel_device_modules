@@ -22,6 +22,7 @@ enum SPR_IP_TYPE {
 	DISP_NVT_SPR,
 };
 
+unsigned int mtk_spr_get_format(struct mtk_drm_crtc *mtk_crtc);
 int mtk_spr_check_postalign_status(struct mtk_drm_crtc *mtk_crtc);
 
 #endif
