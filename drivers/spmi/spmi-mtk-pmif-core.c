@@ -15,6 +15,9 @@
 #include <linux/sched/mm.h>
 #include <linux/spmi.h>
 #include <linux/irq.h>
+#include <linux/timer.h>
+#include <linux/jiffies.h>
+#include "../mfd/mtk-spmi-pmic-debug.h"
 #include "mt-plat/mtk_ccci_common.h"
 #include "spmi-mtk.h"
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
@@ -79,6 +82,11 @@
 #define PMIC_RG_SYSTEM_INFO_CON2_H                              (0xda0)
 
 enum {
+	SPMI_REAL_NACK = 1,
+	SPMI_CURRENT_CLAMPING_NACK
+};
+
+enum {
 	SPMI_WRITE_NACK = 1,
 	SPMI_READ_PARITY_ERROR,
 	SPMI_BYTECNT_ERROR,
@@ -116,6 +124,13 @@ struct pmif_irq_desc {
 	const char *name;
 	irq_handler_t irq_handler;
 	int irq;
+};
+
+struct pmif_irq_timer {
+	struct pmif *irq_arb;
+	struct platform_device *irq_pdev;
+	struct timer_list irq_mask_timer;
+	unsigned int spmi_idx;
 };
 
 enum pmif_regs {
@@ -344,6 +359,7 @@ static const u32 mt6853_spmi_regs[] = {
 	[SPMI_REC4] =		0x0054,
 	[SPMI_REC_CMD_DEC] =	0x005C,
 	[SPMI_WDT_REC] =	0x0060,
+	[SPMI_IRQ_MASK] =	0x0074,
 	[SPMI_DEC_DBG] =	0x00F8,
 	[SPMI_MST_DBG] =	0x00FC,
 	[SPMI_SLV_3_0_NACK_COUNT] =	0x0140,
@@ -405,6 +421,7 @@ enum {
 static struct spmi_dev spmidev[16];
 static struct spmi_nack_monitor_pair nack_monitor_list[MAX_MONITOR_LIST_SIZE];
 static int nack_monitor_list_size;
+static struct pmif_irq_timer irq_timer[3];
 
 struct spmi_dev *get_spmi_device(int slaveid)
 {
@@ -1649,6 +1666,85 @@ static void dump_spmi_pmic_dbg_rg(struct pmif *arb, unsigned int nack_0, unsigne
 	}
 }
 
+static void enable_nack_irq_handler(struct timer_list *t)
+{
+	int err;
+	struct pmif_irq_timer *pmt = from_timer(pmt, t, irq_mask_timer);
+	struct pmif *arb = NULL;
+	struct platform_device *irq_pdev = NULL;
+
+	if ((IS_ERR_OR_NULL(pmt))) {
+		err = PTR_ERR(pmt);
+		dev_info(&irq_pdev->dev, "irq pmt ptr error err:0x%x\n", err);
+		return;
+	}
+
+	arb = pmt->irq_arb;
+	irq_pdev = pmt->irq_pdev;
+
+	pr_notice("%s, spmi_idx = 0x%x\n", __func__, pmt->spmi_idx);
+	if (pmt->spmi_idx == 0) {
+		mtk_spmi_writel(arb->spmimst_base[0], arb, 0x7, SPMI_REC_CTRL);
+		pr_notice("%s, Clear SPMI_0 REC\n", __func__);
+		mtk_spmi_writel(arb->spmimst_base[0], arb, 0x0, SPMI_IRQ_MASK);
+		pr_notice("%s, Unmask SPMI_0 NACK irq\n", __func__);
+	} else if (pmt->spmi_idx == 1) {
+		mtk_spmi_writel(arb->spmimst_base[1], arb, 0x7, SPMI_REC_CTRL);
+		pr_notice("%s, Clear SPMI_1 REC\n", __func__);
+		mtk_spmi_writel(arb->spmimst_base[1], arb, 0x0, SPMI_IRQ_MASK);
+		pr_notice("%s, Unmask SPMI_1 NACK irq\n", __func__);
+	} else if (pmt->spmi_idx == 2) {
+		mtk_spmi_writel(arb->spmimst_base[2], arb, 0x7, SPMI_REC_CTRL);
+		pr_notice("%s, Clear SPMI_2 REC\n", __func__);
+		mtk_spmi_writel(arb->spmimst_base[2], arb, 0x0, SPMI_IRQ_MASK);
+		pr_notice("%s, Unmask SPMI_2 NACK irq\n", __func__);
+	}
+	pr_notice("%s, Unmask SPMI NACK IRQ\n", __func__);
+}
+
+static int nack_type_check(struct pmif *arb, int spmi_nack_0, int spmi_nack_1, int spmi_nack_2)
+{
+	u32 cclp_sts = 0;
+	int ret = 0;
+	unsigned int current_nack_bus = 0;
+
+	if (spmi_nack_0)
+		ret = mtk_spmi_pmic_dump_rg_data(GET_SPMI_NACK_SLVID(spmi_nack_0), &cclp_sts, RGS_NPKT_CCLP_ERR);
+	else if (spmi_nack_1)
+		ret = mtk_spmi_pmic_dump_rg_data(GET_SPMI_NACK_SLVID(spmi_nack_1), &cclp_sts, RGS_NPKT_CCLP_ERR);
+	else if (spmi_nack_2)
+		ret = mtk_spmi_pmic_dump_rg_data(GET_SPMI_NACK_SLVID(spmi_nack_2), &cclp_sts, RGS_NPKT_CCLP_ERR);
+	if (ret < 0) {
+		pr_notice("%s, Failed to get CCLP status\n", __func__);
+		return -1;
+	}
+
+	if (cclp_sts == 0) {
+		pr_notice("%s, This is a real NACK, not CCLP!\n", __func__);
+		ret = SPMI_REAL_NACK;
+	} else {
+		pr_notice("%s, This is a CCLP NACK!\n", __func__);
+		pr_notice("%s, Mask NACK irq for 100ms\n", __func__);
+		if (spmi_nack_0)
+			current_nack_bus = 0;
+		else if (spmi_nack_1)
+			current_nack_bus = 1;
+		else if (spmi_nack_2)
+			current_nack_bus = 2;
+
+		/* Mask SPMI NACK irq */
+		mtk_spmi_writel(arb->spmimst_base[current_nack_bus], arb, (0x1 << 2), SPMI_IRQ_MASK);
+		pr_notice("%s, Mask SPMI_%d NACK irq\n", __func__, current_nack_bus);
+
+		timer_setup(&irq_timer[current_nack_bus].irq_mask_timer, enable_nack_irq_handler, 0);
+		mod_timer(&irq_timer[current_nack_bus].irq_mask_timer,
+			(jiffies + msecs_to_jiffies(100)));
+		ret = SPMI_CURRENT_CLAMPING_NACK;
+	}
+
+	return ret;
+}
+
 static irqreturn_t spmi_nack_irq_handler(int irq, void *data)
 {
 	struct pmif *arb = data;
@@ -1659,6 +1755,7 @@ static irqreturn_t spmi_nack_irq_handler(int irq, void *data)
 				 spmi_debug_nack_0 = 0, spmi_debug_nack_1 = 0, spmi_debug_nack_2 = 0,
 				 spmi_mst_nack_0 = 0, spmi_mst_nack_1 = 0, spmi_mst_nack_2 = 0,
 				 spmi_wdt_rec_0 = 0, spmi_wdt_rec_1 = 0, spmi_wdt_rec_2 = 0;
+	int nack_type = 0;
 
 	__pm_stay_awake(arb->pmif_m_Thread_lock);
 	mutex_lock(&arb->pmif_m_mutex);
@@ -1687,8 +1784,10 @@ static irqreturn_t spmi_nack_irq_handler(int irq, void *data)
 		spmi_wdt_rec_2 = mtk_spmi_readl(arb->spmimst_base[2], arb, SPMI_WDT_REC);
 	}
 
-	if (spmi_nack_1)
-		store_nack_info(arb, spmi_nack_1, spmi_nack_data_1);
+	if (arb->caps == 4) {
+		if (spmi_nack_1)
+			store_nack_info(arb, spmi_nack_1, spmi_nack_data_1);
+	}
 
 	pr_notice("SPMI_REC0-0/1/2:0x%x/0x%x/0x%x SPMI_REC1-0/1/2:0x%x/0x%x/0x%x\n",
 		spmi_nack_0, spmi_nack_1, spmi_nack_2,
@@ -1696,7 +1795,10 @@ static irqreturn_t spmi_nack_irq_handler(int irq, void *data)
 
 	// Write fail nack, causing OP_ST_NACK/PMIF_NACK/PMIF_BYTE_ERR/PMIF_GRP_RD_ERR
 	if ((spmi_nack_0 & 0xD8) || (spmi_nack_1 & 0xD8) || (spmi_nack_2 & 0xD8)) {
-		dump_spmi_pmic_dbg_rg(arb, spmi_nack_0, spmi_nack_1, spmi_nack_2);
+
+		if (arb->caps == 4)
+			dump_spmi_pmic_dbg_rg(arb, spmi_nack_0, spmi_nack_1, spmi_nack_2);
+
 		spmi_slvid_nack_cnt_add(spmi_nack_0, spmi_nack_1);
 		pr_notice("%s spmi transaction fail (Write) irq triggered", __func__);
 		pr_notice("SPMI_REC0-0/1/2:0x%x/0x%x/0x%x SPMI_REC1-0/1/2:0x%x/0x%x/0x%x\n",
@@ -1726,8 +1828,20 @@ static irqreturn_t spmi_nack_irq_handler(int irq, void *data)
 				assert_flag = 0;
 			}
 		} else {
-			flag = 0;
-			assert_flag = 0;
+			if ((spmi_nack_0 & 0xD8) || (spmi_nack_1 & 0xD8) || (spmi_nack_2 & 0xD8)) {
+				nack_type = nack_type_check(arb, spmi_nack_0, spmi_nack_1, spmi_nack_2);
+				if (nack_type == SPMI_REAL_NACK) {
+					flag = 1;
+					assert_flag = 1;
+				} else if (nack_type == SPMI_CURRENT_CLAMPING_NACK) {
+					flag = 0;
+					assert_flag = 0;
+					pr_notice("%s, Current clamping SPMI NACK\n", __func__);
+				} else {
+					pr_notice("%s, Unknown SPMI NACK type\n", __func__);
+				}
+				get_spmi_slvid_nack_cnt(NULL);
+			}
 		}
 	}
 	if ((spmi_rcs_nack_0 & 0xC0000) || (spmi_rcs_nack_1 & 0xC0000) || (spmi_rcs_nack_2 & 0xC0000)) {
@@ -1833,7 +1947,7 @@ static irqreturn_t spmi_nack_irq_handler(int irq, void *data)
 	}
 
 	if (assert_flag)
-		pr_notice("%s Avoid assert for bring up de-risk\n", __func__);
+		BUG_ON(1);
 
 	mutex_unlock(&arb->pmif_m_mutex);
 	__pm_relax(arb->pmif_m_Thread_lock);
@@ -2095,6 +2209,7 @@ static int mtk_spmi_probe(struct platform_device *pdev)
 	struct spmi_controller *ctrl;
 	int err = 0;
 	int spmi_path_cnt = 0;
+	int spmi_nack_path = 0;
 #if defined(CONFIG_FPGA_EARLY_PORTING)
 	u8 id_l = 0, id_h = 0, val = 0, test_id = 0x5;
 	u16 hwcid_l_addr = 0x8, hwcid_h_addr = 0x9, test_w_addr = 0x3a7;
@@ -2380,6 +2495,13 @@ static int mtk_spmi_probe(struct platform_device *pdev)
 	ctrl->read_cmd(ctrl, 0x38, test_id, test_w_addr, &val, 1);
 	dev_notice(&pdev->dev, "%s check [0x%x] = 0x%x\n", __func__, test_w_addr, val);
 #endif
+
+	/* Initialize irq mask timer struct */
+	for (spmi_nack_path = 0; spmi_nack_path < 3; spmi_nack_path++) {
+		irq_timer[spmi_nack_path].spmi_idx = spmi_nack_path;
+		irq_timer[spmi_nack_path].irq_arb = arb;
+		irq_timer[spmi_nack_path].irq_pdev = pdev;
+	}
 
 #if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
 	/* add mrdump for reboot DB*/
