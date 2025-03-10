@@ -5496,6 +5496,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"mbox3",
 				"debug_ctrl";
 			#mbox-cells = <1>;
+			mbox-attr = <0x0>, /* mbox0 */
+				<0x0>, /* mbox1 */
+				<0x0>, /* mbox2 */
+				<0x0>; /* mbox3 */
 			hrt-ctrl-bits = <0x00000000>;
 
 			clocks = <&ap_pd_clk CLK_PD_ADSP_TOP_ADSP_TOP>,
