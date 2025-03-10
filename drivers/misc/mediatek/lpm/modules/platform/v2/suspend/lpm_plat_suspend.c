@@ -281,6 +281,55 @@ FINISHED:
 	return 0;
 }
 
+#define MTK_PBUS_COMPATIBLE_STRING "mediatek,pbus"
+static irqreturn_t pbus_irq_handler(int irq, void *dev_id)
+{
+	disable_irq_nosync(irq);
+	return IRQ_HANDLED;
+}
+
+static int lpm_init_pbus_irq(void)
+{
+	struct device_node *node;
+	unsigned int i, irq, irq_cnt;
+	int ret;
+	const char *irq_name;
+
+	node = of_find_compatible_node(NULL, NULL, MTK_PBUS_COMPATIBLE_STRING);
+	if (!node) {
+		pr_info("[name:spm&][SPM] Failed to find pbus node\n");
+		return 0;
+	}
+	irq_cnt = of_property_count_u32_elems(node, "interrupts") / 4;
+
+	for (i = 0; i < irq_cnt; i++) {
+		irq = irq_of_parse_and_map(node, i);
+		if (irq <= 0) {
+			pr_info("[name:spm&][SPM] Failed to map irq %d\n", i);
+			goto PBUS_FINISHED;
+		}
+		ret = of_property_read_string_index(node, "interrupt-names", i, &irq_name);
+		if (ret) {
+			pr_info("[name:spm&][SPM] Failed to get irq name for irq %d\n", i);
+			goto PBUS_FINISHED;
+		}
+		ret = request_irq(irq, pbus_irq_handler, 0, irq_name, NULL);
+		if (ret) {
+			pr_info("[name:spm&][SPM] Failed to request irq %d\n", irq);
+			goto PBUS_FINISHED;
+		}
+		ret = enable_irq_wake(irq);
+		if (ret) {
+			pr_info("[name:spm&][SPM] Failed to enable irq wake for irq %d\n", irq);
+			goto PBUS_FINISHED;
+		}
+		pr_info("[name:spm&][SPM] %s: install %s %d\n", __func__, irq_name,  irq);
+	}
+
+PBUS_FINISHED:
+	of_node_put(node);
+	return 0;
+}
 #endif
 
 static int lpm_s2idle_barrier(void)
@@ -343,6 +392,12 @@ int __init lpm_model_suspend_init(void)
 	ret = lpm_init_spm_irq();
 	if (ret) {
 		pr_debug("[name:spm&][SPM] Failed to register SPM irq.\n");
+		return ret;
+	}
+
+	ret = lpm_init_pbus_irq();
+	if (ret) {
+		pr_debug("[name:spm&][SPM] Failed to register PBUS irq.\n");
 		return ret;
 	}
 
