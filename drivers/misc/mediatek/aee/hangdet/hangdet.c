@@ -565,8 +565,8 @@ static void kwdt_time_sync(void)
 	rtc_time64_to_tm(tv.tv_sec, &tm);
 	tv_android.tv_sec -= (uint64_t)sys_tz.tz_minuteswest * 60;
 	rtc_time64_to_tm(tv_android.tv_sec, &tm_android);
-	pr_info("[thread:%d] %d-%02d-%02d %02d:%02d:%02d.%u UTC;"
-		"android time %d-%02d-%02d %02d:%02d:%02d.%03d\n",
+	pr_info("[thread:%d] %d-%02d-%02d %02d:%02d:%02d.%06d UTC;"
+		"android time %d-%02d-%02d %02d:%02d:%02d.%06d\n",
 		current->pid, tm.tm_year + 1900, tm.tm_mon + 1,
 		tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec,
 		(unsigned int)(tv.tv_nsec / 1000), tm_android.tm_year + 1900,
