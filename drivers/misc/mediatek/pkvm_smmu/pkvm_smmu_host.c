@@ -582,7 +582,7 @@ struct device_node *get_dev_node_by_alias(struct device_node *alias_node, unsign
 	const char *path = NULL;
 	struct device_node *node = NULL;
 
-	if (sprintf(name, "mtksmmu%d", i) < 0)
+	if (snprintf(name, 64, "mtksmmu%d", i) < 0)
 		return node;
 
 	if(!of_property_read_string(alias_node, name, &path))
