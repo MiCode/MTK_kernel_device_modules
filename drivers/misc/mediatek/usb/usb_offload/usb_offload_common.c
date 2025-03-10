@@ -3065,6 +3065,7 @@ static int __maybe_unused usb_offload_suspend(struct device *dev)
 
 	usb_offload_hid_start();
 	print_all_memory();
+	usb_offload_platform_action(dev, UO_PLAT_ACTION_SUSPEND);
 
 	/* if it's streaming, call to TFA if it's required */
 	return usb_offload_smc_ctrl(uodev->policy.smc_suspend);
@@ -3080,6 +3081,7 @@ static int __maybe_unused usb_offload_resume(struct device *dev)
 
 	usb_offload_hid_finish();
 	print_all_memory();
+	usb_offload_platform_action(dev, UO_PLAT_ACTION_RESUME);
 
 	return usb_offload_smc_ctrl(uodev->policy.smc_resume);
 }
@@ -3097,6 +3099,7 @@ static int __maybe_unused usb_offload_runtime_suspend(struct device *dev)
 
 	usb_offload_hid_start();
 	print_all_memory();
+	usb_offload_platform_action(dev, UO_PLAT_ACTION_SUSPEND);
 
 	return usb_offload_smc_ctrl(uodev->policy.smc_suspend);
 }
@@ -3114,6 +3117,7 @@ static int __maybe_unused usb_offload_runtime_resume(struct device *dev)
 
 	usb_offload_hid_finish();
 	print_all_memory();
+	usb_offload_platform_action(dev, UO_PLAT_ACTION_RESUME);
 
 	return usb_offload_smc_ctrl(uodev->policy.smc_resume);
 }
