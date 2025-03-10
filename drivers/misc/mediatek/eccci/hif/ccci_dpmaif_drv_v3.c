@@ -1424,6 +1424,41 @@ static int drv3_suspend_noirq(struct device *dev)
 	return 0;
 }
 
+static void resume_schedule_rx(void)
+{
+	unsigned int i;
+	struct dpmaif_rx_queue *rxq;
+	unsigned int pit_wr_idx_reg;
+	unsigned int pit_wr_idx_var;
+
+	for (i = 0; i < g_dpmaif_ctrl->real_rxq_num; i++) {
+		rxq = &g_dpmaif_ctrl->rxq[i];
+		pit_wr_idx_reg = ops.drv_dl_get_wridx(i);
+		pit_wr_idx_var = atomic_read(&rxq->pit_wr_idx);
+
+		if (pit_wr_idx_reg == pit_wr_idx_var)
+			continue;
+		CCCI_NORMAL_LOG(-1, TAG, "[%s] extra tasklet schedule for pit_wr_idx=0x%x vs reg=0x%x\n",
+			__func__, pit_wr_idx_var, pit_wr_idx_reg);
+		switch (i) {
+		case 0:
+			if (g_dpmaif_ctrl->support_2rxq)
+				DPMA_WRITE_PD_MISC(DPMAIF_PD_AP_DL_L2TISAR0, DP_DL_INT_LRO0_QDONE_SET);
+			else
+				DPMA_WRITE_PD_MISC(DPMAIF_PD_AP_DL_L2TISAR0, DPMAIF_DL_INT_QDONE_MSK);
+			tasklet_hi_schedule(&rxq->rxq_task);
+			break;
+		case 1:
+			DPMA_WRITE_PD_MISC(DPMAIF_PD_AP_DL_L2TISAR0, DP_DL_INT_LRO1_QDONE_SET);
+			tasklet_hi_schedule(&rxq->rxq_task);
+			break;
+		default:
+			CCCI_NORMAL_LOG(-1, TAG, "[%s] Q%u no handle\n", __func__, i);
+			break;
+		}
+	}
+}
+
 static int drv3_resume_noirq(struct device *dev)
 {
 	unsigned int L2RISAR0;
@@ -1465,6 +1500,8 @@ static int drv3_resume_noirq(struct device *dev)
 		__func__, g_dpmaif_ctrl->support_2rxq,
 		DPMA_READ_AO_UL(NRL2_DPMAIF_AO_UL_APDL_L2TIMR0),
 		DPMA_READ_AO_UL(NRL2_DPMAIF_AO_UL_AP_L2TIMR0));
+
+	resume_schedule_rx();
 
 	return 0;
 }
