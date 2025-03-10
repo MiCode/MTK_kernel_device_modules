@@ -16099,7 +16099,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"mraw_larb26_smi",
 				"camsys_mraw_pda0",
 				"camsys_mraw_pda1";
-#if 0
 			mediatek,smmu-dma-axid =
 				<SMMU_L25_P5_PDA_0_RDMA0>,
 				<SMMU_L25_P6_PDA_0_RDMA1>,
@@ -16107,6 +16106,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<SMMU_L25_P8_PDA_0_RDMA3>,
 				<SMMU_L25_P9_PDA_0_RDMA4>,
 				<SMMU_L25_P11_PDA_0_WDMA>;
+#if 0
 			mediatek,cam-bwr = <&cam_bwr>;
 			mmqos-supply = <&mmqos>;
 			interconnects =
