@@ -2457,14 +2457,16 @@ xhci_add_interrupter(struct xhci_hcd *xhci, struct xhci_interrupter *ir,
 }
 
 struct xhci_interrupter *
-xhci_create_secondary_interrupter_(struct usb_hcd *hcd, unsigned int segs, int intr_num)
+xhci_create_secondary_interrupter_(struct usb_hcd *hcd, unsigned int segs,
+	u32 imod_interval, unsigned int intr_num)
 {
 	struct xhci_hcd *xhci = hcd_to_xhci(hcd);
 	struct xhci_interrupter *ir;
 	unsigned int i;
 	int err = -ENOSPC;
 
-	if (!xhci->interrupters || xhci->max_interrupters <= 1)
+	if (!xhci->interrupters || xhci->max_interrupters <= 1 ||
+		intr_num >= xhci->max_interrupters)
 		return NULL;
 
 	if (xhci_vendor_is_usb_offload_enabled(xhci, NULL, 0))
@@ -2475,21 +2477,18 @@ xhci_create_secondary_interrupter_(struct usb_hcd *hcd, unsigned int segs, int i
 		return NULL;
 
 	spin_lock_irq(&xhci->lock);
-
-	/* Find available secondary interrupter, interrupter 0 is reserverd for primary */
-	for (i = 1; i < xhci->max_interrupters; i++) {
-		if ((intr_num > 0 && i == intr_num) || intr_num <= 0) {
-			if (xhci->interrupters[i] == NULL) {
+	if (!intr_num) {
+		/* Find available secondary interrupter, interrupter 0 is reserved for primary */
+		for (i = 1; i < xhci->max_interrupters; i++) {
+			if (!xhci->interrupters[i]) {
 				err = xhci_add_interrupter(xhci, ir, i);
-				if (err) {
-					spin_unlock_irq(&xhci->lock);
-					goto free_ir;
-				}
 				break;
 			}
 		}
+	} else {
+		if (!xhci->interrupters[intr_num])
+			err = xhci_add_interrupter(xhci, ir, intr_num);
 	}
-
 	spin_unlock_irq(&xhci->lock);
 
 	if (err) {
@@ -2503,17 +2502,9 @@ xhci_create_secondary_interrupter_(struct usb_hcd *hcd, unsigned int segs, int i
 	}
 
 	xhci_dbg(xhci, "Add secondary interrupter %d, max interrupters %d\n",
-		 i, xhci->max_interrupters);
+		 ir->intr_num, xhci->max_interrupters);
 
 	return ir;
-
-free_ir:
-	if (xhci_vendor_is_usb_offload_enabled(xhci, NULL, 0))
-		xhci_vendor_free_interrupter(xhci, ir);
-	else
-		xhci_free_interrupter_(xhci, ir);
-
-	return NULL;
 }
 EXPORT_SYMBOL_GPL(xhci_create_secondary_interrupter_);
 

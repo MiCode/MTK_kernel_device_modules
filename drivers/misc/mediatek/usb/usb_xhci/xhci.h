@@ -2136,7 +2136,8 @@ void xhci_free_container_ctx(struct xhci_hcd *xhci,
 void
 xhci_free_interrupter_(struct xhci_hcd *xhci, struct xhci_interrupter *ir);
 struct xhci_interrupter *
-xhci_create_secondary_interrupter_(struct usb_hcd *hcd, unsigned int segs, int intr_num);
+xhci_create_secondary_interrupter_(struct usb_hcd *hcd, unsigned int segs,
+	u32 imod_interval, unsigned int intr_num);
 void xhci_remove_secondary_interrupter_(struct usb_hcd
 				       *hcd, struct xhci_interrupter *ir);
 void xhci_skip_sec_intr_events(struct xhci_hcd *xhci,
@@ -2347,7 +2348,7 @@ struct sg_table *
 xhci_sideband_get_event_buffer_(struct xhci_sideband_ *sb);
 int
 xhci_sideband_create_interrupter_(struct xhci_sideband_ *sb, int num_seg,
-				 bool ip_autoclear, u32 imod_interval);
+				 bool ip_autoclear, u32 imod_interval, int intr_num);
 void
 xhci_sideband_remove_interrupter_(struct xhci_sideband_ *sb);
 int
@@ -2355,7 +2356,7 @@ xhci_sideband_interrupter_id_(struct xhci_sideband_ *sb);
 void xhci_sideband_notify_ep_ring_free_(struct xhci_sideband_ *sb,
 				       unsigned int ep_index);
 
-static inline struct xhci_ring *xhci_urb_to_transfer_ring_(struct xhci_hcd *xhci,
+static inline struct xhci_ring *xhci_urb_to_transfer_ring(struct xhci_hcd *xhci,
 								struct urb *urb)
 {
 	return xhci_triad_to_transfer_ring(xhci, urb->dev->slot_id,
