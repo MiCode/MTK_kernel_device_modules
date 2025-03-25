@@ -505,6 +505,22 @@ int slbc_force_dynamic_cache(enum slc_ach_uid uid, unsigned int size)
 	return slbc_force_cmd(force_cmd, FORCE_TYPE_DYNAMIC);
 }
 
+static int slbc_set_policy(uint32_t type)
+{
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
+	int ret = 0;
+	struct scmi_tinysys_slbc_ctrl_status rvalue = {0};
+
+	ret = slbc_ctrl_scmi_info(IPI_SLBC_SET_POLICY, type, 0, 0, 0, &rvalue);
+	if (ret)
+		return ret;
+
+	return 0;
+#else
+	return 0;
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
+}
+
 static int slbc_activate_thread(void *arg)
 {
 	struct slbc_ops *ops = arg;
@@ -1671,6 +1687,8 @@ static ssize_t dbg_slbc_proc_write(struct file *file,
 		slbc_disable_dcc(val_1);
 	} else if (!strcmp(cmd, "slbc_enable_gpu_dynamic_cache")) {
 		slbc_enable_gpu_dynamic_cache(val_1);
+	} else if (!strcmp(cmd, "slbc_set_policy")) {
+		slbc_set_policy(val_1);
 #if IS_ENABLED(CONFIG_MTK_SLBC_IPI)
 	} else if (!strcmp(cmd, "gid_set")) {
 		slbc_table_gid_set(val_1, val_2, val_3);
