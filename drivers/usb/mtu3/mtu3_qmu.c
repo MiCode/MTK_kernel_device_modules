@@ -392,9 +392,10 @@ void mtu3_qmu_stop(struct mtu3_ep *mep)
 		mtu3_setbits(mbase, MU3D_EP_TXCR0(epnum), TX_FLUSHFIFO);
 
 	ret = readl_poll_timeout_atomic(mbase + qcsr, value,
-			!(value & QMU_Q_ACTIVE), 1, 1000);
+			!(value & QMU_Q_ACTIVE), 1, 10000);
 	if (ret) {
 		dev_err(mtu->dev, "stop %s's qmu failed\n", mep->name);
+		WARN_ONCE(1, "stop qmu failed\n");
 		return;
 	}
 
