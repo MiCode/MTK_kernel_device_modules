@@ -435,6 +435,7 @@ static int infra_bp_dump_event(struct notifier_block *this,
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 	aee_kernel_exception("INFRA Bus Parity", infra_bp.dump);
 #endif
+	BUG_ON(1);
 
 	return 0;
 }
