@@ -3255,12 +3255,27 @@ void mtk_drm_crtc_diagnose(void)
 
 static void process_dbg_opt(const char *opt)
 {
+	struct mtk_drm_private *priv = NULL;
+	struct drm_crtc *crtc = NULL;
+	struct mtk_drm_crtc *mtk_crtc = NULL;
+	struct mtk_ddp_comp *output_comp = NULL;
+
 	DDPINFO("display_debug cmd %s\n", opt);
 
 	if (IS_ERR_OR_NULL(drm_dev)) {
-		DDPPR_ERR("%s, invalid drm dev\n", __func__);
+		DDPPR_ERR("%s: invalid drm dev\n", __func__);
 		return;
 	}
+
+	priv = drm_dev->dev_private;
+	crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list, typeof(*crtc), head);
+	if (IS_ERR_OR_NULL(crtc)) {
+		DDPPR_ERR("%s: find crtc fail\n", __func__);
+		return;
+	}
+
+	mtk_crtc = to_mtk_crtc(crtc);
+	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 
 	if (strncmp(opt, "helper", 6) == 0) {
 		/*ex: echo helper:DISP_OPT_BYPASS_OVL,0 > /d/mtkfb */
@@ -3268,7 +3283,6 @@ static void process_dbg_opt(const char *opt)
 		char *tmp;
 		int value, i, limited;
 		enum MTK_DRM_HELPER_OPT helper_opt;
-		struct mtk_drm_private *priv = drm_dev->dev_private;
 		int ret;
 
 		tmp = (char *)(opt + 7);
@@ -3295,21 +3309,8 @@ static void process_dbg_opt(const char *opt)
 			mtk_drm_helper_name_to_opt(priv->helper_opt, option);
 		mtk_update_layering_opt_by_disp_opt(helper_opt, value);
 
-		if (helper_opt == MTK_DRM_OPT_MML_PQ) {
-			struct drm_crtc *crtc;
-			struct mtk_drm_crtc *mtk_crtc;
-
-			/* this debug cmd only for crtc0 */
-			crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list, typeof(*crtc),
-						head);
-			if (IS_ERR_OR_NULL(crtc)) {
-				DDPMSG("find crtc fail\n");
-				return;
-			}
-			mtk_crtc = to_mtk_crtc(crtc);
-			if (mtk_crtc)
-				mtk_crtc->is_force_mml_scen = !!value;
-		}
+		if (helper_opt == MTK_DRM_OPT_MML_PQ)
+			mtk_crtc->is_force_mml_scen = !!value;
 	} else if (strncmp(opt, "mobile:", 7) == 0) {
 		if (strncmp(opt + 7, "on", 2) == 0)
 			g_mobile_log = 1;
@@ -3328,18 +3329,6 @@ static void process_dbg_opt(const char *opt)
 		else if (strncmp(opt + 12, "off", 3) == 0)
 			g_msync_debug = 0;
 	} else if (strncmp(opt, "msync_dy:", 9) == 0) {
-		struct drm_crtc *crtc;
-		struct mtk_drm_crtc *mtk_crtc;
-
-		/* this debug cmd only for crtc0 */
-		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
-					typeof(*crtc), head);
-		if (IS_ERR_OR_NULL(crtc)) {
-			DDPPR_ERR("find crtc fail\n");
-			return;
-		}
-
-		mtk_crtc = to_mtk_crtc(crtc);
 		if (strncmp(opt + 9, "on", 2) == 0)
 			mtk_crtc->msync2.msync_dy.dy_en = 1;
 		else if (strncmp(opt + 9, "off", 3) == 0)
@@ -3499,46 +3488,16 @@ static void process_dbg_opt(const char *opt)
 	} else if (strncmp(opt, "repaint", 7) == 0) {
 		drm_trigger_repaint(DRM_REPAINT_FOR_IDLE, drm_dev);
 	} else if (strncmp(opt, "dalprintf", 9) == 0) {
-		struct drm_crtc *crtc;
-
-		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
-					typeof(*crtc), head);
-
-		if (!crtc) {
-			DDPPR_ERR("find crtc fail\n");
-			return;
-		}
-
 		DAL_Printf("DAL printf\n");
 	} else if (strncmp(opt, "dalclean", 8) == 0) {
-		struct drm_crtc *crtc;
-
-		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
-					typeof(*crtc), head);
-
-		if (IS_ERR_OR_NULL(crtc)) {
-			DDPPR_ERR("find crtc fail\n");
-			return;
-		}
-
 		DAL_Clean();
 	} else if (strncmp(opt, "path_switch:", 11) == 0) {
-		struct drm_crtc *crtc;
 		int path_sel, ret;
-
-		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
-					typeof(*crtc), head);
-
-		if (IS_ERR_OR_NULL(crtc)) {
-			DDPPR_ERR("find crtc fail\n");
-			return;
-		}
 		ret = sscanf(opt, "path_switch:%d\n", &path_sel);
 		mtk_crtc_path_switch(crtc, path_sel, 1);
 	} else if (strncmp(opt, "enable_idlemgr:", 15) == 0) {
 		char *p = (char *)opt + 15;
 		unsigned int flg = 0;
-		struct drm_crtc *crtc;
 		int ret;
 
 		ret = kstrtouint(p, 0, &flg);
@@ -3546,19 +3505,9 @@ static void process_dbg_opt(const char *opt)
 			DDPPR_ERR("%d error to parse cmd %s\n", __LINE__, opt);
 			return;
 		}
-
-		/* this debug cmd only for crtc0 */
-		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
-					typeof(*crtc), head);
-		if (IS_ERR_OR_NULL(crtc)) {
-			DDPPR_ERR("find crtc fail\n");
-			return;
-		}
-
 		mtk_drm_set_idlemgr(crtc, flg, 1);
 	} else if (strncmp(opt, "idle_wait:", 10) == 0) {
 		unsigned long long idle_check_interval = 0;
-		struct drm_crtc *crtc;
 		int ret;
 
 		ret = sscanf(opt, "idle_wait:%llu\n", &idle_check_interval);
@@ -3567,21 +3516,11 @@ static void process_dbg_opt(const char *opt)
 			return;
 		}
 
-		/* this debug cmd only for crtc0 */
-		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
-					typeof(*crtc), head);
-		if (IS_ERR_OR_NULL(crtc)) {
-			DDPPR_ERR("find crtc fail\n");
-			return;
-		}
-
 		idle_check_interval = max(idle_check_interval, 17ULL);
 		mtk_drm_set_idle_check_interval(crtc, idle_check_interval);
 		DDPMSG("change idle interval to %llu ms\n",
 		       idle_check_interval);
 	} else if (strncmp(opt, "idle_perf:", 10) == 0) {
-		struct drm_crtc *crtc;
-
 		/* on     -- enable idle performance monitor
 		 * off    -- disable idle performance monitor
 		 * dump   -- dump idle performance data
@@ -3590,12 +3529,6 @@ static void process_dbg_opt(const char *opt)
 		 * detail -- dump the detail timing of idle performance
 		 * brief  -- don't dump detail timing of idle performance
 		 */
-		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
-					typeof(*crtc), head);
-		if (IS_ERR_OR_NULL(crtc)) {
-			DDPPR_ERR("find crtc fail\n");
-			return;
-		}
 
 		DDPMSG("%s: idle_perf\n", __func__);
 		if (strncmp(opt + 10, "on", 2) == 0)
@@ -3617,25 +3550,17 @@ static void process_dbg_opt(const char *opt)
 		else if (strncmp(opt + 10, "detailoff", 9) == 0)
 			mtk_drm_idlemgr_async_perf_detail_control(false, crtc);
 	} else if (strncmp(opt, "idle_cpu_freq:", 14) == 0) {
-		struct drm_crtc *crtc;
 		int ret, value;
 
 		ret = sscanf(opt + 14, "%d\n", &value);
 		if (ret <= 0) {
 			DDPMSG("%d error to parse cmd %s\n", __LINE__, opt);
-			return;
-		}
-		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
-					typeof(*crtc), head);
-		if (IS_ERR_OR_NULL(crtc)) {
-			DDPPR_ERR("find crtc fail\n");
 			return;
 		}
 
 		DDPMSG("%s: idle_cpu_freq:%u\n", __func__, value);
 		mtk_drm_idlemgr_cpu_control(crtc, MTK_DRM_CPU_CMD_FREQ, value);
 	} else if (strncmp(opt, "idle_cpu_mask:", 14) == 0) {
-		struct drm_crtc *crtc;
 		int ret, value;
 
 		ret = sscanf(opt + 14, "%d\n", &value);
@@ -3643,28 +3568,15 @@ static void process_dbg_opt(const char *opt)
 			DDPMSG("%d error to parse cmd %s\n", __LINE__, opt);
 			return;
 		}
-		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
-					typeof(*crtc), head);
-		if (IS_ERR_OR_NULL(crtc)) {
-			DDPPR_ERR("find crtc fail\n");
-			return;
-		}
 
 		DDPMSG("%s: idle_cpu_mask:0x%x\n", __func__, value);
 		mtk_drm_idlemgr_cpu_control(crtc, MTK_DRM_CPU_CMD_MASK, value);
 	} else if (strncmp(opt, "idle_cpu_latency:", 17) == 0) {
-		struct drm_crtc *crtc;
 		int ret, value;
 
 		ret = sscanf(opt + 17, "%d\n", &value);
 		if (ret <= 0) {
 			DDPMSG("%d error to parse cmd %s\n", __LINE__, opt);
-			return;
-		}
-		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
-					typeof(*crtc), head);
-		if (IS_ERR_OR_NULL(crtc)) {
-			DDPPR_ERR("find crtc fail\n");
 			return;
 		}
 
@@ -3681,15 +3593,8 @@ static void process_dbg_opt(const char *opt)
 		DDPMSG("%s: idle_perf_aee:%ums\n", __func__, value);
 		mtk_drm_idlegmr_perf_aee_control(value);
 	} else if (strncmp(opt, "idle_by_wb:", 11) == 0) {
-		struct drm_crtc *crtc;
 		int value;
 
-		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
-					typeof(*crtc), head);
-		if (IS_ERR_OR_NULL(crtc)) {
-			DDPPR_ERR("find crtc fail\n");
-			return;
-		}
 		if (strncmp(opt + 11, "test:", 5) == 0) {
 			if (sscanf(opt + 16, "%d\n", &value) > 0) {
 				DDPMSG("%s: idle_by_wb test: %d\n", __func__, value);
@@ -3703,39 +3608,20 @@ static void process_dbg_opt(const char *opt)
 		} else
 			DDPMSG("%s: idle_by_wb param invalid\n", __func__);
 	} else if (strncmp(opt, "hrt_bw", 6) == 0) {
-		struct mtk_drm_private *priv = drm_dev->dev_private;
-
 		DDPINFO("HRT test+\n");
 		if (mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_MMQOS_SUPPORT))
 			mtk_disp_hrt_bw_dbg();
 		DDPINFO("HRT test-\n");
 	} else if (strncmp(opt, "lcm_dump", 8) == 0) {
-		struct mtk_ddp_comp *comp;
-		struct drm_crtc *crtc;
-		struct mtk_drm_crtc *mtk_crtc;
-
-		/* this debug cmd only for crtc0 */
-		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
-					typeof(*crtc), head);
-		if (IS_ERR_OR_NULL(crtc)) {
-			DDPPR_ERR("find crtc fail\n");
-			return;
-		}
-
-		mtk_crtc = to_mtk_crtc(crtc);
-		comp = mtk_ddp_comp_request_output(mtk_crtc);
-		if (!comp) {
+		if (!output_comp) {
 			DDPINFO("cannot find output component\n");
 			return;
 		}
-		mtk_ddp_comp_io_cmd(comp, NULL,
+		mtk_ddp_comp_io_cmd(output_comp, NULL,
 			DSI_DUMP_LCM_INFO, NULL);
 		DDPMSG("%s, finished lcm dump\n", __func__);
 	} else if (strncmp(opt, "lcm0_cust", 9) == 0) {
-		struct mtk_ddp_comp *comp;
-		struct drm_crtc *crtc;
-		struct mtk_drm_crtc *mtk_crtc;
 		struct lcm_sample_cust_data *cust_data =
 				kzalloc(sizeof(struct lcm_sample_cust_data), GFP_KERNEL);
 
@@ -3746,18 +3632,7 @@ static void process_dbg_opt(const char *opt)
 			return;
 		}
 
-		/* this debug cmd only for crtc0 */
-		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
-					typeof(*crtc), head);
-		if (IS_ERR_OR_NULL(crtc)) {
-			DDPPR_ERR("find crtc fail\n");
-			kfree(cust_data);
-			return;
-		}
-
-		mtk_crtc = to_mtk_crtc(crtc);
-		comp = mtk_ddp_comp_request_output(mtk_crtc);
-		if (!comp || !comp->funcs || !comp->funcs->io_cmd) {
+		if (!output_comp || !output_comp ->funcs || !output_comp ->funcs->io_cmd) {
 			DDPINFO("cannot find output component\n");
 			kfree(cust_data);
 			return;
@@ -3768,7 +3643,7 @@ static void process_dbg_opt(const char *opt)
 			DDPMSG("%s, %d, get cust name\n",
 				__func__, __LINE__);
 			cust_data->cmd = 0;
-			comp->funcs->io_cmd(comp, NULL, LCM_CUST_FUNC, (void *)cust_data);
+			mtk_ddp_comp_io_cmd(output_comp, NULL, LCM_CUST_FUNC, (void *)cust_data);
 			DDPMSG("%s, %d, >>>> cmd:%d name:%s\n",
 				__func__, __LINE__, cust_data->cmd, cust_data->name);
 			kfree(cust_data->name);
@@ -3777,49 +3652,35 @@ static void process_dbg_opt(const char *opt)
 		DDPMSG("%s, %d, get cust type\n",
 			__func__, __LINE__);
 		cust_data->cmd = 1;
-		comp->funcs->io_cmd(comp, NULL, LCM_CUST_FUNC, (void *)cust_data);
+		mtk_ddp_comp_io_cmd(output_comp, NULL, LCM_CUST_FUNC, (void *)cust_data);
 		DDPMSG("%s, %d, >>>> cmd:%d type:0x%x\n",
 			__func__, __LINE__, cust_data->cmd, cust_data->type);
 
 		DDPMSG("%s, %d, do cust pre-prepare\n",
 			__func__, __LINE__);
 		cust_data->cmd = 2;
-		comp->funcs->io_cmd(comp, NULL, LCM_CUST_FUNC, (void *)cust_data);
+		mtk_ddp_comp_io_cmd(output_comp, NULL, LCM_CUST_FUNC, (void *)cust_data);
 
 		kfree(cust_data);
 	} else if (strncmp(opt, "lcm0_reset", 10) == 0) {
-		struct mtk_ddp_comp *comp;
-		struct drm_crtc *crtc;
-		struct mtk_drm_crtc *mtk_crtc;
 		int enable;
 
-		/* this debug cmd only for crtc0 */
-		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
-					typeof(*crtc), head);
-		if (IS_ERR_OR_NULL(crtc)) {
-			DDPPR_ERR("find crtc fail\n");
-			return;
-		}
-
-		mtk_crtc = to_mtk_crtc(crtc);
-		comp = mtk_ddp_comp_request_output(mtk_crtc);
-		if (!comp || !comp->funcs || !comp->funcs->io_cmd) {
+		if (!output_comp || !output_comp->funcs || !output_comp->funcs->io_cmd) {
 			DDPINFO("cannot find output component\n");
 			return;
 		}
 		enable = 1;
-		comp->funcs->io_cmd(comp, NULL, LCM_RESET, &enable);
+		mtk_ddp_comp_io_cmd(output_comp, NULL, LCM_RESET, &enable);
 		msleep(20);
 		enable = 0;
-		comp->funcs->io_cmd(comp, NULL, LCM_RESET, &enable);
+		mtk_ddp_comp_io_cmd(output_comp, NULL, LCM_RESET, &enable);
 		msleep(20);
 		enable = 1;
-		comp->funcs->io_cmd(comp, NULL, LCM_RESET, &enable);
+		mtk_ddp_comp_io_cmd(output_comp, NULL, LCM_RESET, &enable);
 	} else if (strncmp(opt, "lcm1_reset", 10) == 0) {
 		struct mtk_ddp_comp *comp;
 		struct drm_crtc *crtc;
 		struct mtk_drm_crtc *mtk_crtc;
-		struct mtk_drm_private *priv = (drm_dev) ? drm_dev->dev_private : NULL;
 		int enable, i;
 
 		if (IS_ERR_OR_NULL(priv)) {
@@ -3931,18 +3792,7 @@ static void process_dbg_opt(const char *opt)
 		unsigned int relay;
 		int ret;
 		struct mtk_ddp_comp *comp;
-		struct drm_crtc *crtc;
-		struct mtk_drm_crtc *mtk_crtc;
 
-		/* this debug cmd only for crtc0 */
-		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
-					typeof(*crtc), head);
-		if (IS_ERR_OR_NULL(crtc)) {
-			DDPPR_ERR("find crtc fail\n");
-			return;
-		}
-
-		mtk_crtc = to_mtk_crtc(crtc);
 		comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_POSTMASK, 0);
 		if (!comp) {
 			DDPPR_ERR("find postmask fail\n");
@@ -3996,22 +3846,10 @@ static void process_dbg_opt(const char *opt)
 		DDPINFO("set force partial roi:%d\n", en);
 		mtkfb_set_force_partial_roi(en);
 	} else if (strncmp(opt, "dump_fake_engine", 16) == 0) {
-		struct drm_crtc *crtc;
-		struct mtk_drm_crtc *mtk_crtc;
-
-		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
-				typeof(*crtc), head);
-		if (IS_ERR_OR_NULL(crtc)) {
-			DDPPR_ERR("find crtc fail\n");
-			return;
-		}
-
-		mtk_crtc = to_mtk_crtc(crtc);
 		dump_fake_engine(mtk_crtc->config_regs);
 	} else if (!strncmp(opt, "fake_engine:", 12)) {
 		unsigned int en, idx, wr_en, rd_en, wr_pat1, wr_pat2, latency,
 				preultra_cnt, ultra_cnt;
-		struct drm_crtc *crtc;
 		int ret = 0;
 
 		ret = sscanf(opt, "fake_engine:%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
@@ -4021,13 +3859,6 @@ static void process_dbg_opt(const char *opt)
 		if (ret != 9) {
 			DDPPR_ERR("%d error to parse cmd %s\n",
 				__LINE__, opt);
-			return;
-		}
-
-		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
-				typeof(*crtc), head);
-		if (IS_ERR_OR_NULL(crtc)) {
-			DDPPR_ERR("find crtc fail\n");
 			return;
 		}
 
@@ -4108,37 +3939,10 @@ static void process_dbg_opt(const char *opt)
 					unchanged_compress_ratio_table[i].active);
 		}
 	} else if (strncmp(opt, "checkt", 6) == 0) { /* check trigger */
-		struct drm_crtc *crtc;
-		struct mtk_drm_crtc *mtk_crtc;
-
-		/* this debug cmd only for crtc0 */
-		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
-				typeof(*crtc), head);
-
-		if (IS_ERR_OR_NULL(crtc)) {
-			DDPPR_ERR("find crtc fail\n");
-			return;
-		}
-
-		mtk_crtc = to_mtk_crtc(crtc);
 		mtk_crtc_check_trigger(mtk_crtc, false, true);
 	} else if (strncmp(opt, "checkd", 6) == 0) { /* check trigger delay */
-		struct drm_crtc *crtc;
-		struct mtk_drm_crtc *mtk_crtc;
-
-		/* this debug cmd only for crtc0 */
-		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
-				typeof(*crtc), head);
-		if (IS_ERR_OR_NULL(crtc)) {
-			DDPPR_ERR("find crtc fail\n");
-			return;
-		}
-
-		mtk_crtc = to_mtk_crtc(crtc);
 		mtk_crtc_check_trigger(mtk_crtc, true, true);
 	} else if (strncmp(opt, "trig_type:", 10) == 0) { /* check trigger delay */
-		struct drm_crtc *crtc;
-		struct mtk_drm_crtc *mtk_crtc;
 		int value, ret = 0;
 
 		/* 0:none, 1:delay, 2:off, 3:repaint */
@@ -4147,20 +3951,9 @@ static void process_dbg_opt(const char *opt)
 			DDPPR_ERR("%d error to parse cmd %s\n", __LINE__, opt);
 			return;
 		}
-		/* this debug cmd only for crtc0 */
-		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
-				typeof(*crtc), head);
-		if (IS_ERR_OR_NULL(crtc)) {
-			DDPPR_ERR("find crtc fail\n");
-			return;
-		}
-
-		mtk_crtc = to_mtk_crtc(crtc);
 		mtk_crtc_set_check_trigger_type(mtk_crtc, value);
 	} else if (!strncmp(opt, "fake_layer:", 11)) {
 		unsigned int mask;
-		struct drm_crtc *crtc;
-		struct mtk_drm_crtc *mtk_crtc;
 		int ret = 0;
 
 		ret = sscanf(opt, "fake_layer:0x%x\n", &mask);
@@ -4170,19 +3963,11 @@ static void process_dbg_opt(const char *opt)
 			return;
 		}
 
-		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
-				typeof(*crtc), head);
-		if (IS_ERR_OR_NULL(crtc)) {
-			DDPPR_ERR("find crtc fail\n");
-			return;
-		}
-
 		mtk_drm_idlemgr_kick(__func__, crtc, 1);
 		mtk_drm_set_idlemgr(crtc, 0, 1);
 
 		prepare_fake_layer_buffer(crtc);
 
-		mtk_crtc = to_mtk_crtc(crtc);
 		if (!mask && mtk_crtc->fake_layer.fake_layer_mask)
 			mtk_crtc->fake_layer.first_dis = true;
 		mtk_crtc->fake_layer.fake_layer_mask = mask;
@@ -4201,48 +3986,16 @@ static void process_dbg_opt(const char *opt)
 		DDPINFO("mipi_ccci:%d\n", en);
 		mtk_disp_mipi_ccci_callback(en, 0);
 	} else if (strncmp(opt, "aal:", 4) == 0) {
-		struct drm_crtc *crtc;
-
-		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list, typeof(*crtc), head);
-		if (IS_ERR_OR_NULL(crtc)) {
-			DDPPR_ERR("find crtc fail\n");
-			return;
-		}
-
 		disp_aal_debug(crtc, opt + 4);
 	} else if (strncmp(opt, "c3d:", 4) == 0) {
-		struct drm_crtc *crtc;
-
-		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list, typeof(*crtc), head);
-		if (IS_ERR_OR_NULL(crtc)) {
-			DDPPR_ERR("find crtc fail\n");
-			return;
-		}
-
 		disp_c3d_debug(crtc, opt + 4);
 	} else if (strncmp(opt, "gamma:", 6) == 0) {
-		struct drm_crtc *crtc;
-
-		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list, typeof(*crtc), head);
-		if (IS_ERR_OR_NULL(crtc)) {
-			DDPPR_ERR("find crtc fail\n");
-			return;
-		}
-
 		disp_gamma_debug(crtc, opt + 6);
 	} else if (strncmp(opt, "oddmr:", 4) == 0) {
-		struct drm_crtc *crtc;
-
-		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list, typeof(*crtc), head);
-		if (IS_ERR_OR_NULL(crtc)) {
-			DDPPR_ERR("find crtc fail\n");
-			return;
-		}
 		mtk_disp_oddmr_debug(crtc, opt + 6);
 	} else if (strncmp(opt, "mtcmos:", 7) == 0) {
 		int ret;
 		unsigned int on;
-		struct mtk_drm_private *priv = drm_dev->dev_private;
 
 		ret = sscanf(opt, "mtcmos:%u\n", &on);
 		if (ret != 1) {
@@ -4301,10 +4054,7 @@ static void process_dbg_opt(const char *opt)
 			(u8)val2, (u8)val3, (u8)val4, (u8)val5, (u8)val6);
 	} else if (strncmp(opt, "read_base_voltage:", 18) == 0) {
 		unsigned int recoder;
-		struct drm_crtc *crtc;
-		struct mtk_drm_crtc *mtk_crtc;
 		unsigned int ret;
-		struct mtk_ddp_comp *output_comp;
 
 		ret = sscanf(opt, "read_base_voltage:%x\n", &recoder);
 		if (ret != 1) {
@@ -4314,18 +4064,6 @@ static void process_dbg_opt(const char *opt)
 		}
 
 		DDPMSG("read_base_voltage %d\n", recoder);
-		/* This cmd only for crtc0 */
-		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
-				typeof(*crtc), head);
-
-		if (!crtc) {
-			DDPMSG("find crtc fail\n");
-			return;
-		}
-
-		mtk_crtc = to_mtk_crtc(crtc);
-
-		output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 
 		if (!output_comp) {
 
@@ -4447,7 +4185,6 @@ static void process_dbg_opt(const char *opt)
 	} else if (!strncmp(opt, "chg_mipi:", 9)) {
 		int ret;
 		unsigned int rate;
-		struct drm_crtc *crtc;
 
 		ret = sscanf(opt, "chg_mipi:%u\n", &rate);
 		if (ret != 1) {
@@ -4455,15 +4192,6 @@ static void process_dbg_opt(const char *opt)
 				__LINE__, opt);
 			return;
 		}
-		DDPMSG("chg_mipi:%u  1\n", rate);
-
-		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
-						typeof(*crtc), head);
-		if (IS_ERR_OR_NULL(crtc)) {
-			DDPMSG("find crtc fail\n");
-			return;
-		}
-		DDPMSG("chg_mipi:%u  2\n", rate);
 
 		mtk_mipi_clk_change(crtc, rate);
 
@@ -4556,9 +4284,6 @@ static void process_dbg_opt(const char *opt)
 				mtk_dp_intf_dump(comp);
 		}
 	} else if (strncmp(opt, "arr4_enable", 11) == 0) {
-		struct mtk_ddp_comp *comp;
-		struct drm_crtc *crtc;
-		struct mtk_drm_crtc *mtk_crtc;
 		struct mtk_dsi_lfr_con lfr_con = {0};
 
 		lfr_con.lfr_mode     = mtk_dbg_get_lfr_mode_value();
@@ -4567,55 +4292,17 @@ static void process_dbg_opt(const char *opt)
 		lfr_con.lfr_vse_dis  = mtk_dbg_get_lfr_vse_dis_value();
 		lfr_con.lfr_skip_num = mtk_dbg_get_lfr_skip_num_value();
 
-		/* this debug cmd only for crtc0 */
-		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
-					typeof(*crtc), head);
-		if (IS_ERR_OR_NULL(crtc)) {
-			DDPPR_ERR("find crtc fail\n");
-			return;
-		}
-
-		mtk_crtc = to_mtk_crtc(crtc);
-		comp = mtk_ddp_comp_request_output(mtk_crtc);
-		if (comp)
-			comp->funcs->io_cmd(comp, NULL, DSI_LFR_SET, &lfr_con);
+		if (output_comp)
+			mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_LFR_SET, &lfr_con);
 
 	} else if (strncmp(opt, "LFR_update", 10) == 0) {
-		struct mtk_ddp_comp *comp;
-		struct drm_crtc *crtc;
-		struct mtk_drm_crtc *mtk_crtc;
-
-		/* this debug cmd only for crtc0 */
-		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
-					typeof(*crtc), head);
-		if (IS_ERR_OR_NULL(crtc)) {
-			DDPPR_ERR("find crtc fail\n");
-			return;
-		}
-
-		mtk_crtc = to_mtk_crtc(crtc);
-		comp = mtk_ddp_comp_request_output(mtk_crtc);
-		if (comp)
-			comp->funcs->io_cmd(comp, NULL, DSI_LFR_UPDATE, NULL);
+		if (output_comp)
+			mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_LFR_UPDATE, NULL);
 
 	} else if (strncmp(opt, "LFR_status_check", 16) == 0) {
 		//unsigned int data = mtk_dbg_get_LFR_value();
-		struct mtk_ddp_comp *comp;
-		struct drm_crtc *crtc;
-		struct mtk_drm_crtc *mtk_crtc;
-
-		/* this debug cmd only for crtc0 */
-		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
-					typeof(*crtc), head);
-		if (IS_ERR_OR_NULL(crtc)) {
-			DDPPR_ERR("find crtc fail\n");
-			return;
-		}
-
-		mtk_crtc = to_mtk_crtc(crtc);
-		comp = mtk_ddp_comp_request_output(mtk_crtc);
-		if (comp)
-			comp->funcs->io_cmd(comp, NULL, DSI_LFR_STATUS_CHECK, NULL);
+		if (output_comp)
+			mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_LFR_STATUS_CHECK, NULL);
 
 	} else if (strncmp(opt, "tui:", 4) == 0) {
 		unsigned int en, ret;
@@ -4692,21 +4379,10 @@ static void process_dbg_opt(const char *opt)
 		mtk_drm_cwb_enable(enable, &user_cwb_funcs, IMAGE_ONLY);
 	} else if (strncmp(opt, "cwb_get_buffer", 14) == 0) {
 		u8 *user_buffer;
-		struct drm_crtc *crtc;
-		struct mtk_drm_crtc *mtk_crtc;
 		struct mtk_cwb_info *cwb_info;
 		int width, height, size, ret;
 		int Bpp;
 
-		/* this debug cmd only for crtc0 */
-		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
-					typeof(*crtc), head);
-		if (IS_ERR_OR_NULL(crtc)) {
-			DDPPR_ERR("find crtc fail\n");
-			return;
-		}
-
-		mtk_crtc = to_mtk_crtc(crtc);
 		cwb_info = mtk_crtc->cwb_info;
 		if (!cwb_info)
 			return;
@@ -4734,8 +4410,6 @@ static void process_dbg_opt(const char *opt)
 		reinit_completion(&cwb_cmp);
 	} else if (strncmp(opt, "cwb_change_path:", 16) == 0) {
 		int path, ret;
-		struct drm_crtc *crtc;
-		struct mtk_drm_crtc *mtk_crtc;
 		struct mtk_cwb_info *cwb_info;
 
 		ret = sscanf(opt, "cwb_change_path:%d\n", &path);
@@ -4744,13 +4418,7 @@ static void process_dbg_opt(const char *opt)
 				__LINE__, opt);
 			return;
 		}
-		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
-					typeof(*crtc), head);
-		if (IS_ERR_OR_NULL(crtc)) {
-			DDPPR_ERR("find crtc fail\n");
-			return;
-		}
-		mtk_crtc = to_mtk_crtc(crtc);
+
 		if (!mtk_crtc->cwb_info) {
 			mtk_crtc->cwb_info = kzalloc(sizeof(struct mtk_cwb_info),
 				GFP_KERNEL);
@@ -4770,8 +4438,6 @@ static void process_dbg_opt(const char *opt)
 
 	} else if (strncmp(opt, "cwb_change_color_format:", 24) == 0) {
 		int ret, color;
-		struct drm_crtc *crtc;
-		struct mtk_drm_crtc *mtk_crtc;
 
 		ret = sscanf(opt, "cwb_change_color_format:%d\n", &color);
 		if (ret != 1) {
@@ -4780,13 +4446,6 @@ static void process_dbg_opt(const char *opt)
 			return;
 		}
 
-		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
-					typeof(*crtc), head);
-		if (IS_ERR_OR_NULL(crtc)) {
-			DDPPR_ERR("find crtc fail\n");
-			return;
-		}
-		mtk_crtc = to_mtk_crtc(crtc);
 		DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
 
 		if (!mtk_crtc->cwb_info) {
@@ -4801,10 +4460,7 @@ static void process_dbg_opt(const char *opt)
 
 	} else if (strncmp(opt, "fake_wcg", 8) == 0) {
 		unsigned int fake_hdr_en = 0;
-		struct drm_crtc *crtc;
 		struct mtk_panel_params *params = NULL;
-		struct mtk_drm_crtc *mtk_crtc;
-		struct mtk_ddp_comp *output_comp;
 		struct mtk_crtc_state *state;
 		unsigned int mode_cont, cur_mode_idx, i;
 		int ret;
@@ -4815,18 +4471,8 @@ static void process_dbg_opt(const char *opt)
 			return;
 		}
 
-		/* this debug cmd only for crtc0 */
-		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
-					typeof(*crtc), head);
-		if (IS_ERR_OR_NULL(crtc)) {
-			DDPPR_ERR("find crtc fail\n");
-			return;
-		}
-		mtk_crtc = to_mtk_crtc(crtc);
-
 		state = to_mtk_crtc_state(mtk_crtc->base.state);
 		cur_mode_idx = state->prop_val[CRTC_PROP_DISP_MODE_IDX];
-		output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 		if (!output_comp) {
 			DDPMSG("output_comp is null!\n");
 			return;
@@ -4853,10 +4499,7 @@ static void process_dbg_opt(const char *opt)
 		DDPINFO("set panel color_mode to %d\n", params->lcm_color_mode);
 	} else if (strncmp(opt, "fake_mode:", 10) == 0) {
 		unsigned int en = 0;
-		struct drm_crtc *crtc;
 		struct mtk_panel_funcs *funcs;
-		struct mtk_drm_crtc *mtk_crtc;
-		struct mtk_ddp_comp *comp;
 		int tmp;
 		int ret;
 
@@ -4871,14 +4514,6 @@ static void process_dbg_opt(const char *opt)
 			return;
 		}
 
-		/* this debug cmd only for crtc0 */
-		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
-					typeof(*crtc), head);
-		if (IS_ERR_OR_NULL(crtc)) {
-			DDPPR_ERR("find crtc fail\n");
-			return;
-		}
-
 		funcs = mtk_drm_get_lcm_ext_funcs(crtc);
 		if (!funcs || !funcs->set_value) {
 			DDPPR_ERR("[Fake mode] find lcm funcs->debug_set fail\n");
@@ -4887,11 +4522,10 @@ static void process_dbg_opt(const char *opt)
 		funcs->set_value(en);
 		DDPINFO("[Fake mode] set panel debug to %d\n", en);
 
-		mtk_crtc = to_mtk_crtc(crtc);
-		comp = mtk_ddp_comp_request_output(mtk_crtc);
-		mtk_ddp_comp_io_cmd(comp, NULL,	DSI_FILL_MODE_BY_CONNETOR, mtk_crtc);
+		output_comp = mtk_ddp_comp_request_output(mtk_crtc);
+		mtk_ddp_comp_io_cmd(output_comp, NULL,	DSI_FILL_MODE_BY_CONNETOR, mtk_crtc);
 		tmp = mtk_crtc->avail_modes_num;
-		mtk_ddp_comp_io_cmd(comp, NULL,	DSI_SET_CRTC_AVAIL_MODES, mtk_crtc);
+		mtk_ddp_comp_io_cmd(output_comp, NULL,	DSI_SET_CRTC_AVAIL_MODES, mtk_crtc);
 		DDPINFO("[Fake mode] avail_modes_num:%d->%d\n",
 							tmp, mtk_crtc->avail_modes_num);
 #if IS_ENABLED(CONFIG_MTK_DISP_DEBUG)
@@ -4907,8 +4541,6 @@ static void process_dbg_opt(const char *opt)
 		DDPMSG("[reg_dbg] set after_commit:%u\n", g_wr_reg.after_commit);
 	} else if (strncmp(opt, "gce_wr:", strlen("gce_wr:")) == 0) {
 		uint32_t addr, val, mask;
-		struct drm_crtc *crtc;
-		struct mtk_drm_crtc *mtk_crtc;
 		struct cmdq_pkt *handle;
 		char comp_name[64] = {0};
 		int ret;
@@ -4933,16 +4565,6 @@ static void process_dbg_opt(const char *opt)
 			if (g_wr_reg.index < 63)
 				g_wr_reg.index++;
 		} else {
-			/* this debug cmd only for crtc0 */
-			crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
-						typeof(*crtc), head);
-			if (IS_ERR_OR_NULL(crtc)) {
-				DDPPR_ERR("[reg_dbg] find crtc fail\n");
-				return;
-			}
-
-			mtk_crtc = to_mtk_crtc(crtc);
-
 			mtk_crtc_pkt_create(&handle, &mtk_crtc->base,
 					mtk_crtc->gce_obj.client[CLIENT_DSI_CFG]);
 			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
@@ -4952,8 +4574,6 @@ static void process_dbg_opt(const char *opt)
 		}
 	} else if (strncmp(opt, "gce_rd:", strlen("gce_rd:")) == 0) {
 		uint32_t addr, val;
-		struct drm_crtc *crtc;
-		struct mtk_drm_crtc *mtk_crtc;
 		struct cmdq_pkt *handle;
 		struct cmdq_pkt_buffer *cmdq_buf;
 		int ret;
@@ -4964,15 +4584,6 @@ static void process_dbg_opt(const char *opt)
 			return;
 		}
 
-		/* this debug cmd only for crtc0 */
-		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
-					typeof(*crtc), head);
-		if (IS_ERR_OR_NULL(crtc)) {
-			DDPPR_ERR("[reg_dbg] find crtc fail\n");
-			return;
-		}
-
-		mtk_crtc = to_mtk_crtc(crtc);
 		cmdq_buf = &(mtk_crtc->gce_obj.buf);
 
 		mtk_crtc_pkt_create(&handle, &mtk_crtc->base,
@@ -4989,21 +4600,12 @@ static void process_dbg_opt(const char *opt)
 		uint32_t en = 0;
 		uint32_t bit_num = 0;
 		int ret;
-		struct drm_crtc *crtc;
-		struct mtk_drm_crtc *mtk_crtc;
 
 		ret = sscanf(opt, "crtc_caps:%x,%x\n", &bit_num, &en);
 		DDPINFO("[crtc_caps] en: %d, bit: %d\n", en, bit_num);
 		if (ret != 2)
 			return;
 
-		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
-					typeof(*crtc), head);
-		if (IS_ERR_OR_NULL(crtc)) {
-			DDPPR_ERR("[reg_dbg] find crtc fail\n");
-			return;
-		}
-		mtk_crtc = to_mtk_crtc(crtc);
 		DDPINFO("[crtc_caps] crtc_ability[0x%x]+++\n", mtk_crtc->crtc_caps.crtc_ability);
 		if (en)
 			mtk_crtc->crtc_caps.crtc_ability |= BIT(bit_num);
@@ -5028,7 +4630,6 @@ static void process_dbg_opt(const char *opt)
 		DDPMSG("[vidle_dbg] en: 0x%8x, stop: 0x%8x\n", en, stop);
 	} else if (strncmp(opt, "pq_path_sel:", 12) == 0) {
 		unsigned int path_sel, ret, old_path;
-		struct mtk_drm_private *priv = drm_dev->dev_private;
 
 		ret = sscanf(opt, "pq_path_sel:%u\n", &path_sel);
 		if (ret != 1) {
@@ -5099,8 +4700,6 @@ static void process_dbg_opt(const char *opt)
 		}
 	} else if (strncmp(opt, "esd_check", 9) == 0) {
 		unsigned int esd_check_en = 0;
-		struct drm_crtc *crtc;
-		struct mtk_drm_crtc *mtk_crtc;
 		struct mtk_drm_esd_ctx *esd_ctx;
 		int ret;
 
@@ -5110,15 +4709,6 @@ static void process_dbg_opt(const char *opt)
 			return;
 		}
 
-		/* this debug cmd only for crtc0 */
-		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
-					typeof(*crtc), head);
-		if (IS_ERR_OR_NULL(crtc)) {
-			DDPPR_ERR("find crtc fail\n");
-			return;
-		}
-
-		mtk_crtc = to_mtk_crtc(crtc);
 		esd_ctx = mtk_crtc->esd_ctx;
 		if (esd_ctx != NULL) {
 			esd_ctx->chk_en = esd_check_en;
@@ -5127,8 +4717,6 @@ static void process_dbg_opt(const char *opt)
 			DDPINFO("esd_ctx is null!\n");
 		}
 	} else if (strncmp(opt, "mml_debug:", 10) == 0) {
-		struct drm_crtc *crtc;
-		struct mtk_drm_crtc *mtk_crtc;
 		int ret, value;
 
 		ret = sscanf(opt + 10, "%d\n", &value);
@@ -5137,28 +4725,12 @@ static void process_dbg_opt(const char *opt)
 			return;
 		}
 
-		/* this debug cmd only for crtc0 */
-		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list, typeof(*crtc), head);
-		if (IS_ERR_OR_NULL(crtc)) {
-			DDPPR_ERR("find crtc fail\n");
-			return;
-		}
-		mtk_crtc = to_mtk_crtc(crtc);
-
 		mtk_crtc->mml_debug = value;
 		DDPMSG("mml_debug:%s %s %s\n",
 			value & DISP_MML_DBG_LOG ? "DBG_LOG" : "",
 			value & DISP_MML_MMCLK_UNLIMIT ? "MMCLK_UNLIMIT" : "",
 			value & DISP_MML_IR_CLEAR ? "IR_CLEAR" : "");
 	} else if (strncmp(opt, "dual_te:", 8) == 0) {
-		struct drm_crtc *crtc;
-
-		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
-					typeof(*crtc), head);
-		if (IS_ERR_OR_NULL(crtc)) {
-			DDPPR_ERR("find crtc fail\n");
-			return;
-		}
 		if (strncmp(opt + 8, "1", 1) == 0) {
 			mtk_drm_switch_te(crtc, 1, true);
 			DDPMSG("switched to te1\n");
@@ -5181,8 +4753,6 @@ static void process_dbg_opt(const char *opt)
 
 		DDPMSG("mml_mode:%d", g_mml_mode);
 	} else if (strncmp(opt, "force_mml:", 10) == 0) {
-		struct drm_crtc *crtc;
-		struct mtk_drm_crtc *mtk_crtc;
 		int force_mml_scen = 0;
 
 		if (strncmp(opt + 10, "1", 1) == 0)
@@ -5190,20 +4760,7 @@ static void process_dbg_opt(const char *opt)
 		else if (strncmp(opt + 10, "0", 1) == 0)
 			force_mml_scen = 0;
 		DDPMSG("disp_mml:%d", force_mml_scen);
-
-		/* this debug cmd only for crtc0 */
-		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
-					typeof(*crtc), head);
-
-		if (IS_ERR_OR_NULL(crtc)) {
-			DDPPR_ERR("find crtc fail\n");
-			return;
-		}
-
-		mtk_crtc = to_mtk_crtc(crtc);
-
-		if (mtk_crtc)
-			mtk_crtc->is_force_mml_scen = force_mml_scen;
+		mtk_crtc->is_force_mml_scen = force_mml_scen;
 	} else if (strncmp(opt, "g_y2r_en:", 9) == 0) {
 		if (strncmp(opt + 9, "0", 1) == 0)
 			g_y2r_en = 0;
@@ -5247,8 +4804,6 @@ static void process_dbg_opt(const char *opt)
 		}
 
 	} else if (strncmp(opt, "mml_cmd_ir:", 11) == 0) {
-		struct drm_crtc *crtc;
-		struct mtk_drm_crtc *mtk_crtc;
 		bool mml_cmd_ir = false;
 
 		if (strncmp(opt + 11, "1", 1) == 0)
@@ -5256,23 +4811,8 @@ static void process_dbg_opt(const char *opt)
 		else if (strncmp(opt + 11, "0", 1) == 0)
 			mml_cmd_ir = false;
 		DDPMSG("mml_cmd_ir:%d", mml_cmd_ir);
-
-		/* this debug cmd only for crtc0 */
-		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
-					typeof(*crtc), head);
-
-		if (IS_ERR_OR_NULL(crtc)) {
-			pr_info("find crtc fail\n");
-			return;
-		}
-
-		mtk_crtc = to_mtk_crtc(crtc);
-
-		if (mtk_crtc)
-			mtk_crtc->mml_cmd_ir = mml_cmd_ir;
+		mtk_crtc->mml_cmd_ir = mml_cmd_ir;
 	} else if (strncmp(opt, "mml_prefer_dc:", 14) == 0) {
-		struct drm_crtc *crtc;
-		struct mtk_drm_crtc *mtk_crtc;
 		bool mml_prefer_dc = false;
 
 		if (strncmp(opt + 14, "1", 1) == 0)
@@ -5280,23 +4820,8 @@ static void process_dbg_opt(const char *opt)
 		else if (strncmp(opt + 14, "0", 1) == 0)
 			mml_prefer_dc = false;
 		DDPMSG("mml_prefer_dc:%d", mml_prefer_dc);
-
-		/* this debug cmd only for crtc0 */
-		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
-					typeof(*crtc), head);
-
-		if (IS_ERR_OR_NULL(crtc)) {
-			pr_info("find crtc fail\n");
-			return;
-		}
-
-		mtk_crtc = to_mtk_crtc(crtc);
-
-		if (mtk_crtc)
-			mtk_crtc->mml_prefer_dc = mml_prefer_dc;
+		mtk_crtc->mml_prefer_dc = mml_prefer_dc;
 	} else if (strncmp(opt, "pf_ts_type:", 11) == 0) {
-		struct drm_crtc *crtc;
-		struct mtk_drm_crtc *mtk_crtc;
 		int ret, pf_ts_type;
 
 		ret = sscanf(opt, "pf_ts_type:%d\n", &pf_ts_type);
@@ -5305,21 +4830,9 @@ static void process_dbg_opt(const char *opt)
 			return;
 		}
 
-		/* this debug cmd only for crtc0 */
-		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
-					typeof(*crtc), head);
-		if (IS_ERR_OR_NULL(crtc)) {
-			pr_info("find crtc fail\n");
-			return;
-		}
-		mtk_crtc = to_mtk_crtc(crtc);
-
-		if (mtk_crtc) {
-			mtk_crtc->pf_ts_type = pf_ts_type;
-			mtk_crtc->pf_time = 0;
-		}
+		mtk_crtc->pf_ts_type = pf_ts_type;
+		mtk_crtc->pf_time = 0;
 	} else if (strncmp(opt, "hrt_usage:", 10) == 0) {
-		struct mtk_drm_private *priv = drm_dev->dev_private;
 		int crtc_idx = 0;
 
 		if (strncmp(opt + 10, "0", 1) == 0)
@@ -5335,8 +4848,6 @@ static void process_dbg_opt(const char *opt)
 			priv->usage[crtc_idx] = DISP_ENABLE;
 		DDPMSG("set crtc %d usage to %d", crtc_idx, priv->usage[crtc_idx]);
 	} else if (strncmp(opt, "spr_ip_cfg:", 11) == 0) {
-		struct drm_crtc *crtc;
-		struct mtk_drm_crtc *mtk_crtc;
 		char *tmp;
 		char cmd[25] = "";
 		unsigned int addr, value, len, idx;
@@ -5347,16 +4858,6 @@ static void process_dbg_opt(const char *opt)
 		int val = 0;
 
 		DDPINFO("set spr ip start\n");
-
-		/* this debug cmd only for crtc0 */
-		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
-					typeof(*crtc), head);
-		if (IS_ERR_OR_NULL(crtc)) {
-			DDPMSG("find crtc fail\n");
-			return;
-		}
-
-		mtk_crtc = to_mtk_crtc(crtc);
 
 		node = of_find_node_by_path("dsi0");
 		if (node) {
@@ -5625,10 +5126,7 @@ test_done:
 		struct mtk_dsi_cmd_msg rx_test_cmd = { 0 };
 		struct mipi_dsi_msg *msg;
 		struct mipi_dsi_msg rx_msg = { 0 };
-		struct drm_crtc *crtc;
-		struct mtk_drm_crtc *mtk_crtc;
 		int need_lock = false;
-		struct mtk_drm_private *private;
 
 		ret = sscanf(opt, "new_ddic_2c_test:%x,%d,%d,%d,%d,%s,%x,%d,%d,%d,%d,%d\n",
 			&flags, &package, &lp, &cmd_num, &tx_len, &addr,
@@ -5691,23 +5189,7 @@ test_done:
 		if (!need_lock)
 			goto external_test;
 
-		if (IS_ERR_OR_NULL(drm_dev)) {
-			DDPPR_ERR("%s, invalid drm dev\n", __func__);
-			return;
-		}
-
-		/* This cmd only for crtc0 */
-		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
-				typeof(*crtc), head);
-		if (IS_ERR_OR_NULL(crtc)) {
-			DDPPR_ERR("find crtc fail\n");
-			return;
-		}
-
-		private = crtc->dev->dev_private;
-		mtk_crtc = to_mtk_crtc(crtc);
-
-		DDP_COMMIT_LOCK(&private->commit.lock, __func__, __LINE__);
+		DDP_COMMIT_LOCK(&priv->commit.lock, __func__, __LINE__);
 		DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
 		DDPMSG("new_ddic_2c_test write hold lock\n");
 
@@ -5801,7 +5283,7 @@ external_test:
 
 		if (need_lock) {
 			DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
-			DDP_COMMIT_UNLOCK(&private->commit.lock, __func__, __LINE__);
+			DDP_COMMIT_UNLOCK(&priv->commit.lock, __func__, __LINE__);
 			DDPMSG("new_ddic_2c_test write release lock\n");
 		}
 		if (log_en) {
@@ -5899,7 +5381,6 @@ test_2c_done:
 
 		DDPMSG("hc3 3c_init pass\n");
 	} else if (strncmp(opt, "dbgtp:", 6) == 0) {
-		struct mtk_drm_private *priv = drm_dev->dev_private;
 		bool dbgtp_en = false;
 		unsigned int i = 0;
 
@@ -5931,7 +5412,6 @@ test_2c_done:
 		priv->mtk_dbgtp_sta.need_update = true;
 		DDPMSG("%d %s\n", __LINE__, opt);
 	} else if (strncmp(opt, "dbgtp_dump:", 11) == 0) {
-		struct mtk_drm_private *priv = drm_dev->dev_private;
 		bool dump_en = false;
 
 		if (strncmp(opt + 11, "start", 5) == 0)
@@ -5943,7 +5423,6 @@ test_2c_done:
 		priv->mtk_dbgtp_sta.need_update = true;
 		DDPMSG("%d %s\n", __LINE__, opt);
 	} else if (strncmp(opt, "dbgtp_validation:", 17) == 0) {
-		struct mtk_drm_private *priv = drm_dev->dev_private;
 		bool validation_en = false;
 
 		if (strncmp(opt + 17, "on", 2) == 0)
@@ -5954,7 +5433,6 @@ test_2c_done:
 		priv->mtk_dbgtp_sta.is_validation_mode = validation_en;
 		DDPMSG("%d %s\n", __LINE__, opt);
 	} else if (strncmp(opt, "dbgtp_switch:", 13) == 0) {
-		struct mtk_drm_private *priv = drm_dev->dev_private;
 		int ret = 0;
 		unsigned int value = 0;
 
@@ -5967,7 +5445,6 @@ test_2c_done:
 		priv->mtk_dbgtp_sta.dbgtp_switch = value;
 		DDPMSG("%d %s\n", __LINE__, opt);
 	} else if (strncmp(opt, "dbgtp_timeout:", 14) == 0) {
-		struct mtk_drm_private *priv = drm_dev->dev_private;
 		int ret = 0;
 		unsigned int value = 0;
 
@@ -5980,7 +5457,6 @@ test_2c_done:
 		priv->mtk_dbgtp_sta.dbgtp_timeout_en = value;
 		DDPMSG("%d %s\n", __LINE__, opt);
 	} else if (strncmp(opt, "dbgtp_prd_dump:", 15) == 0) {
-		struct mtk_drm_private *priv = drm_dev->dev_private;
 		bool dbgtp_prd_dump_en = false;
 
 		if (strncmp(opt + 15, "on", 2) == 0)
@@ -5991,7 +5467,6 @@ test_2c_done:
 		priv->mtk_dbgtp_sta.dbgtp_prd_trig_en = dbgtp_prd_dump_en;
 		DDPMSG("%d %s\n", __LINE__, opt);
 	} else if (strncmp(opt, "dbgtp_trig_prd:", 15) == 0) {
-		struct mtk_drm_private *priv = drm_dev->dev_private;
 		int ret = 0;
 		unsigned int value = 0;
 
@@ -6004,7 +5479,6 @@ test_2c_done:
 		priv->mtk_dbgtp_sta.dbgtp_trig_prd = value;
 		DDPMSG("%d %s\n", __LINE__, opt);
 	} else if (strncmp(opt, "dbgtp_dpc_cfg:", 14) == 0) {
-		struct mtk_drm_private *priv = drm_dev->dev_private;
 		int ret = 0;
 		unsigned int value = 0;
 
@@ -6017,7 +5491,6 @@ test_2c_done:
 		priv->mtk_dbgtp_sta.dbgtp_dpc_mon_cfg = value;
 		DDPMSG("%d %s\n", __LINE__, opt);
 	} else if (strncmp(opt, "dbgtp_subsys_cfg:", 17) == 0) {
-		struct mtk_drm_private *priv = drm_dev->dev_private;
 		int ret = 0;
 		int sys_type = 0;
 		int sysid = 0;
@@ -6055,7 +5528,6 @@ test_2c_done:
 
 		DDPMSG("%d %s\n", __LINE__, opt);
 	} else if (strncmp(opt, "dbgtp_subsys_cb_cfg:", 20) == 0) {
-		struct mtk_drm_private *priv = drm_dev->dev_private;
 		int ret = 0;
 		int sys_type = 0;
 		int sysid = 0;
@@ -6091,7 +5563,6 @@ test_2c_done:
 
 		DDPMSG("%d %s\n", __LINE__, opt);
 	} else if (strncmp(opt, "dbgtp_subsys_smi_cfg:", 21) == 0) {
-		struct mtk_drm_private *priv = drm_dev->dev_private;
 		int ret = 0;
 		int sys_type = 0;
 		int sysid = 0;
@@ -6124,7 +5595,6 @@ test_2c_done:
 
 		DDPMSG("%d %s\n", __LINE__, opt);
 	} else if (strncmp(opt, "dbgtp_subsys_smi_port_cfg:", 26) == 0) {
-		struct mtk_drm_private *priv = drm_dev->dev_private;
 		int ret = 0;
 		int sys_type = 0;
 		int sysid = 0;
@@ -6155,7 +5625,6 @@ test_2c_done:
 
 		DDPMSG("%d %s\n", __LINE__, opt);
 	} else if (strncmp(opt, "dbgtp_dsi_mon_cfg:", 18) == 0) {
-		struct mtk_drm_private *priv = drm_dev->dev_private;
 		int ret = 0;
 		int sysid = 0;
 		int dsi_mon_en = 0;
@@ -6181,43 +5650,21 @@ test_2c_done:
 
 		DDPMSG("%d %s\n", __LINE__, opt);
 	} else if (strncmp(opt, "dbgtp_all_setting_dump", 22) == 0) {
-		struct mtk_drm_private *priv = drm_dev->dev_private;
-
 		mtk_dbgtp_all_setting_dump(priv);
 		DDPMSG("%d %s\n", __LINE__, opt);
 	} else if (strncmp(opt, "dbgtp_all_regs_dump", 19) == 0) {
-		struct mtk_drm_private *priv = drm_dev->dev_private;
-
 		mtk_dbgtp_all_regs_dump(priv);
 		DDPMSG("%d %s\n", __LINE__, opt);
 	} else if (strncmp(opt, "dbgtp_load_default_setting", 26) == 0) {
-		struct mtk_drm_private *priv = drm_dev->dev_private;
-
 		mtk_dbgtp_default_cfg_load(priv);
 		DDPMSG("%d %s\n", __LINE__, opt);
 	} else if (strncmp(opt, "dbgtp_load_allopen_setting", 26) == 0) {
-		struct mtk_drm_private *priv = drm_dev->dev_private;
-
 		mtk_dbgtp_load_all_open_setting(priv);
 		DDPMSG("%d %s\n", __LINE__, opt);
 	} else if (strncmp(opt, "dbgtp_default_config", 20) == 0) {
-		struct drm_crtc *crtc;
-		struct mtk_drm_crtc *mtk_crtc;
-
-		/* this debug cmd only for crtc0 */
-		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
-					typeof(*crtc), head);
-		if (IS_ERR_OR_NULL(crtc)) {
-			DDPMSG("find crtc fail\n");
-			return;
-		}
-
-		mtk_crtc = to_mtk_crtc(crtc);
-
 		mtk_dbgtp_config(mtk_crtc, NULL);
 		DDPMSG("%d %s\n", __LINE__, opt);
 	} else if (strncmp(opt, "dbgtp_fifo_mon_cfg:", 19) == 0) {
-		struct mtk_drm_private *priv = drm_dev->dev_private;
 		int ret = 0;
 		unsigned int fifo_mon_id = 0;
 		int fifo_mon_en = 0;
@@ -6232,12 +5679,9 @@ test_2c_done:
 		priv->mtk_dbgtp_sta.fifo_mon_en[fifo_mon_id] = fifo_mon_en;
 		DDPMSG("%d %s\n", __LINE__, opt);
 	} else if (strncmp(opt, "dbgtp_fifo_mon_thrd:", 20) == 0) {
-		struct mtk_drm_private *priv = drm_dev->dev_private;
 		int ret = 0;
 		unsigned int fifo_mon_id = 0;
 		unsigned int fifo_mon_trig_thrd = 0;
-		struct drm_crtc *crtc;
-		struct mtk_drm_crtc *mtk_crtc;
 
 		ret = sscanf(opt + 20, "%d,%d\n",
 			&fifo_mon_id, &fifo_mon_trig_thrd);
@@ -6248,15 +5692,6 @@ test_2c_done:
 
 		priv->mtk_dbgtp_sta.fifo_mon_trig_thrd[fifo_mon_id] = fifo_mon_trig_thrd;
 
-		/* this debug cmd only for crtc0 */
-		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
-					typeof(*crtc), head);
-		if (IS_ERR_OR_NULL(crtc)) {
-			DDPMSG("find crtc fail\n");
-			return;
-		}
-
-		mtk_crtc = to_mtk_crtc(crtc);
 		if (mtk_crtc_with_trigger_loop(crtc)) {
 			mtk_crtc_stop_trig_loop(crtc);
 			mtk_crtc_start_trig_loop(crtc);
@@ -6264,12 +5699,9 @@ test_2c_done:
 		//mtk_dbgtp_fifo_mon_set_trig_threshold(mtk_crtc, NULL);
 		DDPMSG("%d %s\n", __LINE__, opt);
 	} else if (strncmp(opt, "disp_ela_sel:", 13) == 0) {
-		struct mtk_drm_private *priv = drm_dev->dev_private;
 		int ret = 0;
 		int fifo_mon_sel = 0;
 		unsigned int bwr_sel = 0;
-		struct drm_crtc *crtc;
-		struct mtk_drm_crtc *mtk_crtc;
 
 		ret = sscanf(opt + 13, "%d,%d\n",
 			&fifo_mon_sel, &bwr_sel);
@@ -6280,16 +5712,6 @@ test_2c_done:
 
 		priv->mtk_dbgtp_sta.fifo_mon_sel = fifo_mon_sel;
 		priv->mtk_dbgtp_sta.disp_bwr_sel = bwr_sel;
-
-		/* this debug cmd only for crtc0 */
-		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
-					typeof(*crtc), head);
-		if (IS_ERR_OR_NULL(crtc)) {
-			DDPMSG("find crtc fail\n");
-			return;
-		}
-
-		mtk_crtc = to_mtk_crtc(crtc);
 
 		mtk_vdisp_ao_for_debug_config(mtk_crtc, NULL);
 		DDPMSG("%d %s\n", __LINE__, opt);
