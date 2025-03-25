@@ -264,24 +264,33 @@ static int aputop_dbg_set_parameter(int param, int argc, int *args)
 // opp range : 1 ~ USER_MIN_OPP_VAL (from fast to slow) , opp0 is turbo boost
 static int _apu_boost_to_opp(int boost)
 {
-	int opp, sec;
-	int opp_min_num = USER_MIN_OPP_VAL;
+	int opp = FINAL_USER_MAX_OPP_VAL;
+	int max_opp_dla_freq, min_opp_dla_freq, boost_to_freq;
 
 	if (boost > 100)
-		return TURBO_BOOST_OPP;
+		return FINAL_USER_MAX_OPP_VAL;
 
 	if (boost < 0)
 		boost = 0;
 
-	// not include opp 0, adjust here to handle the part of not divisible
-	sec = 100 / opp_min_num;
-	opp = opp_min_num - (boost / sec);
+	max_opp_dla_freq = opp_tbl.opp[FINAL_USER_MAX_OPP_VAL].pll_freq[PLL_DLA];
+	min_opp_dla_freq = opp_tbl2.opp[opp_tbl2.tbl_size-1].pll_freq[PLL_DLA];
 
-	if (opp > opp_min_num)
-		opp = opp_min_num;
+	boost_to_freq = boost * (max_opp_dla_freq-min_opp_dla_freq) / 100 + min_opp_dla_freq;
 
-	if (opp <= TURBO_BOOST_OPP)
-		opp = TURBO_BOOST_OPP + 1;
+	for (int i = FINAL_USER_MAX_OPP_VAL ; i < opp_tbl.tbl_size ; i++){
+		if (boost_to_freq >= opp_tbl.opp[i].pll_freq[PLL_DLA]){
+			opp = i;
+			return opp;
+		}
+	}
+
+	for (int i = 0 ; i < opp_tbl2.tbl_size ; i++){
+		if (boost_to_freq >= opp_tbl2.opp[i].pll_freq[PLL_DLA]){
+			opp = i + opp_tbl.tbl_size;
+			break;
+		}
+	}
 
 	return opp;
 }
@@ -290,20 +299,33 @@ static void plat_dump_boost_mapping(struct seq_file *s)
 {
 	int boost, opp, i;
 	int opp_cnt[USER_MIN_OPP_VAL + 1] = {};
-	int begin, end;
+	int max_boost = 100;
+	int prev_min_opp_boost;
+	int cur_min_opp_boost;
 
-	for (boost = TURBO_BOOST_VAL ; boost >= 0 ; boost--) {
-		opp = _apu_boost_to_opp(boost);
-		opp_cnt[opp]++;
+	for (boost = TURBO_BOOST_VAL  ; boost >= 0 ; boost--) {
+		opp =  _apu_boost_to_opp(boost);
+		if(boost <= max_boost)
+			opp_cnt[opp]++;
 	}
 
-	begin = TURBO_BOOST_VAL;
-
-	for (i = 0 ; i < USER_MIN_OPP_VAL + 1; i++) {
-		end = begin - opp_cnt[i] + 1;
-		seq_printf(s, "opp%d : boost %d ~ %d (%d)\n",
-					i, begin, end, opp_cnt[i]);
-		begin -= opp_cnt[i];
+	for (i = FINAL_USER_MAX_OPP_VAL ; i <= USER_MIN_OPP_VAL ; i++){
+		if(i == FINAL_USER_MAX_OPP_VAL){
+			seq_printf(s, "opp:%2d : boost:%3d ~ %3d (%2d)\n",
+					   i,
+					   max_boost,
+					   max_boost,
+					   opp_cnt[i]);
+			prev_min_opp_boost = max_boost;
+		} else {
+			cur_min_opp_boost = prev_min_opp_boost - opp_cnt[i];
+			seq_printf(s, "opp:%2d : boost:%3d ~ %3d (%2d)\n",
+					   i,
+					   cur_min_opp_boost,
+					   prev_min_opp_boost-1,
+					   opp_cnt[i]);
+			prev_min_opp_boost = cur_min_opp_boost;
+		}
 	}
 }
 
