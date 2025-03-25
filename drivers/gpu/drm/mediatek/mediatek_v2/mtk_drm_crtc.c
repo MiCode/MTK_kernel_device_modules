@@ -9283,7 +9283,6 @@ static int _mtk_crtc_cmdq_smi_info_dump(void *data)
 static int mtk_crtc_mbrain_notify(void *data)
 {
 	struct mtk_drm_crtc *mtk_crtc = (struct mtk_drm_crtc *) data;
-	struct drm_crtc *crtc = &mtk_crtc->base;
 	struct sched_param param = {.sched_priority = 94 };
 	int ret;
 
