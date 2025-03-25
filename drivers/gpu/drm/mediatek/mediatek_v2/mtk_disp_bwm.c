@@ -542,7 +542,7 @@ bool bwm_compr_l_config_AFBC_V1_2(struct mtk_ddp_comp *comp,
 	CRTC_MMP_MARK(0, bwm20, (unsigned long)(lye_addr >> 2 | addr_msb << 30),
 		(unsigned long)(lx_hdr_addr >> 2));
 	if ((addr_msb << 32 | lye_addr) != lx_hdr_addr) {
-		DDPPR_ERR("%s lye idx%d addr0x%lx reg addr0x%lx", idx, lx_hdr_addr,
+		DDPPR_ERR("%s lye idx%u addr0x%llx reg addr0x%llx", __func__, idx, lx_hdr_addr,
 			addr_msb << 32 | lye_addr);
 		mtk_bwm_dump(comp);
 	}

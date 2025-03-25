@@ -68,7 +68,6 @@
 #define DISP_CHIST_APB_READ          0x0600
 #define DISP_CHIST_SRAM_R_IF         0x0680
 
-#define MIN(X, Y) ((X) <= (Y) ? (X) : (Y))
 
 static bool debug_dump_hist;
 static unsigned int sel_index;

@@ -1098,7 +1098,6 @@ static void mtk_ovl_exdma_stash_off(struct mtk_ddp_comp *comp, struct cmdq_pkt *
 	struct mtk_disp_ovl_exdma *exdma = comp_to_ovl_exdma(comp);
 	const u16 *regs = exdma->data->regs;
 	const u32 *reg_fld = exdma->data->reg_fld;
-	unsigned int value = 0, mask = 0;
 
 	priv = mtk_crtc->base.dev->dev_private;
 
@@ -2324,7 +2323,6 @@ static void mtk_ovl_exdma_stash_config(struct mtk_ddp_comp *comp, struct cmdq_pk
 	unsigned int pref_line_lead = 0;
 	unsigned int hdr_pref_l_lead = 0;
 	unsigned int phy_id = 0;
-	struct mtk_plane_pending_state *pending = NULL;
 	int bpp = 0;
 	unsigned int narrow_t = 0, bh =0;
 	unsigned int l_width = 0;
