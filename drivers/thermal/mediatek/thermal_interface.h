@@ -233,6 +233,12 @@ struct user_vsensor_info {
 	char user_vsensor_name[USER_VSENSOR_NAME];
 };
 
+struct TzInfo{
+	const char *name;
+	struct thermal_zone_device *tz;
+	int temp;
+};
+
 extern void update_ap_ntc_headroom(int temp, int polling_interval);
 extern int get_thermal_headroom(enum headroom_id id);
 extern int set_cpu_min_opp(int gear, int opp);

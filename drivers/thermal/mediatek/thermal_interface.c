@@ -141,6 +141,22 @@ static struct timer_list boot_thermal_timer;
 static struct workqueue_struct *boot_thermal_wq;
 struct work_struct boot_thermal_work;
 
+#define TZINFO_NUM 7
+#define LOG_THERMAL_DURATION msecs_to_jiffies(10000)
+static struct timer_list log_thermal_timer;
+static struct workqueue_struct *log_thermal_wq;
+struct work_struct log_thermal_work;
+struct TzInfo tzInfos[TZINFO_NUM] = {
+	{"soc_max", NULL, -274000},
+	{"nrpa_ntc", NULL, -274000},
+	{"ltepa_ntc", NULL, -274000},
+	{"Vtskin-max", NULL, -274000},
+	{"consys", NULL, -274000},
+	{"mtk-master-charger", NULL, -274000},
+	{"camera0", NULL, -274000},
+
+};
+
 int mtk_thermal_hint_notify_register(const char *source, struct notifier_block *nb)
 {
 	if (!source)
@@ -1028,11 +1044,9 @@ static ssize_t power_budget_store(struct kobject *kobj,
 	return -EINVAL;
 }
 
-static ssize_t cpu_info_show(struct kobject *kobj,
-	struct kobj_attribute *attr, char *buf)
+int get_cpu_info(char *buf)
 {
 	int len = 0;
-
 
 	if (tm_data.is_cputcm)
 		len += snprintf(buf + len, PAGE_SIZE - len, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
@@ -1069,6 +1083,12 @@ static ssize_t cpu_info_show(struct kobject *kobj,
 	return len;
 }
 
+static ssize_t cpu_info_show(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	return get_cpu_info(buf);
+}
+
 static ssize_t cpu_temp_show(struct kobject *kobj,
 	struct kobj_attribute *attr, char *buf)
 {
@@ -1087,8 +1107,7 @@ static ssize_t cpu_temp_show(struct kobject *kobj,
 	return len;
 }
 
-static ssize_t gpu_info_show(struct kobject *kobj,
-	struct kobj_attribute *attr, char *buf)
+int get_gpu_info(char *buf)
 {
 	int len = 0;
 
@@ -1098,6 +1117,12 @@ static ssize_t gpu_info_show(struct kobject *kobj,
 		therm_intf_read_csram(GPU_TEMP_OFFSET + 8));
 
 	return len;
+}
+
+static ssize_t gpu_info_show(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	return get_gpu_info(buf);
 }
 
 static ssize_t gpu_freq_show(struct kobject *kobj,
@@ -1116,8 +1141,7 @@ static ssize_t gpu_freq_show(struct kobject *kobj,
 	return len;
 }
 
-static ssize_t apu_info_show(struct kobject *kobj,
-	struct kobj_attribute *attr, char *buf)
+int get_apu_info(char *buf)
 {
 	int len = 0;
 
@@ -1134,6 +1158,12 @@ static ssize_t apu_info_show(struct kobject *kobj,
 	}
 
 	return len;
+}
+
+static ssize_t apu_info_show(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	return get_apu_info(buf);
 }
 
 static ssize_t is_cpu_limit_show(struct kobject *kobj,
@@ -1351,10 +1381,7 @@ static ssize_t apu_atc_show(struct kobject *kobj, struct kobj_attribute *attr,
 	return len;
 }
 
-
-
-static ssize_t target_tpcb_show(struct kobject *kobj,
-	struct kobj_attribute *attr, char *buf)
+int get_target_tpcb_info(char *buf)
 {
 	int len = 0;
 	int target_tpcb = 0;
@@ -1364,9 +1391,19 @@ static ssize_t target_tpcb_show(struct kobject *kobj,
 	else
 		target_tpcb = therm_intf_read_csram_s32(TARGET_TPCB_OFFSET);
 
-	len += snprintf(buf + len, PAGE_SIZE - len, "%d\n", target_tpcb);
+	len = snprintf(buf + len, PAGE_SIZE - len, "%d\n", target_tpcb);
+	if (len < 0 || len >= PAGE_SIZE - len) {
+		pr_info("%s: snprintf return negative and buf %s\n", __func__, buf);
+		return -1;
+	}
 
 	return len;
+}
+
+static ssize_t target_tpcb_show(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	return get_target_tpcb_info(buf);
 }
 
 static ssize_t target_tpcb_store(struct kobject *kobj,
@@ -1831,8 +1868,7 @@ static ssize_t catm_p_store(struct kobject *kobj,
 	return -EINVAL;
 }
 
-static ssize_t dram_data_rate_show(struct kobject *kobj,
-	struct kobj_attribute *attr, char *buf)
+int get_dram_data_rate(char *buf)
 {
 	int len = 0;
 #if IS_ENABLED(CONFIG_MTK_DRAMC)
@@ -1842,6 +1878,12 @@ static ssize_t dram_data_rate_show(struct kobject *kobj,
 		pr_info("%s: snprintf return negative and buf %s\n", __func__, buf);
 #endif
 	return len;
+}
+
+static ssize_t dram_data_rate_show(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	return get_dram_data_rate(buf);
 }
 
 static ssize_t pid_info_show(struct kobject *kobj,
@@ -2694,7 +2736,95 @@ static void boot_thermal_handler(struct timer_list *t)
 		pr_notice("Error: %s (%d)\n", __func__, ret);
 }
 
+static void initialize_tzinfos(void)
+{
+	for (int i = 0; i < TZINFO_NUM; ++i) {
+		tzInfos[i].tz = thermal_zone_get_zone_by_name(tzInfos[i].name);
+		if (IS_ERR_OR_NULL(tzInfos[i].tz))
+			pr_err("Failed to get thermal zone for %s\n", tzInfos[i].name);
+	}
+}
 
+static void __used log_thermal_release(struct work_struct *work)
+{
+	char read_buf[128] = {0};
+	int LL_min_opp, BL_min_opp, B_min_opp;
+	int LL_limit_freq, BL_limit_freq, B_limit_freq;
+	int LL_cur_freq, BL_cur_freq, B_cur_freq;
+	int LL_max_temp, BL_max_temp, B_max_temp;
+	int gpu_max_temp, gpu_limit_freq, gpu_cur_freq;
+	int apu_max_temp, apu_limit_freq, apu_cur_freq;
+	int cpu_ttj = 0, gpu_ttj = 0, apu_ttj = 0, target_tpcb = 0;
+	int thermal_hint = 0, dram_data_rate = 0;
+	int ret;
+
+	mutex_lock(&tm_data.lock);
+	cpu_ttj = tm_data.tj_info.catm_cpu_ttj;
+	gpu_ttj = tm_data.tj_info.catm_gpu_ttj;
+	apu_ttj = tm_data.tj_info.catm_apu_ttj;
+	thermal_hint = tm_data.thermal_hint;
+	mutex_unlock(&tm_data.lock);
+
+	initialize_tzinfos();
+
+	for (int i = 0; i < TZINFO_NUM; ++i) {
+		if (!IS_ERR_OR_NULL(tzInfos[i].tz))
+			thermal_zone_get_temp(tzInfos[i].tz, &(tzInfos[i].temp));
+	}
+
+	get_target_tpcb_info(read_buf);
+	ret = kstrtoint(read_buf, 10, &target_tpcb);
+	if (ret != 0)
+		pr_err("Error: target_tpcb sccanf error, ret=%d\n", ret);
+
+	pr_info("[thermal]soc/nr/lte/Vtskin/tpcb/conn/chg/cam/c_ttj/g_ttj/a_ttj=%d/%d/%d/%d/%d/%d/%d/%d/%d/%d/%d\n",
+		tzInfos[0].temp, tzInfos[1].temp, tzInfos[2].temp, tzInfos[3].temp, target_tpcb,
+		tzInfos[4].temp, tzInfos[5].temp, tzInfos[6].temp,
+		cpu_ttj, gpu_ttj, apu_ttj);
+
+	get_cpu_info(read_buf);
+	ret = sscanf(read_buf, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
+		&LL_min_opp, &BL_min_opp, &B_min_opp,
+		&LL_limit_freq, &BL_limit_freq, &B_limit_freq,
+		&LL_cur_freq, &BL_cur_freq, &B_cur_freq,
+		&LL_max_temp, &BL_max_temp, &B_max_temp);
+	if (ret != 12)
+		pr_err("Error: sccanf error, ret=%d\n", ret);
+
+	get_gpu_info(read_buf);
+	ret = sscanf(read_buf, "%d,%d,%d",
+		&gpu_max_temp, &gpu_limit_freq, &gpu_cur_freq);
+	if (ret != 3)
+		pr_err("Error: sccanf error, ret=%d\n", ret);
+
+	get_apu_info(read_buf);
+	ret = sscanf(read_buf, "%d,%d,%d",
+		&apu_max_temp, &apu_limit_freq, &apu_cur_freq);
+	if (ret != 3)
+		pr_err("Error: sccanf error, ret=%d\n", ret);
+
+	get_dram_data_rate(read_buf);
+	ret = kstrtoint(read_buf, 10, &dram_data_rate);
+	if (ret != 0)
+		pr_err("Error: dram_data_rate sccanf error, ret=%d\n", ret);
+
+	pr_info("[thermal][(c0_l/c1_l/c2_l)(c0_c/c1_c/c2_c)(c_i)][(g_l)(g_c)][(a_l)(a_c)][(th)][(ddr)]=[(%d/%d/%d)(%d/%d/%d)()][(%d)(%d)][(%d)(%d)][(%d)][(%d)]\n",
+		LL_limit_freq/1000, BL_limit_freq/1000, B_limit_freq/1000,
+		LL_cur_freq/1000, BL_cur_freq/1000, B_cur_freq/1000,
+		gpu_limit_freq/1000, gpu_cur_freq/1000,
+		apu_limit_freq, apu_cur_freq, thermal_hint, dram_data_rate);
+
+	mod_timer(&log_thermal_timer, jiffies + LOG_THERMAL_DURATION);
+}
+
+static void log_thermal_handler(struct timer_list *t)
+{
+	int ret = 0;
+
+	ret = queue_work(log_thermal_wq, &log_thermal_work);
+	if (!ret)
+		pr_notice("Error: %s (%d)\n", __func__, ret);
+}
 
 static int therm_intf_probe(struct platform_device *pdev)
 {
@@ -2844,11 +2974,26 @@ static int therm_intf_probe(struct platform_device *pdev)
 		mod_timer(&boot_thermal_timer, jiffies + BOOT_THERMAL_DURATION);
 	}
 
+	log_thermal_wq = create_singlethread_workqueue("log_thermal");
+	if (!log_thermal_wq) {
+		pr_err("Failed to create workqueue\n");
+		return -ENOMEM;
+	}
+	INIT_WORK(&log_thermal_work, log_thermal_release);
+	timer_setup(&log_thermal_timer, log_thermal_handler, 0);
+	mod_timer(&log_thermal_timer, jiffies + LOG_THERMAL_DURATION);
+
 	return 0;
 }
 
 static void therm_intf_remove(struct platform_device *pdev)
 {
+	del_timer_sync(&log_thermal_timer);
+	if (log_thermal_wq){
+		flush_workqueue(log_thermal_wq);
+		destroy_workqueue(log_thermal_wq);
+	}
+
 	if (icc_thermal)
 		icc_set_bw(icc_thermal, 0, 0x0);
 
