@@ -1634,9 +1634,20 @@ static bool cmdq_pkt_is_finalized(struct cmdq_pkt *pkt)
 
 	expect_eoc = cmdq_pkt_get_va_by_offset(pkt,
 		pkt->cmd_buf_size - CMDQ_INST_SIZE * 2);
-	if (((struct cmdq_instruction *)expect_eoc)->op == CMDQ_CODE_JUMP)
+	if (unlikely(!expect_eoc)) {
+		cmdq_err("inst is null offset:%zu",
+			pkt->cmd_buf_size - CMDQ_INST_SIZE * 2);
+		return false;
+	}
+	if (((struct cmdq_instruction *)expect_eoc)->op == CMDQ_CODE_JUMP) {
 		expect_eoc = cmdq_pkt_get_va_by_offset(pkt,
 			pkt->cmd_buf_size - CMDQ_INST_SIZE * 3);
+		if (unlikely(!expect_eoc)) {
+			cmdq_err("inst is null offset:%zu",
+				pkt->cmd_buf_size - CMDQ_INST_SIZE * 3);
+			return false;
+		}
+	}
 	if (expect_eoc && (*expect_eoc & CMDQ_EOC_MASK) == CMDQ_EOC_CMD)
 		return true;
 
@@ -1999,6 +2010,11 @@ s32 cmdq_pkt_backup_update(struct cmdq_pkt *pkt, struct cmdq_backup *backup)
 		cl->backup_idx = 0;
 
 	inst = (u32 *)cmdq_pkt_get_va_by_offset(pkt, backup->inst_offset);
+	if (unlikely(!inst)) {
+		cmdq_err("inst is null inst_offset:%d", backup->inst_offset);
+		return -EINVAL;
+	}
+
 	inst[1] = (inst[1] & 0xffff0000) | CMDQ_GET_ADDR_LOW(pa_addr);
 
 	return 0;
@@ -2038,6 +2054,11 @@ void cmdq_pkt_reuse_jump(struct cmdq_pkt *pkt, struct cmdq_reuse *reuse)
 	shift_pa = CMDQ_REG_SHIFT_ADDR_BY_CORE(cmd_pa, client ? client->chan : NULL);
 	inst = (struct cmdq_instruction *)cmdq_pkt_get_va_by_offset(
 		pkt, reuse->offset);
+	if (unlikely(!inst)) {
+		cmdq_err("inst is null offset:%d", reuse->offset);
+		return;
+	}
+
 	inst->arg_b = CMDQ_GET_ARG_B(shift_pa);
 	inst->arg_c = CMDQ_GET_ARG_C(shift_pa);
 }
@@ -2747,6 +2768,12 @@ s32 cmdq_pkt_sleep_reuse(struct cmdq_pkt *pkt, u32 tick, u16 reg_gpr,
 	if (sleep_jump_to_end)
 		sleep_jump_to_end->val = pkt->cmd_buf_size;
 	inst = cmdq_pkt_get_va_by_offset(pkt, end_addr_mark);
+
+	if (unlikely(!inst)) {
+		cmdq_err("inst is null offset:%d", end_addr_mark);
+		return -EINVAL;
+	}
+
 	*inst |= CMDQ_REG_SHIFT_ADDR_BY_CORE(cmdq_pkt_get_curr_buf_pa(pkt),
 		cl ? cl->chan : NULL);
 
@@ -2871,6 +2898,10 @@ s32 cmdq_pkt_poll_timeout_reuse(struct cmdq_pkt *pkt, u32 value, u8 subsys,
 		poll_reuse->jump_to_end.val = pkt->cmd_buf_size;
 	inst = (struct cmdq_instruction *)cmdq_pkt_get_va_by_offset(
 		pkt, end_addr_mark);
+	if (unlikely(!inst)) {
+		cmdq_err("inst is null offset:%d", end_addr_mark);
+		return -EINVAL;
+	}
 	/* instruction may hit boundary case,
 	* check if op code is jump and get next instruction if necessary
 	*/
