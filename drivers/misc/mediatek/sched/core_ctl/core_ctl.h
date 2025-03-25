@@ -51,7 +51,9 @@ enum {
 enum {
 	DISABLE = 0,
 	NORMAL_MODE,
-	CAMERA_MODE
+	CAMERA_MODE,
+	UX_MODE,
+	GAME_MODE
 };
 
 #define CORE_CTL_FORCE_RESUME_CPU               _IOW('g', 1,  struct _CORE_CTL_PACKAGE)

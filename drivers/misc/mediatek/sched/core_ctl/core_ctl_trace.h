@@ -42,32 +42,45 @@ TRACE_EVENT(core_ctl_heaviest_util,
 TRACE_EVENT(core_ctl_algo_info,
 
 	TP_PROTO(
+		unsigned int enable_policy,
 		unsigned int *need_spread_cpu,
 		unsigned int *nr_assist_cpu,
 		unsigned int *orig_need_cpus,
-		unsigned int active_cpus),
+		unsigned int active_cpus,
+		unsigned int *boost_by_freq,
+		unsigned int *boost_by_wlan),
 
-	TP_ARGS(need_spread_cpu, nr_assist_cpu, orig_need_cpus, active_cpus),
+	TP_ARGS(enable_policy, need_spread_cpu, nr_assist_cpu, orig_need_cpus,
+		active_cpus, boost_by_freq, boost_by_wlan),
 
 	TP_STRUCT__entry(
+		__field(unsigned int, enable_policy)
 		__array(unsigned int, need_spread_cpu, 3)
 		__array(unsigned int, nr_assist_cpu, 3)
 		__array(unsigned int, orig_need_cpus, 3)
 		__field(unsigned int, active_cpus)
+		__array(unsigned int, boost_by_freq, 3)
+		__array(unsigned int, boost_by_wlan, 3)
 	),
 
 	TP_fast_assign(
+		__entry->enable_policy = enable_policy;
 		memcpy(__entry->need_spread_cpu, need_spread_cpu, sizeof(unsigned int)*3);
 		memcpy(__entry->nr_assist_cpu, nr_assist_cpu, sizeof(unsigned int)*3);
 		memcpy(__entry->orig_need_cpus, orig_need_cpus, sizeof(unsigned int)*3);
 		__entry->active_cpus = active_cpus;
+		memcpy(__entry->boost_by_freq, boost_by_freq, sizeof(unsigned int)*3);
+		memcpy(__entry->boost_by_wlan, boost_by_wlan, sizeof(unsigned int)*3);
 	),
 
-	TP_printk("need_spread_cpu=%u|%u|%u nr_assist_cpu=%u|%u|%u orig_need_cpus=%u|%u|%u active_cpus=%x",
+	TP_printk("en=%d spread=%u|%u|%u assist=%u|%u|%u orig_need=%u|%u|%u act=%x, bst_freq=%u|%u|%u bst_wlan=%u|%u|%u",
+		__entry->enable_policy,
 		__entry->need_spread_cpu[0], __entry->need_spread_cpu[1], __entry->need_spread_cpu[2],
 		__entry->nr_assist_cpu[0], __entry->nr_assist_cpu[1], __entry->nr_assist_cpu[2],
 		__entry->orig_need_cpus[0], __entry->orig_need_cpus[1], __entry->orig_need_cpus[2],
-		__entry->active_cpus)
+		__entry->active_cpus,
+		__entry->boost_by_freq[0], __entry->boost_by_freq[1], __entry->boost_by_freq[2],
+		__entry->boost_by_wlan[0], __entry->boost_by_wlan[1], __entry->boost_by_wlan[2])
 );
 
 TRACE_EVENT(core_ctl_demand_eval,
@@ -120,7 +133,7 @@ TRACE_EVENT(core_ctl_demand_eval,
 			__entry->next_off_time = next_off_time;
 		),
 
-		TP_printk("cid=%u, old=%u, new=%u, act=%u min=%u max=%u bst=%u gas=%u enbl=%u eff=%u update=%u next_off_time=%u",
+		TP_printk("cid=%u old=%u new=%u act=%u min=%u max=%u bst=%u gas=%u enbl=%u eff=%u update=%u next_off_time=%u",
 			__entry->cid,
 			__entry->old_need,
 			__entry->new_need,
@@ -261,6 +274,51 @@ TRACE_EVENT(core_ctl_busy_cpus,
 		__entry->max_rt_nr_state[5], __entry->max_rt_nr_state[6], __entry->max_rt_nr_state[7])
 );
 
+TRACE_EVENT(core_ctl_cpu_request,
+
+	TP_PROTO(
+		unsigned int cid,
+		unsigned int min_cpus,
+		unsigned int max_cpus,
+		unsigned int *have_demand,
+		unsigned int *min_cpus_req,
+		unsigned int *max_cpus_req,
+		unsigned int *force_pause_req),
+
+	TP_ARGS(cid, min_cpus, max_cpus, have_demand, min_cpus_req, max_cpus_req, force_pause_req),
+
+	TP_STRUCT__entry(
+		__field(unsigned int, cid)
+		__field(unsigned int, min_cpus)
+		__field(unsigned int, max_cpus)
+		__array(unsigned int, have_demand, 5)
+		__array(unsigned int, min_cpus_req, 5)
+		__array(unsigned int, max_cpus_req, 5)
+		__array(unsigned int, force_pause_req, 8)
+	),
+
+	TP_fast_assign(
+		__entry->cid = cid;
+		__entry->min_cpus = min_cpus;
+		__entry->max_cpus = max_cpus;
+		memcpy(__entry->have_demand, have_demand, sizeof(unsigned int) * 5);
+		memcpy(__entry->min_cpus_req, min_cpus_req, sizeof(unsigned int) * 5);
+		memcpy(__entry->max_cpus_req, max_cpus_req, sizeof(unsigned int) * 5);
+		memcpy(__entry->force_pause_req, force_pause_req, sizeof(unsigned int) * 8);
+	),
+
+	TP_printk("cid=%d, min/max=%d|%d demand=%d|%d|%d|%d|%d min_rq=%d|%d|%d|%d|%d max_rq=%d|%d|%d|%d|%d fc_rq=%d|%d|%d|%d|%d|%d|%d|%d",
+		__entry->cid, __entry->min_cpus, __entry->max_cpus,
+		__entry->have_demand[0], __entry->have_demand[1], __entry->have_demand[2],
+		__entry->have_demand[3], __entry->have_demand[4],
+		__entry->min_cpus_req[0], __entry->min_cpus_req[1], __entry->min_cpus_req[2],
+		__entry->min_cpus_req[3], __entry->min_cpus_req[4],
+		__entry->max_cpus_req[0], __entry->max_cpus_req[1], __entry->max_cpus_req[2],
+		__entry->max_cpus_req[3], __entry->max_cpus_req[4],
+		__entry->force_pause_req[0], __entry->force_pause_req[1], __entry->force_pause_req[2],
+		__entry->force_pause_req[3], __entry->force_pause_req[4], __entry->force_pause_req[5],
+		__entry->force_pause_req[6], __entry->force_pause_req[7])
+);
 
 #endif /*_CORE_CTL_TRACE_H */
 
