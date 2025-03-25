@@ -608,34 +608,10 @@ static int mdw_cmd_link_check(struct mdw_cmd *c)
 
 static int mdw_cmd_sc_sanity_check(struct mdw_cmd *c)
 {
-	unsigned int i = 0;
+	struct mdw_device *mdev = c->mpriv->mdev;
 
-	/* subcmd info */
-	for (i = 0; i < c->num_subcmds; i++) {
-		if (c->subcmds[i].type >= MDW_DEV_MAX ||
-			c->subcmds[i].boost > MDW_BOOST_MAX ||
-			c->subcmds[i].pack_id >= MDW_SUBCMD_MAX ||
-			c->subcmds[i].predecessors_start_idx > c->predecessors_num ||
-			c->subcmds[i].predecessors_num >= c->num_subcmds ||
-			c->subcmds[i].pack_friends_start_idx >= c->pack_friends_num ||
-			c->subcmds[i].pack_friends_num > c->num_subcmds) {
-			mdw_drv_err("subcmd(%u) invalid (%u/%u/%u)(%u/%u|%u/%u)(%u/%u|%u/%u)\n",
-				i, c->subcmds[i].type,
-				c->subcmds[i].boost,
-				c->subcmds[i].pack_id,
-				c->subcmds[i].predecessors_start_idx,
-				c->predecessors_num,
-				c->subcmds[i].predecessors_num,
-				c->num_subcmds,
-				c->subcmds[i].pack_friends_start_idx,
-				c->pack_friends_num,
-				c->subcmds[i].pack_friends_num,
-				c->num_subcmds);
-			return -EINVAL;
-		}
-	}
-
-	return 0;
+	mdw_cmd_debug("\n");
+	return mdev->plat_funcs->sc_sanity_check(c);
 }
 
 static int mdw_cmd_order_check(struct mdw_cmd *c)

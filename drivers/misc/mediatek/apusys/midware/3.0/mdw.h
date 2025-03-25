@@ -451,6 +451,7 @@ struct mdw_plat_func {
 	int (*postprocess_cmd)(struct mdw_cmd *c); // call after cmd done
 	int (*late_postprocess_cmd)(struct mdw_cmd *c); // call after signal to user
 	int (*check_sc_rets)(struct mdw_cmd *c, int ipi_ret); // call for check subcmd rets
+	int (*sc_sanity_check)(struct mdw_cmd *c); // call for check sc sanity
 };
 
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)

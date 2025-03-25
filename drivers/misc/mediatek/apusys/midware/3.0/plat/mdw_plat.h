@@ -8,6 +8,7 @@
 
 #include "mdw.h"
 
+extern const struct mdw_plat_func mdw_plat_func_v2;
 extern const struct mdw_plat_func mdw_plat_func_v6;
 
 #endif

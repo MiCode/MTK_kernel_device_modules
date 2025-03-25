@@ -8,6 +8,7 @@
 #include "mdw_rv.h"
 #include "mdw_rv_tag.h"
 #include "mdw_pb.h"
+#include "apu_ipi.h"
 
 int mdw_rv_sw_init(struct mdw_device *mdev)
 {
@@ -140,4 +141,18 @@ int mdw_rv_dtime_handle(struct mdw_cmd *c)
 	struct mdw_rv_dev *mrdev = (struct mdw_rv_dev *)mdev->dev_specific;
 
 	return mdw_rv_dev_dtime_handle(mrdev, c);
+}
+
+void mdw_rv_cmd_set_affinity(struct mdw_cmd *c, bool enable)
+{
+	if (c->power_plcy != MDW_POWERPOLICY_PERFORMANCE)
+		return;
+
+	if (enable) {
+		mdw_flw_debug("enable affinity\n");
+		apu_ipi_affin_enable();
+	} else {
+		mdw_flw_debug("disable affinity\n");
+		apu_ipi_affin_disable();
+	}
 }

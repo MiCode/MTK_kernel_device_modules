@@ -101,7 +101,7 @@ struct mdw_ipi_msg {
 		struct mdw_ipi_ucmd u;
 	};
 	uint64_t inf_id;
-};
+} __packed;
 
 struct mdw_ipi_msg_sync {
 	struct mdw_ipi_msg msg;
