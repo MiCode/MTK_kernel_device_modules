@@ -2863,6 +2863,7 @@ again:
 	return ret;
 }
 
+#if 0
 static void zram_hybrid_bio_read_dc(struct zram *zram, struct bio *bio)
 {
 	unsigned long start_time = bio_start_io_acct(bio);
@@ -2905,6 +2906,7 @@ static void zram_hybrid_bio_read_dc(struct zram *zram, struct bio *bio)
 	bio_end_io_acct(bio, start_time);
 	bio_endio(bio);
 }
+#endif
 
 /*
  * Corresponding ZRAM slot should be locked.
@@ -3097,7 +3099,8 @@ const struct zram_mode_operations mode_ops[] = {
 	/* Mode operations for DST-Copy mode (_dc). */
 	[0] = {
 		.name		= "hybrid",
-		.bio_read	= zram_hybrid_bio_read_dc,
+		//.bio_read	= zram_hybrid_bio_read_dc,
+		.bio_read	= zram_bio_read,
 		.hw_bvec_read	= zram_hw_bvec_read_dc,
 		.bio_write	= zram_hybrid_bio_write,
 		.hw_bvec_write	= zram_hw_bvec_write_dc,
@@ -3111,7 +3114,8 @@ const struct zram_mode_operations mode_ops[] = {
 	},
 	[1] = {
 		.name		= "hwonly",
-		.bio_read	= zram_hwonly_bio_read,
+		//.bio_read	= zram_hwonly_bio_read,
+		.bio_read	= zram_bio_read,
 		.hw_bvec_read	= zram_hw_bvec_read_dc,
 		.bio_write	= zram_hwonly_bio_write,
 		.hw_bvec_write	= zram_hw_bvec_write_dc,
