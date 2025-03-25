@@ -74,6 +74,13 @@ static ssize_t enable_write(char *FromUser, size_t sz, void *priv)
 	if (sscanf(FromUser, "%d %d", &type, &enable) == 2) {
 		swpm_lock(&swpm_mutex);
 		swpm_set_enable(type, enable);
+		if (swpm_status && !timer_pending(&swpm_timer)) {
+			mod_timer(&swpm_timer, jiffies +
+				msecs_to_jiffies(swpm_log_interval_ms));
+		} else {
+			if (!dram_bw_timer_start)
+				del_timer(&swpm_timer);
+		}
 		swpm_unlock(&swpm_mutex);
 		ret = sz;
 	}
@@ -635,26 +642,20 @@ static ssize_t dram_bw_read(char *ToUser, size_t sz, void *priv)
 		swpm_dbg_log("sync success\n");
 
 
-	if (!dram_bw_timer_start) {
-		swpm_lock(&swpm_mutex);
-		mod_timer(&swpm_timer, jiffies +
-				msecs_to_jiffies(swpm_log_interval_ms));
-		swpm_unlock(&swpm_mutex);
-		dram_bw_timer_start = true;
-	}
-
-	spin_lock_irqsave(&swpm_sub_data_spinlock, flags);
-	swpm_dbg_log("DRAM BW R/W=%d/%d\n",
-			sub_idx_snap.emi_bw_read,
-			sub_idx_snap.emi_bw_write);
-	spin_unlock_irqrestore(&swpm_sub_data_spinlock, flags);
-
+	if (timer_pending(&swpm_timer)) {
+		spin_lock_irqsave(&swpm_sub_data_spinlock, flags);
+		swpm_dbg_log("DRAM BW R/W=%d/%d\n",
+				sub_idx_snap.emi_bw_read,
+				sub_idx_snap.emi_bw_write);
+		spin_unlock_irqrestore(&swpm_sub_data_spinlock, flags);
+	} else
+		swpm_dbg_log("swpm_timer has not started yet\n");
 	return p - ToUser;
 }
 
 static ssize_t dram_bw_write(char *FromUser, size_t sz, void *priv)
 {
-	unsigned int disable = 0;
+	unsigned int enable = 0;
 	int ret;
 
 	ret = -EINVAL;
@@ -666,10 +667,23 @@ static ssize_t dram_bw_write(char *FromUser, size_t sz, void *priv)
 		goto out;
 
 	ret = -EPERM;
-	if (!kstrtouint(FromUser, 0, &disable)) {
-		if (disable) {
-			del_timer(&swpm_timer);
+	if (!kstrtouint(FromUser, 0, &enable)) {
+		if (!enable) {
+			if (!swpm_status) {
+				swpm_lock(&swpm_mutex);
+				del_timer(&swpm_timer);
+				swpm_unlock(&swpm_mutex);
+			}
+
 			dram_bw_timer_start = false;
+		} else {
+			if (!timer_pending(&swpm_timer)) {
+				swpm_lock(&swpm_mutex);
+				mod_timer(&swpm_timer, jiffies +
+						msecs_to_jiffies(swpm_log_interval_ms));
+				swpm_unlock(&swpm_mutex);
+				dram_bw_timer_start = true;
+			}
 		}
 
 		ret = sz;
