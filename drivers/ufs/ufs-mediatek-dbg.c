@@ -1525,6 +1525,7 @@ static void ufshcd_l2_frame_decode(struct ufs_hba *hba, bool tx,
 {
 	u64 promoted = 0;
 	char pstr[20] = { 0 };
+	int ret = 0;
 
 	type = (type >> (index * 2)) & 0x3;
 	info = (info >> (index * 8)) & 0xff;
@@ -1537,8 +1538,10 @@ static void ufshcd_l2_frame_decode(struct ufs_hba *hba, bool tx,
 	case TYPE_AFC:
 		if (tx) {
 			promoted = (info >> DL_PROMOTED_OFFSET) & 0x1;
-			snprintf(pstr, sizeof(pstr),
+			ret = snprintf(pstr, sizeof(pstr),
 				"Promoted: %lld, ", promoted);
+			if (ret < 0)
+				break;
 		}
 		dev_err(hba->dev, "[AFC] Creq: %lld, %sTC: %lld, frame sequence: %lld",
 			(info >> DL_CREQ_OFFSET) & 0x1, pstr,

@@ -54,6 +54,8 @@ void ufs_mtk_btag_send_command(struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
 
 	if (hba->mcq_enabled) {
 		hq = ufs_mtk_mcq_req_to_hwq(hba, scsi_cmd_to_rq(cmd));
+		if (!hq)
+			return;
 		qid = hq->id;
 	}
 	mtk_btag_ufs_send_command(host->btag, lrbp->task_tag, qid, cmd);
