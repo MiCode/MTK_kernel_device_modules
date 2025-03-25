@@ -1,11 +1,16 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (C) 2021 ARM Ltd.
+ * Copyright (c) 2025 MediaTek Inc.
  */
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
+#if defined(MTK_ADAPTED) && MTK_ADAPTED
+#include "arm_ffa.h"
+#else
 #include <linux/arm_ffa.h>
+#endif /* defined(MTK_ADAPTED) && MTK_ADAPTED */
 #include <linux/device.h>
 #include <linux/fs.h>
 #include <linux/kernel.h>
@@ -242,19 +247,31 @@ void ffa_device_unregister(struct ffa_device *ffa_dev)
 }
 EXPORT_SYMBOL_GPL(ffa_device_unregister);
 
+#if defined(MTK_ADAPTED) && MTK_ADAPTED
+int arm_ffa_bus_init(void)
+#else
 static int __init arm_ffa_bus_init(void)
+#endif /* defined(MTK_ADAPTED) && MTK_ADAPTED */
 {
 	return bus_register(&ffa_bus_type);
 }
+#if !defined(MTK_ADAPTED) || !MTK_ADAPTED
 subsys_initcall(arm_ffa_bus_init);
+#endif /* !defined(MTK_ADAPTED) || !MTK_ADAPTED */
 
+#if defined(MTK_ADAPTED) && MTK_ADAPTED
+void arm_ffa_bus_exit(void)
+#else
 static void __exit arm_ffa_bus_exit(void)
+#endif /* defined(MTK_ADAPTED) && MTK_ADAPTED */
 {
 	ffa_devices_unregister();
 	bus_unregister(&ffa_bus_type);
 	ida_destroy(&ffa_bus_id);
 }
+#if !defined(MTK_ADAPTED) || !MTK_ADAPTED
 module_exit(arm_ffa_bus_exit);
+#endif /* !defined(MTK_ADAPTED) || !MTK_ADAPTED */
 
 MODULE_ALIAS("ffa-core");
 MODULE_AUTHOR("Sudeep Holla <sudeep.holla@arm.com>");

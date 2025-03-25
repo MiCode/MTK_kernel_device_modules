@@ -1,12 +1,17 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Copyright (C) 2021 ARM Ltd.
+ * Copyright (c) 2025 MediaTek Inc.
  */
 
 #ifndef _FFA_COMMON_H
 #define _FFA_COMMON_H
 
+#if defined(MTK_ADAPTED) && MTK_ADAPTED
+#include "arm_ffa.h"
+#else
 #include <linux/arm_ffa.h>
+#endif /* defined(MTK_ADAPTED) && MTK_ADAPTED */
 #include <linux/arm-smccc.h>
 #include <linux/err.h>
 
@@ -25,5 +30,9 @@ static inline int __init ffa_transport_init(ffa_fn **invoke_ffa_fn)
 	return -EOPNOTSUPP;
 }
 #endif
+
+#if defined(MTK_ADAPTED) && MTK_ADAPTED
+#include "common_mtk.h"
+#endif /* defined(MTK_ADAPTED) && MTK_ADAPTED */
 
 #endif /* _FFA_COMMON_H */

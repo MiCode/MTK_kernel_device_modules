@@ -17,13 +17,18 @@
  * [1] https://developer.arm.com/docs/den0077/latest
  *
  * Copyright (C) 2021 ARM Ltd.
+ * Copyright (c) 2025 MediaTek Inc.
  */
 
 #define DRIVER_NAME "ARM FF-A"
 #define pr_fmt(fmt) DRIVER_NAME ": " fmt
 
 #include <linux/acpi.h>
+#if defined(MTK_ADAPTED) && MTK_ADAPTED
+#include "arm_ffa.h"
+#else
 #include <linux/arm_ffa.h>
+#endif /* defined(MTK_ADAPTED) && MTK_ADAPTED */
 #include <linux/bitfield.h>
 #include <linux/cpuhotplug.h>
 #include <linux/delay.h>
@@ -1724,9 +1729,22 @@ static int __init ffa_init(void)
 	if (ret)
 		return ret;
 
+#if defined(MTK_ADAPTED) && MTK_ADAPTED
+	ret = arm_ffa_bus_init();
+	if (ret)
+		return ret;
+#endif /* defined(MTK_ADAPTED) && MTK_ADAPTED */
+
 	drv_info = kzalloc(sizeof(*drv_info), GFP_KERNEL);
 	if (!drv_info)
+#if defined(MTK_ADAPTED) && MTK_ADAPTED
+	{
+		ret = -ENOMEM;
+		goto ffa_bus_exit;
+	}
+#else
 		return -ENOMEM;
+#endif /* defined(MTK_ADAPTED) && MTK_ADAPTED */
 
 	ret = ffa_version_check(&drv_info->version);
 	if (ret)
@@ -1797,6 +1815,10 @@ free_pages:
 	free_pages_exact(drv_info->rx_buffer, rxtx_bufsz);
 free_drv_info:
 	kfree(drv_info);
+#if defined(MTK_ADAPTED) && MTK_ADAPTED
+ffa_bus_exit:
+	arm_ffa_bus_exit();
+#endif /* defined(MTK_ADAPTED) && MTK_ADAPTED */
 	return ret;
 }
 module_init(ffa_init);
@@ -1809,6 +1831,9 @@ static void __exit ffa_exit(void)
 	free_pages_exact(drv_info->tx_buffer, drv_info->rxtx_bufsz);
 	free_pages_exact(drv_info->rx_buffer, drv_info->rxtx_bufsz);
 	kfree(drv_info);
+#if defined(MTK_ADAPTED) && MTK_ADAPTED
+	arm_ffa_bus_exit();
+#endif /* defined(MTK_ADAPTED) && MTK_ADAPTED */
 }
 module_exit(ffa_exit);
 
