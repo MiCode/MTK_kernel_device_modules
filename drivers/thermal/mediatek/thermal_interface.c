@@ -848,7 +848,7 @@ static ssize_t ttj_store(struct kobject *kobj,
 	char cmd[10];
 	unsigned int cpu_ttj, gpu_ttj, apu_ttj;
 
-	if (sscanf(buf, "%4s %u %u %u", cmd, &cpu_ttj, &gpu_ttj, &apu_ttj)
+	if (sscanf(buf, "%4s %10u %10u %10u", cmd, &cpu_ttj, &gpu_ttj, &apu_ttj)
 		== 4) {
 		if (strncmp(cmd, "TTJ", 3) == 0) {
 			write_ttj(CATM, cpu_ttj, gpu_ttj, apu_ttj);
@@ -881,7 +881,7 @@ static ssize_t max_ttj_store(struct kobject *kobj,
 	char cmd[10];
 	unsigned int cpu_max_ttj, gpu_max_ttj, apu_max_ttj;
 
-	if (sscanf(buf, "%8s %u %u %u", cmd, &cpu_max_ttj, &gpu_max_ttj, &apu_max_ttj)
+	if (sscanf(buf, "%8s %10u %10u %10u", cmd, &cpu_max_ttj, &gpu_max_ttj, &apu_max_ttj)
 		== 4) {
 		if (strncmp(cmd, "MAX_TTJ", 7) == 0) {
 			write_max_ttj(cpu_max_ttj, gpu_max_ttj, apu_max_ttj);
@@ -912,7 +912,7 @@ static ssize_t min_ttj_store(struct kobject *kobj,
 	char cmd[10];
 	unsigned int min_ttj;
 
-	if (sscanf(buf, "%8s %u", cmd, &min_ttj)
+	if (sscanf(buf, "%8s %10u", cmd, &min_ttj)
 		== 2) {
 		if (strncmp(cmd, "MIN_TTJ", 7) == 0) {
 			write_min_ttj(min_ttj);
@@ -958,12 +958,8 @@ static ssize_t min_throttle_freq_store(struct kobject *kobj,
 	int cluster2_min_freq;
 	int gpu_min_freq;
 
-	if (sscanf(buf, "%9s %d %d %d %d", cmd,
-		&cluster0_min_freq,
-		&cluster1_min_freq,
-		&cluster2_min_freq,
-		&gpu_min_freq)
-		== 5) {
+	if (sscanf(buf, "%9s %10d %10d %10d %10d", cmd, &cluster0_min_freq, &cluster1_min_freq,
+		&cluster2_min_freq, &gpu_min_freq) == 5) {
 
 		if (strncmp(cmd, "MIN_FREQ", 8) == 0) {
 			if (tm_data.is_cputcm) {
@@ -1032,7 +1028,7 @@ static ssize_t power_budget_store(struct kobject *kobj,
 	char cmd[10];
 	unsigned int cpu_pb, gpu_pb, apu_pb;
 
-	if (sscanf(buf, "%3s %u %u %u", cmd, &cpu_pb, &gpu_pb, &apu_pb) == 4) {
+	if (sscanf(buf, "%3s %10u %10u %10u", cmd, &cpu_pb, &gpu_pb, &apu_pb) == 4) {
 		if (strncmp(cmd, "pb", 2) == 0) {
 			write_power_budget(cpu_pb, gpu_pb, apu_pb);
 			return count;
@@ -1247,7 +1243,7 @@ static ssize_t frs_info_store(struct kobject *kobj,
 	int pid, diff;
 	int frs_target_fps, real_fps, target_tpcb, ptime;
 
-	if (sscanf(buf, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d", &enable, &act, &pid,
+	if (sscanf(buf, "%10d,%10d,%10d,%10d,%10d,%10d,%10d,%10d,%10d,%10d,%10d,%10d,%10d", &enable, &act, &pid,
 		&target_fps, &diff, &tpcb, &tpcb_slope, &ap_headroom, &n_sec_to_ttpcb,
 		&frs_target_fps, &real_fps, &target_tpcb, &ptime) == 13) {
 		if ((ap_headroom >= -1000) && (ap_headroom <= 1000)) {
@@ -1333,7 +1329,7 @@ static ssize_t cpu_reboot_store(struct kobject *kobj,
 	int len, i;
 	int values[CPU_COOLER_DEBUG_THERMAL_SRAM_LEN] = { 0 };
 
-	len = sscanf(buf, "%d %d %d %d %d %d %d %d %d %d %d %d",
+	len = sscanf(buf, "%10d %10d %10d %10d %10d %10d %10d %10d %10d %10d %10d %10d",
 		&values[0], &values[1], &values[2], &values[3],
 		&values[4], &values[5], &values[6], &values[7],
 		&values[8], &values[9], &values[10], &values[11]);
@@ -1432,7 +1428,7 @@ static ssize_t md_sensor_info_store(struct kobject *kobj,
 	int len = 0, num = 0, val = 0, i = 0;
 	struct md_thermal_sensor_t *ts_info;
 
-	if (sscanf(buf, "%20s %d%n", info_type_s, &num, &len) != 2) {
+	if (sscanf(buf, "%20s %10d%n", info_type_s, &num, &len) != 2) {
 		pr_info("%s: wrong scan info_type and num %s\n", __func__, buf);
 		return -EINVAL;
 	}
@@ -1464,7 +1460,7 @@ static ssize_t md_sensor_info_store(struct kobject *kobj,
 
 	ts_info = md_info_data.sensor_info;
 	for (i = 0; i < md_info_data.sensor_num; i++) {
-		if (sscanf(buf, " %d%n", &val, &len) == 1) {
+		if (sscanf(buf, " %10d%n", &val, &len) == 1) {
 			buf += len;
 			ts_info[i].cur_temp = val;
 		}
@@ -1502,7 +1498,7 @@ static ssize_t md_actuator_info_store(struct kobject *kobj,
 	int len = 0, num = 0, val = 0, i = 0;
 	struct md_thermal_actuator_t *ta_info;
 
-	if (sscanf(buf, "%20s %d%n", info_type_s, &num, &len) != 2) {
+	if (sscanf(buf, "%20s %10d%n", info_type_s, &num, &len) != 2) {
 		pr_info("%s: wrong scan info_type and num %s\n", __func__, buf);
 		return -EINVAL;
 	}
@@ -1542,14 +1538,14 @@ static ssize_t md_actuator_info_store(struct kobject *kobj,
 	ta_info = md_info_data.actuator_info;
 	if (strncmp(info_type_s, "a_cst", 5) == 0) {
 		for (i = 0; i < md_info_data.actuator_num; i++) {
-			if (sscanf(buf, " %d%n", &val, &len) == 1) {
+			if (sscanf(buf, " %10d%n", &val, &len) == 1) {
 				buf += len;
 				ta_info[i].cur_status = val;
 			}
 		}
 	} else {
 		for (i = 0; i < md_info_data.actuator_num; i++) {
-			if (sscanf(buf, " %d%n", &val, &len) == 1) {
+			if (sscanf(buf, " %10d%n", &val, &len) == 1) {
 				buf += len;
 				ta_info[i].max_status = val;
 			}
@@ -1734,7 +1730,7 @@ static ssize_t vtskin_info_store(struct kobject *kobj,
 		return -ENODATA;
 	}
 
-	if (sscanf(buf, "%20s %d %d%n", skin_name, &op, &ref_num, &len) != 3) {
+	if (sscanf(buf, "%20s %10d %10d%n", skin_name, &op, &ref_num, &len) != 3) {
 		pr_info("wrong skin_name, op, or ref_num %s\n", buf);
 		return -EINVAL;
 	}
@@ -1764,7 +1760,7 @@ static ssize_t vtskin_info_store(struct kobject *kobj,
 	memset(tzd, 0, sizeof(tzd));
 
 	for (i = 0; i < ref_num; i++) {
-		if (sscanf(buf, "%20s %lld%n", ref_name, &ref_coef, &len) != 2) {
+		if (sscanf(buf, "%20s %20lld%n", ref_name, &ref_coef, &len) != 2) {
 			pr_info("wrong scan vtskin ref sensor:%s\n", buf);
 			return -EINVAL;
 		}
@@ -1818,7 +1814,7 @@ static ssize_t vtskin_temp_store(struct kobject *kobj,
 	char cmd[10];
 	int temp;
 
-	if (sscanf(buf, "%7s %d", cmd, &temp) == 2) {
+	if (sscanf(buf, "%7s %10d", cmd, &temp) == 2) {
 		if (strncmp(cmd, "VTSKIN", 6) == 0) {
 			therm_intf_write_csram(temp, VTSKIN);
 
@@ -1852,7 +1848,7 @@ static ssize_t catm_p_store(struct kobject *kobj,
 	char cmd[10];
 	int p0, p1, p2;
 
-	if (sscanf(buf, "%5s %d %d %d", cmd, &p0, &p1, &p2)
+	if (sscanf(buf, "%5s %10d %10d %10d", cmd, &p0, &p1, &p2)
 		== 4) {
 		if (strncmp(cmd, "CATM", 4) == 0) {
 			catm_p[0] = p0;
@@ -1925,7 +1921,7 @@ static ssize_t pid_info_store(struct kobject *kobj,
 	int num = 0, len = 0, i, state, p_term, i_term, d_term;
 	struct pid_term_info *pid_data;
 
-	if (sscanf(buf, "%d %3s%n", &num, cmd, &len) != 2) {
+	if (sscanf(buf, "%10d %3s%n", &num, cmd, &len) != 2) {
 		pr_info("%s: wrong scan info type and num %s\n", __func__, buf);
 		return -EINVAL;
 	}
@@ -1959,7 +1955,7 @@ static ssize_t pid_info_store(struct kobject *kobj,
 
 	pid_data = pid_info_data.pid_term_data;
 	for (i = 0; i < pid_info_data.pid_num; i++) {
-		if (sscanf(buf, " %d %d %d %d%n", &state, &p_term, &i_term, &d_term, &len) == 4) {
+		if (sscanf(buf, " %10d %10d %10d %10d%n", &state, &p_term, &i_term, &d_term, &len) == 4) {
 			buf += len;
 			pid_data[i].limit_state = state;
 			pid_data[i].p = p_term;
@@ -2014,7 +2010,7 @@ static ssize_t user_vsensor_store(struct kobject *kobj,
 	char name[32];
 	int id, len;
 
-	if (sscanf(buf, "%9s %d %d %s", cmd, &id, &temp, name)
+	if (sscanf(buf, "%9s %10d %10d %31s", cmd, &id, &temp, name)
 		== 4) {
 		if (strncmp(cmd, "U_VSENSOR", 9) == 0) {
 			if (id >= 0 && id < USER_VSENSOR_NUM) {
@@ -2053,7 +2049,7 @@ static ssize_t abnormal_temp_store(struct kobject *kobj,
 	char cmd[20];
 	unsigned int abnormal_temp_flag;
 
-	if (sscanf(buf, "%14s %u", cmd, &abnormal_temp_flag)
+	if (sscanf(buf, "%14s %10u", cmd, &abnormal_temp_flag)
 		== 2) {
 		if (strncmp(cmd, "ABNORMAL_TEMP", 13) == 0) {
 			therm_intf_write_cputcm(abnormal_temp_flag, ABNORMAL_TEMP_TCM_OFFSET);
@@ -2146,7 +2142,7 @@ static ssize_t thermal_hint_store(struct kobject *kobj,
 	static int enable;
 	static int icc_enable;
 
-	if (sscanf(buf, "%12s %u", cmd, &enable) == 2) {
+	if (sscanf(buf, "%12s %10u", cmd, &enable) == 2) {
 		if (strncmp(cmd, "thermal_hint", 12) == 0) {
 			if (enable != tm_data.thermal_hint) {
 				if (cm_thermal_hint)
@@ -2208,7 +2204,7 @@ static ssize_t gpt_store(struct kobject *kobj,
 	char cmd[20];
 	int index,temp,opp;
 
-	if (sscanf(buf, "%3s %d %d %d ", cmd, &index, &temp, &opp)
+	if (sscanf(buf, "%3s %10d %10d %10d ", cmd, &index, &temp, &opp)
 		== 4) {
 		if (strncmp(cmd, "gpt", 3) == 0) {
 			set_gpu_pre_throttle(temp, index);
@@ -2377,7 +2373,7 @@ static ssize_t emul_temp_write(struct file *flip,
 	}
 	buf[cnt] = '\0';
 
-	if (sscanf(buf, "%10s %d", target, &temp) != 2) {
+	if (sscanf(buf, "%10s %10d", target, &temp) != 2) {
 		dev_info(tm_data.dev, "invalid input for emul temp\n");
 		ret = -EINVAL;
 		goto err;
@@ -2475,7 +2471,7 @@ static ssize_t cpu_cooler_write(struct file *flip,
 	}
 	buf[cnt] = '\0';
 
-	len = sscanf(buf, "%d %d %d %d %d %d %d %d %d %d %d %d",
+	len = sscanf(buf, "%10d %10d %10d %10d %10d %10d %10d %10d %10d %10d %10d %10d",
 		&values[0], &values[1], &values[2], &values[3],
 		&values[4], &values[5], &values[6], &values[7],
 		&values[8], &values[9], &values[10], &values[11]);
@@ -2542,7 +2538,7 @@ static ssize_t gpu_cooler_write(struct file *flip,
 	}
 	buf[cnt] = '\0';
 
-	if (sscanf(buf, "%15s %d", target, &value) != 2) {
+	if (sscanf(buf, "%15s %10d", target, &value) != 2) {
 		dev_info(tm_data.dev, "invalid input for gpu cooler dbg intf\n");
 		ret = -EINVAL;
 		goto err;
@@ -2699,12 +2695,18 @@ static void __used boot_thermal_release(struct work_struct *work)
 
 	tz = thermal_zone_get_zone_by_name(tm_data.boot.sensor);
 	if(IS_ERR_OR_NULL(tz)) {
-		pr_info("%s: get %s temp error\n", __func__, tm_data.boot.sensor);
+		pr_info("%s: get %s thermal zone error\n", __func__, tm_data.boot.sensor);
 		mod_timer(&boot_thermal_timer, jiffies + BOOT_THERMAL_DURATION);
 		return;
 	}
 
-	thermal_zone_get_temp(tz, &temp);
+	ret = thermal_zone_get_temp(tz, &temp);
+	if(ret) {
+		pr_info("%s: get %s temp error, ret %d\n", __func__, tm_data.boot.sensor, ret);
+		mod_timer(&boot_thermal_timer, jiffies + BOOT_THERMAL_DURATION);
+		return;
+	}
+
 	pr_info("[boot_thermal] %s=%d release=%d\n", tm_data.boot.sensor, temp, tm_data.boot.release_temp);
 
 	if (temp < tm_data.boot.release_temp) {

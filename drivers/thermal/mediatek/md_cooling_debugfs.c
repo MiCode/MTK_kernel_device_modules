@@ -101,7 +101,7 @@ static ssize_t md_cooling_duty_ctrl_write(struct file *flip,
 	}
 	buf[cnt] = '\0';
 
-	if ((sscanf(buf, "%d %d %d", &no_ims, &active, &suspend) != 3)) {
+	if ((sscanf(buf, "%10d %10d %10d", &no_ims, &active, &suspend) != 3)) {
 		ret = -EINVAL;
 		goto err;
 	}
@@ -232,7 +232,7 @@ static ssize_t md_cooling_update_tx_pwr_write(struct file *flip,
 	}
 	buf[cnt] = '\0';
 
-	if ((sscanf(buf, "%d %d %d %d", &id, &tx_pwr_lv1,
+	if ((sscanf(buf, "%10d %10d %10d %10d", &id, &tx_pwr_lv1,
 		&tx_pwr_lv2, &tx_pwr_lv3) != (MAX_NUM_TX_PWR_STATE + 1))) {
 		ret = -EINVAL;
 		goto err;
