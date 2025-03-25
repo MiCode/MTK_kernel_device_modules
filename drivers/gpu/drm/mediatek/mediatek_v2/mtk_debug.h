@@ -202,11 +202,10 @@ enum DISP_PQ_TEST_FLAG {
 	TEST_FLAG_DRECOLOR,
 	TEST_FLAG_GAMMALUT,
 	TEST_FLAG_GAMMAGAIN, //5
+	TEST_FLAG_DBI_COUNT,
 };
 
-extern int g_get_pq_relay_idx;
-
 void disp_pq_set_test_flag(unsigned int flag);
-void disp_pq_test_read_relay_reg(struct mtk_drm_crtc *mtk_crtc, int relay_idx);
+bool is_disp_reg(uint32_t addr, char *comp_name, uint32_t comp_name_len);
 
 #endif

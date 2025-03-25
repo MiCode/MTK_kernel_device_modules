@@ -25,6 +25,7 @@
 #include "mtk_drm_drv.h"
 #include "mtk_fence.h"
 #include "mtk_sync.h"
+#include "mtk_debug.h"
 
 #include "mtk_disp_dbi_count.h"
 
@@ -529,6 +530,7 @@ void mtk_crtc_dbi_count_cfg(struct mtk_drm_crtc *mtk_crtc, struct mtk_crtc_state
 			CRTC_MMP_MARK(crtc_index, dbi_trigger, (unsigned long)mtk_crtc->dbi_data.slice_idx,
 				(unsigned long)mtk_crtc->dbi_data.slice_num);
 			DBI_COUNT_INFO("%d %d\n", mtk_crtc->dbi_data.slice_idx, mtk_crtc->dbi_data.slice_num);
+			disp_pq_set_test_flag(TEST_FLAG_DBI_COUNT);
 		}
 	} else {
 		mtk_crtc->dbi_trigger = false;
@@ -1520,7 +1522,7 @@ void mtk_dbi_count_dump(struct mtk_ddp_comp *comp)
 	void __iomem *mbaddr;
 	int i;
 
-	DDPDUMP("== %s REGS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
+	DDPDUMP("== %s REGS:%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
 	DDPDUMP("-- Start dump dbi count registers --\n");
 
 	mbaddr = baddr;

@@ -1432,9 +1432,6 @@ static void disp_aal_sof_handle_by_cpu(struct mtk_ddp_comp *comp)
 	}
 	CRTC_MMP_EVENT_END(0, aal_sof_thread, 0, 4);
 	mtk_drm_trace_end();
-
-	if (g_get_pq_relay_idx >= 0)
-		disp_pq_test_read_relay_reg(comp->mtk_crtc, g_get_pq_relay_idx);
 }
 
 static void disp_aal_on_start_of_frame(struct mtk_ddp_comp *comp)

@@ -314,10 +314,18 @@ int disp_pq_proxy_virtual_hw_read(struct drm_crtc *crtc, void *data)
 	struct DISP_READ_REG *rParams = data;
 	void __iomem *va = 0;
 	unsigned int pa;
+#if IS_ENABLED(CONFIG_MTK_DISP_DEBUG)
+	char comp_name[64] = {0};
+#endif
 
 	pa = (unsigned int)rParams->reg;
 
-	if (!disp_pq_tuning_pa_valid(crtc, pa)) {
+	if (!disp_pq_tuning_pa_valid(crtc, pa)
+#if IS_ENABLED(CONFIG_MTK_DISP_DEBUG)
+			&& !is_disp_reg(pa, comp_name, sizeof(comp_name))) {
+#else
+			) {
+#endif
 		PQ_ERR("reg read, addr invalid, pa:0x%x\n", pa);
 		return -EFAULT;
 	}

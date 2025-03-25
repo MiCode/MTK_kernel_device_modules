@@ -3632,7 +3632,7 @@ void mtk_oddmr_dump(struct mtk_ddp_comp *comp)
 		priv = mtk_crtc->base.dev->dev_private;
 
 	if (oddmr_data->data->dbi_version < MTK_DBI_V2) {
-		DDPDUMP("== %s REGS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
+		DDPDUMP("== %s REGS:%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
 		DDPDUMP("-- Start dump oddmr registers --\n");
 		mbaddr = baddr;
 		for (i = 0; i < 0x2000; i += 16) {
@@ -3644,7 +3644,7 @@ void mtk_oddmr_dump(struct mtk_ddp_comp *comp)
 	}
 
 	if(oddmr_data->data->dbi_version >= MTK_DBI_V2) {
-		DDPDUMP("== %s REGS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
+		DDPDUMP("== %s REGS:%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
 		DDPDUMP("-- Start dump oddmr registers --\n");
 		mbaddr = baddr;
 		for (i = 0; i < 0x1000; i += 16) {

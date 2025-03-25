@@ -463,7 +463,7 @@ void disp_mdp_aal_dump(struct mtk_ddp_comp *comp)
 		return;
 	}
 
-	DDPDUMP("== %s REGS ==\n", mtk_dump_comp_str(comp));
+	DDPDUMP("== %s REGS:%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
 	mtk_cust_dump_reg(baddr, 0x0, 0x20, 0x30, 0x4D8);
 	mtk_cust_dump_reg(baddr, 0x200, 0xf4, 0xf8, 0x468);
 	mtk_cust_dump_reg(baddr, 0x46c, 0x470, 0x474, 0x478);
