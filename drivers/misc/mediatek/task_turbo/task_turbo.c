@@ -1223,7 +1223,8 @@ static void remove_turbo_list(struct task_struct *p)
 	spin_unlock(&TURBO_SPIN_LOCK);
 }
 
-static void probe_android_vh_cgroup_set_task(void *ignore, int ret, struct task_struct *p)
+static void probe_android_vh_cgroup_set_task(void *ignore, int ret, struct cgroup *cgrp,
+					     struct task_struct *p, bool threadgroup)
 {
 	struct task_turbo_t *turbo_data;
 
