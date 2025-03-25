@@ -715,7 +715,6 @@ static int mbraink_v6993_gpu_setFeatureEnable(bool bEnable)
 {
 	if (bEnable == true) {
 #if IS_ENABLED(CONFIG_MTK_FPSGO_V8) || IS_ENABLED(CONFIG_MTK_FPSGO)
-#if (MBRAINK_LANDING_FEATURE_CHECK == 0)
 		register_fpsgo_frame_info_callback(1 << GET_FPSGO_Q2Q_TIME,
 			fpsgo2mbrain_hint_frameinfo);
 
@@ -726,7 +725,6 @@ static int mbraink_v6993_gpu_setFeatureEnable(bool bEnable)
 			fpsgo2mbrain_hint_deleteperfinfo);
 
 		gPerfLoAlarmCount = 0;
-#endif
 #endif
 #if IS_ENABLED(CONFIG_MTK_GPU_SUPPORT)
 		ged_mali_event_register_fence_timeout_callback(
@@ -739,7 +737,6 @@ static int mbraink_v6993_gpu_setFeatureEnable(bool bEnable)
 #endif
 	} else {
 #if IS_ENABLED(CONFIG_MTK_FPSGO_V8) || IS_ENABLED(CONFIG_MTK_FPSGO)
-#if (MBRAINK_LANDING_FEATURE_CHECK == 0)
 		unregister_fpsgo_frame_info_callback(fpsgo2mbrain_hint_frameinfo);
 
 		unregister_fpsgo_frame_info_callback(fpsgo2mbrain_hint_perfinfo);
@@ -747,7 +744,6 @@ static int mbraink_v6993_gpu_setFeatureEnable(bool bEnable)
 		unregister_fpsgo_frame_info_callback(fpsgo2mbrain_hint_deleteperfinfo);
 
 		gPerfLoAlarmCount = 0;
-#endif
 #endif
 
 #if IS_ENABLED(CONFIG_MTK_GPU_SUPPORT)

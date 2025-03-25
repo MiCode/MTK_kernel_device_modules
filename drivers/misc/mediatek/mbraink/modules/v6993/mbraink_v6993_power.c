@@ -1064,7 +1064,6 @@ static int mbraink_v6993_power_get_spmi_glitch_info(
 	return ret;
 }
 
-#if (MBRAINK_LANDING_FEATURE_CHECK == 0)
 static int mbraink_v6993_power_get_dvfsrc_info(
 	struct mbraink_dvfsrc_struct_data *mbraink_dvfsrc_data)
 {
@@ -1088,14 +1087,6 @@ static int mbraink_v6993_power_get_dvfsrc_info(
 
 	return ret;
 }
-#else
-static int mbraink_v6993_power_get_dvfsrc_info(
-	struct mbraink_dvfsrc_struct_data *mbraink_dvfsrc_data)
-{
-	pr_info("%s failed to get : need review\n", __func__);
-	return -1;
-}
-#endif
 
 void smap2mbrain_notify(struct smap_mbrain *smap_mbrain_data)
 {
