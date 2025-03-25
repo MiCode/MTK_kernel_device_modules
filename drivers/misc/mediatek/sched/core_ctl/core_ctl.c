@@ -62,7 +62,7 @@ extern int get_immediate_tslvts1_1_wrap(void);
 
 #define core_ctl_debug(x...)		\
 	do {				\
-		if (debug_enable > DEBUG_DETAIL)	\
+		if (debug_enable >= DEBUG_DETAIL)	\
 			pr_info(x);	\
 	} while (0)
 
@@ -161,24 +161,25 @@ static unsigned int nr_task_thres[MAX_CLUSTERS] = {4, 4, 4};
 static unsigned int rt_nr_task_thres[MAX_CLUSTERS] = {2, 2, 2};
 static unsigned int active_loading_thres[MAX_CLUSTERS] = {80, 80, 80};
 static unsigned long freq_thres[MAX_CLUSTERS] = {5000000, 5000000, 5000000};
+struct cpumask cpu_force_pause_mask;
 
 /* ==================== module parameter ======================== */
 
-static int debug_enable;
-module_param_named(debug_enable, debug_enable, int, 0600);
-
-static void periodic_debug_handler(struct work_struct *work);
-static int periodic_debug_enable;
-static int periodic_debug_delay = 100;
-module_param_named(periodic_debug_delay, periodic_debug_delay, int, 0600);
-static DECLARE_DELAYED_WORK(periodic_debug, periodic_debug_handler);
-
 enum {
 	DISABLE_DEBUG = 0,
-	DEBUG_ROUGH,
+	DEBUG_PERIODIC,
 	DEBUG_DETAIL,
 	DEBUG_CNT
 };
+
+static int debug_enable = DEBUG_PERIODIC;
+module_param_named(debug_enable, debug_enable, int, 0600);
+
+static void periodic_debug_handler(struct work_struct *work);
+static int periodic_debug_enable = 1;
+static int periodic_debug_delay = 1000;
+module_param_named(periodic_debug_delay, periodic_debug_delay, int, 0600);
+static DECLARE_DELAYED_WORK(periodic_debug, periodic_debug_handler);
 
 const char* demand_requester_name[MAX_DEMAND_REQUESTER] = {
 	"SYSNODE", "POWERHAL", "CAMERA"
@@ -223,35 +224,33 @@ static void periodic_debug_handler(struct work_struct *work)
 	unsigned int min_cpus[MAX_CLUSTERS];
 	unsigned int boost[MAX_CLUSTERS];
 	unsigned int need_cpus[MAX_CLUSTERS];
-	unsigned int assist_cpus[MAX_CLUSTERS];
 	int gas_enable = 0;
+
+	mod_delayed_work(system_power_efficient_wq,
+			&periodic_debug, msecs_to_jiffies(periodic_debug_delay));
+
+	if (periodic_debug_enable == DISABLE_DEBUG)
+		return;
 
 #if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
 	gas_enable = get_top_grp_aware();
 #endif
-
-	if (periodic_debug_enable == DISABLE_DEBUG)
-		return;
 
 	for_each_cluster(cluster, index) {
 		max_cpus[index] = cluster->max_cpus;
 		min_cpus[index] = cluster->min_cpus;
 		boost[index] = cluster->boost || cluster->boost_by_freq || cluster->boost_by_wlan;
 		need_cpus[index] = cluster->need_cpus;
-		assist_cpus[index] = cluster->nr_assist;
 	}
 
-	pr_info("%s: policy=%u max=%u|%u|%u min=%u|%u|%u bst=%u|%u|%u gas=%d act=%lx iso=%lx need=%u|%u|%u assist=%u|%u|%u ",
+	pr_info("%s: en=%u max=%u|%u|%u min=%u|%u|%u need=%u|%u|%u bst=%u|%u|%u gas=%d act=%lx iso=%lx f_iso=%lx",
 			TAG, enable_policy,
 			max_cpus[0], max_cpus[1], max_cpus[2],
 			min_cpus[0], min_cpus[1], min_cpus[2],
-			boost[0], boost[1], boost[2],
-			gas_enable, cpumask_bits(cpu_online_mask)[0], cpumask_bits(cpu_pause_mask)[0],
 			need_cpus[0], need_cpus[1], need_cpus[2],
-			assist_cpus[0], assist_cpus[1], assist_cpus[2]);
-
-	mod_delayed_work(system_power_efficient_wq,
-			&periodic_debug, msecs_to_jiffies(periodic_debug_delay));
+			boost[0], boost[1], boost[2],
+			gas_enable, cpumask_bits(cpu_online_mask)[0],
+			cpumask_bits(cpu_pause_mask)[0], cpumask_bits(&cpu_force_pause_mask)[0]);
 }
 
 /*
@@ -1122,7 +1121,8 @@ EXPORT_SYMBOL(core_ctl_set_up_thres);
  *  return 0 if success, else return errno
  */
 static void core_ctl_call_notifier(unsigned int cpu, unsigned int is_pause);
-int core_ctl_force_pause_request(unsigned int cpu, bool is_pause, unsigned int request_mask)
+int core_ctl_force_pause_request(unsigned int cpu, bool is_pause,
+				 unsigned int request_mask)
 {
 	int ret = 0;
 	unsigned long flags;
@@ -1144,13 +1144,13 @@ int core_ctl_force_pause_request(unsigned int cpu, bool is_pause, unsigned int r
 		return -EINVAL;
 
 	if (request_mask >= MAX_FORCE_PAUSE_TYPE) {
-		pr_info("%s:invaild force pause request %u", TAG, request_mask);
+		pr_info("%s:invalid force pause request %u", TAG, request_mask);
 		return -EINVAL;
 	}
 
 	/* Avoid hotplug change online mask */
 	cpu_hotplug_disable();
-	if (is_pause && !test_disable_cpu(cpu)){
+	if (is_pause && !test_disable_cpu(cpu)) {
 		cpu_hotplug_enable();
 		pr_info("%s: force pause failed, retain cpus should >= 2", TAG);
 		return -EBUSY;
@@ -1162,62 +1162,80 @@ int core_ctl_force_pause_request(unsigned int cpu, bool is_pause, unsigned int r
 	force_paused_req = cpu_stat->force_pause_req;
 	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
 
-	if (is_pause){
+	if (is_pause) {
 		test_req_mask = force_paused_req | request_mask;
 		ret = core_ctl_pause_cpu(cpu);
-	}
-	else {
+	} else {
 		test_req_mask = force_paused_req & (~request_mask);
 		if (test_req_mask == 0)
 			ret = core_ctl_resume_cpu(cpu);
-		else
-			pr_info("%s: others still need paused CPU#%d", TAG, cpu);
+		else {
+			cpu_stat->force_pause_req = test_req_mask;
+			cpu_hotplug_enable();
+			pr_info("[Core Force Pause] others still need paused CPU#%d, paused=0x%lx, online=0x%lx, act=0x%lx, req[%d]=%u\n",
+				cpu, cpu_pause_mask->bits[0], cpu_online_mask->bits[0],
+				cpu_active_mask->bits[0], cpu, cpu_stat->force_pause_req);
+			return ret;
+		}
 	}
 
-	if (ret < 0)
-		goto no_update_request_mask;
-	else if (!ret) {
-		/* Update cpu state */
-		spin_lock_irqsave(&core_ctl_state_lock, flags);
-		cpu_stat->force_paused = is_pause;
+	/* pause/resume fail */
+	if (ret < 0) {
+		cpu_hotplug_enable();
+		if (is_pause) {
+			pr_info("[Core Force Pause] Pause request fail ret=%d, cpu=%d, paused=0x%lx, online=0x%lx, act=0x%lx, req[%d]=%u\n",
+				ret, cpu, cpu_pause_mask->bits[0], cpu_online_mask->bits[0],
+				cpu_active_mask->bits[0], cpu, cpu_stat->force_pause_req);
+		} else {
+			pr_info("[Core Force Pause] Resume request fail ret=%d, cpu=%d, paused=0x%lx, online=0x%lx, act=0x%lx, req[%d]=%u\n",
+				ret, cpu, cpu_pause_mask->bits[0], cpu_online_mask->bits[0],
+				cpu_active_mask->bits[0], cpu, cpu_stat->force_pause_req);
+		}
+		return ret;
+	}
+
+	/* success or already pause/resume, update cpu state */
+	spin_lock_irqsave(&core_ctl_state_lock, flags);
+	cpu_stat->force_paused = is_pause;
+
+	if (is_pause) {
 		/* Handle conflict with original policy */
 		if (cpu_stat->paused_by_cc) {
 			cpu_stat->paused_by_cc = false;
 			cluster->nr_paused_cpus--;
 		}
-		cluster->active_cpus = get_active_cpu_count(cluster);
-		spin_unlock_irqrestore(&core_ctl_state_lock, flags);
-		core_ctl_call_notifier(cpu, is_pause);
-	}
+		cpumask_set_cpu(cpu, &cpu_force_pause_mask);
+	} else
+		cpumask_clear_cpu(cpu, &cpu_force_pause_mask);
 
-	spin_lock_irqsave(&core_ctl_state_lock, flags);
+	cluster->active_cpus = get_active_cpu_count(cluster);
 	cpu_stat->force_pause_req = test_req_mask;
 	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
-no_update_request_mask:
 	cpu_hotplug_enable();
-	if (is_pause){
-		if (ret < 0){
-			pr_info("[Core Force Pause] Pause request ret=%d, cpu=%d, paused=0x%lx, online=0x%lx, act=0x%lx, req[%d]=%u\n",
-				ret, cpu, cpu_pause_mask->bits[0], cpu_online_mask->bits[0], cpu_active_mask->bits[0], cpu, cpu_stat->force_pause_req);
-		} else if (ret){
+
+	if (is_pause) {
+		if (ret) {
 			pr_info("[Core Force Pause] Already Pause: cpu=%d, paused=0x%lx, online=0x%lx, act=0x%lx, req[%d]=%u\n",
-				cpu, cpu_pause_mask->bits[0], cpu_online_mask->bits[0], cpu_active_mask->bits[0], cpu, cpu_stat->force_pause_req);
+				cpu, cpu_pause_mask->bits[0], cpu_online_mask->bits[0],
+				cpu_active_mask->bits[0], cpu, cpu_stat->force_pause_req);
 		} else {
 			pr_info("[Core Force Pause] Pause success: cpu=%d, paused=0x%lx, online=0x%lx, act=0x%lx, req[%d]=%u\n",
-				cpu, cpu_pause_mask->bits[0], cpu_online_mask->bits[0], cpu_active_mask->bits[0], cpu, cpu_stat->force_pause_req);
+				cpu, cpu_pause_mask->bits[0], cpu_online_mask->bits[0],
+				cpu_active_mask->bits[0], cpu, cpu_stat->force_pause_req);
 		}
 	} else {
-		if (ret < 0){
-			pr_info("[Core Force Pause] Resume request ret=%d, cpu=%d, paused=0x%lx, online=0x%lx, act=0x%lx, req[%d]=%u\n",
-				ret, cpu, cpu_pause_mask->bits[0], cpu_online_mask->bits[0], cpu_active_mask->bits[0], cpu, cpu_stat->force_pause_req);
-		} else if (ret){
+		if (ret) {
 			pr_info("[Core Force Pause] Already Resume: cpu=%d, paused=0x%lx, online=0x%lx, act=0x%lx, req[%d]=%u\n",
-				cpu, cpu_pause_mask->bits[0], cpu_online_mask->bits[0], cpu_active_mask->bits[0], cpu, cpu_stat->force_pause_req);
+				cpu, cpu_pause_mask->bits[0], cpu_online_mask->bits[0],
+				cpu_active_mask->bits[0], cpu, cpu_stat->force_pause_req);
 		} else {
 			pr_info("[Core Force Pause] Resume success: cpu=%d, paused=0x%lx, online=0x%lx, act=0x%lx, req[%d]=%u\n",
-				cpu, cpu_pause_mask->bits[0], cpu_online_mask->bits[0], cpu_active_mask->bits[0], cpu, cpu_stat->force_pause_req);
+				cpu, cpu_pause_mask->bits[0], cpu_online_mask->bits[0],
+				cpu_active_mask->bits[0], cpu, cpu_stat->force_pause_req);
 		}
 	}
+
+	core_ctl_call_notifier(cpu, is_pause);
 	return ret;
 }
 EXPORT_SYMBOL(core_ctl_force_pause_request);
@@ -1709,6 +1727,10 @@ static ssize_t show_global_state(const struct cluster_data *state, char *buf)
 				"\tPaused: %u\n", cpu_paused(c->cpu));
 		count += snprintf(buf + count, PAGE_SIZE - count,
 				"\tPaused by core_ctl: %u\n", c->paused_by_cc);
+		count += snprintf(buf + count, PAGE_SIZE - count,
+				"\tPaused by forced: %u\n", (unsigned int)c->force_paused);
+		count += snprintf(buf + count, PAGE_SIZE - count,
+				"\tForced pause req: %u\n", c->force_pause_req);
 		count += snprintf(buf + count, PAGE_SIZE - count,
 				"\tCPU utils(%%): %u\n", c->cpu_util_pct[c->win_idx]);
 		count += snprintf(buf + count, PAGE_SIZE - count,
@@ -2370,10 +2392,6 @@ static void __ref do_core_ctl(struct cluster_data *cluster)
 		core_ctl_debug("%s: failed to adjust cluster %u from %u to %u. (min = %u, max = %u)\n",
 				TAG, cluster->cluster_id, cluster->active_cpus, need,
 				cluster->min_cpus, cluster->max_cpus);
-
-	if (periodic_debug_enable > DISABLE_DEBUG)
-		mod_delayed_work(system_power_efficient_wq,
-				&periodic_debug, 0);
 }
 
 static int __ref try_core_ctl(void *data)
@@ -3030,6 +3048,9 @@ static int __init core_ctl_init(void)
 		}
 	}
 
+	/* init force pause mask */
+	cpumask_clear(&cpu_force_pause_mask);
+
 	/* init core_ctl ioctl */
 	pr_info("%s: start to init core_ioctl driver\n", TAG);
 	parent = proc_mkdir("cpumgr", NULL);
@@ -3044,6 +3065,9 @@ static int __init core_ctl_init(void)
 	if (ret)
 		pr_info("%s: Could not register register_pt_isolate_cb\n", TAG);
 
+	/* start periodic debug msg */
+	mod_delayed_work(system_power_efficient_wq,
+			&periodic_debug, msecs_to_jiffies(periodic_debug_delay));
 	initialized = true;
 	return 0;
 
