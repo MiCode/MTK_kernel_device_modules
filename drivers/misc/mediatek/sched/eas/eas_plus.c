@@ -1164,7 +1164,7 @@ void mtk_update_misfit_status(void *data, struct task_struct *p, struct rq *rq, 
 	 */
 	misfit_task_load = task_h_load(p);
 	rq->misfit_task_load = max_t(unsigned long, misfit_task_load, 1);
-
+	rq->misfit_reason = MISFIT_PERF;
 out:
 	if (dpt_v2_support) {
 		if (trace_sched_mtk_update_misfit_status_dpt_v2_enabled())
