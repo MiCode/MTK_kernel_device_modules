@@ -3081,10 +3081,11 @@ static void xhci_clear_interrupt_pending(struct xhci_interrupter *ir)
   * for non OS owned interrupter event ring. It may drop and reaquire xhci->lock
   * between event processing.
   */
-static int xhci_handle_events(struct xhci_hcd *xhci, struct xhci_interrupter *ir)
+static int xhci_handle_events(struct xhci_hcd *xhci, struct xhci_interrupter *ir,
+		bool skip_events)
 {
 	int event_loop = 0;
-	int err;
+	int err = 0;
 	u64 temp;
 
 	xhci_clear_interrupt_pending(ir);
@@ -3107,7 +3108,8 @@ static int xhci_handle_events(struct xhci_hcd *xhci, struct xhci_interrupter *ir
 
 	/* Process all OS owned event TRBs on this event ring */
 	while (unhandled_event_trb(ir->event_ring)) {
-		err = xhci_handle_event_trb(xhci, ir, ir->event_ring->dequeue);
+		if (!skip_events)
+			err = xhci_handle_event_trb(xhci, ir, ir->event_ring->dequeue);
 
 		/*
 		 * If half a segment of events have been handled in one go then
@@ -3137,11 +3139,11 @@ static int xhci_handle_events(struct xhci_hcd *xhci, struct xhci_interrupter *ir
 /*
  * Move the event ring dequeue pointer to skip events kept in the secondary
  * event ring.  This is used to ensure that pending events in the ring are
- * acknowledged, so the XHCI HCD can properly enter suspend/resume.  The
+ * acknowledged, so the xHCI HCD can properly enter suspend/resume.  The
  * secondary ring is typically maintained by an external component.
  */
 void xhci_skip_sec_intr_events(struct xhci_hcd *xhci,
-	struct xhci_ring *ring,	struct xhci_interrupter *ir)
+			struct xhci_ring *ring,	struct xhci_interrupter *ir)
 {
 	union xhci_trb *current_trb;
 	u64 erdp_reg;
@@ -3162,7 +3164,7 @@ void xhci_skip_sec_intr_events(struct xhci_hcd *xhci,
 	/* read cycle state of the last acked trb to find out CCS */
 	ring->cycle_state = le32_to_cpu(current_trb->event_cmd.flags) & TRB_CYCLE;
 
-	xhci_handle_events(xhci, ir);
+	xhci_handle_events(xhci, ir, true);
 }
 
 /*
@@ -3209,7 +3211,7 @@ irqreturn_t xhci_irq(struct usb_hcd *hcd)
 	writel(status, &xhci->op_regs->status);
 
 	/* This is the handler of the primary interrupter */
-	xhci_handle_events(xhci, xhci->interrupters[0]);
+	xhci_handle_events(xhci, xhci->interrupters[0], false);
 out:
 	spin_unlock(&xhci->lock);
 
