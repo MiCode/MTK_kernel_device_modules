@@ -196,9 +196,10 @@ static int gpufreq_status_proc_show(struct seq_file *m, void *v)
 		(ptp3_status.thermal_prot_mode == CTT_THERMAL_PROT ? "CTT_T" :
 		(ptp3_status.thermal_prot_mode == SW_THERMAL_PROT ? "SW" : "Off")));
 	seq_printf(m,
-		"%-16s HBVC: %s, BRCAST: %s, DELSEL: %s, PRBC: %s\n",
+		"%-16s HBVC: %s (TC=%d, BC=%d), BRCAST: %s, DELSEL: %s, PRBC: %s\n",
 		"[PTP3 Config]",
 		ptp3_status.hbvc_support ? "On" : "Off",
+		g_shared_status->hbvc_info.pmu_total_cycle, g_shared_status->hbvc_info.pmu_backend_cnt,
 		ptp3_status.brcast_mode == BRCAST_WITH_AUTO_DMA ? "AutoDMA" : "Off",
 		ptp3_status.delsel_mode == HW_DELSEL ? "HW" : "SW",
 		ptp3_status.prbc_mode ? "On" : "Off");

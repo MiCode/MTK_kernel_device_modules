@@ -501,6 +501,11 @@ struct gpufreq_prbc_info {
 	unsigned int ratio_irq_thresh_count;
 };
 
+struct gpufreq_hbvc_info {
+	unsigned int pmu_total_cycle;
+	unsigned int pmu_backend_cnt;
+};
+
 struct gpufreq_slt2_bmodel {
 	unsigned int vgpu_h1;
 	unsigned int vgpu_h;
@@ -617,6 +622,7 @@ struct gpufreq_shared_status {
 	struct gpu_ptp3_info ptp3_info;
 	struct gpufreq_prbc_info prbc_info;
 	struct gpufreq_preuvlo_info preuvlo_info;
+	struct gpufreq_hbvc_info hbvc_info;
 	struct gpufreq_bus_tracker_info bus_slv_error[GPUFREQ_MAX_BUSTRK_NUM];
 	struct gpufreq_bus_tracker_info bus_slv_timeout[GPUFREQ_MAX_BUSTRK_NUM];
 	struct gpufreq_slt2_bmodel slt2_bmodel;
