@@ -2277,33 +2277,63 @@ struct xhci_ring *xhci_triad_to_transfer_ring(struct xhci_hcd *xhci,
 void xhci_kill_endpoint_urbs(struct xhci_hcd *xhci,
 		int slot_id, int ep_index);
 
-/* xhci sideband */
-struct xhci_sideband_ {
-    struct xhci_hcd                 *xhci;
-    struct xhci_virt_device         *vdev;
-    struct xhci_virt_ep             *eps[EP_CTX_PER_DEV];
-    struct xhci_interrupter         *ir;
-    struct mutex            mutex;
+enum xhci_sideband_type {
+	XHCI_SIDEBAND_AUDIO,
+	XHCI_SIDEBAND_VENDOR,
 };
 
-struct xhci_sideband_ *xhci_sideband_register_(struct usb_device *udev);
-void xhci_sideband_unregister_(struct xhci_sideband_ *sb);
-int xhci_sideband_add_endpoint_(struct xhci_sideband_ *sb,
-	struct usb_host_endpoint *host_ep);
-int xhci_sideband_remove_endpoint_(struct xhci_sideband_ *sb,
-	struct usb_host_endpoint *host_ep);
-int xhci_sideband_stop_endpoint_(struct xhci_sideband_ *sb,
-	struct usb_host_endpoint *host_ep);
-struct sg_table *xhci_sideband_get_endpoint_buffer_(struct xhci_sideband_ *sb,
-	struct usb_host_endpoint *host_ep);
-struct sg_table *xhci_sideband_get_event_buffer_(struct xhci_sideband_ *sb);
-int xhci_sideband_enable_interrupt_(struct xhci_sideband_ *sb, u32 imod_interval);
-int xhci_sideband_create_interrupter_(struct xhci_sideband_ *sb, int num_seg,
-	int intr_num, bool ip_autoclear);
-void xhci_sideband_remove_interrupter_(struct xhci_sideband_ *sb);
-int xhci_sideband_interrupter_id_(struct xhci_sideband_ *sb);
+/**
+ * struct xhci_sideband - representation of a sideband accessed usb device.
+ * @xhci: The xhci host controller the usb device is connected to
+ * @vdev: the usb device accessed via sideband
+ * @eps: array of endpoints controlled via sideband
+ * @ir: event handling and buffer for sideband accessed device
+ * @type: xHCI sideband type
+ * @mutex: mutex for sideband operations
+ * @intf: USB sideband client interface
+ *
+ * FIXME usb device accessed via sideband Keeping track of sideband accessed usb devices.
+ */
+struct xhci_sideband_ {
+	struct xhci_hcd                 *xhci;
+	struct xhci_virt_device         *vdev;
+	struct xhci_virt_ep             *eps[EP_CTX_PER_DEV];
+	struct xhci_interrupter         *ir;
+	enum xhci_sideband_type		type;
 
-static inline struct xhci_ring *xhci_urb_to_transfer_ring(struct xhci_hcd *xhci,
+	/* Synchronizing xHCI sideband operations with client drivers operations */
+	struct mutex			mutex;
+
+	struct usb_interface		*intf;
+};
+
+struct xhci_sideband_ *
+xhci_sideband_register_(struct usb_interface *intf, enum xhci_sideband_type type);
+void
+xhci_sideband_unregister_(struct xhci_sideband_ *sb);
+int
+xhci_sideband_add_endpoint_(struct xhci_sideband_ *sb,
+			   struct usb_host_endpoint *host_ep);
+int
+xhci_sideband_remove_endpoint_(struct xhci_sideband_ *sb,
+			      struct usb_host_endpoint *host_ep);
+int
+xhci_sideband_stop_endpoint_(struct xhci_sideband_ *sb,
+			    struct usb_host_endpoint *host_ep);
+struct sg_table *
+xhci_sideband_get_endpoint_buffer_(struct xhci_sideband_ *sb,
+				  struct usb_host_endpoint *host_ep);
+struct sg_table *
+xhci_sideband_get_event_buffer_(struct xhci_sideband_ *sb);
+int
+xhci_sideband_create_interrupter_(struct xhci_sideband_ *sb, int num_seg,
+				 bool ip_autoclear, u32 imod_interval);
+void
+xhci_sideband_remove_interrupter_(struct xhci_sideband_ *sb);
+int
+xhci_sideband_interrupter_id_(struct xhci_sideband_ *sb);
+
+static inline struct xhci_ring *xhci_urb_to_transfer_ring_(struct xhci_hcd *xhci,
 								struct urb *urb)
 {
 	return xhci_triad_to_transfer_ring(xhci, urb->dev->slot_id,

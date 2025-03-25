@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0
+
 /*
  * xHCI host controller sideband support
  *
- * Copyright (c) 2023, Intel Corporation.
+ * Copyright (c) 2023-2025, Intel Corporation.
  *
  * Author: Mathias Nyman
  */
@@ -30,13 +31,15 @@ xhci_ring_to_sgtable(struct xhci_sideband_ *sb, struct xhci_ring *ring)
 	if (!pages)
 		return NULL;
 
-	sgt = kzalloc(sizeof(struct sg_table), GFP_KERNEL);
+	sgt = kzalloc(sizeof(*sgt), GFP_KERNEL);
 	if (!sgt) {
 		kvfree(pages);
 		return NULL;
 	}
 
 	seg = ring->first_seg;
+	if (!seg)
+		goto err;
 	/*
 	 * Rings can potentially have multiple segments, create an array that
 	 * carries page references to allocated segments.  Utilize the
@@ -45,18 +48,15 @@ xhci_ring_to_sgtable(struct xhci_sideband_ *sb, struct xhci_ring *ring)
 	 */
 	for (i = 0; i < ring->num_segs; i++) {
 		dma_get_sgtable(dev, sgt, seg->trbs, seg->dma,
-					TRB_SEGMENT_SIZE);
+				TRB_SEGMENT_SIZE);
 		pages[i] = sg_page(sgt->sgl);
 		sg_free_table(sgt);
 		seg = seg->next;
 	}
 
-	if (sg_alloc_table_from_pages(sgt, pages, n_pages, 0, sz, GFP_KERNEL)) {
-		kvfree(pages);
-		kfree(sgt);
+	if (sg_alloc_table_from_pages(sgt, pages, n_pages, 0, sz, GFP_KERNEL))
+		goto err;
 
-		return NULL;
-	}
 	/*
 	 * Save first segment dma address to sg dma_address field for the sideband
 	 * client to have access to the IOVA of the ring.
@@ -64,6 +64,12 @@ xhci_ring_to_sgtable(struct xhci_sideband_ *sb, struct xhci_ring *ring)
 	sg_dma_address(sgt->sgl) = ring->first_seg->dma;
 
 	return sgt;
+
+err:
+	kvfree(pages);
+	kfree(sgt);
+
+	return NULL;
 }
 
 static void
@@ -153,7 +159,7 @@ xhci_sideband_remove_endpoint_(struct xhci_sideband_ *sb,
 	ep_index = xhci_get_endpoint_index_(&host_ep->desc);
 	ep = sb->eps[ep_index];
 
-	if (!ep || !ep->sideband) {
+	if (!ep || !ep->sideband || ep->sideband != sb) {
 		mutex_unlock(&sb->mutex);
 		return -ENODEV;
 	}
@@ -176,7 +182,7 @@ xhci_sideband_stop_endpoint_(struct xhci_sideband_ *sb,
 	ep_index = xhci_get_endpoint_index_(&host_ep->desc);
 	ep = sb->eps[ep_index];
 
-	if (!ep || ep->sideband != sb)
+	if (!ep || !ep->sideband || ep->sideband != sb)
 		return -EINVAL;
 
 	return xhci_stop_endpoint_sync_(sb->xhci, ep, 0, GFP_KERNEL);
@@ -198,7 +204,7 @@ EXPORT_SYMBOL_GPL(xhci_sideband_stop_endpoint_);
  */
 struct sg_table *
 xhci_sideband_get_endpoint_buffer_(struct xhci_sideband_ *sb,
-			      struct usb_host_endpoint *host_ep)
+				  struct usb_host_endpoint *host_ep)
 {
 	struct xhci_virt_ep *ep;
 	unsigned int ep_index;
@@ -206,7 +212,7 @@ xhci_sideband_get_endpoint_buffer_(struct xhci_sideband_ *sb,
 	ep_index = xhci_get_endpoint_index_(&host_ep->desc);
 	ep = sb->eps[ep_index];
 
-	if (!ep)
+	if (!ep || !ep->ring || !ep->sideband || ep->sideband != sb)
 		return NULL;
 
 	return xhci_ring_to_sgtable(sb, ep->ring);
@@ -236,30 +242,6 @@ xhci_sideband_get_event_buffer_(struct xhci_sideband_ *sb)
 EXPORT_SYMBOL_GPL(xhci_sideband_get_event_buffer_);
 
 /**
- * xhci_sideband_enable_interrupt - enable interrupt for secondary interrupter
- * @sb: sideband instance for this usb device
- * @imod_interval: number of event ring segments to allocate
- *
- * Enables OS owned event handling for a particular interrupter if client
- * requests for it.  In addition, set the IMOD interval for this particular
- * interrupter.
- *
- * Returns 0 on success, negative error otherwise
- */
-int xhci_sideband_enable_interrupt_(struct xhci_sideband_ *sb, u32 imod_interval)
-{
-	if (!sb || !sb->ir)
-		return -ENODEV;
-
-	xhci_set_interrupter_moderation_(sb->ir, imod_interval);
-	sb->ir->skip_events = false;
-	xhci_enable_interrupter_(sb->ir);
-
-	return 0;
-}
-EXPORT_SYMBOL_GPL(xhci_sideband_enable_interrupt_);
-
-/**
  * xhci_sideband_create_interrupter - creates a new interrupter for this sideband
  * @sb: sideband instance for this usb device
  * @num_seg: number of event ring segments to allocate
@@ -276,11 +258,11 @@ EXPORT_SYMBOL_GPL(xhci_sideband_enable_interrupt_);
  */
 int
 xhci_sideband_create_interrupter_(struct xhci_sideband_ *sb, int num_seg,
-				 int intr_num, bool ip_autoclear)
+				 bool ip_autoclear, u32 imod_interval)
 {
 	int ret = 0;
 
-	if (!sb)
+	if (!sb || !sb->xhci)
 		return -ENODEV;
 
 	mutex_lock(&sb->mutex);
@@ -290,15 +272,13 @@ xhci_sideband_create_interrupter_(struct xhci_sideband_ *sb, int num_seg,
 	}
 
 	sb->ir = xhci_create_secondary_interrupter_(xhci_to_hcd(sb->xhci),
-			num_seg, intr_num);
+						   num_seg, imod_interval);
 	if (!sb->ir) {
 		ret = -ENOMEM;
 		goto out;
 	}
 
 	sb->ir->ip_autoclear = ip_autoclear;
-	/* skip events for secondary interrupters by default */
-	sb->ir->skip_events = true;
 
 out:
 	mutex_unlock(&sb->mutex);
@@ -321,8 +301,6 @@ xhci_sideband_remove_interrupter_(struct xhci_sideband_ *sb)
 		return;
 
 	mutex_lock(&sb->mutex);
-	if (!sb->ir->skip_events)
-		xhci_disable_interrupter_(sb->ir);
 	xhci_remove_secondary_interrupter_(xhci_to_hcd(sb->xhci), sb->ir);
 
 	sb->ir = NULL;
@@ -354,7 +332,7 @@ EXPORT_SYMBOL_GPL(xhci_sideband_interrupter_id_);
 
 /**
  * xhci_sideband_register - register a sideband for a usb device
- * @udev: usb device to be accessed via sideband
+ * @intf: usb interface associated with the sideband device
  *
  * Allows for clients to utilize XHCI interrupters and fetch transfer and event
  * ring parameters for executing data transfers.
@@ -362,15 +340,20 @@ EXPORT_SYMBOL_GPL(xhci_sideband_interrupter_id_);
  * Return: pointer to a new xhci_sideband instance if successful. NULL otherwise.
  */
 struct xhci_sideband_ *
-xhci_sideband_register_(struct usb_device *udev)
+xhci_sideband_register_(struct usb_interface *intf, enum xhci_sideband_type type)
 {
+	struct usb_device *udev = interface_to_usbdev(intf);
 	struct usb_hcd *hcd = bus_to_hcd(udev->bus);
 	struct xhci_hcd *xhci = hcd_to_xhci(hcd);
 	struct xhci_virt_device *vdev;
 	struct xhci_sideband_ *sb;
 
-	/* make sure the usb device is connected to a xhci controller */
-	if (!udev->slot_id)
+	/*
+	 * Make sure the usb device is connected to a xhci controller.  Fail
+	 * registration if the type is anything other than  XHCI_SIDEBAND_VENDOR,
+	 * as this is the only type that is currently supported by xhci-sideband.
+	 */
+	if (!udev->slot_id || type != XHCI_SIDEBAND_VENDOR)
 		return NULL;
 
 	sb = kzalloc_node(sizeof(*sb), GFP_KERNEL, dev_to_node(hcd->self.sysdev));
@@ -394,6 +377,8 @@ xhci_sideband_register_(struct usb_device *udev)
 
 	sb->xhci = xhci;
 	sb->vdev = vdev;
+	sb->intf = intf;
+	sb->type = type;
 	vdev->sideband = sb;
 
 	spin_unlock_irq(&xhci->lock);
@@ -415,8 +400,13 @@ EXPORT_SYMBOL_GPL(xhci_sideband_register_);
 void
 xhci_sideband_unregister_(struct xhci_sideband_ *sb)
 {
-	struct xhci_hcd *xhci = sb->xhci;
+	struct xhci_hcd *xhci;
 	int i;
+
+	if (!sb)
+		return;
+
+	xhci = sb->xhci;
 
 	mutex_lock(&sb->mutex);
 	for (i = 0; i < EP_CTX_PER_DEV; i++)
@@ -434,4 +424,5 @@ xhci_sideband_unregister_(struct xhci_sideband_ *sb)
 	kfree(sb);
 }
 EXPORT_SYMBOL_GPL(xhci_sideband_unregister_);
+MODULE_DESCRIPTION("xHCI sideband driver for secondary interrupter management");
 MODULE_LICENSE("GPL");
