@@ -506,6 +506,8 @@ struct mtk_dpc {
 	struct mtk_dpc_dvfs_bw dvfs_bw;
 
 	unsigned int mmsys_id;
+	unsigned int pwr_clk_num;
+	struct clk **pwr_clk;
 	u32 vidle_mask;
 	u32 vidle_mask_bk;
 	u32 dt_follow_cfg;

@@ -2771,15 +2771,34 @@ static void dpc_dump(void)
 
 static int dpc_smi_force_on_callback(struct notifier_block *nb, unsigned long action, void *data)
 {
+	int i;
+
 	DPCFUNC("action(%lu)", action);
 	if (action == true) {
+		dpc_pm_ctrl(true);
 		dpc_vidle_power_keep_v3(DISP_VIDLE_USER_SMI_DUMP);
 		if (g_priv->root_dev)
 			pm_runtime_get_sync(g_priv->root_dev);
+		for (i = 0; i < g_priv->pwr_clk_num; i++) {
+			if (IS_ERR(g_priv->pwr_clk[i])) {
+				DPCDUMP("%s invalid %d clk\n", __func__, i);
+				return NOTIFY_DONE;
+			}
+			clk_prepare_enable(g_priv->pwr_clk[i]);
+		}
+
 	} else {
 		if (g_priv->root_dev)
 			pm_runtime_put_sync(g_priv->root_dev);
+		for (i = g_priv->pwr_clk_num - 1; i >= 0; i--) {
+			if (IS_ERR(g_priv->pwr_clk[i])) {
+				DPCDUMP("%s invalid %d clk\n", __func__, i);
+				return NOTIFY_DONE;
+			}
+			clk_disable_unprepare(g_priv->pwr_clk[i]);
+		}
 		dpc_vidle_power_release_v3(DISP_VIDLE_USER_SMI_DUMP);
+		dpc_pm_ctrl(false);
 	}
 
 	return NOTIFY_DONE;
@@ -3168,8 +3187,9 @@ static int mtk_dpc_probe_v3(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct mtk_dpc *priv;
+	struct clk *clk;
 	const struct of_device_id *of_id;
-	int ret = 0, genpd_num = 0;
+	int ret = 0, genpd_num = 0, clk_num = 0, i;
 
 	DPCFUNC("+");
 	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
@@ -3242,6 +3262,25 @@ static int mtk_dpc_probe_v3(struct platform_device *pdev)
 	if (ret) {
 		DPCERR("res init failed:%d", ret);
 		return ret;
+	}
+
+	clk_num = of_count_phandle_with_args(dev->of_node, "clocks", "#clock-cells");
+	if (clk_num > 0) {
+		priv->pwr_clk_num = clk_num;
+		priv->pwr_clk = devm_kmalloc_array(dev, priv->pwr_clk_num,
+						sizeof(*priv->pwr_clk), GFP_KERNEL);
+		for (i = 0; i < priv->pwr_clk_num; i++) {
+			clk = of_clk_get(dev->of_node, i);
+			if (IS_ERR(clk)) {
+				DPCERR("%s get %d clk failed\n", __func__, i);
+				priv->pwr_clk_num = 0;
+				return -EINVAL;
+			}
+			priv->pwr_clk[i] = clk;
+		}
+	} else {
+		priv->pwr_clk_num = 0;
+		priv->pwr_clk = NULL;
 	}
 
 	priv->smi_nb.notifier_call = dpc_smi_force_on_callback;
