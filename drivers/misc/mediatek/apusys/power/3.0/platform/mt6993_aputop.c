@@ -35,11 +35,14 @@
 #include "aputop_cdev.h"
 
 #define LOCAL_DBG	(1)
+#define NEED_CHK	(0)
 #define RPC_ALIVE_DBG	(0)
 #define SMC_APUSYS_PWR_DUMP	(0)
 #define TIMER_RDY	(0)
 #define CLIENT_NUM	(6)
-
+#define SW_THROTTLE_PT_THERMAL	(0)
+#define SW_THROTTLE_SYSFS	(1)
+#define SW_THROTTLE_LIMIT_HAL	(2)
 static uint32_t mbox_data;
 
 static struct apu_power apupw = {
@@ -465,7 +468,7 @@ static int mt6993_update_bounds(void)
 	return 0;
 }
 
-#if LOCAL_DBG
+#if NEED_CHK
 static void mt6993_verify_bounds(void)
 {
 	struct client_work *cw;
@@ -526,11 +529,12 @@ int mt6993_set_freq_limit(int upper_limit, int lower_limit, int *request_id, int
 	int type = calltype;
 
 	// mapping user opp to real opp
-	if (calltype == 1) {
+	if (type == SW_THROTTLE_SYSFS) { // sysfs node
 		upper_limit = upper_limit + THERMAL_OPP_OFS;
 		lower_limit = lower_limit + THERMAL_OPP_OFS;
-	} else
+	} else if (type == SW_THROTTLE_PT_THERMAL) // thermal/PT
 		upper_limit = upper_limit + THERMAL_OPP_OFS;
+	// type = 2 -> Limit HAL cmd -> do not shift.
 
 	// real opp range is from 0 to 15
 	if ((lower_limit > USER_MIN_OPP_VAL || lower_limit < USER_MAX_OPP_VAL) ||
@@ -581,14 +585,19 @@ int mt6993_set_freq_limit(int upper_limit, int lower_limit, int *request_id, int
 	}
 
 	ret = mt6993_update_bounds();
-	if (ret == 0 && type == 1) {
+	if (ret == 0 && type == SW_THROTTLE_PT_THERMAL) {
 #if LOCAL_DBG
-		pr_info("%s: input from apu_throttle, detected bounds changed, sending to apu\n", __func__);
+		pr_info("%s: input from apu_sw_throttle, detected bounds changed, sending to apu\n", __func__);
 #endif
 		mt6993_aputop_opp_limit(global_upper_limit, global_lower_limit, 1);
-	} else if (ret == 0 && type == 0) {
+	} else if (ret == 0 && type == SW_THROTTLE_SYSFS) {
 #if LOCAL_DBG
 		pr_info("%s: input from sysfs, detected bounds changed, sending to apu\n", __func__);
+#endif
+		mt6993_aputop_opp_limit(global_upper_limit, global_lower_limit, 2);
+	} else if (ret == 0 && type == SW_THROTTLE_LIMIT_HAL) {
+#if LOCAL_DBG
+		pr_info("%s: input from limit hal cmd, detected bounds changed, sending to apu\n", __func__);
 #endif
 		mt6993_aputop_opp_limit(global_upper_limit, global_lower_limit, 2);
 	} else {
@@ -599,7 +608,7 @@ int mt6993_set_freq_limit(int upper_limit, int lower_limit, int *request_id, int
 		return -EINVAL;
 	}
 
-#if LOCAL_DBG
+#if NEED_CHK
 	mt6993_verify_bounds();
 #endif
 	mutex_unlock(&lock);
@@ -728,7 +737,7 @@ static ssize_t mt6993_handle_client_input(struct file *file, const char __user *
 	}
 
 	mt6993_prepare_freq_input(upper_limit, lower_limit, &opp_max, &opp_min);
-	ret = mt6993_set_freq_limit(opp_max, opp_min, &sys_request_id, 1);
+	ret = mt6993_set_freq_limit(opp_max, opp_min, &sys_request_id, SW_THROTTLE_SYSFS);
 	if (ret)
 		goto out;
 
@@ -929,12 +938,12 @@ static int mt6993_apu_top_func(struct platform_device *pdev,
 	case APUTOP_FUNC_OPP_LIMIT_HAL:
 		dla_max = aputop->param3;
 		dla_min = aputop->param4;
-		mt6993_set_freq_limit(dla_max, dla_min, &limit_debug_request_id, 1);
+		mt6993_set_freq_limit(dla_max, dla_min, &limit_debug_request_id, SW_THROTTLE_LIMIT_HAL);
 		break;
 	case APUTOP_FUNC_OPP_LIMIT_DBG:
 		dla_max = aputop->param3;
 		dla_min = aputop->param4;
-		mt6993_set_freq_limit(dla_max, dla_min, &limit_debug_request_id, 1);
+		mt6993_set_freq_limit(dla_max, dla_min, &limit_debug_request_id, SW_THROTTLE_LIMIT_HAL);
 		break;
 	case APUTOP_FUNC_DUMP_REG:
 		aputop_dump_pwr_reg(&pdev->dev);
@@ -961,7 +970,7 @@ static int mt6993_apu_top_func(struct platform_device *pdev,
 		dla_max = aputop->param1;
 		dla_min = USER_MIN_OPP_VAL;
 		request_id = aputop->param3;
-		mt6993_set_freq_limit(dla_max, dla_min, &request_id, 0);
+		mt6993_set_freq_limit(dla_max, dla_min, &request_id, SW_THROTTLE_PT_THERMAL);
 		aputop->param3 = request_id;
 		break;
 	default:

@@ -30,6 +30,7 @@ struct platform_device *this_pdev;
 static struct apupwr_dbg aputop_dbg;
 static struct apupwr_func_priv *aputop_func_priv;
 static int aputop_func_sel;
+static int aputop_init_done = -1;
 static DEFINE_MUTEX(aputop_func_mtx);
 #if IS_ENABLED(CONFIG_PM_SLEEP)
 struct wakeup_source *ws;
@@ -185,6 +186,8 @@ int register_pt_callbacks(void)
 
 static int apu_top_probe(struct platform_device *pdev)
 {
+	int flag;
+
 	dev_info(&pdev->dev, "%s +\n", __func__);
 	pwr_data = of_device_get_match_data(&pdev->dev);
 
@@ -201,10 +204,12 @@ static int apu_top_probe(struct platform_device *pdev)
 	g_apupw_drv_ver = 3;
 
 	pm_runtime_enable(&pdev->dev);
-	register_pt_callbacks();
 	aputop_cdev_probe(pdev);
+	flag = pwr_data->plat_aputop_pb(pdev);
+	aputop_init_done = flag;
+	register_pt_callbacks();
 
-	return pwr_data->plat_aputop_pb(pdev);
+	return flag;
 }
 
 static void apu_top_remove(struct platform_device *pdev)
@@ -467,6 +472,26 @@ int apu_sw_throttle(int *request_id, unsigned long state)
 
 	struct aputop_func_param aputop;
 	int ret = 0;
+
+	if (!request_id) {
+		pr_info("%s: request_id is NULL\n", __func__);
+		return -EINVAL;
+	}
+
+	if (!aputop_func_priv) {
+		pr_info("%s: aputop_func_priv is NULL\n", __func__);
+		return -EINVAL;
+	}
+
+	if (!pwr_data) {
+		pr_info("%s: pwr_data is NULL\n", __func__);
+		return -EINVAL;
+	}
+
+	if (aputop_init_done != 0) {
+		pr_info("%s: aputop initialization is not ready\n", __func__);
+		return -EINVAL;
+	}
 
 	memset(&aputop, -1, sizeof(struct aputop_func_param));
 
