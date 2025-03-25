@@ -4,6 +4,7 @@
  */
 
 #include <linux/clk.h>
+#include <linux/delay.h>
 #include <linux/kthread.h>
 #include <linux/module.h>
 #include <linux/of_platform.h>
@@ -74,6 +75,8 @@ static DEFINE_MUTEX(mmdvfs_vcp_pwr_mutex);
 
 static s8 vcore_force_val = OPP_NAG;
 static s8 vcore_force_opp = OPP_NAG;
+
+static u32 dconfig_force_clk, dconfig_force_clk_rc;
 
 int mmdvfs_get_version(void)
 {
@@ -415,16 +418,10 @@ static const struct kernel_param_ops mmdvfs_vcp_set_rate_ops = {
 module_param_cb(vcp_set_rate, &mmdvfs_vcp_set_rate_ops, NULL, 0644);
 MODULE_PARM_DESC(vcp_set_rate, "set rate from dummy vcp user by ipi");
 
-static int mmdvfs_force_clock(const char *val, const struct kernel_param *kp)
+static int mmdvfs_force_clock_impl(const int idx, const int opp, const int all)
 {
-	int all = 0, idx = 0, opp = 0, ret = 0;
+	int ret = 0;
 	u8 lvl;
-
-	ret = sscanf(val, "%d %d %d", &idx, &opp, &all);
-	if (ret != 3 || idx >= mmdvfs_data->mux_num) {
-		MMDVFS_DBG("failed:%d idx:%d opp:%d all:%d", ret, idx, opp, all);
-		return -EINVAL;
-	}
 
 	mtk_mmdvfs_enable_vcp(true, idx + step_idx);
 
@@ -441,6 +438,19 @@ static int mmdvfs_force_clock(const char *val, const struct kernel_param *kp)
 
 	mtk_mmdvfs_enable_vcp(false, idx + step_idx);
 	return ret;
+}
+
+static int mmdvfs_force_clock(const char *val, const struct kernel_param *kp)
+{
+	int all = 0, idx = 0, opp = 0, ret = 0;
+
+	ret = sscanf(val, "%d %d %d", &idx, &opp, &all);
+	if (ret != 3 || idx >= mmdvfs_data->mux_num) {
+		MMDVFS_DBG("failed:%d idx:%d opp:%d all:%d", ret, idx, opp, all);
+		return -EINVAL;
+	}
+
+	return mmdvfs_force_clock_impl(idx, opp, all);
 }
 
 static const struct kernel_param_ops mmdvfs_force_clock_ops = {
@@ -935,10 +945,57 @@ static inline int mmdvfs_debug_parse_user(struct mmdvfs_debug_user **_user, u8 c
 	return 0;
 }
 
+static inline int mmdvfs_debug_parse_dconfig(struct device_node *node)
+{
+	dconfig_force_clk = 0xff;
+	dconfig_force_clk_rc = 0xff;
+
+	of_property_read_u32(node, "force-single-clk", &dconfig_force_clk);
+	of_property_read_u32(node, "force-rc-clk", &dconfig_force_clk_rc);
+
+	MMDVFS_DBG("dconfig_force_clk:%#x dconfig_force_clk_rc:%#x",
+		dconfig_force_clk, dconfig_force_clk_rc);
+
+	return 0;
+}
+
+static inline int mmdvfs_debug_set_dconfig(void)
+{
+	if (dconfig_force_clk != 0xff) {
+		MMDVFS_DBG("set dconfig_force_clk:%#x", dconfig_force_clk);
+		mmdvfs_force_clock_impl(dconfig_force_clk >> 4 & 0xf, dconfig_force_clk & 0xf, false);
+	}
+
+	if (dconfig_force_clk_rc != 0xff) {
+		MMDVFS_DBG("set dconfig_force_clk_rc:%#x", dconfig_force_clk_rc);
+		mmdvfs_force_clock_impl(dconfig_force_clk_rc >> 4 & 0xf, dconfig_force_clk_rc & 0xf, true);
+	}
+
+	return 0;
+}
+
+static int mmdvfs_init_kthread(void *data)
+{
+	int retry = 0;
+
+	while (!mmdvfs_mmup_cb_ready_get()) {
+		if (++retry > 100) {
+			MMDVFS_DBG("mmdvfs_v5 init not ready");
+			return -ETIMEDOUT;
+		}
+		ssleep(1);
+	}
+
+	mmdvfs_debug_set_dconfig();
+
+	return 0;
+}
+
 int mmdvfs_mux_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct device_node *node = pdev->dev.of_node;
+	struct task_struct *task;
 	int ret;
 
 	mmdvfs_data = mmdvfs_get_mmdvfs_data(dev);
@@ -951,6 +1008,7 @@ int mmdvfs_mux_probe(struct platform_device *pdev)
 	ret = mmdvfs_parse_mmdvfs_mux(node, mmdvfs_data);
 	ret = mmdvfs_parse_mmdvfs_clk(node, mmdvfs_data);
 	ret = mmdvfs_parse_vcore_level(node);
+	ret = mmdvfs_debug_parse_dconfig(node);
 
 	ret = of_property_read_u8(node, "mediatek,step-idx", &step_idx);
 	mmdvfs_debug_parse_user(&user, mmdvfs_data->mux_num);
@@ -961,6 +1019,10 @@ int mmdvfs_mux_probe(struct platform_device *pdev)
 	ret = register_pm_notifier(&mmdvfs_pm_notifier_block);
 	if (ret)
 		MMDVFS_ERR("failed:%d", ret);
+
+	task = kthread_run(mmdvfs_init_kthread, NULL, "mmdvfs-init-kthread");
+	if (IS_ERR(task))
+		MMDVFS_DBG("kthread_run failed:%ld", PTR_ERR(task));
 
 	return ret;
 }

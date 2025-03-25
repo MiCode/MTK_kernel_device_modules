@@ -4,6 +4,7 @@
  */
 
 #include <linux/clk.h>
+#include <linux/delay.h>
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
@@ -62,6 +63,8 @@ static bool mmdvfs_pm_suspend;
 static u8 user_count;
 static struct mmdvfs_debug_user *user;
 static u8 step_count, *step_idx;
+
+static u32 dconfig_vote_step, dconfig_force_step;
 
 int mmdvfs_debug_v5_force_vcore(const u32 val)
 {
@@ -808,11 +811,62 @@ static inline int mmdvfs_debug_parse_user(struct device *dev, struct mmdvfs_debu
 	return ret;
 }
 
+static inline int mmdvfs_debug_parse_dconfig(struct device *dev)
+{
+	dconfig_vote_step = 0xff;
+	dconfig_force_step = 0xff;
+
+	of_property_read_u32(dev->of_node, "vote-step", &dconfig_vote_step);
+	of_property_read_u32(dev->of_node, "force-step", &dconfig_force_step);
+
+	MMDVFS_DBG("dconfig_vote_step:%#x dconfig_force_step:%#x",
+		dconfig_vote_step, dconfig_force_step);
+
+	return 0;
+}
+
+static inline int mmdvfs_debug_set_dconfig(void)
+{
+	int i, retry = 0;
+
+	while (!step_count) {
+		if (++retry > 100) {
+			MMDVFS_DBG("step_count not ready");
+			return -ETIMEDOUT;
+		}
+		ssleep(1);
+	}
+
+	if (dconfig_vote_step != 0xff)
+		for (i = 0; i < step_count; i++) {
+			MMDVFS_DBG("set dconfig_vote_step:%#x", dconfig_vote_step);
+			mmdvfs_debug_vote_step(dconfig_vote_step >> 4 & 0xf, dconfig_vote_step & 0xf);
+			dconfig_vote_step = dconfig_vote_step >> 8;
+		}
+
+	if (dconfig_force_step != 0xff)
+		for (i = 0; i < step_count; i++) {
+			MMDVFS_DBG("set dconfig_force_step:%#x", dconfig_force_step);
+			mmdvfs_debug_force_step(dconfig_force_step >> 4 & 0xf, dconfig_force_step & 0xf);
+			dconfig_force_step = dconfig_force_step >> 8;
+		}
+
+	return 0;
+}
+
 static int mmdvfs_debug_kthread(void *data)
 {
 	phys_addr_t pa = 0ULL;
 	unsigned long va;
-	int ret;
+	int ret, retry = 0;
+
+	while (!mmdvfs_mmup_cb_ready_get()) {
+		if (++retry > 100) {
+			MMDVFS_DBG("mmdvfs_v5 init not ready");
+			return -ETIMEDOUT;
+		}
+		ssleep(1);
+	}
 
 	va = (unsigned long)(unsigned long *)mmdvfs_get_mmup_base(&pa);
 	if (va && pa) {
@@ -830,6 +884,8 @@ static int mmdvfs_debug_kthread(void *data)
 	} else
 		MMDVFS_DBG("get_vcp_base failed va:%#lx pa:%pa", va, &pa);
 
+	mmdvfs_debug_set_dconfig();
+
 	return 0;
 }
 
@@ -843,6 +899,7 @@ static int mmdvfs_debug_probe(struct platform_device *pdev)
 	mmdvfs_debug_parse_regulator(dev);
 	mmdvfs_debug_parse_mux(dev);
 	mmdvfs_debug_parse_fmeter(dev);
+	mmdvfs_debug_parse_dconfig(dev);
 
 	met_freerun = of_property_read_bool(dev->of_node, "mediatek,met-freerun");
 	of_property_read_s32(dev->of_node, "mediatek,dpsw-thres", &dpsw_thr);
