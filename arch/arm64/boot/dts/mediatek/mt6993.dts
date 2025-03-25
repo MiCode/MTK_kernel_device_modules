@@ -1919,6 +1919,7 @@
 		dsc0 = <&disp_dsc_wrap0 0x1000>;
 		mipitx0 = <&mipi_tx_config0 0x1000>;
 		spr0 = <&disp_spr0 0x1000>;
+		oddmr0 = <&disp_oddmr0 0x2000>;
 	};
 
 	ged: ged {
