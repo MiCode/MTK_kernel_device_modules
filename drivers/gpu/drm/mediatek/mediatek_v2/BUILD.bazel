@@ -238,6 +238,7 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/misc/mediatek/mmdvfs:mtk-mmdvfs-debug".format(kernel_version),
         "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-mmdvfs".format(kernel_version),
         "//kernel_device_modules-{}/drivers/interconnect/mediatek:mmqos-common".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/memory/mediatek:emi".format(kernel_version),
     ],
     header_deps = [
         "//kernel_device_modules-{}/drivers/tee/gud:mobicore_public_hdrs".format(kernel_version),
