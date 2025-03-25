@@ -95,9 +95,6 @@ struct CRTC_MMP_Events {
 	mmp_event present_fence_timestamp;
 	mmp_event update_sf_present_fence;
 	mmp_event release_sf_present_fence;
-	mmp_event release_config_fence;
-	mmp_event free_layer_handle;
-	mmp_event release_frame_done_fence;
 	mmp_event warn_sf_pf_0;
 	mmp_event warn_sf_pf_2;
 	mmp_event ovl_bw_monitor;

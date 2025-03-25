@@ -461,7 +461,6 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 	int written = 0;
 	bool plane_visible = plane->state->visible;
 	struct total_tile_overhead_v to_v_info;
-	bool use_union_fence;
 
 	if (!crtc)
 		return;
@@ -471,8 +470,6 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 	crtc_index = drm_crtc_index(crtc);
 	priv = crtc->dev->dev_private;
 	to_v_info = mtk_crtc_get_total_overhead_v(mtk_crtc);
-	use_union_fence = mtk_drm_helper_get_opt(priv->helper_opt,
-			MTK_DRM_OPT_UNION_FENCE) && crtc_index == 0;
 
 	if ((!fb) || (mtk_crtc->ddp_mode == DDP_NO_USE))
 		return;
@@ -694,17 +691,7 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 		DDPINFO("%s\n", dbg_msg);
 	}
 
-	if (use_union_fence) {
-		DDPFENCE("S+/%sL%d/e%d/id%d/mva0x%08llx/size0x%08lx/S%d\n",
-			mtk_crtc_index_spy(crtc_index),
-			plane_index,
-			mtk_plane_state->pending.enable,
-			(unsigned int)crtc_state->prop_val[CRTC_PROP_PRES_FENCE_IDX],
-			mtk_plane_state->pending.addr,
-			mtk_plane_state->pending.size,
-			mtk_plane_state->pending.is_sec);
-	} else {
-		DDPFENCE("S+/%sL%d/e%d/id%d/mva0x%08llx/size0x%08lx/S%d\n",
+	DDPFENCE("S+/%sL%d/e%d/id%d/mva0x%08llx/size0x%08lx/S%d\n",
 			mtk_crtc_index_spy(crtc_index),
 			plane_index,
 			mtk_plane_state->pending.enable,
@@ -712,7 +699,6 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 			mtk_plane_state->pending.addr,
 			mtk_plane_state->pending.size,
 			mtk_plane_state->pending.is_sec);
-	}
 
 	if (!mtk_crtc->sec_on && mtk_plane_state->pending.is_sec) {
 		DDPMSG("receive sec buffer in non-sec mode\n");

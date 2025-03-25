@@ -208,15 +208,6 @@ void init_crtc_mmp_event(void)
 		g_CRTC_MMP_Events[i].release_sf_present_fence =
 			mmprofile_register_event(crtc_mmp_root,
 				"release_sf_present_fence");
-		g_CRTC_MMP_Events[i].release_config_fence =
-			mmprofile_register_event(crtc_mmp_root,
-				"release_config_fence");
-		g_CRTC_MMP_Events[i].free_layer_handle =
-			mmprofile_register_event(crtc_mmp_root,
-				"free_layer_handle");
-		g_CRTC_MMP_Events[i].release_frame_done_fence =
-			mmprofile_register_event(crtc_mmp_root,
-				"release_frame_done_fence");
 		g_CRTC_MMP_Events[i].warn_sf_pf_0 =
 			mmprofile_register_event(crtc_mmp_root, "warn_sf_pf_0");
 		g_CRTC_MMP_Events[i].warn_sf_pf_2 =

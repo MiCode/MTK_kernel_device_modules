@@ -720,7 +720,7 @@ static void prepare_output_buffer(struct drm_device *dev,
 
 	/* create second fence for WDMA when decouple mirror mode */
 	buf->layer_id = mtk_fence_get_interface_timeline_id();
-	output_buf = mtk_fence_prepare_buf(dev, buf, false, NULL, false);
+	output_buf = mtk_fence_prepare_buf(dev, buf, false, NULL);
 	if (output_buf) {
 		buf->interface_fence_fd = output_buf->fence;
 		buf->interface_index = output_buf->idx;
@@ -742,32 +742,11 @@ int mtk_gem_submit_ioctl(struct drm_device *dev, void *data,
 	struct mtk_fence_buf_info *buf, *buf2 = NULL;
 	struct mtk_drm_private *priv = dev->dev_private;
 
-	// we only support union fence on primary display, because other
-	// crtc may release to other drm user (ex: drmwrapper) which not
-	// support union fence flow.
-	bool use_uinon_fence =
-		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_UNION_FENCE) &&
-		MTK_SESSION_TYPE(args->session_id) == MTK_SESSION_PRIMARY &&
-		args->type != MTK_SUBMIT_OUT_FENCE;
-
-	if (use_uinon_fence) {
-		args->fence_fd = MTK_INVALID_FENCE_FD;
-		args->index = 0;
-		if (args->layer_en) {
-			buf = mtk_fence_prepare_buf(dev, args, false, NULL, true);
-			if (buf != NULL) {
-				args->fence_fd = -1;
-				args->index = 0;
-			}
-		}
-		return ret;
-	}
-
 	if (args->type == MTK_SUBMIT_OUT_FENCE)
 		args->layer_id = mtk_fence_get_output_timeline_id();
 
 	if (args->layer_en) {
-		buf = mtk_fence_prepare_buf(dev, args, false, NULL, false);
+		buf = mtk_fence_prepare_buf(dev, args, false, NULL);
 		if (buf != NULL) {
 			args->fence_fd = buf->fence;
 			args->index = buf->idx;
