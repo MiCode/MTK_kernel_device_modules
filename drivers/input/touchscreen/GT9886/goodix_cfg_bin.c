@@ -292,7 +292,7 @@ int goodix_cfg_bin_proc(void *data)
 	goodix_modules.core_exit = false;
 	/*complete_all(&goodix_modules.core_comp);*/
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 	core_data->disp_notifier.notifier_call = goodix_ts_disp_notifier_callback;
 	if (mtk_disp_notifier_register("Touch-gt9886", &core_data->disp_notifier))
 		ts_err("Failed to register disp notifier client:%d", r);

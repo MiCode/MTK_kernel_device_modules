@@ -3,7 +3,7 @@
 #
 
 #For display ESD recovery
-ccflags-$(CONFIG_DRM_MEDIATEK_V2) += -I$(srctree)/drivers/gpu/drm/mediatek/mediatek_v2/
+ccflags-$(CONFIG_DRM_MEDIATEK_V2) += -I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mediatek_v2/
 
 obj-m += gt9886.o
 gt9886-y += goodix_ts_i2c.o

@@ -42,7 +42,7 @@
 #include <linux/regulator/consumer.h>
 #endif
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 #include "mtk_panel_ext.h"
 #include "mtk_disp_notify.h"
 #endif
@@ -456,7 +456,7 @@ struct goodix_ts_core {
 	struct notifier_block ts_notifier;
 	struct goodix_ts_esd ts_esd;
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_DRM_MEDIATEK)
 	struct notifier_block disp_notifier;
 #endif
 };
