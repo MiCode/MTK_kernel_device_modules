@@ -6,7 +6,7 @@
 load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
 load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
 load("@mgk_info//:kernel_version.bzl", "kernel_version")
-load("config.bzl", "tmem_config", "tmem_ffa_config")
+load("config.bzl", "ffa_config", "tmem_config", "tmem_ffa_config")
 
 package(
 	default_visibility = [
@@ -85,6 +85,8 @@ define_mgk_ddk_ko(
 	includes = [
 		"{}".format(ffa_module),
 	],
+	local_defines = ffa_config["local_defines"],
+	copts = ffa_config["copts"],
 )
 
 ## @package Trusted Memory (trusted_mem, tmem/tmem_ffa)

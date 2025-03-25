@@ -3,6 +3,18 @@
 # Copyright (C) 2024 MediaTek Inc.
 #
 
+ffa_config = {
+	"local_defines": [
+		# MTK adpated implementations
+		"MTK_ADAPTED=1",
+		# MTK adapted workarounds, must use with MTK_ADAPTED
+		"MTK_ADAPTED_WA=1",
+	],
+	"copts": [
+		"-Werror",
+	],
+}
+
 tmem_config = {
 	"local_defines": [
 #		"GCOV_PROFILE",
