@@ -80,3 +80,16 @@ config MTK_PELT_HINT
 	  tasks require more immediate CPU resources for better performance.
 	  If unsure, or if you do not need task-specific CPU resource optimization,
 	  select 'n'.
+
+config MTK_POWER_RL_V2
+	tristate "Support Power RL V2"
+	help
+	  Power RL V2 is a MediaTek feature designed
+	  to manage the power consumption of games running on the device. It
+	  works by monitoring the system's thermal conditions and dynamically
+	  adjusting the power usage to prevent overheating. This can help to
+	  maintain a balance between performance and power, ensuring that
+	  the device operates within safe thermal limits. Enable this feature if
+	  you want to provide thermal management for gaming applications on
+	  MediaTek platforms. If unsure, or if your device does not require this
+	  feature, choose 'n'.
