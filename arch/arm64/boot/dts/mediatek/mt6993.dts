@@ -3696,9 +3696,9 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 "C0_req,C1_req,C2_req,C3_req,C4_req,C5_req,C6_req,C7_req,DSU_req\
 ,C0_max,C1_max,C2_max,C3_max,C4_max,C5_max,C6_max,C7_max,DSU_max\
 ,C0_min,C1_min,C2_min,C3_min,C4_min,C5_min,C6_min,C7_min,DSU_min,MCUPM_PTP3_EOL";
-			node-42 = "MCUPM_PTP3__HBVC__Sample_Ctrl",
-"C0_Verr,C1_Verr,C2_Verr,C3_Verr,C4_Verr,C5_Verr,C6_Verr,C7_Verr,DSU_Verr,MCUPM_PTP3_EOL";
-			node-43 = "MCUPM_PTP3__HBVC__Volt_Calc",
+			node-42 = "MCUPM_PTP3__HBVC__Sample_Ctrl__Verr",
+"C0,C1,C2,C3,C4,C5,C6,C7,DSU,MCUPM_PTP3_EOL";
+			node-43 = "MCUPM_PTP3__HBVC__Sample_Ctrl",
 "C0_Vt,C1_Vt,C2_Vt,C3_Vt,C4_Vt,C5_Vt,C6_Vt,C7_Vt,DSU_Vt,MCUPM_PTP3_EOL";
 			node-44 = "MCUPM_PTP3__HBVC__Volt_Calc__Vupper",
 					"C0,C1,C2,C3,C4,C5,C6,C7,DSU,MCUPM_PTP3_EOL";
@@ -3903,6 +3903,12 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 
 			node-108 = "MCUPM_DPTV2_CTX_SW",
 					"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
+			node-109 = "MCUPM_PTP3__HBVC__PMIF_Mst__Err_Cnt",
+					"GRP0,GRP1,GRP2,MCUPM_PTP3_EOL";
+			node-110 = "MCUPM_PTP3__HBVC__Sample_Ctrl__TH",
+					"C0,C1,C2,C3,C4,C5,C6,C7,DSU,MCUPM_PTP3_EOL";
+			node-111 = "MCUPM_PTP3__HBVC__Freq_Ctrl__Index",
+					"C0,C1,C2,C3,C4,C5,C6,C7,DSU,MCUPM_PTP3_EOL";
 		};
 
 		sspm_rts_header: sspm-rts-header {
