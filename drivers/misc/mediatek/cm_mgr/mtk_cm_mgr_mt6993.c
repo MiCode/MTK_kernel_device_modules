@@ -394,9 +394,10 @@ void check_cm_mgr_status_mt6993(unsigned int cluster, unsigned int freq,
 static void cm_mgr_thermal_hint(int is_thermal)
 {
 	pr_info("%s(%d): is_thermal %d.\n", __func__, __LINE__, is_thermal);
-	cm_mgr_set_perf_mode_enable(!is_thermal);
+	cm_mgr_set_perf_mode_enable(!(is_thermal & 0x01));
 	cm_mgr_to_sspm_command(IPI_CM_MGR_PERF_MODE_ENABLE,
-				   cm_mgr_get_perf_mode_enable());
+		cm_mgr_get_perf_mode_enable());
+	cm_mgr_to_sspm_command(IPI_CM_MGR_ENABLE, !(is_thermal & 0x02));
 }
 
 static int cm_mgr_check_dts_setting_mt6993(struct platform_device *pdev)
