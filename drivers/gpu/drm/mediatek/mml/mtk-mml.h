@@ -72,6 +72,12 @@ enum mml_dl_pos {
 	MML_DL_POS_RIGHT,
 };
 
+enum mml_pry_mode {
+	MML_DEFAULT_PRY = 0,
+	MML_POWER_PRY,
+	MML_PERFORMANCE_PRY,
+};
+
 struct mml_pq_film_grain_params {
 	unsigned char apply_grain;
 	unsigned int grain_seed;
@@ -261,7 +267,7 @@ struct mml_frame_info {
 	uint8_t ovlsys_id;
 	int32_t mutex_src;	/* ddp source component id */
 	bool alpha;	/* alpha channel preserve */
-	bool perf_pry; /* performance mode */
+	int8_t pry_mode; /* performance mode */
 };
 
 struct mml_frame_size {

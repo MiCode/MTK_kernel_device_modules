@@ -1679,7 +1679,7 @@ static enum mml_mode tp_query_mode(struct mml_dev *mml, struct mml_frame_info *i
 
 check_dc_tput:
 	if (mml_isdc(mode)) {
-		if (info->perf_pry || mml_perf_pry) {
+		if (info->pry_mode == MML_PERFORMANCE_PRY || mml_perf_pry) {
 			*reason = mml_query_performance_prioritize;
 			mode = MML_MODE_NOT_SUPPORT;
 		}
@@ -1690,7 +1690,7 @@ check_dc_tput:
 		}
 	} else if (mml_opp_check) {
 		/* dl mode support, compare opp with dc */
-		if (!(info->perf_pry || mml_perf_pry) &&
+		if (!(info->pry_mode == MML_PERFORMANCE_PRY || mml_perf_pry) &&
 			tp_check_tput_dc(info, tp, panel_width, panel_height, info_cache) &&
 			info_cache && info_cache->dl_opp > info_cache->dc_opp) {
 			*reason = mml_query_lowpower;
