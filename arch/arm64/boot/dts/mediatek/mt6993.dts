@@ -5050,7 +5050,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		};
 
 		i2c0: i2c@12950000 {
-			compatible = "mediatek,mt6993-i2c";
+			compatible = "mediatek,mt6991-i2c";
 			reg = <0 0x12950000 0 0x20000>,
 				<0 0x16370000 0 0x10000>;
 			interrupts = <GIC_SPI 373 IRQ_TYPE_LEVEL_HIGH 0>;
@@ -5064,7 +5064,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		};
 
 		i2c1: i2c@13950000 {
-			compatible = "mediatek,mt6993-i2c";
+			compatible = "mediatek,mt6991-i2c";
 			reg = <0 0x13950000 0 0x80000>,
 				<0 0x16380000 0 0x10000>;
 			interrupts = <GIC_SPI 374 IRQ_TYPE_LEVEL_HIGH 0>;
@@ -5078,7 +5078,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		};
 
 		i2c2: i2c@123d0000 {
-			compatible = "mediatek,mt6993-i2c";
+			compatible = "mediatek,mt6991-i2c";
 			reg = <0 0x123d0000 0 0x80000>,
 				<0 0x16390000 0 0x30000>;
 			interrupts = <GIC_SPI 375 IRQ_TYPE_LEVEL_HIGH 0>;
@@ -5092,7 +5092,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		};
 
 		i2c3: i2c@12970000 {
-			compatible = "mediatek,mt6993-i2c";
+			compatible = "mediatek,mt6991-i2c";
 			reg = <0 0x12970000 0 0x20000>,
 				<0 0x163c0000 0 0x10000>;
 			interrupts = <GIC_SPI 376 IRQ_TYPE_LEVEL_HIGH 0>;
@@ -5106,7 +5106,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		};
 
 		i2c4: i2c@12450000 {
-			compatible = "mediatek,mt6993-i2c";
+			compatible = "mediatek,mt6991-i2c";
 			reg = <0 0x12450000 0 0x80000>,
 				<0 0x163d0000 0 0x30000>;
 			interrupts = <GIC_SPI 377 IRQ_TYPE_LEVEL_HIGH 0>;
@@ -5120,7 +5120,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		};
 
 		i2c5: i2c@12350000 {
-			compatible = "mediatek,mt6993-i2c";
+			compatible = "mediatek,mt6991-i2c";
 			reg = <0 0x12350000 0 0x80000>,
 				<0 0x16400000 0 0x10000>;
 			interrupts = <GIC_SPI 378 IRQ_TYPE_LEVEL_HIGH 0>;
@@ -5134,7 +5134,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		};
 
 		i2c6: i2c@12990000 {
-			compatible = "mediatek,mt6993-i2c";
+			compatible = "mediatek,mt6991-i2c";
 			reg = <0 0x12990000 0 0x20000>,
 				<0 0x16410000 0 0x10000>;
 			interrupts = <GIC_SPI 379 IRQ_TYPE_LEVEL_HIGH 0>;
@@ -5150,7 +5150,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		};
 
 		i2c7: i2c@124d0000 {
-			compatible = "mediatek,mt6993-i2c";
+			compatible = "mediatek,mt6991-i2c";
 			reg = <0 0x124d0000 0 0x80000>,
 				<0 0x16420000 0 0x30000>;
 			interrupts = <GIC_SPI 380 IRQ_TYPE_LEVEL_HIGH 0>;
@@ -5164,7 +5164,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		};
 
 		i2c8: i2c@12550000 {
-			compatible = "mediatek,mt6993-i2c";
+			compatible = "mediatek,mt6991-i2c";
 			reg = <0 0x12550000 0 0x80000>,
 				<0 0x16450000 0 0x30000>;
 			interrupts = <GIC_SPI 381 IRQ_TYPE_LEVEL_HIGH 0>;
@@ -5178,7 +5178,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		};
 
 		i2c9: i2c@139d0000 {
-			compatible = "mediatek,mt6993-i2c";
+			compatible = "mediatek,mt6991-i2c";
 			reg = <0 0x139d0000 0 0x80000>,
 				<0 0x16480000 0 0x30000>;
 			interrupts = <GIC_SPI 382 IRQ_TYPE_LEVEL_HIGH 0>;
@@ -5192,7 +5192,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		};
 
 		i2c10: i2c@129b0000 {
-			compatible = "mediatek,mt6993-i2c";
+			compatible = "mediatek,mt6991-i2c";
 			reg = <0 0x129b0000 0 0x20000>,
 				<0 0x164b0000 0 0x10000>;
 			interrupts = <GIC_SPI 383 IRQ_TYPE_LEVEL_HIGH 0>;
@@ -5206,7 +5206,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		};
 
 		i2c11: i2c@125d0000 {
-			compatible = "mediatek,mt6993-i2c";
+			compatible = "mediatek,mt6991-i2c";
 			reg = <0 0x125d0000 0 0x80000>,
 				<0 0x164c0000 0 0x30000>;
 			interrupts = <GIC_SPI 588 IRQ_TYPE_LEVEL_HIGH 0>;
@@ -5220,7 +5220,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		};
 
 		i2c12: i2c@16200000 {
-			compatible = "mediatek,mt6993-i2c";
+			compatible = "mediatek,mt6991-i2c";
 			reg = <0 0x16200000 0 0x40000>,
 				<0 0x164f0000 0 0x10000>;
 			interrupts = <GIC_SPI 284 IRQ_TYPE_LEVEL_HIGH 0>;
@@ -5234,7 +5234,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		};
 
 		i2c13: i2c@16280000 {
-			compatible = "mediatek,mt6993-i2c";
+			compatible = "mediatek,mt6991-i2c";
 			reg = <0 0x16280000 0 0x40000>,
 				<0 0x16500000 0 0x10000>;
 			interrupts = <GIC_SPI 285 IRQ_TYPE_LEVEL_HIGH 0>;
@@ -5248,7 +5248,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		};
 
 		i2c14: i2c@162c0000 {
-			compatible = "mediatek,mt6993-i2c";
+			compatible = "mediatek,mt6991-i2c";
 			reg = <0 0x162c0000 0 0x40000>,
 				<0 0x16510000 0 0x10000>;
 			interrupts = <GIC_SPI 286 IRQ_TYPE_LEVEL_HIGH 0>;
@@ -5380,7 +5380,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		};
 
 		scp_i2c1: i2c@1d840000 {
-			compatible = "mediatek,mt6993-i2c";
+			compatible = "mediatek,mt6991-i2c";
 			reg = <0 0x1d840000 0 0x40000>,
 					<0 0x1db40000 0 0x20000>;
 			interrupts = <GIC_SPI 528 IRQ_TYPE_LEVEL_HIGH 0>;
