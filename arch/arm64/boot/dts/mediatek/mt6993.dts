@@ -3360,6 +3360,11 @@
 			reg = <0 0x0011b500 0 0x300>;
 		};
 
+		ocla_sram: ocla-sram@1c03e000 {
+			compatible = "mediatek,ocla-sram";
+			reg = <0 0x1c03e000 0 0x2000>;
+		};
+
 		irq-remain-list {
 			edge_keypad: edge-keypad {
 				target = <&keypad>;
