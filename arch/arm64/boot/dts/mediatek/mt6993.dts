@@ -13174,6 +13174,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			etdm-in-mclk = <0 0 0 0 0 0 0>; /* 0: disable; 1: enable */
 			etdm-out-mclk = <0 0 0 0 0 0 0>; /* 0: disable; 1: enable */
 			etdm-vlp = <0 0 0 0 1 0 0>; /* 0: vcore 1: vlp */
+
+			mediatek,ap-dmic = <1>; /* using apdmic */
 		};
 
 		clkbuf_ctrl: clkbuf-ctrl {
