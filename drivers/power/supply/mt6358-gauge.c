@@ -2244,7 +2244,9 @@ static int psy_gauge_get_property(struct power_supply *psy,
 			val->intval = gauge->gm->disableGM30;
 		break;
 	case POWER_SUPPLY_PROP_ONLINE:
-		if (gauge == NULL || gauge->gm == NULL)
+		if (gauge == NULL)
+			val->intval = 0;
+		else if (gauge->gm == NULL)
 			val->intval = 0;
 		else
 			val->intval = gauge->gm->disableGM30;
@@ -2275,7 +2277,9 @@ static int psy_gauge_get_property(struct power_supply *psy,
 			val->intval = gm->battery_temp * 10;
 		return 0;
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
-		if (!gauge || !gauge->gm || gauge->gm->disableGM30)
+		if (!gauge)
+			val->intval = 4000 * 1000;
+		else if (!gauge->gm || gauge->gm->disableGM30)
 			val->intval = 4000 * 1000;
 		else
 			val->intval = gauge_get_int_property(gauge->gm,
