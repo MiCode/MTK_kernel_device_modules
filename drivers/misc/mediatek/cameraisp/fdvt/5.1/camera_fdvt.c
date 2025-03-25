@@ -34,7 +34,7 @@
 #include <linux/dma-buf.h>
 #include <soc/mediatek/smi.h>
 #include "linux/soc/mediatek/mtk-cmdq-ext.h"
-#ifdef CMDQ_MTEE
+#if IS_ENABLED(CONFIG_MTK_CAM_SECURE_FD_SUPPORT)
 #include <cmdq-sec.h>
 #endif
 #include "mtk_heap.h"
@@ -266,7 +266,7 @@ pr_debug(FDTAG "[%s] " format, __func__, ##args)
 static irqreturn_t isp_irq_fdvt(signed int irq, void *device_id);
 static bool config_fdvt(void);
 static signed int config_fdvt_hw(struct fdvt_config *basic_config);
-#ifdef CMDQ_MTEE
+#if IS_ENABLED(CONFIG_MTK_CAM_SECURE_FD_SUPPORT)
 static signed int config_secure_fdvt_hw(struct fdvt_config *basic_config,
 							struct FDVT_MEM_RECORD *dmabuf);
 #endif
@@ -1247,7 +1247,7 @@ static inline void fdvt_reset_every_frame(void)
 /*****************************************************************************
  *
  *****************************************************************************/
- #ifdef CMDQ_MTEE
+#if IS_ENABLED(CONFIG_MTK_CAM_SECURE_FD_SUPPORT)
 static void fdvt_sec_fd2handler(struct fdvt_config *basic_config,
 				 struct FDVT_MEM_RECORD *dmabuf)
 {
@@ -1324,7 +1324,7 @@ static bool config_fdvt_request(signed int req_idx)
 				request->fdvt_frame_status[j] =
 					FDVT_FRAME_STATUS_RUNNING;
 				spin_unlock_irqrestore(spinlock_lrq_ptr, flags);
-				#ifdef CMDQ_MTEE
+				#if IS_ENABLED(CONFIG_MTK_CAM_SECURE_FD_SUPPORT)
 				if (request->frame_config[j].FDVT_METADATA_TO_GCE.SecMemType
 					== 3 && request->frame_config[j].FDVT_IS_SECURE)
 					fdvt_sec_fd2handler(
@@ -1332,7 +1332,7 @@ static bool config_fdvt_request(signed int req_idx)
 				#endif
 
 				if (request->frame_config[j].FDVT_IS_SECURE) {
-					#ifdef CMDQ_MTEE
+					#if IS_ENABLED(CONFIG_MTK_CAM_SECURE_FD_SUPPORT)
 					config_secure_fdvt_hw(
 					&request->frame_config[j], &request->frame_dmabuf[j]);
 					#endif
@@ -1384,14 +1384,14 @@ static bool config_fdvt(void)
 						FDVT_FRAME_STATUS_RUNNING;
 					spin_unlock_irqrestore(spinlock_lrq_ptr,
 							       flags);
-					#ifdef CMDQ_MTEE
+					#if IS_ENABLED(CONFIG_MTK_CAM_SECURE_FD_SUPPORT)
 					if (request->frame_config[j].FDVT_METADATA_TO_GCE.SecMemType
 						== 3 && request->frame_config[j].FDVT_IS_SECURE)
 						fdvt_sec_fd2handler(
 					&request->frame_config[j], &request->frame_dmabuf[j]);
 					#endif
 					if (request->frame_config[j].FDVT_IS_SECURE) {
-						#ifdef CMDQ_MTEE
+						#if IS_ENABLED(CONFIG_MTK_CAM_SECURE_FD_SUPPORT)
 						config_secure_fdvt_hw(
 					    &request->frame_config[j], &request->frame_dmabuf[j]);
 						#endif
@@ -1464,7 +1464,7 @@ static bool config_fdvt(void)
 				request->fdvt_frame_status[j] =
 					FDVT_FRAME_STATUS_RUNNING;
 				if (request->frame_config[j].FDVT_IS_SECURE) {
-					#ifdef CMDQ_MTEE
+					#if IS_ENABLED(CONFIG_MTK_CAM_SECURE_FD_SUPPORT)
 					config_secure_fdvt_hw(&request->frame_config[j]);
 					#endif
 				} else
@@ -2034,7 +2034,7 @@ static signed int config_fdvt_hw(struct fdvt_config *basic_config)
 	return 0;
 }
 #endif
-#ifdef CMDQ_MTEE
+#if IS_ENABLED(CONFIG_MTK_CAM_SECURE_FD_SUPPORT)
 static void fdvt_tzmp2(struct fdvt_config *basic_config, struct FDVT_MEM_RECORD *dmabuf,
 			struct FDVT_SEC_MetaDataToGCE *dmabuf_metadata)
 {
@@ -3523,7 +3523,7 @@ static long FDVT_ioctl(struct file *pFile,
 					request->enque_req_num);
 			}
 			spin_unlock_irqrestore(spinlock_lrq_ptr, flags);
-			log_inf("Tina: config_fdvt Request!!\n");
+			log_dbg("config_fdvt Request!!\n");
 			config_fdvt_request(FdvtWriteIdx);
 
 			mutex_unlock(&fdvt_mutex);
@@ -4055,7 +4055,7 @@ static signed int FDVT_open(struct inode *pInode, struct file *pFile)
 	/* Enable clock */
 	fdvt_enable_clock(MTRUE);
 	cmdq_mbox_enable(fdvt_clt->chan);
-	#ifdef CMDQ_MTEE
+	#if IS_ENABLED(CONFIG_MTK_CAM_SECURE_FD_SUPPORT)
 	if (fdvt_secure_clt)
 		cmdq_sec_mbox_enable(fdvt_secure_clt->chan);
 	#endif
@@ -4146,7 +4146,7 @@ static signed int FDVT_release(struct inode *pInode, struct file *pFile)
 	fdvt_sec_dma.handler_first_time = 0;
 
 	cmdq_mbox_disable(fdvt_clt->chan);
-	#ifdef CMDQ_MTEE
+	#if IS_ENABLED(CONFIG_MTK_CAM_SECURE_FD_SUPPORT)
 	if (fdvt_secure_clt)
 		cmdq_sec_mbox_disable(fdvt_secure_clt->chan);
 	#endif
