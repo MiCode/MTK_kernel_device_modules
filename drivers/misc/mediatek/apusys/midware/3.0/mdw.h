@@ -470,10 +470,12 @@ struct mdw_plat_func {
 #define mdw_exception(reason, args...) _mdw_exception("APUSYS_MIDDLEWARE", reason, ##args)
 #define dma_exception(reason, args...) _mdw_exception("APUSYS_EDMA", reason, ##args)
 #define aps_exception(reason, args...) _mdw_exception("APUSYS_APS", reason, ##args)
+#define mdw_rv_exception(reason, args...) _mdw_exception("APUSYS_RV_MIDDLEWARE", reason, ##args)
 #else
-#define mdw_exception(reason, args...)
-#define dma_exception(reason, args...)
-#define aps_exception(reason, args...)
+#define mdw_exception(reason, args...) { (void)(reason); }
+#define dma_exception(reason, args...) { (void)(reason); }
+#define aps_exception(reason, args...) { (void)(reason); }
+#define mdw_rv_exception(reason, args...) { (void)(reason); }
 #endif
 
 long mdw_ioctl(struct file *filep, unsigned int cmd, unsigned long arg);

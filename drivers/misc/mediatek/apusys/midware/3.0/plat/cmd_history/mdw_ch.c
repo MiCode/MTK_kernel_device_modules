@@ -454,12 +454,6 @@ bool mdw_ch_cmd_exec_update(struct mdw_cmd *c)
 
 	mdw_drv_debug("\n");
 
-	if (mdw_ch_is_perf_mode(c)) {
-		mdw_flw_debug("perf mode cmd, bypass update\n");
-		need_dtime_handle = true;
-		goto out;
-	}
-
 	if (c->cmd_state == MDW_CMD_STATE_ERROR) {
 		mdw_flw_debug("cmd execute error, bypass update\n");
 		need_dtime_handle = true;
@@ -481,6 +475,12 @@ bool mdw_ch_cmd_exec_update(struct mdw_cmd *c)
 		 mdw_ch_exec_time_check(ch_tbl->h_exec_time, c->einfos->c.total_us)) {
 		ch_tbl->h_exec_time = c->einfos->c.total_us;
 		mdw_cmd_debug("h_exec_time(%llu)\n", ch_tbl->h_exec_time);
+	}
+
+	if (mdw_ch_is_perf_mode(c)) {
+		mdw_flw_debug("perf mode cmd, bypass fast power off\n");
+		need_dtime_handle = true;
+		goto lock_out;
 	}
 
 	/* update ip time for rv */

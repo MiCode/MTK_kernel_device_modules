@@ -196,7 +196,7 @@ enum apusys_assert_module {
 static const char * const apusys_assert_module_name[assert_module_max] = {
 	"APUSYS_RV",
 	"APUSYS_POWER",
-	"APUSYS_MIDDLEWARE",
+	"APUSYS_RV_MIDDLEWARE",
 	"APUSYS_EDMA",
 	"APUSYS_MDLA",
 	"APUSYS_MVPU",
