@@ -1485,8 +1485,7 @@ static void mtk_oddmr_od_common_init(struct mtk_ddp_comp *comp, struct cmdq_pkt 
 	mtk_oddmr_set_pq(comp, pkg, &od_param->od_basic_info.basic_pq);
 }
 
-/* based on mtk_oddmr_od_hsk_6985, but remove patch for handshake bugs */
-static void mtk_oddmr_od_hsk_6991(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg)
+static void mtk_oddmr_od_hsk(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg)
 {
 	uint32_t hsk_0, hsk_1, hsk_2, merge_lines;
 	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
@@ -1510,16 +1509,21 @@ static void mtk_oddmr_od_hsk_6991(struct mtk_ddp_comp *comp, struct cmdq_pkt *pk
 	} else
 		hsk_1 = oddmr_data->cfg.height / merge_lines;
 	hsk_2 = 1;
-	ODDMRAPI_LOG("6991: hsk_0 %d, hsk_1 %d\n", hsk_0, hsk_1);
+	ODDMRAPI_LOG("hsk_0 %d, hsk_1 %d\n", hsk_0, hsk_1);
 
 	mtk_oddmr_write(comp, hsk_0, DISP_ODDMR_OD_HSK_0, pkg);
 	mtk_oddmr_write(comp, hsk_1, DISP_ODDMR_OD_HSK_1, pkg);
 	mtk_oddmr_write(comp, hsk_2, DISP_ODDMR_OD_HSK_2, pkg);
+	if (oddmr_data->data->od_version >= MTK_OD_V3) {
+		mtk_oddmr_write(comp, 0xFFF, DISP_ODDMR_OD_HSK_3, pkg);
+		mtk_oddmr_write(comp, 0x3, DISP_ODDMR_OD_HSK_4, pkg);
+		return;
+	}
 	mtk_oddmr_write(comp, 0, DISP_ODDMR_OD_HSK_3, pkg);
 	mtk_oddmr_write(comp, 0x8003, DISP_ODDMR_OD_HSK_4, pkg);
 }
 
-static void mtk_oddmr_od_hsk(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg)
+static void mtk_oddmr_od_hsk_6989(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg)
 {
 	uint32_t comp_width, hsk_0, hsk_1, hsk_2;
 	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
@@ -1663,7 +1667,10 @@ static void mtk_oddmr_od_init_end(struct mtk_ddp_comp *comp, struct cmdq_pkt *ha
 		return;
 	}
 	//od reset
-	if (oddmr_data->data->od_version >= MTK_OD_V2) {
+	if (oddmr_data->data->od_version >= MTK_OD_V3) {
+		mtk_oddmr_set_top_clk_force(comp, 1, handle); //needed by writing sram and udma init
+		mtk_oddmr_set_od_clk(comp, 1, handle);
+	} else if (oddmr_data->data->od_version == MTK_OD_V2) {
 		mtk_oddmr_set_top_clk_force(comp, 1, handle); //needed by writing sram and udma init
 		mtk_oddmr_set_od_clk(comp, 1, handle);
 		mtk_oddmr_write(comp, 0x200, MT6991_DISP_ODDMR_OD_SW_RESET, handle);
@@ -1685,11 +1692,11 @@ static void mtk_oddmr_od_init_end(struct mtk_ddp_comp *comp, struct cmdq_pkt *ha
 	}
 	//force clk off
 	if (oddmr_data->data->od_version >= MTK_OD_V2)
-		mtk_oddmr_od_hsk_6991(comp, handle);
+		mtk_oddmr_od_hsk(comp, handle);
 	else if (priv->data->mmsys_id == MMSYS_MT6985)
 		mtk_oddmr_od_hsk_6985(comp, handle);
 	else {
-		mtk_oddmr_od_hsk(comp, handle);
+		mtk_oddmr_od_hsk_6989(comp, handle);
 		mtk_oddmr_od_dummy(comp, handle);
 	}
 
