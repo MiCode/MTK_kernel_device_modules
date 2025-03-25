@@ -175,7 +175,6 @@
 			vmalloc=400M swiotlb=noforce allow_file_spec_access \
 			android_arch_task_struct_size=512 \
 			firmware_class.path=/vendor/firmware";
-		kaslr-seed = <0 0>;
 	};
 
 	cpus {
