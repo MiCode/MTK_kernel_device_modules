@@ -11389,7 +11389,7 @@ int mtk_mipi_dsi_cmd(void *dsi, void *handle, struct mtk_dsi_cmd_option *cmd_opt
 		DDPDSI_CMD("%s, crtc:%d, hold lock\n", __func__, drm_crtc_index(crtc));
 	}
 
-	if (!mtk_crtc->enabled) {
+	if (!(flags & MTK_MIPI_DSI_SKIP_CRTC_EN) && (!mtk_crtc->enabled)) {
 		DDPMSG("crtc%d disable skip %s\n", drm_crtc_index(&mtk_crtc->base), __func__);
 		if ((flags & MTK_MIPI_DSI_CMD_NEED_LOCK) || (flags & MTK_MIPI_DSI_CMD_EXTERNAL)) {
 			DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
@@ -14146,7 +14146,7 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			panel_ext && panel_ext->funcs && panel_ext->funcs->set_aod_light_mode_v2) {
 			struct mtk_dsi_cmd_option cmd_opt = { 0 };
 
-			cmd_opt.flags = MTK_MIPI_DSI_GCE_INPUT_HANDLE_READY;
+			cmd_opt.flags = MTK_MIPI_DSI_GCE_INPUT_HANDLE_READY | MTK_MIPI_DSI_SKIP_CRTC_EN;
 			panel_ext->funcs->set_aod_light_mode_v2(dsi, mtk_mipi_dsi_cmd, handle,
 					*(int *)params, &cmd_opt);
 		} else if (panel_ext && panel_ext->funcs
