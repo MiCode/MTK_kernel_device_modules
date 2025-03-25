@@ -2825,7 +2825,12 @@ static int xhci_reserve_bandwidth(struct xhci_hcd *xhci,
 
 /*
  * Synchronous XHCI stop endpoint helper.  Issues the stop endpoint command and
- * waits for the command completion before returning.
+ * waits for the command completion before returning.  This does not call
+ * xhci_handle_cmd_stop_ep(), which has additional handling for 'context error'
+ * cases, along with transfer ring cleanup.
+ *
+ * xhci_stop_endpoint_sync() is intended to be utilized by clients that manage
+ * their own transfer ring, such as offload situations.
  */
 int xhci_stop_endpoint_sync_(struct xhci_hcd *xhci, struct xhci_virt_ep *ep, int suspend,
 			    gfp_t gfp_flags)
@@ -2851,6 +2856,7 @@ int xhci_stop_endpoint_sync_(struct xhci_hcd *xhci, struct xhci_virt_ep *ep, int
 
 	wait_for_completion(command->completion);
 
+	/* No handling for COMP_CONTEXT_STATE_ERROR done at command completion*/
 	if (command->status == COMP_COMMAND_ABORTED ||
 	    command->status == COMP_COMMAND_RING_STOPPED) {
 		xhci_warn(xhci, "Timeout while waiting for stop endpoint command\n");
