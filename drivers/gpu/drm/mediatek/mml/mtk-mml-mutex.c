@@ -257,7 +257,8 @@ static s32 mutex_trigger(struct mml_comp *comp, struct mml_task *task,
 
 			cmdq_pkt_set_event(pkt, mml_ir_get_mml_ready_event(cfg->mml));
 
-			if (cfg->dpc && (mml_dl_dpc & MML_DPC_MUTEX_VOTE)) {
+			if (cfg->dpc && (mml_dl_dpc & MML_DPC_MUTEX_VOTE) &&
+				comp->sysid == path->mmlsys->sysid) {
 #ifndef MML_FPGA
 				mml_dpc_power_release_gce(comp->sysid, pkt);
 				cmdq_pkt_wfe(pkt, mml_ir_get_disp_ready_event(cfg->mml));

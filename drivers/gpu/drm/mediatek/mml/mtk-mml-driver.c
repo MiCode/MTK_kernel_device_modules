@@ -123,7 +123,7 @@ int mml_opp_rsv = 4;
 module_param(mml_opp_rsv, int, 0644);
 
 struct mml_dpc {
-	atomic_t task_cnt;
+	atomic_t task_cnt[mml_max_sys];
 	atomic_t exc_pw_cnt[mml_max_sys];
 	atomic_t dc_force_cnt[mml_max_sys];
 	struct mutex dpc_mutex[mml_max_sys];
@@ -1141,70 +1141,99 @@ struct device *mml_smmu_get_shared_device(struct device *dev, const char *name)
 	return shared_dev;
 }
 
-s32 mml_dpc_task_cnt_get(struct mml_task *task)
-{
-	struct mml_dev *mml = task->config->mml;
-
-	return atomic_read(&mml->dpc.task_cnt);
-}
-
 void mml_dpc_task_cnt_inc(struct mml_task *task)
 {
 	struct mml_dev *mml = task->config->mml;
-	s32 cur_task_cnt = atomic_inc_return(&mml->dpc.task_cnt);
+	const struct mml_topology_path *path = task->config->path[0];
+	s32 cur_task_cnt, cur_task_cnt2;
+	bool need_pw_ctrl;
 
-	if (cur_task_cnt == 1) {
-		const struct mml_topology_path *path = task->config->path[0];
+	mml_clock_lock(mml);
 
-		mml_msg_dpc("%s scenario in, dpc start", __func__);
-		mml_clock_lock(mml);
+	cur_task_cnt =
+		atomic_inc_return(&mml->dpc.task_cnt[path->mmlsys->sysid]);
+	if (path->mmlsys2)
+		cur_task_cnt2 =
+			atomic_inc_return(&mml->dpc.task_cnt[path->mmlsys2->sysid]);
+
+	need_pw_ctrl = cur_task_cnt == 1 ||
+		(path->mmlsys2 && cur_task_cnt2 == 1);
+
+	if (need_pw_ctrl) {
 		call_hw_op(path->mmlsys, mminfra_pw_enable);
 		mml_dpc_exc_keep(mml, path->mmlsys->sysid);
-		if (path->mmlsys2)
-			mml_dpc_exc_keep(mml, path->mmlsys2->sysid);
+	}
+
+	if (cur_task_cnt == 1) {
+		mml_msg_dpc("%s scenario in, dpc start", __func__);
 		call_hw_op(path->mmlsys, pw_enable, task->config->info.mode, false);
-		if (path->mmlsys2)
-			call_hw_op(path->mmlsys2, pw_enable, task->config->info.mode, false);
 		mml_mmp(dpc, MMPROFILE_FLAG_START, 1, 0);
-		if (path->mmlsys2)
-			mml_dpc_exc_release(mml, path->mmlsys2->sysid);
+	}
+
+	if (path->mmlsys2 && cur_task_cnt2 == 1)
+		call_hw_op(path->mmlsys2, pw_enable, task->config->info.mode, false);
+
+	if (need_pw_ctrl) {
 		mml_dpc_exc_release(mml, path->mmlsys->sysid);
 		call_hw_op(path->mmlsys, mminfra_pw_disable);
-		mml_clock_unlock(mml);
 	}
+
+	mml_clock_unlock(mml);
 }
 
 void mml_dpc_task_cnt_dec(struct mml_task *task)
 {
 	struct mml_dev *mml = task->config->mml;
-	s32 cur_task_cnt = atomic_dec_return(&mml->dpc.task_cnt);
+	const struct mml_topology_path *path = task->config->path[0];
+	s32 cur_task_cnt, cur_task_cnt2;
+	bool need_pw_ctrl;
+
+	mml_clock_lock(mml);
+
+	cur_task_cnt = atomic_dec_return(&mml->dpc.task_cnt[path->mmlsys->sysid]);
 
 	if (cur_task_cnt < 0) {
 		cur_task_cnt = 0;
-		atomic_set(&mml->dpc.task_cnt, 0);
+		atomic_set(&mml->dpc.task_cnt[path->mmlsys->sysid], 0);
 		mml_err("%s task_cnt < 0", __func__);
 	}
 
-	if (cur_task_cnt == 0) {
-		const struct mml_topology_path *path = task->config->path[0];
+	if (path->mmlsys2) {
+		cur_task_cnt2 =
+			atomic_dec_return(&mml->dpc.task_cnt[path->mmlsys2->sysid]);
 
-		mml_msg_dpc("%s scenario out, dpc end", __func__);
-		mml_clock_lock(mml);
+		if (cur_task_cnt2 < 0) {
+			cur_task_cnt2 = 0;
+			atomic_set(&mml->dpc.task_cnt[path->mmlsys2->sysid], 0);
+			mml_err("%s task_cnt < 0", __func__);
+		}
+	}
+
+	need_pw_ctrl = cur_task_cnt == 0 ||
+		(path->mmlsys2 && cur_task_cnt2 == 0);
+
+	if (need_pw_ctrl) {
 		call_hw_op(path->mmlsys, mminfra_pw_enable);
 		mml_dpc_exc_keep(mml, path->mmlsys->sysid);
-		if (path->mmlsys2)
-			mml_dpc_exc_keep(mml, path->mmlsys2->sysid);
-		mml_mmp(dpc, MMPROFILE_FLAG_END, 0, 0);
-		if (path->mmlsys2)
-			call_hw_op(path->mmlsys2, pw_disable,
+	}
+
+	if (path->mmlsys2 && cur_task_cnt2 == 0) {
+		call_hw_op(path->mmlsys2, pw_disable,
 				task->config->info.mode, false);
+	}
+
+	if (cur_task_cnt == 0) {
+		mml_msg_dpc("%s scenario out, dpc end", __func__);
+		mml_mmp(dpc, MMPROFILE_FLAG_END, 0, 0);
 		call_hw_op(path->mmlsys, pw_disable, task->config->info.mode, false);
-		if (path->mmlsys2)
-			mml_dpc_exc_release(mml, path->mmlsys2->sysid);
+	}
+
+	if (need_pw_ctrl) {
 		mml_dpc_exc_release(mml, path->mmlsys->sysid);
 		call_hw_op(path->mmlsys, mminfra_pw_disable);
-		mml_clock_unlock(mml);
 	}
+
+	mml_clock_unlock(mml);
 }
 
 void mml_dpc_exc_keep(struct mml_dev *mml, u32 sysid)
@@ -1258,16 +1287,12 @@ void mml_dpc_exc_keep_task(struct mml_task *task, const struct mml_topology_path
 	struct mml_frame_config *cfg = task->config;
 
 	mml_dpc_exc_keep(cfg->mml, path->mmlsys->sysid);
-	if (path->mmlsys2)
-		mml_dpc_exc_keep(cfg->mml, path->mmlsys2->sysid);
 }
 
 void mml_dpc_exc_release_task(struct mml_task *task, const struct mml_topology_path *path)
 {
 	struct mml_frame_config *cfg = task->config;
 
-	if (path->mmlsys2)
-		mml_dpc_exc_release(cfg->mml, path->mmlsys2->sysid);
 	mml_dpc_exc_release(cfg->mml, path->mmlsys->sysid);
 }
 

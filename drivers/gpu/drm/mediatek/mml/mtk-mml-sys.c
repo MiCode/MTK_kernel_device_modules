@@ -405,9 +405,12 @@ static s32 sys_init(struct mml_comp *comp, struct mml_task *task,
 #ifndef MML_FPGA
 	struct mml_sys *sys = comp_to_sys(comp);
 	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
+	const struct mml_topology_path *path = cfg->path[ccfg->pipe];
 
 	if (cfg->dpc) {
-		if (mml_dl_dpc & MML_DPC_PKT_VOTE && cfg->info.mode != MML_MODE_DDP_ADDON)
+		if (mml_dl_dpc & MML_DPC_PKT_VOTE &&
+			cfg->info.mode != MML_MODE_DDP_ADDON &&
+			comp->sysid == path->mmlsys->sysid)
 			mml_dpc_power_keep_gce(comp->sysid, pkt, sys->data->gpr[ccfg->pipe],
 				&task->dpc_reuse_sys);
 	}
@@ -1154,11 +1157,13 @@ static s32 sys_done(struct mml_comp *comp, struct mml_task *task,
 {
 	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
 	struct mml_frame_config *cfg = task->config;
+	const struct mml_topology_path *path = cfg->path[ccfg->pipe];
 
 	cmdq_pkt_write(pkt, NULL, comp->base_pa + SYS_MISC_REG, 0, GENMASK(21, 12));
 
 	if (task->config->dpc && (mml_dl_dpc & MML_DPC_PKT_VOTE) &&
-	    cfg->info.mode != MML_MODE_DDP_ADDON) {
+	    cfg->info.mode != MML_MODE_DDP_ADDON &&
+	    comp->sysid == path->mmlsys->sysid) {
 #ifndef MML_FPGA
 		mml_dpc_power_release_gce(comp->sysid, pkt);
 #endif
