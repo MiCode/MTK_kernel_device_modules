@@ -1284,7 +1284,6 @@ static int io_pgtable_visit(struct arm_lpae_io_pgtable *data,
 
 	size_t size = ARM_LPAE_BLOCK_SIZE(lvl, data);
 	int ret = walk_data->visit(walk_data, lvl, ptep, size);
-
 	if (ret)
 		return ret;
 
@@ -1304,10 +1303,14 @@ static int io_pgtable_visit(struct arm_lpae_io_pgtable *data,
 		return 0;
 	}
 
-	if (!is_table)
-		return -EINVAL;
+	/* Don't fail the walk if one entry is invalid, just skip over it */
+	if (!is_table) {
+		walk_data->addr += size;
+		return 0;
+	}
 
 	ptep = iopte_deref(pte, data);
+
 	return arm_lpae_iopte_walk(data, walk_data, ptep, lvl + 1);
 }
 
@@ -1353,7 +1356,7 @@ static u64 arm_lpae_iova_to_iopte(struct io_pgtable_ops *ops, unsigned long iova
 	int ret;
 
 	ret = arm_lpae_iopte_walk(data, &walk_data, data->pgd, data->start_level);
-	if (ret)
+	if (ret || !iopte_valid(d.pte))
 		return 0;
 
 	pr_info("%s, iova:0x%lx, pte:0x%llx, lvl:%d, iopte_type:%llu, fmt:%u\n",

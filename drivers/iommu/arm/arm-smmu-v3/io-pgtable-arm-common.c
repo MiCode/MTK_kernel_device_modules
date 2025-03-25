@@ -248,7 +248,7 @@ static int __arm_lpae_map(struct arm_lpae_io_pgtable *data, unsigned long iova,
 			return -ENOMEM;
 
 		pte = arm_lpae_install_table(cptep, ptep, 0, data);
-		if (pte)
+		if (iopte_valid(pte))
 			__arm_lpae_free_pages(cptep, tblsz, cfg, data->iop.cookie);
 	} else if (!cfg->coherent_walk && !(pte & ARM_LPAE_PTE_SW_SYNC)) {
 		__arm_lpae_sync_pte(ptep, 1, cfg);
@@ -420,7 +420,7 @@ static size_t arm_lpae_split_blk_unmap(struct arm_lpae_io_pgtable *data,
 	size_t tablesz = ARM_LPAE_GRANULE(data);
 	size_t split_sz = ARM_LPAE_BLOCK_SIZE(lvl, data);
 	int ptes_per_table = ARM_LPAE_PTES_PER_TABLE(data);
-	int i, unmap_idx_start = -1, num_entries = 0, max_entries;
+	int unmap_idx_start = -1, num_entries = 0, max_entries;
 
 	if (WARN_ON(lvl == ARM_LPAE_MAX_LEVELS))
 		return 0;
@@ -442,13 +442,8 @@ static size_t arm_lpae_split_blk_unmap(struct arm_lpae_io_pgtable *data,
 	if (num_entries > 1)
 		pte |= __arm_lpae_pte_to_cont(pte);
 
-	for (i = 0; i < ptes_per_table; i++, blk_paddr += split_sz) {
-		/* Unmap! */
-		if (i >= unmap_idx_start && i < (unmap_idx_start + num_entries))
-			continue;
-
-		__arm_lpae_init_pte(data, blk_paddr, pte, lvl, 1, &tablep[i]);
-	}
+	/* Fully populate the table. */
+	__arm_lpae_init_pte(data, blk_paddr, pte, lvl, ptes_per_table, tablep);
 
 	pte = arm_lpae_install_table(tablep, ptep, blk_pte, data);
 	if (pte != blk_pte) {
@@ -462,11 +457,6 @@ static size_t arm_lpae_split_blk_unmap(struct arm_lpae_io_pgtable *data,
 			return 0;
 
 		tablep = iopte_deref(pte, data);
-	} else if (unmap_idx_start >= 0) {
-		for (i = 0; i < num_entries; i++)
-			io_pgtable_tlb_add_page(&data->iop, gather, iova + i * split_sz, split_sz);
-
-		return num_entries * size;
 	}
 
 	return __arm_lpae_unmap(data, gather, iova, size, lvl, tablep);
@@ -525,9 +515,13 @@ static size_t __arm_lpae_unmap(struct arm_lpae_io_pgtable *data,
 				/* Also flush any partial walks */
 				io_pgtable_tlb_flush_walk(iop, iova + i * size, size,
 							  ARM_LPAE_GRANULE(data));
-				if (!(iop->cfg.quirks & IO_PGTABLE_QUIRK_UNMAP_INVAL))
-					__arm_lpae_free_pgtable(data, lvl + 1,
-								iopte_deref(pte, data));
+
+				/* Now clear the pte of the table as it's about to be freed. */
+				if (iop->cfg.quirks & IO_PGTABLE_QUIRK_UNMAP_INVAL)
+					ptep[i] = 0;
+
+				__arm_lpae_free_pgtable(data, lvl + 1,
+							iopte_deref(pte, data));
 			}
 		}
 
@@ -619,7 +613,7 @@ static phys_addr_t arm_lpae_iova_to_phys(struct io_pgtable_ops *ops,
 	int ret;
 
 	ret = __arm_lpae_iopte_walk(data, &walk_data, data->pgd, data->start_level);
-	if (ret)
+	if (ret || !iopte_valid(d.pte))
 		return 0;
 
 	iova &= (ARM_LPAE_BLOCK_SIZE(d.lvl, data) - 1);
@@ -663,7 +657,6 @@ static int io_pgtable_visit(struct arm_lpae_io_pgtable *data,
 
 	size_t size = ARM_LPAE_BLOCK_SIZE(lvl, data);
 	int ret = walk_data->visit(walk_data, lvl, ptep, size);
-
 	if (ret)
 		return ret;
 
@@ -683,10 +676,14 @@ static int io_pgtable_visit(struct arm_lpae_io_pgtable *data,
 		return 0;
 	}
 
-	if (!is_table)
-		return -EINVAL;
+	/* Don't fail the walk if one entry is invalid, just skip over it */
+	if (!is_table) {
+		walk_data->addr += size;
+		return 0;
+	}
 
 	ptep = iopte_deref(pte, data);
+
 	return __arm_lpae_iopte_walk(data, walk_data, ptep, lvl + 1);
 }
 

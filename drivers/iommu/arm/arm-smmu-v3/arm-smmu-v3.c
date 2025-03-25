@@ -3368,7 +3368,7 @@ static struct iommu_device *arm_smmu_probe_device(struct device *dev)
 			/* Initialise in-memory data structures */
 			ret = arm_smmu_init_structures(smmu);
 			if (ret)
-				goto out_runtime_put;
+				goto err_free_iopf;
 
 			if (smmu->impl->smmu_hw_init) {
 				ret = smmu->impl->smmu_hw_init(smmu);
@@ -3381,7 +3381,10 @@ static struct iommu_device *arm_smmu_probe_device(struct device *dev)
 
 			/* Reset the device */
 			ret = arm_smmu_device_reset(smmu);
-			dev_info(smmu->dev, "[%s] device_reset:%d\n", __func__, ret);
+			if (ret) {
+				dev_info(smmu->dev, "[%s] device_reset:%d\n", __func__, ret);
+				goto err_disable;
+			}
 
 			if (smmu->impl->smmu_hw_sec_init) {
 				ret = smmu->impl->smmu_hw_sec_init(smmu);
@@ -3440,6 +3443,11 @@ static struct iommu_device *arm_smmu_probe_device(struct device *dev)
 		 __func__, master->streams[0].id, master->ssid_bits, smmu->ssid_bits);
 
 	return &smmu->iommu;
+
+err_disable:
+	arm_smmu_device_disable(smmu);
+err_free_iopf:
+	iopf_queue_free(smmu->evtq.iopf);
 
 out_runtime_put:
 	arm_smmu_rpm_put(smmu);
@@ -4252,7 +4260,7 @@ static int arm_smmu_device_probe(struct platform_device *pdev)
 		/* Initialise in-memory data structures */
 		ret = arm_smmu_init_structures(smmu);
 		if (ret)
-			goto out_runtime_put;
+			goto err_free_iopf;
 
 		if (smmu->impl && smmu->impl->smmu_hw_init) {
 			ret = smmu->impl->smmu_hw_init(smmu);
@@ -4270,7 +4278,10 @@ static int arm_smmu_device_probe(struct platform_device *pdev)
 
 		/* Reset the device */
 		ret = arm_smmu_device_reset(smmu);
-		dev_info(smmu->dev, "[%s] device_reset:%d\n", __func__, ret);
+		if (ret) {
+			dev_info(smmu->dev, "[%s] device_reset:%d\n", __func__, ret);
+			goto err_disable;
+		}
 
 		if (smmu->impl && smmu->impl->smmu_hw_sec_init) {
 			ret = smmu->impl->smmu_hw_sec_init(smmu);
@@ -4283,6 +4294,11 @@ static int arm_smmu_device_probe(struct platform_device *pdev)
 
 	/* And we're up. Go go go! */
 	return arm_smmu_register_iommu(smmu, &arm_smmu_ops.iommu_ops, ioaddr);
+
+err_disable:
+	arm_smmu_device_disable(smmu);
+err_free_iopf:
+	iopf_queue_free(smmu->evtq.iopf);
 
 out_runtime_put:
 	arm_smmu_rpm_put(smmu);
