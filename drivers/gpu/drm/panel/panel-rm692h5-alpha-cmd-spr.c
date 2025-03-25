@@ -1143,21 +1143,6 @@ static int panel_doze_disable(struct drm_panel *panel,
 			{0x02, {addr, setting}},\
 		}
 
-static int lcm_update_roi(struct drm_panel *panel,
-	unsigned int x, unsigned int y, unsigned int w, unsigned int h)
-{
-	int ret = 0;
-	struct lcm *ctx = panel_to_lcm(panel);
-	struct LCD_setting_table roi_x_setting[] = TO_ROI_SETTING(0x2A, x, w);
-	struct LCD_setting_table roi_y_setting[] = TO_ROI_SETTING(0x2B, y, h);
-
-	push_table(ctx, roi_x_setting, ARRAY_SIZE(roi_x_setting), 0);
-	push_table(ctx, roi_y_setting, ARRAY_SIZE(roi_y_setting), 0);
-	lcm_info("(x,y,w,h): (%d,%d,%d,%d)\n", x, y, w, h);
-
-	return ret;
-}
-
 static int lcm_update_roi_cmdq(void *dsi, dcs_write_gce cb, void *handle,
 	unsigned int x, unsigned int y, unsigned int w, unsigned int h)
 {
@@ -1182,6 +1167,29 @@ static int lcm_update_roi_cmdq(void *dsi, dcs_write_gce cb, void *handle,
 
 	for (i = 0; i < ARRAY_SIZE(xeq_tail); i++)
 		cb(dsi, handle, xeq_tail[i].para_list, ARRAY_SIZE(xeq_tail[i].para_list));
+
+	lcm_info("(x,y,w,h): (%d,%d,%d,%d)\n", x, y, w, h);
+
+	return ret;
+}
+
+static int lcm_update_roi_grp_cmdq(void *dsi, dcs_grp_write_gce cb,
+	void *handle, unsigned int x, unsigned int y, unsigned int w, unsigned int h)
+{
+	int ret = 0;
+	struct mtk_panel_para_table roi_grp_setting[] = {
+		{0x02, {0xF1, 0xA2}}, //XEQ
+		{0x05, {0x2A, (x >> 8) & 0xFF, x & 0xFF, ((x + w - 1) >> 8) & 0xFF,
+				(x + w - 1) & 0xFF}},
+		{0x05, {0x2B, (y >> 8) & 0xFF, y & 0xFF, ((y + h - 1) >> 8) & 0xFF,
+				(y + h - 1) & 0xFF}},
+		{0x02, {0xFB, 0xAA}}, //XEQ
+	};
+
+	if (!cb)
+		return -1;
+
+	cb(dsi, handle, roi_grp_setting, ARRAY_SIZE(roi_grp_setting));
 
 	lcm_info("(x,y,w,h): (%d,%d,%d,%d)\n", x, y, w, h);
 
@@ -2622,8 +2630,8 @@ static struct mtk_panel_funcs ext_funcs = {
 #endif
 	/* Not real backlight cmd in AOD, just for QC purpose */
 	.set_aod_light_mode = lcm_setbacklight_cmdq,
-	.lcm_update_roi = lcm_update_roi,
 	.lcm_update_roi_cmdq = lcm_update_roi_cmdq,
+	.lcm_update_roi_grp_cmdq = lcm_update_roi_grp_cmdq,
 	.lcm_valid_roi = rm692h5_lcm_valid_roi,
 	.set_spr_cmdq = lcm_set_spr_cmdq,
 	.ata_check = panel_ata_check,

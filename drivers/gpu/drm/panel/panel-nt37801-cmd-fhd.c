@@ -1030,34 +1030,6 @@ static int mode_switch(struct drm_panel *panel,
 	return ret;
 }
 
-static int lcm_update_roi(struct drm_panel *panel,
-	unsigned int x, unsigned int y, unsigned int w, unsigned int h)
-{
-	int ret = 0;
-	struct lcm *ctx = panel_to_lcm(panel);
-	unsigned int x0 = x;
-	unsigned int y0 = y;
-	unsigned int x1 = x0 + w - 1;
-	unsigned int y1 = y0 + h - 1;
-	unsigned char x0_msb = ((x0 >> 8) & 0xFF);
-	unsigned char x0_lsb = (x0 & 0xFF);
-	unsigned char x1_msb = ((x1 >> 8) & 0xFF);
-	unsigned char x1_lsb = (x1 & 0xFF);
-	unsigned char y0_msb = ((y0 >> 8) & 0xFF);
-	unsigned char y0_lsb = (y0 & 0xFF);
-	unsigned char y1_msb = ((y1 >> 8) & 0xFF);
-	unsigned char y1_lsb = (y1 & 0xFF);
-
-	//set TE scan line: display total line - slice height + 8 = 2368
-	lcm_dcs_write_seq_static(ctx, 0x44, 0x09, 0x40);
-
-	pr_info("%s (x,y,w,h): (%d,%d,%d,%d)\n", __func__, x, y, w, h);
-	lcm_dcs_write_seq(ctx, 0x2A, x0_msb, x0_lsb, x1_msb, x1_lsb);
-	lcm_dcs_write_seq(ctx, 0x2B, y0_msb, y0_lsb, y1_msb, y1_lsb);
-
-	return ret;
-}
-
 static int lcm_update_roi_cmdq(void *dsi, dcs_write_gce cb, void *handle,
 	unsigned int x, unsigned int y, unsigned int w, unsigned int h)
 {
@@ -1092,6 +1064,28 @@ static int lcm_update_roi_cmdq(void *dsi, dcs_write_gce cb, void *handle,
 	return ret;
 }
 
+static int lcm_update_roi_grp_cmdq(void *dsi, dcs_grp_write_gce cb,
+	void *handle, unsigned int x, unsigned int y, unsigned int w, unsigned int h)
+{
+	int ret = 0;
+	struct mtk_panel_para_table roi_grp_setting[] = {
+		//set TE scan line: display total line - slice height + 8 = 2368
+		{0x03, {0x44, 0x09, 0x40}},
+		{0x05, {0x2A, (x >> 8) & 0xFF, x & 0xFF, ((x + w - 1) >> 8) & 0xFF,
+				(x + w - 1) & 0xFF}},
+		{0x05, {0x2B, (y >> 8) & 0xFF, y & 0xFF, ((y + h - 1) >> 8) & 0xFF,
+				(y + h - 1) & 0xFF}},
+	};
+
+	if (!cb)
+		return -1;
+
+	cb(dsi, handle, roi_grp_setting, ARRAY_SIZE(roi_grp_setting));
+
+	pr_info("%s (x,y,w,h): (%d,%d,%d,%d)\n", __func__, x, y, w, h);
+
+	return ret;
+}
 
 static struct mtk_panel_funcs ext_funcs = {
 	.reset = panel_ext_reset,
@@ -1102,8 +1096,8 @@ static struct mtk_panel_funcs ext_funcs = {
 	/* Not real backlight cmd in AOD, just for QC purpose */
 	.set_aod_light_mode = lcm_setbacklight_cmdq,
 	.ata_check = panel_ata_check,
-	.lcm_update_roi = lcm_update_roi,
 	.lcm_update_roi_cmdq = lcm_update_roi_cmdq,
+	.lcm_update_roi_grp_cmdq = lcm_update_roi_grp_cmdq,
 	.get_switch_mode_delay = get_switch_mode_delay,
 };
 #endif

@@ -15138,6 +15138,19 @@ static int mtk_dsi_set_partial_update(struct mtk_ddp_comp *comp,
 			mtk_mipi_dsi_cmd, handle, 0, 0,
 			full_width, full_height, &cmd_opt);
 	} else if (panel_ext && panel_ext->funcs
+		&& panel_ext->funcs->lcm_update_roi_grp_cmdq) {
+		if (dsi->set_partial_update == MTK_PARTIAL_UPDATE_SISO ||
+			(dsi->set_partial_update == MTK_PARTIAL_UPDATE_BISO &&
+			dsi->driver_data->support_pu_con &&
+			panel_ext->params->lp_perline_en == 1))
+			panel_ext->funcs->lcm_update_roi_grp_cmdq(dsi,
+			mipi_dsi_dcs_grp_write_gce, handle, 0, dsi->roi_y_offset,
+			full_width, dsi->roi_height);
+		else
+			panel_ext->funcs->lcm_update_roi_grp_cmdq(dsi,
+			mipi_dsi_dcs_grp_write_gce, handle, 0, 0,
+			full_width, full_height);
+	} else if (panel_ext && panel_ext->funcs
 		&& panel_ext->funcs->lcm_update_roi_cmdq) {
 		if (dsi->set_partial_update == MTK_PARTIAL_UPDATE_SISO ||
 			(dsi->set_partial_update == MTK_PARTIAL_UPDATE_BISO &&
