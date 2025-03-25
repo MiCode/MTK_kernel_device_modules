@@ -7318,8 +7318,7 @@ static void mtk_oddmr_set_dmr_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 			}
 		}
 		if (oddmr_data->data->dbi_version == MTK_DBI_V2) {
-			if (oddmr_data->od_update_sram == 0 &&
-				oddmr_data->primary_data->od_state < ODDMR_INIT_DONE) {
+			if (oddmr_data->od_update_sram == 0) {
 				value = 0; mask = 0;
 				SET_VAL_MASK(value, mask, 0, MT6991_REG_ODDMR_TOP_CLK_FORCE_EN);
 				mtk_oddmr_write_mask(comp, value,
@@ -7479,8 +7478,7 @@ static void mtk_oddmr_set_dbi_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 					mtk_oddmr_write(comp, reg_val,
 						MT6991_DISP_ODDMR_UDMA_DBI_CTRL30, handle);
 				}
-				if (!oddmr_data->dmr_enable && oddmr_data->od_update_sram == 0 &&
-					oddmr_data->primary_data->od_state < ODDMR_INIT_DONE) {
+				if (!oddmr_data->dmr_enable && oddmr_data->od_update_sram == 0) {
 					value = 0;
 					mask = 0;
 					SET_VAL_MASK(value, mask, 0, MT6991_REG_ODDMR_TOP_CLK_FORCE_EN);
