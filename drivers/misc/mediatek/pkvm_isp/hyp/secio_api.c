@@ -4,8 +4,8 @@
  */
 
 #include <linux/arm-smccc.h>
-#include <pkvm_mgmt/pkvm_mgmt.h>
 
+#include "../../include/pkvm_mgmt/pkvm_mgmt.h"
 #include "sys.h"
 #include "trustzone.h"
 

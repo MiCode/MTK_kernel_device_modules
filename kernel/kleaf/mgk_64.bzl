@@ -781,6 +781,7 @@ mgk_64_kleaf_device_modules_kconfigs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_mkp:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_smmu:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_tmem:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_isp:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/ssc:ddk_kconfigs".format(kernel_version),
 ]
 
@@ -1353,6 +1354,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_mkp:pkvm_mkp".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_smmu:pkvm_smmu".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_tmem:pkvm_tmem".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_isp:pkvm_isp".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/sched:mtk_core_ctl".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/ssc:mtk-ssc".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/ssc/debug/v1:mtk-ssc-dbg-v1".format(kernel_version),
@@ -1734,7 +1736,7 @@ mgk_64_device_modules = [
     #"drivers/misc/mediatek/pkvm_mgmt/pkvm_mgmt.ko",
     #"drivers/misc/mediatek/pkvm_tmem/pkvm_tmem.ko",
     #"drivers/misc/mediatek/pkvm_mkp/pkvm_mkp.ko",
-    "drivers/misc/mediatek/pkvm_isp/pkvm_isp.ko",
+    #"drivers/misc/mediatek/pkvm_isp/pkvm_isp.ko",
     "drivers/misc/mediatek/pkvm_cmdq/pkvm_cmdq.ko",
     #"drivers/misc/mediatek/performance/game/mtk_game.ko",
     #"drivers/misc/mediatek/power_throttling/mtk_md_power_throttling.ko",
