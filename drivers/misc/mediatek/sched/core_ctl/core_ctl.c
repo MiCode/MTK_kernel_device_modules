@@ -664,7 +664,10 @@ static void set_min_cpus(struct cluster_data *cluster, unsigned int val, int req
 		TAG, cluster->cluster_id, max_min, selected);
 
 	/* Aggregate with max_cpus */
-	cluster->min_cpus = min(max_min, cluster->max_cpus);
+	if (selected != UINT_MAX)
+		cluster->min_cpus = min(max_min, cluster->max_cpus);
+	else
+		cluster->min_cpus = default_min_cpus[cluster->cluster_id];
 	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
 	core_ctl_cpu_request_trace();
 	wake_up_core_ctl_thread(cluster);
@@ -700,11 +703,14 @@ static void set_max_cpus(struct cluster_data *cluster, unsigned int val, int req
 	core_ctl_debug("%s: cluster#%d min_max=%d demand aggregate from %u",
 		TAG, cluster->cluster_id, min_max, selected);
 
-	min_max = min(min_max, cluster->num_cpus);
-	cluster->max_cpus = min_max;
+	if (selected != UINT_MAX) {
+		min_max = min(min_max, cluster->num_cpus);
+		cluster->max_cpus = min_max;
 
-	/* Aggregate with max_cpus */
-	cluster->min_cpus = min(cluster->min_cpus, cluster->max_cpus);
+		/* Aggregate with max_cpus */
+		cluster->min_cpus = min(cluster->min_cpus, cluster->max_cpus);
+	} else
+		cluster->max_cpus = cluster->num_cpus;
 	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
 	core_ctl_cpu_request_trace();
 	wake_up_core_ctl_thread(cluster);
