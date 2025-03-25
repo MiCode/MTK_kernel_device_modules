@@ -2149,7 +2149,9 @@ void mtk_drm_crtc_mini_analysis(struct drm_crtc *crtc)
 			}
 			for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
 				if (comp && (mtk_ddp_comp_get_type(comp->id) == MTK_OVL_EXDMA ||
-					mtk_ddp_comp_get_type(comp->id) == MTK_OVL_BLENDER))
+					mtk_ddp_comp_get_type(comp->id) == MTK_OVL_BLENDER ||
+					mtk_ddp_comp_get_type(comp->id) == MTK_DISP_ODDMR ||
+					mtk_ddp_comp_get_type(comp->id) == MTK_DISP_DBI_COUNT))
 					mtk_dump_analysis(comp);
 			}
 			/* MT6993 only dump EXDMA module and topsys in mini analysis */
