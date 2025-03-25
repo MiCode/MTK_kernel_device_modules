@@ -21,8 +21,8 @@ static DEFINE_IDA(ffa_bus_id);
 
 static int ffa_device_match(struct device *dev, const struct device_driver *drv)
 {
-	const struct ffa_device_id *id_table;
-	struct ffa_device *ffa_dev;
+	const struct ffa_device_id *id_table = NULL;
+	struct ffa_device *ffa_dev = NULL;
 
 	id_table = to_ffa_driver(drv)->id_table;
 	ffa_dev = to_ffa_dev(dev);
@@ -121,7 +121,7 @@ EXPORT_SYMBOL_GPL(ffa_bus_type);
 int ffa_driver_register(struct ffa_driver *driver, struct module *owner,
 			const char *mod_name)
 {
-	int ret;
+	int ret = 0;
 
 	if (!driver->probe)
 		return -EINVAL;
@@ -170,7 +170,7 @@ bool ffa_device_is_valid(struct ffa_device *ffa_dev)
 {
 	bool valid = false;
 	struct device *dev = NULL;
-	struct ffa_device *tmp_dev;
+	struct ffa_device *tmp_dev = NULL;
 
 	do {
 		dev = bus_find_next_device(&ffa_bus_type, dev);
@@ -191,10 +191,10 @@ struct ffa_device *
 ffa_device_register(const struct ffa_partition_info *part_info,
 		    const struct ffa_ops *ops)
 {
-	int id, ret;
-	uuid_t uuid;
-	struct device *dev;
-	struct ffa_device *ffa_dev;
+	int id = 0, ret = 0;
+	uuid_t uuid = { 0U };
+	struct device *dev = NULL;
+	struct ffa_device *ffa_dev = NULL;
 
 	if (!part_info)
 		return NULL;
