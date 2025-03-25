@@ -927,7 +927,7 @@ struct dbi_count_block_info mtk_dbi_count_get_block_info(uint32_t block_h, uint3
 	return ret;
 }
 
-void mtk_dbi_count_hrt_cal(uint32_t en, uint32_t slice_size, uint32_t slice_num,
+void mtk_dbi_count_hrt_cal(struct drm_device *dev, int disp_idx, uint32_t en, uint32_t slice_size, uint32_t slice_num,
 	uint32_t block_h, uint32_t block_v, int *oddmr_hrt)
 {
 	uint32_t panel_width = 1440;
@@ -937,18 +937,33 @@ void mtk_dbi_count_hrt_cal(uint32_t en, uint32_t slice_size, uint32_t slice_num,
 	uint32_t slice_height;
 	uint32_t hrt = 0;
 	uint32_t layer_size;
+	struct drm_crtc *crtc = NULL;
+	struct mtk_ddp_comp *comp;
+	struct mtk_disp_dbi_count *dbi_count;
+	struct mtk_drm_crtc *mtk_crtc;
+	int index;
 
-	if(en) {
-		block = mtk_dbi_count_get_block_info(block_h, block_v);
-		slice_width = panel_width / block.block_h * block.channel * 2;
-		slice_height = (panel_height/block.block_v + slice_num - 1)/slice_num;
-		hrt = slice_width * slice_height * 2;
-		layer_size = panel_width * panel_height * 4;
-		hrt = (400 * hrt)/layer_size;
-		*oddmr_hrt += hrt;
-		DBI_COUNT_INFO("en:%d, total:%d, hrt:%d\n", en, *oddmr_hrt, hrt);
+	drm_for_each_crtc(crtc, dev) {
+		comp = NULL;
+		mtk_crtc = to_mtk_crtc(crtc);
+		index = drm_crtc_index(crtc);
+		if(index != disp_idx)
+			continue;
+		comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_DBI_COUNT, 0);
+		if(comp && en) {
+			dbi_count = comp_to_dbi_count(comp);
+			panel_width = dbi_count->count_cfg.basic_info.panel_width;
+			panel_height = dbi_count->count_cfg.basic_info.panel_height;
+			block = mtk_dbi_count_get_block_info(block_h, block_v);
+			slice_width = panel_width / block.block_h * block.channel * 2;
+			slice_height = (panel_height/block.block_v + slice_num - 1)/slice_num;
+			hrt = slice_width * slice_height * 2;
+			layer_size = panel_width * panel_height * 4;
+			hrt = (400 * hrt + layer_size -1)/layer_size;
+			*oddmr_hrt += hrt;
+			DBI_COUNT_INFO("en:%d, total:%d, hrt:%d\n", en, *oddmr_hrt, hrt);
+		}
 	}
-
 }
 
 void mtk_dbi_count_hrt_cal_ratio(struct mtk_ddp_comp *comp, enum CHANNEL_TYPE type, int *dbi_count_hrt)
@@ -968,14 +983,17 @@ void mtk_dbi_count_hrt_cal_ratio(struct mtk_ddp_comp *comp, enum CHANNEL_TYPE ty
 	uint32_t block_v = crtc_state->prop_val[CRTC_PROP_DBI_COUNT_BLOCK_V];
 	uint32_t slice_num = crtc_state->prop_val[CRTC_PROP_DBI_COUNT_SLICE_NUM];
 	unsigned long long res_ratio = 1000;
+	struct mtk_disp_dbi_count *dbi_count = comp_to_dbi_count(comp);
 
 	if(en) {
+		panel_width = dbi_count->count_cfg.basic_info.panel_width;
+		panel_height = dbi_count->count_cfg.basic_info.panel_height;
 		block = mtk_dbi_count_get_block_info(block_h, block_v);
 		slice_width = panel_width / block.block_h * block.channel * 2;
 		slice_height = (panel_height/block.block_v + slice_num - 1)/slice_num;
 		hrt = slice_width * slice_height;
 		layer_size = panel_width * panel_height * 4;
-		hrt = (400 * hrt)/layer_size;
+		hrt = (400 * hrt + layer_size - 1)/layer_size;
 		if (mtk_crtc->scaling_ctx.scaling_en) {
 			res_ratio =
 			((unsigned long long)mtk_crtc->scaling_ctx.lcm_width *
@@ -1651,7 +1669,7 @@ int mtk_dbi_count_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		if (weight > 0) {
 			if (!bw_base)
 				bw_base = mtk_drm_primary_frame_bw(&comp->mtk_crtc->base);
-			data->bw = bw_base * weight / 400;
+			data->bw = (bw_base * weight + 399) / 400;
 			DDPINFO("%s, dbi_count comp:%d, larb:%d, type:%d, bw:%d, weight:%d\n",
 				__func__, comp->id, data->larb_id, data->type, data->bw, weight);
 		}
@@ -1694,12 +1712,12 @@ int mtk_dbi_count_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		en = !!bw_base && en;
 
 		mtk_dbi_count_hrt_cal_ratio(comp, CHANNEL_HRT_RW, &weight);
-		bw_val = (weight * bw_base) / 400 *2;
+		bw_val = (weight * bw_base + 399) / 400;
 		bw_val *= (en > 0) ? 1 : 0;
 		if (bw_val > dbi_count->last_hrt) {
-			__mtk_disp_set_module_hrt(dbi_count->qos_req_w, comp->id, bw_val,
+			__mtk_disp_set_module_hrt(dbi_count->qos_req_w_hrt, comp->id, bw_val,
 				priv->data->respective_ostdl);
-			__mtk_disp_set_module_hrt(dbi_count->qos_req_r, comp->id, bw_val,
+			__mtk_disp_set_module_hrt(dbi_count->qos_req_r_hrt, comp->id, bw_val,
 				priv->data->respective_ostdl);
 			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
 				mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_CUR_HRT_VAL_DBI_COUNT),
@@ -1746,9 +1764,9 @@ int mtk_dbi_count_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		bw_val = *(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
 			DISP_SLOT_CUR_HRT_VAL_DBI_COUNT);
 		if (bw_val != NO_PENDING_HRT && bw_val >= dbi_count->last_hrt) {
-			__mtk_disp_set_module_hrt(dbi_count->qos_req_r, comp->id, bw_val,
+			__mtk_disp_set_module_hrt(dbi_count->qos_req_r_hrt, comp->id, bw_val,
 				priv->data->respective_ostdl);
-			__mtk_disp_set_module_hrt(dbi_count->qos_req_w, comp->id, bw_val,
+			__mtk_disp_set_module_hrt(dbi_count->qos_req_w_hrt, comp->id, bw_val,
 				priv->data->respective_ostdl);
 			*(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
 				DISP_SLOT_CUR_HRT_VAL_DBI_COUNT) =	NO_PENDING_HRT;
@@ -1789,13 +1807,13 @@ int mtk_dbi_count_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		if (priv->data->respective_ostdl) {
 			/* DBI outstanding */
 			mtk_dbi_count_hrt_cal_ratio(comp, CHANNEL_HRT_RW, &weight);
-			bw_val = (weight * bw_base) / 400 * 2;
+			bw_val = (weight * bw_base + 399) / 400;
 			bw_val *= (en > 0) ? 1 : 0;
 			if(bw_val == dbi_count->last_hrt)
 				break;
-			__mtk_disp_set_module_hrt(dbi_count->qos_req_w, comp->id, bw_val,
+			__mtk_disp_set_module_hrt(dbi_count->qos_req_w_hrt, comp->id, bw_val,
 				priv->data->respective_ostdl);
-			__mtk_disp_set_module_hrt(dbi_count->qos_req_r, comp->id, bw_val,
+			__mtk_disp_set_module_hrt(dbi_count->qos_req_r_hrt, comp->id, bw_val,
 				priv->data->respective_ostdl);
 			dbi_count->last_hrt = bw_val;
 			if(dbi_count->data->is_support_stash){
@@ -1815,9 +1833,9 @@ int mtk_dbi_count_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			}
 		} else {
 			dbi_count->last_hrt = en;
-			__mtk_disp_set_module_hrt(dbi_count->qos_req_w,
+			__mtk_disp_set_module_hrt(dbi_count->qos_req_w_hrt,
 						comp->id, en, priv->data->respective_ostdl);
-			__mtk_disp_set_module_hrt(dbi_count->qos_req_r,
+			__mtk_disp_set_module_hrt(dbi_count->qos_req_r_hrt,
 						comp->id, en, priv->data->respective_ostdl);
 		}
 	}
@@ -1858,6 +1876,9 @@ int mtk_dbi_count_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 
 		if (force_update || dbi_count->last_qos_srt != dbi_count->qos_srt) {
 			__mtk_disp_set_module_srt(dbi_count->qos_req_w, comp->id,
+				dbi_count->qos_srt, 0, DISP_BW_NORMAL_MODE,
+				priv->data->real_srt_ostdl);
+			__mtk_disp_set_module_srt(dbi_count->qos_req_r, comp->id,
 				dbi_count->qos_srt, 0, DISP_BW_NORMAL_MODE,
 				priv->data->real_srt_ostdl);
 			dbi_count->last_qos_srt = dbi_count->qos_srt;
@@ -2394,12 +2415,20 @@ static int mtk_disp_dbi_count_bind(struct device *dev, struct device *master,
 		dbi_count->qos_req_w = of_mtk_icc_get(dev, buf);
 
 		mtk_disp_pmqos_get_icc_path_name(buf, sizeof(buf),
+						&dbi_count->ddp_comp, "W_HRT");
+		dbi_count->qos_req_w_hrt= of_mtk_icc_get(dev, buf);
+
+		mtk_disp_pmqos_get_icc_path_name(buf, sizeof(buf),
 						&dbi_count->ddp_comp, "W_STASH");
 		dbi_count->qos_req_w_stash = of_mtk_icc_get(dev, buf);
 
 		mtk_disp_pmqos_get_icc_path_name(buf, sizeof(buf),
 						&dbi_count->ddp_comp, "R");
 		dbi_count->qos_req_r = of_mtk_icc_get(dev, buf);
+
+		mtk_disp_pmqos_get_icc_path_name(buf, sizeof(buf),
+						&dbi_count->ddp_comp, "R_HRT");
+		dbi_count->qos_req_r_hrt= of_mtk_icc_get(dev, buf);
 
 		mtk_disp_pmqos_get_icc_path_name(buf, sizeof(buf),
 						&dbi_count->ddp_comp, "R_STASH");

@@ -2592,7 +2592,8 @@ static int calc_hrt_num(struct drm_device *dev,
 		lyeblob_ids->overlap_ovl = sum_overlap_w;
 		lyeblob_ids->overlap_ovl_of_bwm = sum_overlap_w_of_bwm;
 		mtk_oddmr_hrt_cal_notify(dev, disp_idx, &comp_hrt_added);
-		mtk_dbi_count_hrt_cal(disp_info->dbi_count_cfg[disp_idx].enable,
+		mtk_dbi_count_hrt_cal(dev, disp_idx,
+			disp_info->dbi_count_cfg[disp_idx].enable,
 			disp_info->dbi_count_cfg[disp_idx].slice_size,
 			disp_info->dbi_count_cfg[disp_idx].slice_num,
 			disp_info->dbi_count_cfg[disp_idx].block_h,
@@ -3636,7 +3637,8 @@ static int dispatch_gles_range(struct drm_mtk_layering_info *disp_info,
 			valid_ovl_cnt -= (HRT_AEE_WEIGHT / HRT_UINT_BOUND_BPP);
 		if (disp == 0) {
 			mtk_oddmr_hrt_cal_notify(drm_dev, disp, &comp_hrt_added);
-			mtk_dbi_count_hrt_cal(disp_info->dbi_count_cfg[disp].enable,
+			mtk_dbi_count_hrt_cal(drm_dev, disp,
+				disp_info->dbi_count_cfg[disp].enable,
 				disp_info->dbi_count_cfg[disp].slice_size,
 				disp_info->dbi_count_cfg[disp].slice_num,
 				disp_info->dbi_count_cfg[disp].block_h,

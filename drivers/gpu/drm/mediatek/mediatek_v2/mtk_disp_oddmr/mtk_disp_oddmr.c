@@ -3129,7 +3129,7 @@ static void mtk_oddmr_dbi_config(struct mtk_ddp_comp *comp, struct cmdq_pkt *han
 				//DBI table size as block
 				dbi_size_as_block = (oddmr_data->roi_height + top_overhead_v +
 					bot_overhead_v + scale_factor_v -1) / scale_factor_v;
-				if ( dbi_size_as_block < 0x10) {
+				if ( (dbi_size_as_block < 0x10) && (oddmr_data->data->dbi_version == MTK_DBI_V2)) {
 					dbi_size_as_block = 0x10;
 					mtk_oddmr_write(comp, dbi_size_as_block,
 						MT6991_DISP_ODDMR_REG_DBI_VSIZE, handle);
@@ -11719,7 +11719,7 @@ static int mtk_oddmr_set_partial_update(struct mtk_ddp_comp *comp,
 				//DBI table size as block
 				reg_val = (partial_roi.height + top_overhead_v +
 				bot_overhead_v + scale_factor_v -1)/ scale_factor_v;
-				if (reg_val < 0x10) {
+				if ((reg_val < 0x10) && (oddmr_data->data->dbi_version == MTK_DBI_V2)) {
 					reg_val = 0x10;
 					mtk_oddmr_write(comp, reg_val,
 						MT6991_DISP_ODDMR_REG_DBI_VSIZE, handle);

@@ -62,8 +62,10 @@ struct mtk_disp_dbi_count {
 	struct mtk_dbi_count_buf_cfg buffer_cfg;
 	struct mtk_drm_dbi_cfg_info count_cfg;
 	struct icc_path *qos_req_w;
+	struct icc_path *qos_req_w_hrt;
 	struct icc_path *qos_req_w_stash;
 	struct icc_path *qos_req_r;
+	struct icc_path *qos_req_r_hrt;
 	struct icc_path *qos_req_r_stash;
 	uint32_t qos_srt;
 	uint32_t last_qos_srt;
@@ -91,8 +93,9 @@ void mtk_crtc_dbi_count_init(struct mtk_drm_crtc *mtk_crtc);
 void mtk_crtc_dbi_count_cfg(struct mtk_drm_crtc *mtk_crtc, struct mtk_crtc_state *crtc_state);
 void mtk_crtc_dbi_count_release_fence(struct mtk_drm_crtc *mtk_crtc);
 int mtk_dbi_count_load_buffer(struct mtk_ddp_comp *comp, void *data);
-void mtk_dbi_count_hrt_cal(uint32_t en, uint32_t slice_size,
-	uint32_t slice_num, uint32_t block_h, uint32_t block_v, int *oddmr_hrt);
+void mtk_dbi_count_hrt_cal(struct drm_device *dev, int disp_idx,
+	uint32_t en, uint32_t slice_size, uint32_t slice_num,
+	uint32_t block_h, uint32_t block_v, int *oddmr_hrt);
 int mtk_dbi_count_clear_event(struct mtk_ddp_comp *comp, void *data);
 int mtk_dbi_count_check_buffer(struct mtk_ddp_comp *comp, void *data);
 
