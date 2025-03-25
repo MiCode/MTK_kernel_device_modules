@@ -1080,7 +1080,11 @@ static int ffa_sched_recv_cb_update(u16 part_id, ffa_sched_recv_cb callback,
 	bool cb_valid = false;
 
 	if (ffa_notifications_disabled())
+#if defined(MTK_ADAPTED_WA) && MTK_ADAPTED_WA
+		pr_warn("Notifications disabled, continuing with it ....\n");
+#else
 		return -EOPNOTSUPP;
+#endif /* defined(MTK_ADAPTED_WA) && MTK_ADAPTED_WA */
 
 	partition = xa_load(&drv_info->partition_info, part_id);
 	if (!partition) {
@@ -1684,6 +1688,12 @@ static void ffa_notifications_setup(void)
 	int ret = 0;
 
 	ret = ffa_features(FFA_NOTIFICATION_BITMAP_CREATE, 0, NULL, NULL);
+#if defined(MTK_ADAPTED_WA) && MTK_ADAPTED_WA
+	if (ret) {
+		pr_warn("Notifications not supported, continuing with it ....\n");
+		return;
+	}
+#endif /* defined(MTK_ADAPTED_WA) && MTK_ADAPTED_WA */
 	if (!ret) {
 		ret = ffa_notification_bitmap_create();
 		if (ret) {
