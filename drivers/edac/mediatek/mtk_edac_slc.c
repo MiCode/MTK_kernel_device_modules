@@ -89,7 +89,6 @@ static enum error_type read_parity_status(struct edac_device_ctl_info *dci, unsi
 	struct slc_drvdata *drvdata = dci->pvt_info;
 	unsigned int content;
 	int port_idx, chn_idx, cs_idx;
-	int ecc_idx, ecc_count;
 	int ecc_position_idx;
 	int dump_success;
 	enum error_type partial_error_type = NO_ERROR;
@@ -106,27 +105,21 @@ static enum error_type read_parity_status(struct edac_device_ctl_info *dci, unsi
 		for (chn_idx = 0; chn_idx < drvdata->chn_num; chn_idx++) {
 			for (cs_idx = 0; cs_idx < drvdata->cs_num; cs_idx++) {
 				content = readl(drvdata->base[emi_idx] + drvdata->parity_err_status_offset + ((chn_idx * drvdata->cs_num + cs_idx) << 2));
-				ecc_count = 0;
-				for (ecc_idx = 0; ecc_idx < 4; ecc_idx++) {
-					if (content >> ecc_idx)
-						++ecc_count;
-				}
-
 				dump_success = 0;
 				ecc_position_idx = snprintf(ecc_position, sizeof(ecc_position),
 					"emi: %d, port: %d, chn: %d, cs: %d", emi_idx, port_idx, chn_idx, cs_idx);
 				if (ecc_position_idx > 0 && ecc_position_idx < sizeof(ecc_position))
 					dump_success = 1;
-				if (ecc_count == 1) {
-					partial_error_type = CORRECTABLE_ERROR;
-					if (dump_success)
-						edac_device_handle_ce_count(dci, ecc_count, 0, 0, ecc_position);
-				} else if (ecc_count > 1) {
+
+				if (((content & 0x3) == 0x3) || (((content >> 2) & 0x3) == 0x3)) {
 					partial_error_type = UNCORRECTABLE_ERROR;
 					if (dump_success)
-						edac_device_handle_ue_count(dci, ecc_count, 0, 0, ecc_position);
+						edac_device_handle_ue_count(dci, 2, 0, 0, ecc_position);
+				} else if (((content & 0x3) == 0x1) || (((content >> 2) & 0x3) == 0x1)) {
+					partial_error_type = CORRECTABLE_ERROR;
+					if (dump_success)
+						edac_device_handle_ce_count(dci, 1, 0, 0, ecc_position);
 				}
-
 				if (total_error_type == NO_ERROR) {
 					if (partial_error_type != NO_ERROR)
 						total_error_type = partial_error_type;
