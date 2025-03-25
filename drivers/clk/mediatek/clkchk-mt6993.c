@@ -3059,6 +3059,9 @@ static struct regname rn[] = {
 	REGNAME(img, 0x54, IMG_IPE_CG),
 	REGNAME(img, 0x0, IMG_MAIN_CG0),
 	REGNAME(img, 0xC, IMG_MAIN_CG1),
+	REGNAME(img, 0x334, IMG_MAIN_PROTECT_RDY),
+	REGNAME(img, 0x290, IMG_MAIN_GALS_U4),
+	REGNAME(img, 0x298, IMG_MAIN_GASS_U6),
 	/* DIP_TOP_DIP1 register */
 	REGNAME(dip_top_dip1, 0x0, MACRO_CG),
 	/* DIP_NR1_DIP1 register */
@@ -3072,13 +3075,20 @@ static struct regname rn[] = {
 	/* WPE_TNR_DIP1 register */
 	REGNAME(wpe_tnr_dip1, 0x0, MACRO_CG),
 	/* WPE_LITE_DIP1 register */
-	REGNAME(wpe_lite_dip1, 0x0, MACRO_CG),
+	REGNAME(wpe_lite_dip1, 0x0, WPE_LITE_DIP1_CG),
+	REGNAME(wpe_lite_dip1, 0xC0, WPE_LITE_PROT_RDY),
+	REGNAME(wpe_lite_dip1, 0xB8, WPE_LITE_PROT_GASL_T0),
+	REGNAME(wpe_lite_dip1, 0xBC, WPE_LITE_PROT_GASL_T1),
 	/* TRAW_DIP1 register */
 	REGNAME(traw_dip1, 0x0, MACRO_CG),
 	/* TRAW_CAP_DIP1 register */
 	REGNAME(traw_cap_dip1, 0x0, MACRO_CG),
 	/* IMG_VCORE_D1A register */
 	REGNAME(img_v, 0x0, IMG_VCORE_CG_0),
+	REGNAME(img_v, 0x38, IMG_VCORE_GAL_U4),
+	REGNAME(img_v, 0x40, IMG_VCORE_GAL_U6),
+	REGNAME(img_v, 0x4C, IMG_VCORE_GAL_T1),
+	REGNAME(img_v, 0x54, IMG_VCORE_GAL_T3),
 	/* IMG_MAIN_PM register */
 	REGNAME(img_main_pm, 0x70, IMG_MAIN_PM_DEBUG4),
 	REGNAME(img_main_pm, 0x68, IMG_MAIN_PM_DEBUG2),
@@ -4654,6 +4664,9 @@ static enum chk_sys_id debug_dump_id[] = {
 	msdcpll_ctrl,
 	emipll_ctrl,
 	mminfra_bus_dbg,
+	wpe_lite_dip1,
+	img,
+	img_v,
 	chk_sys_num,
 };
 
