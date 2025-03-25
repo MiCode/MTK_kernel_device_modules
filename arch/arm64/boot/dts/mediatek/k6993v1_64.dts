@@ -389,6 +389,10 @@
 	};
 };
 
+&connv3 {
+	drdi-detect = <1>;
+};
+
 &i2c6 {
 	spk1: speaker_amp@5c {
 		compatible = "richtek,rt5512";
