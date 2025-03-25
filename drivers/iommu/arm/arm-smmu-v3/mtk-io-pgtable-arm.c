@@ -45,6 +45,57 @@ static dma_addr_t __arm_lpae_dma_addr(void *pages)
 	return (dma_addr_t)virt_to_phys(pages);
 }
 
+static void *mtk_iommu_alloc_pages(size_t size, gfp_t gfp,
+				   struct io_pgtable_cfg *cfg,
+				   void *cookie)
+{
+	struct device *dev = cfg->iommu_dev;
+	int order = get_order(size);
+	int retry_count = 0;
+	int retry_max = 8;
+	void *pages;
+
+	pages = iommu_alloc_pages_node(dev_to_node(dev), gfp, order);
+	if (pages)
+		return pages;
+
+	if ((gfp & GFP_ATOMIC) == 0)
+		return NULL;
+
+	/* Retry if atomic alloc memory fail */
+	while (!pages && retry_count < retry_max) {
+		bool atomic_ctx = in_atomic() || irqs_disabled() || in_interrupt();
+		gfp_t gfp_flags = gfp;
+
+		if (!atomic_ctx) {
+			/* If not in atomic ctx, wait memory reclaim */
+			gfp_flags = (gfp & ~GFP_ATOMIC) | GFP_KERNEL;
+		}
+
+		pages = iommu_alloc_pages_node(dev_to_node(dev), gfp_flags, order);
+		dev_info_ratelimited(dev,
+				     "[%s] retry:%d size:0x%zx gfp:0x%x->0x%x ret:%d\n",
+				     __func__, retry_count + 1, size, gfp,
+				     gfp_flags, (pages != NULL));
+		if (!pages) {
+			retry_count++;
+			if (atomic_ctx) {
+				/* most wait 4ms at atomic */
+				udelay(500);
+			} else {
+				usleep_range(8000, 10*1000);
+			}
+		}
+	}
+
+	if (!pages) {
+		dev_info(dev, "[%s] retry:%d size:0x%zx gfp:0x%x failed\n",
+			 __func__, retry_count, size, gfp);
+	}
+
+	return pages;
+}
+
 void *__arm_lpae_alloc_pages(size_t size, gfp_t gfp,
 			     struct io_pgtable_cfg *cfg,
 			     void *cookie)
@@ -63,8 +114,12 @@ void *__arm_lpae_alloc_pages(size_t size, gfp_t gfp,
 	else
 		pages = iommu_alloc_pages_node(dev_to_node(dev), gfp, order);
 
-	if (!pages)
-		return NULL;
+	if (!pages) {
+		/* Retry if alloc pages fail */
+		pages = mtk_iommu_alloc_pages(size, gfp, cfg, cookie);
+		if (!pages)
+			return NULL;
+	}
 
 	if (!cfg->coherent_walk) {
 		dma = dma_map_single(dev, pages, size, DMA_TO_DEVICE);
