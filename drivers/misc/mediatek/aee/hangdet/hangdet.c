@@ -169,7 +169,7 @@ static struct kprobe kp_clockevents_exchange_device = {
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG) && IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 #define USLEEP_RANGE_HIS_ARRAY_SIZE (50)
 #define BURST_HRTIMER_HIS_ARRAY_SIZE (50)
-#define HRTIMER_COUNT_ARRAY_SIZE (50)
+#define HRTIMER_COUNT_ARRAY_SIZE (20)
 
 static struct arch_timer_caller_history_struct
 	usleep_range_history[USLEEP_RANGE_HIS_ARRAY_SIZE];
