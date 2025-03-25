@@ -386,9 +386,9 @@ const struct file_operations adsp_trace_ops = {
 #define ADSP_MBRAIN_SIZE   (1024) /* 1024 bytes: from MBrain requested size, Must align firmware */
 static audio_adsp_mbrain_notify_callback adsp_mbrain_notify_cbk;
 
-audio_adsp_mbrain_notify_callback *get_adsp_mbrain_cbk(void)
+void set_adsp_mbrain_cbk(audio_adsp_mbrain_notify_callback mbrain_cbk)
 {
-	return &adsp_mbrain_notify_cbk;
+	adsp_mbrain_notify_cbk = mbrain_cbk;
 }
 
 static void adsp_mbrain_notify_dump(int id, void *buf, unsigned int len)

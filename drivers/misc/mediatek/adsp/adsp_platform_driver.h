@@ -137,6 +137,6 @@ extern struct adspsys_priv *adspsys;
 typedef void (*audio_adsp_mbrain_notify_callback)(const void *info, const size_t size);
 int adsp_mbrain_register_callback(audio_adsp_mbrain_notify_callback mbrain_cbk);
 int adsp_mbrain_unregister_callback(void);
-audio_adsp_mbrain_notify_callback *get_adsp_mbrain_cbk(void);
+void set_adsp_mbrain_cbk(audio_adsp_mbrain_notify_callback mbrain_cbk);
 
 #endif

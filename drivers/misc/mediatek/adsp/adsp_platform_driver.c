@@ -541,8 +541,7 @@ int adsp_mbrain_register_callback(audio_adsp_mbrain_notify_callback mbrain_cbk)
 	if (!mbrain_cbk)
 		return -EINVAL;
 
-	audio_adsp_mbrain_notify_callback *adsp_mbrain_cbk = get_adsp_mbrain_cbk();
-	*adsp_mbrain_cbk = mbrain_cbk;
+	set_adsp_mbrain_cbk(mbrain_cbk);
 	pr_debug("%s(), mbrain_cbk registered", __func__);
 
 	return ret;
@@ -552,12 +551,8 @@ EXPORT_SYMBOL(adsp_mbrain_register_callback);
 int adsp_mbrain_unregister_callback(void)
 {
 	int ret = 0;
-	audio_adsp_mbrain_notify_callback *adsp_mbrain_cbk = get_adsp_mbrain_cbk();
 
-	if (!adsp_mbrain_cbk)
-		return -EINVAL;
-
-	*adsp_mbrain_cbk = NULL;
+	set_adsp_mbrain_cbk(NULL);
 	pr_debug("%s(), mbrain_cbk unregistered", __func__);
 
 	return ret;
