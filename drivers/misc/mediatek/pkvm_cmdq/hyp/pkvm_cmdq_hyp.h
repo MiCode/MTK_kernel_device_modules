@@ -78,6 +78,7 @@
 #define CMDQ_GET_COOKIE_CNT(thd) \
 	(CMDQ_REG_GET32(CMDQ_THR_EXEC_CNT(thd)) & CMDQ_MAX_COOKIE_VALUE)
 
+#define CMDQ_IOVA
 
 struct cmdq_instruction {
 	uint16_t arg_c:16;

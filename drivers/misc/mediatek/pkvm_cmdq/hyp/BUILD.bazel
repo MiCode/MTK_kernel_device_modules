@@ -1,0 +1,37 @@
+# SPDX-License-Identifier: GPL-2.0
+#
+# Copyright (c) 2025 MediaTek Inc.
+#
+
+load("//build/bazel_mgk_rules:mgk_ddk_library.bzl", "define_mgk_ddk_library")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+define_mgk_ddk_library(
+    name = "hyp",
+    srcs = [
+        "isp_sec_platform.c",
+        "list.h",
+        "pkvm_cmdq_hyp.c",
+        "pkvm_cmdq_hyp.h",
+        "pkvm_cmdq_platform.c",
+        "pkvm_cmdq_platform.h",
+        "secio_api.c",
+        "sys.h",
+        "trustzone.h",
+    ],
+    pkvm_el2 = True,
+    copts = [
+        "-I$(srctree)/arch/arm64/kvm/hyp/include/nvhe",
+        "-I$(DEVICE_MODULES_PATH)/include/linux/soc/mediatek",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+    ],
+    local_defines = [
+        "CMDQ_IOVA",
+    ],
+)
