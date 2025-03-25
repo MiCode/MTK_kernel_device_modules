@@ -671,8 +671,8 @@ static void mtk_dp_dvo_golden_setting(struct mtk_ddp_comp *comp,
 	consume_rate = (uint32_t) ((uint64_t)pixel_clk_rate * bpp / (8 * threshold_unit) / 1000);
 
 	//ultra low cal
-	//fifo_size * 0.7 / (consume_rate / 1000)
-	ultra_low_fifo_us = (fifo_size * 1000 * 7) / (10 * consume_rate);
+	//fifo_size * 0.8 / (consume_rate / 1000)
+	ultra_low_fifo_us = (fifo_size * 1000 * 8) / (10 * consume_rate);
 	ultra_low_fifo_us = (ultra_low_fifo_us >= 35) ? ultra_low_fifo_us : 35;
 	ultra_high_fifo_us = ultra_low_fifo_us + 1;
 

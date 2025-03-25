@@ -424,7 +424,8 @@ bool mdrv_DPTx_AuxWrite_Bytes(struct mtk_dp *mtk_dp, u8 ubCmd,
 	DPTXERR("Aux Write Fail: cmd = %d, addr = 0x%x, len = %lu\n",
 		ubCmd, usDPCDADDR, ubLength);
 
-	if (abs(sched_clock() - mtk_dp->starttime) > DPTX_TIMEOUT_THRESHOLD && mtk_dp->trigger_db_flag == false) {
+	if (mtk_dp->trigger_db_flag == false && mtk_dp->usb_last_state != HPD_DISCONNECT
+		&& abs(sched_clock() - mtk_dp->starttime) > DPTX_TIMEOUT_THRESHOLD) {
 		DDPAEE("Aux write fail\n");
 		dptx_dump_reg();
 		mtk_dp->trigger_db_flag = TRUE;
@@ -502,7 +503,8 @@ bool mdrv_DPTx_AuxRead_Bytes(struct mtk_dp *mtk_dp, u8 ubCmd,
 	DPTXERR("Aux Read Fail: cmd = %d, addr = 0x%x, len = %lu\n",
 		ubCmd, usDPCDADDR, ubLength);
 
-	if (abs(sched_clock() - mtk_dp->starttime) > DPTX_TIMEOUT_THRESHOLD && mtk_dp->trigger_db_flag == false) {
+	if (mtk_dp->trigger_db_flag == false && mtk_dp->usb_last_state != HPD_DISCONNECT
+		&& abs(sched_clock() - mtk_dp->starttime) > DPTX_TIMEOUT_THRESHOLD) {
 		DDPAEE("Aux read fail\n");
 		dptx_dump_reg();
 		mtk_dp->trigger_db_flag = TRUE;
@@ -3133,7 +3135,8 @@ static void mdrv_DPTx_main_handle(struct work_struct *data)
 	mtk_dp->starttime = starttime;
 
 	do {
-		if (abs(sched_clock() - starttime) > DPTX_TIMEOUT_THRESHOLD && mtk_dp->trigger_db_flag == false) {
+		if (mtk_dp->trigger_db_flag == false && mtk_dp->usb_last_state != HPD_DISCONNECT
+			&& abs(sched_clock() - mtk_dp->starttime) > DPTX_TIMEOUT_THRESHOLD) {
 			DPTXERR("Handle time over 10s\n");
 			if (mtk_dp->training_state != DPTX_NTSTATE_NORMAL) {
 				DDPAEE("connection fail\n");
@@ -4530,6 +4533,9 @@ void mtk_dp_SWInterruptSet(int bstatus)
 
 	mutex_lock(&dp_lock);
 
+	if (bstatus != HPD_INT_EVNET)
+		g_mtk_dp->usb_last_state = bstatus;
+
 	if ((bstatus == HPD_DISCONNECT && g_mtk_dp->bPowerOn)
 		|| (bstatus == HPD_CONNECT && !g_mtk_dp->bPowerOn))
 		g_mtk_dp->bUeventToHwc = true;
@@ -4598,7 +4604,7 @@ bool mtk_dp_ready(void)
 		return false;
 	}
 
-	return g_mtk_dp->dp_ready;
+	return g_mtk_dp->bPowerOn;
 }
 
 static int mtk_dp_create_workqueue(struct mtk_dp *mtk_dp)
