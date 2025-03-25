@@ -1648,7 +1648,6 @@ void ufs_mtk_dbg_l2_dump(struct ufs_hba *hba)
 		dev_err(hba->dev, "VENDOR_DL_RX_FRAME_HISTORY, err:%d", err);
 		return;
 	}
-	dev_err(hba->dev, "VENDOR_DL_RX_FRAME_HISTORY: 0x%x\n", dl_rx_history);
 
 	err = ufshcd_dme_get_attr_backdoor(hba,
 		UIC_ARG_MIB(VENDOR_DL_RX_FRAME_INFO_0), &dl_rx_info_0);
@@ -1656,7 +1655,6 @@ void ufs_mtk_dbg_l2_dump(struct ufs_hba *hba)
 		dev_err(hba->dev, "VENDOR_DL_RX_FRAME_INFO_0, err:%d", err);
 		return;
 	}
-	dev_err(hba->dev, "VENDOR_DL_RX_FRAME_INFO_0: 0x%x\n", dl_rx_info_0);
 
 	err = ufshcd_dme_get_attr_backdoor(hba,
 		UIC_ARG_MIB(VENDOR_DL_RX_FRAME_INFO_1), &dl_rx_info_1);
@@ -1664,7 +1662,6 @@ void ufs_mtk_dbg_l2_dump(struct ufs_hba *hba)
 		dev_err(hba->dev, "VENDOR_DL_RX_FRAME_INFO_1, err:%d", err);
 		return;
 	}
-	dev_err(hba->dev, "VENDOR_DL_RX_FRAME_INFO_1: 0x%x\n", dl_rx_info_1);
 
 	err = ufshcd_dme_get_attr_backdoor(hba,
 		UIC_ARG_MIB(VENDOR_DL_TX_FRAME_HISTORY), &dl_tx_history);
@@ -1672,7 +1669,6 @@ void ufs_mtk_dbg_l2_dump(struct ufs_hba *hba)
 		dev_err(hba->dev, "VENDOR_DL_TX_FRAME_HISTORY, err:%d", err);
 		return;
 	}
-	dev_err(hba->dev, "VENDOR_DL_TX_FRAME_HISTORY: 0x%x\n", dl_tx_history);
 
 	err = ufshcd_dme_get_attr_backdoor(hba,
 		UIC_ARG_MIB(VENDOR_DL_TX_FRAME_INFO_0), &dl_tx_info_0);
@@ -1680,7 +1676,6 @@ void ufs_mtk_dbg_l2_dump(struct ufs_hba *hba)
 		dev_err(hba->dev, "VENDOR_DL_TX_FRAME_INFO_0, err:%d", err);
 		return;
 	}
-	dev_err(hba->dev, "VENDOR_DL_TX_FRAME_INFO_0: 0x%x\n", dl_tx_info_0);
 
 	err = ufshcd_dme_get_attr_backdoor(hba,
 		UIC_ARG_MIB(VENDOR_DL_TX_FRAME_INFO_1), &dl_tx_info_1);
@@ -1688,8 +1683,13 @@ void ufs_mtk_dbg_l2_dump(struct ufs_hba *hba)
 		dev_err(hba->dev, "VENDOR_DL_TX_FRAME_INFO_1, err:%d", err);
 		return;
 	}
-	dev_err(hba->dev, "VENDOR_DL_TX_FRAME_INFO_1: 0x%x\n", dl_tx_info_1);
 
+	dev_err(hba->dev, "VENDOR_DL_RX_FRAME_HISTORY: 0x%x\n", dl_rx_history);
+	dev_err(hba->dev, "VENDOR_DL_RX_FRAME_INFO_0: 0x%x\n", dl_rx_info_0);
+	dev_err(hba->dev, "VENDOR_DL_RX_FRAME_INFO_1: 0x%x\n", dl_rx_info_1);
+	dev_err(hba->dev, "VENDOR_DL_TX_FRAME_HISTORY: 0x%x\n", dl_tx_history);
+	dev_err(hba->dev, "VENDOR_DL_TX_FRAME_INFO_0: 0x%x\n", dl_tx_info_0);
+	dev_err(hba->dev, "VENDOR_DL_TX_FRAME_INFO_1: 0x%x\n", dl_tx_info_1);
 
 	dev_err(hba->dev, "== DL TX Frame History ==");
 	dl_tx_idx = (dl_tx_history >> DL_TX_FRAME_INDEX_OFFSET);

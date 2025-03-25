@@ -2598,8 +2598,6 @@ static void ufs_mtk_dbg_register_dump(struct ufs_hba *hba)
 				"UFSHCI (0x2800): ");
 	}
 
-	ufs_mtk_dbg_l2_dump(hba);
-
 	ufs_mtk_dbg_dump(hba, 100);
 
 	ufs_mtk_dbg_phy_trace(hba, UFS_MPHY_ERR);
@@ -2705,8 +2703,11 @@ static void ufs_mtk_event_notify(struct ufs_hba *hba,
 	struct timespec64 tv = { 0 };
 	struct ufs_event_hist *e;
 
-	trace_ufs_mtk_event(evt, val);
+	/* Dump l2 info ASAP, else l2 info may overwrite by HW */
+	if (evt <= UFS_EVT_DME_ERR)
+		ufs_mtk_dbg_l2_dump(hba);
 
+	trace_ufs_mtk_event(evt, val);
 
 	/* error check for mbrain */
 	if (evt <= UFS_EVT_FATAL_ERR){
