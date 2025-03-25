@@ -250,8 +250,8 @@ struct cmdq_pkt {
 	bool		loop_cb_times_by_cookie;
 	bool		skip_add_cookie;
 	u32				debug_id;
-	u32			cookie;
-	u32			cookie_diff;
+	u16			cookie;
+	u16			cookie_diff;
 };
 
 struct cmdq_thread {
@@ -273,7 +273,7 @@ struct cmdq_thread {
 	u32			irq_task;
 	u64			mbox_en;
 	u64			mbox_dis;
-	u32			cookie;
+	u16			cookie;
 	cmdq_usage_cb usage_cb;
 	bool			skip_fast_mtcmos;
 	u64			user_cb_cost;

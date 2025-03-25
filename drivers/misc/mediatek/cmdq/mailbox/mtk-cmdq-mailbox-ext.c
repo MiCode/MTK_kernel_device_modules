@@ -111,6 +111,7 @@ struct cmdq_util_controller_fp *cmdq_util_controller;
 #define CMDQ_THR_PRIORITY		0x7
 #define CMDQ_TPR_EN			BIT(31)
 #define CMDQ_HW_TRACE_EN		BIT(31)
+#define CMDQ_EXEC_CNT_MASK	(0xFFFF)
 
 #define GCE_DBG_CTL			0x3000
 #define GCE_DBG0			0x3004
@@ -1056,7 +1057,7 @@ static void cmdq_thread_err_reset(struct cmdq *cmdq, struct cmdq_thread *thread,
 	for (i = 0; i < 4; i++)
 		spr[i] = readl(thread->base + CMDQ_THR_SPR + i * 4);
 	end = cmdq_thread_get_end(thread);
-	cookie = readl(thread->base + CMDQ_THR_CNT);
+	cookie = readl(thread->base + CMDQ_THR_CNT) & CMDQ_EXEC_CNT_MASK;
 
 	cmdq_msg(
 		"reset backup pc:%pa end:%pa cookie:0x%08x spr:0x%x 0x%x 0x%x 0x%x",
@@ -1467,7 +1468,7 @@ static void cmdq_task_exec(struct cmdq_pkt *pkt, struct cmdq_thread *thread)
 			mod_timer(&thread->timeout, jiffies +
 				msecs_to_jiffies(thread->timeout_ms));
 			thread->timer_mod = sched_clock();
-			thread->cookie = readl(thread->base + CMDQ_THR_CNT);
+			thread->cookie = readl(thread->base + CMDQ_THR_CNT) & CMDQ_EXEC_CNT_MASK;
 		}
 		list_move_tail(&task->list_entry, &thread->task_busy_list);
 	} else {
@@ -1788,12 +1789,12 @@ static void cmdq_thread_irq_handler(struct cmdq *cmdq,
 			cmdq_err("irq flag:%#x hwid:%hu idx:%u pkt:%p loop",
 				irq_flag, cmdq->hwid, thread->idx, task->pkt);
 
-		thread->cookie = readl(thread->base + CMDQ_THR_CNT);
+		thread->cookie = readl(thread->base + CMDQ_THR_CNT) & CMDQ_EXEC_CNT_MASK;
+
 		task->pkt->cookie_diff = thread->cookie > task->pkt->cookie ?
 			thread->cookie - task->pkt->cookie :
-			~task->pkt->cookie + 1 + thread->cookie;
+			((~(task->pkt->cookie)) + 1 + (thread->cookie));
 		task->pkt->cookie = thread->cookie;
-
 		if (!thread->thread_timeout) {
 			if (task->pkt->loop_cb_times_by_cookie) {
 				for (i = 0; i < task->pkt->cookie_diff; i++)
@@ -1902,7 +1903,7 @@ static void cmdq_thread_irq_handler(struct cmdq *cmdq,
 			mod_timer(&thread->timeout, jiffies +
 				msecs_to_jiffies(thread->timeout_ms));
 			thread->timer_mod = sched_clock();
-			thread->cookie = readl(thread->base + CMDQ_THR_CNT);
+			thread->cookie = readl(thread->base + CMDQ_THR_CNT) & CMDQ_EXEC_CNT_MASK;
 			cmdq_log("mod_timer pkt:0x%p timeout:%u thread:%u cookie:%d",
 				task->pkt, thread->timeout_ms, thread->idx, thread->cookie);
 		}
@@ -2216,7 +2217,7 @@ static bool cmdq_thread_timeout_excceed(struct cmdq_thread *thread)
 	if (duration < thread->timeout_ms) {
 		mod_timer(&thread->timeout, jiffies +
 			msecs_to_jiffies(thread->timeout_ms - duration));
-		thread->cookie = readl(thread->base + CMDQ_THR_CNT);
+		thread->cookie = readl(thread->base + CMDQ_THR_CNT) & CMDQ_EXEC_CNT_MASK;
 
 		cmdq_msg(
 			"thread:%u usage:%d mod time:%llu dur:%llu cookie:%d timeout not excceed",
@@ -2234,7 +2235,7 @@ static bool cmdq_thread_skip_timeout_by_cookie(struct cmdq_thread *thread)
 	struct cmdq_task *task;
 	struct cmdq *cmdq = container_of(thread->chan->mbox, typeof(*cmdq), mbox);
 
-	cookie = readl(thread->base + CMDQ_THR_CNT);
+	cookie = readl(thread->base + CMDQ_THR_CNT) & CMDQ_EXEC_CNT_MASK;
 	task = list_first_entry_or_null(&thread->task_busy_list,
 		struct cmdq_task, list_entry);
 	if (task) {
@@ -2263,7 +2264,7 @@ void cmdq_thread_reset_timer(void *chan)
 
 	mod_timer(&thread->timeout, jiffies +
 		msecs_to_jiffies(thread->timeout_ms));
-	cmdq_msg("%s mod_timer timeout:%u thread:%u ",
+	cmdq_log("%s mod_timer timeout:%u thread:%u ",
 		__func__, thread->timeout_ms, thread->idx);
 }
 EXPORT_SYMBOL(cmdq_thread_reset_timer);
@@ -2389,7 +2390,7 @@ static void cmdq_thread_handle_timeout_work(struct work_struct *work_item)
 		mod_timer(&thread->timeout, jiffies +
 			msecs_to_jiffies(thread->timeout_ms));
 		thread->timer_mod = sched_clock();
-		thread->cookie = readl(thread->base + CMDQ_THR_CNT);
+		thread->cookie = readl(thread->base + CMDQ_THR_CNT) & CMDQ_EXEC_CNT_MASK;
 		cmdq_thread_err_reset(cmdq, thread,
 			task->pa_base, thread->priority);
 		cmdq_thread_resume(thread);
@@ -2532,7 +2533,7 @@ void cmdq_thread_dump(struct mbox_chan *chan, struct cmdq_pkt *cl_pkt,
 	irq_en = readl(thread->base + CMDQ_THR_IRQ_ENABLE);
 	curr_pa = cmdq_thread_get_pc(thread);
 	end_pa = cmdq_thread_get_end(thread);
-	cnt = readl(thread->base + CMDQ_THR_CNT);
+	cnt = readl(thread->base + CMDQ_THR_CNT) & CMDQ_EXEC_CNT_MASK;
 	wait_token = readl(thread->base + CMDQ_THR_WAIT_TOKEN);
 	cfg = readl(thread->base + CMDQ_THR_CFG);
 	prefetch = readl(thread->base + CMDQ_THR_PREFETCH);
@@ -2894,7 +2895,7 @@ void cmdq_mbox_thread_remove_task(struct mbox_chan *chan,
 		mod_timer(&thread->timeout, jiffies +
 			msecs_to_jiffies(thread->timeout_ms));
 		thread->timer_mod = sched_clock();
-		thread->cookie = readl(thread->base + CMDQ_THR_CNT);
+		thread->cookie = readl(thread->base + CMDQ_THR_CNT) & CMDQ_EXEC_CNT_MASK;
 	}
 
 	if (last_task) {
