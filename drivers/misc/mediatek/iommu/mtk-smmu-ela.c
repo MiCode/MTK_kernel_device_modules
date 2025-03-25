@@ -29,6 +29,7 @@
 #define PMU_MONITOR_MAX_EVT		(0xe7)
 
 #define SMMU_ELA_DUMP_MAX		(PAGE_SIZE - 1)
+#define SMMU_ELA_INPUT_MAX		(512)
 
 #define dump_ela(file, fmt, args...)				\
 	do {							\
@@ -543,20 +544,29 @@ static int smmu_ela_evts_set(const char *val, const struct kernel_param *kp)
 	u32 tcu_evt = 0, tbu_evt = 0;
 	u32 smmu_type = MM_SMMU;
 	struct smmu_pmu *pmu;
-	int i, ret = 0;
+	char *input, *input_tmp, *token;
+	int i;
 
 	if (!smmu_ela_inited(smmu_type))
 		return -EINVAL;
 
 	pmu = &ela_ctrl[smmu_type]->pmu[0];
-	ret = sscanf(val, "%u %u", &tcu_evt, &tbu_evt);
-	if (ret != 2 || !smmu_pmu_check_event(&pmu[0], tcu_evt) ||
-	    !smmu_pmu_check_event(&pmu[1], tbu_evt)) {
-	        pr_info("%s input error, ret:%d, tcu_evt:0x%x, tbu_evt:0x%x\n",
-			__func__, ret, tcu_evt, tbu_evt);
-		return -EINVAL;
-	}
+	input = kstrndup(val, SMMU_ELA_INPUT_MAX, GFP_KERNEL);
+	if (!input)
+		return -ENOMEM;
 
+	input_tmp = input;
+	token = strsep(&input_tmp, " \t\n");
+	if (!token || kstrtou32(token, 10, &tcu_evt) ||
+	    !smmu_pmu_check_event(&pmu[0], tcu_evt))
+		goto err_free;
+
+	token = strsep(&input_tmp, " \t\n");
+	if (!token || kstrtou32(token, 10, &tbu_evt) ||
+	    !smmu_pmu_check_event(&pmu[1], tbu_evt))
+		goto err_free;
+
+	kfree(input);
 	pmu_cntr0_evt[0] = tcu_evt;
 	for (i = 0; i < SMMU_TBU_CNT(smmu_type); i++)
 		pmu_cntr0_evt[i + 1] = tbu_evt;
@@ -565,6 +575,13 @@ static int smmu_ela_evts_set(const char *val, const struct kernel_param *kp)
 		smmu_type, tcu_evt, tbu_evt);
 
 	return 0;
+
+err_free:
+	kfree(input);
+	pr_info("%s input error, tcu_evt:0x%x, tbu_evt:0x%x\n",
+		__func__, tcu_evt, tbu_evt);
+
+	return -EINVAL;
 }
 
 static const struct kernel_param_ops smmu_ela_set_pmu_evts_ops = {
@@ -578,23 +595,29 @@ static int smmu_ela_mons_set(const char *val, const struct kernel_param *kp)
 	u32 smmu_type = MM_SMMU;
 	u32 ela_mons[SMMU_ELA_MONITOR_MAX] = { 0 };
 	void __iomem *wp_base;
+	char *input, *input_tmp, *token;
 	int i, ret = 0;
 
 	if (!smmu_ela_inited(smmu_type))
 		return -EINVAL;
 
+	input = kstrndup(val, SMMU_ELA_INPUT_MAX, GFP_KERNEL);
+	if (!input)
+		return -ENOMEM;
+
+	input_tmp = input;
 	for (i = 0; i < SMMU_ELA_MONITOR_MAX; i++) {
-		ret = sscanf(val, "%x", &ela_mons[i]);
-		if (ret != 1 ||
+		token = strsep(&input_tmp, " \t\n");
+		if (!token || kstrtou32(token, 16, &ela_mons[i]) ||
 		    ela_mons[i] >= SMMU_WPCFG_OFFSET + SMMUWP_REG_SZ) {
-			pr_info("%s input error, ret:%d, ela_mons[%d]:0x%x\n",
-				__func__, ret, i, ela_mons[i]);
+			pr_info("%s input error, ela_mons[%d]:0x%x\n",
+				__func__, i, ela_mons[i]);
+			kfree(input);
 			return -EINVAL;
 		}
-		val += strcspn(val, " \t\n");
-		val += strspn(val, " \t\n");
 	}
 
+	kfree(input);
 	ret = mtk_smmu_rpm_get(smmu_type);
 	if (ret) {
 		pr_info("%s, smmu_%u power_status:%d\n", __func__, smmu_type, ret);
@@ -633,8 +656,8 @@ static int smmu_ela_enable_set(const char *val, const struct kernel_param *kp)
 	if (!smmu_ela_inited(smmu_type))
 		return -EINVAL;
 
-	ret = sscanf(val, "%u", &enable);
-	if (ret != 1) {
+	ret = kstrtou32(val, 10, &enable);
+	if (ret != 0) {
 	        pr_info("%s input error, ret:%d, enable:%u\n", __func__,
 			ret, enable);
 		return -EINVAL;
