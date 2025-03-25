@@ -20,7 +20,7 @@ static void get_scp_tmon_header(void)
 	header.data_offset = sizeof(struct scp_res_mbrain_header);
 	header.index_data_length = sizeof(struct task_monitor_info)*MAX_TASKS
 							 + header.data_offset;
-	pr_notice("scp_tmon size=%lx, header.data_offset size=%hx\n",
+	pr_debug("scp_tmon size=%lx, header.data_offset size=%x\n",
 			sizeof(struct task_monitor_info)*MAX_TASKS, header.data_offset);
 }
 
@@ -36,19 +36,19 @@ static int scp_mbrain_get_sys_tmon_data(void *address, uint32_t size)
 	struct task_monitor_info *tmon = NULL;
 	/* uint64_t suspend_time = 0;*/
 
-	pr_notice("[SCP] %s start\n",__func__);
+	pr_debug("[SCP] %s start\n",__func__);
 	tmon = (struct task_monitor_info *)scp_get_reserve_mem_virt(SCP_TMON_DBG_MEM_ID);
 
-	pr_notice("Prepare header\n");
+	pr_debug("Prepare header\n");
 	/* cpy header */
 	get_scp_tmon_header();
-	pr_notice("address=%p, header size=%lx\n", address, sizeof(struct scp_res_mbrain_header));
+	pr_debug("address=%p, header size=%lx\n", address, sizeof(struct scp_res_mbrain_header));
 	address = scp_data_copy(address, &header, sizeof(struct scp_res_mbrain_header));
-	pr_notice("Prepare data\n");
+	pr_debug("Prepare data\n");
 	/* cpy res data */
-	pr_notice("address=%p, data size=%lx\n", address, sizeof(struct task_monitor_info)*MAX_TASKS);
+	pr_debug("address=%p, data size=%lx\n", address, sizeof(struct task_monitor_info)*MAX_TASKS);
 	address = scp_data_copy(address, tmon, sizeof(struct task_monitor_info)*MAX_TASKS);
-	pr_notice("[SCP] %s end\n",__func__);
+	pr_debug("[SCP] %s end\n",__func__);
 	return 0;
 }
 
