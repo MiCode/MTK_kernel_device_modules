@@ -546,7 +546,7 @@ static int trusty_irq_probe(struct platform_device *pdev)
 
 #ifdef MTK_ADAPTED
 	if (!is_google_real_driver()) {
-		dev_info(&pdev->dev, "%s: google trusty dummy driver\n", __func__);
+		dev_info(&pdev->dev, "%s: google trusty irq dummy driver\n", __func__);
 		return 0;
 	}
 

@@ -352,26 +352,50 @@ static size_t trusty_test_get_arg(const char **buf, size_t default_val)
 #ifdef CONFIG_ARM64
 static ssize_t trusty_test_fpsimd(struct trusty_test_state *s)
 {
-	struct user_fpsimd_state old_state, new_state[2];
+	struct trusty_test_fpsimd_state {
+		struct user_fpsimd_state old;
+		struct user_fpsimd_state random;
+		struct user_fpsimd_state new[2];
+	} *state;
 	unsigned long flags;
 	int ret;
+
+	/*
+	 * Allocate the test state on the kernel heap because
+	 * it overflows the stack.
+	 */
+	state = kzalloc(sizeof(*state), GFP_KERNEL);
+	if (!state) {
+		ret = -ENOMEM;
+		dev_err(s->dev, "failed to allocate fpsimd state\n");
+		goto err_alloc;
+	}
+
+	for (size_t i = 0; i < ARRAY_SIZE(state->random.vregs); i++)
+		state->random.vregs[i] = get_random_u64();
+	/*
+	 * TODO: set FPCR&FPSR to random values, but they need to be masked
+	 * because many of their bits are MBZ
+	 */
 
 	/*
 	 * Disable interrupts so we stay on the current CPU and
 	 * guarantee that nothing else touches the FP registers
 	 */
 	local_irq_save(flags);
-	trusty_fpsimd_save_state(&old_state);
+	trusty_fpsimd_save_state(&state->old);
+	trusty_fpsimd_load_state(&state->random);
 
 	ret = trusty_fast_call32(s->trusty_dev, SMC_FC_TEST_CLOBBER_FPSIMD_CLOBBER,
 				 0, 0, 0);
 	if (ret) {
 		dev_err(s->dev, "trusty fp clobber failed: %d\n", ret);
-		goto err;
+		ret = -EIO;
+		goto err_call;
 	}
 
-	trusty_fpsimd_save_state(&new_state[0]);
-	trusty_fpsimd_load_state(&old_state);
+	trusty_fpsimd_save_state(&state->new[0]);
+	trusty_fpsimd_load_state(&state->random);
 
 	/*
 	 * Call into Trusty again so it can check
@@ -381,40 +405,49 @@ static ssize_t trusty_test_fpsimd(struct trusty_test_state *s)
 				 1, 0, 0);
 	if (ret) {
 		dev_err(s->dev, "trusty fp check failed: %d\n", ret);
-		goto err;
+		ret = -EIO;
+		goto err_call;
 	}
 
 	/* Restore the old state */
-	trusty_fpsimd_save_state(&new_state[1]);
-	trusty_fpsimd_load_state(&old_state);
+	trusty_fpsimd_save_state(&state->new[1]);
+	trusty_fpsimd_load_state(&state->old);
 	local_irq_restore(flags);
 
-	for (size_t i = 0; i < ARRAY_SIZE(new_state); i++) {
-		for (size_t j = 0; j < ARRAY_SIZE(old_state.vregs); j++) {
-			if (new_state[i].vregs[j] != old_state.vregs[j]) {
+	for (size_t i = 0; i < ARRAY_SIZE(state->new); i++) {
+		for (size_t j = 0; j < ARRAY_SIZE(state->random.vregs); j++) {
+			if (state->new[i].vregs[j] != state->random.vregs[j]) {
 				dev_err(s->dev, "vregs[%zu][%zu] mismatch\n",
 					i, j);
-				return -EIO;
+				ret = -EIO;
+				goto err_check;
 			}
 		}
-		if (new_state[i].fpcr != old_state.fpcr) {
+		if (state->new[i].fpcr != state->random.fpcr) {
 			dev_err(s->dev, "FPCR[%zu] mismatch: %x != %x\n",
-				i, new_state[i].fpcr, old_state.fpcr);
-			return -EIO;
+				i, state->new[i].fpcr, state->random.fpcr);
+			ret = -EIO;
+			goto err_check;
 		}
-		if (new_state[i].fpsr != old_state.fpsr) {
+		if (state->new[i].fpsr != state->random.fpsr) {
 			dev_err(s->dev, "FPSR[%zu] mismatch: %x != %x\n",
-				i, new_state[i].fpsr, old_state.fpsr);
-			return -EIO;
+				i, state->new[i].fpsr, state->random.fpsr);
+			ret = -EIO;
+			goto err_check;
 		}
 	}
 
-	return 0;
+	ret = 0;
 
-err:
-	trusty_fpsimd_load_state(&old_state);
-	local_irq_restore(flags);
-	return -EIO;
+err_check:
+	if (0) {
+err_call:
+		trusty_fpsimd_load_state(&state->old);
+		local_irq_restore(flags);
+	}
+	kfree(state);
+err_alloc:
+	return ret;
 }
 #else
 static ssize_t trusty_test_fpsimd(struct trusty_test_state *s)
@@ -455,13 +488,25 @@ static ssize_t trusty_test_run_store(struct device *dev,
 
 		dev_info(s->dev, "running trusty fpsimd tests %zu times...\n",
 			 obj_count);
+		/* Disable preemption so we stay on the same CPU */
+		preempt_disable();
+
+		ret = trusty_std_call32(s->trusty_dev, SMC_SC_NOP,
+					SMC_NC_TEST_CLOBBER_FPSIMD_TIMER,
+					0, 0);
+		if (ret != 1)
+			dev_warn(s->dev, "trusty fpsimd tests failed to start timer: %d\n", ret);
+
 		for (size_t i = 0; i < obj_count; i++) {
 			ret = trusty_test_fpsimd(s);
 			if (ret)
-				return ret;
+				break;
 		}
 
-		return count;
+		preempt_enable();
+		dev_info(s->dev, "trusty fpsimd tests %s (%d)\n",
+			 ret ? "failed" : "passed", ret);
+		return ret ?: count;
 	}
 
 	while (true) {
@@ -527,7 +572,11 @@ static void trusty_test_remove(struct platform_device *pdev)
 }
 
 static const struct of_device_id trusty_test_of_match[] = {
+#ifdef MTK_ADAPTED
+	{ .compatible = "android,google-trusty-test-v1", },
+#else
 	{ .compatible = "android,trusty-test-v1", },
+#endif
 	{},
 };
 
@@ -537,7 +586,11 @@ static struct platform_driver trusty_test_driver = {
 	.probe = trusty_test_probe,
 	.remove_new = trusty_test_remove,
 	.driver = {
+#ifdef MTK_ADAPTED
+		.name = "google-trusty-test",
+#else
 		.name = "trusty-test",
+#endif
 		.of_match_table = trusty_test_of_match,
 		.dev_groups = trusty_test_groups,
 	},

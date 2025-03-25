@@ -22,26 +22,38 @@ config TRUSTY
 if TRUSTY
 
 config TRUSTY_FFA_TRANSPORT
-	bool "Trusty transport based on FFA"
+	tristate "Trusty transport based on FFA"
 	depends on ARM_FFA_TRANSPORT
-	default n
+	default y
 	help
-	  Enable ARM FF-A based transport for Trusty. This transport is required
-	  for Trusty API version >= TRUSTY_API_VERSION_MEM_OBJ.
+	  Enable ARM FF-A based transport for Trusty.
 
 	  If you want to use ARM FF-A based transport for sending Trusty messages
-	  to secure world, answer Y.
+	  to secure world and/or performing memory sharing operations, answer Y.
+
+	  This transport can also be used in tandem with TRUSTY_SMC_TRANSPORT
+	  where the FF-A driver is used for the memory operations, while the
+	  legacy SMC transport is used to call into Trusty.
 
 config TRUSTY_SMC_TRANSPORT
-	bool
+	tristate
 	prompt "Trusty transport based on SMC" if TRUSTY_FFA_TRANSPORT
-	default !TRUSTY_FFA_TRANSPORT
+	default y
 	help
-	  Enable SMC based transport for Trusty. This transport is required for
-	  Trusty API version < TRUSTY_API_VERSION_MEM_OBJ.
+	  Enable SMC based transport for Trusty.
+
+	  If TRUSTY_SMC_TRANSPORT_USE_FFA_TRANSPORT is also Y,
+	  the SMC transport will use the firmware driver
+	  and call into the memory operation implementation from
+	  the FF-A transport enabled by TRUSTY_FFA_TRANSPORT.
 
 	  If you want to use legacy SMC based transport for sending Trusty
 	  messages to secure world, answer Y.
+
+config TRUSTY_SMC_TRANSPORT_USE_FFA_TRANSPORT
+	bool
+	depends on TRUSTY_SMC_TRANSPORT && TRUSTY_FFA_TRANSPORT
+	default y
 
 config TRUSTY_IRQ
 	bool "Trusty IRQ support"
@@ -99,6 +111,19 @@ config TRUSTY_VIRTIO_IPC
 
 	  If you build this as a module, it will be called trusty-ipc.
 
+config TRUSTY_VIRTIO_POLL_VQUEUES
+	bool "Poll the virtio queues periodically"
+	depends on TRUSTY_VIRTIO
+	help
+	  Add an optional timer that polls the virtio queues periodically.
+	  When enabled, this will add a device attribute that configures
+	  the timer period for the polling. The attribute can be set to 0
+	  to disable the timer dynamically.
+
+	  This is needed when there is no signaling mechanism between
+	  Linux and Trusty for virtio, e.g., when using FF-A to talk
+	  between guest VMs and TrustZone without notification support.
+
 config TRUSTY_DMA_BUF_FFA_TAG
 	bool "Availability of trusty_dma_buf_get_ffa_tag"
 	default n
@@ -133,6 +158,18 @@ config TRUSTY_CRASH_IS_PANIC
 
 	 If N, it will contine to run the kernel, but trusty operations will
 	 return errors.
+
+config TRUSTY_POPULATE
+	tristate "Build a module that populates the Trusty devices"
+	default m
+	help
+	  Build a module that will register some platform devices for
+	  some of the other Trusty modules that guests need to use.
+	  This is useful when the device tree does or can not contain
+	  the nodes we need. The devices are populated on module insertion
+	  and persist until trusty-populate.ko is removed.
+
+	  If N, the modules require device tree nodes for probing.
 
 endif # TRUSTY
 

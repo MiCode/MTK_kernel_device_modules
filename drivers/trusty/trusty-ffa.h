@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (C) 2022 ARM Ltd.
- * Copyright (C) 2023 Google, Inc.
+ * Copyright (C) 2024 Google, Inc.
  */
 /*
  * Copyright (C) 2024 MediaTek Inc.
@@ -10,15 +10,9 @@
 #ifndef __LINUX_TRUSTY_FFA_H
 #define __LINUX_TRUSTY_FFA_H
 
+#include <linux/kconfig.h>
 #include <linux/types.h>
 #include <linux/uuid.h>
-#ifndef MTK_ADAPTED
-#include <linux/arm_ffa.h>
-#endif
-
-#ifdef MTK_ADAPTED
-#include "ffa_v11/arm_ffa.h"
-#endif
 
 /**
  * DOC: FF-A driver version requirements
@@ -45,7 +39,18 @@
 	  ((u16)(((v) >> TRUSTY_FFA_VERSION_MINOR_SHIFT) &	\
 		 TRUSTY_FFA_VERSION_MINOR_MASK))
 
-int trusty_ffa_transport_init(void);
-void trusty_ffa_transport_exit(void);
+#if IS_ENABLED(CONFIG_TRUSTY_FFA_TRANSPORT)
+struct ns_mem_page_info;
+
+struct device *trusty_ffa_find_device(void);
+
+int trusty_ffa_dev_share_or_lend_memory(struct device *dev, u64 *id,
+					struct scatterlist *sglist,
+					unsigned int nents, pgprot_t pgprot,
+					u64 tag, bool lend, struct ns_mem_page_info *pg_inf);
+int trusty_ffa_dev_reclaim_memory(struct device *dev, u64 id,
+				  struct scatterlist *sglist,
+				  unsigned int nents);
+#endif
 
 #endif /* __LINUX_TRUSTY_FFA_H */

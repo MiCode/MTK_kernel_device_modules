@@ -8,12 +8,9 @@
 
 #include <linux/types.h>
 #include <linux/printk.h>
+#include <linux/trusty/arm_ffa.h>
 #include <linux/trusty/trusty.h>
 #include <linux/trusty/smcall.h>
-
-#ifndef CONFIG_TRUSTY_FFA_TRANSPORT
-#include <linux/trusty/arm_ffa.h>
-#endif
 
 #define MEM_ATTR_STRONGLY_ORDERED (0x00U)
 #define MEM_ATTR_DEVICE (0x04U)
@@ -81,10 +78,8 @@ int trusty_encode_page_info(struct ns_mem_page_info *inf,
 {
 	int mem_attr;
 	u64 pte;
-#ifndef CONFIG_TRUSTY_FFA_TRANSPORT
 	u8 ffa_mem_attr;
 	u8 ffa_mem_perm = 0;
-#endif
 
 	if (!inf || !page)
 		return -EINVAL;
@@ -97,7 +92,6 @@ int trusty_encode_page_info(struct ns_mem_page_info *inf,
 	if (mem_attr < 0)
 		return mem_attr;
 
-#ifndef CONFIG_TRUSTY_FFA_TRANSPORT
 	switch (mem_attr) {
 	case MEM_ATTR_STRONGLY_ORDERED:
 		ffa_mem_attr = FFA_MEM_ATTR_DEVICE_NGNRNE;
@@ -121,7 +115,6 @@ int trusty_encode_page_info(struct ns_mem_page_info *inf,
 	}
 
 	inf->paddr = pte;
-#endif
 
 	/* add other attributes */
 #if defined(CONFIG_ARM64) || defined(CONFIG_ARM_LPAE)
@@ -133,7 +126,6 @@ int trusty_encode_page_info(struct ns_mem_page_info *inf,
 		pte |= ATTR_INNER_SHAREABLE; /* inner sharable */
 #endif
 
-#ifndef CONFIG_TRUSTY_FFA_TRANSPORT
 	if (!(pte & ATTR_RDONLY))
 		ffa_mem_perm |= FFA_MEM_PERM_RW;
 	else
@@ -144,8 +136,6 @@ int trusty_encode_page_info(struct ns_mem_page_info *inf,
 
 	inf->ffa_mem_attr = ffa_mem_attr;
 	inf->ffa_mem_perm = ffa_mem_perm;
-#endif
-
 	inf->compat_attr = (pte & 0x0000FFFFFFFFFFFFull) |
 			   ((u64)mem_attr << 48);
 	return 0;

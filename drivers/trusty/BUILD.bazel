@@ -23,27 +23,56 @@ define_mgk_ddk_ko(
     name = "trusty-core",
     srcs = [
         "trusty.c",
-        "trusty-ffa.c",
-        "trusty-ffa.h",
         "trusty-irq.c",
         "trusty-irq.h",
         "trusty-irq-trace.h",
         "trusty-mem.c",
-        "trusty-private.h",
         "trusty-sched-share.c",
         "trusty-sched-share.h",
         "trusty-sched-share-api.h",
-        "trusty-smc.c",
-        "trusty-smc.h",
-        "trusty-smc-arm64.S",
         "trusty-trace.h",
+        "trusty-transport.h",
+    ],
+    includes = ["."],
+    local_defines = [
+        "MTK_ADAPTED",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "trusty-ffa",
+    srcs = [
+        "trusty-ffa-transport.c",
+        "trusty-ffa.h",
+        "trusty-sched-share-api.h",
+        "trusty-transport.h",
     ],
     includes = ["."],
     header_deps = [
         "//kernel_device_modules-{}/drivers/misc/mediatek/trusted_mem:ffa_hdrs".format(kernel_version),
     ],
     ko_deps = [
+        ":trusty-core",
         "//kernel_device_modules-{}/drivers/misc/mediatek/trusted_mem:ffa".format(kernel_version),
+    ],
+    local_defines = [
+        "MTK_ADAPTED",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "trusty-smc",
+    srcs = [
+        "trusty-smc-arm64.S",
+        "trusty-smc-transport.c",
+        "trusty-ffa.h",
+        "trusty-smc.h",
+        "trusty-transport.h",
+    ],
+    includes = ["."],
+    ko_deps = [
+        ":trusty-core",
+        ":trusty-ffa",
     ],
     local_defines = [
         "MTK_ADAPTED",
@@ -79,9 +108,9 @@ define_mgk_ddk_ko(
 define_mgk_ddk_ko(
     name = "trusty-test",
     srcs = [
+        "trusty-test.h",
         "trusty-test-arm64.S",
         "trusty-test-main.c",
-        "trusty-test.h",
     ],
     includes = ["."],
     ko_deps = [":trusty-core"],
@@ -94,6 +123,30 @@ define_mgk_ddk_ko(
     name = "trusty-virtio",
     srcs = [
         "trusty-virtio.c",
+    ],
+    includes = ["."],
+    ko_deps = [":trusty-core"],
+    local_defines = [
+        "MTK_ADAPTED",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "trusty-virtio-polling",
+    srcs = [
+        "trusty-virtio.c",
+    ],
+    includes = ["."],
+    ko_deps = [":trusty-core"],
+    local_defines = [
+        "MTK_ADAPTED",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "trusty-populate",
+    srcs = [
+        "trusty-populate.c",
     ],
     includes = ["."],
     ko_deps = [":trusty-core"],

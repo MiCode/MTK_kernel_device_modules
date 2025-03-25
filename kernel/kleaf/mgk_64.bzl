@@ -1234,10 +1234,14 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/thermal/mediatek:vtskin_temp".format(kernel_version),
     "//kernel_device_modules-{}/drivers/thermal/mediatek:wifi_cooling".format(kernel_version),
     "//kernel_device_modules-{}/drivers/trusty:trusty-core".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/trusty:trusty-ffa".format(kernel_version),
     "//kernel_device_modules-{}/drivers/trusty:trusty-ipc".format(kernel_version),
     "//kernel_device_modules-{}/drivers/trusty:trusty-log".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/trusty:trusty-populate".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/trusty:trusty-smc".format(kernel_version),
     "//kernel_device_modules-{}/drivers/trusty:trusty-test".format(kernel_version),
     "//kernel_device_modules-{}/drivers/trusty:trusty-virtio".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/trusty:trusty-virtio-polling".format(kernel_version),
     "//kernel_device_modules-{}/drivers/usb/mtu3:mtu3".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/performance:mtk_ioctl_touch_boost".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/performance:mtk_ioctl_powerhal".format(kernel_version),
@@ -2201,10 +2205,14 @@ def get_overlay_modules_list():
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/tee/teei/520:isee-ffa".format(kernel_version))
 
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-core".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-ffa".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-ipc".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-log".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-populate".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-smc".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-test".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-virtio".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-virtio-polling".format(kernel_version))
 
         mgk_64_kleaf_modules.append("//kernel_device_modules-{}/drivers/misc/mediatek/swpm_legacy_v2:mtk-swpm-perf-arm-pmu-legacy".format(kernel_version))
         mgk_64_kleaf_modules.append("//kernel_device_modules-{}/drivers/misc/mediatek/swpm_legacy_v2:mtk-swpm-legacy".format(kernel_version))
@@ -2456,10 +2464,14 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/thermal/mediatek/vtskin_temp.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/wifi_cooling.ko")
         mgk_64_device_modules.remove("drivers/trusty/trusty-core.ko")
+        mgk_64_device_modules.remove("drivers/trusty/trusty-ffa.ko")
         mgk_64_device_modules.remove("drivers/trusty/trusty-ipc.ko")
         mgk_64_device_modules.remove("drivers/trusty/trusty-log.ko")
+        mgk_64_device_modules.remove("drivers/trusty/trusty-populate.ko")
+        mgk_64_device_modules.remove("drivers/trusty/trusty-smc.ko")
         mgk_64_device_modules.remove("drivers/trusty/trusty-test.ko")
         mgk_64_device_modules.remove("drivers/trusty/trusty-virtio.ko")
+        mgk_64_device_modules.remove("drivers/trusty/trusty-virtio-polling.ko")
 
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/gpu/mediatek/gpueb:mtk_gpueb".format(kernel_version))
         mgk_64_kleaf_platform_modules.pop("//kernel_device_modules-{}/drivers/gpu/mediatek/gpueb:mtk_ghpm_mt6991".format(kernel_version))
@@ -2873,10 +2885,14 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/thermal/mediatek/thermal_trace.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/vtskin_temp.ko")
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-core".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-ffa".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-ipc".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-log".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-populate".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-smc".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-test".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-virtio".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-virtio-polling".format(kernel_version))
         #mgk_64_device_modules.remove("sound/soc/codecs/mt6338-accdet.ko")
         #mgk_64_device_modules.remove("sound/soc/codecs/snd-soc-mt6338.ko")
         #mgk_64_device_modules.remove("sound/soc/codecs/snd-soc-mt6368.ko")
@@ -3420,10 +3436,14 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/thermal/mediatek/vtskin_temp.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/wifi_cooling.ko")
         mgk_64_device_modules.remove("drivers/trusty/trusty-core.ko")
+        mgk_64_device_modules.remove("drivers/trusty/trusty-ffa.ko")
         mgk_64_device_modules.remove("drivers/trusty/trusty-ipc.ko")
         mgk_64_device_modules.remove("drivers/trusty/trusty-log.ko")
+        mgk_64_device_modules.remove("drivers/trusty/trusty-populate.ko")
+        mgk_64_device_modules.remove("drivers/trusty/trusty-smc.ko")
         mgk_64_device_modules.remove("drivers/trusty/trusty-test.ko")
         mgk_64_device_modules.remove("drivers/trusty/trusty-virtio.ko")
+        mgk_64_device_modules.remove("drivers/trusty/trusty-virtio-polling.ko")
 
         mgk_64_kleaf_userdebug_modules.remove("//vendor/mediatek/tests/kernel/ktf_testcase/mml:ktf_mml_ait")
         mgk_64_kleaf_eng_modules.remove("//vendor/mediatek/tests/kernel/ktf_testcase/mml:ktf_mml_ait")
@@ -3737,10 +3757,14 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/thermal/mediatek/vtskin_temp.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/wifi_cooling.ko")
         mgk_64_device_modules.remove("drivers/trusty/trusty-core.ko")
+        mgk_64_device_modules.remove("drivers/trusty/trusty-ffa.ko")
         mgk_64_device_modules.remove("drivers/trusty/trusty-ipc.ko")
         mgk_64_device_modules.remove("drivers/trusty/trusty-log.ko")
+        mgk_64_device_modules.remove("drivers/trusty/trusty-populate.ko")
+        mgk_64_device_modules.remove("drivers/trusty/trusty-smc.ko")
         mgk_64_device_modules.remove("drivers/trusty/trusty-test.ko")
         mgk_64_device_modules.remove("drivers/trusty/trusty-virtio.ko")
+        mgk_64_device_modules.remove("drivers/trusty/trusty-virtio-polling.ko")
 
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/memory/mediatek:emi".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/memory/mediatek:emi-fake-eng".format(kernel_version))
@@ -4696,10 +4720,14 @@ def get_overlay_modules_list():
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/tee/teei/520:isee-ffa".format(kernel_version))
 
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-core".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-ffa".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-ipc".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-log".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-populate".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-smc".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-test".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-virtio".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-virtio-polling".format(kernel_version))
 
         mgk_64_kleaf_platform_modules.pop("//kernel_device_modules-{}/drivers/misc/mediatek/vmm:mtk-vmm-notifier-mt6991".format(kernel_version))
         mgk_64_kleaf_platform_modules.pop("//kernel_device_modules-{}/drivers/misc/mediatek/vmm:mtk-vmm-notifier-mt6993".format(kernel_version))
@@ -4735,10 +4763,14 @@ def get_overlay_modules_list():
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/tee/teei/520:isee-ffa".format(kernel_version))
 
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-core".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-ffa".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-ipc".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-log".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-populate".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-smc".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-test".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-virtio".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-virtio-polling".format(kernel_version))
 
         mgk_64_kleaf_platform_modules.pop("//kernel_device_modules-{}/drivers/misc/mediatek/vmm:mtk-vmm-notifier-mt6991".format(kernel_version))
         mgk_64_kleaf_platform_modules.pop("//kernel_device_modules-{}/drivers/misc/mediatek/vmm:mtk-vmm-notifier-mt6993".format(kernel_version))
