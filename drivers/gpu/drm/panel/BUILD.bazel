@@ -56,6 +56,7 @@ PANELS = [
     "panel-nt37707-c2v-arp",
     "panel-rm692h5-cmd",
     "panel-rm692h5-alpha-cmd-spr",
+    "panel-rm692h5-cmd-fix120te",
     "panel-rm692h5-alpha-cmd-spr-mipichg",
     "panel-rm692h5-alpha-cmd-spr-144hz",
     "panel-tianma-r66451-cmd-120hz",
