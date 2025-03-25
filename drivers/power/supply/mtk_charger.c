@@ -944,7 +944,7 @@ static ssize_t sw_jeita_show(struct device *dev, struct device_attribute *attr,
 	struct mtk_charger *pinfo = dev->driver_data;
 
 	chr_err("%s: %d\n", __func__, pinfo->enable_sw_jeita);
-	return sprintf(buf, "%d\n", pinfo->enable_sw_jeita);
+	return snprintf(buf, PAGE_SIZE, "%d\n", pinfo->enable_sw_jeita);
 }
 
 static ssize_t sw_jeita_store(struct device *dev, struct device_attribute *attr,
@@ -974,7 +974,7 @@ static ssize_t sw_ovp_threshold_show(struct device *dev, struct device_attribute
 	struct mtk_charger *pinfo = dev->driver_data;
 
 	chr_err("%s: %d\n", __func__, pinfo->data.max_charger_voltage);
-	return sprintf(buf, "%d\n", pinfo->data.max_charger_voltage);
+	return snprintf(buf, PAGE_SIZE, "%d\n", pinfo->data.max_charger_voltage);
 }
 
 static ssize_t sw_ovp_threshold_store(struct device *dev, struct device_attribute *attr,
@@ -1004,7 +1004,7 @@ static ssize_t chr_type_show(struct device *dev, struct device_attribute *attr,
 	struct mtk_charger *pinfo = dev->driver_data;
 
 	chr_err("%s: %d\n", __func__, pinfo->chr_type);
-	return sprintf(buf, "%d\n", pinfo->chr_type);
+	return snprintf(buf, PAGE_SIZE, "%d\n", pinfo->chr_type);
 }
 
 static ssize_t chr_type_store(struct device *dev, struct device_attribute *attr,
@@ -1046,7 +1046,7 @@ static ssize_t ta_type_show(struct device *dev, struct device_attribute *attr,
 		break;
 	}
 	chr_err("%s: %d\n", __func__, ta_type);
-	return sprintf(buf, "%s\n", ta_type_name);
+	return snprintf(buf, PAGE_SIZE, "%s\n", ta_type_name);
 }
 
 static DEVICE_ATTR_RO(ta_type);
@@ -1062,7 +1062,7 @@ static ssize_t Pump_Express_show(struct device *dev,
 
 	if (!pinfo) {
 		chr_err("%s: pinfo is null\n", __func__);
-		return sprintf(buf, "%d\n", is_ta_detected);
+		return snprintf(buf, PAGE_SIZE, "%d\n", is_ta_detected);
 	}
 
 	for (i = 0; i < MAX_ALG_NO; i++) {
@@ -1076,7 +1076,7 @@ static ssize_t Pump_Express_show(struct device *dev,
 		}
 	}
 	chr_err("%s: idx = %d, detect = %d\n", __func__, i, is_ta_detected);
-	return sprintf(buf, "%d\n", is_ta_detected);
+	return snprintf(buf, PAGE_SIZE, "%d\n", is_ta_detected);
 }
 
 static DEVICE_ATTR_RO(Pump_Express);
@@ -1092,7 +1092,7 @@ static ssize_t Charging_mode_show(struct device *dev,
 
 	if (!pinfo) {
 		chr_err("%s: pinfo is null\n", __func__);
-		return sprintf(buf, "%d\n", is_ta_detected);
+		return snprintf(buf, PAGE_SIZE, "%d\n", is_ta_detected);
 	}
 
 	for (i = 0; i < MAX_ALG_NO; i++) {
@@ -1106,7 +1106,7 @@ static ssize_t Charging_mode_show(struct device *dev,
 		}
 	}
 	if (alg == NULL)
-		return sprintf(buf, "%s\n", alg_name);
+		return snprintf(buf, PAGE_SIZE, "%s\n", alg_name);
 
 	switch (alg->alg_id) {
 	case PE_ID:
@@ -1129,7 +1129,7 @@ static ssize_t Charging_mode_show(struct device *dev,
 		break;
 	}
 	chr_err("%s: charging_mode: %s\n", __func__, alg_name);
-	return sprintf(buf, "%s\n", alg_name);
+	return snprintf(buf, PAGE_SIZE, "%s\n", alg_name);
 }
 
 static DEVICE_ATTR_RO(Charging_mode);
@@ -1140,7 +1140,7 @@ static ssize_t High_voltage_chg_enable_show(struct device *dev,
 	struct mtk_charger *pinfo = dev->driver_data;
 
 	chr_err("%s: hv_charging = %d\n", __func__, pinfo->enable_hv_charging);
-	return sprintf(buf, "%d\n", pinfo->enable_hv_charging);
+	return snprintf(buf, PAGE_SIZE, "%d\n", pinfo->enable_hv_charging);
 }
 
 static DEVICE_ATTR_RO(High_voltage_chg_enable);
@@ -1151,7 +1151,7 @@ static ssize_t Rust_detect_show(struct device *dev,
 	struct mtk_charger *pinfo = dev->driver_data;
 
 	chr_err("%s: Rust detect = %d\n", __func__, pinfo->record_water_detected);
-	return sprintf(buf, "%d\n", pinfo->record_water_detected);
+	return snprintf(buf, PAGE_SIZE, "%d\n", pinfo->record_water_detected);
 }
 
 static DEVICE_ATTR_RO(Rust_detect);
@@ -1162,7 +1162,7 @@ static ssize_t Thermal_throttle_show(struct device *dev,
 	struct mtk_charger *pinfo = dev->driver_data;
 	struct charger_data *chg_data = &(pinfo->chg_data[CHG1_SETTING]);
 
-	return sprintf(buf, "%d\n", chg_data->thermal_throttle_record);
+	return snprintf(buf, PAGE_SIZE, "%d\n", chg_data->thermal_throttle_record);
 }
 
 static DEVICE_ATTR_RO(Thermal_throttle);
@@ -1173,7 +1173,7 @@ static ssize_t fast_chg_indicator_show(struct device *dev, struct device_attribu
 	struct mtk_charger *pinfo = dev->driver_data;
 
 	chr_debug("%s: %d\n", __func__, pinfo->fast_charging_indicator);
-	return sprintf(buf, "%d\n", pinfo->fast_charging_indicator);
+	return snprintf(buf, PAGE_SIZE, "%d\n", pinfo->fast_charging_indicator);
 }
 
 static ssize_t fast_chg_indicator_store(struct device *dev, struct device_attribute *attr,
@@ -1205,7 +1205,7 @@ static ssize_t alg_new_arbitration_show(struct device *dev, struct device_attrib
 	struct mtk_charger *pinfo = dev->driver_data;
 
 	chr_debug("%s: %d\n", __func__, pinfo->alg_new_arbitration);
-	return sprintf(buf, "%d\n", pinfo->alg_new_arbitration);
+	return snprintf(buf, PAGE_SIZE, "%d\n", pinfo->alg_new_arbitration);
 }
 
 static ssize_t alg_new_arbitration_store(struct device *dev, struct device_attribute *attr,
@@ -1231,7 +1231,7 @@ static ssize_t alg_unchangeable_show(struct device *dev, struct device_attribute
 	struct mtk_charger *pinfo = dev->driver_data;
 
 	chr_debug("%s: %d\n", __func__, pinfo->alg_unchangeable);
-	return sprintf(buf, "%d\n", pinfo->alg_unchangeable);
+	return snprintf(buf, PAGE_SIZE, "%d\n", pinfo->alg_unchangeable);
 }
 
 static ssize_t alg_unchangeable_store(struct device *dev, struct device_attribute *attr,
@@ -1257,7 +1257,7 @@ static ssize_t enable_meta_current_limit_show(struct device *dev, struct device_
 	struct mtk_charger *pinfo = dev->driver_data;
 
 	chr_debug("%s: %d\n", __func__, pinfo->enable_meta_current_limit);
-	return sprintf(buf, "%d\n", pinfo->enable_meta_current_limit);
+	return snprintf(buf, PAGE_SIZE, "%d\n", pinfo->enable_meta_current_limit);
 }
 
 static ssize_t enable_meta_current_limit_store(struct device *dev, struct device_attribute *attr,
@@ -1288,7 +1288,7 @@ static ssize_t cs_heatlim_show(struct device *dev, struct device_attribute *attr
 	struct mtk_charger *pinfo = dev->driver_data;
 
 	chr_debug("%s: %d\n", __func__, pinfo->cs_heatlim);
-	return sprintf(buf, "%d\n", pinfo->cs_heatlim);
+	return snprintf(buf, PAGE_SIZE, "%d\n", pinfo->cs_heatlim);
 }
 
 static ssize_t cs_heatlim_store(struct device *dev, struct device_attribute *attr,
@@ -1319,7 +1319,7 @@ static ssize_t cs_para_mode_show(struct device *dev, struct device_attribute *at
 	struct mtk_charger *pinfo = dev->driver_data;
 
 	chr_debug("%s: %d\n", __func__, pinfo->cs_para_mode);
-	return sprintf(buf, "%d\n", pinfo->cs_para_mode);
+	return snprintf(buf, PAGE_SIZE, "%d\n", pinfo->cs_para_mode);
 }
 
 static ssize_t cs_para_mode_store(struct device *dev, struct device_attribute *attr,
@@ -1350,7 +1350,7 @@ static ssize_t vbat_mon_show(struct device *dev, struct device_attribute *attr,
 	struct mtk_charger *pinfo = dev->driver_data;
 
 	chr_debug("%s: %d\n", __func__, pinfo->enable_vbat_mon);
-	return sprintf(buf, "%d\n", pinfo->enable_vbat_mon);
+	return snprintf(buf, PAGE_SIZE, "%d\n", pinfo->enable_vbat_mon);
 }
 
 static ssize_t vbat_mon_store(struct device *dev, struct device_attribute *attr,
@@ -1381,7 +1381,7 @@ static ssize_t ADC_Charger_Voltage_show(struct device *dev,
 	int vbus = get_vbus(pinfo); /* mV */
 
 	chr_err("%s: %d\n", __func__, vbus);
-	return sprintf(buf, "%d\n", vbus);
+	return snprintf(buf, PAGE_SIZE, "%d\n", vbus);
 }
 
 static DEVICE_ATTR_RO(ADC_Charger_Voltage);
@@ -1393,7 +1393,7 @@ static ssize_t ADC_Charging_Current_show(struct device *dev,
 	int ibat = get_battery_current(pinfo); /* mA */
 
 	chr_err("%s: %d\n", __func__, ibat);
-	return sprintf(buf, "%d\n", ibat);
+	return snprintf(buf, PAGE_SIZE, "%d\n", ibat);
 }
 
 static DEVICE_ATTR_RO(ADC_Charging_Current);
@@ -1406,7 +1406,7 @@ static ssize_t input_current_show(struct device *dev,
 
 	aicr = pinfo->chg_data[CHG1_SETTING].thermal_input_current_limit;
 	chr_err("%s: %d\n", __func__, aicr);
-	return sprintf(buf, "%d\n", aicr);
+	return snprintf(buf, PAGE_SIZE, "%d\n", aicr);
 }
 
 static ssize_t input_current_store(struct device *dev,
@@ -1437,7 +1437,7 @@ static ssize_t charger_log_level_show(struct device *dev,
 	struct mtk_charger *pinfo = dev->driver_data;
 
 	chr_err("%s: %d\n", __func__, pinfo->log_level);
-	return sprintf(buf, "%d\n", pinfo->log_level);
+	return snprintf(buf, PAGE_SIZE, "%d\n", pinfo->log_level);
 }
 
 static ssize_t charger_log_level_store(struct device *dev,
@@ -1473,7 +1473,7 @@ static ssize_t BatteryNotify_show(struct device *dev,
 
 	chr_info("%s: 0x%x\n", __func__, pinfo->notify_code);
 
-	return sprintf(buf, "%u\n", pinfo->notify_code);
+	return snprintf(buf, PAGE_SIZE, "%u\n", pinfo->notify_code);
 }
 
 static ssize_t BatteryNotify_store(struct device *dev,
@@ -1952,7 +1952,7 @@ static ssize_t enable_sc_show(
 	"[enable smartcharging] : %d\n",
 	info->sc.enable);
 
-	return sprintf(buf, "%d\n", info->sc.enable);
+	return snprintf(buf, PAGE_SIZE, "%d\n", info->sc.enable);
 }
 
 static ssize_t enable_sc_store(
@@ -2011,7 +2011,7 @@ static ssize_t sc_stime_show(
 	"[smartcharging stime] : %d\n",
 	info->sc.start_time);
 
-	return sprintf(buf, "%d\n", info->sc.start_time);
+	return snprintf(buf, PAGE_SIZE, "%d\n", info->sc.start_time);
 }
 
 static ssize_t sc_stime_store(
@@ -2075,7 +2075,7 @@ static ssize_t sc_etime_show(
 	"[smartcharging etime] : %d\n",
 	info->sc.end_time);
 
-	return sprintf(buf, "%d\n", info->sc.end_time);
+	return snprintf(buf, PAGE_SIZE, "%d\n", info->sc.end_time);
 }
 
 static ssize_t sc_etime_store(
@@ -2139,7 +2139,7 @@ static ssize_t sc_tuisoc_show(
 	"[smartcharging target uisoc] : %d\n",
 	info->sc.target_percentage);
 
-	return sprintf(buf, "%d\n", info->sc.target_percentage);
+	return snprintf(buf, PAGE_SIZE, "%d\n", info->sc.target_percentage);
 }
 
 static ssize_t sc_tuisoc_store(
@@ -2203,7 +2203,7 @@ static ssize_t sc_ibat_limit_show(
 	"[smartcharging ibat limit] : %d\n",
 	info->sc.current_limit);
 
-	return sprintf(buf, "%d\n", info->sc.current_limit);
+	return snprintf(buf, PAGE_SIZE, "%d\n", info->sc.current_limit);
 }
 
 static ssize_t sc_ibat_limit_store(
@@ -2265,7 +2265,7 @@ static ssize_t enable_power_path_show(
 		return -EINVAL;
 
 	charger_dev_is_powerpath_enabled(info->chg1_dev, &power_path_en);
-	return sprintf(buf, "%d\n", power_path_en);
+	return snprintf(buf, PAGE_SIZE, "%d\n", power_path_en);
 }
 
 static ssize_t enable_power_path_store(
