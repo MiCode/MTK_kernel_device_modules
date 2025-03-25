@@ -14592,6 +14592,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			};
 		};
 
+		mmdebug-vcp {
+			compatible = "mediatek,mmdebug-vcp";
+		};
+
 		mmdvfs_mux: mmdvfs-mux {
 			compatible = "mediatek,mtk-mmdvfs-mux";
 			#clock-cells = <1>;
