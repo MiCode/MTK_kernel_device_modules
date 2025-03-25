@@ -374,6 +374,8 @@ void ged_eb_dvfs_trace_dump(void)
 			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_T_GPU));
 		trace_tracing_mark_write(5566, "t_gpu_target",
 			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_TARGET_GPU));
+		trace_tracing_mark_write(5566, "async_opp_diff",
+			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ASYNC_OPP_DIFF));
 		if ((is_fdvfs_enable() & POLICY_MODE_V2)) {
 			trace_GPU_DVFS__Policy__Common__Check_Target(
 				mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_T_GPU_FPS_PID].addr),
@@ -381,13 +383,19 @@ void ged_eb_dvfs_trace_dump(void)
 				mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_T_GPU_FPS].addr),
 				mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_T_GPU_FPS_USE].addr),
 				mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_T_GPU_FPS_TARGET].addr));
+
+			// show LB loading for V2
+			tmp_multi = mtk_gpueb_sysram_multi_read(SYSRAM_GPU_LOADING);
+			eb_nor_cnt = tmp_multi.twoVar.var2;
+			if (eb_nor_cnt != pre_eb_nor_cnt)
+				ged_eb_dump_norm_loading();
+			pre_eb_nor_cnt = eb_nor_cnt;
 		}
 		trace_GPU_DVFS__EB_Loading_dump(
 			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_GPU_LOADING),
 			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_MCU_LOADING),
 			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ITER_LOADING),
 			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ITER_U_MCU_LOADING));
-
 	}
 
 
@@ -398,29 +406,15 @@ void ged_eb_dvfs_trace_dump(void)
 			trace_tracing_mark_write(5566, "async_perf_high",
 				mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_PERF_IMPROVE));
 		}
-		// show LB loading for V2
-		if ((is_fdvfs_enable() & POLICY_MODE_V2)) {
-			tmp_multi = mtk_gpueb_sysram_multi_read(SYSRAM_GPU_LOADING);
-			eb_nor_cnt = tmp_multi.twoVar.var2;
-			if (eb_nor_cnt != pre_eb_nor_cnt) {
-				ged_eb_dump_norm_loading();
-			}
-			pre_eb_nor_cnt = eb_nor_cnt;
-		}
 	}
-	if (eb_policy_state != GED_DVFS_FRAME_BASE_COMMIT) {
-		trace_tracing_mark_write(5566, "async_opp_diff",
-			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ASYNC_OPP_DIFF));
-	}
+
 	if (is_fdvfs_enable() & POLICY_MODE_V2) {
 		is_offscreen = mtk_gpueb_sysram_read(SYSRAM_GPU_IS_OFFSCREEN);
 		if (is_offscreen || pre_is_offscreen) {
 			trace_tracing_mark_write(5566, "is_offscreen", is_offscreen);
 			pre_is_offscreen = is_offscreen;
 		}
-	}
 
-	if (is_fdvfs_enable() & POLICY_MODE_V2) {
 		tmp_multi = mtk_gpueb_sysram_multi_read(fdvfs_v2_table[DCS_MAJOR_MIN].addr);
 		trace_GPU_DVFS__Policy__DCS_CONFIG(tmp_multi.twoVar.var1, tmp_multi.twoVar.var2);
 
