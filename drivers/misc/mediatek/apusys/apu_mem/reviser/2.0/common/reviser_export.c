@@ -29,6 +29,12 @@ static struct apu_mem_export_ops reviser_export_ops = {
 	.apu_mem_rvs_set_context      = reviser_set_context,
 	.apu_mem_rvs_get_resource_vlm = reviser_get_resource_vlm,
 	.apu_mem_rvs_get_pool_size    = reviser_get_pool_size,
+
+	.apu_mem_map_iova    = reviser_map_iova,
+	.apu_mem_unmap_iova  = reviser_unmap_iova,
+	.apu_mem_table_alloc = reviser_table_alloc,
+	.apu_mem_table_free  = reviser_table_free,
+	.apu_mem_ssid_get    = reviser_ssid_get,
 };
 
 /**
@@ -406,6 +412,34 @@ int reviser_unmap_mem(uint64_t session, uint32_t sid)
 out:
 	LOG_ERR("[Unmap][Fail] Mem (0x%llx/0x%x)\n", session, sid);
 	return ret;
+}
+
+int reviser_map_iova(uint32_t type, uint64_t session, uint64_t device_va,
+		uint64_t buf_size, uint64_t *eva, uint SLC_DC_EN)
+{
+	*eva = device_va;
+	return 0;
+}
+
+int reviser_unmap_iova(uint64_t session, uint64_t device_va, uint64_t buf_size)
+{
+	return 0;
+}
+
+int reviser_table_alloc(uint64_t session)
+{
+	return 0;
+}
+
+int reviser_table_free(uint64_t session)
+{
+	return 0;
+}
+
+int reviser_ssid_get(uint64_t session, uint32_t *ssid)
+{
+	*ssid = 0;
+	return 0;
 }
 
 int reviser_export_API_init(void)

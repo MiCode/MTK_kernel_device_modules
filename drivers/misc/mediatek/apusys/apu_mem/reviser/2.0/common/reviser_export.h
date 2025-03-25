@@ -23,5 +23,11 @@ int reviser_import_mem(uint64_t session, uint32_t sid);
 int reviser_unimport_mem(uint64_t session, uint32_t sid);
 int reviser_map_mem(uint64_t session, uint32_t sid, uint64_t *addr);
 int reviser_unmap_mem(uint64_t session, uint32_t sid);
+int reviser_map_iova(uint32_t type, uint64_t session, uint64_t device_va,
+		uint64_t buf_size, uint64_t *eva, uint SLC_DC_EN);
+int reviser_unmap_iova(uint64_t session, uint64_t device_va, uint64_t buf_size);
+int reviser_table_alloc(uint64_t session);
+int reviser_table_free(uint64_t session);
+int reviser_ssid_get(uint64_t session, uint32_t *ssid);
 int reviser_export_API_init(void);
 #endif
