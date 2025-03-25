@@ -45,6 +45,9 @@
 #include "thermal_interface.h"
 #include <linux/notifier.h>
 
+/* clk fmeter */
+#include "clk-fmeter.h"
+
 /*
  * DST copy -
  * [0]: 2048, [1]: 1024, [2]: 512, [3]: 256, [4]: 128, [5]: 64
@@ -943,6 +946,8 @@ static void comp_hang_handle(struct zram_engine_t *hwz)
 	spin_unlock(&hwz->comp_fifo_lock);
 }
 
+#define FM_ZRAM_SUB_CK			(7)
+#define MAX_TIMEOUT_AFTER_RESET_IN_MS	(100)
 /* Handler (with engine reset) when comp is not started successfully */
 static uint32_t comp_hang_handle_with_reset(struct zram_engine_t *hwz, struct hwfifo *fifo)
 {
@@ -952,6 +957,9 @@ static uint32_t comp_hang_handle_with_reset(struct zram_engine_t *hwz, struct hw
 	struct comp_pp_info *pp_info;
 	struct hwfifo *rfifo; /* reset fifo */
 	int i;
+#if IS_ENABLED(CONFIG_MTK_VM_DEBUG)
+	static bool warn_on_wait_idle_timeout = true;
+#endif
 
 	/* Increase the count to recover hang */
 	atomic_inc(&enc_recover_hang_count);
@@ -969,7 +977,22 @@ static uint32_t comp_hang_handle_with_reset(struct zram_engine_t *hwz, struct hw
 
 	/* Do warm reset & wait for idle */
 	engine_enc_reset(&hwz->ctrl);
+#if IS_ENABLED(CONFIG_MTK_VM_DEBUG)
+	if (engine_enc_wait_idle_timeout(&hwz->ctrl, MAX_TIMEOUT_AFTER_RESET_IN_MS)) {
+		/* Show warning & dump information once to avoid log flooding */
+		if (READ_ONCE(warn_on_wait_idle_timeout)) {
+			engine_get_reg_status(&hwz->ctrl, NULL);
+			engine_fatal_get_reg_status(&hwz->ctrl, NULL);
+			dump_fifo_idx(hwz, NULL, 0);
+			engine_gear_get_status(&hwz->gear_ctrl, NULL);
+			pr_info("%s: freq:%u\n", __func__, mt_get_fmeter_freq(FM_ZRAM_SUB_CK, CKGEN));
+			WARN_ON(1);
+			WRITE_ONCE(warn_on_wait_idle_timeout, false);
+		}
+	}
+#else
 	engine_enc_wait_idle(&hwz->ctrl);
+#endif
 
 	/* Acquire the range for post-processing */
 	start = fifo->pp_prev_end;
