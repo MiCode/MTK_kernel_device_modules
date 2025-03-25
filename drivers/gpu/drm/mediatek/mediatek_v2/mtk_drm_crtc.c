@@ -25892,6 +25892,9 @@ int mtk_crtc_enter_tui(struct drm_crtc *crtc)
 
 	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
 
+	mtk_vidle_hint_update(VIDLE_HINT_TUI_ON);
+	mtk_vidle_config_ff(false);
+
 	mtk_crtc->crtc_blank = true;
 	mtk_disp_esd_check_switch(crtc, 0);
 
@@ -26088,6 +26091,8 @@ int mtk_crtc_exit_tui(struct drm_crtc *crtc)
 	mtk_drm_set_idlemgr(crtc, 1, 0);
 
 	mtk_disp_esd_check_switch(crtc, 1);
+
+	mtk_vidle_hint_update(VIDLE_HINT_TUI_OFF);
 
 	DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 

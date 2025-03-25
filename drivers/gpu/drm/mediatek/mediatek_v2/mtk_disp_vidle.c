@@ -830,6 +830,12 @@ u32 mtk_vidle_hint_update(enum mtk_vidle_hint_type type)
 	case VIDLE_HINT_MULTI_CRTC_OFF:
 		vidle_data.hint.crtc_fuse--;
 		break;
+	case VIDLE_HINT_TUI_ON:
+		vidle_data.hint.tui_fuse++;
+		break;
+	case VIDLE_HINT_TUI_OFF:
+		vidle_data.hint.tui_fuse--;
+		break;
 	default:
 		break;
 	}
@@ -849,6 +855,7 @@ int mtk_vidle_hint_decision(const char *caller)
 	vidle_data.hint.doze_debounce -= (vidle_data.hint.doze_debounce > 0);
 
 	decision = !(vidle_data.hint.crtc_fuse |
+		     vidle_data.hint.tui_fuse |
 		     vidle_data.hint.doze_debounce |
 		     vidle_data.hint.mode_switch_debounce |
 		     vidle_data.hint.mtcmos_debounce);
