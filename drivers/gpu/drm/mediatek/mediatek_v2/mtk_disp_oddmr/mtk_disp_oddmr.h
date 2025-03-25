@@ -495,6 +495,14 @@ struct mtk_drm_dbi_share_info {
 	unsigned int table_addr_va;
 };
 
+struct mtk_drm_dmr_share_info {
+	unsigned int backup_reg_size;
+	unsigned int backup_reg_pa;
+	unsigned int backup_value_pa;
+	unsigned int dmr_hw_enable;
+	unsigned int panel_width;
+	unsigned int panel_height;
+};
 
 enum mtk_dbi_version {
 	MTK_DBI_V1,
@@ -786,4 +794,6 @@ int mtk_oddmr_get_dmr_enable(struct mtk_ddp_comp *comp);
 int mtk_oddmr_get_dbi_enable(struct mtk_ddp_comp *comp);
 unsigned int mtk_oddmr_get_dbi_hw_enable(struct mtk_drm_crtc *mtk_crtc);
 unsigned int mtk_oddmr_get_dbi_init_done(struct mtk_drm_crtc *mtk_crtc);
+bool mtk_drm_dmr_backup(struct drm_crtc *crtc, void *get_phys, void *get_virt,
+	unsigned int offset, unsigned int size);
 #endif

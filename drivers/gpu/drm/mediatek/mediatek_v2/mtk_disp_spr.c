@@ -1322,7 +1322,7 @@ unsigned int mtk_spr_get_format(struct mtk_drm_crtc *mtk_crtc)
 	struct mtk_ddp_comp *comp = NULL;
 	struct mtk_disp_spr *spr;
 	void __iomem *spr_baddr = NULL;
-	unsigned int spr_hw_enable, spr_hw_relay;
+	unsigned int spr_hw_enable = 0, spr_hw_relay;
 	unsigned int ret;
 
 	if (!(mtk_crtc->enabled)) {
@@ -2159,7 +2159,7 @@ bool mtk_drm_spr_backup(struct drm_crtc *crtc, void *get_phys,
 	unsigned int *reg_addr_backup;
 	unsigned int *reg_value_backup;
 	unsigned int i, j;
-	char *spr_scp_sh_mem;
+	char *spr_scp_sh_mem = NULL;
 	void __iomem *spr_baddr = NULL;
 	unsigned int spr_format;
 
@@ -2176,12 +2176,14 @@ bool mtk_drm_spr_backup(struct drm_crtc *crtc, void *get_phys,
 	//memory init
 	scp_get_mem_phys = get_phys;
 	scp_get_mem_virt = get_virt;
-	DDPMSG("%s: scp-aod:%d scp rsv mem:0x%llx(0x%llx)\n", __func__, SCP_AOD_MEM_ID,
+	DDPDBG("%s: scp-aod:%d scp rsv mem:0x%llx(0x%llx)\n", __func__, SCP_AOD_MEM_ID,
 		scp_get_mem_virt(SCP_AOD_MEM_ID), scp_get_mem_phys(SCP_AOD_MEM_ID));
 	spr_scp_sh_mem = (char *)scp_get_mem_virt(SCP_AOD_MEM_ID) + offset;
+	if (!spr_scp_sh_mem)
+		return false;
 	memset((void *)spr_scp_sh_mem, 0, size);
 
-	DDPMSG("%s: scp dmr rsv mem:0x%llx offset:0x%llx size:0x%llx\n",
+	DDPDBG("%s: scp dmr rsv mem:0x%s offset:0x%x size:0x%x\n",
 		__func__, spr_scp_sh_mem, offset, size);
 	share_info = (struct mtk_drm_spr_share_info *)spr_scp_sh_mem;
 	share_info->backup_reg_pa = scp_get_mem_phys(SCP_AOD_MEM_ID) + offset +
