@@ -12,15 +12,17 @@
 #include <linux/types.h>
 #include <linux/dma-direction.h>
 #include <linux/math64.h>
+#include <linux/trace_events.h>
+#include <linux/jiffies.h>
+#include <linux/bitmap.h>
+#include <media/videobuf2-v4l2.h>
+#include <media/v4l2-mem2mem.h>
+
 #include <linux/mtk_vcu_controls.h>
 #include "vcodec_ipi_msg.h"
 #if IS_ENABLED(CONFIG_VIDEO_MEDIATEK_VCU)
 #include "mtk_vcu.h"
 #endif
-#include <linux/trace_events.h>
-#include <linux/jiffies.h>
-#include <linux/bitmap.h>
-#include <media/videobuf2-v4l2.h>
 
 /* #define FPGA_PWRCLK_API_DISABLE */
 /* #define FPGA_INTERRUPT_API_DISABLE */
@@ -236,48 +238,38 @@ enum mtk_vcodec_debug_level {
 	VCODEC_DBG_L8 = 8,
 };
 
-#ifdef MTK_VCODEC_DEBUG_SUPPORT
 #define vcodec_trace_begin(fmt, args...) do { \
-			if (mtk_vcodec_trace_enable) { \
-				vcodec_trace("B|%d|"fmt"\n", current->tgid, ##args); \
-			} \
-		} while (0)
+		if (mtk_vcodec_trace_enable) { \
+			vcodec_trace("B|%d|"fmt"\n", current->tgid, ##args); \
+		} \
+	} while (0)
 
 #define vcodec_trace_begin_func() vcodec_trace_begin("%s", __func__)
 
 #define vcodec_trace_end() do { \
-			if (mtk_vcodec_trace_enable) { \
-				vcodec_trace("E\n"); \
-			} \
-		} while (0)
+		if (mtk_vcodec_trace_enable) { \
+			vcodec_trace("E\n"); \
+		} \
+	} while (0)
 
 #define vcodec_trace_count(name, count) do { \
-			if (mtk_vcodec_trace_enable) { \
-				vcodec_trace("C|%d|%s|%d\n", current->tgid, name, count); \
-			} \
-		} while (0)
+		if (mtk_vcodec_trace_enable) { \
+			vcodec_trace("C|%d|%s|%d\n", current->tgid, name, count); \
+		} \
+	} while (0)
 
 #define vcodec_trace_count_fmt(count, fmt, args...) do { \
-				if (mtk_vcodec_trace_enable) { \
-					vcodec_trace("C|%d|"fmt"|%d\n", current->tgid, ##args, count); \
-				} \
-			} while (0)
+		if (mtk_vcodec_trace_enable) { \
+			vcodec_trace("C|%d|"fmt"|%d\n", current->tgid, ##args, count); \
+		} \
+	} while (0)
 
 #define vcodec_trace_tid_count(tid, count, fmt, args...) do { \
-				if (mtk_vcodec_trace_enable) { \
-					vcodec_trace("C|%d|"fmt"|%d\n", tid, ##args, count); \
-				} \
-			} while (0)
+		if (mtk_vcodec_trace_enable) { \
+			vcodec_trace("C|%d|"fmt"|%d\n", tid, ##args, count); \
+		} \
+	} while (0)
 
-void vcodec_trace(const char *fmt, ...);
-#else
-#define vcodec_trace_begin(fmt, args...)
-#define vcodec_trace_begin_func()
-#define vcodec_trace_end()
-#define vcodec_trace_count(name, count)
-#define vcodec_trace_count_fmt(count, fmt, args...)
-#define vcodec_trace_tid_count(tid, count, fmt, args...)
-#endif
 
 #if defined(DEBUG)
 
@@ -414,6 +406,8 @@ int mtk_vcodec_set_state_from(struct mtk_vcodec_ctx *ctx, int target, int from);
 int mtk_vcodec_set_state(struct mtk_vcodec_ctx *ctx, int target);
 int mtk_vcodec_set_state_except(struct mtk_vcodec_ctx *ctx, int target, int except_state);
 
+void vcodec_trace(const char *fmt, ...);
+void mtk_vcodec_register_trace(void *func);
 void mtk_vcodec_in_out_trace_count(struct mtk_vcodec_ctx *ctx, unsigned int buf_type, bool in_kernel, int add_diff);
 
 void __iomem *mtk_vcodec_get_dec_reg_addr(struct mtk_vcodec_ctx *data,

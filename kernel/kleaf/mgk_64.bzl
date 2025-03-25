@@ -909,6 +909,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/media/platform/mtk-vcodec:mtk-vcodec-dec-v2".format(kernel_version),
     "//kernel_device_modules-{}/drivers/media/platform/mtk-vcodec:mtk-vcodec-enc-v1".format(kernel_version),
     "//kernel_device_modules-{}/drivers/media/platform/mtk-vcodec:mtk-vcodec-enc-v2".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/media/platform/mtk-vcodec:mtk-vcodec-trace".format(kernel_version),
     "//kernel_device_modules-{}/drivers/media/platform/mtk-vcu:mtk-vcu".format(kernel_version),
     "//kernel_device_modules-{}/drivers/memory/mediatek:emi".format(kernel_version),
     "//kernel_device_modules-{}/drivers/memory/mediatek:emi-fake-eng".format(kernel_version),
@@ -3184,6 +3185,7 @@ def get_overlay_modules_list():
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/media/platform/mtk-vcodec:mtk-vcodec-dec-v1".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/media/platform/mtk-vcodec:mtk-vcodec-enc-v1".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/media/platform/mtk-vcodec:mtk-vcodec-common".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/media/platform/mtk-vcodec:mtk-vcodec-trace".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/media/platform/mtk-vcu:mtk-vcu".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/soc/mediatek:mtk-mmdvfs-v3".format(kernel_version))
         mgk_64_device_modules.remove("drivers/misc/mediatek/qos/mtk_qos.ko")

@@ -7,7 +7,6 @@
 
 #include <linux/module.h>
 #include <linux/dma-resv.h>
-#include <media/v4l2-mem2mem.h>
 #include <media/videobuf2-dma-contig.h>
 #include <linux/dma-heap.h>
 #include <linux/dma-direction.h>
@@ -38,6 +37,7 @@ char mtk_vdec_tmp_prop[LOG_PROPERTY_SIZE];
 char mtk_venc_tmp_prop[LOG_PROPERTY_SIZE];
 
 static struct mtk_vcodec_dev *dev_ptr[MTK_INST_MAX];
+static void (*vcodec_trace_puts_ptr)(char *);
 
 
 void mtk_vcodec_set_dev(struct mtk_vcodec_dev *dev, enum mtk_instance_type type)
@@ -347,8 +347,13 @@ EXPORT_SYMBOL_GPL(mtk_vcodec_set_state);
 int venc_disable_hw_break;
 EXPORT_SYMBOL_GPL(venc_disable_hw_break);
 
+void mtk_vcodec_register_trace(void *func)
+{
+	vcodec_trace_puts_ptr = func;
+}
+EXPORT_SYMBOL(mtk_vcodec_register_trace);
+
 /* VCODEC FTRACE */
-#ifdef MTK_VCODEC_DEBUG_SUPPORT
 void vcodec_trace(const char *fmt, ...)
 {
 	char buf[256] = {0};
@@ -364,14 +369,17 @@ void vcodec_trace(const char *fmt, ...)
 	else if (unlikely(len == 256))
 		buf[255] = '\0';
 
+#ifdef MTK_VCODEC_DEBUG_SUPPORT
 	trace_puts(buf);
+#else
+	if (vcodec_trace_puts_ptr)
+		vcodec_trace_puts_ptr(buf);
+#endif
 }
 EXPORT_SYMBOL(vcodec_trace);
-#endif
 
 void mtk_vcodec_in_out_trace_count(struct mtk_vcodec_ctx *ctx, unsigned int buf_type, bool in_kernel, int add_diff)
 {
-#ifdef MTK_VCODEC_DEBUG_SUPPORT
 	bool is_input = V4L2_TYPE_IS_OUTPUT(buf_type);
 	int trace_count;
 
@@ -389,7 +397,6 @@ void mtk_vcodec_in_out_trace_count(struct mtk_vcodec_ctx *ctx, unsigned int buf_
 	vcodec_trace_tid_count(ctx->trace_count_tgid, trace_count,
 		"%s-%d-%s_buf-in_%s", ctx->type == MTK_INST_DECODER ? "VDEC" : "VENC", ctx->id,
 		is_input ? "in" : "out", in_kernel ? "kernel" : "driver");
-#endif
 }
 EXPORT_SYMBOL_GPL(mtk_vcodec_in_out_trace_count);
 

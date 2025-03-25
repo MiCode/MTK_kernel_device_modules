@@ -10,6 +10,7 @@
 #include <aee.h>
 #include <linux/fdtable.h>
 #include <linux/platform_device.h>
+#include <media/videobuf2-v4l2.h>
 
 #if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE)
 #define CMDQ_SEC_SUPPORT
