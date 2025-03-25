@@ -20851,6 +20851,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		compatible = "mediatek,battery manager";
 		gauge1 = <&mtk_gauge>;
 		charger = <&mt6379_chg>;
+		gauge-supply = <&mtk_gauge>;
 	};
 
 	lk_charger: lk-charger {
