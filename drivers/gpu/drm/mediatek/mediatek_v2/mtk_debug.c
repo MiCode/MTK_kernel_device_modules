@@ -3036,6 +3036,80 @@ void mtk_drm_del_cb_data(struct cmdq_cb_data data, unsigned int crtc_id)
 	DDPINFO("%s -\n", __func__);
 }
 
+static hrt_notify_callback hrt_notify_cb;
+struct mutex mbrain_lock;
+
+int mtk_mbrain2disp_register_hrt_cb(hrt_notify_callback func)
+{
+//	struct mtk_drm_private *priv;
+	int ret = 0;
+
+//	if (IS_ERR_OR_NULL(drm_dev)) {
+//		DDPMSG("%s, invalid drm dev\n", __func__);
+//		return -EINVAL;
+//	}
+
+//	priv = drm_dev->dev_private;
+//	if (priv && mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MBRAIN))
+//		return -1;
+
+	mutex_lock(&mbrain_lock);
+	if (!hrt_notify_cb) {
+		hrt_notify_cb = func;
+		DDPMSG("mbrain register\n");
+	}
+	mutex_unlock(&mbrain_lock);
+
+	return ret;
+}
+EXPORT_SYMBOL(mtk_mbrain2disp_register_hrt_cb);
+
+int mtk_mbrain2disp_unregister_hrt_cb(hrt_notify_callback func)
+{
+//	struct mtk_drm_private *priv;
+	int ret = 0;
+
+//	if (IS_ERR_OR_NULL(drm_dev)) {
+//		DDPMSG("%s, invalid drm dev\n", __func__);
+//		return -EINVAL;
+//	}
+
+//	priv = drm_dev->dev_private;
+//	if (priv && mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MBRAIN))
+//		return -1;
+
+	mutex_lock(&mbrain_lock);
+	if (hrt_notify_cb) {
+		hrt_notify_cb = NULL;
+		DDPMSG("mbrain unregister\n");
+	}
+	mutex_unlock(&mbrain_lock);
+
+	return ret;
+}
+EXPORT_SYMBOL(mtk_mbrain2disp_unregister_hrt_cb);
+
+void mtk_disp2mbrain_notify(int threshold)
+{
+//	struct mtk_drm_private *priv;
+
+//	if (IS_ERR_OR_NULL(drm_dev)) {
+//		DDPMSG("%s, invalid drm dev\n", __func__);
+//		return -EINVAL;
+//	}
+
+//	priv = drm_dev->dev_private;
+//	if (priv && mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MBRAIN))
+//		return -1;
+
+	DDPMSG("%s+\n", __func__);
+	mutex_lock(&mbrain_lock);
+	if (hrt_notify_cb)
+		hrt_notify_cb(threshold);
+	mutex_unlock(&mbrain_lock);
+	DDPMSG("%s-\n", __func__);
+}
+
 #if IS_ENABLED(CONFIG_MTK_DISP_DEBUG)
 static bool is_comp_addr(uint32_t addr, struct mtk_ddp_comp *comp)
 {
@@ -7135,6 +7209,7 @@ void disp_dbg_init(struct drm_device *dev)
 
 	drm_dev = dev;
 	init_completion(&cwb_cmp);
+	mutex_init(&mbrain_lock);
 #if IS_ENABLED(POLLING_RDMA_OUTPUT_LINE_ENABLE)
 	priv = drm_dev->dev_private;
 	if (IS_ERR_OR_NULL(priv)) {
@@ -7175,6 +7250,7 @@ void disp_dbg_deinit(void)
 #endif
 	if (debug_buffer)
 		vfree(debug_buffer);
+	mutex_destroy(&mbrain_lock);
 #if IS_ENABLED(CONFIG_DEBUG_FS)
 	debugfs_remove(mtkfb_dbgfs);
 #endif

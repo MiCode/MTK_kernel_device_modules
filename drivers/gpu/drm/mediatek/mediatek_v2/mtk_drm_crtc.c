@@ -9271,6 +9271,33 @@ static int _mtk_crtc_cmdq_smi_info_dump(void *data)
 	return 0;
 }
 
+static int mtk_crtc_mbrain_notify(void *data)
+{
+	struct mtk_drm_crtc *mtk_crtc = (struct mtk_drm_crtc *) data;
+	struct drm_crtc *crtc = &mtk_crtc->base;
+	struct sched_param param = {.sched_priority = 94 };
+	int ret;
+
+	sched_setscheduler(current, SCHED_RR, &param);
+
+	atomic_set(&mtk_crtc->mbrain_notify_event, 0);
+	while (1) {
+		ret = wait_event_interruptible(mtk_crtc->mbrain_notify_wq,
+			atomic_read(&mtk_crtc->mbrain_notify_event));
+		if (ret < 0)
+			DDPMSG("wait %s fail, ret=%d\n", __func__, ret);
+
+		if (mtk_crtc->mbrain_notify_threshold != -1)
+			mtk_disp2mbrain_notify(mtk_crtc->mbrain_notify_threshold);
+		atomic_set(&mtk_crtc->mbrain_notify_event, 0);
+
+		if (kthread_should_stop())
+			break;
+	}
+
+	return 0;
+}
+
 static void mtk_crtc_cmdq_timeout_cb(struct cmdq_cb_data data)
 {
 	struct drm_crtc *crtc = data.data;
@@ -23801,6 +23828,17 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 		kthread_create(_mtk_crtc_cmdq_smi_info_dump,
 				mtk_crtc, "smi_info_dump_thread");
 	wake_up_process(mtk_crtc->smi_info_dump_thread);
+
+	if ((drm_crtc_index(&mtk_crtc->base) == 0)
+//		&& mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MBRAIN)
+		) {
+		init_waitqueue_head(&mtk_crtc->mbrain_notify_wq);
+		atomic_set(&(mtk_crtc->mbrain_notify_event), 0);
+		mtk_crtc->mbrain_notify_thread =
+			kthread_create(mtk_crtc_mbrain_notify,
+					mtk_crtc, "mbrain_notify_thread");
+		wake_up_process(mtk_crtc->mbrain_notify_thread);
+	}
 
 	if (output_comp && mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_DUAL_TE))

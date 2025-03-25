@@ -4155,6 +4155,14 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 				wake_up_interruptible(&mtk_crtc->smi_info_dump_wq);
 			}
 
+			if (aee_cooldown &&
+				mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MBRAIN)) {
+				mtk_crtc->last_aee_trigger_ts = aee_now_ts;
+				mtk_crtc->mbrain_notify_threshold = 0;
+				atomic_set(&mtk_crtc->mbrain_notify_event, 1);
+				wake_up_interruptible(&mtk_crtc->mbrain_notify_wq);
+			}
+
 			/* could dump SMI register while dsi not attached to CRTC */
 			if (aee_cooldown &&
 			    (!dsi->driver_data->smi_dbg_disable &&

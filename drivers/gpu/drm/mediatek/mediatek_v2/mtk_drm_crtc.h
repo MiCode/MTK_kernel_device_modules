@@ -1282,6 +1282,11 @@ struct mtk_drm_crtc {
 	struct task_struct *smi_info_dump_thread;
 	atomic_t smi_info_dump_event;
 
+	wait_queue_head_t mbrain_notify_wq;
+	struct task_struct *mbrain_notify_thread;
+	atomic_t mbrain_notify_event;
+	int mbrain_notify_threshold;
+
 	/*capture write back ctx*/
 	struct mutex cwb_lock;
 	struct mtk_cwb_info *cwb_info;

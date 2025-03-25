@@ -72,6 +72,8 @@ struct disp_rect {
 	u32 width;
 	u32 height;
 };
+typedef void (*hrt_notify_callback)(int threshold);
+
 void disp_dbg_probe(void);
 void disp_dbg_init(struct drm_device *drm_dev);
 void disp_dbg_deinit(void);
@@ -108,6 +110,10 @@ int mtkfb_force_partial_height(void);
 
 int mtk_ddic_dsi_send_cmd(struct mtk_ddic_dsi_msg *cmd_msg, bool blocking);
 int mtk_ddic_dsi_read_cmd(struct mtk_ddic_dsi_msg *cmd_msg);
+int mtk_mbrain2disp_register_hrt_cb(hrt_notify_callback func);
+int mtk_mbrain2disp_unregister_hrt_cb(hrt_notify_callback func);
+void mtk_disp2mbrain_notify(int threshold);
+
 bool mtk_disp_get_logger_enable(void);
 bool mtk_disp_get_dump_prop_enable(void);
 #endif
