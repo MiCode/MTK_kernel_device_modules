@@ -57,6 +57,7 @@ static u8 *fmeter_type;
 
 static int dpsw_thr;
 static bool met_freerun;
+static bool mmdvfs_pm_suspend;
 
 static u8 user_count;
 static struct mmdvfs_debug_user *user;
@@ -76,8 +77,8 @@ int mmdvfs_debug_force_step(const u8 idx, const s8 opp)
 {
 	int ret, last;
 
-	if (idx >= step_count) {
-		MMDVFS_ERR("invalide idx:%hhu opp:%hhd", idx, opp);
+	if (idx >= step_count || mmdvfs_pm_suspend) {
+		MMDVFS_ERR("invalid idx:%hhu opp:%hhd pm_suspend:%d", idx, opp, mmdvfs_pm_suspend);
 		return -EINVAL;
 	}
 
@@ -108,6 +109,11 @@ EXPORT_SYMBOL_GPL(mmdvfs_debug_force_step);
 static int mmdvfs_debug_vote_impl(const u8 idx, const s8 opp)
 {
 	int last, ret;
+
+	if (mmdvfs_pm_suspend) {
+		MMDVFS_ERR("idx:%hhu opp:%hhd pm_suspend:%d", idx, opp, mmdvfs_pm_suspend);
+		return -EINVAL;
+	}
 
 	last = user[idx].vote_opp;
 
@@ -640,18 +646,23 @@ static int mmdvfs_debug_pm_notifier(struct notifier_block *notifier, unsigned lo
 	switch (pm_event) {
 	case PM_SUSPEND_PREPARE:
 		MMDVFS_DBG("PM_SUSPEND_PREPARE in");
-		for (i = 0; i < step_count; i++) {
-			if (unlikely(user[i].force_opp != OPP_NAG || user[i].vote_opp != OPP_NAG))
-				MMDVFS_DBG("user i:%d id:%hhu name:%16s force:%hhd vote:%hhd not release at suspend",
-					i, user[i].id, user[i].name, user[i].force_opp, user[i].vote_opp);
-			if (unlikely(user[i].force_opp != OPP_NAG))
+		for (i = 0; i < user_count; i++)
+			if (unlikely(user[i].force_opp != OPP_NAG)) {
+				MMDVFS_DBG("user i:%d id:%hhu name:%8s force:%hhd not release before suspend",
+					i, user[i].id, user[i].name, user[i].force_opp);
 				mmdvfs_debug_force_step(user[i].rc, OPP_NAG);
-			if (unlikely(user[i].vote_opp != OPP_NAG))
+			}
+		for (i = 0; i < user_count; i++)
+			if (unlikely(user[i].vote_opp != OPP_NAG)) {
+				MMDVFS_DBG("user i:%d id:%hhu name:%8s vote:%hhd not release before suspend",
+					i, user[i].id, user[i].name, user[i].vote_opp);
 				mmdvfs_debug_vote_impl(i, OPP_NAG);
-		}
+			}
+		mmdvfs_pm_suspend = true;
 		break;
 	case PM_POST_SUSPEND:
 		MMDVFS_DBG("PM_POST_SUSPEND in");
+		mmdvfs_pm_suspend = false;
 		break;
 	}
 	return NOTIFY_DONE;
@@ -788,7 +799,7 @@ static inline int mmdvfs_debug_parse_user(struct device *dev, struct mmdvfs_debu
 		user[i].force_opp = OPP_NAG;
 		user[i].vote_opp = OPP_NAG;
 
-		MMDVFS_DBG("user:%p count:%hhu i:%2d id:%2hhu rc:%hhu name:%16s clk:%p force:%hhd vote:%hhd",
+		MMDVFS_DBG("user:%p count:%hhu i:%2d id:%2hhu rc:%hhu name:%8s clk:%p force:%hhd vote:%hhd",
 			*_user, *count, i, user[i].id, user[i].rc, user[i].name, user[i].clk, user[i].force_opp, user[i].vote_opp);
 
 		i += 1;
