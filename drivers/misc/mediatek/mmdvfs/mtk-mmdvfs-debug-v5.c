@@ -582,7 +582,7 @@ static int mmdvfs_debug_mbrain_usr_get_data(void *address, uint32_t size)
 		val = readl(SRAM_XPC_VAL(usr, j));
 		sec = readl(SRAM_XPC_SEC(usr, j));
 		usec = MEM_DEC_USEC(val);
-		opp = mmdvfs_get_level_to_opp(mmdvfs_user_get_rc(usr), MEM_DEC_LVL(val));
+		opp = mmdvfs_get_level_to_opp(mmdvfs_user_get_rc(i), MEM_DEC_LVL(val));
 
 		for (j = 0; j < ARRAY_SIZE(record[i].opp_duration); j++) {
 			record[i].opp_duration[j] = readq(SRAM_USR_TOTAL(usr, j));
