@@ -4296,23 +4296,23 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 				"gid_48_to_51,gid_52_to_55,gid_56_to_59,gid_60_to_63,",
 				"gid_64_to_67,gid_68_to_71,gid_72_to_75,gid_76_to_79,";
 			node-96 = "SSPM_SLBC_CACHE_QUOTA",
-				"gid0,cpu,smmu,smmu_h,gpu,npu,npu_adl_dc,cam,img,mae,dmr,od,dbi,",
-				"vdec_frame,vdec_ube,venc_ec,aov,md,adsp,dummy,";
+				"gid0,cpu,smmu,smmu_h,gpu,npu,cam,img,mae,dmr,dbi,",
+				"vdec_frame,vdec_ube,md,adsp,dummy,gpu_l,gpu_h,";
 			node-97 = "SSPM_SLBC_CACHE_HIT",
-				"gid0,cpu,smmu,smmu_h,gpu,npu,npu_adl_dc,cam,img,mae,dmr,od,dbi,",
-				"vdec_frame,vdec_ube,venc_ec,aov,md,adsp,dummy,";
+				"gid0,cpu,smmu,smmu_h,gpu,npu,cam,img,mae,dmr,dbi,",
+				"vdec_frame,vdec_ube,md,adsp,dummy,gpu_l,gpu_h,";
 			node-98 = "SSPM_SLBC_CACHE_TOTAL",
-				"gid0,cpu,smmu,smmu_h,gpu,npu,npu_adl_dc,cam,img,mae,dmr,od,dbi,",
-				"vdec_frame,vdec_ube,venc_ec,aov,md,adsp,dummy,";
+				"gid0,cpu,smmu,smmu_h,gpu,npu,cam,img,mae,dmr,dbi,",
+				"vdec_frame,vdec_ube,md,adsp,dummy,gpu_l,gpu_h,";
 			node-99 = "SSPM_SLBC_CACHE_STATUS",
-				"pd,cpu,smmu,smmu_h,gpu,npu,npu_adl_dc,cam,img,mae,dmr,od,dbi,",
-				"vdec_frame,vdec_ube,venc_ec,aov,md,adsp,dummy,force,ceil,window_cg,dcc_count";
+				"pd,cpu,smmu,smmu_h,gpu,npu,cam,img,mae,dmr,dbi,",
+				"vdec_frame,vdec_ube,md,adsp,dummy,force,ceil,window_cg,dcc_count,cmd_ver,policy_ver";
 			node-100 = "SSPM_SLBC_CACHE_SIZE",
-				"pd,cpu,smmu,smmu_h,gpu,npu,npu_adl_dc,cam,img,mae,dmr,od,dbi,",
-				"vdec_frame,vdec_ube,venc_ec,aov,md,adsp,dummy,total,valid";
+				"pd,cpu,smmu,smmu_h,gpu,npu,cam,img,mae,dmr,dbi,",
+				"vdec_frame,vdec_ube,md,adsp,dummy,total,valid";
 			node-101 = "SSPM_SLBC_CACHE_WAY",
-				"pd,cpu,smmu,smmu_h,gpu,npu,npu_adl_dc,cam,img,mae,dmr,od,dbi,",
-				"vdec_frame,vdec_ube,venc_ec,aov,md,adsp,dummy,total,buf_unused";
+				"pd,cpu,smmu,smmu_h,gpu,npu,cam,img,mae,dmr,dbi,",
+				"vdec_frame,vdec_ube,md,adsp,dummy,total,buf_unused";
 			node-102 = "SSPM_VCORE_DVFS__DDR_DETAIL",
 				"EMI_MON,QOS_B,HR_BW,SW_R2,",
 				"SW_R3,SW_R6,SW_R9,SW_R10,MD,MD2,ADSP,MAXBW_RECORD";
