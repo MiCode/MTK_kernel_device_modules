@@ -5078,6 +5078,9 @@
 		};
 		scp_dvfs {
 			compatible = "mediatek,scp-dvfs";
+			/*scp-dvfs-disable;*/
+			scp-dvfs-disable = <0>;
+			scp-dvfs-flag = "enable";  /*turn on/off SCP DVFS */
 			clocks = <&vlp_cksys_clk CLK_VLP_CK_SCP_SEL>,
 				<&topckgen_clk CLK_TOP_TCK_26M_MX9>,
 				<&topckgen_clk CLK_TOP_UNIVPLL_D4>, /* 624M */
@@ -5117,15 +5120,24 @@
 			fmeter-clksys = <&vlp_cksys_clk>;
 			ulposc-clksys = <&vlp_cksys_clk>;
 			scp-clk-ctrl = <&scp_clk_ctrl>;
+			fmeter-args-u2-cali =
+			/* fm_id	fm_type */
+			< 36		1>; /* OSC2_SYNC_CK (i.e. D2) */
+			fmeter-args-u2-result =
+			/* fm_id	fm_type */
+			< 36		1>; /* OSC2_CK */
 			scp-clk-hw-ver = "v1";
 			ulposc-cali-ver = "v2";
+			ulposc-cali-alg-ver = <2>;
 			ulposc-cali-num = <1>;
 			ulposc-cali-target = <400>;
+			fmeter-id-ulposc2 = <36>;
+			secure-access = "enable"; /* enable: need to secure access scp */
 			ulposc-cali-config =
 				/* con0		con1	con2 */
 				<0x005ea940	0x2900	0x41>;
 			clk-dbg-ver = "v2";
-			/* ccf-fmeter-support; */
+			ccf-fmeter-support;
 		};
 		mtkfb: mtkfb@0 {
 			compatible = "mediatek,mtkfb";
