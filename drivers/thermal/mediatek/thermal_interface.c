@@ -59,6 +59,7 @@ struct _SCRN_THRM_PACKAGE {
 
 static DEFINE_MUTEX(scrn_nl_enable_lock);
 static DEFINE_MUTEX(scrn_changed_lock);
+static DEFINE_MUTEX(thermal_hint_lock);
 static struct _SCRN_THRM_PACKAGE SCRN_Status;
 static int scrn_status_changed;
 static pid_t scrn_nl_pid;
@@ -143,8 +144,8 @@ struct work_struct boot_thermal_work;
 
 #define TZINFO_NUM 7
 #define LOG_THERMAL_DURATION msecs_to_jiffies(10000)
-static struct timer_list log_thermal_timer;
-static struct workqueue_struct *log_thermal_wq;
+static struct timer_list thrmal_task_timer;
+static struct workqueue_struct *thrmal_task_wq;
 struct work_struct log_thermal_work;
 struct TzInfo tzInfos[TZINFO_NUM] = {
 	{"soc_max", NULL, -274000},
@@ -156,6 +157,15 @@ struct TzInfo tzInfos[TZINFO_NUM] = {
 	{"camera0", NULL, -274000},
 
 };
+
+#define HINT_DURATION_LONG       5000
+#define HINT_DURATION_SHORT      1000
+#define LOG_DURATION            10000
+#define HINT_HIGH_SOC_TEMP     105000
+#define KERNEL_HINT_EN_C_FREQ  600000
+#define KERNEL_HINT_DIS_C_FREQ 800000
+#define SOC_TEMP_TOLARANCE       3000
+#define KERNEL_HINT_CNT             2
 
 int mtk_thermal_hint_notify_register(const char *source, struct notifier_block *nb)
 {
@@ -2124,6 +2134,49 @@ static ssize_t lvts_info3_show(struct kobject *kobj,
 		return len;
 }
 
+static void thermal_hint_notify(unsigned int source, unsigned int enable)
+{
+	static int a_cmd, cm_cmd, icc_cmd;
+	int hint;
+
+	mutex_lock(&thermal_hint_lock);
+	hint = tm_data.thermal_hint;
+	if (enable)
+		hint |= 0x1 << source;
+	else
+		hint &= ~(0x1 << source);
+
+	if (hint != tm_data.thermal_hint) {
+		tm_data.thermal_hint = hint;
+		if (cm_thermal_hint && cm_cmd != hint) {
+			cm_thermal_hint(hint);
+			cm_cmd = hint;
+			pr_info("%s: notify thermal hint to cm %d\n", __func__, cm_cmd);
+		}
+
+		if (hint != 0)
+			hint = 1;
+
+		if (hint != a_cmd) {
+			thermal_hint_callback(hint);
+			a_cmd = hint;
+			pr_info("%s: notify thermal hint to thcb %d\n", __func__, a_cmd);
+		}
+
+		if ((icc_thermal) && icc_cmd != hint) {
+			if (hint)
+				icc_set_bw(icc_thermal, 0, 0xFFFFFFFF);
+			else
+				icc_set_bw(icc_thermal, 0, 0x0);
+
+			icc_cmd = hint;
+			pr_info("%s: notify thermal hint to all icc %d\n", __func__, icc_cmd);
+		}
+
+	}
+	mutex_unlock(&thermal_hint_lock);
+}
+
 static ssize_t thermal_hint_show(struct kobject *kobj,
 	struct kobj_attribute *attr, char *buf)
 {
@@ -2139,26 +2192,11 @@ static ssize_t thermal_hint_store(struct kobject *kobj,
 	struct kobj_attribute *attr, const char *buf, size_t count)
 {
 	char cmd[20];
-	static int enable;
-	static int icc_enable;
+	unsigned int val;
 
-	if (sscanf(buf, "%12s %10u", cmd, &enable) == 2) {
+	if (sscanf(buf, "%12s %10u", cmd, &val) == 2) {
 		if (strncmp(cmd, "thermal_hint", 12) == 0) {
-			if (enable != tm_data.thermal_hint) {
-				if (cm_thermal_hint)
-					cm_thermal_hint(enable);
-
-				thermal_hint_callback(enable);
-				tm_data.thermal_hint = enable;
-			}
-			if ((icc_thermal) && icc_enable != enable) {
-				if (enable)
-					icc_set_bw(icc_thermal, 0, 0xFFFFFFFF);
-				else
-					icc_set_bw(icc_thermal, 0, 0x0);
-
-				icc_enable = enable;
-			}
+			thermal_hint_notify(0, val);
 			return count;
 		}
 	}
@@ -2743,20 +2781,20 @@ static void initialize_tzinfos(void)
 	for (int i = 0; i < TZINFO_NUM; ++i) {
 		tzInfos[i].tz = thermal_zone_get_zone_by_name(tzInfos[i].name);
 		if (IS_ERR_OR_NULL(tzInfos[i].tz))
-			pr_err("Failed to get thermal zone for %s\n", tzInfos[i].name);
+			pr_info("Failed to get thermal zone for %s\n", tzInfos[i].name);
 	}
 }
 
-static void __used log_thermal_release(struct work_struct *work)
+static void __used dump_thermal_log(void)
 {
 	char read_buf[128] = {0};
-	int LL_min_opp, BL_min_opp, B_min_opp;
-	int LL_limit_freq, BL_limit_freq, B_limit_freq;
-	int LL_cur_freq, BL_cur_freq, B_cur_freq;
-	int LL_max_temp, BL_max_temp, B_max_temp;
-	int gpu_max_temp, gpu_limit_freq, gpu_cur_freq;
-	int apu_max_temp, apu_limit_freq, apu_cur_freq;
-	int cpu_ttj = 0, gpu_ttj = 0, apu_ttj = 0, target_tpcb = 0;
+	int cm0, cm1, cm2;
+	int cl0, cl1, cl2;
+	int cc0, cc1, cc2;
+	int cmt0, cmt1, cmt2;
+	int gmt, gl, gc;
+	int amt, al, ac;
+	int cpu_ttj = 0, gpu_ttj = 0, apu_ttj = 0, target_tpcb = 0, skin = 0;
 	int thermal_hint = 0, dram_data_rate = 0;
 	int ret;
 
@@ -2777,53 +2815,159 @@ static void __used log_thermal_release(struct work_struct *work)
 	get_target_tpcb_info(read_buf);
 	ret = kstrtoint(read_buf, 10, &target_tpcb);
 	if (ret != 0)
-		pr_err("Error: target_tpcb sccanf error, ret=%d\n", ret);
+		pr_info("Error: target_tpcb sccanf error, ret=%d\n", ret);
 
-	pr_info("[thermal]soc/nr/lte/Vtskin/tpcb/conn/chg/cam/c_ttj/g_ttj/a_ttj=%d/%d/%d/%d/%d/%d/%d/%d/%d/%d/%d\n",
-		tzInfos[0].temp, tzInfos[1].temp, tzInfos[2].temp, tzInfos[3].temp, target_tpcb,
+	skin = therm_intf_read_csram_s32(VTSKIN);
+	pr_info("[thermal]soc/nr/lte/skin/tpcb/conn/chg/cam/c_ttj/g_ttj/a_ttj=%d/%d/%d/%d/%d/%d/%d/%d/%d/%d/%d\n",
+		tzInfos[0].temp, tzInfos[1].temp, tzInfos[2].temp, skin, target_tpcb,
 		tzInfos[4].temp, tzInfos[5].temp, tzInfos[6].temp,
 		cpu_ttj, gpu_ttj, apu_ttj);
 
 	get_cpu_info(read_buf);
 	ret = sscanf(read_buf, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
-		&LL_min_opp, &BL_min_opp, &B_min_opp,
-		&LL_limit_freq, &BL_limit_freq, &B_limit_freq,
-		&LL_cur_freq, &BL_cur_freq, &B_cur_freq,
-		&LL_max_temp, &BL_max_temp, &B_max_temp);
+		&cm0, &cm1, &cm2,
+		&cl0, &cl1, &cl2,
+		&cc0, &cc1, &cc2,
+		&cmt0, &cmt1, &cmt2);
 	if (ret != 12)
-		pr_err("Error: sccanf error, ret=%d\n", ret);
+		pr_info("Error: cpu sccanf error, ret=%d\n", ret);
 
 	get_gpu_info(read_buf);
 	ret = sscanf(read_buf, "%d,%d,%d",
-		&gpu_max_temp, &gpu_limit_freq, &gpu_cur_freq);
+		&gmt, &gl, &gc);
 	if (ret != 3)
-		pr_err("Error: sccanf error, ret=%d\n", ret);
+		pr_info("Error: gpu sccanf error, ret=%d\n", ret);
 
 	get_apu_info(read_buf);
 	ret = sscanf(read_buf, "%d,%d,%d",
-		&apu_max_temp, &apu_limit_freq, &apu_cur_freq);
+		&amt, &al, &ac);
 	if (ret != 3)
-		pr_err("Error: sccanf error, ret=%d\n", ret);
+		pr_info("Error: apu sccanf error, ret=%d\n", ret);
 
 	get_dram_data_rate(read_buf);
 	ret = kstrtoint(read_buf, 10, &dram_data_rate);
 	if (ret != 0)
-		pr_err("Error: dram_data_rate sccanf error, ret=%d\n", ret);
+		pr_info("Error: ddr sccanf error, ret=%d\n", ret);
 
-	pr_info("[thermal][(c0_l/c1_l/c2_l)(c0_c/c1_c/c2_c)(c_i)][(g_l)(g_c)][(a_l)(a_c)][(th)][(ddr)]=[(%d/%d/%d)(%d/%d/%d)()][(%d)(%d)][(%d)(%d)][(%d)][(%d)]\n",
-		LL_limit_freq/1000, BL_limit_freq/1000, B_limit_freq/1000,
-		LL_cur_freq/1000, BL_cur_freq/1000, B_cur_freq/1000,
-		gpu_limit_freq/1000, gpu_cur_freq/1000,
-		apu_limit_freq, apu_cur_freq, thermal_hint, dram_data_rate);
-
-	mod_timer(&log_thermal_timer, jiffies + LOG_THERMAL_DURATION);
+	pr_info("[thermal][C(l)(c)][G(l)(c)][A(l)(c)][TH][D]=[(%d/%d/%d)(%d/%d/%d)][(%d)(%d)][(%d)(%d)][%d][%d]\n",
+		cl0/1000, cl1/1000, cl2/1000, cc0/1000, cc1/1000, cc2/1000, gl/1000, gc/1000,
+		al, ac, thermal_hint, dram_data_rate);
 }
 
-static void log_thermal_handler(struct timer_list *t)
+static void __used kernel_thermal_hint(unsigned int *next_polling_duration)
+{
+	int max_temp, trip_temp, val1, i, print = 0;
+	int max_val, min_val, cl[3], cc[3];
+	static int th_rasing_cnt, th_falling_cnt, thermal_hint;
+
+	*next_polling_duration = HINT_DURATION_LONG;
+	max_temp = THERMAL_TEMP_INVALID;
+	for (i = 0; i < 8; i++) {
+		if (tm_data.is_cputcm)
+			val1 = therm_intf_read_cputcm_s32(CPU_TEMP_TCM_OFFSET + 4 * i);
+		else
+			val1 = therm_intf_read_csram_s32(CPU_TEMP_OFFSET + 4 * i);
+
+		if (val1 < -100000 || val1 > 150000)
+			continue;
+
+		if (max_temp == THERMAL_TEMP_INVALID)
+			max_temp = val1;
+
+		if (val1 > max_temp)
+			max_temp = val1;
+	}
+
+	for (i = 0; i < 3; i++) {
+		if (tm_data.is_cputcm) {
+			cl[i] = therm_intf_read_cputcm(CPU_LIMIT_FREQ_TCM_OFFSET + 4 * i);
+			cc[i] = therm_intf_read_cputcm(CPU_CUR_FREQ_TCM_OFFSET + 4 * i);
+		} else {
+			cl[i] = therm_intf_read_csram(CPU_LIMIT_FREQ_OFFSET + 4 * i);
+			cc[i] = therm_intf_read_csram(CPU_CUR_FREQ_OFFSET + 4 * i);
+		}
+
+		if (cl[i] < 1 || cc[i] < 1 || cl[i] > 5000000 || cc[i] > 5000000)
+			continue;
+
+		if (max_val == 0)
+			max_val = cl[i];
+		if (min_val == 0)
+			min_val = cl[i];
+
+		if (cl[i] > max_val)
+			max_val = cl[i];
+		if (cl[i] < min_val)
+			min_val = cl[i];
+	}
+
+	if (tm_data.tj_info.catm_cpu_ttj <= 116000 && tm_data.tj_info.catm_cpu_ttj >= 40000)
+		trip_temp = tm_data.tj_info.catm_cpu_ttj;
+	else
+		trip_temp = HINT_HIGH_SOC_TEMP;
+
+	if (!thermal_hint) {
+		if (max_temp > trip_temp + SOC_TEMP_TOLARANCE && max_val < KERNEL_HINT_EN_C_FREQ && max_val != 0) {
+			print = 1;
+			th_rasing_cnt ++;
+			if (th_rasing_cnt >= KERNEL_HINT_CNT) {
+				thermal_hint = 1;
+				th_rasing_cnt = 0;
+				thermal_hint_notify(1, 1);
+			}
+		} else if (th_rasing_cnt) {
+			print = 1;
+			th_rasing_cnt = 0;
+		}
+	} else {
+		if (max_temp < trip_temp - SOC_TEMP_TOLARANCE && min_val >= KERNEL_HINT_DIS_C_FREQ) {
+			th_falling_cnt ++;
+			if (th_falling_cnt >= KERNEL_HINT_CNT) {
+				print = 1;
+				thermal_hint = 0;
+				th_falling_cnt = 0;
+				thermal_hint_notify(1, 0);
+			}
+		} else
+			th_falling_cnt = 0;
+	}
+
+	if (max_temp > trip_temp || thermal_hint) {
+		print = 1;
+		*next_polling_duration = HINT_DURATION_SHORT;
+	}
+
+	if (print)
+		pr_info("[T(M/t)=%d/%d][(CL)(CC)(Mm)=(%d/%d/%d)(%d/%d/%d)(%d/%d)][kHT=%d r/f=%d/%d][d:%d]\n",
+			max_temp, trip_temp, cl[0]/1000, cl[1]/1000, cl[2]/1000, cc[0]/1000, cc[1]/1000, cc[2]/1000,
+			max_val/1000, min_val/1000,  thermal_hint, th_rasing_cnt, th_falling_cnt,
+			*next_polling_duration);
+}
+
+static void __used thermal_task(struct work_struct *work)
+{
+	static int log_remain = LOG_DURATION, hint_remain = HINT_DURATION_LONG, next_duration = HINT_DURATION_LONG;
+
+	log_remain = log_remain - next_duration;
+	hint_remain = hint_remain - next_duration;
+
+	if (log_remain <= 0) {
+		dump_thermal_log();
+		log_remain = LOG_DURATION;
+	}
+
+	if (hint_remain <= 0)
+		kernel_thermal_hint(&hint_remain);
+
+	next_duration = (log_remain > hint_remain) ? hint_remain : log_remain;
+	mod_timer(&thrmal_task_timer, jiffies + msecs_to_jiffies(next_duration));
+}
+
+static void thermal_task_handler(struct timer_list *t)
 {
 	int ret = 0;
 
-	ret = queue_work(log_thermal_wq, &log_thermal_work);
+	ret = queue_work(thrmal_task_wq, &log_thermal_work);
 	if (!ret)
 		pr_notice("Error: %s (%d)\n", __func__, ret);
 }
@@ -2976,24 +3120,24 @@ static int therm_intf_probe(struct platform_device *pdev)
 		mod_timer(&boot_thermal_timer, jiffies + BOOT_THERMAL_DURATION);
 	}
 
-	log_thermal_wq = create_singlethread_workqueue("log_thermal");
-	if (!log_thermal_wq) {
-		pr_err("Failed to create workqueue\n");
+	thrmal_task_wq = create_singlethread_workqueue("thermal_task");
+	if (!thrmal_task_wq) {
+		pr_info("Failed to create workqueue\n");
 		return -ENOMEM;
 	}
-	INIT_WORK(&log_thermal_work, log_thermal_release);
-	timer_setup(&log_thermal_timer, log_thermal_handler, 0);
-	mod_timer(&log_thermal_timer, jiffies + LOG_THERMAL_DURATION);
+	INIT_WORK(&log_thermal_work, thermal_task);
+	timer_setup(&thrmal_task_timer, thermal_task_handler, 0);
+	mod_timer(&thrmal_task_timer, jiffies + HINT_DURATION_LONG);
 
 	return 0;
 }
 
 static void therm_intf_remove(struct platform_device *pdev)
 {
-	del_timer_sync(&log_thermal_timer);
-	if (log_thermal_wq){
-		flush_workqueue(log_thermal_wq);
-		destroy_workqueue(log_thermal_wq);
+	del_timer_sync(&thrmal_task_timer);
+	if (thrmal_task_wq){
+		flush_workqueue(thrmal_task_wq);
+		destroy_workqueue(thrmal_task_wq);
 	}
 
 	if (icc_thermal)
