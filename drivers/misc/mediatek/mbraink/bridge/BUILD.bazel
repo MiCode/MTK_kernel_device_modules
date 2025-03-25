@@ -41,6 +41,7 @@ define_mgk_ddk_ko(
                   "mbraink_bridge_gps.c",
                   "mbraink_bridge_wifi.c",
                   "mbraink_bridge_camera.c",
+                  "mbraink_bridge_hrt.c",
             ],
         },
     },

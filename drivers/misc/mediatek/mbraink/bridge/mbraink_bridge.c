@@ -12,6 +12,7 @@ static int mbraink_bridge_init(void)
 	mbraink_bridge_gps_init();
 	mbraink_bridge_wifi_init();
 	mbraink_bridge_camera_init();
+	mbraink_bridge_hrt_init();
 
 	return 0;
 }
@@ -21,6 +22,7 @@ static void mbraink_bridge_exit(void)
 	mbraink_bridge_wifi_deinit();
 	mbraink_bridge_gps_deinit();
 	mbraink_bridge_camera_deinit();
+	mbraink_bridge_hrt_deinit();
 }
 
 module_init(mbraink_bridge_init);

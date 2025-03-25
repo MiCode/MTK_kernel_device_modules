@@ -9,5 +9,6 @@
 #include "mbraink_bridge_gps.h"
 #include "mbraink_bridge_wifi.h"
 #include "mbraink_bridge_camera.h"
+#include "mbraink_bridge_hrt.h"
 
 #endif /*end of MBRAINK_BRIDGE_H*/

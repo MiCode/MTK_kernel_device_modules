@@ -16,5 +16,6 @@
 #include "mbraink_v6993_camera.h"
 #include "mbraink_v6993_pmu.h"
 #include "mbraink_v6993_touch.h"
+#include "mbraink_v6993_hrt.h"
 
 #endif /*end of MBRAINK_V6993_H*/

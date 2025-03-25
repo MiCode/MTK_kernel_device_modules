@@ -34,6 +34,7 @@ define_mgk_ddk_ko(
                   "mbraink_v6993_camera.c",
                   "mbraink_v6993_pmu.c",
                   "mbraink_v6993_touch.c",
+                  "mbraink_v6993_hrt.c",
                   "mbraink_sys_res_plat.c",
                   "mbraink_sys_res_mbrain_plat.c",
                   "mbraink_sys_res.c",
@@ -83,6 +84,7 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/misc/mediatek/eccci:ccci_md_all".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/smap:smap-mt6993".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/performance/fpsgo_v8:mtk_fpsgo_v8".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:mediatek-drm".format(kernel_version),
     ],
     header_deps = [
         "//kernel_device_modules-{}/drivers/misc/mediatek/mbraink:mtk_mbraink_h".format(kernel_version),
