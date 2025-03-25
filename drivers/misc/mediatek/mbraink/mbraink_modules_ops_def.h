@@ -55,6 +55,7 @@ struct mbraink_power_ops {
 	int (*getLpmStateInfo)(struct mbraink_lpm_state_data *mbraink_lpm_state);
 	int (*getSpmiGlitchInfo)(struct mbraink_spmi_glitch_struct_data *mbraink_spmi_data);
 	int (*getDvfsrcInfo)(struct mbraink_dvfsrc_struct_data *mbraink_dvfsrc_data);
+	int (*getMmdvfsUserInfo)(struct mbraink_mmdvfs_user_info *mmdvfs_user_info);
 };
 int register_mbraink_power_ops(struct mbraink_power_ops *ops);
 int unregister_mbraink_power_ops(void);

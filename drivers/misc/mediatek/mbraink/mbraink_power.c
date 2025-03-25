@@ -27,6 +27,7 @@ int mbraink_power_init(void)
 	_mbraink_power_ops.suspendprepare = NULL;
 	_mbraink_power_ops.postsuspend = NULL;
 	_mbraink_power_ops.getMmdvfsInfo = NULL;
+	_mbraink_power_ops.getMmdvfsUserInfo = NULL;
 	_mbraink_power_ops.getPowerThrottleHwInfo = NULL;
 	_mbraink_power_ops.getLpmStateInfo = NULL;
 	_mbraink_power_ops.getSpmiGlitchInfo = NULL;
@@ -52,6 +53,7 @@ int mbraink_power_deinit(void)
 	_mbraink_power_ops.suspendprepare = NULL;
 	_mbraink_power_ops.postsuspend = NULL;
 	_mbraink_power_ops.getMmdvfsInfo = NULL;
+	_mbraink_power_ops.getMmdvfsUserInfo = NULL;
 	_mbraink_power_ops.getPowerThrottleHwInfo = NULL;
 	_mbraink_power_ops.getLpmStateInfo = NULL;
 	_mbraink_power_ops.getSpmiGlitchInfo = NULL;
@@ -82,6 +84,7 @@ int register_mbraink_power_ops(struct mbraink_power_ops *ops)
 	_mbraink_power_ops.suspendprepare = ops->suspendprepare;
 	_mbraink_power_ops.postsuspend = ops->postsuspend;
 	_mbraink_power_ops.getMmdvfsInfo = ops->getMmdvfsInfo;
+	_mbraink_power_ops.getMmdvfsUserInfo = ops->getMmdvfsUserInfo;
 	_mbraink_power_ops.getPowerThrottleHwInfo = ops->getPowerThrottleHwInfo;
 	_mbraink_power_ops.getLpmStateInfo = ops->getLpmStateInfo;
 	_mbraink_power_ops.getSpmiGlitchInfo = ops->getSpmiGlitchInfo;
@@ -110,6 +113,7 @@ int unregister_mbraink_power_ops(void)
 	_mbraink_power_ops.suspendprepare = NULL;
 	_mbraink_power_ops.postsuspend = NULL;
 	_mbraink_power_ops.getMmdvfsInfo = NULL;
+	_mbraink_power_ops.getMmdvfsUserInfo = NULL;
 	_mbraink_power_ops.getPowerThrottleHwInfo = NULL;
 	_mbraink_power_ops.getLpmStateInfo = NULL;
 	_mbraink_power_ops.getSpmiGlitchInfo = NULL;
@@ -360,6 +364,23 @@ int mbraink_power_get_mmdvfs_info(struct mbraink_mmdvfs_info *mmdvfsInfo)
 		ret = _mbraink_power_ops.getMmdvfsInfo(mmdvfsInfo);
 	else
 		pr_info("%s: Do not support ioctl get power mmdvfs info query.\n", __func__);
+
+	return ret;
+}
+
+int mbraink_power_get_mmdvfs_user_info(struct mbraink_mmdvfs_user_info *mmdvfs_user_info)
+{
+	int ret = 0;
+
+	if (mmdvfs_user_info == NULL) {
+		pr_info("%s: power mmdvfs user is null.\n", __func__);
+		return -1;
+	}
+
+	if (_mbraink_power_ops.getMmdvfsUserInfo)
+		ret = _mbraink_power_ops.getMmdvfsUserInfo(mmdvfs_user_info);
+	else
+		pr_info("%s: Do not support ioctl get power mmdvfs user info query.\n", __func__);
 
 	return ret;
 }

@@ -807,6 +807,7 @@ static struct mbraink_power_ops mbraink_v6989_power_ops = {
 	.getUvloInfo = mbraink_v6989_power_get_uvlo_info,
 	.getPmicVoltageInfo = mbraink_v6989_power_get_pmic_voltage_info,
 	.getMmdvfsInfo = NULL,
+	.getMmdvfsUserInfo = NULL,
 	.getPowerThrottleHwInfo = mbraink_v6989_power_get_power_throttle_hw_info,
 };
 

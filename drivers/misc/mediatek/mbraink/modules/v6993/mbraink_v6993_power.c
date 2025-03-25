@@ -852,7 +852,6 @@ static void mbraink_v6993_power_post_suspend(void)
 	}
 }
 
-#if (MBRAINK_LANDING_FEATURE_CHECK == 0)
 static int mbraink_v6993_power_get_mmdfvs_info(struct mbraink_mmdvfs_info *mmdvfsInfo)
 {
 	unsigned int mmdvfs_data_size = 0;
@@ -884,13 +883,41 @@ static int mbraink_v6993_power_get_mmdfvs_info(struct mbraink_mmdvfs_info *mmdvf
 
 	return ret;
 }
-#else
-static int mbraink_v6993_power_get_mmdfvs_info(struct mbraink_mmdvfs_info *mmdvfsInfo)
+
+static int mbraink_v6993_power_get_mmdvfs_user_info(struct mbraink_mmdvfs_user_info *mmdvfs_user_info)
 {
-	pr_info("%s failed to get : need review\n", __func__);
-	return -1;
+	unsigned int mmdvfs_data_size = 0;
+	int ret = 0;
+	struct mmdvfs_res_mbrain_debug_ops *res_mbrain_debug_ops = NULL;
+
+	if (mmdvfs_user_info == NULL)
+		return -1;
+
+	res_mbrain_debug_ops = get_mmdvfs_mbrain_usr_dbg_ops();
+
+	if (res_mbrain_debug_ops &&
+		res_mbrain_debug_ops->get_length &&
+		res_mbrain_debug_ops->get_data) {
+
+		mmdvfs_data_size = res_mbrain_debug_ops->get_length();
+		if (mmdvfs_data_size <= MMDVFS_USER_TOTAL_SZ) {
+			mmdvfs_user_info->size = mmdvfs_data_size;
+			ret = res_mbrain_debug_ops->get_data(
+				mmdvfs_user_info->mmdvfs_user_data,
+				mmdvfs_user_info->size
+			);
+			pr_info("mmdvfs opp, size: %d", mmdvfs_user_info->size);
+		} else {
+			pr_info("incorrect size: %d for mmdvfs opp", mmdvfs_user_info->size);
+			ret = -1;
+		}
+	} else {
+		pr_info("failed to get mmdvfs opp");
+		ret = -1;
+	}
+
+	return ret;
 }
-#endif
 
 void pt2mbrain_hint_low_battery_volt_throttle(struct lbat_mbrain lbat_mbrain)
 {
@@ -1247,6 +1274,7 @@ static struct mbraink_power_ops mbraink_v6993_power_ops = {
 	.suspendprepare = mbraink_v6993_power_suspend_prepare,
 	.postsuspend = mbraink_v6993_power_post_suspend,
 	.getMmdvfsInfo = mbraink_v6993_power_get_mmdfvs_info,
+	.getMmdvfsUserInfo = mbraink_v6993_power_get_mmdvfs_user_info,
 	.getPowerThrottleHwInfo = mbraink_v6993_power_get_power_throttle_hw_info,
 	.getLpmStateInfo = mbraink_v6993_power_get_lpmstate_info,
 	.getSpmiGlitchInfo = mbraink_v6993_power_get_spmi_glitch_info,

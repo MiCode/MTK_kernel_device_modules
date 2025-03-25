@@ -1056,6 +1056,7 @@ static struct mbraink_power_ops mbraink_v6991_power_ops = {
 	.suspendprepare = mbraink_v6991_power_suspend_prepare,
 	.postsuspend = mbraink_v6991_power_post_suspend,
 	.getMmdvfsInfo = mbraink_v6991_power_get_mmdfvs_info,
+	.getMmdvfsUserInfo = NULL,
 	.getPowerThrottleHwInfo = mbraink_v6991_power_get_power_throttle_hw_info,
 	.getLpmStateInfo = mbraink_v6991_power_get_lpmstate_info,
 	.getSpmiGlitchInfo = mbraink_v6991_power_get_spmi_glitch_info,

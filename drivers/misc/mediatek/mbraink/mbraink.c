@@ -331,7 +331,6 @@ static long handleMmdvfsInfo(unsigned long arg, void *mbraink_data)
 	struct mbraink_mmdvfs_info *mmdvfsInfo =
 		(struct mbraink_mmdvfs_info *)(mbraink_data);
 
-	pr_notice("mbraink %s\n", __func__);
 	memset(mmdvfsInfo,
 		0,
 		sizeof(struct mbraink_mmdvfs_info));
@@ -342,6 +341,28 @@ static long handleMmdvfsInfo(unsigned long arg, void *mbraink_data)
 				mmdvfsInfo,
 				sizeof(struct mbraink_mmdvfs_info))) {
 			pr_notice("Copy mmdvfs info to UserSpace error!\n");
+			ret = -EPERM;
+		}
+	}
+	return ret;
+}
+
+static long handleMmdvfsUserInfo(unsigned long arg, void *mbraink_data)
+{
+	long ret = 0;
+	struct mbraink_mmdvfs_user_info *mmdvfs_user_info =
+		(struct mbraink_mmdvfs_user_info *)(mbraink_data);
+
+	memset(mmdvfs_user_info,
+		0,
+		sizeof(struct mbraink_mmdvfs_user_info));
+
+	ret = mbraink_power_get_mmdvfs_user_info(mmdvfs_user_info);
+	if (ret == 0) {
+		if (copy_to_user((struct mbraink_mmdvfs_user_info *)arg,
+				mmdvfs_user_info,
+				sizeof(struct mbraink_mmdvfs_user_info))) {
+			pr_notice("Copy mmdvfs user info to UserSpace error!\n");
 			ret = -EPERM;
 		}
 	}
@@ -1891,6 +1912,15 @@ static long mbraink_ioctl(struct file *filp,
 		if (!mbraink_data)
 			goto End;
 		ret = handleMemoryEmiInfo(arg, mbraink_data);
+		kfree(mbraink_data);
+		break;
+	}
+	case RO_MMDVFS_USER_INFO:
+	{
+		mbraink_data = kmalloc(sizeof(struct mbraink_mmdvfs_user_info), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handleMmdvfsUserInfo(arg, mbraink_data);
 		kfree(mbraink_data);
 		break;
 	}

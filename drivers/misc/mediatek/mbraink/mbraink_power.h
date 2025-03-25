@@ -41,6 +41,8 @@ void mbraink_power_post_suspend(void);
 
 int mbraink_power_get_mmdvfs_info(struct mbraink_mmdvfs_info *mmdvfsInfo);
 
+int mbraink_power_get_mmdvfs_user_info(struct mbraink_mmdvfs_user_info *mmdvfs_user_info);
+
 int mbraink_power_get_power_throttle_hw_info(struct mbraink_power_throttle_hw_data *power_throttle_hw_data);
 
 int mbraink_power_get_lpmstate_info(struct mbraink_lpm_state_data *lpmStateInfo);

@@ -87,6 +87,7 @@
 
 #define MAX_POWER_SPM_TBL_SEC_SZ (928)
 #define MAX_POWER_MMDVFS_SEC_SZ (264)
+#define MAX_POWER_MMDVFS_USER_SEC_SZ (1032)
 
 #define SPM_L2_MAX_RES_NUM (116)
 #define SPM_L2_SZ (1888)
@@ -470,6 +471,11 @@ struct mbraink_gnss2mbr_mcu_data {
 struct mbraink_mmdvfs_info {
 	unsigned short size;
 	unsigned char mmdvfs_data[MAX_POWER_MMDVFS_SEC_SZ];
+};
+
+struct mbraink_mmdvfs_user_info {
+	unsigned short size;
+	unsigned char mmdvfs_user_data[MAX_POWER_MMDVFS_USER_SEC_SZ];
 };
 
 struct mbraink_wifi2mbr_lls_rate_struct {
