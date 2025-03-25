@@ -9,6 +9,7 @@
 enum scp_audio_ipi_id {
 	SCP_AUDIO_IPI_WDT = 0,
 	SCP_AUDIO_IPI_TEST1 = 1,
+	SCP_AUDIO_DBG_CMDS = 2,
 	SCP_AUDIO_IPI_AUDIO = 9,
 	SCP_AUDIO_NR_IPI,
 };

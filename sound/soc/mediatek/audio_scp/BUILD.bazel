@@ -1,0 +1,46 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "srcs",
+    srcs = glob([
+          "**/Makefile",
+          "**/Kbuild",
+          "**/*.c",
+          "**/*.h",
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "mtk-scp-audiocommon",
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/scp/include:scp_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/sound/soc/mediatek/common:ddk_public_headers".format(kernel_version),
+    ],
+    srcs = [
+        "audio_mbox.c",
+        "scp_audio_ipi.c",
+        "scp_audio_fs.c",
+    ],
+    includes = [
+        ".",
+    ],
+    hdrs = [
+        "audio_mbox.h",
+        "scp_audio_ipi.h",
+        "scp_audio_fs.h",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-mbox".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/scp/rv:scp".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/adsp:adsp".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/audio_ipi:audio_ipi".format(kernel_version),
+    ],
+)

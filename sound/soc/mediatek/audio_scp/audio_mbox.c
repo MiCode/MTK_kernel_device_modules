@@ -6,22 +6,28 @@
 #include <linux/of.h>
 #include <linux/io.h>
 #include <linux/module.h>
+#include <linux/debugfs.h>
 #include <linux/interrupt.h>
 #include <linux/miscdevice.h>
 #include <linux/soc/mediatek/mtk-mbox.h>
-#include "scp_ipi_pin.h"
+#include "scp_audio_fs.h"
 #include "audio_mbox.h"
+
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
+#include "scp_ipi_pin.h"
+#endif
 
 static u32 audio_mbox_pin_buf[AUDIO_MBOX_RECV_SLOT_SIZE];
 static bool init_done;
 
 struct mtk_mbox_info audio_mbox_table[AUDIO_TOTAL_MBOX] = {
 	{ .opt = MBOX_OPT_QUEUE_DIR, .is64d = true},
+	{ .opt = MBOX_OPT_QUEUE_DIR, .is64d = true}
 };
 
 static struct mtk_mbox_pin_send audio_mbox_pin_send[AUDIO_TOTAL_SEND_PIN] = {
 	{
-		.mbox = AUDIO_MBOX_CH_ID,
+		.mbox = AUDIO_MBOX0_CH_ID,
 		.offset = AUDIO_MBOX_SEND_SLOT_OFFSET,
 		.msg_size = AUDIO_MBOX_SEND_SLOT_SIZE,
 		.pin_index = 0,
@@ -30,7 +36,7 @@ static struct mtk_mbox_pin_send audio_mbox_pin_send[AUDIO_TOTAL_SEND_PIN] = {
 
 static struct mtk_mbox_pin_recv audio_mbox_pin_recv[AUDIO_TOTAL_RECV_PIN] = {
 	{
-		.mbox = AUDIO_MBOX_CH_ID,
+		.mbox = AUDIO_MBOX1_CH_ID,
 		.offset = AUDIO_MBOX_RECV_SLOT_OFFSET,
 		.msg_size = AUDIO_MBOX_RECV_SLOT_SIZE,
 		.pin_index = 0,
@@ -50,79 +56,6 @@ struct mtk_mbox_device audio_mboxdev = {
 	.post_cb = (mbox_rx_cb_t)scp_clr_spm_reg,
 };
 
-/*==============================================================================
- *                     ioctl
- *==============================================================================
- */
-#define AUDIO_DSP_IOC_MAGIC 'a'
-#define AUDIO_DSP_IOCTL_ADSP_QUERY_STATUS \
-	_IOR(AUDIO_DSP_IOC_MAGIC, 1, unsigned int)
-
-union ioctl_param {
-	struct {
-		int16_t flag;
-		uint16_t cid;
-	} cmd1;
-};
-
-/* file operations */
-static long adspscp_driver_ioctl(
-	struct file *filp, unsigned int cmd, unsigned long arg)
-{
-	int ret = 0;
-	union ioctl_param t;
-
-	switch (cmd) {
-	case AUDIO_DSP_IOCTL_ADSP_QUERY_STATUS: {
-		if (copy_from_user(&t, (void *)arg, sizeof(t))) {
-			ret = -EFAULT;
-			break;
-		}
-
-		t.cmd1.flag = is_scp_ready(SCP_A_ID);
-		pr_info("%s(), AUDIO_DSP_IOCTL_ADSP_QUERY_STATUS: %d\n", __func__, t.cmd1.flag);
-
-		if (copy_to_user((void __user *)arg, &t, sizeof(t))) {
-			ret = -EFAULT;
-			break;
-		}
-		break;
-	}
-	default:
-		pr_debug("%s(), invalid ioctl cmd\n", __func__);
-	}
-
-	if (ret < 0)
-		pr_info("%s(), ioctl error %d\n", __func__, ret);
-
-	return ret;
-}
-
-static long adspscp_driver_compat_ioctl(
-	struct file *file, unsigned int cmd, unsigned long arg)
-{
-	if (!file->f_op || !file->f_op->unlocked_ioctl) {
-		pr_notice("op null\n");
-		return -ENOTTY;
-	}
-	return file->f_op->unlocked_ioctl(file, cmd, arg);
-}
-
-const struct file_operations adspscp_file_ops = {
-	.owner = THIS_MODULE,
-	.open = simple_open,
-	.unlocked_ioctl = adspscp_driver_ioctl,
-#if IS_ENABLED(CONFIG_COMPAT)
-	.compat_ioctl   = adspscp_driver_compat_ioctl,
-#endif
-};
-
-static struct miscdevice mdev = {
-	.minor = MISC_DYNAMIC_MINOR,
-	.name = "adsp_in_scp",
-	.fops = &adspscp_file_ops,
-
-};
 
 bool is_audio_mbox_init_done(void)
 {
@@ -187,28 +120,78 @@ EXIT:
 	return ret;
 }
 
+static bool audio_mbox_table_init(struct mtk_mbox_device *mbdev, struct platform_device *pdev)
+{
+	struct mtk_mbox_pin_send *pin_send = NULL;
+	struct mtk_mbox_pin_recv *pin_recv = NULL;
+
+	/* Get mbox count */
+	of_property_read_u32(pdev->dev.of_node, "mbox-num", &mbdev->count);
+	if (mbdev->count <= 0 || mbdev->count > AUDIO_TOTAL_MBOX) {
+		pr_warn("[audio_mbox] mbox-num %d invalid\n", mbdev->count);
+		return false;
+	}
+
+	/* Setup send and receive table when mbox count is 1, which is true for legacy platform.
+	 * Use the same mbox channel for send and receive.
+	 */
+	if (mbdev->count == 1) {
+		// send table
+		pin_send = mbdev->pin_send_table;
+		pin_send[0].mbox = AUDIO_MBOX0_CH_ID;
+		pin_send[0].offset = AUDIO_MBOX_SEND_SLOT_OFFSET_1CH;
+		pin_send[0].msg_size = AUDIO_MBOX_SLOT_SIZE_1CH;
+		// recv table
+		pin_recv = mbdev->pin_recv_table;
+		pin_recv[0].mbox = AUDIO_MBOX0_CH_ID;
+		pin_recv[0].offset = AUDIO_MBOX_RECV_SLOT_OFFSET_1CH;
+		pin_recv[0].msg_size = AUDIO_MBOX_SLOT_SIZE_1CH;
+	}
+	return true;
+}
+
 static int scp_audio_mbox_dev_probe(struct platform_device *pdev)
 {
 	int ret = -1;
-	int mbox = AUDIO_MBOX_CH_ID;
+	int idx;
 	struct mtk_mbox_device *mbdev = &audio_mboxdev;
 
-	ret = mtk_mbox_probe(pdev, mbdev, mbox);
-	if (ret) {
-		pr_warn("%s, mtk_mbox_probe mboxdev fail ret(%d)", __func__, ret);
-		goto EXIT;
+	/* Setup mbox info for different set of mbox channels */
+	if (!audio_mbox_table_init(&audio_mboxdev, pdev)) {
+		pr_warn("%s, audio_mbox_table_init fail\n", __func__);
+		return -ENODEV;
 	}
 
-	enable_irq_wake(mbdev->info_table[mbox].irq_num);
-	mutex_init(&audio_mbox_pin_send[0].mutex_send);
+	for (idx = 0; idx < mbdev->count; idx++) {
+		ret = mtk_mbox_probe(pdev, mbdev, idx);
+		if (ret) {
+			pr_warn("%s, mtk_mbox_probe mboxdev id %d fail ret(%d)", __func__, idx, ret);
+			goto EXIT;
+		}
 
-	ret = misc_register(&mdev);
+		ret = enable_irq_wake(mbdev->info_table[idx].irq_num);
+		if (ret) {
+			pr_warn("%s, enable_irq_wake id %d fail ret (%d)", __func__, idx, ret);
+			goto EXIT;
+		}
+	}
+
+	for (idx = 0; idx < mbdev->send_count; idx++)
+		mutex_init(&audio_mbox_pin_send[idx].mutex_send);
+
+
+	/* register misc driver for ioctl and debug */
+	ret = misc_register(&scp_audio_fs_mdev);
 	if (ret)
 		pr_info("%s, cannot register misc device\n", __func__);
 
-	ret = device_create_file(mdev.this_device, &dev_attr_audio_ipi_test);
+	ret = device_create_file(scp_audio_fs_mdev.this_device, &dev_attr_audio_ipi_test);
 	if (ret)
 		pr_info("%s, cannot create dev_attr_audio_ipi_test\n", __func__);
+
+#if IS_ENABLED(CONFIG_DEBUG_FS)
+	debugfs_create_file("audiodsp0", S_IFREG | 0644, NULL, NULL, &scp_audio_debug_ops);
+#endif
 
 	init_done = true;
 EXIT:
@@ -217,14 +200,14 @@ EXIT:
 }
 
 static const struct of_device_id scp_audio_mbox_dt_match[] = {
-	{ .compatible = "mediatek,scp_audio_mbox", },
+	{ .compatible = "mediatek,scp-audio-mbox", },
 	{},
 };
 MODULE_DEVICE_TABLE(of, scp_audio_mbox_dt_match);
 
 static struct platform_driver scp_audio_mbox_driver = {
 	.driver = {
-		   .name = "scp_audio_mbox",
+		   .name = "scp-audio-mbox",
 		   .owner = THIS_MODULE,
 		   .of_match_table = scp_audio_mbox_dt_match,
 	},
