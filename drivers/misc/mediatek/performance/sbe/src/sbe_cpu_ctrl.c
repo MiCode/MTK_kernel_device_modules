@@ -420,8 +420,12 @@ static void __sbe_set_per_task_cap(struct sbe_render_info *thr, int min_cap, int
 			cur_max = uclamp_eff_value(p, UCLAMP_MAX);
 			if (cur_min != attr.sched_util_min || cur_max != attr.sched_util_max) {
 				attr.sched_policy = p->policy;
+
 				if (rt_policy(p->policy))
 					attr.sched_priority = p->rt_priority;
+				else
+					attr.sched_priority = 0;
+
 				ret = sched_setattr_nocheck(p, &attr);
 			}
 			put_task_struct(p);
