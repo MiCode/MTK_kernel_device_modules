@@ -69,7 +69,6 @@ ddk_headers(
 )
 
 mobicore_local_defines = [
-	"DEBUG",
 	"MTK_ADAPTED",
 ]
 
