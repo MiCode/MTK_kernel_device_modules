@@ -5401,8 +5401,8 @@
 					 <&ipesys_clk CLK_IPE_LARB20>;
 			clock-names = "aie",
 						  "FDVT_CLK_IPE_LARB20";
-			mboxes = <&gce 20 0 CMDQ_THR_PRIO_1>;
-				  // <&gce_sec 11 0 CMDQ_THR_PRIO_1>;
+			mboxes = <&gce 20 0 CMDQ_THR_PRIO_1>,
+				     <&gce_sec 11 0 CMDQ_THR_PRIO_1>;
 			iommus = <&disp_iommu M4U_PORT_L20_IPE_FDVT_RDA>,
 				  <&disp_iommu M4U_PORT_L20_IPE_FDVT_RDB>,
 					 <&disp_iommu M4U_PORT_L20_IPE_FDVT_WRA>,
