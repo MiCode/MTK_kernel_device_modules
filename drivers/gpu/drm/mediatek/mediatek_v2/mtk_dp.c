@@ -237,7 +237,7 @@ int notify_uevent_user(struct notify_dev *sdev, int state)
 }
 void dptx_shutdown(void)
 {
-	int ret = 0;
+	int pm_ret = 0;
 	g_mtk_dp->shutdown = 1;
 	DPTXMSG("unprepare dptx shutdown\n");
 	if (g_mtk_dp->priv->pwr_node) {
@@ -245,12 +245,22 @@ void dptx_shutdown(void)
 			clk_disable_unprepare(g_mtk_dp->dp_phy_clk);
 		clk_disable_unprepare(g_mtk_dp->priv->pwr_clks[CLK_DPTX]);
 		clk_disable_unprepare(g_mtk_dp->priv->pwr_clks[CLK_DISP_VCORE]);
-		pm_runtime_put_sync(g_mtk_dp->dev);
+	} else {
+		pm_ret = pm_runtime_put_sync(g_mtk_dp->dev);
+		if (pm_ret < 0)
+			DPTXERR("Failed to disable dptx power: %d\n", pm_ret);
 	}
-	else
-		ret = pm_runtime_put_sync(g_mtk_dp->dev);
-	if (ret < 0)
-		DRM_ERROR("Failed to disable power domain: %d\n", ret);
+
+	if (g_mtk_dp->priv->pwr_node) {
+		mtk_vidle_mminfra_on_off(false);
+		DPTXMSG("%s successfully disable dpc\n", __func__);
+	} else if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6991 && g_mtk_dp->priv->dpc_dev) {
+		pm_ret = pm_runtime_put_sync(g_mtk_dp->priv->dpc_dev);
+		if (pm_ret < 0)
+			DPTXERR("Failed to disable dpc power: %d\n", pm_ret);
+		else
+			DPTXMSG("successfully disable dpc\n");
+	}
 }
 
 void mtk_dp_set_delay(bool enable, unsigned int mode, unsigned int delay_time)
@@ -1704,31 +1714,31 @@ void mdrv_DPTx_put_device(void)
 				clk_disable_unprepare(g_mtk_dp->dp_phy_clk);
 			clk_disable_unprepare(g_mtk_dp->priv->pwr_clks[CLK_DPTX]);
 			clk_disable_unprepare(g_mtk_dp->priv->pwr_clks[CLK_DISP_VCORE]);
-			pm_runtime_put_sync(g_mtk_dp->dev);
-		}
-		else
+		} else {
 			pm_ret = pm_runtime_put_sync(g_mtk_dp->dev);
-		if (pm_ret < 0)
-			DRM_ERROR("Failed to disable power domain: %d\n", pm_ret);
-		else
-			DPTXMSG("%s successfully disable power domain\n", __func__);
+			if (pm_ret < 0)
+				DPTXERR("Failed to disable dptx power: %d\n", pm_ret);
+			else
+				DPTXMSG("successfully disable dptx\n");
+		}
+		if (g_mtk_dp->priv->pwr_node) {
+			mtk_vidle_mminfra_on_off(false);
+			DPTXMSG("%s successfully disable dpc\n", __func__);
+		} else if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6991 && g_mtk_dp->priv->dpc_dev) {
+			pm_ret = pm_runtime_put_sync(g_mtk_dp->priv->dpc_dev);
+			if (pm_ret < 0)
+				DPTXERR("Failed to disable dpc power: %d\n", pm_ret);
+			else
+				DPTXMSG("successfully disable dpc\n");
+		}
 	} else
 		DPTXMSG("thread dptx_shutdown\n");
-	if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6991) {
-		if (g_mtk_dp->priv->dpc_dev) {
-			if (g_mtk_dp->priv->pwr_node)
-				mtk_vidle_mminfra_on_off(false);
-			else
-				pm_runtime_put_sync(g_mtk_dp->priv->dpc_dev);
-			DPTXMSG("%s successfully disable dpc\n", __func__);
-		}
-	} else {
-		if (g_mtk_dp->info.bPatternGen) {
-			if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6993)
-				mhal_DVO_VideoClock(false, g_mtk_dp->info.resolution);
-			else
-				mhal_DPTx_VideoClock(false, g_mtk_dp->info.resolution);
-		}
+
+	if (g_mtk_dp->info.bPatternGen) {
+		if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6993)
+			mhal_DVO_VideoClock(false, g_mtk_dp->info.resolution);
+		else
+			mhal_DPTx_VideoClock(false, g_mtk_dp->info.resolution);
 	}
 
 	mtk_dp_vsvoter_clr(g_mtk_dp);
@@ -4385,19 +4395,20 @@ void mtk_dp_HPDInterruptSet(int bstatus)
 				DPTXMSG("[DP DEBUG]delay_mode=0,delay_time=%d\n",g_mtk_dp->info.delay_time);
 				msleep(g_mtk_dp->info.delay_time*1000);
 			}
+
+			// request mminfra
+			if (g_mtk_dp->priv->pwr_node)
+				mtk_vidle_mminfra_on_off(true);
+			else if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6991 && g_mtk_dp->priv->dpc_dev) {
+				ret = pm_runtime_resume_and_get(g_mtk_dp->priv->dpc_dev);
+				if (unlikely(ret)) {
+					DPTXMSG("request mminfra power failed\n");
+					return;
+				}
+			}
+
 			if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6991 ||
 			g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6993) {
-				if (g_mtk_dp->priv->dpc_dev) {
-					/* get mminfra before DPTX on */
-					if (g_mtk_dp->priv->pwr_node)
-						mtk_vidle_mminfra_on_off(true);
-					else
-						ret = pm_runtime_resume_and_get(g_mtk_dp->priv->dpc_dev);
-					if (unlikely(ret)) {
-						DPTXMSG("request mminfra power failed\n");
-						return;
-					}
-				}
 				if (g_mtk_dp->priv->pwr_node) {
 					clk_prepare_enable(g_mtk_dp->priv->pwr_clks[CLK_DISP_VCORE]);
 					if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6993) {
@@ -4435,7 +4446,6 @@ void mtk_dp_HPDInterruptSet(int bstatus)
 					// dvo CG setting
 					base = ioremap(0x3E900A70, 0x10);
 					DPTXMSG("CG setting =0x%x\n",readl(base + 0x8));
-					writel(0xFFFFFFFF, base + 0x8);
 					iounmap(base);
 
 					//sram debug
