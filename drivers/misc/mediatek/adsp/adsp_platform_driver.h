@@ -82,6 +82,7 @@ struct adsp_priv {
 
 	struct device *dev;
 	struct kfifo tracefifo;
+	struct kfifo mbrainfifo;
 	struct miscdevice mdev;
 	struct workqueue_struct *wq;
 	struct completion done;
@@ -125,10 +126,17 @@ extern const struct file_operations adspsys_file_ops;
 extern struct attribute_group adsp_excep_attr_group;
 extern const struct file_operations adsp_debug_ops;
 extern const struct file_operations adsp_trace_ops;
+extern const struct file_operations adsp_mbrain_ops;
 extern const struct file_operations adsp_core_file_ops;
 extern struct attribute_group adsp_default_attr_group;
 
 extern struct adsp_priv *adsp_cores[ADSP_CORE_TOTAL];
 extern struct adspsys_priv *adspsys;
+
+/* MBrain */
+typedef void (*audio_adsp_mbrain_notify_callback)(const void *info, const size_t size);
+int adsp_mbrain_register_callback(audio_adsp_mbrain_notify_callback mbrain_cbk);
+int adsp_mbrain_unregister_callback(void);
+audio_adsp_mbrain_notify_callback *get_adsp_mbrain_cbk(void);
 
 #endif

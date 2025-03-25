@@ -415,13 +415,16 @@ int adsp_core_common_init(struct adsp_priv *pdata)
 {
 	int ret = 0;
 #if IS_ENABLED(CONFIG_DEBUG_FS)
-	char name[11] = {0};
+	char name[12] = {0};
 
-	if (snprintf(name, 11, "audiodsp%d", pdata->id) >= 0)
+	if (snprintf(name, 12, "audiodsp%d", pdata->id) >= 0)
 		debugfs_create_file(name, S_IFREG | 0644, NULL, pdata, &adsp_debug_ops);
 
-	if (snprintf(name, 11, "adsptrace%d", pdata->id) >= 0)
+	if (snprintf(name, 12, "adsptrace%d", pdata->id) >= 0)
 		debugfs_create_file(name, S_IFREG | 0644, NULL, pdata, &adsp_trace_ops);
+
+	if (snprintf(name, 12, "adspmbrain%d", pdata->id) >= 0)
+		debugfs_create_file(name, S_IFREG | 0644, NULL, pdata, &adsp_mbrain_ops);
 #endif
 
 	/* v1: adsp mpu info */
@@ -529,3 +532,35 @@ EXIT:
 	return adsp_type;
 }
 EXPORT_SYMBOL(get_adsp_type);
+
+/* MBrain */
+int adsp_mbrain_register_callback(audio_adsp_mbrain_notify_callback mbrain_cbk)
+{
+	int ret = 0;
+
+	if (!mbrain_cbk)
+		return -EINVAL;
+
+	audio_adsp_mbrain_notify_callback *adsp_mbrain_cbk = get_adsp_mbrain_cbk();
+	*adsp_mbrain_cbk = mbrain_cbk;
+	pr_debug("%s(), mbrain_cbk registered", __func__);
+
+	return ret;
+}
+EXPORT_SYMBOL(adsp_mbrain_register_callback);
+
+int adsp_mbrain_unregister_callback(void)
+{
+	int ret = 0;
+	audio_adsp_mbrain_notify_callback *adsp_mbrain_cbk = get_adsp_mbrain_cbk();
+
+	if (!adsp_mbrain_cbk)
+		return -EINVAL;
+
+	*adsp_mbrain_cbk = NULL;
+	pr_debug("%s(), mbrain_cbk unregistered", __func__);
+
+	return ret;
+}
+EXPORT_SYMBOL(adsp_mbrain_unregister_callback);
+
