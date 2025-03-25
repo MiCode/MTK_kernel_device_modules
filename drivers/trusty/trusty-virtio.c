@@ -37,6 +37,7 @@
 #include <linux/atomic.h>
 
 #ifdef MTK_ADAPTED
+#include <linux/debugfs.h>
 #include <uapi/linux/virtio_ids.h>
 #endif
 
@@ -69,6 +70,11 @@ struct trusty_ctx {
 #endif
 	struct workqueue_struct	*kick_wq;
 	struct workqueue_struct	*check_wq;
+#ifdef MTK_ADAPTED
+	struct work_struct	kick_vqs_dbg;
+	struct workqueue_struct	*kick_wq_dbg;
+	unsigned long		vring_dbg;
+#endif
 };
 
 struct trusty_vring {
@@ -233,6 +239,33 @@ static void kick_vqs(struct work_struct *work)
 	}
 	mutex_unlock(&tctx->mlock);
 }
+
+#ifdef MTK_ADAPTED
+static void kick_vqs_dbg(struct work_struct *work)
+{
+	struct trusty_ctx *tctx = container_of(work, struct trusty_ctx, kick_vqs_dbg);
+	struct trusty_vdev *tvdev;
+	unsigned long vring_id = tctx->vring_dbg;
+	unsigned long i;
+
+	mutex_lock(&tctx->mlock);
+	list_for_each_entry(tvdev, &tctx->vdev_list, node) {
+		for (i = 0; i < tvdev->vring_num; i++) {
+			struct trusty_vring *tvr = &tvdev->vrings[i];
+
+			if (i != vring_id)
+				continue;
+
+			trusty_enqueue_nop(tctx->dev->parent, &tvr->kick_nop);
+			dev_info(tctx->dev, "enqueue_nop on cpu %u vring[%lu] done\n",
+				smp_processor_id(), vring_id);
+			goto enqueued;
+		}
+	}
+enqueued:
+	mutex_unlock(&tctx->mlock);
+}
+#endif
 
 static bool trusty_virtio_notify(struct virtqueue *vq)
 {
@@ -887,12 +920,55 @@ static const struct dma_map_ops trusty_virtio_dma_map_ops = {
 	.unmap_sg = trusty_virtio_dma_unmap_sg,
 };
 
+#ifdef MTK_ADAPTED
+static ssize_t trusty_virtio_dbg_write(struct file *filp,
+	const char __user *user_buf, size_t count, loff_t *off)
+{
+	struct trusty_ctx *tctx = filp->private_data;
+	unsigned long cpu, vring;
+	size_t buf_size;
+	char buf[32];
+	char *start = buf;
+	char *cpu_str, *vring_str;
+
+	buf_size = min(count, (sizeof(buf) - 1));
+	if (copy_from_user(buf, user_buf, buf_size))
+		return -EFAULT;
+	buf[buf_size] = 0;
+
+	cpu_str = strsep(&start, " ");
+	if (!cpu_str)
+		return -EINVAL;
+	if (kstrtoul(cpu_str, 10, &cpu))
+		return -EINVAL;
+
+	vring_str = strsep(&start, " ");
+	if (!vring_str)
+		return -EINVAL;
+	if (kstrtoul(vring_str, 10, &vring))
+		return -EINVAL;
+
+	dev_info(tctx->dev, "%s: queue_work_on cpu %lu vring %lu\n",
+		__func__, cpu, vring);
+	tctx->vring_dbg = vring;
+	queue_work_on(cpu, tctx->kick_wq_dbg, &tctx->kick_vqs_dbg);
+
+	return count;
+}
+
+static const struct file_operations trusty_virtio_dbg_fops = {
+	.open = simple_open,
+	.write = trusty_virtio_dbg_write,
+};
+#endif
+
 static int trusty_virtio_probe(struct platform_device *pdev)
 {
 	int ret;
 	struct trusty_ctx *tctx;
-
 #ifdef MTK_ADAPTED
+	struct dentry *debugfs_root;
+
 	if (!is_google_real_driver()) {
 		dev_info(&pdev->dev, "%s: google trusty virtio dummy driver\n", __func__);
 		return 0;
@@ -941,9 +1017,38 @@ static int trusty_virtio_probe(struct platform_device *pdev)
 		goto err_add_devices;
 	}
 
+#ifdef MTK_ADAPTED
+	tctx->kick_wq_dbg = alloc_workqueue("trusty-kick-wq-dbg",
+					WQ_CPU_INTENSIVE, 0);
+	if (!tctx->kick_wq_dbg) {
+		ret = -ENODEV;
+		dev_err(&pdev->dev, "Failed create trusty-kick-wq-dbg\n");
+		goto err_create_kick_wq_dbg;
+	}
+
+	INIT_WORK(&tctx->kick_vqs_dbg, kick_vqs_dbg);
+
+	debugfs_root = debugfs_create_dir("google-trusty-virtio", NULL);
+	if (!IS_ERR_OR_NULL(debugfs_root)) {
+		debugfs_create_file("kick", 0600, debugfs_root, tctx,
+			&trusty_virtio_dbg_fops);
+	} else {
+		dev_err(&pdev->dev, "debugfs_create_dir '%s' failed ret %ld\n",
+			"google-trusty-virtio", PTR_ERR(debugfs_root));
+		ret = PTR_ERR(debugfs_root);
+		goto err_create_debugfs;
+	}
+#endif
+
 	dev_info(&pdev->dev, "initializing done\n");
 	return 0;
 
+#ifdef MTK_ADAPTED
+err_create_debugfs:
+	destroy_workqueue(tctx->kick_wq_dbg);
+err_create_kick_wq_dbg:
+	trusty_virtio_remove_devices(tctx);
+#endif
 err_add_devices:
 	destroy_workqueue(tctx->kick_wq);
 err_create_kick_wq:
