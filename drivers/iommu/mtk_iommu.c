@@ -1809,10 +1809,10 @@ static int mtk_iommu_attach_device(struct iommu_domain *domain,
 	mutex_lock(&init_mutexs[tab_id]);
 
 	if (!dom->data) {
-		if (mtk_iommu_domain_finalise(dom, data, domid)) {
-			ret = -ENODEV;
+		ret = mtk_iommu_domain_finalise(dom, data, domid);
+		if (ret)
 			goto out_unlock;
-		}
+
 		dom->data = data;
 		dom->tab_id = MTK_M4U_TO_TAB(fwspec->ids[0]);
 		pr_info("%s, set mtk_iommu_domain, data:(%d,%d), tab_id:%d\n",
