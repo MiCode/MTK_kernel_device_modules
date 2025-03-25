@@ -12,6 +12,7 @@
 #define PF_MIN_INTERVAL			(300)   // 0.3s
 #define PF_MAX_INTERVAL			(100000) // 100s
 #define COREL_NUM			4
+#define PF_IPC_CIRC_BUF_SIZE		256
 
 struct pf_info {
 	u64 pf_ts[COREL_NUM], pf_off_total_time;
@@ -25,6 +26,18 @@ struct pf_work_struct {
 enum pf_work_type {
 	PF_DISABLE,
 	PF_ENABLE,
+};
+
+struct pf_ipc_record {
+	unsigned long long cycle, inst;
+	unsigned int ipc;
+	bool pf_dis;
+};
+
+struct pf_ipc_buf {
+	struct pf_ipc_record *buf;
+	int head;
+	int tail;
 };
 
 int mtk_pf_ctrl_init(void);

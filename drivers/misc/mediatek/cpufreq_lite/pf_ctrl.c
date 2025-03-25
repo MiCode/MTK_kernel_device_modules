@@ -11,6 +11,7 @@
 #include <linux/seq_file.h>
 #include <linux/smp.h>
 #include <linux/arm-smccc.h>
+#include <linux/perf_event.h>
 
 #include "cpufreq-dbg-lite.h"
 #include "pf_ctrl.h"
@@ -29,6 +30,7 @@ u32 *g_pf_ctrl_enable;
 u32 *g_pf_ctrl_max_freq;
 u32 *g_pf_ctrl_min_freq;
 u32 *g_pf_ctrl_interval;
+u32 *g_pf_ctrl_ipc_buf;
 
 static DEFINE_MUTEX(pf_ctrl_proc_mutex);
 static int pf_ctrl_enable;
@@ -42,6 +44,184 @@ static struct delayed_work pf_top_work;
 static struct pf_info pf_ctrl_info;
 static struct cpufreq_policy *ptr_policy_0;
 static struct workqueue_struct *pf_ctrl_wq;
+static struct pf_ipc_buf ipc_circ_buf[COREL_NUM];
+
+static DEFINE_PER_CPU(struct perf_event *, cycle_events);
+static DEFINE_PER_CPU(struct perf_event *, inst_events);
+static DEFINE_PER_CPU(unsigned long long,  cycle_count);
+static DEFINE_PER_CPU(unsigned long long,  inst_count);
+static struct perf_event_attr cycle_event_attr = {
+	.type           = PERF_TYPE_HARDWARE,
+	.config         = PERF_COUNT_HW_CPU_CYCLES,
+	.size           = sizeof(struct perf_event_attr),
+	.pinned         = 1,
+/*	.disabled       = 1, */
+};
+static struct perf_event_attr inst_event_attr = {
+	.type           = PERF_TYPE_HARDWARE,
+	.config         = PERF_COUNT_HW_INSTRUCTIONS,
+	.size           = sizeof(struct perf_event_attr),
+	.pinned         = 1,
+/*	.disabled       = 1, */
+};
+
+static int pf_perf_event_read_local(struct perf_event *ev, u64 *value)
+{
+	return perf_event_read_local(ev, value, NULL, NULL);
+}
+
+static void pf_ipc_write_buf(unsigned int cpu, unsigned long long inst,
+			unsigned long long cycle, bool pf_dis)
+{
+	struct pf_ipc_record *record;
+
+	if (cpu >= COREL_NUM || !ipc_circ_buf[cpu].buf)
+		return;
+
+	record = &ipc_circ_buf[cpu].buf[ipc_circ_buf[cpu].head];
+	ipc_circ_buf[cpu].head = (ipc_circ_buf[cpu].head + 1) & (PF_IPC_CIRC_BUF_SIZE - 1);
+	if (ipc_circ_buf[cpu].tail == ipc_circ_buf[cpu].head)
+		ipc_circ_buf[cpu].tail = (ipc_circ_buf[cpu].tail + 1) & (PF_IPC_CIRC_BUF_SIZE - 1);
+
+	record->inst = inst;
+	record->cycle = cycle;
+	if (cycle / 100 != 0)
+		record->ipc = (unsigned int)(inst / (cycle / 100));
+	else
+		record->ipc = 0;
+	record->pf_dis = pf_dis;
+}
+
+static void pf_ipc_pmu_overflow_handler(struct perf_event *event,
+			struct perf_sample_data *data, struct pt_regs *regs)
+{
+	unsigned long long count = local64_read(&event->count);
+
+	pr_info("pf_ctrl: ignoring spurious overflow on cpu %u, config=%llu, count=%llu\n",
+	       event->cpu,
+	       event->attr.config,
+	       count);
+}
+
+static int pf_ipc_pmu_probe_cpu(int cpu)
+{
+	struct perf_event *event;
+	struct perf_event *i_event = per_cpu(inst_events, cpu);
+	struct perf_event *c_event = per_cpu(cycle_events, cpu);
+
+	if (!i_event) {
+		event = perf_event_create_kernel_counter(
+			&inst_event_attr,
+			cpu,
+			NULL,
+			pf_ipc_pmu_overflow_handler,
+			NULL);
+
+		if (IS_ERR(event))
+			goto error;
+
+		per_cpu(inst_events, cpu) = event;
+		i_event = event;
+	}
+
+	if (!c_event) {
+		event = perf_event_create_kernel_counter(
+			&cycle_event_attr,
+			cpu,
+			NULL,
+			pf_ipc_pmu_overflow_handler,
+			NULL);
+
+		if (IS_ERR(event))
+			goto error;
+
+		per_cpu(cycle_events, cpu) = event;
+		c_event = event;
+	}
+
+	if (i_event) {
+		perf_event_enable(i_event);
+		pf_perf_event_read_local(i_event,
+					&per_cpu(inst_count, cpu));
+	}
+
+	if (c_event) {
+		perf_event_enable(c_event);
+		pf_perf_event_read_local(c_event,
+					&per_cpu(cycle_count, cpu));
+	}
+
+	return 0;
+
+error:
+	pr_info("%s: probe cpu %d fail\n", __func__, cpu);
+
+	return -1;
+}
+
+static void pf_ipc_pmu_remove_cpu(int cpu)
+{
+	struct perf_event *i_event = per_cpu(inst_events, cpu);
+	struct perf_event *c_event = per_cpu(cycle_events, cpu);
+
+	if (i_event) {
+		perf_event_disable(i_event);
+		per_cpu(inst_events, cpu) = NULL;
+		perf_event_release_kernel(i_event);
+	}
+
+	if (c_event) {
+		perf_event_disable(c_event);
+		per_cpu(cycle_events, cpu) = NULL;
+		perf_event_release_kernel(c_event);
+	}
+}
+
+static unsigned long long pf_ipc_get_inst_count(int cpu)
+{
+	struct perf_event *event = per_cpu(inst_events, cpu);
+	unsigned long long new = 0;
+	unsigned long long old = per_cpu(inst_count, cpu);
+	unsigned long long diff = 0;
+
+	if (event && event->state == PERF_EVENT_STATE_ACTIVE) {
+		pf_perf_event_read_local(event, &new);
+		if (new > old)
+			diff = new - old;
+
+		per_cpu(inst_count, cpu) = new;
+	}
+
+#if PF_CTRL_DEBUG
+	pr_info("%s: CPU%d -> new=%llu, old=%llu, diff=%llu\n",
+		__func__, cpu, new, old, diff);
+#endif
+
+	return diff;
+}
+
+static unsigned long long pf_ipc_get_cycle_count(int cpu)
+{
+	struct perf_event *event = per_cpu(cycle_events, cpu);
+	unsigned long long new = 0;
+	unsigned long long old = per_cpu(cycle_count, cpu);
+	unsigned long long diff = 0;
+
+	if (event && event->state == PERF_EVENT_STATE_ACTIVE) {
+		pf_perf_event_read_local(event, &new);
+		if (new > old)
+			diff = new - old;
+
+		per_cpu(cycle_count, cpu) = new;
+	}
+
+#if PF_CTRL_DEBUG
+	pr_info("%s: CPU%d -> new=%llu, old=%llu, diff=%llu\n",
+		__func__, cpu, new, old, diff);
+#endif
+
+	return diff;
+}
 
 static int pf_ctrl_enable_proc_show(struct seq_file *m, void *v)
 {
@@ -285,6 +465,47 @@ PROC_FOPS_RO(pf_ctrl_min_freq);
 PROC_FOPS_RO(pf_ctrl_interval);
 #endif
 
+static void print_record(struct seq_file *m, int cpu, int i)
+{
+	if (cpu < 0 || cpu >= COREL_NUM)
+		return;
+
+	seq_printf(m, "%3d, %13llu, %13llu, %7u, %6d\n",
+			cpu,
+			ipc_circ_buf[cpu].buf[i].inst,
+			ipc_circ_buf[cpu].buf[i].cycle,
+			ipc_circ_buf[cpu].buf[i].ipc,
+			ipc_circ_buf[cpu].buf[i].pf_dis);
+}
+
+static int pf_ctrl_ipc_buf_proc_show(struct seq_file *m, void *v)
+{
+	int cpu, i;
+
+	seq_printf(m, "%3s, %13s, %13s, %7s, %6s\n",
+			"CPU", "inst", "cycle", "IPC*100", "pf_dis");
+
+	for (cpu = 0; cpu < COREL_NUM; cpu++) {
+		if (ipc_circ_buf[cpu].tail == ipc_circ_buf[cpu].head) {
+			// buffer empty
+			return 0;
+		} else if (ipc_circ_buf[cpu].tail < ipc_circ_buf[cpu].head) {
+			// buffer not full
+			for (i = ipc_circ_buf[cpu].tail; i < ipc_circ_buf[cpu].head; i++)
+				print_record(m, cpu, i);
+		} else {
+			// buffer full
+			for (i = ipc_circ_buf[cpu].tail; i < PF_IPC_CIRC_BUF_SIZE; i++)
+				print_record(m, cpu, i);
+			for (i = 0; i < ipc_circ_buf[cpu].head; i++)
+				print_record(m, cpu, i);
+		}
+	}
+
+	return 0;
+}
+PROC_FOPS_RO(pf_ctrl_ipc_buf);
+
 static int create_pf_ctrl_fs(void)
 {
 	struct proc_dir_entry *dir = NULL;
@@ -301,6 +522,7 @@ static int create_pf_ctrl_fs(void)
 		PROC_ENTRY_DATA(pf_ctrl_max_freq),
 		PROC_ENTRY_DATA(pf_ctrl_min_freq),
 		PROC_ENTRY_DATA(pf_ctrl_interval),
+		PROC_ENTRY_DATA(pf_ctrl_ipc_buf),
 	};
 
 	/* create /proc/pf_ctrl */
@@ -347,6 +569,11 @@ static void pf_switch_work_function(struct work_struct *work)
 			MT_PREFETCH_SMC_ACT_GET | MT_PREFETCH_SMC_MAGIC,
 			0, 0, 0, 0, 0, 0, &res);
 	pf_ctrl_info.pf_get[cpu] = (bool)(res.a0 & CPUECTLR_EL1_PREFETCH_MASK);
+
+	pf_ipc_write_buf(cpu,
+		pf_ipc_get_inst_count(cpu),
+		pf_ipc_get_cycle_count(cpu),
+		pf_work->pf_type == PF_DISABLE ? 0 : 1);
 }
 
 static void trigger_pf_work(int type)
@@ -435,7 +662,7 @@ EXPORT_SYMBOL_GPL(mtk_set_pf_ctrl_enable);
 
 int mtk_pf_ctrl_init(void)
 {
-	int cpu;
+	int cpu, ret;
 
 	pf_ctrl_wq = alloc_workqueue("pf_ctrl_wq", __WQ_LEGACY, 1);
 	if (!pf_ctrl_wq) {
@@ -448,6 +675,17 @@ int mtk_pf_ctrl_init(void)
 		pf_switch_work[cpu].cpu = cpu;
 		pf_switch_work[cpu].pf_type = PF_ENABLE;
 		INIT_WORK(&pf_switch_work[cpu].work, pf_switch_work_function);
+
+		ret = pf_ipc_pmu_probe_cpu(cpu);
+		if (ret)
+			pf_ipc_pmu_remove_cpu(cpu);
+
+		ipc_circ_buf[cpu].buf = kcalloc(PF_IPC_CIRC_BUF_SIZE,
+				sizeof(struct pf_ipc_record), GFP_KERNEL);
+		if (!ipc_circ_buf[cpu].buf)
+			pr_info("%s: Failed to allocate ipc_circ_buf[%d].buf\n", __func__, cpu);
+		ipc_circ_buf[cpu].head = 0;
+		ipc_circ_buf[cpu].tail = 0;
 	}
 
 	create_pf_ctrl_fs();
@@ -457,6 +695,13 @@ int mtk_pf_ctrl_init(void)
 
 void mtk_pf_ctrl_exit(void)
 {
+	int cpu;
+
 	if (pf_ctrl_wq)
 		destroy_workqueue(pf_ctrl_wq);
+
+	for (cpu = 0; cpu < COREL_NUM; cpu++) {
+		pf_ipc_pmu_remove_cpu(cpu);
+		kfree(ipc_circ_buf[cpu].buf);
+	}
 }
