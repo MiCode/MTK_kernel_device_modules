@@ -288,20 +288,12 @@ EXPORT_SYMBOL(release_slc);
 
 void update_pcm_cpu_qos(struct snd_pcm_substream *substream, const int task_id)
 {
-	struct snd_pcm_runtime *runtime = substream->runtime;
 	int usecs;
 	int dynamic_rate = get_dsp_task_attr(task_id, ADSP_TASK_ATTR_LATENCY_RATE);
 	int dynamic_irq = get_dsp_task_attr(task_id, ADSP_TASK_ATTR_LATENCY_IRQNUM);
-	int dynamic_frame = get_dsp_task_attr(task_id, ADSP_TASK_ATTR_LATENCY_FRAME);
 
-	if (!runtime)
-		return;
-
-	runtime->rate = dynamic_rate;
-	runtime->period_size = dynamic_irq;
-	runtime->periods = dynamic_frame / dynamic_irq;
-	usecs = (750000 / runtime->rate) * runtime->period_size;
-	usecs += ((750000 % runtime->rate) * runtime->period_size) / runtime->rate;
+	usecs = (750000 / dynamic_rate) * dynamic_irq;
+	usecs += ((750000 % dynamic_rate) * dynamic_irq) / dynamic_rate;
 
 	if (cpu_latency_qos_request_active(&substream->latency_pm_qos_req))
 		cpu_latency_qos_remove_request(&substream->latency_pm_qos_req);
