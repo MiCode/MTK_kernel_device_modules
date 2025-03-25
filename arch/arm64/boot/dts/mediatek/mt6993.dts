@@ -16148,8 +16148,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			#address-cells = <2>;
 			#size-cells = <2>;
 			compatible = "mediatek,pda";
-			reg = <0 0x3a660000 0 0x1000>;
-			reg-names = "base";
+			reg = <0 0x3a660000 0 0x1000>,
+				<0 0x3a668000 0 0x1000>;
+			reg-names = "base", "inner_base";
 			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
 			mediatek,pda-id = <0>;
 			interrupts = <GIC_SPI 611 IRQ_TYPE_LEVEL_HIGH 0>;
