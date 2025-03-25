@@ -5572,6 +5572,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			adsp-rsv-pcie = <0x0>;
 			adsp-rsv-xhci = <0x80000>;
 			adsp-rsv-audio = <0x5c0000>;
+			adsp-slc-enable = <1>;
 		};
 
 		adsp_core0: adsp-core0@1a200000 {
@@ -20823,7 +20824,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		mtk-dsp-btdl = <0x1 0x9 0xffffffff 0xffffffff 0x30000>;
 		mtk-dsp-btul = <0x1 0xffffffff 0x1b 0x10 0x20000>;
 		adsp-dynamic-buffer = <0x1>;
-		adsp-slc = <0x51ca11ca 0x0 0x0 0x0 0x0 0x0 0x2 0x32 0x0>;
 	};
 
 	mt-soc-offload-common {
