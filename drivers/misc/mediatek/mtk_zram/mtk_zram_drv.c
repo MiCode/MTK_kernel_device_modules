@@ -2495,6 +2495,10 @@ again:
 #ifdef ZRAM_ENGINE_DEBUG
 			pr_info_ratelimited("%s: HW is busy, waiting for available.\n", __func__);
 #endif
+			/* Don't block current task if it is exiting */
+			if (current->flags & PF_EXITING)
+				return ret;
+
 			atomic64_inc(&zram->stats.hw_busy_wait);
 
 			/* HW is busy. Relinquish CPU to take a breath. */
@@ -2849,6 +2853,10 @@ again:
 #ifdef ZRAM_ENGINE_DEBUG
 			pr_info_ratelimited("%s: HW is busy, waiting for available.\n", __func__);
 #endif
+			/* Don't block current task if it is exiting */
+			if (current->flags & PF_EXITING)
+				return ret;
+
 			atomic64_inc(&zram->stats.hw_busy_wait);
 
 			/* HW is busy. Relinquish CPU to take a breath. */
@@ -3036,14 +3044,18 @@ static void zram_hwonly_bio_write(struct zram *zram, struct bio *bio)
 
 		/* HW compression - asynchronous */
 		if (ops->hw_bvec_write(zram, &bv, index, offset, bio, true) < 0) {
-			atomic64_inc(&zram->stats.failed_writes);
-			bio->bi_status = BLK_STS_IOERR;
-			break;
-		}
 
-		zram_slot_lock(zram, index);
-		zram_accessed(zram, index);
-		zram_slot_unlock(zram, index);
+			/* Failed to add request to HW, fallback to SW compression */
+			if (zram_bvec_write(zram, &bv, index, offset, bio) < 0) {
+				atomic64_inc(&zram->stats.failed_writes);
+				bio->bi_status = BLK_STS_IOERR;
+				break;
+			}
+
+			zram_slot_lock(zram, index);
+			zram_accessed(zram, index);
+			zram_slot_unlock(zram, index);
+		}
 
 		bio_advance_iter_single(bio, &iter, bv.bv_len);
 	} while (iter.bi_size);
