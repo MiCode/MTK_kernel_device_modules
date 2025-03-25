@@ -328,6 +328,8 @@ struct mtk_disp_ovl_exdma {
 	unsigned int roi_height;
 };
 
+#define CEILING(n, s) ((n) + ((s) - ((n) % (s))))
+
 static inline struct mtk_disp_ovl_exdma *comp_to_ovl_exdma(struct mtk_ddp_comp *comp)
 {
 	return container_of(comp, struct mtk_disp_ovl_exdma, ddp_comp);
@@ -1087,7 +1089,8 @@ static void mtk_ovl_exdma_layer_on(struct mtk_ddp_comp *comp, unsigned int idx,
 			comp->regs_pa + regs[OVL_EXDMA_RDMA0_CTRL], 0x1, ~0);
 }
 
-static void mtk_ovl_exdma_stash_off(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
+static void mtk_ovl_exdma_stash_off(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
+	 unsigned int idx, unsigned int ext_idx)
 {
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 	struct mtk_drm_private *priv;
@@ -1095,6 +1098,7 @@ static void mtk_ovl_exdma_stash_off(struct mtk_ddp_comp *comp, struct cmdq_pkt *
 	struct mtk_disp_ovl_exdma *exdma = comp_to_ovl_exdma(comp);
 	const u16 *regs = exdma->data->regs;
 	const u32 *reg_fld = exdma->data->reg_fld;
+	unsigned int value = 0, mask = 0;
 
 	priv = mtk_crtc->base.dev->dev_private;
 
@@ -1108,15 +1112,31 @@ static void mtk_ovl_exdma_stash_off(struct mtk_ddp_comp *comp, struct cmdq_pkt *
 		priv->sw_ver == A0_CHIP && (te_duration && te_duration <= 2778))
 		return;
 
-	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_STASH_CFG1],
-		       0, ~0);
-	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_STASH_CFG0],
-		       0,
-		       ((REG_FLD_MASK(reg_fld[FLD_L0_STASH_EN])) |
-		       (REG_FLD_MASK(reg_fld[FLD_EL0_STASH_EN])) |
-		       (REG_FLD_MASK(reg_fld[FLD_EL1_STASH_EN])) |
-		       (REG_FLD_MASK(reg_fld[FLD_EL2_STASH_EN])) |
-		       (REG_FLD_MASK(reg_fld[FLD_STASH_ROI_Y_SEL]))));
+
+	if (ext_idx != LYE_NORMAL) { //ext layer
+		unsigned int id = ext_idx - 1;
+
+		switch (id) {
+		case 0:
+			cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_STASH_CFG0],
+				0, (REG_FLD_MASK(reg_fld[FLD_EL0_STASH_EN])));
+			break;
+		case 1:
+			cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_STASH_CFG0],
+				0, (REG_FLD_MASK(reg_fld[FLD_EL1_STASH_EN])));
+			break;
+		case 2:
+			cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_STASH_CFG0],
+				0, (REG_FLD_MASK(reg_fld[FLD_EL2_STASH_EN])));
+			break;
+		default:
+			DDPPR_ERR("%s id %d\n", __func__, id);
+			break;
+		}
+	} else { //phy layer
+		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_STASH_CFG0],
+			0, (REG_FLD_MASK(reg_fld[FLD_L0_STASH_EN])));
+	}
 }
 
 static void mtk_ovl_exdma_layer_off(struct mtk_ddp_comp *comp, unsigned int idx,
@@ -1170,7 +1190,7 @@ static void mtk_ovl_exdma_layer_off(struct mtk_ddp_comp *comp, unsigned int idx,
 		       comp->regs_pa + regs[OVL_EXDMA_WCG_CFG1], wcg_value,
 		       wcg_mask);
 
-	mtk_ovl_exdma_stash_off(comp, handle);
+	mtk_ovl_exdma_stash_off(comp, handle, idx, ext_idx);
 
 	if (ext_idx != LYE_NORMAL) {
 		unsigned int id = ext_idx - 1;
@@ -2284,7 +2304,8 @@ static void mtk_ovl_exdma_vcsel_config(struct mtk_ddp_comp *comp, unsigned int e
 		OVL_EXDMA_ELX_GUSER_EXT(exdma, i), value1, mask1);
 }
 
-static void mtk_ovl_exdma_stash_config(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
+static void mtk_ovl_exdma_stash_config(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
+	unsigned int lye_idx, unsigned int ext_lye_idx,	struct mtk_plane_state *state)
 {
 	unsigned int vrefresh = 0;
 	unsigned int l_time = 0, fifo_l = 0, hdr_fifo_l = 0;
@@ -2303,6 +2324,10 @@ static void mtk_ovl_exdma_stash_config(struct mtk_ddp_comp *comp, struct cmdq_pk
 	unsigned int pref_line_lead = 0;
 	unsigned int hdr_pref_l_lead = 0;
 	unsigned int phy_id = 0;
+	struct mtk_plane_pending_state *pending = NULL;
+	int bpp = 0;
+	unsigned int narrow_t = 0, bh =0;
+	unsigned int l_width = 0;
 
 	mtk_crtc = comp->mtk_crtc;
 	crtc = &mtk_crtc->base;
@@ -2311,8 +2336,6 @@ static void mtk_ovl_exdma_stash_config(struct mtk_ddp_comp *comp, struct cmdq_pk
 
 	if (exdma->data->ovl_phy_mapping)
 		phy_id = exdma->data->ovl_phy_mapping(comp);
-
-	decompr_en = mtk_crtc->usage_ovl_compr[phy_id];
 
 	if (!(mtk_crtc->crtc_caps.crtc_ability & ABILITY_STASH_CMD))
 		return;
@@ -2350,30 +2373,63 @@ static void mtk_ovl_exdma_stash_config(struct mtk_ddp_comp *comp, struct cmdq_pk
 		return;
 	}
 
-	l_time = 1000000 * 100 / vrefresh / mode->vtotal;
-	fifo_l = exdma->data->ovl_fifo_depth * 4 * l_time / mode->hdisplay;
-	hdr_fifo_l = (exdma->data->ovl_hdr_fifo_depth - 8) * 32 * 4 * l_time / mode->hdisplay;
+	if (!state) {
+		l_width = mode->vdisplay;
+		bpp = 4;
+		decompr_en = 0;
+	} else {
+		l_width = state->pending.width;
+		bpp = mtk_get_format_bpp(state->pending.format);
+		decompr_en = state->pending.prop_val[PLANE_PROP_COMPRESS];
+	}
+
+	l_time = 1000000 * 100 / vrefresh / mode->vtotal; //L
 
 	if (!l_time) {
 		DDPPR_ERR("%s, l_time=%d is invalid!\n", __func__, l_time);
 		return;
 	}
 
-	hdr_roi_stall = (exdma->data->lead_time * 100 + hdr_fifo_l * 10) / l_time / 10;
-	roi_stall = (exdma->data->lead_time * 100 + fifo_l * 10) / l_time / 10 + decompr_en * 4;
-	gmc_stall = exdma->data->lead_time * 100 / l_time / 10;
-	DDPDBG("%s, l_time=%d, fifo_l=%d, hdr_fifo_l=%d, hdr_roi_stall=%d, roi_stall=%d, gmc_stall=%d\n",
-		__func__, l_time, fifo_l, hdr_fifo_l, hdr_roi_stall, roi_stall, gmc_stall);
+	if (bpp == 4)
+		bh = 4;
+	else if (bpp == 2)
+		bh = 8;
+
+	narrow_t = (l_width * bpp < 16) ? DIV_ROUND_UP(16, (l_width * bpp)) : 0;
+
+	fifo_l = exdma->data->ovl_fifo_depth * 16 / bpp * l_time / mode->hdisplay; //D
+	hdr_fifo_l = exdma->data->ovl_hdr_fifo_depth * 32 * bh * l_time / mode->hdisplay; //HD
+
+	pref_line_lead =
+		DIV_ROUND_UP(fifo_l, l_time) + (decompr_en * 4) + narrow_t; //(D/L)
+	hdr_pref_l_lead =
+		DIV_ROUND_UP(hdr_fifo_l, l_time); //(HD/L)
+	roi_stall =
+		DIV_ROUND_UP(((exdma->data->lead_time * 100 + fifo_l * 10) / l_time), 10)
+		+ (decompr_en * 4) + narrow_t; //((X+D)/L)
+	hdr_roi_stall =
+		DIV_ROUND_UP(((exdma->data->lead_time * 100 + hdr_fifo_l * 10) / l_time), 10); //((X+HD)/L)
+	gmc_stall =
+		DIV_ROUND_UP((exdma->data->lead_time * 100 / l_time), 10); //(X/L)
+
+	DDPDBG("%s, lye_idx=%u, ext_lye_idx=%u, l_width:%u, bpp:%d\n",
+		__func__, lye_idx, ext_lye_idx, l_width, bpp);
+	DDPDBG(
+		"%s, bh=%d, narrow_t=%d, l_time=%d, fifo_l=%d, hdr_fifo_l=%d, hdr_roi_stall=%d, roi_stall=%d, gmc_stall=%d\n",
+		__func__, bh, narrow_t, l_time, fifo_l, hdr_fifo_l,
+		hdr_roi_stall, roi_stall, gmc_stall);
+	DDPDBG("%s, pref_line_lead=%d, hdr_pref_l_lead=%d, decompr_en=%d, hdisplay=%d\n",
+		__func__, pref_line_lead, hdr_pref_l_lead, decompr_en, mode->hdisplay);
+
 
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_STASH_CFG1],
-			   ((hdr_roi_stall << 24) + (roi_stall << 16) + (gmc_stall << 8) + 0), ~0);
+			   ((gmc_stall << 8) + 0), ~0);
 
 	SET_VAL_MASK(value, mask, 1, reg_fld[FLD_L0_STASH_EN]);
 	SET_VAL_MASK(value, mask, 1, reg_fld[FLD_EL0_STASH_EN]);
 	SET_VAL_MASK(value, mask, 1, reg_fld[FLD_EL1_STASH_EN]);
 	SET_VAL_MASK(value, mask, 1, reg_fld[FLD_EL2_STASH_EN]);
 	SET_VAL_MASK(value, mask, 1, reg_fld[FLD_STASH_ROI_Y_SEL]);
-
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_STASH_CFG0],
 			   value, mask);
 
@@ -2392,42 +2448,109 @@ static void mtk_ovl_exdma_stash_config(struct mtk_ddp_comp *comp, struct cmdq_pk
 	value = 0;
 	mask = 0;
 	SET_VAL_MASK(value, mask, 0, reg_fld[FLD_PREF_START_CTRL]);
-	SET_VAL_MASK(value, mask, 1, reg_fld[FLD_PREF_LINE_CTRL]);
+	SET_VAL_MASK(value, mask, 0, reg_fld[FLD_PREF_LINE_CTRL]);
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_PREF_LEAD_CFG0],
 					value, mask);
 
-	pref_line_lead = exdma->data->ovl_fifo_depth * 4 / mode->hdisplay + 4 * decompr_en;
-	value = 0;
-	mask = 0;
-	SET_VAL_MASK(value, mask, pref_line_lead, reg_fld[FLD_L0_PREF_LINE_LEAD]);
-	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_PREF_LEAD_CFG1],
-			   value, mask);
+	if (ext_lye_idx != LYE_NORMAL) { //ext layer
+		unsigned int id = ext_lye_idx - 1;
 
-	value = 0;
-	mask = 0;
-	SET_VAL_MASK(value, mask, pref_line_lead, reg_fld[FLD_EL0_PREF_LINE_LEAD]);
-	SET_VAL_MASK(value, mask, pref_line_lead, reg_fld[FLD_EL1_PREF_LINE_LEAD]);
-	SET_VAL_MASK(value, mask, pref_line_lead, reg_fld[FLD_EL2_PREF_LINE_LEAD]);
-	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_PREF_LEAD_CFG2],
-			   value, mask);
+		switch (id) {
+		case 0:
+			value = 0;
+			mask = 0;
+			SET_VAL_MASK(value, mask, roi_stall, reg_fld[FLD_EL0_STASH_ROI_LINE_STALL]);
+			cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_STASH_STALL_CFG1],
+				value, mask);
+			value = 0;
+			mask = 0;
+			SET_VAL_MASK(value, mask, hdr_roi_stall, reg_fld[FLD_EL0_STASH_HDR_ROI_LINE_STALL]);
+			cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_STASH_STALL_CFG3],
+				value, mask);
+			value = 0;
+			mask = 0;
+			SET_VAL_MASK(value, mask, pref_line_lead, reg_fld[FLD_EL0_PREF_LINE_LEAD]);
+			cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_PREF_LEAD_CFG2],
+				value, mask);
+			value = 0;
+			mask = 0;
+			SET_VAL_MASK(value, mask, hdr_pref_l_lead, reg_fld[FLD_EL0_HDR_PREF_LINE_LEAD]);
+			cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_PREF_LEAD_CFG4],
+				value, mask);
+			break;
+		case 1:
+			value = 0;
+			mask = 0;
+			SET_VAL_MASK(value, mask, roi_stall, reg_fld[FLD_EL1_STASH_ROI_LINE_STALL]);
+			cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_STASH_STALL_CFG1],
+				value, mask);
+			value = 0;
+			mask = 0;
+			SET_VAL_MASK(value, mask, hdr_roi_stall, reg_fld[FLD_EL1_STASH_HDR_ROI_LINE_STALL]);
+			cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_STASH_STALL_CFG3],
+				value, mask);
+			value = 0;
+			mask = 0;
+			SET_VAL_MASK(value, mask, pref_line_lead, reg_fld[FLD_EL1_PREF_LINE_LEAD]);
+			cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_PREF_LEAD_CFG2],
+				value, mask);
+			value = 0;
+			mask = 0;
+			SET_VAL_MASK(value, mask, hdr_pref_l_lead, reg_fld[FLD_EL1_HDR_PREF_LINE_LEAD]);
+			cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_PREF_LEAD_CFG4],
+				   value, mask);
+			break;
+		case 2:
+			value = 0;
+			mask = 0;
+			SET_VAL_MASK(value, mask, roi_stall, reg_fld[FLD_EL2_STASH_ROI_LINE_STALL]);
+			cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_STASH_STALL_CFG1],
+				value, mask);
+			value = 0;
+			mask = 0;
+			SET_VAL_MASK(value, mask, hdr_roi_stall, reg_fld[FLD_EL2_STASH_HDR_ROI_LINE_STALL]);
+			cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_STASH_STALL_CFG3],
+				value, mask);
+			value = 0;
+			mask = 0;
+			SET_VAL_MASK(value, mask, pref_line_lead, reg_fld[FLD_EL2_PREF_LINE_LEAD]);
+			cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_PREF_LEAD_CFG2],
+				value, mask);
+			value = 0;
+			mask = 0;
+			SET_VAL_MASK(value, mask, hdr_pref_l_lead, reg_fld[FLD_EL2_HDR_PREF_LINE_LEAD]);
+			cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_PREF_LEAD_CFG4],
+				value, mask);
+			break;
+		default:
+			DDPPR_ERR("%s id %d\n", __func__, id);
+			break;
+		}
+	} else { //phy layer
+		value = 0;
+		mask = 0;
+		SET_VAL_MASK(value, mask, roi_stall, reg_fld[FLD_L0_STASH_ROI_LINE_STALL]);
+		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_STASH_STALL_CFG0],
+			value, mask);
 
-	hdr_pref_l_lead = exdma->data->ovl_hdr_fifo_depth * 32 * 4 / mode->hdisplay;
-	value = 0;
-	mask = 0;
-	SET_VAL_MASK(value, mask, hdr_pref_l_lead, reg_fld[FLD_L0_HDR_PREF_LINE_LEAD]);
-	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_PREF_LEAD_CFG3],
-			   value, mask);
+		value = 0;
+		mask = 0;
+		SET_VAL_MASK(value, mask, hdr_roi_stall, reg_fld[FLD_L0_STASH_HDR_ROI_LINE_STALL]);
+		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_STASH_STALL_CFG2],
+			value, mask);
 
-	value = 0;
-	mask = 0;
-	SET_VAL_MASK(value, mask, hdr_pref_l_lead, reg_fld[FLD_EL0_HDR_PREF_LINE_LEAD]);
-	SET_VAL_MASK(value, mask, hdr_pref_l_lead, reg_fld[FLD_EL1_HDR_PREF_LINE_LEAD]);
-	SET_VAL_MASK(value, mask, hdr_pref_l_lead, reg_fld[FLD_EL2_HDR_PREF_LINE_LEAD]);
-	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_PREF_LEAD_CFG4],
-			   value, mask);
+		value = 0;
+		mask = 0;
+		SET_VAL_MASK(value, mask, pref_line_lead, reg_fld[FLD_L0_PREF_LINE_LEAD]);
+		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_PREF_LEAD_CFG1],
+			value, mask);
 
-	DDPDBG("%s, pref_line_lead=%d, hdr_pref_l_lead=%d, decompr_en=%d, hdisplay=%d\n",
-		__func__, pref_line_lead, hdr_pref_l_lead, decompr_en, mode->hdisplay);
+		value = 0;
+		mask = 0;
+		SET_VAL_MASK(value, mask, hdr_pref_l_lead, reg_fld[FLD_L0_HDR_PREF_LINE_LEAD]);
+		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_PREF_LEAD_CFG3],
+			value, mask);
+	}
 }
 
 static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
@@ -2806,7 +2929,7 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 
 		if (fmt != DRM_FORMAT_C8)
 			mtk_ovl_exdma_layer_on(comp, lye_idx, ext_lye_idx, handle);
-		mtk_ovl_exdma_stash_config(comp, handle);
+		mtk_ovl_exdma_stash_config(comp, handle, lye_idx, ext_lye_idx, state);
 		mtk_ovl_exdma_vcsel_config(comp, 1, handle);
 
 		/*constant color :non RDMA source*/
@@ -3570,6 +3693,7 @@ static void mtk_ovl_exdma_config_begin(struct mtk_ddp_comp *comp, struct cmdq_pk
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		       comp->regs_pa + regs[OVL_EXDMA_RDMA_BURST_CON1],
 		       value, mask);
+
 #ifdef IF_ZERO
 	if (idx != 0) {
 		value |= OVL_EXDMA_BGCLR_IN_SEL;
@@ -4528,7 +4652,7 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 		struct mtk_ddp_fb_info *fb_info =
 			(struct mtk_ddp_fb_info *)params;
 
-		mtk_ovl_exdma_stash_config(comp, handle);
+		mtk_ovl_exdma_stash_config(comp, handle, 0, LYE_NORMAL, NULL);
 		mtk_ovl_replace_bootup_mva(comp, handle, params, fb_info);
 		if (priv->data->mmsys_id == MMSYS_MT6989 ||
 			priv->data->mmsys_id == MMSYS_MT6991 ||
@@ -4789,6 +4913,9 @@ int mtk_ovl_exdma_dump(struct mtk_ddp_comp *comp)
 	mtk_cust_dump_reg(baddr, 0x940, 0x950, 0x954, 0x958);
 	mtk_cust_dump_reg(baddr, 0x960, 0x970, 0x974, 0x978);
 	mtk_cust_dump_reg(baddr, 0x97c, 0x970, 0x974, 0x978);
+	mtk_cust_dump_reg(baddr, 0xAE0, 0xAE4, 0xAE8, 0xAEC);
+	mtk_cust_dump_reg(baddr, 0xAF0, 0xAF4, 0xAF8, 0xAFC);
+	mtk_cust_dump_reg(baddr, 0xB00, 0xB04, 0xB08, 0xB0C);
 	mtk_cust_dump_reg(baddr, 0xF40, 0xF44, 0xF48, 0xF4C);
 	mtk_cust_dump_reg(baddr, 0xFF0, 0xFF4, 0xFF8, 0xFFC);
 

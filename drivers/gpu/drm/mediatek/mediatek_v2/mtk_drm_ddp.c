@@ -40248,6 +40248,9 @@ void ovlsys_config_dump_reg_mt6993(void __iomem *config_regs)
 	for (off = 0x300; off <= 0x3E0; off += 0x10)
 		mtk_serial_dump_reg(config_regs, off, 4);
 
+	for (off = 0x400; off <= 0x410; off += 0x10)
+		mtk_serial_dump_reg(config_regs, off, 4);
+
 	for (off = 0x500; off <= 0x550; off += 0x10)
 		mtk_serial_dump_reg(config_regs, off, 4);
 
@@ -40255,6 +40258,9 @@ void ovlsys_config_dump_reg_mt6993(void __iomem *config_regs)
 		mtk_serial_dump_reg(config_regs, off, 4);
 
 	for (off = 0xA00; off <= 0xA10; off += 0x10)
+		mtk_serial_dump_reg(config_regs, off, 4);
+
+	for (off = 0xAA0; off <= 0xAB0; off += 0x10)
 		mtk_serial_dump_reg(config_regs, off, 4);
 
 	for (off = 0xAC0; off <= 0xAD0; off += 0x10)
@@ -40266,6 +40272,8 @@ void ovlsys_config_dump_reg_mt6993(void __iomem *config_regs)
 	for (off = 0xE00; off <= 0xF80; off += 0x10)
 		mtk_serial_dump_reg(config_regs, off, 4);
 
+	for (off = 0xFA0; off <= 0xFD0; off += 0x10)
+		mtk_serial_dump_reg(config_regs, off, 4);
 }
 
 void mmsys_config_dump_reg_mt6993(void __iomem *config_regs)
