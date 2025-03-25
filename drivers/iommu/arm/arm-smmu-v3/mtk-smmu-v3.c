@@ -2388,7 +2388,10 @@ static void mtk_smmu_fault_iova_dump(struct arm_smmu_master *master,
 
 		pr_info("\ttab_id:0x%llx, index:%d, pte:0x%llx, fault_iova:0x%llx, fault_pa:0x%llx\n",
 			tab_id, i, pte, tf_iova_tmp, fault_pa);
-
+		if (fault_pa)
+			mtk_hyp_smmu_debug_dump(master->smmu, fault_pa, 0, sid,
+						EVENT_ID_TRANSLATION_FAULT,
+						true);
 		if (tf_iova_tmp == 0 || (!fault_pa && i > 0))
 			break;
 	}
@@ -2466,6 +2469,8 @@ static int mtk_smmu_report_device_fault(struct arm_smmu_device *smmu, u64 *evt,
 	mtk_smmu_ste_cd_info_dump(NULL, smmu_type, sid, (ssid_valid ? ssid : SMMU_NO_SSID));
 	mtk_hyp_smmu_debug_dump(smmu, 0, 0, sid, HYP_SMMU_GLOBAL_STE_DUMP_EVT, 0);
 	mtk_hyp_smmu_debug_dump(smmu, fault_ipa, 0, sid, id, s2_trans);
+	if (s2_trans && (fault_iova != fault_ipa))
+		mtk_hyp_smmu_debug_dump(smmu, fault_iova, 0, sid, id, s2_trans);
 	mtk_hyp_smmu_reg_dump(smmu);
 
 	/* Need to dump OSTD/IO info if fault_iova in page table */
