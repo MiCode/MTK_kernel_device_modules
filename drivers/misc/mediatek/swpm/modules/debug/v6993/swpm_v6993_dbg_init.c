@@ -42,6 +42,7 @@
 
 #define SWPM_EXT_DBG (1)
 
+static bool dram_bw_timer_start;
 
 static ssize_t enable_read(char *ToUser, size_t sz, void *priv)
 {
@@ -73,11 +74,6 @@ static ssize_t enable_write(char *FromUser, size_t sz, void *priv)
 	if (sscanf(FromUser, "%d %d", &type, &enable) == 2) {
 		swpm_lock(&swpm_mutex);
 		swpm_set_enable(type, enable);
-		if (swpm_status)
-			mod_timer(&swpm_timer, jiffies +
-				msecs_to_jiffies(swpm_log_interval_ms));
-		else
-			del_timer(&swpm_timer);
 		swpm_unlock(&swpm_mutex);
 		ret = sz;
 	}
@@ -633,6 +629,15 @@ static ssize_t dram_bw_read(char *ToUser, size_t sz, void *priv)
 	else
 		swpm_dbg_log("sync success\n");
 
+
+	if (!dram_bw_timer_start) {
+		swpm_lock(&swpm_mutex);
+		mod_timer(&swpm_timer, jiffies +
+				msecs_to_jiffies(swpm_log_interval_ms));
+		swpm_unlock(&swpm_mutex);
+		dram_bw_timer_start = true;
+	}
+
 	spin_lock_irqsave(&swpm_sub_data_spinlock, flags);
 	swpm_dbg_log("DRAM BW R/W=%d/%d\n",
 			sub_idx_snap.emi_bw_read,
@@ -642,8 +647,36 @@ static ssize_t dram_bw_read(char *ToUser, size_t sz, void *priv)
 	return p - ToUser;
 }
 
+static ssize_t dram_bw_write(char *FromUser, size_t sz, void *priv)
+{
+	unsigned int disable = 0;
+	int ret;
+
+	ret = -EINVAL;
+
+	if (!FromUser)
+		goto out;
+
+	if (sz >= MTK_SWPM_SYSFS_BUF_WRITESZ)
+		goto out;
+
+	ret = -EPERM;
+	if (!kstrtouint(FromUser, 0, &disable)) {
+		if (disable) {
+			del_timer(&swpm_timer);
+			dram_bw_timer_start = false;
+		}
+
+		ret = sz;
+	}
+
+out:
+	return ret;
+}
+
 static const struct mtk_swpm_sysfs_op dram_bw_fops = {
 	.fs_read = dram_bw_read,
+	.fs_write = dram_bw_write,
 };
 
 
@@ -674,6 +707,8 @@ static ssize_t swpm_dbg_en_write(char *FromUser, size_t sz, void *priv)
 					, 0444, &swpm_sp_ddr_idx_fops, NULL, NULL);
 			mtk_swpm_sysfs_entry_func_node_add("swpm_sp_spm_sig"
 					, 0444, &swpm_sp_spm_sig_fops, NULL, NULL);
+			mtk_swpm_sysfs_entry_func_node_add("dram_bw"
+					, 0444, &dram_bw_fops, NULL, NULL);
 #endif
 			ret = sz;
 		}
@@ -700,10 +735,6 @@ static void swpm_v6993_dbg_fs_init(void)
 	mtk_swpm_sysfs_entry_func_node_add("swpm_dbg_en"
 			, 0644, &swpm_dbg_en_fops, NULL, NULL);
 
-#if SWPM_EXT_DBG
-	mtk_swpm_sysfs_entry_func_node_add("dram_bw"
-			, 0444, &dram_bw_fops, NULL, NULL);
-#endif
 }
 
 static int __init swpm_v6993_dbg_early_initcall(void)
