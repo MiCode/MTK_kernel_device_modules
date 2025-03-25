@@ -2818,7 +2818,8 @@ static int kick_hwe_gear(const char *val, const struct kernel_param *kp)
 	}
 #endif
 
-	if (!hwcomp_all_fifo_empty(hwz)) {
+	/* It's ONLY allowed to do actions for gear level adjustment anytime */
+	if (tmp > ENGINE_FREE_RUN_GEAR && !hwcomp_all_fifo_empty(hwz)) {
 		retval = -EBUSY;
 #ifdef ZRAM_ENGINE_DEBUG
 		pr_info("%s: There are pending requests in FIFO(s).\n", __func__);
@@ -2851,7 +2852,10 @@ static int kick_hwe_gear(const char *val, const struct kernel_param *kp)
 		/* CLK_SEL(7): 728MHz with 0.825v or 0.95v */
 		engine_fix_gear_level(&hwz->gear_ctrl, 7 - ENGINE_GEAR_DTS_BASE);
 		break;
-
+	case ENGINE_FREE_RUN_GEAR:
+		/* gear free-run */
+		engine_free_gear_level(&hwz->gear_ctrl);
+		break;
 #if IS_ENABLED(CONFIG_MTK_VM_DEBUG)
 	case ENGINE_ENABLE_GEAR_PE:
 		static_branch_enable(&engine_power_efficiency);
@@ -2860,10 +2864,6 @@ static int kick_hwe_gear(const char *val, const struct kernel_param *kp)
 		static_branch_disable(&engine_power_efficiency);
 		break;
 #endif
-	case ENGINE_FREE_RUN_GEAR:
-		/* gear free-run */
-		engine_free_gear_level(&hwz->gear_ctrl);
-		break;
 	default:
 #ifdef ZRAM_ENGINE_DEBUG
 		pr_info("%s: invalid gear!\n", __func__);

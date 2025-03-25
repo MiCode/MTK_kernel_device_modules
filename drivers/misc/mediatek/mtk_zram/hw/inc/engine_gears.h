@@ -22,9 +22,9 @@
 #define ENGINE_ENC_BASE_GEAR	(0)
 #define ENGINE_MAX_GEAR		(ENGINE_MAX_GEARS - 1)
 #define ENGINE_MIN_GEAR		(0)
-#define ENGINE_ENABLE_GEAR_PE	(80)	/* Enable power efficiency */
-#define ENGINE_DISABLE_GEAR_PE	(81)	/* Disable power efficiency */
 #define ENGINE_FREE_RUN_GEAR	(99)
+#define ENGINE_ENABLE_GEAR_PE	(980)	/* Enable power efficiency */
+#define ENGINE_DISABLE_GEAR_PE	(981)	/* Disable power efficiency */
 
 /* Min start gear level for compression & decompression */
 #define ENGINE_ENC_MIN_KICK_GEAR	(ENGINE_MIN_GEAR)
