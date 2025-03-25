@@ -1185,6 +1185,7 @@ static int __init fpsgo_init(void)
 	/*General XGF API*/
 	fpsgo_other2xgf_get_critical_tasks_fp = fpsgo_other2xgf_get_critical_tasks;
 
+	powerhal2fpsgo_get_fpsgo_frame_info_fp = get_fpsgo_frame_info;
 
 #if IS_ENABLED(CONFIG_MTK_PERF_IOCTL_MAGT)
 	magt2fpsgo_notify_target_fps_fp = fpsgo_notify_magt_target_fps;

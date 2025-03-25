@@ -11,7 +11,6 @@
 #define SESSION_UNUSED     0
 #define SESSION_USED       1
 
-#define MAX_RENDER_TID     10
 
 extern int (*powerhal_adpf_create_session_hint_fp)
 	(unsigned int sid, unsigned int tgid,

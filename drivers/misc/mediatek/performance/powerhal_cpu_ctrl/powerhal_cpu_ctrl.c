@@ -28,6 +28,7 @@
 #endif
 #include "powerhal_trace_event.h"
 #include "powerhal_cpu_ctrl.h"
+#include "fpsgo_frame_info.h"
 #include "cci-dbg-lite.h"
 //#include "mtk_perfmgr_internal.h"
 /* PROCFS */
@@ -87,10 +88,20 @@ int cpu_mapping_cluster[CORE_MAX];
 // ADPF
 #define ADPF_MAX_SESSION 64
 #define ADPF_MAX_CALLBACK 64
+#define MAX_RENDER_TID 10
 static int enable_cpu_timing_hint = 1;
 static struct _SESSION *sessionList[ADPF_MAX_SESSION];
 static adpfCallback adpfCallbackList[ADPF_MAX_CALLBACK];
 static DEFINE_MUTEX(adpf_mutex);
+static struct render_frame_info render[MAX_RENDER_TID];
+
+int (*powerhal2fpsgo_get_fpsgo_frame_info_fp)(
+	int max_num,
+	unsigned long mask,
+	struct render_frame_info *frame_info_arr
+);
+EXPORT_SYMBOL(powerhal2fpsgo_get_fpsgo_frame_info_fp);
+
 
 static void _adpf_systrace(int tgid, long val, const char *fmt, ...)
 {
@@ -881,11 +892,44 @@ int dsu_sport_mode(unsigned int mode)
 
 int adpf_get_frame_info(struct fpsgo_render_info *render_info)
 {
-	render_info->cpu_capacity = 0;
-	render_info->ema_t_cpu = 0;
-	render_info->target_fps = 0;
-	render_info->raw_t_cpu = 0;
-	pr_debug("[%s] EX_UNSUPPORTED_OPERATION!",  __func__);
+	int i = 0;
+	int j = 0;
+	int ret = 0;
+	int render_item = -1;
+	unsigned long query_mask = 0;
+
+	if (!powerhal2fpsgo_get_fpsgo_frame_info_fp) {
+		pr_info("[%s] powerhal2fpsgo_get_fpsgo_frame_info_fp not found!",  __func__);
+		return -1;
+	}
+
+	memset(render, 0, sizeof(struct render_frame_info) * MAX_RENDER_TID);
+
+	query_mask =
+		(1 << GET_FPSGO_RAW_CPU_TIME) |
+		(1 << GET_FPSGO_EMA_CPU_TIME) |
+		(1 << GET_FPSGO_AVG_FRAME_CAP) |
+		(1 << GET_FPSGO_TARGET_FPS);
+
+	ret = powerhal2fpsgo_get_fpsgo_frame_info_fp(MAX_RENDER_TID, query_mask, render);
+
+	if (ret > 0) {
+		for (i = 0; i < ret; i++)
+			for (j = 0; j < ADPF_MAX_SESSION; j++)
+				if (sessionList[j] && render[i].pid == sessionList[j]->tgid)
+					render_item = i;
+
+		if (render_item != -1) {
+			render_info->cpu_capacity = render[render_item].avg_frame_cap;
+			render_info->ema_t_cpu = render[render_item].ema_t_cpu;
+			render_info->target_fps = render[render_item].target_fps;
+			render_info->raw_t_cpu = render[render_item].raw_t_cpu;
+		} else {
+			pr_info("[%s] No matching render item found!", __func__);
+			return -1;
+		}
+	}
+
 	return 0;
 }
 

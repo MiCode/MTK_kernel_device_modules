@@ -294,6 +294,8 @@ extern unsigned int fpsgo_other2fbt_calculate_blc(long aa, unsigned long long ta
 	unsigned int blc_when_err, unsigned long long t_q2q, int is_retarget,
 	unsigned int *blc_wt);
 
+extern int (*powerhal2fpsgo_get_fpsgo_frame_info_fp)(int max_num, unsigned long mask,
+	struct render_frame_info *frame_info_arr);
 extern int (*magt2fpsgo_get_fpsgo_frame_info)(int max_num, unsigned long mask,
 	struct render_frame_info *frame_info_arr);
 
