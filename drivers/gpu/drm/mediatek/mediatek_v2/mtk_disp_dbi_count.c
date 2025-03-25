@@ -256,10 +256,6 @@
 #define DISP_DBI_COUNT_UDMA_R_CTRL47 (0xD00)
 	#define REG_PRTCL_PROT_OFF_R REG_FLD_MSB_LSB(7, 7)
 
-
-#define MAX(a,b) ((a>=b)?(a):(b))
-#define MIN(a,b) ((a>=b)?(b):(a))
-
 static void mtk_dbi_hw_count_trigger(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, uint32_t slice_num,
 	uint32_t slice_id, uint32_t time_ms, u64 addr);
@@ -452,9 +448,6 @@ err:
 void mtk_crtc_release_dbi_count_fence_by_idx(
 	struct drm_crtc *crtc, int session_id, unsigned int fence_idx)
 {
-	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
-	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
-
 	if (fence_idx && fence_idx != -1) {
 		DDPINFO("output fence_idx:%d\n", fence_idx);
 		mtk_release_fence(session_id,
@@ -466,15 +459,12 @@ void mtk_crtc_dbi_count_cfg(struct mtk_drm_crtc *mtk_crtc, struct mtk_crtc_state
 {
 	unsigned int slice_num = crtc_state->prop_val[CRTC_PROP_DBI_COUNT_SLICE_NUM];
 	unsigned int slice_size = crtc_state->prop_val[CRTC_PROP_DBI_COUNT_SLICE_SIZE];
-	unsigned int block_h = crtc_state->prop_val[CRTC_PROP_DBI_COUNT_BLOCK_H];
-	unsigned int block_v = crtc_state->prop_val[CRTC_PROP_DBI_COUNT_BLOCK_V];
 	unsigned int enable = crtc_state->prop_val[CRTC_PROP_DBI_COUNT_ENABLE];
 	unsigned int fence = crtc_state->prop_val[CRTC_PROP_DBI_COUNT_FENCE_IDX];
-	unsigned int out = crtc_state->prop_val[CRTC_PROP_OUTPUT_ENABLE];
 	int session_id = 0;
 	struct mtk_dbi_timer *dbi_timer;
 	int sec;
-	unsigned int flags;
+	unsigned long flags;
 	struct mtk_ddp_comp *comp;
 	struct mtk_ddp_comp *dbi_count = NULL;
 	struct mtk_disp_dbi_count *count_data;
@@ -567,7 +557,7 @@ void mtk_crtc_dbi_count_release_fence(struct mtk_drm_crtc *mtk_crtc)
 	struct drm_crtc *crtc = &mtk_crtc->base;
 	int session_id = 0;
 	struct mtk_dbi_event *dbi_event;
-	unsigned int flags;
+	unsigned long flags;
 
 	session_id = mtk_get_session_id(crtc);
 
@@ -649,7 +639,7 @@ int mtk_dbi_count_wait_event(struct mtk_ddp_comp *comp, void *data)
 	int ret = 0;
 	unsigned int *event = data;
 	struct mtk_dbi_event *dbi_event = &mtk_crtc->dbi_data.dbi_event;
-	unsigned int flags_event;
+	unsigned long flags_event;
 
 	wait_event_interruptible_timeout(dbi_event->event_wq,
 		dbi_event->event, msecs_to_jiffies(10000));
@@ -671,7 +661,7 @@ int mtk_dbi_count_clear_event(struct mtk_ddp_comp *comp, void *data)
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 	int ret = 0;
 	struct mtk_dbi_event *dbi_event = &mtk_crtc->dbi_data.dbi_event;
-	unsigned int flags_event;
+	unsigned long flags_event;
 
 	DBI_SPIN_LOCK(&dbi_event->lock, __func__, __LINE__, flags_event);
 	dbi_event->event = 0;
@@ -684,7 +674,6 @@ int mtk_dbi_count_clear_event(struct mtk_ddp_comp *comp, void *data)
 int mtk_dbi_count_wait_new_frame(struct mtk_ddp_comp *comp, void *data)
 {
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
-	int ret = 0;
 	unsigned int *fence_idx = data;
 	unsigned int *out = data;
 	struct mtk_disp_dbi_idle_count *info = &mtk_crtc->dbi_data.idle_count_info;
@@ -713,9 +702,9 @@ void mtk_dbi_count_timer_callback( struct timer_list *timer)
 {
 	struct mtk_dbi_timer *dbi_timer;
 	struct mtk_drm_crtc *mtk_crtc;
-	unsigned int flags;
+	unsigned long flags;
 	struct mtk_dbi_event *dbi_event;
-	unsigned int flags_event;
+	unsigned long flags_event;
 
 	dbi_timer = to_dbi_timer(timer);
 	mtk_crtc = dbi_timer->mtk_crtc;
@@ -741,9 +730,9 @@ int mtk_dbi_count_create_timer(struct mtk_ddp_comp *comp, void *data, bool need_
 	unsigned int sec;
 	struct timer_list *timer = &mtk_crtc->dbi_data.dbi_timer.base;
 	struct mtk_dbi_timer *dbi_timer =  &mtk_crtc->dbi_data.dbi_timer;
-	unsigned int flags;
+	unsigned long flags;
 	struct mtk_dbi_event *dbi_event = &mtk_crtc->dbi_data.dbi_event;
-	unsigned int flags_event;
+	unsigned long flags_event;
 
 	DBI_COUNT_INFO("+++\n");
 
@@ -776,7 +765,7 @@ int mtk_dbi_count_delete_timer(struct mtk_ddp_comp *comp, bool need_lock, bool m
 	int ret = 0;
 	struct timer_list *timer = &mtk_crtc->dbi_data.dbi_timer.base;
 	struct mtk_dbi_timer *dbi_timer =  &mtk_crtc->dbi_data.dbi_timer;
-	unsigned int flags;
+	unsigned long flags;
 
 	DBI_COUNT_INFO(" +++\n");
 
@@ -802,7 +791,7 @@ int mtk_dbi_count_timer_disable(struct drm_crtc *crtc)
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	int ret = 0;
 	struct mtk_dbi_timer *dbi_timer = &mtk_crtc->dbi_data.dbi_timer;
-	unsigned int flags;
+	unsigned long flags;
 	unsigned int crtc_id = drm_crtc_index(crtc);
 	struct mtk_crtc_state *mtk_state = to_mtk_crtc_state(crtc->state);
 	struct mtk_ddp_comp *comp;
@@ -831,7 +820,7 @@ int mtk_dbi_count_timer_enable(struct drm_crtc *crtc)
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	int ret = 0;
 	struct mtk_dbi_timer *dbi_timer = &mtk_crtc->dbi_data.dbi_timer;
-	unsigned int flags;
+	unsigned long flags;
 	struct mtk_crtc_state *mtk_state = to_mtk_crtc_state(crtc->state);
 	unsigned int crtc_id = drm_crtc_index(crtc);
 	struct mtk_ddp_comp *comp;
@@ -1004,7 +993,6 @@ void mtk_dbi_count_hrt_cal_ratio(struct mtk_ddp_comp *comp, enum CHANNEL_TYPE ty
 int mtk_dbi_count_wait_disable_finish(struct mtk_ddp_comp *comp, void *data)
 {
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
-	int ret = 0;
 	unsigned int *event = data;
 
 	DBI_COUNT_INFO("+++\n");
@@ -1263,7 +1251,7 @@ static void mtk_dbi_set_slice(struct mtk_ddp_comp *comp,
 
 	uint32_t value = 0, mask = 0;
 
-	SET_VAL_MASK(value, mask, slice_num - 1, COUNTING_SLICE_NUM);
+	SET_VAL_MASK(value, mask, (slice_num - 1), COUNTING_SLICE_NUM);
 	mtk_dbi_count_write_mask(comp, value, REG_DBI_COUNTING_MODE, mask, handle);
 
 	value = 0;
@@ -1291,7 +1279,7 @@ static void mtk_dbi_hw_count_trigger(struct mtk_ddp_comp *comp,
 		mtk_dbi_count_config(comp, NULL, handle);
 
 	//buf config
-	for(int i;i<dbi_count->buffer_cfg.buf_reg_list.reg_num;i++) {
+	for(int i = 0; i < dbi_count->buffer_cfg.buf_reg_list.reg_num;i++) {
 		if(dbi_count->buffer_cfg.buf_reg_list.mask[i])
 			mtk_dbi_count_write_mask(comp, dbi_count->buffer_cfg.buf_reg_list.value[i],
 				dbi_count->buffer_cfg.buf_reg_list.addr[i],
@@ -1513,10 +1501,6 @@ void mtk_dbi_count_dump(struct mtk_ddp_comp *comp)
 	void __iomem *baddr = comp->regs;
 	void __iomem *mbaddr;
 	int i;
-	struct mtk_drm_private *priv = NULL;
-	struct mtk_drm_crtc *mtk_crtc = NULL;
-	struct mtk_disp_dbi_count *dbi_count = comp_to_dbi_count(comp);
-
 
 	DDPDUMP("== %s REGS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
 	DDPDUMP("-- Start dump dbi count registers --\n");
@@ -1554,7 +1538,6 @@ static void mtk_dbi_count_prepare(struct mtk_ddp_comp *comp)
 
 static void mtk_dbi_count_unprepare(struct mtk_ddp_comp *comp)
 {
-	uint32_t value = 0, mask = 0;
 
 	DBI_COUNT_INFO("%s +++\n", mtk_dump_comp_str(comp));
 	mtk_ddp_comp_clk_unprepare(comp);
@@ -1564,7 +1547,6 @@ static void mtk_dbi_count_unprepare(struct mtk_ddp_comp *comp)
 static void mtk_dbi_count_srt_cal(struct mtk_ddp_comp *comp, int en, int slice_num)
 {
 	struct mtk_disp_dbi_count *dbi_count = comp_to_dbi_count(comp);
-	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 	unsigned int buffer_size = dbi_count->count_buffer.size;
 	uint32_t vrefresh;
 	uint32_t srt = 0;
@@ -2222,7 +2204,6 @@ static int mtk_dbi_count_load_buffer_cfg(struct mtk_ddp_comp *comp, struct mtk_d
 	void *data[10] = {0};
 	int size = 0;
 	int index = 0;
-	bool ret;
 
 	buf_cfg = &dbi_count->buffer_cfg;
 	DBI_COUNT_INFO("+ reg_num %d\n", buf_cfg->buf_reg_list.reg_num);
@@ -2364,7 +2345,6 @@ static int mtk_dbi_count_pq_ioctl_transact(struct mtk_ddp_comp *comp,
 static void mtk_dbi_count_first_cfg(struct mtk_ddp_comp *comp,
 		struct mtk_ddp_config *cfg, struct cmdq_pkt *handle)
 {
-	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 	struct mtk_disp_dbi_count *dbi_count = comp_to_dbi_count(comp);
 
 	DDPMSG("%s+\n", __func__);
@@ -2413,8 +2393,6 @@ static int mtk_disp_dbi_count_bind(struct device *dev, struct device *master,
 						&dbi_count->ddp_comp, "W");
 		dbi_count->qos_req_w = of_mtk_icc_get(dev, buf);
 
-		pr_notice("%s+ %llx\n", __func__, dbi_count->qos_req_w);
-
 		mtk_disp_pmqos_get_icc_path_name(buf, sizeof(buf),
 						&dbi_count->ddp_comp, "W_STASH");
 		dbi_count->qos_req_w_stash = of_mtk_icc_get(dev, buf);
@@ -2452,8 +2430,6 @@ static int mtk_disp_dbi_count_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct mtk_disp_dbi_count *priv;
 	enum mtk_ddp_comp_id comp_id;
-	struct device_node *node = NULL;
-	int val = 0;
 	int ret, irq_num;
 
 	DDPMSG("%s+\n", __func__);
