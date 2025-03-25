@@ -7,6 +7,8 @@
 
 #include "cmdq-util.h"
 
+#define MDP_THRD_MIN	19
+
 const char *cmdq_thread_module_dispatch(phys_addr_t gce_pa, s32 thread)
 {
 	switch (thread) {
@@ -92,6 +94,11 @@ bool cmdq_thread_ddr_module(const s32 thread)
 	}
 }
 
+uint cmdq_get_mdp_min_thread(void)
+{
+	return MDP_THRD_MIN;
+}
+
 struct cmdq_util_platform_fp platform_fp = {
 	.thread_module_dispatch = cmdq_thread_module_dispatch,
 	.event_module_dispatch = cmdq_event_module_dispatch,
@@ -99,6 +106,7 @@ struct cmdq_util_platform_fp platform_fp = {
 	.test_get_subsys_list = cmdq_test_get_subsys_list,
 	.util_hw_name = cmdq_util_hw_name,
 	.thread_ddr_module = cmdq_thread_ddr_module,
+	.get_mdp_min_thread = cmdq_get_mdp_min_thread,
 };
 
 static int __init cmdq_platform_init(void)
