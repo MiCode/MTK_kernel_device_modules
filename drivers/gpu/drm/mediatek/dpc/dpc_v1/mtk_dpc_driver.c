@@ -4347,7 +4347,8 @@ static void process_dbg_opt(const char *opt)
 			DPCDUMP("disp dt(%u, %u->%u)", v1, g_disp_dt_usage[v1].ep, v2);
 			g_disp_dt_usage[v1].ep = v2;
 		} else if (g_mml_dt_usage){
-			v1 -= DPC_DISP_DT_CNT;
+			if (v1 > 0)
+				v1 -= DPC_DISP_DT_CNT;
 			DPCDUMP("mml dt(%u, %u->%u)", v1, g_mml_dt_usage[v1].ep, v2);
 			g_mml_dt_usage[v1].ep = v2;
 		}
