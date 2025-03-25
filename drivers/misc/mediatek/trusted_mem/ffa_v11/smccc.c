@@ -1,26 +1,14 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (C) 2021 ARM Ltd.
- * Copyright (c) 2023 MediaTek Inc.
  */
 
 #include <linux/printk.h>
-#include <linux/kvm.h>
-#include <linux/kprobes.h>
-#include <linux/spinlock.h>
 
 #include "common.h"
 
-#define PKVM_MGMT_SYMBOL	"pkvm_mgmt_get_ver"
-#define APPLY_FFA_WA
-
 static void __arm_ffa_fn_smc(ffa_value_t args, ffa_value_t *res)
 {
-#ifdef APPLY_FFA_WA
-	/* FF-A workaround, routing FFA to vendor module */
-	if (is_protected_kvm_enabled())
-		args.a0 |= 0x8000UL;
-#endif
 	arm_smccc_1_2_smc(&args, res);
 }
 
