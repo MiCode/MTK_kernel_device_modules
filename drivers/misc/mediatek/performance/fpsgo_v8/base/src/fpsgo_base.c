@@ -661,8 +661,8 @@ void fpsgo_reset_attr(struct fpsgo_boost_attr *boost_attr)
 		boost_attr->limit_cfreq2cap_m_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->limit_rfreq2cap_m_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->powerRL_enable_by_pid = BY_PID_DEFAULT_VAL;
-		boost_attr->powerRL_FPS_margin_by_pid = BY_PID_DEFAULT_VAL;
-		boost_attr->powerRL_cap_limit_range_by_pid = BY_PID_DEFAULT_VAL;
+		boost_attr->powerRL_perf_min_by_pid = BY_PID_DEFAULT_VAL;
+		boost_attr->powerRL_current_cap_by_pid = BY_PID_DEFAULT_VAL;
 	}
 }
 
@@ -1013,8 +1013,8 @@ int is_to_delete_fpsgo_attr(struct fpsgo_attr_by_pid *fpsgo_attr)
 			boost_attr.limit_cfreq2cap_m_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.limit_rfreq2cap_m_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.powerRL_enable_by_pid == BY_PID_DEFAULT_VAL &&
-			boost_attr.powerRL_FPS_margin_by_pid == BY_PID_DEFAULT_VAL &&
-			boost_attr.powerRL_cap_limit_range_by_pid == BY_PID_DEFAULT_VAL) {
+			boost_attr.powerRL_perf_min_by_pid == BY_PID_DEFAULT_VAL &&
+			boost_attr.powerRL_current_cap_by_pid == BY_PID_DEFAULT_VAL) {
 		return 1;
 	}
 	return 0;
@@ -2341,7 +2341,7 @@ static ssize_t render_info_params_show(struct kobject *kobj,
 				" aa_b_minus_idle_time, target_time_up_bound\n");
 	pos += length;
 	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
-				" powerRL_enable, powerRL_FPS_margin, powerRL_cap_limit_range\n");
+				" powerRL_enable, powerRL_perf_min, powerRL_current_cap\n");
 	pos += length;
 	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
 				" sep_loading_ctrl, lc_th, lc_th_upbound, frame_lowbd, frame_upbd\n");
@@ -2496,8 +2496,8 @@ static ssize_t render_info_params_show(struct kobject *kobj,
 		length = scnprintf(temp + pos,
 			FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d, %4d\n",
 			attr_item.powerRL_enable_by_pid,
-			attr_item.powerRL_FPS_margin_by_pid,
-			attr_item.powerRL_cap_limit_range_by_pid);
+			attr_item.powerRL_perf_min_by_pid,
+			attr_item.powerRL_current_cap_by_pid);
 		pos += length;
 
 		length = scnprintf(temp + pos,
@@ -2584,7 +2584,7 @@ static ssize_t render_attr_params_show(struct kobject *kobj,
 				" aa_b_minus_idle_time, target_time_up_bound\n");
 	pos += length;
 	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
-				" powerRL_enable, powerRL_FPS_margin, powerRL_cap_limit_range\n");
+				" powerRL_enable, powerRL_perf_min, powerRL_current_cap\n");
 	pos += length;
 	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
 				" sep_loading_ctrl, lc_th, lc_th_upbound, frame_lowbd, frame_upbd\n");
@@ -2713,8 +2713,8 @@ static ssize_t render_attr_params_show(struct kobject *kobj,
 		length = scnprintf(temp + pos,
 			FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d, %4d\n",
 			attr_item.powerRL_enable_by_pid,
-			attr_item.powerRL_FPS_margin_by_pid,
-			attr_item.powerRL_cap_limit_range_by_pid);
+			attr_item.powerRL_perf_min_by_pid,
+			attr_item.powerRL_current_cap_by_pid);
 		pos += length;
 
 		length = scnprintf(temp + pos,

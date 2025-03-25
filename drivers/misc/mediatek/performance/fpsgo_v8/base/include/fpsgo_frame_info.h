@@ -230,8 +230,8 @@ struct fpsgo_boost_attr {
 
 	/* power RL */
 	int powerRL_enable_by_pid;
-	int powerRL_FPS_margin_by_pid;
-	int powerRL_cap_limit_range_by_pid;
+	int powerRL_perf_min_by_pid;
+	int powerRL_current_cap_by_pid;
 };
 
 struct fpsgo_attr_by_pid {
