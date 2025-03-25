@@ -569,6 +569,7 @@ struct mml_frame_config {
 	/* mutex to join operations of task pipes, like buffer flush */
 	struct mutex pipe_mutex;
 	struct kref ref;
+	u32 isr_count;
 
 	/* see more detail in frame_calc_layer_hrt */
 	u16 layer_w;
@@ -769,6 +770,8 @@ struct mml_task {
 	struct work_struct work_done;
 	struct kthread_work kt_work_done;
 	atomic_t pipe_done;
+	atomic_t isr_ref;
+	struct mml_isr_node *isr_nodes;
 
 	/* mml pq task */
 	struct mml_pq_task *pq_task;
@@ -872,6 +875,8 @@ struct mml_comp_config_ops {
 		       struct mml_comp_config *ccfg);
 	s32 (*repost)(struct mml_comp *comp, struct mml_task *task,
 		      struct mml_comp_config *ccfg);
+	bool (*isr_prepare)(struct mml_comp *comp, struct mml_task *task,
+		struct mml_isr_node *isr_node, struct mml_comp_config *ccfg);
 };
 
 struct mml_comp_hw_ops {

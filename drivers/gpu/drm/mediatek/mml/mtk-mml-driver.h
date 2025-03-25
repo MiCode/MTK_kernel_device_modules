@@ -31,6 +31,7 @@ struct mml_topology_cache;
 struct mml_task;
 struct mml_comp_config;
 struct mml_topology_path;
+struct mml_isr_node;
 
 enum mml_sys_id {
 	mml_sys_tile = 0,	/* in most case, mml-tile, for mml_decouple_2, mmlsys0 */
@@ -519,6 +520,16 @@ void mml_dump_output(struct mml_dev *mml, const struct mml_topology_path *path, 
  * Return:	sw ver
  */
 u32 mml_get_chip_swver(struct mml_dev *mml);
+
+void mml_isr_prepare_irq(struct mml_dev *mml, const struct mml_topology_path *path,
+	struct mml_task *task);
+
+void mml_isr_queue_task_locked(struct mml_dev *mml, struct mml_comp *comp,
+	struct list_head *isr_nodes, struct mml_isr_node *isr_node, struct mml_task *task);
+
+void mml_isr_notify(struct mml_dev *mml, struct mml_comp *comp, struct list_head *isr_nodes);
+
+void mml_isr_wait(struct mml_dev *mml, struct mml_task *task);
 
 extern struct platform_driver mml_sys_driver;
 extern struct platform_driver mml_aal_driver;

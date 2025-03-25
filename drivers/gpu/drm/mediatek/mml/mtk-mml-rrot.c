@@ -15,6 +15,7 @@
 #include <soc/mediatek/smi.h>
 #include <mtk-smmu-v3.h>
 
+#include "mtk-mml-dpc.h"
 #include "mtk-mml-driver.h"
 #include "mtk-mml-tile.h"
 #include "mtk-mml-sys.h"
@@ -334,6 +335,8 @@ struct mml_comp_rrot {
 	const struct rrot_data *data;
 	struct device *mmu_dev;	/* for dmabuf to iova */
 	struct device *mmu_dev_sec; /* for secure dmabuf to secure iova */
+	void *mml;
+	struct list_head isr_nodes;
 
 	u16 event_eof;
 
@@ -385,6 +388,7 @@ struct rrot_frame_data {
 	u32 stash_bw;
 	bool ultra_off;
 	bool binning;
+	bool isr_en;
 
 	/* dvfs */
 	struct mml_frame_size in_size;
@@ -1234,6 +1238,7 @@ static s32 rrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 	u8 ext_preultra_en = 0;
 	u8 ext_ultra_en = 0;
 	u32 ddren = BIT(2);
+	u32 irq_en = 0;
 
 	mml_msg("use config %p rrot %p", cfg, rrot);
 
@@ -1256,8 +1261,12 @@ static s32 rrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 		cmdq_pkt_write(pkt, NULL, base_pa + RROT_VCSEL,
 			mml_iscouple(cfg->info.mode) ? 0x3 : 0x0, U32_MAX);
 
-	if (mml_irq && rrot->irq)
-		cmdq_pkt_write(pkt, NULL, base_pa + RROT_INTERRUPT_ENABLE, 0x5, U32_MAX);
+	if (mml_irq && rrot->irq && cfg->info.mode == MML_MODE_DIRECT_LINK) {
+		rrot_frm->isr_en = true;
+		irq_en = 0x5;
+		cfg->isr_count++;
+	}
+	cmdq_pkt_write(pkt, NULL, base_pa + RROT_INTERRUPT_ENABLE, irq_en, U32_MAX);
 
 	if (mml_rdma_crc) {
 		if (MML_FMT_COMPRESS(src->format))
@@ -2261,6 +2270,20 @@ static s32 rrot_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 	return 0;
 }
 
+static bool rrot_isr_prepare(struct mml_comp *comp, struct mml_task *task,
+	struct mml_isr_node *isr_node, struct mml_comp_config *ccfg)
+{
+	struct mml_comp_rrot *rrot = comp_to_rrot(comp);
+	struct rrot_frame_data *rrot_frm = rrot_frm_data(ccfg);
+
+	if (rrot_frm->isr_en) {
+		mml_isr_queue_task_locked(rrot->mml, comp, &rrot->isr_nodes, isr_node, task);
+		return true;
+	}
+
+	return false;
+}
+
 static const struct mml_comp_config_ops rrot_cfg_ops = {
 	.prepare = rrot_prepare,
 	.buf_map = rrot_buf_map,
@@ -2270,6 +2293,7 @@ static const struct mml_comp_config_ops rrot_cfg_ops = {
 	.wait = rrot_wait,
 	.post = rrot_post,
 	.reframe = rrot_reconfig_frame,
+	.isr_prepare = rrot_isr_prepare,
 };
 
 static void rrot_init_frame_done_event(struct mml_comp *comp, u32 event)
@@ -2734,6 +2758,11 @@ static int mml_bind(struct device *dev, struct device *master, void *data)
 	if (ret)
 		dev_err(dev, "Failed to register mml component %s: %d\n",
 			dev->of_node->full_name, ret);
+
+	rrot->mml = dev_get_drvdata(master);
+	mml_log("%s rrot%u bind master %p mml %p",
+		__func__, rrot->pipe, master, rrot->mml);
+
 	return ret;
 }
 
@@ -2786,6 +2815,7 @@ static irqreturn_t mml_rrot_irq_handler(int irq, void *dev_id)
 		rrot_pipe_mmp(rrot->pipe, MMPROFILE_FLAG_END, comp->id, 0);
 
 	mml_dpc_isr_release();
+	mml_isr_notify(rrot->mml, comp, &rrot->isr_nodes);
 
 	return IRQ_HANDLED;
 }
@@ -2850,6 +2880,8 @@ static int probe(struct platform_device *pdev)
 		mml_log("register rrot%u irq %s %d irq %d",
 			priv->pipe, ret ? "fail" : "success", ret, irq);
 	}
+
+	INIT_LIST_HEAD(&priv->isr_nodes);
 
 	/* assign ops */
 	priv->comp.tile_ops = &rrot_tile_ops;

@@ -66,10 +66,12 @@ struct mml_mutex {
 	struct mml_comp comp;
 	const struct mutex_data *data;
 	u32 idx;
+	void *mml;
 	bool ddp_bound;
 	bool irq;
 	atomic_t connect[MML_PIPE_CNT];
 	enum mml_mode connected_mode;
+	struct list_head isr_nodes;
 
 	u16 event_pipe0_mml;
 	u16 event_pipe1_mml;
@@ -79,14 +81,33 @@ struct mml_mutex {
 	struct mutex_module modules[MML_MAX_COMPONENTS];
 };
 
+struct mutex_frame_data {
+	bool isr_en;
+};
+
 static inline struct mml_mutex *comp_to_mutex(struct mml_comp *comp)
 {
 	return container_of(comp, struct mml_mutex, comp);
 }
 
+static inline struct mutex_frame_data *mutex_frm_data(struct mml_comp_config *ccfg)
+{
+	return ccfg->data;
+}
+
+static s32 mutex_prepare(struct mml_comp *comp, struct mml_task *task,
+	struct mml_comp_config *ccfg)
+{
+	ccfg->data = kzalloc(sizeof(struct mutex_frame_data), GFP_KERNEL);
+	if (!ccfg->data)
+		return -ENOMEM;
+
+	return 0;
+}
+
 static s32 mutex_enable(struct mml_mutex *mutex, struct cmdq_pkt *pkt,
 			const struct mml_topology_path *path, u32 mutex_sof,
-			enum mml_mode mode, bool mod_en, bool sof_en)
+			enum mml_mode mode, bool mod_en, bool sof_en, bool irq_en)
 {
 	const phys_addr_t base_pa = mutex->comp.base_pa;
 	const u32 sof_off = mutex->data->sof_offset;
@@ -116,8 +137,8 @@ static s32 mutex_enable(struct mml_mutex *mutex, struct cmdq_pkt *pkt,
 	if (mutex_id < 0)
 		return -EINVAL;
 
-	if (mml_irq && mutex->irq && path->sof_irq)
-		cmdq_pkt_write(pkt, NULL, base_pa + MUTEX_INTEN, 1 << path->mux_group, U32_MAX);
+	cmdq_pkt_write(pkt, NULL, base_pa + MUTEX_INTEN,
+		irq_en ? BIT(path->mux_group) : 0, BIT(path->mux_group));
 
 	/* Do config mutex mod only in dc mode.
 	 * For direct link mode, config from mml side (which mutex_sof is empty),
@@ -170,6 +191,16 @@ static s32 mutex_disable(struct mml_mutex *mutex, struct cmdq_pkt *pkt,
 
 	cmdq_pkt_write(pkt, NULL, base_pa + MUTEX_EN(mutex_id), 0x0, U32_MAX);
 
+	for (i = 0; i < mutex->data->mod_cnt; i++) {
+		u32 offset = mutex->data->mod_offsets[i];
+
+		cmdq_pkt_write(pkt, NULL, base_pa + MUTEX_MOD(mutex_id, offset), 0, U32_MAX);
+	}
+
+	/* also disable irq */
+	if (mutex->irq)
+		cmdq_pkt_write(pkt, NULL, base_pa + MUTEX_INTEN, 0, BIT(path->mux_group));
+
 	mml_mmp(mutex_dis, MMPROFILE_FLAG_PULSE, mutex_id, path->mux_group);
 
 	return 0;
@@ -179,11 +210,12 @@ static s32 mutex_trigger(struct mml_comp *comp, struct mml_task *task,
 			 struct mml_comp_config *ccfg)
 {
 	struct mml_mutex *mutex = comp_to_mutex(comp);
-	const struct mml_frame_config *cfg = task->config;
+	struct mutex_frame_data *mutex_frm = mutex_frm_data(ccfg);
+	struct mml_frame_config *cfg = task->config;
 	const struct mml_topology_path *path = cfg->path[ccfg->pipe];
 	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
 	u32 mutex_src = 0;
-	bool sof_en = true;
+	bool sof_en = true, irq_en = false;
 	s32 ret;
 
 	/* DL mode and dpc off case, mutex sof control by dsi src */
@@ -204,7 +236,13 @@ static s32 mutex_trigger(struct mml_comp *comp, struct mml_task *task,
 	}
 
 	/* DL mode config sof only, other modes enable to trigger directly */
-	ret = mutex_enable(mutex, pkt, path, mutex_src, cfg->info.mode, true, sof_en);
+	if (mml_irq && cfg->info.mode == MML_MODE_DIRECT_LINK &&
+		mutex->irq && path->sof_irq && mutex->mml) {
+		irq_en = true;
+		mutex_frm->isr_en = true;
+		cfg->isr_count++;
+	}
+	ret = mutex_enable(mutex, pkt, path, mutex_src, cfg->info.mode, true, sof_en, irq_en);
 
 	/* asume path->mmlsys2, which is mmlsys0 always put after mmlsys1,
 	 * do disp/mml event sync after both mutex called mutex_enable
@@ -273,8 +311,7 @@ static s32 mutex_post(struct mml_comp *comp, struct mml_task *task,
 	const struct mml_topology_path *path = cfg->path[ccfg->pipe];
 	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
 
-	if (cfg->info.mode == MML_MODE_DIRECT_LINK)
-		mutex_disable(mutex, pkt, path);
+	mutex_disable(mutex, pkt, path);
 
 	return 0;
 }
@@ -295,6 +332,7 @@ static s32 mutex_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 }
 
 static const struct mml_comp_config_ops mutex_config_ops = {
+	.prepare = mutex_prepare,
 	.mutex = mutex_trigger,
 	.wait_sof = mutex_wait_sof,
 	.post = mutex_post,
@@ -305,11 +343,12 @@ static s32 mutex_trigger_mt6993d(struct mml_comp *comp, struct mml_task *task,
 	struct mml_comp_config *ccfg)
 {
 	struct mml_mutex *mutex = comp_to_mutex(comp);
-	const struct mml_frame_config *cfg = task->config;
+	struct mutex_frame_data *mutex_frm = mutex_frm_data(ccfg);
+	struct mml_frame_config *cfg = task->config;
 	const struct mml_topology_path *path = cfg->path[ccfg->pipe];
 	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
 	u32 mutex_src = 0;
-	bool sof_en = true;
+	bool sof_en = true, irq_en = false;
 	s32 ret;
 
 	/* DL mode and dpc off case, mutex sof control by dsi src */
@@ -341,7 +380,13 @@ static s32 mutex_trigger_mt6993d(struct mml_comp *comp, struct mml_task *task,
 	}
 
 	/* DL mode config sof only, other modes enable to trigger directly */
-	ret = mutex_enable(mutex, pkt, path, mutex_src, cfg->info.mode, true, sof_en);
+	if (mml_irq && cfg->info.mode == MML_MODE_DIRECT_LINK &&
+		mutex->irq && path->sof_irq && mutex->mml) {
+		irq_en = true;
+		mutex_frm->isr_en = true;
+		cfg->isr_count++;
+	}
+	ret = mutex_enable(mutex, pkt, path, mutex_src, cfg->info.mode, true, sof_en, irq_en);
 
 	/* asume path->mmlsys2, which is mmlsys0 always put after mmlsys1,
 	 * do disp/mml event sync after both mutex called mutex_enable
@@ -383,11 +428,26 @@ static s32 mutex_trigger_mt6993d(struct mml_comp *comp, struct mml_task *task,
 	return ret;
 }
 
+static bool mutex_isr_prepare(struct mml_comp *comp, struct mml_task *task,
+	struct mml_isr_node *isr_node, struct mml_comp_config *ccfg)
+{
+	struct mml_mutex *mutex = comp_to_mutex(comp);
+	struct mutex_frame_data *mutex_frm = mutex_frm_data(ccfg);
+
+	if (mutex_frm->isr_en) {
+		mml_isr_queue_task_locked(mutex->mml, comp, &mutex->isr_nodes, isr_node, task);
+		return true;
+	}
+
+	return false;
+}
 
 static const struct mml_comp_config_ops mutex_config_ops_mt6993_mmld = {
+	.prepare = mutex_prepare,
 	.mutex = mutex_trigger_mt6993d,
 	.wait_sof = mutex_wait_sof,
 	.reframe = mutex_reconfig_frame,
+	.isr_prepare = mutex_isr_prepare,
 };
 
 static void mutex_taskdone(struct mml_comp *comp, struct mml_task *task,
@@ -496,6 +556,10 @@ static int mml_bind(struct device *dev, struct device *master, void *data)
 		if (ret)
 			dev_err(dev, "Failed to register mml component %s: %d\n",
 				dev->of_node->full_name, ret);
+
+		mutex->mml = dev_get_drvdata(master);
+		mml_log("%s mutex%u bind master %p mml %p irq %d",
+			__func__, mutex->idx, master, mutex->mml, mutex->irq);
 	} else {
 		ret = mml_ddp_comp_register(drm_dev, &mutex->ddp_comp);
 		if (ret)
@@ -677,7 +741,7 @@ static void mutex_addon_config_dl(struct mtk_ddp_comp *ddp_comp,
 		}
 
 		sof = mutex->data->get_mutex_sof(&cfg->mutex);
-		mutex_enable(mutex, pkt, path, sof, MML_MODE_DIRECT_LINK, false, true);
+		mutex_enable(mutex, pkt, path, sof, MML_MODE_DIRECT_LINK, false, true, false);
 		mutex->connected_mode = MML_MODE_DIRECT_LINK;
 	}
 }
@@ -708,7 +772,7 @@ static void mutex_addon_config_addon(struct mtk_ddp_comp *ddp_comp,
 	} else {
 		atomic_set(&mutex->connect[cfg->pipe], 1);
 		mutex_sof = cfg->mutex.is_cmd_mode ? 0 : mutex->data->get_mutex_sof(&cfg->mutex);
-		mutex_enable(mutex, pkt, path, mutex_sof, MML_MODE_DDP_ADDON, true, true);
+		mutex_enable(mutex, pkt, path, mutex_sof, MML_MODE_DDP_ADDON, true, true, false);
 		mutex->connected_mode = MML_MODE_DDP_ADDON;
 	}
 }
@@ -749,14 +813,17 @@ static irqreturn_t mml_mutex_irq_handler_mt6991(int irq, void *dev_id)
 	struct mml_mutex *mutex = dev_id;
 	struct mml_comp *comp = &mutex->comp;
 	void __iomem *base = comp->base;
-	unsigned long irq_status = readl(base + MUTEX_INSTA);
+	unsigned long irq_status;
 
+	mml_dpc_isr_keep();
+
+	irq_status = readl(base + MUTEX_INSTA);
 	mml_mmp(mutex, MMPROFILE_FLAG_PULSE, comp->id, irq_status);
 
 	writel(0, base + MUTEX_INSTA);
 
 	if (!irq_status)
-		return IRQ_HANDLED;
+		goto out;
 
 	/* stream 1 for mml-frame dl mode,
 	 * mml1_rrot0 as rrot0, mml1_rrot1 as rrot1
@@ -768,6 +835,10 @@ static irqreturn_t mml_mutex_irq_handler_mt6991(int irq, void *dev_id)
 			mml_mmp(rrot0, MMPROFILE_FLAG_START, comp->id, 0);
 	}
 
+out:
+	mml_dpc_isr_release();
+	mml_isr_notify(mutex->mml, comp, &mutex->isr_nodes);
+
 	return IRQ_HANDLED;
 }
 
@@ -776,21 +847,36 @@ static irqreturn_t mml_mutex_irq_handler_mt6993(int irq, void *dev_id)
 	struct mml_mutex *mutex = dev_id;
 	struct mml_comp *comp = &mutex->comp;
 	void __iomem *base = comp->base;
-	unsigned long irq_status = readl(base + MUTEX_INSTA);
+	unsigned long irq_status;
+	u32 offset = mutex->data->mod_offsets[0];
+	u32 mod = 0;
+	u32 i;
+	const u32 mml2_rrot0_mod = 18;	/* rrot0 = <MML2_RROT0 0 18>; */
+	const u32 mml2_rrot1_mod = 26;	/* rrot1 = <MML2_RROT1 0 26>; */
 
+	mml_dpc_isr_keep();
+
+	irq_status = readl(base + MUTEX_INSTA);
 	mml_mmp(mutex, MMPROFILE_FLAG_PULSE, comp->id, irq_status);
 
 	writel(0, base + MUTEX_INSTA);
 
-	if (!irq_status)
-		return IRQ_HANDLED;
+	if (!irq_status || !(irq_status & 0xf))
+		goto out;
 
-	if (irq_status & 0xf) {
-		if (mutex->idx == 1) {
-			mml_mmp(rrot1, MMPROFILE_FLAG_START, comp->id, 0);
-			mml_mmp(rrot0, MMPROFILE_FLAG_START, comp->id, 0);
-		}
-	}
+	/* mt6993 uses mutex thread 1~3 */
+	for (i = 1; i < 4; i++)
+		mod |= (u32)readl(base + MUTEX_MOD(i, offset));
+
+	mml_mmp(mutex, MMPROFILE_FLAG_PULSE, 0x80000000 | comp->id, mod);
+	if (mod & BIT(mml2_rrot0_mod))
+		mml_mmp(rrot0, MMPROFILE_FLAG_START, comp->id, mod);
+	if (mod & BIT(mml2_rrot1_mod))
+		mml_mmp(rrot1, MMPROFILE_FLAG_START, comp->id, mod);
+
+out:
+	mml_dpc_isr_release();
+	mml_isr_notify(mutex->mml, comp, &mutex->isr_nodes);
 
 	return IRQ_HANDLED;
 }
@@ -838,8 +924,8 @@ static int probe(struct platform_device *pdev)
 			ret = devm_request_irq(dev, irq, priv->data->handler,
 				IRQF_SHARED, dev_name(dev), priv);
 			priv->irq = true;
-			mml_log("register mutex%u irq %s %d irq %d",
-				priv->idx, ret ? "fail" : "success", ret, irq);
+			mml_log("register mutex%u irq %s %d irq %d mutex %p",
+				priv->idx, ret ? "fail" : "success", ret, irq, priv);
 		}
 	}
 
@@ -889,6 +975,8 @@ static int probe(struct platform_device *pdev)
 		priv->modules[comp_id].mutex_id = mutex_id;
 		priv->modules[comp_id].select = true;
 	}
+
+	INIT_LIST_HEAD(&priv->isr_nodes);
 
 	priv->comp.config_ops = priv->data->config_ops;
 	priv->comp.hw_ops = &mutex_hw_ops;

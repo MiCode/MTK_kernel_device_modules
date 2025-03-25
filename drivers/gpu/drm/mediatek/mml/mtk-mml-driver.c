@@ -135,6 +135,11 @@ struct mml_sys_state {
 	u8 sys_id;
 };
 
+struct mml_isr_node {
+	struct list_head entry;
+	struct mml_task *task;
+};
+
 struct mml_dev {
 	struct platform_device *pdev;
 	struct mml_comp *comps[MML_MAX_COMPONENTS];
@@ -157,6 +162,9 @@ struct mml_dev {
 	struct mml_topology_cache *topology;
 	struct mutex ctx_mutex;
 	struct mutex clock_mutex;
+
+	spinlock_t isr_lock;
+	wait_queue_head_t isr_waitq;
 
 	bool dl_en;
 	bool racing_en;
@@ -2221,6 +2229,117 @@ u32 mml_get_chip_swver(struct mml_dev *mml)
 }
 EXPORT_SYMBOL_GPL(mml_get_chip_swver);
 
+#define has_cfg_op(_comp, op) \
+	(_comp->config_ops && _comp->config_ops->op)
+#define call_cfg_op(_comp, op, ...) \
+	(has_cfg_op(_comp, op) ? \
+		_comp->config_ops->op(_comp, ##__VA_ARGS__) : 0)
+
+void mml_isr_prepare_irq(struct mml_dev *mml, const struct mml_topology_path *path,
+	struct mml_task *task)
+{
+	struct mml_frame_config *cfg = task->config;
+	struct mml_pipe_cache *cache = &task->config->cache[0];
+	struct mml_comp *comp;
+	struct mml_isr_node *nodes;
+	u32 node_idx = 0, i;
+	unsigned long flags = 0;
+
+	if (!cfg->isr_count)
+		return;
+
+	if (!task->isr_nodes) {
+		nodes = kcalloc(cfg->isr_count, sizeof(*nodes), GFP_KERNEL);
+		if (!nodes)
+			goto out;
+		task->isr_nodes = nodes;
+	} else
+		nodes = task->isr_nodes;
+
+	spin_lock_irqsave(&mml->isr_lock, flags);
+	for (i = 0; i < path->node_cnt && node_idx < cfg->isr_count; i++) {
+		comp = path->nodes[i].comp;
+		if (call_cfg_op(comp, isr_prepare, task, &nodes[node_idx], &cache->cfg[i]))
+			node_idx++;
+	}
+	atomic_set(&task->isr_ref, cfg->isr_count);
+	spin_unlock_irqrestore(&mml->isr_lock, flags);
+
+out:
+	mml_msg("%s task job %u isr count %u nodes %p idx %u",
+		__func__, task->job.jobid, cfg->isr_count, nodes, node_idx);
+}
+
+void mml_isr_queue_task_locked(struct mml_dev *mml, struct mml_comp *comp,
+	struct list_head *isr_nodes, struct mml_isr_node *isr_node, struct mml_task *task)
+{
+	INIT_LIST_HEAD(&isr_node->entry);
+	isr_node->task = task;
+	list_add_tail(&isr_node->entry, isr_nodes);
+}
+
+void mml_isr_notify(struct mml_dev *mml, struct mml_comp *comp, struct list_head *isr_nodes)
+{
+	struct mml_isr_node *isr_node;
+	unsigned long flags = 0;
+	bool warning = false;
+
+	spin_lock_irqsave(&mml->isr_lock, flags);
+
+	isr_node = list_first_entry_or_null(isr_nodes, typeof(*isr_node), entry);
+	if (!isr_node) {
+		warning = true;
+		goto out;
+	}
+
+	list_del_init(&isr_node->entry);
+	if (atomic_dec_return(&isr_node->task->isr_ref) == 0)
+		wake_up_interruptible(&mml->isr_waitq);
+
+out:
+	spin_unlock_irqrestore(&mml->isr_lock, flags);
+
+	if (warning)
+		mml_log("%s comp %u isr nodes empty", __func__, comp->id);
+}
+
+void mml_isr_wait(struct mml_dev *mml, struct mml_task *task)
+{
+	struct mml_frame_config *cfg = task->config;
+	long ret;
+
+	mml_msg("%s task job %u isr count %u ref before wait %d",
+		__func__, task->job.jobid, cfg->isr_count, atomic_read(&task->isr_ref));
+
+	ret = wait_event_interruptible_timeout(mml->isr_waitq,
+		atomic_read(&task->isr_ref) == 0, msecs_to_jiffies(10));
+	if (ret <= 1)
+		mml_err("%s timeout as isr_ref %d ret %ld",
+			__func__, atomic_read(&task->isr_ref), ret);
+
+	if (task->isr_nodes) {
+		unsigned long flags = 0;
+		u32 i;
+		bool warning = false;
+
+		spin_lock_irqsave(&mml->isr_lock, flags);
+		for (i = 0; i < cfg->isr_count; i++) {
+			struct mml_isr_node *node = task->isr_nodes;
+			struct list_head *list = &node[i].entry;
+
+			if (list->next != list && list->prev != list) {
+				list_del_init(list);
+				warning = true;
+			}
+		}
+		spin_unlock_irqrestore(&mml->isr_lock, flags);
+
+		if (warning)
+			mml_err("%s task job %u isr not remove node",
+				__func__, task->job.jobid);
+	}
+}
+
 static void mml_process_dbg_cmd(const char *cmd, struct mml_dev *mml)
 {
 	if (IS_ERR_OR_NULL(cmd)) {
@@ -2325,6 +2444,9 @@ static int mml_probe(struct platform_device *pdev)
 	mutex_init(&mml->dpc.dpc_mutex[mml_sys_tile]);
 	mutex_init(&mml->dpc.dpc_mutex[mml_sys_frame]);
 	mutex_init(&mml->dpc.dpc_mutex[mml_sys_dma]);
+
+	spin_lock_init(&mml->isr_lock);
+	init_waitqueue_head(&mml->isr_waitq);
 
 	for (i = 0; i < ARRAY_SIZE(mml->sys_state); i++) {
 		mml->sys_state[i].sys_id = i;

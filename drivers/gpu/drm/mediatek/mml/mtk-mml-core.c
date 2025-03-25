@@ -1809,6 +1809,9 @@ static void core_taskdone(struct work_struct *work)
 	mml_mmp(taskdone, MMPROFILE_FLAG_START, jobid, 0);
 	mml_msg("%s job %u", __func__, jobid);
 
+	if (cfg->isr_count)
+		mml_isr_wait(cfg->mml, task);
+
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 	mml_dump_output(cfg->mml, path, task);
 #endif
@@ -2154,9 +2157,7 @@ static void mml_core_stop_racing_pipe(struct mml_frame_config *cfg, u32 pipe, bo
 static s32 core_flush(struct mml_task *task, u32 pipe)
 {
 	struct mml_frame_config *cfg = task->config;
-#if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 	const struct mml_topology_path *path = cfg->path[pipe];
-#endif
 	struct cmdq_client *tp_clt = cfg->path[pipe]->clt;
 	struct cmdq_client *rb_clt = mml_get_cmdq_clt(cfg->mml,
 		pipe + GCE_THREAD_START);
@@ -2166,6 +2167,9 @@ static s32 core_flush(struct mml_task *task, u32 pipe)
 	mml_msg("%s task %p pipe %u pkt %p job %u",
 		__func__, task, pipe, pkt, task->job.jobid);
 	mml_trace_ex_begin("%s", __func__);
+
+	if (cfg->isr_count)
+		mml_isr_prepare_irq(cfg->mml, path, task);
 
 	core_enable(task, pipe);
 
@@ -2544,6 +2548,7 @@ void mml_core_destroy_task(struct mml_task *task)
 			cmdq_pkt_destroy(task->pkts[i]);
 	}
 	mml_pq_task_release(task);
+	kfree(task->isr_nodes);
 	kfree(task);
 	atomic_dec(&mml_task_ref);
 }
