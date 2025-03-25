@@ -4716,7 +4716,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		mediatek,cti = <&apinfra_mem_cti>,
 				<&emi_infra_cti>,
 				<&chinfra_cti>,
-				<&apu_top_cti>;
+				<&apu_top_cti>,
+				<&mfgsys_cti>;
 	};
 
 	soc {
@@ -20743,6 +20744,13 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0xd033000 0 0x1000>;
 			cti-out-stop = <0x0 0x0 0x2 0x0 0x4 0x0 0x6 0x0>;
 			cti-out-start = <0x1 0x1 0x3 0x1 0x5 0x1 0x7 0x1>;
+		};
+
+		mfgsys_cti: mfgsys-cti {
+			compatible = "mt6993,mfgsys-cti";
+			reg = <0 0xd032000 0 0x1000>;
+			cti-out-stop = <0x0 0x0>;
+			cti-out-start = <0x1 0x1>;
 		};
 	};
 
