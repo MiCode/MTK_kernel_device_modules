@@ -14690,10 +14690,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"seninf-tm",
 				"csi-top-0";
 
-			//interrupts = <GIC_SPI 502 IRQ_TYPE_LEVEL_HIGH 0>;
+			normal-cam-rdy-msk-grp-id-start = <0>;
+			normal-cam-rdy-msk-grp-id-end = <8>;
 
-			//power-domains = <&scpsys MT6985_POWER_DOMAIN_CAM_MAIN>,
-			//		<&scpsys MT6985_POWER_DOMAIN_CSI_RX>;
+			//interrupts = <GIC_SPI 502 IRQ_TYPE_LEVEL_HIGH 0>;
 
 			/* for sentest adjust isp clk used */
 			operating-points-v2 = <&opp_table_cam>;
@@ -14733,8 +14733,12 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<&cksys_mm_clk CKSYS_MM_UNIVPLL2_D6>,
 				<&cksys_mm_clk CKSYS_MM_UNIVPLL2_D5>,
 
-				<&mm_pd_clk CLK_PD_CAM_MAIN_CAM_MAIN>,
-				<&mm_pd_clk CLK_PD_CSI_BS_RX_SENINF>;
+				/* for power domain hw ccf */
+				//<&mm_pd_clk CLK_PD_CAM_MAIN_CAM_MAIN>,
+				<&mm_pd_clk CLK_PD_CSI_BS_RX_SENINF>,
+
+				/* for adjust isp clk node */
+				<&mmdvfs_mux MMDVFS_USER_CAM>;
 
 			clock-names = "clk_cam_seninf",
 				"clk_cam_cam",
@@ -14751,8 +14755,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				 "clk_top_ap_step1",
 				 "clk_top_ap_step2",
 				 "clk_top_ap_step3",
-				 "clk_hw_ccf_cam_main",
-				 "clk_hw_ccf_csi_bs";
+				 //"clk_hw_ccf_cam_main",
+				 "clk_hw_ccf_csi_bs",
+				 "mmdvfs_mux";
 
 			csi-top {
 				#address-cells = <2>;
