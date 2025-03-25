@@ -37,6 +37,9 @@
 #include <soc/mediatek/smi.h>
 #endif
 
+int dbg_always_urgent_sys;
+module_param(dbg_always_urgent_sys, int, 0644);
+
 #define DISP_OD_EN 0x0000
 #define DISP_OD_INTEN 0x0008
 #define DISP_OD_INTSTA 0x000c
@@ -3906,6 +3909,10 @@ void mt6993_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 			writel_relaxed(0x44, priv->ovlsys1_regs + OVLSYS_EXRDMA_ULTRA_SEL1);
 			writel_relaxed(0x44, priv->ovlsys1_regs + OVLSYS_EXRDMA_PREULTRA_SEL1);
 		}
+		if (priv->side_config_regs) {
+			val = dbg_always_urgent_sys;
+			writel_relaxed(val, priv->side_config_regs +  MMSYS_EMI_REQ_CTL);
+		}
 	} else {
 		if (priv->ovlsys1_regs) {
 			val = 0;
@@ -3926,6 +3933,12 @@ void mt6993_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 			cmdq_pkt_write(handle, NULL, priv->ovlsys1_regs_pa +
 				OVLSYS_EXRDMA_PREULTRA_SEL1, val, ~0);
 		}
+		if (priv->side_config_regs_pa) {
+			val = dbg_always_urgent_sys;
+			cmdq_pkt_write(handle, NULL, priv->side_config_regs_pa +
+				MMSYS_EMI_REQ_CTL, val, ~0);
+		}
+
 	}
 }
 

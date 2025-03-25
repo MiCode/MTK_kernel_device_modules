@@ -69,6 +69,13 @@
 //#include "mtk_reg_disp_bdg.h"
 /* ************end bridge ic ************* */
 //#define DSI_SELF_PATTERN
+
+int dbg_always_ultra;
+module_param(dbg_always_ultra, int, 0644);
+
+int dbg_always_urgent;
+module_param(dbg_always_urgent, int, 0644);
+
 #define DSI_START 0x00
 #define SKEWCAL_START BIT(4)
 #define SLEEPOUT_START BIT(2)
@@ -2972,6 +2979,15 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 		ultra_lo = ultra_lo < (u32)buf_con ? ultra_lo : (u32)buf_con;
 		urgent_hi = urgent_hi < (u32)buf_con ? urgent_hi : (u32)buf_con;
 		urgent_lo = urgent_lo < (u32)buf_con ? urgent_lo : (u32)buf_con;
+
+		if (dbg_always_ultra) {
+			ultra_hi = buf_con + 1;
+			ultra_lo = buf_con;
+		}
+		if (dbg_always_urgent) {
+			urgent_hi = buf_con + 1;
+			urgent_lo = buf_con;
+		}
 
 		if (mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base)) {
 			output_valid_us = ultra_low_fifo_us + 5;
