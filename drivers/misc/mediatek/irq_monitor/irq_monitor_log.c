@@ -69,6 +69,18 @@ void __irq_log_store(const char *func, int line)
 }
 EXPORT_SYMBOL_GPL(__irq_log_store);
 
+void irq_log_entry_store(void *func)
+{
+	___irq_log_store((void *)func, 0, IRQ_LOG_TYPE_ENTRY);
+}
+EXPORT_SYMBOL_GPL(irq_log_entry_store);
+
+void irq_log_exit_store(void *func)
+{
+	___irq_log_store((void *)func, 0, IRQ_LOG_TYPE_EXIT);
+}
+EXPORT_SYMBOL_GPL(irq_log_exit_store);
+
 static void irq_log_data_print(unsigned int out, int cpu, struct irq_log_entry *e,
 			       u64 prev_ts)
 {

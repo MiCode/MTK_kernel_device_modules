@@ -19,6 +19,8 @@ int irq_mon_aee_callback_register(unsigned int irq, aee_callback_t fn);
 void irq_mon_aee_callback_unregister(unsigned int irq);
 void mt_aee_dump_irq_info(void);
 void __irq_log_store(const char *func, int line);
+void irq_log_entry_store(void *func);
+void irq_log_exit_store(void *func);
 #define irq_log_store() __irq_log_store(__func__, __LINE__)
 #else
 static inline int irq_mon_aee_period_set(unsigned int irq, unsigned int period)
@@ -35,6 +37,12 @@ static inline void irq_mon_aee_callback_unregister(unsigned int irq)
 }
 #define mt_aee_dump_irq_info() do {} while (0)
 static inline void __irq_log_store(const char *func, int line)
+{
+}
+static inline void irq_log_entry_store(void *func)
+{
+}
+static inline void irq_log_exit_store(void *func)
 {
 }
 #define irq_log_store() do {} while (0)

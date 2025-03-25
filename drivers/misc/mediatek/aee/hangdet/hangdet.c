@@ -190,6 +190,7 @@ static int usleep_range_state_pre(struct kprobe *p, struct pt_regs *regs);
 static int hrtimer_wakeup_entry_pre(struct kprobe *p, struct pt_regs *regs);
 // tracepoints for hrtimers
 static void hrtimer_expire_entry_tracer(void *data, struct hrtimer *hrtimer_t, ktime_t *now_t);
+static void hrtimer_expire_exit_tracer(void *data, struct hrtimer *hrtimer_t);
 
 
 static struct kprobe kp_usleep_range_state = {
@@ -202,6 +203,58 @@ static struct kprobe kp_hrtimer_wakeup_entry = {
 	.pre_handler = hrtimer_wakeup_entry_pre,
 };
 
+static int generic_entry_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
+{
+	if (ri && ri->rph && ri->rph->rp && ri->rph->rp->kp.symbol_name)
+		__irq_log_store(ri->rph->rp->kp.symbol_name, -5);
+
+	return 0;
+}
+
+static int generic_return_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
+{
+	if (ri && ri->rph && ri->rph->rp && ri->rph->rp->kp.symbol_name)
+		__irq_log_store(ri->rph->rp->kp.symbol_name, 0);
+
+	return 0;
+}
+
+#define MAX_PROBES 2
+static struct kretprobe *registered_probes[MAX_PROBES];
+static unsigned int num_probes;
+
+static int register_symbol_probe(const char *symbol)
+{
+	int ret;
+	struct kretprobe *rp;
+
+	rp = kzalloc(sizeof(*rp), GFP_KERNEL);
+	if (!rp)
+		return -ENOMEM;
+
+	/* Setup the kretprobe fields */
+	rp->kp.symbol_name = symbol;
+	rp->handler       = generic_return_handler;
+	rp->entry_handler = generic_entry_handler;
+	rp->maxactive     = 20;
+
+	ret = register_kretprobe(rp);
+	if (ret < 0) {
+		pr_info("Failed to register probe for %s, error: %d\n", symbol, ret);
+		kfree(rp);
+		return ret;
+	}
+
+	pr_info("Successfully registered probe for %s\n", symbol);
+
+	if (num_probes < MAX_PROBES)
+		registered_probes[num_probes++] = rp;
+	else
+		pr_info("Too many probes registered; adjust MAX_PROBES\n");
+
+	return 0;
+}
+
 struct tracepoints_table {
 	const char *name;
 	void *func;
@@ -211,6 +264,7 @@ struct tracepoints_table {
 
 static struct tracepoints_table interests[] = {
 	{.name = "hrtimer_expire_entry", .func = hrtimer_expire_entry_tracer},
+	{.name = "hrtimer_expire_exit", .func = hrtimer_expire_exit_tracer},
 };
 
 #define FOR_EACH_INTEREST(i) \
@@ -1674,6 +1728,7 @@ static void hrtimer_expire_entry_tracer(void *data, struct hrtimer *hrtimer_t, k
 	unsigned long flags = 0;
 	int i;
 
+	irq_log_entry_store(hrtimer_t->function);
 	spin_lock_irqsave(&hrtimer_lock, flags);
 
 	struct hrtimer_count_struct *cpu_counts = this_cpu_ptr(hrtimer_func_counts);
@@ -1716,6 +1771,11 @@ static void hrtimer_expire_entry_tracer(void *data, struct hrtimer *hrtimer_t, k
 	}
 
 	spin_unlock_irqrestore(&hrtimer_lock, flags);
+}
+
+static void hrtimer_expire_exit_tracer(void *data, struct hrtimer *hrtimer_t)
+{
+	irq_log_exit_store(hrtimer_t->function);
 }
 
 static int hrtimer_wakeup_entry_pre(struct kprobe *p, struct pt_regs *regs)
@@ -1949,6 +2009,9 @@ static int __init hangdet_init(void)
 		pr_info("Planted kprobe at %p for hrtimer_wakeup_entry\n",
 			kp_hrtimer_wakeup_entry.addr);
 
+	register_symbol_probe("update_process_times");
+	register_symbol_probe("sched_tick");
+
 	for_each_kernel_tracepoint(lookup_tracepoints, NULL);
 	res = hrtimer_tp_register();
 	if (res < 0)
@@ -1976,6 +2039,10 @@ static void __exit hangdet_exit(void)
 	unregister_kprobe(&kp_usleep_range_state);
         unregister_kprobe(&kp_hrtimer_wakeup_entry);
 	hrtimer_tp_unregister();
+	for (i = 0; i < num_probes; i++) {
+		unregister_kretprobe(registered_probes[i]);
+		kfree(registered_probes[i]);
+	}
 #endif
 #endif
 	unregister_pm_notifier(&wdt_pm_nb);
