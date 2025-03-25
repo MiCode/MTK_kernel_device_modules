@@ -312,6 +312,7 @@
 #define TX_LCTXCM1_STR "tx_lctxcm1"
 #define TX_LCTXC0_STR "tx_lctxc0"
 #define TX_LCTXCP1_STR "tx_lctxcp1"
+#define EQ_OS_STR "eq_os"
 
 #define XSP_MODE_UART_STR "usb2uart_mode=1"
 #define XSP_MODE_JTAG_STR "usb2jtag_mode=1"
@@ -657,6 +658,120 @@ static const struct proc_ops proc_jtag_fops = {
 };
 
 
+static int proc_eq_os_show(struct seq_file *s, void *unused)
+{
+	struct xsphy_instance *inst = s->private;
+	struct device *dev = &inst->phy->dev;
+	struct mtk_xsphy *xsphy = dev_get_drvdata(dev->parent);
+	u32 tmp;
+
+	/* Initial Setting for probe */
+	tmp = readl(xsphy->glb_base);
+	tmp = (tmp&~(0x0f<<0))|0x00<<0;
+	tmp = (tmp&~(0xff<<8))|0x10<<8;
+	tmp = (tmp&~(0x0f<<4))|0x00<<4;
+	tmp = (tmp&~(0xff<<16))|0x11<<16;
+	writel(tmp, xsphy->glb_base);
+
+	/* Read ATT */
+	tmp = readl(xsphy->glb_base);
+	tmp = (tmp&~(0xff<<8))|0x00<<8;
+	tmp = (tmp&~(0xff<<16))|0x8d<<16;
+	writel(tmp, xsphy->glb_base);
+
+	tmp = readl(xsphy->glb_base + 0x088);
+	tmp = (tmp >> 0) & 0x7;
+	seq_printf(s, "ATT:      0x%x\n", tmp);
+
+	/* Read VGA, CTLE */
+	tmp = readl(xsphy->glb_base);
+	tmp = (tmp&~(0xff<<8))|0x8f<<8;
+	tmp = (tmp&~(0xff<<16))|0x8e<<16;
+	writel(tmp, xsphy->glb_base);
+
+	tmp = readl(xsphy->glb_base + 0x088);
+	tmp = (tmp >> 0) & 0x1f;
+	seq_printf(s, "VGA:      0x%x\n", tmp);
+
+	tmp = readl(xsphy->glb_base + 0x088);
+	tmp = (tmp >> 8) & 0x1F;
+	seq_printf(s, "CTLE:     0x%x\n", tmp);
+
+	/* Read DFE_TAP1, DFE_TAP2 */
+	tmp = readl(xsphy->glb_base);
+	tmp = (tmp&~(0xff<<8))|0x91<<8;
+	tmp = (tmp&~(0xff<<16))|0x90<<16;
+	writel(tmp, xsphy->glb_base);
+
+	tmp = readl(xsphy->glb_base + 0x088);
+	tmp = (tmp >> 0) & 0x7f;
+	seq_printf(s, "DFE_TAP1: 0x%x\n", tmp);
+
+	tmp = readl(xsphy->glb_base + 0x088);
+	tmp = (tmp >> 8) & 0x3f;
+	seq_printf(s, "DFE_TAP2:  0x%x\n", tmp);
+
+	/* Read DFE_TAP3, DFE_TAP4 */
+	tmp = readl(xsphy->glb_base);
+	tmp = (tmp&~(0xff<<8))|0x93<<8;
+	tmp = (tmp&~(0xff<<16))|0x92<<16;
+	writel(tmp, xsphy->glb_base);
+
+	tmp = readl(xsphy->glb_base + 0x088);
+	tmp = (tmp >> 0) & 0x3f;
+	seq_printf(s, "DFE_TAP3:  0x%x\n", tmp);
+
+	tmp = readl(xsphy->glb_base + 0x088);
+	tmp = (tmp >> 8) & 0x1f;
+	seq_printf(s, "DFE_TAP4:  0x%x\n", tmp);
+
+	/* Read DFE_TAP5, DFE_TAP6 */
+	tmp = readl(xsphy->glb_base);
+	tmp = (tmp&~(0xff<<8))|0x95<<8;
+	tmp = (tmp&~(0xff<<16))|0x94<<16;
+	writel(tmp, xsphy->glb_base);
+
+	tmp = readl(xsphy->glb_base + 0x088);
+	tmp = (tmp >> 0) & 0x1f;
+	seq_printf(s, "DFE_TAP5:  0x%x\n", tmp);
+
+	tmp = readl(xsphy->glb_base + 0x088);
+	tmp = (tmp >> 8) & 0x1f;
+	seq_printf(s, "DFE_TAP6:  0x%x\n", tmp);
+
+	/* Read DFE_TAP7 */
+	tmp = readl(xsphy->glb_base);
+	tmp = (tmp&~(0xff<<8))|0x97<<8;
+	tmp = (tmp&~(0xff<<16))|0x96<<16;
+	writel(tmp, xsphy->glb_base);
+
+	tmp = readl(xsphy->glb_base + 0x088);
+	tmp = (tmp >> 0) & 0x1f;
+	seq_printf(s, "DFE_TAP7:  0x%x\n", tmp);
+
+	return 0;
+}
+
+static int proc_eq_os_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, proc_eq_os_show, pde_data(inode));
+}
+
+static ssize_t proc_eq_os_write(struct file *file,
+	const char __user *ubuf, size_t count, loff_t *ppos)
+{
+	return -EINVAL;
+}
+
+static const struct proc_ops proc_eq_os_fops = {
+	.proc_open = proc_eq_os_open,
+	.proc_write = proc_eq_os_write,
+	.proc_read = seq_read,
+	.proc_lseek = seq_lseek,
+	.proc_release = single_release,
+};
+
+
 static int proc_tx_lctxcm1_show(struct seq_file *s, void *unused)
 {
 	struct xsphy_instance *inst = s->private;
@@ -893,6 +1008,14 @@ static int u3_phy_procfs_init(struct mtk_xsphy *xsphy,
 			phy_root, &proc_tx_lctxcp1_fops, inst);
 	if (!file) {
 		dev_info(dev, "failed to creat proc file: %s\n", TX_LCTXCP1_STR);
+		ret = -ENOMEM;
+		goto err1;
+	}
+
+	file = proc_create_data(EQ_OS_STR, 0640,
+		phy_root, &proc_eq_os_fops, inst);
+	if (!file) {
+		dev_info(dev, "failed to creat proc file: %s\n", EQ_OS_STR);
 		ret = -ENOMEM;
 		goto err1;
 	}
