@@ -434,7 +434,6 @@ static int __used decide_and_throttle(enum LOW_BATTERY_USER_TAG user, unsigned i
 			lbat_user_modify_thd_ext_locked(lbat_data->lbat_pt[INTR_1],
 				thd_info[INTR_1]->ag_thd_volts, thd_info[INTR_1]->thd_volts_size);
 			dump_thd_volts_ext(thd_info[INTR_1]->ag_thd_volts, thd_info[INTR_1]->thd_volts_size);
-			//dump_lvsys_thd();
 #ifdef LBAT2_ENABLE
 			if (lbat_data->lbat_intr_num == 2) {
 				dual_lbat_user_modify_thd_ext_locked( lbat_data->lbat_pt[INTR_2],
@@ -1093,9 +1092,12 @@ static int __used pt_check_power_off(void)
 
 	if (!lbat_data)
 		return 0;
-
-	thd_info = &lbat_data->lbat_thd[INTR_1][lbat_data->temp_reg_stage];
-	pt_power_off_lv = thd_info->lbat_intr_info[thd_info->thd_volts_size - 1].lt_lv;
+	if (vbat_thd_enable==1){
+		thd_info = &lbat_data->lbat_thd[INTR_1][lbat_data->temp_reg_stage];
+		pt_power_off_lv = thd_info->lbat_intr_info[thd_info->thd_volts_size - 1].lt_lv;
+	} else {
+		pt_power_off_lv = lbat_data->lvsys_volt_size;
+	}
 #ifdef LBAT2_ENABLE
 	if (lbat_data->lbat_intr_num == 2) {
 		thd_info =
@@ -1437,7 +1439,6 @@ static int fill_thd_info(struct platform_device *pdev, struct lbat_thl_priv *pri
 		mutex_unlock(&exe_thr_lock);
 
 		dump_thd_volts_ext(thd_info->ag_thd_volts, thd_info->thd_volts_size);
-		//dump_lvsys_thd();
 	}
 	return 0;
 }
