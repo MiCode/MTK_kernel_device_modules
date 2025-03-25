@@ -3245,6 +3245,20 @@ static int dpmaif_init_register(struct device *dev)
 		return -1;
 	}
 
+	if (g_plat_inf == 6993) {
+		g_dpmaif_ctrl->ao_dl_sram_base1 = of_iomap(node, 4);
+		if (g_dpmaif_ctrl->ao_dl_sram_base1 == NULL) {
+			CCCI_ERROR_LOG(0, TAG, "[%s] error: ao_dl_sram_base1 iomap fail\n", __func__);
+			return -1;
+		}
+		g_dpmaif_ctrl->pd_dl_cfg2_base = of_iomap(node, 5);
+		if (g_dpmaif_ctrl->pd_dl_cfg2_base == NULL) {
+			CCCI_ERROR_LOG(0, TAG, "[%s] error: pd_dl_cfg2_base iomap fail\n", __func__);
+			return -1;
+		}
+		g_dpmaif_ctrl->pd_mmw_hpc2_base = g_dpmaif_ctrl->pd_dl_cfg2_base + 0x200;
+	}
+
 	CCCI_NORMAL_LOG(0, TAG,
 		"[%s] register: ao_ul=0x%p, pd_ul=0x%p, pd_md_misc=0x%p; pd_sram: %p\n",
 		__func__, g_dpmaif_ctrl->ao_ul_base, g_dpmaif_ctrl->pd_ul_base,

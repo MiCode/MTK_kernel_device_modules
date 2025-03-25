@@ -484,6 +484,9 @@ struct dpmaif_ctrl {
 
 	void __iomem              *pd_mmw_hpc_base;   //v3: DTS_reg[1] + 0x600
 	void __iomem              *pd_dl_lro_base;    //v3: DTS_reg[1] + 0x900
+	void __iomem              *ao_dl_sram_base1;   //v3: DTS_reg[4]
+	void __iomem              *pd_dl_cfg2_base;   //v3: DTS_reg[5] + 0x000
+	void __iomem              *pd_mmw_hpc2_base;   //v3: DTS_reg[5] + 0x200
 
 	struct regmap             *infra_ao_base;
 	void __iomem              *infra_ao_mem_base;

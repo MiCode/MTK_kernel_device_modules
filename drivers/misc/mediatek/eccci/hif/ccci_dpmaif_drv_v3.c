@@ -1315,7 +1315,10 @@ static void drv3_hw_hpc_cntl_set(void)
 	cfg =  ((DPMAIF_HPC_LRO_PATH_DF & 0x3)  << 0);
 	cfg |= ((DPMAIF_HPC_ADD_MODE_DF & 0x3)  << 2);
 	cfg |= ((DPMAIF_HASH_PRIME_DF   & 0xf)  << 4);
-	cfg |= ((DPMAIF_HPC_TOTAL_NUM   & 0xff) << 8);
+	if (g_plat_inf == 6993)
+		cfg |= (16 << 8); /* [12:8]: 16 max */
+	else
+		cfg |= ((DPMAIF_HPC_TOTAL_NUM   & 0xff) << 8);
 
 	//cfg include hpclro path, hpc add mode, hash prime, hpc total num
 	//DPMA_WRITE_AO_DL(NRL2_DPMAIF_AO_DL_HPC_CNTL, cfg);
@@ -1364,6 +1367,19 @@ static void drv3_hw_lro_timeout_thres_set(void)
 		//DPMA_WRITE_AO_DL(NRL2_DPMAIF_AO_DL_LROPIT_TIMEOUT1 + (4*(idx/2)), tmp);
 		DPMA_WRITE_AO_DL_SRAM(NRL2_DPMAIF_AO_DL_LROPIT_TIMEOUT1 + (4*(idx/2)), tmp);
 	}
+	if (g_plat_inf != 6993)
+		return;
+	for (idx = 0; idx < DPMAIF_HPC_MAX_TOTAL_NUM; idx++) {
+		tmp = dpmaif_read32(g_dpmaif_ctrl->ao_dl_sram_base1,
+				(NRL2_DPMAIF_AO_DL_LROPIT_TIMEOUT5 + 4*(idx/2)));
+		if (idx % 2)  //odd idx
+			tmp = ((tmp & 0xFFFF) | (DPMAIF_LRO_TIMEOUT_THRES_DF << 16));
+		else  //even idx
+			tmp = ((tmp & 0xFFFF0000) | (DPMAIF_LRO_TIMEOUT_THRES_DF));
+
+		dpmaif_write32(g_dpmaif_ctrl->ao_dl_sram_base1,
+				(NRL2_DPMAIF_AO_DL_LROPIT_TIMEOUT5 + 4*(idx/2)), tmp);
+	}
 }
 
 static void drv3_hw_lro_start_prs_thres_set(void)
@@ -1378,6 +1394,18 @@ static void drv3_hw_lro_start_prs_thres_set(void)
 static void drv3_hw_lro_set_agg_en_df(bool enable)
 {
 	unsigned int value;
+
+	if (g_plat_inf == 6993) {
+		value = dpmaif_read32(g_dpmaif_ctrl->ao_dl_sram_base1, NRL2_DPMAIF_DL_LRO_AGG_CFG_EXTEND);
+
+		if (enable == true)
+			value |= (0xFFFF);
+		else
+			value &= ~(0xFFFF);
+
+		dpmaif_write32(g_dpmaif_ctrl->ao_dl_sram_base1, NRL2_DPMAIF_DL_LRO_AGG_CFG_EXTEND, value);
+		return;
+	}
 
 	value = DPMA_READ_AO_DL_SRAM(DPMAIF_AO_DL_RDY_CHK_FRG_THRES);
 	value &= ~(0xFF<<20);
@@ -1607,6 +1635,22 @@ static void drv3_dump_register(int buf_type)
 #ifdef ENABLE_DPMAIF_ISR_LOG
 	ccci_dpmaif_show_irq_log();
 #endif
+
+	if (g_plat_inf != 6993)
+		return;
+	CCCI_BUF_LOG_TAG(0, buf_type, TAG,
+		"dump AP DPMAIF AO DL SRAM; ao_dl_sram_base1 register -> (start addr: 0x%llX, len: %d):\n",
+		(unsigned long long)g_dpmaif_ctrl->ao_dl_sram_base1 + 0x00, 0xFF);
+	ccci_util_mem_dump(buf_type, g_dpmaif_ctrl->ao_dl_sram_base1 + 0x00, 0xFF);
+	CCCI_BUF_LOG_TAG(0, buf_type, TAG,
+		"dump AP DPMAIF pd_mmw_hpc_base register -> (start addr: 0x%llX, len: %d):\n",
+		(unsigned long long)g_dpmaif_ctrl->pd_mmw_hpc_base + 0x00, 0xFF);
+	ccci_util_mem_dump(buf_type, g_dpmaif_ctrl->pd_mmw_hpc_base + 0x00, 0xFF);
+	CCCI_BUF_LOG_TAG(0, buf_type, TAG,
+		"dump AP DPMAIF pd_mmw_hpc2_base register -> (start addr: 0x%llX, len: %d):\n",
+		(unsigned long long)g_dpmaif_ctrl->pd_mmw_hpc2_base+ 0x00, 0xFF);
+	ccci_util_mem_dump(buf_type, g_dpmaif_ctrl->pd_mmw_hpc2_base + 0x00, 0xFF);
+
 }
 
 static void drv3_hw_reset(void)

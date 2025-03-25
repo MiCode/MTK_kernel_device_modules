@@ -115,6 +115,18 @@
 #define NRL2_DPMAIF_AO_DL_FRGBAT_STA3           (BASE_DPMAIF_PD_SRAM_DL + 0x7C)
 #define NRL2_DPMAIF_AO_DL_FRGBAT_STA4           (BASE_DPMAIF_PD_SRAM_DL + 0x80)
 
+/***********************************************************************
+ *
+ *  dpmaif_dl_sram1
+ *
+ ***********************************************************************/
+#define NRL2_DPMAIF_DL_LRO_AGG_CFG_EXTEND       (BASE_DPMAIF_PD_SRAM1_DL + 0x04)
+#define NRL2_DPMAIF_AO_DL_LROPIT_TIMEOUT5       (BASE_DPMAIF_PD_SRAM1_DL + 0x40)
+#define NRL2_DPMAIF_AO_DL_LROPIT_TIMEOUT6       (BASE_DPMAIF_PD_SRAM1_DL + 0x44)
+#define NRL2_DPMAIF_AO_DL_LROPIT_TIMEOUT7       (BASE_DPMAIF_PD_SRAM1_DL + 0x48)
+#define NRL2_DPMAIF_AO_DL_LROPIT_TIMEOUT8       (BASE_DPMAIF_PD_SRAM1_DL + 0x4C)
+
+
 
 /**********************************************************************
  *
