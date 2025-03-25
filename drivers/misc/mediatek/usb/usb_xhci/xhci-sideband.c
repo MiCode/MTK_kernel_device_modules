@@ -159,7 +159,7 @@ xhci_sideband_remove_endpoint_(struct xhci_sideband_ *sb,
 	}
 
 	__xhci_sideband_remove_endpoint(sb, ep);
-	xhci_initialize_ring_info_(ep->ring, 1);
+	xhci_initialize_ring_info_(ep->ring);
 	mutex_unlock(&sb->mutex);
 
 	return 0;
