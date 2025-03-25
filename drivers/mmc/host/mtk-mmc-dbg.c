@@ -1087,6 +1087,8 @@ static void mmc_dbg_cleanup(void)
 	cmd_hist_cleanup();
 }
 
+static DEFINE_MUTEX(mmc_dbg_lock);
+
 int mmc_dbg_register(struct mmc_host *mmc)
 {
 	int i, ret;
@@ -1103,25 +1105,25 @@ int mmc_dbg_register(struct mmc_host *mmc)
 	} else /* SDIO no debug */
 		return -EINVAL;
 
+	mutex_lock(&mmc_dbg_lock);
 	/* avoid init repeatedly */
-	if (cmd_hist_init == true)
+	if (cmd_hist_init == true) {
+		mutex_unlock(&mmc_dbg_lock);
 		return 0;
+	}
 
 	/*
 	 * Ignore any failure of AEE buffer allocation to still allow
 	 * command history dump in procfs.
 	 */
-	mmc_aee_buffer = kzalloc(MMC_AEE_BUFFER_SIZE, GFP_NOFS);
 	if (mmc_aee_buffer == NULL)
-		return -ENOMEM;
+		mmc_aee_buffer = kzalloc(MMC_AEE_BUFFER_SIZE, GFP_NOFS);
+
 	/* Blocktag */
 #if IS_ENABLED(CONFIG_MTK_BLOCK_IO_TRACER)
 	ret = mmc_mtk_biolog_init(mmc);
-	if (ret) {
-		kfree(mmc_aee_buffer);
-		mmc_aee_buffer = NULL;
-		return ret;
-	}
+	if (ret)
+		pr_info("%s mmc%d blocktag init fail\n", __func__, mmc->index);
 #endif
 
 	spin_lock_init(&cmd_hist_lock);
@@ -1135,9 +1137,7 @@ int mmc_dbg_register(struct mmc_host *mmc)
 				interests[i].name);
 			/* Unload previously loaded */
 			mmc_dbg_cleanup();
-			kfree(mmc_aee_buffer);
-			mmc_aee_buffer = NULL;
-			return -EINVAL;
+			break;
 		}
 
 		tracepoint_probe_register(interests[i].tp,
@@ -1152,6 +1152,7 @@ int mmc_dbg_register(struct mmc_host *mmc)
 	cmd_hist_init = true;
 	cmd_hist_enabled = true;
 
+	mutex_unlock(&mmc_dbg_lock);
 	return ret;
 }
 EXPORT_SYMBOL_GPL(mmc_dbg_register);
@@ -1199,6 +1200,8 @@ static int __init mmc_mtk_dbg_init(void)
 static void __exit mmc_mtk_dbg_exit(void)
 {
 	mrdump_set_extra_dump(AEE_EXTRA_FILE_MMC, NULL);
+	kfree(mmc_aee_buffer);
+
 	return;
 }
 

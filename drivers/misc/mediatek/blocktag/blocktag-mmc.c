@@ -426,14 +426,11 @@ int mmc_mtk_biolog_init(struct mmc_host *mmc)
 {
 	struct mtk_blocktag *btag;
 	struct mmc_mtk_bio_context *ctx;
-	char buf[BTAG_NAME_LEN];
 
 	if (!mmc)
 		return -EINVAL;
 
-	memset(buf, 0, sizeof(buf));
-	snprintf(buf, BTAG_NAME_LEN, "mmc%d", mmc->index);
-	btag = mtk_btag_alloc(buf,
+	btag = mtk_btag_alloc("mmc",
 				BTAG_STORAGE_MMC,
 				MMC_BIOLOG_RINGBUF_MAX,
 				sizeof(struct mmc_mtk_bio_context),
