@@ -5653,6 +5653,7 @@ static void _mtk_crtc_wb_addon_module_connect(
 	struct mtk_crtc_state *state = to_mtk_crtc_state(crtc->state);
 	struct total_tile_overhead to_info;
 	enum addon_scenario scn;
+	u32 out_fence_idx;
 
 	if (index != 0 || mtk_crtc_is_dc_mode(crtc) ||
 		!state->prop_val[CRTC_PROP_OUTPUT_ENABLE])
@@ -5735,8 +5736,16 @@ static void _mtk_crtc_wb_addon_module_connect(
 		addon_config.addon_wdma_config.is_secure = mtk_drm_fb_is_secure(fb);
 		addon_config.addon_wdma_config.p_golden_setting_context
 			= __get_golden_setting_context(mtk_crtc);
+		out_fence_idx = (unsigned int)state->prop_val[CRTC_PROP_OUTPUT_FENCE_IDX];
+
+		if (mtk_crtc->sec_on && !addon_config.addon_wdma_config.is_secure) {
+			DDPINFO("[cwb]skip crtc sec w/ normal out fence %u\n", out_fence_idx);
+			mtk_crtc->wb_error = 1;
+			return;
+		}
+
 		DDPMSG("S+/PL12/e1/id%d/mva0x%08llx/size0x%08lx/sec%d\n",
-			(unsigned int)state->prop_val[CRTC_PROP_OUTPUT_FENCE_IDX],
+			out_fence_idx,
 			mtk_fb_get_dma(fb), mtk_fb_get_size(fb), mtk_drm_fb_is_secure(fb));
 
 		if (mtk_crtc->is_dual_pipe) {
