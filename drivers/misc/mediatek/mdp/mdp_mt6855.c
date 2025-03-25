@@ -1954,10 +1954,6 @@ static void mdp_readback_aal_by_engine(struct cmdqRecStruct *handle,
 		CMDQ_ERR("%s not support\n", __func__);
 		return;
 	}
-#ifdef CMDQ_SECURE_PATH_SUPPORT
-	if (handle->secData.is_secure)
-		engine = engine - CMDQ_ENG_MDP_AAL0 + CMDQ_SEC_MDP_AAL0;
-#endif
 
 	cmdq_mdp_get_func()->mdpReadbackAal(handle, engine, base, pa, param, pipe);
 }
@@ -1976,10 +1972,6 @@ static void mdp_readback_hdr_by_engine(struct cmdqRecStruct *handle,
 		CMDQ_ERR("%s not support\n", __func__);
 		return;
 	}
-#ifdef CMDQ_SECURE_PATH_SUPPORT
-	if (handle->secData.is_secure)
-		engine = engine - CMDQ_ENG_MDP_HDR0 + CMDQ_SEC_MDP_HDR0;
-#endif
 
 	cmdq_mdp_get_func()->mdpReadbackHdr(handle, engine, base, pa, param, pipe);
 }
@@ -2064,7 +2056,7 @@ static bool mdp_check_camin_support_virtual(void)
 
 static bool mdp_svp_support_meta_data(void)
 {
-	return true;
+	return false;
 }
 
 bool mdp_eng_support_readback(u16 engine)
@@ -2098,7 +2090,6 @@ void cmdq_mdp_platform_function_setting(void)
 	pFunc->mdpIsIspImg = mdp_is_isp_img;
 	pFunc->mdpIsIspCamin = mdp_is_isp_camin;
 	pFunc->mdpInitialSet = cmdqMdpInitialSetting;
-	pFunc->mdpGetIspFlag = cmdq_mdp_get_isp_flag;
 
 	pFunc->rdmaGetRegOffsetSrcAddr = cmdq_mdp_rdma_get_reg_offset_src_addr;
 	pFunc->wrotGetRegOffsetDstAddr = cmdq_mdp_wrot_get_reg_offset_dst_addr;
