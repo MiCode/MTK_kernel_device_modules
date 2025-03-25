@@ -13828,12 +13828,20 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			break;
 		}
 
+		mode = (struct drm_display_mode **)params;
+
+		/* If the mode has already been acquired, do not traverse list again */
+		if (dsi->max_vrefresh_mode.htotal != 0) {
+			DDPDBG("%s, return the backup max_vrefresh_mode\n", __func__);
+			*mode = &dsi->max_vrefresh_mode;
+			break;
+		}
+
 		if (list_empty(&dsi->conn.modes)) {
 			DDPPR_ERR("%s, dsi->conn.modes NULL list, break\n", __func__);
 			break;
 		}
 
-		mode = (struct drm_display_mode **)params;
 		list_for_each_entry_safe(max_mode, next, &dsi->conn.modes, head) {
 
 			if (max_mode == NULL) {
@@ -13843,6 +13851,8 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			if (drm_mode_vrefresh(max_mode) > vrefresh) {
 				vrefresh = drm_mode_vrefresh(max_mode);
 				*mode = max_mode;
+				/* store max_vrefresh_mode */
+				memcpy(&dsi->max_vrefresh_mode, max_mode, sizeof(struct drm_display_mode));
 			}
 		}
 	}

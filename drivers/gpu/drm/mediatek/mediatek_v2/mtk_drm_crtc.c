@@ -1730,7 +1730,7 @@ void mtk_drm_crtc_dump(struct drm_crtc *crtc)
 		if (drm_crtc_index(&mtk_crtc->base) != 1) {
 			DDPDUMP("== DISP pipe-0 OVLSYS_CONFIG REGS:0x%pa ==\n",
 						&mtk_crtc->ovlsys0_regs_pa);
-			priv->ovlsys_data->config_dump_reg(mtk_crtc->ovlsys1_regs);
+			priv->ovlsys_data->config_dump_reg(mtk_crtc->ovlsys0_regs);
 			if (mtk_crtc->ovlsys1_regs) {
 				DDPDUMP("== DISP pipe-1 OVLSYS_CONFIG REGS:0x%pa ==\n",
 					&mtk_crtc->ovlsys1_regs_pa);
@@ -16393,6 +16393,7 @@ void mtk_drm_crtc_init_para(struct drm_crtc *crtc)
 	unsigned int crtc_id = drm_crtc_index(&mtk_crtc->base);
 	struct mtk_ddp_comp *comp;
 	struct drm_display_mode *timing = NULL;
+	struct drm_display_mode *max_vrefresh_mode = NULL;
 	unsigned int invoke_fps, init_idle_timeout = 50;
 
 	comp = mtk_ddp_comp_request_output(mtk_crtc);
@@ -16407,6 +16408,10 @@ void mtk_drm_crtc_init_para(struct drm_crtc *crtc)
 		mtk_crtc->avail_modes = vzalloc(sizeof(struct drm_display_mode));
 		return;
 	}
+
+	mtk_ddp_comp_io_cmd(comp, NULL, DSI_GET_MODE_BY_MAX_VREFRESH, &max_vrefresh_mode);
+	if (max_vrefresh_mode == NULL)
+		DDPPR_ERR("%s, %d, failed to get max vrefresh mode\n", __func__, __LINE__);
 
 	crtc->mode.hdisplay = timing->hdisplay;
 	crtc->mode.vdisplay = timing->vdisplay;
