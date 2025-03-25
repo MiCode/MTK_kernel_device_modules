@@ -1721,6 +1721,11 @@
 			"vdisp_ao_dummy",
 			"aging_base";
 		mediatek,vcp-supply = <&vcp>;
+		nvmem-cells = <&vdisp_efuse0 &vdisp_efuse1 &vdisp_efuse2
+			&vdisp_efuse3 &vdisp_efuse4>;
+		nvmem-cell-names =
+			"vdisp-data0", "vdisp-data1", "vdisp-data2",
+			"vdisp-data3", "vdisp-data4";
 	};
 
 	efuse: efuse@10160000 {
@@ -1812,6 +1817,22 @@
 
 		pcie_efuse_version: pcie@234 {
 			reg = <0x234 0x4>;
+		};
+
+		vdisp_efuse0: vdisp-data0@4c0 {
+			reg = <0x4c0 0x4>;
+		};
+		vdisp_efuse1: vdisp-data1@4cc {
+			reg = <0x4cc 0x4>;
+		};
+		vdisp_efuse2: vdisp-data2@4d0 {
+			reg = <0x4d0 0x4>;
+		};
+		vdisp_efuse3: vdisp-data3@4d4 {
+			reg = <0x4d4 0x4>;
+		};
+		vdisp_efuse4: vdisp-data4@4d8 {
+			reg = <0x4d8 0x4>;
 		};
 	};
 
