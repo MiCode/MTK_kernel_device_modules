@@ -53,7 +53,7 @@ struct mtk_freq_qos_record {
 	s32 max_value;
 	unsigned long ts;
 	unsigned int cpu;
-	int type;
+	unsigned int type;
 };
 
 struct mtk_freq_qos_circ_buf {

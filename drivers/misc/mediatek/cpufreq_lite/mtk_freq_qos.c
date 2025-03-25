@@ -820,8 +820,15 @@ PROC_FOPS_RO(freq_req_tbl);
  */
 static void print_record(struct seq_file *m, int i, unsigned long cur_time)
 {
-	seq_printf(m, "%10s, %10d, %10d, %3d, %21d, %45s, %60s\n",
-			record_type_str[circ_buf.buf[i].type],
+	char *record_type;
+
+	if (circ_buf.buf[i].type < 3)
+		record_type = record_type_str[circ_buf.buf[i].type];
+	else
+		record_type = "UNKNOWN";
+
+	seq_printf(m, "%7s, %10d, %10d, %3d, %21d, %45s, %60s\n",
+			record_type,
 			circ_buf.buf[i].min_value,
 			circ_buf.buf[i].max_value,
 			circ_buf.buf[i].cpu,
@@ -834,7 +841,7 @@ static int freq_req_buf_proc_show(struct seq_file *m, void *v)
 	int i;
 	unsigned long cur_time = jiffies;
 
-	seq_printf(m, "%10s, %10s, %10s, %3s, %21s, %45s, %60s\n",
+	seq_printf(m, "%7s, %10s, %10s, %3s, %21s, %45s, %60s\n",
 				"Type", "Min Value", "Max Value", "CPU", "Last Time(ms)", "Caller1", "Caller2");
 	if (circ_buf.tail == circ_buf.head) {
 		// buffer empty
