@@ -261,7 +261,6 @@ static int emi_icc_set(struct icc_node *src, struct icc_node *dst)
 
 	if (node->ep == 1) {
 		if (node->max_peak == 0xFFFFFFFF) {
-			pr_info("[PEAK-BW-ICC] is unexpected value\n");
 			mtk_dvfsrc_send_request(src->provider->dev,
 					MTK_DVFSRC_CMD_PEAK_BW_REQUEST,
 					0);
