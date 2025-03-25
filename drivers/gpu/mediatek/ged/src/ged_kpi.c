@@ -337,6 +337,11 @@ struct GED_KPI_MEOW_DVFS_FREQ_PRED {
 	int gpu_time;
 };
 
+struct GED_SIMPLE_KPI {
+	unsigned long frameID;
+	unsigned long long timeStamp;
+};
+
 static struct GED_KPI_MEOW_DVFS_FREQ_PRED *g_psGIFT;
 static unsigned int fb_timer_set_count;
 
@@ -348,6 +353,7 @@ bool g_set_panel_refresh_rate;
 bool g_invalid_fps;
 
 #define GED_KPI_TOTAL_ITEMS 32
+#define GED_SIMPLE_KPI_TOTAL_ITEMS 4
 #define GED_KPI_UID(pid, wnd) (pid | ((unsigned long)wnd))
 #define SCREEN_IDLE_PERIOD 500000000
 #define GED_KPI_SWITCH_FB_THRESHOLD 3
@@ -368,6 +374,10 @@ static int g_i32Pos;
 static GED_THREAD_HANDLE ghThread;
 static unsigned long long frame_base_timestamp;
 static unsigned long frame_base_ulMask;
+static struct GED_SIMPLE_KPI g_simpleKPI[GED_SIMPLE_KPI_TOTAL_ITEMS];
+static struct GED_SIMPLE_KPI g_last_ts2;
+static u64 latest_done_ts;
+static unsigned long latest_done_fid;
 
 #if !defined(CONFIG_MTK_GPU_COMMON_DVFS_SUPPORT)
 /* Disable for bring-up stage unexpected exception */
@@ -2216,6 +2226,36 @@ static void ged_kpi_work_cb(struct work_struct *psWork)
 work_cb_end:
 	ged_free(psTimeStamp, sizeof(struct GED_TIMESTAMP));
 }
+
+static void update_t_gpu_for_fpsgo(unsigned long long ullWnd,
+	u64 socTimeStamp, int i32FrameID)
+{
+	unsigned int is_FB = (ged_get_policy_state() == POLICY_STATE_FB ||
+						ged_get_policy_state() == POLICY_STATE_FB_FALLBACK);
+	unsigned int gpu_freq = ged_get_cur_freq();
+	unsigned int gpu_freq_max = ged_get_freq_by_idx(ged_get_cur_limit_idx_ceil());
+	long long tmpTS = 0, t_gpu = -1;
+
+	if (is_FB) {
+		for (int i = 0; i < GED_SIMPLE_KPI_TOTAL_ITEMS; i++) {
+			if (g_simpleKPI[i].frameID == i32FrameID) {
+				// default gpu start time is Queue
+				tmpTS = g_simpleKPI[i].timeStamp;
+				break;
+			}
+		}
+		// previous frame done is signaled after queue
+		if (g_last_ts2.timeStamp > tmpTS)
+			tmpTS = g_last_ts2.timeStamp;
+		t_gpu = (socTimeStamp - tmpTS) / soc_timer_unit * 1000;
+	}
+	ged_kpi_output_gfx_info2(
+		t_gpu, gpu_freq, gpu_freq_max, ullWnd);
+
+	g_last_ts2.frameID = i32FrameID;
+	g_last_ts2.timeStamp = socTimeStamp;
+}
+
 /* ------------------------------------------------------------------- */
 static GED_ERROR ged_kpi_push_timestamp(
 	GED_TIMESTAMP_TYPE eTimeStampType,
@@ -2228,10 +2268,10 @@ static GED_ERROR ged_kpi_push_timestamp(
 	void *fence_addr)
 {
 	static atomic_t event_QedBuffer_cnt, event_3d_fence_cnt, event_hw_vsync;
-	static atomic_t sram_rb_write_idx;
+	static atomic_t sram_rb_write_idx, simple_kpi_idx;
 	unsigned long ui32IRQFlags;
 	GPU_TS_INFO temp_ts;
-	unsigned int tmp_sram_rb_write_idx = 0, tmp_sram_rb_read_idx = 0;
+	unsigned int tmp_sram_rb_write_idx = 0, tmp_sram_rb_read_idx = 0, tmp_simple_kpi_idx = 0;
 	u64 socTimeStamp = mtk_gpueb_read_soc_timer();
 	union combineData tmp_multi = {0};
 	int target_FPS;
@@ -2344,6 +2384,12 @@ static GED_ERROR ged_kpi_push_timestamp(
 
 				mtk_gpueb_sysram_rb_write(tmp_sram_rb_write_idx, temp_ts);
 				mtk_gpueb_sysram_write(SYSRAM_GPU_TS_RB_IDX, tmp_sram_rb_write_idx);
+				if (eTimeStampType == GED_TIMESTAMP_TYPE_1) {
+					tmp_simple_kpi_idx = (atomic_inc_return(&simple_kpi_idx) + 1) %
+						GED_SIMPLE_KPI_TOTAL_ITEMS;
+					g_simpleKPI[tmp_simple_kpi_idx].frameID = i32FrameID;
+					g_simpleKPI[tmp_simple_kpi_idx].timeStamp = socTimeStamp;
+				}
 				break;
 			case GED_TIMESTAMP_TYPE_2:
 				if (ged_get_ts_rb_num() > 0) {
@@ -2362,6 +2408,8 @@ static GED_ERROR ged_kpi_push_timestamp(
 
 				mtk_gpueb_sysram_rb_write(tmp_sram_rb_write_idx, temp_ts);
 				mtk_gpueb_sysram_write(SYSRAM_GPU_TS_RB_IDX, tmp_sram_rb_write_idx);
+				latest_done_ts = socTimeStamp;
+				latest_done_fid = i32FrameID;
 				break;
 			case GED_SET_TARGET_FPS:
 				tmp_multi.twoVar.var1 = i32FrameID & 0xFF;  // fps
@@ -2446,6 +2494,26 @@ static void ged_kpi_fence_put_cb(struct work_struct *psWork)
 		ged_free(psMonitor, sizeof(struct GED_KPI_GPU_TS));
 	}
 }
+/* ------------------------------------------------------------------- */
+/* To prevent deadlock from fence_signal_lock when fence refcount
+ * might be decreased to 0 in our fence callback function,
+ * we decrease refcount by creating a new workqueue job.
+ */
+static void ged_kpi_done_fence_put_cb(struct work_struct *psWork)
+{
+	struct GED_KPI_GPU_TS *psMonitor;
+
+	psMonitor =
+	GED_CONTAINER_OF(psWork, struct GED_KPI_GPU_TS, sWork);
+
+	if (psMonitor != NULL) {
+		dma_fence_put(psMonitor->psSyncFence);
+		if (latest_done_fid == psMonitor->i32FrameID)
+			update_t_gpu_for_fpsgo(psMonitor->ullWdnd,
+				latest_done_ts, psMonitor->i32FrameID);
+		ged_free(psMonitor, sizeof(struct GED_KPI_GPU_TS));
+	}
+}
 static
 /* ------------------------------------------------------------------- */
 void ged_kpi_pre_fence_sync_cb(struct dma_fence *sFence,
@@ -2487,7 +2555,10 @@ void ged_kpi_gpu_3d_fence_sync_cb(struct dma_fence *sFence,
 	ged_kpi_time2(psMonitor->pid, psMonitor->ullWdnd,
 		psMonitor->i32FrameID);
 
-	INIT_WORK(&psMonitor->sWork, ged_kpi_fence_put_cb);
+	if (is_fdvfs_enable() & POLICY_MODE_V2)
+		INIT_WORK(&psMonitor->sWork, ged_kpi_done_fence_put_cb);
+	else
+		INIT_WORK(&psMonitor->sWork, ged_kpi_fence_put_cb);
 	queue_work(g_FenceWorkQueue, &psMonitor->sWork);
 }
 #endif /* MTK_GED_KPI */
