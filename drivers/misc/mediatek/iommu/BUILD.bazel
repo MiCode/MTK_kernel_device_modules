@@ -117,16 +117,14 @@ define_mgk_ddk_ko(
         "iommu_test.c",
     ],
     hdrs = glob([
-        "iommu_debug.h",
         "iommu_engine.h",
-        "mtk-iommu-util.h",
     ]),
     includes = ["."],
-    copts = [
-        "-I$(DEVICE_MODULES_PATH)/drivers/dma-buf/heaps/",
-    ],
     header_deps = [
-        "//kernel_device_modules-{}/drivers/iommu/arm/arm-smmu-v3:smmu_public_headers".format(kernel_version),
+        ":iommu_misc_headers",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/dma-buf/heaps:mtk_sec_heap".format(kernel_version),
     ],
     out = "iommu_test.ko",
 )
