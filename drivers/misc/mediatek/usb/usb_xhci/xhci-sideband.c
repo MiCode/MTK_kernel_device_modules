@@ -87,6 +87,30 @@ __xhci_sideband_remove_endpoint(struct xhci_sideband_ *sb, struct xhci_virt_ep *
 
 /* sideband api functions */
 
+ /**
+  * xhci_sideband_notify_ep_ring_free - notify client of xfer ring free
+  * @sb: sideband instance for this usb device
+  * @ep_index: usb endpoint index
+  *
+  * Notifies the xHCI sideband client driver of a xHCI transfer ring free
+  * routine.  This will allow for the client to ensure that all transfers
+  * are completed.
+  *
+  * The callback should be synchronous, as the ring free happens after.
+  */
+void xhci_sideband_notify_ep_ring_free_(struct xhci_sideband_ *sb,
+				       unsigned int ep_index)
+{
+	struct xhci_sideband_event evt;
+
+	evt.type = XHCI_SIDEBAND_XFER_RING_FREE;
+	evt.evt_data = &ep_index;
+
+	if (sb->notify_client)
+		sb->notify_client(sb->intf, &evt);
+}
+EXPORT_SYMBOL_GPL(xhci_sideband_notify_ep_ring_free_);
+
 /**
  * xhci_sideband_add_endpoint - add endpoint to sideband access list
  * @sb: sideband instance for this usb device
@@ -340,7 +364,9 @@ EXPORT_SYMBOL_GPL(xhci_sideband_interrupter_id_);
  * Return: pointer to a new xhci_sideband instance if successful. NULL otherwise.
  */
 struct xhci_sideband_ *
-xhci_sideband_register_(struct usb_interface *intf, enum xhci_sideband_type type)
+xhci_sideband_register_(struct usb_interface *intf, enum xhci_sideband_type type,
+	int (*notify_client)(struct usb_interface *intf,
+	struct xhci_sideband_event *evt))
 {
 	struct usb_device *udev = interface_to_usbdev(intf);
 	struct usb_hcd *hcd = bus_to_hcd(udev->bus);
@@ -379,6 +405,7 @@ xhci_sideband_register_(struct usb_interface *intf, enum xhci_sideband_type type
 	sb->vdev = vdev;
 	sb->intf = intf;
 	sb->type = type;
+	sb->notify_client = notify_client;
 	vdev->sideband = sb;
 
 	spin_unlock_irq(&xhci->lock);

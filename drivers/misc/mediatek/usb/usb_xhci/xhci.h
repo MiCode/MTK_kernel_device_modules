@@ -2282,6 +2282,21 @@ enum xhci_sideband_type {
 	XHCI_SIDEBAND_VENDOR,
 };
 
+enum xhci_sideband_notify_type {
+	XHCI_SIDEBAND_XFER_RING_FREE,
+};
+
+/**
+ * struct xhci_sideband_event - sideband event
+ * @type: notifier type
+ * @evt_data: event data
+ */
+struct xhci_sideband_event {
+	enum xhci_sideband_notify_type type;
+	void *evt_data;
+};
+
+
 /**
  * struct xhci_sideband - representation of a sideband accessed usb device.
  * @xhci: The xhci host controller the usb device is connected to
@@ -2291,6 +2306,7 @@ enum xhci_sideband_type {
  * @type: xHCI sideband type
  * @mutex: mutex for sideband operations
  * @intf: USB sideband client interface
+ * @notify_client: callback for xHCI sideband sequences
  *
  * FIXME usb device accessed via sideband Keeping track of sideband accessed usb devices.
  */
@@ -2305,10 +2321,14 @@ struct xhci_sideband_ {
 	struct mutex			mutex;
 
 	struct usb_interface		*intf;
+	int (*notify_client)(struct usb_interface *intf,
+			struct xhci_sideband_event *evt);
 };
 
 struct xhci_sideband_ *
-xhci_sideband_register_(struct usb_interface *intf, enum xhci_sideband_type type);
+xhci_sideband_register_(struct usb_interface *intf, enum xhci_sideband_type type,
+			int (*notify_client)(struct usb_interface *intf,
+				struct xhci_sideband_event *evt));
 void
 xhci_sideband_unregister_(struct xhci_sideband_ *sb);
 int
@@ -2332,6 +2352,8 @@ void
 xhci_sideband_remove_interrupter_(struct xhci_sideband_ *sb);
 int
 xhci_sideband_interrupter_id_(struct xhci_sideband_ *sb);
+void xhci_sideband_notify_ep_ring_free_(struct xhci_sideband_ *sb,
+				       unsigned int ep_index);
 
 static inline struct xhci_ring *xhci_urb_to_transfer_ring_(struct xhci_hcd *xhci,
 								struct urb *urb)
