@@ -173,7 +173,6 @@ enum usb_audio_device_speed {
 
 struct mem_info_xhci {
 	bool adv_lowpwr;
-	unsigned int uac_slot_id;
 	unsigned long long rsv_dram_addr;
 	unsigned int rsv_dram_size;
 	unsigned long long rsv_sram_addr;
@@ -211,8 +210,9 @@ struct usb_endpoint_info {
 	unsigned int urb_packs;
 };
 
-#define STREAM_FLAG_DATA_EP	(0x1)
-#define STREAM_FLAG_SYNC_EP	(0x2)
+#define STREAM_FLAG_DATA_EP	  (0x1U << 0)
+#define STREAM_FLAG_SYNC_EP	  (0x1U << 1)
+#define STREAM_FLAG_XHCI_HALT (0x1U << 2)
 
 struct usb_audio_stream_msg {
 	unsigned char flag;
@@ -277,6 +277,13 @@ struct intf_info {
 	u8 pcm_dev_num;
 	u8 direction;
 	bool in_use;
+
+	/* urb in adsp/ap view */
+	struct uo_buffer *dsp_urb;
+
+	/* synchronization for disable stream*/
+	atomic_t disable_sync;
+	struct mutex lock;
 };
 
 struct usb_audio_dev {
@@ -284,20 +291,23 @@ struct usb_audio_dev {
 	/* audio control interface */
 	struct usb_host_interface *ctrl_intf;
 	unsigned int card_num;
-	unsigned int usb_core_id;
 	atomic_t in_use;
 	struct kref kref;
-	wait_queue_head_t disconnect_wq;
 
 	/* interface specific */
 	int num_intf;
 	struct intf_info *info;
-};
 
-struct usb_offload_stream {
-	bool direction;
-	bool streaming;
-	struct uo_buffer *urb;
+	struct snd_usb_audio *chip;
+	atomic_t connected;
+
+	wait_queue_head_t disabling_wq;
+
+	/* xhci sideband */
+	struct xhci_sideband_ *sb;
+
+	bool is_valid;
+	bool on_hub;
 };
 
 struct usb_offload_policy {
@@ -319,33 +329,28 @@ struct usb_offload_policy {
 	u32 reserved_size;
 };
 
-#define UO_MAX_DEVICE  5
 struct usb_offload_dev {
 	struct device *dev;
-	struct usb_device *valid_device[UO_MAX_DEVICE];
+	int last_card_num;
 	struct xhci_hcd *xhci;
-	struct xhci_sideband_ *sb;
-	unsigned int num_entries_in_use;
-	u32 intr_num;
-	unsigned long card_slot;
-	unsigned int card_num;
+	int connect_chip_num;
 	bool adv_lowpwr;
 	bool is_streaming;
+	bool tx_streaming;
+	bool rx_streaming;
 	bool adsp_inited;
-	bool connected;
-	bool opened;
 	enum usb_device_speed speed;
-	bool adsp_exception;
-	bool adsp_ready;
 	bool hub_offloading;
-	bool hold_wakelock;
 	struct ssusb_offload *ssusb_offload_notify;
 	struct mutex dev_lock;
 	void *tracer;
-	struct usb_offload_stream stream[2];
 	struct uo_provider provider[UO_PROV_NUM];
 	struct uo_buffer_array buf_array[UO_STRUCT_NUM];
 	struct usb_offload_policy policy;
+
+	/* interrupter */
+	struct xhci_interrupter *ir;
+	struct mutex ir_lock;
 };
 
 extern int ssusb_offload_register(struct ssusb_offload *offload);
@@ -482,6 +487,7 @@ void usb_offload_ipi_trace_handler(void *param);
  * platform policy
  ****/
 void usb_offload_platform_policy_init(struct device *dev, struct usb_offload_policy *policy);
+int usb_offload_link_xhci(struct device *dev);
 void usb_offload_improve_idle_power(bool start);
 enum uo_provider_type usb_offload_mem_type(void);
 enum uo_provider_type usb_offload_mem_type_lp(void);

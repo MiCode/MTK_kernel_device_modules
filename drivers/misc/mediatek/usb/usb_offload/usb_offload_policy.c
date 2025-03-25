@@ -11,6 +11,8 @@
 #include <linux/of_device.h>
 #include <linux/string.h>
 #include "usb_offload.h"
+#include "../usb_xhci/xhci.h"
+#include "../usb_xhci/xhci-mtk.h"
 #include "mtu3.h"
 
 void usb_offload_hub_working(bool hub_offloading, bool hold)
@@ -341,6 +343,37 @@ put_node:
 		USB_OFFLOAD_ERR("no 'usb0' node!\n");
 		policy->hid_disable_offload = true;
 	}
+}
+
+int usb_offload_link_xhci(struct device *dev)
+{
+	struct device_node *node;
+	struct platform_device *pdev = NULL;
+	struct xhci_hcd_mtk *mtk;
+	struct xhci_hcd *xhci;
+	int ret = -EOPNOTSUPP;
+
+	node = of_parse_phandle(dev->of_node, "xhci-host", 0);
+	if (node) {
+		pdev = of_find_device_by_node(node);
+		if (!pdev) {
+			USB_OFFLOAD_ERR("no device found by node!\n");
+			goto err;
+		}
+		of_node_put(node);
+
+		mtk = platform_get_drvdata(pdev);
+		if (!mtk) {
+			USB_OFFLOAD_ERR("no drvdata set!\n");
+			goto err;
+		}
+		xhci = hcd_to_xhci(mtk->hcd);
+		uodev->xhci = xhci;
+		ret = 0;
+	} else
+		uodev->xhci = NULL;
+err:
+	return ret;
 }
 
 void usb_offload_platform_policy_init(struct device *dev, struct usb_offload_policy *policy)

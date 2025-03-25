@@ -85,6 +85,7 @@ int usb_offload_send_ipi_msg(enum usb_offload_ipi_msg msg_type, void *data, size
 	uint32_t param1 = size;
 	int ret = 0;
 	size_t desire;
+	bool ignore_timeout = true;
 
 	switch (msg_type) {
 	case UOI_INIT_ADSP:
@@ -145,10 +146,17 @@ int usb_offload_send_ipi_msg(enum usb_offload_ipi_msg msg_type, void *data, size
 	else
 		ret = send_single_scene(scene, data_type, ack_type, msg_id, param1, 0, data);
 
-	if (ret != 0)
-		USB_OFFLOAD_ERR("<IPI:%s> fail to send, ret:%d\n", msg_string[msg_type], ret);
-	else
+	if (ret == -ETIMEDOUT) {
+		USB_OFFLOAD_ERR("<IPI:%s> timeout, ret:%d, ignore_timeout:%d\n",
+			msg_string[msg_type], ret, ignore_timeout);
+
+		/* although it took too long, it still succeed */
+		if (ignore_timeout)
+			ret = 0;
+	} else if (ret == 0)
 		USB_OFFLOAD_INFO("<IPI:%s> success to send\n", msg_string[msg_type]);
+	else
+		USB_OFFLOAD_ERR("<IPI:%s> fail to send, ret:%d\n", msg_string[msg_type], ret);
 
 	return ret;
 
