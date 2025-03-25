@@ -726,6 +726,8 @@ struct mtk_vcodec_ctx {
 	int last_dpb_size;
 	int is_hdr;
 	int last_is_hdr;
+	unsigned int prev_err_code[MTK_VDEC_HW_NUM];
+	unsigned int err_code_cnt[MTK_VDEC_HW_NUM];
 	unsigned int errormap_info[VB2_MAX_FRAME];
 	u32 err_msg;
 	u64 timestamp;

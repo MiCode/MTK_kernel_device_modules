@@ -130,7 +130,7 @@ static void check_error_code(struct vdec_inst *inst, unsigned int hw_id)
 		return;
 
 	mtk_vcodec_debug(inst, "hw_id %d get error_code %d", hw_id, inst->vsi->dec.error_code[hw_id]);
-	mtk_vdec_queue_error_code_event(inst->ctx, inst->vsi->dec.error_code[hw_id]);
+	mtk_vdec_queue_error_code_event(inst->ctx, inst->vsi->dec.error_code[hw_id], hw_id);
 }
 
 static void vdec_get_fb_list(struct vdec_inst *inst,
