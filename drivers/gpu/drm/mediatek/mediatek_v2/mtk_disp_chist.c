@@ -25,6 +25,7 @@
 /* channel 0~3 has 256 bins, 4~6 has 128 bins */
 #define DISP_CHIST_MAX_BIN 256
 #define DISP_CHIST_MAX_BIN_LOW 128
+#define DISP_CHIST_MAX_BIN_LOW_INDEX 4
 
 /* chist custom info */
 #define DISP_CHIST_HWC_CHANNEL_INDEX 4
@@ -66,6 +67,8 @@
 #define DISP_CHIST_HIST_CH_MON       0x0568
 #define DISP_CHIST_APB_READ          0x0600
 #define DISP_CHIST_SRAM_R_IF         0x0680
+
+#define MIN(X, Y) ((X) <= (Y) ? (X) : (Y))
 
 static bool debug_dump_hist;
 static unsigned int sel_index;
@@ -269,13 +272,6 @@ static int disp_chist_copy_hist_to_user(struct drm_device *dev, struct drm_file 
 	}
 
 	chist_data = comp_to_chist(comp);
-	if (chist_data->primary_data->present_fence == 0) {
-		hist->present_fence = 0;
-		DDPMSG("%s, present_fence err return! comp->id:%d present_fence:%d\n", __func__,
-					comp->id, chist_data->primary_data->present_fence);
-		return ret;
-	}
-
 	if (chist_data->primary_data->pre_frame_width > 0
 		&& (chist_data->primary_data->pre_frame_width
 		!= chist_data->primary_data->frame_width)) {
@@ -310,6 +306,9 @@ static int disp_chist_copy_hist_to_user(struct drm_device *dev, struct drm_file 
 		}
 	}
 	hist->present_fence = chist_data->primary_data->present_fence;
+	if (hist->present_fence == 0)
+		DDPMSG("%s, present_fence err return! comp->id:%d\n", __func__, comp->id);
+
 	DDPINFO("%s: comp->id:%d hist_fence:%d\n", __func__, comp->id, hist->present_fence);
 	mutex_unlock(&chist_data->primary_data->data_lock);
 
@@ -424,7 +423,7 @@ static void disp_chist_enable_channel(unsigned int channel,
 {
 	if (channel > DISP_CHIST_CHANNEL_COUNT)
 		return;
-
+	DDPINFO("%s channel:%d en:%d\n", __func__, channel, enabled);
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_CHIST_HIST_CH_CFG1,
 		(enabled  ? 1 : 0) << channel, 1 << channel);
 }
@@ -566,6 +565,9 @@ static int disp_chist_set_config(struct mtk_ddp_comp *comp,
 	if (config->config_channel_count == 0)
 		return -EINVAL;
 
+	DDPINFO("%s: id:%d(%s) caller:%d\n", __func__, comp->id,
+		mtk_dump_comp_str(comp), config->caller);
+
 	for (; i < config->config_channel_count; i++) {
 		struct drm_mtk_channel_config channel_config;
 		unsigned int channel_id = 0;
@@ -581,25 +583,58 @@ static int disp_chist_set_config(struct mtk_ddp_comp *comp,
 		memset(&(chist_data->primary_data->chist_config[channel_id]), 0,
 			sizeof(struct drm_mtk_channel_config));
 		chist_data->primary_data->chist_config[channel_id].channel_id = channel_id;
-		chist_data->primary_data->frame_cnt[channel_id] = 0;
+		//if CALLER_RESTORE, should not clear frame_cnt to 0
+		if (config->caller != MTK_DRM_CHIST_CALLER_RESTORE)
+			chist_data->primary_data->frame_cnt[channel_id] = 0;
 		memset(&(chist_data->primary_data->block_config[channel_id]), 0,
 			sizeof(struct mtk_disp_block_config));
 		mutex_unlock(&chist_data->primary_data->data_lock);
-
+		DDPINFO("%s: id:%d(%s) ch:%d en:%d\n", __func__, comp->id,
+			mtk_dump_comp_str(comp), i, channel_config.enabled);
 		if (channel_config.enabled) {
 			int blk_column = 0;
-			// end of roi, width & height of block can't be 0
+			//check config valid, end of roi, width & height of block can't be 0
 			channel_config.roi_end_x = channel_config.roi_end_x
-			? channel_config.roi_end_x : chist_data->primary_data->frame_width - 1;
+				? channel_config.roi_end_x : chist_data->primary_data->frame_width - 1;
 			channel_config.roi_end_y = channel_config.roi_end_y
-				? channel_config.roi_end_y
-				: chist_data->primary_data->frame_height - 1;
+				? channel_config.roi_end_y : chist_data->primary_data->frame_height - 1;
+
+			if (channel_config.roi_end_x <= channel_config.roi_start_x) {
+				PQ_ERR("%s, config invalid! id:%d ch:%d roi_start_x:%d roi_end_x:%d\n",
+					__func__, comp->id, channel_id,
+					channel_config.roi_start_x, channel_config.roi_end_x);
+				channel_config.roi_start_x = 0;
+				channel_config.roi_end_x = chist_data->primary_data->frame_width - 1;
+			}
+			if (channel_config.roi_end_y <= channel_config.roi_start_y) {
+				PQ_ERR("%s, config invalid! id:%d ch:%d roi_start_y:%d roi_end_y:%d\n",
+					__func__, comp->id, channel_id,
+					channel_config.roi_start_y, channel_config.roi_end_y);
+				channel_config.roi_start_y = 0;
+				channel_config.roi_end_y = chist_data->primary_data->frame_height - 1;
+			}
+
 			channel_config.blk_width = channel_config.blk_width
 				? channel_config.blk_width
 				: channel_config.roi_end_x - channel_config.roi_start_x + 1;
 			channel_config.blk_height = channel_config.blk_height
 				? channel_config.blk_height
 				: channel_config.roi_end_y - channel_config.roi_start_y + 1;
+
+			unsigned int roi_width = channel_config.roi_end_x - channel_config.roi_start_x + 1;
+			unsigned int roi_height = channel_config.roi_end_y - channel_config.roi_start_y + 1;
+			unsigned int blk_num = DIV_ROUND_UP(roi_width, channel_config.blk_width) *
+				DIV_ROUND_UP(roi_height, channel_config.blk_height);
+			unsigned int cfg_bins = channel_config.bin_count * blk_num;
+			unsigned int max_bins = (i >= DISP_CHIST_MAX_BIN_LOW_INDEX)
+				? DISP_CHIST_MAX_BIN_LOW : DISP_CHIST_MAX_BIN;
+
+			if (cfg_bins > max_bins) {
+				PQ_ERR("%s, bins invalid! id:%d ch:%d max_bins:%d cfg_bins:%d bin_count:%d\n",
+					__func__, comp->id, channel_id, max_bins, cfg_bins, channel_config.bin_count);
+				//force limited to max_bins!
+				channel_config.bin_count = max_bins / blk_num;
+			}
 
 			disp_chist_ceil((channel_config.roi_end_x - channel_config.roi_start_x + 1),
 				channel_config.blk_width, &blk_column);
@@ -722,6 +757,7 @@ static void disp_chist_restore_setting(struct mtk_ddp_comp *comp, struct cmdq_pk
 	struct mtk_disp_chist *chist_data = comp_to_chist(comp);
 
 	config.config_channel_count = DISP_CHIST_CHANNEL_COUNT;
+	config.caller = MTK_DRM_CHIST_CALLER_RESTORE;
 	for (; i < DISP_CHIST_CHANNEL_COUNT; i++) {
 		mutex_lock(&chist_data->primary_data->data_lock);
 		memcpy(&(config.chist_config[i]), &(chist_data->primary_data->chist_config[i]),
@@ -1010,6 +1046,7 @@ static void disp_chist_get_hist(struct mtk_ddp_comp *comp)
 	struct mtk_disp_chist *data = comp_to_chist(comp);
 	struct mtk_disp_chist_primary *prim_data = data->primary_data;
 	unsigned int data_zero = 0;
+	unsigned int data_invalid = 0;
 	unsigned int fence_NULL = 0;
 	unsigned int fence_zero = 0;
 	unsigned int channel_en = 0;
@@ -1040,21 +1077,42 @@ static void disp_chist_get_hist(struct mtk_ddp_comp *comp)
 	mutex_lock(&prim_data->data_lock);
 	cfg_ch_en = readl(comp->regs + DISP_CHIST_HIST_CH_CFG1) & 0x7f;
 	DRM_MMP_MARK(chist0, (comp->id << 16) | 2, cfg_ch_en);
+
 	for (; i < DISP_CHIST_CHANNEL_COUNT; i++) {
-		unsigned int ch_data_zero = 1;
+		struct drm_mtk_channel_config *channel_cfg = &prim_data->chist_config[i];
 
-		prim_data->chist_config[i].channel_id = i;
-		if (prim_data->chist_config[i].enabled && (cfg_ch_en & (1 << i))) {
+		if (channel_cfg->enabled && (cfg_ch_en & (1 << i))) {
+			int data_sum = 0;
+			int target_sum = 0;
+			unsigned int ch_data_zero = 1;
+			unsigned int roi_width = 0;
+			unsigned int roi_height = 0;
+			unsigned int blk_num = 0;
 
-			prim_data->disp_hist[i].bin_count = prim_data->chist_config[i].bin_count;
-			prim_data->disp_hist[i].color_format
-				= prim_data->chist_config[i].color_format;
+			if((channel_cfg->roi_end_x <= channel_cfg->roi_start_x)
+				|| (channel_cfg->roi_end_y <= channel_cfg->roi_start_y)
+				|| !channel_cfg->blk_width || !channel_cfg->blk_height) {
+				PQ_ERR("%s: config invalid! id:%d ch:%d roi:%d,%d,%d,%d blk:%d,%d\n",
+					__func__, comp->id, i,
+					channel_cfg->roi_end_x, channel_cfg->roi_start_x,
+					channel_cfg->roi_end_y, channel_cfg->roi_start_y,
+					channel_cfg->blk_width, channel_cfg->blk_height);
+				continue;
+			}
+
+			prim_data->disp_hist[i].bin_count = channel_cfg->bin_count;
+			prim_data->disp_hist[i].color_format = channel_cfg->color_format;
 			prim_data->disp_hist[i].channel_id = i;
+			roi_width = channel_cfg->roi_end_x - channel_cfg->roi_start_x + 1;
+			roi_height = channel_cfg->roi_end_y - channel_cfg->roi_start_y + 1;
+			target_sum = roi_width * roi_height;
+			blk_num = DIV_ROUND_UP(roi_width, channel_cfg->blk_width) *
+				DIV_ROUND_UP(roi_height, channel_cfg->blk_height);
 
-			if (i >= DISP_CHIST_HWC_CHANNEL_INDEX)
-				max_bins = DISP_CHIST_MAX_BIN_LOW;
+			if (i >= DISP_CHIST_MAX_BIN_LOW_INDEX)
+				max_bins = MIN(DISP_CHIST_MAX_BIN_LOW, channel_cfg->bin_count * blk_num);
 			else
-				max_bins = DISP_CHIST_MAX_BIN;
+				max_bins = MIN(DISP_CHIST_MAX_BIN, channel_cfg->bin_count * blk_num);
 
 			// select channel id
 			writel(0x30 | i, comp->regs + DISP_CHIST_APB_READ);
@@ -1068,42 +1126,50 @@ static void disp_chist_get_hist(struct mtk_ddp_comp *comp)
 
 					if (prim_data->disp_hist[i].hist[j] != 0)
 						ch_data_zero = 0;
+					data_sum += prim_data->disp_hist[i].hist[j];
 
-					if (j == 0 || j == (prim_data->disp_hist[i].bin_count - 1))
-						DDPINFO("%s: id:%d frame_cnt[%d]:%d cfg_ch_en:0x%x hist[%d]\n",
-							__func__, comp->id, i,
-							prim_data->frame_cnt[i], cfg_ch_en, j);
-					if((j < 5) || j > (prim_data->disp_hist[i].bin_count - 5))
+					if (j == 0 || j == (max_bins - 1))
+						DDPINFO("%s: id:%d frame_cnt[%d]:%d ch_en:0x%x hist[%d][%d]:%d\n",
+							__func__, comp->id, i, prim_data->frame_cnt[i], cfg_ch_en,
+							i, j, prim_data->disp_hist[i].hist[j]);
+					if((j < 5) || j > (max_bins - 5))
 						DRM_MMP_MARK(chist0, (comp->id << 16) | 2, (i << 8 | j));
 				}
+
 				if (ch_data_zero && (prim_data->frame_cnt[i] == 0)) {
 					// should skip the first ch_data_zero, it may occurred in multi-user case.
-					DDPINFO("%s, skip the first ch_data_zero!\n", __func__);
-					DDPINFO("%s: comp->id:%d read frame_cnt[%d]:%d cfg_ch_en:0x%x\n",
+					DDPINFO("%s: skip the first ch_data_zero!\n", __func__);
+					DDPINFO("%s: id:%d read frame_cnt[%d]:%d ch_en:0x%x\n",
 						__func__, comp->id, i, prim_data->frame_cnt[i], cfg_ch_en);
 					continue;
 				}
 
 				prim_data->frame_cnt[i]++;
-				data_zero |= ch_data_zero;
+				data_zero |= (ch_data_zero << i);
 				channel_en = 1;
 				if (ch_data_zero) {
-					DDPMSG("%s: comp->id:%d read frame_cnt[%d]:%d cfg_ch_en:0x%x ch_data_zero!\n",
+					PQ_ERR("%s: ch_data_zero! id:%d frame_cnt[%d]:%d ch_en:0x%x\n",
 						__func__, comp->id, i, prim_data->frame_cnt[i], cfg_ch_en);
-					DRM_MMP_MARK(chist, (comp->id << 16) | 0xe, i);//error
-					j = prim_data->disp_hist[i].bin_count - 1;
-					DDPMSG("%s hist[%d][0]:%d, hist[%d][%d]:%d\n", __func__,
-						i, prim_data->disp_hist[i].hist[0],
-						i, j, prim_data->disp_hist[i].hist[j]);
+					DRM_MMP_MARK(chist, (comp->id << 16) | 0xe1, i);//error1
+					disp_chist_dump(comp);
+				} else if (target_sum != data_sum) {
+					data_invalid |= (1 << i);
+					PQ_ERR("%s: data_invalid! id:%d frame_cnt[%d]:%d ch_en:0x%x sum:%d,%d\n",
+						__func__, comp->id, i, prim_data->frame_cnt[i], cfg_ch_en,
+						target_sum, data_sum);
+					DRM_MMP_MARK(chist, (comp->id << 16) | 0xe2, i);//error2
 					disp_chist_dump(comp);
 				}
 				if (g_detail_log) {
 					j = 0;
-					DDPMSG("%s: comp->id:%d read frame_cnt[%d]:%d cfg_ch_en:0x%x\n",
+					DDPMSG("%s: id:%d read frame_cnt[%d]:%d ch_en:0x%x\n",
 						__func__, comp->id, i, prim_data->frame_cnt[i], cfg_ch_en);
-					for (; j < prim_data->disp_hist[i].bin_count; j++)
-						DDPDBG("%s hist[%d][%d]:%d", __func__, i, j,
-							prim_data->disp_hist[i].hist[j]);
+					DDPMSG("%s: roi_w:%d roi_h:%d max_bins:%d bin_cnt:%d blk_num:%d",
+						__func__, roi_width, roi_height, max_bins,
+						channel_cfg->bin_count, blk_num);
+					for (; j < max_bins; j++)
+						DDPDBG("%s hist[%d][%d]:%d",
+							__func__, i, j, prim_data->disp_hist[i].hist[j]);
 				}
 			}
 		}
@@ -1117,35 +1183,48 @@ static void disp_chist_get_hist(struct mtk_ddp_comp *comp)
 	if (channel_en == 0)
 		return;
 
-	p_present_fence = (unsigned int *)(mtk_get_gce_backup_slot_va(mtk_crtc,
+	bool is_frame_mode = mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base);
+
+	if (is_frame_mode)
+		p_present_fence = (unsigned int *)(mtk_get_gce_backup_slot_va(mtk_crtc,
+				DISP_SLOT_FRAME_DONE_FENCE(0)));
+	else
+		p_present_fence = (unsigned int *)(mtk_get_gce_backup_slot_va(mtk_crtc,
 				DISP_SLOT_PRESENT_FENCE(0)));
 	if (p_present_fence != NULL) {
 		cur_present_fence = *p_present_fence;
 	} else {
 		fence_NULL = 1;
 	}
-	if (cur_present_fence != 0) {
-		// 2nd trigger of Frame N, the hist info is already for Content N
-		if (last_present_fence == cur_present_fence)
-			prim_data->present_fence = cur_present_fence;
-		else // 1st trigger of Frame N, the hist info is for Content N-1
-			prim_data->present_fence = cur_present_fence - 1;
 
-		DDPINFO("%s: comp->id:%d hist_fence:%d cur_pf:%d last_pf:%d\n",
-			__func__, comp->id, prim_data->present_fence, cur_present_fence, last_present_fence);
+	if (cur_present_fence != 0) {
+		if (is_frame_mode)// cmd mode, FRAME_DONE_FENCE of Frame N
+			prim_data->present_fence = cur_present_fence;
+		else {
+			// 2nd trigger of Frame N, the hist info is already for Content N
+			if (last_present_fence == cur_present_fence)
+				prim_data->present_fence = cur_present_fence;
+			else // 1st trigger of Frame N, the hist info is for Content N-1
+				prim_data->present_fence = cur_present_fence - 1;
+		}
+		DDPINFO("%s: id:%d hist_fence:%d cur_pf:%d last_pf:%d cmd_mode:%d\n",
+			__func__, comp->id, prim_data->present_fence,
+			cur_present_fence, last_present_fence, is_frame_mode);
 		mtk_drm_trace_begin("hist_fence:%d cur_pf:%d last_pf:%d",
 			prim_data->present_fence, cur_present_fence, last_present_fence);
 		DRM_MMP_MARK(chist0, (comp->id << 16) | 3, prim_data->present_fence);
 		mtk_drm_trace_end();
 	} else {
 		fence_zero = 1;
+		DDPMSG("%s: present_fence err ! comp->id:%d fence_NULL:%d fence_zero:%d\n",
+			__func__, comp->id, fence_NULL, fence_zero);
 	}
 
 	if (data_zero || fence_NULL) {
 		// need db
-		DDPMSG("%s: comp->id:%d hist_fence:%d cur_pf:%d last_pf:%d\n",
+		DDPMSG("%s: id:%d hist_fence:%d cur_pf:%d last_pf:%d\n",
 			__func__, comp->id, prim_data->present_fence, cur_present_fence, last_present_fence);
-		DDPMSG("%s: comp->id:%d data_zero:%d fence_NULL:%d fence_zero:%d channel_en:%d\n",
+		PQ_ERR("%s: id:%d data_zero:0x%x fence_NULL:%d fence_zero:%d channel_en:%d\n",
 			__func__, comp->id, data_zero, fence_NULL, fence_zero, channel_en);
 		DDPAEE_FATAL("%s, %d: chist err data_zero:%d fence_NULL:%d fence_zero:%d\n",
 			__func__, __LINE__, data_zero, fence_NULL, fence_zero);
@@ -1188,7 +1267,7 @@ static void disp_chist_init_primary_data(struct mtk_ddp_comp *comp)
 	struct mtk_disp_chist *chist_data = comp_to_chist(comp);
 	struct mtk_disp_chist *companion_data = comp_to_chist(chist_data->companion);
 	char thread_name[20] = {0};
-	int len = 0;
+	int len = 0, channel_id = 0;
 	static cpumask_t cpumask;
 	struct task_struct *chist_read_task = NULL;
 	struct sched_param param = {.sched_priority = 1};
@@ -1209,6 +1288,9 @@ static void disp_chist_init_primary_data(struct mtk_ddp_comp *comp)
 			sizeof(chist_data->primary_data->block_config));
 	memset(&(chist_data->primary_data->chist_config), 0,
 			sizeof(chist_data->primary_data->chist_config));
+	for (channel_id = 0; channel_id < DISP_CHIST_CHANNEL_COUNT; channel_id++)
+		chist_data->primary_data->chist_config[channel_id].channel_id = channel_id;
+
 	memset(&(chist_data->primary_data->disp_hist), 0,
 			sizeof(chist_data->primary_data->disp_hist));
 	memset(chist_data->primary_data->frame_cnt, 0,
