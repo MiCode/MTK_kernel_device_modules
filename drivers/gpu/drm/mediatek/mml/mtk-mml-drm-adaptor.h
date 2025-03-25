@@ -218,14 +218,6 @@ s32 mml_drm_racing_stop_sync(struct mml_drm_ctx *dctx, struct cmdq_pkt *pkt);
  */
 void mml_drm_split_info(struct mml_submit *submit, struct mml_submit *submit_pq);
 
-
-/*
- * mml_drm_purge - clear all retrigger cache task
- *
- * @dctx:	Context of mml drm adaptor. Get by mml_drm_get_context API.
- */
-void mml_drm_purge(struct mml_drm_ctx *dctx);
-
 /*
  * mml_drm_submit - submit mml job
  *
@@ -238,40 +230,6 @@ void mml_drm_purge(struct mml_drm_ctx *dctx);
  */
 s32 mml_drm_submit(struct mml_drm_ctx *dctx, struct mml_submit *submit,
 	void *cb_param);
-
-/*
- * mml_drm_retrigger - retrigger mml job
- *
- * @dctx:	Context of mml drm adaptor. Get by mml_drm_get_context API.
- *
- * Return:	Result of submit. In value < 0 case job did not send to mml
- *		driver core.
- */
-s32 mml_drm_retrigger(struct mml_drm_ctx *dctx);
-
-/*
- * mml_drm_retrigger_busy - check if mml busy on submit or there is other retrigger working
- *
- * @dctx:	Context of mml drm adaptor. Get by mml_drm_get_context API.
- *
- * Return:	Result of submit. In value < 0 case job did not send to mml
- *		driver core.
- */
-bool mml_drm_retrigger_busy(struct mml_drm_ctx *dctx);
-
-/*
- * mml_drm_addon_connect - do connect for current cached task to maintain retrigger
- *
- * @dctx:	Context of mml drm adaptor. Get by mml_drm_get_context API.
- */
-void mml_drm_addon_connect(struct mml_drm_ctx *dctx);
-
-/*
- * mml_drm_addon_disconnect - do disconnect to previous task to queue taskdone
- *
- * @dctx:	Context of mml drm adaptor. Get by mml_drm_get_context API.
- */
-void mml_drm_addon_disconnect(struct mml_drm_ctx *dctx);
 
 /*
  * mml_drm_stop - stop mml task (for racing mode)

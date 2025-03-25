@@ -671,56 +671,6 @@ static s32 command_reuse(struct mml_task *task, u32 pipe)
 	return 0;
 }
 
-static s32 command_retrigger(struct mml_retrig_task *retg_task)
-{
-	struct mml_task *task = retg_task->task;
-	struct mml_frame_config *cfg = task->config;
-	const struct mml_topology_path *path = cfg->path[0];
-	struct cmdq_pkt *pkt = cmdq_pkt_create(path->clt);
-	struct mml_pipe_cache *cache = &task->config->cache[0];
-	struct mml_comp_config *ccfg = cache->cfg;
-	struct mml_comp *comp;
-	u32 i;
-
-	if (IS_ERR(pkt)) {
-		mml_err("%s fail err %ld", __func__, PTR_ERR(pkt));
-		return PTR_ERR(pkt);
-	}
-
-	retg_task->pkt_retrigger = pkt;
-	retg_task->pkt_retrigger->no_irq = cfg->dpc;
-	pkt->user_data = (void *)retg_task;
-
-	for (i = 0; i < path->node_cnt; i++) {
-		comp = path->nodes[i].comp;
-		call_cfg_op(comp, retrigger, retg_task, &ccfg[i]);
-	}
-
-	path->mutex->config_ops->mutex_retrigger(path->mutex, retg_task, &ccfg[path->mutex_idx]);
-	if (path->mutex2)
-		path->mutex2->config_ops->mutex_retrigger(path->mutex2, retg_task,
-			&ccfg[path->mutex2_idx]);
-
-	for (i = 0; i < path->node_cnt; i++) {
-		comp = path->nodes[i].comp;
-		call_cfg_op(comp, wait_retrigger, retg_task, &ccfg[i], 0);
-	}
-
-	for (i = 0; i < path->node_cnt; i++) {
-		comp = path->nodes[i].comp;
-		call_cfg_op(comp, post_retrigger, retg_task, &ccfg[i]);
-	}
-
-	mml_msg("%s retrigger pkt %#lx", __func__, (unsigned long)pkt);
-
-	if (mml_pkt_dump == 3) {
-		cmdq_pkt_dump_buf(pkt, 0);
-		mml_pkt_dump = 0;
-	}
-
-	return 0;
-}
-
 static void get_fmt_str(char *fmt, size_t sz, enum mml_color f)
 {
 	int ret;
@@ -1786,30 +1736,6 @@ static bool mml_check_dumpsrv(enum dump_srv_option buf_opt, struct mml_file_buf 
 }
 #endif	/* CONFIG_MTK_MML_DEBUG */
 
-void mml_core_queue_taskdone(struct kref *kref)
-{
-	struct mml_task *task = container_of(kref, struct mml_task, connection);
-
-	/* mark done for dl case, so qos would know skip this task */
-	task->done = true;
-	queue_work(task->config->wq_done, &task->work_done);
-}
-
-void core_retrigger_done_kt_work(struct kthread_work *work)
-{
-	struct mml_retrig_task *retg_task =
-		container_of(work, struct mml_retrig_task, kt_retrigger_done);
-	struct mml_task *task = retg_task->task;
-
-	mml_trace_begin("%s_%u_%u", __func__, task->job.jobid, retg_task->jobid);
-
-	/* do disconnect, task done flow wake if connect ref goes 0 */
-	task->config->task_ops->retrigger_framedone(retg_task);
-	task->config->task_ops->disconnect(task);
-
-	mml_trace_end();
-}
-
 static void core_taskdone_kt_work(struct kthread_work *work)
 {
 	struct mml_task *task = container_of(work, struct mml_task, kt_work_done);
@@ -1847,13 +1773,7 @@ static void core_taskdone_kt_work(struct kthread_work *work)
 	}
 #endif
 
-	if (cfg->info.mode == MML_MODE_DIRECT_LINK) {
-		/* do disconnect, task done flow wake if connect ref goes 0 */
-		cfg->task_ops->disconnect(task);
-	} else {
-		/* other mode wakup work_done process directly */
-		queue_work(cfg->wq_done, &task->work_done);
-	}
+	queue_work(cfg->wq_done, &task->work_done);
 	mml_trace_end();
 }
 
@@ -1970,9 +1890,7 @@ static void core_taskdone_check(struct mml_task *task)
 	if (cfg->dual && cnt <= 1)
 		return;
 
-	/* for dl case, mark done after disconnect */
-	if (cfg->info.mode != MML_MODE_DIRECT_LINK)
-		task->done = true;
+	task->done = true;
 	if (cfg->task_ops->signal_irq)
 		cfg->task_ops->signal_irq(task);
 	if (task->fence) {
@@ -2191,14 +2109,6 @@ static const cmdq_async_flush_cb dump_cbs[MML_PIPE_CNT] = {
 	[0] = core_taskdump0_cb,
 	[1] = core_taskdump1_cb,
 };
-
-static void core_retg_taskdump_cb(struct cmdq_cb_data data)
-{
-	struct mml_retrig_task *retg_task = (struct mml_retrig_task *)data.data;
-
-	mml_log("%s retrig task job %u %p", __func__, retg_task->jobid, retg_task);
-	core_taskdump(retg_task->task, 0, data.err);
-}
 
 static int aee_cb(struct cmdq_cb_data data)
 {
@@ -2558,99 +2468,6 @@ static void core_config_task_work(struct kthread_work *work)
 	core_config_task(task);
 }
 
-static void core_retrigger_done_cb(struct cmdq_cb_data data)
-{
-	struct cmdq_pkt *pkt = (struct cmdq_pkt *)data.data;
-	struct mml_retrig_task *retg_task = (struct mml_retrig_task *)pkt->user_data;
-	struct mml_task *task = retg_task->task;
-	struct mml_frame_config *cfg = task->config;
-
-	if (data.err) {
-		mml_trace_begin("%s_err", __func__);
-		mml_mmp(irq_stop, MMPROFILE_FLAG_PULSE, task->job.jobid,
-			((data.err & GENMASK(15, 0)) << 16) | (retg_task->jobid & 0xffff));
-	} else {
-		mml_trace_begin("%s_irq", __func__);
-		mml_mmp(irq_done, MMPROFILE_FLAG_PULSE, task->job.jobid, retg_task->jobid);
-	}
-
-	kthread_queue_work(cfg->ctx_kt_done, &retg_task->kt_retrigger_done);
-	mml_trace_end();
-}
-
-static int core_retrigger_task(struct mml_retrig_task *retg_task)
-{
-	struct mml_task *task = retg_task->task;
-	struct mml_frame_config *cfg = task->config;
-	const u32 jobid = task->job.jobid;
-	const u32 retg_jobid = retg_task->jobid;
-	struct cmdq_pkt *pkt;
-	int ret;
-
-	mml_trace_begin("%s_%u", __func__, jobid);
-
-	mml_mmp2(config, MMPROFILE_FLAG_START,
-		cfg->info.src.width, cfg->info.src.height,
-		cfg->info.dest[0].data.width, cfg->info.dest[0].data.height);
-
-	mml_msg("%s retg job %u task %p ref job %u task %p config %p",
-		__func__, retg_jobid, retg_task, jobid, task, cfg);
-
-	/* enable mminfra and except flow during config */
-	mml_core_mminfra_enable(cfg->mml, 0, cfg->path[0]->mmlsys);
-	mml_dpc_exc_keep_task(task, cfg->path[0]);
-	if (cfg->dpc)
-		mml_dpc_task_cnt_inc(task);
-
-	/* hold config in this task to avoid config release before call submit_done */
-	cfg->cfg_ops->get(cfg);
-	/* ref count to 2 thus destroy can be one of submit done and frame done */
-	kref_get(&task->ref);
-
-	task->config_pipe_time[0] = sched_clock();
-
-	if (cfg->dpc) {
-		struct cmdq_client *cmdq_clt = cfg->path[0]->clt;
-
-		cmdq_check_thread_complete(cmdq_clt->chan);
-	}
-
-	if (!retg_task->pkt_retrigger)
-		command_retrigger(retg_task);
-	else
-		cmdq_pkt_refinalize(retg_task->pkt_retrigger);
-	pkt = retg_task->pkt_retrigger;
-
-	/* assign error handler */
-	pkt->err_cb.cb = core_retg_taskdump_cb;
-	pkt->aee_cb = aee_cb;
-	pkt->err_cb.data = (void *)retg_task;
-	task->dump_full = true;
-
-	mml_mmp(flush, MMPROFILE_FLAG_PULSE, retg_task->jobid, (unsigned long)pkt);
-	ret = cmdq_pkt_flush_async(pkt, core_retrigger_done_cb, (void *)pkt);
-
-	/* dl mode fast on/off during hw run, so disable mminfra and except flow */
-	mml_dpc_exc_release_task(task, cfg->path[0]);
-	mml_core_mminfra_disable(cfg->mml, 0, cfg->path[0]->mmlsys);
-
-	cfg->task_ops->retrigger_done(retg_task);
-	cfg->cfg_ops->put(cfg);
-
-	mml_mmp(config, MMPROFILE_FLAG_END, jobid, 0);
-	mml_trace_end();
-
-	return ret;
-}
-
-void core_retrigger_work(struct kthread_work *work)
-{
-	struct mml_retrig_task *retg_task;
-
-	retg_task = container_of(work, struct mml_retrig_task, work_retrigger);
-	core_retrigger_task(retg_task);
-}
-
 static s32 task_cnt_get(char *buf, const struct kernel_param *kp)
 {
 	s32 len = 0;
@@ -2701,7 +2518,6 @@ struct mml_task *mml_core_create_task(u32 jobid)
 	kthread_init_work(&task->kt_work_done, core_taskdone_kt_work);
 
 	kref_init(&task->ref);
-	kref_init(&task->connection);
 	task->pipe[0].task = task;
 	task->pipe[1].task = task;
 
@@ -2746,8 +2562,6 @@ void mml_core_init_config(struct mml_frame_config *cfg)
 	INIT_LIST_HEAD(&cfg->tasks);
 	INIT_LIST_HEAD(&cfg->await_tasks);
 	INIT_LIST_HEAD(&cfg->done_tasks);
-	INIT_LIST_HEAD(&cfg->retg_tasks);
-	INIT_LIST_HEAD(&cfg->retg_idle_tasks);
 	mutex_init(&cfg->pipe_mutex);
 	mutex_init(&cfg->hist_div_mutex);
 	/* create work_thread 0, wait thread */

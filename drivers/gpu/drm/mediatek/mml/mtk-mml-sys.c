@@ -17,7 +17,6 @@
 #include "mtk-mml-core.h"
 #include "mtk-mml-driver.h"
 #include "mtk-mml-dle-adaptor.h"
-#include "mtk-mml-drm-adaptor.h"
 #include "mtk-mml-mmp.h"
 #include "mtk-mml-sys.h"
 #include "mtk-mml-dpc.h"
@@ -308,8 +307,7 @@ struct sys_frame_data {
 
 	u32 tile_idx;
 
-	u32 reset_cbs[MML_MAX_PATH_CBS];	/* regs in task done reset cb configs */
-	u32 restore_cbs[MML_MAX_PATH_CBS];	/* values in retrigger restore cb configs */
+	u32 reset_cbs[MML_MAX_PATH_CBS];
 	u8 reset_cbs_cnt;
 };
 
@@ -889,19 +887,18 @@ static s32 sys_config_tile(struct mml_comp *comp, struct mml_task *task,
 				   &offset, &mout, &is_cb_mout);
 		}
 		if (mout && is_cb_mout) {
-			u32 mout_en = mout | (sof_grp << sys->data->cb_sof_grp_bit);
-
-			cmdq_pkt_write(pkt, NULL, base_pa + offset, mout_en, U32_MAX);
+			cmdq_pkt_write(pkt, NULL, base_pa + offset,
+				mout + (sof_grp << sys->data->cb_sof_grp_bit),
+				U32_MAX);
 			if (!idx) {
 				/* only check first tile path cb mout */
 				if (sys_frm->reset_cbs_cnt < MML_MAX_PATH_CBS) {
 					sys_frm->reset_cbs[sys_frm->reset_cbs_cnt] =
 						base_pa + offset;
-					sys_frm->restore_cbs[sys_frm->reset_cbs_cnt] = mout_en;
 					sys_frm->reset_cbs_cnt++;
 				} else
-					mml_err("%s reset_cbs_cnt %d overflow",
-						__func__, sys_frm->reset_cbs_cnt);
+					mml_err("%s reset_cbs_cnt %d overflow", __func__,
+						sys_frm->reset_cbs_cnt);
 			}
 		} else if (mout)
 			cmdq_pkt_write(pkt, NULL, base_pa + offset,
@@ -1092,7 +1089,7 @@ static s32 sys_post(struct mml_comp *comp, struct mml_task *task,
 	struct mml_pipe_cache *cache = &cfg->cache[ccfg->pipe];
 	struct mml_sys *sys = comp_to_sys(comp);
 
-	for (i = 0; i < sys_frm->reset_cbs_cnt; i++)
+	for (i = 0; i < sys_frm->reset_cbs_cnt ; i++)
 		cmdq_pkt_write(pkt, NULL, sys_frm->reset_cbs[i], 0, U32_MAX);
 
 	/* later design only need in couple mode */
@@ -1195,32 +1192,6 @@ static s32 sys_repost(struct mml_comp *comp, struct mml_task *task,
 	return 0;
 }
 
-s32 sys_retrigger(struct mml_comp *comp, struct mml_retrig_task *retg_task,
-	struct mml_comp_config *ccfg)
-{
-	struct sys_frame_data *sys_frm = sys_frm_data(ccfg);
-	struct cmdq_pkt *pkt = retg_task->pkt_retrigger;
-	u32 i;
-
-	for (i = 0; i < sys_frm->reset_cbs_cnt; i++)
-		cmdq_pkt_write(pkt, NULL, sys_frm->reset_cbs[i], sys_frm->restore_cbs[i], U32_MAX);
-
-	return 0;
-}
-
-s32 sys_post_retrigger(struct mml_comp *comp, struct mml_retrig_task *retg_task,
-	struct mml_comp_config *ccfg)
-{
-	struct sys_frame_data *sys_frm = sys_frm_data(ccfg);
-	struct cmdq_pkt *pkt = retg_task->pkt_retrigger;
-	u32 i;
-
-	for (i = 0; i < sys_frm->reset_cbs_cnt; i++)
-		cmdq_pkt_write(pkt, NULL, sys_frm->reset_cbs[i], 0, U32_MAX);
-
-	return 0;
-}
-
 static const struct mml_comp_config_ops sys_config_ops = {
 	.prepare = sys_config_prepare,
 	.init = sys_init,
@@ -1230,8 +1201,6 @@ static const struct mml_comp_config_ops sys_config_ops = {
 	.post = sys_post,
 	.done = sys_done,
 	.repost = sys_repost,
-	.retrigger = sys_retrigger,
-	.post_retrigger = sys_post_retrigger,
 };
 
 #include <linux/mm.h>
@@ -1636,10 +1605,8 @@ static void mml_sys_taskdone(struct mml_comp *comp, struct mml_task *task,
 		u32 ovldli_status = cmdq_pkt_backup_get(pkt, &task->ovl_dli_status);
 
 		if ((status1 & 0x1fff0000) != (task->dlo_size & 0x1fff0000))
-			mml_err(
-				"task job %u dlo size %#010x status %#010x ovl dli %#010x %#010x not match",
-				task->job.jobid, task->dlo_size, status1,
-				ovldli_sz, ovldli_status);
+			mml_err("task job %u dlo size %#010x status %#010x not match",
+				task->job.jobid, task->dlo_size, status1);
 		else if (mml_dlo_dbg & BIT(2))
 			mml_log("task job %u dlo size %#010x status %#010x ovl dli %#010x %#010x",
 				task->job.jobid, task->dlo_size, status1,
@@ -2315,34 +2282,6 @@ static void sys_unprepare(struct mtk_ddp_comp *ddp_comp)
 		sys_ddp_disable(sys, task, 1);
 }
 
-static void sys_addon_config_dl(struct mtk_ddp_comp *ddp_comp,
-	enum mtk_ddp_comp_id prev,
-	enum mtk_ddp_comp_id next,
-	union mtk_addon_config *addon_config,
-	struct cmdq_pkt *pkt)
-{
-	struct mtk_addon_mml_config *mcfg;
-
-	if (IS_ERR_OR_NULL(addon_config)) {
-		mml_err("%s addon config fail %pe", __func__, addon_config);
-		return;
-	}
-
-	mcfg = &addon_config->addon_mml_config;
-	if (!mcfg->ctx) {
-		mml_err("%s no ctx", __func__);
-		return;
-	}
-
-	mml_mmp(addon_addon_config, MMPROFILE_FLAG_PULSE, mcfg->config_type.type, 0);
-	mml_msg("%s type %d", __func__, mcfg->config_type.type);
-
-	if (mcfg->config_type.type == ADDON_DISCONNECT)
-		mml_drm_addon_disconnect(mcfg->ctx);
-	else
-		mml_drm_addon_connect(mcfg->ctx);
-}
-
 #define call_dbg_op(_comp, op, ...) \
 	((_comp->debug_ops && _comp->debug_ops->op) ? \
 		_comp->debug_ops->op(_comp, ##__VA_ARGS__) : 0)
@@ -2387,11 +2326,6 @@ static const struct mtk_ddp_comp_funcs sys_ddp_funcs = {
 	.addon_config = sys_addon_config,
 	.start = sys_start,
 	.unprepare = sys_unprepare,
-	.dump = sys_ddp_dump,
-};
-
-static const struct mtk_ddp_comp_funcs sys_ddp_funcs_mt6991 = {
-	.addon_config = sys_addon_config_dl,
 	.dump = sys_ddp_dump,
 };
 
@@ -2561,17 +2495,6 @@ static s32 dl_wait(struct mml_comp *comp, struct mml_task *task,
 	return 0;
 }
 
-static s32 dl_wait_retrigger(struct mml_comp *comp, struct mml_retrig_task *retg_task,
-	struct mml_comp_config *ccfg, u32 idx)
-{
-	struct mml_sys *sys = comp_to_sys(comp);
-
-	if (sys->event_eofs[comp->sub_idx])
-		cmdq_pkt_wfe(retg_task->pkt_retrigger, sys->event_eofs[comp->sub_idx]);
-
-	return 0;
-}
-
 static s32 dl_post(struct mml_comp *comp, struct mml_task *task,
 		   struct mml_comp_config *ccfg)
 {
@@ -2598,7 +2521,6 @@ static const struct mml_comp_config_ops dlo_config_ops_mt6989 = {
 	.tile = dl_config_tile,
 	.wait = dl_wait,
 	.post = dl_post,
-	.wait_retrigger = dl_wait_retrigger,
 };
 
 #define MT6991_MML_DLO_ASYNC5_STATUS1	0x420
@@ -2686,7 +2608,6 @@ static const struct mml_comp_config_ops dlo_config_ops_mt6993d = {
 	.tile = dl_config_tile,
 	.wait = dl_wait_mt6993,
 	.post = dlo_post_mt6993d,
-	.wait_retrigger = dl_wait_retrigger,
 };
 
 static s32 dl_mml_config_tile(struct mml_comp *comp, struct mml_task *task,
@@ -3380,7 +3301,7 @@ static const struct mml_data mt6991_mmlf_data = {
 		[MML_CT_DL_OUT] = &dlo_comp_init_mt6991f,
 	},
 	.ddp_comp_funcs = {
-		[MML_CT_SYS] = &sys_ddp_funcs_mt6991,
+		[MML_CT_SYS] = &sys_ddp_funcs,
 		[MML_CT_DL_IN] = &dl_ddp_funcs,
 		[MML_CT_DL_OUT] = &dl_ddp_funcs,
 	},
@@ -3468,7 +3389,7 @@ static const struct mml_data mt6993_mmld_data = {
 		[MML_CT_SYS_OUT] = &dl_comp_init,
 	},
 	.ddp_comp_funcs = {
-		[MML_CT_SYS] = &sys_ddp_funcs_mt6991,
+		[MML_CT_SYS] = &sys_ddp_funcs,
 		[MML_CT_DL_IN] = &dl_ddp_funcs,
 		[MML_CT_DL_OUT] = &dl_ddp_funcs,
 		[MML_CT_SYS_IN] = &dl_ddp_funcs,

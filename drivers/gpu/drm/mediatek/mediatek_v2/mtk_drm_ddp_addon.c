@@ -305,7 +305,6 @@ static const int disp_mml_dl_exdma_path[] = {
 static const int disp_mml_dl_exdma_v2_path[] = {
 	DDP_COMPONENT_MML_MUTEX1,
 	DDP_COMPONENT_MML_MUTEX0,
-	DDP_COMPONENT_MML_MML0,
 	DDP_COMPONENT_OVLSYS_DLI_ASYNC0,
 	DDP_COMPONENT_OVL_EXDMA0,
 };

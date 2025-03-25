@@ -1690,9 +1690,6 @@ static void mtk_atomic_mml(struct drm_device *dev,
 		}
 	}
 
-	if (old_mtk_state->lye_state.mml_dl_lye && new_mode == MML_MODE_UNKNOWN)
-		mml_drm_purge(mtk_drm_get_mml_drm_ctx(dev, crtc));
-
 	/* return this function when CRTC's no plane to update and exist lye_state with mml lye config */
 	/* which imply mml_dl_lye does not change in this atomic_commit */
 	if (!need_update_plane && (mtk_crtc_state->lye_state.mml_ir_lye ||
@@ -1728,8 +1725,7 @@ static void mtk_atomic_mml(struct drm_device *dev,
 
 	mtk_crtc->is_mml = (new_mode == MML_MODE_RACING);
 	mtk_crtc->is_mml_dl = (new_mode == MML_MODE_DIRECT_LINK);
-	if (mtk_crtc->is_mml_dl && priv->data->ovl_exdma_rule &&
-		!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MML_DLRETRIGGER)) {
+	if (mtk_crtc->is_mml_dl && priv->data->ovl_exdma_rule) {
 		mtk_crtc->skip_check_trigger = true;
 		addr = mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_SKIP_CHECK_TRIGGER);
 		writel(mtk_crtc->skip_check_trigger, addr);
@@ -12250,8 +12246,6 @@ static const struct of_device_id mtk_ddp_comp_dt_ids[] = {
 	{.compatible = "mediatek,mt6989-mml",
 	 .data = (void *)MTK_MML_MML},
 	{.compatible = "mediatek,mt6991-mml",
-	 .data = (void *)MTK_MML_MML},
-	{.compatible = "mediatek,mt6993-mml",
 	 .data = (void *)MTK_MML_MML},
 	{.compatible = "mediatek,mt6897-mml",
 	 .data = (void *)MTK_MML_MML},

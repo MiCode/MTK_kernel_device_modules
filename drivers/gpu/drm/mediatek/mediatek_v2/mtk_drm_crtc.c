@@ -11517,8 +11517,7 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 		}
 	}
 
-	mtk_crtc->skip_check_trigger = cb_data->is_mml_dl &&
-		!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MML_DLRETRIGGER);
+	mtk_crtc->skip_check_trigger = cb_data->is_mml_dl;
 	addr = mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_SKIP_CHECK_TRIGGER);
 	writel(mtk_crtc->skip_check_trigger, addr);
 
@@ -14000,15 +13999,7 @@ struct cmdq_pkt *mtk_crtc_set_dirty_wait(struct mtk_drm_crtc *mtk_crtc)
 	// have to worry about it will effect the original flow.
 	if (mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base) &&
 		(mtk_crtc->is_mml || mtk_crtc->is_mml_dl || mtk_crtc->skip_check_trigger)) {
-		struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
-		bool support = mtk_drm_helper_get_opt(priv->helper_opt,
-			MTK_DRM_OPT_MML_DLRETRIGGER);
-
-		DDPINFO("%s mml %d is mml dl %d support %s\n",
-			__func__, mtk_crtc->is_mml, mtk_crtc->is_mml_dl,
-			support ? "true" : "false");
-		if (!support)
-			return NULL;
+		return NULL;
 	}
 
 	drm_trace_tag_mark("crtc_set_dirty_wait");
@@ -14023,14 +14014,6 @@ struct cmdq_pkt *mtk_crtc_set_dirty_wait(struct mtk_drm_crtc *mtk_crtc)
 		DDPPR_ERR("%s:%d NULL cmdq handle\n", __func__, __LINE__);
 		return NULL;
 	}
-
-	if (mtk_crtc->is_mml_dl) {
-		struct drm_crtc *crtc = &mtk_crtc->base;
-		struct mml_drm_ctx *mml_ctx = mtk_drm_get_mml_drm_ctx(crtc->dev, crtc);
-
-		mml_drm_racing_config_sync(mml_ctx, cmdq_handle);
-	}
-
 	GCE_COND_ASSIGN(cmdq_handle, CMDQ_THR_SPR_IDX1, CMDQ_GPR_R07);
 
 	CRTC_MMP_MARK(0, set_dirty, SET_DIRTY, (unsigned long)cmdq_handle);
@@ -14068,15 +14051,7 @@ void mtk_crtc_set_dirty(struct mtk_drm_crtc *mtk_crtc)
 	// have to worry about it will effect the original flow.
 	if (mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base) &&
 		(mtk_crtc->is_mml || mtk_crtc->is_mml_dl || mtk_crtc->skip_check_trigger)) {
-		struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
-		bool support = mtk_drm_helper_get_opt(priv->helper_opt,
-			MTK_DRM_OPT_MML_DLRETRIGGER);
-
-		DDPINFO("%s mml %d is mml dl %d support %s\n",
-			__func__, mtk_crtc->is_mml, mtk_crtc->is_mml_dl,
-			support ? "true" : "false");
-		if (!support)
-			return;
+		return;
 	}
 
 	cb_data = kmalloc(sizeof(*cb_data), GFP_KERNEL);
@@ -14094,21 +14069,6 @@ void mtk_crtc_set_dirty(struct mtk_drm_crtc *mtk_crtc)
 	if (!cmdq_handle) {
 		DDPPR_ERR("%s:%d NULL cmdq handle\n", __func__, __LINE__);
 		return;
-	}
-
-	if (mtk_crtc->is_mml_dl) {
-		struct drm_crtc *crtc = &mtk_crtc->base;
-		struct mtk_crtc_state *mtk_state = to_mtk_crtc_state(crtc->state);
-
-		if (mtk_state->lye_state.mml_dl_lye) {
-			struct mml_drm_ctx *mml_ctx = mtk_drm_get_mml_drm_ctx(crtc->dev, crtc);
-
-			/* dl case trigger mml hw */
-			mml_drm_retrigger(mml_ctx);
-
-			/* disp sync with mml dl retrigger */
-			mml_drm_racing_config_sync(mml_ctx, cmdq_handle);
-		}
 	}
 
 	CRTC_MMP_MARK(0, set_dirty, SET_DIRTY, (unsigned long)cmdq_handle);
@@ -14508,7 +14468,6 @@ void mtk_crtc_check_trigger(struct mtk_drm_crtc *mtk_crtc, bool delay,
 	int index = 0, type = 0;
 	struct mtk_crtc_state *mtk_state;
 	struct mtk_panel_ext *panel_ext;
-	bool skip_by_mml = false;
 
 	if (!mtk_crtc) {
 		DDPPR_ERR("%s:%d, invalid mtk_crtc\n",
@@ -14542,15 +14501,8 @@ void mtk_crtc_check_trigger(struct mtk_drm_crtc *mtk_crtc, bool delay,
 		goto err;
 	}
 
-	if (mtk_crtc->is_mml_dl && !mtk_crtc->skip_check_trigger) {
-		struct mml_drm_ctx *mml_ctx = mtk_drm_get_mml_drm_ctx(crtc->dev, crtc);
-
-		if (mml_drm_retrigger_busy(mml_ctx))
-			skip_by_mml = true;
-	} else if (mtk_crtc->is_mml || mtk_crtc->is_mml_dl || mtk_crtc->skip_check_trigger)
-		skip_by_mml = true;
-	if (skip_by_mml) {
-		DDPINFO("%s:%d, skip check trigger when MML IR/DL\n", __func__, __LINE__);
+	if (mtk_crtc->is_mml || mtk_crtc->is_mml_dl || mtk_crtc->skip_check_trigger) {
+		DDPINFO("%s:%d, skip check trigger when MML IR\n", __func__, __LINE__);
 		CRTC_MMP_MARK(index, kick_trigger, 0, 4);
 		if (mtk_crtc->is_mml || mtk_crtc->is_mml_dl) {
 			atomic_set(&mtk_crtc->repaint_act, 1);
@@ -17094,15 +17046,9 @@ void mtk_drm_crtc_disable(struct drm_crtc *crtc, bool need_wait)
 		}
 	}
 
-	if (crtc_id == 0 && priv && priv->mml_ctx) {
-		/* makre sure no dl retrigger task exist */
-		mml_drm_purge(priv->mml_ctx);
-
-		/* check idle and clear */
-		if (mml_drm_ctx_idle(priv->mml_ctx)) {
-			mml_drm_put_context(priv->mml_ctx);
-			priv->mml_ctx = NULL;
-		}
+	if ((crtc_id == 0) && priv && priv->mml_ctx && mml_drm_ctx_idle(priv->mml_ctx)) {
+		mml_drm_put_context(priv->mml_ctx);
+		priv->mml_ctx = NULL;
 	}
 
 	/* for dbi idle count timer */

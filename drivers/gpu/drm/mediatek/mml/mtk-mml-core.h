@@ -281,7 +281,6 @@ struct mml_topology_cache;
 struct mml_ctx;
 struct mml_frame_config;
 struct mml_task;
-struct mml_retrig_task;
 struct mml_frame_tile;
 
 struct mml_task_ops {
@@ -296,11 +295,7 @@ struct mml_task_ops {
 	void (*kt_setsched)(struct mml_ctx *ctx);
 	void (*ddren)(struct mml_task *task, struct cmdq_pkt *pkt, bool enable);
 	void (*dispen)(struct mml_task *task, bool enable);
-	void (*connect)(struct mml_task *task);
-	int (*disconnect)(struct mml_task *task);
-	void (*retrigger)(struct mml_retrig_task *retg_task);
-	void (*retrigger_done)(struct mml_retrig_task *retg_task);
-	void (*retrigger_framedone)(struct mml_retrig_task *retg_task);
+
 	void (*disp_dump)(struct mml_task *task);
 };
 
@@ -575,10 +570,6 @@ struct mml_frame_config {
 	struct mutex pipe_mutex;
 	struct kref ref;
 
-	struct list_head retg_tasks;
-	struct list_head retg_idle_tasks;
-	u32 retg_serial;
-
 	/* see more detail in frame_calc_layer_hrt */
 	u16 layer_w;
 	u16 layer_h;
@@ -744,7 +735,6 @@ struct mml_task {
 	enum mml_task_state state;
 	enum mml_adaptor_type adaptor_type;
 	struct kref ref;
-	struct kref connection;
 	struct mml_task_pipe pipe[MML_PIPE_CNT];
 	struct cmdq_backup backup_crc_rdma[MML_PIPE_CNT]; /* rdma or rrot0 and rrot0_2nd */
 	struct cmdq_backup backup_crc_wdma[MML_PIPE_CNT];
@@ -788,7 +778,6 @@ struct mml_task {
 	struct vb2_v4l2_buffer *dst_buf;
 
 	bool done;
-	bool retrigger;
 	bool err;
 	bool dump_full;
 
@@ -804,16 +793,6 @@ struct mml_task {
 	u64 flush_time[MML_PIPE_CNT];
 	u32 src_crc[MML_PIPE_CNT];
 	u32 dest_crc[MML_PIPE_CNT];
-};
-
-struct mml_retrig_task {
-	struct list_head entry;
-	u32 jobid;
-	struct mml_task *task;
-	struct cmdq_pkt *pkt_retrigger;
-
-	struct kthread_work work_retrigger;
-	struct kthread_work kt_retrigger_done;
 };
 
 struct tile_func_block;
@@ -893,15 +872,6 @@ struct mml_comp_config_ops {
 		       struct mml_comp_config *ccfg);
 	s32 (*repost)(struct mml_comp *comp, struct mml_task *task,
 		      struct mml_comp_config *ccfg);
-
-	s32 (*retrigger)(struct mml_comp *comp, struct mml_retrig_task *retg_task,
-			 struct mml_comp_config *ccfg);
-	s32 (*mutex_retrigger)(struct mml_comp *comp, struct mml_retrig_task *retg_task,
-			       struct mml_comp_config *ccfg);
-	s32 (*wait_retrigger)(struct mml_comp *comp, struct mml_retrig_task *retg_task,
-			      struct mml_comp_config *ccfg, u32 idx);
-	s32 (*post_retrigger)(struct mml_comp *comp, struct mml_retrig_task *retg_task,
-			      struct mml_comp_config *ccfg);
 };
 
 struct mml_comp_hw_ops {
@@ -1134,19 +1104,9 @@ void mml_core_dump_buf(struct mml_task *task, const struct mml_frame_data *data,
 char *mml_core_get_dump_inst(u32 *size, void **raw, u32 *size_raw);
 
 /**
- * mml_core_queue_taskdone -
+ * mml_core_create_task -
  *
- */
-void mml_core_queue_taskdone(struct kref *kref);
-
-
-
-void core_retrigger_done_kt_work(struct kthread_work *work);
-
-void core_retrigger_work(struct kthread_work *work);
-
-/**
- * mml_core_create_task - mark task to task done and queue to work thread
+ * Return:
  */
 struct mml_task *mml_core_create_task(u32 jobid);
 

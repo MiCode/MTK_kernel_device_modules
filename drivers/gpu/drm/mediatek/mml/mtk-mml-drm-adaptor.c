@@ -53,55 +53,20 @@ module_param(mml_hrt_overhead, int, 0644);
 int mml_max_layers;
 module_param(mml_max_layers, int, 0644);
 
-/* bits
- * bit[0]: enable or disable
- * bit[1]: set to block continuous retrigger
- */
-int mml_retrigger;
-module_param(mml_retrigger, int, 0644);
-
 struct mml_drm_ctx {
 	struct mml_ctx ctx;
 	struct sync_timeline *timeline;
-	struct mml_task *retg_ref_task;
-	struct mml_task *retg_ref_task_prev;
-	u32 addon_jobid;
 	u16 panel_width;
 	u16 panel_height;
 	bool racing_begin;
-	u8 retrigger_cnt;
-	struct completion idle;
-
 	void (*ddren_cb)(struct cmdq_pkt *pkt, bool enable, void *disp_crtc);
 	void *disp_crtc;
 	void (*dispen_cb)(bool enable, void *dispen_param);
 	void *dispen_param;
+	struct completion idle;
+
 	void (*disp_dump_dl_cb)(void *disp_crtc);
 };
-
-static void mml_drm_task_connect_locked(struct mml_task *task, const char *caller)
-{
-	kref_get(&task->connection);
-	mml_msg("[drm][ReTrig]task connect job %u %p ref %d (%s)",
-		task->job.jobid, task, kref_read(&task->connection), caller);
-}
-
-static int mml_drm_task_disconnect_locked(struct mml_task *task, const char *caller)
-{
-	int cnt = kref_read(&task->connection) - 1;
-	u32 job = task->job.jobid;
-
-	kref_put(&task->connection, mml_core_queue_taskdone);
-	mml_msg("[drm][ReTrig]task disconnect job %u %p ref %d (%s)",
-		job, task, cnt, caller);
-
-	return cnt;
-}
-
-static void task_queue_retrigger(struct mml_retrig_task *retg_task)
-{
-	kthread_queue_work(retg_task->task->ctx->kt_config[0], &retg_task->work_retrigger);
-}
 
 static struct mml_drm_ctx *task_ctx_to_drm(struct mml_task *task)
 {
@@ -406,7 +371,7 @@ int mml_drm_query_multi_layer(struct mml_drm_ctx *dctx,
 
 	if (!duration_us)
 		duration_us = MML_MAX_DUR;
-	mml_msg("[drm][query]%s duration %u count %u", __func__, duration_us, cnt);
+	mml_msg("[drm][query]%s duration %u", __func__, duration_us);
 
 	remain[mml_sys_frame] = duration_us -  dc_layer_reserve;
 	remain[mml_sys_tile] = duration_us -  dc_layer_reserve;
@@ -662,8 +627,8 @@ static void drm_task_frame_done(struct mml_task *task)
 
 	mml_trace_ex_begin("%s", __func__);
 
-	mml_msg("[drm]frame done task %p state %u job %u config %p",
-		task, task->state, task->job.jobid, task->config);
+	mml_msg("[drm]frame done task %p state %u job %u",
+		task, task->state, task->job.jobid);
 
 	/* clean up */
 	task_buf_put(task);
@@ -722,62 +687,12 @@ static void drm_task_frame_done(struct mml_task *task)
 done:
 	if (mml_drm_check_configs_idle_locked(dctx, false))
 		complete(&dctx->idle);
-
 	mutex_unlock(&ctx->config_mutex);
 
 	mml_lock_wake_lock(mml, false);
 
 	mml_trace_ex_end();
 }
-
-static void mml_drm_shift_retrigger_locked(struct mml_drm_ctx *dctx, struct mml_task *task,
-	const char *caller)
-{
-	struct mml_task *prev_task = dctx->retg_ref_task_prev;
-	struct mml_frame_config *cfg = task ? task->config : NULL;
-
-	if (prev_task) {
-		int cnt;
-
-		cnt = mml_drm_task_disconnect_locked(prev_task, "shift");
-		if (cnt)
-			mml_log("[drm][ReTrig]task %u still run %p count %d",
-				prev_task->job.jobid, prev_task, cnt);
-	}
-
-	/* shift previous task */
-	dctx->retg_ref_task_prev = dctx->retg_ref_task;
-
-	/* connect and get new task/config to keep it alive for dl */
-	dctx->retg_ref_task = (cfg && cfg->info.mode == MML_MODE_DIRECT_LINK) ? task : NULL;
-
-	mml_msg("[drm][ReTrig]shift retrigger task job %u task prev job %u (%s)",
-		dctx->retg_ref_task ? dctx->retg_ref_task->job.jobid : 0,
-		dctx->retg_ref_task_prev ? dctx->retg_ref_task_prev->job.jobid : 0,
-		caller);
-}
-
-void mml_drm_purge(struct mml_drm_ctx *dctx)
-{
-	struct mml_ctx *ctx;
-
-	if (!dctx)
-		return;
-
-	ctx = &dctx->ctx;
-	mutex_lock(&ctx->config_mutex);
-	if (!dctx->retg_ref_task && !dctx->retg_ref_task_prev)
-		goto done;
-
-	mml_drm_shift_retrigger_locked(dctx, NULL, "purge");
-	if (dctx->retg_ref_task_prev) {
-		mml_log("[drm][ReTrig]purge on job %u", dctx->retg_ref_task_prev->job.jobid);
-		mml_drm_shift_retrigger_locked(dctx, NULL, "purge prev");
-	}
-done:
-	mutex_unlock(&ctx->config_mutex);
-}
-EXPORT_SYMBOL_GPL(mml_drm_purge);
 
 s32 mml_drm_submit(struct mml_drm_ctx *dctx, struct mml_submit *submit,
 		   void *cb_param)
@@ -888,7 +803,6 @@ s32 mml_drm_submit(struct mml_drm_ctx *dctx, struct mml_submit *submit,
 			init_completion(&task->pkts[0]->cmplt);
 			if (task->pkts[1])
 				init_completion(&task->pkts[1]->cmplt);
-			kref_init(&task->connection);
 			mml_msg("[drm]reuse task %p pkt %p %p",
 				task, task->pkts[0], task->pkts[1]);
 		} else {
@@ -975,12 +889,6 @@ s32 mml_drm_submit(struct mml_drm_ctx *dctx, struct mml_submit *submit,
 		task->config->run_task_cnt,
 		task->config->done_task_cnt,
 		mml_dev_get_couple_cnt(ctx->mml));
-
-	if ((mml_retrigger & BIT(0)) &&
-		(cfg->info.mode == MML_MODE_DIRECT_LINK ||
-		 cfg->info.mode == MML_MODE_MML_DECOUPLE)) {
-		mml_drm_shift_retrigger_locked(dctx, task, "submit");
-	}
 
 	mutex_unlock(&ctx->config_mutex);
 
@@ -1102,161 +1010,6 @@ err_buf_exit:
 }
 EXPORT_SYMBOL_GPL(mml_drm_submit);
 
-s32 mml_drm_retrigger(struct mml_drm_ctx *dctx)
-{
-	struct mml_ctx *ctx = &dctx->ctx;
-	struct mml_task *task;
-	struct mml_frame_config *cfg;
-	struct mml_retrig_task *retg_task;
-	int ret = 0;
-
-	if (!(mml_retrigger & BIT(0)))
-		return 0;
-
-	mml_mmp(retrigger, MMPROFILE_FLAG_PULSE, atomic_read(&ctx->job_serial), 0);
-
-	mutex_lock(&ctx->config_mutex);
-
-	task = dctx->retg_ref_task;
-	if (unlikely(!task)) {
-		mml_err("%s no task exist", __func__);
-		ret = -EPIPE;
-		goto exit;
-	}
-
-	mml_mmp(retrigger, MMPROFILE_FLAG_START, task->job.jobid, 0);
-
-	cfg = task->config;
-	retg_task = list_first_entry_or_null(&cfg->retg_idle_tasks, typeof(*retg_task), entry);
-	if (retg_task)
-		list_del_init(&retg_task->entry);
-	else {
-		retg_task = kzalloc(sizeof(*retg_task), GFP_KERNEL);
-		if (unlikely(!retg_task)) {
-			mml_err("%s unable to alloc retrig task", __func__);
-			ret = -ENOMEM;
-			mml_mmp(retrigger, MMPROFILE_FLAG_END, 0, 0);
-			goto exit;
-		}
-		INIT_LIST_HEAD(&retg_task->entry);
-		kthread_init_work(&retg_task->work_retrigger, core_retrigger_work);
-		kthread_init_work(&retg_task->kt_retrigger_done, core_retrigger_done_kt_work);
-	}
-	retg_task->jobid = ++cfg->retg_serial;
-	retg_task->task = task;
-	list_add_tail(&retg_task->entry, &cfg->retg_idle_tasks);
-
-	mml_mmp(retrigger, MMPROFILE_FLAG_PULSE, task->job.jobid, retg_task->jobid);
-
-	/* submit to core */
-	mml_drm_task_connect_locked(task, "retrigger");
-	dctx->retrigger_cnt++;
-
-	mml_log("[drm][ReTrig]retrigger job %u task %p ref job %u task %p config %p cnt %u",
-		retg_task->jobid, retg_task, task->job.jobid, task, cfg, dctx->retrigger_cnt);
-
-	task_queue_retrigger(retg_task);
-	mml_mmp(retrigger, MMPROFILE_FLAG_END, dctx->retrigger_cnt, cfg->retg_serial);
-
-exit:
-	mutex_unlock(&ctx->config_mutex);
-	return ret;
-}
-EXPORT_SYMBOL_GPL(mml_drm_retrigger);
-
-bool mml_drm_retrigger_busy(struct mml_drm_ctx *dctx)
-{
-	struct mml_ctx *ctx = &dctx->ctx;
-	struct mml_task *task;
-	struct mml_frame_config *cfg;
-	bool busy = false;
-
-	/* not support retrigger, return busy for disp skip dl retrigger case */
-	if (!(mml_retrigger & BIT(0)))
-		return true;
-
-	mutex_lock(&ctx->config_mutex);
-
-	task = dctx->retg_ref_task;
-
-	if (unlikely(!task))
-		goto exit;
-
-	cfg = task->config;
-
-	if (mml_retrigger & BIT(1)) {
-		if (!list_empty(&cfg->await_tasks)) {
-			mml_msg("[drm][ReTrig]%s await_tasks not empty skip retrigger", __func__);
-			busy = true;
-			goto exit;
-		}
-
-		if (dctx->retrigger_cnt) {
-			mml_msg("[drm][ReTrig]%s retrigger working %u skip",
-				__func__, dctx->retrigger_cnt);
-			busy = true;
-			goto exit;
-		}
-	}
-exit:
-	mutex_unlock(&ctx->config_mutex);
-	return busy;
-}
-EXPORT_SYMBOL_GPL(mml_drm_retrigger_busy);
-
-void mml_drm_addon_connect(struct mml_drm_ctx *dctx)
-{
-	struct mml_ctx *ctx = &dctx->ctx;
-	struct mml_task *task;
-	u32 job;
-
-	mutex_lock(&ctx->config_mutex);
-	task = dctx->retg_ref_task;
-	if (unlikely(!task)) {
-		if (mml_retrigger)
-			mml_err("[ReTrig]%s no task current job %d",
-				__func__, atomic_read(&ctx->job_serial));
-		goto exit;
-	}
-
-	/* Only do connect to inc ref when update addon job.
-	 * Skip if mml display already connect this (same) job on mml.
-	 */
-	job = task->job.jobid;
-	if (job != dctx->addon_jobid) {
-		mml_drm_task_connect_locked(task, "addon");
-		dctx->addon_jobid = job;
-	}
-
-exit:
-	mutex_unlock(&ctx->config_mutex);
-}
-
-void mml_drm_addon_disconnect(struct mml_drm_ctx *dctx)
-{
-	struct mml_ctx *ctx = &dctx->ctx;
-	struct mml_task *task;
-	u32 job = 0;
-	int cnt = 0;
-
-	mutex_lock(&ctx->config_mutex);
-	task = dctx->retg_ref_task_prev;
-	if (unlikely(!task))
-		goto exit;
-
-	if (task->job.jobid != dctx->addon_jobid)
-		mml_err("%s addon connected %u but do %u",
-			__func__, dctx->addon_jobid, task->job.jobid);
-
-	job = task->job.jobid;
-	cnt = mml_drm_task_disconnect_locked(task, "addon");
-	dctx->retg_ref_task_prev = NULL;
-	mml_msg("[drm][ReTrig]shift retrigger task prev job clear");
-
-exit:
-	mutex_unlock(&ctx->config_mutex);
-}
-
 s32 mml_drm_stop(struct mml_drm_ctx *dctx, struct mml_submit *submit, bool force)
 {
 	struct mml_ctx *ctx = &dctx->ctx;
@@ -1345,57 +1098,6 @@ static void drm_task_dispen(struct mml_task *task, bool enable)
 	ctx->dispen_cb(enable, ctx->dispen_param);
 }
 
-static void task_retrigger_done(struct mml_retrig_task *retg_task)
-{
-	struct mml_task *task = retg_task->task;
-	struct mml_ctx *ctx = task->ctx;
-	struct mml_drm_ctx *dctx = task_ctx_to_drm(task);
-
-	mutex_lock(&ctx->config_mutex);
-	mml_msg("[drm][ReTrig]%s retg job %u task job %u to idle cnt %u",
-		__func__, retg_task->jobid, task->job.jobid, dctx->retrigger_cnt);
-	mml_mmp(submit_cb, MMPROFILE_FLAG_PULSE, task->job.jobid, retg_task->jobid);
-	mutex_unlock(&ctx->config_mutex);
-}
-
-static void task_retrigger_framedone(struct mml_retrig_task *retg_task)
-{
-	struct mml_task *task = retg_task->task;
-	struct mml_ctx *ctx = task->ctx;
-	struct mml_drm_ctx *dctx = task_ctx_to_drm(task);
-
-	mutex_lock(&ctx->config_mutex);
-	list_del_init(&retg_task->entry);
-	list_add_tail(&retg_task->entry, &task->config->retg_idle_tasks);
-	dctx->retrigger_cnt--;
-	mml_msg("[drm][ReTrig]%s retg job %u task job %u to idle cnt %u",
-		__func__, retg_task->jobid, task->job.jobid, dctx->retrigger_cnt);
-	mutex_unlock(&ctx->config_mutex);
-}
-
-static void mml_drm_task_connect(struct mml_task *task)
-{
-	struct mml_ctx *ctx = task->ctx;
-
-	mml_msg("[drm][ReTrig]%s job %u ref %d",
-		__func__, task->job.jobid, kref_read(&task->connection));
-
-	mutex_lock(&ctx->config_mutex);
-	mml_drm_task_connect_locked(task, "taskop");
-	mutex_unlock(&ctx->config_mutex);
-}
-
-static int mml_drm_task_disconnect(struct mml_task *task)
-{
-	struct mml_ctx *ctx = task->ctx;
-	int cnt;
-
-	mutex_lock(&ctx->config_mutex);
-	cnt = mml_drm_task_disconnect_locked(task, "taskop");
-	mutex_unlock(&ctx->config_mutex);
-
-	return cnt;
-}
 
 static void drm_task_disp_dump(struct mml_task *task)
 {
@@ -1416,11 +1118,7 @@ static const struct mml_task_ops drm_task_ops = {
 	.kt_setsched = ctx_kt_setsched,
 	.ddren = drm_task_ddren,
 	.dispen = drm_task_dispen,
-	.connect = mml_drm_task_connect,
-	.disconnect = mml_drm_task_disconnect,
-	.retrigger = task_queue_retrigger,
-	.retrigger_done = task_retrigger_done,
-	.retrigger_framedone = task_retrigger_framedone,
+
 	.disp_dump = drm_task_disp_dump,
 };
 
@@ -1600,16 +1298,12 @@ s32 mml_drm_racing_config_sync(struct mml_drm_ctx *dctx, struct cmdq_pkt *pkt)
 	struct mml_ctx *ctx = &dctx->ctx;
 	struct cmdq_operand lhs, rhs;
 	u16 event_target = mml_ir_get_target_event(ctx->mml);
-	static bool dumped;
 
 	mml_msg("[drm]%s for disp", __func__);
 
 	/* debug current task idx */
 	cmdq_pkt_assign_command(pkt, CMDQ_THR_SPR_IDX3,
 		atomic_read(&ctx->job_serial) << 16);
-
-	mml_mmp(racing_sync, MMPROFILE_FLAG_PULSE, atomic_read(&ctx->job_serial),
-		(u32)(unsigned long)pkt);
 
 	if (ctx->disp_vdo && event_target) {
 		/* non-racing to racing case, force clear target line
@@ -1619,7 +1313,7 @@ s32 mml_drm_racing_config_sync(struct mml_drm_ctx *dctx, struct cmdq_pkt *pkt)
 			cmdq_pkt_clear_event(pkt, event_target);
 			dctx->racing_begin = false;
 			mml_mmp(racing_enter, MMPROFILE_FLAG_PULSE,
-				atomic_read(&ctx->job_serial), (u32)(unsigned long)pkt);
+				atomic_read(&ctx->job_serial), 0);
 		}
 		cmdq_pkt_wait_no_clear(pkt, event_target);
 	}
@@ -1638,11 +1332,6 @@ s32 mml_drm_racing_config_sync(struct mml_drm_ctx *dctx, struct cmdq_pkt *pkt)
 	rhs.value = ~(u16)MML_NEXTSPR_NEXT;
 	cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_AND, MML_CMDQ_NEXT_SPR, &lhs, &rhs);
 
-	if (!dumped) {
-		cmdq_dump_pkt(pkt, 0, true);
-		dumped = true;
-	}
-
 	return 0;
 }
 EXPORT_SYMBOL_GPL(mml_drm_racing_config_sync);
@@ -1653,8 +1342,6 @@ s32 mml_drm_racing_stop_sync(struct mml_drm_ctx *dctx, struct cmdq_pkt *pkt)
 	struct cmdq_operand lhs, rhs;
 	const struct mml_topology_path *tp_path;
 	u32 jobid = atomic_read(&ctx->job_serial);
-
-	mml_msg("[drm]%s for disp", __func__);
 
 	/* debug current task idx */
 	cmdq_pkt_assign_command(pkt, CMDQ_THR_SPR_IDX3, jobid << 16);
