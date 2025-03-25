@@ -2409,7 +2409,7 @@ static void dpc_hwccf_vote(bool on, struct cmdq_pkt *pkt, const enum mtk_vidle_v
 {
 	int ret = 0;
 	u32 value = 0;
-	u32 xpu_base = 0x31c71700;	/* XPU6 */
+	u32 xpu_base = 0x31471700;	/* XPU6 */
 	u32 mask = 0;
 	unsigned long flags;
 
@@ -2430,18 +2430,18 @@ static void dpc_hwccf_vote(bool on, struct cmdq_pkt *pkt, const enum mtk_vidle_v
 	if (pkt) {
 		if (on) {
 			cmdq_pkt_wfe(pkt, g_priv->event_hwccf_vote);
-			cmdq_pkt_poll_sleep(pkt, 0, 0x31c1131c, mask);			/* polling status idle */
+			cmdq_pkt_poll_sleep(pkt, 0, 0x3141131c, mask);			/* polling status idle */
 			cmdq_pkt_write(pkt, NULL, xpu_base, mask, U32_MAX);		/* vote xpu6 mtcmos voter */
 			cmdq_pkt_poll_sleep(pkt, mask, xpu_base + 0x8, mask);		/* check xpu6 local enable */
-			cmdq_pkt_poll_sleep(pkt, 0, 0x31c1131c, mask);			/* polling status idle */
-			cmdq_pkt_poll_sleep(pkt, mask, 0x31c13700, mask);		/* check global enable */
+			cmdq_pkt_poll_sleep(pkt, 0, 0x3141131c, mask);			/* polling status idle */
+			cmdq_pkt_poll_sleep(pkt, mask, 0x31413700, mask);		/* check global enable */
 			cmdq_pkt_set_event(pkt, g_priv->event_hwccf_vote);
 		} else {
 			cmdq_pkt_wfe(pkt, g_priv->event_hwccf_vote);
-			cmdq_pkt_poll_sleep(pkt, 0, 0x31c1131c, mask);			/* polling status idle */
+			cmdq_pkt_poll_sleep(pkt, 0, 0x3141131c, mask);			/* polling status idle */
 			cmdq_pkt_write(pkt, NULL, xpu_base + 0x4, mask, U32_MAX);	/* vote xpu6 mtcmos voter */
 			cmdq_pkt_poll_sleep(pkt, 0, xpu_base + 0x8, mask);		/* check xpu6 local enable */
-			cmdq_pkt_poll_sleep(pkt, 0, 0x31c1131c, mask);			/* polling status idle */
+			cmdq_pkt_poll_sleep(pkt, 0, 0x3141131c, mask);			/* polling status idle */
 			cmdq_pkt_set_event(pkt, g_priv->event_hwccf_vote);
 
 		}
