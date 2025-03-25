@@ -74,6 +74,8 @@ u32 debug_presz;
 module_param(debug_presz, uint, 0644);
 u32 use_mminfra_api = 1;
 module_param(use_mminfra_api, uint, 0644);
+u32 mm_vote_val = 0x00080008;
+module_param(mm_vote_val, uint, 0644);
 
 /* 0: normal, 1: force wait, 2: force skip */
 int wfe_prete = 2;
@@ -661,6 +663,9 @@ static void dpc_dt_set_update(u16 dt, u32 us)
 		// 	mt6989_mml_dt_usage[dt - DPC_DISP_DT_CNT].ep = us;
 	//}
 
+	if (!dpc_is_power_on_v2())
+		return;
+
 	dpc_dt_set_v2(dt, us);
 }
 
@@ -693,7 +698,7 @@ static void dpc_duration_update_v2(const u32 us)
 
 static void dpc_duration_update_v3(const u32 us)
 {
-	DPCFUNC();
+	dpc_duration_update_v2(us);
 }
 
 static void dpc_enable_v2(const u8 en)
@@ -857,6 +862,12 @@ static void dpc_enable_v3(const u8 en)
 			       INTEN_MTCMOS_ON_OFF_FLD_INTEN_DISP1A_MTCMOS_ON |
 			       INTEN_MTCMOS_ON_OFF_FLD_INTEN_DISP1A_MTCMOS_OFF,
 			       dpc_base + DISP_DPC_INTEN_MTCMOS_ON_OFF);
+			writel(BIT(25) | BIT(26),
+			       dpc_base + DISP_DPC_INTEN_MTCMOS_BUSY);
+
+			writel(BIT(20) | BIT(21),
+			       dpc_base + DISP_DPC_INTEN_INTF_PWR_RDY_STATE);
+
 			writel(0xffffffff, dpc_base + DISP_DPC_INTEN_DISP_PM_CFG_ERROR);
 			writel(INTEN_DT_TE_THREAD_FLD_INTEN_DISP_DT_TE_SEL_0 |	/* trigger_te0 */
 			       INTEN_DT_TE_THREAD_FLD_INTEN_DISP_DT_TE_SEL_6,	/* dt_done34_0 */
@@ -868,6 +879,9 @@ static void dpc_enable_v3(const u8 en)
 		writel(0x40, dpc_base + DISP_DPC_ON2SOF_DT_EN);
 		writel(0xf, dpc_base + DISP_DPC_ON2SOF_DSI0_SOF_COUNTER); /* should > 2T, cannot be zero */
 		// writel(0x2, dpc_base + DISP_REG_DPC_DEBUG_SEL);	/* mtcmos_debug */
+
+		// writel(0x18240, dpc_base + DISP_REG_DPC_MML_DT_CFG); /* MML dsi frame busy switch to unused DSI3 */
+		writel(0x3, dpc_base + DISP_REG_DPC_DISP_POWER_STATE_CFG); /* MML busy select to unused RDMA1 */
 
 		/* wla ddren ack */
 		// writel(1, dpc_base + DISP_REG_DPC_DDREN_ACK_SEL);
@@ -1492,11 +1506,9 @@ static void dpc_disp_group_enable(bool en)
 	writel(value, dpc_base + DISP_REG_DPC_DISP_VDISP_DVFS_CFG);
 
 	/* mminfra request */
-	value = (en && has_cap(DPC_CAP_MMINFRA_PLL)) ? 0 : 0x181818;
+	writel(mm_vote_val, dpc_base + 0xb0);
+	value = (en && has_cap(DPC_CAP_MMINFRA_PLL)) ? 0x020202 : 0x1a1a1a;
 	writel(value, dpc_base + DISP_REG_DPC_DISP_INFRA_PLL_OFF_CFG);
-
-	/* check mminfra voter bit and polling power on */
-	// TBD
 
 	/* dsi pll auto */
 	value = (en && has_cap(DPC_CAP_DSI)) ? 0x11 : 0x1;
@@ -1529,7 +1541,8 @@ static void dpc_mml_group_enable(bool en)
 	writel(value, dpc_base + DISP_REG_DPC_MML_HRTBW_SRTBW_CFG);
 
 	/* mminfra request */
-	value = (en && has_cap(DPC_CAP_MMINFRA_PLL)) ? 0 : 0x181818;
+	writel(mm_vote_val, dpc_base + 0xb0);
+	value = (en && has_cap(DPC_CAP_MMINFRA_PLL)) ? 0x020202 : 0x1a1a1a;
 	writel(value, dpc_base + DISP_REG_DPC_MML_INFRA_PLL_OFF_CFG);
 
 	/* vcore off */
@@ -1541,7 +1554,10 @@ void dpc_group_enable_v3(const u16 group, bool en)
 {
 	if (group == DPC_SUBSYS_DISP)
 		dpc_disp_group_enable(en);
-	else
+	else if (group == 7777) {
+		writel(0x080808, dpc_base + DISP_REG_DPC_DISP_INFRA_PLL_OFF_CFG);
+		writel(0x080808, dpc_base + DISP_REG_DPC_MML_INFRA_PLL_OFF_CFG);
+	} else
 		dpc_mml_group_enable(en);
 }
 
@@ -1615,6 +1631,7 @@ static void dpc_config_v3(const u32 subsys, bool en)
 
 	/* set resource auto or manual mode */
 	dpc_disp_group_enable(en);
+	dpc_mml_group_enable(en);
 
 	/* set mtcmos auto or manual mode */
 	g_priv->set_mtcmos(DPC3_SUBSYS_DISP, (enum mtk_dpc_mtcmos_mode)en);
@@ -1754,7 +1771,7 @@ out:
 irqreturn_t mt6993_irq_handler(int irq, void *dev_id)
 {
 	struct mtk_dpc *priv = dev_id;
-	u32 mtcmos_sta, err_sta, dt_sta;
+	u32 mtcmos_sta, err_sta, dt_sta, mtcmos_busy, pwr_rdy;
 	irqreturn_t ret = IRQ_NONE;
 	static DEFINE_RATELIMIT_STATE(err_rate, HZ, 1);
 
@@ -1771,10 +1788,12 @@ irqreturn_t mt6993_irq_handler(int irq, void *dev_id)
 	}
 	dpc_mmp(mminfra, MMPROFILE_FLAG_PULSE, 0x77777777, 2);
 
+	mtcmos_busy = readl(dpc_base + DISP_DPC_INTSTA_MTCMOS_BUSY);
 	mtcmos_sta = readl(dpc_base + DISP_DPC_INTSTA_MTCMOS_ON_OFF);
 	err_sta = readl(dpc_base + DISP_DPC_INTSTA_DISP_PM_CFG_ERROR);
 	dt_sta = readl(dpc_base + DISP_DPC_INTSTA_DT_TE_THREAD);
-	if ((!mtcmos_sta) && (!err_sta) && (!dt_sta)) {
+	pwr_rdy =  readl(dpc_base + DISP_DPC_INTSTA_INTF_PWR_RDY_STATE);
+	if ((!mtcmos_sta) && (!err_sta) && (!dt_sta) && (!mtcmos_busy) && (!pwr_rdy)) {
 		if (__ratelimit(&err_rate)) {
 			DPCERR("irq err clksq");
 			debug_irq = 0;
@@ -1782,12 +1801,16 @@ irqreturn_t mt6993_irq_handler(int irq, void *dev_id)
 		goto out;
 	}
 
+	if (mtcmos_busy)
+		writel(~mtcmos_busy, dpc_base + DISP_DPC_INTSTA_MTCMOS_BUSY);
 	if (mtcmos_sta)
 		writel(~mtcmos_sta, dpc_base + DISP_DPC_INTSTA_MTCMOS_ON_OFF);
 	if (err_sta)
 		writel(~err_sta, dpc_base + DISP_DPC_INTSTA_DISP_PM_CFG_ERROR);
 	if (dt_sta)
 		writel(~dt_sta, dpc_base + DISP_DPC_INTSTA_DT_TE_THREAD);
+	if (pwr_rdy)
+		writel(~pwr_rdy, dpc_base + DISP_DPC_INTSTA_INTF_PWR_RDY_STATE);
 
 	if (err_sta) {
 		dpc_mmp(folder, MMPROFILE_FLAG_PULSE, mtcmos_sta, err_sta);
@@ -1817,6 +1840,19 @@ irqreturn_t mt6993_irq_handler(int irq, void *dev_id)
 		dpc_mmp(folder, MMPROFILE_FLAG_PULSE, 0, 0);
 	// if (dt_sta & BIT(6))
 		// dpc_mmp(mtcmos_mml1, MMPROFILE_FLAG_PULSE, 0, 0);
+
+	if (mtcmos_busy & BIT(25))	// DT18 mminfra off
+		dpc_mmp(debug1, MMPROFILE_FLAG_PULSE, 0x11111111, 0x11111111);
+
+	if (mtcmos_busy & BIT(26))	// DT19 mminfra on
+		dpc_mmp(debug1, MMPROFILE_FLAG_PULSE, 0x22222222, 0x22222222);
+
+	if (pwr_rdy & BIT(20))		// mminfra off rdy rising
+		dpc_mmp(debug2, MMPROFILE_FLAG_PULSE, 0x11111111, 0x11111111);
+
+	if (pwr_rdy & BIT(21))		// mminfra on rdy rising
+		dpc_mmp(debug2, MMPROFILE_FLAG_PULSE, 0x22222222, 0x22222222);
+
 	if (mtcmos_sta & BIT(9))
 		dpc_mmp(mtcmos_mml1, MMPROFILE_FLAG_START, 0, 1);
 	if (mtcmos_sta & BIT(21))
@@ -2035,8 +2071,11 @@ static int dpc_res_init_v3(struct mtk_dpc *priv)
 	/* force request emireq and ddrsrc */
 	writel(0x0D0D0D0D, dpc_base + DISP_REG_DPC_DISP_DDRSRC_EMIREQ_CFG);	/* TCUCOH, DATACOH */
 	writel(0x0D0D0D0D, dpc_base + DISP_REG_DPC_MML_DDRSRC_EMIREQ_CFG);
-	writel(0x181818, dpc_base + DISP_REG_DPC_DISP_INFRA_PLL_OFF_CFG);
-	writel(0x181818, dpc_base + DISP_REG_DPC_MML_INFRA_PLL_OFF_CFG);
+
+	/* DISP_DPC_MMINFRA_HWVOTE_CFG */
+	writel(mm_vote_val, dpc_base + 0xb0);
+	writel(0x1a1a1a, dpc_base + DISP_REG_DPC_DISP_INFRA_PLL_OFF_CFG);
+	writel(0x1a1a1a, dpc_base + DISP_REG_DPC_MML_INFRA_PLL_OFF_CFG);
 
 	/* keep vdisp opp */
 	writel(0x1, dpc_base + DISP_REG_DPC_DISP_VDISP_DVFS_CFG);			/* TODO: CHECK VALUE */
@@ -3184,8 +3223,6 @@ static int mtk_dpc_probe_v3(struct platform_device *pdev)
 		priv->vidle_mask = 0;
 	}
 #endif
-	priv->vidle_mask = 0;
-	DPCFUNC("force vidle_mask to %#x", priv->vidle_mask);
 
 	if (of_property_read_u32(dev->of_node, "mminfra-pwr-idx", &priv->mminfra_pwr_idx)) {
 		DPCERR("failed to get mminfra-pwr-idx");
@@ -3233,15 +3270,9 @@ static int mtk_dpc_probe_v3(struct platform_device *pdev)
 	funcs_v3.dpc_analysis = priv->analysis;
 
 	if (priv->mmsys_id == MMSYS_MT6993) {
-		funcs_v3.dpc_mtcmos_auto = NULL;
 		funcs_v3.dpc_mtcmos_vote = NULL;
 		funcs_v3.dpc_dsi_pll_set = NULL;
-		funcs_v3.dpc_vidle_power_keep = NULL;
-		funcs_v3.dpc_vidle_power_release = NULL;
-		funcs_v3.dpc_vidle_power_keep_by_gce = NULL;
-		funcs_v3.dpc_vidle_power_release_by_gce = NULL;
 		funcs_v3.dpc_check_pll = NULL;
-		funcs_v3.dpc_analysis = NULL;
 	}
 
 	mtk_vidle_register(&funcs_v3, DPC_VER2);

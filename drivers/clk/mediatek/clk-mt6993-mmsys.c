@@ -1311,7 +1311,7 @@ static const struct mtk_gate_regs vdisp_ao1_hwv_regs = {
 		.shift = _shift,					\
 		.ops = &mtk_clk_gate_generic_mm_hwv_ops,				\
 		.dma_ops = &mtk_clk_mm_gate_ops_setclr,			\
-		.flags = RES_FRAMEWORK_VDISP | RES_FRAMEWORK_MMINFRA | CLK_USE_HW_VOTER,	\
+		.flags = RES_FRAMEWORK_VDISP | CLK_USE_HW_VOTER,	\
 	}
 
 #define GATE_HWV_VDISP_AO1(_id, _name, _parent, _shift) {	\
@@ -1324,7 +1324,7 @@ static const struct mtk_gate_regs vdisp_ao1_hwv_regs = {
 		.shift = _shift,					\
 		.ops = &mtk_clk_gate_generic_mm_hwv_ops,				\
 		.dma_ops = &mtk_clk_mm_gate_ops_setclr,			\
-		.flags = RES_FRAMEWORK_VDISP | RES_FRAMEWORK_MMINFRA | CLK_USE_HW_VOTER,	\
+		.flags = RES_FRAMEWORK_VDISP | CLK_USE_HW_VOTER,	\
 	}
 
 static const struct mtk_gate vdisp_ao_clks[] = {

@@ -40,6 +40,8 @@ void dpc_mmp_init(void)
 	dpc_mmp_events.ch_bw = mmprofile_register_event(folder, "ch_bw");
 	dpc_mmp_events.hrt_bw = mmprofile_register_event(folder, "hrt_bw");
 	dpc_mmp_events.srt_bw = mmprofile_register_event(folder, "srt_bw");
+	dpc_mmp_events.debug1 = mmprofile_register_event(folder, "debug1");
+	dpc_mmp_events.debug2 = mmprofile_register_event(folder, "debug2");
 
 	mmprofile_enable_event_recursive(folder, 1);
 	mmprofile_start(1);

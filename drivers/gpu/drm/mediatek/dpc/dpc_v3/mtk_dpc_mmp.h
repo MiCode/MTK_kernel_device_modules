@@ -38,6 +38,8 @@ struct dpc_mmp_events_t {
 	mmp_event ch_bw;
 	mmp_event hrt_bw;
 	mmp_event srt_bw;
+	mmp_event debug1;
+	mmp_event debug2;
 };
 
 
