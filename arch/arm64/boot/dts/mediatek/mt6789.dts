@@ -4703,6 +4703,7 @@
 			compatible = "mediatek,disp_mtee";
 
 			mediatek,mailbox-gce = <&gce>;
+			mediatek,drm = <&dispsys_config>;
 			mboxes = <&gce_sec 8 0 CMDQ_THR_PRIO_3>,
 				<&gce_sec 9 0 CMDQ_THR_PRIO_3>,
 				<&gce_sec 9 0 CMDQ_THR_PRIO_3>;
