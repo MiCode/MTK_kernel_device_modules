@@ -250,6 +250,7 @@ struct mtk_pinctrl;
 #define FLAG_GPIO_START_IDX_1	0x00000004
 #define FLAG_MT63XX		0x00000008
 #define FLAG_MT66XX		0x00000010
+#define FLAG_NEED_AD_SWITCH	0x00000020
 
 #define SIZE_LOCK_FLAGS PINCTRL_PIN_REG_MAX/sizeof(u32) + \
 			((PINCTRL_PIN_REG_MAX%sizeof(u32)) ? 1 : 0)

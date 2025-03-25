@@ -1237,25 +1237,28 @@ static int mt63xx_pmx_set_mux(struct pinctrl_dev *pctldev,
 		return -EINVAL;
 	}
 
-	if (hw->soc->capability_flags & FLAG_MT63XX) {
-		(void)mt63xx_hw_set_value(hw, grp->pin,
-			PINCTRL_PIN_REG_AD_SWITCH,
-			((function == 1) ? 1 : 0));
-	} else if (hw->soc->capability_flags & FLAG_MT66XX) {
-		need_ad_sw_switch = mt63xx_hw_get_value(hw, grp->pin,
-			PINCTRL_PIN_REG_AD_SW_SWITCH, &err);
-		if (!err) {
-			if (!need_ad_sw_switch)
-				/* HW auto swtich */
-				return 0;
+	if (hw->soc->capability_flags & FLAG_NEED_AD_SWITCH) {
+		if (hw->soc->capability_flags & FLAG_MT63XX) {
 			(void)mt63xx_hw_set_value(hw, grp->pin,
-			        PINCTRL_PIN_REG_AD_SWITCH, 1);
-		} else {
-			/* shall not happen */
+				PINCTRL_PIN_REG_AD_SWITCH,
+				((function == 1) ? 1 : 0));
+		} else if (hw->soc->capability_flags & FLAG_MT66XX) {
+			err = mt63xx_hw_get_value(hw, grp->pin,
+				PINCTRL_PIN_REG_AD_SW_SWITCH,
+				&need_ad_sw_switch);
+			if (!err) {
+				if (!need_ad_sw_switch)
+					/* HW auto switch */
+					return 0;
+				/* SW switch */
+				(void)mt63xx_hw_set_value(hw, grp->pin,
+					PINCTRL_PIN_REG_AD_SWITCH, 1);
+			} else {
+				/* shall not happen */
+			}
 		}
 	}
 
-	/* SW switch */
 	return mt63xx_hw_set_value(hw, grp->pin, PINCTRL_PIN_REG_MODE,
 					function);
 }

@@ -201,7 +201,7 @@ static const struct mtk_pin_soc mt6661_data = {
 	.nfuncs = 1,
 	.gpio_m = 0,
 	.real_pin_start_idx = 3,
-	.capability_flags = FLAG_MT66XX,
+	.capability_flags = FLAG_MT66XX | FLAG_NEED_AD_SWITCH,
 	.field_lock_flags[0] = 1 << PINCTRL_PIN_REG_SMT,
 	.field_lock_ops = mt6661_lock,
 };
