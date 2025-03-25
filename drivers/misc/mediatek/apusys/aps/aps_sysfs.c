@@ -29,7 +29,7 @@ static ssize_t loglevel_show(struct kobject *kobj, struct kobj_attribute *attr,
 {
 	uint64_t level = 0;
 
-	if (sprintf(buf, "%d", (uint32_t)level) < 0)
+	if (snprintf(buf, PAGE_SIZE, "%d", (uint32_t)level) < 0)
 		return -EINVAL;
 	APS_INFO("%s, level= %d\n", __func__, (uint32_t)level);
 
