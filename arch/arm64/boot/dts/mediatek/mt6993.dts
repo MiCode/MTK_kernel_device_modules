@@ -4528,6 +4528,12 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 				"idle_ratio,suspend_ratio,frequency";
 			node-131 = "SSPM_SWPM_CPU__CORE_RET_CNT",
 				"cpu0,cpu1,cpu2,cpu3,cpu4,cpu5,cpu6,cpu7";
+			node-132 = "CHINFRA_HN_BW",
+				"CHANNEL_A_BW,CHANNEL_B_BW,CHANNEL_C_BW,CHANNEL_D_BW,TOTAL_BW";
+			node-133 = "CHINFRA_HN_LAT",
+				"CHANNEL_A_LAT,CHANNEL_B_LAT,CHANNEL_C_LAT,CHANNEL_D_LAT";
+			node-134 = "CHINFRA_FREQUENCY",
+				"frequency";
 		};
 
 		gpueb_rts_header:gpueb-rts-header {
