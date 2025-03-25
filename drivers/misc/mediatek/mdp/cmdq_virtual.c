@@ -315,17 +315,16 @@ const char *cmdq_virtual_parse_module_from_reg_addr(u32 reg_addr)
 #endif
 }
 
-ssize_t cmdq_virtual_print_status_clock(char *buf)
+ssize_t cmdq_virtual_print_status_clock(char *buf, size_t size)
 {
 	s32 length = 0;
 	char *pBuffer = buf;
 
 #ifdef CMDQ_PWR_AWARE
 	/* MT_CG_DISP0_MUTEX_32K is removed in this platform */
-	pBuffer += sprintf(pBuffer, "MT_CG_INFRA_GCE: %d\n",
+	pBuffer += snprintf(pBuffer, size,
+		"MT_CG_INFRA_GCE: %d\n\n",
 		cmdq_dev_gce_clock_is_enable());
-
-	pBuffer += sprintf(pBuffer, "\n");
 #endif
 
 	length = pBuffer - buf;

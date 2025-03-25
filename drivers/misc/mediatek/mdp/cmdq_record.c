@@ -2924,8 +2924,8 @@ s32 cmdq_op_rewrite_jump_c(struct cmdqRecStruct *handle,
 			jump_pos);
 
 		/* reserve condition statement */
-		op = (va_logic[1] & 0xFF000000) >> 24;
-		op_jump = (va_jump[1] & 0xFF000000) >> 24;
+		op = va_logic ? (va_logic[1] & 0xFF000000) >> 24 : 0;
+		op_jump = va_jump ? (va_jump[1] & 0xFF000000) >> 24 : 0;
 		if (op != CMDQ_CODE_LOGIC || op_jump !=
 			CMDQ_CODE_JUMP_C_RELATIVE) {
 			CMDQ_ERR("rewrite wrong op:0x%08x jump:0x%08x\n",
@@ -2946,7 +2946,7 @@ s32 cmdq_op_rewrite_jump_c(struct cmdqRecStruct *handle,
 	} else {
 		va_jump = (u32 *)cmdq_pkt_get_va_by_offset(handle->pkt,
 			logic_pos);
-		op = (va_jump[1] & 0xFF000000) >> 24;
+		op = va_jump ? (va_jump[1] & 0xFF000000) >> 24 : 0;
 		if (op != CMDQ_CODE_JUMP_C_RELATIVE) {
 			CMDQ_ERR("fail to rewrite jump c handle:0x%p\n",
 				handle);
