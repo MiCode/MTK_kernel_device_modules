@@ -28,6 +28,7 @@
 #include "mtk_disp_vidle.h"
 #include "mtk_dsi.h"
 #include "mtk_dsi_lpc.h"
+#include "mtk_disp_dbgtp.h"
 
 #ifdef SHARE_WROT_SRAM
 #include "cmdq_helper_ext.h"
@@ -2279,8 +2280,7 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 				"start_event_loop", 6, perf_string, true);
 	/* 4. start event loop first */
 	if (crtc_id == 0) {
-		if (mtk_crtc_with_event_loop(crtc) &&
-			(mtk_crtc_is_frame_trigger_mode(crtc)))
+		if (mtk_crtc_with_event_loop(crtc))
 			mtk_crtc_start_event_loop(crtc);
 	}
 
@@ -2467,6 +2467,13 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 	if (mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_IDLEMGR_ASYNC))
 		atomic_set(&idlemgr->async_enabled, 0);
+
+	if ((priv->data->mmsys_id == MMSYS_MT6993) && output_comp &&
+			(priv->mtk_dbgtp_sta.fifo_mon_en[0]) && (crtc_id == 0)) {
+		/* For dbgtp fifo mon WA */
+		mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_GCE_EVENT_CFG, NULL);
+		mtk_dbgtp_fifo_mon_config(mtk_crtc, NULL);
+	}
 
 	DDPINFO("crtc%d do %s-\n", crtc_id, __func__);
 }

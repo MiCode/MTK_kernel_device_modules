@@ -3778,8 +3778,7 @@ int mtk_drm_aod_setbacklight(struct drm_crtc *crtc, unsigned int level)
 		mtk_crtc_v_idle_apsrc_control(crtc, NULL, false, false, crtc_id, true);
 
 		cmdq_mbox_enable(client->chan);
-		if (mtk_crtc_with_event_loop(crtc) &&
-				(mtk_crtc_is_frame_trigger_mode(crtc)))
+		if (mtk_crtc_with_event_loop(crtc))
 			mtk_crtc_start_event_loop(crtc);
 
 		if (mtk_crtc_with_trigger_loop(crtc))
@@ -3856,8 +3855,7 @@ int mtk_drm_aod_setbacklight(struct drm_crtc *crtc, unsigned int level)
 		if (mtk_crtc_with_trigger_loop(crtc))
 			mtk_crtc_stop_trig_loop(crtc);
 
-		if (mtk_crtc_with_event_loop(crtc) &&
-				(mtk_crtc_is_frame_trigger_mode(crtc)))
+		if (mtk_crtc_with_event_loop(crtc))
 			mtk_crtc_stop_event_loop(crtc);
 
 		mtk_ddp_comp_io_cmd(output_comp, NULL, CONNECTOR_DISABLE, NULL);
@@ -8948,16 +8946,27 @@ bool mtk_crtc_with_event_loop(struct drm_crtc *crtc)
 
 	priv = mtk_crtc->base.dev->dev_private;
 
-	if (!(mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_PREFETCH_TE) ||
-		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_APSRC_OFF) ||
-		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_DSI_PLL_OFF) ||
-		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_CHECK_TRIGGER_MERGE)
-		))
-		return false;
+	if (mtk_crtc_is_frame_trigger_mode(crtc)) {
+		if (!(mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_PREFETCH_TE) ||
+			mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_APSRC_OFF) ||
+			mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_DSI_PLL_OFF) ||
+			mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_CHECK_TRIGGER_MERGE)
+			 ))
+			return false;
 
-	if (mtk_crtc->gce_obj.client[CLIENT_EVENT_LOOP])
-		return true;
-	return false;
+		if (mtk_crtc->gce_obj.client[CLIENT_EVENT_LOOP])
+			return true;
+		return false;
+	} else {
+		/* For mt6993 debug sys fifo mon HW bug vdo mode WA */
+		/* Need use event loop to wait VACT start to change threshold */
+		if ((priv->mtk_dbgtp_sta.fifo_mon_en[0]) &&
+			(priv->data->mmsys_id == MMSYS_MT6993) &&
+			(mtk_crtc->gce_obj.client[CLIENT_EVENT_LOOP]))
+			return true;
+
+		return false;
+	}
 }
 
 bool mtk_crtc_is_frame_trigger_mode(struct drm_crtc *crtc)
@@ -11917,6 +11926,9 @@ void mtk_crtc_start_event_loop(struct drm_crtc *crtc)
 	const u16 var1 = CMDQ_THR_SPR_IDX2;
 	const u16 var2 = CMDQ_THR_SPR_IDX3;
 
+	if (!mtk_crtc_is_frame_trigger_mode(crtc))
+		goto VDO_MODE;
+
 	priv = mtk_crtc->base.dev->dev_private;
 	mtk_crtc->pre_te_cfg.prefetch_te_en =
 		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_PREFETCH_TE);
@@ -12122,6 +12134,12 @@ void mtk_crtc_start_event_loop(struct drm_crtc *crtc)
 	cmdq_pkt_finalize_loop(cmdq_handle);
 
 	cmdq_pkt_flush_async(cmdq_handle, event_done_cb, (void *)crtc_id);
+
+	return;
+
+VDO_MODE:
+
+	return;
 }
 
 #ifndef DRM_CMDQ_DISABLE
@@ -12723,7 +12741,9 @@ void mtk_crtc_start_trig_loop(struct drm_crtc *crtc)
 		}
 
 		/* For dbgtp fifo mon WA */
-		mtk_dbgtp_dsi_gce_event_config(mtk_crtc, cmdq_handle);
+		if ((priv->data->mmsys_id == MMSYS_MT6993) &&
+			(priv->mtk_dbgtp_sta.fifo_mon_en[0]) && (crtc_id == 0))
+			mtk_dbgtp_dsi_gce_event_config(mtk_crtc, cmdq_handle);
 
 		if (mtk_crtc->pre_te_cfg.vidle_apsrc_off_en == true ||
 		    mtk_crtc->pre_te_cfg.vidle_dsi_pll_off_en == true ||
@@ -12785,19 +12805,22 @@ skip_prete:
 		GCE_DO(clear_event, EVENT_MML_DISP_DONE_EVENT);
 
 		/* For dbgtp fifo mon WA */
-		mtk_dbgtp_dsi_gce_event_config(mtk_crtc, cmdq_handle);
+		if ((priv->data->mmsys_id == MMSYS_MT6993) &&
+			(priv->mtk_dbgtp_sta.fifo_mon_en[0]) && (crtc_id == 0))
+			mtk_dbgtp_dsi_gce_event_config(mtk_crtc, cmdq_handle);
 
 		mtk_crtc_comp_trigger(mtk_crtc, cmdq_handle, MTK_TRIG_FLAG_TRIGGER);
 
 		if (debug_trigger_loop & BIT(3))
 			mtk_disp_dbg_cmdq_use_mutex(mtk_crtc, cmdq_handle, 6);
-		if ((priv->mtk_dbgtp_sta.fifo_mon_en[0]) && (crtc_id == 0)) {
+		if ((priv->data->mmsys_id == MMSYS_MT6993) &&
+			(priv->mtk_dbgtp_sta.fifo_mon_en[0]) && (crtc_id == 0)) {
 			/* For dbgtp fifo mon WA */
 			mtk_dbgtp_dsi_gce_event_config(mtk_crtc, cmdq_handle);
-
-			DDPMSG("FIFO mon: Wait gce event vact start\n");
+			DDPMSG("FIFO mon: Wait gce event fifo level down\n");
 			GCE_DO(wfe, EVENT_CMD_TRIG_START);
 			mtk_dbgtp_fifo_mon_set_trig_threshold(mtk_crtc, cmdq_handle);
+			mtk_dbgtp_switch(mtk_crtc, cmdq_handle, true);
 		}
 		GCE_DO(wfe, EVENT_CMD_EOF);
 		for_each_comp_in_cur_crtc_path(dbi_comp, mtk_crtc, i, j) {
@@ -12805,6 +12828,16 @@ skip_prete:
 				GCE_DO(wfe, EVENT_DBI_COUNT_EOF);
 				mtk_oddmr_dbi_udma_off(dbi_comp, cmdq_handle);
 			}
+		}
+
+		/* For dbgtp fifo mon WA */
+		if ((priv->data->mmsys_id == MMSYS_MT6993) &&
+			(priv->mtk_dbgtp_sta.fifo_mon_en[0]) && (crtc_id == 0)) {
+			mtk_dbgtp_fifo_mon_config(mtk_crtc, cmdq_handle);
+			mtk_dbgtp_switch(mtk_crtc, cmdq_handle, false);
+			// when eof, fifo mon will trigger stop ELA
+			cmdq_pkt_write(cmdq_handle, NULL, 0x3EFC0014, 0x1, 0xf);
+			cmdq_pkt_write(cmdq_handle, NULL, 0x3EFC0018, 0x1, 0xf);
 		}
 
 		/* update frame done fence slot */
@@ -12890,12 +12923,16 @@ skip_prete:
 				/*for dynamic Msync on/off,set vfp period token*/
 				GCE_DO(set_event, EVENT_SYNC_TOKEN_VFP_PERIOD);
 			} else {
-				if ((priv->mtk_dbgtp_sta.fifo_mon_en[0]) && (crtc_id == 0)) {
-					DDPMSG("FIFO mon: wait gce event vact start\n");
-					GCE_DO(wfe, EVENT_VDO_TRIG_START);
-					mtk_dbgtp_fifo_mon_set_trig_threshold(mtk_crtc, cmdq_handle);
-				}
 				GCE_DO(wfe, EVENT_CMD_EOF);
+				/* For dbgtp fifo mon WA */
+				if ((priv->data->mmsys_id == MMSYS_MT6993) &&
+					(priv->mtk_dbgtp_sta.fifo_mon_en[0]) && (crtc_id == 0)) {
+					mtk_dbgtp_fifo_mon_config(mtk_crtc, cmdq_handle);
+					mtk_dbgtp_switch(mtk_crtc, cmdq_handle, false);
+					// when eof, fifo mon will trigger stop ELA
+					cmdq_pkt_write(cmdq_handle, NULL, 0x3EFC0014, 0x1, 0xf);
+					cmdq_pkt_write(cmdq_handle, NULL, 0x3EFC0018, 0x1, 0xf);
+				}
 			}
 
 		} else if (crtc_id == 1) {
@@ -15218,8 +15255,7 @@ skip:
 			mtk_crtc_stop_sodi_loop(crtc);
 	}
 
-	if (mtk_crtc_with_event_loop(crtc) &&
-			(mtk_crtc_is_frame_trigger_mode(crtc)))
+	if (mtk_crtc_with_event_loop(crtc))
 		mtk_crtc_stop_event_loop(crtc);
 
 	if (priv->data->ovl_exdma_rule)
@@ -15667,8 +15703,7 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc, bool need_report_bw)
 			(!mtk_crtc_is_frame_trigger_mode(crtc)))
 			mtk_crtc_start_sodi_loop(crtc);
 
-		if (mtk_crtc_with_event_loop(crtc) &&
-				(mtk_crtc_is_frame_trigger_mode(crtc)))
+		if (mtk_crtc_with_event_loop(crtc))
 			mtk_crtc_start_event_loop(crtc);
 		mtk_crtc_start_trig_loop(crtc);
 	}
@@ -16855,8 +16890,7 @@ void mtk_drm_crtc_first_enable(struct drm_crtc *crtc)
 			(!mtk_crtc_is_frame_trigger_mode(crtc)))
 			mtk_crtc_start_sodi_loop(crtc);
 
-		if (mtk_crtc_with_event_loop(crtc) &&
-			(mtk_crtc_is_frame_trigger_mode(crtc)))
+		if (mtk_crtc_with_event_loop(crtc))
 			mtk_crtc_start_event_loop(crtc);
 
 		mtk_crtc_start_trig_loop(crtc);
@@ -26316,8 +26350,7 @@ skip:
 			mtk_crtc_stop_sodi_loop(crtc);
 	}
 
-	if (mtk_crtc_with_event_loop(crtc) &&
-			(mtk_crtc_is_frame_trigger_mode(crtc)))
+	if (mtk_crtc_with_event_loop(crtc))
 		mtk_crtc_stop_event_loop(crtc);
 
 	DDPINFO("%s:%d -\n", __func__, __LINE__);

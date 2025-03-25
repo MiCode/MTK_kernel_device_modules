@@ -57,6 +57,7 @@
 #include "mtk_drm_trace.h"
 #include "mtk_disp_gamma.h"
 #include "mtk_dsi_lpc.h"
+#include "mtk_disp_dbgtp.h"
 
 /* ************ Panel Master ********** */
 #include "mtk_fbconfig_kdebug.h"
@@ -346,6 +347,7 @@
 #define DATA_SCRAMBLE_EN BIT(31)
 
 #define DSI_TARGET_NL(data)	(data->dsi_target_nl ? data->dsi_target_nl : 0x300)
+#define DSI_TARGET_NL2(data)	(data->dsi_target_nl2 ? data->dsi_target_nl2 : 0x300)
 #define TARGET_NL	REG_FLD_MSB_LSB(14, 0)
 #define TARGET_NL_EN BIT(16)
 #define MT6993_TARGET_NL REG_FLD_MSB_LSB(31, 12)
@@ -1967,20 +1969,21 @@ void mtk_dsi_gce_event_cfg(struct mtk_dsi *dsi, struct mtk_ddp_comp *comp,
 	}
 
 	if (handle == NULL) {
-		writel(0x0913, dsi->regs + DSI_GCE_EVENT_CON0);
+		writel(0x0918, dsi->regs + DSI_GCE_EVENT_CON0);
+		writel(0x1000, dsi->regs + 0xE4);
 		if (dsi->slave_dsi)
-			writel(0x0913, dsi->slave_dsi->ddp_comp.regs + DSI_GCE_EVENT_CON0);
+			writel(0x0918, dsi->slave_dsi->ddp_comp.regs + DSI_GCE_EVENT_CON0);
 		DDPMSG("%s:%d\n", __func__, __LINE__);
 		return;
 	}
 
-	/*ENG_EVENT_SEL0:dsi_internal_sof(0x13) ENG_EVENT_SEL1:vm_vact_start(0x09)*/
+	/*ENG_EVENT_SEL0:dsi targetline2(0x18) ENG_EVENT_SEL1:vm_vact_start(0x09)*/
 	cmdq_pkt_write(handle, comp->cmdq_base,
-		comp->regs_pa + DSI_GCE_EVENT_CON0, 0x0913, ~0);
+		comp->regs_pa + DSI_GCE_EVENT_CON0, 0x0918, ~0);
 	if (dsi->slave_dsi)
 		cmdq_pkt_write(handle, dsi->slave_dsi->ddp_comp.cmdq_base,
 			dsi->slave_dsi->ddp_comp.regs_pa + DSI_GCE_EVENT_CON0,
-			0x0913, ~0);
+			0x0918, ~0);
 }
 
 static int  mtk_dsi_dbg_monitor_config0(struct mtk_dsi *dsi, struct mtk_ddp_comp *comp,
@@ -4114,8 +4117,12 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 			}
 
 			/* SW tigger stop for prevent for others start again and overwrite dump */
-			if (priv->data->mmsys_id == MMSYS_MT6993)
+			if ((priv->data->mmsys_id == MMSYS_MT6993) &&
+				(priv->mtk_dbgtp_sta.fifo_mon_en[0]) && (index == 0)) {
 				mtk_set_mmmc_rg(2, 3, 0x14, 0x1, 0xffff);
+				mtk_dbgtp_switch(mtk_crtc, NULL, 0);
+				priv->mtk_dbgtp_sta.dbgtp_en = false;
+			}
 
 			dump_cur_pos(mtk_crtc);
 			if (dsi->encoder.crtc)
@@ -4178,8 +4185,12 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 				DRM_MMP_MARK(dsi, underrun_cnt|(0<<16), 0);
 
 			/* When dump finished, release stop, let other could trigger start */
-			if (priv->data->mmsys_id == MMSYS_MT6993)
+			if ((priv->data->mmsys_id == MMSYS_MT6993) &&
+				(priv->mtk_dbgtp_sta.fifo_mon_en[0]) && (index == 0)) {
 				mtk_set_mmmc_rg(2, 3, 0x18, 0x1, 0xffff);
+				/*mtk_dbgtp_switch(mtk_crtc, NULL, 1);*/
+				/*priv->mtk_dbgtp_sta.dbgtp_en = true;*/
+			}
 		}
 
 		//if (status & INP_UNFINISH_INT_EN)
@@ -6138,8 +6149,7 @@ SKIP_WAIT_FRAME_DONE:
 	if (mtk_crtc_with_trigger_loop(dsi->encoder.crtc))
 		mtk_crtc_stop_trig_loop(dsi->encoder.crtc);
 
-	if (mtk_crtc_with_event_loop(dsi->encoder.crtc) &&
-			(mtk_dsi_is_cmd_mode(&dsi->ddp_comp)))
+	if (mtk_crtc_with_event_loop(dsi->encoder.crtc))
 		mtk_crtc_stop_event_loop(dsi->encoder.crtc);
 
 	/* 3. turn off panel or set to doze mode */
@@ -13357,12 +13367,14 @@ static void mtk_dsi_set_targetline(struct mtk_ddp_comp *comp,
 				struct cmdq_pkt *handle, unsigned int hactive)
 {
 	u32 val = 0;
+	u32 val1 = 0;
 	struct mtk_dsi *dsi = container_of(comp, struct mtk_dsi, ddp_comp);
 	struct mtk_drm_crtc *crtc = comp->mtk_crtc;
 	struct mtk_drm_private *priv = (crtc->base).dev->dev_private;
 
 	if (priv && priv->data->mmsys_id == MMSYS_MT6993) {
 		val = REG_FLD_VAL(MT6993_TARGET_NL, (hactive * 9) / 10);
+		val1 = REG_FLD_VAL(MT6993_TARGET_NL, 1);
 		val |= MT6993_TARGET_NL_EN;
 	} else {
 		val = (hactive * 9) / 10;
@@ -13372,8 +13384,14 @@ static void mtk_dsi_set_targetline(struct mtk_ddp_comp *comp,
 	DDPINFO("%s -> h:%u, val:0x%x\n", __func__, hactive, val);
 	if (handle) {
 		mtk_ddp_write(comp, val, DSI_TARGET_NL(dsi->driver_data), handle);
+		/* For mt6993 debug sys fifo mon HW bug cmd mode WA */
+		if (priv && priv->data->mmsys_id == MMSYS_MT6993)
+			mtk_ddp_write(comp, val1, DSI_TARGET_NL2(dsi->driver_data), handle);
 	} else {
 		writel(val, comp->regs + DSI_TARGET_NL(dsi->driver_data));
+		/* For mt6993 debug sys fifo mon HW bug cmd mode WA */
+		if (priv && priv->data->mmsys_id == MMSYS_MT6993)
+			writel(val1, comp->regs + DSI_TARGET_NL2(dsi->driver_data));
 	}
 
 }
@@ -15585,6 +15603,7 @@ static const struct mtk_dsi_driver_data mt6993_dsi_driver_data = {
 	.dsi_shadow_dbg = 0x0d0,
 	.dsi_scramble_con = 0xf8,
 	.dsi_target_nl = 0xe0,
+	.dsi_target_nl2 = 0xe4,
 	.dsi_buf_con_base = 0x300,
 	.dsi_phy_syncon = 0x1D8,
 	.dsi_ltpo_vdo_con = 0x1A8,

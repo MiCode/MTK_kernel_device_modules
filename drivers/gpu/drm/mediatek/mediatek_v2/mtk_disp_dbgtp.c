@@ -297,6 +297,12 @@ void mtk_dbgtp_fifo_mon_config(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *c
 	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
 	struct mtk_ddp_comp *output_comp = NULL;
 
+	if (cmdq_handle == NULL) {
+		writel(0, dbgtp_comp->regs + DISP_DBG_FIFO_MON_CFG0);
+		DDPDBG("%s:%d disable fifo mon when leave hs idle\n", __func__, __LINE__);
+		return;
+	}
+
 	output_comp =
 		mtk_ddp_comp_request_output(mtk_crtc);
 	mtk_ddp_comp_io_cmd(output_comp, cmdq_handle, DSI_GCE_EVENT_CFG, NULL);
@@ -904,14 +910,14 @@ void mtk_dbgtp_default_cfg_load(struct mtk_drm_private *priv)
 	priv->mtk_dbgtp_sta.dbgtp_switch = 0x1795;
 	priv->mtk_dbgtp_sta.dbgtp_prd_trig_en = true;
 	priv->mtk_dbgtp_sta.dbgtp_trig_prd = 260;
-	priv->mtk_dbgtp_sta.dbgtp_timeout_en = 0x1;
+	priv->mtk_dbgtp_sta.dbgtp_timeout_en = 0x0;
 	priv->mtk_dbgtp_sta.dsi_lpc_mon_en = false;
 
 	/* dpc default setting */
 	priv->mtk_dbgtp_sta.dbgtp_dpc_mon_cfg = 0x00FFE;
 
 	/* fifo mon default setting */
-	priv->mtk_dbgtp_sta.fifo_mon_en[0] = 0;
+	priv->mtk_dbgtp_sta.fifo_mon_en[0] = 1;
 	priv->mtk_dbgtp_sta.fifo_mon_trig_thrd[0] = 5;
 
 	/* dispsys default setting */
@@ -2038,6 +2044,23 @@ void mtk_dbgtp_mmlsys_config(struct cmdq_pkt *cmdq_handle, struct cmdq_base *clt
 	}
 }
 
+void mtk_dbgtp_switch(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cmdq_handle, bool en)
+{
+	unsigned int value = 0;
+	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
+	unsigned int val = 0;
+	unsigned int mask = 0;
+
+	if (cmdq_handle == NULL) {
+		writel(en, dbgtp_comp->regs + DISP_DBG_TOP_EN);
+		return;
+	}
+
+	/* Enable/Disable dbg top */
+	cmdq_pkt_write(cmdq_handle, dbgtp_comp->cmdq_base,
+			dbgtp_comp->regs_pa + DISP_DBG_TOP_EN, en, 0x1);
+}
+
 void mtk_dbgtp_config(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cmdq_handle)
 {
 	unsigned int value = 0;
@@ -2250,16 +2273,10 @@ static const struct dbgtp_funcs dbgtp_mml_funcs = {
 
 static irqreturn_t mtk_disp_dbgtp_irq_handler(int irq, void *dev_id)
 {
-	struct mtk_disp_ovl *priv = dev_id;
 	struct mtk_ddp_comp *dbgtp = NULL;
-	struct mtk_drm_private *drv_priv = NULL;
-	struct mtk_drm_crtc *mtk_crtc = NULL;
 	unsigned int val = 0;
+	unsigned int val1 = 0;
 	unsigned int ret = 0;
-	static DEFINE_RATELIMIT_STATE(isr_ratelimit, 1 * HZ, 4);
-
-	if (IS_ERR_OR_NULL(priv))
-		return IRQ_NONE;
 
 	dbgtp = dbgtp_comp;
 	if (IS_ERR_OR_NULL(dbgtp))
@@ -2271,38 +2288,40 @@ static irqreturn_t mtk_disp_dbgtp_irq_handler(int irq, void *dev_id)
 	}
 
 	val = readl(dbgtp->regs + DISP_DBG_FIFO_MON_INTSTA);
+	val1 = readl(dbgtp->regs + DISP_DBG_FIFO_MON_CFG0);
 	if (!val) {
 		ret = IRQ_NONE;
 		goto out;
 	}
 
 	DRM_MMP_MARK(IRQ, dbgtp->regs_pa, val);
-	DDPMSG("%s irq, val:0x%x\n", mtk_dump_comp_str(dbgtp), val);
+	DDPDBG("%s irq, val:0x%x\n", mtk_dump_comp_str(dbgtp), val);
 
 	if (val & (1 << 0)) {
-		DDPMSG("[IRQ] %s: 0 trigger start\n", mtk_dump_comp_str(dbgtp));
-		DRM_MMP_MARK(dbgtp, val, 0);
+		DRM_MMP_MARK(dbgtp, val, val1);
+		DDPPR_ERR(pr_fmt("[IRQ] %s: 0 trigger start\n"),
+				mtk_dump_comp_str(dbgtp));
 		writel(0xf, dbgtp->regs + DISP_DBG_FIFO_MON_INT_CLR);
 		writel(0, dbgtp->regs + DISP_DBG_FIFO_MON_INT_CLR);
 	}
 
 	if (val & (1 << 1)) {
-		DDPMSG("[IRQ] %s: 1 trigger start\n", mtk_dump_comp_str(dbgtp));
 		DRM_MMP_MARK(dbgtp, val, 1);
+		DDPMSG("[IRQ] %s: 1 trigger start\n", mtk_dump_comp_str(dbgtp));
 		writel(0xf, dbgtp->regs + DISP_DBG_FIFO_MON_INT_CLR);
 		writel(0, dbgtp->regs + DISP_DBG_FIFO_MON_INT_CLR);
 	}
 
 	if (val & (1 << 2)) {
-		DDPMSG("[IRQ] %s: 2 trigger start\n", mtk_dump_comp_str(dbgtp));
 		DRM_MMP_MARK(dbgtp, val, 2);
+		DDPMSG("[IRQ] %s: 2 trigger start\n", mtk_dump_comp_str(dbgtp));
 		writel(0xf, dbgtp->regs + DISP_DBG_FIFO_MON_INT_CLR);
 		writel(0, dbgtp->regs + DISP_DBG_FIFO_MON_INT_CLR);
 	}
 
 	if (val & (1 << 3)) {
-		DDPMSG("[IRQ] %s: 3 trigger start\n", mtk_dump_comp_str(dbgtp));
 		DRM_MMP_MARK(dbgtp, val, 3);
+		DDPMSG("[IRQ] %s: 3 trigger start\n", mtk_dump_comp_str(dbgtp));
 		writel(0xf, dbgtp->regs + DISP_DBG_FIFO_MON_INT_CLR);
 		writel(0, dbgtp->regs + DISP_DBG_FIFO_MON_INT_CLR);
 	}

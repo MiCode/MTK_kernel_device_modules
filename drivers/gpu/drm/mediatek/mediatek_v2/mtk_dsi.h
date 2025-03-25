@@ -96,6 +96,7 @@ struct mtk_dsi_driver_data {
 	const u32 dsi_shadow_dbg;
 	const u32 dsi_scramble_con;
 	const u32 dsi_target_nl;
+	const u32 dsi_target_nl2;
 	const u32 dsi_buf_con_base;
 	const u32 dsi_phy_syncon;
 	//vdo ltpo

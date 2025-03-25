@@ -903,8 +903,7 @@ static void mtk_atomic_force_doze_switch(struct drm_device *dev,
 			(!mtk_crtc_is_frame_trigger_mode(crtc)))
 			mtk_crtc_stop_sodi_loop(crtc);
 
-		if (mtk_crtc_with_event_loop(crtc) &&
-			(mtk_crtc_is_frame_trigger_mode(crtc)))
+		if (mtk_crtc_with_event_loop(crtc))
 			mtk_crtc_stop_event_loop(crtc);
 
 		if (mtk_crtc_is_frame_trigger_mode(crtc)) {
@@ -948,8 +947,7 @@ static void mtk_atomic_force_doze_switch(struct drm_device *dev,
 			(!mtk_crtc_is_frame_trigger_mode(crtc)))
 			mtk_crtc_start_sodi_loop(crtc);
 
-		if (mtk_crtc_with_event_loop(crtc) &&
-			(mtk_crtc_is_frame_trigger_mode(crtc)))
+		if (mtk_crtc_with_event_loop(crtc))
 			mtk_crtc_start_event_loop(crtc);
 
 #ifndef DRM_CMDQ_DISABLE
