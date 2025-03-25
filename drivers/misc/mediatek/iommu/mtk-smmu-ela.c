@@ -472,11 +472,13 @@ EXPORT_SYMBOL_GPL(mtk_smmu_ela_enabled);
 
 void mtk_smmu_ela_dump(struct seq_file *s, u32 smmu_type)
 {
+	struct mtk_smmu_data *data;
 	void __iomem *wp_base;
 	struct smmu_pmu *pmu;
 	int i, ret = 0;
 
-	if (!smmu_ela_inited(smmu_type))
+	data = get_smmu_data(smmu_type);
+	if (!data || data->hw_init_flag != 1 || !data->ela_support)
 		return;
 
 	ret = mtk_smmu_rpm_get(smmu_type);
@@ -484,6 +486,9 @@ void mtk_smmu_ela_dump(struct seq_file *s, u32 smmu_type)
 		dump_ela(s, "smmu_%u ela dump, power_status:%d\n", smmu_type, ret);
 		return;
 	}
+
+	if (!smmu_ela_inited(smmu_type))
+		goto dump_hwpmu;
 
 	dump_ela(s, "smmu_%u ela dump, EN:%u\n",
 		 smmu_type, smmu_hwpmu_enabled(smmu_type));
@@ -499,7 +504,8 @@ void mtk_smmu_ela_dump(struct seq_file *s, u32 smmu_type)
 			 smmu_read_reg(pmu[i].reg_base, SMMU_PMCG_SMR(0)));
 	}
 
-	wp_base = ela_ctrl[smmu_type]->wp_base;
+dump_hwpmu:
+	wp_base = data->smmu.wp_base;
 	dump_ela(s, "SNAP_A: 0x%04x=0x%-8x 0x%04x=0x%-8x 0x%04x=0x%-8x 0x%04x=0x%x\n",
 		 SMMUWP_PMU_SNAP_A(0), smmu_read_reg(wp_base, SMMUWP_PMU_SNAP_A(0)),
 		 SMMUWP_PMU_SNAP_A(1), smmu_read_reg(wp_base, SMMUWP_PMU_SNAP_A(1)),
