@@ -17746,7 +17746,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mminfra-ultra2qos0-val = <0xc81c81>;
 			mminfra-ultra2qos1-val = <0xc81c81>;
 			emi-16qos-monitor = <0x11049000>;
-			mmmc-state = <0x11>;
+			mmmc-state = <0x19>;
 			power-init-cb = <MT6993_SMI_PD_VDISP_PERI>,
 				<MT6993_SMI_PD_ISP_VCORE>,
 				<MT6993_SMI_PD_CAM_VCORE>,
