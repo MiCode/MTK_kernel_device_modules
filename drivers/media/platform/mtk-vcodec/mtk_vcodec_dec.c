@@ -921,7 +921,9 @@ static void mtk_vdec_set_frame_handler(struct work_struct *ws)
 
 static void mtk_vdec_init_set_frame_wq(struct mtk_vcodec_ctx *ctx)
 {
+	vcodec_trace_begin("create_singlethread_workqueue(vdec_set_frame)");
 	ctx->vdec_set_frame_wq = create_singlethread_workqueue("vdec_set_frame");
+	vcodec_trace_end();
 	INIT_WORK(&ctx->vdec_set_frame_work.work, mtk_vdec_set_frame_handler);
 	ctx->vdec_set_frame_work.ctx = ctx;
 }
@@ -967,7 +969,9 @@ static void mtk_vdec_cgrp_init(struct mtk_vcodec_ctx *ctx)
 	char name[25];
 
 	SNPRINTF(name, sizeof(name), "vdec_cgrp-%d", ctx->id);
+	vcodec_trace_begin("create_workqueue(%s)", name);
 	ctx->cgrp_wq = create_workqueue(name);
+	vcodec_trace_end();
 }
 
 static void mtk_vdec_cgrp_deinit(struct mtk_vcodec_ctx *ctx)
@@ -5071,6 +5075,7 @@ void mtk_vcodec_dec_set_default_params(struct mtk_vcodec_ctx *ctx)
 {
 	struct mtk_q_data *q_data;
 
+	vcodec_trace_begin_func();
 	mtk_vdec_cgrp_init(ctx);
 	mtk_vdec_trigger_cgrp(ctx);
 
@@ -5135,6 +5140,7 @@ void mtk_vcodec_dec_set_default_params(struct mtk_vcodec_ctx *ctx)
 
 	mtk_vdec_init_set_frame_wq(ctx);
 	mtk_vdec_lpw_init_timer(ctx);
+	vcodec_trace_end();
 }
 
 static void mtk_vcodec_dec_custom_ctrls_check(struct v4l2_ctrl_handler *hdl,

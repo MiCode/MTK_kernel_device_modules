@@ -96,30 +96,29 @@ static int fops_vcodec_open(struct file *file)
 
 	ctx = kzalloc(sizeof(*ctx), GFP_KERNEL);
 	if (!ctx) {
-		vcodec_trace_end();
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto err_alloc_ctx;
 	}
 	mtk_buf = kzalloc(sizeof(*mtk_buf), GFP_KERNEL);
 	if (!mtk_buf) {
-		kfree(ctx);
-		vcodec_trace_end();
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto err_alloc_mtk_buf;
 	}
 
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 	if (mtk_vcodec_is_vcp(MTK_INST_DECODER)) {
+		vcodec_trace_begin("vcp_register_feature_ex");
 		ret = vcp_register_feature_ex(VDEC_FEATURE_ID);
+		vcodec_trace_end();
 		if (ret) {
 			mtk_v4l2_err("Failed to vcp_register_feature");
-			kfree(ctx);
-			kfree(mtk_buf);
-			ctx = NULL;
-			mtk_buf = NULL;
-			vcodec_trace_end();
-			return -EPERM;
+			ret = -EPERM;
+			goto err_before_lock;
 		}
 #if DEC_DVFS
+		vcodec_trace_begin("mtk_mmdvfs_enable_vcp");
 		mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_VDEC);
+		vcodec_trace_end();
 #endif
 	}
 #endif
@@ -223,8 +222,7 @@ static int fops_vcodec_open(struct file *file)
 	dev->dec_cnt++;
 
 	mutex_unlock(&dev->dev_mutex);
-	mtk_v4l2_debug(0, "%s decoder [%d][%d]", dev_name(&dev->plat_dev->dev),
-				   ctx->id, dev->dec_cnt);
+	mtk_v4l2_debug(0, "%s decoder [%d][%d]", dev_name(&dev->plat_dev->dev), ctx->id, dev->dec_cnt);
 
 #if ENABLE_FENCE
 	ctx->p_timeline_obj = timeline_create("Vdec-timeline");
@@ -256,10 +254,14 @@ err_m2m_ctx_init:
 err_ctrls_setup:
 	v4l2_fh_del(&ctx->fh);
 	v4l2_fh_exit(&ctx->fh);
-	kfree(ctx->dec_flush_buf);
-	kfree(ctx);
 	mutex_unlock(&dev->dev_mutex);
-
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
+err_before_lock:
+#endif
+	kfree(mtk_buf);
+err_alloc_mtk_buf:
+	kfree(ctx);
+err_alloc_ctx:
 	vcodec_trace_end();
 	return ret;
 }

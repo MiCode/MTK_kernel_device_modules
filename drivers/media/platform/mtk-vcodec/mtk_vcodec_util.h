@@ -25,6 +25,9 @@
 /* #define FPGA_PWRCLK_API_DISABLE */
 /* #define FPGA_INTERRUPT_API_DISABLE */
 
+#if IS_ENABLED(CONFIG_MTK_VCODEC_DEBUG) // only support eng & userdebug
+#define MTK_VCODEC_DEBUG_SUPPORT
+#endif
 #if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
 #define MTK_SCHED_SUPPORT
 #endif
@@ -233,7 +236,7 @@ enum mtk_vcodec_debug_level {
 	VCODEC_DBG_L8 = 8,
 };
 
-#if IS_ENABLED(CONFIG_MTK_VCODEC_DEBUG) // only support eng & userdebug
+#ifdef MTK_VCODEC_DEBUG_SUPPORT
 #define vcodec_trace_begin(fmt, args...) do { \
 			if (mtk_vcodec_trace_enable) { \
 				vcodec_trace("B|%d|"fmt"\n", current->tgid, ##args); \

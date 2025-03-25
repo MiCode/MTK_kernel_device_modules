@@ -348,7 +348,7 @@ int venc_disable_hw_break;
 EXPORT_SYMBOL_GPL(venc_disable_hw_break);
 
 /* VCODEC FTRACE */
-#if IS_ENABLED(CONFIG_MTK_VCODEC_DEBUG)
+#ifdef MTK_VCODEC_DEBUG_SUPPORT
 void vcodec_trace(const char *fmt, ...)
 {
 	char buf[256] = {0};
@@ -371,7 +371,7 @@ EXPORT_SYMBOL(vcodec_trace);
 
 void mtk_vcodec_in_out_trace_count(struct mtk_vcodec_ctx *ctx, unsigned int buf_type, bool in_kernel, int add_diff)
 {
-#if IS_ENABLED(CONFIG_MTK_VCODEC_DEBUG)
+#ifdef MTK_VCODEC_DEBUG_SUPPORT
 	bool is_input = V4L2_TYPE_IS_OUTPUT(buf_type);
 	int trace_count;
 
