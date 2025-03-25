@@ -7334,7 +7334,7 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 #endif
 
 #if defined(DISP_BWM20_ENABLE)
-	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BWM20)) {
+	if ((crtc_idx == 0) && mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BWM20)) {
 		if (flush || no_bwm20_layer)
 			mtk_crtc->qos_ctx->last_hrt_req = bw;
 		else
@@ -7362,7 +7362,7 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 	mtk_update_channel_hrt_bw_by_type(crtc, bw_base, cmdq_handle, true, flush);
 	mtk_update_channel_hrt_bw_by_type(crtc, bw_base, cmdq_handle, false, flush);
 
-	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BWM20) &&
+	if ((crtc_idx == 0) && mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BWM20) &&
 		no_bwm20_layer)
 		no_bwm20_layer = false;
 
