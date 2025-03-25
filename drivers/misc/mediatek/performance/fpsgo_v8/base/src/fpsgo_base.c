@@ -632,6 +632,11 @@ void fpsgo_reset_attr(struct fpsgo_boost_attr *boost_attr)
 		boost_attr->gh_prefer_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->bm_th_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->ml_th_by_pid = BY_PID_DEFAULT_VAL;
+		boost_attr->sep_loading_ctrl_by_pid = BY_PID_DEFAULT_VAL;
+		boost_attr->lc_th_by_pid = BY_PID_DEFAULT_VAL;
+		boost_attr->lc_th_upbound_by_pid = BY_PID_DEFAULT_VAL;
+		boost_attr->frame_lowbd_by_pid = BY_PID_DEFAULT_VAL;
+		boost_attr->frame_upbd_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->tp_policy_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->set_l3_cache_ct_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->set_ls_by_pid = BY_PID_DEFAULT_VAL;
@@ -967,6 +972,11 @@ int is_to_delete_fpsgo_attr(struct fpsgo_attr_by_pid *fpsgo_attr)
 			boost_attr.gh_prefer_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.bm_th_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.ml_th_by_pid == BY_PID_DEFAULT_VAL &&
+			boost_attr.sep_loading_ctrl_by_pid == BY_PID_DEFAULT_VAL &&
+			boost_attr.lc_th_by_pid == BY_PID_DEFAULT_VAL &&
+			boost_attr.lc_th_upbound_by_pid == BY_PID_DEFAULT_VAL &&
+			boost_attr.frame_lowbd_by_pid == BY_PID_DEFAULT_VAL &&
+			boost_attr.frame_upbd_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.tp_policy_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.set_l3_cache_ct_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.set_ls_by_pid == BY_PID_DEFAULT_VAL &&
@@ -2329,6 +2339,9 @@ static ssize_t render_info_params_show(struct kobject *kobj,
 	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
 				" powerRL_enable, powerRL_FPS_margin, powerRL_cap_limit_range\n");
 	pos += length;
+	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
+				" sep_loading_ctrl, lc_th, lc_th_upbound, frame_lowbd, frame_upbd\n");
+	pos += length;
 
 	fpsgo_render_tree_lock(__func__);
 
@@ -2480,6 +2493,15 @@ static ssize_t render_info_params_show(struct kobject *kobj,
 			attr_item.powerRL_FPS_margin_by_pid,
 			attr_item.powerRL_cap_limit_range_by_pid);
 		pos += length;
+
+		length = scnprintf(temp + pos,
+			FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d, %4d, %4d, %4d\n",
+			attr_item.sep_loading_ctrl_by_pid,
+			attr_item.lc_th_by_pid,
+			attr_item.lc_th_upbound_by_pid,
+			attr_item.frame_lowbd_by_pid,
+			attr_item.frame_upbd_by_pid);
+		pos += length;
 	}
 
 	fpsgo_render_tree_unlock(__func__);
@@ -2557,6 +2579,9 @@ static ssize_t render_attr_params_show(struct kobject *kobj,
 	pos += length;
 	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
 				" powerRL_enable, powerRL_FPS_margin, powerRL_cap_limit_range\n");
+	pos += length;
+	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
+				" sep_loading_ctrl, lc_th, lc_th_upbound, frame_lowbd, frame_upbd\n");
 	pos += length;
 
 	fpsgo_render_tree_lock(__func__);
@@ -2682,6 +2707,15 @@ static ssize_t render_attr_params_show(struct kobject *kobj,
 			attr_item.powerRL_enable_by_pid,
 			attr_item.powerRL_FPS_margin_by_pid,
 			attr_item.powerRL_cap_limit_range_by_pid);
+		pos += length;
+
+		length = scnprintf(temp + pos,
+			FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d, %4d, %4d, %4d\n",
+			attr_item.sep_loading_ctrl_by_pid,
+			attr_item.lc_th_by_pid,
+			attr_item.lc_th_upbound_by_pid,
+			attr_item.frame_lowbd_by_pid,
+			attr_item.frame_upbd_by_pid);
 		pos += length;
 	}
 

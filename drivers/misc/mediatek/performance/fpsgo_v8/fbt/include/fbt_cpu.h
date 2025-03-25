@@ -34,6 +34,7 @@ int fbt_get_rl_ko_is_ready(void);
 
 int __init fbt_cpu_init(void);
 void __exit fbt_cpu_exit(void);
+void fbt_trace(const char *fmt, ...);
 
 int fpsgo_ctrl2fbt_switch_fbt(int enable);
 int fbt_switch_ceiling(int value);

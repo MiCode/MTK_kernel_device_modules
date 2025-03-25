@@ -130,6 +130,26 @@ TRACE_EVENT(fpsgo_main_trace,
 	)
 );
 
+TRACE_EVENT(fbt_trace,
+	TP_PROTO(
+	const char *buf
+	),
+
+	TP_ARGS(buf),
+
+	TP_STRUCT__entry(
+	__string(buf, buf)
+	),
+
+	TP_fast_assign(
+	__assign_str(buf);
+	),
+
+	TP_printk("%s",
+	__get_str(buf)
+	)
+);
+
 TRACE_EVENT(xgf_trace,
 	TP_PROTO(
 	const char *buf

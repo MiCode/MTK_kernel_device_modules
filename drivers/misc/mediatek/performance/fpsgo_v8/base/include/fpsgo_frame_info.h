@@ -216,6 +216,13 @@ struct fpsgo_boost_attr {
 	int l2q_enable_by_pid;
 	int l2q_exp_us_by_pid;
 
+	/* sep loading ctrl */
+	int sep_loading_ctrl_by_pid;
+	int lc_th_by_pid;
+	int lc_th_upbound_by_pid;
+	int frame_lowbd_by_pid;
+	int frame_upbd_by_pid;
+
 	/* Minus idle time*/
 	int aa_b_minus_idle_t_by_pid;
 

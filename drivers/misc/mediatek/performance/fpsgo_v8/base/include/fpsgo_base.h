@@ -185,6 +185,24 @@ struct fbt_ff_info {
 	unsigned int filter_frames_count_m;
 };
 
+struct frame_loading_info {
+	struct list_head list;
+	int pid;
+	unsigned long long runtime;
+	unsigned long long duration;
+};
+
+struct fbt_separate_ctrl {
+	int count_frame;
+	int count_loading;
+	int th_cali;
+	int lc_pid;
+	unsigned long long prev_window;
+	unsigned long long prev_ts;
+	unsigned long long prev_runtime;
+	struct list_head loading_list;
+};
+
 struct fbt_boost_info {
 	int target_fps;
 	unsigned long long target_time;
@@ -207,6 +225,10 @@ struct fbt_boost_info {
 
 	/* SeparateCap */
 	long *cl_loading;
+
+	/* Separate Ctrl Closed Loop for Second Group */
+	unsigned long long target_time_m;
+	struct fbt_separate_ctrl sep_ctrl_info;
 
 	/* rescue*/
 	struct fbt_proc proc;
