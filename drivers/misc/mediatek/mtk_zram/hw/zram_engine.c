@@ -111,6 +111,9 @@ struct zram_engine_t {
 	/* Avoid mode switching between No-DST and DST copy */
 	atomic_t mode_locked;
 
+	/* Gear level is fixed manually */
+	bool gear_level_fixed_manually;
+
 	/* List for available HW engine */
 	struct list_head list;
 };
@@ -2270,6 +2273,13 @@ static int thermal_callback(struct notifier_block *nb, unsigned long event, void
 		goto exit;
 	}
 
+	/* Gear level is fixed manually. It's not allowed to do adjustment here. */
+	if (hwz->gear_level_fixed_manually) {
+		retval = -EBUSY;
+		pr_info("%s: failed to adjust gear level for event %lu\n", __func__, event);
+		goto exit;
+	}
+
 #ifndef FPGA_EMULATION
 	/* Enable clock for zram engine */
 	retval = engine_gear_enable_clock(&hwz->ctrl, &hwz->gear_ctrl);
@@ -2352,6 +2362,9 @@ static int mtk_hwzram_probe(struct platform_device *pdev)
 
 	/* Initialize mode_locked to unlock */
 	atomic_set(&hwz->mode_locked, HWCOMP_MODE_UNLOCK);
+
+	/* Initialize gear level fixed manually to false */
+	hwz->gear_level_fixed_manually = false;
 
 	/* It's safe to enable rtff check */
 	static_branch_enable(&engine_rtff_check);
@@ -2831,30 +2844,37 @@ static int kick_hwe_gear(const char *val, const struct kernel_param *kp)
 	case 0:
 		/* Max frequency */
 		engine_fix_gear_level(&hwz->gear_ctrl, ENGINE_MAX_GEAR);
+		hwz->gear_level_fixed_manually = true;
 		break;
 	case 3:
 		/* CLK_SEL(3): 218.4MHz with 0.55v or 0.575v */
 		engine_fix_gear_level(&hwz->gear_ctrl, 3 - ENGINE_GEAR_DTS_BASE);
+		hwz->gear_level_fixed_manually = true;
 		break;
 	case 4:
 		/* CLK_SEL(4): 384MHz with 0.6v */
 		engine_fix_gear_level(&hwz->gear_ctrl, 4 - ENGINE_GEAR_DTS_BASE);
+		hwz->gear_level_fixed_manually = true;
 		break;
 	case 5:
 		/* CLK_SEL(5): 436.8MHz with 0.65v */
 		engine_fix_gear_level(&hwz->gear_ctrl, 5 - ENGINE_GEAR_DTS_BASE);
+		hwz->gear_level_fixed_manually = true;
 		break;
 	case 6:
 		/* CLK_SEL(6): 546MHz with 0.725v */
 		engine_fix_gear_level(&hwz->gear_ctrl, 6 - ENGINE_GEAR_DTS_BASE);
+		hwz->gear_level_fixed_manually = true;
 		break;
 	case 7:
 		/* CLK_SEL(7): 728MHz with 0.825v or 0.95v */
 		engine_fix_gear_level(&hwz->gear_ctrl, 7 - ENGINE_GEAR_DTS_BASE);
+		hwz->gear_level_fixed_manually = true;
 		break;
 	case ENGINE_FREE_RUN_GEAR:
 		/* gear free-run */
 		engine_free_gear_level(&hwz->gear_ctrl);
+		hwz->gear_level_fixed_manually = false;
 		break;
 #if IS_ENABLED(CONFIG_MTK_VM_DEBUG)
 	case ENGINE_ENABLE_GEAR_PE:
