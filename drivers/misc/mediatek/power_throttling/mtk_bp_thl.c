@@ -139,7 +139,7 @@ static ssize_t bp_thl_ut_show(
 {
 	/*show_battery_percent_protect_ut */
 	pr_info("[%s] g_bp_thl_lv=%d\n", __func__, bp_thl_data->bp_thl_lv);
-	return sprintf(buf, "level:%u, stop:%d\n", bp_thl_data->bp_thl_lv, bp_thl_data->bp_thl_stop);
+	return snprintf(buf, PAGE_SIZE, "level:%u, stop:%d\n", bp_thl_data->bp_thl_lv, bp_thl_data->bp_thl_stop);
 }
 
 static ssize_t bp_thl_ut_store(
