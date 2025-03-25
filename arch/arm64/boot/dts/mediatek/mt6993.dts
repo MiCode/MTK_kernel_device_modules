@@ -623,26 +623,30 @@
 	};
 
 	google_trusty: google-trusty {
-		compatible = "android,google-trusty-smc-v1";
-		ranges = <0x0>;
-		#address-cells = <0x2>;
-		#size-cells = <0x2>;
+		compatible = "android,google-trusty-ffa-v1";
 		google,real-drv = <0>;
 
-		virtio {
-			compatible = "android,google-trusty-virtio-v1";
-		};
+		trusty-core {
+			compatible = "android,google-trusty-core-v1";
+			ranges = <0x0>;
+			#address-cells = <0x2>;
+			#size-cells = <0x2>;
 
-		test {
-			compatible = "android,google-trusty-test-v1";
-		};
+			virtio {
+				compatible = "android,google-trusty-virtio-v1";
+			};
 
-		log {
-			compatible = "android,google-trusty-log-v1";
-		};
+			test {
+				compatible = "android,google-trusty-test-v1";
+			};
 
-		irq {
-			compatible = "android,google-trusty-irq-v1";
+			log {
+				compatible = "android,google-trusty-log-v1";
+			};
+
+			irq {
+				compatible = "android,google-trusty-irq-v1";
+			};
 		};
 	};
 
