@@ -1191,7 +1191,7 @@ static void mml_core_qos_update_dpc(struct mml_frame_config *cfg, bool trigger)
 	}
 
 	for (sysid = 0; sysid < mml_max_sys; sysid++)
-		dpc_dvfs_lv = max_t(u32, dpc_dvfs_lv, tp->qos[sysid].current_level[mml_tput_dpc]);
+		dpc_dvfs_lv = max_t(u32, dpc_dvfs_lv, tp->dvfs->current_level[mml_tput_dpc]);
 
 	mml_msg_dpc("%s dpc dvfs level %u srt %u hrt %u hrt_mode %u trigger %s",
 		__func__, dpc_dvfs_lv, srt_bw_max, hrt_bw_max, mtk_mml_hrt_mode,
@@ -1315,10 +1315,7 @@ static struct mml_path_client *core_get_path_clt(struct mml_task *task, u32 pipe
 static u32 mml_qos_max_freq(const struct mml_topology_path *path,
 	const struct mml_topology_cache *tp)
 {
-	return path->sys_en[mml_sys_dma] ?
-		tp->qos[mml_sys_dma].freq_max :
-		(path->sys_en[mml_sys_frame] ? tp->qos[mml_sys_frame].freq_max :
-		tp->qos[mml_sys_tile].freq_max);
+	return tp->dvfs->freq_max;
 }
 
 static void mml_core_dvfs_begin(struct mml_task *task, u32 pipe)
@@ -1427,7 +1424,7 @@ static void mml_core_dvfs_begin(struct mml_task *task, u32 pipe)
 	mml_trace_begin("%u_%llu_%llu", throughput, duration, boost_time);
 	task->freq_time[pipe] = sched_clock();
 	path_clt->throughput[dpc] = throughput;
-	tput_up = mml_qos_update_sys(cfg->mml, cfg->dpc, cfg->path[pipe], true);
+	tput_up = mml_qos_update_tput(cfg->mml, cfg->dpc, true);
 
 	/* note the running task not always current begin task */
 	task_pipe_tmp = list_first_entry_or_null(&path_clt->tasks,
@@ -1602,7 +1599,7 @@ static void mml_core_dvfs_end(struct mml_task *task, u32 pipe)
 done:
 	path_clt->throughput[dpc] = throughput;
 
-	tput_up = mml_qos_update_sys(cfg->mml, cfg->dpc, cfg->path[pipe], false);
+	tput_up = mml_qos_update_tput(cfg->mml, cfg->dpc, false);
 	if (throughput) {
 		/* clear so that qos set api report max bw */
 		task_pipe_cur->bandwidth = 0;

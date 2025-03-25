@@ -1950,7 +1950,6 @@ static u32 wdma_calc_stash_delay(struct mml_comp_config *ccfg,
 	u32 in_xsize, u32 line_num)
 {
 	const struct mml_topology_cache *tp = mml_topology_get_cache(cfg->mml);
-	struct mml_comp *mmlsys = cfg->path[ccfg->pipe]->mmlsys;
 	u32 opp, clk_rate, delay_interval, delay_line;
 
 	if (unlikely(!tp)) {
@@ -1958,8 +1957,8 @@ static u32 wdma_calc_stash_delay(struct mml_comp_config *ccfg,
 		return 0;
 	}
 
-	opp = tp->qos[mmlsys->sysid].opp_cnt / 2;
-	clk_rate = tp->qos[mmlsys->sysid].opp_speeds[opp];
+	opp = tp->dvfs->opp_cnt / 2;
+	clk_rate = tp->dvfs->opp_speeds[opp];
 
 	if (dest->rotate == MML_ROT_0) {
 		/* config only page to page delay in clock level

@@ -471,10 +471,9 @@ struct mml_path_client {
 	struct list_head tasks;
 	/* current throughput */
 	u32 throughput[mml_tput_modes];	/* 0:AP 1:DPC */
-	u32 sys_en_ref[mml_max_sys];
 };
 
-struct mml_sys_qos {
+struct mml_dvfs {
 	struct regulator *reg;
 	struct clk *dvfs_clk;
 	u32 opp_cnt;
@@ -483,7 +482,7 @@ struct mml_sys_qos {
 	u64 freq_max;
 	u32 current_volt[mml_tput_modes];	/* 0:AP 1:DPC */
 	u8 current_level[mml_tput_modes];	/* 0:AP 1:DPC */
-	struct mutex qos_mutex;
+	struct mutex dvfs_mutex;
 };
 
 struct mml_topology_cache {
@@ -492,7 +491,7 @@ struct mml_topology_cache {
 	struct mml_path_client path_clts[MML_MAX_CMDQ_CLTS];
 	u32 dpc_qos_ref;
 	struct mutex qos_mutex;	/* lock to qos operation */
-	struct mml_sys_qos *qos;
+	struct mml_dvfs *dvfs;
 };
 
 struct mml_comp_config {

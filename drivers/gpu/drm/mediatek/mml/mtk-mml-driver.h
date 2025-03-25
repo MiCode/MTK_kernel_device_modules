@@ -70,38 +70,23 @@ s32 mml_dev_couple_inc(struct mml_dev *mml, enum mml_mode mode);
 s32 mml_dev_couple_dec(struct mml_dev *mml, enum mml_mode mode);
 
 /*
- * mml_qos_init - init mmlsys mmqos and mmdvfs from dts property
+ * mml_dvfs_init - init mmlsys mmdvfs from dts property
  *
  * @mml: The mml driver instance
  * @pdev: mmlsys platform device
- * @sysid: one of enum mml_sys_id
  */
-void mml_qos_init(struct mml_dev *mml, struct platform_device *pdev, u32 sysid);
-
-/*
- * mml_qos_update_sys - check all mmlsys and update throughput
- *
- * @mml: The mml driver instance
- * @dpc: mml using dpc or not
- * @path: current topology path for task
- * @enable: begin task or end task
- *
- * Return: throughput upper bound from opp table
- */
-u32 mml_qos_update_sys(struct mml_dev *mml, bool dpc,
-	const struct mml_topology_path *path, bool enable);
+void mml_dvfs_init(struct mml_dev *mml, struct platform_device *pdev);
 
 /*
  * mml_qos_update_tput - scan throughputs in all path client and update the max one
  *
  * @mml:	The mml driver instance
  * @dpc:	mml using dpc or not
- * @sysid:	mmlsys which want to update throughput
  * @enable:	enable or disable dvfs
  *
  * Return: throughput upper bound from opp table
  */
-u32 mml_qos_update_tput(struct mml_dev *mml, bool dpc, enum mml_sys_id sysid, bool enable);
+u32 mml_qos_update_tput(struct mml_dev *mml, bool dpc, bool enable);
 
 s32 mml_comp_init(struct platform_device *comp_pdev, struct mml_comp *comp);
 

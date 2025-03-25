@@ -1057,7 +1057,7 @@ static bool tp_check_tput_dl(struct mml_frame_info *info, struct mml_topology_ca
 	if (!info->act_time)
 		return true;
 
-	if (!tp->qos[mml_sys_frame].opp_cnt) {
+	if (!tp->dvfs->opp_cnt) {
 		mml_err("no opp table support");
 		return false;
 	}
@@ -1103,7 +1103,7 @@ static bool tp_check_tput_dl(struct mml_frame_info *info, struct mml_topology_ca
 	if (panel_width > destw)
 		tput = tput * panel_width / destw;
 	if (mml_rrot_single != 2 && tputw * tputh <= MML_DL_RROT_S_PX &&
-		tput < tp->qos[mml_sys_frame].opp_speeds[1]) {
+		tput < tp->dvfs->opp_speeds[1]) {
 		*dual = false;
 		if (info_cache)
 			info_cache->dl_opp = 1;
@@ -1112,7 +1112,7 @@ static bool tp_check_tput_dl(struct mml_frame_info *info, struct mml_topology_ca
 
 	pixel = max(tputw / 2, destw) * max(tputh, desth) * 11 / 10;
 	tput = pixel / (info->act_time / 1000);
-	if (tput < tp->qos[mml_sys_frame].opp_speeds[tp->qos[mml_sys_frame].opp_cnt - 1]) {
+	if (tput < tp->dvfs->opp_speeds[tp->dvfs->opp_cnt - 1]) {
 		*dual = mml_rrot_single == 1 ? false : true;
 		goto find_opp;
 	}
@@ -1124,8 +1124,8 @@ static bool tp_check_tput_dl(struct mml_frame_info *info, struct mml_topology_ca
 
 find_opp:
 	if (info_cache) {
-		for (i = 0; i < tp->qos[mml_sys_frame].opp_cnt; i++) {
-			if (tput <= tp->qos[mml_sys_frame].opp_speeds[i])
+		for (i = 0; i < tp->dvfs->opp_cnt; i++) {
+			if (tput <= tp->dvfs->opp_speeds[i])
 				break;
 		}
 		info_cache->dl_opp = i;
@@ -1166,7 +1166,7 @@ static bool tp_check_tput_dc(struct mml_frame_info *info, struct mml_topology_ca
 		return true;
 	}
 
-	if (!tp || !tp->qos[mml_sys_frame].opp_cnt) {
+	if (!tp || !tp->dvfs->opp_cnt) {
 		mml_err("no opp table support");
 		return false;
 	}
@@ -1201,15 +1201,15 @@ static bool tp_check_tput_dc(struct mml_frame_info *info, struct mml_topology_ca
 	 *	duration = pixel * 11 / 10 / max_clock
 	 */
 	pixel = max(tputw, destw) * max(tputh, desth) * 11 / 10;
-	max_clock = tp->qos[mml_sys_frame].opp_speeds[tp->qos[mml_sys_frame].opp_cnt - 1];
+	max_clock = tp->dvfs->opp_speeds[tp->dvfs->opp_cnt - 1];
 	info_cache->pixels = pixel;
 	info_cache->duration = pixel / max_clock;
 	if (info_cache->duration > MML_DC_MAX_DURATION_US)
 		return false;
 
 	tput = pixel / info_cache->remain;
-	for (i = 0; i < tp->qos[mml_sys_frame].opp_cnt; i++) {
-		if (tput <= tp->qos[mml_sys_frame].opp_speeds[i])
+	for (i = 0; i < tp->dvfs->opp_cnt; i++) {
+		if (tput <= tp->dvfs->opp_speeds[i])
 			break;
 	}
 	info_cache->dc_opp = i;
@@ -1445,7 +1445,7 @@ static enum mml_mode tp_query_mode_dl(struct mml_dev *mml, struct mml_frame_info
 	}
 
 	/* get mid opp frequency */
-	if (tp && tp->qos[mml_sys_frame].opp_cnt) {
+	if (tp && tp->dvfs->opp_cnt) {
 		if (!tp_check_tput_dl(info, tp, panel_width, panel_height, &dual, info_cache)) {
 			*reason = mml_query_opp_out;
 			goto decouple;
@@ -1502,7 +1502,7 @@ static enum mml_mode tp_query_mode_racing(struct mml_dev *mml, struct mml_frame_
 
 	/* get mid opp frequency */
 	tp = mml_topology_get_cache(mml);
-	if (!tp || !tp->qos[mml_sys_frame].opp_cnt) {
+	if (!tp || !tp->dvfs->opp_cnt) {
 		mml_err("not support racing due to opp not ready");
 		goto decouple;
 	}
@@ -1514,19 +1514,19 @@ static enum mml_mode tp_query_mode_racing(struct mml_dev *mml, struct mml_frame_
 		u32 i, dc_opp, ir_freq, ir_opp;
 		u32 pipe_pixel = pixel / 2;
 
-		if (!tp->qos[mml_sys_frame].opp_cnt) {
+		if (!tp->dvfs->opp_cnt) {
 			mml_err("no opp table support");
 			goto decouple;
 		}
 
 		if (!opp_pixel_table[0]) {
 			for (i = 0; i < ARRAY_SIZE(opp_pixel_table); i++) {
-				opp_pixel_table[i] = tp->qos[mml_sys_frame].opp_speeds[i] * MML_DC_ACT_DUR;
+				opp_pixel_table[i] = tp->dvfs->opp_speeds[i] * MML_DC_ACT_DUR;
 				mml_log("[topology]Racing pixel OPP %u: %u",
 					i, opp_pixel_table[i]);
 			}
 		}
-		for (i = 0; i < tp->qos[mml_sys_frame].opp_cnt; i++)
+		for (i = 0; i < tp->dvfs->opp_cnt; i++)
 			if (pipe_pixel < opp_pixel_table[i])
 				break;
 		dc_opp = min_t(u32, i, ARRAY_SIZE(opp_pixel_table) - 1);
@@ -1536,8 +1536,8 @@ static enum mml_mode tp_query_mode_racing(struct mml_dev *mml, struct mml_frame_
 		}
 
 		ir_freq = pipe_pixel * 1000 / info->act_time;
-		for (i = 0; i < tp->qos[mml_sys_frame].opp_cnt; i++)
-			if (ir_freq < tp->qos[mml_sys_frame].opp_speeds[i])
+		for (i = 0; i < tp->dvfs->opp_cnt; i++)
+			if (ir_freq < tp->dvfs->opp_speeds[i])
 				break;
 		ir_opp = min_t(u32, i, ARRAY_SIZE(opp_pixel_table) - 1);
 

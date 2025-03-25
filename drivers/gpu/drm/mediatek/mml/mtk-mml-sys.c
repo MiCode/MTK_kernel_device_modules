@@ -3009,9 +3009,6 @@ struct mml_sys *mml_sys_create(struct platform_device *pdev,
 	if (unlikely(dbg_probed_count < 0))
 		return ERR_PTR(-EFAULT);
 
-	/* init each mml dvfs/qos interface */
-	mml_qos_init(mml, pdev, sys->data->sysid);
-
 	dbg_probed_components[dbg_probed_count++] = sys;
 	return sys;
 }

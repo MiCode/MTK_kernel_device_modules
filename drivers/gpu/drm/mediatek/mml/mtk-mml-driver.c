@@ -139,7 +139,7 @@ struct mml_dev {
 	struct platform_device *pdev;
 	struct mml_comp *comps[MML_MAX_COMPONENTS];
 	struct mml_sys_state sys_state[mml_max_sys];
-	struct mml_sys_qos qos[mml_max_sys];
+	struct mml_dvfs dvfs;
 	u16 port_srt_bw[MML_MAX_LARB][MML_MAX_PORT];
 	u16 port_hrt_bw[MML_MAX_LARB][MML_MAX_PORT];
 	u32 vcp_ref;
@@ -345,30 +345,30 @@ s32 mml_dev_couple_dec(struct mml_dev *mml, enum mml_mode mode)
 	return cnt;
 }
 
-void mml_qos_init(struct mml_dev *mml, struct platform_device *pdev, u32 sysid)
+void mml_dvfs_init(struct mml_dev *mml, struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
-	struct mml_sys_qos *sysqos = &mml->qos[sysid];
+	struct mml_dvfs *dvfs = &mml->dvfs;
 	struct dev_pm_opp *opp;
 	int num;
 	unsigned long freq = 0;
 	u32 i;
 
-	mml_msg("%s sysid %u", __func__, sysid);
-	mutex_init(&sysqos->qos_mutex);
+	mml_msg("%s mml %p", __func__, mml);
+	mutex_init(&dvfs->dvfs_mutex);
 
 	/* Create opp table from dts */
 	dev_pm_opp_of_add_table(dev);
 
 	/* Get regulator instance by name. */
-	sysqos->reg = devm_regulator_get_optional(dev, "mmdvfs-dvfsrc-vcore");
-	if (IS_ERR_OR_NULL(sysqos->reg)) {
-		sysqos->reg = NULL;
-		sysqos->dvfs_clk = devm_clk_get(dev, "mmdvfs_clk");
-		if (IS_ERR_OR_NULL(sysqos->dvfs_clk)) {
+	dvfs->reg = devm_regulator_get_optional(dev, "mmdvfs-dvfsrc-vcore");
+	if (IS_ERR_OR_NULL(dvfs->reg)) {
+		dvfs->reg = NULL;
+		dvfs->dvfs_clk = devm_clk_get(dev, "mmdvfs_clk");
+		if (IS_ERR_OR_NULL(dvfs->dvfs_clk)) {
 			mml_err("%s get mmdvfs clk failed %d",
-				__func__, (int)PTR_ERR(sysqos->dvfs_clk));
-			sysqos->dvfs_clk = NULL;
+				__func__, (int)PTR_ERR(dvfs->dvfs_clk));
+			dvfs->dvfs_clk = NULL;
 			return;
 		}
 		mml_log("%s support mmdvfs clk", __func__);
@@ -382,121 +382,119 @@ void mml_qos_init(struct mml_dev *mml, struct platform_device *pdev, u32 sysid)
 		return;
 	}
 
-	sysqos->opp_cnt = (u32)num;
-	if (sysqos->opp_cnt > ARRAY_SIZE(sysqos->opp_speeds)) {
+	dvfs->opp_cnt = (u32)num;
+	if (dvfs->opp_cnt > ARRAY_SIZE(dvfs->opp_speeds)) {
 		mml_err("%s opp num more than table size %u %u",
-			__func__, sysqos->opp_cnt, (u32)ARRAY_SIZE(sysqos->opp_speeds));
-		sysqos->opp_cnt = ARRAY_SIZE(sysqos->opp_speeds);
+			__func__, dvfs->opp_cnt, (u32)ARRAY_SIZE(dvfs->opp_speeds));
+		dvfs->opp_cnt = ARRAY_SIZE(dvfs->opp_speeds);
 	}
 
 	i = 0;
 	while (!IS_ERR(opp = dev_pm_opp_find_freq_ceil(dev, &freq))) {
 
-		if (i >= sysqos->opp_cnt)
+		if (i >= dvfs->opp_cnt)
 			break;
 
 		/* available freq from table, store in MHz */
-		sysqos->opp_speeds[i] = (u32)div_u64(freq, 1000000) - mml_opp_rsv;
-		sysqos->opp_volts[i] = dev_pm_opp_get_voltage(opp);
-		sysqos->freq_max = sysqos->opp_speeds[i];
-		mml_log("mml%u opp %u: %uMHz\t%d",
-			sysid, i, sysqos->opp_speeds[i], sysqos->opp_volts[i]);
+		dvfs->opp_speeds[i] = (u32)div_u64(freq, 1000000) - mml_opp_rsv;
+		dvfs->opp_volts[i] = dev_pm_opp_get_voltage(opp);
+		dvfs->freq_max = dvfs->opp_speeds[i];
+		mml_log("mml opp %u: %uMHz\t%d",
+			i, dvfs->opp_speeds[i], dvfs->opp_volts[i]);
 		freq++;
 		i++;
 		dev_pm_opp_put(opp);
 	}
 }
 
-static void mml_dvfs_vcp_enable(struct mml_dev *mml, enum mml_sys_id sysid)
+static void mml_dvfs_vcp_enable(struct mml_dev *mml)
 {
 	mml->vcp_ref++;
 	if (mml->vcp_ref == 1) {
-		mml_mmp(mmdvfs, MMPROFILE_FLAG_START, sysid, 0);
+		mml_mmp(mmdvfs, MMPROFILE_FLAG_START, 0, 0);
 #ifndef MML_FPGA
 		mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MML);
 #endif
 	}
 }
 
-static void mml_dvfs_vcp_disable(struct mml_dev *mml, enum mml_sys_id sysid)
+static void mml_dvfs_vcp_disable(struct mml_dev *mml)
 {
 	mml->vcp_ref--;
 	if (mml->vcp_ref == 0) {
 #ifndef MML_FPGA
 		mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MML);
 #endif
-		mml_mmp(mmdvfs, MMPROFILE_FLAG_END, sysid, 0);
+		mml_mmp(mmdvfs, MMPROFILE_FLAG_END, 0, 0);
 	}
 }
 
-u32 mml_qos_update_tput(struct mml_dev *mml, bool dpc, enum mml_sys_id sysid, bool enable)
+u32 mml_qos_update_tput(struct mml_dev *mml, bool dpc, bool enable)
 {
 	struct mml_topology_cache *tp = mml_topology_get_cache(mml);
-	struct mml_sys_qos *sysqos;
+	struct mml_dvfs *dvfs;
 	u32 tput = 0, i;
 	int volt;
 
 	if (unlikely(!tp))
 		return 0;
 
-	sysqos = &tp->qos[sysid];
-	if (!sysqos->reg && !sysqos->dvfs_clk)
+	dvfs = tp->dvfs;
+	if (!dvfs->reg && !dvfs->dvfs_clk)
 		return 0;
 
 	for (i = 0; i < ARRAY_SIZE(tp->path_clts); i++) {
-		if (!tp->path_clts[i].sys_en_ref[sysid])
-			continue;
 		/* select max one across clients */
 		tput = max(tput, tp->path_clts[i].throughput[dpc]);
 	}
 
-	for (i = 0; i < sysqos->opp_cnt; i++) {
-		if (tput < sysqos->opp_speeds[i])
+	for (i = 0; i < dvfs->opp_cnt; i++) {
+		if (tput < dvfs->opp_speeds[i])
 			break;
 	}
-	i = min(i, sysqos->opp_cnt - 1);
-	volt = sysqos->opp_volts[i];
+	i = min(i, dvfs->opp_cnt - 1);
+	volt = dvfs->opp_volts[i];
 
 	if (mml_freq_for_tppa)
-		mml_update_freq_status(sysqos->opp_speeds[i]);
+		mml_update_freq_status(dvfs->opp_speeds[i]);
 
-	if (!dpc && sysqos->dvfs_clk && enable)
-		mml_dvfs_vcp_enable(mml, sysid);
+	if (!dpc && dvfs->dvfs_clk && enable)
+		mml_dvfs_vcp_enable(mml);
 
-	if (sysqos->current_volt[dpc] == volt)	/* skip for better performance */
+	if (dvfs->current_volt[dpc] == volt)	/* skip for better performance */
 		goto done;
-	sysqos->current_level[dpc] = i;
+	dvfs->current_level[dpc] = i;
 
-	mml_msg_qos("%s sys %u dvfs update %u to %u(%u)by tput %u dpc %u",
-		__func__, sysid, tp->qos[sysid].current_volt[dpc], volt, sysqos->opp_speeds[i],
+	mml_msg_qos("%s dvfs update %u to %u(%u)by tput %u dpc %u",
+		__func__, dvfs->current_volt[dpc], volt, dvfs->opp_speeds[i],
 		tput, dpc);
-	tp->qos[sysid].current_volt[dpc] = volt;
+	dvfs->current_volt[dpc] = volt;
 	mml_trace_begin("mml_volt_%u", volt);
 
 #ifndef MML_FPGA
 	if (dpc)
 		goto no_dvfs;
 
-	if (sysqos->reg) {
-		int ret = regulator_set_voltage(sysqos->reg, volt, INT_MAX);
+	if (dvfs->reg) {
+		int ret = regulator_set_voltage(dvfs->reg, volt, INT_MAX);
 
 		if (ret)
-			mml_err("%s sys %u fail to set volt %d",
-				__func__, sysid, volt);
+			mml_err("%s fail to set volt %d",
+				__func__, volt);
 		else
-			mml_msg("%s sys %u volt %d (%u) tput %u",
-				__func__, sysid, volt, i, tput);
-	} else if (sysqos->dvfs_clk) {
+			mml_msg("%s volt %d (%u) tput %u",
+				__func__, volt, i, tput);
+	} else if (dvfs->dvfs_clk) {
 		/* set dvfs clock rate by unit Hz */
-		int ret = clk_set_rate(sysqos->dvfs_clk, sysqos->opp_speeds[i] * 1000000);
+		int ret = clk_set_rate(dvfs->dvfs_clk, dvfs->opp_speeds[i] * 1000000);
 
 		if (ret)
-			mml_err("%s sys %u %s fail to set rate %uMHz error %d cnt %u",
-				__func__, sysid, enable ? "on" : "off", sysqos->opp_speeds[i],
+			mml_err("%s %s fail to set rate %uMHz error %d cnt %u",
+				__func__, enable ? "on" : "off", dvfs->opp_speeds[i],
 				ret, mml->vcp_ref);
 		else
-			mml_msg("%s sys %u %s rate %uMHz (%u) tput %u cnt %u",
-				__func__, sysid, enable ? "on" : "off", sysqos->opp_speeds[i],
+			mml_msg("%s %s rate %uMHz (%u) tput %u cnt %u",
+				__func__, enable ? "on" : "off", dvfs->opp_speeds[i],
 				i, tput, mml->vcp_ref);
 	}
 
@@ -504,47 +502,16 @@ no_dvfs:
 #endif
 	mml_trace_end();
 
-	mml_update_freq_status(sysqos->opp_speeds[i]);
+	mml_update_freq_status(dvfs->opp_speeds[i]);
 
 done:
-	if (!dpc && sysqos->dvfs_clk) {
+	if (!dpc && dvfs->dvfs_clk) {
 		if (!enable)
-			mml_dvfs_vcp_disable(mml, sysid);
-		mml_msg("%s vcp ref sys %u ref %u %s",
-			__func__, sysid, mml->vcp_ref, enable ? "on" : "off");
+			mml_dvfs_vcp_disable(mml);
+		mml_msg("%s vcp ref %u %s",
+			__func__, mml->vcp_ref, enable ? "on" : "off");
 	}
 	return volt;
-}
-
-u32 mml_qos_update_sys(struct mml_dev *mml, bool dpc,
-	const struct mml_topology_path *path, bool enable)
-{
-	u32 sysid, tput = 0;
-	struct mml_topology_cache *tp = mml_topology_get_cache(mml);
-
-	if (unlikely(!tp))
-		return 0;
-
-	/* for all mmlsys, update the count to current path client reference count,
-	 * so that mml_qos_update_tput api could update throughput to running client.
-	 */
-	for (sysid = 0; sysid < mml_max_sys; sysid++) {
-		if (!path->sys_en[sysid])
-			continue;
-		if (enable)
-			tp->path_clts[path->clt_id].sys_en_ref[sysid]++;
-		else
-			tp->path_clts[path->clt_id].sys_en_ref[sysid]--;
-	}
-
-	/* update throughput to the mmlsys(s) which used in this path */
-	for (sysid = 0; sysid < mml_max_sys; sysid++) {
-		if (!path->sys_en[sysid])
-			continue;
-		tput = max(tput, mml_qos_update_tput(mml, dpc, sysid, enable));
-	}
-
-	return tput;
 }
 
 static void create_dev_topology_locked(struct mml_dev *mml)
@@ -554,7 +521,7 @@ static void create_dev_topology_locked(struct mml_dev *mml)
 		mml->topology = mml_topology_create(mml, mml->pdev,
 			mml->cmdq_clts, mml->cmdq_clt_cnt);
 		if (!IS_ERR_OR_NULL(mml->topology))
-			mml->topology->qos = mml->qos;
+			mml->topology->dvfs = &mml->dvfs;
 	}
 	if (IS_ERR(mml->topology))
 		mml_err("topology create fail %ld", PTR_ERR(mml->topology));
@@ -2380,6 +2347,9 @@ static int mml_probe(struct platform_device *pdev)
 		dev_err(dev, "failed to init mml sys: %d\n", ret);
 		goto err_sys_add;
 	}
+
+	/* init each mml dvfs interface */
+	mml_dvfs_init(mml, pdev);
 
 	if (smmu_v3_enabled()) {
 		/* shared smmu device, setup 34bit in dts */
