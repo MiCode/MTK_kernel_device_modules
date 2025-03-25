@@ -1230,7 +1230,7 @@ int pd_send_svdm_request(struct pd_port *pd_port,
 	uint32_t payload[PD_DATA_OBJ_SIZE];
 
 	if (cnt > VDO_MAX_NR) {
-		PD_BUG_ON(1);
+		PD_WARN_ON(1);
 		return -EINVAL;
 	}
 
@@ -1257,7 +1257,7 @@ int pd_reply_svdm_request(struct pd_port *pd_port,
 	uint32_t payload[PD_DATA_OBJ_SIZE];
 	struct tcpc_device __maybe_unused *tcpc = pd_port->tcpc;
 
-	PD_BUG_ON(cnt > VDO_MAX_NR);
+	PD_WARN_ON(cnt > VDO_MAX_NR);
 
 	if (pd_check_rev30(pd_port))
 		ver = SVDM_REV20;
@@ -1266,7 +1266,7 @@ int pd_reply_svdm_request(struct pd_port *pd_port,
 			       reply, pd_get_msg_vdm_hdr(pd_port));
 
 	if (cnt > 0 && cnt <= PD_DATA_OBJ_SIZE - 1) {
-		PD_BUG_ON(data_obj == NULL);
+		PD_WARN_ON(data_obj == NULL);
 		memcpy(&payload[1], data_obj, sizeof(uint32_t) * cnt);
 	}
 

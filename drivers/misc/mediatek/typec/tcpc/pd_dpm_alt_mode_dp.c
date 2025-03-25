@@ -1068,7 +1068,7 @@ static inline void dp_ufp_u_send_dp_attention(struct pd_port *pd_port)
 	case DP_UFP_U_OPERATION:
 		svid_data = dpm_get_svdm_svid_data(
 				pd_port, USB_SID_DISPLAYPORT);
-		PD_BUG_ON(svid_data == NULL);
+		PD_WARN_ON(svid_data == NULL);
 
 		pd_send_vdm_dp_attention(pd_port, TCPC_TX_SOP,
 			svid_data->active_mode, dp_data->local_status);
@@ -1261,12 +1261,12 @@ bool dp_parse_svid_data(
 		}
 	}
 	/* 2nd connection must not be BOTH */
-	PD_BUG_ON(pd_port->dp_second_connected == DPSTS_BOTH_CONNECTED);
+	PD_WARN_ON(pd_port->dp_second_connected == DPSTS_BOTH_CONNECTED);
 	/* UFP or DFP can't both be invalid */
-	PD_BUG_ON(ufp_d_pin_cap == 0 && dfp_d_pin_cap == 0);
+	PD_WARN_ON(ufp_d_pin_cap == 0 && dfp_d_pin_cap == 0);
 	if (pd_port->dp_first_connected == DPSTS_BOTH_CONNECTED) {
-		PD_BUG_ON(ufp_d_pin_cap == 0);
-		PD_BUG_ON(dfp_d_pin_cap == 0);
+		PD_WARN_ON(ufp_d_pin_cap == 0);
+		PD_WARN_ON(dfp_d_pin_cap == 0);
 	}
 
 	return true;

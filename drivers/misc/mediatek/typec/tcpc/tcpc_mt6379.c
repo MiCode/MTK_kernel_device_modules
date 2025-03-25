@@ -1793,7 +1793,15 @@ static int mt6379_set_low_power_mode(struct tcpc_device *tcpc, bool en,
 	} else {
 		data = MT6379_MSK_VBUSDET_EN | MT6379_MSK_BMCIOOSC_EN;
 	}
-	return mt6379_write8(ddata, MT6379_REG_SYSCTRL2, data);
+	ret = mt6379_write8(ddata, MT6379_REG_SYSCTRL2, data);
+	/* Let CC pins re-toggle */
+	if (en && ret >= 0 &&
+	    (tcpc->typec_local_cc & TYPEC_CC_DRP)) {
+		udelay(32);
+		ret = mt6379_write8(ddata, TCPC_V10_REG_COMMAND,
+				    TCPM_CMD_LOOK_CONNECTION);
+	}
+	return ret;
 }
 
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
@@ -2237,7 +2245,7 @@ static irqreturn_t mt6379_pd_evt_handler(int irq, void *data)
 
 		handled = true;
 		tcpci_lock_typec(ddata->tcpc);
-		ret = tcpci_alert(ddata->tcpc, true);
+		ret = tcpci_alert(ddata->tcpc, false);
 		tcpci_unlock_typec(ddata->tcpc);
 		if (ret < 0)
 			break;

@@ -589,7 +589,7 @@ void pd_dpm_snk_evaluate_caps(struct pd_port *pd_port)
 {
 	uint8_t pos = 0;
 
-	PD_BUG_ON(pd_get_msg_data_payload(pd_port) == NULL);
+	PD_WARN_ON(pd_get_msg_data_payload(pd_port) == NULL);
 
 	pd_dpm_dr_inform_source_cap(pd_port);
 
@@ -771,7 +771,7 @@ void pd_dpm_src_evaluate_request(struct pd_port *pd_port)
 	uint32_t *payload = pd_get_msg_data_payload(pd_port);
 	struct tcpc_device __maybe_unused *tcpc = pd_port->tcpc;
 
-	PD_BUG_ON(payload == NULL);
+	PD_WARN_ON(payload == NULL);
 
 	rdo = payload[0];
 	rdo_pos = RDO_POS(rdo);
@@ -929,7 +929,7 @@ static int dpm_vdm_ufp_response_svids(struct pd_port *pd_port)
 	uint32_t svids[VDO_MAX_NR];
 	uint8_t i = 0, j = 0, cnt = pd_port->svid_data_cnt;
 
-	PD_BUG_ON(pd_port->svid_data_cnt >= VDO_MAX_SVID_NR);
+	PD_WARN_ON(pd_port->svid_data_cnt >= VDO_MAX_SVID_NR);
 
 	while (i < cnt) {
 		svid_data = &pd_port->svid_data[i++];
@@ -957,7 +957,7 @@ static int dpm_vdm_ufp_response_modes(struct pd_port *pd_port)
 
 	svid_data = dpm_get_svdm_svid_data(pd_port, svid);
 
-	PD_BUG_ON(svid_data == NULL);
+	PD_WARN_ON(svid_data == NULL);
 
 	return pd_reply_svdm_request(
 		pd_port, CMDT_RSP_ACK,

@@ -287,7 +287,7 @@ void pe_src_give_pps_status_entry(struct pd_port *pd_port)
 	PE_STATE_WAIT_TX_SUCCESS(pd_port);
 
 	/* TODO */
-	PD_BUG_ON(1);
+	PD_WARN_ON(1);
 }
 #endif	/* CONFIG_USB_PD_REV30_PPS_SOURCE */
 

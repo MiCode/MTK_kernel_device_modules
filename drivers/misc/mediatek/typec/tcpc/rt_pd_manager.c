@@ -17,7 +17,7 @@
 
 #define RT_PD_MANAGER_VERSION	"1.0.11"
 
-static bool dbg_log_en;
+static bool dbg_log_en = true;
 module_param(dbg_log_en, bool, 0644);
 #define mt_dbg(dev, fmt, ...) \
 	do { \
@@ -60,7 +60,7 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 	struct typec_displayport_data dp_data = {.status = 0, .conf = 0};
 	struct typec_mux_state state = {.mode = 0, .data = &dp_data};
 
-	mt_dbg(rpmd->dev, "%s event = %lu, idx = %d\n", __func__, event, idx);
+	mt_dbg(rpmd->dev, "event = %lu, idx = %d\n", event, idx);
 
 	switch (event) {
 	case TCP_NOTIFY_VBUS_SHORT_CC:

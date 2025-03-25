@@ -297,9 +297,11 @@ int tcpci_alert(struct tcpc_device *tcpc, bool masked)
 	uint32_t alert_status = 0, alert_mask = 0;
 	const uint8_t typec_role = tcpc->typec_role,
 		      vbus_level = tcpc->vbus_level;
-
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
+	uint8_t pd_bist_mode = PD_BIST_MODE_DISABLE;
+
 	mutex_lock(&tcpc->access_lock);
+	pd_bist_mode = tcpc->pd_bist_mode;
 	tcpc->io_time_start = local_clock();
 	mutex_unlock(&tcpc->access_lock);
 #endif	/* CONFIG_USB_POWER_DELIVERY */
@@ -337,7 +339,8 @@ int tcpci_alert(struct tcpc_device *tcpc, bool masked)
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
 	if (alert_status & TCPC_V10_REG_ALERT_RX_STATUS) {
 		mutex_lock(&tcpc->rxbuf_lock);
-		if (!(alert_status & TCPC_V10_REG_ALERT_RX_HARD_RST))
+		if (!(alert_status & TCPC_V10_REG_ALERT_RX_HARD_RST) &&
+		    pd_bist_mode == PD_BIST_MODE_DISABLE)
 			tcpci_alert_recv_msg(tcpc);
 	}
 #endif	/* CONFIG_USB_POWER_DELIVERY */
@@ -359,8 +362,10 @@ int tcpci_alert(struct tcpc_device *tcpc, bool masked)
 #endif	/* CONFIG_USB_POWER_DELIVERY */
 
 	if ((tcpc->tcpc_flags & TCPC_FLAGS_ALERT_V10) &&
-	    (alert_status & TCPC_REG_ALERT_EXT_VBUS_80))
+	    (alert_status & TCPC_REG_ALERT_EXT_VBUS_80 || tcpc->ps_changed)) {
+		tcpc->ps_changed = false;
 		alert_status |= TCPC_V10_REG_ALERT_POWER_STATUS;
+	}
 
 	for (i = 0; i < ARRAY_SIZE(tcpci_alert_handlers); i++)
 		if (tcpci_alert_handlers[i].bit_mask & alert_status)
@@ -380,8 +385,10 @@ int tcpci_alert(struct tcpc_device *tcpc, bool masked)
 		return rv;
 
 	tcpci_vbus_level_refresh(tcpc);
-	if (vbus_level != tcpc->vbus_level)
+	if (vbus_level != tcpc->vbus_level || tcpc->ps_changed) {
+		tcpc->ps_changed = false;
 		rv = tcpci_vbus_level_changed(tcpc);
+	}
 
 	return rv;
 }

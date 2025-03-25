@@ -57,7 +57,7 @@ static struct pd_msg *__pd_alloc_msg(struct tcpc_device *tcpc)
 	}
 
 	PD_ERR("pd_alloc_msg failed\n");
-	PD_BUG_ON(true);
+	PD_WARN_ON(true);
 
 	return (struct pd_msg *)NULL;
 }
@@ -78,7 +78,7 @@ static void __pd_free_msg(struct tcpc_device *tcpc, struct pd_msg *pd_msg)
 	int index = pd_msg - tcpc->pd_msg_buffer;
 	uint8_t mask = 1 << index;
 
-	PD_BUG_ON((mask & tcpc->pd_msg_buffer_allocated) == 0);
+	PD_WARN_ON((mask & tcpc->pd_msg_buffer_allocated) == 0);
 	tcpc->pd_msg_buffer_allocated &= (~mask);
 }
 
@@ -603,7 +603,7 @@ static void __pd_event_buf_reset(struct tcpc_device *tcpc, uint8_t reason)
 	tcpc->pd_pending_vdm_attention = false;
 
 	__tcp_event_buf_reset(tcpc, reason);
-	/* PD_BUG_ON(tcpc->pd_msg_buffer_allocated != 0); */
+	/* PD_WARN_ON(tcpc->pd_msg_buffer_allocated != 0); */
 }
 
 void pd_event_buf_reset(struct tcpc_device *tcpc)
@@ -792,14 +792,7 @@ bool pd_put_pd_msg_event(struct tcpc_device *tcpc, struct pd_msg *pd_msg)
 	cmd = PD_HEADER_TYPE(pd_msg->msg_hdr);
 	extend = PD_HEADER_EXT(pd_msg->msg_hdr);
 
-	/* bist mode */
 	mutex_lock(&tcpc->access_lock);
-	if (tcpc->pd_bist_mode != PD_BIST_MODE_DISABLE) {
-		TCPC_DBG2("BIST_MODE_RX\n");
-		__pd_free_event(tcpc, &evt);
-		mutex_unlock(&tcpc->access_lock);
-		return 0;
-	}
 
 #if CONFIG_USB_PD_RETRY_CRC_DISCARD
 	if (tcpc->pd_discard_pending && pd_msg->frame_type == TCPC_TX_SOP) {
@@ -813,7 +806,7 @@ bool pd_put_pd_msg_event(struct tcpc_device *tcpc, struct pd_msg *pd_msg)
 
 			tcpc_disable_timer(tcpc, PD_TIMER_DISCARD);
 			pd_put_hw_event(tcpc, PD_HW_TX_RETRANSMIT);
-			return 0;
+			return false;
 		}
 	}
 #endif	/* CONFIG_USB_PD_RETRY_CRC_DISCARD */
@@ -822,7 +815,7 @@ bool pd_put_pd_msg_event(struct tcpc_device *tcpc, struct pd_msg *pd_msg)
 		TCPC_DBG2("Drop PING\n");
 		__pd_free_event(tcpc, &evt);
 		mutex_unlock(&tcpc->access_lock);
-		return 0;
+		return false;
 	}
 
 	if (cnt != 0 && cmd == PD_DATA_BIST && extend == 0)
@@ -831,8 +824,12 @@ bool pd_put_pd_msg_event(struct tcpc_device *tcpc, struct pd_msg *pd_msg)
 	mutex_unlock(&tcpc->access_lock);
 
 #if CONFIG_USB_PD_RETRY_CRC_DISCARD
-	if (discard_pending)
+	if (discard_pending) {
 		tcpc_disable_timer(tcpc, PD_TIMER_DISCARD);
+		pd_put_hw_event(tcpc, PD_HW_TX_DISCARD);
+		pd_free_event(tcpc, &evt);
+		return false;
+	}
 #endif	/* CONFIG_USB_PD_RETRY_CRC_DISCARD */
 
 	if (cnt != 0 && cmd == PD_DATA_VENDOR_DEF && extend == 0)

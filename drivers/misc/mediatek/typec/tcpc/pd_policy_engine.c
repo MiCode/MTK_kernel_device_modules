@@ -981,7 +981,7 @@ static inline void pd_pe_state_change(
 	uint8_t new_state = pd_port->pe_state_next;
 
 	if (old_state >= PD_NR_PE_STATES || new_state >= PD_NR_PE_STATES) {
-		PD_BUG_ON(1);
+		PD_WARN_ON(1);
 		return;
 	}
 

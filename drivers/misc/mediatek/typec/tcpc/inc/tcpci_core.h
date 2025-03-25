@@ -6,15 +6,16 @@
 #ifndef __LINUX_RT_TCPCI_CORE_H
 #define __LINUX_RT_TCPCI_CORE_H
 
+#include <linux/alarmtimer.h>
 #include <linux/device.h>
 #include <linux/hrtimer.h>
-#include <linux/alarmtimer.h>
-#include <linux/workqueue.h>
-#include <linux/pm_wakeup.h>
 #include <linux/notifier.h>
+#include <linux/platform_device.h>
+#include <linux/pm_wakeup.h>
 #include <linux/sched.h>
 #include <linux/semaphore.h>
 #include <linux/spinlock.h>
+#include <linux/workqueue.h>
 #include <uapi/linux/sched/types.h>
 
 #include "tcpm.h"
@@ -64,7 +65,7 @@
 #define PE_STATE_INFO_VDM_DIS	0
 #define PE_EVT_INFO_VDM_DIS	0
 
-#define PD_BUG_ON(x)	WARN_ON(x)
+#define PD_WARN_ON(x)	WARN_ON(x)
 
 struct tcpc_device;
 
@@ -370,6 +371,7 @@ struct tcpc_device {
 	struct mutex rxbuf_lock;
 #endif /* CONFIG_USB_POWER_DELIVERY */
 	u8 vbus_level:2;
+	bool ps_changed;
 	bool vbus_safe0v;
 	bool vbus_present;
 	u8 pd_inited_flag:1;

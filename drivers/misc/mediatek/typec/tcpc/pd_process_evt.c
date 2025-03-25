@@ -558,14 +558,14 @@ static inline void pd_copy_msg_data_from_evt(
 
 	switch (pd_event->event_type) {
 	case PD_EVT_DATA_MSG:
-		PD_BUG_ON(pd_msg == NULL);
+		PD_WARN_ON(pd_msg == NULL);
 		pd_copy_msg_data(pd_port, (uint8_t *)pd_msg->payload,
 			pd_get_msg_hdr_cnt(pd_port), sizeof(uint32_t));
 		break;
 
 #if CONFIG_USB_PD_REV30
 	case PD_EVT_EXT_MSG:
-		PD_BUG_ON(pd_msg == NULL);
+		PD_WARN_ON(pd_msg == NULL);
 		pd_copy_msg_data_from_ext_evt(pd_port, pd_msg);
 		return;
 #endif	/* CONFIG_USB_PD_REV30 */
@@ -676,7 +676,7 @@ static inline void pe_translate_pd_msg_event(struct pd_port *pd_port,
 {
 	uint16_t msg_hdr;
 
-	PD_BUG_ON(pd_msg == NULL);
+	PD_WARN_ON(pd_msg == NULL);
 
 	msg_hdr = pd_msg->msg_hdr;
 	pd_port->curr_msg_hdr = msg_hdr;

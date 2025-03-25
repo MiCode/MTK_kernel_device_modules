@@ -6,14 +6,12 @@
 #ifndef PD_CORE_H_
 #define PD_CORE_H_
 
-#include <linux/platform_device.h>
-#include <linux/pm_wakeup.h>
 #include "tcpci_timer.h"
 #include "tcpci_event.h"
 #include "pd_dbg_info.h"
 #include "tcpm.h"
 
-#define PD_BUG_ON(x)	WARN_ON(x)
+#define PD_WARN_ON(x)	WARN_ON(x)
 
 #define PD_SOP_NR	3
 
@@ -1379,7 +1377,7 @@ int pd_send_ext_msg(struct pd_port *pd_port,
 static inline int pd_send_sop_ext_msg(struct pd_port *pd_port,
 	uint8_t msg, uint8_t size, const void *data)
 {
-	PD_BUG_ON(size > MAX_EXTENDED_MSG_LEGACY_LEN);
+	PD_WARN_ON(size > MAX_EXTENDED_MSG_LEGACY_LEN);
 
 	/* TODO: chunking */
 

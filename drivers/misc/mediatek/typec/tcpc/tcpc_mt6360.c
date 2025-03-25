@@ -1163,7 +1163,12 @@ static int mt6360_set_low_power_mode(struct tcpc_device *tcpc, bool en,
 		data = MT6360_VBUS_DET_EN | MT6360_PD_BG_EN |
 			MT6360_PD_IREF_EN | MT6360_BMCIO_OSC_EN;
 	}
-	return mt6360_i2c_write8(tcpc, MT6360_REG_MODE_CTRL3, data);
+	ret = mt6360_i2c_write8(tcpc, MT6360_REG_MODE_CTRL3, data);
+	/* Let CC pins re-toggle */
+	if (en && ret >= 0 &&
+	    (tcpc->typec_local_cc & TYPEC_CC_DRP))
+		ret = mt6360_command(tcpc, TCPM_CMD_LOOK_CONNECTION);
+	return ret;
 }
 
 static int mt6360_tcpc_deinit(struct tcpc_device *tcpc)

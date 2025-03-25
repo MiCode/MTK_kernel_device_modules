@@ -243,7 +243,7 @@ static int typec_alert_attach_state_change(struct tcpc_device *tcpc)
 static inline void typec_enable_low_power_mode(struct tcpc_device *tcpc)
 {
 	tcpc->typec_lpm = true;
-	tcpc->typec_lpm_tout = 5000;
+	tcpc->typec_lpm_tout = 15000;
 	tcpc_enable_lpm_timer(tcpc, true);
 }
 
@@ -1086,7 +1086,6 @@ static inline void typec_attach_wait_entry(struct tcpc_device *tcpc)
 static inline int typec_attached_snk_cc_detach(struct tcpc_device *tcpc)
 {
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
-	tcpc_enable_timer(tcpc, TYPEC_TIMER_PDDEBOUNCE);
 #if CONFIG_USB_PD_DIRECT_CHARGE
 	if (typec_is_cc_open()) {
 		mutex_lock(&tcpc->access_lock);
@@ -1094,9 +1093,8 @@ static inline int typec_attached_snk_cc_detach(struct tcpc_device *tcpc)
 		mutex_unlock(&tcpc->access_lock);
 	}
 #endif	/* CONFIG_USB_PD_DIRECT_CHARGE */
-#else
-	tcpc_reset_typec_debounce_timer(tcpc);
 #endif	/* CONFIG_USB_POWER_DELIVERY */
+	tcpc_enable_timer(tcpc, TYPEC_TIMER_PDDEBOUNCE);
 	return 0;
 }
 

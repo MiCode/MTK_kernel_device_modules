@@ -370,7 +370,7 @@ static void tcpc_device_release(struct device *dev)
 	struct tcpc_device *tcpc = to_tcpc_device(dev);
 
 	pr_info("%s : %s device release\n", __func__, dev_name(dev));
-	PD_BUG_ON(tcpc == NULL);
+	PD_WARN_ON(tcpc == NULL);
 	/* Un-init pe thread */
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
 	tcpci_event_deinit(tcpc);
@@ -886,6 +886,11 @@ MODULE_LICENSE("GPL");
  * (22) Revise the feature of VBUS shorted to CC
  * (23) Handle typec timers first
  * (24) Revise the logics of expected_svid
+ * (25) Replace BUG_ON with WARN_ON
+ * (26) Start tPDDebounce always when CC Open at Attached.SNK
+ * (27) Let CC pins re-toggle after entering lpm
+ * (28) Add ps_changed flow
+ * (29) Revise Rx flow
  *
  * 2.0.30_MTK
  * (1) Decrease the I2C/IO transactions

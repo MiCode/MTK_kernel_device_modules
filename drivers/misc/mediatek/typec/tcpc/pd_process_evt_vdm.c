@@ -824,7 +824,7 @@ static inline bool pd_process_tcp_msg(
 
 	new_state = pd_event->msg - TCP_DPM_EVT_DISCOVER_ID;
 	if (new_state >= ARRAY_SIZE(tcp_vdm_evt_init_state)) {
-		PD_BUG_ON(1);
+		PD_WARN_ON(1);
 		return false;
 	}
 

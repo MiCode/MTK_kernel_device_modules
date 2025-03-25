@@ -990,7 +990,15 @@ static int rt1718s_set_low_power_mode(struct tcpc_device *tcpc, bool en,
 		data = RT1718S_M_SAFE0VDET_EN |
 		       RT1718S_M_VBUSDET_EN | RT1718S_M_BMCIOOSC_EN;
 	}
-	return rt1718s_write8(chip, RT1718S_SYS_CTRL2, data);
+	ret = rt1718s_write8(chip, RT1718S_SYS_CTRL2, data);
+	/* Let CC pins re-toggle */
+	if (en && ret >= 0 &&
+	    (tcpc->typec_local_cc & TYPEC_CC_DRP)) {
+		udelay(32);
+		ret = rt1718s_write8(chip, TCPC_V10_REG_COMMAND,
+				     TCPM_CMD_LOOK_CONNECTION);
+	}
+	return ret;
 }
 
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)

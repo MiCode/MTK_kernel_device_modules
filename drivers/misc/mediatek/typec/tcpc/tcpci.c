@@ -38,6 +38,7 @@ static void tcp_notify_func(struct work_struct *work)
 	srcu_notifier_call_chain(&tcpc->evt_nh[type], state, tcp_noti);
 	t = local_clock() - t;
 	do_div(t, NSEC_PER_MSEC);
+	PD_WARN_ON(t > TCPC_NOTIFY_OVERTIME);
 #else
 	srcu_notifier_call_chain(&tcpc->evt_nh[type], state, tcp_noti);
 #endif
@@ -74,6 +75,7 @@ static int tcpc_check_notify_time(struct tcpc_device *tcpc,
 	ret = srcu_notifier_call_chain(&tcpc->evt_nh[type], state, tcp_noti);
 	t = local_clock() - t;
 	do_div(t, NSEC_PER_MSEC);
+	PD_WARN_ON(t > TCPC_NOTIFY_OVERTIME);
 #else
 	ret = srcu_notifier_call_chain(&tcpc->evt_nh[type], state, tcp_noti);
 #endif
@@ -89,6 +91,7 @@ int tcpci_check_vbus_valid_from_ic(struct tcpc_device *tcpc)
 		if (vbus_level != tcpc->vbus_level) {
 			TCPC_INFO("[Warning] ps_changed %d -> %d\n",
 				vbus_level, tcpc->vbus_level);
+			tcpc->ps_changed = true;
 		}
 	}
 
@@ -132,7 +135,7 @@ EXPORT_SYMBOL(tcpci_check_vsafe0v);
 int tcpci_alert_status_clear(
 	struct tcpc_device *tcpc, uint32_t mask)
 {
-	PD_BUG_ON(tcpc->ops->alert_status_clear == NULL);
+	PD_WARN_ON(tcpc->ops->alert_status_clear == NULL);
 
 	return tcpc->ops->alert_status_clear(tcpc, mask);
 }
@@ -141,7 +144,7 @@ EXPORT_SYMBOL(tcpci_alert_status_clear);
 int tcpci_fault_status_clear(
 	struct tcpc_device *tcpc, uint8_t status)
 {
-	PD_BUG_ON(tcpc->ops->fault_status_clear == NULL);
+	PD_WARN_ON(tcpc->ops->fault_status_clear == NULL);
 
 	return tcpc->ops->fault_status_clear(tcpc, status);
 }
@@ -161,7 +164,7 @@ EXPORT_SYMBOL(tcpci_set_alert_mask);
 int tcpci_get_alert_mask(
 	struct tcpc_device *tcpc, uint32_t *mask)
 {
-	PD_BUG_ON(tcpc->ops->get_alert_mask == NULL);
+	PD_WARN_ON(tcpc->ops->get_alert_mask == NULL);
 
 	return tcpc->ops->get_alert_mask(tcpc, mask);
 }
@@ -194,7 +197,7 @@ int tcpci_get_power_status(struct tcpc_device *tcpc)
 {
 	int ret;
 
-	PD_BUG_ON(tcpc->ops->get_power_status == NULL);
+	PD_WARN_ON(tcpc->ops->get_power_status == NULL);
 
 	ret = tcpc->ops->get_power_status(tcpc);
 	if (ret < 0)
@@ -209,7 +212,7 @@ int tcpci_init(struct tcpc_device *tcpc, bool sw_reset)
 {
 	int ret;
 
-	PD_BUG_ON(tcpc->ops->init == NULL);
+	PD_WARN_ON(tcpc->ops->init == NULL);
 
 	ret = tcpc->ops->init(tcpc, sw_reset);
 	if (ret < 0)
@@ -232,7 +235,7 @@ int tcpci_get_cc(struct tcpc_device *tcpc)
 	int ret;
 	int cc1, cc2;
 
-	PD_BUG_ON(tcpc->ops->get_cc == NULL);
+	PD_WARN_ON(tcpc->ops->get_cc == NULL);
 
 	ret = tcpc->ops->get_cc(tcpc, &cc1, &cc2);
 	if (ret < 0)
@@ -283,6 +286,8 @@ int tcpci_set_cc(struct tcpc_device *tcpc, int pull)
 	pull = TYPEC_CC_PULL(rp_lvl, res);
 #endif /* CONFIG_TYPEC_LEGACY3_ALWAYS_LOCAL_RP */
 
+	PD_WARN_ON(tcpc->ops->set_cc == NULL);
+
 	if (pull & TYPEC_CC_DRP) {
 		tcpc->typec_remote_cc[0] =
 		tcpc->typec_remote_cc[1] =
@@ -296,7 +301,7 @@ EXPORT_SYMBOL(tcpci_set_cc);
 
 int tcpci_set_polarity(struct tcpc_device *tcpc, int polarity)
 {
-	PD_BUG_ON(tcpc->ops->set_polarity == NULL);
+	PD_WARN_ON(tcpc->ops->set_polarity == NULL);
 
 	return tcpc->ops->set_polarity(tcpc, polarity);
 }
@@ -483,7 +488,7 @@ EXPORT_SYMBOL(tcpci_notify_vbus_short_cc_status);
 int tcpci_set_msg_header(struct tcpc_device *tcpc,
 	uint8_t power_role, uint8_t data_role)
 {
-	PD_BUG_ON(tcpc->ops->set_msg_header == NULL);
+	PD_WARN_ON(tcpc->ops->set_msg_header == NULL);
 
 	return tcpc->ops->set_msg_header(tcpc, power_role, data_role);
 }
@@ -491,7 +496,7 @@ EXPORT_SYMBOL(tcpci_set_msg_header);
 
 int tcpci_set_rx_enable(struct tcpc_device *tcpc, uint8_t enable)
 {
-	PD_BUG_ON(tcpc->ops->set_rx_enable == NULL);
+	PD_WARN_ON(tcpc->ops->set_rx_enable == NULL);
 
 	return tcpc->ops->set_rx_enable(tcpc, enable);
 }
@@ -509,7 +514,7 @@ EXPORT_SYMBOL(tcpci_protocol_reset);
 int tcpci_get_message(struct tcpc_device *tcpc,
 	uint32_t *payload, uint16_t *head, enum tcpm_transmit_type *type)
 {
-	PD_BUG_ON(tcpc->ops->get_message == NULL);
+	PD_WARN_ON(tcpc->ops->get_message == NULL);
 
 	return tcpc->ops->get_message(tcpc, payload, head, type);
 }
@@ -552,7 +557,7 @@ int tcpci_transmit(struct tcpc_device *tcpc,
 	int ret = 0;
 	unsigned int bits = 0;
 
-	PD_BUG_ON(tcpc->ops->transmit == NULL);
+	PD_WARN_ON(tcpc->ops->transmit == NULL);
 
 	tcpc_wait_tx_done(tcpc);
 

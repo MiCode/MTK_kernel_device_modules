@@ -331,7 +331,7 @@ void tcpc_enable_timer(struct tcpc_device *tcpc, uint32_t timer_id)
 #endif	/* CONFIG_USB_POWER_DELIVERY */
 
 	if (timer_id >= PD_TIMER_NR) {
-		PD_BUG_ON(1);
+		PD_WARN_ON(1);
 		return;
 	}
 
@@ -387,7 +387,7 @@ int tcpc_disable_timer(struct tcpc_device *tcpc, uint32_t timer_id)
 	int ret = 0;
 
 	if (timer_id >= PD_TIMER_NR) {
-		PD_BUG_ON(1);
+		PD_WARN_ON(1);
 		return ret;
 	}
 	mutex_lock(&tcpc->timer_lock);
