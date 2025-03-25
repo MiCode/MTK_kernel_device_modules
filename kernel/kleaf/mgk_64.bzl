@@ -983,8 +983,6 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/geniezone:gz_tz_system".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/geniezone/gz-trusty:gz-trusty".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/hwccf:hwccf".format(kernel_version),
-    "//kernel_device_modules-{}/drivers/misc/mediatek/ise_lpm:ise_lpm".format(kernel_version),
-    "//kernel_device_modules-{}/drivers/misc/mediatek/ise_lpm:ise_lpm_v2".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/ips:mtk-ips-helper".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/ktchbst:ktchbst".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/log_store:log_store".format(kernel_version),
@@ -1402,6 +1400,8 @@ mgk_64_kleaf_platform_modules = {
     "//kernel_device_modules-{}/drivers/misc/mediatek/dcm:mt6895_dcm".format(kernel_version): "mt6895",
     "//kernel_device_modules-{}/drivers/misc/mediatek/dcm:mt6991_dcm".format(kernel_version): "mt6991",
     "//kernel_device_modules-{}/drivers/misc/mediatek/dcm:mt6993_dcm".format(kernel_version): "mt6993",
+    "//kernel_device_modules-{}/drivers/misc/mediatek/ise_lpm:ise_lpm".format(kernel_version): "mt6989 mt6991 mt6993",
+    "//kernel_device_modules-{}/drivers/misc/mediatek/ise_lpm:ise_lpm_v2".format(kernel_version): "mt6991 mt6993",
     "//kernel_device_modules-{}/drivers/misc/mediatek/lpm/modules/debug/mt6991:mtk-lpm-dbg-mt6991".format(kernel_version): "mt6991",
     "//kernel_device_modules-{}/drivers/misc/mediatek/lpm/modules/debug/v6993:mtk-lpm-dbg-v6993".format(kernel_version): "mt6993",
     "//kernel_device_modules-{}/drivers/misc/mediatek/slbc:slbc_mt6895".format(kernel_version): "mt6895",
@@ -2315,8 +2315,6 @@ def get_overlay_modules_list():
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/cm_mgr:mtk_cm_mgr".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/cm_mgr:mtk_cm_ipi".format(kernel_version))
         mgk_64_device_modules.append("drivers/misc/mediatek/cm_mgr_legacy_v1/mtk_cm_mgr.ko")
-        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/ise_lpm:ise_lpm".format(kernel_version))
-        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/ise_lpm:ise_lpm_v2".format(kernel_version))
         mgk_64_device_modules.remove("drivers/misc/mediatek/ise_trusty/ise-trusty.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/ise_trusty/ise-trusty-ipc.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/ise_trusty/ise-trusty-log.ko")
@@ -3007,8 +3005,6 @@ def get_overlay_modules_list():
         #mgk_64_platform_device_modules.update({"sound/soc/mediatek/mt6768/snd-soc-mt6768-afe.ko":"mt6768"})
 
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/memory/mediatek:slc-parity".format(kernel_version))
-        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/ise_lpm:ise_lpm".format(kernel_version))
-        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/ise_lpm:ise_lpm_v2".format(kernel_version))
         mgk_64_device_modules.remove("drivers/misc/mediatek/ise_trusty/ise-trusty.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/ise_trusty/ise-trusty-ipc.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/ise_trusty/ise-trusty-log.ko")
@@ -3173,8 +3169,6 @@ def get_overlay_modules_list():
         mgk_64_device_modules.append("drivers/misc/mediatek/mcdi/mcdi.ko")
         mgk_64_device_modules.append("drivers/misc/mediatek/spm/common_v0/MTK_INTERNAL_SPM.ko")
 
-        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/ise_lpm:ise_lpm".format(kernel_version))
-        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/ise_lpm:ise_lpm_v2".format(kernel_version))
         mgk_64_device_modules.remove("drivers/misc/mediatek/ise_trusty/ise-trusty.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/ise_trusty/ise-trusty-ipc.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/ise_trusty/ise-trusty-log.ko")
@@ -3624,8 +3618,6 @@ def get_overlay_modules_list():
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/iommu:smmu_secure".format(kernel_version))
 
         mgk_64_device_modules.append("drivers/misc/mediatek/cm_mgr_legacy_v1/mtk_cm_mgr.ko")
-        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/ise_lpm:ise_lpm".format(kernel_version))
-        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/ise_lpm:ise_lpm_v2".format(kernel_version))
         mgk_64_device_modules.remove("drivers/misc/mediatek/ise_trusty/ise-trusty.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/ise_trusty/ise-trusty-ipc.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/ise_trusty/ise-trusty-log.ko")
