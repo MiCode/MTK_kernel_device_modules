@@ -564,6 +564,7 @@ struct mtk_panel_params {
 	//either pll_clk or data_rate must be set, event if data_rate_khz is set
 	unsigned int data_rate_khz; //only used in exact value for fps
 	unsigned int vdo_keep_hs_perline; /* Enable video mode HFP keep HS */
+	unsigned int change_fps_by_vfp_send_cmd;
 	struct mtk_dsi_phy_timcon phy_timcon;
 	unsigned int vfp_low_power;
 	struct dynamic_mipi_params dyn;
