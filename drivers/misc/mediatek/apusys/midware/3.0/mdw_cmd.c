@@ -1075,6 +1075,7 @@ static int mdw_cmd_ioctl_run(struct mdw_fpriv *mpriv, union mdw_cmd_args *args)
 	struct sync_file *sync_file = NULL;
 	struct dma_fence *f = NULL;
 	int ret = 0, fd = 0, wait_fd = 0, run_ret = 0;
+	unsigned long timeout = msecs_to_jiffies(MDW_CMD_TIMEOUT_MS);
 
 	mdw_trace_begin("apumdw:user_run");
 
@@ -1125,7 +1126,17 @@ static int mdw_cmd_ioctl_run(struct mdw_fpriv *mpriv, union mdw_cmd_args *args)
 		c->get_ref(c);
 
 		/* take semaphore */
-		down(&c->exec_sem);
+		if (down_trylock(&c->exec_sem)) {
+			mutex_unlock(&mpriv->mtx);
+			ret = down_timeout(&c->exec_sem, timeout);
+			mutex_lock(&mpriv->mtx);
+			if (ret) {
+				mdw_drv_err("s(0x%llx) inf_id(0x%llx) take semaphore timeout\n",
+						(uint64_t)c->mpriv, c->inference_id);
+				c->put_ref(c);
+				goto out;
+			}
+		}
 		mutex_lock(&c->mtx);
 
 		/* prepare fence */

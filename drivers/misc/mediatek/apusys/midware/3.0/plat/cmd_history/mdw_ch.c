@@ -111,7 +111,6 @@ int mdw_ch_pollcmd_timeout(uint32_t *flag, uint32_t poll_interval_us, uint32_t p
 	struct mdw_ch_tbl *ch_tbl = NULL;
 	uint32_t poll_acc_us = 0;
 	int ret = -ETIME;
-	uint64_t poll_timeout = MDW_POLL_TIMEOUT;
 
 	mutex_lock(&g_ch_mgr->mtx);
 	ch_tbl = mdw_ch_find_tbl(c);
@@ -122,9 +121,9 @@ int mdw_ch_pollcmd_timeout(uint32_t *flag, uint32_t poll_interval_us, uint32_t p
 	}
 
 	if (g_mdw_poll_timeout)
-		poll_timeout = g_mdw_poll_timeout;
+		poll_timeout_us = g_mdw_poll_timeout;
 
-	if (ch_tbl->h_exec_time > poll_timeout) {
+	if (ch_tbl->h_exec_time > poll_timeout_us) {
 		mdw_cmd_debug("skip poll cmd\n");
 		goto out;
 	}
