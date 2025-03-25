@@ -1028,9 +1028,6 @@ static int mtk_smmu_wakelock_get(struct mtk_smmu_data *data)
 	if (unlikely(!data->power_awake))
 		return 0;
 
-	if (atomic_read(&data->is_suspend))
-		return -1;
-
 	/* wake lock AP*/
 	__pm_stay_awake(data->suspend_lock);
 
