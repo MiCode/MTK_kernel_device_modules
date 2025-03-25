@@ -1605,6 +1605,7 @@ mgk_64_kleaf_platform_modules = {
 
     "//kernel_device_modules-{}/sound/soc/codecs:snd-soc-mt6366".format(kernel_version): "mt6789",
     "//kernel_device_modules-{}/sound/soc/codecs:snd-soc-mt6369".format(kernel_version): "mt6855",
+    "//kernel_device_modules-{}/drivers/input/touchscreen/hxchipset:hxchipset".format(kernel_version): "mt6789",
 }
 
 mgk_64_kleaf_eng_device_modules = [
