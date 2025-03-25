@@ -270,7 +270,6 @@
 			    disable_dma32=on \
 			    transparent_hugepage=never";
 			    mkp_panic="on";
-		kaslr-seed = <0 0>;
 	};
 
 	cpus {
