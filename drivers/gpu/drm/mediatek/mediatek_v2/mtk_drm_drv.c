@@ -10813,6 +10813,7 @@ bool mtk_drm_use_retrigger(struct mtk_drm_private *priv)
 
 	// only enable retrig when primary display is cmd mode
 	return (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_RETRIGGER) &&
+			mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_USE_PQ) &&
 			mtk_crtc_is_frame_trigger_mode(priv->crtc[0]));
 }
 
