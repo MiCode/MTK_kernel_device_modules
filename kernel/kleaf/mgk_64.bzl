@@ -4802,4 +4802,7 @@ def get_overlay_modules_list():
         mgk_64_kleaf_platform_modules.pop("//kernel_device_modules-{}/drivers/misc/mediatek/vmm:mtk-vmm-notifier-mt6991".format(kernel_version))
         mgk_64_kleaf_platform_modules.pop("//kernel_device_modules-{}/drivers/misc/mediatek/vmm:mtk-vmm-notifier-mt6993".format(kernel_version))
 
+        mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/mtkcam/sched:c2ps")
+        mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/mtkcam/sched:c2ps_perf_ioctl")
+
 get_overlay_modules_list()
