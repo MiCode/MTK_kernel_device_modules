@@ -604,6 +604,14 @@ static void config_ap_side_feature(struct ccci_modem *md,
 		md_feature->feature_set[UDC_RAW_SHARE_MEMORY].support_mask
 			= CCCI_FEATURE_NOT_SUPPORT;
 
+	/* BIG_DATA support */
+#ifdef MTK_TC10_FEATURE_BIG_DATA
+	md_feature->feature_set[CCCI_MD_BIGDATA_SHARE_MEMORY].support_mask
+		= CCCI_FEATURE_MUST_SUPPORT;
+	md_feature->feature_set[CCCI_MD_IPCA_BIGDATA_SHARE_MEMORY].support_mask
+		= CCCI_FEATURE_MUST_SUPPORT;
+#endif
+
 	if (get_smem_amms_pos_size() > 0)
 		md_feature->feature_set[MD_POS_SHARE_MEMORY].support_mask =
 			CCCI_FEATURE_MUST_SUPPORT;
@@ -1282,6 +1290,19 @@ static int ccci_md_prepare_runtime_data(unsigned char *data, int length)
 				append_runtime_feature(&rt_data, &rt_feature,
 				&rt_shm);
 				break;
+#ifdef MTK_TC10_FEATURE_BIG_DATA
+			/* BIG_DATA support */
+			case CCCI_MD_BIGDATA_SHARE_MEMORY:
+				ccci_smem_region_set_runtime(
+					SMEM_USER_MD_BIGDATA, &rt_feature, &rt_shm);
+				append_runtime_feature(&rt_data, &rt_feature, &rt_shm);
+				break;
+			case CCCI_MD_IPCA_BIGDATA_SHARE_MEMORY:
+				ccci_smem_region_set_runtime(
+					SMEM_USER_MD_IPCA_BIGDATA, &rt_feature, &rt_shm);
+				append_runtime_feature(&rt_data, &rt_feature, &rt_shm);
+				break;
+#endif
 			case MD_PHY_CAPTURE:
 				if (md->hw_info->plat_val->md_gen >= 6297)
 					ccci_sib_region_set_runtime(&rt_feature,

@@ -512,6 +512,8 @@ enum SMEM_USER_ID {
 	SMEM_USER_RESERVED, /*40*/
 	SMEM_USER_MD_DRDI,
 	SMEM_USER_MD_DATA,
+	SMEM_USER_MD_BIGDATA = 43,
+	SMEM_USER_MD_IPCA_BIGDATA = 44,
 	SMEM_USER_MD_POST_DUMP = 46, //46
 	SMEM_USER_MAX,
 };
@@ -685,5 +687,11 @@ int mtk_ccci_register_md_state_cb(
 		void (*md_state_cb)(
 			enum MD_STATE old_state,
 			enum MD_STATE new_state));
+
+/*
+ * When Titan phone enter upload mode, md ee info message
+ * will save this memory, for big data analysis.
+ */
+// #define MTK_TC10_FEATURE_BIG_DATA
 
 #endif
