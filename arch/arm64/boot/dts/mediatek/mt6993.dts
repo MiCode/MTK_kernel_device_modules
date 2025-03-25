@@ -17467,6 +17467,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			ostdbl-w-nps = <119>;
 			ela-supply = <&camsys_vcore_cse600_top>;
 			bwr-ela = <&camsys_vcore_cse600_top>;
+			cam-sel-id-0 = <0x100 0x120>;
+			cam-sel-id-2 = <0x100 0x120>;
 		};
 
 		camsys_core_cbip_axi_monitor_1: mm-axi-monitor@3c821000 {
@@ -17481,6 +17483,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			ostdbl-w-nps = <119>;
 			ela-supply = <&camsys_vcore_cse600_top>;
 			bwr-ela = <&camsys_vcore_cse600_top>;
+			cam-sel-id-0 = <0x100 0x300>;
+			cam-sel-id-2 = <0x100 0x300>;
 		};
 
 		camsys_core_cbip_axi_monitor_2: mm-axi-monitor@3c822000 {
@@ -17509,6 +17513,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			ostdbl-w-nps = <119>;
 			ela-supply = <&camsys_vcore_cse600_top>;
 			bwr-ela = <&camsys_vcore_cse600_top>;
+			cam-sel-id-0 = <0x80 0x80>;
+			cam-sel-id-2 = <0x80 0x80>;
 		};
 
 		camsys_rawa_cbip_axi_monitor_0: mm-axi-monitor@3a7c0000 {
@@ -17701,7 +17707,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mminfra-ultra2qos0-val = <0xc81c81>;
 			mminfra-ultra2qos1-val = <0xc81c81>;
 			emi-16qos-monitor = <0x11049000>;
-			mmmc-state = <0x1>;
+			mmmc-state = <0x11>;
 			power-init-cb = <MT6993_SMI_PD_VDISP_PERI>,
 				<MT6993_SMI_PD_ISP_VCORE>,
 				<MT6993_SMI_PD_CAM_VCORE>,
