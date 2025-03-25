@@ -435,7 +435,6 @@
 			    android_arch_task_struct_size=512 \
 			    firmware_class.path=/vendor/firmware pelt=8 \
 			    loop.max_part=7";
-		kaslr-seed = <0 0>;
 	};
 	cpus {
 		#address-cells = <1>;
