@@ -2025,10 +2025,8 @@
 		radio-support = "wifi", "bt", "md";
 		/* radio-off-mode: 0 means turn off pmic when all radio off */
 		radio-off-mode = <0>;
-		co-clock = <1>;
+		co-clock = <0>;
 		ext-32k-ticks = <32768>;
-		/* poweroffble-ap-enable-pmic: 0: connsys IC hold PMIC_EN1, 1: MT6661 hold PMIC_EN1 */
-		poweroffble-ap-enable-pmic = <1>;
 		/* pmic-uvlo-level: 0: skip, 1: 2.0V, 2: 2.1V, 3: 2.2V */
 		pmic-uvlo-level = <1>;
 		pinctrl-names = "connsys-pin-pmic-en-default",
@@ -2061,6 +2059,8 @@
 		mt6376-gpio = <&pio 65 0>,
 				<&pio 251 0>;
 		interrupts = <65 IRQ_TYPE_EDGE_FALLING>;
+		io-channels = <&mt6661_6_auxadc (ADC_PURES_OPEN_MASK | AUXADC_AGPIO3)>;
+		io-channel-names = "mt6661_6_aio3";
 	};
 
 	mtk_leds: mtk-leds {
