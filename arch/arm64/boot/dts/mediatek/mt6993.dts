@@ -19138,7 +19138,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			bat1-aging-volts-t2 =  <0 0>;
 			bat1-aging-volts-t3 =  <0 0>;
 
-			pt-shutdown-enable = <1>;
+			pt-shutdown-enable = <0>;
 
 			throttle-level = <0 1 2>,
 							<0 1 2>,
