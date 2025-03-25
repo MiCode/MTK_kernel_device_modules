@@ -3,6 +3,8 @@
 # Copyright (c) 2025 MediaTek Inc.
 #
 
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include
+
 subdir-ccflags-y += -DIS_MULTI_SEC_PORT_SUPPORT
 subdir-ccflags-y += -DMULTI_SENSOR_INDIVIDUAL_SUPPORT
 

@@ -4,6 +4,7 @@
  */
 
 #include <linux/arm-smccc.h>
+#include <pkvm_mgmt/pkvm_mgmt.h>
 
 #include "sys.h"
 #include "trustzone.h"
@@ -13,9 +14,6 @@
 
 #define IO_OFFSET_LIMIT (0x1000)
 #define IO_ACCESS_SIZE (4)
-
-#define MTK_SIP_HYP_SECIO_WRITE 0xC2000812
-#define MTK_SIP_HYP_SECIO_READ 0xC2000813
 
 static inline bool is_valid_offset(uint32_t offset)
 {

@@ -3,6 +3,8 @@
 # Copyright (c) 2024 MediaTek Inc.
 #
 
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include
+
 #subdir-ccflags-y += -DCMDQ_DEBUG
 subdir-ccflags-y += -DCMDQ_IOVA
 

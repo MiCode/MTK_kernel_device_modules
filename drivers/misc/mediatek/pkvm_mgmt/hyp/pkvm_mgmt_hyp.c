@@ -21,6 +21,8 @@
  * call to use el2 smc call ids
  */
 static const uint64_t el2_smc_id_list[] = {
+	MTK_SIP_HYP_SECIO_WRITE,
+	MTK_SIP_HYP_SECIO_READ,
 };
 
 struct nlist {
