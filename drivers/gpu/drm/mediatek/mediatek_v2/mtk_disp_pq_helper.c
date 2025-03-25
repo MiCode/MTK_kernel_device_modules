@@ -468,11 +468,21 @@ static int disp_pq_proxy_virtual_wait_crtc_ready(struct drm_crtc *crtc, void *da
 	crtc_ready_info->crtcReady = 1;
 	crtc_ready_info->pathSel = priv->pq_path_sel;
 	if (crtc_ready_info->pathSel == 0) {
+		if (priv->data->mmsys_id == MMSYS_MT6993) {
 #if defined(PQ_PATH_11)
-		crtc_ready_info->pathSel = 11;
+			crtc_ready_info->pathSel = 11;
 #elif defined(PQ_PATH_9)
-		crtc_ready_info->pathSel = 9;
+			crtc_ready_info->pathSel = 9;
 #endif
+		}
+	} else {
+		switch (priv->data->mmsys_id) {
+		case MMSYS_MT6991:
+			crtc_ready_info->pathSel = 0;
+			break;
+		default:
+			break;
+		}
 	}
 	DDPDBG("%s: crtcReady %d pathSel %d", __func__, crtc_ready_info->crtcReady, crtc_ready_info->pathSel);
 
