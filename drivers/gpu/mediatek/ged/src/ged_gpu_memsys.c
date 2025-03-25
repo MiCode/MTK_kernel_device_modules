@@ -140,10 +140,8 @@ GED_ERROR ged_gpu_aximon_init(void)
 			g_hrt_debug_enabled = false;
 	}
 
-	/*
 	if (g_hrt_debug_enabled)
 		gpufreq_set_mfgsys_config(CONFIG_AXI_MON, FEAT_ENABLE);
-	*/
 
 	GED_LOGI("[GPU_DEBUG_UTIL]%s aximonitor init status : %u\n",
 		__func__, g_hrt_debug_enabled);
