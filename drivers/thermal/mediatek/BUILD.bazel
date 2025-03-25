@@ -112,7 +112,11 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/gpu/mediatek/gpufreq/v2:mtk_gpufreq_wrapper".format(kernel_version),
         "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:mediatek-drm".format(kernel_version),
         "//kernel_device_modules-{}/drivers/leds:leds-mtk".format(kernel_version),
-        "//kernel_device_modules-{}/drivers/memory/mediatek:mtk_dramc".format(kernel_version)
+        "//kernel_device_modules-{}/drivers/memory/mediatek:mtk_dramc".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/dvfsrc:mtk-dvfsrc-helper".format(kernel_version)
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat"
     ],
 )
 

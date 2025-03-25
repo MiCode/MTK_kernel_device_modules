@@ -41,6 +41,7 @@
 #include <linux/socket.h>
 #include <leds-mtk.h>
 #endif
+#include "dvfsrc-exp.h"
 
 #define MAX_HEADROOM		(100)
 #define CSRAM_INIT_VAL		(0x27bc86aa)
@@ -2136,7 +2137,7 @@ static ssize_t lvts_info3_show(struct kobject *kobj,
 
 static void thermal_hint_notify(unsigned int source, unsigned int enable)
 {
-	static int a_cmd, cm_cmd, icc_cmd;
+	static int a_cmd, cm_cmd, icc_cmd, dvfs_cmd;
 	int hint;
 
 	mutex_lock(&thermal_hint_lock);
@@ -2151,7 +2152,7 @@ static void thermal_hint_notify(unsigned int source, unsigned int enable)
 		if (cm_thermal_hint && cm_cmd != hint) {
 			cm_thermal_hint(hint);
 			cm_cmd = hint;
-			pr_info("%s: notify thermal hint to cm %d\n", __func__, cm_cmd);
+			pr_info("%s: cm %d\n", __func__, cm_cmd);
 		}
 
 		if (hint != 0)
@@ -2160,7 +2161,7 @@ static void thermal_hint_notify(unsigned int source, unsigned int enable)
 		if (hint != a_cmd) {
 			thermal_hint_callback(hint);
 			a_cmd = hint;
-			pr_info("%s: notify thermal hint to thcb %d\n", __func__, a_cmd);
+			pr_info("%s: thcb %d\n", __func__, a_cmd);
 		}
 
 		if ((icc_thermal) && icc_cmd != hint) {
@@ -2170,9 +2171,14 @@ static void thermal_hint_notify(unsigned int source, unsigned int enable)
 				icc_set_bw(icc_thermal, 0, 0x0);
 
 			icc_cmd = hint;
-			pr_info("%s: notify thermal hint to all icc %d\n", __func__, icc_cmd);
+			pr_info("%s: icc %d\n", __func__, icc_cmd);
 		}
 
+		if (source == 1 && hint != dvfs_cmd) {
+			mtk_dvfsrc_thernal_notify(hint);
+			dvfs_cmd = hint;
+			pr_info("%s: dvfsrc(powerhal) %d\n", __func__, dvfs_cmd);
+		}
 	}
 	mutex_unlock(&thermal_hint_lock);
 }
