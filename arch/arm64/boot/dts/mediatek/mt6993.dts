@@ -12888,10 +12888,12 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 		dpmaif:dpmaif@14117000 {
 			compatible = "mediatek,dpmaif";
-			reg = <0 0x14117000 0 0x1000>, /*AO_UL*/
-				<0 0x1410d000 0 0x1000>, /*PD_UL*/
-				<0 0x1410c000 0 0x1000>, /*PD_MD_MISC*/
-				<0 0x1410e000 0 0x1000>; /*SRAM*/
+			reg = <0 0x14117000 0 0x1000>, /*ao_ul*/
+				<0 0x1410d000 0 0x1000>, /*pd_ul*/
+				<0 0x1410c000 0 0x1000>, /*pm_md_misc*/
+				<0 0x1410e000 0 0x1000>, /*pd_sram*/
+				<0 0x14100000 0 0x1000>, /* ao_dl_sram_base1 */
+				<0 0x14101000 0 0x1000>; /* pd_dl_cfg2 */
 			interrupts = <GIC_SPI 846 IRQ_TYPE_LEVEL_HIGH 0>, /* rxq0 irq: 702 846 878 */
 				<GIC_SPI 847 IRQ_TYPE_LEVEL_HIGH 0>; /*new rxq1 irq: 703 847 879*/
 			mediatek,dpmaif-ver = <3>;
