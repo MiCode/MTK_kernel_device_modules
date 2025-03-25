@@ -1387,6 +1387,8 @@ int uarthub_dump_debug_tx_rx_count_mt6993(const char *tag, int trigger_point)
 				DEBUG_MODE_CRTL_ADDR);
 			rx_monitor_pointer = DEBUG_MODE_CRTL_GET_check_data_mode_rx_monitor_pointer(
 				DEBUG_MODE_CRTL_ADDR);
+			check_data_mode_sel = DEBUG_MODE_CRTL_GET_check_data_mode_select(
+				DEBUG_MODE_CRTL_ADDR);
 		}
 	}
 
@@ -2444,10 +2446,10 @@ int uarthub_record_check_data_mode_sta_to_buffer_mt6993(
 		ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
 			"%s%02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X]",
 			((tx_monitor_pointer == 15) ? "|" : ""),
-			UARTHUB_DEBUG_GET_DBG_MONITOR_CHECK_DATA(rx_monitor[0]),
-			UARTHUB_DEBUG_GET_DBG_MONITOR_CHECK_DATA(rx_monitor[1]),
-			UARTHUB_DEBUG_GET_DBG_MONITOR_CHECK_DATA(rx_monitor[2]),
-			UARTHUB_DEBUG_GET_DBG_MONITOR_CHECK_DATA(rx_monitor[3]));
+			UARTHUB_DEBUG_GET_DBG_MONITOR_CHECK_DATA(tx_monitor[0]),
+			UARTHUB_DEBUG_GET_DBG_MONITOR_CHECK_DATA(tx_monitor[1]),
+			UARTHUB_DEBUG_GET_DBG_MONITOR_CHECK_DATA(tx_monitor[2]),
+			UARTHUB_DEBUG_GET_DBG_MONITOR_CHECK_DATA(tx_monitor[3]));
 		if (ret > 0)
 			len += ret;
 
