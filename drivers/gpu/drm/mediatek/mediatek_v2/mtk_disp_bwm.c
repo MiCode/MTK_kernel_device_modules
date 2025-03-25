@@ -85,6 +85,7 @@
 #define DISP_REG_BWM_L_BURST_ACC_WIN_MAX(n)	(0x100UL + 0x4 * (n))
 
 #define MT6991_OVL_BWM0_L0_AID_SETTING		(0xBB8UL)
+#define DISP_REG_BWM_DDREN_DEBUG			(0x204UL)
 
 #define OVL_CON_CLRFMT_RGB (1UL)
 #define OVL_CON_CLRFMT_RGBA8888 (2)
@@ -220,6 +221,8 @@ int mtk_bwm_dump(struct mtk_ddp_comp *comp)
 	DDPDUMP("== %s REGS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
 	for (i = 0; i < 0x1e0; i += 0x10)
 		mtk_serial_dump_reg(baddr, i, 4);
+	mtk_cust_dump_reg(baddr, 0x1F0, 0x1F4, 0x1F8, 0x1FC);
+	mtk_cust_dump_reg(baddr, 0x200, 0x204, -1, -1);
 
 	return 0;
 }
@@ -288,8 +291,12 @@ static void mtk_bwm_enable(struct mtk_ddp_comp *comp,
 
 void mtk_bwm_trigger(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
+	s32 reg_val1,reg_val2;
+
+	reg_val1 = readl(comp->regs + DISP_REG_BWM_INTSTA);
+	reg_val2 = readl(comp->regs + DISP_REG_BWM_DDREN_DEBUG);
 	writel(0x1, comp->regs + DISP_REG_BWM_TRIG);
-	CRTC_MMP_MARK(0, bwm20, 3, 3);
+	CRTC_MMP_MARK(0, bwm20, (unsigned long)(0x30000 | reg_val2), (unsigned long)reg_val1);
 }
 
 void mtk_bwm_calc_ratio(struct mtk_ddp_comp *comp)
@@ -348,9 +355,9 @@ void mtk_bwm_calc_ratio(struct mtk_ddp_comp *comp)
 	}
 	memset(active_layer_avg_info, 0, sizeof(active_layer_avg_info));
 	memset(active_layer_peak_info, 0, sizeof(active_layer_peak_info));
+	writel(0x0, comp->regs + DISP_REG_BWM_INTSTA);
 	writel(0x1, comp->regs + DISP_REG_BWM_RST);
 	writel(0x0, comp->regs + DISP_REG_BWM_RST);
-	writel(0x0, comp->regs + DISP_REG_BWM_INTSTA);
 	//add memory barrior to avoid bwm work after atomic commit
 	wmb();
 }
@@ -408,7 +415,7 @@ bool bwm_compr_l_config_AFBC_V1_2(struct mtk_ddp_comp *comp,
 	unsigned int src_y_align, src_y_half_align;
 	unsigned int src_y_end_align, src_y_end_half_align;
 	unsigned int src_h_align = 0, src_h_half_align = 0, lx_2nd_subbuf = 0;
-	dma_addr_t lx_hdr_addr, addr = mtk_fb_get_dma(fb);
+	dma_addr_t lx_hdr_addr, addr = mtk_fb_get_dma(fb), lye_addr, addr_msb;
 	int rotate = 0;
 	struct mtk_panel_params *params = NULL;
 	unsigned int expand = 1 << 24;
@@ -530,6 +537,15 @@ bool bwm_compr_l_config_AFBC_V1_2(struct mtk_ddp_comp *comp,
 
 	if (bwm->data->is_support_34bits)
 		writel(lx_hdr_addr >> 32, comp->regs + DISP_REG_BWM_L_ADDR_MSB(idx));
+	lye_addr = readl(comp->regs + DISP_REG_BWM_L_HDR_ADDR(idx));
+	addr_msb = readl(comp->regs + DISP_REG_BWM_L_ADDR_MSB(idx));
+	CRTC_MMP_MARK(0, bwm20, (unsigned long)(lye_addr >> 2 | addr_msb << 30),
+		(unsigned long)(lx_hdr_addr >> 2));
+	if ((addr_msb << 32 | lye_addr) != lx_hdr_addr) {
+		DDPPR_ERR("%s lye idx%d addr0x%lx reg addr0x%lx", idx, lx_hdr_addr,
+			addr_msb << 32 | lye_addr);
+		mtk_bwm_dump(comp);
+	}
 
 	lx_hdr_pitch = pitch / tile_w / Bpp *
 		AFBC_V1_2_HEADER_SIZE_PER_TILE_BYTES;
@@ -553,7 +569,6 @@ bool bwm_compr_l_config_AFBC_V1_2(struct mtk_ddp_comp *comp,
 				+ bwm->data->aid_lye_ofs * idx);
 		}
 	}
-	CRTC_MMP_MARK(0, bwm20, (unsigned long)lx_hdr_addr, (unsigned long)lx_hdr_pitch);
 
 	return 0;
 }
