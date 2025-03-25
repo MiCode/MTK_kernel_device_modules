@@ -288,7 +288,7 @@ void touch_boost(void)
 
 	for (i = 0 ; i < policy_num ; i++) {
 		if (boost_cluster[i] >= 0) {
-			freq_to_set[i].min = (boost_cluster[i] != -1) ?
+			freq_to_set[i].min = (boost_cluster[i] >= cpu_opp_tbl[i][(opp_count[i]-1)]) ?
 				boost_cluster[i] : cpu_opp_tbl[i][(opp_count[i]-1)];
 			ret = _update_userlimit_cpufreq_min(i, freq_to_set[i].min);
 			if (ret < 0) {
