@@ -310,6 +310,7 @@ struct ufs_mtk_host {
 	struct pm_qos_request pm_qos_req;
 	struct mtk_blocktag *btag;
 
+	struct completion luns_added;
 	struct delayed_work delay_eh_work;
 	struct workqueue_struct *delay_eh_workq;
 	struct wakeup_source *ufs_wake_lock;
