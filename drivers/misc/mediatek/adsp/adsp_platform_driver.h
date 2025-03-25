@@ -41,6 +41,8 @@ struct adspsys_description {
 	const int semaphore_retry;
 	const u32 axibus_idle_val;
 	const u32 mtcmos_ao_ctrl;
+	const u32 slc_bw;
+	const u32 slc_dma_size;
 };
 
 struct irq_t {
@@ -99,6 +101,7 @@ struct adspsys_priv {
 	u32 slp_prot_ctrl;
 	u32 sram_sleep_mode_ctrl;
 	u32 system_l2sram;
+	u32 slc_enable;
 
 	/* address & size */
 	void __iomem *cfg;

@@ -26,6 +26,8 @@ const struct adspsys_description mt6993_adspsys_desc = {
 	.semaphore_retry = 5000,
 	.axibus_idle_val = 0x0,
 	.mtcmos_ao_ctrl = 0,
+	.slc_bw = 100,
+	.slc_dma_size = 2,
 };
 
 const struct adsp_core_description mt6993_adsp_c0_desc = {
@@ -125,7 +127,10 @@ static int adspsys_drv_probe(struct platform_device *pdev)
 				  &adspsys->sram_sleep_mode_ctrl, 0);
 	READ_U32_PROPERTY_DEFAULT(dev->of_node, "system-l2sram",
 				  &adspsys->system_l2sram, 0);
-
+#if IS_ENABLED(CONFIG_MTK_SLBC)
+	READ_U32_PROPERTY_DEFAULT(dev->of_node, "adsp-slc-enable",
+				  &adspsys->slc_enable, 0);
+#endif
 	ret = adsp_clk_probe(pdev, &adspsys->clk_ops);
 	if (ret) {
 		dev_err(dev ,"clk probe fail, %d", ret);

@@ -9,7 +9,9 @@
 #include <linux/vmalloc.h>
 #include <linux/ktime.h>
 #include <linux/pm_runtime.h>
+#if IS_ENABLED(CONFIG_MTK_SLBC)
 #include <slbc_ops.h>
+#endif
 #include "adsp_mbox.h"
 #include "adsp_logger.h"
 #include "adsp_timesync.h"
@@ -25,6 +27,10 @@ const struct attribute_group *adsp_core_attr_groups[] = {
 };
 
 static int slb_memory_control(bool en);
+static void adsp_slb_init_handler(int id, void *data, unsigned int len);
+#if IS_ENABLED(CONFIG_MTK_SLBC)
+static void adsp_slc_memory_control(bool en);
+#endif
 static u32 adsp_pending_cnt;
 static bool resume_first_time = true;
 static s64 core1_start_us = 0;
@@ -153,6 +159,7 @@ int adsp_core0_suspend(void)
 		}
 
 		adsp_core_stop(pdata->id);
+		adsp_slc_memory_control(false);
 		switch_adsp_power(false);
 		set_adsp_state(pdata, ADSP_SUSPEND);
 	}
@@ -179,6 +186,7 @@ int adsp_core0_resume(void)
 
 	if (get_adsp_state(pdata) == ADSP_SUSPEND) {
 		switch_adsp_power(true);
+		adsp_slc_memory_control(true);
 		reinit_completion(&pdata->done);
 		adsp_core_start(pdata->id);
 		ret = wait_for_completion_timeout(&pdata->done, 2 * HZ);
@@ -344,73 +352,6 @@ void adsp_logger_init1_cb(struct work_struct *ws)
 		pr_info("%s(), fail ret=%d\n", __func__, ret);
 }
 
-static struct slbc_data slb_data = {
-	.uid = UID_HIFI3,
-	.type = TP_BUFFER
-};
-
-static int slb_memory_control(bool en)
-{
-#ifndef CFG_FPGA
-	static DEFINE_MUTEX(lock);
-	static int use_cnt;
-	int ret = 0;
-
-	mutex_lock(&lock);
-	if (en) {
-		if (use_cnt == 0) {
-			ret = slbc_request(&slb_data);
-			if (ret)
-				goto EXIT;
-			slbc_power_on(&slb_data);
-		}
-		use_cnt++;
-	} else {
-		if (use_cnt == 0)
-			goto EXIT;
-
-		if (--use_cnt == 0) {
-			slbc_power_off(&slb_data);
-			ret = slbc_release(&slb_data);
-		}
-	}
-EXIT:
-	if (ret)
-		pr_info("%s, fail slbc request %d, ret %d, cnt %d",
-			__func__, en, ret, use_cnt);
-	mutex_unlock(&lock);
-	return ret < 0 ? ret : use_cnt;
-#else
-	return 0;
-#endif
-}
-
-static void adsp_slb_init_handler(int id, void *data, unsigned int len)
-{
-	u32 cid = *(u32 *)data;
-	u32 request = *((u32 *)data + 1);
-	unsigned long info[2] = {0};
-	int ret;
-
-	ret = slb_memory_control(request);
-
-	if (ret >= 0) {
-		info[0] = (unsigned long)slb_data.paddr;
-		info[1] = (unsigned long)slb_data.size;
-	}
-	pr_info("%s(), addr:0x%lx, size:0x%lx, cid %d, request %d, ret %d",
-		__func__, info[0], info[1], cid, request, ret);
-
-	_adsp_register_feature(cid, SYSTEM_FEATURE_ID, 0);
-
-	ret = adsp_push_message(ADSP_IPI_SLB_INIT, info, sizeof(info), 20, cid);
-
-	_adsp_deregister_feature(cid, SYSTEM_FEATURE_ID, 0);
-
-	if (ret != ADSP_IPI_DONE)
-		pr_info("%s, fail send msg to cid %d, ret %d", __func__, cid, ret);
-}
-
 int adsp_core_common_init(struct adsp_priv *pdata)
 {
 	int ret = 0;
@@ -559,3 +500,117 @@ int adsp_mbrain_unregister_callback(void)
 }
 EXPORT_SYMBOL(adsp_mbrain_unregister_callback);
 
+static struct slbc_data slb_data = {
+	.uid = UID_HIFI3,
+	.type = TP_BUFFER
+};
+
+static int slb_memory_control(bool en)
+{
+#if !defined(CFG_FPGA) && IS_ENABLED(CONFIG_MTK_SLBC)
+	static DEFINE_MUTEX(lock);
+	static int use_cnt;
+	int ret = 0;
+
+	mutex_lock(&lock);
+	if (en) {
+		if (use_cnt == 0) {
+			ret = slbc_request(&slb_data);
+			if (ret)
+				goto EXIT;
+			slbc_power_on(&slb_data);
+		}
+		use_cnt++;
+	} else {
+		if (use_cnt == 0)
+			goto EXIT;
+
+		if (--use_cnt == 0) {
+			slbc_power_off(&slb_data);
+			ret = slbc_release(&slb_data);
+		}
+	}
+EXIT:
+	if (ret)
+		pr_info("%s, fail slbc request %d, ret %d, cnt %d",
+			__func__, en, ret, use_cnt);
+	mutex_unlock(&lock);
+	return ret < 0 ? ret : use_cnt;
+#else
+	return 0;
+#endif
+}
+
+static void adsp_slb_init_handler(int id, void *data, unsigned int len)
+{
+	u32 cid = *(u32 *)data;
+	u32 request = *((u32 *)data + 1);
+	unsigned long info[2] = {0};
+	int ret;
+
+	ret = slb_memory_control(request);
+
+	if (ret >= 0) {
+		info[0] = (unsigned long)slb_data.paddr;
+		info[1] = (unsigned long)slb_data.size;
+	}
+	pr_info("%s(), addr:0x%lx, size:0x%lx, cid %d, request %d, ret %d",
+		__func__, info[0], info[1], cid, request, ret);
+
+	_adsp_register_feature(cid, SYSTEM_FEATURE_ID, 0);
+
+	ret = adsp_push_message(ADSP_IPI_SLB_INIT, info, sizeof(info), 20, cid);
+
+	_adsp_deregister_feature(cid, SYSTEM_FEATURE_ID, 0);
+
+	if (ret != ADSP_IPI_DONE)
+		pr_info("%s, fail send msg to cid %d, ret %d", __func__, cid, ret);
+}
+
+#if IS_ENABLED(CONFIG_MTK_SLBC)
+static void adsp_slc_memory_control(bool en)
+{
+	static DEFINE_MUTEX(slc_lock);
+	static int adsp_gid;
+	static int use_cnt;
+	struct slbc_gid_data adsp_slc_data;
+
+	if (!adspsys->slc_enable)
+		return;
+
+	adsp_slc_data.sign = SLC_DATA_MAGIC;
+	adsp_slc_data.bw = adspsys->desc->slc_bw;
+	adsp_slc_data.dma_size = adspsys->desc->slc_dma_size;
+
+	mutex_lock(&slc_lock);
+	if (en) {
+		if (use_cnt++ == 0) {
+			if (slbc_gid_request(ID_ADSP, &adsp_gid, &adsp_slc_data)) {
+				pr_info("%s(), slc request failed\n", __func__);
+				goto exit;
+			}
+			if (slbc_validate(ID_ADSP, adsp_gid)) {
+				pr_info("%s(), slc validate failed\n", __func__);
+				goto exit;
+			}
+			pr_info("%s() slc request success, dma_size = %d, bw = %d\n",
+				__func__, adsp_slc_data.dma_size, adsp_slc_data.bw);
+		}
+	} else {
+		if (--use_cnt == 0) {
+			if (slbc_invalidate(ID_ADSP, adsp_gid)) {
+				pr_info("%s(), slc invalidate failed\n", __func__);
+				goto exit;
+			}
+			if (slbc_gid_release(ID_ADSP, adsp_gid)) {
+				pr_info("%s(), slc release failed\n", __func__);
+				goto exit;
+			}
+			pr_info("%s() slc release success\n", __func__);
+		}
+		use_cnt = (use_cnt < 0) ? 0 : use_cnt;
+	}
+exit:
+	mutex_unlock(&slc_lock);
+}
+#endif

@@ -26,6 +26,8 @@ const struct adspsys_description mt6983_adspsys_desc = {
 	.semaphore_ctrl = 2,
 	.semaphore_retry = 5000,
 	.axibus_idle_val = 0x0,
+	.slc_bw = 100,
+	.slc_dma_size = 2,
 };
 
 const struct adspsys_description mt6879_adspsys_desc = {
@@ -34,6 +36,8 @@ const struct adspsys_description mt6879_adspsys_desc = {
 	.semaphore_ctrl = 2,
 	.semaphore_retry = 5000,
 	.axibus_idle_val = 0x0,
+	.slc_bw = 100,
+	.slc_dma_size = 2,
 };
 
 const struct adspsys_description mt6895_adspsys_desc = {
@@ -42,6 +46,8 @@ const struct adspsys_description mt6895_adspsys_desc = {
 	.semaphore_ctrl = 2,
 	.semaphore_retry = 5000,
 	.axibus_idle_val = 0x0,
+	.slc_bw = 100,
+	.slc_dma_size = 2,
 };
 
 const struct adspsys_description mt6991_adspsys_desc = {
@@ -51,6 +57,8 @@ const struct adspsys_description mt6991_adspsys_desc = {
 	.semaphore_retry = 5000,
 	.axibus_idle_val = 0x0,
 	.mtcmos_ao_ctrl = 0,
+	.slc_bw = 100,
+	.slc_dma_size = 2,
 };
 
 const struct adsp_core_description mt6983_adsp_c0_desc = {
@@ -237,6 +245,14 @@ static int adspsys_drv_probe(struct platform_device *pdev)
 	if (ret)
 		pr_info("%s, system l2sram not support %d\n", __func__, adspsys->system_l2sram);
 
+#if IS_ENABLED(CONFIG_MTK_SLBC)
+	ret = of_property_read_u32(dev->of_node, "adsp-slc-enable",
+				   &adspsys->slc_enable);
+	if (ret) {
+		pr_info("%s, get adsp-slc-enable failed %d\n", __func__, adspsys->slc_enable);
+		adspsys->slc_enable = 0;
+	}
+#endif
 	ret = adsp_clk_probe(pdev, &adspsys->clk_ops);
 	if (ret) {
 		pr_warn("%s(), clk probe fail, %d\n", __func__, ret);

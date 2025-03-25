@@ -369,24 +369,12 @@ static int mtk_compr_offload_open(struct snd_soc_component *component,
 				  struct snd_compr_stream *stream)
 {
 	int ret = 0;
-#if IS_ENABLED(CONFIG_MTK_SLBC)
-	int slc_sign = get_dsp_task_attr(AUDIO_TASK_OFFLOAD_ID, ADSP_TASK_ATTR_ADSP_SLC_SIGN);
-#endif
 
 #ifdef use_wake_lock
 	mtk_compr_offload_int_wakelock(true);
 #endif
 	snd_compr_use_pause_in_draining(stream);
 
-#if IS_ENABLED(CONFIG_MTK_SLBC)
-	if (slc_sign) {
-		mutex_lock(&slc_mutex);
-		if (get_slc_counter() == 0)
-			request_slc(ID);
-		set_slc_counter(1);
-		mutex_unlock(&slc_mutex);
-	}
-#endif
 	mtk_scp_ipi_send(TASK_SCENE_PLAYBACK_MP3,
 			 AUDIO_IPI_MSG_ONLY,
 			 AUDIO_IPI_MSG_NEED_ACK,
@@ -455,18 +443,6 @@ static int mtk_afe_dloffload_probe(struct snd_soc_component *component)
 static int mtk_compr_offload_free(struct snd_soc_component *component,
 				  struct snd_compr_stream *stream)
 {
-#if IS_ENABLED(CONFIG_MTK_SLBC)
-	int slc_sign = get_dsp_task_attr(AUDIO_TASK_OFFLOAD_ID, ADSP_TASK_ATTR_ADSP_SLC_SIGN);
-
-	if (slc_sign) {
-		mutex_lock(&slc_mutex);
-		if (get_slc_counter() == 1)
-			release_slc(ID);
-		if (get_slc_counter() > 0)
-			set_slc_counter(0);
-		mutex_unlock(&slc_mutex);
-	}
-#endif
 	if (afe_offload_block.state != OFFLOAD_STATE_IDLE) {
 		/* stop hw */
 		mtk_scp_ipi_send(get_dspscene_by_dspdaiid(ID),
