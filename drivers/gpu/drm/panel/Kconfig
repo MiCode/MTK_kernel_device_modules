@@ -1,5 +1,25 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
+config DEVICE_MODULE_BACKLIGHT_KTZ8866
+       tristate "Backlight driver for KTZ8866"
+       depends on I2C && PWM
+       help
+         This supports KTZ8866 backlight driver.
+		 Say Y here if you want to enable support for platform,
+		 Say N here if you want to disable support for platform,
+		 KTZ8866 can control backlight.
+
+config DRM_PANEL_BOE_HX83102J_VDO
+        tristate "boe & hx83102j fhdplus and  dphy vdo panel"
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for hx83102j
+          fhdplus vdo panel. The panel has a 2000x1200 resolution
+          and uses 24-bits RGB per pixel. It provides a MIPI DSI
+          interface to host.
+
 config DRM_PANEL_BOE_TS127QFMLL1DKP0
 	tristate "BOE wqxga2944 vdo mode panel"
 	depends on OF
@@ -313,6 +333,17 @@ config DRM_PANEL_TIANMA_NT36672E_VDO_120HZ_VFP_6382
            vdo mode HFP Full HD Plus 120HZ panel. The panel has a 1080x2408
            resolution and uses 24-bits RGB per pixel. It provides a
            MIPI DSI interface to host.
+
+config DRM_PANEL_TIANMA_HX83102J_VDO
+        tristate "tianma & hx83102j fhdplus and  dphy vdo panel"
+        depends on OF
+        depends on DRM_MIPI_DSI
+        depends on BACKLIGHT_CLASS_DEVICE
+        help
+          Say Y here if you want to enable support for hx83102j
+          fhdplus vdo panel. The panel has a 2000x1200 resolution
+          and uses 24-bits RGB per pixel. It provides a MIPI DSI
+          interface to host.
 
 config DRM_PANEL_ALPHA_JDI_NT36672E_CPHY_VDO
 	tristate "ALPHA JDI FHD+ CPHY vdo mode panel"

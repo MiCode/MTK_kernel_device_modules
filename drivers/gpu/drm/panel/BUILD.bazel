@@ -25,6 +25,17 @@ filegroup(
 )
 
 define_mgk_ddk_ko(
+    name = "ktz8866",
+    srcs = [
+        "ktz8866.c",
+    ],
+    hdrs = [
+        "ktz8866.h",
+    ],
+    includes = ["."],
+)
+
+define_mgk_ddk_ko(
     name = "panel-aw37501-i2c",
     srcs = [
         "panel-aw37501-i2c.c",
@@ -70,12 +81,14 @@ PANELS = [
     "panel-tianma-nt36672e-vdo-120hz-hfp",
     "panel-tianma-nt36672e-vdo-120hz-vfp",
     "panel-tianma-nt36672e-vdo-120hz-vfp-6382",
+    "panel-tianma-hx83102j-vdo",
     "panel-nt36672a-rt4801-vdo",
     "panel-alpha-jdi-nt36672e-vdo-120hz",
     "panel-alpha-jdi-nt36672e-vdo-120hz-hfp",
     "panel-alpha-jdi-nt36672e-vdo-120hz-threshold",
     "panel-alpha-jdi-nt36672e-vdo-144hz-hfp",
     "panel-alpha-jdi-nt36672e-vdo-60hz",
+    "panel-boe-hx83102j-vdo",
     "panel-nt37801-cmd-120hz",
     "panel-nt37801-cmd-fhd",
     "panel-nt37801-cmd-fhd-plus",
@@ -102,6 +115,7 @@ PANELS = [
     includes = ["."],
     ko_deps = [
         "panel-aw37501-i2c",
+        "ktz8866",
         "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:mtk_panel_ext".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/gate_ic:rt4831a_drv".format(kernel_version),
     ],
