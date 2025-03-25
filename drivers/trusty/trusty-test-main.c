@@ -495,10 +495,12 @@ static int trusty_test_probe(struct platform_device *pdev)
 	struct trusty_test_state *s;
 	int ret;
 
+#ifdef MTK_ADAPTED
 	if (!is_google_real_driver()) {
 		dev_info(&pdev->dev, "%s: google trusty test dummy driver\n", __func__);
 		return 0;
 	}
+#endif
 
 	ret = trusty_std_call32(pdev->dev.parent, SMC_SC_TEST_VERSION,
 				TRUSTY_STDCALLTEST_API_VERSION, 0, 0);

@@ -45,6 +45,9 @@ define_mgk_ddk_ko(
     ko_deps = [
         "//kernel_device_modules-{}/drivers/misc/mediatek/trusted_mem:ffa".format(kernel_version),
     ],
+    local_defines = [
+        "MTK_ADAPTED",
+    ],
 )
 
 define_mgk_ddk_ko(
@@ -55,6 +58,9 @@ define_mgk_ddk_ko(
     ],
     includes = ["."],
     ko_deps = [":trusty-core"],
+    local_defines = [
+        "MTK_ADAPTED",
+    ],
 )
 
 define_mgk_ddk_ko(
@@ -65,6 +71,9 @@ define_mgk_ddk_ko(
     ],
     includes = ["."],
     ko_deps = [":trusty-core"],
+    local_defines = [
+        "MTK_ADAPTED",
+    ],
 )
 
 define_mgk_ddk_ko(
@@ -76,6 +85,9 @@ define_mgk_ddk_ko(
     ],
     includes = ["."],
     ko_deps = [":trusty-core"],
+    local_defines = [
+        "MTK_ADAPTED",
+    ],
 )
 
 define_mgk_ddk_ko(
@@ -85,4 +97,7 @@ define_mgk_ddk_ko(
     ],
     includes = ["."],
     ko_deps = [":trusty-core"],
+    local_defines = [
+        "MTK_ADAPTED",
+    ],
 )

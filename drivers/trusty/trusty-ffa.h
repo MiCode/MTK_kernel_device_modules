@@ -12,8 +12,13 @@
 
 #include <linux/types.h>
 #include <linux/uuid.h>
+#ifndef MTK_ADAPTED
+#include <linux/arm_ffa.h>
+#endif
 
+#ifdef MTK_ADAPTED
 #include "ffa_v11/arm_ffa.h"
+#endif
 
 /**
  * DOC: FF-A driver version requirements

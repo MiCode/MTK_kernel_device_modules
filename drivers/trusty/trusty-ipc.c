@@ -25,13 +25,18 @@
 #include <linux/shrinker.h>
 
 #include <linux/virtio.h>
+#ifndef MTK_ADAPTED
+#include <linux/virtio_ids.h>
+#endif
 #include <linux/virtio_config.h>
 
 #include <linux/trusty/trusty.h>
 #include <linux/trusty/trusty_ipc.h>
 
 #include <uapi/linux/trusty/ipc.h>
+#ifdef MTK_ADAPTED
 #include <uapi/linux/virtio_ids.h>
+#endif
 
 #include "trusty-ipc-trace.h"
 
@@ -2587,10 +2592,12 @@ static int tipc_virtio_probe(struct virtio_device *vdev)
 	static const char * const vq_names[] = { "rx", "tx" };
 #endif
 
+#ifdef MTK_ADAPTED
 	if (!is_google_real_driver()) {
 		dev_info(&vdev->dev, "%s: google trusty ipc dummy driver\n", __func__);
 		return 0;
 	}
+#endif
 
 	vds = kzalloc(sizeof(*vds), GFP_KERNEL);
 	if (!vds)
@@ -2776,10 +2783,12 @@ static int __init tipc_init(void)
 	int ret;
 	dev_t dev;
 
+#ifdef MTK_ADAPTED
 	if (!is_google_real_driver()) {
 		pr_info("%s: google trusty ipc dummy driver\n", __func__);
 		return 0;
 	}
+#endif
 
 	ret = alloc_chrdev_region(&dev, 0, MAX_DEVICES, KBUILD_MODNAME);
 	if (ret) {

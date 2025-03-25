@@ -26,7 +26,11 @@
 #include <asm/daifflags.h>
 #endif
 
+#ifdef MTK_ADAPTED
 #ifdef CONFIG_TRUSTY_FFA_TRANSPORT
+#include "trusty-ffa.h"
+#endif
+#else
 #include "trusty-ffa.h"
 #endif
 #include "trusty-irq.h"
@@ -46,7 +50,9 @@ module_param(nop_nice_value, int, 0660);
 static u64 trusty_poll_period_ms = 100;
 module_param(trusty_poll_period_ms, ullong, 0660);
 
+#ifdef MTK_ADAPTED
 static u32 real_drv;
+#endif
 
 s32 trusty_fast_call32(struct device *dev, u32 smcnr, u32 a0, u32 a1, u32 a2)
 {
@@ -788,11 +794,13 @@ trusty_transports_cleanup(const struct trusty_transport_desc **transports,
 	}
 }
 
+#ifdef MTK_ADAPTED
 u32 is_google_real_driver(void)
 {
 	return real_drv;
 }
 EXPORT_SYMBOL(is_google_real_driver);
+#endif
 
 static int trusty_probe(struct platform_device *pdev)
 {
@@ -802,10 +810,12 @@ static int trusty_probe(struct platform_device *pdev)
 	struct device_node *node = pdev->dev.of_node;
 	const struct trusty_transport_desc **descs;
 
+#ifdef MTK_ADAPTED
 	if (!is_google_real_driver()) {
 		dev_info(&pdev->dev, "%s: google trusty dummy driver\n", __func__);
 		return 0;
 	}
+#endif
 
 	if (!node) {
 		dev_err(&pdev->dev, "of_node required\n");
@@ -994,7 +1004,11 @@ static const struct trusty_transport_desc *trusty_transports[] = {
 };
 
 static const struct of_device_id trusty_of_match[] = {
+#ifdef MTK_ADAPTED
 	{ .compatible = "android,google-trusty-smc-v1", .data = trusty_transports },
+#else
+	{ .compatible = "android,trusty-smc-v1", .data = trusty_transports },
+#endif
 	{},
 };
 
@@ -1004,7 +1018,11 @@ static struct platform_driver trusty_driver = {
 	.probe = trusty_probe,
 	.remove_new = trusty_remove,
 	.driver	= {
+#ifdef MTK_ADAPTED
 		.name = "google-trusty",
+#else
+		.name = "trusty",
+#endif
 		.of_match_table = trusty_of_match,
 		.dev_groups = trusty_groups,
 	},
@@ -1013,6 +1031,7 @@ static struct platform_driver trusty_driver = {
 static int __init trusty_driver_init(void)
 {
 	int ret;
+#ifdef MTK_ADAPTED
 	struct device_node *node;
 
 	node = of_find_compatible_node(NULL, NULL, "android,google-trusty-smc-v1");
@@ -1024,13 +1043,20 @@ static int __init trusty_driver_init(void)
 		pr_info("%s: of_node required\n", __func__);
 		return -EINVAL;
 	}
+#endif
 
 #ifdef CONFIG_TRUSTY_FFA_TRANSPORT
+#ifdef MTK_ADAPTED
 	if (is_google_real_driver()) {
 		ret = trusty_ffa_transport_init();
 		if (ret < 0)
 			goto err_ffa_transport_init;
 	}
+#else
+	ret = trusty_ffa_transport_init();
+	if (ret < 0)
+		goto err_ffa_transport_init;
+#endif
 #endif
 
 	/*

@@ -93,7 +93,11 @@ static const char * const log_to_dmesg_opt_names[] = {
 	"never", "always", "until_first_reader"
 };
 
+#ifdef MTK_ADAPTED
 static int log_to_dmesg_param = ALWAYS;
+#else
+static int log_to_dmesg_param = NEVER;
+#endif
 
 static int trusty_log_mode_set(const char *val, const struct kernel_param *kp)
 {
@@ -913,10 +917,12 @@ static int trusty_log_probe(struct platform_device *pdev)
 {
 	int rc;
 
+#ifdef MTK_ADAPTED
 	if (!is_google_real_driver()) {
 		dev_info(&pdev->dev, "%s: google trusty log dummy driver\n", __func__);
 		return 0;
 	}
+#endif
 
 	if (!trusty_supports_logging(pdev->dev.parent))
 		return -ENXIO;
@@ -976,7 +982,11 @@ static void trusty_log_cleanup(struct kref *ref)
 }
 
 static const struct of_device_id trusty_test_of_match[] = {
+#ifdef MTK_ADAPTED
 	{ .compatible = "android,google-trusty-log-v1", },
+#else
+	{ .compatible = "android,trusty-log-v1", },
+#endif
 	{},
 };
 
@@ -986,7 +996,11 @@ static struct platform_driver trusty_log_driver = {
 	.probe = trusty_log_probe,
 	.remove_new = trusty_log_remove,
 	.driver = {
+#ifdef MTK_ADAPTED
 		.name = "google-trusty-log",
+#else
+		.name = "trusty-log",
+#endif
 		.of_match_table = trusty_test_of_match,
 	},
 };

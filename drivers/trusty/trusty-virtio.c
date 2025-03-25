@@ -28,11 +28,16 @@
 
 #include <linux/virtio.h>
 #include <linux/virtio_config.h>
+#ifndef MTK_ADAPTED
+#include <linux/virtio_ids.h>
+#endif
 #include <linux/virtio_ring.h>
 
 #include <linux/atomic.h>
 
+#ifdef MTK_ADAPTED
 #include <uapi/linux/virtio_ids.h>
+#endif
 
 #define  RSC_DESCR_VER  1
 
@@ -791,10 +796,12 @@ static int trusty_virtio_probe(struct platform_device *pdev)
 	int ret;
 	struct trusty_ctx *tctx;
 
+#ifdef MTK_ADAPTED
 	if (!is_google_real_driver()) {
 		dev_info(&pdev->dev, "%s: google trusty virtio dummy driver\n", __func__);
 		return 0;
 	}
+#endif
 
 	tctx = kzalloc(sizeof(*tctx), GFP_KERNEL);
 	if (!tctx)
@@ -885,7 +892,11 @@ static void trusty_virtio_remove(struct platform_device *pdev)
 
 static const struct of_device_id trusty_of_match[] = {
 	{
+#ifdef MTK_ADAPTED
 		.compatible = "android,google-trusty-virtio-v1",
+#else
+		.compatible = "android,trusty-virtio-v1",
+#endif
 	},
 	{},
 };
@@ -896,7 +907,11 @@ static struct platform_driver trusty_virtio_driver = {
 	.probe = trusty_virtio_probe,
 	.remove_new = trusty_virtio_remove,
 	.driver = {
+#ifdef MTK_ADAPTED
 		.name = "google-trusty-virtio",
+#else
+		.name = "trusty-virtio",
+#endif
 		.of_match_table = trusty_of_match,
 	},
 };

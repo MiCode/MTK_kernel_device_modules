@@ -20,7 +20,9 @@
 #include <linux/trusty/sm_err.h>
 #include <linux/trusty/trusty.h>
 
+#ifdef MTK_ADAPTED
 #include <dt-bindings/interrupt-controller/arm-gic.h>
+#endif
 
 #include "trusty-irq.h"
 #include "trusty-irq-trace.h"
@@ -51,7 +53,9 @@ struct trusty_irq_state {
 };
 
 static int trusty_irq_cpuhp_slot = -1;
+#ifdef MTK_ADAPTED
 static struct device_node *gic_node;
+#endif
 
 static void trusty_irq_enable_pending_irqs(struct trusty_irq_state *is,
 					   struct trusty_irq_irqset *irqset,
@@ -395,20 +399,17 @@ static int trusty_irq_init_per_cpu_irq(struct trusty_irq_state *is, int tirq,
 				       unsigned int type)
 {
 	int ret;
+#ifdef MTK_ADAPTED
 	int irq = tirq;
+#else
+	int irq;
+#endif
 	unsigned int cpu;
 	struct trusty_irq __percpu *trusty_irq_handler_data;
 
 	dev_dbg(is->dev, "%s: irq %d\n", __func__, tirq);
 
-#if !IS_ENABLED(CONFIG_TRUSTY)
-	irq = trusty_irq_create_irq_mapping(is, tirq);
-	if (irq <= 0) {
-		dev_err(is->dev,
-			"trusty_irq_create_irq_mapping failed (%d)\n", irq);
-		return irq;
-	}
-#else
+#ifdef MTK_ADAPTED
 	if (gic_node) {
 		struct of_phandle_args oirq = {};
 
@@ -426,6 +427,13 @@ static int trusty_irq_init_per_cpu_irq(struct trusty_irq_state *is, int tirq,
 			return -EINVAL;
 		}
 		of_node_put(gic_node);
+	}
+#else
+	irq = trusty_irq_create_irq_mapping(is, tirq);
+	if (irq <= 0) {
+		dev_err(is->dev,
+			"trusty_irq_create_irq_mapping failed (%d)\n", irq);
+		return irq;
 	}
 #endif
 
@@ -536,6 +544,7 @@ static int trusty_irq_probe(struct platform_device *pdev)
 	unsigned long irq_flags;
 	struct trusty_irq_state *is;
 
+#ifdef MTK_ADAPTED
 	if (!is_google_real_driver()) {
 		dev_info(&pdev->dev, "%s: google trusty dummy driver\n", __func__);
 		return 0;
@@ -546,6 +555,7 @@ static int trusty_irq_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "gic-v3 of_node required\n");
 		return -EINVAL;
 	}
+#endif
 
 	is = kzalloc(sizeof(*is), GFP_KERNEL);
 	if (!is) {
@@ -628,7 +638,11 @@ static void trusty_irq_remove(struct platform_device *pdev)
 }
 
 static const struct of_device_id trusty_test_of_match[] = {
+#ifdef MTK_ADAPTED
 	{ .compatible = "android,google-trusty-irq-v1", },
+#else
+	{ .compatible = "android,trusty-irq-v1", },
+#endif
 	{},
 };
 
@@ -638,7 +652,11 @@ static struct platform_driver trusty_irq_driver = {
 	.probe = trusty_irq_probe,
 	.remove_new = trusty_irq_remove,
 	.driver	= {
+#ifdef MTK_ADAPTED
 		.name = "google-trusty-irq",
+#else
+		.name = "trusty-irq",
+#endif
 		.of_match_table = trusty_test_of_match,
 	},
 };

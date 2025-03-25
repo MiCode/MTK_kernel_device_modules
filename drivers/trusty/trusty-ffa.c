@@ -10,16 +10,24 @@
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <linux/trusty/smcall.h>
+#ifndef MTK_ADAPTED
+#include <linux/arm_ffa.h>
+#endif
 #include <linux/trusty/trusty.h>
 
 #include <linux/scatterlist.h>
 #include <linux/dma-mapping.h>
 
+#ifdef MTK_ADAPTED
 #include "ffa_v11/arm_ffa.h"
+#endif
 #include "trusty-ffa.h"
 #include "trusty-private.h"
 #include "trusty-sched-share-api.h"
 #include "trusty-trace.h"
+#ifndef MTK_ADAPTED
+extern const struct bus_type ffa_bus_type;
+#endif
 
 /* partition property: Supports receipt of direct requests */
 #define FFA_PARTITION_DIRECT_REQ_RECV	BIT(0)
@@ -27,6 +35,7 @@
 /* string representation of trusty UUID used for partition info get call */
 static const char *trusty_uuid = "40ee25f0-a2bc-304c-8c4c-a173c57d8af1";
 
+#ifdef MTK_ADAPTED
 struct ffa_device *g_ffa_dev;
 
 struct ffa_device *trusty_ffa_get_dev(void)
@@ -34,6 +43,7 @@ struct ffa_device *trusty_ffa_get_dev(void)
 	return g_ffa_dev;
 }
 EXPORT_SYMBOL(trusty_ffa_get_dev);
+#endif
 
 static u32 trusty_ffa_nop_call(struct device *dev, unsigned long a0,
 			       unsigned long a1, unsigned long a2)
@@ -394,10 +404,12 @@ static int trusty_ffa_probe(struct ffa_device *ffa_dev)
 	struct trusty_ffa_state *s;
 	u32 ffa_drv_version;
 
+#ifdef MTK_ADAPTED
 	if (!is_google_real_driver()) {
 		dev_info(&ffa_dev->dev, "%s: google trusty ffa dummy driver\n", __func__);
 		return 0;
 	}
+#endif
 
 	/* check ffa driver version compatibility */
 	ffa_drv_version = ffa_dev->ops->info_ops->api_version_get();
@@ -415,7 +427,9 @@ static int trusty_ffa_probe(struct ffa_device *ffa_dev)
 	ffa_dev_set_drvdata(ffa_dev, s);
 
 	ffa_dev->ops->msg_ops->mode_32bit_set(ffa_dev);
+#ifdef MTK_ADAPTED
 	g_ffa_dev = ffa_dev;
+#endif
 
 	return 0;
 }

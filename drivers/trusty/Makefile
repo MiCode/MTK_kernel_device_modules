@@ -3,8 +3,11 @@
 # Makefile for trusty components
 #
 
+#ifdef MTK_ADAPTED
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/trusted_mem/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/trusty
+ccflags-y += -DMTK_ADAPTED
+#endif
 
 obj-$(CONFIG_TRUSTY)		+= trusty-core.o
 trusty-core-objs		+= trusty.o trusty-mem.o trusty-sched-share.o
@@ -23,3 +26,7 @@ trusty-test-objs		+= trusty-test-main.o
 trusty-test-$(CONFIG_ARM64)	+= trusty-test-arm64.o
 obj-$(CONFIG_TRUSTY_VIRTIO)	+= trusty-virtio.o
 obj-$(CONFIG_TRUSTY_VIRTIO_IPC)	+= trusty-ipc.o
+
+#ifndef MTK_ADAPTED
+#ccflags-y			+= -I$(src) -I$(src)/../../include
+#endif
