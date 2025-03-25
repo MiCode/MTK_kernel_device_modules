@@ -1,0 +1,65 @@
+# SPDX-License-Identifier: GPL-2.0
+#
+# Copyright (c) 2025 MediaTek Inc.
+#
+
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+
+package(
+	default_visibility = [
+		"//visibility:public",
+	],
+)
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig"
+    ])
+)
+define_mgk_ddk_ko(
+    name = "pkvm_mkp",
+    srcs = [
+      "debug.h",
+      "ext/mkp_pcpu.c",
+      "ext/mkp_pcpu.h",
+      "helper.c",
+      "helper.h",
+      "ksym.c",
+      "ksym.h",
+      "mkp.h",
+      "mkp_api.c",
+      "mkp_api.h",
+      "mkp_demo.c",
+      "mkp_demo.h",
+      "mkp_demo_host.h",
+      "mkp_hvc.c",
+      "mkp_hvc.h",
+      "mkp_main.c",
+      "mkp_module.c",
+      "mkp_module.h",
+      "mkp_rbtree.c",
+      "mkp_rbtree.h",
+      "policy.c",
+      "policy.h",
+      "selinux/mkp_policycap.h",
+      "selinux/mkp_security.h",
+      "trace_mkp.h",
+      "trace_mtk_mkp.h",
+    ],
+    out = "pkvm_mkp.ko",
+    includes = ["."],
+    # Depends on the ddk_library that builds the hypervisor code.
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_mkp/hyp:hyp".format(kernel_version),
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:headers".format(kernel_version),
+    ],
+    copts = [
+        "-I$(srctree)/drivers/android",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/aee/mrdump",
+    ],
+)

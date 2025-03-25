@@ -19,7 +19,7 @@ void traverse_rbtree(struct rb_root *root)
 	struct rb_node *node;
 
 	for (node = rb_first(root); node; node = rb_next(node)) {
-		struct mkp_rb_node *data = rb_entry(node, struct mkp_rb_node, rb_node);
+		[[maybe_unused]] struct mkp_rb_node *data = rb_entry(node, struct mkp_rb_node, rb_node);
 
 		MKP_DEBUG("%s: addr: 0x%pa, size: %pa\n", __func__, &data->addr, &data->size);
 	}

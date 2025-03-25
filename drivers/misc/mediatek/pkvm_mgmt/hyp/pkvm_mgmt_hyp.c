@@ -8,8 +8,12 @@
 #include <linux/arm-smccc.h>
 
 #include "../../include/pkvm_mgmt/pkvm_mgmt.h"
+/*#include "pkvm_mgmt.h"*/
+/*#include "<pkvm_mgmt.h>"*/
 #include "../../../../arch/arm64/kvm/hyp/include/nvhe/ffa.h"
 #include "../../../../arch/arm64/kvm/hyp/include/nvhe/spinlock.h"
+/*#include "ffa.h"*/
+/*#include "spinlock.h"*/
 #include "pkvm_ctrl.h"
 
 /*

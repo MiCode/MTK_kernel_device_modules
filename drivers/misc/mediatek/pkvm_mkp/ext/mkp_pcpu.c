@@ -5,7 +5,7 @@
 
 #include <linux/cpumask.h>
 //#include <linux/android_debug_symbols.h>
-#include "mkp_api.h"
+#include "../mkp_api.h"
 #include "debug.h"
 
 DEBUG_SET_LEVEL(DEBUG_LEVEL_ERR);
