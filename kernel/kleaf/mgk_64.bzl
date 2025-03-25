@@ -120,6 +120,7 @@ mgk_64_kleaf_modules = [
     "//vendor/mediatek/kernel_modules/mtkcam/mtk-aie:mtk-aie-debug-7sp",
     "//vendor/mediatek/kernel_modules/mtkcam/mtk-aie:mtk-aie-debug-7sp-1",
     "//vendor/mediatek/kernel_modules/mtkcam/mtk-aie:mtk-aie-debug-7sp-2",
+    "//vendor/mediatek/kernel_modules/mtkcam/mtk-aie:mtk-aie-71",
     "//vendor/mediatek/kernel_modules/mtkcam/mtk-mae:mtk_mae",
     "//vendor/mediatek/kernel_modules/mtkcam/mtk-mae:mtk_mae_isp8",
     "//vendor/mediatek/kernel_modules/mtkcam/mtk-hcp/legacy:mtk-hcp",
