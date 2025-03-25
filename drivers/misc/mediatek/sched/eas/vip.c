@@ -70,9 +70,9 @@ void turn_off_vip_in_gh(void)
 }
 EXPORT_SYMBOL_GPL(turn_off_vip_in_gh);
 
-struct cpumask find_min_num_vip_cpus_slow(int vip_prio, struct cpumask *allowed_cpu_mask_for_slow)
+struct cpumask find_min_num_vip_cpus_slow(int pid, int vip_prio, struct cpumask *allowed_cpu_mask_for_slow)
 {
-	int cpu, num_same_vip, num_higher_vip, min_num_same_vip = UINT_MAX, min_num_higher_vip = UINT_MAX;
+	unsigned int cpu, num_same_vip, num_higher_vip, min_num_same_vip = UINT_MAX, min_num_higher_vip = UINT_MAX;
 	struct cpumask vip_candidate;
 
 	for_each_cpu(cpu, allowed_cpu_mask_for_slow) {
@@ -95,6 +95,9 @@ struct cpumask find_min_num_vip_cpus_slow(int vip_prio, struct cpumask *allowed_
 			cpumask_set_cpu(cpu, &vip_candidate);
 		}
 	}
+
+	if (trace_sched_find_min_num_vip_cpus_slow_cpus_enabled())
+		trace_sched_find_min_num_vip_cpus_slow_cpus(pid, &vip_candidate, allowed_cpu_mask_for_slow);
 
 	return vip_candidate;
 }
@@ -184,7 +187,7 @@ struct cpumask find_min_num_vip_cpus(struct perf_domain *pd, struct task_struct 
 	 * and find min num SP(Same Prio) CPUs within min num HP CPUs.
 	 */
 	if (cpumask_weight(&allowed_cpu_mask_for_slow) != 0)
-		vip_candidate = find_min_num_vip_cpus_slow(vip_prio, &allowed_cpu_mask_for_slow);
+		vip_candidate = find_min_num_vip_cpus_slow(p->pid, vip_prio, &allowed_cpu_mask_for_slow);
 
 backup:
 	if (!cpumask_weight(&vip_candidate)) {

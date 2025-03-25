@@ -1096,6 +1096,27 @@ TRACE_EVENT(sched_find_imbalanced_vvip_gear,
 		  __entry->cpu, __entry->num_vvip_in_gear)
 );
 
+TRACE_EVENT(sched_find_min_num_vip_cpus_slow_cpus,
+	TP_PROTO(int pid, struct cpumask *vip_candidate, struct cpumask *allowed_cpu_mask_for_slow),
+
+	TP_ARGS(pid, vip_candidate, allowed_cpu_mask_for_slow),
+
+	TP_STRUCT__entry(
+		__field(int, pid)
+		__field(long, vip_candidate)
+		__field(long, allowed_cpu_mask_for_slow)
+	),
+
+	TP_fast_assign(
+		__entry->pid					= pid;
+		__entry->vip_candidate          = cpumask_bits(vip_candidate)[0];
+		__entry->allowed_cpu_mask_for_slow     = cpumask_bits(allowed_cpu_mask_for_slow)[0];
+	),
+
+	TP_printk("pid=%d vip_candidate=0x%lx allowed_cpu_mask_for_slow=0x%lx",
+		__entry->pid, __entry->vip_candidate, __entry->allowed_cpu_mask_for_slow)
+);
+
 TRACE_EVENT(sched_find_min_num_vip_cpus,
 	TP_PROTO(bool failed, int pid, struct cpumask *vip_candidate, u64 num_vip_in_cpu_bit),
 
