@@ -434,7 +434,7 @@ static int __used decide_and_throttle(enum LOW_BATTERY_USER_TAG user, unsigned i
 			lbat_user_modify_thd_ext_locked(lbat_data->lbat_pt[INTR_1],
 				thd_info[INTR_1]->ag_thd_volts, thd_info[INTR_1]->thd_volts_size);
 			dump_thd_volts_ext(thd_info[INTR_1]->ag_thd_volts, thd_info[INTR_1]->thd_volts_size);
-			dump_lvsys_thd();
+			//dump_lvsys_thd();
 #ifdef LBAT2_ENABLE
 			if (lbat_data->lbat_intr_num == 2) {
 				dual_lbat_user_modify_thd_ext_locked( lbat_data->lbat_pt[INTR_2],
@@ -1437,7 +1437,7 @@ static int fill_thd_info(struct platform_device *pdev, struct lbat_thl_priv *pri
 		mutex_unlock(&exe_thr_lock);
 
 		dump_thd_volts_ext(thd_info->ag_thd_volts, thd_info->thd_volts_size);
-		dump_lvsys_thd();
+		//dump_lvsys_thd();
 	}
 	return 0;
 }
