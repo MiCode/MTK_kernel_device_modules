@@ -139,5 +139,7 @@ extern int32_t swpm_dbg_en(uint32_t num1, uint32_t num2,
 		uint32_t *out1, uint32_t *out2);
 extern void swpm_v6993_ext_init(void);
 extern void swpm_v6993_ext_exit(void);
+extern void swpm_release_pmsr_access_rights(void);
+extern void swpm_retrieve_pmsr_access_rights(void);
 
 #endif /* __MTK_SWPM_SP_PLATFORM_H__ */

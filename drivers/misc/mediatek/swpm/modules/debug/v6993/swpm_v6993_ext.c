@@ -84,6 +84,7 @@ static unsigned int update_count;
 
 static ktime_t last_req_data_time;
 struct mutex swpm_get_sram_data_mutex = __MUTEX_INITIALIZER(swpm_get_sram_data_mutex);
+struct mutex swpm_pmsr_access_rights_mutex = __MUTEX_INITIALIZER(swpm_pmsr_access_rights_mutex);
 
 static char xpu_ip_str[NR_XPU_IP][MAX_IP_NAME_LENGTH] = {
 	"DISP", "VENC", "VDEC", "ADSP", "SCP", "MCU",
@@ -97,7 +98,6 @@ static unsigned int swpm_core_volt;
 static unsigned int swpm_ddr_freq;
 static unsigned int swpm_emi_freq;
 static struct task_struct *swpm_psp_update_thread = NULL;
-
 
 /* critical section function */
 static void swpm_sp_internal_update(void)
@@ -259,9 +259,16 @@ static int swpm_get_data_from_sram(void)
 	int scmi_ret = 0;
 	int ret = SWPM_NOT_EXE;
 	unsigned int cur_update_count;
-    unsigned int cur_write_flag;
+	unsigned int cur_write_flag;
+
+
+	if (mutex_trylock(&swpm_pmsr_access_rights_mutex) == 0) {
+		pr_notice("%s mutex_trylock busy", __func__);
+		return SWPM_PSP_SUCCESS;
+	}
 
 	do {
+
 		if (last_req_data_time != 0) { // last_req_data_time = 0 is first request
 			if (ktime_to_ms((ktime_sub(ktime_get_real(),
 							last_req_data_time))) <= 500) {
@@ -282,7 +289,7 @@ static int swpm_get_data_from_sram(void)
 					} else if (scmi_ret != 0) {
 					} else if (scmi_ret == 0) {
 						break;
-                    }
+					}
 				}
 
 			}
@@ -315,8 +322,10 @@ static int swpm_get_data_from_sram(void)
 		}
 	} while(0);
 
-
 	ret = sp_ret;
+
+	swpm_unlock(&swpm_pmsr_access_rights_mutex);
+
 	return ret;
 }
 
@@ -324,7 +333,7 @@ static int swpm_periodic_update_data(void *arg)
 {
 	while(1) {
 		swpm_get_data_from_sram();
-		usleep_range(DEFAULT_UPDATE_US, DEFAULT_UPDATE_US + 100);
+		usleep_range_state(DEFAULT_UPDATE_US, DEFAULT_UPDATE_US + 100, TASK_INTERRUPTIBLE);
 	}
 
 	return 0;
@@ -599,6 +608,16 @@ static void swpm_sp_timer_init(void)
 	} else {
 		pr_notice("create swpm psp update thread fail ***\n");
 	}
+}
+
+void swpm_release_pmsr_access_rights(void)
+{
+	swpm_lock(&swpm_pmsr_access_rights_mutex);
+}
+
+void swpm_retrieve_pmsr_access_rights(void)
+{
+	swpm_unlock(&swpm_pmsr_access_rights_mutex);
 }
 
 /* snapshot the last completed average index data */

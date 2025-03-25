@@ -115,6 +115,11 @@ static ssize_t swpm_pmsr_en_write(char *FromUser, size_t sz, void *priv)
 
 	ret = -EPERM;
 	if (!kstrtouint(FromUser, 0, &enable)) {
+		if (enable)
+			swpm_retrieve_pmsr_access_rights();
+		else
+			swpm_release_pmsr_access_rights();
+
 		swpm_pmsr_en = !!enable;
 		swpm_set_only_cmd(0, swpm_pmsr_en,
 				  PMSR_SET_EN, PMSR_CMD_TYPE);
