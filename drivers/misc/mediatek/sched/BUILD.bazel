@@ -156,6 +156,7 @@ define_mgk_ddk_ko(
 		"//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:mtk_cpu_power_throttling".format(kernel_version),
 		"//kernel_device_modules-{}/drivers/misc/mediatek/sched:cpufreq_sugov_ext".format(kernel_version),
 		"//kernel_device_modules-{}/drivers/misc/mediatek/sched:scheduler".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/irq_monitor:irq_monitor".format(kernel_version),
 	],
     copts = [
         "-Wall",
@@ -169,5 +170,6 @@ define_mgk_ddk_ko(
 		"-I$(DEVICE_MODULES_PATH)/drivers/cpufreq/",
 		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/upower",
 		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat",
     ],
 )

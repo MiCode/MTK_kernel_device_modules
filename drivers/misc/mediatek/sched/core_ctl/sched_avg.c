@@ -15,6 +15,7 @@
 #include <sched/sched.h>
 #include "sched_avg.h"
 #include "common.h"
+#include <mt-plat/mtk_irq_mon.h>
 
 #define TAG "sched_avg"
 
@@ -740,6 +741,9 @@ void inc_nr_over_thres_running(void *data, struct rq *rq, struct task_struct *p,
 {
 	if (!core_ctl_get_policy())
 		return;
+
+	irq_log_store();
+
 #if IS_ENABLED(CONFIG_CFS_BANDWIDTH)
 	struct cfs_rq *cfs_rq;
 	struct sched_entity *se = &p->se;
@@ -752,12 +756,16 @@ void inc_nr_over_thres_running(void *data, struct rq *rq, struct task_struct *p,
 	}
 #endif
 	sched_update_nr_over_thres_prod(p, cpu_of(rq), 1);
+	irq_log_store();
 }
 
 void dec_nr_over_thres_running(void *data, struct rq *rq, struct task_struct *p, int flags)
 {
 	if (!core_ctl_get_policy())
 		return;
+
+	irq_log_store();
+
 #if IS_ENABLED(CONFIG_CFS_BANDWIDTH)
 	struct cfs_rq *cfs_rq;
 	struct sched_entity *se = &p->se;
@@ -770,6 +778,7 @@ void dec_nr_over_thres_running(void *data, struct rq *rq, struct task_struct *p,
 	}
 #endif
 	sched_update_nr_over_thres_prod(p, cpu_of(rq), -1);
+	irq_log_store();
 }
 
 /*
