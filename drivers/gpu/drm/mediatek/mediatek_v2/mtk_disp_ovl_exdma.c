@@ -4065,19 +4065,28 @@ static int mtk_ovl_calc_layer_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int
 			total += *body_bw;
 		}
 		if (!IS_ERR_OR_NULL(hdr_bw)) {
-			*hdr_bw = (uncompr_bw > 32) ? (uncompr_bw / 32 + 1) : 1;
-			*hdr_bw = (*hdr_bw > afbc_header_bw_min) ? *hdr_bw : afbc_header_bw_min;
-			total += *hdr_bw;
+			if (uncompr_bw) {
+				*hdr_bw = (uncompr_bw > 32) ? (uncompr_bw / 32 + 1) : 1;
+				*hdr_bw = (*hdr_bw > afbc_header_bw_min) ? *hdr_bw : afbc_header_bw_min;
+				total += *hdr_bw;
+			} else
+				*hdr_bw = 0;
 		}
 		if (!IS_ERR_OR_NULL(stash_body_bw)) {
-			*stash_body_bw = uncompr_bw * 2 / 256 + 1;
-			*stash_body_bw = *stash_body_bw > stash_bw_min ? *stash_body_bw : stash_bw_min;
-			total += *stash_body_bw;
+			if (uncompr_bw) {
+				*stash_body_bw = uncompr_bw * 2 / 256 + 1;
+				*stash_body_bw = *stash_body_bw > stash_bw_min ? *stash_body_bw : stash_bw_min;
+				total += *stash_body_bw;
+			} else
+				*stash_body_bw = 0;
 		}
 		if (!IS_ERR_OR_NULL(stash_hdr_bw)) {
-			*stash_hdr_bw = uncompr_bw * 2 / 32 / 256 + 1;
-			*stash_hdr_bw = *stash_hdr_bw > stash_bw_min ? *stash_hdr_bw : stash_bw_min;
-			total += *stash_hdr_bw;
+			if (uncompr_bw) {
+				*stash_hdr_bw = uncompr_bw * 2 / 32 / 256 + 1;
+				*stash_hdr_bw = *stash_hdr_bw > stash_bw_min ? *stash_hdr_bw : stash_bw_min;
+				total += *stash_hdr_bw;
+			} else
+				*stash_hdr_bw = 0;
 		}
 		/* avoid of compress ratio floating*/
 		if (compr_ratio > 0 && compr_ratio < 1000)
@@ -4092,9 +4101,12 @@ static int mtk_ovl_calc_layer_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int
 		if (!IS_ERR_OR_NULL(hdr_bw))
 			*hdr_bw = 0;
 		if (!IS_ERR_OR_NULL(stash_body_bw)) {
-			*stash_body_bw = uncompr_bw / 256 + 1;
-			*stash_body_bw = *stash_body_bw > stash_bw_min ? *stash_body_bw : stash_bw_min;
-			total += *stash_body_bw;
+			if (uncompr_bw) {
+				*stash_body_bw = uncompr_bw / 256 + 1;
+				*stash_body_bw = *stash_body_bw > stash_bw_min ? *stash_body_bw : stash_bw_min;
+				total += *stash_body_bw;
+			} else
+				*stash_body_bw = 0;
 		}
 		if (!IS_ERR_OR_NULL(stash_hdr_bw))
 			*stash_hdr_bw = 0;
