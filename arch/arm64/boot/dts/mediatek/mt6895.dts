@@ -191,9 +191,9 @@
 			clock-frequency = <1701000000>;
 			capacity-dmips-mhz = <380>;
 			#cooling-cells = <2>;
-			//SI_comment cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff
-			//SI_comment			&system_mem &system_pll &system_bus
-			//SI_comment			&s2idle>;
+			cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff
+						&system_mem &system_pll &system_bus
+						&s2idle>;
 		};
 
 		cpu1: cpu@001 {
@@ -205,9 +205,9 @@
 			clock-frequency = <1701000000>;
 			capacity-dmips-mhz = <380>;
 			#cooling-cells = <2>;
-			//SI_commentcpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff
-			//SI_comment			&system_mem &system_pll &system_bus
-			//SI_comment			&s2idle>;
+			cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff
+						&system_mem &system_pll &system_bus
+						&s2idle>;
 		};
 
 		cpu2: cpu@002 {
@@ -219,9 +219,9 @@
 			clock-frequency = <1701000000>;
 			capacity-dmips-mhz = <380>;
 			#cooling-cells = <2>;
-			//SI_commentcpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff
-			//SI_comment			&system_mem &system_pll &system_bus
-			//SI_comment			&s2idle>;
+			cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff
+						&system_mem &system_pll &system_bus
+						&s2idle>;
 		};
 
 		cpu3: cpu@003 {
@@ -233,9 +233,9 @@
 			clock-frequency = <1701000000>;
 			capacity-dmips-mhz = <380>;
 			#cooling-cells = <2>;
-			//SI_comment cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff
-			//SI_comment			&system_mem &system_pll &system_bus
-			//SI_comment			&s2idle>;
+			cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff
+						&system_mem &system_pll &system_bus
+						&s2idle>;
 		};
 
 		cpu4: cpu@100 {
@@ -247,9 +247,9 @@
 			clock-frequency = <2171000000>;
 			capacity-dmips-mhz = <1024>;
 			#cooling-cells = <2>;
-			//SI_comment cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff
-			//SI_comment			&system_mem &system_pll &system_bus
-			//SI_comment			&s2idle>;
+			cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff
+						&system_mem &system_pll &system_bus
+						&s2idle>;
 		};
 
 		cpu5: cpu@101 {
@@ -261,9 +261,9 @@
 			clock-frequency = <2171000000>;
 			capacity-dmips-mhz = <1024>;
 			#cooling-cells = <2>;
-			//SI_comment cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff
-			//SI_comment			&system_mem &system_pll &system_bus
-			//SI_comment			&s2idle>;
+			cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff
+						&system_mem &system_pll &system_bus
+						&s2idle>;
 		};
 
 		cpu6: cpu@102 {
@@ -275,9 +275,9 @@
 			clock-frequency = <2171000000>;
 			capacity-dmips-mhz = <1024>;
 			#cooling-cells = <2>;
-			//SI_comment cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff
-			//SI_comment			&system_mem &system_pll &system_bus
-			//SI_comment			&s2idle>;
+			cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff
+						&system_mem &system_pll &system_bus
+						&s2idle>;
 		};
 
 		cpu7: cpu@200 {
@@ -289,9 +289,9 @@
 			clock-frequency = <2171000000>;
 			capacity-dmips-mhz = <1024>;
 			#cooling-cells = <2>;
-			//SI_comment cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff
-			//SI_comment			&system_mem &system_pll &system_bus
-			//SI_comment			&s2idle>;
+			cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff
+						&system_mem &system_pll &system_bus
+						&s2idle>;
 		};
 		cpu-map {
 
