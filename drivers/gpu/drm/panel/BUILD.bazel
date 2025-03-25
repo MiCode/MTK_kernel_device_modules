@@ -67,6 +67,7 @@ PANELS = [
     "panel-samsung-op-cmd",
     "panel-samsung-op-cmd-msync2",
     "panel-alpha-samsung-s6e3hae-wqhd-dphy-cmd-120hz",
+    "panel-tianma-nt36672e-vdo-120hz-hfp",
     "panel-tianma-nt36672e-vdo-120hz-vfp",
     "panel-tianma-nt36672e-vdo-120hz-vfp-6382",
     "panel-nt36672a-rt4801-vdo",
@@ -83,6 +84,8 @@ PANELS = [
     "panel-nt37801-cmd-spr",
     "panel-truly-td4330-cmd",
     "panel-samsung-s68fc01-vdo-aod",
+    "panel-hx-nt37701-dphy-cmd",
+    "panel-hx-nt37701-dphy-cmd-120hz",
 ]
 
 [define_mgk_ddk_ko(
