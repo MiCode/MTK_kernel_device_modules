@@ -1081,7 +1081,7 @@ static int fstb_calculate_target_fps(int tgid, int pid, unsigned long long bufID
 		// use Target FPS V2
 		if (local_tfps <= 0)
 			local_tfps = iter->raw_target_fpks / 1000;
-		iter->target_fps_margin = hint ? margin : 0;
+		iter->target_fps_margin = hint ? 0 : margin;
 	}
 	if (local_tfps)
 		local_ttime = div_u64(NSEC_PER_SEC, local_tfps);
