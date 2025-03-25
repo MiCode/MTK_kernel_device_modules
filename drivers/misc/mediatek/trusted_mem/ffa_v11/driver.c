@@ -1461,11 +1461,19 @@ static int ffa_setup_partitions(void)
 	ret = xa_insert(&drv_info->partition_info, drv_info->vm_id,
 			info, GFP_KERNEL);
 	if (ret) {
+#if defined(MTK_ADAPTED_WA) && MTK_ADAPTED_WA
+		pr_warn("%s: failed to save Host partition ID 0x%x - ret:%d. Continuing with it ....\n",
+		       __func__, drv_info->vm_id, ret);
+		ret = 0;
+#else
 		pr_err("%s: failed to save Host partition ID 0x%x - ret:%d. Abort.\n",
 		       __func__, drv_info->vm_id, ret);
+#endif /* defined(MTK_ADAPTED_WA) && MTK_ADAPTED_WA */
 		kfree(info);
+#if !defined(MTK_ADAPTED_WA) || !MTK_ADAPTED_WA
 		/* Already registered devices are freed on bus_exit */
 		ffa_partitions_cleanup();
+#endif /* !defined(MTK_ADAPTED_WA) || !MTK_ADAPTED_WA */
 	}
 
 	return ret;
