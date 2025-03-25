@@ -3009,10 +3009,6 @@ static void fg_drv_update_hw_status(struct mtk_battery *gm)
 
 		bm_err(gm, "[%s_Error] get %s hang over 3 sec, time:%lld\n",
 			reg_type_name, gp_name, prop_control->last_diff_time.tv_sec);
-#if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
-		if (!gm->disableGM30)
-			aee_kernel_warning("BATTERY", "gauge get prop over 3 sec\n");
-#endif
 	}
 	if (!gm->disableGM30 && prop_control->total_fail > 20) {
 		regmap_type = gauge_get_int_property(gm,GAUGE_PROP_REGMAP_TYPE);
@@ -3026,9 +3022,6 @@ static void fg_drv_update_hw_status(struct mtk_battery *gm)
 				reg_type_name, gp_name, prop_control->i2c_fail_counter[i]);
 			prop_control->i2c_fail_counter[i] = 0;
 		}
-#if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
-		aee_kernel_warning("BATTERY",  "gauge get prop fail case over 20 times\n");
-#endif
 	}
 
 	gauge_coulomb_dump_list(gm);
