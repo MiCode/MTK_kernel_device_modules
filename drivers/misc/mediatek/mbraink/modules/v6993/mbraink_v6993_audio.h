@@ -10,6 +10,8 @@
 #include <linux/io.h>
 #include <mbraink_ioctl_struct_def.h>
 
+extern int mbraink_netlink_send_msg(const char *msg);
+
 int mbraink_v6993_audio_init(void);
 int mbraink_v6993_audio_deinit(void);
 

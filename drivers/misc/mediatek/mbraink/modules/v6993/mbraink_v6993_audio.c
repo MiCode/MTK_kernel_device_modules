@@ -12,6 +12,8 @@
 
 #include <swpm_module_psp.h>
 
+#include <adsp_platform_driver.h>
+
 static int mbraink_v6993_audio_getIdleRatioInfo(
 	struct mbraink_audio_idleRatioInfo *pmbrainkAudioIdleRatioInfo)
 {
@@ -51,6 +53,40 @@ End:
 	return ret;
 }
 
+static void sendAudioAdspNotifyEvent(const char *data, uint32_t totalCount)
+{
+	char netlink_buf[NETLINK_EVENT_MESSAGE_SIZE] = {'\0'};
+
+	int n = 0;
+	int pos = 0;
+
+	if (data == NULL)
+		return;
+
+	n = snprintf(netlink_buf + pos,
+			NETLINK_EVENT_MESSAGE_SIZE - pos,
+			"%s:%s",
+			NETLINK_EVENT_AUDIOADSPNOTIFY,
+			data);
+
+	if (n < 0 || n >= NETLINK_EVENT_MESSAGE_SIZE - pos)
+		return;
+
+	mbraink_netlink_send_msg(netlink_buf);
+
+}
+
+void audio2mbrain_hint_adspnotifyinfo(const void *info, const size_t size)
+{
+	const char *byte_data = (const char *)info;
+	uint32_t totalCount = (uint32_t)size;
+
+	if (info == NULL)
+		return;
+
+	sendAudioAdspNotifyEvent(byte_data, totalCount);
+}
+
 static struct mbraink_audio_ops mbraink_v6993_audio_ops = {
 	.setUdmFeatureEn = NULL,
 	.getIdleRatioInfo = mbraink_v6993_audio_getIdleRatioInfo,
@@ -61,6 +97,13 @@ int mbraink_v6993_audio_init(void)
 	int ret = 0;
 
 	ret = register_mbraink_audio_ops(&mbraink_v6993_audio_ops);
+	if (ret != 0)
+		pr_info("%s(%d) register audio ops fail\n", __func__, __LINE__);
+
+	ret = adsp_mbrain_register_callback(audio2mbrain_hint_adspnotifyinfo);
+	if (ret != 0)
+		pr_info("%s(%d) register audio adsp cb fail\n", __func__, __LINE__);
+
 	return ret;
 }
 
@@ -69,6 +112,13 @@ int mbraink_v6993_audio_deinit(void)
 	int ret = 0;
 
 	ret = unregister_mbraink_audio_ops();
+	if (ret != 0)
+		pr_info("%s(%d) unregister audio ops fail\n", __func__, __LINE__);
+
+	ret = adsp_mbrain_unregister_callback();
+	if (ret != 0)
+		pr_info("%s(%d) unregister audio adsp cb fail\n", __func__, __LINE__);
+
 	return ret;
 }
 

@@ -76,6 +76,11 @@ ifeq ($(CONFIG_DEVICE_MODULES_SCSI_UFS_MEDIATEK),m)
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/ufs/
 endif
 
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/adsp
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/adsp
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/adsp/include
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/adsp/include
+
 subdir-ccflags-y += -Wformat
 
 #BUILD_MBRAINK_MODULE_NAME=mtk_mbraink_v6991
