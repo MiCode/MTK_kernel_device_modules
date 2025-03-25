@@ -922,7 +922,6 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/media/platform/mtk-vcodec:mtk-vcodec-enc-v1".format(kernel_version),
     "//kernel_device_modules-{}/drivers/media/platform/mtk-vcodec:mtk-vcodec-enc-v2".format(kernel_version),
     "//kernel_device_modules-{}/drivers/media/platform/mtk-vcodec:mtk-vcodec-trace".format(kernel_version),
-    "//kernel_device_modules-{}/drivers/media/platform/mtk-vcu:mtk-vcu".format(kernel_version),
     "//kernel_device_modules-{}/drivers/memory/mediatek:emi".format(kernel_version),
     "//kernel_device_modules-{}/drivers/memory/mediatek:emi-fake-eng".format(kernel_version),
     "//kernel_device_modules-{}/drivers/memory/mediatek:emi-fake-eng-v2".format(kernel_version),
@@ -1395,6 +1394,7 @@ mgk_64_kleaf_platform_modules = {
     "//kernel_device_modules-{}/drivers/gpu/mediatek/gpufreq/v2:mtk_gpufreq_mt6895".format(kernel_version): "mt6895",
     "//kernel_device_modules-{}/drivers/gpu/mediatek/ged:mtk_ged_mt6991".format(kernel_version): "mt6991",
     "//kernel_device_modules-{}/drivers/gpu/mediatek/ged:mtk_ged_mt6993".format(kernel_version): "mt6993",
+    "//kernel_device_modules-{}/drivers/media/platform/mtk-vcu:mtk-vcu".format(kernel_version): "mt6768 mt6781 mt6789 mt6833 mt6853 mt6855 mt6877 mt6893 mt8188 mt8192",
     "//kernel_device_modules-{}/drivers/misc/mediatek/cm_mgr:mtk_cm_mgr_mt6991".format(kernel_version): "mt6991",
     "//kernel_device_modules-{}/drivers/misc/mediatek/cm_mgr:mtk_cm_mgr_mt6993".format(kernel_version): "mt6993",
     "//kernel_device_modules-{}/drivers/misc/mediatek/dcm:mt6789_dcm".format(kernel_version): "mt6789",
@@ -3210,7 +3210,6 @@ def get_overlay_modules_list():
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/media/platform/mtk-vcodec:mtk-vcodec-enc-v1".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/media/platform/mtk-vcodec:mtk-vcodec-common".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/media/platform/mtk-vcodec:mtk-vcodec-trace".format(kernel_version))
-        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/media/platform/mtk-vcu:mtk-vcu".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/soc/mediatek:mtk-mmdvfs-v3".format(kernel_version))
         mgk_64_device_modules.remove("drivers/misc/mediatek/qos/mtk_qos.ko")
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/cpufreq_cus:cpufreq_cus")
