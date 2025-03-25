@@ -19202,6 +19202,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 		apu_power_throttling: apu-power-throttling {
 			compatible = "mediatek,apu-power-throttling";
+			status = "disabled";
 			lbat-max-level = <2>;
 			lbat-limit-opp-lv1 = <0>;
 			lbat-limit-opp-lv2 = <0>;
