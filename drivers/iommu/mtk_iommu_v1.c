@@ -564,7 +564,7 @@ static int mtk_iommu_probe(struct platform_device *pdev)
 	data->dev = dev;
 
 	/* Protect memory. HW will access here while translation fault.*/
-	protect = devm_kzalloc(dev, MTK_PROTECT_PA_ALIGN * 2,
+	protect = devm_kcalloc(dev, 2, MTK_PROTECT_PA_ALIGN,
 			GFP_KERNEL | GFP_DMA);
 	if (!protect)
 		return -ENOMEM;
