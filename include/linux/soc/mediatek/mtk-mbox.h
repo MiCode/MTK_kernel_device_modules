@@ -159,6 +159,7 @@ struct mtk_mbox_device {
 	void (*memcpy_to_tiny)(void __iomem *dest, const void *src, int size);
 	void (*memcpy_from_tiny)(void *dest, const void __iomem *src, int size);
 	mbox_ipi_cb_t ipi_cb;
+	mbox_ipi_cb_t ipi_timeout_cb;
 	void *ipi_priv;
 	mbox_rx_cb_t pre_cb;
 	mbox_rx_cb_t post_cb;

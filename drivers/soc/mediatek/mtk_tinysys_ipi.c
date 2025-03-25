@@ -26,6 +26,7 @@
 
 
 static void ipi_isr_cb(struct mtk_mbox_pin_recv *pin, void *priv);
+static void ipi_isr_timeout_cb(struct mtk_mbox_pin_recv *pin, void *priv);
 
 
 static void ipi_monitor(struct mtk_ipi_device *ipidev, int id, int stage)
@@ -208,6 +209,7 @@ int mtk_ipi_device_register(struct mtk_ipi_device *ipidev,
 	}
 
 	mbox->ipi_cb = ipi_isr_cb;
+	mbox->ipi_timeout_cb = ipi_isr_timeout_cb;
 	mbox->ipi_priv = (void *)ipidev;
 	ipidev->mrpdev = mtk_rpdev;
 	ipidev->table = ipi_chan_table;
@@ -662,6 +664,24 @@ static void ipi_isr_cb(struct mtk_mbox_pin_recv *pin, void *priv)
 		complete(&pin->notify);
 	}
 
+}
+
+static void ipi_isr_timeout_cb(struct mtk_mbox_pin_recv *pin, void *priv)
+{
+	struct mtk_ipi_device *ipidev = priv;
+	struct mtk_ipi_chan_table *chan;
+	unsigned long flags;
+	int ipi_id = pin->chan_id;
+
+	chan = &ipidev->table[ipi_id];
+
+	spin_lock_irqsave(&ipidev->lock_monitor, flags);
+	pr_notice("[TINY_IPI] ipi_id %d: t%d=%lld, t%d=%lld, t%d=%lld\n",
+			ipi_id, chan->ipi_record[0].idx, chan->ipi_record[0].ts,
+			chan->ipi_record[1].idx, chan->ipi_record[1].ts,
+			chan->ipi_record[2].idx, chan->ipi_record[2].ts);
+
+	spin_unlock_irqrestore(&ipidev->lock_monitor, flags);
 }
 
 MODULE_LICENSE("GPL v2");

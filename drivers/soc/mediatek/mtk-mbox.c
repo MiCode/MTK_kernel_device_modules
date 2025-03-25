@@ -521,8 +521,7 @@ static irqreturn_t mtk_mbox_isr(int irq, void *dev_id)
 	uint64_t post_mbox_op_time = 0,  post_mbox_dump_time= 0;
 	uint32_t execute_count = 0;
 	//void *user_data;
-	int ret;
-	int i;
+	int ret, i;
 
 	start_time = cpu_clock(0);
 	mbox = minfo->id;
@@ -684,11 +683,25 @@ skip:
 	}
 	end_time = cpu_clock(0);
 	if (end_time - start_time > timeout_time) {
-		pr_notice("[MBOX Error]dev=%s ipi_id=%d, start=%llu, pre_cb_time=%llu, cb_pre_time=%llu\n",
-		mbdev->name, pin_recv->chan_id, start_time, pre_cb_time, pin_recv->recv_record.pre_timestamp);
+		pr_notice("[MBOX Error]dev=%s mbox=%u, start=%llu, pre_cb_time=%llu, cb_pre_time=%llu\n",
+		mbdev->name, mbox, start_time, pre_cb_time, pin_recv->recv_record.pre_timestamp);
 		pr_notice("[MBOX Error]cb_post_time=%llu, post_cb_time=%llu, post_mbox_op_time=%llu,post_mbox_dump_time =%llu,end=%llu\n",
 		pin_recv->recv_record.post_timestamp, post_cb_time, post_mbox_op_time, post_mbox_dump_time, end_time);
 		pr_notice("[MBOX Error]diff=%llu, count=%u\n", end_time - start_time, execute_count);
+
+		/* debug: end_time - post_mbox_dump_time(ipi_cb) */
+		for (i = 0; i < mbdev->recv_count; i++) {
+			pin_recv = &(mbdev->pin_recv_table[i]);
+			if (pin_recv->mbox != mbox)
+				continue;
+			if (((0x1 << pin_recv->pin_index) & irq_status) > 0x0) {
+				if (mbdev->ipi_timeout_cb)
+					mbdev->ipi_timeout_cb(pin_recv, mbdev->ipi_priv);
+
+				pr_notice("[MBOX Error] ipi_id=%d, noitfy_count=%d\n",
+					pin_recv->chan_id, pin_recv->recv_record.notify_count);
+			}
+		}
 	}
 	return IRQ_HANDLED;
 }
