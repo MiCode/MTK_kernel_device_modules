@@ -16,6 +16,7 @@
 #include <linux/slab.h>
 #include <linux/uaccess.h>
 #include <linux/delay.h>
+#include <soc/mediatek/emi.h>
 
 #define FAKE_ENG_EN				0x0
 #define FAKE_ENG_RST			0x4
@@ -488,6 +489,23 @@ out:
 
 static DRIVER_ATTR_RW(emi_fake_eng);
 
+static ssize_t emi_total_bw_show(struct device_driver *driver, char *buf)
+{
+	unsigned int emi_total_bw;
+
+	emi_total_bw = get_emi_total_bw();
+	return scnprintf(buf, PAGE_SIZE, "0x%x\n", emi_total_bw);
+}
+
+static ssize_t emi_total_bw_store
+	(struct device_driver *driver, const char *buf, size_t count)
+{
+	return 0;
+}
+
+static DRIVER_ATTR_RW(emi_total_bw);
+
+
 static void emi_fake_eng_remove(struct platform_device *pdev)
 {
 	dev_info(&pdev->dev, "driver removed\n");
@@ -625,6 +643,9 @@ static void __exit emi_fake_eng_exit(void)
 	driver_remove_file(&emi_fake_eng_drv.driver,
 					&driver_attr_emi_fake_eng);
 
+	driver_remove_file(&emi_fake_eng_drv.driver,
+					&driver_attr_emi_total_bw);
+
 	platform_driver_unregister(&emi_fake_eng_drv);
 
 }
@@ -642,6 +663,13 @@ static int __init emi_fake_eng_init(void)
 
 	ret = driver_create_file(&emi_fake_eng_drv.driver,
 							&driver_attr_emi_fake_eng);
+	if (ret) {
+		pr_info("emi fake engine v2: failed to create control file\n");
+		return ret;
+	}
+
+	ret = driver_create_file(&emi_fake_eng_drv.driver,
+							&driver_attr_emi_total_bw);
 	if (ret) {
 		pr_info("emi fake engine v2: failed to create control file\n");
 		return ret;

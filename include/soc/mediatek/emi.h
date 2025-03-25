@@ -124,6 +124,9 @@ void mtk_emidbg_dump(void);
 void mtk_emiisu_record_off(void);
 void mtk_emiisu_record_on(void);
 
+/* for hrt test only */
+unsigned int get_emi_total_bw(void);
+
 /* mtk emimpu api */
 #if IS_ENABLED(CONFIG_MTK_EMI_LEGACY)
 int mtk_emimpu_init_region(

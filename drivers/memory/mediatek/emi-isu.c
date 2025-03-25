@@ -262,6 +262,25 @@ void mtk_emiisu_record_on(void)
 }
 EXPORT_SYMBOL(mtk_emiisu_record_on);
 
+unsigned int get_emi_total_bw(void)
+{
+	struct emi_isu *isu;
+	unsigned int emi_total_bw;
+
+	if (!global_emi_isu)
+		return 0;
+
+	isu = global_emi_isu;
+
+	if (!(isu->con_addr))
+		return 0;
+
+	emi_total_bw = readl(isu->con_addr + 0x4);
+
+	return emi_total_bw;
+}
+EXPORT_SYMBOL(get_emi_total_bw);
+
 static ssize_t emiisu_ctrl_show(struct device_driver *driver, char *buf)
 {
 	struct emi_isu *isu;
