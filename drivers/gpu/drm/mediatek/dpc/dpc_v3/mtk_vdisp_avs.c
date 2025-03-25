@@ -9,6 +9,7 @@
 #include <linux/io.h>
 #include <linux/ktime.h>
 #include <linux/pm_opp.h>
+#include <linux/nvmem-consumer.h>
 #include <soc/mediatek/mmdvfs_public.h>
 
 #include "mtk-mmdvfs-debug.h"
@@ -40,6 +41,7 @@ struct vdisp_mmup_sram {
 };
 static struct vdisp_mmup_sram g_vdisp_mmup_sram;
 static struct notifier_block g_vdisp_vcp_nb;
+static uint32_t *g_vdisp_efuse_val;
 
 static void mtk_vdisp_set_mmup_sram_ofst(uint32_t ofst)
 {
@@ -172,81 +174,81 @@ static int mtk_vdisp_avs_vcp_notifier
 }
 #endif
 
-static void query_curr_ro(const struct mtk_vdisp_avs_data *vdisp_avs_data)
+static void query_curr_ro(const struct mtk_vdisp_aging_data *aging_data)
 {
 	u32 ro_fresh_curr = 0, ro_aging_curr = 0;
 
 	/* read vdisp avs RO fresh current */
 	// 1. Enable Power on
-	writel(0x0000001D, g_aging_base + vdisp_avs_data->aging_reg_pwr_ctrl);
-	writel(0x0000001F, g_aging_base + vdisp_avs_data->aging_reg_pwr_ctrl);
-	writel(0x0000005F, g_aging_base + vdisp_avs_data->aging_reg_pwr_ctrl);
-	writel(0x0000004F, g_aging_base + vdisp_avs_data->aging_reg_pwr_ctrl);
-	writel(0x0000006F, g_aging_base + vdisp_avs_data->aging_reg_pwr_ctrl);
+	writel(0x0000001D, g_aging_base + aging_data->reg_pwr_ctrl);
+	writel(0x0000001F, g_aging_base + aging_data->reg_pwr_ctrl);
+	writel(0x0000005F, g_aging_base + aging_data->reg_pwr_ctrl);
+	writel(0x0000004F, g_aging_base + aging_data->reg_pwr_ctrl);
+	writel(0x0000006F, g_aging_base + aging_data->reg_pwr_ctrl);
 	// 2. let rst_b =1’b0 (normal mode0 to  rst_b = 1’b1
-	writel(0x00000000, g_aging_base + vdisp_avs_data->aging_reg_test);
-	writel(0x00000100, g_aging_base + vdisp_avs_data->aging_reg_test);
+	writel(0x00000000, g_aging_base + aging_data->reg_test);
+	writel(0x00000100, g_aging_base + aging_data->reg_test);
 	// 3. enable RO
-	writel(vdisp_avs_data->aging_reg_ro_en0_fresh_val,
-		g_aging_base + vdisp_avs_data->aging_reg_ro_en0);
-	writel(0x00000000, g_aging_base + vdisp_avs_data->aging_reg_ro_en1);
-	writel(vdisp_avs_data->aging_reg_ro_en2_fresh_val,
-		g_aging_base + vdisp_avs_data->aging_reg_ro_en2);
+	writel(aging_data->reg_ro_en0_fresh_val,
+		g_aging_base + aging_data->reg_ro_en0);
+	writel(0x00000000, g_aging_base + aging_data->reg_ro_en1);
+	writel(aging_data->reg_ro_en2_fresh_val,
+		g_aging_base + aging_data->reg_ro_en2);
 	// 4. RO select
-	writel(vdisp_avs_data->aging_ro_sel_0_fresh_val,
-		g_aging_base + vdisp_avs_data->aging_ro_sel_0);
-	writel(vdisp_avs_data->aging_ro_sel_1_fresh_val,
-		g_aging_base + vdisp_avs_data->aging_ro_sel_1);
+	writel(aging_data->ro_sel_0_fresh_val,
+		g_aging_base + aging_data->ro_sel_0);
+	writel(aging_data->ro_sel_1_fresh_val,
+		g_aging_base + aging_data->ro_sel_1);
 	// 5. Aptv_timer + cnt restart & clr
-	writel(0x00022A00, g_aging_base + vdisp_avs_data->aging_win_cyc);
+	writel(0x00022A00, g_aging_base + aging_data->win_cyc);
 	udelay(20);
-	writel(0x00002A00, g_aging_base + vdisp_avs_data->aging_win_cyc);
+	writel(0x00002A00, g_aging_base + aging_data->win_cyc);
 	// 6. Aptv_timer + cnt start & clr
-	writel(0x00012A00, g_aging_base + vdisp_avs_data->aging_win_cyc);
+	writel(0x00012A00, g_aging_base + aging_data->win_cyc);
 	// 7. Count over
 	udelay(460);
 	// Get RO fresh current Value
-	ro_fresh_curr = readl(g_aging_base + vdisp_avs_data->aging_ro_fresh) & 0xFFFF;
+	ro_fresh_curr = readl(g_aging_base + aging_data->ro_fresh) & 0xFFFF;
 	// VDISPDBG("VDISP_AVS_RO_FRESH_CURR=%x", ro_fresh_curr);
 	// 8. Power off
-	writel(0x0000006F, g_aging_base + vdisp_avs_data->aging_reg_pwr_ctrl);
-	writel(0x0000007F, g_aging_base + vdisp_avs_data->aging_reg_pwr_ctrl);
-	writel(0x0000003F, g_aging_base + vdisp_avs_data->aging_reg_pwr_ctrl);
-	writel(0x0000001F, g_aging_base + vdisp_avs_data->aging_reg_pwr_ctrl);
-	writel(0x0000001E, g_aging_base + vdisp_avs_data->aging_reg_pwr_ctrl);
-	writel(0x0000001C, g_aging_base + vdisp_avs_data->aging_reg_pwr_ctrl);
+	writel(0x0000006F, g_aging_base + aging_data->reg_pwr_ctrl);
+	writel(0x0000007F, g_aging_base + aging_data->reg_pwr_ctrl);
+	writel(0x0000003F, g_aging_base + aging_data->reg_pwr_ctrl);
+	writel(0x0000001F, g_aging_base + aging_data->reg_pwr_ctrl);
+	writel(0x0000001E, g_aging_base + aging_data->reg_pwr_ctrl);
+	writel(0x0000001C, g_aging_base + aging_data->reg_pwr_ctrl);
 
 	/* read vdisp avs RO aging current */
 	// // 1. Enable Power on
-	// writel(0x0000001D, g_aging_base + vdisp_avs_data->aging_reg_pwr_ctrl);
-	// writel(0x0000001F, g_aging_base + vdisp_avs_data->aging_reg_pwr_ctrl);
-	// writel(0x0000005F, g_aging_base + vdisp_avs_data->aging_reg_pwr_ctrl);
-	// writel(0x0000004F, g_aging_base + vdisp_avs_data->aging_reg_pwr_ctrl);
-	// writel(0x0000006F, g_aging_base + vdisp_avs_data->aging_reg_pwr_ctrl);
+	// writel(0x0000001D, g_aging_base + aging_data->reg_pwr_ctrl);
+	// writel(0x0000001F, g_aging_base + aging_data->reg_pwr_ctrl);
+	// writel(0x0000005F, g_aging_base + aging_data->reg_pwr_ctrl);
+	// writel(0x0000004F, g_aging_base + aging_data->reg_pwr_ctrl);
+	// writel(0x0000006F, g_aging_base + aging_data->reg_pwr_ctrl);
 	// 2. let rst_b =1’b0 (normal mode0 to  rst_b = 1’b1
-	writel(0x00000000, g_aging_base + vdisp_avs_data->aging_reg_test);
-	writel(0x00000100, g_aging_base + vdisp_avs_data->aging_reg_test);
+	writel(0x00000000, g_aging_base + aging_data->reg_test);
+	writel(0x00000100, g_aging_base + aging_data->reg_test);
 	// 3. enable RO
-	writel(vdisp_avs_data->aging_reg_ro_en0_aging_val,
-		g_aging_base + vdisp_avs_data->aging_reg_ro_en0);
-	writel(0x00000000, g_aging_base + vdisp_avs_data->aging_reg_ro_en1);
-	writel(vdisp_avs_data->aging_reg_ro_en2_aging_val,
-		g_aging_base + vdisp_avs_data->aging_reg_ro_en2);
+	writel(aging_data->reg_ro_en0_aging_val,
+		g_aging_base + aging_data->reg_ro_en0);
+	writel(0x00000000, g_aging_base + aging_data->reg_ro_en1);
+	writel(aging_data->reg_ro_en2_aging_val,
+		g_aging_base + aging_data->reg_ro_en2);
 	// 4. RO select
-	writel(vdisp_avs_data->aging_ro_sel_0_aging_val,
-		g_aging_base + vdisp_avs_data->aging_ro_sel_0);
-	writel(vdisp_avs_data->aging_ro_sel_1_aging_val,
-		g_aging_base + vdisp_avs_data->aging_ro_sel_1);
+	writel(aging_data->ro_sel_0_aging_val,
+		g_aging_base + aging_data->ro_sel_0);
+	writel(aging_data->ro_sel_1_aging_val,
+		g_aging_base + aging_data->ro_sel_1);
 	// 5. Aptv_timer + cnt restart & clr
-	writel(0x00022A00, g_aging_base + vdisp_avs_data->aging_win_cyc);
+	writel(0x00022A00, g_aging_base + aging_data->win_cyc);
 	udelay(20);
-	writel(0x00002A00, g_aging_base + vdisp_avs_data->aging_win_cyc);
+	writel(0x00002A00, g_aging_base + aging_data->win_cyc);
 	// 6. Aptv_timer + cnt start & clr
-	writel(0x00012A00, g_aging_base + vdisp_avs_data->aging_win_cyc);
+	writel(0x00012A00, g_aging_base + aging_data->win_cyc);
 	// 7. Count over
 	udelay(460);
 	// Get RO aging current Value
-	ro_aging_curr = readl(g_aging_base + vdisp_avs_data->aging_ro_aging) & 0xFFFF;
+	ro_aging_curr = readl(g_aging_base + aging_data->ro_aging) & 0xFFFF;
 	// VDISPDBG("VDISP_AVS_RO_AGING_CURR=%x", ro_aging_curr);
 
 	/* update to share memory and send ipi to update */
@@ -280,8 +282,9 @@ void mtk_vdisp_avs_query_aging_val(struct device *dev)
 		return;
 	}
 
-	if (!g_vdisp_up_data || !g_vdisp_up_data->avs) {
-		VDISPDBG("vdisp_avs_data uninitialized, skip");
+	if (!g_vdisp_up_data || !g_vdisp_up_data->avs ||
+		!g_vdisp_up_data->avs->aging) {
+		VDISPDBG("vdisp_data uninitialized, skip");
 		return;
 	}
 
@@ -318,7 +321,7 @@ void mtk_vdisp_avs_query_aging_val(struct device *dev)
 		goto release_mmdvfs_clk;
 
 	/* query current aging sensor value */
-	query_curr_ro(g_vdisp_up_data->avs);
+	query_curr_ro(g_vdisp_up_data->avs->aging);
 
 	/* release VDISP opp4 */
 release_mmdvfs_clk:
@@ -417,6 +420,14 @@ int mtk_vdisp_up_analysis(void)
 
 	/* print mmup info */
 	mtk_dprec_logger_pr(DPREC_LOGGER_DUMP, "== VDISP MMUP ANALYSIS ==\n");
+	if (g_vdisp_efuse_val && g_vdisp_up_data->avs
+		&& g_vdisp_up_data->avs->efuse && g_vdisp_up_data->avs->efuse->tbl)
+		for (i = 0; i < g_vdisp_up_data->avs->efuse->num; i++) {
+			if (!g_vdisp_up_data->avs->efuse->tbl[i].name)
+				continue;
+			mtk_dprec_logger_pr(DPREC_LOGGER_DUMP, "%s(0x%08x)\n",
+				g_vdisp_up_data->avs->efuse->tbl[i].name, g_vdisp_efuse_val[i]);
+		}
 	written = scnprintf(msg, 512, "vdisp_cal:");
 	for (i = 0; i < vdisp_opp_num; i++)
 		written += scnprintf(msg + written, 512 - written,
@@ -551,6 +562,65 @@ int mtk_vdisp_up_dbg_opt(const char *opt)
 }
 #endif /* #if (IS_ENABLED(CONFIG_DEBUG_FS) | IS_ENABLED(CONFIG_PROC_FS)) */
 
+int mtk_vdisp_efuse_probe(struct platform_device *pdev)
+{
+	uint32_t i, used_efuse_num;
+	size_t len = 0;
+	struct device *dev = &pdev->dev;
+	struct nvmem_cell *cell = NULL;
+	uint32_t *buf = NULL;
+	const struct mtk_vdisp_efuse_lut *efuse_tbl;
+
+	/* early return check */
+	// already probed, return directly
+	if (g_vdisp_efuse_val)
+		return 0;
+
+	// platform data not ready, return directly
+	if (!g_vdisp_up_data || !g_vdisp_up_data->avs || !g_vdisp_up_data->avs->efuse)
+		return 0;
+
+	/* get efuse driver data */
+	used_efuse_num = g_vdisp_up_data->avs->efuse->num;
+	efuse_tbl = g_vdisp_up_data->avs->efuse->tbl;
+	// platform data not valid, return directly
+	if ((used_efuse_num == 0) || !efuse_tbl)
+		return 0;
+
+	/* store efuse values */
+	g_vdisp_efuse_val = kcalloc(used_efuse_num, sizeof(uint32_t), GFP_KERNEL);
+	if (!g_vdisp_efuse_val)
+		return -1;
+
+	for (i = 0; i < used_efuse_num; i++) {
+		if (!efuse_tbl[i].cell_name)
+			continue;
+
+		/* get efuse buf */
+		cell = nvmem_cell_get(dev, efuse_tbl[i].cell_name);
+		if (IS_ERR(cell)) {
+			if (PTR_ERR(cell) == -EPROBE_DEFER)
+				return -EPROBE_DEFER;
+			return -1;
+		}
+
+		buf = (uint32_t *)nvmem_cell_read(cell, &len);
+		nvmem_cell_put(cell);
+
+		if (IS_ERR(buf))
+			return PTR_ERR(buf);
+
+		g_vdisp_efuse_val[i] = *buf;
+		VDISPDBG("efuse_val[%d] %s(0x%08x)", i,
+			efuse_tbl[i].name ? efuse_tbl[i].name : "unnamed",
+			g_vdisp_efuse_val[i]);
+
+		kfree(buf);
+	}
+
+	return 0;
+}
+
 int mtk_vdisp_avs_probe(struct platform_device *pdev)
 {
 	int ret;
@@ -593,6 +663,10 @@ int mtk_vdisp_avs_probe(struct platform_device *pdev)
 
 	if (vdisp_data && vdisp_data->up)
 		g_vdisp_up_data = vdisp_data->up;
+
+	ret = mtk_vdisp_efuse_probe(pdev);
+	if (ret)
+		VDISPDBG("fail to get efuse");
 
 	ret = dev_pm_opp_of_add_table(dev);
 	if (ret)
