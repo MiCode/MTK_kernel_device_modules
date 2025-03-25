@@ -285,7 +285,7 @@ int mtk_dmabuf_page_pool_init_shrinker(void)
 
 	mtk_pool_shrinker->count_objects = mtk_dmabuf_page_pool_shrink_count;
 	mtk_pool_shrinker->scan_objects = mtk_dmabuf_page_pool_shrink_scan;
-	mtk_pool_shrinker->seeks = DEFAULT_SEEKS;
+	mtk_pool_shrinker->seeks = 16;
 	shrinker_register(mtk_pool_shrinker);
 	return 0;
 }
