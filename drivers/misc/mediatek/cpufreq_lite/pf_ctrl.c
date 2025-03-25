@@ -340,6 +340,8 @@ static void pf_switch_work_function(struct work_struct *work)
 	arm_smccc_smc(MTK_SIP_CACHE_CONTROL,
 			smc_act | MT_PREFETCH_SMC_MAGIC,
 			0, 0, 0, 0, 0, 0, &res);
+	if (res.a0)
+		pr_info("%s: MTK_SIP_CACHE_CONTROL fail: %lu\n", __func__, res.a0);
 
 	arm_smccc_smc(MTK_SIP_CACHE_CONTROL,
 			MT_PREFETCH_SMC_ACT_GET | MT_PREFETCH_SMC_MAGIC,
