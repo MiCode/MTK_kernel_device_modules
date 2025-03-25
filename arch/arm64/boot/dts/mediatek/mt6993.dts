@@ -1943,6 +1943,10 @@
 		oddmr0 = <&disp_oddmr0 0x2000>;
 	};
 
+	aiste: aiste {
+		compatible = "mediatek,aiste";
+	};
+
 	ged: ged {
 		compatible = "mediatek,ged";
                 gpufreq-supply = <&gpufreq>;
@@ -2153,6 +2157,7 @@
 				scmi-ssc = <11>;
 				scmi-ise = <12>;
 				scmi-spbm = <13>;
+				scmi-aiste = <14>;
 			};
 		};
 	};
