@@ -73,6 +73,7 @@
 
 
 #define DISP_ODDMR_OD_UDMA_CTR_0 0x0100
+#define REG_OD_RD_REG_EN REG_FLD_MSB_LSB(7, 7)
 #define REG_OD_CLK_EN REG_FLD_MSB_LSB(11, 11)
 
 #define DISP_ODDMR_FMT_CTR_0 0x0140
@@ -3321,8 +3322,12 @@ static void mtk_oddmr_od_config(struct mtk_ddp_comp *comp,
 	od_support = oddmr_data->primary_data->od_support;
 	if (od_support == true &&
 		oddmr_data->primary_data->od_state >= ODDMR_INIT_DONE) {
-		if (oddmr_data->data->od_version >= MTK_OD_V2)
+		if (oddmr_data->data->od_version >= MTK_OD_V2) {
+			SET_VAL_MASK(value, mask, 1, REG_OD_RD_REG_EN); //for sram read
+			mtk_oddmr_write_mask(comp, value, DISP_ODDMR_OD_UDMA_CTR_0, mask, NULL);
+			value = 0; mask = 0;
 			mtk_oddmr_set_top_clk_force(comp, 1, NULL); //needed by writing sram and udma init
+		}
 
 		if (oddmr_data->data->od_version < MTK_OD_V2) {
 			//crop off
@@ -8053,8 +8058,12 @@ static int mtk_oddmr_od_init(struct mtk_ddp_comp *comp, void *data)
 			return -1;
 		}
 		oddmr_data->primary_data->od_state = ODDMR_LOAD_DONE;
-		if (oddmr_data->data->od_version >= MTK_OD_V2)
+		if (oddmr_data->data->od_version >= MTK_OD_V2) {
+			SET_VAL_MASK(value, mask, 1, REG_OD_RD_REG_EN); //for sram read
+			mtk_oddmr_write_mask(comp, value, DISP_ODDMR_OD_UDMA_CTR_0, mask, NULL);
+			value = 0; mask = 0;
 			mtk_oddmr_set_top_clk_force(comp, 1, NULL); //needed by writing sram and udma init
+		}
 		if (oddmr_data->data->od_version == MTK_OD_V3)
 			mtk_oddmr_od_trigger_frame(comp);
 
