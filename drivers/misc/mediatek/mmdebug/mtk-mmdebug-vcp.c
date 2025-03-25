@@ -87,8 +87,7 @@ static void mmdebug_work_impl(struct work_struct *work)
 	raw_notifier_call_chain(&mmdebug_status_dump_notifier_list, 0, NULL);
 }
 
-static int mmdebug_vcp_ipi_cb(unsigned int ipi_id, void *prdata, void *data,
-	unsigned int len) // vcp > ap
+static int mmdebug_vcp_ipi_cb(unsigned int ipi_id, void *prdata, void *data, unsigned int len) // vcp > ap
 {
 	struct mmdebug_ipi_data slot;
 
@@ -103,16 +102,15 @@ static int mmdebug_vcp_ipi_cb(unsigned int ipi_id, void *prdata, void *data,
 		break;
 	case MMDEBUG_FUNC_KERNEL_WARN:
 		if (slot.idx >= ARRAY_SIZE(kernel_warn_type_str)) {
-			MMDEBUG_ERR("MMDEBUG kernel warning invalid idx:%hhu ack:%hhu base:%hhu",
+			MMDEBUG_ERR("MMDEBUG kernel warning invalid idx:%hhu ack:%hhu base:%#x",
 				slot.idx, slot.ack, slot.base);
 			break;
 		}
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 		aee_kernel_warning(kernel_warn_type_str[slot.idx],
-			"kernel warning idx:%hhu ack:%hhu base:%hhu",
-			slot.idx, slot.ack, slot.base);
+			"kernel warning idx:%hhu ack:%hhu base:%#x", slot.idx, slot.ack, slot.base);
 #endif
-		MMDEBUG_ERR("MMDEBUG kernel warning str:%s idx:%hhu ack:%hhu base:%hhu",
+		MMDEBUG_ERR("MMDEBUG kernel warning str:%s idx:%hhu ack:%hhu base:%#x",
 			kernel_warn_type_str[slot.idx], slot.idx, slot.ack, slot.base);
 
 		if (!work_pending(&mmdebug_work))
@@ -121,7 +119,7 @@ static int mmdebug_vcp_ipi_cb(unsigned int ipi_id, void *prdata, void *data,
 			MMDEBUG_ERR("queue work fail");
 		break;
 	default:
-		MMDEBUG_ERR("ipi_id:%u func:%hhu idx:%hhu ack:%hhu base:%hhu",
+		MMDEBUG_ERR("ipi_id:%u func:%hhu idx:%hhu ack:%hhu base:%#x",
 			ipi_id, slot.func, slot.idx, slot.ack, slot.base);
 		break;
 	}

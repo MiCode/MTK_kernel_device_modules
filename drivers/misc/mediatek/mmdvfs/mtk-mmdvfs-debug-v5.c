@@ -261,7 +261,7 @@ static int mmdvfs_debug_dump_volt_freq(struct seq_file *file)
 		mmdvfs_seq_print(file, "fmeter:%d id:%hhu type:%hhu freq:%u", i, fmeter_id[i], fmeter_type[i], val);
 	}
 
-	mmdvfs_dump_dvfsrc_rg();
+	// mmdvfs_dump_dvfsrc_rg();
 
 	return 0;
 }
@@ -861,7 +861,7 @@ static int mmdvfs_debug_probe(struct platform_device *pdev)
 	workq = create_singlethread_workqueue("mmdvfs-debug-workq");
 	INIT_WORK(&work, mmdvfs_debug_work);
 
-	//mtk_mmdebug_status_dump_register_notifier(&mmdebug_nb);
+	mtk_mmdebug_status_dump_register_notifier(&mmdebug_nb);
 	mtk_smi_dbg_register_notifier(&smi_dbg_nb);
 
 	task = kthread_run(mmdvfs_debug_kthread, NULL, "mmdvfs-debug-kthread");
