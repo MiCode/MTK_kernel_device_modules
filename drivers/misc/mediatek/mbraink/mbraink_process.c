@@ -169,9 +169,11 @@ void mbraink_get_process_stat_info(pid_t current_pid, unsigned int cnt,
 		}
 	}
 
-	pr_info("%s: current_pid = %u, count = %u, current_count=%u\n",
-		__func__, process_stat_buffer->pid, process_stat_buffer->pid_count,
-		process_stat_buffer->current_cnt);
+	if (process_stat_buffer->pid == 0)
+		pr_info("%s: current_pid = %u, count = %u, current_count=%u\n",
+			__func__, process_stat_buffer->pid, process_stat_buffer->pid_count,
+			process_stat_buffer->current_cnt);
+
 	read_unlock(&tasklist_lock);
 }
 
@@ -297,9 +299,10 @@ void mbraink_get_thread_stat_info(pid_t current_pid_idx, pid_t current_tid,
 		}
 	}
 
-	pr_info("%s: current_tid = %u, current_pid_idx = %u, count = %u, current_count=%u\n",
+	if (thread_stat_buffer->tid == 0)
+		pr_info("%s: current_tid = %u, current_pid_idx = %u, current_count=%u\n",
 			__func__, thread_stat_buffer->tid, thread_stat_buffer->pid_idx,
-			thread_stat_buffer->tid_count, thread_stat_buffer->current_cnt);
+			thread_stat_buffer->current_cnt);
 
 	read_unlock(&tasklist_lock);
 }
@@ -1056,8 +1059,12 @@ void mbraink_get_tracing_pid_info(unsigned short current_idx,
 			}
 		}
 	}
-	pr_info("%s: current_idx = %u, count = %u\n",
-		__func__, tracing_pid_buffer->tracing_idx, tracing_pid_buffer->tracing_count);
+
+	if (tracing_pid_buffer->tracing_idx == 0)
+		pr_info("%s: current_idx = %u, count = %u\n",
+			__func__, tracing_pid_buffer->tracing_idx,
+			tracing_pid_buffer->tracing_count);
+
 	spin_unlock_irqrestore(&tracing_pidlist_lock, flags);
 }
 

@@ -2381,6 +2381,11 @@ int mbraink_netlink_send_msg(const char *msg)
 	void *msg_head = NULL;
 	int ret = -1, size = 0;
 
+	if (msg == NULL) {
+		pr_notice("[%s]: msg is NULL\n", __func__);
+		return -EINVAL;
+	}
+
 	if (mbraink_priv.client_pid != -1) {
 		size = nla_total_size(strlen(msg) + 1);
 		skb = genlmsg_new(size, GFP_ATOMIC);
