@@ -819,7 +819,7 @@ void mtk_hook_after_enqueue_task(void *data, struct rq *rq,
 }
 
 void mtk_hook_after_dequeue_task(void *data, struct rq *rq,
-				struct task_struct *p, int flags)
+				struct task_struct *p, int flags, bool *dequeue_task_result)
 {
 	vip_dequeue_task(rq, p);
 

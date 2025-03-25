@@ -360,7 +360,7 @@ extern void rotat_task_newtask(void __always_unused *data, struct task_struct *p
 extern void mtk_hook_after_enqueue_task(void *data, struct rq *rq,
 				struct task_struct *p, int flags);
 extern void mtk_hook_after_dequeue_task(void *data, struct rq *rq,
-				struct task_struct *p, int flags);
+				struct task_struct *p, int flags, bool *dequeue_task_result);
 extern void hook_enqueue_task_fair(void *data, struct rq *rq,
 				struct task_struct *p, int flags);
 extern void hook_dequeue_task_fair(void *data, struct rq *rq,
