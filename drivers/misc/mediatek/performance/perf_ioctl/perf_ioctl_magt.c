@@ -254,6 +254,7 @@ int (*magt2pelt_notify_pelt_hint_boost_fp)(int enable,
 	int pid,
 	int ratio);
 EXPORT_SYMBOL(magt2pelt_notify_pelt_hint_boost_fp);
+
 /*--------------------Set CPU mask by kernel------------------------*/
 int set_cpus_allowed_ptr_by_kernel(struct task_struct *p, const struct cpumask *new_mask)
 {
@@ -265,6 +266,41 @@ int set_cpus_allowed_ptr_by_kernel(struct task_struct *p, const struct cpumask *
 	kernel_allowed_mask = &((struct mtk_task *) p->android_vendor_data1)->kernel_allowed_mask;
 	cpumask_copy(kernel_allowed_mask, new_mask);
 	ret = set_cpus_allowed_ptr(p, new_mask);
+	return ret;
+}
+
+int magt_set_affinity(int pid, int cpu_mask)
+{
+	ssize_t ret = 0;
+	struct task_struct *p;
+	struct cpumask mask;
+
+	rcu_read_lock();
+
+	p = find_task_by_vpid(pid);
+	if (!p) {
+		rcu_read_unlock();
+		ret = -ESRCH;
+		goto ret_set_aff;
+	}
+
+	get_task_struct(p);
+	rcu_read_unlock();
+
+	if (p->flags & PF_NO_SETAFFINITY) {
+		ret = -EINVAL;
+		put_task_struct(p);
+		goto out_put_task;
+	}
+
+	cpumask_clear(&mask);
+	*cpumask_bits(&mask) = cpu_mask;
+	ret = set_cpus_allowed_ptr_by_kernel(p, &mask);
+
+out_put_task:
+	put_task_struct(p);
+
+ret_set_aff:
 	return ret;
 }
 
@@ -688,8 +724,6 @@ static long magt_ioctl(struct file *filp,
 	case MAGT_BIND_THREAD_TO_CPU:
 	{
 		struct thread_binding_info tbiKM;
-		struct cpumask mask;
-		struct task_struct *p;
 
 		// Check if the input parameters are valid,
 		// And Copy the data from userspace.
@@ -698,33 +732,64 @@ static long magt_ioctl(struct file *filp,
 			ret = -EFAULT;
 			goto ret_ioctl;
 		}
+		pr_debug(TAG ": %s %d, copy_from_user success.", __FILE__, __LINE__);
 
 		// Bind the threads to the specified CPUs.
 		for (int i = 0; i < tbiKM.pid_num; i++) {
-			rcu_read_lock();
-
-			p = find_task_by_vpid(tbiKM.pid[i]);
-			if (!p) {
-				rcu_read_unlock();
-				ret = -ESRCH;
+			ret = magt_set_affinity(tbiKM.pid[i], tbiKM.core[i]);
+			if (ret < 0)
 				goto ret_ioctl;
-			}
-
-			get_task_struct(p);
-			rcu_read_unlock();
-
-			if (p->flags & PF_NO_SETAFFINITY) {
-				ret = -EINVAL;
-				put_task_struct(p);
-				goto out_put_task;
-			}
-
-			cpumask_clear(&mask);
-			*cpumask_bits(&mask) = tbiKM.core[i];
-			ret = set_cpus_allowed_ptr_by_kernel(p, &mask);
-out_put_task:
-			put_task_struct(p);
 		}
+		pr_debug(TAG ": %s %d, Set Thread Affinity Finished.", __FILE__, __LINE__);
+
+		break;
+	}
+
+	case MAGT_GET_PID_BIND_BOOST:
+	{
+		struct ta_binding_info tabiKM;
+		struct task_struct *task;
+		struct pid *pid_struct;
+
+		// Check if the input parameters are valid,
+		// And Copy the data from userspace.
+		if (perfctl_copy_from_user(&tabiKM, (void *)arg,
+				sizeof(struct ta_binding_info))) {
+			ret = -EFAULT;
+			goto ret_ioctl;
+		}
+		pr_debug(TAG ": %s %d, copy_from_user success.", __FILE__, __LINE__);
+
+		/**
+		 * Traverse threads in top-app and bind them to the specified core.
+		 * Store the thread information and transfer back to userspace for reset later.
+		 */
+		int index = 0;
+
+		for (int i = 0; i < tabiKM.ta_num; i++) {
+			pid_struct = find_get_pid(tabiKM.ta_tasks[i]);
+			if (!pid_struct)
+				continue;
+
+			task = pid_task(pid_struct, PIDTYPE_PID);
+			for (int j = 0; j < tabiKM.thread_num; j++) {
+				if (task && strcmp(task->comm, tabiKM.thread_name[j]) == 0) {
+					int cpu, result = 0;
+					struct cpumask mask;
+
+					cpumask_copy(&mask, &task->cpus_mask);
+					for_each_cpu(cpu, &mask)
+						result |= (1 << cpu);
+					tabiKM.cpu_mask[index] = result;
+					tabiKM.ta_tasks[index] = tabiKM.ta_tasks[i];
+					index++;
+				}
+			}
+		}
+		tabiKM.ta_num = index;
+		perfctl_copy_to_user((void *)arg, &tabiKM, sizeof(struct ta_binding_info));
+		pr_debug(TAG ": %s %d, Search Thread Success.", __FILE__, __LINE__);
+
 		break;
 	}
 
