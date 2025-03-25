@@ -13,7 +13,7 @@
 
 #include <dt-bindings/clock/mt6993-clk.h>
 
-#define MT_CCF_BRINGUP		1
+#define MT_CCF_BRINGUP         0
 
 /* Regular Number Definition */
 #define INV_OFS			-1

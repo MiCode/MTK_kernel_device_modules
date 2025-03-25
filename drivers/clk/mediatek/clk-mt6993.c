@@ -25,7 +25,7 @@
 
 /* bringup config */
 
-#define MT_CCF_BRINGUP		1
+#define MT_CCF_BRINGUP         0
 #define MT_CCF_PLL_DISABLE	0
 #define MT_CCF_MUX_DISABLE	0
 
