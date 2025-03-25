@@ -1085,14 +1085,13 @@ static bool ufs_mtk_is_legacy_chipset(struct ufs_hba *hba, u32 hw_ip_ver)
 	switch (hw_ip_ver) {
 	case IP_LEGACY_VER_MT6893:
 	case IP_LEGACY_VER_MT6781:
-	case IP_LEGACY_VER_MT6879:
 		/* can add other legacy chipset ID here accordingly */
 		is_legacy = true;
 		break;
 	default:
 		break;
 	}
-	dev_info(hba->dev, "IP version - 0x%x, is legacy : %d", hw_ip_ver, is_legacy);
+	dev_info(hba->dev, "legacy IP version - 0x%x, is legacy : %d", hw_ip_ver, is_legacy);
 	return is_legacy;
 }
 /*
