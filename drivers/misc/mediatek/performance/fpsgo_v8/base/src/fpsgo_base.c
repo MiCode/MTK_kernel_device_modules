@@ -638,6 +638,8 @@ void fpsgo_reset_attr(struct fpsgo_boost_attr *boost_attr)
 		boost_attr->frame_lowbd_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->frame_upbd_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->tp_policy_by_pid = BY_PID_DEFAULT_VAL;
+		boost_attr->tp_strict_middle_by_pid = BY_PID_DEFAULT_VAL;
+		boost_attr->tp_strict_little_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->set_l3_cache_ct_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->set_ls_by_pid = BY_PID_DEFAULT_VAL;
 		boost_attr->ls_groupmask_by_pid = BY_PID_DEFAULT_VAL;
@@ -978,6 +980,8 @@ int is_to_delete_fpsgo_attr(struct fpsgo_attr_by_pid *fpsgo_attr)
 			boost_attr.frame_lowbd_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.frame_upbd_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.tp_policy_by_pid == BY_PID_DEFAULT_VAL &&
+			boost_attr.tp_strict_middle_by_pid == BY_PID_DEFAULT_VAL &&
+			boost_attr.tp_strict_little_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.set_l3_cache_ct_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.set_ls_by_pid == BY_PID_DEFAULT_VAL &&
 			boost_attr.ls_groupmask_by_pid == BY_PID_DEFAULT_VAL &&
@@ -2331,7 +2335,7 @@ static ssize_t render_info_params_show(struct kobject *kobj,
 				" boost_VIP, vip_mask, set_l3_cache_ct , set_ls, ls_groupmask, set_vvip, vip_throttle\n");
 	pos += length;
 	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
-				" bm_th, ml_th, tp_policy, gh_prefer\n");
+				" bm_th, ml_th, tp_policy, tp_strict_middle, tp_strict_little, gh_prefer\n");
 	pos += length;
 	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
 				" aa_b_minus_idle_time, target_time_up_bound\n");
@@ -2474,10 +2478,12 @@ static ssize_t render_info_params_show(struct kobject *kobj,
 		pos += length;
 
 		length = scnprintf(temp + pos,
-			FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d, %4d, %4d\n",
+			FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d, %4d, %4d, %4d, %4d\n",
 			attr_item.bm_th_by_pid,
 			attr_item.ml_th_by_pid,
 			attr_item.tp_policy_by_pid,
+			attr_item.tp_strict_middle_by_pid,
+			attr_item.tp_strict_little_by_pid,
 			attr_item.gh_prefer_by_pid);
 		pos += length;
 
@@ -2572,7 +2578,7 @@ static ssize_t render_attr_params_show(struct kobject *kobj,
 				" boost_VIP, vip_mask, set_l3_cache_ct, set_ls, ls_groupmask, set_vvip, vip_throttle\n");
 	pos += length;
 	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
-				" bm_th, ml_th, tp_policy, gh_prefer\n");
+				" bm_th, ml_th, tp_policy, tp_strict_middle, tp_strict_little, gh_prefer\n");
 	pos += length;
 	length = scnprintf(temp + pos, FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
 				" aa_b_minus_idle_time, target_time_up_bound\n");
@@ -2689,10 +2695,12 @@ static ssize_t render_attr_params_show(struct kobject *kobj,
 		pos += length;
 
 		length = scnprintf(temp + pos,
-			FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d, %4d, %4d\n",
+			FPSGO_SYSFS_MAX_BUFF_SIZE - pos, " %4d, %4d, %4d, %4d, %4d, %4d\n",
 			attr_item.bm_th_by_pid,
 			attr_item.ml_th_by_pid,
 			attr_item.tp_policy_by_pid,
+			attr_item.tp_strict_middle_by_pid,
+			attr_item.tp_strict_little_by_pid,
 			attr_item.gh_prefer_by_pid);
 		pos += length;
 

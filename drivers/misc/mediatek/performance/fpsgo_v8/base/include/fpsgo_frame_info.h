@@ -182,6 +182,8 @@ struct fpsgo_boost_attr {
 	int bm_th_by_pid;
 	int ml_th_by_pid;
 	int tp_policy_by_pid;
+	int tp_strict_middle_by_pid;
+	int tp_strict_little_by_pid;
 
 	/* QUOTA */
 	int qr_enable_by_pid;
