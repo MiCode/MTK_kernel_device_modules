@@ -333,6 +333,28 @@ int mtk_dvfsrc_set_ceiling_freq(u8 user, u8 freq_opp)
 	return 0;
 }
 
+static void dvfsrc_periodic_work_handler(struct work_struct *work)
+{
+	struct mtk_dvfsrc *dvfsrc =
+		container_of(work, struct mtk_dvfsrc, thm_defer_work.work);
+	char *p;
+	const struct dvfsrc_config *config;
+	ssize_t dump_size = DUMP_BUF_SIZE - 1;
+
+
+	config = dvfsrc->dvd->config;
+	if (config->dump_therm_info) {
+		mutex_lock(&dvfsrc->dump_lock);
+		p = dvfsrc->dump_buf;
+		config->dump_therm_info(dvfsrc, p, dump_size);
+		pr_info("[%s][core]%s", "thermal", dvfsrc->dump_buf);
+		mutex_unlock(&dvfsrc->dump_lock);
+	}
+
+	queue_delayed_work(dvfsrc->dvfsrc_wq, &dvfsrc->thm_defer_work,
+		msecs_to_jiffies(dvfsrc->thm_delay_ms));
+}
+
 static int dvfsrc_query_debug_info(u32 id)
 {
 	struct mtk_dvfsrc *dvfsrc = dvfsrc_drv;
@@ -572,6 +594,57 @@ static void dvfsrc_debug_notifier_register(struct mtk_dvfsrc *dvfsrc)
 	dvfsrc->debug_notifier.notifier_call = dvfsrc_debug_notifier_handler;
 	register_dvfsrc_debug_notifier(&dvfsrc->debug_notifier);
 }
+
+static BLOCKING_NOTIFIER_HEAD(dvfsrc_thermal_notifier);
+#define DVFSRC_THERMAL_ON 1
+#define DVFSRC_THERMAL_OFF 0
+int register_dvfsrc_thermal_notifier(struct notifier_block *nb)
+{
+	return blocking_notifier_chain_register(&dvfsrc_thermal_notifier, nb);
+}
+
+int unregister_dvfsrc_thermal_notifier(struct notifier_block *nb)
+{
+	return blocking_notifier_chain_unregister(&dvfsrc_thermal_notifier, nb);
+}
+
+static int dvfsrc_thermal_notifier_handler(struct notifier_block *b,
+					 unsigned long l, void *v)
+{
+	int ret = NOTIFY_DONE;
+	struct mtk_dvfsrc *dvfsrc;
+
+	dvfsrc = container_of(b, struct mtk_dvfsrc, thermal_notifier);
+	switch (l) {
+	case DVFSRC_THERMAL_OFF:
+		dvfsrc->therma_hint_val = l;
+		mtk_dvfsrc_send_request(dvfsrc->dev->parent,
+			MTK_DVFSRC_CMD_DRAM_REQUEST, 0xFFFFFFFF);
+		mtk_dvfsrc_send_request(dvfsrc->dev->parent,
+			MTK_DVFSRC_CMD_EMICLK_REQUEST, 0xFFFFFFFF);
+	break;
+	case DVFSRC_THERMAL_ON:
+		dvfsrc->therma_hint_val = l;
+		mtk_dvfsrc_send_request(dvfsrc->dev->parent,
+			MTK_DVFSRC_CMD_DRAM_REQUEST, 0xFFFF0000);
+		mtk_dvfsrc_send_request(dvfsrc->dev->parent,
+			MTK_DVFSRC_CMD_EMICLK_REQUEST, 0xFFFF0000);
+	break;
+	default:
+		dev_notice(dvfsrc->dev, "unknown notify type\n");
+	break;
+	}
+
+	return ret;
+}
+
+void mtk_dvfsrc_thernal_notify(u32 state)
+{
+	blocking_notifier_call_chain(&dvfsrc_thermal_notifier,
+			state, NULL);
+}
+EXPORT_SYMBOL_GPL(mtk_dvfsrc_thernal_notify);
+
 
 static struct ratelimit_state dvfsrc_ratelimit_force =
 	RATELIMIT_STATE_INIT_FLAGS("dvfsrc_force", HZ, 2, RATELIMIT_MSG_ON_RELEASE);
@@ -1601,6 +1674,18 @@ static int mtk_dvfsrc_helper_probe(struct platform_device *pdev)
 	}
 	dvfsrc_register_sysfs(dev);
 	register_dvfsrc_debug_handler(dvfsrc_query_debug_info);
+	if (dvfsrc->dvd->therm_info_en) {
+		dvfsrc->thm_delay_ms = 10000;
+		dvfsrc->dvfsrc_wq = create_singlethread_workqueue("smap_wq");
+		INIT_DELAYED_WORK(&dvfsrc->thm_defer_work, dvfsrc_periodic_work_handler);
+		if (dvfsrc->dvfsrc_wq) {
+			queue_delayed_work(dvfsrc->dvfsrc_wq, &dvfsrc->thm_defer_work,
+				msecs_to_jiffies(1000));
+		}
+		dvfsrc->thermal_notifier.notifier_call = dvfsrc_thermal_notifier_handler;
+		register_dvfsrc_thermal_notifier(&dvfsrc->thermal_notifier);
+	}
+
 	return 0;
 }
 
@@ -1610,6 +1695,13 @@ static void mtk_dvfsrc_helper_remove(struct platform_device *pdev)
 	struct mtk_dvfsrc *dvfsrc = platform_get_drvdata(pdev);
 
 	unregister_dvfsrc_debug_notifier(&dvfsrc->debug_notifier);
+	if (dvfsrc->dvd->therm_info_en) {
+		unregister_dvfsrc_thermal_notifier(&dvfsrc->thermal_notifier);
+		if (dvfsrc->dvfsrc_wq) {
+			cancel_delayed_work_sync(&dvfsrc->thm_defer_work);
+			destroy_workqueue(dvfsrc->dvfsrc_wq);
+		}
+	}
 	dvfsrc_unregister_sysfs(dev);
 	platform_driver_unregister(&mtk_dvfsrc_mt6397_driver);
 	dvfsrc_drv = NULL;

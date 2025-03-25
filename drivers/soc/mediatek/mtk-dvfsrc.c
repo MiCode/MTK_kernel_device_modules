@@ -116,6 +116,10 @@ struct mtk_dvfsrc {
 #endif
 	bool disable_wait_level;
 	u32 num_opp;
+	u32  ddr_user_level;
+	u32  emi_user_level;
+	u32  therm_ddr_limit;
+	u32  therm_emi_limit;
 };
 
 #ifdef DVFSRC_OPP_BW_QUERY
@@ -822,6 +826,57 @@ static void mt6983_set_emi_level(struct mtk_dvfsrc *dvfsrc, u32 level)
 {
 	spin_lock(&dvfsrc->req_lock);
 	dvfsrc_rmw(dvfsrc, DVFSRC_SW_REQ, level, 0xf, 0);
+	spin_unlock(&dvfsrc->req_lock);
+}
+
+/* set_dram_level, get_dram_level for thermal must pair */
+static void mt6993_set_dram_level(struct mtk_dvfsrc *dvfsrc, u32 level)
+{
+	u32 tmp_level;
+
+	/* notice can't wait_for_dram_level */
+	spin_lock(&dvfsrc->req_lock);
+	if ((level & 0xFFFF0000) == 0xFFFF0000)
+		dvfsrc->therm_ddr_limit = level & 0xFFFF;
+	else
+		dvfsrc->ddr_user_level = level;
+
+	if (dvfsrc->ddr_user_level <= dvfsrc->therm_ddr_limit)
+		tmp_level = dvfsrc->ddr_user_level;
+	else
+		tmp_level = dvfsrc->therm_ddr_limit;
+
+	dvfsrc_rmw(dvfsrc, DVFSRC_SW_REQ, tmp_level, 0xf, 12);
+	spin_unlock(&dvfsrc->req_lock);
+}
+
+static u32 mt6993_get_dram_level(struct mtk_dvfsrc *dvfsrc)
+{
+	u32 tmp_level;
+
+	spin_lock(&dvfsrc->req_lock);
+	tmp_level = dvfsrc->ddr_user_level;
+	spin_unlock(&dvfsrc->req_lock);
+
+	return tmp_level;
+}
+
+static void mt6993_set_emi_level(struct mtk_dvfsrc *dvfsrc, u32 level)
+{
+	u32 tmp_level;
+
+	spin_lock(&dvfsrc->req_lock);
+	if ((level & 0xFFFF0000) == 0xFFFF0000)
+		dvfsrc->therm_emi_limit = level & 0xFFFF;
+	else
+		dvfsrc->emi_user_level = level;
+
+	if (dvfsrc->emi_user_level <= dvfsrc->therm_emi_limit)
+		tmp_level = dvfsrc->emi_user_level;
+	else
+		tmp_level = dvfsrc->therm_emi_limit;
+
+	dvfsrc_rmw(dvfsrc, DVFSRC_SW_REQ, tmp_level, 0xf, 0);
 	spin_unlock(&dvfsrc->req_lock);
 }
 
@@ -1677,7 +1732,8 @@ static int mtk_dvfsrc_probe(struct platform_device *pdev)
 		ret = PTR_ERR(dvfsrc->icc);
 		goto unregister_regulator;
 	}
-
+	dvfsrc->therm_ddr_limit = 0xFFFF;
+	dvfsrc->therm_emi_limit = 0xFFFF;
 	dvfsrc->devfreq = platform_device_register_data(dvfsrc->dev,
 			"mtk-dvfsrc-devfreq", -1, NULL, 0);
 	if (IS_ERR(dvfsrc->devfreq)) {
@@ -1788,6 +1844,22 @@ err:
 	.set_dram_peak_bw = mt6991_set_dram_peak_bw,	\
 	.set_dram_level = mt6983_set_dram_level,	\
 	.set_emi_level = mt6983_set_emi_level,		\
+	.set_dram_hrtbw = mt6991_set_dram_hrtbw,	\
+	.set_vcore_level = mt6873_set_vcore_level,	\
+	.set_vscp_level = mt6873_set_vscp_level,	\
+	.wait_for_vcore_level = mt6989_wait_for_vcore_level,	\
+	.wait_for_dram_level = mt6989_wait_for_dram_level
+
+#define DVFSRC_MT6993_SERIES_OPS			\
+	.get_target_level = mt6989_get_target_level,	\
+	.get_current_level = mt6989_get_current_level,	\
+	.get_vcore_level = mt6873_get_vcore_level,	\
+	.get_vcp_level = mt6873_get_vcp_level,		\
+	.get_dram_level = mt6993_get_dram_level,	\
+	.set_dram_bw = mt6991_set_dram_bw,		\
+	.set_dram_peak_bw = mt6991_set_dram_peak_bw,	\
+	.set_dram_level = mt6993_set_dram_level,	\
+	.set_emi_level = mt6993_set_emi_level,		\
 	.set_dram_hrtbw = mt6991_set_dram_hrtbw,	\
 	.set_vcore_level = mt6873_set_vcore_level,	\
 	.set_vscp_level = mt6873_set_vscp_level,	\
@@ -2252,7 +2324,7 @@ static const struct dvfsrc_soc_data mt6991_data = {
 };
 
 static const struct dvfsrc_soc_data mt6993_data = {
-	DVFSRC_MT6991_SERIES_OPS,
+	DVFSRC_MT6993_SERIES_OPS,
 	.opps_desc = dvfsrc_opp_mt6991_desc,
 	.num_opp_desc = ARRAY_SIZE(dvfsrc_opp_mt6991_desc),
 	.regs = mt6993_regs,

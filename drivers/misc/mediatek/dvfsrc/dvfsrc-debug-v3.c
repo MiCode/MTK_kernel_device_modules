@@ -1166,7 +1166,7 @@ static void dvfsrc_set_ceiling_6993_ddr_opp(struct mtk_dvfsrc *dvfsrc, u32 gear,
 
 	if (!force_en) {
 		dvfsrc_write(dvfsrc, DVFSRC_CEILING, val & ~(1 << 16));
-		pr_info("ceiling set\n");
+
 		arm_smccc_smc(MTK_SIP_VCOREFS_CONTROL, MTK_SIP_VCOREFS_CEINING_SET,
 			gear, 0, 0, 0, 0, 0,
 			&ares);
@@ -1265,10 +1265,10 @@ static char *dvfsrc_dump_therm_idx_mt6993(struct mtk_dvfsrc *dvfsrc, char *p, u3
 #if IS_ENABLED(CONFIG_MTK_DRAMC)
 	data_rate = mtk_dramc_get_data_rate();
 #endif
-	p += snprintf(p, buff_end - p, "%s", "[v/d/f/op/s_r/b_r/sta]=");
+	p += snprintf(p, buff_end - p, "%s", "[on/v/d/f/op/s_r/b_r/sta]=");
 
-	p += snprintf(p, buff_end - p, "%d/%d/%d/%d",
-		vcore_uv, data_rate, dvfsrc->force_opp_idx,
+	p += snprintf(p, buff_end - p, "%d/%d/%d/%d/%d",
+		dvfsrc->therma_hint_val, vcore_uv, data_rate, dvfsrc->force_opp_idx,
 		dvfsrc_read(dvfsrc, DVFSRC_TARGET_LEVEL, 0x0));
 
 	p += snprintf(p, buff_end - p, "/%x,%x,%x,%x,%x,%x,%x,%x",
@@ -1287,14 +1287,15 @@ static char *dvfsrc_dump_therm_idx_mt6993(struct mtk_dvfsrc *dvfsrc, char *p, u3
 		dvfsrc_read(dvfsrc, DVFSRC_BASIC_CONTROL, 0x600),
 		dvfsrc_read(dvfsrc, DVFSRC_BASIC_CONTROL, 0x604));
 
-	p += snprintf(p, buff_end - p, "/%d,%d,%d,%d,%d,%d,%d",
+	p += snprintf(p, buff_end - p, "/%d,%d,%d,%d,%d,%d,%d,%d",
 		dvfsrc_read(dvfsrc, DVFSRC_SW_BW_0, 0x0),
 		dvfsrc_read(dvfsrc, DVFSRC_SW_BW_0, 0x4),
 		dvfsrc_read(dvfsrc, DVFSRC_SW_BW_0, 0x8),
 		dvfsrc_read(dvfsrc, DVFSRC_SW_BW_0, 0xC),
 		dvfsrc_read(dvfsrc, DVFSRC_SW_BW_0, 0x10),
 		dvfsrc_read(dvfsrc, DVFSRC_SW_BW_0, 0x14),
-		dvfsrc_read(dvfsrc, DVFSRC_SW_BW_0, 0x18));
+		dvfsrc_read(dvfsrc, DVFSRC_SW_BW_0, 0x18),
+		dvfsrc_read(dvfsrc, DVFSRC_BASIC_CONTROL, 0x20C));
 
 	p += snprintf(p, buff_end - p, "/%x,%x,%x,%x,%x,%x,%x,%x,%x\n",
 		dvfsrc_read(dvfsrc, DVFSRC_BASIC_CONTROL, 0x294),

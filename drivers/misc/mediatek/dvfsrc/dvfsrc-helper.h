@@ -130,6 +130,11 @@ struct mtk_dvfsrc {
 	bool vchk_enable;
 	bool force_ddr_en;
 	u32 force_ddr_idx;
+	struct workqueue_struct *dvfsrc_wq;
+	struct delayed_work thm_defer_work;
+	struct notifier_block thermal_notifier;
+	u32 therma_hint_val;
+	unsigned int thm_delay_ms;
 };
 
 extern int dvfsrc_register_sysfs(struct device *dev);
