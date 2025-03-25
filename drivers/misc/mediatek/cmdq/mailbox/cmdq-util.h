@@ -250,7 +250,7 @@ void cmdq_util_disp_smc_cmd(u32 crtc_idx, u32 cmd);
 bool cmdq_util_is_prebuilt_client(struct cmdq_client *client);
 void cmdq_util_prebuilt_set_client(const u16 hwid, struct cmdq_client *client);
 bool cmdq_util_is_secure_client(struct cmdq_client *client);
-void cmdq_util_pkvm_disable(void);
+void cmdq_util_pkvm_disable(bool kvm_enabled);
 void cmdq_util_prebuilt_init(const u16 mod);
 void cmdq_util_prebuilt_enable(const u16 hwid);
 void cmdq_util_prebuilt_disable(const u16 hwid);

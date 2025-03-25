@@ -823,20 +823,20 @@ void cmdq_util_disp_smc_cmd(u32 crtc_idx, u32 cmd)
 }
 EXPORT_SYMBOL(cmdq_util_disp_smc_cmd);
 
-//todo
-void cmdq_util_pkvm_disable(void)
+void cmdq_util_pkvm_disable(bool kvm_enabled)
 {
 	struct arm_smccc_res res;
-#if IS_ENABLED(CONFIG_MTK_PKVM_CMDQ)
-	unsigned long hvc_id;
-#endif
 
 	cmdq_mbox_mtcmos_by_fast(util.cmdq_mbox[1], true);
 #if IS_ENABLED(CONFIG_MTK_PKVM_CMDQ)
-	arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_CMDQ_PKVM_DISABLE,
-		0, 0, 0, 0, 0, 0, &res);
-	hvc_id = res.a1;
-	pkvm_el2_mod_call(hvc_id);
+	if (kvm_enabled) {
+		unsigned long hvc_id;
+
+		arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_CMDQ_PKVM_DISABLE,
+			0, 0, 0, 0, 0, 0, &res);
+		hvc_id = res.a1;
+		pkvm_el2_mod_call(hvc_id);
+	}
 #else
 	arm_smccc_smc(MTK_SIP_CMDQ_CONTROL, CMD_CMDQ_TL_PKVM_DISABLE,
 		0, 0, 0, 0, 0, 0, &res);

@@ -1937,16 +1937,17 @@ static int cmdq_sec_probe(struct platform_device *pdev)
 		DL_FLAG_AUTOREMOVE_CONSUMER | DL_FLAG_AUTOREMOVE_SUPPLIER;
 	int genpd_num = 0;
 #endif /* defined(CMDQ_SECURE_MTEE_SUPPORT) */
+	bool kvm_enabled = is_protected_kvm_enabled();
 
-	cmdq_msg("%s pkvm:%d", __func__, is_protected_kvm_enabled());
+	cmdq_msg("%s pkvm:%d", __func__, kvm_enabled);
 
 	cmdq = devm_kzalloc(&pdev->dev, sizeof(*cmdq), GFP_KERNEL);
 	if (!cmdq)
 		return -ENOMEM;
 
 #if defined(CMDQ_SECURE_MTEE_SUPPORT)
-	if (!is_protected_kvm_enabled()) {
-		cmdq_util_pkvm_disable();
+	if (!kvm_enabled) {
+		cmdq_util_pkvm_disable(kvm_enabled);
 
 		gz_node = of_find_compatible_node(NULL, NULL, "mediatek,trusty-mtee-v1");
 		if (!gz_node) {
