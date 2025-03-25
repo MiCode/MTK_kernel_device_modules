@@ -258,7 +258,7 @@ static int __arm_lpae_map(struct arm_lpae_io_pgtable *data, unsigned long iova,
 		cptep = iopte_deref(pte, data);
 	} else if (iopte_valid(pte)) {
 		/* We require an unmap first */
-		return arm_lpae_unmap_empty();
+		return arm_lpae_map_exists();
 	}
 
 	/* Rinse, repeat */
@@ -491,8 +491,10 @@ static size_t __arm_lpae_unmap(struct arm_lpae_io_pgtable *data,
 	unmap_idx_start = ARM_LPAE_LVL_IDX(iova, lvl, data);
 	ptep += unmap_idx_start;
 	pte = READ_ONCE(*ptep);
-	if (WARN_ON(!iopte_valid(pte)))
+	if (!iopte_valid(pte)) {
+		arm_lpae_unmap_empty();
 		return 0;
+	}
 
 	/* If the size matches this level, we're in the right place */
 	if (size >= block_size) {
@@ -512,8 +514,10 @@ static size_t __arm_lpae_unmap(struct arm_lpae_io_pgtable *data,
 		/* Find and handle non-leaf entries */
 		for (i = 0; i < num_entries; i++) {
 			pte = READ_ONCE(ptep[i]);
-			if (WARN_ON(!iopte_valid(pte)))
+			if (!iopte_valid(pte)) {
+				arm_lpae_unmap_empty();
 				break;
+			}
 
 			if (!iopte_leaf(pte, lvl, iop->fmt)) {
 				__arm_lpae_clear_pte(&ptep[i], &iop->cfg, 1);
@@ -633,16 +637,6 @@ static int visit_pgtable_walk(struct io_pgtable_walk_data *walk_data, int lvl,
 	return 0;
 }
 
-static void visit_pgtable_post_table(struct io_pgtable_walk_data *walk_data,
-				     arm_lpae_iopte *ptep, int lvl)
-{
-	struct io_pgtable_walk_common *walker = walk_data->data;
-	struct arm_lpae_io_pgtable_walk_data *data = walker->data;
-
-	if (data->visit_post_table)
-		data->visit_post_table(data, ptep, lvl);
-}
-
 static int arm_lpae_pgtable_walk(struct io_pgtable_ops *ops, unsigned long iova,
 				 size_t size, struct io_pgtable_walk_common *walker)
 {
@@ -650,7 +644,6 @@ static int arm_lpae_pgtable_walk(struct io_pgtable_ops *ops, unsigned long iova,
 	struct io_pgtable_walk_data walk_data = {
 		.data = walker,
 		.visit = visit_pgtable_walk,
-		.visit_post_table = visit_pgtable_post_table,
 		.addr = iova,
 		.end = iova + size,
 	};
@@ -666,7 +659,6 @@ static int io_pgtable_visit(struct arm_lpae_io_pgtable *data,
 	struct io_pgtable_cfg *cfg = &iop->cfg;
 	arm_lpae_iopte pte = READ_ONCE(*ptep);
 	struct io_pgtable_walk_common *walker = walk_data->data;
-	arm_lpae_iopte *old_ptep = ptep;
 	bool is_leaf, is_table;
 
 	size_t size = ARM_LPAE_BLOCK_SIZE(lvl, data);
@@ -695,12 +687,7 @@ static int io_pgtable_visit(struct arm_lpae_io_pgtable *data,
 		return -EINVAL;
 
 	ptep = iopte_deref(pte, data);
-	ret = __arm_lpae_iopte_walk(data, walk_data, ptep, lvl + 1);
-
-	if (walk_data->visit_post_table)
-		walk_data->visit_post_table(walk_data, old_ptep, lvl);
-
-	return ret;
+	return __arm_lpae_iopte_walk(data, walk_data, ptep, lvl + 1);
 }
 
 int __arm_lpae_iopte_walk(struct arm_lpae_io_pgtable *data,
