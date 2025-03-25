@@ -378,6 +378,7 @@ void sbe_delete_render_info(struct sbe_render_info *iter)
 			sbe_set_per_task_cap(iter);
 			fpsgo_other2comp_set_no_boost_info(1, iter->dep_arr[i], 0);
 		}
+		sbe_set_deplist_policy(iter, 0);
 	}
 
 	switch_fpsgo_control(1, iter->pid, 0, iter->buffer_id);

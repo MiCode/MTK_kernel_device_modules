@@ -549,6 +549,20 @@ static int sbe_set_webview_policy(int tgid, char *name, unsigned long mask,
 	sbe_trace("[SBE] %s tgid:%d name:%s mask:%lu start:%d final_pid_arr_idx:%d ux_general_policy:%d",
 		__func__, tgid, name, mask, start, final_pid_arr_idx, ux_general_policy);
 
+	if (test_bit(SBE_SCROLLING, &mask)) {
+		sbe_trace("[SBE] %s receive scrolling %d",__func__, start);
+
+		sbe_get_tree_lock(__func__);
+		sbe_info = sbe_get_info(tgid, 1);
+		if (sbe_info)
+			sbe_info->ux_scrolling = start;
+		sbe_put_tree_lock(__func__);
+
+		set_sbe_thread_vip(start, tgid, specific_name, num);
+
+		goto out;
+	}
+
 	if (ux_general_policy) {
 		sbe_get_tree_lock(__func__);
 		sbe_info = sbe_get_info(tgid, 1);

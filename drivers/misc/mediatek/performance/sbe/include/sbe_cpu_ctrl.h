@@ -135,10 +135,12 @@ int sbe_count_frame_info(struct sbe_render_info *thr, int target);
 void sbe_boost_non_hwui_policy(struct sbe_render_info *thr, int set_vip);
 void sbe_set_ux_general_policy(int scrolling, unsigned long ux_mask);
 int get_ux_general_policy(void);
+void set_sbe_thread_vip(int set_vip, int tgid, char *dep_name, int dep_num);
 void sbe_reset_deplist_task_priority(struct sbe_render_info *thr);
 void sbe_set_group_dvfs(int start);
 void sbe_set_gas_policy(int start);
 void update_ux_general_policy(void);
+void sbe_set_deplist_policy(struct sbe_render_info *thr, int policy);
 
 void sbe_do_rescue(struct sbe_render_info *thr, int start, int enhance,
 		int rescue_type, unsigned long long rescue_target, unsigned long long frame_id);

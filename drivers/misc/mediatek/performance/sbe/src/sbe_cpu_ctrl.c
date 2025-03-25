@@ -223,7 +223,7 @@ void sbe_set_affinity_on_rescue(int pid, int r_cpu_mask)
 	}
 }
 
-static void sbe_set_deplist_policy(struct sbe_render_info *thr, int policy)
+void sbe_set_deplist_policy(struct sbe_render_info *thr, int policy)
 {
 	int i;
 
@@ -514,8 +514,6 @@ void sbe_do_frame_start(struct sbe_render_info *thr, unsigned long long frameid,
 		return;
 
 	thr->ux_blc_cur = thr->ux_blc_next;
-	if (ux_general_policy)
-		sbe_set_deplist_policy(thr, SBE_TASK_VIP);
 
 	sbe_set_per_task_cap(thr);
 
@@ -558,16 +556,14 @@ void sbe_do_frame_end(struct sbe_render_info *thr, unsigned long long frameid,
 	sbe_systrace_c(thr->pid, thr->buffer_id, targettime, "[ux]target_time");
 	sbe_systrace_c(thr->pid, thr->buffer_id, (int)thr->frame_time, "[ux]frame_time");
 
-	if (ux_general_policy) {
-		s_info = sbe_get_info(thr->tgid, 0);
+	s_info = sbe_get_info(thr->tgid, 0);
 
-		if (s_info) {
-			sbe_set_deplist_policy(thr, SBE_TASK_NONE);
-			if (s_info->ux_scrolling)
-				sbe_set_deplist_policy(thr, SBE_TASK_VIP);
-		} else
-			sbe_trace("%d: not find sbe_info ", __func__);
-	}
+	if (s_info) {
+		sbe_set_deplist_policy(thr, SBE_TASK_NONE);
+		if (s_info->ux_scrolling)
+			sbe_set_deplist_policy(thr, SBE_TASK_VIP);
+	} else
+		sbe_trace("%d: not find sbe_info ", __func__);
 
 	if (sbe_dy_rescue_enable) {
 		struct hwui_frame_info *new_frame;
@@ -609,8 +605,7 @@ void sbe_do_frame_err(struct sbe_render_info *thr, int frame_count,
 		return;
 
 	if (frame_count == 0) {
-		if (ux_general_policy)
-			sbe_set_deplist_policy(thr, SBE_TASK_NONE);
+		sbe_set_deplist_policy(thr, SBE_TASK_NONE);
 		thr->ux_blc_cur = 0;
 		sbe_set_per_task_cap(thr);
 	}
@@ -844,8 +839,8 @@ void sbe_reset_deplist_task_priority(struct sbe_render_info *thr)
 		pr_debug("%s: NON render info!!!!\n", __func__);
 		return;
 	}
-	if (ux_general_policy)
-		sbe_set_deplist_policy(thr, SBE_TASK_NONE);
+
+	sbe_set_deplist_policy(thr, SBE_TASK_NONE);
 
 }
 
@@ -904,7 +899,6 @@ void sbe_boost_non_hwui_policy(struct sbe_render_info *thr, int set_vip)
 
 void sbe_set_ux_general_policy(int scrolling, unsigned long ux_mask)
 {
-	int pid;
 	int need_gas_policy __maybe_unused = 1;
 
 #if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE) && IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
@@ -951,14 +945,53 @@ void sbe_set_ux_general_policy(int scrolling, unsigned long ux_mask)
 			sbe_set_gas_policy(scrolling);
 #endif
 	}
+}
+
+void set_sbe_thread_vip(int set_vip, int tgid, char *dep_name, int dep_num)
+{
+#if IS_ENABLED(CONFIG_MTK_SCHEDULER) && IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
+	int sbe_pid, i;
+	int local_specific_tid_num = 0;
+	int *local_specific_tid_arr = NULL;
+#endif
+
+	if (!set_deplist_vip)
+		return;
 
 #if IS_ENABLED(CONFIG_MTK_SCHEDULER) && IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
-	//set sbe process priority to vip
-	pid = sbe_get_kthread_tid();
-	if (scrolling)
-		set_task_basic_vip(pid);
-	else
-		unset_task_basic_vip(pid);
+	//set sbe process and framepolicy process priority to vip
+	sbe_pid = sbe_get_kthread_tid();
+
+	if (dep_num > 0) {
+		local_specific_tid_arr = kcalloc(dep_num, sizeof(int), GFP_KERNEL);
+		if (local_specific_tid_arr) {
+			local_specific_tid_num = sbe_split_task_tid(dep_name, dep_num,
+					local_specific_tid_arr, __func__);
+		}
+	}
+
+	if (sbe_pid <= 0 || local_specific_tid_num <= 0) {
+		pr_info("[sbe] not found sbe tids");
+		goto out;
+	}
+
+	if (set_vip) {
+		set_task_basic_vip(sbe_pid);
+		for (i = 0; i < local_specific_tid_num; i++) {
+			if (local_specific_tid_arr[i] > 0)
+				set_task_basic_vip(local_specific_tid_arr[i]);
+		}
+		sbe_trace("[SBE] set sbe task as vip %d", sbe_pid);
+	} else {
+		unset_task_basic_vip(sbe_pid);
+		for (i = 0; i < local_specific_tid_num; i++) {
+			if (local_specific_tid_arr[i] > 0)
+				unset_task_basic_vip(local_specific_tid_arr[i]);
+		}
+		sbe_trace("[SBE] reset sbe task priority");
+	}
+out:
+	kfree(local_specific_tid_arr);
 #endif
 }
 
@@ -1729,8 +1762,7 @@ void sbe_del_ux(struct sbe_render_info *info)
 	if (!info)
 		return;
 
-	if (ux_general_policy)
-		sbe_reset_deplist_task_priority(info);
+	sbe_reset_deplist_task_priority(info);
 
 	if (sbe_dy_rescue_enable) {
 		release_all_ux_info(info);
