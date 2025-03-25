@@ -3347,14 +3347,14 @@ static void mtk_oddmr_od_config(struct mtk_ddp_comp *comp,
 		ODDMRAPI_LOG("oddmr_config_od_sram, %d\n", oddmr_data->od_data.od_sram_read_sel);
 		if (oddmr_data->data->od_version >= MTK_OD_V3) {
 			if (oddmr_data->od_data.od_sram_read_sel == 1)
-				mtk_oddmr_write(comp, 0x60, MT6991_DISP_ODDMR_OD_SRAM_CTRL_0, NULL);
+				mtk_oddmr_write(comp, 0xE0, MT6991_DISP_ODDMR_OD_SRAM_CTRL_0, NULL);
 			else
-				mtk_oddmr_write(comp, 0x50, MT6991_DISP_ODDMR_OD_SRAM_CTRL_0, NULL);
+				mtk_oddmr_write(comp, 0xD0, MT6991_DISP_ODDMR_OD_SRAM_CTRL_0, NULL);
 		} else if (oddmr_data->data->od_version == MTK_OD_V2) {
 			if (oddmr_data->od_data.od_sram_read_sel == 1)
-				mtk_oddmr_write(comp, 0x20, MT6991_DISP_ODDMR_OD_SRAM_CTRL_0, NULL);
+				mtk_oddmr_write(comp, 0xA0, MT6991_DISP_ODDMR_OD_SRAM_CTRL_0, NULL);
 			else
-				mtk_oddmr_write(comp, 0x10, MT6991_DISP_ODDMR_OD_SRAM_CTRL_0, NULL);
+				mtk_oddmr_write(comp, 0x90, MT6991_DISP_ODDMR_OD_SRAM_CTRL_0, NULL);
 		} else {
 			if (oddmr_data->od_data.od_sram_read_sel == 1)
 				mtk_oddmr_write(comp, 0x20, DISP_ODDMR_OD_SRAM_CTRL_0, NULL);
