@@ -167,6 +167,7 @@ enum MT_SPM_DBG_SMC_UID {
 	MT_SPM_DBG_SMC_PERI_WAKEUP_STA,
 	MT_SPM_DBG_SMC_SPM_EL1,
 	MT_SPM_DBG_SMC_COMMON_PWR_STAT,
+	MT_SPM_DBG_SMC_OCLA,
 };
 
 #define lpm_smc_spm_dbg(_lp_id, _act, _val1, _val2) ({\

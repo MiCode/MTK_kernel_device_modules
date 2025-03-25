@@ -1265,6 +1265,7 @@ static int __init mt6993_dbg_device_initcall(void)
 		pr_info("[name:spm&][SPM] Failed to register dbg plat ops notifier.\n");
 
 	lpm_spm_fs_init(pwr_ctrl_str, PW_MAX_COUNT);
+	lpm_ocla_fs_init();
 
 #if IS_ENABLED(CONFIG_MTK_SYS_RES_DBG_SUPPORT)
 	ret = lpm_sys_res_stat_init();

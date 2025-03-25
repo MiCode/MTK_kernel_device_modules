@@ -40,6 +40,7 @@ ddk_headers(
         "mtk_lpm_fs/mtk_lp_kernfs.h",
         "mtk_lpm_fs/mtk_suspend_sysfs.h",
         "mtk_lpm_fs/mtk_idle_sysfs.h",
+        "mtk_lpm_fs/mtk_ocla_sysfs.h",
         "modules/include/lpm_dbg_common_v2.h",
         "modules/include/lpm_dbg_syssram_v1.h",
         "modules/include/lpm_plat_apmcu.h",

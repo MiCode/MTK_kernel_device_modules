@@ -27,6 +27,9 @@ unsigned int lpm_get_lp_blocked_threshold(void);
 int lpm_spm_fs_init(char **str, unsigned int cnt);
 int lpm_spm_fs_deinit(void);
 
+void lpm_ocla_fs_init(void);
+int lpm_ocla_fs_deinit(void);
+
 int lpm_hwreq_fs_init(void);
 int lpm_hwreq_fs_deinit(void);
 
