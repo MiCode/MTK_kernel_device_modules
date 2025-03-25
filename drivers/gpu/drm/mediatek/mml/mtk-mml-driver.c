@@ -413,6 +413,12 @@ void mml_dvfs_init(struct mml_dev *mml, struct platform_device *pdev)
 		i++;
 		dev_pm_opp_put(opp);
 	}
+
+	if (i > 0) {
+		/* max_bw = opp max level * 4 * 1.1 */
+		mml_qos_max_bw = (int)(dvfs->opp_speeds[i - 1] * 4 * 11 / 10);
+		mml_msg("%s mml_qos_max_bw: %d", __func__, mml_qos_max_bw);
+	}
 }
 
 static void mml_dvfs_vcp_enable(struct mml_dev *mml)
@@ -1366,7 +1372,7 @@ static u32 mml_calc_bw(struct mml_dev *mml, u64 data, u32 pixel, u64 throughput)
 	if (!pixel)
 		pixel = 1;
 
-	return max_t(u32, MML_QOS_MIN_BW, min_t(u32, div_u64(data, pixel), MML_QOS_MAX_BW));
+	return max_t(u32, MML_QOS_MIN_BW, min_t(u32, div_u64(data, pixel), mml_qos_max_bw));
 }
 
 static u32 mml_calc_bw_couple(struct mml_dev *mml, u32 datasize)
@@ -1436,6 +1442,8 @@ void mml_comp_qos_calc(struct mml_comp *comp, struct mml_task *task,
 	stash_srt_bw = srt_bw;
 	stash_hrt_bw = hrt_bw;
 	comp->hw_ops->qos_stash_bw_get(comp, task, ccfg, &stash_srt_bw, &stash_hrt_bw);
+	stash_srt_bw = min_t(u32, stash_srt_bw, mml_qos_max_stash_bw);
+	stash_hrt_bw = min_t(u32, stash_hrt_bw, mml_qos_max_stash_bw);
 
 	if (mml_stash_bw) {
 		stash_srt_bw = mml_stash_bw & 0xfffe;

@@ -143,6 +143,12 @@ module_param(dc_sw_reserve, int, 0644);
 int pq_sw_reserve = 3000;
 module_param(pq_sw_reserve, int, 0644);
 
+/* max bw limit per platform */
+int mml_qos_max_bw = 5329;
+module_param(mml_qos_max_bw, int, 0644);
+int mml_qos_max_stash_bw = 64;
+module_param(mml_qos_max_stash_bw, int, 0644);
+
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 static bool mml_timeout_dump = true;
 static DEFINE_MUTEX(mml_dump_mutex);

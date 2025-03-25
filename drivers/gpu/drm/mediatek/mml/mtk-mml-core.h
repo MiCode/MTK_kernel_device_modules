@@ -60,8 +60,9 @@ extern int mml_irq;
  * 5329 is the worst bw calculated by 1440x3200 RGBA in+out w/ 1.2 overhead
  */
 #define MML_QOS_MIN_BW		48
-#define MML_QOS_MAX_BW		5329
 #define MML_QOS_MIN_STASH_BW	17
+extern int mml_qos_max_bw;
+extern int mml_qos_max_stash_bw;
 
 /* MML couple mode HRT mode, HRT bandwidth to MMQoS and DPC
  * MML_HRT_ENABLE:	default, config srt and hrt to mmqos and dpc
