@@ -482,13 +482,16 @@ allocate_success:
 	buf->provider = provider;
 
 	/* increase structrure count of current provider */
-	uop_increase_cnt(provider, type);
+	if (uop_increase_cnt(provider, type))
+		goto allocate_fail;
 
 	USB_OFFLOAD_INFO("success to allocate %s\n", mtk_offload_parse_buffer(buf));
 	USB_OFFLOAD_MEM_DBG("[%s] %s\n",
 		uop_get_name(provider), uo_provider_parse_count(provider));
 	return 0;
 allocate_fail:
+	if (buf->allocated && mtk_offload_free_mem(buf) < 0)
+		USB_OFFLOAD_ERR("failt to free buf:%p\n", buf);
 	USB_OFFLOAD_ERR("fail to allocate, (%s) size:%d align:%d is_rsv:%d\n",
 		uo_struct_name(type), size, align, is_rsv);
 	return ret;

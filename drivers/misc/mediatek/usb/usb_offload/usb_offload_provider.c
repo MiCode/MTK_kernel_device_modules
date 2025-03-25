@@ -385,42 +385,49 @@ error:
 }
 
 struct uo_struct_info {
-    u8 mask;
-    u8 shift;
-    char *name;
+	u32 mask;
+	u32 shift;
+	u32 max;
+	char *name;
 };
 
 static struct uo_struct_info str_info[UO_STRUCT_NUM] = {
-    { /* UO_STRUCT_DCBAA */
-        .mask  = 0x1,
-        .shift = 0x0,
-        .name  = "DCBAA",
-    },
-    { /* UO_STRUCT_CTX */
-        .mask  = 0x7,
-        .shift = 0x1,
-        .name  = "CONTEXT",
-    },
-    { /* UO_STRUCT_ERST */
-        .mask  = 0x1,
-        .shift = 0x4,
-        .name  = "ERST",
-    },
-    { /* UO_STRUCT_EVRING */
-        .mask  = 0x7,
-        .shift = 0x5,
-        .name  = "EV_RING",
-    },
-    { /* UO_STRUCT_TRRING */
-        .mask  = 0x7,
-        .shift = 0x8,
-        .name  = "TR_RING",
-    },
-    { /* UO_STRUCT_URB */
-        .mask  = 0x7,
-        .shift = 0xb,
-        .name  = "URB",
-    },
+	{ /* UO_STRUCT_DCBAA */
+		.mask  = GENMASK(1, 0),
+		.shift = 0x0,
+		.max = BUF_DCBAA_SIZE, /* max: 1 dcbaa*/
+		.name  = "DCBAA",
+	},
+	{ /* UO_STRUCT_CTX */
+		.mask  = GENMASK(7, 2),
+		.shift = 2,
+		.max = BUF_CTX_SIZE, /* max: 31 contextes */
+		.name  = "CONTEXT",
+	},
+	{ /* UO_STRUCT_ERST */
+		.mask  = GENMASK(9, 8),
+		.shift = 8,
+		.max = BUF_ERST_SIZE, /* max: 1 event ring table */
+		.name  = "ERST",
+	},
+	{ /* UO_STRUCT_EVRING */
+		.mask  = GENMASK(13, 12),
+		.shift = 12,
+		.max = BUF_EV_RING_SIZE, /* max: 1 event ring*/
+		.name  = "EV_RING",
+	},
+	{ /* UO_STRUCT_TRRING */
+		.mask  = GENMASK(23, 16),
+		.shift = 16,
+		.max = BUF_TR_RING_SIZE, /* max: 62 trasnfer ring */
+		.name  = "TR_RING",
+	},
+	{ /* UO_STRUCT_URB */
+		.mask  = GENMASK(25, 24),
+		.shift = 24,
+		.max = BUF_URB_SIZE, /* max: 5 urbs */
+		.name  = "URB",
+	},
 };
 
 char *uo_struct_name(enum uo_struct type)
@@ -440,12 +447,12 @@ char *uo_provider_parse_count(struct uo_provider *provider)
 
 	n = snprintf(parse_info, PARSE_INFO_LEN, "cnt:%d, dcbaa:%d ctx:%d erst:%d ev:%d tr:%d urb:%d",
 		provider->struct_cnt,
-		(provider->struct_cnt >> str_info[UO_STRUCT_DCBAA].shift) & str_info[UO_STRUCT_DCBAA].mask,
-		(provider->struct_cnt >> str_info[UO_STRUCT_CTX].shift) & str_info[UO_STRUCT_CTX].mask,
-		(provider->struct_cnt >> str_info[UO_STRUCT_ERST].shift) & str_info[UO_STRUCT_ERST].mask,
-		(provider->struct_cnt >> str_info[UO_STRUCT_EVRING].shift) & str_info[UO_STRUCT_EVRING].mask,
-		(provider->struct_cnt >> str_info[UO_STRUCT_TRRING].shift) & str_info[UO_STRUCT_TRRING].mask,
-		(provider->struct_cnt >> str_info[UO_STRUCT_URB].shift) & str_info[UO_STRUCT_URB].mask);
+		(provider->struct_cnt & str_info[UO_STRUCT_DCBAA].mask) >> str_info[UO_STRUCT_DCBAA].shift,
+		(provider->struct_cnt & str_info[UO_STRUCT_CTX].mask)>> str_info[UO_STRUCT_CTX].shift,
+		(provider->struct_cnt & str_info[UO_STRUCT_ERST].mask)>> str_info[UO_STRUCT_ERST].shift,
+		(provider->struct_cnt & str_info[UO_STRUCT_EVRING].mask)>> str_info[UO_STRUCT_EVRING].shift,
+		(provider->struct_cnt & str_info[UO_STRUCT_TRRING].mask)>> str_info[UO_STRUCT_TRRING].shift,
+		(provider->struct_cnt & str_info[UO_STRUCT_URB].mask)>> str_info[UO_STRUCT_URB].shift);
 	parse_info[n < PARSE_INFO_LEN ? n : PARSE_INFO_LEN - 1] = '\0';
 
 	return parse_info;
@@ -462,36 +469,36 @@ u32 uo_get_cnt_power_sensitive(struct uo_provider *provider)
 	/* erase dcbaa & ctx count */
 	value = provider->struct_cnt;
 	for (i = 0; i <= UO_STRUCT_CTX && i < UO_STRUCT_NUM; i++)
-		value &= ~(str_info[i].mask << str_info[i].shift);
+		value &= ~(str_info[i].mask);
 
 	return value;
 }
 
-void uop_increase_cnt(struct uo_provider *provider, enum uo_struct type)
+int uop_increase_cnt(struct uo_provider *provider, enum uo_struct type)
 {
 	struct uo_struct_info *info;
 	u32 cnt;
 
 	if (type >= UO_STRUCT_NUM) {
 		USB_OFFLOAD_ERR("invalid input, type:%d\n", type);
-		return;
+		return -EINVAL;
 	}
 
 	info = &str_info[(int)type];
 
-	cnt = ((provider->struct_cnt >> info->shift) & info->mask);
-	if ((cnt + 1) > info->mask)
+	cnt = ((provider->struct_cnt & info->mask) >> info->shift);
+	if ((cnt + 1) > info->max)
 		goto error;
 	cnt++;
 
-	provider->struct_cnt &= ~(info->mask << info->shift);
-	provider->struct_cnt |= ((cnt & info->mask) << info->shift);
+	provider->struct_cnt &= ~(info->mask);
+	provider->struct_cnt |= ((cnt << info->shift) & info->mask);
 
-	return;
+	return 0;
 error:
 	USB_OFFLOAD_ERR("fail to increase, (%s, %s) cnt:%d max:%d\n",
-		uop_get_name(provider), uo_struct_name(type), cnt, info->mask);
-	return;
+		uop_get_name(provider), uo_struct_name(type), cnt, info->max);
+	return -EINVAL;
 }
 
 void uop_decrease_cnt(struct uo_provider *provider,	enum uo_struct type)
@@ -506,17 +513,17 @@ void uop_decrease_cnt(struct uo_provider *provider,	enum uo_struct type)
 
 	info = &str_info[(int)type];
 
-	cnt = ((provider->struct_cnt >> info->shift) & info->mask);
+	cnt = ((provider->struct_cnt & info->mask) >> info->shift);
 	if (!cnt)
 		goto error;
 	cnt--;
 
-	provider->struct_cnt &= ~(info->mask << info->shift);
-	provider->struct_cnt |= ((cnt & info->mask) << info->shift);
+	provider->struct_cnt &= ~(info->mask);
+	provider->struct_cnt |= ((cnt << info->shift) & info->mask);
 
 	return;
+
 error:
 	USB_OFFLOAD_ERR("fail to decrease, (%s, %s) cnt:%d max:%d\n",
-		uop_get_name(provider), uo_struct_name(type), cnt, info->mask);
-	return;
+		uop_get_name(provider), uo_struct_name(type), cnt, info->max);
 }

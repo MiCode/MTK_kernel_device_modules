@@ -30,13 +30,14 @@
 #define MIN_USB_OFFLOAD_SHIFT (8)
 #define MIN_USB_OFFLOAD_POOL_SIZE (1 << MIN_USB_OFFLOAD_SHIFT)
 
+#define BUF_DCBAA_SIZE					1
 #define BUF_CTX_SIZE					31
-#define TR_MAX_SEG						((15 * 2 + 1) * 2)
-#define EV_MAX_SEG						1
-#define BUF_SEG_SIZE					(TR_MAX_SEG)
-#define ERST_SIZE						16
-#define ERST_NUMBER						EV_MAX_SEG
+#define BUF_ERST_SIZE					1
+#define BUF_EV_RING_SIZE				1
+#define BUF_TR_RING_SIZE				((15 * 2 + 1) * 2)
 #define BUF_URB_SIZE					5 /* hid*1, stream*2, trace*2 */
+
+#define ERST_SIZE						16
 #define USB_OFFLOAD_TRBS_PER_SEGMENT	256
 #define USB_OFFLOAD_TRB_SEGMENT_SIZE	(USB_OFFLOAD_TRBS_PER_SEGMENT*16)
 #define XHCI1_INTR_TARGET	1
@@ -427,7 +428,7 @@ unsigned int uop_mpu_region(struct uo_provider *provider, dma_addr_t *phy);
 char *uop_get_name(struct uo_provider *provider);
 char *uo_struct_name(enum uo_struct type);
 u32 uo_get_cnt_power_sensitive(struct uo_provider *provider);
-void uop_increase_cnt(struct uo_provider *provider, enum uo_struct type);
+int uop_increase_cnt(struct uo_provider *provider, enum uo_struct type);
 void uop_decrease_cnt(struct uo_provider *provider,	enum uo_struct type);
 char *uo_provider_parse_count(struct uo_provider *provider);
 int mtk_register_usb_sram_ops(

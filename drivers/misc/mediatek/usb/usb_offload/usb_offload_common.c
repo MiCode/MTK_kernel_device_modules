@@ -3005,11 +3005,11 @@ static int usb_offload_probe(struct platform_device *pdev)
 		goto INIT_SHAREMEM_FAIL;
 	}
 
-	uob_assign_array(UO_STRUCT_DCBAA, NULL, 1);
+	uob_assign_array(UO_STRUCT_DCBAA, NULL, BUF_DCBAA_SIZE);
 	uob_assign_array(UO_STRUCT_CTX, NULL, BUF_CTX_SIZE);
-	uob_assign_array(UO_STRUCT_ERST, NULL, 1);
-	uob_assign_array(UO_STRUCT_EVRING, NULL, 1);
-	uob_assign_array(UO_STRUCT_TRRING, NULL, BUF_SEG_SIZE);
+	uob_assign_array(UO_STRUCT_ERST, NULL, BUF_ERST_SIZE);
+	uob_assign_array(UO_STRUCT_EVRING, NULL, BUF_EV_RING_SIZE);
+	uob_assign_array(UO_STRUCT_TRRING, NULL, BUF_TR_RING_SIZE);
 	uob_assign_array(UO_STRUCT_URB, NULL, BUF_URB_SIZE);
 
 	uob_init(UO_STRUCT_ERST);
@@ -3071,13 +3071,6 @@ EXPORT_SYMBOL_GPL(unregister_uo_mbrain_cb);
 void uo_mbrain_update(enum uo_mbrain_phase phase, enum uo_mbrain_error error)
 {
 	struct uo_mbrain data = {0};
-	struct usb_device *udev;
-
-	udev = get_uac_device();
-	if (udev) {
-		data.vid = udev->descriptor.idVendor;
-		data.pid = udev->descriptor.idProduct;
-	}
 
 	data.phase = phase;
 	data.error = error;
