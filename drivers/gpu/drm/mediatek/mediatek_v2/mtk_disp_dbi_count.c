@@ -1389,17 +1389,17 @@ static void mtk_dbi_count_common_init(struct mtk_ddp_comp *comp,
 	value = 0;
 	mask = 0;
 	SET_VAL_MASK(value, mask, 0, REG_DBIW_DDREN_REQ_DISABLE);
-	SET_VAL_MASK(value, mask, 1, REG_DBIW_USE_HRT_DDREN_REQ);
+	SET_VAL_MASK(value, mask, 1, REG_DBIW_SRT_DDREN_REQ);
 	SET_VAL_MASK(value, mask, 0, REG_DBIW_STASH_DDREN_REQ_DISABLE);
-	SET_VAL_MASK(value, mask, 1, REG_DBIW_STASH_USE_HRT_DDREN_REQ);
+	SET_VAL_MASK(value, mask, 1, REG_DBIW_STASH_SRT_DDREN_REQ);
 
 	mtk_dbi_count_write_mask(comp, value, DISP_DBI_COUNT_DDREN_CTRL_DBIW, mask, handle);
 	value = 0;
 	mask = 0;
 	SET_VAL_MASK(value, mask, 0, REG_DBIR_DDREN_REQ_DISABLE);
-	SET_VAL_MASK(value, mask, 1, REG_DBIR_USE_HRT_DDREN_REQ);
+	SET_VAL_MASK(value, mask, 1, REG_DBIR_SRT_DDREN_REQ);
 	SET_VAL_MASK(value, mask, 0, REG_DBIR_STASH_DDREN_REQ_DISABLE);
-	SET_VAL_MASK(value, mask, 1, REG_DBIR_STASH_USE_HRT_DDREN_REQ);
+	SET_VAL_MASK(value, mask, 1, REG_DBIR_STASH_SRT_DDREN_REQ);
 	mtk_dbi_count_write_mask(comp, value, DISP_DBI_COUNT_DDREN_CTRL_DBIR, mask, handle);
 
 	value = 0;mask = 0;
