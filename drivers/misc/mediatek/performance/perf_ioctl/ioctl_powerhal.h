@@ -33,7 +33,7 @@ enum _ADPF_CMD {
 	ADPF_CLOSE,
 	ADPF_SENT_HINT,
 	ADPF_SET_THREADS,
-	GET_FPSGO_FRAME_INFO,
+	ADPF_GET_FPSGO_THREAD_LOADING,
 };
 
 struct _ADPF_WORK_DURATION {
@@ -56,18 +56,15 @@ struct _ADPF_PACKAGE {
 		__s64 durationNanos;
 		__s64 targetDurationNanos;
 	};
-	__s32 cpu_capacity;
 	__s32 target_fps;
-	__u64 cpu_running_time;
-	__s64 gpu_running_time;
+	__u64 raw_t_cpu;
+	__u64 ema_t_cpu;
 };
 
 struct fpsgo_render_info {
-	int cpu_capacity;
 	int target_fps;
 	unsigned long long raw_t_cpu;
 	unsigned long long ema_t_cpu;
-	long long gpu_running_time;
 };
 
 struct _POWERHAL_PACKAGE {

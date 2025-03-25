@@ -890,12 +890,10 @@ int dsu_sport_mode(unsigned int mode)
 	return 0;
 }
 
-int adpf_get_frame_info(struct fpsgo_render_info *render_info)
+int adpf_get_fpsgo_thread_loading(struct fpsgo_render_info *render_info)
 {
 	int i = 0;
-	int j = 0;
-	int ret = 0;
-	int render_item = -1;
+	int render_count = 0;
 	unsigned long query_mask = 0;
 
 	if (!powerhal2fpsgo_get_fpsgo_frame_info_fp) {
@@ -908,26 +906,38 @@ int adpf_get_frame_info(struct fpsgo_render_info *render_info)
 	query_mask =
 		(1 << GET_FPSGO_RAW_CPU_TIME) |
 		(1 << GET_FPSGO_EMA_CPU_TIME) |
-		(1 << GET_FPSGO_AVG_FRAME_CAP) |
 		(1 << GET_FPSGO_TARGET_FPS);
 
-	ret = powerhal2fpsgo_get_fpsgo_frame_info_fp(MAX_RENDER_TID, query_mask, render);
+	render_count = powerhal2fpsgo_get_fpsgo_frame_info_fp(MAX_RENDER_TID, query_mask, render);
 
-	if (ret > 0) {
-		for (i = 0; i < ret; i++)
-			for (j = 0; j < ADPF_MAX_SESSION; j++)
-				if (sessionList[j] && render[i].pid == sessionList[j]->tgid)
-					render_item = i;
+	if (render_count > 0) {
+		int target_index = 0;
+		int max_loading = 0;
 
-		if (render_item != -1) {
-			render_info->cpu_capacity = render[render_item].avg_frame_cap;
-			render_info->ema_t_cpu = render[render_item].ema_t_cpu;
-			render_info->target_fps = render[render_item].target_fps;
-			render_info->raw_t_cpu = render[render_item].raw_t_cpu;
-		} else {
-			pr_info("[%s] No matching render item found!", __func__);
-			return -1;
+		for (i = 0; i < render_count; i++) {
+			unsigned long long target_frame_time = 0;
+			unsigned long long scaled_cpu_running_time = 0;
+			int loading = 0;
+
+			if (render[i].target_fps == 0) {
+				pr_info("[%s] target_fps cannot be zero", __func__);
+			} else {
+				target_frame_time = div64_u64(NSEC_PER_SEC, render[i].target_fps);
+				scaled_cpu_running_time = render[i].ema_t_cpu * 100;
+				loading = scaled_cpu_running_time / target_frame_time;
+			}
+
+			if (loading > max_loading) {
+				max_loading = loading;
+				target_index = i;
+			}
 		}
+
+		render_info->ema_t_cpu = render[target_index].ema_t_cpu;
+		render_info->raw_t_cpu = render[target_index].raw_t_cpu;
+		render_info->target_fps = render[target_index].target_fps;
+	} else {
+		pr_info("[%s] no render thread found from fpsgo",  __func__);
 	}
 
 	return 0;
@@ -1054,10 +1064,7 @@ static int __init powerhal_cpu_ctrl_init(void)
 	powerhal_adpf_close_fp = adpf_close;
 	powerhal_adpf_sent_hint_fp = adpf_sent_hint;
 	powerhal_adpf_set_threads_fp = adpf_set_threads;
-
-	powerhal_adpf_get_frame_info_fp = adpf_get_frame_info;
-
-
+	powerhal_adpf_get_fpsgo_thread_loading_fp = adpf_get_fpsgo_thread_loading;
 
 	// DSU
 	powerhal_dsu_sport_mode_fp = dsu_sport_mode;
