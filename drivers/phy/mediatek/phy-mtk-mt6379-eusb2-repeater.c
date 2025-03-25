@@ -52,6 +52,11 @@
 #define RG_USB20_FS_SR_SHIFT		0
 #define RG_USB20_FS_SR_MASK		0x7
 
+#define PHYA_U2_CR1_3			0x17
+#define RG_USB20_SQD			GENMASK(1,0)
+#define RG_USB20_SQD_SHIFT		0
+#define RG_USB20_SQD_MASK		0x3
+
 #define PHYA_U2_CR2_0			0x18
 #define RG_USB20_SQTH			GENMASK(3,0)
 #define RG_USB20_SQTH_SHIFT		0
@@ -611,6 +616,9 @@ static int eusb2_repeater_power_on(struct phy *phy)
 
 	regmap_read(rptr->regmap, MT6379_REG_DEV_INFO, &chip_rev);
 	dev_info(rptr->dev, "eusb2 repeater power on chip_rev(%x) submode(%x)\n", chip_rev, rptr->submode);
+
+	/* set SQD to deglitch 1x */
+	regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR1_3, RG_USB20_SQD_MASK, 0x0);
 
 	if ((chip_rev & MT6379_CHIP_REV_MASK) <= 0x2) {
 		regmap_update_bits(rptr->regmap, rptr->base + 0x92, 0x7, 0x7);
