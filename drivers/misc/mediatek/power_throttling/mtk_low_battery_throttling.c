@@ -1645,7 +1645,9 @@ static int lvsys_thd_setting(struct platform_device *pdev, struct lbat_thl_priv 
 		if (switch_pt) {
 			for (k = 1; k < max_tb_num; k++) {
 				// Read low voltage array
-				snprintf(prop_name, sizeof(prop_name), "lvsys-thd-volt-tb%d-l", k);
+				ret = snprintf(prop_name, sizeof(prop_name), "lvsys-thd-volt-tb%d-l", k);
+				if (ret < 0)
+					pr_info("%s:%d: snprintf error %d\n", __func__, __LINE__, ret);
 				ret = of_property_read_u32_array(np, prop_name,
 								lvsys_table_data->tables[k].low,
 								volt_size);
@@ -1655,7 +1657,9 @@ static int lvsys_thd_setting(struct platform_device *pdev, struct lbat_thl_priv 
 					return -ENOMEM;
 				}
 				// Read high voltage array
-				snprintf(prop_name, sizeof(prop_name), "lvsys-thd-volt-tb%d-h", k);
+				ret = snprintf(prop_name, sizeof(prop_name), "lvsys-thd-volt-tb%d-h", k);
+				if (ret < 0)
+					pr_info("%s:%d: snprintf error %d\n", __func__, __LINE__, ret);
 				ret = of_property_read_u32_array(np, prop_name,
 								lvsys_table_data->tables[k].high,
 								volt_size);
