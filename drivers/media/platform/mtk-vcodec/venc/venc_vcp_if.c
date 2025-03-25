@@ -2104,6 +2104,10 @@ int vcp_enc_set_param(struct venc_inst *inst,
 	case VENC_SET_PARAM_I_FRM_SZ_CTRL:
 		out.data_item = 0; // passed via vsi
 		break;
+	case VENC_SET_PARAM_COMPATIBILITY_OPTION:
+		out.data_item = 1;
+		out.data[0] = enc_param->compatibility_option;
+		break;
 	default:
 		mtk_vcodec_err(inst, "id %d not supported", id);
 		return -EINVAL;
@@ -2199,6 +2203,7 @@ static int venc_vcp_set_param(unsigned long handle,
 		inst->vsi->config.bfrm_q_ltr = enc_prm->bfrm_q_ltr;
 		inst->vsi->config.use_clean_gop = enc_prm->use_clean_gop;
 		inst->vsi->query_encode_param = enc_prm->query_encode_param;
+		inst->vsi->config.compatibility_option = enc_prm->compatibility_option;
 
 		if (enc_prm->i_frm_sz_ctrl) {
 			memcpy(&inst->vsi->config.i_frm_sz_ctrl,

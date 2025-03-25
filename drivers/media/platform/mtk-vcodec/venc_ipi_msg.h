@@ -150,6 +150,7 @@ enum venc_set_param_type {
 	VENC_SET_PARAM_CONFIG,
 	VENC_SET_PARAM_ADAB_INFO,
 	VENC_SET_PARAM_I_FRM_SZ_CTRL,
+	VENC_SET_PARAM_COMPATIBILITY_OPTION,
 };
 
 #define VENC_MSG_AP_SEND_PREFIX	\
@@ -561,6 +562,7 @@ struct venc_vcu_config {
 	__u8 use_clean_gop;
 	struct v4l2_venc_adab_info adab_info;
 	struct v4l2_venc_i_frame_size_control i_frm_sz_ctrl;
+	__u32 compatibility_option;
 };
 
 /**

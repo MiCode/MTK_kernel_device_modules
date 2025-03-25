@@ -190,6 +190,7 @@ enum mtk_encode_param {
 	MTK_ENCODE_PARAM_MBRC_TKSPD = ((u64)1 << 32),
 	MTK_ENCODE_PARAM_ADAB_INFO = ((u64)1 << 33),
 	MTK_ENCODE_PARAM_I_FRM_SZ_CTRL = ((u64)1 << 34),
+	MTK_ENCODE_PARAM_COMPATIBILITY_OPTION = ((u64)1 << 35),
 };
 
 /*
@@ -442,6 +443,7 @@ struct mtk_enc_params {
 	struct v4l2_venc_adab_info adab_info;
 	struct v4l2_venc_i_frame_size_control i_frm_sz_ctrl;
 	bool query_encode_param;
+	unsigned int    compatibility_option;
 };
 
 /*
@@ -546,6 +548,7 @@ struct venc_enc_param {
 	struct v4l2_venc_adab_info *adab_info;
 	struct v4l2_venc_i_frame_size_control *i_frm_sz_ctrl;
 	bool query_encode_param;
+	unsigned int compatibility_option;
 };
 
 /*

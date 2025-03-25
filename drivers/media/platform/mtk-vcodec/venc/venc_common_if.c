@@ -516,6 +516,7 @@ static int venc_set_param(unsigned long handle,
 		inst->vsi->config.bfrm_q_ltr = enc_prm->bfrm_q_ltr;
 		inst->vsi->config.use_clean_gop = enc_prm->use_clean_gop;
 		inst->vsi->query_encode_param = enc_prm->query_encode_param;
+		inst->vsi->config.compatibility_option = enc_prm->compatibility_option;
 
 		if (enc_prm->i_frm_sz_ctrl) {
 			memcpy(&inst->vsi->config.i_frm_sz_ctrl,
