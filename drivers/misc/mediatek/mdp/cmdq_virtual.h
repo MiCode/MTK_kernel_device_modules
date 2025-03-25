@@ -46,7 +46,7 @@ typedef bool(*cmdq_is_disp_loop) (enum CMDQ_SCENARIO_ENUM scenario);
 typedef const char *(*CmdqParseModule) (u32 reg_addr);
 
 /* print status clock */
-typedef ssize_t(*CmdqPrintStatusClock) (char *buf);
+typedef ssize_t(*CmdqPrintStatusClock) (char *buf, size_t size);
 
 /* print seq status clock */
 typedef void (*CmdqPrintStatusSeqClock) (struct seq_file *m);
