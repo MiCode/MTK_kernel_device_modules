@@ -35,6 +35,8 @@
 #endif
 #include "cmdq_sec_pkvm.h"
 
+extern u8 gce_hw_cnt;
+
 /*
  * inter-world communication state
  */
@@ -61,7 +63,10 @@ void cmdq_sec_dump_response(void *chan, struct cmdq_pkt *pkt,
 void cmdq_sec_mtee_setup_context(struct cmdq_sec_mtee_context *tee);
 s32 cmdq_sec_mtee_allocate_shared_memory(struct cmdq_sec_mtee_context *tee,
 	const dma_addr_t MVABase, const u32 size);
-s32 cmdq_sec_mtee_allocate_wsm(struct cmdq_sec_mtee_context *tee,
+s32 cmdq_sec_mtee_allocate_wsm(
+	void **wsm_buffer, u32 size, void **wsm_buf_ex, u32 size_ex,
+	void **wsm_buf_ex2, u32 size_ex2);
+s32 cmdq_sec_mtee_register_wsm(struct cmdq_sec_mtee_context *tee,
 	void **wsm_buffer, u32 size, void **wsm_buf_ex, u32 size_ex,
 	void **wsm_buf_ex2, u32 size_ex2);
 s32 cmdq_sec_mtee_free_wsm(
