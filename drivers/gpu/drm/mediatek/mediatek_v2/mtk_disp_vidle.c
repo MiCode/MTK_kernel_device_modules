@@ -49,6 +49,7 @@ struct mtk_disp_vidle {
 	enum mtk_dpc_version dpc_version;
 	enum mtk_vdisp_version vdisp_version;
 	int pm_ret_crtc;	/* for DISP_VIDLE_USER_CRTC only, already locked by crtc_lock */
+	int pm_ret_isr;		/* for DISP_VIDLE_USER_TOP_CLK_ISR only, already locked by top_clk_lock */
 	struct mtk_vidle_hint hint;
 };
 
@@ -65,6 +66,7 @@ static struct mtk_disp_vidle vidle_data = {
 	.dpc_version = DPC_VER_CNT,
 	.vdisp_version = VDISP_VER_CNT,
 	.pm_ret_crtc = 0,
+	.pm_ret_isr = 0,
 };
 
 void mtk_vidle_flag_init(void *_crtc)
@@ -243,6 +245,8 @@ int mtk_vidle_user_power_keep_v2(enum mtk_vidle_voter_user user)
 
 	if (user == DISP_VIDLE_USER_CRTC)
 		vidle_data.pm_ret_crtc = pm_ret;
+	else if (user == DISP_VIDLE_USER_TOP_CLK_ISR)
+		vidle_data.pm_ret_isr = pm_ret;
 
 	return pm_ret;
 }
@@ -257,6 +261,8 @@ void mtk_vidle_user_power_release_v2(enum mtk_vidle_voter_user user)
 
 	if (user == DISP_VIDLE_USER_CRTC && vidle_data.pm_ret_crtc == VOTER_ONLY)
 		user |= VOTER_ONLY;
+	else if (user == DISP_VIDLE_USER_TOP_CLK_ISR && vidle_data.pm_ret_isr != VOTER_PM_DONE)
+		return;
 
 	disp_dpc_driver.dpc_vidle_power_release(user);
 }

@@ -34,6 +34,8 @@ void mml_dpc_group_enable(u32 sysid, bool en);
 void mml_dpc_mtcmos_auto(u32 sysid, const bool en, const s8 mode);
 int mml_dpc_power_keep(u32 sysid);
 void mml_dpc_power_release(u32 sysid);
+void mml_dpc_isr_keep(void);
+void mml_dpc_isr_release(void);
 int mml_dpc_power_keep_gce(u32 sysid, struct cmdq_pkt *pkt, u16 gpr, struct cmdq_poll_reuse *reuse);
 void mml_dpc_power_release_gce(u32 sysid, struct cmdq_pkt *pkt);
 void mml_dpc_hrt_bw_set(u32 larb_idx, const u32 bw_in_mb, bool force_keep);

@@ -151,6 +151,18 @@ void mml_dpc_power_release(u32 sysid)
 	mml_dpc_funcs.dpc_vidle_power_release(user);
 }
 
+void mml_dpc_isr_keep(void)
+{
+	if (mml_dpc_funcs.dpc_vidle_power_keep)
+		mml_dpc_funcs.dpc_vidle_power_keep(DISP_VIDLE_USER_MML_CLK_ISR);
+}
+
+void mml_dpc_isr_release(void)
+{
+	if (mml_dpc_funcs.dpc_vidle_power_release)
+		mml_dpc_funcs.dpc_vidle_power_release(DISP_VIDLE_USER_MML_CLK_ISR);
+}
+
 int mml_dpc_power_keep_gce(u32 sysid, struct cmdq_pkt *pkt, u16 gpr, struct cmdq_poll_reuse *reuse)
 {
 	enum mtk_vidle_voter_user user;

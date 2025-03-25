@@ -8179,7 +8179,10 @@ bool mtk_drm_top_clk_isr_get(struct mtk_ddp_comp *comp)
 				}
 				DRM_MMP_EVENT_END(top_clk, comp->id, 0);
 			}
-		}
+		} else
+			if (atomic_read(&top_isr_ref) == 1)
+				mtk_vidle_user_power_keep(DISP_VIDLE_USER_TOP_CLK_ISR);
+
 		spin_unlock_irqrestore(&top_clk_lock, flags);
 	}
 	return true;
@@ -8206,7 +8209,10 @@ void mtk_drm_top_clk_isr_put(struct mtk_ddp_comp *comp)
 				comp->pm_ret = 0;
 			}
 			mtk_vidle_user_power_release(DISP_VIDLE_USER_TOP_CLK_ISR);
-		}
+		} else
+			if (atomic_read(&top_isr_ref) == 0)
+				mtk_vidle_user_power_release(DISP_VIDLE_USER_TOP_CLK_ISR);
+
 		spin_unlock_irqrestore(&top_clk_lock, flags);
 	}
 }

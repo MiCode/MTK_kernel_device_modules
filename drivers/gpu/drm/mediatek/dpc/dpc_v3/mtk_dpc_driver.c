@@ -2325,10 +2325,8 @@ static int dpc_vidle_power_keep_v3(const enum mtk_vidle_voter_user _user)
 		mtk_disp_vlp_vote_v2(VOTE_SET, user);
 		return VOTER_ONLY;
 	} else if (user == DISP_VIDLE_USER_TOP_CLK_ISR) {
-		/* skip pm_get to fix unstable DSI TE, mminfra power is held by DPC usually */
-		/* but if no power at this time, the user should call pm_get to ensure power */
-		mtk_disp_vlp_vote_v2(VOTE_SET, user);
-		return mminfra_is_power_on_v2() ? VOTER_ONLY : VOTER_PM_LATER;
+		if (!g_priv->enabled)
+			return VOTER_PM_FAILED;
 	}
 
 	if (dpc_pm_ctrl(true))
@@ -2367,14 +2365,14 @@ static void dpc_vidle_power_release_v3(const enum mtk_vidle_voter_user _user)
 	if (!has_cap(DPC_CAP_MTCMOS))
 		return;
 
+	if (_user & VOTER_ONLY) {
+		mtk_disp_vlp_vote_v2(VOTE_CLR, user);
+		return;
+	}
+
 	mtk_disp_vlp_vote_v2(VOTE_CLR, user);
 
-	if (_user & VOTER_ONLY)
-		return;
-
 	switch (user) {
-	case DISP_VIDLE_USER_TOP_CLK_ISR:
-		return;
 	case DISP_VIDLE_USER_DPC_DUMP:
 	case DISP_VIDLE_USER_SMI_DUMP:
 	case DISP_VIDLE_FORCE_KEEP:

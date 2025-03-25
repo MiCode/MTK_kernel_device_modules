@@ -21,6 +21,7 @@
 #include "mtk-mml-mmp.h"
 #include "mtk-mml-dle-adaptor.h"
 #include "mtk-mml-rrot-golden.h"
+#include "mtk-mml-dpc.h"
 #include "tile_driver.h"
 #include "tile_mdp_func.h"
 
@@ -2763,8 +2764,11 @@ static irqreturn_t mml_rrot_irq_handler(int irq, void *dev_id)
 	struct mml_comp_rrot *rrot = dev_id;
 	struct mml_comp *comp = &rrot->comp;
 	void __iomem *base = comp->base;
-	unsigned long irq_status = readl(base + RROT_INTERRUPT_STATUS);
+	unsigned long irq_status;
 
+	mml_dpc_isr_keep();
+
+	irq_status = readl(base + RROT_INTERRUPT_STATUS);
 	rrot_pipe_mmp(rrot->pipe, MMPROFILE_FLAG_PULSE, comp->id, irq_status);
 
 	if (!irq_status)
@@ -2780,6 +2784,8 @@ static irqreturn_t mml_rrot_irq_handler(int irq, void *dev_id)
 
 	if (irq_status & RROT_IRQ_FRAME_COMPLETE)
 		rrot_pipe_mmp(rrot->pipe, MMPROFILE_FLAG_END, comp->id, 0);
+
+	mml_dpc_isr_release();
 
 	return IRQ_HANDLED;
 }
