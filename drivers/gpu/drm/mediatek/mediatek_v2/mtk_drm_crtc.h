@@ -1533,8 +1533,11 @@ struct mtk_ddp_comp *mtk_ddp_comp_request_output_lpc(struct mtk_drm_crtc *mtk_cr
 /* get fence */
 int mtk_drm_crtc_getfence_ioctl(struct drm_device *dev, void *data,
 				struct drm_file *file_priv);
-int mtk_drm_get_union_fence_ioctl(struct drm_device *dev, void *data,
-				struct drm_file *file_priv);
+int mtk_drm_get_union_fence(struct mtk_union_fence *args,
+				struct mtk_drm_private *priv, struct drm_crtc *crtc,
+				int crtc_index, int session_id);
+int mtk_drm_frame_submit_ioctl(struct drm_device *dev,
+				void *data, struct drm_file *file_priv);
 int mtk_drm_crtc_get_sf_fence_ioctl(struct drm_device *dev, void *data,
 				    struct drm_file *file_priv);
 int mtk_drm_crtc_fence_release_ioctl(struct drm_device *dev, void *data,

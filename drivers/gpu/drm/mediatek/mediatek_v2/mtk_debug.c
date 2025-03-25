@@ -2633,7 +2633,7 @@ void mtk_wakeup_frame_done_wq(void)
 	}
 
 	if (mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base) &&
-		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_UNION_FENCE) &&
+		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_FRAME_SUBMIT) &&
 		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_PARTIAL_UPDATE)) {
 		atomic_set(&mtk_crtc->frame_done_event, 1);
 		wake_up_interruptible(&mtk_crtc->frame_done_fence_wq);

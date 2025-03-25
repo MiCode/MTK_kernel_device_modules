@@ -501,7 +501,7 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 	int written = 0;
 	bool plane_visible = plane->state->visible;
 	struct total_tile_overhead_v to_v_info;
-	bool use_union_fence;
+	bool use_frame_submit;
 
 	if (!crtc)
 		return;
@@ -511,8 +511,8 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 	crtc_index = drm_crtc_index(crtc);
 	priv = crtc->dev->dev_private;
 	to_v_info = mtk_crtc_get_total_overhead_v(mtk_crtc);
-	use_union_fence = mtk_drm_helper_get_opt(priv->helper_opt,
-			MTK_DRM_OPT_UNION_FENCE) && crtc_index == 0;
+	use_frame_submit = mtk_drm_helper_get_opt(priv->helper_opt,
+			MTK_DRM_OPT_FRAME_SUBMIT) && crtc_index == 0;
 
 	if ((!fb) || (mtk_crtc->ddp_mode == DDP_NO_USE))
 		return;
@@ -773,7 +773,7 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 		}
 	}
 
-	if (use_union_fence) {
+	if (use_frame_submit) {
 		DDPFENCE("S+/%sL%d/e%d/id%d/mva0x%08llx/size0x%08lx/S%d\n",
 			mtk_crtc_index_spy(crtc_index),
 			plane_index,

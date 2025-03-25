@@ -973,7 +973,7 @@ int mtk_fence_convert_input_to_fence_layer_info(
  */
 struct mtk_fence_buf_info *mtk_fence_prepare_buf(struct drm_device *dev,
 						 struct drm_mtk_gem_submit *buf, bool is_implicit,
-						 struct dma_resv *resv, bool use_union_fence)
+						 struct dma_resv *resv, bool use_frame_submit)
 {
 	int ret = 0;
 	unsigned int session_id = 0;
@@ -991,7 +991,7 @@ struct mtk_fence_buf_info *mtk_fence_prepare_buf(struct drm_device *dev,
 	}
 
 	session_id = buf->session_id;
-	if (use_union_fence) {
+	if (use_frame_submit) {
 		timeline_id = mtk_fence_get_config_timeline_id(session_id);
 	} else {
 		timeline_id = buf->layer_id;
@@ -1016,9 +1016,9 @@ struct mtk_fence_buf_info *mtk_fence_prepare_buf(struct drm_device *dev,
 		return NULL;
 	mutex_lock(&layer_info->sync_lock);
 	data.fence = MTK_INVALID_FENCE_FD;
-	if (use_union_fence) {
-		/* mtk_drm_ioctl_get_union_fence create config fence and updtae crtc_config,
-		 * then mtk_gem_submit_ioctl set buf_hnd to corresponding config fence.
+	if (use_frame_submit) {
+		/* mtk_drm_ioctl_frame_submit create config fence and updtae crtc_config,
+		 * then set buf_hnd to corresponding config fence.
 		 */
 		data.value = atomic_read(&priv->crtc_config[MTK_SESSION_TYPE(session_id) - 1]);
 	} else {
@@ -1026,7 +1026,7 @@ struct mtk_fence_buf_info *mtk_fence_prepare_buf(struct drm_device *dev,
 	}
 	mutex_unlock(&(layer_info->sync_lock));
 
-	if (use_union_fence) {
+	if (use_frame_submit) {
 	} else if (layer_info->timeline) {
 		if (is_implicit)
 			ret = mtk_sync_share_fence_create(layer_info->timeline, &data, resv);
@@ -1067,7 +1067,7 @@ struct mtk_fence_buf_info *mtk_fence_prepare_buf(struct drm_device *dev,
 	list_add_tail(&buf_info->list, &layer_info->buf_list);
 	mutex_unlock(&layer_info->sync_lock);
 
-	if (use_union_fence) {
+	if (use_frame_submit) {
 		if (buf_info->buf_hnd)
 			DDPFENCE("P+/%s%d/L%d/T%d/id%d/hnd0x%8p\n",
 				mtk_fence_session_mode_spy(session_id),

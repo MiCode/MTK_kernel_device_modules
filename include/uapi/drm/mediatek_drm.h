@@ -474,6 +474,7 @@ struct DISP_AAL_TRIG_STATE {
 
 #define DRM_MTK_GET_UNION_FENCE 0x3F
 #define DRM_MTK_RETRIG	0x18
+#define DRM_MTK_FRAME_SUBMIT 0x19
 
 /* CHIST */
 #define DRM_MTK_GET_CHIST           0x46
@@ -703,6 +704,7 @@ enum MTK_DRM_DISP_FEATURE {
 	DRM_DISP_FEATURE_UNION_FENCE = 0x00020000,
 	DRM_DISP_FEATURE_RETRIGGER = 0x00040000,
 	DRM_DISP_FEATURE_PROP_INHERITANCE = 0x00080000,
+	DRM_DISP_FEATURE_FRAME_SUBMIT = 0x00100000,
 };
 
 enum MTK_DRM_DUMP_POINT {
@@ -865,6 +867,7 @@ enum MTK_CRTC_ABILITY {
 	ABILITY_STASH_CMD = BIT(15),
 	ABILITY_UNION_FENCE = BIT(16),
 	ABILITY_HW_COUNTING = BIT(17),
+	ABILITY_FRAME_SUBMIT = BIT(18),
 };
 
 struct mtk_drm_wb_caps {
@@ -2194,6 +2197,15 @@ struct mtk_union_fence {
 
 #define DRM_IOCTL_MTK_GET_UNION_FENCE DRM_IOWR(DRM_COMMAND_BASE + \
 	DRM_MTK_GET_UNION_FENCE, struct mtk_union_fence)
+
+struct mtk_frame_submit {
+	struct mtk_union_fence union_fence;
+	unsigned int layer_num;
+	struct drm_mtk_gem_submit *gem_submits;
+};
+
+#define DRM_IOCTL_MTK_FRAME_SUBMIT DRM_IOWR(DRM_COMMAND_BASE + \
+	DRM_MTK_FRAME_SUBMIT, struct mtk_frame_submit)
 
 enum MTK_REQUEST_RETRIG_TYPE : unsigned int {
 	MTK_REQUEST_RETRIG_TYPE_SHIFT       = 30u,

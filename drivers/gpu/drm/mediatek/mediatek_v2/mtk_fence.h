@@ -175,7 +175,7 @@ int mtk_fence_get_interface_timeline_id(void);
 
 struct mtk_fence_buf_info *
 mtk_fence_prepare_buf(struct drm_device *dev, struct drm_mtk_gem_submit *buf,
-					 bool is_implicit, struct dma_resv *resv, bool use_union_fence);
+					 bool is_implicit, struct dma_resv *resv, bool use_frame_submit);
 int mtk_fence_init(void);
 int mtk_fence_get_cached_layer_info(unsigned int session_id,
 				    unsigned int timeline_idx,

@@ -7563,7 +7563,7 @@ int mtk_drm_suspend_release_fence(struct device *dev)
 	unsigned int i = 0;
 	struct mtk_drm_private *private = dev_get_drvdata(dev);
 
-	if (mtk_drm_helper_get_opt(private->helper_opt, MTK_DRM_OPT_UNION_FENCE)) {
+	if (mtk_drm_helper_get_opt(private->helper_opt, MTK_DRM_OPT_FRAME_SUBMIT)) {
 		mtk_release_union_fence(private->session_id[0],
 			atomic_read(&private->crtc_config[0]), 0, MTK_UNION_FENCE_CONFIG);
 		mtk_release_union_fence(private->session_id[0],
@@ -8390,9 +8390,9 @@ int mtk_drm_get_display_caps_ioctl(struct drm_device *dev, void *data,
 		caps_info->disp_feature_flag |=
 				DRM_DISP_FEATURE_PARTIAL_UPDATE;
 #endif
-	if (mtk_drm_helper_get_opt(private->helper_opt, MTK_DRM_OPT_UNION_FENCE))
+	if (mtk_drm_helper_get_opt(private->helper_opt, MTK_DRM_OPT_FRAME_SUBMIT))
 		caps_info->disp_feature_flag |=
-				DRM_DISP_FEATURE_UNION_FENCE;
+				DRM_DISP_FEATURE_FRAME_SUBMIT;
 
 	if (mtk_drm_use_retrigger(private))
 		caps_info->disp_feature_flag |=
@@ -11183,7 +11183,7 @@ static const struct drm_ioctl_desc mtk_ioctls[] = {
 			  0 | DRM_AUTH | DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(MTK_UNMAP_DMA_BUF, mtk_drm_unmap_dma_buf,
 			  0 | DRM_AUTH | DRM_RENDER_ALLOW),
-	DRM_IOCTL_DEF_DRV(MTK_GET_UNION_FENCE, mtk_drm_get_union_fence_ioctl,
+	DRM_IOCTL_DEF_DRV(MTK_FRAME_SUBMIT, mtk_drm_frame_submit_ioctl,
 			  0 | DRM_AUTH | DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(MTK_RETRIG, mtk_drm_ioctl_retrig,
 			  0 | DRM_AUTH | DRM_RENDER_ALLOW),
