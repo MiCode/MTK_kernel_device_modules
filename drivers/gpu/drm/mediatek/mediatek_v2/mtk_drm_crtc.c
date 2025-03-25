@@ -13766,6 +13766,8 @@ void mtk_crtc_dual_layer_config(struct mtk_drm_crtc *mtk_crtc,
 	struct mtk_plane_state plane_state_r = {0};
 	struct mtk_ddp_comp *p_comp = NULL;
 	unsigned int comp_index = 0;
+	struct mtk_panel_params *params = NULL;
+	bool rotate = false;
 
 	if (!mtk_crtc || !comp) {
 		DDPINFO("%s failed with NULL argument mtk_crtc or comp\n", __func__);
@@ -13773,6 +13775,11 @@ void mtk_crtc_dual_layer_config(struct mtk_drm_crtc *mtk_crtc,
 	}
 
 	crtc = &mtk_crtc->base;
+	if (crtc)
+		params = mtk_drm_get_lcm_ext_params(crtc);
+	if (params && params->rotate == MTK_PANEL_ROTATE_180)
+		rotate = true;
+
 	priv = mtk_crtc->base.dev->dev_private;
 	mtk_drm_layer_dispatch_to_dual_pipe(mtk_crtc, priv->data->mmsys_id,
 		plane_state, &plane_state_l, &plane_state_r,
@@ -13789,11 +13796,20 @@ void mtk_crtc_dual_layer_config(struct mtk_drm_crtc *mtk_crtc,
 		DDPPR_ERR("%s:%d comp_index:%d is invalid!\n", __func__, __LINE__, comp_index);
 		return;
 	}
-
-	mtk_ddp_comp_layer_config(p_comp, idx, &plane_state_r, cmdq_handle);
+	if (rotate)
+		mtk_ddp_comp_layer_config(p_comp, idx,
+					&plane_state_l, cmdq_handle);
+	else
+		mtk_ddp_comp_layer_config(p_comp, idx,
+					&plane_state_r, cmdq_handle);
 
 	p_comp = comp;
-	mtk_ddp_comp_layer_config(p_comp, idx, &plane_state_l, cmdq_handle);
+	if (rotate)
+		mtk_ddp_comp_layer_config(p_comp, idx, &plane_state_r,
+				  cmdq_handle);
+	else
+		mtk_ddp_comp_layer_config(p_comp, idx, &plane_state_l,
+				  cmdq_handle);
 }
 
 void __mtk_crtc_restore_plane_setting(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cmdq_handle)

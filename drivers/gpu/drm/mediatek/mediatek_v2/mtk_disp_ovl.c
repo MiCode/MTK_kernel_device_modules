@@ -3153,7 +3153,8 @@ static bool compr_l_config_PVRIC_V4_1(struct mtk_ddp_comp *comp,
 		return 0;
 	}
 
-	params = mtk_drm_get_lcm_ext_params(&comp->mtk_crtc->base);
+	if (comp->mtk_crtc)
+		params = mtk_drm_get_lcm_ext_params(&comp->mtk_crtc->base);
 	if (params && params->rotate == MTK_PANEL_ROTATE_180)
 		rotate = 1;
 
