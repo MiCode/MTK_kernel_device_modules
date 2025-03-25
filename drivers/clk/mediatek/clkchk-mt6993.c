@@ -5165,7 +5165,10 @@ static void check_mm_hwv_irq_sta(void)
 		else
 			pr_chk("%s Invalid trigger buck irq, buck_en = 0x%x\n", __func__, buck_en);
 
-		dump_bus_reg(NULL, 0);
+		if (xpu_name && strcmp(xpu_name, "VCP") == 0)
+			external_dump();
+		else
+			dump_bus_reg(NULL, 0);
 	}
 
 	if ((irq_sta & HWV_INT_TIMEOUT_TRIGGER) != 0)

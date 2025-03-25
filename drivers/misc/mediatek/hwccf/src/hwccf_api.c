@@ -271,7 +271,7 @@ int v0_hwccf_voter_ctrl(enum HWCCF_TYPE hwccf_type, uint32_t resource_id, enum H
 	map = ((hwccf_type == AP_HWCCF) ? regmaps[AP_HWCCF]:regmaps[MM_HWCCF]);
 
 
-	if((resource_id >= HW_CCF_CG_GRP_0) && (resource_id <= HW_CCF_CG_GRP_14)) {
+	if (resource_id <= HW_CCF_CG_GRP_14) {
 		setclr_ofs = ((hwccf_op == HWCCF_VOTE) ? V0_CG_SET_OFS(resource_id) : V0_CG_CLR_OFS(resource_id));
 		done_ofs = V0_CG_DONE_OFS(resource_id);
 	} else if((resource_id > HW_CCF_CG_GRP_14) && (resource_id <= HW_CCF_CG_GRP_29)
@@ -305,7 +305,7 @@ static int _v1_hwccf_voter_ctrl_wrapper(enum HWCCF_TYPE hwccf_type, uint32_t res
 	map = ((hwccf_type == AP_HWCCF) ? regmaps[AP_HWCCF]:regmaps[MM_HWCCF]);
 
 
-	if((resource_id >= HW_CCF_CG_GRP_0) && (resource_id <= HW_CCF_CG_GRP_29)) {
+	if (resource_id <= HW_CCF_CG_GRP_29) {
 		setclr_ofs = ((hwccf_op == HWCCF_VOTE) ? CG_SET_OFS(resource_id) : CG_CLR_OFS(resource_id));
 		done_ofs = CG_DONE_OFS(resource_id);
 	} else if((resource_id > HW_CCF_CG_GRP_29) && (resource_id <= HW_CCF_CG_GRP_51)
@@ -443,7 +443,7 @@ int v1_hwccf_is_enabled(enum HWCCF_TYPE hwccf_type, uint32_t resource_id, enum H
 
 	map = ((hwccf_type == AP_HWCCF) ? regmaps[AP_HWCCF]:regmaps[MM_HWCCF]);
 
-	if((resource_id >= HW_CCF_CG_GRP_0) && (resource_id <= HW_CCF_CG_GRP_29)) {
+	if (resource_id <= HW_CCF_CG_GRP_29) {
 		setclr_ofs = ((hwccf_op == HWCCF_VOTE) ? CG_SET_OFS(resource_id) : CG_CLR_OFS(resource_id));
 		done_ofs = CG_DONE_OFS(resource_id);
 	} else if((resource_id > HW_CCF_CG_GRP_29) && (resource_id <= HW_CCF_CG_GRP_51)

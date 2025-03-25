@@ -595,8 +595,10 @@ static int proc_hwccf_dump(struct seq_file *s, void *v)
 
 	if (strcmp(hwccf_type_str, "AP_HW_CCF") == 0)
 		hwccf_type = AP_HWCCF;
-	if (strcmp(hwccf_type_str, "MM_HW_CCF") == 0)
+	else if (strcmp(hwccf_type_str, "MM_HW_CCF") == 0)
 		hwccf_type = MM_HWCCF;
+	else
+		return 0;
 
 	for (i = 0; i < ARRAY_SIZE(hwccf_dump_regs); i++)
 		seq_printf(s, "%s = 0x%x\n",

@@ -43,9 +43,7 @@
 #define V0_CCF_PLL_CLR_OFS          (0x214)
 
 /* Utilities for HWCCF Voter */
-#define V0_IS_SET_FROM_VOTER_ADDR(ofs)  (((ofs) & 0x2ff) < 0x300 ? \
-					(((ofs) & 0x2ff) % 0x8) == 0 : \
-					(((ofs) & 0x2ff) % 0x8) == 4)
+#define V0_IS_SET_FROM_VOTER_ADDR(ofs)  ((((ofs) & 0x2ff) % 0x8) == 0)
 
 // CG VIP Status
 #define V0_CCF_VIP_CG_DONE(x)    CCF_OFS(0x12600 + (x) * 0x4)
