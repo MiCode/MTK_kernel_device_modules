@@ -4361,7 +4361,7 @@ static long WPE_ioctl(struct file *pFile,
 			(void *)Param,
 			sizeof(struct WPE_ION_MEM_INFO)) == 0) {
 			if (ion_mem_info.buf_fd <= 0) {
-				LOG_ERR("buf fd equal 0 or less than 0\n");
+				LOG_ERR("buf fd equal or less than 0\n");
 				Ret = -EFAULT;
 				goto EXIT;
 			}
@@ -4384,7 +4384,6 @@ static long WPE_ioctl(struct file *pFile,
 				wpe_put_cnt = 0;
 				wpe_get_cnt++;
 				wpe_ion_list->fd = ion_mem_info.buf_fd;
-
 				wpe_ion_list->buf = dma_buf_get(ion_mem_info.buf_fd);
 				wpe_ion_list->attach = dma_buf_attach(wpe_ion_list->buf,
 						WPE_devs->dev);
@@ -4415,9 +4414,9 @@ static long WPE_ioctl(struct file *pFile,
 	case WPE_DEL_BUF_FD: {
 		if (copy_from_user(&fd,
 			(void *)Param,
-			sizeof(unsigned int)) <= 0) {
-			if (fd == 0) {
-				LOG_ERR("wpe buf fd equal 0 or less than 0\n");
+			sizeof(unsigned int)) == 0) {
+			if (fd <= 0) {
+				LOG_ERR("wpe buf fd equal or less than 0\n");
 				Ret = -EFAULT;
 				goto EXIT;
 			}
@@ -5691,8 +5690,8 @@ static ssize_t wpe_reg_write(
 			if (strlen(valSzBuf) > 2) {
 				if (kstrtoint(valSzBuf + 2, 16, &val) != 0)
 					LOG_ERR(
-						"scan hexadecimal value is wrong !!:%s",
-						valSzBuf);
+					"scan hexadecimal value is wrong !!:%s",
+					valSzBuf);
 			} else {
 				LOG_INF("WPE Write Value Error!!:%s\n",
 					valSzBuf);
@@ -5710,7 +5709,7 @@ static ssize_t wpe_reg_write(
 			     addr, val);
 		}
 
-	} else{
+	} else {
 		strscpy(addrSzBuf, desc, sizeof(addrSzBuf));
 		pszTmp = strstr(addrSzBuf, "0x");
 		if (pszTmp == NULL) {
