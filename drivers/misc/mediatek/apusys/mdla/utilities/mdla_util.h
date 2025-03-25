@@ -10,6 +10,10 @@
 
 #include <common/mdla_device.h>
 
+#ifndef UNUSED
+#define UNUSED(x) ((void)(x))
+#endif
+
 /* MDLA command priority level */
 enum MDLA_PRIORITY {
 	MDLA_LOW_PRIORITY,

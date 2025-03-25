@@ -93,6 +93,7 @@ enum MDLA_IPI_DIR_TYPE {
 
 int mdla_ipi_send(int type_0, int type_1, u64 val);
 int mdla_ipi_recv(int type_0, int type_1, u64 *val);
+void mdla_ipi_register_aee_handling(void (*handler)(u32, u64));
 int mdla_ipi_init(void);
 void mdla_ipi_deinit(void);
 

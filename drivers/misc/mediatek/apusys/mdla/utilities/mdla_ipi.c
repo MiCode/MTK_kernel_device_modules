@@ -11,9 +11,11 @@
 #include <linux/mutex.h>
 #include <linux/rpmsg.h>
 #include <linux/delay.h>
+#include <linux/compiler.h>
 
 #include <utilities/mdla_debug.h>
 #include <utilities/mdla_ipi.h>
+#include <utilities/mdla_util.h>
 #include <platform/mdla_plat_api.h>
 
 #include "../../apusys_rv/apu.h"
@@ -44,6 +46,23 @@ struct mdla_rpmsg_device {
 
 static struct mdla_rpmsg_device mdla_tx_rpm_dev;
 static struct mdla_rpmsg_device mdla_rx_rpm_dev;
+
+static void mdla_default_aee_handler(u32 type, u64 val)
+{
+	UNUSED(val);
+
+	if (type == MDLA_IPI_MICROP_MSG_TIMEOUT)
+		mdla_aee_exception("MDLA", "MDLA timeout");
+	else if (type == MDLA_IPI_MICROP_MSG_DBG_CHECK_FAILED)
+		mdla_aee_exception("MDLA", "MDLA debug check failed");
+	else if (type == MDLA_IPI_MICROP_MSG_CMD_FAILED)
+		mdla_aee_exception("MDLA", "MDLA cmd failed");
+	else if (type == MDLA_IPI_MICROP_MSG_WDEC_RESOURCE_BUSY)
+		mdla_aee_exception("MDLA", "WDEC resource busy");
+	else if (type == MDLA_IPI_MICROP_MSG_DLA_ERROR)
+		mdla_aee_exception("DLA", "DLA Error");
+}
+static void (*aee_handler)(u32, u64) = mdla_default_aee_handler;
 
 int mdla_ipi_send(int type_0, int type_1, u64 val)
 {
@@ -198,16 +217,7 @@ static void mdla_ipi_up_msg(u32 type, u64 val)
 		apu_ce_sram_dump(mdla_dev);
 	}
 
-	if (type == MDLA_IPI_MICROP_MSG_TIMEOUT)
-		mdla_aee_exception("MDLA", "MDLA timeout");
-	else if (type == MDLA_IPI_MICROP_MSG_DBG_CHECK_FAILED)
-		mdla_aee_exception("MDLA", "MDLA debug check failed");
-	else if (type == MDLA_IPI_MICROP_MSG_CMD_FAILED)
-		mdla_aee_exception("MDLA", "MDLA cmd failed");
-	else if (type == MDLA_IPI_MICROP_MSG_WDEC_RESOURCE_BUSY)
-		mdla_aee_exception("MDLA", "WDEC resource busy");
-	else if (type == MDLA_IPI_MICROP_MSG_DLA_ERROR)
-		mdla_aee_exception("DLA", "DLA Error");
+	aee_handler(type, val);
 }
 
 static int mdla_rpmsg_rx_cb(struct rpmsg_device *rpdev, void *data,
@@ -301,6 +311,12 @@ static struct rpmsg_driver mdla_rpmsg_rx_drv = {
 	.callback = mdla_rpmsg_rx_cb,
 	.remove = mdla_rpmsg_remove,
 };
+
+void mdla_ipi_register_aee_handling(void (*handler)(u32, u64))
+{
+	if (handler)
+		aee_handler = handler;
+}
 
 int mdla_ipi_init(void)
 {

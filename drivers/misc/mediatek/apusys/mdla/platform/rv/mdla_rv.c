@@ -128,7 +128,7 @@ static struct mdla_dbgfs_ipi_file ipi_dbgfs_file[] = {
 	{MDLA_IPI_PMU_COUNT,     15, 0x04, 0660,            "c15",            &C15_fops, 0},
 	{MDLA_IPI_PREEMPT_CNT,    0, 0x6C, 0660,  "preempt_times",  &preempt_times_fops, 0},
 	{MDLA_IPI_FORCE_PWR_ON,   0, 0x2C, 0660,   "force_pwr_on",   &force_pwr_on_fops, 0},
-	{MDLA_IPI_PROFILE_EN,     0, 0x28, 0660,      "profiling",      &profiling_fops, 0},
+	{MDLA_IPI_PROFILE_EN,     0, 0x68, 0660,      "profiling",      &profiling_fops, 0},
 	{MDLA_IPI_DUMP_CMDBUF_EN, 0, 0x6C, 0660, "dump_cmdbuf_en", &dump_cmdbuf_en_fops, 0},
 	{MDLA_IPI_INFO,           0, 0x6C, 0660,           "info",           &info_fops, 0},
 	{MDLA_IPI_HALT_STA,       0, 0x28, 0660,        "dbg_brk",        &dbg_brk_fops, 0},
@@ -393,6 +393,36 @@ static const struct file_operations mdla_rv_dbg_mem_fops = {
 /*****************************************************************************
  *                          Static IP Functions                              *
  *****************************************************************************/
+static void mdla_plat_v6_aee_handler(u32 type, u64 val)
+{
+	if (type == MDLA_IPI_MICROP_MSG_TIMEOUT) {
+		mdla_aee_exception("MDLA", "MDLA timeout : reset core map = 0x%llx", val & 0xf);
+	} else if (type == MDLA_IPI_MICROP_MSG_DBG_CHECK_FAILED) {
+		u32 idx;
+		struct msg_type {
+			u64 val;
+			char *msg;
+		} dbg_info[5] = {
+			{ 0x10000, "Command buffer is NULL" },
+			{ 0x10001, "Command buffer number error" },
+			{ 0x10002, "Command buffer size error" },
+			{ 0x10003, "CE abort ack timeout" },
+			{ 0x10004, "Power off in abort state" }
+		};
+		for (idx = 0; idx < 5; idx++) {
+			if (dbg_info[idx].val == val) {
+				mdla_aee_exception("MDLA", "MDLA check failed: %s", dbg_info[idx].msg);
+				break;
+			}
+		}
+		if (idx == 5)
+			mdla_aee_exception("MDLA", "MDLA check failed (%llu)", val);
+	} else if (type == MDLA_IPI_MICROP_MSG_CMD_FAILED) {
+		mdla_aee_exception("MDLA", "MDLA cmd failed (%llu)", val);
+	} else if (type == MDLA_IPI_MICROP_MSG_DLA_ERROR) {
+		mdla_aee_exception("DLA", "DLA Error");
+	}
+}
 
 static int mdla_plat_v2_dbgfs_usage(struct seq_file *s, void *data)
 {
@@ -583,6 +613,7 @@ static void mdla_plat_v6_rv_configuration(void)
 {
 	mdla_plat_get_and_set_rv_dbg_mem();
 	mdla_plat_get_ip_ver_from_rv();
+	mdla_ipi_register_aee_handling(mdla_plat_v6_aee_handler);
 }
 
 static void mdla_plat_v2_alloc_dbg_mem(void)
