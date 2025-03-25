@@ -4324,98 +4324,98 @@ static void __iomem *plls_base[PLL_SYS_NUM];
 		.ops = &mtk_pll_ops,					\
 	}
 
-#define PLL_FENC(_id, _name, _fenc_sta_ofs, _fenc_sta_bit,		\
-			_flags, _pd_reg, _pd_shift,			\
-			 _pcw_reg, _pcw_shift, _pcwbits) {		\
-		.id = _id,						\
-		.name = _name,						\
-		.reg = 0,						\
-		.fenc_sta_ofs = _fenc_sta_ofs,				\
-		.fenc_sta_bit = _fenc_sta_bit,				\
+#define PLL_FENC(_id, _name, _reg, _fenc_sta_ofs,		\
+		_fenc_sta_bit, _flags, _pd_reg, _pd_shift,		\
+		_pcw_reg, _pcw_shift, _pcwbits) {		\
+		.id = (_id),						\
+		.name = (_name),						\
+		.reg = (_reg),						\
+		.fenc_sta_ofs = (_fenc_sta_ofs),				\
+		.fenc_sta_bit = (_fenc_sta_bit),				\
 		.flags = (_flags | PLL_CFLAGS),				\
 		.fmax = MT6993_PLL_FMAX,				\
 		.fmin = MT6993_PLL_FMIN,				\
-		.pd_reg = _pd_reg,					\
-		.pd_shift = _pd_shift,					\
-		.pcw_reg = _pcw_reg,					\
-		.pcw_shift = _pcw_shift,				\
-		.pcwbits = _pcwbits,					\
+		.pd_reg = (_pd_reg),					\
+		.pd_shift = (_pd_shift),					\
+		.pcw_reg = (_pcw_reg),					\
+		.pcw_shift = (_pcw_shift),				\
+		.pcwbits = (_pcwbits),					\
 		.pcwibits = MT6993_INTEGER_BITS,			\
-		.ops = &mtk_pll_fenc_ops,				\
+		.ops = (&mtk_pll_fenc_ops),				\
 	}
 
 static const struct mtk_pll_data mmpll_ctrl_plls[] = {
-	PLL_FENC(MMPLL_CTRL_MMPLL, "mmpll",
+	PLL_FENC(MMPLL_CTRL_MMPLL, "mmpll", MMPLL_CON0,
 	0x0034/*fenc*/, 4, 0,
 		MMPLL_CON1, 24/*pd*/,
 				MMPLL_CON1, 0, 22/*pcw*/),
 };
 
 static const struct mtk_pll_data mainpll2_ctrl_plls[] = {
-	PLL_FENC(MAINPLL2_CTRL_MAINPLL2, "mainpll2",
+	PLL_FENC(MAINPLL2_CTRL_MAINPLL2, "mainpll2", MAINPLL2_CON0,
 	0x0034/*fenc*/, 4, 0,
 		MAINPLL2_CON1, 24/*pd*/,
 				MAINPLL2_CON1, 0, 22/*pcw*/),
 };
 
 static const struct mtk_pll_data tvdpll_ctrl_plls[] = {
-	PLL_FENC(TVDPLL_CTRL_TVDPLL, "tvdpll",
+	PLL_FENC(TVDPLL_CTRL_TVDPLL, "tvdpll", TVDPLL_CON0,
 	0x0034/*fenc*/, 4, 0,
 		TVDPLL_CON1, 24/*pd*/,
 				TVDPLL_CON1, 0, 22/*pcw*/),
 };
 
 static const struct mtk_pll_data univpll2_ctrl_plls[] = {
-	PLL_FENC(UNIVPLL2_CTRL_UNIVPLL2, "univpll2",
+	PLL_FENC(UNIVPLL2_CTRL_UNIVPLL2, "univpll2", UNIVPLL2_CON0,
 	0x0034/*fenc*/, 4, 0,
 		UNIVPLL2_CON1, 24/*pd*/,
 				UNIVPLL2_CON1, 0, 22/*pcw*/),
 };
 
 static const struct mtk_pll_data univpll_ctrl_plls[] = {
-	PLL_FENC(UNIVPLL_CTRL_UNIVPLL, "univpll",
+	PLL_FENC(UNIVPLL_CTRL_UNIVPLL, "univpll", UNIVPLL_CON0,
 	0x0034/*fenc*/, 4, 0,
 		UNIVPLL_CON1, 24/*pd*/,
 				UNIVPLL_CON1, 0, 22/*pcw*/),
 };
 
 static const struct mtk_pll_data imgpll_ctrl_plls[] = {
-	PLL_FENC(IMGPLL_CTRL_IMGPLL, "imgpll",
+	PLL_FENC(IMGPLL_CTRL_IMGPLL, "imgpll", IMGPLL_CON0,
 	0x0034/*fenc*/, 4, 0,
 		IMGPLL_CON1, 24/*pd*/,
 				IMGPLL_CON1, 0, 22/*pcw*/),
 };
 
 static const struct mtk_pll_data msdcpll_ctrl_plls[] = {
-	PLL_FENC(MSDCPLL_CTRL_MSDCPLL, "msdcpll",
+	PLL_FENC(MSDCPLL_CTRL_MSDCPLL, "msdcpll", MSDCPLL_CON0,
 	0x0034/*fenc*/, 4, 0,
 		MSDCPLL_CON1, 24/*pd*/,
 				MSDCPLL_CON1, 0, 22/*pcw*/),
 };
 
 static const struct mtk_pll_data apll1_ctrl_plls[] = {
-	PLL_FENC(APLL1_CTRL_APLL1, "apll1",
+	PLL_FENC(APLL1_CTRL_APLL1, "apll1", APLL1_CON0,
 	0x0034/*fenc*/, 4, 0,
 		APLL1_CON1, 24/*pd*/,
 				APLL1_PCW_CON0, 0, 32/*pcw*/),
 };
 
 static const struct mtk_pll_data apll2_ctrl_plls[] = {
-	PLL_FENC(APLL2_CTRL_APLL2, "apll2",
+	PLL_FENC(APLL2_CTRL_APLL2, "apll2", APLL2_CON0,
 	0x0034/*fenc*/, 4, 0,
 		APLL2_CON1, 24/*pd*/,
 				APLL2_PCW_CON0, 0, 32/*pcw*/),
 };
 
 static const struct mtk_pll_data mainpll_ctrl_plls[] = {
-	PLL_FENC(MAINPLL_CTRL_MAINPLL, "mainpll",
+	PLL_FENC(MAINPLL_CTRL_MAINPLL, "mainpll", MAINPLL_CON0,
 	0x0034/*fenc*/, 4, 0,
 		MAINPLL_CON1, 24/*pd*/,
 				MAINPLL_CON1, 0, 22/*pcw*/),
 };
 
 static const struct mtk_pll_data emipll_ctrl_plls[] = {
-	PLL_FENC(EMIPLL_CTRL_EMIPLL, "emipll",
+	PLL_FENC(EMIPLL_CTRL_EMIPLL, "emipll", EMIPLL_CON0,
 	0x0034/*fenc*/, 4, 0,
 		EMIPLL_CON1, 24/*pd*/,
 				EMIPLL_CON1, 0, 22/*pcw*/),
