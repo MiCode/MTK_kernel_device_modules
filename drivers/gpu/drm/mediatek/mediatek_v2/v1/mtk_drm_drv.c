@@ -9720,7 +9720,11 @@ static int mtk_drm_kms_init(struct drm_device *drm)
 		atomic_set(&private->crtc_frame_done[i], 0);
 		atomic_set(&private->crtc_dbi_count[i], 0);
 	}
-	atomic_set(&private->rollback_all, 0);
+	//mt6895 force GPU
+	if (private->data->mmsys_id == MMSYS_MT6895)
+		atomic_set(&private->rollback_all, 1);
+	else
+		atomic_set(&private->rollback_all, 0);
 	mtk_drm_svp_init(drm);
 
 	DDPINFO("%s-\n", __func__);
