@@ -351,11 +351,13 @@ static ssize_t remote_data_write(struct file *fp, const char __user *userbuf,
 				timer_window_len = cfg.pmsr_sample_rate;
 				cfg.pmsr_window_len = 0;
 				met_mode = (1 << PMSR_MODE_FOR_MET_FR);
+				cfg.enable_hrtimer = true;
 			}
 			if (cfg.pmsr_window_len != 0) {
 				timer_window_len = cfg.pmsr_window_len;
 				cfg.pmsr_sample_rate = 0;
 				met_mode = (1 << PMSR_MODE_FOR_MET_TO);
+				cfg.enable_hrtimer = false;
 			}
 			if (cfg.met_cts_mode)
 				met_mode |= (1 << PMSR_MODE_FOR_MET_CTS);
@@ -455,7 +457,7 @@ static ssize_t remote_data_write(struct file *fp, const char __user *userbuf,
 				cfg.sig_count, 0, 0, 0);
 #endif
 			if (!ret) {
-				if (timer_window_len != 0) {
+				if ((timer_window_len != 0) && (cfg.enable_hrtimer)) {
 					hrtimer_start(&pmsr_timer,
 							ns_to_ktime(timer_window_len * NSEC_PER_USEC),
 							HRTIMER_MODE_REL_PINNED);

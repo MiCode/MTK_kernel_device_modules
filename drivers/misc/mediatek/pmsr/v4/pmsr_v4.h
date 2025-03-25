@@ -134,6 +134,7 @@ struct pmsr_cfg {
 	struct pmsr_tool_mon_results_acc acc_results;
 #endif
 	bool enable;
+	bool enable_hrtimer;
 	/* pmsr_window_len
 	 *	0: will be automatically updated for current speed mode
 	 * for normal speed mode, set to WINDOW_LEN_NORMAL.
