@@ -155,7 +155,7 @@ static unsigned int cmdq_client_num;
 
 struct timespec64 atomic_flush_tval;
 struct timespec64 rdma_sof_tval;
-static void mmqos_hrt_dump(void);
+//static void mmqos_hrt_dump(void);
 
 bool hdr_en;
 static const char * const crtc_gce_client_str[] = {
@@ -441,53 +441,53 @@ unsigned int mtk_drm_crtc_check_ovl_status(struct drm_crtc *crtc, struct mtk_cmd
 	return ovl_status;
 }
 
-static unsigned int dual_comp_blender_map_mt6991(unsigned int comp_id)
-{
-	unsigned int ret = 0;
+//static unsigned int dual_comp_blender_map_mt6991(unsigned int comp_id)
+//{
+//	unsigned int ret = 0;
 
-	switch (comp_id) {
-	case DDP_COMPONENT_OVL1_EXDMA6:
-		ret = DDP_COMPONENT_OVL1_BLENDER5;
-		break;
-	case DDP_COMPONENT_OVL1_EXDMA7:
-		ret = DDP_COMPONENT_OVL1_BLENDER6;
-		break;
-	case DDP_COMPONENT_OVL1_EXDMA8:
-		ret = DDP_COMPONENT_OVL1_BLENDER7;
-		break;
-	case DDP_COMPONENT_OVL1_EXDMA9:
-		ret = DDP_COMPONENT_OVL1_BLENDER8;
-		break;
-	default:
-		DDPMSG("unknown comp %u for %s\n", comp_id, __func__);
-	}
+//	switch (comp_id) {
+//	case DDP_COMPONENT_OVL1_EXDMA6:
+//		ret = DDP_COMPONENT_OVL1_BLENDER5;
+//		break;
+//	case DDP_COMPONENT_OVL1_EXDMA7:
+//		ret = DDP_COMPONENT_OVL1_BLENDER6;
+//		break;
+//	case DDP_COMPONENT_OVL1_EXDMA8:
+//		ret = DDP_COMPONENT_OVL1_BLENDER7;
+//		break;
+//	case DDP_COMPONENT_OVL1_EXDMA9:
+//		ret = DDP_COMPONENT_OVL1_BLENDER8;
+//		break;
+//	default:
+//		DDPMSG("unknown comp %u for %s\n", comp_id, __func__);
+//	}
 
-	return ret;
-}
+//	return ret;
+//}
 
-static unsigned int dual_comp_blender_map_mt6993(unsigned int comp_id)
-{
-	unsigned int ret = 0;
+//static unsigned int dual_comp_blender_map_mt6993(unsigned int comp_id)
+//{
+//	unsigned int ret = 0;
 
-	switch (comp_id) {
-	case DDP_COMPONENT_OVL1_EXDMA6:
-		ret = DDP_COMPONENT_OVL1_BLENDER5;
-		break;
-	case DDP_COMPONENT_OVL1_EXDMA7:
-		ret = DDP_COMPONENT_OVL1_BLENDER6;
-		break;
-	case DDP_COMPONENT_OVL1_EXDMA8:
-		ret = DDP_COMPONENT_OVL1_BLENDER7;
-		break;
-	case DDP_COMPONENT_OVL1_EXDMA9:
-		ret = DDP_COMPONENT_OVL1_BLENDER8;
-		break;
-	default:
-		DDPMSG("unknown comp %u for %s\n", comp_id, __func__);
-	}
+//	switch (comp_id) {
+//	case DDP_COMPONENT_OVL1_EXDMA6:
+//		ret = DDP_COMPONENT_OVL1_BLENDER5;
+//		break;
+//	case DDP_COMPONENT_OVL1_EXDMA7:
+//		ret = DDP_COMPONENT_OVL1_BLENDER6;
+//		break;
+//	case DDP_COMPONENT_OVL1_EXDMA8:
+//		ret = DDP_COMPONENT_OVL1_BLENDER7;
+//		break;
+//	case DDP_COMPONENT_OVL1_EXDMA9:
+//		ret = DDP_COMPONENT_OVL1_BLENDER8;
+//		break;
+//	default:
+//		DDPMSG("unknown comp %u for %s\n", comp_id, __func__);
+//	}
 
-	return ret;
-}
+//	return ret;
+//}
 
 static void mtk_drm_crtc_init_bind_comp(struct mtk_drm_crtc *mtk_crtc)
 {
@@ -602,14 +602,14 @@ void mtk_drm_crtc_rsz_exdma_ovl_path(struct mtk_drm_crtc *mtk_crtc,
 	else
 		config_regs_pa = mtk_crtc->ovlsys2_regs_pa;
 
-	if (value >= 0 && config_regs_pa > 0)
+	if (value >= 0 && config_regs_pa > 0) {
 		if (reset_flag)
 			cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
 				config_regs_pa + addr, 0, ~0);
 		else
 			cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
 				config_regs_pa + addr, value, ~0);
-
+	}
 
 	if (priv->data->mmsys_id == MMSYS_MT6991) {
 		value = priv->ovlsys_data->exdma_mout(DDP_COMPONENT_OVL0_MDP_RSZ0, next_blender, &addr);
@@ -666,7 +666,6 @@ void mtk_drm_crtc_exdma_ovl_path(struct mtk_drm_crtc *mtk_crtc,
 	int value = 0;
 	resource_size_t config_regs_pa = 0;
 	enum mtk_ddp_comp_id next_blender = blender_id;
-	int crtc_id = drm_crtc_index(&mtk_crtc->base);
 
 	/* exdma to blender */
 	if (mtk_ddp_comp_get_type(comp->id) != MTK_OVL_EXDMA) {
@@ -1325,9 +1324,7 @@ void mtk_drm_crtc_default_blender(struct mtk_drm_crtc *mtk_crtc,
 {
 	struct mtk_disp_mutex *mutex = NULL;
 	struct mtk_ddp *ddp = NULL;
-	resource_size_t ovl0_mutex_regs_pa = 0;
-	resource_size_t ovl1_mutex_regs_pa = 0;
-	unsigned int addr, offset, value = 0;
+	unsigned int addr, value = 0;
 	int crtc_id = drm_crtc_index(&mtk_crtc->base);
 	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
 	struct mtk_ddp_comp *first_blender;
@@ -1605,7 +1602,6 @@ void mtk_drm_crtc_mini_dump(struct drm_crtc *crtc)
 			mtk_dump_reg(comp);
 	}
 
-done_return:
 	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
 		mtk_vidle_user_power_release(DISP_VIDLE_USER_DPC_DUMP);
 		if (!priv->pwr_node)
@@ -1934,7 +1930,6 @@ void mtk_drm_crtc_dump(struct drm_crtc *crtc)
 			mtk_dump_reg(priv->ddp_comp[DDP_COMPONENT_DSC1]);
 	}
 
-done_return:
 	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
 		mtk_vidle_user_power_release(DISP_VIDLE_USER_DPC_DUMP);
 		if (!priv->pwr_node)
@@ -2610,7 +2605,6 @@ void mtk_drm_crtc_analysis(struct drm_crtc *crtc)
 		mtk_drm_crtc_addon_analysis(crtc, addon_data);
 	}
 
-done_return:
 	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
 		mtk_vidle_user_power_release(DISP_VIDLE_USER_DPC_DUMP);
 		if (!priv->pwr_node)
@@ -2757,12 +2751,12 @@ mtk_drm_crtc_duplicate_state(struct drm_crtc *crtc)
 				"[DUMP_PROP]prev_crtc%d_mtk_prop_val: ", crtc_idx);
 			for (i = 0; i < CRTC_PROP_MAX; i++) {
 				written += scnprintf(dbg_msg + written, 1024 - written,
-					"[%d]%d ", i, state->prop_val[i]);
+					"[%d]%llu ", i, state->prop_val[i]);
 			}
 			DDP_DUMP_PROP("%s\n", dbg_msg);
 			kfree(dbg_msg);
 		} else {
-			DDPPR_ERR("%s: Failed to allocate prop dbg msg\n");
+			DDPPR_ERR("%s: Failed to allocate prop dbg msg\n",__func__);
 		}
 
 		DDP_DUMP_PROP("[DUMP_PROP]prev_crtc%d_drm_prop_val: act%d mode_id%d\n",
@@ -3399,7 +3393,6 @@ int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level,
 static void mtk_drm_spr_notify(struct drm_crtc *crtc, struct cmdq_pkt *handle,
 	unsigned int spr_status)
 {
-	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_ddp_comp *comp = NULL;
 
@@ -3620,8 +3613,6 @@ static void mtk_atomic_doze_update_spr(struct drm_crtc *crtc)
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_crtc_state *mtk_state = to_mtk_crtc_state(crtc->state);
-	int i, j;
-	unsigned int bypass = 0;
 
 	if (!aod_scp_flag || !aod_scp_ipi.send_ipi || !aod_scp_ipi.module_backup) {
 		DDPINFO("%s aod_scp invalid parameter\n", __func__);
@@ -3741,7 +3732,7 @@ static void mtk_drm_crtc_wk_lock(struct drm_crtc *crtc, bool get,
 
 int mtk_drm_aod_setbacklight(struct drm_crtc *crtc, unsigned int level)
 {
-
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_ddp_comp *output_comp, *comp;
 	unsigned int crtc_id = drm_crtc_index(&mtk_crtc->base);
@@ -3750,7 +3741,6 @@ int mtk_drm_aod_setbacklight(struct drm_crtc *crtc, unsigned int level)
 	struct cmdq_client *client;
 	int i, j;
 	struct mtk_crtc_state *crtc_state;
-	struct mtk_drm_private *priv = crtc->dev->dev_private;
 
 	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
 
@@ -5041,7 +5031,6 @@ static void mtk_addon_path_io_cmd(struct drm_crtc *crtc, const enum addon_scenar
 enum mtk_ddp_comp_id mtk_addon_path_get_cmp(struct drm_crtc *crtc, unsigned int path,
 	enum addon_scenario scn, enum mtk_ddp_comp_type type)
 {
-	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	const struct mtk_addon_scenario_data *addon_data;
 	const struct mtk_addon_module_data *addon_module;
@@ -5516,7 +5505,7 @@ static void mtk_crtc_update_ovl_bwm2_phy(struct drm_crtc *crtc,
 		}
 	}
 	if (debug_channel_bw_flow)
-		DDPMSG("%s, ovl:%s-%u,phy:%u,dual:%d,update key:%u,bwm2[%u],compress:%d\n",
+		DDPMSG("%s, ovl:%s-%u,phy:%u,dual:%d,update key:%llu,bwm2[%u],compress:%llu\n",
 			__func__, mtk_dump_comp_str_id(comp->id), comp->id,
 			phy_id, dual, plane_state->prop_val[PLANE_PROP_BUFFER_ALLOC_ID],
 			i, plane_state->prop_val[PLANE_PROP_COMPRESS]);
@@ -6199,7 +6188,6 @@ void _mtk_crtc_atmoic_addon_module_connect(
 {
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
-	struct mtk_crtc_state *mtk_state = to_mtk_crtc_state(crtc->state);
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VDS_PATH_SWITCH) &&
 	    priv->need_vds_path_switch)
@@ -6473,7 +6461,6 @@ static void mtk_crtc_atomic_ddp_config(struct drm_crtc *crtc,
 	struct mtk_lye_ddp_state *lye_state, *old_lye_state;
 	struct mtk_crtc_state *state = to_mtk_crtc_state(crtc->state);
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
-	struct mtk_drm_private *priv = crtc->dev->dev_private;
 
 	lye_state = &state->lye_state;
 	old_lye_state = &old_crtc_state->lye_state;
@@ -6856,7 +6843,6 @@ static void mtk_crtc_get_plane_comp_state(struct drm_crtc *crtc,
 		struct drm_plane *plane = &mtk_crtc->planes[i].base;
 		struct mtk_plane_state *plane_state;
 		struct mtk_ddp_comp *comp = NULL;
-		struct mtk_ddp_comp *blender_comp = NULL;
 
 		plane_state = to_mtk_plane_state(plane->state);
 		comp_state = &(plane_state->comp_state);
@@ -9252,7 +9238,6 @@ static int _mtk_crtc_cmdq_retrig(void *data)
 static int _mtk_crtc_cmdq_smi_info_dump(void *data)
 {
 	struct mtk_drm_crtc *mtk_crtc = (struct mtk_drm_crtc *) data;
-	struct drm_crtc *crtc = &mtk_crtc->base;
 	struct sched_param param = {.sched_priority = 94 };
 	int ret;
 
@@ -9266,7 +9251,7 @@ static int _mtk_crtc_cmdq_smi_info_dump(void *data)
 			DDPPR_ERR("wait %s fail, ret=%d\n", __func__, ret);
 
 		mtk_smi_dbg_hang_detect("disp_underrun");
-		mmqos_hrt_dump();
+		//mmqos_hrt_dump();
 		mmdvfs_debug_status_dump(NULL);
 		atomic_set(&mtk_crtc->smi_info_dump_event, 0);
 
@@ -10696,7 +10681,7 @@ unsigned int mtk_bwm_get_layer_compress_ratio(struct mtk_drm_crtc *mtk_crtc, uns
 			tmp_ratio = tmp_ratio > 0 ? tmp_ratio : 1000;
 			if (compr_ratio < tmp_ratio) {
 				if (debug_channel_bw_flow)
-					DDPMSG("%s,bwm2[%u] key:%u get layer:%u %s_ratio:%u->%u,compr:%d\n",
+					DDPMSG("%s,bwm2[%u] key:%llu get layer:%u %s_ratio:%u->%u,compr:%d\n",
 						__func__, i, all_layer_compress_ratio_table[i].key_value,
 						phy_id, peak ? "peak" : "avg", compr_ratio,
 						tmp_ratio, mtk_crtc->usage_ovl_compr[phy_id]);
@@ -10746,7 +10731,6 @@ void mtk_bwm_calc_hrt_bw(struct drm_crtc *crtc,
 	unsigned int active_index = 0;
 	unsigned long tmp_srt = 0;
 	struct mtk_drm_private *priv = NULL;
-	struct mtk_cmdq_cb_data *bwm20_cb_data;
 
 	mtk_crtc = to_mtk_crtc(crtc);
 	plane_mask = crtc->state->plane_mask;
@@ -10788,7 +10772,7 @@ void mtk_bwm_calc_hrt_bw(struct drm_crtc *crtc,
 			plane_state->mml_mode == MML_MODE_DIRECT_LINK ||
 			plane_state->mml_mode == MML_MODE_RACING ||
 			((drm_rect_height(&plane->state->src) >> 16) < 8))
-			DDPDBG_BWM("%s: skip bwm2,key:%llu,mode:%u,compr:%u\n",
+			DDPDBG_BWM("%s: skip bwm2,key:%u,mode:%u,compr:%u\n",
 				__func__, (unsigned int)plane_state->prop_val[PLANE_PROP_BUFFER_ALLOC_ID],
 				plane_state->mml_mode, is_compress);
 		else if (plane_state->comp_state.layer_caps & MTK_DISP_UNCHANGED_RATIO_VALID) {
@@ -10966,7 +10950,6 @@ void mtk_bwm_get_compress_ratio(struct drm_crtc *crtc,
 					all_layer_compress_ratio_table[i].key_value) &&
 					all_layer_compress_ratio_table[i].valid) {
 					unsigned int peak = all_layer_compress_ratio_table[i].peak_ratio;
-					unsigned int avg = all_layer_compress_ratio_table[i].average_ratio;
 
 					if (peak < 1000)
 						weight = mtk_bwm_get_weight(peak);
@@ -13973,7 +13956,6 @@ struct cmdq_pkt *mtk_crtc_set_dirty_wait(struct mtk_drm_crtc *mtk_crtc)
 	GCE_COND_DECLARE;
 	struct cmdq_operand lop, rop;
 	const u16 var1 = CMDQ_THR_SPR_IDX2;
-	const u16 var2 = CMDQ_THR_SPR_IDX3;
 	struct cmdq_client *cl;
 
 	// Temp code. This flow will only enter by debug command
@@ -17388,7 +17370,6 @@ static void mtk_crtc_partial_update_wait_cabc(struct drm_crtc *crtc,
 	GCE_COND_DECLARE;
 	struct cmdq_operand lop, rop;
 	const u16 var1 = CMDQ_THR_SPR_IDX2;
-	const u16 var2 = CMDQ_THR_SPR_IDX3;
 	dma_addr_t slot;
 
 	if (!mtk_drm_helper_get_opt(priv->helper_opt,
@@ -17425,7 +17406,6 @@ struct cmdq_pkt *mtk_crtc_gce_commit_begin(struct drm_crtc *crtc,
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	struct mtk_panel_params *params =
 			mtk_drm_get_lcm_ext_params(crtc);
-	struct mtk_ddp_comp *comp = NULL;
 
 	if (old_crtc_state != NULL)
 		old_mtk_state = to_mtk_crtc_state(old_crtc_state);
@@ -18664,12 +18644,12 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 				"[DUMP_PROP]curr_crtc%d_mtk_prop_val: ", crtc_idx);
 			for (i = 0; i < CRTC_PROP_MAX; i++) {
 				written += scnprintf(dbg_msg + written, 1024 - written,
-					"[%d]%d ", i, mtk_crtc_state->prop_val[i]);
+					"[%d]%llu ", i, mtk_crtc_state->prop_val[i]);
 			}
 			DDP_DUMP_PROP("%s\n", dbg_msg);
 			kfree(dbg_msg);
 		} else {
-			DDPPR_ERR("%s: Failed to allocate prop dbg msg\n");
+			DDPPR_ERR("%s: Failed to allocate prop dbg msg\n",__func__);
 		}
 
 		DDP_DUMP_PROP("[DUMP_PROP]curr_crtc%d_drm_prop_val: act%d mode_id%d\n",
@@ -19181,14 +19161,14 @@ void mtk_drm_layer_dispatch_to_dual_pipe(
 						plane_state_r->pending.dst_x;
 	}
 
-	if (mtk_crtc->path_data->is_exdma_dual_layer)
+	if (mtk_crtc->path_data->is_exdma_dual_layer) {
 		if (left_bg <= plane_state->pending.dst_x)
 			plane_state_r->pending.offset = plane_state_r->pending.dst_y << 16 |
 						(plane_state->pending.dst_x);
 		else
 			plane_state_r->pending.offset = plane_state_r->pending.dst_y << 16 |
 						(plane_state_l->pending.dst_x + plane_state_l->pending.width);
-
+	}
 	DDPINFO("plane_r (%u,%u) (%u,%u), (%u,%u) exdma_comp=%s, blender_comp=%s\n",
 		plane_state_r->pending.src_x, plane_state_r->pending.src_y,
 		plane_state_r->pending.dst_x, plane_state_r->pending.dst_y,
@@ -19849,7 +19829,6 @@ static void mtk_crtc_dl_config_color_matrix(struct drm_crtc *crtc,
 	int i;
 	bool linear;
 	struct mtk_ddp_comp *comp;
-	struct mtk_disp_ccorr *ccorr_data;
 	struct mtk_crtc_state *state = to_mtk_crtc_state(crtc->state);
 
 	if (!ccorr_config)
@@ -20844,7 +20823,7 @@ static int mtk_crtc_partial_compute_ovl_roi(struct drm_crtc *crtc,
 			layer_total_roi.width = dst_roi.width;
 			layer_total_roi.height = dst_roi.height;
 
-			DDPINFO("rpo plane[%d]en:(%d) roi_num:(%llu) roi:(%llu,%llu,%llu,%llu)\n",
+			DDPINFO("rpo plane[%d]en:(%d) roi_num:(%d) roi:(%d,%d,%d,%d)\n",
 			i, plane->state->visible, dirty_roi_num,
 			layer_total_roi.x,
 			layer_total_roi.y,
@@ -21618,7 +21597,7 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 
 	if (mtk_crtc->event)
 		mtk_crtc->pending_needs_vblank = true;
-	DDPINFO("mtk_crtc->reset_path %d, %d, %d\n",mtk_crtc->reset_path,
+	DDPINFO("mtk_crtc->reset_path %d, %llu, %llu\n",mtk_crtc->reset_path,
 			old_mtk_state->prop_val[CRTC_PROP_PRES_FENCE_IDX],
 			mtk_crtc_state->prop_val[CRTC_PROP_PRES_FENCE_IDX]);
 
@@ -24174,14 +24153,14 @@ int mtk_drm_get_union_fence_ioctl(struct drm_device *dev, void *data,
 	unsigned int curr_present_fence_idx;
 	struct fence_data present_fence;
 
-	int frame_done_timeline_id;
+	int frame_done_timeline_id = 0;
 	struct mtk_fence_info *frame_done_layer_info;
 	unsigned int curr_frame_done_fence_idx;
 	struct fence_data frame_done_fence;
 
 	crtc = drm_crtc_find(dev, file_priv, args->crtc_id);
 	if (!crtc) {
-		DDPPR_ERR("%s: Unknown CRTC ID %d\n", args->crtc_id, __func__);
+		DDPPR_ERR("%s: Unknown CRTC ID %d\n", __func__,args->crtc_id);
 		return -ENOENT;
 	}
 	if (!crtc->dev) {
@@ -26145,7 +26124,6 @@ unsigned int mtk_drm_external_display_get_debug_state(
 
 	struct drm_crtc *crtc = priv->crtc[1];
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
-	struct mtk_ddp_comp *comp;
 	struct drm_display_mode *adjust_mode;
 
 	if (!mtk_crtc || !mtk_crtc->avail_modes)

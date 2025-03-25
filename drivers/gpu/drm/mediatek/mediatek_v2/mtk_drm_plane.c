@@ -769,7 +769,7 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 			DDPINFO("%s\n", dbg_msg);
 			kfree(dbg_msg);
 		} else {
-			DDPPR_ERR("%s: Failed to allocate prop dbg msg\n");
+			DDPPR_ERR("%s: Failed to allocate prop dbg msg\n",__func__);
 		}
 	}
 
