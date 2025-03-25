@@ -963,7 +963,7 @@ static int xgf_non_cfs_task(int tid)
 	}
 
 	get_task_struct(tsk);
-	if ((tsk->flags & PF_KTHREAD) || (rt_task(tsk) && dl_task(tsk)))
+	if ((tsk->flags & PF_KTHREAD) || rt_task(tsk) || dl_task(tsk))
 		ret = 1;
 	put_task_struct(tsk);
 
