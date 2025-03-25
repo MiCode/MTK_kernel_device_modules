@@ -397,7 +397,7 @@ static int __mtk_vdisp_ao_qos_config_MT6993(bool hrt_read, bool hrt_write)
 {
 	int value = 0, mask = 0;
 	// 16 level qos config, config value see 16 level qos table
-	int hrt_normal_lv = 6, hrt_preultra_lv = 6, hrt_ultra_lv = 14;
+	int hrt_normal_lv = 6, hrt_preultra_lv = 12, hrt_ultra_lv = 14;
 	int srt_normal_lv_w = 0, srt_normal_lv = 1, srt_preultra_lv = 9, srt_ultra_lv = 9;
 	int normal_lv = srt_normal_lv;
 	int preultra_lv = srt_preultra_lv;
