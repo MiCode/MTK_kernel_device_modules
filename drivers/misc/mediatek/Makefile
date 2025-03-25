@@ -125,3 +125,4 @@ obj-$(CONFIG_MTK_PKVM_MTK_SMC_HANDLER) += pkvm_mgmt/
 obj-$(CONFIG_MTK_SPM_VHOST_DMABUF_PHYS) += vhost_dmabuf_phys/
 obj-$(CONFIG_MTK_PKVM_SMMU) += pkvm_smmu/
 obj-$(CONFIG_MTK_PKVM_ISP) += pkvm_isp/
+obj-$(CONFIG_MTK_PKVM_CMDQ) += pkvm_cmdq/

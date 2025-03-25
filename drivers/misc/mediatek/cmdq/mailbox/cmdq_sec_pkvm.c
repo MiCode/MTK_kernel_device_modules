@@ -3,8 +3,10 @@
  * Copyright (c) 2023 MediaTek Inc.
  */
 
+#include <asm/kvm_pkvm_module.h>
 #include <linux/arm-smccc.h>
 #include <linux/soc/mediatek/mtk_sip_svc.h>
+#include <pkvm_mgmt/pkvm_mgmt.h>
 
 #include "cmdq_sec_pkvm.h"
 
@@ -68,16 +70,46 @@ s32 cmdq_sec_pkvm_execute_session(struct cmdq_sec_pkvm_context *tee,
 	u32 wait_cookie, s32 scenario_aee)
 {
 	struct arm_smccc_res res;
+#if IS_ENABLED(CONFIG_MTK_PKVM_CMDQ)
+	unsigned long smc_id = -1;
+	unsigned long hvc_id;
+#endif
 
 	cmdq_mbox_mtcmos_by_fast(NULL, true);
+#if IS_ENABLED(CONFIG_MTK_PKVM_CMDQ)
+	switch (cmd + CMDQ_SMC_REQ_MAX) {
+	case CMD_CMDQ_TL_SUBMIT_TASK:
+		smc_id = SMC_ID_MTK_PKVM_CMDQ_SUBMIT_TASK;
+		break;
+	case CMD_CMDQ_TL_RES_RELEASE:
+		smc_id = SMC_ID_MTK_PKVM_CMDQ_RES_RELEASE;
+		break;
+	case CMD_CMDQ_TL_CANCEL_TASK:
+		smc_id = SMC_ID_MTK_PKVM_CMDQ_CANCEL_TASK;
+		break;
+	case CMD_CMDQ_TL_PATH_RES_ALLOCATE:
+		smc_id = SMC_ID_MTK_PKVM_CMDQ_PATH_RES_ALLOCATE;
+		break;
+	case CMD_CMDQ_TL_PATH_RES_RELEASE:
+		smc_id = SMC_ID_MTK_PKVM_CMDQ_PATH_RES_RELEASE;
+		break;
+	default:
+		cmdq_err("invalid cmd");
+		break;
+	}
+	arm_smccc_1_1_smc(smc_id, 0, 0, 0, 0, 0, 0, &res);
+	hvc_id = res.a1;
+	pkvm_el2_mod_call(hvc_id, thread_idx, wait_cookie, scenario_aee);
+	// tee->rsp = res.a0;
+#else
 	arm_smccc_smc(MTK_SIP_CMDQ_CONTROL, cmd + CMDQ_SMC_REQ_MAX,
 		thread_idx, wait_cookie, scenario_aee, 0, 0, 0, &res);
+	tee->rsp = res.a0;
+#endif
 	cmdq_mbox_mtcmos_by_fast(NULL, false);
 
-	tee->rsp = res.a0;
 	cmdq_msg("%s: cmd:%u CMDQ_SMC_REQ_MAX:%u rsp:%llx",
 		__func__, cmd, CMDQ_SMC_REQ_MAX, tee->rsp);
-
 
 	return 0;
 }
@@ -85,9 +117,17 @@ s32 cmdq_sec_pkvm_execute_session(struct cmdq_sec_pkvm_context *tee,
 s32 cmdq_sec_pkvm_open_session(void)
 {
 	struct arm_smccc_res res;
+#if IS_ENABLED(CONFIG_MTK_PKVM_CMDQ)
+	unsigned long hvc_id;
 
-	arm_smccc_smc(MTK_SIP_CMDQ_CONTROL, CMD_CMDQ_TL_PKVM_INIT,
+	arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_CMDQ_PKVM_INIT,
 		0, 0, 0, 0, 0, 0, &res);
+	hvc_id = res.a1;
+	pkvm_el2_mod_call(hvc_id);
+#else
+	arm_smccc_smc(MTK_SIP_CMDQ_CONTROL,
+		CMD_CMDQ_TL_PKVM_INIT, 0, 0, 0, 0, 0, 0, &res);
+#endif
 
 	return 0;
 }

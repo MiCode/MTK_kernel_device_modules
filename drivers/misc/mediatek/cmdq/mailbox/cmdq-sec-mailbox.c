@@ -183,7 +183,6 @@ struct cmdq_sec {
 	struct cmdq_mmp_event		mmp;
 #endif
 	struct mutex mbox_mutex;
-	spinlock_t		pkvm_lock;
 	bool		pwr_control_by_mminfra;
 	u32			mminfra_all_on_pwr_idx;
 };
@@ -209,13 +208,6 @@ static s32
 cmdq_sec_task_submit(struct cmdq_sec *cmdq, struct cmdq_sec_task *task,
 	const u32 iwc_cmd, const u32 thrd_idx, void *data, bool mtee);
 
-static bool pkvm_enabled;
-
-static bool is_pkvm_enabled(void)
-{
-	return pkvm_enabled;
-}
-
 /* operator API */
 static inline void
 cmdq_sec_setup_tee_context_base(struct cmdq_sec_context *context)
@@ -225,7 +217,7 @@ cmdq_sec_setup_tee_context_base(struct cmdq_sec_context *context)
 #endif
 
 #ifdef CMDQ_SECURE_MTEE_SUPPORT
-	if (!is_pkvm_enabled())
+	if (!is_protected_kvm_enabled())
 		cmdq_sec_mtee_setup_context(&context->mtee);
 #endif
 }
@@ -242,7 +234,7 @@ cmdq_sec_init_context_base(struct cmdq_sec_context *context)
 #endif
 
 #ifdef CMDQ_SECURE_MTEE_SUPPORT
-	if (!is_pkvm_enabled())
+	if (!is_protected_kvm_enabled())
 		status = cmdq_sec_mtee_open_session(
 			&context->mtee, context->mtee_iwc_msg);
 #endif
@@ -883,7 +875,7 @@ static s32 cmdq_sec_session_init(struct cmdq_sec_context *context)
 #endif
 
 #ifdef CMDQ_SECURE_MTEE_SUPPORT
-		if (!is_pkvm_enabled()) {
+		if (!is_protected_kvm_enabled()) {
 			if (!context->mtee_iwc_msg ||
 				!context->mtee_iwc_ex1 || !context->mtee_iwc_ex2) {
 				err = cmdq_sec_mtee_allocate_wsm(&context->mtee,
@@ -952,7 +944,7 @@ static s32 cmdq_sec_fill_iwc_msg(struct cmdq_sec_context *context,
 	}
 #ifdef CMDQ_SECURE_MTEE_SUPPORT
 	else {
-		if (!is_pkvm_enabled()) {
+		if (!is_protected_kvm_enabled()) {
 			iwc_msg =
 				(struct iwcCmdqMessage_t *)context->mtee_iwc_msg;
 			iwc_msg_ex1 =
@@ -980,7 +972,7 @@ static s32 cmdq_sec_fill_iwc_msg(struct cmdq_sec_context *context,
 		CMDQ_MIN_SECURE_THREAD_ID + CMDQ_MAX_SECURE_THREAD_COUNT)
 		return -EINVAL;
 
-	if (!is_pkvm_enabled()) {
+	if (!is_protected_kvm_enabled()) {
 		u32 max_size;
 
 		max_size = cmdq_tz_cmd_block_size[thrd_idx - CMDQ_MIN_SECURE_THREAD_ID];
@@ -1082,13 +1074,13 @@ static s32 cmdq_sec_session_send(struct cmdq_sec_context *context,
 	bool mem_ex1, mem_ex2;
 	u64 cost;
 	struct iwcCmdqMessage_t *iwc_msg = NULL;
-	u32 scenario_aee = 0;
+	u32 scenario_aee = 0, hwid_thrd = 0;
 
 	if (!mtee)
 		iwc_msg = (struct iwcCmdqMessage_t *)context->iwc_msg;
 #ifdef CMDQ_SECURE_MTEE_SUPPORT
 	else {
-		if (!is_pkvm_enabled())
+		if (!is_protected_kvm_enabled())
 			iwc_msg = (struct iwcCmdqMessage_t *)context->mtee_iwc_msg;
 #endif
 		else
@@ -1174,7 +1166,7 @@ static s32 cmdq_sec_session_send(struct cmdq_sec_context *context,
 	}
 #ifdef CMDQ_SECURE_MTEE_SUPPORT
 	else {
-		if (!is_pkvm_enabled())
+		if (!is_protected_kvm_enabled())
 			err = cmdq_sec_mtee_execute_session(
 				&context->mtee, iwc_cmd, 3000,
 				mem_ex1, mem_ex2);
@@ -1182,8 +1174,9 @@ static s32 cmdq_sec_session_send(struct cmdq_sec_context *context,
 		else {
 			scenario_aee = task ? task->scenario : 0;
 			scenario_aee = scenario_aee | (cmdq->cancel.throwAEE ? BIT(15) : 0);
+			hwid_thrd = (cmdq->hwid << 5) | (thrd_idx & 0x1F);
 			err = cmdq_sec_pkvm_execute_session(
-				&context->pkvm, iwc_cmd, 3000, thrd_idx,
+				&context->pkvm, iwc_cmd, 3000, hwid_thrd,
 				task ? task->waitCookie : 0, scenario_aee);
 		}
 	}
@@ -1385,7 +1378,7 @@ cmdq_sec_task_submit(struct cmdq_sec *cmdq, struct cmdq_sec_task *task,
 			}
 #ifdef CMDQ_SECURE_MTEE_SUPPORT
 			else {
-				if (!is_pkvm_enabled())
+				if (!is_protected_kvm_enabled())
 					err = cmdq_sec_session_reply(iwc_cmd,
 						cmdq->context->mtee_iwc_msg,
 						data, task);
@@ -1569,7 +1562,7 @@ static void cmdq_sec_task_exec_work(struct work_struct *work_item)
 	mutex_lock(&cmdq->exec_lock);
 	spin_lock_irqsave(&task->thread->chan->lock, flags);
 
-	if (!is_pkvm_enabled()) {
+	if (!is_protected_kvm_enabled()) {
 		s32 max_task;
 
 		max_task = cmdq_max_task_in_secure_thread[
@@ -1936,9 +1929,6 @@ static int cmdq_sec_probe(struct platform_device *pdev)
 	struct resource *res;
 	s32 i, err;
 	u32 hwid;
-	const char *pkvm_status = NULL;
-	struct device_node *pkvm_node;
-	unsigned long flags;
 #if defined(CMDQ_SECURE_MTEE_SUPPORT)
 	struct platform_device *gz_pdev;
 	struct device_node *gz_node;
@@ -1948,26 +1938,14 @@ static int cmdq_sec_probe(struct platform_device *pdev)
 	int genpd_num = 0;
 #endif /* defined(CMDQ_SECURE_MTEE_SUPPORT) */
 
-	cmdq_msg("%s", __func__);
+	cmdq_msg("%s pkvm:%d", __func__, is_protected_kvm_enabled());
 
 	cmdq = devm_kzalloc(&pdev->dev, sizeof(*cmdq), GFP_KERNEL);
 	if (!cmdq)
 		return -ENOMEM;
 
-	spin_lock_init(&cmdq->pkvm_lock);
-
-	spin_lock_irqsave(&cmdq->pkvm_lock, flags);
-	pkvm_node = of_find_node_by_name(NULL, "pkvm");
-	if (pkvm_node) {
-		of_property_read_string(pkvm_node, "status", &pkvm_status);
-		if (!strncmp(pkvm_status, "okay", sizeof("okay")))
-			pkvm_enabled = true;
-	}
-	spin_unlock_irqrestore(&cmdq->pkvm_lock, flags);
-	cmdq_msg("%s: pkvm enabled:%d", __func__, pkvm_enabled);
-
 #if defined(CMDQ_SECURE_MTEE_SUPPORT)
-	if (!pkvm_enabled) {
+	if (!is_protected_kvm_enabled()) {
 		cmdq_util_pkvm_disable();
 
 		gz_node = of_find_compatible_node(NULL, NULL, "mediatek,trusty-mtee-v1");

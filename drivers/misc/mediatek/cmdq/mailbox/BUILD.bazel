@@ -116,8 +116,13 @@ define_mgk_ddk_ko(
         "mt-plat/aee.h",
     ]),
     includes = ["."],
-    ko_deps = ["//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:mtk-cmdq-drv-ext".format(kernel_version),],
+    ko_deps = ["//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:mtk-cmdq-drv-ext".format(kernel_version),
+            "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:cmdq-sec-drv".format(kernel_version),],
     copts = ["-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/geniezone:gz-public_hdrs".format(kernel_version),
+    ],
+    local_defines = ["CMDQ_SECURE_MTEE_SUPPORT", "CMDQ_SECURE_SUPPORT"],
 )
 
 [define_mgk_ddk_ko(
