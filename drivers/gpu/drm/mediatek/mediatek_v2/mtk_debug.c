@@ -5943,6 +5943,17 @@ test_2c_done:
 		priv->mtk_dbgtp_sta.dbgtp_prd_trig_en = dump_en;
 		priv->mtk_dbgtp_sta.need_update = true;
 		DDPMSG("%d %s\n", __LINE__, opt);
+	} else if (strncmp(opt, "dbgtp_validation:", 17) == 0) {
+		struct mtk_drm_private *priv = drm_dev->dev_private;
+		bool validation_en = false;
+
+		if (strncmp(opt + 17, "on", 2) == 0)
+			validation_en = true;
+		else if (strncmp(opt + 17, "off", 3) == 0)
+			validation_en = false;
+
+		priv->mtk_dbgtp_sta.is_validation_mode = validation_en;
+		DDPMSG("%d %s\n", __LINE__, opt);
 	} else if (strncmp(opt, "dbgtp_switch:", 13) == 0) {
 		struct mtk_drm_private *priv = drm_dev->dev_private;
 		int ret = 0;
@@ -6184,6 +6195,11 @@ test_2c_done:
 		struct mtk_drm_private *priv = drm_dev->dev_private;
 
 		mtk_dbgtp_default_cfg_load(priv);
+		DDPMSG("%d %s\n", __LINE__, opt);
+	} else if (strncmp(opt, "dbgtp_load_allopen_setting", 26) == 0) {
+		struct mtk_drm_private *priv = drm_dev->dev_private;
+
+		mtk_dbgtp_load_all_open_setting(priv);
 		DDPMSG("%d %s\n", __LINE__, opt);
 	} else if (strncmp(opt, "dbgtp_default_config", 20) == 0) {
 		struct drm_crtc *crtc;

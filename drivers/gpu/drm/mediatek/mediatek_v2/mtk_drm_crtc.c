@@ -12164,6 +12164,38 @@ void mtk_crtc_start_event_loop(struct drm_crtc *crtc)
 	return;
 
 VDO_MODE:
+	/* For mt6993 debug sys fifo mon HW bug vdo mode WA */
+	if (crtc_id) {
+		DDPDBG("%s:%d invalid crtc:%ld\n", __func__, __LINE__, crtc_id);
+		return;
+	}
+
+	if (mtk_crtc->event_loop_cmdq_handle) {
+		DDPDBG("exist event loop, skip %s\n", __func__);
+		return;
+	}
+
+	priv = mtk_crtc->base.dev->dev_private;
+	mtk_crtc->event_loop_cmdq_handle = cmdq_pkt_create(
+		mtk_crtc->gce_obj.client[CLIENT_EVENT_LOOP]);
+	cmdq_handle = mtk_crtc->event_loop_cmdq_handle;
+	if (!cmdq_handle) {
+		DDPPR_ERR("%s:%d NULL cmdq handle\n", __func__, __LINE__);
+		return;
+	}
+
+	if ((priv->mtk_dbgtp_sta.fifo_mon_en[0]) && (crtc_id == 0)) {
+		DDPMSG("FIFO mon: wait gce event vact start\n");
+		cmdq_pkt_wfe(cmdq_handle, mtk_crtc->gce_obj.event[EVENT_VDO_TRIG_START]);
+		mtk_dbgtp_fifo_mon_set_trig_threshold(mtk_crtc, cmdq_handle);
+		if (!priv->mtk_dbgtp_sta.is_validation_mode &&
+			priv->mtk_dbgtp_sta.dbgtp_en)
+			mtk_dbgtp_switch(mtk_crtc, cmdq_handle, true);
+	}
+
+	cmdq_pkt_finalize_loop(cmdq_handle);
+
+	cmdq_pkt_flush_async(cmdq_handle, event_done_cb, (void *)crtc_id);
 
 	return;
 }
@@ -12846,24 +12878,30 @@ skip_prete:
 			DDPMSG("FIFO mon: Wait gce event fifo level down\n");
 			GCE_DO(wfe, EVENT_CMD_TRIG_START);
 			mtk_dbgtp_fifo_mon_set_trig_threshold(mtk_crtc, cmdq_handle);
-			mtk_dbgtp_switch(mtk_crtc, cmdq_handle, true);
+			if (!priv->mtk_dbgtp_sta.is_validation_mode &&
+				priv->mtk_dbgtp_sta.dbgtp_en)
+				mtk_dbgtp_switch(mtk_crtc, cmdq_handle, true);
 		}
+
 		GCE_DO(wfe, EVENT_CMD_EOF);
-		for_each_comp_in_cur_crtc_path(dbi_comp, mtk_crtc, i, j) {
-			if (mtk_ddp_comp_get_type(dbi_comp->id) == MTK_DISP_DBI_COUNT) {
-				GCE_DO(wfe, EVENT_DBI_COUNT_EOF);
-				mtk_oddmr_dbi_udma_off(dbi_comp, cmdq_handle);
-			}
-		}
 
 		/* For dbgtp fifo mon WA */
 		if ((priv->data->mmsys_id == MMSYS_MT6993) &&
 			(priv->mtk_dbgtp_sta.fifo_mon_en[0]) && (crtc_id == 0)) {
 			mtk_dbgtp_fifo_mon_config(mtk_crtc, cmdq_handle);
-			mtk_dbgtp_switch(mtk_crtc, cmdq_handle, false);
+			if (!priv->mtk_dbgtp_sta.is_validation_mode &&
+				priv->mtk_dbgtp_sta.dbgtp_en)
+				mtk_dbgtp_switch(mtk_crtc, cmdq_handle, false);
 			// when eof, fifo mon will trigger stop ELA
 			cmdq_pkt_write(cmdq_handle, NULL, 0x3EFC0014, 0x1, 0xf);
 			cmdq_pkt_write(cmdq_handle, NULL, 0x3EFC0018, 0x1, 0xf);
+		}
+
+		for_each_comp_in_cur_crtc_path(dbi_comp, mtk_crtc, i, j) {
+			if (mtk_ddp_comp_get_type(dbi_comp->id) == MTK_DISP_DBI_COUNT) {
+				GCE_DO(wfe, EVENT_DBI_COUNT_EOF);
+				mtk_oddmr_dbi_udma_off(dbi_comp, cmdq_handle);
+			}
 		}
 
 		/* update frame done fence slot */
@@ -12954,7 +12992,9 @@ skip_prete:
 				if ((priv->data->mmsys_id == MMSYS_MT6993) &&
 					(priv->mtk_dbgtp_sta.fifo_mon_en[0]) && (crtc_id == 0)) {
 					mtk_dbgtp_fifo_mon_config(mtk_crtc, cmdq_handle);
-					mtk_dbgtp_switch(mtk_crtc, cmdq_handle, false);
+					if (!priv->mtk_dbgtp_sta.is_validation_mode &&
+						priv->mtk_dbgtp_sta.dbgtp_en)
+						mtk_dbgtp_switch(mtk_crtc, cmdq_handle, false);
 					// when eof, fifo mon will trigger stop ELA
 					cmdq_pkt_write(cmdq_handle, NULL, 0x3EFC0014, 0x1, 0xf);
 					cmdq_pkt_write(cmdq_handle, NULL, 0x3EFC0018, 0x1, 0xf);

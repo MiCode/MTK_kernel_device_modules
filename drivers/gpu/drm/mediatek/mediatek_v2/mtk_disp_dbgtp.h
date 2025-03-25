@@ -59,6 +59,7 @@ struct mtk_dbgtp {
 	bool dbgtp_timeout_en;
 	unsigned int dbgtp_timeout_prd;
 	bool dsi_lpc_mon_en;
+	bool is_validation_mode;
 
 	/* debug FIFO mon */
 	bool fifo_mon_en[FIFO_MON_NUM];
@@ -83,6 +84,7 @@ void mtk_dbgtp_config(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cmdq_handl
 void mtk_dbgtp_all_setting_dump(struct mtk_drm_private *priv);
 void mtk_dbgtp_all_regs_dump(struct mtk_drm_private *priv);
 void mtk_dbgtp_default_cfg_load(struct mtk_drm_private *priv);
+void mtk_dbgtp_load_all_open_setting(struct mtk_drm_private *priv);
 void mtk_dbgtp_switch(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cmdq_handle, bool en);
 
 /* Just for mt6993*/
