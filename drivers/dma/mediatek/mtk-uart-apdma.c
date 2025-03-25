@@ -886,16 +886,17 @@ static void mtk_uart_apdma_start_tx(struct mtk_chan *c)
 	if (!mtk_uart_apdma_read(c, VFF_FLUSH)) {
 		mtk_uart_apdma_write(c, VFF_FLUSH, VFF_FLUSH_B);
 		flush_flag = mtk_uart_apdma_read(c, VFF_FLUSH);
-
-		while ((flush_flag != 0) && (poll_flush_cnt > 0)) {
-			udelay(4);
-			flush_flag = mtk_uart_apdma_read(c, VFF_FLUSH);
-			poll_flush_cnt--;
-		}
-		if (poll_flush_cnt <= 0) {
-			mtk_save_uart_apdma_reg(chan,dma_reg_buf);
-			c->chan_debug_value = DMA_FLUSH_FAIL;
-			memcpy(c->dma_debug_buf,dma_reg_buf,sizeof(dma_reg_buf));
+		if (c->is_hub_port) {
+			while ((flush_flag != 0) && (poll_flush_cnt > 0)) {
+				udelay(4);
+				flush_flag = mtk_uart_apdma_read(c, VFF_FLUSH);
+				poll_flush_cnt--;
+			}
+			if (poll_flush_cnt <= 0) {
+				mtk_save_uart_apdma_reg(chan,dma_reg_buf);
+				c->chan_debug_value = DMA_FLUSH_FAIL;
+				memcpy(c->dma_debug_buf,dma_reg_buf,sizeof(dma_reg_buf));
+			}
 		}
 	}
 }
