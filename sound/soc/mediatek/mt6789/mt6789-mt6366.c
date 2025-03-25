@@ -598,13 +598,12 @@ SND_SOC_DAILINK_DEFS(vow,
 	DAILINK_COMP_ARRAY(COMP_EMPTY()));
 #endif
 #endif
-/* #if IS_ENABLED(CONFIG_MTK_ULTRASND_PROXIMITY) && !defined(CONFIG_FPGA_EARLY_PORTING)
- * SND_SOC_DAILINK_DEFS(ultra,
- *	DAILINK_COMP_ARRAY(COMP_DUMMY()),
- *	DAILINK_COMP_ARRAY(COMP_DUMMY()),
- *	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-scp-ultra")));
- *#endif
- */
+#if IS_ENABLED(CONFIG_MTK_ULTRASND_PROXIMITY) && !defined(CONFIG_FPGA_EARLY_PORTING)
+SND_SOC_DAILINK_DEFS(ultra,
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-scp-ultra")));
+#endif
 
 #if IS_ENABLED(CONFIG_MTK_SCP_AUDIO)
 SND_SOC_DAILINK_DEFS(scpspkprocess,
@@ -1062,14 +1061,14 @@ static struct snd_soc_dai_link mt6789_mt6366_dai_links[] = {
 	},
 #endif
 #endif
-/* #if IS_ENABLED(CONFIG_MTK_ULTRASND_PROXIMITY) && !defined(CONFIG_FPGA_EARLY_PORTING)
- *	{
- *		.name = "SCP_ULTRA_Playback",
- *		.stream_name = "SCP_ULTRA_Playback",
- *		SND_SOC_DAILINK_REG(ultra),
- *	},
- *#endif
- */
+#if IS_ENABLED(CONFIG_MTK_ULTRASND_PROXIMITY) && !defined(CONFIG_FPGA_EARLY_PORTING)
+	{
+		.name = "SCP_ULTRA_Playback",
+		.stream_name = "SCP_ULTRA_Playback",
+		SND_SOC_DAILINK_REG(ultra),
+	},
+#endif
+
 #if IS_ENABLED(CONFIG_MTK_SCP_AUDIO)
 	{
 		.name = "SCP_SPK_Process",
