@@ -19,6 +19,7 @@
 #include "mtk_drm_fb.h"
 #include "mtk_drm_drv.h"
 #include "mtk_disp_spr.h"
+#include "mtk_log.h"
 #include "scp.h"
 
 #define DISP_REG_SPR_STA			0x0000
@@ -832,7 +833,7 @@ static void mtk_spr_prepare(struct mtk_ddp_comp *comp)
 
 	spr = comp_to_spr(comp);
 	if (!spr) {
-		DDPMSG("disp_spr driver struct is null %s %d\n", __func__, __LINE__);
+		PC_ERR("disp_spr driver struct is null %s %d\n", __func__, __LINE__);
 		return;
 	}
 	if (spr->data) {
@@ -846,7 +847,7 @@ static void mtk_spr_prepare(struct mtk_ddp_comp *comp)
 
 	spr_params = &comp->mtk_crtc->panel_ext->params->spr_params;
 	if (!spr_params) {
-		DDPMSG("spr_params is null %s %d\n", __func__, __LINE__);
+		PC_ERR("spr_params is null %s %d\n", __func__, __LINE__);
 		return;
 	}
 	if (spr_params->enable == 1 && spr_params->relay == 0) {

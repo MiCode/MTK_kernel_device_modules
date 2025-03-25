@@ -26,6 +26,7 @@
 #include "mtk_fence.h"
 #include "mtk_sync.h"
 #include "mtk_debug.h"
+#include "mtk_log.h"
 
 #include "mtk_disp_dbi_count.h"
 
@@ -297,7 +298,7 @@ static inline unsigned int mtk_dbi_count_read(struct mtk_ddp_comp *comp,
 	u32 max_offset = 0x1000;
 
 	if (offset >= max_offset || (offset % 4) != 0) {
-		DDPPR_ERR("%s: invalid addr 0x%x\n",
+		PC_ERR("%s: invalid addr 0x%x\n",
 		__func__, offset);
 		return 0;
 	}
@@ -311,7 +312,7 @@ static inline void mtk_dbi_count_write_mask_cpu(struct mtk_ddp_comp *comp,
 	unsigned int tmp;
 
 	if (offset >= max_offset || (offset % 4) != 0) {
-		DDPPR_ERR("%s: invalid addr 0x%x\n",
+		PC_ERR("%s: invalid addr 0x%x\n",
 		__func__, offset);
 		return;
 	}
@@ -327,7 +328,7 @@ static inline void mtk_dbi_count_write_cpu(struct mtk_ddp_comp *comp,
 	u32 max_offset = 0x1000;
 
 	if (offset >= max_offset || (offset % 4) != 0) {
-		DDPPR_ERR("%s: invalid addr 0x%x\n",
+		PC_ERR("%s: invalid addr 0x%x\n",
 		__func__, offset);
 		return;
 	}
@@ -340,12 +341,12 @@ static inline void mtk_dbi_count_write(struct mtk_ddp_comp *comp, unsigned int v
 	u32 max_offset = 0x1000;
 
 	if (comp == NULL) {
-		DDPPR_ERR("%s: invalid comp\n", __func__);
+		PC_ERR("%s: invalid comp\n", __func__);
 		return;
 	}
 
 	if (offset >= max_offset || (offset % 4) != 0) {
-		DDPPR_ERR("%s: invalid addr 0x%x\n",
+		PC_ERR("%s: invalid addr 0x%x\n",
 		__func__, offset);
 		return;
 	}
@@ -364,7 +365,7 @@ static inline void mtk_dbi_count_write_mask(struct mtk_ddp_comp *comp, unsigned 
 	u32 max_offset = 0x1000;
 
 	if (offset >= max_offset || (offset % 4) != 0) {
-		DDPPR_ERR("%s: invalid addr 0x%x\n",
+		PC_ERR("%s: invalid addr 0x%x\n",
 		__func__, offset);
 		return;
 	}
@@ -863,19 +864,19 @@ int mtk_drm_crtc_get_count_fence_ioctl(struct drm_device *dev, void *data,
 
 	crtc = drm_crtc_find(dev, file_priv, args->crtc_id);
 	if (!crtc) {
-		DDPMSG("Unknown CRTC ID %d\n", args->crtc_id);
+		PC_ERR("Unknown CRTC ID %d\n", args->crtc_id);
 		ret = -ENOENT;
 		return ret;
 	}
 
 	idx = drm_crtc_index(crtc);
 	if (!crtc->dev) {
-		DDPMSG("%s:%d dev is null\n", __func__, __LINE__);
+		PC_ERR("%s:%d dev is null\n", __func__, __LINE__);
 		ret = -EFAULT;
 		return ret;
 	}
 	if (!crtc->dev->dev_private) {
-		DDPMSG("%s:%d dev private is null\n", __func__, __LINE__);
+		PC_ERR("%s:%d dev private is null\n", __func__, __LINE__);
 		ret = -EFAULT;
 		return ret;
 	}
@@ -884,7 +885,7 @@ int mtk_drm_crtc_get_count_fence_ioctl(struct drm_device *dev, void *data,
 	tl = mtk_fence_get_dbi_count_timeline_id();
 	l_info = mtk_fence_get_layer_info(mtk_get_session_id(crtc), tl);
 	if (!l_info) {
-		DDPMSG("%s:%d layer_info is null\n", __func__, __LINE__);
+		PC_ERR("%s:%d layer_info is null\n", __func__, __LINE__);
 		ret = -EFAULT;
 		return ret;
 	}
@@ -895,7 +896,7 @@ int mtk_drm_crtc_get_count_fence_ioctl(struct drm_device *dev, void *data,
 	atomic_inc(&private->crtc_dbi_count[idx]);
 	ret = mtk_sync_fence_create(l_info->timeline, &fence);
 	if (ret) {
-		DDPMSG("%d,L%d create Fence Object failed!\n",
+		PC_ERR("%d,L%d create Fence Object failed!\n",
 			  MTK_SESSION_DEV(mtk_get_session_id(crtc)), tl);
 		ret = -EFAULT;
 	}
@@ -1082,13 +1083,13 @@ int mtk_dbi_count_load_buffer(struct mtk_ddp_comp *comp,void *data)
 
 	dbi_buf->dmabuf = dma_buf_get(fd);
 	if (IS_ERR_OR_NULL(dbi_buf->dmabuf)) {
-		DDPMSG("%s: fail to get dma_buf by fd : %d\n", __func__, fd);
+		PC_ERR("%s: fail to get dma_buf by fd : %d\n", __func__, fd);
 		return -1;
 	}
 
 	ret = dmabuf_to_iova(crtc->dev, dbi_buf);
 	if (ret < 0) {
-		DDPMSG("%s: fail to dmabuf_to_iova : %d\n", __func__, ret);
+		PC_ERR("%s: fail to dmabuf_to_iova : %d\n", __func__, ret);
 		return -1;
 	}
 	dbi_buf->size = size;
@@ -1164,7 +1165,7 @@ static void mtk_dbi_set_reg_by_mode(struct mtk_ddp_comp *comp,
 	int size;
 
 	if(!mode_cfg) {
-		DDPPR_ERR("%s:%d mode_cfg is null\n", __func__, __LINE__);
+		PC_ERR("%s:%d mode_cfg is null\n", __func__, __LINE__);
 		return;
 	}
 
@@ -1291,7 +1292,7 @@ static void mtk_dbi_hw_count_trigger(struct mtk_ddp_comp *comp,
 	struct mtk_disp_dbi_count *dbi_count = comp_to_dbi_count(comp);
 
 	if(dbi_count->status < DBI_COUNT_SW_INIT){
-		DDPPR_ERR("%s:%d trigger fail\n", __func__, __LINE__);
+		PC_ERR("%s:%d trigger fail\n", __func__, __LINE__);
 		return;
 	}
 
@@ -1595,7 +1596,7 @@ int mtk_dbi_count_get_mode_by_fmt(struct mtk_dbi_count_helper *helper, enum MTK_
 	else if(data_fmt == MTK_PANEL_SPR_OFF_TYPE)
 		return helper->dfmt_rgb_mode_index;
 
-	DDPMSG("%s:%d, fail %d\n", __func__, __LINE__, data_fmt);
+	PC_ERR("%s:%d, fail %d\n", __func__, __LINE__, data_fmt);
 	return -1;
 }
 
@@ -1703,11 +1704,11 @@ int mtk_dbi_count_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			break;
 
 		if (!priv->data->respective_ostdl) {
-			DDPPR_ERR("respective_ostdl do not set\n");
+			PC_ERR("respective_ostdl do not set\n");
 			break;
 		}
 		if (!handle) {
-			DDPPR_ERR("no cmdq handle\n");
+			PC_ERR("no cmdq handle\n");
 			break;
 		}
 
@@ -1759,7 +1760,7 @@ int mtk_dbi_count_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			break;
 
 		if (!priv->data->respective_ostdl) {
-			DDPPR_ERR("respective_ostdl do not set\n");
+			PC_ERR("respective_ostdl do not set\n");
 			break;
 		}
 
@@ -1915,12 +1916,12 @@ static bool mtk_dbi_count_load_curve(struct mtk_dbi_curve_2d *curve , void **dat
 
 	data[*index] = vmalloc(size);
 	if (!data[*index]) {
-		DDPPR_ERR("%s:%d dbi count init fail\n", __func__, __LINE__);
+		PC_ERR("%s:%d dbi count init fail\n", __func__, __LINE__);
 		goto fail;
 	}
 	if (copy_from_user(data[*index],
 		curve->x, size)) {
-		DDPPR_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
+		PC_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
 		goto fail;
 	}
 	curve->x = (uint32_t *)data[*index];
@@ -1928,12 +1929,12 @@ static bool mtk_dbi_count_load_curve(struct mtk_dbi_curve_2d *curve , void **dat
 
 	data[*index] = vmalloc(size);
 	if (!data[*index]) {
-		DDPPR_ERR("%s:%d dbi count init fail\n", __func__, __LINE__);
+		PC_ERR("%s:%d dbi count init fail\n", __func__, __LINE__);
 		goto fail;
 	}
 	if (copy_from_user(data[*index],
 		curve->y, size)) {
-		DDPPR_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
+		PC_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
 		goto fail;
 	}
 	curve->y = (uint32_t *)data[*index];
@@ -1969,55 +1970,55 @@ static int mtk_dbi_count_init(struct mtk_ddp_comp *comp, struct mtk_drm_dbi_cfg_
 			ret = mtk_dbi_count_load_curve(
 				&count_cfg->count_cfg.hw_count_param[i].dbv_gain_curve[0], data, &index);
 			if(!ret){
-				DDPPR_ERR("%s:%d, mtk_dbi_count_load_curve fail %d\n", __func__, __LINE__, i);
+				PC_ERR("%s:%d, mtk_dbi_count_load_curve fail %d\n", __func__, __LINE__, i);
 				goto fail;
 			}
 			ret = mtk_dbi_count_load_curve(
 				&count_cfg->count_cfg.hw_count_param[i].dbv_gain_curve[1], data, &index);
 			if(!ret){
-				DDPPR_ERR("%s:%d, mtk_dbi_count_load_curve fail %d\n", __func__, __LINE__, i);
+				PC_ERR("%s:%d, mtk_dbi_count_load_curve fail %d\n", __func__, __LINE__, i);
 				goto fail;
 			}
 			ret = mtk_dbi_count_load_curve(
 				&count_cfg->count_cfg.hw_count_param[i].dbv_gain_curve[2], data, &index);
 			if(!ret){
-				DDPPR_ERR("%s:%d, mtk_dbi_count_load_curve fail %d\n", __func__, __LINE__, i);
+				PC_ERR("%s:%d, mtk_dbi_count_load_curve fail %d\n", __func__, __LINE__, i);
 				goto fail;
 			}
 			ret = mtk_dbi_count_load_curve(
 				&count_cfg->count_cfg.hw_count_param[i].fps_gain_curve[0], data, &index);
 			if(!ret){
-				DDPPR_ERR("%s:%d, mtk_dbi_count_load_curve fail %d\n", __func__, __LINE__, i);
+				PC_ERR("%s:%d, mtk_dbi_count_load_curve fail %d\n", __func__, __LINE__, i);
 				goto fail;
 			}
 			ret = mtk_dbi_count_load_curve(
 				&count_cfg->count_cfg.hw_count_param[i].fps_gain_curve[1], data, &index);
 			if(!ret){
-				DDPPR_ERR("%s:%d, mtk_dbi_count_load_curve fail %d\n", __func__, __LINE__, i);
+				PC_ERR("%s:%d, mtk_dbi_count_load_curve fail %d\n", __func__, __LINE__, i);
 				goto fail;
 			}
 			ret = mtk_dbi_count_load_curve(
 				&count_cfg->count_cfg.hw_count_param[i].fps_gain_curve[2], data, &index);
 			if(!ret){
-				DDPPR_ERR("%s:%d, mtk_dbi_count_load_curve fail %d\n", __func__, __LINE__, i);
+				PC_ERR("%s:%d, mtk_dbi_count_load_curve fail %d\n", __func__, __LINE__, i);
 				goto fail;
 			}
 			ret = mtk_dbi_count_load_curve(
 				&count_cfg->count_cfg.hw_count_param[i].temp_gain_curve[0], data, &index);
 			if(!ret){
-				DDPPR_ERR("%s:%d, mtk_dbi_count_load_curve fail %d\n", __func__, __LINE__, i);
+				PC_ERR("%s:%d, mtk_dbi_count_load_curve fail %d\n", __func__, __LINE__, i);
 				goto fail;
 			}
 			ret = mtk_dbi_count_load_curve(
 				&count_cfg->count_cfg.hw_count_param[i].temp_gain_curve[1], data, &index);
 			if(!ret){
-				DDPPR_ERR("%s:%d, mtk_dbi_count_load_curve fail %d\n", __func__, __LINE__, i);
+				PC_ERR("%s:%d, mtk_dbi_count_load_curve fail %d\n", __func__, __LINE__, i);
 				goto fail;
 			}
 			ret = mtk_dbi_count_load_curve(
 				&count_cfg->count_cfg.hw_count_param[i].temp_gain_curve[2], data, &index);
 			if(!ret){
-				DDPPR_ERR("%s:%d, mtk_dbi_count_load_curve fail %d\n", __func__, __LINE__, i);
+				PC_ERR("%s:%d, mtk_dbi_count_load_curve fail %d\n", __func__, __LINE__, i);
 				goto fail;
 			}
 
@@ -2025,46 +2026,46 @@ static int mtk_dbi_count_init(struct mtk_ddp_comp *comp, struct mtk_drm_dbi_cfg_
 				ret = mtk_dbi_count_load_curve(
 					&count_cfg->count_cfg.hw_count_param[i].irdrop_total_gain_curve, data, &index);
 				if(!ret){
-					DDPPR_ERR("%s:%d, mtk_dbi_count_load_curve fail %d\n", __func__, __LINE__, i);
+					PC_ERR("%s:%d, mtk_dbi_count_load_curve fail %d\n", __func__, __LINE__, i);
 					goto fail;
 				}
 				ret = mtk_dbi_count_load_curve(
 					&count_cfg->count_cfg.hw_count_param[i].irdrop_ratio_gain_curve[0],
 					data, &index);
 				if(!ret){
-					DDPPR_ERR("%s:%d, mtk_dbi_count_load_curve fail %d\n", __func__, __LINE__, i);
+					PC_ERR("%s:%d, mtk_dbi_count_load_curve fail %d\n", __func__, __LINE__, i);
 					goto fail;
 				}
 				ret = mtk_dbi_count_load_curve(
 					&count_cfg->count_cfg.hw_count_param[i].irdrop_ratio_gain_curve[1],
 					data, &index);
 				if(!ret){
-					DDPPR_ERR("%s:%d, mtk_dbi_count_load_curve fail %d\n", __func__, __LINE__, i);
+					PC_ERR("%s:%d, mtk_dbi_count_load_curve fail %d\n", __func__, __LINE__, i);
 					goto fail;
 				}
 				ret = mtk_dbi_count_load_curve(
 					&count_cfg->count_cfg.hw_count_param[i].irdrop_ratio_gain_curve[2],
 					data, &index);
 				if(!ret){
-					DDPPR_ERR("%s:%d, mtk_dbi_count_load_curve fail %d\n", __func__, __LINE__, i);
+					PC_ERR("%s:%d, mtk_dbi_count_load_curve fail %d\n", __func__, __LINE__, i);
 					goto fail;
 				}
 				ret = mtk_dbi_count_load_curve(
 					&count_cfg->count_cfg.hw_count_param[i].irdrop_dbv_gain_curve[0], data, &index);
 				if(!ret){
-					DDPPR_ERR("%s:%d, mtk_dbi_count_load_curve fail %d\n", __func__, __LINE__, i);
+					PC_ERR("%s:%d, mtk_dbi_count_load_curve fail %d\n", __func__, __LINE__, i);
 					goto fail;
 				}
 				ret = mtk_dbi_count_load_curve(
 					&count_cfg->count_cfg.hw_count_param[i].irdrop_dbv_gain_curve[1], data, &index);
 				if(!ret){
-					DDPPR_ERR("%s:%d, mtk_dbi_count_load_curve fail %d\n", __func__, __LINE__, i);
+					PC_ERR("%s:%d, mtk_dbi_count_load_curve fail %d\n", __func__, __LINE__, i);
 					goto fail;
 				}
 				ret = mtk_dbi_count_load_curve(
 					&count_cfg->count_cfg.hw_count_param[i].irdrop_dbv_gain_curve[2], data, &index);
 				if(!ret){
-					DDPPR_ERR("%s:%d, mtk_dbi_count_load_curve fail %d\n", __func__, __LINE__, i);
+					PC_ERR("%s:%d, mtk_dbi_count_load_curve fail %d\n", __func__, __LINE__, i);
 					goto fail;
 				}
 			}
@@ -2076,12 +2077,12 @@ static int mtk_dbi_count_init(struct mtk_ddp_comp *comp, struct mtk_drm_dbi_cfg_
 
 		data[index] = vmalloc(size);
 		if (!data[index]) {
-			DDPPR_ERR("%s:%d dbi count init fail\n", __func__, __LINE__);
+			PC_ERR("%s:%d dbi count init fail\n", __func__, __LINE__);
 			goto fail;
 		}
 		if (copy_from_user(data[index],
 			count_cfg->count_cfg.code_gain_packed.addr, size)) {
-			DDPPR_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
+			PC_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
 			goto fail;
 		}
 		count_cfg->count_cfg.code_gain_packed.addr = (uint32_t *)data[index];
@@ -2089,12 +2090,12 @@ static int mtk_dbi_count_init(struct mtk_ddp_comp *comp, struct mtk_drm_dbi_cfg_
 
 		data[index] = vmalloc(size);
 		if (!data[index]) {
-			DDPPR_ERR("%s:%d dbi count init fail\n", __func__, __LINE__);
+			PC_ERR("%s:%d dbi count init fail\n", __func__, __LINE__);
 			goto fail;
 		}
 		if (copy_from_user(data[index],
 			count_cfg->count_cfg.code_gain_packed.mask, size)) {
-			DDPPR_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
+			PC_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
 			goto fail;
 		}
 		count_cfg->count_cfg.code_gain_packed.mask= (uint32_t *)data[index];
@@ -2104,12 +2105,12 @@ static int mtk_dbi_count_init(struct mtk_ddp_comp *comp, struct mtk_drm_dbi_cfg_
 			count_cfg->count_cfg.code_gain_packed.mode_num;
 		data[index] = vmalloc(size);
 		if (!data[index]) {
-			DDPPR_ERR("%s:%d dbi count init fail\n", __func__, __LINE__);
+			PC_ERR("%s:%d dbi count init fail\n", __func__, __LINE__);
 			goto fail;
 		}
 		if (copy_from_user(data[index],
 			count_cfg->count_cfg.code_gain_packed.mode_value, size)) {
-			DDPPR_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
+			PC_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
 			goto fail;
 		}
 		count_cfg->count_cfg.code_gain_packed.mode_value= (uint32_t *)data[index];
@@ -2122,12 +2123,12 @@ static int mtk_dbi_count_init(struct mtk_ddp_comp *comp, struct mtk_drm_dbi_cfg_
 
 		data[index] = vmalloc(size);
 		if (!data[index]) {
-			DDPPR_ERR("%s:%d dbi count init fail\n", __func__, __LINE__);
+			PC_ERR("%s:%d dbi count init fail\n", __func__, __LINE__);
 			goto fail;
 		}
 		if (copy_from_user(data[index],
 			count_cfg->count_static_cfg.addr, size)) {
-			DDPPR_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
+			PC_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
 			goto fail;
 		}
 		count_cfg->count_static_cfg.addr = (uint32_t *)data[index];
@@ -2135,12 +2136,12 @@ static int mtk_dbi_count_init(struct mtk_ddp_comp *comp, struct mtk_drm_dbi_cfg_
 
 		data[index] = vmalloc(size);
 		if (!data[index]) {
-			DDPPR_ERR("%s:%d dbi count init fail\n", __func__, __LINE__);
+			PC_ERR("%s:%d dbi count init fail\n", __func__, __LINE__);
 			goto fail;
 		}
 		if (copy_from_user(data[index],
 			count_cfg->count_static_cfg.mask, size)) {
-			DDPPR_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
+			PC_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
 			goto fail;
 		}
 		count_cfg->count_static_cfg.mask= (uint32_t *)data[index];
@@ -2149,12 +2150,12 @@ static int mtk_dbi_count_init(struct mtk_ddp_comp *comp, struct mtk_drm_dbi_cfg_
 		size = sizeof(uint32_t) * count_cfg->count_static_cfg.reg_num * count_cfg->count_static_cfg.mode_num;
 		data[index] = vmalloc(size);
 		if (!data[index]) {
-			DDPPR_ERR("%s:%d dbi count init fail\n", __func__, __LINE__);
+			PC_ERR("%s:%d dbi count init fail\n", __func__, __LINE__);
 			goto fail;
 		}
 		if (copy_from_user(data[index],
 			count_cfg->count_static_cfg.mode_value, size)) {
-			DDPPR_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
+			PC_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
 			goto fail;
 		}
 		count_cfg->count_static_cfg.mode_value= (uint32_t *)data[index];
@@ -2166,12 +2167,12 @@ static int mtk_dbi_count_init(struct mtk_ddp_comp *comp, struct mtk_drm_dbi_cfg_
 
 		data[index] = vmalloc(size);
 		if (!data[index]) {
-			DDPPR_ERR("%s:%d dbi count init fail\n", __func__, __LINE__);
+			PC_ERR("%s:%d dbi count init fail\n", __func__, __LINE__);
 			goto fail;
 		}
 		if (copy_from_user(data[index],
 			count_cfg->count_dfmt_cfg.addr, size)) {
-			DDPPR_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
+			PC_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
 			goto fail;
 		}
 		count_cfg->count_dfmt_cfg.addr = (uint32_t *)data[index];
@@ -2179,12 +2180,12 @@ static int mtk_dbi_count_init(struct mtk_ddp_comp *comp, struct mtk_drm_dbi_cfg_
 
 		data[index] = vmalloc(size);
 		if (!data[index]) {
-			DDPPR_ERR("%s:%d dbi count init fail\n", __func__, __LINE__);
+			PC_ERR("%s:%d dbi count init fail\n", __func__, __LINE__);
 			goto fail;
 		}
 		if (copy_from_user(data[index],
 			count_cfg->count_dfmt_cfg.mask, size)) {
-			DDPPR_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
+			PC_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
 			goto fail;
 		}
 		count_cfg->count_dfmt_cfg.mask= (uint32_t *)data[index];
@@ -2193,12 +2194,12 @@ static int mtk_dbi_count_init(struct mtk_ddp_comp *comp, struct mtk_drm_dbi_cfg_
 		size = sizeof(uint32_t) * count_cfg->count_dfmt_cfg.reg_num * count_cfg->count_dfmt_cfg.mode_num;
 		data[index] = vmalloc(size);
 		if (!data[index]) {
-			DDPPR_ERR("%s:%d dbi count init fail\n", __func__, __LINE__);
+			PC_ERR("%s:%d dbi count init fail\n", __func__, __LINE__);
 			goto fail;
 		}
 		if (copy_from_user(data[index],
 			count_cfg->count_dfmt_cfg.mode_value, size)) {
-			DDPPR_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
+			PC_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
 			goto fail;
 		}
 		count_cfg->count_dfmt_cfg.mode_value= (uint32_t *)data[index];
@@ -2211,7 +2212,7 @@ static int mtk_dbi_count_init(struct mtk_ddp_comp *comp, struct mtk_drm_dbi_cfg_
 	return 0;
 
 fail:
-	DDPPR_ERR("%s: dbi count init fail\n", __func__);
+	PC_ERR("%s: dbi count init fail\n", __func__);
 	for (int i = 0; i<ARRAY_SIZE(data); i++) {
 		if (data[i])
 			vfree(data[i]);
@@ -2237,19 +2238,19 @@ static int mtk_dbi_count_load_buffer_cfg(struct mtk_ddp_comp *comp, struct mtk_d
 		data[2] = (void *)buf_cfg->buf_reg_list.addr;
 		if (copy_from_user(buf_cfg->buf_reg_list.value,
 			cfg->buf_reg_list.value, size)) {
-			DDPPR_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
+			PC_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
 			goto fail;
 		}
 
 		if (copy_from_user(buf_cfg->buf_reg_list.mask,
 			cfg->buf_reg_list.mask, size)) {
-			DDPPR_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
+			PC_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
 			goto fail;
 		}
 
 		if (copy_from_user(buf_cfg->buf_reg_list.addr,
 			cfg->buf_reg_list.addr, size)) {
-			DDPPR_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
+			PC_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
 			goto fail;
 		}
 
@@ -2261,12 +2262,12 @@ static int mtk_dbi_count_load_buffer_cfg(struct mtk_ddp_comp *comp, struct mtk_d
 		size = sizeof(uint32_t) * buf_cfg->buf_reg_list.reg_num;
 		data[index] = vmalloc(size);
 		if (!data[index]) {
-			DDPPR_ERR("%s:%d dbi count init fail\n", __func__, __LINE__);
+			PC_ERR("%s:%d dbi count init fail\n", __func__, __LINE__);
 			goto fail;
 		}
 		if (copy_from_user(data[index],
 			buf_cfg->buf_reg_list.value, size)) {
-			DDPPR_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
+			PC_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
 			goto fail;
 		}
 		buf_cfg->buf_reg_list.value = (uint32_t *)data[index];
@@ -2274,12 +2275,12 @@ static int mtk_dbi_count_load_buffer_cfg(struct mtk_ddp_comp *comp, struct mtk_d
 
 		data[index] = vmalloc(size);
 		if (!data[index]) {
-			DDPPR_ERR("%s:%d dbi count init fail\n", __func__, __LINE__);
+			PC_ERR("%s:%d dbi count init fail\n", __func__, __LINE__);
 			goto fail;
 		}
 		if (copy_from_user(data[index],
 			buf_cfg->buf_reg_list.addr, size)) {
-			DDPPR_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
+			PC_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
 			goto fail;
 		}
 		buf_cfg->buf_reg_list.addr = (uint32_t *)data[index];
@@ -2287,12 +2288,12 @@ static int mtk_dbi_count_load_buffer_cfg(struct mtk_ddp_comp *comp, struct mtk_d
 
 		data[index] = vmalloc(size);
 		if (!data[index]) {
-			DDPPR_ERR("%s:%d dbi count init fail\n", __func__, __LINE__);
+			PC_ERR("%s:%d dbi count init fail\n", __func__, __LINE__);
 			goto fail;
 		}
 		if (copy_from_user(data[index],
 			buf_cfg->buf_reg_list.mask, size)) {
-			DDPPR_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
+			PC_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
 			goto fail;
 		}
 		buf_cfg->buf_reg_list.mask = (uint32_t *)data[index];
@@ -2302,7 +2303,7 @@ static int mtk_dbi_count_load_buffer_cfg(struct mtk_ddp_comp *comp, struct mtk_d
 	return 0;
 
 fail:
-	DDPPR_ERR("%s: dbi count init fail\n", __func__);
+	PC_ERR("%s: dbi count init fail\n", __func__);
 	for (int i = 0; i<ARRAY_SIZE(data); i++) {
 		if (data[i])
 			vfree(data[i]);
