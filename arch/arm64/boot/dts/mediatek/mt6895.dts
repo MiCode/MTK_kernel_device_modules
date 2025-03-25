@@ -1678,7 +1678,7 @@
 			};
 
 			apu_mdw_rpmsg {
-				compatible = "mediatek,apu-mdw-rpmsg";
+				compatible = "mediatek,apu-mdw-rpmsg-v2";
 				mtk,rpmsg-name = "apu-mdw-rpmsg";
 			};
 
