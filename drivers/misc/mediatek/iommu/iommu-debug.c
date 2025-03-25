@@ -115,6 +115,8 @@
 #define SMMU_STACK_MAX_LEN		(400)
 #endif
 
+#define SMMU_SSID_SIZE			GENMASK(4, 0)
+
 #define IOMMU_DEFAULT_IOVA_MAX_ALIGN_SHIFT	9
 static unsigned long iommu_max_align_shift __read_mostly = IOMMU_DEFAULT_IOVA_MAX_ALIGN_SHIFT;
 
@@ -1041,6 +1043,20 @@ static int mtk_smmu_ssid_support(struct arm_smmu_master *master)
 	return 0;
 }
 
+static int mtk_smmu_ssid_is_valid(struct arm_smmu_master *master, u32 ssid)
+{
+	u32 ssid_max;
+
+	if (ssid == SMMU_NO_SSID || !master || master->ssid_bits > SMMU_SSID_SIZE)
+		return -EINVAL;
+
+	ssid_max = (u32)(1U << master->ssid_bits) - 1;
+	if (ssid > ssid_max)
+		return -EINVAL;
+
+	return 0;
+}
+
 void report_custom_smmu_fault(u64 fault_iova, u64 fault_pa,
 			      u32 fault_id, u32 smmu_id)
 {
@@ -1466,8 +1482,8 @@ static void cd_dump(struct seq_file *s, u32 ssid, __le64 *cd)
 	}
 }
 
-static void dump_ste_cd_info(struct seq_file *s,
-			     struct arm_smmu_master *master)
+static void dump_ste_cd(struct seq_file *s, struct arm_smmu_master *master,
+			u32 sub_sid, bool ssidv)
 {
 	struct arm_smmu_ssid_domain *ssid_domain, *next;
 	struct arm_smmu_domain *domain;
@@ -1495,7 +1511,7 @@ static void dump_ste_cd_info(struct seq_file *s,
 
 	if (is_valid_cd(cdptr)) {
 		asid = FIELD_GET(CTXDESC_CD_0_ASID, le64_to_cpu(cdptr[0]));
-		ttbr = FIELD_GET(CTXDESC_CD_1_TTB0_MASK,  le64_to_cpu(cdptr[1]));
+		ttbr = FIELD_GET(CTXDESC_CD_1_TTB0_MASK, le64_to_cpu(cdptr[1]));
 	}
 
 	iommu_dump(s, "%s sid=0x%x ssid=0x0 asid=0x%llx ttbr=0x%llx dev(%s) [cd:%d ste:%d]\n",
@@ -1517,22 +1533,38 @@ static void dump_ste_cd_info(struct seq_file *s,
 	if (mtk_smmu_ssid_support(master))
 		return;
 
+	if (ssidv && (mtk_smmu_ssid_is_valid(master, sub_sid) != 0))
+		return;
+
 	/* ssid cd dump */
 	rbtree_postorder_for_each_entry_safe(ssid_domain,
 					     next,
 					     &domain->ssid_domains,
 					     node) {
 		ssid = ssid_domain->ssid;
-		cdptr = smmu_ops->get_cd_ptr(master, ssid);
-		if (!is_valid_cd(cdptr))
+
+		/* If ssidv is enabled and ssid doesn't match sub_sid, skip */
+		if (ssidv && (sub_sid != ssid))
 			continue;
 
-		asid = FIELD_GET(CTXDESC_CD_0_ASID, le64_to_cpu(cdptr[0]));
-		ttbr = FIELD_GET(CTXDESC_CD_1_TTB0_MASK,  le64_to_cpu(cdptr[1]));
-		iommu_dump(s, "%s sid=0x%x ssid=0x%x asid=0x%llx ttbr=0x%llx dev(%s)\n",
-			   __func__, sid, ssid, asid, ttbr, dev_name(master->dev));
-		cd_dump(s, ssid, cdptr);
+		cdptr = smmu_ops->get_cd_ptr(master, ssid);
+		if (is_valid_cd(cdptr)) {
+			asid = FIELD_GET(CTXDESC_CD_0_ASID, le64_to_cpu(cdptr[0]));
+			ttbr = FIELD_GET(CTXDESC_CD_1_TTB0_MASK, le64_to_cpu(cdptr[1]));
+			iommu_dump(s, "%s sid=0x%x ssid=0x%x asid=0x%llx ttbr=0x%llx dev(%s)\n",
+				   __func__, sid, ssid, asid, ttbr, dev_name(master->dev));
+			cd_dump(s, ssid, cdptr);
+		}
+
+		/* If ssidv is enabled and ssid matches sub_sid, exit early */
+		if (ssidv && (sub_sid == ssid))
+			return;
 	}
+}
+
+static void dump_ste_cd_info(struct seq_file *s, struct arm_smmu_master *master)
+{
+	dump_ste_cd(s, master, SMMU_NO_SSID, false);
 }
 
 static inline void pt_info_dump(struct seq_file *s,
@@ -1823,7 +1855,7 @@ void mtk_smmu_ste_cd_dump(struct seq_file *s, u32 smmu_type)
 }
 EXPORT_SYMBOL_GPL(mtk_smmu_ste_cd_dump);
 
-void mtk_smmu_ste_cd_info_dump(struct seq_file *s, u32 smmu_type, u32 sid)
+void mtk_smmu_ste_cd_info_dump(struct seq_file *s, u32 smmu_type, u32 sid, u32 ssid)
 {
 	struct arm_smmu_device *smmu = NULL;
 	struct arm_smmu_stream *stream;
@@ -1847,7 +1879,7 @@ void mtk_smmu_ste_cd_info_dump(struct seq_file *s, u32 smmu_type, u32 sid)
 		    stream->master->streams != NULL)
 			/* currently only support one master one sid */
 			if (sid == stream->master->streams[0].id) {
-				dump_ste_cd_info(s, stream->master);
+				dump_ste_cd(s, stream->master, ssid, true);
 				return;
 			}
 	}

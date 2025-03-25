@@ -2466,7 +2466,7 @@ static int mtk_smmu_report_device_fault(struct arm_smmu_device *smmu, u64 *evt,
 
 	mtk_smmu_wpreg_dump(NULL, smmu_type);
 
-	mtk_smmu_ste_cd_info_dump(NULL, smmu_type, sid);
+	mtk_smmu_ste_cd_info_dump(NULL, smmu_type, sid, (ssid_valid ? ssid : SMMU_NO_SSID));
 	mtk_hyp_smmu_debug_dump(smmu, 0, 0, sid, HYP_SMMU_GLOBAL_STE_DUMP_EVT, 0);
 	mtk_hyp_smmu_debug_dump(smmu, fault_ipa, 0, sid, id, s2_trans);
 	mtk_hyp_smmu_reg_dump(smmu);
@@ -3752,7 +3752,7 @@ void smmu_reg_dump(enum mtk_smmu_type type,
 	mtk_hyp_smmu_reg_dump(smmu);
 
 	if (sid_valid) {
-		mtk_smmu_ste_cd_info_dump(NULL, type, sid);
+		mtk_smmu_ste_cd_info_dump(NULL, type, sid, SMMU_NO_SSID);
 		mtk_hyp_smmu_debug_dump(smmu, 0, 0, sid, HYP_SMMU_GLOBAL_STE_DUMP_EVT, 0);
 		mtk_smmu_sid_dump(smmu, sid);
 	}
