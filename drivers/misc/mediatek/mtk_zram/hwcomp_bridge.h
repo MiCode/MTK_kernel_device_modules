@@ -139,7 +139,7 @@ void hwcomp_buf_destroy(struct hwcomp_buf_t *entry);
 		if (current_is_kswapd())	\
 			cond_resched();		\
 		else				\
-			usleep_range(1, 5);	\
+			usleep_range(10, 50);	\
 	} while (0)				\
 
 #define WAIT_FOR_HWDCOMP()			\

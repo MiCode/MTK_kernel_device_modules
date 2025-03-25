@@ -122,11 +122,13 @@ struct zram_stats {
 	atomic64_t bd_writes;		/* no. of writes from backing device */
 #endif
 	atomic64_t hw_failed_reads;	/* Error occurs when using HW for reads */
+	atomic64_t hw_failed_writes;	/* Error occurs when using HW for writes */
 	atomic64_t hw_inuse;		/* no. of requests using HW (now only for read) */
 	atomic64_t hw_busy;		/* HW compression is busy (may be FIFO full) */
 	atomic64_t hw_busy_wait;	/* HW compression is busy and wait for available */
 	atomic64_t hw_dec_busy;		/* HW decompression is busy (may be FIFO full) */
 	atomic64_t hw_dec_busy_wait;	/* HW decompression is busy and wait for available */
+	atomic64_t hw_huge_pages_since;	/* no. of huge pages (from hw view) since zram set up */
 };
 
 #ifdef CONFIG_ZRAM_MULTI_COMP

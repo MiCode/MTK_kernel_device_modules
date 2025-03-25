@@ -12,7 +12,7 @@
 struct engine_operations_struct {
 
 	/* Post-process one compression cmd */
-	void (*comp_process_completed_cmd)(struct hwfifo *fifo, uint32_t entry);
+	void (*comp_process_completed_cmd)(struct hwfifo *fifo, uint32_t entry, bool silence);
 
 	/* Prepare CMD for the compression of one page */
 	bool (*fill_compression_info)(struct hwfifo *fifo, uint32_t entry,

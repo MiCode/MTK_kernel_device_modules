@@ -317,12 +317,12 @@ void engine_smmu_bypass(struct engine_control_t *ctrl);
 
 void engine_enc_wait_idle(struct engine_control_t *ctrl);
 void engine_dec_wait_idle(struct engine_control_t *ctrl);
+int engine_enc_wait_idle_timeout(struct engine_control_t *ctrl, unsigned long timeout);
 
 void engine_enc_init(struct engine_control_t *ctrl, bool dst_copy);
 void engine_dec_init(struct engine_control_t *ctrl, bool src_snoop);
 
-void engine_setup_enc_main_fifo(struct engine_control_t *ctrl, phys_addr_t addr, unsigned int sz_bits);
-void engine_setup_enc_second_fifo(struct engine_control_t *ctrl, phys_addr_t addr, unsigned int sz_bits);
+void engine_setup_enc_fifo(struct engine_control_t *ctrl, unsigned int id, phys_addr_t addr, unsigned int sz_bits);
 void engine_setup_dec_fifo(struct engine_control_t *ctrl, unsigned int id, phys_addr_t addr, unsigned int sz_bits);
 void engine_reset_all_indices(struct engine_control_t *ctrl);
 
@@ -333,6 +333,22 @@ void engine_enc_debug_show_more(struct engine_control_t *ctrl);
 void engine_dec_debug_sel(struct engine_control_t *ctrl, uint32_t reg_val);
 void engine_dec_debug_show(struct engine_control_t *ctrl);
 void engine_dec_debug_show_more(struct engine_control_t *ctrl);
+
+static inline void engine_enc_change_mode(struct engine_control_t *ctrl, bool offset_mode)
+{
+	if (offset_mode)
+		writel(0x1, ctrl->zram_enc_base + ZRAM_ENC_CONTROL);
+	else
+		writel(0x0, ctrl->zram_enc_base + ZRAM_ENC_CONTROL);
+}
+
+static inline void engine_dec_change_mode(struct engine_control_t *ctrl, bool offset_mode)
+{
+	if (offset_mode)
+		writel(0x1, ctrl->zram_dec_base + ZRAM_DEC_CONTROL);
+	else
+		writel(0x0, ctrl->zram_dec_base + ZRAM_DEC_CONTROL);
+}
 
 /* A function provided from zram_engine.c to check fifo rtff result */
 void engine_self_check_before_kick(struct engine_control_t *ctrl);
@@ -529,6 +545,12 @@ static inline void engine_kick(void __iomem *write_idx_reg)
 	writel(ENGINE_START_MASK | reg_val, write_idx_reg);
 }
 
+/* Kick engine with idx */
+static inline void engine_kick_with_idx(void __iomem *write_idx_reg, uint32_t hw_write_idx)
+{
+	writel(ENGINE_START_MASK | hw_write_idx, write_idx_reg);
+}
+
 /* Warm reset enc */
 static inline void engine_enc_reset(struct engine_control_t *ctrl)
 {
@@ -539,6 +561,20 @@ static inline void engine_enc_reset(struct engine_control_t *ctrl)
 static inline void engine_dec_reset(struct engine_control_t *ctrl)
 {
 	writel(0x1, ctrl->zram_dec_base + ZRAM_DEC_RESET);
+}
+
+/* Set offset index as complete index */
+static inline void engine_set_offset_as_complete(void __iomem *offset_idx_reg, void __iomem *complete_idx_reg)
+{
+	uint32_t reg_val = readl(complete_idx_reg);
+
+	writel(reg_val, offset_idx_reg);
+}
+
+/* Update offset index */
+static inline void engine_set_offset_index(void __iomem *offset_idx_reg, uint32_t reg_val)
+{
+	writel(reg_val, offset_idx_reg);
 }
 
 #endif /* _ENGINE_REGS_H_ */

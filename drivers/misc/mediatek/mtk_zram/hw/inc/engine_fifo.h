@@ -19,38 +19,24 @@
 #define ENGINE_COMP_FIFO_TAG_BIT		(ENGINE_COMP_FIFO_MAX_BITS - 1)
 #define ENGINE_COMP_FIFO_TAG_BIT_MASK		(1 << ENGINE_COMP_FIFO_TAG_BIT)
 
-/* Compression FIFO #1 (for kswapd only) */
-#define ENGINE_COMP_FIFO_1_ID			(0)
-#define ENGINE_COMP_FIFO_1_ENTRY_BITS		(CONFIG_ZRAM_ENGINE_COMP_FIFO_1_BITS)
-#define ENGINE_COMP_FIFO_1_CARRY_BIT		(ENGINE_COMP_FIFO_1_ENTRY_BITS)
-#define ENGINE_COMP_FIFO_1_ENTRY_MASK		((1UL << ENGINE_COMP_FIFO_1_ENTRY_BITS) - 1)
-#define ENGINE_COMP_FIFO_1_ENTRY_CARRY_BITS	(ENGINE_COMP_FIFO_1_ENTRY_BITS + 1)
-#define ENGINE_COMP_FIFO_1_ENTRY_CARRY_MASK	((1UL << ENGINE_COMP_FIFO_1_ENTRY_CARRY_BITS) - 1)
-#define ENGINE_COMP_FIFO_1_PROPAGATION		((1UL << ENGINE_COMP_FIFO_TAG_BIT) \
-						 - ENGINE_COMP_FIFO_1_ENTRY_MASK - 1)
-#define ENGINE_COMP_FIFO_1_INDEX_MASK		(((1UL << ENGINE_COMP_FIFO_MAX_BITS) - 1) \
-						 & ~ENGINE_COMP_FIFO_1_PROPAGATION)
-#define ENGINE_COMP_FIFO_1_TAG_CARRY_OFFSET	(ENGINE_COMP_FIFO_TAG_BIT - ENGINE_COMP_FIFO_1_CARRY_BIT)
-
-/* Compression FIFO #2 (for others) */
-#define ENGINE_COMP_FIFO_2_ID			(1)
-#define ENGINE_COMP_FIFO_2_ENTRY_BITS		(CONFIG_ZRAM_ENGINE_COMP_FIFO_2_BITS)
-#define ENGINE_COMP_FIFO_2_CARRY_BIT		(ENGINE_COMP_FIFO_2_ENTRY_BITS)
-#define ENGINE_COMP_FIFO_2_ENTRY_MASK		((1UL << ENGINE_COMP_FIFO_2_ENTRY_BITS) - 1)
-#define ENGINE_COMP_FIFO_2_ENTRY_CARRY_BITS	(ENGINE_COMP_FIFO_2_ENTRY_BITS + 1)
-#define ENGINE_COMP_FIFO_2_ENTRY_CARRY_MASK	((1UL << ENGINE_COMP_FIFO_2_ENTRY_CARRY_BITS) - 1)
-#define ENGINE_COMP_FIFO_2_PROPAGATION		((1UL << ENGINE_COMP_FIFO_TAG_BIT) \
-						 - ENGINE_COMP_FIFO_2_ENTRY_MASK - 1)
-#define ENGINE_COMP_FIFO_2_INDEX_MASK		(((1UL << ENGINE_COMP_FIFO_MAX_BITS) - 1) \
-						 & ~ENGINE_COMP_FIFO_2_PROPAGATION)
-#define ENGINE_COMP_FIFO_2_TAG_CARRY_OFFSET	(ENGINE_COMP_FIFO_TAG_BIT - ENGINE_COMP_FIFO_2_CARRY_BIT)
+/* Compression FIFOs */
+#define ENGINE_COMP_FIFO_ENTRY_BITS		(CONFIG_ZRAM_ENGINE_COMP_FIFO_BITS)
+#define ENGINE_COMP_FIFO_CARRY_BIT		(ENGINE_COMP_FIFO_ENTRY_BITS)
+#define ENGINE_COMP_FIFO_ENTRY_MASK		((1UL << ENGINE_COMP_FIFO_ENTRY_BITS) - 1)
+#define ENGINE_COMP_FIFO_ENTRY_CARRY_BITS	(ENGINE_COMP_FIFO_ENTRY_BITS + 1)
+#define ENGINE_COMP_FIFO_ENTRY_CARRY_MASK	((1UL << ENGINE_COMP_FIFO_ENTRY_CARRY_BITS) - 1)
+#define ENGINE_COMP_FIFO_PROPAGATION		((1UL << ENGINE_COMP_FIFO_TAG_BIT) \
+						 - ENGINE_COMP_FIFO_ENTRY_MASK - 1)
+#define ENGINE_COMP_FIFO_INDEX_MASK		(((1UL << ENGINE_COMP_FIFO_MAX_BITS) - 1) \
+						 & ~ENGINE_COMP_FIFO_PROPAGATION)
+#define ENGINE_COMP_FIFO_TAG_CARRY_OFFSET	(ENGINE_COMP_FIFO_TAG_BIT - ENGINE_COMP_FIFO_CARRY_BIT)
 
 /* Batch interrupt for compression */
-#define COMP_BATCH_INTR_CNT_BITS		((CONFIG_ZRAM_ENGINE_COMP_FIFO_1_BITS >		\
-						 CONFIG_ZRAM_ENGINE_COMP_FIFO_2_BITS) ?		\
-						 (CONFIG_ZRAM_ENGINE_COMP_FIFO_2_BITS - 1) :	\
-						 (CONFIG_ZRAM_ENGINE_COMP_FIFO_1_BITS - 1))
+#define COMP_BATCH_INTR_CNT_BITS		(ENGINE_COMP_FIFO_ENTRY_BITS - 1)
 #define ENGINE_COMP_BATCH_INTR_CNT_BITS		((COMP_BATCH_INTR_CNT_BITS > 6) ? COMP_BATCH_INTR_CNT_BITS : 6)
+
+/* The number of compression fifos */
+#define MAX_COMP_NR	(2)
 
 /*
  * Decompression FIFO - BIT[15]: Tag-bit, BIT[6..0]: Entry-bits
@@ -107,87 +93,83 @@ struct hwfifo {
 	 */
 	uint32_t write_idx;
 	uint32_t complete_idx;
+	uint32_t pp_prev_end;
+	uint32_t accu_usage;	/* Accumulated usage (monotonically increased or set to 0 when fifo switch) */
 
 	/* Corresponding Registers */
 	void __iomem *write_idx_reg;
 	void __iomem *complete_idx_reg;
+	void __iomem *offset_idx_reg;
 
 	/* Keep track of ongoing operations */
 	void *completion;
 
-	/* Private data for current fifo implementation (May be NULL) */
-	void *priv;
-
-	uint32_t pp_prev_end;
-
 	/* fifo depth */
 	uint32_t size;
+
+	/* fifo private id */
+	uint32_t id;
 
 	/* In DRAM fifo */
 	void *buf;
 	phys_addr_t buf_pa;	/* Must be 4K-aligned */
 
+	/* Private data for current fifo implementation (May be NULL) */
+	void *priv;
+
 	/* - No use of fields for mask operations will save up to 5 more instructions per function call - */
 
 } ____cacheline_internodealigned_in_smp;
 
-/* Just for fifo initialization */
-struct hwfifo_mask_fields {
-	uint32_t entry_mask;
-	uint32_t sw_index_mask;	/* ENTRY_CARRY_MASK */
-	uint32_t propagation;	/* Translate SW carry-bit to HW tag-bit */
-	uint32_t hw_index_mask;	/* INDEX_MASK */
-};
-
 /*
  * Macros to create function defintions for fifos -
  *
- * ex. ENGINE_FIFO_OPS(COMP, comp, _1) will create following functions,
+ * ex. ENGINE_FIFO_OPS(COMP, comp) will create following functions,
  *
  * // Get the SW copy of fifo's write index
- * 	static inline uint32_t comp_fifo_1_write_entry(struct hwfifo *fifo)
+ *	static inline uint32_t comp_fifo_write_entry(struct hwfifo *fifo)
  * // Get the SW copy of fifo's complete index
- * 	static inline uint32_t comp_fifo_1_complete_entry(struct hwfifo *fifo)
+ *	static inline uint32_t comp_fifo_complete_entry(struct hwfifo *fifo)
  * // Query whether fifo is full
- * 	static bool comp_fifo_1_full(struct hwfifo *fifo)
+ *	static bool comp_fifo_full(struct hwfifo *fifo)
  * // Query whether fifo is empty
- * 	static bool comp_fifo_1_empty(struct hwfifo *fifo)
+ *	static bool comp_fifo_empty(struct hwfifo *fifo)
  * // Increase the fifo's write index (including the HW one) by 1
- *	static inline void update_comp_fifo_1_write_index(struct hwfifo *fifo)
+ *	static inline void update_comp_fifo_write_index(struct hwfifo *fifo)
  * // Increase the fifo's write index (including the HW one) by 1 without kick
- *	static inline void update_comp_fifo_1_write_index_nokick(struct hwfifo *fifo)
+ *	static inline void update_comp_fifo_write_index_nokick(struct hwfifo *fifo)
  * // Increase the SW copy of fifo's complete index by 1
- *	static inline void update_comp_fifo_1_complete_index(struct hwfifo *fifo)
+ *	static inline void update_comp_fifo_complete_index(struct hwfifo *fifo)
  * // Translate the HW complete index to the SW one
- *	static inline uint32_t comp_fifo_1_HtS_complete_index(struct hwfifo *fifo)
+ *	static inline uint32_t comp_fifo_HtS_complete_index(struct hwfifo *fifo)
  * // Translate the SW complete index to the HW one (debug purpose)
- *	static inline uint32_t comp_fifo_1_StH_complete_index(struct hwfifo *fifo)
+ *	static inline uint32_t comp_fifo_StH_complete_index(struct hwfifo *fifo)
  */
-#define ENGINE_FIFO_OPS(uname, lname, num)							\
-static inline uint32_t lname##_fifo##num##_write_entry(struct hwfifo *fifo)			\
-{ return fifo->write_idx & ENGINE_##uname##_FIFO##num##_ENTRY_MASK; }				\
-static inline uint32_t lname##_fifo##num##_complete_entry(struct hwfifo *fifo)			\
-{ return fifo->complete_idx & ENGINE_##uname##_FIFO##num##_ENTRY_MASK; }			\
-static bool lname##_fifo##num##_full(struct hwfifo *fifo)					\
+#define ENGINE_FIFO_OPS(uname, lname)								\
+static inline uint32_t lname##_fifo_write_entry(struct hwfifo *fifo)				\
+{ return fifo->write_idx & ENGINE_##uname##_FIFO_ENTRY_MASK; }					\
+static inline uint32_t lname##_fifo_complete_entry(struct hwfifo *fifo)				\
+{ return fifo->complete_idx & ENGINE_##uname##_FIFO_ENTRY_MASK; }				\
+static bool lname##_fifo_full(struct hwfifo *fifo)						\
 {												\
-	uint32_t write_idx = lname##_fifo##num##_write_entry(fifo);				\
-	uint32_t complete_idx = lname##_fifo##num##_complete_entry(fifo);			\
+	uint32_t write_idx = lname##_fifo_write_entry(fifo);					\
+	uint32_t complete_idx = lname##_fifo_complete_entry(fifo);				\
 												\
 	if (write_idx != complete_idx)								\
 		return false;									\
 												\
 	return fifo->write_idx != fifo->complete_idx;						\
 }												\
-static bool lname##_fifo##num##_empty(struct hwfifo *fifo)					\
+static bool lname##_fifo_empty(struct hwfifo *fifo)						\
 { return fifo->write_idx == fifo->complete_idx; }						\
-static inline void update_##lname##_fifo##num##_write_index(struct hwfifo *fifo)		\
+static inline void update_##lname##_fifo_write_index(struct hwfifo *fifo)			\
 {												\
 	uint32_t next_write_idx, next_hw_write_idx;						\
 												\
 	next_write_idx = (fifo->write_idx + 1)							\
-			 & ENGINE_##uname##_FIFO##num##_ENTRY_CARRY_MASK;			\
-	next_hw_write_idx = (next_write_idx + ENGINE_##uname##_FIFO##num##_PROPAGATION)		\
-			    & ENGINE_##uname##_FIFO##num##_INDEX_MASK;				\
+			 & ENGINE_##uname##_FIFO_ENTRY_CARRY_MASK;				\
+	next_hw_write_idx = (next_write_idx + ENGINE_##uname##_FIFO_PROPAGATION)		\
+			    & ENGINE_##uname##_FIFO_INDEX_MASK;					\
 												\
 	wmb();											\
 												\
@@ -195,42 +177,61 @@ static inline void update_##lname##_fifo##num##_write_index(struct hwfifo *fifo)
 												\
 	writel(ENGINE_START_MASK | next_hw_write_idx, fifo->write_idx_reg);			\
 }												\
-static inline void update_##lname##_fifo##num##_write_index_nokick(struct hwfifo *fifo)		\
+static inline void update_##lname##_fifo_write_index_nokick(struct hwfifo *fifo)		\
 {												\
 	uint32_t next_write_idx, next_hw_write_idx;						\
 												\
 	next_write_idx = (fifo->write_idx + 1)							\
-			 & ENGINE_##uname##_FIFO##num##_ENTRY_CARRY_MASK;			\
-	next_hw_write_idx = (next_write_idx + ENGINE_##uname##_FIFO##num##_PROPAGATION)		\
-			    & ENGINE_##uname##_FIFO##num##_INDEX_MASK;				\
+			 & ENGINE_##uname##_FIFO_ENTRY_CARRY_MASK;				\
+	next_hw_write_idx = (next_write_idx + ENGINE_##uname##_FIFO_PROPAGATION)		\
+			    & ENGINE_##uname##_FIFO_INDEX_MASK;					\
 												\
 	wmb();											\
 												\
 	fifo->write_idx = next_write_idx;							\
 												\
-	writel(next_hw_write_idx, fifo->write_idx_reg);			\
+	writel(next_hw_write_idx, fifo->write_idx_reg);						\
 }												\
-static inline void update_##lname##_fifo##num##_complete_index(struct hwfifo *fifo)		\
+static inline void update_##lname##_pfifo_write_index(struct hwfifo *fifo)			\
+{												\
+	uint32_t next_write_idx, next_hw_write_idx;						\
+												\
+	next_write_idx = (fifo->write_idx + 1)							\
+			 & ENGINE_##uname##_FIFO_ENTRY_CARRY_MASK;				\
+	next_hw_write_idx = (next_write_idx + ENGINE_##uname##_FIFO_PROPAGATION)		\
+			    & ENGINE_##uname##_FIFO_INDEX_MASK;					\
+												\
+	/* To make sure write order is perceived correctly */					\
+	wmb();											\
+												\
+	fifo->write_idx = next_write_idx;							\
+}												\
+static inline void update_##lname##_fifo_complete_index(struct hwfifo *fifo)			\
 {												\
 	uint32_t next_complete_idx;								\
 												\
 	next_complete_idx = (fifo->complete_idx + 1)						\
-			    & ENGINE_##uname##_FIFO##num##_ENTRY_CARRY_MASK;			\
+			    & ENGINE_##uname##_FIFO_ENTRY_CARRY_MASK;				\
 												\
 	smp_store_release(&fifo->complete_idx, next_complete_idx);				\
 }												\
-static inline uint32_t lname##_fifo##num##_HtS_complete_index(struct hwfifo *fifo)		\
+static inline uint32_t lname##_fifo_HtS_complete_index(struct hwfifo *fifo)			\
 {												\
 	uint32_t hw_complete_idx = readl(fifo->complete_idx_reg);				\
 												\
 	return (((hw_complete_idx & ENGINE_COMP_FIFO_TAG_BIT_MASK)				\
-			>> ENGINE_##uname##_FIFO##num##_TAG_CARRY_OFFSET)			\
-			| (hw_complete_idx & ENGINE_##uname##_FIFO##num##_ENTRY_MASK));		\
+			>> ENGINE_##uname##_FIFO_TAG_CARRY_OFFSET)				\
+			| (hw_complete_idx & ENGINE_##uname##_FIFO_ENTRY_MASK));		\
 }												\
-static inline uint32_t lname##_fifo##num##_StH_complete_index(struct hwfifo *fifo)		\
+static inline uint32_t lname##_fifo_StH_complete_index(struct hwfifo *fifo)			\
 {												\
-	return (fifo->complete_idx + ENGINE_##uname##_FIFO##num##_PROPAGATION)			\
-		& ENGINE_##uname##_FIFO##num##_INDEX_MASK;					\
+	return (fifo->complete_idx + ENGINE_##uname##_FIFO_PROPAGATION)				\
+		& ENGINE_##uname##_FIFO_INDEX_MASK;						\
+}												\
+static inline uint32_t lname##_fifo_StH_write_index(struct hwfifo *fifo)			\
+{												\
+	return (fifo->write_idx + ENGINE_##uname##_FIFO_PROPAGATION)				\
+		& ENGINE_##uname##_FIFO_INDEX_MASK;						\
 }
 
 /*
@@ -369,7 +370,7 @@ enum comp_cmd_status {
  * (After post-processing, it may be COMP_CMD_PP_ERROR when some error occurs.)
  * If not COMP_CMD_IDLE, will reset it as COMP_CMD_IDLE and tell caller it's invalid.
  */
-static inline bool comp_cmd_check_invalid(struct compress_cmd *cmd)
+static inline bool comp_cmd_check_invalid(struct compress_cmd *cmd, uint32_t entry)
 {
 	if (cmd->status != COMP_CMD_IDLE) {
 		/*
@@ -377,7 +378,8 @@ static inline bool comp_cmd_check_invalid(struct compress_cmd *cmd)
 		 * HW will bypass this cmd when it is set as IDLE.
 		 * What SW needs to do is only update complete_index and try the next one.
 		 */
-		pr_info("%s: cmd status is (0x%x), not (0x%x).\n", __func__, cmd->status, COMP_CMD_IDLE);
+		pr_info("%s: (0x%llx)fifo(%u) - cmd status is (0x%x), not (0x%x) at (0x%x).\n",
+			__func__, cmd->word_0_value, cmd->fifo, cmd->status, COMP_CMD_IDLE, entry);
 		cmd->status = COMP_CMD_IDLE;
 		return true;
 	}
@@ -411,12 +413,33 @@ static inline void update_cmd_before_compression(struct compress_cmd *cmd,
 	 */
 }
 
+/* Return compression status */
+static inline unsigned int get_comp_cmd_status(struct compress_cmd *cmd)
+{
+	return ((unsigned int)READ_ONCE(cmd->word_0_value)) & COMP_CMD_STATUS_MASK;
+}
+
+/* Check whether compression result is incompressible */
+static inline bool comp_cmd_is_incompressible(struct compress_cmd *cmd)
+{
+	return (((unsigned int)READ_ONCE(cmd->word_0_value)) & COMP_CMD_STATUS_MASK) == COMP_CMD_INCOMPRESSIBLE;
+}
+
 /* Set cmd as idle and reset src_addr to 0 (used for reset case) */
 static inline void set_comp_cmd_as_idle(struct compress_cmd *cmd)
 {
 	cmd->status = COMP_CMD_IDLE;
 	cmd->src_addr = 0x0;
 	cmd->word_1_value = 0x0;
+	wmb();
+}
+
+/* Set cmd as error */
+static inline void set_comp_cmd_as_error(struct compress_cmd *cmd)
+{
+	cmd->status = COMP_CMD_ERROR;
+
+	/* To make sure write order is perceived correctly */
 	wmb();
 }
 

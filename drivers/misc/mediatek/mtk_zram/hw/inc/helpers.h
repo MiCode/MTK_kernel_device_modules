@@ -8,11 +8,13 @@
 
 #include <linux/printk.h>
 #include <linux/sprintf.h>
+#include <linux/seq_file.h>
 #include <inc/engine_fifo.h>
 
 int printbinary(char *buf, unsigned long x, int nbits);
 void dump_cmd(void *cmdp, unsigned int cmdsize);
 void dump_comp_cmd(struct compress_cmd *cmdp);
+void seq_dump_comp_cmd(struct seq_file *m, struct compress_cmd *cmdp);
 void dump_all_comp_cmd(struct hwfifo *fifo);
 void dump_dcomp_cmd(struct decompress_cmd *cmdp);
 void dump_all_dcomp_cmd(struct hwfifo *fifo);

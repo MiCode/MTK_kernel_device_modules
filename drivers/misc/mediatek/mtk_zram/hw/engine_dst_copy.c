@@ -107,7 +107,7 @@ static void invalidate_comp_dst_buffers(struct compress_cmd *cmdp)
 /*
  * Post-process one compression cmd
  */
-static void comp_process_completed_cmd(struct hwfifo *fifo, uint32_t entry)
+static void comp_process_completed_cmd(struct hwfifo *fifo, uint32_t entry, bool silence)
 {
 	struct compress_cmd *cmdp = COMP_CMD(fifo, entry);
 	struct comp_pp_info *pp_info = COMP_CMPL(fifo, entry);
@@ -122,7 +122,7 @@ static void comp_process_completed_cmd(struct hwfifo *fifo, uint32_t entry)
 	if (engine_coherence_disabled())
 		invalidate_dcache((unsigned long)cmdp, (unsigned long)cmdp + ENGINE_COMP_CMD_SIZE);
 
-	comp_status = ((unsigned int)READ_ONCE(cmdp->word_0_value)) & COMP_CMD_STATUS_MASK;
+	comp_status = get_comp_cmd_status(cmdp);
 
 	switch (comp_status) {
 	/* Contains repeated pattern */
@@ -162,7 +162,8 @@ static void comp_process_completed_cmd(struct hwfifo *fifo, uint32_t entry)
 	/* This CMD is not processed correctly during HW compression */
 	case COMP_CMD_ERROR:
 		/* Dump CMD */
-		dump_comp_cmd(cmdp);
+		if (!silence)
+			dump_comp_cmd(cmdp);
 		/* No valid HW processed result */
 		err = -EIO;
 		break;
@@ -171,7 +172,8 @@ static void comp_process_completed_cmd(struct hwfifo *fifo, uint32_t entry)
 		/* It's unexpected to be here. dump more information... */
 		pr_info("%s: unexpected compressed status (0x%x).\n", __func__, comp_status);
 		/* Dump CMD */
-		dump_comp_cmd(cmdp);
+		if (!silence)
+			dump_comp_cmd(cmdp);
 		/* No valid HW processed result */
 		err = -EIO;
 		break;
@@ -184,7 +186,7 @@ static void comp_process_completed_cmd(struct hwfifo *fifo, uint32_t entry)
 
 	/* Reset the cmd according to pp_err */
 	if (!pp_err)
-		reset_cmd_after_compression(cmdp);
+		reset_cmd_after_compression(cmdp, fifo->id);
 	else
 		;/* Never comes here! */
 
@@ -354,7 +356,7 @@ static bool fill_compression_info(struct hwfifo *fifo, uint32_t entry,
 	struct comp_pp_info *pp_info = COMP_CMPL(fifo, entry);
 
 	/* Set cmd as COMP_CMD_IDLE. If it's invalid, and then bypass it. */
-	if (comp_cmd_check_invalid(cmdp))
+	if (comp_cmd_check_invalid(cmdp, entry))
 		return false;
 
 	/* Initialize compress cmd */

@@ -27,6 +27,9 @@
 #include <linux/delay.h>
 #include <asm-generic/rwonce.h>
 
+#include <linux/proc_fs.h>
+#include <linux/seq_file.h>
+
 #include <inc/engine_fifo.h>
 #include <inc/engine_regs.h>
 #include <inc/engine_gears.h>
@@ -54,15 +57,17 @@ const unsigned int bufsz[ENGINE_NUM_OF_BUF_SIZES] = { 2048, 1024, 512, 256, 128,
 
 struct zram_engine_t {
 
-	/* Compression fifo for kswapd only (lockless) */
-	struct hwfifo fifo_1;
-
-	/* Compression fifo for others */
-	struct hwfifo fifo_2;
-	spinlock_t fifo_2_lock;
+	/* Compression ping-pong fifos */
+	struct hwfifo comp_fifo[MAX_COMP_NR];
 
 	/* The number of compression requests */
 	atomic_t comp_cnt;
+
+	/* ID of current in-use fifo */
+	int curr_fifo;
+
+	/* Lock for ping-pong & concurrent usage */
+	spinlock_t comp_fifo_lock;
 
 	CACHELINE_PADDING(__pad__0);
 
@@ -125,9 +130,8 @@ static DEFINE_MUTEX(hwz_mutex);
 /*
  * Definition of FIFO operations
  */
-ENGINE_FIFO_OPS(COMP, comp, _1)
-ENGINE_FIFO_OPS(COMP, comp, _2)
-ENGINE_FIFO_OPS(DCOMP, dcomp, )
+ENGINE_FIFO_OPS(COMP, comp)
+ENGINE_FIFO_OPS(DCOMP, dcomp)
 
 /*
  * ATTENTION -
@@ -164,6 +168,7 @@ DEFINE_STATIC_KEY_FALSE(engine_rtff_check);
 
 /* Statistics for suspect hang */
 static atomic_t enc_suspect_hang_count = ATOMIC_INIT(0);
+static atomic_t enc_recover_hang_count = ATOMIC_INIT(0);
 static atomic_t dec_suspect_hang_count = ATOMIC_INIT(0);
 
 /* Statistics for rtff status */
@@ -177,7 +182,7 @@ enum glaflags {
 	GLA_notify,		/* Someone has a request */
 	GLA_encset,		/* Set to default gear level for compression */
 	GLA_decset,		/* Set to default gear level for decompression */
-	GLA_encnotready,	/* Gear set up is ready for compression */
+	GLA_encup,		/* Gear up for compression */
 	GLA_encdone,		/* Gear down for compression */
 	GLA_decdone,		/* Gear down for decompression */
 	GLA_encrst,		/* Notify requesters we will reset compression. Don't bother us */
@@ -209,9 +214,9 @@ static __always_inline bool Gla##uname(unsigned long *flags)		\
 GLAFLAG(Notify, notify);
 GLAFLAG(Encset, encset);
 GLAFLAG(Decset, decset);
+GLAFLAG(Encup, encup);
 GLAFLAG(Encdone, encdone);
 GLAFLAG(Decdone, decdone);
-GLAFLAG(EncNotready, encnotready);
 GLAFLAG(EncRst, encrst);
 GLAFLAG(DecRst, decrst);
 
@@ -443,20 +448,15 @@ void engine_self_check_before_kick(struct engine_control_t *ctrl)
 	 * Check fifo status
 	 */
 
-	/* main compression fifo */
-	fifo = &hwz->fifo_1;
-	cmpl_idx = comp_fifo_1_HtS_complete_index(fifo);
-	if (cmpl_idx != fifo->complete_idx) {
-		rtff_fail = true;
-		goto dump;
-	}
-
-	/* second compression fifo */
-	fifo = &hwz->fifo_2;
-	cmpl_idx = comp_fifo_2_HtS_complete_index(fifo);
-	if (cmpl_idx != fifo->complete_idx) {
-		rtff_fail = true;
-		goto dump;
+	/* compression fifos */
+	for (i = 0; i < MAX_COMP_NR; i++) {
+		fifo = &hwz->comp_fifo[i];
+		cmpl_idx = comp_fifo_HtS_complete_index(fifo);
+		if (cmpl_idx != fifo->complete_idx) {
+			rtff_fail = true;
+			pr_info("%s:%d:%d:(%u:%u)\n", __func__, __LINE__, i, cmpl_idx, fifo->complete_idx);
+			goto dump;
+		}
 	}
 
 	/* decompression fifos */
@@ -465,6 +465,7 @@ void engine_self_check_before_kick(struct engine_control_t *ctrl)
 		cmpl_idx = dcomp_fifo_HtS_complete_index(fifo);
 		if (cmpl_idx != fifo->complete_idx) {
 			rtff_fail = true;
+			pr_info("%s:%d:%d:(%u:%u)\n", __func__, __LINE__, i, cmpl_idx, fifo->complete_idx);
 			goto dump;
 		}
 	}
@@ -488,22 +489,15 @@ dump:
 	 * Try to restore
 	 */
 
-	/* main compression fifo */
-	fifo = &hwz->fifo_1;
-	cmpl_idx = comp_fifo_1_HtS_complete_index(fifo);
-	if (cmpl_idx != fifo->complete_idx) {
-		fifo->write_idx = cmpl_idx;
-		fifo->complete_idx = cmpl_idx;
-		fifo->pp_prev_end = cmpl_idx;
-	}
-
-	/* second compression fifo */
-	fifo = &hwz->fifo_2;
-	cmpl_idx = comp_fifo_2_HtS_complete_index(fifo);
-	if (cmpl_idx != fifo->complete_idx) {
-		fifo->write_idx = cmpl_idx;
-		fifo->complete_idx = cmpl_idx;
-		fifo->pp_prev_end = cmpl_idx;
+	/* compression fifos */
+	for (i = 0; i < MAX_COMP_NR; i++) {
+		fifo = &hwz->comp_fifo[i];
+		cmpl_idx = comp_fifo_HtS_complete_index(fifo);
+		if (cmpl_idx != fifo->complete_idx) {
+			fifo->write_idx = cmpl_idx;
+			fifo->complete_idx = cmpl_idx;
+			fifo->pp_prev_end = cmpl_idx;
+		}
 	}
 
 	/* decompression fifos */
@@ -586,11 +580,7 @@ int refill_entry_buffer(uint32_t *buf_addr, int index, bool invalidate)
 static int gear_level_adjustment(void *data)
 {
 	struct zram_engine_t *hwz = data;
-	struct hwfifo *fifo;
 	DEFINE_WAIT(wait);
-
-	/* Default setting */
-	SetGlaEncNotready(&gla_flags);
 
 	/* Main loop for GLA thread */
 	while (!kthread_should_stop()) {
@@ -606,29 +596,22 @@ static int gear_level_adjustment(void *data)
 			return 0;
 
 		/* Request to set up default gear level for compression */
-		if (TestClearGlaEncset(&gla_flags)) {
-			while (!engine_try_to_set_gear_level(&hwz->gear_ctrl, true, ENGINE_ENC_MIN_KICK_GEAR));
-
-			/* Gear set up is ready */
-			ClearGlaEncNotready(&gla_flags);
-
-			/* It's ok to kick compression */
-			spin_lock(&hwz->fifo_2_lock);
-			fifo = &hwz->fifo_2;
-			engine_kick(fifo->write_idx_reg);
-			spin_unlock(&hwz->fifo_2_lock);
-		}
+		if (TestClearGlaEncset(&gla_flags))
+			while (!engine_try_to_set_gear_level(&hwz->gear_ctrl, true, ENGINE_ENC_MIN_KICK_GEAR))
+				;
 
 		/* Request to set up default gear level for decompression */
 		if (TestClearGlaDecset(&gla_flags))
-			while (!engine_try_to_set_gear_level(&hwz->gear_ctrl, false, ENGINE_DEC_MIN_KICK_GEAR));
+			while (!engine_try_to_set_gear_level(&hwz->gear_ctrl, false, ENGINE_DEC_MIN_KICK_GEAR))
+				;
+
+		/* Request to gear up for compression */
+		if (TestClearGlaEncup(&gla_flags))
+			while (!engine_try_to_gear_up(&hwz->gear_ctrl, true))
+				;
 
 		/* Request to start gear down for compression */
 		if (TestClearGlaEncdone(&gla_flags)) {
-
-			/* Set EncNotready to notify users should set gear if necessary */
-			SetGlaEncNotready(&gla_flags);
-
 			do {
 				/* Sleep for a while */
 				usleep_idle_range(50, 100);
@@ -892,81 +875,36 @@ repeat:
 	return 0;
 }
 
-/* Return the number of processed comp second cmds */
-static inline uint32_t comp_second_post_processing_cmds(struct zram_engine_t *hwz, struct hwfifo *fifo)
+/* Return the number of processed comp cmds */
+static inline uint32_t comp_post_processing_cmds(struct zram_engine_t *hwz, struct hwfifo *fifo, uint32_t end)
 {
-	uint32_t start, end, index, entry;
+	uint32_t start, index, entry;
 	uint32_t processed = 0;
 
-	/* Add memory barrier to make sure we can get the correct range */
+	/* Nothing to do */
+	if (end == fifo->pp_prev_end)
+		return 0;
+
+	/* Call rmb() to make sure we can perceive the correct order here. */
 	rmb();
 
 	/* Acquire the range for post-processing */
 	start = fifo->complete_idx;
-	end = comp_fifo_2_HtS_complete_index(fifo);
 
-	smp_rmb();
-
-	/* I am empty, just leave. */
-	if (comp_fifo_2_empty(fifo))
-		return 0;
-
-	/* The wake up is premature */
-	if (start == end)
-		return 0;
+#ifdef ZRAM_ENGINE_DEBUG
+	pr_info("%s: fifo(%d) - start(0x%x), end(0x%x)", __func__, hwz->curr_fifo, start, end);
+#endif
 
 	/* Start post-processing cmds */
-	if (start != fifo->pp_prev_end)
-		pr_info("%s: unexpected start(0x%x), not (0x%x)", __func__, start, fifo->pp_prev_end);
-
-	for (index = start; index != end; index = (index + 1) & ENGINE_COMP_FIFO_2_ENTRY_CARRY_MASK) {
-		entry = index & ENGINE_COMP_FIFO_2_ENTRY_MASK;
-		hwz->ops->comp_process_completed_cmd(fifo, entry);
+	for (index = start; index != end; index = (index + 1) & ENGINE_COMP_FIFO_ENTRY_CARRY_MASK) {
+		entry = index & ENGINE_COMP_FIFO_ENTRY_MASK;
+		hwz->ops->comp_process_completed_cmd(fifo, entry, false);
 		atomic_dec(&hwz->comp_cnt);
-		update_comp_fifo_2_complete_index(fifo);
+		update_comp_fifo_complete_index(fifo);
 		processed++;
 	}
 
-	fifo->pp_prev_end = end;
-
-	return processed;
-}
-
-/* Return the number of processed comp main cmds */
-static inline uint32_t comp_main_post_processing_cmds(struct zram_engine_t *hwz, struct hwfifo *fifo)
-{
-	uint32_t start, end, index, entry;
-	uint32_t processed = 0;
-
-	/* Add memory barrier to make sure we can get the correct range */
-	rmb();
-
-	/* Acquire the range for post-processing */
-	start = fifo->complete_idx;
-	end = comp_fifo_1_HtS_complete_index(fifo);
-
-	smp_rmb();
-
-	/* I am empty, just leave. */
-	if (comp_fifo_1_empty(fifo))
-		return 0;
-
-	/* The wake up is premature */
-	if (start == end)
-		return 0;
-
-	/* Start post-processing cmds */
-	if (start != fifo->pp_prev_end)
-		pr_info("%s: unexpected start(0x%x), not (0x%x)", __func__, start, fifo->pp_prev_end);
-
-	for (index = start; index != end; index = (index + 1) & ENGINE_COMP_FIFO_1_ENTRY_CARRY_MASK) {
-		entry = index & ENGINE_COMP_FIFO_1_ENTRY_MASK;
-		hwz->ops->comp_process_completed_cmd(fifo, entry);
-		atomic_dec(&hwz->comp_cnt);
-		update_comp_fifo_1_complete_index(fifo);
-		processed++;
-	}
-
+	/* Mark end for next iteration */
 	fifo->pp_prev_end = end;
 
 	return processed;
@@ -989,104 +927,104 @@ static void comp_hang_handle(struct zram_engine_t *hwz)
 {
 	struct hwfifo *fifo;
 
-	spin_lock(&hwz->fifo_2_lock);
-	fifo = &hwz->fifo_2;
+	/* Acquire lock to avoid racing on update of write index */
+
+	spin_lock(&hwz->comp_fifo_lock);
+	fifo = &hwz->comp_fifo[hwz->curr_fifo];
 	engine_kick(fifo->write_idx_reg);
-	spin_unlock(&hwz->fifo_2_lock);
+	spin_unlock(&hwz->comp_fifo_lock);
 }
 
 /* Handler (with engine reset) when comp is not started successfully */
-static void comp_hang_handle_with_reset(struct zram_engine_t *hwz)
+static uint32_t comp_hang_handle_with_reset(struct zram_engine_t *hwz, struct hwfifo *fifo)
 {
-	struct hwfifo *fifo;
-	uint32_t monitor_widx;
 	uint32_t start, end, index, entry;
+	uint32_t processed = 0;
 	struct compress_cmd *cmdp;
 	struct comp_pp_info *pp_info;
+	struct hwfifo *rfifo; /* reset fifo */
+	int i;
+
+	/* Increase the count to recover hang */
+	atomic_inc(&enc_recover_hang_count);
+
+	/* Newer request is not allowed */
+	spin_lock(&hwz->comp_fifo_lock);
+	fifo->accu_usage = 1 << ENGINE_COMP_FIFO_ENTRY_BITS;
+	spin_unlock(&hwz->comp_fifo_lock);
 
 	/*
-	 * Set atomic flag to notify we are handling reset and take a nap.
-	 * In the meantime, kswapd may being adding new request or trying slowpath.
-	 * Concurent requests from trying slowpath can be avoided by the fifo_2_lock.
-	 * But for concurrent ones from kswapd adding new request to main fifo and to
-	 * avoid unnecessary overhead in kswapd, we can try a longer nap to monitor
-	 * the change of write index.
+	 * write_idx may be updated somewhere concurrently during post-process.
+	 * Call smp_rmb() to make sure we can perceive the update here.
 	 */
-	SetGlaEncRst(&gla_flags);
-	fifo = &hwz->fifo_1;
+	smp_rmb();
 
-retry:
-	monitor_widx = fifo->write_idx;
-	usleep_idle_range(5000, 10000);
-
-	/*
-	 * Before doing reset, fifo_2_lock should be acquired to avoid
-	 * other concurrent compression requests.
-	 */
-	spin_lock(&hwz->fifo_2_lock);
-
-	if (fifo->write_idx != monitor_widx) {
-		pr_info("%s: main fifo busy...\n", __func__);
-		spin_unlock(&hwz->fifo_2_lock);
-		goto retry;
-	}
-
-	/* Do warm reset */
+	/* Do warm reset & wait for idle */
 	engine_enc_reset(&hwz->ctrl);
-	udelay(1);
+	engine_enc_wait_idle(&hwz->ctrl);
 
-	/* Check the range for reset */
+	/* Acquire the range for post-processing */
+	start = fifo->pp_prev_end;
+	end = fifo->write_idx;
 
-	/* main fifo */
-	if (!comp_fifo_1_empty(fifo)) {
+#ifdef ZRAM_ENGINE_DEBUG
+	pr_info("%s: fifo(%d) - start(0x%x), end(0x%x)", __func__, hwz->curr_fifo, start, end);
+#endif
 
-		start = comp_fifo_1_HtS_complete_index(fifo);
-		end = fifo->write_idx;
-		fifo->write_idx = start;
-
-		/* Show information */
-		pr_info("%s: main fifo pending cmds (0x%-4x)~(0x%-4x)\n", __func__, start, end);
-
-		/* Send cmds again */
-		for (index = start; index != end; index = (index + 1) & ENGINE_COMP_FIFO_1_ENTRY_CARRY_MASK) {
-			entry = index & ENGINE_COMP_FIFO_1_ENTRY_MASK;
-			cmdp = COMP_CMD(fifo, entry);
-			pp_info = COMP_CMPL(fifo, entry);
-			pr_info("%s: index(%u)\n", __func__, pp_info->index);
-			set_comp_cmd_as_idle(cmdp);
-			hwz->ops->fill_compression_info(fifo, entry, pp_info->page, pp_info, false);
-			update_comp_fifo_1_write_index(fifo);
-		}
+	/* Change cmd status and do post processing */
+	for (index = start; index != end; index = (index + 1) & ENGINE_COMP_FIFO_ENTRY_CARRY_MASK) {
+		entry = index & ENGINE_COMP_FIFO_ENTRY_MASK;
+		cmdp = COMP_CMD(fifo, entry);
+		pp_info = COMP_CMPL(fifo, entry);
+		set_comp_cmd_as_error(cmdp);
+		hwz->ops->comp_process_completed_cmd(fifo, entry, true);
+		atomic_dec(&hwz->comp_cnt);
+		update_comp_fifo_complete_index(fifo);
+		processed++;
 	}
 
-	/* second fifo */
-	fifo = &hwz->fifo_2;
-	if (!comp_fifo_2_empty(fifo)) {
+	/* Mark end for next iteration */
+	fifo->pp_prev_end = end;
 
-		start = comp_fifo_2_HtS_complete_index(fifo);
-		end = fifo->write_idx;
-		fifo->write_idx = start;
+	/* Reset indices */
 
-		/* Show information */
-		pr_info("%s: second fifo pending cmds (0x%-4x)~(0x%-4x)\n", __func__, start, end);
+	spin_lock(&hwz->comp_fifo_lock);
 
-		/* Send cmds again */
-		for (index = start; index != end; index = (index + 1) & ENGINE_COMP_FIFO_2_ENTRY_CARRY_MASK) {
-			entry = index & ENGINE_COMP_FIFO_2_ENTRY_MASK;
-			cmdp = COMP_CMD(fifo, entry);
-			pp_info = COMP_CMPL(fifo, entry);
-			pr_info("%s: index(%u)\n", __func__, pp_info->index);
-			set_comp_cmd_as_idle(cmdp);
-			hwz->ops->fill_compression_info(fifo, entry, pp_info->page, pp_info, false);
-			update_comp_fifo_2_write_index(fifo);
+	/* 1. Change to offset index mode */
+	engine_enc_change_mode(&hwz->ctrl, true);
+
+	/* 2~3. Update offset indices */
+	for (i = 0; i < MAX_COMP_NR; i++) {
+		rfifo = &hwz->comp_fifo[i];
+
+		/* Reset all indices of curr fifo to 0 */
+		if (rfifo == fifo) {
+			engine_set_offset_index(rfifo->offset_idx_reg, 0);
+			rfifo->write_idx = 0;
+			rfifo->complete_idx = 0;
+			rfifo->pp_prev_end = 0;
+			continue;
 		}
+
+		/* Keep all indices of other fifos as original */
+		engine_set_offset_as_complete(rfifo->offset_idx_reg, rfifo->complete_idx_reg);
 	}
 
-	/* Unlock */
-	spin_unlock(&hwz->fifo_2_lock);
+	/* 4. Engine start (on curr fifo) */
+	engine_kick_with_idx(fifo->write_idx_reg, 0);
+	engine_enc_wait_idle(&hwz->ctrl);
 
-	/* Reset is done */
-	ClearGlaEncRst(&gla_flags);
+	/* 5. Back to complete index mode */
+	engine_enc_change_mode(&hwz->ctrl, false);
+	engine_enc_wait_idle(&hwz->ctrl);
+
+	spin_unlock(&hwz->comp_fifo_lock);
+
+	/* Reset is finished. Show information for debug */
+	engine_get_reg_status(&hwz->ctrl, NULL);
+	dump_fifo_idx(hwz, NULL, 0);
+
+	return processed;
 }
 
 /* Handler when comp is not started successfully */
@@ -1096,33 +1034,114 @@ static void dump_pending_comp_cmds(struct zram_engine_t *hwz)
 	struct hwfifo *fifo;
 	uint32_t start, end, index, entry;
 
-	/* main fifo */
-	fifo = &hwz->fifo_1;
-	start = comp_fifo_1_HtS_complete_index(fifo);
+	/* No need to acquire lock because the caller it the only one to do fifo switch */
+
+	fifo = &hwz->comp_fifo[hwz->curr_fifo];
+	start = comp_fifo_HtS_complete_index(fifo);
 	end = fifo->write_idx;
 
 	if (start != end)
 		pr_info("%s: main fifo pending cmds (0x%-4x)~(0x%-4x)\n", __func__, start, end);
 
-	for (index = start; index != end; index = (index + 1) & ENGINE_COMP_FIFO_1_ENTRY_CARRY_MASK) {
-		entry = index & ENGINE_COMP_FIFO_1_ENTRY_MASK;
-		dump_comp_cmd(COMP_CMD(fifo, entry));
-	}
-
-	/* second fifo */
-	fifo = &hwz->fifo_2;
-	start = comp_fifo_2_HtS_complete_index(fifo);
-	end = fifo->write_idx;
-
-	if (start != end)
-		pr_info("%s: second fifo pending cmds (0x%-4x)~(0x%-4x)\n", __func__, start, end);
-
-	for (index = start; index != end; index = (index + 1) & ENGINE_COMP_FIFO_2_ENTRY_CARRY_MASK) {
-		entry = index & ENGINE_COMP_FIFO_2_ENTRY_MASK;
+	for (index = start; index != end; index = (index + 1) & ENGINE_COMP_FIFO_ENTRY_CARRY_MASK) {
+		entry = index & ENGINE_COMP_FIFO_ENTRY_MASK;
 		dump_comp_cmd(COMP_CMD(fifo, entry));
 	}
 }
 #endif
+
+/*
+ * Create a compression window to monitor engine status
+ */
+#define MIN_TIMEOUT_IN_US	(100)	// Could it be smaller (?)
+#define MAX_TIMEOUT_IN_MS	(10)
+static uint32_t comp_window_post_process(struct zram_engine_t *hwz)
+{
+	struct hwfifo *fifo, *nfifo;
+	bool do_fifo_switch = false;
+	bool detect_inst_invariance = false;
+	uint32_t next_fifo_complete_idx, index;
+	uint32_t processed;
+
+	/*
+	 * It's unnecessary to acquire lock here, because curr_fifo will be updated ONLY
+	 * in the post-process which is the caller of this function.
+	 */
+
+	/* Select current fifo */
+	fifo = &hwz->comp_fifo[hwz->curr_fifo];
+
+	/* Add memory barrier to make sure we can get the correct range */
+	rmb();
+
+	next_fifo_complete_idx = comp_fifo_HtS_complete_index(fifo);
+
+	/*
+	 * accu_usage may be updated somewhere concurrently during post-process.
+	 * Call smp_rmb() to make sure we can perceive the update here.
+	 */
+	smp_rmb();
+
+	/* Determine what actions to do */
+	if (fifo->accu_usage == (1 << ENGINE_COMP_FIFO_ENTRY_BITS)) {
+		do_fifo_switch = true;
+	} else {
+		if (fifo->accu_usage < (1 << ENGINE_COMP_FIFO_ENTRY_BITS))
+			detect_inst_invariance = true;
+		else
+			WARN_ON_ONCE(1);
+	}
+
+#ifdef ZRAM_ENGINE_DEBUG
+	pr_info("%s: case(%s) - (%u)", __func__, do_fifo_switch ? "switch" : "detect invariance", fifo->accu_usage);
+#endif
+
+	/* Try to detect whether inst is updated */
+	if (detect_inst_invariance) {
+		do {
+			usleep_idle_range(MIN_TIMEOUT_IN_US, MIN_TIMEOUT_IN_US + 20);
+			index = comp_fifo_HtS_complete_index(fifo);
+			if (index == next_fifo_complete_idx)
+				break;
+
+			next_fifo_complete_idx = index;
+		} while (1);
+
+		/* The case may be changed to switch after invariance detection */
+		if (fifo->accu_usage == (1 << ENGINE_COMP_FIFO_ENTRY_BITS))
+			do_fifo_switch = true;
+	}
+
+	/* Wait for idle until timeout. Clear all pending cmds if timeout */
+	if (engine_enc_wait_idle_timeout(&hwz->ctrl, MAX_TIMEOUT_IN_MS)) {
+		processed = comp_hang_handle_with_reset(hwz, fifo);
+		do_fifo_switch = true;
+	} else {
+		/* Update next_fifo_complete_idx if we need to do fifo switch */
+		if (do_fifo_switch == true)
+			next_fifo_complete_idx = comp_fifo_HtS_complete_index(fifo);
+
+		processed = comp_post_processing_cmds(hwz, fifo, next_fifo_complete_idx);
+	}
+
+	/* Do fifo switch */
+	if (do_fifo_switch) {
+		spin_lock(&hwz->comp_fifo_lock);
+
+		/* Reset curr fifo accumulate usage to 0 and change curr fifo */
+		fifo->accu_usage = 0;
+		hwz->curr_fifo = (hwz->curr_fifo + 1) % MAX_COMP_NR;
+		nfifo = &hwz->comp_fifo[hwz->curr_fifo];
+
+		/* Kick engine if switch-to-fifo is not empty */
+		if (!comp_fifo_empty(nfifo))
+			engine_kick_with_idx(nfifo->write_idx_reg, comp_fifo_StH_write_index(nfifo));
+
+		spin_unlock(&hwz->comp_fifo_lock);
+	}
+
+	return processed;
+}
 
 /*
  * Compression post-process
@@ -1180,22 +1199,16 @@ static int comp_post_process(void *data)
 		suspect_hang = 0;
 
 repeat:
-		/* Processing main fifo cmds */
-		processed = comp_main_post_processing_cmds(hwz, &hwz->fifo_1);
-
-		/* Processing second fifo cmds */
-		processed += comp_second_post_processing_cmds(hwz, &hwz->fifo_2);
+		/* Processing fifo cmds */
+		processed = comp_window_post_process(hwz);
 
 		/* Update total_processed */
 		total_processed += processed;
 
 		/* HW is slow, just sleep for a while */
 		if (processed == 0) {
-			usleep_idle_range(50, 100);
-
-			/* Not hang, don't count it as hang */
-			if (!GlaEncNotready(&gla_flags))
-				hang_detect++;
+			usleep_idle_range(500, 1000);
+			hang_detect++;
 		} else {
 			/* not hang */
 			hang_detect = 0;
@@ -1212,7 +1225,6 @@ repeat:
 		/* comp hang. Try to dump more information & do something. */
 		if (suspect_hang > SUSPECT_HANG_BOUND) {
 			engine_get_reg_status(&hwz->ctrl, NULL);
-			//engine_fatal_get_reg_status(&hwz->ctrl, NULL);
 			dump_fifo_idx(hwz, NULL, 0);
 			engine_gear_get_status(&hwz->gear_ctrl, NULL);
 
@@ -1223,9 +1235,6 @@ repeat:
 
 			/* Increase the suspect hang count */
 			atomic_inc(&enc_suspect_hang_count);
-
-			/* Try to warm reset engine */
-			comp_hang_handle_with_reset(hwz);
 		}
 
 		/* Repeat until all compression cmds are processed */
@@ -1473,7 +1482,8 @@ EXPORT_SYMBOL(hwcomp_decompress_page);
 int hwcomp_compress_page(void *hw, struct page *page, struct comp_pp_info *pp_info)
 {
 	struct zram_engine_t *hwz = hw;
-	struct hwfifo *fifo;
+	struct hwfifo *fifo, *pfifo;
+	int curr_pfifo;
 	uint32_t entry;
 	bool valid = false;
 	bool wake_up_pp = false;
@@ -1489,152 +1499,99 @@ int hwcomp_compress_page(void *hw, struct page *page, struct comp_pp_info *pp_in
 	pr_info("%s\n", __func__);
 #endif
 
-#ifndef FPGA_EMULATION
-retry:
-#endif
+	/* Lock */
+	spin_lock(&hwz->comp_fifo_lock);
+	fifo = &hwz->comp_fifo[hwz->curr_fifo];
 
-	/* Engine is doing reset, don't bother it */
-	if (GlaEncRst(&gla_flags))
-		return -EBUSY;
+next_cmd_fifo:
 
-	/* Lockless fifo for kswapd only */
-	if (current_is_kswapd()) {
-		fifo = &hwz->fifo_1;
-
-next_cmd_fifo_1:
-
-		/*
-		 * complete_idx may be updated somewhere concurrently during post-process.
-		 * Call smp_rmb() to make sure we can perceive the update here.
-		 */
-		smp_rmb();
-
-		/* Fallback to slow path if fifo full */
-		if (comp_fifo_1_full(fifo)) {
-
-			/* Post-process may not start yet */
-			wake_up(&hwz->comp_wait);
-
-			goto slowpath;
-		}
-
-		/*
-		 * Increment the usage count and enable the gear clock
-		 * if possible before committing the request.
-		 */
-#ifndef FPGA_EMULATION
-		WARN_ON(engine_gear_enable_clock(&hwz->ctrl, &hwz->gear_ctrl) != 0);
-#endif
-
-		/* Increment the number of compression request and remember to wake up post-process. */
-		if (atomic_inc_return(&hwz->comp_cnt) == 1)
-			wake_up_pp = true;
-
-		/* Query entry and fill request */
-		entry = comp_fifo_1_write_entry(fifo);
-		valid = hwz->ops->fill_compression_info(fifo, entry, page, pp_info, true);
-		if (GlaEncNotready(&gla_flags)) {
-
-			/* Wake up gear level adjusting thread to set up default gear if necessary */
-			if (!GlaEncset(&gla_flags)) {
-				SetGlaEncset(&gla_flags);
-				SetGlaNotify(&gla_flags);
-				wake_up(&hwz->gla_wait);
-			}
-
-			/* Update write index without kick */
-			update_comp_fifo_1_write_index_nokick(fifo);
-		} else {
-			update_comp_fifo_1_write_index(fifo);
-		}
-
-		/* Try next cmd if necessary */
-		if (!valid)
-			goto next_cmd_fifo_1;
-
-		/* Using sync mode */
-		if (engine_async_mode_disabled()) {
-			hwcomp_poll_cmd_complete(fifo);
-			wake_up(&hwz->comp_wait);
-		}
-
-		/* Request is sent, just leave. */
-		goto exit;
+	/* Go to slowpath if accu_usage hit fifo size */
+	if (fifo->accu_usage == (1 << ENGINE_COMP_FIFO_ENTRY_BITS)) {
+		wake_up(&hwz->comp_wait);
+		goto slowpath;
 	}
 
-slowpath:
-
-	/* For other callers */
-	spin_lock(&hwz->fifo_2_lock);
-	fifo = &hwz->fifo_2;
-
-next_cmd_fifo_2:
-
-	/*
-	 * complete_idx may be updated somewhere concurrently during post-process.
-	 * Call smp_rmb() to make sure we can perceive the update here.
-	 */
-	smp_rmb();
-
-	/* If fifo is full, then return -EBUSY */
-	if (comp_fifo_2_full(fifo)) {
-		spin_unlock(&hwz->fifo_2_lock);
-
-		/* Post-process may not start yet */
-		wake_up(&hwz->comp_wait);
-
 #ifndef FPGA_EMULATION
-		/* Promote frequency. Retry if gear up successfully (may sleep) */
-		if (engine_try_to_gear_up(&hwz->gear_ctrl, true))
-			goto retry;
-#endif
-
-		return -EBUSY;
+	/* Wake up gear level adjusting thread to promote frequency if necessary */
+	if (fifo->accu_usage == (1 << ENGINE_COMP_BATCH_INTR_CNT_BITS) ||
+			comp_fifo_full(fifo)) {
+		SetGlaEncup(&gla_flags);
+		SetGlaNotify(&gla_flags);
+		wake_up(&hwz->gla_wait);
 	}
 
 	/*
 	 * Increment the usage count and enable the gear clock
 	 * if possible before committing the request.
 	 */
-#ifndef FPGA_EMULATION
 	WARN_ON(engine_gear_enable_clock(&hwz->ctrl, &hwz->gear_ctrl) != 0);
 #endif
 
-	/* Increment the number of compression request and remember to wake up post-process. */
+	/* Query entry and fill request */
+	entry = comp_fifo_write_entry(fifo);
+	valid = hwz->ops->fill_compression_info(fifo, entry, page, pp_info, true);
+	fifo->accu_usage++;
+	update_comp_fifo_write_index(fifo);
+
+	/*
+	 * Increment the number of compression request after update hw write index
+	 * and remember to wake up post-process.
+	 */
 	if (atomic_inc_return(&hwz->comp_cnt) == 1)
 		wake_up_pp = true;
 
-	/* Query entry and fill request */
-	entry = comp_fifo_2_write_entry(fifo);
-	valid = hwz->ops->fill_compression_info(fifo, entry, page, pp_info, true);
-	if (GlaEncNotready(&gla_flags)) {
+	/* Try next cmd if necessary */
+	if (!valid)
+		goto next_cmd_fifo;
 
-		/* Wake up gear level adjusting thread to set up default gear if necessary */
-		if (!GlaEncset(&gla_flags)) {
-			SetGlaEncset(&gla_flags);
-			SetGlaNotify(&gla_flags);
-			wake_up(&hwz->gla_wait);
-		}
+	/* Request is sent, just leave. */
+	goto exit;
 
-		/* Update write index without kick */
-		update_comp_fifo_2_write_index_nokick(fifo);
-	} else {
-		update_comp_fifo_2_write_index(fifo);
+
+slowpath:
+
+	/* Start slowpath */
+	curr_pfifo = (hwz->curr_fifo + 1) % MAX_COMP_NR;
+	pfifo = &hwz->comp_fifo[curr_pfifo];
+
+next_cmd_pfifo:
+
+	/* Return as engine is busy */
+	if (pfifo->accu_usage == (1 << ENGINE_COMP_FIFO_ENTRY_BITS)) {
+		spin_unlock(&hwz->comp_fifo_lock);
+		wake_up(&hwz->comp_wait);
+		return -EBUSY;
 	}
+
+#ifndef FPGA_EMULATION
+	/*
+	 * Increment the usage count and enable the gear clock
+	 * if possible before committing the request.
+	 */
+	WARN_ON(engine_gear_enable_clock(&hwz->ctrl, &hwz->gear_ctrl) != 0);
+#endif
+
+	/* Query entry and fill request */
+	entry = comp_fifo_write_entry(pfifo);
+	valid = hwz->ops->fill_compression_info(pfifo, entry, page, pp_info, true);
+	pfifo->accu_usage++;
+	update_comp_pfifo_write_index(pfifo);
+
+	/*
+	 * Increment the number of compression request after update write index
+	 * and remember to wake up post-process.
+	 */
+	if (atomic_inc_return(&hwz->comp_cnt) == 1)
+		wake_up_pp = true;
 
 	/* Try next cmd if necessary */
 	if (!valid)
-		goto next_cmd_fifo_2;
-
-	/* Using sync mode */
-	if (engine_async_mode_disabled()) {
-		hwcomp_poll_cmd_complete(fifo);
-		wake_up(&hwz->comp_wait);
-	}
-
-	spin_unlock(&hwz->fifo_2_lock);
+		goto next_cmd_pfifo;
 
 exit:
+	/* Unlock */
+	spin_unlock(&hwz->comp_fifo_lock);
+
 	/* Wake up comp_post_process */
 	if (wake_up_pp)
 		wake_up(&hwz->comp_wait);
@@ -1893,17 +1850,11 @@ static void zram_engine_destroy_fifos(struct zram_engine_t *hwz)
 {
 	int i;
 
-	/* Release all allocated buffers for fifo_1 */
-	hwz->ops->release_comp_fifo_dst_buffers(&hwz->fifo_1);
-
-	/* Destroy compression fifo#1 */
-	destroy_fifo_memory(&hwz->fifo_1);
-
-	/* Release all allocated buffers for fifo_2 */
-	hwz->ops->release_comp_fifo_dst_buffers(&hwz->fifo_2);
-
-	/* Destroy compression fifo#2 */
-	destroy_fifo_memory(&hwz->fifo_2);
+	/* Release all allocated buffers for comp_fifo# */
+	for (i = 0; i < MAX_COMP_NR; i++) {
+		hwz->ops->release_comp_fifo_dst_buffers(&hwz->comp_fifo[i]);
+		destroy_fifo_memory(&hwz->comp_fifo[i]);
+	}
 
 	/* Release all allocated buffers for dcomp_fifo# */
 	for (i = 0; i < MAX_DCOMP_NR; i++) {
@@ -1918,75 +1869,54 @@ static int zram_engine_setup_fifos(struct zram_engine_t *hwz, bool reset_idx)
 	int ret = 0, i, j;
 
 	/*
-	 * Compression FIFO #1
+	 * Compression FIFOs
 	 */
 
-	/* Initialize compression fifo for kswapd only */
-	fifo = &hwz->fifo_1;
-	ret = create_fifo_memory(fifo, 1 << ENGINE_COMP_FIFO_1_ENTRY_BITS,
-			ENGINE_COMP_CMD_SIZE, sizeof(struct comp_pp_info));
-	if (ret) {
-		pr_info("%s: failed to prepare fifo_1: (%d)\n", __func__, ret);
-		ret = -ENOMEM;
-		goto exit;
-	}
+	/* Initialize compression fifos */
+	for (i = 0; i < MAX_COMP_NR; i++) {
+		unsigned long offset = i * 4;
 
-	if (reset_idx) {
-		fifo->write_idx = 0;
-		fifo->complete_idx = 0;
-		fifo->pp_prev_end = 0;
-		fifo->write_idx_reg = hwz->ctrl.zram_enc_base +
-			ZRAM_ENC_CMD_MAIN_FIFO_WRITE_INDEX;
-		fifo->complete_idx_reg = hwz->ctrl.zram_enc_base +
-			ZRAM_ENC_CMD_MAIN_FIFO_COMPLETE_INDEX;
+		fifo = &hwz->comp_fifo[i];
+		ret = create_fifo_memory(fifo, 1 << ENGINE_COMP_FIFO_ENTRY_BITS,
+				ENGINE_COMP_CMD_SIZE, sizeof(struct comp_pp_info));
+		if (ret) {
+			pr_info("%s: failed to prepare fifo-(%d): (%d)\n", __func__, i, ret);
+			ret = -ENOMEM;
+			goto exit;
+		}
+
+		if (reset_idx) {
+			fifo->write_idx = 0;
+			fifo->complete_idx = 0;
+			fifo->pp_prev_end = 0;
+			fifo->write_idx_reg = hwz->ctrl.zram_enc_base +
+				ZRAM_ENC_CMD_MAIN_FIFO_WRITE_INDEX + offset;
+			fifo->complete_idx_reg = hwz->ctrl.zram_enc_base +
+				ZRAM_ENC_CMD_MAIN_FIFO_COMPLETE_INDEX + offset;
+			fifo->offset_idx_reg = hwz->ctrl.zram_enc_base +
+				ZRAM_ENC_CMD_MAIN_FIFO_OFFSET_INDEX + offset;
+			fifo->accu_usage = 0;
+		}
+
+		/* Setup registers for compression fifos */
+		engine_setup_enc_fifo(&hwz->ctrl, i, fifo->buf_pa, ENGINE_COMP_FIFO_ENTRY_BITS);
+
+		/* Record fifo id */
+		fifo->id = i;
 	}
 
 	/* Allocate dst buffers for every fifo cmds & set fifo ID */
-	ret = hwz->ops->fill_comp_fifo_dst_buffers(fifo, ENGINE_COMP_FIFO_1_ID);
-	if (ret) {
-		pr_info("%s: failed to prepare cmd dst buffers for fifo_1: (%d)\n", __func__, ret);
-		ret = -ENOMEM;
-		goto free_fifo_1;
+	for (i = 0; i < MAX_COMP_NR; i++) {
+		fifo = &hwz->comp_fifo[i];
+		ret = hwz->ops->fill_comp_fifo_dst_buffers(fifo, i);
+		if (ret) {
+			pr_info("%s: failed to prepare cmd dst buffers for fifo-(%d): (%d)\n", __func__, i, ret);
+			ret = -ENOMEM;
+			goto free_comp_fifos;
+		}
 	}
 
-	/* Setup registers for compression fifo #1 */
-	engine_setup_enc_main_fifo(&hwz->ctrl, fifo->buf_pa, ENGINE_COMP_FIFO_1_ENTRY_BITS);
-
-	/*
-	 * Compression FIFO #2
-	 */
-
-	/* Initialize compression fifo & lock for others */
-	fifo = &hwz->fifo_2;
-	ret = create_fifo_memory(fifo, 1 << ENGINE_COMP_FIFO_2_ENTRY_BITS,
-			ENGINE_COMP_CMD_SIZE, sizeof(struct comp_pp_info));
-	if (ret) {
-		pr_info("%s: failed to prepare fifo_2: (%d)\n", __func__, ret);
-		ret = -ENOMEM;
-		goto free_fifo_1_dstbuf;
-	}
-
-	if (reset_idx) {
-		fifo->write_idx = 0;
-		fifo->complete_idx = 0;
-		fifo->pp_prev_end = 0;
-		fifo->write_idx_reg = hwz->ctrl.zram_enc_base +
-			ZRAM_ENC_CMD_SECOND_FIFO_WRITE_INDEX;
-		fifo->complete_idx_reg = hwz->ctrl.zram_enc_base +
-			ZRAM_ENC_CMD_SECOND_FIFO_COMPLETE_INDEX;
-	}
-	spin_lock_init(&hwz->fifo_2_lock);
-
-	/* Allocate dst buffers for every fifo cmds & set fifo ID */
-	ret = hwz->ops->fill_comp_fifo_dst_buffers(fifo, ENGINE_COMP_FIFO_2_ID);
-	if (ret) {
-		pr_info("%s: failed to prepare cmd dst buffers for fifo_2: (%d)\n", __func__, ret);
-		ret = -ENOMEM;
-		goto free_fifo_2;
-	}
-
-	/* Setup registers for compression fifo #2 */
-	engine_setup_enc_second_fifo(&hwz->ctrl, fifo->buf_pa, ENGINE_COMP_FIFO_2_ENTRY_BITS);
+	spin_lock_init(&hwz->comp_fifo_lock);
 
 	/*
 	 * Decompression FIFOs
@@ -2003,7 +1933,7 @@ static int zram_engine_setup_fifos(struct zram_engine_t *hwz, bool reset_idx)
 			pr_info("%s: failed to prepare decompression fifo[%d]: (%d)\n",
 					__func__, i, ret);
 			ret = -ENOMEM;
-			goto free_fifo_2_dstbuf;
+			goto free_comp_dstbuf;
 		}
 
 		if (reset_idx) {
@@ -2014,6 +1944,8 @@ static int zram_engine_setup_fifos(struct zram_engine_t *hwz, bool reset_idx)
 				ZRAM_DEC_CMD_FIFO_0_WRITE_INDEX + offset;
 			fifo->complete_idx_reg = hwz->ctrl.zram_dec_base +
 				ZRAM_DEC_CMD_FIFO_0_COMPLETE_INDEX + offset;
+			fifo->offset_idx_reg = hwz->ctrl.zram_dec_base +
+				ZRAM_DEC_CMD_FIFO_0_OFFSET_INDEX + offset;
 		}
 
 #ifdef ZRAM_ENGINE_DEBUG
@@ -2050,31 +1982,24 @@ free_dcomp_fifos:
 	for (i = 0; i < MAX_DCOMP_NR; i++)
 		hwz->ops->release_dcomp_fifo_src_buffers(&hwz->dcomp_fifo[i]);
 
-free_fifo_2_dstbuf:
+free_comp_dstbuf:
 
 	/* Destroy initialized decompression fifos */
 	for (j = 0; j < i; j++)
 		destroy_fifo_memory(&hwz->dcomp_fifo[j]);
 
-	/* Release all allocated buffers for fifo_2 */
-	hwz->ops->release_comp_fifo_dst_buffers(&hwz->fifo_2);
+free_comp_fifos:
 
-free_fifo_2:
-
-	/* Destroy compression fifo#2 */
-	destroy_fifo_memory(&hwz->fifo_2);
-
-free_fifo_1_dstbuf:
-
-	/* Release all allocated buffers for fifo_1 */
-	hwz->ops->release_comp_fifo_dst_buffers(&hwz->fifo_1);
-
-free_fifo_1:
-
-	/* Destroy compression fifo#1 */
-	destroy_fifo_memory(&hwz->fifo_1);
+	/* Release all allocated buffers for comp_fifo# */
+	for (i = 0; i < MAX_COMP_NR; i++)
+		hwz->ops->release_comp_fifo_dst_buffers(&hwz->comp_fifo[i]);
 
 exit:
+
+	/* Destroy initialized compression fifos */
+	for (j = 0; j < i; j++)
+		destroy_fifo_memory(&hwz->comp_fifo[j]);
+
 	return ret;
 }
 
@@ -2133,22 +2058,20 @@ exit:
 static bool hwcomp_all_fifo_empty(struct zram_engine_t *hwz)
 {
 	struct hwfifo *fifo;
-	int cpu;
+	int i;
 
-	if (!comp_fifo_1_empty(&hwz->fifo_1)) {
-		pr_info("%s: comp(0) is busy!\n", __func__);
-		return false;
+	for (i = 0; i < MAX_COMP_NR; i++) {
+		fifo = &hwz->comp_fifo[i];
+		if (!comp_fifo_empty(fifo)) {
+			pr_info("%s: comp(%d) is busy!\n", __func__, i);
+			return false;
+		}
 	}
 
-	if (!comp_fifo_2_empty(&hwz->fifo_2)) {
-		pr_info("%s: comp(1) is busy!\n", __func__);
-		return false;
-	}
-
-	for (cpu = 0; cpu < MAX_DCOMP_NR; cpu++) {
-		fifo = &hwz->dcomp_fifo[cpu];
+	for (i = 0; i < MAX_DCOMP_NR; i++) {
+		fifo = &hwz->dcomp_fifo[i];
 		if (!dcomp_fifo_empty(fifo)) {
-			pr_info("%s: decomp(%d) is busy!\n", __func__, cpu);
+			pr_info("%s: decomp(%d) is busy!\n", __func__, i);
 			return false;
 		}
 	}
@@ -2567,6 +2490,56 @@ struct platform_driver mtk_hwzram = {
 	},
 };
 
+#if IS_ENABLED(CONFIG_MTK_VM_DEBUG)
+static int engine_cmd_seq_show(struct seq_file *m, void *v)
+{
+	struct zram_engine_t *hwz = ERR_PTR(-ENODEV);
+	struct hwfifo *fifo;
+	uint32_t start, end, index, entry;
+	int i;
+
+	mutex_lock(&hwz_mutex);
+
+	if (!list_empty(&hwz_list))
+		hwz = list_first_entry(&hwz_list, struct zram_engine_t, list);
+
+	if (IS_ERR(hwz)) {
+		pr_info("%s: failed to get hwz.\n", __func__);
+		mutex_unlock(&hwz_mutex);
+		return -ENOENT;
+	}
+
+	for (i = 0; i < MAX_COMP_NR; i++) {
+		fifo = &hwz->comp_fifo[i];
+		start = fifo->write_idx;
+		end = fifo->complete_idx;
+		index = start;
+		do {
+			entry = index & ENGINE_COMP_FIFO_ENTRY_MASK;
+			seq_printf(m, "%s: index(%u)\n", __func__,
+				((struct comp_pp_info *)COMP_CMPL(fifo, entry))->index);
+			seq_dump_comp_cmd(m, COMP_CMD(fifo, entry));
+			index = (index + 1) & ENGINE_COMP_FIFO_ENTRY_CARRY_MASK;
+		} while (index != end);
+	}
+
+	mutex_unlock(&hwz_mutex);
+	return 0;
+}
+
+static int engine_cmd_seq_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, engine_cmd_seq_show, NULL);
+}
+
+static const struct proc_ops engine_cmd_proc_ops = {
+	.proc_open    = engine_cmd_seq_open,
+	.proc_read    = seq_read,
+	.proc_lseek   = seq_lseek,
+	.proc_release = single_release,
+};
+#endif
+
 static int __init zram_engine_init(void)
 {
 	int ret;
@@ -2574,6 +2547,10 @@ static int __init zram_engine_init(void)
 	ret = platform_driver_register(&mtk_hwzram);
 	if (ret)
 		pr_info("%s: failed to register platform driver.\n", __func__);
+
+#if IS_ENABLED(CONFIG_MTK_VM_DEBUG)
+	proc_create("engine_cmd_file", 0, NULL, &engine_cmd_proc_ops);
+#endif
 
 	return ret;
 }
@@ -2904,14 +2881,14 @@ static int dump_fifo_idx(struct zram_engine_t *hwz, char *buf, int offset)
 	int copied = offset;
 	int i;
 
-	fifo = &hwz->fifo_1;
+	fifo = &hwz->comp_fifo[0];
 	ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied,
-			"[enc:main] - 0x%-4x:0x%-4x:0x%-4x\n",
-			fifo->write_idx, fifo->complete_idx, fifo->pp_prev_end);
-	fifo = &hwz->fifo_2;
+			"[enc:main] - 0x%-4x:0x%-4x:0x%-4x:%u\n",
+			fifo->write_idx, fifo->complete_idx, fifo->pp_prev_end, fifo->accu_usage);
+	fifo = &hwz->comp_fifo[1];
 	ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied,
-			"[enc:second] - 0x%-4x:0x%-4x:0x%-4x\n",
-			fifo->write_idx, fifo->complete_idx, fifo->pp_prev_end);
+			"[enc:second] - 0x%-4x:0x%-4x:0x%-4x:%u\n",
+			fifo->write_idx, fifo->complete_idx, fifo->pp_prev_end, fifo->accu_usage);
 	ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied,
 			"Total comp cnts: %d, dcomp cnts: %d\n",
 			atomic_read(&hwz->comp_cnt), atomic_read(&hwz->dcomp_cnt));
@@ -2922,9 +2899,10 @@ static int dump_fifo_idx(struct zram_engine_t *hwz, char *buf, int offset)
 				i, fifo->write_idx, fifo->complete_idx, fifo->pp_prev_end);
 	}
 	ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied,
-			"comp hang: %d, dcomp hang: %d, rtff pass: %d, rtff fail: %d\n",
+			"comp hang: %d, dcomp hang: %d, rtff pass: %d, rtff fail: %d, comp recover: %d\n",
 			atomic_read(&enc_suspect_hang_count), atomic_read(&dec_suspect_hang_count),
-			atomic_read(&engine_rtff_pass_count), atomic_read(&engine_rtff_fail_count));
+			atomic_read(&engine_rtff_pass_count), atomic_read(&engine_rtff_fail_count),
+			atomic_read(&enc_recover_hang_count));
 
 	return copied;
 }

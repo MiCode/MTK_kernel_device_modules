@@ -54,6 +54,31 @@ static void print_header_series(void)
 	pr_info("%s", headers);
 }
 
+static void seq_print_header_series(struct seq_file *m)
+{
+	char headers[128];
+	int len = 0;
+	int i;
+
+	len += snprintf(headers, 128, "%8s", " ");
+	for (i = 63; i >= 0; i--) {
+		if (i % 4 == 0)
+			len += snprintf(&headers[len], 128 - len, "%d", (int)(i / 10));
+		else
+			len += snprintf(&headers[len], 128 - len, "%s", " ");
+	}
+	seq_printf(m, "%s\n", headers);
+	len = 0;
+	len += snprintf(headers, 128, "%8s", "OFFSET: ");
+	for (i = 63; i >= 0; i--) {
+		if (i % 4 == 0)
+			len += snprintf(&headers[len], 128 - len, "%d", i % 10);
+		else
+			len += snprintf(&headers[len], 128 - len, "%s", "-");
+	}
+	seq_printf(m, "%s\n", headers);
+}
+
 #define BIN_STRING_LEN	(sizeof(uint64_t) * 8)
 
 void dump_cmd(void *cmdp, unsigned int cmdsize)
@@ -83,6 +108,30 @@ void dump_cmd(void *cmdp, unsigned int cmdsize)
 void dump_comp_cmd(struct compress_cmd *cmdp)
 {
 	dump_cmd(cmdp, sizeof(*cmdp));
+}
+
+void seq_dump_comp_cmd(struct seq_file *m, struct compress_cmd *cmdp)
+{
+	uint64_t *ptr;
+	int i, loop = sizeof(*cmdp) / sizeof(uint64_t);
+	char bins[BIN_STRING_LEN + 1];
+	int nbits;
+
+	/* Hexadecimal dump */
+	seq_puts(m, "***HEXDUMP***\n");
+	ptr = (uint64_t *)cmdp;
+	for (i = 0; i < loop; i++, ptr++)
+		seq_printf(m, "Offset[0x%-2lx]: 0x%llx\n", i * sizeof(uint64_t), *ptr);
+
+	/* Binary dump */
+	seq_puts(m, "***BINDUMP***\n");
+	ptr = (uint64_t *)cmdp;
+	seq_print_header_series(m);
+	for (i = 0; i < loop; i++, ptr++) {
+		nbits = printbinary(bins, *ptr, 64);
+		if (nbits)
+			seq_printf(m, "%2s0x%-2lx: %s\n", " ", i * sizeof(uint64_t), bins);
+	}
 }
 
 void dump_all_comp_cmd(struct hwfifo *fifo)

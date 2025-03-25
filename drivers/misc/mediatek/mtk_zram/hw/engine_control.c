@@ -531,6 +531,29 @@ void engine_enc_wait_idle(struct engine_control_t *ctrl)
 	} while ((reg_val & ZRAM_ENC_STATUS_IDLE_MASK) != ZRAM_ENC_STATUS_IDLE_MASK);
 }
 
+/* Wait for ENC Idle with timeout */
+int engine_enc_wait_idle_timeout(struct engine_control_t *ctrl, unsigned long timeout)
+{
+	void __iomem *reg = ctrl->zram_enc_base + ZRAM_ENC_STATUS;
+	uint32_t reg_val;
+
+	/* Update timeout according to jiffies */
+	timeout = jiffies + msecs_to_jiffies(timeout);
+
+	/* Polling idle */
+	reg_val = zram_readl(reg);
+	while ((reg_val & ZRAM_ENC_STATUS_IDLE_MASK) != ZRAM_ENC_STATUS_IDLE_MASK) {
+
+		cpu_relax();
+		if (time_after(jiffies, timeout))
+			return -ETIME;
+
+		reg_val = zram_readl(reg);
+	}
+
+	return 0;
+}
+
 /* Wait for DEC Idle */
 #define ZRAM_DEC_STATUS_IDLE_MASK	(0x1)
 void engine_dec_wait_idle(struct engine_control_t *ctrl)
@@ -653,7 +676,7 @@ next:
 	ctrl->dec_irq_setting = reg_val;
 }
 
-void engine_setup_enc_main_fifo(struct engine_control_t *ctrl, phys_addr_t addr, unsigned int sz_bits)
+void engine_setup_enc_fifo(struct engine_control_t *ctrl, unsigned int id, phys_addr_t addr, unsigned int sz_bits)
 {
 	void __iomem *reg;
 	uint32_t reg_val;
@@ -668,33 +691,16 @@ void engine_setup_enc_main_fifo(struct engine_control_t *ctrl, phys_addr_t addr,
 		return;
 	}
 
-	reg = ctrl->zram_enc_base + ZRAM_ENC_CMD_MAIN_FIFO_CONFIG;
-	reg_val = (addr >> 7) | sz_bits;
-	zram_writel(reg_val, reg);
-
-	pr_info("%s: REG(%lx) VAL(%x)\n", __func__, (unsigned long)reg, (uint32_t)reg_val);
-}
-
-void engine_setup_enc_second_fifo(struct engine_control_t *ctrl, phys_addr_t addr, unsigned int sz_bits)
-{
-	void __iomem *reg;
-	uint32_t reg_val;
-
-	if (!IS_ALIGNED(addr, SZ_4K)) {
-		pr_info("%s: addr (0x%llx) is not 4K aligned.\n", __func__, addr);
+	if (id >= MAX_COMP_NR) {
+		pr_info("%s: id (%u) is too large.\n", __func__, id);
 		return;
 	}
 
-	if (sz_bits > ENGINE_COMP_FIFO_MAX_ENTRY_BITS) {
-		pr_info("%s: sz_bits (%u) is too large.\n", __func__, sz_bits);
-		return;
-	}
-
-	reg = ctrl->zram_enc_base + ZRAM_ENC_CMD_SECOND_FIFO_CONFIG;
+	reg = ctrl->zram_enc_base + ZRAM_ENC_CMD_MAIN_FIFO_CONFIG + (id * 4);
 	reg_val = (addr >> 7) | sz_bits;
 	zram_writel(reg_val, reg);
 
-	pr_info("%s: REG(%lx) VAL(%x)\n", __func__, (unsigned long)reg, (uint32_t)reg_val);
+	pr_info("%s: ID(%u) REG(%lx) VAL(%x)\n", __func__, id, (unsigned long)reg, (uint32_t)reg_val);
 }
 
 void engine_setup_dec_fifo(struct engine_control_t *ctrl, unsigned int id, phys_addr_t addr, unsigned int sz_bits)

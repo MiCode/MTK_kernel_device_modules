@@ -18,19 +18,12 @@ config MTK_ZRAM_ENGINE
 	  This is used for the improvement of sw compression over some scenarios.
 	  If you are not sure about whether to enable it or not, please set n.
 
-config ZRAM_ENGINE_COMP_FIFO_1_BITS
-	int "The entry bits of ZRAM ENGINE Compression FIFO #1 (8-11)"
+config ZRAM_ENGINE_COMP_FIFO_BITS
+	int "The entry bits of ZRAM ENGINE Compression FIFOs (8-11)"
 	range 8 11
 	default "11"
 	help
 	  This will create a fifo with depth of 2^8 ~ 2^11.
-
-config ZRAM_ENGINE_COMP_FIFO_2_BITS
-	int "The entry bits of ZRAM ENGINE Compression FIFO #2 (7-11)"
-	range 7 11
-	default "11"
-	help
-	  This will create a fifo with depth of 2^7 ~ 2^11.
 
 config ZRAM_ENGINE_DECOMP_FIFO_BITS
 	int "The entry bits of ZRAM ENGINE Decompression FIFOs (3-7)"

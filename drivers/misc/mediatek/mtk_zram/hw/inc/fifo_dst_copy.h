@@ -30,12 +30,18 @@
  * 1. Clear src_addr, I bit and set status to COMP_CMD_IDLE (0x0).
  * 2. Set word_1_value to 0x0.
  */
-static inline void reset_cmd_after_compression(struct compress_cmd *cmd)
+static inline void reset_cmd_after_compression(struct compress_cmd *cmd, uint32_t id)
 {
 	/* After the completion of HW compression, CMD should be post-processed before doing reset */
 
 	cmd->word_0_value = (cmd->word_0_value & COMP_CMD_OFFSET_0_RESET_MASK);
 	cmd->word_1_value = 0x0;
+
+	/* CMD is invalid, try to restore it */
+	if (unlikely(cmd->buf_enable != ENGINE_BUF_ENABLE)) {
+		cmd->buf_enable = ENGINE_BUF_ENABLE;
+		cmd->fifo = id;
+	}
 }
 
 /*

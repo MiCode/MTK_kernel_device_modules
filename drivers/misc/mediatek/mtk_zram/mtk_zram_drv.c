@@ -1133,11 +1133,12 @@ static ssize_t io_stat_show(struct device *dev,
 
 	down_read(&zram->init_lock);
 	ret = scnprintf(buf, PAGE_SIZE,
-			"%8llu %8llu 0 %8llu %8llu %8llu %8llu %8llu %8llu %8llu\n",
+			"%8llu %8llu 0 %8llu %8llu %8llu %8llu %8llu %8llu %8llu %8llu\n",
 			(u64)atomic64_read(&zram->stats.failed_reads),
 			(u64)atomic64_read(&zram->stats.failed_writes),
 			(u64)atomic64_read(&zram->stats.notify_free),
 			(u64)atomic64_read(&zram->stats.hw_failed_reads),
+			(u64)atomic64_read(&zram->stats.hw_failed_writes),
 			(u64)atomic64_read(&zram->stats.hw_inuse),
 			(u64)atomic64_read(&zram->stats.hw_busy),
 			(u64)atomic64_read(&zram->stats.hw_busy_wait),
@@ -1169,7 +1170,7 @@ static ssize_t mm_stat_show(struct device *dev,
 	max_used = atomic_long_read(&zram->stats.max_used_pages);
 
 	ret = scnprintf(buf, PAGE_SIZE,
-			"%8llu %8llu %8llu %8lu %8ld %8llu %8lu %8llu %8llu\n",
+			"%8llu %8llu %8llu %8lu %8ld %8llu %8lu %8llu %8llu %8llu\n",
 			orig_size << PAGE_SHIFT,
 			(u64)atomic64_read(&zram->stats.compr_data_size),
 			mem_used << PAGE_SHIFT,
@@ -1178,7 +1179,8 @@ static ssize_t mm_stat_show(struct device *dev,
 			(u64)atomic64_read(&zram->stats.same_pages),
 			atomic_long_read(&pool_stats.pages_compacted),
 			(u64)atomic64_read(&zram->stats.huge_pages),
-			(u64)atomic64_read(&zram->stats.huge_pages_since));
+			(u64)atomic64_read(&zram->stats.huge_pages_since),
+			(u64)atomic64_read(&zram->stats.hw_huge_pages_since));
 	up_read(&zram->init_lock);
 
 	return ret;
@@ -1262,6 +1264,9 @@ static bool zram_meta_alloc(struct zram *zram, u64 disksize)
 
 	if (!huge_class_size)
 		huge_class_size = zs_huge_class_size(zram->mem_pool);
+
+	pr_info("%s: %llu\n", __func__, (unsigned long long)huge_class_size);
+
 	return true;
 }
 
@@ -2276,12 +2281,11 @@ static void hwcomp_compress_post_process_ndc(int err, void *buffer, unsigned int
 	struct bio *bio = pp_info->bio;
 	unsigned long handle = -ENOMEM;
 
-	if (err) {
-		pr_info("%s: error (%d) occurs for index (%u)\n", __func__, err, index);
-		goto out;
-	}
-
 	/* zram should not be NULL here */
+	if (unlikely(!zram)) {
+		pr_info("%s: Empty ZRAM for index (%u) at (%d)\n", __func__, index, err);
+		return;
+	}
 
 	/* Check bio */
 	if (unlikely(!bio)) {
@@ -2289,8 +2293,24 @@ static void hwcomp_compress_post_process_ndc(int err, void *buffer, unsigned int
 		return;
 	}
 
+	if (err) {
+		atomic64_inc(&zram->stats.hw_failed_writes);
+
+		/* Fallback to SW compression */
+		if (zram_write_page(zram, pp_info->page, index)) {
+			pr_info("%s: fallback to SW compression fail\n", __func__);
+			goto out;
+		}
+
+		goto fallback_success;
+	}
+
 	/* Copy incompressible page to zspool */
 	if (flag == HWCOMP_HUGE) {
+
+		/* HW views it as huge page */
+		atomic64_inc(&zram->stats.hw_huge_pages_since);
+
 		/* Make sure comp_len is PAGE_SIZE for HWCOMP_HUGE */
 		comp_len = PAGE_SIZE;
 		handle = hwcomp_copy_to_zspool(zram, buffer, pp_info->page, comp_len);
@@ -2348,17 +2368,13 @@ static void hwcomp_compress_post_process_ndc(int err, void *buffer, unsigned int
 	/* Update stats */
 	atomic64_inc(&zram->stats.pages_stored);
 
+fallback_success:
+
 	/* Call bio_endio to decrease one reference to bio from bio_inc_remaining */
 	bio_endio(bio);
 	return;
 
 out:
-	/* Sanity check */
-	if (!zram) {
-		pr_info("%s: Empty zram.\n", __func__);
-		return;
-	}
-
 	/* Return as bio error */
 	atomic64_inc(&zram->stats.failed_writes);
 	bio_io_error(bio);
@@ -2617,12 +2633,11 @@ static void hwcomp_compress_post_process_dc(int err, void *buffer, unsigned int 
 	struct bio *bio = pp_info->bio;
 	unsigned long handle = -ENOMEM;
 
-	if (err) {
-		pr_info("%s: error (%d) occurs for index (%u)\n", __func__, err, index);
-		goto out;
-	}
-
 	/* zram should not be NULL here */
+	if (unlikely(!zram)) {
+		pr_info("%s: Empty ZRAM for index (%u) at (%d)\n", __func__, index, err);
+		return;
+	}
 
 	/* Check bio */
 	if (unlikely(!bio)) {
@@ -2630,8 +2645,25 @@ static void hwcomp_compress_post_process_dc(int err, void *buffer, unsigned int 
 		return;
 	}
 
+	if (err) {
+		atomic64_inc(&zram->stats.hw_failed_writes);
+
+		/* Fallback to SW compression */
+		if (zram_write_page(zram, pp_info->page, index)) {
+			pr_info("%s: fallback to SW compression fail\n", __func__);
+			goto out;
+		}
+
+		goto fallback_success;
+	}
+
 	/* Copy compressed/incompressible page to zspool */
 	if (flag != HWCOMP_SAME) {
+
+		/* HW views it as huge page */
+		if (flag == HWCOMP_HUGE)
+			atomic64_inc(&zram->stats.hw_huge_pages_since);
+
 		/* Make sure comp_len is PAGE_SIZE for HWCOMP_HUGE or if comp_len >= huge_class_size */
 		if (comp_len >= huge_class_size || flag == HWCOMP_HUGE)
 			comp_len = PAGE_SIZE;
@@ -2688,17 +2720,13 @@ static void hwcomp_compress_post_process_dc(int err, void *buffer, unsigned int 
 	/* Update stats */
 	atomic64_inc(&zram->stats.pages_stored);
 
+fallback_success:
+
 	/* Call bio_endio to decrease one reference to bio from bio_inc_remaining */
 	bio_endio(bio);
 	return;
 
 out:
-	/* Sanity check */
-	if (!zram) {
-		pr_info("%s: Empty ZRAM.\n", __func__);
-		return;
-	}
-
 	/* Return as bio error */
 	atomic64_inc(&zram->stats.failed_writes);
 	bio_io_error(bio);
