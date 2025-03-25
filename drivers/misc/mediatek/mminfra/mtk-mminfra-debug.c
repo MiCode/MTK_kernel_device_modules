@@ -502,13 +502,21 @@ static int mminfra_power_mon(void *data)
 			mdelay(1);
 		}
 	} else if (mm_pwr_ver == mm_pwr_v3) {
-		if (!dbg || !dbg->mm_mtcmos_base || !dbg->mm_mtcmos_mask ||
-			!dbg->mmpc_src_ctrl_base) {
+		if (!dbg || !dbg->mm_mtcmos_base || !dbg->mm_mtcmos_mask) {
 			pr_notice("%s skip\n", __func__);
 			return 0;
 		}
 
-		mmpc_src_addr = ioremap(dbg->mmpc_src_ctrl_base, 0x1000);
+		if (mmpc_src_ctrl_v2) {
+			mmpc_src_addr = ioremap(mmpc_dbg->mmpc_src_ctrl_base, 0x1000);
+		} else {
+			if (!dbg->mmpc_src_ctrl_base) {
+				pr_notice("%s mmpc not support\n", __func__);
+				return 0;
+			}
+			mmpc_src_addr = ioremap(dbg->mmpc_src_ctrl_base, 0x1000);
+		}
+
 		mmpc_hw_req_addr[MM_DDRSRC] = mmpc_src_addr + 0x1C;
 		mmpc_hw_req_addr[MM_EMI] = mmpc_src_addr + 0x3C;
 		mmpc_hw_req_addr[MM_BUSPLL] = mmpc_src_addr + 0x5C;
