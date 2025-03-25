@@ -2984,6 +2984,8 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 		ultra_lo_fifo_us = DIV_ROUND_UP(buf_con * 1000 * 8, consume_rate * 10);
 		ultra_lo_fifo_us = (ultra_lo_fifo_us >= 35) ? ultra_lo_fifo_us : 35;
 		ultra_hi_fifo_us = ultra_lo_fifo_us + 1;
+		urgent_lo_fifo_us = DIV_ROUND_UP(buf_con * 1000 * 6, consume_rate * 10);
+		urgent_hi_fifo_us = DIV_ROUND_UP(buf_con * 1000 * 8, consume_rate * 10);
 
 		ultra_lo_fifo_us = dbg_ultra_low ? dbg_ultra_low : ultra_lo_fifo_us;
 		ultra_hi_fifo_us = dbg_ultra_high? dbg_ultra_high : ultra_hi_fifo_us;
