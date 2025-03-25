@@ -532,13 +532,13 @@ static int mmdvfs_vcp_init(void)
 	struct iommu_domain *domain;
 	int retry = 0, ret = 0;
 
-	/*while (!mmdebug_is_init_done()) {
+	while (!mmdebug_is_init_done()) {
 		if (++retry > 100) {
 			MMDVFS_ERR("mmdebug is not ready yet");
 			return -ETIMEDOUT;
 		}
 		ssleep(1);
-	}*/
+	}
 
 	//vcp
 	retry = 0;
