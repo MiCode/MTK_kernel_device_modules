@@ -42,9 +42,7 @@ static int engine_setup_gear(struct engine_gear_control_t *gear_ctrl, uint32_t l
 			goto exit;
 		}
 
-		/* Unbind vcore when indicating ENGINE_MIN_GEAR */
-		ret = regulator_set_voltage(gear_ctrl->vcore,
-				(level == ENGINE_MIN_GEAR)? 0 : gear_ctrl->volt[level], INT_MAX);
+		ret = regulator_set_voltage(gear_ctrl->vcore, gear_ctrl->volt[level], INT_MAX);
 		if (ret) {
 			pr_info("%s: failed to set voltage to %d: ret(%d).\n",
 					__func__, gear_ctrl->volt[level], ret);
@@ -144,7 +142,9 @@ void engine_gear_disable_clock(struct engine_control_t *ctrl,
 {
 	spin_lock(&gear_ctrl->lock);
 
-	BUG_ON(gear_ctrl->clk_usage == 0);
+	/* It's forbidden to proceed when clk_usage is 0 */
+	if (gear_ctrl->clk_usage == 0)
+		goto exit;
 
 	/* Sequence: power off -> disable clock */
 	if (--gear_ctrl->clk_usage == 0) {
@@ -166,6 +166,7 @@ void engine_gear_disable_clock(struct engine_control_t *ctrl,
 		clk_disable(gear_ctrl->clk_mux);
 	}
 
+exit:
 	spin_unlock(&gear_ctrl->lock);
 }
 
@@ -179,7 +180,9 @@ void engine_gear_disable_clock_by_cnt(struct engine_control_t *ctrl,
 {
 	spin_lock(&gear_ctrl->lock);
 
-	BUG_ON(gear_ctrl->clk_usage < cnt);
+	/* It's forbidden to make clk_usage underflow */
+	if (gear_ctrl->clk_usage < cnt)
+		goto exit;
 
 	gear_ctrl->clk_usage -= cnt;
 
@@ -206,6 +209,7 @@ void engine_gear_disable_clock_by_cnt(struct engine_control_t *ctrl,
 		engine_set_irq_on(ctrl, true, true);
 	}
 
+exit:
 	spin_unlock(&gear_ctrl->lock);
 }
 
@@ -495,10 +499,14 @@ void engine_fix_gear_level(struct engine_gear_control_t *gear_ctrl, uint32_t gea
 	gear_ctrl->engine_gear_fixed = true;
 
 	if (gear_ctrl->curr_gear == gear_level) {
+#ifdef ZRAM_ENGINE_DEBUG
 		pr_info("%s: gear is identical:(%u)!\n", __func__, gear_level);
+#endif
 		goto exit;
 	} else if (gear_ctrl->curr_gear < gear_level) {
+#ifdef ZRAM_ENGINE_DEBUG
 		pr_info("%s: gear up to (%u)!\n", __func__, gear_level);
+#endif
 		gear_up = true;
 	}
 
@@ -551,10 +559,14 @@ void engine_free_gear_level(struct engine_gear_control_t *gear_ctrl)
 
 	/* Whether we should change gear level */
 	if (gear_ctrl->curr_gear == gear_level) {
+#ifdef ZRAM_ENGINE_DEBUG
 		pr_info("%s: gear is identical:(%u)!\n", __func__, gear_level);
+#endif
 		goto exit;
 	} else if (gear_ctrl->curr_gear < gear_level) {
+#ifdef ZRAM_ENGINE_DEBUG
 		pr_info("%s: gear up to (%u)!\n", __func__, gear_level);
+#endif
 		gear_up = true;
 	} else {
 		pr_info("%s: gear down to (%u)!\n", __func__, gear_level);

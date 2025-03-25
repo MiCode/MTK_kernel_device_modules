@@ -486,30 +486,27 @@ dump:
 	dump_fifo_idx(hwz, NULL, 0);
 
 	/*
-	 * Try to restore
+	 * Try to reset all indices
 	 */
 
 	/* compression fifos */
 	for (i = 0; i < MAX_COMP_NR; i++) {
 		fifo = &hwz->comp_fifo[i];
-		cmpl_idx = comp_fifo_HtS_complete_index(fifo);
-		if (cmpl_idx != fifo->complete_idx) {
-			fifo->write_idx = cmpl_idx;
-			fifo->complete_idx = cmpl_idx;
-			fifo->pp_prev_end = cmpl_idx;
-		}
+		fifo->write_idx = 0;
+		fifo->complete_idx = 0;
+		fifo->pp_prev_end = 0;
 	}
 
 	/* decompression fifos */
 	for (i = 0; i < MAX_DCOMP_NR; i++) {
 		fifo = &hwz->dcomp_fifo[i];
-		cmpl_idx = dcomp_fifo_HtS_complete_index(fifo);
-		if (cmpl_idx != fifo->complete_idx) {
-			fifo->write_idx = cmpl_idx;
-			fifo->complete_idx = cmpl_idx;
-			fifo->pp_prev_end = cmpl_idx;
-		}
+		fifo->write_idx = 0;
+		fifo->complete_idx = 0;
+		fifo->pp_prev_end = 0;
 	}
+
+	/* Reset all indices */
+	engine_reset_all_indices(&hwz->ctrl);
 }
 
 /* Polling for cmd completion */
@@ -689,6 +686,17 @@ static uint32_t dcomp_post_processing_cmds(struct zram_engine_t *hwz, struct hwf
 	/* Add memory barrier to make sure we can get the correct range */
 	rmb();
 
+	/* Validate fifo indices */
+	if (dcomp_fifo_indices_invalid(fifo->write_idx, end)) {
+		engine_get_reg_status(&hwz->ctrl, NULL);
+		dump_fifo_idx(hwz, NULL, 0);
+		engine_gear_get_status(&hwz->gear_ctrl, NULL);
+		WARN_ON_ONCE(1);
+
+		/* Don't proceed. Just return. */
+		return 0;
+	}
+
 	if (start != fifo->pp_prev_end)
 		pr_info("%s: unexpected start(0x%x), not (0x%x)", __func__, start, fifo->pp_prev_end);
 
@@ -818,7 +826,7 @@ repeat:
 
 		/* HW is slow, just sleep for a while */
 		if (processed == 0) {
-			usleep_idle_range(50, 100);
+			usleep_idle_range(100, 200);
 			hang_detect++;
 		} else {
 			/* not hang */
@@ -842,7 +850,7 @@ repeat:
 
 			/* do something */
 			suspect_hang = 0;
-			WARN_ON_ONCE(1);
+			//WARN_ON_ONCE(1);
 
 			/* Increase the suspect hang count */
 			atomic_inc(&dec_suspect_hang_count);
@@ -855,7 +863,7 @@ repeat:
 		} else if (cnt < 0) {
 			/* Show warning & dump information once to avoid log flooding */
 			if (READ_ONCE(warn_on_cnt_underflow)) {
-				WARN_ON(1);
+				//WARN_ON(1);
 				engine_get_reg_status(&hwz->ctrl, NULL);
 				dump_fifo_idx(hwz, NULL, 0);
 				engine_gear_get_status(&hwz->gear_ctrl, NULL);
@@ -1231,7 +1239,7 @@ repeat:
 			/* do something */
 			//dump_pending_comp_cmds(hwz);
 			suspect_hang = 0;
-			WARN_ON_ONCE(1);
+			//WARN_ON_ONCE(1);
 
 			/* Increase the suspect hang count */
 			atomic_inc(&enc_suspect_hang_count);
@@ -1242,7 +1250,7 @@ repeat:
 		if (cnt > 0) {
 			goto repeat;
 		} else if (cnt < 0) {
-			WARN_ON_ONCE(1);
+			//WARN_ON_ONCE(1);
 			engine_get_reg_status(&hwz->ctrl, NULL);
 			dump_fifo_idx(hwz, NULL, 0);
 			engine_gear_get_status(&hwz->gear_ctrl, NULL);
@@ -1451,18 +1459,18 @@ next_dcmd:
 	WARN_ON(engine_gear_enable_clock(&hwz->ctrl, &hwz->gear_ctrl) != 0);
 #endif
 
+	/*
+	 * Increment the number of decompression request BEFORE update hw write index
+	 * and remember to wake up post-process.
+	 */
+	if (atomic_inc_return(&hwz->dcomp_cnt) == 1)
+		wake_up_pp = true;
+
 	/* Query entry and fill request */
 	entry = dcomp_fifo_write_entry(fifo);
 	valid = hwz->ops->fill_decompression_info(fifo, entry, src, slen, page, pp_info,
 						true, zspool_to_hwcomp_buffer);
 	update_dcomp_fifo_write_index(fifo);
-
-	/*
-	 * Increment the number of decompression request after update hw write index
-	 * and remember to wake up post-process.
-	 */
-	if (atomic_inc_return(&hwz->dcomp_cnt) == 1)
-		wake_up_pp = true;
 
 	/* Try next cmd if necessary */
 	if (!valid)
@@ -1527,18 +1535,18 @@ next_cmd_fifo:
 	WARN_ON(engine_gear_enable_clock(&hwz->ctrl, &hwz->gear_ctrl) != 0);
 #endif
 
+	/*
+	 * Increment the number of compression request BEFORE update hw write index
+	 * and remember to wake up post-process.
+	 */
+	if (atomic_inc_return(&hwz->comp_cnt) == 1)
+		wake_up_pp = true;
+
 	/* Query entry and fill request */
 	entry = comp_fifo_write_entry(fifo);
 	valid = hwz->ops->fill_compression_info(fifo, entry, page, pp_info, true);
 	fifo->accu_usage++;
 	update_comp_fifo_write_index(fifo);
-
-	/*
-	 * Increment the number of compression request after update hw write index
-	 * and remember to wake up post-process.
-	 */
-	if (atomic_inc_return(&hwz->comp_cnt) == 1)
-		wake_up_pp = true;
 
 	/* Try next cmd if necessary */
 	if (!valid)
@@ -1571,18 +1579,18 @@ next_cmd_pfifo:
 	WARN_ON(engine_gear_enable_clock(&hwz->ctrl, &hwz->gear_ctrl) != 0);
 #endif
 
+	/*
+	 * Increment the number of compression request BEFORE update write index
+	 * and remember to wake up post-process.
+	 */
+	if (atomic_inc_return(&hwz->comp_cnt) == 1)
+		wake_up_pp = true;
+
 	/* Query entry and fill request */
 	entry = comp_fifo_write_entry(pfifo);
 	valid = hwz->ops->fill_compression_info(pfifo, entry, page, pp_info, true);
 	pfifo->accu_usage++;
 	update_comp_pfifo_write_index(pfifo);
-
-	/*
-	 * Increment the number of compression request after update write index
-	 * and remember to wake up post-process.
-	 */
-	if (atomic_inc_return(&hwz->comp_cnt) == 1)
-		wake_up_pp = true;
 
 	/* Try next cmd if necessary */
 	if (!valid)
@@ -2063,7 +2071,9 @@ static bool hwcomp_all_fifo_empty(struct zram_engine_t *hwz)
 	for (i = 0; i < MAX_COMP_NR; i++) {
 		fifo = &hwz->comp_fifo[i];
 		if (!comp_fifo_empty(fifo)) {
+#ifdef ZRAM_ENGINE_DEBUG
 			pr_info("%s: comp(%d) is busy!\n", __func__, i);
+#endif
 			return false;
 		}
 	}
@@ -2071,7 +2081,9 @@ static bool hwcomp_all_fifo_empty(struct zram_engine_t *hwz)
 	for (i = 0; i < MAX_DCOMP_NR; i++) {
 		fifo = &hwz->dcomp_fifo[i];
 		if (!dcomp_fifo_empty(fifo)) {
+#ifdef ZRAM_ENGINE_DEBUG
 			pr_info("%s: decomp(%d) is busy!\n", __func__, i);
+#endif
 			return false;
 		}
 	}
@@ -2785,7 +2797,9 @@ static int kick_hwe_gear(const char *val, const struct kernel_param *kp)
 
 	if (!hwcomp_all_fifo_empty(hwz)) {
 		retval = -EBUSY;
+#ifdef ZRAM_ENGINE_DEBUG
 		pr_info("%s: There are pending requests in FIFO(s).\n", __func__);
+#endif
 		goto exit;
 	}
 
@@ -2828,7 +2842,9 @@ static int kick_hwe_gear(const char *val, const struct kernel_param *kp)
 		engine_free_gear_level(&hwz->gear_ctrl);
 		break;
 	default:
+#ifdef ZRAM_ENGINE_DEBUG
 		pr_info("%s: invalid gear!\n", __func__);
+#endif
 		retval = -EINVAL;
 		break;
 	}

@@ -232,6 +232,26 @@ static inline uint32_t lname##_fifo_StH_write_index(struct hwfifo *fifo)			\
 {												\
 	return (fifo->write_idx + ENGINE_##uname##_FIFO_PROPAGATION)				\
 		& ENGINE_##uname##_FIFO_INDEX_MASK;						\
+}												\
+static inline bool lname##_fifo_indices_invalid(uint32_t write_idx, uint32_t complete_idx)	\
+{												\
+	uint32_t write_entry, complete_entry;							\
+	uint32_t write_tag, complete_tag;							\
+												\
+	write_entry = write_idx & ENGINE_##uname##_FIFO_ENTRY_MASK;				\
+	complete_entry = complete_idx & ENGINE_##uname##_FIFO_ENTRY_MASK;			\
+	write_tag = write_idx >> ENGINE_##uname##_FIFO_CARRY_BIT;				\
+	complete_tag = complete_idx >> ENGINE_##uname##_FIFO_CARRY_BIT;				\
+												\
+	if (write_tag == complete_tag) {							\
+		if (complete_entry > write_entry)						\
+			return true;								\
+	} else {										\
+		if (write_entry > complete_entry)						\
+			return true;								\
+	}											\
+												\
+	return false;										\
 }
 
 /*
