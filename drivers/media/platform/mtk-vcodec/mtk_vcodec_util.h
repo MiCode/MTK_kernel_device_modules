@@ -33,8 +33,8 @@
 #if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
 #define MTK_SCHED_SUPPORT
 #endif
-#if IS_ENABLED(CONFIG_MTK_TASK_TURBO)
-#define MTK_TASK_SUPPORT
+#if IS_ENABLED(CONFIG_MTK_VIP_ENGINE)
+#define MTK_VIP_SUPPORT
 #endif
 
 #define mem_slot_range (100*1024ULL) //100KB
@@ -467,7 +467,7 @@ extern void set_top_grp_aware(int val, int force_ctrl);
 extern void set_grp_awr_min_opp_margin(int gear_id, int group_id, int val);
 extern void set_grp_awr_thr(int gear_id, int group_id, int opp);
 #endif
-#ifdef MTK_TASK_SUPPORT
+#ifdef MTK_VIP_SUPPORT
 extern int set_task_priority(struct task_struct *task, int prio);
 #endif
 

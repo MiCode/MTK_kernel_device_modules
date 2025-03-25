@@ -3122,7 +3122,7 @@ static int vb2ops_venc_start_streaming(struct vb2_queue *q, unsigned int count)
 	vcodec_trace_end();
 	vcodec_trace_end();
 
-#ifdef MTK_TASK_SUPPORT
+#ifdef MTK_VIP_SUPPORT
 	if (ctx->enc_params.operationrate >= 960) {
 		int ret = set_task_priority(ctx->dev->worker_thread, 50);
 		ctx->is_worker_set_rt = true;
@@ -3254,7 +3254,7 @@ static void vb2ops_venc_stop_streaming(struct vb2_queue *q)
 		}
 		vcodec_trace_end();
 
-#ifdef MTK_TASK_SUPPORT
+#ifdef MTK_VIP_SUPPORT
 		if (ctx->is_worker_set_rt) {
 			int ret = set_task_priority(ctx->dev->worker_thread, 120 + MIN_NICE + 2);
 			ctx->is_worker_set_rt = false;
