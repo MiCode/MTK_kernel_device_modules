@@ -1261,7 +1261,6 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/tee/teei/520:isee-ffa".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/mediatek/audio_dsp:snd-soc-audiodsp-common".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/mediatek/audio_scp:mtk-scp-audiocommon".format(kernel_version),
-    "//kernel_device_modules-{}/sound/soc/mediatek/common:mtk-btcvsd".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/mediatek/common:mtk-afe-external".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/mediatek/common:mtk-sp-spk-amp".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/mediatek/common:snd-soc-mtk-common".format(kernel_version),
@@ -1576,6 +1575,7 @@ mgk_64_kleaf_platform_modules = {
     "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mml:mtk-mml-mt6991".format(kernel_version): "mt6991",
     "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mml:mtk-mml-mt6993".format(kernel_version): "mt6993",
 
+    "//kernel_device_modules-{}/sound/soc/mediatek/common:mtk-btcvsd".format(kernel_version): "mt6858 mt6789 mt6855 mt6895",
     "//kernel_device_modules-{}/sound/soc/mediatek/mt6855:snd-soc-mt6855-afe".format(kernel_version): "mt6855",
     "//kernel_device_modules-{}/sound/soc/mediatek/mt6855:mt6855-mt6369".format(kernel_version): "mt6855",
     "//kernel_device_modules-{}/sound/soc/mediatek/mt6991:snd-soc-mt6991-afe".format(kernel_version): "mt6991",
