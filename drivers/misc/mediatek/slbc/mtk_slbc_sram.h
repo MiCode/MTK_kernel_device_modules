@@ -91,6 +91,7 @@
 #define SLBC_IPIC_TYPE                  0xEC
 #define SLBC_IPIC_UID                   0xF0
 #define SLBC_IPIC_RET                   0xF4
+#define SLBC_ENABLE_GPU_DYNAMIC         0xF8
 
 /* SLBC_UID_USED */
 #define SLBC_UID_USED_STA_LSB           SLBC_BIT(0)

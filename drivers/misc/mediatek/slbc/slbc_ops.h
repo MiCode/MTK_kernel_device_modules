@@ -21,6 +21,7 @@
 #define EREQ_TIMEOUT		8 /* req timeout */
 #define EREQ_WAIT_FAIL		9 /* req wait fail */
 #define EREQ_GID_RUN_OUT	10 /* req wait fail */
+#define EREQ_FAIL		11 /* req to sspm fail */
 
 
 /* call back return value */

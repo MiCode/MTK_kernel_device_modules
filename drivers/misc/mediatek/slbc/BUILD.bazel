@@ -45,6 +45,7 @@ ddk_headers(
     name = "headers",
     hdrs = [
         "slbc_ops.h",
+        "slbc_sdk.h",
     ],
     includes = ["."],
 )
@@ -60,8 +61,8 @@ define_mgk_ddk_ko(
     hdrs = [
         "slbc.h",
         "slbc_ops.h",
-        "mtk_slbc_sram.h",
         "slbc_sdk.h",
+        "mtk_slbc_sram.h",
     ],
     copts = [
         "-Wall",

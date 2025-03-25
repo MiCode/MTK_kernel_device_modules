@@ -301,6 +301,15 @@ int slbc_force_cache(enum slc_ach_uid uid, unsigned int size)
 }
 EXPORT_SYMBOL_GPL(slbc_force_cache);
 
+int slbc_force_dynamic_cache(enum slc_ach_uid uid, unsigned int size)
+{
+	if (common_ops && common_ops->slbc_force_dynamic_cache)
+		return common_ops->slbc_force_dynamic_cache(uid, size);
+	else
+		return -ENODEV;
+}
+EXPORT_SYMBOL_GPL(slbc_force_dynamic_cache);
+
 int slbc_force_cache_ratio(enum slc_ach_uid uid, unsigned int ratio)
 {
 	if (common_ops && common_ops->slbc_force_cache_ratio)
@@ -345,6 +354,15 @@ int slbc_cg_priority(bool gpu_first)
 		return -ENODEV;
 }
 EXPORT_SYMBOL_GPL(slbc_cg_priority);
+
+int slbc_enable_gpu_dynamic_cache(uint32_t type)
+{
+	if (common_ops && common_ops->slbc_enable_gpu_dynamic_cache)
+		return common_ops->slbc_enable_gpu_dynamic_cache(type);
+	else
+		return -ENODEV;
+}
+EXPORT_SYMBOL_GPL(slbc_enable_gpu_dynamic_cache);
 
 int slbc_disable_dcc(bool disable)
 {

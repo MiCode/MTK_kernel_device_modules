@@ -102,11 +102,13 @@ struct slbc_common_ops {
 	int (*slbc_invalidate)(enum slc_ach_uid uid, int gid);
 	int (*slbc_read_invalidate)(enum slc_ach_uid uid, int gid, int enable);
 	int (*slbc_force_cache)(enum slc_ach_uid uid, unsigned int size);
+	int (*slbc_force_dynamic_cache)(enum slc_ach_uid uid, unsigned int size);
 	int (*slbc_force_cache_ratio)(enum slc_ach_uid uid, unsigned int ratio);
 	int (*slbc_ceil)(enum slc_ach_uid uid, unsigned int ceil);
 	int (*slbc_total_ceil)(unsigned int ceil);
 	int (*slbc_window)(unsigned int window);
 	int (*slbc_cg_priority)(bool gpu_first);
+	int (*slbc_enable_gpu_dynamic_cache)(uint32_t type);
 	int (*slbc_disable_dcc)(bool disable);
 	int (*slbc_disable_slc)(bool disable);
 	int (*slbc_get_cache_size)(enum slc_ach_uid uid);
