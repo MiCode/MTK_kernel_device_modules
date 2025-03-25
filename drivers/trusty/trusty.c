@@ -42,6 +42,9 @@ module_param(use_high_wq, bool, 0660);
 static int nop_nice_value = -20; /* default to highest */
 module_param(nop_nice_value, int, 0660);
 
+static u64 poll_period_ms = 100;
+module_param(poll_period_ms, ullong, 0660);
+
 #ifdef MTK_ADAPTED
 static u32 real_drv;
 #endif
@@ -648,7 +651,7 @@ int trusty_nop_nice_value(void)
 	return nop_nice_value;
 }
 
-static void locked_nop_work_func(struct trusty_work *tw)
+static void locked_nop_work_func(struct trusty_work *tw, bool force)
 {
 	int ret;
 	struct trusty_state *s = tw->s;
@@ -713,7 +716,7 @@ static void trusty_adjust_nice_nopreempt(struct trusty_state *s, bool do_nop)
 	local_irq_restore(flags);
 }
 
-static void nop_work_func(struct trusty_work *tw)
+static void nop_work_func(struct trusty_work *tw, bool force)
 {
 	int ret;
 	bool do_nop;
@@ -721,7 +724,7 @@ static void nop_work_func(struct trusty_work *tw)
 	u32 last_arg0;
 	struct trusty_state *s = tw->s;
 
-	do_nop = dequeue_nop(s, args);
+	do_nop = force || dequeue_nop(s, args);
 
 	if (do_nop) {
 		/* we have been signaled or there's a nop so
@@ -832,8 +835,9 @@ static int trusty_nop_thread(void *context)
 {
 	struct trusty_work *tw = context;
 	struct trusty_state *s = tw->s;
-	void (*work_func)(struct trusty_work *tw);
+	void (*work_func)(struct trusty_work *tw, bool force);
 	int ret = 0;
+	long timeout;
 
 	DEFINE_WAIT_FUNC(wait, woken_wake_function);
 
@@ -847,13 +851,14 @@ static int trusty_nop_thread(void *context)
 		if (kthread_should_stop())
 			break;
 
-		wait_woken(&wait, TASK_INTERRUPTIBLE, MAX_SCHEDULE_TIMEOUT);
+		timeout = poll_period_ms ? msecs_to_jiffies(poll_period_ms) : MAX_SCHEDULE_TIMEOUT;
+		timeout = wait_woken(&wait, TASK_INTERRUPTIBLE, timeout);
 
 		if (kthread_should_park())
 			kthread_parkme();
 
 		/* process work */
-		work_func(tw);
+		work_func(tw, !timeout);
 	};
 	remove_wait_queue(&tw->nop_event_wait, &wait);
 
