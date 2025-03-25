@@ -10,7 +10,7 @@
 
 /* log definition */
 
-static uint32_t g_apu_sysmem_klog = 0x3;
+extern uint32_t g_apu_sysmem_klog;
 
 enum {
 	APU_SYSMEM_ERR = 0x1,

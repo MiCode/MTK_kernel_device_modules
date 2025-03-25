@@ -19,6 +19,7 @@
 #include "apusys_core.h"
 #include "apu_sysmem.h"
 #include "apu_sysmem_drv.h"
+#include "apu_sysmem_dbg.h"
 
 #include "apummu_mgt.h"
 #include "apu_mem_export.h"
@@ -704,6 +705,9 @@ int apu_sysmem_init(struct apusys_core_info *info)
 		apu_sysmem_err("failed to register apu sysmem driver\n");
 		goto out;
 	}
+
+	if (apu_sysmem_dbg_init(info->dbg_root))
+		apu_sysmem_err("apu_sysmem_dbg_init fail\n");
 
 	apu_sysmem_info("-\n");
 
