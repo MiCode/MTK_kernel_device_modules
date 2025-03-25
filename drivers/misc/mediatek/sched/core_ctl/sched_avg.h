@@ -39,5 +39,9 @@ extern unsigned int core_ctl_get_policy(void);
 extern unsigned long _capacity_of(int cpu);
 extern unsigned long get_freq_qos_max_of_min(unsigned int cid);
 extern unsigned long mtk_cpu_util_cfs_boost(int cpu);
+extern int mtk_effective_cpu_util_total(int cpu, struct task_struct *p, int dst_cpu, int runnable_boost,
+					unsigned long *min, unsigned long *max, unsigned long *tsk_min_clp,
+					unsigned long *tsk_max_clp, struct cpumask *sg_cpumask,
+					unsigned long cpu_util_iowait, int curr_task_uclamp);
 
 #endif /* _SCHED_AVG_H */

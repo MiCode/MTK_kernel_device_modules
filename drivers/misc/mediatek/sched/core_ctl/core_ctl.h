@@ -42,7 +42,10 @@ enum{
 enum {
 	SYSNODE = 0,
 	POWERHAL,
-	CAMERA
+	CAMERA,
+	UX,
+	GAME,
+	MAX_DEMAND_REQUESTER
 };
 
 enum {

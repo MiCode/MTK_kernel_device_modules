@@ -120,8 +120,8 @@ unsigned int get_cpu_util_pct(unsigned int cpu, bool orig)
 	/* camera mode only consider CFS loading & orig capacity */
 	if (core_ctl_get_policy() != 2) {
 		cfs_util = mtk_cpu_util_cfs_boost(cpu);
-		cpu_util = mtk_effective_cpu_util(cpu, cfs_util,
-					(struct task_struct *)UINTPTR_MAX, &umin, &umax);
+		cpu_util = mtk_effective_cpu_util_total(cpu, NULL, -1,
+					1, &umin, &umax, NULL, NULL, NULL, 0, false);
 		capacity = (orig == true) ? arch_scale_cpu_capacity(cpu) : _capacity_of(cpu);
 	} else {
 		cfs_rq = &cpu_rq(cpu)->cfs;
