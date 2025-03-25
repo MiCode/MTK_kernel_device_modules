@@ -835,6 +835,7 @@ enum Fg_interrupt_flags {
 	FG_INTR_BAT_INT2_CHECK = 0x4000000,
 	FG_INTR_BAT_PLUGIN = 0x8000000,
 	FG_INTR_LAST_MODE = 0x10000000,
+	FG_INTR_DYNAMIC = 0x20000000,
 };
 
 struct mtk_battery_algo {
@@ -1110,7 +1111,15 @@ struct rl_data_st {
 
 struct shutdown_data {
 	int data[7];
+	int dynamic_shutdown_flag;
+	int dynamic_gauge0_flag;
+	int dynamic_gauge0_voltage;
+	int dynamic_cv_flag;
+	int dynamic_cv_voltage;
+	int dynamic_zcv_flag;
+	int dynamic_zcv_cycle;
 };
+
 struct mtk_battery {
 	/*linux driver related*/
 	wait_queue_head_t  wait_que;
@@ -1351,6 +1360,7 @@ struct mtk_battery {
 	unsigned int notify_code;
 
 	struct shutdown_data sd_data;
+	struct shutdown_data rcv_sd_data;
 };
 
 struct mtk_battery_manager {

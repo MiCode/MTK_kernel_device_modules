@@ -173,7 +173,7 @@ void fg_daemon_send_data(struct mtk_battery *gm,
 	case FG_DAEMON_CMD_SEND_SD_DATA:
 		{
 			char *ptr;
-			int buffer[7];
+			int buffer[14];
 
 			if (sizeof(struct shutdown_data)
 				!= prcv->total_size) {
@@ -195,6 +195,9 @@ void fg_daemon_send_data(struct mtk_battery *gm,
 				memcpy(&ptr[prcv->idx],
 					prcv->input,
 					prcv->size);
+				memcpy(&gm->rcv_sd_data,
+					prcv->input,
+					prcv->size);
 
 				if (buffer[5] > 0 && buffer[5] <= DYNAMIC_SHUTDOWN_MAX)
 					gm->bat_voltage_low_bound =
@@ -203,10 +206,11 @@ void fg_daemon_send_data(struct mtk_battery *gm,
 					gm->low_tmp_bat_voltage_low_bound =
 						gm->low_tmp_bat_voltage_low_bound_orig + buffer[6];
 
-				bm_err(gm, "FG_DAEMON_CMD_SEND_SD_DATA vbat [%d %d] [%d %d] %d %d %d %d %d [%d %d]\n",
+				bm_err(gm, "FG_DAEMON_CMD_SEND_SD_DATA vbat [%d %d] [%d %d] %d %d %d %d %d [%d %d] %d %d, %d %d, %d %d\n",
 					gm->bat_voltage_low_bound, gm->low_tmp_bat_voltage_low_bound,
 					gm->bat_voltage_low_bound_orig, gm->low_tmp_bat_voltage_low_bound_orig,
-					buffer[0], buffer[1], buffer[2], buffer[3], buffer[4], buffer[5], buffer[6]);
+					buffer[0], buffer[1], buffer[2], buffer[3], buffer[4], buffer[5], buffer[6],
+					buffer[7], buffer[8], buffer[9], buffer[10], buffer[11], buffer[12]);
 			}
 		}
 		break;
@@ -1916,9 +1920,10 @@ void exec_BAT_EC(struct mtk_battery *gm, int cmd, int param)
 		{
 			int val = 43500 - param;
 
-			wakeup_fg_algo_cmd(gm, FG_INTR_KERNEL_CMD,
-					FG_KERNEL_CMD_GET_DYNAMIC_CV, val);
-
+			gm->sd_data.dynamic_cv_flag = 1;
+			gm->sd_data.dynamic_cv_voltage = val;
+			wakeup_fg_algo_cmd(gm, FG_INTR_DYNAMIC,
+					0, 0);
 			bm_err(gm, "exe_BAT_EC cmd %d. set dynamic cv %d 43500 %d\n",
 				cmd, val, param);
 		}
@@ -1927,8 +1932,10 @@ void exec_BAT_EC(struct mtk_battery *gm, int cmd, int param)
 		{
 			int val = param;
 
-			wakeup_fg_algo_cmd(gm, FG_INTR_KERNEL_CMD,
-					FG_KERNEL_CMD_GET_DYNAMIC_GAUGE0, val);
+			gm->sd_data.dynamic_gauge0_flag = 1;
+			gm->sd_data.dynamic_gauge0_voltage = val;
+			wakeup_fg_algo_cmd(gm, FG_INTR_DYNAMIC,
+					0, 0);
 
 			bm_err(gm, "exe_BAT_EC cmd %d. set dynamic gauge0 %d\n",
 				cmd, val);
@@ -1938,9 +1945,12 @@ void exec_BAT_EC(struct mtk_battery *gm, int cmd, int param)
 		{
 			int val = param;
 
+			gm->sd_data.dynamic_zcv_flag = 1;
+			gm->sd_data.dynamic_zcv_cycle = val;
 			reload_battery_zcv_table(gm, val);
-			wakeup_fg_algo_cmd(gm, FG_INTR_KERNEL_CMD,
-					FG_KERNEL_CMD_GET_DYNAMIC_ZCV_TABLE, val);
+			wakeup_fg_algo_cmd(gm, FG_INTR_DYNAMIC,
+					0, 0);
+
 
 			bm_err(gm, "exe_BAT_EC cmd %d. set dynamic ZCV TABLE %d\n",
 				cmd, val);
@@ -2820,8 +2830,9 @@ static ssize_t BAT_SHUTDOWN_store(
 			gm->sd_data.data[4], gm->sd_data.data[5],
 			gm->sd_data.data[6]);
 
-		wakeup_fg_algo_cmd(gm, FG_INTR_KERNEL_CMD,
-			FG_KERNEL_CMD_SEND_SHUTDOWN_DATA, 0);
+		gm->sd_data.dynamic_shutdown_flag = 1;
+		wakeup_fg_algo_cmd(gm, FG_INTR_DYNAMIC,
+				0, 0);
 
 		mdelay(4);
 		bm_err(gm, "%s wakeup DONE~~~\n", __func__);
@@ -4518,7 +4529,7 @@ static void mtk_battery_daemon_handler(struct mtk_battery *gm, void *nl_data,
 		memcpy(&int_value, &msg->data[0], sizeof(int_value));
 		reload_battery_zcv_table(gm, int_value);
 		bm_debug(gm, "FG_DAEMON_CMD_SET_SELECT_ZCV %d\n",
-			gm->soc);
+			int_value);
 	}
 	break;
 	case FG_DAEMON_CMD_SET_SOC:
