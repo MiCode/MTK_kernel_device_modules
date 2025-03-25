@@ -475,9 +475,11 @@ void mtk_smi_larb_bw_set(struct device *dev, const u32 port, const u32 val)
 		} else {
 			larb->larb_gen->bwl[larb->larbid * SMI_LARB_PORT_NR_MAX + port] = val;
 		}
-		writel(val, larb->base + SMI_LARB_OSTDL_PORTx(port));
-		if (larb->is_two_dram_path_ostdl)
-			writel(val, larb->base + INT_SMI_LARB_OSTDL_PORTx(port));
+		if (atomic_read(&larb->smi.ref_count)) {
+			writel(val, larb->base + SMI_LARB_OSTDL_PORTx(port));
+			if (larb->is_two_dram_path_ostdl)
+				writel(val, larb->base + INT_SMI_LARB_OSTDL_PORTx(port));
+		}
 	}
 }
 EXPORT_SYMBOL_GPL(mtk_smi_larb_bw_set);
