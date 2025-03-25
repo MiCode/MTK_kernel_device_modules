@@ -5,11 +5,19 @@
  */
 
 #include <linux/printk.h>
+#if defined(MTK_ADAPTED_WA) && MTK_ADAPTED_WA
+#include <linux/kvm.h>
+#endif /* defined(MTK_ADAPTED_WA) && MTK_ADAPTED_WA */
 
 #include "common.h"
 
 static void __arm_ffa_fn_smc(ffa_value_t args, ffa_value_t *res)
 {
+#if defined(MTK_ADAPTED_WA) && MTK_ADAPTED_WA
+	/* FF-A workaround, routing FFA to vendor module */
+	if (is_protected_kvm_enabled())
+		args.a0 |= 0x8000UL;
+#endif /* defined(MTK_ADAPTED_WA) && MTK_ADAPTED_WA */
 	arm_smccc_1_2_smc(&args, res);
 }
 
