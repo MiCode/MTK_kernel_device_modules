@@ -657,6 +657,7 @@ struct mtk_disp_oddmr_primary {
 	atomic_t od_weight_trigger;
 	atomic_t frame_dirty;
 	atomic_t sof_irq_available;
+	atomic_t sof_irq_for_od_sram;
 	/* 2: need oddmr hrt, 1: oddmr hrt done, 0:nothing to do */
 	atomic_t dmr_hrt_done;
 	atomic_t dbi_hrt_done;
@@ -667,6 +668,7 @@ struct mtk_disp_oddmr_primary {
 	struct task_struct *sof_irq_event_task;
 	struct wait_queue_head sof_irq_wq;
 	struct wait_queue_head hrt_wq;
+	struct wait_queue_head od_sram_wq;
 	struct mutex clock_lock;
 	struct mutex timing_lock;
 	struct mutex dbi_data_lock;

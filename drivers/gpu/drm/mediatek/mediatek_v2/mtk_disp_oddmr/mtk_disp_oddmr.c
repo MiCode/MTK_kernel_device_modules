@@ -795,6 +795,7 @@ static void mtk_oddmr_od_dummy(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg);
 static int mtk_oddmr_od_set_partial_update(struct mtk_ddp_comp *comp,
 		struct cmdq_pkt *handle, unsigned int top_overhead_v,
 		unsigned int bot_overhead_v, unsigned int full_height);
+static void mtk_oddmr_od_trigger_frame(struct mtk_ddp_comp *comp);
 
 static void mtk_oddmr_dmr_gain_cfg(struct mtk_ddp_comp *comp,
 		struct cmdq_pkt *pkg, unsigned int dbv_node, unsigned int fps_node,
@@ -2254,13 +2255,18 @@ static void mtk_oddmr_top_prepare(struct mtk_ddp_comp *comp, struct cmdq_pkt *ha
 {
 	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
 	uint32_t value = 0, mask = 0;
+	bool od_support = oddmr_data->primary_data->od_support;
 
 	ODDMRAPI_LOG("+\n");
 
-	if (oddmr_data->data->dbi_version == MTK_DBI_V3) {
+	if (oddmr_data->data->dbi_version == MTK_DBI_V3 ||
+		oddmr_data->data->od_version == MTK_OD_V3) {
 		mtk_oddmr_write(comp, 32, MT6991_DISP_ODDMR_TOP_CTR_1, handle);
 		mtk_oddmr_write(comp, 1, MT6991_DISP_ODDMR_TOP_CTR_2, handle);
-		SET_VAL_MASK(value, mask, 0, MT6991_REG_ODDMR_TOP_CLK_FORCE_EN);
+		if (od_support == true && oddmr_data->primary_data->od_state >= ODDMR_INIT_DONE)
+			SET_VAL_MASK(value, mask, 1, MT6991_REG_ODDMR_TOP_CLK_FORCE_EN);
+		else
+			SET_VAL_MASK(value, mask, 0, MT6991_REG_ODDMR_TOP_CLK_FORCE_EN);
 		SET_VAL_MASK(value, mask, 0, MT6991_REG_ODDMR_BYPASS);
 		mtk_oddmr_write_mask(comp, value,
 			MT6991_DISP_ODDMR_TOP_CTR_3, mask, handle);
@@ -2268,7 +2274,8 @@ static void mtk_oddmr_top_prepare(struct mtk_ddp_comp *comp, struct cmdq_pkt *ha
 	}
 
 	if (oddmr_data->data->dbi_version == MTK_DBI_V2 ||
-		oddmr_data->data->dmr_version == MTK_DMR_V1) {
+		oddmr_data->data->dmr_version == MTK_DMR_V1 ||
+		oddmr_data->data->od_version == MTK_OD_V2) {
 		mtk_oddmr_write(comp, 32, MT6991_DISP_ODDMR_TOP_CTR_1, handle);
 		mtk_oddmr_write(comp, 1, MT6991_DISP_ODDMR_TOP_CTR_2, handle);
 		SET_VAL_MASK(value, mask, 0, MT6991_REG_ODDMR_TOP_CLK_FORCE_EN);
@@ -6053,6 +6060,7 @@ static void disp_oddmr_primary_data_init(struct mtk_ddp_comp *comp)
 
 	init_waitqueue_head(&primary_data->sof_irq_wq);
 	init_waitqueue_head(&primary_data->hrt_wq);
+	init_waitqueue_head(&primary_data->od_sram_wq);
 	mutex_init(&primary_data->clock_lock);
 	mutex_init(&primary_data->timing_lock);
 	mutex_init(&primary_data->dbi_data_lock);
@@ -6064,6 +6072,7 @@ static void disp_oddmr_primary_data_init(struct mtk_ddp_comp *comp)
 	atomic_set(&primary_data->od_weight_trigger, 0);
 	atomic_set(&primary_data->frame_dirty, 0);
 	atomic_set(&primary_data->sof_irq_available, 0);
+	atomic_set(&primary_data->sof_irq_for_od_sram, 0);
 	atomic_set(&primary_data->dmr_hrt_done, 0);
 	atomic_set(&primary_data->dbi_hrt_done, 0);
 	atomic_set(&primary_data->od_hrt_done, 0);
@@ -7766,6 +7775,14 @@ static void disp_oddmr_on_start_of_frame(struct mtk_ddp_comp *comp)
 		oddmr_data->primary_data->sof_time_last = oddmr_data->primary_data->sof_time;
 		oddmr_data->primary_data->sof_time = comp->mtk_crtc->sof_time;
 	}
+
+	if (od_support == true && oddmr_data->primary_data->od_state >= ODDMR_LOAD_DONE) {
+		if (!atomic_read(&oddmr_data->primary_data->sof_irq_for_od_sram)) {
+			atomic_set(&oddmr_data->primary_data->sof_irq_for_od_sram, 1);
+			wake_up_interruptible(&oddmr_data->primary_data->od_sram_wq);
+		}
+	}
+
 	if (od_support == false ||
 			oddmr_data->primary_data->od_state < ODDMR_INIT_DONE ||
 			oddmr_data->od_enable == 0)
@@ -7967,6 +7984,20 @@ static void mtk_oddmr_od_gce_pkt_init(struct mtk_drm_crtc *mtk_crtc,
 		oddmr_data->od_data.od_sram_pkgs[dram_id][1], dram_id, 1);
 }
 
+static void mtk_oddmr_od_trigger_frame(struct mtk_ddp_comp *comp)
+{
+	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
+	int ret = 0;
+
+	atomic_set(&oddmr_data->primary_data->sof_irq_for_od_sram, 0);
+	mtk_crtc_check_trigger(comp->mtk_crtc, false, true);
+	ret = wait_event_interruptible_timeout(oddmr_data->primary_data->od_sram_wq,
+			atomic_read(&oddmr_data->primary_data->sof_irq_for_od_sram) == 1,
+			msecs_to_jiffies(200));
+	if (ret <= 0)
+		DDPPR_ERR("od_trigger_frame timeout %d\n", ret);
+}
+
 static int mtk_oddmr_od_init(struct mtk_ddp_comp *comp, void *data)
 {
 	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
@@ -8024,6 +8055,9 @@ static int mtk_oddmr_od_init(struct mtk_ddp_comp *comp, void *data)
 		oddmr_data->primary_data->od_state = ODDMR_LOAD_DONE;
 		if (oddmr_data->data->od_version >= MTK_OD_V2)
 			mtk_oddmr_set_top_clk_force(comp, 1, NULL); //needed by writing sram and udma init
+		if (oddmr_data->data->od_version == MTK_OD_V3)
+			mtk_oddmr_od_trigger_frame(comp);
+
 		mtk_oddmr_od_common_init_dual(comp, NULL);
 		ret = mtk_crtc_user_cmd(&comp->mtk_crtc->base,
 				comp, ODDMR_CMD_SET_SPR2RGB, NULL);
