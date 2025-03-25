@@ -1295,7 +1295,6 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/sound/soc/codecs:mt6368-accdet".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/codecs:mt6369-accdet".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/codecs:snd-soc-mt6368".format(kernel_version),
-    "//kernel_device_modules-{}/sound/soc/codecs:snd-soc-mt6369".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/codecs:snd-soc-mt6681".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/codecs:mt6681-accdet".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/codecs/richtek:snd-soc-rt5512".format(kernel_version),
@@ -1600,6 +1599,7 @@ mgk_64_kleaf_platform_modules = {
     "//kernel_device_modules-{}/sound/soc/mediatek/mt6895:mt6895-mt6368".format(kernel_version): "mt6895",
 
     "//kernel_device_modules-{}/sound/soc/codecs:snd-soc-mt6366".format(kernel_version): "mt6789",
+    "//kernel_device_modules-{}/sound/soc/codecs:snd-soc-mt6369".format(kernel_version): "mt6855",
 }
 
 mgk_64_kleaf_eng_device_modules = [
