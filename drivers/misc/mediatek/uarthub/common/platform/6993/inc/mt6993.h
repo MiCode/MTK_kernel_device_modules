@@ -81,6 +81,22 @@ extern struct uarthub_ut_test_ops_struct mt6993_plat_ut_test_data;
 
 #define TRX_BUF_LEN                64
 
+#define UARTHUB_IRQ_OP_LOG_SIZE     5
+#define UARTHUB_LOG_IRQ_PKT_SIZE    12
+#define UARTHUB_LOG_IRQ_IDX_ADDR(addr) (addr)
+
+#define UARTHUB_TSK_OP_LOG_SIZE     20
+#define UARTHUB_LOG_TSK_PKT_SIZE    20
+#define UARTHUB_LOG_TSK_IDX_ADDR(addr) \
+		(addr + (UARTHUB_LOG_IRQ_PKT_SIZE * UARTHUB_IRQ_OP_LOG_SIZE) + 4)
+
+#define UARTHUB_CK_CNT_ADDR(addr) \
+	(UARTHUB_LOG_TSK_IDX_ADDR(addr) + (UARTHUB_TSK_OP_LOG_SIZE * UARTHUB_LOG_TSK_PKT_SIZE) + 4)
+
+#define UARTHUB_LAST_CK_ON(addr) (UARTHUB_CK_CNT_ADDR(addr) + 4)
+#define UARTHUB_LAST_CK_ON_CNT(addr) (UARTHUB_LAST_CK_ON(addr) + 8)
+#define UARTHUB_DEFAULT_CONFIG(addr) (UARTHUB_LAST_CK_ON_CNT(addr) + 4)
+
 int uarthub_uarthub_init_mt6993(struct platform_device *pdev);
 int uarthub_uarthub_exit_mt6993(void);
 int uarthub_uarthub_open_mt6993(void);

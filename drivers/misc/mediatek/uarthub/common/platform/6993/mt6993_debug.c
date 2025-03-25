@@ -2208,22 +2208,6 @@ int uarthub_dump_debug_bus_status_info_mt6993(const char *tag)
 	return 0;
 }
 
-#define UARTHUB_IRQ_OP_LOG_SIZE     5
-#define UARTHUB_LOG_IRQ_PKT_SIZE    12
-#define UARTHUB_LOG_IRQ_IDX_ADDR(addr) (addr)
-
-#define UARTHUB_TSK_OP_LOG_SIZE     20
-#define UARTHUB_LOG_TSK_PKT_SIZE    20
-#define UARTHUB_LOG_TSK_IDX_ADDR(addr) \
-		(addr + (UARTHUB_LOG_IRQ_PKT_SIZE * UARTHUB_IRQ_OP_LOG_SIZE) + 4)
-
-#define UARTHUB_CK_CNT_ADDR(addr) \
-	(UARTHUB_LOG_TSK_IDX_ADDR(addr) + (UARTHUB_TSK_OP_LOG_SIZE * UARTHUB_LOG_TSK_PKT_SIZE) + 4)
-
-
-#define UARTHUB_LAST_CK_ON(addr) (UARTHUB_CK_CNT_ADDR(addr) + 4)
-#define UARTHUB_LAST_CK_ON_CNT(addr) (UARTHUB_LAST_CK_ON(addr) + 8)
-
 #define UARTHUB_TMP_BUF_SZ  512
 char g_buf_mt6993[UARTHUB_TMP_BUF_SZ];
 

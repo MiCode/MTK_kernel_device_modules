@@ -26,6 +26,10 @@
 #include <linux/string.h>
 #include <linux/types.h>
 
+#if IS_ENABLED(CONFIG_OF)
+#include <linux/of.h>
+#endif
+
 void __iomem *gpio_base_remap_addr_mt6993;
 void __iomem *iocfg_tm1_base_remap_addr_mt6993;
 void __iomem *pericfg_ao_remap_addr_mt6993;
@@ -41,6 +45,10 @@ void __iomem *peri_par_remap_addr_mt6993;
 
 void __iomem *uartip_base_map_mt6993[UARTHUB_MAX_NUM_DEV_HOST + 1] = { 0 };
 void __iomem *apuart_base_map_mt6993[4] = { 0 };
+
+#if !(SSPM_DRIVER_EN) || (UARTHUB_SUPPORT_FPGA)
+int g_default_baud_rate_mt6993;
+#endif
 
 int uarthub_dev_baud_rate_mt6993[UARTHUB_MAX_NUM_DEV_HOST + 1] = {
 	UARTHUB_DEV_0_BAUD_RATE,
@@ -74,6 +82,7 @@ static int uarthub_reset_to_ap_enable_only_mt6993(int ap_only);
 static int uarthub_reset_flow_control_mt6993(void);
 static int uarthub_is_assert_state_mt6993(void);
 static int uarthub_assert_state_ctrl_mt6993(int assert_ctrl);
+static int uarthub_set_default_config_mt6993(struct platform_device *pdev);
 static int uarthub_get_host_status_mt6993(int dev_index);
 static int uarthub_get_host_wakeup_status_mt6993(void);
 static int uarthub_get_host_set_fw_own_status_mt6993(void);
@@ -810,6 +819,7 @@ int uarthub_uarthub_init_mt6993(struct platform_device *pdev)
 	/* default assert mode enable */
 	/* assert mode enable --> BT off or assert state*/
 	uarthub_assert_state_ctrl_mt6993(1);
+	uarthub_set_default_config_mt6993(pdev);
 
 #if UARTHUB_WAKEUP_DEBUG_EN
 	uarthub_sspm_wakeup_enable_mt6993();
@@ -863,6 +873,43 @@ int uarthub_uarthub_init_mt6993(struct platform_device *pdev)
 	return 0;
 }
 
+int uarthub_set_default_config_mt6993(struct platform_device *pdev)
+{
+	int baud_rate = 1;
+	int wakeup_mode = 1;
+	struct device_node *node = NULL;
+
+	if (pdev)
+		node = pdev->dev.of_node;
+
+	if (node) {
+		if (of_property_read_u32(node, "baud-rate", &baud_rate))
+			pr_notice("[%s] unable to get baud-rate from dts\n", __func__);
+
+		if (of_property_read_u32(node, "wakeup-mode", &wakeup_mode))
+			pr_notice("[%s] unable to get wakeup-mode from dts\n", __func__);
+	} else {
+		pr_notice("[%s] can't find UARTHUB compatible node\n", __func__);
+	}
+
+#if !(SSPM_DRIVER_EN) || (UARTHUB_SUPPORT_FPGA)
+	g_default_baud_rate_mt6993 = baud_rate;
+#endif
+
+	if (wakeup_mode == 0)
+		uarthub_set_bt_sleep_flow_hw_mech_en_mt6993(0);
+
+#if UARTHUB_INFO_LOG
+	pr_info("[%s] Get baud-rate(%d), wakeup-mode(%d)\n",
+		__func__, baud_rate, wakeup_mode);
+#endif
+
+	UARTHUB_REG_WRITE(UARTHUB_DEFAULT_CONFIG(sys_sram_remap_addr_mt6993),
+		((wakeup_mode << 16) | baud_rate));
+
+	return 0;
+}
+
 int uarthub_uarthub_exit_mt6993(void)
 {
 #if !(SSPM_DRIVER_EN) || (UARTHUB_SUPPORT_FPGA)
@@ -888,14 +935,23 @@ int uarthub_pll_clk_on_mt6993(int on, const char *tag)
 	/* config ap_uart source clock to TOPCKGEN */
 	uarthub_uart_src_clk_ctrl((on == 1) ? uarthub_clk_topckgen : uarthub_clk_26m);
 
-	/* config TOPCKGEN ap_uart mux to 208m */
-	uarthub_uart_mux_sel_ctrl((on == 1) ? uarthub_clk_208m : uarthub_clk_26m);
+	/* config TOPCKGEN ap_uart mux to 104m/208m */
+	if (g_default_baud_rate_mt6993 == 0)
+		uarthub_uart_mux_sel_ctrl((on == 1) ? uarthub_clk_104m : uarthub_clk_26m);
+	else
+		uarthub_uart_mux_sel_ctrl((on == 1) ? uarthub_clk_208m : uarthub_clk_26m);
 
-	/* config TOPCKGEN uarthub mux to 208m */
-	uarthub_uarthub_mux_sel_ctrl((on == 1) ? uarthub_clk_208m : uarthub_clk_26m);
+	/* config TOPCKGEN uarthub mux to 104m/208m */
+	if (g_default_baud_rate_mt6993 == 0)
+		uarthub_uarthub_mux_sel_ctrl((on == 1) ? uarthub_clk_104m : uarthub_clk_26m);
+	else
+		uarthub_uarthub_mux_sel_ctrl((on == 1) ? uarthub_clk_208m : uarthub_clk_26m);
 
-	/* config TOPCKGEN adsp_uarthub mux to 208m */
-	uarthub_adsp_uarthub_mux_sel_ctrl((on == 1) ? uarthub_clk_208m : uarthub_clk_26m);
+	/* config TOPCKGEN adsp_uarthub mux to 104m/208m */
+	if (g_default_baud_rate_mt6993 == 0)
+		uarthub_adsp_uarthub_mux_sel_ctrl((on == 1) ? uarthub_clk_104m : uarthub_clk_26m);
+	else
+		uarthub_adsp_uarthub_mux_sel_ctrl((on == 1) ? uarthub_clk_208m : uarthub_clk_26m);
 
 	atomic_set(&g_uarthub_pll_clk_on, on);
 
