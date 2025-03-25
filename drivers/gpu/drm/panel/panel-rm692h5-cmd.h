@@ -68,7 +68,7 @@
 
 #define CONFIG_MTK_RES_SWITCH_ON_AP     1
 
-#define CUST_ESD_CHECK 0
+#define CUST_ESD_CHECK 1
 #define ESD_CHECK_ENABLE 1
 #define INIT_CODE_BACKLIGHT_INDEX_DV3 (ARRAY_SIZE(init_setting_fhd_120hz_dv3) - 5)
 
