@@ -921,7 +921,7 @@ void mtk_dbgtp_default_cfg_load(struct mtk_drm_private *priv)
 
 	/* fifo mon default setting */
 	priv->mtk_dbgtp_sta.fifo_mon_en[0] = 1;
-	priv->mtk_dbgtp_sta.fifo_mon_trig_thrd[0] = 20;
+	priv->mtk_dbgtp_sta.fifo_mon_trig_thrd[0] = 30;
 
 	/* dispsys default setting */
 	/* dispsys0A */
