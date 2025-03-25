@@ -307,7 +307,10 @@ static int lcm_panel_init(struct drm_panel *panel)
 			push_table(ctx, cmd_set_fps_360te, ARRAY_SIZE(cmd_set_fps_360te), 0);
 		break;
 	default:
-		push_table(ctx, cmd_set_fps_360te, ARRAY_SIZE(cmd_set_fps_360te), 0);
+		if (mte_support == MTE_SUPPORT)
+			push_table(ctx, cmd_set_fps_mte, ARRAY_SIZE(cmd_set_fps_mte), 0);
+		else
+			push_table(ctx, cmd_set_fps_360te, ARRAY_SIZE(cmd_set_fps_360te), 0);
 		break;
 	}
 
@@ -621,7 +624,10 @@ static int lcm_panel_init_v2(void *dsi_drv, struct drm_panel *panel, void *handl
 			cb(dsi_drv, handle, cmd_opt, &fps_120hz_cmd);
 		break;
 	default:
-		cb(dsi_drv, handle, cmd_opt, &fps_120hz_cmd);
+		if (mte_support == MTE_SUPPORT)
+			cb(dsi_drv, handle, cmd_opt, &fps_mte_cmd);
+		else
+			cb(dsi_drv, handle, cmd_opt, &fps_120hz_cmd);
 		break;
 	}
 

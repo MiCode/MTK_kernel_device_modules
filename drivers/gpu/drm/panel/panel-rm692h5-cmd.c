@@ -291,7 +291,10 @@ static void lcm_panel_init(struct lcm *ctx)
 			push_table(ctx, cmd_set_fps_360te, ARRAY_SIZE(cmd_set_fps_360te), 0);
 		break;
 	default:
-		push_table(ctx, cmd_set_fps_360te, ARRAY_SIZE(cmd_set_fps_360te), 0);
+		if (mte_support == MTE_SUPPORT)
+			push_table(ctx, cmd_set_fps_mte, ARRAY_SIZE(cmd_set_fps_mte), 0);
+		else
+			push_table(ctx, cmd_set_fps_360te, ARRAY_SIZE(cmd_set_fps_360te), 0);
 		break;
 	}
 }
