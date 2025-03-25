@@ -327,7 +327,12 @@ static void ise_deinit(void)
 		}
 		if(retry >= retry_limit) {
 			pr_notice("deinit failed\n");
-			WARN_ON_ONCE(1);
+			/*
+			 * Backtrace only happened from ise_lpm_work_handle,
+			 * issued from timer, statically in ise_lpm.c
+			 * WARN_ON may be redundant here.
+			 */
+			//WARN_ON_ONCE(1);
 			break;
 		}
 		udelay(1000);
