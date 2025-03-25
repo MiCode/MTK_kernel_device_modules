@@ -153,7 +153,8 @@ struct mddpw_md_notify_info_t {
 #define STATS_LLS_MAX_VHT_BW_NUM 3
 #define STATS_LLS_MAX_HE_BW_NUM 4
 #define STATS_LLS_MAX_EHT_BW_NUM 5
-#define BSS_NUM 6
+#define BSS_NUM_4 4
+#define BSS_NUM_6 6
 #define AC_NUM 4
 #define STA_NUM 27
 
@@ -171,8 +172,16 @@ struct rate_stat_rx_mpdu_t {
 struct wsvc_stat_lls_report_t {
 	uint32_t version; // will be 0 if not initialize yet, will be >= 1
 	uint32_t reserved[3];
-	uint32_t wmm_ac_stat_rx_mpdu[BSS_NUM][AC_NUM];
-	struct rate_stat_rx_mpdu_t rate_stat_rx_mpdu[STA_NUM];
+	union {
+		struct {
+			uint32_t wmm_ac_stat_rx_mpdu_4[BSS_NUM_4][AC_NUM];
+			struct rate_stat_rx_mpdu_t rate_stat_rx_mpdu_4[STA_NUM];
+		};
+		struct {
+			uint32_t wmm_ac_stat_rx_mpdu[BSS_NUM_6][AC_NUM];
+			struct rate_stat_rx_mpdu_t rate_stat_rx_mpdu[STA_NUM];
+		};
+	};
 };
 
 typedef int32_t (*drv_cbf_notify_md_info_t) (

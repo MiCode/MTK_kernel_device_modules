@@ -17,7 +17,7 @@
 #define MDDP_IPC_TTY_NAME			"ccci_0_200"
 #define MDFPM_TTY_BUF_SZ_OLD        256
 #define MDFPM_TTY_BUF_SZ            2048
-#define WIFI_STATE_DEFAULT          (1<<0)
+#define WIFI_STATE_LLS_BSS_NUM_6    (1<<0)
 #define WIFI_STATE_LEN2B            (1<<1)
 
 //------------------------------------------------------------------------------
@@ -103,15 +103,6 @@ enum mdfpm_user_id_e {
 //------------------------------------------------------------------------------
 // Struct definition.
 // -----------------------------------------------------------------------------
-#define MDFPM_CTRL_MSG_HEADER_SZ    \
-		(sizeof(struct mdfpm_ctrl_msg_t) - MDFPM_TTY_BUF_SZ)
-struct mdfpm_ctrl_msg_t {
-	uint32_t                        dest_user_id;
-	uint32_t                        msg_id;
-	uint32_t                        buf_len;
-	uint8_t	                        buf[MDFPM_TTY_BUF_SZ];
-} __packed;
-
 struct check_feature_req {
 	uint16_t        major_version;
 	uint16_t        minor_version;
@@ -133,23 +124,14 @@ struct mddp_f_set_ct_timeout_req_t {
 	uint8_t                 rsv[4];
 };
 
+#define MDFPM_CTRL_MSG_HEADER_SZ    \
+		(sizeof(struct mddp_md_msg_t) - MDFPM_TTY_BUF_SZ)
 struct mddp_md_msg_t {
-	struct list_head                list;
+	uint32_t                        dest_user_id;
 	uint32_t                        msg_id;
 	uint32_t                        data_len;
-	struct_group(data,
-		struct check_feature_req ap_info;
-		struct check_feature_req_k66 ap_info_k66;
-		struct mddp_u_warning_and_data_limit_t wlimit;
-		struct mddp_u_data_limit_t limit;
-		struct mddpw_txd_t txd;
-		struct mddpw_drv_notify_info_t wifi_notify;
-		struct mddpw_drv_notify_info_t_v1 wifi_notify_v1;
-		struct mddp_f_set_ct_timeout_req_t ct_req;
-		struct mddp_dev_ipv4_conntrack_event_t v4_event;
-		struct mddp_dev_ipv6_conntrack_event_t v6_event;
-	);
-};
+	uint8_t	                        data[MDFPM_TTY_BUF_SZ];
+} __packed;
 
 struct mddp_ipc_rx_msg_entry_t {
 	enum MDDP_MDFPM_MSG_ID_CODE     msg_id;

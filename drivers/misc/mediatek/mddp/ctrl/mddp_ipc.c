@@ -128,7 +128,7 @@ static int32_t mddp_ipc_open_port(void)
 /*
  * Rx kthread used to receive ctrl_msg from MD.
  */
-struct mdfpm_ctrl_msg_t rx_ctrl_msg;
+struct mddp_md_msg_t rx_ctrl_msg;
 static int32_t mddp_md_msg_hdlr(void *arg)
 {
 	int32_t                     rx_count;
@@ -153,7 +153,7 @@ static int32_t mddp_md_msg_hdlr(void *arg)
 		if (rx_count > 0 && rx_count >= MDFPM_CTRL_MSG_HEADER_SZ) {
 			// OK. Forward to dest_user.
 			mddp_sm_msg_hdlr(rx_ctrl_msg.dest_user_id, rx_ctrl_msg.msg_id,
-					&(rx_ctrl_msg.buf), rx_ctrl_msg.buf_len);
+					&rx_ctrl_msg.data, rx_ctrl_msg.data_len);
 		} else {
 			// NG. Error to read TTY port!
 			MDDP_C_LOG(MDDP_LL_DEBUG,
@@ -174,7 +174,6 @@ static int32_t mddp_md_msg_hdlr(void *arg)
 /*
  * Tx API used to send ctrl_msg to MD.
  */
-struct mdfpm_ctrl_msg_t tx_ctrl_msg;
 int32_t mddp_ipc_send_md(
 	void *in_app,
 	struct mddp_md_msg_t *msg,
@@ -201,19 +200,10 @@ int32_t mddp_ipc_send_md(
 		kfree(msg);
 		return -EFAULT;
 	}
-	tx_ctrl_msg.dest_user_id = (dest_user == MDFPM_USER_ID_NULL)
+	msg->dest_user_id = (dest_user == MDFPM_USER_ID_NULL)
 		? (app->md_cfg.ipc_md_user_id) : (dest_user);
 
-	tx_ctrl_msg.msg_id = msg->msg_id;
-	tx_ctrl_msg.buf_len = msg->data_len;
-
-	if (msg->data_len > 0)
-		memcpy(tx_ctrl_msg.buf, &msg->data, msg->data_len);
-
-	if (tx_ctrl_msg.msg_id == IPC_MSG_ID_WFPM_DRV_NOTIFY)
-		MDDP_C_LOG(MDDP_LL_WARN, "%s: msg%u,len%u\n", __func__, tx_ctrl_msg.msg_id, tx_ctrl_msg.buf_len);
-
-	ret = mtk_ccci_send_data(mddp_ipc_tty_port_s, (char *)&tx_ctrl_msg,
+	ret = mtk_ccci_send_data(mddp_ipc_tty_port_s, (char *)msg,
 			MDFPM_CTRL_MSG_HEADER_SZ + msg->data_len);
 
 	kfree(msg);
