@@ -9146,7 +9146,7 @@ int __init fbt_cpu_init(void)
 	cpumask_others = 255;
 	set_l3_cache_ct = 0;
 
-	// exp_fps_raw_enable = 1;
+	exp_fps_raw_enable = 1;
 	exp_normal_fps_pct = 101;
 	exp_fps_disp_enable = 1;
 	limit_min_cap_target_t = 0;
