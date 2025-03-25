@@ -6,7 +6,7 @@
 #define _VIP_ENGINE_H_
 
 #include <linux/list.h>
-#include <common.h>
+#include "common.h"
 
 #define get_task_turbo_t(p)	\
 	(&((struct mtk_task *)android_task_vendor_data(p))->turbo_data)
@@ -17,8 +17,13 @@
 #define INVALID_TGID -1
 #define INVALID_VAL -1
 #define INVALID_LOADING -1
+#define MAX_NR_THREAD 200
 #define MAX_RT_PRIO 100
 #define MAX_NORMAL_PRIO 140
+#define MIN_CPUS 4
+
+DECLARE_PER_CPU(unsigned long, max_freq_scale);
+DECLARE_PER_CPU(unsigned long, min_freq_scale);
 
 struct list_head;
 
@@ -60,6 +65,7 @@ extern void (*task_turbo_do_unset_binder_uclamp_param)(pid_t pid);
 extern void (*task_turbo_do_binder_uclamp_stuff)(int cmd);
 extern void (*task_turbo_do_enable_binder_uclamp_inheritance)(int enable);
 extern inline bool launch_turbo_enable(void);
+extern int get_cpu_gear_uclamp_max_capacity(unsigned int cpu, int ret_type);
 #if IS_ENABLED(CONFIG_MTK_TASK_TURBO)
 extern int *tt_vip_enable_p;
 #endif

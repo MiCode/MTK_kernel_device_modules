@@ -11,20 +11,22 @@
 #include <linux/sched/signal.h>
 #include <uapi/linux/sched/types.h>
 #include <linux/platform_device.h>
-
+#include <linux/cpumask.h>
 #include <kernel/sched/sched.h>
 #include <drivers/android/binder_internal.h>
 
 #include <trace/hooks/sched.h>
 #include <trace/hooks/binder.h>
 
-#include <vip_engine.h>
+#include "vip_engine.h"
+#include "eas/eas_plus.h"
 #if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
-#include <eas/vip.h>
+#include "eas/vip.h"
 #endif
 
+
 #define CREATE_TRACE_POINTS
-#include <trace_vip_engine.h>
+#include "trace_vip_engine.h"
 
 LIST_HEAD(uclamp_data_head);
 
@@ -50,6 +52,7 @@ static DEFINE_MUTEX(enforced_qualified_lock);
 static void init_turbo_attr(struct task_struct *p);
 static int avg_cpu_loading;
 static int cpu_loading_thres = 95;
+static int vip_util_thres = 80;
 static int tt_vip_enable;
 #if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 static int binder_vip_inheritance_enable = 1;
@@ -938,8 +941,85 @@ static void update_cpu_loading(void)
 	mutex_unlock(&cpu_loading_lock);
 }
 
+unsigned long capacity_of(int cpu)
+{
+	return cpu_rq(cpu)->cpu_capacity;
+}
+
+unsigned long cpu_cap_ceiling(int cpu)
+{
+	unsigned long cap_ceiling;
+
+	cap_ceiling = min_t(unsigned long, arch_scale_cpu_capacity(cpu),
+		get_cpu_gear_uclamp_max_capacity(cpu, GU_RET_UTIL));
+	return clamp_t(unsigned long, cap_ceiling,
+		READ_ONCE(per_cpu(min_freq_scale, cpu)), READ_ONCE(per_cpu(max_freq_scale, cpu)));
+}
+
+unsigned long get_tgid_util(int tgid)
+{
+	struct task_struct *p, *t;
+	unsigned long vip_total_util = 0;
+	int i = 0;
+
+	rcu_read_lock();
+	p = find_task_by_vpid(tgid);
+	if (!p) {
+		rcu_read_unlock();
+		return 0;
+	}
+
+	get_task_struct(p);
+	for_each_thread(p, t) {
+		i++;
+		if (i > MAX_NR_THREAD)
+			break;
+		get_task_struct(t);
+		if (READ_ONCE(t->__state) == TASK_RUNNING)
+			vip_total_util += task_util(t);
+		put_task_struct(t);
+	}
+	put_task_struct(p);
+	rcu_read_unlock();
+
+	return vip_total_util;
+}
+EXPORT_SYMBOL(get_tgid_util);
+
+bool is_util_overhigh(unsigned long util)
+{
+	int cpu;
+	unsigned long total_capacity = 0;
+
+	for_each_online_cpu(cpu) {
+		total_capacity += min(cpu_cap_ceiling(cpu), capacity_of(cpu));
+	}
+	if (util*100 > vip_util_thres*total_capacity)
+		return true;
+
+	return false;
+}
+EXPORT_SYMBOL(is_util_overhigh);
+
 int (*tt_vip_algo_hook)(int ct_vip_qualified, int ssid_tgid, int sui_tgid, int f_tgid, bool touching) = NULL;
 EXPORT_SYMBOL(tt_vip_algo_hook);
+
+static inline void cpumask_complement(struct cpumask *dstp,
+				      const struct cpumask *srcp)
+{
+	bitmap_complement(cpumask_bits(dstp), cpumask_bits(srcp),
+					      nr_cpumask_bits);
+}
+
+int tt_cpu_count_check(void)
+{
+	cpumask_t count_mask = CPU_MASK_NONE;
+
+	cpumask_complement(&count_mask, cpu_pause_mask);
+	cpumask_and(&count_mask, &count_mask, cpu_online_mask);
+
+	return cpumask_weight(&count_mask);
+}
 
 /*
  * tt_vip - Task Turbo VIP management routine
@@ -974,12 +1054,16 @@ static void tt_vip(void)
 
 	mutex_lock(&wi_lock);
 
+	if (tt_cpu_count_check() <= MIN_CPUS)
+		ct_vip_qualified = false;
+
 	if (tt_vip_algo_hook)
 		tt_vip_algo_hook(ct_vip_qualified, ssid_tgid, sui_tgid, f_tgid, touching);
 
 	mutex_unlock(&wi_lock);
 }
 module_param(cpu_loading_thres, int, 0644);
+module_param(vip_util_thres, int, 0644);
 
 /**
  * tt_vip_event_handler - Event-triggered work handler for VIP management
