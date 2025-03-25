@@ -40,6 +40,7 @@
 /* For bus hang issue debugging */
 #if IS_ENABLED(CONFIG_MTK_UFS_DEBUG_BUILD)
 #include "../../clk/mediatek/clk-fmeter.h"
+#include "../../clk/mediatek/clkchk.h"
 #endif
 
 #define MAX_CMD_HIST_ENTRY_CNT (500)
@@ -150,12 +151,38 @@ EXPORT_SYMBOL_GPL(ufs_mtk_check_bus_init);
 #define FM_U_FAXI_CK		3
 #define FM_U_CK		44
 
+/* for IP_VER_MT6993 */
+#define MT6993_HF_FAES_UFSFDE_0_CK	56
+#define MT6993_HF_FUFS_0_CK		57
+#define MT6993_HF_FAES_UFSFDE_1_CK	59
+#define MT6993_HF_FUFS_1_CK		60
+
 void ufs_mtk_check_bus_status(struct ufs_hba *hba)
 {
 	void __iomem *reg;
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 
-	if (host->ip_ver == IP_VER_MT6991_A0 ||
+	if (host->ip_ver == IP_VER_MT6993) {
+		if (host->host_id == 0) {
+			if (mt_get_fmeter_freq(MT6993_HF_FUFS_0_CK, CKGEN) == 0)
+				pr_err("%s: hf_fufs_0_ck off\n", __func__);
+			else if (mt_get_fmeter_freq(MT6993_HF_FAES_UFSFDE_0_CK, CKGEN) == 0)
+				pr_err("%s: hf_faes_ufsfde_0_ck off\n", __func__);
+			else
+				return;
+		} else if (host->host_id == 1) {
+			if (mt_get_fmeter_freq(MT6993_HF_FUFS_1_CK, CKGEN) == 0)
+				pr_err("%s: hf_fufs_1_ck off\n", __func__);
+			else if (mt_get_fmeter_freq(MT6993_HF_FAES_UFSFDE_1_CK, CKGEN) == 0)
+				pr_err("%s: hf_faes_ufsfde_1_ck off\n", __func__);
+			else
+				return;
+		} else
+			return;
+
+		clkchk_external_dump();
+		BUG_ON(1);
+	} else if (host->ip_ver == IP_VER_MT6991_A0 ||
 		host->ip_ver == IP_VER_MT6991_B0) {
 		if (reg_ufscfg_ao == NULL)
 			return;
@@ -542,6 +569,7 @@ static void probe_android_vh_ufs_send_command(void *data, struct ufs_hba *hba,
 {
 	struct ufs_mtk_dbg *mdbg = ufshcd_to_dbg(hba);
 
+	ufs_mtk_check_bus_status(hba);
 	if (IS_ERR_OR_NULL(mdbg))
 		return;
 
