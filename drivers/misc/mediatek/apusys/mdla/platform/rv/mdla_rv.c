@@ -419,6 +419,10 @@ static void mdla_plat_v6_aee_handler(u32 type, u64 val)
 			mdla_aee_exception("MDLA", "MDLA check failed (%llu)", val);
 	} else if (type == MDLA_IPI_MICROP_MSG_CMD_FAILED) {
 		mdla_aee_exception("MDLA", "MDLA cmd failed (%llu)", val);
+	} else if (type == MDLA_IPI_MICROP_MSG_NPUMMU_TF) {
+		mdla_aee_exception("MDLA", "NPUMMU TF (core: %llu, thread: %llu)",
+								(val >> 16) & 0xf,
+								val & 0xf);
 	} else if (type == MDLA_IPI_MICROP_MSG_DLA_ERROR) {
 		mdla_aee_exception("DLA", "DLA Error");
 	}
@@ -576,6 +580,7 @@ static int mdla_plat_v6_dbgfs_usage(struct seq_file *s, void *data)
 	seq_printf(s, "echo [item] > /d/mdla/%s\n", mdla_plat_get_ipi_str(MDLA_IPI_INFO));
 	seq_puts(s, "and then cat /proc/apusys_logger/seq_log\n");
 	seq_printf(s, "\t%d: show register value\n", MDLA_IPI_INFO_REG);
+	seq_printf(s, "\t%d: show profiling result\n", MDLA_IPI_INFO_PROF);
 
 	seq_puts(s, "\n----------- set debug options -----------\n");
 	seq_printf(s, "echo [mask(hex))] > /d/mdla/%s\n", mdla_plat_get_ipi_str(MDLA_IPI_DBG_OPTIONS));
@@ -583,7 +588,8 @@ static int mdla_plat_v6_dbgfs_usage(struct seq_file *s, void *data)
 	seq_puts(s, "\tPreempt once                                     = 0x0002\n");
 	seq_puts(s, "\tDump cmdbuf in seq log while CMD hang            = 0x0010\n");
 	seq_puts(s, "\tDump cmdbuf in /d/mdla/mdla_memory               = 0x0020\n");
-
+	seq_puts(s, "\tAlways dump mdla registers before power off      = 0x0040\n");
+	seq_puts(s, "\tForce assert when mdla exception. (need unlock)  = 0x0800\n");
 	seq_puts(s, "\n----------- set firmware log level -----------\n");
 	seq_printf(s, "echo [log_lv] > /d/mdla/%s\n", mdla_plat_get_ipi_str(MDLA_IPI_FW_LOG_LV));
 	seq_puts(s, "\t0: off\n");

@@ -78,6 +78,7 @@ enum MDLA_IPI_MICROP_MSG_TYPE_1 {
 	 * AEE_DB with this error type to identify the event occurs
 	 */
 	MDLA_IPI_MICROP_MSG_WDEC_RESOURCE_BUSY,
+	MDLA_IPI_MICROP_MSG_NPUMMU_TF,
 
 	/* For more DLA type error */
 	MDLA_IPI_MICROP_MSG_DLA_ERROR,
