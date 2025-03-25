@@ -43,6 +43,15 @@
 #define MON_BWLMTE2_WA		0x084
 #define MON_BWLMTE3		0x0D8
 #define MON_BWLMTE3_WA		0x088
+/* ID Filter */
+#define MON_ID_TMP0		0x0DC
+#define MON_ID_MASK0		0x0E0
+#define MON_ID_TMP1		0x0E4
+#define MON_ID_MASK1		0x0E8
+#define MON_ID_TMP2		0x0EC
+#define MON_ID_MASK2		0x0F0
+#define MON_ID_TMP3		0x0F4
+#define MON_ID_MASK3		0x0F8
 
 /* settings for ELA */
 #define ELA_SIG_MAX		8
@@ -783,12 +792,12 @@ void init_bwr(struct mtk_mmmc_power_domain *mmmc_power_domain, bool dump)
 		/* BW Monitor - write ultra, qos ignore */
 		writel(0x12, base + MON_DBWA);
 		writel(0x80000000, base + MON_DBWA_2ND);
-		/* BW Monitor - write total, qos ignore */
-		writel(0x16, base + MON_DBWB);
-		writel(0x0, base + MON_DBWB_2ND);
 		/* BW Monitor - read ultra, qos ignore */
-		writel(0x11, base + MON_DBWC);
-		writel(0x80000000, base + MON_DBWC_2ND);
+		writel(0x11, base + MON_DBWB);
+		writel(0x80000000, base + MON_DBWB_2ND);
+		/* BW Monitor - write total, qos ignore */
+		writel(0x16, base + MON_DBWC);
+		writel(0x0, base + MON_DBWC_2ND);
 		/* BW Monitor - read total, qos ignore */
 		writel(0x15, base + MON_DBWD);
 		writel(0x0, base + MON_DBWD_2ND);
@@ -816,6 +825,39 @@ void init_bwr(struct mtk_mmmc_power_domain *mmmc_power_domain, bool dump)
 			writel((readl(base + MON_BMAN2) & ~0xc03) | 0x403, base + MON_BMAN2);
 			MM_MONITOR_INFO("FIXED_OSTDBL_ENABLE, r_ostdbl:%d, w_ostdbl:%d, value:%#x",
 				mmmc_fixed_r_ostdbl, mmmc_fixed_w_ostdbl, value);
+		}
+		if (mmmc_state & CAM_ID_FILTER_ENABLE) {
+			MM_MONITOR_INFO("CAM_ID_FILTER_ENABLE");
+			if (bwr->cam_sel_id_0[0] != 0) {
+				writel(bwr->cam_sel_id_0[0], base + MON_ID_TMP0);
+				writel(bwr->cam_sel_id_0[1], base + MON_ID_MASK0);
+				writel(0x1a, base + MON_DBWA);
+				writel(0x1e, base + MON_TTYPE0_CONA);
+				MM_MONITOR_DBG("cam_sel_id_0: %#x %#x",
+					bwr->cam_sel_id_0[0], bwr->cam_sel_id_0[1]);
+			}
+			if (bwr->cam_sel_id_1[0] != 0) {
+				writel(bwr->cam_sel_id_1[0], base + MON_ID_TMP1);
+				writel(bwr->cam_sel_id_1[1], base + MON_ID_MASK1);
+				writel(0x19, base + MON_DBWB);
+				writel(0x1d, base + MON_TTYPE0_CONA);
+				MM_MONITOR_DBG("cam_sel_id_1: %#x %#x",
+					bwr->cam_sel_id_1[0], bwr->cam_sel_id_1[1]);
+			}
+			if (bwr->cam_sel_id_2[0] != 0) {
+				writel(bwr->cam_sel_id_2[0], base + MON_ID_TMP2);
+				writel(bwr->cam_sel_id_2[1], base + MON_ID_MASK2);
+				writel(0x1e, base + MON_DBWC);
+				MM_MONITOR_DBG("cam_sel_id_2: %#x %#x",
+					bwr->cam_sel_id_2[0], bwr->cam_sel_id_2[1]);
+			}
+			if (bwr->cam_sel_id_3[0] != 0) {
+				writel(bwr->cam_sel_id_3[0], base + MON_ID_TMP3);
+				writel(bwr->cam_sel_id_3[1], base + MON_ID_MASK3);
+				writel(0x1d, base + MON_DBWD);
+				MM_MONITOR_DBG("cam_sel_id_3: %#x %#x",
+					bwr->cam_sel_id_3[0], bwr->cam_sel_id_3[1]);
+			}
 		}
 	}
 	if (dump)
@@ -1542,6 +1584,7 @@ int mtk_mm_bwr_probe(struct platform_device *pdev, u32 power_domain_id)
 	struct resource *res;
 	u32 hwid, bwr_index = 0, subsys_id;
 	u32 commid = -1, larbid = -1;
+	int ret;
 
 	if (of_property_read_u32(dev->of_node, "axi-common-id", &commid) == 0 ||
 		of_property_read_u32(dev->of_node, "axi-larb-id", &larbid) == 0) {
@@ -1628,6 +1671,27 @@ int mtk_mm_bwr_probe(struct platform_device *pdev, u32 power_domain_id)
 		g_mtk_axi_mon->aximon_larb_map_size++;
 	}
 
+	ret = of_property_read_u32_array(dev->of_node, "cam_sel_id_0", mtk_bwr->cam_sel_id_0, 2);
+	if (ret)
+		MM_MONITOR_INFO("Failed to read cam_sel_id_0");
+
+	ret = of_property_read_u32_array(dev->of_node, "cam_sel_id_1", mtk_bwr->cam_sel_id_1, 2);
+	if (ret)
+		MM_MONITOR_INFO("Failed to read cam_sel_id_1");
+
+	ret = of_property_read_u32_array(dev->of_node, "cam_sel_id_2", mtk_bwr->cam_sel_id_2, 2);
+	if (ret)
+		MM_MONITOR_INFO("Failed to read cam_sel_id_2");
+
+	ret = of_property_read_u32_array(dev->of_node, "cam_sel_id_3", mtk_bwr->cam_sel_id_3, 2);
+	if (ret)
+		MM_MONITOR_INFO("Failed to read cam_sel_id_3");
+
+	MM_MONITOR_DBG("cam_sel_id 0: %#x %#x 1: %#x %#x 2: %#x %#x 3: %#x %#x",
+		mtk_bwr->cam_sel_id_0[0], mtk_bwr->cam_sel_id_0[1],
+		mtk_bwr->cam_sel_id_1[0], mtk_bwr->cam_sel_id_1[1],
+		mtk_bwr->cam_sel_id_2[0], mtk_bwr->cam_sel_id_2[1],
+		mtk_bwr->cam_sel_id_3[0], mtk_bwr->cam_sel_id_3[1]);
 	return 0;
 }
 

@@ -132,6 +132,7 @@ enum mmmc_state_level {
 	CTI_SW_ENABLE = BIT(1),
 	DEF_LIMITER_ENABLE = BIT(2),
 	FIXED_OSTDBL_ENABLE = BIT(3),
+	CAM_ID_FILTER_ENABLE = BIT(4),
 };
 extern u32 mmmc_state;
 
@@ -153,6 +154,10 @@ struct mtk_bwr {
 	u32 ostdbl_r_nps;
 	u32 ostdbl_w_nps;
 	struct platform_device *bwr_ela;
+	u32 cam_sel_id_0[2];
+	u32 cam_sel_id_1[2];
+	u32 cam_sel_id_2[2];
+	u32 cam_sel_id_3[2];
 };
 
 struct mtk_ela {
