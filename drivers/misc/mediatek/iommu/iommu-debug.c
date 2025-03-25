@@ -743,7 +743,7 @@ static int mtk_iommu_get_tf_port_idx(int tf_id, u32 type, int id)
 	return port_nr;
 }
 
-static int mtk_iommu_port_idx(int id, enum mtk_iommu_type type, int *idx_list)
+static int mtk_iommu_port_idx(int id, u32 type, int *idx_list)
 {
 	int  i, larb_id = -1;
 	u32 port_nr;
@@ -888,7 +888,7 @@ int mtk_iommu_register_fault_callback(int port,
 	mtk_iommu_fault_callback_t fn,
 	void *cb_data, bool is_vpu)
 {
-	enum mtk_iommu_type type = is_vpu ? APU_IOMMU : MM_IOMMU;
+	u32 type = is_vpu ? APU_IOMMU : MM_IOMMU;
 	int i, idx, idx_list[] = {-1, -1};
 
 	if (mtk_iommu_port_idx(port, type, idx_list)) {
@@ -914,7 +914,7 @@ EXPORT_SYMBOL_GPL(mtk_iommu_register_fault_callback);
 
 int mtk_iommu_unregister_fault_callback(int port, bool is_vpu)
 {
-	enum mtk_iommu_type type = is_vpu ? APU_IOMMU : MM_IOMMU;
+	u32 type = is_vpu ? APU_IOMMU : MM_IOMMU;
 	int i, idx, idx_list[] = {-1, -1};
 
 	if (mtk_iommu_port_idx(port, type, idx_list)) {
@@ -1939,7 +1939,7 @@ int mtk_smmu_get_port_tf_ids(u32 smmu_id, int port, u32 *tf_ids, u32 ids_num)
 	u32 port_nr;
 	int i, idx_list[] = {-1, -1};
 
-	if (!smmu_v3_enable || smmu_id > APU_SMMU || !tf_ids || ids_num == 0)
+	if (!smmu_v3_enable || smmu_id > (u32)APU_SMMU || !tf_ids || ids_num == 0)
 		return -EINVAL;
 
 	port_nr = m4u_data->plat_data->port_nr[smmu_id];
