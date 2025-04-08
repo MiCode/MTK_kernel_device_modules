@@ -11368,6 +11368,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			clocks = <&dispsys_config_clk MM0_DISP_C3D0_DISP>;
 			bin-num = <9>;
 			lut-bit = <10>;
+			auto-flip = <1>;
 		};
 
 		disp_c3d1: disp-c3d1@3e350000 {
@@ -11377,6 +11378,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			clocks = <&dispsys_config_clk MM0_DISP_C3D1_DISP>;
 			bin-num = <17>;
 			lut-bit = <12>;
+			auto-flip = <1>;
 		};
 
 		disp_c3d2: disp-c3d2@3e540000 {
@@ -11386,6 +11388,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			clocks = <&disp0b_dispsys_config_clk MM0B_DISP_C3D0_DISP>;
 			bin-num = <9>;
 			lut-bit = <10>;
+			auto-flip = <1>;
 		};
 
 		disp_c3d3: disp-c3d3@3e550000 {
@@ -11395,6 +11398,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			clocks = <&disp0b_dispsys_config_clk MM0B_DISP_C3D1_DISP>;
 			bin-num = <17>;
 			lut-bit = <12>;
+			auto-flip = <1>;
 		};
 
 		disp_aal0: disp-aal0@3e330000 {
@@ -11447,6 +11451,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x3e3b0000 0 0x1000>;
 			clocks = <&dispsys_config_clk MM0_DISP_GAMMA0_DISP>;
 			gamma-data-mode = <2>;
+			auto-flip = <1>;
 			color-protect-red = <0>;
 			color-protect-green = <0>;
 			color-protect-blue = <0>;
@@ -11461,6 +11466,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x3e5b0000 0 0x1000>;
 			clocks = <&disp0b_dispsys_config_clk MM0B_DISP_GAMMA0_DISP>;
 			gamma-data-mode = <2>;
+			auto-flip = <1>;
 			color-protect-red = <0>;
 			color-protect-green = <0>;
 			color-protect-blue = <0>;
