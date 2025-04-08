@@ -138,13 +138,12 @@ struct icc_path *icc_thermal;
 
 static DEFINE_MUTEX(pid_info_lock);
 
-#define BOOT_THERMAL_DURATION msecs_to_jiffies(5000)
+#define BOOT_THERMAL_DURATION 5000
 static struct timer_list boot_thermal_timer;
 static struct workqueue_struct *boot_thermal_wq;
 struct work_struct boot_thermal_work;
 
 #define TZINFO_NUM 7
-#define LOG_THERMAL_DURATION msecs_to_jiffies(10000)
 static struct timer_list thrmal_task_timer;
 static struct workqueue_struct *thrmal_task_wq;
 struct work_struct log_thermal_work;
@@ -159,6 +158,7 @@ struct TzInfo tzInfos[TZINFO_NUM] = {
 
 };
 
+#define TASK_INIT_DURATION       2000
 #define HINT_DURATION_LONG       5000
 #define HINT_DURATION_SHORT      1000
 #define LOG_DURATION            10000
@@ -2147,38 +2147,36 @@ static void thermal_hint_notify(unsigned int source, unsigned int enable)
 	else
 		hint &= ~(0x1 << source);
 
-	if (hint != tm_data.thermal_hint) {
-		tm_data.thermal_hint = hint;
-		if (cm_thermal_hint && cm_cmd != hint) {
-			cm_thermal_hint(hint);
-			cm_cmd = hint;
-			pr_info("%s: cm %d\n", __func__, cm_cmd);
-		}
+	tm_data.thermal_hint = hint;
+	if (cm_thermal_hint && cm_cmd != hint) {
+		cm_thermal_hint(hint);
+		cm_cmd = hint;
+		pr_info("%s: cm %d\n", __func__, cm_cmd);
+	}
 
-		if (hint != 0)
-			hint = 1;
+	if (hint != 0)
+		hint = 1;
 
-		if (hint != a_cmd) {
-			thermal_hint_callback(hint);
-			a_cmd = hint;
-			pr_info("%s: thcb %d\n", __func__, a_cmd);
-		}
+	if (hint != a_cmd) {
+		thermal_hint_callback(hint);
+		a_cmd = hint;
+		pr_info("%s: thcb %d\n", __func__, a_cmd);
+	}
 
-		if ((icc_thermal) && icc_cmd != hint) {
-			if (hint)
-				icc_set_bw(icc_thermal, 0, 0xFFFFFFFF);
-			else
-				icc_set_bw(icc_thermal, 0, 0x0);
+	if ((icc_thermal) && icc_cmd != hint) {
+		if (hint)
+			icc_set_bw(icc_thermal, 0, 0xFFFFFFFF);
+		else
+			icc_set_bw(icc_thermal, 0, 0x0);
 
-			icc_cmd = hint;
-			pr_info("%s: icc %d\n", __func__, icc_cmd);
-		}
+		icc_cmd = hint;
+		pr_info("%s: icc %d\n", __func__, icc_cmd);
+	}
 
-		if (source == 1 && hint != dvfs_cmd) {
-			mtk_dvfsrc_thernal_notify(hint);
-			dvfs_cmd = hint;
-			pr_info("%s: dvfsrc(powerhal) %d\n", __func__, dvfs_cmd);
-		}
+	if (source == 1 && hint != dvfs_cmd) {
+		mtk_dvfsrc_thernal_notify(hint);
+		dvfs_cmd = hint;
+		pr_info("%s: dvfsrc(powerhal) %d\n", __func__, dvfs_cmd);
 	}
 	mutex_unlock(&thermal_hint_lock);
 }
@@ -2740,14 +2738,14 @@ static void __used boot_thermal_release(struct work_struct *work)
 	tz = thermal_zone_get_zone_by_name(tm_data.boot.sensor);
 	if(IS_ERR_OR_NULL(tz)) {
 		pr_info("%s: get %s thermal zone error\n", __func__, tm_data.boot.sensor);
-		mod_timer(&boot_thermal_timer, jiffies + BOOT_THERMAL_DURATION);
+		mod_timer(&boot_thermal_timer, jiffies + msecs_to_jiffies(BOOT_THERMAL_DURATION));
 		return;
 	}
 
 	ret = thermal_zone_get_temp(tz, &temp);
 	if(ret) {
 		pr_info("%s: get %s temp error, ret %d\n", __func__, tm_data.boot.sensor, ret);
-		mod_timer(&boot_thermal_timer, jiffies + BOOT_THERMAL_DURATION);
+		mod_timer(&boot_thermal_timer, jiffies + msecs_to_jiffies(BOOT_THERMAL_DURATION));
 		return;
 	}
 
@@ -2759,7 +2757,8 @@ static void __used boot_thermal_release(struct work_struct *work)
 				ret = CPU_UP(i);
 				if (ret) {
 					pr_info("%s: fail to online CPU%d\n", __func__, i);
-					mod_timer(&boot_thermal_timer, jiffies + BOOT_THERMAL_DURATION);
+					mod_timer(&boot_thermal_timer, jiffies +
+						msecs_to_jiffies(BOOT_THERMAL_DURATION));
 					break;
 				}
 				pr_info("%s: online CPU%d success\n", __func__, i);
@@ -2768,7 +2767,7 @@ static void __used boot_thermal_release(struct work_struct *work)
 		}
 		pr_info("[boot_thermal] core_status=0x%x\n", tm_data.boot.core_status);
 	} else {
-		mod_timer(&boot_thermal_timer, jiffies + BOOT_THERMAL_DURATION);
+		mod_timer(&boot_thermal_timer, jiffies + msecs_to_jiffies(BOOT_THERMAL_DURATION));
 		return;
 	}
 }
@@ -2868,7 +2867,7 @@ static void __used dump_thermal_log(void)
 static void __used kernel_thermal_hint(unsigned int *next_polling_duration)
 {
 	int max_temp, trip_temp, val1, i, print = 0;
-	int max_val, min_val, cl[3], cc[3];
+	int max_val = 0, min_val = 0, cl[3], cc[3];
 	static int th_rasing_cnt, th_falling_cnt, thermal_hint;
 
 	*next_polling_duration = HINT_DURATION_LONG;
@@ -2941,6 +2940,9 @@ static void __used kernel_thermal_hint(unsigned int *next_polling_duration)
 			}
 		} else
 			th_falling_cnt = 0;
+
+		if (thermal_hint)
+			thermal_hint_notify(1, 1);
 	}
 
 	if (max_temp > trip_temp || thermal_hint) {
@@ -2949,7 +2951,7 @@ static void __used kernel_thermal_hint(unsigned int *next_polling_duration)
 	}
 
 	if (print)
-		pr_info("[T(M/t)=%d/%d][(CL)(CC)(Mm)=(%d/%d/%d)(%d/%d/%d)(%d/%d)][kHT=%d r/f=%d/%d][d:%d]\n",
+		pr_info("[T(M/t)=%d/%d][(CL)(CC)(Mm)=(%d/%d/%d)(%d/%d/%d)(%d/%d)][kTH=%d r/f=%d/%d][d:%d]\n",
 			max_temp, trip_temp, cl[0]/1000, cl[1]/1000, cl[2]/1000, cc[0]/1000, cc[1]/1000, cc[2]/1000,
 			max_val/1000, min_val/1000,  thermal_hint, th_rasing_cnt, th_falling_cnt,
 			*next_polling_duration);
@@ -2957,7 +2959,8 @@ static void __used kernel_thermal_hint(unsigned int *next_polling_duration)
 
 static void __used thermal_task(struct work_struct *work)
 {
-	static int log_remain = LOG_DURATION, hint_remain = HINT_DURATION_LONG, next_duration = HINT_DURATION_LONG;
+	static int log_remain = TASK_INIT_DURATION, hint_remain = TASK_INIT_DURATION,
+		next_duration = TASK_INIT_DURATION;
 
 	log_remain = log_remain - next_duration;
 	hint_remain = hint_remain - next_duration;
@@ -3128,7 +3131,7 @@ static int therm_intf_probe(struct platform_device *pdev)
 			tm_data.boot.release_temp, tm_data.boot.thermal_core_num,
 			tm_data.boot.core_status);
 
-		mod_timer(&boot_thermal_timer, jiffies + BOOT_THERMAL_DURATION);
+		mod_timer(&boot_thermal_timer, jiffies + msecs_to_jiffies(BOOT_THERMAL_DURATION));
 	}
 
 	thrmal_task_wq = create_singlethread_workqueue("thermal_task");
@@ -3138,7 +3141,7 @@ static int therm_intf_probe(struct platform_device *pdev)
 	}
 	INIT_WORK(&log_thermal_work, thermal_task);
 	timer_setup(&thrmal_task_timer, thermal_task_handler, 0);
-	mod_timer(&thrmal_task_timer, jiffies + HINT_DURATION_LONG);
+	mod_timer(&thrmal_task_timer, jiffies + msecs_to_jiffies(TASK_INIT_DURATION));
 
 	return 0;
 }
