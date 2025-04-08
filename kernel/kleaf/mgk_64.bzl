@@ -4828,6 +4828,8 @@ def get_overlay_modules_list():
         #mgk_64_device_modules.remove("drivers/misc/mediatek/mbraink/modules/v6989/mtk_mbraink_v6989.ko")
         #mgk_64_device_modules.remove("drivers/misc/mediatek/mbraink/modules/v6899/mtk_mbraink_v6899.ko")
 
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/input/touchscreen/k6895v1_64_95t_alpha:fts_touch_spi".format(kernel_version))
+
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/cm_mgr:mtk_cm_mgr".format(kernel_version))
         mgk_64_kleaf_platform_modules.pop("//kernel_device_modules-{}/drivers/misc/mediatek/cm_mgr:mtk_cm_mgr_mt6991".format(kernel_version))
         mgk_64_kleaf_platform_modules.pop("//kernel_device_modules-{}/drivers/misc/mediatek/cm_mgr:mtk_cm_mgr_mt6993".format(kernel_version))
