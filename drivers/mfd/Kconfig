@@ -163,3 +163,11 @@ config MFD_MT6687
 	  These PMICs are currently used with the Mediatek series of
 	  SoCs.  Note, that this will only be useful paired with descriptions
 	  of the independent functions as children nodes in the device tree.
+
+config MTK_PMIC_ADB_EN
+	tristate "Mediatek PMIC ADB command enable"
+	help
+	  This enables support for the Mediatek PMIC ADB read and write register
+	  command. This feature is expected to be enabled in userdebug and eng
+	  loads, but not in user loads. Therefore, this config is used to
+	  distinguish which loads need to enable this feature.

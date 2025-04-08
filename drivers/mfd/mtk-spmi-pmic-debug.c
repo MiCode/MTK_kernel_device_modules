@@ -107,10 +107,14 @@ static ssize_t pmic_access_show(struct device *dev,
 				struct device_attribute *attr,
 				char *buf)
 {
+#if IS_ENABLED(CONFIG_MTK_PMIC_ADB_EN)
 	struct mtk_spmi_pmic_debug_data *data = dev_get_drvdata(dev);
 
 	dev_info(dev, "0x%x\n", data->reg_value);
 	return snprintf(buf, BUF_SIZE, "0x%x\n", data->reg_value);
+#else
+	return snprintf(buf, BUF_SIZE, "\n");
+#endif /* IS_ENABLED(CONFIG_MTK_PMIC_ADB_EN) */
 }
 #undef BUF_SIZE
 
@@ -119,6 +123,7 @@ static ssize_t pmic_access_store(struct device *dev,
 				 const char *buf,
 				 size_t size)
 {
+#if IS_ENABLED(CONFIG_MTK_PMIC_ADB_EN)
 	struct mtk_spmi_pmic_debug_data *data;
 	struct regmap *regmap;
 	unsigned int reg_val = 0, reg_adr = 0;
@@ -172,6 +177,7 @@ static ssize_t pmic_access_store(struct device *dev,
 			 (val ? "write" : "read"), usid, reg_adr,
 			 (val ? reg_val : data->reg_value));
 	}
+#endif /* IS_ENABLED(CONFIG_MTK_PMIC_ADB_EN) */
 	return size;
 }
 static DEVICE_ATTR_RW(pmic_access);
