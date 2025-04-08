@@ -2906,7 +2906,7 @@ static int dpmaif_stop(unsigned char hif_id)
 	/* rx bat buf clear */
 	ccci_dpmaif_bat_stop();
 
-	if (g_dpmf_ver > 1) {
+	if ((g_dpmf_ver > 1) || (g_plat_inf == 6789)) {
 		dpmaif_set_clk(0, g_dpmaif_ctrl->clk_tbs);
 		ops.drv_hw_reset();
 	} else {
