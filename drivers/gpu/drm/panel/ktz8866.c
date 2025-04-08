@@ -238,16 +238,14 @@ static int lcd_bl_i2c_probe(struct i2c_client *client)
 	ret = lcd_bl_write_byte(0x11, 0x37); /* BL_OPTION2；电感4.7uH，BL_CURRENT_LIMIT 2.5A；*/
 	ret = lcd_bl_write_byte(0x15, 0xB0); /* Backlight Full-scale LED Current 22.8mA/CH；*/
 	ret = lcd_bl_write_byte(0x08, 0x5F); /* BL enabled and Current sink 1/2/3/4 /5 enabled；*/
+	if (ret < 0){
+		pr_debug("--wlc,[%s]:I2C write reg is fail!\n", __func__);
+		return -EINVAL;
+	}
 #endif
-	if (ret < 0)
-		goto i2c_fail;
 
 	pr_debug("--wlc,[%s]:I2C write reg is success!\n", __func__);
-		return 0;
-
-i2c_fail:
-	pr_debug("--wlc,[%s]:I2C write reg is fail!\n", __func__);
-	return -EINVAL;
+	return ret;
 }
 
 static void lcd_bl_i2c_remove(struct i2c_client *client)
