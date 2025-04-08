@@ -13,7 +13,7 @@
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
 #include <linux/soc/mediatek/devapc_public.h>
 #endif
-#if IS_ENABLED(CONFIG_MTK_EMI) && !IS_ENABLED(CONFIG_MTK_COMMON_LEGACY_EMI)
+#if IS_ENABLED(CONFIG_MTK_EMI) && !IS_ENABLED(CONFIG_MTK_EMI_LEGACY)
 #include <soc/mediatek/smpu.h>
 #endif
 
@@ -401,7 +401,7 @@ static void ccci_md_exception_handshake(int timeout)
 	md_cd_ee_handshake(md, timeout);
 }
 
-#if IS_ENABLED(CONFIG_MTK_EMI) && !IS_ENABLED(CONFIG_MTK_COMMON_LEGACY_EMI)
+#if IS_ENABLED(CONFIG_MTK_EMI) && !IS_ENABLED(CONFIG_MTK_EMI_LEGACY)
 static void ccci_get_vioinfo_clear_md_violation(void)
 {
 	char *vio_msg = NULL;
@@ -445,7 +445,7 @@ void fsm_md_normal_ee_handler(struct ccci_fsm_ctl *ctl)
 #if IS_ENABLED(CONFIG_MTK_EMI)
 	CCCI_NORMAL_LOG(0, FSM, "normal_ee_handler mtk_clear_md_violation\n");
 	mtk_clear_md_violation();
-#if !IS_ENABLED(CONFIG_MTK_COMMON_LEGACY_EMI)
+#if !IS_ENABLED(CONFIG_MTK_EMI_LEGACY)
 	ccci_get_vioinfo_clear_md_violation();
 #endif
 #endif
