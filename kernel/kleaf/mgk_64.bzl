@@ -1045,7 +1045,6 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/iommu:mtk_smmu_qos".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/iommu:smmu_secure".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/irtx:mtk_irtx_pwm".format(kernel_version),
-    "//kernel_device_modules-{}/drivers/misc/mediatek/jpeg:jpeg-driver".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/lens/vcm/v4l2/ak7375c:ak7375c".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/lens/vcm/v4l2/ak7377a:ak7377a".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/lens/vcm/v4l2/bu64253gwz:bu64253gwz".format(kernel_version),
@@ -1404,6 +1403,7 @@ mgk_64_kleaf_platform_modules = {
     "//kernel_device_modules-{}/drivers/misc/mediatek/flashlight/v4l2:lm3644".format(kernel_version): "mt6855 mt6858 mt6895",
     "//kernel_device_modules-{}/drivers/misc/mediatek/ise_lpm:ise_lpm".format(kernel_version): "mt6989 mt6991 mt6993",
     "//kernel_device_modules-{}/drivers/misc/mediatek/ise_lpm:ise_lpm_v2".format(kernel_version): "mt6991 mt6993",
+    "//kernel_device_modules-{}/drivers/misc/mediatek/jpeg:jpeg-driver".format(kernel_version): "mt6895 mt6991 mt6993",
     "//kernel_device_modules-{}/drivers/misc/mediatek/kcompressd:kcompressd".format(kernel_version): "mt6993 mt6858",
     "//kernel_device_modules-{}/drivers/misc/mediatek/lpm/modules/debug/mt6991:mtk-lpm-dbg-mt6991".format(kernel_version): "mt6991",
     "//kernel_device_modules-{}/drivers/misc/mediatek/lpm/modules/debug/v6993:mtk-lpm-dbg-v6993".format(kernel_version): "mt6993",
@@ -2145,7 +2145,7 @@ def get_overlay_modules_list():
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/iommu/arm/arm-smmu-v3:mtk-smmuv3-mpam-mon".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/iommu:mtk_smmu_qos".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/iommu:smmu_secure".format(kernel_version))
-        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/jpeg:jpeg-driver".format(kernel_version))
+        mgk_64_kleaf_platform_modules.pop("//kernel_device_modules-{}/drivers/misc/mediatek/jpeg:jpeg-driver".format(kernel_version))
 
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/cm_mgr:mtk_cm_mgr".format(kernel_version))
         mgk_64_kleaf_platform_modules.pop("//kernel_device_modules-{}/drivers/misc/mediatek/cm_mgr:mtk_cm_mgr_mt6991".format(kernel_version))
@@ -4704,7 +4704,7 @@ def get_overlay_modules_list():
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/iommu/arm/arm-smmu-v3:mtk-smmuv3-mpam-mon".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/iommu:mtk_smmu_qos".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/iommu:smmu_secure".format(kernel_version))
-        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/jpeg:jpeg-driver".format(kernel_version))
+        mgk_64_kleaf_platform_modules.pop("//kernel_device_modules-{}/drivers/misc/mediatek/jpeg:jpeg-driver".format(kernel_version))
 
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/mminfra:mtk-mminfra-util".format(kernel_version))
 
