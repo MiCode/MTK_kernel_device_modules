@@ -1280,7 +1280,7 @@ bool binder_start_vip_inherit(struct task_struct *from,
 		if (is_VIP_basic(vts_to))
 			goto done;
 	} else {
-		if (is_priority_based_vip(vts_to) && (vts_to->priority_based_prio==inherited_vip_prio))
+		if (is_priority_based_vip(vts_to))
 			goto done;
 	}
 	to_pid = to->pid;
