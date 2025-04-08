@@ -681,7 +681,7 @@ void smmu_host_hvc(void)
 			  0, 0, 0, &res);
 	/* register merge smmu s2 page table function into HYP */
 	smmu_page_table_merge = pkvm_register_el2_mod_call(
-		__kvm_nvhe_smmu_merge_s2_table, pkvm_module_token);
+		kvm_nvhe_sym(smmu_merge_s2_table), pkvm_module_token);
 	arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_ADD_HVC,
 			  SMC_ID_MTK_PKVM_SMMU_PAGE_TABLE_MERGE,
 			  smmu_page_table_merge, 0, 0, 0, 0, &res);

@@ -747,7 +747,7 @@ void mtk_smmu_secure_v2(struct user_pt_regs *regs)
 	pglist_pfn = regs->regs[1];
 	count = regs->regs[3];
 	pglist_pa = (void *)(pglist_pfn << ONE_PAGE_OFFSET);
-	regs->regs[1] = false;
+	regs->regs[1] = 0;
 
 	if (!share_memory_to_hyp(pglist_pfn << ONE_PAGE_OFFSET, ONE_PAGE_SIZE)) {
 		pkvm_smmu_ops->puts("mtk_smmu_secure_v2 : share mem fail");
@@ -773,7 +773,7 @@ void mtk_smmu_secure_v2(struct user_pt_regs *regs)
 		 *	|___________________________|
 		 */
 		ret = pkvm_smmu_ops->host_donate_hyp(pfn, 1 << order, false);
-		if (!ret)
+		if (ret)
 			pkvm_smmu_ops->puts("mtk_smmu_secure_v2 : host_donate_hyp fail");
 	}
 	mtk_smmu_sync();
@@ -782,8 +782,6 @@ void mtk_smmu_secure_v2(struct user_pt_regs *regs)
 		pkvm_smmu_ops->puts("mtk_smmu_secure_v2 : unshare mem fail");
 		return;
 	}
-
-	regs->regs[1] = true;
 }
 
 void mtk_smmu_unsecure_v2(struct user_pt_regs *regs)
@@ -840,7 +838,7 @@ void mtk_smmu_unsecure_v2(struct user_pt_regs *regs)
 
 		/* Return secure page to host */
 		ret = pkvm_smmu_ops->hyp_donate_host(pfn, 1 << order);
-		if (!ret)
+		if (ret)
 			pkvm_smmu_ops->puts("mtk_smmu_secure_v2 : hyp_donate_host fail");
 	}
 	mtk_smmu_sync();
@@ -1759,12 +1757,11 @@ static bool mtk_iommu_host_dabt_handler(struct user_pt_regs *regs, u64 esr,
 
 	far = read_sysreg_el2(SYS_FAR);
 	addr |= far & FAR_MASK;
+
 	smmu_dev = get_smmu_dev_from_addr(addr);
-	if (!smmu_dev) {
-		pkvm_smmu_ops->puts(
-			"pkvm_smmu: mtk_iommu_host_dabt_handler can't find dev");
+	if (!smmu_dev)
 		return false;
-	}
+
 	is_write = esr & ESR_ELx_WNR;
 	off = addr - smmu_dev->reg_base_pa_addr;
 
