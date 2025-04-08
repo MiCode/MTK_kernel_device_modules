@@ -1742,6 +1742,11 @@ void mtk_vcodec_vgo_send(int type, void *data)
 
 		for (i = 0; i < vgo_info->count; i++) {
 			op_data = &vgo_info->data[i];
+			if (op_data->inst_type >= MTK_INST_MAX || op_data->inst_type < 0) {
+				mtk_v4l2_err("VGO_SEND_OPRATE data[%d] inst_type %d invalid (ctx_id %d, adaptive_oprate %d)",
+					i, op_data->inst_type, op_data->ctx_id, op_data->oprate);
+				continue;
+			}
 			ctx = mtk_vcodec_get_ctx_by_id(dev_ptr[op_data->inst_type], op_data->ctx_id);
 			if (!ctx) {
 				mtk_v4l2_err("VGO_SEND_OPRATE data[%d] inst_type %d ctx_id %d, but ctx not found (adaptive_oprate %d)",
