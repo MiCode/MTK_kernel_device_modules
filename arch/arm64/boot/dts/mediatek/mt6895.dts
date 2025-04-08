@@ -13865,26 +13865,6 @@ cpuqos_mode,dnth0,dnth1,upth0,upth1";
 	mt6685:	mt6685_mfd {
 		compatible = "mediatek,mt6685";
 		reg = <0x9 SPMI_USID>;
-		mt6685_rtc: mt6685_rtc {
-			compatible = "mediatek,mt6685-rtc";
-			interrupts = <0x9 IRQ_TYPE_NONE>;
-			interrupt-names = "rtc";
-			base = <0x580>;
-
-			#address-cells = <1>;
-			#size-cells = <1>;
-
-			fg_init: fg_init {
-				reg = <0 0x1>;
-			};
-			fg_soc: fg_soc {
-				reg = <1 0x1>;
-			};
-			ext_32k: ext_32k {
-				reg = <2 0x1>;
-				bits = <6 1>;
-			};
-		};
 		mt6685_consys: mt6685_consys {
 			compatible = "mediatek,mt6685-consys";
 		};
@@ -13928,6 +13908,11 @@ cpuqos_mode,dnth0,dnth1,upth0,upth1";
 #include "mediatek/rt5133.dtsi"
 #include "mediatek/rt6160.dtsi"
 #include "mediatek/cust_mt6895_connfem.dtsi"
+#include "mediatek/mt6685.dtsi"
+
+&mt6685_rtc {
+	status = "okay";
+};
 
 &rt5133 {
 	interrupts-extended = <&pio 141 0x0>;
@@ -14351,4 +14336,3 @@ cpuqos_mode,dnth0,dnth1,upth0,upth1";
 #include "mediatek/mt6895-clkitg.dtsi"
 #include "mediatek/mt6895-disable-unused.dtsi"
 #include "mediatek/trusty.dtsi"
-#include "mediatek/mt6685.dtsi"
