@@ -186,14 +186,15 @@ int mt6993_fe_trigger(struct snd_pcm_substream *substream, int cmd,
 		strscpy(memif->process_name, "NULL", sizeof(memif->process_name) - 1);
 
 		/* add delay for bt memif to avoid dl noise */
-		if (id == MT6993_MEMIF_DL23)
-			mtk_memif_set_pbuf_size(afe, id, MT6993_MEMIF_PBUF_SIZE_32_BYTES);
-
-		if (!strcmp(memif->data->name, "VUL_CM0")
-			|| !strcmp(memif->data->name, "VUL_CM1")
-			|| !strcmp(memif->data->name, "VUL_CM2"))
-			mtk_memif_set_min_max_len(afe, id, MT6993_MEMIF_MAX_LEN_64_BYTES,
-						MT6993_MEMIF_MAX_LEN_64_BYTES);
+		if (id == MT6993_MEMIF_DL23) {
+			mtk_memif_set_pbuf_size(afe, id, MT6993_MEMIF_PBUF_SIZE_64_BYTES);
+			mtk_memif_set_min_max_len(afe, id, MT6993_MEMIF_MIN_LEN_16_BYTES,
+					  MT6993_MEMIF_MAX_LEN_64_BYTES);
+		} else {
+			mtk_memif_set_pbuf_size(afe, id, MT6993_MEMIF_PBUF_SIZE_256_BYTES);
+			mtk_memif_set_min_max_len(afe, id, MT6993_MEMIF_MIN_LEN_64_BYTES,
+					  MT6993_MEMIF_MAX_LEN_64_BYTES);
+		}
 
 		if (is_afe_need_triggered(memif)) {
 			ret = mtk_memif_set_enable(afe, id);
