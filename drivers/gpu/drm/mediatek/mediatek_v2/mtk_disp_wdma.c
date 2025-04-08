@@ -395,8 +395,8 @@ static irqreturn_t mtk_wdma_irq_handler(int irq, void *dev_id)
 		underrun_new_ts = sched_clock();
 		if (wdma->mtk_crtc && &(wdma->mtk_crtc->base)
 			&& (underrun_new_ts - underrun_old_ts > 1000*1000*1000)) { //1s
-			mtk_drm_crtc_analysis(&(wdma->mtk_crtc->base));
-			mtk_drm_crtc_dump(&(wdma->mtk_crtc->base));
+			mtk_wdma_analysis(wdma);
+			mtk_drm_crtc_dump(&wdma->mtk_crtc->base);
 			DDPMSG("new: %llu, old: %llu", underrun_new_ts, underrun_old_ts);
 			underrun_old_ts = underrun_new_ts;
 			mtk_smi_dbg_hang_detect("wdma-underrun");
