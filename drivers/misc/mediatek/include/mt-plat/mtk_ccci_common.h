@@ -692,7 +692,12 @@ int mtk_ccci_register_md_state_cb(
 			enum MD_STATE new_state));
 
 /*
- * When Titan phone enter upload mode, md ee info message
+ * SRIL feature
+ */
+//#define MTK_TC10_FEATURE_SRIL
+
+/*
+ * When phone enter upload mode, md ee info message
  * will save this memory, for big data analysis.
  */
 // #define MTK_TC10_FEATURE_BIG_DATA
