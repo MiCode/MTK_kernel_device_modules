@@ -56,8 +56,6 @@ mgk_64_kleaf_modules = [
     "//vendor/mediatek/kernel_modules/afs_common_utils:jank_detection_common_utils",
     "//vendor/mediatek/kernel_modules/afs_core_int:jank_detection_core_int",
     "//vendor/mediatek/kernel_modules/afs_core_cus:jank_detection_core_cus",
-    "//vendor/mediatek/kernel_modules/hbt_driver_cus:hbt_cus",
-    "//vendor/mediatek/kernel_modules/hbt_driver:hbt_int",
     "//vendor/mediatek/kernel_modules/met_drv_secure_v3:met_drv_secure_v3",
     "//vendor/mediatek/kernel_modules/met_drv_v3/met_api/met_backlight_api:met_backlight_api_int",
     "//vendor/mediatek/kernel_modules/met_drv_v3/met_api/met_emi_api:met_emi_api_int",
@@ -1542,6 +1540,8 @@ mgk_64_kleaf_platform_modules = {
     "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/pda:pda_drv_mt6878".format(kernel_version): "mt6878",
 
   ## write vendor file by platform here
+    "//vendor/mediatek/kernel_modules/hbt_driver_cus:hbt_cus":"mt6886 mt6897 mt6985 mt6989 mt6991 mt6899 mt6993",
+    "//vendor/mediatek/kernel_modules/hbt_driver:hbt_int":"mt6886 mt6897 mt6985 mt6989 mt6991 mt6899 mt6993",
     "//vendor/mediatek/kernel_modules/mtkcam/camsys:mtk-cam-plat-mt6983":"mt6983",
     "//vendor/mediatek/kernel_modules/mtkcam/camsys:mtk-cam-plat-mt6895":"mt6895",
     "//vendor/mediatek/kernel_modules/mtkcam/camsys:mtk-cam-plat-mt6879":"mt6879",
