@@ -39,6 +39,8 @@ static DEFINE_MUTEX(notifier_wq_lock);
 static DEFINE_MUTEX(sbe_recycle_lock);
 static DECLARE_WAIT_QUEUE_HEAD(notifier_wq_queue);
 
+struct task_info g_dep_arr[FPSGO_MAX_TASK_NUM];
+
 //ConsistencyEngine pointer interface for Taskturbo implement
 //We are using sbe when ConsistencyEngine API called.
 void (*task_turbo_do_set_binder_uclamp_param)(pid_t pid,
@@ -577,6 +579,11 @@ static int sbe_set_webview_policy(int tgid, char *name, unsigned long mask,
 
 		set_sbe_thread_vip(start, tgid, specific_name, num);
 
+		if (test_bit(SBE_PAGE_FLUTTER, &mask)
+				|| test_bit(SBE_PAGE_WEBVIEW, &mask)){
+			update_fpsgo_hint_param(start, tgid);
+		}
+
 		goto out;
 	}
 
@@ -816,6 +823,11 @@ static void sbe_notifier_wq_cb(void)
 	case SBE_NOTIFIER_SET_SBB:
 		sbe_set_sbb(vpPush->pid, vpPush->start, vpPush->mode);
 		break;
+	case SBE_NOTIFIER_FPSGO_CALLBACK_INFO:
+		sbe_get_fpsgo_info(vpPush->tgid, vpPush->pid, vpPush->enhance,
+				vpPush->mask, vpPush->rescue_type, vpPush->dep_arr);
+		break;
+
 	default:
 		break;
 	}
@@ -997,6 +1009,39 @@ void sbe_receive_display_rate(unsigned int fps_limit)
 	vpPush->display_rate = vTmp;
 
 	sbe_queue_work(vpPush);
+}
+
+void sbe_notify_update_fpsgo_jerk_boost_info(int tgid, int pid, int blc, unsigned long mask,
+		int jerk_boost_flag, struct task_info *dep_arr_fpsgo)
+{
+	struct SBE_NOTIFIER_PUSH_TAG *vpPush;
+
+	vpPush = kzalloc(sizeof(struct SBE_NOTIFIER_PUSH_TAG), GFP_KERNEL);
+	if (!vpPush)
+		return;
+
+	if (!sbe_ktsk) {
+		kfree(vpPush);
+		return;
+	}
+
+	sbe_get_tree_lock(__func__);
+	if (dep_arr_fpsgo) {
+		memset(g_dep_arr, 0, sizeof(struct task_info) * FPSGO_MAX_TASK_NUM);
+		memcpy(g_dep_arr, dep_arr_fpsgo, sizeof(struct task_info) * FPSGO_MAX_TASK_NUM);
+	}
+
+	vpPush->ePushType = SBE_NOTIFIER_FPSGO_CALLBACK_INFO;
+	vpPush->tgid = tgid;
+	vpPush->pid = pid;
+	vpPush->mask = mask;
+	vpPush->enhance = blc;
+	vpPush->rescue_type = jerk_boost_flag;
+	if (dep_arr_fpsgo)
+		vpPush->dep_arr = g_dep_arr;
+
+	sbe_queue_work(vpPush);
+	sbe_put_tree_lock(__func__);
 }
 
 int sbe_get_kthread_tid(void)

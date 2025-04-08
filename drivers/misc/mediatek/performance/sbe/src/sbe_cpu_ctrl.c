@@ -19,6 +19,7 @@
 #include <uapi/linux/sched/types.h>
 #include <linux/cgroup-defs.h>
 #include <linux/sched/cputime.h>
+#include <linux/atomic.h>
 #include <sched/sched.h>
 
 #include "eas/grp_awr.h"
@@ -78,6 +79,9 @@ static int ai_rescuing_frame_id;
 static int registered;
 static int curr_pid;
 static unsigned long long curr_idf;
+
+atomic_t g_web_or_flutter_tgid = ATOMIC_INIT(0);
+struct task_info g_dep_arr_last[FPSGO_MAX_TASK_NUM];
 
 typedef void (*heavy_fp)(int jank, int tgid, int pid, unsigned long long frameid);
 int (*register_jank_ux_callback_fp)(heavy_fp cb);
@@ -1962,8 +1966,85 @@ void destroy_smart_launch_capinfo(void)
 #endif
 }
 
+void fpsgo2sbe_hint_frameinfo(unsigned long cmd, struct render_frame_info *iter)
+{
+	struct task_info *tmp_dep_arr = NULL;
+	int dep_num = 0;
+	int sbe_tgid = atomic_read(&g_web_or_flutter_tgid);
+
+	if (sbe_tgid <= 0 || iter->tgid != sbe_tgid)
+		return;
+
+	tmp_dep_arr = kcalloc(MAX_TASK_NUM, sizeof(struct task_info), GFP_KERNEL);
+	//get cur render dep
+	if (tmp_dep_arr)
+		dep_num = fpsgo_other2xgf_get_critical_tasks(iter->pid,
+						MAX_TASK_NUM, tmp_dep_arr, 1, iter->buffer_id);
+
+	if (dep_num > 0)
+		sbe_notify_update_fpsgo_jerk_boost_info(iter->tgid, iter->pid,
+				iter->blc, cmd,  iter->jerk_boost_flag, tmp_dep_arr);
+
+	kfree(tmp_dep_arr);
+}
+
+void update_fpsgo_hint_param(int scrolling, int tgid)
+{
+	if (!set_deplist_vip)
+		return;
+
+	if (scrolling) {
+		if (tgid > 0)
+			atomic_set(&g_web_or_flutter_tgid, tgid);
+	} else {
+		//reset the tgid
+		atomic_set(&g_web_or_flutter_tgid, 0);
+		//clear vip!!
+
+		sbe_get_tree_lock(__func__);
+		for (size_t i = 0; i < FPSGO_MAX_TASK_NUM; i++) {
+			struct task_info *dep_task = g_dep_arr_last;
+
+			if (dep_task && dep_task[i].pid > 0)
+				unset_task_basic_vip(dep_task[i].pid);
+		}
+		memset(g_dep_arr_last, 0, sizeof(struct task_info) * FPSGO_MAX_TASK_NUM);
+		sbe_put_tree_lock(__func__);
+	}
+}
+
+int sbe_get_fpsgo_info(int tgid, int pid, int blc,
+		unsigned long mask, int jerk_boost_flag, struct task_info *dep_arr)
+{
+	if (set_deplist_vip
+			&& tgid == atomic_read(&g_web_or_flutter_tgid)
+			&& dep_arr) {
+		sbe_get_tree_lock(__func__);
+		for (size_t i = 0; i < FPSGO_MAX_TASK_NUM; i++) {
+			struct task_info *dep_task = g_dep_arr_last;
+
+			if (dep_task && dep_task[i].pid > 0)
+				unset_task_basic_vip(dep_task[i].pid);
+		}
+
+		//copy once reset when scrolling end!!!!
+		memset(g_dep_arr_last, 0, sizeof(struct task_info) * FPSGO_MAX_TASK_NUM);
+		memcpy(g_dep_arr_last, dep_arr, sizeof(struct task_info) * FPSGO_MAX_TASK_NUM);
+
+		for (size_t i = 0; i < FPSGO_MAX_TASK_NUM; i++) {
+			struct task_info *dep_task = g_dep_arr_last;
+
+			if (dep_task && dep_task[i].pid > 0)
+				set_task_basic_vip(dep_task[i].pid);
+		}
+		sbe_put_tree_lock(__func__);
+	}
+	return 0;
+}
+
 void __exit sbe_cpu_ctrl_exit(void)
 {
+	unregister_fpsgo_frame_info_callback(fpsgo2sbe_hint_frameinfo);
 	destroy_smart_launch_capinfo();
 	kmem_cache_destroy(frame_info_cachep);
 	kmem_cache_destroy(ux_scroll_info_cachep);
@@ -1994,6 +2075,11 @@ int __init sbe_cpu_ctrl_init(void)
 	registered = 0;
 	sbe_ai_ctrl_enabled = 0;
 	sbe_uclamp_margin = 0;
+
+	atomic_set(&g_web_or_flutter_tgid, 0);
+
+	register_fpsgo_frame_info_callback(1 << GET_FPSGO_Q2Q_TIME,
+			fpsgo2sbe_hint_frameinfo);
 
 	frame_info_cachep = kmem_cache_create("ux_frame_info",
 		sizeof(struct ux_frame_info), 0, SLAB_HWCACHE_ALIGN, NULL);

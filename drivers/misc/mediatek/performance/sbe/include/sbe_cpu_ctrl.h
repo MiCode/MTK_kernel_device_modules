@@ -55,6 +55,7 @@ void sbe_do_frame_err(struct sbe_render_info *thr, int frame_count,
 void sbe_ux_reset(struct sbe_render_info *thr);
 void sbe_set_per_task_cap(struct sbe_render_info *thr);
 int sbe_set_sbb(int pid, int set, int active_ratio);
+int sbe_get_fpsgo_info(int tgid, int pid, int blc, unsigned long mask, int jerk_boost_flag, struct task_info *dep_arr);
 void sbe_reset_frame_cap(struct sbe_render_info *thr);
 
 struct ux_frame_info {
@@ -132,6 +133,7 @@ void enqueue_ux_scroll_info(int type, unsigned long long start_ts, struct sbe_re
 struct ux_scroll_info *search_ux_scroll_info(unsigned long long ts, struct sbe_render_info *thr);
 int sbe_calculate_dy_enhance(struct sbe_render_info *thr);
 void sbe_ux_scrolling_end(struct sbe_render_info *thr);
+void update_fpsgo_hint_param(int scrolling, int tgid);
 
 void sbe_delete_frame_info(struct sbe_render_info *thr, struct ux_frame_info *info);
 struct ux_frame_info *sbe_search_and_add_frame_info(struct sbe_render_info *thr,

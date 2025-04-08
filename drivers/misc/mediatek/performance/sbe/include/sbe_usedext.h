@@ -5,6 +5,7 @@
 
 #ifndef __SBE_USEDEXT_H__
 #define __SBE_USEDEXT_H__
+#include "fpsgo_frame_info.h"
 
 enum SBE_NOTIFIER_PUSH_TYPE {
 	SBE_NOTIFIER_DISPLAY_RATE,
@@ -12,6 +13,7 @@ enum SBE_NOTIFIER_PUSH_TYPE {
 	SBE_NOTIFIER_HWUI_FRAME_HINT,
 	SBE_NOTIFIER_WEBVIEW_POLICY,
 	SBE_NOTIFIER_SET_SBB,
+	SBE_NOTIFIER_FPSGO_CALLBACK_INFO,
 };
 
 enum SBE_ACTION_MASK {
@@ -37,6 +39,7 @@ struct SBE_NOTIFIER_PUSH_TAG {
 
 	char name[16];
 	char specific_name[1000];
+	int tgid;
 	int pid;
 	int start;
 	int num;
@@ -51,7 +54,7 @@ struct SBE_NOTIFIER_PUSH_TAG {
 	unsigned long long cur_ts;
 	unsigned long long identifier;
 	unsigned long long rescue_target;
-
+	struct task_info *dep_arr;
 	struct list_head queue_list;
 };
 
@@ -67,5 +70,8 @@ extern void (*sbe_notify_rescue_fp)(int pid, int start, int enhance,
 		int rescue_type, unsigned long long rescue_target, unsigned long long frameID);
 extern void (*sbe_consistency_policy_fp)(int start, int pid, int uclamp_min, int uclamp_max);
 extern int (*sbe_set_sbb_fp)(int pid, int set, int active_ratio);
+
+extern void sbe_notify_update_fpsgo_jerk_boost_info(int tgid, int pid, int blc,
+		unsigned long mask, int jerk_boost_flag, struct task_info *dep_arr_fpsgo);
 
 #endif
