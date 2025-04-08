@@ -944,10 +944,12 @@ void init_cti(struct mtk_mmmc_power_domain *mmmc_power_domain, bool dump)
 			writel(0x1 << cti->cti_in_chnn_stop[j][1],
 				base + CTIINEN0(cti->cti_in_chnn_stop[j][0]));
 		}
-		writel(0x1 << cti->cti_out_chnn_start[1],
-			base + CTIOUTEN0(cti->cti_out_chnn_start[0]));
-		writel(0x1 << cti->cti_out_chnn_stop[1],
-			base + CTIOUTEN0(cti->cti_out_chnn_stop[0]));
+		if (cti->cti_out_chnn_start[0] != -1)
+			writel(0x1 << cti->cti_out_chnn_start[1],
+				base + CTIOUTEN0(cti->cti_out_chnn_start[0]));
+		if (cti->cti_out_chnn_stop[0] != -1)
+			writel(0x1 << cti->cti_out_chnn_stop[1],
+				base + CTIOUTEN0(cti->cti_out_chnn_stop[0]));
 		if (mmmc_state & CTI_SW_ENABLE) {
 			writel(0x2, base + CTIAPPSET);
 		}
@@ -1753,6 +1755,7 @@ int mtk_mm_cti_probe(struct platform_device *pdev, u32 power_domain_id)
 	u32 hwid, cti_index = 0, subsys_id;
 	const __be32 *cti_in_stop = NULL, *cti_in_start = NULL;
 	int len_start = 0, len_stop = 0, i;
+	s32 err;
 
 	mtk_cti = devm_kzalloc(dev, sizeof(*mtk_cti), GFP_KERNEL);
 	if (!mtk_cti) {
@@ -1811,10 +1814,16 @@ int mtk_mm_cti_probe(struct platform_device *pdev, u32 power_domain_id)
 			mtk_cti->cti_in_chnn_start[i][0], mtk_cti->cti_in_chnn_start[i][1]);
 	}
 
-	of_property_read_u32_array(dev->of_node, "cti-out-chnn-stop",
+	err = of_property_read_u32_array(dev->of_node, "cti-out-chnn-stop",
 		mtk_cti->cti_out_chnn_stop, 2);
-	of_property_read_u32_array(dev->of_node, "cti-out-chnn-start",
+	if (err)
+		mtk_cti->cti_out_chnn_stop[0] = -1;
+
+	err = of_property_read_u32_array(dev->of_node, "cti-out-chnn-start",
 		mtk_cti->cti_out_chnn_start, 2);
+	if (err)
+		mtk_cti->cti_out_chnn_start[0] = -1;
+
 	MM_MONITOR_DBG("CTI hwid:%d cti_out_chnn_stop:%d %d cti_out_chnn_start:%d %d",
 		mtk_cti->hwid, mtk_cti->cti_out_chnn_stop[0], mtk_cti->cti_out_chnn_stop[1],
         mtk_cti->cti_out_chnn_start[0], mtk_cti->cti_out_chnn_start[1]);
