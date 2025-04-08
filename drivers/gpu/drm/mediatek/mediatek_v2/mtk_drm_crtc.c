@@ -355,11 +355,12 @@ EXPORT_SYMBOL(mtk_crtc_wb_get_scn);
 
 static int mtk_drm_crtc_pwr_check(struct mtk_drm_private *priv)
 {
+#if IS_ENABLED(CONFIG_MTK_HWCCF)
 	if (priv->data->mmsys_id == MMSYS_MT6993) {
 		// check disp vcore
 		return hwccf_is_enabled(MM_HWCCF,HW_CCF_MTCMOS_GRP_0, HWCCF_VOTE, 18);
 	}
-
+#endif
 	return 1;
 }
 
