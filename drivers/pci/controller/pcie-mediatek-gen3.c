@@ -3509,6 +3509,11 @@ static int mtk_pcie_pre_init_6993(struct mtk_pcie_port *port)
 		val = readl_relaxed(port->pextpcfg + PEXTP_PWRCTL_0);
 		val |= PEXTP_TIMER_SET;
 		writel_relaxed(val, port->pextpcfg + PEXTP_PWRCTL_0);
+
+		/* pcie0 use BBCK1, need to bypass pcie26m PMRC signal */
+		val = readl_relaxed(port->pextpcfg + PEXTP_REQ_CTRL);
+		val |= RG_PCIE26M_BYPASS;
+		writel_relaxed(val, port->pextpcfg + PEXTP_REQ_CTRL);
 	}
 
 	return 0;
