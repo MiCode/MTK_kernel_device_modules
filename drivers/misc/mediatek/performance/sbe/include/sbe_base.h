@@ -16,8 +16,8 @@
 #define MAX_PROCESS_NAME_LEN 16
 
 enum SBE_TASK_POLICY {
-	SBE_TASK_NONE = 0,
-	SBE_TASK_VIP = 1,
+	SBE_TASK_DISABLE = 0,
+	SBE_TASK_ENABLE = 1,
 };
 
 struct sbe_info {

@@ -9,9 +9,11 @@
 
 #define SBE_AFFNITY_TASK 0
 /*define cpu mask, maybe change setting to DTS not here*/
-#define SBE_AFFINITY_NONE 255
+#define SBE_PREFER_NONE 255
 #define SBE_PREFER_BIG 128
+#define SBE_PREFER_LM 127
 #define SBE_PREFER_M 112
+#define SBE_PREFER_L 15
 
 //high 16bit for frame status
 #define FRAME_MASK 0xFFFF0000
@@ -38,6 +40,8 @@
 
 extern void set_task_basic_vip(int pid);
 extern void unset_task_basic_vip(int pid);
+extern void set_task_ls_prefer_cpus(int pid, unsigned int cpumask_val);
+extern void unset_task_ls_prefer_cpus(int pid);
 extern int set_tgid_vip(int tgid);
 extern int unset_tgid_vip(int tgid);
 extern void turn_on_tgid_vip(void);

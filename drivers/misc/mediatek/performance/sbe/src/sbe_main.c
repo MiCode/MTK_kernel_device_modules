@@ -118,15 +118,15 @@ static void __sbe_receive_frame_start(struct sbe_render_info *f_render,
 
 void _sbe_set_vip_with_scroll(struct sbe_render_info *thr)
 {
-	struct sbe_info *s_info =NULL;
+	struct sbe_info *s_info = sbe_get_info(thr->tgid, 0);
 
-	s_info = sbe_get_info(thr->tgid, 0);
-	if (s_info) {
-		sbe_set_deplist_policy(thr, SBE_TASK_NONE);
-		if (s_info->ux_scrolling)
-			sbe_set_deplist_policy(thr, SBE_TASK_VIP);
-	} else
+	if (!s_info) {
 		sbe_trace("%d: not find sbe_info ", __func__);
+		return;
+	}
+
+	if (s_info->ux_scrolling)
+		sbe_set_deplist_policy(thr, SBE_TASK_ENABLE);
 }
 
 static void __sbe_receive_frame_end(struct sbe_render_info *f_render,
@@ -418,6 +418,7 @@ static void sbe_notifier_wq_cb_hwui_frame_hint(int start,
 		break;
 	case 1:
 		sbe_receive_frame_end(cur_pid, frameID, curr_ts, id);
+		sbe_set_critical_task(sbe_get_tgid(cur_pid), id, dep_mode, dep_name, dep_num);
 		break;
 	case 2:
 		sbe_receive_doframe_end(cur_pid, frameID, curr_ts, id, frame_flags);

@@ -43,6 +43,7 @@
 #define SBE_RESUCE_MODE_START 1
 #define SBE_RESUCE_MODE_TO_QUEUE_END 2
 #define SBE_RESUCE_MODE_UPDATE_RESCUE_STRENGTH 3
+#define UTIL_EST_RESET_VALUE 0
 
 static DEFINE_MUTEX(sbe_rescue_lock);
 
@@ -60,6 +61,7 @@ static int scroll_cnt;
 static int global_ux_blc;
 static int global_ux_max_pid;
 static int set_deplist_vip;
+static int set_deplist_ls;
 static int ux_general_policy;
 static int ux_general_policy_type;
 static int ux_general_policy_dpt_setwl;
@@ -110,6 +112,7 @@ module_param(sbe_dy_max_enhance, int, 0644);
 module_param(sbe_dy_enhance_margin, int, 0644);
 module_param(scroll_cnt, int, 0644);
 module_param(set_deplist_vip, int, 0644);
+module_param(set_deplist_ls, int, 0644);
 module_param(ux_general_policy, int, 0644);
 module_param(ux_general_policy_type, int, 0644);
 module_param(ux_general_policy_dpt_setwl, int, 0644);
@@ -218,41 +221,55 @@ void sbe_set_affinity_on_rescue(int pid, int r_cpu_mask)
 	}
 }
 
+void sbe_set_task_ls(int pid, int set, unsigned int prefer_type)
+{
+#if IS_ENABLED(CONFIG_MTK_SCHEDULER)
+	if (set)
+		set_task_ls_prefer_cpus(pid, prefer_type);
+	else
+		unset_task_ls_prefer_cpus(pid);
+#endif
+}
+
 void sbe_set_deplist_policy(struct sbe_render_info *thr, int policy)
 {
-	int i;
+	int i, ret;
+	char pid_buf[320] = {0};
 
 	if (!thr)
 		return;
 
-	if (!set_deplist_vip)
-		return;
-
+#if IS_ENABLED(CONFIG_MTK_SCHEDULER) && IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 	for (i = 0; i < thr->dep_num; i++) {
 		if (thr->dep_arr[i] <= 0)
 			continue;
 
-		if (policy == SBE_TASK_NONE) {
-#if IS_ENABLED(CONFIG_MTK_SCHEDULER) && IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
-			unset_task_basic_vip(thr->dep_arr[i]);
-#endif
+		char pid_str[10];
 
-#if SBE_AFFNITY_TASK
-			sbe_set_affinity_on_rescue(thr->dep_arr[i], SBE_AFFINITY_NONE);
-#endif //SBE_AFFNITY_TASK
+		ret = snprintf(pid_str, sizeof(pid_str), "%d,", thr->dep_arr[i]);
+		if (ret > 0
+				&& strlen(pid_buf) + strlen(pid_str) < sizeof(pid_buf))
+			strcat(pid_buf, pid_str);
+
+		if (set_deplist_vip) {
+			if (policy == SBE_TASK_DISABLE)
+				unset_task_basic_vip(thr->dep_arr[i]);
+			else if (policy == SBE_TASK_ENABLE)
+				set_task_basic_vip(thr->dep_arr[i]);
 		}
-
-		if (policy == SBE_TASK_VIP) {
-#if IS_ENABLED(CONFIG_MTK_SCHEDULER) && IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
-			set_task_basic_vip(thr->dep_arr[i]);
-#endif
-
-#if SBE_AFFNITY_TASK
-			sbe_set_affinity_on_rescue(thr->dep_arr[i], SBE_PREFER_M);
-#endif //SBE_AFFNITY_TASK
-		}
+		if (set_deplist_ls)
+			sbe_set_task_ls(thr->dep_arr[i], policy, SBE_PREFER_NONE);
 	}
-	sbe_systrace_c(thr->pid, thr->buffer_id, policy, "[ux]set_vip");
+#endif
+
+	if (set_deplist_vip) {
+		sbe_trace("[ux]set_deplist_vip=%d for %s\n", policy, pid_buf);
+		sbe_systrace_c(thr->pid, thr->buffer_id, policy, "[ux]set_vip");
+	}
+	if (set_deplist_ls) {
+		sbe_trace("[ux]set_deplist_ls=%d for %s\n", policy, pid_buf);
+		sbe_systrace_c(thr->pid, thr->buffer_id, policy, "[ux]set_ls");
+	}
 }
 
 void sbe_set_curr_thread_info(int pid, unsigned long long identifier)
@@ -603,7 +620,7 @@ void sbe_do_frame_err(struct sbe_render_info *thr, int frame_count,
 		return;
 
 	if (frame_count == 0) {
-		sbe_set_deplist_policy(thr, SBE_TASK_NONE);
+		sbe_set_deplist_policy(thr, SBE_TASK_DISABLE);
 		sbe_reset_frame_cap(thr);
 	}
 
@@ -837,7 +854,7 @@ void sbe_reset_deplist_task_priority(struct sbe_render_info *thr)
 		return;
 	}
 
-	sbe_set_deplist_policy(thr, SBE_TASK_NONE);
+	sbe_set_deplist_policy(thr, SBE_TASK_DISABLE);
 
 }
 
@@ -889,9 +906,9 @@ void sbe_boost_non_hwui_policy(struct sbe_render_info *thr, int set_vip)
 		return;
 	}
 	if (set_vip)
-		sbe_set_deplist_policy(thr, SBE_TASK_VIP);
+		sbe_set_deplist_policy(thr, SBE_TASK_ENABLE);
 	else
-		sbe_set_deplist_policy(thr, SBE_TASK_NONE);
+		sbe_set_deplist_policy(thr, SBE_TASK_DISABLE);
 }
 
 void sbe_set_ux_general_policy(int scrolling, unsigned long ux_mask)
@@ -1149,8 +1166,8 @@ void sbe_ux_scrolling_end(struct sbe_render_info *thr)
 	//reset rescue affnity if needed
 	scroll_info = get_latest_ux_scroll_info(thr);
 	if (scroll_info && scroll_info->rescue_with_perf_mode > 0) {
-		sbe_set_affinity_on_rescue(thr->tgid, SBE_AFFINITY_NONE);
-		sbe_set_affinity_on_rescue(thr->pid, SBE_AFFINITY_NONE);
+		sbe_set_affinity_on_rescue(thr->tgid, SBE_PREFER_NONE);
+		sbe_set_affinity_on_rescue(thr->pid, SBE_PREFER_NONE);
 	}
 
 	thr->sbe_dy_enhance_f = sbe_calculate_dy_enhance(thr);
@@ -1461,13 +1478,13 @@ void sbe_do_rescue(struct sbe_render_info *thr, int start, int enhance,
 			thr->rescue_start_time = 0;
 			//frame->rescue_reason is update in doframe end
 			if (last_scroll && last_scroll->rescue_with_perf_mode > 0) {
-				sbe_set_affinity_on_rescue(thr->tgid, SBE_AFFINITY_NONE);
-				sbe_set_affinity_on_rescue(thr->pid, SBE_AFFINITY_NONE);
+				sbe_set_affinity_on_rescue(thr->tgid, SBE_PREFER_NONE);
+				sbe_set_affinity_on_rescue(thr->pid, SBE_PREFER_NONE);
 			}
 		} else {
 			#if SBE_AFFNITY_TASK
-			sbe_set_affinity_on_rescue(thr->tgid, SBE_AFFINITY_NONE);
-			sbe_set_affinity_on_rescue(thr->pid, SBE_AFFINITY_NONE);
+			sbe_set_affinity_on_rescue(thr->tgid, SBE_PREFER_NONE);
+			sbe_set_affinity_on_rescue(thr->pid, SBE_PREFER_NONE);
 			#endif
 		}
 
@@ -1962,6 +1979,7 @@ int __init sbe_cpu_ctrl_init(void)
 	sbe_dy_rescue_enable = 1;
 	scroll_cnt = 6;
 	set_deplist_vip = 1;
+	set_deplist_ls = 1;
 	gas_threshold = 10;
 	gas_threshold_for_low_TLP = 10;
 	gas_threshold_for_high_TLP = 5;
