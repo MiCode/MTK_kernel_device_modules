@@ -5736,6 +5736,7 @@
 					 /bits/ 16 <CMDQ_SYNC_TOKEN_PREBUILT_MML_LOCK>,
 					 /bits/ 16 <CMDQ_SYNC_TOKEN_PREBUILT_VFMT_LOCK>,
 					 /bits/ 16 <CMDQ_SYNC_TOKEN_PREBUILT_DISP_LOCK>;
+			gce-hwid = <0>;
 			power-domains = <&scpsys MT6895_POWER_DOMAIN_MM_INFRA>;
 			mediatek,smi = <&smi_mdp_common>;
 			prebuilt-enable;
@@ -5781,6 +5782,7 @@
 					 /bits/ 16 <CMDQ_SYNC_TOKEN_PREBUILT_MML_LOCK>,
 					 /bits/ 16 <CMDQ_SYNC_TOKEN_PREBUILT_VFMT_LOCK>,
 					 /bits/ 16 <CMDQ_SYNC_TOKEN_PREBUILT_DISP_LOCK>;
+			gce-hwid = <1>;
 			power-domains = <&scpsys MT6895_POWER_DOMAIN_MM_INFRA>;
 			mediatek,smi = <&smi_mdp_common>;
 			prebuilt-enable;
