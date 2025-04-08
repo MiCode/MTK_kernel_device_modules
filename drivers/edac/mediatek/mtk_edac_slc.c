@@ -183,6 +183,9 @@ static irqreturn_t slc_err_handler(int irq, void *dev_id)
 	}
 	if (total_error_type == UNCORRECTABLE_ERROR)
 		BUG_ON(1);
+	if ((total_error_type == CORRECTABLE_ERROR) && drvdata->assert)
+		BUG_ON(1);
+
 	for (emi_idx = 0; emi_idx < drvdata->slc_parity_cnt; emi_idx++) {
 		slc_clear_violation(emi_idx);
 	}
@@ -234,8 +237,6 @@ static irqreturn_t slc_err_handler(int irq, void *dev_id)
 			}
 		}
 	}
-	if (drvdata->assert)
-                BUG_ON(1);
 
 	return IRQ_HANDLED;
 }
