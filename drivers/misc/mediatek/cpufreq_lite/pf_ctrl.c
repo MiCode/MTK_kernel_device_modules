@@ -30,6 +30,7 @@ u32 *g_pf_ctrl_enable;
 u32 *g_pf_ctrl_max_freq;
 u32 *g_pf_ctrl_min_freq;
 u32 *g_pf_ctrl_interval;
+u32 *g_pf_ctrl_buf;
 u32 *g_pf_ctrl_ipc_buf;
 
 static DEFINE_MUTEX(pf_ctrl_proc_mutex);
@@ -44,6 +45,7 @@ static struct delayed_work pf_top_work;
 static struct pf_info pf_ctrl_info;
 static struct cpufreq_policy *ptr_policy_0;
 static struct workqueue_struct *pf_ctrl_wq;
+static struct pf_buf pf_circ_buf;
 static struct pf_ipc_buf ipc_circ_buf[COREL_NUM];
 
 static DEFINE_PER_CPU(struct perf_event *, cycle_events);
@@ -65,13 +67,31 @@ static struct perf_event_attr inst_event_attr = {
 /*	.disabled       = 1, */
 };
 
+static void pf_write_buf(u64 ts, u64 pf_off_total_time, int count, bool pf_dis)
+{
+	struct pf_record *record;
+
+	if (!pf_circ_buf.buf)
+		return;
+
+	record = &pf_circ_buf.buf[pf_circ_buf.head];
+	pf_circ_buf.head = (pf_circ_buf.head + 1) & (PF_CIRC_BUF_SIZE - 1);
+	if (pf_circ_buf.tail == pf_circ_buf.head)
+		pf_circ_buf.tail = (pf_circ_buf.tail + 1) & (PF_CIRC_BUF_SIZE - 1);
+
+	record->ts = (unsigned int)(ts / MSEC_PER_NSEC);
+	record->pf_off_total_time = (unsigned int)(pf_off_total_time / MSEC_PER_NSEC);
+	record->count = pf_counter;
+	record->pf_dis = pf_dis;
+}
+
 static int pf_perf_event_read_local(struct perf_event *ev, u64 *value)
 {
 	return perf_event_read_local(ev, value, NULL, NULL);
 }
 
 static void pf_ipc_write_buf(unsigned int cpu, unsigned long long inst,
-			unsigned long long cycle, bool pf_dis)
+			unsigned long long cycle, bool pf_dis, u64 ts)
 {
 	struct pf_ipc_record *record;
 
@@ -90,6 +110,7 @@ static void pf_ipc_write_buf(unsigned int cpu, unsigned long long inst,
 	else
 		record->ipc = 0;
 	record->pf_dis = pf_dis;
+	record->ts = (unsigned int)(ts / MSEC_PER_NSEC);
 }
 
 static void pf_ipc_pmu_overflow_handler(struct perf_event *event,
@@ -240,12 +261,13 @@ static int pf_ctrl_enable_proc_show(struct seq_file *m, void *v)
 	else
 		seq_printf(m, "pf is turned on, counter=%d\n", pf_counter);
 
-	seq_printf(m, "pf off total time (ns)=%llu\n", pf_ctrl_info.pf_off_total_time);
+	seq_printf(m, "pf off total time (ms)=%llu\n",
+		pf_ctrl_info.pf_off_total_time / MSEC_PER_NSEC);
 
 	for (cpu = 0; cpu < COREL_NUM; cpu++)
 		seq_printf(m, "cpu=%d, set=%d, get=%d, ts=%llu\n",
 			cpu, pf_ctrl_info.pf_set[cpu], pf_ctrl_info.pf_get[cpu],
-			pf_ctrl_info.pf_ts[cpu]);
+			pf_ctrl_info.pf_ts[cpu] / MSEC_PER_NSEC);
 
 	return 0;
 }
@@ -465,25 +487,61 @@ PROC_FOPS_RO(pf_ctrl_min_freq);
 PROC_FOPS_RO(pf_ctrl_interval);
 #endif
 
-static void print_record(struct seq_file *m, int cpu, int i)
+static void print_record(struct seq_file *m, int i)
+{
+	seq_printf(m, "%5u, %6d, %10u, %10u\n",
+			pf_circ_buf.buf[i].count,
+			pf_circ_buf.buf[i].pf_dis,
+			pf_circ_buf.buf[i].ts,
+			pf_circ_buf.buf[i].pf_off_total_time);
+}
+
+static int pf_ctrl_buf_proc_show(struct seq_file *m, void *v)
+{
+	int i;
+
+	seq_printf(m, "%5s, %6s, %10s, %10s\n",
+			"count", "pf_dis", "ts", "total_time");
+
+	if (pf_circ_buf.tail == pf_circ_buf.head) {
+		// buffer empty
+		return 0;
+	} else if (pf_circ_buf.tail < pf_circ_buf.head) {
+		// buffer not full
+		for (i = pf_circ_buf.tail; i < pf_circ_buf.head; i++)
+			print_record(m, i);
+	} else {
+		// buffer full
+		for (i = pf_circ_buf.tail; i < PF_CIRC_BUF_SIZE; i++)
+			print_record(m, i);
+		for (i = 0; i < pf_circ_buf.head; i++)
+			print_record(m, i);
+	}
+
+	return 0;
+}
+PROC_FOPS_RO(pf_ctrl_buf);
+
+static void print_ipc_record(struct seq_file *m, int cpu, int i)
 {
 	if (cpu < 0 || cpu >= COREL_NUM)
 		return;
 
-	seq_printf(m, "%3d, %13llu, %13llu, %7u, %6d\n",
+	seq_printf(m, "%3d, %13llu, %13llu, %7u, %6d, %10u\n",
 			cpu,
 			ipc_circ_buf[cpu].buf[i].inst,
 			ipc_circ_buf[cpu].buf[i].cycle,
 			ipc_circ_buf[cpu].buf[i].ipc,
-			ipc_circ_buf[cpu].buf[i].pf_dis);
+			ipc_circ_buf[cpu].buf[i].pf_dis,
+			ipc_circ_buf[cpu].buf[i].ts);
 }
 
 static int pf_ctrl_ipc_buf_proc_show(struct seq_file *m, void *v)
 {
 	int cpu, i;
 
-	seq_printf(m, "%3s, %13s, %13s, %7s, %6s\n",
-			"CPU", "inst", "cycle", "IPC*100", "pf_dis");
+	seq_printf(m, "%3s, %13s, %13s, %7s, %6s, %10s\n",
+			"CPU", "inst", "cycle", "IPC*100", "pf_dis", "ts");
 
 	for (cpu = 0; cpu < COREL_NUM; cpu++) {
 		if (ipc_circ_buf[cpu].tail == ipc_circ_buf[cpu].head) {
@@ -492,13 +550,13 @@ static int pf_ctrl_ipc_buf_proc_show(struct seq_file *m, void *v)
 		} else if (ipc_circ_buf[cpu].tail < ipc_circ_buf[cpu].head) {
 			// buffer not full
 			for (i = ipc_circ_buf[cpu].tail; i < ipc_circ_buf[cpu].head; i++)
-				print_record(m, cpu, i);
+				print_ipc_record(m, cpu, i);
 		} else {
 			// buffer full
 			for (i = ipc_circ_buf[cpu].tail; i < PF_IPC_CIRC_BUF_SIZE; i++)
-				print_record(m, cpu, i);
+				print_ipc_record(m, cpu, i);
 			for (i = 0; i < ipc_circ_buf[cpu].head; i++)
-				print_record(m, cpu, i);
+				print_ipc_record(m, cpu, i);
 		}
 	}
 
@@ -522,6 +580,7 @@ static int create_pf_ctrl_fs(void)
 		PROC_ENTRY_DATA(pf_ctrl_max_freq),
 		PROC_ENTRY_DATA(pf_ctrl_min_freq),
 		PROC_ENTRY_DATA(pf_ctrl_interval),
+		PROC_ENTRY_DATA(pf_ctrl_buf),
 		PROC_ENTRY_DATA(pf_ctrl_ipc_buf),
 	};
 
@@ -570,10 +629,20 @@ static void pf_switch_work_function(struct work_struct *work)
 			0, 0, 0, 0, 0, 0, &res);
 	pf_ctrl_info.pf_get[cpu] = (bool)(res.a0 & CPUECTLR_EL1_PREFETCH_MASK);
 
+	if (cpu == 0) {
+		pf_write_buf(
+			pf_ctrl_info.pf_ts[cpu],
+			pf_ctrl_info.pf_off_total_time,
+			pf_counter,
+			pf_work->pf_type == PF_DISABLE ? 1 : 0
+		);
+	}
+
 	pf_ipc_write_buf(cpu,
 		pf_ipc_get_inst_count(cpu),
 		pf_ipc_get_cycle_count(cpu),
-		pf_work->pf_type == PF_DISABLE ? 0 : 1);
+		pf_work->pf_type == PF_DISABLE ? 0 : 1,
+		pf_ctrl_info.pf_ts[cpu]);
 }
 
 static void trigger_pf_work(int type)
@@ -687,6 +756,10 @@ int mtk_pf_ctrl_init(void)
 		ipc_circ_buf[cpu].head = 0;
 		ipc_circ_buf[cpu].tail = 0;
 	}
+	pf_circ_buf.buf = kcalloc(PF_CIRC_BUF_SIZE,
+			sizeof(struct pf_record), GFP_KERNEL);
+	pf_circ_buf.head = 0;
+	pf_circ_buf.tail = 0;
 
 	create_pf_ctrl_fs();
 
@@ -702,6 +775,7 @@ void mtk_pf_ctrl_exit(void)
 
 	for (cpu = 0; cpu < COREL_NUM; cpu++) {
 		pf_ipc_pmu_remove_cpu(cpu);
+		kfree(pf_circ_buf.buf);
 		kfree(ipc_circ_buf[cpu].buf);
 	}
 }
