@@ -51,6 +51,12 @@ define_mgk_ddk_ko(
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/vcp/include",
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mme",
     ],
+    local_defines = select({
+            "@mgk_internal//:mgk_internal_setting" : [
+                "DISP_AVS_SUPPORT=1",
+            ],
+            "//conditions:default" : [],
+    }),
     ko_deps = [
         "//kernel_device_modules-{}/drivers/misc/mediatek/mmp/src:mmprofile".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),

@@ -42,6 +42,7 @@ struct vdisp_mmup_sram {
 static struct vdisp_mmup_sram g_vdisp_mmup_sram;
 static struct notifier_block g_vdisp_vcp_nb;
 static uint32_t *g_vdisp_efuse_val;
+static unsigned long g_vdisp_max_freq = 728000000;
 
 static void mtk_vdisp_set_mmup_sram_ofst(uint32_t ofst)
 {
@@ -308,7 +309,7 @@ void mtk_vdisp_avs_query_aging_val(struct device *dev)
 		wait_for_aging_ack_timeout(1))
 		goto release_vcp;
 
-	ret = clk_set_rate(g_mmdvfs_clk, 728000000);
+	ret = clk_set_rate(g_mmdvfs_clk, g_vdisp_max_freq);
 	if (ret) {
 		VDISPDBG("request vdisp opp4 fail: %d", ret);
 		if (vdisp_avs_ipi_send_slot(FUNC_IPI_AGING_ACK, 0) != IPI_ACTION_DONE)
@@ -673,6 +674,8 @@ int mtk_vdisp_efuse_probe(struct platform_device *pdev)
 int mtk_vdisp_avs_probe(struct platform_device *pdev)
 {
 	int ret;
+	unsigned long freq = 0;
+	struct dev_pm_opp *opp;
 	struct device *dev = &pdev->dev;
 	struct resource *res;
 	struct clk *clk;
@@ -717,6 +720,13 @@ int mtk_vdisp_avs_probe(struct platform_device *pdev)
 	if (ret)
 		VDISPDBG("fail to get efuse");
 
+	/* signal to uP start supporting AVS */
+#if defined(DISP_AVS_SUPPORT)
+	if(vdisp_avs_ipi_send_slot_enable_vcp(FUNC_IPI_MGK_SUPPORT_AVS, 1))
+		VDISPDBG("fail to enable MGK support AVS");
+#endif
+
+	/* OPP related operation */
 	ret = dev_pm_opp_of_add_table(dev);
 	if (ret)
 		return 0;
@@ -726,6 +736,13 @@ int mtk_vdisp_avs_probe(struct platform_device *pdev)
 		vdisp_opp_num = ret;
 		VDISPDBG("get vdisp_opp_num(%d)", vdisp_opp_num);
 	}
+
+	while (!IS_ERR(opp = dev_pm_opp_find_freq_ceil(dev, &freq))) {
+		g_vdisp_max_freq = freq;
+		freq++;
+		dev_pm_opp_put(opp);
+	}
+	VDISPDBG("get g_vdisp_max_freq(%lu)", g_vdisp_max_freq);
 
 	return 0;
 }
