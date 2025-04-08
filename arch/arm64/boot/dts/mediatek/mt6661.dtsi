@@ -122,7 +122,6 @@
 				regulator-max-microvolt = <1200000>;
 				regulator-enable-ramp-delay = <180>;
 				regulator-allowed-modes = <0 1 2>;
-				// regulator-always-on;
 			};
 			mt6661_4_buck2: mt6661-4-buck2 {
 				regulator-compatible = "BUCK2";
@@ -156,6 +155,7 @@
 				regulator-enable-ramp-delay = <180>;
 				regulator-allowed-modes = <0 1 2>;
 				regulator-always-on;
+				regulator-allow-set-load;
 			};
 			mt6661_4_buck6: mt6661-4-buck6 {
 				regulator-compatible = "BUCK6";
@@ -173,6 +173,7 @@
 				regulator-enable-ramp-delay = <200>;
 				regulator-allowed-modes = <0 2>;
 				regulator-always-on;
+				regulator-allow-set-load;
 			};
 			mt6661_4_ld20_2: mt6661-4-ld20-2 {
 				regulator-compatible = "LD20_2";
@@ -181,6 +182,7 @@
 				regulator-max-microvolt = <3700000>;
 				regulator-enable-ramp-delay = <200>;
 				regulator-allowed-modes = <0 2>;
+				regulator-allow-set-load;
 			};
 			mt6661_4_ldc0_3: mt6661-4-ldc0-3 {
 				regulator-compatible = "LDC0_3";
@@ -189,6 +191,7 @@
 				regulator-max-microvolt = <3700000>;
 				regulator-enable-ramp-delay = <200>;
 				regulator-allowed-modes = <0 2>;
+				regulator-allow-set-load;
 			};
 			mt6661_4_ldc0_4: mt6661-4-ldc0-4 {
 				regulator-compatible = "LDC0_4";
@@ -197,6 +200,7 @@
 				regulator-max-microvolt = <3700000>;
 				regulator-enable-ramp-delay = <200>;
 				regulator-allowed-modes = <0 2>;
+				regulator-allow-set-load;
 			};
 			mt6661_4_ln60_5: mt6661-4-ln60-5 {
 				regulator-compatible = "LN60_5";
@@ -213,7 +217,6 @@
 				regulator-max-microvolt = <2090000>;
 				regulator-enable-ramp-delay = <200>;
 				regulator-allowed-modes = <0 2>;
-				// regulator-always-on; // TODO: VUFS12CK
 			};
 			mt6661_4_lnc0_10: mt6661-4-lnc0-10 {
 				regulator-compatible = "LNC0_10";
@@ -258,7 +261,6 @@
 				regulator-max-microvolt = <2090000>;
 				regulator-enable-ramp-delay = <200>;
 				regulator-allowed-modes = <0 2>;
-				// regulator-always-on; // TODO: UFS VCCQ2
 			};
 			mt6661_4_lnc0_s_12: mt6661-4-lnc0-s-12 {
 				regulator-compatible = "LNC0_S_12";
@@ -267,7 +269,6 @@
 				regulator-max-microvolt = <2090000>;
 				regulator-enable-ramp-delay = <200>;
 				regulator-allowed-modes = <0 2>;
-				// regulator-always-on; // TODO: UFS VCCQ1
 			};
 			mt6661_4_ld20_1_eint_high: mt6661-4-ld20-1-eint-high {
 				regulator-compatible = "LD20_1_EINT_HIGH";
@@ -435,7 +436,6 @@
 				regulator-max-microvolt = <1200000>;
 				regulator-enable-ramp-delay = <180>;
 				regulator-allowed-modes = <0 1 2>;
-				// regulator-always-on; // TODO: APU
 			};
 			mt6661_3_buck2: mt6661-3-buck2 {
 				regulator-compatible = "BUCK2";
@@ -469,6 +469,7 @@
 				regulator-enable-ramp-delay = <180>;
 				regulator-allowed-modes = <0 1 2>;
 				regulator-always-on;
+				regulator-allow-set-load;
 			};
 			mt6661_3_buck6: mt6661-3-buck6 {
 				regulator-compatible = "BUCK6";
@@ -485,6 +486,7 @@
 				regulator-max-microvolt = <3700000>;
 				regulator-enable-ramp-delay = <200>;
 				regulator-allowed-modes = <0 2>;
+				regulator-allow-set-load;
 			};
 			mt6661_3_ld20_2: mt6661-3-ld20-2 {
 				regulator-compatible = "LD20_2";
@@ -493,6 +495,7 @@
 				regulator-max-microvolt = <3700000>;
 				regulator-enable-ramp-delay = <200>;
 				regulator-allowed-modes = <0 2>;
+				regulator-allow-set-load;
 			};
 			mt6661_3_ldc0_3: mt6661-3-ldc0-3 {
 				regulator-compatible = "LDC0_3";
@@ -501,6 +504,7 @@
 				regulator-max-microvolt = <3700000>;
 				regulator-enable-ramp-delay = <200>;
 				regulator-allowed-modes = <0 2>;
+				regulator-allow-set-load;
 			};
 			mt6661_3_ldc0_4: mt6661-3-ldc0-4 {
 				regulator-compatible = "LDC0_4";
@@ -509,6 +513,7 @@
 				regulator-max-microvolt = <3700000>;
 				regulator-enable-ramp-delay = <200>;
 				regulator-allowed-modes = <0 2>;
+				regulator-allow-set-load;
 			};
 			mt6661_3_ln60_5: mt6661-3-ln60-5 {
 				regulator-compatible = "LN60_5";
@@ -972,6 +977,7 @@
 				regulator-enable-ramp-delay = <180>;
 				regulator-allowed-modes = <0 1 2>;
 				regulator-always-on;
+				regulator-allow-set-load;
 			};
 			mt6661_5_buck6: mt6661-5-buck6 {
 				regulator-compatible = "BUCK6";
@@ -989,6 +995,7 @@
 				regulator-max-microvolt = <3700000>;
 				regulator-enable-ramp-delay = <200>;
 				regulator-allowed-modes = <0 2>;
+				regulator-allow-set-load;
 			};
 			mt6661_5_ld20_2: mt6661-5-ld20-2 {
 				regulator-compatible = "LD20_2";
@@ -997,6 +1004,7 @@
 				regulator-max-microvolt = <3700000>;
 				regulator-enable-ramp-delay = <200>;
 				regulator-allowed-modes = <0 2>;
+				regulator-allow-set-load;
 			};
 			mt6661_5_ldc0_3: mt6661-5-ldc0-3 {
 				regulator-compatible = "LDC0_3";
@@ -1005,6 +1013,7 @@
 				regulator-max-microvolt = <3700000>;
 				regulator-enable-ramp-delay = <200>;
 				regulator-allowed-modes = <0 2>;
+				regulator-allow-set-load;
 			};
 			mt6661_5_ldc0_4: mt6661-5-ldc0-4 {
 				regulator-compatible = "LDC0_4";
@@ -1013,6 +1022,7 @@
 				regulator-max-microvolt = <3700000>;
 				regulator-enable-ramp-delay = <200>;
 				regulator-allowed-modes = <0 2>;
+				regulator-allow-set-load;
 			};
 			mt6661_5_ln60_5: mt6661-5-ln60-5 {
 				regulator-compatible = "LN60_5";
@@ -1071,7 +1081,6 @@
 				regulator-max-microvolt = <2090000>;
 				regulator-enable-ramp-delay = <200>;
 				regulator-allowed-modes = <0 2>;
-				// regulator-always-on; // TODO: APU_SRAM
 			};
 			mt6661_5_lnc0_s_12: mt6661-5-lnc0-s-12 {
 				regulator-compatible = "LNC0_S_12";
@@ -1080,7 +1089,6 @@
 				regulator-max-microvolt = <2090000>;
 				regulator-enable-ramp-delay = <200>;
 				regulator-allowed-modes = <0 2>;
-				// regulator-always-on;
 			};
 			mt6661_5_ld20_1_eint_high: mt6661-5-ld20-1-eint-high {
 				regulator-compatible = "LD20_1_EINT_HIGH";
@@ -1469,7 +1477,6 @@
 				regulator-max-microvolt = <1200000>;
 				regulator-enable-ramp-delay = <180>;
 				regulator-allowed-modes = <0 1 2>;
-				// regulator-always-on; // TODO: DISP
 			};
 			mt6661_6_buck5: mt6661-6-buck5 {
 				regulator-compatible = "BUCK5";
@@ -1478,6 +1485,7 @@
 				regulator-max-microvolt = <1200000>;
 				regulator-enable-ramp-delay = <180>;
 				regulator-allowed-modes = <0 1 2>;
+				regulator-allow-set-load;
 			};
 			mt6661_6_buck6: mt6661-6-buck6 {
 				regulator-compatible = "BUCK6";
@@ -1486,6 +1494,7 @@
 				regulator-max-microvolt = <1200000>;
 				regulator-enable-ramp-delay = <180>;
 				regulator-allowed-modes = <0 1 2>;
+				regulator-allow-set-load;
 			};
 			mt6661_6_ld20_1: mt6661-6-ld20-1 {
 				regulator-compatible = "LD20_1";
@@ -1494,6 +1503,7 @@
 				regulator-max-microvolt = <3700000>;
 				regulator-enable-ramp-delay = <200>;
 				regulator-allowed-modes = <0 2>;
+				regulator-allow-set-load;
 			};
 			mt6661_6_ld20_2: mt6661-6-ld20-2 {
 				regulator-compatible = "LD20_2";
@@ -1502,6 +1512,7 @@
 				regulator-max-microvolt = <3700000>;
 				regulator-enable-ramp-delay = <200>;
 				regulator-allowed-modes = <0 2>;
+				regulator-allow-set-load;
 			};
 			mt6661_6_ldc0_3: mt6661-6-ldc0-3 {
 				regulator-compatible = "LDC0_3";
@@ -1510,6 +1521,7 @@
 				regulator-max-microvolt = <3700000>;
 				regulator-enable-ramp-delay = <200>;
 				regulator-allowed-modes = <0 2>;
+				regulator-allow-set-load;
 			};
 			mt6661_6_ldc0_4: mt6661-6-ldc0-4 {
 				regulator-compatible = "LDC0_4";
@@ -1518,6 +1530,7 @@
 				regulator-max-microvolt = <3700000>;
 				regulator-enable-ramp-delay = <200>;
 				regulator-allowed-modes = <0 2>;
+				regulator-allow-set-load;
 			};
 			mt6661_6_ln60_5: mt6661-6-ln60-5 {
 				regulator-compatible = "LN60_5";
