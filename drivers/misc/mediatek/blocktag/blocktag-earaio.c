@@ -246,7 +246,8 @@ static void mtk_btag_eara_get_data(struct earaio_iostat *data)
 	spin_unlock_irqrestore(&earaio_ctrl.lock, flags);
 }
 
-#define EARAIO_BOOST_EVAL_THRESHOLD_PAGES ((32 * 1024 * 1024) >> PAGE_SHIFT)
+/* #define EARAIO_BOOST_EVAL_THRESHOLD_PAGES ((32 * 1024 * 1024) >> PAGE_SHIFT) */
+#define EARAIO_BOOST_EVAL_THRESHOLD_PAGES ((16 * 1024 * 1024) >> PAGE_SHIFT)
 
 /**
  * earaio_try_boost - try to send an ACCEL_NORMAL boost message if needed
@@ -314,8 +315,11 @@ static int earaio_try_boost(bool boost)
 #if IS_ENABLED(CONFIG_MTK_FUSE_TRACER)
 	/* Establish threshold for top app fuse request count */
 	earaio_get_fuse_count(&fuse_total, &fuse_unlink);
-	if (((fuse_total > earaio_ctrl.fuse_threshold) && total_top_rw) ||
-	    (fuse_unlink > earaio_ctrl.fuse_unlink_threshold))
+	if ((total_top_rw &&
+	     (fuse_total - earaio_ctrl.fuse_total_prev >
+	      earaio_ctrl.fuse_threshold)) ||
+	    (fuse_unlink - earaio_ctrl.fuse_unlink_prev >
+	     earaio_ctrl.fuse_unlink_threshold))
 		goto need_boost;
 #endif
 
@@ -631,6 +635,8 @@ static void earaio_top_io_notify(enum mtk_btag_io_type type, __u32 top_pages_r,
 		    top_pages_r > earaio_ctrl.seq_r_threshold) {
 			early_notification = ACCEL_SEQ;
 			mtk_btag_earaio_boost_fill(ACCEL_SEQ);
+			if (!earaio_ctrl.start_collect)
+				earaio_ctrl.boosted = true;
 		} else if (type == BTAG_IO_WRITE && top_pages_r == 0 &&
 			   top_pages_w > earaio_ctrl.seq_w_threshold) {
 			early_notification = ACCEL_SEQ;
