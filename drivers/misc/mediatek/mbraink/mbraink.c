@@ -20,7 +20,7 @@
 #include <linux/rtc.h>
 #include <linux/sched/clock.h>
 #include <linux/suspend.h>
-
+#include <clocksource/arm_arch_timer.h>
 
 #include "mbraink_power.h"
 #include "mbraink_video.h"
@@ -253,7 +253,8 @@ static long handlePmuInfo(unsigned long arg, void *mbraink_data)
 		0,
 		sizeof(struct mbraink_pmu_info));
 
-	if (copy_from_user(pmuInfo,(struct mbraink_pmu_info *)arg, sizeof(struct mbraink_pmu_info))) {
+	if (copy_from_user(pmuInfo, (struct mbraink_pmu_info *)arg,
+			sizeof(struct mbraink_pmu_info))) {
 		pr_notice("Data write pmu info from UserSpace Err!\n");
 		return -EPERM;
 	}
@@ -1227,6 +1228,7 @@ static long handle_netlink_trigger_recv(unsigned long arg)
 {
 	long ret = 0;
 	char netlink_buf[NETLINK_EVENT_MESSAGE_SIZE] = {'\0'};
+
 	ret = mbraink_netlink_send_msg(netlink_buf); // dummy data for trigger only
 	return ret;
 }
@@ -1396,6 +1398,26 @@ static long handleMemoryEmiInfo(unsigned long arg, void *mbraink_data)
 			pr_notice("Copy memory emi Info to UserSpace error!\n");
 			ret = -EPERM;
 		}
+	}
+
+	return ret;
+}
+
+static long handle_timer_mapping_info(unsigned long arg, void *mbraink_data)
+{
+	long ret = 0;
+	struct mbraink_timer_mapping_info *pTimerMappingInfo =
+		(struct mbraink_timer_mapping_info *)(mbraink_data);
+
+	memset(pTimerMappingInfo, 0, sizeof(struct mbraink_timer_mapping_info));
+
+	pTimerMappingInfo->timer = sched_clock();
+	pTimerMappingInfo->read_counter = arch_timer_read_counter();
+
+	if (copy_to_user((struct mbraink_timer_mapping_info *)arg, pTimerMappingInfo,
+			sizeof(struct mbraink_timer_mapping_info))) {
+		pr_notice("Copy timer mapping info to UserSpace error!\n");
+		ret = -EPERM;
 	}
 
 	return ret;
@@ -1921,6 +1943,15 @@ static long mbraink_ioctl(struct file *filp,
 		if (!mbraink_data)
 			goto End;
 		ret = handleMmdvfsUserInfo(arg, mbraink_data);
+		kfree(mbraink_data);
+		break;
+	}
+	case RO_TIMER_MAPPING_INFO:
+	{
+		mbraink_data = kmalloc(sizeof(struct mbraink_timer_mapping_info), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handle_timer_mapping_info(arg, mbraink_data);
 		kfree(mbraink_data);
 		break;
 	}

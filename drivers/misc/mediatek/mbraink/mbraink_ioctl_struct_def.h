@@ -785,4 +785,8 @@ struct mbraink_memory_emiInfo {
 	uint32_t updateCnt;
 };
 
+struct mbraink_timer_mapping_info {
+	unsigned long long timer;
+	u64 read_counter;
+};
 #endif

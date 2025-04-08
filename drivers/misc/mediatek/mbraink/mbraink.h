@@ -79,6 +79,7 @@
 #define MEMORY_EMI_INFO	'U'
 #define WIFI_WAKEUP_INFO		'V'
 #define MMDVFS_USER_INFO		'W'
+#define TIMER_MAPPING_INFO	'X'
 
 /*Mbrain Delegate IOCTL List*/
 #define AUTO_IOCTL_INFO			_IOR(IOC_MAGIC, AUTO_IOCTL, \
@@ -212,6 +213,8 @@
 
 #define RO_MMDVFS_USER_INFO	_IOR(IOC_MAGIC, MMDVFS_USER_INFO, \
 						struct mbraink_mmdvfs_user_info*)
+#define RO_TIMER_MAPPING_INFO	_IOR(IOC_MAGIC, TIMER_MAPPING_INFO, \
+					struct mbraink_timer_mapping_info*)
 
 #define SUSPEND_DATA	0
 #define RESUME_DATA		1
