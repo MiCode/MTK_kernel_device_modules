@@ -60,7 +60,7 @@ define_mgk_ddk_ko(
         ".",
     ],
     header_deps = [
-        #"//kernel_device_modules-{}/drivers/misc/mediatek/videogo:headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/videogo:headers".format(kernel_version),
     ],
     ko_deps = [
         "//kernel_device_modules-{}/drivers/dma-buf/heaps:system_heap".format(kernel_version),

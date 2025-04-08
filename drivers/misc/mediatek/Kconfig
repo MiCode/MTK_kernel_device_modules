@@ -178,6 +178,7 @@ source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/mmdebug/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/mm_monitor/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/widevine_drm/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/hw_sem/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/videogo/Kconfig"
 endmenu # MultiMedia, Display, Camera
 
 menu "Security"
