@@ -1440,5 +1440,15 @@ void cmdq_hyp_get_memory(struct user_pt_regs *regs)
 		CALL_FROM_OPS(puts, PFX_CMDQ_MSG "reserved_mem_va:");
 		CALL_FROM_OPS(putx64, (u64)reserved_mem_va_base);
 	}
+
+	ret = pkvm_cmdq_ops->host_stage2_mod_prot(mem_base_address >> PAGE_SHIFT, 0,
+				  (mem_size / 2) >> PAGE_SHIFT, false);
+	if (!ret) {
+		CALL_FROM_OPS(puts, PFX_CMDQ_MSG "EL1S2 unmap success");
+	} else {
+		CALL_FROM_OPS(puts, PFX_CMDQ_MSG "EL1S2 unmap fail, ret:");
+		CALL_FROM_OPS(putx64, ret);
+	}
+
 	regs->regs[0] = SMCCC_RET_SUCCESS;
 }
