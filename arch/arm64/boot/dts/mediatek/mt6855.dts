@@ -7235,28 +7235,39 @@
 		bootmode = <&chosen>;
 	};
 
-	lk_charger: lk_charger {
+	lk_charger: lk-charger {
 		compatible = "mediatek,lk_charger";
-		enable_anime;
-		/* enable_pe_plus; */
-		enable_pd20_reset;
-		power_path_support;
-		max_charger_voltage = <6500000>;
-		fast_charge_voltage = <3000000>;
+		enable-anime;
+		/* enable-pe-plus; */
+		enable-pd20-reset;
+		power-path-support;
+		max-charger-voltage = <6500000>;
+		fast-charge-voltage = <3000000>;
+
 		/* charging current */
-		usb_charger_current = <500000>;
-		ac_charger_current = <2050000>;
-		ac_charger_input_current = <3200000>;
-		non_std_ac_charger_current = <500000>;
-		charging_host_charger_current = <1500000>;
-		ta_ac_charger_current = <3000000>;
-		pd_charger_current = <500000>;
+		usb-charger-current = <500000>;
+		ac-charger-current = <2050000>;
+		ac-charger-input-current = <3000000>;
+		non-std-ac-charger-current = <500000>;
+		charging-host-charger-current = <1500000>;
+		ta-ac-charger-current = <3000000>;
+		pd-charger-current = <500000>;
+
 		/* battery temperature protection */
-		temp_t4_threshold = <50>;
-		temp_t3_threshold = <45>;
-		temp_t1_threshold = <0>;
+		temp-t4-threshold = <50>;
+		temp-t3-threshold = <45>;
+		temp-t1-threshold = <0>;
+
 		/* enable check vsys voltage */
-		enable_check_vsys;
+		enable-check-vsys;
+
+		/* enable LK boot volt*/
+		enable-boot-volt = <1>;
+
+		/* Try Adapter Capability For Boot Volt Adjustment*/
+		enable-try-ta-cap;
+		boot-voltage-level = <3000 3100 3200 3350 3450>;
+		ta-capability-level = <1900 1350 850 500 0>;
 	};
 	pe: pe {
 		compatible = "mediatek,charger,pe";
