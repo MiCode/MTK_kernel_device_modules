@@ -656,8 +656,8 @@ void hook_rvh_get_nohz_timer_target(void __always_unused *data,
 
 	*done = true;
 
-	/* 1. Choose this cpu & non-pause & hk_mask & non-idle */
-	if (housekeeping_cpu(*cpu, HK_TYPE_TIMER) && !cpu_paused(*cpu)) {
+	/* 1. Choose this cpu & non-pause & hk_mask & non-idle & online */
+	if (housekeeping_cpu(*cpu, HK_TYPE_TIMER) && !cpu_paused(*cpu) && cpu_online(*cpu)) {
 		/*
 		 * Use available_idle_cpu() instead of idle_cpu().
 		 * Need to pay attention to the difference between
@@ -666,7 +666,7 @@ void hook_rvh_get_nohz_timer_target(void __always_unused *data,
 		if (!mtk_available_idle_cpu(*cpu))
 			return;
 
-		/* Keep default_cpu = this cpu & non-pause & hk_mask */
+		/* Keep default_cpu = this cpu & non-pause & hk_mask & online */
 		default_cpu = *cpu;
 	}
 
@@ -677,7 +677,7 @@ void hook_rvh_get_nohz_timer_target(void __always_unused *data,
 	if (!pd)
 		goto unlock;
 
-	/* 2. Choose same gear of this cpu & non-pause & hk_mask & non-idle */
+	/* 2. Choose same gear of this cpu & non-pause & hk_mask & non-idle & online */
 	for (; pd; pd = pd->next) {
 		if (!cpumask_test_cpu(*cpu, perf_domain_span(pd)))
 			continue;
@@ -686,7 +686,7 @@ void hook_rvh_get_nohz_timer_target(void __always_unused *data,
 			if (*cpu == i)
 				continue;
 
-			if (!mtk_available_idle_cpu(i) && !cpu_paused(i)) {
+			if (!mtk_available_idle_cpu(i) && !cpu_paused(i) && cpu_online(i)) {
 				*cpu = i;
 				goto unlock;
 			}
@@ -732,7 +732,7 @@ void hook_rvh_get_nohz_timer_target(void __always_unused *data,
 		}
 	}
 
-	/* 3. Choose this_cpu & non-pause & hk_mask */
+	/* 3. Choose this_cpu & non-pause & hk_mask & online */
 	*cpu = default_cpu;
 unlock:
 	rcu_read_unlock();
