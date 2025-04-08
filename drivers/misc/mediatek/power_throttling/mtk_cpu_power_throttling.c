@@ -482,7 +482,7 @@ static ssize_t modify_cpu_throttle_freq_show(struct device *dev,
 	for (i = 0; i < max_tb_num; i++ ) {
 		pt_info_p = &cpu_pt_tb[i];
 		len += snprintf(buf + len, PAGE_SIZE - len, "cpu table%d limit freq:", i);
-		for (j = 0; j < max_lv*3; j++)
+		for (j = 0; j < max_lv * CLUSTER_NUM; j++)
 			len += snprintf(buf + len, PAGE_SIZE - len, " %d", pt_info_p->freq_limit[j]);
 
 		len += snprintf(buf + len, PAGE_SIZE - len, "\n");
@@ -495,7 +495,7 @@ static ssize_t modify_cpu_throttle_freq_store(struct device *dev,
 		const char *buf, size_t size)
 {
 	int i, j, k = 0, len = 0;
-	u32 freq_limit[LOW_BATTERY_LEVEL_NUM*3];
+	u32 freq_limit[LOW_BATTERY_LEVEL_NUM * CLUSTER_NUM];
 	u32 table_idx;
 	struct cpu_pt_policy *pt_policy;
 	u32 max_tb_num = 0;
@@ -517,7 +517,7 @@ static ssize_t modify_cpu_throttle_freq_store(struct device *dev,
 		dev_info(dev, "Invalid table_idx: %u\n", table_idx);
 		return -EINVAL;
 	}
-	for (i = 0; i < max_lv*3; i++) {
+	for (i = 0; i < max_lv * CLUSTER_NUM; i++) {
 		if (sscanf(buf, "%u%n", &freq_limit[i], &len) != 1) {
 			dev_info(dev, "Failed to read freq_limit[%d]\n", i);
 			return -EINVAL;
@@ -531,7 +531,7 @@ static ssize_t modify_cpu_throttle_freq_store(struct device *dev,
 	}
 
 	mutex_lock(&cpu_freq_lock);
-	for (i = 0; i < max_lv * 3; i++)
+	for (i = 0; i < max_lv * CLUSTER_NUM; i++)
 		cpu_pt_tb[table_idx].freq_limit[i] = freq_limit[i];
 	if (table_idx==cpu_pt_table_idx){
 		list_for_each_entry(pt_policy, &pt_policy_list, cpu_pt_list) {
@@ -550,7 +550,7 @@ static ssize_t modify_cpu_throttle_freq_store(struct device *dev,
 
 	cpu_pt_low_battery_cb(cpu_pt_info[LBAT_POWER_THROTTLING].cur_lv, NULL);
 
-	for (i = 0; i < max_lv * 3; i++)
+	for (i = 0; i < max_lv * CLUSTER_NUM; i++)
 		dev_notice(dev, "freq_limit[%d]: %d\n", i, cpu_pt_tb[table_idx].freq_limit[i]);
 	return size;
 }
