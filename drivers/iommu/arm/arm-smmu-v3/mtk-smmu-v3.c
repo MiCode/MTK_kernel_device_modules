@@ -63,6 +63,9 @@
 
 #define SMMU_FAULT_RS_INTERVAL		DEFAULT_RATELIMIT_INTERVAL
 #define SMMU_FAULT_RS_BURST		(1)
+#define SMMU_DETECT_DUMP_COUNT		(3)
+#define SMMU_TXU_DBG0_BITS_SIZE		(14)
+#define SMMU_TXU_DBG0_BUF_SIZE		(200)
 
 #define SMMU_DETECT_TF_OPT_SKIP_IRQ	BIT(0)
 
@@ -2480,7 +2483,7 @@ static void smmu_debug_dump(struct arm_smmu_device *smmu, bool check_pm,
 				      SMMU_FAULT_RS_BURST);
 	struct mtk_smmu_data *data;
 	u32 type;
-	int ret;
+	int ret, i;
 
 	if (!smmu)
 		return;
@@ -2509,8 +2512,11 @@ static void smmu_debug_dump(struct arm_smmu_device *smmu, bool check_pm,
 	mtk_smmu_glbreg_dump(smmu);
 	mtk_smmu_wpreg_dump(NULL, type);
 
-	smmuwp_dump_outstanding_monitor(smmu);
-	smmuwp_dump_io_interface_signals(smmu);
+	for (i = 0; i < SMMU_DETECT_DUMP_COUNT; i++) {
+		smmuwp_dump_outstanding_monitor(smmu);
+		smmuwp_dump_io_interface_signals(smmu);
+	}
+
 	mtk_hyp_smmu_reg_dump(smmu);
 
 	if (check_pm)
@@ -2557,7 +2563,7 @@ static void smi_debug_dump(struct arm_smmu_device *smmu)
 static void mtk_smmu_fault_dump(struct arm_smmu_device *smmu)
 {
 	static DEFINE_RATELIMIT_STATE(fault_rs, SMMU_FAULT_RS_INTERVAL,
-				      SMMU_FAULT_RS_BURST);
+				      (SMMU_FAULT_RS_BURST * 2));
 	struct mtk_smmu_data *data;
 
 	if (!__ratelimit(&fault_rs))
@@ -3597,25 +3603,58 @@ static void smmuwp_dump_outstanding_monitor(struct arm_smmu_device *smmu)
 	}
 }
 
+static const char *smmu_txu_dbg0_bits_names[SMMU_TXU_DBG0_BITS_SIZE] = {
+	"B_RDY", "R_RDY", "W_RDY", "AW_RDY", "AR_RDY", "AC_RDY", "CR_RDY",
+	"B_VLD", "R_VLD", "W_VLD", "AW_VLD", "AR_VLD", "AC_VLD", "CR_VLD"
+};
+
+static void smmuwp_dump_txu_dbg0_bits(const char *prefix, unsigned int dbg_val)
+{
+	char buf[SMMU_TXU_DBG0_BUF_SIZE];
+	int i, len, offset = 0;
+
+	memset(buf, 0, sizeof(buf));
+
+	len = snprintf(buf + offset, sizeof(buf) - offset,
+		       "\t\t%s:0x%-4x", prefix, dbg_val);
+	if (len < 0 || len >= sizeof(buf) - offset)
+		return;
+	offset += len;
+
+	for (i = 0; i < SMMU_TXU_DBG0_BITS_SIZE; i++) {
+		len = snprintf(buf + offset, sizeof(buf) - offset,
+			       " %s=%d", smmu_txu_dbg0_bits_names[i],
+			       ((dbg_val >> i) & 1));
+		if (len < 0 || len >= sizeof(buf) - offset)
+			return;
+		offset += len;
+	}
+
+	pr_info("%s\n", buf);
+}
+
 /* Used to debug hang/stability issue */
 static void smmuwp_dump_io_interface_signals(struct arm_smmu_device *smmu)
 {
 	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
 	void __iomem *wp_base = smmu->wp_base;
-	unsigned int i, regval;
+	unsigned int i, regval, dbg_s, dbg_m;
 
 	pr_info("smmu:%s io interface signals:\n",
 		get_smmu_name(data->plat_data->smmu_type));
 
 	regval = smmu_read_reg(wp_base, SMMUWP_TCU_DBG0);
-	pr_info("\tTCU_DBG0(0x%x):0x%x, AXI_DBG_M:0x%lx\n",
-		SMMUWP_TCU_DBG0, regval, FIELD_GET(TCU_AXI_DBG_M, regval));
+	dbg_m = FIELD_GET(TCU_AXI_DBG_M, regval);
+	pr_info("\tTCU_DBG0 (0x%x):0x%x\n", SMMUWP_TCU_DBG0, regval);
+	smmuwp_dump_txu_dbg0_bits("AXI_DBG_M", dbg_m);
 
 	for (i = 0; i < SMMU_TBU_CNT(data->plat_data->smmu_type); i++) {
 		regval = smmu_read_reg(wp_base, SMMUWP_TBUx_DBG0(i));
-		pr_info("\tTBU%u_DBG0(0x%x):0x%x, AXI_DBG_S:0x%lx, AXI_DBG_M:0x%lx\n",
-			i, SMMUWP_TBUx_DBG0(i), regval, FIELD_GET(DBG0_AXI_DBG_S, regval),
-			FIELD_GET(DBG0_AXI_DBG_M, regval));
+		dbg_s = FIELD_GET(DBG0_AXI_DBG_S, regval);
+		dbg_m = FIELD_GET(DBG0_AXI_DBG_M, regval);
+		pr_info("\tTBU%u_DBG0(0x%x):0x%x\n", i, SMMUWP_TBUx_DBG0(i), regval);
+		smmuwp_dump_txu_dbg0_bits("AXI_DBG_S", dbg_s);
+		smmuwp_dump_txu_dbg0_bits("AXI_DBG_M", dbg_m);
 	}
 }
 
