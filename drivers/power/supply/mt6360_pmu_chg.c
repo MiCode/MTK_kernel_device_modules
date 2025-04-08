@@ -230,7 +230,7 @@ static const struct linear_range mt6360_chg_range[MT6360_RANGE_MAX] = {
 	MT6360_LINEAR_RANGE(MT6360_RANGE_IRCMP_R, 0, 0, 0x07, 25000),
 	MT6360_LINEAR_RANGE(MT6360_RANGE_VCLAMP, 0, 0, 0x07, 32000),
 	MT6360_LINEAR_RANGE(MT6360_RANGE_PUMPX20, 5500000, 0, 0x1D, 500000),
-	MT6360_LINEAR_RANGE(MT6360_RANGE_AICC_VTH, 3900000, 0, 0x51, 10000),
+	MT6360_LINEAR_RANGE(MT6360_RANGE_AICC_VTH, 3900000, 0, 0x5F, 100000),
 };
 
 #define PHY_MODE_BC11_SET 1
@@ -1330,8 +1330,7 @@ static int mt6360_set_ieoc(struct charger_device *chg_dev, u32 uA)
 static int mt6360_set_mivr(struct charger_device *chg_dev, u32 uV)
 {
 	struct mt6360_chg_info *mci = charger_get_data(chg_dev);
-	u32 aicc_vth = 0, data = 0;
-	u8 aicc_vth_sel = 0;
+	u32 data = 0;
 	int ret = 0;
 
 	mt_dbg(mci->dev, "%s: mivr = %d\n", __func__, uV);
@@ -1341,13 +1340,12 @@ static int mt6360_set_mivr(struct charger_device *chg_dev, u32 uV)
 		return -EINVAL;
 	}
 
-	aicc_vth = uV + 200000;
 	linear_range_get_selector_within(
-		&mt6360_chg_range[MT6360_RANGE_AICC_VTH], aicc_vth, &data);
+		&mt6360_chg_range[MT6360_RANGE_AICC_VTH], uV + 200000, &data);
 	ret = regmap_update_bits(mci->regmap,
 				 MT6360_PMU_CHG_CTRL16,
 				 MT6360_AICC_VTH_MASK,
-				 aicc_vth_sel << MT6360_AICC_VTH_SHFT);
+				 data << MT6360_AICC_VTH_SHFT);
 	if (ret < 0)
 		return ret;
 
@@ -1523,7 +1521,7 @@ static inline int mt6360_post_aicc_measure(struct charger_device *chg_dev,
 
 	mt_dbg(mci->dev,
 		"%s: post_aicc = (%d, %d, %d)\n", __func__, start, stop, step);
-	for (cur = start; cur < (stop + step); cur += step) {
+	for (cur = start; cur < stop; cur += step) {
 		/* set_aicr to cur */
 		ret = mt6360_set_aicr(chg_dev, cur + step);
 		if (ret < 0)
