@@ -513,6 +513,8 @@ enum disp_pm_action {
 	DISP_PM_PUT,
 	DISP_PM_PUT_SYNC,
 	DISP_PM_CHECK,
+	DISP_PRE_CG_GET,
+	DISP_PRE_CG_PUT,
 };
 
 struct bwm_hrt_sort_entry {

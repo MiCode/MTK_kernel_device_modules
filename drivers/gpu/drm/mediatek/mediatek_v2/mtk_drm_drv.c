@@ -7712,6 +7712,18 @@ int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action action)
 		return -1;
 
 	switch (action) {
+	case DISP_PRE_CG_GET:
+		if (priv->pwr_clks[CLK_DISP_VCORE])
+			clk_prepare_enable(priv->pwr_clks[CLK_DISP_VCORE]);
+		if (priv->pwr_clks[CLK_VDISP_PERI])
+			clk_prepare_enable(priv->pwr_clks[CLK_VDISP_PERI]);
+		break;
+	case DISP_PRE_CG_PUT:
+		if (priv->pwr_clks[CLK_VDISP_PERI])
+			clk_disable_unprepare(priv->pwr_clks[CLK_VDISP_PERI]);
+		if (priv->pwr_clks[CLK_DISP_VCORE])
+			clk_disable_unprepare(priv->pwr_clks[CLK_DISP_VCORE]);
+		break;
 	case DISP_PM_ENABLE:
 		if (priv->dsi_phy0_dev && (!pm_runtime_enabled(priv->dsi_phy0_dev)))
 			pm_runtime_enable(priv->dsi_phy0_dev);
