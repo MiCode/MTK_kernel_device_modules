@@ -8,6 +8,7 @@
 #include "mdw_rv.h"
 #include "mdw_mem_pool.h"
 #include "mdw_cmd.h"
+#include "mdw_sanity.h"
 
 /* for rv cmd v2 */
 struct mdw_rv_msg_cmd {
@@ -501,6 +502,47 @@ static int mdw_plat_v2_sc_sanity_check(struct mdw_cmd *c)
 	return 0;
 }
 
+static int mdw_plat_v2_cmd_sanity_check(struct mdw_cmd *c)
+{
+	int ret = -EINVAL;
+
+	mdw_flw_debug("\n");
+
+	/* check cmd params */
+	if (c->priority >= MDW_PRIORITY_MAX ||
+		c->num_subcmds > MDW_SUBCMD_MAX) {
+		mdw_drv_err("s(0x%llx)cmd invalid(0x%llx/0x%llx)(%u/%u)\n",
+			(uint64_t)c->mpriv, c->uid, c->kid,
+			c->priority, c->num_subcmds);
+		goto out;
+	}
+
+	/* check exec infos */
+	ret = mdw_sanity_einfo_check(c);
+	if (ret) {
+		mdw_drv_err("cmd sanity check: einfo error\n");
+		goto out;
+	}
+
+	/* check adj matrix */
+	ret = mdw_sanity_adj_check(c);
+	if (ret) {
+		mdw_drv_err("cmd sanity check: adj matrix error\n");
+		goto out;
+	}
+
+	/* check subcmd info */
+	ret = mdw_plat_v2_sc_sanity_check(c);
+	if (ret) {
+		mdw_drv_err("cmd sanity check: subcmd error\n");
+		goto out;
+	}
+
+	ret = 0;
+out:
+	return ret;
+}
+
 /* mdw_plat_func for v2 */
 const struct mdw_plat_func mdw_plat_func_v2 = {
 	.late_init =   mdw_rv_late_init,
@@ -526,5 +568,5 @@ const struct mdw_plat_func mdw_plat_func_v2 = {
 	.late_postprocess_cmd = mdw_plat_v2_late_postprocess_cmd,
 
 	.check_sc_rets = mdw_plat_v2_check_sc_rets,
-	.sc_sanity_check = mdw_plat_v2_sc_sanity_check,
+	.cmd_sanity_check = mdw_plat_v2_cmd_sanity_check,
 };

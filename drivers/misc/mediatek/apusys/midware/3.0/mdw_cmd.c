@@ -558,151 +558,18 @@ static void mdw_cmd_delete_async(struct mdw_cmd *c)
 	schedule_work(&mdev->c_wk);
 }
 
-static int mdw_cmd_adj_check(struct mdw_cmd *c)
-{
-	uint32_t i = 0, j = 0;
-
-	for (i = 0; i < c->num_subcmds; i++) {
-		for (j = 0; j < c->num_subcmds; j++) {
-			if (i == j) {
-				c->adj_matrix[i * c->num_subcmds + j] = 0;
-				continue;
-			}
-
-			if (i < j)
-				continue;
-
-			if (!c->adj_matrix[i * c->num_subcmds + j] ||
-				!c->adj_matrix[i + j * c->num_subcmds])
-				continue;
-
-			mdw_drv_err("s(0x%llx)c(0x%llx/0x%llx) adj matrix(%u/%u) fail\n",
-				(uint64_t)c->mpriv, c->uid, c->kid, i, j);
-			return -EINVAL;
-		}
-	}
-
-	return 0;
-}
-
-static int mdw_cmd_link_check(struct mdw_cmd *c)
-{
-	uint32_t i = 0;
-
-	for (i = 0; i < c->num_links; i++) {
-		if (c->links[i].producer_idx > c->num_subcmds ||
-			c->links[i].consumer_idx > c->num_subcmds ||
-			!c->links[i].x || !c->links[i].y ||
-			!c->links[i].va) {
-			mdw_drv_err("link(%u) invalid(%u/%u)(%llu/%llu)(0x%llx)\n", i,
-				c->links[i].producer_idx,
-				c->links[i].consumer_idx,
-				c->links[i].x,
-				c->links[i].y,
-				c->links[i].va);
-			return -EINVAL;
-		}
-	}
-	return 0;
-}
-
-static int mdw_cmd_sc_sanity_check(struct mdw_cmd *c)
-{
-	struct mdw_device *mdev = c->mpriv->mdev;
-
-	mdw_cmd_debug("\n");
-	return mdev->plat_funcs->sc_sanity_check(c);
-}
-
-static int mdw_cmd_order_check(struct mdw_cmd *c)
-{
-	uint32_t i = 0, *val = c->execute_orders;
-
-	for (i = 0; i < c->num_subcmds; i++) {
-		if (*val > c->num_subcmds) {
-			mdw_drv_err("execut order(%u) is invalid(%u)\n", i, *val);
-			return -EINVAL;
-		}
-		val++;
-	}
-
-	return 0;
-}
-
 static int mdw_cmd_sanity_check(struct mdw_cmd *c)
 {
 	int ret = -EINVAL;
+	struct mdw_device *mdev = c->mpriv->mdev;
 
 	mdw_trace_begin("apumdw:cmd_sanity_check|c:0x%llx", (uint64_t)c);
-
 	mdw_cmd_debug("num_subcmd(%u) c_execinfo_size(%lu) sc_execinfo_size(%lu)\n",
 		c->num_subcmds, sizeof(struct mdw_cmd_exec_info), sizeof(struct mdw_subcmd_exec_info));
 
-	/* check cmd params */
-	if (c->priority >= MDW_PRIORITY_MAX ||
-		c->num_links > c->num_subcmds ||
-		c->end_vertices_num > c->num_subcmds) {
-		mdw_drv_err("s(0x%llx)cmd invalid(0x%llx/0x%llx)(%u/%u/%u/%u)\n",
-			(uint64_t)c->mpriv, c->uid, c->kid,
-			c->priority, c->num_subcmds, c->num_links,
-			c->end_vertices_num);
-		goto out;
-	}
-
-	/* check adj_matrix and execute_order exist */
-	if (c->adj_matrix == NULL && c->execute_orders == NULL) {
-		mdw_drv_err("s(0x%llx)cmd(0x%llx/0x%llx) miss execution order(%pK, %pK)\n",
-			(uint64_t)c->mpriv, c->uid, c->kid, c->adj_matrix, c->execute_orders);
-		goto out;
-	}
-
-	/* check exec infos */
-	if (c->exec_infos->size != sizeof(struct mdw_cmd_exec_info) +
-		c->num_subcmds * sizeof(struct mdw_subcmd_exec_info)) {
-		mdw_drv_err("s(0x%llx)cmd invalid(0x%llx/0x%llx) einfo(%llu/%lu)\n",
-			(uint64_t)c->mpriv, c->uid, c->kid,
-			c->exec_infos->size,
-			sizeof(struct mdw_cmd_exec_info) +
-			c->num_subcmds * sizeof(struct mdw_subcmd_exec_info));
-		goto out;
-	}
-
-	/* check adj matrix */
-	if (c->adj_matrix) {
-		ret = mdw_cmd_adj_check(c);
-		if (ret) {
-			mdw_drv_err("cmd sanity check: links error\n");
-			goto out;
-		}
-	}
-
-	/* check execute order */
-	if (c->execute_orders) {
-		ret = mdw_cmd_order_check(c);
-		if (ret) {
-			mdw_drv_err("cmd sanity check: order error\n");
-			goto out;
-		}
-	}
-
-	/* check links */
-	ret = mdw_cmd_link_check(c);
-	if (ret) {
-		mdw_drv_err("cmd sanity check: links error\n");
-		goto out;
-	}
-
-	/* check subcmd info */
-	ret = mdw_cmd_sc_sanity_check(c);
-	if (ret) {
-		mdw_drv_err("cmd sanity check: subcmd error\n");
-		goto out;
-	}
-
-	ret = 0;
-
-out:
+	ret = mdev->plat_funcs->cmd_sanity_check(c);
 	mdw_trace_end();
+
 	return ret;
 }
 

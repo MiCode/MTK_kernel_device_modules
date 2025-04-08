@@ -52,6 +52,7 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/midware/$(APU
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/midware/$(APUSYS_VERSION_MIDWARE)/plat/cmd_history/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/midware/$(APUSYS_VERSION_MIDWARE)/plat/power_budget/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/midware/$(APUSYS_VERSION_MIDWARE)/plat/dvfs_policy/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/midware/$(APUSYS_VERSION_MIDWARE)/plat/sanity/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/$(UTIL_DIR)/
 
 # apusys-objs += midware/$(APUSYS_VERSION_MIDWARE)/mdw_drv.o

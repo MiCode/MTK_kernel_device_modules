@@ -11,6 +11,7 @@
 #include "mdw_mem_pool.h"
 #include "mdw_cmd.h"
 #include "mdw_cb_appendix.h"
+#include "mdw_sanity.h"
 
 /* exit id support */
 #include "mdw_ext.h"
@@ -20,6 +21,7 @@
 #include "mdw_ch.h"
 /* dvfs policy support */
 #include "mdw_dplcy.h"
+
 
 struct mdw_rv_msg_cmd {
 	/* ids */
@@ -790,7 +792,6 @@ static int mdw_plat_v6_sc_sanity_check(struct mdw_cmd *c)
 	for (i = 0; i < c->num_subcmds; i++) {
 		if (c->subcmds[i].type >= MDW_DEV_MAX ||
 			c->subcmds[i].boost > MDW_BOOST_MAX ||
-			c->subcmds[i].pack_id >= MDW_SUBCMD_MAX ||
 			c->subcmds[i].predecessors_start_idx > c->predecessors_num ||
 			c->subcmds[i].predecessors_num >= c->num_subcmds ||
 			c->subcmds[i].pack_friends_start_idx >= c->pack_friends_num ||
@@ -815,6 +816,56 @@ static int mdw_plat_v6_sc_sanity_check(struct mdw_cmd *c)
 	return 0;
 }
 
+static int mdw_plat_v6_cmd_sanity_check(struct mdw_cmd *c)
+{
+	int ret = -EINVAL;
+
+	mdw_flw_debug("\n");
+
+	/* check cmd params */
+	if (c->priority >= MDW_PRIORITY_MAX ||
+		c->num_links > c->num_subcmds ||
+		c->end_vertices_num > c->num_subcmds) {
+		mdw_drv_err("s(0x%llx)cmd invalid(0x%llx/0x%llx)(%u/%u/%u/%u)\n",
+			(uint64_t)c->mpriv, c->uid, c->kid,
+			c->priority, c->num_subcmds, c->num_links,
+			c->end_vertices_num);
+		goto out;
+	}
+
+	/* check exec infos */
+	ret = mdw_sanity_einfo_check(c);
+	if (ret) {
+		mdw_drv_err("cmd sanity check: einfo error\n");
+		goto out;
+	}
+
+	/* check execute order */
+	ret = mdw_sanity_order_check(c);
+	if (ret) {
+		mdw_drv_err("cmd sanity check: order error\n");
+		goto out;
+	}
+
+	/* check links */
+	ret = mdw_sanity_link_check(c);
+	if (ret) {
+		mdw_drv_err("cmd sanity check: links error\n");
+		goto out;
+	}
+
+	/* check subcmd info */
+	ret = mdw_plat_v6_sc_sanity_check(c);
+	if (ret) {
+		mdw_drv_err("cmd sanity check: subcmd error\n");
+		goto out;
+	}
+
+	ret = 0;
+out:
+	return ret;
+}
+
 const struct mdw_plat_func mdw_plat_func_v6 = {
 	.late_init = mdw_plat_v6_late_init,
 	.late_deinit = mdw_plat_v6_late_deinit,
@@ -836,6 +887,7 @@ const struct mdw_plat_func mdw_plat_func_v6 = {
 	.preprocess_cmd = mdw_plat_v6_preprocess_cmd,
 	.postprocess_cmd = mdw_plat_v6_postprocess_cmd,
 	.late_postprocess_cmd = mdw_plat_v6_late_postprocess_cmd,
+
 	.check_sc_rets = mdw_plat_v6_check_sc_rets,
-	.sc_sanity_check = mdw_plat_v6_sc_sanity_check,
+	.cmd_sanity_check = mdw_plat_v6_cmd_sanity_check,
 };
