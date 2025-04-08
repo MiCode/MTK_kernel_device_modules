@@ -20,10 +20,12 @@
 #define mmp_data2_fence(c, s)	((c & 0xff) << 24 | s & 0xffffff)
 
 #define mml_mmp(event, flag, v1, v2) \
-	mmprofile_log_ex(mml_mmp_get_event()->event, flag, v1, v2)
+	mmprofile_log_ex(mml_mmp_get_event()->event, flag, (v1), (v2))
 
 #define mml_mmp2(event, flag, v1h, v1l, v2h, v2l) \
-	mmprofile_log_ex(mml_mmp_get_event()->event, flag, v1h << 16 | v1l, v2h << 16 | v2l)
+	mmprofile_log_ex(mml_mmp_get_event()->event, flag, \
+		(((v1h) << 16) | (v1l)), \
+		(((v2h) << 16) | (v2l)))
 
 #define mml_mmp_raw(event, flag, v1, v2, data_ptr, sz) do { \
 	struct mmp_metadata_t meta = { \

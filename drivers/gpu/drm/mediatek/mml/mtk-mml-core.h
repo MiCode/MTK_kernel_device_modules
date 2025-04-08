@@ -927,8 +927,10 @@ struct mml_comp {
 	struct device *larb_dev2;
 	phys_addr_t larb_base;
 	phys_addr_t larb_base2;
-	u32 larb_port;
+	u8 larb_port;
+	u8 larb_port_stash;
 	u8 larb_idx;
+	u8 larb_idx_dpc;
 	s32 pw_cnt;
 	s32 mminfra_pw_cnt;
 	s32 clk_cnt;
@@ -943,6 +945,7 @@ struct mml_comp {
 	const struct mml_comp_debug_ops *debug_ops;
 	const char *name;
 	bool bound;
+	bool bw_hybrid;
 };
 
 struct mml_tile_config {

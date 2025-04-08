@@ -17,7 +17,7 @@
 
 #define MML_MAX_COMPONENTS	60
 #define MML_MAX_PORT		18
-#define MML_MAX_LARB		4
+#define MML_MAX_LARB		5
 #define MML_MAX_LAYER		4	/* max layer count for time sharing */
 
 struct mml_comp;

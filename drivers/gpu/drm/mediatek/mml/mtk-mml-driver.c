@@ -906,6 +906,9 @@ s32 mml_comp_init_larb(struct mml_comp *comp, struct device *dev)
 	/* parse larb node and port from dts */
 	if (of_property_read_u8(dev->of_node, "larb-idx", &comp->larb_idx))
 		comp->larb_idx = comp->sysid;
+	/* assigned second larb index for dpc means this comp switch between srt/hrt */
+	if (!of_property_read_u8(dev->of_node, "larb-idx-dpc", &comp->larb_idx_dpc))
+		comp->bw_hybrid = true;
 
 	if (of_parse_phandle_with_fixed_args(dev->of_node, "mediatek,larb",
 		1, 0, &larb_args)) {
@@ -918,6 +921,9 @@ s32 mml_comp_init_larb(struct mml_comp *comp, struct device *dev)
 	comp->larb_port = larb_args.args[0];
 	if (!of_address_to_resource(larb_args.np, 0, &res))
 		comp->larb_base = res.start;
+
+	if (!of_property_read_u8(dev->of_node, "stash-port", &comp->larb_port_stash))
+		mml_log("%s stash port %u", __func__, comp->larb_port_stash);
 
 	larb_pdev = of_find_device_by_node(larb_args.np);
 	of_node_put(larb_args.np);
@@ -1470,16 +1476,29 @@ void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
 	struct mml_dev *mml = cfg->mml;
 	struct mml_pipe_cache *cache = &cfg->cache[ccfg->pipe];
 	struct mml_comp_bw *bw = &comp->bw[cfg->dpc];
-	const u32 srt_bw = bw->srt_bw, hrt_bw = bw->hrt_bw;
-	const u32 stash_srt_bw = bw->stash_srt_bw, stash_hrt_bw = bw->stash_hrt_bw;
+	u32 srt_bw = bw->srt_bw, hrt_bw = bw->hrt_bw;
+	u32 stash_srt_bw = bw->stash_srt_bw, stash_hrt_bw = bw->stash_hrt_bw;
 	bool hrt = cfg->info.mode == MML_MODE_RACING || cfg->info.mode == MML_MODE_DIRECT_LINK;
 	bool updated = false;
 	u8 larb_idx = comp->larb_idx;
+
+	if (comp->bw_hybrid) {
+		struct mml_comp_bw *bw_r = &comp->bw[!cfg->dpc];
+
+		srt_bw = max_t(u32, srt_bw, bw_r->srt_bw);
+		hrt_bw = max_t(u32, hrt_bw, bw_r->hrt_bw);
+		stash_srt_bw = max_t(u32, stash_srt_bw, bw_r->stash_srt_bw);
+		stash_hrt_bw = max_t(u32, stash_hrt_bw, bw_r->stash_hrt_bw);
+
+		if (cfg->dpc)
+			larb_idx = comp->larb_idx_dpc;
+	}
 
 	if (larb_idx >= MML_MAX_LARB) {
 		mml_err("%s larb_idx overflow comp %d", __func__, comp->id);
 		larb_idx = 0;
 	}
+
 	/* store for debug log */
 	task->pipe[ccfg->pipe].bandwidth = max(srt_bw, task->pipe[ccfg->pipe].bandwidth);
 	if (srt_bw == mml->port_srt_bw[larb_idx][comp->larb_port] &&
@@ -1537,7 +1556,9 @@ skip_update:
 		task->dpc_hrt_write_bw[larb_idx] += stash_hrt_bw;
 	}
 
-	mml_mmp(bandwidth, MMPROFILE_FLAG_PULSE, comp->id, ((u32)bw->srt_bw << 16) | bw->hrt_bw);
+	mml_mmp2(bandwidth, MMPROFILE_FLAG_PULSE,
+		updated ? cfg->dpc : (0x8000 | cfg->dpc), comp->id,
+		bw->srt_bw, bw->hrt_bw);
 
 	mml_msg_qos("%s comp %u %s bw %u %u stash %u %u by throughput %u pixel %u%s%s dpc %u hrtmode %d",
 		__func__, comp->id, comp->name, srt_bw, hrt_bw, stash_srt_bw, stash_hrt_bw,
@@ -1551,33 +1572,65 @@ void mml_comp_qos_clear(struct mml_comp *comp, struct mml_task *task, bool dpc)
 	struct mml_dev *mml = task->config->mml;
 	struct mml_comp_bw *bw = &comp->bw[dpc];
 	u8 larb_idx = comp->larb_idx;
+	bool clear_real = !dpc, clear_dpc = dpc;
+
+	if (comp->bw_hybrid) {
+		if (comp->bw[!dpc].srt_bw) {
+			mml_msg_qos("%s comp %u %s qos bw clear skip",
+				__func__, comp->id, comp->name);
+			goto skip;
+		}
+		if (dpc) {
+			larb_idx = comp->larb_idx_dpc;
+
+			if (mml->port_srt_bw[comp->larb_idx][comp->larb_port])
+				clear_real = true;
+		} else {
+			if (mml->port_srt_bw[comp->larb_idx_dpc][comp->larb_port])
+				clear_dpc = true;
+		}
+	}
 
 	if (larb_idx >= MML_MAX_LARB) {
 		mml_err("%s larb_idx overflow comp %d", __func__, comp->id);
 		larb_idx = 0;
 	}
+
+	if (clear_dpc) {
 #ifndef MML_FPGA
-	if (dpc) {
 		mtk_icc_set_bw(comp->icc_dpc_path, 0, 0);
 		if (comp->icc_dpc_stash_path)
 			mtk_icc_set_bw(comp->icc_dpc_stash_path, 0, 0);
-	} else {
+#endif
+		if (comp->bw_hybrid) {
+			mml->port_srt_bw[comp->larb_idx_dpc][comp->larb_port] = 0;
+			mml->port_hrt_bw[comp->larb_idx_dpc][comp->larb_port] = 0;
+		} else {
+			mml->port_srt_bw[comp->larb_idx][comp->larb_port] = 0;
+			mml->port_hrt_bw[comp->larb_idx][comp->larb_port] = 0;
+		}
+	}
+
+	if (clear_real) {
+#ifndef MML_FPGA
 		mtk_icc_set_bw(comp->icc_path, 0, 0);
 		if (comp->icc_stash_path)
 			mtk_icc_set_bw(comp->icc_stash_path, 0, 0);
-	}
 #endif
+		mml->port_srt_bw[comp->larb_idx][comp->larb_port] = 0;
+		mml->port_hrt_bw[comp->larb_idx][comp->larb_port] = 0;
+	}
+	mml_mmp(bandwidth, MMPROFILE_FLAG_PULSE, comp->id, 0);
+
+	mml_msg_qos("%s comp %u %s qos bw clear%s",
+		__func__, comp->id, comp->name,
+		(clear_real && clear_dpc) ? " hybrid" : (dpc ? " dpc" : ""));
+
+skip:
 	bw->srt_bw = 0;
 	bw->hrt_bw = 0;
 	bw->stash_srt_bw = 0;
 	bw->stash_hrt_bw = 0;
-	mml->port_srt_bw[larb_idx][comp->larb_port] = 0;
-	mml->port_hrt_bw[larb_idx][comp->larb_port] = 0;
-
-	mml_mmp(bandwidth, MMPROFILE_FLAG_PULSE, comp->id, 0);
-
-	mml_msg_qos("%s comp %u %s qos bw clear%s",
-		__func__, comp->id, comp->name, dpc ? " dpc" : "");
 }
 
 static const struct mml_comp_hw_ops mml_hw_ops = {
