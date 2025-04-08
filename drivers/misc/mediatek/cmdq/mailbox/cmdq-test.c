@@ -90,6 +90,7 @@ static struct cmdq_test		*gtest;
 static u32	*gdma_va;
 static dma_addr_t gdma_pa;
 static bool g_stop;
+static bool fast_mtcmos_stop;
 
 static void cmdq_test_mbox_cb(struct cmdq_cb_data data)
 {
@@ -1602,7 +1603,7 @@ static void cmdq_test_sec_reg(struct cmdq_test *test)
 
 static int cmdq_test_fast_mtcmos_event_task(void *unused)
 {
-	while (!g_stop) {
+	while (!fast_mtcmos_stop) {
 		cmdq_set_event(gtest->clt->chan, gtest->token_user0);
 		msleep(1);
 		cmdq_clear_event(gtest->clt->chan, gtest->token_user0);
@@ -1633,6 +1634,7 @@ static int cmdq_test_fast_mtcmos_flush(void *unused)
 		cmdq_pkt_wfe(pkt[i], gtest->token_user0);
 	}
 
+	fast_mtcmos_stop = false;
 	while (!g_stop) {
 		cmdq_mbox_enable(gtest->clt->chan);
 		for (i = 0; i < CMDQ_FAST_MTCMOS_TEST_CNT; i++) {
@@ -1650,6 +1652,7 @@ static int cmdq_test_fast_mtcmos_flush(void *unused)
 
 		cmdq_mbox_disable(gtest->clt->chan);
 	}
+	fast_mtcmos_stop = true;
 	return 0;
 }
 
@@ -1689,15 +1692,17 @@ static void cmdq_test_fast_mtcmos_stress(void)
 		}
 	}
 
-	mbox_event_task = kthread_create(cmdq_test_fast_mtcmos_event_task, NULL , "mbox_event_task");
-	if (!IS_ERR(mbox_event_task))
-		wake_up_process(mbox_event_task);
+	fast_mtcmos_stop = false;
+
 	mbox_task0 = kthread_create(cmdq_test_fast_mtcmos_flush, NULL , "cmdq_kthrd_task0");
 	if (!IS_ERR(mbox_task0))
 		wake_up_process(mbox_task0);
 	mbox_task1 = kthread_create(cmdq_test_fast_mtcmos_alloc, NULL , "cmdq_kthrd_task1");
 	if (!IS_ERR(mbox_task1))
 		wake_up_process(mbox_task1);
+	mbox_event_task = kthread_create(cmdq_test_fast_mtcmos_event_task, NULL , "mbox_event_task");
+	if (!IS_ERR(mbox_event_task))
+		wake_up_process(mbox_event_task);
 }
 
 
