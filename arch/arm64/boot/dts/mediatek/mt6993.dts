@@ -9730,7 +9730,17 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<&disp0b_dispsys_config_clk MM0B_DISP_MUTEX0_DISP>,
 				<&ovl1_ovlsys_config_clk OVL1_OVL_MUTEX0_DISP>,
 				<&ovl2_ovlsys_config_clk OVL2_OVL_MUTEX0_DISP>,
-				<&disp1b_dispsys1_config_clk MM1B_DISP_MUTEX0_DISP>;
+				<&disp1b_dispsys1_config_clk MM1B_DISP_MUTEX0_DISP>,
+				<&disp_vdisp_ao_config_clk VDISP_AO_DISP_BWR_DISP>,
+				<&disp_vdisp_ao_config_clk VDISP_AO_DISP_DEBUG_TOP_DISP>,
+				<&dispsys_config_clk MM0_DISP_DBG_DISP>,
+				<&disp0b_dispsys_config_clk MM0B_DISP_DBG_DISP>,
+				<&ovlsys_config_clk OVL_DISP_DBG_DISP>,
+				<&ovl1_ovlsys_config_clk OVL1_DISP_DBG_DISP>,
+				<&ovl2_ovlsys_config_clk OVL2_DISP_DBG_DISP>,
+				<&dispsys1_config_clk MM1_DISP_DBG_DISP>,
+				<&disp1b_dispsys1_config_clk MM1B_DISP_DBG_DISP>;
+
 
 			condition-num = <2>;
 			operating-points-v2 = <&opp_table_disp>;
