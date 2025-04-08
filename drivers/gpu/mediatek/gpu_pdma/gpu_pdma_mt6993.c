@@ -51,7 +51,7 @@
 #define CCMD_POWER_OFF						0
 
 #define CCMD_UNSUPPORTED_CID		0xFFFFFFFF
-#define CCMD_RESERVED_PBHA_NUM		5
+#define CCMD_RESERVED_PBHA_NUM		4
 #define CCMD_UNSUPPORTED_PBHA_ID	0
 /* #define CCMD_DEBUG_MODE */
 #define CCMD_V2_SUPPORT			1
@@ -59,7 +59,7 @@
 /* variables */
 static struct pdma_device *g_pdma_dev;
 static u32 g_reserved_pbha_id[CCMD_RESERVED_PBHA_NUM] = {
-	0, 6, 7, 9, 15};
+	0, 6, 9, 15};
 
 static unsigned int g_pdma_open_cnt;
 
@@ -192,10 +192,9 @@ static void init_pbha_pool(struct device_node *node, struct pdma_device *pdma_de
 	for (resv_idx = 0 ; resv_idx < CCMD_RESERVED_PBHA_NUM; resv_idx++) {
 		list_for_each_safe(entry, tmp, &pdma_dev->extened_pbha_pool) {
 			pbha_entry = list_entry(entry, struct extended_pbha, entry);
-			if (pbha_entry->id == g_reserved_pbha_id[resv_idx]) {
+			if ((pbha_entry->id & 0xF) == g_reserved_pbha_id[resv_idx]) {
 				list_del(&pbha_entry->entry);
-				pr_info("remove %u from extened_pbha_pool\n", g_reserved_pbha_id[resv_idx]);
-				break;
+				pr_info("remove %u from extened_pbha_pool\n", pbha_entry->id);
 			}
 		}
 	}
@@ -897,13 +896,14 @@ static ssize_t gpu_pdma_show(struct device *dev,
 	int pos = 0;
 	u32 used_pbha_cnt = 0;
 	struct pdma_device *pdma_dev = get_PDMA_Device();
-	struct list_head *entry, *tmp, *pbha_entry, *pbha_tmp;
-	u32 available_pbha_cnt;
+	struct list_head *entry, *tmp, *pbha_entry, *pbha_tmp, *pbha_all_entry, *pbha_all_tmp;
+	u32 available_pbha_cnt = 0;
 
 	if (!pdma_dev)
 		return -ENODEV;
 
-	available_pbha_cnt = (1 << pdma_dev->extended_pbha_bits)-CCMD_RESERVED_PBHA_NUM;
+	list_for_each_safe(pbha_all_entry, pbha_all_tmp, &pdma_dev->extened_pbha_pool)
+		available_pbha_cnt++;
 
 	mutex_lock(&pdma_dev->pdma_device_lock);
 
