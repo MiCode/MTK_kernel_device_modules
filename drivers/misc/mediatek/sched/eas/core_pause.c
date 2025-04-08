@@ -325,9 +325,6 @@ static void migrate_tasks(struct rq *dead_rq, struct rq_flags *rf)
 			break;
 
 		next = mtk_pick_migrate_task(rq);
-		/* prevent warn on rq_pin_lock() */
-		if (rq->balance_callback && rq->balance_callback != &balance_push_callback)
-			rq->balance_callback = NULL;
 
 		/*
 		 * Argh ... no iterator for tasks, we need to remove the
@@ -390,6 +387,8 @@ static void migrate_tasks(struct rq *dead_rq, struct rq_flags *rf)
 	rq->stop = stop;
 }
 
+void __balance_callbacks(struct rq *rq);
+
 int drain_rq_cpu_stop(void *data)
 {
 	struct rq *rq = this_rq();
@@ -397,7 +396,10 @@ int drain_rq_cpu_stop(void *data)
 
 	rq_lock_irqsave(rq, &rf);
 	migrate_tasks(rq, &rf);
-	rq_unlock_irqrestore(rq, &rf);
+
+	rq_unpin_lock(rq, &rf);
+	__balance_callbacks(rq);
+	raw_spin_rq_unlock_irqrestore(rq, rf.flags);
 
 	return 0;
 }
