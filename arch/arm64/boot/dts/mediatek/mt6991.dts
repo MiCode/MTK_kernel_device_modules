@@ -16186,7 +16186,7 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 	mmup: mmup@31a00000 {
 		compatible = "mediatek,mmup";
 		status = "okay";
-		l2tcm-offset = <0x02d000>;
+		l2tcm-offset = <0x02e000>;
 		twohart = <0>;		/* two hart arch */
 		reg = <0 0x31bb0000 0 0x100>, /* mbox0 base, is actully mbox3 hw */
 			<0 0x31bb0100 0 0x4>, /* mbox0 set, is actully mbox3 hw*/
