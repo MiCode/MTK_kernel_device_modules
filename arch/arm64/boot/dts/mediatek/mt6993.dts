@@ -5636,7 +5636,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x1a210000 0 0x10000>,
 				<0 0x1a221000 0 0x1000>;
 			reg-names = "sram", "share";
-			system = <0 0x50f00000 0 0xd00000>;
+			system = <0 0x50f00000 0 0xe00000>;
 			interrupts = <GIC_SPI 535 IRQ_TYPE_LEVEL_HIGH 0>,
 				<GIC_SPI 537 IRQ_TYPE_LEVEL_HIGH 0>,
 				<GIC_SPI 539 IRQ_TYPE_LEVEL_HIGH 0>;
