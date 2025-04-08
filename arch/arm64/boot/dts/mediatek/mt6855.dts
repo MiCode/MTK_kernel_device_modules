@@ -6415,7 +6415,6 @@
 			power-domains = <&scpsys MT6855_POWER_DOMAIN_CAM_MAIN>;
 			mediatek,larb = <&smi_larb13>;
 			mediatek,platform = "mt6855";
-			#clock-cells = <1>;
 			/* Camera CCF */
 			clocks = <&camsys_main_clk CLK_CAM_M_CAM>,
 				 <&camsys_main_clk CLK_CAM_M_CAMTG>,
@@ -6486,7 +6485,6 @@
 			/* non-v4l2 legacy camera */
 			compatible = "mediatek,camsys_rawa_legacy";
 			reg = <0 0x1a04f000 0 0x1000>;
-			#clock-cells = <1>;
 		};
 		cam2_legacy: cam2_legacy@1a050000 {
 			/* non-v4l2 legacy camera */
@@ -6524,7 +6522,6 @@
 			/* non-v4l2 legacy camera */
 			compatible = "mediatek,camsys_rawb_legacy";
 			reg = <0 0x1a06f000 0 0x1000>;
-			#clock-cells = <1>;
 		};
 		/* Dummy */
 		cam3_legacy: cam3_legacy@1a070000 {
@@ -6543,7 +6540,6 @@
 			/* non-v4l2 legacy camera */
 			compatible = "mediatek,camsys_rawc_legacy";
 			reg = <0 0x1a08f000 0 0x1000>;
-			#clock-cells = <1>;
 		};
 		camsv2_legacy: camsv2_legacy@1a092000 {
 			/* non-v4l2 legacy camera */
