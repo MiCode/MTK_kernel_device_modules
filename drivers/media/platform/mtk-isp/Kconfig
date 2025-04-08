@@ -59,6 +59,14 @@ config VIDEO_MTK_ISP_HCP
 	  events, and other notification events that are needed for a
 	  working camera session.
 
+config VIDEO_MTK_ISP_HCP_ISP71
+	tristate "Mediatek hcp processing function"
+	help
+	  HCP driver acts a message protocol between imgsys driver and
+	  userspace daemon. messages can include enqueue event, dequeue
+	  events, and other notification events that are needed for a
+	  working camera session.
+
 config VIDEO_MTK_ISP_HCP_ISP8
 	tristate "Mediatek hcp processing function"
 	help
@@ -124,6 +132,14 @@ config VIDEO_MTK_ISP_IMGSYS_7S
 	  and motion estimation, etc.
 
 config VIDEO_MTK_ISP_IMGSYS_CMDQ
+	tristate "Mediatek imgsys cmdq processing function"
+	help
+	  imgsys cmdq driver acts a message protocol between imgsys
+	  driver and gce driver. messages can include R/W registers,
+	  wait gce events, and notification that are needed for a
+	  working camera session.
+
+config VIDEO_MTK_ISP_IMGSYS_CMDQ_ISP71
 	tristate "Mediatek imgsys cmdq processing function"
 	help
 	  imgsys cmdq driver acts a message protocol between imgsys
