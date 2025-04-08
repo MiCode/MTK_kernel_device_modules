@@ -4452,11 +4452,6 @@ void mtk_dp_HPDInterruptSet(int bstatus)
 					iounmap(base);
 					mtk_dp_intf_prepare_clk();
 				} else if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6993) {
-					// dvo CG setting
-					base = ioremap(0x3E900A70, 0x10);
-					DPTXMSG("CG setting =0x%x\n",readl(base + 0x8));
-					iounmap(base);
-
 					//sram debug
 					base = ioremap(0x3EFF1A40, 0x10);
 					value = readl(base);
