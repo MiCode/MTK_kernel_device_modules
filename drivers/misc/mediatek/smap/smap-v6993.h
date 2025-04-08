@@ -10,6 +10,7 @@
  *=============================================================
  */
 #define SMAP_BASE (0x1000F000)
+#define VSMR_LEN_CON (0x068)
 #define SMAP_DETECTION_MODE (0x4CC)
 #define SMAP_IDLE2MAX_LEN (0x060)
 #define SMAP_IMAX_LEN (0x064)

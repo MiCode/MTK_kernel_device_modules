@@ -108,7 +108,7 @@ static void smap_init(enum SMAP_MODE mode)
 static ssize_t dump_and_send_smap_staus(char *buf, enum SMAP_DUMP_LOG_TYPE log_type,
 	enum SMAP_SEND_LOG_TYPE send_type)
 {
-	unsigned int len = 0;
+	unsigned int dm_cnt, len = 0;
 	struct smap_mbrain *dbg;
 	struct timespec64 tv = {0};
 
@@ -119,7 +119,14 @@ static ssize_t dump_and_send_smap_staus(char *buf, enum SMAP_DUMP_LOG_TYPE log_t
 
 	dbg = &smap_data->debug_data;
 
+	dm_cnt = smap_read(VSMR_LEN_CON);
 	dbg->enable = smap_read(SMAP_ENABLE);
+	dbg->dump_cnt = dm_cnt & 0xFFFF;
+	dbg->mitigation_cnt = dm_cnt >> 16;
+	if (dbg->dump_cnt != 0)
+		dbg->mitigation_rate = dbg->mitigation_cnt * 100 / dbg->dump_cnt;
+	else
+		dbg->mitigation_rate = 0;
 	dbg->dect_cnt = smap_read(PMSR_RESERVED_RW_REG_4);
 	dbg->temp_cnt = smap_read(PMSR_RESERVED_RW_REG_5);
 	dbg->sys_time = smap_read(PMSR_RESERVED_RW_REG_6);
@@ -143,9 +150,13 @@ static ssize_t dump_and_send_smap_staus(char *buf, enum SMAP_DUMP_LOG_TYPE log_t
 
 	smap_write(SMAP_SNAPSHOT_CLR, 0x1);
 	smap_write(SMAP_SNAPSHOT_CLR, 0x0);
+	smap_write(VSMR_LEN_CON, 0x0);
 
 	if (log_type == DUMP_HEADER) {
 		len += snprintf(buf + len, PAGE_SIZE - len, "ENABLE=%u\n", dbg->enable);
+		len += snprintf(buf + len, PAGE_SIZE - len, "MITIGATION_RATE=%u%%\n", dbg->mitigation_rate);
+		len += snprintf(buf + len, PAGE_SIZE - len, "MITIGATION_CNT=%u\n", dbg->mitigation_cnt);
+		len += snprintf(buf + len, PAGE_SIZE - len, "Dump_CNT=%u\n", dbg->dump_cnt);
 		len += snprintf(buf + len, PAGE_SIZE - len, "DECT_CNT=%u\n", dbg->dect_cnt);
 		len += snprintf(buf + len, PAGE_SIZE - len, "TEMP_CNT=%u\n", dbg->temp_cnt);
 		len += snprintf(buf + len, PAGE_SIZE - len, "SYS_TIME=%u\n", dbg->sys_time);
@@ -168,8 +179,9 @@ static ssize_t dump_and_send_smap_staus(char *buf, enum SMAP_DUMP_LOG_TYPE log_t
 			dbg->emi_s_snapshot, dbg->zram_snapshot, dbg->apu_snapshot);
 	} else if (log_type == DUMP_NO_HEADER)
 		len += snprintf(buf + len, PAGE_SIZE - len,
-			"%u,%u,%u,%u,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x\n",
+			"%u,%u,%u,%u,%u,%u,%u,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x\n",
 			dbg->enable, dbg->dect_cnt,
+			dbg->mitigation_rate, dbg->mitigation_cnt, dbg->dump_cnt,
 			dbg->temp_cnt, dbg->sys_time, dbg->dect_result,
 			dbg->dyn_base, dbg->cg_subsys_dyn, dbg->cg_ratio,
 			dbg->dram0_smap_snapshot, dbg->dram1_smap_snapshot,
@@ -180,6 +192,9 @@ static ssize_t dump_and_send_smap_staus(char *buf, enum SMAP_DUMP_LOG_TYPE log_t
 			dbg->emi_s_snapshot, dbg->zram_snapshot, dbg->apu_snapshot);
 	else if (log_type == DUMP_KERNEL) {
 		len += snprintf(buf + len, PAGE_SIZE - len, "ENABLE=%u ", dbg->enable);
+		len += snprintf(buf + len, PAGE_SIZE - len, "MITIGATION_RATE=%u%% ", dbg->mitigation_rate);
+		len += snprintf(buf + len, PAGE_SIZE - len, "MITIGATION_CNT=%u ", dbg->mitigation_cnt);
+		len += snprintf(buf + len, PAGE_SIZE - len, "Dump_CNT=%u ", dbg->dump_cnt);
 		len += snprintf(buf + len, PAGE_SIZE - len, "DECT_CNT=%u ", dbg->dect_cnt);
 		len += snprintf(buf + len, PAGE_SIZE - len, "TEMP_CNT=%u ", dbg->temp_cnt);
 		len += snprintf(buf + len, PAGE_SIZE - len, "SYS_TIME=%u ", dbg->sys_time);
