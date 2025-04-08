@@ -53,12 +53,6 @@ static const char *default_mode = "hwonly";
 static const char *default_mode = "swonly";
 #endif
 
-static DEFINE_STATIC_KEY_TRUE(hwzram_enabled);
-static inline bool is_hwzram_enabled(void)
-{
-	return static_branch_likely(&hwzram_enabled);
-}
-
 static DEFINE_STATIC_KEY_FALSE(kcompressd_enabled);
 static inline bool is_kcompressd_enabled(void)
 {
@@ -3143,6 +3137,43 @@ static void zram_fini_hw_engine(struct zram *zram)
 	hwcomp_destroy(hw_engine);
 }
 
+/* Callback for kcompressd */
+static void zram_bio_write_callback(void *mem, struct bio *bio)
+{
+	struct zram *zram = (struct zram *)mem;
+
+	zram_bio_write(zram, bio);
+}
+
+static void zram_kcompressd_hw_bio_write(struct zram *zram, struct bio *bio)
+{
+	if(is_hwzram_busy()) {
+		/*
+		 * When hw is busy, trying to send requests to kcompressd.
+		 * If kcompressd is unable to receive the request, fallback
+		 * to SW bio write.
+		 */
+		if(schedule_bio_write(zram, bio, zram_bio_write_callback))
+			zram_bio_write(zram, bio);
+	} else {
+		/*
+		 * Call hybrid_bio_write to make sure we have the chance to
+		 * sending requests to kcompressd without busy waiting on HW.
+		 */
+		zram_hybrid_bio_write(zram, bio);
+	}
+}
+
+static void zram_kcompressd_bio_write(struct zram *zram, struct bio *bio)
+{
+	/*
+	 * Trying to send requests to kcompressd firstly. If kcompressd
+	 * is unable to receive the request, fallback to SW bio write.
+	 */
+	if(schedule_bio_write(zram, bio, zram_bio_write_callback))
+		zram_bio_write(zram, bio);
+}
+
 /*
  * The order is corresponding to the one in the comp_mode_series.
  */
@@ -3164,6 +3195,7 @@ const struct zram_mode_operations mode_ops[] = {
 		.default_swalg	= true,
 		.table_entry_sz = sizeof(struct zram_table_entry),
 	},
+
 	[1] = {
 		.name		= "hwonly",
 		//.bio_read	= zram_hwonly_bio_read,
@@ -3196,9 +3228,42 @@ const struct zram_mode_operations mode_ops[] = {
 		.table_entry_sz = sizeof(struct zram_table_entry),
 	},
 
+	/* kcompressd:hw (similar to hybrid) */
+	[3] = {
+		.name		= "kcompressd:hw",
+		//.bio_read	= zram_hybrid_bio_read_dc,
+		.bio_read	= zram_bio_read,
+		.hw_bvec_read	= zram_hw_bvec_read_dc,
+		.bio_write	= zram_kcompressd_hw_bio_write,
+		.hw_bvec_write	= zram_hw_bvec_write_dc,
+		.to_zspool	= NULL,
+		.free_entry	= zram_free_hw_entry_dc,
+		.wait_for_hw	= zram_wait_for_hw,
+		.hwinit		= zram_init_hw_engine,
+		.hwfini		= zram_fini_hw_engine,
+		.default_swalg	= true,
+		.table_entry_sz = sizeof(struct zram_table_entry),
+	},
+
+	/* kcompressd (similar to swonly) */
+	[4] = {
+		.name		= "kcompressd",
+		.bio_read	= zram_bio_read,
+		.hw_bvec_read	= NULL,
+		.bio_write	= zram_kcompressd_bio_write,
+		.hw_bvec_write	= NULL,
+		.to_zspool	= NULL,
+		.free_entry	= NULL,
+		.wait_for_hw	= NULL,
+		.hwinit		= NULL,
+		.hwfini		= NULL,
+		.default_swalg	= false,
+		.table_entry_sz = sizeof(struct zram_table_entry),
+	},
+
 #if IS_ENABLED(CONFIG_HWCOMP_SUPPORT_NO_DST_COPY)
 	/* Mode operations for No-DST-Copy mode (_ndc). */
-	[3] = {
+	[5] = {
 		/* default mode */
 		.name		= "ndc:hybrid",
 		.bio_read	= zram_hybrid_bio_read_ndc,
@@ -3213,7 +3278,8 @@ const struct zram_mode_operations mode_ops[] = {
 		.default_swalg	= true,
 		.table_entry_sz = sizeof(struct zram_table_entry_ndc),
 	},
-	[4] = {
+
+	[6] = {
 		.name		= "ndc:hwonly",
 		.bio_read	= zram_hwonly_bio_read,
 		.hw_bvec_read	= zram_hw_bvec_read_ndc,
@@ -3235,11 +3301,17 @@ const struct zram_mode_operations mode_ops[] = {
  * hybrid: HW compression first, fallback to SW compression if necessary.
  * hwonly: No fallback to SW except !zram_hw_compress.
  * swonly: Only SW flow.
+ * kcompressd:hw: HW compression with kcompressd extension
+ * kcompressd: SW compression with kcompressd extension
+ * ndc:hybrid: hybrid with no dst copy
+ * ndc:hwonly: hwonly with no dst copy
  */
 static const char * const comp_mode_series[] = {
 	"hybrid",
 	"hwonly",
 	"swonly",
+	"kcompressd:hw",
+	"kcompressd",
 #if IS_ENABLED(CONFIG_HWCOMP_SUPPORT_NO_DST_COPY)
 	"ndc:hybrid",
 	"ndc:hwonly",
@@ -3297,17 +3369,13 @@ retry:
 	/* Determine operations */
 	zram->ops = &mode_ops[i];
 
-	/* Default setting for hwonly (also compatible for ndc:hwonly & ndc:hybrid) */
-	static_branch_enable(&hwzram_enabled);
-	static_branch_disable(&kcompressd_enabled);
+	/* Support BLK_FEAT_SYNCHRONOUS when it's swonly */
+	if (!strcmp(mode, "swonly"))
+		zram->disk->queue->limits.features |= BLK_FEAT_SYNCHRONOUS;
 
-	/* Select different configuration */
-	if (!strcmp(mode, "swonly")) {
-		static_branch_disable(&hwzram_enabled);
+	/* Turn on kcompressd_enabled if necessary */
+	if (!strcmp(mode, "kcompressd:hw") || !strcmp(mode, "kcompressd"))
 		static_branch_enable(&kcompressd_enabled);
-	} else if (!strcmp(mode, "hybrid")) {
-		static_branch_enable(&kcompressd_enabled);
-	}
 
 	/* Override SW algorithm if necessary before creating zcomp instance */
 	comp_mode_set_algorithm(zram);
@@ -3348,13 +3416,6 @@ static ssize_t comp_mode_store(struct device *dev,
 	return len;
 }
 
-static void zram_bio_write_callback(void *mem, struct bio *bio)
-{
-	struct zram *zram = (struct zram *)mem;
-
-	zram_bio_write(zram, bio);
-}
-
 /*
  * Handler function for all zram I/O requests.
  */
@@ -3367,18 +3428,7 @@ static void zram_submit_bio(struct bio *bio)
 		zram->ops->bio_read(zram, bio);
 		break;
 	case REQ_OP_WRITE:
-		if(is_hwzram_enabled()) {
-			if(is_kcompressd_enabled() && is_hwzram_busy()) {
-				if(schedule_bio_write(zram, bio, zram_bio_write_callback))
-					zram_bio_write(zram, bio);
-			} else {
-				zram->ops->bio_write(zram, bio);
-			}
-		} else {
-			/* kcompressd is enabled by default when hwzram is disabled */
-			if(schedule_bio_write(zram, bio, zram_bio_write_callback))
-				zram_bio_write(zram, bio);
-		}
+		zram->ops->bio_write(zram, bio);
 		break;
 	case REQ_OP_DISCARD:
 	case REQ_OP_WRITE_ZEROES:
