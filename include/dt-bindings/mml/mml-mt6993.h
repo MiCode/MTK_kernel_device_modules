@@ -72,6 +72,7 @@
 #define MML_LARB3_IDX  1
 #define MML_LARB56_IDX 2
 #define MML_LARB57_IDX 3
+#define MML_LARB58_IDX 4
 
 /* MML component types. See mtk-mml-sys.c */
 #define MML_CT_SYS		1
