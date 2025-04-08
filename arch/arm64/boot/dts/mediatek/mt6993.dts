@@ -913,6 +913,30 @@
 				bus-freq-mhz = <728>;
 				isr-dump = <0>;
 			};
+			monitor27 {
+					monitor-name = "debug_ctrl_ao_APINFRA_HASH_AO";
+					base = <0x14092000>;
+					num-ports = <15>;
+					bus-status-offset = <0x10>;
+					bus-status-num = <4>;
+					bus-freq-mhz = <728>;
+			};
+			monitor28 {
+					monitor-name = "debug_ctrl_ao_APINFRA_HASH_CTRL_AO";
+					base = <0x14093000>;
+					num-ports = <2>;
+					bus-status-offset = <0x8>;
+					bus-status-num = <2>;
+					bus-freq-mhz = <728>;
+			};
+			monitor29 {
+					monitor-name = "debug_ctrl_ao_APINFRA_HASH_NOC_AO";
+					base = <0x14094000>;
+					num-ports = <11>;
+					bus-status-offset = <0x8>;
+					bus-status-num = <2>;
+					bus-freq-mhz = <1248>;
+			};
 		};
 	};
 
