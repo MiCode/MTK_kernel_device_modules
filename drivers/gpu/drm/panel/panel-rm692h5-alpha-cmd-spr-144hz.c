@@ -591,7 +591,7 @@ static int lcm_enable(struct drm_panel *panel)
 static const struct drm_display_mode display_mode[MODE_NUM] = {
 	//fhd_120hz_360hz
 	[FHD_120_360TE] = {
-		.clock = 439782,
+		.clock = 527739,
 		.hdisplay = FHD_FRAME_WIDTH,
 		.hsync_start = FHD_FRAME_WIDTH + HFP,
 		.hsync_end = FHD_FRAME_WIDTH + HFP + HSA,
@@ -678,7 +678,7 @@ static const struct drm_display_mode display_mode[MODE_NUM] = {
 #ifdef CONFIG_MTK_RES_SWITCH_ON_AP
 	//fhd_120hz_360hz
 	[VFHD_120_360TE] = {
-		.clock = 325134,
+		.clock = 390161,
 		.hdisplay = VFHD_FRAME_WIDTH,
 		.hsync_start = VFHD_FRAME_WIDTH + HFP,
 		.hsync_end = VFHD_FRAME_WIDTH + HFP + HSA,
