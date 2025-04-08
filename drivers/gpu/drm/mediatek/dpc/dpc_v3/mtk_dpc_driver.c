@@ -2810,6 +2810,7 @@ static int dpc_smi_pwr_get(void *data)
 	int i;
 
 	DPCFUNC("+");
+	dpc_pm_ctrl(true);
 	for (i = 0; i < g_priv->pwr_clk_num; i++) {
 		if (IS_ERR(g_priv->pwr_clk[i])) {
 			DPCDUMP("%s invalid %d clk\n", __func__, i);
@@ -2832,6 +2833,7 @@ static int dpc_smi_pwr_put(void *data)
 		}
 		clk_disable_unprepare(g_priv->pwr_clk[i]);
 	}
+	dpc_pm_ctrl(false);
 	return 0;
 }
 

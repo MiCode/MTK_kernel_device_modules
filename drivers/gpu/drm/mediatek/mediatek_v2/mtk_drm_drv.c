@@ -7728,6 +7728,7 @@ int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action action)
 
 	switch (action) {
 	case DISP_PRE_CG_GET:
+		mtk_vidle_mminfra_on_off(true);
 		if (priv->pwr_clks[CLK_DISP_VCORE])
 			clk_prepare_enable(priv->pwr_clks[CLK_DISP_VCORE]);
 		if (priv->pwr_clks[CLK_VDISP_PERI])
@@ -7738,6 +7739,7 @@ int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action action)
 			clk_disable_unprepare(priv->pwr_clks[CLK_VDISP_PERI]);
 		if (priv->pwr_clks[CLK_DISP_VCORE])
 			clk_disable_unprepare(priv->pwr_clks[CLK_DISP_VCORE]);
+		mtk_vidle_mminfra_on_off(false);
 		break;
 	case DISP_PM_ENABLE:
 		if (priv->dsi_phy0_dev && (!pm_runtime_enabled(priv->dsi_phy0_dev)))
