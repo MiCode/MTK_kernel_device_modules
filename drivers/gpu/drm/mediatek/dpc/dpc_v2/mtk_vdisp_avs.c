@@ -312,16 +312,59 @@ release_vcp:
 	VDISPDBG("execution %lld us", ktime_us_delta(end_time, start_time));
 }
 
+static int parse_u32(const char *input, u32 *p_v1, u32 *p_v2, u32 fmt)
+{
+	int ret = 0;
+	char *token, *end, *str;
+	unsigned long v = 0;
+
+	if (!p_v1)
+		return -EINVAL;
+
+	str = kstrdup(input, GFP_KERNEL);
+	if (!str) {
+		VDISPDBG("fail to allocate memory");
+		return -ENOMEM;
+	}
+
+	end = str;
+	token = strsep(&end, ",");
+	if (!token) {
+		ret = -EINVAL;
+		if (end)
+			goto free_str;
+	}
+	ret = kstrtoul(token, fmt, &v);
+	if (ret)
+		goto free_str;
+	memcpy((void *)p_v1, (void *)&v, sizeof(u32));
+
+	if ((*end == '\0') || !p_v2)
+		goto free_str;
+	ret = kstrtoul(end, fmt, &v);
+	if (ret)
+		goto free_str;
+	memcpy((void *)p_v2, (void *)&v, sizeof(u32));
+
+free_str:
+	kfree(str);
+
+	return ret;
+}
+
 int mtk_vdisp_avs_dbg_opt(const char *opt)
 {
 	int ret = 0;
 	u32 v1 = 0, v2 = 0;
 
 	if (strncmp(opt + 4, "off:", 4) == 0) {
-		ret = sscanf(opt, "avs:off:%u,%u\n", &v1, &v2);
-		/* opp(v1): max 5 level; step(v2) max 32 level; v1(5) is used to toggle AVS */
-		if ((ret != 2) || (v1 > 5 || v2 >= 31)) {
-			VDISPDBG("[Warning] avs:off sscanf not match");
+		if (parse_u32(opt + 8, &v1, &v2, 10)) {
+			VDISPDBG("[Warning] avs:off parsing failed");
+			return -EINVAL;
+		}
+		/* opp(v1); step(v2) max 31 steps */
+		if ((v1 >= 5 || v2 >= 31)) {
+			VDISPDBG("[Warning] avs:off invalid input");
 			return -EINVAL;
 		}
 		/*Set opp and step*/
@@ -337,9 +380,8 @@ int mtk_vdisp_avs_dbg_opt(const char *opt)
 		/*Off avs*/
 		ret = vdisp_avs_ipi_send_slot_enable_vcp(FUNC_IPI_AVS_EN, 0);
 	} else if (strncmp(opt + 4, "t_ag:", 5) == 0) {
-		ret = sscanf(opt, "avs:t_ag:%u\n", &v1);
-		if (ret != 1) {
-			VDISPDBG("[Warning] avs:t_ag sscanf not match");
+		if (parse_u32(opt + 9, &v1, NULL, 10)) {
+			VDISPDBG("[Warning] avs:t_ag parsing failed");
 			return -EINVAL;
 		}
 		fast_en = (v1 != 0);
