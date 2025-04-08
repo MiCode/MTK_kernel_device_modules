@@ -32,6 +32,7 @@ obj-$(CONFIG_DEVICE_MODULES_SND_SOC_MT6660)	+= snd-soc-mt6660.o
 #obj-$(CONFIG_SND_SOC_MT6681)	+= snd-soc-mt6681.o
 obj-$(CONFIG_DEVICE_MODULES_SND_SOC_HDMI_CODEC)	+= snd-soc-hdmi-codec.o
 obj-$(CONFIG_SND_SOC_RT5512)	+= richtek/
+obj-$(CONFIG_SND_SOC_AW883XX)	+= aw883xx/
 obj-$(CONFIG_SND_SOC_TFA9874)	+= tfa98xx/
 obj-$(CONFIG_SND_SOC_RT5509) 	+= snd-soc-rt5509.o
 obj-$(CONFIG_SND_SOC_AK7709)	+= ak7709/

@@ -14,6 +14,7 @@ config DEVICE_MODULES_SND_SOC_ALL_CODECS
 	imply SND_SOC_MT6368
 	imply DEVICE_MODULES_SND_SOC_HDMI_CODEC
 	imply SND_SOC_RT5512
+	imply SND_SOC_AW883XX
 	imply SND_SOC_TFA9874
         imply SND_SOC_RT5509
         imply SND_SOC_FS16XX
@@ -52,6 +53,12 @@ config SND_SOC_RT5512
 	  amplifier which contain speaker protection,
 	  multi-band DRC, equalizer function. It would
 	  be set to yes if device with RT5512 on it.
+
+config SND_SOC_AW883XX
+	tristate "SoC Audio for awinic aw883xx series"
+	depends on I2C
+	help
+	  This option enables support for aw883xx series Smart PA.
 
 config SND_SOC_FS16XX
 	tristate "Foursemi speaker amplifier"
