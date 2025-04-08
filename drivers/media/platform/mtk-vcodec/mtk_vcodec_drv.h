@@ -62,8 +62,8 @@
 #define MAX_CODEC_FREQ_STEP	10
 #define MTK_VDEC_PORT_NUM	64
 #define MTK_VENC_PORT_NUM	64
-#define MTK_VDEC_LARB_NUM	20 // for qos
-#define MTK_VENC_LARB_NUM	40 // for qos
+#define MTK_VDEC_LARB_NUM	22 // for qos
+#define MTK_VENC_LARB_NUM	44 // for qos
 #define MTK_MAX_METADATA_NUM	8
 
 #define MAX_GEN_BUF_CNT		64

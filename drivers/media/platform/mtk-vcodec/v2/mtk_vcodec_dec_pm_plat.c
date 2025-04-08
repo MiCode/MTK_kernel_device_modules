@@ -391,7 +391,7 @@ void mtk_prepare_vdec_emi_bw(struct mtk_vcodec_dev *dev)
 	int i, ret;
 	struct platform_device *pdev = 0;
 	u32 larb_num = 0;
-	const char *path_strs[32];
+	const char *path_strs[MTK_VDEC_LARB_NUM];
 
 	pdev = dev->plat_dev;
 	for (i = 0; i < MTK_VDEC_LARB_NUM; i++)
@@ -412,6 +412,12 @@ void mtk_prepare_vdec_emi_bw(struct mtk_vcodec_dev *dev)
 	} else if (ret != (int)larb_num) {
 		mtk_vcodec_dvfs_qos_log(true, "[VDEC] Interconnect name count not match %u %d",
 			larb_num, ret);
+	}
+
+	if (larb_num > MTK_VDEC_LARB_NUM) {
+		mtk_vcodec_dvfs_qos_log(true, "[VDEC] vdec larb over limit %u > %d",
+				larb_num, MTK_VDEC_LARB_NUM);
+		larb_num = MTK_VDEC_LARB_NUM;
 	}
 
 	for (i = 0; i < larb_num; i++) {
