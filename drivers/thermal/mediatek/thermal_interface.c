@@ -1875,11 +1875,11 @@ static ssize_t catm_p_store(struct kobject *kobj,
 	return -EINVAL;
 }
 
-int get_dram_data_rate(char *buf)
+int get_dram_data_rate(char *buf, size_t size)
 {
 	int len = 0;
 #if IS_ENABLED(CONFIG_MTK_DRAMC)
-	len = snprintf(buf, PAGE_SIZE, "%d\n",
+	len = snprintf(buf, size, "%d\n",
 		mtk_dramc_get_data_rate());
 	if (len < 0 || len >= sizeof(buf))
 		pr_info("%s: snprintf return negative and buf %s\n", __func__, buf);
@@ -1890,7 +1890,7 @@ int get_dram_data_rate(char *buf)
 static ssize_t dram_data_rate_show(struct kobject *kobj,
 	struct kobj_attribute *attr, char *buf)
 {
-	return get_dram_data_rate(buf);
+	return get_dram_data_rate(buf, PAGE_SIZE);
 }
 
 static ssize_t pid_info_show(struct kobject *kobj,
@@ -2855,7 +2855,7 @@ static void __used dump_thermal_log(void)
 	if (ret != 3)
 		pr_info("Error: apu sccanf error, ret=%d\n", ret);
 
-	get_dram_data_rate(read_buf);
+	get_dram_data_rate(read_buf, sizeof(read_buf));
 	ret = kstrtoint(read_buf, 10, &dram_data_rate);
 	if (ret != 0)
 		pr_info("Error: ddr sccanf error, ret=%d\n", ret);
