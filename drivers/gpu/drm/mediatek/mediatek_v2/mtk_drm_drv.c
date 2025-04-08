@@ -10969,14 +10969,6 @@ int mtk_drm_ioctl_retrig(struct drm_device *dev, void *data,
 		return 0;
 	}
 
-	if (mtk_crtc->is_mml || mtk_crtc->is_mml_dl) {
-		/* if last frame is mml, not handle yet */
-		// TODO
-		atomic_set(&private->crtc_rel_present[crtc_idx], retrig->present_fence_idx);
-		mtk_release_present_fence(session_id, retrig->present_fence_idx, 0);
-		return 0;
-	}
-
 	DDP_PROFILE("[PROFILE] %s+\n", __func__);
 	DDP_COMMIT_LOCK(&private->commit.lock, __func__, retrig->present_fence_idx);
 	DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
@@ -11032,6 +11024,13 @@ int mtk_drm_ioctl_retrig(struct drm_device *dev, void *data,
 	}
 	mtk_vidle_user_power_keep_by_gce(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle, 0);
 
+	if (mtk_crtc_retrig_mml(dev, mtk_crtc->gce_obj.pkt_info) < 0) {
+		atomic_set(&private->crtc_rel_present[crtc_idx], retrig->present_fence_idx);
+		mtk_release_present_fence(session_id, retrig->present_fence_idx, 0);
+		mtk_crtc_release_cmdq_pkt(mtk_crtc->gce_obj.pkt_info);
+		goto retrig_end;
+	}
+
 	mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle, DDP_FIRST_PATH, 0);
 
 	addr = mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_PRESENT_FENCE(crtc_idx));
@@ -11060,7 +11059,7 @@ int mtk_drm_ioctl_retrig(struct drm_device *dev, void *data,
 
 		mtk_drm_trace_begin("retrig_sleep %u", sleep_t);
 		usleep_range(sleep_t, sleep_t + 100);
-		mtk_drm_trace_end("retrig_sleep %u", sleep_t);
+		mtk_drm_trace_end();
 
 		DDP_COMMIT_LOCK(&private->commit.lock, __func__, retrig->present_fence_idx);
 		DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
@@ -11083,7 +11082,7 @@ int mtk_drm_ioctl_retrig(struct drm_device *dev, void *data,
 		atomic_set(&private->crtc_rel_present[crtc_idx], retrig->present_fence_idx);
 		mtk_release_present_fence(session_id, retrig->present_fence_idx, 0);
 	}
-	mtk_drm_trace_end("retrig_kick_flush %u", retrig->present_fence_idx);
+	mtk_drm_trace_end();
 
 retrig_end:
 	DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);

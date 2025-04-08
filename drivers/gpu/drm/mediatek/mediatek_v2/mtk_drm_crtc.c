@@ -14728,7 +14728,8 @@ void mtk_crtc_check_trigger(struct mtk_drm_crtc *mtk_crtc, bool delay,
 		goto err;
 	}
 
-	if (mtk_crtc->is_mml || mtk_crtc->is_mml_dl || mtk_crtc->skip_check_trigger) {
+	if (!mtk_drm_use_retrigger(crtc->dev->dev_private) &&
+		(mtk_crtc->is_mml || mtk_crtc->is_mml_dl || mtk_crtc->skip_check_trigger)) {
 		DDPINFO("%s:%d, skip check trigger when MML IR\n", __func__, __LINE__);
 		CRTC_MMP_MARK(index, kick_trigger, 0, 4);
 		if (mtk_crtc->is_mml || mtk_crtc->is_mml_dl) {
@@ -20728,6 +20729,78 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 		fence_idx = state->prop_val[CRTC_PROP_OUTPUT_FENCE_IDX];
 		session_id = mtk_get_session_id(crtc);
 		mtk_crtc_release_output_buffer_fence_by_idx(crtc, session_id, fence_idx);
+	}
+
+	return 0;
+}
+
+int mtk_crtc_retrig_mml(struct drm_device *dev, struct mtk_cmdq_pkt_info *pkt_info)
+{
+	struct mtk_drm_crtc *mtk_crtc = NULL;
+
+	if (!pkt_info) {
+		DDPPR_ERR("%s: pkt_info is null\n", __func__);
+		return -EINVAL;
+	}
+
+	// need retrig mml when mml_ir or mml_dl
+	mtk_crtc = pkt_info->mtk_crtc;
+	if (mtk_crtc->is_mml_submit &&
+		(mtk_crtc->is_mml || mtk_crtc->is_mml_dl)) {
+		struct drm_crtc *crtc = &mtk_crtc->base;
+		struct mml_drm_ctx *mml_ctx = mtk_drm_get_mml_drm_ctx(dev, crtc);
+		struct mtk_crtc_state *crtc_state = NULL;
+		struct mtk_lye_ddp_state *lye_state = NULL;
+		int ret = 0;
+
+		if (mtk_crtc->is_mml) {
+			DDPINFO("%s: not support mml_ir yet\n", __func__);
+			return -EINVAL;
+		}
+
+		if (mtk_crtc->mml_cfg == NULL) {
+			DDPPR_ERR("%s: mml_cfg is null\n", __func__);
+			return -EINVAL;
+		}
+
+		crtc_state  = to_mtk_crtc_state(crtc->state);
+		if (crtc_state  == NULL) {
+			DDPPR_ERR("%s: crtc_state is null\n", __func__);
+			return -EINVAL;
+		}
+
+		lye_state = &crtc_state->lye_state;
+		if (lye_state == NULL) {
+			DDPPR_ERR("%s: lye_state is null\n", __func__);
+			return -EINVAL;
+		}
+
+		if (unlikely(!mml_ctx)) {
+			DDPPR_ERR("%s: mml_ctx is NULL\n", __func__);
+			return -EINVAL;
+		}
+
+		if (mtk_crtc->mml_link_state != MML_DIRECT_LINKING) {
+			DDPPR_ERR("%s: mml_link_state is %d\n", __func__,
+				mtk_crtc->mml_link_state);
+			return -EINVAL;
+		}
+
+		mtk_drm_trace_begin("retrig_kick_mml_submit");
+		mtk_drm_idlemgr_kick(__func__, crtc, 0);
+		ret = mml_drm_submit(mml_ctx, mtk_crtc->mml_cfg, &(mtk_crtc->mml_cb));
+		if (ret) {
+			DDPPR_ERR("%s: err_submit %d\n", __func__, ret);
+			return -EINVAL;
+		}
+		mtk_drm_trace_end();
+		CRTC_MMP_MARK(0, mml_dbg, crtc_state->prop_val[CRTC_PROP_LYE_IDX], MMP_MML_SUBMIT);
+
+		mml_cmdq_pkt_init(crtc, pkt_info->cmdq_handle);
+
+		mtk_drm_trace_begin("retrig_wait_mml_submit_done");
+		mtk_drm_wait_mml_submit_done(&(mtk_crtc->mml_cb));
+		mtk_drm_trace_end();
 	}
 
 	return 0;
