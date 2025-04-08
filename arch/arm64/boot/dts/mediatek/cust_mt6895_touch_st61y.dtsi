@@ -41,7 +41,6 @@
 		fts,support-super-resolution = <1>;
 		spi-max-frequency = <12000000>;
 		fts,default-fw-name = "st_fts_L11a.ftb";
-		fts,old-fw-name = "st_fts_L11.ftb";
 		fts,thp-fw-name = "st_fts_L11a_thp.ftb";
 /*		fts,touch-up-threshold-min = <40>;	*/
 /*		fts,touch-up-threshold-max = <120>;	*/
@@ -99,7 +98,6 @@
 			fts,tp-vendor = <0x38>;
 			fts,tp-color = <0x32>;
 			fts,fw-name = "st_fts_L11a.ftb";
-			fts,old-fw-name = "st_fts_L11.ftb";
 			fts,limit-name = "stm_fts_production_limits.csv";
 		};
 	};
