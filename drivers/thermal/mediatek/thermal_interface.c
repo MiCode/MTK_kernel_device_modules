@@ -2814,8 +2814,13 @@ static void __used dump_thermal_log(void)
 	initialize_tzinfos();
 
 	for (int i = 0; i < TZINFO_NUM; ++i) {
-		if (!IS_ERR_OR_NULL(tzInfos[i].tz))
-			thermal_zone_get_temp(tzInfos[i].tz, &(tzInfos[i].temp));
+		if (!IS_ERR_OR_NULL(tzInfos[i].tz)){
+			ret = thermal_zone_get_temp(tzInfos[i].tz, &(tzInfos[i].temp));
+			if(ret) {
+				pr_info("%s: get %s temp error, ret %d\n", __func__, tzInfos[i].name, ret);
+				tzInfos[i].temp = -274000;
+			}
+		}
 	}
 
 	get_target_tpcb_info(read_buf);
