@@ -55,6 +55,7 @@ enum mtk_vdisp_avs_ipi_func_id {
 	FUNC_IPI_RESET_EFUSE_VAR,
 	FUNC_IPI_CHANGE_STAGE,
 	FUNC_IPI_RESTORE_FREERUN,
+	FUNC_IPI_SET_TEMP,
 };
 
 enum vdisp_ut_id {

@@ -455,16 +455,59 @@ end:
 }
 
 #if (IS_ENABLED(CONFIG_DEBUG_FS) | IS_ENABLED(CONFIG_PROC_FS))
+static int parse_u32(const char *input, u32 *p_v1, u32 *p_v2, u32 fmt)
+{
+	int ret = 0;
+	char *token, *end, *str;
+	unsigned long v = 0;
+
+	if (!p_v1)
+		return -EINVAL;
+
+	str = kstrdup(input, GFP_KERNEL);
+	if (!str) {
+		VDISPDBG("fail to allocate memory");
+		return -ENOMEM;
+	}
+
+	end = str;
+	token = strsep(&end, ",");
+	if (!token) {
+		ret = -EINVAL;
+		if (end)
+			goto free_str;
+	}
+	ret = kstrtoul(token, fmt, &v);
+	if (ret)
+		goto free_str;
+	memcpy((void *)p_v1, (void *)&v, sizeof(u32));
+
+	if ((*end == '\0') || !p_v2)
+		goto free_str;
+	ret = kstrtoul(end, fmt, &v);
+	if (ret)
+		goto free_str;
+	memcpy((void *)p_v2, (void *)&v, sizeof(u32));
+
+free_str:
+	kfree(str);
+
+	return ret;
+}
+
 static int mtk_vdisp_avs_dbg_opt(const char *opt)
 {
 	int ret = 0;
 	u32 v1 = 0, v2 = 0;
 
 	if (strncmp(opt + 4, "off:", 4) == 0) {
-		ret = sscanf(opt, "avs:off:%u,%u\n", &v1, &v2);
-		/* opp(v1); step(v2) max 32 level */
-		if ((ret != 2) || (v1 >= vdisp_opp_num || v2 >= 31)) {
-			VDISPDBG("[Warning] avs:off sscanf not match");
+		if (parse_u32(opt + 8, &v1, &v2, 10)) {
+			VDISPDBG("[Warning] avs:off parsing failed");
+			return -EINVAL;
+		}
+		/* opp(v1); step(v2) max 31 steps */
+		if ((v1 >= vdisp_opp_num || v2 >= 31)) {
+			VDISPDBG("[Warning] avs:off invalid input");
 			return -EINVAL;
 		}
 		/*Set opp and step*/
@@ -480,9 +523,8 @@ static int mtk_vdisp_avs_dbg_opt(const char *opt)
 		/*Off avs*/
 		ret = vdisp_avs_ipi_send_slot_enable_vcp(FUNC_IPI_AVS_EN, 0);
 	} else if (strncmp(opt + 4, "t_ag:", 5) == 0) {
-		ret = sscanf(opt, "avs:t_ag:%u\n", &v1);
-		if (ret != 1) {
-			VDISPDBG("[Warning] avs:t_ag sscanf not match");
+		if (parse_u32(opt + 9, &v1, NULL, 10)) {
+			VDISPDBG("[Warning] avs:t_ag parsing failed");
 			return -EINVAL;
 		}
 		fast_en = (v1 != 0);
@@ -501,12 +543,18 @@ static int mtk_vdisp_avs_dbg_opt(const char *opt)
 		ret = vdisp_avs_ipi_send_slot_enable_vcp(FUNC_IPI_RESET_EFUSE_VAR, 0);
 	} else if (strncmp(opt + 4, "vir_efuse:", 10) == 0) {
 		/* virtual efuse (ofs, val) */
-		ret = sscanf(opt, "avs:vir_efuse:0x%x,0x%x\n", &v1, &v2);
-		if (ret != 2) {
-			VDISPDBG("[Warning] avs:vir_efuse sscanf not match");
+		if (parse_u32(opt + 14, &v1, &v2, 16)) {
+			VDISPDBG("[Warning] avs:vir_efuse parsing failed");
 			return -EINVAL;
 		}
 		ret = vdisp_avs_ipi_send_slot_enable_vcp(v1, v2);
+	} else if (strncmp(opt + 4, "set_temp:", 9) == 0) {
+		/* set temperature */
+		if (parse_u32(opt + 13, &v1, NULL, 10)) {
+			VDISPDBG("[Warning] avs:set_temp parsing failed");
+			return -EINVAL;
+		}
+		ret = vdisp_avs_ipi_send_slot_enable_vcp(FUNC_IPI_SET_TEMP, v1);
 	}
 
 	return ret;
@@ -528,9 +576,12 @@ int mtk_vdisp_up_dbg_opt(const char *opt)
 	} else if (strncmp(opt + 3, "vdisp_update_level:-1", 21) == 0) {
 		ret = vdisp_avs_ipi_send_slot_enable_vcp(FUNC_IPI_RESTORE_FREERUN, 0);
 	} else if (strncmp(opt + 3, "vdisp_update_level", 18) == 0) {
-		ret = sscanf(opt, "up:vdisp_update_level:%u\n", &v1);
-		if ((ret != 1) || (v1 >= vdisp_opp_num)) {
-			VDISPDBG("[Warning] up:vdisp_update_level sscanf not match");
+		if (parse_u32(opt + 22, &v1, NULL, 10)) {
+			VDISPDBG("[Warning] up:vdisp_update_level parsing failed");
+			return -EINVAL;
+		}
+		if (v1 >= vdisp_opp_num) {
+			VDISPDBG("[Warning] up:vdisp_update_level invalid input");
 			return -EINVAL;
 		}
 		ret = vdisp_avs_ipi_send_slot_enable_vcp(FUNC_IPI_UNIT_TEST, (v1 << 16) | UT_WR_LVL);
@@ -540,17 +591,15 @@ int mtk_vdisp_up_dbg_opt(const char *opt)
 		ret = vdisp_avs_ipi_send_slot_enable_vcp(FUNC_IPI_UNIT_TEST, UT_PWR_OFF);
 	} else if (strncmp(opt + 3, "arb:", 4) == 0) {
 		/* arbitrary input */
-		ret = sscanf(opt, "up:arb:%u,%u\n", &v1, &v2);
-		if (ret != 2) {
-			VDISPDBG("[Warning] up:arb sscanf not match");
+		if (parse_u32(opt + 7, &v1, &v2, 10)) {
+			VDISPDBG("[Warning] up:arb parsing failed");
 			return -EINVAL;
 		}
 		ret = vdisp_avs_ipi_send_slot_enable_vcp(v1, v2);
 	} else if (strncmp(opt + 3, "chg_stg:", 8) == 0) {
 		/* change MMuP VDISP stage*/
-		ret = sscanf(opt, "up:chg_stg:%u\n", &v1);
-		if (ret != 1) {
-			VDISPDBG("[Warning] up:chg_stg sscanf not match");
+		if (parse_u32(opt + 11, &v1, NULL, 10)) {
+			VDISPDBG("[Warning] up:chg_stg parsing failed");
 			return -EINVAL;
 		}
 		ret = vdisp_avs_ipi_send_slot_enable_vcp(FUNC_IPI_CHANGE_STAGE, v1);
