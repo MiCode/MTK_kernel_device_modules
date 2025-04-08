@@ -101,7 +101,7 @@ void mml_dpc_mtcmos_auto(u32 sysid, const bool en, const s8 mode)
 
 int mml_dpc_power_keep(u32 sysid)
 {
-	enum mtk_vidle_voter_user user;
+	enum mtk_vidle_voter_user user = DISP_VIDLE_USER_MML;
 
 	switch (mml_dpc_version) {
 	case DPC_VER1:
@@ -127,7 +127,7 @@ int mml_dpc_power_keep(u32 sysid)
 
 void mml_dpc_power_release(u32 sysid)
 {
-	enum mtk_vidle_voter_user user;
+	enum mtk_vidle_voter_user user = DISP_VIDLE_USER_MML;
 
 	switch (mml_dpc_version) {
 	case DPC_VER1:
@@ -165,7 +165,7 @@ void mml_dpc_isr_release(void)
 
 int mml_dpc_power_keep_gce(u32 sysid, struct cmdq_pkt *pkt, u16 gpr, struct cmdq_poll_reuse *reuse)
 {
-	enum mtk_vidle_voter_user user;
+	enum mtk_vidle_voter_user user = DISP_VIDLE_USER_MML_CMDQ;
 
 	switch (mml_dpc_version) {
 	case DPC_VER1:
@@ -193,7 +193,7 @@ int mml_dpc_power_keep_gce(u32 sysid, struct cmdq_pkt *pkt, u16 gpr, struct cmdq
 
 void mml_dpc_power_release_gce(u32 sysid, struct cmdq_pkt *pkt)
 {
-	enum mtk_vidle_voter_user user;
+	enum mtk_vidle_voter_user user = DISP_VIDLE_USER_MML_CMDQ;
 
 	switch (mml_dpc_version) {
 	case DPC_VER1:
