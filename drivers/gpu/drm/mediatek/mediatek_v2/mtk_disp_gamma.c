@@ -77,11 +77,6 @@ enum GAMMA_MODE {
 	HW_12BIT_MODE_IN_10BIT,
 };
 
-enum GAMMA_CMDQ_TYPE {
-	GAMMA_USERSPACE = 0,
-	GAMMA_RESUME,
-};
-
 struct gamma_color_protect_mode {
 	unsigned int red_support;
 	unsigned int green_support;
@@ -166,7 +161,7 @@ static void disp_gamma_bypass(struct mtk_ddp_comp *comp, int bypass,
 }
 
 static int disp_gamma_write_sram(struct mtk_ddp_comp *comp,
-	int lock, struct DISP_GAMMA_12BIT_LUT_T *gamma_12b_lut)
+	int lock, enum GAMMA_CMDQ_TYPE cmd_type)
 {
 	int i, j, block_num, offset = 0;
 	int ret = 0;
@@ -174,6 +169,7 @@ static int disp_gamma_write_sram(struct mtk_ddp_comp *comp,
 	unsigned int config_value = 0;
 	struct mtk_disp_gamma *gamma = comp_to_gamma(comp);
 	struct mtk_disp_gamma_primary *primary_data = gamma->primary_data;
+	struct DISP_GAMMA_12BIT_LUT_T *gamma_12b_lut = &primary_data->gamma_12b_lut;
 	struct cmdq_pkt *handle = NULL;
 	struct cmdq_reuse *reuse_lut;
 
@@ -201,8 +197,8 @@ static int disp_gamma_write_sram(struct mtk_ddp_comp *comp,
 		goto gamma_write_lut_unlock;
 	}
 
-	reuse_lut = gamma->reuse_gamma_lut;
-	handle = primary_data->sram_pkt;
+	reuse_lut = gamma->reuse_gamma_lut[cmd_type];
+	handle = primary_data->sram_pkt[cmd_type];
 
 	if (handle == NULL) {
 		ret = -EFAULT;
@@ -228,7 +224,7 @@ static int disp_gamma_write_sram(struct mtk_ddp_comp *comp,
 	write_value = (gamma->primary_data->table_config_sel << 1) |
 			gamma->primary_data->table_out_sel;
 
-	if (!gamma->pkt_reused) {
+	if (!gamma->pkt_reused[cmd_type]) {
 		cmdq_pkt_write_value_addr_reuse(handle, comp->regs_pa + DISP_GAMMA_SHADOW_SRAM,
 				write_value, 0x3, &reuse_lut[offset++]);
 		for (i = 0; i < block_num; i++) {
@@ -246,7 +242,7 @@ static int disp_gamma_write_sram(struct mtk_ddp_comp *comp,
 		}
 		cmdq_pkt_write_value_addr_reuse(handle, comp->regs_pa + DISP_GAMMA_CFG,
 				config_value, GAMMA_LUT_TYPE, &reuse_lut[offset++]);
-		gamma->pkt_reused = true;
+		gamma->pkt_reused[cmd_type] = true;
 	} else {
 		reuse_lut[offset].val = write_value;
 		cmdq_pkt_reuse_value(handle, &reuse_lut[offset++]);
@@ -269,6 +265,116 @@ gamma_write_lut_unlock:
 	if (lock)
 		mutex_unlock(&gamma->primary_data->data_lock);
 
+	if (cmd_type == GAMMA_USERSPACE)
+		gamma->lut_updated = true;
+	if (cmd_type == GAMMA_RESUME)
+		gamma->lut_updated = false;
+
+	return ret;
+}
+
+static int disp_gamma_write_sram_v2(struct mtk_ddp_comp *comp,
+	int lock, enum GAMMA_CMDQ_TYPE cmd_type)
+{
+	int i, j, block_num, offset = 0;
+	int ret = 0;
+	unsigned int write_value = 0;
+	unsigned int config_value = 0;
+	struct mtk_disp_gamma *gamma = comp_to_gamma(comp);
+	struct mtk_disp_gamma_primary *primary_data = gamma->primary_data;
+	struct DISP_GAMMA_12BIT_LUT_T *gamma_12b_lut = &primary_data->gamma_12b_lut;
+	struct cmdq_pkt *handle = NULL;
+	struct cmdq_reuse *reuse_lut;
+
+	if (!gamma_12b_lut) {
+		PQ_ERR("%s: gamma_12b_lut null\n", __func__);
+		return -EFAULT;
+	}
+
+	if (lock)
+		mutex_lock(&gamma->primary_data->data_lock);
+
+	if (gamma_12b_lut->hw_id == DISP_GAMMA_TOTAL) {
+		PQ_ERR("%s: table not initialized\n", __func__);
+		ret = -EFAULT;
+		goto gamma_write_lut_unlock;
+	}
+
+	if (gamma->primary_data->data_mode == HW_12BIT_MODE_IN_10BIT) {
+		block_num = DISP_GAMMA_12BIT_LUT_SIZE / DISP_GAMMA_BLOCK_SIZE;
+	} else if (gamma->primary_data->data_mode == HW_12BIT_MODE_IN_8BIT) {
+		block_num = DISP_GAMMA_LUT_SIZE / DISP_GAMMA_BLOCK_SIZE;
+	} else {
+		PQ_ERR("%s: g_gamma_data_mode is error\n", __func__);
+		ret = -EFAULT;
+		goto gamma_write_lut_unlock;
+	}
+
+	reuse_lut = gamma->reuse_gamma_lut[cmd_type];
+	handle = primary_data->sram_pkt[cmd_type];
+
+	if (handle == NULL) {
+		ret = -EFAULT;
+		PQ_ERR("%s: handle null\n", __func__);
+		goto gamma_write_lut_unlock;
+	}
+	handle->no_pool = true;
+
+	if ((int)(gamma_12b_lut->lut_0[0] & 0x3FF) -
+		(int)(gamma_12b_lut->lut_0[510] & 0x3FF) > 0) {
+		config_value = 0x4;
+		DDPINFO("decreasing LUT\n");
+	} else {
+		config_value = 0x0 << 2;
+		DDPINFO("Incremental LUT\n");
+	}
+
+	if (!gamma->pkt_reused[cmd_type]) {
+		cmdq_pkt_write_value_addr_reuse(handle, comp->regs_pa + DISP_GAMMA_STATUS,
+				0x0 << 26, 0x1 << 26, &reuse_lut[offset++]);
+		for (i = 0; i < block_num; i++) {
+			write_value = i | (gamma->primary_data->data_mode - 1) << 2;
+			cmdq_pkt_write_value_addr_reuse(handle, comp->regs_pa + DISP_GAMMA_BANK,
+					write_value, 0x7, &reuse_lut[offset++]);
+			for (j = 0; j < DISP_GAMMA_BLOCK_SIZE; j++) {
+				write_value = gamma_12b_lut->lut_0[i * DISP_GAMMA_BLOCK_SIZE + j];
+				cmdq_pkt_write_value_addr_reuse(handle, comp->regs_pa + DISP_GAMMA_LUT_0 + j * 4,
+					write_value, ~0, &reuse_lut[offset++]);
+				write_value = gamma_12b_lut->lut_1[i * DISP_GAMMA_BLOCK_SIZE + j];
+				cmdq_pkt_write_value_addr_reuse(handle, comp->regs_pa + DISP_GAMMA_LUT_1 + j * 4,
+					write_value, ~0, &reuse_lut[offset++]);
+			}
+		}
+		cmdq_pkt_write_value_addr_reuse(handle, comp->regs_pa + DISP_GAMMA_CFG,
+				config_value, GAMMA_LUT_TYPE, &reuse_lut[offset++]);
+		cmdq_pkt_write_value_addr_reuse(handle, comp->regs_pa + DISP_GAMMA_STATUS,
+				0x1 << 26, 0x1 << 26, &reuse_lut[offset++]);
+		gamma->pkt_reused[cmd_type] = true;
+	} else {
+		for (i = 0; i < block_num; i++) {
+			reuse_lut[++offset].val = i | (gamma->primary_data->data_mode - 1) << 2;
+			cmdq_pkt_reuse_value(handle, &reuse_lut[offset]);
+			for (j = 0; j < DISP_GAMMA_BLOCK_SIZE; j++) {
+				reuse_lut[++offset].val = gamma_12b_lut->lut_0[i * DISP_GAMMA_BLOCK_SIZE + j];
+				cmdq_pkt_reuse_value(handle, &reuse_lut[offset]);
+
+				reuse_lut[++offset].val = gamma_12b_lut->lut_1[i * DISP_GAMMA_BLOCK_SIZE + j];
+				cmdq_pkt_reuse_value(handle, &reuse_lut[offset]);
+			}
+		}
+		reuse_lut[++offset].val = config_value;
+		cmdq_pkt_reuse_value(handle, &reuse_lut[offset]);
+	}
+
+gamma_write_lut_unlock:
+	if (lock)
+		mutex_unlock(&gamma->primary_data->data_lock);
+
+	if (cmd_type == GAMMA_USERSPACE)
+		gamma->lut_updated = true;
+	if (cmd_type == GAMMA_RESUME)
+		gamma->lut_updated = false;
+
 	return ret;
 }
 
@@ -277,7 +383,7 @@ static bool disp_gamma_flush_sram(struct mtk_ddp_comp *comp, int cmd_type)
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 	struct mtk_disp_gamma *gamma_data = comp_to_gamma(comp);
 	struct mtk_disp_gamma_primary *primary_data = gamma_data->primary_data;
-	struct cmdq_pkt *cmdq_handle = primary_data->sram_pkt;
+	struct cmdq_pkt *cmdq_handle = primary_data->sram_pkt[cmd_type];
 	struct cmdq_client *client = NULL;
 
 	if (!cmdq_handle) {
@@ -298,13 +404,16 @@ static bool disp_gamma_flush_sram(struct mtk_ddp_comp *comp, int cmd_type)
 
 	switch (cmd_type) {
 	case GAMMA_USERSPACE:
-		primary_data->table_out_sel = primary_data->table_config_sel;
+		if (gamma_data->auto_flip == 0)
+			primary_data->table_out_sel = primary_data->table_config_sel;
 		cmdq_pkt_refinalize(cmdq_handle);
 		cmdq_pkt_flush(cmdq_handle);
 		cmdq_mbox_disable(client->chan);
 		break;
 
 	case GAMMA_RESUME:
+		if (gamma_data->auto_flip == 0)
+			primary_data->table_out_sel = primary_data->table_config_sel;
 		cmdq_pkt_refinalize(cmdq_handle);
 		cmdq_pkt_flush(cmdq_handle);
 		cmdq_mbox_disable(client->chan);
@@ -322,12 +431,60 @@ static void disp_gamma_flip_sram(struct mtk_ddp_comp *comp, struct cmdq_pkt *han
 	struct mtk_disp_gamma_primary *primary_data = gamma->primary_data;
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_GAMMA_CFG,
-			GAMMA_LUT_EN, GAMMA_LUT_EN);
-
-	cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_GAMMA_SHADOW_SRAM,
 			primary_data->table_config_sel << 1 | primary_data->table_out_sel, 0x3);
+}
+
+static int disp_gamma_update_sram(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
+		enum GAMMA_CMDQ_TYPE cmd_type)
+{
+	int ret = 0;
+	struct mtk_disp_gamma *gamma = comp_to_gamma(comp);
+
+	if (gamma->auto_flip == 0) {
+		if (disp_gamma_write_sram(comp, 0, cmd_type) < 0) {
+			PQ_ERR("%s: failed\n", __func__);
+			ret = -EFAULT;
+			return ret;
+		}
+		if ((comp->mtk_crtc != NULL) && comp->mtk_crtc->is_dual_pipe) {
+			if (disp_gamma_write_sram(gamma->companion, 0, cmd_type) < 0) {
+				PQ_ERR("%s: comp_gamma1 failed\n", __func__);
+				ret = -EFAULT;
+				return ret;
+			}
+		}
+
+		ret = disp_gamma_flush_sram(comp, cmd_type);
+		disp_gamma_flip_sram(comp, handle);
+		if (comp->mtk_crtc->is_dual_pipe && gamma->companion)
+			disp_gamma_flip_sram(gamma->companion, handle);
+	} else {
+		if (disp_gamma_write_sram_v2(comp, 0, cmd_type) < 0) {
+			PQ_ERR("%s: failed\n", __func__);
+			ret = -EFAULT;
+			return ret;
+		}
+		if ((comp->mtk_crtc != NULL) && comp->mtk_crtc->is_dual_pipe) {
+			if (disp_gamma_write_sram_v2(gamma->companion, 0, cmd_type) < 0) {
+				PQ_ERR("%s: comp_gamma1 failed\n", __func__);
+				ret = -EFAULT;
+				return ret;
+			}
+		}
+
+		ret = disp_gamma_flush_sram(comp, cmd_type);
+	}
+
+	// enable gamma_lut_en
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_GAMMA_CFG,
+			GAMMA_LUT_EN, GAMMA_LUT_EN);
+	if (comp->mtk_crtc->is_dual_pipe && gamma->companion)
+		cmdq_pkt_write(handle, comp->cmdq_base,
+				gamma->companion->regs_pa + DISP_GAMMA_CFG,
+				GAMMA_LUT_EN, GAMMA_LUT_EN);
+
+	return ret;
 }
 
 static int disp_gamma_cfg_set_12bit_gammalut(struct mtk_ddp_comp *comp,
@@ -377,25 +534,11 @@ static int disp_gamma_cfg_set_12bit_gammalut(struct mtk_ddp_comp *comp,
 	}
 
 	mutex_lock(&primary_data->data_lock);
-	if (disp_gamma_write_sram(comp, 0, config) < 0) {
-		PQ_ERR("%s: failed\n", __func__);
-		ret = -EFAULT;
+	ret = disp_gamma_update_sram(comp, handle, GAMMA_USERSPACE);
+	if (ret < 0) {
 		mutex_unlock(&primary_data->data_lock);
 		goto _return;
 	}
-	if ((comp->mtk_crtc != NULL) && comp->mtk_crtc->is_dual_pipe) {
-		if (disp_gamma_write_sram(gamma->companion, 0, config) < 0) {
-			PQ_ERR("%s: comp_gamma1 failed\n", __func__);
-			ret = -EFAULT;
-			mutex_unlock(&primary_data->data_lock);
-			goto _return;
-		}
-	}
-
-	ret = disp_gamma_flush_sram(comp, GAMMA_USERSPACE);
-	disp_gamma_flip_sram(comp, handle);
-	if (comp->mtk_crtc->is_dual_pipe && companion)
-		disp_gamma_flip_sram(companion, handle);
 	mutex_unlock(&primary_data->data_lock);
 
 	if (!atomic_read(&primary_data->gamma_sram_hw_init)) {
@@ -645,7 +788,8 @@ static void disp_gamma_init_primary_data(struct mtk_ddp_comp *comp)
 	primary_data->gamma_12b_lut.hw_id = DISP_GAMMA_TOTAL;
 	primary_data->gamma_lut_cur.hw_id = DISP_GAMMA_TOTAL;
 
-	disp_gamma_create_gce_pkt(comp, &primary_data->sram_pkt);
+	disp_gamma_create_gce_pkt(comp, &primary_data->sram_pkt[GAMMA_USERSPACE]);
+	disp_gamma_create_gce_pkt(comp, &primary_data->sram_pkt[GAMMA_RESUME]);
 	atomic_set(&primary_data->gamma_sram_hw_init, 0);
 	primary_data->relay_state = 0x1 << PQ_FEATURE_DEFAULT;
 }
@@ -747,6 +891,9 @@ static void disp_gamma_config(struct mtk_ddp_comp *comp,
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_GAMMA_CFG, 0, STALL_CG_ON);
 
+	if (gamma->auto_flip == 1)
+		writel_relaxed(0x4, comp->regs + DISP_GAMMA_SHADOW_SRAM);
+
 	mutex_lock(&primary_data->data_lock);
 	if (atomic_read(&primary_data->gamma_sram_hw_init) != 0) {
 		if (pq_data->new_persist_property[DISP_PQ_GAMMA_SILKY_BRIGHTNESS] ||
@@ -757,11 +904,26 @@ static void disp_gamma_config(struct mtk_ddp_comp *comp,
 			gamma->primary_data->data_mode != HW_12BIT_MODE_IN_10BIT) {
 			disp_gamma_set_lut(comp, handle, 0, &gamma->primary_data->gamma_lut_cur);
 		} else {
-			if (primary_data->need_refinalize) {
-				disp_gamma_flush_sram(comp, GAMMA_RESUME);
-				primary_data->need_refinalize = false;
+			if (gamma->auto_flip == 0) {
+				if (primary_data->need_refinalize) {
+					if (gamma->lut_updated)
+						disp_gamma_write_sram(comp, 0, GAMMA_RESUME);
+					if (gamma->is_right_pipe ||!comp->mtk_crtc->is_dual_pipe)
+						disp_gamma_flush_sram(comp, GAMMA_RESUME);
+					primary_data->need_refinalize = false;
+				}
+				disp_gamma_flip_sram(comp, handle);
+			} else if (gamma->auto_flip == 1) {
+				if (primary_data->need_refinalize) {
+					if (gamma->lut_updated)
+						disp_gamma_write_sram_v2(comp, 0, GAMMA_RESUME);
+					if (gamma->is_right_pipe ||!comp->mtk_crtc->is_dual_pipe)
+						disp_gamma_flush_sram(comp, GAMMA_RESUME);
+					primary_data->need_refinalize = false;
+				}
 			}
-			disp_gamma_flip_sram(comp, handle);
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DISP_GAMMA_CFG, GAMMA_LUT_EN, GAMMA_LUT_EN);
 		}
 	}
 
@@ -1113,6 +1275,12 @@ static void disp_gamma_parse_dts(const struct device_node *np,
 		PQ_ERR("comp_id: %d, gamma_data_mode = %d\n",
 			comp->id, gamma->primary_data->data_mode);
 		gamma->primary_data->data_mode = HW_8BIT;
+	}
+
+	if (of_property_read_u32(np, "auto-flip", &gamma->auto_flip)) {
+		PQ_ERR("comp_id: %d, auto_flip = %d\n",
+			comp->id, gamma->auto_flip);
+		gamma->auto_flip = 0;
 	}
 
 	if (of_property_read_u32(np, "color-protect-lsb",

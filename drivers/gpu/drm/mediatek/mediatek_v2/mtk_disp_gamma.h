@@ -9,6 +9,12 @@
 #include <linux/uaccess.h>
 #include <uapi/drm/mediatek_drm.h>
 
+enum GAMMA_CMDQ_TYPE {
+	GAMMA_USERSPACE = 0,
+	GAMMA_RESUME,
+	GAMMA_CMDQ_MAX,
+};
+
 struct gamma_color_protect {
 	unsigned int gamma_color_protect_support;
 	unsigned int gamma_color_protect_lsb;
@@ -45,7 +51,7 @@ struct mtk_disp_gamma_primary {
 	atomic_t irq_event;
 	struct mutex clk_lock;
 	struct mutex data_lock;
-	struct cmdq_pkt *sram_pkt;
+	struct cmdq_pkt *sram_pkt[GAMMA_CMDQ_MAX];
 
 	atomic_t clock_on;
 	atomic_t sof_filp;
@@ -69,10 +75,12 @@ struct mtk_disp_gamma {
 	struct mtk_ddp_comp *companion;
 	struct mtk_disp_gamma_primary *primary_data;
 	atomic_t is_clock_on;
-	bool pkt_reused;
-	struct cmdq_reuse reuse_gamma_lut[DISP_GAMMA_12BIT_LUT_SIZE * 2 + 6];
+	bool pkt_reused[GAMMA_CMDQ_MAX];
+	struct cmdq_reuse reuse_gamma_lut[GAMMA_CMDQ_MAX][DISP_GAMMA_12BIT_LUT_SIZE * 2 + 7];
 	unsigned int set_partial_update;
 	unsigned int roi_height;
+	unsigned int auto_flip;
+	bool lut_updated;
 };
 
 static inline struct mtk_disp_gamma *comp_to_gamma(struct mtk_ddp_comp *comp)
