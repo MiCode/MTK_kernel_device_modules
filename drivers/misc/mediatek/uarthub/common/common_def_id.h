@@ -103,7 +103,22 @@ enum uarthub_pkt_fmt_type {
 	pkt_fmt_undef,
 };
 
-enum bt_over_uart_log_id {
+enum BOU_MOD_ID {
+	mod_undefined = 0,
+	mod_bt_drv,
+	mod_tty,
+	mod_ap_dma,
+	mod_ap_uart,
+	mod_adsp_host,
+	mod_adsp_uart,
+	mod_uarthub,
+	mod_bt_uart,
+	mod_bt_mcu,
+	mod_bt_fw,
+	mod_max,
+};
+
+enum BOU_LOG_ID {
 	log_undefined = 0,
 	log_uart0_det_xoff,
 	log_uart1_det_xoff,
@@ -130,13 +145,13 @@ enum bt_over_uart_log_id {
 	log_uart2_frame_error,
 	log_uartcmm_frame_error,
 	log_apuart_frame_error,
-	log_ap_tx_cmd_tmo_tx_pkt_cnt_err,
-	log_ap_tx_cmd_tmo_rx_pkt_cnt_err,
-	log_ap_tx_cmd_tmo_apuart_rx_byte_cnt_err,
-	log_ap_tx_cmd_tmo_apuart_tx_byte_cnt_err,
-	log_ap_tx_cmd_tmo_uartcmm_rx_byte_cnt_err,
-	log_ap_tx_cmd_tmo_uartcmm_tx_byte_cnt_err,
-	log_ap_tx_cmd_tmo_apdma_err,
+	log_ap_tx_tmo_tx_pkt_cnt_err,
+	log_ap_tx_tmo_rx_pkt_cnt_err,
+	log_ap_tx_tmo_apuart_tx_byte_cnt_err,
+	log_ap_tx_tmo_uartcmm_tx_byte_cnt_err,
+	log_ap_tx_tmo_uartcmm_rx_byte_cnt_err,
+	log_ap_tx_tmo_apuart_rx_byte_cnt_err,
+	log_ap_tx_tmo_apdma_err,
 	log_uart0_rx_woffset_not_empty,
 	log_uart1_rx_woffset_not_empty,
 	log_uart2_rx_woffset_not_empty,
@@ -171,118 +186,6 @@ enum bt_over_uart_log_id {
 	log_dev2_tx_err,
 	log_max,
 };
-
-static char * const bt_over_uart_log_str[] = {
-	"UNDEF_ERROR",
-	"UART0_DET_XOFF",
-	"UART1_DET_XOFF",
-	"UART2_DET_XOFF",
-	"UARTCMM_DET_XOFF",
-	"APUART_DET_XOFF",
-	"UART0_SEND_XOFF",
-	"UART1_SEND_XOFF",
-	"UART2_SEND_XOFF",
-	"UARTCMM_SEND_XOFF",
-	"APUART_SEND_XOFF",
-	"UART0_KEEP_SENDING_XOFF",
-	"UART1_KEEP_SENDING_XOFF",
-	"UART2_KEEP_SENDING_XOFF",
-	"UARTCMM_KEEP_SENDING_XOFF",
-	"APUART_KEEP_SENDING_XOFF",
-	"UART0_KEEP_SENDING_XON",
-	"UART1_KEEP_SENDING_XON",
-	"UART2_KEEP_SENDING_XON",
-	"UARTCMM_KEEP_SENDING_XON",
-	"APUART_KEEP_SENDING_XON",
-	"UART0_FRAME_ERROR",
-	"UART1_FRAME_ERROR",
-	"UART2_FRAME_ERROR",
-	"UARTCMM_FRAME_ERROR",
-	"APUART_FRAME_ERROR",
-	"AP_TX_CMD_TMO_TX_PKT_CNT_ERR",
-	"AP_TX_CMD_TMO_RX_PKT_CNT_ERR",
-	"AP_TX_CMD_TMO_APUART_RX_BYTE_CNT_ERR",
-	"AP_TX_CMD_TMO_APUART_TX_BYTE_CNT_ERR",
-	"AP_TX_CMD_TMO_UARTCMM_RX_BYTE_CNT_ERR",
-	"AP_TX_CMD_TMO_UARTCMM_TX_BYTE_CNT_ERR",
-	"AP_TX_CMD_TMO_APDMA_ERR",
-	"UART0_RX_WOFFSET_NOT_EMPTY",
-	"UART1_RX_WOFFSET_NOT_EMPTY",
-	"UART2_RX_WOFFSET_NOT_EMPTY",
-	"UARTCMM_RX_WOFFSET_NOT_EMPTY",
-	"APUART_RX_WOFFSET_NOT_EMPTY",
-	"UART0_TX_WOFFSET_NOT_EMPTY",
-	"UART1_TX_WOFFSET_NOT_EMPTY",
-	"UART2_TX_WOFFSET_NOT_EMPTY",
-	"UARTCMM_TX_WOFFSET_NOT_EMPTY",
-	"APUART_TX_WOFFSET_NOT_EMPTY",
-	"GPIO_RX_MODE_ERR",
-	"GPIO_TX_MODE_ERR",
-	"GPIO_BT_RST_MODE_ERR",
-	"GPIO_BT_RST_DIR_ERR",
-	"GPIO_BT_RST_OUT_ERR",
-	"DEV0_CRC_ERR",
-	"DEV1_CRC_ERR",
-	"DEV2_CRC_ERR",
-	"DEV0_TX_TIMEOUT_ERR",
-	"DEV1_TX_TIMEOUT_ERR",
-	"DEV2_TX_TIMEOUT_ERR",
-	"DEV0_TX_PKT_TYPE_ERR",
-	"DEV1_TX_PKT_TYPE_ERR",
-	"DEV2_TX_PKT_TYPE_ERR",
-	"DEV0_RX_TIMEOUT_ERR",
-	"DEV1_RX_TIMEOUT_ERR",
-	"DEV2_RX_TIMEOUT_ERR",
-	"RX_PKT_TYPE_ERR",
-	"DEV_RX_ERR",
-	"DEV0_TX_ERR",
-	"DEV1_TX_ERR",
-	"DEV2_TX_ERR",
-};
-
-enum bt_over_uart_mod_id {
-	mod_undefined = 0,
-	mod_bt_drv,
-	mod_tty,
-	mod_ap_dma,
-	mod_ap_uart,
-	mod_adsp_host,
-	mod_adsp_uart,
-	mod_uarthub,
-	mod_bt_uart,
-	mod_bt_mcu,
-	mod_bt_fw,
-	mod_max,
-};
-
-static char * const bt_over_uart_mod_str[] = {
-	"undef_module",
-	"bt_drv",
-	"tty",
-	"ap_dma",
-	"ap_uart",
-	"adsp_host",
-	"adsp_uart",
-	"uarthub",
-	"bt_uart",
-	"bt_mcu",
-	"bt_fw",
-};
-
-#define BT_OVER_UAER_DEBUG_LOG_ERROR_KEYWORD      "BT_OVER_UART_LOG_ERROR"
-
-#define BT_OVER_UAER_DUMP_LOG(_err, _mod, _next_mod, _log, _tag) \
-	pr_notice("%s%s%s%s:%.2d-%.2d-%.4d-%d/%s/%s/%s/%s\n",\
-		((_tag == NULL) ? "" : "["),\
-		((_tag == NULL) ? "" : _tag),\
-		((_tag == NULL) ? "" : "] " ),\
-		BT_OVER_UAER_DEBUG_LOG_ERROR_KEYWORD,\
-		_mod, _next_mod, _log,\
-		((_err == 0) ? 0 : 1),\
-		((_err == 0) ? "warning" : "error"),\
-		bt_over_uart_log_str[_log],\
-		bt_over_uart_mod_str[_mod],\
-		bt_over_uart_mod_str[_next_mod])
 
 /* UART_IP CODA definition */
 #define DEBUG_1(_baseaddr) (_baseaddr+0x64)

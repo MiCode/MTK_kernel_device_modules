@@ -503,7 +503,7 @@ int uarthub_core_irq_free(struct platform_device *pdev)
 	int irq_num = 0;
 
 	uarthub_core_irq_mask_ctrl(0);
-	uarthub_core_irq_clear_ctrl(-1);
+	uarthub_core_irq_clear_ctrl(BIT_0xFFFF_FFFF);
 
 	if (pdev)
 		node = pdev->dev.of_node;
@@ -570,7 +570,7 @@ int uarthub_core_open(void)
 		return UARTHUB_ERR_APB_BUS_CLK_DISABLE;
 	}
 
-	uarthub_core_irq_clear_ctrl(-1);
+	uarthub_core_irq_clear_ctrl(BIT_0xFFFF_FFFF);
 	ret = uarthub_core_irq_register(g_uarthub_pdev);
 	if (ret)
 		return -1;
@@ -598,7 +598,7 @@ int uarthub_core_close(void)
 	}
 
 	uarthub_core_irq_free(g_uarthub_pdev);
-	uarthub_core_irq_clear_ctrl(-1);
+	uarthub_core_irq_clear_ctrl(BIT_0xFFFF_FFFF);
 
 	uarthub_core_dev0_clear_txrx_request();
 
@@ -1205,13 +1205,13 @@ int uarthub_core_bypass_mode_ctrl(int enable)
 	if (enable == 1) {
 		if (g_is_ut_testing == 0) {
 			uarthub_core_irq_mask_ctrl(1);
-			uarthub_core_irq_clear_ctrl(-1);
+			uarthub_core_irq_clear_ctrl(BIT_0xFFFF_FFFF);
 		}
 		g_plat_ic_core_ops->uarthub_plat_config_bypass_ctrl(1);
 	} else {
 		g_plat_ic_core_ops->uarthub_plat_config_bypass_ctrl(0);
 		if (g_is_ut_testing == 0) {
-			uarthub_core_irq_clear_ctrl(-1);
+			uarthub_core_irq_clear_ctrl(BIT_0xFFFF_FFFF);
 			uarthub_core_irq_mask_ctrl(0);
 		}
 	}
@@ -1452,7 +1452,7 @@ static void trigger_uarthub_error_worker_handler(struct work_struct *work)
 				(tv_now_assert.tv_nsec > tv_end_assert.tv_nsec)) ||
 				(tv_now_assert.tv_sec > tv_end_assert.tv_sec)) == false) {
 #if ISR_CLEAR_ALL_IRQ
-			uarthub_core_irq_clear_ctrl(-1);
+			uarthub_core_irq_clear_ctrl(BIT_0xFFFF_FFFF);
 #else
 			uarthub_core_irq_clear_ctrl(err_type);
 #endif
@@ -1490,7 +1490,7 @@ static void trigger_uarthub_error_worker_handler(struct work_struct *work)
 
 	if (uarthub_core_is_apb_bus_clk_enable() == 0) {
 #if ISR_CLEAR_ALL_IRQ
-		uarthub_core_irq_clear_ctrl(-1);
+		uarthub_core_irq_clear_ctrl(BIT_0xFFFF_FFFF);
 #else
 		uarthub_core_irq_clear_ctrl(err_type);
 #endif
@@ -1501,14 +1501,14 @@ static void trigger_uarthub_error_worker_handler(struct work_struct *work)
 	if (uarthub_core_is_bypass_mode() == 1) {
 		pr_info("[%s] ignore irq error in bypass mode\n", __func__);
 		uarthub_core_irq_mask_ctrl(1);
-		uarthub_core_irq_clear_ctrl(-1);
+		uarthub_core_irq_clear_ctrl(BIT_0xFFFF_FFFF);
 		return;
 	}
 
 	if (uarthub_core_is_assert_state() == 1) {
 		pr_info("[%s] ignore irq error if assert flow\n", __func__);
 #if ISR_CLEAR_ALL_IRQ
-		uarthub_core_irq_clear_ctrl(-1);
+		uarthub_core_irq_clear_ctrl(BIT_0xFFFF_FFFF);
 #else
 		uarthub_core_irq_clear_ctrl(err_type);
 #endif
@@ -1519,7 +1519,7 @@ static void trigger_uarthub_error_worker_handler(struct work_struct *work)
 	uarthub_core_debug_info(__func__);
 
 #if ISR_CLEAR_ALL_IRQ
-	uarthub_core_irq_clear_ctrl(-1);
+	uarthub_core_irq_clear_ctrl(BIT_0xFFFF_FFFF);
 #else
 	uarthub_core_irq_clear_ctrl(err_type);
 #endif

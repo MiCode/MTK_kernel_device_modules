@@ -401,9 +401,9 @@ int uarthub_dump_uartip_debug_info_mt6993(
 	UARTHUB_DEBUG_PRINT_LSR(def_tag, tag, print_ap, 1);
 
 	UARTHUB_DEBUG_PRINT_RX_WOFFSET_DEBUG_KEYWORD(lst_rx_woffset[0], lst_rx_woffset[1],
-		lst_rx_woffset[2], lst_rx_woffset[3], lst_rx_woffset[4], 0);
+		lst_rx_woffset[2], lst_rx_woffset[3], lst_rx_woffset[4], 0, 0);
 	UARTHUB_DEBUG_PRINT_TX_WOFFSET_DEBUG_KEYWORD(lst_tx_woffset[0], lst_tx_woffset[1],
-		lst_tx_woffset[2], lst_tx_woffset[3], lst_tx_woffset[4], 0);
+		lst_tx_woffset[2], lst_tx_woffset[3], lst_tx_woffset[4], 0, 0);
 	UARTHUB_DEBUG_PRINT_FRAME_ERROR_DEBUG_KEYWORD(lst_frame_error[0], lst_frame_error[1],
 		lst_frame_error[2], lst_frame_error[3], lst_frame_error[4], 1);
 	UARTHUB_DEBUG_PRINT_DET_XOFF_DEBUG_KEYWORD(lst_det_xoff[0], lst_det_xoff[1],
@@ -1615,9 +1615,9 @@ int uarthub_dump_debug_tx_rx_count_mt6993(const char *tag, int trigger_point)
 
 		if (pre_trigger_point == DUMP0) {
 			UARTHUB_DEBUG_PRINT_RX_WOFFSET_DEBUG_KEYWORD(d0_rx_fifoc, d1_rx_fifoc,
-				d2_rx_fifoc, cmm_rx_fifoc, ap_rx_fifoc, 0);
+				d2_rx_fifoc, cmm_rx_fifoc, ap_rx_fifoc, 0, 0);
 			UARTHUB_DEBUG_PRINT_TX_WOFFSET_DEBUG_KEYWORD(d0_tx_fifoc, d1_tx_fifoc,
-				d2_tx_fifoc, cmm_tx_fifoc, ap_tx_fifoc, 0);
+				d2_tx_fifoc, cmm_tx_fifoc, ap_tx_fifoc, 0, 0);
 			UARTHUB_DEBUG_PRINT_DET_XOFF_DEBUG_KEYWORD(d0_detect_xoff, d1_detect_xoff,
 				d2_detect_xoff, cmm_detect_xoff, ap_detect_xoff, 1);
 			UARTHUB_DEBUG_PRINT_WSEND_XOFF_DEBUG_KEYWORD(d0_wait_for_send_xoff,
@@ -1744,8 +1744,8 @@ int uarthub_dump_debug_clk_info_mt6993(const char *tag)
 
 	UARTHUB_DEBUG_PRINT_DEBUG_2_REG(debug5, 0xF0, 4, debug6, 0x3, 4, ",bcnt=[R:%d-%d-%d-%d-%d");
 	UARTHUB_DEBUG_PRINT_DEBUG_2_REG(debug2, 0xF0, 4, debug3, 0x3, 4, ",T:%d-%d-%d-%d-%d]");
-	UARTHUB_DEBUG_PRINT_DEBUG_RX_WOFFSET_REG(debug7, ",fifo_woffset=[R:%d-%d-%d-%d-%d", 0);
-	UARTHUB_DEBUG_PRINT_DEBUG_TX_WOFFSET_REG(debug4, ",T:%d-%d-%d-%d-%d]", 0);
+	UARTHUB_DEBUG_PRINT_DEBUG_RX_WOFFSET_REG(debug7, 1, ",fifo_woffset=[R:%d-%d-%d-%d-%d", 0);
+	UARTHUB_DEBUG_PRINT_DEBUG_TX_WOFFSET_REG(debug4, 1, ",T:%d-%d-%d-%d-%d]", 0);
 	UARTHUB_DEBUG_PRINT_DEBUG_WSEND_XOFF_REG(debug1, ",wsend_xoff=[%d-%d-%d-%d-%d]", 0);
 	UARTHUB_DEBUG_PRINT_DEBUG_DET_XOFF_REG(debug8, ",det_xoff=[%d-%d-%d-%d-%d]", 0);
 
@@ -1976,8 +1976,8 @@ int uarthub_dump_debug_byte_cnt_info_mt6993(const char *tag)
 
 	UARTHUB_DEBUG_PRINT_DEBUG_2_REG(debug5, 0xF0, 4, debug6, 0x3, 4, ",bcnt=[R:%d-%d-%d-%d-%d");
 	UARTHUB_DEBUG_PRINT_DEBUG_2_REG(debug2, 0xF0, 4, debug3, 0x3, 4, ",T:%d-%d-%d-%d-%d]");
-	UARTHUB_DEBUG_PRINT_DEBUG_RX_WOFFSET_REG(debug7, ",fifo_woffset=[R:%d-%d-%d-%d-%d", 0);
-	UARTHUB_DEBUG_PRINT_DEBUG_TX_WOFFSET_REG(debug4, ",T:%d-%d-%d-%d-%d]", 0);
+	UARTHUB_DEBUG_PRINT_DEBUG_RX_WOFFSET_REG(debug7, 1, ",fifo_woffset=[R:%d-%d-%d-%d-%d", 0);
+	UARTHUB_DEBUG_PRINT_DEBUG_TX_WOFFSET_REG(debug4, 1, ",T:%d-%d-%d-%d-%d]", 0);
 	UARTHUB_DEBUG_PRINT_DEBUG_2_REG(debug4, 0xC0, 6, debug5, 0xF, 2, ",fifo_tx_roffset=[%d-%d-%d-%d-%d]");
 	UARTHUB_DEBUG_PRINT_DEBUG_1_REG(debug6, 0xFC, 2, ",offset_dma=[R:%d-%d-%d-%d-%d");
 	UARTHUB_DEBUG_PRINT_DEBUG_1_REG(debug3, 0xFC, 2, ",T:%d-%d-%d-%d-%d]");
@@ -2232,8 +2232,8 @@ int uarthub_dump_debug_bus_status_info_mt6993(const char *tag)
 
 	UARTHUB_DEBUG_PRINT_DEBUG_2_REG(debug5, 0xF0, 4, debug6, 0x3, 4, ",bcnt=[R:%d-%d-%d-%d-%d");
 	UARTHUB_DEBUG_PRINT_DEBUG_2_REG(debug2, 0xF0, 4, debug3, 0x3, 4, ",T:%d-%d-%d-%d-%d]");
-	UARTHUB_DEBUG_PRINT_DEBUG_RX_WOFFSET_REG(debug7, ",fifo_woffset=[R:%d-%d-%d-%d-%d", 0);
-	UARTHUB_DEBUG_PRINT_DEBUG_TX_WOFFSET_REG(debug4, ",T:%d-%d-%d-%d-%d]", 0);
+	UARTHUB_DEBUG_PRINT_DEBUG_RX_WOFFSET_REG(debug7, 1, ",fifo_woffset=[R:%d-%d-%d-%d-%d", 0);
+	UARTHUB_DEBUG_PRINT_DEBUG_TX_WOFFSET_REG(debug4, 1, ",T:%d-%d-%d-%d-%d]", 0);
 	UARTHUB_DEBUG_PRINT_DEBUG_2_REG(debug4, 0xC0, 6, debug5, 0xF, 2, ",fifo_tx_roffset=[%d-%d-%d-%d-%d]");
 	UARTHUB_DEBUG_PRINT_DEBUG_1_REG(debug6, 0xFC, 2, ",offset_dma=[R:%d-%d-%d-%d-%d");
 	UARTHUB_DEBUG_PRINT_DEBUG_1_REG(debug3, 0xFC, 2, ",T:%d-%d-%d-%d-%d]");

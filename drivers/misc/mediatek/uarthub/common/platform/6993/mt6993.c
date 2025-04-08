@@ -265,7 +265,18 @@ int uarthub_get_hwccf_univpll_on_info_mt6993(void)
 
 int uarthub_is_ready_state_mt6993(void)
 {
-	return DEV0_STA_GET_dev0_intfhub_ready(DEV0_STA_ADDR);
+	int state = -1;
+	int fe_state = 0;
+
+	state = DEV0_STA_GET_dev0_intfhub_ready(DEV0_STA_ADDR);
+	if (state == 1) {
+		fe_state = LSR_GET_FE(LSR_ADDR(uartip_base_map_mt6993[uartip_id_ap]));
+		if (fe_state == 1)
+			pr_notice("[%s] detect frame error during CKOFF, ignore it\n", __func__);
+		uarthub_usb_rx_pin_ctrl_mt6993(uartip_base_map_mt6993[uartip_id_ap], 0);
+	}
+
+	return state;
 }
 
 int uarthub_config_baud_rate_mt6993(void __iomem *dev_base, int rate_index)
@@ -368,7 +379,7 @@ int uarthub_irq_mask_ctrl_mt6993(int mask)
 	if (mask == 0)
 		UARTHUB_REG_WRITE(DEV0_IRQ_MASK_ADDR, 0x0);
 	else
-		UARTHUB_REG_WRITE(DEV0_IRQ_MASK_ADDR, 0xFFFFFFFF);
+		UARTHUB_REG_WRITE(DEV0_IRQ_MASK_ADDR, BIT_0xFFFF_FFFF);
 
 	return 0;
 }
@@ -1700,6 +1711,9 @@ int uarthub_set_host_trx_request_mt6993(int dev_index, enum uarthub_trx_type trx
 
 int uarthub_clear_host_trx_request_mt6993(int dev_index, enum uarthub_trx_type trx)
 {
+	int sta_tx = -1;
+	int sta_rx = -1;
+
 	if (dev_index < 0 || dev_index >= UARTHUB_MAX_NUM_DEV_HOST) {
 		pr_notice("[%s] not support dev_index(%d)\n", __func__, dev_index);
 		return UARTHUB_ERR_DEV_INDEX_NOT_SUPPORT;
@@ -1711,6 +1725,12 @@ int uarthub_clear_host_trx_request_mt6993(int dev_index, enum uarthub_trx_type t
 	}
 
 	if (dev_index == 0) {
+		sta_rx = DEV0_STA_GET_dev0_sw_rx_sta(DEV0_STA_ADDR);
+		sta_tx = DEV0_STA_GET_dev0_sw_tx_sta(DEV0_STA_ADDR);
+
+		if ((trx == RX && sta_tx == 0) || (trx == TX && sta_rx == 0) || (trx == TRX))
+			uarthub_usb_rx_pin_ctrl_mt6993(uartip_base_map_mt6993[uartip_id_ap], 1);
+
 		if (trx == RX) {
 			UARTHUB_REG_WRITE(DEV0_STA_CLR_ADDR,
 				(REG_FLD_MASK(DEV0_STA_CLR_FLD_dev0_sw_rx_clr) |
