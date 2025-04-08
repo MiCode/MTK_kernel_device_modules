@@ -254,3 +254,45 @@ define_mgk_ddk_ko(
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/aee/aed",
     ],
 )
+
+define_mgk_ddk_ko(
+    name = "mtk_gpufreq_mt6858",
+    out = "mtk_gpufreq_mt6858.ko",
+    srcs = [
+        "gpufreq_mt6858.c",
+        "gpuppm.c",
+        "gpufreq_history_mt6858.c",
+    ]+glob(["**/include/*.h"]),
+
+    includes = ["include"],
+
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/gpu/mediatek/gpufreq/v2:mtk_gpufreq_wrapper".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/gpu/mediatek/gpueb:mtk_gpueb".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
+    ],
+
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/gpu/mediatek/gpufreq/v2:gpufreq_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/gpu/mediatek/gpueb:gpueb_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/gpu/mediatek/mt-plat:gpu_utility_headers".format(kernel_version),
+    ],
+
+    copts = [
+        "-Wno-unused-variable",
+        "-Wno-unused-function",
+        "-Wno-unused-but-set-variable",
+        "-I$(DEVICE_MODULES_PATH)/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpufreq/v2/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/ged/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpueb/include",
+        "-I$(srctree)/drivers/gpu/mediatek/mt-plat",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/base/power/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/clk/mediatek",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pbm",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/aee/aed",
+    ],
+)
