@@ -18845,6 +18845,12 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			bat1-aging-volts-t2 =  <0 0>;
 			bat1-aging-volts-t3 =  <0 0>;
 
+			lvsys-aging-threshold = <500 1000>;
+			lvsys-aging-volts-t0 =  <0 0>;
+			lvsys-aging-volts-t1 =  <0 0>;
+			lvsys-aging-volts-t2 =  <0 0>;
+			lvsys-aging-volts-t3 =  <0 0>;
+
 			pt-shutdown-enable = <1>;
 
 			throttle-level = <0 1 2>,
@@ -23591,7 +23597,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			interrupts-extended = <&mtk_gauge RG_INT_STATUS_FG_CUR_H>,
 					      <&mtk_gauge RG_INT_STATUS_FG_CUR_L>;
 			interrupt-names = "fg_cur_h", "fg_cur_l";
-			oc-thd = <6000 7000 8000>;
+			oc-thd = <13000 14000 15000>;
 		};
 
 		mt6379_auxadc_2: auxadc2 {
@@ -23660,7 +23666,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			interrupts-extended = <&mtk_gauge2 RG_INT_STATUS_FG_CUR_H>,
 					      <&mtk_gauge2 RG_INT_STATUS_FG_CUR_L>;
 			interrupt-names = "fg_cur_h", "fg_cur_l";
-			oc-thd = <6000 7000 8000>;
+			oc-thd = <13000 14000 15000>;
 		};
 
 		mt6379_eusb2_repeater: mt6379-eusb2-repeater@d00 {
