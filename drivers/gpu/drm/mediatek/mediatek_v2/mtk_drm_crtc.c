@@ -12243,22 +12243,26 @@ VDO_MODE:
 	}
 	GCE_COND_ASSIGN(cmdq_handle, CMDQ_THR_SPR_IDX1, CMDQ_GPR_R07);
 
-	if ((priv->mtk_dbgtp_sta.fifo_mon_en[0]) && (crtc_id == 0)) {
-		DDPMSG("FIFO mon: wait gce event vact start\n");
+	if (crtc_id == 0) {
+		/* For HRT urgent WA */
+		DDPMSG("wait gce event vact start\n");
 		cmdq_pkt_wfe(cmdq_handle, mtk_crtc->gce_obj.event[EVENT_VDO_TRIG_START]);
-		lop.reg = true;
-		lop.idx = var1;
-		rop.reg = false;
-		rop.idx = 0;
-		slot_src_addr = mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_UNDERRUNED);
-		cmdq_pkt_read(cmdq_handle, mtk_crtc->gce_obj.base, slot_src_addr, var1);
-		GCE_IF(lop, R_CMDQ_EQUAL, rop);
-		mtk_disp_dbg_cmdq_use_mutex(mtk_crtc, cmdq_handle, 6);
-		mtk_dbgtp_fifo_mon_set_trig_threshold(mtk_crtc, cmdq_handle);
-		if (!priv->mtk_dbgtp_sta.is_validation_mode &&
-			priv->mtk_dbgtp_sta.dbgtp_en)
-			mtk_dbgtp_switch(mtk_crtc, cmdq_handle, true);
-		GCE_FI;
+		cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base, 0x03E730300, 0, BIT(1) | BIT(3));
+		if (priv->mtk_dbgtp_sta.fifo_mon_en[0]) {
+			lop.reg = true;
+			lop.idx = var1;
+			rop.reg = false;
+			rop.idx = 0;
+			slot_src_addr = mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_UNDERRUNED);
+			cmdq_pkt_read(cmdq_handle, mtk_crtc->gce_obj.base, slot_src_addr, var1);
+			GCE_IF(lop, R_CMDQ_EQUAL, rop);
+			mtk_disp_dbg_cmdq_use_mutex(mtk_crtc, cmdq_handle, 6);
+			mtk_dbgtp_fifo_mon_set_trig_threshold(mtk_crtc, cmdq_handle);
+			if (!priv->mtk_dbgtp_sta.is_validation_mode &&
+				priv->mtk_dbgtp_sta.dbgtp_en)
+				mtk_dbgtp_switch(mtk_crtc, cmdq_handle, true);
+			GCE_FI;
+		}
 	}
 
 	cmdq_pkt_finalize_loop(cmdq_handle);
@@ -13094,6 +13098,10 @@ skip_prete:
 			}
 		}
 	} else {
+		/* For HRT urgent WA */
+		if ((priv->data->mmsys_id == MMSYS_MT6993) && (crtc_id == 0))
+			cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base, 0x03E730300,
+						BIT(1) | BIT(3), BIT(1) | BIT(3));
 		mtk_disp_mutex_submit_sof(mtk_crtc->mutex[0]);
 		if (crtc_id == 0) {
 			if (mtk_crtc->panel_ext)
