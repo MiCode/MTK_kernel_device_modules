@@ -16859,13 +16859,46 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		pmic_oc_debug: pmic-oc-debug {
 			compatible = "mediatek,mt6993-oc-debug";
 		};
-		// PMIC TODO:
-		/*
-		pmic_ecid: pmic-ecid {
-			compatible = "mediatek,mt6661-4-efuse",
-			status = "disabled";
-		}
-		*/
+
+		pmic-ecid {
+			compatible = "mediatek,mt6661-4-efuse";
+			mt6661-4-ecid {
+				ecid = /bits/ 16 <0 0 0 0>;
+				slvid = <4>;
+			};
+			mt6661-3-ecid {
+				ecid = /bits/ 16 <0 0 0 0>;
+				slvid = <3>;
+			};
+			mt6661-5-ecid {
+				ecid = /bits/ 16 <0 0 0 0>;
+				slvid = <5>;
+			};
+			mt6661-6-ecid {
+				ecid = /bits/ 16 <0 0 0 0>;
+				slvid = <6>;
+			};
+			mt6667-7-ecid {
+				ecid =  /bits/ 16 <0 0 0 0>;
+				slvid = <7>;
+			};
+			mt6667-8-ecid {
+				ecid =  /bits/ 16 <0 0 0 0>;
+				slvid = <8>;
+			};
+			mt6667-12-ecid {
+				ecid =  /bits/ 16 <0 0 0 0>;
+				slvid = <12>;
+			};
+			mt6667-13-ecid {
+				ecid =  /bits/ 16 <0 0 0 0>;
+				slvid = <13>;
+			};
+			mt6687-9-ecid {
+				ecid =  /bits/ 16 <0 0 0 0>;
+				slvid = <9>;
+			};
+		};
 
 		mm_fake_eng: mm-fake-engine@30030000 {
 			compatible = "mediatek,mm-fake-engine";
