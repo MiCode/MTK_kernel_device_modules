@@ -36,7 +36,7 @@
 #include "platform/mtk_drm_platform.h"
 #include "mtk_disp_vidle.h"
 #include "mtk_dsi_lpc.h"
-
+#include "mtk_dsi.h"
 #include "mtk-mml-dbgtp.h"
 
 /* Display Debug Top Regs */

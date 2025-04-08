@@ -241,5 +241,7 @@ unsigned int mtk_dsi_get_line_time_vdo(struct mtk_drm_crtc *mtk_crtc,
 unsigned int mtk_dsi_get_dsc_compress_rate(struct mtk_dsi *dsi);
 
 extern u32 mtk_set_mmmc_rg(u32 hw, u32 id, u32 offset, u32 value, u32 mask);
+extern int mtk_hrt_issue_flag_set(bool is_hrt_issue);
+extern int mtk_dsi_fifo_mon_trigger_start_set(bool is_trig_start);
 
 #endif
