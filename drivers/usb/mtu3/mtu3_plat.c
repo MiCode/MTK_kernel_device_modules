@@ -170,7 +170,8 @@ static void ssusb_hwrscs_req_v2_v3(struct ssusb_mtk *ssusb,
 	case MTU3_STATE_OFFLOAD_IDLE:
 		spm_ctrl |= SSUSB_SPM_REQ_OFFLOAD_IDLE_MSK;
 		spm_ctrl &= ~(SSUSB_SPM_REQ_OFFLOAD_IDLE_MSK ^ (spm_msk | SSUSB_SPM_FORCE_HW_REQ_MSK));
-		spm_msk &= ~(spm_msk ^ (SSUSB_SPM_FORCE_HW_REQ_MSK >> 8));
+		/* don't check ack which belongs to HW mode */
+		spm_msk &= ~(SSUSB_SPM_REQ_OFFLOAD_IDLE_MSK >> 8);
 		break;
 	case MTU3_STATE_RESUME:
 		spm_ctrl |= spm_msk;
