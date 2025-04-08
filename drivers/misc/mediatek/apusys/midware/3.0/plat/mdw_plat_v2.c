@@ -59,6 +59,25 @@ struct mdw_rv_msg_cb {
 	uint32_t size;
 } __packed;
 
+/* for rv exec info v2 */
+struct mdw_rv_cmd_exec_info {
+	uint64_t sc_rets;
+	int64_t ret;
+	uint64_t total_us;
+	uint64_t reserved;
+};
+
+struct mdw_rv_subcmd_exec_info {
+	uint32_t driver_time;
+	uint32_t ip_time;
+	uint32_t ip_start_ts;
+	uint32_t ip_end_ts;
+	uint32_t bw;
+	uint32_t boost;
+	uint32_t tcm_usage;
+	int32_t ret;
+};
+
 /* called by plat funcs */
 static struct mdw_mem_map *mdw_plat_v2_create_msg(struct mdw_cmd *c)
 {
@@ -71,6 +90,8 @@ static struct mdw_mem_map *mdw_plat_v2_create_msg(struct mdw_cmd *c)
 	struct mdw_rv_msg_cmd *rmc = NULL;
 	struct mdw_rv_msg_sc *rmsc = NULL;
 	struct mdw_rv_msg_cb *rmcb = NULL;
+	uint64_t rv_einfo_size = sizeof(struct mdw_rv_cmd_exec_info) +
+		(c->num_subcmds * sizeof(struct mdw_rv_subcmd_exec_info));
 
 	mdw_trace_begin("apumdw:rv_cmd_create");
 
@@ -107,9 +128,8 @@ static struct mdw_mem_map *mdw_plat_v2_create_msg(struct mdw_cmd *c)
 
 	/* calc exec_infos_ofs */
 	exec_infos_ofs = cb_size;
-	if (check_add_overflow(cb_size, c->exec_infos->size, &cb_size))
+	if (check_add_overflow(cb_size, rv_einfo_size, &cb_size))
 		goto cb_overflow;
-	// cb_size = MDW_ALIGN(cb_size, MDW_DEFAULT_ALIGN); // no need final align for v2
 
 	/* allocate communicate buffer */
 	rv_cb = mdw_mem_pool_alloc(&mpriv->cmd_buf_pool, cb_size,
@@ -199,9 +219,11 @@ static void mdw_plat_v2_reset_info(struct mdw_rv_msg_cmd *rmc, struct mdw_cmd *c
 									struct mdw_mem_map *map)
 {
 	struct mdw_rv_cmd *rc = (struct mdw_rv_cmd *)c->plat_priv;
+	uint64_t rv_einfo_size = sizeof(struct mdw_rv_cmd_exec_info) +
+		(c->num_subcmds * sizeof(struct mdw_rv_subcmd_exec_info));
 
-	/* clear einfos */
-	memset((void *)rmc + rmc->exec_infos_offset, 0, c->exec_infos->size);
+	/* clear rv exec infos */
+	memset((void *)rmc + rmc->exec_infos_offset, 0, rv_einfo_size);
 
 	/* clear exec ret */
 	c->einfos->c.ret = 0;
@@ -387,6 +409,9 @@ static int mdw_plat_v2_postprocess_cmd(struct mdw_cmd *c)
 {
 	struct mdw_rv_cmd *rc = (struct mdw_rv_cmd *)c->plat_priv;
 	struct mdw_rv_msg_cmd *rmc = NULL;
+	uint64_t rv_cmd_einfo_size = sizeof(struct mdw_rv_cmd_exec_info),
+			 rv_sc_einfo_size = sizeof(struct mdw_rv_subcmd_exec_info),
+			 rv_einfo_size = rv_cmd_einfo_size + (c->num_subcmds * rv_sc_einfo_size);
 	int ret = 0;
 
 	mdw_drv_debug("msg(%pK) sync id (%lld)\n", &rc->s_msg.msg, rc->s_msg.msg.sync_id);
@@ -396,24 +421,26 @@ static int mdw_plat_v2_postprocess_cmd(struct mdw_cmd *c)
 		goto out;
 	}
 
-	/* copy exec info out */
 	/* invalidate */
 	if (mdw_mem_invalidate(c->mpriv, rc->cb))
 		mdw_drv_warn("s(0x%llx) c(0x%llx/0x%llx/0x%llx) invalidate rcbs(%llu) fail\n",
 			(uint64_t)c->mpriv, c->uid, c->kid,
 			c->inference_id, rc->cb->size);
 
-	/* copy exec infos */
+	/* copy exec info out */
 	rmc = (struct mdw_rv_msg_cmd *)rc->cb->vaddr;
-	if (rmc->exec_infos_offset + c->exec_infos->size <= rc->cb->size) {
-		memcpy(c->exec_infos->vaddr,
-			rc->cb->vaddr + rmc->exec_infos_offset,
-			c->exec_infos->size);
+	if (rmc->exec_infos_offset + rv_einfo_size <= rc->cb->size &&
+		rv_cmd_einfo_size <= sizeof(struct mdw_cmd_exec_info) &&
+		rv_sc_einfo_size <= sizeof(struct mdw_subcmd_exec_info) &&
+		rv_einfo_size <= c->exec_infos->size) {
+		mdw_rv_einfo_copy_out(c, (void *)rmc + rmc->exec_infos_offset, rv_cmd_einfo_size, rv_sc_einfo_size);
 	} else {
-		mdw_drv_warn("c(0x%llx/0x%llx/0x%llx) execinfos(%llu/%llu) not matched\n",
-			c->uid, c->kid, c->inference_id,
-			rmc->exec_infos_offset + c->exec_infos->size,
-			rc->cb->size);
+		mdw_drv_warn("c(0x%llx/0x%llx/0x%llx) execinfos not matched\n",
+			c->uid, c->kid, c->inference_id);
+		mdw_drv_debug("  cmd_exec_info(%llu/%lu) subcmd_exec_info(%llu/%lu) execinfos(%llu/%llu)\n",
+			rv_cmd_einfo_size, sizeof(struct mdw_cmd_exec_info),
+			rv_sc_einfo_size, sizeof(struct mdw_subcmd_exec_info),
+			rv_einfo_size, c->exec_infos->size);
 		ret = -EINVAL;
 	}
 

@@ -156,3 +156,20 @@ void mdw_rv_cmd_set_affinity(struct mdw_cmd *c, bool enable)
 		apu_ipi_affin_disable();
 	}
 }
+
+void mdw_rv_einfo_copy_out(struct mdw_cmd *c, void *rv_einfo_entry,
+	uint32_t rv_cmd_einfo_size, uint32_t rv_subcmd_einfo_size)
+{
+	uint32_t i = 0;
+
+	/* copy rv cmd exec info */
+	memcpy(c->exec_infos->vaddr, rv_einfo_entry, rv_cmd_einfo_size);
+
+	/* copy rv sc exec infos */
+	for (i = 0; i < c->num_subcmds; i++) {
+		memcpy(c->exec_infos->vaddr + sizeof(struct mdw_cmd_exec_info) +
+			(i * sizeof(struct mdw_subcmd_exec_info)),
+			rv_einfo_entry + rv_cmd_einfo_size + (i * rv_subcmd_einfo_size),
+			rv_subcmd_einfo_size);
+	}
+}

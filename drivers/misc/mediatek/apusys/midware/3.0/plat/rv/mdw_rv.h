@@ -71,5 +71,6 @@ uint32_t mdw_rv_get_info(struct mdw_device *mdev, enum mdw_info_type type);
 int mdw_rv_power_onoff(struct mdw_device *mdev, enum mdw_power_type power_onoff);
 int mdw_rv_dtime_handle(struct mdw_cmd *c);
 void mdw_rv_cmd_set_affinity(struct mdw_cmd *c, bool enable);
-
+void mdw_rv_einfo_copy_out(struct mdw_cmd *c, void *rv_einfo_entry,
+	uint32_t rv_cmd_einfo_size, uint32_t rv_subcmd_einfo_size);
 #endif
