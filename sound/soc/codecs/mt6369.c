@@ -481,6 +481,40 @@ static int dmic_used_get(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+#if IS_ENABLED(CONFIG_MTK_VOW_SUPPORT)
+
+static int vow_pbuf_ch_get(struct snd_kcontrol *kcontrol,
+			   struct snd_ctl_elem_value *ucontrol)
+{
+	unsigned int pbuf_active = 0; // no use
+
+	ucontrol->value.integer.value[0] = pbuf_active;
+
+	return 0;
+}
+
+static int vow_codec_type_get(struct snd_kcontrol *kcontrol,
+			      struct snd_ctl_elem_value *ucontrol)
+{
+	unsigned int codec_type = VOW_SCP_FIFO;
+
+	ucontrol->value.integer.value[0] = codec_type;
+
+	return 0;
+}
+
+static int vow_cic_type_get(struct snd_kcontrol *kcontrol,
+			    struct snd_ctl_elem_value *ucontrol)
+{
+	unsigned int vow_cic_type = 0; // VOW Legacy CIC
+
+	ucontrol->value.integer.value[0] = vow_cic_type;
+
+	return 0;
+}
+
+#endif
+
 static int mt6369_snd_soc_put_volsw(struct snd_kcontrol *kcontrol,
 				    struct snd_ctl_elem_value *ucontrol)
 {
@@ -5757,6 +5791,11 @@ static const struct snd_kcontrol_new mt6369_snd_misc_controls[] = {
 	SOC_ENUM_EXT("PMIC_REG_CLEAR", misc_control_enum[0],
 		     NULL, mt6369_rcv_acc_set),
 	SOC_ENUM_EXT("DMic Used", misc_control_enum[0], dmic_used_get, NULL),
+#if IS_ENABLED(CONFIG_MTK_VOW_SUPPORT)
+	SOC_ENUM_EXT("VOW PBUF Channel", misc_control_enum[0], vow_pbuf_ch_get, NULL),
+	SOC_ENUM_EXT("VOW codec type", misc_control_enum[0], vow_codec_type_get, NULL),
+	SOC_ENUM_EXT("VOW CIC type", misc_control_enum[0], vow_cic_type_get, NULL),
+#endif
 };
 
 static int mt6369_codec_init_reg(struct snd_soc_component *cmpnt)
@@ -5884,7 +5923,7 @@ static void codec_write_reg(struct mt6369_priv *priv, void *arg)
 	char delim[] = " ,";
 	unsigned int reg_addr = 0;
 	unsigned int reg_value = 0;
-//	int ret = 0;
+	int ret = 0;
 
 	token1 = strsep(&temp, delim);
 	token2 = strsep(&temp, delim);
@@ -5892,8 +5931,8 @@ static void codec_write_reg(struct mt6369_priv *priv, void *arg)
 		 __func__, token1, token2, temp);
 
 	if ((token1 != NULL) && (token2 != NULL)) {
-//		ret = kstrtouint(token1, 16, &reg_addr);
-//		ret = kstrtouint(token2, 16, &reg_value);
+		ret = kstrtouint(token1, 16, &reg_addr);
+		ret = kstrtouint(token2, 16, &reg_value);
 		dev_info(priv->dev, "%s(), reg_addr = 0x%x, reg_value = 0x%x\n",
 			 __func__,
 			 reg_addr, reg_value);
