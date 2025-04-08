@@ -12,9 +12,8 @@
 
 enum SMAP_MODE {
 	MODE_NORMAL,
-	MODE_TEST1,
-	MODE_TEST2,
-	MODE_TEST3,
+	MODE_THRESHOLD_10GB,
+	MODE_THRESHOLD_10GB_BYPASS_TEMP,
 	MODE_NUM,
 };
 
@@ -41,6 +40,7 @@ struct smap_mbrain {
 	unsigned int cnt;
 	unsigned int type;
 	unsigned int enable;
+	unsigned int mode;
 	unsigned int dump_cnt;
 	unsigned int mitigation_cnt;
 	unsigned int dect_cnt;
