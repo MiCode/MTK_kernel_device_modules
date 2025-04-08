@@ -17,6 +17,7 @@
 
 #define MAX_INT 0x7FFF
 #define MD_TX_REDUCE 6
+#define MAX_VALUE 0x7FFF
 
 static int *temp_thresholds;
 static int temp_stage_size;
@@ -143,6 +144,40 @@ static void md_lbat_dedicate_callback(unsigned int thd)
 		md_pt_low_battery_cb(lv, NULL);
 }
 
+#endif
+
+#if IS_ENABLED(CONFIG_MTK_BATTERY_PERCENT_THROTTLING)
+static void md_bp_cb(enum BATTERY_PERCENT_LEVEL_TAG bp_level)
+{
+	unsigned int md_throttle_cmd;
+	int ret, val = 0;
+
+	if (bp_level == 0)
+		val = TMC_CTRL_LOW_POWER_RECHARGE_BATTERY_EVENT;
+	else
+		val = TMC_CTRL_LOW_POWER_LOW_BATTERY_EVENT;
+
+	md_throttle_cmd = TMC_CTRL_CMD_LOW_POWER_IND | val << 8;
+
+	ret = exec_ccci_kern_func(ID_THROTTLING_CFG, (char *)&md_throttle_cmd, 4);
+
+	pr_notice("%s: send cmd to CCCI ret=%d, cmd=0x%x\n", __func__, ret, md_throttle_cmd);
+}
+
+static void md_bp_uisoc_chg_cb(unsigned int chg_state, unsigned int soc)
+{
+	unsigned int md_throttle_cmd;
+	int ret;
+
+	md_throttle_cmd = TMC_CTRL_CMD_LOW_POWER_IND | soc << 8 | chg_state << 16;
+	ret = exec_ccci_kern_func(ID_THROTTLING_CFG, (char *)&md_throttle_cmd, 4);
+	if (ret) {
+		pr_info("%s: error, ret=%d, cmd=0x%x\n", __func__, ret, md_throttle_cmd);
+		return;
+	}
+	pr_info("[%s] notify md soc:%d, chg state:%d\n", __func__, soc, chg_state);
+	pr_info("[%s] send cmd to CCCI ret=%d, cmd=0x%x\n", __func__, ret, md_throttle_cmd);
+}
 #endif
 
 #if IS_ENABLED(CONFIG_MTK_BATTERY_OC_POWER_THROTTLING)
@@ -378,6 +413,10 @@ static int mtk_md_power_throttling_probe(struct platform_device *pdev)
 #if IS_ENABLED(CONFIG_MTK_BATTERY_OC_POWER_THROTTLING)
 	if (md_pt_info[OC_POWER_THROTTLING].max_lv > 0)
 		register_battery_oc_notify(&md_pt_over_current_cb, BATTERY_OC_PRIO_MD, NULL);
+#endif
+#if IS_ENABLED(CONFIG_MTK_BATTERY_PERCENT_THROTTLING)
+	register_bp_thl_md_notify(&md_bp_cb, BATTERY_PERCENT_PRIO_MD);
+	register_bp_thl_md_uisoc_notify(&md_bp_uisoc_chg_cb, BATTERY_PERCENT_PRIO_MD);
 #endif
 	return 0;
 }

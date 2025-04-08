@@ -36,6 +36,7 @@ enum BATTERY_PERCENT_PRIO_TAG {
 };
 
 typedef void (*battery_percent_callback)(BATTERY_PERCENT_LEVEL tag);
+typedef void (*bp_md_uisoc_callback)(unsigned int chg_state, unsigned int soc);
 
 #if IS_ENABLED(CONFIG_MTK_BATTERY_PERCENT_THROTTLING)
 void register_bp_thl_notify(
@@ -43,6 +44,9 @@ void register_bp_thl_notify(
 		BATTERY_PERCENT_PRIO prio_val);
 void register_bp_thl_md_notify(
 		battery_percent_callback md_cb,
+		BATTERY_PERCENT_PRIO prio_val);
+void register_bp_thl_md_uisoc_notify(
+		bp_md_uisoc_callback md_uisoc_cb,
 		BATTERY_PERCENT_PRIO prio_val);
 void unregister_bp_thl_notify(BATTERY_PERCENT_PRIO prio_val);
 void set_bp_thl_ut_status(int status);
