@@ -63,7 +63,6 @@ EXTRA_SYMBOLS += $(wildcard $(DEVICE_MODULES_FOLDER)/drivers/input/touchscreen/B
 EXTRA_SYMBOLS += $(wildcard $(DEVICE_MODULES_FOLDER)/drivers/input/touchscreen/NT36532/*Module.symvers)
 EXTRA_SYMBOLS += $(wildcard $(DEVICE_MODULES_FOLDER)/drivers/input/touchscreen/NT36672C_I2C/*Module.symvers)
 EXTRA_SYMBOLS += $(wildcard $(DEVICE_MODULES_FOLDER)/drivers/input/touchscreen/GT9896S/*Module.symvers)
-EXTRA_SYMBOLS += $(wildcard $(DEVICE_MODULES_FOLDER)/drivers/input/touchscreen/k6895v1_64_95t_alpha/*Module.symvers)
 EXTRA_SYMBOLS += $(wildcard $(DEVICE_MODULES_FOLDER)/drivers/input/touchscreen/ts_scp/*Module.symvers)
 EXTRA_SYMBOLS += $(wildcard $(DEVICE_MODULES_FOLDER)/drivers/leds/*Module.symvers)
 EXTRA_SYMBOLS += $(wildcard $(DEVICE_MODULES_FOLDER)/drivers/leds/flash/*Module.symvers)
