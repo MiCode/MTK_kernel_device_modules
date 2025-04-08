@@ -1852,6 +1852,31 @@ static const struct proc_ops mmqos_last_debug_fops = {
 	.proc_release = single_release,
 };
 
+struct MM_bwData g_sidData[MAX_SUBSYS_NUM] = {0};
+
+struct MM_bwData *get_mm_bw_data_for_mbrain(void)
+{
+	if (!(mmqos_state & MMPC_V2_ENABLE)) {
+		MMQOS_ERR("Not support for MBrain.\n");
+		return NULL;
+	}
+
+	for (int i = 0; i < MAX_SUBSYS_NUM; i++) {
+		g_sidData[i].sid = i;
+		// total bw
+		g_sidData[i].totalHRT = read_register(SUBSYS_V2_HW_BW_HRT(i)) << DRAM_BW_UNIT_SHIFT;
+		g_sidData[i].totalSRT = read_register(SUBSYS_V2_HW_BW_SRT(i)) << DRAM_BW_UNIT_SHIFT;
+		g_sidData[i].totalEMIHRT = read_register(SUBSYS_V2_HW_EMI_BW_HRT(i)) << DRAM_BW_UNIT_SHIFT;
+		g_sidData[i].totalEMISRT = read_register(SUBSYS_V2_HW_EMI_BW_SRT(i)) << DRAM_BW_UNIT_SHIFT;
+		// channel bw
+		for (int j = 0; j < MAX_BW_VALUE_NUM; j++)
+			g_sidData[i].mmpc_chan_bw[j].bw = read_register(SUBSYS_V2_HW_BW_OFFSET(i, j))
+								<< CHNN_BW_UNIT_SHIFT;
+	}
+	return g_sidData;
+}
+EXPORT_SYMBOL(get_mm_bw_data_for_mbrain);
+
 static void mmpc_subsys_hw_mode_full_dump(struct seq_file *file, int sid)
 {
 	if (mmqos_state & MMPC_V2_ENABLE) {
