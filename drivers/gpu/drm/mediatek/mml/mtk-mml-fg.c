@@ -1316,7 +1316,7 @@ static s32 ut_set(const char *val, const struct kernel_param *kp)
 {
 	s32 result;
 
-	result = sscanf(val, "%d", &ut_case);
+	result = kstrtou32(val, 16, &ut_case);
 	if (result != 1) {
 		mml_err("invalid input: %s, result(%d)", val, result);
 		return -EINVAL;
