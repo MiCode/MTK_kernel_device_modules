@@ -13,6 +13,9 @@
 #include <linux/sched/signal.h>
 #include "mtk_page_pool.h"
 
+#define TRY_LOCK_RS_INTERVAL      (10 * HZ)
+#define TRY_LOCK_RS_BURST         (1)
+
 static LIST_HEAD(pool_list);
 static DEFINE_MUTEX(pool_list_lock);
 
@@ -228,6 +231,8 @@ int mtk_dmabuf_page_pool_do_shrink(struct mtk_dmabuf_page_pool *pool, gfp_t gfp_
 
 static int mtk_dmabuf_page_pool_shrink(gfp_t gfp_mask, int nr_to_scan)
 {
+	static DEFINE_RATELIMIT_STATE(dbg_rs, TRY_LOCK_RS_INTERVAL,
+				      TRY_LOCK_RS_BURST);
 	struct mtk_dmabuf_page_pool *pool;
 	int nr_total = 0;
 	int nr_freed;
@@ -237,7 +242,9 @@ static int mtk_dmabuf_page_pool_shrink(gfp_t gfp_mask, int nr_to_scan)
 		only_scan = 1;
 
 	if (mutex_trylock(&pool_list_lock) == 0) {
-		pr_info("%s: mutex_trylock busy\n", __func__);
+		if (__ratelimit(&dbg_rs))
+			pr_info("%s: mutex_trylock busy\n", __func__);
+
 		return 0;
 	}
 
