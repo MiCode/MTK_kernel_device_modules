@@ -10,6 +10,7 @@
  * GPUFREQ Config
  **************************************************/
 #define GPUFREQ_KDEBUG_VERSION              (0x20250311)
+#define GPUFREQ_SLAVE_BUS_RECOVERY_ENABLE   (0)
 
 /**************************************************
  * Clock Setting
