@@ -50,13 +50,15 @@ struct mtk_disp_dbi_count {
 	const struct mtk_disp_dbi_count_data *data;
 	int status;
 	int current_mode;
-	int current_count_mode;
+	atomic_t current_count_mode;
+	atomic_t new_count_mode;
 	uint32_t current_bl;
 	uint32_t current_fps;
 	int current_temp;
 	bool temp_chg;
 	int current_freq;
 	atomic_t buffer_full;
+	uint32_t buffer_time;
 	uint32_t data_fmt;
 	struct mtk_dbi_dma_buf count_buffer;
 	struct mtk_dbi_count_buf_cfg buffer_cfg;
@@ -90,8 +92,9 @@ int mtk_dbi_count_wait_event(struct mtk_ddp_comp *comp, void *data);
 int mtk_dbi_count_wait_disable_finish(struct mtk_ddp_comp *comp, void *data);
 int mtk_dbi_count_wait_new_frame(struct mtk_ddp_comp *comp, void *data);
 void mtk_crtc_dbi_count_init(struct mtk_drm_crtc *mtk_crtc);
-void mtk_crtc_dbi_count_cfg(struct mtk_drm_crtc *mtk_crtc, struct mtk_crtc_state *crtc_state);
-void mtk_crtc_dbi_count_release_fence(struct mtk_drm_crtc *mtk_crtc);
+void mtk_crtc_dbi_count_cfg(struct mtk_drm_crtc *mtk_crtc, struct mtk_crtc_state *crtc_state, struct cmdq_pkt *handle);
+void mtk_crtc_dbi_count_pre_cfg(struct mtk_drm_crtc *mtk_crtc, struct mtk_crtc_state *crtc_state);
+
 int mtk_dbi_count_load_buffer(struct mtk_ddp_comp *comp, void *data);
 void mtk_dbi_count_hrt_cal(struct drm_device *dev, int disp_idx,
 	uint32_t en, uint32_t slice_size, uint32_t slice_num,
@@ -100,7 +103,7 @@ int mtk_dbi_count_clear_event(struct mtk_ddp_comp *comp, void *data);
 int mtk_dbi_count_check_buffer(struct mtk_ddp_comp *comp, void *data);
 
 void mtk_dbi_count_bypass(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle);
-void mtk_oddmr_dbi_udma_off(struct mtk_ddp_comp *comp,
+void mtk_oddmr_dbi_count_clk_off(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle);
 
 struct dbi_count_block_info mtk_dbi_count_get_block_info(uint32_t block_h, uint32_t block_v);

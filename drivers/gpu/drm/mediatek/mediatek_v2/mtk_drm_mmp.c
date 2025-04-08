@@ -440,6 +440,8 @@ void init_crtc_mmp_event(void)
 			crtc_mmp_root, "dbi_merge");
 		g_CRTC_MMP_Events[i].dbi_drop= mmprofile_register_event(
 			crtc_mmp_root, "dbi_drop");
+		g_CRTC_MMP_Events[i].dbi_count_done= mmprofile_register_event(
+			crtc_mmp_root, "dbi_count_done");
 	}
 }
 

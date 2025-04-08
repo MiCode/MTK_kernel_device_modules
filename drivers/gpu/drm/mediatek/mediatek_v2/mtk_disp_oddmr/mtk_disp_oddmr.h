@@ -450,10 +450,10 @@ struct mtk_dbi_count_buf_cfg{
 	uint32_t level;
 	uint32_t capacity_ms;      // ms
 	uint32_t _hw_threshold; // for debug
+	uint32_t sw_timer_ms; // ms
 	struct mtk_dbi_reg_list buf_reg_list;
 
 };
-
 
 struct bitstream_buffer {
 	uint8_t *_self;

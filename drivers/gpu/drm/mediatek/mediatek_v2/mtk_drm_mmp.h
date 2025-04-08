@@ -206,6 +206,7 @@ struct CRTC_MMP_Events {
 	mmp_event dbi_trigger;
 	mmp_event dbi_merge;
 	mmp_event dbi_drop;
+	mmp_event dbi_count_done;
 };
 
 struct PKT_MMP_Events {

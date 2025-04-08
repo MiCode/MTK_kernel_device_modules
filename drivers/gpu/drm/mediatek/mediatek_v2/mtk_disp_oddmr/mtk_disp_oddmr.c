@@ -9461,7 +9461,13 @@ static int mtk_oddmr_dbi_init(struct mtk_ddp_comp *comp, struct mtk_drm_dbi_cfg_
 		ODDMRFLOW_LOG("dbi is not support\n");
 		return -1;
 	}
+
 	if (oddmr_data->primary_data->dbi_state != ODDMR_INVALID) {
+		if(oddmr_data->primary_data->dbi_state >= ODDMR_INIT_DONE){
+			DDPMSG("%s dbi already inited, state %d\n",__func__, oddmr_data->primary_data->dmr_state);
+			return 0;
+		}
+
 		ODDMRFLOW_LOG("dbi can not init, state %d\n", oddmr_data->primary_data->dmr_state);
 		return -1;
 	}
@@ -11694,8 +11700,10 @@ static int mtk_oddmr_pq_ioctl_transact(struct mtk_ddp_comp *comp,
 			oddmr_data->dbi_data.scp_param = ptr;
 			oddmr_data->dbi_data.load_scp_param =1;
 			DDPMSG("PQ_DBI_LOAD_SCP_PARAM %d size\n", size);
-		} else
-			return -1;
+		} else {
+			DDPMSG("%s scp dbi already inited, state %d\n", __func__, oddmr_data->primary_data->dmr_state);
+			return 0;
+		}
 		break;
 	case PQ_ODDMR_OD_INIT:
 		ret = mtk_oddmr_od_init(comp, params);

@@ -222,8 +222,8 @@ enum EVENT_TRIGGER_PT {
 #define DISP_SLOT_CUR_HRT_VAL_DBIR (DISP_SLOT_CUR_HRT_VAL_DMRR_STASH + 0x4)
 #define DISP_SLOT_CUR_HRT_VAL_ODRW (DISP_SLOT_CUR_HRT_VAL_DBIR + 0x4)
 #define DISP_SLOT_CUR_HRT_VAL_ODRW_STASH (DISP_SLOT_CUR_HRT_VAL_ODRW + 0x4)
-#define DISP_SLOT_RELEASE_DBI_COUNT_FENCE (DISP_SLOT_CUR_HRT_VAL_ODRW_STASH + 0x4)
-#define DISP_SLOT_CURRENT_DBI_COUNT_FENCE (DISP_SLOT_RELEASE_DBI_COUNT_FENCE + 0x4)
+#define DISP_SLOT_DBI_COUNT_ERROR (DISP_SLOT_CUR_HRT_VAL_ODRW_STASH + 0x4)
+#define DISP_SLOT_CURRENT_DBI_COUNT_FENCE (DISP_SLOT_DBI_COUNT_ERROR + 0x4)
 #define DISP_SLOT_TRIGGER_LOOP_SKIP_MERGE (DISP_SLOT_CURRENT_DBI_COUNT_FENCE + 0x4)
 #define DISP_SLOT_CUR_HRT_VAL_DBI_COUNT (DISP_SLOT_TRIGGER_LOOP_SKIP_MERGE + 0x4)
 
@@ -1118,6 +1118,8 @@ struct mtk_dbi_event {
 	unsigned int event;
 	struct wait_queue_head event_wq;
 	spinlock_t lock;
+	struct workqueue_struct *work_queue;
+	struct work_struct task;
 };
 
 struct dbi_count_data {
@@ -1127,7 +1129,7 @@ struct dbi_count_data {
 	struct wait_queue_head disable_finish_wq;
 	atomic_t disable_finish;
 
-	int slice_size;
+	int real_idx;
 	int slice_num;
 	int fence_idx;
 	int fence_unreleased;

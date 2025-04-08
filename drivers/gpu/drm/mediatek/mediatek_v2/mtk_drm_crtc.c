@@ -11429,8 +11429,6 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 	DDP_COMMIT_LOCK(&priv->commit.lock, __func__, cb_data->pres_fence_idx);
 	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
 
-	mtk_crtc_dbi_count_release_fence(mtk_crtc);
-
 	ovl_status = mtk_drm_crtc_check_ovl_status(crtc, cb_data);
 
 	if ((id == 0) && (priv && priv->power_state)) {
@@ -13027,7 +13025,7 @@ skip_prete:
 		for_each_comp_in_cur_crtc_path(dbi_comp, mtk_crtc, i, j) {
 			if (mtk_ddp_comp_get_type(dbi_comp->id) == MTK_DISP_DBI_COUNT) {
 				GCE_DO(wfe, EVENT_DBI_COUNT_EOF);
-				mtk_oddmr_dbi_udma_off(dbi_comp, cmdq_handle);
+				mtk_oddmr_dbi_count_clk_off(dbi_comp, cmdq_handle);
 			}
 		}
 
@@ -19151,7 +19149,7 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 		}
 	}
 
-	mtk_crtc_dbi_count_cfg(mtk_crtc, mtk_crtc_state);
+	mtk_crtc_dbi_count_pre_cfg(mtk_crtc, mtk_crtc_state);
 
 #ifdef MTK_DRM_ADVANCE
 	if (mtk_crtc->fake_layer.fake_layer_mask)
@@ -20598,6 +20596,8 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 		} else {
 			/* DL with trigger loop */
 			if (!mtk_crtc->path_data->is_discrete_path) {
+				if(!is_from_dal)
+					mtk_crtc_dbi_count_cfg(mtk_crtc, state, cmdq_handle);
 				CRTC_MMP_MARK(0, set_dirty, GCE_FLUSH, (unsigned long)cmdq_handle);
 				cmdq_pkt_set_event(cmdq_handle,
 					   mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
