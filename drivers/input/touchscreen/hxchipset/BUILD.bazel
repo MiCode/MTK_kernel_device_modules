@@ -28,6 +28,7 @@ define_mgk_ddk_ko(
         "CONFIG_HIMAX_WAKE_UP",
         "CONFIG_TOUCHSCREEN_HIMAX_INSPECT",
         "CONFIG_TOUCHSCREEN_HIMAX_DEBUG",
+        "CONFIG_DRM_MEDIATEK",
     ],
     ko_deps = [
         "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:mtk_disp_notify".format(kernel_version),
