@@ -1838,7 +1838,7 @@ static int mtk_oddmr_dmr_bpp(struct mtk_ddp_comp *comp, bool max)
 			table_size = dmr_cfg_info->table_index.table_byte_num;
 		layer_size = dmr_cfg_info->basic_info.panel_width
 			* dmr_cfg_info->basic_info.panel_height * 4;
-		ret = (400 * table_size)/layer_size;
+		ret = (400 * table_size + layer_size - 1) / layer_size;
 		ODDMRFLOW_LOG("dmr hrt %d\n", ret);
 	}
 	return ret;
@@ -5570,7 +5570,8 @@ static void mtk_oddmr_dmr_bl_chg(struct mtk_ddp_comp *comp, uint32_t bl_level, s
 	is_bin_chg = mtk_oddmr_dmr_binset_check(comp, cur_binset_idx, bl_level, handle);
 	if (is_bin_chg) {
 		oddmr_data->primary_data->slc_frame_cnt[DMR_SLC] = 0;
-		mtk_oddmr_dmr_config(comp, handle);
+		atomic_set(&oddmr_data->dmr_data.bin_idx_chg, 1);
+		DDPINFO("DeMura bin file changed but port bw updated until atomic occurs\n");
 	} else {
 		ODDMRFLOW_LOG("bin index dose not been changed\n");
 		if (cur_bin_idx != -1) {
@@ -5892,7 +5893,7 @@ static int mtk_oddmr_sum_hrt(struct mtk_ddp_comp *comp, enum CHANNEL_TYPE type, 
 			mtk_crtc->base.state->adjusted_mode.hdisplay);
 	}
 	sum = sum * res_ratio / 1000;
-	ODDMRAPI_LOG("type:%d, od %d dmr %d dbi %d sum %d res_ratio %llu\n",
+	DDPINFO("type:%d, od %d dmr %d dbi %d sum %d res_ratio %llu\n",
 			type, od_enable, oddmr_data->dmr_enable,
 			oddmr_data->dbi_enable, sum, res_ratio);
 
@@ -6217,6 +6218,7 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		static int dmr_enable;
 		static int dbi_enable;
 		unsigned int remap_enable;
+		unsigned int bin_idx_chg = 0;
 
 		slc_alloc = oddmr_data->data->slc_read_alloc;
 		slc_period = oddmr_data->data->slc_period;
@@ -6229,14 +6231,15 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		mtk_oddmr_od_sec_bypass(comp, sec_on, handle);
 
 		cur_binset_idx = atomic_read(&oddmr_data->dmr_data.cur_binset_idx);
-		if((dmr_enable != oddmr_data->dmr_enable) ||
-			(dmr_binset_idx != cur_binset_idx && oddmr_data->dmr_enable)) {
+		bin_idx_chg = atomic_read(&oddmr_data->dmr_data.bin_idx_chg);
+		if((dmr_enable != oddmr_data->dmr_enable) || (oddmr_data->dmr_enable &&
+			(dmr_binset_idx != cur_binset_idx || bin_idx_chg == 1))) {
 			mutex_lock(&oddmr_data->primary_data->timing_lock);
 			cur_dbv = oddmr_data->primary_data->current_timing.bl_level;
 			mutex_unlock(&oddmr_data->primary_data->timing_lock);
-			mtk_oddmr_dmr_binset_check(comp, cur_binset_idx, cur_dbv, handle);
 			oddmr_data->primary_data->slc_frame_cnt[DMR_SLC] = 0;
 			mtk_oddmr_dmr_config(comp, handle);
+			atomic_set(&oddmr_data->dmr_data.bin_idx_chg, 0);
 			dmr_enable = oddmr_data->dmr_enable;
 			atomic_set(&oddmr_data->dmr_data.remap_enable, dmr_enable);
 			if (dmr_enable == 1) {
@@ -6410,7 +6413,7 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		u32 bw_val, bw_base = *(unsigned int *)params;
 		struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
 		u32 layer_num = 0;
-		u32 stash_bw = 17;
+		u32 stash_bw = 0;
 		int cur_bin_idx = atomic_read(&oddmr_data->dmr_data.cur_bin_idx);
 		struct mtk_oddmr_od_param *od_param = &oddmr_data->primary_data->od_param;
 
@@ -6426,22 +6429,25 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 
 		if (priv->data->respective_ostdl) {
 			/* DMR outstanding */
+			if (cur_bin_idx == -1)
+				dmr_enable = 0;
 			layer_num = mtk_oddmr_dmr_bpp(comp, false);
 			bw_val = (layer_num * bw_base / 400) * dmr_enable;
 			/* stash bw = data_bw / 4096 * 16 */
-			if (oddmr_data->data->is_dmr_support_stash && cur_bin_idx >= 0) {
+			if (oddmr_data->data->is_dmr_support_stash) {
 				stash_bw = bw_val / 256;
 				stash_bw = stash_bw > oddmr_data->data->min_stash_port_bw ?
 					stash_bw : oddmr_data->data->min_stash_port_bw; //set low bound
-				if (oddmr_data->data->dbi_version == MTK_DBI_V3)
+				if (oddmr_data->data->dbi_version == MTK_DBI_V3) {
 					stash_bw = stash_bw * dmr_enable;
-				else
+					__mtk_disp_set_module_hrt(oddmr_data->qos_req_dmrr_stash_hrt,
+						comp->id, stash_bw, priv->data->respective_ostdl);
+				} else {
 					bw_val += (stash_bw * dmr_enable);
+				}
 			}
 			__mtk_disp_set_module_hrt(oddmr_data->qos_req_dmrr_hrt, comp->id, bw_val,
 				priv->data->respective_ostdl);
-			__mtk_disp_set_module_hrt(oddmr_data->qos_req_dmrr_stash_hrt,
-						comp->id, (stash_bw * dmr_enable), priv->data->respective_ostdl);
 			oddmr_data->last_hrt_dmrr = bw_val;
 			oddmr_data->last_hrt_dmrr_stash = stash_bw;
 
@@ -6523,7 +6529,7 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 		struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
 		u32 layer_num = 0;
-		u32 stash_bw = 17;
+		u32 stash_bw = 0;
 		int cur_bin_idx = atomic_read(&oddmr_data->dmr_data.cur_bin_idx);
 		struct mtk_oddmr_od_param *od_param = &oddmr_data->primary_data->od_param;
 
@@ -6547,9 +6553,11 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		dbi_enable = !!bw_base && dbi_enable;
 
 		/* DMR outstanding */
+		if (cur_bin_idx == -1)
+			dmr_enable = 0;
 		layer_num = mtk_oddmr_dmr_bpp(comp, false);
 		bw_val = (layer_num * bw_base / 400) * dmr_enable;
-		if (oddmr_data->data->is_dmr_support_stash && cur_bin_idx >= 0) {
+		if (oddmr_data->data->is_dmr_support_stash) {
 			/* stash bw = data_bw / 4096 * 16 */
 			stash_bw = bw_val / 256;
 			stash_bw = stash_bw > oddmr_data->data->min_stash_port_bw ?
@@ -6694,7 +6702,7 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	case PMQOS_SET_HRT_BW_DELAY_POST:
 	{
 		u32 bw_val = 0;
-		u32 stash_bw = oddmr_data->data->min_stash_port_bw;
+		u32 stash_bw = 0;
 		struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 		struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
 
@@ -6716,7 +6724,7 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			__mtk_disp_set_module_hrt(oddmr_data->qos_req_dmrr_hrt, comp->id, bw_val,
 				priv->data->respective_ostdl);
 			*(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
-				DISP_SLOT_CUR_HRT_VAL_DMRR) =	NO_PENDING_HRT;
+				DISP_SLOT_CUR_HRT_VAL_DMRR) = NO_PENDING_HRT;
 			if (oddmr_data->data->dbi_version >= MTK_DBI_V3) {
 				ODDMRLOW_LOG("dmrr stash bw final down to %u,last:%u\n",
 					stash_bw, oddmr_data->last_hrt_dmrr_stash);
@@ -11442,6 +11450,8 @@ static int mtk_oddmr_pq_ioctl_transact(struct mtk_ddp_comp *comp,
 					atomic_set(&oddmr_data->primary_data->dmr_hrt_done, 0);
 					PC_ERR("repaint timeout\n");
 					ret = -1;
+				} else {
+					ret = 0;
 				}
 			}
 		}

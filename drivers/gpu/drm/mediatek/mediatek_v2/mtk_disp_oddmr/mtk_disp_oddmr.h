@@ -614,6 +614,7 @@ struct mtk_disp_oddmr_dmr_data {
 	atomic_t dmr_bin_num;
 	atomic_t cur_binset_idx;
 	atomic_t cur_bin_idx;
+	atomic_t bin_idx_chg;
 	unsigned int max_table_size;
 };
 
