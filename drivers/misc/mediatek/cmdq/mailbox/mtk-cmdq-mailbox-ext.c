@@ -2229,33 +2229,43 @@ static bool cmdq_thread_timeout_excceed(struct cmdq_thread *thread)
 	return true;
 }
 
-static bool cmdq_thread_skip_timeout_by_cookie(struct cmdq_thread *thread)
+static bool cmdq_thread_skip_timeout(struct cmdq_thread *thread)
 {
 	u32 cookie;
 	struct cmdq_task *task;
 	struct cmdq *cmdq = container_of(thread->chan->mbox, typeof(*cmdq), mbox);
+	bool skip = false;
+	struct cmdq_skip_timeout_cb_data data;
 
 	cookie = readl(thread->base + CMDQ_THR_CNT) & CMDQ_EXEC_CNT_MASK;
 	task = list_first_entry_or_null(&thread->task_busy_list,
 		struct cmdq_task, list_entry);
 	if (task) {
-		if (task->pkt->self_loop && cookie != thread->cookie) {
+		if (task->pkt->skip_timeout_cb) {
+			data.pa_curr = cmdq_thread_get_pc(thread);
+			data.pkt = task->pkt;
+			skip = task->pkt->skip_timeout_cb((void *)(&data));
+			cmdq_msg("%s thrd:%d pkt:%p skip:%d", __func__, thread->idx, task->pkt, skip);
+		} else if (task->pkt->self_loop && cookie != thread->cookie) {
 #ifndef CMDQ_SKIP_BY_CMDQ_BUILT
 #if IS_ENABLED(CONFIG_CMDQ_MMPROFILE_SUPPORT)
 			mmprofile_log_ex(cmdq_mmp.warning, MMPROFILE_FLAG_PULSE,
 				MMP_THD(thread, cmdq), cookie);
 #endif
 #endif
-			mod_timer(&thread->timeout, jiffies +
-				msecs_to_jiffies(thread->timeout_ms));
 			cmdq_msg("%s pre_cookie:%d cookie:%d pass timeout flow",
 				__func__, thread->cookie, cookie);
 			thread->cookie = cookie;
-			return true;
+			skip = true;
 		}
 	}
 
-	return false;
+	if (skip) {
+		mod_timer(&thread->timeout, jiffies +
+			msecs_to_jiffies(thread->timeout_ms));
+	}
+
+	return skip;
 }
 
 void cmdq_thread_reset_timer(void *chan)
@@ -2297,7 +2307,7 @@ static void cmdq_thread_handle_timeout_work(struct work_struct *work_item)
 	}
 
 	/* After IRQ, first task may change. */
-	if (cmdq_thread_skip_timeout_by_cookie(thread)) {
+	if (cmdq_thread_skip_timeout(thread)) {
 		spin_unlock_irqrestore(&thread->chan->lock, flags);
 		cmdq_mtcmos_by_fast(cmdq, false);
 		return;

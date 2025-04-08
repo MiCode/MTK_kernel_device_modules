@@ -57,6 +57,10 @@ void cmdq_controller_set_fp(struct cmdq_util_controller_fp *cust_cmdq_util);
 
 #define CMDQ_THRD_PKT_ARR_MAX	1024
 
+/* CMDQ FUNCTION RETURN VALUE*/
+#define CMDQ_FIND_INST_BY_PC_FAIL	(0xFFFFFFFF)
+#define CMDQ_OPCODE_MATCH_FAIL		(0xFFFFFFFE)
+
 enum CMDQ_PKT_ID_ARR_IDX {
 	CMDQ_PKT_ID_CNT,
 	CMDQ_PKT_BUFFER_CNT,
@@ -164,6 +168,8 @@ enum CMDQ_HW_FLAGS {
 typedef int (*cmdq_aee_cb)(struct cmdq_cb_data data);
 
 typedef void (*cmdq_async_flush_cb)(struct cmdq_cb_data data);
+typedef bool (*cmdq_skip_timeout_cb)(void *data);
+
 
 struct cmdq_task_cb {
 	cmdq_async_flush_cb	cb;
@@ -252,6 +258,7 @@ struct cmdq_pkt {
 	u32				debug_id;
 	u16			cookie;
 	u16			cookie_diff;
+	cmdq_skip_timeout_cb skip_timeout_cb;
 };
 
 struct cmdq_thread {
@@ -284,6 +291,12 @@ struct cmdq_thread {
 #endif
 	bool thread_timeout;
 };
+
+struct cmdq_skip_timeout_cb_data {
+	struct cmdq_pkt *pkt;
+	dma_addr_t pa_curr;
+};
+
 
 extern int mtk_cmdq_log;
 #define cmdq_log(fmt, args...) \
@@ -477,4 +490,5 @@ unsigned long long cmdq_get_hw_flags(void *chan, enum CMDQ_HW_FLAGS);
 bool cmdq_is_hw_trace_thread(struct mbox_chan *chan);
 bool cmdq_get_hw_trace_built_in(u8 hwid);
 void cmdq_set_hw_trace_built_in(u8 hwid, bool built_in);
+s32	cmdq_get_inst_event(struct cmdq_pkt *pkt, dma_addr_t pa_curr);
 #endif /* __MTK_CMDQ_MAILBOX_H__ */

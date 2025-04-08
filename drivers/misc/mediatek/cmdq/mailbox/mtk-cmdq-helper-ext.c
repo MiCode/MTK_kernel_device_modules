@@ -205,6 +205,28 @@ int __weak set_memory_valid(unsigned long addr, int numpages, int enable)
 }
 #endif
 
+s32 cmdq_get_inst_event(struct cmdq_pkt *pkt, dma_addr_t pa_curr)
+{
+	struct cmdq_pkt_buffer *buf;
+	struct cmdq_instruction *inst = NULL;
+
+	list_for_each_entry(buf, &pkt->buf, list_entry) {
+		if (!(pa_curr >= CMDQ_BUF_ADDR(buf) &&
+			pa_curr < CMDQ_BUF_ADDR(buf) + CMDQ_CMD_BUFFER_SIZE)) {
+			continue;
+		}
+		inst = (struct cmdq_instruction *)(buf->va_base + (pa_curr - CMDQ_BUF_ADDR(buf)));
+		break;
+	}
+	if (!inst)
+		return CMDQ_FIND_INST_BY_PC_FAIL;
+	else if(inst->op != CMDQ_CODE_WFE)
+		return CMDQ_OPCODE_MATCH_FAIL;
+
+	return inst->arg_a;
+}
+EXPORT_SYMBOL(cmdq_get_inst_event);
+
 struct mutex buffer_size_mutex;
 
 void cmdq_set_thrd_pkt_buf(struct cmdq_client *client, u32 debug_id, bool add)
