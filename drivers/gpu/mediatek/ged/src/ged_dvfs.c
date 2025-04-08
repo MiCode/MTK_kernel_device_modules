@@ -3403,6 +3403,8 @@ static void ged_dvfs_set_bottom_gpu_freq(unsigned int ui32FreqLevel)
 	s_bottom_freq_id = minfreq_idx - ui32FreqLevel;
 
 	ged_set_limit_floor(LIMITER_APIBOOST, s_bottom_freq_id);
+	if (is_fdvfs_enable() & POLICY_MODE_V2)
+		g_last_def_commit_freq_id = ged_get_cur_oppidx();
 
 	gpu_bottom_freq = ged_get_freq_by_idx(s_bottom_freq_id);
 	if (g_bottom_freq_id < s_bottom_freq_id) {
