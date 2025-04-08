@@ -416,6 +416,10 @@ static int mtk_pcie_monitor_phy(struct phy *phy)
 	void __iomem *sif = pcie_phy->sif_base;
 	u32 tbl[11] = {0};
 
+	dev_info(pcie_phy->dev, "PHY Setting: PEXTP_ANA_LN_TRX_38=%#x, PEXTP_DIG_LN_RX_A0=%#x\n",
+		 readl_relaxed(sif + PEXTP_ANA_LN_TRX_38),
+		 readl_relaxed(sif + PEXTP_DIG_LN_RX_A0));
+
 	mtk_pcie_phy_dbg_set_partition(sif, 0x0);
 	tbl[0] = mtk_pcie_phy_dbg_read_bus(sif, PEXTP_DIG_GLB_04, 0x306);
 	tbl[1] = mtk_pcie_phy_dbg_read_bus(sif, PEXTP_DIG_GLB_04, 0xc0d);
