@@ -1633,6 +1633,8 @@ static enum mml_mode _mtk_atomic_mml_plane(struct drm_device *dev,
 	mtk_crtc->mml_cfg = submit_kernel;
 	mtk_crtc->mml_cfg_pq = submit_pq;
 
+	CRTC_MMP_MARK(0, mml_dbg, crtc_state->prop_val[CRTC_PROP_LYE_IDX], MMP_MML_SUBMITED);
+
 	return submit_kernel->info.mode;
 
 err_submit:
@@ -1731,6 +1733,7 @@ static void mtk_atomic_mml(struct drm_device *dev,
 	mtk_crtc->is_mml = (new_mode == MML_MODE_RACING);
 	mtk_crtc->is_mml_dl = (new_mode == MML_MODE_DIRECT_LINK);
 	if (mtk_crtc->is_mml_dl && priv->data->ovl_exdma_rule) {
+		DDPINFO("%s dl clear set dirty\n", __func__);
 		mtk_crtc->skip_check_trigger = true;
 		addr = mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_SKIP_CHECK_TRIGGER);
 		writel(mtk_crtc->skip_check_trigger, addr);
