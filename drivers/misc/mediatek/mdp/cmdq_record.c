@@ -1431,15 +1431,16 @@ s32 cmdq_op_replace_overwrite_cpr(struct cmdqRecStruct *handle, u32 index,
 	}
 
 	va = (u32 *)cmdq_pkt_get_va_by_offset(handle->pkt, offset);
-	if (new_arg_a >= 0)
-		va[1] = (va[1] & 0xffff0000) | (new_arg_a & 0xffff);
-	if (new_arg_b >= 0)
-		va[0] = (va[0] & 0x0000ffff) | ((new_arg_b & 0xffff) << 16);
-	if (new_arg_c >= 0)
-		va[0] = (va[0] & 0xffff0000) | (new_arg_c & 0xffff);
-	CMDQ_MSG("======REC 0x%p replace cpr cmd(%d):0x%08x 0x%08x\n",
-		handle, index, va[0], va[1]);
-
+	if (va) {
+		if (new_arg_a >= 0)
+			va[1] = (va[1] & 0xffff0000) | (new_arg_a & 0xffff);
+		if (new_arg_b >= 0)
+			va[0] = (va[0] & 0x0000ffff) | ((new_arg_b & 0xffff) << 16);
+		if (new_arg_c >= 0)
+			va[0] = (va[0] & 0xffff0000) | (new_arg_c & 0xffff);
+		CMDQ_MSG("======REC 0x%p replace cpr cmd(%d):0x%08x 0x%08x\n",
+			handle, index, va[0], va[1]);
+	}
 	return 0;
 }
 
