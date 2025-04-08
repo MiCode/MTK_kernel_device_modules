@@ -24122,28 +24122,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		};
 	};
 	aud_gpio_ap_dmic2_off: aud-gpio-ap-dmic2-off {
-		pins-cmd1-dat {
-			pinmux = <PINMUX_GPIO222__FUNC_GPIO222>;
-			input-enable;
-			bias-pull-down;
-		};
-		pins-cmd2-dat {
-			pinmux = <PINMUX_GPIO223__FUNC_GPIO223>;
-			input-enable;
-			bias-pull-down;
-		};
 	};
 	aud_gpio_ap_dmic2_on: aud-gpio-ap-dmic2-on {
-		pins-cmd1-dat {
-			pinmux = <PINMUX_GPIO222__FUNC_DMIC2_CLK>;
-			input-schmitt-enable;
-			bias-disable;
-		};
-		pins-cmd2-dat {
-			pinmux = <PINMUX_GPIO223__FUNC_DMIC2_DAT>;
-			input-schmitt-enable;
-			bias-disable;
-		};
 	};
 	vow_scp_dmic_dat_off: vow-scp-dmic-dat-off {
 		pins-cmd1-dat {
