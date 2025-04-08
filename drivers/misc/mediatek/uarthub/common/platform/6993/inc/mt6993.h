@@ -6,7 +6,7 @@
 #ifndef MT6993_H
 #define MT6993_H
 
-#define MT6993_UARTHUB_DUMP_VERSION    "20250217"
+#define MT6993_UARTHUB_DUMP_VERSION    "20250323"
 
 #define UARTHUB_SUPPORT_FPGA           0
 #define UARTHUB_SUPPORT_DVT            0

@@ -6,8 +6,19 @@
 #ifndef MT6993_DEBUG_H
 #define MT6993_DEBUG_H
 
+#include "common_def_id.h"
+
 #define UARTHUB_DEBUG_MAX_CHAR_PER_LINE 256
 #define UARTHUB_DEBUG_REMAP_ADDR(_dev, _dev_idx) _dev##_base_map_mt6993[_dev_idx]
+#define UARTHUB_DEBUG_RECORD_UART_DEBUG_VAL(_lst, _v0, _v1, _v2, _v3, _v4) \
+	do {\
+		_lst[0] = _v0;\
+		_lst[1] = _v1;\
+		_lst[2] = _v2;\
+		_lst[3] = _v3;\
+		_lst[4] = _v4;\
+	} while (0)
+
 #define UARTHUB_DEBUG_PRINT(_op1, _op2, _p1, _p2, _str, _print_ap, _def_tag, _tag, _t, _last) \
 	do {\
 		int _d0, _d1, _d2, _cmm;\
@@ -19,6 +30,17 @@
 		_op1(_cmm, _p1, _p2, uartip, 3, _op2);\
 		if (_print_ap == 1)\
 			_op1(_ap, _p1, _p2, apuart, 3, _op2);\
+		if (strstr(_str, "LSR")) {\
+			UARTHUB_DEBUG_RECORD_UART_DEBUG_VAL(lst_frame_error, _d0, _d1, _d2, _cmm, _ap);\
+		} else if (strstr(_str, "det_xoff")) {\
+			UARTHUB_DEBUG_RECORD_UART_DEBUG_VAL(lst_det_xoff, _d0, _d1, _d2, _cmm, _ap);\
+		} else if (strstr(_str, "wsend_xoff")) {\
+			UARTHUB_DEBUG_RECORD_UART_DEBUG_VAL(lst_wsend_xoff, _d0, _d1, _d2, _cmm, _ap);\
+		} else if (strstr(_str, "rx_woffset")) {\
+			UARTHUB_DEBUG_RECORD_UART_DEBUG_VAL(lst_rx_woffset, _d0, _d1, _d2, _cmm, _ap);\
+		} else if (strstr(_str, "tx_woffset")) {\
+			UARTHUB_DEBUG_RECORD_UART_DEBUG_VAL(lst_tx_woffset, _d0, _d1, _d2, _cmm, _ap);\
+		}\
 		if (snprintf(_buf, sizeof(_buf),\
 			_str"=["_t"-"_t"-"_t"-"_t"-"_t"],",\
 			_d0, _d1, _d2, _cmm, _ap) < 0)\
