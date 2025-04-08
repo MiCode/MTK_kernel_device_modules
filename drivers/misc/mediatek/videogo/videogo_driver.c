@@ -144,7 +144,7 @@ static int videogo_process_data(int iotype, void *data)
 		list_add(&info0->list, &inst_list[type]);
 
 		alive_count[type]++;
-		if (info0->oprate > TARGET_FPS)
+		if (info0->oprate <= TARGET_FPS)
 			target_fps_count[type]++;
 		mutex_unlock(&inst_list_mutex[type]);
 
@@ -157,7 +157,7 @@ static int videogo_process_data(int iotype, void *data)
 
 		mutex_lock(&inst_list_mutex[type]);
 		alive_count[type]--;
-		if (inst_data->oprate > TARGET_FPS)
+		if (inst_data->oprate <= TARGET_FPS)
 			target_fps_count[type]--;
 
 		list_for_each_entry_safe(info0, tmp, &inst_list[type], list) {
