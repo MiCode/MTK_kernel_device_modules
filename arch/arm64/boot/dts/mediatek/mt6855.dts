@@ -6679,7 +6679,7 @@
 			mbox-count = <4>;
 			/* id, mbox, send_size*/
 			send-table =
-			< 0 0  9>,/* IPI_OUT_AUDIO_VOW_1 */
+			< 0 0  11>,/* IPI_OUT_AUDIO_VOW_1 */
 			<14 0  1>,/* IPI_OUT_DVFS_SET_FREQ_1 */
 			<15 0  2>,/* IPI_OUT_C_SLEEP_1 */
 			<16 0  1>,/* IPI_OUT_TEST_1 */
@@ -6747,7 +6747,7 @@
 			/* feature ID, size, alignment */
 			scp-mem-tbl = < 0 0x0      0x0>, /* secure dump,*/
 							 /* its size is in secure_dump_size */
-				      < 1 0x4A700  0x0>, /* vow */
+				      < 1 0xca700  0x0>, /* vow */
 				      < 2 0x100000 0x0>, /* sensor main*/
 				      < 3 0x180000 0x0>, /* logger */
 				      < 4 0x200000 0x0>, /* audio 2M*/
