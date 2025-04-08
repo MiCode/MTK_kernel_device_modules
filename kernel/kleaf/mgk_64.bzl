@@ -4733,13 +4733,10 @@ def get_overlay_modules_list():
 
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/input/touchscreen/k6895v1_64_95t_alpha:fts_touch_spi".format(kernel_version))
 
-        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/mminfra:mtk-mminfra-util".format(kernel_version))
-
         #mgk_64_platform_device_modules.pop("drivers/clk/mediatek/clk-chk-mt6989.ko")
         #mgk_64_platform_device_modules.pop("drivers/clk/mediatek/pd-chk-mt6989.ko")
         #mgk_64_platform_device_modules.pop("drivers/clk/mediatek/clk-chk-mt6991.ko")
         #mgk_64_platform_device_modules.pop("drivers/clk/mediatek/pd-chk-mt6991.ko")
-
 
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/cm_mgr:mtk_cm_mgr".format(kernel_version))
         mgk_64_kleaf_platform_modules.pop("//kernel_device_modules-{}/drivers/misc/mediatek/cm_mgr:mtk_cm_mgr_mt6991".format(kernel_version))
