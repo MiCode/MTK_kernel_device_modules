@@ -279,6 +279,7 @@ struct dr_work_data_mtk {
 	struct otg_switch_mtk *otg_sx;
 	struct work_struct dr_work;
 	enum usb_role desired_role;
+	bool force_mode;
 };
 
 struct otg_switch_mtk {

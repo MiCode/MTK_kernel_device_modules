@@ -739,7 +739,7 @@ static int mtu3_gadget_pullup(struct usb_gadget *gadget, int is_on)
 		mtu3_gadget_set_ready(gadget);
 
 	if (setmode)
-		ssusb_set_mode(otg_sx, otg_sx->current_role);
+		ssusb_set_mode(otg_sx, otg_sx->current_role, true);
 
 	pm_runtime_put(mtu->dev);
 

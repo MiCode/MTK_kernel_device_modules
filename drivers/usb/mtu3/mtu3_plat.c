@@ -702,7 +702,7 @@ int ssusb_offload_register(struct ssusb_offload *offload)
 
 	if (ssusb->otg_switch.latest_role == USB_ROLE_HOST) {
 		dev_info(ssusb->dev, "usb offload ready, switch to host\n");
-		ssusb_set_mode(&ssusb->otg_switch, USB_ROLE_HOST);
+		ssusb_set_mode(&ssusb->otg_switch, USB_ROLE_HOST, false);
 	}
 err:
 	return ret;
@@ -1661,8 +1661,7 @@ sleep_err:
 	ssusb_clear_host_low_speed_bypass(ssusb);
 	resume_ip_and_ports(ssusb, msg);
 	if (ssusb->is_host) {
-		ssusb_set_mode(&ssusb->otg_switch, USB_ROLE_NONE);
-		ssusb_set_mode(&ssusb->otg_switch, USB_ROLE_HOST);
+		ssusb_set_mode(&ssusb->otg_switch, USB_ROLE_HOST, true);
 	}
 err:
 	ssusb_clear_host_low_speed_bypass(ssusb);

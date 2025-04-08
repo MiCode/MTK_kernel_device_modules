@@ -224,6 +224,9 @@ static void ssusb_mode_sw_work_v2(struct work_struct *work)
 
 	mtu3_dbg_trace(ssusb->dev, "set role : %s", usb_role_string(desired_role));
 
+	if (!work_data->force_mode && current_role == desired_role)
+		goto same_role;
+
 	timeout = jiffies + SSUSB_SUSPEND_RESUME_TIMEOUT;
 
 	while (time_before(jiffies, timeout)) {
@@ -301,6 +304,7 @@ static void ssusb_mode_sw_work_v2(struct work_struct *work)
 
 	pm_runtime_put(ssusb->dev);
 
+same_role:
 	kfree(work_data);
 }
 
@@ -361,7 +365,7 @@ same_role:
 	kfree(work_data);
 }
 
-void ssusb_set_mode(struct otg_switch_mtk *otg_sx, enum usb_role role)
+void ssusb_set_mode(struct otg_switch_mtk *otg_sx, enum usb_role role, bool force)
 {
 	struct ssusb_mtk *ssusb = otg_sx_to_ssusb(otg_sx);
 	struct dr_work_data_mtk *work_data;
@@ -402,6 +406,7 @@ void ssusb_set_mode(struct otg_switch_mtk *otg_sx, enum usb_role role)
 		INIT_WORK(&work_data->dr_work, ssusb_mode_sw_work);
 
 	work_data->desired_role = role;
+	work_data->force_mode = force;
 	queue_work(otg_sx->wq, &work_data->dr_work);
 
 exit:
@@ -414,7 +419,7 @@ static int ssusb_id_notifier(struct notifier_block *nb,
 	struct otg_switch_mtk *otg_sx =
 		container_of(nb, struct otg_switch_mtk, id_nb);
 
-	ssusb_set_mode(otg_sx, event ? USB_ROLE_HOST : USB_ROLE_DEVICE);
+	ssusb_set_mode(otg_sx, event ? USB_ROLE_HOST : USB_ROLE_DEVICE, false);
 
 	return NOTIFY_DONE;
 }
@@ -442,7 +447,7 @@ static int ssusb_extcon_register(struct otg_switch_mtk *otg_sx)
 
 	/* default as host, switch to device mode if needed */
 	if (!ret)
-		ssusb_set_mode(otg_sx, USB_ROLE_DEVICE);
+		ssusb_set_mode(otg_sx, USB_ROLE_DEVICE, false);
 
 	return 0;
 }
@@ -457,7 +462,7 @@ void ssusb_mode_switch(struct ssusb_mtk *ssusb, int to_host)
 {
 	struct otg_switch_mtk *otg_sx = &ssusb->otg_switch;
 
-	ssusb_set_mode(otg_sx, to_host ? USB_ROLE_HOST : USB_ROLE_DEVICE);
+	ssusb_set_mode(otg_sx, to_host ? USB_ROLE_HOST : USB_ROLE_DEVICE, false);
 }
 
 void ssusb_set_force_mode(struct ssusb_mtk *ssusb,
@@ -488,7 +493,7 @@ static int ssusb_role_sw_set(struct usb_role_switch *sw, enum usb_role role)
 	struct ssusb_mtk *ssusb = usb_role_switch_get_drvdata(sw);
 	struct otg_switch_mtk *otg_sx = &ssusb->otg_switch;
 
-	ssusb_set_mode(otg_sx, role);
+	ssusb_set_mode(otg_sx, role, false);
 
 	return 0;
 }
@@ -539,7 +544,7 @@ static int ssusb_role_sw_register(struct otg_switch_mtk *otg_sx)
 	if (IS_ERR(otg_sx->role_sw))
 		return PTR_ERR(otg_sx->role_sw);
 
-	ssusb_set_mode(otg_sx, otg_sx->default_role);
+	ssusb_set_mode(otg_sx, otg_sx->default_role, false);
 
 	return 0;
 }
