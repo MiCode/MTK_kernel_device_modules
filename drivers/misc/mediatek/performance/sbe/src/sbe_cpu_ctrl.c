@@ -72,7 +72,7 @@ static int global_sbe_dy_enhance;
 static int global_sbe_dy_enhance_max_pid;
 static int sbe_critical_basic_cap;
 static int sbe_ai_ctrl_enabled;
-
+static int sbe_uclamp_margin;
 /*For AI jank detection*/
 static int ai_rescuing_frame_id;
 static int registered;
@@ -121,6 +121,7 @@ module_param(gas_threshold_for_high_TLP, int, 0644);
 module_param(smart_launch_off_on, int, 0644);
 module_param(sbe_critical_basic_cap, int, 0644);
 module_param(sbe_ai_ctrl_enabled, int, 0644);
+module_param(sbe_uclamp_margin, int, 0644);
 
 static void update_hwui_frame_info(struct sbe_render_info *info,
 		struct hwui_frame_info *frame, unsigned long long id,
@@ -409,8 +410,13 @@ static void __sbe_set_per_task_cap(struct sbe_render_info *thr, int min_cap, int
 		min_uclamp = (min_cap << 10) / 100U;
 		min_uclamp = clamp(min_uclamp, 1U, max_uclamp);
 
-		attr.sched_util_min = (min_uclamp << 10) / 1280;
-		attr.sched_util_max = (max_uclamp << 10) / 1280;
+		if (sbe_uclamp_margin) {
+			attr.sched_util_min = (min_uclamp << 10) / 1280;
+			attr.sched_util_max = (max_uclamp << 10) / 1280;
+		} else {
+			attr.sched_util_min = min_uclamp;
+			attr.sched_util_max = max_uclamp;
+		}
 	}
 
 	local_dep_str = kcalloc(MAX_TASK_NUM + 1, 7 * sizeof(char), GFP_KERNEL);
@@ -1987,6 +1993,7 @@ int __init sbe_cpu_ctrl_init(void)
 	ai_rescuing_frame_id = -1;
 	registered = 0;
 	sbe_ai_ctrl_enabled = 0;
+	sbe_uclamp_margin = 0;
 
 	frame_info_cachep = kmem_cache_create("ux_frame_info",
 		sizeof(struct ux_frame_info), 0, SLAB_HWCACHE_ALIGN, NULL);
