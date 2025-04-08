@@ -307,8 +307,9 @@ int migrate_running_task(int this_cpu, struct task_struct *p, struct rq *target,
 		active_balance = true;
 		get_task_struct(p);
 	}
-	raw_spin_rq_unlock_irqrestore(target, flags);
 
+	preempt_disable();
+	raw_spin_rq_unlock_irqrestore(target, flags);
 	if (active_balance) {
 		if (trace_sched_force_migrate_enabled())
 			trace_sched_force_migrate(p, this_cpu, reason);
@@ -317,7 +318,7 @@ int migrate_running_task(int this_cpu, struct task_struct *p, struct rq *target,
 				mtk_active_load_balance_cpu_stop,
 				p, &target->active_balance_work);
 	}
-
+	preempt_enable();
 	return active_balance;
 }
 
