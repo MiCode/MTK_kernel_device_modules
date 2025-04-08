@@ -758,14 +758,18 @@ static int mt6993_polling_rpc_status(struct mtk_apu *apu, u32 pwr_stat, u32 time
 	int ret = 0;
 	void *addr = 0;
 	uint32_t val = 0;
+	uint32_t polling_val = 0;
 
-	if (pwr_stat == 0)
+	if (pwr_stat == 0) {
 		addr = apu->apu_rpc + 0x44;
-	else
+		polling_val = 0x3UL;
+	} else {
 		addr = apu->apu_mbox + MBOX_RV_PWR_STA_FLG;
+		polling_val = 0x1UL;
+	}
 
 	ret = readl_relaxed_poll_timeout_atomic(addr, val,
-		((val & (0x1UL)) == pwr_stat), 1, timeout);
+		((val & polling_val) == pwr_stat), 1, timeout);
 
 	if (ret)
 		dev_info(apu->dev, "%s(pwr_stat = %u): timeout\n", __func__, pwr_stat);
