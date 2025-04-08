@@ -456,15 +456,10 @@ void mtk_smi_common_ostdl_set(struct device *dev, const u32 port, bool is_write,
 }
 EXPORT_SYMBOL_GPL(mtk_smi_common_ostdl_set);
 
-void mtk_smi_larb_bw_set(struct device *dev, const u32 port, const u32 val)
+static void __mtk_smi_larb_bw_set(struct device *dev, const u32 port, const u32 val)
 {
 	struct mtk_smi_larb *larb = dev_get_drvdata(dev);
 
-	if (port >= SMI_LARB_PORT_NR_MAX) { /* max: 32 ports for a larb */
-		dev_notice(dev, "%s port invalid:%d, val:%u.\n", __func__,
-			port, val);
-		return;
-	}
 	if (val) {
 		if (log_level & 1 << log_set_ostdl)
 			dev_notice(dev, "%s is_def: %d larb%d port%d, val:%u.\n",
@@ -475,12 +470,27 @@ void mtk_smi_larb_bw_set(struct device *dev, const u32 port, const u32 val)
 		} else {
 			larb->larb_gen->bwl[larb->larbid * SMI_LARB_PORT_NR_MAX + port] = val;
 		}
-		if (atomic_read(&larb->smi.ref_count)) {
-			writel(val, larb->base + SMI_LARB_OSTDL_PORTx(port));
-			if (larb->is_two_dram_path_ostdl)
-				writel(val, larb->base + INT_SMI_LARB_OSTDL_PORTx(port));
-		}
+		writel(val, larb->base + SMI_LARB_OSTDL_PORTx(port));
+		if (larb->is_two_dram_path_ostdl)
+			writel(val, larb->base + INT_SMI_LARB_OSTDL_PORTx(port));
 	}
+}
+
+void mtk_smi_larb_bw_set(struct device *dev, const u32 port, const u32 val)
+{
+	struct mtk_smi_larb *larb = dev_get_drvdata(dev);
+
+	if (port >= SMI_LARB_PORT_NR_MAX) { /* max: 32 ports for a larb */
+		dev_notice(dev, "%s port invalid:%d, val:%u.\n", __func__,
+			port, val);
+		return;
+	}
+	if (atomic_read(&larb->smi.ref_count))
+		__mtk_smi_larb_bw_set(dev, port, val);
+	else
+		dev_notice(dev, "%s: skip! ref_cnt is 0, larb%d port%d val:%u\n", __func__,
+							larb->larbid, port, val);
+
 }
 EXPORT_SYMBOL_GPL(mtk_smi_larb_bw_set);
 
@@ -844,7 +854,7 @@ static void mtk_smi_larb_config_port_gen2_general(struct device *dev)
 		mtk_smi_larb_bwl = larb->larb_gen->bwl;
 
 	for (i = 0; i < larb->larb_gen->port_in_larb_gen2[larb->larbid]; i++)
-		mtk_smi_larb_bw_set(larb->smi.dev, i, mtk_smi_larb_bwl[
+		__mtk_smi_larb_bw_set(larb->smi.dev, i, mtk_smi_larb_bwl[
 			larb->larbid * SMI_LARB_PORT_NR_MAX + i]);
 
 	if (larb->skip_restore) {
