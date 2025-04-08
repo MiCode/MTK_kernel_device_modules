@@ -9313,11 +9313,11 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 		cmdq_test: cmdq-test@0 {
 			compatible = "mediatek,cmdq-test";
-			mediatek,gce = <&gce_m_2>;
+			mediatek,gce = <&gce>;
 			cmdq-supply = <&gce_m_sec_2>;
-			mboxes = <&gce_m_2 8 3000 CMDQ_THR_PRIO_1>,
-				<&gce_m 8 3000 CMDQ_THR_PRIO_1>,
-				<&gce_m 30 3000 CMDQ_THR_PRIO_1>,
+			mboxes = <&gce 8 3000 CMDQ_THR_PRIO_1>,
+				<&gce 9 3000 CMDQ_THR_PRIO_1>,
+				<&gce 28 3000 CMDQ_THR_PRIO_1>,
 				<&gce_m_sec_2 9 0 CMDQ_THR_PRIO_1>;
 			gce-event-names = "token_user_0";
 			gce-events = <&gce CMDQ_SYNC_TOKEN_USER_0>;
