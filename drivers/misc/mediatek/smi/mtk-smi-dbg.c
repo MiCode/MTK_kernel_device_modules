@@ -2289,8 +2289,6 @@ int smi_get_larb_dump(const char *val, const struct kernel_param *kp)
 	if (ret < 0)
 		dev_notice(smi->larb[larb_id].dev, "smi_larb%d get fail:%d\n", larb_id, ret);
 
-	mtk_smi_dbg_hang_detect("SMI driver");
-
 	return 0;
 }
 
