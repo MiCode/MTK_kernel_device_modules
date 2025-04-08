@@ -14859,21 +14859,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			    <&cam_vcore_r1a_clk CAM_V_R1A_X94_GALS_CAM_VCORE>,
 			    <&cam_vcore_r1a_clk CAM_V_R1A_X22_GALS_CAM_VCORE>,
 			    <&cam_vcore_r1a_clk CAM_V_R1A_X60_GALS_CAM_VCORE>,
-			    <&cam_vcore_r1a_clk CAM_V_R1A_X90_GALS_CAM_VCORE>,
-			    <&cam_vcore_r1a_clk CAM_V_R1A_GALS51_CON_1_CAM_VCORE>,
-			    <&cam_vcore_r1a_clk CAM_V_R1A_GALS50_CON_1_CAM_VCORE>,
-			    <&cam_vcore_r1a_clk CAM_V_R1A_GALS45_CON_1_CAM_VCORE>,
-			    <&cam_vcore_r1a_clk CAM_V_R1A_GALS43_CON_1_CAM_VCORE>,
-			    <&cam_vcore_r1a_clk CAM_V_R1A_GALS52_CON_1_CAM_VCORE>,
-			    <&cam_vcore_r1a_clk CAM_V_R1A_GALS44_CON_1_CAM_VCORE>,
-			    <&cam_vcore_r1a_clk CAM_V_R1A_GALS91_CON_1_CAM_VCORE>,
-			    <&cam_vcore_r1a_clk CAM_V_R1A_GALS54_CON_1_CAM_VCORE>,
-			    <&cam_vcore_r1a_clk CAM_V_R1A_GALS48_CON_1_CAM_VCORE>,
-			    <&cam_vcore_r1a_clk CAM_V_R1A_GALS93_CON_1_CAM_VCORE>,
-			    <&cam_vcore_r1a_clk CAM_V_R1A_GALS46_CON_1_CAM_VCORE>,
-			    <&cam_vcore_r1a_clk CAM_V_R1A_GALS53_CON_1_CAM_VCORE>,
-			    <&cam_vcore_r1a_clk CAM_V_R1A_GALS94_CON_1_CAM_VCORE>,
-			    <&cam_vcore_r1a_clk CAM_V_R1A_GALS22_CON_1_CAM_VCORE>;
+			    <&cam_vcore_r1a_clk CAM_V_R1A_X90_GALS_CAM_VCORE>;
 			clock-names =
 			    "camsys_vcore_g_cam_vcore",
 			    "camsys_vcore_sv0_gals",
@@ -14903,21 +14889,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			    "camsys_vcore_x94_gals",
 			    "camsys_vcore_x22_gals",
 			    "camsys_vcore_x60_gals",
-			    "camsys_vcore_x90_gals",
-			    "camsys_vcore_gals51_con_1",
-			    "camsys_vcore_gals50_con_1",
-			    "camsys_vcore_gals45_con_1",
-			    "camsys_vcore_gals43_con_1",
-			    "camsys_vcore_gals52_con_1",
-			    "camsys_vcore_gals44_con_1",
-			    "camsys_vcore_gals91_con_1",
-			    "camsys_vcore_gals54_con_1",
-			    "camsys_vcore_gals48_con_1",
-			    "camsys_vcore_gals93_con_1",
-			    "camsys_vcore_gals46_con_1",
-			    "camsys_vcore_gals53_con_1",
-			    "camsys_vcore_gals94_con_1",
-			    "camsys_vcore_gals22_con_1";
+			    "camsys_vcore_x90_gals";
 		};
 
 		camisp: camisp@3a010000 {
@@ -14950,9 +14922,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			    <&cam_main_r1a_clk CAM_M_CAM_MRAW_CAM_MAIN>,
 			    <&cam_main_r1a_clk CAM_M_CAMTG_CAM_MAIN>,
 			    <&cam_main_r1a_clk CAM_M_SENINF_CAM_MAIN>,
-			    <&cam_main_r1a_clk CAM_M_CAM2SYS_GALS_CAM_MAIN>,
-			    <&cam_main_r1a_clk CAM_M_IPS_CAM_MAIN>,
-			    <&cam_main_r1a_clk CAM_M_CAM_ASG_CAM_MAIN>,
 			    <&cam_main_r1a_clk CAM_M_CAM_QOF_CON_1_CAM_MAIN>,
 			    <&cam_main_r1a_clk CAM_M_CAM_WLA_CON_1_CAM_MAIN>,
 			    <&cam_main_r1a_clk CAM_M_CAM_DVC_CON_1_CAM_MAIN>,
@@ -14968,9 +14937,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			    "camsys_main_cam_mraw",
 			    "camsys_main_camtg",
 			    "camsys_main_seninf",
-			    "camsys_main_cam2sys_gals",
-			    "camsys_main_ips",
-			    "camsys_main_cam_asg",
 			    "camsys_main_cam_qof_con_1",
 			    "camsys_main_cam_wla_con_1",
 			    "camsys_main_cam_dvc_con_1",
@@ -15010,15 +14976,11 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			    <&camsys_rawa_clk CAM_RA_LARBX_CAM_RAWA>,
 			    <&camsys_rawa_clk CAM_RA_CAM_CAM_RAWA>,
 			    <&camsys_rawa_clk CAM_RA_CAMTG_CAM_RAWA>,
-			    <&camsys_rawa_clk CAM_RA_RAW2MM_GALS_CAM_RAWA>,
-			    <&camsys_rawa_clk CAM_RA_YUV2RAW2MM_GALS_CAM_RAWA>,
 			    <&camsys_rawa_clk CAM_RA_CAM_26M_CAM_RAWA>;
 			clock-names =
 				"camsys_rawa_larbx_cgpdn",
 				"camsys_rawa_cam_cgpdn",
 				"camsys_rawa_camtg_cgpdn",
-				"camsys_rawa_raw2mm_gals_cgpdn",
-				"camsys_rawa_yuv2raw2mm_gals_cgpdn",
 				"camsys_rawa_cam_26m_cgpdn";
 			mediatek,smmu-dma-axid =
 				<SMMU_L16_P0_CAM2_RAW_R_0_P0_16_U0>,
@@ -15162,15 +15124,11 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			    <&camsys_rawb_clk CAM_RB_LARBX_CAM_RAWB>,
 			    <&camsys_rawb_clk CAM_RB_CAM_CAM_RAWB>,
 			    <&camsys_rawb_clk CAM_RB_CAMTG_CAM_RAWB>,
-			    <&camsys_rawb_clk CAM_RB_RAW2MM_GALS_CAM_RAWB>,
-			    <&camsys_rawb_clk CAM_RB_YUV2RAW2MM_GALS_CAM_RAWB>,
 			    <&camsys_rawb_clk CAM_RB_CAM_26M_CAM_RAWB>;
 			clock-names =
 				"camsys_rawb_larbx_cgpdn",
 				"camsys_rawb_cam_cgpdn",
 				"camsys_rawb_camtg_cgpdn",
-				"camsys_rawb_raw2mm_gals_cgpdn",
-				"camsys_rawb_yuv2raw2mm_gals_cgpdn",
 				"camsys_rawb_cam_26m_cgpdn";
 			mmqos-supply = <&mmqos>;
 			mediatek,smmu-dma-axid =
@@ -15318,15 +15276,11 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			    <&camsys_rawc_clk CAM_RC_LARBX_CAM_RAWC>,
 			    <&camsys_rawc_clk CAM_RC_CAM_CAM_RAWC>,
 			    <&camsys_rawc_clk CAM_RC_CAMTG_CAM_RAWC>,
-			    <&camsys_rawc_clk CAM_RC_RAW2MM_GALS_CAM_RAWC>,
-			    <&camsys_rawc_clk CAM_RC_YUV2RAW2MM_GALS_CAM_RAWC>,
 			    <&camsys_rawc_clk CAM_RC_CAM_26M_CAM_RAWC>;
 			clock-names =
 				"camsys_rawc_larbx_cgpdn",
 				"camsys_rawc_cam_cgpdn",
 				"camsys_rawc_camtg_cgpdn",
-				"camsys_rawc_raw2mm_gals_cgpdn",
-				"camsys_rawc_yuv2raw2mm_gals_cgpdn",
 				"camsys_rawc_cam_26m_cgpdn";
 			mmqos-supply = <&mmqos>;
 			mediatek,smmu-dma-axid =
@@ -15821,8 +15775,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<&cam_vcore_r1a_clk CAM_V_R1A_SUB_COMM2_CAM_VCORE>,
 				<&cam_vcore_r1a_clk CAM_V_R1A_X46_GALS_CAM_VCORE>,
 				<&cam_vcore_r1a_clk CAM_V_R1A_X53_GALS_CAM_VCORE>,
-				<&cam_vcore_r1a_clk CAM_V_R1A_GALS46_CON_1_CAM_VCORE>,
-				<&cam_vcore_r1a_clk CAM_V_R1A_GALS53_CON_1_CAM_VCORE>,
 				<&cam_main_r1a_clk CAM_M_CAM_CAM_MAIN>,
 				<&cam_main_r1a_clk CAM_M_CAM_CVFS_CON_1_CAM_MAIN>,
 				<&cksys_mm_clk CKSYS_MM_CAMTM_SEL>,
@@ -15839,8 +15791,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"camsys_vcore_sub_comm2",
 				"camsys_vcore_x46_gals",
 				"camsys_vcore_x53_gals",
-				"camsys_vcore_gals46_con_1",
-				"camsys_vcore_gals53_con_1",
 				"camsys_main_cam",
 				"camsys_main_cam_cvfs_con_1",
 				"cksys_mm_camtm_sel",
