@@ -734,6 +734,10 @@ exit:
 		fpsgo_notify_frame_info_callback(pid, cb_mask, buffer_id, info);
 		kfree(info);
 	}
+
+	// for debug oom issue only
+	if (!cb_mask)
+		FPSGO_LOGE("[comp] info size=%lu\n", sizeof(info));
 }
 
 void fpsgo_ctrl2comp_dequeue_start(int pid,
