@@ -136,7 +136,9 @@ define_mgk_ddk_ko(
 		"DISP_BWM20_ENABLE=1",
 		"DISP_VIDLE_ENABLE=1"
             ],
-            "//conditions:default" : []
+            "//conditions:default" : [
+                "DRM_RETRIGGER_ENABLE=1",
+            ]
     }) + [
         "DISP_MDP_COLOR_ON=1",
         "DISP_STASH_ENABLE=1",
