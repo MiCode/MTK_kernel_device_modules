@@ -1924,6 +1924,9 @@ static void get_busy_cpus(void)
 			continue;
 
 		for_each_cpu(cpu, &cluster->cpu_mask) {
+			if (cpu >= MAX_NR_CPUS)
+				continue;
+
 			cpu_stat = &per_cpu(cpu_state, cpu);
 			idx = cpu_stat->win_idx;
 
@@ -1934,11 +1937,9 @@ static void get_busy_cpus(void)
 				cpu_stat->is_busy = false;
 			/* else remain previous status */
 
-			if (cpu < MAX_NR_CPUS) {
-				busy_state[cpu] = (unsigned int)cpu_stat->is_busy;
-				max_nr_state[cpu] = get_max_nr_running(cpu);
-				max_rt_nr_state[cpu] = get_max_rt_nr_running(cpu);
-			}
+			busy_state[cpu] = (unsigned int)cpu_stat->is_busy;
+			max_nr_state[cpu] = get_max_nr_running(cpu);
+			max_rt_nr_state[cpu] = get_max_rt_nr_running(cpu);
 
 			over_nr_task = max_nr_state[cpu] > cluster->nr_task_thres;
 			over_act_load = cpu_stat->cpu_active_loading[idx] > cluster->active_loading_thres;
