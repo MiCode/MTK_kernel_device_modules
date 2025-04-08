@@ -2413,8 +2413,9 @@ static int lcm_set_spr_cmdq_v2(void *dsi, struct drm_panel *panel, mtk_dsi_ddic_
 	static struct mipi_dsi_msg spr_on_msg[ARRAY_SIZE(panel_spr_on_tb)] = { 0 };
 	static struct mipi_dsi_msg spr_off_msg[ARRAY_SIZE(panel_spr_off_tb)] = { 0 };
 
-	pr_info("%s en %d, flag=%d, cmd_num:%d, %d\n", __func__, en, flag,
-		(int)ARRAY_SIZE(panel_spr_on_tb), (int)ARRAY_SIZE(panel_spr_off_tb));
+	/*pr_info("%s en %d, flag=%d, cmd_num:%d, %d\n", __func__, en, flag,
+	 *	(int)ARRAY_SIZE(panel_spr_on_tb), (int)ARRAY_SIZE(panel_spr_off_tb));
+	 */
 	if (!flag) {
 		flag = 1;
 		for (i = 0; i < ARRAY_SIZE(panel_spr_on_tb); i++) {

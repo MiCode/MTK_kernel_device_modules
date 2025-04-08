@@ -1991,7 +1991,7 @@ void mtk_dsi_gce_event_cfg(struct mtk_dsi *dsi, struct mtk_ddp_comp *comp,
 		writel(0x1000, dsi->regs + 0xE4);
 		if (dsi->slave_dsi)
 			writel(0x0918, dsi->slave_dsi->ddp_comp.regs + DSI_GCE_EVENT_CON0);
-		DDPMSG("%s:%d\n", __func__, __LINE__);
+		DDPINFO("%s:%d\n", __func__, __LINE__);
 		return;
 	}
 

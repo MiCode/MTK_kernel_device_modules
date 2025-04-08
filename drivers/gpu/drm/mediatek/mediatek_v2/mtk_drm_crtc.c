@@ -12977,7 +12977,7 @@ skip_prete:
 		if ((priv->data->mmsys_id == MMSYS_MT6993) && (crtc_id == 0)) {
 			/* For HRT urgent WA */
 			mtk_dbgtp_dsi_gce_event_config(mtk_crtc, cmdq_handle);
-			DDPMSG("FIFO mon: Wait gce event fifo level down\n");
+			DDPINFO("FIFO mon: Wait gce event fifo level down\n");
 			GCE_DO(wfe, EVENT_CMD_TRIG_START);
 			cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base, 0x03E730300, 0, BIT(1) | BIT(3));
 			if (priv->mtk_dbgtp_sta.fifo_mon_en[0]) {

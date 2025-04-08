@@ -3198,6 +3198,7 @@ static void disp_aal_config(struct mtk_ddp_comp *comp,
 	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
 	phys_addr_t dre3_pa = disp_aal_dre3_pa(comp);
 
+	mtk_drm_trace_begin("aal_config:%u", comp->id);
 	if (comp->mtk_crtc->is_dual_pipe && cfg->tile_overhead.is_support) {
 		width = aal_data->overhead.in_width;
 		out_width = width - aal_data->overhead.comp_overhead;
@@ -3334,6 +3335,7 @@ static void disp_aal_config(struct mtk_ddp_comp *comp,
 		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_AAL_SHADOW_CTRL, 1, AAL_BYPASS_SHADOW);
 	else
 		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_AAL_SHADOW_CTRL, 0, AAL_BYPASS_SHADOW);
+	mtk_drm_trace_end();
 }
 
 void disp_aal_first_cfg(struct mtk_ddp_comp *comp,

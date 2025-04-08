@@ -22,6 +22,7 @@
 #include "mtk_disp_gamma.h"
 #include "mtk_dump.h"
 #include "mtk_drm_mmp.h"
+#include "mtk_drm_trace.h"
 #include "mtk_disp_pq_helper.h"
 #include "mtk_debug.h"
 
@@ -385,6 +386,8 @@ static bool disp_gamma_flush_sram(struct mtk_ddp_comp *comp, int cmd_type)
 	struct mtk_disp_gamma_primary *primary_data = gamma_data->primary_data;
 	struct cmdq_pkt *cmdq_handle = primary_data->sram_pkt[cmd_type];
 	struct cmdq_client *client = NULL;
+	struct drm_crtc *crtc = NULL;
+	bool async = false;
 
 	if (!cmdq_handle) {
 		DDPMSG("%s: cmdq handle is null.\n", __func__);
@@ -399,28 +402,52 @@ static bool disp_gamma_flush_sram(struct mtk_ddp_comp *comp, int cmd_type)
 	else
 		client = mtk_crtc->gce_obj.client[CLIENT_CFG];
 
-	cmdq_mbox_enable(client->chan);
+	crtc = &mtk_crtc->base;
+	if (IS_ERR_OR_NULL(crtc))
+		cmdq_mbox_enable(client->chan);
+	else {
+		async = mtk_drm_idlemgr_get_async_status(crtc);
+		if (async == false) {
+			cmdq_mbox_enable(client->chan);
+			mtk_drm_clear_async_cb_list(crtc);
+		}
+	}
+
 	CRTC_MMP_MARK(0, gamma_ioctl, comp->id, (unsigned long)cmdq_handle);
 
+	mtk_drm_trace_begin("gamma flush sram:%d", async);
 	switch (cmd_type) {
 	case GAMMA_USERSPACE:
 		if (gamma_data->auto_flip == 0)
 			primary_data->table_out_sel = primary_data->table_config_sel;
 		cmdq_pkt_refinalize(cmdq_handle);
 		cmdq_pkt_flush(cmdq_handle);
-		cmdq_mbox_disable(client->chan);
+		if (async == false)
+			cmdq_mbox_disable(client->chan);
 		break;
 
 	case GAMMA_RESUME:
 		if (gamma_data->auto_flip == 0)
 			primary_data->table_out_sel = primary_data->table_config_sel;
 		cmdq_pkt_refinalize(cmdq_handle);
-		cmdq_pkt_flush(cmdq_handle);
-		cmdq_mbox_disable(client->chan);
+		if (async == false) {
+			cmdq_pkt_flush(cmdq_handle);
+			cmdq_mbox_disable(client->chan);
+		} else {
+			int ret = 0;
+
+			ret = mtk_drm_idle_async_flush_cust(crtc, comp->id,
+						cmdq_handle, false, NULL);
+			if (ret < 0) {
+				cmdq_pkt_flush(cmdq_handle);
+				DDPMSG("%s, failed of async flush, %d\n", __func__, ret);
+			}
+		}
 		break;
 	default:
 		PQ_ERR("%s, invalid cmd_type:%d\n", __func__, cmd_type);
 	}
+	mtk_drm_trace_end();
 
 	return true;
 }

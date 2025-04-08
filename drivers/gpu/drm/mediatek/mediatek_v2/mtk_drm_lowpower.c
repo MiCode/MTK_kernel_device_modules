@@ -313,7 +313,8 @@ static int mtk_drm_enhance_cpu_freq(struct freq_qos_request *req,
 		unsigned int cpu_id, unsigned int cpu_freq, int *cpu_first, int *cpu_last)
 {
 	struct cpufreq_policy *policy = NULL;
-	int ret = 0;
+	int ret = 0, j = 0, retry_cnt = 5;
+	unsigned int cpufreq_ret = 0;
 
 	if (req == NULL) {
 		DDPMSG("%s, invalid req\n", __func__);
@@ -331,13 +332,30 @@ static int mtk_drm_enhance_cpu_freq(struct freq_qos_request *req,
 		*cpu_first = cpumask_first(policy->related_cpus);
 	if (cpu_last != NULL)
 		*cpu_last = cpumask_last(policy->related_cpus);
-	cpufreq_cpu_put(policy);
-
 	if (ret < 0) {
 		DDPMSG("%s, failed to enhance cpu%u freq%u,first:%d,last:%d,ret:%d\n",
 			__func__, cpu_id, cpu_freq,  *cpu_first, *cpu_last, ret);
+		cpufreq_cpu_put(policy);
 		return ret;
 	}
+
+	for (j = 0; j < retry_cnt; j++) {
+		usleep_range(100, 150);
+		ret = cpufreq_get_policy(policy, cpu_id);
+		if (ret) {
+			DDPMSG("%s, polling err, cpu%u freq:%u, ret:%d\n",
+				__func__, cpu_id, cpu_freq, ret);
+			break;
+		}
+		if (policy->cur >= cpu_freq)
+			break;
+	}
+	cpufreq_ret = policy->cur;
+	cpufreq_cpu_put(policy);
+
+	if (j >= retry_cnt)
+		DDPINFO("%s, failed to polling cpu%u freq%u,retry:%u,cur_freq:%u\n",
+			__func__, cpu_id, cpu_freq, j, cpufreq_ret);
 
 	return 0;
 }
@@ -456,7 +474,7 @@ static void mtk_drm_adjust_cpu_freq(struct drm_crtc *crtc, bool bind,
 		start = sched_clock();
 		detail = atomic_read(&perf->detail);
 		if (detail != 0)
-			mtk_drm_trace_begin("adjust_cpu_freq:%d", bind);
+			mtk_drm_trace_begin("adjust_cpu_freq:%d", count);
 	}
 
 	if (bind == true) {
@@ -471,14 +489,17 @@ static void mtk_drm_adjust_cpu_freq(struct drm_crtc *crtc, bool bind,
 				continue;
 			}
 
+			if (detail != 0)
+				mtk_drm_trace_begin("cpu_adjust:%d,%u", cpus[i], freq);
 			ret = mtk_drm_enhance_cpu_freq(req[i], cpus[i], freq, &cpu_first, &cpu_last);
+			if (detail != 0)
+				mtk_drm_trace_end();
 			if (ret < 0) {
 				kfree(req[i]);
 				req[i] = NULL;
 				continue;
 			}
 		}
-		usleep_range(10, 30); //make freq update
 	} else {
 		for (i = 0; i < count; i++) {
 			if (req[i] == NULL)
@@ -2337,10 +2358,6 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_SHARE_SRAM))
 		mtk_drm_enter_share_sram(crtc, false);
 #endif
-
-	if (perf_detail)
-		mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
-				"connect_default_path", 12, perf_string, true);
 
 	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
 				"config_default_path", 13, perf_string, true);

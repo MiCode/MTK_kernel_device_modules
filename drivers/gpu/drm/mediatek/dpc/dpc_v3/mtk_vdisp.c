@@ -387,7 +387,7 @@ static void vdisp_hwccf_ctrl(struct mtk_vdisp *priv, bool enable)
 			VDISPERR("hwccf irq voter failed, ret: %d", hwccf_ret);
 			clkchk_external_dump();
 		}
-		VDISPDBG("BUCK %s", (enable) ? "ON" : "OFF");
+		//VDISPDBG("BUCK %s", (enable) ? "ON" : "OFF");
 		#endif
 	}
 }
