@@ -5718,6 +5718,9 @@ test_2c_done:
 	} else if (strncmp(opt, "disp_db_trig", 12) == 0) {
 		DDPAEE_FATAL("Test hrt issue db contain atb trace or not\n");
 		DDPMSG("%d %s\n", __LINE__, opt);
+	} else if (strncmp(opt, "dbgtp_stop", 10) == 0) {
+		mtk_hrt_issue_flag_set(true);
+		DDPMSG("%d %s\n", __LINE__, opt);
 	} else if (strncmp(opt, "clear_pq_test_flag", 18) == 0) {
 		g_pq_test_flag = 0;
 		DDPMSG("clear pq_test_flag\n");

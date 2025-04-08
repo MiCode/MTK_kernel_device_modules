@@ -61,6 +61,10 @@ struct mtk_dbgtp {
 	bool dsi_lpc_mon_en;
 	bool is_validation_mode;
 
+	/* For camera ELA trace be covered issues */
+	bool is_cam_hrt_issue;
+	unsigned int cam_hrt_time_count;
+
 	/* debug FIFO mon */
 	bool fifo_mon_en[FIFO_MON_NUM];
 	unsigned int fifo_mon_trig_thrd[FIFO_MON_NUM];
@@ -86,6 +90,7 @@ void mtk_dbgtp_all_regs_dump(struct mtk_drm_private *priv);
 void mtk_dbgtp_default_cfg_load(struct mtk_drm_private *priv);
 void mtk_dbgtp_load_all_open_setting(struct mtk_drm_private *priv);
 void mtk_dbgtp_switch(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cmdq_handle, bool en);
+dma_addr_t mtk_get_dbgtp_comp_pa(void);
 
 /* Just for mt6993*/
 void mtk_dbgtp_dsi_gce_event_config(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cmdq_handle);

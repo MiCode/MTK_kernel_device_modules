@@ -2336,6 +2336,11 @@ void mtk_dbgtp_switch(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cmdq_handl
 			dbgtp_comp->regs_pa + DISP_DBG_TOP_EN, en, 0x1);
 }
 
+dma_addr_t mtk_get_dbgtp_comp_pa(void)
+{
+	return dbgtp_comp->regs_pa;
+}
+
 void mtk_dbgtp_config(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cmdq_handle)
 {
 	unsigned int value = 0;
@@ -2343,7 +2348,6 @@ void mtk_dbgtp_config(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cmdq_handl
 	unsigned int val = 0;
 	unsigned int mask = 0;
 	unsigned int i = 0;
-
 
 	if (priv->mtk_dbgtp_sta.dbgtp_en && !(readl(priv->config_regs + DISPSYS_DEBUG_SUBSYS) & 0x1)) {
 		DDPDBG("%s:%d dbgtp regs not match setting need update\n", __func__, __LINE__);
@@ -2574,6 +2578,7 @@ static irqreturn_t mtk_disp_dbgtp_irq_handler(int irq, void *dev_id)
 		DRM_MMP_MARK(dbgtp, val, val1);
 		DDPPR_ERR(pr_fmt("[IRQ] %s: 0 trigger start\n"),
 				mtk_dump_comp_str(dbgtp));
+		mtk_dsi_fifo_mon_trigger_start_set(true);
 		writel(0xf, dbgtp->regs + DISP_DBG_FIFO_MON_INT_CLR);
 		writel(0, dbgtp->regs + DISP_DBG_FIFO_MON_INT_CLR);
 	}

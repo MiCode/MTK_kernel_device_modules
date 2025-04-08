@@ -7236,6 +7236,7 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 	bool opt_mmdvfs = 0;
 	bool is_force_high_step = atomic_read(&mtk_crtc->force_high_step);
 	unsigned int channel_hrt[BW_CHANNEL_NR] = {0};
+	unsigned int *addr = NULL;
 
 	if (unlikely(!mtk_crtc || !mtk_crtc->qos_ctx)) {
 		DDPPR_ERR("%s invalid qos_ctx\n", __func__);
@@ -7378,6 +7379,21 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 		       mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_CUR_HRT_IDX),
 		       crtc_state->prop_val[CRTC_PROP_LYE_IDX], ~0);
 
+	if (priv->mtk_dbgtp_sta.is_cam_hrt_issue) {
+		priv->mtk_dbgtp_sta.cam_hrt_time_count--;
+		if (priv->mtk_dbgtp_sta.cam_hrt_time_count <= 0) {
+			DDPMSG("After cam issues delay enable dbgtp\n");
+			/* Enable dbgtp en config */
+			priv->mtk_dbgtp_sta.dbgtp_en = true;
+			/* Clear dsi underrun slot */
+			addr = mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_UNDERRUNED);
+			*addr = 0;
+			/* Clear flags */
+			priv->mtk_dbgtp_sta.is_cam_hrt_issue = false;
+			priv->mtk_dbgtp_sta.cam_hrt_time_count = 0;
+		}
+	}
+
 	if (opt_mmdvfs && is_force_high_step) {
 		unsigned int step_size = mtk_drm_get_mmclk_step_size();
 
@@ -7401,6 +7417,13 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 			}
 			atomic_set(&mtk_crtc->force_high_step, 0);
 			mtk_vidle_force_power_ctrl_by_cpu(false);
+
+			DDPMSG("After DSI underrun delay enable dbgtp\n");
+			/* Enable dbgtp en config */
+			priv->mtk_dbgtp_sta.dbgtp_en = true;
+			/* Clear dsi underrun slot */
+			addr = mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_UNDERRUNED);
+			*addr = 0;
 		}
 	} else {
 		if (mtk_crtc->force_high_enabled != 0) {
@@ -11956,6 +11979,7 @@ void mtk_crtc_start_event_loop(struct drm_crtc *crtc)
 	unsigned int prefetch_te_offset = CMDQ_US_TO_TICK(150);
 	unsigned int frame_time = 0;
 	int ct_wiat_cmdq_event = 0;
+	dma_addr_t slot_src_addr;
 
 	GCE_COND_DECLARE;
 	struct cmdq_operand lop, rop;
@@ -12193,14 +12217,24 @@ VDO_MODE:
 		DDPPR_ERR("%s:%d NULL cmdq handle\n", __func__, __LINE__);
 		return;
 	}
+	GCE_COND_ASSIGN(cmdq_handle, CMDQ_THR_SPR_IDX1, CMDQ_GPR_R07);
 
 	if ((priv->mtk_dbgtp_sta.fifo_mon_en[0]) && (crtc_id == 0)) {
 		DDPMSG("FIFO mon: wait gce event vact start\n");
 		cmdq_pkt_wfe(cmdq_handle, mtk_crtc->gce_obj.event[EVENT_VDO_TRIG_START]);
+		lop.reg = true;
+		lop.idx = var1;
+		rop.reg = false;
+		rop.idx = 0;
+		slot_src_addr = mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_UNDERRUNED);
+		cmdq_pkt_read(cmdq_handle, mtk_crtc->gce_obj.base, slot_src_addr, var1);
+		GCE_IF(lop, R_CMDQ_EQUAL, rop);
+		mtk_disp_dbg_cmdq_use_mutex(mtk_crtc, cmdq_handle, 6);
 		mtk_dbgtp_fifo_mon_set_trig_threshold(mtk_crtc, cmdq_handle);
 		if (!priv->mtk_dbgtp_sta.is_validation_mode &&
 			priv->mtk_dbgtp_sta.dbgtp_en)
 			mtk_dbgtp_switch(mtk_crtc, cmdq_handle, true);
+		GCE_FI;
 	}
 
 	cmdq_pkt_finalize_loop(cmdq_handle);
@@ -12626,6 +12660,7 @@ void mtk_crtc_start_trig_loop(struct drm_crtc *crtc)
 		mtk_drm_get_lcm_ext_params(crtc);
 	dma_addr_t slot_src_addr;
 	dma_addr_t slot_dts_addr;
+	dma_addr_t slot_addr;
 	struct mtk_ddp_comp *output_comp;
 	struct mtk_ddp_comp *dbi_comp;
 	int i, j;
@@ -12887,10 +12922,19 @@ skip_prete:
 			mtk_dbgtp_dsi_gce_event_config(mtk_crtc, cmdq_handle);
 			DDPMSG("FIFO mon: Wait gce event fifo level down\n");
 			GCE_DO(wfe, EVENT_CMD_TRIG_START);
+			lop.reg = true;
+			lop.idx = var1;
+			rop.reg = false;
+			rop.idx = 0;
+			slot_src_addr = mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_UNDERRUNED);
+			cmdq_pkt_read(cmdq_handle, mtk_crtc->gce_obj.base, slot_src_addr, var1);
+			GCE_IF(lop, R_CMDQ_EQUAL, rop);
+			mtk_disp_dbg_cmdq_use_mutex(mtk_crtc, cmdq_handle, 6);
 			mtk_dbgtp_fifo_mon_set_trig_threshold(mtk_crtc, cmdq_handle);
 			if (!priv->mtk_dbgtp_sta.is_validation_mode &&
 				priv->mtk_dbgtp_sta.dbgtp_en)
 				mtk_dbgtp_switch(mtk_crtc, cmdq_handle, true);
+			GCE_FI;
 		}
 
 		GCE_DO(wfe, EVENT_CMD_EOF);
@@ -12902,9 +12946,47 @@ skip_prete:
 			if (!priv->mtk_dbgtp_sta.is_validation_mode &&
 				priv->mtk_dbgtp_sta.dbgtp_en)
 				mtk_dbgtp_switch(mtk_crtc, cmdq_handle, false);
+			/* gce if (A || B) start */
+			slot_addr = mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_CONDITION);
+			/* clear result */
+			cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base, slot_addr, 0, ~0);
+
+			/* condition A */
+			lop.reg = true;
+			lop.idx = var1;
+			rop.reg = false;
+			rop.idx = 1;
+			slot_src_addr = mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_TRIG_STARTED);
+			cmdq_pkt_read(cmdq_handle, mtk_crtc->gce_obj.base, slot_src_addr, var1);
+			GCE_IF(lop, R_CMDQ_EQUAL, rop);
+			cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base, slot_addr, 1, ~0);
+			GCE_FI;
+
+			/* condition B */
+			lop.reg = true;
+			lop.idx = var1;
+			rop.reg = false;
+			rop.idx = 1;
+			slot_src_addr = mtk_get_dbgtp_comp_pa();
+			cmdq_pkt_read(cmdq_handle, mtk_crtc->gce_obj.base, slot_src_addr + 0x38, var1);
+			GCE_IF(lop, R_CMDQ_EQUAL, rop);
+			cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base, slot_addr, 1, ~0);
+			GCE_FI;
+
+			/* result */
+			lop.reg = true;
+			lop.idx = var1;
+			rop.reg = false;
+			rop.idx = 1;
+			cmdq_pkt_read(cmdq_handle, mtk_crtc->gce_obj.base, slot_addr, var1);
+			GCE_IF(lop, R_CMDQ_EQUAL, rop);
 			// when eof, fifo mon will trigger stop ELA
 			cmdq_pkt_write(cmdq_handle, NULL, 0x3EFC0014, 0x1, 0xf);
 			cmdq_pkt_write(cmdq_handle, NULL, 0x3EFC0018, 0x1, 0xf);
+			mtk_disp_dbg_cmdq_use_mutex(mtk_crtc, cmdq_handle, 6);
+			slot_src_addr = mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_TRIG_STARTED);
+			cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base, slot_src_addr, 0, ~0);
+			GCE_FI;
 		}
 
 		for_each_comp_in_cur_crtc_path(dbi_comp, mtk_crtc, i, j) {
@@ -13005,9 +13087,47 @@ skip_prete:
 					if (!priv->mtk_dbgtp_sta.is_validation_mode &&
 						priv->mtk_dbgtp_sta.dbgtp_en)
 						mtk_dbgtp_switch(mtk_crtc, cmdq_handle, false);
+					/* gce if (A || B) start */
+					slot_addr = mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_CONDITION);
+					/* clear result */
+					cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base, slot_addr, 0, ~0);
+
+					/* condition A */
+					lop.reg = true;
+					lop.idx = var1;
+					rop.reg = false;
+					rop.idx = 1;
+					slot_src_addr = mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_TRIG_STARTED);
+					cmdq_pkt_read(cmdq_handle, mtk_crtc->gce_obj.base, slot_src_addr, var1);
+					GCE_IF(lop, R_CMDQ_EQUAL, rop);
+					cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base, slot_addr, 1, ~0);
+					GCE_FI;
+
+					/* condition B */
+					lop.reg = true;
+					lop.idx = var1;
+					rop.reg = false;
+					rop.idx = 1;
+					slot_src_addr = mtk_get_dbgtp_comp_pa();
+					cmdq_pkt_read(cmdq_handle, mtk_crtc->gce_obj.base, slot_src_addr + 0x38, var1);
+					GCE_IF(lop, R_CMDQ_EQUAL, rop);
+					cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base, slot_addr, 1, ~0);
+					GCE_FI;
+
+					/* result */
+					lop.reg = true;
+					lop.idx = var1;
+					rop.reg = false;
+					rop.idx = 1;
+					cmdq_pkt_read(cmdq_handle, mtk_crtc->gce_obj.base, slot_addr, var1);
+					GCE_IF(lop, R_CMDQ_EQUAL, rop);
 					// when eof, fifo mon will trigger stop ELA
 					cmdq_pkt_write(cmdq_handle, NULL, 0x3EFC0014, 0x1, 0xf);
 					cmdq_pkt_write(cmdq_handle, NULL, 0x3EFC0018, 0x1, 0xf);
+					mtk_disp_dbg_cmdq_use_mutex(mtk_crtc, cmdq_handle, 6);
+					slot_src_addr = mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_TRIG_STARTED);
+					cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base, slot_src_addr, 0, ~0);
+					GCE_FI;
 				}
 			}
 

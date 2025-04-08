@@ -4049,6 +4049,85 @@ void dump_cur_pos(struct mtk_drm_crtc *mtk_crtc)
 	}
 }
 
+int mtk_dsi_fifo_mon_trigger_start_set(bool is_trig_start)
+{
+	struct drm_crtc *crtc;
+	int ret = 0;
+	unsigned int *addr = NULL;
+	struct mtk_drm_crtc *mtk_crtc = NULL;
+	struct mtk_drm_private *priv = NULL;
+
+	if (IS_ERR_OR_NULL(drm_dev)) {
+		DDPINFO("%s, invalid drm dev\n", __func__);
+		return -EINVAL;
+	}
+
+	/* this debug cmd only for crtc0 */
+	crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
+				typeof(*crtc), head);
+	if (IS_ERR_OR_NULL(crtc)) {
+		DDPINFO("%s failed to find crtc\n", __func__);
+		return -EINVAL;
+	}
+	mtk_crtc = to_mtk_crtc(crtc);
+	if (IS_ERR_OR_NULL(mtk_crtc)) {
+		DDPINFO("%s failed to find crtc\n", __func__);
+		return -EINVAL;
+	}
+	priv = mtk_crtc->base.dev->dev_private;
+	addr = mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_TRIG_STARTED);
+	*addr = is_trig_start;
+
+	return ret;
+}
+EXPORT_SYMBOL(mtk_dsi_fifo_mon_trigger_start_set);
+
+int mtk_hrt_issue_flag_set(bool is_hrt_issue)
+{
+	struct drm_crtc *crtc;
+	int ret = 0;
+	unsigned int *addr = NULL;
+	struct mtk_drm_crtc *mtk_crtc = NULL;
+	struct mtk_drm_private *priv = NULL;
+
+	if (IS_ERR_OR_NULL(drm_dev)) {
+		DDPINFO("%s, invalid drm dev\n", __func__);
+		return -EINVAL;
+	}
+
+	/* this debug cmd only for crtc0 */
+	crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
+				typeof(*crtc), head);
+	if (IS_ERR_OR_NULL(crtc)) {
+		DDPINFO("%s failed to find crtc\n", __func__);
+		return -EINVAL;
+	}
+	mtk_crtc = to_mtk_crtc(crtc);
+	if (IS_ERR_OR_NULL(mtk_crtc)) {
+		DDPINFO("%s failed to find crtc\n", __func__);
+		return -EINVAL;
+	}
+	priv = mtk_crtc->base.dev->dev_private;
+	addr = mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_UNDERRUNED);
+	*addr = is_hrt_issue;
+	DDPMSG("%s set hrt issue is %d\n", __func__, is_hrt_issue);
+	if (is_hrt_issue) {
+		/* dbgtp dely 3072 frames and auto enable */
+		priv->mtk_dbgtp_sta.is_cam_hrt_issue = true;
+		priv->mtk_dbgtp_sta.cam_hrt_time_count = 4096;
+		mtk_dbgtp_switch(mtk_crtc, NULL, 0);
+		priv->mtk_dbgtp_sta.dbgtp_en = false;
+		DDPMSG("%s set hrt issue is %d disable dbgtp\n", __func__, is_hrt_issue);
+	} else {
+		mtk_dbgtp_switch(mtk_crtc, NULL, 1);
+		priv->mtk_dbgtp_sta.dbgtp_en = true;
+		DDPMSG("%s set hrt issue is %d enable dbgtp\n", __func__, is_hrt_issue);
+	}
+
+	return ret;
+}
+EXPORT_SYMBOL(mtk_hrt_issue_flag_set);
+
 irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 {
 	struct mtk_dsi *dsi = dev_id;
@@ -4064,6 +4143,7 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 	struct drm_crtc *crtc = NULL;
 	struct mtk_ddp_comp *comp = NULL;
 	unsigned int irq_mask = 0;
+	unsigned int *addr = NULL;
 
 	if (IS_ERR_OR_NULL(dsi) || IS_ERR_OR_NULL(dsi->driver_data)) {
 		DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
@@ -4163,8 +4243,12 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 			if ((priv->data->mmsys_id == MMSYS_MT6993) &&
 				(priv->mtk_dbgtp_sta.fifo_mon_en[0]) && (index == 0)) {
 				mtk_set_mmmc_rg(2, 3, 0x14, 0x1, 0xffff);
+				/* Disable dbgtp */
 				mtk_dbgtp_switch(mtk_crtc, NULL, 0);
 				priv->mtk_dbgtp_sta.dbgtp_en = false;
+				/* Set dsi underrun slot */
+				addr = mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_UNDERRUNED);
+				*addr = 1;
 			}
 
 			dump_cur_pos(mtk_crtc);
