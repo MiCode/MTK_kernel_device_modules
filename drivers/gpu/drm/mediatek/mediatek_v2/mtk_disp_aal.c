@@ -995,6 +995,7 @@ static int disp_aal_update_dre3_sram(struct mtk_ddp_comp *comp,
 	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
 	struct mtk_ddp_comp *comp1 = NULL;
 	struct mtk_disp_aal *aal1_data = NULL;
+	struct DISP_AAL_INITREG *init_regs = &aal_data->primary_data->init_regs;
 
 	AALIRQ_LOG("first_frame = %d\n", atomic_read(&aal_data->first_frame));
 	AALIRQ_LOG("hist_available = %d\n", atomic_read(&aal_data->hist_available));
@@ -1064,7 +1065,8 @@ static int disp_aal_update_dre3_sram(struct mtk_ddp_comp *comp,
 
 	/* Write DRE 3.0 gain */
 	mtk_drm_trace_begin("write_dre3_curve");
-	if (!atomic_read(&aal_data->first_frame)) {
+	if (!atomic_read(&aal_data->first_frame) &&
+			(init_regs && (!init_regs->aal_gtm_entry_mode_switch))) {
 		mutex_lock(&aal_data->primary_data->config_lock);
 		disp_aal_write_dre3_curve(comp, false);
 		if (comp1)
@@ -2060,6 +2062,7 @@ int disp_aal_set_param(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	int ret = 0;
 	u64 time_use = 0;
 	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
+	struct DISP_AAL_INITREG *init_regs = &aal_data->primary_data->init_regs;
 
 	if (debug_dump_input_param)
 		disp_aal_dump_param(&aal_data->primary_data->aal_param);
@@ -2080,9 +2083,9 @@ int disp_aal_set_param(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		//so if intervel less than 260 should delay
 		usleep_range(260-time_use, 270-time_use);
 	}
-
-	if (aal_data->primary_data->aal_fo->mtk_dre30_support && aal_data->primary_data->dre30_enabled)
-		ret = disp_aal_set_dre3_curve(comp, handle, param);
+	if (init_regs && (!init_regs->aal_gtm_entry_mode_switch))
+		if (aal_data->primary_data->aal_fo->mtk_dre30_support && aal_data->primary_data->dre30_enabled)
+			ret = disp_aal_set_dre3_curve(comp, handle, param);
 	disp_aal_write_dre_to_reg(comp, handle, &aal_data->primary_data->aal_param);
 	disp_aal_write_cabc_to_reg(comp, handle, &aal_data->primary_data->aal_param);
 	if (comp->mtk_crtc->is_dual_pipe) {
