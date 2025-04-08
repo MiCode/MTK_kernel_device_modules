@@ -42,6 +42,8 @@ SIMPLE_MODULE_NAME = [
     "mt6688",
     "mtk-extbuck-debug",
     "rt4803",
+    "fan53870-ldo",
+    "wl2868c-regulator",
 ]
 
 [define_mgk_ddk_ko(
