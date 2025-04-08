@@ -43,6 +43,7 @@ struct mtk_disp_chist_primary {
 	unsigned int pre_frame_width;
 	unsigned int frame_width;
 	unsigned int frame_height;
+	unsigned int relay_state;
 };
 
 struct mtk_disp_chist {
@@ -74,5 +75,6 @@ int mtk_drm_ioctl_chist_set_config(struct drm_device *dev, void *data,
 
 void disp_chist_set_tile_overhead(struct mtk_drm_crtc *mtk_crtc, int overhead, bool is_right);
 
+unsigned int disp_chist_bypass_info(struct mtk_drm_crtc *mtk_crtc, unsigned int chist_id);
 #endif
 
