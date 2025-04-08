@@ -49,12 +49,6 @@ struct data_entry {
 	struct list_head list;
 };
 
-struct transcoding_pair {
-	int ctx_id[2];
-	struct inst_node *node[2];
-	struct list_head list;
-};
-
 struct inst_perf_info {
 	int inst_type;
 	int ctx_id;

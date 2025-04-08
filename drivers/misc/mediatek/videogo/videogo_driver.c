@@ -25,10 +25,9 @@
 static DECLARE_KFIFO(service_fifo, struct vgo_powerhal_info, 16);
 
 static DECLARE_WAIT_QUEUE_HEAD(passive_wq);
-static int passive_wq_ready;
 
 static DECLARE_WAIT_QUEUE_HEAD(controller_wq);
-static int controller_wq_ready;
+static atomic_t controller_wq_ready;
 
 static DECLARE_WAIT_QUEUE_HEAD(service_wq);
 
@@ -57,14 +56,17 @@ static struct cdev videogo_cdev;
 #define TARGET_FPS 30
 static int set_runnable_boost_disable;
 static int set_margin_control;
-static int target_fps_count[2] = {0};
-static int alive_count[2] = {0};
-
+static int set_uclamp_min_ta;
+//static int set_cpu_freq_min;
+static int set_gpu_freq_min;
+static int target_fps_count[MAX_CODEC_TYPE] = {0};
+static int alive_count[MAX_CODEC_TYPE] = {0};
+static int isTranscoding;
 //static struct task_struct *kvideogo_active;
 //static bool videogo_enable;
 
 
-static void videogo_vcodec_send_fn(int type, void *data)
+static void videogo_vcodec_send_fn(int iotype, void *data)
 {
 	struct data_entry *entry;
 
@@ -72,9 +74,9 @@ static void videogo_vcodec_send_fn(int type, void *data)
 	if (!entry)
 		return;
 
-	entry->type = type;
+	entry->type = iotype;
 
-	switch(type) {
+	switch(iotype) {
 	case VGO_RECV_INSTANCE_INC:
 	case VGO_RECV_INSTANCE_DEC:
 		entry->data = kmalloc(sizeof(struct inst_init_data), GFP_KERNEL);
@@ -93,96 +95,117 @@ static void videogo_vcodec_send_fn(int type, void *data)
 		memcpy(entry->data, data, sizeof(struct inst_data));
 		break;
 	default:
-		pr_info("type: %d not support\n", type);
+		pr_info("type: %d not support\n", iotype);
+		kfree(entry);
 		return;
 	}
 
 	mutex_lock(&passive_workqueue_mutex);
 	list_add_tail(&entry->list, &passive_workqueue);
-	passive_wq_ready = 1;
 	mutex_unlock(&passive_workqueue_mutex);
 
 	wake_up_interruptible(&passive_wq);
 }
 
-static int videogo_process_data(int type, void *data)
+static int videogo_process_data(int iotype, void *data)
 {
-	struct inst_node *info, *tmp;
-	//struct transcoding_pair *pair, *pair_tmp;
+	struct inst_node *info0, *tmp;
 	int ret = VGO_IDLE;
 
-	if (type == VGO_RECV_INSTANCE_INC) {
+	if (iotype == VGO_RECV_INSTANCE_INC) {
 		struct inst_init_data *init_data = (struct inst_init_data *)data;
+		int type = init_data->inst_type;
 
-		info = kmalloc(sizeof(*info), GFP_KERNEL);
-		if (!info)
+		info0 = kmalloc(sizeof(*info0), GFP_KERNEL);
+		if (!info0)
 			return -ENOMEM;
 
-		info->inst_type = init_data->inst_type;
-		info->ctx_id = init_data->ctx_id;
-		info->caller_pid = init_data->caller_pid;
-		info->fourcc = init_data->fourcc;
-		info->oprate = init_data->oprate;
-		info->oprate_vgo = 0;
+		info0->inst_type = type;
+		info0->ctx_id = init_data->ctx_id;
+		info0->caller_pid = init_data->caller_pid;
+		info0->fourcc = init_data->fourcc;
+		info0->oprate = init_data->oprate;
+		info0->oprate_vgo = 0;
 
-		if ((init_data->width > 0 && init_data->width < INT_MAX) ||
+		if ((init_data->width > 0 && init_data->width < INT_MAX) &&
 			(init_data->height > 0 && init_data->height < INT_MAX)) {
-			info->width = init_data->width;
-			info->height = init_data->height;
-		} else
+			info0->width = init_data->width;
+			info0->height = init_data->height;
+		} else {
+			kfree(info0);
 			return -ENOMEM;
+		}
 
-		memset(info->hw_proc_time, 0, sizeof(info->hw_proc_time));
-		info->post_proc_time = 0;
-		INIT_LIST_HEAD(&info->list);
+		memset(info0->hw_proc_time, 0, sizeof(info0->hw_proc_time));
+		info0->post_proc_time = 0;
+		INIT_LIST_HEAD(&info0->list);
 
-		mutex_lock(&inst_list_mutex[info->inst_type]);
-		list_add(&info->list, &inst_list[info->inst_type]);
+		mutex_lock(&inst_list_mutex[type]);
+		list_add(&info0->list, &inst_list[type]);
 
-		alive_count[info->inst_type]++;
-		if (info->oprate > TARGET_FPS)
-			target_fps_count[info->inst_type]++;
-		mutex_unlock(&inst_list_mutex[info->inst_type]);
+		alive_count[type]++;
+		if (info0->oprate > TARGET_FPS)
+			target_fps_count[type]++;
+		mutex_unlock(&inst_list_mutex[type]);
 
 		pr_info("[vgo] INC inst_type: %d, ctx_id: %d, caller_pid: %d, fourcc: %d, oprate: %d, width: %d, height: %d\n",
-			info->inst_type, info->ctx_id, info->caller_pid,
-			info->fourcc, info->oprate, info->width, info->height);
-	} else if (type == VGO_RECV_INSTANCE_DEC) {
+			info0->inst_type, info0->ctx_id, info0->caller_pid,
+			info0->fourcc, info0->oprate, info0->width, info0->height);
+	} else if (iotype == VGO_RECV_INSTANCE_DEC) {
 		struct inst_init_data *inst_data = (struct inst_init_data *)data;
+		int type = inst_data->inst_type;
 
-		mutex_lock(&inst_list_mutex[inst_data->inst_type]);
-		alive_count[inst_data->inst_type]--;
+		mutex_lock(&inst_list_mutex[type]);
+		alive_count[type]--;
 		if (inst_data->oprate > TARGET_FPS)
-			target_fps_count[inst_data->inst_type]--;
+			target_fps_count[type]--;
 
-		list_for_each_entry_safe(info, tmp, &inst_list[inst_data->inst_type], list) {
-			if (info->ctx_id == inst_data->ctx_id &&
-				info->inst_type == inst_data->inst_type) {
+		list_for_each_entry_safe(info0, tmp, &inst_list[type], list) {
+			if (info0->ctx_id == inst_data->ctx_id &&
+				info0->inst_type == type) {
 
-				pr_info("[vgo] DEC inst_type: %d, ctx_id: %d\n", info->inst_type, info->ctx_id);
-				list_del(&info->list);
-				kfree(info);
+				pr_info("[vgo] DEC inst_type: %d, ctx_id: %d\n",
+						info0->inst_type, info0->ctx_id);
+				list_del(&info0->list);
+				kfree(info0);
 				break;
 			}
 		}
-		mutex_unlock(&inst_list_mutex[inst_data->inst_type]);
+		mutex_unlock(&inst_list_mutex[type]);
 
-	} else if (type == VGO_RECV_RUNNING_UPDATE) {
+		isTranscoding = alive_count[VENC] == 0 ? 0 : isTranscoding;
+
+	} else if (iotype == VGO_RECV_RUNNING_UPDATE) {
 		struct inst_data *run_data = (struct inst_data *)data;
+		int type = run_data->inst_type;
 
-		mutex_lock(&inst_list_mutex[run_data->inst_type]);
-		list_for_each_entry_safe(info, tmp, &inst_list[run_data->inst_type], list) {
-			if (info->ctx_id == run_data->ctx_id &&
-				info->inst_type == run_data->inst_type) {
-				info->oprate_avdvfs = run_data->oprate;
-				memcpy(info->hw_proc_time, run_data->hw_proc_time,
-					   sizeof(info->hw_proc_time));
-				info->updated = 1;
+		mutex_lock(&inst_list_mutex[type]);
+		list_for_each_entry_safe(info0, tmp, &inst_list[type], list) {
+			if (info0->ctx_id == run_data->ctx_id &&
+				info0->inst_type == run_data->inst_type) {
+				info0->oprate_avdvfs = run_data->oprate;
+				memcpy(info0->hw_proc_time, run_data->hw_proc_time,
+					   sizeof(info0->hw_proc_time));
+				info0->updated = 1;
 
 				break;
 			}
 		}
-		mutex_unlock(&inst_list_mutex[run_data->inst_type]);
+		mutex_unlock(&inst_list_mutex[type]);
+
+		//struct oprate_data oprate_vgo;
+		//oprate_vgo.inst_type = type;
+		//oprate_vgo.ctx_id = info0->ctx_id;
+		//oprate_vgo.oprate = info0->oprate_avdvfs;
+		//mtk_vcodec_vgo_send(VGO_SEND_OPRATE, videogo_vcodec_send_fn);
+
+		if (!isTranscoding && info0->oprate_avdvfs > 45 &&
+			type == VENC && alive_count[VDEC] > 0)
+			if (info0->oprate_avdvfs >= (info0->oprate * 11 + 9) / 10)
+				isTranscoding = 1;
+
+		pr_info("[vgo] oprate_avdvfs=%d, oprate=%d, type=%d\n",
+				info0->oprate_avdvfs, info0->oprate, type);
 	}
 
 	return ret;
@@ -191,10 +214,16 @@ static int videogo_process_data(int type, void *data)
 static int videogo_passive_fn(void *arg)
 {
 	struct data_entry *entry;
+	int ret = 0;
 
 	while(!kthread_should_stop()) {
-		wait_event_interruptible(passive_wq, passive_wq_ready ||
-		kthread_should_stop());
+		ret = wait_event_interruptible(passive_wq, !list_empty(&passive_workqueue) ||
+				kthread_should_stop());
+
+		if (ret < 0) {
+			pr_info("[vgo] wait event return=%d\n", ret);
+			continue;
+		}
 
 		if (kthread_should_stop())
 			break;
@@ -208,24 +237,47 @@ static int videogo_passive_fn(void *arg)
 			list_del(&entry->list);
 			kfree(entry);
 		}
-		passive_wq_ready = 0;
 		mutex_unlock(&passive_workqueue_mutex);
 
 		// if need to notify controller thread
-		controller_wq_ready = 1;
+		atomic_inc(&controller_wq_ready);
 		wake_up_interruptible(&controller_wq);
 	}
 
 	return 0;
 }
 
-static int videogo_controller_fn(void *arg)
+static void send_service_info(const char *log_msg, int service_type,
+								int data0, int data1, int data2)
 {
-//	struct transcoding_pair *pair, *pair_tmp;
 	struct vgo_powerhal_info service_info;
 
+	pr_info("[vgo] %s\n", log_msg);
+	service_info.type = service_type;
+	service_info.data[0] = data0;
+	service_info.data[1] = data1;
+	service_info.data[2] = data2;
+	mutex_lock(&service_mutex);
+	kfifo_in(&service_fifo, &service_info, 1);
+	mutex_unlock(&service_mutex);
+}
+
+static int videogo_controller_fn(void *arg)
+{
+	int ret = 0;
+
 	while(!kthread_should_stop()) {
-		wait_event_interruptible(controller_wq, controller_wq_ready);
+		ret = wait_event_interruptible(controller_wq,
+				 atomic_read(&controller_wq_ready) > 0 || kthread_should_stop());
+
+		if (ret < 0) {
+			pr_info("[vgo] wait event return=%d\n", ret);
+			continue;
+		}
+
+		if (kthread_should_stop())
+			break;
+		atomic_dec(&controller_wq_ready);
 
 		int total_vdec_30fps = target_fps_count[VDEC];
 		int total_vdec = alive_count[VDEC];
@@ -234,58 +286,55 @@ static int videogo_controller_fn(void *arg)
 		if (total_vdec_30fps > 0 && total_vdec_30fps <= 2 &&
 			!total_venc && total_vdec_30fps == total_vdec) {
 			if (!set_runnable_boost_disable) {
-				pr_info("[vgo] ack disable Runnable_boost\n");
-				service_info.type = VGO_RUNNABLE_BOOST_DISABLE;
-				service_info.data[0] = 1;
-
-				mutex_lock(&service_mutex);
-				kfifo_in(&service_fifo, &service_info, 1);
-				mutex_unlock(&service_mutex);
-
+				send_service_info("ack Runnable_boost_disable",
+								VGO_RUNNABLE_BOOST_DISABLE, 1, 0, 0);
 				set_runnable_boost_disable = 1;
-
 			}
 			if (!set_margin_control) {
-				pr_info("[vgo] ack margin control\n");
-				service_info.type = VGO_MARGIN_CONTROL_0;
-				service_info.data[0] = 1000;
-				service_info.data[1] = 20;
-				service_info.data[2] = 0;
-
-				mutex_lock(&service_mutex);
-				kfifo_in(&service_fifo, &service_info, 1);
-				mutex_unlock(&service_mutex);
-
+				send_service_info("ack margin_control",
+								VGO_MARGIN_CONTROL_0, 1000, 20, 0);
 				set_margin_control = 1;
 			}
 		} else {
 			if (set_runnable_boost_disable) {
-				pr_info("[vgo] rel disable Runnable_boost\n");
-				service_info.type = VGO_RUNNABLE_BOOST_DISABLE;
-				service_info.data[0] = 0;
-
-				mutex_lock(&service_mutex);
-				kfifo_in(&service_fifo, &service_info, 1);
-				mutex_unlock(&service_mutex);
+				send_service_info("rel Runnable_boost_disable",
+								VGO_RUNNABLE_BOOST_DISABLE, -1, 0, 0);
 				set_runnable_boost_disable = 0;
 			}
 			if (set_margin_control) {
-				pr_info("[vgo] rel margin control\n");
-				service_info.type = VGO_MARGIN_CONTROL_0;
-				service_info.data[0] = 0;
-
-				mutex_lock(&service_mutex);
-				kfifo_in(&service_fifo, &service_info, 1);
-				mutex_unlock(&service_mutex);
+				send_service_info("rel margin_control",
+								VGO_MARGIN_CONTROL_0, -1, 0, 0);
 				set_margin_control = 0;
 			}
 		}
 
-		if (!kfifo_is_empty(&service_fifo)) {
-			pr_info("[vgo] Hints service_wq\n");
-			wake_up_interruptible(&service_wq);
+		if (isTranscoding) {
+			if (!set_uclamp_min_ta) {
+				send_service_info("ack uclamp_min_ta",
+								VGO_UCLAMP_MIN_TA, 100, 0, 0);
+				set_uclamp_min_ta = 1;
+			}
+			if (!set_gpu_freq_min) {
+				send_service_info("ack gpu_freq_min",
+								VGO_GPU_FREQ_MIN, 7, 0, 0);
+				set_gpu_freq_min = 1;
+			}
+		} else {
+			if (set_uclamp_min_ta) {
+				send_service_info("rel uclamp_min_ta",
+								VGO_UCLAMP_MIN_TA, -1, 0, 0);
+				set_uclamp_min_ta = 0;
+			}
+			if (set_gpu_freq_min) {
+				send_service_info("rel gpu_freq_min",
+								VGO_GPU_FREQ_MIN, -1, 0, 0);
+				set_gpu_freq_min = 0;
+			}
 		}
-		controller_wq_ready = 0;
+
+		if (!kfifo_is_empty(&service_fifo))
+			wake_up_interruptible(&service_wq);
+
 	}
 	return 0;
 }
