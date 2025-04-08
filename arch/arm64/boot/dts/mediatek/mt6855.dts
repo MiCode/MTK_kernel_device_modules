@@ -4009,7 +4009,7 @@
 			< 2 1  2>,/* IPI_OUT_C_SLEEP_0 */
 			< 3 1  1>,/* IPI_OUT_TEST_0 */
 			<16 2 18>,/* IPI_OUT_VENC_0 */
-			<11 2  4>,/* IPI_OUT_VCP_MPOOL_0 */
+			<18 2  4>,/* IPI_OUT_VCP_MPOOL_0 */
 			<20 3  2>,/* IPI_OUT_C_SLEEP_1 */
 			<21 3  1>,/* IPI_OUT_TEST_1 */
 			<22 3  6>,/* IPI_OUT_LOGGER_CTRL_0 */
