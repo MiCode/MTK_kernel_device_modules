@@ -34,7 +34,7 @@
 #include "mt6993_apupwr_ce.h"
 #include "aputop_cdev.h"
 
-#define LOCAL_DBG	(1)
+#define LOCAL_DBG	(0)
 #define NEED_CHK	(0)
 #define RPC_ALIVE_DBG	(0)
 #define SMC_APUSYS_PWR_DUMP	(0)
@@ -434,12 +434,16 @@ static int mt6993_update_bounds(void)
 			if (cw->lower_limit < new_lower_limit)
 				new_lower_limit = cw->lower_limit;
 		}
+#if LOCAL_DBG
 		pr_info("%s: Now new_upper_limit = %d, new_lower_limit = %d\n",
 				__func__, new_upper_limit, new_lower_limit);
+#endif
 	}
 
 	if (new_upper_limit == global_upper_limit && new_lower_limit == global_lower_limit) {
+#if LOCAL_DBG
 		pr_info("%s: bounds not changed.\n", __func__);
+#endif
 		return -EAGAIN;
 	}
 
@@ -539,20 +543,26 @@ int mt6993_set_freq_limit(int upper_limit, int lower_limit, int *request_id, int
 	// real opp range is from 0 to 15
 	if ((lower_limit > USER_MIN_OPP_VAL || lower_limit < USER_MAX_OPP_VAL) ||
 		(upper_limit > USER_MIN_OPP_VAL || upper_limit < USER_MAX_OPP_VAL)) {
+#if LOCAL_DBG
 		pr_info("%s: Error, limits out of range: lower_limit (%d), upper_limit (%d)\n",
 				__func__, lower_limit, upper_limit);
+#endif
 		if (lower_limit > USER_MIN_OPP_VAL) {
 			lower_limit = USER_MIN_OPP_VAL;
+#if LOCAL_DBG
 			pr_info("%s: setting lower_limit to %d\n",
 				__func__, lower_limit);
+#endif
 			}
 		else
 			return -ERANGE;
 	}
 
 	if (lower_limit < upper_limit) {
+#if LOCAL_DBG
 		pr_info("%s: Error, upper_limit (%d) cannot be bigger than lower_limit (%d)\n",
 				__func__, lower_limit, upper_limit);
+#endif
 		return -EINVAL;
 	}
 
@@ -568,8 +578,10 @@ int mt6993_set_freq_limit(int upper_limit, int lower_limit, int *request_id, int
 		/* update existing nodes values */
 		cw->lower_limit = lower_limit;
 		cw->upper_limit = upper_limit;
+#if LOCAL_DBG
 		pr_info("%s: updated existing node, and request_id is %d\n",
 				__func__, *request_id);
+#endif
 		} else {
 			cw = kmalloc(sizeof(*cw), GFP_KERNEL);
 		if (!cw) {
@@ -581,7 +593,9 @@ int mt6993_set_freq_limit(int upper_limit, int lower_limit, int *request_id, int
 		/* record id number */
 		cw->request_id = *request_id;
 		list_add(&cw->list, &client_list);
+#if LOCAL_DBG
 		pr_info("%s: added new node, and request_id is %d\n", __func__, cw->request_id);
+#endif
 	}
 
 	ret = mt6993_update_bounds();
