@@ -583,15 +583,15 @@ int adpf_create_session_hint(unsigned int sid, unsigned int tgid,
 
 	adpf_notify_callback(ADPF_CREATE_HINT_SESSION, sid);
 
-	if (sprintf(log, "adpf_status") < 0) {
-		pr_debug("[%s] sprintf failed!",  __func__);
+	if (snprintf(log, 256, "%s", "adpf_status") < 0) {
+		pr_debug("[%s] snprintf failed!",  __func__);
 		return -1;
 	}
 
 	_adpf_systrace(tgid, ADPF_CREATE_HINT_SESSION, log);
 
-	if (sprintf(log, "adpf_target") < 0) {
-		pr_debug("[%s] sprintf failed!",  __func__);
+	if (snprintf(log, 256, "%s", "adpf_target") < 0) {
+		pr_debug("[%s] snprintf failed!",  __func__);
 		return -1;
 	}
 
@@ -630,8 +630,8 @@ int adpf_update_work_duaration(unsigned int sid, long targetDurationNanos)
 
 	adpf_notify_callback(ADPF_UPDATE_TARGET_WORK_DURATION, sid);
 
-	if (sprintf(log, "adpf_target") < 0) {
-		pr_debug("[%s] sprintf failed!",  __func__);
+	if (snprintf(log, 256, "%s", "adpf_target") < 0) {
+		pr_debug("[%s] snprintf failed!",  __func__);
 		return -1;
 	}
 
@@ -678,15 +678,15 @@ int adpf_report_actual_work_duaration(unsigned int sid,
 
 	adpf_notify_callback(ADPF_REPORT_ACTUAL_WORK_DURATION, sid);
 
-	if (sprintf(log, "adpf_timeStamp") < 0) {
-		pr_debug("[%s] sprintf failed!",  __func__);
+	if (snprintf(log, 256, "%s", "adpf_timeStamp") < 0) {
+		pr_debug("[%s] snprintf failed!",  __func__);
 		return -1;
 	}
 
 	_adpf_systrace(tgid, ts, log);
 
-	if (sprintf(log, "adpf_workDuration") < 0) {
-		pr_debug("[%s] sprintf failed!",  __func__);
+	if (snprintf(log, 256, "%s", "adpf_workDuration") < 0) {
+		pr_debug("[%s] snprintf failed!",  __func__);
 		return -1;
 	}
 
@@ -717,8 +717,8 @@ int adpf_pause(unsigned int sid)
 
 	adpf_notify_callback(ADPF_PAUSE, sid);
 
-	if (sprintf(log, "adpf_status") < 0) {
-		pr_debug("[%s] sprintf failed!",  __func__);
+	if (snprintf(log, 256, "%s", "adpf_status") < 0) {
+		pr_debug("[%s] snprintf failed!",  __func__);
 		return -1;
 	}
 
@@ -749,8 +749,8 @@ int adpf_resume(unsigned int sid)
 
 	adpf_notify_callback(ADPF_RESUME, sid);
 
-	if (sprintf(log, "adpf_status") < 0) {
-		pr_debug("[%s] sprintf failed!",  __func__);
+	if (snprintf(log, 256, "%s", "adpf_status") < 0) {
+		pr_debug("[%s] snprintf failed!",  __func__);
 		return -1;
 	}
 
@@ -781,8 +781,8 @@ int adpf_close(unsigned int sid)
 
 	adpf_notify_callback(ADPF_CLOSE, sid);
 
-	if (sprintf(log, "adpf_status") < 0) {
-		pr_debug("[%s] sprintf failed!",  __func__);
+	if (snprintf(log, 256, "%s", "adpf_status") < 0) {
+		pr_debug("[%s] snprintf failed!",  __func__);
 		return -1;
 	}
 
@@ -814,15 +814,15 @@ int adpf_sent_hint(unsigned int sid, int hint)
 
 	adpf_notify_callback(ADPF_SENT_HINT, sid);
 
-	if (sprintf(log, "adpf_status") < 0) {
-		pr_debug("[%s] sprintf failed!",  __func__);
+	if (snprintf(log, 256, "%s", "adpf_status") < 0) {
+		pr_debug("[%s] snprintf failed!",  __func__);
 		return -1;
 	}
 
 	_adpf_systrace(tgid ,ADPF_SENT_HINT, log);
 
-	if (sprintf(log, "adpf_hint") < 0) {
-		pr_debug("[%s] sprintf failed!",  __func__);
+	if (snprintf(log, 256, "%s", "adpf_hint") < 0) {
+		pr_debug("[%s] snprintf failed!",  __func__);
 		return -1;
 	}
 
@@ -871,8 +871,8 @@ int adpf_set_threads(unsigned int sid, int *threadIds, int threadIds_size)
 
 	adpf_notify_callback(ADPF_SET_THREADS, sid);
 
-	if (sprintf(log, "adpf_status") < 0) {
-		pr_debug("[%s] sprintf failed!",  __func__);
+	if (snprintf(log, 256, "%s", "adpf_status") < 0) {
+		pr_debug("[%s] snprintf failed!",  __func__);
 		return -1;
 	}
 
