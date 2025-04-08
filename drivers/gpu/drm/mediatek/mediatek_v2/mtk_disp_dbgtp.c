@@ -8,6 +8,16 @@
 #include <linux/of_device.h>
 #include <linux/of_irq.h>
 #include <linux/platform_device.h>
+#include <linux/clk.h>
+#include <linux/delay.h>
+#include <linux/of_address.h>
+#include <linux/of_platform.h>
+#include <linux/of_reserved_mem.h>
+#include <linux/of.h>
+#include <linux/module.h>
+#include <linux/regmap.h>
+#include <linux/types.h>
+#include <linux/rtc.h>
 
 #ifndef DRM_CMDQ_DISABLE
 #include <linux/soc/mediatek/mtk-cmdq-ext.h>
@@ -229,6 +239,7 @@
 struct mtk_disp_dbgtp_data {
 	bool is_support_34bits;
 	bool need_bypass_shadow;
+	unsigned int mminfra_funnel_addr;
 };
 
 struct mtk_disp_dbgtp {
@@ -236,6 +247,7 @@ struct mtk_disp_dbgtp {
 	struct drm_crtc *crtc;
 	unsigned int underflow_cnt;
 	unsigned int abnormal_cnt;
+	void __iomem *mminfra_funnel;
 	const struct mtk_disp_dbgtp_data *data;
 };
 
@@ -246,6 +258,20 @@ struct mtk_drm_private *private_ptr;
 static inline struct mtk_disp_dbgtp *comp_to_dbgtp(struct mtk_ddp_comp *comp)
 {
 	return container_of(comp, struct mtk_disp_dbgtp, ddp_comp);
+}
+
+/* For CAM ELA affect DISP HRT fail no DISP ELA */
+void mtk_dbgtp_set_mminfra_funnel(bool en)
+{
+	struct mtk_disp_dbgtp *priv = comp_to_dbgtp(dbgtp_comp);
+
+	if (priv && priv->mminfra_funnel) {
+		DDPMSG("%s: %s mminfra funnel\n", __func__, en ? "enalbe" : "disable");
+		if (en)
+			writel(0xFF, priv->mminfra_funnel);
+		else
+			writel(0x0, priv->mminfra_funnel);
+	}
 }
 
 void mtk_dbgtp_update(struct mtk_drm_private *priv)
@@ -2648,6 +2674,10 @@ static int mtk_disp_dbgtp_probe(struct platform_device *pdev)
 
 	priv->data = of_device_get_match_data(dev);
 
+	/* For Camera ELA affect display ELA issue */
+	if (priv->data->mminfra_funnel_addr)
+		priv->mminfra_funnel = ioremap(priv->data->mminfra_funnel_addr, 0x4);
+
 	platform_set_drvdata(pdev, priv);
 
 	mtk_ddp_comp_pm_enable(&priv->ddp_comp);
@@ -2687,6 +2717,7 @@ static void mtk_disp_dbgtp_remove(struct platform_device *pdev)
 static const struct mtk_disp_dbgtp_data mt6993_dbgtp_driver_data = {
 	.is_support_34bits = true,
 	.need_bypass_shadow = true,
+	.mminfra_funnel_addr = 0x30a2f000,
 };
 
 static const struct of_device_id mtk_disp_dbgtp_driver_dt_match[] = {

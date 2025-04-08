@@ -4249,6 +4249,8 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 				/* Set dsi underrun slot */
 				addr = mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_UNDERRUNED);
 				*addr = 1;
+				/* Disable mminfra funnel */
+				mtk_dbgtp_set_mminfra_funnel(false);
 			}
 
 			dump_cur_pos(mtk_crtc);

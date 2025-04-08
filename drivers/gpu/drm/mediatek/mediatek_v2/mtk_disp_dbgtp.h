@@ -91,6 +91,7 @@ void mtk_dbgtp_default_cfg_load(struct mtk_drm_private *priv);
 void mtk_dbgtp_load_all_open_setting(struct mtk_drm_private *priv);
 void mtk_dbgtp_switch(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cmdq_handle, bool en);
 dma_addr_t mtk_get_dbgtp_comp_pa(void);
+void mtk_dbgtp_set_mminfra_funnel(bool en);
 
 /* Just for mt6993*/
 void mtk_dbgtp_dsi_gce_event_config(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cmdq_handle);

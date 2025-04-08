@@ -7429,6 +7429,8 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 			/* Clear dsi underrun slot */
 			addr = mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_UNDERRUNED);
 			*addr = 0;
+			/* Re-enable mminfor funnel */
+			mtk_dbgtp_set_mminfra_funnel(true);
 		}
 	} else {
 		if (mtk_crtc->force_high_enabled != 0) {
