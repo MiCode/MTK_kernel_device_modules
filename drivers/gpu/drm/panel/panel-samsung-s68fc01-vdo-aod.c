@@ -872,10 +872,10 @@ static ssize_t aod_area_store(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
 {
 	//struct lcm *ctx = mipi_dsi_get_drvdata(dev);
-	int i, ret;
+	int i, ret = 1;
 
 	for (i = 0; i < count; i++) {
-		ret = sscanf(&buf[i], "%c", &doze_area_cmd[i]);
+		doze_area_cmd[i] = buf[i];
 		pr_info("%s ret = %d, buf[%d]=%d", __func__, ret, i, buf[i]);
 	}
 
