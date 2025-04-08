@@ -676,9 +676,9 @@ static void mtk_dp_dvo_golden_setting(struct mtk_ddp_comp *comp,
 	ultra_low_fifo_us = (ultra_low_fifo_us >= 35) ? ultra_low_fifo_us : 35;
 	ultra_high_fifo_us = ultra_low_fifo_us + 1;
 
-	//urgent low is fix value (1/6 version) (30us)
-	urgent_low_fifo_us = 30;
-	urgent_high_fifo_us = 31;
+	//urgent low is 60%, urgent high is 80%
+	urgent_low_fifo_us = (fifo_size * 1000 * 6) / (10 * consume_rate);
+	urgent_high_fifo_us = (fifo_size * 1000 * 8) / (10 * consume_rate);
 
 	//final result
 	dp_buf_sodi_low = fifo_size;
