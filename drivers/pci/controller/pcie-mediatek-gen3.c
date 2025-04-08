@@ -2301,7 +2301,7 @@ u32 mtk_pcie_dump_link_info(int port)
 	if (val & DRIVER_OWN_IRQ_STATUS)
 		ret_val |= BIT(9);
 
-	dev_info(pcie_port->dev, "dump info return = %#x\n", ret_val);
+	dev_dbg(pcie_port->dev, "dump info return = %#x\n", ret_val);
 
 	return ret_val;
 }
