@@ -12909,7 +12909,8 @@ skip_prete:
 
 			/* For HRT urgent WA */
 			if ((priv->data->mmsys_id == MMSYS_MT6993) && (crtc_id == 0))
-				cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base, 0x03E730300, BIT(1), BIT(1));
+				cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
+					0x03E730300, BIT(1) | BIT(3), BIT(1) | BIT(3));
 			mtk_disp_mutex_enable_cmdq(mtk_crtc->mutex[0], cmdq_handle,
 						   mtk_crtc->gce_obj.base);
 		}
@@ -12929,7 +12930,7 @@ skip_prete:
 			mtk_dbgtp_dsi_gce_event_config(mtk_crtc, cmdq_handle);
 			DDPMSG("FIFO mon: Wait gce event fifo level down\n");
 			GCE_DO(wfe, EVENT_CMD_TRIG_START);
-			cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base, 0x03E730300, 0, BIT(1));
+			cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base, 0x03E730300, 0, BIT(1) | BIT(3));
 			if (priv->mtk_dbgtp_sta.fifo_mon_en[0]) {
 				/* For dbgtp fifo mon WA */
 				lop.reg = true;
