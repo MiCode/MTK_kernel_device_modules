@@ -979,9 +979,9 @@ GEN("EBRB_FREQ2", GPU_EB_LOG_DUMP_STACK_FREQ2, 2, "d_top | d_avg_stack") \
 GEN("Policy__Mask_Control", GPU_EB_LOG_DUMP_MASK_CONTROL1, 2, "ipi_cnt | write_gov_cnt") \
 GEN("Policy__Mask_Control", GPU_EB_LOG_DUMP_MASK_CONTROL2, 1, "ipi_expected_mask") \
 GEN("Policy__Mask_Control", GPU_EB_LOG_DUMP_MASK_CONTROL3, 1, "reg_expected_mask") \
- GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE5, 2, "dbg5_1 | dbg5_2") \
- GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE6, 2, "dbg6_1 | dbg6_2") \
-GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE7, 2, "dbg7_1 | dbg7_2")
+GEN("Policy__PREUVLO1", GPU_EB_LOG_DUMP_PREUVLO1, 2, "count | throttle_freq") \
+GEN("Policy__PREUVLO2", GPU_EB_LOG_DUMP_PREUVLO2, 1, "total_time_diff") \
+GEN("Policy__DEBUG", GPU_EB_LOG_DUMP_PRESERVE5, 2, "dbg5_1 | dbg5_2")
 
 // sysram
 #define GPU_FDVFS_V2_COUNTER_LIST \
