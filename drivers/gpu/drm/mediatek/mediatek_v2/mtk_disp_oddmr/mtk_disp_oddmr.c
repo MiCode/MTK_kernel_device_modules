@@ -5615,6 +5615,7 @@ static void mtk_oddmr_dbi_bl_chg(struct mtk_ddp_comp *comp, uint32_t bl_level, s
 	int cur_tb;
 	uint32_t max_time_set_done = 0;
 	unsigned int gain_ratio;
+	uint32_t remap_enable;
 
 	if (oddmr_data->primary_data->dbi_state >= ODDMR_INIT_DONE) {
 		ODDMRAPI_LOG("+\n");
@@ -5644,7 +5645,8 @@ static void mtk_oddmr_dbi_bl_chg(struct mtk_ddp_comp *comp, uint32_t bl_level, s
 		}
 
 		max_time_set_done = atomic_read(&oddmr_data->dbi_data.max_time_set_done);
-		if (max_time_set_done) {
+		remap_enable = atomic_read(&oddmr_data->dbi_data.remap_enable);
+		if (max_time_set_done && remap_enable == 1) {
 			mutex_lock(&oddmr_data->primary_data->dbi_data_lock);
 			mtk_oddmr_dbi_change_remap_gain(comp, handle, oddmr_data->dbi_data.cur_max_time);
 			mutex_unlock(&oddmr_data->primary_data->dbi_data_lock);
@@ -10841,13 +10843,13 @@ static int mtk_oddmr_dmr_enable(struct mtk_ddp_comp *comp, bool en)
 	atomic_set(&oddmr_data->primary_data->dmr_hrt_done, 2);
 	drm_trigger_repaint(DRM_REPAINT_FOR_IDLE, comp->mtk_crtc->base.dev);
 	ret = wait_event_interruptible_timeout(g_oddmr_hrt_wq,
-			atomic_read(&oddmr_data->primary_data->dmr_hrt_done) == 1, msecs_to_jiffies(200));
+			atomic_read(&oddmr_data->primary_data->dmr_hrt_done) == 1, msecs_to_jiffies(300));
 	if (ret <= 0) {
 		atomic_set(&oddmr_data->primary_data->dmr_hrt_done, 0);
 		PC_ERR("enable %d repaint timeout %d\n", enable, ret);
-		ret = -1;
+		return -1;
 	}
-	return ret;
+	return 0;
 }
 
 static int mtk_oddmr_tuning_od_set_sram_data(uint32_t map_id,
@@ -11401,6 +11403,7 @@ static int mtk_oddmr_pq_ioctl_transact(struct mtk_ddp_comp *comp,
 	unsigned int temp;
 	unsigned int cur_dbv;
 	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
+	unsigned int dmr_remap_en;
 
 	switch (cmd) {
 	case PQ_ODDMR_DMR_INIT:
@@ -11528,7 +11531,9 @@ static int mtk_oddmr_pq_ioctl_transact(struct mtk_ddp_comp *comp,
 	case PQ_ODDMR_DBI_REMAP_DISABLE:
 		ret = 0;
 		atomic_set(&oddmr_data->dbi_data.remap_enable, 0);
-		mtk_oddmr_remap_enable(comp, false);
+		dmr_remap_en = atomic_read(&oddmr_data->dmr_data.remap_enable);
+		if (dmr_remap_en == 0)
+			mtk_oddmr_remap_enable(comp, false);
 		break;
 	case PQ_ODDMR_DBI_GET_HW_ID:
 		ret = 0;
