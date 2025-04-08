@@ -13271,6 +13271,7 @@
 	speech_usip_mem: speech-usip-mem {
 		compatible = "mediatek,speech-usip-mem";
 		adsp-phone-call-enh-enable = <0x3>;
+		adsp-ble-phone-call-enable = <0x1>;
 	};
 
 /** audio end **/
