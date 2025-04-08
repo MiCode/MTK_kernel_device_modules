@@ -20881,7 +20881,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		mediatek,ready-for-xhci;
 		mediatek,explicit-feedback;
 		mediatek,hub-offload;
-		//mediatek,idle-lowpwr;
+		mediatek,idle-lowpwr;
 	};
 
 	battery_manager: battery-manager {
