@@ -15,6 +15,11 @@
 #define MAX_SBE_RECYCLE_IDLE_CNT 5
 #define MAX_PROCESS_NAME_LEN 16
 
+enum SBE_TASK_POLICY {
+	SBE_TASK_NONE = 0,
+	SBE_TASK_VIP = 1,
+};
+
 struct sbe_info {
 	int pid;
 	int ux_crtl_type;

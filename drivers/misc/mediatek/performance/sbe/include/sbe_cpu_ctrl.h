@@ -51,6 +51,7 @@ void sbe_do_frame_err(struct sbe_render_info *thr, int frame_count,
 void sbe_ux_reset(struct sbe_render_info *thr);
 void sbe_set_per_task_cap(struct sbe_render_info *thr);
 int sbe_set_sbb(int pid, int set, int active_ratio);
+void sbe_reset_frame_cap(struct sbe_render_info *thr);
 
 struct ux_frame_info {
 	unsigned long long frameID;

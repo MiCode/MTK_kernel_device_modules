@@ -44,11 +44,6 @@
 #define SBE_RESUCE_MODE_TO_QUEUE_END 2
 #define SBE_RESUCE_MODE_UPDATE_RESCUE_STRENGTH 3
 
-enum SBE_TASK_POLICY {
-	SBE_TASK_NONE = 0,
-	SBE_TASK_VIP = 1,
-};
-
 static DEFINE_MUTEX(sbe_rescue_lock);
 
 static struct kmem_cache *frame_info_cachep __ro_after_init;
@@ -533,10 +528,18 @@ void sbe_do_frame_start(struct sbe_render_info *thr, unsigned long long frameid,
 	}
 }
 
+void sbe_reset_frame_cap(struct sbe_render_info *thr)
+{
+	if (!thr)
+		return;
+
+	thr->ux_blc_cur = 0;
+	__sbe_set_per_task_cap(thr, 0, 100);
+}
+
 void sbe_do_frame_end(struct sbe_render_info *thr, unsigned long long frameid,
 		unsigned long long start_ts, unsigned long long end_ts)
 {
-	struct sbe_info *s_info =NULL;
 	long long runtime;
 	int targettime, targetfps;
 	unsigned long long loading = 0;
@@ -559,15 +562,6 @@ void sbe_do_frame_end(struct sbe_render_info *thr, unsigned long long frameid,
 	sbe_systrace_c(thr->pid, thr->buffer_id, targetfps, "[ux]target_fps");
 	sbe_systrace_c(thr->pid, thr->buffer_id, targettime, "[ux]target_time");
 	sbe_systrace_c(thr->pid, thr->buffer_id, (int)thr->frame_time, "[ux]frame_time");
-
-	s_info = sbe_get_info(thr->tgid, 0);
-
-	if (s_info) {
-		sbe_set_deplist_policy(thr, SBE_TASK_NONE);
-		if (s_info->ux_scrolling)
-			sbe_set_deplist_policy(thr, SBE_TASK_VIP);
-	} else
-		sbe_trace("%d: not find sbe_info ", __func__);
 
 	if (sbe_dy_rescue_enable) {
 		struct hwui_frame_info *new_frame;
@@ -598,8 +592,8 @@ void sbe_do_frame_end(struct sbe_render_info *thr, unsigned long long frameid,
 
 EXIT:
 	sbe_notify_ai_frame_hint(0, loading, thr, frameid);
-	thr->ux_blc_cur = 0;
-	sbe_set_per_task_cap(thr);
+	sbe_reset_deplist_task_priority(thr);
+	sbe_reset_frame_cap(thr);
 }
 
 void sbe_do_frame_err(struct sbe_render_info *thr, int frame_count,
@@ -610,8 +604,7 @@ void sbe_do_frame_err(struct sbe_render_info *thr, int frame_count,
 
 	if (frame_count == 0) {
 		sbe_set_deplist_policy(thr, SBE_TASK_NONE);
-		thr->ux_blc_cur = 0;
-		sbe_set_per_task_cap(thr);
+		sbe_reset_frame_cap(thr);
 	}
 
 	//try end this frame rescue when err

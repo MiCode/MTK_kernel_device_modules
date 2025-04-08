@@ -116,6 +116,19 @@ static void __sbe_receive_frame_start(struct sbe_render_info *f_render,
 	sbe_do_frame_start(f_render, frameID, frame_start_time);
 }
 
+void _sbe_set_vip_with_scroll(struct sbe_render_info *thr)
+{
+	struct sbe_info *s_info =NULL;
+
+	s_info = sbe_get_info(thr->tgid, 0);
+	if (s_info) {
+		sbe_set_deplist_policy(thr, SBE_TASK_NONE);
+		if (s_info->ux_scrolling)
+			sbe_set_deplist_policy(thr, SBE_TASK_VIP);
+	} else
+		sbe_trace("%d: not find sbe_info ", __func__);
+}
+
 static void __sbe_receive_frame_end(struct sbe_render_info *f_render,
 	unsigned long long frame_start_time,
 	unsigned long long frame_end_time,
@@ -162,6 +175,9 @@ static void __sbe_receive_frame_end(struct sbe_render_info *f_render,
 		sbe_systrace_c(f_render->pid, bufID, frameid, "[ux]get_dep_malloc_fail");
 		sbe_systrace_c(f_render->pid, bufID, 0, "[ux]get_dep_malloc_fail");
 	}
+	//frame_end blc must be 0, set sbe enhance to new dep
+	sbe_set_per_task_cap(f_render);
+	_sbe_set_vip_with_scroll(f_render);
 }
 
 static void sbe_receive_frame_err(int pid,
