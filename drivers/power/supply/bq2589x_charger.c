@@ -36,6 +36,8 @@
 #include "bq2589x_reg.h"
 #include "charger_class.h"
 #include "mtk_charger.h"
+#include <mtk_musb.h>
+#include <linux/pinctrl/consumer.h>
 
 struct delayed_work plug_work;
 struct bq2589x *bq_ex;
@@ -969,7 +971,7 @@ static struct bq2589x_platform_data *bq2589x_parse_dt(struct device_node *np,
 		of_property_read_u32(np, "ti,bq2589x,boost-current",
 				 &pdata->boosti);
 	if (ret) {
-		pdata->boosti = 750;
+		pdata->boosti = 2400;
 		pr_info("Failed to read node of ti,bq2589x,boost-current\n");
 	}
 	bq->otg_enable_pin = of_get_named_gpio(np, "ti,otg-en-gpio", 0);
@@ -1082,9 +1084,11 @@ int bq2589x_get_usb_type(struct bq2589x *bq, int *type)
 
 	switch (vbus_stat) {
 	case BQ2589X_VBUS_TYPE_NONE:
-		bq->psy_desc.type = POWER_SUPPLY_TYPE_UNKNOWN;
+		bq->psy_desc.type = POWER_SUPPLY_TYPE_USB;
 		usb_type = POWER_SUPPLY_USB_TYPE_UNKNOWN;
 		pr_info("BQ2589X charger type: UNKNOW\n");
+		Charger_Detect_Release();
+		pr_info("Charger_Detect_Release\n");
 		break;
 	case BQ2589X_VBUS_TYPE_SDP:
 		bq->psy_desc.type = POWER_SUPPLY_TYPE_USB;
@@ -1123,7 +1127,7 @@ int bq2589x_get_usb_type(struct bq2589x *bq, int *type)
 		pr_info("BQ2589X charger type: NON_STANDARD\n");
 		break;
 	default:
-		bq->psy_desc.type = POWER_SUPPLY_TYPE_UNKNOWN;
+		bq->psy_desc.type = POWER_SUPPLY_TYPE_USB;
 		usb_type = POWER_SUPPLY_USB_TYPE_UNKNOWN;
 		pr_info("BQ2589X charger type: UNKNOW\n");
 		break;
@@ -1222,7 +1226,7 @@ static void bq2589x_read_byte_work(struct work_struct *work)
 			}
 		} else if (prev_pg && !bq->power_good) {
 			pr_info("adapter/usb removed\n");
-			bq->psy_desc.type = POWER_SUPPLY_TYPE_UNKNOWN;
+			bq->psy_desc.type = POWER_SUPPLY_TYPE_USB;
 		}
 	} else {//for bq25890h
 		if (!prev_pg && bq->power_good) {
@@ -1234,7 +1238,7 @@ static void bq2589x_read_byte_work(struct work_struct *work)
 			}
 	} else if (prev_pg && !bq->power_good) {
 			pr_info("adapter/usb removed\n");
-			bq->psy_desc.type = POWER_SUPPLY_TYPE_UNKNOWN;
+			bq->psy_desc.type = POWER_SUPPLY_TYPE_USB;
 		}
 	}
 
@@ -1250,6 +1254,11 @@ static void bq2589x_read_byte_work(struct work_struct *work)
 static irqreturn_t bq2589x_irq_handler_thread(int irq, void *data)
 {
 	struct bq2589x *bq = data;
+
+	if (!mt_usb_is_device()) {
+		pr_info("%s: Now is usb host mode. Skip detection\n",__func__);
+		return IRQ_HANDLED;
+	}
 
 	schedule_delayed_work(&bq->read_byte_work, msecs_to_jiffies(40));
 
@@ -1949,11 +1958,15 @@ static int bq2589x_chg_get_property(struct power_supply *psy,
 				val->intval = 0;
 			else if (vbus < BQ2589X_VBUS_UVLO)
 				val->intval = 0;
+			else if (!mt_usb_is_device())
+				val->intval = 0;
 			else
 				val->intval = 1;
 			pr_info("%s usb online(%d),pd(%d), vbus(%d)\n",
 				__func__, val->intval, bq->power_good, vbus);
-		} else
+		} else if (!mt_usb_is_device())
+			val->intval = 0;
+		else
 			val->intval = bq->power_good;
 		break;
 	case POWER_SUPPLY_PROP_STATUS:
@@ -2295,6 +2308,8 @@ static int bq2589x_charger_probe(struct i2c_client *client)
 	struct device_node *node = client->dev.of_node;
 	struct regulator_config config = { };
 	int ret = 0;
+	struct pinctrl *pinctrl;
+	struct pinctrl_state *pinctrl_state;
 
 	bq = devm_kzalloc(&client->dev, sizeof(struct bq2589x), GFP_KERNEL);
 	if (!bq)
@@ -2335,6 +2350,25 @@ static int bq2589x_charger_probe(struct i2c_client *client)
 	ret = bq2589x_init_device(bq);
 	if (ret) {
 		pr_info("Failed to init device\n");
+		return ret;
+	}
+
+	pinctrl = devm_pinctrl_get(bq->dev);
+	if (IS_ERR(pinctrl)) {
+		ret = PTR_ERR(pinctrl);
+		pr_info( "failed to get pinctrl, ret=%d\n", ret);
+		return ret;
+	}
+
+	pinctrl_state = pinctrl_lookup_state(pinctrl, "test");
+	if (IS_ERR(pinctrl_state)) {
+		pr_info( "Failed to lookup pinctrl state\n");
+		return PTR_ERR(pinctrl_state);
+	}
+
+	ret = pinctrl_select_state(pinctrl, pinctrl_state);
+	if (ret) {
+		pr_info("Failed to select pinctrl state\n");
 		return ret;
 	}
 

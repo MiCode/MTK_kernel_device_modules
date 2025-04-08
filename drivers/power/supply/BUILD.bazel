@@ -581,3 +581,47 @@ define_mgk_ddk_ko(
         "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/ufcs",
     ],
 ) for chg in SPLIT_TYPE_CHG_MODULES]
+
+define_mgk_ddk_ko(
+    name = "mm8013",
+    srcs = [
+        "mm8013.c",
+    ],
+    includes = ["."],
+    ko_deps = [
+        ":adapter_class",
+        ":charger_class",
+        ":mtk_chg_type_det",
+        ":mtk_charger_framework",
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb20/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/ufcs",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "bq2589x_charger",
+    srcs = [
+        "bq2589x_charger.c",
+        "bq2589x_reg.h",
+    ],
+    includes = ["."],
+    ko_deps = [
+        ":adapter_class",
+        ":charger_class",
+        ":mtk_chg_type_det",
+        ":mtk_charger_framework",
+        "//kernel_device_modules-{}/drivers/misc/mediatek/usb/usb20:musb_hdrc".format(kernel_version),
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb20/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/ufcs",
+    ],
+)

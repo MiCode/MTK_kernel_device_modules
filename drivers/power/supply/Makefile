@@ -29,7 +29,7 @@ obj-$(CONFIG_GAUGE_BQ28Z610)      += k6985v1_64_alpha/
 endif
 
 obj-$(CONFIG_CHARGER_GAUGE_MAX17332) += max1720x_battery.o
-obj-$(CONFIG_BATTERY_MM8013) += mm8013.o
+#obj-$(CONFIG_BATTERY_MM8013) += mm8013.o
 
 obj-$(CONFIG_CHARGER_TYPE_MT6357) += mt6357-charger-type.o
 #obj-$(CONFIG_MTK_CHARGER_TYPE_DETECT)	+= mtk_chg_type_det.o
@@ -54,4 +54,4 @@ obj-$(CONFIG_CURRENT_SELECTOR_MAX17332) += max1720x_battery.o
 #obj-$(CONFIG_CHARGER_RT9758)	+= rt9758-charger.o
 #obj-$(CONFIG_UFCS_CLASS)	+= ufcs/
 
-obj-$(CONFIG_CHARGER_BQ2589X)	+= bq2589x_charger.o
+#obj-$(CONFIG_CHARGER_BQ2589X)	+= bq2589x_charger.o
