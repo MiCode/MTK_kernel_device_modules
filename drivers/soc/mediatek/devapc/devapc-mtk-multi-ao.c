@@ -562,9 +562,10 @@ static uint32_t sync_vio_dbg(int slave_type, uint32_t shift_bit)
 			++shift_count)
 		;
 
-	if ((readl(pd_vio_shift_con_reg) & 0x3) == 0x3)
+	if ((readl(pd_vio_shift_con_reg) & 0x3) == 0x3) {
+		pr_info(PFX "[DEBUG] sync successfully!\n");
 		sync_done = 1;
-	else {
+	} else {
 		sync_done = 0;
 		pr_info(PFX "sync failed, shift_bit:0x%x\n", shift_bit);
 
@@ -580,10 +581,16 @@ static uint32_t sync_vio_dbg(int slave_type, uint32_t shift_bit)
 			}
 		}
 
-		reg = mtk_devapc_pd_get(slave_type, APC_CON, 0);
-		if (reg)
-			pr_info(PFX "sync failed, APC_CON: 0x%x\n", readl(reg));
+		/*
+		 * reg = mtk_devapc_pd_get(slave_type, APC_CON, 0);
+		 * if (reg)
+		 *	pr_info(PFX "sync failed, APC_CON: 0x%x\n", readl(reg));
+		 */
 	}
+
+	reg = mtk_devapc_pd_get(slave_type, APC_CON, 0);
+	if (reg)
+		pr_info(PFX "[DEBUG] After sync, APC_CON: 0x%x\n", readl(reg));
 
 	/* Disable shift mechanism */
 	writel(0x0, pd_vio_shift_con_reg);
