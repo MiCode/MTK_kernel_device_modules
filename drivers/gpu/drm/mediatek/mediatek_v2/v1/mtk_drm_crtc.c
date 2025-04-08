@@ -16578,7 +16578,8 @@ void mml_cmdq_pkt_init(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle)
 				  mtk_crtc->gce_obj.event[EVENT_DPC_DISP1_PRETE]);
 			mtk_vidle_user_power_keep_by_gce(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle, 0);
 		}
-		mml_drm_racing_config_sync(mml_ctx, cmdq_handle);
+		mml_drm_racing_config_sync(mml_ctx, cmdq_handle,
+			(u32)mtk_crtc_state->prop_val[CRTC_PROP_PRES_FENCE_IDX]);
 		break;
 	case MML_DC_ENTERING:
 		if (mtk_vidle_is_ff_enabled() && !mtk_drm_helper_get_opt(priv->helper_opt,
@@ -24999,6 +25000,7 @@ void mtk_crtc_mml_racing_resubmit(struct drm_crtc *crtc, struct cmdq_pkt *_cmdq_
 	struct mtk_ddp_comp *comp = NULL;
 	const enum mtk_ddp_comp_id id[] = {DDP_COMPONENT_INLINE_ROTATE0,
 					   DDP_COMPONENT_INLINE_ROTATE1};
+	struct mtk_crtc_state *state = to_mtk_crtc_state(mtk_crtc->base.state);
 
 	if (!mml_ctx || !mtk_crtc->is_mml) {
 		DDPMSG("%s !mml_ctx or !is_mml\n", __func__);
@@ -25025,7 +25027,8 @@ void mtk_crtc_mml_racing_resubmit(struct drm_crtc *crtc, struct cmdq_pkt *_cmdq_
 		mtk_disp_mutex_add_comp_with_cmdq(mtk_crtc, id[i], false, cmdq_handle, 0);
 	}
 	/* prepare racing packet */
-	mml_drm_racing_config_sync(mml_ctx, cmdq_handle);
+	mml_drm_racing_config_sync(mml_ctx, cmdq_handle,
+		(u32)state->prop_val[CRTC_PROP_PRES_FENCE_IDX]);
 
 	/* blocking wait until mml submit is flushed */
 	mtk_drm_wait_mml_submit_done(&(mtk_crtc->mml_cb));

@@ -745,6 +745,9 @@ struct mml_task {
 	u32 dpc_srt_write_bw[MML_MAX_LARB];
 	u32 dpc_hrt_write_bw[MML_MAX_LARB];
 
+	struct cmdq_backup disp_fence_id;
+	u32 disp_fid_submit;
+
 	struct cmdq_backup perf_prete;
 	struct cmdq_backup perf_dispready;
 	struct cmdq_backup perf_sof;

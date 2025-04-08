@@ -700,6 +700,7 @@ s32 mml_drm_submit(struct mml_drm_ctx *dctx, struct mml_submit *submit,
 	struct mml_ctx *ctx = &dctx->ctx;
 	struct mml_frame_config *cfg;
 	struct mml_task *task = NULL;
+	u32 disp_fid = submit->disp_id;
 	s32 result = -EINVAL;
 	u32 i;
 	struct fence_data fence = {0};
@@ -878,6 +879,7 @@ s32 mml_drm_submit(struct mml_drm_ctx *dctx, struct mml_submit *submit,
 
 	/* make sure id unique and cached last */
 	task->job.jobid = atomic_inc_return(&ctx->job_serial);
+	task->disp_fid_submit = disp_fid;
 	task->adaptor_type = MML_ADAPTOR_DRM;
 	task->cb_param = cb_param;
 	cfg->last_jobid = task->job.jobid;
@@ -970,14 +972,14 @@ s32 mml_drm_submit(struct mml_drm_ctx *dctx, struct mml_submit *submit,
 	/* submit to core */
 	mml_core_submit_task(cfg, task);
 
-	mml_mmp(submit, MMPROFILE_FLAG_END, atomic_read(&ctx->job_serial), 0);
+	mml_mmp(submit, MMPROFILE_FLAG_END, atomic_read(&ctx->job_serial), disp_fid);
 	mml_trace_end();
 	return 0;
 
 err_unlock_exit:
 	mutex_unlock(&ctx->config_mutex);
 err_buf_exit:
-	mml_mmp(submit, MMPROFILE_FLAG_END, atomic_read(&ctx->job_serial), 0);
+	mml_mmp(submit, MMPROFILE_FLAG_END, atomic_read(&ctx->job_serial), disp_fid);
 	mml_trace_end();
 	mml_log("[drm]%s fail result %d task %p", __func__, result, task);
 	if (task) {
@@ -1293,17 +1295,17 @@ void mml_drm_set_panel_pixel(struct mml_drm_ctx *dctx, u32 panel_width, u32 pane
 }
 EXPORT_SYMBOL_GPL(mml_drm_set_panel_pixel);
 
-s32 mml_drm_racing_config_sync(struct mml_drm_ctx *dctx, struct cmdq_pkt *pkt)
+s32 mml_drm_racing_config_sync(struct mml_drm_ctx *dctx, struct cmdq_pkt *pkt, u32 disp_fid)
 {
 	struct mml_ctx *ctx = &dctx->ctx;
 	struct cmdq_operand lhs, rhs;
 	u16 event_target = mml_ir_get_target_event(ctx->mml);
+	u32 job = atomic_read(&ctx->job_serial);
 
-	mml_msg("[drm]%s for disp", __func__);
+	mml_msg("[drm]%s for disp %#x", __func__, disp_fid);
 
 	/* debug current task idx */
-	cmdq_pkt_assign_command(pkt, CMDQ_THR_SPR_IDX3,
-		atomic_read(&ctx->job_serial) << 16);
+	cmdq_pkt_assign_command(pkt, CMDQ_THR_SPR_IDX3, job << 16);
 
 	if (ctx->disp_vdo && event_target) {
 		/* non-racing to racing case, force clear target line
@@ -1312,8 +1314,7 @@ s32 mml_drm_racing_config_sync(struct mml_drm_ctx *dctx, struct cmdq_pkt *pkt)
 		if (dctx->racing_begin) {
 			cmdq_pkt_clear_event(pkt, event_target);
 			dctx->racing_begin = false;
-			mml_mmp(racing_enter, MMPROFILE_FLAG_PULSE,
-				atomic_read(&ctx->job_serial), 0);
+			job = job | BIT(31);	/* mark bit31 for debug */
 		}
 		cmdq_pkt_wait_no_clear(pkt, event_target);
 	}
@@ -1325,12 +1326,15 @@ s32 mml_drm_racing_config_sync(struct mml_drm_ctx *dctx, struct cmdq_pkt *pkt)
 	rhs.value = MML_NEXTSPR_NEXT;
 	cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_OR, MML_CMDQ_NEXT_SPR, &lhs, &rhs);
 
+	cmdq_pkt_assign_command(pkt, CMDQ_CPR_MML_DISP_FENCE, disp_fid);
 	cmdq_pkt_set_event(pkt, mml_ir_get_disp_ready_event(ctx->mml));
 	cmdq_pkt_wfe(pkt, mml_ir_get_mml_ready_event(ctx->mml));
 
 	/* clear next bit since disp with new mml now */
 	rhs.value = ~(u16)MML_NEXTSPR_NEXT;
 	cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_AND, MML_CMDQ_NEXT_SPR, &lhs, &rhs);
+
+	mml_mmp(racing_enter, MMPROFILE_FLAG_PULSE, job, disp_fid);
 
 	return 0;
 }

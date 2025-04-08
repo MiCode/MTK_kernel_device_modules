@@ -1614,6 +1614,7 @@ static enum mml_mode _mtk_atomic_mml_plane(struct drm_device *dev,
 		       sizeof(struct mml_rect));
 	}
 
+	submit_kernel->disp_id = (u32)crtc_state->prop_val[CRTC_PROP_PRES_FENCE_IDX];
 	ret = mml_drm_submit(mml_ctx, submit_kernel, &(mtk_crtc->mml_cb));
 	if (ret) {
 		DDPPR_ERR("%s:err_submit\n", __func__);

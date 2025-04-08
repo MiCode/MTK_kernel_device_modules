@@ -499,6 +499,7 @@ dup_command:
 		sizeof(*task->reuse[pipe].label_check), GFP_KERNEL);
 	memcpy(&task->backup_crc_rdma, &src->backup_crc_rdma, sizeof(task->backup_crc_rdma));
 	memcpy(&task->backup_crc_wdma, &src->backup_crc_wdma, sizeof(task->backup_crc_wdma));
+	task->disp_fence_id = src->disp_fence_id;
 	task->perf_prete = src->perf_prete;
 	task->perf_dispready = src->perf_dispready;
 	task->perf_sof = src->perf_sof;

@@ -1977,7 +1977,7 @@ s32 cmdq_pkt_backup(struct cmdq_pkt *pkt, dma_addr_t addr, struct cmdq_backup *b
 }
 EXPORT_SYMBOL(cmdq_pkt_backup);
 
-s32 cmdq_pkt_backup_stamp(struct cmdq_pkt *pkt, struct cmdq_backup *backup)
+s32 cmdq_pkt_backup_cpr(struct cmdq_pkt *pkt, struct cmdq_backup *backup, u16 cpr_idx)
 {
 	struct cmdq_client *cl = pkt->cl;
 	dma_addr_t pa_addr;
@@ -2003,10 +2003,16 @@ s32 cmdq_pkt_backup_stamp(struct cmdq_pkt *pkt, struct cmdq_backup *backup)
 		cl->backup_idx = 0;
 
 	/* TPR value to dram pa */
-	cmdq_pkt_write_indriect(pkt, NULL, pa_addr, CMDQ_TPR_ID, U32_MAX);
+	cmdq_pkt_write_indriect(pkt, NULL, pa_addr, cpr_idx, U32_MAX);
 	backup->inst_offset = pkt->cmd_buf_size - CMDQ_INST_SIZE;
 
 	return 0;
+}
+EXPORT_SYMBOL(cmdq_pkt_backup_cpr);
+
+s32 cmdq_pkt_backup_stamp(struct cmdq_pkt *pkt, struct cmdq_backup *backup)
+{
+	return cmdq_pkt_backup_cpr(pkt, backup, CMDQ_TPR_ID);
 }
 EXPORT_SYMBOL(cmdq_pkt_backup_stamp);
 

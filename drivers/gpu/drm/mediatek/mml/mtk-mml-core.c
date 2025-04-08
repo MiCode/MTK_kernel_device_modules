@@ -1811,8 +1811,19 @@ static void core_taskdone(struct work_struct *work)
 	u32 *perf, hw_time = 0;
 	u32 jobid = task->job.jobid;
 
+	if (mml_iscouple(cfg->info.mode) && task->disp_fence_id.inst_offset) {
+		u32 disp_fid = cmdq_pkt_backup_get(task->pkts[0], &task->disp_fence_id);
+
+		if (task->disp_fid_submit != disp_fid) {
+			mml_err("%s job %u disp fence submit %u readback %u",
+				__func__, task->job.jobid, task->disp_fid_submit, disp_fid);
+			mml_aee("MML_MML", "fence id miss match job %u fence %u/%u",
+				task->job.jobid, task->disp_fid_submit, disp_fid);
+		}
+	}
+
 	mml_trace_begin("%s", __func__);
-	mml_mmp(taskdone, MMPROFILE_FLAG_START, jobid, 0);
+	mml_mmp(taskdone, MMPROFILE_FLAG_START, jobid, task->disp_fid_submit);
 	mml_msg("%s job %u", __func__, jobid);
 
 	if (cfg->isr_count)

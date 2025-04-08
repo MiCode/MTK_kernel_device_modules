@@ -72,6 +72,7 @@ void cmdq_helper_set_fp(struct cmdq_util_helper_fp *cust_cmdq_util);
 #define CMDQ_CPR_MML0_PQ0_ADDRH		0x800D
 #define CMDQ_CPR_MML0_PQ1_ADDR		0x800E
 #define CMDQ_CPR_MML0_PQ1_ADDRH		0x800F
+#define CMDQ_CPR_MML_DISP_FENCE		0x8010
 #define CMDQ_CPR64			0x4e0
 
 #define CMDQ_CPR_TO_CPR64(cpr)		(((cpr - CMDQ_CPR_STRAT_ID) >> 1) + \
@@ -511,6 +512,8 @@ s32 cmdq_pkt_write_value_addr_reuse(struct cmdq_pkt *pkt, dma_addr_t addr,
  * Return: 0 if success, error code if fail
  */
 s32 cmdq_pkt_backup(struct cmdq_pkt *pkt, dma_addr_t addr, struct cmdq_backup *backup);
+
+s32 cmdq_pkt_backup_cpr(struct cmdq_pkt *pkt, struct cmdq_backup *backup, u16 cpr_idx);
 
 /**
  * cmdq_pkt_backup_stamp() - store tpr count to channel internal dram, for performance estimate
