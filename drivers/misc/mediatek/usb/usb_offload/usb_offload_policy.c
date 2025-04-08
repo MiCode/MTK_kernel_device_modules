@@ -15,11 +15,14 @@
 #include "../usb_xhci/xhci-mtk.h"
 #include "mtu3.h"
 
-void usb_offload_hub_working(bool hub_offloading, bool hold)
+void usb_offload_hub_working(bool dev_on_hub, bool hold)
 {
 	struct wakeup_source *ws = uodev->dev->power.wakeup;
 
-	if (!uodev->policy.support_hub || !hub_offloading || !ws)
+	USB_OFFLOAD_DBG("support_hub:%d dev_on_hub:%d hold:%d ws:%p\n",
+		uodev->policy.support_hub, dev_on_hub, hold, ws);
+
+	if (!uodev->policy.support_hub || !dev_on_hub || !ws)
 		return;
 
 	USB_OFFLOAD_INFO("hold:%d active:%d\n", hold, ws->active);

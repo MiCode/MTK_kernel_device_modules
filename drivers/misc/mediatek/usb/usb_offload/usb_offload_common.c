@@ -104,6 +104,12 @@ static struct xhci_ring *xhci_mtk_alloc_event_ring(struct usb_offload_dev *udev)
 static int xhci_mtk_ring_expansion(struct xhci_hcd *xhci,
 	struct xhci_ring *ring, dma_addr_t phys, void *vir);
 
+static void usb_offload_status(void)
+{
+	USB_OFFLOAD_INFO("init:%d stream:%d(tx:%d rx:%d) card:%d(speed:%d)\n",
+		uodev->adsp_inited, uodev->is_streaming, uodev->tx_streaming,
+		uodev->rx_streaming, uodev->last_card_num, uodev->speed);
+}
 
 static void print_all_memory(void)
 {
@@ -531,13 +537,19 @@ skip_remove:
 	atomic_set(&dev->in_use, 0);
 
 	if (uodev->last_card_num == dev->card_num) {
+		/* all streaming interface on device stopped */
 		uodev->last_card_num = -EINVAL;
 		uodev->speed = USB_SPEED_UNKNOWN;
-		uodev->hub_offloading = false;
-		USB_OFFLOAD_INFO("last_card:%d speed:%d hub_offloading:%d\n",
-			uodev->last_card_num, uodev->speed,
-			uodev->hub_offloading);
-	}
+		uodev->is_streaming = false;
+
+		usb_offload_hid_stop();
+		usb_offload_hub_working(dev->on_hub, false);
+		usb_offload_improve_idle_power(false);
+		mtk_clk_notify(NULL, NULL, NULL, 0, 1, 0, CLK_EVT_BYPASS_PLL);
+	} else
+		/* unlikely to here ... */
+		USB_OFFLOAD_ERR("card:%d doesn't match (last:%d)\n",
+			dev->card_num, uodev->last_card_num);
 }
 
 static void uaudio_dev_shutdown(struct usb_audio_dev *dev)
@@ -626,6 +638,8 @@ static int send_init_adsp(void)
 
 	kfree(xhci_mem);
 fail:
+	usb_offload_status();
+	print_all_memory();
 	return ret;
 }
 
@@ -656,9 +670,10 @@ static int send_deinit_adsp(void)
 			uodev->adv_lowpwr = uodev->policy.adv_lowpwr;
 		}
 	}
-	usb_offload_improve_idle_power(false);
-	usb_offload_hub_working(uodev->hub_offloading, false);
+
 fail:
+	usb_offload_status();
+	print_all_memory();
 	return ret;
 }
 
@@ -680,12 +695,17 @@ static int issue_audio_stream(enum usb_offload_ipi_msg ipi_type,
 			cleanup = true;
 		else {
 			cleanup = false;
-			uodev->last_card_num = dev->card_num;
-			uodev->speed = dev->udev->speed;
-			uodev->hub_offloading =  dev->on_hub;
-			USB_OFFLOAD_INFO("last_card:%d speed:%d hub_offloading:%d\n",
-				uodev->last_card_num, uodev->speed,
-				uodev->hub_offloading);
+
+			if (kref_read(&dev->kref) == 1) {
+				/* the first interface on device to start streaming */
+				uodev->last_card_num = dev->card_num;
+				uodev->speed = dev->udev->speed;
+				uodev->is_streaming = true;
+				usb_offload_hub_working(dev->on_hub, true);
+				usb_offload_improve_idle_power(true);
+				mtk_clk_notify(NULL, NULL, NULL, 1, 1, 0, CLK_EVT_BYPASS_PLL);
+			}
+
 			msg->direction ? (uodev->rx_streaming = true) : (uodev->tx_streaming = true);
 		}
 	} else {
@@ -712,20 +732,8 @@ static int issue_audio_stream(enum usb_offload_ipi_msg ipi_type,
 			kref_put(&dev->kref, uaudio_dev_release);
 	}
 
-	uodev->is_streaming = (uodev->rx_streaming || uodev->tx_streaming);
-
-	if (uodev->is_streaming) {
-		usb_offload_hub_working(uodev->hub_offloading, true);
-		usb_offload_improve_idle_power(true);
-		mtk_clk_notify(NULL, NULL, NULL, 1, 1, 0, CLK_EVT_BYPASS_PLL);
-	} else {
-		if (!enable)
-			usb_offload_hid_stop();
-		usb_offload_hub_working(uodev->hub_offloading, false);
-		usb_offload_improve_idle_power(false);
-		mtk_clk_notify(NULL, NULL, NULL, 0, 1, 0, CLK_EVT_BYPASS_PLL);
-	}
-
+	usb_offload_status();
+	print_all_memory();
 	return ret;
 }
 
@@ -2283,7 +2291,7 @@ static void check_valid_device(struct usb_device *rhdev,
 
 	/* step1. check device class */
 	if (device_class != USB_CLASS_PER_INTERFACE && device_class != USB_CLASS_MISC) {
-		USB_OFFLOAD_INFO("(vid:0x%x pid:0x%x bDeviceClass:0x%x) wasn't audio device\n",
+		USB_OFFLOAD_DBG("(vid:0x%x pid:0x%x bDeviceClass:0x%x) wasn't audio device\n",
 			vid, pid, device_class);
 		goto error;
 	}
@@ -2308,7 +2316,7 @@ static void check_valid_device(struct usb_device *rhdev,
 			subclass = intfd->bInterfaceSubClass;
 
 			if (!(class == USB_CLASS_AUDIO && subclass == USB_SUBCLASS_AUDIOSTREAMING)) {
-				USB_OFFLOAD_INFO("(intf:%d alt:%d bInterfaceClass:0x%x "
+				USB_OFFLOAD_DBG("(intf:%d alt:%d bInterfaceClass:0x%x "
 					"bInterfaceSubClass:0x%x)wasn't stream intface\n",
 					intf_idx, alt_idx, class, subclass);
 				continue;
@@ -2340,13 +2348,12 @@ static void check_valid_device(struct usb_device *rhdev,
 					fallthrough;
 				/* 0x20: implicit feedback */
 				default:
+					USB_OFFLOAD_INFO("(intf:%d alt:%dep:%d usage:0x%02x) invalid\n",
+						intf_idx, alt_idx, ep_idx, ep_usage);
 					valid = false;
 					has_invalid_ep = true;
 					break;
 				}
-				USB_OFFLOAD_INFO("(intf:%d alt:%d bInterfaceClass:0x%x "
-					"ep:%d usage:0x%02x) %s ep\n", intf_idx, alt_idx, class,
-					ep_idx, ep_usage, valid ? "valid" : "invalid");
 			}
 		}
 	}
@@ -2354,8 +2361,8 @@ static void check_valid_device(struct usb_device *rhdev,
 	*support = (has_valid_ep && !has_invalid_ep);
 
 error:
-	USB_OFFLOAD_INFO("has_valid_ep:%d has_invalid_ep:%d\n", has_valid_ep, has_invalid_ep);
-	USB_OFFLOAD_INFO("vid:0x%x pid:0x%x support:%d on_hub:%d\n", vid, pid, *support, *on_hub);
+	USB_OFFLOAD_INFO("vid:0x%x pid:0x%x support:%d(valid_ep:%d invlaid_ep:%d) on_hub:%d\n",
+		vid, pid, *support, *on_hub, has_valid_ep, has_invalid_ep);
 }
 
 static int usb_offload_open(struct inode *ip, struct file *fp)
@@ -2427,7 +2434,7 @@ static long usb_offload_ioctl(struct file *fp,
 
 	switch (cmd) {
 	case USB_OFFLOAD_INIT_ADSP:
-		USB_OFFLOAD_INFO("USB_OFFLOAD_INIT_ADSP: %ld\n", value);
+		USB_OFFLOAD_INFO("++ USB_OFFLOAD_INIT_ADSP: %ld\n", value);
 		usb_offload_register_ipi_recv();
 		if (value)
 			ret = send_init_adsp();
@@ -2436,7 +2443,7 @@ static long usb_offload_ioctl(struct file *fp,
 		break;
 	case USB_OFFLOAD_ENABLE_STREAM:
 	case USB_OFFLOAD_DISABLE_STREAM:
-		USB_OFFLOAD_INFO("%s\n",
+		USB_OFFLOAD_INFO("++ %s\n",
 			(cmd == USB_OFFLOAD_ENABLE_STREAM) ?
 			"USB_OFFLOAD_ENABLE_STREAM":"USB_OFFLOAD_DISABLE_STREAM");
 
@@ -2503,10 +2510,7 @@ static long usb_offload_ioctl(struct file *fp,
 		ret = handle_enable_stream(&uainfo, subs, audio_dev, info_idx);
 		break;
 	}
-	USB_OFFLOAD_INFO("is_streaming:%d(rx:%d tx:%d) inited:%d, ioctl ret:%ld\n",
-			uodev->is_streaming, uodev->rx_streaming,
-			uodev->tx_streaming, uodev->adsp_inited, ret);
-	print_all_memory();
+	USB_OFFLOAD_INFO("-- ioctl ret:%ld\n", ret);
 fail:
 	mutex_unlock(&uodev->dev_lock);
 	return ret;
@@ -2602,7 +2606,6 @@ static int usb_offload_probe(struct platform_device *pdev)
 	uodev->adsp_inited = false;
 	uodev->speed = USB_SPEED_UNKNOWN;
 	uodev->xhci = NULL;
-	uodev->hub_offloading = false;
 	uodev->connect_chip_num = 0;
 	uodev->last_card_num = -EINVAL;
 

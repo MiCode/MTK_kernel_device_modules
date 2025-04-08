@@ -492,7 +492,7 @@ void usb_offload_improve_idle_power(bool start);
 enum uo_provider_type usb_offload_mem_type(void);
 enum uo_provider_type usb_offload_mem_type_lp(void);
 enum uo_provider_type usb_offload_mem_type_lp_ex(int direction);
-void usb_offload_hub_working(bool hub_offloading, bool hold);
+void usb_offload_hub_working(bool dev_on_hub, bool hold);
 
 enum usb_plat_action {
 	UO_PLAT_ACTION_SUSPEND,
