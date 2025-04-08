@@ -24,7 +24,6 @@ mgk_64_kleaf_modules = [
     #"//vendor/mediatek/kernel_modules/connectivity/bt/mt76xx/sdio:btmtksdio",
     "//vendor/mediatek/kernel_modules/connectivity/common:wmt_drv",
     "//vendor/mediatek/kernel_modules/connectivity/connfem:connfem",
-    "//vendor/mediatek/kernel_modules/connectivity/conninfra:conninfra",
     "//vendor/mediatek/kernel_modules/connectivity/fmradio:fmradio",
     "//vendor/mediatek/kernel_modules/connectivity/fmradio:fmradio-connac2",
     "//vendor/mediatek/kernel_modules/connectivity/gps/data_link/plat/v010:gps_drv_dl_v010",
@@ -964,7 +963,6 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/audio_ipi:audio_ipi".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/atf:atf_logger".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/blocktag:blocktag".format(kernel_version),
-    "//kernel_device_modules-{}/drivers/misc/mediatek/btif:btif_drv".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/ccci_util:ccci_util_lib".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/cci_lite:ccidvfs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/ccmni:ccmni".format(kernel_version),
@@ -1393,6 +1391,7 @@ mgk_64_kleaf_platform_modules = {
     "//kernel_device_modules-{}/drivers/gpu/mediatek/ged:mtk_ged_mt6993".format(kernel_version): "mt6993",
     "//kernel_device_modules-{}/drivers/mfd:mt63xx-debug".format(kernel_version): "mt6789",
     "//kernel_device_modules-{}/drivers/media/platform/mtk-vcu:mtk-vcu".format(kernel_version): "mt6768 mt6781 mt6789 mt6833 mt6853 mt6855 mt6877 mt6893 mt8188 mt8192",
+    "//kernel_device_modules-{}/drivers/misc/mediatek/btif:btif_drv".format(kernel_version): "mt6761 mt6765 mt6768 mt6779 mt6781 mt6785 mt6789 mt6833 mt6853 mt6855 mt6873 mt6877 mt6885 mt6886 mt6893 mt6895 mt6879 mt6983",
     "//kernel_device_modules-{}/drivers/misc/mediatek/ccu/src/isp6s:ccu_isp6s".format(kernel_version):"mt6833 mt6853 mt6873 mt6877 mt6885 mt6893",
     "//kernel_device_modules-{}/drivers/misc/mediatek/cm_mgr:mtk_cm_mgr_mt6991".format(kernel_version): "mt6991",
     "//kernel_device_modules-{}/drivers/misc/mediatek/cm_mgr:mtk_cm_mgr_mt6993".format(kernel_version): "mt6993",
@@ -1554,6 +1553,8 @@ mgk_64_kleaf_platform_modules = {
     "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/pda:pda_drv_mt6878".format(kernel_version): "mt6878",
 
   ## write vendor file by platform here
+
+    "//vendor/mediatek/kernel_modules/connectivity/conninfra:conninfra":"mt6858 mt6877 mt6878 mt6879 mt6880 mt6885 mt6886 mt6890 mt6893 mt6895 mt6897 mt6899 mt6983 mt6985 mt6989 mt6991 mt6993",
     "//vendor/mediatek/kernel_modules/hbt_driver_cus:hbt_cus":"mt6886 mt6897 mt6985 mt6989 mt6991 mt6899 mt6993",
     "//vendor/mediatek/kernel_modules/hbt_driver:hbt_int":"mt6886 mt6897 mt6985 mt6989 mt6991 mt6899 mt6993",
     "//vendor/mediatek/kernel_modules/mtkcam/camsys:mtk-cam-plat-mt6983":"mt6983",
