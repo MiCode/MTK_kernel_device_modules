@@ -385,7 +385,7 @@ static const struct iommu_ops mtk_iommu_ops;
  * sharing the same iova address space.
  */
 static int mtk_iommu_create_mapping(struct device *dev,
-				    struct of_phandle_args *args)
+				    const struct of_phandle_args *args)
 {
 	struct mtk_iommu_data *data;
 	struct platform_device *m4updev;
