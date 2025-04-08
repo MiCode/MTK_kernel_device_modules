@@ -36,6 +36,7 @@
 #include <linux/vmalloc.h>
 #include <linux/wait.h>
 #include <linux/workqueue.h>
+#include <linux/sched/clock.h>
 
 #include <mt-plat/aee.h>
 #include <mt-plat/slog.h>
@@ -2046,6 +2047,19 @@ static long aed_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		}
 
 		break;
+	case AEEIOCTL_GET_SYSTIMER_CNT:
+	{
+		struct aee_sys_timer sys_timer;
+
+		sys_timer.cnt = arch_timer_read_counter();
+		sys_timer.raw_ktime = sched_clock();
+		if (copy_to_user((struct aee_sys_timer __user *)arg,
+			&sys_timer, sizeof(struct aee_sys_timer))) {
+			ret = -EFAULT;
+			goto EXIT;
+		}
+		break;
+	}
 	default:
 		ret = -EINVAL;
 	}

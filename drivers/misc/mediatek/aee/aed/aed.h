@@ -204,6 +204,11 @@ struct aee_dal_setcolor {
 	unsigned int screencolor;
 };
 
+struct aee_sys_timer {
+	__u64 cnt;
+	__u64 raw_ktime;
+};
+
 /* we use MAX_NR_FRAME to control max unwind layer */
 #define MAX_AEE_KERNEL_BT 16
 #define AEE_NR_FRAME 32
@@ -256,6 +261,7 @@ struct aee_siginfo {
 #define AEEIOCTL_SET_HANG_REBOOT _IO('p', 0x12)
 #define AEEIOCTL_GET_THREAD_RMS  _IOW('p', 0x13, struct unwind_info_rms)
 #define AEEIOCTL_GET_THREAD_STACK_RAW  _IOW('p', 0x14, struct unwind_info_stack)
+#define AEEIOCTL_GET_SYSTIMER_CNT  _IOW('p', 0x15, struct aee_sys_timer)
 
 
 #define AED_FILE_OPS(entry) \
