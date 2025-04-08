@@ -377,9 +377,9 @@ static void vdisp_hwccf_ctrl(struct mtk_vdisp *priv, bool enable)
 				& BIT(HW_CCF_AP_VOTER_BIT)) != 0)
 			udelay(VOTE_DELAY_US);
 	} else {
+		#if IS_ENABLED(CONFIG_MTK_HWCCF)
 		int hwccf_ret = 0;
 
-		#if IS_ENABLED(CONFIG_MTK_HWCCF)
 		hwccf_ret = hwccf_irq_voter_ctrl(MM_HWCCF, HW_CCF_BACKUP_GRP_0,
 			enable ? HWCCF_VOTE : HWCCF_UNVOTE,
 			data->ap_voter_bit);

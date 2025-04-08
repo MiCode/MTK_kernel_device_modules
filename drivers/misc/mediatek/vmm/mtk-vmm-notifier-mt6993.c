@@ -371,6 +371,7 @@ EXPORT_SYMBOL_GPL(vmm_cvfs_dump);
 static int vmm_locked_buck_ctrl(bool enable)
 {
 	int ret = 0;
+#if IS_ENABLED(CONFIG_MTK_HWCCF)
 	int pre_cnt = vmm_user_counter;
 
 	vmm_user_counter += (enable ? 1 : -1);
@@ -381,7 +382,6 @@ static int vmm_locked_buck_ctrl(bool enable)
 	if ((pre_cnt == 0 && vmm_user_counter == 1) || (pre_cnt == 1 && vmm_user_counter == 0)) {
 		bool is_activating = (pre_cnt == 0 && vmm_user_counter == 1);
 
-#if IS_ENABLED(CONFIG_MTK_HWCCF)
 		ret = hwccf_irq_multi_voter_ctrl(MM_HWCCF, HW_CCF_BACKUP_GRP_0,
 						 is_activating ? HWCCF_VOTE : HWCCF_UNVOTE,
 						 BIT(HW_CCF_AP_VOTER_BIT)|BIT(VMM_BUCK_SWITCH));
@@ -389,16 +389,18 @@ static int vmm_locked_buck_ctrl(bool enable)
 			ISP_LOGE("HWCCF_voter_ctrl fail, ret: %d", ret);
 			clkchk_external_dump();
 		}
-#endif
 	}
+#endif
 
 	return ret;
 }
 
 int mtk_vmm_ctrl_dbg_use(bool enable)
 {
+	int ret = 0;
+#if IS_ENABLED(CONFIG_MTK_HWCCF)
 	int vote_val;
-	int ret;
+
 
 	ISP_LOGI("[%s][%d] vmm mtk_vmm_ctrl_dbg_use[%u]", __func__, __LINE__, enable);
 
@@ -419,6 +421,7 @@ int mtk_vmm_ctrl_dbg_use(bool enable)
 		ISP_LOGE("HWCCF_voter_ctrl fail, ret: %d", ret);
 		clkchk_external_dump();
 	}
+#endif
 
 	return ret;
 }
@@ -1412,8 +1415,10 @@ static const struct kernel_param_ops vmm_cvfs_ut_ctrl_ops = {
 int mtk_vmm_dbg_ctrl(const char *val, const struct kernel_param *kp)
 {
 	int enable;
-	int vote_val;
 	int ret;
+#if IS_ENABLED(CONFIG_MTK_HWCCF)
+	int vote_val;
+#endif
 
 	ret = kstrtouint(val, 0, &enable);
 	if (ret)

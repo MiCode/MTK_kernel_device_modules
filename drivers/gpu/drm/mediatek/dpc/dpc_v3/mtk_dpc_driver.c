@@ -1448,18 +1448,26 @@ static void mt6993_set_mtcmos(const u32 subsys, const enum mtk_dpc_mtcmos_mode m
 		if (subsys == DPC3_SUBSYS_DISP) {
 			for (i = 0; i < 7; i++)
 				writel(value, dpc_base + g_priv->mtcmos_cfg[i].cfg);
+#if IS_ENABLED(CONFIG_MTK_HWCCF)
 			hwccf_multi_voter_ctrl(MM_HWCCF, HW_CCF_CG_GRP_51, HWCCF_VOTE, mask);
+#endif
 		} else if (subsys < g_priv->subsys_cnt) {
 			writel(value, dpc_base + g_priv->mtcmos_cfg[subsys].cfg);
+#if IS_ENABLED(CONFIG_MTK_HWCCF)
 			hwccf_voter_ctrl(MM_HWCCF, HW_CCF_CG_GRP_51, HWCCF_VOTE, mask);
+#endif
 		}
 	} else {
 		if (subsys == DPC3_SUBSYS_DISP) {
+#if IS_ENABLED(CONFIG_MTK_HWCCF)
 			hwccf_multi_voter_ctrl(MM_HWCCF, HW_CCF_CG_GRP_51, HWCCF_UNVOTE, mask);
+#endif
 			for (i = 0; i < 7; i++)
 				writel(value, dpc_base + g_priv->mtcmos_cfg[i].cfg);
 		} else if (subsys < g_priv->subsys_cnt) {
+#if IS_ENABLED(CONFIG_MTK_HWCCF)
 			hwccf_voter_ctrl(MM_HWCCF, HW_CCF_CG_GRP_51, HWCCF_UNVOTE, mask);
+#endif
 			writel(value, dpc_base + g_priv->mtcmos_cfg[subsys].cfg);
 		}
 	}
@@ -1824,7 +1832,9 @@ irqreturn_t mt6993_irq_handler(int irq, void *dev_id)
 
 		if (__ratelimit(&err_rate)) {
 			if (unlikely(irq_aee)) {
+			#if IS_ENABLED(CONFIG_MTK_HWCCF)
 				clkchk_external_dump();
+			#endif
 				DPCERR("irq err(%#x) psel(%#x=%#x) mtcmos(%#x) intf(%#x)",
 					err_sta,
 					readl(dpc_base + DISP_SW_OFF_CONFIG_PADDR_W_PWRITE),
@@ -2498,7 +2508,9 @@ err4:
 err_dump:
 	spin_unlock_irqrestore(&g_priv->skip_force_power_lock, flags);
 	dump_stack();
+#if IS_ENABLED(CONFIG_MTK_HWCCF)
 	clkchk_external_dump();
+#endif
 	BUG_ON(1);
 }
 
@@ -3069,6 +3081,7 @@ static void process_dbg_opt(const char *opt)
 		 * 10 DPC3_SUBSYS_DPTX,   30 ocip_disp_dptx_mtcmos_req (notice idx!!!)
 		 * 11 DPC3_SUBSYS_PERI,   29 ocip_disp_peri_mtcmos_req (notice idx!!!)
 		 */
+#if IS_ENABLED(CONFIG_MTK_HWCCF)
 		if (v1 == 100) {
 			hwccf_voter_ctrl(MM_HWCCF, HW_CCF_CG_GRP_51, v2 ? HWCCF_VOTE : HWCCF_UNVOTE, 19);
 			hwccf_voter_ctrl(MM_HWCCF, HW_CCF_CG_GRP_51, v2 ? HWCCF_VOTE : HWCCF_UNVOTE, 20);
@@ -3082,6 +3095,7 @@ static void process_dbg_opt(const char *opt)
 			hwccf_voter_ctrl(MM_HWCCF, HW_CCF_CG_GRP_51, v2 ? HWCCF_VOTE : HWCCF_UNVOTE, 28);
 		} else
 			hwccf_voter_ctrl(MM_HWCCF, HW_CCF_CG_GRP_51, v2 ? HWCCF_VOTE : HWCCF_UNVOTE, v1 + 19);
+#endif
 	}
 
 	if (g_priv->mminfra_hangfree) {
