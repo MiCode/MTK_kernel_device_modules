@@ -3409,6 +3409,7 @@
 			compatible = "mediatek,gpu_fdvfs";
 			reg = <0 0x112000 0 0x400>;
 			fdvfs-policy-support = <0>;
+			gpu-freq-notify-support = <1>;
 		};
 
 		gpueb: gpueb@13c00000 {
