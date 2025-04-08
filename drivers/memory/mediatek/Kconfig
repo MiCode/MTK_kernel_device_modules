@@ -56,15 +56,6 @@ config MTK_EMI_LEGACY_VERSION
 	  This selects the MediaTek(R) EMI driver.
 	  Provide the version control for MTK_EMI_LEGACY.
 
-config MTK_COMMON_LEGACY_EMI
-	tristate "MediaTek External Memory Interface Legacy driver"
-	depends on HAVE_MTK_MC
-	help
-	  This selects the MediaTek(R) EMI driver.
-	  Provide the API for MPU registration, EMI MPU violation handling,
-	  the API for EMI information, the BWL golden setting,
-	  and the sysfs for EMI ISU control.
-
 config MTK_EMI_BWL_VERSION
 	int "MTK_EMI_BWL_VERSION"
 	depends on HAVE_MTK_MC
