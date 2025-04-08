@@ -96,6 +96,7 @@ static int pd_type_to_adapter_event(int pd_type)
 	case MTK_PD_CONNECT_PE_READY_SNK:
 	case MTK_PD_CONNECT_PE_READY_SNK_PD30:
 	case MTK_PD_CONNECT_PE_READY_SNK_APDO:
+	case MTK_PD_CONNECT_NEW_SRC_CAP:
 		return TA_ATTACH;
 	case MTK_PD_CONNECT_HARD_RESET:
 		return TA_HARD_RESET;
