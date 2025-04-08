@@ -2506,16 +2506,19 @@ int mdrv_DPTx_Training_Handler(struct mtk_dp *mtk_dp)
 			DPTXMSG("READ EDID done!\n");
 
 			u8 *raw_edid = (u8 *)mtk_dp->edid;
+			int num_blocks;
 
 			DPTXMSG("Raw EDID:\n");
 			print_hex_dump(KERN_NOTICE,
 					"\t", DUMP_PREFIX_NONE, 16, 1,
 					raw_edid, EDID_LENGTH, false);
-			if ((raw_edid[0x7E] & 0x01) == 0x01) {
+
+			num_blocks = raw_edid[0x7E] + 1; // +1 to include the base block
+			for (int i = 1; i < num_blocks; i++) {
 				print_hex_dump(KERN_NOTICE,
-					"\t", DUMP_PREFIX_NONE, 16, 1,
-					(raw_edid + 128), EDID_LENGTH,
-					false);
+						"\t", DUMP_PREFIX_NONE, 16, 1,
+						(raw_edid + (i * 128)), EDID_LENGTH,
+						false);
 			}
 			mdelay(10);
 			ubTempBuffer[0x0] = mtk_dp->edid->checksum;
@@ -2550,9 +2553,12 @@ int mdrv_DPTx_Training_Handler(struct mtk_dp *mtk_dp)
 			ret = DPTX_NOERR;
 		} else {
 			DPTXERR("Handle Training Fail 6 times\n");
-			DDPAEE("Link training fail\n");
-			dptx_dump_reg();
-			mtk_dp->trigger_db_flag = TRUE;
+			if (mtk_dp->trigger_db_flag == false && mtk_dp->usb_last_state != HPD_DISCONNECT
+			&& mtk_dp->training_info.ubSinkCountNum != 0) {
+				DDPAEE("Link training fail\n");
+				dptx_dump_reg();
+				mtk_dp->trigger_db_flag = TRUE;
+			}
 		}
 		break;
 	case DPTX_NTSTATE_CHECKTIMING:
