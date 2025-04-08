@@ -323,6 +323,29 @@ dapc_srcs_list = glob([
 	"devapc/*.c",
 ])
 
+#######################################
+# AISTE
+#######################################
+# aiste header
+ddk_headers(
+	name = "apu_aiste_hdrs",
+	# include header files
+	hdrs = glob([
+		"aiste/*.h",
+		"tinysys-scmi.h",
+	]),
+	# include directory for relative path
+	includes = [
+		"aiste",
+	],
+	visibility = [
+		"//visibility:public",
+	],
+)
+
+aiste_srcs_list = glob([
+	"aiste/*.c",
+])
 
 #######################################
 # VPU
@@ -604,6 +627,7 @@ define_mgk_ddk_ko(
 		pbm_srcs_list +
 		mdla_srcs_list +
 		dapc_srcs_list +
+		aiste_srcs_list +
 		apusys_rv_common_srcs_list +
 		apusys_rv_plat_srcs_list +
 		apusys_ce_srcs_list +
@@ -624,6 +648,7 @@ define_mgk_ddk_ko(
 		":apu_pbm_hdrs",
 		":apu_mdla_hdrs",
 		":apu_dapc_hdrs",
+		":apu_aiste_hdrs",
 		":apu_vpu_hdrs",
 		":apusys_rv_hdrs",
 		":apusys_ce_hdrs",
@@ -635,6 +660,7 @@ define_mgk_ddk_ko(
 		"//kernel_device_modules-{}/drivers/iommu/arm/arm-smmu-v3:smmu_public_headers".format(kernel_version),
 		"//kernel_device_modules-{}/drivers/misc/mediatek/scp/include:scp_public_headers".format(kernel_version),
 		"//kernel_device_modules-{}/drivers/misc/mediatek/pbm:pbm_headers".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/tinysys_scmi:ddk_public_headers".format(kernel_version),
 	],
 	# header export to other DDK
 	hdrs = glob([
@@ -693,6 +719,7 @@ define_mgk_ddk_ko(
 		"-I$(DEVICE_MODULES_PATH)/drivers/staging/android/ion",
 		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
 		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/tinysys_scmi/",
 		"-I$(srctree)/drivers/rpmsg",
 	],
 	ko_deps = [
@@ -708,6 +735,7 @@ define_mgk_ddk_ko(
 		"//kernel_device_modules-{}/drivers/misc/mediatek/iommu:mtk_iommu_util".format(kernel_version),
 		"//kernel_device_modules-{}/drivers/iommu:mtk_iommu".format(kernel_version),
 		"//kernel_device_modules-{}/drivers/iommu/arm/arm-smmu-v3:arm_smmu_v3".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/tinysys_scmi:tinysys-scmi".format(kernel_version),
 	],
 )
 

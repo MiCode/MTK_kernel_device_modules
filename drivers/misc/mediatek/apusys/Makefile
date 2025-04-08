@@ -400,6 +400,14 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/power/3.0/inc
 # smmu device driver
 apusys-objs += secure_mem/smmu_device.o
 
+# aiste
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/aiste/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/tinysys_scmi/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/
+ccflags-y += -I$(srctree)/include/
+ccflags-y += -I$(srctree)/kernel/
+#apusys-objs += aiste/aiste.o
+
 # aov
 APUSYS_VERSION_MIDWARE = 3.0
 UTIL_DIR = util

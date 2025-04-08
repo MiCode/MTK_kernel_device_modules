@@ -48,6 +48,8 @@ int apu_sysmem_init(struct apusys_core_info *info);
 void apu_sysmem_exit(void);
 int apu_hds_init(struct apusys_core_info *info);
 void apu_hds_exit(void);
+int aiste_init(struct apusys_core_info *info);
+void aiste_exit(void);
 
 /*
  * init function at other modulses
@@ -78,6 +80,7 @@ static int (*apusys_init_func[])(struct apusys_core_info *) = {
 	apu_smmu_device_init,
 	apu_pbm_drv_init,
 	apu_rproc_init,
+	aiste_init,
 };
 
 /*
@@ -109,5 +112,6 @@ static void (*apusys_exit_func[])(void) = {
 //	apupwr_exit_tags,
 	hw_logger_exit,
 	sw_logger_exit,
+	aiste_exit,
 };
 #endif
