@@ -71,6 +71,7 @@
 #include "mtk_dp.h"
 #include "mtk_disp_dbgtp.h"
 #include "mtk_disp_dbi_count.h"
+#include "mmqos-mtk.h"
 
 
 /* *****Panel_Master*********** */
@@ -155,7 +156,6 @@ static unsigned int cmdq_client_num;
 
 struct timespec64 atomic_flush_tval;
 struct timespec64 rdma_sof_tval;
-//static void mmqos_hrt_dump(void);
 
 bool hdr_en;
 static const char * const crtc_gce_client_str[] = {
@@ -9318,7 +9318,7 @@ static int _mtk_crtc_cmdq_smi_info_dump(void *data)
 			DDPPR_ERR("wait %s fail, ret=%d\n", __func__, ret);
 
 		mtk_smi_dbg_hang_detect("disp_underrun");
-		//mmqos_hrt_dump();
+		mmqos_hrt_dump();
 		mmdvfs_debug_status_dump(NULL);
 		atomic_set(&mtk_crtc->smi_info_dump_event, 0);
 
