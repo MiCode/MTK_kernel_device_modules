@@ -33,17 +33,17 @@ struct mtk_aspm_state {
 unsigned int mtk_get_value(char *str)
 {
 	unsigned int index, value = 0;
-	char *format;
+	int format;
 
 	if (str[0] == '0' && str[1] == 'x') {
 		index = 2;
-		format = "%x";
+		format = 16;
 	} else {
 		index = 0;
-		format = "%d";
+		format = 10;
 	}
 
-	if (sscanf(&str[index], format, &value) == 1)
+	if (kstrtouint(str + index, format, &value) == 0)
 		return value;
 
 	return 0;
