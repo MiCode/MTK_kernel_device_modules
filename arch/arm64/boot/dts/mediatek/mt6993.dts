@@ -7566,7 +7566,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 			clock-names = "mutex0";
 			sof-event = /bits/ 16 <CMDQ_EVENT_MML2_STREAM_SOF_0>;
-			event-prete = /bits/ 16 <CMDQ_EVENT_DPC_ENG_EVENT_28>;
 		};
 
 		mml2_rdma1: mml2-rdma1@32730000 {
