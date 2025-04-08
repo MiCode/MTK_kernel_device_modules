@@ -79,12 +79,13 @@ enum venc_ipi_msg_id {
 enum venc_get_param_type {
 	GET_PARAM_VENC_CAP_SUPPORTED_FORMATS,
 	GET_PARAM_VENC_CAP_FRAME_SIZES,
+	GET_PARAM_VENC_CAP_COMMON,
+	/** only for kernel **/
 	GET_PARAM_FREE_BUFFERS,
 	GET_PARAM_ROI_RC_QP,
 	GET_PARAM_RESOLUTION_CHANGE,
-	GET_PARAM_VENC_CAP_COMMON,
-	/** only for kernel **/
 	GET_PARAM_VENC_PWR_CTRL,
+	GET_PARAM_VENC_HW_TIME,
 	GET_PARAM_VENC_VCU_VPUD_LOG
 };
 
@@ -665,7 +666,8 @@ struct venc_vsi {
 	__u64 general_buf_dma;
 	__s32 general_buf_fd;
 	__u32 general_buf_size;
-	__u32 reserved;
+	__u32 hw_proc_cnt[MTK_VENC_HW_NUM];
+	__u32 hw_proc_time[MTK_VENC_HW_NUM];
 };
 
 struct venc_common_vsi {

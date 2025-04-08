@@ -2152,6 +2152,8 @@ void mtk_vdec_check_alive_work(struct work_struct *ws)
 			mutex_unlock(&dev->dec_dvfs_mutex);
 			return;
 		}
+		if (!ctx->is_active)
+			mtk_vcodec_send_info_to_vgo(ctx, MTK_VCODEC_VGO_ADD_INST);
 		ctx->is_active = 1;
 		mtk_vdec_dvfs_update_dvfs_params(ctx);
 		kfree(caws);
@@ -2169,6 +2171,7 @@ void mtk_vdec_check_alive_work(struct work_struct *ws)
 					if (ctx->is_active) {
 						need_update = true;
 						ctx->is_active = 0;
+						mtk_vcodec_send_info_to_vgo(ctx, MTK_VCODEC_VGO_DEL_INST);
 						mtk_vdec_dvfs_update_dvfs_params(ctx);
 						mtk_vcodec_dvfs_qos_log(false, "[VDVFS] ctx %d inactive", ctx->id);
 					}
@@ -2176,6 +2179,7 @@ void mtk_vdec_check_alive_work(struct work_struct *ws)
 					if (!ctx->is_active) {
 						need_update = true;
 						ctx->is_active = 1;
+						mtk_vcodec_send_info_to_vgo(ctx, MTK_VCODEC_VGO_ADD_INST);
 						mtk_vdec_dvfs_update_dvfs_params(ctx);
 						mtk_vcodec_dvfs_qos_log(false, "[VDVFS] ctx %d active", ctx->id);
 					}
@@ -3607,7 +3611,11 @@ static void vb2ops_vdec_buf_queue(struct vb2_buffer *vb)
 		retrigger_ctx_work->dev = ctx->dev;
 		queue_work(ctx->dev->check_alive_workqueue, &retrigger_ctx_work->work);
 		mtk_vcodec_dvfs_qos_log(false, "%s [VDVFS] retrigger ctx work: %d", __func__, ctx->id);
+		mutex_lock(&ctx->dev->dec_dvfs_mutex);
+		if (!ctx->is_active)
+			mtk_vcodec_send_info_to_vgo(ctx, MTK_VCODEC_VGO_ADD_INST);
 		ctx->is_active = 1;
+		mutex_unlock(&ctx->dev->dec_dvfs_mutex);
 	}
 #endif
 	/*
@@ -4236,6 +4244,8 @@ static void vb2ops_vdec_stop_streaming(struct vb2_queue *q)
 
 	vcodec_trace_begin("dvfs(stream_off)");
 	mutex_lock(&ctx->dev->dec_dvfs_mutex);
+	if (ctx->is_active)
+		mtk_vcodec_send_info_to_vgo(ctx, MTK_VCODEC_VGO_DEL_INST);
 	ctx->is_active = 0;
 	if (ctx->dev->vdec_dvfs_params.mmdvfs_in_vcp) {
 		mtk_vdec_unprepare_vcp_dvfs_data(ctx, vcp_dvfs_data);
@@ -4289,6 +4299,9 @@ static void mtk_vdec_start_work(struct mtk_vcodec_ctx *ctx)
 
 	vcodec_trace_begin("dvfs(stream_on)");
 	mutex_lock(&ctx->dev->dec_dvfs_mutex);
+	if (!ctx->is_active)
+		mtk_vcodec_send_info_to_vgo(ctx, MTK_VCODEC_VGO_ADD_INST);
+	ctx->is_active = 1;
 	if (ctx->dev->vdec_dvfs_params.mmdvfs_in_vcp) {
 		mtk_vcodec_cpu_pf_ctrl(ctx, true);
 		mtk_vcodec_slc_wce_ctrl(ctx, true);
@@ -4349,6 +4362,11 @@ static void mtk_vdec_worker(struct mtk_vcodec_ctx *ctx)
 	if (!mtk_vcodec_is_state(ctx, MTK_STATE_HEADER)) {
 		mtk_v4l2_debug(1, "[%d] state %d", ctx->id, mtk_vcodec_get_state(ctx));
 		goto vdec_worker_finish;
+	}
+
+	if (ctx->last_vgo_op_rate != ctx->vgo_op_rate) {
+		mtk_vdec_queue_videogo_info_event(ctx, ctx->vgo_op_rate);
+		ctx->last_vgo_op_rate = ctx->vgo_op_rate;
 	}
 
 	/* process deferred put fb job */

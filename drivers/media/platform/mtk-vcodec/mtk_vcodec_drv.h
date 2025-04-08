@@ -809,6 +809,9 @@ struct mtk_vcodec_ctx {
 	int last_decoded_frame_cnt; // used for timer to check active state of decoded ctx
 	int op_rate_adaptive; // current using adaptive op rate
 	int last_monitor_op; // current monitored op rate
+	unsigned int vgo_op_rate;
+	unsigned int last_vgo_op_rate;
+	unsigned int hw_proc_time[MTK_VDEC_HW_NUM];
 	unsigned int input_buf_cnt;
 	unsigned int prev_inbuf_time;
 	struct mutex buf_lock;

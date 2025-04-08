@@ -2106,6 +2106,25 @@ static void get_low_pw_mode(struct vdec_inst *inst, unsigned int *low_pw_mode)
 		*low_pw_mode = inst->vsi->low_pw_mode;
 }
 
+static void get_hw_time(struct vdec_inst *inst, unsigned int *avg_hw_time)
+{
+	int i;
+
+	for (i = 0; i < MTK_VDEC_HW_NUM; i++)
+		avg_hw_time[i] = 0;
+
+	if (inst->vsi == NULL)
+		return;
+
+	for (i = 0; i < MTK_VDEC_HW_NUM; i++) {
+		if (inst->vsi->hw_proc_cnt[i] > 0)
+			avg_hw_time[i] = inst->vsi->hw_proc_time[i] / inst->vsi->hw_proc_cnt[i];
+
+		inst->vsi->hw_proc_cnt[i] = 0;
+		inst->vsi->hw_proc_time[i] = 0;
+	}
+}
+
 static void get_frame_interval(struct vdec_inst *inst, struct v4l2_fract *time_per_frame)
 {
 	inst->vcu.ctx = inst->ctx;
@@ -2264,6 +2283,10 @@ static int vdec_vcp_get_param(unsigned long h_vdec,
 
 	case GET_PARAM_LOW_POWER_MODE:
 		get_low_pw_mode(inst, out);
+		break;
+
+	case GET_PARAM_VDEC_HW_TIME:
+		get_hw_time(inst, out);
 		break;
 
 	case GET_PARAM_RES_INFO:

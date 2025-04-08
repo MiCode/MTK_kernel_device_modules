@@ -3120,7 +3120,8 @@ static int vb2ops_venc_start_streaming(struct vb2_queue *q, unsigned int count)
 		mutex_unlock(&ctx->dev->enc_dvfs_mutex);
 	}
 	vcodec_trace_end();
-	vcodec_trace_end();
+
+	mtk_vcodec_send_info_to_vgo(ctx, MTK_VCODEC_VGO_ADD_INST);
 
 #ifdef MTK_VIP_SUPPORT
 	if (ctx->enc_params.operationrate >= 960) {
@@ -3129,6 +3130,7 @@ static int vb2ops_venc_start_streaming(struct vb2_queue *q, unsigned int count)
 		mtk_v4l2_debug(0, "set_task_priority() ret %d, is_worker_set_rt %d", ret, ctx->is_worker_set_rt);
 	}
 #endif
+	vcodec_trace_end();
 	return 0;
 
 err_set_param:
@@ -3205,6 +3207,8 @@ static void vb2ops_venc_stop_streaming(struct vb2_queue *q)
 				venc_check_release_lock(ctx);
 			}
 		}
+
+		mtk_vcodec_send_info_to_vgo(ctx, MTK_VCODEC_VGO_DEL_INST);
 	}
 
 	if (q->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE) {
@@ -3719,6 +3723,11 @@ static void mtk_venc_worker(struct mtk_vcodec_ctx *ctx)
 		mtk_v4l2_debug(1, " %d", mtk_vcodec_get_state(ctx));
 		mutex_unlock(&ctx->worker_lock);
 		return;
+	}
+
+	if (ctx->last_vgo_op_rate != ctx->vgo_op_rate) {
+		//mtk_venc_queue_videogo_info_event(ctx, ctx->vgo_op_rate);
+		ctx->last_vgo_op_rate = ctx->vgo_op_rate;
 	}
 
 	/* check dst_buf, dst_buf may be removed in device_run

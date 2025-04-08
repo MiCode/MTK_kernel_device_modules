@@ -816,6 +816,7 @@ bool mtk_venc_dvfs_monitor_op_rate(struct mtk_vcodec_ctx *ctx, int buf_type)
 	bool update_op = false;
 	struct vcodec_inst *inst = 0;
 	struct mtk_vcodec_dev *dev = ctx->dev;
+	int ret;
 
 	if (buf_type != V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE ||
 		!dev->venc_dvfs_params.mmdvfs_in_adaptive)
@@ -880,8 +881,15 @@ bool mtk_venc_dvfs_monitor_op_rate(struct mtk_vcodec_ctx *ctx, int buf_type)
 				dev->venc_dvfs_params.init_boost = 0;
 
 			mutex_unlock(&dev->enc_dvfs_mutex);
-			return true;
 		}
+
+		ret = venc_if_get_param(ctx, GET_PARAM_VENC_HW_TIME, ctx->hw_proc_time);
+		if (ret)
+			mtk_v4l2_err("[%d] GET_PARAM_VENC_HW_TIME fail ret %d", ctx->id, ret);
+		mtk_vcodec_send_info_to_vgo(ctx, MTK_VCODEC_VGO_UPDATE);
+
+		if (update_op)
+			return true;
 	}
 	return false;
 }
