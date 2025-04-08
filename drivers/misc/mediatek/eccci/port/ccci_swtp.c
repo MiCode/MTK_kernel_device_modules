@@ -170,9 +170,15 @@ static void swtp_tx_delayed_work(struct work_struct *work)
 
 int swtp_md_tx_power_req_hdlr(int data)
 {
-	struct swtp_t *swtp = NULL;
+	struct swtp_t *swtp = &swtp_data;
+#ifdef MTK_TC10_FEATURE_CHANGE_TX_POWER
+	unsigned long flags;
 
-	swtp = &swtp_data;
+	/*default do tx power for special use*/
+	spin_lock_irqsave(&swtp->spinlock, flags);
+	swtp->tx_power_mode = SWTP_DO_TX_POWER;
+	spin_unlock_irqrestore(&swtp->spinlock, flags);
+#endif
 	swtp_send_tx_power_state(swtp);
 
 	return 0;

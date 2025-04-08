@@ -6,6 +6,8 @@
 #include "ccci_fsm_internal.h"
 #include "ccci_fsm_sys.h"
 #include "port_rpc.h"
+#include "modem_sys.h"
+#include "ccci_config.h"
 
 #define CCCI_KOBJ_NAME "md"
 
@@ -118,7 +120,14 @@ int fsm_sys_init(void)
 		CCCI_ERROR_LOG(-1, FSM, "fail to add fsm kobject\n");
 		return ret;
 	}
-
+#ifdef MTK_TC10_FEATURE_MD_EE_INFO
+#if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
+	ret = mrdump_mini_add_extra_file((unsigned long)mdee_collect.mdee_info,
+			0, AED_STR_LEN, "MD_EE_INFO");
+	if (ret)
+		CCCI_ERROR_LOG(0, FSM, "%s: MD_EE_INFO add fail\n", __func__);
+#endif
+#endif
 	return ret;
 }
 

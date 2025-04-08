@@ -20,6 +20,10 @@
 #define BANK4_DRDI_SMEM_SIZE (64*1024)
 
 
+/* This feature will stores the md ee information to specific file. */
+
+//#define MTK_TC10_FEATURE_MD_EE_INFO
+
 /*
  * This feature set the md debug level.
  * After MD EE.
@@ -27,5 +31,17 @@
  *  2. LEVEL_MID/LEVEL_HIGH: trigger crash.
  */
 //#define MTK_TC10_FEATURE_SET_DEBUG_LEVEL
+
+/*
+ * This feature send carkit status to md.
+ */
+//#define MTK_TC10_FEATURE_CARKIT
+
+/*
+ * This feature change tx_power_mode.
+ * when MD actively queries the status of tx_power_mode,
+ * set tx_power_mode to SWTP_DO_TX_POWER.
+ */
+//#define MTK_TC10_FEATURE_CHANGE_TX_POWER
 
 #endif

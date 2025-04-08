@@ -2375,6 +2375,15 @@ int exec_ccci_kern_func(unsigned int id, char *buf, unsigned int len)
 
 			ret = ccci_port_send_msg_to_md(CCCI_SYSTEM_TX,
 				msg_id, mode, 0);
+			if (ret != 0)
+				CCCI_ERROR_LOG(0, TAG, "send msg id error %d\n", ret);
+#ifdef MTK_TC10_FEATURE_CARKIT
+			ret = ccci_port_send_msg_to_md(CCCI_SYSTEM_TX,
+				MD_CARKIT_STATUS, mode, 0);
+			if (ret != 0)
+				CCCI_ERROR_LOG(0, TAG, "send carkit status error %d\n", ret);
+#endif
+
 		}
 		break;
 	case ID_DUMP_MD_SLEEP_MODE:
