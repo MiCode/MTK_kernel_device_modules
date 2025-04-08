@@ -722,7 +722,7 @@ int get_md1_tx_power(enum md_scenario scenario, u32 *share_mem,
 
 	if (mt_mdpm_debug == 2)
 		for (i = 0; i < SHARE_MEM_SIZE; i++) {
-			usedBytes += sprintf(log_buffer + usedBytes, "0x%x ",
+			usedBytes += snprintf(log_buffer + usedBytes, sizeof(log_buffer) - usedBytes, "0x%x ",
 				share_mem[i]);
 
 			if ((i + 1) % 10 == 0 || (i + 1) == SHARE_MEM_SIZE) {
