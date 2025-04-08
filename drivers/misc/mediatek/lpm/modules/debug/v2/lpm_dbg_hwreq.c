@@ -192,6 +192,9 @@ static ssize_t lpm_generic_hwreq_write(char *FromUserBuf,
 					  size_t sz, void *priv)
 {
 	struct LPM_HWREQ_NODE *node = (struct LPM_HWREQ_NODE *)priv;
+	char *token;
+	char *str = FromUserBuf;
+	const char *delim = " ";
 
 	if (!node)
 		return -EINVAL;
@@ -200,20 +203,30 @@ static ssize_t lpm_generic_hwreq_write(char *FromUserBuf,
 	    || (node->type == LPM_HWREQ_NODE_CLR)) {
 		unsigned int parm1, parm2, act;
 
-		if (sscanf(FromUserBuf, "%u %x", &parm1, &parm2) == 2) {
-			unsigned long arg1 = 0;
+		token = strsep(&str, delim);
+		if (!token)
+			return -EINVAL;
+		if (kstrtouint(token, 10, &parm1))
+			return -EINVAL;
 
-			act = (node->type == LPM_HWREQ_NODE_SET) ?
-				MT_LPM_SMC_ACT_SET :
-				(node->type == LPM_HWREQ_NODE_CLR) ?
-				MT_LPM_SMC_ACT_CLR : 0;
+		token = strsep(&str, delim);
+		if (!token)
+			return -EINVAL;
+		if (kstrtouint(token, 16, &parm2))
+			return -EINVAL;
 
-			arg1 = node->hwreq_id;
-			arg1 = (arg1 << 32) | parm1;
-			if (act != 0)
-				lpm_smc_spm_dbg((node->hwreq_fs)->smc_id_set,
-						act, arg1, parm2);
-		}
+		unsigned long arg1 = 0;
+
+		act = (node->type == LPM_HWREQ_NODE_SET) ?
+			MT_LPM_SMC_ACT_SET :
+			(node->type == LPM_HWREQ_NODE_CLR) ?
+			MT_LPM_SMC_ACT_CLR : 0;
+
+		arg1 = node->hwreq_id;
+		arg1 = (arg1 << 32) | parm1;
+		if (act != 0)
+			lpm_smc_spm_dbg((node->hwreq_fs)->smc_id_set,
+					act, arg1, parm2);
 	}
 	return sz;
 }

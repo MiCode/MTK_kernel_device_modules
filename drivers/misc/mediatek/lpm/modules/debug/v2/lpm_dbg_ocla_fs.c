@@ -36,15 +36,29 @@ static unsigned int ocla_dbg_enable;
 static ssize_t ocla_dbg_enable_write(char *FromUserBuf, size_t sz, void *priv)
 {
 	unsigned int magic, enable;
+	char *token;
+	char *str = FromUserBuf;
+	const char *delim = " ";
 
-	if (sscanf(FromUserBuf, "%x %x", &magic, &enable) == 2) {
-		if (magic == SPM_OCLA_MAGIC_NUM) {
-			if (enable <= 1) {
-				ocla_dbg_enable = enable;
-				return sz;
-			}
+	token = strsep(&str, delim);
+	if (!token)
+		return -EINVAL;
+	if (kstrtouint(token, 16, &magic))
+		return -EINVAL;
+
+	token = strsep(&str, delim);
+	if (!token)
+		return -EINVAL;
+	if (kstrtouint(token, 16, &enable))
+		return -EINVAL;
+
+	if (magic == SPM_OCLA_MAGIC_NUM) {
+		if (enable <= 1) {
+			ocla_dbg_enable = enable;
+			return sz;
 		}
 	}
+
 	return -EINVAL;
 }
 
@@ -81,18 +95,32 @@ static ssize_t ocla_enable_read(char *ToUserBuf, size_t sz, void *priv)
 static ssize_t ocla_enable_write(char *FromUserBuf, size_t sz, void *priv)
 {
 	unsigned int magic, enable;
+	char *token;
+	char *str = FromUserBuf;
+	const char *delim = " ";
 
 	if (!ocla_dbg_enable)
 		return -EINVAL;
 
-	if (sscanf(FromUserBuf, "%x %x", &magic, &enable) == 2) {
-		if (magic == SPM_OCLA_MAGIC_NUM) {
-			if (enable <= 1) {
-				ocla_enable_set(enable);
-				return sz;
-			}
+	token = strsep(&str, delim);
+	if (!token)
+		return -EINVAL;
+	if (kstrtouint(token, 16, &magic))
+		return -EINVAL;
+
+	token = strsep(&str, delim);
+	if (!token)
+		return -EINVAL;
+	if (kstrtouint(token, 16, &enable))
+		return -EINVAL;
+
+	if (magic == SPM_OCLA_MAGIC_NUM) {
+		if (enable <= 1) {
+			ocla_enable_set(enable);
+			return sz;
 		}
 	}
+
 	return -EINVAL;
 }
 
@@ -125,25 +153,54 @@ static ssize_t ocla_packet_read(char *ToUserBuf, size_t sz, void *priv)
 static ssize_t ocla_packet_write(char *FromUserBuf, size_t sz, void *priv)
 {
 	unsigned int magic, signal, enable_bit, monitor_0, monitor_1;
+	char *token;
+	char *str = FromUserBuf;
+	const char *delim = " ";
 
 	if (!ocla_dbg_enable)
 		return -EINVAL;
 
-	if (sscanf(FromUserBuf, "%x %x %x %x %x",
-			&magic, &signal, &enable_bit, &monitor_0, &monitor_1) == 5) {
-		if (magic != SPM_OCLA_MAGIC_NUM)
-			return -EINVAL;
-		lpm_smc_spm_dbg(MT_SPM_DBG_SMC_OCLA, MT_LPM_SMC_ACT_SET,
-						SPM_OCLA_SMC_SIGNAL, signal);
-		lpm_smc_spm_dbg(MT_SPM_DBG_SMC_OCLA, MT_LPM_SMC_ACT_SET,
-						SPM_OCLA_SMC_BIT_EN, enable_bit);
-		lpm_smc_spm_dbg(MT_SPM_DBG_SMC_OCLA, MT_LPM_SMC_ACT_SET,
-						SPM_OCLA_SMC_MONITOR, monitor_0);
-		lpm_smc_spm_dbg(MT_SPM_DBG_SMC_OCLA, MT_LPM_SMC_ACT_SET,
-						SPM_OCLA_SMC_MONITOR | 0x100, monitor_1);
-		return sz;
-	}
-	return -EINVAL;
+	token = strsep(&str, delim);
+	if (!token)
+		return -EINVAL;
+	if (kstrtouint(token, 16, &magic))
+		return -EINVAL;
+
+	token = strsep(&str, delim);
+	if (!token)
+		return -EINVAL;
+	if (kstrtouint(token, 16, &signal))
+		return -EINVAL;
+
+	token = strsep(&str, delim);
+	if (!token)
+		return -EINVAL;
+	if (kstrtouint(token, 16, &enable_bit))
+		return -EINVAL;
+
+	token = strsep(&str, delim);
+	if (!token)
+		return -EINVAL;
+	if (kstrtouint(token, 16, &monitor_0))
+		return -EINVAL;
+
+	token = strsep(&str, delim);
+	if (!token)
+		return -EINVAL;
+	if (kstrtouint(token, 16, &monitor_1))
+		return -EINVAL;
+
+	if (magic != SPM_OCLA_MAGIC_NUM)
+		return -EINVAL;
+	lpm_smc_spm_dbg(MT_SPM_DBG_SMC_OCLA, MT_LPM_SMC_ACT_SET,
+					SPM_OCLA_SMC_SIGNAL, signal);
+	lpm_smc_spm_dbg(MT_SPM_DBG_SMC_OCLA, MT_LPM_SMC_ACT_SET,
+					SPM_OCLA_SMC_BIT_EN, enable_bit);
+	lpm_smc_spm_dbg(MT_SPM_DBG_SMC_OCLA, MT_LPM_SMC_ACT_SET,
+					SPM_OCLA_SMC_MONITOR, monitor_0);
+	lpm_smc_spm_dbg(MT_SPM_DBG_SMC_OCLA, MT_LPM_SMC_ACT_SET,
+					SPM_OCLA_SMC_MONITOR | 0x100, monitor_1);
+	return sz;
 }
 
 static const struct mtk_lp_sysfs_op ocla_packet_fops = {
@@ -170,19 +227,39 @@ static ssize_t ocla_usr_sel_read(char *ToUserBuf, size_t sz, void *priv)
 static ssize_t ocla_usr_sel_write(char *FromUserBuf, size_t sz, void *priv)
 {
 	unsigned int magic, sel, val;
+	char *token;
+	char *str = FromUserBuf;
+	const char *delim = " ";
 
 	if (!ocla_dbg_enable)
 		return -EINVAL;
 
-	if (sscanf(FromUserBuf, "%x %x %x", &magic, &sel, &val) == 3) {
-		if (magic != SPM_OCLA_MAGIC_NUM)
-			return -EINVAL;
-		if ( !sel || sel & ~SPM_OCLA_CTRL_PARA_MASK)
-			return -EINVAL;
-		ocla_sel_tmp = sel;
-		lpm_smc_spm_dbg(MT_SPM_DBG_SMC_OCLA, MT_LPM_SMC_ACT_SET,
-				ocla_sel_tmp | SPM_OCLA_SMC_USER_SEL, val);
-	}
+	token = strsep(&str, delim);
+	if (!token)
+		return -EINVAL;
+	if (kstrtouint(token, 16, &magic))
+		return -EINVAL;
+
+	token = strsep(&str, delim);
+	if (!token)
+		return -EINVAL;
+	if (kstrtouint(token, 16, &sel))
+		return -EINVAL;
+
+	token = strsep(&str, delim);
+	if (!token)
+		return -EINVAL;
+	if (kstrtouint(token, 16, &val))
+		return -EINVAL;
+
+	if (magic != SPM_OCLA_MAGIC_NUM)
+		return -EINVAL;
+	if ( !sel || sel & ~SPM_OCLA_CTRL_PARA_MASK)
+		return -EINVAL;
+	ocla_sel_tmp = sel;
+	lpm_smc_spm_dbg(MT_SPM_DBG_SMC_OCLA, MT_LPM_SMC_ACT_SET,
+			ocla_sel_tmp | SPM_OCLA_SMC_USER_SEL, val);
+
 	return sz;
 }
 

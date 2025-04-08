@@ -372,20 +372,38 @@ static ssize_t lpm_cpuidle_state_write(char *FromUserBuf,
 	struct LPM_CPUIDLE_STATE_NODE *node =
 			(struct LPM_CPUIDLE_STATE_NODE *)priv;
 	unsigned int cpu = 0, val = 0, state_idx = 0;
+	char *token;
+	char *str = FromUserBuf;
+	const char *delim = " ";
 
 	if (!FromUserBuf || !node)
 		return -EINVAL;
 	if (node->type < IDLE_STATE_EN && !mtk_cpuidle_get_state_en())
 		return -EINVAL;
 
-	if (sscanf(FromUserBuf, "%u %u %u", &cpu, &state_idx, &val) == 3) {
-		if (!state_idx || state_idx >= nr_states)
-			return -EINVAL;
-		idle_proc_state_param_setting(cpu, state_idx, val, &sz, node->type);
+	token = strsep(&str, delim);
+	if (!token)
+		return -EINVAL;
+	if (kstrtouint(token, 10, &cpu))
+		return -EINVAL;
 
-		return sz;
-	}
-	return -EINVAL;
+	token = strsep(&str, delim);
+	if (!token)
+		return -EINVAL;
+	if (kstrtouint(token, 10, &state_idx))
+		return -EINVAL;
+
+	token = strsep(&str, delim);
+	if (!token)
+		return -EINVAL;
+	if (kstrtouint(token, 10, &val))
+		return -EINVAL;
+
+	if (!state_idx || state_idx >= nr_states)
+		return -EINVAL;
+	idle_proc_state_param_setting(cpu, state_idx, val, &sz, node->type);
+
+	return sz;
 }
 
 static int lpm_cpuidle_state_info_init(void)

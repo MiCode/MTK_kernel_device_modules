@@ -114,16 +114,30 @@ ssize_t set_spm_resource_req_timer_enable(char *ToUserBuf
 {
 	u32 is_enable;
 	u32 timer_ms;
+	char *token;
+	char *str;
+	const char *delim = " ";
+	u32 input_para_cnt = 0;
 
 	if (!ToUserBuf)
 		return -EINVAL;
 
-	if (sscanf(ToUserBuf, "%d %d", &is_enable, &timer_ms) == 2) {
+	str = ToUserBuf;
+
+	token = strsep(&str, delim);
+	if ( (token) && (kstrtouint(token, 10, &is_enable) == 0) )
+		input_para_cnt++;
+	else
+		return -EINVAL;
+
+	token = strsep(&str, delim);
+	if ( (token) && (kstrtouint(token, 10, &timer_ms) == 0) )
+		input_para_cnt++;
+
+	if (input_para_cnt == 2) {
 		spm_resource_req_timer_en(is_enable, timer_ms);
 		return sz;
-	}
-
-	if (kstrtouint(ToUserBuf, 10, &is_enable) == 0) {
+	} else if (input_para_cnt == 1) {
 		if (is_enable == 0) {
 			spm_resource_req_timer_en(is_enable, 0);
 			return sz;

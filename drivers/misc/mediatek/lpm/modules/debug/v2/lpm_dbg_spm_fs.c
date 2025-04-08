@@ -9,6 +9,7 @@
 #include <linux/rtc.h>
 #include <linux/of_device.h>
 #include <linux/spinlock.h>
+#include <linux/string.h>
 
 #include <lpm_dbg_common_v2.h>
 #include <lpm_module.h>
@@ -148,11 +149,28 @@ static ssize_t store_pwr_ctrl(int id, const char *buf, size_t count, void *priv)
 	int i;
 	char **pwr_ctrl_str = NULL;
 	int pwr_ctrl_cnt = 0;
+	char *token;
+	char *str = kcalloc(count, sizeof(char), GFP_KERNEL);
+	const char *delim = " ";
+
+	if ( (!buf) || (!str) )
+		return -EINVAL;
 
 	pwr_ctrl_str = ((struct spm_node *)priv)->pwr_ctrl_str;
 	pwr_ctrl_cnt = ((struct spm_node *)priv)->pwr_ctrl_cnt;
 
-	if (sscanf(buf, "%63s %x", cmd, &val) != 2)
+	strscpy(str, buf, count);
+
+	token = strsep(&str, delim);
+	if (!token)
+		return -EINVAL;
+
+	strscpy(cmd, token, sizeof(cmd));
+
+	token = strsep(&str, delim);
+	if (!token)
+		return -EINVAL;
+	if (kstrtouint(token, 16, &val))
 		return -EINVAL;
 
 	pr_info("[SPM] pwr_ctrl: cmd = %s, val = 0x%x\n", cmd, val);
@@ -163,6 +181,8 @@ static ssize_t store_pwr_ctrl(int id, const char *buf, size_t count, void *priv)
 			break;
 		}
 	}
+
+	kfree(str);
 
 	return count;
 }
@@ -257,32 +277,47 @@ static ssize_t spm_res_rq_write(char *FromUserBuf, size_t sz, void *priv)
 {
 	char cmd[128];
 	int parm;
+	char *token;
+	char *str = FromUserBuf;
+	const char *delim = " ";
 
-	if (sscanf(FromUserBuf, "%127s %d", cmd, &parm) == 2) {
-		if (!strcmp(cmd, "bypass"))
-			lpm_smc_spm_dbg(MT_SPM_DBG_SMC_UID_RES_USER_VALID,
-					    MT_LPM_SMC_ACT_SET,
-					    parm, 0);
-		else if (!strcmp(cmd, "enable"))
-			lpm_smc_spm_dbg(MT_SPM_DBG_SMC_UID_RES_USER_VALID,
-					    MT_LPM_SMC_ACT_SET,
-					    parm, 1);
-		else if (!strcmp(cmd, "request"))
-			lpm_smc_spm_dbg(MT_SPM_DBG_SMC_UID_RES_REQ,
-					    MT_LPM_SMC_ACT_SET,
-					    0, parm);
+	if (!FromUserBuf)
+		return -EINVAL;
+
+	token = strsep(&str, delim);
+	if (!token)
+		return -EINVAL;
+
+	strscpy(cmd, token, sizeof(cmd));
+
+	if (!strcmp(cmd, "release\n")) {
+		lpm_smc_spm_dbg(MT_SPM_DBG_SMC_UID_RES_REQ,
+					MT_LPM_SMC_ACT_CLR,
+					0, 0);
 		return sz;
-	} else if (sscanf(FromUserBuf, "%127s", cmd) == 1) {
-		if (!strcmp(cmd, "release"))
-			lpm_smc_spm_dbg(MT_SPM_DBG_SMC_UID_RES_REQ,
-					    MT_LPM_SMC_ACT_CLR,
-					    0, 0);
-		return sz;
-	} else if ((!kstrtoint(FromUserBuf, 10, &parm)) == 1) {
+	} else if (kstrtouint(token, 10, &parm) == 0) {
 		return sz;
 	}
 
-	return -EINVAL;
+	token = strsep(&str, delim);
+	if (!token)
+		return -EINVAL;
+	if (kstrtouint(token, 10, &parm))
+		return -EINVAL;
+
+	if (!strcmp(cmd, "bypass"))
+		lpm_smc_spm_dbg(MT_SPM_DBG_SMC_UID_RES_USER_VALID,
+					MT_LPM_SMC_ACT_SET,
+					parm, 0);
+	else if (!strcmp(cmd, "enable"))
+		lpm_smc_spm_dbg(MT_SPM_DBG_SMC_UID_RES_USER_VALID,
+					MT_LPM_SMC_ACT_SET,
+					parm, 1);
+	else if (!strcmp(cmd, "request"))
+		lpm_smc_spm_dbg(MT_SPM_DBG_SMC_UID_RES_REQ,
+					MT_LPM_SMC_ACT_SET,
+					0, parm);
+	return sz;
 }
 
 static const struct mtk_lp_sysfs_op spm_res_rq_fops = {

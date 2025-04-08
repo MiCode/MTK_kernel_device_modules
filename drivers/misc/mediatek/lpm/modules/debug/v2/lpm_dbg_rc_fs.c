@@ -385,17 +385,30 @@ static ssize_t lpm_generic_rc_write(char *FromUserBuf,
 	} else if ((node->type == LPM_RC_NODE_COND_SET)
 		|| (node->type == LPM_RC_NODE_COND_CLR)) {
 		unsigned int parm1, parm2, act;
+		char *token;
+		char *str = FromUserBuf;
+		const char *delim = " ";
 
-		if (sscanf(FromUserBuf, "%u %x", &parm1, &parm2) == 2) {
-			act = (node->type == LPM_RC_NODE_COND_SET) ?
-				MT_LPM_SMC_ACT_SET :
-				(node->type == LPM_RC_NODE_COND_CLR) ?
-				MT_LPM_SMC_ACT_CLR : 0;
+		token = strsep(&str, delim);
+		if (!token)
+			return -EINVAL;
+		if (kstrtouint(token, 10, &parm1))
+			return -EINVAL;
 
-			if (act != 0)
-				lpm_rc_cond_ctrl(node->rc_id, act,
-							parm1, parm2);
-		}
+		token = strsep(&str, delim);
+		if (!token)
+			return -EINVAL;
+		if (kstrtouint(token, 16, &parm2))
+			return -EINVAL;
+
+		act = (node->type == LPM_RC_NODE_COND_SET) ?
+			MT_LPM_SMC_ACT_SET :
+			(node->type == LPM_RC_NODE_COND_CLR) ?
+			MT_LPM_SMC_ACT_CLR : 0;
+
+		if (act != 0)
+			lpm_rc_cond_ctrl(node->rc_id, act,
+						parm1, parm2);
 	} else if ((node->type == LPM_RC_NODE_RATIO_ENABLE)
 		|| (node->type == LPM_RC_NODE_RATIO_INTERVAL)) {
 		unsigned int parm;

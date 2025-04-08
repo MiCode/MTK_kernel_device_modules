@@ -11,6 +11,7 @@
 #include <linux/of.h>
 #include <linux/of_device.h>
 #include <linux/proc_fs.h>
+#include <linux/string.h>
 
 #include <lpm_dbg_common_v2.h>
 #include <lpm_module.h>
@@ -70,28 +71,44 @@ static ssize_t suspend_state_write(char *FromUser,
 {
 	char cmd[128];
 	int param;
+	char *token;
+	char *str = kcalloc(sz, sizeof(char), GFP_KERNEL);
+	const char *delim = " ";
 
-	if (!FromUser)
+	if ( (!FromUser) || (!str) )
 		return -EINVAL;
 
-	if (sscanf(FromUser, "%127s %d", cmd, &param) == 2) {
-		if (!strcmp(cmd, "kernel_suspend")) {
-			if (!param)
-				kernel_suspend_only = 0;
-			else
-				kernel_suspend_only = 1;
-		} else if (!strcmp(cmd, "mtk_suspend")) {
-			/* add debug if necessary*/
-		} else if (!strcmp(cmd, "gpio_dump")) {
-			if (param)
-				mtk_suspend_debug_flag |= MTK_DUMP_GPIO;
-			else
-				mtk_suspend_debug_flag &= ~(MTK_DUMP_GPIO);
-		}
+	strscpy(str, FromUser, sz);
 
-		return sz;
+	token = strsep(&str, delim);
+	if (!token)
+		return -EINVAL;
+
+	strscpy(cmd, token, sizeof(cmd));
+
+	token = strsep(&str, delim);
+	if (!token)
+		return -EINVAL;
+	if (kstrtouint(token, 10, &param))
+		return -EINVAL;
+
+	if (!strcmp(cmd, "kernel_suspend")) {
+		if (!param)
+			kernel_suspend_only = 0;
+		else
+			kernel_suspend_only = 1;
+	} else if (!strcmp(cmd, "mtk_suspend")) {
+		/* add debug if necessary*/
+	} else if (!strcmp(cmd, "gpio_dump")) {
+		if (param)
+			mtk_suspend_debug_flag |= MTK_DUMP_GPIO;
+		else
+			mtk_suspend_debug_flag &= ~(MTK_DUMP_GPIO);
 	}
-	return -EINVAL;
+
+	kfree(str);
+
+	return sz;
 }
 
 static const struct mtk_lp_sysfs_op lpm_dbg_suspend_state_fops = {
