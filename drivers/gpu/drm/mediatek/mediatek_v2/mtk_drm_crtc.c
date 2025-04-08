@@ -12902,6 +12902,9 @@ skip_prete:
 					mtk_disp_dbg_cmdq_use_mutex(mtk_crtc, cmdq_handle, 4);
 //			}
 
+			/* For HRT urgent WA */
+			if ((priv->data->mmsys_id == MMSYS_MT6993) && (crtc_id == 0))
+				cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base, 0x03E730300, BIT(1), BIT(1));
 			mtk_disp_mutex_enable_cmdq(mtk_crtc->mutex[0], cmdq_handle,
 						   mtk_crtc->gce_obj.base);
 		}
@@ -12916,25 +12919,28 @@ skip_prete:
 
 		if (debug_trigger_loop & BIT(3))
 			mtk_disp_dbg_cmdq_use_mutex(mtk_crtc, cmdq_handle, 6);
-		if ((priv->data->mmsys_id == MMSYS_MT6993) &&
-			(priv->mtk_dbgtp_sta.fifo_mon_en[0]) && (crtc_id == 0)) {
-			/* For dbgtp fifo mon WA */
+		if ((priv->data->mmsys_id == MMSYS_MT6993) && (crtc_id == 0)) {
+			/* For HRT urgent WA */
 			mtk_dbgtp_dsi_gce_event_config(mtk_crtc, cmdq_handle);
 			DDPMSG("FIFO mon: Wait gce event fifo level down\n");
 			GCE_DO(wfe, EVENT_CMD_TRIG_START);
-			lop.reg = true;
-			lop.idx = var1;
-			rop.reg = false;
-			rop.idx = 0;
-			slot_src_addr = mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_UNDERRUNED);
-			cmdq_pkt_read(cmdq_handle, mtk_crtc->gce_obj.base, slot_src_addr, var1);
-			GCE_IF(lop, R_CMDQ_EQUAL, rop);
-			mtk_disp_dbg_cmdq_use_mutex(mtk_crtc, cmdq_handle, 6);
-			mtk_dbgtp_fifo_mon_set_trig_threshold(mtk_crtc, cmdq_handle);
-			if (!priv->mtk_dbgtp_sta.is_validation_mode &&
-				priv->mtk_dbgtp_sta.dbgtp_en)
-				mtk_dbgtp_switch(mtk_crtc, cmdq_handle, true);
-			GCE_FI;
+			cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base, 0x03E730300, 0, BIT(1));
+			if (priv->mtk_dbgtp_sta.fifo_mon_en[0]) {
+				/* For dbgtp fifo mon WA */
+				lop.reg = true;
+				lop.idx = var1;
+				rop.reg = false;
+				rop.idx = 0;
+				slot_src_addr = mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_UNDERRUNED);
+				cmdq_pkt_read(cmdq_handle, mtk_crtc->gce_obj.base, slot_src_addr, var1);
+				GCE_IF(lop, R_CMDQ_EQUAL, rop);
+				mtk_disp_dbg_cmdq_use_mutex(mtk_crtc, cmdq_handle, 6);
+				mtk_dbgtp_fifo_mon_set_trig_threshold(mtk_crtc, cmdq_handle);
+				if (!priv->mtk_dbgtp_sta.is_validation_mode &&
+					priv->mtk_dbgtp_sta.dbgtp_en)
+					mtk_dbgtp_switch(mtk_crtc, cmdq_handle, true);
+				GCE_FI;
+			}
 		}
 
 		GCE_DO(wfe, EVENT_CMD_EOF);
