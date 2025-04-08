@@ -165,6 +165,7 @@ struct mml_dev {
 
 	spinlock_t isr_lock;
 	wait_queue_head_t isr_waitq;
+	s32 alive_cnt;
 
 	bool dl_en;
 	bool racing_en;
@@ -2330,6 +2331,7 @@ void mml_isr_prepare_irq(struct mml_dev *mml, const struct mml_topology_path *pa
 	struct mml_isr_node *nodes;
 	u32 node_idx = 0, i;
 	unsigned long flags = 0;
+	s32 alive = 0;
 
 	if (!cfg->isr_count)
 		return;
@@ -2349,11 +2351,12 @@ void mml_isr_prepare_irq(struct mml_dev *mml, const struct mml_topology_path *pa
 			node_idx++;
 	}
 	atomic_set(&task->isr_ref, cfg->isr_count);
+	alive = ++mml->alive_cnt;
 	spin_unlock_irqrestore(&mml->isr_lock, flags);
 
 out:
-	mml_msg("%s task job %u isr count %u nodes %p idx %u",
-		__func__, task->job.jobid, cfg->isr_count, nodes, node_idx);
+	mml_msg("%s task job %u isr count %u nodes %p idx %u alive %d",
+		__func__, task->job.jobid, cfg->isr_count, nodes, node_idx, alive);
 }
 
 void mml_isr_queue_task_locked(struct mml_dev *mml, struct mml_comp *comp,
@@ -2362,6 +2365,20 @@ void mml_isr_queue_task_locked(struct mml_dev *mml, struct mml_comp *comp,
 	INIT_LIST_HEAD(&isr_node->entry);
 	isr_node->task = task;
 	list_add_tail(&isr_node->entry, isr_nodes);
+}
+
+bool mml_isr_alive(struct mml_dev *mml, struct mml_comp *comp, struct list_head *isr_nodes)
+{
+	unsigned long flags = 0;
+	bool alive;
+
+	spin_lock_irqsave(&mml->isr_lock, flags);
+	alive = mml->alive_cnt && !list_empty(isr_nodes);
+	spin_unlock_irqrestore(&mml->isr_lock, flags);
+
+	if (!alive)
+		mml_log("[warn]%s comp %u isr not alive %d", __func__, comp->id, mml->alive_cnt);
+	return alive;
 }
 
 void mml_isr_notify(struct mml_dev *mml, struct mml_comp *comp, struct list_head *isr_nodes)
@@ -2394,8 +2411,9 @@ void mml_isr_wait(struct mml_dev *mml, struct mml_task *task)
 	struct mml_frame_config *cfg = task->config;
 	long ret;
 
-	mml_msg("%s task job %u isr count %u ref before wait %d",
-		__func__, task->job.jobid, cfg->isr_count, atomic_read(&task->isr_ref));
+	mml_msg("%s task job %u isr count %u alive %d ref before wait %d",
+		__func__, task->job.jobid, cfg->isr_count, mml->alive_cnt,
+		atomic_read(&task->isr_ref));
 
 	ret = wait_event_interruptible_timeout(mml->isr_waitq,
 		atomic_read(&task->isr_ref) == 0, msecs_to_jiffies(10));
@@ -2418,6 +2436,7 @@ void mml_isr_wait(struct mml_dev *mml, struct mml_task *task)
 				warning = true;
 			}
 		}
+		mml->alive_cnt--;
 		spin_unlock_irqrestore(&mml->isr_lock, flags);
 
 		if (warning)

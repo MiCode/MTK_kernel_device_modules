@@ -855,6 +855,9 @@ static irqreturn_t mml_mutex_irq_handler_mt6993(int irq, void *dev_id)
 	const u32 mml2_rrot0_mod = 18;	/* rrot0 = <MML2_RROT0 0 18>; */
 	const u32 mml2_rrot1_mod = 26;	/* rrot1 = <MML2_RROT1 0 26>; */
 
+	if (!mml_isr_alive(mutex->mml, comp, &mutex->isr_nodes))
+		goto out;
+
 	mml_dpc_isr_keep();
 
 	irq_status = readl(base + MUTEX_INSTA);
@@ -863,7 +866,7 @@ static irqreturn_t mml_mutex_irq_handler_mt6993(int irq, void *dev_id)
 	writel(0, base + MUTEX_INSTA);
 
 	if (!irq_status || !(irq_status & 0xf))
-		goto out;
+		goto no_status;
 
 	/* mt6993 uses mutex thread 1~3 */
 	for (i = 1; i < 4; i++)
@@ -875,10 +878,11 @@ static irqreturn_t mml_mutex_irq_handler_mt6993(int irq, void *dev_id)
 	if (mod & BIT(mml2_rrot1_mod))
 		mml_mmp(rrot1, MMPROFILE_FLAG_START, comp->id, mod);
 
-out:
+no_status:
 	mml_dpc_isr_release();
 	mml_isr_notify(mutex->mml, comp, &mutex->isr_nodes);
 
+out:
 	return IRQ_HANDLED;
 }
 

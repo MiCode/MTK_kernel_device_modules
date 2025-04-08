@@ -2795,13 +2795,16 @@ static irqreturn_t mml_rrot_irq_handler(int irq, void *dev_id)
 	void __iomem *base = comp->base;
 	unsigned long irq_status;
 
+	if (!mml_isr_alive(rrot->mml, comp, &rrot->isr_nodes))
+		goto out;
+
 	mml_dpc_isr_keep();
 
 	irq_status = readl(base + RROT_INTERRUPT_STATUS);
 	rrot_pipe_mmp(rrot->pipe, MMPROFILE_FLAG_PULSE, comp->id, irq_status);
 
 	if (!irq_status)
-		return IRQ_HANDLED;
+		goto no_status;
 
 	writel(0, base + RROT_INTERRUPT_STATUS);
 
@@ -2814,9 +2817,11 @@ static irqreturn_t mml_rrot_irq_handler(int irq, void *dev_id)
 	if (irq_status & RROT_IRQ_FRAME_COMPLETE)
 		rrot_pipe_mmp(rrot->pipe, MMPROFILE_FLAG_END, comp->id, 0);
 
+no_status:
 	mml_dpc_isr_release();
 	mml_isr_notify(rrot->mml, comp, &rrot->isr_nodes);
 
+out:
 	return IRQ_HANDLED;
 }
 

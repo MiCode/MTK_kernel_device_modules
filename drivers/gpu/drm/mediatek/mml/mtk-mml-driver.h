@@ -526,6 +526,8 @@ void mml_isr_prepare_irq(struct mml_dev *mml, const struct mml_topology_path *pa
 void mml_isr_queue_task_locked(struct mml_dev *mml, struct mml_comp *comp,
 	struct list_head *isr_nodes, struct mml_isr_node *isr_node, struct mml_task *task);
 
+bool mml_isr_alive(struct mml_dev *mml, struct mml_comp *comp, struct list_head *isr_nodes);
+
 void mml_isr_notify(struct mml_dev *mml, struct mml_comp *comp, struct list_head *isr_nodes);
 
 void mml_isr_wait(struct mml_dev *mml, struct mml_task *task);
