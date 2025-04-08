@@ -20491,6 +20491,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		charger = <&mt6379_chg>;
 		tcpc = "type_c_port0";
 		mediatek,bypss-typec-sink = <1>;
+		tcpc-supply = <&mt6379_typec>;
 		port {
 			usb_role: endpoint {
 				remote-endpoint = <&mtu3_drd_switch>;
@@ -20964,6 +20965,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		compatible = "mediatek,rt-pd-manager";
 		nr-port = <1>;
 		//en-wd0-port0;
+		tcpc-supply = <&mt6379_typec>;
 	};
 
 	pd_adapter: pd-adapter {
@@ -20971,6 +20973,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		nr-port = <1>;
 		force-cv;
 		adapter-name = "pd_adapter";
+		tcpc-supply = <&mt6379_typec>;
 	};
 
 	mtk_ctd: mtk-ctd {
@@ -20979,6 +20982,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		chg-name-port0 = "primary_chg";
 		bc12-sel-port0 = <MTK_CTD_BY_SUBPMIC>;
 		bc12-psy-port0 = <&mt6379_chg>;
+		tcpc-supply = <&mt6379_typec>;
+		chg-supply = <&mt6379_chg>;
 	};
 
 	ufcs_adapter: ufcs-adapter {
@@ -23307,6 +23312,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			//usb-killer-detect;
 			//pmic-uvlo = <&mt6363_dynamic_loading_throttling>;
 			otg-supply = <&mt6379_otg_vbus>;
+			ufcs-supply = <&mt6379_ufcs>;
 			mt6379_otg_vbus: usb-otg-vbus-regulator {
 				regulator-name = "mt6379-usb-otg-vbus";
 				regulator-min-microvolt = <4850000>;
@@ -23391,7 +23397,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			};
 		};
 
-		ufcs {
+		mt6379_ufcs: ufcs {
 			compatible = "mediatek,mt6379-ufcs";
 			interrupts = <MT6379_DUMMY_EVT_UFCS>;
 		};
@@ -23432,6 +23438,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			/* 0:400us, 1:1ms, 2:2ms, 3:4ms, 4:10ms, 5:40ms, 6:100ms, 7:400ms */
 			wd,wd0-tdet = <3>;
 			/* example wd0-tsleep = 512x, wd0-tdet = 4ms, wd0 polling time = 512*4ms */
+			pko-sync-state;
 			pd-data {
 				pd,vid = <0x29cf>;
 				pd,pid = <0x6379>;
