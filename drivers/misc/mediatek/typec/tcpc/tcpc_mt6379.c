@@ -2664,6 +2664,14 @@ static const struct of_device_id mt6379_tcpc_of_match[] = {
 };
 MODULE_DEVICE_TABLE(of, mt6379_tcpc_of_match);
 
+void mt6379_tcpc_sync_state(struct device *dev)
+{
+	struct mt6379_tcpc_data *ddata = dev_get_drvdata(dev);
+
+	dev_info(ddata->dev, "%s: devname:%s\n", __func__, dev_name(dev));
+	tcpc_class_complete_work(&ddata->tcpc->dev, (void *)COMPLETE_TYPE_PKO_SYNC_STATE);
+}
+
 static struct platform_driver mt6379_tcpc_driver = {
 	.probe = mt6379_tcpc_probe,
 	.remove = mt6379_tcpc_remove,
@@ -2673,6 +2681,7 @@ static struct platform_driver mt6379_tcpc_driver = {
 		.owner = THIS_MODULE,
 		.of_match_table = mt6379_tcpc_of_match,
 		.pm = &mt6379_tcpc_pm_ops,
+		.sync_state = mt6379_tcpc_sync_state,
 	},
 };
 module_platform_driver(mt6379_tcpc_driver);

@@ -396,6 +396,7 @@ struct tcpc_device {
 
 	struct ratelimit_state alert_rs;
 	bool alert_ratelimited;
+	bool user_complete;
 };
 
 #define to_tcpc_device(obj) container_of(obj, struct tcpc_device, dev)
@@ -561,5 +562,11 @@ static inline bool pd_check_rev30(struct pd_port *pd_port)
 #define TCPM_DBG(format, args...)
 #endif
 
+enum {
+	COMPLETE_TYPE_KO_TABLE,
+	COMPLETE_TYPE_PKO_SYNC_STATE,
+};
+
 void sched_set_fifo(struct task_struct *p);
+int tcpc_class_complete_work(struct device *dev, void *data);
 #endif /* #ifndef __LINUX_RT_TCPCI_CORE_H */

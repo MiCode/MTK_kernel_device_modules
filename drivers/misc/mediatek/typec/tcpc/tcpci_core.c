@@ -452,6 +452,12 @@ int tcpc_device_irq_enable(struct tcpc_device *tcpc)
 {
 	int ret;
 
+	if (tcpc->user_complete) {
+		dev_info(&tcpc->dev, "%s: already done\n", __func__);
+		return 0;
+	}
+	tcpc->user_complete = true;
+
 	if (!tcpc->ops->init) {
 		pr_notice("%s Please implment tcpc ops init function\n",
 		__func__);
@@ -479,6 +485,79 @@ int tcpc_device_irq_enable(struct tcpc_device *tcpc)
 	return 0;
 }
 EXPORT_SYMBOL(tcpc_device_irq_enable);
+
+#if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
+#include "pd_dpm_prv.h"
+#include "inc/tcpm.h"
+#if CONFIG_RECV_BAT_ABSENT_NOTIFY && CONFIG_MTK_BATTERY
+#include "mtk_battery.h"
+#endif /* CONFIG_RECV_BAT_ABSENT_NOTIFY && CONFIG_MTK_BATTERY */
+#endif /* CONFIG_USB_POWER_DELIVERY */
+
+#if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
+#if CONFIG_RECV_BAT_ABSENT_NOTIFY && CONFIG_MTK_BATTERY
+static int fg_bat_notifier_call(struct notifier_block *nb,
+				unsigned long event, void *data)
+{
+	struct pd_port *pd_port = container_of(nb, struct pd_port, fg_bat_nb);
+	struct tcpc_device *tcpc = pd_port->tcpc;
+
+	switch (event) {
+	case EVT_INT_BAT_PLUGOUT:
+		dev_info(&tcpc->dev, "%s: fg battery absent\n", __func__);
+		schedule_work(&pd_port->fg_bat_work);
+		break;
+	default:
+		break;
+	}
+	return NOTIFY_OK;
+}
+#endif /* CONFIG_RECV_BAT_ABSENT_NOTIFY && CONFIG_MTK_BATTERY */
+#endif /* CONFIG_USB_POWER_DELIVERY */
+
+static int __tcpc_class_complete_work(struct device *dev, void *data)
+{
+	struct tcpc_device *tcpc = dev_get_drvdata(dev);
+#if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
+#if CONFIG_RECV_BAT_ABSENT_NOTIFY && CONFIG_MTK_BATTERY
+	struct notifier_block *fg_bat_nb = &tcpc->pd_port.fg_bat_nb;
+	int ret = 0;
+#endif /* CONFIG_RECV_BAT_ABSENT_NOTIFY && CONFIG_MTK_BATTERY */
+#endif /* CONFIG_USB_POWER_DELIVERY */
+
+	if (tcpc != NULL) {
+		tcpc_device_irq_enable(tcpc);
+
+#if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
+#if CONFIG_RECV_BAT_ABSENT_NOTIFY && CONFIG_MTK_BATTERY
+		fg_bat_nb->notifier_call = fg_bat_notifier_call;
+		ret = register_battery_notifier(fg_bat_nb);
+		if (ret < 0) {
+			pr_notice("%s: register bat notifier fail\n", __func__);
+			return -EINVAL;
+		}
+#endif /* CONFIG_RECV_BAT_ABSENT_NOTIFY && CONFIG_MTK_BATTERY */
+#endif /* CONFIG_USB_POWER_DELIVERY */
+	}
+	return 0;
+}
+
+int tcpc_class_complete_work(struct device *dev, void *data)
+{
+	u64 complete_type = (u64)data;
+	bool pko_sync_state = false;
+
+	pko_sync_state = device_property_read_bool(dev->parent, "pko-sync-state");
+
+	dev_info(dev, "%s: complete_type:%llu, pko_sync_state:%d\n",
+		 __func__, complete_type, pko_sync_state);
+
+	if (complete_type != pko_sync_state)
+		return 0;
+
+	return __tcpc_class_complete_work(dev, data);
+}
+EXPORT_SYMBOL(tcpc_class_complete_work);
 
 #if CONFIG_USB_PD_REV30
 static void bat_update_work_func(struct work_struct *work)
