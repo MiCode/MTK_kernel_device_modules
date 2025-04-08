@@ -32,6 +32,7 @@ int mbraink_power_init(void)
 	_mbraink_power_ops.getLpmStateInfo = NULL;
 	_mbraink_power_ops.getSpmiGlitchInfo = NULL;
 	_mbraink_power_ops.getDvfsrcInfo = NULL;
+	_mbraink_power_ops.getMMBWInfo = NULL;
 	return 0;
 }
 
@@ -58,6 +59,7 @@ int mbraink_power_deinit(void)
 	_mbraink_power_ops.getLpmStateInfo = NULL;
 	_mbraink_power_ops.getSpmiGlitchInfo = NULL;
 	_mbraink_power_ops.getDvfsrcInfo = NULL;
+	_mbraink_power_ops.getMMBWInfo = NULL;
 	return 0;
 }
 
@@ -89,6 +91,7 @@ int register_mbraink_power_ops(struct mbraink_power_ops *ops)
 	_mbraink_power_ops.getLpmStateInfo = ops->getLpmStateInfo;
 	_mbraink_power_ops.getSpmiGlitchInfo = ops->getSpmiGlitchInfo;
 	_mbraink_power_ops.getDvfsrcInfo = ops->getDvfsrcInfo;
+	_mbraink_power_ops.getMMBWInfo = ops->getMMBWInfo;
 	return 0;
 }
 EXPORT_SYMBOL(register_mbraink_power_ops);
@@ -118,6 +121,7 @@ int unregister_mbraink_power_ops(void)
 	_mbraink_power_ops.getLpmStateInfo = NULL;
 	_mbraink_power_ops.getSpmiGlitchInfo = NULL;
 	_mbraink_power_ops.getDvfsrcInfo = NULL;
+	_mbraink_power_ops.getMMBWInfo = NULL;
 	return 0;
 }
 EXPORT_SYMBOL(unregister_mbraink_power_ops);
@@ -455,3 +459,19 @@ int mbraink_power_get_dvfsrc_info(
 	return ret;
 }
 
+int mbraink_power_get_mmqos_bw_info(struct mbraink_mmqos_bw_info *mmqos_bw_info)
+{
+	int ret = 0;
+
+	if (mmqos_bw_info == NULL) {
+		pr_info("%s: power mm qos bw is null.\n", __func__);
+		return -1;
+	}
+
+	if (_mbraink_power_ops.getMMBWInfo)
+		ret = _mbraink_power_ops.getMMBWInfo(mmqos_bw_info);
+	else
+		pr_info("%s: Do not support ioctl get power mm qos bw info query.\n", __func__);
+
+	return ret;
+}

@@ -14,6 +14,7 @@
 #include <mtk_peak_power_budget_mbrain.h>
 #include <mtk-mmdvfs-debug.h>
 #include <mbraink_modules_ops_def.h>
+#include <mmqos.h>
 #include "mbraink_v6993_power.h"
 
 #include <scp_mbrain_dbg.h>
@@ -1257,6 +1258,34 @@ int mbraink_v6993_power_ccci_event_cb(enum CCCI_MBRAIN_EVENT_TYPE event_type,
 	return 0;
 }
 
+static int mbraink_v6993_power_get_mmqos_bw_info(struct mbraink_mmqos_bw_info *mmqos_bw_info)
+{
+	int ret = 0;
+	struct MM_bwData *mmqos_bw_data = NULL;
+
+	if (mmqos_bw_info == NULL)
+		return -1;
+
+	mmqos_bw_data = get_mm_bw_data_for_mbrain();
+	if (mmqos_bw_data) {
+		for (int i = 0; i < MAX_SUBSYS_NUMS; i++) {
+			mmqos_bw_info->mmqos_bw_data[i].sid = mmqos_bw_data[i].sid;
+			mmqos_bw_info->mmqos_bw_data[i].totalHRT = mmqos_bw_data[i].totalHRT;
+			mmqos_bw_info->mmqos_bw_data[i].totalSRT = mmqos_bw_data[i].totalSRT;
+			mmqos_bw_info->mmqos_bw_data[i].totalEMIHRT = mmqos_bw_data[i].totalEMIHRT;
+			mmqos_bw_info->mmqos_bw_data[i].totalEMISRT = mmqos_bw_data[i].totalEMISRT;
+			for (int j = 0; j < MAX_BW_VALUE_NUMS; j++)
+				mmqos_bw_info->mmqos_bw_data[i].mmpc_chan_bw[j].bw =
+				mmqos_bw_data[i].mmpc_chan_bw[j].bw;
+		}
+	} else {
+		pr_info("failed to get mm bw");
+		ret = -1;
+	}
+
+	return ret;
+}
+
 static struct mbraink_power_ops mbraink_v6993_power_ops = {
 	.getVotingInfo = NULL,
 	.getPowerInfo = NULL,
@@ -1279,6 +1308,7 @@ static struct mbraink_power_ops mbraink_v6993_power_ops = {
 	.getLpmStateInfo = mbraink_v6993_power_get_lpmstate_info,
 	.getSpmiGlitchInfo = mbraink_v6993_power_get_spmi_glitch_info,
 	.getDvfsrcInfo = mbraink_v6993_power_get_dvfsrc_info,
+	.getMMBWInfo = mbraink_v6993_power_get_mmqos_bw_info,
 };
 
 int mbraink_v6993_power_init(struct device *dev)
@@ -1340,4 +1370,3 @@ int mbraink_v6993_power_deinit(void)
 
 	return ret;
 }
-

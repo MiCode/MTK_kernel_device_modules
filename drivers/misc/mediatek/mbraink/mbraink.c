@@ -1423,6 +1423,29 @@ static long handle_timer_mapping_info(unsigned long arg, void *mbraink_data)
 	return ret;
 }
 
+static long handleMMBWInfo(unsigned long arg, void *mbraink_data)
+{
+	long ret = 0;
+	struct mbraink_mmqos_bw_info *mmqos_bw_info =
+		(struct mbraink_mmqos_bw_info *)(mbraink_data);
+
+	memset(mmqos_bw_info,
+		0,
+		sizeof(struct mbraink_mmqos_bw_info));
+
+	ret = mbraink_power_get_mmqos_bw_info(mmqos_bw_info);
+	if (ret == 0) {
+		if (copy_to_user((struct mbraink_mmqos_bw_info *)arg,
+				mmqos_bw_info,
+				sizeof(struct mbraink_mmqos_bw_info))) {
+			pr_notice("Copy mm qos bw info to UserSpace error!\n");
+			ret = -EPERM;
+		}
+	}
+
+	return ret;
+}
+
 static long mbraink_ioctl(struct file *filp,
 							unsigned int cmd,
 							unsigned long arg)
@@ -1952,6 +1975,15 @@ static long mbraink_ioctl(struct file *filp,
 		if (!mbraink_data)
 			goto End;
 		ret = handle_timer_mapping_info(arg, mbraink_data);
+		kfree(mbraink_data);
+		break;
+	}
+	case RO_MMQOS_BW_INFO:
+	{
+		mbraink_data = kmalloc(sizeof(struct mbraink_mmqos_bw_info), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handleMMBWInfo(arg, mbraink_data);
 		kfree(mbraink_data);
 		break;
 	}

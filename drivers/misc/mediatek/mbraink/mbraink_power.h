@@ -51,4 +51,6 @@ int mbraink_power_get_spmi_glitch_info(struct mbraink_spmi_glitch_struct_data *m
 
 int mbraink_power_get_dvfsrc_info(struct mbraink_dvfsrc_struct_data *mbraink_dvfsrc_data);
 
+int mbraink_power_get_mmqos_bw_info(struct mbraink_mmqos_bw_info *mmqos_bw_info);
+
 #endif /*end of MBRAINK_POWER_H*/

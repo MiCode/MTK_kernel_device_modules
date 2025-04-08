@@ -84,6 +84,9 @@ subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/adsp
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/adsp/include
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/adsp/include
 
+ccflags-y += -I$(DEVICE_MODULES_PATH)/include/soc/mediatek/
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/include/soc/mediatek/
+
 subdir-ccflags-y += -Wformat
 
 #BUILD_MBRAINK_MODULE_NAME=mtk_mbraink_v6993

@@ -1031,6 +1031,7 @@ static struct mbraink_power_ops mbraink_v6899_power_ops = {
 	.getLpmStateInfo = mbraink_v6899_power_get_lpmstate_info,
 	.getSpmiGlitchInfo = mbraink_v6899_power_get_spmi_glitch_info,
 	.getDvfsrcInfo = NULL,
+	.getMMBWInfo = NULL,
 };
 
 int mbraink_v6899_power_init(struct device *dev)

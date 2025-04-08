@@ -809,6 +809,7 @@ static struct mbraink_power_ops mbraink_v6989_power_ops = {
 	.getMmdvfsInfo = NULL,
 	.getMmdvfsUserInfo = NULL,
 	.getPowerThrottleHwInfo = mbraink_v6989_power_get_power_throttle_hw_info,
+	.getMMBWInfo = NULL,
 };
 
 int mbraink_v6989_power_init(struct device *dev)

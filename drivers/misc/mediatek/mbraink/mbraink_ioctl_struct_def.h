@@ -47,6 +47,8 @@
 #define MAX_SPMI_CURR_CLAMPING_SZ		128
 #define MAX_WIFI_NOTIFY_TXPOWER_RPT_NUM		2
 #define MAX_EMI_FREQ_NUM			12
+#define MAX_MMQOS_BW_SUBSYS_NUMS			6
+#define MAX_MMQOS_BW_VALUE_NUMS				24
 
 #define NETLINK_EVENT_Q2QTIMEOUT		"NLEvent_Q2QTimeout"
 #define NETLINK_EVENT_UDMFETCH			"M&"
@@ -789,4 +791,22 @@ struct mbraink_timer_mapping_info {
 	unsigned long long timer;
 	u64 read_counter;
 };
+
+struct mbraink_mmpc {
+	int bw;
+};
+
+struct mbraink_mmqos_bw_data {
+	int sid;
+	int totalHRT;
+	int totalSRT;
+	int totalEMIHRT;
+	int totalEMISRT;
+	struct mbraink_mmpc mmpc_chan_bw[MAX_MMQOS_BW_VALUE_NUMS];
+};
+
+struct mbraink_mmqos_bw_info {
+	struct mbraink_mmqos_bw_data mmqos_bw_data[MAX_MMQOS_BW_SUBSYS_NUMS];
+};
+
 #endif
