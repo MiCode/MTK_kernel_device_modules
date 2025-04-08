@@ -66,6 +66,8 @@
 #define MTK_VENC_LARB_NUM	44 // for qos
 #define MTK_MAX_METADATA_NUM	8
 
+#define MTK_VENC_MULTIPLEX_RECORD_PARAM_SZ   (10)
+
 #define MAX_GEN_BUF_CNT		64
 #define MAX_META_BUF_CNT	32
 
@@ -436,6 +438,8 @@ struct mtk_enc_params {
 	int             bfrm_q_ltr;
 	unsigned int    mlvec_mode;
 	char            *config_data;
+	unsigned int	multiplex_record_enable;
+	unsigned int	multiplex_record_param[MTK_VENC_MULTIPLEX_RECORD_PARAM_SZ];
 	struct v4l2_venc_visual_quality visual_quality;
 	struct v4l2_venc_init_qp init_qp;
 	struct v4l2_venc_frame_qp_range frame_qp_range;
@@ -546,6 +550,8 @@ struct venc_enc_param {
 	struct v4l2_venc_init_qp *init_qp;
 	struct v4l2_venc_frame_qp_range *frame_qp_range;
 	struct v4l2_venc_nal_length *nal_length;
+	unsigned int	multiplex_record_enable;
+	unsigned int	multiplex_record_param[MTK_VENC_MULTIPLEX_RECORD_PARAM_SZ];
 	bool use_clean_gop;
 	struct v4l2_venc_adab_info *adab_info;
 	struct v4l2_venc_i_frame_size_control *i_frm_sz_ctrl;

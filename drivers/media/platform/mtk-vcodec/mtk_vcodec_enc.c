@@ -1076,6 +1076,20 @@ static int vidioc_venc_s_ctrl(struct v4l2_ctrl *ctrl)
 		p->timing_info= ctrl->val;
 		ctx->param_change |= MTK_ENCODE_PARAM_TIMING_INFO;
 		break;
+	case V4L2_CID_MTK_VIDEO_ENC_ENABLE_MULTIPLEX_RECORD:
+		if (ctrl->p_new.p_u32 != NULL) {
+			p->multiplex_record_enable = ctrl->p_new.p_u32[0];
+			memcpy(&p->multiplex_record_param, &ctrl->p_new.p_u32[1],
+				sizeof(__u32) * MTK_VENC_MULTIPLEX_RECORD_PARAM_SZ);
+			mtk_v4l2_debug(2,
+			"V4L2_CID_MTK_VIDEO_ENC_ENABLE_MULTIPLEX_RECORD: enable(%d) value(%d, %d)",
+			p->multiplex_record_enable, p->multiplex_record_param[0],
+			p->multiplex_record_param[1]);
+		} else {
+			mtk_v4l2_err("V4L2_CID_MTK_VIDEO_ENC_ENABLE_MULTIPLEX_RECORD error");
+			ret = -EINVAL;
+		}
+		break;
 	default:
 		mtk_v4l2_debug(4, "ctrl-id=%d not support!", ctrl->id);
 		ret = -EINVAL;
@@ -1695,6 +1709,9 @@ static void mtk_venc_set_param(struct mtk_vcodec_ctx *ctx,
 	param->query_encode_param = enc_params->query_encode_param;
 	param->compatibility_option = enc_params->compatibility_option;
 	param->timing_info = enc_params->timing_info;
+	param->multiplex_record_enable = enc_params->multiplex_record_enable;
+	memcpy(param->multiplex_record_param, enc_params->multiplex_record_param,
+		sizeof(__u32) * MTK_VENC_MULTIPLEX_RECORD_PARAM_SZ);
 	vcodec_trace_end();
 }
 
@@ -5028,6 +5045,18 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	cfg.ops = ops;
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 
+	memset(&cfg, 0, sizeof(cfg));
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_ENABLE_MULTIPLEX_RECORD;
+	cfg.type = V4L2_CTRL_TYPE_INTEGER;
+	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
+	cfg.name = "Video encode multiplex record";
+	cfg.min = 0x0;
+	cfg.max = 0xffff;
+	cfg.step = 1;
+	cfg.def = 0x0;
+	cfg.dims[0] = MTK_VENC_MULTIPLEX_RECORD_PARAM_SZ+1;
+	cfg.ops = ops;
+	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 
 	return 0;
 }

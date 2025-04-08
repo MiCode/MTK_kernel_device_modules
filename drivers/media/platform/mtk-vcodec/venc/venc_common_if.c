@@ -525,6 +525,10 @@ static int venc_set_param(unsigned long handle,
 				sizeof(struct v4l2_venc_i_frame_size_control));
 		}
 
+		inst->vsi->config.multiplex_record_enable = enc_prm->multiplex_record_enable;
+		memcpy(&inst->vsi->config.multiplex_record_param, enc_prm->multiplex_record_param,
+				sizeof(__u32)*MTK_VENC_MULTIPLEX_RECORD_PARAM_SZ);
+
 		if (enc_prm->visual_quality) {
 			memcpy(&inst->vsi->config.visual_quality,
 				enc_prm->visual_quality,

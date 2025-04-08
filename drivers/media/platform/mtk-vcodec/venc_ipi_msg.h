@@ -566,6 +566,8 @@ struct venc_vcu_config {
 	struct v4l2_venc_i_frame_size_control i_frm_sz_ctrl;
 	__u32 compatibility_option;
 	__u32 timing_info;
+	__u32 multiplex_record_enable;
+	__u32 multiplex_record_param[MTK_VENC_MULTIPLEX_RECORD_PARAM_SZ];
 };
 
 /**
