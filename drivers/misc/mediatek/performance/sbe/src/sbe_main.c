@@ -27,8 +27,6 @@
 #endif
 
 static int sbe_query_is_running;
-static int ux_general_policy;
-static int ux_scroll_count;
 static int sbe_recycle_idle_cnt;
 static int sbe_recycle_active = 1;
 static int condition_notifier_wq;
@@ -52,6 +50,14 @@ void (*task_turbo_do_binder_uclamp_stuff)(int cmd);
 EXPORT_SYMBOL_GPL(task_turbo_do_binder_uclamp_stuff);
 void (*task_turbo_do_enable_binder_uclamp_inheritance)(int enable);
 EXPORT_SYMBOL_GPL(task_turbo_do_enable_binder_uclamp_inheritance);
+
+struct scroll_policy_details_info {
+	char thread_name[MAX_PROCESS_NAME_LEN];
+	int final_pid_arr[FPSGO_MAX_RENDER_INFO_SIZE];
+	int local_specific_tid_arr[FPSGO_MAX_RENDER_INFO_SIZE];
+	unsigned long long final_bufID_arr[FPSGO_MAX_RENDER_INFO_SIZE];
+	struct task_info local_specific_action_arr[FPSGO_MAX_RENDER_INFO_SIZE];
+};
 
 static void sbe_do_recycle(struct work_struct *work)
 {
@@ -492,194 +498,343 @@ void sbe_enforce_update_sbe_info_by_thread_name(int tgid, char *thread_name,
 	}
 }
 
-static int sbe_set_webview_policy(int tgid, char *name, unsigned long mask,
-				unsigned long long ts, int start,
-				char *specific_name, int num)
+static int sbe_do_running_check(int start, int tgid, char *specific_name, int num)
 {
-	char *thread_name = NULL;
-	int ret;
-	int i;
-	int max_rpid_num = 10;
-	int *final_pid_arr =  NULL;
-	int final_pid_arr_idx = 0;
-	int *local_specific_tid_arr = NULL;
+	int ret = 0;
 	int local_specific_tid_num = 0;
-	unsigned long long *final_bufID_arr = NULL;
-	struct sbe_render_info *thr = NULL;
+	int local_specific_tid_arr[FPSGO_MAX_RENDER_INFO_SIZE];
+
+	if (num < 0 || num >= FPSGO_MAX_RENDER_INFO_SIZE
+		|| specific_name == NULL || tgid <= 0 ) {
+		ret = SBE_INPUT_ERROR;
+		return ret;
+	}
+
+	if (start) {
+		local_specific_tid_num = sbe_split_task_name(tgid,
+			specific_name, num, local_specific_tid_arr, __func__);
+		sbe_update_spid_loading(local_specific_tid_arr,
+			local_specific_tid_num, tgid);
+	} else
+		sbe_delete_spid_loading(tgid);
+
+	return ret;
+}
+
+static int sbe_do_hwui_scrolling_policy(int tgid, int start, char *specific_name, int num,
+				unsigned long mask)
+{
+	int ret = 0;
 	struct sbe_info *sbe_info = NULL;
+
+	if (num < 0 || num >= FPSGO_MAX_RENDER_INFO_SIZE
+		|| tgid <= 0 ) {
+		ret = SBE_INPUT_ERROR;
+		return ret;
+	}
+
+	sbe_get_tree_lock(__func__);
+	sbe_info = sbe_get_info(tgid, 1);
+	if (sbe_info)
+		sbe_info->ux_scrolling = start;
+	sbe_put_tree_lock(__func__);
+
+	set_sbe_thread_vip(start, tgid, specific_name, num);
+
+	if (test_bit(SBE_PAGE_FLUTTER, &mask)
+		|| test_bit(SBE_PAGE_WEBVIEW, &mask)){
+		update_fpsgo_hint_param(start, tgid);
+	}
+
+	return ret;
+}
+
+static int sbe_do_webview_notify_fpsgo_ctrl(int tgid, char *name, int start, char *specific_name,
+					int num, unsigned long long ts)
+{
+	int ret = SBE_SUCCESS;
+	int final_pid_arr_idx = 0;
+	int local_specific_tid_num = 0;
+	int i = 0;
 	struct xgf_policy_cmd xgf_attr_iter;
 	struct fpsgo_boost_attr attr_iter;
-	struct task_info *local_specific_action_arr = NULL;
-	struct task_info *tmp_dep_arr = NULL;
+	struct sbe_render_info *thr = NULL;
+	struct scroll_policy_details_info scroll_policy_info = {0};
 
-	if (tgid <= 0 || !name || !mask) {
-		ret = -EINVAL;
-		goto out;
+	if (num < 0 || num >= FPSGO_MAX_RENDER_INFO_SIZE
+		|| specific_name == NULL || tgid <= 0 || name == NULL) {
+		ret = SBE_INPUT_ERROR;
+		return ret;
 	}
 
-	ret = -ENOMEM;
-	thread_name = kcalloc(16, sizeof(char), GFP_KERNEL);
-	if (!thread_name)
-		goto out;
-
-	if (!strncpy(thread_name, name, 16))
-		goto out;
-	thread_name[15] = '\0';
-
-	final_pid_arr = kcalloc(max_rpid_num, sizeof(int), GFP_KERNEL);
-	if (!final_pid_arr)
-		goto out;
-
-	final_bufID_arr = kcalloc(max_rpid_num, sizeof(unsigned long long), GFP_KERNEL);
-	if (!final_bufID_arr)
-		goto out;
-
-	local_specific_tid_arr = kcalloc(num, sizeof(int), GFP_KERNEL);
-	if (!local_specific_tid_arr)
-		goto out;
-
-	local_specific_action_arr = kcalloc(num, sizeof(struct task_info), GFP_KERNEL);
-	if (!local_specific_action_arr)
-		goto out;
-
-	ret = 0;
-
-	if (test_bit(SBE_RUNNING_CHECK, &mask)) {
-		if (start) {
-			local_specific_tid_num = sbe_split_task_name(tgid,
-				specific_name, num, local_specific_tid_arr, __func__);
-			sbe_update_spid_loading(local_specific_tid_arr,
-				local_specific_tid_num, tgid);
-		} else
-			sbe_delete_spid_loading(tgid);
-		goto out;
+	if (strscpy(scroll_policy_info.thread_name, name, MAX_PROCESS_NAME_LEN) < 0) {
+		ret = SBE_COPY_STR_ERROR;
+		return ret;
 	}
+	scroll_policy_info.thread_name[MAX_PROCESS_NAME_LEN - 1] = '\0';
 
-	sbe_get_render_tid_by_render_name(tgid, thread_name,
-		final_pid_arr, final_bufID_arr, &final_pid_arr_idx, max_rpid_num);
+	sbe_get_render_tid_by_render_name(tgid, scroll_policy_info.thread_name,
+		scroll_policy_info.final_pid_arr, scroll_policy_info.final_bufID_arr,
+		&final_pid_arr_idx, FPSGO_MAX_RENDER_INFO_SIZE);
 
 	if (!final_pid_arr_idx) {
 		sbe_get_tree_lock(__func__);
-		sbe_enforce_update_sbe_info_by_thread_name(tgid, thread_name, start, ts);
+		sbe_enforce_update_sbe_info_by_thread_name(tgid, scroll_policy_info.thread_name, start, ts);
 		sbe_put_tree_lock(__func__);
+		ret = SBE_PID_NOT_FIND;
+		return ret;
 	}
-
-	ux_general_policy = get_ux_general_policy();
-	sbe_trace("[SBE] %s tgid:%d name:%s mask:%lu start:%d final_pid_arr_idx:%d ux_general_policy:%d",
-		__func__, tgid, name, mask, start, final_pid_arr_idx, ux_general_policy);
-
-	if (test_bit(SBE_SCROLLING, &mask)) {
-		sbe_trace("[SBE] %s receive scrolling %d",__func__, start);
-
-		sbe_get_tree_lock(__func__);
-		sbe_info = sbe_get_info(tgid, 1);
-		if (sbe_info)
-			sbe_info->ux_scrolling = start;
-		sbe_put_tree_lock(__func__);
-
-		set_sbe_thread_vip(start, tgid, specific_name, num);
-
-		if (test_bit(SBE_PAGE_FLUTTER, &mask)
-				|| test_bit(SBE_PAGE_WEBVIEW, &mask)){
-			update_fpsgo_hint_param(start, tgid);
-		}
-
-		goto out;
-	}
-
-	if (ux_general_policy) {
-		sbe_get_tree_lock(__func__);
-		sbe_info = sbe_get_info(tgid, 1);
-		if (sbe_info) {
-			if (test_bit(SBE_HWUI, &mask) || test_bit(SBE_NON_HWUI, &mask)) {
-				if (start && !sbe_info->ux_scrolling) {
-					sbe_info->ux_scrolling = start;
-					if (!ux_scroll_count) {
-						sbe_set_ux_general_policy(start, mask);
-						sbe_systrace_c(tgid, 0, start, "ux_policy");
-					} else {
-						//If multi window case, need update ux general policy.
-#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE) && IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
-						update_ux_general_policy();
-#endif
-					}
-					ux_scroll_count++;
-				}
-
-				if (!start && sbe_info->ux_scrolling) {
-					sbe_info->ux_scrolling = start;
-					ux_scroll_count--;
-					if (!ux_scroll_count) {
-						sbe_set_ux_general_policy(start, mask);
-						sbe_systrace_c(tgid, 0, start, "ux_policy");
-					}
-				}
-			}
-		}
-		sbe_put_tree_lock(__func__);
-	}
-
-	sbe_register_jank_cb(mask);
 
 	for (i = 0; i < final_pid_arr_idx; i++) {
-		if (test_bit(SBE_CPU_CONTROL, &mask)) {
-			switch_fpsgo_control(1, final_pid_arr[i], start, final_bufID_arr[i]);
-			sbe_systrace_c(final_pid_arr[i], final_bufID_arr[i], start, "[ux]sbe_set_ctrl");
-			if (!start)
-				fpsgo_other2comp_control_pause(final_pid_arr[i], final_bufID_arr[i]);
-		}
-		if (test_bit(SBE_DISPLAY_TARGET_FPS, &mask))
-			fpsgo_other2fstb_set_target(1, final_pid_arr[i],
-				start, 0, start ? sbe_get_display_rate() : 0, 0, final_bufID_arr[i]);
-
+		// todo: remove this get info?
 		sbe_get_tree_lock(__func__);
-		thr = sbe_get_render_info(final_pid_arr[i], final_bufID_arr[i], 1);
-		if (!thr) {
-			sbe_systrace_c(final_pid_arr[i], final_bufID_arr[i], -1, "[ux]sbe_set_ctrl");
-			sbe_put_tree_lock(__func__);
-			continue;
+		thr = sbe_get_render_info(scroll_policy_info.final_pid_arr[i],
+				scroll_policy_info.final_bufID_arr[i], 0);
+		if (thr) {
+			/*
+			 * It's essential to update the status here.
+			 * This ensures timely reclamation of buffer information.
+			 */
+			thr->latest_use_ts = ts;
+			thr->scroll_status = start;
 		}
+		sbe_put_tree_lock(__func__);
+		/*
+		 * Call General API for notify FPSGO control
+		 * switch_fpsgo_control:
+		 * @mode: 0 by process control, 1 by render control
+		 * @pid: tgid with mode is 0, render pid with mode is 1
+		 * @set_ctrl: boost is 1, deboost is 0
+		 * @buffer_id: 0 with mode is 0, render buffer id with mode is 1
+		 */
+		switch_fpsgo_control(1, scroll_policy_info.final_pid_arr[i], start,
+							scroll_policy_info.final_bufID_arr[i]);
+		sbe_systrace_c(scroll_policy_info.final_pid_arr[i], scroll_policy_info.final_bufID_arr[i],
+						start, "[ux]sbe_set_ctrl");
+		sbe_trace("[SBE]: switch fpsgo control: pid=%d, frameID=%llu, start=%d",
+				scroll_policy_info.final_pid_arr[i], scroll_policy_info.final_bufID_arr[i], start);
 
-		thr->target_fps = sbe_get_display_rate();
-		thr->target_time = div_u64(NSEC_PER_SEC, sbe_get_display_rate());
-		thr->dep_self_ctrl = 0;
-		thr->latest_use_ts = ts;
-		thr->scroll_status = start;
-
-		if (test_bit(SBE_CLEAR_SCROLLING_INFO, &mask) && thr != NULL) {
-			clear_ux_info(thr);
-			sbe_put_tree_lock(__func__);
-			goto out;
-		}
 		if (start) {
-			memset(&xgf_attr_iter, -1, sizeof(struct xgf_policy_cmd));
+			memset(&xgf_attr_iter, 0, sizeof(struct xgf_policy_cmd));
 			xgf_attr_iter.mode = 1;
-			xgf_attr_iter.pid = final_pid_arr[i];
-			xgf_attr_iter.bufid = final_bufID_arr[i];
+			xgf_attr_iter.pid = scroll_policy_info.final_pid_arr[i];
+			xgf_attr_iter.bufid = scroll_policy_info.final_bufID_arr[i];
 			xgf_attr_iter.calculate_dep_enable = 1;
 			xgf_attr_iter.ts = sbe_get_time();
 			fpsgo_other2xgf_set_attr(1, &xgf_attr_iter);
 
-			memset(&attr_iter, -1, sizeof(struct fpsgo_boost_attr));
+			memset(&attr_iter, 0, sizeof(struct fpsgo_boost_attr));
 			attr_iter.aa_enable_by_pid = 1;
 			attr_iter.rescue_enable_by_pid = 1;
 			attr_iter.gcc_enable_by_pid = 0;
 			attr_iter.qr_enable_by_pid = 0;
-			set_fpsgo_attr(1, final_pid_arr[i], 1, &attr_iter);
+			set_fpsgo_attr(1, scroll_policy_info.final_pid_arr[i], 1, &attr_iter);
+		} else {
+			memset(&xgf_attr_iter, 0, sizeof(struct xgf_policy_cmd));
+			xgf_attr_iter.mode = 1;
+			xgf_attr_iter.pid = scroll_policy_info.final_pid_arr[i];
+			xgf_attr_iter.bufid = scroll_policy_info.final_bufID_arr[i];
+			xgf_attr_iter.ts = sbe_get_time();
+			fpsgo_other2xgf_set_attr(0, &xgf_attr_iter);
+			set_fpsgo_attr(1, scroll_policy_info.final_pid_arr[i], 0, &attr_iter);
 
-			sbe_notify_ux_jank_detection(true, tgid, final_pid_arr[i], mask, thr, final_bufID_arr[i]);
+			/*
+			 * It's crucial to notify fpsgo when scrolling stops.
+			 * Failure to do so will result in the thread's performance index
+			 *remaining at its last value, preventing it from resetting.
+			 */
+			fpsgo_other2comp_control_pause(scroll_policy_info.final_pid_arr[i],
+					scroll_policy_info.final_bufID_arr[i]);
+		}
 
-			//get sbe_render_info struct for this tid and buffer_id
-			if (test_bit(SBE_HWUI, &mask) && thr != NULL) {
-				int add_new_scrolling = 1;
-				int type = test_bit(SBE_MOVEING, &mask) ?
-						SBE_MOVEING : (test_bit(SBE_FLING, &mask) ? SBE_FLING : 0);
-				if (get_ux_list_length(&thr->scroll_list) >= 1) {
-					struct ux_scroll_info *last =
-						list_first_entry(
-							&thr->scroll_list,
-							struct ux_scroll_info,
-							queue_list);
+		sbe_trace("[SBE] %s %dth rtid:%d buffer_id:0x%llx", __func__, i+1,
+			scroll_policy_info.final_pid_arr[i], scroll_policy_info.final_bufID_arr[i]);
+	}
+
+	if (final_pid_arr_idx > 0) {
+		local_specific_tid_num = sbe_split_task_name(tgid,
+				specific_name, num, scroll_policy_info.local_specific_tid_arr, __func__);
+		for (i = 0; i < local_specific_tid_num; i++) {
+			scroll_policy_info.local_specific_action_arr[i].pid =
+					scroll_policy_info.local_specific_tid_arr[i];
+			scroll_policy_info.local_specific_action_arr[i].action = 0;  // XGF_ADD_DEP
+		}
+		for (i = 0; i < final_pid_arr_idx; i++) {
+			fpsgo_other2xgf_set_critical_tasks(scroll_policy_info.final_pid_arr[i],
+				scroll_policy_info.final_bufID_arr[i], scroll_policy_info.local_specific_action_arr,
+				local_specific_tid_num, start);
+			sbe_trace("[SBE]: webview Set dep: pid %d, bufID %llu, start %d, local_specific_tid_num %d",
+			scroll_policy_info.final_pid_arr[i], scroll_policy_info.final_bufID_arr[i],
+				start, local_specific_tid_num);
+		}
+	}
+
+	return ret;
+}
+
+static int sbe_do_display_target_fps(int tgid, char *name, int start, unsigned long long ts)
+{
+	int ret = SBE_SUCCESS;
+	int final_pid_arr_idx = 0;
+	int i = 0;
+	struct scroll_policy_details_info scroll_policy_info = {0};
+
+	if (!name || tgid < 0) {
+		ret = SBE_INPUT_ERROR;
+		return ret;
+	}
+
+	if (strscpy(scroll_policy_info.thread_name, name, MAX_PROCESS_NAME_LEN) < 0) {
+		ret = SBE_COPY_STR_ERROR;
+		return ret;
+	}
+	scroll_policy_info.thread_name[MAX_PROCESS_NAME_LEN - 1] = '\0';
+
+	sbe_get_render_tid_by_render_name(tgid, scroll_policy_info.thread_name,
+		scroll_policy_info.final_pid_arr, scroll_policy_info.final_bufID_arr,
+		&final_pid_arr_idx, FPSGO_MAX_RENDER_INFO_SIZE);
+
+	if (!final_pid_arr_idx) {
+		sbe_get_tree_lock(__func__);
+		sbe_enforce_update_sbe_info_by_thread_name(tgid, scroll_policy_info.thread_name, start, ts);
+		sbe_put_tree_lock(__func__);
+		ret = SBE_PID_NOT_FIND;
+		return ret;
+	}
+
+	for (i = 0; i < final_pid_arr_idx; i++)
+		fpsgo_other2fstb_set_target(1, scroll_policy_info.final_pid_arr[i],
+			start, 0, start ? sbe_get_display_rate() : 0, 0, scroll_policy_info.final_bufID_arr[i]);
+
+	return ret;
+}
+
+static int sbe_do_clear_scrolling_info(int tgid, char *name, unsigned long long ts)
+{
+	int ret = SBE_SUCCESS;
+	int i = 0;
+	int final_pid_arr_idx = 0;
+	struct sbe_render_info *thr = NULL;
+	unsigned int display_rate = 0;
+	struct scroll_policy_details_info scroll_policy_info = {0};
+
+	if (!name || tgid < 0 ) {
+		ret = SBE_INPUT_ERROR;
+		return ret;
+	}
+
+	if (strscpy(scroll_policy_info.thread_name, name, MAX_PROCESS_NAME_LEN) < 0) {
+		ret = SBE_COPY_STR_ERROR;
+		return ret;
+	}
+	scroll_policy_info.thread_name[MAX_PROCESS_NAME_LEN - 1] = '\0';
+
+	sbe_get_render_tid_by_render_name(tgid, scroll_policy_info.thread_name,
+		scroll_policy_info.final_pid_arr, scroll_policy_info.final_bufID_arr,
+		&final_pid_arr_idx, FPSGO_MAX_RENDER_INFO_SIZE);
+
+	for (i = 0; i < final_pid_arr_idx; i++) {
+		sbe_get_tree_lock(__func__);
+		thr = sbe_get_render_info(scroll_policy_info.final_pid_arr[i],
+			scroll_policy_info.final_bufID_arr[i], 0);
+		if (!thr) {
+			sbe_systrace_c(scroll_policy_info.final_pid_arr[i],
+				scroll_policy_info.final_bufID_arr[i], -1, "[ux]sbe_set_ctrl");
+			sbe_put_tree_lock(__func__);
+			continue;
+		}
+
+		display_rate = sbe_get_display_rate();
+		thr->target_fps = display_rate;
+		if (display_rate > 0)
+			thr->target_time = div_u64(NSEC_PER_SEC, display_rate);
+		else
+			thr->target_time = div_u64(NSEC_PER_SEC, SBE_DEFAULT_TARGET_FPS);
+		thr->dep_self_ctrl = 0;
+		thr->latest_use_ts = ts;
+
+		clear_ux_info(thr);
+		sbe_put_tree_lock(__func__);
+	}
+
+	return ret;
+}
+
+static int sbe_do_hwui_scrolling_status_policy(int tgid, char *name, unsigned long mask,
+				unsigned long long ts, int start,
+				char *specific_name, int num)
+{
+	int ret = SBE_SUCCESS;
+	int i = 0;
+	int type = 0;
+	int final_pid_arr_idx = 0;
+	int add_new_scrolling = 1;
+	int local_specific_tid_num = 0;
+	unsigned int display_rate = 0;
+	struct sbe_render_info *thr = NULL;
+	struct ux_scroll_info *last = NULL;
+	struct xgf_policy_cmd xgf_attr_iter;
+	struct fpsgo_boost_attr attr_iter;
+	struct scroll_policy_details_info scroll_policy_info = {0};
+
+	if (num < 0 || num >= FPSGO_MAX_RENDER_INFO_SIZE
+		|| specific_name == NULL || tgid <= 0 || name == NULL) {
+		ret = SBE_INPUT_ERROR;
+		return ret;
+	}
+
+	if (strscpy(scroll_policy_info.thread_name, name, MAX_PROCESS_NAME_LEN) < 0) {
+		ret = SBE_COPY_STR_ERROR;
+		return ret;
+	}
+	scroll_policy_info.thread_name[MAX_PROCESS_NAME_LEN - 1] = '\0';
+
+	sbe_get_render_tid_by_render_name(tgid, scroll_policy_info.thread_name,
+		scroll_policy_info.final_pid_arr, scroll_policy_info.final_bufID_arr,
+		&final_pid_arr_idx, FPSGO_MAX_RENDER_INFO_SIZE);
+
+	if (!final_pid_arr_idx) {
+		sbe_get_tree_lock(__func__);
+		sbe_enforce_update_sbe_info_by_thread_name(tgid, scroll_policy_info.thread_name,
+						start, ts);
+		sbe_put_tree_lock(__func__);
+		ret = SBE_PID_NOT_FIND;
+		return ret;
+	}
+
+	for (i = 0; i < final_pid_arr_idx; i++) {
+		sbe_get_tree_lock(__func__);
+		thr = sbe_get_render_info(scroll_policy_info.final_pid_arr[i],
+				scroll_policy_info.final_bufID_arr[i], 1);
+		if (!thr) {
+			sbe_systrace_c(scroll_policy_info.final_pid_arr[i],
+				scroll_policy_info.final_bufID_arr[i], -1, "[ux]sbe_set_ctrl");
+			sbe_put_tree_lock(__func__);
+			continue;
+		}
+
+		sbe_systrace_c(scroll_policy_info.final_pid_arr[i], scroll_policy_info.final_bufID_arr[i],
+			start, "[ux]sbe_set_ctrl");
+		display_rate = sbe_get_display_rate();
+		thr->target_fps = display_rate;
+		if (display_rate > 0)
+			thr->target_time = div_u64(NSEC_PER_SEC, display_rate);
+		else
+			thr->target_time = div_u64(NSEC_PER_SEC, SBE_DEFAULT_TARGET_FPS);
+		thr->dep_self_ctrl = 0;
+		/*
+		 * It's essential to update the status here.
+		 * This ensures timely reclamation of buffer information.
+		 */
+		thr->latest_use_ts = ts;
+		thr->scroll_status = start;
+
+		if (start) {
+			type = test_bit(SBE_MOVEING, &mask) ? SBE_MOVEING :
+						(test_bit(SBE_FLING, &mask) ? SBE_FLING : 0);
+			if (get_ux_list_length(&thr->scroll_list) >= 1) {
+				last = list_first_entry(&thr->scroll_list, struct ux_scroll_info, queue_list);
+				if (last) {
 					if (last->type == SBE_MOVEING && type == SBE_FLING)
 						add_new_scrolling = 0;
 
@@ -690,82 +845,142 @@ static int sbe_set_webview_policy(int tgid, char *name, unsigned long mask,
 						last->type = SBE_FLING;
 					}
 				}
-				if (add_new_scrolling) {
-					//add new scroll_info into sbe_render_info struct
-					enqueue_ux_scroll_info(type, ts, thr);
-				}
 			}
+			if (add_new_scrolling) {
+				//add new scroll_info into sbe_render_info struct
+				enqueue_ux_scroll_info(type, ts, thr);
+			}
+
+			memset(&xgf_attr_iter, 0, sizeof(struct xgf_policy_cmd));
+			xgf_attr_iter.mode = 1;
+			xgf_attr_iter.pid = scroll_policy_info.final_pid_arr[i];
+			xgf_attr_iter.bufid = scroll_policy_info.final_bufID_arr[i];
+			xgf_attr_iter.calculate_dep_enable = 1;
+			xgf_attr_iter.ts = sbe_get_time();
+			fpsgo_other2xgf_set_attr(1, &xgf_attr_iter);
+
+			memset(&attr_iter, 0, sizeof(struct fpsgo_boost_attr));
+			attr_iter.aa_enable_by_pid = 1;
+			attr_iter.rescue_enable_by_pid = 1;
+			attr_iter.gcc_enable_by_pid = 0;
+			attr_iter.qr_enable_by_pid = 0;
+			set_fpsgo_attr(1, scroll_policy_info.final_pid_arr[i], 1, &attr_iter);
+
+			sbe_notify_ux_jank_detection(true, tgid, scroll_policy_info.final_pid_arr[i], mask,
+				thr, scroll_policy_info.final_bufID_arr[i]);
 		} else {
-			if (ux_general_policy && thr) {
-				memset(thr->dep_arr, 0, MAX_TASK_NUM * sizeof(int));
-				tmp_dep_arr = kcalloc(MAX_TASK_NUM, sizeof(struct task_info), GFP_KERNEL);
-				if (tmp_dep_arr) {
-					thr->dep_num = fpsgo_other2xgf_get_critical_tasks(thr->pid,
-						MAX_TASK_NUM, tmp_dep_arr, 1, thr->buffer_id);
-					if (thr->dep_num > 0 && thr->dep_num <= MAX_TASK_NUM) {
-						int j;
-						for (j = 0; j < thr->dep_num; j++)
-							thr->dep_arr[j] = tmp_dep_arr[j].pid;
-					} else
-						thr->dep_num = 0;
-					kfree(tmp_dep_arr);
-				} else {
-					sbe_systrace_c(thr->pid, thr->buffer_id, 1, "[ux]get_dep_malloc_fail");
-					sbe_systrace_c(thr->pid, thr->buffer_id, 0, "[ux]get_dep_malloc_fail");
-				}
-				sbe_reset_deplist_task_priority(thr);
-			}
-
-			sbe_notify_ux_jank_detection(false, tgid, final_pid_arr[i], mask, thr, final_bufID_arr[i]);
-
 			//update scroll_info when scroll end
-			if (test_bit(SBE_HWUI, &mask) && thr != NULL) {
-				if (get_ux_list_length(&thr->scroll_list) > 0) {
-					struct ux_scroll_info *last =
-						list_first_entry(
-							&thr->scroll_list,
-							struct ux_scroll_info,
-							queue_list);
+			if (get_ux_list_length(&thr->scroll_list) > 0) {
+				last = list_first_entry(&thr->scroll_list, struct ux_scroll_info, queue_list);
+				if (last) {
 					last->end_ts = ts;
-					last->dur_ts = last->end_ts - last->start_ts;
+					if (last->end_ts > last->start_ts)
+						last->dur_ts = last->end_ts - last->start_ts;
 					sbe_ux_scrolling_end(thr);
 				}
 			}
 
-			memset(&xgf_attr_iter, -1, sizeof(struct xgf_policy_cmd));
+			memset(&xgf_attr_iter, 0, sizeof(struct xgf_policy_cmd));
 			xgf_attr_iter.mode = 1;
-			xgf_attr_iter.pid = final_pid_arr[i];
-			xgf_attr_iter.bufid = final_bufID_arr[i];
+			xgf_attr_iter.pid = scroll_policy_info.final_pid_arr[i];
+			xgf_attr_iter.bufid = scroll_policy_info.final_bufID_arr[i];
 			xgf_attr_iter.ts = sbe_get_time();
 			fpsgo_other2xgf_set_attr(0, &xgf_attr_iter);
-			set_fpsgo_attr(1, final_pid_arr[i], 0, &attr_iter);
+
+			memset(&attr_iter, 0, sizeof(struct fpsgo_boost_attr));
+			attr_iter.aa_enable_by_pid = 1;
+			attr_iter.rescue_enable_by_pid = 1;
+			attr_iter.gcc_enable_by_pid = 0;
+			attr_iter.qr_enable_by_pid = 0;
+			set_fpsgo_attr(1, scroll_policy_info.final_pid_arr[i], 0, &attr_iter);
+
+			sbe_notify_ux_jank_detection(false, tgid, scroll_policy_info.final_pid_arr[i], mask,
+				thr, scroll_policy_info.final_bufID_arr[i]);
 		}
 		sbe_put_tree_lock(__func__);
-
-		sbe_trace("[SBE] %s %dth rtid:%d buffer_id:0x%llx",
-			__func__, i+1, final_pid_arr[i], final_bufID_arr[i]);
 	}
+
 
 	if (final_pid_arr_idx > 0) {
 		local_specific_tid_num = sbe_split_task_name(tgid,
-				specific_name, num, local_specific_tid_arr, __func__);
+				specific_name, num, scroll_policy_info.local_specific_tid_arr, __func__);
 		for (i = 0; i < local_specific_tid_num; i++) {
-			local_specific_action_arr[i].pid = local_specific_tid_arr[i];
-			local_specific_action_arr[i].action = 0;  // XGF_ADD_DEP
+			scroll_policy_info.local_specific_action_arr[i].pid =
+				scroll_policy_info.local_specific_tid_arr[i];
+			scroll_policy_info.local_specific_action_arr[i].action = 0;  // XGF_ADD_DEP
 		}
-		for (i = 0; i < final_pid_arr_idx; i++)
-			fpsgo_other2xgf_set_critical_tasks(final_pid_arr[i], final_bufID_arr[i],
-				local_specific_action_arr, local_specific_tid_num, start);
+		/*
+		 * TODO: This might be redundant?
+		 * Manually adding render thread to dep list.
+		 * Consider removing this in the future.
+		 * Evaluate the impact of removal and optimize
+		 * only if it doesn't cause any issues.
+		 */
+		for (i = 0; i < final_pid_arr_idx; i++) {
+			fpsgo_other2xgf_set_critical_tasks(scroll_policy_info.final_pid_arr[i],
+				scroll_policy_info.final_bufID_arr[i], scroll_policy_info.local_specific_action_arr,
+				local_specific_tid_num, start);
+			sbe_trace("[SBE]: hwui Set dep: pid %d, bufID %llu, start %d, local_specific_tid_num %d",
+				scroll_policy_info.final_pid_arr[i], scroll_policy_info.final_bufID_arr[i],
+				start, local_specific_tid_num);
+		}
 	}
 
-	ret = final_pid_arr_idx;
+	return ret;
+}
+
+static int sbe_set_scroll_policy(int tgid, char *name, unsigned long mask,
+				unsigned long long ts, int start,
+				char *specific_name, int num)
+{
+	int ret = 0;
+
+	sbe_trace("[SBE] scroll policy: tgid:%d, name:%s, mask:%lx, ts:%llu, start:%d, s_name:%s, num:%d",
+		tgid, name, mask, ts, start, specific_name, num);
+
+	if (IS_BIT_SET(mask, SBE_RUNNING_CHECK)) {
+		/*
+		 * The running check only performs update actions and doesn't involve any other behaviors.
+		 * After updating the loading information, it should exit immediately.
+		 */
+		ret = sbe_do_running_check(start, tgid, specific_name, num);
+		sbe_trace("[SBE]: Do running check ret %d", ret);
+		goto out;
+	}
+
+	sbe_register_jank_cb(mask);
+
+	if (IS_BIT_SET(mask, SBE_SCROLLING)) {
+		/*
+		 * The mask may include multiple scenarios simultaneously, so we need to check all cases.
+		 * Each case is processed independently without early returns.
+		 */
+		ret = sbe_do_hwui_scrolling_policy(tgid, start, specific_name, num, mask);
+		sbe_trace("[SBE] %s receive scrolling %d, ret = %d", __func__, start, ret);
+	}
+
+	if (IS_BIT_SET(mask, SBE_CPU_CONTROL)) {
+		ret = sbe_do_webview_notify_fpsgo_ctrl(tgid, name, start, specific_name, num, ts);
+		sbe_trace("[SBE] %s webview notify fpsgo ctrl start: %d, ret = %d", __func__, start, ret);
+	}
+
+	if (IS_BIT_SET(mask, SBE_DISPLAY_TARGET_FPS)) {
+		ret = sbe_do_display_target_fps(tgid, name, start, ts);
+		sbe_trace("[SBE] %s do display target fps start: %d, ret = %d", __func__, start, ret);
+	}
+
+	if (IS_BIT_SET(mask, SBE_CLEAR_SCROLLING_INFO)) {
+		ret = sbe_do_clear_scrolling_info(tgid, name, ts);
+		sbe_trace("[SBE] %s do clear scrolling info: %d, ret = %d", __func__, tgid, ret);
+	}
+
+	if (IS_BIT_SET(mask, SBE_HWUI)) {
+		ret = sbe_do_hwui_scrolling_status_policy(tgid, name, mask, ts, start, specific_name, num);
+		sbe_trace("[SBE] %s hwui scrolling status policy: %d, mask:%lx, start:%d, s_name:%s, num:%d, ret:%d",
+			__func__, tgid, mask, start, specific_name, num, ret);
+	}
 
 out:
-	kfree(thread_name);
-	kfree(final_pid_arr);
-	kfree(final_bufID_arr);
-	kfree(local_specific_tid_arr);
-	kfree(local_specific_action_arr);
 	return ret;
 }
 
@@ -814,7 +1029,7 @@ static void sbe_notifier_wq_cb(void)
 		sbe_check_restart_recycle_hrt();
 		break;
 	case SBE_NOTIFIER_WEBVIEW_POLICY:
-		sbe_set_webview_policy(vpPush->pid,
+		sbe_set_scroll_policy(vpPush->pid,
 				vpPush->name, vpPush->mask,
 				vpPush->cur_ts, vpPush->start,
 				vpPush->specific_name, vpPush->num);

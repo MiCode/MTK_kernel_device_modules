@@ -562,6 +562,8 @@ void sbe_reset_frame_cap(struct sbe_render_info *thr)
 
 	thr->ux_blc_cur = 0;
 	__sbe_set_per_task_cap(thr, 0, 100);
+	sbe_systrace_c(thr->pid, thr->buffer_id, 0, "[ux]perf_idx");
+	sbe_systrace_c(thr->pid, thr->buffer_id, 100, "[ux]perf_idx_max");
 }
 
 void sbe_do_frame_end(struct sbe_render_info *thr, unsigned long long frameid,
