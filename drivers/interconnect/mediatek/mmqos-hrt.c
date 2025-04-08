@@ -33,6 +33,9 @@ static void record_hrt_bw(u32 avail_bw, u32 cam_max_bw, u32 cam_bw)
 	u32 pre_idx, idx;
 	struct hrt_record *rec;
 
+	if (stop_record)
+		return;
+
 	rec = &mmqos_hrt->hrt_rec;
 	mutex_lock(&rec->lock);
 	idx = rec->idx;
@@ -53,6 +56,9 @@ static void record_cam_hrt(u32 cam_max_bw)
 {
 	u32 pre_idx, idx;
 	struct cam_hrt_record *rec = &mmqos_hrt->cam_hrt_rec;
+
+	if (stop_record)
+		return;
 
 	idx = rec->idx;
 	pre_idx = (idx - 1) % RECORD_NUM;

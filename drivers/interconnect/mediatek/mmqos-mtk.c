@@ -231,6 +231,7 @@ u32 log_level;
 
 static struct mtk_mmqos *gmmqos;
 static struct mmqos_hrt *g_hrt;
+u32 stop_record;
 
 static u32 chn_hrt_r_bw[MMQOS_MAX_COMM_NUM][MMQOS_COMM_CHANNEL_NUM] = {};
 static u32 chn_srt_r_bw[MMQOS_MAX_COMM_NUM][MMQOS_COMM_CHANNEL_NUM] = {};
@@ -908,8 +909,22 @@ static void update_hrt_bw(struct mtk_mmqos *mmqos)
 
 }
 
+void mmqos_stop_record(void)
+{
+	stop_record = true;
+	MMQOS_DBG("stop_record %d", stop_record);
+}
+EXPORT_SYMBOL_GPL(mmqos_stop_record);
+
 static void record_last_larb(u32 node_id, u32 avg_bw, u32 peak_bw)
 {
+	if (stop_record) {
+		if (log_level & 1 << log_bw)
+			MMQOS_DBG("node_id %d avg %d peak %d",
+				node_id, (int)icc_to_MBps(avg_bw), (int)icc_to_MBps(peak_bw));
+		return;
+	}
+
 	last_rec->larb_update_time = sched_clock();
 	last_rec->larb_node_id = node_id;
 	last_rec->larb_avg_bw = avg_bw;
@@ -918,6 +933,13 @@ static void record_last_larb(u32 node_id, u32 avg_bw, u32 peak_bw)
 
 static void record_last_larb_port(u32 node_id, u32 avg_bw, u32 peak_bw)
 {
+	if (stop_record) {
+		if (log_level & 1 << log_bw)
+			MMQOS_DBG("node_id %d avg %d peak %d",
+				node_id, (int)icc_to_MBps(avg_bw), (int)icc_to_MBps(peak_bw));
+		return;
+	}
+
 	last_rec->larb_port_update_time = sched_clock();
 	last_rec->larb_port_node_id = node_id;
 	last_rec->larb_port_avg_bw = avg_bw;
@@ -934,6 +956,9 @@ static void record_comm_port_bw(u32 comm_id, u32 port_id, u32 larb_id,
 			comm_id, port_id, larb_id,
 			(int)(icc_to_MBps(avg_bw)), (int)(icc_to_MBps(peak_bw)),
 			(int)(icc_to_MBps(l_avg)), (int)(icc_to_MBps(l_peak)));
+	if (stop_record)
+		return;
+
 	idx = comm_port_bw_rec->idx[comm_id][port_id];
 	comm_port_bw_rec->time[comm_id][port_id][idx] = sched_clock();
 	comm_port_bw_rec->larb_id[comm_id][port_id][idx] = larb_id;
@@ -948,6 +973,15 @@ static void record_chn_bw(u32 comm_id, u32 chnn_id, u32 srt_r, u32 srt_w, u32 hr
 {
 	u32 idx;
 
+	if (stop_record) {
+		if (log_level & 1 << log_bw)
+			MMQOS_DBG("comm%d chnn%d srt_r %d srt_w %d hrt_r %d hrt_w %d",
+				comm_id, chnn_id,
+				(int)(icc_to_MBps(srt_r)), (int)(icc_to_MBps(srt_w)),
+				(int)(icc_to_MBps(hrt_r)), (int)(icc_to_MBps(hrt_w)));
+		return;
+	}
+
 	idx = chn_bw_rec->idx[comm_id][chnn_id];
 	chn_bw_rec->time[comm_id][chnn_id][idx] = sched_clock();
 	chn_bw_rec->srt_r_bw[comm_id][chnn_id][idx] = srt_r;
@@ -961,6 +995,9 @@ static void record_larb_port_bw_ostdl(u32 larb_id, u32 port_id, u32 avg_bw,
 	u32 peak_bw, u32 mix_bw, u8 ostdl, bool was_hrt)
 {
 	u32 idx, old_idx;
+
+	if (stop_record)
+		return;
 
 	idx = larb_port_bw_rec->idx[larb_id];
 	old_idx = idx;
@@ -2149,6 +2186,7 @@ static int mmqos_bw_dump(struct seq_file *file, void *data)
 
 	if ((mmqos_state & MMPC_ENABLE) || (mmqos_state & MMPC_V2_ENABLE))
 		mmpc_dvfsrc_full_dump(file);
+
 	return 0;
 }
 
@@ -2183,6 +2221,8 @@ void mmqos_hrt_dump(void)
 	//larb port qos bw dump
 	for (larb_id = 0; larb_id < MAX_RECORD_LARB_NUM; larb_id++)
 		larb_port_ostdl_dump_line(larb_id);
+
+	stop_record = false;
 }
 EXPORT_SYMBOL_GPL(mmqos_hrt_dump);
 

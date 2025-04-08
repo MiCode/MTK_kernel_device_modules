@@ -25,6 +25,8 @@
 #define RECORD_NUM		(10)
 #define RECORD_NUM_LARB_PORT		(20)
 
+extern u32 stop_record;
+
 enum {
 	MD_SCEN_NONE,
 	MD_SCEN_SUB6_EXT,
@@ -201,6 +203,7 @@ void mmqos_hrt_dump(void);
 void mmqos_set_met(bool enable);
 int mmqos_debug_set_ftrace(const char *val,
 	const struct kernel_param *kp);
+void mmqos_stop_record(void);
 
 /* For MET */
 bool mmqos_met_enabled(void);
