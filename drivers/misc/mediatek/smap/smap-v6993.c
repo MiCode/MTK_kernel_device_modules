@@ -217,8 +217,8 @@ static ssize_t dump_and_send_smap_staus(char *buf, enum SMAP_DUMP_LOG_TYPE log_t
 
 static void smap_update_result(struct mtk_smap *smap)
 {
-	static unsigned int last_dect_cnt, last_temp_cnt;
-	unsigned int len, dect_cnt, temp_cnt, enable;
+	static unsigned int last_sys_time;
+	unsigned int len, enable, sys_time;
 	char buf[STR_SIZE];
 
 	if (!smap_data) {
@@ -227,10 +227,9 @@ static void smap_update_result(struct mtk_smap *smap)
 	}
 
 	enable = smap_read(SMAP_ENABLE);
-	dect_cnt = smap_read(PMSR_RESERVED_RW_REG_4);
-	temp_cnt = smap_read(PMSR_RESERVED_RW_REG_5);
+	sys_time = smap_read(PMSR_RESERVED_RW_REG_6);
 
-	if (dect_cnt != last_dect_cnt && temp_cnt != last_temp_cnt) {
+	if (sys_time != last_sys_time) {
 		len = dump_and_send_smap_staus(buf, DUMP_KERNEL, SEND_MBRAIN);
 		smap_print("Mitigation happened, SMAP enalbe:%u\n", enable);
 	} else
@@ -239,8 +238,7 @@ static void smap_update_result(struct mtk_smap *smap)
 	if (len)
 		smap_print("%s\n", buf);
 
-	last_dect_cnt = dect_cnt;
-	last_temp_cnt = temp_cnt;
+	last_sys_time = sys_time;
 }
 
 static void smap_periodic_work_handler(struct work_struct *work)
