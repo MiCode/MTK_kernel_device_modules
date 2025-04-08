@@ -49,6 +49,7 @@ mgk_64_kleaf_modules = [
     "//vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac3x/6991_6653_dx5_triband:wlan_drv_gen4m_6991_6653_dx5_triband",
     "//vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac3x/6993_6653:wlan_drv_gen4m_6993_6653",
     "//vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac3x/6993_6653_triband:wlan_drv_gen4m_6993_6653_triband",
+    "//vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4-mt79xx:wlan_mt7902",
     "//vendor/mediatek/kernel_modules/cpufreq_cus:cpufreq_cus",
     "//vendor/mediatek/kernel_modules/cpufreq_int:cpufreq_int",
     "//vendor/mediatek/kernel_modules/fpsgo_cus:fpsgo_cus",
