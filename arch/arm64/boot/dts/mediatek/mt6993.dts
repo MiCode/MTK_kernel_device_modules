@@ -14670,6 +14670,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			fmeter-type	= /bits/ 8 < 6 6 6 6 6 6 6 6 6 6 6 6>;
 			mediatek,dpsw-thres = <1>;
 			mediatek,met-freerun;
+			mmdvfs-mux-supply = <&mmdvfs_mux>;
 		};
 
 		mmdvfs-debug-user {
