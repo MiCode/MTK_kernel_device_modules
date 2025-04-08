@@ -2593,6 +2593,10 @@ static int ufs_mtk_dbg_init_procfs(struct ufs_hba *hba)
 int ufs_mtk_dbg_tp_register(struct ufs_hba *hba)
 {
 	int i;
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+
+	if (host->host_id == 1)
+		return 0;
 
 	FOR_EACH_INTEREST(i) {
 		if (interests[i].tp == NULL) {
@@ -2617,6 +2621,10 @@ EXPORT_SYMBOL_GPL(ufs_mtk_dbg_tp_register);
 void ufs_mtk_dbg_tp_unregister(struct ufs_hba *hba)
 {
 	int i;
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+
+	if (host->host_id == 1)
+		return;
 
 	FOR_EACH_INTEREST(i) {
 		if (interests[i].init) {
