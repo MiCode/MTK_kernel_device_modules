@@ -946,6 +946,30 @@ static void flt_init_window_dep(void)
 		scale_demand(sched_init_task_load_windows);
 }
 
+static bool flt_raw_spin_rq_trylock(struct rq *rq)
+{
+	raw_spinlock_t *lock;
+	bool ret;
+
+	/* Matches synchronize_rcu() in __sched_core_enable() */
+	preempt_disable();
+	if (sched_core_disabled()) {
+		ret = raw_spin_trylock(&rq->__lock);
+		preempt_enable();
+		return ret;
+	}
+
+	for (;;) {
+		lock = __rq_lockp(rq);
+		ret = raw_spin_trylock(lock);
+		if (!ret || (likely(lock == __rq_lockp(rq)))) {
+			preempt_enable();
+			return ret;
+		}
+		raw_spin_unlock(lock);
+	}
+}
+
 static int flt_sync_all_cpu(void)
 {
 	int cpu, grp_idx, ridx, widx;
@@ -962,14 +986,15 @@ static int flt_sync_all_cpu(void)
 	for_each_possible_cpu(cpu) {
 		rq = cpu_rq(cpu);
 		irq_log_store();
-		raw_spin_rq_lock(rq);
-		fsrq = &per_cpu(flt_rq, cpu);
-		delta = wallclock - fsrq->window_start;
-		if (delta >= sched_ravg_window  && rq->curr)
-			flt_update_task_ravg(rq->curr, rq, TASK_UPDATE, wallclock, 0);
-		if (rq->nr_running == 0)
-			memset(fsrq->group_nr_running, 0, sizeof(fsrq->group_nr_running));
-		raw_spin_rq_unlock(rq);
+		if (flt_raw_spin_rq_trylock(rq)) {
+			fsrq = &per_cpu(flt_rq, cpu);
+			delta = wallclock - fsrq->window_start;
+			if (delta >= sched_ravg_window  && rq->curr)
+				flt_update_task_ravg(rq->curr, rq, TASK_UPDATE, wallclock, 0);
+			if (rq->nr_running == 0)
+				memset(fsrq->group_nr_running, 0, sizeof(fsrq->group_nr_running));
+			raw_spin_rq_unlock(rq);
+		}
 		irq_log_store();
 	}
 
@@ -1245,18 +1270,23 @@ void flt_android_rvh_new_task_stats(void *unused, struct task_struct *p)
 void flt_android_rvh_try_to_wake_up(void *unused, struct task_struct *p)
 {
 	struct rq *rq = cpu_rq(task_cpu(p));
-	struct rq_flags rf;
 	u64 wallclock;
+	unsigned long irq_flags;
+
 	if (unlikely(flt_get_mode() == FLT_MODE_0))
 		return;
 	irq_log_store();
-	rq_lock_irqsave(rq, &rf);
-	wallclock = get_current_time();
-	irq_log_store();
-	flt_update_task_ravg(rq->curr, rq, TASK_UPDATE, wallclock, 0);
-	irq_log_store();
-	flt_update_task_ravg(p, rq, TASK_WAKE, wallclock, 0);
-	rq_unlock_irqrestore(rq, &rf);
+
+	local_irq_save(irq_flags);
+	if (flt_raw_spin_rq_trylock(rq)) {
+		wallclock = get_current_time();
+		irq_log_store();
+		flt_update_task_ravg(rq->curr, rq, TASK_UPDATE, wallclock, 0);
+		irq_log_store();
+		flt_update_task_ravg(p, rq, TASK_WAKE, wallclock, 0);
+		raw_spin_rq_unlock(rq);
+	}
+	local_irq_restore(irq_flags);
 }
 
 void flt_android_rvh_tick_entry(void *unused, struct rq *rq)
