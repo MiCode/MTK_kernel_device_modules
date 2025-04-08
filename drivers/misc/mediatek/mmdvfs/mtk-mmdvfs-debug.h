@@ -70,6 +70,7 @@ void mtk_mmdvfs_debug_ulposc_enable(const bool enable);
 int mtk_mmdvfs_debug_force_vcore_notify(const u32 val);
 bool mtk_is_mmdvfs_v3_debug_init_done(void);
 int mmdvfs_debug_status_dump(struct seq_file *file);
+int mmdvfs_stop_record(void);
 inline void mmdvfs_vcp_cb_mutex_lock(void);
 inline void mmdvfs_vcp_cb_mutex_unlock(void);
 inline bool mmdvfs_vcp_cb_ready_get(void);
@@ -81,6 +82,7 @@ struct mmdvfs_debug_ops {
 	int (*force_step_fp)(const char *val, const struct kernel_param *kp);
 	int (*vote_step_fp)(const char *val, const struct kernel_param *kp);
 	int (*status_dump_fp)(struct seq_file *file);
+	int (*record_snapshot_fp)(void);
 	int (*force_vcore_fp)(const u32 val);
 	struct mmdvfs_res_mbrain_debug_ops *(*mmdvfs_mbrain_fp)(void);
 	struct mmdvfs_res_mbrain_debug_ops *(*mmdvfs_mbrain_usr_fp)(void);

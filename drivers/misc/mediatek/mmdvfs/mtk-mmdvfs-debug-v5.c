@@ -269,10 +269,8 @@ static int mmdvfs_debug_dump_volt_freq(struct seq_file *file)
 	return 0;
 }
 
-#define MEM_PRINT(SEC, VAL, i, file, name, idx_name, lvl_name) \
+#define MEM_PRINT(sec, val, file, name, idx_name, lvl_name) \
 	do { \
-		u32 sec = readl(SEC); \
-		u32 val = readl(VAL); \
 		if (!sec && !MEM_DEC_USEC(val)) \
 			continue; \
 		mmdvfs_seq_print(file, "[%6u.%06u] " name ":%2d " idx_name ":%2u " lvl_name ":%2u", \
@@ -285,11 +283,50 @@ static int mmdvfs_debug_dump_volt_freq(struct seq_file *file)
 		for (i = 0; i < NUM; i++) { \
 			int j, k = readl(IDX(i)) % MEM_REC_CNT; \
 			for (j = k; j < MEM_REC_CNT; j++) \
-				MEM_PRINT(SEC(i, j), VAL(i, j), i, file, ##__VA_ARGS__); \
+				MEM_PRINT(readl(SEC(i, j)), readl(VAL(i, j)), file, ##__VA_ARGS__); \
 			for (j = 0; j < k; j++) \
-				MEM_PRINT(SEC(i, j), VAL(i, j), i, file, ##__VA_ARGS__); \
+				MEM_PRINT(readl(SEC(i, j)), readl(VAL(i, j)), file, ##__VA_ARGS__); \
 		} \
 	} while (0)
+
+#define MAX_REC_CLK_SIZE	(80)
+#define REC_CLK_IDX(x)		(clk_snapshot[x])
+#define REC_CLK_SEC(x, y)	(clk_snapshot[SRAM_CLK_CNT + MEM_OBJ_CNT * (MEM_REC_CNT * x + y) + 0])
+#define REC_CLK_VAL(x, y)	(clk_snapshot[SRAM_CLK_CNT + MEM_OBJ_CNT * (MEM_REC_CNT * x + y) + 1])
+static u32 *clk_snapshot;
+static int mmdvfs_debug_v5_record_snapshot(void)
+{
+	int ret;
+
+	if (clk_snapshot) {
+		MMDVFS_DBG("clk snapshot already set");
+		return 0;
+	}
+
+	clk_snapshot = kmalloc((MAX_REC_CLK_SIZE + SRAM_CLK_CNT) * sizeof(*clk_snapshot) , GFP_KERNEL);
+	if (!clk_snapshot) {
+		MMDVFS_ERR("failed to allocate memory");
+		return -ENOMEM;
+	}
+	mtk_mmdvfs_enable_vcp(true, user ? user[0].id : 0);
+	mmdvfs_mmup_cb_mutex_lock();
+	ret = mmdvfs_mmup_cb_ready_get();
+	if (!ret || !unlikely(SRAM_BASE)) {
+		mmdvfs_mmup_cb_mutex_unlock();
+		mtk_mmdvfs_enable_vcp(false, user ? user[0].id : 0);
+		kfree(clk_snapshot);
+		clk_snapshot = NULL;
+		MMDVFS_ERR("mmup_cb_ready:%d SRAM_BASE:%#lx", ret, (unsigned long)(void *)SRAM_BASE);
+		return 0;
+	}
+	// clk: vcore, vmm, vdisp, cam, hop
+	memcpy_fromio(clk_snapshot, SRAM_CLK_IDX(0), SRAM_CLK_CNT * sizeof(*clk_snapshot));
+	memcpy_fromio(clk_snapshot + SRAM_CLK_CNT, SRAM_CLK_SEC(0, 0), MAX_REC_CLK_SIZE * sizeof(*clk_snapshot));
+
+	mmdvfs_mmup_cb_mutex_unlock();
+	mtk_mmdvfs_enable_vcp(false, user ? user[0].id : 0);
+	return 0;
+}
 
 static int mmdvfs_debug_v5_status_dump(struct seq_file *file)
 {
@@ -332,6 +369,19 @@ static int mmdvfs_debug_v5_status_dump(struct seq_file *file)
 	MEM_PRINT_LOOP(SRAM_PWR_CNT, SRAM_PWR_IDX, SRAM_PWR_SEC, SRAM_PWR_VAL,
 		file, "lvl history of pwr from mmup", "pwr", "", "lvl");
 	// clk: vcore, vmm, vdisp, cam, hop
+	if (clk_snapshot) {
+		mmdvfs_seq_print(file,  "lvl history of clk from snapshot");
+		for (i = 0; i < SRAM_CLK_CNT; i++) {
+			u32 j, k = REC_CLK_IDX(i) % MEM_REC_CNT;
+
+			for (j = k; j < MEM_REC_CNT; j++)
+				MEM_PRINT(REC_CLK_SEC(i, j), REC_CLK_VAL(i, j), file, "clk", "", "lvl");
+			for (j = 0; j < k; j++)
+				MEM_PRINT(REC_CLK_SEC(i, j), REC_CLK_VAL(i, j), file, "clk", "", "lvl");
+		}
+		kfree(clk_snapshot);
+		clk_snapshot = NULL;
+	}
 	MEM_PRINT_LOOP(SRAM_CLK_CNT, SRAM_CLK_IDX, SRAM_CLK_SEC, SRAM_CLK_VAL,
 		file, "lvl history of clk from mmup", "clk", "", "lvl");
 	// ceil: vcore, vmm, vdisp
@@ -636,6 +686,7 @@ static struct mmdvfs_debug_ops mmdvfs_debug_v5_ops = {
 	.force_step_fp = mmdvfs_debug_v5_set_force_step,
 	.vote_step_fp = mmdvfs_debug_v5_set_vote_step,
 	.status_dump_fp = mmdvfs_debug_v5_status_dump,
+	.record_snapshot_fp = mmdvfs_debug_v5_record_snapshot,
 	.force_vcore_fp = mmdvfs_debug_v5_force_vcore,
 	.mmdvfs_mbrain_fp = mmdvfs_debug_v5_mbrain_pwr_get,
 	.mmdvfs_mbrain_usr_fp = mmdvfs_debug_v5_mbrain_usr_get,

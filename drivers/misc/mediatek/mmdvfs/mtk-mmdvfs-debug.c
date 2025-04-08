@@ -61,6 +61,17 @@ int mmdvfs_debug_status_dump(struct seq_file *file)
 }
 EXPORT_SYMBOL_GPL(mmdvfs_debug_status_dump);
 
+int mmdvfs_stop_record(void)
+{
+	if (!ops.record_snapshot_fp) {
+		pr_notice("[mmdvfs_dbg][dbg]%s:%d: without fp\n", __func__, __LINE__);
+		return -EINVAL;
+	}
+
+	return ops.record_snapshot_fp();
+}
+EXPORT_SYMBOL_GPL(mmdvfs_stop_record);
+
 static int mmdvfs_debug_set_force_step(const char *val, const struct kernel_param *kp)
 {
 	if (!ops.force_step_fp) {
