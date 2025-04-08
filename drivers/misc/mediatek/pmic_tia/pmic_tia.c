@@ -44,7 +44,7 @@ static const struct proc_ops pmic_tia_fops = {
 	.proc_open	= pmic_tia_open,
 	.proc_read	= pmic_tia_read,
 	.proc_release	= pmic_tia_release,
-	.proc_lseek	= no_llseek,
+	.proc_lseek	= NULL,
 };
 
 static int mtk_pmic_tia_probe(struct platform_device *pdev)
@@ -71,10 +71,9 @@ static int mtk_pmic_tia_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int mtk_pmic_tia_remove(struct platform_device *pdev)
+static void mtk_pmic_tia_remove(struct platform_device *pdev)
 {
 	iounmap(addr_virt);
-	return 0;
 }
 
 static const struct of_device_id mtk_pmic_tia_of_match[] = {

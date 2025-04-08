@@ -1,0 +1,29 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_src",
+    srcs = glob([
+        "**/*.c",
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "pmic_tia",
+    srcs = [
+        "pmic_tia.c",
+    ],
+)
+

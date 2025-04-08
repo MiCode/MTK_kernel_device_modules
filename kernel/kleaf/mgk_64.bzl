@@ -410,6 +410,7 @@ mgk_64_kleaf_device_modules_srcs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/ccmni:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/cache-auditor:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/clkbuf:ddk_src".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/pmic_tia:ddk_src".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/conn_md:ddk_makefiles".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/connectivity:ddk_makefiles".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/conn_scp:ddk_makefiles".format(kernel_version),
@@ -618,6 +619,7 @@ mgk_64_kleaf_device_modules_kconfigs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/ccu/src/isp6s:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/cache-auditor:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/clkbuf:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/pmic_tia:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/conn_md:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/connectivity:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/conn_scp:ddk_kconfigs".format(kernel_version),
@@ -959,6 +961,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/ccmni:ccmni".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/cache-auditor:cpuqos_v3".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/clkbuf:clkbuf".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/pmic_tia:pmic_tia".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/connectivity:connadp".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/conn_scp:connscp".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/cpufreq_lite:cpudvfs".format(kernel_version),
@@ -2086,8 +2089,6 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/misc/mediatek/usb/c2k_usb/c2k_usb_f_via_ets.ko")
         mgk_64_device_modules.remove("drivers/misc/mediatek/usb/c2k_usb/c2k_usb_f_via_modem.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/md_cooling_all.ko")
-
-        mgk_64_device_modules.append("drivers/misc/mediatek/pmic_tia/pmic_tia.ko")
 
     if "thinmodem.config" in DEFCONFIG_OVERLAYS:
         mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/wwan/tmi3:tmi3")

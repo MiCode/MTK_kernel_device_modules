@@ -2,5 +2,5 @@
 
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/
 
-obj-$(CONFIG_MTK_PMIC_TIA) += pmic_tia.o
+#obj-$(CONFIG_MTK_PMIC_TIA) += pmic_tia.o
 
