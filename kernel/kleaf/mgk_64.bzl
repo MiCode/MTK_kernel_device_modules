@@ -898,6 +898,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/input/touchscreen/GT9886:gt9886".format(kernel_version),
     "//kernel_device_modules-{}/drivers/input/touchscreen/GT9895:gt9895".format(kernel_version),
     "//kernel_device_modules-{}/drivers/input/touchscreen/GT9896S:gt9896s".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/input/touchscreen/k6895v1_64_95t_alpha:fts_touch_spi".format(kernel_version),
     "//kernel_device_modules-{}/drivers/input/touchscreen/GT9966:gt9966".format(kernel_version),
     "//kernel_device_modules-{}/drivers/input/touchscreen/gt9xx:gt9xx_touch".format(kernel_version),
     "//kernel_device_modules-{}/drivers/input/touchscreen/NT36532:nt36532".format(kernel_version),
