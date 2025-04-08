@@ -73,6 +73,10 @@
 #include "mtk_disp_dbi_count.h"
 #include "mmqos-mtk.h"
 
+#if IS_ENABLED(CONFIG_MTK_HWCCF)
+#include "hwccf_provider.h"
+#include "hwccf_provider_data.h"
+#endif
 
 /* *****Panel_Master*********** */
 #include "mtk_fbconfig_kdebug.h"
@@ -347,6 +351,16 @@ enum addon_scenario mtk_crtc_wb_get_scn(struct mtk_crtc_state *state)
 	return scn;
 }
 EXPORT_SYMBOL(mtk_crtc_wb_get_scn);
+
+static int mtk_drm_crtc_pwr_check(struct mtk_drm_private *priv)
+{
+	if (priv->data->mmsys_id == MMSYS_MT6993) {
+		// check disp vcore
+		return hwccf_is_enabled(MM_HWCCF,HW_CCF_MTCMOS_GRP_0, HWCCF_VOTE, 18);
+	}
+
+	return 1;
+}
 
 static void mtk_drm_crtc_finish_page_flip(struct mtk_drm_crtc *mtk_crtc)
 {
@@ -1635,7 +1649,11 @@ void mtk_drm_crtc_dump(struct drm_crtc *crtc)
 	}
 
 	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
-		mtk_drm_pm_ctrl(priv, DISP_PRE_CG_GET);
+
+		if (!mtk_drm_crtc_pwr_check(priv))
+			return;
+		if (!in_interrupt())
+			mtk_drm_pm_ctrl(priv, DISP_PRE_CG_GET);
 		if (!priv->pwr_node)
 			mtk_drm_pm_ctrl(priv, DISP_PM_GET);
 		mtk_vidle_user_power_keep(DISP_VIDLE_USER_DPC_DUMP);
@@ -1941,7 +1959,8 @@ void mtk_drm_crtc_dump(struct drm_crtc *crtc)
 		mtk_vidle_user_power_release(DISP_VIDLE_USER_DPC_DUMP);
 		if (!priv->pwr_node)
 			mtk_drm_pm_ctrl(priv, DISP_PM_PUT);
-		mtk_drm_pm_ctrl(priv, DISP_PRE_CG_PUT);
+		if (!in_interrupt())
+			mtk_drm_pm_ctrl(priv, DISP_PRE_CG_PUT);
 	}
 
 	return;
@@ -2000,7 +2019,10 @@ void mtk_drm_crtc_dump_vr_rg(struct drm_crtc *crtc)
 	mtk_crtc = to_mtk_crtc(crtc);
 
 	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
-		mtk_drm_pm_ctrl(priv, DISP_PRE_CG_GET);
+		if (!mtk_drm_crtc_pwr_check(priv))
+			return;
+		if (!in_interrupt())
+			mtk_drm_pm_ctrl(priv, DISP_PRE_CG_GET);
 		if (!priv->pwr_node)
 			mtk_drm_pm_ctrl(priv, DISP_PM_GET);
 		mtk_vidle_user_power_keep(DISP_VIDLE_USER_DPC_DUMP);
@@ -2013,7 +2035,8 @@ done_return:
 		mtk_vidle_user_power_release(DISP_VIDLE_USER_DPC_DUMP);
 		if (!priv->pwr_node)
 			mtk_drm_pm_ctrl(priv, DISP_PM_PUT);
-		mtk_drm_pm_ctrl(priv, DISP_PRE_CG_PUT);
+		if (!in_interrupt())
+			mtk_drm_pm_ctrl(priv, DISP_PRE_CG_PUT);
 	}
 }
 
@@ -2264,7 +2287,10 @@ void mtk_drm_crtc_analysis(struct drm_crtc *crtc)
 	}
 
 	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
-		mtk_drm_pm_ctrl(priv, DISP_PRE_CG_GET);
+		if (!mtk_drm_crtc_pwr_check(priv))
+			return;
+		if (!in_interrupt())
+			mtk_drm_pm_ctrl(priv, DISP_PRE_CG_GET);
 		if (!priv->pwr_node)
 			mtk_drm_pm_ctrl(priv, DISP_PM_GET);
 		mtk_vidle_user_power_keep(DISP_VIDLE_USER_DPC_DUMP);
@@ -2623,7 +2649,8 @@ void mtk_drm_crtc_analysis(struct drm_crtc *crtc)
 		mtk_vidle_user_power_release(DISP_VIDLE_USER_DPC_DUMP);
 		if (!priv->pwr_node)
 			mtk_drm_pm_ctrl(priv, DISP_PM_PUT);
-		mtk_drm_pm_ctrl(priv, DISP_PRE_CG_PUT);
+		if (!in_interrupt())
+			mtk_drm_pm_ctrl(priv, DISP_PRE_CG_PUT);
 	}
 
 	return;
