@@ -138,8 +138,10 @@ static irqreturn_t emimpu_violation_irq(int irq, void *dev_id)
 			}
 		}
 
-		if (dump_reg[2].value & hp_mask)
+		if (dump_reg[2].value & hp_mask) {
 			violation = false;
+			BUG_ON(1);
+		}
 
 		if ((mpu->bypass_r_cnt) && (dump_reg[0].value & r_vio)) {
 			axi_id = (dump_reg[2].value >> 4) & 0xf;
@@ -364,7 +366,7 @@ static int emimpu_probe(struct platform_device *pdev)
 	ret = of_property_read_u32(emimpu_node,
 		"dump-axid", &dump_axid);
 	if (!ret)
-		dev_info(&pdev->dev, "No need to dump axid\n");
+		dev_info(&pdev->dev, "Need to dump axid\n");
 
 	size = of_property_count_elems_of_size(emimpu_node,
 		"bypass-r-axi", sizeof(char));
