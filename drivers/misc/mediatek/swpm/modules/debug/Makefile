@@ -11,9 +11,9 @@ endif
 ifeq ($(CONFIG_MTK_SWPM_MT6853),m)
 obj-$(CONFIG_MTK_SWPM_MT6853) += v6853/
 endif
-ifeq ($(CONFIG_MTK_SWPM_MT6855),m)
-obj-$(CONFIG_MTK_SWPM_MT6855) += v6855/
-endif
+#ifeq ($(CONFIG_MTK_SWPM_MT6855),m)
+#obj-$(CONFIG_MTK_SWPM_MT6855) += v6855/
+#endif
 ifeq ($(CONFIG_MTK_SWPM_MT6873),m)
 obj-$(CONFIG_MTK_SWPM_MT6873) += v6873/
 endif
@@ -32,9 +32,9 @@ endif
 ifeq ($(CONFIG_MTK_SWPM_MT6893),m)
 obj-$(CONFIG_MTK_SWPM_MT6893) += v6893/
 endif
-ifeq ($(CONFIG_MTK_SWPM_MT6895),m)
-obj-$(CONFIG_MTK_SWPM_MT6895) += v6895/
-endif
+#ifeq ($(CONFIG_MTK_SWPM_MT6895),m)
+#obj-$(CONFIG_MTK_SWPM_MT6895) += v6895/
+#endif
 ifeq ($(CONFIG_MTK_SWPM_MT6899),m)
 obj-$(CONFIG_MTK_SWPM_MT6899) += v6899/
 endif
