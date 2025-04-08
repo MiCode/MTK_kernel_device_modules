@@ -14304,7 +14304,7 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			panel_ext && panel_ext->funcs && panel_ext->funcs->set_spr_cmdq_v2) {
 			struct mtk_dsi_cmd_option cmd_opt = { 0 };
 
-			cmd_opt.flags = MTK_MIPI_DSI_GCE_INPUT_HANDLE_READY;
+			cmd_opt.flags = MTK_MIPI_DSI_GCE_INPUT_HANDLE_READY | MTK_MIPI_DSI_SKIP_CRTC_EN;
 			panel_ext->funcs->set_spr_cmdq_v2(dsi, panel, mtk_mipi_dsi_cmd, handle,
 				*(unsigned int *)params, &cmd_opt);
 		} else if (panel_ext && panel_ext->funcs
