@@ -9376,9 +9376,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<0 0x10693000 0 0x1000>, /* apinfra_big4 pd */
 				<0 0x102f3000 0 0x1000>, /* apinfra_dramc pd */
 				<0 0x11004000 0 0x1000>, /* apinfra_emi pd */
-				<0 0x14130000 0 0x1000>, /* apinfra_mem pd */
 				<0 0x10438000 0 0x1000>, /* apinfra_nemi pd */
 				<0 0x10538000 0 0x1000>, /* apinfra_semi pd */
+				<0 0x14130000 0 0x1000>, /* apinfra_mem pd */
 				<0 0x14131000 0 0x1000>, /* apinfra_mem_ctrl pd */
 				<0 0x140c0000 0 0x1000>, /* apinfra_mem_intf pd */
 				<0 0x142f4000 0 0x1000>, /* apinfra_int pd */
