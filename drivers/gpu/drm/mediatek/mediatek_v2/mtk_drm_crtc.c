@@ -68,6 +68,7 @@
 #include "mtk_disp_ovl.h"
 #include "mtk_disp_spr.h"
 #include "mtk_dsi_lpc.h"
+#include "mtk_dsi.h"
 #include "mtk_dp.h"
 #include "mtk_disp_dbgtp.h"
 #include "mtk_disp_dbi_count.h"
@@ -17444,6 +17445,10 @@ void mtk_drm_crtc_suspend(struct drm_crtc *crtc)
 
 	CRTC_MMP_EVENT_START(index, suspend,
 			mtk_crtc->enabled, 0);
+
+	/* Force trigger stop when suspend for fifo mon WA */
+	mtk_set_mmmc_rg(2, 3, 0x14, 0x1, 0xffff);
+	mtk_set_mmmc_rg(2, 3, 0x18, 0x1, 0xffff);
 
 	mtk_drm_crtc_wait_blank(mtk_crtc);
 
