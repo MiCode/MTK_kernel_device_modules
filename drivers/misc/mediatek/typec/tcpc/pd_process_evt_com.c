@@ -288,6 +288,7 @@ static inline bool pd_process_ctrl_msg(
 
 	case PD_CTRL_NOT_SUPPORTED:
 		pd_cancel_dpm_reaction(pd_port);
+		pd_notify_pe_reset_protocol(pd_port);
 		pd_notify_tcp_event_2nd_result(
 				pd_port, TCP_DPM_RET_NOT_SUPPORT);
 

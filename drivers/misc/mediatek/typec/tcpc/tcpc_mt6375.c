@@ -272,9 +272,7 @@ struct mt6375_tcpc_data {
 	atomic_t wd_protect_rty;
 	bool wd_polling;
 	struct tcpc_device *tcpc_port1;
-#if !CONFIG_WD_DURING_PLUGGED_IN
 	struct delayed_work wd_polling_dwork;
-#endif	/* !CONFIG_WD_DURING_PLUGGED_IN */
 	struct delayed_work wd12_strise_irq_dwork;
 	struct delayed_work fod_polling_dwork;
 
@@ -1200,21 +1198,22 @@ static int mt6375_enable_wd_protection(struct mt6375_tcpc_data *ddata, bool en)
 			     MT6375_MSK_WD12MODE_EN | MT6375_MSK_WD12PROT : 0);
 }
 
-#if !CONFIG_WD_DURING_PLUGGED_IN
 static void mt6375_wd_polling_dwork_handler(struct work_struct *work)
 {
-	int i;
 	struct delayed_work *dwork = to_delayed_work(work);
 	struct mt6375_tcpc_data *ddata = container_of(dwork,
 						      struct mt6375_tcpc_data,
 						      wd_polling_dwork);
+#if !CONFIG_WD_DURING_PLUGGED_IN
 	struct tcpc_device *tcpcs[] = {ddata->tcpc, ddata->tcpc_port1};
 	const uint32_t tcpc_flags = ddata->tcpc->tcpc_flags;
 	size_t array_size = (tcpc_flags & TCPC_FLAGS_WD_DUAL_PORT) ?  2 : 1;
-	int ret = 0;
+	int i = 0, ret = 0;
+#endif	/* !CONFIG_WD_DURING_PLUGGED_IN */
 
 	pm_system_wakeup();
 
+#if !CONFIG_WD_DURING_PLUGGED_IN
 	for (i = 0; i < array_size; i++) {
 		tcpci_lock_typec(tcpcs[i]);
 		ret = tcpci_is_plugged_in(tcpcs[i]);
@@ -1226,12 +1225,12 @@ static void mt6375_wd_polling_dwork_handler(struct work_struct *work)
 			return;
 		}
 	}
+#endif	/* !CONFIG_WD_DURING_PLUGGED_IN */
 
 	tcpci_lock_typec(ddata->tcpc);
 	mt6375_enable_wd_polling(ddata, true);
 	tcpci_unlock_typec(ddata->tcpc);
 }
-#endif	/* !CONFIG_WD_DURING_PLUGGED_IN */
 
 static int mt6375_wd_polling_evt_process(struct mt6375_tcpc_data *ddata)
 {
@@ -1424,8 +1423,8 @@ static int mt6375_tcpc_init(struct tcpc_device *tcpc, bool sw_reset)
 	/* Transition window time = 43.29us */
 	mt6375_write8(ddata, MT6375_REG_PHYCTRL3, 0x82);
 
-	/* BMC decoder idle time = 9.99us */
-	mt6375_write8(ddata, MT6375_REG_PHYCTRL7, 0x1E);
+	/* BMC decoder idle time = 17.982us */
+	mt6375_write8(ddata, MT6375_REG_PHYCTRL7, 0x36);
 
 	/* Retry period = 26.208us */
 	mt6375_write8(ddata, MT6375_REG_PHYCTRL9, 0x3C);
@@ -1471,7 +1470,8 @@ static int mt6375_tcpc_init(struct tcpc_device *tcpc, bool sw_reset)
 				tcpc->tcpc_flags &= ~TCPC_FLAGS_WD_DUAL_PORT;
 		}
 		mt6375_init_wd(ddata);
-		mt6375_enable_wd_polling(ddata, true);
+		schedule_delayed_work(&ddata->wd_polling_dwork,
+				      msecs_to_jiffies(5000));
 	}
 
 	if (tcpc->tcpc_flags & TCPC_FLAGS_FLOATING_GROUND)
@@ -2199,12 +2199,15 @@ static struct tcpc_ops mt6375_tcpc_ops = {
 static irqreturn_t mt6375_pd_evt_handler(int irq, void *data)
 {
 	struct mt6375_tcpc_data *ddata = data;
+	int ret = 0;
 
 	MT6375_DBGINFO("++\n");
 	pm_stay_awake(ddata->dev);
-	tcpci_lock_typec(ddata->tcpc);
-	tcpci_alert(ddata->tcpc, true);
-	tcpci_unlock_typec(ddata->tcpc);
+	do {
+		tcpci_lock_typec(ddata->tcpc);
+		ret = tcpci_alert(ddata->tcpc, false);
+		tcpci_unlock_typec(ddata->tcpc);
+	} while (ret != -ENODATA);
 	pm_relax(ddata->dev);
 	MT6375_DBGINFO("--\n");
 
@@ -2460,10 +2463,8 @@ static int mt6375_tcpc_probe(struct platform_device *pdev)
 	}
 
 	atomic_set(&ddata->wd_protect_rty, CONFIG_WD_PROTECT_RETRY_COUNT);
-#if !CONFIG_WD_DURING_PLUGGED_IN
 	INIT_DELAYED_WORK(&ddata->wd_polling_dwork,
 			  mt6375_wd_polling_dwork_handler);
-#endif	/* !CONFIG_WD_DURING_PLUGGED_IN */
 	INIT_DELAYED_WORK(&ddata->wd12_strise_irq_dwork,
 			  mt6375_wd12_strise_irq_dwork_handler);
 	INIT_DELAYED_WORK(&ddata->fod_polling_dwork,
@@ -2556,9 +2557,7 @@ static void mt6375_tcpc_remove(struct platform_device *pdev)
 	cancel_delayed_work_sync(&ddata->vbus_to_cc_dwork);
 	cancel_delayed_work_sync(&ddata->fod_polling_dwork);
 	if (ddata->tcpc->tcpc_flags & TCPC_FLAGS_WATER_DETECTION) {
-#if !CONFIG_WD_DURING_PLUGGED_IN
 		cancel_delayed_work_sync(&ddata->wd_polling_dwork);
-#endif	/* !CONFIG_WD_DURING_PLUGGED_IN */
 		cancel_delayed_work_sync(&ddata->wd12_strise_irq_dwork);
 	}
 	tcpc_device_unregister(ddata->dev, ddata->tcpc);

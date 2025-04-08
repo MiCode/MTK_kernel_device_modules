@@ -310,6 +310,12 @@ int tcpci_alert(struct tcpc_device *tcpc, bool masked)
 	if (rv < 0)
 		return rv;
 
+	if (!(alert_status & alert_mask)) {
+		TCPC_DBG("No Alert, Alert:0x%04x, Mask:0x%04x\n",
+			 alert_status, alert_mask);
+		return -ENODATA;
+	}
+
 	if (!__ratelimit(&tcpc->alert_rs)) {
 		tcpci_notify_alert_ratelimited(tcpc, true);
 		alert_status &= alert_mask;

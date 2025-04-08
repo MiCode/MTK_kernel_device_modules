@@ -891,6 +891,7 @@ MODULE_LICENSE("GPL");
  * (27) Let CC pins re-toggle after entering lpm
  * (28) Add ps_changed flow
  * (29) Revise Rx flow
+ * (30) Reset pd_wait_pr_swap_complete at receiving Not_Supported
  *
  * 2.0.30_MTK
  * (1) Decrease the I2C/IO transactions

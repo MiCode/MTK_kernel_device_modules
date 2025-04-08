@@ -369,8 +369,8 @@ static const struct reg_sequence rt1718s_init_settings[] = {
 	/* CRCtimer = 1ms for typical spec */
 	{ RT1718S_PHY_CTRL4, 0x60, 0 },
 	{ RT1718S_PHY_CTRL5, 0xE9, 0 },
-	/* BMC decoder idle time = 9.99us */
-	{ RT1718S_PHY_CTRL7, 0x1E, 0 },
+	/* BMC decoder idle time = 17.982us */
+	{ RT1718S_PHY_CTRL7, 0x36, 0 },
 	/* IRQB 3M path, Set shipping mode off, Connect invalid is off */
 	{ RT1718S_SYS_CTRL1, 0xB8, 1000 },
 

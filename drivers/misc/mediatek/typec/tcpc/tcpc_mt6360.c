@@ -888,8 +888,8 @@ static inline int mt6360_init_phy_ctrl(struct tcpc_device *tcpc)
 	mt6360_i2c_write8(tcpc, MT6360_REG_PHY_CTRL2, 0x3A);
 	/* Transition window count */
 	mt6360_i2c_write8(tcpc, MT6360_REG_PHY_CTRL3, 0x82);
-	/* BMC decoder idle time = 9.99us */
-	mt6360_i2c_write8(tcpc, MT6360_REG_PHY_CTRL7, 0x1E);
+	/* BMC decoder idle time = 17.982us */
+	mt6360_i2c_write8(tcpc, MT6360_REG_PHY_CTRL7, 0x36);
 	mt6360_i2c_write8(tcpc, MT6360_REG_PHY_CTRL11, 0x60);
 	/* Retry period setting, 416ns per step */
 	mt6360_i2c_write8(tcpc, MT6360_REG_PHY_CTRL12, 0x3C);
@@ -2257,7 +2257,7 @@ MODULE_LICENSE("GPL");
  *	(1) Do I2C/IO transactions when system resumed
  *	(2) Reduce log printing
  *	(3) Control CC Open in the deinit ops
- *	(4) Decrease BMC Decoder idle time to 9.99us
+ *	(4) Decrease BMC Decoder idle time to 17.982us
  *
  * 2.0.11_MTK
  *	(1) Decrease the I2C/IO transactions
