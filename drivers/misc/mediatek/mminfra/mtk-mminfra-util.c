@@ -58,12 +58,74 @@ static struct mtk_mminfra_util *g_mminfra_util;
 spinlock_t mminfra_pd_lock;
 static bool is_mminfra_util_shutdown;
 
-#if IS_ENABLED(CONFIG_MTK_HWCCF)
 void mtk_mminfra_voter_debug(u32 mm_pwr)
 {
 	/*not implement yet*/
 }
 
+#if IS_ENABLED(CONFIG_MTK_HWCCF)
+int mminfra0_onoff(bool on_off)
+{
+	int ret = 0;
+
+	if (on_off) {
+		ret = hwccf_irq_voter_ctrl(MM_HWCCF, g_mm_pd->mm_mtcmos[MM_PWR_MM_0].voter,
+			HWCCF_VOTE, g_mm_pd->mm_mtcmos[MM_PWR_MM_0].vote_bit);
+	} else {
+		ret = hwccf_irq_voter_ctrl(MM_HWCCF, g_mm_pd->mm_mtcmos[MM_PWR_MM_0].voter,
+			HWCCF_UNVOTE, g_mm_pd->mm_mtcmos[MM_PWR_MM_0].vote_bit);
+	}
+
+	return ret;
+}
+
+int mminfra1_onoff(bool on_off)
+{
+	int ret = 0;
+
+	if (on_off) {
+		ret = hwccf_irq_voter_ctrl(MM_HWCCF, g_mm_pd->mm_mtcmos[MM_PWR_MM_1].voter,
+			HWCCF_VOTE, g_mm_pd->mm_mtcmos[MM_PWR_MM_1].vote_bit);
+	} else {
+		ret = hwccf_irq_voter_ctrl(MM_HWCCF, g_mm_pd->mm_mtcmos[MM_PWR_MM_1].voter,
+			HWCCF_UNVOTE, g_mm_pd->mm_mtcmos[MM_PWR_MM_1].vote_bit);
+	}
+
+	return ret;
+}
+
+int mminfra_ao_onoff(bool on_off)
+{
+	int ret = 0;
+
+	if (on_off) {
+		ret = hwccf_irq_voter_ctrl(MM_HWCCF, g_mm_pd->mm_mtcmos[MM_PWR_MM_AO].voter,
+			HWCCF_VOTE, g_mm_pd->mm_mtcmos[MM_PWR_MM_AO].vote_bit);
+	} else {
+		ret = hwccf_irq_voter_ctrl(MM_HWCCF, g_mm_pd->mm_mtcmos[MM_PWR_MM_AO].voter,
+			HWCCF_UNVOTE, g_mm_pd->mm_mtcmos[MM_PWR_MM_AO].vote_bit);
+	}
+
+	return ret;
+}
+
+int mminfra2_onoff(bool on_off)
+{
+	int ret = 0;
+
+	if (on_off) {
+		ret = hwccf_irq_voter_ctrl(MM_HWCCF, g_mm_pd->mm_mtcmos[MM_PWR_MM_2].voter,
+			HWCCF_VOTE, g_mm_pd->mm_mtcmos[MM_PWR_MM_2].vote_bit);
+	} else {
+		ret = hwccf_irq_voter_ctrl(MM_HWCCF, g_mm_pd->mm_mtcmos[MM_PWR_MM_2].voter,
+			HWCCF_UNVOTE, g_mm_pd->mm_mtcmos[MM_PWR_MM_2].vote_bit);
+	}
+
+	return ret;
+}
+#endif
+
+#if IS_ENABLED(CONFIG_MTK_MMINFRA)
 bool mtk_mminfra_is_on(u32 mm_pwr)
 {
 	if (mm_pwr >= MM_PWR_NUM_NR) {
@@ -172,67 +234,6 @@ void mtk_mminfra_all_power_debug(void)
 }
 EXPORT_SYMBOL_GPL(mtk_mminfra_all_power_debug);
 
-int mminfra0_onoff(bool on_off)
-{
-	int ret = 0;
-
-	if (on_off) {
-		ret = hwccf_irq_voter_ctrl(MM_HWCCF, g_mm_pd->mm_mtcmos[MM_PWR_MM_0].voter,
-			HWCCF_VOTE, g_mm_pd->mm_mtcmos[MM_PWR_MM_0].vote_bit);
-	} else {
-		ret = hwccf_irq_voter_ctrl(MM_HWCCF, g_mm_pd->mm_mtcmos[MM_PWR_MM_0].voter,
-			HWCCF_UNVOTE, g_mm_pd->mm_mtcmos[MM_PWR_MM_0].vote_bit);
-	}
-
-	return ret;
-}
-
-int mminfra1_onoff(bool on_off)
-{
-	int ret = 0;
-
-	if (on_off) {
-		ret = hwccf_irq_voter_ctrl(MM_HWCCF, g_mm_pd->mm_mtcmos[MM_PWR_MM_1].voter,
-			HWCCF_VOTE, g_mm_pd->mm_mtcmos[MM_PWR_MM_1].vote_bit);
-	} else {
-		ret = hwccf_irq_voter_ctrl(MM_HWCCF, g_mm_pd->mm_mtcmos[MM_PWR_MM_1].voter,
-			HWCCF_UNVOTE, g_mm_pd->mm_mtcmos[MM_PWR_MM_1].vote_bit);
-	}
-
-	return ret;
-}
-
-int mminfra_ao_onoff(bool on_off)
-{
-	int ret = 0;
-
-	if (on_off) {
-		ret = hwccf_irq_voter_ctrl(MM_HWCCF, g_mm_pd->mm_mtcmos[MM_PWR_MM_AO].voter,
-			HWCCF_VOTE, g_mm_pd->mm_mtcmos[MM_PWR_MM_AO].vote_bit);
-	} else {
-		ret = hwccf_irq_voter_ctrl(MM_HWCCF, g_mm_pd->mm_mtcmos[MM_PWR_MM_AO].voter,
-			HWCCF_UNVOTE, g_mm_pd->mm_mtcmos[MM_PWR_MM_AO].vote_bit);
-	}
-
-	return ret;
-}
-
-int mminfra2_onoff(bool on_off)
-{
-	int ret = 0;
-
-	if (on_off) {
-		ret = hwccf_irq_voter_ctrl(MM_HWCCF, g_mm_pd->mm_mtcmos[MM_PWR_MM_2].voter,
-			HWCCF_VOTE, g_mm_pd->mm_mtcmos[MM_PWR_MM_2].vote_bit);
-	} else {
-		ret = hwccf_irq_voter_ctrl(MM_HWCCF, g_mm_pd->mm_mtcmos[MM_PWR_MM_2].voter,
-			HWCCF_UNVOTE, g_mm_pd->mm_mtcmos[MM_PWR_MM_2].vote_bit);
-	}
-
-	return ret;
-}
-
-#if IS_ENABLED(CONFIG_MTK_MMINFRA)
 int mtk_mminfra_on_off(bool on_off, u32 mm_pwr, u32 mm_type)
 {
 	int ret = 0, ref_cnt, user_ref_cnt, i, temp_cnt;
@@ -290,7 +291,7 @@ int mtk_mminfra_on_off(bool on_off, u32 mm_pwr, u32 mm_type)
 			spin_unlock_irqrestore(&mminfra_pd_lock, flags);
 			return 0;
 		}
-
+#if IS_ENABLED(CONFIG_MTK_HWCCF)
 		// power on mminfra
 		if (mm_pwr == MM_PWR_MM_0)
 			ret = mminfra0_onoff(true);
@@ -300,6 +301,7 @@ int mtk_mminfra_on_off(bool on_off, u32 mm_pwr, u32 mm_type)
 			ret = mminfra_ao_onoff(true);
 		else if (mm_pwr == MM_PWR_MM_2)
 			ret = mminfra2_onoff(true);
+#endif
 	} else {
 		// minus ref_cnt
 		ref_cnt = atomic_dec_return(&g_mm_pd->mm_mtcmos[mm_pwr].ref_cnt);
@@ -327,7 +329,7 @@ int mtk_mminfra_on_off(bool on_off, u32 mm_pwr, u32 mm_type)
 			spin_unlock_irqrestore(&mminfra_pd_lock, flags);
 			return 0;
 		}
-
+#if IS_ENABLED(CONFIG_MTK_HWCCF)
 		// power off mminfra
 		if (mm_pwr == MM_PWR_MM_0)
 			ret = mminfra0_onoff(false);
@@ -337,6 +339,7 @@ int mtk_mminfra_on_off(bool on_off, u32 mm_pwr, u32 mm_type)
 			ret = mminfra_ao_onoff(false);
 		else if (mm_pwr == MM_PWR_MM_2)
 			ret = mminfra2_onoff(false);
+#endif
 	}
 
 	if (ret) {
@@ -385,7 +388,7 @@ int mtk_mminfra_on_off(bool on_off, u32 mm_pwr, u32 mm_type)
 	return ret;
 }
 EXPORT_SYMBOL_GPL(mtk_mminfra_on_off);
-#endif /* CONFIG_MTK_MMINFRA */
+#endif
 
 int mminfra_ctrl(struct cb_params *cb_para)
 {
@@ -398,7 +401,6 @@ int mminfra_ctrl(struct cb_params *cb_para)
 
 	return 0;
 }
-#endif
 
 static void mminfra_util_shutdown(struct platform_device *pdev)
 {
@@ -418,7 +420,6 @@ static void mminfra_util_shutdown(struct platform_device *pdev)
 static int mminfra_util_probe(struct platform_device *pdev)
 {
 	u32 i, j, tmp, vlp_base_pa;
-	int ret = 0;
 
 	g_mm_pd = devm_kzalloc(&pdev->dev, sizeof(*g_mm_pd), GFP_KERNEL);
 	g_mminfra_util = devm_kzalloc(&pdev->dev, sizeof(*g_mminfra_util), GFP_KERNEL);
@@ -472,7 +473,7 @@ static int mminfra_util_probe(struct platform_device *pdev)
 
 	spin_lock_init(&mminfra_pd_lock);
 #if IS_ENABLED(CONFIG_MTK_HWCCF)
-	ret = register_mtk_clk_external_api_cb(CLK_REQUEST_MMINFRA_CB, &mminfra_ctrl, NULL);
+	int ret = register_mtk_clk_external_api_cb(CLK_REQUEST_MMINFRA_CB, &mminfra_ctrl, NULL);
 	if (ret < 0) {
 		pr_notice("[mminfra] register mminfra callback fail!\n");
 	}
@@ -519,4 +520,4 @@ module_init(mtk_mminfra_util_init);
 module_exit(mtk_mminfra_util_exit);
 MODULE_DESCRIPTION("MTK MMInfra util driver");
 MODULE_AUTHOR("Kenny Liu<kenny.liu@mediatek.com>");
-MODULE_LICENSE("GPL v2");
+MODULE_LICENSE("GPL");
