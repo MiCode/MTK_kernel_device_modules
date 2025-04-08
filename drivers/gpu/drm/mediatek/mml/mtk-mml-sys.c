@@ -288,6 +288,8 @@ struct mml_sys {
 	bool pwr_control_by_mminfra;
 	u32 mminfra_pwr_idx;
 	u32 mminfra_pwr_type;
+
+	s32 dpc_auto_cnt;
 };
 
 struct sys_frame_data {
@@ -1436,12 +1438,14 @@ s32 mml_sys_pw_enable(struct mml_comp *comp, const s8 mode, bool pw_by_mminfra)
 
 	ret = mml_comp_pw_enable(comp, mode, sys->pwr_control_by_mminfra);
 
-	if (!ret && pwon) {
-		if (mode == MML_MODE_DIRECT_LINK ||
-			mode == MML_MODE_RACING ||
-			mode == MML_MODE_DDP_ADDON)
+	if (mml_iscouple(mode)) {
+		if (++sys->dpc_auto_cnt == 1)
 			mml_dpc_mtcmos_auto(comp->sysid, true, mode);
+		if (sys->dpc_auto_cnt <= 0)
+			mml_err("enable sys comp %u auto cnt %d", comp->id, sys->dpc_auto_cnt);
+	}
 
+	if (!ret && pwon) {
 		ret = clk_prepare_enable(sys->clk_sys_26m);
 		if (ret)
 			mml_err("%s clk_sys_26m fail %d", __func__, ret);
@@ -1456,13 +1460,14 @@ s32 mml_sys_pw_disable(struct mml_comp *comp, const s8 mode, bool pw_by_mminfra)
 	struct mml_sys *sys = comp_to_sys(comp);
 	bool pwoff = comp->pw_cnt == 1;
 
-	if (pwoff) {
+	if (pwoff)
 		clk_disable_unprepare(sys->clk_sys_26m);
 
-		if (mode == MML_MODE_DIRECT_LINK ||
-			mode == MML_MODE_RACING ||
-			mode == MML_MODE_DDP_ADDON)
+	if (mml_iscouple(mode)) {
+		if (--sys->dpc_auto_cnt == 0)
 			mml_dpc_mtcmos_auto(comp->sysid, false, mode);
+		if (sys->dpc_auto_cnt < 0)
+			mml_err("disable sys comp %u auto cnt %d", comp->id, sys->dpc_auto_cnt);
 	}
 
 	ret = mml_comp_pw_disable(comp, mode, sys->pwr_control_by_mminfra);
