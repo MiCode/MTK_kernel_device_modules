@@ -1829,6 +1829,8 @@
 		};
 
 		fhctl: fhctl@1000ce00 {
+			mcupm-supply = <&mcupm>;
+			gpueb-supply = <&gpueb>;
 			compatible = "mediatek,mt6895-fhctl";
 			reg = <0 0x1000ce00 0 0x200>, //AP FHCTL base
 			<0 0x1000c000 0 0xe00>, //APMIX base
