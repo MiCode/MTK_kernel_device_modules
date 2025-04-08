@@ -708,8 +708,6 @@ static const struct mtk_fixed_factor cksys_top_divs[] = {
 			"cksys_ssr_kdf_sel", 1, 1),
 	FACTOR(CKSYS_TOP_SSR_RNG, "cksys_ssr_rng_ck",
 			"cksys_ssr_rng_sel", 1, 1),
-	FACTOR(CKSYS_TOP_DXCC, "cksys_dxcc_ck",
-			"cksys_dxcc_sel", 1, 1),
 	FACTOR(CKSYS_TOP_AUD_1, "cksys_aud_1_ck",
 			"cksys_aud_1_sel", 1, 1),
 	FACTOR(CKSYS_TOP_AUD_2, "cksys_aud_2_ck",
@@ -912,6 +910,8 @@ static const struct mtk_fixed_factor cksys_mm_divs[] = {
 			"mm_ccusys_sel", 1, 1),
 	FACTOR(CKSYS_MM_AVS_IMG, "mm_avs_img_ck",
 			"cksys_vlp_f26m_ck", 1, 1),
+	FACTOR(CKSYS_MM_DVO_FAVT_DP, "mm_dvo_favt_dp_ck",
+			"mm_dvo_favt_dp_sel", 1, 1),
 };
 
 static const char * const cksys_axi_parents[] = {
