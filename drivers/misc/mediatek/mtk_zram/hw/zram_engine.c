@@ -1220,9 +1220,6 @@ static int comp_post_process(void *data)
 		WARN_ON(engine_gear_enable_clock_disable_irq(&hwz->ctrl, &hwz->gear_ctrl, true) != 0);
 #endif
 
-		/* Start of memory stall section - it's ok for current usage as zram swap. */
-		psi_memstall_enter(&pflags);
-
 		/* Reset total_processed */
 		total_processed = 0;
 
@@ -1233,6 +1230,9 @@ static int comp_post_process(void *data)
 		suspect_hang = 0;
 
 repeat:
+		/* Start of memory stall section - it's ok for current usage as zram swap. */
+		psi_memstall_enter(&pflags);
+
 		/* Processing fifo cmds */
 		processed = comp_window_post_process(hwz);
 
@@ -1271,6 +1271,9 @@ repeat:
 			atomic_inc(&enc_suspect_hang_count);
 		}
 
+		/* End of memory stall section */
+		psi_memstall_leave(&pflags);
+
 		/* Repeat until all compression cmds are processed */
 		cnt = atomic_read(&hwz->comp_cnt);
 		if (cnt > 0) {
@@ -1281,9 +1284,6 @@ repeat:
 			dump_fifo_idx(hwz, NULL, 0);
 			engine_gear_get_status(&hwz->gear_ctrl, NULL);
 		}
-
-		/* End of memory stall section */
-		psi_memstall_leave(&pflags);
 
 #ifndef FPGA_EMULATION
 		/*
