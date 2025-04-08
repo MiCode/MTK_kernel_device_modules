@@ -1401,11 +1401,8 @@ static int vdec_vcp_init(struct mtk_vcodec_ctx *ctx, unsigned long *h_vdec)
 	inst->vcu.signaled = false;
 	inst->vcu.signaled_res = false;
 	inst->put_frame_async = false;
-	ctx->input_driven = inst->vsi->input_driven;
-	ctx->output_async = inst->vsi->output_async;
 	ctx->ipi_blocked = &inst->vsi->ipi_blocked;
 	*(ctx->ipi_blocked) = 0;
-	ctx->low_pw_mode = inst->vsi->low_pw_mode;
 
 	mtk_v4l2_debug(0, "[%d] %s(%d) Decoder Instance >> %p, ap_inst_addr %llx",
 		ctx->id, FOURCC_STR(fourcc),

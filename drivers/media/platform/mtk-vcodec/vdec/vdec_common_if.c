@@ -130,11 +130,8 @@ static int vdec_init(struct mtk_vcodec_ctx *ctx, unsigned long *h_vdec)
 	VCU_FPTR(vcu_set_v4l2_callback)(inst->vcu.dev, &cb);
 
 	inst->vsi = (struct vdec_vsi *)inst->vcu.vsi;
-	ctx->input_driven = inst->vsi->input_driven;
-	ctx->output_async = inst->vsi->output_async;
 	ctx->ipi_blocked = &inst->vsi->ipi_blocked;
 	*(ctx->ipi_blocked) = 0;
-	ctx->low_pw_mode = inst->vsi->low_pw_mode;
 
 	mtk_vcodec_debug(inst, "Decoder Instance >> %p", inst);
 
@@ -310,6 +307,7 @@ static int vdec_decode(unsigned long h_vdec, struct mtk_vcodec_mem *bs,
 
 	inst->ctx->input_driven = inst->vsi->input_driven;
 	inst->ctx->output_async = inst->vsi->output_async;
+	inst->ctx->low_pw_mode  = inst->vsi->low_pw_mode > 0;
 	inst->num_nalu++;
 	return ret;
 
