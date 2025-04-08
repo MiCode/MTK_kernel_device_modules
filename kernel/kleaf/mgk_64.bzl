@@ -22,7 +22,6 @@ mgk_64_kleaf_modules = [
     "//vendor/mediatek/kernel_modules/connectivity/bt/mt66xx:btif",
     "//vendor/mediatek/kernel_modules/connectivity/bt/mt66xx/wmt:wmt",
     #"//vendor/mediatek/kernel_modules/connectivity/bt/mt76xx/sdio:btmtksdio",
-    "//vendor/mediatek/kernel_modules/connectivity/common:wmt_drv",
     "//vendor/mediatek/kernel_modules/connectivity/connfem:connfem",
     "//vendor/mediatek/kernel_modules/connectivity/fmradio:fmradio",
     "//vendor/mediatek/kernel_modules/connectivity/fmradio:fmradio-connac2",
@@ -1553,6 +1552,7 @@ mgk_64_kleaf_platform_modules = {
 
   ## write vendor file by platform here
 
+    "//vendor/mediatek/kernel_modules/connectivity/common:wmt_drv":"mt6789 mt6855",
     "//vendor/mediatek/kernel_modules/connectivity/conninfra:conninfra":"mt6858 mt6877 mt6878 mt6879 mt6880 mt6885 mt6886 mt6890 mt6893 mt6895 mt6897 mt6899 mt6983 mt6985 mt6989 mt6991 mt6993",
     "//vendor/mediatek/kernel_modules/hbt_driver_cus:hbt_cus":"mt6886 mt6897 mt6985 mt6989 mt6991 mt6899 mt6993",
     "//vendor/mediatek/kernel_modules/hbt_driver:hbt_int":"mt6886 mt6897 mt6985 mt6989 mt6991 mt6899 mt6993",
