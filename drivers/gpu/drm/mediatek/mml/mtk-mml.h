@@ -186,6 +186,7 @@ enum mml_pq_video_mode {
 	MML_PQ_HLG,
 	MML_PQ_APP,
 	MML_PQ_CV_BASED_SDR,
+	MML_PQ_DV,
 };
 
 struct mml_pq_param {
@@ -205,6 +206,7 @@ struct mml_pq_param {
 	uint32_t current_panel_lum;
 	bool svp;
 	bool bypass_all_alg;
+	float brightness;
 };
 
 struct mml_color_desc {
