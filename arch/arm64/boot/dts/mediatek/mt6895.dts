@@ -6779,13 +6779,13 @@
 		};
 
 		hcp: hcp@0 {
-			compatible = "mediatek,hcp";
+			compatible = "mediatek,hcp71";
 			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
 			iommus = <&mdp_iommu M4U_LARB15_PORT0>;
 		};
 
 		imgsys_fw: imgsys_fw@15000000 {
-			compatible = "mediatek,imgsys";
+			compatible = "mediatek,imgsys-isp71";
 			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
 			reg = <0 0x15000000 0 0x4000>,	/* 0 IMGSYS_TOP */
 			      <0 0x15020000 0 0x10000>,	/* 1 IMGSYS_TRAW */
@@ -6807,6 +6807,7 @@
 			      <0 0x15110000 0 0x00100>,	/* 16 IMGSYS_DIP_TOP */
 			      <0 0x15130000 0 0x00100>;	/* 17 IMGSYS_DIP_TOP_NR */
 			mediatek,hcp = <&hcp>;
+			mediatek,imgsys-cmdq = <&imgsys_cmdq>;
 			mediatek,larbs = <&smi_larb9>,
 					 <&smi_larb10>,
 					 <&smi_larb11>,
@@ -6815,9 +6816,9 @@
 					 <&smi_larb23>,
 					 <&smi_larb18>,
 					 <&smi_larb12>;
-			iommus = <&disp_iommu M4U_LARB9_PORT0>,
-				 <&disp_iommu M4U_LARB10_PORT10>,
-				 <&disp_iommu M4U_LARB11_PORT0>;
+			iommus = <&disp_iommu M4U_LARB9_PORT0>;
+				 // <&disp_iommu M4U_LARB10_PORT10>,
+				 // <&disp_iommu M4U_LARB11_PORT0>;
 			mboxes = <&gce_m 0 3000 CMDQ_THR_PRIO_2>,
 				 <&gce_m 1 3000 CMDQ_THR_PRIO_2>,
 				 <&gce_m 2 3000 CMDQ_THR_PRIO_2>,
@@ -7880,6 +7881,12 @@
 	#endif
 					"l9_common_0",
 					"l12_common_1";
+		};
+
+		imgsys_cmdq: imgsys-cmdq@15002000 {
+			compatible = "mediatek,imgsys-cmdq";
+			//dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
+			reg = <0 0x15002000 0 0x4000>;
 		};
 
 	dvs: dvs@15300000 {
