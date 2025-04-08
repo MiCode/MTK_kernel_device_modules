@@ -2803,22 +2803,44 @@ static int dpc_smi_force_on_callback(struct notifier_block *nb, unsigned long ac
 
 	return NOTIFY_DONE;
 }
+
 static int dpc_smi_pwr_get(void *data)
 {
+	int i;
+
 	DPCFUNC("+");
+	for (i = 0; i < g_priv->pwr_clk_num; i++) {
+		if (IS_ERR(g_priv->pwr_clk[i])) {
+			DPCDUMP("%s invalid %d clk\n", __func__, i);
+			return -1;
+		}
+		clk_prepare_enable(g_priv->pwr_clk[i]);
+	}
 	return 0;
 }
+
 static int dpc_smi_pwr_put(void *data)
 {
+	int i;
+
 	DPCFUNC("-");
+	for (i = g_priv->pwr_clk_num - 1; i >= 0; i--) {
+		if (IS_ERR(g_priv->pwr_clk[i])) {
+			DPCDUMP("%s invalid %d clk\n", __func__, i);
+			return -1;
+		}
+		clk_disable_unprepare(g_priv->pwr_clk[i]);
+	}
 	return 0;
 }
+
 static struct smi_user_pwr_ctrl dpc_smi_pwr_funcs_v3 = {
 	 .name = "disp_dpc",
 	 .data = NULL,
 	 .smi_user_id =  MTK_SMI_DISP,
 	 .smi_user_get = dpc_smi_pwr_get,
 	 .smi_user_put = dpc_smi_pwr_put,
+	 .smi_user_get_if_in_use = dpc_smi_pwr_get,
 };
 
 static struct dpc_funcs funcs_v3 = {
