@@ -654,6 +654,10 @@ int vcu_enc_set_param(struct venc_vcu_inst *vcu,
 		out.data_item = 1;
 		out.data[0] = enc_param->compatibility_option;
 		break;
+	case VENC_SET_PARAM_TIMING_INFO:
+		out.data_item = 1;
+		out.data[0] = enc_param->timing_info;
+		break;
 	default:
 		mtk_vcodec_err(vcu, "id %d not supported", id);
 		return -EINVAL;

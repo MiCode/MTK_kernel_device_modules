@@ -152,6 +152,7 @@ enum venc_set_param_type {
 	VENC_SET_PARAM_ADAB_INFO,
 	VENC_SET_PARAM_I_FRM_SZ_CTRL,
 	VENC_SET_PARAM_COMPATIBILITY_OPTION,
+	VENC_SET_PARAM_TIMING_INFO,
 };
 
 #define VENC_MSG_AP_SEND_PREFIX	\
@@ -564,6 +565,7 @@ struct venc_vcu_config {
 	struct v4l2_venc_adab_info adab_info;
 	struct v4l2_venc_i_frame_size_control i_frm_sz_ctrl;
 	__u32 compatibility_option;
+	__u32 timing_info;
 };
 
 /**

@@ -1069,6 +1069,13 @@ static int vidioc_venc_s_ctrl(struct v4l2_ctrl *ctrl)
 		p->compatibility_option= ctrl->val;
 		ctx->param_change |= MTK_ENCODE_PARAM_COMPATIBILITY_OPTION;
 		break;
+	case V4L2_CID_MTK_VIDEO_ENC_TIMING_INFO:
+		mtk_v4l2_debug(2,
+			"V4L2_CID_MTK_VIDEO_ENC_TIMING_INFO: %d",
+			ctrl->val);
+		p->timing_info= ctrl->val;
+		ctx->param_change |= MTK_ENCODE_PARAM_TIMING_INFO;
+		break;
 	default:
 		mtk_v4l2_debug(4, "ctrl-id=%d not support!", ctrl->id);
 		ret = -EINVAL;
@@ -1687,6 +1694,7 @@ static void mtk_venc_set_param(struct mtk_vcodec_ctx *ctx,
 	param->i_frm_sz_ctrl = &enc_params->i_frm_sz_ctrl;
 	param->query_encode_param = enc_params->query_encode_param;
 	param->compatibility_option = enc_params->compatibility_option;
+	param->timing_info = enc_params->timing_info;
 	vcodec_trace_end();
 }
 
@@ -3663,6 +3671,13 @@ static int mtk_venc_param_change(struct mtk_vcodec_ctx *ctx)
 		ret |= venc_if_set_param(ctx, VENC_SET_PARAM_COMPATIBILITY_OPTION, &enc_prm);
 	}
 
+	if (!ret && mtkbuf->param_change & MTK_ENCODE_PARAM_TIMING_INFO) {
+		enc_prm.timing_info = mtkbuf->enc_params.timing_info;
+		mtk_v4l2_err("[%d] idx=%d, timing_info %d",
+			ctx->id, mtkbuf->vb.vb2_buf.index, mtkbuf->enc_params.timing_info);
+		ret |= venc_if_set_param(ctx, VENC_SET_PARAM_TIMING_INFO, &enc_prm);
+	}
+
 	mtkbuf->param_change = MTK_ENCODE_PARAM_NONE;
 
 	if (ret) {
@@ -4999,6 +5014,20 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	cfg.def = 0;
 	cfg.ops = ops;
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
+
+	ctx->enc_params.timing_info = 0;
+	memset(&cfg, 0, sizeof(cfg));
+	cfg.id = V4L2_CID_MTK_VIDEO_ENC_TIMING_INFO;
+	cfg.type = V4L2_CTRL_TYPE_INTEGER;
+	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
+	cfg.name = "Video encode timing info";
+	cfg.min = 0;
+	cfg.max = 1;
+	cfg.step = 1;
+	cfg.def = 0;
+	cfg.ops = ops;
+	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
+
 
 	return 0;
 }
