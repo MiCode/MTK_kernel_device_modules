@@ -28,11 +28,11 @@ filegroup(
 define_mgk_ddk_ko(
     name = "mtk_hwz",
     srcs = [
-	"hw/zram_engine.c",
-	"hw/engine_dst_copy.c",
-	"hw/helpers.c",
-	"hw/engine_control.c",
-	"hw/engine_gears_control.c",
+    "hw/zram_engine.c",
+    "hw/engine_dst_copy.c",
+    "hw/helpers.c",
+    "hw/engine_control.c",
+    "hw/engine_gears_control.c",
     ],
     conditional_srcs = {
         "CONFIG_HWCOMP_SUPPORT_NO_DST_COPY": {
@@ -59,26 +59,28 @@ define_mgk_ddk_ko(
 	"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtk_zram/hw",
     ],
     local_defines = [
-#       "FPGA_EMULATION",		# For FPGA emulation
-#	"ENGINE_BYPASS_SMMU",		# Bypass SMMU
-#	"ZRAM_ENGINE_DEBUG",		# Dump debug log
+#       "FPGA_EMULATION",       # For FPGA emulation
+#   	"ENGINE_BYPASS_SMMU",   # Bypass SMMU
+#   	"ZRAM_ENGINE_DEBUG",    # Dump debug log
     ],
 )
 
 define_mgk_ddk_ko(
     name = "mtk_zram",
     srcs = [
-	"mtk_zram_drv.c",
-	"zcomp.c",
+    "mtk_zram_drv.c",
+    "zcomp.c",
     ],
     hdrs = glob(["**/*.h"]),
     ko_deps = [
-	"//kernel_device_modules-{}/drivers/misc/mediatek/mtk_zram:mtk_hwz".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/kcompressd:kcompressd".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mtk_zram:mtk_hwz".format(kernel_version),
     ],
     includes = ["."],
     copts = [
-	"-I$(srctree)/mm",
-	"-I$(srctree)/$(src)",
-	"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtk_zram",
+    "-I$(srctree)/mm",
+    "-I$(srctree)/$(src)",
+    "-I$(DEVICE_MODULES_PATH)/include/linux",
+    "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtk_zram",
     ],
 )

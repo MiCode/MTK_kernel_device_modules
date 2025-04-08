@@ -12,6 +12,7 @@
 #
 ccflags-y += -I$(src)              	# needed for trace events
 ccflags-y += -I$(srctree)/mm
+ccflags-y += -I$(DEVICE_MODULES_PATH)/include/linux
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtk_zram
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtk_zram/hw
 

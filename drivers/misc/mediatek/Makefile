@@ -118,5 +118,6 @@ obj-$(CONFIG_MTK_PPM_V3) += ppm_v3/
 obj-$(CONFIG_MTK_MT6382_BDG) += spi_slave_drv/
 obj-$(CONFIG_MTK_SPM_CAREVENT) += carevent/
 obj-$(CONFIG_ARM) += arm_div/
+obj-$(CONFIG_MTK_KCOMPRESSD) += kcompressd/
 obj-$(CONFIG_ROOTFS_CHECK) += rootfs_check/
 obj-$(CONFIG_MTK_SPM_VHOST_DMABUF_PHYS) += vhost_dmabuf_phys/

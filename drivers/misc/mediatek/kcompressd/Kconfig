@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: GPL-2.0
+config MTK_KCOMPRESSD
+	tristate "Kcompressd: Accelerated zram compression"
+	help
+	  Kcompressd creates multiple daemons to accelerate the compression of pages
+	  in zram, offloading this time-consuming task from the zram driver.
+
+	  This approach improves system efficiency by handling page compression separately,
+	  which was originally done by kswapd or direct reclaim.
+

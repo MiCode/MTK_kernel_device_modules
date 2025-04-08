@@ -37,6 +37,7 @@
 #include <linux/debugfs.h>
 #include <linux/cpuhotplug.h>
 #include <linux/part_stat.h>
+#include <linux/kcompressd.h>
 
 #include "hwcomp_bridge.h"
 
@@ -51,6 +52,38 @@ static const char *default_mode = "hwonly";
 #else
 static const char *default_mode = "swonly";
 #endif
+
+static DEFINE_STATIC_KEY_TRUE(hwzram_enabled);
+static inline bool is_hwzram_enabled(void)
+{
+	return static_branch_likely(&hwzram_enabled);
+}
+
+static DEFINE_STATIC_KEY_FALSE(kcompressd_enabled);
+static inline bool is_kcompressd_enabled(void)
+{
+	return static_branch_unlikely(&kcompressd_enabled);
+}
+
+/* Set a value to stand for fifo depth */
+#define HWZRAM_IS_BUSY	(1 << CONFIG_ZRAM_ENGINE_COMP_FIFO_BITS)
+static atomic_t hwzram_busy = ATOMIC_INIT(0);
+static inline bool is_hwzram_busy(void)
+{
+	return (atomic_read(&hwzram_busy) != 0);
+}
+
+static inline void mark_hwzram_busy(void)
+{
+	if(is_kcompressd_enabled())
+		atomic_set(&hwzram_busy, HWZRAM_IS_BUSY);
+}
+
+static inline void mark_hwzram_not_busy(void)
+{
+	if(is_kcompressd_enabled())
+		atomic_dec_if_positive(&hwzram_busy);
+}
 
 /* Module params (documentation at end) */
 static unsigned int num_devices = 1;
@@ -2721,6 +2754,9 @@ static void hwcomp_compress_post_process_dc(int err, void *buffer, unsigned int 
 	zram_accessed(zram, index);
 	zram_slot_unlock(zram, index);
 
+	/* Mark hwzram not busy if necessary */
+	mark_hwzram_not_busy();
+
 	/* Update stats */
 	atomic64_inc(&zram->stats.pages_stored);
 
@@ -2849,6 +2885,10 @@ again:
 
 	/* Wait for HW available */
 	if (ret == -EBUSY) {
+
+		/* Mark hwzram busy if necessary */
+		mark_hwzram_busy();
+
 		if (wait) {
 #ifdef ZRAM_ENGINE_DEBUG
 			pr_info_ratelimited("%s: HW is busy, waiting for available.\n", __func__);
@@ -3257,10 +3297,19 @@ retry:
 	/* Determine operations */
 	zram->ops = &mode_ops[i];
 
-	/* Support BLK_FEAT_SYNCHRONOUS when it's swonly (TODO) */
-	if (!strcmp(mode, "swonly"))
-		zram->disk->queue->limits.features |= BLK_FEAT_SYNCHRONOUS;
+	/* Default setting for hwonly (also compatible for ndc:hwonly & ndc:hybrid) */
+	static_branch_enable(&hwzram_enabled);
+	static_branch_disable(&kcompressd_enabled);
 
+	/* Select different configuration */
+	if (!strcmp(mode, "swonly")) {
+		static_branch_disable(&hwzram_enabled);
+		static_branch_enable(&kcompressd_enabled);
+	} else if (!strcmp(mode, "hybrid")) {
+		static_branch_enable(&kcompressd_enabled);
+	}
+
+	/* Override SW algorithm if necessary before creating zcomp instance */
 	comp_mode_set_algorithm(zram);
 }
 
@@ -3299,6 +3348,13 @@ static ssize_t comp_mode_store(struct device *dev,
 	return len;
 }
 
+static void zram_bio_write_callback(void *mem, struct bio *bio)
+{
+	struct zram *zram = (struct zram *)mem;
+
+	zram_bio_write(zram, bio);
+}
+
 /*
  * Handler function for all zram I/O requests.
  */
@@ -3311,7 +3367,18 @@ static void zram_submit_bio(struct bio *bio)
 		zram->ops->bio_read(zram, bio);
 		break;
 	case REQ_OP_WRITE:
-		zram->ops->bio_write(zram, bio);
+		if(is_hwzram_enabled()) {
+			if(is_kcompressd_enabled() && is_hwzram_busy()) {
+				if(schedule_bio_write(zram, bio, zram_bio_write_callback))
+					zram_bio_write(zram, bio);
+			} else {
+				zram->ops->bio_write(zram, bio);
+			}
+		} else {
+			/* kcompressd is enabled by default when hwzram is disabled */
+			if(schedule_bio_write(zram, bio, zram_bio_write_callback))
+				zram_bio_write(zram, bio);
+		}
 		break;
 	case REQ_OP_DISCARD:
 	case REQ_OP_WRITE_ZEROES:

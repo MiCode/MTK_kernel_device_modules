@@ -1,21 +1,22 @@
-config MTK_ZRAM
-	tristate "MTK zram feature"
-	depends on BLOCK && SYSFS && MMU
-	depends on CRYPTO_LZ4
-	select ZSMALLOC
-	help
-	  Creates virtual block devices called /dev/block/zramX (X = 0, 1, ...).
-	  Pages written to these disks are compressed and stored in memory itself.
-	  These disks allow very fast I/O and compression provides good amounts of
-	  memory savings.
-	  If you are not sure about whether to enable it or not, please set n.
-
 config MTK_ZRAM_ENGINE
 	tristate "MTK zram engine feature"
 	help
 	  MTK proprietary compression engine, which is highly integrated with
 	  ZRAM to provide fast and light-loading compression tasks.
 	  This is used for the improvement of sw compression over some scenarios.
+	  If you are not sure about whether to enable it or not, please set n.
+
+config MTK_ZRAM
+	tristate "MTK zram feature"
+	depends on BLOCK && SYSFS && MMU
+	depends on CRYPTO_LZ4
+	depends on MTK_ZRAM_ENGINE && MTK_KCOMPRESSD
+	select ZSMALLOC
+	help
+	  Creates virtual block devices called /dev/block/zramX (X = 0, 1, ...).
+	  Pages written to these disks are compressed and stored in memory itself.
+	  These disks allow very fast I/O and compression provides good amounts of
+	  memory savings.
 	  If you are not sure about whether to enable it or not, please set n.
 
 config ZRAM_ENGINE_COMP_FIFO_BITS
