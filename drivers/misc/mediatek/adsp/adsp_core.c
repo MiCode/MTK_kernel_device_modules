@@ -632,6 +632,7 @@ int adsp_reset(void)
 	/* restart adsp */
 	for (cid = 0; cid < get_adsp_core_total(); cid++) {
 		pdata = adsp_cores[cid];
+		set_adsp_state(pdata, ADSP_RESET);
 
 		/* v1: adsp mpu info reinit */
 		if (adspsys->desc->version == 1)
@@ -642,6 +643,7 @@ int adsp_reset(void)
 		ret = wait_for_completion_timeout(&pdata->done, HZ);
 
 		if (unlikely(ret == 0)) {
+			adsp_mbox_dump();
 			adsp_core_stop(cid);
 			pr_warn("%s, core %d reset timeout\n", __func__, cid);
 			return -ETIME;
