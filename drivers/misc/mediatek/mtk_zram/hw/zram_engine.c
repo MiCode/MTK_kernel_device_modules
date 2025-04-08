@@ -1160,6 +1160,17 @@ static uint32_t comp_window_post_process(struct zram_engine_t *hwz)
 
 	/* Do fifo switch */
 	if (do_fifo_switch) {
+
+		/*
+		 * do_fifo_switch is not allowed before current fifo is empty.
+		 * Return processed back and give it a try.
+		 * If processed is still 0, comp_hang_handle will kick the engine
+		 * again to make the remaining requests in current fifo processed
+		 * by HW completely.
+		 */
+		if (!comp_fifo_empty(fifo))
+			goto exit;
+
 		spin_lock(&hwz->comp_fifo_lock);
 
 		/* Reset curr fifo accumulate usage to 0 and change curr fifo */
@@ -1174,6 +1185,7 @@ static uint32_t comp_window_post_process(struct zram_engine_t *hwz)
 		spin_unlock(&hwz->comp_fifo_lock);
 	}
 
+exit:
 	return processed;
 }
 
@@ -1571,8 +1583,8 @@ next_cmd_fifo:
 	/* Query entry and fill request */
 	entry = comp_fifo_write_entry(fifo);
 	valid = hwz->ops->fill_compression_info(fifo, entry, page, pp_info, true);
-	fifo->accu_usage++;
 	update_comp_fifo_write_index(fifo);
+	fifo->accu_usage++;
 
 	/* Try next cmd if necessary */
 	if (!valid)
@@ -1615,8 +1627,8 @@ next_cmd_pfifo:
 	/* Query entry and fill request */
 	entry = comp_fifo_write_entry(pfifo);
 	valid = hwz->ops->fill_compression_info(pfifo, entry, page, pp_info, true);
-	pfifo->accu_usage++;
 	update_comp_pfifo_write_index(pfifo);
+	pfifo->accu_usage++;
 
 	/* Try next cmd if necessary */
 	if (!valid)
