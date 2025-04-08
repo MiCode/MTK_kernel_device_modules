@@ -293,6 +293,29 @@ static void mtk_iommu_detach_device(struct iommu_domain *domain,
 	mtk_iommu_config(data, dev, false);
 }
 
+static int mtk_iommu_identity_attach(struct iommu_domain *identity_domain,
+					struct device *dev)
+{
+	struct mtk_iommu_data *data = dev_iommu_priv_get(dev);
+
+	if (!data) {
+		dev_info(dev, "Get iommu data fail\n");
+		return -EINVAL;
+	}
+
+	mtk_iommu_config(data, dev, false);
+	return 0;
+}
+
+static struct iommu_domain_ops mtk_iommu_identity_ops = {
+	.attach_dev = mtk_iommu_identity_attach,
+};
+
+static struct iommu_domain mtk_iommu_identity_domain = {
+	.type = IOMMU_DOMAIN_IDENTITY,
+	.ops = &mtk_iommu_identity_ops,
+};
+
 static int mtk_iommu_map(struct iommu_domain *domain, unsigned long iova,
 			 phys_addr_t paddr, size_t size, int prot, gfp_t gfp)
 {
@@ -522,6 +545,7 @@ static int mtk_iommu_hw_init(const struct mtk_iommu_data *data)
 }
 
 static const struct iommu_ops mtk_iommu_ops = {
+	.identity_domain = &mtk_iommu_identity_domain,
 	.domain_alloc	= mtk_iommu_domain_alloc,
 	.domain_free	= mtk_iommu_domain_free,
 	.attach_dev	= mtk_iommu_attach_device,
