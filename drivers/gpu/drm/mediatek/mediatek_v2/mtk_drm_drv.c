@@ -1469,6 +1469,11 @@ static enum mml_mode _mtk_atomic_mml_plane(struct drm_device *dev,
 		return MML_MODE_UNKNOWN;
 
 	crtc = mtk_plane_state->crtc;
+	if (unlikely(!crtc)) {
+		DDPPR_ERR("%s:crtc is NULL\n", __func__);
+		return MML_MODE_UNKNOWN;
+	}
+
 	mtk_crtc = to_mtk_crtc(crtc);
 	crtc_state = to_mtk_crtc_state(crtc->state);
 	fps = drm_mode_vrefresh(&crtc->state->adjusted_mode);

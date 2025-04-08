@@ -1540,6 +1540,11 @@ void mtk_drm_crtc_mini_dump(struct drm_crtc *crtc)
 					&mtk_crtc->sys_b_side_config_regs_pa);
 				priv->dispsys_data->config_dump_reg(mtk_crtc->sys_b_side_config_regs);
 			}
+
+			for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
+				if (comp && (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_DBI_COUNT))
+					mtk_dump_reg(comp);
+			}
 			break;
 	case MMSYS_MT6897:
 		DDPDUMP("== DISP pipe-0 OVLSYS_CONFIG REGS:0x%pa ==\n",
