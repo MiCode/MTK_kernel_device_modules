@@ -22898,6 +22898,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 /delete-node/ &mt6661_6_ldc0_4_eint_high;
 /delete-node/ &mt6661_6_ldc0_4_eint_low;
 
+/* delete VSIM1/2 node */
+/delete-node/ &mt6661_6_ld20_1;
+/delete-node/ &mt6661_6_ld20_2;
+
 &spmi {
         pmic: mt6661-4@4 {
 		mt6661_dynamic_loading_throttling: mtk-dynamic-loading-throttling {
