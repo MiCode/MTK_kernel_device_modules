@@ -332,11 +332,26 @@ static int mt635x_get_ecid(struct device *dev, struct mt635x_efuse *efuse)
 	struct device_node *np, *ecid_np;
 	int ret = 0, elems_count = 0, slvid = 0;
 	u16 pmic_ecid[EFUSE_ECID_SIZE] = {0};
+	const char *compatible_pmic_ecid;
+	const char *compatible_efuse_dev;
 
 	np = of_find_node_by_name(dev->parent->of_node, "pmic-ecid");
 	if (!np) {
 		dev_notice(dev, "\"pmic-ecid\" dts node not found.\n");
 		return -ENODEV;
+	}
+
+	if (of_property_read_string(np, "compatible", &compatible_pmic_ecid)) {
+		dev_notice(dev, "Failed to read compatible property of pmic-ecid node\n");
+		return -EINVAL;
+	}
+	if (of_property_read_string(dev->of_node, "compatible", &compatible_efuse_dev)) {
+		dev_notice(dev, "Failed to read compatible property of efuse dev node\n");
+		return -EINVAL;
+	}
+	if (strcmp(compatible_pmic_ecid, compatible_efuse_dev) != 0) {
+		dev_info(dev, "compatible is different\n");
+		return -EINVAL;
 	}
 
 	for_each_child_of_node(np, ecid_np) {
