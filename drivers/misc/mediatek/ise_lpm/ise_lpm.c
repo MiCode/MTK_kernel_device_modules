@@ -517,7 +517,7 @@ static int ise_lpm_probe(struct platform_device *pdev)
 		ise_req_pending_cnt = 0;
 		timer_setup(&ise_lpm_pd_timer, ise_lpm_pwr_off_cb, 0);
 		mutex_unlock(&mutex_ise_lpm);
-		proc_create("ise_lpm_dbg", 0664, NULL, &ise_lpm_dbg_fops);
+		proc_create("ise_lpm_dbg", 0200, NULL, &ise_lpm_dbg_fops);
 
 		ise_lpm_dev = &pdev->dev;
 		pm_runtime_enable(ise_lpm_dev);
