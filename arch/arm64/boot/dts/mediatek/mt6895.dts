@@ -5359,7 +5359,7 @@
 		mmdvfs {
 			compatible = "mediatek,mmdvfs";
 			operating-points-v2 = <&opp_table_mminfra>;
-			mediatek,support_mux = "disp0", "disp1",
+			mediatek,support-mux = "disp0", "disp1",
 				"mminfra", "venc", "vdec", "mdp0", "mdp1";
 			mediatek,mux-disp0 = "TOP_UNIVPLL_D6_D2",
 				"TOP_UNIVPLL_D5_D2", "TOP_MAINPLL_D5",
