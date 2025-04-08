@@ -2,7 +2,6 @@
 //
 // Copyright (c) 2024 MediaTek Inc.
 
-// #include <linux/errno.h>
 #include <linux/interrupt.h>
 #include <linux/math.h>
 #include <linux/mfd/mt6667/registers.h>
@@ -16,11 +15,9 @@
 #include <linux/regulator/mt6667-regulator.h>
 #include <linux/regulator/of_regulator.h>
 
-#define SET_OFFSET	0x1
-#define CLR_OFFSET	0x2
-#define OP_CFG_OFFSET	0x5
-#define NORMAL_OP_CFG	0x10
-#define NORMAL_OP_EN	0x800000
+#define SET_OFFSET		0x1
+#define CLR_OFFSET		0x2
+#define HW_NORMAL_OP_EN		0x2
 #define STRGINGIFY(x)	#x
 #define CONCAT_AND_STRGINGIFY(x, y) STRGINGIFY(x##_##y)
 
@@ -48,7 +45,7 @@
  * @modeset_reg: for operating AUTO/PWM mode register.
  * @modeset_mask: MASK for operating modeset register.
  * @lp_imax_uA: Maximum load current in Low power mode.
- * @op_en_reg: for HW control operating mode register.
+ * @hw_op_en_reg: for HW control operating mode register.
  */
 struct mt6667_regulator_info {
 	int irq;
@@ -64,12 +61,9 @@ struct mt6667_regulator_info {
 	u32 da_en_mask;
 	u32 da_lp_mask;
 	int lp_imax_uA;
-	u32 op_en_reg;
-	u32 orig_op_en;
-	u32 orig_op_cfg;
+	u32 hw_op_en_reg;
 };
 
-// TODO: lp_imax_uA
 #define MT6667_BUCK(_name, _min, _max, _step, _volt_ranges,	\
 		    _enable_reg, _en_bit, _vsel_reg, _vsel_mask,\
 		    _lp_mode_reg, _lp_bit,			\
@@ -103,8 +97,8 @@ struct mt6667_regulator_info {
 	.da_lp_mask = 0xc,					\
 	.modeset_reg = _modeset_reg,				\
 	.modeset_mask = BIT(modeset_bit),			\
-	.lp_imax_uA = 100000,					\
-	.op_en_reg = MT6667_##_name##_OP_EN_0,			\
+	.lp_imax_uA = 3000000,					\
+	.hw_op_en_reg = MT6667_##_name##_OP_EN_1,		\
 }
 
 static const struct linear_range mt_volt_range0[] = {
@@ -235,11 +229,10 @@ static int mt6667_regulator_set_mode(struct regulator_dev *rdev,
 	return ret;
 }
 
-// TODO:
 static int mt6667_regulator_set_load(struct regulator_dev *rdev, int load_uA)
 {
-	int i, ret;
 	struct mt6667_regulator_info *info = rdev_get_drvdata(rdev);
+	int ret = 0;
 
 	/* not support */
 	if (!info->lp_imax_uA)
@@ -249,20 +242,20 @@ static int mt6667_regulator_set_load(struct regulator_dev *rdev, int load_uA)
 		ret = mt6667_regulator_set_mode(rdev, REGULATOR_MODE_NORMAL);
 		if (ret)
 			return ret;
-		ret = regmap_write(rdev->regmap, info->op_en_reg + OP_CFG_OFFSET, NORMAL_OP_CFG);
-		for (i = 0; i < 3; i++) {
-			ret |= regmap_write(rdev->regmap, info->op_en_reg + i,
-					    (NORMAL_OP_EN >> (i * 8)) & 0xff);
-		}
+		/* enable HW1_OP_EN (HW1 default high) */
+		ret = regmap_update_bits(rdev->regmap,
+					 info->hw_op_en_reg,
+					 HW_NORMAL_OP_EN, HW_NORMAL_OP_EN);
+		dev_info(&rdev->dev,
+			 "[%s] %s force normal mode\n", __func__, info->desc.name);
 	} else {
-		ret = regmap_write(rdev->regmap, info->op_en_reg + OP_CFG_OFFSET,
-				   info->orig_op_cfg);
-		for (i = 0; i < 3; i++) {
-			ret |= regmap_write(rdev->regmap, info->op_en_reg + i,
-					    (info->orig_op_en >> (i * 8)) & 0xff);
-		}
+		/* disable HW1_OP_EN */
+		ret = regmap_update_bits(rdev->regmap,
+					 info->hw_op_en_reg,
+					 HW_NORMAL_OP_EN, 0);
+		dev_info(&rdev->dev,
+			 "[%s] %s restore to original setting\n", __func__, info->desc.name);
 	}
-
 	return ret;
 }
 

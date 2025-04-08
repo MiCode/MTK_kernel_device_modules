@@ -480,8 +480,8 @@ static irqreturn_t lvsys_f_int_handler(int irq, void *data)
 #endif
 	event = EVENT_LVSYS_F | *(lvsys_notify->cur_lv_ptr);
 	if (int_notify == SPMI_RCS) {
-		dev_notice(lvsys_notify->dev, "event: falling %dmV(SPMI RCS)\n", *(lvsys_notify->cur_lv_ptr));
 		blocking_notifier_call_chain(&lvsys_notifier_list, event, NULL);
+		dev_notice(lvsys_notify->dev, "event: falling %dmV(SPMI RCS)\n", *(lvsys_notify->cur_lv_ptr));
 	} else if (int_notify == GPIO)
 		dev_notice(lvsys_notify->dev, "event: falling %dmV(GPIO)\n", *(lvsys_notify->cur_lv_ptr));
 
@@ -519,8 +519,8 @@ static irqreturn_t lvsys_r_int_handler(int irq, void *data)
 #endif
 	event = EVENT_LVSYS_R | *(lvsys_notify->cur_hv_ptr);
 	if (int_notify == SPMI_RCS) {
-		dev_notice(lvsys_notify->dev, "event: rising %dmV(SPMI RCS)\n", *(lvsys_notify->cur_hv_ptr));
 		blocking_notifier_call_chain(&lvsys_notifier_list, event, NULL);
+		dev_notice(lvsys_notify->dev, "event: rising %dmV(SPMI RCS)\n", *(lvsys_notify->cur_hv_ptr));
 	} else if (int_notify == GPIO)
 		dev_notice(lvsys_notify->dev, "event: rising %dmV(GPIO)\n", *(lvsys_notify->cur_hv_ptr));
 

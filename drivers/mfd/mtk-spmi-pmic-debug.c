@@ -204,16 +204,14 @@ void mtk_spmi_pmic_get_glitch_cnt(u16 *buf)
 			pr_info("%s slvid 0x%x MT6316 %s cid_l 0x%x\n", __func__, i,
 				reg_val >= MT6316_SWCID_L_E4_CODE ? "E4" : "E3", reg_val);
 		}
-		if (((mtk_spmi_pmic_debug[i]->cid == 0x16) && (reg_val >= MT6316_SWCID_L_E4_CODE)) ||
-			(mtk_spmi_pmic_debug[i]->cid == 0x61) ||
-			(mtk_spmi_pmic_debug[i]->cid == 0x67)) {
+		if ((mtk_spmi_pmic_debug[i]->cid == 0x61) || (mtk_spmi_pmic_debug[i]->cid == 0x67)) {
 
 			/* dump glitch status */
 			regmap_read(regmap, mtk_spmi_pmic_debug[i]->spmi_glitch_sts0, &glitch_sta);
 			/* pr_info("%s glitch status: slvid 0x%x 0x%x\n", __func__, i, glitch_sta); */
 
 			/* dump rising/falling edge deglitch counter */
-			reg_val = 0x2;
+			reg_val = 0x1;
 			regmap_update_bits(regmap,
 				mtk_spmi_pmic_debug[i]->spmi_glitch_sta_sel,
 				(mtk_spmi_pmic_debug[i]->spmi_debug_out_l_mask <<
@@ -221,7 +219,7 @@ void mtk_spmi_pmic_get_glitch_cnt(u16 *buf)
 			regmap_bulk_read(regmap, mtk_spmi_pmic_debug[i]->spmi_debug_out_l,
 				(void *)&sck_cnt, 2);
 
-			reg_val = 0xa;
+			reg_val = 0x9;
 			regmap_update_bits(regmap,
 				mtk_spmi_pmic_debug[i]->spmi_glitch_sta_sel,
 				(mtk_spmi_pmic_debug[i]->spmi_debug_out_l_mask <<
@@ -229,7 +227,7 @@ void mtk_spmi_pmic_get_glitch_cnt(u16 *buf)
 			regmap_bulk_read(regmap, mtk_spmi_pmic_debug[i]->spmi_debug_out_l,
 				(void *)&sck_degitch_cnt, 2);
 
-			reg_val = 0xe;
+			reg_val = 0xd;
 			regmap_update_bits(regmap,
 				mtk_spmi_pmic_debug[i]->spmi_glitch_sta_sel,
 				(mtk_spmi_pmic_debug[i]->spmi_debug_out_l_mask <<
@@ -237,7 +235,7 @@ void mtk_spmi_pmic_get_glitch_cnt(u16 *buf)
 			regmap_bulk_read(regmap, mtk_spmi_pmic_debug[i]->spmi_debug_out_l,
 				(void *)&sda_cnt, 2);
 
-			reg_val = 0x6;
+			reg_val = 0x5;
 			regmap_update_bits(regmap,
 				mtk_spmi_pmic_debug[i]->spmi_glitch_sta_sel,
 				(mtk_spmi_pmic_debug[i]->spmi_debug_out_l_mask <<
@@ -422,12 +420,14 @@ void mtk_spmi_pmic_get_pre_ot_cnt(u16 *buf)
 				 i, pre_ot_cnt[PMIC_PRE_OT_CNT_NUM*i+1]);
 #endif
 			/* clear pre-ot count */
+			/*
 			regmap_update_bits(regmap,
 					   info.cnt_clr_reg,
 					   info.cnt_clr_mask << info.cnt_clr_shift, 1);
 			regmap_update_bits(regmap,
 					   info.cnt_clr_reg,
 					   info.cnt_clr_mask << info.cnt_clr_shift, 0);
+			*/
 		}
 	}
 	if (buf != NULL)
@@ -470,12 +470,14 @@ void mtk_spmi_pmic_get_pre_lvsys_cnt(u16 *buf)
 				 i, pre_lvsys_cnt[PMIC_PRE_LVSYS_CNT_NUM*i+1]);
 #endif
 			/* clear pre-lvsys count */
+			/*
 			regmap_update_bits(regmap,
 					   info.cnt_clr_reg,
 					   info.cnt_clr_mask << info.cnt_clr_shift, 1);
 			regmap_update_bits(regmap,
 					   info.cnt_clr_reg,
 					   info.cnt_clr_mask << info.cnt_clr_shift, 0);
+			*/
 		}
 	}
 	if (buf != NULL)
@@ -521,12 +523,14 @@ void mtk_spmi_pmic_get_current_clamping_cnt(u16 *buf)
 #endif
 			}
 			/* clear current clamping count */
+			/*
 			regmap_update_bits(regmap,
 					   info.cnt_clr_reg,
 					   info.cnt_clr_mask << info.cnt_clr_shift, 1);
 			regmap_update_bits(regmap,
 					   info.cnt_clr_reg,
 					   info.cnt_clr_mask << info.cnt_clr_shift, 0);
+			*/
 		}
 	}
 	if (buf != NULL)

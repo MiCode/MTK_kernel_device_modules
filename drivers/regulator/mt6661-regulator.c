@@ -2,7 +2,6 @@
 //
 // Copyright (c) 2024 MediaTek Inc.
 
-// #include <linux/errno.h>
 #include <linux/interrupt.h>
 #include <linux/math.h>
 #include <linux/mfd/mt6661/registers.h>
@@ -16,11 +15,9 @@
 #include <linux/regulator/mt6661-regulator.h>
 #include <linux/regulator/of_regulator.h>
 
-#define SET_OFFSET	0x1
-#define CLR_OFFSET	0x2
-#define OP_CFG_OFFSET	0x5
-#define NORMAL_OP_CFG	0x10
-#define NORMAL_OP_EN	0x800000
+#define SET_OFFSET		0x1
+#define CLR_OFFSET		0x2
+#define HW_NORMAL_OP_EN		0x2
 #define STRGINGIFY(x)	#x
 #define CONCAT_AND_STRGINGIFY(x, y) STRGINGIFY(x##_##y)
 
@@ -50,7 +47,7 @@
  * @vocal_reg: Calibrates output voltage register.
  * @vocal_mask: MASK of Calibrates output voltage register.
  * @lp_imax_uA: Maximum load current in Low power mode.
- * @op_en_reg: for HW control operating mode register.
+ * @hw_op_en_reg: for HW control operating mode register.
  */
 struct mt6661_regulator_info {
 	int irq;
@@ -72,12 +69,9 @@ struct mt6661_regulator_info {
 	u32 eint_en_mask;
 	u32 pol_mask;
 	int lp_imax_uA;
-	u32 op_en_reg;
-	u32 orig_op_en;
-	u32 orig_op_cfg;
+	u32 hw_op_en_reg;
 };
 
-// TODO: lp_imax_uA
 #define MT6661_BUCK(_name, _min, _max, _step, _volt_ranges,	\
 		    _enable_reg, _en_bit, _vsel_reg, _vsel_mask,\
 		    _lp_mode_reg, _lp_bit,			\
@@ -111,8 +105,8 @@ struct mt6661_regulator_info {
 	.da_lp_mask = 0xc,					\
 	.modeset_reg = _modeset_reg,				\
 	.modeset_mask = BIT(modeset_bit),			\
-	.lp_imax_uA = 100000,					\
-	.op_en_reg = MT6661_##_name##_OP_EN_0,			\
+	.lp_imax_uA = 3000000,					\
+	.hw_op_en_reg = MT6661_##_name##_OP_EN_1,		\
 }
 
 #define MT6661_SSHUB(_name, _min, _max, _step, _volt_ranges,	\
@@ -171,9 +165,10 @@ struct mt6661_regulator_info {
 	.da_lp_mask = 0x7,					\
 	.lp_mode_reg = _lp_mode_reg,				\
 	.lp_mode_mask = BIT(_lp_bit),				\
+	.lp_imax_uA = 100000,					\
+	.hw_op_en_reg = MT6661_LDO_##_name##_HW_OP_EN0,		\
 }
 
-// TODD: lp_imax_ua
 #define MT6661_LDO(_name, _volt_table, _enable_reg, _en_bit,	\
 		   _vsel_reg, _vsel_mask, _vocal_reg,		\
 		   _vocal_mask, _lp_mode_reg, _lp_bit)		\
@@ -203,8 +198,8 @@ struct mt6661_regulator_info {
 	.lp_mode_reg = _lp_mode_reg,				\
 	.lp_mode_mask = BIT(_lp_bit),				\
 	.da_lp_mask = 0x4,					\
-	.lp_imax_uA = 10000,					\
-	.op_en_reg = MT6661_LDO_##_name##_RC_OP_EN0,		\
+	.lp_imax_uA = 100000,					\
+	.hw_op_en_reg = MT6661_LDO_##_name##_HW_OP_EN0,		\
 }
 
 #define MT6661_EINT(_name, _eint_pol, _volt_table,		\
@@ -441,8 +436,8 @@ static int mt6661_regulator_set_mode(struct regulator_dev *rdev,
 
 static int mt6661_regulator_set_load(struct regulator_dev *rdev, int load_uA)
 {
-	int i, ret;
 	struct mt6661_regulator_info *info = rdev_get_drvdata(rdev);
+	int ret = 0;
 
 	/* not support */
 	if (!info->lp_imax_uA)
@@ -452,20 +447,20 @@ static int mt6661_regulator_set_load(struct regulator_dev *rdev, int load_uA)
 		ret = mt6661_regulator_set_mode(rdev, REGULATOR_MODE_NORMAL);
 		if (ret)
 			return ret;
-		ret = regmap_write(rdev->regmap, info->op_en_reg + OP_CFG_OFFSET, NORMAL_OP_CFG);
-		for (i = 0; i < 3; i++) {
-			ret |= regmap_write(rdev->regmap, info->op_en_reg + i,
-					    (NORMAL_OP_EN >> (i * 8)) & 0xff);
-		}
+		/* enable HW1_OP_EN (HW1 default high) */
+		ret = regmap_update_bits(rdev->regmap,
+					 info->hw_op_en_reg,
+					 HW_NORMAL_OP_EN, HW_NORMAL_OP_EN);
+		dev_info(&rdev->dev,
+			 "[%s] %s force normal mode\n", __func__, info->desc.name);
 	} else {
-		ret = regmap_write(rdev->regmap, info->op_en_reg + OP_CFG_OFFSET,
-				   info->orig_op_cfg);
-		for (i = 0; i < 3; i++) {
-			ret |= regmap_write(rdev->regmap, info->op_en_reg + i,
-					    (info->orig_op_en >> (i * 8)) & 0xff);
-		}
+		/* disable HW1_OP_EN */
+		ret = regmap_update_bits(rdev->regmap,
+					 info->hw_op_en_reg,
+					 HW_NORMAL_OP_EN, 0);
+		dev_info(&rdev->dev,
+			 "[%s] %s set to original setting\n", __func__, info->desc.name);
 	}
-
 	return ret;
 }
 
@@ -546,6 +541,7 @@ static const struct regulator_ops mt6661_volt_range_ops = {
 	.is_enabled = regulator_is_enabled_regmap,
 	.set_mode = mt6661_regulator_set_mode,
 	.get_mode = mt6661_regulator_get_mode,
+	.set_load = mt6661_regulator_set_load,
 };
 
 /* for sshub */
@@ -903,24 +899,8 @@ static int mt6661_of_parse_cb(struct device_node *np,
 	return 0;
 }
 
-#if 0
-static int mt6363_backup_op_setting(struct regmap *map, struct mt6363_regulator_info *info)
-{
-	int i, ret;
-	u32 val = 0;
-
-	ret = regmap_read(map, info->op_en_reg + OP_CFG_OFFSET, &info->orig_op_cfg);
-	for (i = 0; i < 3; i++) {
-		ret |= regmap_read(map, info->op_en_reg + i, &val);
-		info->orig_op_en |= val << (i * 8);
-	}
-	if (ret)
-		return ret;
-
-	return 0;
-}
-
-/* Clear UVLO info from LK2 */
+/*
+ * Clear UVLO info from LK2
 static void pmic_clear_uvlo_info(struct regulator_dev *rdev)
 {
 	unsigned int val = 0;
@@ -938,7 +918,7 @@ static void pmic_clear_uvlo_info(struct regulator_dev *rdev)
 	regmap_write(rdev->regmap, MT6363_CPSWKEY, val);
 	regmap_write(rdev->regmap, MT6363_CPSWKEY_H, val);
 }
-#endif
+*/
 
 static int mt6661_regulator_probe(struct platform_device *pdev)
 {
@@ -965,7 +945,6 @@ static int mt6661_regulator_probe(struct platform_device *pdev)
 				info->desc.name, ret);
 			continue;
 		}
-
 		if (info->irq <= 0)
 			continue;
 		ret = devm_request_threaded_irq(&pdev->dev, info->irq, NULL,
