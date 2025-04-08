@@ -50,7 +50,7 @@ struct DRM_MMP_Events {
 	mmp_event dsi2;
 	mmp_event dsi_lpc;
 	mmp_event dsi_lpc0;
-	mmp_event dsi_lpc0_ts;
+	mmp_event dsi_lpc0_te;
 	mmp_event dsi_lpc1;
 	mmp_event dsi_lpc2;
 	mmp_event dsi_lpc3;

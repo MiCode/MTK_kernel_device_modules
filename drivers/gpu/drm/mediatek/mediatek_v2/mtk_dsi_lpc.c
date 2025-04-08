@@ -387,8 +387,6 @@ void mtk_dsi_lpc_sof_ts(long long *sof_ts, struct mtk_drm_crtc *mtk_crtc, struct
 	*sof_ts = (ts1 << 32 | ts0) << 7;
 	*sof_ts -= pl_kernel_offset();
 
-	if (index == 0)
-		DRM_MMP_MARK(dsi_lpc0_ts, ts1, ts0);
 	drm_trace_tag_value("lpc_sof_timestamp", *sof_ts);
 }
 void mtk_dsi_lpc_event_te_ts(long long *event_te_ts_diff, struct mtk_drm_crtc *mtk_crtc,
@@ -432,8 +430,6 @@ void mtk_dsi_lpc_resync_ts(long long *resync_ts, struct mtk_drm_crtc *mtk_crtc,
 	*resync_ts = (ts1 << 32 | ts0) << 7;
 	*resync_ts -= pl_kernel_offset();
 
-	if (index == 0)
-		DRM_MMP_MARK(dsi_lpc0_ts, ts1, ts0);
 	drm_trace_tag_value("lpc_resync_timestamp", *resync_ts);
 }
 void mtk_dsi_lpc_te_irq_en(struct mtk_drm_crtc *mtk_crtc,
@@ -600,6 +596,8 @@ void mtk_dsi_lpc_init_config(struct drm_crtc *crtc, struct mtk_ddp_comp *comp)
 	unsigned long dsi_lpc_fake_te_prd = 0;
 	bool lpc_en = false;
 
+	drm_trace_tag_start("lpc_init_config");
+
 	set_pl_kernel_offset();
 
 	params = mtk_drm_get_lcm_ext_params(crtc);
@@ -632,6 +630,7 @@ void mtk_dsi_lpc_init_config(struct drm_crtc *crtc, struct mtk_ddp_comp *comp)
 		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_HRT_DEBUG))
 			mtk_dsi_lpc_te_irq_en(mtk_crtc, comp);
 	}
+	drm_trace_tag_end("lpc_init_config");
 }
 static int mtk_dsi_lpc_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			  enum mtk_ddp_io_cmd cmd, void *params)
@@ -771,8 +770,8 @@ static irqreturn_t mtk_dsi_lpc_irq_handler(int irq, void *dev_id)
 	if (!dsi_lpc_te_irq_en)
 		status &= ~EVENT_TE_INT;
 
-	if (index == 0)
-		DRM_MMP_MARK(dsi_lpc0, status, 0);
+	//if (index == 0)
+		//DRM_MMP_MARK(dsi_lpc0, status, 0);
 
 	DDPIRQ("%s irq, val:0x%x\n", mtk_dump_comp_str(comp), status);
 
@@ -781,6 +780,9 @@ static irqreturn_t mtk_dsi_lpc_irq_handler(int irq, void *dev_id)
 
 		if (status & REPORTED_RESYNC_INT) {
 			int refcount = atomic_read(&vblank->refcount);
+
+			if (index == 0)
+				DRM_MMP_MARK(dsi_lpc0, status, 0);
 
 			drm_trace_tag_mark("lpc_resync_irq");
 
@@ -794,8 +796,10 @@ static irqreturn_t mtk_dsi_lpc_irq_handler(int irq, void *dev_id)
 				mtk_crtc_vblank_irq_for_lpc_resync(&mtk_crtc->base);
 		}
 
-		if (status & EVENT_TE_INT)
+		if (status & EVENT_TE_INT) {
+			DRM_MMP_MARK(dsi_lpc0_te, status, 0);
 			drm_trace_tag_mark("lpc_te_irq");
+		}
 	}
 
 	ret = IRQ_HANDLED;
