@@ -7405,7 +7405,7 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 		if (!mtk_crtc->force_high_enabled) {
 			DDPMSG("start SET MMCLK step 0\n");
 			/* set MMCLK highest step for next 2048 frame */
-			mtk_crtc->force_high_enabled = 2048;
+			mtk_crtc->force_high_enabled = 512;
 		}
 		mtk_crtc->force_high_enabled--;
 
