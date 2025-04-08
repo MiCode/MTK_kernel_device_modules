@@ -2036,7 +2036,7 @@ static int disp_aal_set_dre3_curve(struct mtk_ddp_comp *comp,
 	if (atomic_read(&aal_data->primary_data->change_to_dre30) == 0x3) {
 		dre30_gain = vmalloc(sizeof(struct DISP_DRE30_PARAM));
 		if (dre30_gain == NULL) {
-			PQ_ERR("%s: vmalloc fail\n", __func__);
+			DDPMSG("%s: vmalloc fail\n", __func__);
 			return -1;
 		}
 
@@ -2291,7 +2291,7 @@ static int disp_aal_copy_hist_to_user(struct mtk_ddp_comp *comp,
 	}
 
 	if (dre30_hist == NULL) {
-		PQ_ERR("%s: vmalloc fail\n", __func__);
+		DDPMSG("%s: vmalloc fail\n", __func__);
 		return -1;
 	}
 
