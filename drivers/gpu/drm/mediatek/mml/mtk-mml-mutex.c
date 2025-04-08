@@ -36,7 +36,7 @@ module_param(mml_mutex_dl_sof, int, 0644);
 #define mutex_dl_perf_en	(mml_mutex_dl_sof & BIT(1))
 #define mutex_dl_perf_log	(mml_mutex_dl_sof & BIT(2))
 #define mutex_dl_nodone		(mml_mutex_dl_sof & BIT(3))
-
+#define mutex_dl_noprete	(mml_mutex_dl_sof & BIT(4))
 
 struct mutex_data {
 	/* Count of display mutex HWs */
@@ -358,7 +358,7 @@ static s32 mutex_trigger_mt6993d(struct mml_comp *comp, struct mml_task *task,
 			/* mutex en in disp pkt */
 			sof_en = false;
 		} else if (comp == path->mutex) {
-			if (mutex->event_prete) {
+			if (mutex->event_prete && !mutex_dl_noprete) {
 				/* wait pre-te in first mutex trigger */
 				cmdq_pkt_clear_event(pkt, mutex->event_prete);
 				cmdq_pkt_wait_no_clear(pkt, mutex->event_prete);
