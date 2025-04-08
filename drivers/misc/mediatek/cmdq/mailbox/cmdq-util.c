@@ -50,6 +50,7 @@
 #define GCE_DBG3			0x3010
 
 #define CMDQ_BUF_REC_BUFFER_SIZE		(PAGE_SIZE * 11)
+#define CMDQ_MBRAIN_BUF_REC_BUFFER_SIZE		(PAGE_SIZE * 5)
 #define log_length		128
 
 #define util_time_to_us(start, end, duration)	\
@@ -139,6 +140,7 @@ struct cmdq_util {
 	u8	cmdq_irq_thrd_history[CMDQ_HW_MAX][CMDQ_IRQ_HISTORY_MAX_SIZE];
 	u16	cmdq_irq_thrd_history_idx[CMDQ_HW_MAX];
 	char	*buf_rec_buffer;
+	char	*buf_rec_mbrain;
 	u32		total_length;
 };
 static struct cmdq_util	util;
@@ -589,6 +591,50 @@ char *cmdq_util_user_buf_record_print(char *buf_start, char *buf_end)
 	return buf_start;
 }
 
+
+void cmdq_util_mbrain_buf_rec_latest(void)
+{
+	struct cmdq_buf_record *buf_rec;
+
+	s32 i, j, arr_idx, idx, cnt;
+	u64		sec = 0;
+	unsigned long	nsec = 0;
+	char end[] = "\n";
+	char *buf_va, *buf_va_end;
+	static int pre_idx;
+
+	buf_va = (char *)(util.buf_rec_mbrain);
+	buf_va_end = (char *)(util.buf_rec_mbrain + CMDQ_MBRAIN_BUF_REC_BUFFER_SIZE);
+	idx = util.buf_record_idx;
+
+	memset(buf_va, 0, CMDQ_MBRAIN_BUF_REC_BUFFER_SIZE);
+	cmdq_msg("%s idx:%d pre:%d", __func__, idx, pre_idx);
+	if (idx == pre_idx)
+		return;
+
+	cnt = idx > pre_idx ? idx - pre_idx :
+		ARRAY_SIZE(util.buf_record) - pre_idx + idx;
+	cmdq_msg("%s idx:%d pre:%d cnt:%d", __func__, idx, pre_idx, cnt);
+	pre_idx = idx;
+	for (arr_idx = 0; arr_idx < cnt; arr_idx++) {
+		idx--;
+
+		if (idx < 0)
+			idx = ARRAY_SIZE(util.buf_record) - 1;
+		buf_rec = &util.buf_record[idx];
+
+		sec = buf_rec->nsec;
+		nsec = do_div(sec, 1000000000);
+		for (i = 0; i < gce_hw_cnt; i++) {
+			for (j = 0; j < CMDQ_THR_MAX_COUNT; j++) {
+				if(buf_rec->buf_peek_cnt[i][j] == 0)
+					continue;
+				buf_va += scnprintf(buf_va, buf_va_end - buf_va,
+					"%llu:%d:%d:%u%s", sec, i, j, buf_rec->buf_peek_cnt[i][j],end);
+			}
+		}
+	}
+}
 void cmdq_util_buf_record_save(void)
 {
 	struct cmdq_buf_record *buf_rec;
@@ -654,6 +700,15 @@ static int cmdq_util_buf_record_print(struct seq_file *seq, void *data)
 	return 0;
 }
 
+static int cmdq_util_mbrain_buf_rec_print(struct seq_file *seq, void *data)
+{
+	mutex_lock(&cmdq_buf_record_mutex);
+	cmdq_util_mbrain_buf_rec_latest();
+	seq_printf(seq, "%s", util.buf_rec_mbrain);
+	mutex_unlock(&cmdq_buf_record_mutex);
+	return 0;
+}
+
 static int cmdq_util_status_open(struct inode *inode, struct file *file)
 {
 	return single_open(file, cmdq_util_status_print, inode->i_private);
@@ -676,6 +731,10 @@ static int cmdq_util_buffer_record_open(struct inode *inode, struct file *file)
 	return single_open(file, cmdq_util_buf_record_print, inode->i_private);
 }
 
+static int cmdq_util_mbrain_buf_rec_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, cmdq_util_mbrain_buf_rec_print, inode->i_private);
+}
 static const struct proc_ops cmdq_util_record_fops = {
 	.proc_open = cmdq_util_record_open,
 	.proc_read = seq_read,
@@ -685,6 +744,13 @@ static const struct proc_ops cmdq_util_record_fops = {
 
 static const struct proc_ops cmdq_proc_util_buf_record_fops = {
 	.proc_open = cmdq_util_buffer_record_open,
+	.proc_read = seq_read,
+	.proc_lseek = seq_lseek,
+	.proc_release = single_release,
+};
+
+static const struct proc_ops cmdq_proc_util_mbrain_buf_rec_fops = {
+	.proc_open = cmdq_util_mbrain_buf_rec_open,
 	.proc_read = seq_read,
 	.proc_lseek = seq_lseek,
 	.proc_release = single_release,
@@ -1220,7 +1286,7 @@ void cmdq_util_buff_track(u32 *buf_peek_arr, const uint rows, const uint cols)
 	buf_record_unit->nsec = sched_clock();
 	for(i = 0; i < rows; i++)
 		for(j = 0; j < cols; j++)
-			buf_record_unit->buf_peek_cnt[i][j] = buf_peek_arr[i * rows + j];
+			buf_record_unit->buf_peek_cnt[i][j] = buf_peek_arr[i * cols + j];
 
 	if (util.buf_record_idx >= CMDQ_BUF_RECORD_NUM)
 		util.buf_record_idx = 0;
@@ -1433,6 +1499,13 @@ int cmdq_proc_create(void)
 			cmdq_err("proc_create_file cmdq_buffer_record failed");
 			return -ENOMEM;
 		}
+
+		entry = proc_create("cmdq_mbrain_buf_rec", 0440, debugDirEntry,
+			&cmdq_proc_util_mbrain_buf_rec_fops);
+		if (!entry) {
+			cmdq_err("proc_create_file cmdq_proc_util_mbrain_buf_rec_fops failed");
+			return -ENOMEM;
+		}
 	}
 	return 0;
 }
@@ -1523,6 +1596,10 @@ int cmdq_util_init(void)
 	}
 	util.buf_rec_buffer = vzalloc(CMDQ_BUF_REC_BUFFER_SIZE);
 	if (!util.buf_rec_buffer)
+		return -ENOMEM;
+
+	util.buf_rec_mbrain = vzalloc(CMDQ_MBRAIN_BUF_REC_BUFFER_SIZE);
+	if (!util.buf_rec_mbrain)
 		return -ENOMEM;
 
 	dir = debugfs_lookup("cmdq", NULL);

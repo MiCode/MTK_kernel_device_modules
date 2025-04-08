@@ -4819,7 +4819,7 @@ EXPORT_SYMBOL(cmdq_sec_helper_set_fp);
 static int cmdq_record_buffer_usage(void *data)
 {
 	while (!kthread_should_stop()) {
-		cmdq_util_buff_track(&BUF_SIZE_THRD_MAX[0][0], gce_hw_cnt, CMDQ_THR_MAX_COUNT);
+		cmdq_util_buff_track((u32 *)BUF_SIZE_THRD_MAX, gce_hw_cnt, CMDQ_THR_MAX_COUNT);
 		msleep(1000 * 60);
 	}
 	return 0;
