@@ -382,7 +382,21 @@ static struct fh_operation gpueb_ops_v1 = {
 	.ssc_enable = gpueb_ssc_enable_v1,
 	.ssc_disable = gpueb_ssc_disable_v1,
 };
-
+/*mt6855 begin*/
+struct hdlr_data_v1 hdlr_data_6855_gpueb = {
+	.reg_tr = NULL,
+	.map = NULL,
+};
+static struct fh_hdlr gpueb_hdlr_6855 = {
+	.ops = &gpueb_ops_v1,
+	.data = &hdlr_data_6855_gpueb,
+};
+static struct match mt6855_match = {
+	.name = "mediatek,mt6855-fhctl",
+	.hdlr = &gpueb_hdlr_6855,
+	.init = &gpueb_init_v1,
+};
+/*mt6855 end*/
 
 /*mt6985 begin*/
 static struct id_map map_6985[] = {
@@ -474,6 +488,7 @@ static struct match mt6993_match = {
 /*mt6993 end*/
 
 static struct match *matches[] = {
+	&mt6855_match,
 	&mt6897_match,
 	&mt6985_match,
 	&mt6989_match,
