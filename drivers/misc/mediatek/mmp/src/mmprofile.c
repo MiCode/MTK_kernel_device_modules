@@ -1482,7 +1482,7 @@ static ssize_t mmprofile_dbgfs_start_read(struct file *file, char __user *buf,
 	int r;
 
 	MMP_LOG(ANDROID_LOG_DEBUG, "start=%d", mmprofile_globals.start);
-	r = sprintf(str, "start = %d\n", mmprofile_globals.start);
+	r = snprintf(str, sizeof(str), "start = %d\n", mmprofile_globals.start);
 	if (r < 0)
 		MMP_MSG("%s snprintf fail\n", __func__);
 	return simple_read_from_buffer(buf, size, ppos, str, r);
@@ -1512,7 +1512,7 @@ static ssize_t mmprofile_dbgfs_enable_read(struct file *file, char __user *buf,
 	int r;
 
 	MMP_LOG(ANDROID_LOG_DEBUG, "enable=%d", mmprofile_globals.enable);
-	r = sprintf(str, "enable = %d\n", mmprofile_globals.enable);
+	r = snprintf(str, sizeof(str), "enable = %d\n", mmprofile_globals.enable);
 	if (r < 0)
 		MMP_MSG("%s snprintf fail\n", __func__);
 	return simple_read_from_buffer(buf, size, ppos, str, r);
