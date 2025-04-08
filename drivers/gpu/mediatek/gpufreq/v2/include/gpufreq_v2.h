@@ -168,6 +168,7 @@ enum gpufreq_config_target {
 	CONFIG_SRAM_ENHANCEMENT      = 31,
 	CONFIG_AXI_MON               = 32,
 	CONFIG_GPU_SLT               = 33,
+	CONFIG_GPUFREQ_TASK          = 34,
 	CONFIG_AP_IMPL_BOUNDARY      = 100, /* implement on AP */
 	CONFIG_WB_TEST_ONCE          = 101,
 	CONFIG_WB_MFG1_SLAVE_STRESS  = 102,
