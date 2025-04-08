@@ -968,7 +968,6 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/ccmni:ccmni".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/cache-auditor:cpuqos_v3".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/clkbuf:clkbuf".format(kernel_version),
-    "//kernel_device_modules-{}/drivers/misc/mediatek/pmic_tia:pmic_tia".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/connectivity:connadp".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/conn_scp:connscp".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/cpufreq_lite:cpudvfs".format(kernel_version),
@@ -2107,6 +2106,7 @@ def get_overlay_modules_list():
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/usb/c2k_usb:c2k_usb_f_via_ets".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/usb/c2k_usb:c2k_usb_f_via_modem".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/thermal/mediatek:md_cooling_all".format(kernel_version))
+        mgk_64_kleaf_device_modules.append("//kernel_device_modules-{}/drivers/misc/mediatek/pmic_tia:pmic_tia".format(kernel_version))
 
     if "thinmodem.config" in DEFCONFIG_OVERLAYS:
         mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/wwan/tmi3:tmi3")
