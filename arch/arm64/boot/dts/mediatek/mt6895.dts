@@ -5787,7 +5787,7 @@
 			gce-hwid = <1>;
 			power-domains = <&scpsys MT6895_POWER_DOMAIN_MM_INFRA>;
 			mediatek,smi = <&smi_mdp_common>;
-			prebuilt-enable;
+			//prebuilt-enable;
 			unprepare_in_idle;
 			gce-in-vcp;
 			cmdq-log-perf-off;
@@ -9420,6 +9420,7 @@
 			dli1-dl-relay = /bits/ 16 <DL_IN_RELAY1_SIZE>;
 			dlo0-dl-relay = /bits/ 16 <DL_OUT_RELAY0_SIZE>;
 			dlo1-dl-relay = /bits/ 16 <DL_OUT_RELAY1_SIZE>;
+			mediatek,larb = <&smi_larb3 MTK_M4U_TO_PORT(M4U_LARB3_PORT4)>;
 		};
 
 		mml-mutex0@1f801000 {
