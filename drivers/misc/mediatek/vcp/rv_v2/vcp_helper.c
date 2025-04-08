@@ -906,7 +906,7 @@ int vcp_enable_pm_clk(enum feature_id id)
 	}
 	pwclkcnt++;
 #ifdef VCP_CLK_FMETER
-	pr_notice("[VCP] %s id %d done %d clk %d\n", __func__, id,
+	pr_debug("[VCP] %s id %d done %d clk %d\n", __func__, id,
 		pwclkcnt, mt_get_fmeter_freq(vcpreg.fmeter_ck, vcpreg.fmeter_type));
 #endif
 	mutex_unlock(&vcp_pw_clk_mutex);
@@ -928,7 +928,7 @@ int vcp_disable_pm_clk(enum feature_id id)
 		mutex_lock(&vcp_pw_clk_mutex);
 	}
 
-	pr_notice("[VCP] %s id %d entered %d ready %d %d\n", __func__, id,
+	pr_debug("[VCP] %s id %d entered %d ready %d %d\n", __func__, id,
 		pwclkcnt, is_vcp_ready_by_coreid(VCP_ID), is_vcp_ready_by_coreid(MMUP_ID));
 
 	pwclkcnt--;
