@@ -299,7 +299,7 @@ unlock_efuse:
 #ifdef BUF_SIZE
 #undef BUF_SIZE
 #endif
-#define BUF_SIZE	20
+#define BUF_SIZE	64
 /* Create sysfs entry for lbat throttling ext */
 static ssize_t efuse_pmic_ecid_show(struct device *dev,
 				    struct device_attribute *attr,
@@ -435,10 +435,11 @@ static int mt635x_efuse_probe(struct platform_device *pdev)
 		return 0;
 	}
 	if (!ecid_flag) {
-		ecid_flag = true;
 		ret = mt635x_get_ecid(&pdev->dev, efuse);
-		if (ret >= 0)
+		if (ret >= 0) {
+			ecid_flag = true;
 			platform_set_drvdata(pdev, efuse);
+		}
 	}
 #endif
 	pr_info("efuse probe success\n");
