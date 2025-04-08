@@ -1179,6 +1179,12 @@ unsigned int ged_dvfs_get_desire_mask(void)
 }
 EXPORT_SYMBOL(ged_dvfs_get_desire_mask);
 
+int ged_dvfs_get_dcs_enable(void)
+{
+	return is_dcs_enable();
+}
+EXPORT_SYMBOL(ged_dvfs_get_dcs_enable);
+
 unsigned int ged_dvfs_write_sysram_protm_enter(void)
 {
 	if(protm_cnt == 0x7FFFFFFF)

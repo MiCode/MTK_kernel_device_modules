@@ -277,6 +277,7 @@ unsigned int ged_dvfs_get_gov_mask_enable(void);
 unsigned int ged_dvfs_get_gov_mask_support(void);
 void ged_dvfs_set_gov_mask_enable(unsigned int enable);
 unsigned int ged_dvfs_get_desire_mask(void);
+int ged_dvfs_get_dcs_enable(void);
 unsigned int ged_dvfs_write_sysram_protm_enter(void);
 unsigned int ged_dvfs_write_sysram_protm_exit(void);
 int ged_write_sysram_pwr_hint(int pwr_hint);
