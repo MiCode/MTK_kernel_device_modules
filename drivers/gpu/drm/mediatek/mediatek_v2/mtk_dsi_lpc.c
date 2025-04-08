@@ -168,6 +168,7 @@ enum LPC_MMP_IDX {
 struct mtk_dsi_lpc {
 	struct mtk_ddp_comp ddp_comp;
 	struct drm_crtc *crtc;
+	int lpc_sof_status;
 };
 
 struct mtk_ddp_comp *dsi_lpc_comp;
@@ -340,6 +341,7 @@ void mtk_dsi_lpc_analysis(struct mtk_ddp_comp *comp)
 static void mtk_dsi_lpc_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
 	int i = 0;
+	struct mtk_dsi_lpc *lpc = comp_to_dsi_lpc(comp);
 
 	writel(0, comp->regs + DSI_LPC_EN);
 	for (i = 0; i < 4; i++) {
@@ -347,6 +349,7 @@ static void mtk_dsi_lpc_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 		writel(0, comp->regs + DSI_LPC_INSTA(i));
 	}
 
+	lpc->lpc_sof_status = 0;
 	drm_trace_tag_mark("lpc_stop");
 	DRM_MMP_MARK(dsi_lpc, IRQ_DISABLE, 0xFFFF);
 }
@@ -375,6 +378,7 @@ void mtk_dsi_lpc_sof_ts(long long *sof_ts, struct mtk_drm_crtc *mtk_crtc, struct
 	/* repot sof time */
 	int index = 0;
 	unsigned long ts0, ts1;
+	struct mtk_dsi_lpc *lpc = comp_to_dsi_lpc(comp);
 
 	index = mtk_dsi_lpc_unit(mtk_crtc);
 	if (index < 0) {
@@ -386,6 +390,8 @@ void mtk_dsi_lpc_sof_ts(long long *sof_ts, struct mtk_drm_crtc *mtk_crtc, struct
 	ts1 = readl(comp->regs + DSI_LPC_SOF_TIMESTAMP_1(index));
 	*sof_ts = (ts1 << 32 | ts0) << 7;
 	*sof_ts -= pl_kernel_offset();
+
+	lpc->lpc_sof_status = 1;
 
 	drm_trace_tag_value("lpc_sof_timestamp", *sof_ts);
 }
@@ -682,6 +688,14 @@ static int mtk_dsi_lpc_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle
 		struct mtk_panel_params *panel_params = (struct mtk_panel_params *)params;
 
 		mtk_dsi_lpc_update_panel_params(mtk_crtc, comp, handle, panel_params);
+	}
+		break;
+	case DSI_LPC_GET_SOF_STATUS:
+	{
+		int *sof_status = (int *)params;
+		struct mtk_dsi_lpc *lpc = comp_to_dsi_lpc(comp);
+
+		*sof_status = lpc->lpc_sof_status;
 	}
 		break;
 	default:
