@@ -555,10 +555,10 @@ EXPORT_SYMBOL(fbt_cal_target_time_fp);
 
 int (*fbt_power_rl_fp)(int pid, unsigned long long bufID,
 		unsigned long long ts, unsigned int target_fps_ori,
-		int power_current, unsigned long long inst_frame,
-		int min_cap, int fps_margin, int cap_limit_range,
+		int power_current, int min_cap,
+		int fps_margin,
 		int *uclamp, int *ruclamp,
-		int *uclamp_m, int *ruclamp_m);
+		int *uclamp_m, int *ruclamp_m, int cap_limit_range);
 EXPORT_SYMBOL(fbt_power_rl_fp);
 
 void (*fpsgo_set_last_target_t_fp)(int pid, unsigned long long bufId,
@@ -5009,10 +5009,10 @@ int fbt_power_rl(struct render_info *thr, int is_powerRL_ready, int separate_aa_
 			// cal limit by powerRL
 			ret = fbt_power_rl_fp(thr->pid, thr->buffer_id,
 				ts, target_fps_ori,
-				power_current, inst_frame,
-				min_cap, powerRL_FPS_margin_final, powerRL_cap_limit_range_final,
+				power_current,
+				min_cap, powerRL_FPS_margin_final,
 				&thr->powerRL.uclamp, &thr->powerRL.ruclamp,
-				&thr->powerRL.uclamp_m, &thr->powerRL.ruclamp_m);
+				&thr->powerRL.uclamp_m, &thr->powerRL.ruclamp_m, powerRL_cap_limit_range_final);
 			fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, 1, "powerRL_enable");
 		} else {
 			fpsgo_fbt_delete_power_rl(thr->pid, thr->buffer_id);
