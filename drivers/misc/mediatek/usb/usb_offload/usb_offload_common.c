@@ -517,13 +517,13 @@ static void uaudio_dev_cleanup(struct usb_audio_dev *dev)
 static void uaudio_dev_release(struct kref *kref)
 {
 	struct usb_audio_dev *dev = container_of(kref, struct usb_audio_dev, kref);
-	struct xhci_sideband_ *sb = dev->sb;
+	struct xhci_sideband_ *sb;
 
 	if (!dev) {
 		USB_OFFLOAD_ERR("dev has been freed!!\n");
 		return;
 	}
-
+	sb = dev->sb;
 	USB_OFFLOAD_INFO("all interfaces freed, release card:%d\n", dev->card_num);
 
 	if (!sb || !sb->ir) {
@@ -814,13 +814,11 @@ static int send_disable_stream(u8 card_num,
 	/* others was running, we should wait */
 	case ON_DISABLE:
 
-		retval = wait_event_interruptible_timeout(dev->disabling_wq,
+		retval = wait_event_timeout(dev->disabling_wq,
 			(atomic_read(&info->disable_sync) == DONE_DISABLE),
 			msecs_to_jiffies(DISABLE_WAIT_TIME));
 		if (!retval)
 			USB_OFFLOAD_ERR("timeout while waiting disabling");
-		else if (retval < 0)
-			USB_OFFLOAD_ERR("failed with retval:%d\n", retval);
 		else
 			USB_OFFLOAD_INFO("success to wait\n");
 		fallthrough;
