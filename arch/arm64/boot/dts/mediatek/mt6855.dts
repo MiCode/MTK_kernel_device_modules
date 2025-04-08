@@ -7256,14 +7256,6 @@
 
 		/* enable check vsys voltage */
 		enable-check-vsys;
-
-		/* enable LK boot volt*/
-		enable-boot-volt = <1>;
-
-		/* Try Adapter Capability For Boot Volt Adjustment*/
-		enable-try-ta-cap;
-		boot-voltage-level = <3000 3100 3200 3350 3450>;
-		ta-capability-level = <1900 1350 850 500 0>;
 	};
 	pe: pe {
 		compatible = "mediatek,charger,pe";

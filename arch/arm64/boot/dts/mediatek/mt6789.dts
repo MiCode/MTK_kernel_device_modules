@@ -6639,7 +6639,7 @@
 		/* charging current */
 		usb-charger-current = <500000>;
 		ac-charger-current = <2050000>;
-		ac-charger-input-current = <3000000>;
+		ac-charger-input-current = <3200000>;
 		non-std-ac-charger-current = <500000>;
 		charging-host-charger-current = <1500000>;
 		ta-ac-charger-current = <3000000>;
@@ -6652,14 +6652,6 @@
 
 		/* enable check vsys voltage */
 		enable-check-vsys;
-
-		/* enable LK boot volt*/
-		enable-boot-volt = <1>;
-
-		/* Try Adapter Capability For Boot Volt Adjustment*/
-		enable-try-ta-cap;
-		boot-voltage-level = <3000 3100 3200 3350 3450>;
-		ta-capability-level = <1900 1350 850 500 0>;
 	};
 
 	pe: pe {
