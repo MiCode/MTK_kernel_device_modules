@@ -1136,6 +1136,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/mmc/host:cqhci".format(kernel_version),
     "//kernel_device_modules-{}/drivers/mmc/host:mtk-sd".format(kernel_version),
     "//kernel_device_modules-{}/drivers/mmc/host:mtk-mmc".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/mmc/host:mtk-mmc-wp".format(kernel_version),
     "//kernel_device_modules-{}/drivers/pci/controller:pcie-mediatek-gen3".format(kernel_version),
     "//kernel_device_modules-{}/drivers/phy/mediatek:phy-mtk-fpgaphy".format(kernel_version),
     "//kernel_device_modules-{}/drivers/memory/mediatek:mtk_dramc".format(kernel_version),

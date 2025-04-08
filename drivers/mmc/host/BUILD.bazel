@@ -157,3 +157,14 @@ define_mgk_ddk_ko(
 	],
     out = "mtk-mmc.ko",
 )
+
+define_mgk_ddk_ko(
+	name = "mtk-mmc-wp",
+	srcs = [
+		"mtk-mmc-wp.c",
+	],
+	includes = [
+		".",
+	],
+    out = "mtk-mmc-wp.ko",
+)
