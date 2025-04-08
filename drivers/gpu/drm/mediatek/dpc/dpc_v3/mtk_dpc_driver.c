@@ -1436,9 +1436,10 @@ static void mt6993_set_mtcmos(const u32 subsys, const enum mtk_dpc_mtcmos_mode m
 	 *   1. rebuild the cg-link
 	 *   2. force DT fsm to OFF state by MANUAL_MODE_EN and MANUAL_MODE(2)
 	 *   3. disable AUTO_ONOFF_MASTER_EN
+	 *   4. enable RTFF_EN and disable SRAM_SLEEP_PD
 	 */
 
-	value = en ? 0x33 : 0x570;
+	value = en ? 0x33 : 0x552;
 	mask = (subsys == DPC3_SUBSYS_DISP) ? 0x3f80000 : g_priv->mtcmos_cfg[subsys].link_bit;
 
 	spin_lock_irqsave(&g_priv->mtcmos_cfg_lock, flags);
