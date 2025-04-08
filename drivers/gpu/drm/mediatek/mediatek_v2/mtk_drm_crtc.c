@@ -17030,6 +17030,32 @@ void mtk_crtc_first_enable_ddp_config(struct mtk_drm_crtc *mtk_crtc)
 	}
 }
 
+void mtk_crtc_disable_unused_clk(struct drm_crtc *crtc)
+{
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
+	struct device *dev = priv->mmsys_dev;
+	struct device_node *node;
+	struct clk *clk;
+	int i, clk_num;
+
+	node = of_parse_phandle(dev->of_node, "unused-clocks", 0);
+	if (!node) {
+		DDPMSG("No disp unused clk node\n");
+		return;
+	}
+	clk_num = of_count_phandle_with_args(node, "clocks", "#clock-cells");
+
+	for (i = 0; i < clk_num; i++) {
+		clk = of_clk_get(node, i);
+		if (IS_ERR(clk)) {
+			DDPMSG("%s get %d clk failed\n", __func__, i);
+			return;
+		}
+		clk_prepare_enable(clk);
+		clk_disable_unprepare(clk);
+	}
+}
+
 void mtk_drm_crtc_first_enable(struct drm_crtc *crtc)
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
@@ -17083,11 +17109,14 @@ void mtk_drm_crtc_first_enable(struct drm_crtc *crtc)
 	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
 		/* 4. power on mtcmos & init apsrc*/
 		mtk_drm_top_clk_prepare_enable(crtc);
+
 		mtk_crtc_v_idle_apsrc_control(crtc, NULL, true, false,
 			MTK_APSRC_CRTC_DEFAULT, false);
 
 		/* 5. prepare modules would be used in this CRTC */
 		mtk_crtc_ddp_prepare(mtk_crtc);
+
+		mtk_crtc_disable_unused_clk(crtc);
 
 		/* 6. sodi config */
 		if (priv->data->sodi_config) {
