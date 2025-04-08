@@ -38,6 +38,14 @@ config MTK_QOS_LEGACY
 	will be enabled and set EMI hardware.
 	If unsure, say N.
 
+config MTK_QOS_LEGACY_V1
+	tristate "MTK QOS for MT6789, MT6855, MT6895"
+	help
+	This kernel config can be used to enable MTK QOS MT6789 ktf.
+	When enabling this option, BW Limiter and BW Bound Detector
+	will be enabled and set EMI hardware.
+	If unsure, say N.
+
 config MTK_QOS_EVT_TRI_SUPPORT
 	bool "Enable MTK QOS event trigger"
 	help
