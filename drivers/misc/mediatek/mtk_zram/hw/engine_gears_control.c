@@ -488,11 +488,15 @@ void engine_fix_gear_level(struct engine_gear_control_t *gear_ctrl, uint32_t gea
 		return;
 	}
 
+retry:
 	spin_lock(&gear_ctrl->lock);
 
 	if (gear_ctrl->engine_gear_in_change) {
 		pr_info("%s: gear is in change!\n", __func__);
-		goto exit;
+
+		/* Retry until we can fix the gear level */
+		spin_unlock(&gear_ctrl->lock);
+		goto retry;
 	}
 
 	/* Gear is fixed */
