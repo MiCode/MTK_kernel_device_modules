@@ -830,6 +830,19 @@ static void ufs_mtk_mcq_enable_irq(struct ufs_hba *hba)
 	if (host->mcq_nr_intr == 0)
 		return;
 
+	/*
+	 * Racing by gate work(should turn off clock, but not) and
+	 * ufshcd_hold (turn on again).
+	 *
+	 * ufshcd_gate_work -> spin_lock_irqsave           2
+	 *                  -> active_reqs !=0             7
+	 *                  -> spin_unlock_irqrestore      8
+	 * ufshcd_hold      -> spin_lock_irqsave           1
+	 *                  -> active_reqs ++              3
+	 *                  -> cancel_delayed_work fail    4
+	 *                  -> ungate work (turn clock)    5
+	 *                  -> spin_unlock_irqrestore      6
+	 */
 	if (host->is_mcq_intr_enabled == true)
 		return;
 
@@ -3080,8 +3093,12 @@ static int ufs_mtk_config_mcq_irq(struct ufs_hba *hba)
 
 		dev_info(hba->dev, "request irq %d intr %s\n", irq, ret ? "failed" : "");
 
-		if (ret)
+		if (ret) {
+			dev_err(hba->dev, "request irq failed\n");
 			return ret;
+		} else {
+			host->is_mcq_intr_enabled = true;
+		}
 	}
 
 	if (host->cpuhp_state >= 0) {
