@@ -957,7 +957,8 @@ static ssize_t low_battery_modify_threshold_store(struct device *dev,
 	dev_notice(dev, "temp_stage: %d, aging_stage: %d\n", temp_stage, aging_stage);
 
 	if ((temp_stage <= lbat_data->temp_max_stage) ||
-	(aging_stage <= lbat_data->aging_max_stage)) {
+	(aging_stage <= lbat_data->aging_max_stage) ||
+	(lvsys_aging_stage <= lbat_data->lvsys_aging_max_stage)) {
 		if (!lbat_data->lbat_thd_modify)
 			update_thresholds(temp_stage, aging_stage, lvsys_aging_stage);
 	}
