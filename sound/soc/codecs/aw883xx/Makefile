@@ -9,6 +9,6 @@ subdir-ccflags-y += -I$(srctree)/drivers/base
 ccflags-y += -Werror
 ccflags-y += $(call cc-option,-Wno-date-time,)
 
-snd-soc-aw883xx-objs:= aw883xx.o aw_monitor.o aw_bin_parse.o aw_device.o aw_init.o aw_calib.o aw_spin.o
+#snd-soc-aw883xx-objs:= aw883xx.o aw_monitor.o aw_bin_parse.o aw_device.o aw_init.o aw_calib.o aw_spin.o
 
-obj-$(CONFIG_SND_SOC_AW883XX) += snd-soc-aw883xx.o
+#obj-$(CONFIG_SND_SOC_AW883XX) += snd-soc-aw883xx.o
