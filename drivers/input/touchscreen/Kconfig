@@ -38,6 +38,14 @@ config TOUCHSCREEN_GT9XX
          Set Y or M to select this feature for touch compile,
          and set N to disable.for car serdes touch feature.
 
+config TOUCHSCREEN_MT6895_ALPHA_SUPPORT
+	tristate "Specify Alpha Touch Platform is mt6895"
+	help
+	  Select Alpha Touch Platform is mt6895.
+	  To compile this dirver for used touch IC.
+	  Set Y or M to select this feature for specific platform-mt6895,
+	  and set N to disable.
+
 # source "$(KCONFIG_EXT_PREFIX)drivers/input/touchscreen/BoTai_Multi_Touch/Kconfig"
 # source "$(KCONFIG_EXT_PREFIX)drivers/input/touchscreen/GT9966/Kconfig"
 # source "$(KCONFIG_EXT_PREFIX)drivers/input/touchscreen/gt9xx/Kconfig"
