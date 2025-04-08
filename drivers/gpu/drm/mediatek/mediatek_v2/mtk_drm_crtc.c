@@ -10776,9 +10776,9 @@ unsigned int mtk_bwm_get_layer_compress_ratio(struct mtk_drm_crtc *mtk_crtc, uns
 	return compr_ratio;
 }
 
-int mtk_bwm_get_weight(unsigned int peak)
+int mtk_bwm_get_weight(int weight, unsigned int peak)
 {
-	int weight = 0, index = 0;
+	int index = 0;
 
 	weight *= peak;
 	do_div(weight, 1000);
@@ -11026,18 +11026,18 @@ void mtk_bwm_get_compress_ratio(struct drm_crtc *crtc,
 					unsigned int peak = all_layer_compress_ratio_table[i].peak_ratio;
 
 					if (peak < 1000)
-						weight = mtk_bwm_get_weight(peak);
+						weight = mtk_bwm_get_weight(weight, peak);
 					else
 						weight = div_u64((weight * 10000), default_emi_eff);
 					break;
 				}
 			}
 			overlap = weight * bpp;
-			CRTC_MMP_MARK(0, bwm20, overlap, 5);
+			CRTC_MMP_MARK(0, bwm20, overlap << 16 | bpp << 8 | weight, 5);
 			add_bwm_entry(&mtk_bwm_sort_list, plane_state, overlap);
 		} else {
 			overlap = div_u64((weight * bpp * 10000), default_emi_eff);
-			CRTC_MMP_MARK(0, bwm20, overlap, 5);
+			CRTC_MMP_MARK(0, bwm20, overlap, 6);
 			add_bwm_entry(&mtk_bwm_sort_list, plane_state, overlap);
 		}
 	}
@@ -11047,7 +11047,7 @@ void mtk_bwm_get_compress_ratio(struct drm_crtc *crtc,
 			bwm20_overlap = overlap_sum;
 	}
 	DDPDBG_BWM("BWMT all_layer overlap %d\n", bwm20_overlap);
-	CRTC_MMP_MARK(0, bwm20, bwm20_overlap, 6);
+	CRTC_MMP_MARK(0, bwm20, bwm20_overlap, 7);
 	if (mtk_crtc->cur_lyeblob) {
 		mtk_crtc_update_hrt_state(crtc, 0, mtk_crtc->cur_lyeblob, cmdq_handle, true);
 		mtk_crtc->cur_lyeblob = NULL;
