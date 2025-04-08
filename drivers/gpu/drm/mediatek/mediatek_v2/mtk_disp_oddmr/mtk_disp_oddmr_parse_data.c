@@ -432,10 +432,11 @@ fail:
 }
 int mtk_oddmr_load_param(struct mtk_disp_oddmr *oddmr_data, struct mtk_drm_oddmr_param *param)
 {
-	int ret = -1;
+	int ret = -1, i = 0;
 	uint32_t table_idx, size_alloc;
 	void *data;
 	struct mtk_oddmr_od_param *od_param = &oddmr_data->primary_data->od_param;
+	char valid_table_str[OD_TABLE_MAX + 1];
 
 	if (param == NULL) {
 		DDPINFO("%s:%d, param is NULL\n",
@@ -484,14 +485,17 @@ int mtk_oddmr_load_param(struct mtk_disp_oddmr *oddmr_data, struct mtk_drm_oddmr
 		}
 		ret = _mtk_oddmr_load_param(od_param, param);
 		if (ret == 0) {
-			if (0 == (od_param->valid_table & (1 << table_idx)))
+			if (!od_param->valid_table[table_idx])
 				od_param->valid_table_cnt += 1;
-			od_param->valid_table |= (1 << table_idx);
+			od_param->valid_table[table_idx] = true;
 			oddmr_data->primary_data->od_state = ODDMR_LOAD_PARTS;
 		}
-		DDPINFO("%s:%d, od table cnt %d, valid 0x%x\n",
+		for (i = 0; i < OD_TABLE_MAX; i++)
+			valid_table_str[i] = od_param->valid_table[i] ? '1' : '0';
+		valid_table_str[OD_TABLE_MAX] = '\0';
+		DDPINFO("%s:%d, od valid_table_cnt %d: %s\n",
 				__func__, __LINE__,
-				od_param->valid_table_cnt, od_param->valid_table);
+				od_param->valid_table_cnt, valid_table_str);
 		break;
 	default:
 		DDPINFO("%s:%d, param is invalid 0x%x\n",

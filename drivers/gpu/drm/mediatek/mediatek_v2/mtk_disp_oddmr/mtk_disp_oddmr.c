@@ -993,19 +993,26 @@ static inline struct mtk_disp_oddmr *comp_to_oddmr(struct mtk_ddp_comp *comp)
 
 /* must check after get current table idx*/
 static inline bool mtk_oddmr_is_table_valid(int table_idx,
-		uint32_t valid_table, const char *name, int line, int log)
+		bool *valid_table, const char *name, int line, int log)
 {
+	int i;
+	char valid_table_str[OD_TABLE_MAX + 1];
+
 	if (table_idx < 0) {
 		if (log)
-			PC_ERR("%s[%d] invalid tableidx %d 0x%x\n",
-					name, line, table_idx, valid_table);
+			PC_ERR("%s[%d] invalid tableidx %d\n",
+					name, line, table_idx);
 		return false;
 	}
-	if (((1 << table_idx) & valid_table) > 0)
+	if (valid_table[table_idx])
 		return true;
-	if (log)
-		PC_ERR("%s[%d] invalid tableidx %d 0x%x\n",
-				name, line, table_idx, valid_table);
+	if (log) {
+		for (i = 0; i < OD_TABLE_MAX; i++)
+			valid_table_str[i] = valid_table[i] ? '1' : '0';
+		valid_table_str[OD_TABLE_MAX] = '\0';
+		PC_ERR("%s[%d] table %d is invalid: %s\n",
+				name, line, table_idx, valid_table_str);
+	}
 	return false;
 }
 #define IS_TABLE_VALID(idx, valid) mtk_oddmr_is_table_valid(idx, valid, __func__, __LINE__, 1)
@@ -3541,31 +3548,64 @@ static void mtk_oddmr_config(struct mtk_ddp_comp *comp,
 	mtk_oddmr_remap_config(comp, handle);
 }
 
-static void mtk_oddmr_dump_od_table(struct mtk_ddp_comp *comp, int table_idx)
+#define	TAB_MSG_LEN	(OD_GAIN_MAX * 23 + 15)
+static void mtk_oddmr_dump_od_table(struct mtk_ddp_comp *comp, int table_idx, bool dump_detail)
 {
 	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
 	struct mtk_oddmr_od_param *od_param = &oddmr_data->primary_data->od_param;
 	struct mtk_oddmr_od_table *table = od_param->od_tables[table_idx];
 	struct mtk_oddmr_od_table_basic_info *info = &table->table_basic_info;
-	int i;
+	int i, len = 0, n = 0;
+	char msg[TAB_MSG_LEN];
 
-	DDPDUMP("OD Table%d\n", table_idx);
-	DDPDUMP("%u x %u fps: %u(%d-%d) dbv 0x%x(0x%x-0x%x)\n",
-			info->width, info->height,
+	DDPDUMP("OD Table%d: %ux%u, fps %u(%d-%d), dbv 0x%x(0x%x-0x%x)\n",
+			table_idx, info->width, info->height,
 			info->fps, info->min_fps, info->max_fps,
 			info->dbv, info->min_dbv, info->max_dbv);
-	DDPDUMP("fps cnt %d\n", table->fps_cnt);
+	if (!dump_detail)
+		return;
+
+	len = snprintf(msg, TAB_MSG_LEN, " fps cnt %d, ", table->fps_cnt);
+	if (len < 0) {
+		DDPDUMP("%s:%d snprintf failed, %d\n", __func__, __LINE__, len);
+		return;
+	}
 	for (i = 0; i < table->fps_cnt && i < OD_GAIN_MAX; i++) {
-		DDPDUMP("(%d, %d) ",
+		if (oddmr_data->data->od_version >= MTK_OD_V3)
+			n = snprintf(msg + len, TAB_MSG_LEN - len, "(%d,%d,%d,%d) ",
+				table->fps_table[i].item, table->fps_table[i].value_r,
+				table->fps_table[i].value, table->fps_table[i].value_b);
+		else
+			n = snprintf(msg + len, TAB_MSG_LEN - len, "(%d, %d) ",
 				table->fps_table[i].item, table->fps_table[i].value);
+		if (n < 0) {
+			DDPDUMP("%s:%d snprintf failed, %d\n", __func__, __LINE__, n);
+			return;
+		}
+		len += n;
 	}
-	DDPDUMP("\n");
-	DDPDUMP("dbv cnt %d\n", table->bl_cnt);
+	DDPDUMP("%s\n", msg);
+
+	len = snprintf(msg, TAB_MSG_LEN, " dbv cnt %d, ", table->bl_cnt);
+	if (len < 0) {
+		DDPDUMP("%s:%d snprintf failed, %d\n", __func__, __LINE__, len);
+		return;
+	}
 	for (i = 0; i < table->bl_cnt && i < OD_GAIN_MAX; i++) {
-		DDPDUMP("(%d, %d) ",
+		if (oddmr_data->data->od_version >= MTK_OD_V3)
+			n = snprintf(msg + len, TAB_MSG_LEN - len, "(%d,%d,%d,%d) ",
+				table->bl_table[i].item, table->bl_table[i].value_r,
+				table->bl_table[i].value, table->bl_table[i].value_b);
+		else
+			n = snprintf(msg + len, TAB_MSG_LEN - len, "(%d, %d) ",
 				table->bl_table[i].item, table->bl_table[i].value);
+		if (n < 0) {
+			DDPDUMP("%s:%d snprintf failed, %d\n", __func__, __LINE__, n);
+			return;
+		}
+		len += n;
 	}
-	DDPDUMP("\n");
+	DDPDUMP("%s\n", msg);
 }
 
 static void mtk_oddmr_dump_od_param(struct mtk_ddp_comp *comp)
@@ -3573,24 +3613,36 @@ static void mtk_oddmr_dump_od_param(struct mtk_ddp_comp *comp)
 	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
 	struct mtk_oddmr_od_param *od_param = &oddmr_data->primary_data->od_param;
 	struct mtk_oddmr_od_basic_param *basic_param = &od_param->od_basic_info.basic_param;
+	int i = 0, cnt = 0;
+	char valid_table_str[OD_TABLE_MAX + 1];
+	bool dump_detail = true;
 
 	DDPDUMP("OD Basic info:\n");
-	DDPDUMP("valid_table 0x%x, valid_table_cnt %d\n",
-			od_param->valid_table, od_param->valid_table_cnt);
+	for (i = 0; i < OD_TABLE_MAX; i++)
+		valid_table_str[i] = od_param->valid_table[i] ? '1' : '0';
+	valid_table_str[OD_TABLE_MAX] = '\0';
+	DDPDUMP("%d valid tables: %s\n",
+			od_param->valid_table_cnt, valid_table_str);
 	DDPDUMP("res_switch_mode %d, %u x %u, table cnts %d, od_mode %d\n",
 			basic_param->resolution_switch_mode,
 			basic_param->panel_width, basic_param->panel_height,
 			basic_param->table_cnt, basic_param->od_mode);
 	DDPDUMP("dither_sel %d scaling_mode 0x%x\n",
 			basic_param->dither_sel, basic_param->scaling_mode);
-	if (IS_TABLE_VALID_LOW(0, od_param->valid_table))
-		mtk_oddmr_dump_od_table(comp, 0);
-	if (IS_TABLE_VALID_LOW(1, od_param->valid_table))
-		mtk_oddmr_dump_od_table(comp, 1);
-	if (IS_TABLE_VALID_LOW(2, od_param->valid_table))
-		mtk_oddmr_dump_od_table(comp, 2);
-	if (IS_TABLE_VALID_LOW(3, od_param->valid_table))
-		mtk_oddmr_dump_od_table(comp, 3);
+	if (od_param->valid_table_cnt > 8) {
+		dump_detail = false;
+		DDPDUMP("too many tables, not dump fps/dbv tables\n");
+	}
+	for (i = 0; i < basic_param->table_cnt; i++) {
+		if (IS_TABLE_VALID_LOW(i, od_param->valid_table)) {
+			cnt += 1;
+			mtk_oddmr_dump_od_table(comp, i, dump_detail);
+		}
+		if (cnt == 20) {
+			DDPDUMP("too many tables, only dump first 20 valid tables\n");
+			return;
+		}
+	}
 }
 
 int mtk_oddmr_analysis(struct mtk_ddp_comp *comp)

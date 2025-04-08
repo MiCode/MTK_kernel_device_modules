@@ -203,7 +203,7 @@ struct mtk_oddmr_od_basic_info {
 struct mtk_oddmr_od_param {
 	struct mtk_oddmr_od_basic_info od_basic_info;
 	struct mtk_oddmr_od_table *od_tables[OD_TABLE_MAX];
-	uint32_t valid_table;
+	bool valid_table[OD_TABLE_MAX];
 	int valid_table_cnt;
 	int updata_dram_table;
 };
