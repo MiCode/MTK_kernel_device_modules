@@ -4288,7 +4288,7 @@ int mtk_crtc_user_cmd_impl(struct drm_crtc *crtc, struct mtk_ddp_comp *comp,
 		DDPINFO("%s:%d, slepted\n", __func__, __LINE__);
 		CRTC_MMP_MARK(index, user_cmd, 0, 1);
 		ret = 1;
-		goto out;
+		goto out2;
 	}
 
 	CRTC_MMP_EVENT_START(index, user_cmd, comp->id, cmd);
@@ -4392,6 +4392,7 @@ err:
 	CRTC_MMP_EVENT_END(index, user_cmd, 0, 0);
 out:
 	mtk_vidle_user_power_release(DISP_VIDLE_USER_CRTC);
+out2:
 	if (need_lock)
 		DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
 
