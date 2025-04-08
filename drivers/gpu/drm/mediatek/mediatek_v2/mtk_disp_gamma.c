@@ -493,8 +493,6 @@ static int disp_gamma_cfg_set_12bit_gammalut(struct mtk_ddp_comp *comp,
 	struct mtk_disp_gamma *gamma = comp_to_gamma(comp);
 	struct mtk_disp_gamma_primary *primary_data = gamma->primary_data;
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
-	struct DISP_GAMMA_12BIT_LUT_T *config = data;
-	struct mtk_ddp_comp *companion = gamma->companion;
 	int ret = -1, pm_ret = 0;
 
 	if (!data || !mtk_crtc) {

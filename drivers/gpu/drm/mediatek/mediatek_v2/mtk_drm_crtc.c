@@ -7006,7 +7006,7 @@ static unsigned int overlap_to_bw(struct drm_crtc *crtc, unsigned int bw_base,
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
 	int crtc_idx = drm_crtc_index(crtc);
-	unsigned int bw = 0, tmp_overlap_of_bwm;
+	unsigned int bw = 0, tmp_overlap_of_bwm = 0;
 	unsigned int ori_overlap_num = overlap_num;
 	int discount = hrt_lp_switch_get();
 #if defined(DISP_BWM20_ENABLE)

@@ -696,7 +696,6 @@ static int disp_c3d_set_3dlut_v2(struct mtk_ddp_comp *comp,
 	struct mtk_ddp_comp *comp_c3d1 = NULL;
 	struct mtk_drm_crtc *mtk_crtc = NULL;
 	int pm_ret = 0;
-	bool ret;
 
 	if (IS_ERR_OR_NULL(comp)) {
 		PQ_ERR("%s: comp is NULL\n", __func__);

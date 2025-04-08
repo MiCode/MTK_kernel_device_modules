@@ -740,7 +740,6 @@ int mtk_gem_submit_ioctl(struct drm_device *dev, void *data,
 	int ret = 0;
 	struct drm_mtk_gem_submit *args = data;
 	struct mtk_fence_buf_info *buf, *buf2 = NULL;
-	struct mtk_drm_private *priv = dev->dev_private;
 
 	if (args->type == MTK_SUBMIT_OUT_FENCE)
 		args->layer_id = mtk_fence_get_output_timeline_id();
