@@ -730,6 +730,8 @@ static int mtk_drm_esd_check_worker_kthread(void *data)
 	} else
 		return -EINVAL;
 	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
+	idlemgr = mtk_crtc->idlemgr;
+	idlemgr_ctx = idlemgr->idlemgr_ctx;
 
 	while (1) {
 		msleep(ESD_CHECK_PERIOD);
@@ -743,11 +745,9 @@ static int mtk_drm_esd_check_worker_kthread(void *data)
 			atomic_set(&esd_ctx->target_time, 0);
 			if (esd_ctx->chk_mode == READ_LCM && en) {
 				DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
-				idlemgr = mtk_crtc->idlemgr;
-				idlemgr_ctx = idlemgr->idlemgr_ctx;
 
 				if (!mtk_crtc->enabled || idlemgr_ctx->is_idle)
-					DDPINFO("%s skip set int\n", __func__);
+					DDPINFO("%s skip set irq\n", __func__);
 				else {
 					mtk_ddp_comp_io_cmd(output_comp, NULL, ESD_CHECK_SET_INT,
 						(void *)&en);
@@ -776,8 +776,11 @@ static int mtk_drm_esd_check_worker_kthread(void *data)
 		}
 		if (esd_ctx->chk_mode == READ_LCM && !en) {
 			DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
-			mtk_ddp_comp_io_cmd(output_comp, NULL, ESD_CHECK_SET_INT,
-				(void *)&en);
+			if (!mtk_crtc->enabled || idlemgr_ctx->is_idle)
+				DDPINFO("%s skip clear irq\n", __func__);
+			else
+				mtk_ddp_comp_io_cmd(output_comp, NULL, ESD_CHECK_SET_INT,
+					(void *)&en);
 			DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
 		}
 
