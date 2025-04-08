@@ -2687,9 +2687,9 @@ static s32 ut_test_get(char *buf, const struct kernel_param *kp)
 static void process_ut_cmd(const char *cmd, u32 mmlid)
 {
 	struct mml_ut_config *utcfg = &mml_ut_cfg[mmlid];
-	char scan_buf[32] = {0};
-	int ret = 0;
-	u32 i, val;
+	u32 i;
+	int val = 0;
+	int ret;
 
 	if (strncmp(cmd, "reset", 5) == 0) {
 		memset((void *)utcfg, 0, sizeof(*utcfg));
@@ -2698,35 +2698,30 @@ static void process_ut_cmd(const char *cmd, u32 mmlid)
 	}
 
 	for (i = 0; i < ARRAY_SIZE(ut_params); i++) {
-		u32 param_len = strlen(ut_params[i]);
 		char temp[10] = {0};
+		const char *cursor;
 
 		if (strncmp(cmd, ut_params[i], strlen(ut_params[i])) != 0)
 			continue;
+		cursor = cmd + strlen(ut_params[i]);
+		if (*cursor != ':')
+			continue;
+		cursor++;
 
 		memcpy(temp, cmd, min_t(u32, 9, (u32)strlen(cmd)));
 		mml_msg("[ut]%s checking %s", __func__, temp);
 
-		if (strlen(cmd) > param_len && strncmp(cmd + param_len, ":0x", 3) == 0) {
-			ret = snprintf(scan_buf, ARRAY_SIZE(scan_buf) - 1, "%s:%%i", ut_params[i]);
-			if (ret < 0) {
-				mml_err("[ut]%s scan_buf snprintf error", __func__);
-				break;
-			}
-			ret = sscanf(cmd, scan_buf, &val);
-			mml_msg("[ut]scan %s %#010x idx %u ret %d", scan_buf, val, i, ret);
+		if (strlen(cursor) > 2 && strncmp(cursor, "0x", 2) == 0) {
+			cursor += 2;
+			ret = kstrtou32(cursor, 16, &val);
+			mml_msg("[ut]%s cursor %u cmd %s val %#x ret %d",
+				__func__, (u32)(cursor - cmd), ut_params[i], val, ret);
 		} else {
-			ret = snprintf(scan_buf, ARRAY_SIZE(scan_buf) - 1, "%s:%%u", ut_params[i]);
-			if (ret < 0) {
-				mml_err("[ut]%s scan_buf snprintf error", __func__);
-				break;
-			}
-			ret = sscanf(cmd, scan_buf, &val);
-			mml_msg("[ut]scan %s %u idx %u ret %d", scan_buf, val, i, ret);
+			ret = kstrtou32(cursor, 10, &val);
+			mml_msg("[ut]%s cursor %u cmd %s val %u ret %d",
+				__func__, (u32)(cursor - cmd), ut_params[i], val, ret);
 		}
 
-		if (ret != 1)
-			break;
 		((u32 *)utcfg)[i] = val;
 		break;
 	}
