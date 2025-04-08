@@ -1006,8 +1006,8 @@ static int hwccf_drv_probe(struct platform_device *pdev)
 
 
 	/* get regmap info */
-	if (regmap_count >= MAX_HWCCF) {
-		HWCCF_ERR("Too many regmaps\n");
+	if (regmap_count < 0 || regmap_count >= MAX_HWCCF) {
+		HWCCF_ERR("Too many regmaps or regmaps_count < 0(%d)\n", regmap_count);
 		return -ENOMEM;
 	}
 
