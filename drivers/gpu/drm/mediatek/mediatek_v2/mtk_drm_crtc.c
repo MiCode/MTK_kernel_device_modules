@@ -7408,6 +7408,23 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 		}
 	}
 
+	if (priv->mtk_dbgtp_sta.is_disp_hrt_issue) {
+		priv->mtk_dbgtp_sta.disp_hrt_time_count--;
+		if (priv->mtk_dbgtp_sta.disp_hrt_time_count <= 0) {
+			DDPMSG("After DSI underrun delay enable dbgtp\n");
+			/* Enable dbgtp en config */
+			priv->mtk_dbgtp_sta.dbgtp_en = true;
+			/* Clear dsi underrun slot */
+			addr = mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_UNDERRUNED);
+			*addr = 0;
+			/* Re-enable mminfor funnel */
+			mtk_dbgtp_set_mminfra_funnel(true);
+			/* Clear flags */
+			priv->mtk_dbgtp_sta.is_disp_hrt_issue = false;
+			priv->mtk_dbgtp_sta.disp_hrt_time_count = 0;
+		}
+	}
+
 	if (opt_mmdvfs && is_force_high_step) {
 		unsigned int step_size = mtk_drm_get_mmclk_step_size();
 
@@ -7431,15 +7448,6 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 			}
 			atomic_set(&mtk_crtc->force_high_step, 0);
 			mtk_vidle_force_power_ctrl_by_cpu(false);
-
-			DDPMSG("After DSI underrun delay enable dbgtp\n");
-			/* Enable dbgtp en config */
-			priv->mtk_dbgtp_sta.dbgtp_en = true;
-			/* Clear dsi underrun slot */
-			addr = mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_UNDERRUNED);
-			*addr = 0;
-			/* Re-enable mminfor funnel */
-			mtk_dbgtp_set_mminfra_funnel(true);
 		}
 	} else {
 		if (mtk_crtc->force_high_enabled != 0) {

@@ -4112,9 +4112,9 @@ int mtk_hrt_issue_flag_set(bool is_hrt_issue)
 	*addr = is_hrt_issue;
 	DDPMSG("%s set hrt issue is %d\n", __func__, is_hrt_issue);
 	if (is_hrt_issue) {
-		/* dbgtp dely 3072 frames and auto enable */
+		/* dbgtp dely 12000 frames and auto enable */
 		priv->mtk_dbgtp_sta.is_cam_hrt_issue = true;
-		priv->mtk_dbgtp_sta.cam_hrt_time_count = 4096;
+		priv->mtk_dbgtp_sta.cam_hrt_time_count = 12000;
 		mtk_dbgtp_switch(mtk_crtc, NULL, 0);
 		priv->mtk_dbgtp_sta.dbgtp_en = false;
 		DDPMSG("%s set hrt issue is %d disable dbgtp\n", __func__, is_hrt_issue);
@@ -4246,6 +4246,9 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 				/* Disable dbgtp */
 				mtk_dbgtp_switch(mtk_crtc, NULL, 0);
 				priv->mtk_dbgtp_sta.dbgtp_en = false;
+				/* dbgtp dely 12000 frames and auto enable */
+				priv->mtk_dbgtp_sta.is_disp_hrt_issue = true;
+				priv->mtk_dbgtp_sta.disp_hrt_time_count = 12000;
 				/* Set dsi underrun slot */
 				addr = mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_UNDERRUNED);
 				*addr = 1;
