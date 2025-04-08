@@ -932,7 +932,7 @@ void mtk_dbgtp_default_cfg_load(struct mtk_drm_private *priv)
 	priv->mtk_dbgtp_sta.dispsys[0].subsys_mon_info_en = true;
 	priv->mtk_dbgtp_sta.dispsys[0].smi_mon[0].smi_mon_en = true;
 	priv->mtk_dbgtp_sta.dispsys[0].smi_mon[0].rst_by_frame = true;
-	priv->mtk_dbgtp_sta.dispsys[0].smi_mon[0].slice_time = 0x514;
+	priv->mtk_dbgtp_sta.dispsys[0].smi_mon[0].slice_time = 0x104;
 	priv->mtk_dbgtp_sta.dispsys[0].smi_mon[0].smi_mon_dump_sel = 0x1;
 	priv->mtk_dbgtp_sta.dispsys[0].smi_mon[0].smi_mon_portid[0] = 2;
 	priv->mtk_dbgtp_sta.dispsys[0].smi_mon[0].smi_mon_portid[1] = 3;
@@ -950,7 +950,7 @@ void mtk_dbgtp_default_cfg_load(struct mtk_drm_private *priv)
 	priv->mtk_dbgtp_sta.dispsys[1].subsys_mon_info_en = false;
 	priv->mtk_dbgtp_sta.dispsys[1].smi_mon[0].smi_mon_en = false;
 	priv->mtk_dbgtp_sta.dispsys[1].smi_mon[0].rst_by_frame = true;
-	priv->mtk_dbgtp_sta.dispsys[1].smi_mon[0].slice_time = 0x514;
+	priv->mtk_dbgtp_sta.dispsys[1].smi_mon[0].slice_time = 0x104;
 	priv->mtk_dbgtp_sta.dispsys[1].smi_mon[0].smi_mon_dump_sel = 0x1;
 	priv->mtk_dbgtp_sta.dispsys[1].smi_mon[0].smi_mon_portid[0] = 0;
 	priv->mtk_dbgtp_sta.dispsys[1].smi_mon[0].smi_mon_portid[1] = 1;
@@ -972,7 +972,7 @@ void mtk_dbgtp_default_cfg_load(struct mtk_drm_private *priv)
 	priv->mtk_dbgtp_sta.dispsys[2].subsys_mon_info_en = true;
 	priv->mtk_dbgtp_sta.dispsys[2].smi_mon[0].smi_mon_en = true;
 	priv->mtk_dbgtp_sta.dispsys[2].smi_mon[0].rst_by_frame = true;
-	priv->mtk_dbgtp_sta.dispsys[2].smi_mon[0].slice_time = 0x514;
+	priv->mtk_dbgtp_sta.dispsys[2].smi_mon[0].slice_time = 0x104;
 	priv->mtk_dbgtp_sta.dispsys[2].smi_mon[0].smi_mon_portid[0] = 1;
 	priv->mtk_dbgtp_sta.dispsys[2].smi_mon[0].smi_mon_portid[1] = 3;
 	priv->mtk_dbgtp_sta.dispsys[2].smi_mon[0].smi_mon_portid[2] = 6;
@@ -989,7 +989,7 @@ void mtk_dbgtp_default_cfg_load(struct mtk_drm_private *priv)
 	priv->mtk_dbgtp_sta.dispsys[3].subsys_mon_info_en = true;
 	priv->mtk_dbgtp_sta.dispsys[3].smi_mon[0].smi_mon_en = true;
 	priv->mtk_dbgtp_sta.dispsys[3].smi_mon[0].rst_by_frame = true;
-	priv->mtk_dbgtp_sta.dispsys[3].smi_mon[0].slice_time = 0x514;
+	priv->mtk_dbgtp_sta.dispsys[3].smi_mon[0].slice_time = 0x104;
 	priv->mtk_dbgtp_sta.dispsys[3].smi_mon[0].smi_mon_portid[0] = 0;
 	priv->mtk_dbgtp_sta.dispsys[3].smi_mon[0].smi_mon_portid[1] = 1;
 	priv->mtk_dbgtp_sta.dispsys[3].smi_mon[0].smi_mon_portid[2] = 5;
@@ -1018,10 +1018,10 @@ void mtk_dbgtp_default_cfg_load(struct mtk_drm_private *priv)
 	priv->mtk_dbgtp_sta.ovlsys[0].smi_mon[1].rst_by_frame = true;
 	priv->mtk_dbgtp_sta.ovlsys[0].smi_mon[2].rst_by_frame = true;
 	priv->mtk_dbgtp_sta.ovlsys[0].smi_mon[3].rst_by_frame = true;
-	priv->mtk_dbgtp_sta.ovlsys[0].smi_mon[0].slice_time = 0x514;
-	priv->mtk_dbgtp_sta.ovlsys[0].smi_mon[1].slice_time = 0x514;
-	priv->mtk_dbgtp_sta.ovlsys[0].smi_mon[2].slice_time = 0x514;
-	priv->mtk_dbgtp_sta.ovlsys[0].smi_mon[3].slice_time = 0x514;
+	priv->mtk_dbgtp_sta.ovlsys[0].smi_mon[0].slice_time = 0x104;
+	priv->mtk_dbgtp_sta.ovlsys[0].smi_mon[1].slice_time = 0x104;
+	priv->mtk_dbgtp_sta.ovlsys[0].smi_mon[2].slice_time = 0x104;
+	priv->mtk_dbgtp_sta.ovlsys[0].smi_mon[3].slice_time = 0x104;
 	priv->mtk_dbgtp_sta.ovlsys[0].smi_mon[0].smi_mon_dump_sel = 0x1;
 	priv->mtk_dbgtp_sta.ovlsys[0].smi_mon[1].smi_mon_dump_sel = 0x1;
 	priv->mtk_dbgtp_sta.ovlsys[0].smi_mon[2].smi_mon_dump_sel = 0x1;
@@ -1061,10 +1061,10 @@ void mtk_dbgtp_default_cfg_load(struct mtk_drm_private *priv)
 	priv->mtk_dbgtp_sta.ovlsys[1].smi_mon[1].rst_by_frame = true;
 	priv->mtk_dbgtp_sta.ovlsys[1].smi_mon[2].rst_by_frame = true;
 	priv->mtk_dbgtp_sta.ovlsys[1].smi_mon[3].rst_by_frame = true;
-	priv->mtk_dbgtp_sta.ovlsys[1].smi_mon[0].slice_time = 0x514;
-	priv->mtk_dbgtp_sta.ovlsys[1].smi_mon[1].slice_time = 0x514;
-	priv->mtk_dbgtp_sta.ovlsys[1].smi_mon[2].slice_time = 0x514;
-	priv->mtk_dbgtp_sta.ovlsys[1].smi_mon[3].slice_time = 0x514;
+	priv->mtk_dbgtp_sta.ovlsys[1].smi_mon[0].slice_time = 0x104;
+	priv->mtk_dbgtp_sta.ovlsys[1].smi_mon[1].slice_time = 0x104;
+	priv->mtk_dbgtp_sta.ovlsys[1].smi_mon[2].slice_time = 0x104;
+	priv->mtk_dbgtp_sta.ovlsys[1].smi_mon[3].slice_time = 0x104;
 	priv->mtk_dbgtp_sta.ovlsys[1].smi_mon[0].smi_mon_portid[0] = 2;
 	priv->mtk_dbgtp_sta.ovlsys[1].smi_mon[0].smi_mon_cg_ctl[1] = 1;
 	priv->mtk_dbgtp_sta.ovlsys[1].smi_mon[0].smi_mon_cg_ctl[2] = 1;
@@ -1100,10 +1100,10 @@ void mtk_dbgtp_default_cfg_load(struct mtk_drm_private *priv)
 	priv->mtk_dbgtp_sta.ovlsys[2].smi_mon[1].rst_by_frame = true;
 	priv->mtk_dbgtp_sta.ovlsys[2].smi_mon[2].rst_by_frame = true;
 	priv->mtk_dbgtp_sta.ovlsys[2].smi_mon[3].rst_by_frame = true;
-	priv->mtk_dbgtp_sta.ovlsys[2].smi_mon[0].slice_time = 0x514;
-	priv->mtk_dbgtp_sta.ovlsys[2].smi_mon[1].slice_time = 0x514;
-	priv->mtk_dbgtp_sta.ovlsys[2].smi_mon[2].slice_time = 0x514;
-	priv->mtk_dbgtp_sta.ovlsys[2].smi_mon[3].slice_time = 0x514;
+	priv->mtk_dbgtp_sta.ovlsys[2].smi_mon[0].slice_time = 0x104;
+	priv->mtk_dbgtp_sta.ovlsys[2].smi_mon[1].slice_time = 0x104;
+	priv->mtk_dbgtp_sta.ovlsys[2].smi_mon[2].slice_time = 0x104;
+	priv->mtk_dbgtp_sta.ovlsys[2].smi_mon[3].slice_time = 0x104;
 	priv->mtk_dbgtp_sta.ovlsys[2].smi_mon[0].smi_mon_portid[0] = 2;
 	priv->mtk_dbgtp_sta.ovlsys[2].smi_mon[0].smi_mon_cg_ctl[1] = 1;
 	priv->mtk_dbgtp_sta.ovlsys[2].smi_mon[0].smi_mon_cg_ctl[2] = 1;
@@ -1135,7 +1135,7 @@ void mtk_dbgtp_default_cfg_load(struct mtk_drm_private *priv)
 	priv->mtk_dbgtp_sta.mmlsys[0].subsys_mon_info_en = true;
 	priv->mtk_dbgtp_sta.mmlsys[0].smi_mon[0].smi_mon_en = true;
 	priv->mtk_dbgtp_sta.mmlsys[0].smi_mon[0].rst_by_frame = true;
-	priv->mtk_dbgtp_sta.mmlsys[0].smi_mon[0].slice_time = 0x514;
+	priv->mtk_dbgtp_sta.mmlsys[0].smi_mon[0].slice_time = 0x104;
 	priv->mtk_dbgtp_sta.mmlsys[0].smi_mon[0].smi_mon_portid[0] = 4;
 	priv->mtk_dbgtp_sta.mmlsys[0].smi_mon[0].smi_mon_portid[1] = 5;
 	priv->mtk_dbgtp_sta.mmlsys[0].smi_mon[0].smi_mon_portid[2] = 11;
@@ -1150,7 +1150,7 @@ void mtk_dbgtp_default_cfg_load(struct mtk_drm_private *priv)
 	priv->mtk_dbgtp_sta.mmlsys[1].subsys_mon_info_en = true;
 	priv->mtk_dbgtp_sta.mmlsys[1].smi_mon[0].smi_mon_en = true;
 	priv->mtk_dbgtp_sta.mmlsys[1].smi_mon[0].rst_by_frame = true;
-	priv->mtk_dbgtp_sta.mmlsys[1].smi_mon[0].slice_time = 0x514;
+	priv->mtk_dbgtp_sta.mmlsys[1].smi_mon[0].slice_time = 0x104;
 	priv->mtk_dbgtp_sta.mmlsys[1].smi_mon[0].smi_mon_portid[0] = 4;
 	priv->mtk_dbgtp_sta.mmlsys[1].smi_mon[0].smi_mon_portid[1] = 5;
 	priv->mtk_dbgtp_sta.mmlsys[1].smi_mon[0].smi_mon_portid[2] = 11;
@@ -1167,8 +1167,8 @@ void mtk_dbgtp_default_cfg_load(struct mtk_drm_private *priv)
 	priv->mtk_dbgtp_sta.mmlsys[2].smi_mon[1].smi_mon_en = true;
 	priv->mtk_dbgtp_sta.mmlsys[2].smi_mon[0].rst_by_frame = true;
 	priv->mtk_dbgtp_sta.mmlsys[2].smi_mon[1].rst_by_frame = true;
-	priv->mtk_dbgtp_sta.mmlsys[2].smi_mon[0].slice_time = 0x514;
-	priv->mtk_dbgtp_sta.mmlsys[2].smi_mon[1].slice_time = 0x514;
+	priv->mtk_dbgtp_sta.mmlsys[2].smi_mon[0].slice_time = 0x104;
+	priv->mtk_dbgtp_sta.mmlsys[2].smi_mon[1].slice_time = 0x104;
 	priv->mtk_dbgtp_sta.mmlsys[2].smi_mon[0].smi_mon_portid[0] = 0;
 	priv->mtk_dbgtp_sta.mmlsys[2].smi_mon[0].smi_mon_portid[1] = 1;
 	priv->mtk_dbgtp_sta.mmlsys[2].smi_mon[0].smi_mon_portid[2] = 2;
@@ -2576,8 +2576,7 @@ static irqreturn_t mtk_disp_dbgtp_irq_handler(int irq, void *dev_id)
 
 	if (val & (1 << 0)) {
 		DRM_MMP_MARK(dbgtp, val, val1);
-		DDPPR_ERR(pr_fmt("[IRQ] %s: 0 trigger start\n"),
-				mtk_dump_comp_str(dbgtp));
+		DDPDBG("[IRQ] %s: 0 trigger start\n", mtk_dump_comp_str(dbgtp));
 		mtk_dsi_fifo_mon_trigger_start_set(true);
 		writel(0xf, dbgtp->regs + DISP_DBG_FIFO_MON_INT_CLR);
 		writel(0, dbgtp->regs + DISP_DBG_FIFO_MON_INT_CLR);
@@ -2585,21 +2584,21 @@ static irqreturn_t mtk_disp_dbgtp_irq_handler(int irq, void *dev_id)
 
 	if (val & (1 << 1)) {
 		DRM_MMP_MARK(dbgtp, val, 1);
-		DDPMSG("[IRQ] %s: 1 trigger start\n", mtk_dump_comp_str(dbgtp));
+		DDPDBG("[IRQ] %s: 1 trigger start\n", mtk_dump_comp_str(dbgtp));
 		writel(0xf, dbgtp->regs + DISP_DBG_FIFO_MON_INT_CLR);
 		writel(0, dbgtp->regs + DISP_DBG_FIFO_MON_INT_CLR);
 	}
 
 	if (val & (1 << 2)) {
 		DRM_MMP_MARK(dbgtp, val, 2);
-		DDPMSG("[IRQ] %s: 2 trigger start\n", mtk_dump_comp_str(dbgtp));
+		DDPDBG("[IRQ] %s: 2 trigger start\n", mtk_dump_comp_str(dbgtp));
 		writel(0xf, dbgtp->regs + DISP_DBG_FIFO_MON_INT_CLR);
 		writel(0, dbgtp->regs + DISP_DBG_FIFO_MON_INT_CLR);
 	}
 
 	if (val & (1 << 3)) {
 		DRM_MMP_MARK(dbgtp, val, 3);
-		DDPMSG("[IRQ] %s: 3 trigger start\n", mtk_dump_comp_str(dbgtp));
+		DDPDBG("[IRQ] %s: 3 trigger start\n", mtk_dump_comp_str(dbgtp));
 		writel(0xf, dbgtp->regs + DISP_DBG_FIFO_MON_INT_CLR);
 		writel(0, dbgtp->regs + DISP_DBG_FIFO_MON_INT_CLR);
 	}
