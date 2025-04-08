@@ -1024,8 +1024,11 @@ static void devapc_extra_handler(int slave_type, const char *vio_master,
 		if (viocb->id == DEVAPC_SUBSYS_CLKMGR &&
 				viocb->debug_dump &&
 				vio_type != DEVAPC_VIO_PERM_DENIED &&
-				ret_cb != DEVAPC_NOT_KE)
+				ret_cb != DEVAPC_NOT_KE) {
 			viocb->debug_dump();
+			dbg_stat->enable_AEE = false;
+			dbg_stat->enable_KE = true;
+		}
 	}
 
 	pr_info(PFX "enable AEE:0x%x,enable KE:0x%x, enable WARN:0x%x",
