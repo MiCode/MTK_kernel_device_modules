@@ -4646,6 +4646,12 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			node-50 = "GPUEB_SLCV2_ITER_TRACE_END", "source,event,context_id,timer";
 			node-51 = "GPUEB_SLCV2_CCMD_PMU_CNT", "DF0,DF1,CH0,CH2,RP_HIT,Z_CLEAN,Z_IRQ";
 			node-52 = "GPUEB_SLCV1_POLICY", "current,final";
+			node-53 = "GPUEB_GPUFREQ_PRBC_POWER_CURRENT",
+				"final_power,spbm_power,spbm_current,ondie_power,ondie_current";
+			node-54 = "GPUEB_GPUFREQ_PRBC_FREQ_VOLT",
+				"hbvc_freq,prbc_freq,avg_freq,ondie_volt";
+			node-55 = "GPUEB_GPUFREQ_PRBC_MISC_INFO",
+				"limiter,ratio,ratio_irq_count";
 		};
 	};
 
