@@ -71,6 +71,60 @@
 })
 #endif
 
+enum GCE_COND_REVERSE_COND {
+	R_CMDQ_NOT_EQUAL = CMDQ_EQUAL,
+	R_CMDQ_EQUAL = CMDQ_NOT_EQUAL,
+	R_CMDQ_LESS = CMDQ_GREATER_THAN_AND_EQUAL,
+	R_CMDQ_GREATER = CMDQ_LESS_THAN_AND_EQUAL,
+	R_CMDQ_LESS_EQUAL = CMDQ_GREATER_THAN,
+	R_CMDQ_GREATER_EQUAL = CMDQ_LESS_THAN,
+};
+
+#define GCE_COND_DECLARE \
+	u32 _inst_condi_jump, _inst_jump_end; \
+	u64 _jump_pa; \
+	u64 *_inst; \
+	struct cmdq_pkt *_cond_pkt; \
+	u16 _gpr, _reg_jump
+
+#define GCE_COND_ASSIGN(pkt, addr, gpr) do { \
+	_cond_pkt = pkt; \
+	_reg_jump = addr; \
+	_gpr = gpr; \
+} while (0)
+
+#define GCE_IF(lop, cond, rop) do { \
+	_inst_condi_jump = _cond_pkt->cmd_buf_size; \
+	cmdq_pkt_assign_command(_cond_pkt, _reg_jump, 0); \
+	cmdq_pkt_cond_jump_abs(_cond_pkt, _reg_jump, &lop, &rop, (enum CMDQ_CONDITION_ENUM) cond); \
+	_inst_jump_end = _inst_condi_jump; \
+} while (0)
+
+#define GCE_ELSE do { \
+	_inst_jump_end = _cond_pkt->cmd_buf_size; \
+	cmdq_pkt_jump_addr(_cond_pkt, 0); \
+	_inst = cmdq_pkt_get_va_by_offset(_cond_pkt, _inst_condi_jump); \
+	_jump_pa = cmdq_pkt_get_pa_by_offset(_cond_pkt, _cond_pkt->cmd_buf_size); \
+	*_inst = *_inst | CMDQ_REG_SHIFT_ADDR(_jump_pa); \
+} while (0)
+
+#define GCE_FI do { \
+	_inst = cmdq_pkt_get_va_by_offset(_cond_pkt, _inst_jump_end); \
+	_jump_pa = cmdq_pkt_get_pa_by_offset(_cond_pkt, _cond_pkt->cmd_buf_size); \
+	*_inst = *_inst & ((u64)0xFFFFFFFF << 32); \
+	*_inst = *_inst | CMDQ_REG_SHIFT_ADDR(_jump_pa); \
+} while (0)
+
+#define GCE_FI_REUSE(reuse) do { \
+	_inst = cmdq_pkt_get_va_by_offset(_cond_pkt, _inst_jump_end); \
+	_jump_pa = cmdq_pkt_get_pa_by_offset(_cond_pkt, _cond_pkt->cmd_buf_size); \
+	*_inst = *_inst & ((u64)0xFFFFFFFF << 32); \
+	*_inst = *_inst | CMDQ_REG_SHIFT_ADDR(_jump_pa); \
+	(reuse)->op = CMDQ_CODE_JUMP_C_ABSOLUTE; \
+	(reuse)->offset = _inst_condi_jump; \
+	(reuse)->val = _cond_pkt->cmd_buf_size; \
+} while (0)
+
 #define VLP_DISP_SW_VOTE_CON 0x410
 #define VLP_DISP_SW_VOTE_SET 0x414
 #define VLP_DISP_SW_VOTE_CLR 0x418
@@ -483,7 +537,7 @@ static bool dpc_is_power_on_v2(void);
 static bool mminfra_is_power_on_v2(void);
 static u8 bw_to_level_v3(const u32 total_bw);
 static void dpc_analysis_v2(void);
-static void dpc_hwccf_vote(bool on, struct cmdq_pkt *pkt, const enum mtk_vidle_voter_user user);
+static void dpc_hwccf_vote(bool on, struct cmdq_pkt *pkt, const enum mtk_vidle_voter_user user, bool lock);
 static void process_dbg_opt(const char *opt);
 
 struct mtk_dpc {
@@ -501,6 +555,8 @@ struct mtk_dpc {
 	bool skip_force_power;
 	spinlock_t skip_force_power_lock;
 	spinlock_t mtcmos_cfg_lock;
+	spinlock_t hwccf_ref_lock;
+
 #if IS_ENABLED(CONFIG_DEBUG_FS)
 	struct dentry *fs;
 #endif
@@ -563,8 +619,8 @@ struct mtk_dpc {
 	void (*mtcmos_vote)(const u32 subsys, const u8 thread, const bool en);
 	int (*power_keep)(const u32 user);
 	void (*power_release)(const u32 user);
-	void (*power_keep_by_gce)(struct cmdq_pkt *pkt, const u32 user, const u16 gpr, struct cmdq_poll_reuse *reuse);
-	void (*power_release_by_gce)(struct cmdq_pkt *pkt, const u32 user);
+	void (*power_keep_by_gce)(struct cmdq_pkt *pkt, const u32 user, const u16 gpr, void *reuse);
+	void (*power_release_by_gce)(struct cmdq_pkt *pkt, const u32 user, void *reuse);
 	void (*config)(const u32 subsys, bool en);
 	void (*analysis)(void);
 };

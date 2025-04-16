@@ -1682,7 +1682,7 @@ static void dpc_clear_wfe_event(struct cmdq_pkt *pkt, enum mtk_vidle_voter_user 
 }
 
 static void dpc_vidle_power_keep_by_gce(struct cmdq_pkt *pkt, const enum mtk_vidle_voter_user user,
-					const u16 gpr, struct cmdq_poll_reuse *reuse)
+					const u16 gpr, void *reuse)
 {
 	cmdq_pkt_write(pkt, NULL, g_priv->voter_set_pa, BIT(user), U32_MAX);
 
@@ -1708,7 +1708,8 @@ static void dpc_vidle_power_keep_by_gce(struct cmdq_pkt *pkt, const enum mtk_vid
 	}
 }
 
-static void dpc_vidle_power_release_by_gce(struct cmdq_pkt *pkt, const enum mtk_vidle_voter_user user)
+static void dpc_vidle_power_release_by_gce(struct cmdq_pkt *pkt, const enum mtk_vidle_voter_user user,
+					   void *reuse)
 {
 	cmdq_pkt_write(pkt, NULL, g_priv->voter_clr_pa, BIT(user), U32_MAX);
 }

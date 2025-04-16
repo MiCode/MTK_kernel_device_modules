@@ -258,20 +258,7 @@ static s32 mutex_trigger(struct mml_comp *comp, struct mml_task *task,
 			}
 
 			cmdq_pkt_set_event(pkt, mml_ir_get_mml_ready_event(cfg->mml));
-
-			if (cfg->dpc && (mml_dl_dpc & MML_DPC_MUTEX_VOTE) &&
-				comp->sysid == path->mmlsys->sysid) {
-#ifndef MML_FPGA
-				mml_dpc_power_release_gce(comp->sysid, pkt);
-				cmdq_pkt_wfe(pkt, mml_ir_get_disp_ready_event(cfg->mml));
-				mml_dpc_power_keep_gce(comp->sysid, pkt,
-					mutex->data->gpr[ccfg->pipe],
-					&task->dpc_reuse_mutex);
-
-#endif
-			} else {
-				cmdq_pkt_wfe(pkt, mml_ir_get_disp_ready_event(cfg->mml));
-			}
+			cmdq_pkt_wfe(pkt, mml_ir_get_disp_ready_event(cfg->mml));
 
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 			cmdq_pkt_backup_cpr(pkt, &task->disp_fence_id, CMDQ_CPR_MML_DISP_FENCE);
@@ -413,11 +400,10 @@ static s32 mutex_trigger_mt6993d(struct mml_comp *comp, struct mml_task *task,
 
 			if (cfg->dpc && (mml_dl_dpc & MML_DPC_MUTEX_VOTE)) {
 #ifndef MML_FPGA
-				mml_dpc_power_release_gce(comp->sysid, pkt);
+				mml_dpc_power_release_gce(comp->sysid, pkt, NULL);
 				cmdq_pkt_wfe(pkt, mml_ir_get_disp_ready_event(cfg->mml));
 				mml_dpc_power_keep_gce(comp->sysid, pkt,
-					mutex->data->gpr[ccfg->pipe],
-					&task->dpc_reuse_mutex);
+					mutex->data->gpr[ccfg->pipe], task->reuse_dpc);
 
 #endif
 			} else {

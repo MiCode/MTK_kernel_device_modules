@@ -28,6 +28,8 @@ struct dpc_mmp_events_t {
 	mmp_event prete;
 	mmp_event mminfra;
 	mmp_event vlp_vote;
+	mmp_event hwccf_vote;
+	mmp_event hwccf_gce_vote;
 	mmp_event mml_rrot_done;
 	mmp_event mml_sof;
 	mmp_event mtcmos_ovl0;

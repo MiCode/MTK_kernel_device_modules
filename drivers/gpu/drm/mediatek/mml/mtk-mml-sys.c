@@ -422,7 +422,7 @@ static s32 sys_init(struct mml_comp *comp, struct mml_task *task,
 			cfg->info.mode != MML_MODE_DDP_ADDON &&
 			comp->sysid == path->mmlsys->sysid)
 			mml_dpc_power_keep_gce(comp->sysid, pkt, sys->data->gpr[ccfg->pipe],
-				&task->dpc_reuse_sys);
+				task->reuse_dpc);
 	}
 
 	if (cfg->dbgtp)
@@ -1172,7 +1172,7 @@ static s32 sys_done(struct mml_comp *comp, struct mml_task *task,
 	    cfg->info.mode != MML_MODE_DDP_ADDON &&
 	    comp->sysid == path->mmlsys->sysid) {
 #ifndef MML_FPGA
-		mml_dpc_power_release_gce(comp->sysid, pkt);
+		mml_dpc_power_release_gce(comp->sysid, pkt, task->reuse_dpc);
 #endif
 	}
 

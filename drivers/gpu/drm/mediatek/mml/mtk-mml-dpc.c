@@ -159,7 +159,7 @@ void mml_dpc_isr_release(void)
 		mml_dpc_funcs.dpc_vidle_power_release(DISP_VIDLE_USER_MML_CLK_ISR);
 }
 
-int mml_dpc_power_keep_gce(u32 sysid, struct cmdq_pkt *pkt, u16 gpr, struct cmdq_poll_reuse *reuse)
+int mml_dpc_power_keep_gce(u32 sysid, struct cmdq_pkt *pkt, u16 gpr, struct cmdq_reuse *reuse)
 {
 	enum mtk_vidle_voter_user user = DISP_VIDLE_USER_MML_CMDQ;
 
@@ -183,11 +183,11 @@ int mml_dpc_power_keep_gce(u32 sysid, struct cmdq_pkt *pkt, u16 gpr, struct cmdq
 
 	mml_msg_dpc("%s exception flow gce user %d keep", __func__, user);
 
-	mml_dpc_funcs.dpc_vidle_power_keep_by_gce(pkt, user, gpr, reuse);
+	mml_dpc_funcs.dpc_vidle_power_keep_by_gce(pkt, user, gpr, (void *)reuse);
 	return 0;
 }
 
-void mml_dpc_power_release_gce(u32 sysid, struct cmdq_pkt *pkt)
+void mml_dpc_power_release_gce(u32 sysid, struct cmdq_pkt *pkt, struct cmdq_reuse *reuse)
 {
 	enum mtk_vidle_voter_user user = DISP_VIDLE_USER_MML_CMDQ;
 
@@ -211,7 +211,7 @@ void mml_dpc_power_release_gce(u32 sysid, struct cmdq_pkt *pkt)
 
 	mml_msg_dpc("%s exception flow gce user %d release", __func__, user);
 
-	mml_dpc_funcs.dpc_vidle_power_release_by_gce(pkt, user);
+	mml_dpc_funcs.dpc_vidle_power_release_by_gce(pkt, user, (void *)reuse);
 }
 
 void mml_dpc_hrt_bw_set(u32 larb_idx, const u32 bw_in_mb, bool force_keep)

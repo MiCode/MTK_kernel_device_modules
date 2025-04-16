@@ -453,7 +453,7 @@ void mtk_vdisp_ctrl(int on_off, const char *c_n, uint32_t ops, uint32_t bit)
 #endif
 			/* power on disp vcore by mtcmos voter */
 			if (disp_dpc_driver.dpc_mtcmos_on_off)
-				disp_dpc_driver.dpc_mtcmos_on_off(true, NULL, DISP_VIDLE_USER_DISP_VCORE);
+				disp_dpc_driver.dpc_mtcmos_on_off(true, NULL, DISP_VIDLE_USER_DISP_VCORE, true);
 
 			vdisp_hwccf_ctrl(g_priv, true);
 		} else if (atomic_read(&g_vdisp_ctrl_cnt) == 1) {
@@ -509,7 +509,7 @@ void mtk_vdisp_ctrl(int on_off, const char *c_n, uint32_t ops, uint32_t bit)
 
 			/* power off disp vcore by mtcmos voter */
 			if (disp_dpc_driver.dpc_mtcmos_on_off)
-				disp_dpc_driver.dpc_mtcmos_on_off(false, NULL, DISP_VIDLE_USER_DISP_VCORE);
+				disp_dpc_driver.dpc_mtcmos_on_off(false, NULL, DISP_VIDLE_USER_DISP_VCORE, true);
 
 #if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 			__pm_relax(g_vdisp_wake_lock);

@@ -209,9 +209,10 @@ struct dpc_funcs {
 	void (*dpc_vidle_power_release)(const enum mtk_vidle_voter_user);
 	void (*dpc_vidle_power_keep_by_gce)(struct cmdq_pkt *pkt,
 					    const enum mtk_vidle_voter_user user, const u16 gpr,
-					    struct cmdq_poll_reuse *reuse);
+					    void *reuse);
 	void (*dpc_vidle_power_release_by_gce)(struct cmdq_pkt *pkt,
-					    const enum mtk_vidle_voter_user user);
+					       const enum mtk_vidle_voter_user user,
+					       void *reuse);
 
 	/* dpc monitor */
 	void (*dpc_monitor_config)(struct cmdq_pkt *cmdq_handle, const u32 value);
@@ -252,7 +253,7 @@ struct dpc_funcs {
 	void (*dpc_dvfs_both_set)(const u32 subsys, const u8 level, bool force,
 		const u32 bw_in_mb);
 	int (*dpc_mminfra_on_off)(bool en);
-	void (*dpc_mtcmos_on_off)(bool on, struct cmdq_pkt *pkt, const enum mtk_vidle_voter_user user);
+	void (*dpc_mtcmos_on_off)(bool on, struct cmdq_pkt *pkt, const enum mtk_vidle_voter_user user, bool lock);
 };
 
 #endif
