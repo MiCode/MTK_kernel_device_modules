@@ -9440,6 +9440,8 @@
 			dli1-dl-relay = /bits/ 16 <DL_IN_RELAY1_SIZE>;
 			dlo0-dl-relay = /bits/ 16 <DL_OUT_RELAY0_SIZE>;
 			dlo1-dl-relay = /bits/ 16 <DL_OUT_RELAY1_SIZE>;
+			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
+			iommus = <&mdp_iommu M4U_LARB3_PORT4>;
 			mediatek,larb = <&smi_larb3 MTK_M4U_TO_PORT(M4U_LARB3_PORT4)>;
 		};
 
