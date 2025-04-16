@@ -1650,6 +1650,9 @@ static void dpc_config_v3(const u32 subsys, bool en)
 
 	/* set mtcmos auto or manual mode */
 	g_priv->set_mtcmos(DPC3_SUBSYS_DISP, (enum mtk_dpc_mtcmos_mode)en);
+	g_priv->set_mtcmos(DPC3_SUBSYS_MML0, (enum mtk_dpc_mtcmos_mode)en);
+	g_priv->set_mtcmos(DPC3_SUBSYS_MML1, (enum mtk_dpc_mtcmos_mode)en);
+	g_priv->set_mtcmos(DPC3_SUBSYS_MML2, (enum mtk_dpc_mtcmos_mode)en);
 
 	if (en && has_cap(DPC_CAP_MMINFRA_PLL) && !is_mminfra_ctrl_by_dpc) {
 		dpc_pm_ctrl(false);

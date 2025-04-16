@@ -3979,6 +3979,10 @@ static const enum pwr_clk_id mt6993_pwr_on_order[] = {
 	CLK_OVL0,
 	CLK_OVL1,
 	CLK_OVL2,
+	CLK_MML0,
+	CLK_MML1,
+	CLK_MML2,
+
 };
 
 static const enum pwr_clk_id mt6993_pwr_off_order[] = {
@@ -3989,6 +3993,9 @@ static const enum pwr_clk_id mt6993_pwr_off_order[] = {
 	CLK_OVL0,
 	CLK_OVL1,
 	CLK_OVL2,
+	CLK_MML0,
+	CLK_MML1,
+	CLK_MML2,
 	CLK_VDISP_PERI,
 	CLK_DISP_VCORE,
 	CLK_DSI_PHY0,
@@ -7402,7 +7409,7 @@ static const struct mtk_mmsys_driver_data mt6993_mmsys_driver_data = {
 	.pwr_clk_map = pwr_clk_map,
 	.pwr_on_order = mt6993_pwr_on_order,
 	.pwr_off_order = mt6993_pwr_off_order,
-	.pwr_length = MT6993_PWR_CLK_NUMS,
+	.pwr_length = ARRAY_SIZE(mt6993_pwr_on_order),
 	//.update_channel_hrt = mtk_disp_update_channel_hrt_MT6993,
 	//.get_channel_idx = mtk_disp_get_channel_idx_MT6993,
 	.get_dispsys_reg = mtk_disp_get_dispsys_reg_mt6993,

@@ -76,7 +76,7 @@ void mml_dpc_mtcmos_auto(u32 sysid, const bool en, const s8 mode)
 {
 	enum mtk_dpc_mtcmos_mode mtcmos_mode = en ? DPC_MTCMOS_AUTO : DPC_MTCMOS_MANUAL;
 
-	if (mml_dpc_version == DPC_VER2)
+	if (mml_dpc_version == DPC_VER2 || mml_dpc_version == DPC_VER3)
 		return;
 
 	if (mml_dpc_funcs.dpc_mtcmos_auto == NULL) {
@@ -88,10 +88,6 @@ void mml_dpc_mtcmos_auto(u32 sysid, const bool en, const s8 mode)
 	case DPC_VER1:
 		mml_dpc_funcs.dpc_mtcmos_auto(
 			mml_sysid_to_dpc_subsys(sysid), mtcmos_mode);
-		break;
-	case DPC_VER3:
-		mml_dpc_funcs.dpc_mtcmos_auto(
-			mml_sysid_to_dpc_subsys_v3(sysid), mtcmos_mode);
 		break;
 	default:
 		mml_err("%s mml_dpc_version %d", __func__, mml_dpc_version);
