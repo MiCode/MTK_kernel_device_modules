@@ -2233,20 +2233,15 @@ static bool xhci_mtk_is_streaming(struct xhci_hcd *xhci)
 
 static int check_usb_offload_quirk(int vid, int pid)
 {
-	if (vid == 0x046D && pid == 0x0A38) {
-		USB_OFFLOAD_INFO("Logitech USB Headset H340 NOT SUPPORT!!\n");
-		return -EOPNOTSUPP;
+	if ((vid == 0x046D && pid == 0x0A38) ||
+		(vid == 0x3302 && pid == 0x00c0) ||
+		(vid == 0x0BDA && pid == 0x4BD1) ||
+		(vid == 0x8087 && pid == 0x1024) ||
+		(vid == 0x0ECB && pid == 0x20F6)) {
+		USB_OFFLOAD_INFO("vid:0x%x pid:0x%x NOT SUPPORT!!\n", vid, pid);
+		return -1;
 	}
 
-	if (vid == 0x3302 && pid == 0x00c0) {
-		USB_OFFLOAD_INFO("TTGK Audio (GSI) NOT SUPPORT!!\n");
-		return -EOPNOTSUPP;
-	}
-
-	if (vid == 0x0BDA && pid == 0x4BD1) {
-		USB_OFFLOAD_INFO("JOWOYE MH339 NOT SUPPORT!!\n");
-		return -EOPNOTSUPP;
-	}
 	return 0;
 }
 
@@ -2371,7 +2366,6 @@ static int usb_offload_open(struct inode *ip, struct file *fp)
 
 	if (!uodev->connect_chip_num) {
 		USB_OFFLOAD_ERR("No UAC Device Connected!!!\n");
-		uo_mbrain_update(UO_PHASE_OPEN, UO_ERROR_NO_DEV_CONNECTED);
 		goto error;
 	}
 
