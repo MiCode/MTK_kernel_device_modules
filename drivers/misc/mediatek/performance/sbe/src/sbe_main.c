@@ -16,6 +16,8 @@
 #include "sbe_usedext.h"
 #include "sbe_sysfs.h"
 
+#include "util/tsk_util.h"
+
 #include <linux/sched.h>
 #include <uapi/linux/sched/types.h>
 #include <linux/sched/cputime.h>
@@ -30,6 +32,7 @@ static int sbe_query_is_running;
 static int sbe_recycle_idle_cnt;
 static int sbe_recycle_active = 1;
 static int condition_notifier_wq;
+static int sbe_disable_runnable_est;
 static struct task_struct *sbe_ktsk;
 static struct hrtimer sbe_recycle_hrt;
 static LIST_HEAD(head);
@@ -482,6 +485,28 @@ int sbe_get_render_tid_by_render_name(int tgid, char *name,
 	return 0;
 }
 
+void sbe_disable_runnable_est_boost(int disable)
+{
+	if (!get_sbe_disable_runnable_util_est_status()) {
+		if (sbe_disable_runnable_est) {
+			reset_runnable_boost_util_est_enable();
+			sbe_disable_runnable_est = 0;
+			sbe_trace("[SBE]: Runnable_EST_Boost=%d", 0);
+		}
+		return;
+	}
+
+	if (disable) {
+		set_runnable_boost_util_est_enable(0);
+		sbe_disable_runnable_est = 1;
+	} else {
+		reset_runnable_boost_util_est_enable();
+		sbe_disable_runnable_est = 0;
+	}
+
+	sbe_trace("[SBE]: Runnable_EST_Boost=%d", sbe_disable_runnable_est);
+}
+
 void sbe_enforce_update_sbe_info_by_thread_name(int tgid, char *thread_name,
 		int start, unsigned long long ts)
 {
@@ -798,9 +823,12 @@ static int sbe_do_hwui_scrolling_status_policy(int tgid, char *name, unsigned lo
 		sbe_enforce_update_sbe_info_by_thread_name(tgid, scroll_policy_info.thread_name,
 						start, ts);
 		sbe_put_tree_lock(__func__);
+		sbe_disable_runnable_est_boost(0);
 		ret = SBE_PID_NOT_FIND;
 		return ret;
 	}
+
+	sbe_disable_runnable_est_boost(start);
 
 	for (i = 0; i < final_pid_arr_idx; i++) {
 		sbe_get_tree_lock(__func__);
@@ -1158,7 +1186,7 @@ void sbe_consistency_policy(int enabled, int pid, int uclamp_min, int uclamp_max
 	sbe_trace("Consistency_policy, pid=%d enable=%d uclamp_min=%d uclamp_max=%d",
 			pid, enabled, uclamp_min, uclamp_max);
 #if IS_ENABLED(CONFIG_MTK_SCHEDULER) && IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
-	if (enabled == 1 && uclamp_min > 0) {
+	if (enabled == 1) {
 		// turn_on_tgid_vip();
 		// set_tgid_vip(pid);
 		set_task_vvip(pid);

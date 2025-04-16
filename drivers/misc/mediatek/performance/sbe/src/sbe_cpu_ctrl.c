@@ -74,6 +74,7 @@ static int global_sbe_dy_enhance_max_pid;
 static int sbe_critical_basic_cap;
 static int sbe_ai_ctrl_enabled;
 static int sbe_uclamp_margin;
+static int sbe_runnable_util_est_disable;
 /*For AI jank detection*/
 static int ai_rescuing_frame_id;
 static int registered;
@@ -126,6 +127,7 @@ module_param(smart_launch_off_on, int, 0644);
 module_param(sbe_critical_basic_cap, int, 0644);
 module_param(sbe_ai_ctrl_enabled, int, 0644);
 module_param(sbe_uclamp_margin, int, 0644);
+module_param(sbe_runnable_util_est_disable, int, 0644);
 
 static void update_hwui_frame_info(struct sbe_render_info *info,
 		struct hwui_frame_info *frame, unsigned long long id,
@@ -142,6 +144,11 @@ static int nsec_to_100usec(unsigned long long nsec)
 	husec = div64_u64(nsec, (unsigned long long)NSEC_PER_HUSEC);
 
 	return (int)husec;
+}
+
+int get_sbe_disable_runnable_util_est_status(void)
+{
+	return sbe_runnable_util_est_disable;
 }
 
 int get_ux_general_policy(void)
@@ -2072,6 +2079,7 @@ int __init sbe_cpu_ctrl_init(void)
 	gas_threshold = 10;
 	gas_threshold_for_low_TLP = 10;
 	gas_threshold_for_high_TLP = 5;
+	sbe_runnable_util_est_disable = 1;
 
 	ai_rescuing_frame_id = -1;
 	registered = 0;
