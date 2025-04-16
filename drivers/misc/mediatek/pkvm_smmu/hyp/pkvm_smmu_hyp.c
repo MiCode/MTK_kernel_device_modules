@@ -1844,7 +1844,6 @@ static void mtk_smmu_host_stage2_idmap(struct kvm_hyp_iommu_domain *domain,
 {
 	phys_addr_t paddr;
 	uint32_t size;
-	bool tlb_sync = false;
 
 	paddr = start;
 	size = end - start;
@@ -1858,7 +1857,6 @@ static void mtk_smmu_host_stage2_idmap(struct kvm_hyp_iommu_domain *domain,
 	if (!prot) {
 		/* unmap vm */
 		smmu_vm_unmap(0, paddr, size);
-		tlb_sync = true;
 		/*
 		 * Using snapshot status to distinctive iommu idmap stage.
 		 * Before snapshot done, iommu idmap have to unmap both VM
@@ -1886,7 +1884,11 @@ static void mtk_smmu_host_stage2_idmap(struct kvm_hyp_iommu_domain *domain,
 	}
 
 	hyp_spin_unlock(&smmu_all_vm_lock);
-	if (tlb_sync)
+}
+
+static void mtk_smmu_host_stage2_idmap_complete(bool map)
+{
+	if (!map)
 		mtk_smmu_sync();
 }
 
@@ -1911,6 +1913,7 @@ struct kvm_iommu_ops smmu_ops = {
 	.resume				= mtk_smmu_resume,
 	.iotlb_sync			= mtk_smmu_iotlb_sync,
 	.host_stage2_idmap		= mtk_smmu_host_stage2_idmap,
+	.host_stage2_idmap_complete     = mtk_smmu_host_stage2_idmap_complete,
 };
 
 int smmu_hyp_init(const struct pkvm_module_ops *ops)
