@@ -77,20 +77,23 @@ static struct platform_driver g_gpufreq_wrapper_pdrv = {
 	},
 };
 
-static unsigned int g_gpufreq_ready;
+static struct gpufreq_platform_fp *gpufreq_fp;
+static struct gpuppm_platform_fp *gpuppm_fp;
+static struct gpufreq_ipi_data g_recv_msg;
+static struct gpufreq_shared_status *g_shared_status;
+static phys_addr_t g_shared_mem_pa;
 static int g_ipi_channel;
+static unsigned int g_gpufreq_ready;
 static unsigned int g_dual_buck;
 static unsigned int g_gpueb_support;
 static unsigned int g_gpufreq_bringup;
 static unsigned int g_ipi_magic;
-static struct gpufreq_shared_status *g_shared_status;
-static phys_addr_t g_shared_mem_pa;
 static unsigned int g_shared_mem_size;
-static struct gpufreq_platform_fp *gpufreq_fp;
-static struct gpuppm_platform_fp *gpuppm_fp;
-static struct gpufreq_ipi_data g_recv_msg;
+static unsigned int g_abort_state;
 static unsigned long g_ipi_irq_flags;
+static unsigned long g_pwr_irq_flags;
 static raw_spinlock_t gpufreq_ipi_lock;
+static raw_spinlock_t gpufreq_power_lock;
 
 /**
  * ===============================================
@@ -803,6 +806,8 @@ int gpufreq_power_control(enum gpufreq_power_state power)
 		goto done;
 	}
 
+	raw_spin_lock_irqsave(&gpufreq_power_lock, g_pwr_irq_flags);
+
 	/* implement on EB */
 	if (g_gpueb_support && g_gpufreq_ready) {
 		raw_spin_lock_irqsave(&gpufreq_ipi_lock, g_ipi_irq_flags);
@@ -829,6 +834,8 @@ done_unlock:
 	if (unlikely(ret < 0))
 		GPUFREQ_LOGE("fail to control power state: %s (%d)",
 			power ? "GPU_PWR_ON" : "GPU_PWR_OFF", ret);
+
+	raw_spin_unlock_irqrestore(&gpufreq_power_lock, g_pwr_irq_flags);
 
 done:
 	GPUFREQ_TRACE_END();
@@ -1679,14 +1686,20 @@ static void gpufreq_dump_external_status(char *log_buf, int *log_len, int log_si
 
 /***********************************************************************************
  * Function Name      : gpufreq_dump_internal_status
- * Description        : Dump MFGSYS internal debug info, MFGSYS need to be power-on
+ * Description        : Dump MFGSYS internal debug info, protected by power lock
  ***********************************************************************************/
 static void gpufreq_dump_internal_status(char *log_buf, int *log_len, int log_size)
 {
 	/* implement on AP */
-	if (gpufreq_fp && gpufreq_fp->dump_internal_status)
-		gpufreq_fp->dump_internal_status(log_buf, log_len, log_size);
-	else
+	if (gpufreq_fp && gpufreq_fp->dump_internal_status) {
+		if (g_abort_state)
+			gpufreq_fp->dump_internal_status(log_buf, log_len, log_size);
+		else {
+			raw_spin_lock_irqsave(&gpufreq_power_lock, g_pwr_irq_flags);
+			gpufreq_fp->dump_internal_status(log_buf, log_len, log_size);
+			raw_spin_unlock_irqrestore(&gpufreq_power_lock, g_pwr_irq_flags);
+		}
+	} else
 		GPUFREQ_LOGE("null gpufreq platform function pointer (ENOENT)");
 }
 
@@ -1709,6 +1722,7 @@ static void gpufreq_dump_shared_status(char *log_buf, int *log_len, int log_size
  ***********************************************************************************/
 static void gpufreq_abort(void)
 {
+	g_abort_state = true;
 	gpufreq_dump_infra_status();
 
 #if GPUFREQ_FORCE_WDT_ENABLE
@@ -1945,6 +1959,7 @@ static int gpufreq_wrapper_pdrv_probe(struct platform_device *pdev)
 
 	/* init spinlock */
 	raw_spin_lock_init(&gpufreq_ipi_lock);
+	raw_spin_lock_init(&gpufreq_power_lock);
 
 	/* keep probe successful but do nothing when bringup */
 	if (g_gpufreq_bringup) {
