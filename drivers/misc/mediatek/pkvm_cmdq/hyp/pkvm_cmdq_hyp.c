@@ -295,20 +295,6 @@ static int cmdq_task_append_command(struct TaskStruct *task,
 	cmdq_inst->arg_b = arg_b;
 	cmdq_inst->arg_c = arg_c;
 
-#if defined(CMDQ_DEBUG)
-	CALL_FROM_OPS(puts, __func__);
-	CALL_FROM_OPS(puts, PFX_CMDQ_MSG "va:");
-	CALL_FROM_OPS(putx64, (u64)task->pCMDEnd);
-	CALL_FROM_OPS(puts, PFX_CMDQ_MSG "cmd:");
-	CALL_FROM_OPS(putx64, cmdq_inst->op);
-	CALL_FROM_OPS(putx64, cmdq_inst->arg_a_type);
-	CALL_FROM_OPS(putx64, cmdq_inst->arg_b_type);
-	CALL_FROM_OPS(putx64, cmdq_inst->arg_c_type);
-	CALL_FROM_OPS(putx64, cmdq_inst->s_op);
-	CALL_FROM_OPS(putx64, cmdq_inst->arg_a);
-	CALL_FROM_OPS(putx64, cmdq_inst->arg_b);
-	CALL_FROM_OPS(putx64, cmdq_inst->arg_c);
-#endif
 	task->commandSize += CMDQ_INST_SIZE;
 	task->pCMDEnd += 2;
 
@@ -459,8 +445,13 @@ int32_t cmdq_core_insert_security_instruction(struct TaskStruct *pTask,
 	const uint32_t originalSize = (uint32_t)pTask->commandSize;
 	/* be careful that subsys encoding position is different among platforms */
 	int32_t offset;
-	uint32_t op = CMDQ_CODE_WRITE_S;
+	enum cmdq_code op = CMDQ_CODE_WRITE_S;
 	int err = 0;
+
+	err = cmdq_task_assign_command(pTask, CMDQ_SPR_FOR_TEMP,
+		CMDQ_GET_ADDR_HIGH(regAddr));
+	if (err != 0)
+		return err;
 
 	/* write with mask */
 	if (mask != 0xFFFFFFFF) {
@@ -472,15 +463,10 @@ int32_t cmdq_core_insert_security_instruction(struct TaskStruct *pTask,
 		op = CMDQ_CODE_WRITE_S_W_MASK;
 	}
 
-	err = cmdq_task_assign_command(pTask, CMDQ_SPR_FOR_TEMP,
-		regAddr);
-	if (err != 0)
-		return err;
-
 	err = cmdq_task_append_command(pTask, CMDQ_GET_ARG_C(value),
-		CMDQ_GET_ARG_B(value), 0,
+		CMDQ_GET_ARG_B(value), CMDQ_GET_ADDR_LOW(regAddr),
 		CMDQ_SPR_FOR_TEMP, CMDQ_IMMEDIATE_VALUE,
-		CMDQ_IMMEDIATE_VALUE, CMDQ_IMMEDIATE_VALUE, (uint8_t)op);
+		CMDQ_IMMEDIATE_VALUE, CMDQ_IMMEDIATE_VALUE, op);
 	if (err != 0)
 		return err;
 
@@ -547,7 +533,13 @@ int32_t cmdq_tz_set_dapc_security_reg(struct TaskStruct *task, bool enable, bool
 				task, DAPC_REG_PA(g_dapc_sys[i],
 				g_dapc_reg_offset[i]), value, g_mask[i]);
 		}
-
+		CALL_FROM_OPS(puts, __func__);
+		CALL_FROM_OPS(puts, PFX_CMDQ_MSG "DAPC_REG_PA");
+		CALL_FROM_OPS(putx64, (u64)DAPC_REG_PA(g_dapc_sys[i], g_dapc_reg_offset[i]));
+		CALL_FROM_OPS(puts, PFX_CMDQ_MSG "value");
+		CALL_FROM_OPS(putx64, (u64)value);
+		CALL_FROM_OPS(puts, PFX_CMDQ_MSG "mask");
+		CALL_FROM_OPS(putx64, (u64)g_mask[i]);
 	}
 
 	return offset;
@@ -1327,6 +1319,10 @@ void cmdq_hyp_cancel_task(struct user_pt_regs *regs)
 		CALL_FROM_OPS(puts, PFX_CMDQ_ERR "), currCookie:");
 		CALL_FROM_OPS(putx64, (u64)currCookie);
 
+#if defined(CMDQ_DEBUG)
+		cmdqUtilPrintHexDump("[CMDQ][pkvm]", pTask->pVABase, pTask->commandSize,
+			pTask->MVABase);
+#endif
 		/* dump error */
 		if (throwAEE)
 			cmdq_pkvm_attach_error_task(pTask, thread);
