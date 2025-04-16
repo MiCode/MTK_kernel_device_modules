@@ -256,6 +256,17 @@ static int gpufreq_status_proc_show(struct seq_file *m, void *v)
 	return GPUFREQ_SUCCESS;
 }
 
+static int infra_status_proc_show(struct seq_file *m, void *v)
+{
+	mutex_lock(&gpufreq_debug_lock);
+
+	gpufreq_dump_infra_status();
+
+	mutex_unlock(&gpufreq_debug_lock);
+
+	return GPUFREQ_SUCCESS;
+}
+
 static int gpu_working_opp_table_proc_show(struct seq_file *m, void *v)
 {
 	const struct gpufreq_opp_info *opp_table = NULL;
@@ -1222,6 +1233,7 @@ done:
 
 /* PROCFS : initialization */
 PROC_FOPS_RO(gpufreq_status);
+PROC_FOPS_RO(infra_status);
 PROC_FOPS_RO(gpu_working_opp_table);
 PROC_FOPS_RO(gpu_signed_opp_table);
 PROC_FOPS_RO(stack_working_opp_table);
@@ -1249,6 +1261,7 @@ static int gpufreq_create_procfs(void)
 
 	const struct procfs_entry default_entries[] = {
 		PROC_ENTRY(gpufreq_status),
+		PROC_ENTRY(infra_status),
 		PROC_ENTRY(gpu_working_opp_table),
 		PROC_ENTRY(gpu_signed_opp_table),
 		PROC_ENTRY(asensor_info),

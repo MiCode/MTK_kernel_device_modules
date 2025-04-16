@@ -108,11 +108,11 @@ static unsigned int g_mcl50_load;
 static DEFINE_MUTEX(gpufreq_lock);
 
 static struct gpufreq_platform_fp platform_ap_fp = {
-	
+
 };
 
 static struct gpufreq_platform_fp platform_eb_fp = {
-	.dump_infra_status = __gpufreq_dump_infra_status,
+	.dump_external_status = __gpufreq_dump_external_status,
 	.get_dyn_pgpu = __gpufreq_get_dyn_pgpu,
 };
 
@@ -268,7 +268,7 @@ int __gpufreq_fix_target_oppidx_gpu(int oppidx)
 	return GPUFREQ_EINVAL;
 }
 
-void __gpufreq_dump_infra_status(char *log_buf, int *log_len, int log_size)
+void __gpufreq_dump_external_status(char *log_buf, int *log_len, int log_size)
 {
 	u32 val = 0;
 

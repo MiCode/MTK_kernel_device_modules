@@ -648,7 +648,9 @@ struct gpufreq_platform_fp {
 	unsigned int (*get_shader_present)(void);
 	int (*power_control)(enum gpufreq_power_state power);
 	int (*active_sleep_control)(enum gpufreq_power_state power);
-	void (*dump_infra_status)(char *log_buf, int *log_len, int log_size);
+	void (*dump_external_status)(char *log_buf, int *log_len, int log_size);
+	void (*dump_internal_status)(char *log_buf, int *log_len, int log_size);
+	void (*dump_shared_status)(char *log_buf, int *log_len, int log_size);
 	unsigned int (*bus_tracker_vio_handler)(void);
 	void (*set_mfgsys_config)(enum gpufreq_config_target target, enum gpufreq_config_value val);
 	struct gpufreq_core_mask_info *(*get_core_mask_table)(void);

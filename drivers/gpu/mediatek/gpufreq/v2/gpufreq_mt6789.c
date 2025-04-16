@@ -202,7 +202,7 @@ static struct gpufreq_platform_fp platform_ap_fp = {
 	.fix_custom_freq_volt_gpu = __gpufreq_fix_custom_freq_volt_gpu,
 	.set_timestamp = __gpufreq_set_timestamp,
 	.check_bus_idle = __gpufreq_check_bus_idle,
-	.dump_infra_status = __gpufreq_dump_infra_status,
+	.dump_external_status = __gpufreq_dump_external_status,
 	.set_stress_test = __gpufreq_set_stress_test,
 	.set_aging_mode = __gpufreq_set_aging_mode,
 	.get_asensor_info = __gpufreq_get_asensor_info,
@@ -214,7 +214,7 @@ static struct gpufreq_platform_fp platform_eb_fp = {
 	.bringup = __gpufreq_bringup,
 	.set_timestamp = __gpufreq_set_timestamp,
 	.check_bus_idle = __gpufreq_check_bus_idle,
-	.dump_infra_status = __gpufreq_dump_infra_status,
+	.dump_external_status = __gpufreq_dump_external_status,
 	.get_dyn_pgpu = __gpufreq_get_dyn_pgpu,
 	.get_core_mask_table = __gpufreq_get_core_mask_table,
 	.get_core_num = __gpufreq_get_core_num,
@@ -997,7 +997,7 @@ void __gpufreq_check_bus_idle(void)
 	} while ((val & 0x4) != 0x4);
 }
 
-void __gpufreq_dump_infra_status(void)
+void __gpufreq_dump_external_status(void)
 {
 	u32 val = 0;
 

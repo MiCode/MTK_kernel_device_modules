@@ -107,7 +107,9 @@ static struct gpufreq_shared_status *g_shared_status;
 static DEFINE_MUTEX(gpufreq_lock);
 
 static struct gpufreq_platform_fp platform_eb_fp = {
-	.dump_infra_status = __gpufreq_dump_infra_status,
+	.dump_external_status = __gpufreq_dump_external_status,
+	.dump_internal_status = __gpufreq_dump_internal_status,
+	.dump_shared_status = __gpufreq_dump_shared_status,
 	.get_dyn_pgpu = __gpufreq_get_dyn_pgpu,
 	.get_dyn_pstack = __gpufreq_get_dyn_pstack,
 	.get_core_mask_table = __gpufreq_get_core_mask_table,
@@ -233,55 +235,15 @@ unsigned int __gpufreq_get_core_num(void)
 	return SHADER_CORE_NUM;
 }
 
-void __gpufreq_dump_infra_status(char *log_buf, int *log_len, int log_size)
+void __gpufreq_dump_external_status(char *log_buf, int *log_len, int log_size)
 {
-	unsigned int val1 = 0, val2 = 0, val3 = 0, val4 = 0;
+	unsigned int val = 0;
 
 	if (!g_gpufreq_ready)
 		return;
 
-	__gpufreq_dump_power_tracker_status();
-	__gpufreq_dump_freq_volt_tracker_status(log_buf, log_len, log_size);
-	__gpufreq_dump_bus_tracker_status(log_buf, log_len, log_size);
-
 	GPUFREQ_LOGB(log_buf, log_len, log_size,
-		"== [GPUFREQ INFRA STATUS] ==");
-
-	val1 = DRV_Reg32(MFG_TOP_AXI_SLPPROT_FREQ_BRIDGE);
-	GPUFREQ_LOGB(log_buf, log_len, log_size,
-		"%-11s %s=0x%x, %s=0x%x, %s=0x%x, %s=0x%x",
-		"[MFG]",
-		"MFG1_NEMI_M0_IDLE", (unsigned int)((val1 & BIT(8)) >> 8),
-		"MFG1_NEMI_M1_IDLE", (unsigned int)((val1 & BIT(10)) >> 10),
-		"MFG1_SEMI_M0_IDLE", (unsigned int)((val1 & BIT(12)) >> 12),
-		"MFG1_SEMI_M1_IDLE", (unsigned int)((val1 & BIT(14)) >> 14));
-	GPUFREQ_LOGB(log_buf, log_len, log_size,
-		"%-11s %s=0x%x, %s=0x%x, %s=0x%x, %s=0x%x",
-		"[MFG]",
-		"MFG0_NEMI_M0_IDLE", (unsigned int)((val1 & BIT(16)) >> 16),
-		"MFG0_NEMI_M1_IDLE", (unsigned int)((val1 & BIT(18)) >> 18),
-		"MFG0_SEMI_M0_IDLE", (unsigned int)((val1 & BIT(20)) >> 20),
-		"MFG0_SEMI_M1_IDLE", (unsigned int)((val1 & BIT(22)) >> 22));
-
-	/* MFG_TOP_DEBUG_SEL 0x48500170 [23:16] MFG_DEBUG_ASYNC_SEL = 2'h08 */
-	DRV_WriteReg32(MFG_TOP_DEBUG_SEL, (DRV_Reg32(MFG_TOP_DEBUG_SEL) & ~GENMASK(23, 16)) | BIT(19));
-	val1 = DRV_Reg32(MFG_TOP_DEBUG_ASYNC);
-	/* MFG_TOP_DEBUG_SEL 0x48500170 [23:16] MFG_DEBUG_ASYNC_SEL = 2'h0E */
-	DRV_WriteReg32(MFG_TOP_DEBUG_SEL, (DRV_Reg32(MFG_TOP_DEBUG_SEL) & ~GENMASK(23, 16)) | GENMASK(19, 17));
-	val2 = DRV_Reg32(MFG_TOP_DEBUG_ASYNC);
-	/* MFG_TOP_DEBUG_SEL 0x48500170 [23:16] MFG_DEBUG_ASYNC_SEL = 2'h09 */
-	DRV_WriteReg32(MFG_TOP_DEBUG_SEL, (DRV_Reg32(MFG_TOP_DEBUG_SEL) & ~GENMASK(23, 16)) | BIT(19) | BIT(16));
-	val3 = DRV_Reg32(MFG_TOP_DEBUG_ASYNC);
-	/* MFG_TOP_DEBUG_SEL 0x48500170 [23:16] MFG_DEBUG_ASYNC_SEL = 2'h0F */
-	DRV_WriteReg32(MFG_TOP_DEBUG_SEL, (DRV_Reg32(MFG_TOP_DEBUG_SEL) & ~GENMASK(23, 16)) | GENMASK(19, 16));
-	val4 = DRV_Reg32(MFG_TOP_DEBUG_ASYNC);
-	GPUFREQ_LOGB(log_buf, log_len, log_size,
-		"%-11s %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x",
-		"[MFG_GALS]",
-		"NEMI_M0_TX", val1,
-		"NEMI_M1_TX", val2,
-		"SEMI_M0_TX", val3,
-		"SEMI_M1_TX", val4);
+		"== [GPUFREQ EXTERNAL STATUS] ==");
 
 	GPUFREQ_LOGB(log_buf, log_len, log_size,
 		"%-11s %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x",
@@ -327,23 +289,14 @@ void __gpufreq_dump_infra_status(char *log_buf, int *log_len, int log_size)
 		"CHI2_MI_BUSY", (unsigned int)(DRV_Reg32(EMI_IFR_ACP_CHI2_RW_MI_CTRL) & GENMASK(1, 0)),
 		"CHI3_MI_BUSY", (unsigned int)(DRV_Reg32(EMI_IFR_ACP_CHI3_RW_MI_CTRL) & GENMASK(1, 0)));
 
-	val1 = DRV_Reg32(MFG_TOP_ACP_SLPPROT_FREQ_BRIDGE);
-	GPUFREQ_LOGB(log_buf, log_len, log_size,
-		"%-11s %s=0x%x, %s=0x%x, %s=0x%x, %s=0x%x",
-		"[MFG_ACP1]",
-		"MFG1_ACP1_IDLE", (unsigned int)((val1 & BIT(2)) >> 2),
-		"MFG0_ACP1_IDLE", (unsigned int)((val1 & BIT(4)) >> 4),
-		"AFIFO_TX_EMPTY", (unsigned int)(DRV_Reg32(MFG_ACP_GALS0_SLV_TX_STA0) & GENMASK(3, 0)),
-		"AFIFO_RX_EMPTY", (unsigned int)(DRV_Reg32(MFG_ACP_GALS0_SLV_RX_STA0) & GENMASK(3, 0)));
-
-	val1 = DRV_Reg32(EMI_IFR_ACP_DVM_SI_CTRL);
+	val = DRV_Reg32(EMI_IFR_ACP_DVM_SI_CTRL);
 	GPUFREQ_LOGB(log_buf, log_len, log_size,
 		"%-11s %s=0x%x, %s=0x%x, %s=0x%x, %s=0x%x",
 		"[EMI_ACP1]",
 		"TCU2EMI_IDLE", (unsigned int)(DRV_Reg32(EMI_IFR_ACP_MFG_DVM_PROT_CTRL) & BIT(0)),
 		"DVM_PROT_IDLE", (unsigned int)(DRV_Reg32(EMI_IFR_ACP_TCU_EFP_M_CTRL) & BIT(0)),
-		"DVM_SI_R_BUSY", (unsigned int)((val1 & BIT(2)) >> 2),
-		"DVM_SI_W_BUSY", (unsigned int)((val1 & BIT(1)) >> 1));
+		"DVM_SI_R_BUSY", (unsigned int)((val & BIT(2)) >> 2),
+		"DVM_SI_W_BUSY", (unsigned int)((val & BIT(1)) >> 1));
 	GPUFREQ_LOGB(log_buf, log_len, log_size,
 		"%-11s %s=0x%x, %s=0x%x, %s=0x%x",
 		"[EMI_ACP1]",
@@ -433,6 +386,137 @@ void __gpufreq_dump_infra_status(char *log_buf, int *log_len, int log_size)
 		"MFG18", DRV_Reg32(MFG_RPC_MFG18_PWR_CON),
 		"MFG19", DRV_Reg32(MFG_RPC_MFG19_PWR_CON),
 		"MFG20", DRV_Reg32(MFG_RPC_MFG20_PWR_CON));
+}
+
+void __gpufreq_dump_internal_status(char *log_buf, int *log_len, int log_size)
+{
+	unsigned int val1 = 0, val2 = 0, val3 = 0, val4 = 0;
+
+	if (!g_gpufreq_ready)
+		return;
+
+	GPUFREQ_LOGB(log_buf, log_len, log_size,
+		"== [GPUFREQ INTERNAL STATUS] ==");
+
+	val1 = DRV_Reg32(MFG_TOP_AXI_SLPPROT_FREQ_BRIDGE);
+	GPUFREQ_LOGB(log_buf, log_len, log_size,
+		"%-11s %s=0x%x, %s=0x%x, %s=0x%x, %s=0x%x",
+		"[MFG]",
+		"MFG1_NEMI_M0_IDLE", (unsigned int)((val1 & BIT(8)) >> 8),
+		"MFG1_NEMI_M1_IDLE", (unsigned int)((val1 & BIT(10)) >> 10),
+		"MFG1_SEMI_M0_IDLE", (unsigned int)((val1 & BIT(12)) >> 12),
+		"MFG1_SEMI_M1_IDLE", (unsigned int)((val1 & BIT(14)) >> 14));
+	GPUFREQ_LOGB(log_buf, log_len, log_size,
+		"%-11s %s=0x%x, %s=0x%x, %s=0x%x, %s=0x%x",
+		"[MFG]",
+		"MFG0_NEMI_M0_IDLE", (unsigned int)((val1 & BIT(16)) >> 16),
+		"MFG0_NEMI_M1_IDLE", (unsigned int)((val1 & BIT(18)) >> 18),
+		"MFG0_SEMI_M0_IDLE", (unsigned int)((val1 & BIT(20)) >> 20),
+		"MFG0_SEMI_M1_IDLE", (unsigned int)((val1 & BIT(22)) >> 22));
+
+	/* MFG_TOP_DEBUG_SEL 0x48500170 [23:16] MFG_DEBUG_ASYNC_SEL = 2'h08 */
+	DRV_WriteReg32(MFG_TOP_DEBUG_SEL, (DRV_Reg32(MFG_TOP_DEBUG_SEL) & ~GENMASK(23, 16)) | BIT(19));
+	val1 = DRV_Reg32(MFG_TOP_DEBUG_ASYNC);
+	/* MFG_TOP_DEBUG_SEL 0x48500170 [23:16] MFG_DEBUG_ASYNC_SEL = 2'h0E */
+	DRV_WriteReg32(MFG_TOP_DEBUG_SEL, (DRV_Reg32(MFG_TOP_DEBUG_SEL) & ~GENMASK(23, 16)) | GENMASK(19, 17));
+	val2 = DRV_Reg32(MFG_TOP_DEBUG_ASYNC);
+	/* MFG_TOP_DEBUG_SEL 0x48500170 [23:16] MFG_DEBUG_ASYNC_SEL = 2'h09 */
+	DRV_WriteReg32(MFG_TOP_DEBUG_SEL, (DRV_Reg32(MFG_TOP_DEBUG_SEL) & ~GENMASK(23, 16)) | BIT(19) | BIT(16));
+	val3 = DRV_Reg32(MFG_TOP_DEBUG_ASYNC);
+	/* MFG_TOP_DEBUG_SEL 0x48500170 [23:16] MFG_DEBUG_ASYNC_SEL = 2'h0F */
+	DRV_WriteReg32(MFG_TOP_DEBUG_SEL, (DRV_Reg32(MFG_TOP_DEBUG_SEL) & ~GENMASK(23, 16)) | GENMASK(19, 16));
+	val4 = DRV_Reg32(MFG_TOP_DEBUG_ASYNC);
+	GPUFREQ_LOGB(log_buf, log_len, log_size,
+		"%-11s %s=0x%08x, %s=0x%08x, %s=0x%08x, %s=0x%08x",
+		"[MFG_GALS]",
+		"NEMI_M0_TX", val1,
+		"NEMI_M1_TX", val2,
+		"SEMI_M0_TX", val3,
+		"SEMI_M1_TX", val4);
+
+	val1 = DRV_Reg32(MFG_TOP_ACP_SLPPROT_FREQ_BRIDGE);
+	GPUFREQ_LOGB(log_buf, log_len, log_size,
+		"%-11s %s=0x%x, %s=0x%x, %s=0x%x, %s=0x%x",
+		"[MFG_ACP1]",
+		"MFG1_ACP1_IDLE", (unsigned int)((val1 & BIT(2)) >> 2),
+		"MFG0_ACP1_IDLE", (unsigned int)((val1 & BIT(4)) >> 4),
+		"AFIFO_TX_EMPTY", (unsigned int)(DRV_Reg32(MFG_ACP_GALS0_SLV_TX_STA0) & GENMASK(3, 0)),
+		"AFIFO_RX_EMPTY", (unsigned int)(DRV_Reg32(MFG_ACP_GALS0_SLV_RX_STA0) & GENMASK(3, 0)));
+
+	__gpufreq_dump_power_tracker_status();
+	__gpufreq_dump_freq_volt_tracker_status(log_buf, log_len, log_size);
+	__gpufreq_dump_bus_tracker_status(log_buf, log_len, log_size);
+}
+
+void __gpufreq_dump_shared_status(char *log_buf, int *log_len, int log_size)
+{
+	int cur_oppidx_gpu = 0, cur_oppidx_stack = 0, vgpu_diff = 0, vstack_diff = 0;
+	unsigned int cur_vgpu = 0, cur_vstack = 0, opp_vgpu = 0, opp_vstack = 0;
+	unsigned long long power_time = 0;
+	struct gpufreq_ptp3_shared_status ptp3_status = {};
+
+	if (!g_gpufreq_ready)
+		return;
+
+	if (g_shared_status) {
+		GPUFREQ_LOGB(log_buf, log_len, log_size,
+			"== [GPUFREQ SHARED STATUS] ==");
+
+		ptp3_status = g_shared_status->ptp3_status;
+		power_time = g_shared_status->power_time_h;
+		power_time = (power_time << 32) | g_shared_status->power_time_l;
+		cur_oppidx_gpu = g_shared_status->cur_oppidx_gpu;
+		cur_vgpu = g_shared_status->cur_vgpu;
+		if (cur_oppidx_gpu >= 0 && cur_oppidx_gpu < g_shared_status->opp_num_gpu) {
+			opp_vgpu = g_shared_status->working_table_gpu[cur_oppidx_gpu].volt;
+			vgpu_diff = (int)cur_vgpu - (int)opp_vgpu;
+		} else
+			GPUFREQ_LOGE("abnormal cur_oppidx_gpu: %d", cur_oppidx_gpu);
+		cur_oppidx_stack = g_shared_status->cur_oppidx_stack;
+		cur_vstack = g_shared_status->cur_vstack;
+		if (cur_oppidx_stack >= 0 && cur_oppidx_stack < g_shared_status->opp_num_stack) {
+			opp_vstack = g_shared_status->working_table_stack[cur_oppidx_stack].volt;
+			vstack_diff = (int)cur_vstack - (int)opp_vstack;
+		} else
+			GPUFREQ_LOGE("abnormal cur_oppidx_stack: %d", cur_oppidx_stack);
+
+		GPUFREQ_LOGB(log_buf, log_len, log_size,
+			"DBGVer: 0x%08x, KDBGVer: 0x%08x, PTPVer: 0x%04x, DVFSMode: %s",
+			g_shared_status->dbg_version, g_shared_status->kdbg_version,
+			g_shared_status->ptp_version,
+			(ptp3_status.dvfs_mode == HW_DUAL_LOOP_DVFS ? "HW_LOOP" :
+			(ptp3_status.dvfs_mode == SW_DUAL_LOOP_DVFS ? "SW_LOOP" : "LEGACY")));
+		GPUFREQ_LOGB(log_buf, log_len, log_size,
+			"GPU[%d] Freq: %d/%d, Volt: %d (%d), Vsram: %d",
+			g_shared_status->cur_oppidx_gpu, g_shared_status->cur_fgpu,
+			g_shared_status->cur_out_fgpu, g_shared_status->cur_vgpu,
+			vgpu_diff, g_shared_status->cur_vsram_gpu);
+		GPUFREQ_LOGB(log_buf, log_len, log_size,
+			"STACK[%d] Freq: %d/%d, Volt: %d (%d), Vsram: %d",
+			g_shared_status->cur_oppidx_stack, g_shared_status->cur_fstack,
+			g_shared_status->cur_out_fstack, g_shared_status->cur_vstack,
+			vstack_diff, g_shared_status->cur_vsram_stack);
+		GPUFREQ_LOGB(log_buf, log_len, log_size,
+			"Temperature: %d'C, StressTest: %d, Ceiling/Floor: %d/%d, Limiter: %d/%d",
+			g_shared_status->temperature, g_shared_status->stress_test,
+			g_shared_status->cur_ceiling, g_shared_status->cur_floor,
+			g_shared_status->cur_c_limiter, g_shared_status->cur_f_limiter);
+		GPUFREQ_LOGB(log_buf, log_len, log_size,
+			"PowerCount: %d, ActiveCount: %d, Buck: %d, MTCMOS: %d, CG: %d",
+			g_shared_status->power_count, g_shared_status->active_count,
+			g_shared_status->buck_count, g_shared_status->mtcmos_count,
+			g_shared_status->cg_count);
+		GPUFREQ_LOGB(log_buf, log_len, log_size,
+			"PowerStatus: 0x%08x, Timestamp: %lld, ShaderPresent: 0x%08x",
+			g_shared_status->mfg_pwr_status, power_time,
+			g_shared_status->shader_present);
+		GPUFREQ_LOGB(log_buf, log_len, log_size,
+			"InFreq: %d/%d, OutFreq: %d/%d, CC:%d/%d, FC:%d/%d",
+			g_shared_status->ptp3_info.infreq0, g_shared_status->ptp3_info.infreq1,
+			g_shared_status->ptp3_info.outfreq0, g_shared_status->ptp3_info.outfreq1,
+			g_shared_status->ptp3_info.hw_cc, g_shared_status->ptp3_info.sw_cc,
+			g_shared_status->ptp3_info.hw_fc, g_shared_status->ptp3_info.sw_fc);
+	}
 }
 
 /* API: get working OPP index of STACK limited by BATTERY_OC via given level */

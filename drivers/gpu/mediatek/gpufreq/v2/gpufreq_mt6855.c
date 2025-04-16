@@ -118,7 +118,7 @@ static struct gpufreq_platform_fp platform_ap_fp = {
 };
 
 static struct gpufreq_platform_fp platform_eb_fp = {
-	.dump_infra_status = __gpufreq_dump_infra_status,
+	.dump_external_status = __gpufreq_dump_external_status,
 	.get_dyn_pgpu = __gpufreq_get_dyn_pgpu,
 };
 
@@ -257,7 +257,7 @@ int __gpufreq_power_control(enum gpufreq_power_state power)
 	return 1;
 }
 
-void __gpufreq_dump_infra_status(char *log_buf, int *log_len, int log_size)
+void __gpufreq_dump_external_status(char *log_buf, int *log_len, int log_size)
 {
 	u32 val = 0;
 

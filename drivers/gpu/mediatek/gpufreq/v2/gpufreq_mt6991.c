@@ -116,7 +116,7 @@ static struct gpufreq_shared_status *g_shared_status;
 static DEFINE_MUTEX(gpufreq_lock);
 
 static struct gpufreq_platform_fp platform_eb_fp = {
-	.dump_infra_status = __gpufreq_dump_infra_status,
+	.dump_external_status = __gpufreq_dump_external_status,
 	.bus_tracker_vio_handler = __gpufreq_bus_tracker_vio_handler,
 	.get_dyn_pgpu = __gpufreq_get_dyn_pgpu,
 	.get_dyn_pstack = __gpufreq_get_dyn_pstack,
@@ -246,7 +246,7 @@ unsigned int __gpufreq_get_core_num(void)
 	return SHADER_CORE_NUM;
 }
 
-void __gpufreq_dump_infra_status(char *log_buf, int *log_len, int log_size)
+void __gpufreq_dump_external_status(char *log_buf, int *log_len, int log_size)
 {
 	if (!g_gpufreq_ready)
 		return;
