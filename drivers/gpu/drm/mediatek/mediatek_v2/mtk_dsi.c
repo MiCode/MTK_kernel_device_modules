@@ -4253,6 +4253,7 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 				addr = mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_UNDERRUNED);
 				*addr = 1;
 				/* Disable mminfra funnel */
+				mtk_dbgtp_dump_mminfra_funnel();
 				mtk_dbgtp_set_mminfra_funnel(false);
 			}
 

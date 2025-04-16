@@ -274,6 +274,14 @@ void mtk_dbgtp_set_mminfra_funnel(bool en)
 	}
 }
 
+void mtk_dbgtp_dump_mminfra_funnel(void)
+{
+	struct mtk_disp_dbgtp *priv = comp_to_dbgtp(dbgtp_comp);
+
+	if (priv && priv->mminfra_funnel)
+		DDPMSG("%s: 0x%08x\n" , __func__, readl(priv->mminfra_funnel));
+}
+
 void mtk_dbgtp_update(struct mtk_drm_private *priv)
 {
 	int i = 0;
