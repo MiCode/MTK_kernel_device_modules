@@ -14,7 +14,7 @@ static ssize_t ips_worst_vmin_show(struct device *dev,
 {
 	struct ips_drv_data *ips_data = dev_get_drvdata(dev);
 
-	return sprintf(buf, "ips worst vmin = %d\n", mtkips_worst_vmin(ips_data));
+	return snprintf(buf,  PAGE_SIZE, "ips worst vmin = %d\n", mtkips_worst_vmin(ips_data));
 }
 DEVICE_ATTR_RO(ips_worst_vmin);
 
@@ -23,7 +23,7 @@ static ssize_t ips_read_vmin_show(struct device *dev,
 {
 	struct ips_drv_data *ips_data = dev_get_drvdata(dev);
 
-	return sprintf(buf, "ips vmin = %d\n", ips_data->dvd->ips_getvmin(ips_data));
+	return snprintf(buf,  PAGE_SIZE, "ips vmin = %d\n", ips_data->dvd->ips_getvmin(ips_data));
 }
 DEVICE_ATTR_RO(ips_read_vmin);
 
@@ -32,7 +32,7 @@ static ssize_t ips_read_vmin_clear_show(struct device *dev,
 {
 	struct ips_drv_data *ips_data = dev_get_drvdata(dev);
 
-	return sprintf(buf, "ips vmin = %d\n", ips_data->dvd->ips_getvmin_clear(ips_data));
+	return snprintf(buf, PAGE_SIZE, "ips vmin = %d\n", ips_data->dvd->ips_getvmin_clear(ips_data));
 }
 DEVICE_ATTR_RO(ips_read_vmin_clear);
 
@@ -41,7 +41,7 @@ static inline ssize_t ips_enable_show(struct device *dev,
 {
 	struct ips_drv_data *ips_data = dev_get_drvdata(dev);
 
-	return sprintf(buf, "%d\n", ips_data->enable);
+	return snprintf(buf,  PAGE_SIZE, "%d\n", ips_data->enable);
 }
 
 static inline ssize_t ips_enable_store(struct device *dev,
@@ -67,7 +67,7 @@ static inline ssize_t ips_set_clk_show(struct device *dev,
 {
 	struct ips_drv_data *ips_data = dev_get_drvdata(dev);
 
-	return sprintf(buf, "%d\n", ips_data->enable);
+	return snprintf(buf,  PAGE_SIZE, "%d\n", ips_data->enable);
 }
 
 static inline ssize_t ips_set_clk_store(struct device *dev,
@@ -93,7 +93,7 @@ static ssize_t ips_vsense_detect_show(struct device *dev,
 	if (!ips_data->dvd->vsense_support)
 		return -EINVAL;
 
-	return sprintf(buf, "ips vsense = %d\n", ips_data->dvd->ips_vsense_detect(ips_data));
+	return snprintf(buf,  PAGE_SIZE, "ips vsense = %d\n", ips_data->dvd->ips_vsense_detect(ips_data));
 }
 DEVICE_ATTR_RO(ips_vsense_detect);
 
@@ -126,4 +126,3 @@ void ips_unregister_sysfs(struct device *dev)
 {
 	sysfs_remove_group(&dev->kobj, &ips_sysfs_attr_group);
 }
-
