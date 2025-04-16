@@ -14311,6 +14311,34 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			};
 		};
 
+		opp_table_disp_b0: opp-table-disp-b0 {
+			compatible = "operating-points-v2";
+			opp-0 {
+				opp-hz = /bits/ 64 <273000000>;
+				opp-microvolt = <000000>;
+			};
+			opp-1 {
+				opp-hz = /bits/ 64 <364000000>;
+				opp-microvolt = <575000>;
+			};
+			opp-2 {
+				opp-hz = /bits/ 64 <458000000>;
+				opp-microvolt = <600000>;
+			};
+			opp-3 {
+				opp-hz = /bits/ 64 <546000000>;
+				opp-microvolt = <650000>;
+			};
+			opp-4 {
+				opp-hz = /bits/ 64 <728000000>;
+				opp-microvolt = <700000>;
+			};
+			opp-5 {
+				opp-hz = /bits/ 64 <832000000>;
+				opp-microvolt = <750000>;
+			};
+		};
+
 		opp_table_vote: opp-table-vote {
 			compatible = "operating-points-v2";
 			opp-0 {
@@ -14357,6 +14385,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"mux-dis", "mux-mdp", "mux-smi", "mux-ven", "mux-ven-mdp";
 			mediatek,mmdvfs-opp-table = <&opp_table_cam>, <&opp_table_camtm>, <&opp_table_vdec>,
 				<&opp_table_img>, <&opp_table_ipe>, <&opp_table_disp>, <&opp_table_disp>,
+				<&opp_table_mminfra>, <&opp_table_venc>, <&opp_table_venc_mdp>;
+			mediatek,mmdvfs-opp-table-b0 = <&opp_table_cam>, <&opp_table_camtm>, <&opp_table_vdec>,
+				<&opp_table_img>, <&opp_table_ipe>, <&opp_table_disp_b0>, <&opp_table_disp_b0>,
 				<&opp_table_mminfra>, <&opp_table_venc>, <&opp_table_venc_mdp>;
 			mediatek,vcore-level =	/bits/ 8 <1 2 3 4 5 6>; //mapping to mmdvfs vcore dfs level
 			mediatek,step-idx = /bits/ 8 <MMDVFS_VCP_CAM>;
