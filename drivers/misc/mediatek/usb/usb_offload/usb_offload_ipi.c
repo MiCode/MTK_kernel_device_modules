@@ -72,12 +72,11 @@ static int send_single_scene(uint8_t scene, uint8_t data_type, uint8_t ack_type,
 			ack_type, msg_id, param1, param2, data_buffer);
 }
 
-
+char *msg_string[UOI_NUM] = {"INIT_ADSP", "DEINIT_ADSP", "ENABLE_STREAM",
+	"DISABLE_STREAM", "ENABLE_HID", "DISABLE_HID", "ENABLE_TRACE", "DISABLE_TRACE"};
 
 int usb_offload_send_ipi_msg(enum usb_offload_ipi_msg msg_type, void *data, size_t size)
 {
-	char *msg_string[UOI_NUM] = {"INIT_ADSP", "DEINIT_ADSP", "ENABLE_STREAM",
-		"DISABLE_STREAM", "ENABLE_HID", "ENABLE_TRACE", "DISABLE_TRACE"};
 	uint8_t scene = TASK_SCENE_INVALID;
 	uint8_t data_type;
 	uint8_t ack_type;
@@ -86,6 +85,11 @@ int usb_offload_send_ipi_msg(enum usb_offload_ipi_msg msg_type, void *data, size
 	int ret = 0;
 	size_t desire;
 	bool ignore_timeout = true;
+
+	if (msg_type >= UOI_NUM) {
+		USB_OFFLOAD_ERR("invalid msg_type:%d\n", msg_type);
+		return -EINVAL;
+	}
 
 	switch (msg_type) {
 	case UOI_INIT_ADSP:
@@ -119,6 +123,7 @@ int usb_offload_send_ipi_msg(enum usb_offload_ipi_msg msg_type, void *data, size
 		break;
 	}
 	case UOI_ENABLE_HID:
+	case UOI_DISABLE_HID:
 		desire = sizeof(struct usb_offload_urb_msg);
 		if (param1 != desire || data == NULL)
 			goto sz_fail;

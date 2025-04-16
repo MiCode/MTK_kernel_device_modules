@@ -61,9 +61,6 @@ MODULE_PARM_DESC(hid_debug_sync, "Enable/Disable HID Offload sync log");
 	(condition) ? 0 : -ETIMEDOUT; \
 })
 
-#define wait_reset_done(hid, timeout_ns) \
-	(wait_condition((test_bit(HID_ON_RESET, &hid->sync_flag) == 0), timeout_ns) == 0)
-
 /* counter bit defined */
 #define HID_GIVEBACK_CNT_MASK	GENMASK(3, 0)
 #define HID_GIVEBACK_CNT_SHIFT	(0)
@@ -83,7 +80,7 @@ MODULE_PARM_DESC(hid_debug_sync, "Enable/Disable HID Offload sync log");
 #define HID_EP_NAME_LEN      30
 #define UO_HID_EP_NUM        2
 #define UO_HID_WAKEUP_TIME   1000
-#define UO_HID_WAIT_RESET_NS 1000000
+#define UO_HID_WAIT_RESET_NS 1000000000 /* 1 sec */
 
 static DECLARE_COMPLETION(hid_dequeue_done);
 struct workqueue_struct *wq;
@@ -148,6 +145,7 @@ static inline struct hid_ep_info *get_hid_ep_safe(int dir, int slot, int ep)
 static int start_dsp(struct hid_ep_info *hid);
 static void stop_dsp(struct hid_ep_info *hid, bool inform_dsp);
 static void hid_offload_reset(struct hid_ep_info *hid);
+static bool hid_wait_reset(struct hid_ep_info *hid);
 
 /**
  * hid_trace_dequeue - trace killed urb & init hid_ep_info
@@ -178,14 +176,11 @@ static void hid_trace_dequeue(void *unused, struct urb *urb)
 		}
 
 		/* wait until preivious round finish */
-		hid_dbg("wait reset for %d ns.....\n", UO_HID_WAIT_RESET_NS);
-		if (!wait_reset_done(hid, UO_HID_WAIT_RESET_NS)) {
+		if (!hid_wait_reset(hid)) {
 			uo_mbrain_update(UO_PHASE_HID_START, UO_ERROR_TIMEOUT);
 			hid_dump_ep(hid, "<HID Dequeue ERROR>");
-			hid_err("wait reset timeout, Not Support HID Offloading\n");
 			return;
 		}
-		hid_dbg("reset done.....\n");
 
 		set_bit(HID_NEED_OFFLOAD, &hid->sync_flag);
 		hid->urb = urb;
@@ -225,15 +220,13 @@ bool usb_offload_trace_hid_enqueue(struct xhci_hcd *xhci, struct urb *urb)
 		return false;
 
 	/* do not make decision while previous round was resetting */
-	hid_dbg("wait reset for %d ns.....\n", UO_HID_WAIT_RESET_NS);
-	if (!wait_reset_done(hid, 1000000)) {
+	if (!hid_wait_reset(hid)) {
 		uo_mbrain_update(UO_PHASE_HID_ONGOING, UO_ERROR_TIMEOUT);
 		hid_dump_ep(hid, "<AP Enqueue ERROR>");
-		hid_err("%s wait reset timeout, do not skip\n", hid->name);
+
 		/* todo: shall we skip it or not ??? */
 		return false;
 	}
-	hid_dbg("reset done.....\n");
 
 	/* we can fully trust the flags now */
 	if (!test_bit(HID_NEED_OFFLOAD, &hid->sync_flag)) {
@@ -396,8 +389,11 @@ static void giveback_hid(struct work_struct *work_struct)
  */
 static void hid_offload_reset(struct hid_ep_info *hid)
 {
+	struct timespec64 start, end;
 	bool giveback = false;
 	bool inform_dsp = false;
+
+	ktime_get_ts64(&start);
 
 	/* update synchorization */
 	hid_lock(hid, __func__);
@@ -425,6 +421,36 @@ static void hid_offload_reset(struct hid_ep_info *hid)
 	clear_bit(HID_ON_RESET, &hid->sync_flag);
 	clear_bit(HID_NEED_OFFLOAD, &hid->sync_flag);
 	hid_dump_ep(hid, "<HID RESET End>");
+
+	ktime_get_ts64(&end);
+	hid_info("spend:%ld ns\n", end.tv_nsec - start.tv_nsec);
+}
+
+/**
+ * hid_wait_reset - wait until hid_offload_reset finish
+ *
+ * return false if @UO_HID_WAIT_RESET_NS elapsed, otherwise, true.
+ */
+static bool hid_wait_reset(struct hid_ep_info *hid)
+{
+	struct timespec64 start, end;
+	int retval;
+
+	hid_dbg("wait reset for %d ns.....\n", UO_HID_WAIT_RESET_NS);
+
+	ktime_get_ts64(&start);
+	retval = wait_condition(
+		(test_bit(HID_ON_RESET, &hid->sync_flag) == 0), UO_HID_WAIT_RESET_NS);
+	ktime_get_ts64(&end);
+
+	if (retval < 0)
+		hid_err("%s timeout while waiting reset (spend:%ld ns)\n",
+			hid->name, end.tv_nsec - start.tv_nsec);
+	else
+		hid_dbg("%s success waiting reset (spend:%ld ns)\n",
+			hid->name, end.tv_nsec - start.tv_nsec);
+
+	return !retval ? true : false;
 }
 
 /**
@@ -535,7 +561,7 @@ void usb_offload_hid_stop(void)
 		hid = &hid_ep[i];
 
 		/* prevent from hid offloading was on resetting */
-		if (!wait_reset_done(hid, UO_HID_WAIT_RESET_NS)) {
+		if (!hid_wait_reset(hid)) {
 			hid_dump_ep(hid, "<HID Stop ERROR>");
 			hid_err("wait reset timeout, may cause chaos\n");
 		}
@@ -641,7 +667,7 @@ static void stop_dsp(struct hid_ep_info *hid, bool inform_dsp)
 		msg.first_trb = 0;
 
 		/* inform dsp to stop */
-		if (!usb_offload_send_ipi_msg(UOI_ENABLE_HID, &msg, sizeof(struct usb_offload_urb_msg))) {
+		if (!usb_offload_send_ipi_msg(UOI_DISABLE_HID, &msg, sizeof(struct usb_offload_urb_msg))) {
 			clear_bit(HID_DSP_RUNNING, &hid->sync_flag);
 			hid_dump_ep(hid, "<End DSP>");
 		}
