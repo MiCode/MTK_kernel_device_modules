@@ -186,8 +186,8 @@ void fbt_set_per_task_cap(int pid, unsigned int min_blc,
 		attr.sched_util_min = -1;
 		attr.sched_util_max = -1;
 	} else {
-		attr.sched_util_min = (min_blc_1024 << 10) / 1280;
-		attr.sched_util_max = (max_blc_1024 << 10) / 1280;
+		attr.sched_util_min = min_blc_1024;
+		attr.sched_util_max = max_blc_1024;
 	}
 
 	if (pid < 0)
