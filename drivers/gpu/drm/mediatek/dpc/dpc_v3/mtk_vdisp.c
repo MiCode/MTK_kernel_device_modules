@@ -380,6 +380,10 @@ static void vdisp_hwccf_ctrl(struct mtk_vdisp *priv, bool enable)
 		#if IS_ENABLED(CONFIG_MTK_HWCCF)
 		int hwccf_ret = 0;
 
+		if (!enable)
+			if (disp_dpc_driver.dpc_buck_status)
+				disp_dpc_driver.dpc_buck_status(enable);
+
 		hwccf_ret = hwccf_irq_voter_ctrl(MM_HWCCF, HW_CCF_BACKUP_GRP_0,
 			enable ? HWCCF_VOTE : HWCCF_UNVOTE,
 			data->ap_voter_bit);
@@ -387,6 +391,11 @@ static void vdisp_hwccf_ctrl(struct mtk_vdisp *priv, bool enable)
 			VDISPERR("hwccf irq voter failed, ret: %d", hwccf_ret);
 			clkchk_external_dump();
 		}
+
+		if (enable)
+			if (disp_dpc_driver.dpc_buck_status)
+				disp_dpc_driver.dpc_buck_status(enable);
+
 		//VDISPDBG("BUCK %s", (enable) ? "ON" : "OFF");
 		#endif
 	}
