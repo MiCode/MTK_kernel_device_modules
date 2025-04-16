@@ -914,7 +914,6 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/aee/hangdet:aee_hangdet".format(kernel_version),
 	"//kernel_device_modules-{}/drivers/misc/mediatek/apusys/power:apu_top".format(kernel_version),
 	"//kernel_device_modules-{}/drivers/misc/mediatek/apusys:apusys".format(kernel_version),
-    "//kernel_device_modules-{}/drivers/misc/mediatek/apusys/aov:apu_aov".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/audio_ipi:audio_ipi".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/atf:atf_logger".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/blocktag:blocktag".format(kernel_version),
@@ -1521,6 +1520,7 @@ mgk_64_kleaf_platform_modules = {
     "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/pda:pda_drv_mt6895".format(kernel_version): "mt6895",
     "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/pda:pda_drv_mt6878".format(kernel_version): "mt6878",
     "//kernel_device_modules-{}/drivers/misc/mediatek/performance/game:mtk_game".format(kernel_version): "mt6899 mt6991 mt6993",
+    "//kernel_device_modules-{}/drivers/misc/mediatek/apusys/aov:apu_aov".format(kernel_version): "mt6989 mt6991 mt6993",
 
   ## write vendor file by platform here
 
