@@ -2992,7 +2992,7 @@ static int therm_intf_probe(struct platform_device *pdev)
 	struct resource *res;
 	void __iomem *addr;
 	struct device_node *cpu_np, *gauge_np, *therm_np;
-	struct of_phandle_args args;
+	struct of_phandle_args args = {0};
 	unsigned int cpu, max_perf_domain = 0;
 	int ret, i;
 
@@ -3055,7 +3055,7 @@ static int therm_intf_probe(struct platform_device *pdev)
 						 &args);
 
 		if (ret < 0)
-			return ret;
+			dev_info(tm_data.dev, "can't get cpu cluster by dts\n");
 
 		max_perf_domain = max(max_perf_domain, args.args[0]);
 	}
