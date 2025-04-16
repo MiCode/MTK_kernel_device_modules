@@ -4597,6 +4597,16 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 			node-135 = "SSPM_SWPM_UFS1__STATE_RATIO",
 				"g4_txrx,g4_tx,g4_rx,g4_idle,g5_txrx,g5_tx,g5_rx,g5_idle,",
 				"h8_ckoff,h8_ckon,off,frequency";
+			node-136 = "SSPM_SWPM_USB",
+				"sspxtp_d9_G1U3,sspxtp_d8_G2U3,sspxtp_d7_G1U2,sspxtp_d6_G1U1,",
+				"sspxtp_d5_G2U2,sspxtp_d4_G2U1,sspxtp_d3_G1UXEXIT,sspxtp_d2_G2UXEXIT,",
+				"sspxtp_d1_G1U0,sspxtp_d0_G2U0",
+				"ssusb_u2_phy_l0_fsrx_ip0,ssusb_u2_phy_l0_fstx_ip0,ssusb_u2_phy_l0_hsrx_ip0,",
+				"ssusb_u2_phy_l0_hstx_ip0,ssusb_u2_phy_l0_idle_ip0,ssusb_u2_phy_l0_ip0,",
+				"ssusb_u2_phy_l1_ip0,ssusb_u2_phy_l2_ip0,",
+				"ssusb_usb2_l2_ip0,ssusb_usb2_l1_ip0,ssusb_usb2_l0_ip0,ssusb_usb3_u3_ip0,",
+				"ssusb_usb3_u2_ip0,ssusb_usb3_u1_ip0,ssusb_usb3_u0_ip0,",
+				"usb_ck_freq";
 		};
 
 		gpueb_rts_header:gpueb-rts-header {
