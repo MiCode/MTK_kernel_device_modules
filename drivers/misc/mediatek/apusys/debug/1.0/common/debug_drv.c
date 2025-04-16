@@ -185,17 +185,26 @@ static ssize_t gals_dump_show(struct device *dev,
 	struct dbg_mux_sel_value *value_table;
 	struct dbg_hw_info *hw_info;
 	char *p = buf;
+	u32 max_size, page_num;
 
 	hw_info = &hw_info_set[debug_drv.platform_idx];
 	value_table = hw_info->value_tbl;
-
+	if (!value_table) {
+		LOG_ERR("error: value_table is NULL\n");
+		return 0;
+	}
 
 	if (apusys_dump_force)
 		apusys_reg_dump("force_dump", false);
 
+	/* One row is "%s:0x%08x\n" */
+	max_size = debug_drv.total_dbg_mux_count * (sizeof(value_table[0].name) + 12);
+	page_num = max_size / PAGE_SIZE + 1;
+
 	for (i = 0; i < debug_drv.total_dbg_mux_count; ++i)
-		p += sprintf(p, "%s:0x%08x\n",
+		p += scnprintf(p, page_num * PAGE_SIZE - (p - buf), "%s:0x%08x\n",
 			value_table[i].name, data.gals_reg[i]);
+
 	return p - buf;
 }
 
