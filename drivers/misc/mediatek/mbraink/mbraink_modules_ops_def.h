@@ -13,6 +13,7 @@ struct mbraink_memory_ops {
 	int (*getMdvInfo)(struct mbraink_memory_mdvInfo *pMemoryMdv);
 	int (*get_ufs_info)(struct mbraink_ufs_info *ufs_info);
 	int (*getEmiInfo)(struct mbraink_memory_emiInfo *pMemoryEmiInfo);
+	int (*getCmProfileInfo)(struct mbraink_memory_cmProfileInfo *pCmProfileInfo);
 };
 int register_mbraink_memory_ops(struct mbraink_memory_ops *ops);
 int unregister_mbraink_memory_ops(void);

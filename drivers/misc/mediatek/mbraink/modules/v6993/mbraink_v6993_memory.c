@@ -14,6 +14,7 @@
 
 #include <swpm_module_psp.h>
 #include <dvfsrc-mb.h>
+#include <mtk_cm_mgr_mt6993.h>
 
 struct device *mbraink_v6993_device;
 
@@ -281,11 +282,42 @@ End:
 	return ret;
 }
 
+static int mbraink_v6993_memory_getCmProfileInfo
+	(struct mbraink_memory_cmProfileInfo *pCmProfileInfo)
+{
+	struct cm_profile_info cmProfInfo;
+	int ret = 0;
+	int32_t cm_profile_check = 0;
+
+	if (pCmProfileInfo == NULL)	{
+		pr_info("(%s)cm profile is null\n", __func__);
+		return -1;
+	}
+
+	memset(&cmProfInfo, 0x00, sizeof(struct cm_profile_info));
+	ret = cm_profile_get_bw(&cmProfInfo);
+	if (ret != 0) {
+		pr_info("(%s) get cm profile fail\n", __func__);
+		return ret;
+	}
+
+	if (CM_WRAP_EMI_MAX > MAX_CM_WRAP_NUM)
+		cm_profile_check = MAX_CM_WRAP_NUM;
+	else
+		cm_profile_check = CM_WRAP_EMI_MAX;
+
+	pCmProfileInfo->totalCmWrapNum = cm_profile_check;
+	pCmProfileInfo->updateCnt = cmProfInfo.update_cnt;
+
+	return ret;
+}
+
 static struct mbraink_memory_ops mbraink_v6993_memory_ops = {
 	.getDdrInfo = mbraink_v6993_memory_getDdrInfo,
 	.getMdvInfo = mbraink_v6993_memory_getMdvInfo,
 	.get_ufs_info = mbraink_v6993_get_ufs_info,
 	.getEmiInfo = mbraink_v6993_memory_getEmiInfo,
+	.getCmProfileInfo = mbraink_v6993_memory_getCmProfileInfo,
 };
 
 int mbraink_v6993_memory_init(struct device *dev)

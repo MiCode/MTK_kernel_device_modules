@@ -50,6 +50,7 @@
 #define MAX_EMI_FREQ_NUM			12
 #define MAX_MMQOS_BW_SUBSYS_NUMS			6
 #define MAX_MMQOS_BW_VALUE_NUMS				24
+#define MAX_CM_WRAP_NUM				8
 
 #define NETLINK_EVENT_Q2QTIMEOUT		"NLEvent_Q2QTimeout"
 #define NETLINK_EVENT_UDMFETCH			"M&"
@@ -810,6 +811,12 @@ struct mbraink_mmqos_bw_data {
 
 struct mbraink_mmqos_bw_info {
 	struct mbraink_mmqos_bw_data mmqos_bw_data[MAX_MMQOS_BW_SUBSYS_NUMS];
+};
+
+struct mbraink_memory_cmProfileInfo {
+	u64 info[MAX_CM_WRAP_NUM];
+	int32_t totalCmWrapNum;
+	unsigned long updateCnt;
 };
 
 #endif

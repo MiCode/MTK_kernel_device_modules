@@ -81,6 +81,7 @@
 #define MMDVFS_USER_INFO		'W'
 #define TIMER_MAPPING_INFO	'X'
 #define MMQOS_BW_INFO			'Y'
+#define MEMORY_CM_PROFILE_INFO	'Z'
 
 /*Mbrain Delegate IOCTL List*/
 #define AUTO_IOCTL_INFO			_IOR(IOC_MAGIC, AUTO_IOCTL, \
@@ -217,6 +218,8 @@
 					struct mbraink_timer_mapping_info*)
 #define RO_MMQOS_BW_INFO	_IOR(IOC_MAGIC, MMQOS_BW_INFO, \
 						struct mbraink_mmqos_bw_info*)
+#define RO_MEMORY_CM_PROFILE_INFO		_IOR(IOC_MAGIC, MEMORY_CM_PROFILE_INFO, \
+							struct mbraink_memory_cmProfileInfo*)
 
 #define SUSPEND_DATA	0
 #define RESUME_DATA		1

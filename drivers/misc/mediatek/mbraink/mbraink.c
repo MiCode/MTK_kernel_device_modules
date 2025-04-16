@@ -1447,6 +1447,28 @@ static long handleMMBWInfo(unsigned long arg, void *mbraink_data)
 	return ret;
 }
 
+static long handleMemoryCmProfileInfo(unsigned long arg, void *mbraink_data)
+{
+	long ret = 0;
+	struct mbraink_memory_cmProfileInfo *pMemoryCmProfileInfo =
+		(struct mbraink_memory_cmProfileInfo *)(mbraink_data);
+
+	memset(pMemoryCmProfileInfo,
+			0,
+			sizeof(struct mbraink_memory_cmProfileInfo));
+	ret = mbraink_memory_getCmProfileInfo(pMemoryCmProfileInfo);
+	if (ret == 0) {
+		if (copy_to_user((struct mbraink_memory_cmProfileInfo *)arg,
+				pMemoryCmProfileInfo,
+				sizeof(struct mbraink_memory_cmProfileInfo))) {
+			pr_notice("Copy memory cm Profile Info to UserSpace error!\n");
+			ret = -EPERM;
+		}
+	}
+
+	return ret;
+}
+
 static long mbraink_ioctl(struct file *filp,
 							unsigned int cmd,
 							unsigned long arg)
@@ -1961,6 +1983,7 @@ static long mbraink_ioctl(struct file *filp,
 		kfree(mbraink_data);
 		break;
 	}
+
 	case RO_MMDVFS_USER_INFO:
 	{
 		mbraink_data = kmalloc(sizeof(struct mbraink_mmdvfs_user_info), GFP_KERNEL);
@@ -1985,6 +2008,15 @@ static long mbraink_ioctl(struct file *filp,
 		if (!mbraink_data)
 			goto End;
 		ret = handleMMBWInfo(arg, mbraink_data);
+		kfree(mbraink_data);
+		break;
+	}
+	case RO_MEMORY_CM_PROFILE_INFO:
+	{
+		mbraink_data = kmalloc(sizeof(struct mbraink_memory_cmProfileInfo), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handleMemoryCmProfileInfo(arg, mbraink_data);
 		kfree(mbraink_data);
 		break;
 	}
