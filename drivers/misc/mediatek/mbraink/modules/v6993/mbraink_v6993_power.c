@@ -29,6 +29,7 @@
 #define MAX_SPMI_PRE_OT_CNT PMIC_PRE_OT_BUF_SIZE
 #define MAX_SPMI_PRE_LVSYS_CNT PMIC_PRE_LVSYS_BUF_SIZE
 #define MAX_SPMI_CURR_CLAMPING_CNT PMIC_CURR_CLAMPING_BUF_SIZE
+#define MAX_SPMI_RG_CNT SPMI_PMIC_DEBUG_RG_BUF_SIZE
 #else
 #define MAX_SPMI_SLVID 32
 #define MAX_SPMI_NACK_CNT 64
@@ -36,6 +37,7 @@
 #define MAX_SPMI_PRE_OT_CNT 32
 #define MAX_SPMI_PRE_LVSYS_CNT 32
 #define MAX_SPMI_CURR_CLAMPING_CNT 128
+#define MAX_SPMI_RG_CNT 192
 #endif
 
 #if IS_ENABLED(CONFIG_MFD_MTK_SPMI_PMIC)
@@ -712,6 +714,7 @@ static int mbraink_v6993_power_get_spmi_info(
 	u16 currClampingBuf[MAX_SPMI_CURR_CLAMPING_CNT] = {0};
 	int ret = 0;
 	int num = 0;
+	unsigned int rg[MAX_SPMI_RG_CNT] = {0};
 
 	if (mbraink_spmi_data == NULL) {
 		pr_info("mbraink_spmi_data is null\n");
@@ -746,12 +749,19 @@ static int mbraink_v6993_power_get_spmi_info(
 	memcpy(mbraink_spmi_data->spmi_pre_lvsys, preLvsysBuf, sizeof(u16)*num);
 	mbraink_spmi_data->spmi_pre_lvsys_count = num;
 
-	//get pre lvsys cnt
+	//get current clamping cnt
 	mtk_spmi_pmic_get_current_clamping_cnt(currClampingBuf);
 	num = (MAX_SPMI_CURR_CLAMPING_SZ > MAX_SPMI_CURR_CLAMPING_CNT) ?
 		MAX_SPMI_CURR_CLAMPING_CNT : MAX_SPMI_CURR_CLAMPING_SZ;
 	memcpy(mbraink_spmi_data->spmi_curr_clamping, currClampingBuf, sizeof(u16)*num);
 	mbraink_spmi_data->spmi_curr_clamping_count = num;
+
+	//get rg info
+	mtk_spmi_pmic_get_debug_rg_info(rg);
+	num = (MAX_SPMI_RG_SZ > MAX_SPMI_RG_CNT) ?
+		MAX_SPMI_RG_CNT : MAX_SPMI_RG_SZ;
+	memcpy(mbraink_spmi_data->spmi_rg, rg, sizeof(unsigned int)*num);
+	mbraink_spmi_data->spmi_rg_count = num;
 
 	return ret;
 }

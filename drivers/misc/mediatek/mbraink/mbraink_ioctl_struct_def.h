@@ -45,6 +45,7 @@
 #define MAX_SPMI_PRE_OT_SZ			32
 #define MAX_SPMI_PRE_LVSYS_SZ			32
 #define MAX_SPMI_CURR_CLAMPING_SZ		128
+#define MAX_SPMI_RG_SZ				192
 #define MAX_WIFI_NOTIFY_TXPOWER_RPT_NUM		2
 #define MAX_EMI_FREQ_NUM			12
 #define MAX_MMQOS_BW_SUBSYS_NUMS			6
@@ -381,6 +382,8 @@ struct mbraink_spmi_struct_data {
 	u16 spmi_pre_lvsys[MAX_SPMI_PRE_LVSYS_SZ];
 	u16 spmi_curr_clamping_count;
 	u16 spmi_curr_clamping[MAX_SPMI_CURR_CLAMPING_SZ];
+	unsigned int spmi_rg_count;
+	unsigned int spmi_rg[MAX_SPMI_RG_SZ];
 };
 
 struct mbraink_uvlo_err_data {
