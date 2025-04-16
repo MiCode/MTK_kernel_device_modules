@@ -37,7 +37,12 @@ int mbraink_power_get_pmic_voltage_info(struct mbraink_pmic_voltage_info *pmicVo
 
 void mbraink_power_suspend_prepare(void);
 
-void mbraink_power_post_suspend(void);
+void mbraink_power_post_suspend(long long last_resume_timestamp);
+
+int mbraink_power_device_suspend(struct device *dev);
+
+int mbraink_power_device_resume(struct device *dev);
+
 
 int mbraink_power_get_mmdvfs_info(struct mbraink_mmdvfs_info *mmdvfsInfo);
 

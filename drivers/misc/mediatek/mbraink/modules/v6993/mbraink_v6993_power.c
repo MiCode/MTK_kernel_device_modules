@@ -53,11 +53,15 @@
 #include "mbraink_sys_res_mbrain_plat.h"
 #include "mbraink_sys_res_plat.h"
 
+/*spinlock for mbraink spm l2 data*/
+static DEFINE_SPINLOCK(spm_l1_lock);
+
 unsigned char *g_spm_raw;
 unsigned int g_data_size;
 int g_spm_l2_sig_tbl_size;
 unsigned int g_spm_l2_sig_num;
 unsigned char *g_spm_l2_ls_ptr = NULL, *g_spm_l2_sig_tbl_ptr = NULL;
+long long g_spm_l1_data[SPM_L1_DATA_NUM];
 
 #endif
 
@@ -829,28 +833,91 @@ static int mbraink_v6993_power_sys_res_deinit(void)
 	return 0;
 }
 
-static void mbraink_v6993_power_suspend_prepare(void)
+static void mbraink_v6993_power_send_spml1(long long last_resume_timestamp)
 {
-	struct mbraink_sys_res_mbrain_dbg_ops *sys_res_mbrain_ops = NULL;
+	unsigned long flags;
+	char netlink_buf[NETLINK_EVENT_MESSAGE_SIZE] = {'\0'};
+	int n = 0;
 
-	sys_res_mbrain_ops = get_mbraink_dbg_ops();
+	spin_lock_irqsave(&spm_l1_lock, flags);
 
-	if (sys_res_mbrain_ops && sys_res_mbrain_ops->update) {
-		if (sys_res_mbrain_ops->update() != 0)
-			pr_info("suspend_prepare mbraink update sys res fail");
+	if (g_spm_l1_data[0] == 0 && g_spm_l1_data[1] == 0 && g_spm_l1_data[2] == 0 &&
+		g_spm_l1_data[3] == 0) {
+		spin_unlock_irqrestore(&spm_l1_lock, flags);
+		return;
 	}
+
+	n = snprintf(netlink_buf, NETLINK_EVENT_MESSAGE_SIZE,
+		"%s %lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld",
+		NETLINK_EVENT_SYSNOTIFIER_PS,
+		last_resume_timestamp,
+		g_spm_l1_data[0],
+		g_spm_l1_data[1],
+		g_spm_l1_data[2],
+		g_spm_l1_data[3],
+		g_spm_l1_data[4],
+		g_spm_l1_data[5],
+		g_spm_l1_data[6],
+		g_spm_l1_data[7],
+		g_spm_l1_data[8],
+		g_spm_l1_data[9],
+		g_spm_l1_data[10],
+		g_spm_l1_data[11],
+		g_spm_l1_data[12],
+		g_spm_l1_data[13]
+	);
+
+	if (n < 0 || n > NETLINK_EVENT_MESSAGE_SIZE)
+		pr_info("%s : snprintf error n = %d\n", __func__, n);
+	else
+		mbraink_netlink_send_msg(netlink_buf);
+
+	spin_unlock_irqrestore(&spm_l1_lock, flags);
 }
 
-static void mbraink_v6993_power_post_suspend(void)
+static void mbraink_v6993_power_suspend_prepare(void)
 {
+	unsigned long flags;
+
+	spin_lock_irqsave(&spm_l1_lock, flags);
+	memset(g_spm_l1_data, 0, sizeof(g_spm_l1_data));
+	spin_unlock_irqrestore(&spm_l1_lock, flags);
+}
+
+static void mbraink_v6993_power_post_suspend(long long last_resume_timestamp)
+{
+	mbraink_v6993_power_send_spml1(last_resume_timestamp);
+}
+
+static int mbraink_v6993_power_device_suspend(struct device *dev)
+{
+	int ret = 0;
 	struct mbraink_sys_res_mbrain_dbg_ops *sys_res_mbrain_ops = NULL;
 
 	sys_res_mbrain_ops = get_mbraink_dbg_ops();
 
 	if (sys_res_mbrain_ops && sys_res_mbrain_ops->update) {
-		if (sys_res_mbrain_ops->update() != 0)
-			pr_info("post_suspend mbraink update sys res fail");
+		ret = sys_res_mbrain_ops->update();
+		if (ret != 0)
+			pr_info("suspend_prepare mbraink update sys res fail");
 	}
+	return ret;
+}
+
+static int mbraink_v6993_power_device_resume(struct device *dev)
+{
+	unsigned long flags;
+	int ret;
+	long long spm_l1_data[SPM_L1_DATA_NUM];
+
+	memset(spm_l1_data, 0, sizeof(spm_l1_data));
+	ret = mbraink_v6993_power_get_spm_l1_info(spm_l1_data, SPM_L1_DATA_NUM);
+
+	spin_lock_irqsave(&spm_l1_lock, flags);
+	memcpy(g_spm_l1_data, spm_l1_data, sizeof(spm_l1_data));
+	spin_unlock_irqrestore(&spm_l1_lock, flags);
+
+	return ret;
 }
 
 static int mbraink_v6993_power_get_mmdfvs_info(struct mbraink_mmdvfs_info *mmdvfsInfo)
@@ -1309,6 +1376,8 @@ static struct mbraink_power_ops mbraink_v6993_power_ops = {
 	.getSpmiGlitchInfo = mbraink_v6993_power_get_spmi_glitch_info,
 	.getDvfsrcInfo = mbraink_v6993_power_get_dvfsrc_info,
 	.getMMBWInfo = mbraink_v6993_power_get_mmqos_bw_info,
+	.deviceSuspend = mbraink_v6993_power_device_suspend,
+	.deviceResume = mbraink_v6993_power_device_resume,
 };
 
 int mbraink_v6993_power_init(struct device *dev)
@@ -1346,6 +1415,8 @@ int mbraink_v6993_power_init(struct device *dev)
 		pr_info("register ccci callback failed by: %d", ret);
 		return ret;
 	}
+
+	device_enable_async_suspend(dev);
 
 	return ret;
 }

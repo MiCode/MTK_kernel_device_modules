@@ -33,6 +33,8 @@ int mbraink_power_init(void)
 	_mbraink_power_ops.getSpmiGlitchInfo = NULL;
 	_mbraink_power_ops.getDvfsrcInfo = NULL;
 	_mbraink_power_ops.getMMBWInfo = NULL;
+	_mbraink_power_ops.deviceSuspend = NULL;
+	_mbraink_power_ops.deviceResume = NULL;
 	return 0;
 }
 
@@ -60,6 +62,8 @@ int mbraink_power_deinit(void)
 	_mbraink_power_ops.getSpmiGlitchInfo = NULL;
 	_mbraink_power_ops.getDvfsrcInfo = NULL;
 	_mbraink_power_ops.getMMBWInfo = NULL;
+	_mbraink_power_ops.deviceSuspend = NULL;
+	_mbraink_power_ops.deviceResume = NULL;
 	return 0;
 }
 
@@ -92,6 +96,8 @@ int register_mbraink_power_ops(struct mbraink_power_ops *ops)
 	_mbraink_power_ops.getSpmiGlitchInfo = ops->getSpmiGlitchInfo;
 	_mbraink_power_ops.getDvfsrcInfo = ops->getDvfsrcInfo;
 	_mbraink_power_ops.getMMBWInfo = ops->getMMBWInfo;
+	_mbraink_power_ops.deviceSuspend = ops->deviceSuspend;
+	_mbraink_power_ops.deviceResume = ops->deviceResume;
 	return 0;
 }
 EXPORT_SYMBOL(register_mbraink_power_ops);
@@ -122,6 +128,8 @@ int unregister_mbraink_power_ops(void)
 	_mbraink_power_ops.getSpmiGlitchInfo = NULL;
 	_mbraink_power_ops.getDvfsrcInfo = NULL;
 	_mbraink_power_ops.getMMBWInfo = NULL;
+	_mbraink_power_ops.deviceSuspend = NULL;
+	_mbraink_power_ops.deviceResume = NULL;
 	return 0;
 }
 EXPORT_SYMBOL(unregister_mbraink_power_ops);
@@ -349,10 +357,30 @@ void mbraink_power_suspend_prepare(void)
 		_mbraink_power_ops.suspendprepare();
 }
 
-void mbraink_power_post_suspend(void)
+void mbraink_power_post_suspend(long long last_resume_timestamp)
 {
 	if (_mbraink_power_ops.postsuspend)
-		_mbraink_power_ops.postsuspend();
+		_mbraink_power_ops.postsuspend(last_resume_timestamp);
+}
+
+int mbraink_power_device_suspend(struct device *dev)
+{
+	int ret = 0;
+
+	if (_mbraink_power_ops.deviceSuspend)
+		ret = _mbraink_power_ops.deviceSuspend(dev);
+
+	return ret;
+}
+
+int mbraink_power_device_resume(struct device *dev)
+{
+	int ret = 0;
+
+	if (_mbraink_power_ops.deviceResume)
+		ret = _mbraink_power_ops.deviceResume(dev);
+
+	return ret;
 }
 
 int mbraink_power_get_mmdvfs_info(struct mbraink_mmdvfs_info *mmdvfsInfo)

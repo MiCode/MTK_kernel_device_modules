@@ -49,7 +49,7 @@ struct mbraink_power_ops {
 	int (*getUvloInfo)(struct mbraink_uvlo_struct_data *mbraink_uvlo_data);
 	int (*getPmicVoltageInfo)(struct mbraink_pmic_voltage_info *pmicVoltageInfo);
 	void (*suspendprepare)(void);
-	void (*postsuspend)(void);
+	void (*postsuspend)(long long last_resume_timestamp);
 	int (*getMmdvfsInfo)(struct mbraink_mmdvfs_info *mmdvfsInfo);
 	int (*getPowerThrottleHwInfo)(struct mbraink_power_throttle_hw_data *power_throttle_hw_data);
 	int (*getLpmStateInfo)(struct mbraink_lpm_state_data *mbraink_lpm_state);
@@ -57,6 +57,8 @@ struct mbraink_power_ops {
 	int (*getDvfsrcInfo)(struct mbraink_dvfsrc_struct_data *mbraink_dvfsrc_data);
 	int (*getMmdvfsUserInfo)(struct mbraink_mmdvfs_user_info *mmdvfs_user_info);
 	int (*getMMBWInfo)(struct mbraink_mmqos_bw_info *mmqos_bw_info);
+	int (*deviceSuspend)(struct device *dev);
+	int (*deviceResume)(struct device *dev);
 };
 int register_mbraink_power_ops(struct mbraink_power_ops *ops);
 int unregister_mbraink_power_ops(void);

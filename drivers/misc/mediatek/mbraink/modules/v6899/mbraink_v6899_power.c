@@ -795,8 +795,12 @@ static void mbraink_v6899_power_suspend_prepare(void)
 	}
 }
 
-static void mbraink_v6899_power_post_suspend(void)
+static void mbraink_v6899_power_post_suspend(long long last_resume_timestamp)
 {
+	int ret;
+	char netlink_buf[NETLINK_EVENT_MESSAGE_SIZE] = {'\0'};
+	long long spm_l1_info[SPM_L1_DATA_NUM];
+	int n = 0;
 	struct mbraink_sys_res_mbrain_dbg_ops *sys_res_mbrain_ops = NULL;
 
 	sys_res_mbrain_ops = get_mbraink_dbg_ops();
@@ -805,6 +809,38 @@ static void mbraink_v6899_power_post_suspend(void)
 		if (sys_res_mbrain_ops->update() != 0)
 			pr_info("post_suspend mbraink update sys res fail");
 	}
+
+	memset(spm_l1_info, 0, sizeof(spm_l1_info));
+	ret = mbraink_v6899_power_get_spm_l1_info(spm_l1_info, SPM_L1_DATA_NUM);
+	if (ret)
+		return;
+
+	n = snprintf(netlink_buf, NETLINK_EVENT_MESSAGE_SIZE,
+		"%s %lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld",
+		NETLINK_EVENT_SYSNOTIFIER_PS,
+		last_resume_timestamp,
+		spm_l1_info[0],
+		spm_l1_info[1],
+		spm_l1_info[2],
+		spm_l1_info[3],
+		spm_l1_info[4],
+		spm_l1_info[5],
+		spm_l1_info[6],
+		spm_l1_info[7],
+		spm_l1_info[8],
+		spm_l1_info[9],
+		spm_l1_info[10],
+		spm_l1_info[11],
+		spm_l1_info[12],
+		spm_l1_info[13]
+	);
+
+	last_resume_timestamp = 0;
+	if (n < 0 || n > NETLINK_EVENT_MESSAGE_SIZE)
+		pr_info("%s : snprintf error n = %d\n", __func__, n);
+	else
+		mbraink_netlink_send_msg(netlink_buf);
+
 }
 
 static int mbraink_v6899_power_get_mmdfvs_info(struct mbraink_mmdvfs_info *mmdvfsInfo)
@@ -1032,6 +1068,8 @@ static struct mbraink_power_ops mbraink_v6899_power_ops = {
 	.getSpmiGlitchInfo = mbraink_v6899_power_get_spmi_glitch_info,
 	.getDvfsrcInfo = NULL,
 	.getMMBWInfo = NULL,
+	.deviceSuspend = NULL,
+	.deviceResume = NULL,
 };
 
 int mbraink_v6899_power_init(struct device *dev)

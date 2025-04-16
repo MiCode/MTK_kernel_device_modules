@@ -53,6 +53,7 @@ struct mbraink_data mbraink_priv;
 long long last_resume_timestamp;
 
 
+
 #define MAX_LOGMISCDATA_LOG_SIZE 256
 #define MAX_LOGMISCDATA_VALUE_NUM 8
 #define LogMiscDataToken     "__LMD&"
@@ -2039,19 +2040,25 @@ static int mbraink_suspend(struct device *dev)
 {
 	int ret;
 
+	ret = mbraink_power_device_suspend(dev);
+
 	pr_info("[MBK_INFO] %s\n", __func__);
 	ret = pm_generic_suspend(dev);
+
 
 	return ret;
 }
 
 static int mbraink_resume(struct device *dev)
 {
-	int ret;
+	int ret, result;
 
 	ret = pm_generic_resume(dev);
-
 	pr_info("[MBK_INFO] %s\n", __func__);
+
+	result = mbraink_power_device_resume(dev);
+	if (result)
+		pr_info("[Mbraink][SPM] %s update(%d)\n", __func__, result);
 
 	return ret;
 }
@@ -2193,62 +2200,18 @@ out:
 	return ret;
 }
 
-static void mbraink_post_suspend_get_spm(void)
-{
-	int ret;
-	char netlink_buf[MAX_BUF_SZ] = {'\0'};
-	long long spm_l1_info[SPM_L1_DATA_NUM];
-	int n = 0;
-
-	memset(spm_l1_info, 0, sizeof(spm_l1_info));
-	ret = mbraink_power_get_spm_l1_info(spm_l1_info, SPM_L1_DATA_NUM);
-	if (ret)
-		return;
-
-	n = snprintf(netlink_buf, MAX_BUF_SZ,
-		"%s %lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld:%lld",
-		NETLINK_EVENT_SYSNOTIFIER_PS,
-		last_resume_timestamp,
-		spm_l1_info[0],
-		spm_l1_info[1],
-		spm_l1_info[2],
-		spm_l1_info[3],
-		spm_l1_info[4],
-		spm_l1_info[5],
-		spm_l1_info[6],
-		spm_l1_info[7],
-		spm_l1_info[8],
-		spm_l1_info[9],
-		spm_l1_info[10],
-		spm_l1_info[11],
-		spm_l1_info[12],
-		spm_l1_info[13]
-	);
-
-	last_resume_timestamp = 0;
-	if (n < 0 || n > MAX_BUF_SZ)
-		pr_info("%s : snprintf error n = %d\n", __func__, n);
-	else
-		mbraink_netlink_send_msg(netlink_buf);
-}
-
 static int mbraink_sys_res_pm_event(struct notifier_block *notifier,
 			unsigned long pm_event, void *unused)
 {
 	switch (pm_event) {
 	case PM_SUSPEND_PREPARE:
-		pr_notice("mbraink_PM_SUSPEND_PREPARE\n");
 		mbraink_power_suspend_prepare();
-		pr_notice("mbraink_PM_SUSPEND_PREPARE exit\n");
 		return NOTIFY_DONE;
 	case PM_POST_SUSPEND:
-		pr_notice("mbraink_PM_POST_SUSPEND\n");
 		if (mbraink_post_suspend() == 0) {
-			//spm : 1.update (mbraink_power_post_suspend) 2.get spm data
-			mbraink_power_post_suspend();
-			mbraink_post_suspend_get_spm();
+			mbraink_power_post_suspend(last_resume_timestamp);
+			last_resume_timestamp = 0;
 		}
-		pr_notice("mbraink_PM_POST_SUSPEND exit\n");
 		return NOTIFY_DONE;
 	default:
 		return NOTIFY_DONE;
