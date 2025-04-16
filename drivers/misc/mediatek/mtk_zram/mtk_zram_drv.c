@@ -2143,6 +2143,9 @@ static void hwcomp_decompress_post_process(int err, struct dcomp_pp_info *pp_inf
 		return;
 	}
 
+	/* bio has been acquired, it's ok to reset the field to null here */
+	pp_info->bio = NULL;
+
 	zram_slot_lock(zram, index);
 
 	/* Clear ZRAM_IN_HW_PROCESSING whatever the err is */
@@ -2319,6 +2322,9 @@ static void hwcomp_compress_post_process_ndc(int err, void *buffer, unsigned int
 		pr_info("%s: Empty BIO for index (%u) at (%d)\n", __func__, index, err);
 		return;
 	}
+
+	/* bio has been acquired, it's ok to reset the field to null here */
+	pp_info->bio = NULL;
 
 	if (err) {
 		atomic64_inc(&zram->stats.hw_failed_writes);
@@ -2675,6 +2681,9 @@ static void hwcomp_compress_post_process_dc(int err, void *buffer, unsigned int 
 		pr_info("%s: Empty BIO for index (%u) at (%d)\n", __func__, index, err);
 		return;
 	}
+
+	/* bio has been acquired, it's ok to reset the field to null here */
+	pp_info->bio = NULL;
 
 	if (err) {
 		atomic64_inc(&zram->stats.hw_failed_writes);
