@@ -16886,7 +16886,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		mm_fake_eng: mm-fake-engine@30030000 {
 			compatible = "mediatek,mm-fake-engine";
 			reg = <0 0x30030000 0 0x10000>;
-			power-domains = <MT6993_SMI_PD_MMINFRA0>;
+			power-domain = <MT6993_SMI_PD_MMINFRA0>;
 			#fake-engine-cells = <1>;
 			fake-engines = <&mm_fake_eng 0x0>,
 				<&mm_fake_eng 0x1000>,
@@ -16904,7 +16904,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		cxcti_tx: mm-cti@30a2b000 {
 			compatible = "mediatek,mm-cti";
 			reg = <0 0x30a2b000 0 0x1000>;
-			power-domains = <MT6993_SMI_PD_MMINFRA1>;
+			power-domain = <MT6993_SMI_PD_MMINFRA1>;
 			hw-id = <0>;
 			cti-in-chnn-stop = <0 0>;
 			cti-in-chnn-start = <1 1>;
@@ -16916,7 +16916,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		cxcti_rx: mm-cti@30a29000 {
 			compatible = "mediatek,mm-cti";
 			reg = <0 0x30a29000 0 0x1000>;
-			power-domains = <MT6993_SMI_PD_MMINFRA1>;
+			power-domain = <MT6993_SMI_PD_MMINFRA1>;
 			hw-id = <1>;
 			cti-in-chnn-stop = <0 0>;
 			cti-in-chnn-start = <1 1>;
@@ -16928,7 +16928,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		cxcti_acp: mm-cti@30a2d000 {
 			compatible = "mediatek,mm-cti";
 			reg = <0 0x30a2d000 0 0x1000>;
-			power-domains = <MT6993_SMI_PD_MMINFRA1>;
+			power-domain = <MT6993_SMI_PD_MMINFRA1>;
 			hw-id = <2>;
 			cti-in-chnn-stop = <0 0>;
 			cti-in-chnn-start = <1 1>;
@@ -16940,7 +16940,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		disp_cti: mm-cti@3efc0000 {
 			compatible = "mediatek,mm-cti";
 			reg = <0 0x3efc0000 0 0x1000>;
-			power-domains = <MT6993_SMI_PD_VDISP_PERI>;
+			power-domain = <MT6993_SMI_PD_VDISP_PERI>;
 			hw-id = <3>;
 			cti-in-chnn-stop = <7 0>,
 								<5 0>,
@@ -16958,7 +16958,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		cam_cti: mm-cti@3c82c000 {
 			compatible = "mediatek,mm-cti";
 			reg = <0 0x3c82c000 0 0x1000>;
-			power-domains = <MT6993_SMI_PD_CAM_VCORE>;
+			power-domain = <MT6993_SMI_PD_CAM_VCORE>;
 			hw-id = <4>;
 			cti-in-chnn-stop = <0 0>;
 			cti-in-chnn-start = <1 1>;
@@ -16970,7 +16970,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		img_cti: mm-cti@3478e000 {
 			compatible = "mediatek,mm-cti";
 			reg = <0 0x3478e000 0 0x1000>;
-			power-domains = <MT6993_SMI_PD_ISP_VCORE>;
+			power-domain = <MT6993_SMI_PD_ISP_VCORE>;
 			hw-id = <5>;
 			cti-in-chnn-stop = <0 0>;
 			cti-in-chnn-start = <1 1>;
@@ -16982,7 +16982,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		cse600_top_rx: mm-ela@30a2a000 {
 			compatible = "mediatek,mm-ela";
 			reg = <0 0x30a2a000 0 0x1000>;
-			power-domains = <MT6993_SMI_PD_MMINFRA1>;
+			power-domain = <MT6993_SMI_PD_MMINFRA1>;
 			hw-id = <1>;
 			cti-supply = <&cxcti_rx>;
 			ela-cti = <&cxcti_rx>;
@@ -16991,7 +16991,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		cse600_top_tx: mm-ela@30a2c000 {
 			compatible = "mediatek,mm-ela";
 			reg = <0 0x30a2c000 0 0x1000>;
-			power-domains = <MT6993_SMI_PD_MMINFRA1>;
+			power-domain = <MT6993_SMI_PD_MMINFRA1>;
 			hw-id = <2>;
 			cti-supply = <&cxcti_tx>;
 			ela-cti = <&cxcti_tx>;
@@ -17000,7 +17000,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		cse600_top_acp: mm-ela@30a2e000 {
 			compatible = "mediatek,mm-ela";
 			reg = <0 0x30a2e000 0 0x1000>;
-			power-domains = <MT6993_SMI_PD_MMINFRA1>;
+			power-domain = <MT6993_SMI_PD_MMINFRA1>;
 			hw-id = <3>;
 			cti-supply = <&cxcti_acp>;
 			ela-cti = <&cxcti_acp>;
@@ -17009,7 +17009,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		disp_ela: mm-ela@3ef60000 {
 			compatible = "mediatek,mm-ela";
 			reg = <0 0x3ef60000 0 0x1000>;
-			power-domains = <MT6993_SMI_PD_VDISP_PERI>;
+			power-domain = <MT6993_SMI_PD_VDISP_PERI>;
 			hw-id = <4>;
 			cti-supply = <&disp_cti>;
 			ela-cti = <&disp_cti>;
@@ -17018,7 +17018,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		camsys_vcore_cse600_top: mm-ela@3c824000 {
 			compatible = "mediatek,mm-ela";
 			reg = <0 0x3c824000 0 0x1000>;
-			power-domains = <MT6993_SMI_PD_CAM_VCORE>;
+			power-domain = <MT6993_SMI_PD_CAM_VCORE>;
 			hw-id = <5>;
 			cti-supply = <&cam_cti>;
 			ela-cti = <&cam_cti>;
@@ -17027,7 +17027,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		imgsys_vcore_cse600_top: mm-ela@3478f000 {
 			compatible = "mediatek,mm-ela";
 			reg = <0 0x3478f000 0 0x1000>;
-			power-domains = <MT6993_SMI_PD_ISP_VCORE>;
+			power-domain = <MT6993_SMI_PD_ISP_VCORE>;
 			hw-id = <6>;
 			cti-supply = <&img_cti>;
 			ela-cti = <&img_cti>;
@@ -17036,7 +17036,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		cbip_axi_monitor_tx70: mm-axi-monitor@30a24000 {
 			compatible = "mediatek,mm-axi-monitor";
 			reg = <0 0x30a24000 0 0x1000>;
-			power-domains = <MT6993_SMI_PD_MMINFRA1>;
+			power-domain = <MT6993_SMI_PD_MMINFRA1>;
 			hw-id = <0>;
 			ostdbl-r-nps = <110>;
 			ostdbl-w-nps = <90>;
@@ -17047,7 +17047,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		cbip_axi_monitor_tx71: mm-axi-monitor@30a25000 {
 			compatible = "mediatek,mm-axi-monitor";
 			reg = <0 0x30a25000 0 0x1000>;
-			power-domains = <MT6993_SMI_PD_MMINFRA1>;
+			power-domain = <MT6993_SMI_PD_MMINFRA1>;
 			hw-id = <1>;
 			ostdbl-r-nps = <110>;
 			ostdbl-w-nps = <90>;
@@ -17058,7 +17058,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		cbip_axi_monitor_tx72: mm-axi-monitor@30a26000 {
 			compatible = "mediatek,mm-axi-monitor";
 			reg = <0 0x30a26000 0 0x1000>;
-			power-domains = <MT6993_SMI_PD_MMINFRA1>;
+			power-domain = <MT6993_SMI_PD_MMINFRA1>;
 			hw-id = <2>;
 			ostdbl-r-nps = <110>;
 			ostdbl-w-nps = <90>;
@@ -17069,7 +17069,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		cbip_axi_monitor_tx73: mm-axi-monitor@30a27000 {
 			compatible = "mediatek,mm-axi-monitor";
 			reg = <0 0x30a27000 0 0x1000>;
-			power-domains = <MT6993_SMI_PD_MMINFRA1>;
+			power-domain = <MT6993_SMI_PD_MMINFRA1>;
 			hw-id = <3>;
 			ostdbl-r-nps = <110>;
 			ostdbl-w-nps = <90>;
@@ -17080,7 +17080,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		cbip_axi_monitor_rx1: mm-axi-monitor@30a20000 {
 			compatible = "mediatek,mm-axi-monitor";
 			reg = <0 0x30a20000 0 0x1000>;
-			power-domains = <MT6993_SMI_PD_MMINFRA1>;
+			power-domain = <MT6993_SMI_PD_MMINFRA1>;
 			hw-id = <4>;
 			ostdbl-r-nps = <130>;
 			ostdbl-w-nps = <110>;
@@ -17091,7 +17091,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		cbip_axi_monitor_rx2: mm-axi-monitor@30a21000 {
 			compatible = "mediatek,mm-axi-monitor";
 			reg = <0 0x30a21000 0 0x1000>;
-			power-domains = <MT6993_SMI_PD_MMINFRA1>;
+			power-domain = <MT6993_SMI_PD_MMINFRA1>;
 			hw-id = <5>;
 			ostdbl-r-nps = <130>;
 			ostdbl-w-nps = <110>;
@@ -17102,7 +17102,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		cbip_axi_monitor_rx3: mm-axi-monitor@30a22000 {
 			compatible = "mediatek,mm-axi-monitor";
 			reg = <0 0x30a22000 0 0x1000>;
-			power-domains = <MT6993_SMI_PD_MMINFRA1>;
+			power-domain = <MT6993_SMI_PD_MMINFRA1>;
 			hw-id = <6>;
 			ostdbl-r-nps = <130>;
 			ostdbl-w-nps = <110>;
@@ -17113,7 +17113,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		cbip_axi_monitor_rx4: mm-axi-monitor@30a23000 {
 			compatible = "mediatek,mm-axi-monitor";
 			reg = <0 0x30a23000 0 0x1000>;
-			power-domains = <MT6993_SMI_PD_MMINFRA1>;
+			power-domain = <MT6993_SMI_PD_MMINFRA1>;
 			hw-id = <7>;
 			ostdbl-r-nps = <130>;
 			ostdbl-w-nps = <110>;
@@ -17124,7 +17124,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		cbip_axi_monitor_acp: mm-axi-monitor@30a28000 {
 			compatible = "mediatek,mm-axi-monitor";
 			reg = <0 0x30a28000 0 0x1000>;
-			power-domains = <MT6993_SMI_PD_MMINFRA1>;
+			power-domain = <MT6993_SMI_PD_MMINFRA1>;
 			hw-id = <8>;
 			ela-supply = <&cse600_top_tx>;
 			bwr-ela = <&cse600_top_acp>;
@@ -17133,7 +17133,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		disp_bwr0: mm-axi-monitor@3ef20000 {
 			compatible = "mediatek,mm-axi-monitor";
 			reg = <0 0x3ef20000 0 0x1000>;
-			power-domains = <MT6993_SMI_PD_VDISP_PERI>;
+			power-domain = <MT6993_SMI_PD_VDISP_PERI>;
 			hw-id = <11>;
 			axi-limiter-supply = <&axi_monitor_limiter>;
 			axi-port-id = <0>;
@@ -17147,7 +17147,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		disp_bwr1: mm-axi-monitor@3ef30000 {
 			compatible = "mediatek,mm-axi-monitor";
 			reg = <0 0x3ef30000 0 0x1000>;
-			power-domains = <MT6993_SMI_PD_VDISP_PERI>;
+			power-domain = <MT6993_SMI_PD_VDISP_PERI>;
 			hw-id = <12>;
 			axi-limiter-supply = <&axi_monitor_limiter>;
 			axi-port-id = <1>;
@@ -17161,7 +17161,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		disp_bwr2: mm-axi-monitor@3ef40000 {
 			compatible = "mediatek,mm-axi-monitor";
 			reg = <0 0x3ef40000 0 0x1000>;
-			power-domains = <MT6993_SMI_PD_VDISP_PERI>;
+			power-domain = <MT6993_SMI_PD_VDISP_PERI>;
 			axi-limiter-supply = <&axi_monitor_limiter>;
 			axi-port-id = <0>;
 			axi-mux-id = <1>;
@@ -17175,7 +17175,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		disp_bwr3: mm-axi-monitor@3ef50000 {
 			compatible = "mediatek,mm-axi-monitor";
 			reg = <0 0x3ef50000 0 0x1000>;
-			power-domains = <MT6993_SMI_PD_VDISP_PERI>;
+			power-domain = <MT6993_SMI_PD_VDISP_PERI>;
 			axi-limiter-supply = <&axi_monitor_limiter>;
 			axi-port-id = <1>;
 			axi-mux-id = <1>;
@@ -17189,7 +17189,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		camsys_core_cbip_axi_monitor_0: mm-axi-monitor@3c820000 {
 			compatible = "mediatek,mm-axi-monitor";
 			reg = <0 0x3c820000 0 0x1000>;
-			power-domains = <MT6993_SMI_PD_CAM_VCORE>;
+			power-domain = <MT6993_SMI_PD_CAM_VCORE>;
 			axi-limiter-supply = <&axi_monitor_limiter>;
 			axi-port-id = <5>;
 			axi-mux-id = <2>;
@@ -17205,7 +17205,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		camsys_core_cbip_axi_monitor_1: mm-axi-monitor@3c821000 {
 			compatible = "mediatek,mm-axi-monitor";
 			reg = <0 0x3c821000 0 0x1000>;
-			power-domains = <MT6993_SMI_PD_CAM_VCORE>;
+			power-domain = <MT6993_SMI_PD_CAM_VCORE>;
 			axi-limiter-supply = <&axi_monitor_limiter>;
 			axi-port-id = <4>;
 			axi-mux-id = <2>;
@@ -17221,7 +17221,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		camsys_core_cbip_axi_monitor_2: mm-axi-monitor@3c822000 {
 			compatible = "mediatek,mm-axi-monitor";
 			reg = <0 0x3c822000 0 0x1000>;
-			power-domains = <MT6993_SMI_PD_CAM_VCORE>;
+			power-domain = <MT6993_SMI_PD_CAM_VCORE>;
 			axi-limiter-supply = <&axi_monitor_limiter>;
 			axi-port-id = <6>;
 			axi-mux-id = <2>;
@@ -17235,7 +17235,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		camsys_core_cbip_axi_monitor_3: mm-axi-monitor@3c823000 {
 			compatible = "mediatek,mm-axi-monitor";
 			reg = <0 0x3c823000 0 0x1000>;
-			power-domains = <MT6993_SMI_PD_CAM_VCORE>;
+			power-domain = <MT6993_SMI_PD_CAM_VCORE>;
 			axi-limiter-supply = <&axi_monitor_limiter>;
 			axi-port-id = <5>;
 			axi-mux-id = <2>;
@@ -17251,7 +17251,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		camsys_rawa_cbip_axi_monitor_0: mm-axi-monitor@3a7c0000 {
 			compatible = "mediatek,mm-axi-monitor";
 			reg = <0 0x3a7c0000 0 0x1000>;
-			power-domains = <MT6993_SMI_PD_CAM_RAWA>;
+			power-domain = <MT6993_SMI_PD_CAM_RAWA>;
 			axi-limiter-supply = <&axi_monitor_limiter>;
 			axi-mux-id = <2>;
 			hw-id = <17>;
@@ -17262,7 +17262,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		camsys_yuva_cbip_axi_monitor_0: mm-axi-monitor@3a7c1000 {
 			compatible = "mediatek,mm-axi-monitor";
 			reg = <0 0x3a7c1000 0 0x1000>;
-			power-domains = <MT6993_SMI_PD_CAM_RAWB>;
+			power-domain = <MT6993_SMI_PD_CAM_RAWB>;
 			axi-limiter-supply = <&axi_monitor_limiter>;
 			axi-mux-id = <2>;
 			hw-id = <18>;
@@ -17273,7 +17273,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		camsys_rawb_cbip_axi_monitor: mm-axi-monitor@3a9c0000 {
 			compatible = "mediatek,mm-axi-monitor";
 			reg = <0 0x3a9c0000 0 0x1000>;
-			power-domains = <MT6993_SMI_PD_CAM_RAWB>;
+			power-domain = <MT6993_SMI_PD_CAM_RAWB>;
 			axi-limiter-supply = <&axi_monitor_limiter>;
 			axi-mux-id = <2>;
 			hw-id = <19>;
@@ -17284,7 +17284,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		camsys_yuvb_cbip_axi_monitor: mm-axi-monitor@3a9c1000 {
 			compatible = "mediatek,mm-axi-monitor";
 			reg = <0 0x3a9c1000 0 0x1000>;
-			power-domains = <MT6993_SMI_PD_CAM_RAWC>;
+			power-domain = <MT6993_SMI_PD_CAM_RAWC>;
 			axi-limiter-supply = <&axi_monitor_limiter>;
 			axi-mux-id = <2>;
 			hw-id = <20>;
@@ -17295,7 +17295,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		camsys_yuvc_cbip_axi_monitor: mm-axi-monitor@3abc1000 {
 			compatible = "mediatek,mm-axi-monitor";
 			reg = <0 0x3abc1000 0 0x1000>;
-			power-domains = <MT6993_SMI_PD_CAM_RAWA>;
+			power-domain = <MT6993_SMI_PD_CAM_RAWA>;
 			axi-limiter-supply = <&axi_monitor_limiter>;
 			axi-mux-id = <2>;
 			hw-id = <21>;
@@ -17306,7 +17306,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		camsys_rawc_cbip_axi_monitor: mm-axi-monitor@3abc0000 {
 			compatible = "mediatek,mm-axi-monitor";
 			reg = <0 0x3abc0000 0 0x1000>;
-			power-domains = <MT6993_SMI_PD_CAM_RAWC>;
+			power-domain = <MT6993_SMI_PD_CAM_RAWC>;
 			axi-limiter-supply = <&axi_monitor_limiter>;
 			axi-mux-id = <2>;
 			hw-id = <22>;
@@ -17317,7 +17317,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		imgsys_vcore_cbip_axi_monitor_1: mm-axi-monitor@3478c000 {
 			compatible = "mediatek,mm-axi-monitor";
 			reg = <0 0x3478c000 0 0x1000>;
-			power-domains = <MT6993_SMI_PD_ISP_VCORE>;
+			power-domain = <MT6993_SMI_PD_ISP_VCORE>;
 			hw-id = <23>;
 			ostdbl-r-nps = <142>;
 			ostdbl-w-nps = <122>;
@@ -17328,7 +17328,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		imgsys_vcore_cbip_axi_monitor_0: mm-axi-monitor@3478b000 {
 			compatible = "mediatek,mm-axi-monitor";
 			reg = <0 0x3478b000 0 0x1000>;
-			power-domains = <MT6993_SMI_PD_ISP_VCORE>;
+			power-domain = <MT6993_SMI_PD_ISP_VCORE>;
 			hw-id = <24>;
 			ostdbl-r-nps = <142>;
 			ostdbl-w-nps = <122>;
@@ -17339,7 +17339,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		imgsys_vcore_cbip_axi_monitor_2: mm-axi-monitor@3478d000 {
 			compatible = "mediatek,mm-axi-monitor";
 			reg = <0 0x3478d000 0 0x1000>;
-			power-domains = <MT6993_SMI_PD_ISP_VCORE>;
+			power-domain = <MT6993_SMI_PD_ISP_VCORE>;
 			hw-id = <25>;
 			ostdbl-r-nps = <142>;
 			ostdbl-w-nps = <122>;
@@ -17350,7 +17350,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		vdec_axi_monitor2: mm-axi-monitor@36093000 {
 			compatible = "mediatek,mm-axi-monitor";
 			reg = <0 0x36093000 0 0x1000>;
-			power-domains = <MT6993_SMI_PD_VDE0>;
+			power-domain = <MT6993_SMI_PD_VDE0>;
 			hw-id = <26>;
 			ostdbl-r-nps = <143>;
 			ostdbl-w-nps = <123>;
@@ -17360,7 +17360,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		vdec_axi_monitor0: mm-axi-monitor@36091000 {
 			compatible = "mediatek,mm-axi-monitor";
 			reg = <0 0x36091000 0 0x1000>;
-			power-domains = <MT6993_SMI_PD_VDE1>;
+			power-domain = <MT6993_SMI_PD_VDE1>;
 			hw-id = <27>;
 			ostdbl-r-nps = <143>;
 			ostdbl-w-nps = <123>;
@@ -17370,7 +17370,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		vdec_axi_monitor1: mm-axi-monitor@36092000 {
 			compatible = "mediatek,mm-axi-monitor";
 			reg = <0 0x36092000 0 0x1000>;
-			power-domains = <MT6993_SMI_PD_VDE0>;
+			power-domain = <MT6993_SMI_PD_VDE0>;
 			hw-id = <28>;
 			ostdbl-r-nps = <143>;
 			ostdbl-w-nps = <123>;
@@ -17380,7 +17380,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		venc_c0p0_axi_monitor: mm-axi-monitor@380f0000 {
 			compatible = "mediatek,mm-axi-monitor";
 			reg = <0 0x380f0000 0 0x1000>;
-			power-domains = <MT6993_SMI_PD_VEN0>;
+			power-domain = <MT6993_SMI_PD_VEN0>;
 			hw-id = <29>;
 			ostdbl-r-nps = <144>;
 			ostdbl-w-nps = <124>;
@@ -17390,7 +17390,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		venc_c1p0_axi_monitor: mm-axi-monitor@388a0000 {
 			compatible = "mediatek,mm-axi-monitor";
 			reg = <0 0x388a0000 0 0x1000>;
-			power-domains = <MT6993_SMI_PD_VEN2>;
+			power-domain = <MT6993_SMI_PD_VEN2>;
 			hw-id = <30>;
 			ostdbl-r-nps = <144>;
 			ostdbl-w-nps = <124>;
@@ -17400,7 +17400,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		venc_mdp_axi_monitor: mm-axi-monitor@392e0000 {
 			compatible = "mediatek,mm-axi-monitor";
 			reg = <0 0x392e0000 0 0x1000>;
-			power-domains = <MT6993_SMI_PD_VEN_MDP>;
+			power-domain = <MT6993_SMI_PD_VEN_MDP>;
 			hw-id = <31>;
 			ostdbl-r-nps = <144>;
 			ostdbl-w-nps = <124>;
@@ -17429,7 +17429,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		mminfra2_config: mminfra2-config@30b00000 {
 			compatible = "mediatek,mmmc-config-mt6993";
 			reg = <0 0x30b00000 0 0x1000>;
-			power-domains = <MT6993_SMI_PD_MMINFRA2>;
+			power-domain = <MT6993_SMI_PD_MMINFRA2>;
 			16qos-enable-offset = <0x400>;
 			16qos-debug-enable = <0>; // false
 			use-subsys-16qos = <1>; // true
