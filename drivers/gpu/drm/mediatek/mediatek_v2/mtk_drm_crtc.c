@@ -3489,6 +3489,8 @@ int mtk_drm_switch_spr(struct drm_crtc *crtc, unsigned int en,
 			mtk_drm_get_lcm_ext_params(crtc);
 	struct mtk_cmdq_cb_data *cb_data;
 	unsigned int hrt_idx = 0;
+	struct mtk_drm_private *private = crtc->dev->dev_private;
+	unsigned int crtc_idx = drm_crtc_index(crtc);
 
 	if (need_lock)
 		DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
@@ -3535,7 +3537,8 @@ int mtk_drm_switch_spr(struct drm_crtc *crtc, unsigned int en,
 	}
 
 	if (need_repaint) {
-		if (mtk_crtc->is_mml || mtk_crtc->is_mml_dl) {
+		if (!mtk_drm_use_retrigger(private) &&
+			(mtk_crtc->is_mml || mtk_crtc->is_mml_dl)) {
 			hrt_idx = _layering_rule_get_hrt_idx(drm_crtc_index(crtc));
 			hrt_idx++;
 			mtk_crtc->mml_prefer_dc = true;
@@ -3586,9 +3589,11 @@ int mtk_drm_switch_spr(struct drm_crtc *crtc, unsigned int en,
 				cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
 					mtk_get_gce_backup_slot_pa(mtk_crtc,
 					DISP_SLOT_PANEL_SPR_EN), 2, ~0);
-			CRTC_MMP_MARK(0, set_dirty, SWITCH_SPR, (unsigned long)cmdq_handle);
-			cmdq_pkt_set_event(cmdq_handle,
-				mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
+			if (!mtk_drm_use_retrigger(private)) {
+				CRTC_MMP_MARK(0, set_dirty, SWITCH_SPR, (unsigned long)cmdq_handle);
+				cmdq_pkt_set_event(cmdq_handle,
+					mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
+			}
 
 			cb_data->crtc = crtc;
 			cb_data->cmdq_handle = cmdq_handle;
@@ -3601,9 +3606,12 @@ int mtk_drm_switch_spr(struct drm_crtc *crtc, unsigned int en,
 				ret = -EINVAL;
 				goto out;
 			}
+			if (mtk_drm_use_retrigger(private))
+				mtk_request_retrig(crtc->dev, crtc_idx);
 		}
 
-		if (mtk_crtc->mml_prefer_dc) {
+		if (!mtk_drm_use_retrigger(private) &&
+			mtk_crtc->mml_prefer_dc) {
 			mtk_crtc->mml_prefer_dc = false;
 			drm_trigger_repaint(DRM_REPAINT_FOR_IDLE, crtc->dev);
 		}
