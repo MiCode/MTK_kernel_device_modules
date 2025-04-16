@@ -830,15 +830,24 @@ static void mtk_jpeg_update_bw_request(struct mtk_jpeg_ctx *ctx)
 		ctx->out_q.pix_mp.width, ctx->out_q.pix_mp.height, emi_bw);
 		if (ctx->out_q.fmt->fourcc == V4L2_PIX_FMT_YUYV ||
 			ctx->out_q.fmt->fourcc == V4L2_PIX_FMT_YVYU) {
+
+			if (jpeg->yuv422_bw != 0)
+				emi_bw = jpeg->yuv422_bw;
+
 			mtk_icc_set_bw(jpeg->path_y_rdma, kBps_to_icc(emi_bw*2), 0);
 			mtk_icc_set_bw(jpeg->path_c_rdma, kBps_to_icc(emi_bw), 0);
 		} else {
+
+			if (jpeg->yuv420_bw != 0)
+				emi_bw = jpeg->yuv420_bw;
+
 			mtk_icc_set_bw(jpeg->path_y_rdma, kBps_to_icc(emi_bw), 0);
 			mtk_icc_set_bw(jpeg->path_c_rdma,
 				kBps_to_icc(emi_bw * 1/2), 0);
 		}
 		mtk_icc_set_bw(jpeg->path_qtbl, kBps_to_icc(emi_bw), 0);
 		mtk_icc_set_bw(jpeg->path_bsdma, kBps_to_icc(emi_bw), 0);
+		pr_info("new BW  emi_bw %d\n", emi_bw);
 	}
 
 	if (jpeg->is_mmqos_level)
@@ -2196,6 +2205,18 @@ static int mtk_jpeg_probe(struct platform_device *pdev)
 		jpeg->clock_set = 0;
 
 	dev_info(&pdev->dev, "clock_set %d", jpeg->clock_set);
+
+	ret = of_property_read_u32(pdev->dev.of_node, "yuv422-bw", &jpeg->yuv422_bw);
+	if (ret != 0)
+		jpeg->yuv422_bw = 0;
+
+	dev_info(&pdev->dev, "yuv422 bw %d", jpeg->yuv422_bw);
+
+	ret = of_property_read_u32(pdev->dev.of_node, "yuv420-bw", &jpeg->yuv420_bw);
+	if (ret != 0)
+		jpeg->yuv420_bw = 0;
+
+	dev_info(&pdev->dev, "yuv420 bw %d", jpeg->yuv420_bw);
 
 	if ((jpeg->support_34bits != MTK_JPEG_NON_SUPPORT_34BITS) || jpeg->is_mmqos_level) {
 		res = platform_get_resource(pdev, IORESOURCE_MEM, VENC_GCON);

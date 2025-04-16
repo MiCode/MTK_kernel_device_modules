@@ -178,6 +178,8 @@ struct mtk_jpeg_dev {
 	u32 clock_set;
 	int need_resource_set;
 	u32 mmdvfs_vcp_idx;
+	u32 yuv422_bw;
+	u32 yuv420_bw;
 };
 
 /**
