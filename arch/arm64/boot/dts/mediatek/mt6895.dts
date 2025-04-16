@@ -8986,6 +8986,13 @@
 			iommus = <&mdp_iommu M4U_LARB33_VIDEO_UP_256MB2>;
 		};
 
+		vcp_io5: vcp-iommu-sec {
+			compatible =  "mediatek,vcp-io-sec";
+			vcp-support = <7>;
+			dma-ranges = <0x1 0x0 0x1 0x0 0x1 0x0>;
+			iommus = <&disp_iommu M4U_LARB33_VIDEO_UP_256MB1>;
+		};
+
 		vcp_iommu_ube_lat {
 			vcp-support = <5>;
 			compatible =  "mediatek,vcp-io-ube-lat";
