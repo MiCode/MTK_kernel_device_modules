@@ -21,11 +21,13 @@ static int sapu_lock_ipi_send(uint32_t lock, struct kref *ref_cnt)
 	sapu_lock_rpm_dev = get_rpm_dev();
 
 	if (!sapu_lock_rpm_dev->ept) {
-		pr_info("%s: sapu_lock_rpm_dev.ept == NULL\n", __func__);
+		pr_info("%s: sapu_lock_rpm_dev->ept == NULL\n", __func__);
 		return -ENXIO;
 	}
 
 	mutex_lock(get_rpm_mtx());
+
+	reinit_completion(&sapu_lock_rpm_dev->ack);
 
 	if (lock) {
 		kref_get(ref_cnt);
