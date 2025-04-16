@@ -12766,7 +12766,7 @@ static const struct mtk_disp_oddmr_data mt6993_oddmr_driver_data = {
 	.is_od_support_stash = true,
 	.min_stash_port_bw = 49,
 	.slc_read_alloc = 1,
-	.slc_period = 10,
+	.slc_period = 1,
 	.sodi_config = mt6993_mtk_sodi_config,
 };
 
