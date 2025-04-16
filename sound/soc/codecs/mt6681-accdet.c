@@ -276,39 +276,65 @@ inline void pmic_write_clr(u32 addr, u32 shift)
 static void mini_dump_register(void)
 {
 	int addr = 0, st_addr = 0, end_addr = 0, idx = 0, log_size = 0;
+	const int buffer_size = sizeof(accdet_log_buf);
 
-	log_size +=
-	sprintf(accdet_log_buf,
+	log_size += snprintf(accdet_log_buf + log_size, buffer_size - log_size,
 		"(0x%x)=0x%x (0x%x)=0x%x (0x%x)=0x%x (0x%x)=0x%x",
 		MT6681_ACCDET_SW_EN_ADDR, pmic_read(MT6681_ACCDET_SW_EN_ADDR),
 		MT6681_ACCDET_CMP_PWM_EN_ADDR, pmic_read(MT6681_ACCDET_CMP_PWM_EN_ADDR),
 		MT6681_ACCDET_IRQ_ADDR, pmic_read(MT6681_ACCDET_IRQ_ADDR),
 		MT6681_ACCDET_DA_STABLE_ADDR, pmic_read(MT6681_ACCDET_DA_STABLE_ADDR));
-	log_size += sprintf(accdet_log_buf + log_size,
+
+	if (log_size >= buffer_size) {
+		pr_notice("Buffer overflow detected\n");
+		return;
+	}
+
+	log_size += snprintf(accdet_log_buf + log_size, buffer_size - log_size,
 		"(0x%x)=0x%x (0x%x)=0x%x\naccdet (0x%x)=0x%x (0x%x)=0x%x",
 		MT6681_ACCDET_HWMODE_EN_ADDR, pmic_read(MT6681_ACCDET_HWMODE_EN_ADDR),
 		MT6681_ACCDET_CMPEN_SEL_ADDR, pmic_read(MT6681_ACCDET_CMPEN_SEL_ADDR),
 		MT6681_ACCDET_CMPEN_SW_ADDR, pmic_read(MT6681_ACCDET_CMPEN_SW_ADDR),
 		MT6681_AD_AUDACCDETCMPOB_ADDR, pmic_read(MT6681_AD_AUDACCDETCMPOB_ADDR));
-	log_size += sprintf(accdet_log_buf + log_size,
+
+	if (log_size >= buffer_size) {
+		pr_notice("Buffer overflow detected\n");
+		return;
+	}
+
+	log_size += snprintf(accdet_log_buf + log_size, buffer_size - log_size,
 		"(0x%x)=0x%x (0x%x)=0x%x (0x%x)=0x%x (0x%x)=0x%x\n",
 		MT6681_AD_EINT0CMPMOUT_ADDR, pmic_read(MT6681_AD_EINT0CMPMOUT_ADDR),
 		MT6681_AD_EINT0INVOUT_ADDR, pmic_read(MT6681_AD_EINT0INVOUT_ADDR),
 		MT6681_ACCDET_EN_ADDR, pmic_read(MT6681_ACCDET_EN_ADDR),
 		MT6681_AD_AUDACCDETCMPOB_ADDR, pmic_read(MT6681_AD_AUDACCDETCMPOB_ADDR));
+
+	if (log_size >= buffer_size) {
+		pr_notice("Buffer overflow detected\n");
+		return;
+	}
+
 	st_addr = MT6681_RG_AUDPWDBMICBIAS0_ADDR;
 	end_addr = MT6681_RG_ACCDETSPARE_ADDR;
+
 	for (addr = st_addr; addr <= end_addr; addr += 4) {
 		idx = addr;
-		log_size += sprintf(accdet_log_buf + log_size,
+		log_size += snprintf(accdet_log_buf + log_size, buffer_size - log_size,
 			"(0x%x)=0x%x (0x%x)=0x%x (0x%x)=0x%x (0x%x)=0x%x\n",
 			idx, pmic_read(idx),
 			idx+1, pmic_read(idx+1),
 			idx+2, pmic_read(idx+2),
 			idx+3, pmic_read(idx+3));
+
+		if (log_size >= buffer_size) {
+			pr_notice("Buffer overflow detected\n");
+			return;
+		}
 	}
+
 	if (log_size < 0)
-		pr_notice("sprintf failed\n");
+		pr_notice("snprintf failed\n");
+
 	pr_notice("\naccdet %s %d", accdet_log_buf, log_size);
 }
 
@@ -368,23 +394,24 @@ static void cat_register(char *buf)
 {
 	int addr = 0, st_addr = 0, end_addr = 0, idx = 0, ret = 0;
 
-	ret = sprintf(accdet_log_buf, "[Accdet EINTx support][MODE_%d]regs:\n",
+	ret = snprintf(accdet_log_buf, sizeof(accdet_log_buf),
+		"[Accdet EINTx support][MODE_%d]regs:\n",
 		accdet_dts.mic_mode);
 	strncat(buf, accdet_log_buf, strlen(accdet_log_buf));
 	if (ret < 0)
-		pr_notice("sprintf failed\n");
+		pr_notice("snprintf failed\n");
 	dump_reg = true;
 	dump_register();
 	dump_reg = false;
-	ret = sprintf(accdet_log_buf, "ACCDET_RG\n");
+	ret = snprintf(accdet_log_buf, sizeof(accdet_log_buf), "ACCDET_RG\n");
 	strncat(buf, accdet_log_buf, strlen(accdet_log_buf));
 	if (ret < 0)
-		pr_notice("sprintf failed\n");
+		pr_notice("snprintf failed\n");
 	st_addr = MT6681_ACCDET_AUXADC_SEL_ADDR;
 	end_addr = MT6681_ACCDET_MON_FLAG_EN_ADDR;
 	for (addr = st_addr; addr <= end_addr; addr += 4) {
 		idx = addr;
-		ret = sprintf(accdet_log_buf,
+		ret = snprintf(accdet_log_buf, sizeof(accdet_log_buf),
 			"(0x%x)=0x%x (0x%x)=0x%x (0x%x)=0x%x (0x%x)=0x%x\n",
 			idx, pmic_read(idx),
 			idx+1, pmic_read(idx+1),
@@ -392,42 +419,43 @@ static void cat_register(char *buf)
 			idx+3, pmic_read(idx+3));
 		strncat(buf, accdet_log_buf, strlen(accdet_log_buf));
 		if (ret < 0)
-			pr_notice("sprintf failed\n");
+			pr_notice("snprintf failed\n");
 	}
-	ret = sprintf(accdet_log_buf, "AUDDEC_ANA_RG\n");
+	ret = snprintf(accdet_log_buf, sizeof(accdet_log_buf), "AUDDEC_ANA_RG\n");
 	strncat(buf, accdet_log_buf, strlen(accdet_log_buf));
 	if (ret < 0)
-		pr_notice("sprintf failed\n");
+		pr_notice("snprintf failed\n");
 	st_addr = MT6681_RG_AUDPREAMPLON_ADDR;
 	end_addr = MT6681_RG_ADCL_CLKMODE_ADDR;
 	for (addr = st_addr; addr <= end_addr; addr += 4) {
 		idx = addr;
-		ret = sprintf(accdet_log_buf,
+		ret = snprintf(accdet_log_buf, sizeof(accdet_log_buf),
 			"(0x%x)=0x%x (0x%x)=0x%x (0x%x)=0x%x (0x%x)=0x%x\n",
 			idx, pmic_read(idx),
 			idx+1, pmic_read(idx+1),
 			idx+2, pmic_read(idx+2),
 			idx+3, pmic_read(idx+3));
 		if (ret < 0)
-			pr_notice("sprintf failed\n");
+			pr_notice("snprintf failed\n");
 		strncat(buf, accdet_log_buf, strlen(accdet_log_buf));
 	}
 
-	ret = sprintf(accdet_log_buf, "[0x%x]=0x%x\n",
+	ret = snprintf(accdet_log_buf, sizeof(accdet_log_buf), "[0x%x]=0x%x\n",
 		      MT6681_RG_SCK32K_CK_PDN_ADDR,
 		      pmic_read(MT6681_RG_SCK32K_CK_PDN_ADDR));
 	strncat(buf, accdet_log_buf, strlen(accdet_log_buf));
 	if (ret < 0)
-		pr_notice("sprintf failed\n");
+		pr_notice("snprintf failed\n");
 
-	ret = sprintf(accdet_log_buf, "[0x%x]=0x%x\n",
+	ret = snprintf(accdet_log_buf, sizeof(accdet_log_buf), "[0x%x]=0x%x\n",
 		      MT6681_RG_ACCDET_RST_ADDR,
 		      pmic_read(MT6681_RG_ACCDET_RST_ADDR));
 	strncat(buf, accdet_log_buf, strlen(accdet_log_buf));
 	if (ret < 0)
-		pr_notice("sprintf failed\n");
+		pr_notice("snprintf failed\n");
 
-	ret = sprintf(accdet_log_buf, "[0x%x]=0x%x, [0x%x]=0x%x, [0x%x]=0x%x\n",
+	ret = snprintf(accdet_log_buf, sizeof(accdet_log_buf),
+			  "[0x%x]=0x%x, [0x%x]=0x%x, [0x%x]=0x%x\n",
 		      MT6681_RG_INT_EN_ACCDET_ADDR,
 		      pmic_read(MT6681_RG_INT_EN_ACCDET_ADDR),
 		      MT6681_RG_INT_MASK_ACCDET_ADDR,
@@ -436,33 +464,33 @@ static void cat_register(char *buf)
 		      pmic_read(MT6681_RG_INT_STATUS_ACCDET_ADDR));
 	strncat(buf, accdet_log_buf, strlen(accdet_log_buf));
 	if (ret < 0)
-		pr_notice("sprintf failed\n");
+		pr_notice("snprintf failed\n");
 
-	ret = sprintf(accdet_log_buf, "[0x%x]=0x%x,[0x%x]=0x%x\n",
+	ret = snprintf(accdet_log_buf, sizeof(accdet_log_buf), "[0x%x]=0x%x,[0x%x]=0x%x\n",
 		      MT6681_RG_AUDPWDBMICBIAS1_ADDR,
 		      pmic_read(MT6681_RG_AUDPWDBMICBIAS1_ADDR),
 		      MT6681_RG_AUDACCDETMICBIAS0PULLLOW_ADDR,
 		      pmic_read(MT6681_RG_AUDACCDETMICBIAS0PULLLOW_ADDR));
 	strncat(buf, accdet_log_buf, strlen(accdet_log_buf));
 	if (ret < 0)
-		pr_notice("sprintf failed\n");
+		pr_notice("snprintf failed\n");
 
-	ret = sprintf(accdet_log_buf, "[0x%x]=0x%x, [0x%x]=0x%x\n",
+	ret = snprintf(accdet_log_buf, sizeof(accdet_log_buf), "[0x%x]=0x%x, [0x%x]=0x%x\n",
 		      MT6681_AUXADC_RQST_CH5_ADDR,
 		      pmic_read(MT6681_AUXADC_RQST_CH5_ADDR),
 		      MT6681_AUXADC_ACCDET_AUTO_SPL_ADDR,
 		      pmic_read(MT6681_AUXADC_ACCDET_AUTO_SPL_ADDR));
 	strncat(buf, accdet_log_buf, strlen(accdet_log_buf));
 	if (ret < 0)
-		pr_notice("sprintf failed\n");
+		pr_notice("snprintf failed\n");
 
-	ret = sprintf(accdet_log_buf,
+	ret = snprintf(accdet_log_buf, sizeof(accdet_log_buf),
 		"dtsInfo:deb0=0x%x,deb1=0x%x,deb3=0x%x,deb4=0x%x\n",
 		 cust_pwm_deb->debounce0, cust_pwm_deb->debounce1,
 		 cust_pwm_deb->debounce3, cust_pwm_deb->debounce4);
 	strncat(buf, accdet_log_buf, strlen(accdet_log_buf));
 	if (ret < 0)
-		pr_notice("sprintf failed\n");
+		pr_notice("snprintf failed\n");
 }
 
 static int dbug_thread(void *unused)
