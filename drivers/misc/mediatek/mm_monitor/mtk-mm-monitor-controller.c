@@ -2032,7 +2032,7 @@ static int mm_monitor_controller_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
-	of_property_read_u32(dev->of_node, "power-domains", &power_domain_id);
+	of_property_read_u32(dev->of_node, "power-domain", &power_domain_id);
 	subsys_id = MTK_SMI_ID2SUBSYS_ID(power_domain_id);
 	if (!g_mmmc_power_domain[subsys_id]) {
 		mmmc_power_domain = devm_kzalloc(dev, sizeof(*mmmc_power_domain), GFP_KERNEL);
