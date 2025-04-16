@@ -5411,6 +5411,16 @@ test_2c_done:
 		priv->mtk_dbgtp_sta.dbgtp_en = dbgtp_en;
 		priv->mtk_dbgtp_sta.need_update = true;
 		DDPMSG("%d %s\n", __LINE__, opt);
+	} else if (strncmp(opt, "dbgtp_reg:", 10) == 0) {
+		bool dbgtp_en = false;
+
+		if (strncmp(opt + 10, "on", 2) == 0)
+			dbgtp_en = true;
+		else if (strncmp(opt + 10, "off", 3) == 0)
+			dbgtp_en = false;
+
+		mtk_dbgtp_switch(mtk_crtc, NULL, dbgtp_en);
+		DDPMSG("%d %s\n", __LINE__, opt);
 	} else if (strncmp(opt, "dbgtp_dump:", 11) == 0) {
 		bool dump_en = false;
 

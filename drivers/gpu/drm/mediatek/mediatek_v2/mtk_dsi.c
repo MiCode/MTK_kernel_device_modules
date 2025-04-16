@@ -4113,12 +4113,22 @@ int mtk_hrt_issue_flag_set(bool is_hrt_issue)
 	*addr = is_hrt_issue;
 	DDPMSG("%s set hrt issue is %d\n", __func__, is_hrt_issue);
 	if (is_hrt_issue) {
+		DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
+		if(!(mtk_crtc->enabled)) {
+			DDPINFO("%s:%d, slepted\n", __func__, __LINE__);
+			DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
+			return 1;
+		}
+		mtk_drm_idlemgr_kick(__func__, crtc, 0);
+		mtk_vidle_user_power_keep(DISP_VIDLE_USER_CRTC);
 		/* dbgtp dely 12000 frames and auto enable */
 		priv->mtk_dbgtp_sta.is_cam_hrt_issue = true;
 		priv->mtk_dbgtp_sta.cam_hrt_time_count = 12000;
 		mtk_dbgtp_switch(mtk_crtc, NULL, 0);
 		priv->mtk_dbgtp_sta.dbgtp_en = false;
 		DDPMSG("%s set hrt issue is %d disable dbgtp\n", __func__, is_hrt_issue);
+		mtk_vidle_user_power_release(DISP_VIDLE_USER_CRTC);
+		DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
 	} else {
 		mtk_dbgtp_switch(mtk_crtc, NULL, 1);
 		priv->mtk_dbgtp_sta.dbgtp_en = true;
