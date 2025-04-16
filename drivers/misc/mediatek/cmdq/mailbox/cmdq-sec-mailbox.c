@@ -541,7 +541,7 @@ static void cmdq_sec_task_done(struct cmdq_sec_task *task, s32 err)
 #if IS_ENABLED(CONFIG_MTK_CMDQ_MBOX_EXT)
 		task->pkt->rec_irq = sched_clock();
 #endif
-
+	task->pkt->done = true;
 	if (task->pkt->cb.cb) {
 		struct cmdq_cb_data cb_data;
 

@@ -255,6 +255,7 @@ struct cmdq_pkt {
 	bool		support_poll_sleep_bit32;
 	bool		loop_cb_times_by_cookie;
 	bool		skip_add_cookie;
+	bool		done;
 	u32				debug_id;
 	u16			cookie;
 	u16			cookie_diff;

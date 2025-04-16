@@ -1564,6 +1564,7 @@ static void cmdq_task_exec_done(struct cmdq_task *task, s32 err)
 	u32 *perf, hw_time = 0, exec_begin = 0, exec_end = 0;
 	unsigned long hw_time_rem = 0;
 
+	task->pkt->done = true;
 	perf = cmdq_pkt_get_perf_ret(task->pkt);
 	if (perf) {
 		exec_begin = perf[0];
