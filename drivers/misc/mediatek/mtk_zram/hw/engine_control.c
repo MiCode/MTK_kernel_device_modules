@@ -361,7 +361,8 @@ int engine_power_on(struct engine_control_t *ctrl)
 	engine_wait_smmu_prot_off(ctrl);
 
 	/* Do self-check */
-	engine_self_check_before_kick(ctrl);
+	engine_enc_self_check_before_kick(ctrl);
+	engine_dec_self_check_before_kick(ctrl);
 
 #ifdef ZRAM_ENGINE_DEBUG
 	pr_info("%s: REG(%lx) VAL(%x)\n", __func__, (unsigned long)reg, (uint32_t)reg_val);
@@ -730,7 +731,7 @@ void engine_setup_dec_fifo(struct engine_control_t *ctrl, unsigned int id, phys_
 	pr_info("%s: ID(%u) REG(%lx) VAL(%x)\n", __func__, id, (unsigned long)reg, (uint32_t)reg_val);
 }
 
-static void engine_reset_enc_indices(struct engine_control_t *ctrl)
+void engine_reset_enc_indices(struct engine_control_t *ctrl)
 {
 	/* Do warm reset & wait for idle */
 	engine_enc_reset(ctrl);
@@ -754,7 +755,7 @@ static void engine_reset_enc_indices(struct engine_control_t *ctrl)
 	engine_enc_wait_idle(ctrl);
 }
 
-static void engine_reset_dec_indices(struct engine_control_t *ctrl)
+void engine_reset_dec_indices(struct engine_control_t *ctrl)
 {
 	int i;
 
@@ -1009,317 +1010,293 @@ exit:
 }
 #endif
 
-int engine_get_reg_status(struct engine_control_t *ctrl, char *buf)
+/* Register dump for compression */
+int engine_get_enc_reg_status(struct engine_control_t *ctrl, char *buf, int buf_offset)
 {
 	void __iomem *reg;
-	uint32_t reg_val;
+	uint32_t reg_val, reg_set;
 	int i;
-	int copied = 0;
-	char output[130];
+	int copied = buf_offset;
+	char output[LINE_SZ];
 	int offset;
 
-	/* enc register dump */
+	/*
+	 * enc register dump
+	 */
+
 	offset = 0;
 	for (i = 0; i < 0x100; i += sizeof(uint32_t)) {
 		reg = ctrl->zram_enc_base + i;
 		reg_val = zram_readl(reg);
-		offset += snprintf(output + offset, 130 - offset, "%3x:0x%-8x", i, reg_val);
+		offset += snprintf(output + offset, LINE_SZ - offset, "%2x:0x%-8x", i, reg_val);
 		if (((i + sizeof(uint32_t)) % 0x20) == 0) {
 			/* do output */
 			ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied, "%s\n", output);
 			offset = 0;
 		} else {
-			offset += snprintf(output + offset, 130 - offset, " ");
+			offset += snprintf(output + offset, LINE_SZ - offset, " ");
 		}
 	}
-
-	/* dec register dump */
-	offset = 0;
-	for (i = 0; i < 0x100; i += sizeof(uint32_t)) {
-		reg = ctrl->zram_dec_base + i;
-		reg_val = zram_readl(reg);
-		offset += snprintf(output + offset, 130 - offset, "%3x:0x%-8x", i, reg_val);
-		if (((i + sizeof(uint32_t)) % 0x20) == 0) {
-			/* do output */
-			ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied, "%s\n", output);
-			offset = 0;
-		} else {
-			offset += snprintf(output + offset, 130 - offset, " ");
-		}
-	}
-
-	return copied;
-}
-
-int engine_fatal_get_reg_status(struct engine_control_t *ctrl, char *buf)
-{
-	uint32_t reg_val, reg_set;
-	int copied = 0;
-	char output[130];
-	int offset;
-	int i;
 
 	/*
-	 * More enc debug info
+	 * enc debug register dump
 	 */
-	offset = 0;
-	zram_writel(0x00080000, ctrl->zram_enc_base + 0xc8);
-	reg_val = zram_readl(ctrl->zram_enc_base + 0xcc);
-	offset += snprintf(output + offset, 130 - offset, "c8(0x00080000)-cc:0x%-8x, ", reg_val);
-	zram_writel(0x00090000, ctrl->zram_enc_base + 0xc8);
-	reg_val = zram_readl(ctrl->zram_enc_base + 0xcc);
-	offset += snprintf(output + offset, 130 - offset, "c8(0x00090000)-cc:0x%-8x, ", reg_val);
-	zram_writel(0x000a0000, ctrl->zram_enc_base + 0xc8);
-	reg_val = zram_readl(ctrl->zram_enc_base + 0xcc);
-	offset += snprintf(output + offset, 130 - offset, "c8(0x000a0000)-cc:0x%-8x, ", reg_val);
-	zram_writel(0x000b0000, ctrl->zram_enc_base + 0xc8);
-	reg_val = zram_readl(ctrl->zram_enc_base + 0xcc);
-	offset += snprintf(output + offset, 130 - offset, "c8(0x000b0000)-cc:0x%-8x\n", reg_val);
-	/* do output */
-	ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied, "%s", output);
-	offset = 0;
 
-	zram_writel(0x000c0000, ctrl->zram_enc_base + 0xc8);
-	reg_val = zram_readl(ctrl->zram_enc_base + 0xcc);
-	offset += snprintf(output + offset, 130 - offset, "c8(0x000c0000)-cc:0x%-8x, ", reg_val);
-	zram_writel(0x000d0000, ctrl->zram_enc_base + 0xc8);
-	reg_val = zram_readl(ctrl->zram_enc_base + 0xcc);
-	offset += snprintf(output + offset, 130 - offset, "c8(0x000d0000)-cc:0x%-8x, ", reg_val);
-	zram_writel(0x000e0000, ctrl->zram_enc_base + 0xc8);
-	reg_val = zram_readl(ctrl->zram_enc_base + 0xcc);
-	offset += snprintf(output + offset, 130 - offset, "c8(0x000e0000)-cc:0x%-8x, ", reg_val);
-	zram_writel(0x000f0000, ctrl->zram_enc_base + 0xc8);
-	reg_val = zram_readl(ctrl->zram_enc_base + 0xcc);
-	offset += snprintf(output + offset, 130 - offset, "c8(0x000f0000)-cc:0x%-8x\n", reg_val);
-	/* do output */
-	ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied, "%s", output);
+	ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied, "(c8)-(cc)\n");
 	offset = 0;
+	reg_set = 0x00080000;
+	for (i = 0; i < 16; i++) {
+		zram_writel(reg_set, ctrl->zram_enc_base + 0xc8);
+		reg_val = zram_readl(ctrl->zram_enc_base + 0xcc);
+		offset += snprintf(output + offset, LINE_SZ - offset, "%x-%x", reg_set, reg_val);
+		reg_set += 0x10000;
 
-	zram_writel(0x00100000, ctrl->zram_enc_base + 0xc8);
-	reg_val = zram_readl(ctrl->zram_enc_base + 0xcc);
-	offset += snprintf(output + offset, 130 - offset, "c8(0x00100000)-cc:0x%-8x, ", reg_val);
-	zram_writel(0x00110000, ctrl->zram_enc_base + 0xc8);
-	reg_val = zram_readl(ctrl->zram_enc_base + 0xcc);
-	offset += snprintf(output + offset, 130 - offset, "c8(0x00110000)-cc:0x%-8x, ", reg_val);
-	zram_writel(0x00120000, ctrl->zram_enc_base + 0xc8);
-	reg_val = zram_readl(ctrl->zram_enc_base + 0xcc);
-	offset += snprintf(output + offset, 130 - offset, "c8(0x00120000)-cc:0x%-8x, ", reg_val);
-	zram_writel(0x00130000, ctrl->zram_enc_base + 0xc8);
-	reg_val = zram_readl(ctrl->zram_enc_base + 0xcc);
-	offset += snprintf(output + offset, 130 - offset, "c8(0x00130000)-cc:0x%-8x\n", reg_val);
-	/* do output */
-	ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied, "%s", output);
+		/* newline or space */
+		if (((i + 1) % 4) == 0) {
+			/* do output */
+			ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied, "%s\n", output);
+			offset = 0;
+		} else {
+			offset += snprintf(output + offset, LINE_SZ - offset, " ");
+		}
+	}
+
+	ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied, "(c8)-(d0)\n");
 	offset = 0;
-
-	zram_writel(0x00140000, ctrl->zram_enc_base + 0xc8);
-	reg_val = zram_readl(ctrl->zram_enc_base + 0xcc);
-	offset += snprintf(output + offset, 130 - offset, "c8(0x00140000)-cc:0x%-8x, ", reg_val);
-	zram_writel(0x00150000, ctrl->zram_enc_base + 0xc8);
-	reg_val = zram_readl(ctrl->zram_enc_base + 0xcc);
-	offset += snprintf(output + offset, 130 - offset, "c8(0x00150000)-cc:0x%-8x, ", reg_val);
-	zram_writel(0x00160000, ctrl->zram_enc_base + 0xc8);
-	reg_val = zram_readl(ctrl->zram_enc_base + 0xcc);
-	offset += snprintf(output + offset, 130 - offset, "c8(0x00160000)-cc:0x%-8x, ", reg_val);
-	zram_writel(0x00170000, ctrl->zram_enc_base + 0xc8);
-	reg_val = zram_readl(ctrl->zram_enc_base + 0xcc);
-	offset += snprintf(output + offset, 130 - offset, "c8(0x00170000)-cc:0x%-8x\n", reg_val);
-	/* do output */
-	ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied, "%s", output);
-	offset = 0;
-
 	reg_set = 0x00180000;
 	for (i = 0; i < 16; i++) {
 		zram_writel(reg_set, ctrl->zram_enc_base + 0xc8);
 		reg_val = zram_readl(ctrl->zram_enc_base + 0xd0);
-		offset += snprintf(output + offset, 130 - offset, "c8(0x%x)-d0:0x%-8x, ", reg_set, reg_val);
+		offset += snprintf(output + offset, LINE_SZ - offset, "%x-%x ", reg_set, reg_val);
 		reg_set += 0x4;
 		zram_writel(reg_set, ctrl->zram_enc_base + 0xc8);
 		reg_val = zram_readl(ctrl->zram_enc_base + 0xd0);
-		offset += snprintf(output + offset, 130 - offset, "c8(0x%x)-d0:0x%-8x, ", reg_set, reg_val);
+		offset += snprintf(output + offset, LINE_SZ - offset, "%x-%x ", reg_set, reg_val);
 		reg_set += 0x15;
 		zram_writel(reg_set, ctrl->zram_enc_base + 0xc8);
 		reg_val = zram_readl(ctrl->zram_enc_base + 0xd0);
-		offset += snprintf(output + offset, 130 - offset, "c8(0x%x)-d0:0x%-8x\n", reg_set, reg_val);
+		offset += snprintf(output + offset, LINE_SZ - offset, "%x-%x", reg_set, reg_val);
 		reg_set += 0x7;
 
 		/* do output */
-		ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied, "%s", output);
+		ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied, "%s\n", output);
 		offset = 0;
 	}
 
 	reg_val = zram_readl(ctrl->zram_enc_base + 0x504);
-	offset += snprintf(output + offset, 130 - offset, "0x504:0x%x, ", reg_val);
+	offset += snprintf(output + offset, LINE_SZ - offset, "504-%x ", reg_val);
 	reg_val = zram_readl(ctrl->zram_enc_base + 0x508);
-	offset += snprintf(output + offset, 130 - offset, "0x508:0x%x, ", reg_val);
+	offset += snprintf(output + offset, LINE_SZ - offset, "508-%x ", reg_val);
 	reg_val = zram_readl(ctrl->zram_enc_base + 0x50c);
-	offset += snprintf(output + offset, 130 - offset, "0x50c:0x%x\n", reg_val);
+	offset += snprintf(output + offset, LINE_SZ - offset, "50c-%x", reg_val);
+
 	/* do output */
-	ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied, "%s", output);
+	ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied, "%s\n", output);
+
+	/* The last line */
+	ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied, "\n");
+	return copied;
+}
+
+/* Register dump for decompression */
+int engine_get_dec_reg_status(struct engine_control_t *ctrl, char *buf, int buf_offset)
+{
+	void __iomem *reg;
+	uint32_t reg_val, reg_set;
+	int i;
+	int copied = buf_offset;
+	char output[LINE_SZ];
+	int offset;
 
 	/*
-	 * More dec debug info
+	 * dec register dump
 	 */
+
 	offset = 0;
-	zram_writel(0x00000000, ctrl->zram_dec_base + 0xc8);
-	reg_val = zram_readl(ctrl->zram_dec_base + 0xcc);
-	offset += snprintf(output + offset, 130 - offset, "c8(0x00000000)-cc:0x%-8x, ", reg_val);
-	zram_writel(0x00010000, ctrl->zram_dec_base + 0xc8);
-	reg_val = zram_readl(ctrl->zram_dec_base + 0xcc);
-	offset += snprintf(output + offset, 130 - offset, "c8(0x00010000)-cc:0x%-8x, ", reg_val);
-	zram_writel(0x00020000, ctrl->zram_dec_base + 0xc8);
-	reg_val = zram_readl(ctrl->zram_dec_base + 0xcc);
-	offset += snprintf(output + offset, 130 - offset, "c8(0x00020000)-cc:0x%-8x, ", reg_val);
-	zram_writel(0x00030000, ctrl->zram_dec_base + 0xc8);
-	reg_val = zram_readl(ctrl->zram_dec_base + 0xcc);
-	offset += snprintf(output + offset, 130 - offset, "c8(0x00030000)-cc:0x%-8x\n", reg_val);
+	for (i = 0; i < 0x100; i += sizeof(uint32_t)) {
+		reg = ctrl->zram_dec_base + i;
+		reg_val = zram_readl(reg);
+		offset += snprintf(output + offset, LINE_SZ - offset, "%3x:0x%-8x", i, reg_val);
+		if (((i + sizeof(uint32_t)) % 0x20) == 0) {
+			/* do output */
+			ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied, "%s\n", output);
+			offset = 0;
+		} else {
+			offset += snprintf(output + offset, LINE_SZ - offset, " ");
+		}
+	}
+
+	/*
+	 * dec debug register dump
+	 */
+
+	ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied, "(c8)-(cc)\n");
+	offset = 0;
+	reg_set = 0x00000000;
+	for (i = 0; i < 4; i++) {
+		zram_writel(reg_set, ctrl->zram_dec_base + 0xc8);
+		reg_val = zram_readl(ctrl->zram_dec_base + 0xcc);
+		offset += snprintf(output + offset, LINE_SZ - offset, "%x-%x", reg_set, reg_val);
+		reg_set += 0x10000;
+
+		/* Space */
+		if (((i + 1) % 4) != 0)
+			offset += snprintf(output + offset, LINE_SZ - offset, " ");
+	}
 	/* do output */
-	ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied, "%s", output);
+	ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied, "%s\n", output);
 	offset = 0;
 
-	zram_writel(0x00100000, ctrl->zram_dec_base + 0xc8);
-	reg_val = zram_readl(ctrl->zram_dec_base + 0xcc);
-	offset += snprintf(output + offset, 130 - offset, "c8(0x00100000)-cc:0x%-8x, ", reg_val);
-	zram_writel(0x00110000, ctrl->zram_dec_base + 0xc8);
-	reg_val = zram_readl(ctrl->zram_dec_base + 0xcc);
-	offset += snprintf(output + offset, 130 - offset, "c8(0x00110000)-cc:0x%-8x, ", reg_val);
-	zram_writel(0x00120000, ctrl->zram_dec_base + 0xc8);
-	reg_val = zram_readl(ctrl->zram_dec_base + 0xcc);
-	offset += snprintf(output + offset, 130 - offset, "c8(0x00120000)-cc:0x%-8x, ", reg_val);
-	zram_writel(0x00130000, ctrl->zram_dec_base + 0xc8);
-	reg_val = zram_readl(ctrl->zram_dec_base + 0xcc);
-	offset += snprintf(output + offset, 130 - offset, "c8(0x00130000)-cc:0x%-8x\n", reg_val);
+	reg_set = 0x00100000;
+	for (i = 0; i < 4; i++) {
+		zram_writel(reg_set, ctrl->zram_dec_base + 0xc8);
+		reg_val = zram_readl(ctrl->zram_dec_base + 0xcc);
+		offset += snprintf(output + offset, LINE_SZ - offset, "%x-%x", reg_set, reg_val);
+		reg_set += 0x10000;
+
+		/* Space */
+		if (((i + 1) % 4) != 0)
+			offset += snprintf(output + offset, LINE_SZ - offset, " ");
+	}
 	/* do output */
-	ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied, "%s", output);
+	ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied, "%s\n", output);
 	offset = 0;
 
-	zram_writel(0x00160000, ctrl->zram_dec_base + 0xc8);
-	reg_val = zram_readl(ctrl->zram_dec_base + 0xcc);
-	offset += snprintf(output + offset, 130 - offset, "c8(0x00160000)-cc:0x%-8x, ", reg_val);
-	zram_writel(0x00170000, ctrl->zram_dec_base + 0xc8);
-	reg_val = zram_readl(ctrl->zram_dec_base + 0xcc);
-	offset += snprintf(output + offset, 130 - offset, "c8(0x00170000)-cc:0x%-8x, ", reg_val);
-	zram_writel(0x00180000, ctrl->zram_dec_base + 0xc8);
-	reg_val = zram_readl(ctrl->zram_dec_base + 0xcc);
-	offset += snprintf(output + offset, 130 - offset, "c8(0x00180000)-cc:0x%-8x, ", reg_val);
-	zram_writel(0x00190000, ctrl->zram_dec_base + 0xc8);
-	reg_val = zram_readl(ctrl->zram_dec_base + 0xcc);
-	offset += snprintf(output + offset, 130 - offset, "c8(0x00190000)-cc:0x%-8x\n", reg_val);
+	reg_set = 0x00160000;
+	for (i = 0; i < 4; i++) {
+		zram_writel(reg_set, ctrl->zram_dec_base + 0xc8);
+		reg_val = zram_readl(ctrl->zram_dec_base + 0xcc);
+		offset += snprintf(output + offset, LINE_SZ - offset, "%x-%x", reg_set, reg_val);
+		reg_set += 0x10000;
+
+		/* Space */
+		if (((i + 1) % 4) != 0)
+			offset += snprintf(output + offset, LINE_SZ - offset, " ");
+	}
 	/* do output */
-	ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied, "%s", output);
+	ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied, "%s\n", output);
 	offset = 0;
 
-	zram_writel(0x00280000, ctrl->zram_dec_base + 0xc8);
-	reg_val = zram_readl(ctrl->zram_dec_base + 0xcc);
-	offset += snprintf(output + offset, 130 - offset, "c8(0x00280000)-cc:0x%-8x, ", reg_val);
-	zram_writel(0x00290000, ctrl->zram_dec_base + 0xc8);
-	reg_val = zram_readl(ctrl->zram_dec_base + 0xcc);
-	offset += snprintf(output + offset, 130 - offset, "c8(0x00290000)-cc:0x%-8x, ", reg_val);
-	zram_writel(0x002a0000, ctrl->zram_dec_base + 0xc8);
-	reg_val = zram_readl(ctrl->zram_dec_base + 0xcc);
-	offset += snprintf(output + offset, 130 - offset, "c8(0x002a0000)-cc:0x%-8x, ", reg_val);
-	zram_writel(0x002b0000, ctrl->zram_dec_base + 0xc8);
-	reg_val = zram_readl(ctrl->zram_dec_base + 0xcc);
-	offset += snprintf(output + offset, 130 - offset, "c8(0x002b0000)-cc:0x%-8x\n", reg_val);
+	reg_set = 0x00280000;
+	for (i = 0; i < 4; i++) {
+		zram_writel(reg_set, ctrl->zram_dec_base + 0xc8);
+		reg_val = zram_readl(ctrl->zram_dec_base + 0xcc);
+		offset += snprintf(output + offset, LINE_SZ - offset, "%x-%x", reg_set, reg_val);
+		reg_set += 0x10000;
+
+		/* Space */
+		if (((i + 1) % 4) != 0)
+			offset += snprintf(output + offset, LINE_SZ - offset, " ");
+	}
 	/* do output */
-	ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied, "%s", output);
+	ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied, "%s\n", output);
 	offset = 0;
 
+	/* Others */
 	zram_writel(0x00050000, ctrl->zram_dec_base + 0xc8);
 	reg_val = zram_readl(ctrl->zram_dec_base + 0xcc);
-	offset += snprintf(output + offset, 130 - offset, "c8(0x00050000)-cc:0x%-8x, ", reg_val);
+	offset += snprintf(output + offset, LINE_SZ - offset, "50000-%x ", reg_val);
 	zram_writel(0x00090000, ctrl->zram_dec_base + 0xc8);
 	reg_val = zram_readl(ctrl->zram_dec_base + 0xcc);
-	offset += snprintf(output + offset, 130 - offset, "c8(0x00090000)-cc:0x%-8x\n", reg_val);
+	offset += snprintf(output + offset, LINE_SZ - offset, "90000-%x ", reg_val);
 	zram_writel(0x0000000c, ctrl->zram_dec_base + 0xc8);
 	reg_val = zram_readl(ctrl->zram_dec_base + 0xcc);
-	offset += snprintf(output + offset, 130 - offset, "c8(0x0000000c)-cc:0x%-8x\n", reg_val);
+	offset += snprintf(output + offset, LINE_SZ - offset, "c-%x ", reg_val);
 	zram_writel(0x0000000e, ctrl->zram_dec_base + 0xc8);
 	reg_val = zram_readl(ctrl->zram_dec_base + 0xcc);
-	offset += snprintf(output + offset, 130 - offset, "c8(0x0000000e)-cc:0x%-8x\n", reg_val);
+	offset += snprintf(output + offset, LINE_SZ - offset, "e-%x", reg_val);
 	/* do output */
-	ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied, "%s", output);
+	ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied, "%s\n", output);
 	offset = 0;
 
+	ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied, "(c8)-(d0)\n");
+	offset = 0;
 	zram_writel(0x00000001, ctrl->zram_dec_base + 0xc8);
 	reg_val = zram_readl(ctrl->zram_dec_base + 0xd0);
-	offset += snprintf(output + offset, 130 - offset, "c8(0x00000001)-d0:0x%-8x, ", reg_val);
+	offset += snprintf(output + offset, LINE_SZ - offset, "1-%x ", reg_val);
 	zram_writel(0x00000002, ctrl->zram_dec_base + 0xc8);
 	reg_val = zram_readl(ctrl->zram_dec_base + 0xd0);
-	offset += snprintf(output + offset, 130 - offset, "c8(0x00000002)-d0:0x%-8x, ", reg_val);
+	offset += snprintf(output + offset, LINE_SZ - offset, "2-%x ", reg_val);
 	zram_writel(0x00000008, ctrl->zram_dec_base + 0xc8);
 	reg_val = zram_readl(ctrl->zram_dec_base + 0xd0);
-	offset += snprintf(output + offset, 130 - offset, "c8(0x00000008)-d0:0x%-8x, ", reg_val);
+	offset += snprintf(output + offset, LINE_SZ - offset, "8-%x ", reg_val);
 	zram_writel(0x00000009, ctrl->zram_dec_base + 0xc8);
 	reg_val = zram_readl(ctrl->zram_dec_base + 0xd0);
-	offset += snprintf(output + offset, 130 - offset, "c8(0x00000009)-d0:0x%-8x, ", reg_val);
+	offset += snprintf(output + offset, LINE_SZ - offset, "9-%x ", reg_val);
 	zram_writel(0x0000000a, ctrl->zram_dec_base + 0xc8);
 	reg_val = zram_readl(ctrl->zram_dec_base + 0xd0);
-	offset += snprintf(output + offset, 130 - offset, "c8(0x0000000a)-d0:0x%-8x\n", reg_val);
+	offset += snprintf(output + offset, LINE_SZ - offset, "a-%x", reg_val);
 	/* do output */
-	ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied, "%s", output);
+	ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied, "%s\n", output);
 	offset = 0;
 	zram_writel(0x00000000, ctrl->zram_dec_base + 0xc8);  // must
 
+	ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied, "(404)-(d0)\n");
+	offset = 0;
 	zram_writel(0x00000001, ctrl->zram_dec_base + 0x404);
 	reg_val = zram_readl(ctrl->zram_dec_base + 0xd0);
-	offset += snprintf(output + offset, 130 - offset, "404(0x00000001)-d0:0x%-8x, ", reg_val);
+	offset += snprintf(output + offset, LINE_SZ - offset, "1-%x ", reg_val);
 	zram_writel(0x00000002, ctrl->zram_dec_base + 0x404);
 	reg_val = zram_readl(ctrl->zram_dec_base + 0xd0);
-	offset += snprintf(output + offset, 130 - offset, "404(0x00000002)-d0:0x%-8x, ", reg_val);
+	offset += snprintf(output + offset, LINE_SZ - offset, "2-%x ", reg_val);
 	zram_writel(0x00000008, ctrl->zram_dec_base + 0x404);
 	reg_val = zram_readl(ctrl->zram_dec_base + 0xd0);
-	offset += snprintf(output + offset, 130 - offset, "404(0x00000008)-d0:0x%-8x, ", reg_val);
+	offset += snprintf(output + offset, LINE_SZ - offset, "8-%x ", reg_val);
 	zram_writel(0x00000009, ctrl->zram_dec_base + 0x404);
 	reg_val = zram_readl(ctrl->zram_dec_base + 0xd0);
-	offset += snprintf(output + offset, 130 - offset, "404(0x00000009)-d0:0x%-8x, ", reg_val);
+	offset += snprintf(output + offset, LINE_SZ - offset, "9-%x ", reg_val);
 	zram_writel(0x0000000a, ctrl->zram_dec_base + 0x404);
 	reg_val = zram_readl(ctrl->zram_dec_base + 0xd0);
-	offset += snprintf(output + offset, 130 - offset, "404(0x0000000a)-d0:0x%-8x\n", reg_val);
+	offset += snprintf(output + offset, LINE_SZ - offset, "a-%x", reg_val);
 	/* do output */
-	ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied, "%s", output);
+	ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied, "%s\n", output);
 	offset = 0;
-	zram_writel(0x00000000, ctrl->zram_dec_base + 0x404);
+	zram_writel(0x00000000, ctrl->zram_dec_base + 0x404);	// must
 
 	zram_writel(0x00010000, ctrl->zram_dec_base + 0x404);
 	reg_val = zram_readl(ctrl->zram_dec_base + 0xd0);
-	offset += snprintf(output + offset, 130 - offset, "404(0x00010000)-d0:0x%-8x, ", reg_val);
+	offset += snprintf(output + offset, LINE_SZ - offset, "10000-%x ", reg_val);
 	zram_writel(0x00020000, ctrl->zram_dec_base + 0x404);
 	reg_val = zram_readl(ctrl->zram_dec_base + 0xd0);
-	offset += snprintf(output + offset, 130 - offset, "404(0x00020000)-d0:0x%-8x, ", reg_val);
+	offset += snprintf(output + offset, LINE_SZ - offset, "20000-%x ", reg_val);
 	zram_writel(0x00080000, ctrl->zram_dec_base + 0x404);
 	reg_val = zram_readl(ctrl->zram_dec_base + 0xd0);
-	offset += snprintf(output + offset, 130 - offset, "404(0x00080000)-d0:0x%-8x, ", reg_val);
+	offset += snprintf(output + offset, LINE_SZ - offset, "80000-%x ", reg_val);
 	zram_writel(0x00090000, ctrl->zram_dec_base + 0x404);
 	reg_val = zram_readl(ctrl->zram_dec_base + 0xd0);
-	offset += snprintf(output + offset, 130 - offset, "404(0x00090000)-d0:0x%-8x, ", reg_val);
+	offset += snprintf(output + offset, LINE_SZ - offset, "90000-%x ", reg_val);
 	zram_writel(0x000a0000, ctrl->zram_dec_base + 0x404);
 	reg_val = zram_readl(ctrl->zram_dec_base + 0xd0);
-	offset += snprintf(output + offset, 130 - offset, "404(0x000a0000)-d0:0x%-8x\n", reg_val);
+	offset += snprintf(output + offset, LINE_SZ - offset, "a0000-%x", reg_val);
 	/* do output */
-	ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied, "%s", output);
+	ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied, "%s\n", output);
 	offset = 0;
-	zram_writel(0x00000000, ctrl->zram_dec_base + 0x404);
+	zram_writel(0x00000000, ctrl->zram_dec_base + 0x404);	// must
 
+	ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied, "(408)-(d0)\n");
+	offset = 0;
 	zram_writel(0x00000001, ctrl->zram_dec_base + 0x408);
 	reg_val = zram_readl(ctrl->zram_dec_base + 0xd0);
-	offset += snprintf(output + offset, 130 - offset, "408(0x00000001)-d0:0x%-8x, ", reg_val);
+	offset += snprintf(output + offset, LINE_SZ - offset, "1-%x ", reg_val);
 	zram_writel(0x00000002, ctrl->zram_dec_base + 0x408);
 	reg_val = zram_readl(ctrl->zram_dec_base + 0xd0);
-	offset += snprintf(output + offset, 130 - offset, "408(0x00000002)-d0:0x%-8x, ", reg_val);
+	offset += snprintf(output + offset, LINE_SZ - offset, "2-%x ", reg_val);
 	zram_writel(0x00000008, ctrl->zram_dec_base + 0x408);
 	reg_val = zram_readl(ctrl->zram_dec_base + 0xd0);
-	offset += snprintf(output + offset, 130 - offset, "408(0x00000008)-d0:0x%-8x, ", reg_val);
+	offset += snprintf(output + offset, LINE_SZ - offset, "8-%x ", reg_val);
 	zram_writel(0x00000009, ctrl->zram_dec_base + 0x408);
 	reg_val = zram_readl(ctrl->zram_dec_base + 0xd0);
-	offset += snprintf(output + offset, 130 - offset, "408(0x00000009)-d0:0x%-8x, ", reg_val);
+	offset += snprintf(output + offset, LINE_SZ - offset, "9-%x ", reg_val);
 	zram_writel(0x0000000a, ctrl->zram_dec_base + 0x408);
 	reg_val = zram_readl(ctrl->zram_dec_base + 0xd0);
-	offset += snprintf(output + offset, 130 - offset, "408(0x0000000a)-d0:0x%-8x\n", reg_val);
+	offset += snprintf(output + offset, LINE_SZ - offset, "a-%x", reg_val);
 	/* do output */
-	ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied, "%s", output);
+	ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied, "%s\n", output);
 	offset = 0;
-	zram_writel(0x00000000, ctrl->zram_dec_base + 0x408);
+	zram_writel(0x00000000, ctrl->zram_dec_base + 0x408);	// must
 
+	/* The last line */
+	ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied, "\n");
 	return copied;
 }
 
@@ -1337,20 +1314,23 @@ void engine_get_smmu_reg_dump(struct engine_control_t *ctrl, struct seq_file *s)
 	void __iomem *reg;
 	uint32_t reg_val;
 	unsigned int smmuwp_reg_nr, i;
-
-	zram_smmu_dump(s, "%s\n", __func__);
+	char output[LINE_SZ];
+	int offset = 0;
 
 	smmuwp_reg_nr = ARRAY_SIZE(zram_smmuwp_regs);
 	for (i = 0; i < smmuwp_reg_nr;) {
 
 		reg = ctrl->zram_smmu_base + zram_smmuwp_regs[i].offset;
 		reg_val = zram_readl(reg);
-		zram_smmu_dump(s, "%-11s:0x%03x=0x%x", zram_smmuwp_regs[i].name, zram_smmuwp_regs[i].offset, reg_val);
+		offset += snprintf(output + offset, LINE_SZ - offset, "%-11s:0x%03x=0x%-8x",
+				zram_smmuwp_regs[i].name, zram_smmuwp_regs[i].offset, reg_val);
 
 		/* newline or space */
-		if (++i % 4 == 0)
-			zram_smmu_dump(s, "\n");
-		else
-			zram_smmu_dump(s, " ");
+		if (++i % 4 == 0) {
+			zram_smmu_dump(s, "%s\n", output);
+			offset = 0;
+		} else {
+			offset += snprintf(output + offset, LINE_SZ - offset, " ");
+		}
 	}
 }

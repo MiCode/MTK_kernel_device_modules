@@ -324,6 +324,8 @@ void engine_dec_init(struct engine_control_t *ctrl, bool src_snoop);
 
 void engine_setup_enc_fifo(struct engine_control_t *ctrl, unsigned int id, phys_addr_t addr, unsigned int sz_bits);
 void engine_setup_dec_fifo(struct engine_control_t *ctrl, unsigned int id, phys_addr_t addr, unsigned int sz_bits);
+void engine_reset_enc_indices(struct engine_control_t *ctrl);
+void engine_reset_dec_indices(struct engine_control_t *ctrl);
 void engine_reset_all_indices(struct engine_control_t *ctrl);
 
 void engine_enc_debug_sel(struct engine_control_t *ctrl, uint32_t reg_val);
@@ -351,15 +353,17 @@ static inline void engine_dec_change_mode(struct engine_control_t *ctrl, bool of
 }
 
 /* A function provided from zram_engine.c to check fifo rtff result */
-void engine_self_check_before_kick(struct engine_control_t *ctrl);
+void engine_dec_self_check_before_kick(struct engine_control_t *ctrl);
+void engine_enc_self_check_before_kick(struct engine_control_t *ctrl);
 
 #if IS_ENABLED(CONFIG_MTK_VM_DEBUG)
 void engine_dump_all_registers(struct engine_control_t *ctrl);
 int engine_compare_all_registers(struct engine_control_t *ctrl);
 #endif
 
-int engine_get_reg_status(struct engine_control_t *ctrl, char *buf);
-int engine_fatal_get_reg_status(struct engine_control_t *ctrl, char *buf);
+#define LINE_SZ	(130)
+int engine_get_enc_reg_status(struct engine_control_t *ctrl, char *buf, int buf_offset);
+int engine_get_dec_reg_status(struct engine_control_t *ctrl, char *buf, int buf_offset);
 void engine_get_smmu_reg_dump(struct engine_control_t *ctrl, struct seq_file *s);
 
 /* Whether IRQ is available */

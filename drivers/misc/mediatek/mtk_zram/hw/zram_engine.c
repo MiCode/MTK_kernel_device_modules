@@ -178,8 +178,10 @@ static atomic_t enc_recover_hang_count = ATOMIC_INIT(0);
 static atomic_t dec_suspect_hang_count = ATOMIC_INIT(0);
 
 /* Statistics for rtff status */
-static atomic_t engine_rtff_pass_count = ATOMIC_INIT(0);
-static atomic_t engine_rtff_fail_count = ATOMIC_INIT(0);
+static atomic_t engine_enc_rtff_pass_count = ATOMIC_INIT(0);
+static atomic_t engine_dec_rtff_pass_count = ATOMIC_INIT(0);
+static atomic_t engine_enc_rtff_fail_count = ATOMIC_INIT(0);
+static atomic_t engine_dec_rtff_fail_count = ATOMIC_INIT(0);
 
 /*
  * Request to adjust gear level
@@ -237,8 +239,6 @@ static int zram_engine_tbu_pm_get(struct smmu_tbu_device *tbu)
 {
 	struct zram_engine_t *hwz = dev_get_drvdata(tbu->dev);
 
-	dev_info(tbu->dev, "%s:\n", __func__);
-
 #ifndef FPGA_EMULATION
 	WARN_ON(engine_gear_enable_clock(&hwz->ctrl, &hwz->gear_ctrl) != 0);
 #endif
@@ -250,8 +250,6 @@ static int zram_engine_tbu_pm_get(struct smmu_tbu_device *tbu)
 static int zram_engine_tbu_pm_put(struct smmu_tbu_device *tbu)
 {
 	struct zram_engine_t *hwz = dev_get_drvdata(tbu->dev);
-
-	dev_info(tbu->dev, "%s:\n", __func__);
 
 #ifndef FPGA_EMULATION
 	engine_gear_disable_clock(&hwz->ctrl, &hwz->gear_ctrl);
@@ -436,7 +434,7 @@ static struct engine_irq_t zram_engine_irqs[] = {
 static int dump_fifo_idx(struct zram_engine_t *hwz, char *buf, int offset);
 
 /* Check FIFO RTFF result and recover if necessary (only called during power on) */
-void engine_self_check_before_kick(struct engine_control_t *ctrl)
+void engine_enc_self_check_before_kick(struct engine_control_t *ctrl)
 {
 	struct zram_engine_t *hwz = container_of(ctrl, struct zram_engine_t, ctrl);
 	struct hwfifo *fifo;
@@ -465,6 +463,53 @@ void engine_self_check_before_kick(struct engine_control_t *ctrl)
 		}
 	}
 
+dump:
+	/* RTFF is successful */
+	if (!rtff_fail) {
+		atomic_inc(&engine_enc_rtff_pass_count);
+		return;
+	}
+
+	/*
+	 * Dump for RTFF fail
+	 */
+	atomic_inc(&engine_enc_rtff_fail_count);
+	engine_get_enc_reg_status(ctrl, NULL, 0);
+	dump_fifo_idx(hwz, NULL, 0);
+
+	/*
+	 * Try to reset all indices
+	 */
+
+	/* compression fifos */
+	for (i = 0; i < MAX_COMP_NR; i++) {
+		fifo = &hwz->comp_fifo[i];
+		fifo->write_idx = 0;
+		fifo->complete_idx = 0;
+	}
+
+	/* Reset all indices */
+	engine_reset_enc_indices(&hwz->ctrl);
+}
+
+void engine_dec_self_check_before_kick(struct engine_control_t *ctrl)
+{
+	struct zram_engine_t *hwz = container_of(ctrl, struct zram_engine_t, ctrl);
+	struct hwfifo *fifo;
+	int i;
+	uint32_t cmpl_idx;
+	bool rtff_fail = false;
+
+	if (!static_branch_unlikely(&engine_rtff_check))
+		return;
+
+	if (unlikely(!hwz))
+		return;
+
+	/*
+	 * Check fifo status
+	 */
+
 	/* decompression fifos */
 	for (i = 0; i < MAX_DCOMP_NR; i++) {
 		fifo = &hwz->dcomp_fifo[i];
@@ -479,29 +524,20 @@ void engine_self_check_before_kick(struct engine_control_t *ctrl)
 dump:
 	/* RTFF is successful */
 	if (!rtff_fail) {
-		atomic_inc(&engine_rtff_pass_count);
+		atomic_inc(&engine_dec_rtff_pass_count);
 		return;
 	}
 
 	/*
 	 * Dump for RTFF fail
 	 */
-	atomic_inc(&engine_rtff_fail_count);
-
-	engine_get_reg_status(ctrl, NULL);
+	atomic_inc(&engine_dec_rtff_fail_count);
+	engine_get_dec_reg_status(ctrl, NULL, 0);
 	dump_fifo_idx(hwz, NULL, 0);
 
 	/*
 	 * Try to reset all indices
 	 */
-
-	/* compression fifos */
-	for (i = 0; i < MAX_COMP_NR; i++) {
-		fifo = &hwz->comp_fifo[i];
-		fifo->write_idx = 0;
-		fifo->complete_idx = 0;
-		fifo->pp_prev_end = 0;
-	}
 
 	/* decompression fifos */
 	for (i = 0; i < MAX_DCOMP_NR; i++) {
@@ -512,7 +548,7 @@ dump:
 	}
 
 	/* Reset all indices */
-	engine_reset_all_indices(&hwz->ctrl);
+	engine_reset_dec_indices(&hwz->ctrl);
 }
 
 /* Polling for cmd completion */
@@ -694,7 +730,7 @@ static uint32_t dcomp_post_processing_cmds(struct zram_engine_t *hwz, struct hwf
 
 	/* Validate fifo indices */
 	if (dcomp_fifo_indices_invalid(fifo->write_idx, end)) {
-		engine_get_reg_status(&hwz->ctrl, NULL);
+		engine_get_dec_reg_status(&hwz->ctrl, NULL, 0);
 		dump_fifo_idx(hwz, NULL, 0);
 		engine_gear_get_status(&hwz->gear_ctrl, NULL);
 		WARN_ON_ONCE(1);
@@ -849,8 +885,7 @@ repeat:
 
 		/* dcomp hang. Try to dump more information & do something. */
 		if (suspect_hang > SUSPECT_HANG_BOUND) {
-			engine_get_reg_status(&hwz->ctrl, NULL);
-			//engine_fatal_get_reg_status(&hwz->ctrl, NULL);
+			engine_get_dec_reg_status(&hwz->ctrl, NULL, 0);
 			dump_fifo_idx(hwz, NULL, 0);
 			engine_gear_get_status(&hwz->gear_ctrl, NULL);
 
@@ -870,7 +905,7 @@ repeat:
 			/* Show warning & dump information once to avoid log flooding */
 			if (READ_ONCE(warn_on_cnt_underflow)) {
 				//WARN_ON(1);
-				engine_get_reg_status(&hwz->ctrl, NULL);
+				engine_get_dec_reg_status(&hwz->ctrl, NULL, 0);
 				dump_fifo_idx(hwz, NULL, 0);
 				engine_gear_get_status(&hwz->gear_ctrl, NULL);
 				WRITE_ONCE(warn_on_cnt_underflow, false);
@@ -984,8 +1019,7 @@ static uint32_t comp_hang_handle_with_reset(struct zram_engine_t *hwz, struct hw
 	if (engine_enc_wait_idle_timeout(&hwz->ctrl, MAX_TIMEOUT_AFTER_RESET_IN_MS)) {
 		/* Show warning & dump information once to avoid log flooding */
 		if (READ_ONCE(warn_on_wait_idle_timeout)) {
-			engine_get_reg_status(&hwz->ctrl, NULL);
-			engine_fatal_get_reg_status(&hwz->ctrl, NULL);
+			engine_get_enc_reg_status(&hwz->ctrl, NULL, 0);
 			dump_fifo_idx(hwz, NULL, 0);
 			engine_gear_get_status(&hwz->gear_ctrl, NULL);
 			pr_info("%s: freq:%u\n", __func__, mt_get_fmeter_freq(FM_ZRAM_SUB_CK, CKGEN));
@@ -1055,7 +1089,7 @@ static uint32_t comp_hang_handle_with_reset(struct zram_engine_t *hwz, struct hw
 	spin_unlock(&hwz->comp_fifo_lock);
 
 	/* Reset is finished. Show information for debug */
-	engine_get_reg_status(&hwz->ctrl, NULL);
+	engine_get_enc_reg_status(&hwz->ctrl, NULL, 0);
 	dump_fifo_idx(hwz, NULL, 0);
 
 	return processed;
@@ -1270,7 +1304,7 @@ repeat:
 
 		/* comp hang. Try to dump more information & do something. */
 		if (suspect_hang > SUSPECT_HANG_BOUND) {
-			engine_get_reg_status(&hwz->ctrl, NULL);
+			engine_get_enc_reg_status(&hwz->ctrl, NULL, 0);
 			dump_fifo_idx(hwz, NULL, 0);
 			engine_gear_get_status(&hwz->gear_ctrl, NULL);
 
@@ -1292,7 +1326,7 @@ repeat:
 			goto repeat;
 		} else if (cnt < 0) {
 			//WARN_ON_ONCE(1);
-			engine_get_reg_status(&hwz->ctrl, NULL);
+			engine_get_enc_reg_status(&hwz->ctrl, NULL, 0);
 			dump_fifo_idx(hwz, NULL, 0);
 			engine_gear_get_status(&hwz->gear_ctrl, NULL);
 		}
@@ -2463,8 +2497,6 @@ static int __maybe_unused mtk_hwzram_suspend(struct device *dev)
 	int ret;
 #endif
 
-	pr_info("++ %s ++\n", __func__);
-
 	/*
 	 * Do NOT proceed if no hwz instance.
 	 * The LAST power control is completed by driver DIRECTLY, not through PM.
@@ -2484,8 +2516,6 @@ static int __maybe_unused mtk_hwzram_suspend(struct device *dev)
 	}
 
 #endif
-
-	pr_info("-- %s --\n", __func__);
 	return 0;
 }
 
@@ -2495,8 +2525,6 @@ static int __maybe_unused mtk_hwzram_resume(struct device *dev)
 #if !defined(FPGA_EMULATION)
 	int ret;
 #endif
-
-	pr_info("++ %s ++\n", __func__);
 
 	/*
 	 * Do NOT proceed if no hwz instance.
@@ -2516,8 +2544,6 @@ static int __maybe_unused mtk_hwzram_resume(struct device *dev)
 		}
 	}
 #endif
-
-	pr_info("-- %s --\n", __func__);
 	return 0;
 }
 
@@ -2722,13 +2748,11 @@ static int kick_hwe_exp(const char *val, const struct kernel_param *kp)
 		break;
 	case 92:
 		/* Same as kick_hwe_ctrl, but output to kernel log */
-		engine_get_reg_status(&hwz->ctrl, NULL);
+		engine_get_enc_reg_status(&hwz->ctrl, NULL, 0);
+		engine_get_dec_reg_status(&hwz->ctrl, NULL, 0);
 		dump_fifo_idx(hwz, NULL, 0);
 		engine_gear_get_status(&hwz->gear_ctrl, NULL);
-		break;
-	case 93:
-		/* Dump more debug registers */
-		engine_fatal_get_reg_status(&hwz->ctrl, NULL);
+		engine_get_smmu_reg_dump(&hwz->ctrl, NULL);
 		break;
 	default:
 		pr_info("%s invalid ops!\n", __func__);
@@ -2970,9 +2994,10 @@ static int dump_fifo_idx(struct zram_engine_t *hwz, char *buf, int offset)
 				i, fifo->write_idx, fifo->complete_idx, fifo->pp_prev_end);
 	}
 	ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied,
-			"comp hang: %d, dcomp hang: %d, rtff pass: %d, rtff fail: %d, comp recover: %d\n",
+			"comp hang: %d, dcomp hang: %d, rtff pass: (%d)(%d), rtff fail: (%d)(%d), comp recover: %d\n",
 			atomic_read(&enc_suspect_hang_count), atomic_read(&dec_suspect_hang_count),
-			atomic_read(&engine_rtff_pass_count), atomic_read(&engine_rtff_fail_count),
+			atomic_read(&engine_enc_rtff_pass_count), atomic_read(&engine_dec_rtff_pass_count),
+			atomic_read(&engine_enc_rtff_fail_count), atomic_read(&engine_dec_rtff_fail_count),
 			atomic_read(&enc_recover_hang_count));
 
 	return copied;
@@ -3003,9 +3028,10 @@ static int get_hwe_ctrl(char *buf, const struct kernel_param *kp)
 	}
 #endif
 
-	retval = engine_get_reg_status(&hwz->ctrl, buf);
+	retval = engine_get_enc_reg_status(&hwz->ctrl, buf, 0);
+	retval = engine_get_dec_reg_status(&hwz->ctrl, buf, retval);
 	retval = dump_fifo_idx(hwz, buf, retval);
-exit:
+
 #ifndef FPGA_EMULATION
 	/*
 	 * Disable clock for zram engine -
@@ -3014,6 +3040,7 @@ exit:
 	engine_gear_disable_clock(&hwz->ctrl, &hwz->gear_ctrl);
 #endif
 
+exit:
 	mutex_unlock(&hwz_mutex);
 	return retval;
 }
