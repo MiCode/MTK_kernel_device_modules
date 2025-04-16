@@ -60,7 +60,7 @@ static void aee_exception_reboot(int reboot_reason)
 #if defined(CONFIG_RANDOMIZE_BASE) && defined(CONFIG_ARM64)
 static inline void show_kaslr(void)
 {
-	u64 const kaslr_off = kimage_voffset + memstart_addr - KIMAGE_VADDR;
+	u64 const kaslr_off = aee_get_text() - KIMAGE_VADDR;
 
 	pr_notice("Kernel Offset: 0x%llx from 0x%lx\n",
 			kaslr_off, KIMAGE_VADDR);

@@ -11,6 +11,7 @@
 extern void *aee_log_buf_addr_get(void);
 extern unsigned long aee_get_stext(void);
 extern unsigned long aee_get_etext(void);
+extern unsigned long aee_get_text(void);
 extern unsigned long aee_get_init_begin(void);
 
 extern struct list_head *aee_get_modules(void);

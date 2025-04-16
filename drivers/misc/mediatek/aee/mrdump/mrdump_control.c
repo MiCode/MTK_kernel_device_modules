@@ -116,6 +116,7 @@ void mrdump_cblock_late_init(void)
 	}
 
 	machdesc_p = &mrdump_cblock->machdesc;
+	mrdump_arch_fill_machdesc(machdesc_p);
 #if IS_ENABLED(CONFIG_KALLSYMS)
 	mrdump_cblock_kallsyms_init(&machdesc_p->kallsyms);
 #endif
@@ -180,8 +181,6 @@ __init void mrdump_cblock_init(const struct mrdump_params *mparams)
 				(1UL << PG_lru) + (1UL << PG_writeback);
 
 	machdesc_p->struct_page_size = (uint32_t)sizeof(struct page);
-
-	mrdump_arch_fill_machdesc(machdesc_p);
 #ifdef MODULE
 	mrdump_cblock->machdesc_crc = crc32(0, machdesc_p,
 			sizeof(struct mrdump_machdesc));

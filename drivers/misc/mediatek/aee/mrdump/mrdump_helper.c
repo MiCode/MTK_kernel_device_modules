@@ -43,7 +43,7 @@ static u8 *mrdump_ktt;
 static u16 *mrdump_kti;
 static unsigned long p_stext;
 static unsigned long p_etext;
-//static unsigned long p_text;
+static unsigned long p_text;
 static unsigned long p_init_begin;
 
 #if IS_ENABLED(CONFIG_64BIT)
@@ -131,7 +131,7 @@ static void mrdump_ka_work_func(struct work_struct *work)
 		mrdump_km = (void *)(kinfo->_markers_pa + kimage_voffset);
 		p_stext = __phys_to_kimg(kinfo->_stext_pa);
 		p_etext = __phys_to_kimg(kinfo->_etext_pa);
-		//p_text = __phys_to_kimg(kinfo->_text_pa);
+		p_text = __phys_to_kimg(kinfo->_text_pa);
 		_mrdump_krb = p_stext - SEGMENT_ALIGN;
 		p_init_begin = __phys_to_kimg(kinfo->_sinittext_pa);
 		aee_base_addrs_init();
@@ -235,6 +235,14 @@ unsigned long aee_get_etext(void)
 	return p_etext;
 }
 EXPORT_SYMBOL(aee_get_etext);
+
+unsigned long aee_get_text(void)
+{
+	if (!p_text)
+		pr_info("%s failed", __func__);
+	return p_text;
+}
+EXPORT_SYMBOL(aee_get_text);
 
 unsigned long aee_get_init_begin(void)
 {
