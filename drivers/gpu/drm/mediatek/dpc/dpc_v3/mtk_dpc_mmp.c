@@ -45,6 +45,14 @@ void dpc_mmp_init(void)
 	dpc_mmp_events.debug1 = mmprofile_register_event(folder, "debug1");
 	dpc_mmp_events.debug2 = mmprofile_register_event(folder, "debug2");
 
+	dpc_mmp_events.user_9 = mmprofile_register_event(folder, "9_NST_LOCK");
+	dpc_mmp_events.user_14 = mmprofile_register_event(folder, "14_FOR_FRAME");
+	dpc_mmp_events.user_15 = mmprofile_register_event(folder, "15_DISP_ISR");
+	dpc_mmp_events.user_16 = mmprofile_register_event(folder, "16_CRTC");
+	dpc_mmp_events.user_17 = mmprofile_register_event(folder, "17_PQ");
+	dpc_mmp_events.user_26 = mmprofile_register_event(folder, "26_DPC_CFG");
+	dpc_mmp_events.user_31 = mmprofile_register_event(folder, "31_FORCE");
+
 	mmprofile_enable_event_recursive(folder, 1);
 	mmprofile_start(1);
 }

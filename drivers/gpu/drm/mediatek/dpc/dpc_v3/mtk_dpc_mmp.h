@@ -42,6 +42,13 @@ struct dpc_mmp_events_t {
 	mmp_event srt_bw;
 	mmp_event debug1;
 	mmp_event debug2;
+	mmp_event user_9;
+	mmp_event user_14;
+	mmp_event user_15;
+	mmp_event user_16;
+	mmp_event user_17;
+	mmp_event user_26;
+	mmp_event user_31;
 };
 
 

@@ -556,6 +556,8 @@ struct mtk_dpc {
 	spinlock_t skip_force_power_lock;
 	spinlock_t mtcmos_cfg_lock;
 	spinlock_t hwccf_ref_lock;
+	spinlock_t excp_spin_lock;
+	struct mutex excp_lock;
 
 #if IS_ENABLED(CONFIG_DEBUG_FS)
 	struct dentry *fs;

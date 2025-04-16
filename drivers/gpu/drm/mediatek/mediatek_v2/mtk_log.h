@@ -330,13 +330,13 @@ int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...);
 		mtk_drm_trace_tag_begin("M_LOCK_NST_%s", name);	\
 		mutex_lock_nested(lock, i);		   \
 		if (i == 0) \
-			mtk_vidle_user_power_keep(DISP_VIDLE_USER_CRTC); \
+			mtk_vidle_user_power_keep(DISP_VIDLE_USER_NST_LOCK); \
 	} while (0)
 
 #define DDP_MUTEX_UNLOCK_NESTED(lock, i, name, line)                           \
 	do {                                                                   \
 		if (i == 0) \
-			mtk_vidle_user_power_release(DISP_VIDLE_USER_CRTC); \
+			mtk_vidle_user_power_release(DISP_VIDLE_USER_NST_LOCK); \
 		mutex_unlock(lock);		   \
 		mtk_drm_trace_tag_end("M_LOCK_NST_%s", name);	\
 		DDPINFO("M_ULOCK_NST[%d]:%s[%d] -\n", i, name, line);	\
