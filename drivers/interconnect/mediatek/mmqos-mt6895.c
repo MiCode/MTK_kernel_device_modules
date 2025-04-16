@@ -10,46 +10,47 @@
 #include <linux/of_platform.h>
 #include "mmqos-mtk.h"
 static const struct mtk_node_desc node_descs_mt6895[] = {
-	DEFINE_MNODE(common0,
-		SLAVE_COMMON(0), 0, false, 0x0, MMQOS_NO_LINK), //DISP
-	DEFINE_MNODE(mdp_common0,
-		SLAVE_COMMON(1), 0, false, 0x0, MMQOS_NO_LINK), //MDP
+	DEFINE_MNODE(common0, SLAVE_COMMON(0), 0, false, 0x0, MMQOS_NO_LINK), //DISP
+	DEFINE_MNODE(mdp_common0, SLAVE_COMMON(1), 0, false, 0x0, MMQOS_NO_LINK), //MDP
+	/* DISP common0_port0 */
 	DEFINE_MNODE(common0_port0,
-		MASTER_COMMON_PORT(0, 0), 0, false, 0x0, SLAVE_COMMON(0)),
+		MASTER_COMMON_PORT(0, 0), 0, false, 0x1, SLAVE_COMMON(0)),
 	DEFINE_MNODE(common0_port1,
-		MASTER_COMMON_PORT(0, 1), 0, false, 0x0, SLAVE_COMMON(0)),
+		MASTER_COMMON_PORT(0, 1), 0, false, 0x2, SLAVE_COMMON(0)),
 	DEFINE_MNODE(common0_port2,
-		MASTER_COMMON_PORT(0, 2), 0, false, 0x0, SLAVE_COMMON(0)),
+		MASTER_COMMON_PORT(0, 2), 0, false, 0x2, SLAVE_COMMON(0)),
 	DEFINE_MNODE(common0_port3,
-		MASTER_COMMON_PORT(0, 3), 0, false, 0x0, SLAVE_COMMON(0)),
+		MASTER_COMMON_PORT(0, 3), 0, false, 0x2, SLAVE_COMMON(0)),
 	DEFINE_MNODE(common0_port4,
-		MASTER_COMMON_PORT(0, 4), 0, false, 0x0, SLAVE_COMMON(0)),
+		MASTER_COMMON_PORT(0, 4), 0, false, 0x1, SLAVE_COMMON(0)),
 	DEFINE_MNODE(common0_port5,
-		MASTER_COMMON_PORT(0, 5), 0, false, 0x0, SLAVE_COMMON(0)),
+		MASTER_COMMON_PORT(0, 5), 0, false, 0x2, SLAVE_COMMON(0)),
 	DEFINE_MNODE(common0_port6,
-		MASTER_COMMON_PORT(0, 6), 0, false, 0x0, SLAVE_COMMON(0)),
+		MASTER_COMMON_PORT(0, 6), 0, false, 0x1, SLAVE_COMMON(0)),
 	DEFINE_MNODE(common0_port7,
-		MASTER_COMMON_PORT(0, 7), 0, false, 0x0, SLAVE_COMMON(0)),
+		MASTER_COMMON_PORT(0, 7), 0, false, 0x1, SLAVE_COMMON(0)),
 	DEFINE_MNODE(common0_port8,
-		MASTER_COMMON_PORT(0, 8), 0, false, 0x0, SLAVE_COMMON(0)),
+		MASTER_COMMON_PORT(0, 8), 0, false, 0x1, SLAVE_COMMON(0)),
+	/* MDP common0_port1 */
 	DEFINE_MNODE(mdp_common0_port0,
-		MASTER_COMMON_PORT(1, 0), 0, false, 0x0, SLAVE_COMMON(1)),
+		MASTER_COMMON_PORT(1, 0), 0, false, 0x2, SLAVE_COMMON(1)),
 	DEFINE_MNODE(mdp_common0_port1,
-		MASTER_COMMON_PORT(1, 1), 0, false, 0x0, SLAVE_COMMON(1)),
+		MASTER_COMMON_PORT(1, 1), 0, false, 0x2, SLAVE_COMMON(1)),
 	DEFINE_MNODE(mdp_common0_port2,
-		MASTER_COMMON_PORT(1, 2), 0, false, 0x0, SLAVE_COMMON(1)),
+		MASTER_COMMON_PORT(1, 2), 0, false, 0x1, SLAVE_COMMON(1)),
 	DEFINE_MNODE(mdp_common0_port3,
-		MASTER_COMMON_PORT(1, 3), 0, false, 0x0, SLAVE_COMMON(1)),
+		MASTER_COMMON_PORT(1, 3), 0, false, 0x1, SLAVE_COMMON(1)),
 	DEFINE_MNODE(mdp_common0_port4,
-		MASTER_COMMON_PORT(1, 4), 0, false, 0x0, SLAVE_COMMON(1)),
+		MASTER_COMMON_PORT(1, 4), 0, false, 0x1, SLAVE_COMMON(1)),
 	DEFINE_MNODE(mdp_common0_port5,
-		MASTER_COMMON_PORT(1, 5), 0, false, 0x0, SLAVE_COMMON(1)),
+		MASTER_COMMON_PORT(1, 5), 0, false, 0x2, SLAVE_COMMON(1)),
 	DEFINE_MNODE(mdp_common0_port6,
-		MASTER_COMMON_PORT(1, 6), 0, false, 0x0, SLAVE_COMMON(1)),
+		MASTER_COMMON_PORT(1, 6), 0, false, 0x1, SLAVE_COMMON(1)),
 	DEFINE_MNODE(mdp_common0_port7,
-		MASTER_COMMON_PORT(1, 7), 0, false, 0x0, SLAVE_COMMON(1)),
+		MASTER_COMMON_PORT(1, 7), 0, false, 0x2, SLAVE_COMMON(1)),
 	DEFINE_MNODE(mdp_common0_port8,
-		MASTER_COMMON_PORT(1, 8), 0, false, 0x0, SLAVE_COMMON(1)),
+		MASTER_COMMON_PORT(1, 8), 0, false, 0x1, SLAVE_COMMON(1)),
+
 	/* SMI COMMON */
 	DEFINE_MNODE(larb0, SLAVE_LARB(0), 0, false, 0x0, MASTER_COMMON_PORT(0, 0)),
 	DEFINE_MNODE(larb21, SLAVE_LARB(21), 0, false, 0x0, MASTER_COMMON_PORT(0, 1)),
@@ -85,6 +86,7 @@ static const struct mtk_node_desc node_descs_mt6895[] = {
 	DEFINE_MNODE(larb31, SLAVE_LARB(31), 0, false, 0x1, MASTER_COMMON_PORT(0, 8)), //virt DISP
 	DEFINE_MNODE(larb32, SLAVE_LARB(32), 0, true, 0x11, MASTER_COMMON_PORT(1, 6)), //virt CCU0
 	DEFINE_MNODE(larb33, SLAVE_LARB(33), 0, true, 0x11, MASTER_COMMON_PORT(1, 6)), //virt CCU1
+	/* Larb0 */
 	DEFINE_MNODE(disp_postmask0,
 		MASTER_LARB_PORT(M4U_LARB0_PORT0), 8, false, 0x1, SLAVE_LARB(0)),
 	DEFINE_MNODE(dmdp_rdma0_remove,
@@ -117,6 +119,7 @@ static const struct mtk_node_desc node_descs_mt6895[] = {
 		MASTER_LARB_PORT(M4U_LARB0_PORT14), 9, true, 0x1, SLAVE_LARB(0)),
 	DEFINE_MNODE(disp_fake0,
 		MASTER_LARB_PORT(M4U_LARB0_PORT15), 8, false, 0x1, SLAVE_LARB(0)),
+	/* Larb21 */
 	DEFINE_MNODE(disp_ovl0_1,
 		MASTER_LARB_PORT(M4U_LARB21_PORT0), 8, false, 0x2, SLAVE_LARB(21)),
 	DEFINE_MNODE(disp_ovl0_2L_1,
@@ -133,6 +136,7 @@ static const struct mtk_node_desc node_descs_mt6895[] = {
 		MASTER_LARB_PORT(M4U_LARB21_PORT6), 9, true, 0x2, SLAVE_LARB(21)),
 	DEFINE_MNODE(disp_fake1,
 		MASTER_LARB_PORT(M4U_LARB21_PORT7), 8, false, 0x2, SLAVE_LARB(21)),
+	/* Larb2 */
 	DEFINE_MNODE(mdp_rdma0,
 		MASTER_LARB_PORT(M4U_LARB2_PORT0), 8, false, 0x2, SLAVE_LARB(2)),
 	DEFINE_MNODE(mdp_rdma2,
@@ -151,6 +155,7 @@ static const struct mtk_node_desc node_descs_mt6895[] = {
 		MASTER_LARB_PORT(M4U_LARB2_PORT7), 9, true, 0x2, SLAVE_LARB(2)),
 	DEFINE_MNODE(mdp_wdma2,
 		MASTER_LARB_PORT(M4U_LARB2_PORT8), 9, true, 0x2, SLAVE_LARB(2)),
+	/* Larb5 */
 	DEFINE_MNODE(hw_vdec_lat0_vld_ext,
 		MASTER_LARB_PORT(M4U_LARB5_PORT0), 7, false, 0x2, SLAVE_LARB(5)),
 	DEFINE_MNODE(hw_vdec_lat0_vld2_ext,
@@ -169,6 +174,7 @@ static const struct mtk_node_desc node_descs_mt6895[] = {
 		MASTER_LARB_PORT(M4U_LARB5_PORT7), 7, true, 0x2, SLAVE_LARB(5)),
 	DEFINE_MNODE(hw_vdec_mc_ext_c,
 		MASTER_LARB_PORT(M4U_LARB5_PORT8), 6, false, 0x2, SLAVE_LARB(5)),
+	/* Larb7 */
 	DEFINE_MNODE(l7_venc_rcpu,
 		MASTER_LARB_PORT(M4U_LARB7_PORT0), 7, false, 0x1, SLAVE_LARB(7)),
 	DEFINE_MNODE(l7_venc_rec,
@@ -231,6 +237,7 @@ static const struct mtk_node_desc node_descs_mt6895[] = {
 		MASTER_LARB_PORT(M4U_LARB7_PORT29), 8, true, 0x1, SLAVE_LARB(7)),
 	DEFINE_MNODE(l7_jpgdec_huff_offset_0,
 		MASTER_LARB_PORT(M4U_LARB7_PORT30), 8, true, 0x1, SLAVE_LARB(7)),
+	/* Larb9 */
 	DEFINE_MNODE(imgi_t1_a,
 		MASTER_LARB_PORT(M4U_LARB9_PORT0), 7, false, 0x2, SLAVE_LARB(9)),
 	DEFINE_MNODE(ufdi_t1_a,
@@ -281,6 +288,7 @@ static const struct mtk_node_desc node_descs_mt6895[] = {
 		MASTER_LARB_PORT(M4U_LARB9_PORT23), 8, true, 0x2, SLAVE_LARB(9)),
 	DEFINE_MNODE(smto_t4_b,
 		MASTER_LARB_PORT(M4U_LARB9_PORT24), 8, true, 0x2, SLAVE_LARB(9)),
+	/* Larb10 */
 	DEFINE_MNODE(imgi_d1,
 		MASTER_LARB_PORT(M4U_LARB10_PORT0), 7, false, 0x2, SLAVE_LARB(10)),
 	DEFINE_MNODE(imgbi_d1,
@@ -321,6 +329,7 @@ static const struct mtk_node_desc node_descs_mt6895[] = {
 		MASTER_LARB_PORT(M4U_LARB10_PORT18), 8, true, 0x2, SLAVE_LARB(10)),
 	DEFINE_MNODE(dbgo_d1,
 		MASTER_LARB_PORT(M4U_LARB10_PORT19), 8, true, 0x2, SLAVE_LARB(10)),
+	/* Larb11 */
 	DEFINE_MNODE(l11_wpe_rdma_0,
 		MASTER_LARB_PORT(M4U_LARB11_PORT0), 7, false, 0x2, SLAVE_LARB(11)),
 	DEFINE_MNODE(l11_wpe_rdma_1,
@@ -381,6 +390,7 @@ static const struct mtk_node_desc node_descs_mt6895[] = {
 		MASTER_LARB_PORT(M4U_LARB11_PORT28), 8, true, 0x2, SLAVE_LARB(11)),
 	DEFINE_MNODE(l11_dbgo_t1_c,
 		MASTER_LARB_PORT(M4U_LARB11_PORT29), 8, true, 0x2, SLAVE_LARB(11)),
+	/* Larb23 */
 	DEFINE_MNODE(l23_wpe_rdma_0,
 		MASTER_LARB_PORT(M4U_LARB23_PORT0), 7, false, 0x2, SLAVE_LARB(23)),
 	DEFINE_MNODE(l23_wpe_rdma_1,
@@ -441,6 +451,7 @@ static const struct mtk_node_desc node_descs_mt6895[] = {
 		MASTER_LARB_PORT(M4U_LARB23_PORT28), 8, true, 0x2, SLAVE_LARB(23)),
 	DEFINE_MNODE(l23_dbgo_t1_c,
 		MASTER_LARB_PORT(M4U_LARB23_PORT29), 8, true, 0x2, SLAVE_LARB(23)),
+	/* Larb25 */
 	DEFINE_MNODE(mraw0_lsci_m1,
 		MASTER_LARB_PORT(M4U_LARB25_PORT0), 8, false, 0x1, SLAVE_LARB(25)),
 	DEFINE_MNODE(mraw0_cqi_m1,
@@ -469,6 +480,7 @@ static const struct mtk_node_desc node_descs_mt6895[] = {
 		MASTER_LARB_PORT(M4U_LARB25_PORT12), 8, false, 0x1, SLAVE_LARB(25)),
 	DEFINE_MNODE(pdao_a,
 		MASTER_LARB_PORT(M4U_LARB25_PORT13), 9, true, 0x1, SLAVE_LARB(25)),
+	/* Larb29 */
 	DEFINE_MNODE(l29_yuvo_r1,
 		MASTER_LARB_PORT(M4U_LARB29_PORT0), 9, true, 0x1, SLAVE_LARB(29)),
 	DEFINE_MNODE(l29_yuvo_r3,
@@ -483,6 +495,7 @@ static const struct mtk_node_desc node_descs_mt6895[] = {
 		MASTER_LARB_PORT(M4U_LARB29_PORT5), 9, true, 0x1, SLAVE_LARB(29)),
 	DEFINE_MNODE(l29_tncso_r1,
 		MASTER_LARB_PORT(M4U_LARB29_PORT6), 9, true, 0x1, SLAVE_LARB(29)),
+	/* Larb30 */
 	DEFINE_MNODE(l30_yuvo_r1,
 		MASTER_LARB_PORT(M4U_LARB30_PORT0), 9, true, 0x1, SLAVE_LARB(30)),
 	DEFINE_MNODE(l30_yuvo_r3,
@@ -497,6 +510,7 @@ static const struct mtk_node_desc node_descs_mt6895[] = {
 		MASTER_LARB_PORT(M4U_LARB30_PORT5), 9, true, 0x1, SLAVE_LARB(30)),
 	DEFINE_MNODE(l30_tncso_r1,
 		MASTER_LARB_PORT(M4U_LARB30_PORT6), 9, true, 0x1, SLAVE_LARB(30)),
+	/* Larb27 */
 	DEFINE_MNODE(l27_imgo_r1,
 		MASTER_LARB_PORT(M4U_LARB27_PORT0), 9, true, 0x1, SLAVE_LARB(27)),
 	DEFINE_MNODE(l27_cqi_r1,
@@ -531,6 +545,7 @@ static const struct mtk_node_desc node_descs_mt6895[] = {
 		MASTER_LARB_PORT(M4U_LARB27_PORT15), 9, true, 0x1, SLAVE_LARB(27)),
 	DEFINE_MNODE(l27_flko_r1,
 		MASTER_LARB_PORT(M4U_LARB27_PORT16), 9, true, 0x1, SLAVE_LARB(27)),
+	/* Larb13 */
 	DEFINE_MNODE(camsv_cqi_e1,
 		MASTER_LARB_PORT(M4U_LARB13_PORT0), 8, false, 0x1, SLAVE_LARB(13)),
 	DEFINE_MNODE(camsv_cqi_e2,
@@ -579,6 +594,7 @@ static const struct mtk_node_desc node_descs_mt6895[] = {
 		MASTER_LARB_PORT(M4U_LARB13_PORT22), 9, true, 0x1, SLAVE_LARB(13)),
 	DEFINE_MNODE(pdao_c,
 		MASTER_LARB_PORT(M4U_LARB13_PORT23), 9, true, 0x1, SLAVE_LARB(13)),
+	/* Larb6 */
 	DEFINE_MNODE(hw_mini_mdp_r0_ext,
 		MASTER_LARB_PORT(M4U_LARB6_PORT0), 8, false, 0x1, SLAVE_LARB(6)),
 	DEFINE_MNODE(hw_mini_mdp_w0_ext,
@@ -587,6 +603,7 @@ static const struct mtk_node_desc node_descs_mt6895[] = {
 		MASTER_LARB_PORT(M4U_LARB6_PORT2), 8, false, 0x1, SLAVE_LARB(6)),
 	DEFINE_MNODE(hw_mini_mdp_w1_ext,
 		MASTER_LARB_PORT(M4U_LARB6_PORT3), 9, true, 0x1, SLAVE_LARB(6)),
+	/* Larb1 */
 	DEFINE_MNODE(l1_disp_ovl0_1,
 		MASTER_LARB_PORT(M4U_LARB1_PORT0), 8, false, 0x12, SLAVE_LARB(1)),
 	DEFINE_MNODE(l1_disp_ovl0_2L_1,
@@ -603,6 +620,7 @@ static const struct mtk_node_desc node_descs_mt6895[] = {
 		MASTER_LARB_PORT(M4U_LARB1_PORT6), 9, true, 0x12, SLAVE_LARB(1)),
 	DEFINE_MNODE(l1_disp_fake1,
 		MASTER_LARB_PORT(M4U_LARB1_PORT7), 8, false, 0x12, SLAVE_LARB(1)),
+	/* Larb20 */
 	DEFINE_MNODE(l20_disp_postmask0,
 		MASTER_LARB_PORT(M4U_LARB20_PORT0), 8, false, 0x12, SLAVE_LARB(20)),
 	DEFINE_MNODE(l20_dmdp_rdma0_remove,
@@ -635,6 +653,7 @@ static const struct mtk_node_desc node_descs_mt6895[] = {
 		MASTER_LARB_PORT(M4U_LARB20_PORT14), 9, true, 0x12, SLAVE_LARB(20)),
 	DEFINE_MNODE(l20_disp_fake0,
 		MASTER_LARB_PORT(M4U_LARB20_PORT15), 8, false, 0x12, SLAVE_LARB(20)),
+	/* Larb3 */
 	DEFINE_MNODE(mdp_rdma1,
 		MASTER_LARB_PORT(M4U_LARB3_PORT0), 8, false, 0x11, SLAVE_LARB(3)),
 	DEFINE_MNODE(mdp_rdma3,
@@ -653,6 +672,7 @@ static const struct mtk_node_desc node_descs_mt6895[] = {
 		MASTER_LARB_PORT(M4U_LARB3_PORT7), 9, true, 0x11, SLAVE_LARB(3)),
 	DEFINE_MNODE(mdp_wdma3,
 		MASTER_LARB_PORT(M4U_LARB3_PORT8), 9, true, 0x11, SLAVE_LARB(3)),
+	/* Larb4 */
 	DEFINE_MNODE(hw_vdec_mc_ext,
 		MASTER_LARB_PORT(M4U_LARB4_PORT0), 6, false, 0x11, SLAVE_LARB(4)),
 	DEFINE_MNODE(hw_vdec_ufo_ext,
@@ -675,6 +695,7 @@ static const struct mtk_node_desc node_descs_mt6895[] = {
 		MASTER_LARB_PORT(M4U_LARB4_PORT9), 6, false, 0x11, SLAVE_LARB(4)),
 	DEFINE_MNODE(hw_vdec_ufo_ext_c,
 		MASTER_LARB_PORT(M4U_LARB4_PORT10), 7, false, 0x11, SLAVE_LARB(4)),
+	/* Larb8 */
 	DEFINE_MNODE(l8_venc_rcpu,
 		MASTER_LARB_PORT(M4U_LARB8_PORT0), 7, false, 0x11, SLAVE_LARB(8)),
 	DEFINE_MNODE(l8_venc_rec,
@@ -737,6 +758,7 @@ static const struct mtk_node_desc node_descs_mt6895[] = {
 		MASTER_LARB_PORT(M4U_LARB8_PORT29), 8, true, 0x11, SLAVE_LARB(8)),
 	DEFINE_MNODE(l8_jpgdec_huff_offset_0,
 		MASTER_LARB_PORT(M4U_LARB8_PORT30), 8, true, 0x11, SLAVE_LARB(8)),
+	/* Larb18 */
 	DEFINE_MNODE(imgadl_0_cqi_e1,
 		MASTER_LARB_PORT(M4U_LARB18_PORT0), 7, false, 0x12, SLAVE_LARB(18)),
 	DEFINE_MNODE(imgadl_0_cqi_e2,
@@ -753,6 +775,7 @@ static const struct mtk_node_desc node_descs_mt6895[] = {
 		MASTER_LARB_PORT(M4U_LARB18_PORT6), 7, false, 0x12, SLAVE_LARB(18)),
 	DEFINE_MNODE(imgadl_1_ipuo_e1,
 		MASTER_LARB_PORT(M4U_LARB18_PORT7), 8, true, 0x12, SLAVE_LARB(18)),
+	/* Larb15 */
 	DEFINE_MNODE(vipi_d1,
 		MASTER_LARB_PORT(M4U_LARB15_PORT0), 7, false, 0x12, SLAVE_LARB(15)),
 	DEFINE_MNODE(vipbi_d1,
@@ -791,6 +814,7 @@ static const struct mtk_node_desc node_descs_mt6895[] = {
 		MASTER_LARB_PORT(M4U_LARB15_PORT17), 8, true, 0x12, SLAVE_LARB(15)),
 	DEFINE_MNODE(tnco_d1_n,
 		MASTER_LARB_PORT(M4U_LARB15_PORT18), 8, true, 0x12, SLAVE_LARB(15)),
+	/* Larb12 */
 	DEFINE_MNODE(fdvt_rda_0,
 		MASTER_LARB_PORT(M4U_LARB12_PORT0), 7, false, 0x12, SLAVE_LARB(12)),
 	DEFINE_MNODE(fdvt_rdb_0,
@@ -823,6 +847,7 @@ static const struct mtk_node_desc node_descs_mt6895[] = {
 		MASTER_LARB_PORT(M4U_LARB12_PORT14), 7, false, 0x12, SLAVE_LARB(12)),
 	DEFINE_MNODE(dhzeo_e1,
 		MASTER_LARB_PORT(M4U_LARB12_PORT15), 8, true, 0x12, SLAVE_LARB(12)),
+	/* Larb22 */
 	DEFINE_MNODE(l22_wpe_rdma_0,
 		MASTER_LARB_PORT(M4U_LARB22_PORT0), 7, false, 0x12, SLAVE_LARB(22)),
 	DEFINE_MNODE(l22_wpe_rdma_1,
@@ -883,6 +908,7 @@ static const struct mtk_node_desc node_descs_mt6895[] = {
 		MASTER_LARB_PORT(M4U_LARB22_PORT28), 8, true, 0x12, SLAVE_LARB(22)),
 	DEFINE_MNODE(l22_dbgo_t1_c,
 		MASTER_LARB_PORT(M4U_LARB22_PORT29), 8, true, 0x12, SLAVE_LARB(22)),
+	/* Larb14 */
 	DEFINE_MNODE(l14_gcamsv_b_imgo_1,
 		MASTER_LARB_PORT(M4U_LARB14_PORT0), 9, true, 0x11, SLAVE_LARB(14)),
 	DEFINE_MNODE(l14_gcamsv_b_imgo_2,
@@ -929,6 +955,7 @@ static const struct mtk_node_desc node_descs_mt6895[] = {
 		MASTER_LARB_PORT(M4U_LARB14_PORT21), 9, true, 0x11, SLAVE_LARB(14)),
 	DEFINE_MNODE(l14_fake,
 		MASTER_LARB_PORT(M4U_LARB14_PORT22), 9, true, 0x11, SLAVE_LARB(14)),
+	/* Larb26 */
 	DEFINE_MNODE(l26_mraw1_lsci_m1,
 		MASTER_LARB_PORT(M4U_LARB26_PORT0), 8, false, 0x11, SLAVE_LARB(26)),
 	DEFINE_MNODE(l26_mraw1_cqi_m1,
@@ -957,6 +984,7 @@ static const struct mtk_node_desc node_descs_mt6895[] = {
 		MASTER_LARB_PORT(M4U_LARB26_PORT12), 8, false, 0x11, SLAVE_LARB(26)),
 	DEFINE_MNODE(l26_pdao_b,
 		MASTER_LARB_PORT(M4U_LARB26_PORT13), 9, true, 0x11, SLAVE_LARB(26)),
+	/* Larb17 */
 	DEFINE_MNODE(l17_yuvo_r1,
 		MASTER_LARB_PORT(M4U_LARB17_PORT0), 9, true, 0x11, SLAVE_LARB(17)),
 	DEFINE_MNODE(l17_yuvo_r3,
@@ -971,6 +999,7 @@ static const struct mtk_node_desc node_descs_mt6895[] = {
 		MASTER_LARB_PORT(M4U_LARB17_PORT5), 9, true, 0x11, SLAVE_LARB(17)),
 	DEFINE_MNODE(l17_tncso_r1,
 		MASTER_LARB_PORT(M4U_LARB17_PORT6), 9, true, 0x11, SLAVE_LARB(17)),
+	/* Larb16 */
 	DEFINE_MNODE(l16_imgo_r1,
 		MASTER_LARB_PORT(M4U_LARB16_PORT0), 9, true, 0x11, SLAVE_LARB(16)),
 	DEFINE_MNODE(l16_cqi_r1,
@@ -1005,6 +1034,7 @@ static const struct mtk_node_desc node_descs_mt6895[] = {
 		MASTER_LARB_PORT(M4U_LARB16_PORT15), 9, true, 0x11, SLAVE_LARB(16)),
 	DEFINE_MNODE(l16_flko_r1,
 		MASTER_LARB_PORT(M4U_LARB16_PORT16), 9, true, 0x11, SLAVE_LARB(16)),
+	/* Larb28 */
 	DEFINE_MNODE(l28_imgo_r1,
 		MASTER_LARB_PORT(M4U_LARB28_PORT0), 9, true, 0x11, SLAVE_LARB(28)),
 	DEFINE_MNODE(l28_cqi_r1,
@@ -1039,6 +1069,7 @@ static const struct mtk_node_desc node_descs_mt6895[] = {
 		MASTER_LARB_PORT(M4U_LARB28_PORT15), 9, true, 0x11, SLAVE_LARB(28)),
 	DEFINE_MNODE(l28_flko_r1,
 		MASTER_LARB_PORT(M4U_LARB28_PORT16), 9, true, 0x11, SLAVE_LARB(28)),
+	/* Larb19 */
 	DEFINE_MNODE(ccui,
 		MASTER_LARB_PORT(M4U_LARB19_PORT0), 8, false, 0x11, SLAVE_LARB(19)),
 	DEFINE_MNODE(ccuo,
