@@ -278,7 +278,8 @@ enum mtk_dec_param {
 	MTK_DEC_PARAM_WAIT_KEY_FRAME = (1 << 4),
 	MTK_DEC_PARAM_OPERATING_RATE = (1 << 5),
 	MTK_DEC_PARAM_DECODE_ERROR_HANDLE_MODE = (1 << 6),
-	MTK_DEC_PARAM_LINECOUNT_THRESHOLD = (1 << 7)
+	MTK_DEC_PARAM_LINECOUNT_THRESHOLD = (1 << 7),
+	MTK_DEC_PARAM_DV_MODE = (1 << 8),
 };
 
 struct mtk_dec_params {
@@ -295,8 +296,10 @@ struct mtk_dec_params {
 		char	*golden_path;
 		__u64	golden_path_64;
 	};
-	__u32	wait_key_frame;
-	__u32	svp_mode;
+	__u8	wait_key_frame;
+	__u8	svp_mode;
+	__u8	dv_mode;
+	__u8	reserved; // for compiler 32 bit align
 	__u32	operating_rate;
 	__u32	decode_error_handle_mode;
 	__u32	queued_frame_buf_count;

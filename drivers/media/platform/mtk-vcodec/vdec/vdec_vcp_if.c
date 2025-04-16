@@ -1767,8 +1767,14 @@ static int vdec_vcp_set_param(unsigned long h_vdec,
 	case SET_PARAM_WAIT_KEY_FRAME:
 		if (inst->vsi == NULL)
 			return -EINVAL;
-		inst->vsi->dec_params.wait_key_frame = (__u32)(*param_ptr);
+		inst->vsi->dec_params.wait_key_frame = (__u8)(*param_ptr);
 		inst->vsi->dec_params.dec_param_change |= MTK_DEC_PARAM_WAIT_KEY_FRAME;
+		break;
+	case SET_PARAM_VDEC_DV_MODE:
+		if (inst->vsi == NULL)
+			return -EINVAL;
+		inst->vsi->dec_params.dv_mode = (__u8)(*param_ptr);
+		inst->vsi->dec_params.dec_param_change |= MTK_DEC_PARAM_DV_MODE;
 		break;
 	case SET_PARAM_DECODE_ERROR_HANDLE_MODE:
 		if (inst->vsi == NULL)

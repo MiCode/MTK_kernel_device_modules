@@ -3288,6 +3288,15 @@ static int mtk_vdec_set_param(struct mtk_vcodec_ctx *ctx, bool need_ipi)
 		ctx->dec_params.dec_param_change &= (~MTK_DEC_PARAM_WAIT_KEY_FRAME);
 	}
 
+	if (ctx->dec_params.dec_param_change & MTK_DEC_PARAM_DV_MODE) {
+		in[0] = (unsigned long)ctx->dec_params.dv_mode;
+		if (vdec_if_set_param(ctx, SET_PARAM_VDEC_DV_MODE, in) != 0) {
+			mtk_v4l2_err("[%d] Error!! Cannot set param", ctx->id);
+			return -EINVAL;
+		}
+		ctx->dec_params.dec_param_change &= (~MTK_DEC_PARAM_DV_MODE);
+	}
+
 	if (ctx->dec_params.dec_param_change & MTK_DEC_PARAM_DECODE_ERROR_HANDLE_MODE) {
 		in[0] = (unsigned long)ctx->dec_params.decode_error_handle_mode;
 		if (vdec_if_set_param(ctx, SET_PARAM_DECODE_ERROR_HANDLE_MODE, in) != 0) {
@@ -4974,7 +4983,7 @@ static int mtk_vdec_s_ctrl(struct v4l2_ctrl *ctrl)
 
 		}
 #endif
-		ctx->dec_params.svp_mode = ctrl->val;
+		ctx->dec_params.svp_mode = (__u8)ctrl->val;
 		mtk_v4l2_debug(ctrl->val ? 0 : 1, "[%d] V4L2_CID_MTK_VIDEO_SEC_MODE id %d val %d",
 			ctx->id, ctrl->id, ctrl->val);
 		break;
@@ -4994,8 +5003,12 @@ static int mtk_vdec_s_ctrl(struct v4l2_ctrl *ctrl)
 		ctx->dec_params.dec_param_change |= MTK_DEC_PARAM_GOLDEN_PATH;
 		break;
 	case V4L2_CID_MTK_VIDEO_DEC_SET_WAIT_KEY_FRAME:
-		ctx->dec_params.wait_key_frame = ctrl->val;
+		ctx->dec_params.wait_key_frame = (__u8)ctrl->val;
 		ctx->dec_params.dec_param_change |= MTK_DEC_PARAM_WAIT_KEY_FRAME;
+		break;
+	case V4L2_CID_MTK_VIDEO_DV_MODE:
+		ctx->dec_params.dv_mode = (__u8)ctrl->val;
+		ctx->dec_params.dec_param_change |= MTK_DEC_PARAM_DV_MODE;
 		break;
 	case V4L2_CID_MTK_VIDEO_DEC_SET_DECODE_ERROR_HANDLE_MODE:
 		ctx->dec_params.decode_error_handle_mode = ctrl->val;
@@ -5352,6 +5365,18 @@ int mtk_vcodec_dec_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
 	cfg.name = "Wait key frame";
+	cfg.min = 0;
+	cfg.max = 255;
+	cfg.step = 1;
+	cfg.def = 0;
+	cfg.ops = ops;
+	mtk_vcodec_dec_custom_ctrls_check(handler, &cfg, NULL);
+
+	memset(&cfg, 0, sizeof(cfg));
+	cfg.id = V4L2_CID_MTK_VIDEO_DV_MODE;
+	cfg.type = V4L2_CTRL_TYPE_INTEGER;
+	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
+	cfg.name = "Video DV Decode Mode";
 	cfg.min = 0;
 	cfg.max = 255;
 	cfg.step = 1;
