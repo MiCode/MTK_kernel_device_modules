@@ -334,6 +334,8 @@ static unsigned long g_last_commit_before_api_boost;
 static unsigned int g_last_api_boost_counter;
 static int g_fix_opp_by_cmd = -1;
 static bool g_force_commit;
+static unsigned long long g_ns_gpu_api_boost_end_ts;
+static unsigned long long g_ns_gpu_api_boost_interval;
 
 unsigned int ged_npu_hint_enable = 0;
 
@@ -2769,10 +2771,29 @@ int get_api_sync_flag(void)
 }
 EXPORT_SYMBOL(get_api_sync_flag);
 
+unsigned long long ged_get_api_boost_end_ts(void)
+{
+	return g_latest_api_sync_done_ts_us;
+}
+EXPORT_SYMBOL(ged_get_api_boost_end_ts);
+
+unsigned long long ged_get_api_boost_interval(void)
+{
+	return g_ns_gpu_api_boost_interval;
+}
+EXPORT_SYMBOL(ged_get_api_boost_interval);
+
+void ged_reset_api_boost_interval(void)
+{
+	g_ns_gpu_api_boost_interval = 0;
+}
+EXPORT_SYMBOL(ged_reset_api_boost_interval);
+
 void set_api_sync_flag(int flag)
 {
 	unsigned int tmp_sysram_val = 0;
-	unsigned long long cur_ts_us = div_u64(ged_get_time(), 1000);
+	unsigned long long cur_ts_ns = ged_get_time();
+	unsigned long long cur_ts_us = div_u64(cur_ts_ns, 1000);
 
 	if (flag == 1 || flag == 0) {
 		// update counter when api sync finish (1 => 0)
@@ -2787,10 +2808,15 @@ void set_api_sync_flag(int flag)
 		tmp_sysram_val = api_sync_flag << COMMON_LOW_BIT;
 		tmp_sysram_val += api_sync_counter << COMMON_MID_BIT;
 		ged_eb_dvfs_task(EB_UPDATE_API_BOOST, tmp_sysram_val);
-		if (flag)
+		if (flag) {
+			if (g_ns_gpu_api_boost_end_ts > 0)
+				g_ns_gpu_api_boost_interval = cur_ts_ns - g_ns_gpu_api_boost_end_ts;
+
 			g_latest_api_sync_ts_ms = div_u64(cur_ts_us, 1000);
-		else
+		} else {
 			g_latest_api_sync_done_ts_us = cur_ts_us;
+			g_ns_gpu_api_boost_end_ts = cur_ts_ns;
+		}
 	} else if (flag == 2) {
 		dcs_set_fix_num(0);
 		cancel_mewtwo_timer();
