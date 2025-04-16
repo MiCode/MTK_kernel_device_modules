@@ -180,7 +180,7 @@ mgk_64_kleaf_eng_modules = [
     "//vendor/mediatek/tests/kernel/ktf_testcase/touch:ktf_touch",
     "//vendor/mediatek/tests/kernel/ktf_testcase/uart:ktf_uart",
     "//vendor/mediatek/tests/kernel/ktf_testcase/typec:ktf_i2c_suspend",
-    "//vendor/mediatek/tests/kernel/ktf_testcase/i3c:ktf_i3c",
+    #"//vendor/mediatek/tests/kernel/ktf_testcase/i3c:ktf_i3c",
     "//vendor/mediatek/tests/kernel/ktf_testcase/iommu:ktf_iommu",
     "//vendor/mediatek/tests/kernel/ktf_testcase/iommu/iommu_ait:ktf_iommu_ait",
     "//vendor/mediatek/tests/kernel/ktf_testcase/leds_mtk:ktf_leds_mtk_test",
@@ -274,7 +274,7 @@ mgk_64_kleaf_userdebug_modules = [
     "//vendor/mediatek/tests/kernel/ktf_testcase/touch:ktf_touch",
     "//vendor/mediatek/tests/kernel/ktf_testcase/uart:ktf_uart",
     "//vendor/mediatek/tests/kernel/ktf_testcase/typec:ktf_i2c_suspend",
-    "//vendor/mediatek/tests/kernel/ktf_testcase/i3c:ktf_i3c",
+    #"//vendor/mediatek/tests/kernel/ktf_testcase/i3c:ktf_i3c",
     "//vendor/mediatek/tests/kernel/ktf_testcase/iommu:ktf_iommu",
     "//vendor/mediatek/tests/kernel/ktf_testcase/iommu/iommu_ait:ktf_iommu_ait",
     "//vendor/mediatek/tests/kernel/ktf_testcase/leds_mtk:ktf_leds_mtk_test",
@@ -798,8 +798,8 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/dma/mediatek:mtk-uart-apdma".format(kernel_version),
     "//kernel_device_modules-{}/drivers/tty/serial/8250:8250_mtk".format(kernel_version),
     "//kernel_device_modules-{}/drivers/i2c/busses:i2c-mt65xx".format(kernel_version),
-    "//kernel_device_modules-{}/drivers/i3c/master:mtk-i3c-master-mt69xx".format(kernel_version),
-    "//kernel_device_modules-{}/drivers/misc/mediatek/i3c_i2c_wrap:mtk-i3c-i2c-wrap".format(kernel_version),
+    #"//kernel_device_modules-{}/drivers/i3c/master:mtk-i3c-master-mt69xx".format(kernel_version),
+    #"//kernel_device_modules-{}/drivers/misc/mediatek/i3c_i2c_wrap:mtk-i3c-i2c-wrap".format(kernel_version),
     "//kernel_device_modules-{}/drivers/dma-buf/heaps:mtk_heap_debug".format(kernel_version),
     "//kernel_device_modules-{}/drivers/dma-buf/heaps:mtk_heap_refill".format(kernel_version),
     "//kernel_device_modules-{}/drivers/dma-buf/heaps:mtk_sec_heap".format(kernel_version),
@@ -1518,6 +1518,8 @@ mgk_64_kleaf_platform_modules = {
     "//kernel_device_modules-{}/drivers/clk/mediatek:clk-mt6855-img".format(kernel_version): "mt6855",
     "//kernel_device_modules-{}/drivers/clk/mediatek:clk-mt6855-mdp1".format(kernel_version): "mt6855",
     "//kernel_device_modules-{}/drivers/clk/mediatek:clk-mt6855-mdp".format(kernel_version): "mt6855",
+    "//kernel_device_modules-{}/drivers/i3c/master:mtk-i3c-master-mt69xx".format(kernel_version): "mt6991 mt6993",
+    "//kernel_device_modules-{}/drivers/misc/mediatek/i3c_i2c_wrap:mtk-i3c-i2c-wrap".format(kernel_version): "mt6991 mt6993",
 
 
     "//kernel_device_modules-{}/drivers/clk/mediatek:clk-mt6895".format(kernel_version): "mt6895",
@@ -1640,7 +1642,7 @@ mgk_64_kleaf_eng_device_modules = [
 
 mgk_64_kleaf_platform_eng_modules = {
     # keep sorted
-
+    "//vendor/mediatek/tests/kernel/ktf_testcase/i3c:ktf_i3c": "mt6991 mt6993",
     ## write vendor file by platform here
 
 }
@@ -1654,7 +1656,7 @@ mgk_64_kleaf_userdebug_device_modules = [
 
 mgk_64_kleaf_platform_userdebug_modules = {
     # keep sorted
-
+    "//vendor/mediatek/tests/kernel/ktf_testcase/i3c:ktf_i3c": "mt6991 mt6993",
     ## write vendor file by platform here
 
 }
