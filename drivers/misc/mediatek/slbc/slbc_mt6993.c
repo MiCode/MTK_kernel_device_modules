@@ -125,6 +125,27 @@ enum force_type{
 #define BUF_ID_OVL				0x000000f0
 #define BUF_ID_VDEC				0x00000f00
 
+#define SLC_CUST_PMU_CONFIG_NUM 8   /* cust pmu config num in dts */
+#define SLC_CUST_PMU_NUM        16  /* cust pmu num in dts */
+#define SLC_CUST_PMU_ARR_LEN    ((SLC_CUST_PMU_NUM)*(SLC_CUST_PMU_CONFIG_NUM))
+
+struct slbc_cust_pmu_config_t {
+	uint8_t enable;
+	uint8_t r_w;
+	uint8_t sel;
+	uint8_t master;
+	uint8_t category;
+	uint8_t id;
+	uint8_t pmu_id;
+	uint8_t resv;
+};
+
+struct slbc_cust_pmu_t {
+	struct slbc_cust_pmu_config_t config[SLC_CUST_PMU_NUM];
+	uint32_t update_interval;
+	uint64_t pmu[SLC_CUST_PMU_NUM];
+	uint64_t timestamp;
+};
 
 static struct mtk_slbc *slbc;
 
@@ -159,10 +180,13 @@ static u32 slbc_ipic_ret; /* ipic debug info */
 static u32 slbc_ipic_uid; /* ipic debug info */
 static u32 slbc_ipic_type; /* ipic debug info */
 static u32 slbc_gpu_dynamic_cache; /* gpu dynamic cache debug info */
+static u32 slbc_cust_pmu_config[SLC_CUST_PMU_NUM][SLC_CUST_PMU_CONFIG_NUM]; /* SLC cust pmu */
+static u32 slbc_cust_pmu_update_interval; /* SLC cust pmu, update time interval */
 static int debug_level;
 static int uid_ref[UID_MAX]; /* SLB */
 static int slc_uid_ref[ID_MAX]; /* SLC */
 static int slc_vld_cnt[ID_MAX]; /* SLC */
+static struct slbc_cust_pmu_t *slbc_cust_pmu_data; /* SLC cust pmu*/
 static u64 slbc_ipic_start_ts; /* ipic debug info */
 static u64 slbc_ipic_end_ts; /* ipic debug info */
 
@@ -1302,6 +1326,18 @@ int slbc_get_cache_usage(int *cpu, int *gpu, int *other)
 #endif /* CONFIG_MTK_TINYSYS_SCMI */
 }
 
+int slbc_get_cust_pmu(unsigned char idx, u64 *cnt, u64 *timestamp)
+{
+	if (!slbc_cust_pmu_data || idx >= SLC_CUST_PMU_NUM
+		|| !slbc_cust_pmu_data || !cnt || !timestamp)
+		return -1;
+
+	*cnt = slbc_cust_pmu_data->pmu[idx];
+	*timestamp = slbc_cust_pmu_data->timestamp;
+
+	return 0;
+}
+
 #ifdef SLBC_DUMP_DATA
 static void slbc_dump_data(struct seq_file *m, struct slbc_data *d)
 {
@@ -1330,6 +1366,36 @@ static void slbc_dump_data(struct seq_file *m, struct slbc_data *d)
 	seq_printf(m, "pwr_ref: %d\n", d->pwr_ref);
 }
 #endif
+
+static int slbc_init_cust_pmu_config(void)
+{
+	int i = 0;
+
+	if (!slbc_sram_enable)
+		return -1;
+
+	if (!slbc->sram_vaddr ||
+		((SLBC_CUST_PMU_OFFSET + sizeof(struct slbc_cust_pmu_t)) > slbc->regsize))
+		return -1;
+
+	slbc_cust_pmu_data = (struct slbc_cust_pmu_t *)(slbc->sram_vaddr + SLBC_CUST_PMU_OFFSET);
+	if (!slbc_cust_pmu_data)
+		return -1;
+
+	for (i = 0; i < SLC_CUST_PMU_NUM; i++) {
+		/* id, category, sel, r/w, master, enable, pmu_id, resv */
+		slbc_cust_pmu_data->config[i].id = (unsigned char)slbc_cust_pmu_config[i][0];
+		slbc_cust_pmu_data->config[i].category = (unsigned char)slbc_cust_pmu_config[i][1];
+		slbc_cust_pmu_data->config[i].sel = (unsigned char)slbc_cust_pmu_config[i][2];
+		slbc_cust_pmu_data->config[i].r_w = (unsigned char)slbc_cust_pmu_config[i][3];
+		slbc_cust_pmu_data->config[i].master = (unsigned char)slbc_cust_pmu_config[i][4];
+		slbc_cust_pmu_data->config[i].enable = (unsigned char)slbc_cust_pmu_config[i][5];
+		slbc_cust_pmu_data->config[i].pmu_id = (unsigned char)slbc_cust_pmu_config[i][6];
+		slbc_cust_pmu_data->config[i].resv = (unsigned char)slbc_cust_pmu_config[i][7];
+	}
+	slbc_cust_pmu_data->update_interval = slbc_cust_pmu_update_interval;
+	return 0;
+}
 
 static int dbg_slbc_proc_show(struct seq_file *m, void *v)
 {
@@ -1527,12 +1593,15 @@ static ssize_t dbg_slbc_proc_write(struct file *file,
 		const char __user *buffer, size_t count, loff_t *pos)
 {
 	int ret = 0;
+	int i = 0;
 	int temp;
 	char *buf = (char *) __get_free_page(GFP_USER);
 	char cmd[64];
 	unsigned long val_1;
 	unsigned long val_2;
 	unsigned long val_3;
+	unsigned long long val_1_64_bit = 0;
+	unsigned long long val_2_64_bit = 0;
 
 	if (!buf)
 		return -ENOMEM;
@@ -1689,6 +1758,18 @@ static ssize_t dbg_slbc_proc_write(struct file *file,
 		slbc_enable_gpu_dynamic_cache(val_1);
 	} else if (!strcmp(cmd, "slbc_set_policy")) {
 		slbc_set_policy(val_1);
+	} else if (!strcmp(cmd, "slbc_get_cust_pmu")) {
+		slbc_get_cust_pmu((unsigned char)val_1, &val_1_64_bit, &val_2_64_bit);
+		SLBC_TRACE_REC(LVL_NORM, TYPE_C, 0, 0,
+		"cust_pmu[%lu] = %llu, timestamp = %llu",
+		val_1, val_1_64_bit, val_2_64_bit);
+	} else if (!strcmp(cmd, "slbc_get_cust_pmu_config")) {
+		for (i = 0; i < SLC_CUST_PMU_NUM; i++)
+			SLBC_TRACE_REC(LVL_NORM, TYPE_C, 0, 0,
+			"cust_bw_pmu[%d], enable=%hu, sel:%hu, r_w:%hu, category:%hu, pmu_id:%hu\n", i,
+			slbc_cust_pmu_data->config[i].enable, slbc_cust_pmu_data->config[i].sel,
+			slbc_cust_pmu_data->config[i].r_w, slbc_cust_pmu_data->config[i].category,
+			slbc_cust_pmu_data->config[i].pmu_id);
 #if IS_ENABLED(CONFIG_MTK_SLBC_IPI)
 	} else if (!strcmp(cmd, "gid_set")) {
 		slbc_table_gid_set(val_1, val_2, val_3);
@@ -1895,6 +1976,7 @@ static struct slbc_common_ops common_ops = {
 	.slbc_get_cache_hit_rate = slbc_get_cache_hit_rate,
 	.slbc_get_cache_hit_bw = slbc_get_cache_hit_bw,
 	.slbc_get_cache_usage = slbc_get_cache_usage,
+	.slbc_get_cust_pmu = slbc_get_cust_pmu,
 };
 
 static struct slbc_ipi_ops ipi_ops = {
@@ -2000,6 +2082,25 @@ static int slbc_probe(struct platform_device *pdev)
 					(unsigned long)slbc->regs, slbc->regsize);
 			slbc_sram_init(slbc);
 		}
+	}
+
+	/* SLC customer PMU */
+	ret = of_property_read_u32_array(node, "cust-pmu", &slbc_cust_pmu_config[0][0], SLC_CUST_PMU_ARR_LEN);
+	if (ret < 0) {
+		SLBC_TRACE_REC(LVL_ERR, TYPE_N, 0, -1,
+				"slbc cust_pmu node not found");
+	}
+	ret = of_property_read_u32(node,
+				"cust-pmu-update", &slbc_cust_pmu_update_interval);
+	if (ret < 0) {
+		SLBC_TRACE_REC(LVL_ERR, TYPE_N, 0, -1,
+				"slbc cust_pmu_update node not found");
+	}
+	ret = slbc_init_cust_pmu_config();
+	if (ret) {
+		pr_info("SLBC FAILED TO INIT CUST PMU CONFIG (%d)\n", ret);
+		SLBC_TRACE_REC(LVL_ERR, TYPE_N, 0, ret,
+				"failed to init cust pmu config (%d)", ret);
 	}
 
 #if IS_ENABLED(CONFIG_PM_SLEEP)

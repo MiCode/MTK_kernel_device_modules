@@ -418,6 +418,15 @@ int slbc_get_cache_usage(int *cpu, int *gpu, int *other)
 }
 EXPORT_SYMBOL_GPL(slbc_get_cache_usage);
 
+int slbc_get_cust_pmu(unsigned char idx, u64 *cnt, u64 *timestamp)
+{
+	if (common_ops && common_ops->slbc_get_cust_pmu)
+		return common_ops->slbc_get_cust_pmu(idx, cnt, timestamp);
+	else
+		return -ENODEV;
+}
+EXPORT_SYMBOL_GPL(slbc_get_cust_pmu);
+
 void slbc_register_common_ops(struct slbc_common_ops *ops)
 {
 	common_ops = ops;

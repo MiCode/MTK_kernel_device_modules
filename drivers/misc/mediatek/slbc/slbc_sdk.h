@@ -22,6 +22,7 @@ extern int slbc_get_cache_hit_rate(enum slc_ach_uid uid);
 extern int slbc_get_cache_hit_bw(enum slc_ach_uid uid);
 extern int slbc_get_cache_usage(int *cpu, int *gpu, int *other);
 extern int slbc_enable_gpu_dynamic_cache(uint32_t type);
+extern int slbc_get_cust_pmu(unsigned char idx, u64 *cnt, u64 *timestamp);
 #else
 __weak int slbc_force_cache(enum slc_ach_uid uid, unsigned int size) { return -EDISABLED; }
 __weak int slbc_force_dynamic_cache(enum slc_ach_uid uid, unsigned int size) { return -EDISABLED; }
@@ -37,6 +38,7 @@ __weak int slbc_get_cache_hit_rate(enum slc_ach_uid uid) { return -EDISABLED; }
 __weak int slbc_get_cache_hit_bw(enum slc_ach_uid uid) { return -EDISABLED; }
 __weak int slbc_get_cache_usage(int *cpu, int *gpu, int *other) { return -EDISABLED; }
 __weak int slbc_enable_gpu_dynamic_cache(uint32_t type) { return -EDISABLED; }
+__weak int slbc_get_cust_pmu(unsigned char idx, u64 *cnt, u64 *timestamp) { return -EDISABLED; }
 #endif /* CONFIG_MTK_SLBC */
 
 #endif /* _SLBC_SDK_H_ */
