@@ -59,6 +59,7 @@ static int binder_vip_inheritance_enable = 1;
 static int binder_nonvip_inheritance_enable;
 #endif
 static int binder_uclamp_inheritance_enable;
+static int binder_uclamp_inheritance_enable_authority = 1;
 static pid_t unset_binder_uclamp_pid;
 static struct cpu_info ci;
 static u64 checked_timestamp;
@@ -749,6 +750,8 @@ void do_set_binder_uclamp_param(pid_t pid, int binder_uclamp_max, int binder_ucl
 	struct task_turbo_t *task_turbo_data;
 	struct task_struct *task_struct_data;
 
+	if(!binder_uclamp_inheritance_enable_authority)
+		return;
 	trace_binder_uclamp_parameters_set(pid, binder_uclamp_max, binder_uclamp_min);
 	if (binder_uclamp_min<UCLAMP_MIN_VALUE || binder_uclamp_min>UCLAMP_MAX_VALUE ||
 		binder_uclamp_max<UCLAMP_MIN_VALUE || binder_uclamp_max>UCLAMP_MAX_VALUE)
@@ -787,7 +790,7 @@ void do_unset_binder_uclamp_param(int pid)
 	struct task_turbo_t *task_turbo_data;
 	struct task_struct *task_struct_data;
 
-	if (pid < 0)
+	if (pid < 0 || (!binder_uclamp_inheritance_enable_authority))
 		return;
 
 	unset_binder_uclamp_pid = pid;
@@ -820,6 +823,8 @@ void do_unset_binder_uclamp_param(int pid)
 
 void do_binder_uclamp_stuff(int cmd)
 {
+	if(!binder_uclamp_inheritance_enable_authority)
+		return;
 	trace_binder_uclamp_parameters_set(cmd, -2, -2);
 	if(cmd == PRINT_UCLAMP_LIST)
 		print_uclamp_list();
@@ -829,9 +834,11 @@ void do_binder_uclamp_stuff(int cmd)
 
 void do_enable_binder_uclamp_inheritance(int enable)
 {
+	if(!binder_uclamp_inheritance_enable_authority)
+		return;
 	if (enable < 0)
 		return;
-	if (binder_uclamp_inheritance_enable && !enable)
+	if (!enable)
 		uclamp_list_clear();
 	binder_uclamp_inheritance_enable = !!enable;
 }
@@ -855,6 +862,28 @@ static const struct kernel_param_ops enable_binder_uclamp_inheritance_ops = {
 module_param_cb(enable_binder_uclamp_inheritance
 		, &enable_binder_uclamp_inheritance_ops, &binder_uclamp_inheritance_enable, 0664);
 MODULE_PARM_DESC(enable_binder_uclamp_inheritance, "Enable or disable binder uclamp inheritance");
+
+static int enable_binder_uclamp_inheritance_authority(const char *buf, const struct kernel_param *kp)
+{
+	int retval = 0, val = 0;
+
+	retval = kstrtoint(buf, 0, &val);
+	if (retval)
+		return -EINVAL;
+	if(!val)
+		do_enable_binder_uclamp_inheritance(val);
+	binder_uclamp_inheritance_enable_authority = !!val;
+	return retval;
+}
+
+static const struct kernel_param_ops enable_binder_uclamp_inheritance_authority_ops = {
+	.set = enable_binder_uclamp_inheritance_authority,
+	.get = param_get_int,
+};
+
+module_param_cb(enable_binder_uclamp_inheritance_authority
+		, &enable_binder_uclamp_inheritance_authority_ops, &binder_uclamp_inheritance_enable_authority, 0664);
+MODULE_PARM_DESC(enable_binder_uclamp_inheritance_authority, "Enable or disable binder_uclamp_inheritance_authority");
 
 static char binder_uclamp_param[64] = "";
 static int set_binder_uclamp_param(const char *buf, const struct kernel_param *kp)
@@ -1366,7 +1395,7 @@ static void probe_android_vh_binder_set_priority(void *ignore, struct binder_tra
 	if (binder_vip_inheritance_enable && tt_vip_enable && binder_start_vip_inherit_hook)
 		binder_start_vip_inherit(t->from ? t->from->task : NULL, task);
 #endif
-	if (binder_uclamp_inheritance_enable)
+	if (binder_uclamp_inheritance_enable && binder_uclamp_inheritance_enable_authority)
 		binder_start_uclamp_inherit(t->from ? t->from->task : NULL, task);
 }
 
