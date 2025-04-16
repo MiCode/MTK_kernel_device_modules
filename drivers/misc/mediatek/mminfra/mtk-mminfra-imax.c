@@ -149,14 +149,16 @@ static void init_disp_smi(int id, void __iomem *disp_larb_base, unsigned int fak
 		mminfra_read(disp_larb_base + 0x380 + 0x4 * fake_port));
 }
 
-static void init_smi(void)
+static void init_smi(unsigned int is_sram)
 {
-	if (mdp_larb_0_base)
-		init_mdp_smi(0, mdp_larb_0_base, mdp_larb_0_fake);
-	if (mdp_larb_1_base)
-		init_mdp_smi(1, mdp_larb_1_base, mdp_larb_1_fake);
-	if (mdp_larb_2_base)
-		init_mdp_smi(1, mdp_larb_2_base, mdp_larb_2_fake);
+	if (is_sram) {
+		if (mdp_larb_0_base)
+			init_mdp_smi(0, mdp_larb_0_base, mdp_larb_0_fake);
+		if (mdp_larb_1_base)
+			init_mdp_smi(1, mdp_larb_1_base, mdp_larb_1_fake);
+		if (mdp_larb_2_base)
+			init_mdp_smi(1, mdp_larb_2_base, mdp_larb_2_fake);
+	}
 
 	if (disp_larb_0_base)
 		init_disp_smi(0, disp_larb_0_base, disp_larb_0_fake);
@@ -407,7 +409,7 @@ static int do_mminfra_imax(const char *val, const struct kernel_param *kp)
 		is_init = true;
 	}
 	init_mmsys();
-	init_smi();
+	init_smi(is_sram);
 	cmdq_util_mminfra_cmd(2);
 
 	if (is_sram) {
@@ -494,7 +496,7 @@ int fake_eng_fuzzer(bool enable, u32 larb)
 	if (!is_init)
 		init_ctrl_base(g_pdev);
 
-	init_smi();
+	init_smi(0);
 	cmdq_util_mminfra_cmd(2);
 
 	if (!is_init) {
