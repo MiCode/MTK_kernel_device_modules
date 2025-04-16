@@ -262,6 +262,7 @@ bool mhal_DPTx_SetSwingtPreEmphasis(struct mtk_dp *mtk_dp, int lane_num,
 	int swingValue, int preEmphasis);
 bool mhal_DPTx_ResetSwingtPreEmphasis(struct mtk_dp *mtk_dp);
 void mhal_DPTx_DigitalSwReset(struct mtk_dp *mtk_dp);
+void mhal_recover_safe_mode_settting(struct mtk_dp *mtk_dp);
 bool mhal_DPTx_GetHPDPinLevel(struct mtk_dp *mtk_dp);
 void mhal_DPTx_SSCOnOffSetting(struct mtk_dp *mtk_dp, bool bENABLE);
 void mhal_DPTx_SWInterruptSet(struct mtk_dp *mtk_dp, WORD bstatus);

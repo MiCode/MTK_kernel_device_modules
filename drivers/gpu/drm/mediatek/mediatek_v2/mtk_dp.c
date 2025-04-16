@@ -61,6 +61,7 @@ struct mutex dp_lock;
 static bool g_force_2lane;
 static bool g_hdcp_on = 1;
 static bool aux_swap;
+static BYTE USB_LANECOUNT = DP_LANECOUNT_4;
 static BYTE MAX_LANECOUNT = DP_LANECOUNT_4;
 
 static const struct drm_display_mode dptx_est_modes[] = {
@@ -582,10 +583,12 @@ void mdrv_DPTx_InitVariable(struct mtk_dp *mtk_dp)
 	mtk_dp->training_info.ubDPSysVersion = DP_VERSION_14;
 	mtk_dp->training_info.ubLinkRate = DP_LINKRATE_HBR3;
 
-	if (mtk_dp_2lane_only()) {
-		DPTXMSG("%s: force 2lane only\n", __func__);
-		MAX_LANECOUNT = DP_LANECOUNT_2;
-	}
+	if(mtk_dp->training_info.set_max_lanecount_enable) {
+		DPTXMSG("Set max lane count = %d\n", mtk_dp->training_info.set_max_lanecount);
+		MAX_LANECOUNT = (mtk_dp->training_info.set_max_lanecount < USB_LANECOUNT) ?
+			mtk_dp->training_info.set_max_lanecount : USB_LANECOUNT;
+	} else
+		MAX_LANECOUNT = USB_LANECOUNT;
 
 	mtk_dp->training_info.ubLinkLaneCount = MAX_LANECOUNT;
 	mtk_dp->training_info.bSinkEXTCAP_En = false;
@@ -833,7 +836,7 @@ void mdrv_DPTx_SetDPTXOut(struct mtk_dp *mtk_dp)
 
 	mdrv_DPTx_SetTU(mtk_dp);
 
-	if (mtk_dp->info.resolution == SINK_640_480)
+	if (mtk_dp->mode.hdisplay == 640 && mtk_dp->mode.vdisplay == 480)
 		mhal_DPTx_SafeModeSetting(mtk_dp);
 }
 
@@ -1622,8 +1625,9 @@ void mdrv_DPTx_ColorSet(int bpc, int format)
 	DPTXMSG("%sadb set bpc:%d format:%d\n", __func__, bpc, format);
 	// bpc 0/1/2/3/4: 6/8/10/12/16
 	// format 0/1/2/3/4 RGB/YUV422/YUV420/YONLY/RAW
-	g_mtk_dp->info.depth = bpc;
-	g_mtk_dp->info.format = format;
+	mhal_DPTx_SetColorDepth(g_mtk_dp, bpc);
+	mhal_DPTx_SetColorFormat(g_mtk_dp, format);
+	mhal_DPTx_MacVideoPatternGenEn(g_mtk_dp, true);
 }
 
 void mdrv_DPTx_set_maxlinkrate(bool enable, int maxlinkrate)
@@ -2865,11 +2869,14 @@ void mdrv_DPTx_InitPort(struct mtk_dp *mtk_dp)
 	mhal_DPTx_SetAuxSwap(mtk_dp, aux_swap);
 	mhal_DPTx_DigitalSetting(mtk_dp);
 	mhal_DPTx_AnalogPowerOnOff(mtk_dp, true);
-	mhal_DPTx_PHYSetting(mtk_dp, MAX_LANECOUNT);
+	mhal_DPTx_PHYSetting(mtk_dp, USB_LANECOUNT);
 	mhal_DPTx_HPDDetectSetting(mtk_dp);
 
 	mhal_DPTx_DigitalSwReset(mtk_dp);
 	mhal_DPTx_Set_Efuse_Value(mtk_dp);
+
+	if (mtk_dp->priv->data->mmsys_id == MMSYS_MT6993)
+		mhal_recover_safe_mode_settting(mtk_dp);
 }
 
 void mdrv_DPTx_Video_Enable(struct mtk_dp *mtk_dp, bool bEnable)
@@ -3215,156 +3222,25 @@ void mtk_dp_video_config(struct mtk_dp *mtk_dp)
 		}
 		mtk_dp->info.depth = fakebpc;
 	}
-		switch (mtk_dp->info.resolution) {
-		case SINK_7680_4320:
-			DPTX_TBL->FrameRate = 60;
-			DPTX_TBL->Htt = 8040; DPTX_TBL->Hbp = 240; DPTX_TBL->Hsw = 96;
-			DPTX_TBL->bHsp = 0; DPTX_TBL->Hfp = 24; DPTX_TBL->Hde = 7680;
-			DPTX_TBL->Vtt = 4381; DPTX_TBL->Vbp = 6; DPTX_TBL->Vsw = 8;
-			DPTX_TBL->bVsp = 0; DPTX_TBL->Vfp = 47; DPTX_TBL->Vde = 4320;
-			break;
-		case SINK_3840_2160:
-			DPTX_TBL->FrameRate = 60;
-			DPTX_TBL->Htt = 4400; DPTX_TBL->Hbp = 296; DPTX_TBL->Hsw = 88;
-			DPTX_TBL->bHsp = 0; DPTX_TBL->Hfp = 176; DPTX_TBL->Hde = 3840;
-			DPTX_TBL->Vtt = 2250; DPTX_TBL->Vbp = 72; DPTX_TBL->Vsw = 10;
-			DPTX_TBL->bVsp = 0; DPTX_TBL->Vfp = 8; DPTX_TBL->Vde = 2160;
-			break;
-		case SINK_3840_2160_30:
-			DPTX_TBL->FrameRate = 30;
-			DPTX_TBL->Htt = 4400; DPTX_TBL->Hbp = 296; DPTX_TBL->Hsw = 88;
-			DPTX_TBL->bHsp = 0; DPTX_TBL->Hfp = 176; DPTX_TBL->Hde = 3840;
-			DPTX_TBL->Vtt = 2250; DPTX_TBL->Vbp = 72; DPTX_TBL->Vsw = 10;
-			DPTX_TBL->bVsp = 0; DPTX_TBL->Vfp = 8; DPTX_TBL->Vde = 2160;
-			break;
-		case SINK_2560_1600:
-			DPTX_TBL->FrameRate = 60;
-			DPTX_TBL->Htt = 2720; DPTX_TBL->Hbp = 80; DPTX_TBL->Hsw = 32;
-			DPTX_TBL->bHsp = 0; DPTX_TBL->Hfp = 48; DPTX_TBL->Hde = 2560;
-			DPTX_TBL->Vtt = 1646; DPTX_TBL->Vbp = 37; DPTX_TBL->Vsw = 6;
-			DPTX_TBL->bVsp = 0; DPTX_TBL->Vfp = 3; DPTX_TBL->Vde = 1600;
-			break;
-		case SINK_2560_1440:
-			DPTX_TBL->FrameRate = 60;
-			DPTX_TBL->Htt = 2720; DPTX_TBL->Hbp = 80; DPTX_TBL->Hsw = 32;
-			DPTX_TBL->bHsp = 0; DPTX_TBL->Hfp = 48; DPTX_TBL->Hde = 2560;
-			DPTX_TBL->Vtt = 1481; DPTX_TBL->Vbp = 33; DPTX_TBL->Vsw = 5;
-			DPTX_TBL->bVsp = 0; DPTX_TBL->Vfp = 3; DPTX_TBL->Vde = 1440;
-			break;
-		case SINK_2048_1536:
-			DPTX_TBL->FrameRate = 60;
-			DPTX_TBL->Htt = 2208; DPTX_TBL->Hbp = 80; DPTX_TBL->Hsw = 32;
-			DPTX_TBL->bHsp = 0; DPTX_TBL->Hfp = 48; DPTX_TBL->Hde = 2048;
-			DPTX_TBL->Vtt = 1580; DPTX_TBL->Vbp = 37; DPTX_TBL->Vsw = 4;
-			DPTX_TBL->bVsp = 0; DPTX_TBL->Vfp = 3; DPTX_TBL->Vde = 1536;
-			break;
-		case SINK_1920_1440:
-			DPTX_TBL->FrameRate = 60;
-			DPTX_TBL->Htt = 2600; DPTX_TBL->Hbp = 344; DPTX_TBL->Hsw = 208;
-			DPTX_TBL->bHsp = 1; DPTX_TBL->Hfp = 128; DPTX_TBL->Hde = 1920;
-			DPTX_TBL->Vtt = 1500; DPTX_TBL->Vbp = 56; DPTX_TBL->Vsw = 3;
-			DPTX_TBL->bVsp = 0; DPTX_TBL->Vfp = 1; DPTX_TBL->Vde = 1440;
-			break;
-		case SINK_1920_1200:
-			DPTX_TBL->FrameRate = 60;
-			DPTX_TBL->Htt = 2080; DPTX_TBL->Hbp = 80; DPTX_TBL->Hsw = 32;
-			DPTX_TBL->bHsp = 0; DPTX_TBL->Hfp = 48; DPTX_TBL->Hde = 1920;
-			DPTX_TBL->Vtt = 1235; DPTX_TBL->Vbp = 26; DPTX_TBL->Vsw = 6;
-			DPTX_TBL->bVsp = 0; DPTX_TBL->Vfp = 3; DPTX_TBL->Vde = 1200;
-			break;
-		case SINK_1920_1080_120_RB:
-			DPTX_TBL->FrameRate = 120;
-			DPTX_TBL->Htt = 2080; DPTX_TBL->Hbp = 80; DPTX_TBL->Hsw = 32;
-			DPTX_TBL->bHsp = 0; DPTX_TBL->Hfp = 48; DPTX_TBL->Hde = 1920;
-			DPTX_TBL->Vtt = 1144; DPTX_TBL->Vbp = 56; DPTX_TBL->Vsw = 5;
-			DPTX_TBL->bVsp = 0; DPTX_TBL->Vfp = 3; DPTX_TBL->Vde = 1080;
-			break;
-		case SINK_1920_1080_120:
-			DPTX_TBL->FrameRate = 120;
-			DPTX_TBL->Htt = 2080; DPTX_TBL->Hbp = 80; DPTX_TBL->Hsw = 32;
-			DPTX_TBL->bHsp = 0; DPTX_TBL->Hfp = 48; DPTX_TBL->Hde = 1920;
-			DPTX_TBL->Vtt = 1144; DPTX_TBL->Vbp = 56; DPTX_TBL->Vsw = 5;
-			DPTX_TBL->bVsp = 0; DPTX_TBL->Vfp = 3; DPTX_TBL->Vde = 1080;
-			break;
-		case SINK_1920_1080:
-			DPTX_TBL->FrameRate = 60;
-			DPTX_TBL->Htt = 2200; DPTX_TBL->Hbp = 148; DPTX_TBL->Hsw = 44;
-			DPTX_TBL->bHsp = 0; DPTX_TBL->Hfp = 88; DPTX_TBL->Hde = 1920;
-			DPTX_TBL->Vtt = 1125; DPTX_TBL->Vbp = 36; DPTX_TBL->Vsw = 5;
-			DPTX_TBL->bVsp = 0; DPTX_TBL->Vfp = 4; DPTX_TBL->Vde = 1080;
-			break;
-		case SINK_1280_800:
-			DPTX_TBL->FrameRate = 60;
-			DPTX_TBL->Htt = 1680; DPTX_TBL->Hbp = 200; DPTX_TBL->Hsw = 128;
-			DPTX_TBL->bHsp = 0; DPTX_TBL->Hfp = 72; DPTX_TBL->Hde = 1280;
-			DPTX_TBL->Vtt = 831; DPTX_TBL->Vbp = 22; DPTX_TBL->Vsw = 6;
-			DPTX_TBL->bVsp = 1; DPTX_TBL->Vfp = 3; DPTX_TBL->Vde = 800;
-			break;
-		case SINK_1080_2460:
-			DPTX_TBL->FrameRate = 60;
-			DPTX_TBL->Htt = 1172; DPTX_TBL->Hbp = 30; DPTX_TBL->Hsw = 32;
-			DPTX_TBL->bHsp = 1; DPTX_TBL->Hfp = 30; DPTX_TBL->Hde = 1080;
-			DPTX_TBL->Vtt = 2476; DPTX_TBL->Vbp = 5; DPTX_TBL->Vsw = 2;
-			DPTX_TBL->bVsp = 0; DPTX_TBL->Vfp = 9; DPTX_TBL->Vde = 2460;
-			break;
-		case SINK_1280_1024:
-			DPTX_TBL->FrameRate = 60;
-			DPTX_TBL->Htt = 1688; DPTX_TBL->Hbp = 248; DPTX_TBL->Hsw = 112;
-			DPTX_TBL->bHsp = 0; DPTX_TBL->Hfp = 88; DPTX_TBL->Hde = 1280;
-			DPTX_TBL->Vtt = 1066; DPTX_TBL->Vbp = 38; DPTX_TBL->Vsw = 3;
-			DPTX_TBL->bVsp = 0; DPTX_TBL->Vfp = 4; DPTX_TBL->Vde = 1024;
-			break;
-		case SINK_1280_960:
-			DPTX_TBL->FrameRate = 60;
-			DPTX_TBL->Htt = 1800; DPTX_TBL->Hbp = 312; DPTX_TBL->Hsw = 112;
-			DPTX_TBL->bHsp = 0; DPTX_TBL->Hfp = 96; DPTX_TBL->Hde = 1280;
-			DPTX_TBL->Vtt = 1000; DPTX_TBL->Vbp = 36; DPTX_TBL->Vsw = 3;
-			DPTX_TBL->bVsp = 0; DPTX_TBL->Vfp = 1; DPTX_TBL->Vde = 960;
-			break;
-		case SINK_1280_720:
-			DPTX_TBL->FrameRate = 60;
-			DPTX_TBL->Htt = 1650; DPTX_TBL->Hbp = 220; DPTX_TBL->Hsw = 40;
-			DPTX_TBL->bHsp = 0; DPTX_TBL->Hfp = 110; DPTX_TBL->Hde = 1280;
-			DPTX_TBL->Vtt = 750; DPTX_TBL->Vbp = 20; DPTX_TBL->Vsw = 5;
-			DPTX_TBL->bVsp = 0; DPTX_TBL->Vfp = 5; DPTX_TBL->Vde = 720;
-			break;
-		case SINK_800_600:
-			DPTX_TBL->FrameRate = 60;
-			DPTX_TBL->Htt = 1056; DPTX_TBL->Hbp = 88; DPTX_TBL->Hsw = 128;
-			DPTX_TBL->bHsp = 0; DPTX_TBL->Hfp = 40; DPTX_TBL->Hde = 800;
-			DPTX_TBL->Vtt = 628; DPTX_TBL->Vbp = 23; DPTX_TBL->Vsw = 4;
-			DPTX_TBL->bVsp = 0; DPTX_TBL->Vfp = 16; DPTX_TBL->Vde = 600;
-			break;
-		case SINK_848_480:
-			DPTX_TBL->FrameRate = 60;
-			DPTX_TBL->Htt = 1088; DPTX_TBL->Hbp = 112; DPTX_TBL->Hsw = 112;
-			DPTX_TBL->bHsp = 0; DPTX_TBL->Hfp = 16; DPTX_TBL->Hde = 848;
-			DPTX_TBL->Vtt = 517; DPTX_TBL->Vbp = 23; DPTX_TBL->Vsw = 8;
-			DPTX_TBL->bVsp = 0; DPTX_TBL->Vfp = 6; DPTX_TBL->Vde = 480;
-			break;
-		case SINK_640_480:
-		default:
-			DPTX_TBL->FrameRate = 60;
-			DPTX_TBL->Htt = 800; DPTX_TBL->Hbp = 48; DPTX_TBL->Hsw = 96;
-			DPTX_TBL->bHsp = 1; DPTX_TBL->Hfp = 16; DPTX_TBL->Hde = 640;
-			DPTX_TBL->Vtt = 525; DPTX_TBL->Vbp = 33; DPTX_TBL->Vsw = 2;
-			DPTX_TBL->bVsp = 1; DPTX_TBL->Vfp = 10; DPTX_TBL->Vde = 480;
-			break;
-	}
-	if (mtk_dp->info.resolution == SINK_3840_2160) {
-		// patch for 4k@60 with DSC 3 times compress
-		switch (mtk_dp->training_info.ubLinkRate) {
-		case DP_LINKRATE_HBR3:
-			mvid = 0x5DDE;
-			break;
-		case DP_LINKRATE_HBR2:
-			mvid = 0x8CCD;
-			break;
-		}
-		overwrite = true;
-	}
 
-	mhal_DPTx_OverWrite_MN(mtk_dp, overwrite, mvid, 0x8000);
+	DPTX_TBL->FrameRate = drm_mode_vrefresh(&mtk_dp->mode);
+	DPTX_TBL->Htt = mtk_dp->mode.htotal;
+	DPTX_TBL->Hbp = mtk_dp->mode.htotal - mtk_dp->mode.hsync_end;
+	DPTX_TBL->Hsw = mtk_dp->mode.hsync_end - mtk_dp->mode.hsync_start;
+	DPTX_TBL->bHsp = (mtk_dp->mode.flags & DRM_MODE_FLAG_PHSYNC);
+	DPTX_TBL->Hfp = mtk_dp->mode.hsync_start - mtk_dp->mode.hdisplay;
+	DPTX_TBL->Hde = mtk_dp->mode.hdisplay;
+	DPTX_TBL->Vtt = mtk_dp->mode.vtotal;
+	DPTX_TBL->Vbp = mtk_dp->mode.vtotal - mtk_dp->mode.vsync_end;
+	DPTX_TBL->Vsw = mtk_dp->mode.vsync_end - mtk_dp->mode.vsync_start;
+	DPTX_TBL->bVsp = (mtk_dp->mode.flags & DRM_MODE_FLAG_PVSYNC);
+	DPTX_TBL->Vfp = mtk_dp->mode.vsync_start - mtk_dp->mode.vdisplay;
+	DPTX_TBL->Vde = mtk_dp->mode.vdisplay;
+
+	DPTXMSG("FrameRate=%d,Htt=%d,Hbp=%d,Hsw=%d,bHsp=%d,Hfp=%d,Hde=%d,Vtt=%d,Vbp=%d,Vsw=%d,bVsp=%d,Vfp=%d,Vde=%d"
+			,DPTX_TBL->FrameRate,DPTX_TBL->Htt,DPTX_TBL->Hbp,DPTX_TBL->Hsw,DPTX_TBL->bHsp,DPTX_TBL->Hfp
+			,DPTX_TBL->Hde,DPTX_TBL->Vtt,DPTX_TBL->Vbp,DPTX_TBL->Vsw,DPTX_TBL->bVsp,DPTX_TBL->Vfp
+			,DPTX_TBL->Vde);
 
 	if (mtk_dp->has_dsc) {
 		uint8_t Data[1];
@@ -3909,15 +3785,46 @@ static const struct drm_connector_funcs mtk_dp_connector_funcs = {
 	.atomic_destroy_state = drm_atomic_helper_connector_destroy_state,
 };
 
+#define DRM_MODE_FMT    "\"%s\": %d %d %d %d %d %d %d %d %d %d 0x%x 0x%x"
+#define DRM_MODE_ARG(m) \
+	(m)->name, drm_mode_vrefresh(m), (m)->clock, \
+	(m)->hdisplay, (m)->hsync_start, (m)->hsync_end, (m)->htotal, \
+	(m)->vdisplay, (m)->vsync_start, (m)->vsync_end, (m)->vtotal, \
+	(m)->type, (m)->flags
+
+struct drm_display_mode *add_cea_mode(struct drm_device *dev, int hdisplay, int vdisplay, int vrefresh)
+{
+	u8 vic;
+	struct drm_display_mode *cea_mode;
+
+	for (vic = 1; vic <= 255; vic++) {	//since vic is u8
+		cea_mode = drm_display_mode_from_cea_vic(dev, vic);
+		if (!cea_mode) {
+			DPTXMSG("Out of declared cea mode array size, use 640x480@60Hz\n");
+			return drm_display_mode_from_cea_vic(dev, (u8)1);
+		}
+		if (cea_mode->hdisplay == hdisplay && cea_mode->vdisplay == vdisplay &&
+			cea_mode->clock*1000/(cea_mode->htotal*cea_mode->vtotal) == vrefresh)
+			break;
+	}
+	if (vic > 255) {
+		DPTXMSG("No such cea mode, use 640x480@60Hz\n");
+		return drm_display_mode_from_cea_vic(dev, (u8)1);
+	}
+
+	return cea_mode;
+}
+
 static int mtk_dp_conn_get_modes(struct drm_connector *conn)
 {
 	struct mtk_dp *mtk_dp = mtk_dp_ctx_from_conn(conn);
 	int ret;
-	struct drm_display_mode *mode;
+	struct drm_display_mode *mode, *printmode;
 	struct drm_device *dev = conn->dev;
+	int width = 0, height = 0, fps = 0;
+	bool reduced = false, interlaced = false, margins = false;
 
-	DPTXFUNC("fakecablein %d, res %d\n", fakecablein, fakeres);
-	if (fakecablein) {
+	if (mtk_dp && mtk_dp->force_timing.enable > FORCE_TIMING_NONE) {
 		conn->display_info.width_mm = 900;
 		conn->display_info.height_mm = 1100;
 
@@ -3928,29 +3835,67 @@ static int mtk_dp_conn_get_modes(struct drm_connector *conn)
 		conn->display_info.max_tmds_clock = 0;
 		conn->display_info.dvi_dual = false;
 
-		if (fakeres == SINK_3840_2160)
-			mode = drm_mode_duplicate(dev, &dptx_est_modes[0]);
-		else if (fakeres == SINK_3840_2160_30)
-			mode = drm_mode_duplicate(dev, &dptx_est_modes[1]);
-		else if (fakeres == SINK_1920_1080)
-			mode = drm_mode_duplicate(dev, &dptx_est_modes[2]);
-		else if (fakeres == SINK_1280_720)
-			mode = drm_mode_duplicate(dev, &dptx_est_modes[3]);
-		else
-			mode = drm_mode_duplicate(dev, &dptx_est_modes[4]);
+		if (mtk_dp->force_timing.enable == FORCE_TIMING_CVT) {
+			width = mtk_dp->force_timing.width;
+			height = mtk_dp->force_timing.height;
+			fps = mtk_dp->force_timing.fps;
+			reduced = mtk_dp->force_timing.reduced;
+			interlaced = mtk_dp->force_timing.interlaced;
+			margins = mtk_dp->force_timing.margins;
 
-		if (!mode)
+			DPTXMSG("add cvt mode: %dx%d, fps=%d\n", width, height, fps);
+			mode = drm_cvt_mode(dev, width, height, fps, reduced, interlaced, margins);
+		} else if (mtk_dp->force_timing.enable == FORCE_TIMING_CEA) {
+			width = mtk_dp->force_timing.width;
+			height = mtk_dp->force_timing.height;
+			fps = mtk_dp->force_timing.fps;
+
+			DPTXMSG("add cea mode: %dx%d, fps=%d\n", width, height, fps);
+			mode = add_cea_mode(dev, width, height, fps);
+		} else if (mtk_dp->force_timing.enable == FORCE_TIMING_DETAIL) {
+			struct drm_display_mode new_mode = {
+				.clock = mtk_dp->force_timing.clock,
+				.hdisplay = mtk_dp->force_timing.hdisplay,
+				.hsync_start = mtk_dp->force_timing.hsync_start,
+				.hsync_end = mtk_dp->force_timing.hsync_end,
+				.htotal = mtk_dp->force_timing.htotal,
+				.hskew = mtk_dp->force_timing.hskew,
+				.vdisplay = mtk_dp->force_timing.vdisplay,
+				.vsync_start = mtk_dp->force_timing.vsync_start,
+				.vsync_end = mtk_dp->force_timing.vsync_end,
+				.vtotal = mtk_dp->force_timing.vtotal,
+				.vscan = mtk_dp->force_timing.vscan,
+				.type = DRM_MODE_TYPE_DRIVER | DRM_MODE_TYPE_PREFERRED,
+				.flags = DRM_MODE_FLAG_PHSYNC | DRM_MODE_FLAG_PVSYNC
+			};
+			DPTXMSG("add detail mode: clock=%d, hdisplay=%d, hsync_start=%d, hsync_end=%d, ",
+				new_mode.clock, new_mode.hdisplay, new_mode.hsync_start, new_mode.hsync_end);
+			DPTXMSG("htotal=%d, hskew=%d, vdisplay=%d, vsync_start=%d, ",
+				new_mode.htotal, new_mode.hskew, new_mode.vdisplay, new_mode.vsync_start);
+			DPTXMSG("vsync_end=%d, vtotal=%d, vscan=%d\n",
+				new_mode.vsync_end, new_mode.vtotal, new_mode.vscan);
+			mode = drm_mode_duplicate(dev, &new_mode);
+		}
+		if (!mode) {
+			DPTXMSG("%s no mode and return 0\n", __func__);
 			return 0;
+		}
 		drm_mode_set_name(mode);
 		mode->type = DRM_MODE_TYPE_DRIVER | DRM_MODE_TYPE_PREFERRED;
 		drm_mode_probed_add(conn, mode);
+
+		if (mode)
+			list_for_each_entry(printmode, &conn->probed_modes, head)
+				DPTXMSG("fake %s modes:" DRM_MODE_FMT "\n",
+					(mtk_dp->force_timing.enable == FORCE_TIMING_CVT) ? "cvt" :
+					(mtk_dp->force_timing.enable == FORCE_TIMING_CEA) ? "cea" : "detail",
+					DRM_MODE_ARG(printmode));
 
 		return 1;
 	}
 
 	if (mtk_dp->edid) {
-		drm_connector_update_edid_property(&mtk_dp->conn,
-			mtk_dp->edid);
+		drm_connector_update_edid_property(&mtk_dp->conn, mtk_dp->edid);
 		ret = drm_add_edid_modes(&mtk_dp->conn, mtk_dp->edid);
 		//drm_edid_to_eld(&mtk_dp->conn, mtk_dp->edid);
 		DPTXMSG("%s modes = %d\n", __func__, ret);
@@ -3986,25 +3931,6 @@ static struct drm_display_limit_mode dp_plat_limit[] = {
 	{ 640,  480, 60,  25200, 1},
 };
 
-void mtk_dp_set_force_2lane(bool en)
-{
-	g_force_2lane = en;
-}
-
-bool mtk_dp_2lane_only(void)
-{
-	bool ret = false;
-
-	if (g_mtk_dp && g_mtk_dp->priv && g_mtk_dp->priv->data)
-		if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6983)
-			ret = true;
-
-	if (g_force_2lane)
-		ret = true;
-
-	return ret;
-}
-
 void mtk_dp_enable_4k60(int enable)
 {
 #if DPTX_SUPPORT_DSC
@@ -4025,12 +3951,13 @@ void mtk_dp_enable_4k60(int enable)
 static enum drm_mode_status mtk_dp_conn_mode_valid(struct drm_connector *conn,
 		struct drm_display_mode *mode)
 {
-	int plat_limit_array = ARRAY_SIZE(dp_plat_limit);
-	int i;
 	struct mtk_dp *mtk_dp = mtk_dp_ctx_from_conn(conn);
 	unsigned int bandwidth = mtk_dp->training_info.ubLinkLaneCount *
 		mtk_dp->training_info.ubLinkRate * 27000 * 8 / 24;
-
+	unsigned int vsize = 0, vpw = 0, vfp = 0, vbp = 0, vrefresh = 0, vtotal = 0;
+	unsigned int line_time = 0, vblank_time = 0;
+	unsigned int adjusted_clock = mode->clock;
+	unsigned int adjusted_bandwidth = 0;
 #if DPTX_SUPPORT_DSC
 	// TODO : add DSC rules here
 	if (mode->hdisplay == 3840 && mode->vdisplay == 2160 &&
@@ -4039,67 +3966,77 @@ static enum drm_mode_status mtk_dp_conn_mode_valid(struct drm_connector *conn,
 		bandwidth = bandwidth * 594 * 10 / 2025;
 #endif
 
-	if (fakecablein == true)
-		bandwidth = dp_plat_limit[0].clock;
+	if (mtk_dp->has_fec)
+		adjusted_clock = mode->clock * 1024 / 1000; // fec function add 2.4% bandwidth in spec
 
-	DPTXMSG("Hde:%d,Vde:%d,fps:%d,clk:%d,bandwidth:%d,4k60:%d\n",
-		mode->hdisplay, mode->vdisplay, drm_mode_vrefresh(mode), mode->clock,
-		bandwidth, dp_plat_limit[0].valid);
+	// 2.5% margin for pll clk or truncate error
+	adjusted_bandwidth = bandwidth * 975 / 1000;
 
+	DPTXDBG("Hde:%d,Vde:%d,fps:%d,adjusted_clock:%d,adjusted_bandwidth:%d\n", mode->hdisplay,
+		mode->vdisplay, drm_mode_vrefresh(mode), adjusted_clock, adjusted_bandwidth);
 
-	if (mode->clock > (dp_plat_limit[0].clock + 50000))
-		return MODE_CLOCK_HIGH;
-	if (mode->clock < (dp_plat_limit[plat_limit_array-1].clock - 5000))
-		return MODE_CLOCK_LOW;
-
-	for (i = 0; i < plat_limit_array; i++) {
-		if (mode->hdisplay == 640 && mode->vdisplay == 480)
-			break;
-
-		if (mode->clock == 0)
-			mode->clock
-			= mode->htotal * mode->vtotal * drm_mode_vrefresh(mode);
-
-		if ((abs(dp_plat_limit[i].vrefresh - drm_mode_vrefresh(mode)) <= 1)
-			&& (mode->vdisplay == dp_plat_limit[i].vdisplay)
-			&& (mode->hdisplay == dp_plat_limit[i].hdisplay)
-			&& (dp_plat_limit[i].clock < bandwidth)) {
-
-			if (dp_plat_limit[i].valid)
-				break;
-
-			return MODE_BAD_VSCAN;
+	if (mode->hdisplay == 640 && mode->vdisplay == 480) {
+		if (drm_mode_vrefresh(mode) <= 61 && drm_mode_vrefresh(mode) >= 59) {
+			DPTXDBG("Returning MODE_OK: Standard display mode");
+			return MODE_OK;
 		}
+		DPTXDBG("Returning MODE_NOMODE: abnormal 640*480 clk");
+		return MODE_NOMODE;
 	}
 
-	if (i >= plat_limit_array)
-		return MODE_BAD_VSCAN;
+	if (adjusted_clock > adjusted_bandwidth) {
+		DPTXDBG("Returning MODE_CLOCK_HIGH: Mode clock exceeds bandwidth");
+		return MODE_CLOCK_HIGH;
+	}
 
-	DPTXMSG("%s xres=%d, yres=%d, refresh=%d, clock=%d\n",
-			__func__, mode->hdisplay, mode->vdisplay,
-			drm_mode_vrefresh(mode),
-			mode->clock);
-	if (0x1fff > 0 && mode->hdisplay > 0x1fff)
+	if (mode->clock < 62500) { // kHz
+		DPTXDBG("Returning MODE_CLOCK_LOW: Mode clock is too low");
+		return MODE_CLOCK_LOW;
+	}
+
+	if (mode->hdisplay > 0x1fff) { // 8191
+		DPTXDBG("Returning MODE_VIRTUAL_X: Virtual width exceeds limit");
 		return MODE_VIRTUAL_X;
-	if (0x1fff > 0 && mode->vdisplay > 0x1fff)
-		return MODE_VIRTUAL_Y;
+	}
 
-	if (g_mtk_dp->info.force_resoultion_en==1){
-		if (g_mtk_dp->info.force_resoultion_mode==1){
-			if (mode->hdisplay == 1920 && mode->vdisplay == 1080) {
-				DPTXMSG("[DP Debug]Force FHD timing");
-				return MODE_OK;
-			} else
-				return MODE_BAD_VSCAN;
-		} else{
-			if (mode->hdisplay == 640 && mode->vdisplay == 480) {
-				DPTXMSG("[DP Debug]Force safe-mode timing");
-				return MODE_OK;
-			} else
-				return MODE_BAD_VSCAN;
-		}
-	} else
-		return MODE_OK;
+	if (mode->vdisplay > 0x1fff) { // 8191
+		DPTXDBG("Returning MODE_VIRTUAL_Y: Virtual height exceeds limit");
+		return MODE_VIRTUAL_Y;
+	}
+
+	if (mode->hdisplay > 4095 || mode->hdisplay < 640) { // dual exdma && spec 640*480
+		DPTXDBG("Returning MODE_BAD_HVALUE: Horizontal display value is out of range");
+		return MODE_BAD_HVALUE;
+	}
+
+	if (mode->vdisplay > 2160 || mode->vdisplay < 480) { // internal monitor max is 2160 && spec 640*480
+		DPTXDBG("Returning MODE_BAD_VVALUE: Vertical display value is out of range");
+		return MODE_BAD_VVALUE;
+	}
+
+	if (drm_mode_vrefresh(mode) > 240) { // no environment
+		DPTXDBG("Returning MODE_NOMODE: FPS is too high");
+		return MODE_NOMODE;
+	}
+
+	vsize = mode->vdisplay;
+	vpw = mode->vsync_end - mode->vsync_start;
+	vfp = mode->vsync_start - mode->vdisplay;
+	vbp = mode->vtotal - mode->vsync_end;
+	vrefresh = drm_mode_vrefresh(mode);
+
+	vtotal = vfp + vpw + vbp + vsize;
+	line_time = (vtotal * vrefresh) > 0 ? 1000000 * 100 / (vtotal * vrefresh) : 1400;
+	vblank_time = line_time * (vfp + vpw + vbp);
+
+	// FHD 120Hz blanking = 333ms (Can't be lower than this value)
+	if (vblank_time - 13300 < 20000) { // prefetch=13300
+		DPTXDBG("Returning MODE_VBLANK_NARROW: VBlank time too narrow");
+		return MODE_VBLANK_NARROW;
+	}
+
+	DPTXDBG("Returning MODE_OK: All checks passed");
+	return MODE_OK;
 }
 
 static const struct drm_connector_helper_funcs mtk_dp_connector_helper_funcs = {
@@ -4115,6 +4052,23 @@ static void mtk_dp_encoder_destroy(struct drm_encoder *encoder)
 
 static const struct drm_encoder_funcs mtk_dp_enc_funcs = {
 	.destroy = mtk_dp_encoder_destroy,
+};
+
+static void mtk_dp_encoder_mode_set(struct drm_encoder *encoder,
+				     struct drm_display_mode *mode,
+				     struct drm_display_mode *adjusted)
+{
+	struct mtk_dp *mtk_dp = container_of(encoder, struct mtk_dp, enc);
+
+	drm_mode_copy(&mtk_dp->mode, adjusted);
+
+	mhal_DPTx_ModeCopy(adjusted);
+	DPTXMSG("%s Htt=%d Vtt=%d Ha=%d Va=%d\n", __func__, mtk_dp->mode.htotal,
+		mtk_dp->mode.vtotal, mtk_dp->mode.hdisplay, mtk_dp->mode.vdisplay);
+}
+
+static const struct drm_encoder_helper_funcs mtk_dp_encoder_helper_funcs = {
+	.mode_set = mtk_dp_encoder_mode_set,
 };
 
 static ssize_t mtk_dp_aux_transfer(struct drm_dp_aux *mtk_aux,
@@ -4379,6 +4333,63 @@ void mtk_dp_fake_plugin(unsigned int status, unsigned int bpc)
 	mtk_dp_hotplug_uevent(1);
 }
 
+void mtk_dp_set_force_lane(bool enable,int number)
+{
+	if (g_mtk_dp == NULL) {
+		DPTXERR("%s: dp not initial\n", __func__);
+		return;
+	}
+	g_mtk_dp->training_info.set_max_lanecount_enable = enable;
+	g_mtk_dp->training_info.set_max_lanecount = number;
+}
+
+void mtk_dp_force_timing_cvt(unsigned int res_h, unsigned int res_v, unsigned int fps)
+{
+	if (g_mtk_dp == NULL) {
+		DPTXERR("%s: dp not initial\n", __func__);
+		return;
+	}
+	g_mtk_dp->force_timing.enable = FORCE_TIMING_CVT;
+	g_mtk_dp->force_timing.width = res_h;
+	g_mtk_dp->force_timing.height = res_v;
+	g_mtk_dp->force_timing.fps = fps;
+	g_mtk_dp->force_timing.reduced = false;
+	g_mtk_dp->force_timing.interlaced = false;
+	g_mtk_dp->force_timing.margins = false;
+}
+
+void mtk_dp_force_timing_cea(unsigned int res_h, unsigned int res_v, unsigned int fps)
+{
+	if (g_mtk_dp == NULL) {
+		DPTXERR("%s: dp not initial\n", __func__);
+		return;
+	}
+	g_mtk_dp->force_timing.enable = FORCE_TIMING_CEA;
+	g_mtk_dp->force_timing.width = res_h;
+	g_mtk_dp->force_timing.height = res_v;
+	g_mtk_dp->force_timing.fps = fps;
+}
+
+void mtk_dp_force_timing_detail(unsigned int *value)
+{
+	if (g_mtk_dp == NULL) {
+		DPTXERR("%s: dp not initial\n", __func__);
+		return;
+	}
+	g_mtk_dp->force_timing.enable = FORCE_TIMING_DETAIL;
+	g_mtk_dp->force_timing.clock = value[0];
+	g_mtk_dp->force_timing.hdisplay = value[1];
+	g_mtk_dp->force_timing.hsync_start = value[2];
+	g_mtk_dp->force_timing.hsync_end = value[3];
+	g_mtk_dp->force_timing.htotal = value[4];
+	g_mtk_dp->force_timing.hskew = 0;
+	g_mtk_dp->force_timing.vdisplay = value[5];
+	g_mtk_dp->force_timing.vsync_start = value[6];
+	g_mtk_dp->force_timing.vsync_end = value[7];
+	g_mtk_dp->force_timing.vtotal = value[8];
+	g_mtk_dp->force_timing.vscan = 0;
+}
+
 void mtk_dp_HPDInterruptSet(int bstatus)
 {
 	void *base;
@@ -4509,12 +4520,12 @@ void mtk_dp_set_pin_assign(u8 type)
 	switch (type) {
 	case DP_USB_PIN_ASSIGNMENT_C:
 	case DP_USB_PIN_ASSIGNMENT_E:
-		MAX_LANECOUNT = DP_LANECOUNT_4;
+		USB_LANECOUNT = DP_LANECOUNT_4;
 		break;
 	case DP_USB_PIN_ASSIGNMENT_D:
 	case DP_USB_PIN_ASSIGNMENT_F:
 	default:
-		MAX_LANECOUNT = DP_LANECOUNT_2;
+		USB_LANECOUNT = DP_LANECOUNT_2;
 		break;
 	}
 }
@@ -4652,6 +4663,7 @@ static int mtk_dp_bind(struct device *dev, struct device *master, void *data)
 	if (drm_encoder_init(drm, &mtk_dp->enc,	&mtk_dp_enc_funcs,
 		DRM_MODE_ENCODER_DPMST, "DP MST"))
 		goto err_encoder_init;
+	drm_encoder_helper_add(&mtk_dp->enc, &mtk_dp_encoder_helper_funcs);
 	mtk_dp->enc.possible_crtcs = 2;
 	drm_connector_attach_encoder(&mtk_dp->conn, &mtk_dp->enc);
 	g_mtk_dp = mtk_dp;

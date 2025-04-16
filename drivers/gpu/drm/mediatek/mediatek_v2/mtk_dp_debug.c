@@ -68,6 +68,36 @@ void mtk_dp_debug(const char *opt)
 				mtk_dp_fake_plugin(SINK_1920_1080, 2);
 		} else
 			DDPINFO("fakecablein error msg\n");
+	} else if (strncmp(opt, "force_cvt:", 10) == 0) {
+		unsigned int ret, res_h, res_v, fps;
+
+		ret = sscanf(opt, "force_cvt:%d,%d,%d\n", &res_h, &res_v, &fps);
+		if (ret != 3) {
+			DDPINFO("error to parse force_cvt cmd\n");
+			return;
+		}
+		mtk_dp_force_timing_cvt(res_h, res_v, fps);
+	} else if (strncmp(opt, "force_cea:", 10) == 0) {
+		unsigned int ret, res_h, res_v, fps;
+
+		ret = sscanf(opt, "force_cea:%d,%d,%d\n", &res_h, &res_v, &fps);
+		if (ret != 3) {
+			DDPINFO("error to parse force_cea cmd\n");
+			return;
+		}
+		mtk_dp_force_timing_cea(res_h, res_v, fps);
+	} else if (strncmp(opt, "force_detail:", 13) == 0) {
+		unsigned int ret;
+		unsigned int value[9];
+
+		ret = sscanf(opt, "force_detail:%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
+			&value[0], &value[1], &value[2], &value[3], &value[4], &value[5],
+			&value[6], &value[7], &value[8]);
+		if (ret != 9) {
+			DDPINFO("error to parse force_detail cmd\n");
+			return;
+		}
+		mtk_dp_force_timing_detail(value);
 	} else if (strncmp(opt, "fec:", 4) == 0) {
 		if (strncmp(opt + 4, "enable", 6) == 0)
 			mtk_dp_fec_enable(1);
@@ -172,18 +202,19 @@ void mtk_dp_debug(const char *opt)
 		DPTXMSG("set max link rate:enable = %d, maxlinkrate =%d\n",
 			enable, maxlinkrate);
 		mdrv_DPTx_set_maxlinkrate(enable, maxlinkrate);
-	} else if (strncmp(opt, "max2lane:", 9) == 0) {
+	} else if (strncmp(opt, "max_lane_set:", 13) == 0) {
 		int ret = 0;
-		int enable;
+		int number;
+		bool enable;
 
-		ret = sscanf(opt, "max2lane:%d\n", &enable);
-		if (ret != 1) {
+		ret = sscanf(opt, "max_lane_set:%d,%d\n",&enable ,&number);
+		if (ret != 2) {
 			DPTXMSG("ret = %d\n", ret);
 			return;
 		}
 
-		DPTXMSG("set max 2lane enable = %d\n", enable);
-		mtk_dp_set_force_2lane(enable ? true : false);
+		DPTXMSG("set max lane = %d\n", number);
+		mtk_dp_set_force_lane(enable, number);
 	} else if (strncmp(opt, "video_clock:", 12) == 0) {
 		int ret = 0;
 		unsigned int clksrc;

@@ -286,6 +286,15 @@ void mhal_DPTx_DataLanePNSwap(struct mtk_dp *mtk_dp, bool bENABLE)
 	}
 }
 
+void mhal_recover_safe_mode_settting(struct mtk_dp *mtk_dp)
+{
+	//disable safe mode setting
+	msWrite4ByteMask(mtk_dp, 0x304C , 0x2 , 0x3);
+	msWrite4ByteMask(mtk_dp, 0x303C , 0x1000 , 0x3F);
+	msWrite4ByteMask(mtk_dp, 0x3358 , 0x0, 0x80);
+	msWrite4ByteMask(mtk_dp, 0x3004 , 0x0, 0x100);
+}
+
 void mhal_DPTx_Set_Efuse_Value(struct mtk_dp *mtk_dp)
 {
 	u32 efuse = 0;

@@ -100,6 +100,13 @@
 #define VS_VOTER_EN_LO_SET 0x1
 #define VS_VOTER_EN_LO_CLR 0x2
 
+/****************************************/
+/* force timing standard */
+/****************************************/
+#define FORCE_TIMING_NONE	0
+#define FORCE_TIMING_CVT	1
+#define FORCE_TIMING_CEA	2
+#define FORCE_TIMING_DETAIL	3
 
 enum dp_cmd {
 	DP_DUMP = 0x20,
@@ -237,8 +244,10 @@ struct DPTX_TRAINING_INFO {
 	bool eq_done : 1;
 	bool set_max_linkrate;
 
+	BYTE set_max_lanecount_enable;
 	BYTE ubDPSysVersion;
 	BYTE ubSysMaxLinkRate;
+	BYTE set_max_lanecount;
 	BYTE ubLinkRate;
 	BYTE ubLinkLaneCount;
 	WORD usPHY_STS;
@@ -278,6 +287,28 @@ struct DPTX_INFO {
 	struct HDCP2_INFO hdcp2_info;
 #endif
 
+};
+
+struct FORCE_TIMING {
+	unsigned int enable;
+	unsigned int width;
+	unsigned int height;
+	unsigned int fps;
+	bool reduced;
+	bool interlaced;
+	bool margins;
+	// For detailed
+	unsigned int clock;
+	unsigned int hdisplay;
+	unsigned int hsync_start;
+	unsigned int hsync_end;
+	unsigned int htotal;
+	unsigned int hskew;
+	unsigned int vdisplay;
+	unsigned int vsync_start;
+	unsigned int vsync_end;
+	unsigned int vtotal;
+	unsigned int vscan;
 };
 
 struct mtk_dp {
@@ -347,6 +378,8 @@ struct mtk_dp {
 
 	/* cfg ver for diff platform*/
 	int cfg_ver;
+
+	struct FORCE_TIMING force_timing;
 };
 
 #endif /*__DRTX_TYPE_H__*/
