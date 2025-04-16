@@ -36,6 +36,7 @@
 #define CCMD_STATUS_CH0						0x20
 #define CCMD_RING_BUFFER_CONTROL	0x84
 #define CCMD_CID_COMMAND			0x9C
+#define CCMD_HRPTR_VALID			0xA0
 #define CIDX_RING_BUFFER_HRPTR(n)	(0xC0 + n * 0x8)
 #define CIDX_RING_BUFFER_HWPTR(n)	(0xC4 + n * 0x8)
 #define CIDX_RING_BUFFER_PA_0_L(n)	(0x100 + n * 0x20)
@@ -53,6 +54,7 @@
 #define CCMD_UNSUPPORTED_CID		0xFFFFFFFF
 #define CCMD_RESERVED_PBHA_NUM		4
 #define CCMD_UNSUPPORTED_PBHA_ID	0
+#define CCMD_BUFFER_SIZE			64
 /* #define CCMD_DEBUG_MODE */
 #define CCMD_V2_SUPPORT			1
 
@@ -236,10 +238,11 @@ static bool IsValidCcmdCtx(struct ccmd_context *ccmd_ctx)
 static void __ccmd_reset_hw(struct pdma_device *pdma_dev,
 	struct ccmd_context *ccmd_ctx)
 {
-//	int *ringbuf_pa0_setting_l;
 #if CCMD_V2_SUPPORT
 	unsigned int pdma_status;
 	unsigned int poll_timeout = 1000;
+	unsigned long long hrptr_valid;
+	unsigned int buffer_index, buffer_status;
 #endif
 	if (!pdma_dev || !ccmd_ctx) {
 		pr_info("[CCMD] %s, Invalid arguments.\n", __func__);
@@ -248,12 +251,9 @@ static void __ccmd_reset_hw(struct pdma_device *pdma_dev,
 
 	lockdep_assert_held(&pdma_dev->pdma_device_lock);
 
-//	ringbuf_pa0_setting_l = pdma_dev->pdma_reg_base_kva +
-//		CIDX_RING_BUFFER_PA_0_L(ccmd_ctx->cid);
-
 #if CCMD_V2_SUPPORT
-	/*ch0 is for initializing custom command buffer process.*/
-	/* Disable and poll Ch0*/
+	/* ch0 is for initializing custom command buffer process.*/
+	/* Disable and poll Ch0 */
 	writel((readl(pdma_dev->pdma_reg_base_kva) & 0xFFFDFFFF),
 		pdma_dev->pdma_reg_base_kva);
 
@@ -267,9 +267,36 @@ static void __ccmd_reset_hw(struct pdma_device *pdma_dev,
 	/* status 0: ch0 is running */
 
 	/* CID_COMMAND */
-	writel((ccmd_ctx->cid << 8) | (0x3 << 10),
+	writel((ccmd_ctx->cid << 8) | (0x7 << 10),
 		pdma_dev->pdma_reg_base_kva + CCMD_CID_COMMAND);
 	/* release GID command of the CID, and reset hrptr&hwptr */
+	/* reset RPC register */
+	writel(0, pdma_dev->pdma_reg_base_ao_kva + (ccmd_ctx->cid << 2));
+
+	/* Clear CCMD Buffer of CID */
+	hrptr_valid =
+		readl(pdma_dev->pdma_reg_base_kva + CCMD_HRPTR_VALID) & 0xFFFFFFFF;
+	hrptr_valid |=
+		((unsigned long long)
+		(readl(pdma_dev->pdma_reg_base_kva + CCMD_HRPTR_VALID + 0x4)))
+		<< 32;
+
+	pr_debug("[CCMD] CID%u CCMD_HRPTR_VALID: 0x%llX\n", ccmd_ctx->cid, hrptr_valid);
+
+	for (buffer_index = 0; buffer_index < CCMD_BUFFER_SIZE; buffer_index++) {
+		if ((hrptr_valid >> buffer_index) & 0x1ULL) {
+			buffer_status =
+				readl(pdma_dev->pdma_buffer_status_base_kva +
+				(buffer_index * 4));
+			if ((buffer_status & 0x3) == ccmd_ctx->cid) {
+				writel((buffer_status & 0x7FFFFFFF),
+					pdma_dev->pdma_buffer_status_base_kva +
+					(buffer_index * 4));
+				pr_debug("[CCMD] Clear CCMD Buffer %u with CID %u (0x%X)\n",
+					buffer_index, ccmd_ctx->cid, buffer_status);
+			}
+		}
+	}
 
 	/* Enable ch0*/
 	writel((readl(pdma_dev->pdma_reg_base_kva) | (0x1 << 17)),
@@ -306,7 +333,7 @@ static int init_ccmd_hw(struct pdma_device *pdma_dev,
 
 #if CCMD_V2_SUPPORT
 	/* CCMD mode */
-	writel(0x423B8000, pdma_dev->pdma_reg_base_kva);
+	writel(0x401B8000, pdma_dev->pdma_reg_base_kva);
 #endif
 
 	for (page_num = 0; page_num < (1 << pdma_dev->page_order); page_num++) {
@@ -333,9 +360,6 @@ static int init_ccmd_hw(struct pdma_device *pdma_dev,
 			/* ring_buffer_pa config per 4k range */
 			ringbuf_pa += CCMD_PAGE_SIZE_4K;
 	}
-	/* reset HW */
-	//writel(0x3, (g_pdma_reg_base_kva + CCMD_RING_BUFFER_CONTROL));
-	__ccmd_reset_hw(pdma_dev, ccmd_ctx);
 
 #ifndef CCMD_DEBUG_MODE
 	if (ccmd_power_control(CCMD_POWER_OFF))
@@ -620,8 +644,11 @@ static int gpu_pdma_mmap(struct file *const filp,
 		length == pdma_dev->reg_region) {
 		vma->vm_page_prot =  pgprot_noncached(vma->vm_page_prot);
 	} else if (phy_addr == pdma_dev->hw_sem_base && phy_addr != 0 &&
-		((length >> PAGE_SHIFT) == 1)) {
+		(length == PAGE_SIZE)) {
 		/* Expect only one page needed from hw semaphore base */
+		vma->vm_page_prot =  pgprot_noncached(vma->vm_page_prot);
+	} else if (phy_addr == (pdma_dev->ao_reg_base & ~(PAGE_SIZE - 1)) &&
+		phy_addr != 0 && length == PAGE_SIZE) {
 		vma->vm_page_prot =  pgprot_noncached(vma->vm_page_prot);
 	} else {
 		pr_info("Invalid argument! addr: 0x%lx, length: %ld\n", phy_addr, length);
@@ -690,12 +717,18 @@ static long gpu_pdma_unlocked_ioctl(struct file *filp, unsigned int cmd,
 			}
 
 			hw_lock.out.status = 1;
-			hw_lock.out.base = ccmd_ctx->cid_reg_base;		/* PA of cidx ptr base */
+			/* PA of cidx ptr base */
+			hw_lock.out.base = ccmd_ctx->cid_reg_base;
 			hw_lock.out.region_size = pdma_dev->reg_region;
-			hw_lock.out.ringbuf = ccmd_ctx->ringbuf_paddr; /* pa of ring */
+			/* PA of ring buffer */
+			hw_lock.out.ringbuf = ccmd_ctx->ringbuf_paddr;
 			hw_lock.out.size = RING_BUFFER_PAGE_SIZE(pdma_dev->page_order);
 			hw_lock.out.hw_sem_base = pdma_dev->hw_sem_base;
 			hw_lock.out.hw_sem_offset = pdma_dev->hw_sem_offset;
+			/* PA of ccmd ao register */
+			hw_lock.out.ao_region_base = pdma_dev->ao_reg_base;
+			hw_lock.out.ao_hrptr_offset = pdma_dev->ao_hrptr_offset +
+				(ccmd_ctx->cid * 4);
 			hw_lock.out.sw_ver = pdma_dev->sw_version;
 			hw_lock.out.cid = ccmd_ctx->cid;
 #ifdef CCMD_DEBUG_MODE
@@ -1045,6 +1078,42 @@ static int gpu_pdma_probe(struct platform_device *pdev)
 	g_pdma_dev->hw_sem_base = 0;
 	g_pdma_dev->hw_sem_offset = 0;
 
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 2);
+
+	if (res == NULL) {
+		pr_info("PDMA platform_get_resource 2 fail\n");
+		return -ENODEV;
+	}
+	g_pdma_dev->buffer_status_base = res->start;
+	g_pdma_dev->buffer_status_region = res->end - res->start + 1;
+	g_pdma_dev->pdma_buffer_status_base_kva =
+		devm_ioremap_resource(&pdev->dev, res);
+	if (IS_ERR(g_pdma_dev->pdma_buffer_status_base_kva))
+		return PTR_ERR(g_pdma_dev->pdma_buffer_status_base_kva);
+
+	pr_info("@%s: PDMA Buffer status base: 0x%llx, size: 0x%llx, kva: 0x%p\n",
+		__func__, g_pdma_dev->buffer_status_base,
+		g_pdma_dev->buffer_status_region,
+		g_pdma_dev->pdma_buffer_status_base_kva);
+
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 3);
+
+	if (res == NULL) {
+		pr_info("PDMA platform_get_resource 3 fail\n");
+		return -ENODEV;
+	}
+	g_pdma_dev->ao_reg_base = res->start & ~(PAGE_SIZE - 1);
+	g_pdma_dev->ao_hrptr_offset = res->start & (PAGE_SIZE - 1);
+	g_pdma_dev->pdma_reg_base_ao_kva =
+		devm_ioremap_resource(&pdev->dev, res);
+	if (IS_ERR(g_pdma_dev->pdma_reg_base_ao_kva))
+		return PTR_ERR(g_pdma_dev->pdma_reg_base_ao_kva);
+
+	pr_info("@%s: PDMA RPC HRPTR base: 0x%llx, size: 0x%llx, kva: 0x%p\n",
+		__func__, g_pdma_dev->ao_reg_base,
+		g_pdma_dev->ao_hrptr_offset,
+		g_pdma_dev->pdma_reg_base_ao_kva);
+
 	if (of_property_read_u8(node, "concurrent-contexts",
 			&g_pdma_dev->max_ctx_cnt) < 0) {
 		/* Support single context only if not specified */
@@ -1082,9 +1151,9 @@ static int gpu_pdma_probe(struct platform_device *pdev)
 	}
 
 	/* sram */
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 2);
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 4);
 	if (res == NULL) {
-		pr_info("PDMA platform_get_resource 2 fail\n");
+		pr_info("PDMA platform_get_resource 4 fail\n");
 		return -ENODEV;
 	}
 	g_pdma_dev->pdma_sram_base = res->start;
@@ -1113,7 +1182,7 @@ static int gpu_pdma_probe(struct platform_device *pdev)
 	if (ret)
 		pr_info("@%s: __get sw version fail: %d\n", __func__, ret);
 
-	dma_set_mask(g_pdma_dev->dev, DMA_BIT_MASK(64));
+	dma_set_mask(g_pdma_dev->dev, DMA_BIT_MASK(64ULL));
 
 	return ret;
 }

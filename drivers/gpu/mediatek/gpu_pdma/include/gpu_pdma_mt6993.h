@@ -28,9 +28,16 @@ enum CCMD_CACHE_MODE {
  * @hw_sem_base:            PA of hw semaphore base.
  * @hw_sem_offset:          Offset from hw semaphore base.
  * @hw_sem_bit:             Bit shifter of HW semaphore. Set by dts.
+ * @buffer_status_base:     Base address of CCMD buffer status.
+ * @buffer_status_region:   Range of CCMD buffer status.
+ * @ao_reg_base:            Base address of CCMD AO register.
+ * @ao_hrptr_offset:        Offset to cid0  hrptr.
+ * @hw_sem_base:            PA of hw semaphore base.
  * @pdma_sram_base:         PA of PDMA SRAM base
  * @pdma_reg_base_kva:      Kernel virtual address of CCMD base address.
  * @pdma_hw_sem_base_kva:   Kernel virtual address of CCMD HW semaohore.
+ * @pdma_buffer_status_base_kva:   Kernel virtual address of CCMD buffer status.
+ * @pdma_reg_base_ao_kva:   Kernel virtual address of CCMD AO register.
  * @pdma_sram_base_kva:     Kernel virtual address of SRAM base.
  * @page_order:             4k-based page_order. e.q. 3 for 8 4k-alinged pages.
  * @pdma_sram_base:         PA of PDMA SRAM base.
@@ -55,9 +62,15 @@ struct pdma_device {
 	u64 hw_sem_base;
 	u64 hw_sem_offset;
 	u32 hw_sem_bit;
+	u64 buffer_status_base;
+	u64 buffer_status_region;
+	u64 ao_reg_base;
+	u64 ao_hrptr_offset;
 	u64 pdma_sram_base;
 	void __iomem *pdma_reg_base_kva;
 	void __iomem *pdma_hw_sem_base_kva;
+	void __iomem *pdma_buffer_status_base_kva;
+	void __iomem *pdma_reg_base_ao_kva;
 	struct pdma_sram *pdma_sram_base_kva;
 	u32 page_order; /* g_page_order is 4k-based */
 	u32 config_mode;
@@ -125,6 +138,8 @@ struct extended_pbha {
  * @out.sw_ver:             Software version for specific HW configuration
  * @out.cid:                CCMD Context ID. Supported cid is from 0 to 3.
  * @out.debug_mode:         For debugging propose only.
+ * @out.ao_region_base      PA of CCMD AO Reg base.
+ * @out.ao_hrptr_offset     Offset of cidx hrptr.
  */
 
 struct pdma_hw_lock {
@@ -143,6 +158,8 @@ struct pdma_hw_lock {
 		unsigned int sw_ver;
 		unsigned int cid;
 		bool debug_mode;
+		unsigned long ao_region_base;
+		unsigned long ao_hrptr_offset;
 	} out;
 };
 
