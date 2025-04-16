@@ -4637,7 +4637,9 @@ GED_ERROR ged_dvfs_system_init(void)
 		g_enable_lb_async = g_async_ratio_support;
 	}
 	ged_set_eb_dvfs_init_value();
+#if !IS_ENABLED(CONFIG_MTK_GPU_MT6855_SUPPORT)
 	ged_notify_eb_ged_ready();
+#endif
 	// Find the largest oppidx whose stack freq does not repeat
 	g_async_id_threshold = get_max_oppidx_with_same_stack(ged_get_min_oppidx_real());
 	if (g_async_id_threshold != ged_get_min_oppidx_real())
