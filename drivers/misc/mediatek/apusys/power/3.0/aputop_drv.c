@@ -312,6 +312,21 @@ static struct platform_driver apu_top_drv = {
 	},
 };
 
+static int sscanf_safe(const char *buf, const char *format, ...)
+{
+	int result;
+	va_list args;
+
+	va_start(args, format);
+	result = vsscanf(buf, format, args);
+	va_end(args);
+
+	if (result < 0 )
+		return -EINVAL;
+
+	return result;
+}
+
 static int set_aputop_func_param(const char *buf,
 		const struct kernel_param *kp)
 {
@@ -325,12 +340,12 @@ static int set_aputop_func_param(const char *buf,
 
 	memset(&aputop, 0, sizeof(struct aputop_func_param));
 
-	arg_cnt = sscanf(buf, "%d %d %d %d %d",
+	arg_cnt = sscanf_safe(buf, "%d %d %d %d %d",
 				&aputop.func_id,
 				&aputop.param1, &aputop.param2,
 				&aputop.param3, &aputop.param4);
 
-	if (arg_cnt > 5) {
+	if (arg_cnt < 0 || arg_cnt > 5) {
 		pr_notice("%s invalid input: %s, arg_cnt(%d)\n",
 				__func__, buf, arg_cnt);
 		return -EINVAL;
