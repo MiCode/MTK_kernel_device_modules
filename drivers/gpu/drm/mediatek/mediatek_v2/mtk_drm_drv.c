@@ -1484,6 +1484,52 @@ static enum mml_mode _mtk_atomic_mml_plane(struct drm_device *dev,
 	if (unlikely(!mml_ctx))
 		return MML_MODE_UNKNOWN;
 
+	if (!mtk_plane_state->prop_val[PLANE_PROP_MML_SUBMIT]) {
+		/* If previous mml_submit is fail,
+		 * then current will reuse previous mml_submit,
+		 * which must be fail.
+		 */
+		if (!mtk_crtc->is_mml_submit_success) {
+			DDPPR_ERR("%s:err_submit\n", __func__);
+			goto err_submit;
+		}
+
+		mtk_drm_idlemgr_kick(__func__, crtc, false); /* power on dsi */
+
+		/* fill back mml submit roi to crtc_state roi */
+		crtc_state->mml_dst_roi.x = mtk_plane_state->base.dst.x1;
+		crtc_state->mml_dst_roi.y = mtk_plane_state->base.dst.y1;
+		crtc_state->mml_dst_roi.width =
+			mtk_crtc->mml_cfg_pq->info.dest[0].compose.width;
+		crtc_state->mml_dst_roi.height =
+			mtk_crtc->mml_cfg_pq->info.dest[0].compose.height;
+		memcpy(&crtc_state->mml_dst_roi_dual[0], &mtk_crtc->mml_cfg->dl_out[0],
+		       sizeof(struct mml_rect));
+		if (mtk_crtc->is_dual_pipe)
+			memcpy(&crtc_state->mml_dst_roi_dual[1], &mtk_crtc->mml_cfg->dl_out[1],
+			    sizeof(struct mml_rect));
+		mtk_crtc->mml_cfg->disp_id = mtk_crtc->cur_present_fence_idx;
+
+		ret = mml_drm_submit(mml_ctx, mtk_crtc->mml_cfg, &(mtk_crtc->mml_cb));
+		if (ret) {
+			DDPPR_ERR("%s:err_submit\n", __func__);
+			goto err_submit;
+		}
+
+		mtk_crtc->is_mml_submit = true;
+		mtk_crtc->is_mml_submit_success = true;
+
+		atomic_set(&(mtk_crtc->wait_mml_last_job_is_flushed), 0);
+
+		CRTC_MMP_MARK(0, mml_job_status, mtk_crtc->is_mml,
+			atomic_read(&mtk_crtc->wait_mml_last_job_is_flushed));
+
+		CRTC_MMP_MARK(0, mml_dbg, crtc_state->prop_val[CRTC_PROP_LYE_IDX],
+			MMP_MML_RESUBMITED);
+
+		return mtk_crtc->mml_cfg->info.mode;
+	}
+
 	submit_pq = mtk_alloc_mml_submit();
 	if (unlikely(!submit_pq)) {
 		DDPPR_ERR("%s:err_alloc_submit_pq\n", __func__);
@@ -1614,13 +1660,14 @@ static enum mml_mode _mtk_atomic_mml_plane(struct drm_device *dev,
 		       sizeof(struct mml_rect));
 	}
 
-	submit_kernel->disp_id = (u32)crtc_state->prop_val[CRTC_PROP_PRES_FENCE_IDX];
+	submit_kernel->disp_id = mtk_crtc->cur_present_fence_idx;
 	ret = mml_drm_submit(mml_ctx, submit_kernel, &(mtk_crtc->mml_cb));
 	if (ret) {
 		DDPPR_ERR("%s:err_submit\n", __func__);
 		goto err_submit;
 	}
 	mtk_crtc->is_mml_submit = true;
+	mtk_crtc->is_mml_submit_success = true;
 
 	atomic_set(&(mtk_crtc->wait_mml_last_job_is_flushed), 0);
 
@@ -1636,7 +1683,9 @@ static enum mml_mode _mtk_atomic_mml_plane(struct drm_device *dev,
 	mtk_crtc->mml_cfg = submit_kernel;
 	mtk_crtc->mml_cfg_pq = submit_pq;
 
-	/* set unused fd = -1 */
+	/* these fd only can be used in atomic mml
+	 * so we need set them to -1 when atomic mml done
+	 */
 	mtk_crtc->mml_cfg->job->fence = -1;
 	mtk_crtc->mml_cfg->buffer.src.fence = -1;
 	for (i = 0; i < MML_MAX_PLANES; ++i)
@@ -1660,6 +1709,7 @@ err_alloc_submit_pq:
 	mtk_free_mml_submit(submit_pq);
 
 	mtk_crtc->is_mml_submit = false;
+	mtk_crtc->is_mml_submit_success = false;
 	return MML_MODE_UNKNOWN;
 }
 
