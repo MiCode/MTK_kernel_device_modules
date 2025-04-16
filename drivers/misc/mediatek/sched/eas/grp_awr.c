@@ -63,6 +63,9 @@ static int gas_force_ctrl;
 #include <linux/ftrace.h>
 #include <linux/kallsyms.h>
 
+
+#define SANITY_ERR_GRP(grp)	((grp >= GROUP_ID_RECORD_MAX || grp < 0) ? 1 : 0)
+#define SANITY_ERR_CPU(cpu)	((cpu >= FLT_NR_CPUS || cpu < 0) ? 1 : 0)
 /*
  * GAS enable/disable control function
  * force_ctrl = 0 => normal control GAS by val, enable/disable by refcnt
@@ -171,7 +174,7 @@ void set_grp_awr_thr(int gear_id, int group_id, int freq)
 	if (grp_awr_init_finished == false ||
 		gear_id == -1 ||
 		gas_force_ctrl == 1 ||
-		group_id >= GROUP_ID_RECORD_MAX)
+		SANITY_ERR_GRP(group_id))
 		return;
 	for (cpu_idx = 0; cpu_idx < FLT_NR_CPUS; cpu_idx++)
 		if (map_cpu_ger[cpu_idx] == gear_id) {
@@ -191,7 +194,7 @@ int get_grp_awr_thr(int gear_id, int group_id)
 {
 	int cpu_idx;
 
-	if (grp_awr_init_finished == false)
+	if (grp_awr_init_finished == false || SANITY_ERR_GRP(group_id))
 		return -1;
 	for (cpu_idx = 0; cpu_idx < FLT_NR_CPUS; cpu_idx++)
 		if (map_cpu_ger[cpu_idx] == gear_id)
@@ -203,7 +206,7 @@ int get_grp_awr_thr_freq(int gear_id, int group_id)
 {
 	int cpu_idx;
 
-	if (grp_awr_init_finished == false)
+	if (grp_awr_init_finished == false || SANITY_ERR_GRP(group_id))
 		return -1;
 	for (cpu_idx = 0; cpu_idx < FLT_NR_CPUS; cpu_idx++)
 		if (map_cpu_ger[cpu_idx] == gear_id)
@@ -219,7 +222,7 @@ void set_grp_awr_min_opp_margin(int gear_id, int group_id, int val)
 	if (grp_awr_init_finished == false ||
 		gear_id == -1 ||
 		gas_force_ctrl == 1 ||
-		group_id >= GROUP_ID_RECORD_MAX)
+		SANITY_ERR_GRP(group_id))
 		return;
 	for (cpu_idx = 0; cpu_idx < FLT_NR_CPUS; cpu_idx++)
 		if (map_cpu_ger[cpu_idx] == gear_id) {
@@ -240,7 +243,7 @@ int get_grp_awr_min_opp_margin(int gear_id, int group_id)
 {
 	int cpu_idx;
 
-	if (grp_awr_init_finished == false)
+	if (grp_awr_init_finished == false || SANITY_ERR_GRP(group_id))
 		return -1;
 	for (cpu_idx = 0; cpu_idx < FLT_NR_CPUS; cpu_idx++)
 		if (map_cpu_ger[cpu_idx] == gear_id)
@@ -374,7 +377,7 @@ void grp_awr_update_grp_awr_util(void)
 int grp_awr_get_grp_tar_util(int grp_idx)
 {
 
-	if (grp_awr_init_finished == false)
+	if (grp_awr_init_finished == false || SANITY_ERR_GRP(grp_idx))
 		return 0;
 
 	return pgrp_tar_u_m[grp_idx];
@@ -399,7 +402,7 @@ void grp_awr_update_cpu_tar_util(int cpu)
 
 void set_group_target_active_ratio_pct(int grp_idx, int val)
 {
-	if (grp_awr_init_finished == false)
+	if (grp_awr_init_finished == false || SANITY_ERR_GRP(grp_idx))
 		return;
 	pgrp_tar_act_rto_cap[grp_idx] = ((clamp_val(val, 1, 100) << SCHED_CAPACITY_SHIFT) / 100);
 }
@@ -407,7 +410,7 @@ EXPORT_SYMBOL(set_group_target_active_ratio_pct);
 
 void set_group_target_active_ratio_cap(int grp_idx, int val)
 {
-	if (grp_awr_init_finished == false)
+	if (grp_awr_init_finished == false || SANITY_ERR_GRP(grp_idx))
 		return;
 	pgrp_tar_act_rto_cap[grp_idx] = clamp_val(val, 1, SCHED_CAPACITY_SCALE);
 }
@@ -415,7 +418,9 @@ EXPORT_SYMBOL(set_group_target_active_ratio_cap);
 
 void set_cpu_group_active_ratio_pct(int cpu, int grp_idx, int val)
 {
-	if (grp_awr_init_finished == false)
+	if (grp_awr_init_finished == false ||
+		SANITY_ERR_GRP(grp_idx) ||
+		SANITY_ERR_CPU(cpu))
 		return;
 	if (val < 0)
 		userdefined_pcpu_pgrp_act_rto_cap[cpu][grp_idx] = -1;
@@ -427,7 +432,9 @@ EXPORT_SYMBOL(set_cpu_group_active_ratio_pct);
 
 void set_cpu_group_active_ratio_cap(int cpu, int grp_idx, int val)
 {
-	if (grp_awr_init_finished == false)
+	if (grp_awr_init_finished == false ||
+		SANITY_ERR_GRP(grp_idx) ||
+		SANITY_ERR_CPU(cpu))
 		return;
 	if (val < 0)
 		userdefined_pcpu_pgrp_act_rto_cap[cpu][grp_idx] = -1;
@@ -441,7 +448,7 @@ void set_group_active_ratio_pct(int grp_idx, int val)
 {
 	int cpu_idx;
 
-	if (grp_awr_init_finished == false)
+	if (grp_awr_init_finished == false || SANITY_ERR_GRP(grp_idx))
 		return;
 	for_each_possible_cpu(cpu_idx) {
 		if (val < 0)
@@ -457,7 +464,7 @@ void set_group_active_ratio_cap(int grp_idx, int val)
 {
 	int cpu_idx;
 
-	if (grp_awr_init_finished == false)
+	if (grp_awr_init_finished == false || SANITY_ERR_GRP(grp_idx))
 		return;
 	for_each_possible_cpu(cpu_idx) {
 		if (val < 0)
