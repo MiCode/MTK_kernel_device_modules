@@ -92,15 +92,7 @@ mgk_64_kleaf_modules = [
     "//vendor/mediatek/kernel_modules/mtkcam/camsys:cam-isp8s-ut",
     "//vendor/mediatek/kernel_modules/mtkcam/mtk-pda:pda_drv_dummy",
     "//vendor/mediatek/kernel_modules/mtkcam/imgsys/common:imgsys_common",
-    # "//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/isp8s:imgsys_8s",
-    "//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/isp8:imgsys_8",
-    "//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/isp7sp:imgsys_7sp",
-    "//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/isp7s:imgsys_7s",
-    # "//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/isp71:imgsys_71",
-    "//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/cmdq/legacy:imgsys_cmdq",
-    "//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/cmdq/isp8:imgsys_cmdq_isp8",
-    # "//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/cmdq/isp8s:imgsys_cmdq_isp8s",
-    # "//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/cmdq/isp71:imgsys_cmdq_isp71",
+    "//vendor/mediatek/kernel_modules/mtkcam/mtk-ipesys-me:mtk-ipesys-me",
 
     "//vendor/mediatek/kernel_modules/mtkcam/mtk-aie:mtk-aie",
     "//vendor/mediatek/kernel_modules/mtkcam/mtk-aie:mtk-aie-debug-7sp",
@@ -109,11 +101,7 @@ mgk_64_kleaf_modules = [
     "//vendor/mediatek/kernel_modules/mtkcam/mtk-aie:mtk-aie-71",
     "//vendor/mediatek/kernel_modules/mtkcam/mtk-mae:mtk_mae",
     "//vendor/mediatek/kernel_modules/mtkcam/mtk-mae:mtk_mae_isp8",
-    "//vendor/mediatek/kernel_modules/mtkcam/mtk-hcp/legacy:mtk-hcp",
-    "//vendor/mediatek/kernel_modules/mtkcam/mtk-hcp/isp8:mtk-hcp-isp8",
-    "//vendor/mediatek/kernel_modules/mtkcam/mtk-hcp/isp8s:mtk-hcp-isp8s",
-    "//vendor/mediatek/kernel_modules/mtkcam/mtk-hcp/isp71:mtk-hcp-isp71",
-    "//vendor/mediatek/kernel_modules/mtkcam/mtk-ipesys-me:mtk-ipesys-me",
+
     "//vendor/mediatek/kernel_modules/mtkcam/mtk-dpe:camera_dpe_isp70",
     "//vendor/mediatek/kernel_modules/mtkcam/sched:c2ps",
     "//vendor/mediatek/kernel_modules/mtkcam/sched:c2ps_perf_ioctl",
@@ -1565,10 +1553,19 @@ mgk_64_kleaf_platform_modules = {
     "//vendor/mediatek/kernel_modules/mtkcam/imgsensor/src-v4l2:imgsensor":"mt6983 mt6879 mt6985 mt6886 mt6895 mt6897 mt6989 mt6878",
     "//vendor/mediatek/kernel_modules/mtkcam/mtk-pda:pda_drv_mt6991":"mt6991",
     "//vendor/mediatek/kernel_modules/mtkcam/mtk-pda:pda_drv_mt6993":"mt6993",
+
     "//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/isp8s:imgsys_8s":"mt6993",
-    "//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/isp71:imgsys_71":"mt6895",
+    "//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/isp8:imgsys_8":"mt6991",
+    "//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/isp7sp:imgsys_7sp":"mt6858",
+    "//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/isp71:imgsys_71":"mt6983 mt6879 mt6896 mt6895",
+    "//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/cmdq/isp71:imgsys_cmdq_isp71":"mt6895 mt6879",
+    "//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/cmdq/legacy:imgsys_cmdq":"mt6858",
+    "//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/cmdq/isp8:imgsys_cmdq_isp8":"mt6991",
     "//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/cmdq/isp8s:imgsys_cmdq_isp8s":"mt6993",
-    "//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/cmdq/isp71:imgsys_cmdq_isp71":"mt6895",
+    "//vendor/mediatek/kernel_modules/mtkcam/mtk-hcp/isp8s:mtk-hcp-isp8s":"mt6993",
+    "//vendor/mediatek/kernel_modules/mtkcam/mtk-hcp/isp8:mtk-hcp-isp8":"mt6991",
+    "//vendor/mediatek/kernel_modules/mtkcam/mtk-hcp/legacy:mtk-hcp":"mt6858",
+    "//vendor/mediatek/kernel_modules/mtkcam/mtk-hcp/isp71:mtk-hcp-isp71":"mt6895 mt6879",
 
     "//vendor/mediatek/kernel_modules/gpu/gpu_mali/mali_avalon/a16w/drivers/gpu/arm/midgard:mali_kbase_mt6993_a16w":"mt6993",
     "//vendor/mediatek/kernel_modules/gpu/gpu_mali/mali_avalon/a16w/drivers/base/arm:mali_mgm_mt6993_a16w":"mt6993",
@@ -2199,14 +2196,17 @@ def get_overlay_modules_list():
         mgk_64_kleaf_eng_modules.remove("//vendor/mediatek/tests/kernel/ktf_testcase/display_mobile_wbgai:ktf_display_mobile_wbgai")
         mgk_64_kleaf_eng_modules.remove("//vendor/mediatek/tests/kernel/ktf_testcase/display_pq_wbgai:ktf_display_pq_wbgai")
 
-        # mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/isp71:imgsys_71")
-        mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/isp7s:imgsys_7s")
-        mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/isp7sp:imgsys_7sp")
-        mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/isp8:imgsys_8")
-        # mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/isp8s:imgsys_8s")
-        mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/cmdq/legacy:imgsys_cmdq")
-        mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/cmdq/isp8:imgsys_cmdq_isp8")
-        # mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/cmdq/isp8s:imgsys_cmdq_isp8s")
+        mgk_64_kleaf_platform_modules.pop("//vendor/mediatek/kernel_modules/mtkcam/mtk-hcp/legacy:mtk-hcp")
+        mgk_64_kleaf_platform_modules.pop("//vendor/mediatek/kernel_modules/mtkcam/mtk-hcp/isp71:mtk-hcp-isp71")
+        mgk_64_kleaf_platform_modules.pop("//vendor/mediatek/kernel_modules/mtkcam/mtk-hcp/isp8:mtk-hcp-isp8")
+        mgk_64_kleaf_platform_modules.pop("//vendor/mediatek/kernel_modules/mtkcam/mtk-hcp/isp8s:mtk-hcp-isp8s")
+        mgk_64_kleaf_platform_modules.pop("//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/isp71:imgsys_71")
+        mgk_64_kleaf_platform_modules.pop("//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/isp7sp:imgsys_7sp")
+        mgk_64_kleaf_platform_modules.pop("//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/isp8:imgsys_8")
+        mgk_64_kleaf_platform_modules.pop("//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/isp8s:imgsys_8s")
+        mgk_64_kleaf_platform_modules.pop("//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/cmdq/legacy:imgsys_cmdq")
+        mgk_64_kleaf_platform_modules.pop("//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/cmdq/isp8:imgsys_cmdq_isp8")
+        mgk_64_kleaf_platform_modules.pop("//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/cmdq/isp8s:imgsys_cmdq_isp8s")
 
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/gpu/drm/mediatek/dpc/dpc_v1:mtk_dpc_v1".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/gpu/drm/mediatek/dpc/dpc_v1:mtk_vdisp_v1".format(kernel_version))
@@ -2690,17 +2690,19 @@ def get_overlay_modules_list():
         mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/gpu:gpu_mt6768")
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/mtkcam/mtk-aie:mtk-aie")
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/mtkcam/scpsys/mtk-aov:mtk_aov")
-        mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/mtkcam/mtk-hcp/legacy:mtk-hcp")
-        mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/mtkcam/mtk-hcp/isp8:mtk-hcp-isp8")
-        mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/mtkcam/mtk-hcp/isp8s:mtk-hcp-isp8s")
-        # mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/isp71:imgsys_71")
-        mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/isp7s:imgsys_7s")
-        mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/isp7sp:imgsys_7sp")
-        mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/isp8:imgsys_8")
-        # mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/isp8s:imgsys_8s")
-        mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/cmdq/legacy:imgsys_cmdq")
-        mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/cmdq/isp8:imgsys_cmdq_isp8")
-        mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/cmdq/isp8s:imgsys_cmdq_isp8s")
+
+        mgk_64_kleaf_platform_modules.pop("//vendor/mediatek/kernel_modules/mtkcam/mtk-hcp/legacy:mtk-hcp")
+        mgk_64_kleaf_platform_modules.pop("//vendor/mediatek/kernel_modules/mtkcam/mtk-hcp/isp71:mtk-hcp-isp71")
+        mgk_64_kleaf_platform_modules.pop("//vendor/mediatek/kernel_modules/mtkcam/mtk-hcp/isp8:mtk-hcp-isp8")
+        mgk_64_kleaf_platform_modules.pop("//vendor/mediatek/kernel_modules/mtkcam/mtk-hcp/isp8s:mtk-hcp-isp8s")
+        mgk_64_kleaf_platform_modules.pop("//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/isp71:imgsys_71")
+        mgk_64_kleaf_platform_modules.pop("//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/isp7sp:imgsys_7sp")
+        mgk_64_kleaf_platform_modules.pop("//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/isp8:imgsys_8")
+        mgk_64_kleaf_platform_modules.pop("//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/isp8s:imgsys_8s")
+        mgk_64_kleaf_platform_modules.pop("//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/cmdq/legacy:imgsys_cmdq")
+        mgk_64_kleaf_platform_modules.pop("//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/cmdq/isp8:imgsys_cmdq_isp8")
+        mgk_64_kleaf_platform_modules.pop("//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/cmdq/isp8s:imgsys_cmdq_isp8s")
+
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/mtkcam/sched:c2ps")
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/mtkcam/sched:c2ps_perf_ioctl")
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/mtkcam/isp_pspm:isp_pspm")
