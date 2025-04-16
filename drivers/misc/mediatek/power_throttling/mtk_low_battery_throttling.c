@@ -1148,7 +1148,7 @@ static int __used pt_check_power_off(void)
 
 	if (pt_power_off_cnt >= 4) {
 		pr_info("Powering off by PT.\n");
-		kernel_power_off();
+		hw_protection_shutdown("Power Off by PT", 10000);
 	}
 
 	return ret;
