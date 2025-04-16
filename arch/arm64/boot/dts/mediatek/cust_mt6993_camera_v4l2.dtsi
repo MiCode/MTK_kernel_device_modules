@@ -34,6 +34,7 @@
 
 			nvmem-cells = <&csi_efuse1>;
 			nvmem-cell-names = "rg_csi";
+			is-sof-delay-apply;
 
 			/* HP9 EINT */
 			interrupts-extended = <&pio 187 IRQ_TYPE_EDGE_FALLING>;
