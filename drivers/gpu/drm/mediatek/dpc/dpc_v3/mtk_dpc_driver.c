@@ -140,18 +140,18 @@ static struct mtk_dpc_mtcmos_cfg mt6991_mtcmos_cfg[DPC_SUBSYS_CNT] = {
 };
 
 static struct mtk_dpc_mtcmos_cfg mt6993_mtcmos_cfg[DPC3_SUBSYS_CNT] = {
-	{0x1000, 0x1020, 0x1024, 0, 0, DPC_MTCMOS_MANUAL, 19},
-	{0x1100, 0x1120, 0x1124, 0, 0, DPC_MTCMOS_MANUAL, 20},
-	{0x1200, 0x1220, 0x1224, 0, 0, DPC_MTCMOS_MANUAL, 21},
-	{0x1300, 0x1320, 0x1324, 0, 0, DPC_MTCMOS_MANUAL, 22},
-	{0x1400, 0x1420, 0x1424, 0, 0, DPC_MTCMOS_MANUAL, 23},
-	{0x1500, 0x1520, 0x1524, 0, 0, DPC_MTCMOS_MANUAL, 24},
-	{0x1600, 0x1620, 0x1624, 0, 0, DPC_MTCMOS_MANUAL, 25},
-	{0x1700, 0x1720, 0x1724, 0, 0, DPC_MTCMOS_MANUAL, 26},
-	{0x1800, 0x1820, 0x1824, 0, 0, DPC_MTCMOS_MANUAL, 27},
-	{0x1900, 0x1920, 0x1924, 0, 0, DPC_MTCMOS_MANUAL, 28},
-	{0x1A00, 0x1A20, 0x1A24, 0, 0, DPC_MTCMOS_MANUAL, 30},	/* notice */
-	{0x1B00, 0x1B20, 0x1B24, 0, 0, DPC_MTCMOS_MANUAL, 29},	/* notice */
+	{0x1000, 0x1020, 0x1024, 0, 0, DPC_MTCMOS_MANUAL, 19},  /* DIS0A */
+	{0x1100, 0x1120, 0x1124, 0, 0, DPC_MTCMOS_MANUAL, 20},  /* DIS0B */
+	{0x1200, 0x1220, 0x1224, 0, 0, DPC_MTCMOS_MANUAL, 21},  /* DIS1A */
+	{0x1300, 0x1320, 0x1324, 0, 0, DPC_MTCMOS_MANUAL, 22},  /* DIS1B */
+	{0x1400, 0x1420, 0x1424, 0, 0, DPC_MTCMOS_MANUAL, 23},  /* OVL0 */
+	{0x1500, 0x1520, 0x1524, 0, 0, DPC_MTCMOS_MANUAL, 24},  /* OVL1 */
+	{0x1600, 0x1620, 0x1624, 0, 0, DPC_MTCMOS_MANUAL, 25},  /* OVL2 */
+	{0x1700, 0x1720, 0x1724, 0, 0, DPC_MTCMOS_MANUAL, 26},  /* MML0 */
+	{0x1800, 0x1820, 0x1824, 0, 0, DPC_MTCMOS_MANUAL, 27},  /* MML1 */
+	{0x1900, 0x1920, 0x1924, 0, 0, DPC_MTCMOS_MANUAL, 28},  /* MML2 */
+	{0x1A00, 0x1A20, 0x1A24, 0, 0, DPC_MTCMOS_MANUAL, 30},  /* DPTX !! notice !! */
+	{0x1B00, 0x1B20, 0x1B24, 0, 0, DPC_MTCMOS_MANUAL, 29},  /* PERI !! notice !! */
 };
 
 static struct mtk_dpc2_dt_usage mt6991_dt_usage[DPC2_VIDLE_CNT] = {
@@ -2720,9 +2720,9 @@ static void dpc_hwccf_vote(bool on, struct cmdq_pkt *pkt, const enum mtk_vidle_v
 			spin_lock_irqsave(&g_priv->hwccf_ref_lock, flags);
 
 		if (on) {
-			ret = readl_poll_timeout_atomic(hwccf_global_sta, value, !(value & mask), 1, 10000);
-			if (ret < 0)
-				goto err1;
+			//ret = readl_poll_timeout_atomic(hwccf_global_sta, value, !(value & mask), 1, 10000);
+			//if (ret < 0)
+			//	goto err1;
 
 			writel(mask, hwccf_xpu0_mtcmos_set);			/* vote xpu0 mtcmos voter */
 
@@ -2745,9 +2745,9 @@ static void dpc_hwccf_vote(bool on, struct cmdq_pkt *pkt, const enum mtk_vidle_v
 			ret = readl_poll_timeout_atomic(hwccf_xpu0_local_en, value, !(value & mask), 1, 2000);
 			if (ret < 0)
 				goto err2;
-			ret = readl_poll_timeout_atomic(hwccf_global_sta, value, !(value & mask), 1, 10000);
-			if (ret < 0)
-				goto err3;
+			//ret = readl_poll_timeout_atomic(hwccf_global_sta, value, !(value & mask), 1, 10000);
+			//if (ret < 0)
+			//	goto err3;
 		}
 
 		if (lock)
