@@ -164,9 +164,14 @@ s32 cmdq_sec_mtee_register_wsm(struct cmdq_sec_mtee_context *tee,
 			__func__, tee->wsm_pHandle, tee->wsm_ex_handle,
 			tee->wsm_ex_param.size, *wsm_buf_ex, (unsigned long)*wsm_buf_ex);
 
-	*wsm_buf_ex2 = kzalloc(size_ex2, GFP_KERNEL);
-	if (!*wsm_buf_ex2)
-		return -ENOMEM;
+	if (!*wsm_buf_ex2) {
+		*wsm_buf_ex2 = kzalloc(size_ex2, GFP_KERNEL);
+		if (!*wsm_buf_ex2) {
+			kfree(*wsm_buffer);
+			kfree(*wsm_buf_ex);
+			return -ENOMEM;
+		}
+	}
 
 	tee->wsm_ex2_param.size = size_ex2;
 	tee->wsm_ex2_param.buffer = (void *)(u64)virt_to_phys(*wsm_buf_ex2);

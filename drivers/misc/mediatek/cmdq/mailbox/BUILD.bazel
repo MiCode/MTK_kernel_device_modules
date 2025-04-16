@@ -54,6 +54,8 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:mtk-cmdq-drv-ext".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/mmp/src:mmprofile".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/mminfra:mtk-mminfra-util".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
     ],
     header_deps = [
         "//kernel_device_modules-{}/drivers/misc/mediatek/geniezone:gz-public_hdrs".format(kernel_version),

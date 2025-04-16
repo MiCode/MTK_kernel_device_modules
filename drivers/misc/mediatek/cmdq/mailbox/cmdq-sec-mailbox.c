@@ -27,6 +27,10 @@
 #endif
 #include "cmdq_sec_pkvm.h"
 
+#if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
+#include <mt-plat/aee.h>
+#endif
+
 #ifdef CMDQ_GP_SUPPORT
 #include "cmdq-sec-gp.h"
 static atomic_t m4u_init = ATOMIC_INIT(0);
@@ -2101,6 +2105,7 @@ static s32 cmdq_sec_prealloc_mem(void)
 	struct cmdq_sec_context *context = NULL;
 	static u32 i;
 	s32 err, retry_cnt = 0, total_retry_cnt = 5;
+	const char *mod = "CMDQ";
 
 	for (i = 0; i < gce_hw_cnt; i++) {
 		do {
@@ -2112,6 +2117,8 @@ static s32 cmdq_sec_prealloc_mem(void)
 
 		if (!context) {
 			cmdq_err("cmdq->context kzalloc failed");
+			cmdq_util_aee_ex(CMDQ_AEE_EXCEPTION, mod,
+				"%s cmdq->context kzalloc failed", __func__);
 			return -ENOMEM;
 		}
 
@@ -2121,8 +2128,10 @@ static s32 cmdq_sec_prealloc_mem(void)
 			&context->mtee_iwc_ex2, sizeof(struct iwcCmdqMessageEx2_t));
 		if (err) {
 			kfree(context);
+			cmdq_util_aee_ex(CMDQ_AEE_EXCEPTION, mod,
+				"%s allocate wsm failed", __func__);
 			return err;
-	}
+		}
 		g_context[i] = context;
 	}
 
