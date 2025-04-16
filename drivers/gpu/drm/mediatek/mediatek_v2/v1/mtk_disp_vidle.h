@@ -43,6 +43,10 @@ enum mtk_vidle_hint_type {
 	VIDLE_HINT_DOZE,
 	VIDLE_HINT_MULTI_CRTC_ON,
 	VIDLE_HINT_MULTI_CRTC_OFF,
+	VIDLE_HINT_TUI_ON,
+	VIDLE_HINT_TUI_OFF,
+	VIDLE_HINT_HSIDLE_ENTER,
+	VIDLE_HINT_HSIDLE_LEAVE,
 };
 
 struct mtk_vidle_hint {
@@ -50,6 +54,8 @@ struct mtk_vidle_hint {
 	u8 mode_switch_debounce;	/* 0: okay */
 	u8 doze_debounce;		/* 0: okay */
 	u8 crtc_fuse;			/* 0: okay, or +1 by others(multi crtc, DP, ...) */
+	u8 tui_fuse;			/* 0: okay, or +1 by enter tui */
+	u8 hsidle_fuse;			/* 0: okay, or +1 by enter hs idle */
 };
 
 struct mtk_disp_dpc_data {

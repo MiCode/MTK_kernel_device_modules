@@ -1429,13 +1429,8 @@ void mtk_drm_idlemgr_kick(const char *source, struct drm_crtc *crtc,
 		if (mtk_crtc->esd_ctx)
 			atomic_set(&mtk_crtc->esd_ctx->target_time, 0);
 
-		if (mtk_crtc->enabled)
-			mtk_vidle_user_power_keep(DISP_VIDLE_USER_HSIDLE);	/* no polling for this user */
-
 		mtk_drm_idlemgr_leave_idle_nolock(crtc);
-
-		if (mtk_crtc->enabled)
-			mtk_vidle_user_power_release(DISP_VIDLE_USER_HSIDLE);
+		mtk_vidle_hint_update(VIDLE_HINT_HSIDLE_LEAVE);
 
 		idlemgr_ctx->is_idle = 0;
 		/* wake up idlemgr process to monitor next idle state */
@@ -1811,9 +1806,11 @@ static int mtk_drm_idlemgr_monitor_thread(void *data)
 			/* enter idle state */
 			if (!vblank || atomic_read(&vblank->refcount) == 0) {
 				DDPINFO("[LP] enter idle\n");
-				mtk_vidle_user_power_keep(DISP_VIDLE_USER_HSIDLE);	/* no polling for this user */
+				mtk_vidle_hint_update(VIDLE_HINT_HSIDLE_ENTER);
+				mtk_vidle_user_power_keep(DISP_VIDLE_USER_CRTC);
+				mtk_vidle_config_ff(false);
+				mtk_vidle_user_power_release(DISP_VIDLE_USER_CRTC);
 				mtk_drm_idlemgr_enter_idle_nolock(crtc);
-				mtk_vidle_user_power_release(DISP_VIDLE_USER_HSIDLE);
 				idlemgr_ctx->is_idle = 1;
 				idlemgr_ctx->enter_idle_ts = local_clock();
 			} else {
@@ -2717,8 +2714,8 @@ static void mtk_drm_idlemgr_wb_cmdq_cb(struct cmdq_cb_data data)
 	DDPINFO("%s,[IWB] trace:0x%x\n", __func__, *trace);
 
 	if (mtk_crtc->enabled) {
-		/* use hsidle bit but not crtc bit, to avoid of crtc timing issue*/
-		mtk_vidle_user_power_keep(DISP_VIDLE_USER_HSIDLE);
+		/* VIDLE_USER_CRTC can only be used safely within crtc->lock */
+		mtk_vidle_user_power_keep(DISP_VIDLE_USER_CRTC);
 		if (*trace & BIT(4)) {
 			if (*trace & BIT(31))
 				wdma_only = true;
@@ -2731,7 +2728,7 @@ static void mtk_drm_idlemgr_wb_cmdq_cb(struct cmdq_cb_data data)
 			mtk_drm_crtc_analysis(&mtk_crtc->base);
 			mtk_drm_crtc_dump(&mtk_crtc->base);
 		}
-		mtk_vidle_user_power_release(DISP_VIDLE_USER_HSIDLE);
+		mtk_vidle_user_power_release(DISP_VIDLE_USER_CRTC);
 	} else
 		DDPMSG("%s,[IWB] ignore bw update,trace:0x%x,crtc enabled:%d\n",
 			__func__, *trace, mtk_crtc->enabled);
