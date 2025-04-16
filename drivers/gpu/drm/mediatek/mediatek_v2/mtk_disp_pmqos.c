@@ -1268,8 +1268,8 @@ int mtk_disp_set_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int bw)
 		total += priv->req_hrt[i];
 
 	if (bw != 0 && is_force_high_step) {
-		DDPMSG("%s,total:%d->65535\n", __func__, total);
-		total = 65535;
+		DDPMSG("%s,total:%d->18000\n", __func__, total);
+		total = 18000;
 	} else if (debug_deteriorate) {
 		DDPMSG("%s,total:%d->0\n", __func__, total);
 		total = 0;
