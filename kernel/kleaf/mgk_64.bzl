@@ -94,15 +94,10 @@ mgk_64_kleaf_modules = [
     "//vendor/mediatek/kernel_modules/mtkcam/imgsys/common:imgsys_common",
     "//vendor/mediatek/kernel_modules/mtkcam/mtk-ipesys-me:mtk-ipesys-me",
 
-    "//vendor/mediatek/kernel_modules/mtkcam/mtk-aie:mtk-aie",
     "//vendor/mediatek/kernel_modules/mtkcam/mtk-aie:mtk-aie-debug-7sp",
     "//vendor/mediatek/kernel_modules/mtkcam/mtk-aie:mtk-aie-debug-7sp-1",
     "//vendor/mediatek/kernel_modules/mtkcam/mtk-aie:mtk-aie-debug-7sp-2",
-    "//vendor/mediatek/kernel_modules/mtkcam/mtk-aie:mtk-aie-71",
-    "//vendor/mediatek/kernel_modules/mtkcam/mtk-mae:mtk_mae",
-    "//vendor/mediatek/kernel_modules/mtkcam/mtk-mae:mtk_mae_isp8",
 
-    "//vendor/mediatek/kernel_modules/mtkcam/mtk-dpe:camera_dpe_isp70",
     "//vendor/mediatek/kernel_modules/mtkcam/sched:c2ps",
     "//vendor/mediatek/kernel_modules/mtkcam/sched:c2ps_perf_ioctl",
     "//vendor/mediatek/kernel_modules/mtkcam/scpsys/mtk-aov:mtk_aov",
@@ -785,7 +780,6 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
     "//kernel_device_modules-{}/drivers/clk/mediatek:clk-disable-unused".format(kernel_version),
     "//kernel_device_modules-{}/drivers/clk/mediatek:fhctl".format(kernel_version),
-    "//kernel_device_modules-{}/drivers/misc/mediatek/vmm_spm:mtk_vmm_spm".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/gate_ic:rt4831a_drv".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:ktz8866".format(kernel_version),
@@ -1132,7 +1126,6 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/regulator:rt4803".format(kernel_version),
     "//kernel_device_modules-{}/drivers/regulator:rt5133-regulator".format(kernel_version),
     "//kernel_device_modules-{}/drivers/regulator:rt6160-regulator".format(kernel_version),
-    "//kernel_device_modules-{}/drivers/regulator:mtk-vmm-isp71-regulator".format(kernel_version),
     "//kernel_device_modules-{}/drivers/rtc:rtc-mt6397".format(kernel_version),
     "//kernel_device_modules-{}/drivers/rtc:rtc-mt6685".format(kernel_version),
     "//kernel_device_modules-{}/drivers/reset:reset-ti-syscon".format(kernel_version),
@@ -1202,7 +1195,6 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/mminfra:mtk-mminfra-debug".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mminfra:mtk-mminfra-imax".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/tinysys_scmi:tinysys-scmi".format(kernel_version),
-    "//kernel_device_modules-{}/drivers/misc/mediatek/vmm:mtk-vmm-notifier".format(kernel_version),
     "//kernel_device_modules-{}/drivers/mailbox:mtk-ise-mailbox".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/ise_trusty:ise-trusty".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/ise_trusty:ise-trusty-log".format(kernel_version),
@@ -1374,8 +1366,11 @@ mgk_64_kleaf_platform_modules = {
     "//kernel_device_modules-{}/drivers/misc/mediatek/usb/usb_boost:musb_boost".format(kernel_version):"mt6789 mt6855",
     "//kernel_device_modules-{}/drivers/misc/mediatek/usb/usb20:musb_hdrc".format(kernel_version):"mt6789 mt6855",
     "//kernel_device_modules-{}/drivers/misc/mediatek/usb/usb20/musb_main:musb_main".format(kernel_version):"mt6789 mt6855",
+    "//kernel_device_modules-{}/drivers/misc/mediatek/vmm:mtk-vmm-notifier".format(kernel_version):"mt6895",
     "//kernel_device_modules-{}/drivers/misc/mediatek/vmm:mtk-vmm-notifier-mt6991".format(kernel_version): "mt6991",
     "//kernel_device_modules-{}/drivers/misc/mediatek/vmm:mtk-vmm-notifier-mt6993".format(kernel_version): "mt6993",
+    "//kernel_device_modules-{}/drivers/regulator:mtk-vmm-isp71-regulator".format(kernel_version): "mt6895",
+    "//kernel_device_modules-{}/drivers/misc/mediatek/vmm_spm:mtk_vmm_spm".format(kernel_version): "mt6895",
     "//kernel_device_modules-{}/drivers/misc/mediatek/vmm_spm:mtk_vmm_spm_mt6989".format(kernel_version): "mt6989",
     "//kernel_device_modules-{}/drivers/misc/mediatek/mcupm/v3:mcupm".format(kernel_version): "mt6993",
     "//kernel_device_modules-{}/drivers/misc/mediatek/mcupm/v2:mcupm".format(kernel_version): "mt6991 mt6789 mt6895 mt6855",
@@ -1590,6 +1585,12 @@ mgk_64_kleaf_platform_modules = {
     "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:cmdq-platform-mt6789".format(kernel_version): "mt6789",
     "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:cmdq-platform-mt6895".format(kernel_version): "mt6895",
     "//vendor/mediatek/kernel_modules/mtkcam/mtk-dpe:camera_dpe_isp8":"mt6991",
+    "//vendor/mediatek/kernel_modules/mtkcam/mtk-dpe:camera_dpe_isp70":"mt6895",
+    "//vendor/mediatek/kernel_modules/mtkcam/mtk-mae:mtk_mae":"mt6991",
+    "//vendor/mediatek/kernel_modules/mtkcam/mtk-mae:mtk_mae_isp8":"mt6991",
+    "//vendor/mediatek/kernel_modules/mtkcam/mtk-aie:mtk-aie":"mt6895",
+    "//vendor/mediatek/kernel_modules/mtkcam/mtk-aie:mtk-aie-71":"mt6895",
+
     "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/dip/isp_6s:camera_dip_isp6s".format(kernel_version): "mt6789 mt6855",
     "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/mfb/isp_6s:camera_mfb_isp6s".format(kernel_version): "mt6855",
     "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/wpe/isp_6s:camera_wpe_isp6s".format(kernel_version): "mt6855",
@@ -2696,7 +2697,7 @@ def get_overlay_modules_list():
         mgk_64_kleaf_eng_modules.remove("//vendor/mediatek/tests/kernel/ktf_testcase/slbc:ktf_slbc_it")
         mgk_64_kleaf_userdebug_modules.remove("//vendor/mediatek/tests/kernel/ktf_testcase/slbc:ktf_slbc_it")
         mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/gpu:gpu_mt6768")
-        mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/mtkcam/mtk-aie:mtk-aie")
+        mgk_64_kleaf_platform_modules.pop("//vendor/mediatek/kernel_modules/mtkcam/mtk-aie:mtk-aie")
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/mtkcam/scpsys/mtk-aov:mtk_aov")
 
         mgk_64_kleaf_platform_modules.pop("//vendor/mediatek/kernel_modules/mtkcam/mtk-hcp/legacy:mtk-hcp")
