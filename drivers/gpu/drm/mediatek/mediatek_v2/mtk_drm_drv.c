@@ -9952,6 +9952,7 @@ static void mtk_drm_kms_lateinit(struct kthread_work *work)
 
 		/* debug top load default setting */
 		if (private->data->mmsys_id == MMSYS_MT6993) {
+			mtk_drm_helper_set_opt_by_name(private->helper_opt, "MTK_DRM_OPT_MBRAIN", 1);
 			mtk_dbgtp_default_cfg_load(private);
 			mtk_dbgtp_update(private);
 		}
