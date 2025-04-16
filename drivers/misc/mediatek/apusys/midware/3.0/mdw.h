@@ -457,26 +457,26 @@ struct mdw_plat_func {
 
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 #include <aee.h>
-#define _mdw_exception(key, reason, args...) \
+#define _mdw_exception(key, reason) \
 	do { \
 		char info[150];\
-		mdw_drv_err(reason, args); \
-		if (snprintf(info, 150, "apu_mdw:" reason, args) > 0) { \
+		mdw_drv_err(reason); \
+		if (snprintf(info, 150, "apu_mdw:" reason) > 0) { \
 			aee_kernel_exception(info, \
 				"\nCRDISPATCH_KEY:%s\n", key); \
 		} else { \
 			mdw_drv_err("apu_mdw: %s snprintf fail(%d)\n", __func__, __LINE__); \
 		} \
 	} while (0)
-#define mdw_exception(reason, args...) _mdw_exception("APUSYS_MIDDLEWARE", reason, ##args)
-#define dma_exception(reason, args...) _mdw_exception("APUSYS_EDMA", reason, ##args)
-#define aps_exception(reason, args...) _mdw_exception("APUSYS_APS", reason, ##args)
-#define mdw_rv_exception(reason, args...) _mdw_exception("APUSYS_RV_MIDDLEWARE", reason, ##args)
+#define mdw_exception(reason) _mdw_exception("APUSYS_MIDDLEWARE", reason)
+#define dma_exception(reason) _mdw_exception("APUSYS_EDMA", reason)
+#define aps_exception(reason) _mdw_exception("APUSYS_APS", reason)
+#define mdw_rv_exception(reason) _mdw_exception("APUSYS_RV_MIDDLEWARE", reason)
 #else
-#define mdw_exception(reason, args...) { (void)(reason); }
-#define dma_exception(reason, args...) { (void)(reason); }
-#define aps_exception(reason, args...) { (void)(reason); }
-#define mdw_rv_exception(reason, args...) { (void)(reason); }
+#define mdw_exception(reason) { (void)(reason); }
+#define dma_exception(reason) { (void)(reason); }
+#define aps_exception(reason) { (void)(reason); }
+#define mdw_rv_exception(reason) { (void)(reason); }
 #endif
 
 long mdw_ioctl(struct file *filep, unsigned int cmd, unsigned long arg);

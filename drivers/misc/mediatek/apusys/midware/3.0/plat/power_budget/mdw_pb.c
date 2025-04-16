@@ -94,8 +94,9 @@ static int mdw_pb_put_cnt(enum mdw_pwrplcy_type type, uint32_t cnt)
 	mdw_drv_debug("pb type(%d) ref(%d->%d) cnt(%u)\n", pb_type, val + cnt, val, cnt);
 
 	if (val < 0) {
-		mdw_exception("put pb cnt underflow, pb type(%u) ref(->%d) put_cnt(%u)\n",
+		mdw_drv_err("put pb cnt underflow, pb type(%u) ref(->%d) put_cnt(%u)\n",
 			pb_type, val, cnt);
+		mdw_exception("put pb cnt underflow\n");
 	}
 
 	if (val == 0) {

@@ -495,9 +495,10 @@ static int mdw_plat_v2_check_sc_rets(struct mdw_cmd *c, int ipi_ret)
 
 		/* trigger exception if dma */
 		if (is_dma) {
-			dma_exception("s(0x%llx)pid(%d/%d)c(0x%llx)fail(%d/0x%llx)\n",
+			mdw_drv_err("s(0x%llx)pid(%d/%d)c(0x%llx)fail(%d/0x%llx)\n",
 				(uint64_t)c->mpriv, c->pid, c->tgid,
 				c->kid, ret, c->einfos->c.sc_rets);
+			dma_exception("EDMA exec fail\n");
 		}
 	}
 	c->einfos->c.ret = ret;

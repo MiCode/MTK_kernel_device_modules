@@ -642,8 +642,7 @@ static int mdw_cmd_complete(struct mdw_cmd *c, int ipi_ret)
 		dma_fence_set_error(f, ret);
 
 		if (mdw_debug_on(MDW_DBG_EXP))
-			mdw_exception("exec fail:%s:ret(%d/0x%llx)pid(%d/%d)\n",
-				c->comm, ret, c->einfos->c.sc_rets, c->pid, c->tgid);
+			mdw_exception("exec fail\n");
 	} else {
 		mdw_flw_debug("s(0x%llx) c(%s/0x%llx/0x%llx/0x%llx) ret(%d/0x%llx) time(%llu) pid(%d/%d)\n",
 			(uint64_t)mpriv, c->comm, c->uid, c->kid, c->inference_id,

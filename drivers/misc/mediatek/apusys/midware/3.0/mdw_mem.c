@@ -162,8 +162,10 @@ static void mdw_mem_release(struct kref *ref)
 	mdw_mem_show(m);
 
 	ret = m->mpriv->mem_allocator->free(m->mpriv->mem_allocator, m->sysbuf);
-	if (ret)
-		mdw_exception("delete mem failed(%d) dbuf(0x%llx) size(%llu)", ret, (uint64_t)m->dbuf, m->size);
+	if (ret) {
+		mdw_drv_err("delete mem failed(%d) dbuf(0x%llx) size(%llu)\n", ret, (uint64_t)m->dbuf, m->size);
+		mdw_exception("delete mem failed\n");
+	}
 
 	/* remove from dev hashtable */
 	mutex_lock(&mdw_dev->mctl_mtx);
@@ -258,8 +260,10 @@ static void mdw_map_release(struct kref *ref)
 	mutex_unlock(&mdw_dev->mctl_mtx);
 
 	ret = map->mpriv->mem_allocator->unmap(map->mpriv->mem_allocator, map->sysmap);
-	if (ret)
-		mdw_exception("unmap failed(%d) dbuf(0x%llx) size(%llu)", ret, (uint64_t)map->dbuf, map->size);
+	if (ret) {
+		mdw_drv_err("unmap failed(%d) dbuf(0x%llx) size(%llu)\n", ret, (uint64_t)map->dbuf, map->size);
+		mdw_exception("unmap failed\n");
+	}
 
 	kfree(map);
 }

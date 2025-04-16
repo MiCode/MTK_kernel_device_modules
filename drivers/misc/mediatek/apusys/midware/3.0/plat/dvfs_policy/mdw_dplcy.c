@@ -242,10 +242,12 @@ static int mdw_dplcy_postprocess(struct policy_cb *cb, struct mdw_dplcy_cmd_tb *
 	mdw_dplcy_dump_cb(cb);
 	mdw_dplcy_dump_cmd_tb(cmd_tb);
 
-	if (cb->unexpect_code != 0)
-		mdw_exception("dplcy err(%d) session(0x%llx) c-uid(0x%llx/0x%llx)\n",
+	if (cb->unexpect_code != 0) {
+		mdw_drv_err("dplcy err(%d) session(0x%llx) c-uid(0x%llx/0x%llx)\n",
 			      cb->unexpect_code, (uint64_t)cmd_tb->mpriv, cb->cmd_tb_id,
 			      cmd_tb->uid);
+		mdw_exception("dplcy err\n");
+	}
 
 	cb->con_current_cmd =
 		(cb->con_current_cmd > MAX_CON_CMD) ? MAX_CON_CMD : cb->con_current_cmd;

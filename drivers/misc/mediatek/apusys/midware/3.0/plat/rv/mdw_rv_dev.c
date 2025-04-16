@@ -45,10 +45,13 @@ static struct mdw_ipi_msg_sync *mdw_rv_dev_msg_find_erase(struct mdw_rv_dev *mrd
 
 	mdw_drv_debug("remove msg sync_id(%llu)\n", sync_id);
 	s_msg = idr_remove(&mrdev->msg_idr, sync_id);
-	if (!s_msg)
-		mdw_exception("can't find msg sync id(0x%llu)\n", sync_id);
-	else if (s_msg->msg.sync_id != sync_id)
-		mdw_exception("msg sync id(%llu/%llu) confuse\n", s_msg->msg.sync_id, sync_id);
+	if (!s_msg) {
+		mdw_drv_err("can't find msg sync_id(0x%llx)\n", sync_id);
+		mdw_exception("can't find msg sync_id\n");
+	} else if (s_msg->msg.sync_id != sync_id) {
+		mdw_drv_err("msg sync_id(%llu/%llu) confuse\n", s_msg->msg.sync_id, sync_id);
+		mdw_exception("msg sync_id confuse\n");
+	}
 
 	return s_msg;
 }
@@ -324,14 +327,15 @@ static void mdw_rv_ipi_cmplt_cmd(struct mdw_ipi_msg_sync *s_msg)
 	switch (s_msg->msg.ret) {
 	case MDW_IPI_MSG_STATUS_BUSY:
 		ret = -EBUSY;
-		mdw_drv_warn("uP mdw busy, sync_id(0x%llx) inference_id(0x%llx)\n",
+		mdw_drv_warn("uP mdw busy, sync_id(0x%llx) inf_id(0x%llx)\n",
 			s_msg->msg.sync_id, c->inference_id);
 		break;
 
 	case MDW_IPI_MSG_STATUS_ERR:
 		ret = -EREMOTEIO;
-		mdw_rv_exception("uP mdw error, sync_id(0x%llx) inference_id(0x%llx)\n",
+		mdw_drv_err("uP mdw error, sync_id(0x%llx) inf_id(0x%llx)\n",
 			s_msg->msg.sync_id, c->inference_id);
+		mdw_rv_exception("uP mdw error\n");
 		break;
 
 	case MDW_IPI_MSG_STATUS_TIMEOUT:
@@ -342,8 +346,8 @@ static void mdw_rv_ipi_cmplt_cmd(struct mdw_ipi_msg_sync *s_msg)
 		break;
 	}
 	if (ret)
-		mdw_drv_err("cmd(%pK/0x%llx) ret(%d/0x%llx) time(%llu) pid(%d/%d)\n",
-			c->mpriv, c->kid, ret, c->einfos->c.sc_rets,
+		mdw_drv_err("s(0x%llx) c(0x%llx) ret(%d/0x%llx) time(%llu) pid(%d/%d)\n",
+			(uint64_t)c->mpriv, c->kid, ret, c->einfos->c.sc_rets,
 			c->einfos->c.total_us, c->pid, c->tgid);
 	c->enter_rv_cb_time = mrdev->enter_rv_cb_time;
 	c->rv_cb_time = mrdev->rv_cb_time;
