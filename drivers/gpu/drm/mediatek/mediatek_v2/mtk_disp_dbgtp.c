@@ -1162,7 +1162,7 @@ void mtk_dbgtp_default_cfg_load(struct mtk_drm_private *priv)
 
 	/* mmlsys default setting */
 	/* mmlsys0 */
-	priv->mtk_dbgtp_sta.mmlsys[0].subsys_mon_en = true;
+	priv->mtk_dbgtp_sta.mmlsys[0].subsys_mon_en = false;
 	priv->mtk_dbgtp_sta.mmlsys[0].subsys_smi_trig_en = true;
 	priv->mtk_dbgtp_sta.mmlsys[0].subsys_crossbar_info_en = true;
 	priv->mtk_dbgtp_sta.mmlsys[0].subsys_inlinerotate_info_en = true;
@@ -1177,7 +1177,7 @@ void mtk_dbgtp_default_cfg_load(struct mtk_drm_private *priv)
 	priv->mtk_dbgtp_sta.mmlsys[0].crossbar_mon_cfg0 = 0x00000000;//MML_PQ_OUT
 	priv->mtk_dbgtp_sta.mmlsys[0].crossbar_mon_cfg1 = 0x00000000;//MML_PQ_IN
 	/* mmlsys1 */
-	priv->mtk_dbgtp_sta.mmlsys[1].subsys_mon_en = true;
+	priv->mtk_dbgtp_sta.mmlsys[1].subsys_mon_en = false;
 	priv->mtk_dbgtp_sta.mmlsys[1].subsys_smi_trig_en = true;
 	priv->mtk_dbgtp_sta.mmlsys[1].subsys_crossbar_info_en = true;
 	priv->mtk_dbgtp_sta.mmlsys[1].subsys_inlinerotate_info_en = true;
@@ -1195,7 +1195,7 @@ void mtk_dbgtp_default_cfg_load(struct mtk_drm_private *priv)
 	priv->mtk_dbgtp_sta.mmlsys[2].subsys_mon_en = true;
 	priv->mtk_dbgtp_sta.mmlsys[2].subsys_smi_trig_en = true;
 	priv->mtk_dbgtp_sta.mmlsys[2].subsys_crossbar_info_en = true;
-	priv->mtk_dbgtp_sta.mmlsys[2].subsys_inlinerotate_info_en = true;
+	priv->mtk_dbgtp_sta.mmlsys[2].subsys_inlinerotate_info_en = false;
 	priv->mtk_dbgtp_sta.mmlsys[2].subsys_mon_info_en = true;
 	priv->mtk_dbgtp_sta.mmlsys[2].smi_mon[0].smi_mon_en = true;
 	priv->mtk_dbgtp_sta.mmlsys[2].smi_mon[1].smi_mon_en = true;
@@ -1203,6 +1203,8 @@ void mtk_dbgtp_default_cfg_load(struct mtk_drm_private *priv)
 	priv->mtk_dbgtp_sta.mmlsys[2].smi_mon[1].rst_by_frame = true;
 	priv->mtk_dbgtp_sta.mmlsys[2].smi_mon[0].slice_time = 0x104;
 	priv->mtk_dbgtp_sta.mmlsys[2].smi_mon[1].slice_time = 0x104;
+	priv->mtk_dbgtp_sta.mmlsys[2].smi_mon[0].smi_mon_dump_sel = 0x1;
+	priv->mtk_dbgtp_sta.mmlsys[2].smi_mon[1].smi_mon_dump_sel = 0x1;
 	priv->mtk_dbgtp_sta.mmlsys[2].smi_mon[0].smi_mon_portid[0] = 0;
 	priv->mtk_dbgtp_sta.mmlsys[2].smi_mon[0].smi_mon_portid[1] = 1;
 	priv->mtk_dbgtp_sta.mmlsys[2].smi_mon[0].smi_mon_portid[2] = 2;
