@@ -30,6 +30,7 @@
 #include <sched_sys_common.h>
 #include <eas/eas_plus.h>
 #include <mtk_cpu_power_throttling.h>
+#include <mt-plat/mtk_irq_mon.h>
 
 #if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
 #include <thermal_interface.h>
@@ -479,6 +480,8 @@ static bool demand_eval(struct cluster_data *cluster)
 	unsigned int cid, active_cpus, min_cpus, max_cpus, enable, next_offline_time;
 	int gas_enable = 0;
 
+	irq_log_store();
+
 	if (unlikely(!cluster->inited))
 		return ret;
 
@@ -558,6 +561,7 @@ unlock:
 				next_offline_time);
 	}
 
+	irq_log_store();
 	return ret && need_flag;
 }
 
@@ -2216,6 +2220,8 @@ void core_ctl_tick(void *data, struct rq *rq)
 	unsigned int index = 0;
 	struct cluster_data *cluster;
 
+	irq_log_store();
+
 	/* prevent irq disable on cpu 0 */
 	if (rq->cpu == 0)
 		return;
@@ -2229,11 +2235,16 @@ void core_ctl_tick(void *data, struct rq *rq)
 		need_update_ppm_eff = update_ppm_eff();
 	}
 
+	irq_log_store();
+
 	if (enable_policy)
 		core_ctl_main_algo();
 
+	irq_log_store();
+
 	for_each_cluster(cluster, index)
 		apply_demand(cluster);
+	irq_log_store();
 }
 
 inline void core_ctl_update_active_cpu(unsigned int cpu)
