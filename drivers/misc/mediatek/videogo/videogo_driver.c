@@ -107,6 +107,43 @@ static void videogo_vcodec_send_fn(int iotype, void *data)
 	wake_up_interruptible(&passive_wq);
 }
 
+static int is_transcoding(struct inst_node *venc_info)
+{
+	struct inst_node *vdec_info, *tmp;
+	int ret = 0;
+
+	// Check has the same caller_pid of venc from vdec list
+	// One VENC can be paired with multiple VDECs
+	list_for_each_entry_safe(vdec_info, tmp, &inst_list[VDEC], list) {
+		if (vdec_info->caller_pid == venc_info->caller_pid) {
+			// abnormal oprate, it means best effort mode
+			if (vdec_info->oprate > 960 || venc_info->oprate > 960)
+				ret = 1;
+
+			// oprate is 0, it means best effort mode
+			// Need to avoid Vilte Scenario
+			if (vdec_info->oprate == 0 && venc_info->oprate == 0) {
+				ret = 1;
+
+				// Could be Vilte Scenario
+				if (venc_info->width * venc_info->height <= FHD_SIZE &&
+					venc_info->oprate_avdvfs < 35)
+					ret = 0;
+			}
+
+			if ((vdec_info->oprate != 0 || venc_info->oprate != 0) &&
+				((abs(vdec_info->oprate - vdec_info->oprate_avdvfs) > 10) ||
+				(abs(venc_info->oprate - venc_info->oprate_avdvfs) > 10)))
+				ret = 1;
+		}
+
+		if (ret)
+			break;
+	}
+
+	return ret;
+}
+
 static int videogo_process_data(int iotype, void *data)
 {
 	struct inst_node *info0, *tmp;
@@ -199,13 +236,15 @@ static int videogo_process_data(int iotype, void *data)
 		//oprate_vgo.oprate = info0->oprate_avdvfs;
 		//mtk_vcodec_vgo_send(VGO_SEND_OPRATE, videogo_vcodec_send_fn);
 
-		if (!isTranscoding && info0->oprate_avdvfs > 45 &&
-			type == VENC && alive_count[VDEC] > 0)
-			if (info0->oprate_avdvfs >= (info0->oprate * 11 + 9) / 10)
-				isTranscoding = 1;
+		if (!isTranscoding)
+			isTranscoding = is_transcoding(info0);
+		//if (!isTranscoding && info0->oprate_avdvfs > 45 &&
+		//	type == VENC && alive_count[VDEC] > 0)
+		//	if (info0->oprate_avdvfs >= (info0->oprate * 11 + 9) / 10)
+		//		isTranscoding = 1;
 
-		pr_info("[vgo] oprate_avdvfs=%d, oprate=%d, type=%d\n",
-				info0->oprate_avdvfs, info0->oprate, type);
+		pr_info("[vgo] oprate_avdvfs=%d, oprate=%d, type=%d, isTrans=%d\n",
+				info0->oprate_avdvfs, info0->oprate, type, isTranscoding);
 	}
 
 	return ret;
