@@ -1049,7 +1049,8 @@ GEN("policy_state_v2", GPU_EB_USE_POLICY_STATE_V2, 1, "policy_state_v2")\
  GEN("workload_mode", GPU_EB_WORKLOAD_MODE, 1, "workload_mode") \
 GEN("fix_freq_id", GPU_FIX_FREQ_ID, 2, "enable|id") \
 GEN("gpu_version", GPU_EB_VERSION, 1, "gpu_version") \
-GEN("desire_mask", GOV_DESIRE_MASK, 1, "desire_mask")
+GEN("desire_mask", GOV_DESIRE_MASK, 1, "desire_mask") \
+GEN("fb_mfrc", GPU_FB_MFRC_2, 1, "fb_mfrc_2")
 
 // generate sysram index list according to FDVFS_V2_COUNTER
 #define GEN(name, index, count, var) index,

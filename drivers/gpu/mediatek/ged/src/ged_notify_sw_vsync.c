@@ -546,9 +546,14 @@ void ged_eb_dvfs_frame_done_dump(void)
 	trace_tracing_mark_write(5566, "preserve",
 		mtk_gpueb_sysram_read(SYSRAM_GPU_EB_GED_PRESERVE));
 
-	if (mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_FB_MFRC].addr) >> 8 == 2)
+	if (mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_FB_MFRC].addr) >> 8 == 2) {
 		trace_tracing_mark_write(5566, "mfrc_policy_margin",
 			mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_FB_MFRC].addr) & 0xFF);
+		trace_tracing_mark_write(5566, "mfrc_policy_done",
+			mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_FB_MFRC_2].addr) & 0xFF);
+		trace_tracing_mark_write(5566, "mfrc_policy_return",
+			mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_FB_MFRC_2].addr) >> 8);
+	}
 
 	trace_GPU_DVFS__Policy__Common__Check_Target(
 			mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_T_GPU_FPS_PID].addr),
