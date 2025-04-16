@@ -1645,6 +1645,8 @@ static enum mml_mode tp_query_mode(struct mml_dev *mml, struct mml_frame_info *i
 	/* for alpha support */
 	if (info->alpha) {
 		*reason = mml_query_alpha;
+		if (MML_FMT_ALPHA(info->src.format) && tp_need_resize(info, NULL))
+			goto not_support;
 		if (!MML_FMT_ALPHA(info->src.format) ||
 		    info->src.width <= 32 ||
 		    info->dest_cnt != 1 ||
