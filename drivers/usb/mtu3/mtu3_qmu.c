@@ -396,6 +396,7 @@ void mtu3_qmu_stop(struct mtu3_ep *mep)
 	if (ret) {
 		dev_err(mtu->dev, "stop %s's qmu failed\n", mep->name);
 		WARN_ONCE(1, "stop qmu failed\n");
+		BUG_ON(1);
 		return;
 	}
 
