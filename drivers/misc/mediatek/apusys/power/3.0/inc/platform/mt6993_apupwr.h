@@ -35,7 +35,7 @@
 #define THERMAL_USER_MAX_OPP_VAL	(0) // fastest speed user can specify
 #define THERMAL_USER_MID_OPP_VAL        (7) // for dump 2nd opp table
 #define THERMAL_USER_MIN_OPP_VAL	(15 - THERMAL_OPP_OFS) // slowest speed user can specify
-#define OPP_TABLE_SIZE (THERMAL_USER_MIN_OPP_VAL	-  THERMAL_USER_MAX_OPP_VAL	+ 1)
+#define OPP_TABLE_SIZE				(USER_MIN_OPP_VAL + 1)
 #define FINAL_USER_MAX_OPP_VAL (USER_MAX_OPP_VAL + THERMAL_OPP_OFS) // final opp = opp + opp offset
 
 enum smc_rcx_pwr_op {

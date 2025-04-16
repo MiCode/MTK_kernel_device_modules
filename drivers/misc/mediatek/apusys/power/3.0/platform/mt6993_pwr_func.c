@@ -564,7 +564,7 @@ int mt6993_apu_top_rpmsg_cb(int cmd, void *data, int len, void *priv, u32 src)
 		if (len) {
 			memcpy(&opp_tbl2, data, len);
 			if(opp_request_bit == 1) {
-				save_opp_table(&opp_tbl2, (THERMAL_USER_MID_OPP_VAL - THERMAL_OPP_OFS));
+				save_opp_table(&opp_tbl2, THERMAL_USER_MID_OPP_VAL);
 				//memset(&opp_tbl, 0, sizeof(opp_tbl));
 				opp_request_bit = 0;
 			}
