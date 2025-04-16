@@ -13354,10 +13354,19 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			support-acp = <1>;
 			mtk,smmu-shared = <&mm_smmu_codec>;
 			vdec-power-in-vcp = <1>;
+			clocks =
+				<&vdec_soc_gcon_base_clk VDE1_LAT_CKEN>,
+				<&vdec_gcon_base_clk VDE2_VDEC_CKEN>;
+			clock-names =
+				"LAT_MT_CG_VDEC1",
+				"CORE_MT_CG_VDEC0";
+
+			/* dvfs params */
 			dvfs-qos-ver = <2>;
 			vdec-mmdvfs-in-vcp = <1>;
 			vdec-mmdvfs-in-adaptive = <1>;
 			vdec-cpu-hint-mode = <2>; /* cpu grp awr mode */
+
 			vp-mode-buf-size-multi = <1>;
 
 			/* for translation fault callback */
@@ -13414,10 +13423,24 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mtk,smmu-shared = <&mm_smmu_codec>;
 			venc-core-count = <2>;
 			venc-power-in-vcp = <1>;
+			clocks =
+				<&venc_gcon_clk VEN1_CKE1_VENC>,
+				<&venc_gcon_core0_p1_clk VEN_C0_P1_CKE1_VENC>,
+				<&venc_gcon_core1_clk VEN2_CKE1_VENC>,
+				<&venc_gcon_core1_p1_clk VEN_C1_P1_CKE1_VENC>;
+			clock-names =
+				"MT_CG_VENC0_P0",
+				"MT_CG_VENC0_P1",
+				"MT_CG_VENC1_P0",
+				"MT_CG_VENC1_P1";
+
+			/* dvfs params */
 			dvfs-qos-ver = <2>;
 			venc-mmdvfs-in-vcp = <1>;
 			venc-mmdvfs-in-adaptive = <1>;
 			venc-cpu-hint-mode = <2>; /* cpu grp awr mode */
+
+			/* slbc params*/
 			venc-slb-cpu-used-perf = <27648000>;
 			venc-slb-extra = <1>;
 			venc-slb-extra-resolution-threshold = <2073601 2073601>;
