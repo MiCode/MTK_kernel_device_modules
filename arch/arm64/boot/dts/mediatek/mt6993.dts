@@ -13888,6 +13888,24 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			slbc-all-cache-enable = <1>;
 			trace-dram-base = <0x0>;
 			trace-dram-size  = <0x0>;
+			/* id, bw/cmd, sel, r/w, master, enable, pmu_id, resv */
+			cust-pmu = <0 1 1 0 1 1 0 0>, /* start of bw pmu */
+				<1 1 2 0 1 1 0 0>,
+				<2 1 1 0 2 1 0 0>,
+				<3 1 2 0 2 1 0 0>,
+				<4 1 0 0 0 0 0 0>,
+				<5 1 0 0 0 0 0 0>,
+				<6 1 0 0 0 0 0 0>,
+				<7 1 0 0 0 0 0 0>,
+				<8 0 0 2 1 1 0 0>, /* start of cmd pmu */
+				<9 0 0 0 0 0 0 0>,
+				<10 0 0 0 0 0 0 0>,
+				<11 0 0 0 0 0 0 0>,
+				<12 0 0 0 0 0 0 0>,
+				<13 0 0 0 0 0 0 0>,
+				<14 0 0 0 0 0 0 0>,
+				<15 0 0 0 0 0 0 0>;
+			cust-pmu-update = <200>; /* update time interval */
 		};
 
 		nsmpu: nsmpu@11073000 {
