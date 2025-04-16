@@ -8213,11 +8213,13 @@
 						"path_vdec_ufo_enc", "path_vdec_ufo_enc_c",
 						"path_vdec_mc_c", "path_larb5";
 			interconnect-num = <22>;
+			dvfs-qos-ver = <2>;
 			throughput-op-rate-thresh = <120>;
 			throughput-min = <218000000>;
 			throughput-normal-max = <416000000>;
 			profile-duration = <60 2000>;
 			profile-target = <15 25 30 50 60 90 120 150 180 240>;
+			max-op-rate-item-num = <9>;
 			max-op-rate-table =
 				<877088845 921600 120 3686400 60 8847360 15 35389440 5>, /* MPEG4 */
 				<826757197 921600 120 3686400 60 8847360 15 35389440 5>, /* MPEG1 */
@@ -8587,6 +8589,7 @@
 					"path_venc1_ref_chroma", "path_venc1_sub_r_luma",
 					"path_venc0_fcs_nbm_wdma", "path_larb8";
 			interconnect-num = <44>;
+			dvfs-qos-ver = <2>;
 			throughput-op-rate-thresh = <120>;
 			throughput-min = <250000000>;
 			throughput-normal-max = <458000000>;

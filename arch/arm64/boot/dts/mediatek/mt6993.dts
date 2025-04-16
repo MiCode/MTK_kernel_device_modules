@@ -13341,6 +13341,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			support-acp = <1>;
 			mtk,smmu-shared = <&mm_smmu_codec>;
 			vdec-power-in-vcp = <1>;
+			dvfs-qos-ver = <2>;
 			vdec-mmdvfs-in-vcp = <1>;
 			vdec-mmdvfs-in-adaptive = <1>;
 			vdec-cpu-hint-mode = <2>; /* cpu grp awr mode */
@@ -13400,6 +13401,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mtk,smmu-shared = <&mm_smmu_codec>;
 			venc-core-count = <2>;
 			venc-power-in-vcp = <1>;
+			dvfs-qos-ver = <2>;
 			venc-mmdvfs-in-vcp = <1>;
 			venc-mmdvfs-in-adaptive = <1>;
 			venc-cpu-hint-mode = <2>; /* cpu grp awr mode */

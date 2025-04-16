@@ -4366,9 +4366,11 @@ transparent_hugepage=never";
 			"CORE_MT_CG_VDEC";
 		operating-points-v2 = <&opp_table_mm>;
 		mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+		dvfs-qos-ver = <1>;
 		throughput-op-rate-thresh = <120>;
 		throughput-min = <228000000>;
 		throughput-normal-max = <312000000>;
+		max-op-rate-item-num = <7>;
 		max-op-rate-table =
 			<877088845 921600 60 2228224 60 3686400 1>, /* MPEG4 */
 			<826757197 921600 60 2228224 60 3686400 1>, /* MPEG1 */
@@ -4466,6 +4468,7 @@ transparent_hugepage=never";
 		operating-points-v2 = <&opp_table_venc>;
 		mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 		venc-disable-hw-break = <1>;
+		dvfs-qos-ver = <1>;
 		throughput-op-rate-thresh = <120>;
 		throughput-min = <312000000>;
 		throughput-normal-max = <457000000>;
@@ -5698,4 +5701,3 @@ transparent_hugepage=never";
 	md-vmodem-supply = <&mt_pmic_vmodem_buck_reg>;
 	md-vmodem = <750000 750000>;
 };
-

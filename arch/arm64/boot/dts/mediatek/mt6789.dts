@@ -5835,11 +5835,13 @@
 						"path_larb4";
 			interconnect-num = <13>;
 			vdec-set-bw-in-min-freq = <1>;
+			dvfs-qos-ver = <1>;
 			throughput-op-rate-thresh = <120>;
 			throughput-min = <218000000>;
 			throughput-normal-max = <546000000>;
 			profile-duration = <60 2000>;
 			profile-target = <15 25 30 50 60 90 120 150 180 240 480>;
+			max-op-rate-item-num = <7>;
 			max-op-rate-table =
 				<877088845 921600 40 3686400 30 8847360 30>, /* MPEG4 */
 				<826757197 921600 40 3686400 30 8847360 30>, /* MPEG1 */
@@ -5955,6 +5957,7 @@
 					"path_venc_cur_chroma", "venc_ref_luma",
 					"path_venc_ref_chroma", "path_larb7";
 			interconnect-num = <10>;
+			dvfs-qos-ver = <1>;
 			throughput-op-rate-thresh = <120>;
 			throughput-min = <249000000>;
 			throughput-normal-max = <458000000>;
@@ -7238,7 +7241,7 @@
 				      <&mt6375_adc MT6375_ADC_USBDP>,
 				      <&mt6375_adc MT6375_ADC_USBDM>,
 					  <&mt6375_adc MT6375_ADC_SBU2>;
- 
+
 			chg_name = "primary_chg";
 			aicr = <500>;
 			mivr = <4400>;

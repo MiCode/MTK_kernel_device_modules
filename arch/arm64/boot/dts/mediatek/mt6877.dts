@@ -1905,9 +1905,11 @@
 				"CORE_MT_CG_VDEC";
 			operating-points-v2 = <&opp_table_vdec>;
 			mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+			dvfs-qos-ver = <1>;
 			throughput-op-rate-thresh = <120>;
 			throughput-min = <250000000>;
 			throughput-normal-max = <546000000>;
+			max-op-rate-item-num = <7>;
 			max-op-rate-table =
 				<877088845 921600 60 2228224 60 3686400 1>, /* MPEG4 */
 				<826757197 921600 60 2228224 60 3686400 1>, /* MPEG1 */
@@ -2038,6 +2040,7 @@
 						"path_venc_cur_chroma", "venc_ref_luma",
 						"path_venc_ref_chroma", "path_larb7";
 			interconnect-num = <10>;
+			dvfs-qos-ver = <1>;
 			throughput-op-rate-thresh = <120>;
 			throughput-min = <250000000>;
 			throughput-normal-max = <546000000>;
