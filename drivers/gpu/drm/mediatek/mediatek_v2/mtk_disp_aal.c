@@ -2027,26 +2027,18 @@ static int disp_aal_set_dre3_curve(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, const struct DISP_AAL_PARAM *param)
 {
 	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
-	struct DISP_DRE30_PARAM *dre30_gain;
+	struct DISP_DRE30_PARAM *dre30_gain = &aal_data->primary_data->dre30_gain_cpy;
 
 	AALFLOW_LOG("\n");
 	disp_pq_set_test_flag(TEST_FLAG_DRE);
 	if (atomic_read(&aal_data->primary_data->change_to_dre30) == 0x3) {
-		dre30_gain = vmalloc(sizeof(struct DISP_DRE30_PARAM));
-		if (dre30_gain == NULL) {
-			DDPMSG("%s: vmalloc fail\n", __func__);
-			return -1;
-		}
 
 		if (copy_from_user(dre30_gain, (struct DISP_DRE30_PARAM *)param->dre30_gain,
 				    sizeof(struct DISP_DRE30_PARAM)) == 0) {
 			mutex_lock(&aal_data->primary_data->config_lock);
 			memcpy(&aal_data->primary_data->dre30_gain, dre30_gain, sizeof(struct DISP_DRE30_PARAM));
 			mutex_unlock(&aal_data->primary_data->config_lock);
-
-			vfree(dre30_gain);
 		} else {
-			vfree(dre30_gain);
 			return -1;
 		}
 	}
@@ -2280,15 +2272,10 @@ static int disp_aal_copy_hist_to_user(struct mtk_ddp_comp *comp,
 	unsigned long flags;
 	int ret = 0;
 	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
-	struct DISP_DRE30_HIST *dre30_hist = vmalloc(sizeof(struct DISP_DRE30_HIST));
+	struct DISP_DRE30_HIST *dre30_hist = &aal_data->primary_data->dre30_hist_cpy;
 
 	if (hist == NULL) {
 		PQ_ERR("%s, DstHist is NULL\n", __func__);
-		return -1;
-	}
-
-	if (dre30_hist == NULL) {
-		DDPMSG("%s: vmalloc fail\n", __func__);
 		return -1;
 	}
 
@@ -2336,8 +2323,6 @@ static int disp_aal_copy_hist_to_user(struct mtk_ddp_comp *comp,
 		atomic_set(&aal1_data->dre20_hist_is_ready, 0);
 	}
 	atomic_set(&aal_data->primary_data->force_event_en, 0);
-
-	vfree(dre30_hist);
 
 	return ret;
 }

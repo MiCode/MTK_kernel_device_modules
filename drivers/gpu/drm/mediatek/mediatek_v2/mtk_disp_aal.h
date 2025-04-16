@@ -114,6 +114,8 @@ struct mtk_disp_aal_primary {
 	atomic_t dre_halt;
 	struct DISP_DRE30_PARAM dre30_gain;
 	struct DISP_DRE30_HIST dre30_hist;
+	struct DISP_DRE30_PARAM dre30_gain_cpy;
+	struct DISP_DRE30_HIST dre30_hist_cpy;
 	atomic_t change_to_dre30;
 	struct wait_queue_head size_wq;
 	bool get_size_available;
