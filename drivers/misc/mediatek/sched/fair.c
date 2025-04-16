@@ -3198,6 +3198,8 @@ void mtk_update_load_avg_se(void *unused, u64 now, struct cfs_rq *cfs_rq, struct
 	if(!is_dpt_v2_support())
 		return;
 
+	irq_log_store();
+
 	cpu = cpu_of(rq_of(cfs_rq_of(se)));
 	dpt_rq = &per_cpu(__dpt_rq, cpu);
 
@@ -3228,6 +3230,8 @@ void mtk_update_load_avg_se(void *unused, u64 now, struct cfs_rq *cfs_rq, struct
 	}
 	*ret = 0;
 
+	irq_log_store();
+
 	if (trace_sched_update_load_avg_se_enabled())
 		trace_sched_update_load_avg_se(cpu, pid, &se->avg, util_task, dpt_rq);
 }
@@ -3242,6 +3246,8 @@ void mtk_update_load_avg_cfs_rq(void *unused, u64 now, struct cfs_rq *cfs_rq, in
 
 	if(!is_dpt_v2_support())
 		return;
+
+	irq_log_store();
 
 	rq = rq_of(cfs_rq);
 	cpu = cpu_of(rq);
@@ -3319,6 +3325,8 @@ void mtk_update_load_avg_cfs_rq(void *unused, u64 now, struct cfs_rq *cfs_rq, in
 		dpt_rq->util_coef2_sum_tmp = 0;
 	}
 
+	irq_log_store();
+
 	if (trace_sched_update_load_avg_cfs_rq_enabled() && util_cfs)
 		trace_sched_update_load_avg_cfs_rq(cpu, &cfs_rq->avg, util_cfs, dpt_rq);
 }
@@ -3384,6 +3392,8 @@ void mtk_attach_entity_load_avg(void *unused, struct cfs_rq *cfs_rq, struct sche
 	if (unlikely(!entity_is_task(se)))
 		return;
 
+	irq_log_store();
+
 	rq = rq_of(cfs_rq);
 	cpu = cpu_of(rq);
 	p = task_of(se);
@@ -3407,6 +3417,8 @@ void mtk_attach_entity_load_avg(void *unused, struct cfs_rq *cfs_rq, struct sche
 	dpt_rq->util_cpu_sum_tmp += local_util_cpu_avg * divider;
 	dpt_rq->util_coef1_sum_tmp += local_util_coef1_avg * divider;
 	dpt_rq->util_coef2_sum_tmp += local_util_coef2_avg * divider;
+
+	irq_log_store();
 
 	if (trace_sched_attach_entity_load_avg_enabled())
 		trace_sched_attach_entity_load_avg(cpu, task_pid_nr(p), dpt_rq, util_task);

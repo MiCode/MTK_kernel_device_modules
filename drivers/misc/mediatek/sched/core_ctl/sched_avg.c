@@ -678,6 +678,8 @@ void pelt_se_tp(void *data, struct sched_entity *se)
 		return;
 	}
 
+	irq_log_store();
+
 	if (entity_is_task(se) && se->on_rq) {
 		p = task_of(se);
 		cpu = cpu_of(task_rq(p));
@@ -713,6 +715,8 @@ void pelt_se_tp(void *data, struct sched_entity *se)
 		WRITE_ONCE(cc_ts->over_type, (u64)new_type);
 		spin_unlock_irqrestore(&per_cpu(nr_over_thres_lock, cpu), flags);
 	}
+
+	irq_log_store();
 }
 
 

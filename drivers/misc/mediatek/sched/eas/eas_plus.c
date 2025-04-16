@@ -178,6 +178,8 @@ void mtk_cpu_overutilized(void *data, int cpu, int *overutilized)
 	if (!get_eas_hook())
 		return;
 
+	irq_log_store();
+
 	rcu_read_lock();
 	pd = rcu_dereference(rq->rd->pd);
 	pd = find_pd(pd, cpu);
@@ -212,6 +214,7 @@ void mtk_cpu_overutilized(void *data, int cpu, int *overutilized)
 		trace_sched_cpu_overutilized(cpu, pd_mask, sum_util, sum_cap, *overutilized);
 
 	rcu_read_unlock();
+	irq_log_store();
 }
 
 #if IS_ENABLED(CONFIG_MTK_THERMAL_AWARE_SCHEDULING)
