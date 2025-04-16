@@ -165,6 +165,7 @@ int mtk_vcodec_init_enc_pm(struct mtk_vcodec_dev *mtkdev)
 				return -1;
 			}
 			pm->larbvencs[larb_index] = &larb_pdev->dev;
+			mtkdev->power_in_kernel = true;
 			mtk_v4l2_debug(8, "larbvencs[%d] = %p", larb_index, pm->larbvencs[larb_index]);
 
 			if (!device_link_add(&pdev->dev, pm->larbvencs[larb_index],
@@ -177,7 +178,7 @@ int mtk_vcodec_init_enc_pm(struct mtk_vcodec_dev *mtkdev)
 
 	memset(clks_data, 0x00, sizeof(struct mtk_venc_clks_data));
 	while (!of_property_read_string_index(pdev->dev.of_node, "clock-names", clk_id, &clk_name)) {
-		mtk_v4l2_debug(8, "init clock, id: %d, name: %s", clk_id, clk_name);
+		mtk_v4l2_debug(0, "init clock, id: %d, name: %s", clk_id, clk_name);
 		pm->venc_clks[clk_id] = devm_clk_get(&pdev->dev, clk_name);
 		if (IS_ERR(pm->venc_clks[clk_id])) {
 			mtk_v4l2_err("[VCODEC][ERROR] Unable to devm_clk_get id: %d, name: %s",
@@ -188,6 +189,7 @@ int mtk_vcodec_init_enc_pm(struct mtk_vcodec_dev *mtkdev)
 		clks_data->core_clks[clks_data->core_clks_len].clk_name = clk_name;
 		clks_data->core_clks_len++;
 		clk_id++;
+		mtkdev->power_in_kernel = true;
 	}
 
 	if (pm->larbvencs[0])
@@ -244,11 +246,14 @@ void mtk_venc_deinit_ctx_pm(struct mtk_vcodec_ctx *ctx)
 
 }
 
-void mtk_vcodec_enc_pw_on(struct mtk_vcodec_pm *pm)
+static void mtk_vcodec_enc_larb_on(struct mtk_vcodec_pm *pm)
 {
 	struct mtk_vcodec_dev *dev = container_of(pm, struct mtk_vcodec_dev, pm);
 	int larb_index;
 	int ret;
+
+	if (pm->larbvencs[0])
+		return;
 
 	atomic_inc(&dev->larb_ref_cnt);
 	for (larb_index = 0; larb_index < MTK_VENC_MAX_LARB_COUNT; larb_index++) {
@@ -261,10 +266,13 @@ void mtk_vcodec_enc_pw_on(struct mtk_vcodec_pm *pm)
 	}
 }
 
-void mtk_vcodec_enc_pw_off(struct mtk_vcodec_pm *pm)
+static void mtk_vcodec_enc_larb_off(struct mtk_vcodec_pm *pm)
 {
 	struct mtk_vcodec_dev *dev = container_of(pm, struct mtk_vcodec_dev, pm);
 	int larb_index;
+
+	if (pm->larbvencs[0])
+		return;
 
 	for (larb_index = 0; larb_index < MTK_VENC_MAX_LARB_COUNT; larb_index++) {
 		if (pm->larbvencs[larb_index])
@@ -273,62 +281,57 @@ void mtk_vcodec_enc_pw_off(struct mtk_vcodec_pm *pm)
 	atomic_dec(&dev->larb_ref_cnt);
 }
 
-void mtk_vcodec_enc_clock_on(struct mtk_vcodec_ctx *ctx, int core_id)
+void mtk_vcodec_enc_clock_on(struct mtk_vcodec_ctx *ctx, int core_id, bool power_only)
 {
-	struct mtk_vcodec_pm *pm = &ctx->dev->pm;
-	int ret;
-	int i, larb_port_num, larb_id;
 #ifdef CONFIG_MTK_PSEUDO_M4U
 	struct M4U_PORT_STRUCT port;
+	int idx, m4u_larb_port_num, m4u_larb_id;
 #endif
-	int j;
-	struct mtk_venc_clks_data *clks_data;
-	struct mtk_vcodec_dev *dev = NULL;
-	unsigned long flags;
-	unsigned int clk_id = 0;
-	unsigned int smi_start_time, smi_end_time;
-	unsigned int ccf_start_time, ccf_end_time;
-	unsigned int slbc_start_time, slbc_end_time;
-
-	dev = ctx->dev;
-
 #ifndef FPGA_PWRCLK_API_DISABLE
-	time_check_start(MTK_FMT_ENC, core_id);
+	struct mtk_vcodec_dev *dev = ctx->dev;
+	struct mtk_vcodec_pm *pm = &dev->pm;
+	int ret;
+	int larb_port_num, larb_id;
+	int i, j;
+	struct mtk_venc_clks_data *clks_data = &pm->venc_clks_data;
+	unsigned int clk_id = 0;
+	unsigned long start_jiffies;
+	unsigned int smi_time = 0, ccf_time = 0, slbc_time = 0;
+	unsigned long flags;
 
-	clks_data = &pm->venc_clks_data;
-	smi_start_time = jiffies_to_msecs(jiffies);
-	mtk_vcodec_enc_pw_on(&ctx->dev->pm);
-	smi_end_time = jiffies_to_msecs(jiffies);
-	ccf_start_time = jiffies_to_msecs(jiffies);
-	if (core_id == MTK_VENC_CORE_0 ||
-		core_id == MTK_VENC_CORE_1 ||
-		core_id == MTK_VENC_CORE_2) {
-			// enable core clocks
-		for (j = 0; j < clks_data->core_clks_len; j++) {
-			clk_id = clks_data->core_clks[j].clk_id;
-			ret = clk_prepare_enable(pm->venc_clks[clk_id]);
-			if (ret) {
-				mtk_v4l2_err("clk_prepare_enable id: %d, name: %s fail %d",
-					clk_id, clks_data->core_clks[j].clk_name, ret);
-			}
-		}
-	} else {
+	if (core_id < 0 || core_id >= MTK_VENC_HW_NUM) {
 		mtk_v4l2_err("invalid core_id %d", core_id);
-		time_check_end(MTK_FMT_ENC, core_id, 5);
 		return;
 	}
-	ccf_end_time  = jiffies_to_msecs(jiffies);
+
+	time_check_start(MTK_FMT_ENC, core_id);
+
+	start_jiffies = jiffies;
+	mtk_vcodec_enc_larb_on(&ctx->dev->pm);
+	smi_time = jiffies_to_msecs(jiffies - start_jiffies);
+
+	start_jiffies = jiffies;
+	// enable core clocks
+	for (j = 0; j < clks_data->core_clks_len; j++) {
+		clk_id = clks_data->core_clks[j].clk_id;
+		ret = clk_prepare_enable(pm->venc_clks[clk_id]);
+		if (ret) {
+			mtk_v4l2_err("clk_prepare_enable id: %d, name: %s fail %d",
+				clk_id, clks_data->core_clks[j].clk_name, ret);
+		}
+	}
+	ccf_time = jiffies_to_msecs(jiffies - start_jiffies);
 	time_check_end(MTK_FMT_ENC, core_id, 5);
 
-
-
-#endif
-
-	slbc_start_time = jiffies_to_msecs(jiffies);
-	spin_lock_irqsave(&dev->enc_power_lock[core_id], flags);
+	atomic_inc(&dev->clk_ref_cnt[core_id]);
+	spin_lock_irqsave(&dev->power_check_lock[core_id], flags);
 	dev->enc_is_power_on[core_id] = true;
-	spin_unlock_irqrestore(&dev->enc_power_lock[core_id], flags);
+	spin_unlock_irqrestore(&dev->power_check_lock[core_id], flags);
 
+	if (power_only)
+		goto skip_slbc_setting;
+
+	start_jiffies = jiffies;
 	if (ctx->sysram_enable == 1) {
 		time_check_start(MTK_FMT_ENC, core_id);
 		ret = slbc_power_on(&ctx->sram_data);
@@ -373,25 +376,27 @@ void mtk_vcodec_enc_clock_on(struct mtk_vcodec_ctx *ctx, int core_id)
 			}
 		}
 	}
-	slbc_end_time = jiffies_to_msecs(jiffies);
 	time_check_end(MTK_FMT_ENC, core_id, 50);
-	if ((slbc_end_time - smi_start_time) > 2) {
-		pr_info("%s %d smi time %u  ccf time %u slbc time %u\n",
-		__func__, __LINE__,
-		(smi_end_time - smi_start_time),
-		(ccf_end_time - ccf_start_time),
-		(slbc_end_time - slbc_start_time));
-	}
+	slbc_time = jiffies_to_msecs(jiffies - start_jiffies);
+
+skip_slbc_setting:
+	if (smi_time + ccf_time + slbc_time > 2)
+		mtk_v4l2_debug(0, "[%d] smi time %u  ccf time %u slbc time %u\n",
+			ctx->id, smi_time, ccf_time, slbc_time);
+#endif
 #ifdef CONFIG_MTK_PSEUDO_M4U
+	if (power_only)
+		return;
+
 	time_check_start(MTK_FMT_ENC, core_id);
 	if (core_id == MTK_VENC_CORE_0) {
-		larb_port_num = SMI_LARB7_PORT_NUM;
-		larb_id = 7;
+		m4u_larb_port_num = SMI_LARB7_PORT_NUM;
+		m4u_larb_id = 7;
 	}
 
 	//enable 34bits port configs
-	for (i = 0; i < larb_port_num; i++) {
-		port.ePortID = MTK_M4U_ID(larb_id, i);
+	for (idx = 0; idx < m4u_larb_port_num; idx++) {
+		port.ePortID = MTK_M4U_ID(m4u_larb_id, idx);
 		port.Direction = 0;
 		port.Distance = 1;
 		port.domain = 0;
@@ -406,10 +411,15 @@ void mtk_vcodec_enc_clock_on(struct mtk_vcodec_ctx *ctx, int core_id)
 static int mtk_venc_smi_pwr_ctrl(struct mtk_vcodec_dev *dev,
 	enum mtk_smi_pwr_ctrl_type type, enum mtk_venc_hw_id hw_id)
 {
-	if (dev->power_in_vcp && mtk_vcodec_is_vcp(MTK_INST_ENCODER)) {
-		struct mtk_smi_pwr_ctrl_info info;
-		int ret;
+	int ret;
 
+	if (type >= MTK_SMI_CTRL_TYPE_MAX)
+		return -1;
+
+	mtk_v4l2_debug(0, "type %d, hw_id %d (power_in_vcp %d, power_in_kernel %d)",
+		type, hw_id, dev->power_in_vcp, dev->power_in_kernel);
+
+	if (dev->power_in_vcp) {
 		if (type == MTK_SMI_GET_IF_IN_USE) {
 			if (atomic_read(&dev->smi_dump_ref_cnt)) {
 				atomic_inc(&dev->smi_ctrl_get_ref_cnt[hw_id]);
@@ -418,6 +428,15 @@ static int mtk_venc_smi_pwr_ctrl(struct mtk_vcodec_dev *dev,
 			return 0;
 		} else if (type == MTK_SMI_PUT && atomic_add_unless(&dev->smi_ctrl_get_ref_cnt[hw_id], -1, 0))
 			return 0;
+	}
+
+	if (dev->power_in_vcp && !dev->power_in_kernel) {
+		struct mtk_smi_pwr_ctrl_info info;
+
+		if (!mtk_vcodec_is_vcp(MTK_INST_ENCODER)) {
+			mtk_v4l2_err("power ipi invalid !! (ctrl type %d, hw_id %d)", type, hw_id);
+			return -1;
+		}
 
 		info.type = type;
 		info.hw_id = hw_id;
@@ -427,15 +446,13 @@ static int mtk_venc_smi_pwr_ctrl(struct mtk_vcodec_dev *dev,
 	}
 
 	// else => not vcp
-	if (type >= MTK_SMI_CTRL_TYPE_MAX)
-		return -1;
-	else if (type == MTK_SMI_GET)
-		mtk_vcodec_enc_pw_on(&dev->pm);
+	if (type == MTK_SMI_GET)
+		mtk_vcodec_enc_clock_on(&dev->dev_ctx, hw_id, true);
 	else if (type == MTK_SMI_PUT)
-		mtk_vcodec_enc_pw_off(&dev->pm);
+		mtk_vcodec_enc_clock_off(&dev->dev_ctx, hw_id, true);
 	else if (type == MTK_SMI_GET_IF_IN_USE) {
-		if (atomic_read(&dev->larb_ref_cnt) > 0) {
-			mtk_vcodec_enc_pw_on(&dev->pm);
+		if (atomic_read(&dev->clk_ref_cnt[hw_id]) > 0) {
+			mtk_vcodec_enc_clock_on(&dev->dev_ctx, hw_id, true);
 			return 1;
 		}
 	}
@@ -521,6 +538,7 @@ void mtk_vcodec_enc_smi_pwr_ctrl_register(struct mtk_vcodec_dev *dev)
 	for (hw_id = 0; hw_id < dev->hw_max_count; hw_id++) {
 		venc_pwr_ctrl[hw_id].data = (void *)dev;
 		mtk_smi_dbg_register_pwr_ctrl_cb(&venc_pwr_ctrl[hw_id]);
+		mtk_v4l2_debug(2, "register core %d power control", hw_id);
 	}
 }
 
@@ -531,8 +549,10 @@ void mtk_vcodec_enc_smi_pwr_ctrl_unregister(struct mtk_vcodec_dev *dev)
 	if (!dev->power_in_vcp)
 		return;
 
-	for (hw_id = 0; hw_id < dev->hw_max_count; hw_id++)
+	for (hw_id = 0; hw_id < dev->hw_max_count; hw_id++) {
 		mtk_smi_dbg_unregister_pwr_ctrl_cb(&venc_pwr_ctrl[hw_id]);
+		mtk_v4l2_debug(2, "unregister core %d power control", hw_id);
+	}
 }
 
 #ifndef FPGA_PWRCLK_API_DISABLE
@@ -551,7 +571,7 @@ static void mtk_venc_hw_break(struct mtk_vcodec_dev *dev)
 
 	for (i = 0; i < MTK_VENC_HW_NUM; i++) {
 		reg_base = dev->enc_reg_base[i];
-		spin_lock_irqsave(&dev->enc_power_lock[i], flags);
+		spin_lock_irqsave(&dev->power_check_lock[i], flags);
 		if (reg_base != NULL && dev->enc_is_power_on[i] == 1) {
 			reg_val = readl(reg_base + 0x1398);
 			if ((reg_val & 0x1f) != 0) {
@@ -565,7 +585,7 @@ static void mtk_venc_hw_break(struct mtk_vcodec_dev *dev)
 			else
 				break_mode = MTK_VENC_HW_BREAK_PAUSE_MODE;
 		}
-		spin_unlock_irqrestore(&dev->enc_power_lock[i], flags);
+		spin_unlock_irqrestore(&dev->power_check_lock[i], flags);
 	}
 
 
@@ -574,12 +594,12 @@ static void mtk_venc_hw_break(struct mtk_vcodec_dev *dev)
 		for (i = 0; i < MTK_VENC_HW_NUM; i++) {
 			reg_base = dev->enc_reg_base[i];
 
-			spin_lock_irqsave(&dev->enc_power_lock[i], flags);
+			spin_lock_irqsave(&dev->power_check_lock[i], flags);
 			if (reg_base == NULL || dev->enc_is_power_on[i] == 0) {
-				spin_unlock_irqrestore(&dev->enc_power_lock[i], flags);
+				spin_unlock_irqrestore(&dev->power_check_lock[i], flags);
 				continue;
 			}
-			spin_unlock_irqrestore(&dev->enc_power_lock[i], flags);
+			spin_unlock_irqrestore(&dev->power_check_lock[i], flags);
 			if (break_mode == MTK_VENC_HW_BREAK_SMI_LOCK_MODE) {
 				writel(1, (reg_base + 0x13B8));
 			} else {
@@ -594,12 +614,12 @@ static void mtk_venc_hw_break(struct mtk_vcodec_dev *dev)
 			timeout_fg = false;
 			reg_base = dev->enc_reg_base[i];
 
-			spin_lock_irqsave(&dev->enc_power_lock[i], flags);
+			spin_lock_irqsave(&dev->power_check_lock[i], flags);
 			if (reg_base == NULL || dev->enc_is_power_on[i] == 0) {
-				spin_unlock_irqrestore(&dev->enc_power_lock[i], flags);
+				spin_unlock_irqrestore(&dev->power_check_lock[i], flags);
 				continue;
 			}
-			spin_unlock_irqrestore(&dev->enc_power_lock[i], flags);
+			spin_unlock_irqrestore(&dev->power_check_lock[i], flags);
 
 			if (break_mode == MTK_VENC_HW_BREAK_SMI_LOCK_MODE) {
 				mtk_venc_do_gettimeofday(&tv_start);
@@ -694,45 +714,44 @@ static void mtk_venc_hw_break(struct mtk_vcodec_dev *dev)
 }
 #endif
 
-void mtk_vcodec_enc_clock_off(struct mtk_vcodec_ctx *ctx, int core_id)
+void mtk_vcodec_enc_clock_off(struct mtk_vcodec_ctx *ctx, int core_id, bool power_only)
 {
 #ifndef FPGA_PWRCLK_API_DISABLE
 	struct mtk_vcodec_pm *pm = &ctx->dev->pm;
 	int i;
-	struct mtk_venc_clks_data *clks_data;
-	struct mtk_vcodec_dev *dev = NULL;
+	struct mtk_venc_clks_data *clks_data = &pm->venc_clks_data;
+	struct mtk_vcodec_dev *dev = ctx->dev;
 	unsigned long flags;
 	unsigned int clk_id = 0;
 
-	dev = ctx->dev;
-
-	if (core_id == MTK_VENC_CORE_0 && !venc_disable_hw_break)
-		mtk_venc_hw_break(dev);
-
-	if (ctx->sysram_enable == 1)
-		slbc_power_off(&ctx->sram_data);
-
-
-	/* avoid translation fault callback dump reg not done */
-	spin_lock_irqsave(&dev->enc_power_lock[core_id], flags);
-	dev->enc_is_power_on[core_id] = false;
-	spin_unlock_irqrestore(&dev->enc_power_lock[core_id], flags);
-
-	clks_data = &pm->venc_clks_data;
-
-	if (core_id == MTK_VENC_CORE_0 ||
-		core_id == MTK_VENC_CORE_1 ||
-		core_id == MTK_VENC_CORE_2) {
-		if (clks_data->core_clks_len > 0) {
-			for (i = clks_data->core_clks_len - 1; i >= 0; i--) {
-				clk_id = clks_data->core_clks[i].clk_id;
-				clk_disable_unprepare(pm->venc_clks[clk_id]);
-			}
-		}
-	} else
+	if (core_id >= MTK_VENC_HW_NUM) {
 		mtk_v4l2_err("invalid core_id %d", core_id);
+		return;
+	}
 
-	mtk_vcodec_enc_pw_off(pm);
+	if (!power_only) {
+		if (core_id == MTK_VENC_CORE_0 && !venc_disable_hw_break)
+			mtk_venc_hw_break(dev);
+
+		if (ctx->sysram_enable == 1)
+			slbc_power_off(&ctx->sram_data);
+	}
+
+	atomic_dec(&dev->clk_ref_cnt[core_id]);
+	/* avoid translation fault callback dump reg not done */
+	spin_lock_irqsave(&dev->power_check_lock[core_id], flags);
+	if (atomic_read(&dev->clk_ref_cnt[core_id]) <= 0)
+		dev->enc_is_power_on[core_id] = false;
+	spin_unlock_irqrestore(&dev->power_check_lock[core_id], flags);
+
+	if (clks_data->core_clks_len > 0) {
+		for (i = clks_data->core_clks_len - 1; i >= 0; i--) {
+			clk_id = clks_data->core_clks[i].clk_id;
+			clk_disable_unprepare(pm->venc_clks[clk_id]);
+		}
+	}
+
+	mtk_vcodec_enc_larb_off(pm);
 #endif
 }
 
@@ -787,10 +806,10 @@ static int mtk_venc_translation_fault_callback(
 		mtk_v4l2_err("larb %d hw_id %d not support dump", larb_id, hw_id);
 		return -1;
 	}
-	spin_lock_irqsave(&dev->enc_power_lock[hw_id], flags);
+	spin_lock_irqsave(&dev->power_check_lock[hw_id], flags);
 	if (dev->enc_is_power_on[hw_id] == false) {
 		mtk_v4l2_err("hw %d power is off !!", hw_id);
-		spin_unlock_irqrestore(&dev->enc_power_lock[hw_id], flags);
+		spin_unlock_irqrestore(&dev->power_check_lock[hw_id], flags);
 		return -1;
 	}
 
@@ -846,12 +865,12 @@ static int mtk_venc_translation_fault_callback(
 				readl(reg_base + 0x4074), readl(reg_base + 0x52c0));
 		} else { // core 1 or core 2
 			reg_base = dev->enc_reg_base[VENC_SYS];
-			spin_lock_irqsave(&dev->enc_power_lock[MTK_VENC_CORE_0], flags);
+			spin_lock_irqsave(&dev->power_check_lock[MTK_VENC_CORE_0], flags);
 			if (dev->enc_is_power_on[MTK_VENC_CORE_0] == false) {
 				mtk_v4l2_err("hw %d power is off !!", MTK_VENC_CORE_0);
-				spin_unlock_irqrestore(&dev->enc_power_lock[MTK_VENC_CORE_0],
+				spin_unlock_irqrestore(&dev->power_check_lock[MTK_VENC_CORE_0],
 					flags);
-				spin_unlock_irqrestore(&dev->enc_power_lock[hw_id], flags);
+				spin_unlock_irqrestore(&dev->power_check_lock[hw_id], flags);
 				return -1;
 			}
 			if (reg_base != NULL) {
@@ -859,11 +878,11 @@ static int mtk_venc_translation_fault_callback(
 					readl(reg_base + 0x4064), readl(reg_base + 0x406c),
 					readl(reg_base + 0x4074), readl(reg_base + 0x52c0));
 			}
-			spin_unlock_irqrestore(&dev->enc_power_lock[MTK_VENC_CORE_0], flags);
+			spin_unlock_irqrestore(&dev->power_check_lock[MTK_VENC_CORE_0], flags);
 		}
 	}
 
-	spin_unlock_irqrestore(&dev->enc_power_lock[hw_id], flags);
+	spin_unlock_irqrestore(&dev->power_check_lock[hw_id], flags);
 
 	return 0;
 }

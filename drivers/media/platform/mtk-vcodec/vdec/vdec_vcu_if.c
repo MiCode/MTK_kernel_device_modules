@@ -295,7 +295,7 @@ int vcu_dec_ipi_handler(void *data, unsigned int len, void *priv)
 			break;
 		case VCU_IPIMSG_DEC_LOCK_CORE:
 			if (msg->payload) {
-				mtk_vcodec_dec_pw_on(&vcu->ctx->dev->pm);
+				mtk_vcodec_dec_clock_on(&vcu->ctx->dev->pm, MTK_VDEC_CORE);
 				dev->dec_ao_pw_cnt++;
 			} else {
 				vdec_decode_prepare(vcu->ctx, MTK_VDEC_CORE);
@@ -306,7 +306,7 @@ int vcu_dec_ipi_handler(void *data, unsigned int len, void *priv)
 		case VCU_IPIMSG_DEC_UNLOCK_CORE:
 			if (msg->payload) {
 				dev->dec_ao_pw_cnt--;
-				mtk_vcodec_dec_pw_off(&vcu->ctx->dev->pm);
+				mtk_vcodec_dec_clock_off(&vcu->ctx->dev->pm, MTK_VDEC_CORE);
 			} else {
 				atomic_set(&dev->dec_hw_active[MTK_VDEC_CORE], 0);
 				vdec_decode_unprepare(vcu->ctx, MTK_VDEC_CORE);

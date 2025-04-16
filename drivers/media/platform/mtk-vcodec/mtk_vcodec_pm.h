@@ -98,7 +98,7 @@ struct mtk_vcodec_pm {
 
 	atomic_t dec_active_cnt;
 	__u32 vdec_racing_info[MTK_VDEC_RACING_INFO_SIZE];
-	struct mutex dec_racing_info_mutex;
+	spinlock_t dec_racing_info_lock;
 };
 
 enum mtk_dec_dump_addr_type {

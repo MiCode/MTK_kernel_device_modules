@@ -59,6 +59,8 @@
 #define MTK_VCODEC_IPI_THREAD_PRIORITY 1
 #define MTK_VCODEC_MAX_MQ_NODE_CNT 32
 
+#define MTK_VCODEC_HW_NUM MAX(MTK_VDEC_HW_NUM,(int)MTK_VENC_HW_NUM)
+
 #define MAX_CODEC_FREQ_STEP	10
 #define MTK_VDEC_PORT_NUM	64
 #define MTK_VENC_PORT_NUM	64
@@ -942,16 +944,16 @@ struct mtk_vcodec_dev {
 	void __iomem *enc_reg_base[NUM_MAX_VENC_REG_BASE];
 	void *com_vsi;
 
-	unsigned int power_in_vcp;
+	bool power_in_vcp;
+	bool power_in_kernel;
 	bool dec_is_power_on[MTK_VDEC_HW_NUM];
 	bool enc_is_power_on[MTK_VENC_HW_NUM];
-	spinlock_t dec_power_lock[MTK_VDEC_HW_NUM];
-	spinlock_t enc_power_lock[MTK_VENC_HW_NUM];
+	spinlock_t power_check_lock[MTK_VCODEC_HW_NUM];
 	int dec_m4u_ports[NUM_MAX_VDEC_M4U_PORT];
-	atomic_t dec_clk_ref_cnt[MTK_VDEC_HW_NUM];
+	atomic_t clk_ref_cnt[MTK_VCODEC_HW_NUM];
 	atomic_t larb_ref_cnt;
 	atomic_t smi_dump_ref_cnt;
-	atomic_t smi_ctrl_get_ref_cnt[MAX(MTK_VDEC_HW_NUM,(int)MTK_VENC_HW_NUM)]; // for get_if_in_use
+	atomic_t smi_ctrl_get_ref_cnt[MTK_VCODEC_HW_NUM]; // for get_if_in_use
 	unsigned int dec_ao_pw_cnt;
 
 	int id_counter;

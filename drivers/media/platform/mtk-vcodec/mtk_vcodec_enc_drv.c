@@ -414,11 +414,11 @@ static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 	struct mtk_vcodec_dev *dev;
 	struct video_device *vfd_enc;
 	struct resource *res;
-	int i = 0, reg_index = 0, ret, slb_cpu_used_pref, slb_extra, slb_extra_res_thresh;
+	int i = 0, reg_index = 0, ret;
 	int port_num[MTK_VENC_MAX_HW_NUM] = {0};
 	const char *name = NULL;
 	int port_args_num = 0, port_data_len = 0, total_port_num = 0;
-	unsigned int offset = 0;
+	unsigned int offset = 0, value = 0;
 	unsigned int core_id = 0, ram_type = 0, port_id = 0;
 
 	dev = devm_kzalloc(mtk_smmu_get_shared_device(&pdev->dev), sizeof(*dev), GFP_KERNEL);
@@ -429,8 +429,9 @@ static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 	INIT_LIST_HEAD(&dev->ctx_list);
 	for (i = 0; i < MTK_VENC_HW_NUM; i++) {
 		sema_init(&dev->enc_sem[i], 1);
-		spin_lock_init(&dev->enc_power_lock[i]);
+		spin_lock_init(&dev->power_check_lock[i]);
 		dev->enc_is_power_on[i] = false;
+		atomic_set(&dev->clk_ref_cnt[i], 0);
 		atomic_set(&dev->smi_ctrl_get_ref_cnt[i], 0);
 	}
 	atomic_set(&dev->larb_ref_cnt, 0);
@@ -590,37 +591,30 @@ static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 		mtk_v4l2_debug(0, "[VENC] Cannot get uniq dom, skip");
 
 	/* get slb params */
-	ret = of_property_read_u32(pdev->dev.of_node, "venc-slb-cpu-used-perf", &slb_cpu_used_pref);
+	ret = of_property_read_u32(pdev->dev.of_node, "venc-slb-cpu-used-perf", &value);
 	if (ret != 0)
 		dev_info(&pdev->dev, "Failed to get venc-slb-cpu-used-perf!");
+	else
+		dev->enc_slb_cpu_used_perf = (int)value;
+	pr_info("after get venc-slb-cpu-used-perf %d\n", dev->enc_slb_cpu_used_perf);
 
-	dev->enc_slb_cpu_used_perf = slb_cpu_used_pref;
-	pr_info("after get venc-slb-cpu-used-perf %d\n", slb_cpu_used_pref);
-
-	ret = of_property_read_u32(pdev->dev.of_node, "venc-slb-extra", &slb_extra);
+	ret = of_property_read_u32(pdev->dev.of_node, "venc-slb-extra", &value);
 	if (ret != 0)
 		dev_info(&pdev->dev, "Failed to get venc-slb-extra!");
+	else
+		dev->enc_slb_extra = (int)value;
+	pr_info("after get venc-slb-extra %d\n", dev->enc_slb_extra);
 
-	dev->enc_slb_extra = slb_extra;
-	pr_info("after get venc-slb-extra %d\n", slb_extra);
-
-	offset = 0;
-	ret = of_property_read_u32_index(pdev->dev.of_node, "venc-slb-extra-resolution-threshold",
-			offset, &slb_extra_res_thresh);
-	if (ret != 0)
-		dev_info(&pdev->dev, "fail venc-slb-extra-resolution-threshold offset %d!", offset);
-
-	dev->enc_slb_extra_res_thresh[offset] = slb_extra_res_thresh;
-	pr_info("after get venc-slb-extra-resolution-threshold %d %d\n", offset, slb_extra_res_thresh);
-
-	offset++;
-	ret = of_property_read_u32_index(pdev->dev.of_node, "venc-slb-extra-resolution-threshold",
-			offset, &slb_extra_res_thresh);
-	if (ret != 0)
-		dev_info(&pdev->dev, "fail venc-slb-extra-resolution-threshold offset %d!", offset);
-
-	dev->enc_slb_extra_res_thresh[offset] = slb_extra_res_thresh;
-	pr_info("after get venc-slb-extra-resolution-threshold %d %d\n", offset, slb_extra_res_thresh);
+	for (offset = 0; offset < 2; offset++) {
+		ret = of_property_read_u32_index(pdev->dev.of_node, "venc-slb-extra-resolution-threshold",
+				offset, &value);
+		if (ret != 0)
+			dev_info(&pdev->dev, "fail venc-slb-extra-resolution-threshold offset %d!", offset);
+		else
+			dev->enc_slb_extra_res_thresh[offset] = (int)value;
+		pr_info("after get venc-slb-extra-resolution-threshold %d %d\n",
+			offset, dev->enc_slb_extra_res_thresh[offset]);
+	}
 
 	venc_acp_enable_check(pdev, dev);
 
@@ -716,10 +710,11 @@ static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 	venc_vcp_probe(dev);
 
-	ret = of_property_read_u32(pdev->dev.of_node, "venc-power-in-vcp", &dev->power_in_vcp);
-	if (ret != 0)
-		dev->power_in_vcp = 0;
+	ret = of_property_read_u32(pdev->dev.of_node, "venc-power-in-vcp", &value);
+	dev->power_in_vcp = (ret == 0 && value);
 #endif
+	mtk_v4l2_debug(0, "power in vcp: %d, power in kernel %d, mtk_vcodec_vcp 0x%x",
+		dev->power_in_vcp, dev->power_in_kernel, mtk_vcodec_vcp);
 
 	mtk_vcodec_enc_smi_pwr_ctrl_register(dev);
 

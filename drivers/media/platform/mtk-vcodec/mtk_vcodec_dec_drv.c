@@ -428,6 +428,9 @@ static int mtk_vcodec_dec_probe(struct platform_device *pdev)
 	int i = 0, reg_index = 0, ret;
 	const char *name = NULL;
 	u32 port_id;
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
+	u32 value = 0;
+#endif
 
 	dev = devm_kzalloc(mtk_smmu_get_shared_device(&pdev->dev), sizeof(*dev), GFP_KERNEL);
 	if (!dev)
@@ -437,10 +440,10 @@ static int mtk_vcodec_dec_probe(struct platform_device *pdev)
 	INIT_LIST_HEAD(&dev->ctx_list);
 	for (i = 0; i < MTK_VDEC_HW_NUM; i++) {
 		sema_init(&dev->dec_sem[i], 1);
-		spin_lock_init(&dev->dec_power_lock[i]);
+		spin_lock_init(&dev->power_check_lock[i]);
 		dev->dec_is_power_on[i] = false;
 		atomic_set(&dev->dec_hw_active[i], 0);
-		atomic_set(&dev->dec_clk_ref_cnt[i], 0);
+		atomic_set(&dev->clk_ref_cnt[i], 0);
 		atomic_set(&dev->smi_ctrl_get_ref_cnt[i], 0);
 	}
 	atomic_set(&dev->larb_ref_cnt, 0);
@@ -727,10 +730,11 @@ static int mtk_vcodec_dec_probe(struct platform_device *pdev)
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 	vdec_vcp_probe(dev);
 
-	ret = of_property_read_u32(pdev->dev.of_node, "vdec-power-in-vcp", &dev->power_in_vcp);
-	if (ret != 0)
-		dev->power_in_vcp = 0;
+	ret = of_property_read_u32(pdev->dev.of_node, "vdec-power-in-vcp", &value);
+	dev->power_in_vcp = (ret == 0 && value);
 #endif
+	mtk_v4l2_debug(0, "power in vcp: %d, power in kernel %d, mtk_vcodec_vcp 0x%x",
+		dev->power_in_vcp, dev->power_in_kernel, mtk_vcodec_vcp);
 
 	mtk_vcodec_dec_smi_pwr_ctrl_register(dev);
 

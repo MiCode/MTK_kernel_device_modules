@@ -905,7 +905,7 @@ return_vdec_ipi_ack:
 				break;
 			case VCU_IPIMSG_DEC_LOCK_CORE:
 				if (msg->payload) {
-					mtk_vcodec_dec_pw_on(&vcu->ctx->dev->pm);
+					mtk_vcodec_dec_clock_on(&vcu->ctx->dev->pm, MTK_VDEC_CORE);
 					dev->dec_ao_pw_cnt++;
 				} else {
 					get_dvfs_data(vcu->ctx->dev, msg->data);
@@ -918,7 +918,7 @@ return_vdec_ipi_ack:
 			case VCU_IPIMSG_DEC_UNLOCK_CORE:
 				if (msg->payload) {
 					dev->dec_ao_pw_cnt--;
-					mtk_vcodec_dec_pw_off(&vcu->ctx->dev->pm);
+					mtk_vcodec_dec_clock_off(&vcu->ctx->dev->pm, MTK_VDEC_CORE);
 				} else {
 					get_dvfs_data(vcu->ctx->dev, msg->data);
 					atomic_set(&dev->dec_hw_active[MTK_VDEC_CORE], 0);
@@ -1154,9 +1154,9 @@ static int vcp_vdec_notify_callback(struct notifier_block *this,
 		core_ctx = mtk_vcodec_get_curr_ctx(dev, MTK_VDEC_CORE);
 		mtk_v4l2_debug(0, "dec power before VCP_EVENT_STOP: LAT %d (ctx %d)(clk ref %d), CORE %d (ctx %d)(clk red %d), ao %d, ref %d\n",
 			dev->dec_is_power_on[MTK_VDEC_LAT], lat_ctx ? lat_ctx->id : -1,
-			atomic_read(&dev->dec_clk_ref_cnt[MTK_VDEC_LAT]),
+			atomic_read(&dev->clk_ref_cnt[MTK_VDEC_LAT]),
 			dev->dec_is_power_on[MTK_VDEC_CORE], core_ctx ? core_ctx->id : -1,
-			atomic_read(&dev->dec_clk_ref_cnt[MTK_VDEC_CORE]),
+			atomic_read(&dev->clk_ref_cnt[MTK_VDEC_CORE]),
 			dev->dec_ao_pw_cnt, atomic_read(&dev->larb_ref_cnt));
 
 		mutex_lock(&dev->ctx_mutex);
@@ -1186,16 +1186,16 @@ static int vcp_vdec_notify_callback(struct notifier_block *this,
 		mutex_unlock(&dev->ctx_mutex);
 		while (dev->dec_ao_pw_cnt > 0) {
 			dev->dec_ao_pw_cnt--;
-			mtk_vcodec_dec_pw_off(&dev->pm);
+			mtk_vcodec_dec_clock_off(&dev->pm, MTK_VDEC_CORE);
 		}
 		if (atomic_read(&dev->larb_ref_cnt) != 0) {
 			lat_ctx = mtk_vcodec_get_curr_ctx(dev, MTK_VDEC_LAT);
 			core_ctx = mtk_vcodec_get_curr_ctx(dev, MTK_VDEC_CORE);
 			mtk_v4l2_err("dec power after VCP_EVENT_STOP: LAT %d (ctx %d)(clk ref %d), CORE %d (ctx %d)(clk red %d), ao %d, ref %d\n",
 				dev->dec_is_power_on[MTK_VDEC_LAT], lat_ctx ? lat_ctx->id : -1,
-				atomic_read(&dev->dec_clk_ref_cnt[MTK_VDEC_LAT]),
+				atomic_read(&dev->clk_ref_cnt[MTK_VDEC_LAT]),
 				dev->dec_is_power_on[MTK_VDEC_CORE], core_ctx ? core_ctx->id : -1,
-				atomic_read(&dev->dec_clk_ref_cnt[MTK_VDEC_CORE]),
+				atomic_read(&dev->clk_ref_cnt[MTK_VDEC_CORE]),
 				dev->dec_ao_pw_cnt, atomic_read(&dev->larb_ref_cnt));
 		}
 		dev->codec_stop_done = true;
@@ -1221,8 +1221,8 @@ static int vcp_vdec_notify_callback(struct notifier_block *this,
 			need_backup ? "" : "no need ",
 			dev->vdec_dvfs_params.target_freq,
 			atomic_read(&dev->larb_ref_cnt),
-			atomic_read(&dev->dec_clk_ref_cnt[MTK_VDEC_LAT]),
-			atomic_read(&dev->dec_clk_ref_cnt[MTK_VDEC_CORE]),
+			atomic_read(&dev->clk_ref_cnt[MTK_VDEC_LAT]),
+			atomic_read(&dev->clk_ref_cnt[MTK_VDEC_CORE]),
 			atomic_read(&dev->dec_hw_active[MTK_VDEC_LAT]),
 			atomic_read(&dev->dec_hw_active[MTK_VDEC_CORE]));
 
@@ -1263,8 +1263,8 @@ static int vcp_vdec_notify_callback(struct notifier_block *this,
 			mtk_v4l2_debug(0, "restore (dvfs freq %d)(pw ref %d, %d %d)(hw active %d %d)",
 				dev->vdec_dvfs_params.target_freq,
 				atomic_read(&dev->larb_ref_cnt),
-				atomic_read(&dev->dec_clk_ref_cnt[MTK_VDEC_LAT]),
-				atomic_read(&dev->dec_clk_ref_cnt[MTK_VDEC_CORE]),
+				atomic_read(&dev->clk_ref_cnt[MTK_VDEC_LAT]),
+				atomic_read(&dev->clk_ref_cnt[MTK_VDEC_CORE]),
 				atomic_read(&dev->dec_hw_active[MTK_VDEC_LAT]),
 				atomic_read(&dev->dec_hw_active[MTK_VDEC_CORE]));
 			vdec_vcp_resume((struct vdec_inst *)dev->dev_ctx.drv_handle);

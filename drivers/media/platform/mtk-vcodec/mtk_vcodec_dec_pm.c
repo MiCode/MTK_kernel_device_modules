@@ -122,6 +122,7 @@ int mtk_vcodec_init_dec_pm(struct mtk_vcodec_dev *mtkdev)
 				return -1;
 			}
 			pm->larbvdecs[larb_index] = &larb_pdev->dev;
+			mtkdev->power_in_kernel = true;
 			mtk_v4l2_debug(2, "larbvdecs[%d] = %p", larb_index, pm->larbvdecs[larb_index]);
 
 			if (!device_link_add(&pdev->dev, pm->larbvdecs[larb_index],
@@ -160,27 +161,28 @@ int mtk_vcodec_init_dec_pm(struct mtk_vcodec_dev *mtkdev)
 			clks_data->lat_clks_len++;
 		}
 		clk_id++;
+		mtkdev->power_in_kernel = true;
 	}
 
 #if DEBUG_GKI
 	// dump main clocks
 	for (i = 0; i < clks_data->main_clks_len; i++) {
-		mtk_v4l2_debug(8, "main_clks id: %d, name: %s",
+		mtk_v4l2_debug(0, "main_clks id: %d, name: %s",
 			clks_data->main_clks[i].clk_id, clks_data->main_clks[i].clk_name);
 	}
 	// dump soc clocks
 	for (i = 0; i < clks_data->soc_clks_len; i++) {
-		mtk_v4l2_debug(8, "core_clks id: %d, name: %s",
+		mtk_v4l2_debug(0, "core_clks id: %d, name: %s",
 			clks_data->soc_clks[i].clk_id, clks_data->soc_clks[i].clk_name);
 	}
 	// dump core clocks
 	for (i = 0; i < clks_data->core_clks_len; i++) {
-		mtk_v4l2_debug(8, "core_clks id: %d, name: %s",
+		mtk_v4l2_debug(0, "core_clks id: %d, name: %s",
 			clks_data->core_clks[i].clk_id, clks_data->core_clks[i].clk_name);
 	}
 	// dump lat clocks
 	for (i = 0; i < clks_data->lat_clks_len; i++) {
-		mtk_v4l2_debug(8, "lat_clks id: %d, name: %s",
+		mtk_v4l2_debug(0, "lat_clks id: %d, name: %s",
 			clks_data->lat_clks[i].clk_id, clks_data->lat_clks[i].clk_name);
 	}
 #endif
@@ -188,7 +190,7 @@ int mtk_vcodec_init_dec_pm(struct mtk_vcodec_dev *mtkdev)
 	if (pm->mtkdev->vdec_hw_ipm == VCODEC_IPM_V2) {
 		atomic_set(&pm->dec_active_cnt, 0);
 		memset(pm->vdec_racing_info, 0, sizeof(pm->vdec_racing_info));
-		mutex_init(&pm->dec_racing_info_mutex);
+		spin_lock_init(&pm->dec_racing_info_lock);
 	}
 
 	if (pm->larbvdecs[0])
@@ -210,10 +212,13 @@ void mtk_vcodec_release_dec_pm(struct mtk_vcodec_dev *dev)
 #endif
 }
 
-void mtk_vcodec_dec_pw_on(struct mtk_vcodec_pm *pm)
+static void mtk_vcodec_dec_larb_on(struct mtk_vcodec_pm *pm)
 {
 	int ret, larb_index;
 	struct mtk_vcodec_dev *dev = container_of(pm, struct mtk_vcodec_dev, pm);
+
+	if (!pm->larbvdecs[0])
+		return;
 
 	atomic_inc(&dev->larb_ref_cnt);
 	mtk_v4l2_debug(8, "larb_ref_cnt: %d", atomic_read(&dev->larb_ref_cnt));
@@ -227,11 +232,14 @@ void mtk_vcodec_dec_pw_on(struct mtk_vcodec_pm *pm)
 	}
 }
 
-void mtk_vcodec_dec_pw_off(struct mtk_vcodec_pm *pm)
+static void mtk_vcodec_dec_larb_off(struct mtk_vcodec_pm *pm)
 {
 	int larb_index;
 	int hw_lock_cnt = 0, i;
 	struct mtk_vcodec_dev *dev = container_of(pm, struct mtk_vcodec_dev, pm);
+
+	if (!pm->larbvdecs[0])
+		return;
 
 	if (atomic_read(&dev->larb_ref_cnt) <= 0) {
 		mtk_v4l2_err("larb_ref_cnt %d invalid !!",
@@ -494,18 +502,16 @@ static void mtk_vdec_hw_break(struct mtk_vcodec_dev *dev, int hw_id)
 
 void mtk_vcodec_dec_clock_on(struct mtk_vcodec_pm *pm, unsigned int hw_id)
 {
-
 #ifdef CONFIG_MTK_PSEUDO_M4U
 	int i, larb_port_num, larb_id;
 	struct M4U_PORT_STRUCT port;
 #endif
-
 #ifndef FPGA_PWRCLK_API_DISABLE
 	int j, ret;
-	struct mtk_vcodec_dev *dev;
+	struct mtk_vcodec_dev *dev = container_of(pm, struct mtk_vcodec_dev, pm);
 	void __iomem *vdec_racing_addr;
 	int clk_id;
-	struct mtk_vdec_clks_data *clks_data;
+	struct mtk_vdec_clks_data *clks_data = &pm->vdec_clks_data;
 	unsigned long flags;
 
 	if (hw_id >= MTK_VDEC_HW_NUM) {
@@ -514,15 +520,7 @@ void mtk_vcodec_dec_clock_on(struct mtk_vcodec_pm *pm, unsigned int hw_id)
 	}
 
 	time_check_start(MTK_FMT_DEC, hw_id);
-
-	clks_data = &pm->vdec_clks_data;
-	dev = container_of(pm, struct mtk_vcodec_dev, pm);
-
-	mtk_vcodec_dec_pw_on(pm);
-
-	atomic_inc(&dev->dec_clk_ref_cnt[hw_id]);
-	mtk_v4l2_debug(8, "dec_clk_ref_cnt[%d]: %d",
-		hw_id, atomic_read(&dev->dec_clk_ref_cnt[hw_id]));
+	mtk_vcodec_dec_larb_on(pm);
 
 	// enable main clocks
 	for (j = 0; j < clks_data->main_clks_len; j++) {
@@ -559,30 +557,28 @@ void mtk_vcodec_dec_clock_on(struct mtk_vcodec_pm *pm, unsigned int hw_id)
 				mtk_v4l2_err("clk_prepare_enable id: %d, name: %s fail %d",
 					clk_id, clks_data->lat_clks[j].clk_name, ret);
 		}
-	} else
-		mtk_v4l2_err("invalid hw_id %d", hw_id);
-
-	if (!ret) {
-		spin_lock_irqsave(&dev->dec_power_lock[hw_id], flags);
-		dev->dec_is_power_on[hw_id] = true;
-		spin_unlock_irqrestore(&dev->dec_power_lock[hw_id], flags);
 	}
+	time_check_end(MTK_FMT_DEC, hw_id, 50);
 
-	if (pm->mtkdev->vdec_hw_ipm == VCODEC_IPM_V2) {
-		mutex_lock(&pm->dec_racing_info_mutex);
+	atomic_inc(&dev->clk_ref_cnt[hw_id]);
+	mtk_v4l2_debug(8, "clk_ref_cnt[%d]: %d", hw_id, atomic_read(&dev->clk_ref_cnt[hw_id]));
+
+	spin_lock_irqsave(&dev->power_check_lock[hw_id], flags);
+	dev->dec_is_power_on[hw_id] = true;
+	spin_unlock_irqrestore(&dev->power_check_lock[hw_id], flags);
+
+	if (pm->mtkdev->vdec_hw_ipm == VCODEC_IPM_V2 && !dev->power_in_vcp) {
+		unsigned long info_flags;
+
+		spin_lock_irqsave(&pm->dec_racing_info_lock, info_flags);
 		if (atomic_inc_return(&pm->dec_active_cnt) == 1) {
 			/* restore racing info read/write ptr */
-			vdec_racing_addr =
-				dev->dec_reg_base[VDEC_RACING_CTRL] +
-					MTK_VDEC_RACING_INFO_OFFSET;
+			vdec_racing_addr = dev->dec_reg_base[VDEC_RACING_CTRL] + MTK_VDEC_RACING_INFO_OFFSET;
 			for (j = 0; j < MTK_VDEC_RACING_INFO_SIZE; j++)
-				writel(pm->vdec_racing_info[j],
-					vdec_racing_addr + j * 4);
+				writel(pm->vdec_racing_info[j], vdec_racing_addr + j * 4);
 		}
-		mutex_unlock(&pm->dec_racing_info_mutex);
+		spin_unlock_irqrestore(&pm->dec_racing_info_lock, info_flags);
 	}
-
-	time_check_end(MTK_FMT_DEC, hw_id, 50);
 #endif
 
 #ifdef CONFIG_MTK_PSEUDO_M4U
@@ -616,17 +612,16 @@ void mtk_vcodec_dec_clock_on(struct mtk_vcodec_pm *pm, unsigned int hw_id)
 	}
 	time_check_end(MTK_FMT_DEC, hw_id, 50);
 #endif
-
 }
 
 void mtk_vcodec_dec_clock_off(struct mtk_vcodec_pm *pm, unsigned int hw_id)
 {
 #ifndef FPGA_PWRCLK_API_DISABLE
-	struct mtk_vcodec_dev *dev;
+	struct mtk_vcodec_dev *dev = container_of(pm, struct mtk_vcodec_dev, pm);
 	void __iomem *vdec_racing_addr;
 	int i;
 	int clk_id;
-	struct mtk_vdec_clks_data *clks_data;
+	struct mtk_vdec_clks_data *clks_data = &pm->vdec_clks_data;
 	unsigned long flags;
 
 	if (hw_id >= MTK_VDEC_HW_NUM) {
@@ -634,47 +629,37 @@ void mtk_vcodec_dec_clock_off(struct mtk_vcodec_pm *pm, unsigned int hw_id)
 		return;
 	}
 
-	clks_data = &pm->vdec_clks_data;
-	dev = container_of(pm, struct mtk_vcodec_dev, pm);
-	if (atomic_read(&dev->dec_clk_ref_cnt[hw_id]) <= 0) {
-		mtk_v4l2_err("dec_clk_ref_cnt[%d] %d invalid !!",
-			hw_id, atomic_read(&dev->larb_ref_cnt));
+	if (atomic_read(&dev->clk_ref_cnt[hw_id]) <= 0) {
+		mtk_v4l2_err("clk_ref_cnt[%d] %d invalid !!", hw_id, atomic_read(&dev->clk_ref_cnt[hw_id]));
 		// BUG();
 		// return;
-	}
-	atomic_dec(&dev->dec_clk_ref_cnt[hw_id]);
-	mtk_v4l2_debug(8, "dec_clk_ref_cnt[%d]: %d",
-		hw_id, atomic_read(&dev->dec_clk_ref_cnt[hw_id]));
-
-	if (pm->mtkdev->vdec_hw_ipm == VCODEC_IPM_V2) {
-		mutex_lock(&pm->dec_racing_info_mutex);
-		if (atomic_dec_and_test(&pm->dec_active_cnt)) {
-			/* backup racing info read/write ptr */
-			vdec_racing_addr =
-				dev->dec_reg_base[VDEC_RACING_CTRL] +
-					MTK_VDEC_RACING_INFO_OFFSET;
-			for (i = 0; i < MTK_VDEC_RACING_INFO_SIZE; i++)
-				pm->vdec_racing_info[i] =
-					readl(vdec_racing_addr + i * 4);
-		}
-		mutex_unlock(&pm->dec_racing_info_mutex);
 	}
 
 	// remove for security, handle decode timeout hw break in vcp
 	//mtk_vdec_hw_break(dev, hw_id);
 
-	/* avoid translation fault callback dump reg not done */
-	spin_lock_irqsave(&dev->dec_power_lock[hw_id], flags);
-	dev->dec_is_power_on[hw_id] = false;
-	spin_unlock_irqrestore(&dev->dec_power_lock[hw_id], flags);
+	if (pm->mtkdev->vdec_hw_ipm == VCODEC_IPM_V2 && !dev->power_in_vcp) {
+		unsigned long info_flags;
 
-	// disable soc clocks
-	if (clks_data->soc_clks_len > 0) {
-		for (i = clks_data->soc_clks_len - 1; i >= 0; i--) {
-			clk_id = clks_data->soc_clks[i].clk_id;
-			clk_disable_unprepare(pm->vdec_clks[clk_id]);
+		spin_lock_irqsave(&pm->dec_racing_info_lock, info_flags);
+		if (atomic_dec_and_test(&pm->dec_active_cnt)) {
+			/* backup racing info read/write ptr */
+			vdec_racing_addr = dev->dec_reg_base[VDEC_RACING_CTRL] + MTK_VDEC_RACING_INFO_OFFSET;
+			for (i = 0; i < MTK_VDEC_RACING_INFO_SIZE; i++)
+				pm->vdec_racing_info[i] = readl(vdec_racing_addr + i * 4);
 		}
+		spin_unlock_irqrestore(&pm->dec_racing_info_lock, info_flags);
 	}
+
+	/* avoid translation fault callback dump reg not done */
+	spin_lock_irqsave(&dev->power_check_lock[hw_id], flags);
+	if (atomic_read(&dev->clk_ref_cnt[hw_id]) <= 1)
+		dev->dec_is_power_on[hw_id] = false;
+	spin_unlock_irqrestore(&dev->power_check_lock[hw_id], flags);
+
+	atomic_dec(&dev->clk_ref_cnt[hw_id]);
+	mtk_v4l2_debug(8, "clk_ref_cnt[%d]: %d", hw_id, atomic_read(&dev->clk_ref_cnt[hw_id]));
+
 	if (hw_id == MTK_VDEC_CORE || hw_id == MTK_VDEC_CORE1) {
 		// disable core clocks
 		if (clks_data->core_clks_len > 0) {
@@ -691,8 +676,14 @@ void mtk_vcodec_dec_clock_off(struct mtk_vcodec_pm *pm, unsigned int hw_id)
 				clk_disable_unprepare(pm->vdec_clks[clk_id]);
 			}
 		}
-	} else
-		mtk_v4l2_err("invalid hw_id %d", hw_id);
+	}
+	// disable soc clocks
+	if (clks_data->soc_clks_len > 0) {
+		for (i = clks_data->soc_clks_len - 1; i >= 0; i--) {
+			clk_id = clks_data->soc_clks[i].clk_id;
+			clk_disable_unprepare(pm->vdec_clks[clk_id]);
+		}
+	}
 
 	if (clks_data->main_clks_len > 0) {
 		for (i = clks_data->main_clks_len - 1; i >= 0; i--) {
@@ -701,17 +692,22 @@ void mtk_vcodec_dec_clock_off(struct mtk_vcodec_pm *pm, unsigned int hw_id)
 		}
 	}
 
-	mtk_vcodec_dec_pw_off(pm);
+	mtk_vcodec_dec_larb_off(pm);
 #endif
 }
 
 static int mtk_vdec_smi_pwr_ctrl(struct mtk_vcodec_dev *dev,
 	enum mtk_smi_pwr_ctrl_type type, enum mtk_vdec_hw_id hw_id)
 {
-	if (dev->power_in_vcp && mtk_vcodec_is_vcp(MTK_INST_DECODER)) {
-		struct mtk_smi_pwr_ctrl_info info;
-		int ret;
+	int ret;
 
+	if (type >= MTK_SMI_CTRL_TYPE_MAX)
+		return -1;
+
+	mtk_v4l2_debug(0, "type %d, hw_id %d (power_in_vcp %d, power_in_kernel %d)",
+		type, hw_id, dev->power_in_vcp, dev->power_in_kernel);
+
+	if (dev->power_in_vcp) {
 		if (type == MTK_SMI_GET_IF_IN_USE) {
 			if (atomic_read(&dev->smi_dump_ref_cnt)) {
 				atomic_inc(&dev->smi_ctrl_get_ref_cnt[hw_id]);
@@ -720,6 +716,15 @@ static int mtk_vdec_smi_pwr_ctrl(struct mtk_vcodec_dev *dev,
 			return 0;
 		} else if (type == MTK_SMI_PUT && atomic_add_unless(&dev->smi_ctrl_get_ref_cnt[hw_id], -1, 0))
 			return 0;
+	}
+
+	if (dev->power_in_vcp && !dev->power_in_kernel) {
+		struct mtk_smi_pwr_ctrl_info info;
+
+		if (!mtk_vcodec_is_vcp(MTK_INST_DECODER)) {
+			mtk_v4l2_err("power ipi invalid !! (ctrl type %d, hw_id %d)", type, hw_id);
+			return -1;
+		}
 
 		info.type = type;
 		info.hw_id = hw_id;
@@ -729,15 +734,13 @@ static int mtk_vdec_smi_pwr_ctrl(struct mtk_vcodec_dev *dev,
 	}
 
 	// else => not vcp
-	if (type >= MTK_SMI_CTRL_TYPE_MAX)
-		return -1;
-	else if (type == MTK_SMI_GET)
-		mtk_vcodec_dec_pw_on(&dev->pm);
+	if (type == MTK_SMI_GET)
+		mtk_vcodec_dec_clock_on(&dev->pm, hw_id);
 	else if (type == MTK_SMI_PUT)
-		mtk_vcodec_dec_pw_off(&dev->pm);
+		mtk_vcodec_dec_clock_off(&dev->pm, hw_id);
 	else if (type == MTK_SMI_GET_IF_IN_USE) {
-		if (atomic_read(&dev->larb_ref_cnt) > 0) {
-			mtk_vcodec_dec_pw_on(&dev->pm);
+		if (atomic_read(&dev->clk_ref_cnt[hw_id]) > 0) {
+			mtk_vcodec_dec_clock_on(&dev->pm, hw_id);
 			return 1;
 		}
 	}
@@ -797,10 +800,12 @@ void mtk_vcodec_dec_smi_pwr_ctrl_register(struct mtk_vcodec_dev *dev)
 
 	vdec_core_pwr_ctrl.data = (void *)dev;
 	mtk_smi_dbg_register_pwr_ctrl_cb(&vdec_core_pwr_ctrl);
+	mtk_v4l2_debug(2, "register core power control");
 
 	if (dev->vdec_hw_ipm == VCODEC_IPM_V2){
 		vdec_lat_pwr_ctrl.data = (void *)dev;
 		mtk_smi_dbg_register_pwr_ctrl_cb(&vdec_lat_pwr_ctrl);
+		mtk_v4l2_debug(2, "register lat power control");
 	}
 }
 
@@ -810,9 +815,12 @@ void mtk_vcodec_dec_smi_pwr_ctrl_unregister(struct mtk_vcodec_dev *dev)
 		return;
 
 	mtk_smi_dbg_unregister_pwr_ctrl_cb(&vdec_core_pwr_ctrl);
+	mtk_v4l2_debug(2, "unregister core power control");
 
-	if (dev->vdec_hw_ipm == VCODEC_IPM_V2)
+	if (dev->vdec_hw_ipm == VCODEC_IPM_V2) {
 		mtk_smi_dbg_unregister_pwr_ctrl_cb(&vdec_lat_pwr_ctrl);
+		mtk_v4l2_debug(2, "unregister lat power control");
+	}
 }
 
 #ifdef VDEC_DEBUG_DUMP
@@ -883,10 +891,10 @@ static void mtk_vdec_dump_addr_reg(
 	else
 		fourcc = v4l2_fourcc('U', 'N', 'K', 'N');
 
-	spin_lock_irqsave(&dev->dec_power_lock[hw_id], flags);
+	spin_lock_irqsave(&dev->power_check_lock[hw_id], flags);
 	if (dev->dec_is_power_on[hw_id] == false) {
 		mtk_v4l2_err("hw %d power is off !!", hw_id);
-		spin_unlock_irqrestore(&dev->dec_power_lock[hw_id], flags);
+		spin_unlock_irqrestore(&dev->power_check_lock[hw_id], flags);
 		return;
 	}
 
@@ -1039,7 +1047,7 @@ static void mtk_vdec_dump_addr_reg(
 		mtk_v4l2_err("unknown addr type");
 	}
 
-	spin_unlock_irqrestore(&dev->dec_power_lock[hw_id], flags);
+	spin_unlock_irqrestore(&dev->power_check_lock[hw_id], flags);
 }
 #endif
 

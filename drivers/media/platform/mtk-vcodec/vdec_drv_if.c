@@ -269,8 +269,12 @@ void vdec_decode_prepare(void *ctx_prepare,
 
 	if (ret == 0 && !mtk_vcodec_is_vcp(MTK_INST_DECODER) && ctx->dev->dec_irq[hw_id] > 0)
 		enable_irq(ctx->dev->dec_irq[hw_id]);
+
+	mutex_lock(&ctx->dev->dec_dvfs_mutex);
 	mtk_vdec_dvfs_begin_frame(ctx, hw_id);
 	mtk_vdec_pmqos_begin_frame(ctx);
+	mutex_unlock(&ctx->dev->dec_dvfs_mutex);
+
 	if (hw_id == MTK_VDEC_CORE)
 		vcodec_trace_count("VDEC_HW_CORE", 1);
 	else
@@ -287,15 +291,19 @@ void vdec_decode_unprepare(void *ctx_unprepare,
 		return;
 
 	mutex_lock(&ctx->hw_status);
-	if (ctx->dev->vdec_reg) // per frame mmdvfs in AP
-		mtk_vdec_dvfs_end_frame(ctx, hw_id);
-	mtk_vdec_pmqos_end_frame(ctx);
 	if (ctx->dev->dec_sem[hw_id].count != 0) {
 		mtk_v4l2_debug(0, "HW not prepared, dec_sem[%d].count = %d",
 			hw_id, ctx->dev->dec_sem[hw_id].count);
 		mutex_unlock(&ctx->hw_status);
 		return;
 	}
+
+	mutex_lock(&ctx->dev->dec_dvfs_mutex);
+	if (ctx->dev->vdec_reg) // per frame mmdvfs in AP
+		mtk_vdec_dvfs_end_frame(ctx, hw_id);
+	mtk_vdec_pmqos_end_frame(ctx);
+	mutex_unlock(&ctx->dev->dec_dvfs_mutex);
+
 	if (hw_id == MTK_VDEC_CORE)
 		vcodec_trace_count("VDEC_HW_CORE", 0);
 	else
@@ -309,7 +317,6 @@ void vdec_decode_unprepare(void *ctx_unprepare,
 	mtk_vcodec_set_curr_ctx(ctx->dev, NULL, hw_id);
 	mtk_vdec_unlock(ctx, hw_id);
 	mutex_unlock(&ctx->hw_status);
-
 }
 
 void vdec_check_release_lock(void *ctx_check)
@@ -326,9 +333,9 @@ void vdec_check_release_lock(void *ctx_check)
 	}
 	if (ctx->dev->dec_cnt == 1) {
 		for (i = 0; i < MTK_VDEC_HW_NUM; i++)
-			if (atomic_read(&ctx->dev->dec_clk_ref_cnt[i]))
-				mtk_v4l2_err("[%d] hw_id %d: dec_clk_ref_cnt %d",
-					ctx->id, i, atomic_read(&ctx->dev->dec_clk_ref_cnt[i]));
+			if (atomic_read(&ctx->dev->clk_ref_cnt[i]))
+				mtk_v4l2_err("[%d] hw_id %d: clk_ref_cnt %d",
+					ctx->id, i, atomic_read(&ctx->dev->clk_ref_cnt[i]));
 		if (atomic_read(&ctx->dev->larb_ref_cnt))
 			mtk_v4l2_err("[%d] larb_ref_cnt %d",
 				ctx->id, atomic_read(&ctx->dev->larb_ref_cnt));

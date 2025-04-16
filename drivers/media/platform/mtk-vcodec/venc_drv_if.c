@@ -184,7 +184,7 @@ void venc_encode_prepare(void *ctx_prepare,
 	spin_lock_irqsave(&ctx->dev->irqlock, *flags);
 	ctx->dev->curr_enc_ctx[core_id] = ctx;
 	spin_unlock_irqrestore(&ctx->dev->irqlock, *flags);
-	mtk_vcodec_enc_clock_on(ctx, core_id);
+	mtk_vcodec_enc_clock_on(ctx, core_id, false);
 	if (!mtk_vcodec_is_vcp(MTK_INST_ENCODER) && ctx->dev->enc_irq[core_id] > 0)
 		enable_irq(ctx->dev->enc_irq[core_id]);
 	if (core_id == MTK_VENC_CORE_0) {
@@ -230,7 +230,7 @@ void venc_encode_unprepare(void *ctx_unprepare,
 
 	if (!mtk_vcodec_is_vcp(MTK_INST_ENCODER) && ctx->dev->enc_irq[core_id] > 0)
 		disable_irq(ctx->dev->enc_irq[core_id]);
-	mtk_vcodec_enc_clock_off(ctx, core_id);
+	mtk_vcodec_enc_clock_off(ctx, core_id, false);
 	spin_lock_irqsave(&ctx->dev->irqlock, *flags);
 	ctx->dev->curr_enc_ctx[core_id] = NULL;
 	spin_unlock_irqrestore(&ctx->dev->irqlock, *flags);
