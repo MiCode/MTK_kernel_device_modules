@@ -545,16 +545,16 @@ void mtk_dbgtp_all_setting_dump(struct mtk_drm_private *priv)
 	mtk_dbgtp_all_regs_dump(priv);
 }
 
-int mtk_dbgtp_dump(struct mtk_ddp_comp *comp)
+int mtk_dbgtp_dump(void)
 {
-	void __iomem *baddr = comp->regs;
+	void __iomem *baddr = dbgtp_comp->regs;
 
 	if (!baddr) {
-		DDPDUMP("%s, %s is NULL!\n", __func__, mtk_dump_comp_str(comp));
+		DDPDUMP("%s, %s is NULL!\n", __func__, mtk_dump_comp_str(dbgtp_comp));
 		return 0;
 	}
 
-	DDPDUMP("== %s REGS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
+	DDPDUMP("== %s REGS:0x%pa ==\n", mtk_dump_comp_str(dbgtp_comp), &dbgtp_comp->regs_pa);
 	mtk_serial_dump_reg(baddr, 0x0, 4);
 	mtk_serial_dump_reg(baddr, 0x10, 4);
 	mtk_serial_dump_reg(baddr, 0x20, 4);
@@ -568,7 +568,7 @@ void mtk_dbgtp_all_regs_dump(struct mtk_drm_private *priv)
 {
 	void __iomem *regs = NULL;
 
-	mtk_dbgtp_dump(dbgtp_comp);
+	mtk_dbgtp_dump();
 	DDPDUMP(">>>>>>>>>>>>>>>> dispsys   <<<<<<<<<<<<<<<<\n");
 	regs = priv->config_regs;
 	if (regs != NULL) {

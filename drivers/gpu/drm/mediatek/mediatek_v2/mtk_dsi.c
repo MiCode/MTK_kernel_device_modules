@@ -4278,8 +4278,10 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 
 				mtk_dprec_snapshot();
 
-				if (dsi->encoder.crtc)
+				if (dsi->encoder.crtc) {
 					mtk_drm_crtc_mini_analysis(dsi->encoder.crtc);
+					mtk_drm_crtc_mini_dump(dsi->encoder.crtc);
+				}
 
 				mtk_vidle_dpc_analysis();
 

@@ -1562,6 +1562,9 @@ void mtk_drm_crtc_mini_dump(struct drm_crtc *crtc)
 				if (comp && (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_DBI_COUNT))
 					mtk_dump_reg(comp);
 			}
+
+			mtk_dbgtp_dump();
+
 			break;
 	case MMSYS_MT6897:
 		DDPDUMP("== DISP pipe-0 OVLSYS_CONFIG REGS:0x%pa ==\n",
@@ -17175,6 +17178,11 @@ void mtk_drm_crtc_first_enable(struct drm_crtc *crtc)
 		mtk_crtc_start_trig_loop(crtc);
 	}
 
+	/*need enable hrt_bw for pan display, be aware should update BW after SRT BW */
+	if (mtk_drm_helper_get_opt(priv->helper_opt,
+		MTK_DRM_OPT_MMQOS_SUPPORT))
+		mtk_drm_pan_disp_set_hrt_bw(crtc, __func__);
+
 	/* 3. Regsister configuration */
 	mtk_crtc_first_enable_ddp_config(mtk_crtc);
 
@@ -17208,10 +17216,6 @@ void mtk_drm_crtc_first_enable(struct drm_crtc *crtc)
 	comp = mtk_ddp_comp_request_output_lpc(mtk_crtc);
 	if (comp)
 		mtk_ddp_comp_io_cmd(comp, NULL, DSI_LPC_INIT_CONFIG, NULL);
-
-	/*need enable hrt_bw for pan display, be aware should update BW after SRT BW */
-	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMQOS_SUPPORT))
-		mtk_drm_pan_disp_set_hrt_bw(crtc, __func__);
 
 	mtk_set_dpc_dsi_clk(mtk_crtc, true);
 
