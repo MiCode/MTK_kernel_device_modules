@@ -59,6 +59,7 @@ struct adsp_priv {
 	const char *name;
 	int state;
 	u64 feature_set;
+	u32 mbrain_enable;
 
 	/* address & size */
 	void __iomem *itcm;
@@ -141,5 +142,6 @@ typedef void (*audio_adsp_mbrain_notify_callback)(const void *info, const size_t
 int adsp_mbrain_register_callback(audio_adsp_mbrain_notify_callback mbrain_cbk);
 int adsp_mbrain_unregister_callback(void);
 void set_adsp_mbrain_cbk(audio_adsp_mbrain_notify_callback mbrain_cbk);
+int adsp_mbrain_enable(struct adsp_priv *pdata);
 
 #endif

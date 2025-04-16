@@ -248,6 +248,9 @@ static int adsp_core_drv_probe(struct platform_device *pdev)
 	READ_U64_PROPERTY_DEFAULT(dev->of_node, "feature-control-bits",
 				  &pdata->feature_set, 0xF);
 
+	READ_U32_PROPERTY_DEFAULT(dev->of_node, "adsp-mbrain-enable",
+				  &pdata->mbrain_enable, 0);
+
 	/* mailbox channel parsing */
 	if (of_parse_phandle_with_args(dev->of_node, "mboxes",
 				       "#mbox-cells", 0, &spec)) {

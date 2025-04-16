@@ -440,17 +440,15 @@ static void adsp_mbrain_notify_dump(int id, void *buf, unsigned int len)
 		 kfifo_avail(&pdata->mbrainfifo));
 }
 
-static int adsp_mbrain_open(struct inode *inode, struct file *file)
+int adsp_mbrain_enable(struct adsp_priv *pdata)
 {
-	struct adsp_priv *pdata = inode->i_private;
 	char *buffer = NULL;
+	char msg[64] = {0};
 	size_t size;
 	unsigned int memid;
 
-	if (!inode->i_private)
+	if (!pdata)
 		return -ENODEV;
-
-	file->private_data = inode->i_private;
 
 	if (!kfifo_initialized(&pdata->mbrainfifo)) {
 		/* mbrain kfifo initialize, use bottom of debug memory */
@@ -468,50 +466,29 @@ static int adsp_mbrain_open(struct inode *inode, struct file *file)
 		buffer += size - ADSP_TRACE_SIZE - ADSP_MBRAIN_SIZE;
 		kfifo_init(&pdata->mbrainfifo, buffer, ADSP_MBRAIN_SIZE);
 
+		/* register MBrain callback */
 		adsp_ipi_registration(ADSP_IPI_MBRAIN_DONE,
 				      adsp_mbrain_notify_dump, "mbrain_notify_dump");
+
+		/* enable ADSP MBrain */
+		kfifo_reset(&pdata->mbrainfifo);
+		strscpy(msg, "mbrain_start", sizeof(msg) - 1);
+
+		pr_info("%s(), send '%s' to adsp kfifo:%d/%d", __func__, msg,
+			kfifo_avail(&pdata->mbrainfifo),
+			kfifo_size(&pdata->mbrainfifo));
+
+		if (_adsp_register_feature(pdata->id, SYSTEM_FEATURE_ID, 0) == 0) {
+			adsp_push_message(ADSP_IPI_ADSP_TIMER, msg, sizeof(msg), 0, pdata->id);
+			_adsp_deregister_feature(pdata->id, SYSTEM_FEATURE_ID, 0);
+		}
 
 		pr_debug("%s(), init done %d, %p, %zu", __func__,
 			 kfifo_initialized(&pdata->mbrainfifo), buffer, size);
 	}
 
-	return nonseekable_open(inode, file);
+	return 0;
 }
-
-static ssize_t adsp_mbrain_write(struct file *filp, const char __user *buffer,
-				size_t count, loff_t *ppos)
-{
-	char buf[64] = {0};
-	unsigned int enable = 0;
-	struct adsp_priv *pdata = filp->private_data;
-
-	if (kstrtouint_from_user(buffer, count, 0, &enable) != 0)
-		return -EINVAL;
-
-	if (enable) {
-		kfifo_reset(&pdata->mbrainfifo);
-		strscpy(buf, "mbrain_start", sizeof(buf) - 1);
-	} else {
-		strscpy(buf, "mbrain_stop", sizeof(buf) - 1);
-	}
-
-	pr_info("%s(), send '%s' to adsp kfifo:%d/%d", __func__, buf,
-		kfifo_avail(&pdata->mbrainfifo),
-		kfifo_size(&pdata->mbrainfifo));
-
-	if (_adsp_register_feature(pdata->id, SYSTEM_FEATURE_ID, 0) == 0) {
-		adsp_push_message(ADSP_IPI_ADSP_TIMER, buf, sizeof(buf), 0, pdata->id);
-		_adsp_deregister_feature(pdata->id, SYSTEM_FEATURE_ID, 0);
-	}
-
-	return count;
-}
-
-const struct file_operations adsp_mbrain_ops = {
-	.open = adsp_mbrain_open,
-	.write = adsp_mbrain_write,
-	.llseek = noop_llseek,
-};
 
 /* ------------------------------ misc device ----------------------------- */
 /*==============================================================================

@@ -47,6 +47,13 @@ int adsp_after_bootup(struct adsp_priv *pdata)
 	while (slb_memory_control(false) > 0)
 		;
 
+	/* Enable adsp_mbrain if need */
+	if (pdata->mbrain_enable) {
+		pr_info("%s(), core(%d) adsp_mbrain enable\n", __func__, pdata->id);
+		if (adsp_mbrain_enable(pdata) < 0)
+			pr_info("%s(), core(%d) adsp_mbrain enable fail\n", __func__, pdata->id);
+	}
+
 	return adsp_awake_unlock(pdata->id);
 }
 EXPORT_SYMBOL(adsp_after_bootup);
@@ -356,16 +363,13 @@ int adsp_core_common_init(struct adsp_priv *pdata)
 {
 	int ret = 0;
 #if IS_ENABLED(CONFIG_DEBUG_FS)
-	char name[12] = {0};
+	char name[11] = {0};
 
-	if (snprintf(name, 12, "audiodsp%d", pdata->id) >= 0)
+	if (snprintf(name, 11, "audiodsp%d", pdata->id) >= 0)
 		debugfs_create_file(name, S_IFREG | 0644, NULL, pdata, &adsp_debug_ops);
 
-	if (snprintf(name, 12, "adsptrace%d", pdata->id) >= 0)
+	if (snprintf(name, 11, "adsptrace%d", pdata->id) >= 0)
 		debugfs_create_file(name, S_IFREG | 0644, NULL, pdata, &adsp_trace_ops);
-
-	if (snprintf(name, 12, "adspmbrain%d", pdata->id) >= 0)
-		debugfs_create_file(name, S_IFREG | 0644, NULL, pdata, &adsp_mbrain_ops);
 #endif
 
 	/* v1: adsp mpu info */
