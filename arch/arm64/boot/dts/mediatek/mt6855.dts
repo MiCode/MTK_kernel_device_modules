@@ -4067,6 +4067,12 @@
 			dma-ranges = <0x1 0x0 0x1 0x0 0x1 0x0>;
 			iommus = <&disp_iommu M4U_LARB33_VIDEO_UP_256MB2>;
 		};
+		vcp_io5: vcp-iommu-sec {
+			compatible =  "mediatek,vcp-io-sec";
+			vcp-support = <7>;
+			dma-ranges = <0x1 0x0 0x1 0x0 0x1 0x0>;
+			iommus = <&disp_iommu M4U_LARB33_VIDEO_UP_256MB1>;
+		};
 		vcu: vcu@16000000 {
 			compatible = "mediatek-vcu";
 			mediatek,vcuid = <0>;
