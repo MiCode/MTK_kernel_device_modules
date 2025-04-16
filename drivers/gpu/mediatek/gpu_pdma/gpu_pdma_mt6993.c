@@ -20,12 +20,14 @@
 #include <linux/printk.h>
 #include <linux/dma-mapping.h>
 
-
 /* gpu header */
 #include <gpu_pdma_mt6993.h>
 #include <mtk_gpufreq.h>
 #include <ghpm_wrapper.h>
 #include <ged_gpu_slc.h>
+
+/* SLC header*/
+#include <slbc_sdk.h>
 
 /* define */
 #define PDMA_DEVNAME "gpu_pdma_driver"
@@ -51,10 +53,11 @@
 #define CCMD_POWER_ON							1
 #define CCMD_POWER_OFF						0
 
-#define CCMD_UNSUPPORTED_CID		0xFFFFFFFF
-#define CCMD_RESERVED_PBHA_NUM		4
-#define CCMD_UNSUPPORTED_PBHA_ID	0
-#define CCMD_BUFFER_SIZE			64
+#define CCMD_UNSUPPORTED_CID		(0xFFFFFFFF)
+#define CCMD_RETIRED_CID		(CCMD_UNSUPPORTED_CID - 1)
+#define CCMD_RESERVED_PBHA_NUM		(4)
+#define CCMD_UNSUPPORTED_PBHA_ID	(0)
+#define CCMD_BUFFER_SIZE		(64)
 /* #define CCMD_DEBUG_MODE */
 #define CCMD_V2_SUPPORT			1
 
@@ -160,6 +163,33 @@ static int ccmd_power_control(int power)
 	return ret;
 }
 
+static void init_ccmd_reg_dummy_page(struct pdma_device *pdma_dev, u32 page_order)
+{
+	unsigned int *dummy_page;
+	dma_addr_t dma_addr;
+	int cid_num;
+
+	dummy_page = (unsigned int *)(pdma_dev->dummy_reg_page_virt);
+
+	// Read pointer gets 0xDEADBEEF for dummy page.
+	if (dummy_page) {
+		for (cid_num = 0; cid_num < pdma_dev->max_ctx_cnt; cid_num++)
+			dummy_page[cid_num + (pdma_dev->ao_hrptr_offset >> 2)] = 0xDEADBEEF;
+	}
+
+	/* Cache Sync for dummy page */
+	dma_addr = dma_map_single(pdma_dev->dev, (void *)dummy_page,
+		(PAGE_SIZE << pdma_dev->page_order), DMA_BIDIRECTIONAL);
+	if (dma_mapping_error(pdma_dev->dev, dma_addr)) {
+		pr_info("%s fail to performance cache sync via dma\n", __func__);
+		return;
+	}
+	dma_sync_single_for_device(pdma_dev->dev, dma_addr,
+		(PAGE_SIZE << page_order), DMA_TO_DEVICE);
+	dma_unmap_page(pdma_dev->dev, dma_addr,
+		(PAGE_SIZE << page_order), DMA_BIDIRECTIONAL);
+}
+
 static void init_pbha_pool(struct device_node *node, struct pdma_device *pdma_dev)
 {
 	struct extended_pbha *pbha_entry;
@@ -202,7 +232,7 @@ static void init_pbha_pool(struct device_node *node, struct pdma_device *pdma_de
 	}
 }
 
-static bool IsValidCcmdCtx(struct ccmd_context *ccmd_ctx)
+static bool IsActiveCcmdCtx(struct ccmd_context *ccmd_ctx)
 {
 	struct pdma_device *pdma_dev;
 	struct list_head *entry, *tmp;
@@ -210,8 +240,9 @@ static bool IsValidCcmdCtx(struct ccmd_context *ccmd_ctx)
 
 	if (!ccmd_ctx)
 		return false;
+
 	if (ccmd_ctx->cid == CCMD_UNSUPPORTED_CID) {
-		pr_info("[CCMD] %s : Unsupported CID (%p)\n", __func__, ccmd_ctx);
+		pr_debug("[CCMD] %s : Unsupported CID (%p)\n", __func__, ccmd_ctx);
 		return false;
 	}
 
@@ -223,21 +254,63 @@ static bool IsValidCcmdCtx(struct ccmd_context *ccmd_ctx)
 	lockdep_assert_held(&pdma_dev->pdma_device_lock);
 
 	/* vaidate ccmd_ctx */
-	list_for_each_safe(entry, tmp, &pdma_dev->ctx_list) {
+	list_for_each_safe(entry, tmp, &pdma_dev->ctx_list_active) {
 		ctx = list_entry(entry, struct ccmd_context, entry);
 		if (ccmd_ctx == ctx)
 			return true;
 	}
 
-	pr_info("[CCMD] Context %p is not found in context list\n",
+	pr_debug("[CCMD] Context %p is not found in active context list\n",
+		(void *)ccmd_ctx);
+	return false;
+}
+static bool IsRetiredCcmdCtx(struct ccmd_context *ccmd_ctx)
+{
+	struct pdma_device *pdma_dev;
+	struct list_head *entry, *tmp;
+	struct ccmd_context *ctx;
+
+	if (!ccmd_ctx)
+		return false;
+
+	if (ccmd_ctx->cid == CCMD_UNSUPPORTED_CID) {
+		pr_debug("[CCMD] %s : Unsupported CID (%p)\n", __func__, ccmd_ctx);
+		return false;
+	}
+
+	if (ccmd_ctx->cid != CCMD_RETIRED_CID) {
+		pr_debug("[CCMD] %s : Not Retired CCMD context (%p)\n", __func__, ccmd_ctx);
+		return false;
+	}
+
+	pdma_dev = ccmd_ctx->pdma_dev;
+
+	if (!pdma_dev)
+		return false;
+
+	lockdep_assert_held(&pdma_dev->pdma_device_lock);
+
+	/* vaidate ccmd_ctx */
+	list_for_each_safe(entry, tmp, &pdma_dev->ctx_list_retired) {
+		ctx = list_entry(entry, struct ccmd_context, entry);
+		if (ccmd_ctx == ctx)
+			return true;
+	}
+
+	pr_info("[CCMD] Context %p is not found in retired context list\n",
 		(void *)ccmd_ctx);
 	return false;
 }
 
+static bool IsValidCcmdCtx(struct ccmd_context *ccmd_ctx)
+{
+	return (IsActiveCcmdCtx(ccmd_ctx) || IsRetiredCcmdCtx(ccmd_ctx));
+}
+
+
 /* Must be called with power on */
 static void __ccmd_reset_hw(struct pdma_device *pdma_dev,
-	struct ccmd_context *ccmd_ctx)
-{
+	struct ccmd_context *ccmd_ctx) {
 #if CCMD_V2_SUPPORT
 	unsigned int pdma_status;
 	unsigned int poll_timeout = 1000;
@@ -257,7 +330,7 @@ static void __ccmd_reset_hw(struct pdma_device *pdma_dev,
 	writel((readl(pdma_dev->pdma_reg_base_kva) & 0xFFFDFFFF),
 		pdma_dev->pdma_reg_base_kva);
 
-	pr_info("[CCMD] %s Polling AutoDMA ch0", __func__);
+	pr_debug("[CCMD] %s Polling AutoDMA ch0", __func__);
 	do {
 		udelay(10);
 		pdma_status =
@@ -325,8 +398,6 @@ static int init_ccmd_hw(struct pdma_device *pdma_dev,
 	lockdep_assert_held(&pdma_dev->pdma_device_lock);
 
 	ringbuf_pa = ccmd_ctx->ringbuf_paddr;
-	// TODO: change to pr_debug
-	pr_info("PDMA Ring buffer addr PA0 0x%lx\n", ringbuf_pa);
 
 	if (ccmd_power_control(CCMD_POWER_ON))
 		return 1;
@@ -375,6 +446,16 @@ static int reset_ccmd_hw(struct pdma_device *pdma_dev,
 {
 
 	int ret = 0;
+
+	if (!pdma_dev || !ccmd_ctx) {
+		pr_info("[CCMD] %s, Invalid arguments.\n", __func__);
+		return -EINVAL;
+	}
+
+	if (!IsActiveCcmdCtx(ccmd_ctx)) {
+		pr_debug("[CCMD] %s, Reset active context only.\n", __func__);
+		return -EINVAL;
+	}
 
 	if (pdma_dev->config_mode == CCMD_CONFIG_MODE_GPUEB)
 		return ret;
@@ -443,8 +524,20 @@ static int ccmd_context_init(
 #else
 	ccmd_ctx->cid_reg_base = pdma_dev->reg_base + 0x10000 + (0x4000ULL * cid);
 #endif
+	/* get VMAs at mmap */
+	ccmd_ctx->reg_vma = NULL;
+	ccmd_ctx->ao_reg_vma = NULL;
 	/* user gets available cid, so init ccmd_context */
-	list_add(&ccmd_ctx->entry, &pdma_dev->ctx_list);
+	if (list_empty(&pdma_dev->ctx_list_active) &&
+		pdma_dev->enable_priority_mode == 0) {
+		if (!slbc_enable_gpu_dynamic_cache(1)) {
+			pr_info("[CCMD] %s fail to enable GPU dynamic cache mode\n",
+				__func__);
+		} else
+			pdma_dev->enable_priority_mode = 1;
+	}
+
+	list_add_tail(&ccmd_ctx->entry, &pdma_dev->ctx_list_active);
 
 	return 0;
 }
@@ -463,14 +556,22 @@ static void ccmd_context_destroy(struct ccmd_context *ccmd_ctx)
 		ccmd_ctx->ringbuf_vaddr = 0;
 		ccmd_ctx->ringbuf_paddr = 0;
 		list_del(&ccmd_ctx->entry);
+		if (list_empty(&pdma_dev->ctx_list_active) &&
+			pdma_dev->enable_priority_mode == 1) {
+			if (!slbc_enable_gpu_dynamic_cache(0)) {
+				pr_info("[CCMD] %s fail to disable GPU dynamic cache mode\n",
+				__func__);
+			} else
+				pdma_dev->enable_priority_mode = 0;
+		}
 	}
 }
 
-
-static u32 getCCMDCid(struct pdma_device *pdma_dev, unsigned int mode)
+static u32 requestCCMDCid(struct pdma_device *pdma_dev, unsigned int mode)
 {
 	u32 index;
 	u32 cid = CCMD_UNSUPPORTED_CID;
+	struct ccmd_context *retired_ctx;
 
 	if (!pdma_dev) {
 		pr_info("Invalid pointer to pdma device\n");
@@ -479,25 +580,46 @@ static u32 getCCMDCid(struct pdma_device *pdma_dev, unsigned int mode)
 
 	lockdep_assert_held(&pdma_dev->pdma_device_lock);
 
-	if (mode == COMPUTE_TLS &&
-		pdma_dev->non_api_ctx_cnt == pdma_dev->max_non_api_ctx_cnt) {
-		pr_info("Allow only %u non API contexts concurrently\n",
-			pdma_dev->max_non_api_ctx_cnt);
-		return cid;
-	}
-
+	/* Find available cid*/
 	for (index = 0; index < pdma_dev->max_ctx_cnt; index++) {
 		if (((pdma_dev->ccmd_locked_ctx_id >> index) & 0x1) == 0) {
 			pdma_dev->ccmd_locked_ctx_id |= (0x1 << index);
 			cid = index;
-			if (mode == COMPUTE_TLS)
-				pdma_dev->non_api_ctx_cnt++;
-			break;
+			pr_debug("[CCMD] %s, get CID %u. mode %u (0x%x)", __func__,
+				cid, mode, pdma_dev->ccmd_locked_ctx_id);
+			return cid;
 		}
 	}
 
-	pr_info("[CCMD] %s, get CID %u. mode %u (0x%x)", __func__,
-		cid, mode, pdma_dev->ccmd_locked_ctx_id);
+	/* replace existing cid */
+	if (!list_empty(&pdma_dev->ctx_list_active)) {
+		retired_ctx = list_first_entry(&pdma_dev->ctx_list_active,
+			struct ccmd_context, entry);
+
+		/* unmap VMAs */
+
+		if (retired_ctx->reg_vma)
+			zap_vma_ptes(retired_ctx->reg_vma,
+				retired_ctx->reg_vma->vm_start,
+				pdma_dev->reg_region);
+
+		if (retired_ctx->ao_reg_vma)
+			zap_vma_ptes(retired_ctx->ao_reg_vma,
+				(retired_ctx->ao_reg_vma->vm_start),
+				PAGE_SIZE);
+
+		/* reset HW by CID */
+		reset_ccmd_hw(pdma_dev, retired_ctx);
+
+		pr_debug("[CCMD] %s retire cid %u, kctx: %u, ccmd_ctx: %p\n",
+			__func__, retired_ctx->cid, retired_ctx->kctx_id, retired_ctx);
+		cid = retired_ctx->cid;
+		retired_ctx->cid = CCMD_RETIRED_CID;
+
+		/* move from active list to retired list */
+		list_del_init(&retired_ctx->entry);
+		list_add_tail(&retired_ctx->entry, &pdma_dev->ctx_list_retired);
+	}
 
 	return cid;
 }
@@ -511,16 +633,20 @@ static void releaseCCMDCid(struct pdma_device *pdma_dev, u32 cid, u32 mode)
 		return;
 	}
 
+	if (cid == CCMD_RETIRED_CID || cid == CCMD_UNSUPPORTED_CID) {
+		pr_debug("[CCMD] %s cid is not valid.\n", __func__);
+		return;
+	}
+
+
 	lockdep_assert_held(&pdma_dev->pdma_device_lock);
 
 	if (!(pdma_dev->ccmd_locked_ctx_id & cid_mask)) {
-		pr_info("[CCMD] Try to release unused cid\n");
+		pr_info("[CCMD] Try to release unused cid %u\n", cid);
 		return;
 	}
 
 	pdma_dev->ccmd_locked_ctx_id &= ~cid_mask;
-	if (mode == COMPUTE_TLS)
-		pdma_dev->non_api_ctx_cnt--;
 }
 
 static const struct of_device_id pdma_of_match[] = {
@@ -537,10 +663,59 @@ void gpu_pdma_vma_close(struct vm_area_struct *vma)
 {
 	pr_debug("gpu_pdma VMA close, virt %lx, phys %lx\n", vma->vm_start, vma->vm_pgoff << PAGE_SHIFT);
 }
+static vm_fault_t gpu_pdma_vma_fault(struct vm_fault *vmf)
+{
+	struct vm_area_struct *vma = vmf->vma;
+
+	struct ccmd_context *ccmd_ctx = vma->vm_private_data;
+	struct pdma_device *pdma_dev;
+	unsigned long dummy_page_addr;
+	unsigned long pfn;
+	vm_fault_t ret;
+
+	if (!ccmd_ctx) {
+		pr_info("ccmd context is not valid\n");
+		return -ENOMEM;
+	}
+
+	pdma_dev = ccmd_ctx->pdma_dev;
+	if (!pdma_dev) {
+		pr_info("pdma device is not valid\n");
+		return -ENOMEM;
+	}
+
+	pr_info("[CCMD] %s cid %u fault address 0x%lx (0x%lx)((0x%lx))\n",
+		__func__, ccmd_ctx->cid, vmf->address, vma->vm_start, vma->vm_pgoff);
+
+	mutex_lock(&pdma_dev->pdma_device_lock);
+	if (!ccmd_ctx->reg_vma) {
+		pr_info("[CCMD] %s register base is not valid\n", __func__);
+		mutex_unlock(&pdma_dev->pdma_device_lock);
+		return VM_FAULT_SIGBUS;
+	}
+
+	if (!ccmd_ctx->ao_reg_vma) {
+		pr_info("[CCMD] %s AO register base is not valid\n", __func__);
+		mutex_unlock(&pdma_dev->pdma_device_lock);
+		return VM_FAULT_SIGBUS;
+	}
+
+	dummy_page_addr = ccmd_ctx->pdma_dev->dummy_reg_page_phys;
+	pfn = (dummy_page_addr >> PAGE_SHIFT);
+	ret = vmf_insert_pfn_prot(vma, vma->vm_start, pfn, vma->vm_page_prot);
+	mutex_unlock(&pdma_dev->pdma_device_lock);
+
+	pr_debug("[CCMD] %s insert phys 0x%lx into vma 0x%lx %x\n",
+		__func__, dummy_page_addr, vma->vm_start, ret);
+
+	return ret;
+
+}
 
 const struct vm_operations_struct gpu_pdma_vm_ops = {
 	.open = gpu_pdma_vma_open,
 	.close = gpu_pdma_vma_close,
+	.fault = gpu_pdma_vma_fault,
 };
 
 static int gpu_pdma_open(struct inode *inode, struct file *filp)
@@ -566,9 +741,7 @@ static int gpu_pdma_open(struct inode *inode, struct file *filp)
 	spin_lock_irqsave(&g_pdma_file_lock, flags);
 	g_pdma_open_cnt++;
 	spin_unlock_irqrestore(&g_pdma_file_lock, flags);
-	// TODO: debug remove
-	pr_info("[CCMD] %s ccmd_ctx: %p %u\n", __func__, ccmd_ctx, g_pdma_open_cnt);
-//	pr_debug("%s open count %u\n", __func__, g_pdma_open_cnt);
+	pr_debug("[CCMD] %s ccmd_ctx: %p %u\n", __func__, ccmd_ctx, g_pdma_open_cnt);
 	return 0;
 }
 
@@ -581,10 +754,15 @@ static int gpu_pdma_release(struct inode *inode, struct file *filp)
 	struct extended_pbha *ext_pbha;
 
 	mutex_lock(&pdma_dev->pdma_device_lock);
-	if (IsValidCcmdCtx(ccmd_ctx)) {
+
+	/* in case user doesn't unlock HW. */
+	if (IsActiveCcmdCtx(ccmd_ctx)) {
+		pr_info("[CCMD] %s Active context released without unlock HW %u/%u",
+			__func__, ccmd_ctx->kctx_id, ccmd_ctx->cid);
 		if (unlikely(!list_empty(&ccmd_ctx->pbha_list))) {
-			pr_info("[CCMD] %s unreturned PBHA ID found in kctx/cid %u/%u",
+			pr_info("[CCMD] %s Not returned PBHA IDs found in kctx/cid %u/%u",
 				__func__, ccmd_ctx->kctx_id, ccmd_ctx->cid);
+
 			list_for_each_safe(pbha_entry, pbha_tmp, &ccmd_ctx->pbha_list) {
 				ext_pbha = list_entry(pbha_entry, struct extended_pbha, entry);
 				__pdma_release_extended_pbha(ccmd_ctx->kctx_id, ext_pbha->id);
@@ -593,7 +771,21 @@ static int gpu_pdma_release(struct inode *inode, struct file *filp)
 		reset_ccmd_hw(pdma_dev, ccmd_ctx);
 		releaseCCMDCid(pdma_dev, ccmd_ctx->cid, ccmd_ctx->mode);
 		ccmd_context_destroy(ccmd_ctx);
+	} else if (IsRetiredCcmdCtx(ccmd_ctx)) {
+		pr_info("[CCMD] %s Retired context released without unlock HW %u",
+			__func__, ccmd_ctx->kctx_id);
+		if (unlikely(!list_empty(&ccmd_ctx->pbha_list))) {
+			pr_info("[CCMD] %s Not returned PBHA IDs found in kctx/cid %u/%u",
+				__func__, ccmd_ctx->kctx_id, ccmd_ctx->cid);
+
+			list_for_each_safe(pbha_entry, pbha_tmp, &ccmd_ctx->pbha_list) {
+				ext_pbha = list_entry(pbha_entry, struct extended_pbha, entry);
+				__pdma_release_extended_pbha(ccmd_ctx->kctx_id, ext_pbha->id);
+			}
+		}
+		ccmd_context_destroy(ccmd_ctx);
 	}
+
 	mutex_unlock(&pdma_dev->pdma_device_lock);
 
 	kfree(ccmd_ctx);
@@ -624,15 +816,12 @@ static int gpu_pdma_mmap(struct file *const filp,
 	if (!ccmd_ctx->pdma_dev)
 		return -ENODEV;
 
-	if (ccmd_ctx->cid == CCMD_UNSUPPORTED_CID)
-		return -EINVAL;
-
 	pdma_dev = ccmd_ctx->pdma_dev;
 	ringbuf_pa = ccmd_ctx->ringbuf_paddr;
 
 	mutex_lock(&pdma_dev->pdma_device_lock);
 
-	if (!IsValidCcmdCtx(ccmd_ctx)) {
+	if (!IsActiveCcmdCtx(ccmd_ctx)) {
 		mutex_unlock(&pdma_dev->pdma_device_lock);
 		return -EINVAL;
 	}
@@ -642,14 +831,18 @@ static int gpu_pdma_mmap(struct file *const filp,
 		vma->vm_page_prot = pgprot_writecombine(vma->vm_page_prot);
 	} else if (phy_addr == ccmd_ctx->cid_reg_base && phy_addr != 0 &&
 		length == pdma_dev->reg_region) {
+		vm_flags_set(vma, (VM_DONTCOPY | VM_DONTDUMP | VM_DONTEXPAND | VM_IO | VM_PFNMAP));
 		vma->vm_page_prot =  pgprot_noncached(vma->vm_page_prot);
+		ccmd_ctx->reg_vma = vma;
 	} else if (phy_addr == pdma_dev->hw_sem_base && phy_addr != 0 &&
 		(length == PAGE_SIZE)) {
 		/* Expect only one page needed from hw semaphore base */
 		vma->vm_page_prot =  pgprot_noncached(vma->vm_page_prot);
 	} else if (phy_addr == (pdma_dev->ao_reg_base & ~(PAGE_SIZE - 1)) &&
 		phy_addr != 0 && length == PAGE_SIZE) {
+		vm_flags_set(vma, (VM_DONTCOPY | VM_DONTDUMP | VM_DONTEXPAND | VM_IO | VM_PFNMAP));
 		vma->vm_page_prot =  pgprot_noncached(vma->vm_page_prot);
+		ccmd_ctx->ao_reg_vma = vma;
 	} else {
 		pr_info("Invalid argument! addr: 0x%lx, length: %ld\n", phy_addr, length);
 		mutex_unlock(&pdma_dev->pdma_device_lock);
@@ -665,6 +858,7 @@ static int gpu_pdma_mmap(struct file *const filp,
 
 	mutex_unlock(&pdma_dev->pdma_device_lock);
 	vma->vm_ops = &gpu_pdma_vm_ops;
+	vma->vm_private_data = ccmd_ctx;
 	return 0;
 }
 
@@ -694,7 +888,7 @@ static long gpu_pdma_unlocked_ioctl(struct file *filp, unsigned int cmd,
 			return -EFAULT;
 		}
 		mutex_lock(&pdma_dev->pdma_device_lock);
-		cid = getCCMDCid(pdma_dev, hw_lock.in.mode);
+		cid = requestCCMDCid(pdma_dev, hw_lock.in.mode);
 		if (cid != CCMD_UNSUPPORTED_CID && ccmd_ctx->cid == CCMD_UNSUPPORTED_CID) {
 			/* Init context */
 			if (ccmd_context_init(
@@ -738,6 +932,7 @@ static long gpu_pdma_unlocked_ioctl(struct file *filp, unsigned int cmd,
 #endif
 			pr_info("[CCMD] GPU_PDMA_LOCKHW success pid/tid: %d/%d, (%u)(%u)\n",
 				current->tgid, current->pid, hw_lock.in.kctx_id, ccmd_ctx->cid);
+
 			/*if (hw_lock.in.mode == 1){
 				pdma_dev->dynamic_mode = ged_gpu_slc_get_dynamic_mode();
 				ged_gpu_slc_dynamic_mode(POLICY_TEX_CACHE_LSC_ALLOC);
@@ -958,10 +1153,10 @@ static ssize_t gpu_pdma_show(struct device *dev,
 		pdma_dev->pdma_sram_base_kva->pmu_status_df_1);
 
 
-	if (pdma_dev->ccmd_locked_ctx_id != 0) {
+//	if (pdma_dev->ccmd_locked_ctx_id != 0) {
 		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
 				"ccmd context info:\n");
-		list_for_each_safe(entry, tmp, &pdma_dev->ctx_list) {
+		list_for_each_safe(entry, tmp, &pdma_dev->ctx_list_active) {
 			struct ccmd_context *ctx;
 
 			ctx = list_entry(entry, struct ccmd_context, entry);
@@ -971,7 +1166,7 @@ static ssize_t gpu_pdma_show(struct device *dev,
 				"kctx:			0x%x\n", ctx->kctx_id);
 			pos += scnprintf(buf + pos, PAGE_SIZE - pos,
 				"mode:			[%s]\n", (ctx->mode == COMPUTE_TLS)
-				? "COMPUTE_TLS" : "SMART API");
+				? "COMPUTE_TLS" : "DYNAMIC API");
 			pos += scnprintf(buf + pos, PAGE_SIZE - pos,
 				"pbha owned		: ");
 			list_for_each_safe(pbha_entry, pbha_tmp, &ctx->pbha_list) {
@@ -986,7 +1181,32 @@ static ssize_t gpu_pdma_show(struct device *dev,
 			pos += scnprintf(buf + pos, PAGE_SIZE - pos,
 				"ringbuf base:		0x%llx\n\n", ctx->ringbuf_paddr);
 		}
-	}
+		list_for_each_safe(entry, tmp, &pdma_dev->ctx_list_retired) {
+			struct ccmd_context *ctx;
+
+			ctx = list_entry(entry, struct ccmd_context, entry);
+			pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"cid:			0x%x\n", ctx->cid);
+			pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"kctx:			0x%x\n", ctx->kctx_id);
+			pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"mode:			[%s]\n", (ctx->mode == COMPUTE_TLS)
+				? "COMPUTE_TLS" : "DYNAMIC API");
+			pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"pbha owned		: ");
+			list_for_each_safe(pbha_entry, pbha_tmp, &ctx->pbha_list) {
+				struct extended_pbha *ext_pbha;
+
+				ext_pbha = list_entry(pbha_entry, struct extended_pbha, entry);
+				pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"%u ,", ext_pbha->id);
+				used_pbha_cnt++;
+			}
+			pos += scnprintf(buf + pos, PAGE_SIZE - pos, "\n");
+			pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"ringbuf base:		0x%llx\n\n", ctx->ringbuf_paddr);
+		}
+//	}
 	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
 		"remaining PBHA: %u/%u\n",
 		(available_pbha_cnt - used_pbha_cnt), available_pbha_cnt);
@@ -1044,16 +1264,27 @@ static int gpu_pdma_probe(struct platform_device *pdev)
 	int ret;
 	struct resource *res;
 	struct device_node *node = pdev->dev.of_node;
+	gfp_t gfp = (GFP_HIGHUSER | __GFP_ZERO);
 
 	g_pdma_dev = kzalloc(sizeof(struct pdma_device), GFP_KERNEL);
 
-	if (!g_pdma_dev)
+	if (!g_pdma_dev) {
+		dev_dbg(&pdev->dev, "Allocate PDMA device fail\n");
 		return -ENOMEM;
+	}
 
 	/* Init device */
 	g_pdma_dev->dev = &pdev->dev;
-	INIT_LIST_HEAD(&g_pdma_dev->ctx_list);
+	INIT_LIST_HEAD(&g_pdma_dev->ctx_list_active);
+	INIT_LIST_HEAD(&g_pdma_dev->ctx_list_retired);
 	mutex_init(&g_pdma_dev->pdma_device_lock);
+	dma_set_mask(g_pdma_dev->dev, DMA_BIT_MASK(64ULL));
+
+	g_pdma_dev->dummy_reg_page_virt = __get_free_pages(gfp, 0);
+	if (!g_pdma_dev->dummy_reg_page_virt) {
+		dev_dbg(&pdev->dev, "Allocate dummy page fail\n");
+		return -ENOMEM;
+	}
 
 #ifdef CCMD_DEBUG_MODE
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
@@ -1172,7 +1403,16 @@ static int gpu_pdma_probe(struct platform_device *pdev)
 		g_pdma_dev->pdma_sram_base, resource_size(res),
 		g_pdma_dev->pdma_sram_base_kva);
 
+	g_pdma_dev->enable_priority_mode = 0;
+
 	init_pbha_pool(node, g_pdma_dev);
+
+	g_pdma_dev->dummy_reg_page_phys =
+		virt_to_phys((void *)g_pdma_dev->dummy_reg_page_virt);
+	init_ccmd_reg_dummy_page(g_pdma_dev, 0);
+
+	pr_info("[CCMD] @%s: dummy page pa: 0x%llx, kva: 0x%llx\n", __func__,
+		g_pdma_dev->dummy_reg_page_phys, g_pdma_dev->dummy_reg_page_virt);
 
 	ret = __create_file();
 	if (ret)
@@ -1223,6 +1463,8 @@ void pdma_lock_reclaim(u32 kctx_id)
 	struct list_head *entry, *tmp, *pbha_entry, *pbha_tmp;
 	struct ccmd_context *ccmd_ctx = NULL;
 	struct extended_pbha *ext_pbha = NULL;
+	bool isActiveCtx = false;
+	bool isIdleCtx = false;
 
 	mutex_lock(&g_pdma_dev->pdma_device_lock);
 	if (g_pdma_dev->ccmd_locked_ctx_id == 0) {
@@ -1231,8 +1473,27 @@ void pdma_lock_reclaim(u32 kctx_id)
 		return;
 	}
 
+	if (!list_empty(&g_pdma_dev->ctx_list_active)) {
+		list_for_each_safe(entry, tmp, &g_pdma_dev->ctx_list_active) {
+			ccmd_ctx = list_entry(entry, struct ccmd_context, entry);
+			if (ccmd_ctx->kctx_id == kctx_id) {
+				isActiveCtx = true;
+				break;
+			}
+		}
+	}
+	if (!list_empty(&g_pdma_dev->ctx_list_retired) && !isActiveCtx) {
+		list_for_each_safe(entry, tmp, &g_pdma_dev->ctx_list_retired) {
+			ccmd_ctx = list_entry(entry, struct ccmd_context, entry);
+			if (ccmd_ctx->kctx_id == kctx_id) {
+				isIdleCtx = true;
+				break;
+			}
+		}
+	}
+
 	/* vaidate ccmd_ctx */
-	list_for_each_safe(entry, tmp, &g_pdma_dev->ctx_list) {
+	list_for_each_safe(entry, tmp, &g_pdma_dev->ctx_list_active) {
 		ccmd_ctx = list_entry(entry, struct ccmd_context, entry);
 		if (ccmd_ctx->kctx_id == kctx_id) {
 			// Need to check if pbha is all returned?
@@ -1263,11 +1524,12 @@ u32 pdma_request_extended_pbha(u32 kctx_id)
 
 	mutex_lock(&g_pdma_dev->pdma_device_lock);
 
-	/* validate kctx_id */
-	list_for_each_safe(entry, tmp, &g_pdma_dev->ctx_list) {
+	/* validate kctx_id from active list */
+	list_for_each_safe(entry, tmp, &g_pdma_dev->ctx_list_active) {
 		ccmd_ctx = list_entry(entry, struct ccmd_context, entry);
-		if (ccmd_ctx->kctx_id == kctx_id)
+		if (ccmd_ctx->kctx_id == kctx_id) {
 			break;
+		}
 	}
 
 	if (ccmd_ctx) {
@@ -1298,34 +1560,52 @@ static void __pdma_release_extended_pbha(u32 kctx_id, u32 pbha_id)
 	struct extended_pbha *ext_pbha;
 	struct list_head *entry, *tmp;
 	struct ccmd_context *ccmd_ctx = NULL;
+	bool isActiveCtx = false;
+	bool isRetiredCtx = false;
+
+	pr_debug("[CCMD] %s release PBHA %u from kctx%u\n", __func__,
+		pbha_id, kctx_id);
 
 	lockdep_assert_held(&g_pdma_dev->pdma_device_lock);
 	/* validate kctx_id */
-	list_for_each_safe(entry, tmp, &g_pdma_dev->ctx_list) {
-		ccmd_ctx = list_entry(entry, struct ccmd_context, entry);
-		if (ccmd_ctx->kctx_id == kctx_id)
-			break;
+	// TODO: traverse through both active and idle lists
+	if (!list_empty(&g_pdma_dev->ctx_list_active)) {
+		list_for_each_safe(entry, tmp, &g_pdma_dev->ctx_list_active) {
+			ccmd_ctx = list_entry(entry, struct ccmd_context, entry);
+			if (ccmd_ctx->kctx_id == kctx_id) {
+				isActiveCtx = true;
+				break;
+			}
+		}
+	}
+	if (!list_empty(&g_pdma_dev->ctx_list_retired) && !isActiveCtx) {
+		list_for_each_safe(entry, tmp, &g_pdma_dev->ctx_list_retired) {
+			ccmd_ctx = list_entry(entry, struct ccmd_context, entry);
+			if (ccmd_ctx->kctx_id == kctx_id) {
+				isRetiredCtx = true;
+				break;
+			}
+		}
 	}
 
-	if (ccmd_ctx) {
+	if (isActiveCtx || isRetiredCtx) {
 		if (!list_empty(&ccmd_ctx->pbha_list)) {
 			list_for_each_safe(entry, tmp, &ccmd_ctx->pbha_list) {
 				ext_pbha = list_entry(entry, struct extended_pbha, entry);
 				if (ext_pbha->id == pbha_id) {
 					list_del_init(&ext_pbha->entry);
 					list_add_tail(&ext_pbha->entry, &g_pdma_dev->extened_pbha_pool);
-					pr_info("[CCMD] %s: release pbha %u from kctx/cid: %u/%u\n",
-						__func__, pbha_id, kctx_id, ccmd_ctx->cid);
 					break;
+				} else {
+					pr_info("[CCMD] %s: PBHA %u(%u) does not belong to kctx %u\n",
+						__func__, pbha_id, ext_pbha->id, kctx_id);
 				}
-				pr_info("[CCMD] %s: PBHA %u(%u) does not belongs to kctx %u\n",
-					__func__, pbha_id, ext_pbha->id, kctx_id);
 			}
 		} else
 			pr_info("[CCMD] %s: kctx %u doesn't request any PBHA ID\n",
 						__func__, kctx_id);
 	} else
-		pr_info("[CCMD] %s: kctx %u doesn't lock CCMD HW\n", __func__,
+		pr_info("[CCMD] %s: kctx %u doesn't create ccmd ctx\n", __func__,
 			kctx_id);
 }
 void pdma_release_extended_pbha(u32 kctx_id, u32 pbha_id)

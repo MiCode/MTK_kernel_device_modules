@@ -20,7 +20,10 @@ enum CCMD_CACHE_MODE {
  *
  * @dev:                    Pointer to the kernel's representation of the
  *                          PDMA platform device.
- * @ctx_list:               A gloal list of existing ccmd_context instances.
+ * @ctx_list_active:        A gloal list of ccmd_context instances with valid
+ *                          cid.
+ * @ctx_list_retired:       A gloal list of existing ccmd_context instances
+ *                          without holding valid cid.
  * @pdma_device_lock:       Protected critical section related to HW lock.
  * @ccmd_locked_ctx_id:     CCMD context ID which has been used. Bit-wise.
  * @reg_base:               Base address of CCMD register.
@@ -40,6 +43,8 @@ enum CCMD_CACHE_MODE {
  * @pdma_reg_base_ao_kva:   Kernel virtual address of CCMD AO register.
  * @pdma_sram_base_kva:     Kernel virtual address of SRAM base.
  * @page_order:             4k-based page_order. e.q. 3 for 8 4k-alinged pages.
+ * @dummy_reg_page_virt:    Dummy page kva for CCMD read/write pointer
+ * @dummy_reg_page_phys:    Dummy page pa for CCMD read/write pointer
  * @pdma_sram_base:         PA of PDMA SRAM base.
  * @config_mode:            Init CCMD by AP or mirco processor. Set by dts.
  * @dynamic_mode:           Backup and restore dynamic policy to SRAM.
@@ -49,11 +54,13 @@ enum CCMD_CACHE_MODE {
  * @non_api_ctx_cnt:        Number of non-api contexts that have required HW lock
  * @sw_version:             To identify specific SW version.
  * @extended_pbha_bits:     Number of bits used for extended PBHA ID
+ * @enable_priority_mode:   1 if set mode to SLC and 0 otherwise.
  */
 
 struct pdma_device {
 	struct device *dev;
-	struct list_head ctx_list;
+	struct list_head ctx_list_active;
+	struct list_head ctx_list_retired;
 	struct mutex pdma_device_lock;
 	struct list_head extened_pbha_pool;
 	u32 ccmd_locked_ctx_id;
@@ -73,6 +80,8 @@ struct pdma_device {
 	void __iomem *pdma_reg_base_ao_kva;
 	struct pdma_sram *pdma_sram_base_kva;
 	u32 page_order; /* g_page_order is 4k-based */
+	u64 dummy_reg_page_virt;
+	u64 dummy_reg_page_phys;
 	u32 config_mode;
 	s32 dynamic_mode;
 	u8 max_ctx_cnt;
@@ -80,6 +89,7 @@ struct pdma_device {
 	u8 non_api_ctx_cnt;
 	u8 sw_version;
 	u8 extended_pbha_bits;
+	u8 enable_priority_mode;
 };
 
 
@@ -96,6 +106,8 @@ struct pdma_device {
  * @ringbuf_paddr:          VA of the ring buffer for the context
  * @cid_reg_base:           Context view of CCMD register base
  * @mode:                   Use smart cache API or others. Refer to CCMD_CACHE_MODE.
+ * @reg_vma:                vma struct for register base.
+ * @reg_vma:                vma struct for ao register base.
  */
 
 struct ccmd_context {
@@ -108,6 +120,8 @@ struct ccmd_context {
 	u64 ringbuf_vaddr;
 	u64 cid_reg_base;
 	u32 mode;
+	struct vm_area_struct *reg_vma;
+	struct vm_area_struct *ao_reg_vma;
 };
 
 /**

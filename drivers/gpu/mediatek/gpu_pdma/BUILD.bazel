@@ -84,6 +84,7 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/gpu/mediatek/ged:ged_public_headers".format(kernel_version),
         "//kernel_device_modules-{}/drivers/gpu/mediatek/mt-plat:gpu_utility_headers".format(kernel_version),
         "//kernel_device_modules-{}/drivers/gpu/mediatek/gpufreq:mtk_gpufreq_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/slbc:headers".format(kernel_version),
     ],
 
     ko_deps = [
@@ -91,6 +92,7 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/gpu/mediatek/gpueb:mtk_gpueb".format(kernel_version),
         "//kernel_device_modules-{}/drivers/gpu/mediatek/gpueb:mtk_ghpm_mt6993".format(kernel_version),
         "//kernel_device_modules-{}/drivers/gpu/mediatek/ged:ged".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/slbc:mtk_slbc".format(kernel_version),
     ],
 
     copts = [
