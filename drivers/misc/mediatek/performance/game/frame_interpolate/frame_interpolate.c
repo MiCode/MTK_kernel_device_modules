@@ -19,6 +19,10 @@
 #include "fi_base.h"
 #include "frame_interpolate.h"
 
+#if IS_ENABLED(CONFIG_MTK_GPU_SUPPORT)
+#include "ged_kpi.h"
+#endif
+
 #define FRAME_INTERPOLATE_VERSION_MODULE "1.0"
 #define GAME_MAX_DEP_NUM 50
 #define GAME_MAX_FRAME_COUNT INT_MAX
@@ -111,17 +115,25 @@ static void fi_queuework_cb(struct work_struct *psWork)
 {
 	struct fi_notifier_push_tag *vpPush = NULL;
 	struct game_render_info *iter_thr = NULL;
-	int target_fps = 0;
+	struct render_fps_info fps_info;
+	int target_fps = 0, fps_info_ret = 0;
 
 	vpPush = container_of(psWork, struct fi_notifier_push_tag, sWork);
 	// TODO(Ann): It has still a bug when calculating target fps.
 	target_fps = fpsgo_other2fstb_calculate_target_fps(2, vpPush->pid,
 		vpPush->buffer_id, vpPush->cur_queue_end_ts);
 
+	fps_info.target_fps_diff = 0;
+	fps_info_ret = fpsgo_other2fstb_get_fps_info(vpPush->pid, vpPush->buffer_id,
+		&fps_info);
+
 	game_render_tree_lock();
 	iter_thr = frame_interp_search_and_add_render_info(vpPush->tgid, 0);
-	if (iter_thr)
+	if (iter_thr) {
 		iter_thr->fpsgo_target_fps = target_fps;
+		if (!fps_info_ret)
+			iter_thr->target_fps_diff = fps_info.target_fps_diff;
+	}
 	game_render_tree_unlock();
 
 	kfree(vpPush);
@@ -183,6 +195,7 @@ static void frame_interpolate_fpsgo_render_control(struct game_render_info *iter
 		0, 0, 0, 0, 0);
 	game_main_trace("[fpsgo_other2xgf_calculate_dep]: raw_r_ts=%llu, ema=%llu, enq=%llu",
 		raw_running_time, ema_running_time, enq_running_time);
+	iter->cpu_time = ema_running_time;
 
 	dep_num = fpsgo_other2xgf_get_critical_tasks(iter->frame_info.pid, GAME_MAX_DEP_NUM,
 		dep_arr, 1, iter->frame_info.buffer_id);
@@ -385,6 +398,7 @@ void fpsgo_fi_receive_q2q_cb(unsigned long cmd, struct render_frame_info *iter)
 		iter_thr->updated_ts = ts;
 		if (!iter_thr->is_fpsgo_render_created) {
 			iter_thr->frame_info = *iter;
+			iter_thr->old_buffer_id = iter->buffer_id;
 			iter_thr->frame_info.buffer_id = FRAME_INTERPOLATE_BUFFER_ID;
 			fpsgo_other2comp_user_create(iter_thr->frame_info.tgid, iter_thr->frame_info.pid,
 				iter_thr->frame_info.buffer_id, NULL, 0, 0);
@@ -407,6 +421,11 @@ void fpsgo_fi_receive_q2q_cb(unsigned long cmd, struct render_frame_info *iter)
 
 		fpsgo_other2fstb_set_target(1, iter_thr->frame_info.pid, 1, 0, set_target_fps, 0,
 			iter_thr->frame_info.buffer_id);
+
+#if IS_ENABLED(CONFIG_MTK_GPU_SUPPORT)
+		ged_kpi_set_target_FPS_margin(iter_thr->old_buffer_id, set_target_fps,
+			0, iter_thr->target_fps_diff, iter_thr->cpu_time);
+#endif  // IS_ENABLED(CONFIG_MTK_GPU_SUPPORT)
 
 		if (iter_thr->frame_count % iter_thr->interpolation_ratio == 0)
 			frame_interpolate_fpsgo_render_control(iter_thr, ts);

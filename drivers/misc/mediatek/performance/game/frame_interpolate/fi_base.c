@@ -112,7 +112,10 @@ struct game_render_info *frame_interp_search_and_add_render_info(int tgid, int a
 	iter_thr->fi_enabled = 0;
 	iter_thr->fpsgo_target_fps = 0;
 	iter_thr->user_target_fps = 0;
+	iter_thr->target_fps_diff = 0;
+	iter_thr->cpu_time = 0;
 	iter_thr->updated_ts = game_get_time();
+	iter_thr->old_buffer_id = 0;
 
 	kmemleak_not_leak(iter_thr);
 

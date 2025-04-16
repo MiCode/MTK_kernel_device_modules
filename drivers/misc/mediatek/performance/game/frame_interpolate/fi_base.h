@@ -60,8 +60,11 @@ struct game_render_info {
 	int is_fpsgo_render_created;
 
 	unsigned long long queue_end_ns;
+	unsigned long long cpu_time;
 	int user_target_fps;
 	int fpsgo_target_fps;
+	int target_fps_diff;
+	unsigned long long old_buffer_id;
 };
 
 /* composite key for render_info rbtree */
