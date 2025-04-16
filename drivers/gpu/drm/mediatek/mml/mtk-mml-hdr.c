@@ -452,18 +452,18 @@ static void hdr_init(struct mml_comp *comp, struct cmdq_pkt *pkt, const phys_add
 }
 
 static void hdr_relay(struct mml_comp *comp, struct cmdq_pkt *pkt, const phys_addr_t base_pa,
-		      u32 relay, u32 timeout)
+		      u32 relay, u32 is_timeout)
 {
 	struct mml_comp_hdr *hdr = comp_to_hdr(comp);
 	if (hdr->data->two_curve) {
-		if (timeout) {
+		if (is_timeout) {
 			/* enable eotf and oetf,and set hdr_abort_en = 0 to make HDR Linear effect*/
 			cmdq_pkt_write(pkt, NULL,
 				base_pa + hdr->data->reg_table[HDR_TOP],
 				1<<27 | 1<<19 | 0<<16 | 0<<1 | 1, 0x080b0003);
 			cmdq_pkt_write(pkt, NULL,
 				base_pa + hdr->data->reg_table[HDR_OOTF_CTRL_0], 0x0, 0x1);
-			/* make HDR Linear effect with panel nist 400 from ALG*/
+			/* make HDR Fixed Linear effect with panel nist 400 from ALG*/
 			cmdq_pkt_write(pkt, NULL,
 				base_pa + hdr->data->reg_table[HDR_EOTF_CTRL],
 				1<<18 | 2<<16 | 25600, 0x7FFFF);
@@ -476,16 +476,10 @@ static void hdr_relay(struct mml_comp *comp, struct cmdq_pkt *pkt, const phys_ad
 			mml_pq_err("%s: get hdr timeout, set linear effect\n", __func__);
 		} else {
 			if(relay) {
-				cmdq_pkt_write(pkt, NULL,
-					base_pa + hdr->data->reg_table[HDR_TOP], 0x1, 0x08080001);
-				cmdq_pkt_write(pkt, NULL,
-					base_pa + hdr->data->reg_table[HDR_OOTF_CTRL_0], 0x0, 0x1);
-				cmdq_pkt_write(pkt,NULL,
-					base_pa + hdr->data->reg_table[HDR_TONE_MAP_TOP], 0x0, 0x1);
-				cmdq_pkt_write(pkt, NULL,
-					base_pa + hdr->data->reg_table[HDR_3x3_COEF_00], 0x0, 0x1);
-				cmdq_pkt_write(pkt, NULL,
-					base_pa + hdr->data->reg_table[HDR_RELAY], 0, 0x1);
+				cmdq_pkt_write(pkt,
+					NULL, base_pa + hdr->data->reg_table[HDR_TOP], 1 << 1, 0x2);
+				cmdq_pkt_write(pkt,
+					NULL, base_pa + hdr->data->reg_table[HDR_RELAY], 0, 0x1);
 			} else {
 				cmdq_pkt_write(pkt,
 					NULL, base_pa + hdr->data->reg_table[HDR_TOP], 0 << 1, 0x2);
@@ -495,7 +489,7 @@ static void hdr_relay(struct mml_comp *comp, struct cmdq_pkt *pkt, const phys_ad
 		}
 	} else
 		cmdq_pkt_write(pkt, NULL, base_pa + hdr->data->reg_table[HDR_RELAY], relay, U32_MAX);
-	mml_pq_msg("%s: relay = %d, timeout = %d\n", __func__, relay, timeout);
+	mml_pq_msg("%s: relay = %d, timeout = %d\n", __func__, relay, is_timeout);
 }
 
 static void hdr_disable_curve(struct mml_comp *comp, struct cmdq_pkt *pkt,
