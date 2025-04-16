@@ -1559,6 +1559,8 @@ mgk_64_kleaf_platform_modules = {
     "//vendor/mediatek/kernel_modules/mtkcam/mtk-hcp/legacy:mtk-hcp":"mt6858",
     "//vendor/mediatek/kernel_modules/mtkcam/mtk-hcp/isp71:mtk-hcp-isp71":"mt6895 mt6879",
 
+    "//vendor/mediatek/kernel_modules/mtk_input/FTS_TOUCH_SPI:fts_touch_spi":"mt6895",
+
     "//vendor/mediatek/kernel_modules/gpu/gpu_mali/mali_avalon/a16w/drivers/gpu/arm/midgard:mali_kbase_mt6993_a16w":"mt6993",
     "//vendor/mediatek/kernel_modules/gpu/gpu_mali/mali_avalon/a16w/drivers/base/arm:mali_mgm_mt6993_a16w":"mt6993",
     "//vendor/mediatek/kernel_modules/gpu/gpu_mali/mali_avalon/a16w/drivers/base/arm:mali_prot_alloc_mt6993_a16w":"mt6993",
