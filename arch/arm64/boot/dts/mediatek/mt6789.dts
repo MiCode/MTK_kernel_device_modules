@@ -2364,6 +2364,7 @@
 			clear-md = <0x1fc 0x80000000 1>;
 			ctrl-intf = <1>;
 			slverr = <0>;
+			bypass = <1>;
 		};
 
 		seninf1@1a004000 {
