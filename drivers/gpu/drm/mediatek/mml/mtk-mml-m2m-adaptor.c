@@ -648,7 +648,8 @@ static bool m2m_target_is_compose(u32 target)
 }
 
 static int m2m_try_crop(struct mml_m2m_ctx *ctx, struct v4l2_rect *r,
-	const struct v4l2_selection *s, struct mml_m2m_frame *frame)
+	const struct v4l2_selection *s, struct mml_m2m_frame *frame,
+	const struct mml_m2m_pix_limit *pix_limit)
 {
 	s32 left, top, right, bottom;
 	u32 framew, frameh, walign = 0, halign = 0;
@@ -678,10 +679,10 @@ static int m2m_try_crop(struct mml_m2m_ctx *ctx, struct v4l2_rect *r,
 	ret = m2m_clamp_start(&top, 0, bottom, halign, s->flags);
 	if (ret)
 		return ret;
-	ret = m2m_clamp_end(&right, left, framew, walign, s->flags);
+	ret = m2m_clamp_end(&right, left + pix_limit->wmin, framew, walign, s->flags);
 	if (ret)
 		return ret;
-	ret = m2m_clamp_end(&bottom, top, frameh, halign, s->flags);
+	ret = m2m_clamp_end(&bottom, top + pix_limit->hmin, frameh, halign, s->flags);
 	if (ret)
 		return ret;
 
@@ -1424,11 +1425,12 @@ static int mml_m2m_s_selection(struct file *file, void *fh,
 		return -EINVAL;
 	}
 
-	ret = m2m_try_crop(ctx, &r, s, frame);
+	ret = m2m_try_crop(ctx, &r, s, frame, V4L2_TYPE_IS_OUTPUT(s->type) ?
+		&ctx->limit->out_limit : &ctx->limit->cap_limit);
 	if (ret)
 		return ret;
-	dest = ctx_get_submit_dest(ctx, 0);
 
+	dest = ctx_get_submit_dest(ctx, 0);
 	if (m2m_target_is_crop(s->target)) {
 		struct mml_rect crop;
 
