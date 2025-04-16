@@ -504,6 +504,8 @@ struct gpufreq_prbc_info {
 	unsigned int hbvc_freq;
 	unsigned int prbc_freq;
 	unsigned int avg_freq;
+	unsigned int avg_power_gpu;
+	unsigned int avg_power_stack;
 	unsigned int ratio;
 	unsigned int ratio_irq_count;
 	unsigned int ratio_irq_thresh_count;
