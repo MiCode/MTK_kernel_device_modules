@@ -26,12 +26,18 @@ int mcupms_plt_module_init(void)
 
 	ipinum = get_mcupms_ipidev_number();
 	for(int i=0; i < ipinum; i++) {
+		struct mtk_ipi_device *ipi_dev = GET_MCUPM_IPIDEV(i);
+
+		if (ipi_dev == NULL) {
+			pr_info("[MCUPM] GET_MCUPM_IPIDEV(%d) is NULL\n", i);
+			return -1;
+		}
 		/* Initialize mcupm ipi driver */
-		ret = mtk_ipi_register(GET_MCUPM_IPIDEV(i), CHAN_PLATFORM, NULL, NULL,
+		ret = mtk_ipi_register(ipi_dev, CHAN_PLATFORM, NULL, NULL,
 					       (void *) &multi_mcupm_plt_ackdata[i]);
-		if(ret) {
-				pr_info("[MCUPM] mtk_ipi_register(%d) failed ret=%d\n", i, ret);
-				return -1;
+		if (ret) {
+			pr_info("[MCUPM] mtk_ipi_register(%d) failed ret=%d\n", i, ret);
+			return -1;
 		}
 	}
 
@@ -50,7 +56,13 @@ void mcupms_plt_module_exit(void)
 	u32 ipinum = get_mcupms_ipidev_number();
 
 	for(int i=0; i < ipinum; i++) {
-		ret = mtk_ipi_unregister(GET_MCUPM_IPIDEV(i), CHAN_PLATFORM);
+		struct mtk_ipi_device *ipi_dev = GET_MCUPM_IPIDEV(i);
+
+		if (ipi_dev == NULL) {
+			pr_info("[MCUPM] GET_MCUPM_IPIDEV(%d) is NULL\n", i);
+			return;
+		}
+		ret = mtk_ipi_unregister(ipi_dev, CHAN_PLATFORM);
 		if(ret) {
 			pr_info("[MCUPM] mtk_ipi_unregister(%d) failed ret=%d\n", i, ret);
 			return;

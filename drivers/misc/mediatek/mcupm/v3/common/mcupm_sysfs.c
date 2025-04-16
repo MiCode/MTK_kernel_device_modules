@@ -88,7 +88,7 @@ static ssize_t mcupm_alive_store(struct device *dev,
 											size_t size)
 {
 	int rc;
-	unsigned int val;
+	unsigned int val = 0;
 
 	rc = kstrtouint(buf, 10, &val);
 	if (rc < 0 || val >= get_mcupms_ipidev_number()) {

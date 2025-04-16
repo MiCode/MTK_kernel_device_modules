@@ -27,9 +27,7 @@ EXPORT_SYMBOL_GPL(mcupm_reserve_mem_get_size);
 
 void *get_mcupm_ipidev(void)
 {
-	if (get_mcupms_ipidev_number() > 0)
-		return mcupm_ipidevs;
-	return NULL;
+	return mcupm_ipidevs;
 }
 EXPORT_SYMBOL_GPL(get_mcupm_ipidev);
 
