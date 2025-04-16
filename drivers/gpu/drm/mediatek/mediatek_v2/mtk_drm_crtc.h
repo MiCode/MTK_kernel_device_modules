@@ -1418,6 +1418,8 @@ struct mtk_drm_crtc {
 	bool dbi_trigger;
 
 	dma_addr_t lk_dma_addr;
+
+	unsigned int cur_present_fence_idx;
 };
 
 enum BL_GAMMA_GAIN {

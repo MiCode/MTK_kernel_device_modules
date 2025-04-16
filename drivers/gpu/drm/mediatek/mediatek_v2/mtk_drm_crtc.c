@@ -17677,8 +17677,7 @@ void mml_cmdq_pkt_init(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle)
 				  mtk_crtc->gce_obj.event[EVENT_DPC_DISP1_PRETE]);
 			mtk_vidle_user_power_keep_by_gce(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle, 0);
 		}
-		mml_drm_racing_config_sync(mml_ctx, cmdq_handle,
-			(u32)mtk_crtc_state->prop_val[CRTC_PROP_PRES_FENCE_IDX]);
+		mml_drm_racing_config_sync(mml_ctx, cmdq_handle, mtk_crtc->cur_present_fence_idx);
 		break;
 	case MML_DC_ENTERING:
 		if (mtk_vidle_is_ff_enabled() && !mtk_drm_helper_get_opt(priv->helper_opt,
@@ -20889,6 +20888,7 @@ int mtk_crtc_retrig_mml(struct drm_device *dev, struct mtk_cmdq_pkt_info *pkt_in
 
 		mtk_drm_trace_begin("retrig_kick_mml_submit");
 		mtk_drm_idlemgr_kick(__func__, crtc, 0);
+		mtk_crtc->mml_cfg->disp_id = mtk_crtc->cur_present_fence_idx;
 		ret = mml_drm_submit(mml_ctx, mtk_crtc->mml_cfg, &(mtk_crtc->mml_cb));
 		if (ret) {
 			DDPPR_ERR("%s: err_submit %d\n", __func__, ret);
@@ -26927,8 +26927,7 @@ void mtk_crtc_mml_racing_resubmit(struct drm_crtc *crtc, struct cmdq_pkt *_cmdq_
 		mtk_disp_mutex_add_comp_with_cmdq(mtk_crtc, id[i], false, cmdq_handle, 0);
 	}
 	/* prepare racing packet */
-	mml_drm_racing_config_sync(mml_ctx, cmdq_handle,
-		(u32)state->prop_val[CRTC_PROP_PRES_FENCE_IDX]);
+	mml_drm_racing_config_sync(mml_ctx, cmdq_handle, mtk_crtc->cur_present_fence_idx);
 
 	/* blocking wait until mml submit is flushed */
 	mtk_drm_wait_mml_submit_done(&(mtk_crtc->mml_cb));

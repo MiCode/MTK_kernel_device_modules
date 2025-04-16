@@ -2205,12 +2205,16 @@ static int mtk_atomic_commit(struct drm_device *drm,
 	crtc_mask = mtk_atomic_crtc_mask(drm, state);
 
 	for_each_new_crtc_in_state(state, crtc, new_crtc_state, j) {
+
+		mtk_crtc = to_mtk_crtc(crtc);
+		mtk_crtc_state = to_mtk_crtc_state(new_crtc_state);
+		mtk_crtc->cur_present_fence_idx =
+			(unsigned int)mtk_crtc_state->prop_val[CRTC_PROP_PRES_FENCE_IDX];
+
 		/* check only crtc 0 for mml and update pf */
 		if (!(crtc_mask & 0x1))
 			break;
 
-		mtk_crtc = to_mtk_crtc(crtc);
-		mtk_crtc_state = to_mtk_crtc_state(new_crtc_state);
 		pf = (unsigned int)mtk_crtc_state->prop_val[CRTC_PROP_PRES_FENCE_IDX];
 
 		if (mtk_crtc_state->prop_val[CRTC_PROP_USER_SCEN] & USER_SCEN_SAME_POWER_MODE) {
@@ -11054,6 +11058,8 @@ int mtk_drm_ioctl_retrig(struct drm_device *dev, void *data,
 	cb_data->crtc = crtc;
 	cb_data->cmdq_handle = cmdq_handle;
 	cb_data->pres_fence_idx = retrig->present_fence_idx;
+
+	mtk_crtc->cur_present_fence_idx = retrig->present_fence_idx;
 
 	// setup config
 	if (crtc_idx == 0) {
