@@ -461,15 +461,6 @@ static void __mtk_smi_larb_bw_set(struct device *dev, const u32 port, const u32 
 	struct mtk_smi_larb *larb = dev_get_drvdata(dev);
 
 	if (val) {
-		if (log_level & 1 << log_set_ostdl)
-			dev_notice(dev, "%s is_def: %d larb%d port%d, val:%u.\n",
-				__func__, larb->is_default_ostdl, larb->larbid, port, val);
-		if (larb->is_default_ostdl) {
-			larb->larb_gen->default_bwl[larb->larbid * SMI_LARB_PORT_NR_MAX + port]
-				= val;
-		} else {
-			larb->larb_gen->bwl[larb->larbid * SMI_LARB_PORT_NR_MAX + port] = val;
-		}
 		writel(val, larb->base + SMI_LARB_OSTDL_PORTx(port));
 		if (larb->is_two_dram_path_ostdl)
 			writel(val, larb->base + INT_SMI_LARB_OSTDL_PORTx(port));
@@ -485,6 +476,14 @@ void mtk_smi_larb_bw_set(struct device *dev, const u32 port, const u32 val)
 			port, val);
 		return;
 	}
+	if (log_level & 1 << log_set_ostdl)
+		dev_notice(dev, "%s is_def: %d larb%d port%d, val:%u.\n",
+			__func__, larb->is_default_ostdl, larb->larbid, port, val);
+	if (larb->is_default_ostdl)
+		larb->larb_gen->default_bwl[larb->larbid * SMI_LARB_PORT_NR_MAX + port] = val;
+	else
+		larb->larb_gen->bwl[larb->larbid * SMI_LARB_PORT_NR_MAX + port] = val;
+
 	if (atomic_read(&larb->smi.ref_count))
 		__mtk_smi_larb_bw_set(dev, port, val);
 	else
@@ -504,21 +503,7 @@ void mtk_smi_larb_port_dis_ultra(struct device *dev, const u32 port, bool is_dis
 		return;
 	}
 
-	if (is_dis_ultra) {
-		larb->real_time_type = larb->real_time_type | (1 << port);
-		if (atomic_read(&larb->smi.ref_count))
-			writel_relaxed(larb->real_time_type, larb->base + SMI_LARB_DISABLE_ULTRA);
-		else
-			dev_notice(dev, "larb%d port%d not enable is_dis_ultra:%d\n",
-				larb->larbid, port, is_dis_ultra);
-	} else {
-		larb->real_time_type = larb->real_time_type & ~(1 << port);
-		if (atomic_read(&larb->smi.ref_count))
-			writel_relaxed(larb->real_time_type, larb->base + SMI_LARB_DISABLE_ULTRA);
-		else
-			dev_notice(dev, "larb%d port%d not enable is_dis_ultra:%d\n",
-				larb->larbid, port, is_dis_ultra);
-	}
+	writel_relaxed(larb->real_time_type, larb->base + SMI_LARB_DISABLE_ULTRA);
 	if (log_level & 1 << log_disable_ultra)
 		dev_notice(dev, "larb%d port%d is_dis_ultra:%d vlue:%#x\n",
 			larb->larbid, port, is_dis_ultra, readl_relaxed(larb->base + SMI_LARB_DISABLE_ULTRA));
@@ -589,19 +574,25 @@ void mtk_smi_set_hrt_perm(struct device *dev, const u32 port, bool is_hrt)
 				larb->larbid, port);
 			return;
 		}
+		larb->real_time_type = larb->real_time_type & ~(1 << port);
 		if (atomic_read(&larb->smi.ref_count)) {
 			//disable dis_ultra
 			mtk_smi_larb_port_dis_ultra(larb->smi.dev, port, false);
 			//disable bw thr
 			mtk_smi_larb_bw_thr(larb->smi.dev, port, false);
-		}
+		} else
+			dev_notice(dev, "%s: skip! ref_cnt is 0, larb%d port%d real_time_type:%u\n",
+				__func__, larb->larbid, port, larb->real_time_type);
 	} else {
+		larb->real_time_type = larb->real_time_type | (1 << port);
 		if (atomic_read(&larb->smi.ref_count)) {
 			//enable dis_ultra
 			mtk_smi_larb_port_dis_ultra(larb->smi.dev, port, true);
 			//enable bw thr
 			mtk_smi_larb_bw_thr(larb->smi.dev, port, true);
-		}
+		} else
+			dev_notice(dev, "%s: skip! ref_cnt is 0, larb%d port%d real_time_type:%u\n",
+				__func__, larb->larbid, port, larb->real_time_type);
 	}
 }
 EXPORT_SYMBOL_GPL(mtk_smi_set_hrt_perm);
