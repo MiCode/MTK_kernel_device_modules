@@ -2763,6 +2763,11 @@ mtk_drm_crtc_duplicate_state(struct drm_crtc *crtc)
 			!debug_drm_prop_force_reset) {
 			memcpy(&state->prop_val[0], &old_state->prop_val[0],
 				sizeof(state->prop_val));
+			/* Whatever DRM prop inheritance or basic flow,
+			 * HWC need force reset and DRV force initial for property with address type
+			 * to avoid DRV use invalid address at anytime.
+			 */
+			state->prop_val[CRTC_PROP_BL_SYNC_GAMMA_GAIN] = 0;
 		} else {
 			state->prop_val[CRTC_PROP_DOZE_ACTIVE] =
 				old_state->prop_val[CRTC_PROP_DOZE_ACTIVE];

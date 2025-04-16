@@ -241,6 +241,11 @@ mtk_plane_duplicate_state(struct drm_plane *plane)
 		!debug_drm_prop_force_reset) {
 		memcpy(&state->prop_val[0], &old_state->prop_val[0],
 			sizeof(state->prop_val));
+		/* Whatever DRM prop inheritance or basic flow,
+		 * HWC need force reset and DRV force initial for property with address type
+		 * to avoid DRV use invalid address at anytime.
+		 */
+		state->prop_val[PLANE_PROP_MML_SUBMIT] = 0;
 	} else {
 		state->prop_val[PLANE_PROP_OVL_CSC_SET_BRIGHTNESS] =
 			old_state->prop_val[PLANE_PROP_OVL_CSC_SET_BRIGHTNESS];
