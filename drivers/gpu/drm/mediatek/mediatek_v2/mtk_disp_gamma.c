@@ -917,7 +917,7 @@ static void disp_gamma_config(struct mtk_ddp_comp *comp,
 		comp->regs_pa + DISP_GAMMA_CFG, 0, STALL_CG_ON);
 
 	if (gamma->auto_flip == 1)
-		writel_relaxed(0x4, comp->regs + DISP_GAMMA_SHADOW_SRAM);
+		writel_relaxed(0x0, comp->regs + DISP_GAMMA_SHADOW_SRAM);
 
 	mutex_lock(&primary_data->data_lock);
 	if (atomic_read(&primary_data->gamma_sram_hw_init) != 0) {
