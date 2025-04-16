@@ -1139,8 +1139,6 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/regulator:mt6667-regulator".format(kernel_version),
     "//kernel_device_modules-{}/drivers/regulator:mt6681-regulator".format(kernel_version),
     "//kernel_device_modules-{}/drivers/regulator:mt6688".format(kernel_version),
-    "//kernel_device_modules-{}/drivers/regulator:fan53870-ldo".format(kernel_version),
-    "//kernel_device_modules-{}/drivers/regulator:wl2868c-regulator".format(kernel_version),
     "//kernel_device_modules-{}/drivers/regulator:mtk-dvfsrc-regulator".format(kernel_version),
     "//kernel_device_modules-{}/drivers/regulator:mtk-extbuck-debug".format(kernel_version),
     "//kernel_device_modules-{}/drivers/regulator:rt4803".format(kernel_version),
@@ -1633,6 +1631,10 @@ mgk_64_kleaf_platform_modules = {
     "//kernel_device_modules-{}/sound/soc/codecs:snd-soc-mt6366".format(kernel_version): "mt6789",
     "//kernel_device_modules-{}/sound/soc/codecs:snd-soc-mt6369".format(kernel_version): "mt6855",
     "//kernel_device_modules-{}/drivers/input/touchscreen/hxchipset:hxchipset".format(kernel_version): "mt6789",
+
+    "//kernel_device_modules-{}/drivers/regulator:fan53870-ldo".format(kernel_version): "mt6789",
+    "//kernel_device_modules-{}/drivers/regulator:wl2868c-regulator".format(kernel_version): "mt6789",
+
 }
 
 mgk_64_kleaf_eng_device_modules = [
@@ -2284,8 +2286,6 @@ def get_overlay_modules_list():
 
         mgk_64_kleaf_platform_modules.pop("//kernel_device_modules-{}/drivers/misc/mediatek/vmm:mtk-vmm-notifier-mt6991".format(kernel_version))
         mgk_64_kleaf_platform_modules.pop("//kernel_device_modules-{}/drivers/misc/mediatek/vmm:mtk-vmm-notifier-mt6993".format(kernel_version))
-        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/regulator:fan53870-ldo".format(kernel_version))
-        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/regulator:wl2868c-regulator".format(kernel_version))
 
     if "mt6877_overlay.config" in DEFCONFIG_OVERLAYS:
         mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac2x/6877:wlan_drv_gen4m_6877")
@@ -4794,8 +4794,6 @@ def get_overlay_modules_list():
 
         mgk_64_kleaf_platform_modules.pop("//kernel_device_modules-{}/drivers/misc/mediatek/vmm:mtk-vmm-notifier-mt6991".format(kernel_version))
         mgk_64_kleaf_platform_modules.pop("//kernel_device_modules-{}/drivers/misc/mediatek/vmm:mtk-vmm-notifier-mt6993".format(kernel_version))
-        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/regulator:fan53870-ldo".format(kernel_version))
-        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/regulator:wl2868c-regulator".format(kernel_version))
 
         mgk_64_kleaf_modules.append("//kernel_device_modules-{}/drivers/misc/mediatek/swpm_legacy_v2:mtk-swpm-perf-arm-pmu-legacy".format(kernel_version))
         mgk_64_kleaf_modules.append("//kernel_device_modules-{}/drivers/misc/mediatek/swpm_legacy_v2:mtk-swpm-legacy".format(kernel_version))
@@ -4852,8 +4850,6 @@ def get_overlay_modules_list():
 
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/mtkcam/sched:c2ps")
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/mtkcam/sched:c2ps_perf_ioctl")
-        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/regulator:fan53870-ldo".format(kernel_version))
-        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/regulator:wl2868c-regulator".format(kernel_version))
 
         mgk_64_kleaf_modules.append("//kernel_device_modules-{}/drivers/misc/mediatek/swpm_legacy_v2:mtk-swpm-perf-arm-pmu-legacy".format(kernel_version))
         mgk_64_kleaf_modules.append("//kernel_device_modules-{}/drivers/misc/mediatek/swpm_legacy_v2:mtk-swpm-legacy".format(kernel_version))
