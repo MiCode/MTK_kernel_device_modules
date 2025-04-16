@@ -1651,6 +1651,7 @@ static int mtk_dsp_pcm_copy_ul(struct snd_pcm_substream *substream,
 	int id = cpu_dai->id;
 	struct RingBuf *ringbuf = &(dsp_mem->ring_buf);
 	unsigned long flags = 0;
+	void *dsp_copy_buf = dsp_mem->dsp_copy_buf;
 	spinlock_t *ringbuf_lock = &dsp_mem->ringbuf_lock;
 
 #ifdef DEBUG_VERBOSE
@@ -1658,26 +1659,35 @@ static int mtk_dsp_pcm_copy_ul(struct snd_pcm_substream *substream,
 	dump_rbuf_bridge_s(__func__,
 			   &dsp_mem->adsp_buf.aud_buffer.buf_bridge);
 #endif
+	if (dsp_copy_buf == NULL)
+		return -ENOMEM;
+
 	Ringbuf_Check(&dsp_mem->ring_buf);
 	Ringbuf_Bridge_Check(
 			&dsp_mem->adsp_buf.aud_buffer.buf_bridge);
 
 	spin_lock_irqsave(ringbuf_lock, flags);
 	availsize = RingBuf_getDataCount(ringbuf);
-	spin_unlock_irqrestore(ringbuf_lock, flags);
 
 	if (availsize < copy_size) {
 		pr_info("%s fail copy_size = %d availsize = %d\n", __func__,
 			copy_size, RingBuf_getFreeSpace(ringbuf));
+		spin_unlock_irqrestore(ringbuf_lock, flags);
 		return -1;
 	}
-
 	/* get audio_buffer from ring buffer */
-	ringbuf_copyto_user_linear(buf, &dsp_mem->ring_buf, copy_size);
-	spin_lock_irqsave(ringbuf_lock, flags);
+	RingBuf_copyToLinear(dsp_copy_buf, &dsp_mem->ring_buf, copy_size);
 	sync_bridge_ringbuf_readidx(&dsp_mem->adsp_buf.aud_buffer.buf_bridge,
 				    &dsp_mem->ring_buf);
 	spin_unlock_irqrestore(ringbuf_lock, flags);
+
+	/* copy to user space memory */
+	ret = copy_to_iter(dsp_copy_buf, copy_size, buf);
+	if (ret != copy_size) {
+		pr_info("%s copy_to_iter fail line %d\n", __func__, __LINE__);
+		return -1;
+	}
+
 	dsp_mem->adsp_buf.counter++;
 
 	ipi_audio_buf = (void *)dsp_mem->msg_atod_share_buf.va_addr;
