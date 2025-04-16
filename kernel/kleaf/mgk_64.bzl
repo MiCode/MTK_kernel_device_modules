@@ -19,6 +19,7 @@ mgk_64_defconfig = "mgk_64_k612_defconfig"
 mgk_64_kleaf_modules = [
     # keep sorted
     "//vendor/mediatek/kernel_modules/connectivity/bt/linux_v2:btmtk_uart_unify",
+    "//vendor/mediatek/kernel_modules/connectivity/bt/linux_v2_ce:btmtk_unify",
     "//vendor/mediatek/kernel_modules/connectivity/bt/mt66xx:btif",
     "//vendor/mediatek/kernel_modules/connectivity/bt/mt66xx/wmt:wmt",
     #"//vendor/mediatek/kernel_modules/connectivity/bt/mt76xx/sdio:btmtksdio",
