@@ -2026,32 +2026,23 @@ static int disp_aal_write_cabc_to_reg(struct mtk_ddp_comp *comp,
 static int disp_aal_set_dre3_curve(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, const struct DISP_AAL_PARAM *param)
 {
+	int ret = 0;
 	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
-	struct DISP_DRE30_PARAM *dre30_gain;
+	struct DISP_DRE30_PARAM *dre30_gain = &aal_data->primary_data->dre30_gain;
 
 	AALFLOW_LOG("\n");
 	disp_pq_set_test_flag(TEST_FLAG_DRE);
 	if (atomic_read(&aal_data->primary_data->change_to_dre30) == 0x3) {
-		dre30_gain = vmalloc(sizeof(struct DISP_DRE30_PARAM));
-		if (dre30_gain == NULL) {
-			DDPMSG("%s: vmalloc fail\n", __func__);
-			return -1;
-		}
-
+		mutex_lock(&aal_data->primary_data->config_lock);
 		if (copy_from_user(dre30_gain, (struct DISP_DRE30_PARAM *)param->dre30_gain,
-				    sizeof(struct DISP_DRE30_PARAM)) == 0) {
-			mutex_lock(&aal_data->primary_data->config_lock);
-			memcpy(&aal_data->primary_data->dre30_gain, dre30_gain, sizeof(struct DISP_DRE30_PARAM));
-			mutex_unlock(&aal_data->primary_data->config_lock);
-
-			vfree(dre30_gain);
-		} else {
-			vfree(dre30_gain);
-			return -1;
+					sizeof(struct DISP_DRE30_PARAM)) != 0) {
+			PQ_ERR("%s, copy_from_user failed!\n", __func__);
+			ret = -1;
 		}
+		mutex_unlock(&aal_data->primary_data->config_lock);
 	}
 
-	return 0;
+	return ret;
 }
 
 int disp_aal_set_param(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
@@ -2280,22 +2271,15 @@ static int disp_aal_copy_hist_to_user(struct mtk_ddp_comp *comp,
 	unsigned long flags;
 	int ret = 0;
 	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
-	struct DISP_DRE30_HIST *dre30_hist = vmalloc(sizeof(struct DISP_DRE30_HIST));
+	struct DISP_DRE30_HIST *dre30_hist = &aal_data->primary_data->dre30_hist;
 
 	if (hist == NULL) {
 		PQ_ERR("%s, DstHist is NULL\n", __func__);
 		return -1;
 	}
 
-	if (dre30_hist == NULL) {
-		DDPMSG("%s: vmalloc fail\n", __func__);
-		return -1;
-	}
-
 	/* We assume only one thread will call this function */
 	spin_lock_irqsave(&aal_data->primary_data->hist_lock, flags);
-	if (aal_data->primary_data->aal_fo->mtk_dre30_support && aal_data->primary_data->dre30_enabled)
-		memcpy(dre30_hist, &aal_data->primary_data->dre30_hist, sizeof(struct DISP_DRE30_HIST));
 	aal_data->primary_data->hist.panel_type = atomic_read(&aal_data->primary_data->panel_type);
 	aal_data->primary_data->hist.essStrengthIndex = aal_data->primary_data->ess_level;
 	aal_data->primary_data->hist.ess_enable = aal_data->primary_data->ess_en;
@@ -2321,10 +2305,13 @@ static int disp_aal_copy_hist_to_user(struct mtk_ddp_comp *comp,
 	// dre30_hist ptr should be always from userspace, valid or not
 	aal_data->primary_data->hist.dre30_hist = hist->dre30_hist;
 	memcpy(hist, &aal_data->primary_data->hist, sizeof(aal_data->primary_data->hist));
-	spin_unlock_irqrestore(&aal_data->primary_data->hist_lock, flags);
 
-	if (aal_data->primary_data->aal_fo->mtk_dre30_support && aal_data->primary_data->dre30_enabled)
+	if (aal_data->primary_data->aal_fo->mtk_dre30_support && aal_data->primary_data->dre30_enabled) {
 		ret = copy_to_user((void *)hist->dre30_hist, dre30_hist, sizeof(struct DISP_DRE30_HIST));
+		if (ret != 0)
+			PQ_ERR("%s, copy_to_user failed!\n", __func__);
+	}
+	spin_unlock_irqrestore(&aal_data->primary_data->hist_lock, flags);
 	aal_data->primary_data->hist.serviceFlags = 0;
 	atomic_set(&aal_data->hist_available, 0);
 	atomic_set(&aal_data->dre20_hist_is_ready, 0);
@@ -2336,8 +2323,6 @@ static int disp_aal_copy_hist_to_user(struct mtk_ddp_comp *comp,
 		atomic_set(&aal1_data->dre20_hist_is_ready, 0);
 	}
 	atomic_set(&aal_data->primary_data->force_event_en, 0);
-
-	vfree(dre30_hist);
 
 	return ret;
 }
