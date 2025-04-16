@@ -170,6 +170,9 @@ struct ppb3_dbg_t {
 	unsigned int bat_pwr;
 	unsigned int pre_uv;
 	unsigned int cgn_sf[SF_NUM];
+	unsigned int oc_count;
+	unsigned int oc_duration;
+	unsigned int oc_duration_us;
 };
 
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
@@ -302,6 +305,7 @@ extern int ppb_set_wifi_pwr_addr(unsigned int val);
 /*for SPMB to save Record the number of times UVLO is triggered*/
 #define SPBM_BAT_PWR_OFFSET             (0xF0)
 #define SPBM_UVLO_TRIGGER_TIMES_OFFSET  (0xF4)
-
+#define SPBM_OC_COUNT_OFFSET            (0xF8)
+#define SPBM_OC_DURATION_OFFSET         (0xFC)
 
 #endif /* __MTK_PEAK_POWER_BUDGETING_H__ */

@@ -1093,7 +1093,8 @@ static int __used get_xpu_debug_info(struct xpu_dbg_t *data)
 static int __used get_ppb3_debug_info(struct ppb3_dbg_t *data)
 {
 	unsigned int i;
-
+	unsigned long long duration_unit = 3846; /* 38.46 ns */
+	unsigned int  duration_us_factor = 100000;
 	if (!data)
 		return -EINVAL;
 
@@ -1112,6 +1113,9 @@ static int __used get_ppb3_debug_info(struct ppb3_dbg_t *data)
 
 	data->bat_pwr = dbg_read(spbm_csram_base + SPBM_BAT_PWR_OFFSET, 0);
 	data->pre_uv = dbg_read(spbm_csram_base + SPBM_UVLO_TRIGGER_TIMES_OFFSET, 0);
+	data->oc_count = dbg_read(spbm_csram_base + SPBM_OC_COUNT_OFFSET, 0);
+	data->oc_duration = dbg_read(spbm_csram_base + SPBM_OC_DURATION_OFFSET, 0);
+	data->oc_duration_us = ((unsigned long long)(data->oc_duration) * (duration_unit)) / (duration_us_factor);
 	return 0;
 }
 
@@ -1216,9 +1220,10 @@ static void __used ppb3_print_dbg_log(struct timer_list *timer)
 		}
 
 		ret = snprintf(str + offset, STR_SIZE - offset,
-		") bat[soc:%d t:%d] bdt[pwr:%d noer:%d][spbm pwr:%d pre_uv:%d]",
+		") bat[soc:%d t:%d] bdt[pwr:%d noer:%d][spbm pwr:%d pre_uv:%d oc:%d dur:%d(%d)]",
 			pb.soc, pb.temp, pb.sys_power,pb.sys_power_noerr,
-			ppb3_dbg_data.bat_pwr, ppb3_dbg_data.pre_uv);
+			ppb3_dbg_data.bat_pwr, ppb3_dbg_data.pre_uv, ppb3_dbg_data.oc_count,
+			ppb3_dbg_data.oc_duration, ppb3_dbg_data.oc_duration_us);
 		if (ret < 0)
 			pr_info("%s:%d: snprintf error %d\n", __func__, __LINE__, ret);
 		else
