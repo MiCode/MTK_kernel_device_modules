@@ -20,6 +20,10 @@
 #include <mt-plat/aee.h>
 #include <soc/mediatek/emi.h>
 
+#define EMI_MPUS_OFFSET	(0x1F0)
+#define EMI_MPUT_OFFSET	(0x1F8)
+#define EMI_MPUT_2ND_OFFSET	(0x1FC)
+
 /* global pointer for exported functions */
 struct emi_mpu *global_emi_mpu;
 EXPORT_SYMBOL_GPL(global_emi_mpu);
@@ -136,6 +140,40 @@ static void devmpu_vio_clear_atemi(unsigned int emi_id)
 #endif
 }
 
+static int bypass_violation(unsigned int emi_id, struct reg_info_t *dump, unsigned int len)
+{
+	unsigned int i;
+	unsigned int mpus = 0, mput = 0, mput_2nd = 0;
+	unsigned int master_id;
+	unsigned int port_id;
+	unsigned int wr_vio, wr_oo_vio;
+
+	for (i = 0; i < len; i++) {
+		if (dump[i].offset == EMI_MPUS_OFFSET)
+			mpus = dump[i].value;
+		if (dump[i].offset == EMI_MPUT_OFFSET)
+			mput = dump[i].value;
+		if (dump[i].offset == EMI_MPUT_2ND_OFFSET)
+			mput_2nd = dump[i].value;
+	}
+	if (!mput && !mput_2nd) {
+		pr_err("%s:%d failed to get violation from emi\n", __func__,
+			   __LINE__);
+		return 0;
+	}
+	master_id = mpus & 0xFFFF;
+	wr_vio = (mpus >> 29) & 0x3;
+	wr_oo_vio = (mpus >> 27) & 0x3;
+	port_id = master_id & 0x7;
+	#if IS_ENABLED(CONFIG_MTK_ENABLE_GENIEZONE) \
+	|| IS_ENABLED(CONFIG_MTK_SEC_VIDEO_PATH_SUPPORT)
+	if ((wr_vio == 2) && (wr_oo_vio == 0) &&
+		((port_id == 0) || (port_id == 1)))
+		return 1;
+	#endif
+	return 0;
+}
+
 static irqreturn_t emimpu_violation_irq(int irq, void *dev_id)
 {
 	struct emi_mpu *mpu = (struct emi_mpu *)dev_id;
@@ -196,14 +234,12 @@ static irqreturn_t emimpu_violation_irq(int irq, void *dev_id)
 		}
 
 		//to handle violations caused by CPU prefetch
-		if(mpu->bypass && mpu->tmem_handler) {
-			if(mpu->tmem_handler(emi_id, dump_reg, mpu->dump_cnt) == IRQ_HANDLED) {
-				pr_info("%s: tmem handler flow !!\n", __func__);
-				clear_violation(mpu, emi_id);
-				mtk_clear_md_violation();
-				continue;
+		if (mpu->bypass && bypass_violation(emi_id, dump_reg, mpu->dump_cnt) == 1){
+			pr_info("[MPU] bypass flow\n");
+			clear_violation(mpu, emi_id);
+			mtk_clear_md_violation();
+			continue;
 		}
-	}
 
 		nr_vio++;
 
