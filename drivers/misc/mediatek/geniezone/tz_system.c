@@ -234,13 +234,7 @@ int32_t _setSessionHandle(struct tipc_k_handle h)
 	return session;
 }
 
-void _clearSessionHandle(uint32_t session)
-{
-	mutex_lock(&fd_mutex);
-	_kree_session_handle_pool[session].dn = 0;
-	mutex_unlock(&fd_mutex);
-}
-
+void _clearSessionHandle(int32_t session);
 
 int _getSessionHandle(int32_t session, struct tipc_k_handle **h)
 {
@@ -254,7 +248,6 @@ int _getSessionHandle(int32_t session, struct tipc_k_handle **h)
 		return -1;
 	return 0;
 }
-
 
 struct tipc_k_handle *_FdToHandle(int32_t session)
 {
@@ -276,6 +269,20 @@ int32_t _HandleToFd(struct tipc_k_handle h)
 static inline struct tipc_dn_chan *_HandleToChanInfo(struct tipc_k_handle *handle)
 {
 	return handle ? (struct tipc_dn_chan *)(handle->dn) : NULL;
+}
+
+void _clearSessionHandle(int32_t session)
+{
+	struct tipc_k_handle *handle = _FdToHandle(session);
+
+	do {
+		if (IS_ERR_OR_NULL((const void *)handle))
+			break;
+
+		mutex_lock(&fd_mutex);
+		handle->dn = NULL;
+		mutex_unlock(&fd_mutex);
+	} while (false);
 }
 
 TZ_RESULT KREE_SessionToTID(KREE_SESSION_HANDLE session, enum tee_id_t *o_tid)
