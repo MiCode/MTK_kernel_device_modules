@@ -3,13 +3,13 @@
  * Copyright (c) 2016 MediaTek Inc.
  * Author: Tiffany Lin <tiffany.lin@mediatek.com>
  */
-
+#include <linux/module.h>
 #include <linux/of_address.h>
 #include <linux/of_platform.h>
 #include <linux/pm_runtime.h>
 #include <linux/delay.h>
-#include <soc/mediatek/mmdvfs_v3.h>
 #include <linux/vmalloc.h>
+#include <soc/mediatek/mmdvfs_v3.h>
 #include <soc/mediatek/smi.h>
 
 #include "mtk_vcodec_enc_pm.h"
@@ -23,7 +23,6 @@
 #include <linux/pm_opp.h>
 #include <linux/regulator/consumer.h>
 #include "vcodec_dvfs.h"
-#define STD_VENC_FREQ 250000000
 #define BW_FACTOR_DENOMINATOR 1000000
 #define VENC_ADAPTIVE_OPRATE_INTERVAL 500 //ms
 #define VENC_INIT_BOOST_INTERVAL 1500
@@ -34,14 +33,16 @@
 #include "mtk-interconnect.h"
 #include "vcodec_bw.h"
 #include "mtk-smi-dbg.h"
+#define STD_VENC_FREQ 250000000
 #endif
 
 //#define VENC_PRINT_DTS_INFO
-#if ENC_EMI_BW
 int venc_smi_monitor_mode = 1; // 0: disable, 1: enable, 2: debug mode
 int venc_max_mon_frm = 8;
 module_param(venc_smi_monitor_mode, int, 0644);
 module_param(venc_max_mon_frm, int, 0644);
+
+#if ENC_EMI_BW
 static bool mtk_enc_tput_init(struct mtk_vcodec_dev *dev)
 {
 	const int tp_item_num = 6;
@@ -255,8 +256,8 @@ static bool mtk_enc_tput_init(struct mtk_vcodec_dev *dev)
 	mtk_venc_pmqos_monitor_init(dev);
 
 #ifdef VENC_PRINT_DTS_INFO
-	mtk_vcodec_dvfs_qos_log(true, "[VENC] tput_cnt %d, cfg_cnt %d, port_cnt %d\n",
-		dev->venc_tput_cnt, dev->venc_cfg_cnt, dev->venc_port_cnt);
+	mtk_vcodec_dvfs_qos_log(true, "[VENC] tput_cnt %d, cfg_cnt %d, larb_cnt %d\n",
+		dev->venc_tput_cnt, dev->venc_cfg_cnt, dev->venc_larb_cnt);
 
 	for (i = 0; i < dev->venc_tput_cnt; i++) {
 		mtk_vcodec_dvfs_qos_log(true, "[VENC] tput fmt %u, cfg %d, cy1 %u, cy2 %u",
@@ -274,11 +275,11 @@ static bool mtk_enc_tput_init(struct mtk_vcodec_dev *dev)
 			dev->venc_cfg[i].config_2);
 	}
 
-	for (i = 0; i < dev->venc_port_cnt; i++) {
-		mtk_vcodec_dvfs_qos_log(true, "[VENC] port[%d] type %d, bw %u, larb %u", i,
-			dev->venc_port_bw[i].port_type,
-			dev->venc_port_bw[i].port_base_bw,
-			dev->venc_port_bw[i].larb);
+	for (i = 0; i < dev->venc_larb_cnt; i++) {
+		mtk_vcodec_dvfs_qos_log(true, "[VENC] larb %u type %d, bw %u",
+			dev->venc_larb_bw[i].larb_id
+			dev->venc_larb_bw[i].larb_type,
+			dev->venc_larb_bw[i].larb_base_bw);
 	}
 #endif
 	return true;
@@ -310,11 +311,16 @@ void mtk_prepare_venc_dvfs(struct mtk_vcodec_dev *dev)
 	int ret;
 	struct dev_pm_opp *opp = 0;
 	unsigned long freq = 0;
-	int i = 0, venc_req = 0, flag = 0;
+	int i = 0, venc_req = 0, flag = 0, dvfs_qos_ver = 2;
 	struct platform_device *pdev = 0;
 
 	pdev = dev->plat_dev;
 	INIT_LIST_HEAD(&dev->venc_dvfs_inst);
+
+	ret = of_property_read_u32(pdev->dev.of_node, "dvfs-qos-ver", &dvfs_qos_ver);
+	if (ret)
+		mtk_vcodec_dvfs_qos_log(true, "[VENC] Failed to get dvfs-qos-ver, default %d", dvfs_qos_ver);
+	dev->venc_dvfs_params.version = dvfs_qos_ver;
 
 	ret = of_property_read_s32(pdev->dev.of_node, "venc-mmdvfs-in-vcp", &venc_req);
 	if (ret)
@@ -374,7 +380,7 @@ void mtk_prepare_venc_dvfs(struct mtk_vcodec_dev *dev)
 
 void mtk_unprepare_venc_dvfs(struct mtk_vcodec_dev *dev)
 {
-#if ENC_EMI_BW
+#if ENC_DVFS
 	mtk_enc_tput_deinit(dev);
 #endif
 }
@@ -491,6 +497,13 @@ void mtk_venc_dvfs_sync_vsi_data(struct mtk_vcodec_ctx *ctx)
 	dev->venc_dvfs_params.target_freq = inst->vsi->config.target_freq;
 	dev->venc_dvfs_params.target_bw_factor = inst->vsi->config.target_bw_factor;
 	mtk_vcodec_cpu_adaptive_ctrl(ctx, inst->vsi->config.cpu_hint);
+	if (inst->vsi->config.cpu_hint) {
+		mtk_vcodec_dvfs_qos_log(true, "[VENC] enable ct to TA");
+		//enforce_ct_to_vip(1, 3);
+	} else {
+		mtk_vcodec_dvfs_qos_log(true, "[VENC] disable ct to TA");
+		//enforce_ct_to_vip(0, 3);
+	}
 }
 
 void mtk_venc_dvfs_begin_inst(struct mtk_vcodec_ctx *ctx)
@@ -523,15 +536,16 @@ void mtk_venc_dvfs_end_inst(struct mtk_vcodec_ctx *ctx)
 		set_venc_opp(dev, dev->venc_dvfs_params.target_freq);
 	}
 }
-
 void mtk_venc_init_boost(struct mtk_vcodec_ctx *ctx)
 {
 	ctx->dev->venc_dvfs_params.last_boost_time = jiffies_to_msecs(jiffies);
 	ctx->dev->venc_dvfs_params.init_boost = 1;
+	mtk_vcodec_cpu_adaptive_ctrl(ctx, true);
 }
 
 void mtk_venc_dvfs_check_boost(struct mtk_vcodec_dev *dev)
 {
+#if ENC_DVFS
 	unsigned int cur_in_timestamp;
 
 	if (!dev->venc_dvfs_params.mmdvfs_in_adaptive || !dev->venc_dvfs_params.init_boost)
@@ -546,9 +560,11 @@ void mtk_venc_dvfs_check_boost(struct mtk_vcodec_dev *dev)
 		mutex_lock(&dev->enc_dvfs_mutex);
 		dev->venc_dvfs_params.init_boost = 0;
 		set_venc_opp(dev, dev->venc_dvfs_params.target_freq);
-		mtk_vcodec_dvfs_qos_log(true, "[VDVFS][VENC] stop boost, set freq %u", dev->venc_dvfs_params.target_freq);
+		mtk_vcodec_dvfs_qos_log(true, "[VDVFS][VENC] stop boost, set freq %u",
+			dev->venc_dvfs_params.target_freq);
 		mutex_unlock(&dev->enc_dvfs_mutex);
 	}
+#endif
 }
 
 void mtk_venc_pmqos_begin_inst(struct mtk_vcodec_ctx *ctx)
@@ -573,7 +589,10 @@ void mtk_venc_pmqos_begin_inst(struct mtk_vcodec_ctx *ctx)
 			mtk_vcodec_dvfs_qos_log(false, "[VENC] unknown port type %d\n",
 					dev->venc_larb_bw[i].larb_type);
 		}
-		if (dev->venc_qos.need_smi_monitor && venc_smi_monitor_mode)
+		if (((dev->venc_dvfs_params.version == 1) &&
+			 (dev->venc_qos.need_smi_monitor && venc_smi_monitor_mode))||
+			((dev->venc_dvfs_params.version == 2) &&
+			 (!dev->venc_qos.need_smi_monitor && !venc_smi_monitor_mode)))
 			dev->venc_qos.prev_comm_bw[i] = target_bw;
 	}
 #endif
@@ -623,12 +642,14 @@ void mtk_venc_pmqos_lock_unlock(struct mtk_vcodec_dev *dev, bool is_lock)
 	}
 }
 
-
 void mtk_venc_pmqos_monitor(struct mtk_vcodec_dev *dev, u32 state)
 {
+#if ENC_EMI_BW
+	int dvfs_qos_ver = dev->venc_dvfs_params.version;
 	struct vcodec_dev_qos *qos = &dev->venc_qos;
 
 	u32 data_comm0[MTK_SMI_MAX_MON_REQ] = {0};
+	u32 data_comm1[MTK_SMI_MAX_MON_REQ] = {0};
 
 	if (unlikely(!qos->need_smi_monitor || !venc_smi_monitor_mode))
 		return;
@@ -639,19 +660,37 @@ void mtk_venc_pmqos_monitor(struct mtk_vcodec_dev *dev, u32 state)
 		smi_monitor_start(qos->dev, qos->common_id[SMI_COMMON_ID_0],
 			qos->commlarb_id[SMI_COMMON_ID_0], qos->rw_flag,
 			qos->monitor_id[SMI_COMMON_ID_0]);
+		if (dvfs_qos_ver == 2)
+			smi_monitor_start(qos->dev, qos->common_id[SMI_COMMON_ID_1],
+				qos->commlarb_id[SMI_COMMON_ID_1], qos->rw_flag,
+				qos->monitor_id[SMI_COMMON_ID_1]);
 		break;
 	case VCODEC_SMI_MONITOR_STOP:
 		smi_monitor_stop(qos->dev, qos->common_id[SMI_COMMON_ID_0],
 			data_comm0, qos->monitor_id[SMI_COMMON_ID_0]);
+		if (dvfs_qos_ver == 2)
+			smi_monitor_stop(qos->dev, qos->common_id[SMI_COMMON_ID_1],
+				data_comm1, qos->monitor_id[SMI_COMMON_ID_1]);
 
 		qos->data_total[SMI_COMMON_ID_0][SMI_MON_READ] += data_comm0[0]; // MB
 		qos->data_total[SMI_COMMON_ID_0][SMI_MON_WRITE] += data_comm0[1];
 
-		mtk_vcodec_dvfs_qos_log(false, "[VQOS] frm_cnt %d: Acquire: (%d, %d)\n",
-			qos->monitor_ring_frame_cnt, data_comm0[0], data_comm0[1]);
-		mtk_vcodec_dvfs_qos_log(false, "[VQOS] Total bytes: (%llu, %llu)\n",
+		if (dvfs_qos_ver == 2) {
+			qos->data_total[SMI_COMMON_ID_1][SMI_MON_READ] += data_comm1[0];
+			qos->data_total[SMI_COMMON_ID_1][SMI_MON_WRITE] += data_comm1[1];
+		}
+
+		// qos->data_total[SMI_COMMON_ID_1][SMI_MON_READ] += data_comm1[2];
+		// qos->data_total[SMI_COMMON_ID_1][SMI_MON_WRITE] += data_comm1[3];
+
+		mtk_vcodec_dvfs_qos_log(false, "[VQOS] frm_cnt %d: Acquire: (%d, %d, %d, %d)\n",
+			qos->monitor_ring_frame_cnt,
+			data_comm0[0], data_comm0[1], data_comm1[0], data_comm1[1]);
+		mtk_vcodec_dvfs_qos_log(false, "[VQOS] Total bytes: (%llu, %llu, %llu, %llu)\n",
 			qos->data_total[SMI_COMMON_ID_0][SMI_MON_READ],
-			qos->data_total[SMI_COMMON_ID_0][SMI_MON_WRITE]);
+			qos->data_total[SMI_COMMON_ID_0][SMI_MON_WRITE],
+			qos->data_total[SMI_COMMON_ID_1][SMI_MON_READ],
+			qos->data_total[SMI_COMMON_ID_1][SMI_MON_WRITE]);
 
 		if (++qos->monitor_ring_frame_cnt >= qos->max_mon_frm_cnt)
 			qos->apply_monitor_config = true;
@@ -663,6 +702,7 @@ void mtk_venc_pmqos_monitor(struct mtk_vcodec_dev *dev, u32 state)
 		mtk_vcodec_dvfs_qos_log(true, "[VQOS] unknown smi monitor state...\n");
 		break;
 	}
+#endif
 };
 
 void mtk_venc_pmqos_monitor_init(struct mtk_vcodec_dev *dev)
@@ -671,7 +711,7 @@ void mtk_venc_pmqos_monitor_init(struct mtk_vcodec_dev *dev)
 	struct platform_device *pdev;
 	int need_smi_monitor = 0;
 	int commlarb_id = 0;
-	int i, j, ret, smi_common_num = 1;
+	int i, j, ret, smi_common_num = 0;
 
 	pdev = dev->plat_dev;
 
@@ -688,6 +728,11 @@ void mtk_venc_pmqos_monitor_init(struct mtk_vcodec_dev *dev)
 	qos->monitor_ring_frame_cnt = 0;
 	qos->apply_monitor_config = false;
 	qos->need_smi_monitor = need_smi_monitor;
+
+	if (dev->venc_dvfs_params.version == 2)
+		smi_common_num = 2;
+	else if (dev->venc_dvfs_params.version == 1)
+		smi_common_num = 1;
 
 	for (i = 0; i < smi_common_num; i++) {
 		ret = of_property_read_u32_index(pdev->dev.of_node, "common-id",
@@ -755,6 +800,7 @@ void mtk_venc_pmqos_monitor_reset(struct mtk_vcodec_dev *dev)
 			sizeof(unsigned long long) * SMI_COMMON_NUM * MTK_VCODEC_QOS_TYPE);
 };
 
+#if ENC_EMI_BW
 static void mtk_venc_pmqos_monitor_debugger(struct mtk_vcodec_dev *dev, u32 *cur_common_bw)
 {
 	int i;
@@ -765,14 +811,21 @@ static void mtk_venc_pmqos_monitor_debugger(struct mtk_vcodec_dev *dev, u32 *cur
 		dev->venc_qos.prev_comm_bw[i] = cur_common_bw[i];
 	}
 }
+#endif
 
 void mtk_venc_pmqos_frame_req(struct mtk_vcodec_ctx *ctx)
 {
+#if ENC_EMI_BW
 	struct mtk_vcodec_dev *dev = ctx->dev;
 	struct vcodec_dev_qos *qos = &dev->venc_qos;
 	u32 common_bw[MTK_SMI_MAX_MON_REQ] = {0};
 	u32 cur_fps = dev->venc_dvfs_params.oprate_sum;
-	u32 i, smi_common_num = 1;
+	u32 i, smi_common_num = 0;
+
+	if (dev->venc_dvfs_params.version == 2)
+		smi_common_num = 2;
+	else if (dev->venc_dvfs_params.version == 1)
+		smi_common_num = 1;
 
 	if (qos->need_smi_monitor) {
 
@@ -781,9 +834,18 @@ void mtk_venc_pmqos_frame_req(struct mtk_vcodec_ctx *ctx)
 
 		common_bw[0] = (u32)((((qos->data_total[SMI_COMMON_ID_0][SMI_MON_READ] * cur_fps
 			/ qos->max_mon_frm_cnt) >> 2) * 5) >> 20);
-		common_bw[1] = (u32)((((qos->data_total[SMI_COMMON_ID_0][SMI_MON_WRITE] * cur_fps
-			/ qos->max_mon_frm_cnt) >> 2) * 5) >> 20);
 
+		if (smi_common_num == 1) {
+			common_bw[1] = (u32)((((qos->data_total[SMI_COMMON_ID_0][SMI_MON_WRITE] * cur_fps
+				/ qos->max_mon_frm_cnt) >> 2) * 5) >> 20);
+		} else if (smi_common_num == 2) {
+			common_bw[1] = (u32)((((qos->data_total[SMI_COMMON_ID_1][SMI_MON_READ] * cur_fps
+				/ qos->max_mon_frm_cnt) >> 2) * 5) >> 20);
+			common_bw[2] = (u32)((((qos->data_total[SMI_COMMON_ID_0][SMI_MON_WRITE] * cur_fps
+				/ qos->max_mon_frm_cnt) >> 2) * 5) >> 20);
+			common_bw[3] = (u32)((((qos->data_total[SMI_COMMON_ID_1][SMI_MON_WRITE] * cur_fps
+				/ qos->max_mon_frm_cnt) >> 2) * 5) >> 20);
+		}
 		qos->monitor_ring_frame_cnt = 0;
 		qos->apply_monitor_config = false;
 		memset(qos->data_total, 0,
@@ -797,6 +859,7 @@ void mtk_venc_pmqos_frame_req(struct mtk_vcodec_ctx *ctx)
 		mtk_vcodec_dvfs_qos_log(false, "[VQOS] set larb%d: %dMB/s",
 			dev->venc_larb_bw[i].larb_id, common_bw[i]);
 	}
+#endif
 }
 
 /*
@@ -810,6 +873,7 @@ void mtk_venc_pmqos_frame_req(struct mtk_vcodec_ctx *ctx)
  */
 bool mtk_venc_dvfs_monitor_op_rate(struct mtk_vcodec_ctx *ctx, int buf_type)
 {
+#if ENC_DVFS
 	unsigned int cur_in_timestamp, time_diff, threshold = 20;
 	unsigned int cur_op, tmp_op; /* monitored op in the prev interval */
 	int prev_op;
@@ -891,5 +955,6 @@ bool mtk_venc_dvfs_monitor_op_rate(struct mtk_vcodec_ctx *ctx, int buf_type)
 		if (update_op)
 			return true;
 	}
+#endif
 	return false;
 }

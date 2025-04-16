@@ -19,8 +19,21 @@
 #include <linux/ktime.h>
 #include <linux/vmalloc.h>
 #include "mtk_vcodec_drv.h"
+#ifdef MS_TO_NS
+#undef MS_TO_NS
+#endif
+#include "pf_ctrl.h"
+#include "slbc_sdk.h"
+#ifdef MTK_SCHED_SUPPORT
+#include <sched/sched.h>
+#include "common.h"
+#include "util/cpu_util.h"
 
-#define WP_SCENARIO 6
+int get_target_margin_low(int cpu);
+
+int codec_margin_change;
+int codec_runnable_boost_disable;
+#endif
 
 struct vcodec_inst *get_inst(struct mtk_vcodec_ctx *ctx)
 {
@@ -32,7 +45,7 @@ struct vcodec_inst *get_inst(struct mtk_vcodec_ctx *ctx)
 	if (codec_type == MTK_INST_DECODER) {
 		list_for_each(item, &dev->vdec_dvfs_inst) {
 			if(item == (void *) 0) {
-				mtk_vcodec_dvfs_qos_log(true, "%s [VDVFS][VDEC] find null in item in list!\n", __func__);
+				mtk_vcodec_dvfs_qos_log(true, "[VDVFS][VDEC] find null in item in list!\n");
 				INIT_LIST_HEAD(&dev->vdec_dvfs_inst);
 				return 0;
 			}
@@ -44,7 +57,7 @@ struct vcodec_inst *get_inst(struct mtk_vcodec_ctx *ctx)
 	} else if (codec_type == MTK_INST_ENCODER) {
 		list_for_each(item, &dev->venc_dvfs_inst) {
 			if(item == (void *) 0) {
-				mtk_vcodec_dvfs_qos_log(true, "%s [VDVFS][VENC] find null in item in list!\n", __func__);
+				mtk_vcodec_dvfs_qos_log(true, "[VDVFS][VENC] find null in item in list!\n");
 				INIT_LIST_HEAD(&dev->venc_dvfs_inst);
 				return 0;
 			}
@@ -101,7 +114,7 @@ int add_inst(struct mtk_vcodec_ctx *ctx)
 {
 	struct vcodec_inst *new_inst;
 	struct mtk_vcodec_dev *dev = ctx->dev;
-	int ret;
+	int ret, dvfs_qos_ver = 0;
 
 	new_inst = vzalloc(sizeof(struct vcodec_inst));
 	if (!new_inst) {
@@ -116,7 +129,11 @@ int add_inst(struct mtk_vcodec_ctx *ctx)
 	new_inst->yuv_fmt = (new_inst->codec_type == MTK_INST_ENCODER) ?
 		ctx->q_data[MTK_Q_DATA_SRC].fmt->fourcc : ctx->q_data[MTK_Q_DATA_DST].fmt->fourcc;
 	new_inst->config = DEFAULT_VENC_CONFIG; /* Read from register when encode done */
-	new_inst->core_cnt = 1; /* Depends on WP */
+	if (new_inst->codec_type == MTK_INST_DECODER)
+		dvfs_qos_ver = dev->vdec_dvfs_params.version;
+	else if (new_inst->codec_type == MTK_INST_ENCODER)
+		dvfs_qos_ver = dev->venc_dvfs_params.version;
+	new_inst->core_cnt = (dvfs_qos_ver == 2) ? 2 : 1; /* Depends on WP */
 	new_inst->b_frame = (new_inst->codec_type == MTK_INST_ENCODER) ?
 		ctx->enc_params.num_b_frame : 0;
 	new_inst->wp = (new_inst->codec_type == MTK_INST_ENCODER) ?
@@ -154,12 +171,13 @@ int add_inst(struct mtk_vcodec_ctx *ctx)
 			mtk_vcodec_dvfs_qos_log(true, "[VDVFS] VENC no config");
 	}
 
-	mtk_vcodec_dvfs_qos_log(false, "[VDVFS] New inst id %d, type %u, fmt %u, cfg %d, ccnt %u, op_rate %d, priority %d",
-			new_inst->id, new_inst->codec_type, new_inst->codec_fmt, new_inst->config,
-			new_inst->core_cnt, new_inst->op_rate, new_inst->priority);
-	mtk_vcodec_dvfs_qos_log(false, "[VDVFS] width %u, height %u, fps %d, is_encoder %d",
-			new_inst->width, new_inst->height, new_inst->fps,
-			new_inst->codec_type == MTK_INST_ENCODER);
+	mtk_vcodec_dvfs_qos_log(false,
+		"[VDVFS] New inst id %d, type %u, fmt %u, cfg %d, ccnt %u, op_rate %d, priority %d",
+		new_inst->id, new_inst->codec_type, new_inst->codec_fmt, new_inst->config,
+		new_inst->core_cnt, new_inst->op_rate, new_inst->priority);
+	mtk_vcodec_dvfs_qos_log(false,
+		"[VDVFS] width %u, height %u, fps %d, is_encoder %d",
+		new_inst->width, new_inst->height, new_inst->fps, new_inst->codec_type == MTK_INST_ENCODER);
 
 	if (new_inst->codec_type == MTK_INST_ENCODER)
 		list_add_tail(&new_inst->list, &dev->venc_dvfs_inst);
@@ -198,7 +216,6 @@ bool setting_changed(struct vcodec_inst *inst, struct mtk_vcodec_ctx *ctx)
 			ret = get_cfg(inst, ctx);
 			if (ret != 0)
 				mtk_vcodec_dvfs_qos_log(true, "[VDVFS] VENC no config");
-
 			return true;
 		}
 	}
@@ -377,60 +394,87 @@ u32 match_avail_freq(struct mtk_vcodec_dev *dev, int codec_type, u64 freq)
  * dev: device
  * Return: hz
  */
-u32 calc_freq(struct vcodec_inst *inst, struct mtk_vcodec_dev *dev)
+u64 calc_freq(struct vcodec_inst *inst, struct mtk_vcodec_dev *dev)
 {
 	struct vcodec_perf *perf;
-	u32 dflt_op_rate;
-	u32 freq = 0;
+	u32 dvfs_qos_ver = 0;
+	u64 dflt_op_rate;
+	u64 freq = 0;
 
 	perf = find_perf(inst, dev);
 	if (inst->codec_type == MTK_INST_DECODER) {
+		dvfs_qos_ver = dev->vdec_dvfs_params.version;
 		if (perf != 0) {
-			freq = inst->width * inst->height / 256 * inst->op_rate *
-				perf->cy_per_mb_1;
+			freq = (u64)inst->width * (u64)inst->height / 256 * (u64)inst->op_rate *
+				(u64)perf->cy_per_mb_1;
 
 			mtk_vcodec_dvfs_qos_log(false, "[VDVFS] VDEC w:%u x h:%u / 256 x oprate: %d x mb %u",
 				inst->width, inst->height, inst->op_rate, perf->cy_per_mb_1);
 		} else
 			freq = 100000000;
 
-		if (perf != 0 && inst->op_rate <= 0) {
-			/* Undefined priority + op_rate combination behavior, to be configurable */
-			dflt_op_rate = find_dflt_op_rate(inst, dev);
+		if (dvfs_qos_ver == 1) {
+			if (perf != 0 && inst->op_rate <= 0) {
+				/* Undefined priority + op_rate combination behavior, to be configurable */
+				dflt_op_rate = find_dflt_op_rate(inst, dev);
 
-			if (inst->priority < 0) {
-				inst->op_rate = 30;
-				if (inst->codec_fmt == 808996950) {
-					/* performance class WA for VP8 */
-					inst->op_rate = 60;
-				} else if (
-					inst->codec_fmt == 875967048 && dev->dec_cnt > 1 &&
-					(inst->width * inst->height <= 1920 * 1088)) {
-					inst->op_rate = 174;
-				}
-			} else
-				inst->op_rate = dflt_op_rate;
+				if (inst->priority < 0) {
+					inst->op_rate = 30;
+					if (inst->codec_fmt == 808996950) {
+						/* performance class WA for VP8 */
+						inst->op_rate = 60;
+					} else if (
+						inst->codec_fmt == 875967048 && dev->dec_cnt > 1 &&
+						(inst->width * inst->height <= 1920 * 1088)) {
+						inst->op_rate = 174;
+					}
+				} else
+					inst->op_rate = dflt_op_rate;
 
-			mtk_vcodec_dvfs_qos_log(false, "[VDVFS] VDEC w:%u x h:%u priority %d, new oprate %u",
-				inst->width, inst->height, inst->priority, inst->op_rate);
+				mtk_vcodec_dvfs_qos_log(false, "[VDVFS] VDEC w:%u x h:%u priority %d, new oprate %d",
+					inst->width, inst->height, inst->priority, inst->op_rate);
 
-			freq = inst->width * inst->height / 256 * inst->op_rate *
-				perf->cy_per_mb_1;
-
-			mtk_vcodec_dvfs_qos_log(false, "[VDVFS] VDEC priority:%d oprate:%d, set freq = %u",
+				freq = (u64)inst->width * (u64)inst->height / 256 * (u64)inst->op_rate *
+					(u64)perf->cy_per_mb_1;
+				mtk_vcodec_dvfs_qos_log(false, "[VDVFS] VDEC priority:%d oprate:%d, set freq = %llu",
 					inst->priority, inst->op_rate, freq);
+			}
+		} else if (dvfs_qos_ver == 2) {
+			/* AV1 boost for 720P180 test */
+			if (((inst->priority > 0 && inst->op_rate <= 0) || inst->op_rate >= 135) &&
+			    perf != 0 && inst->codec_fmt == 808539713 &&
+			    (inst->width * inst->height <= 1280 * 736)) {
+
+				if (inst->priority > 0)
+					inst->op_rate = 3000;
+				else
+					inst->op_rate = 2500;
+				mtk_vcodec_dvfs_qos_log(true, "[VDVFS] VDEC w:%u x h:%u priority %d, new oprate %d",
+					inst->width, inst->height, inst->priority, inst->op_rate);
+				freq = (u64)inst->width * (u64)inst->height / 256 * (u64)inst->op_rate *
+					(u64)perf->cy_per_mb_1;
+			} else if (perf != 0 && inst->op_rate <= 0) {
+				/* Undefined priority + op_rate combination & max op rate behavior */
+				inst->op_rate = find_dflt_op_rate(inst, dev);
+
+				mtk_vcodec_dvfs_qos_log(false, "[VDVFS] VDEC w:%u x h:%u priority %d, new oprate %d",
+					inst->width, inst->height, inst->priority, inst->op_rate);
+				freq = (u64)inst->width * (u64)inst->height / 256 * (u64)inst->op_rate *
+					(u64)perf->cy_per_mb_1;
+			}
+			mtk_vcodec_dvfs_qos_log(false, "[VDVFS] VDEC priority:%d oprate:%d, set freq = %llu",
+						inst->priority, inst->op_rate, freq);
 		}
 	} else if (inst->codec_type == MTK_INST_ENCODER) {
 		if (perf != 0) {
 			inst->op_rate = MAX(MAX(inst->op_rate_user, inst->op_rate_adaptive), inst->fps);
-			freq = inst->width * inst->height / 256 * inst->op_rate;
+			freq = (u64)inst->width * inst->height / 256 * inst->op_rate;
 			if (inst->b_frame == 0)
 				freq = freq * perf->cy_per_mb_1;
 			else
 				freq = freq * perf->cy_per_mb_2;
 
 			freq = freq / inst->core_cnt;
-
 
 			mtk_vcodec_dvfs_qos_log(false, "[VDVFS] VENC w:%u x h:%u / 256 x oprate: %d x mb %u",
 				inst->width, inst->height, inst->op_rate,
@@ -439,7 +483,7 @@ u32 calc_freq(struct vcodec_inst *inst, struct mtk_vcodec_dev *dev)
 			freq = 100000000;
 	}
 
-	mtk_vcodec_dvfs_qos_log(false, "[VDVFS] freq = %u", freq);
+	mtk_vcodec_dvfs_qos_log(false, "[VDVFS] freq = %llu", freq);
 	return freq;
 }
 
@@ -483,6 +527,69 @@ bool mtk_vcodec_is_afbc(u32 cur_codec_fmt, int codec_type)
 	return false;
 }
 
+static bool mtk_vcodec_has_active_inst(struct mtk_vcodec_dev *dev, int codec_type)
+{
+	struct list_head *item = 0;
+	struct vcodec_inst *inst;
+	struct list_head *dvfs_inst = 0;
+
+	if (codec_type == MTK_INST_DECODER)
+		dvfs_inst = &dev->vdec_dvfs_inst;
+	else if(codec_type == MTK_INST_ENCODER)
+		dvfs_inst = &dev->venc_dvfs_inst;
+
+	if ((dvfs_inst) && (!list_empty(dvfs_inst))) {
+		list_for_each(item, dvfs_inst) {
+			if(IS_ERR_OR_NULL(item)) {
+				mtk_vcodec_dvfs_qos_log(true, "[VDVFS][%s] find null in item in list!\n",
+					(codec_type == MTK_INST_DECODER) ? "VDEC" : "VENC");
+				INIT_LIST_HEAD(dvfs_inst);
+				break;
+			}
+			inst = list_entry(item, struct vcodec_inst, list);
+			if(inst->is_active)
+				return true;
+		}
+	}
+
+	return false;
+}
+
+
+#ifdef MTK_SCHED_SUPPORT
+static bool mtk_vcodec_has_single_inst(struct mtk_vcodec_dev *dev, int codec_type, unsigned int op_rate)
+{
+	struct list_head *item = 0;
+	struct vcodec_inst *inst;
+	struct list_head *dvfs_inst = 0;
+	int count = 0;
+
+	if (codec_type == MTK_INST_DECODER)
+		dvfs_inst = &dev->vdec_dvfs_inst;
+	else if(codec_type == MTK_INST_ENCODER)
+		dvfs_inst = &dev->venc_dvfs_inst;
+
+	if ((dvfs_inst) && (!list_empty(dvfs_inst))) {
+		list_for_each(item, dvfs_inst) {
+			if(IS_ERR_OR_NULL(item)) {
+				mtk_vcodec_dvfs_qos_log(true, "[VDVFS][%s] find null in item in list!\n",
+					(codec_type == MTK_INST_DECODER) ? "VDEC" : "VENC");
+				INIT_LIST_HEAD(&dev->vdec_dvfs_inst);
+				break;
+			}
+			count++;
+			inst = list_entry(item, struct vcodec_inst, list);
+
+		}
+	}
+
+	if(count == 1 && inst != NULL && inst->op_rate <= op_rate)
+		return true;
+
+	return false;
+}
+#endif
+
 u32 mtk_vcodec_get_bw_factor(struct mtk_vcodec_dev *dev, int codec_type)
 {
 	int i;
@@ -500,7 +607,8 @@ u32 mtk_vcodec_get_bw_factor(struct mtk_vcodec_dev *dev, int codec_type)
 		/*get encoder bw factor*/
 		list_for_each(item, &dev->venc_dvfs_inst) {
 			if(item == (void *) 0) {
-				mtk_vcodec_dvfs_qos_log(true, "%s [VDVFS][VENC] find null in item in list!\n", __func__);
+				mtk_vcodec_dvfs_qos_log(true, "[VDVFS][VENC] find null in item in list!\n");
+				INIT_LIST_HEAD(&dev->venc_dvfs_inst);
 				return 0;
 			}
 			inst = list_entry(item, struct vcodec_inst, list);
@@ -531,14 +639,13 @@ void update_freq(struct mtk_vcodec_dev *dev, int codec_type)
 {
 	struct list_head *item;
 	struct vcodec_inst *inst;
-	u32 freq = 0;
+	u64 freq = 0;
 	u64 freq_sum = 0;
 	u32 op_rate_sum = 0;
 	u32 target_bw_factor;
 	bool no_op_rate_max_freq = false;
 
 	if (codec_type == MTK_INST_DECODER) {
-
 		if (dev->vdec_reg == 0 && dev->vdec_mmdvfs_clk == 0)
 			return;
 
@@ -547,13 +654,14 @@ void update_freq(struct mtk_vcodec_dev *dev, int codec_type)
 
 		if (list_empty(&dev->vdec_dvfs_inst)) {
 			freq_sum = match_avail_freq(dev, codec_type, 0);
+			dev->vdec_dvfs_params.freq_sum = (u32)freq_sum;
 			dev->vdec_dvfs_params.target_freq = (u32)freq_sum;
 			return;
 		}
 
 		list_for_each(item, &dev->vdec_dvfs_inst) {
 			if(item == (void *) 0) {
-				mtk_vcodec_dvfs_qos_log(true, "%s [VDVFS][VDEC] find null in item in list!\n", __func__);
+				mtk_vcodec_dvfs_qos_log(true, "[VDVFS][VDEC] find null in item in list!\n");
 				INIT_LIST_HEAD(&dev->vdec_dvfs_inst);
 				return;
 			}
@@ -566,9 +674,9 @@ void update_freq(struct mtk_vcodec_dev *dev, int codec_type)
 
 				freq_sum += freq;
 				op_rate_sum += inst->op_rate;
-			} else {
+			} else
 				mtk_vcodec_dvfs_qos_log(false, "[VDVFS] %s no inst, skip", __func__);
-			}
+
 		}
 		mtk_vcodec_dvfs_qos_log(false, "[VDVFS] VDEC freq_sum = %llu, op_rate_sum = %u",
 			freq_sum, op_rate_sum);
@@ -583,10 +691,11 @@ void update_freq(struct mtk_vcodec_dev *dev, int codec_type)
 		else
 			dev->vdec_dvfs_params.per_frame_adjust = 0;
 
+		dev->vdec_dvfs_params.freq_sum = (u32)freq_sum;
 		freq_sum = match_avail_freq(dev, codec_type, freq_sum);
 
 		dev->vdec_dvfs_params.target_freq = (u32)freq_sum;
-		mtk_vcodec_dvfs_qos_log(true, "[VDVFS] VDEC freq = %u", dev->vdec_dvfs_params.target_freq);
+		mtk_vcodec_dvfs_qos_log(false, "[VDVFS] VDEC freq = %u", dev->vdec_dvfs_params.target_freq);
 	} else if (codec_type == MTK_INST_ENCODER) {
 
 		if (dev->venc_reg == 0 && dev->venc_mmdvfs_clk == 0)
@@ -597,13 +706,14 @@ void update_freq(struct mtk_vcodec_dev *dev, int codec_type)
 
 		if (list_empty(&dev->venc_dvfs_inst)) {
 			freq_sum = match_avail_freq(dev, codec_type, 0);
+			dev->venc_dvfs_params.freq_sum = (u32)freq_sum;
 			dev->venc_dvfs_params.target_freq = (u32)freq_sum;
 			return;
 		}
 
 		list_for_each(item, &dev->venc_dvfs_inst) {
 			if(item == (void *) 0) {
-				mtk_vcodec_dvfs_qos_log(true, "%s [VDVFS][VENC] find null in item in list!\n", __func__);
+				mtk_vcodec_dvfs_qos_log(true, "[VDVFS][VENC] find null in item in list!\n");
 				INIT_LIST_HEAD(&dev->venc_dvfs_inst);
 				return;
 			}
@@ -619,10 +729,11 @@ void update_freq(struct mtk_vcodec_dev *dev, int codec_type)
 				mtk_vcodec_dvfs_qos_log(true, "[VDVFS] has trans inst: hint cpu & venc max freq");
 				mtk_vcodec_cpu_adaptive_ctrl(inst->ctx, true);
 			}
+
 			if (freq > dev->venc_dvfs_params.normal_max_freq)
 				dev->venc_dvfs_params.allow_oc = 1;
 
-			if (inst->op_rate == 0)
+			if (inst->op_rate == 0 || inst->op_rate >= 960)
 				no_op_rate_max_freq = 1;
 
 			freq_sum += freq;
@@ -650,15 +761,23 @@ void update_freq(struct mtk_vcodec_dev *dev, int codec_type)
 		freq_sum = match_avail_freq(dev, codec_type, freq_sum);
 
 		dev->venc_dvfs_params.target_freq = (u32)freq_sum;
-		mtk_vcodec_dvfs_qos_log(false, "[VDVFS] VENC freq = %u", dev->venc_dvfs_params.target_freq);
+		mtk_vcodec_dvfs_qos_log(false, "[VDVFS] VENC freq = %u",
+			dev->venc_dvfs_params.target_freq);
 
 		target_bw_factor = mtk_vcodec_get_bw_factor(dev, MTK_INST_ENCODER);
 		dev->venc_dvfs_params.target_bw_factor = target_bw_factor;
 		mtk_vcodec_dvfs_qos_log(false, "[VDVFS] VENC bw_factor = %u",
 			dev->venc_dvfs_params.target_bw_factor);
+
+		// Check transcode scenario
+		if (dev->venc_dvfs_params.trans_inst && mtk_vcodec_has_active_inst(dev, MTK_INST_DECODER)) {
+			if (dev->venc_reg != 0 || dev->venc_mmdvfs_clk != 0)
+				dev->venc_dvfs_params.target_freq = dev->venc_dvfs_params.normal_max_freq;
+			mtk_vcodec_dvfs_qos_log(true, "[VDVFS] - has trancode, set venc max freq\n");
+			return;
+		}
 	}
 
-	return;
 }
 
 void mtk_vcodec_alive_checker_suspend(struct mtk_vcodec_dev *dev)
@@ -668,7 +787,8 @@ void mtk_vcodec_alive_checker_suspend(struct mtk_vcodec_dev *dev)
 	/* Only support vdec check alive now */
 	if (mtk_vcodec_is_vcp(MTK_INST_DECODER)) {
 		if (!mtk_vcodec_ctx_list_empty(dev) && dev->vdec_dvfs_params.has_timer) {
-			mtk_vcodec_dvfs_qos_log(true, "[VDVFS][VDEC] suspend vdec alive checker...");
+			mtk_vcodec_dvfs_qos_log(true, "[VDVFS][VDEC] suspend vdec alive checker (freq %d)..",
+				dev->vdec_dvfs_params.target_freq);
 			del_timer_sync(&dev->vdec_dvfs_params.vdec_active_checker);
 			flush_workqueue(dev->check_alive_workqueue);
 			dev->vdec_dvfs_params.has_timer = 0;
@@ -685,7 +805,8 @@ void mtk_vcodec_alive_checker_resume(struct mtk_vcodec_dev *dev)
 	/* Only support vdec check alive now */
 	if (mtk_vcodec_is_vcp(MTK_INST_DECODER)) {
 		if (!mtk_vcodec_ctx_list_empty(dev) && !dev->vdec_dvfs_params.has_timer) {
-			mtk_vcodec_dvfs_qos_log(true, "[VDVFS][VDEC] resume vdec alive checker...");
+			mtk_vcodec_dvfs_qos_log(true, "[VDVFS][VDEC] resume vdec alive checker (freq %d)..",
+				dev->vdec_dvfs_params.target_freq);
 			timer_setup(&dev->vdec_dvfs_params.vdec_active_checker,
 				mtk_vcodec_check_alive, 0);
 			dev->vdec_dvfs_params.vdec_active_checker.expires =
@@ -728,26 +849,68 @@ void mtk_vcodec_cpu_adaptive_ctrl(struct mtk_vcodec_ctx *ctx, int enable)
 			mtk_vcodec_set_cpu_hint(dev, enable, ctx->type, ctx->id, ctx->cpu_caller_pid, __func__);
 		}
 	}
-
 }
 
 void mtk_vcodec_cpu_pf_ctrl(struct mtk_vcodec_ctx *ctx, int enable)
 {
-
+	if (!mtk_vcodec_has_active_inst(ctx->dev, MTK_INST_DECODER)) {
+		mtk_set_pf_ctrl_enable((bool)enable);
+		mtk_vcodec_dvfs_qos_log(false, "[VDVFS] pf dynamic control %s\n",
+			mtk_get_pf_ctrl_enable() ? "enable" : "disable");
+	}
 }
 
 void mtk_vcodec_slc_wce_ctrl(struct mtk_vcodec_ctx *ctx, int off)
 {
-
+	if (!mtk_vcodec_has_active_inst(ctx->dev, MTK_INST_DECODER)) {
+		slbc_disable_dcc((bool)off); // 1: disable WCE, 0: enable (default)
+		mtk_vcodec_dvfs_qos_log(false, "[VDVFS] slc wce %s\n", off ? "disable" : "enable");
+	}
 }
 
 void mtk_vcodec_cpu_margin_ctrl(struct mtk_vcodec_ctx *ctx)
 {
+#ifdef MTK_SCHED_SUPPORT
+	int margin = get_target_margin_low(0);
 
+	if (mtk_vcodec_has_single_inst(ctx->dev, MTK_INST_DECODER, 30) &&
+		!mtk_vcodec_has_active_inst(ctx->dev, MTK_INST_ENCODER)) {
+		set_turn_point_freq(0, 1000);
+		set_target_margin(0, 20);
+		set_target_margin_low(0, 0);
+		codec_margin_change++;
+	} else {
+		if (codec_margin_change > 0) {
+			set_turn_point_freq(0, 0);
+			unset_target_margin(0);
+			unset_target_margin_low(0);
+			codec_margin_change--;
+		}
+	}
+
+	mtk_vcodec_dvfs_qos_log(false, "[VDVFS] cpu margin change %d to %d, count: %d\n",
+		margin, get_target_margin_low(0), codec_margin_change);
+#endif
 }
 
 void mtk_vcodec_cpu_runnable_boost_ctrl(struct mtk_vcodec_ctx *ctx)
 {
+#ifdef MTK_SCHED_SUPPORT
+	int boost = is_runnable_boost_enable();
 
+	if (mtk_vcodec_has_single_inst(ctx->dev, MTK_INST_DECODER, 30) &&
+		!mtk_vcodec_has_active_inst(ctx->dev, MTK_INST_ENCODER) &&
+		is_runnable_boost_enable()) {
+		set_runnable_boost_enable(0);
+		codec_runnable_boost_disable++;
+	} else {
+		if (codec_runnable_boost_disable > 0) {
+			unset_runnable_boost_enable();
+			codec_runnable_boost_disable--;
+		}
+	}
+
+	mtk_vcodec_dvfs_qos_log(false, "[VDVFS] cpu runnable boost change %d to %d, count: %d\n",
+		boost, is_runnable_boost_enable(), codec_runnable_boost_disable);
+#endif
 }
-

@@ -76,6 +76,7 @@ struct vcodec_inst {
 
 /* dvfs policies  */
 struct dvfs_params {
+	u8 version;		/* DVFS & QoS Version */
 	u8 codec_type;
 	u8 allow_oc;		/* allow oc freq */
 	u8 per_frame_adjust;	/* do per frame adjust dvfs / pmqos */
