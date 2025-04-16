@@ -10856,23 +10856,23 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x3e950000 0 0x1000>;
 			interrupts = <GIC_SPI 451 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&disp1b_dispsys1_config_clk MM1B_DISP_DVO0_DISP>,
-				<&disp1b_dispsys1_config_clk MM1B_MOD3>,
+				<&disp1b_dispsys1_config_clk MM1B_MOD3_V>,
 				<&cksys_mm_clk CKSYS_MM_DVO_DP_SEL>,
 				<&cksys_mm_clk CKSYS_MM_TVDPLL_D2>,
+				<&cksys_mm_clk CKSYS_MM_TVDPLL_D3>,
 				<&cksys_mm_clk CKSYS_MM_TVDPLL_D4>,
 				<&cksys_mm_clk CKSYS_MM_TVDPLL_D8>,
-				<&cksys_mm_clk CKSYS_MM_TVDPLL_D3>,
 				<&tvdpll_ctrl_clk TVDPLL_CTRL_TVDPLL>,
 				<&cksys_top_clk CKSYS_TOP_TCK_26M_MX9>;
 			clock-names = "hf_fmm_ck",
 					"hf_fdp_ck",
-					"MUX_DP",
+					"MUX_DVO",
 					"TVDPLL_D2",
+					"TVDPLL_D3",
 					"TVDPLL_D4",
 					"TVDPLL_D8",
-					"TVDPLL_D16",
-					"DPI_CK",
-					"DPI_26M";
+					"TVDPLL_PLL",
+					"TCK_26M";
 		};
 
 		dp_tx: dp-tx@3ed00000 {
