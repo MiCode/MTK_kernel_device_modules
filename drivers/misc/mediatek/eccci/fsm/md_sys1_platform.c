@@ -1196,15 +1196,21 @@ static int md_start_platform(struct ccci_modem *md)
 	} else
 		return 0;
 
-	md_cd_get_md_bootup_status(NULL, 0);
+	/* if load md in bl2ext, then 1st power off md in bl33
+	 * no need to power off md again when in kernel.
+	 */
+	if (!md_cd_plat_val_ptr.load_md_stage) {
 
-	if (ret != 0) {
-		/* BROM */
-		CCCI_ERROR_LOG(0, TAG, "BROM Failed\n");
-		md_cd_dump_debug_register(md, true);
+		/* md off in bl33, shouldn't get md status && dump md reg */
+		md_cd_get_md_bootup_status(NULL, 0);
+
+		if (ret != 0) {
+			CCCI_ERROR_LOG(0, TAG, "BROM Failed\n");
+			md_cd_dump_debug_register(md, true);
+		}
+
+		md_cd_power_off(md, 0);
 	}
-
-	md_cd_power_off(md, 0);
 
 	return ret;
 }
@@ -2347,6 +2353,7 @@ static int md_cd_get_modem_hw_info(struct platform_device *dev_ptr,
 #ifdef USING_PM_RUNTIME
 	int retval = 0;
 #endif
+	const char *ld_md_stage = NULL;
 
 	if (dev_ptr->dev.of_node == NULL) {
 		CCCI_ERROR_LOG(0, TAG, "modem OF node NULL\n");
@@ -2525,6 +2532,15 @@ static int md_cd_get_modem_hw_info(struct platform_device *dev_ptr,
 	if (ret < 0) {
 		md_cd_plat_val_ptr.ccci_ctrl_mtcmos = 0;
 		CCCI_NORMAL_LOG(0, TAG, "%s: ccci no need to control mtcmos\n", __func__);
+	}
+
+	ret = of_property_read_string(dev_ptr->dev.of_node,
+		"load-md-stage", &ld_md_stage);
+	if ((ret < 0) || (ld_md_stage == NULL) || (strcmp(ld_md_stage, "bl2_ext_load_md") != 0))
+		md_cd_plat_val_ptr.load_md_stage = 0;
+	else {
+		CCCI_NORMAL_LOG(0, TAG, "%s: load md img in bl2ext\n", __func__);
+		md_cd_plat_val_ptr.load_md_stage = 1;
 	}
 
 	/* Get spm sleep base */

@@ -57,6 +57,7 @@ struct  ccci_plat_val {
 	unsigned int boot_status_value;
 	unsigned int mdsrc_settle_time;
 	unsigned int ccci_ctrl_mtcmos;
+	unsigned int load_md_stage;
 };
 
 struct ccci_clk_node {
