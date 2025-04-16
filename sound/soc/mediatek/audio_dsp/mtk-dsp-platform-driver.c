@@ -1645,6 +1645,7 @@ static int mtk_dsp_pcm_copy_ul(struct snd_pcm_substream *substream,
 			       struct iov_iter *buf)
 {
 	int ret = 0, availsize = 0;
+	int ack_type;
 	void *ipi_audio_buf; /* dsp <-> audio data struct */
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_dai *cpu_dai = snd_soc_rtd_to_cpu(rtd, 0);
@@ -1693,9 +1694,14 @@ static int mtk_dsp_pcm_copy_ul(struct snd_pcm_substream *substream,
 	ipi_audio_buf = (void *)dsp_mem->msg_atod_share_buf.va_addr;
 	memcpy((void *)ipi_audio_buf, (void *)&dsp_mem->adsp_buf,
 		sizeof(struct audio_hw_buffer));
+
+	if (substream->runtime->status->state != SNDRV_PCM_STATE_RUNNING)
+		ack_type = AUDIO_IPI_MSG_NEED_ACK;
+	else
+		ack_type = AUDIO_IPI_MSG_BYPASS_ACK;
 	ret = mtk_scp_ipi_send(
 			get_dspscene_by_dspdaiid(id), AUDIO_IPI_PAYLOAD,
-			AUDIO_IPI_MSG_NEED_ACK, AUDIO_DSP_TASK_ULCOPY,
+			ack_type, AUDIO_DSP_TASK_ULCOPY,
 			sizeof(dsp_mem->msg_atod_share_buf.phy_addr),
 			0,
 			(char *)&dsp_mem->msg_atod_share_buf.phy_addr);
