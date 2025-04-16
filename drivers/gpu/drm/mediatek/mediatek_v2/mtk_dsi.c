@@ -15270,7 +15270,7 @@ static int mtk_dsi_set_partial_update(struct mtk_ddp_comp *comp,
 			SET_VAL_MASK(val, mask, 1, PU_EN);
 			SET_VAL_MASK(val, mask, 0, PU_SISO);
 			SET_VAL_MASK(val, mask, 1, PU_NUM);
-			SET_VAL_MASK(val, mask, 3, PU_CROP_THRPT_DEC_FACTOR);
+			SET_VAL_MASK(val, mask, 4, PU_CROP_THRPT_DEC_FACTOR);
 			cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + DSI_PU_CON0, val, mask);
 
