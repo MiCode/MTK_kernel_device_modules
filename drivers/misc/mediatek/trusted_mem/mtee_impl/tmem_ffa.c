@@ -101,6 +101,8 @@ static void tmem_do_gettimeofday(struct timespec64 *tv)
 #define VM_HA_BASE   0x2
 /* TA receiver id should be a SP at secure world */
 #define SP_TA_1   0x8001
+/* receiver id pKVM  */
+#define PKVM_VM_ID   0x1
 
 static void set_memory_region_attrs(enum MTEE_MCHUNKS_ID mchunk_id,
 						struct ffa_mem_ops_args *ffa_args,
@@ -140,7 +142,7 @@ static void set_memory_region_attrs(enum MTEE_MCHUNKS_ID mchunk_id,
 	case MTEE_MCHUNKS_PROT:
 		if(is_pkvm_enabled()) {
 			mem_region_attrs[0] = (struct ffa_mem_region_attributes) {
-				.receiver = SP_TA_1,
+				.receiver = PKVM_VM_ID,
 				.attrs = FFA_MEM_RW
 			};
 			ffa_args->nattrs = 1;
