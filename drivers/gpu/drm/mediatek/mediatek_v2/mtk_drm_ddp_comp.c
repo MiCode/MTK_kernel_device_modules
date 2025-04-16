@@ -187,6 +187,8 @@ module_param(dbg_always_urgent_sys, int, 0644);
 	#define DISP_MDP_RDMA0_GPREULTRA_SEL		(MT6991_ULTRA_SEL_DSI1 << 12)
 	#define DISP_MDP_RDMA0_GULTRA_SEL			(MT6991_ULTRA_SEL_DSI1 << 8)
 
+#define MT6993_DISPSYS0_DDREN_ACK_CON	0x54
+
 #define MTK_DDP_COMP_USER "DISP"
 #define CONFIG_MTK_IOMMU_MISC_DBG_DETAIL
 
@@ -3896,6 +3898,7 @@ void mt6993_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 		return;
 
 	if (handle == NULL) {
+		unsigned int v;
 		if (priv->ovlsys1_regs) {
 			val = 0;
 			SET_VAL_MASK(val, val_mask, 4, OVL_EXDMA6_SEL);
@@ -3913,6 +3916,8 @@ void mt6993_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 			val = dbg_always_urgent_sys;
 			writel_relaxed(val, priv->side_config_regs +  MMSYS_EMI_REQ_CTL);
 		}
+		v = MT6989_DISP0_DDREN_ACK_CON;
+		writel_relaxed(v, priv->config_regs + MT6993_DISPSYS0_DDREN_ACK_CON);
 	} else {
 		if (priv->ovlsys1_regs) {
 			val = 0;
