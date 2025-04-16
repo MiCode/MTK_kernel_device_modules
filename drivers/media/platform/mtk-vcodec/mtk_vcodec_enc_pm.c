@@ -252,7 +252,7 @@ static void mtk_vcodec_enc_larb_on(struct mtk_vcodec_pm *pm)
 	int larb_index;
 	int ret;
 
-	if (pm->larbvencs[0])
+	if (!pm->larbvencs[0])
 		return;
 
 	atomic_inc(&dev->larb_ref_cnt);
@@ -271,7 +271,7 @@ static void mtk_vcodec_enc_larb_off(struct mtk_vcodec_pm *pm)
 	struct mtk_vcodec_dev *dev = container_of(pm, struct mtk_vcodec_dev, pm);
 	int larb_index;
 
-	if (pm->larbvencs[0])
+	if (!pm->larbvencs[0])
 		return;
 
 	for (larb_index = 0; larb_index < MTK_VENC_MAX_LARB_COUNT; larb_index++) {
