@@ -12959,7 +12959,7 @@
 		nvmem-cell-names = "mt6368_e_data";
 	};
 
-	low_battery_throttling {
+	low_battery_throttling: low-battery-throttling {
 		compatible = "mediatek,low_battery_throttling";
 		vbat-thd-enable = <0>;
 		lvsys-thd-enable = <0>;
@@ -13040,6 +13040,11 @@
 
 		soc-max-stage = <1>;
 		soc-limit-threshold = <15>;
+	};
+
+	peak_power_budget:peak-power-budget@117780 {
+		compatible = "mediatek,peak_power_budget";
+		status = "disable";
 	};
 
 /** audio device nodes start **/
