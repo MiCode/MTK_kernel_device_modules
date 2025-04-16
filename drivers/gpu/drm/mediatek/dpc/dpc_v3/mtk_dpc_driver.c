@@ -864,8 +864,10 @@ static void dpc_enable_v3(const u8 en)
 
 	u16 i = 0;
 
-	if (en == 2)
+	if (en == 2) {
 		g_priv->vidle_mask = 0;
+		debug_irq = 0;
+	}
 
 	if (en) {
 		dt_strategy_decision();
