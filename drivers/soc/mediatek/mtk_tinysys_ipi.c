@@ -98,15 +98,14 @@ static void ipi_timeout_dump(struct mtk_ipi_device *ipidev, int ipi_id)
 
 	spin_lock_irqsave(&ipidev->lock_monitor, flags);
 
-	pr_err("Error: %s IPI %d timeout at %lld (last done is IPI %d)\n",
-		 ipidev->name, ipi_id, cpu_clock(0), ipidev->ipi_last_done);
-
-	pr_err("IPI %d: seqno=%d, state=%d, t%d=%lld, t%d=%lld, t%d=%lld (trysend %d, polling %d\n",
-		ipi_id, chan->ipi_seqno, chan->ipi_stage,
+	pr_err("%s IPI %d timeout seq=%d, state=%d, t%d=%lld, t%d=%lld, t%d=%lld, trysend %d, polling %d, last done IPI %d\n",
+		ipidev->name, ipi_id,
+		chan->ipi_seqno, chan->ipi_stage,
 		chan->ipi_record[0].idx, chan->ipi_record[0].ts,
 		chan->ipi_record[1].idx, chan->ipi_record[1].ts,
 		chan->ipi_record[2].idx, chan->ipi_record[2].ts,
-		chan->trysend_count, chan->polling_count);
+		chan->trysend_count, chan->polling_count,
+		ipidev->ipi_last_done);
 
 	spin_unlock_irqrestore(&ipidev->lock_monitor, flags);
 }
