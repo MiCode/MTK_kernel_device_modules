@@ -91,7 +91,6 @@ mgk_64_kleaf_modules = [
     "//vendor/mediatek/kernel_modules/mtkcam/camsys:cam-isp8-ut",
     "//vendor/mediatek/kernel_modules/mtkcam/camsys:cam-isp8s-ut",
     "//vendor/mediatek/kernel_modules/mtkcam/mtk-pda:pda_drv_dummy",
-    "//vendor/mediatek/kernel_modules/mtkcam/cam_cal/src_v4l2:mtk_cam_cal",
     "//vendor/mediatek/kernel_modules/mtkcam/imgsys/common:imgsys_common",
     # "//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/isp8s:imgsys_8s",
     "//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/isp8:imgsys_8",
@@ -135,14 +134,6 @@ mgk_64_kleaf_modules = [
     "//vendor/mediatek/kernel_modules/mtkcam/img_frm_sync:mtk-img-frm-sync",
     "//vendor/mediatek/kernel_modules/task_turbo_cus:task_turbo_cus",
     "//vendor/mediatek/kernel_modules/task_turbo_int:task_turbo_int",
-    "//vendor/mediatek/kernel_modules/mtkcam/imgsensor/src-v4l2/imgsensor-glue:imgsensor-glue",
-    "//vendor/mediatek/kernel_modules/mtkcam/imgsensor/src-isp8/imgsensor-glue:imgsensor-glue_isp8",
-    "//vendor/mediatek/kernel_modules/mtkcam/imgsensor/src_spm-isp8/imgsensor-glue:imgsensor-glue_spm_isp8",
-    "//vendor/mediatek/kernel_modules/mtkcam/imgsensor/src-isp8s/imgsensor-glue:imgsensor-glue_isp8s",
-    "//vendor/mediatek/kernel_modules/mtkcam/imgsensor/src-v4l2:imgsensor",
-    "//vendor/mediatek/kernel_modules/mtkcam/imgsensor/src-isp8:imgsensor_isp8",
-    "//vendor/mediatek/kernel_modules/mtkcam/imgsensor/src_spm-isp8:imgsensor_spm_isp8",
-    "//vendor/mediatek/kernel_modules/mtkcam/imgsensor/src-isp8s:imgsensor_isp8s",
     "//vendor/mediatek/kernel_modules/perf_common_cus:perf_common_cus",
     "//vendor/mediatek/kernel_modules/perf_common_int:perf_common_int",
 ]
@@ -1297,8 +1288,6 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/interconnect/mediatek:mmqos-common".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mmqos:mmqos_wrapper".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2/v1:mediatek_drm_v1".format(kernel_version),
-    "//kernel_device_modules-{}/drivers/misc/mediatek/imgsensor/src:imgsensor_isp6s".format(kernel_version),
-    "//kernel_device_modules-{}/drivers/misc/mediatek/cam_cal/src:camera_eeprom".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:cmdq-sec-drv".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mddp:mddp".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/apusys/sapu:sapu".format(kernel_version),
@@ -1365,6 +1354,14 @@ mgk_64_kleaf_platform_modules = {
     "//kernel_device_modules-{}/drivers/mfd:mt6687-core".format(kernel_version): "mt6993",
     "//kernel_device_modules-{}/drivers/media/platform/mtk-vcu:mtk-vcu".format(kernel_version): "mt6768 mt6781 mt6789 mt6833 mt6853 mt6855 mt6877 mt6893 mt8188 mt8192",
     "//kernel_device_modules-{}/drivers/misc/mediatek/btif:btif_drv".format(kernel_version): "mt6761 mt6765 mt6768 mt6779 mt6781 mt6785 mt6789 mt6833 mt6853 mt6855 mt6873 mt6877 mt6885 mt6886 mt6893 mt6895 mt6879 mt6983",
+    "//kernel_device_modules-{}/drivers/misc/mediatek/cam_cal/src:camera_eeprom_isp3_m".format(kernel_version): "mt6761",
+    "//kernel_device_modules-{}/drivers/misc/mediatek/cam_cal/src:camera_eeprom_isp3_z".format(kernel_version): "mt6739",
+    "//kernel_device_modules-{}/drivers/misc/mediatek/cam_cal/src:camera_eeprom_isp4_c".format(kernel_version): "mt6765",
+    "//kernel_device_modules-{}/drivers/misc/mediatek/cam_cal/src:camera_eeprom_isp4_t".format(kernel_version): "mt6768",
+    "//kernel_device_modules-{}/drivers/misc/mediatek/cam_cal/src:camera_eeprom".format(kernel_version): "mt6789 mt6835 mt6855 mt6858 mt6893",
+    "//kernel_device_modules-{}/drivers/misc/mediatek/cam_cal/src:camera_eeprom_isp6s_lag".format(kernel_version): "mt6781",
+    "//kernel_device_modules-{}/drivers/misc/mediatek/cam_cal/src:camera_eeprom_isp6s_mon".format(kernel_version): "mt6877",
+    "//kernel_device_modules-{}/drivers/misc/mediatek/cam_cal/src:camera_eeprom_isp6s_mou".format(kernel_version): "mt6853",
     "//kernel_device_modules-{}/drivers/misc/mediatek/ccu/src/isp6s:ccu_isp6s".format(kernel_version):"mt6833 mt6853 mt6873 mt6877 mt6885 mt6893",
     "//kernel_device_modules-{}/drivers/misc/mediatek/cm_mgr:mtk_cm_mgr_mt6991".format(kernel_version): "mt6991",
     "//kernel_device_modules-{}/drivers/misc/mediatek/cm_mgr:mtk_cm_mgr_mt6993".format(kernel_version): "mt6993",
@@ -1377,6 +1374,8 @@ mgk_64_kleaf_platform_modules = {
     "//kernel_device_modules-{}/drivers/misc/mediatek/flashlight/v4l2:lm3643".format(kernel_version): "mt6789",
     "//kernel_device_modules-{}/drivers/misc/mediatek/flashlight/v4l2:lm3644".format(kernel_version): "mt6855 mt6858 mt6895",
     "//kernel_device_modules-{}/drivers/misc/mediatek/hwccf:hwccf".format(kernel_version) : "mt6991 mt6993",
+    "//kernel_device_modules-{}/drivers/misc/mediatek/imgsensor/src:imgsensor_isp4_t".format(kernel_version): "mt6768",
+    "//kernel_device_modules-{}/drivers/misc/mediatek/imgsensor/src:imgsensor_isp6s".format(kernel_version): "mt6789 mt6855 mt6858",
     "//kernel_device_modules-{}/drivers/misc/mediatek/ise_lpm:ise_lpm".format(kernel_version): "mt6989 mt6991 mt6993",
     "//kernel_device_modules-{}/drivers/misc/mediatek/ise_lpm:ise_lpm_v2".format(kernel_version): "mt6991 mt6993",
     "//kernel_device_modules-{}/drivers/misc/mediatek/jpeg:jpeg-driver".format(kernel_version): "mt6895 mt6991 mt6993",
@@ -1549,6 +1548,7 @@ mgk_64_kleaf_platform_modules = {
     "//vendor/mediatek/kernel_modules/connectivity/conninfra:conninfra":"mt6858 mt6877 mt6878 mt6879 mt6880 mt6885 mt6886 mt6890 mt6893 mt6895 mt6897 mt6899 mt6983 mt6985 mt6989 mt6991 mt6993",
     "//vendor/mediatek/kernel_modules/hbt_driver_cus:hbt_cus":"mt6886 mt6897 mt6985 mt6989 mt6991 mt6899 mt6993",
     "//vendor/mediatek/kernel_modules/hbt_driver:hbt_int":"mt6886 mt6897 mt6985 mt6989 mt6991 mt6899 mt6993",
+    "//vendor/mediatek/kernel_modules/mtkcam/cam_cal/src_v4l2:mtk_cam_cal":"mt6878 mt6879 mt6886 mt6895 mt6897 mt6899 mt6983 mt6985 mt6989 mt6991 mt6993",
     "//vendor/mediatek/kernel_modules/mtkcam/camsys:mtk-cam-plat-mt6983":"mt6983",
     "//vendor/mediatek/kernel_modules/mtkcam/camsys:mtk-cam-plat-mt6895":"mt6895",
     "//vendor/mediatek/kernel_modules/mtkcam/camsys:mtk-cam-plat-mt6879":"mt6879",
@@ -1557,6 +1557,12 @@ mgk_64_kleaf_platform_modules = {
     "//vendor/mediatek/kernel_modules/mtkcam/camsys:cam-isp7_1-ut":"mt6983 mt6895 mt6879",
     "//vendor/mediatek/kernel_modules/mtkcam/camsys:mtk-cam-plat-util":"mt6983 mt6895 mt6879",
     "//vendor/mediatek/kernel_modules/mtkcam/ccusys:mtk_ccuv":"mt6993 mt6991 mt6983 mt6879 mt6895",
+    "//vendor/mediatek/kernel_modules/mtkcam/imgsensor/src-isp8/imgsensor-glue:imgsensor-glue_isp8":"mt6991 mt6899",
+    "//vendor/mediatek/kernel_modules/mtkcam/imgsensor/src-isp8:imgsensor_isp8":"mt6991 mt6899",
+    "//vendor/mediatek/kernel_modules/mtkcam/imgsensor/src-isp8s/imgsensor-glue:imgsensor-glue_isp8s":"mt6993",
+    "//vendor/mediatek/kernel_modules/mtkcam/imgsensor/src-isp8s:imgsensor_isp8s":"mt6993",
+    "//vendor/mediatek/kernel_modules/mtkcam/imgsensor/src-v4l2/imgsensor-glue:imgsensor-glue":"mt6983 mt6879 mt6985 mt6886 mt6895 mt6897 mt6989 mt6878",
+    "//vendor/mediatek/kernel_modules/mtkcam/imgsensor/src-v4l2:imgsensor":"mt6983 mt6879 mt6985 mt6886 mt6895 mt6897 mt6989 mt6878",
     "//vendor/mediatek/kernel_modules/mtkcam/mtk-pda:pda_drv_mt6991":"mt6991",
     "//vendor/mediatek/kernel_modules/mtkcam/mtk-pda:pda_drv_mt6993":"mt6993",
     "//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/isp8s:imgsys_8s":"mt6993",
@@ -2780,12 +2786,12 @@ def get_overlay_modules_list():
 
         #mgk_64_device_modules.remove("drivers/misc/mediatek/imgsensor/src/isp6s/imgsensor_isp6s.ko")
         #mgk_64_device_modules.append("drivers/misc/mediatek/imgsensor/src/isp4_t/imgsensor_isp4_t.ko")
-        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/imgsensor/src:imgsensor_isp6s".format(kernel_version))
-        mgk_64_kleaf_device_modules.append("//kernel_device_modules-{}/drivers/misc/mediatek/imgsensor/src:imgsensor_isp4_t".format(kernel_version))
+        #mgk_64_kleaf_platform_modules.pop("//kernel_device_modules-{}/drivers/misc/mediatek/imgsensor/src:imgsensor_isp6s".format(kernel_version))
+        #mgk_64_kleaf_platform_modules.update({"//kernel_device_modules-{}/drivers/misc/mediatek/imgsensor/src:imgsensor_isp4_t".format(kernel_version):"mt6768"})
         # mgk_64_device_modules.remove("drivers/misc/mediatek/cam_cal/src/custom/camera_eeprom.ko")
         # mgk_64_device_modules.append("drivers/misc/mediatek/cam_cal/src/isp4_t/camera_eeprom_isp4_t.ko")
-        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/cam_cal/src:camera_eeprom".format(kernel_version))
-        mgk_64_kleaf_device_modules.append("//kernel_device_modules-{}/drivers/misc/mediatek/cam_cal/src:camera_eeprom_isp4_t".format(kernel_version))
+        # mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/cam_cal/src:camera_eeprom".format(kernel_version))
+        # mgk_64_kleaf_device_modules.append("//kernel_device_modules-{}/drivers/misc/mediatek/cam_cal/src:camera_eeprom_isp4_t".format(kernel_version))
 
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/iommu:smmu_secure".format(kernel_version))
 
