@@ -7764,7 +7764,7 @@ static void mtk_dsi_ddp_config(struct mtk_ddp_comp *comp,
 {
 	struct mtk_dsi *dsi = container_of(comp, struct mtk_dsi, ddp_comp);
 
-	if (dsi && dsi->driver_data && dsi->driver_data->support_rd_cmdq)
+	if ((mtk_dsi_cmd_version() == DSI_CMD_V2) && dsi && dsi->driver_data && dsi->driver_data->support_rd_cmdq)
 		mtk_dsi_set_rx_sram_mode(comp, handle, 1);
 
 	mtk_dsi_set_targetline(comp, handle, (unsigned int)cfg->h);
@@ -15557,6 +15557,9 @@ static int mtk_dsi_bind(struct device *dev, struct device *master, void *data)
 			dsi_cmd_ver = DSI_CMD_V1;
 	}
 
+	if ((mtk_dsi_cmd_version() == DSI_CMD_V2) && dsi->driver_data->support_rd_cmdq)
+		mtk_dsi_mask(dsi, DSI_RX_CON(dsi->driver_data), RX_DATA_SRAM_MODE, RX_DATA_SRAM_MODE);
+
 	drm_dev = drm;
 	DDPMSG("%s-, dsi_cmd_ver=%d\n", __func__, dsi_cmd_ver);
 	return 0;
@@ -16304,9 +16307,6 @@ static int mtk_dsi_probe(struct platform_device *pdev)
 		dev_err(dev, "Failed to initialize component: %d\n", ret);
 		goto error;
 	}
-
-	if (dsi->driver_data->support_rd_cmdq)
-		mtk_dsi_mask(dsi, DSI_RX_CON(dsi->driver_data), RX_DATA_SRAM_MODE, RX_DATA_SRAM_MODE);
 
 	/* init dsi cmdq page */
 	spin_lock_init(&dsi->cmdq_pg_lock);
