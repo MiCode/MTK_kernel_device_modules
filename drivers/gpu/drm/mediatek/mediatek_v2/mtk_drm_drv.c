@@ -11029,7 +11029,7 @@ int mtk_drm_ioctl_retrig(struct drm_device *dev, void *data,
 	mtk_drm_idlemgr_kick(__func__, crtc, 0);
 
 	// request cmdq_pkt and cb_data
-	if (mtk_crtc->sec_on) {
+	if (mtk_crtc->sec_on && !is_tzmp2_enable()) {
 		mtk_crtc->gce_obj.pkt_info =
 			mtk_crtc_request_cmdq_pkt(mtk_crtc, CLIENT_SEC_CFG,
 				retrig->present_fence_idx);
