@@ -632,7 +632,7 @@ static int trusty_probe(struct platform_device *pdev)
 	if (ret < 0)
 		goto err_mcia_init;
 
-	s->nop_wq = alloc_workqueue("trusty-nop-wq", WQ_CPU_INTENSIVE, 0);
+	s->nop_wq = alloc_workqueue("trusty-nop-wq", WQ_CPU_INTENSIVE | WQ_HIGHPRI, 0);
 	if (!s->nop_wq) {
 		ret = -ENODEV;
 		dev_err(&pdev->dev, "Failed create trusty-nop-wq\n");
