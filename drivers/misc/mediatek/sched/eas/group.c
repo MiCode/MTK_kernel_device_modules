@@ -43,6 +43,7 @@ static int grp_threshold_util[GROUP_ID_RECORD_MAX] = {DEFAULT_GRP_THRESHOLD_UTIL
 						DEFAULT_GRP_THRESHOLD_UTIL};
 
 static DEFINE_RWLOCK(related_thread_group_lock);
+static bool grp_track = true;
 
 char *cgrp_map_str[CGRP_NUM] = {
 	"",
@@ -221,7 +222,8 @@ static void init_topapp_tg(struct task_group *tg)
 
 	cgrptg->colocate = true;
 	cgrptg->groupid = GROUP_ID_1;
-	set_group_pd(CGRP_TA, cgrptg->groupid + FLT_GROUP_START_IDX);
+	if (grp_track)
+		set_group_pd(CGRP_TA, cgrptg->groupid + FLT_GROUP_START_IDX);
 }
 
 static void init_tg(struct task_group *tg)
@@ -280,11 +282,13 @@ int group_set_cgroup_colocate(int cgrp_id, int grp_id)
 	if (grp_id < 0) {
 		cgrptg->colocate = false;
 		cgrptg->groupid = -1;
-		set_group_pd(cgrp_id, cgrptg->groupid);
+		if (grp_track)
+			set_group_pd(cgrp_id, cgrptg->groupid);
 	} else {
 		cgrptg->colocate = true;
 		cgrptg->groupid = grp_id;
-		set_group_pd(cgrp_id, cgrptg->groupid + FLT_GROUP_START_IDX);
+		if (grp_track)
+			set_group_pd(cgrp_id, cgrptg->groupid + FLT_GROUP_START_IDX);
 	}
 
 out:
@@ -392,7 +396,7 @@ static void group_android_rvh_cpu_cgroup_attach(void *unused,
 
 	if (cgrptg->colocate) {
 		for (cgrp_id = 0; cgrp_id < CGRP_NUM; cgrp_id++)
-			if ((!strcmp(css->cgroup->kn->name, cgrp_map_str[cgrp_id]))) {
+			if ((!strcmp(css->cgroup->kn->name, cgrp_map_str[cgrp_id])) && grp_track) {
 				set_group_pd(cgrp_id, grp_id + FLT_GROUP_START_IDX);
 				break;
 			}
@@ -626,7 +630,7 @@ inline bool group_get_gear_hint(struct task_struct *p)
 	struct grp *grp;
 	bool ret = false;
 
-	if (unlikely(flt_get_mode() == FLT_MODE_0))
+	if (unlikely(flt_get_mode() == FLT_MODE_0) || !grp_track)
 		return ret;
 
 	rcu_read_lock();
@@ -638,4 +642,9 @@ inline bool group_get_gear_hint(struct task_struct *p)
 	rcu_read_unlock();
 
 	return ret;
+}
+
+void  group_set_track(bool set)
+{
+	grp_track = set;
 }

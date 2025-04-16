@@ -108,4 +108,5 @@ int  group_get_threshold(int grp_id);
 inline bool group_get_gear_hint(struct task_struct *p);
 int group_get_cgroup_colocate(int cgrp_id);
 int group_set_cgroup_colocate(int cgrp_id, int grp_id);
+void  group_set_track(bool set);
 #endif /* _EAS_GROUP_H*/

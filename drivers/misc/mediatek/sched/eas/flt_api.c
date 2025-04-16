@@ -396,6 +396,11 @@ EXPORT_SYMBOL(flt_res_init);
 
 int flt_set_grp_dvfs_ctrl(int set)
 {
+	if (set)
+		group_set_track(true);
+	else
+		group_set_track(false);
+
 	if (unlikely(flt_get_mode() == FLT_MODE_0))
 		return -1;
 	else if (flt_class_mode && flt_class_mode->flt_set_grp_dvfs_ctrl_api)
