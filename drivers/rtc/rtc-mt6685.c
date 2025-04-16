@@ -42,7 +42,6 @@ static int rtc_show_alarm;
 module_param(rtc_show_time, int, 0644);
 module_param(rtc_show_alarm, int, 0644);
 
-
 static int mtk_rtc_write_trigger(struct mt6685_rtc *rtc);
 
 static int counter;
@@ -360,12 +359,32 @@ static void mtk_rtc_work_queue(struct work_struct *work)
 	}
 }
 
+static void mtk_rtc_delayed_work_queue(struct work_struct *work)
+{
+	struct mt6685_rtc *rtc = container_of(work, struct mt6685_rtc, delay_work.work);
+	unsigned long ret;
+	unsigned int msecs;
+
+	ret = wait_for_completion_timeout(&rtc->comp, msecs_to_jiffies(30000));
+	if (!ret) {
+		dev_notice(rtc->rtc_dev->dev.parent, "%s timeout\n", __func__);
+		WARN_ON(1);
+	} else {
+		msecs = jiffies_to_msecs(ret);
+		dev_notice(rtc->rtc_dev->dev.parent,
+				"%s timeleft= %d\n", __func__, msecs);
+		rtc_mark_kpoc(rtc);
+		kernel_restart("kpoc");
+	}
+}
+
 static void mtk_rtc_reboot(struct mt6685_rtc *rtc)
 {
 	__pm_stay_awake(mt6685_rtc_suspend_lock);
 
 	init_completion(&rtc->comp);
-	schedule_work_on(cpumask_first(cpu_online_mask), &rtc->work);
+//	schedule_work_on(cpumask_first(cpu_online_mask), &rtc->work);
+	schedule_delayed_work_on(cpumask_first(cpu_online_mask), &rtc->delay_work, msecs_to_jiffies(30000));
 
 	if (!rtc_pm_notifier_registered)
 		goto reboot;
@@ -1500,6 +1519,7 @@ static int mtk_rtc_probe(struct platform_device *pdev)
 #endif /* CONFIG_PM */
 
 	INIT_WORK(&rtc->work, mtk_rtc_work_queue);
+	INIT_DELAYED_WORK(&rtc->delay_work, mtk_rtc_delayed_work_queue);
 #endif
 
 	/* Obtain interrupt ID from DTS or MFD */
@@ -1524,7 +1544,9 @@ static int mtk_rtc_probe(struct platform_device *pdev)
 	}
 
 	/*Enable SCK_TOP rtc interrupt*/
-	rtc_update_bits(rtc, SCK_TOP_INT_CON0, EN_RTC_INTERRUPT, 1);
+	ret = rtc_update_bits(rtc, SCK_TOP_INT_CON0, EN_RTC_INTERRUPT, 1);
+	if (ret < 0)
+		dev_err(&pdev->dev, "Failed to update RTC interrupt control register\n");
 
 	device_init_wakeup(&pdev->dev, 1);
 

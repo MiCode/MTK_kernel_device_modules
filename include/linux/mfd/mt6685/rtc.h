@@ -309,6 +309,7 @@ struct mt6685_rtc {
 	bool                    cali_is_supported;
 #ifdef SUPPORT_PWR_OFF_ALARM
 	struct work_struct work;
+	struct delayed_work delay_work;
 	struct completion comp;
 	bool   ext_sts_support;
 #if IS_ENABLED(CONFIG_PM)
