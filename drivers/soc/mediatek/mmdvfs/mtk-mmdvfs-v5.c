@@ -783,10 +783,40 @@ static struct mmdvfs_data *mmdvfs_get_mmdvfs_data(struct device *dev)
 	return mmdvfs_data;
 }
 
+struct tag_chipid {
+	u32 size;
+	u32 hw_code;
+	u32 hw_subcode;
+	u32 hw_ver;
+	u32 sw_ver;
+};
+
+static int mmdvfs_get_chipid(void)
+{
+	struct device_node *node = of_find_node_by_path("/chosen");
+	struct tag_chipid *chip_id = NULL;
+	int len;
+
+	if (!node)
+		node = of_find_node_by_path("/chosen@0");
+	if (!node) {
+		MMDVFS_ERR("%s not found in device tree", "/chosen");
+		return -ENODEV;
+	}
+
+	chip_id = (struct tag_chipid *)of_get_property(node, "atag,chipid", &len);
+	if (!chip_id) {
+		MMDVFS_ERR("%s not found in chosen", "atag,chipid");
+		return -ENODEV;
+	}
+
+	return chip_id->sw_ver;
+}
+
 static int mmdvfs_parse_mmdvfs_mux(struct device_node *node, struct mmdvfs_data *mmdvfs_data)
 {
 	u8 mmdvfs_clk_num;
-	int i, ret;
+	int sw_ver, i, ret;
 
 	mmdvfs_clk_num = of_property_count_strings(node, "mediatek,mmdvfs-mux-names");
 	if (mmdvfs_clk_num != mmdvfs_data->mux_num) {
@@ -795,6 +825,7 @@ static int mmdvfs_parse_mmdvfs_mux(struct device_node *node, struct mmdvfs_data 
 		return -EINVAL;
 	}
 
+	sw_ver = mmdvfs_get_chipid();
 	for (i = 0; i < mmdvfs_clk_num; i++) {
 		struct device_node *table, *level = NULL;
 		struct mmdvfs_mux *mux;
@@ -813,7 +844,8 @@ static int mmdvfs_parse_mmdvfs_mux(struct device_node *node, struct mmdvfs_data 
 
 		of_property_read_string_index(node, "mediatek,mmdvfs-mux-names", i, &mux->name);
 
-		ret = of_property_read_u32_index(node, "mediatek,mmdvfs-opp-table", i, &handle);
+		ret = of_property_read_u32_index(node, sw_ver == 0x0001 ?
+			"mediatek,mmdvfs-opp-table-b0" : "mediatek,mmdvfs-opp-table", i, &handle);
 		if (ret) {
 			MMDVFS_ERR("failed:%d i:%d handle:%u", ret, i, handle);
 			return ret;
