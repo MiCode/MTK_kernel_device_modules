@@ -9524,11 +9524,9 @@ static int mtk_drm_pm_notifier(struct notifier_block *notifier, unsigned long pm
 		wake_up_interruptible(&kernel_pm->wq);
 		return NOTIFY_OK;
 	case PM_POST_SUSPEND:
-#if !IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 		atomic_set(&kernel_pm->status, KERNEL_PM_RESUME);
 		wake_up_interruptible(&kernel_pm->wq);
 		DDPMSG("%s PM_POST_SUSPEND status(%d)\n", __func__, atomic_read(&kernel_pm->status));
-#endif
 		return NOTIFY_OK;
 	}
 	return NOTIFY_DONE;
