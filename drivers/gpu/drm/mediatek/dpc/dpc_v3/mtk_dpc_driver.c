@@ -3618,6 +3618,12 @@ static int mtk_dpc_probe_v3(struct platform_device *pdev)
 	funcs_v3.dpc_analysis = priv->analysis;
 
 	if (priv->mmsys_id == MMSYS_MT6993) {
+		if (!has_cap(DPC_CAP_MTCMOS)) {
+			funcs_v3.dpc_vidle_power_keep = NULL;
+			funcs_v3.dpc_vidle_power_release = NULL;
+			funcs_v3.dpc_vidle_power_keep_by_gce = NULL;
+			funcs_v3.dpc_vidle_power_release_by_gce = NULL;
+		}
 		funcs_v3.dpc_mtcmos_vote = NULL;
 		funcs_v3.dpc_dsi_pll_set = NULL;
 		funcs_v3.dpc_check_pll = NULL;
