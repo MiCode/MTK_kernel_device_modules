@@ -709,12 +709,17 @@ retry_wait_pwr_ack:
 		arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, MD_MTCMOS_ENABLE,
 			MTCMOS_PWR_ACK_FAIL_RETRY, 0, 0, 0, 0, 0, &res);
 		if (--timeout == 0) {
-			CCCI_NORMAL_LOG(0, TAG,
-				"[POWER ON] %s fail: wait pwr_ack timeout\n",
+			CCCI_NORMAL_LOG(0, TAG, "[POWER ON] %s fail: wait pwr_ack timeout\n",
 				__func__);
+			arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, MD_MTCMOS_FAIL_DUMP,
+				MTCMOS_ON_FAIL_DUMP, 0, 0, 0, 0, 0, &res);
 			return -1;
 		} else
 			goto retry_wait_pwr_ack;
+	} else if ((res.a0 & MTCMOS_EMI_BUS_PROT_FAIL) == MTCMOS_EMI_BUS_PROT_FAIL) {
+		CCCI_NORMAL_LOG(0, TAG, "[POWER ON] %s fail to clear emi bus\n",
+				__func__);
+		return -1;
 	} else
 		CCCI_NORMAL_LOG(0, TAG, "[POWER ON] %s unknown return value: 0x%lx\n",
 			__func__, res.a0);
@@ -740,20 +745,15 @@ retry_wait_pwr_ack:
 		arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, MD_MTCMOS_DISABLE,
 			MTCMOS_PWR_ACK_FAIL_RETRY, 0, 0, 0, 0, 0, &res);
 		if (--timeout == 0) {
-			CCCI_NORMAL_LOG(0, TAG,
-				"[POWER OFF] %s fail: wait pwr_ack timeout\n",
+			CCCI_NORMAL_LOG(0, TAG, "[POWER OFF] %s fail: wait pwr_ack timeout\n",
 				__func__);
+			arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, MD_MTCMOS_FAIL_DUMP,
+				MTCMOS_OFF_FAIL_DUMP, 0, 0, 0, 0, 0, &res);
 			return -1;
 		} else
 			goto retry_wait_pwr_ack;
-	} else if ((res.a0 & MTCMOS_OFF_SLPPRO_RDY_0_FAIL) == MTCMOS_OFF_SLPPRO_RDY_0_FAIL) {
-		CCCI_NORMAL_LOG(0, TAG,
-			"[POWER OFF] %s fail: polling slrpro_rdy_sta_0 timeout\n",
-			__func__);
-		return -1;
-	} else if ((res.a0 & MTCMOS_OFF_SLPPRO_RDY_1_FAIL) == MTCMOS_OFF_SLPPRO_RDY_1_FAIL) {
-		CCCI_NORMAL_LOG(0, TAG,
-			"[POWER OFF] %s fail: polling slrpro_rdy_sta_1 timeout\n",
+	} else if ((res.a0 & MTCMOS_EMI_BUS_PROT_FAIL) == MTCMOS_EMI_BUS_PROT_FAIL) {
+		CCCI_NORMAL_LOG(0, TAG, "[POWER OFF] %s fail to set emi bus protect\n",
 			__func__);
 		return -1;
 	} else

@@ -91,11 +91,14 @@ struct md_pll_reg {
 #define	INFRA_PERI2MD_PROT_BIT	7
 
 #define MTCMOS_PWR_ACK_FAIL_RETRY    1
+
+#define MTCMOS_OFF_FAIL_DUMP         0
+#define MTCMOS_ON_FAIL_DUMP          1
+
 /* ccci control md mtcmos fail type */
 #define MTCMOS_ON_PWR_ACK_FAIL       0xfffffff1
 #define MTCMOS_OFF_PWR_ACK_FAIL      0xfffffff2
-#define MTCMOS_OFF_SLPPRO_RDY_0_FAIL 0xfffffff3
-#define MTCMOS_OFF_SLPPRO_RDY_1_FAIL 0xfffffff4
+#define MTCMOS_EMI_BUS_PROT_FAIL     0xfffffff3
 
 struct ccci_plat_ops {
 	void (*md_dump_reg)(struct ccci_modem *md);
