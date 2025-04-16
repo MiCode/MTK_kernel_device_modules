@@ -14372,6 +14372,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			#size-cells = <2>;
 			ranges;
 
+			cam-main-csi-afifo-addr = <0x3a0107dc>;
+
 			hwccf-apply;
 			reg = <0 0x3a400000 0 0x1000>,
 				<0 0x3a401000 0 0x1000>,
