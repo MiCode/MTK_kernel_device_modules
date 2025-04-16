@@ -2202,9 +2202,7 @@ bootargs_ext = "rcu_nocbs=0-7";
 };
 
 &mddriver {
-	load-md-stage = "bl2_ext_load_md";
 	mediatek,mdsrc-settle-time = <20>;
-	mediatek,ccci-ctrl-mtcmos = <1>;
 };
 
 &gpu_dvfs_mode {
