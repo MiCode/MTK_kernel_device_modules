@@ -121,6 +121,8 @@ void mtk_vdisp_ao_dump(struct mtk_ddp_comp *comp)
 		mtk_serial_dump_reg(baddr, 0x34, 4);
 		mtk_serial_dump_reg(baddr, 0x44, 4);
 		mtk_serial_dump_reg(baddr, 0x54, 4);
+		mtk_serial_dump_reg(baddr, 0x520, 4);
+		mtk_serial_dump_reg(baddr, 0x610, 4);
 	}
 
 	/* 16 lv qos */
