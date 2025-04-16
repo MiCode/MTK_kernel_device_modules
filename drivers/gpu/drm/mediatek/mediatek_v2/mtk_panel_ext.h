@@ -30,7 +30,11 @@
 struct mtk_dsi;
 struct cmdq_pkt;
 
-#define DSI_CMD_V2
+enum dsi_cmd_verion {
+	DSI_CMD_V1, /* legacy */
+	DSI_CMD_V2,
+	DSI_CMD_VERSION_NUM
+};
 
 #define MTK_MIPI_DSI_CMD_EXTERNAL				BIT(0)
 #define MTK_MIPI_DSI_CMD_BY_CPU					BIT(1)
@@ -877,4 +881,5 @@ int mtk_lcm_dsi_ddic_handler(struct mipi_dsi_device *dsi_dev,
 				mtk_dsi_ddic_handler_cb handler_cb,
 				struct mtk_lcm_dsi_cmd_packet *packet);
 int mtk_mipi_dsi_cmd(void *dsi, void *handle, struct mtk_dsi_cmd_option *cmd_opt, const struct mtk_dsi_cmd_msg *cmd_msg);
+enum dsi_cmd_verion mtk_dsi_cmd_version(void);
 #endif
