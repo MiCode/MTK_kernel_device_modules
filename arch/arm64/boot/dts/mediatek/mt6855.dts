@@ -2798,7 +2798,7 @@
 				<0x160 0xffffffff 16>,
 				<0x200 0x00000003 16>;
 			clear_hp = <0x1fc 0x40000000 1>;
-			clear_md = <0x1fc 0x80000000 1>;
+			clear-md = <0x1fc 0x80000000 1>;
 		};
 		miu_kp: miu_kp@10350000 {
 			compatible = "mediatek,common-miukp";
