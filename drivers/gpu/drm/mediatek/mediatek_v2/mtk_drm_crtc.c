@@ -26295,8 +26295,8 @@ int mtk_crtc_enter_tui(struct drm_crtc *crtc)
 	case MMSYS_MT6991:
 	case MMSYS_MT6993:
 		priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA5]->blank_mode = true;
-		mtk_crtc_axuser_control(crtc, true);
 		mtk_crtc_tui_ovl_status(crtc);
+		mtk_crtc_axuser_control(crtc, true);
 		break;
 	default:
 		priv->ddp_comp[DDP_COMPONENT_OVL0]->blank_mode = true;
