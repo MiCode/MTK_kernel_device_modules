@@ -313,11 +313,14 @@ error:
 	return;
 }
 
-void usb_offload_trace_stop(int dir)
+void usb_offload_trace_stop(int dir, bool skip_ipi)
 {
-	struct usb_trace_msg trace_msg = {0};
+	struct usb_trace_msg trace_msg = {
+		.direction = dir,
+	};
 	struct trace_manager *mag = &manager;
 	struct stream_info *stream;
+	int retval = 0;
 
 	if (!chk_flag(mag, TRACE_SUPPORT)) {
 		USB_OFFLOAD_INFO("trace was unsupported\n");
@@ -339,17 +342,13 @@ void usb_offload_trace_stop(int dir)
 		goto error;
 	}
 
-	/* prepare trace_msg */
-	trace_msg.enable = 0;
-	trace_msg.disable_all = 0;
-	trace_msg.direction = dir;
-	trace_msg.buffer = 0;
-	trace_msg.size = 0;
+	if (!skip_ipi)
+		/* send IPI_MSG(enable_trace:0) */
+		retval = usb_offload_send_ipi_msg(UOI_DISABLE_TRACE, &trace_msg, sizeof(struct usb_trace_msg));
 
-	/* send IPI_MSG(enable_trace:0) */
-	if (usb_offload_send_ipi_msg(UOI_DISABLE_TRACE, &trace_msg, sizeof(struct usb_trace_msg)))
-		goto error;
-	stop_trace_stream(stream);
+	if (!retval)
+		stop_trace_stream(stream);
+
 error:
 	return;
 }

@@ -359,6 +359,11 @@ u32 mtk_offload_provider_get_cnt(enum uo_provider_type id)
 	return provider->struct_cnt;
 }
 
+bool mtk_offload_provider_is_valid(enum uo_provider_type id)
+{
+	return check_provider_valid(get_provider(id));
+}
+
 char *mtk_offload_provider_parse_count(enum uo_provider_type id)
 {
 	struct uo_provider *provider = get_provider(id);

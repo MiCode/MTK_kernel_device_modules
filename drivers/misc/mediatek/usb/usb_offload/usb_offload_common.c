@@ -73,7 +73,13 @@ struct usb_offload_dev *uodev;
 static void check_valid_device(struct usb_device *rhdev,
 	struct usb_device *udev, bool *support, bool *bypass);
 
-static void uaudio_dev_intf_cleanup(struct usb_device *udev, struct intf_info *info);
+/* audio interface */
+static void uaudio_dev_intf_cleanup(struct intf_info *info);
+static void uaudio_dev_intf_release(struct usb_audio_dev *dev, int info_idx);
+static int uaudio_dev_intf_prepare(struct usb_audio_dev *dev, struct intf_info *info);
+static void uaudio_dev_intf_lift(struct usb_audio_dev *dev, struct intf_info *info);
+
+/* audio device */
 static void uaudio_dev_cleanup(struct usb_audio_dev *dev);
 static void uaudio_dev_release(struct kref *kref);
 static void uaudio_dev_shutdown(struct usb_audio_dev *dev);
@@ -84,16 +90,17 @@ static void uaudio_dev_shutdown(struct usb_audio_dev *dev);
 #define DONE_DISABLE  (2)
 #define DISABLE_WAIT_TIME 10000 /* 10 secs */
 
+/* ipi message helper */
 static int send_init_adsp(void);
 static int send_deinit_adsp(void);
 static int send_enable_stream(struct usb_audio_stream_msg *msg, int info_idx);
 static int send_disable_stream(u8 card_num, u8 direction, int info_idx, bool must_success);
 
+/* xhci helper */
 static int xhci_prepare_offloading(struct usb_device *udev,
 	struct xhci_sideband_ *sb, unsigned int pipe);
 static void xhci_lift_offloading(struct usb_device *udev,
 	struct xhci_sideband_ *sb, unsigned int pipe);
-
 static struct xhci_ring *xhci_mtk_alloc_ring(struct xhci_hcd *xhci,
 	int num_segs, int cycle_state, enum xhci_ring_type ring_type,
 	unsigned int max_packet, gfp_t mem_flags,
@@ -104,10 +111,14 @@ static struct xhci_ring *xhci_mtk_alloc_event_ring(struct usb_offload_dev *udev)
 static int xhci_mtk_ring_expansion(struct xhci_hcd *xhci,
 	struct xhci_ring *ring, dma_addr_t phys, void *vir);
 
+/* usb offload device helper */
+static void usb_offload_start_offloading(struct usb_audio_dev *dev);
+static void usb_offload_end_offloading(struct usb_audio_dev *dev);
+
 static void usb_offload_status(void)
 {
-	USB_OFFLOAD_INFO("init:%d stream:%d(tx:%d rx:%d) card:%d(speed:%d)\n",
-		uodev->adsp_inited, uodev->is_streaming, uodev->tx_streaming,
+	USB_OFFLOAD_INFO("adsp(init:%d ready:%d) stream:%d(tx:%d rx:%d) card:%d(speed:%d)\n",
+		uodev->adsp_inited, uodev->adsp_ready, uodev->is_streaming, uodev->tx_streaming,
 		uodev->rx_streaming, uodev->last_card_num, uodev->speed);
 }
 
@@ -127,8 +138,10 @@ static void print_all_memory(void)
 		}
 	}
 
-	for (i = 0; i < UO_PROV_NUM; i++)
-		USB_OFFLOAD_INFO("[id:%d] %s\n", i, mtk_offload_provider_parse_count(i));
+	for (i = 0; i < UO_PROV_NUM; i++) {
+		if (mtk_offload_provider_is_valid(i))
+			USB_OFFLOAD_INFO("[id:%d] %s\n", i, mtk_offload_provider_parse_count(i));
+	}
 }
 
 static void adsp_ee_recovery(void)
@@ -172,22 +185,25 @@ static void adsp_ee_recovery(void)
 static int usb_offload_event_receive(struct notifier_block *this, unsigned long event,
 			    void *ptr)
 {
-	int ret = 0;
-
 	switch (event) {
 	case ADSP_EVENT_STOP:
-		pr_info("%s event[%lu]\n", __func__, event);
-		if (uodev->connect_chip_num)
-			adsp_ee_recovery();
+		USB_OFFLOAD_INFO("<ADSP STOP(%ld)>\n", event);
+		uodev->adsp_ready = false;
 		break;
-	case ADSP_EVENT_READY: {
-		pr_info("%s event[%lu]\n", __func__, event);
+	case ADSP_EVENT_READY:
+		USB_OFFLOAD_INFO("<ADSP READY(%ld)>\n", event);
+		uodev->adsp_ready = true;
 		break;
-	}
 	default:
-		pr_info("%s event[%lu]\n", __func__, event);
+		USB_OFFLOAD_INFO("unknown event:%ld\n", event);
+		goto error;
 	}
-	return ret;
+
+	usb_offload_status();
+	if (!uodev->adsp_ready && uodev->total_connected > 0)
+		adsp_ee_recovery();
+error:
+	return 0;
 }
 
 static struct notifier_block adsp_usb_offload_notifier = {
@@ -301,10 +317,10 @@ static void sound_usb_connect(struct snd_usb_audio *chip)
 	uadev[chip->card->number].sb = sb;
 	atomic_set(&uadev[chip->card->number].connected, 1);
 
-	uodev->connect_chip_num++;
+	uodev->total_connected++;
 
-	USB_OFFLOAD_INFO("interface:%d support:%d on_hub:%d connect_cnt:%d\n",
-		if_idx, support, on_hub, uodev->connect_chip_num);
+	USB_OFFLOAD_INFO("interface:%d support:%d on_hub:%d total_connected:%d\n",
+		if_idx, support, on_hub, uodev->total_connected);
 
 	uo_mbrain_update(UO_PHASE_CONNECT, UO_ERROR_SUCCESS);
 err:
@@ -324,13 +340,20 @@ static void sound_usb_disconnect(struct snd_usb_audio *chip)
 	card_num = chip->card->number;
 	USB_OFFLOAD_INFO("++ card_num:%d\n", card_num);
 
-	if (card_num >= SNDRV_CARDS)
+	if (card_num >= SNDRV_CARDS) {
+		USB_OFFLOAD_ERR("invalid card:%d\n", card_num);
 		goto err;
+	}
+
+	if (!uodev->total_connected) {
+		USB_OFFLOAD_ERR("no chip connected (total_connected:%d)\n", uodev->total_connected);
+		goto err;
+	}
 
 	dev = &uadev[card_num];
 
-	USB_OFFLOAD_INFO("(in_use:%d kref:%d) connect_chip_num:%d\n",
-		atomic_read(&dev->in_use), kref_read(&dev->kref), uodev->connect_chip_num);
+	USB_OFFLOAD_INFO("(in_use:%d kref:%d) total_connected:%d\n",
+		atomic_read(&dev->in_use), kref_read(&dev->kref), uodev->total_connected);
 
 	/* chip has already been cleaned up or never populated */
 	if (!dev->chip)
@@ -338,11 +361,10 @@ static void sound_usb_disconnect(struct snd_usb_audio *chip)
 
 	uaudio_dev_shutdown(dev);
 	atomic_set(&uadev[card_num].connected, 0);
-	uodev->connect_chip_num--;
-
+	uodev->total_connected--;
 err:
 	mutex_unlock(&uodev->dev_lock);
-	USB_OFFLOAD_INFO("--\n");
+	USB_OFFLOAD_INFO("-- total_connected:%d\n", uodev->total_connected);
 }
 
 static bool is_support_format(snd_pcm_format_t fmt)
@@ -483,12 +505,68 @@ static void dump_uainfo(struct usb_audio_stream_info *uainfo)
 		uainfo->dram_cnt);
 }
 
-static void uaudio_dev_intf_cleanup(struct usb_device *udev, struct intf_info *info)
+static void uaudio_dev_intf_cleanup(struct intf_info *info)
 {
 	info->in_use = false;
 
 	if (mtk_offload_free_mem(info->dsp_urb))
 		USB_OFFLOAD_ERR("fail to free urb\n");
+}
+
+static void uaudio_dev_intf_release(struct usb_audio_dev *dev, int info_idx)
+{
+	struct intf_info *info;
+
+	if (!dev || info_idx >= dev->num_intf)
+		return;
+	info = &dev->info[info_idx];
+
+	/* cleanup audio interface */
+	USB_OFFLOAD_INFO("cleanup info_idx:%d, card:%d kref:%d\n",
+		info_idx, dev->card_num, kref_read(&dev->kref));
+	uaudio_dev_intf_cleanup(info);
+
+	info->direction ? (uodev->rx_streaming = false) : (uodev->tx_streaming = false);
+
+	/* release audio device if it's unused anymore */
+	if (atomic_read(&dev->in_use))
+		kref_put(&dev->kref, uaudio_dev_release);
+}
+
+static int uaudio_dev_intf_prepare(struct usb_audio_dev *dev, struct intf_info *info)
+{
+	int retval = 0;
+
+	if (info->data_ep_pipe) {
+		retval = xhci_prepare_offloading(dev->udev, dev->sb, info->data_ep_pipe);
+		if (retval < 0) {
+			USB_OFFLOAD_ERR("fail to prepare data endpoint\n");
+			return retval;
+		}
+	}
+
+	if (info->sync_ep_pipe) {
+		retval = xhci_prepare_offloading(dev->udev, dev->sb, info->sync_ep_pipe);
+		if (retval < 0) {
+			USB_OFFLOAD_ERR("fail to prepare sync endpoint\n");
+			return retval;
+		}
+	}
+
+	return retval;
+}
+
+static void uaudio_dev_intf_lift(struct usb_audio_dev *dev, struct intf_info *info)
+{
+	if (info->data_ep_pipe) {
+		xhci_lift_offloading(dev->udev, dev->sb, info->data_ep_pipe);
+		info->data_ep_pipe = 0;
+	}
+
+	if (info->sync_ep_pipe) {
+		xhci_lift_offloading(dev->udev, dev->sb, info->sync_ep_pipe);
+		info->sync_ep_pipe = 0;
+	}
 }
 
 static void uaudio_dev_cleanup(struct usb_audio_dev *dev)
@@ -500,12 +578,10 @@ static void uaudio_dev_cleanup(struct usb_audio_dev *dev)
 
 	USB_OFFLOAD_INFO("cleanup device, card:%d\n", dev->card_num);
 
-	/* in case that there's any unfreed audio interface */
 	for (if_idx = 0; if_idx < dev->num_intf; if_idx++) {
 		if (!dev->info[if_idx].in_use)
 			continue;
-		USB_OFFLOAD_INFO("cleanup interface, info_idx:%d\n", if_idx);
-		uaudio_dev_intf_cleanup(dev->udev, &dev->info[if_idx]);
+		uaudio_dev_intf_release(dev, if_idx);
 	}
 
 	dev->num_intf = 0;
@@ -536,17 +612,10 @@ static void uaudio_dev_release(struct kref *kref)
 skip_remove:
 	atomic_set(&dev->in_use, 0);
 
-	if (uodev->last_card_num == dev->card_num) {
+	if (uodev->last_card_num == dev->card_num)
 		/* all streaming interface on device stopped */
-		uodev->last_card_num = -EINVAL;
-		uodev->speed = USB_SPEED_UNKNOWN;
-		uodev->is_streaming = false;
-
-		usb_offload_hid_stop();
-		usb_offload_hub_working(dev->on_hub, false);
-		usb_offload_improve_idle_power(false);
-		mtk_clk_notify(NULL, NULL, NULL, 0, 1, 0, CLK_EVT_BYPASS_PLL);
-	} else
+		usb_offload_end_offloading(dev);
+	else
 		/* unlikely to here ... */
 		USB_OFFLOAD_ERR("card:%d doesn't match (last:%d)\n",
 			dev->card_num, uodev->last_card_num);
@@ -591,6 +660,37 @@ skip_disable:
 	dev->chip = NULL;
 }
 
+static void usb_offload_start_offloading(struct usb_audio_dev *dev)
+{
+	uodev->last_card_num = dev->card_num;
+	uodev->speed = dev->udev->speed;
+	uodev->is_streaming = true;
+
+	/* hold wakelock if device's'on hub */
+	usb_offload_hub_working(dev->on_hub, true);
+
+	/* improve power consumption under deep-idle */
+	usb_offload_improve_idle_power(true);
+
+	/* bypass clock cehcker */
+	mtk_clk_notify(NULL, NULL, NULL, 1, 1, 0, CLK_EVT_BYPASS_PLL);
+}
+
+static void usb_offload_end_offloading(struct usb_audio_dev *dev)
+{
+	uodev->last_card_num = -EINVAL;
+	uodev->speed = USB_SPEED_UNKNOWN;
+	uodev->is_streaming = false;
+
+	usb_offload_hid_stop();
+
+	usb_offload_hub_working(dev->on_hub, false);
+
+	usb_offload_improve_idle_power(false);
+
+	mtk_clk_notify(NULL, NULL, NULL, 0, 1, 0, CLK_EVT_BYPASS_PLL);
+}
+
 static int send_init_adsp(void)
 {
 	struct mem_info_xhci *xhci_mem;
@@ -611,9 +711,10 @@ static int send_init_adsp(void)
 		goto fail;
 	}
 
+	/* init reserved region on main sram */
 	if (mtk_offload_init_rsv(uodev, UO_PROV_SRAM)) {
-		USB_OFFLOAD_ERR("change mode, adv_lowpwr:%d->0\n", uodev->adv_lowpwr);
 		uodev->adv_lowpwr = false;
+		USB_OFFLOAD_INFO("mode change, adv_lowpwr->%d\n", uodev->adv_lowpwr);
 	}
 	xhci_mem->adv_lowpwr = uodev->adv_lowpwr;
 
@@ -630,10 +731,26 @@ static int send_init_adsp(void)
 		goto fail;
 	}
 
-	ret = usb_offload_send_ipi_msg(UOI_INIT_ADSP, xhci_mem, sizeof(struct mem_info_xhci));
+	USB_OFFLOAD_INFO("rsv-dram:0x%llx size:%d\n", xhci_mem->rsv_dram_addr, xhci_mem->rsv_dram_size);
+	USB_OFFLOAD_INFO("rsv-sram:0x%llx size:%d\n", xhci_mem->rsv_sram_addr, xhci_mem->rsv_sram_size);
+
+	if (uodev->adsp_ready)
+		ret = usb_offload_send_ipi_msg(UOI_INIT_ADSP, xhci_mem, sizeof(struct mem_info_xhci));
+	else {
+		/* adsp was expected to be ready before sending ipi_msg(INIT_ADSP) */
+		USB_OFFLOAD_ERR("adsp should be ready\n");
+		ret = -EINVAL;
+	}
+
 	if (!ret) {
 		uodev->adsp_inited = true;
 		uo_mbrain_update(phase, UO_ERROR_SUCCESS);
+	} else {
+		mtk_offload_deinit_rsv(UO_PROV_SRAM);
+		if (uodev->adv_lowpwr != uodev->policy.adv_lowpwr) {
+			uodev->adv_lowpwr = uodev->policy.adv_lowpwr;
+			USB_OFFLOAD_INFO("mode back, adv_lowpwr->%d\n", uodev->adv_lowpwr);
+		}
 	}
 
 	kfree(xhci_mem);
@@ -645,7 +762,6 @@ fail:
 
 static int send_deinit_adsp(void)
 {
-	struct usb_audio_stream_msg msg = {0};
 	int ret;
 
 	if (!uodev->adsp_inited) {
@@ -654,20 +770,25 @@ static int send_deinit_adsp(void)
 		goto fail;
 	}
 
-	msg.status = USB_AUDIO_STREAM_REQ_STOP;
-	ret = usb_offload_send_ipi_msg(UOI_DEINIT_ADSP, NULL, 0);
-	if (ret < 0) {
-		USB_OFFLOAD_INFO("adsp deinit fail, skip memory cleanup\n");
-		goto fail;
-	}
+	if (!uodev->adsp_ready) {
+		/* after ee triggered, we'll be requested to send ipi message (DEINIT_ADSP), although
+		 * audio service has already died, we still need to deinit reserved sram region.
+		 */
+		ret = 0;
+		USB_OFFLOAD_INFO("adsp wasn't ready, skip sending ipi message\n");
+	} else
+		ret = usb_offload_send_ipi_msg(UOI_DEINIT_ADSP, NULL, 0);
 
-	uodev->adsp_inited = false;
-	if (!mtk_offload_provider_get_cnt(UO_PROV_SRAM)) {
-		mtk_offload_deinit_rsv(UO_PROV_SRAM);
-		if (uodev->adv_lowpwr != uodev->policy.adv_lowpwr) {
-			USB_OFFLOAD_ERR("mode back, adv_lowpwr:%d->%d\n",
-				uodev->adv_lowpwr, uodev->policy.adv_lowpwr);
-			uodev->adv_lowpwr = uodev->policy.adv_lowpwr;
+	if (ret < 0)
+		USB_OFFLOAD_INFO("adsp deinit fail, rsv-region wasn't freed\n");
+	else {
+		uodev->adsp_inited = false;
+		if (!mtk_offload_provider_get_cnt(UO_PROV_SRAM)) {
+			mtk_offload_deinit_rsv(UO_PROV_SRAM);
+			if (uodev->adv_lowpwr != uodev->policy.adv_lowpwr) {
+				uodev->adv_lowpwr = uodev->policy.adv_lowpwr;
+				USB_OFFLOAD_INFO("mode back, adv_lowpwr->%d\n", uodev->adv_lowpwr);
+			}
 		}
 	}
 
@@ -679,7 +800,7 @@ fail:
 
 static int issue_audio_stream(enum usb_offload_ipi_msg ipi_type,
 	struct usb_audio_stream_msg *msg, struct usb_audio_dev *dev,
-	struct intf_info *info, int info_idx, bool must_success)
+	struct intf_info *info, int info_idx, bool must_success, bool skip_ipi)
 {
 	bool enable, cleanup;
 	int ret;
@@ -687,7 +808,12 @@ static int issue_audio_stream(enum usb_offload_ipi_msg ipi_type,
 	if (!dev || !info)
 		return -EINVAL;
 
-	ret = usb_offload_send_ipi_msg(ipi_type, msg, sizeof(struct usb_audio_stream_msg));
+	if (!skip_ipi)
+		ret = usb_offload_send_ipi_msg(ipi_type, msg, sizeof(struct usb_audio_stream_msg));
+	else {
+		USB_OFFLOAD_INFO("adsp wasn't ready, skip sending ipi message");
+		ret = 0;
+	}
 
 	enable = msg->uainfo.enable;
 	if (enable) {
@@ -696,41 +822,26 @@ static int issue_audio_stream(enum usb_offload_ipi_msg ipi_type,
 		else {
 			cleanup = false;
 
-			if (kref_read(&dev->kref) == 1) {
+			if (kref_read(&dev->kref) == 1)
 				/* the first interface on device to start streaming */
-				uodev->last_card_num = dev->card_num;
-				uodev->speed = dev->udev->speed;
-				uodev->is_streaming = true;
-				usb_offload_hub_working(dev->on_hub, true);
-				usb_offload_improve_idle_power(true);
-				mtk_clk_notify(NULL, NULL, NULL, 1, 1, 0, CLK_EVT_BYPASS_PLL);
-			}
+				usb_offload_start_offloading(dev);
 
 			msg->direction ? (uodev->rx_streaming = true) : (uodev->tx_streaming = true);
 		}
 	} else {
-		if ((!must_success) || (must_success && (ret == 0 || ret != -ETIMEDOUT))) {
+		if ((!must_success) || (must_success && (ret == 0 || ret != -ETIMEDOUT)))
 			cleanup = true;
-			msg->direction ? (uodev->rx_streaming = false) : (uodev->tx_streaming = false);
-		} else {
+		else {
 			USB_OFFLOAD_ERR("uac interface wasn't free\n");
 			cleanup = false;
 		}
 	}
 
-	USB_OFFLOAD_INFO("enable:%d ret:%d must_success:%d cleanup:%d\n",
-		enable, ret, must_success, cleanup);
+	USB_OFFLOAD_INFO("enable:%d ret:%d must_success:%d skip_ipi:%d cleanup:%d\n",
+		enable, ret, must_success, skip_ipi, cleanup);
 
-	if (cleanup) {
-		/* clean uac interface */
-		USB_OFFLOAD_INFO("cleanup info_idx:%d, card:%d kref:%d\n",
-			info_idx, dev->card_num, kref_read(&dev->kref));
-		uaudio_dev_intf_cleanup(dev->udev, info);
-
-		/* clean uac device if it's unused anymore */
-		if (atomic_read(&dev->in_use))
-			kref_put(&dev->kref, uaudio_dev_release);
-	}
+	if (cleanup)
+		uaudio_dev_intf_release(dev, info_idx);
 
 	usb_offload_status();
 	print_all_memory();
@@ -752,26 +863,24 @@ static int send_enable_stream(struct usb_audio_stream_msg *msg, int info_idx)
 	info = &dev->info[info_idx];
 
 	/* prepare for offloading */
-	if (info->data_ep_pipe) {
-		retval = xhci_prepare_offloading(dev->udev, dev->sb, info->data_ep_pipe);
-		if (retval < 0) {
-			USB_OFFLOAD_ERR("fail to prepare data endpoint\n");
-			return retval;
-		}
+	retval = uaudio_dev_intf_prepare(dev, info);
+	if ( retval < 0)
+		return retval;
+
+	if (uodev->adsp_ready) {
+		/* issue ENABLE_TRACE to dsp */
+		usb_offload_trace_start(msg);
+
+		/* issue ENABLE_STREAM to dsp */
+		retval = issue_audio_stream(UOI_ENABLE_STREAM, msg, dev, info, info_idx, true, false);
+	} else {
+		/* adsp was expected to be ready before sending ipi_msg(ENABLE_STREAM) */
+		USB_OFFLOAD_ERR("adsp should be ready\n");
+		uaudio_dev_intf_lift(dev, info);
+		retval = -EINVAL;
 	}
 
-	if (info->sync_ep_pipe) {
-		retval = xhci_prepare_offloading(dev->udev, dev->sb, info->sync_ep_pipe);
-		if (retval < 0) {
-			USB_OFFLOAD_ERR("fail to prepare sync endpoint\n");
-			return retval;
-		}
-	}
-
-	usb_offload_trace_start(msg);
-
-	/* issue ENABLE_STREAM to dsp */
-	return issue_audio_stream(UOI_ENABLE_STREAM, msg, dev, info, info_idx, true);
+	return retval;
 }
 
 static int send_disable_stream(u8 card_num,
@@ -787,7 +896,7 @@ static int send_disable_stream(u8 card_num,
 		.uainfo.direction = direction,
 	};
 	struct intf_info *info;
-	bool run_disable = true;
+	bool run_disable = true, skip_ipi;
 	int retval = 0, state;
 
 	if (card_num >= SNDRV_CARDS || uadev[card_num].info == NULL
@@ -840,27 +949,26 @@ static int send_disable_stream(u8 card_num,
 	if (!run_disable)
 		return 0;
 
-	usb_offload_trace_stop(msg.direction);
-
-	/* lift from offloading */
-	if (info->data_ep_pipe) {
-		xhci_lift_offloading(dev->udev, dev->sb, info->data_ep_pipe);
-		info->data_ep_pipe = 0;
-	}
-
-	if (info->sync_ep_pipe) {
-		xhci_lift_offloading(dev->udev, dev->sb, info->sync_ep_pipe);
-		info->sync_ep_pipe = 0;
-	}
-
-	if (xhci->xhc_state & XHCI_STATE_HALTED) {
-		USB_OFFLOAD_INFO("xhci halted, hasn't queue stop_endpoint\n");
+	USB_OFFLOAD_INFO("xhc state:0x%x\n", xhci->xhc_state);
+	if ((xhci->xhc_state & XHCI_STATE_DYING) || (xhci->xhc_state & XHCI_STATE_HALTED)) {
+		USB_OFFLOAD_INFO("xhci halted or dying\n");
 		msg.flag |= STREAM_FLAG_XHCI_HALT;
-	}
+	} else
+		/* lift from offloading */
+		uaudio_dev_intf_lift(dev, info);
+
+	/* after ee triggered, it's requested to send ipi_msg(DISABLE_STREAM)
+	 * although audio service has already died, we still need to cleanup
+	 * audio interface and tracer which we had enabled before.
+	 */
+	skip_ipi = !uodev->adsp_ready;
+
+	/* issue DISABLE_TRACE to dsp */
+	usb_offload_trace_stop(msg.direction, skip_ipi);
 
 	/* issue DISABLE_STREAM to dsp */
 	retval = issue_audio_stream(UOI_DISABLE_STREAM, &msg,
-		dev, info, info_idx, must_success);
+		dev, info, info_idx, must_success, skip_ipi);
 
 	/* notify others that we've done */
 	atomic_set(&info->disable_sync, DONE_DISABLE);
@@ -1125,9 +1233,8 @@ skip_sync_ep:
 		return -ENODEV;
 	}
 
-
 	if (!atomic_read(&audio_dev->in_use)) {
-		/* interrupter */
+		/* setup audio device */
 		if (xhci_sideband_create_interrupter_(audio_dev->sb, 1,
 			true, uodev->xhci->imod_interval, XHCI1_INTR_TARGET) < 0) {
 			USB_OFFLOAD_ERR("fail to create interrupter%d\n", XHCI1_INTR_TARGET);
@@ -1149,9 +1256,10 @@ skip_sync_ep:
 	} else
 		kref_get(&audio_dev->kref);
 
-	USB_OFFLOAD_INFO("card_num:%d info_idx:%d kref:%d\n",
-		audio_dev->card_num, info_idx, kref_read(&audio_dev->kref));
+	USB_OFFLOAD_INFO("card_num:%d info_idx:%d num_intf:%d kref:%d\n",
+		audio_dev->card_num, info_idx, audio_dev->num_intf, kref_read(&audio_dev->kref));
 
+	/* setup audio interface */
 	audio_dev->info[info_idx].data_ep_pipe = data_ep_pipe;
 	audio_dev->info[info_idx].sync_ep_pipe = sync_ep_pipe;
 	audio_dev->info[info_idx].pcm_card_num = card_num;
@@ -2355,16 +2463,17 @@ static void check_valid_device(struct usb_device *rhdev,
 
 error:
 	USB_OFFLOAD_INFO("vid:0x%x pid:0x%x support:%d(valid_ep:%d invlaid_ep:%d) on_hub:%d\n",
-		vid, pid, *support, *on_hub, has_valid_ep, has_invalid_ep);
+		vid, pid, *support, has_valid_ep, has_invalid_ep, *on_hub);
 }
 
 static int usb_offload_open(struct inode *ip, struct file *fp)
 {
 	int i;
 
+	USB_OFFLOAD_INFO("++\n");
 	mutex_lock(&uodev->dev_lock);
 
-	if (!uodev->connect_chip_num) {
+	if (!uodev->total_connected) {
 		USB_OFFLOAD_ERR("No UAC Device Connected!!!\n");
 		goto error;
 	}
@@ -2377,18 +2486,19 @@ static int usb_offload_open(struct inode *ip, struct file *fp)
 	for (i = 0; i < SNDRV_CARDS; i++) {
 		if (!atomic_read(&uadev[i].connected) || uadev[i].chip == NULL)
 			continue;
+		USB_OFFLOAD_INFO("%s device (card:%d)\n", uadev[i].is_valid ? "valid" : "invalid", i);
 		if (!uadev[i].is_valid)
 			goto not_support;
 	}
 
-	USB_OFFLOAD_INFO("support offloading!!\n");
+	USB_OFFLOAD_INFO("-- support offloading!!\n");
 
 	mutex_unlock(&uodev->dev_lock);
 	uo_mbrain_update(UO_PHASE_OPEN, UO_ERROR_SUCCESS);
 	return 0;
 
 not_support:
-	USB_OFFLOAD_INFO("unsupport offloading!!\n");
+	USB_OFFLOAD_INFO("-- unsupport offloading!!\n");
 error:
 	mutex_unlock(&uodev->dev_lock);
 	return -1;
@@ -2398,17 +2508,21 @@ static int usb_offload_release(struct inode *ip, struct file *fp)
 {
 	int ret = 0, idx;
 
-	USB_OFFLOAD_INFO("\n");
+	USB_OFFLOAD_INFO("++\n");
 	mutex_lock(&uodev->dev_lock);
 
 	for (idx = 0; idx < SNDRV_CARDS; idx++) {
-		/* chip has already been cleaned up or never populated */
 		if (!uadev[idx].chip)
 			continue;
-		uaudio_dev_shutdown(&uadev[idx]);
+
+		/* just cleanup audio device, do not shut it down */
+		uaudio_dev_cleanup(&uadev[idx]);
 	}
 
+	usb_offload_status();
+
 	mutex_unlock(&uodev->dev_lock);
+	USB_OFFLOAD_INFO("--\n");
 	return ret;
 }
 
@@ -2596,9 +2710,10 @@ static int usb_offload_probe(struct platform_device *pdev)
 
 	uodev->is_streaming = false;
 	uodev->adsp_inited = false;
+	uodev->adsp_ready = true; /* default ready ?? */
 	uodev->speed = USB_SPEED_UNKNOWN;
 	uodev->xhci = NULL;
-	uodev->connect_chip_num = 0;
+	uodev->total_connected = 0;
 	uodev->last_card_num = -EINVAL;
 
 	node_xhci_host = of_parse_phandle(uodev->dev->of_node, "xhci-host", 0);

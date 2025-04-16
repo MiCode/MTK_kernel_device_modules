@@ -271,7 +271,6 @@ struct usb_trace_msg {
 struct intf_info {
 	unsigned int data_ep_pipe;
 	unsigned int sync_ep_pipe;
-	u8 *xfer_buf;
 	u8 intf_num;
 	u8 pcm_card_num;
 	u8 pcm_dev_num;
@@ -333,12 +332,13 @@ struct usb_offload_dev {
 	struct device *dev;
 	int last_card_num;
 	struct xhci_hcd *xhci;
-	int connect_chip_num;
+	int total_connected;
 	bool adv_lowpwr;
 	bool is_streaming;
 	bool tx_streaming;
 	bool rx_streaming;
 	bool adsp_inited;
+	bool adsp_ready;
 	enum usb_device_speed speed;
 	bool hub_offloading;
 	struct ssusb_offload *ssusb_offload_notify;
@@ -392,6 +392,7 @@ int xhci_mtk_realloc_transfer_ring(unsigned int slot_id, unsigned int ep_id,
  * mmemory manager exported api
  ****/
 u32 mtk_offload_get_cnt(enum uo_provider_type id);
+bool mtk_offload_provider_is_valid(enum uo_provider_type id);
 int mtk_offload_provider_register(struct usb_offload_dev *udev, enum uo_provider_type id);
 u32 mtk_offload_provider_get_cnt(enum uo_provider_type id);
 int mtk_offload_init_rsv(struct usb_offload_dev *udev, enum uo_provider_type id);
@@ -508,7 +509,7 @@ void usb_offload_platform_action(struct device *dev, enum usb_plat_action action
 int usb_offload_debug_init(struct usb_offload_dev *udev);
 int usb_offload_debug_deinit(struct usb_offload_dev *udev);
 void usb_offload_trace_start(struct usb_audio_stream_msg *msg);
-void usb_offload_trace_stop(int dir);
+void usb_offload_trace_stop(int dir, bool skip_ipi);
 void usb_offload_trace_stop_all(void);
 
 /****
