@@ -57,6 +57,7 @@ struct sched_attr_work {
 	struct work_struct work;
 	struct task_struct *task;
 	struct sched_attr attr;
+	int toSet;
 };
 
 extern int (*task_turbo_enforce_ct_to_vip_fp)(int val, int caller_id);

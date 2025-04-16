@@ -104,23 +104,57 @@ TRACE_EVENT(binder_uclamp_set,
 );
 
 TRACE_EVENT(binder_start_uclamp_inherit,
-	TP_PROTO(pid_t b_pid, int max, int min),
-	TP_ARGS(b_pid, max, min),
+	TP_PROTO(pid_t a_pid, pid_t b_pid, int max, int min),
+	TP_ARGS(a_pid, b_pid, max, min),
 
 	TP_STRUCT__entry(
+		__field(pid_t, a_pid)
 		__field(pid_t, b_pid)
 		__field(int, max)
 		__field(int, min)
 	),
 	TP_fast_assign(
+		__entry->a_pid = a_pid;
 		__entry->b_pid = b_pid;
 		__entry->max = max;
 		__entry->min = min;
 	),
-	TP_printk("%d start uclamp inherit: max=%d, min=%d",
+	TP_printk("%d -> %d start uclamp inherit: max=%d, min=%d",
+		__entry->a_pid,
 		__entry->b_pid,
 		__entry->max,
 		__entry->min)
+);
+
+TRACE_EVENT(binder_stop_uclamp_inherit,
+	TP_PROTO(pid_t b_pid),
+	TP_ARGS(b_pid),
+
+	TP_STRUCT__entry(
+		__field(pid_t, b_pid)
+	),
+	TP_fast_assign(
+		__entry->b_pid = b_pid;
+	),
+	TP_printk("%d stop uclamp",
+		__entry->b_pid)
+);
+
+TRACE_EVENT(binder_uclamp_debug,
+	TP_PROTO(pid_t b_pid, int code),
+	TP_ARGS(b_pid, code),
+
+	TP_STRUCT__entry(
+		__field(pid_t, b_pid)
+		__field(int, code)
+	),
+	TP_fast_assign(
+		__entry->b_pid = b_pid;
+		__entry->code = code;
+	),
+	TP_printk("pid:%d code:%d",
+		__entry->b_pid,
+		__entry->code)
 );
 
 TRACE_EVENT(turbo_vip,

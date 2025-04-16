@@ -61,6 +61,7 @@ static int binder_nonvip_inheritance_enable;
 static int binder_uclamp_inheritance_enable;
 static int binder_uclamp_inheritance_enable_authority = 1;
 static pid_t unset_binder_uclamp_pid;
+static struct workqueue_struct *uclamp_wq;
 static struct cpu_info ci;
 static u64 checked_timestamp;
 static int max_cpus;
@@ -597,14 +598,23 @@ module_param_cb(enforce_ct_to_vip_param, &enforce_ct_to_vip_param_ops,
 static void sched_attr_work_func(struct work_struct *work)
 {
 	struct sched_attr_work *sched_work = container_of(work, struct sched_attr_work, work);
+	struct task_turbo_t *task_turbo_data;
 	int ret;
 
+	if(uclamp_eff_value(sched_work->task, UCLAMP_MIN) == sched_work->attr.sched_util_min &&
+			uclamp_eff_value(sched_work->task, UCLAMP_MAX) == sched_work->attr.sched_util_max) {
+		trace_binder_uclamp_set(sched_work->task->pid,
+			sched_work->attr.sched_util_max, sched_work->attr.sched_util_min, 1);
+		return;
+	}
 	ret = sched_setattr_nocheck(sched_work->task, &sched_work->attr);
 	trace_binder_uclamp_set(sched_work->task->pid,
 		sched_work->attr.sched_util_max, sched_work->attr.sched_util_min, ret);
-	kfree(sched_work);
-
 	if (ret < 0) {
+		if(sched_work->toSet==0){
+			task_turbo_data = get_task_turbo_t(sched_work->task);
+			task_turbo_data->uclamp_binder_cnt++;
+		}
 		switch (-ret) {
 		case ESRCH:
 			pr_info("%s: Error: No such process\n", __func__);
@@ -623,9 +633,10 @@ static void sched_attr_work_func(struct work_struct *work)
 			break;
 		}
 	}
+	kfree(sched_work);
 }
 
-void set_sched_attr_non_blocking(struct task_struct *task, const struct sched_attr *attr)
+void set_sched_attr_non_blocking(struct task_struct *task, const struct sched_attr *attr, int toSet)
 {
 	struct sched_attr_work *sched_work;
 
@@ -635,11 +646,12 @@ void set_sched_attr_non_blocking(struct task_struct *task, const struct sched_at
 
 	INIT_WORK(&sched_work->work, sched_attr_work_func);
 	sched_work->task = task;
+	sched_work->toSet = toSet;
 	memcpy(&sched_work->attr, attr, sizeof(struct sched_attr));
-	schedule_work(&sched_work->work);
+	queue_work(uclamp_wq, &sched_work->work);
 }
 
-static void doUclamp(struct task_struct *to, int max, int min)
+static void doUclamp(struct task_struct *to, int max, int min, int toSet)
 {
 	struct sched_attr attr = {};
 
@@ -652,14 +664,11 @@ static void doUclamp(struct task_struct *to, int max, int min)
 	attr.sched_util_max = max;
 
 	if(likely(to)) {
-		if(uclamp_eff_value(to, UCLAMP_MIN)!= attr.sched_util_min ||
-			uclamp_eff_value(to, UCLAMP_MAX)!= attr.sched_util_max) {
+		attr.sched_policy = to->policy;
+		if(rt_policy(to->policy))
 			attr.sched_priority = to->rt_priority;
-			if(rt_policy(to->policy))
-				attr.sched_policy = to->policy;
-		}
+		set_sched_attr_non_blocking(to, &attr, toSet);
 	}
-	set_sched_attr_non_blocking(to, &attr);
 }
 
 int write_uclamp_to_list(pid_t pid)
@@ -719,7 +728,7 @@ void uclamp_list_clear(void)
 			put_task_struct(task_struct_data);
 			continue;
 		}
-		doUclamp(task_struct_data, UCLAMP_MAX_VALUE, UCLAMP_MIN_VALUE);
+		doUclamp(task_struct_data, UCLAMP_MAX_VALUE, UCLAMP_MIN_VALUE, 0);
 		task_turbo_data->uclamp_binder_cnt = 0;
 		task_turbo_data->is_uclamp_binder = 0;
 		task_turbo_data->uclamp_value_max = 0;
@@ -775,13 +784,13 @@ void do_set_binder_uclamp_param(pid_t pid, int binder_uclamp_max, int binder_ucl
 				put_task_struct(task_struct_data);
 				return;
 			}
-			task_turbo_data->uclamp_binder_cnt++;
 		}
 		task_turbo_data->is_uclamp_binder = 1;
 	}
 	task_turbo_data->uclamp_value_min = binder_uclamp_min;
 	task_turbo_data->uclamp_value_max = binder_uclamp_max;
-	doUclamp(task_struct_data, binder_uclamp_max, binder_uclamp_min);
+	task_turbo_data->uclamp_binder_cnt++;
+	doUclamp(task_struct_data, binder_uclamp_max, binder_uclamp_min, 1);
 	put_task_struct(task_struct_data);
 }
 
@@ -811,11 +820,13 @@ void do_unset_binder_uclamp_param(int pid)
 	}
 	if (task_turbo_data->is_uclamp_binder){
 		task_turbo_data->is_uclamp_binder = 0;
-		if(--task_turbo_data->uclamp_binder_cnt == 0){
-			doUclamp(task_struct_data, UCLAMP_MAX_VALUE, UCLAMP_MIN_VALUE);
-			erase_uclamp_in_list(pid);
-			task_turbo_data->uclamp_value_min = 0;
-			task_turbo_data->uclamp_value_max = 0;
+		if(task_turbo_data->uclamp_binder_cnt > 0){
+			if(--task_turbo_data->uclamp_binder_cnt == 0){
+				doUclamp(task_struct_data, UCLAMP_MAX_VALUE, UCLAMP_MIN_VALUE, 0);
+				erase_uclamp_in_list(pid);
+				task_turbo_data->uclamp_value_min = 0;
+				task_turbo_data->uclamp_value_max = 0;
+			}
 		}
 	}
 	put_task_struct(task_struct_data);
@@ -1356,7 +1367,7 @@ void binder_start_uclamp_inherit(struct task_struct *from,
 		return;
 	from_min = from_turbo_data->uclamp_value_min;
 	from_max = from_turbo_data->uclamp_value_max;
-	trace_binder_start_uclamp_inherit(to->pid, from_max, from_min);
+	trace_binder_start_uclamp_inherit(from->pid, to->pid, from_max, from_min);
 
 	if (from_min<UCLAMP_MIN_VALUE || from_min>UCLAMP_MAX_VALUE ||
 		from_max<UCLAMP_MIN_VALUE || from_max>UCLAMP_MAX_VALUE)
@@ -1366,11 +1377,11 @@ void binder_start_uclamp_inherit(struct task_struct *from,
 	if(to_turbo_data->uclamp_binder_cnt==0){
 		if(unlikely(write_uclamp_to_list(to->pid)))
 			return;
-		to_turbo_data->uclamp_binder_cnt++;
 	}
 	to_turbo_data->uclamp_value_min = from_min;
 	to_turbo_data->uclamp_value_max = from_max;
-	doUclamp(to, from_max, from_min);
+	to_turbo_data->uclamp_binder_cnt++;
+	doUclamp(to, from_max, from_min, 1);
 }
 
 void binder_stop_uclamp_inherit(struct task_struct *p)
@@ -1379,11 +1390,16 @@ void binder_stop_uclamp_inherit(struct task_struct *p)
 
 	turbo_data = get_task_turbo_t(p);
 	if(turbo_data->uclamp_binder_cnt>0){
+		trace_binder_stop_uclamp_inherit(p->pid);
 		if(--turbo_data->uclamp_binder_cnt==0){
+			if(turbo_data->is_uclamp_binder){
+				turbo_data->uclamp_binder_cnt = 1;
+				return;
+			}
 			turbo_data->uclamp_value_min = 0;
 			turbo_data->uclamp_value_max = 0;
 			erase_uclamp_in_list(p->pid);
-			doUclamp(p, UCLAMP_MAX_VALUE, UCLAMP_MIN_VALUE);
+			doUclamp(p, UCLAMP_MAX_VALUE, UCLAMP_MIN_VALUE, 0);
 		}
 	}
 }
@@ -1647,6 +1663,7 @@ static int __init init_vip_engine(void)
 	task_turbo_do_unset_binder_uclamp_param = do_unset_binder_uclamp_param;
 	task_turbo_do_binder_uclamp_stuff = do_binder_uclamp_stuff;
 	task_turbo_do_enable_binder_uclamp_inheritance = do_enable_binder_uclamp_inheritance;
+	uclamp_wq = create_singlethread_workqueue("uclamp_singlethread_wq");
 
 failed:
 	if (ret)
@@ -1661,6 +1678,7 @@ register_failed:
 static void  __exit exit_vip_engine(void)
 {
 	uclamp_list_clear();
+	destroy_workqueue(uclamp_wq);
 }
 module_init(init_vip_engine);
 module_exit(exit_vip_engine);
