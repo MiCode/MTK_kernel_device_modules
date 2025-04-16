@@ -9365,6 +9365,9 @@ static int _mtk_crtc_cmdq_smi_info_dump(void *data)
 		if (ret < 0)
 			DDPPR_ERR("wait %s fail, ret=%d\n", __func__, ret);
 
+		mmdvfs_stop_record();
+		mmqos_stop_record();
+
 		mtk_smi_dbg_hang_detect("disp_underrun");
 		mmqos_hrt_dump();
 		mmdvfs_debug_status_dump(NULL);
