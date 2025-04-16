@@ -1908,7 +1908,7 @@ static int mtk_is_i2s_low_power(int i2s_num)
 		pr_debug("%s(), err i2s_num: %d\n", __func__, i2s_num);
 		return 0;
 	}
-	return (i2s_low_power_mask>>i2s_bit_shift) & 0x1;
+	return (i2s_low_power_mask >> i2s_bit_shift) & 0x1;
 }
 
 /* low jitter control */
@@ -1954,9 +1954,10 @@ static int mt6993_i2s_hd_set(struct snd_kcontrol *kcontrol,
 
 	hd_en = ucontrol->value.integer.value[0];
 
-	dev_info(afe->dev, "%s(), kcontrol name %s, hd_en %d\n",
-		 __func__, kcontrol->id.name, hd_en);
-
+	if (hd_en) {
+		dev_info(afe->dev, "%s(), kcontrol name %s, hd_en %d\n",
+			 __func__, kcontrol->id.name, hd_en);
+	}
 	i2s_priv = get_i2s_priv_by_name(afe, kcontrol->id.name);
 
 	if (!i2s_priv) {
@@ -2713,18 +2714,6 @@ static int mtk_i2s_en_event(struct snd_soc_dapm_widget *w,
 	return 0;
 }
 
-static int mtk_i2s_hd_en_event(struct snd_soc_dapm_widget *w,
-			       struct snd_kcontrol *kcontrol,
-			       int event)
-{
-	struct snd_soc_component *cmpnt = snd_soc_dapm_to_component(w->dapm);
-
-	dev_dbg(cmpnt->dev, "%s(), name %s, event 0x%x\n",
-		 __func__, w->name, event);
-
-	return 0;
-}
-
 static int mtk_apll_event(struct snd_soc_dapm_widget *w,
 			  struct snd_kcontrol *kcontrol,
 			  int event)
@@ -3006,64 +2995,49 @@ static const struct snd_soc_dapm_widget mtk_dai_i2s_widgets[] = {
 	/* i2s hd en */
 	SND_SOC_DAPM_SUPPLY_S(I2SIN0_HD_EN_W_NAME, SUPPLY_SEQ_I2S_HD_EN,
 			      SND_SOC_NOPM, 0, 0,
-			      mtk_i2s_hd_en_event,
-			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
+			      NULL, 0),
 	SND_SOC_DAPM_SUPPLY_S(I2SIN1_HD_EN_W_NAME, SUPPLY_SEQ_I2S_HD_EN,
 			      SND_SOC_NOPM, 0, 0,
-			      mtk_i2s_hd_en_event,
-			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
+			      NULL, 0),
 	SND_SOC_DAPM_SUPPLY_S(I2SIN2_HD_EN_W_NAME, SUPPLY_SEQ_I2S_HD_EN,
 			      SND_SOC_NOPM, 0, 0,
-			      mtk_i2s_hd_en_event,
-			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
+			      NULL, 0),
 	SND_SOC_DAPM_SUPPLY_S(I2SIN3_HD_EN_W_NAME, SUPPLY_SEQ_I2S_HD_EN,
 			      SND_SOC_NOPM, 0, 0,
-			      mtk_i2s_hd_en_event,
-			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
+			      NULL, 0),
 	SND_SOC_DAPM_SUPPLY_S(I2SIN4_HD_EN_W_NAME, SUPPLY_SEQ_I2S_HD_EN,
 			      SND_SOC_NOPM, 0, 0,
-			      mtk_i2s_hd_en_event,
-			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
+			      NULL, 0),
 	SND_SOC_DAPM_SUPPLY_S(I2SIN5_HD_EN_W_NAME, SUPPLY_SEQ_I2S_HD_EN,
 			      SND_SOC_NOPM, 0, 0,
-			      mtk_i2s_hd_en_event,
-			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
+			      NULL, 0),
 	SND_SOC_DAPM_SUPPLY_S(I2SIN6_HD_EN_W_NAME, SUPPLY_SEQ_I2S_HD_EN,
 			      SND_SOC_NOPM, 0, 0,
-			      mtk_i2s_hd_en_event,
-			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
+			      NULL, 0),
 	SND_SOC_DAPM_SUPPLY_S(I2SOUT0_HD_EN_W_NAME, SUPPLY_SEQ_I2S_HD_EN,
 			      SND_SOC_NOPM, 0, 0,
-			      mtk_i2s_hd_en_event,
-			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
+			      NULL, 0),
 	SND_SOC_DAPM_SUPPLY_S(I2SOUT1_HD_EN_W_NAME, SUPPLY_SEQ_I2S_HD_EN,
 			      SND_SOC_NOPM, 0, 0,
-			      mtk_i2s_hd_en_event,
-			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
+			      NULL, 0),
 	SND_SOC_DAPM_SUPPLY_S(I2SOUT2_HD_EN_W_NAME, SUPPLY_SEQ_I2S_HD_EN,
 			      SND_SOC_NOPM, 0, 0,
-			      mtk_i2s_hd_en_event,
-			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
+			      NULL, 0),
 	SND_SOC_DAPM_SUPPLY_S(I2SOUT3_HD_EN_W_NAME, SUPPLY_SEQ_I2S_HD_EN,
 			      SND_SOC_NOPM, 0, 0,
-			      mtk_i2s_hd_en_event,
-			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
+			      NULL, 0),
 	SND_SOC_DAPM_SUPPLY_S(I2SOUT4_HD_EN_W_NAME, SUPPLY_SEQ_I2S_HD_EN,
 			      SND_SOC_NOPM, 0, 0,
-			      mtk_i2s_hd_en_event,
-			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
+			      NULL, 0),
 	SND_SOC_DAPM_SUPPLY_S(I2SOUT5_HD_EN_W_NAME, SUPPLY_SEQ_I2S_HD_EN,
 			      SND_SOC_NOPM, 0, 0,
-			      mtk_i2s_hd_en_event,
-			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
+			      NULL, 0),
 	SND_SOC_DAPM_SUPPLY_S(I2SOUT6_HD_EN_W_NAME, SUPPLY_SEQ_I2S_HD_EN,
 			      SND_SOC_NOPM, 0, 0,
-			      mtk_i2s_hd_en_event,
-			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
+			      NULL, 0),
 	SND_SOC_DAPM_SUPPLY_S(FMI2S_MASTER_HD_EN_W_NAME, SUPPLY_SEQ_I2S_HD_EN,
 			      AFE_CONNSYS_I2S_CON, I2S_HDEN_SFT, 0,
-			      mtk_i2s_hd_en_event,
-			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
+			      NULL, 0),
 
 	/* i2s mclk en */
 	SND_SOC_DAPM_SUPPLY_S(I2SIN0_MCLK_EN_W_NAME, SUPPLY_SEQ_I2S_MCLK_EN,

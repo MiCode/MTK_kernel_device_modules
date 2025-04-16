@@ -115,8 +115,10 @@ static bool mtk_audio_sram_avail_from_offset(struct mtk_audio_sram *sram,
 		}
 	}
 
-	dev_info(sram->dev, "%s(), (ram_blk->valid == 0, i = %d), max_avail_size = %d, size = %d, blk_idx = %d, blk_num = %d\n",
-		 __func__, i, max_avail_size, size, *blk_idx, *blk_num);
+	/* dev_info(sram->dev, "%s(), (ram_blk->valid == 0, i = %d),"
+	 *	 " max_avail_size = %d, size = %d, blk_idx = %d, blk_num = %d\n",
+	 *	  __func__, i, max_avail_size, size, *blk_idx, *blk_num);
+	 */
 
 	return max_avail_size >= size;
 }
@@ -330,16 +332,20 @@ int mtk_audio_sram_free(struct mtk_audio_sram *sram, void *user)
 {
 	unsigned int i = 0;
 	struct mtk_audio_sram_block *sram_blk = NULL;
-
-	dev_info(sram->dev, "%s(), user %p\n", __func__, user);
+	int ret = 0;
 
 	spin_lock(&sram->lock);
 	for (i = 0; i < sram->block_num ; i++) {
 		sram_blk = &sram->blocks[i];
-		if (sram_blk->user == user)
+		if (sram_blk->user == user) {
 			sram_blk->user = NULL;
+			ret = 1;
+		}
 	}
 	spin_unlock(&sram->lock);
+
+	if (ret)
+		dev_info(sram->dev, "%s(), user %p\n", __func__, user);
 	return 0;
 }
 EXPORT_SYMBOL_GPL(mtk_audio_sram_free);

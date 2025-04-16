@@ -120,7 +120,7 @@ void mt6993_set_cm_mux(int id, unsigned int mux)
 	else
 		return;
 
-	pr_info("%s(), set CM%d mux = %d\n", __func__, id, mux);
+	/* pr_info("%s(), set CM%d mux = %d\n", __func__, id, mux); */
 }
 EXPORT_SYMBOL_GPL(mt6993_set_cm_mux);
 
@@ -157,8 +157,7 @@ static unsigned int calculate_cm_update(int rate, int ch)
 {
 	int update_val;
 
-	pr_info("%s(), rate %d, channel %d\n",
-		 __func__, rate, ch);
+	/* pr_info("%s(), rate %d, channel %d\n", __func__, rate, ch); */
 
 	update_val = (((26000000 / rate) - 10) / (ch / 2)) - 1;
 

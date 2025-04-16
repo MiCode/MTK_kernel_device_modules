@@ -3672,7 +3672,7 @@ static int cm_mux_set(struct snd_kcontrol *kcontrol,
 	struct snd_soc_component *cmpnt = snd_soc_dapm_to_component(widget->dapm);
 	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
 
-	dev_info(afe->dev, "%s(), %s: fd %ld\n",
+	dev_info(afe->dev, "%s(), %s: mux %ld\n",
 			 __func__, widget->name, ucontrol->value.integer.value[0]);
 
 	if (!strcmp(widget->name, "CM2_UL_MUX"))

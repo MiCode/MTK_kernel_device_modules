@@ -598,21 +598,6 @@ static int mtk_hw_src_event(struct snd_soc_dapm_widget *w,
 		id = MT6993_DAI_SRC_2;
 	else
 		id = MT6993_DAI_SRC_3;
-
-	if (id >= 0)
-		src_priv = afe_priv->dai_priv[id];
-	else {
-		AUDIO_AEE("dai id negative");
-		return -EINVAL;
-	}
-
-	dev_info(afe->dev, "%s(), name %s, event 0x%x, id %d, src_priv %p, dl_rate %d, ul_rate %d\n",
-		 __func__,
-		 w->name, event,
-		 id, src_priv,
-		 src_priv->dl_rate,
-		 src_priv->ul_rate);
-
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
 		if (id == MT6993_DAI_SRC_0)
@@ -625,6 +610,20 @@ static int mtk_hw_src_event(struct snd_soc_dapm_widget *w,
 			mtk_set_src_3_param(afe, id);
 		break;
 	case SND_SOC_DAPM_POST_PMU:
+		if (id >= 0)
+			src_priv = afe_priv->dai_priv[id];
+		else {
+			AUDIO_AEE("dai id negative");
+			return -EINVAL;
+		}
+
+		dev_info(afe->dev, "%s(), name %s, event 0x%x, id %d, src_priv %p, dl_rate %d, ul_rate %d\n",
+			 __func__,
+			 w->name, event,
+			 id, src_priv,
+			 src_priv->dl_rate,
+			 src_priv->ul_rate);
+
 		if (id == MT6993_DAI_SRC_0)
 			reg = AFE_GASRC0_NEW_CON0;
 		else if (id == MT6993_DAI_SRC_1)
@@ -998,9 +997,9 @@ static int mtk_afe_src_en_connect(struct snd_soc_dapm_widget *source,
 		src_priv = afe_priv->dai_priv[MT6993_DAI_SRC_3];
 
 	ret = (src_priv->dl_rate > 0 && src_priv->ul_rate > 0) ? 1 : 0;
-	if (ret)
+	if (!ret)
 		dev_info(afe->dev,
-			 "%s(), source %s, sink %s, dl_rate %d, ul_rate %d\n",
+			 "%s(), Error: rate not support, source %s, sink %s, dl_rate %d, ul_rate %d\n",
 			 __func__, source->name, sink->name,
 			 src_priv->dl_rate, src_priv->ul_rate);
 
