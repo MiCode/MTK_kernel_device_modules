@@ -37,6 +37,10 @@ int mtk_mminfra_dbg_hang_detect(const char *user, bool skip_pm_runtime);
 
 void mtk_mminfra_off_gipc(void);
 
+int mtk_mminfra_get(void);
+
+int mtk_mminfra_put(void);
+
 void mtk_mmpc_resource_dump(void);
 
 #else
@@ -47,6 +51,16 @@ static inline int mtk_mminfra_dbg_hang_detect(const char *user, bool skip_pm_run
 }
 
 static inline void mtk_mminfra_off_gipc(void) { }
+
+static inline int mtk_mminfra_get(void)
+{
+	return 0;
+}
+
+static inline int mtk_mminfra_put(void)
+{
+	return 0;
+}
 
 static inline void mtk_mmpc_resource_dump(void) { }
 

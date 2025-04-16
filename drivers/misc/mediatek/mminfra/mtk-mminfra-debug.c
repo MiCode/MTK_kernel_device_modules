@@ -1093,6 +1093,22 @@ static struct smi_user_pwr_ctrl mminfra_pwr_ctrl = {
 	.smi_user_put = mminfra_put_for_smi_dbg,
 };
 
+int mtk_mminfra_get(void)
+{
+	return mminfra_api_pwr_ctrl ?
+		mtk_mminfra_on_off(true, mminfra_api_pwr_idx, MM_TYPE_MMINFRA_DBG) :
+		pm_runtime_get_sync(dev);
+}
+EXPORT_SYMBOL_GPL(mtk_mminfra_get);
+
+int mtk_mminfra_put(void)
+{
+	return mminfra_api_pwr_ctrl ?
+		mtk_mminfra_on_off(false, mminfra_api_pwr_idx, MM_TYPE_MMINFRA_DBG) :
+		pm_runtime_put_sync(dev);
+}
+EXPORT_SYMBOL_GPL(mtk_mminfra_put);
+
 void mtk_mminfra_off_gipc(void)
 {
 	if (vcp_gipc) {
