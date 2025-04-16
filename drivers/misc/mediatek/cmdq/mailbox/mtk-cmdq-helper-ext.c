@@ -2197,6 +2197,7 @@ s32 cmdq_pkt_copy(struct cmdq_pkt *dst, struct cmdq_pkt *src)
 	struct cmdq_client *client = src->cl;
 
 	cmdq_pkt_free_buf(dst);
+	kfree(dst->flush_item);
 	cmdq_set_thrd_pkt_buf(cl, dst->debug_id, false);
 	buf_cnt = dst->buf_cnt;
 	INIT_LIST_HEAD(&dst->buf);
