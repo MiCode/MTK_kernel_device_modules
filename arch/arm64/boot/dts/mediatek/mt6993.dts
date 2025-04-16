@@ -12345,6 +12345,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			ccf-one-step;
 			need-resource-set = <1>;
 			mmqos-level;
+			yuv422-bw = <2867000>;
+			yuv420-bw = <4096000>;
 		};
 
 		jpgenc1: jpgenc@39240000 {
@@ -12385,6 +12387,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			ccf-one-step;
 			need-resource-set = <1>;
 			mmqos-level;
+			yuv422-bw = <2867000>;
+			yuv420-bw = <4096000>;
 		};
 
 		/* smmu pmu */
