@@ -884,9 +884,6 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/iio/adc:mt635x-auxadc".format(kernel_version),
     "//kernel_device_modules-{}/drivers/iio/adc:mt6338-auxadc".format(kernel_version),
     "//kernel_device_modules-{}/drivers/iio/adc:mt6577_auxadc".format(kernel_version),
-    "//kernel_device_modules-{}/drivers/iio/adc:mt6375-adc".format(kernel_version),
-    "//kernel_device_modules-{}/drivers/iio/adc:mt6375-auxadc".format(kernel_version),
-    "//kernel_device_modules-{}/drivers/iio/adc:mt6379-adc".format(kernel_version),
     "//kernel_device_modules-{}/drivers/iio/adc:mtk-spmi-pmic-adc".format(kernel_version),
     "//kernel_device_modules-{}/drivers/iio/adc:rt9490-adc".format(kernel_version),
     "//kernel_device_modules-{}/drivers/iio/adc:mt6681-auxadc".format(kernel_version),
@@ -906,7 +903,6 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/input/touchscreen/NT36672C_I2C:nt36672c_i2c".format(kernel_version),
     "//kernel_device_modules-{}/drivers/interconnect/mediatek:mtk-emi".format(kernel_version),
     "//kernel_device_modules-{}/drivers/interconnect/mediatek:mtk-emibus-icc".format(kernel_version),
-    "//kernel_device_modules-{}/drivers/leds/flash:leds-mt6379".format(kernel_version),
     "//kernel_device_modules-{}/drivers/leds:leds-mtk".format(kernel_version),
     "//kernel_device_modules-{}/drivers/leds:leds-mtk-pwm".format(kernel_version),
     "//kernel_device_modules-{}/drivers/leds:leds-mtk-disp".format(kernel_version),
@@ -931,9 +927,6 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/memory/mediatek:emi-mpu-test-v2".format(kernel_version),
     "//kernel_device_modules-{}/drivers/memory/mediatek:emi-slb".format(kernel_version),
     "//kernel_device_modules-{}/drivers/memory/mediatek:slc-parity".format(kernel_version),
-    "//kernel_device_modules-{}/drivers/mfd:mt6375".format(kernel_version),
-    "//kernel_device_modules-{}/drivers/mfd:mt6379i".format(kernel_version),
-    "//kernel_device_modules-{}/drivers/mfd:mt6379s".format(kernel_version),
     "//kernel_device_modules-{}/drivers/mfd:mt6397".format(kernel_version),
     "//kernel_device_modules-{}/drivers/mfd:mtk-spmi-pmic".format(kernel_version),
     "//kernel_device_modules-{}/drivers/mfd:mtk-spmi-pmic-debug".format(kernel_version),
@@ -1079,8 +1072,6 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:rt_pd_manager".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:tcpci_late_sync".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:tcpc_class".format(kernel_version),
-    "//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:tcpc_mt6375".format(kernel_version),
-    "//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:tcpc_mt6379".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:tcpc_rt1711h".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:tcpc_rt1718s".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/typec/mux:fusb304".format(kernel_version),
@@ -1142,8 +1133,6 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/pinctrl/mediatek:pinctrl-mt6373".format(kernel_version),
     "//kernel_device_modules-{}/drivers/pinctrl/mediatek:pinctrl-mt6661".format(kernel_version),
     "//kernel_device_modules-{}/drivers/pinctrl/mediatek:pinctrl-mt6667".format(kernel_version),
-    "//kernel_device_modules-{}/drivers/power/supply/ufcs:ufcs_class".format(kernel_version),
-    "//kernel_device_modules-{}/drivers/power/supply/ufcs:ufcs_mt6379".format(kernel_version),
     "//kernel_device_modules-{}/drivers/power/supply:adapter_class".format(kernel_version),
     "//kernel_device_modules-{}/drivers/power/supply:bq2589x_charger".format(kernel_version),
     "//kernel_device_modules-{}/drivers/power/supply:charger_class".format(kernel_version),
@@ -1151,10 +1140,6 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/power/supply:mt6357_battery".format(kernel_version),
     "//kernel_device_modules-{}/drivers/power/supply:mt6358_battery".format(kernel_version),
     "//kernel_device_modules-{}/drivers/power/supply:mt6359p_battery".format(kernel_version),
-    "//kernel_device_modules-{}/drivers/power/supply:mt6375-battery".format(kernel_version),
-    "//kernel_device_modules-{}/drivers/power/supply:mt6375-charger".format(kernel_version),
-    "//kernel_device_modules-{}/drivers/power/supply:mt6379-battery".format(kernel_version),
-    "//kernel_device_modules-{}/drivers/power/supply:mt6379-chg".format(kernel_version),
     "//kernel_device_modules-{}/drivers/power/supply:mtk_2p_charger".format(kernel_version),
     "//kernel_device_modules-{}/drivers/power/supply:mtk_battery_manager".format(kernel_version),
     "//kernel_device_modules-{}/drivers/power/supply:mtk_charger_algorithm_class".format(kernel_version),
@@ -1181,7 +1166,6 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/regulator:mt6368-regulator".format(kernel_version),
     "//kernel_device_modules-{}/drivers/regulator:mt6369-regulator".format(kernel_version),
     "//kernel_device_modules-{}/drivers/regulator:mt6373-regulator".format(kernel_version),
-    "//kernel_device_modules-{}/drivers/regulator:mt6379-regulator".format(kernel_version),
     "//kernel_device_modules-{}/drivers/regulator:mt6661-regulator".format(kernel_version),
     "//kernel_device_modules-{}/drivers/regulator:mt6667-regulator".format(kernel_version),
     "//kernel_device_modules-{}/drivers/regulator:mt6681-regulator".format(kernel_version),
@@ -1377,6 +1361,13 @@ mgk_64_kleaf_platform_modules = {
     "//kernel_device_modules-{}/drivers/gpu/mediatek/gpufreq/v2:mtk_gpufreq_mt6858".format(kernel_version): "mt6858",
     "//kernel_device_modules-{}/drivers/gpu/mediatek/ged:mtk_ged_mt6991".format(kernel_version): "mt6991",
     "//kernel_device_modules-{}/drivers/gpu/mediatek/ged:mtk_ged_mt6993".format(kernel_version): "mt6993",
+    "//kernel_device_modules-{}/drivers/iio/adc:mt6375-adc".format(kernel_version): "mt6789 mt6855 mt6895",
+    "//kernel_device_modules-{}/drivers/iio/adc:mt6375-auxadc".format(kernel_version): "mt6991 mt6993 mt6858 mt6789 mt6855 mt6895",
+    "//kernel_device_modules-{}/drivers/iio/adc:mt6379-adc".format(kernel_version): "mt6991 mt6993",
+    "//kernel_device_modules-{}/drivers/leds/flash:leds-mt6379".format(kernel_version): "mt6991 mt6993",
+    "//kernel_device_modules-{}/drivers/mfd:mt6375".format(kernel_version): "mt6789 mt6855 mt6895",
+    "//kernel_device_modules-{}/drivers/mfd:mt6379i".format(kernel_version): "mt6991 mt6993",
+    "//kernel_device_modules-{}/drivers/mfd:mt6379s".format(kernel_version): "mt6991 mt6993",
     "//kernel_device_modules-{}/drivers/mfd:mt63xx-debug".format(kernel_version): "mt6789",
     "//kernel_device_modules-{}/drivers/media/platform/mtk-vcu:mtk-vcu".format(kernel_version): "mt6768 mt6781 mt6789 mt6833 mt6853 mt6855 mt6877 mt6893 mt8188 mt8192",
     "//kernel_device_modules-{}/drivers/misc/mediatek/btif:btif_drv".format(kernel_version): "mt6761 mt6765 mt6768 mt6779 mt6781 mt6785 mt6789 mt6833 mt6853 mt6855 mt6873 mt6877 mt6885 mt6886 mt6893 mt6895 mt6879 mt6983",
@@ -1406,6 +1397,8 @@ mgk_64_kleaf_platform_modules = {
     "//kernel_device_modules-{}/drivers/misc/mediatek/smap:mtk-smap-debug".format(kernel_version): "mt6993 mt6991",
     "//kernel_device_modules-{}/drivers/misc/mediatek/smap:smap-mt6991".format(kernel_version): "mt6991",
     "//kernel_device_modules-{}/drivers/misc/mediatek/smap:smap-mt6993".format(kernel_version): "mt6993",
+    "//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:tcpc_mt6375".format(kernel_version): "mt6789 mt6855 mt6895",
+    "//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:tcpc_mt6379".format(kernel_version): "mt6991 mt6993",
     "//kernel_device_modules-{}/drivers/misc/mediatek/uarthub:uarthub_drv".format(kernel_version): "mt6985 mt6989 mt6991 mt6993",
     "//kernel_device_modules-{}/drivers/misc/mediatek/usb/usb_boost:musb_boost".format(kernel_version):"mt6789 mt6855",
     "//kernel_device_modules-{}/drivers/misc/mediatek/usb/usb20:musb_hdrc".format(kernel_version):"mt6789 mt6855",
@@ -1432,6 +1425,13 @@ mgk_64_kleaf_platform_modules = {
     "//kernel_device_modules-{}/drivers/pinctrl/mediatek:pinctrl-mt6989".format(kernel_version): "mt6989",
     "//kernel_device_modules-{}/drivers/pinctrl/mediatek:pinctrl-mt6991".format(kernel_version): "mt6991",
     "//kernel_device_modules-{}/drivers/pinctrl/mediatek:pinctrl-mt6993".format(kernel_version): "mt6993",
+    "//kernel_device_modules-{}/drivers/power/supply/ufcs:ufcs_class".format(kernel_version): "mt6858 mt6991 mt6993",
+    "//kernel_device_modules-{}/drivers/power/supply/ufcs:ufcs_mt6379".format(kernel_version): "mt6858 mt6991 mt6993",
+    "//kernel_device_modules-{}/drivers/power/supply:mt6375-battery".format(kernel_version): "mt6789 mt6855 mt6895",
+    "//kernel_device_modules-{}/drivers/power/supply:mt6375-charger".format(kernel_version): "mt6789 mt6855 mt6895",
+    "//kernel_device_modules-{}/drivers/power/supply:mt6379-battery".format(kernel_version): "mt6858 mt6991 mt6993",
+    "//kernel_device_modules-{}/drivers/power/supply:mt6379-chg".format(kernel_version): "mt6858 mt6991 mt6993",
+    "//kernel_device_modules-{}/drivers/regulator:mt6379-regulator".format(kernel_version): "mt6858 mt6991 mt6993",
     "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-scpsys-bringup".format(kernel_version): "mt6789 mt6833 mt6855 mt6895 mt6886 mt6983 mt6989 mt8192 mt8188 ",
     #"//kernel_device_modules-{}/drivers/soc/mediatek:mtk-scpsys-mt6761".format(kernel_version): "mt6761",
     "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-scpsys-mt6789".format(kernel_version): "mt6789",
@@ -2980,7 +2980,7 @@ def get_overlay_modules_list():
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/gpu/mediatek/gpufreq/v2:mtk_gpufreq_wrapper".format(kernel_version))
         mgk_64_kleaf_device_modules.append("//kernel_device_modules-{}/drivers/gpu/mediatek/gpufreq/v2_legacy:mtk_gpufreq_wrapper_legacy".format(kernel_version))
 
-        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/power/supply:mt6375-charger".format(kernel_version))
+        mgk_64_kleaf_platform_modules.remove("//kernel_device_modules-{}/drivers/power/supply:mt6375-charger".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/power/supply:rt9490-charger".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/power/supply:rt9758-charger".format(kernel_version))
 
@@ -3419,13 +3419,13 @@ def get_overlay_modules_list():
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:pd_dbg_info".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:rt_pd_manager".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:tcpc_class".format(kernel_version))
-        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:tcpc_mt6375".format(kernel_version))
-        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:tcpc_mt6379".format(kernel_version))
+        mgk_64_kleaf_platform_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:tcpc_mt6375".format(kernel_version))
+        mgk_64_kleaf_platform_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:tcpc_mt6379".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:tcpc_rt1711h".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:tcpci_late_sync".format(kernel_version))
-        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/power/supply/ufcs:ufcs_class".format(kernel_version))
-        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/power/supply/ufcs:ufcs_mt6379".format(kernel_version))
-        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/power/supply:mt6379-chg".format(kernel_version))
+        mgk_64_kleaf_platform_modules.remove("//kernel_device_modules-{}/drivers/power/supply/ufcs:ufcs_class".format(kernel_version))
+        mgk_64_kleaf_platform_modules.remove("//kernel_device_modules-{}/drivers/power/supply/ufcs:ufcs_mt6379".format(kernel_version))
+        mgk_64_kleaf_platform_modules.remove("//kernel_device_modules-{}/drivers/power/supply:mt6379-chg".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/power/supply:mtk_2p_charger".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/power/supply:mtk_ufcs_adapter".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/power/supply:mtk_chg_type_det".format(kernel_version))
