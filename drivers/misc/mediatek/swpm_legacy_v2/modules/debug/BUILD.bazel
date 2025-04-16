@@ -21,6 +21,7 @@ filegroup(
 
 PLATFORMS = [
     "6789",
+    "6855",
     "6895",
 ]
 
