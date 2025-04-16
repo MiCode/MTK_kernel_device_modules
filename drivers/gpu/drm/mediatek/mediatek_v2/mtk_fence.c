@@ -569,8 +569,6 @@ int mtk_release_present_fence(unsigned int session_id, unsigned int fence_idx, k
 	CRTC_MMP_MARK(idx, release_present_fence, 0, fence_idx);
 	drm_trace_tag_value("release_present_fence", fence_idx);
 
-	mtk_vidle_user_power_release(DISP_VIDLE_USER_FOR_FRAME | VOTER_ONLY);
-
 	mtk_drm_trace_end("present_fence_rel:%s-%d",
 		mtk_fence_session_mode_spy(session_id), fence_idx);
 
@@ -750,8 +748,6 @@ int mtk_release_union_fence(unsigned int session_id, unsigned int fence_idx, kti
 		mtk_sync_timeline_inc(layer_info->timeline, fence_increment, time);
 		drm_trace_tag_value("release_present_fence", fence_idx);
 
-		mtk_vidle_user_power_release(DISP_VIDLE_USER_FOR_FRAME | VOTER_ONLY);
-
 		/* print mmp log */
 		CRTC_MMP_MARK(idx, release_present_fence, 0, fence_idx);
 
@@ -774,6 +770,7 @@ int mtk_release_union_fence(unsigned int session_id, unsigned int fence_idx, kti
 		fence_increment = fence_idx - layer_info->timeline->value;
 		if (fence_increment <= 0) {
 			mutex_unlock(&layer_info->sync_lock);
+			CRTC_MMP_MARK(idx, release_frame_done_fence, U32_MAX, fence_idx);
 			return 0;
 		}
 
@@ -783,6 +780,8 @@ int mtk_release_union_fence(unsigned int session_id, unsigned int fence_idx, kti
 		/* signal fence */
 		mtk_sync_timeline_inc(layer_info->timeline, fence_increment, time);
 		drm_trace_tag_value("release_frame_done_fence", fence_idx);
+
+		// mtk_vidle_user_power_release(DISP_VIDLE_USER_FOR_FRAME | VOTER_ONLY);
 
 		/* print mmp log */
 		CRTC_MMP_MARK(idx, release_frame_done_fence, 0, fence_idx);

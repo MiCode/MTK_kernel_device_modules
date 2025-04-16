@@ -2720,7 +2720,7 @@ static void dpc_hwccf_vote(bool on, struct cmdq_pkt *pkt, const enum mtk_vidle_v
 			spin_lock_irqsave(&g_priv->hwccf_ref_lock, flags);
 
 		if (on) {
-			ret = readl_poll_timeout_atomic(hwccf_global_sta, value, !(value & mask), 1, 2000);
+			ret = readl_poll_timeout_atomic(hwccf_global_sta, value, !(value & mask), 1, 10000);
 			if (ret < 0)
 				goto err1;
 
@@ -2729,14 +2729,14 @@ static void dpc_hwccf_vote(bool on, struct cmdq_pkt *pkt, const enum mtk_vidle_v
 			ret = readl_poll_timeout_atomic(hwccf_xpu0_local_en, value, value & mask, 1, 2000);
 			if (ret < 0)
 				goto err2;
-			ret = readl_poll_timeout_atomic(hwccf_global_sta, value, !(value & mask), 1, 2000);
+			ret = readl_poll_timeout_atomic(hwccf_global_sta, value, !(value & mask), 1, 10000);
 			if (ret < 0)
 				goto err3;
-			ret = readl_poll_timeout_atomic(hwccf_global_en, value, value & mask, 1, 2000);
+			ret = readl_poll_timeout_atomic(hwccf_global_en, value, value & mask, 1, 10000);
 			if (ret < 0)
 				goto err4;
 		} else {
-			ret = readl_poll_timeout_atomic(hwccf_global_sta, value, !(value & mask), 1, 2000);
+			ret = readl_poll_timeout_atomic(hwccf_global_sta, value, !(value & mask), 1, 10000);
 			if (ret < 0)
 				goto err1;
 
@@ -2745,7 +2745,7 @@ static void dpc_hwccf_vote(bool on, struct cmdq_pkt *pkt, const enum mtk_vidle_v
 			ret = readl_poll_timeout_atomic(hwccf_xpu0_local_en, value, !(value & mask), 1, 2000);
 			if (ret < 0)
 				goto err2;
-			ret = readl_poll_timeout_atomic(hwccf_global_sta, value, !(value & mask), 1, 2000);
+			ret = readl_poll_timeout_atomic(hwccf_global_sta, value, !(value & mask), 1, 10000);
 			if (ret < 0)
 				goto err3;
 		}

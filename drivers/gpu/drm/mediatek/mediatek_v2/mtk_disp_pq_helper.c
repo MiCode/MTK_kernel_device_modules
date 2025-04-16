@@ -806,7 +806,8 @@ int disp_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_han
 			}
 		}
 	}
-	mtk_vidle_user_power_release_by_gce(DISP_VIDLE_USER_DISP_CMDQ, pq_cmdq_handle);
+	if (!is_atomic_commit)
+		mtk_vidle_user_power_release_by_gce(DISP_VIDLE_USER_DISP_CMDQ, pq_cmdq_handle);
 
 	/* atomic commit will flush in crtc */
 	if (!is_atomic_commit) {

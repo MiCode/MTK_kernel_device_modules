@@ -12861,6 +12861,9 @@ void mtk_crtc_start_trig_loop(struct drm_crtc *crtc)
 				GCE_DO(clear_event, EVENT_DBI_COUNT_EOF);
 		}
 
+		/* keep power before access registers and after events waiting */
+		mtk_vidle_user_power_keep_by_gce(DISP_VIDLE_USER_TRIGLOOP_CMDQ, cmdq_handle, 0);
+
 		mtk_crtc_comp_trigger(mtk_crtc, cmdq_handle, MTK_TRIG_FLAG_PRE_TRIGGER);
 
 		if (disp_helper_get_stage() == DISP_HELPER_STAGE_BRING_UP)
@@ -13140,6 +13143,8 @@ skip_prete:
 				cmdq_pkt_switch_panel_spr_disable(cmdq_handle, mtk_crtc);
 			}
 		}
+
+		mtk_vidle_user_power_release_by_gce(DISP_VIDLE_USER_TRIGLOOP_CMDQ, cmdq_handle);
 
 		mtk_set_trig_stage(crtc, cmdq_handle, SET_CABC_START);
 		GCE_DO(set_event, EVENT_CABC_EOF);
@@ -19253,6 +19258,9 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 					mtk_crtc_state->cmdq_handle, partial_enable);
 	}
 
+	if (priv->data->mmsys_id == MMSYS_MT6991)
+		mtk_atomic_doze_update_spr(crtc);
+
 	if (crtc_id == 0 && mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_FULL_SCENARIO)) {
 		/* update DT timer to avoid mismatch between real TE and DT timer */
 		if (crtc->state->active && !mtk_crtc_state->prop_val[CRTC_PROP_DOZE_ACTIVE]) {
@@ -19269,14 +19277,9 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 
 		if (mtk_crtc_state->doze_changed || mtk_crtc_state->prop_val[CRTC_PROP_DOZE_ACTIVE])
 			mtk_vidle_hint_update(VIDLE_HINT_DOZE);
-		if (priv->data->mmsys_id == MMSYS_MT6991)
-			mtk_atomic_doze_update_spr(crtc);
 
-		if (mtk_crtc_state->disp_mode_changed) {
+		if (mtk_crtc_state->disp_mode_changed)
 			mtk_vidle_hint_update(VIDLE_HINT_MODE_SWITCH);
-			mtk_vidle_user_power_keep(DISP_VIDLE_USER_DISP_DPC_CFG | VOTER_ONLY);
-		} else
-			mtk_vidle_user_power_release_by_gce(DISP_VIDLE_USER_DISP_DPC_CFG, mtk_crtc_state->cmdq_handle);
 
 		/* disable vidle by special case debounce, or enable after mtcmos on debounce */
 		mtk_vidle_hint_decision(__func__);
@@ -20718,6 +20721,8 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 		mtk_bwm_get_compress_ratio(crtc, priv, cmdq_handle);
 #endif
 
+	mtk_vidle_user_power_release_by_gce(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle);
+
 #ifdef MTK_DRM_CMDQ_ASYNC
 #ifdef MTK_DRM_ASYNC_HANDLE
 	if (gce_cb) {
@@ -22128,7 +22133,8 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 		drm_trace_tag_value("update_present_fence",
 			mtk_crtc_state->prop_val[CRTC_PROP_PRES_FENCE_IDX]);
 
-		mtk_vidle_user_power_keep(DISP_VIDLE_USER_FOR_FRAME | VOTER_ONLY);
+		// if (mtk_crtc_state->prop_val[CRTC_PROP_PRES_FENCE_IDX] > 0)
+		//	mtk_vidle_user_power_keep(DISP_VIDLE_USER_FOR_FRAME | VOTER_ONLY);
 	}
 
 	/* for wfd latency debug */
@@ -22234,8 +22240,6 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 		}
 	}
 #endif
-
-	mtk_vidle_user_power_release_by_gce(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle);
 
 	mtk_drm_idlemgr_kick(__func__, crtc, false); /* update kick timestamp */
 

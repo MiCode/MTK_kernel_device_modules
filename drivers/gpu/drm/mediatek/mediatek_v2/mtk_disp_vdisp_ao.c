@@ -180,6 +180,7 @@ static void mtk_vdisp_ao_prepare(struct mtk_ddp_comp *comp)
 
 static void mtk_vdisp_ao_unprepare(struct mtk_ddp_comp *comp)
 {
+	writel(0, vdisp_ao_base + DISP_REG_VDISP_AO_INTEN);
 	mtk_ddp_comp_clk_unprepare(comp);
 }
 

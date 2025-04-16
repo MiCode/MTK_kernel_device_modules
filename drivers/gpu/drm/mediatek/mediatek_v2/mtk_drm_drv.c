@@ -11089,6 +11089,8 @@ int mtk_drm_ioctl_retrig(struct drm_device *dev, void *data,
 	CRTC_MMP_MARK((int) crtc_idx, update_present_fence, 0, retrig->present_fence_idx);
 	drm_trace_tag_value("update_present_fence", retrig->present_fence_idx);
 
+	// mtk_vidle_user_power_keep(DISP_VIDLE_USER_FOR_FRAME | VOTER_ONLY);
+
 	cmdq_pkt_set_event(cmdq_handle, mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
 
 	mtk_vidle_user_power_release_by_gce(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle);
