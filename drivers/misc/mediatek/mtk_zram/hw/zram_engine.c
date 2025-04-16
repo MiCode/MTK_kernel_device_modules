@@ -337,7 +337,7 @@ static irqreturn_t comp_irq_handler(int irq, void *data)
 	pr_info("%s\n", __func__);
 #endif
 
-	if (engine_irq_off(&hwz->ctrl)) {
+	if (engine_enc_irq_off(&hwz->ctrl)) {
 #ifdef ZRAM_ENGINE_DEBUG
 		pr_info("%s: irq is off!\n", __func__);
 #endif
@@ -373,7 +373,7 @@ static irqreturn_t dcomp_irq_handler(int irq, void *data)
 	pr_info("%s\n", __func__);
 #endif
 
-	if (engine_irq_off(&hwz->ctrl)) {
+	if (engine_dec_irq_off(&hwz->ctrl)) {
 #ifdef ZRAM_ENGINE_DEBUG
 		pr_info("%s: irq is off!\n", __func__);
 #endif
@@ -412,7 +412,7 @@ static irqreturn_t smmu_irq_handler(int irq, void *data)
 	if (!hwz)
 		return IRQ_HANDLED;
 
-	if (engine_irq_off(&hwz->ctrl)) {
+	if (engine_enc_irq_off(&hwz->ctrl) && engine_dec_irq_off(&hwz->ctrl)) {
 #ifdef ZRAM_ENGINE_DEBUG
 		pr_info("%s: irq is off!\n", __func__);
 #endif
@@ -847,7 +847,7 @@ static int dcomp_post_process(void *data)
 		}
 
 #ifndef FPGA_EMULATION
-		WARN_ON(engine_gear_enable_clock_disable_irq(&hwz->ctrl, &hwz->gear_ctrl, false) != 0);
+		WARN_ON(engine_gear_dec_enable_clock_disable_irq(&hwz->ctrl, &hwz->gear_ctrl) != 0);
 #endif
 
 		/* Reset total_processed */
@@ -917,7 +917,7 @@ repeat:
 		 * Disable clock for zram engine -
 		 * Paired with the one in dcomp_post_process. (decrease the ref count by "total_processed + 1")
 		 */
-		engine_gear_disable_clock_by_cnt(&hwz->ctrl, &hwz->gear_ctrl, total_processed + 1);
+		engine_gear_dec_disable_clock_by_cnt(&hwz->ctrl, &hwz->gear_ctrl, total_processed + 1);
 #endif
 	}
 
@@ -1263,7 +1263,7 @@ static int comp_post_process(void *data)
 		}
 
 #ifndef FPGA_EMULATION
-		WARN_ON(engine_gear_enable_clock_disable_irq(&hwz->ctrl, &hwz->gear_ctrl, true) != 0);
+		WARN_ON(engine_gear_enc_enable_clock_disable_irq(&hwz->ctrl, &hwz->gear_ctrl) != 0);
 #endif
 
 		/* Reset total_processed */
@@ -1336,7 +1336,7 @@ repeat:
 		 * Disable clock for zram engine -
 		 * Paired with the one in comp_post_process. (decrease the ref count by "total_processed + 1")
 		 */
-		engine_gear_disable_clock_by_cnt(&hwz->ctrl, &hwz->gear_ctrl, total_processed + 1);
+		engine_gear_enc_disable_clock_by_cnt(&hwz->ctrl, &hwz->gear_ctrl, total_processed + 1);
 #endif
 	}
 
@@ -1399,7 +1399,7 @@ next_dcmd:
 	 * if possible before committing the request.
 	 */
 #ifndef FPGA_EMULATION
-	WARN_ON(engine_gear_enable_clock(&hwz->ctrl, &hwz->gear_ctrl) != 0);
+	WARN_ON(engine_gear_dec_enable_clock(&hwz->ctrl, &hwz->gear_ctrl) != 0);
 #endif
 
 	/* Increment the number of decompression request */
@@ -1440,7 +1440,7 @@ next_dcmd:
 		 * HW register access per request now.
 		 */
 #ifndef FPGA_EMULATION
-		engine_gear_disable_clock(&hwz->ctrl, &hwz->gear_ctrl);
+		engine_gear_dec_disable_clock(&hwz->ctrl, &hwz->gear_ctrl);
 #endif
 	}
 
@@ -1528,7 +1528,7 @@ next_dcmd:
 	 * if possible before committing the request.
 	 */
 #ifndef FPGA_EMULATION
-	WARN_ON(engine_gear_enable_clock(&hwz->ctrl, &hwz->gear_ctrl) != 0);
+	WARN_ON(engine_gear_dec_enable_clock(&hwz->ctrl, &hwz->gear_ctrl) != 0);
 #endif
 
 	/*
@@ -1604,7 +1604,7 @@ next_cmd_fifo:
 	 * Increment the usage count and enable the gear clock
 	 * if possible before committing the request.
 	 */
-	WARN_ON(engine_gear_enable_clock(&hwz->ctrl, &hwz->gear_ctrl) != 0);
+	WARN_ON(engine_gear_enc_enable_clock(&hwz->ctrl, &hwz->gear_ctrl) != 0);
 #endif
 
 	/*
@@ -1648,7 +1648,7 @@ next_cmd_pfifo:
 	 * Increment the usage count and enable the gear clock
 	 * if possible before committing the request.
 	 */
-	WARN_ON(engine_gear_enable_clock(&hwz->ctrl, &hwz->gear_ctrl) != 0);
+	WARN_ON(engine_gear_enc_enable_clock(&hwz->ctrl, &hwz->gear_ctrl) != 0);
 #endif
 
 	/*

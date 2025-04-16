@@ -136,66 +136,22 @@ int engine_gear_init(struct platform_device *pdev, struct engine_gear_control_t 
 	return 0;
 }
 
-/* Disable clk mux for engine (can be called in atomic context) */
-void engine_gear_disable_clock(struct engine_control_t *ctrl,
-		struct engine_gear_control_t *gear_ctrl)
-{
-	spin_lock(&gear_ctrl->lock);
-
-	/* It's forbidden to proceed when clk_usage is 0 */
-	if (gear_ctrl->clk_usage == 0)
-		goto exit;
-
-	/* Sequence: power off -> disable clock */
-	if (--gear_ctrl->clk_usage == 0) {
-
-		/* Wait for HW lat_fifo empty */
-		engine_enc_wait_idle(ctrl);
-		engine_dec_wait_idle(ctrl);
-
-		/* IRQ is not available now */
-		engine_set_irq_off(ctrl, true, true);
-
-		/* Try to power off HW engine */
-		if (engine_power_efficiency_enabled()) {
-			engine_power_off(ctrl);
-			gear_ctrl->power_on = false;
-		}
-
-		/* It's safe to disable clock now */
-		clk_disable(gear_ctrl->clk_mux);
-	}
-
-exit:
-	spin_unlock(&gear_ctrl->lock);
-}
-
 /*
  * Disable clk mux for engine by cnt (can be called in atomic context)
- * Used by post process batch counting and enable IRQ if necessary.
- * Should be paired with engine_gear_enable_clock_disable_irq.
+ * Should be called under gear_ctrl->lock acquired.
  */
-void engine_gear_disable_clock_by_cnt(struct engine_control_t *ctrl,
+static inline void __engine_gear_disable_clock_by_cnt(struct engine_control_t *ctrl,
 		struct engine_gear_control_t *gear_ctrl, uint32_t cnt)
 {
-	spin_lock(&gear_ctrl->lock);
-
 	/* It's forbidden to make clk_usage underflow */
 	if (gear_ctrl->clk_usage < cnt)
-		goto exit;
+		return;
 
 	gear_ctrl->clk_usage -= cnt;
 
 	/* Sequence: power off -> disable clock */
 	if (gear_ctrl->clk_usage == 0) {
 
-		/* Wait for HW lat_fifo empty */
-		engine_enc_wait_idle(ctrl);
-		engine_dec_wait_idle(ctrl);
-
-		/* IRQ is not available now */
-		engine_set_irq_off(ctrl, true, true);
-
 		/* Try to power off HW engine */
 		if (engine_power_efficiency_enabled()) {
 			engine_power_off(ctrl);
@@ -204,10 +160,184 @@ void engine_gear_disable_clock_by_cnt(struct engine_control_t *ctrl,
 
 		/* It's safe to disable clock now */
 		clk_disable(gear_ctrl->clk_mux);
-	} else {
-		/* IRQ is restored to be available now */
-		engine_set_irq_on(ctrl, true, true);
 	}
+}
+
+/* Main entry to disable clks for compression (can be called in atomic context) */
+void engine_gear_enc_disable_clock(struct engine_control_t *ctrl,
+		struct engine_gear_control_t *gear_ctrl)
+{
+	spin_lock(&gear_ctrl->lock);
+
+	/* It's forbidden to proceed when enc_clk_usage is 0 */
+	if (gear_ctrl->enc_clk_usage == 0)
+		goto exit;
+
+	if (--gear_ctrl->enc_clk_usage == 0) {
+
+		/* Wait for HW lat_fifo empty */
+		engine_enc_wait_idle(ctrl);
+
+		/* IRQ is not available for compression now */
+		engine_set_irq_off(ctrl, true, false);
+
+		/* Disable partial clk for compression */
+		engine_clock_partial_disable(ctrl, ENGINE_CLK_ENC);
+	}
+
+	/* Sequence: disable partial clk -> disable clk mux */
+	__engine_gear_disable_clock_by_cnt(ctrl, gear_ctrl, 1);
+
+exit:
+	spin_unlock(&gear_ctrl->lock);
+}
+
+/* Main entry to disable clks for decompression (can be called in atomic context) */
+void engine_gear_dec_disable_clock(struct engine_control_t *ctrl,
+		struct engine_gear_control_t *gear_ctrl)
+{
+	spin_lock(&gear_ctrl->lock);
+
+	/* It's forbidden to proceed when dec_clk_usage is 0 */
+	if (gear_ctrl->dec_clk_usage == 0)
+		goto exit;
+
+	if (--gear_ctrl->dec_clk_usage == 0) {
+
+		/* Wait for HW lat_fifo empty */
+		engine_dec_wait_idle(ctrl);
+
+		/* IRQ is not available for decompression now */
+		engine_set_irq_off(ctrl, false, true);
+
+		/* Disable partial clk for decompression */
+		engine_clock_partial_disable(ctrl, ENGINE_CLK_DEC);
+	}
+
+	/* Sequence: disable partial clk -> disable clk mux */
+	__engine_gear_disable_clock_by_cnt(ctrl, gear_ctrl, 1);
+
+exit:
+	spin_unlock(&gear_ctrl->lock);
+}
+
+/*
+ * Main entry to disable clks for engine (can be called in atomic context)
+ * Should be paired with engine_gear_enable_clock.
+ */
+void engine_gear_disable_clock(struct engine_control_t *ctrl,
+		struct engine_gear_control_t *gear_ctrl)
+{
+	spin_lock(&gear_ctrl->lock);
+
+	/* It's forbidden to proceed when enc_clk_usage or dec_clk_usage is 0 */
+	if (gear_ctrl->enc_clk_usage == 0 || gear_ctrl->dec_clk_usage == 0)
+		goto exit;
+
+	if (--gear_ctrl->enc_clk_usage == 0) {
+
+		/* Wait for HW lat_fifo empty */
+		engine_enc_wait_idle(ctrl);
+
+		/* IRQ is not available for compression now */
+		engine_set_irq_off(ctrl, true, false);
+
+		/* Disable partial clk for compression */
+		engine_clock_partial_disable(ctrl, ENGINE_CLK_ENC);
+	}
+
+	if (--gear_ctrl->dec_clk_usage == 0) {
+
+		/* Wait for HW lat_fifo empty */
+		engine_dec_wait_idle(ctrl);
+
+		/* IRQ is not available for decompression now */
+		engine_set_irq_off(ctrl, false, true);
+
+		/* Disable partial clk for decompression */
+		engine_clock_partial_disable(ctrl, ENGINE_CLK_DEC);
+	}
+
+	/* Sequence: disable partial clk -> disable clk mux */
+	__engine_gear_disable_clock_by_cnt(ctrl, gear_ctrl, 2);
+
+exit:
+	spin_unlock(&gear_ctrl->lock);
+}
+
+/*
+ * Main entry to disable clks for compression by cnt (can be called in atomic context)
+ * Used by post process batch counting and enable IRQ if necessary.
+ * Should be paired with engine_gear_enc_enable_clock_disable_irq.
+ */
+void engine_gear_enc_disable_clock_by_cnt(struct engine_control_t *ctrl,
+		struct engine_gear_control_t *gear_ctrl, uint32_t cnt)
+{
+	spin_lock(&gear_ctrl->lock);
+
+	/* It's forbidden to make enc_clk_usage underflow */
+	if (gear_ctrl->enc_clk_usage < cnt)
+		goto exit;
+
+	gear_ctrl->enc_clk_usage -= cnt;
+
+	if (gear_ctrl->enc_clk_usage == 0) {
+
+		/* Wait for HW lat_fifo empty */
+		engine_enc_wait_idle(ctrl);
+
+		/* IRQ is not available for compression now */
+		engine_set_irq_off(ctrl, true, false);
+
+		/* Disable partial clk for compression */
+		engine_clock_partial_disable(ctrl, ENGINE_CLK_ENC);
+
+	} else {
+		/* IRQ is restored to be available for compression now */
+		engine_set_irq_on(ctrl, true, false);
+	}
+
+	/* Sequence: disable partial clk -> disable clk mux */
+	__engine_gear_disable_clock_by_cnt(ctrl, gear_ctrl, cnt);
+
+exit:
+	spin_unlock(&gear_ctrl->lock);
+}
+
+/*
+ * Main entry to disable clks for decompression by cnt (can be called in atomic context)
+ * Used by post process batch counting and enable IRQ if necessary.
+ * Should be paired with engine_gear_dec_enable_clock_disable_irq.
+ */
+void engine_gear_dec_disable_clock_by_cnt(struct engine_control_t *ctrl,
+		struct engine_gear_control_t *gear_ctrl, uint32_t cnt)
+{
+	spin_lock(&gear_ctrl->lock);
+
+	/* It's forbidden to make dec_clk_usage underflow */
+	if (gear_ctrl->dec_clk_usage < cnt)
+		goto exit;
+
+	gear_ctrl->dec_clk_usage -= cnt;
+
+	if (gear_ctrl->dec_clk_usage == 0) {
+
+		/* Wait for HW lat_fifo empty */
+		engine_dec_wait_idle(ctrl);
+
+		/* IRQ is not available for decompression now */
+		engine_set_irq_off(ctrl, false, true);
+
+		/* Disable partial clk for decompression */
+		engine_clock_partial_disable(ctrl, ENGINE_CLK_DEC);
+
+	} else {
+		/* IRQ is restored to be available for decompression now */
+		engine_set_irq_on(ctrl, false, true);
+	}
+
+	/* Sequence: disable partial clk -> disable clk mux */
+	__engine_gear_disable_clock_by_cnt(ctrl, gear_ctrl, cnt);
 
 exit:
 	spin_unlock(&gear_ctrl->lock);
@@ -607,8 +737,8 @@ int engine_gear_get_status(struct engine_gear_control_t *gear_ctrl, char *buf)
 
 	spin_lock(&gear_ctrl->lock);
 
-	ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied, "clk_usage: %u\n",
-			gear_ctrl->clk_usage);
+	ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied, "clk_usage: %u(%u)(%u)\n",
+			gear_ctrl->clk_usage, gear_ctrl->enc_clk_usage, gear_ctrl->dec_clk_usage);
 	ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied, "enc_wish_gear: %u\n",
 			gear_ctrl->enc_wish_gear);
 	ZRAM_DEBUG_DUMP(buf, copied, buf + copied, PAGE_SIZE - copied, "dec_wish_gear: %u\n",

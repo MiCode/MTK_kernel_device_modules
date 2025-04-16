@@ -29,7 +29,8 @@ struct engine_control_t {
 	uint32_t dec_irq_setting;
 
 	/* Control by gear enable/disable clock */
-	atomic_t irq_status;
+	atomic_t enc_irq_status;
+	atomic_t dec_irq_status;
 
 	/* Use smmu s2 or not */
 	bool smmu_s2;
@@ -67,6 +68,7 @@ struct engine_error_t {
 
 // ---------------------- ZRAM_CONFIG Definitions ---------------------- //
 #define	ZRAM_CONFIG_ZRAM_CG_CON0				0x0100
+#define	ZRAM_CONFIG_ZRAM_CG_SET0				0x0104
 #define	ZRAM_CONFIG_ZRAM_CG_CLR0				0x0108
 #define	ZRAM_CONFIG_ZRAM_CG_CON1				0x0110
 #define	ZRAM_CONFIG_ZRAM_CG_CLR1				0x0118
@@ -369,42 +371,50 @@ void engine_get_smmu_reg_dump(struct engine_control_t *ctrl, struct seq_file *s)
 /* Whether IRQ is available */
 #define ENGINE_IRQ_ON	(0x1)	// Set when clk is enabled
 #define ENGINE_IRQ_OFF	(0x0)	// Set when clk is disabled
-static inline bool engine_irq_off(struct engine_control_t *ctrl)
+static inline bool engine_enc_irq_off(struct engine_control_t *ctrl)
 {
-	return (atomic_read(&ctrl->irq_status) == ENGINE_IRQ_OFF);
+	return (atomic_read(&ctrl->enc_irq_status) == ENGINE_IRQ_OFF);
+}
+
+static inline bool engine_dec_irq_off(struct engine_control_t *ctrl)
+{
+	return (atomic_read(&ctrl->dec_irq_status) == ENGINE_IRQ_OFF);
 }
 
 static inline void engine_set_irq_on(struct engine_control_t *ctrl, bool enc_on, bool dec_on)
 {
-	/* ISR is allowed to work */
-	if (enc_on || dec_on)
-		atomic_set(&ctrl->irq_status, ENGINE_IRQ_ON);
-
 	/* Enable engine ENC interrupt */
-	if (enc_on)
+	if (enc_on) {
+		/* ENC ISR is allowed to work */
+		atomic_set(&ctrl->enc_irq_status, ENGINE_IRQ_ON);
 		writel(ctrl->enc_irq_setting, ctrl->zram_enc_base + ZRAM_ENC_IRQ_EN);
+	}
 
 	/* Enable engine DEC interrupt */
-	if (dec_on)
+	if (dec_on) {
+		/* DEC ISR is allowed to work */
+		atomic_set(&ctrl->dec_irq_status, ENGINE_IRQ_ON);
 		writel(ctrl->dec_irq_setting, ctrl->zram_dec_base + ZRAM_DEC_IRQ_EN);
+	}
 }
 
 static inline void engine_set_irq_off(struct engine_control_t *ctrl, bool enc_off, bool dec_off)
 {
 	/* Disable engine ENC interrupt */
-	if (enc_off)
+	if (enc_off) {
 		writel(0x0, ctrl->zram_enc_base + ZRAM_ENC_IRQ_EN);
-
-	/* Disable engine DEC interrupt */
-	if (dec_off)
-		writel(0x0, ctrl->zram_dec_base + ZRAM_DEC_IRQ_EN);
-
-	/* ISR is not allowed to work */
-	if (enc_off && dec_off) {
-		atomic_set(&ctrl->irq_status, ENGINE_IRQ_OFF);
-
+		/* ENC ISR is not allowed to work */
+		atomic_set(&ctrl->enc_irq_status, ENGINE_IRQ_OFF);
 		/* Clear avoid pending IRQs */
 		writel(0x0, ctrl->zram_enc_base + ZRAM_ENC_IRQ_STATUS);
+	}
+
+	/* Disable engine DEC interrupt */
+	if (dec_off) {
+		writel(0x0, ctrl->zram_dec_base + ZRAM_DEC_IRQ_EN);
+		/* DEC ISR is not allowed to work */
+		atomic_set(&ctrl->dec_irq_status, ENGINE_IRQ_OFF);
+		/* Clear avoid pending IRQs */
 		writel(0x0, ctrl->zram_dec_base + ZRAM_DEC_IRQ_STATUS);
 	}
 }
@@ -579,6 +589,32 @@ static inline void engine_set_offset_as_complete(void __iomem *offset_idx_reg, v
 static inline void engine_set_offset_index(void __iomem *offset_idx_reg, uint32_t reg_val)
 {
 	writel(reg_val, offset_idx_reg);
+}
+
+/* Values for CLK set/clr */
+#define ENGINE_CLK_DEC	(0x2)	/* bit[1] */
+#define ENGINE_CLK_ENC	(0x4)	/* bit[2] */
+
+/*
+ * Enable clock for compression or decompression partially.
+ * val -
+ *      ENGINE_CLK_DEC: enable clk for decompression
+ *      ENGINE_CLK_ENC: enable clk for compression
+ */
+static inline void engine_clock_partial_enable(struct engine_control_t *ctrl, uint32_t val)
+{
+	writel(val, ctrl->zram_config_base + ZRAM_CONFIG_ZRAM_CG_CLR0);
+}
+
+/*
+ * Disable clock for compression or decompression partially
+ * val -
+ *      ENGINE_CLK_DEC: disable clk for decompression
+ *      ENGINE_CLK_ENC: disable clk for compression
+ */
+static inline void engine_clock_partial_disable(struct engine_control_t *ctrl, uint32_t val)
+{
+	writel(val, ctrl->zram_config_base + ZRAM_CONFIG_ZRAM_CG_SET0);
 }
 
 #endif /* _ENGINE_REGS_H_ */

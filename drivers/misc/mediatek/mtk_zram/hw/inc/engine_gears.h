@@ -34,6 +34,8 @@ struct engine_gear_control_t {
 
 	/* gear status */
 	uint32_t clk_usage;
+	uint32_t enc_clk_usage;
+	uint32_t dec_clk_usage;
 	uint32_t enc_wish_gear;
 	uint32_t dec_wish_gear;
 	uint32_t curr_gear;			/* max(curr_enc_gear, curr_dec_gear) or manually */
@@ -143,16 +145,17 @@ static inline int engine_gear_power_off(struct engine_control_t *ctrl,
 	return ret;
 }
 
-/* Enable clk mux for engine (can be called in atomic context) */
-static inline int engine_gear_enable_clock(struct engine_control_t *ctrl,
-		struct engine_gear_control_t *gear_ctrl)
+/*
+ * Enable clk mux for engine by cnt (can be called in atomic context).
+ * Should be called under gear_ctrl->lock acquired.
+ */
+static inline int __engine_gear_enable_clock_by_cnt(struct engine_control_t *ctrl,
+		struct engine_gear_control_t *gear_ctrl, uint32_t cnt)
 {
 	int ret = 0;
 
-	spin_lock(&gear_ctrl->lock);
-
 	/* Sequence: enable clock -> power on */
-	if (gear_ctrl->clk_usage++ == 0) {
+	if (gear_ctrl->clk_usage == 0) {
 
 		ret = clk_enable(gear_ctrl->clk_mux);
 
@@ -161,10 +164,95 @@ static inline int engine_gear_enable_clock(struct engine_control_t *ctrl,
 			if (!ret)
 				gear_ctrl->power_on = true;
 		}
+	}
 
-		/* IRQ is available now */
-		if (!ret)
-			engine_set_irq_on(ctrl, true, true);
+	/* Increment the clk_usage without the check of ret (intentional) */
+	gear_ctrl->clk_usage += cnt;
+
+	return ret;
+}
+
+/* Main entry to enable clks for compression (can be called in atomic context) */
+static inline int engine_gear_enc_enable_clock(struct engine_control_t *ctrl,
+		struct engine_gear_control_t *gear_ctrl)
+{
+	int ret = -1;
+
+	spin_lock(&gear_ctrl->lock);
+
+	/* Sequence: enable clk mux -> enable partial clk */
+	ret = __engine_gear_enable_clock_by_cnt(ctrl, gear_ctrl, 1);
+
+	if (!ret && gear_ctrl->enc_clk_usage++ == 0) {
+
+		/* Enable partial clk for compression */
+		engine_clock_partial_enable(ctrl, ENGINE_CLK_ENC);
+
+		/* IRQ is available for compression now */
+		engine_set_irq_on(ctrl, true, false);
+	}
+
+	spin_unlock(&gear_ctrl->lock);
+
+	return ret;
+}
+
+/* Main entry to enable clks for decompression (can be called in atomic context) */
+static inline int engine_gear_dec_enable_clock(struct engine_control_t *ctrl,
+		struct engine_gear_control_t *gear_ctrl)
+{
+	int ret = -1;
+
+	spin_lock(&gear_ctrl->lock);
+
+	/* Sequence: enable clk mux -> enable partial clk */
+	ret = __engine_gear_enable_clock_by_cnt(ctrl, gear_ctrl, 1);
+
+	if (!ret && gear_ctrl->dec_clk_usage++ == 0) {
+
+		/* Enable partial clk for decompression */
+		engine_clock_partial_enable(ctrl, ENGINE_CLK_DEC);
+
+		/* IRQ is available for decompression now */
+		engine_set_irq_on(ctrl, false, true);
+	}
+
+	spin_unlock(&gear_ctrl->lock);
+
+	return ret;
+}
+
+/* Main entry to enable clks for engine (can be called in atomic context) */
+static inline int engine_gear_enable_clock(struct engine_control_t *ctrl,
+		struct engine_gear_control_t *gear_ctrl)
+{
+	int ret = -1;
+
+	spin_lock(&gear_ctrl->lock);
+
+	/* Sequence: enable clk mux -> enable partial clk */
+	ret = __engine_gear_enable_clock_by_cnt(ctrl, gear_ctrl, 2);
+
+	if (!ret) {
+		/* Compression part */
+		if (gear_ctrl->enc_clk_usage++ == 0) {
+
+			/* Enable partial clk for compression */
+			engine_clock_partial_enable(ctrl, ENGINE_CLK_ENC);
+
+			/* IRQ is available for compression now */
+			engine_set_irq_on(ctrl, true, false);
+		}
+
+		/* Decompression part */
+		if (gear_ctrl->dec_clk_usage++ == 0) {
+
+			/* Enable partial clk for decompression */
+			engine_clock_partial_enable(ctrl, ENGINE_CLK_DEC);
+
+			/* IRQ is available for decompression now */
+			engine_set_irq_on(ctrl, false, true);
+		}
 	}
 
 	spin_unlock(&gear_ctrl->lock);
@@ -173,46 +261,56 @@ static inline int engine_gear_enable_clock(struct engine_control_t *ctrl,
 }
 
 /*
- * Enable clk mux for engine (can be called in atomic context)
- * Used by post process to disable IRQ when it starts processing.
+ * Main entry to enable clks for compression (can be called in atomic context)
+ * Used by post process to disable compression IRQ when it starts processing.
  */
-static inline int engine_gear_enable_clock_disable_irq(struct engine_control_t *ctrl,
-		struct engine_gear_control_t *gear_ctrl, bool by_enc)
+static inline int engine_gear_enc_enable_clock_disable_irq(struct engine_control_t *ctrl,
+		struct engine_gear_control_t *gear_ctrl)
 {
-	int ret = 0;
+	int ret = -1;
 
 	spin_lock(&gear_ctrl->lock);
 
-	/* Sequence: enable clock -> power on */
-	if (gear_ctrl->clk_usage++ == 0) {
+	/* Sequence: enable clk mux -> enable partial clk */
+	ret = __engine_gear_enable_clock_by_cnt(ctrl, gear_ctrl, 1);
 
-		ret = clk_enable(gear_ctrl->clk_mux);
-
-		if (engine_power_efficiency_enabled() && !ret) {
-			ret = engine_power_on(ctrl);
-			if (!ret)
-				gear_ctrl->power_on = true;
+	if (!ret) {
+		if (gear_ctrl->enc_clk_usage++ == 0) {
+			/* Enable partial clk for compression */
+			engine_clock_partial_enable(ctrl, ENGINE_CLK_ENC);
+		} else {
+			/* IRQ is not necessary for compression now */
+			engine_set_irq_off(ctrl, true, false);
 		}
+	}
 
-		/*
-		 * IRQ is available now by case (enc or dec) -
-		 * by_enc == true : engine_set_irq_on(ctrl, false, true);
-		 * 	(-> only enable DEC interrupt)
-		 * by_enc == false: engine_set_irq_on(ctrl, true, false);
-		 * 	(-> only enable ENC interrupt)
-		 */
-		if (!ret)
-			engine_set_irq_on(ctrl, !by_enc, by_enc);
+	spin_unlock(&gear_ctrl->lock);
 
-	} else {
-		/*
-		 * IRQ is not available now by case (enc or dec)
-		 * by_enc == true : engine_set_irq_off(ctrl, true, false);
-		 * 	(-> only disable ENC interrupt)
-		 * by_enc == false: engine_set_irq_off(ctrl, false, true);
-		 * 	(-> only disable DEC interrupt)
-		 */
-		engine_set_irq_off(ctrl, by_enc, !by_enc);
+	return ret;
+}
+
+/*
+ * Main entry to enable clks for decompression (can be called in atomic context)
+ * Used by post process to disable decompression IRQ when it starts processing.
+ */
+static inline int engine_gear_dec_enable_clock_disable_irq(struct engine_control_t *ctrl,
+		struct engine_gear_control_t *gear_ctrl)
+{
+	int ret = -1;
+
+	spin_lock(&gear_ctrl->lock);
+
+	/* Sequence: enable clk mux -> enable partial clk */
+	ret = __engine_gear_enable_clock_by_cnt(ctrl, gear_ctrl, 1);
+
+	if (!ret) {
+		if (gear_ctrl->dec_clk_usage++ == 0) {
+			/* Enable partial clk for decompression */
+			engine_clock_partial_enable(ctrl, ENGINE_CLK_DEC);
+		} else {
+			/* IRQ is not necessary for decompression now */
+			engine_set_irq_off(ctrl, false, true);
+		}
 	}
 
 	spin_unlock(&gear_ctrl->lock);
@@ -221,8 +319,12 @@ static inline int engine_gear_enable_clock_disable_irq(struct engine_control_t *
 }
 
 /* Disable clk mux for engine (can be called in atomic context) */
+void engine_gear_enc_disable_clock(struct engine_control_t *ctrl, struct engine_gear_control_t *gear_ctrl);
+void engine_gear_dec_disable_clock(struct engine_control_t *ctrl, struct engine_gear_control_t *gear_ctrl);
 void engine_gear_disable_clock(struct engine_control_t *ctrl, struct engine_gear_control_t *gear_ctrl);
-void engine_gear_disable_clock_by_cnt(struct engine_control_t *ctrl,
+void engine_gear_enc_disable_clock_by_cnt(struct engine_control_t *ctrl,
+		struct engine_gear_control_t *gear_ctrl, uint32_t cnt);
+void engine_gear_dec_disable_clock_by_cnt(struct engine_control_t *ctrl,
 		struct engine_gear_control_t *gear_ctrl, uint32_t cnt);
 
 /* Gear up or down */
