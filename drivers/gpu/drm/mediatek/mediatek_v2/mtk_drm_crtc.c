@@ -7450,12 +7450,14 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 		       mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_CUR_HRT_IDX),
 		       crtc_state->prop_val[CRTC_PROP_LYE_IDX], ~0);
 
-	if (priv->mtk_dbgtp_sta.is_cam_hrt_issue) {
+	if (priv->mtk_dbgtp_sta.is_cam_hrt_issue &&
+		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_HRT_DEBUG)) {
 		priv->mtk_dbgtp_sta.cam_hrt_time_count--;
 		if (priv->mtk_dbgtp_sta.cam_hrt_time_count <= 0) {
 			DDPMSG("After cam issues delay enable dbgtp\n");
 			/* Enable dbgtp en config */
 			priv->mtk_dbgtp_sta.dbgtp_en = true;
+			mtk_dbgtp_update(priv);
 			/* Clear dsi underrun slot */
 			addr = mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_UNDERRUNED);
 			*addr = 0;
@@ -7465,12 +7467,14 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 		}
 	}
 
-	if (priv->mtk_dbgtp_sta.is_disp_hrt_issue) {
+	if (priv->mtk_dbgtp_sta.is_disp_hrt_issue &&
+		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_HRT_DEBUG)) {
 		priv->mtk_dbgtp_sta.disp_hrt_time_count--;
 		if (priv->mtk_dbgtp_sta.disp_hrt_time_count <= 0) {
 			DDPMSG("After DSI underrun delay enable dbgtp\n");
 			/* Enable dbgtp en config */
 			priv->mtk_dbgtp_sta.dbgtp_en = true;
+			mtk_dbgtp_update(priv);
 			/* Clear dsi underrun slot */
 			addr = mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_UNDERRUNED);
 			*addr = 0;
@@ -19101,7 +19105,8 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 
 #ifndef DRM_CMDQ_DISABLE
 	/* Display Debug Top and FIFO mon config */
-	if (priv->data->mmsys_id == MMSYS_MT6993) {
+	if ((priv->data->mmsys_id == MMSYS_MT6993) &&
+		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_HRT_DEBUG)) {
 		if ((priv->mtk_dbgtp_sta.fifo_mon_en[0]) && (crtc_idx == 0))
 			mtk_dbgtp_fifo_mon_config(mtk_crtc, mtk_crtc_state->cmdq_handle);
 		mtk_dbgtp_config(mtk_crtc, mtk_crtc_state->cmdq_handle);
