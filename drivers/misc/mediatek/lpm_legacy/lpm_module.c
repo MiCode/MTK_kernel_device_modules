@@ -125,7 +125,7 @@ static int lpm_cpuidle_state_percpu_set(int cpu, struct lpm_module_reg *p)
 	drv = cpuidle_get_driver();
 
 	if (!drv || !fp) {
-		pr_info("[name:mtk_lpm][P] - cpuidle state register fail (%s:%d)\n",
+		pr_err("[name:mtk_lpm][P] - cpuidle state register fail (%s:%d)\n",
 					__func__, __LINE__);
 		return -EINVAL;
 	}
@@ -139,11 +139,13 @@ static int lpm_cpuidle_state_percpu_set(int cpu, struct lpm_module_reg *p)
 		}
 
 		ptr = &per_cpu(lpm_cstate, cpu);
+
 		if (fp->state) {
 			ptr->cpuidle[idx] = drv->states[idx].enter;
 			drv->states[idx].enter = fp->state;
-			pr_info("%s state set cpu %d", __func__, cpu);
-		}
+		} else
+			pr_info("[%s]:state set failed for cpu [%d]\n", __func__, cpu);
+
 		if (fp->s2idle) {
 			ptr->s2idle[idx] = drv->states[idx].enter_s2idle;
 			drv->states[idx].enter_s2idle = fp->s2idle;
@@ -161,7 +163,7 @@ static int lpm_model_percpu_set(int cpu, struct lpm_module_reg *p)
 	drv = cpuidle_get_driver();
 
 	if (!drv) {
-		pr_info("[name:mtk_lpm][P] - cpuidle drv is null (%s:%d)\n",
+		pr_err("[name:mtk_lpm][P] - cpuidle drv is null (%s:%d)\n",
 					__func__, __LINE__);
 		return -EINVAL;
 	}
