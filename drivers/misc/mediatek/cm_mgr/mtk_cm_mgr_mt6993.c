@@ -61,8 +61,11 @@ static struct cm_mgr_hook local_hk;
 u32 *cm_mgr_perfs;
 
 void __iomem *csram_base;
+static void __iomem *qos_sram_base;
 u32 cm_vendor_id, cm_mem_info, cm_num_opp, nr_vc0, nr_vc1, nr_bound;
 u32 *cm_mem_support, *cm_mem_dynamic, *cm_mem_capacity, *cm_mem_bound;
+/* only for debug use*/
+struct cm_profile_info info;
 /*****************************************************************************
  *  Platform functions
  *****************************************************************************/
@@ -329,6 +332,86 @@ void csram_write(unsigned int offs, unsigned int val)
 	__raw_writel(val, csram_base + (offs));
 }
 
+static int cm_get_qos_base(void)
+{
+	int ret = 0;
+	struct device_node *dn = NULL;
+	struct platform_device *pdev = NULL;
+	struct resource *csram_res = NULL;
+
+	/* get cpufreq driver base address */
+	dn = of_find_node_by_name(NULL, "qos");
+	if (!dn) {
+		ret = -ENOMEM;
+		pr_info("find qos node failed\n");
+		goto ERROR;
+	}
+
+	pdev = of_find_device_by_node(dn);
+	of_node_put(dn);
+	if (!pdev) {
+		ret = -ENODEV;
+		pr_info("qos is not ready\n");
+		goto ERROR;
+	}
+
+	csram_res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!csram_res) {
+		ret = -ENODEV;
+		pr_info("qos resource is not found\n");
+		goto ERROR;
+	}
+
+	qos_sram_base = ioremap(csram_res->start, resource_size(csram_res));
+	if (IS_ERR_OR_NULL((void *)qos_sram_base)) {
+		ret = -ENOMEM;
+		pr_info("find csram base failed\n");
+		goto ERROR;
+	}
+
+ERROR:
+	return ret;
+}
+
+unsigned int cm_qosram_read(unsigned int offs)
+{
+	if (IS_ERR_OR_NULL((void *)qos_sram_base))
+		return 0;
+	return __raw_readl(qos_sram_base + (offs));
+}
+
+int cm_profile_get_bw(struct cm_profile_info *info_ptr)
+{
+	int ret = 0;
+	short i;
+	unsigned long long up = 0, down = 0;
+
+	if (!info_ptr) {
+		ret = -1;
+	} else {
+		for (i = 0; i < CM_WRAP_EMI_MAX; i++) {
+			down = cm_qosram_read(0x60 + (2*i)*0x4);
+			up = cm_qosram_read(0x60 + (2*i+1)*0x4);
+			info_ptr->info[i] = (up << 32) |
+				(down & 0xffffffff);
+		}
+		info_ptr->update_cnt = cm_qosram_read(0x98);
+	}
+	return ret;
+}
+EXPORT_SYMBOL(cm_profile_get_bw);
+
+void cm_get_dram_bw(void)
+{
+	short i;
+
+	cm_profile_get_bw(&info);
+	for (i = 0; i < CM_WRAP_EMI_MAX; i++)
+		pr_info("DRAM[%d] BW : %llu\n", i, info.info[i] );
+
+	pr_info("Update %lu\n", info.update_cnt);
+}
+
 u32 cm_mgr_get_perfs_mt6993(int num)
 {
 	if (num < 0 || num >= cm_mgr_get_num_perf())
@@ -553,6 +636,14 @@ static int platform_cm_mgr_probe(struct platform_device *pdev)
 
 	// local_hk.cm_mgr_get_perfs = cm_mgr_get_perfs_mt6993;
 	// local_hk.check_cm_mgr_status = check_cm_mgr_status_mt6993;
+	ret = cm_get_qos_base();
+	if (ret) {
+		pr_info("%s(%d): fail to get qos csram base. ret %d\n", __func__,
+			__LINE__, ret);
+		goto ERROR;
+	}
+
+	local_hk.cm_mgr_get_dram_bw = cm_get_dram_bw;
 
 	cm_mgr_register_hook(&local_hk);
 	dev_pm_genpd_set_performance_state(&pdev->dev, 0);

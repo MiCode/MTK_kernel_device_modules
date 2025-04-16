@@ -42,6 +42,8 @@ struct cm_mgr_hook {
 	void (*cm_mgr_perf_platform_set_status)(int enable);
 	void (*cm_mgr_perf_set_status)(int enable);
 	int (*cm_mgr_get_latency_awareness_model_indexes)(unsigned int *buf);
+	/* only for debug use*/
+	void (*cm_mgr_get_dram_bw)(void);
 };
 
 #if !IS_ENABLED(CONFIG_MTK_CM_IPI)

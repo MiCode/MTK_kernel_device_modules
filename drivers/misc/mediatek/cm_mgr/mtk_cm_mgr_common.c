@@ -340,6 +340,8 @@ void cm_mgr_register_hook(struct cm_mgr_hook *hook)
 	hk.cm_mgr_perf_set_status = hook->cm_mgr_perf_set_status;
 	hk.cm_mgr_get_latency_awareness_model_indexes =
 		hook->cm_mgr_get_latency_awareness_model_indexes;
+	/* only for debug use*/
+	hk.cm_mgr_get_dram_bw = hook->cm_mgr_get_dram_bw;
 }
 EXPORT_SYMBOL_GPL(cm_mgr_register_hook);
 
@@ -351,6 +353,8 @@ void cm_mgr_unregister_hook(struct cm_mgr_hook *hook)
 	hk.cm_mgr_perf_platform_set_status = NULL;
 	hk.cm_mgr_perf_set_status = NULL;
 	hk.cm_mgr_get_latency_awareness_model_indexes = NULL;
+	/* only for debug use*/
+	hk.cm_mgr_get_dram_bw = NULL;
 }
 EXPORT_SYMBOL_GPL(cm_mgr_unregister_hook);
 
@@ -806,6 +810,9 @@ static ssize_t dbg_cm_mgr_store(struct kobject *kobj,
 	} else if (!strcmp(cmd, "cm_perf_mode_thd")) {
 		cm_mgr_set_perf_mode_thd(val_1);
 		cm_mgr_to_sspm_command(IPI_CM_MGR_PERF_MODE_THD, val_1);
+	} else if (!strcmp(cmd, "cm_get_dram_bw")) {
+		if (hk.cm_mgr_get_dram_bw)
+			hk.cm_mgr_get_dram_bw();
 #endif
 	} else if (!strcmp(cmd, "cm_dbg_info")) {
 		cm_dbg_info = val_1;

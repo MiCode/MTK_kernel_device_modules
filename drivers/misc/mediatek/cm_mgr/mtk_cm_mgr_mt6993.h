@@ -36,4 +36,21 @@ struct tag_chipid {
 
 extern void check_cm_mgr_status_mt6993(unsigned int cluster, unsigned int freq,
 					   unsigned int idx);
+enum cm_wrap_emibm_type {
+	CM_WRAP_EMIBM_TOTAL,
+	CM_WRAP_EMIBM_CPU,
+	CM_WRAP_EMIBM_GPU,
+	CM_WRAP_EMIBM_APU,
+	CM_WRAP_EMIBM_MM,
+	CM_WRAP_EMIBM_MD,
+	CM_WRAP_EMIBM_WB,
+	CM_WRAP_EMI_MAX,
+};
+
+struct cm_profile_info {
+	unsigned long long info[CM_WRAP_EMI_MAX];
+	unsigned long update_cnt;
+};
+
+extern int cm_profile_get_bw(struct cm_profile_info *info_ptr);
 #endif /* __MTK_CM_MGR_PLATFORM_H__ */
