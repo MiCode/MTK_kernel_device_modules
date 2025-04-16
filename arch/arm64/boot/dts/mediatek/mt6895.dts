@@ -4245,6 +4245,7 @@
 				mediatek,comm-port-range = <0xe 0x7>;
 				main-power;
 				power-domains = <&scpsys MT6895_POWER_DOMAIN_ISP_MAIN>;
+				bus-protect;
 		};
 
 		smi_pd_cam_main: smi-pd-cam-main {
@@ -4254,6 +4255,7 @@
 				mediatek,comm-port-range = <0x1e 0x1c 0x1e>;
 				main-power;
 				power-domains = <&scpsys MT6895_POWER_DOMAIN_CAM_MAIN>;
+				bus-protect;
 		};
 
 		smi_pd_dip1: smi-pd-dip1 {
@@ -4267,6 +4269,7 @@
 						<0x1522000C 0>,
 						<0x1552000C 0>,
 						<0x1562000C 0>;
+				bus-protect;
 		};
 
 		smi_pd_ipe: smi-pd-ipe {
@@ -4275,6 +4278,7 @@
 				mediatek,comm-port-range = <0x1>;
 				power-domains = <&scpsys MT6895_POWER_DOMAIN_ISP_IPE>;
 				power-reset = <0x1533000C 8>;
+				bus-protect;
 		};
 
 		smi_pd_cam_mraw: smi-pd-cam-mraw {
@@ -4283,6 +4287,7 @@
 				mediatek,comm-port-range = <0x2 0x2>;
 				power-domains = <&scpsys MT6895_POWER_DOMAIN_CAM_MRAW>;
 				power-reset = <0x1a1700a0 16>;
+				bus-protect;
 		};
 
 		smi_pd_cam_suba: smi-pd-cam-suba {
@@ -4292,6 +4297,7 @@
 				power-domains = <&scpsys MT6895_POWER_DOMAIN_CAM_SUBA>;
 				power-reset = <0x1a04f0a0 4>,
 						<0x1a06f0a0 4>;
+				bus-protect;
 		};
 
 		smi_pd_cam_subb: smi-pd-cam-subb {
@@ -4301,6 +4307,7 @@
 				power-domains = <&scpsys MT6895_POWER_DOMAIN_CAM_SUBB>;
 				power-reset = <0x1a08f0a0 4>,
 						<0x1a0af0a0 4>;
+				bus-protect;
 		};
 
 		smi_pd_cam_subc: smi-pd-cam-subc {
@@ -4311,6 +4318,7 @@
 				power-domains = <&scpsys MT6895_POWER_DOMAIN_CAM_SUBC>;
 				power-reset = <0x1a0cf0a0 4>,
 						<0x1a0ef0a0 4>;
+				bus-protect;
 		};
 
 		smi-dbg {
