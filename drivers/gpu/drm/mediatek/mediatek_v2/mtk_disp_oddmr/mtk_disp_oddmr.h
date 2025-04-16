@@ -33,7 +33,7 @@
 #define DMR_FPS_TABLE_MAX 4
 #define DBI_GET_RAW_TYPE_FRAME_NUM (10)
 
-#define MAX_BIN_NUM	7
+#define MAX_BIN_NUM 7
 #define MAX_BINSET_NUM 32
 #define DMR_LINE_BUFFER 19
 #define MAX_PID_LENGTH 256

@@ -1831,7 +1831,7 @@ static int mtk_oddmr_dmr_bpp(struct mtk_ddp_comp *comp, bool max)
 	int ret = 0;
 	unsigned long  table_size, layer_size;
 	struct mtk_drm_dmr_cfg_info *dmr_cfg_info;
-	unsigned int cur_bin_idx;
+	int cur_bin_idx;
 
 	cur_bin_idx = atomic_read(&oddmr_data->dmr_data.cur_bin_idx);
 	if (cur_bin_idx == -1)
@@ -2051,7 +2051,7 @@ static void mtk_oddmr_dmr_srt_cal(struct mtk_ddp_comp *comp, int en)
 	uint32_t vrefresh;
 	uint32_t srt = 0;
 	struct mtk_drm_dmr_cfg_info *dmr_cfg_data;
-	unsigned int cur_bin_idx;
+	int cur_bin_idx;
 
 	if (comp == NULL)
 		return;
@@ -2693,7 +2693,7 @@ static void mtk_oddmr_dmr_config(struct mtk_ddp_comp *comp,
 	unsigned int dmr_y_ini, dmr_y_offset = 0;
 	unsigned int dmr_input_height; //pixel base
 	unsigned int is_compression_mode;
-	unsigned int cur_bin_idx = atomic_read(&oddmr_data->dmr_data.cur_bin_idx);
+	int cur_bin_idx;
 	unsigned int reg_tuning_en = 0;
 	unsigned int full_height = mtk_crtc_get_height_by_comp(__func__,
 				&comp->mtk_crtc->base, comp, true);
@@ -5336,15 +5336,19 @@ static void mtk_oddmr_dmr_timing_chg_dual(struct mtk_ddp_comp *comp,
 	uint32_t fps;
 	dma_addr_t addr = 0;
 	struct mtk_drm_dmr_cfg_info *dmr_cfg_info;
-	unsigned int cur_bin_idx = atomic_read(&oddmr_data->dmr_data.cur_bin_idx);
+	int cur_bin_idx;
 	unsigned int reg_tuning_en = 0;
+	unsigned int bin_idx_chg;
 
+	ODDMRAPI_LOG("+\n");
 	cur_bin_idx = atomic_read(&oddmr_data->dmr_data.cur_bin_idx);
 	if (cur_bin_idx == -1)
 		return;
 	dmr_cfg_info = &oddmr_data->primary_data->dmr_multi_bin[cur_bin_idx];
+	bin_idx_chg = atomic_read(&oddmr_data->dmr_data.bin_idx_chg);
+	if (bin_idx_chg)
+		return;
 
-	ODDMRAPI_LOG("+\n");
 	if (oddmr_data->primary_data->dmr_state >= ODDMR_INIT_DONE) {
 		fps = timing->vrefresh;
 		mtk_oddmr_dmr_fps_lookup(fps, dmr_cfg_info, &fps_table_idx,&fps_node);
@@ -5513,7 +5517,7 @@ static unsigned int mtk_oddmr_dmr_binset_check(struct mtk_ddp_comp *comp, unsign
 	struct mtk_drm_oddmr_binset_info *dmr_binset;
 	unsigned int new_bin_idx;
 	unsigned int cur_binset_idx;
-	unsigned int cur_bin_idx;
+	int cur_bin_idx;
 	unsigned int dmr_ln_offset = 2048;
 	unsigned int dma_buffer_size = 0;
 	int i = 0, j = 0;
@@ -5607,7 +5611,7 @@ static void mtk_oddmr_dmr_bl_chg(struct mtk_ddp_comp *comp, uint32_t bl_level, s
 	uint32_t remap_enable;
 	unsigned int cur_binset_idx;
 	struct mtk_drm_dmr_cfg_info *dmr_cfg_info;
-	unsigned int cur_bin_idx = atomic_read(&oddmr_data->dmr_data.cur_bin_idx);
+	int cur_bin_idx;
 	unsigned int reg_tuning_en = 0;
 	unsigned int is_bin_chg = 0;
 
@@ -5620,6 +5624,7 @@ static void mtk_oddmr_dmr_bl_chg(struct mtk_ddp_comp *comp, uint32_t bl_level, s
 	// check dbv range & switch bin file
 	cur_binset_idx = atomic_read(&oddmr_data->dmr_data.cur_binset_idx);
 	is_bin_chg = mtk_oddmr_dmr_binset_check(comp, cur_binset_idx, bl_level, handle);
+	cur_bin_idx = atomic_read(&oddmr_data->dmr_data.cur_bin_idx);
 	if (is_bin_chg) {
 		oddmr_data->primary_data->slc_frame_cnt[DMR_SLC] = 0;
 		atomic_set(&oddmr_data->dmr_data.bin_idx_chg, 1);
@@ -7154,7 +7159,7 @@ int mtk_oddmr_get_dmr_enable(struct mtk_ddp_comp *comp)
 {
 	int en = 0;
 	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
-	unsigned int cur_bin_idx = atomic_read(&oddmr_data->dmr_data.cur_bin_idx);
+	int cur_bin_idx = atomic_read(&oddmr_data->dmr_data.cur_bin_idx);
 
 	if (oddmr_data->primary_data->dmr_state < ODDMR_INIT_DONE)
 		return 0;
@@ -8451,6 +8456,21 @@ static void mtk_oddmr_dmr_gain_cfg(struct mtk_ddp_comp *comp,
 	unsigned int value_interpolate_by_fps;
 	unsigned int cur_dbv;
 	unsigned int cur_fps;
+
+	if (!cfg_info) {
+		ODDMRFLOW_LOG("cfg_info is NULL\n");
+		return;
+	}
+
+	if(dbv_node >= cfg_info->fps_dbv_node.DBV_num) {
+		ODDMRFLOW_LOG("dbv node index out of range\n");
+		return;
+	}
+
+	if(fps_node >= cfg_info->fps_dbv_node.FPS_num) {
+		ODDMRFLOW_LOG("fps node index out of range\n");
+		return;
+	}
 
 	/* keep track of chg anytime */
 	mutex_lock(&oddmr_data->primary_data->timing_lock);
@@ -10623,7 +10643,7 @@ bool mtk_drm_dmr_backup(struct drm_crtc *crtc, void *get_phys,
 	unsigned int *reg_addr_backup;
 	unsigned int *reg_value_backup;
 	unsigned int i, j;
-	unsigned int cur_bin_idx = 0;
+	int cur_bin_idx = 0;
 	char *dmr_scp_sh_mem = NULL;
 
 	if (!crtc)
@@ -10729,7 +10749,7 @@ static void mtk_oddmr_dmr_change_remap_gain(struct mtk_ddp_comp *comp,
 	uint32_t dmr_remap_gain;
 	uint32_t dbi_remap_gain;
 	int dbi_remap_enable;
-	unsigned int cur_bin_idx;
+	int cur_bin_idx;
 
 	if (oddmr_data->primary_data->dmr_state >= ODDMR_INIT_DONE) {
 		mutex_lock(&oddmr_data->primary_data->timing_lock);
@@ -11830,7 +11850,7 @@ static int mtk_oddmr_set_partial_update(struct mtk_ddp_comp *comp,
 	unsigned int dmr_y_ini, dmr_y_offset = 0;
 	unsigned int dmr_input_height; //pixel base
 	unsigned int is_compression_mode;
-	unsigned int cur_bin_idx = atomic_read(&oddmr_data->dmr_data.cur_bin_idx);
+	int cur_bin_idx;
 	bool dmr_support, od_support, dbi_support;
 
 	unsigned int i = 0;
