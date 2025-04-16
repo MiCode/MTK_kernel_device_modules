@@ -2240,29 +2240,36 @@ static bool cmdq_thread_skip_timeout(struct cmdq_thread *thread)
 	cookie = readl(thread->base + CMDQ_THR_CNT) & CMDQ_EXEC_CNT_MASK;
 	task = list_first_entry_or_null(&thread->task_busy_list,
 		struct cmdq_task, list_entry);
-	if (task) {
-		if (task->pkt->skip_timeout_cb) {
-			data.pa_curr = cmdq_thread_get_pc(thread);
-			data.pkt = task->pkt;
-			skip = task->pkt->skip_timeout_cb((void *)(&data));
-			cmdq_msg("%s thrd:%d pkt:%p skip:%d", __func__, thread->idx, task->pkt, skip);
-		} else if (task->pkt->self_loop && cookie != thread->cookie) {
+
+	if (!task )
+		return skip;
+
+	if(!cmdq_thread_timeout_excceed(thread)) {
+		skip = true;
+		cmdq_msg("%s thrd:%d pkt:%p timeout_excceed skip",
+			__func__, thread->idx, task->pkt);
+	} else if (task->pkt->skip_timeout_cb) {
+		data.pa_curr = cmdq_thread_get_pc(thread);
+		data.pkt = task->pkt;
+		skip = task->pkt->skip_timeout_cb((void *)(&data));
+		cmdq_msg("%s thrd:%d pkt:%p skip:%d", __func__, thread->idx, task->pkt, skip);
+	} else if (task->pkt->self_loop && cookie != thread->cookie) {
 #ifndef CMDQ_SKIP_BY_CMDQ_BUILT
 #if IS_ENABLED(CONFIG_CMDQ_MMPROFILE_SUPPORT)
-			mmprofile_log_ex(cmdq_mmp.warning, MMPROFILE_FLAG_PULSE,
-				MMP_THD(thread, cmdq), cookie);
+		mmprofile_log_ex(cmdq_mmp.warning, MMPROFILE_FLAG_PULSE,
+			MMP_THD(thread, cmdq), cookie);
 #endif
 #endif
-			cmdq_msg("%s pre_cookie:%d cookie:%d pass timeout flow",
-				__func__, thread->cookie, cookie);
-			thread->cookie = cookie;
-			skip = true;
-		}
+		cmdq_msg("%s pre_cookie:%d cookie:%d pass timeout flow",
+			__func__, thread->cookie, cookie);
+		thread->cookie = cookie;
+		skip = true;
 	}
 
 	if (skip) {
 		mod_timer(&thread->timeout, jiffies +
 			msecs_to_jiffies(thread->timeout_ms));
+		thread->timer_mod = sched_clock();
 	}
 
 	return skip;
@@ -2272,6 +2279,7 @@ void cmdq_thread_reset_timer(void *chan)
 {
 	struct cmdq_thread *thread = ((struct mbox_chan *)chan)->con_priv;
 
+	thread->timer_mod = sched_clock();
 	mod_timer(&thread->timeout, jiffies +
 		msecs_to_jiffies(thread->timeout_ms));
 	cmdq_log("%s mod_timer timeout:%u thread:%u ",
@@ -2306,15 +2314,16 @@ static void cmdq_thread_handle_timeout_work(struct work_struct *work_item)
 		return;
 	}
 
+
+	WARN_ON(cmdq_thread_suspend(cmdq, thread) < 0);
+
 	/* After IRQ, first task may change. */
 	if (cmdq_thread_skip_timeout(thread)) {
+		cmdq_thread_resume(thread);
 		spin_unlock_irqrestore(&thread->chan->lock, flags);
 		cmdq_mtcmos_by_fast(cmdq, false);
 		return;
 	}
-
-	WARN_ON(cmdq_thread_suspend(cmdq, thread) < 0);
-
 	/*
 	 * Although IRQ is disabled, GCE continues to execute.
 	 * It may have pending IRQ before GCE thread is suspended,
