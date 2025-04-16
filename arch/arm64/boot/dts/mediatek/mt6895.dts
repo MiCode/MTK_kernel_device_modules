@@ -8110,7 +8110,7 @@
 					"CORE_MT_CG_VDEC0";
 			mediatek,clock-parents = <4 3>;
 			operating-points-v2 = <&opp_table_vdec>;
-			//dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+			mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 			m4u-ports =
 				<M4U_LARB4_PORT0>,
 				<M4U_LARB4_PORT1>,
