@@ -566,8 +566,9 @@ static int sbe_do_hwui_scrolling_policy(int tgid, int start, char *specific_name
 
 	set_sbe_thread_vip(start, tgid, specific_name, num);
 
-	if (test_bit(SBE_PAGE_FLUTTER, &mask)
-		|| test_bit(SBE_PAGE_WEBVIEW, &mask)){
+	if (!start && (test_bit(SBE_PAGE_FLUTTER, &mask)
+			|| test_bit(SBE_PAGE_WEBVIEW, &mask))) {
+		//force clear vip when scrolling end
 		update_fpsgo_hint_param(start, tgid);
 	}
 
@@ -624,6 +625,8 @@ static int sbe_do_webview_notify_fpsgo_ctrl(int tgid, char *name, int start, cha
 			thr->scroll_status = start;
 		}
 		sbe_put_tree_lock(__func__);
+
+		update_fpsgo_hint_param(start, tgid);
 		/*
 		 * Call General API for notify FPSGO control
 		 * switch_fpsgo_control:
