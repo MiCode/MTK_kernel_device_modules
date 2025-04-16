@@ -392,11 +392,9 @@ struct mt6379_charger_data {
 	struct work_struct bc12_work;
 	struct delayed_work switching_work;
 	struct delayed_work icc_cali_work;
-	struct delayed_work icc_check_work;
 	struct delayed_work pwr_rdy_dwork;
 	struct delayed_work non_switch_dwork;
 	struct power_supply *psy;
-	struct power_supply *bat;
 	struct power_supply_desc psy_desc;
 	struct iio_channel *iio_adcs;
 	struct charger_device *chgdev;
@@ -418,7 +416,6 @@ struct mt6379_charger_data {
 	bool non_switching;
 	u32 zcv;
 	u32 cv;
-	u32 vbat;
 	u8 bypass_mode_entered;
 
 	struct ufcs_port *ufcs;
@@ -432,10 +429,17 @@ struct mt6379_charger_data {
 	bool *bc12_dn;
 
 	bool enable_fsw;
-	bool icc_calibrated;
+	struct mutex icc_trim_lock;
+	bool icc_needs_trim;
 	bool icc_trimmed;
-	int icc_offset;
-	int saved_icc_offset;
+	bool dynamic_icc_trim_en;
+	int icc_double_check_time_ms;
+	int current_icc_offset_step;
+	int saved_icc_offset_step;
+
+	bool lock_icc_and_aicr;
+	u32 target_aicr_uA;
+	u32 target_icc_uA;
 
 	enum mt6379_chip_rev rev;
 	u32 waferid;

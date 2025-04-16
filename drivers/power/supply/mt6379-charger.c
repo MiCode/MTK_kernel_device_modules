@@ -25,17 +25,33 @@
 #define DEFAULT_PMIC_UVLO_MV	2000
 #define DPDM_OV_THRESHOLD_MV	3850
 
-/*
- * modify MT6379_IMPLEMENT_ICC_LOAD if you implement icc save/load to/from Phone.
- */
-#define  MT6379_IMPLEMENT_ICC_LOAD	0
+/* Implement icc save/load to/from Phone */
+#define MT6379_IMPLEMENT_ICC_STORAGE_FUNC_EN		0
+/* The interval of restarting icc calibration delayed work */
+#define MT6379_RESTART_ICC_TRIM_INTERVAL_MS		10000	/* 10 s */
+#define MT6379_ICC_SENSING_OFFSET_MAX_uA		250000	/* 250 mA */
+#define MT6379_ICC_DIFF_VALID_uA			50000	/* 50 mA */
+#define MT6379_ICC_DIFF_NO_NEED_TRIM_uA			5000	/* 5 mA */
+#define MT6379_ICC_MAX_uA				4000000	/* 4000 mA */
+#define MT6379_CHECK_ICC_VAILD_BY_AVG_VALULE_EN		1
+#define MT6379_CHECK_ICC_VAILD_TIMES			5
+#define MT6379_DOUBLE_CHECK_ICC_OFFSET_VALID_EN		1
+#define MT6379_DOUBLE_CHECK_ICC_OFFSET_DELAY_TIME_MS	500	/* 500 ms */
+#define MT6379_DYNAMIC_ICC_TRIM_EN			1
 
-/* check for do calibration or not */
-#define MT6379_CHECK_ICC_TIME		10000	/* 10s */
-/* check for icc is good or not */
-#define MT6379_ICC_CHECK_TIME		500	/* 500ms */
-#define MT6379_SENSING_OFFSET_MAX	250000	/* 250 mA */
-#define MT6379_ICC_DIFF_MAX		50000	/* 50 mA */
+/* Use MT6379 gauge for the current baseline */
+#define MT6379_ICC_TRIM_USE_MT6379_GAUGE_EN		1
+#define MT6379_READ_GAUGE_INTERVAL_MS			2
+
+/*
+ * @MT6379_REVERSE_GAUGE_IBAT_VALUE_EN (default: 0)
+ * 0: gauge ibat > 0 --> charging,    gague ibat < 0 --> discharging
+ * 1: gauge ibat > 0 --> discharging, gauge ibat < 0 --> charging
+ */
+#define MT6379_REVERSE_GAUGE_IBAT_VALUE_EN		0
+
+#define MT6379_DEFAULT_TARGET_ICC_WHEN_LOCK_uA		3225000	/* 3225 mA */
+#define MT6379_DEFAULT_TARGET_AICR_WHEN_LOCK_uA		1000000	/* 1000 mA */
 
 /*
  * For Fsw Control
@@ -66,14 +82,7 @@ module_param(fsw_ctrl_time_ns, uint, 0644);
 module_param(fsw_ctrl_time_2, uint, 0644);
 module_param(fsw_ctrl_time_ns_2, uint, 0644);
 
-static int icc_check_time = MT6379_ICC_CHECK_TIME;
-module_param(icc_check_time, int, 0644);
-
-static int test_icc = -1;
-static int test_aicr = -1;
 static int test_mivr = -1;
-module_param(test_icc, int, 0644);
-module_param(test_aicr, int, 0644);
 module_param(test_mivr, int, 0644);
 
 static const struct rt_charger_data mt6379_data = {
@@ -802,7 +811,10 @@ static int mt6379_charger_set_online(struct mt6379_charger_data *cdata,
 	if (attach == ATTACH_TYPE_NONE) {
 		cdata->bc12_dn[idx] = false;
 		/* reset calibrated when plug out */
-		cdata->icc_calibrated = false;
+		mutex_lock(&cdata->icc_trim_lock);
+		cdata->icc_needs_trim = cdata->dynamic_icc_trim_en ? true :
+					cdata->icc_needs_trim;
+		mutex_unlock(&cdata->icc_trim_lock);
 	}
 
 	if (!cdata->bc12_dn[idx])
@@ -1077,9 +1089,8 @@ static int mt6379_charger_set_property(struct power_supply *psy, enum power_supp
 				       const union power_supply_propval *val)
 {
 	struct mt6379_charger_data *cdata = power_supply_get_drvdata(psy);
+	u32 value = 0, aicr = 0;
 	int ret = 0;
-	u32 value = 0;
-	unsigned int aicr;
 
 	if (!cdata)
 		return -ENODEV;
@@ -1089,36 +1100,48 @@ static int mt6379_charger_set_property(struct power_supply *psy, enum power_supp
 	case POWER_SUPPLY_PROP_ONLINE:
 		return mt6379_charger_set_online(cdata, ATTACH_TRIG_TYPEC, val->intval);
 	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT:
-		if (test_icc != -1)
-			return mt6379_charger_field_set(cdata, F_CC, test_icc);
+		if (cdata->lock_icc_and_aicr) {
+			dev_info(cdata->dev, "%s, Lock ICC in: %u mA\n",
+				 __func__, U_TO_M(cdata->target_icc_uA));
+			return mt6379_charger_field_set(cdata, F_CC, cdata->target_icc_uA);
+		}
+
 		return mt6379_charger_field_set(cdata, F_CC, val->intval);
 	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_VOLTAGE:
 		return mt6379_charger_field_set(cdata, F_CV, val->intval);
 	case POWER_SUPPLY_PROP_INPUT_CURRENT_LIMIT:
 		if (cdata->bypass_mode_entered)
 			return 0;
+
 		ret = mt6379_charger_field_get(cdata, F_IBUS_AICR, &value);
 		if (ret)
 			dev_info(cdata->dev, "%s, get F_IBUS_AICR failed\n", __func__);
 
-		if (test_aicr != -1)
-			aicr = test_aicr;
-		else
+		if (cdata->lock_icc_and_aicr) {
+			dev_info(cdata->dev, "%s, Lock AICR in: %u mA\n",
+				 __func__, U_TO_M(cdata->target_aicr_uA));
+			aicr = cdata->target_aicr_uA;
+		} else
 			aicr = val->intval;
+
 		ret = mt6379_charger_field_set(cdata, F_IBUS_AICR, aicr);
 		if (ret)
 			dev_info(cdata->dev, "%s, set F_IBUS_AICR failed\n", __func__);
+
 		if (value != aicr && (value < 500000 || aicr < 500000)) {
 			dev_info(cdata->dev, "%s, new aicr = %d, old aicr = %d\n",
 				 __func__, aicr, value);
 			cdata->fsw_check_nr = 0;
 		}
+
 		return ret;
 	case POWER_SUPPLY_PROP_INPUT_VOLTAGE_LIMIT:
 		if (cdata->bypass_mode_entered)
 			return 0;
+
 		if (test_mivr != -1)
 			return mt6379_charger_field_set(cdata, F_VBUS_MIVR, test_mivr);
+
 		return mt6379_charger_field_set(cdata, F_VBUS_MIVR, val->intval);
 	case POWER_SUPPLY_PROP_PRECHARGE_CURRENT:
 		return mt6379_charger_field_set(cdata, F_IPREC, val->intval);
@@ -1222,39 +1245,41 @@ static ssize_t shipping_mode_store(struct device *dev, struct device_attribute *
 }
 static DEVICE_ATTR_WO(shipping_mode);
 
-static int mt6379_get_ipeak(struct mt6379_charger_data *cdata)
+static int mt6379_get_ipeak(struct mt6379_charger_data *cdata, int *ipeak)
 {
-	u32 ibus = 0, vbus = 0, vsys = 0, ipeak = 0;
+	u32 ibus = 0, vbus = 0, vsys = 0;
 	struct device *dev = cdata->dev;
-	int ret = 0;
+	int ret = 0, tmp = 0;
 
 	ret = iio_read_channel_processed(&cdata->iio_adcs[ADC_CHAN_CHGVIN], &vbus);
 	if (ret) {
-		dev_info(dev, "%s get vbus failed\n", __func__);
+		dev_info(dev, "%s, Failed to get vbus (ret:%d)\n", __func__, ret);
 		return ret;
 	}
 
 	ret = iio_read_channel_processed(&cdata->iio_adcs[ADC_CHAN_VSYS], &vsys);
 	if (ret) {
-		dev_info(dev, "%s get vsys failed\n", __func__);
+		dev_info(dev, "%s, Failed to get vsys (ret:%d)\n", __func__, ret);
 		return ret;
 	}
 
 	ret = iio_read_channel_processed(&cdata->iio_adcs[ADC_CHAN_IBUS], &ibus);
 	if (ret) {
-		dev_info(dev, "%s get ibus failed\n", __func__);
+		dev_info(dev, "%s Failed to get ibus (ret:%d)\n", __func__, ret);
 		return ret;
 	}
 
-	vbus = U_TO_M(vbus);
-	ibus = U_TO_M(ibus);
-	vsys = U_TO_M(vsys);
+	vbus = U_TO_M(vbus) > 22000 ? 22000 : U_TO_M(vbus);
+	ibus = U_TO_M(ibus) > 5000 ? 5000 : U_TO_M(ibus);
+	vsys = U_TO_M(vsys) > 5500 ? 5500 : U_TO_M(vsys);
 
-	ipeak = (vbus * ibus) * 9 / (vsys * 10) + (vbus - vsys) * vsys / (2 * vbus);
+	tmp = (int)((vbus * ibus) * 9 / (vsys * 10) + (vbus - vsys) * vsys / (vbus * 2));
+	*ipeak = tmp;
 
-	dev_info(cdata->dev, "%s ipeak = %d, ibus = %d, vbus = %d, vsys = %d\n",
-		 __func__, ipeak, ibus, vbus, vsys);
-	return ipeak;
+	dev_info(dev, "%s, ipeak = %d mA, ibus = %d mV, vbus = %d mV, vsys = %d mV\n",
+		 __func__, tmp, ibus, vbus, vsys);
+
+	return 0;
 }
 
 /*
@@ -1271,56 +1296,69 @@ static void customer_turn_on_battery_device(void)
 {
 }
 
-static int mt6379_get_gauge_ibat_ua(struct mt6379_charger_data *cdata)
-{
-	int ibat = 0, i = 0, samples = 5, ret = 0;
-	union power_supply_propval cic1 = {};
-
-	if (!cdata->bat)
-		cdata->bat = devm_power_supply_get_by_phandle(cdata->dev, "gauge");
-	if (IS_ERR_OR_NULL(cdata->bat)) {
-		dev_info(cdata->dev, "%s, Can't Get battery power supply\n", __func__);
-		return -EINVAL;
-	}
-
-	for (i = 0; i < samples; i++) {
-		ret = power_supply_get_property(cdata->bat, POWER_SUPPLY_PROP_CURRENT_NOW, &cic1);
-		if (ret) {
-			dev_info(cdata->dev, "%s, get gauge ibat failed\n", __func__);
-			return -EINVAL;
-		}
-		dev_info(cdata->dev, "%s, gauge ibat = %d\n", __func__, cic1.intval);
-		ibat += cic1.intval;
-		mdelay(2);
-	}
-
-	return ibat / samples;
-}
-
-static int mt6379_icc_check(struct mt6379_charger_data *cdata)
+static int mt6379_set_icc_trim_step_to_reg(struct mt6379_charger_data *cdata, int offset_step)
 {
 	struct device *dev = cdata->dev;
-	int ret = 0, ibat = 0;
-	u32 icc = 0;
+	int ret = 0, result = 0;
+	u32 val = 0;
 
-	ret = mt6379_charger_field_get(cdata, F_CC, &icc);
+	dev_info(dev, "%s, target offset step: %d\n", __func__, offset_step);
+	ret = mt6379_charger_field_get(cdata, F_ICC_OFFSET, &val);
 	if (ret) {
-		dev_info(dev, "%s, get CC setting failed\n", __func__);
-		return -EINVAL;
+		dev_info(dev, "%s, Failed to get icc offset step (ret:%d)\n", __func__, ret);
+		return ret;
 	}
 
-	ibat = mt6379_get_gauge_ibat_ua(cdata);
-	if (ibat < 0) {
-		dev_info(dev, "%s get gauge ibat failed\n", __func__);
-		return -EINVAL;
+	result = val + offset_step;
+	if (result > 0xFF)
+		result = 0xFF;
+	else if (result < 0)
+		result = 0;
+
+	ret = mt6379_enable_tm(cdata, true);
+	if (ret) {
+		dev_info(dev, "%s, Failed to enter tm (ret:%d)\n", __func__, ret);
+		return ret;
 	}
 
-	if (abs(ibat - icc) < MT6379_ICC_DIFF_MAX) {
-		dev_info(dev, "%s, Pass ibat - icc = %duA\n", __func__, ibat - icc);
-		return 0;
+	if (!cdata->icc_trimmed) {
+		ret = mt6379_charger_field_set(cdata, F_ICC_ORIGIN, val);
+		if (ret)
+			dev_info(dev, "%s, Failed to backup original icc offset step data (ret:%d)\n",
+				 __func__, ret);
 	}
-	dev_info(dev, "%s, Failed ibat -icc = %duA\n", __func__, ibat - icc);
-	return -EINVAL;
+
+	if (offset_step) {
+		ret = mt6379_charger_field_set(cdata, F_ICC_OFFSET, result);
+		if (ret)
+			dev_info(dev, "%s, Failed set icc offset step (ret:%d)\n", __func__, ret);
+	}
+
+	ret = mt6379_charger_field_set(cdata, F_ICC_TRIMMED, 1);
+	if (ret) {
+		dev_info(dev, "%s, Failed to set icc trimmed flag (ret:%d)\n", __func__, ret);
+		goto failed;
+	}
+
+	ret = mt6379_charger_field_get(cdata, F_ICC_ORIGIN, &val);
+	if (ret) {
+		dev_info(dev, "%s, Failed to get original icc offset step data (ret:%d)\n",
+			  __func__, ret);
+		goto failed;
+	}
+
+	cdata->icc_trimmed = true;
+	cdata->current_icc_offset_step = result - val;
+
+	dev_info(dev, "%s, expected offset step: %d, current offset step: %d, RG val: 0x%02x\n",
+		 __func__, offset_step, cdata->current_icc_offset_step, result);
+
+failed:
+	ret = mt6379_enable_tm(cdata, false);
+	if (ret)
+		dev_info(dev, "%s, Failed to exit tm\n", __func__);
+
+	return ret;
 }
 
 /*
@@ -1330,228 +1368,379 @@ static int mt6379_icc_check(struct mt6379_charger_data *cdata)
  *
  * Please implement it at your platform
  */
-static int __maybe_unused mt6379_load_save_icc_offset(void)
+static int __maybe_unused mt6379_load_icc_offset_step(struct mt6379_charger_data *cdata)
 {
-	/* Load value from phone, 0 is example */
+	/*
+	 * ==========================================================
+	 *
+	 * TODO: Implement your load offset step function here
+	 *
+	 * ==========================================================
+	 */
+
 	return 0;
 }
 
-static int mt6379_store_save_icc_offset(int offset)
+static int mt6379_store_icc_offset_step(struct mt6379_charger_data *cdata)
 {
-	/* Store value to phone */
+	/*
+	 * ==========================================================
+	 *
+	 * TODO: Implement your storage offset step function here
+	 *
+	 * ==========================================================
+	 */
 
-	pr_info("%s, offset = %d\n", __func__, offset);
+	cdata->saved_icc_offset_step = cdata->current_icc_offset_step;
+	dev_info(cdata->dev, "%s, current icc offset step: %d, saved icc offset step: %d\n",
+		 __func__, cdata->current_icc_offset_step, cdata->saved_icc_offset_step);
 	return 0;
 }
 
-static int mt6379_trim_icc_offset(struct mt6379_charger_data *cdata, int offset, bool check)
+static int mt6379_force_set_icc_offset_step(struct mt6379_charger_data *cdata, int offset)
 {
-	int ret = 0, result = 0;
+	struct device *dev = cdata->dev;
 	u32 val = 0;
+	int ret = 0;
 
-	ret = mt6379_charger_field_get(cdata, F_ICC_OFFSET, &val);
-	if (ret) {
-		dev_info(cdata->dev, "%s get icc offset failed\n", __func__);
-		return ret;
-	}
+	mutex_lock(&cdata->icc_trim_lock);
 
-	result = val + offset;
-	if (result > 0xFF)
-		result = 0xFF;
-	else if (result < 0)
-		result = 0;
-
-	ret = mt6379_enable_tm(cdata, true);
-	if (ret) {
-		dev_info(cdata->dev, "%s enter tm failed\n", __func__);
-		return ret;
-	}
-
-	if (!cdata->icc_trimmed) {
-		ret = mt6379_charger_field_set(cdata, F_ICC_ORIGIN, val);
-		if (ret)
-			dev_info(cdata->dev, "%s, set icc sensing data origin failed\n", __func__);
-	}
-
-	if (offset) {
-		ret = mt6379_charger_field_set(cdata, F_ICC_OFFSET, result);
-		if (ret)
-			dev_info(cdata->dev, "%s set icc offset failed\n", __func__);
-	}
-
-	ret = mt6379_charger_field_set(cdata, F_ICC_TRIMMED, 1);
-	if (ret)
-		dev_info(cdata->dev, "%s, set icc trimmed failed\n", __func__);
-	else {
+	if (cdata->icc_trimmed) {
 		ret = mt6379_charger_field_get(cdata, F_ICC_ORIGIN, &val);
 		if (ret) {
-			dev_info(cdata->dev, "%s, get F_ICC_ORGIN failed\n", __func__);
-			goto failed;
+			dev_info(dev, "%s, Failed to get original icc offset data (ret:%d)\n",
+				 __func__, ret);
+			goto out;
 		}
-		cdata->icc_trimmed = true;
-		cdata->icc_offset = result - val;
-		if (check)
-			schedule_delayed_work(&cdata->icc_check_work,
-					      msecs_to_jiffies(icc_check_time));
+
+		ret = mt6379_charger_field_set(cdata, F_ICC_OFFSET, val);
+		if (ret) {
+			dev_info(dev, "%s, Failed to roll back icc offset step to default (ret:%d)\n",
+				 __func__, ret);
+			goto out;
+		}
+
+		cdata->current_icc_offset_step = 0;
 	}
 
-	dev_info(cdata->dev, "%s, offset = %d, icc_offset = %d, result = 0x%02x\n",
-		 __func__, offset, cdata->icc_offset, result);
-failed:
-	ret = mt6379_enable_tm(cdata, false);
-	if (ret)
-		dev_info(cdata->dev, "%s exit tm failed\n", __func__);
+	ret = mt6379_set_icc_trim_step_to_reg(cdata, offset);
+	if (ret) {
+		dev_info(dev, "%s, Failed to set trim icc offset step (ret:%d)\n", __func__, ret);
+		goto out;
+	}
+
+	cdata->icc_needs_trim = false;
+
+	ret = mt6379_store_icc_offset_step(cdata);
+	if (ret) {
+		dev_info(dev, "%s, Failed to save icc offset step data to phone (ret:%d)\n",
+			 __func__, ret);
+		goto out;
+	}
+
+out:
+	mutex_unlock(&cdata->icc_trim_lock);
+
 	return ret;
 }
 
-static int mt6379_do_icc_calibrate(struct mt6379_charger_data *cdata, int offset_ua)
+static int mt6379_get_gauge_ibat_ua(struct mt6379_charger_data *cdata, int *ibat)
 {
-	int ret = 0, offset = 0;
+#if MT6379_ICC_TRIM_USE_MT6379_GAUGE_EN
+	union power_supply_propval gauge_ibat = { 0 };
+	static struct power_supply *bat;
+	struct device *dev = cdata->dev;
+	int ret;
 
-	dev_info(cdata->dev, "%s offset_ua = %d\n", __func__, offset_ua);
+	if (IS_ERR_OR_NULL(bat))
+		bat = devm_power_supply_get_by_phandle(dev, "gauge");
 
-	if (offset_ua > MT6379_SENSING_OFFSET_MAX)
-		offset = (MT6379_SENSING_OFFSET_MAX / 10000) - cdata->saved_icc_offset;
-	else if (offset_ua < -MT6379_SENSING_OFFSET_MAX)
-		offset = -(MT6379_SENSING_OFFSET_MAX / 10000) - cdata->saved_icc_offset;
-	else
-		offset = offset_ua > 0 ? (offset_ua + 5000) / (10 * 1000) :
-			(offset_ua - 5000) / (10 * 1000);
+	if (IS_ERR_OR_NULL(bat)) {
+		dev_info(dev, "%s, Failed to get gauge psy\n", __func__);
+		return -EINVAL;
+	}
 
-	dev_info(cdata->dev, "%s offset = %d\n", __func__, offset);
-	ret = mt6379_trim_icc_offset(cdata, offset, true);
-	if (ret)
-		dev_info(cdata->dev, "%s, trim icc offset failed\n", __func__);
-	else /* calibration only once when plug in */
-		cdata->icc_calibrated = true;
-	return ret;
+	if (!ibat) {
+		dev_info(dev, "%s, *ibat is invalid\n", __func__);
+		return -EINVAL;
+	}
+
+	ret = power_supply_get_property(bat, POWER_SUPPLY_PROP_CURRENT_NOW, &gauge_ibat);
+	if (ret) {
+		dev_info(dev, "%s, Failed to get gauge ibat (ret:%d)\n", __func__, ret);
+		return -EINVAL;
+	}
+
+	*ibat = gauge_ibat.intval;
+#else
+#endif /* MT6379_ICC_TRIM_USE_MT6379_GAUGE_EN */
+
+	if (MT6379_REVERSE_GAUGE_IBAT_VALUE_EN && ibat)
+		*ibat *= -1;
+
+	return 0;
+}
+
+static int mt6379_check_diff_between_icc_and_gauge_ibat(struct mt6379_charger_data *cdata,
+							int diff_threshold_uA, int *avg_diff_uA,
+							bool *valid)
+{
+	int i, ret = 0, gauge_ibat = 0, diff_val = 0;
+	struct device *dev = cdata->dev;
+	bool current_valid = false;
+	u32 icc = 0;
+
+	if (!avg_diff_uA || !valid || MT6379_CHECK_ICC_VAILD_TIMES <= 0)
+		return -EINVAL;
+
+	/* 1. Get charger ICC setting, valid range: 300mA ~ 4000mA */
+	ret = mt6379_charger_field_get(cdata, F_CC, &icc);
+	if (ret) {
+		dev_info(dev, "%s, Failed to get CC setting (ret:%d)\n", __func__, ret);
+		*valid = false;
+		return ret;
+	}
+
+	if (icc > MT6379_ICC_MAX_uA)
+		icc = MT6379_ICC_MAX_uA;
+
+	*valid = true;
+	*avg_diff_uA = 0;
+
+	/* 2. Check if |ICC - gauge ibat| <= "diff_threshold" mA */
+	for (i = 0; i < MT6379_CHECK_ICC_VAILD_TIMES; i++) {
+		ret = mt6379_get_gauge_ibat_ua(cdata, &gauge_ibat);
+		if (ret) {
+			dev_info(dev, "%s, Failed to get gauge ibat (ret:%d)\n", __func__, ret);
+			*valid = false;
+			return ret;
+		}
+
+		diff_val = (int)icc - gauge_ibat;
+		*avg_diff_uA += diff_val;
+
+		current_valid = abs(diff_val) <= diff_threshold_uA ? true : false;
+		*valid &= current_valid;
+
+		dev_info(dev, "%s, cnt:%d %s, ICC(%d uA)  - gauge ibat(%d uA) = %d uA\n",
+			 __func__, i + 1, current_valid ? "ok": "ng",
+			 (int)icc, gauge_ibat, diff_val);
+
+		mdelay(MT6379_READ_GAUGE_INTERVAL_MS);
+	}
+
+	*avg_diff_uA /= MT6379_CHECK_ICC_VAILD_TIMES;
+	return 0;
 }
 
 static int mt6379_icc_calibrate(struct mt6379_charger_data *cdata)
 {
-	u32 val = 0, cv = 0, vrec = 0, vbat = 0, chg_ocp = 0, icc = 0, ibat = 0;
+	int ret, online = 0, ipeak = 0, avg_diff_uA = 0, offset_step = 0;
+	u32 val, cv = 0, vrec = 0, vbat = 0, chg_ocp = 0;
 	struct device *dev = cdata->dev;
-	int ret = 0, ipeak = 0;
+	bool diff_valid = false;
 
-	if (cdata->icc_calibrated)
+	mutex_lock(&cdata->icc_trim_lock);
+	dev_info(dev, "%s ++, icc needs trim = %d(%s)\n",
+		 __func__, cdata->icc_needs_trim, cdata->icc_needs_trim ? "Yes!" : "No!");
+
+	if (!cdata->icc_needs_trim) {
+		mutex_unlock(&cdata->icc_trim_lock);
 		return 0;
+	}
 
-	/* check ic stat is fast chrging */
+	/* 1. Check vbus & ic stat is in fast charging */
+	ret = mt6379_charger_get_online(cdata, &online);
+	if (ret) {
+		dev_info(dev, "%s, Failed to get online status (ret:%d)\n", __func__, ret);
+		goto not_finished;
+	}
+
 	ret = mt6379_charger_field_get(cdata, F_IC_STAT, &val);
 	if (ret) {
-		dev_info(cdata->dev, "%s, Failed to get IC_STAT(ret:%d)\n", __func__, ret);
-		goto not_finished;
-	}
-	if (val != CHG_STAT_FAST) {
-		dev_info(cdata->dev, "%s, ic_stat:%d is not fast charging\n", __func__, val);
+		dev_info(dev, "%s, Failed to get IC_STAT (ret:%d)\n", __func__, ret);
 		goto not_finished;
 	}
 
-	/* check vsys_min */
+	if (val != CHG_STAT_FAST) {
+		dev_info(dev, "%s, IC is not in fast charging (ic_stat:%u)\n", __func__, val);
+		goto not_finished;
+	}
+
+	/* 2. Check if vsys status is valid (ST_SYS_MIN != 1) */
 	ret = regmap_read(cdata->rmap, MT6379_REG_CHG_STAT2, &val);
 	if (ret) {
-		dev_info(dev, "%s, Failed to read chg stat2\n", __func__);
+		dev_info(dev, "%s, Failed to read chg stat2 (ret:%d)\n", __func__, ret);
 		goto not_finished;
 	}
+
 	if (val & BIT(1)) {
-		dev_info(dev, "%s, VSYS < VSYS_MIN, %x\n", __func__, val);
+		dev_info(dev, "%s, VSYS < VSYS_MIN (0x72 = 0x%02x)\n", __func__, val);
 		ret = -EAGAIN;
 		goto not_finished;
 	}
 
-	/* check AICR, MIVR, THERMAL Loop */
+	/* 3. Check if ic is not in AICR, MIVR, and THERMAL loop */
 	ret = regmap_read(cdata->rmap, MT6379_REG_CHG_STAT1, &val);
 	if (ret) {
-		dev_info(dev, "%s, Failed to read chg stat1\n", __func__);
+		dev_info(dev, "%s, Failed to read chg stat1 (ret:%d)\n", __func__, ret);
 		goto not_finished;
 	}
+
 	if (val & GENMASK(7, 5)) {
-		dev_info(dev, "%s, Charger in AICR, MIVR, THERMAL Loop %x\n", __func__, val);
+		dev_info(dev, "%s, IC is in AICR or MIVR or THERMAL loop (0x71 = 0x%02x)\n",
+			 __func__, val);
 		ret = -EAGAIN;
 		goto not_finished;
 	}
 
+	/* 4. Check if vbat < (CV - vrec) */
 	ret = mt6379_charger_field_get(cdata, F_CV, &cv);
 	if (ret) {
-		dev_info(dev, "%s, get CV Failed\n", __func__);
+		dev_info(dev, "%s, Failed to get CV (ret:%d)\n", __func__, ret);
 		goto not_finished;
 	}
 
 	ret = mt6379_charger_field_get(cdata, F_VREC, &vrec);
 	if (ret) {
-		dev_info(dev, "%s, get VREC Failed\n", __func__);
+		dev_info(dev, "%s, Failed to get VREC (ret:%d)\n", __func__, ret);
 		goto not_finished;
 	}
 
 	ret = iio_read_channel_processed(&cdata->iio_adcs[ADC_CHAN_VBAT], &vbat);
 	if (ret) {
-		dev_info(dev, "%s, get vbat failed\n", __func__);
+		dev_info(dev, "%s, Failed to get vbat (ret:%d)\n", __func__, ret);
 		goto not_finished;
 	}
 
-	if (cdata->vbat >= cv - vrec) {
-		dev_info(dev, "%s, VBAT >= CV - VREC, (%d, %d, %d)\n",
-			 __func__, vbat, cv, vrec);
+	if (vbat >= cv - vrec) {
+		dev_info(dev, "%s, VBAT(%u mV) >= CV(%u mV) - VREC(%u mV)\n",
+			 __func__, U_TO_M(vbat), U_TO_M(cv), U_TO_M(vrec));
 		ret = -EAGAIN;
 		goto not_finished;
 	}
 
+	/* 5. Check if IL_peak < CHG_OCP, unit: mA */
 	ret = mt6379_charger_field_get(cdata, F_CHG_OCP, &chg_ocp);
 	if (ret) {
-		dev_info(dev, "%s, get chg ocp failed\n", __func__);
+		dev_info(dev, "%s, Failed to get CHG_OCP (ret:%d)\n", __func__, ret);
+		goto not_finished;
+	}
+
+	ret = mt6379_get_ipeak(cdata, &ipeak);
+	if (ret) {
+		dev_info(dev, "%s, Failed to get IL_PEAK (ret:%d)\n", __func__, ret);
 		goto not_finished;
 	}
 
 	chg_ocp = chg_ocp ? 8000 : 6000;
-	ipeak = mt6379_get_ipeak(cdata);
-
-	/* mA */
 	if (ipeak >= chg_ocp || ipeak < 0) {
-		dev_info(dev, "%s, IL_PEAK >= CHG_OCP or invalid, ipeak = %d\n", __func__, ipeak);
+		dev_info(dev, "%s, IL_PEAK >= CHG_OCP or < 0 (IL_PEAK = %d)\n", __func__, ipeak);
 		ret = -EAGAIN;
 		goto not_finished;
 	}
 
-	ret = mt6379_charger_field_get(cdata, F_CC, &icc);
-	if (ret) {
-		dev_info(dev, "%s, get CC setting failed\n", __func__);
-		goto not_finished;
-	}
-
+	/* 6. Turn off external baatery device */
 	customer_turn_off_battery_device();
-	/* MT6379 or 3rd Party Gauge Ibat Read */
-	ibat = mt6379_get_gauge_ibat_ua(cdata);
-	if (ibat < 0) {
-		ret = -EAGAIN;
-		customer_turn_on_battery_device();
-		goto not_finished;
+
+	/*
+	 * 7. Check the absolute value of
+	 *    |(gauge ibat - ICC setting)| <= MT6379_ICC_SENSING_OFFSET_MAX_uA,
+	 *    It will calculate 5 times by default.
+	 */
+	diff_valid = false;
+	avg_diff_uA = 0;
+	ret = mt6379_check_diff_between_icc_and_gauge_ibat(cdata, MT6379_ICC_SENSING_OFFSET_MAX_uA,
+							   &avg_diff_uA, &diff_valid);
+	if (ret) {
+		dev_info(dev, "%s, The difference between icc and gauge ibat is invalid (ret:%d)\n",
+			 __func__, ret);
+		goto recover_battery_device;
 	}
 
-	ret = mt6379_do_icc_calibrate(cdata, ibat - icc);
-	if (ret)
-		dev_info(dev, "%s, mt6379 do icc calibrate failed\n", __func__);
+	/* 8. Calculate the trim code offset to be applied, 1 step is 10mA */
+	dev_info(dev, "%s, Before trim, Avg. (ICC - gauge ibat) = %d uA\n",
+		 __func__, avg_diff_uA);
 
+	if (abs(avg_diff_uA) < MT6379_ICC_DIFF_NO_NEED_TRIM_uA)
+		offset_step = 0;
+	else if (abs(avg_diff_uA) > MT6379_ICC_SENSING_OFFSET_MAX_uA)
+		offset_step = (MT6379_ICC_SENSING_OFFSET_MAX_uA / 10000);
+	else
+		offset_step = DIV_ROUND_CLOSEST(avg_diff_uA, 10000);
+
+	/*
+	 * Because reverse calibration is needed,
+	 * it is necessary to use "avg_diff_uA" to determine whether to multiply by "-1".
+	 */
+	offset_step = (offset_step * (avg_diff_uA > 0 ? -1 : 1)) - cdata->saved_icc_offset_step;
+
+	/* 9. Set ICC trimmed offset step to register */
+	ret = mt6379_set_icc_trim_step_to_reg(cdata, offset_step);
+	if (ret) {
+		dev_info(dev, "%s, Failed to set trim icc offset step (ret:%d)\n", __func__, ret);
+		goto recover_battery_device;
+	}
+
+	cdata->icc_needs_trim = false;
+
+#if MT6379_DOUBLE_CHECK_ICC_OFFSET_VALID_EN
+	/* 10. Double-Check to confirm if |(gauge ibat - ICC setting)| <= 50mA */
+	mdelay(cdata->icc_double_check_time_ms);
+	ret = mt6379_check_diff_between_icc_and_gauge_ibat(cdata, MT6379_ICC_DIFF_VALID_uA,
+							   &avg_diff_uA, &diff_valid);
+	if (ret) {
+		dev_info(dev, "%s, The difference between icc and gauge ibat is invalid (ret:%d)\n",
+			 __func__, ret);
+		goto recover_battery_device;
+	}
+
+	diff_valid = (MT6379_CHECK_ICC_VAILD_BY_AVG_VALULE_EN &&
+		      abs(avg_diff_uA) < MT6379_ICC_DIFF_VALID_uA) ? true : diff_valid;
+	if (!diff_valid) {
+		cdata->icc_needs_trim = true;
+		goto recover_battery_device;
+	}
+#endif /* MT6379_DOUBLE_CHECK_ICC_OFFSET_VALID_EN */
+
+	ret = mt6379_store_icc_offset_step(cdata);
+	if (ret) {
+		dev_info(dev, "%s, Failed to save icc offset step data to phone (ret:%d)\n",
+			 __func__, ret);
+		goto recover_battery_device;
+	}
+
+	dev_info(dev, "%s, After trim, Avg. (ICC - gauge ibat) = %d uA (icc trim %s)\n",
+		 __func__, avg_diff_uA, cdata->icc_needs_trim ? "failed!" : "pass!");
+
+recover_battery_device:
 	customer_turn_on_battery_device();
+
 not_finished:
-	/* if calibration is not finish, schedule work again */
-	if (!cdata->icc_calibrated)
+	mutex_unlock(&cdata->icc_trim_lock);
+	if (cdata->dynamic_icc_trim_en && cdata->icc_needs_trim)
 		schedule_delayed_work(&cdata->icc_cali_work,
-				      msecs_to_jiffies(MT6379_CHECK_ICC_TIME));
+				      msecs_to_jiffies(MT6379_RESTART_ICC_TRIM_INTERVAL_MS));
+
 	return ret;
 }
 
 /*
- * IF POR occurred, trimmed bit will be reset to 0
+ * If POR occurred, trimmed bit will be reset to 0
  * This bit stored trimmed already or not. Even offset is 0
  */
-static bool mt6379_get_icc_trimmed(struct mt6379_charger_data *cdata)
+static bool mt6379_get_icc_trimmed_status(struct mt6379_charger_data *cdata)
 {
 	int ret = 0;
 	u32 val = 0;
 
+	mutex_lock(&cdata->icc_trim_lock);
+
 	ret = mt6379_charger_field_get(cdata, F_ICC_TRIMMED, &val);
 	if (ret)
-		dev_info(cdata->dev, "%s get icc trimmed failed\n", __func__);
+		dev_info(cdata->dev, "%s, Failed to get icc trimmed status\n", __func__);
+
+	mutex_unlock(&cdata->icc_trim_lock);
 
 	return ret == 0 ? !!val : false;
 }
@@ -1565,7 +1754,7 @@ static ssize_t icc_cali_store(struct device *dev, struct device_attribute *attr,
 
 	ret = kstrtoul(buf, 0, &magic);
 	if (ret) {
-		dev_info(dev, "%s, Failed to parse number\n", __func__);
+		dev_info(dev, "%s, Failed to parse number (ret:%d)\n", __func__, ret);
 		return ret;
 	}
 
@@ -1590,6 +1779,180 @@ static ssize_t icc_cali_show(struct device *dev, struct device_attribute *attr, 
 	return sysfs_emit(buf, "%d\n", val);
 }
 static DEVICE_ATTR_RW(icc_cali);
+
+static ssize_t current_icc_offset_step_show(struct device *dev, struct device_attribute *attr,
+					    char *buf)
+{
+	struct mt6379_charger_data *cdata = power_supply_get_drvdata(to_power_supply(dev));
+	int val;
+
+	mutex_lock(&cdata->icc_trim_lock);
+	val = cdata->current_icc_offset_step;
+	mutex_unlock(&cdata->icc_trim_lock);
+
+	return sysfs_emit(buf, "%d\n", val);
+}
+static DEVICE_ATTR_RO(current_icc_offset_step);
+
+static ssize_t icc_cali_mode_store(struct device *dev, struct device_attribute *attr,
+					 const char *buf, size_t count)
+{
+	struct mt6379_charger_data *cdata = power_supply_get_drvdata(to_power_supply(dev));
+	unsigned long magic = 0;
+	int ret = 0;
+
+	mutex_lock(&cdata->icc_trim_lock);
+
+	ret = kstrtoul(buf, 0, &magic);
+	if (ret) {
+		dev_info(dev, "%s, Failed to parse number (ret:%d)\n", __func__, ret);
+		return ret;
+	}
+
+	cdata->dynamic_icc_trim_en = magic ? true : false;
+	dev_info(cdata->dev, "%s, Set mode to: %s\n",
+		 __func__, cdata->dynamic_icc_trim_en ? "Dynamic" : "One-Shot");
+
+	mutex_unlock(&cdata->icc_trim_lock);
+
+	return count;
+}
+
+static ssize_t icc_cali_mode_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct mt6379_charger_data *cdata = power_supply_get_drvdata(to_power_supply(dev));
+	bool val = false;
+
+	mutex_lock(&cdata->icc_trim_lock);
+	val = cdata->dynamic_icc_trim_en;
+	mutex_unlock(&cdata->icc_trim_lock);
+
+	return sysfs_emit(buf, "%s\n", val ? "-> [Dynamic]\tOne-Shot" : "Dynamic\t-> [One-Shot]");
+}
+static DEVICE_ATTR_RW(icc_cali_mode);
+
+static ssize_t force_set_icc_offset_step_store(struct device *dev,
+						    struct device_attribute *attr,
+						    const char *buf, size_t count)
+{
+	struct mt6379_charger_data *cdata = power_supply_get_drvdata(to_power_supply(dev));
+	int ret = 0, offset = 0;
+
+	ret = kstrtoint(buf, 0, &offset);
+	if (ret) {
+		dev_info(dev, "%s, Failed to parse number (ret:%d)\n", __func__, ret);
+		return ret;
+	}
+
+	ret = mt6379_force_set_icc_offset_step(cdata, offset);
+	if (ret) {
+		dev_info(dev, "%s, Failed to force set icc offset step to reg\n", __func__);
+		return ret;
+	}
+
+	return count;
+}
+static DEVICE_ATTR_WO(force_set_icc_offset_step);
+
+static ssize_t lock_icc_and_aicr_en_store(struct device *dev, struct device_attribute *attr,
+					  const char *buf, size_t count)
+{
+	struct mt6379_charger_data *cdata = power_supply_get_drvdata(to_power_supply(dev));
+	char *tmp_str, *token;
+	int ret = 0, i = 0;
+	u32 val[3] = { 0 };
+
+	tmp_str = kstrdup(buf, GFP_KERNEL);
+	if (!tmp_str)
+		return -ENOMEM;
+
+	while ((token = strsep(&tmp_str, " ")) && *token && i < 3) {
+		ret = kstrtou32(token, 0, &val[i++]);
+		if (ret) {
+			dev_info(dev, "%s, Failed to parse %s\n", __func__, token);
+			kfree(tmp_str);
+			return ret;
+		}
+	}
+
+	dev_info(dev, "%s, en: %u, target icc: %u uA, target aicr: %u uA\n",
+		 __func__, val[0], val[1], val[2]);
+
+	cdata->lock_icc_and_aicr = (bool)(!!val[0]);
+	cdata->target_icc_uA = val[1];
+	cdata->target_aicr_uA = val[2];
+
+	if (cdata->lock_icc_and_aicr) {
+		mt6379_charger_field_set(cdata, F_CC, cdata->target_icc_uA);
+		mt6379_charger_field_set(cdata, F_IBUS_AICR, cdata->target_aicr_uA);
+	} else {
+		cdata->target_icc_uA = MT6379_DEFAULT_TARGET_ICC_WHEN_LOCK_uA;
+		cdata->target_aicr_uA = MT6379_DEFAULT_TARGET_AICR_WHEN_LOCK_uA;
+	}
+
+	kfree(tmp_str);
+	return count;
+}
+
+static ssize_t lock_icc_and_aicr_en_show(struct device *dev, struct device_attribute *attr,
+					 char *buf)
+{
+	struct mt6379_charger_data *cdata = power_supply_get_drvdata(to_power_supply(dev));
+
+	return sysfs_emit(buf, "en: %d, target icc: %u uA, target aicr: %u uA\n",
+			  cdata->lock_icc_and_aicr, cdata->target_icc_uA, cdata->target_aicr_uA);
+}
+static DEVICE_ATTR_RW(lock_icc_and_aicr_en);
+
+static ssize_t target_aicr_uA_store(struct device *dev, struct device_attribute *attr,
+				    const char *buf, size_t count)
+{
+	struct mt6379_charger_data *cdata = power_supply_get_drvdata(to_power_supply(dev));
+	int ret = 0;
+	u32 val = 0;
+
+	ret = kstrtou32(buf, 0, &val);
+	if (ret) {
+		dev_info(dev, "%s, Failed to parse token\n", __func__);
+		return ret;
+	}
+
+	cdata->target_aicr_uA = val;
+	return count;
+}
+
+static ssize_t target_aicr_uA_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct mt6379_charger_data *cdata = power_supply_get_drvdata(to_power_supply(dev));
+
+	return sysfs_emit(buf, "%d\n", cdata->target_aicr_uA);
+}
+static DEVICE_ATTR_RW(target_aicr_uA);
+
+static ssize_t target_icc_uA_store(struct device *dev, struct device_attribute *attr,
+				   const char *buf, size_t count)
+{
+	struct mt6379_charger_data *cdata = power_supply_get_drvdata(to_power_supply(dev));
+	int ret = 0;
+	u32 val = 0;
+
+	ret = kstrtou32(buf, 0, &val);
+	if (ret) {
+		dev_info(dev, "%s, Failed to parse token\n", __func__);
+		return ret;
+	}
+
+	cdata->target_icc_uA = val;
+	return count;
+}
+
+static ssize_t target_icc_uA_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct mt6379_charger_data *cdata = power_supply_get_drvdata(to_power_supply(dev));
+
+	return sysfs_emit(buf, "%d\n", cdata->target_icc_uA);
+}
+static DEVICE_ATTR_RW(target_icc_uA);
 
 static const u16 mt6xxx_charger_bypass_iq[] = {
 	MT6379_REG_CHG_BYPASS_IQ,
@@ -1739,6 +2102,12 @@ static struct attribute *mt6379_charger_psy_sysfs_attrs[] = {
 	&dev_attr_shipping_mode.attr,
 	&dev_attr_bypass_iq.attr,
 	&dev_attr_icc_cali.attr,
+	&dev_attr_icc_cali_mode.attr,
+	&dev_attr_current_icc_offset_step.attr,
+	&dev_attr_force_set_icc_offset_step.attr,
+	&dev_attr_target_icc_uA.attr,
+	&dev_attr_target_aicr_uA.attr,
+	&dev_attr_lock_icc_and_aicr_en.attr,
 	&dev_attr_test_mode.attr,
 	NULL
 };
@@ -1869,44 +2238,18 @@ static int mt6379_charger_toggle_bc12(struct mt6379_charger_data *cdata)
 	return mt6379_charger_enable_bc12(cdata, true);
 }
 
-static void mt6379_charger_icc_check_work_func(struct work_struct *work)
-{
-	struct mt6379_charger_data *cdata = container_of(work, struct mt6379_charger_data,
-							 icc_check_work.work);
-	int ret = 0;
-
-	ret = mt6379_icc_check(cdata);
-	if (ret) {
-		dev_info(cdata->dev, "%s, icc check failed, do not write to phone\n", __func__);
-		cdata->icc_calibrated = false;
-		schedule_delayed_work(&cdata->icc_cali_work,
-				      msecs_to_jiffies(MT6379_CHECK_ICC_TIME));
-	} else {
-		dev_info(cdata->dev, "%s, icc is good now\n", __func__);
-		ret = mt6379_store_save_icc_offset(cdata->icc_offset);
-		if (ret)
-			dev_info(cdata->dev, "%s, save icc offset to phone failed\n", __func__);
-	}
-}
-
 static void mt6379_charger_icc_cali_work_func(struct work_struct *work)
 {
 	struct mt6379_charger_data *cdata = container_of(work, struct mt6379_charger_data,
 							 icc_cali_work.work);
-	int online = 0, ret = 0;
 
-	dev_info(cdata->dev, "%s, calibrated = %d\n", __func__, cdata->icc_calibrated);
+	if (!cdata->dynamic_icc_trim_en) {
+		dev_info(cdata->dev, "%s, It is not in dynamic trim mode now!\n", __func__);
+		return;
+	}
 
-	ret = mt6379_charger_get_online(cdata, &online);
-	if (ret)
-		dev_info(cdata->dev, "%s, get online failed, ret(%d)\n", __func__, ret);
-
-	if (online) {
-		if (mt6379_icc_calibrate(cdata))
-			dev_info(cdata->dev, "%s icc calibrate not excute\n", __func__);
-	} else
-		schedule_delayed_work(&cdata->icc_cali_work,
-				      msecs_to_jiffies(MT6379_CHECK_ICC_TIME));
+	if (mt6379_icc_calibrate(cdata))
+		dev_info(cdata->dev, "%s, icc trim flow has not been excuted\n", __func__);
 }
 
 static void mt6379_charger_bc12_work_func(struct work_struct *work)
@@ -3166,6 +3509,13 @@ static void mt6379_charger_destroy_ramp_lock(void *data)
 	mutex_destroy(ramp_lock);
 }
 
+static void mt6379_charger_destroy_icc_trim_lock(void *data)
+{
+	struct mutex *icc_trim_lock = data;
+
+	mutex_destroy(icc_trim_lock);
+}
+
 static int mt6379_charger_init_mutex(struct mt6379_charger_data *cdata)
 {
 	struct device *dev = cdata->dev;
@@ -3205,6 +3555,14 @@ static int mt6379_charger_init_mutex(struct mt6379_charger_data *cdata)
 	ret = devm_add_action_or_reset(dev, mt6379_charger_destroy_ramp_lock, &cdata->ramp_lock);
 	if (ret) {
 		dev_info(dev, "%s, Failed to init ramp lock\n", __func__);
+		return ret;
+	}
+
+	mutex_init(&cdata->icc_trim_lock);
+	ret = devm_add_action_or_reset(dev, mt6379_charger_destroy_icc_trim_lock,
+				       &cdata->icc_trim_lock);
+	if (ret) {
+		dev_info(dev, "%s, Failed to init icc trim lock\n", __func__);
 		return ret;
 	}
 
@@ -3258,13 +3616,6 @@ static void mt6379_charger_destroy_switching_work(void *d)
 }
 
 static void mt6379_charger_destroy_icc_cali_work(void *d)
-{
-	struct delayed_work *work = d;
-
-	cancel_delayed_work(work);
-}
-
-static void mt6379_charger_destroy_icc_check_work(void *d)
 {
 	struct delayed_work *work = d;
 
@@ -3485,9 +3836,10 @@ static void mt6379_charger_non_switch_dwork_func(struct work_struct *work)
 
 static int mt6379_charger_probe(struct platform_device *pdev)
 {
+	u32 icc_efuse = 0, icc_offset_step = 0;
+	const struct platform_device_id *id;
 	struct mt6379_charger_data *cdata;
 	struct device *dev = &pdev->dev;
-	const struct platform_device_id *id;
 	int ret = 0;
 
 	cdata = devm_kzalloc(dev, sizeof(*cdata), GFP_KERNEL);
@@ -3557,19 +3909,13 @@ static int mt6379_charger_probe(struct platform_device *pdev)
 	}
 	cdata->non_switching = false;
 
+	cdata->dynamic_icc_trim_en = MT6379_DYNAMIC_ICC_TRIM_EN;
+	cdata->icc_double_check_time_ms = MT6379_DOUBLE_CHECK_ICC_OFFSET_DELAY_TIME_MS;
 	INIT_DELAYED_WORK(&cdata->icc_cali_work, mt6379_charger_icc_cali_work_func);
 	ret = devm_add_action_or_reset(dev, mt6379_charger_destroy_icc_cali_work,
 				       &cdata->icc_cali_work);
 	if (ret) {
 		dev_info(dev, "%s, Failed to add icc cali action\n", __func__);
-		return ret;
-	}
-
-	INIT_DELAYED_WORK(&cdata->icc_check_work, mt6379_charger_icc_check_work_func);
-	ret = devm_add_action_or_reset(dev, mt6379_charger_destroy_icc_check_work,
-				       &cdata->icc_check_work);
-	if (ret) {
-		dev_info(dev, "%s, Failed to add icc check action\n", __func__);
 		return ret;
 	}
 
@@ -3655,17 +4001,36 @@ static int mt6379_charger_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	cdata->icc_trimmed = mt6379_get_icc_trimmed(cdata);
+	cdata->icc_trimmed = mt6379_get_icc_trimmed_status(cdata);
+	cdata->icc_needs_trim = cdata->icc_trimmed ? false : true;
+	ret = mt6379_charger_field_get(cdata, F_ICC_ORIGIN, &icc_efuse);
+	if (ret)
+		dev_info(dev, "%s, Failed to get icc offset efuse data (ret:%d)\n", __func__, ret);
+
+	ret = mt6379_charger_field_get(cdata, F_ICC_OFFSET, &icc_offset_step);
+	if (ret)
+		dev_info(dev, "%s, Failed to get icc offset step (ret:%d)\n", __func__, ret);
+
+	if (cdata->icc_trimmed)
+		cdata->current_icc_offset_step = icc_offset_step - icc_efuse;
+
 	dev_info(dev, "%s, icc trimmed = %d\n", __func__, cdata->icc_trimmed);
-#if MT6379_IMPLEMENT_ICC_LOAD
+
+#if MT6379_IMPLEMENT_ICC_STORAGE_FUNC_EN
 	if (!cdata->icc_trimmed) { /* POR occurred */
-		cdata->saved_icc_offset = mt6379_load_save_icc_offset();
-		dev_info(dev, "%s, saved icc offset = %d\n", __func__, cdata->saved_icc_offset);
-		ret = mt6379_trim_icc_offset(cdata, cdata->saved_icc_offset, false);
+		cdata->saved_icc_offset_step = mt6379_load_icc_offset_step();
+		dev_info(dev, "%s, saved icc offset step: %d\n",
+			 __func__, cdata->saved_icc_offset_step);
+
+		ret = mt6379_set_icc_trim_step_to_reg(cdata, cdata->saved_icc_offset_step);
 		if (ret)
-			dev_info(dev, "%s trim icc offset failed\n", __func__);
+			dev_info(dev, "%s, Failed to set trim icc offset step (ret:%d)\n",
+				 __func__, ret);
 	}
-#endif /* MT6379_IMPLEMENT_ICC_LOAD */
+#endif /* MT6379_IMPLEMENT_ICC_STORAGE_FUNC_EN */
+
+	cdata->target_icc_uA = MT6379_DEFAULT_TARGET_ICC_WHEN_LOCK_uA;
+	cdata->target_aicr_uA = MT6379_DEFAULT_TARGET_AICR_WHEN_LOCK_uA;
 
 	mt6379_charger_check_pwr_rdy(cdata);
 	return 0;
