@@ -14,6 +14,7 @@
 #define MMSYS_MT6878  0x6878
 #define MMSYS_MT6991  0x6991
 #define MMSYS_MT6993  0x6993
+#define MMSYS_MT6858  0x6858
 
 #define DPCFUNC(fmt, args...) \
 	pr_info("[dpc] %s:%d " fmt "\n", __func__, __LINE__, ##args)

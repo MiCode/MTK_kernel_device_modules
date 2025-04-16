@@ -54,6 +54,7 @@ struct mtk_dsi_driver_data {
 	const u32 reg_vm_cmd_data20_ofs;
 	const u32 reg_vm_cmd_data30_ofs;
 	const u32 reg_dsi_input_dbg_ofs;
+	const u32 reg_shadow_ofs;
 	s32 (*poll_for_idle)(struct mtk_dsi *dsi, struct cmdq_pkt *handle);
 	irqreturn_t (*irq_handler)(int irq, void *dev_id);
 	char *esd_eint_compat;
@@ -72,6 +73,8 @@ struct mtk_dsi_driver_data {
 	bool keep_hs_eotp; /* keep HS eotp */
 	bool support_rd_cmdq;
 	enum PREURGENT_MODE support_pre_urgent;
+	bool disable_te_timeout_by_set_cnt;
+	bool vm_rgb_time_interval; /* RGB or HBP interval */
 	u32 max_vfp;
 	void (*mmclk_by_datarate)(struct mtk_dsi *dsi,
 		struct mtk_drm_crtc *mtk_crtc, unsigned int en);

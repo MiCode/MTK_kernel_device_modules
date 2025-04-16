@@ -248,6 +248,10 @@ bool no_bwm20_layer;
 #define DISP_MUTEX0_MOD0 0xB0
 #define DISP_MUTEX0_MOD1 0xB4
 
+/* For MT6858 */
+#define MT6858_MMSYS_BYPASS_MUX_SHADOW 0xC00
+#define MT6858_MMSYS_CROSSBAR_CON 0xC0C
+
 /* MT6989 DLI_Relay setting*/
 #define MT6989_DISPSYS_DLI_RELAY_1TNP 0x200
 #define MT6989_DISPSYS_DLI_NUM 8
@@ -1533,6 +1537,12 @@ void mtk_drm_crtc_mini_dump(struct drm_crtc *crtc)
 	case MMSYS_MT6781:
 		mmsys_config_dump_reg_mt6879(mtk_crtc->config_regs);
 		break;
+	case MMSYS_MT6858:
+		DDPDUMP("== DISP pipe0 MMSYS_CONFIG REGS:0x%pa ==\n",
+			&mtk_crtc->config_regs_pa);
+		mmsys_config_dump_reg_mt6858(mtk_crtc->config_regs);
+		break;
+
 	default:
 		DDPPR_ERR("%s mtk drm not support mmsys id %d\n",
 			__func__, priv->data->mmsys_id);
@@ -1762,6 +1772,10 @@ void mtk_drm_crtc_dump(struct drm_crtc *crtc)
 	case MMSYS_MT6781:
 		mmsys_config_dump_reg_mt6879(mtk_crtc->config_regs);
 		mutex_dump_reg_mt6879(mtk_crtc->mutex[0]);
+		break;
+	case MMSYS_MT6858:
+		mmsys_config_dump_reg_mt6858(mtk_crtc->config_regs);
+		mutex_dump_reg_mt6858(mtk_crtc->mutex[0]);
 		break;
 	default:
 		DDPPR_ERR("%s mtk drm not support mmsys id %d\n",
@@ -2162,6 +2176,11 @@ void mtk_drm_crtc_mini_analysis(struct drm_crtc *crtc)
 			}
 		}
 		break;
+	case MMSYS_MT6858:
+		DDPDUMP("== DUMP DISP pipe-0 ANALYSIS:0x%pa ==\n",
+			&mtk_crtc->config_regs_pa);
+		mmsys_config_dump_analysis_mt6858(crtc);
+		break;
 	case MMSYS_MT6873:
 	case MMSYS_MT6853:
 	case MMSYS_MT6833:
@@ -2480,6 +2499,12 @@ void mtk_drm_crtc_analysis(struct drm_crtc *crtc)
 	case MMSYS_MT6835:
 		mmsys_config_dump_analysis_mt6835(mtk_crtc->config_regs);
 		mutex_dump_analysis_mt6835(mtk_crtc->mutex[0]);
+		break;
+	case MMSYS_MT6858:
+		// mmsys_config_dump_analysis_mt6858(mtk_crtc->config_regs);
+		mmsys_config_dump_analysis_mt6858(crtc);
+		mutex_dump_analysis_mt6858(mtk_crtc->mutex[0]);
+		mtk_vidle_dpc_analysis(); //test_541 need it?
 		break;
 	default:
 		DDPPR_ERR("%s mtk drm not support mmsys id %d\n",
@@ -4879,6 +4904,10 @@ int get_addon_path_wait_event(struct drm_crtc *crtc,
 		else if (comp->id == DDP_COMPONENT_OVLSYS_WDMA1)
 			return mtk_crtc->gce_obj.event[EVENT_OVLSYS_WDMA0_EOF];
 	}
+	if (priv->data->mmsys_id == MMSYS_MT6858)
+		if (comp->id == DDP_COMPONENT_WDMA1)
+			return mtk_crtc->gce_obj.event[EVENT_WDMA1_EOF];
+
 	if (comp->id == DDP_COMPONENT_WDMA0)
 		return mtk_crtc->gce_obj.event[EVENT_WDMA0_EOF];
 	if (comp->id == DDP_COMPONENT_WDMA1)
@@ -4978,6 +5007,8 @@ void _mtk_crtc_wb_addon_module_disconnect(
 			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_WDMA1_v3) ||
 			(addon_module->type == ADDON_AFTER &&
+			addon_module->module == DISP_WDMA1_v4) ||
+			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_WDMA1_DL) ||
 			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_WDMA_MID) ||
@@ -5061,6 +5092,8 @@ static void _mtk_crtc_cwb_addon_module_disconnect(
 			addon_module->module == DISP_WDMA1) ||
 			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_WDMA1_v3) ||
+			(addon_module->type == ADDON_AFTER &&
+			addon_module->module == DISP_WDMA1_v4) ||
 			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_WDMA1_DL) ||
 			(addon_module->type == ADDON_AFTER &&
@@ -5431,6 +5464,8 @@ _mtk_crtc_wb_addon_module_connect(
 			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_WDMA1_v3) ||
 			(addon_module->type == ADDON_AFTER &&
+			addon_module->module == DISP_WDMA1_v4) ||
+			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_WDMA1_DL) ||
 			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_OVLSYS_WDMA0) ||
@@ -5640,6 +5675,8 @@ _mtk_crtc_cwb_addon_module_connect(
 			addon_module->module == DISP_WDMA1) ||
 			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_WDMA1_v3) ||
+			(addon_module->type == ADDON_AFTER &&
+			addon_module->module == DISP_WDMA1_v4) ||
 			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_WDMA1_DL) ||
 			(addon_module->type == ADDON_AFTER &&
@@ -10595,7 +10632,8 @@ void mtk_crtc_enable_iommu_runtime(struct mtk_drm_crtc *mtk_crtc,
 			priv->data->mmsys_id == MMSYS_MT6895 ||
 			priv->data->mmsys_id == MMSYS_MT6835 ||
 			priv->data->mmsys_id == MMSYS_MT6855 ||
-			priv->data->mmsys_id == MMSYS_MT6886) {
+			priv->data->mmsys_id == MMSYS_MT6886 ||
+			priv->data->mmsys_id == MMSYS_MT6858) {
 			/*set smi_larb_sec_con reg as 1*/
 			mtk_crtc_exec_atf_prebuilt_instr(mtk_crtc, handle);
 		}
@@ -12685,6 +12723,9 @@ static void mtk_crtc_addon_connector_disconnect(struct drm_crtc *crtc,
 		case MMSYS_MT6855:
 			mtk_ddp_remove_dsc_prim_MT6855(mtk_crtc, handle);
 			break;
+		case MMSYS_MT6858:
+			mtk_ddp_remove_dsc_prim_mt6858(mtk_crtc, handle);
+			break;
 		default:
 			DDPINFO("%s mtk drm not support mmsys id %d\n",
 				__func__, priv->data->mmsys_id);
@@ -12854,6 +12895,9 @@ void mtk_crtc_addon_connector_connect(struct drm_crtc *crtc,
 			break;
 		case MMSYS_MT6855:
 			mtk_ddp_insert_dsc_prim_MT6855(mtk_crtc, handle);
+			break;
+		case MMSYS_MT6858:
+			mtk_ddp_insert_dsc_prim_mt6858(mtk_crtc, handle);
 			break;
 		default:
 			DDPINFO("%s mtk drm not support mmsys id %d\n",
@@ -14020,6 +14064,19 @@ void mtk_crtc_config_default_path(struct mtk_drm_crtc *mtk_crtc)
 
 		_mtk_crtc_1tnp_setting(mtk_crtc);
 
+	} else if (priv->data->mmsys_id == MMSYS_MT6858) {
+		/*Set EVENT_GCED_EN EVENT_GCEM_EN*/
+		writel(0x3, mtk_crtc->config_regs +
+				DISP_REG_CONFIG_MMSYS_GCE_EVENT_SEL);
+
+		/*Set BYPASS_MUX_SHADOW*/
+		writel(0x1, mtk_crtc->config_regs +
+				MT6858_MMSYS_BYPASS_MUX_SHADOW);
+
+		/*Set CROSSBAR_BYPASS_MUX_SHADOW*/
+		writel(0x00ff0000, mtk_crtc->config_regs +
+				MT6858_MMSYS_CROSSBAR_CON);
+
 	}
 #endif
 
@@ -14599,7 +14656,8 @@ void mtk_crtc_prepare_instr(struct drm_crtc *crtc)
 		priv->data->mmsys_id == MMSYS_MT6895 ||
 		priv->data->mmsys_id == MMSYS_MT6886 ||
 		priv->data->mmsys_id == MMSYS_MT6835 ||
-		priv->data->mmsys_id == MMSYS_MT6855) {
+		priv->data->mmsys_id == MMSYS_MT6855 ||
+		priv->data->mmsys_id == MMSYS_MT6858) {
 		handle = cmdq_pkt_create(mtk_crtc->gce_obj.client[CLIENT_CFG]);
 
 		if (!handle) {
@@ -15911,6 +15969,19 @@ void mtk_crtc_first_enable_ddp_config(struct mtk_drm_crtc *mtk_crtc)
 						DISP_REG_CONFIG_OVLSYS_BYPASS_MUX_SHADOW);
 			}
 		}
+	} else if (priv->data->mmsys_id == MMSYS_MT6858) {
+		/*Set EVENT_GCED_EN EVENT_GCEM_EN*/
+		writel(0x3, mtk_crtc->config_regs +
+				DISP_REG_CONFIG_MMSYS_GCE_EVENT_SEL);
+
+		/*Set BYPASS_MUX_SHADOW*/
+		writel(0x1, mtk_crtc->config_regs +
+				MT6858_MMSYS_BYPASS_MUX_SHADOW);
+
+		/*Set CROSSBAR_BYPASS_MUX_SHADOW*/
+		writel(0x00ff0000, mtk_crtc->config_regs +
+				MT6858_MMSYS_CROSSBAR_CON);
+
 	}
 #endif
 
@@ -20247,7 +20318,8 @@ static void mtk_drm_crtc_enable_fake_layer(struct drm_crtc *crtc,
 
 		if (priv->data->mmsys_id == MMSYS_MT6985 ||
 			priv->data->mmsys_id == MMSYS_MT6989 ||
-			priv->data->mmsys_id == MMSYS_MT6897) {
+			priv->data->mmsys_id == MMSYS_MT6897 ||
+			priv->data->mmsys_id == MMSYS_MT6858) {
 			layer_num2 = mtk_ovl_layer_num(
 					priv->ddp_comp[DDP_COMPONENT_OVL1_2L]);
 
@@ -20339,7 +20411,8 @@ static void mtk_drm_crtc_disable_fake_layer(struct drm_crtc *crtc,
 
 		if (priv->data->mmsys_id == MMSYS_MT6985 ||
 			priv->data->mmsys_id == MMSYS_MT6989 ||
-			priv->data->mmsys_id == MMSYS_MT6897) {
+			priv->data->mmsys_id == MMSYS_MT6897 ||
+			priv->data->mmsys_id == MMSYS_MT6858) {
 			layer_num2 = mtk_ovl_layer_num(
 					priv->ddp_comp[DDP_COMPONENT_OVL1_2L]);
 
@@ -21486,6 +21559,7 @@ u16 mtk_get_gpr(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle)
 	case MMSYS_MT6835:
 	case MMSYS_MT6789:
 	case MMSYS_MT6855:
+	case MMSYS_MT6858:
 		if (handle->cl == (void *)client_dsi)
 			return ((drm_crtc_index(crtc) == 0) ? CMDQ_GPR_R03 : CMDQ_GPR_R05);
 		else
@@ -22306,6 +22380,10 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 				mtk_crtc->crtc_caps.wb_caps[2].support = 1;
 				mtk_crtc->crtc_caps.wb_caps[3].support = 1;
 			}
+			if (priv->data->mmsys_id == MMSYS_MT6858) {
+				mtk_crtc->crtc_caps.wb_caps[0].support = 1;
+				mtk_crtc->crtc_caps.wb_caps[1].support = 1;
+			}
 			mtk_crtc->crtc_caps.crtc_ability |= ABILITY_IDLEMGR;
 			mtk_crtc->crtc_caps.crtc_ability |= ABILITY_ESD_CHECK;
 			mtk_crtc->crtc_caps.crtc_ability |= ABILITY_RSZ;
@@ -22337,6 +22415,16 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 				priv->data->mmsys_id == MMSYS_MT6993) {
 				mtk_crtc->crtc_caps.wb_caps[1].support = 1;
 				mtk_crtc->crtc_caps.crtc_ability |= ABILITY_MML;
+			}
+
+			if (pipe == 3 && priv->data->mmsys_id == MMSYS_MT6858) {
+				//test_541 check if it need or not
+				mtk_crtc->crtc_caps.crtc_ability |= ABILITY_IDLEMGR;
+				mtk_crtc->crtc_caps.crtc_ability |= ABILITY_ESD_CHECK;
+				mtk_crtc->crtc_caps.crtc_ability |= ABILITY_MML;
+				mtk_crtc->crtc_caps.crtc_ability |= ABILITY_WCG;
+				mtk_crtc->crtc_caps.crtc_ability |= ABILITY_FBDC;
+				mtk_crtc->crtc_caps.crtc_ability |= ABILITY_EXT_LAYER;
 			}
 		}
 		mtk_crtc->crtc_caps.ovl_csc_bit_number = 18;
