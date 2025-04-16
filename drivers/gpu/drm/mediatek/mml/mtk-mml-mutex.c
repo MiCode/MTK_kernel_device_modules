@@ -79,6 +79,8 @@ struct mml_mutex {
 	u16 event_prete;
 
 	struct mutex_module modules[MML_MAX_COMPONENTS];
+
+	void *dispao_base;
 };
 
 struct mutex_frame_data {
@@ -863,9 +865,24 @@ static irqreturn_t mml_mutex_irq_handler_mt6993(int irq, void *dev_id)
 	u32 i;
 	const u32 mml2_rrot0_mod = 18;	/* rrot0 = <MML2_RROT0 0 18>; */
 	const u32 mml2_rrot1_mod = 26;	/* rrot1 = <MML2_RROT1 0 26>; */
+	static bool dispao_once;
 
-	if (!mml_isr_alive(mutex->mml, comp, &mutex->isr_nodes))
+	if (!mml_isr_alive(mutex->mml, comp, &mutex->isr_nodes)) {
+		if (!dispao_once && mutex->dispao_base) {
+			u32 regs[4], i;
+			const u32 *va = (u32 *)mutex->dispao_base;
+
+			mml_dpc_isr_keep();
+			for (i = 0; i < 4; i++)
+				regs[i] = readl(va + i);
+			mml_dpc_isr_release();
+			dispao_once = true;
+			mml_log("disp ao:%#010x %#010x %#010x %#010x",
+				regs[0], regs[1], regs[2], regs[3]);
+		}
+
 		goto out;
+	}
 
 	mml_dpc_isr_keep();
 
@@ -940,6 +957,9 @@ static int probe(struct platform_device *pdev)
 			priv->irq = true;
 			mml_log("register mutex%u irq %s %d irq %d mutex %p",
 				priv->idx, ret ? "fail" : "success", ret, irq, priv);
+
+			/* debug irq issue */
+			priv->dispao_base = (void *)ioremap(0x3ee00000, 4096);
 		}
 	}
 
