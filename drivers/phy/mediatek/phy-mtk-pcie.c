@@ -470,6 +470,13 @@ static int mtk_pcie_monitor_phy(struct phy *phy)
 	dev_info(pcie_phy->dev, "PHY ln0 probe: 0xc000c1=%#x, 0xc200c3=%#x, 0xca00cb=%#x, 0xcc00d3=%#x, 0xd400d5=%#x, 0xd600d7=%#x, 0xd800d9=%#x, 0xda00db=%#x, 0xdc00dd=%#x, 0xfb00fd=%#x, 0x10a013f=%#x\n",
 		 tbl[0], tbl[1], tbl[2], tbl[3], tbl[4], tbl[5], tbl[6], tbl[7], tbl[8], tbl[9], tbl[10]);
 
+	mtk_pcie_phy_dbg_set_partition(sif, 0x404);
+	tbl[0] = mtk_pcie_phy_dbg_read_bus(sif, PEXTP_DIG_GLB_10, 0x1050106);
+	tbl[1] = mtk_pcie_phy_dbg_read_bus(sif, PEXTP_DIG_GLB_10, 0x1070108);
+	tbl[2] = mtk_pcie_phy_dbg_read_bus(sif, PEXTP_DIG_GLB_10, 0x109010a);
+	dev_info(pcie_phy->dev, "PHY ln0 probe: 0x1050106=%#x, 0x1070108=%#x, 0x109010a=%#x\n",
+		 tbl[0], tbl[1], tbl[2]);
+
 	tbl[0] = readl_relaxed(sif + PEXTP_ANA_GLB_50_REG);
 	tbl[1] = readl_relaxed(sif + PEXTP_ANA_GLB_54_REG);
 	mtk_phy_update_field(sif + PEXTP_ANA_GLB_14_REG, GLB_TPLL0_DEBUG_SEL, 0x7);
