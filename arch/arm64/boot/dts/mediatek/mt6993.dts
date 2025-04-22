@@ -9483,6 +9483,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<0 0x14800000 0 0x1000>, /* apinfra_mmu pd */
 				<0 0x140e0000 0 0x1000>, /* apinfra_hash pd */
 				<0 0x140e1000 0 0x1000>, /* apinfra_hash_ctrl pd */
+				<0 0x180a4000 0 0x1000>, /* ssr pd */
 				<0 0x16670000 0 0x1000>, /* peri pd */
 				<0 0x1c032000 0 0x1000>, /* vlp pd */
 				<0 0x1a019000 0 0x1000>, /* adsp pd */
@@ -9505,6 +9506,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<0 0x14060000 0 0x1000>, /* apinfra_mmu ao */
 				<0 0x14080000 0 0x1000>, /* apinfra_hash ao */
 				<0 0x14084000 0 0x1000>, /* apinfra_hash_ctrl ao */
+				<0 0x180a0000 0 0x1000>, /* ssr ao */
 				<0 0x16660000 0 0x1000>, /* peri ao */
 				<0 0x1c550000 0 0x1000>, /* vlp ao */
 				<0 0x1a340000 0 0x1000>, /* adsp ao */
@@ -9528,6 +9530,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<GIC_SPI 831 IRQ_TYPE_LEVEL_HIGH 0>, /* apinfra_mmu irq */
 				<2 7 IRQ_TYPE_LEVEL_HIGH 0>, /* apinfra_hash irq */
 				<2 8 IRQ_TYPE_LEVEL_HIGH 0>, /* apinfra_hash_ctrl irq */
+				<2 94 IRQ_TYPE_LEVEL_HIGH 0>, /* ssr irq */
 				<GIC_SPI 279 IRQ_TYPE_EDGE_RISING 0>, /* peri irq */
 				<GIC_SPI 806 IRQ_TYPE_LEVEL_HIGH 0>, /* vlp irq */
 				<GIC_SPI 546 IRQ_TYPE_LEVEL_HIGH 0>, /* adsp irq */
