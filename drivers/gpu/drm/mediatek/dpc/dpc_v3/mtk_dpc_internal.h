@@ -619,6 +619,7 @@ struct mtk_dpc {
 	void (*hrt_bw_set)(const u32 subsys, const u32 bw_in_mb, bool force);
 	void (*srt_bw_set)(const u32 subsys, const u32 bw_in_mb, bool force);
 	void (*mtcmos_vote)(const u32 subsys, const u8 thread, const bool en);
+	void (*group_enable)(const u16 group, bool en);
 	int (*power_keep)(const u32 user);
 	void (*power_release)(const u32 user);
 	void (*power_keep_by_gce)(struct cmdq_pkt *pkt, const u32 user, const u16 gpr, void *reuse);
