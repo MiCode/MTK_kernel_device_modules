@@ -671,9 +671,39 @@ int mtk_vdisp_efuse_probe(struct platform_device *pdev)
 	return 0;
 }
 
+struct tag_chipid {
+	u32 size;
+	u32 hw_code;
+	u32 hw_subcode;
+	u32 hw_ver;
+	u32 sw_ver;
+};
+
+static int vdisp_get_chipid(void)
+{
+	struct device_node *node = of_find_node_by_path("/chosen");
+	struct tag_chipid *chip_id = NULL;
+	int len;
+
+	if (!node)
+		node = of_find_node_by_path("/chosen@0");
+	if (!node) {
+		VDISPERR("chosen node not found in device tree");
+		return -ENODEV;
+	}
+
+	chip_id = (struct tag_chipid *)of_get_property(node, "atag,chipid", &len);
+	if (!chip_id) {
+		VDISPERR("could not found atag,chipid in chosen");
+		return -ENODEV;
+	}
+
+	return chip_id->sw_ver;
+}
+
 int mtk_vdisp_avs_probe(struct platform_device *pdev)
 {
-	int ret;
+	int ret, sw_ver, opp_tbl_num;
 	unsigned long freq = 0;
 	struct dev_pm_opp *opp;
 	struct device *dev = &pdev->dev;
@@ -727,7 +757,15 @@ int mtk_vdisp_avs_probe(struct platform_device *pdev)
 #endif
 
 	/* OPP related operation */
-	ret = dev_pm_opp_of_add_table(dev);
+	// A0/B0 chip discrimination
+	sw_ver = vdisp_get_chipid();
+	if (sw_ver < 0)
+		return 0;
+
+	// B0 chip use opp_tbl[1] if exist in dts
+	opp_tbl_num = of_count_phandle_with_args(dev->of_node, "operating-points-v2", NULL);
+	ret = dev_pm_opp_of_add_table_indexed(dev,
+		((sw_ver == 0x0001) && (opp_tbl_num > 1)) ? 1 : 0);
 	if (ret)
 		return 0;
 
