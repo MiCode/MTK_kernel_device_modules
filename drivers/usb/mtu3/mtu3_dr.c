@@ -125,6 +125,7 @@ static void switch_port_to_on(struct ssusb_mtk *ssusb, enum phy_mode mode)
 	ssusb_phy_power_on(ssusb);
 	ssusb_phy_set_mode(ssusb, mode);
 	ssusb_ip_sw_reset(ssusb);
+	ssusb_phy_apply_prop(ssusb, mode);
 }
 
 static void switch_port_to_off(struct ssusb_mtk *ssusb)
@@ -136,10 +137,10 @@ static void switch_port_to_off(struct ssusb_mtk *ssusb)
 	ssusb_phy_set_mode(ssusb, PHY_MODE_INVALID);
 	ssusb_phy_power_off(ssusb);
 	ssusb_set_power_state(ssusb, MTU3_STATE_POWER_OFF);
+	ssusb_phy_clear_prop(ssusb);
 	ssusb_clks_disable(ssusb);
 	ssusb_pds_disable(ssusb);
 	ssusb_vsvoter_clr(ssusb);
-
 	pm_runtime_put(ssusb->dev);
 }
 
@@ -224,7 +225,9 @@ static void ssusb_mode_sw_work_v2(struct work_struct *work)
 
 	mtu3_dbg_trace(ssusb->dev, "set role : %s", usb_role_string(desired_role));
 
-	if (!work_data->force_mode && current_role == desired_role)
+	if (work_data->force_mode)
+		ssusb->phy_prop_state = SSUSB_PHY_PROP_SWITCHING;
+	else if (current_role == desired_role)
 		goto same_role;
 
 	timeout = jiffies + SSUSB_SUSPEND_RESUME_TIMEOUT;
@@ -794,6 +797,34 @@ static ssize_t host_dev_show(struct device *dev,
 }
 static DEVICE_ATTR_RW(host_dev);
 
+
+static ssize_t phy_prop_store(struct device *dev,
+				 struct device_attribute *attr,
+				 const char *buf, size_t count)
+{
+	struct ssusb_mtk *ssusb = dev_get_drvdata(dev);
+	int index, ret;
+
+	if (kstrtoint(buf, 10, &index))
+		return -EINVAL;
+
+	ret = ssusb_phy_set_prop(ssusb, index);
+	if (ret < 0)
+		return ret;
+
+	return count;
+}
+
+static ssize_t phy_prop_show(struct device *dev,
+				struct device_attribute *attr,
+				char *buf)
+{
+	struct ssusb_mtk *ssusb = dev_get_drvdata(dev);
+
+	return snprintf(buf, PAGE_SIZE, "%d\n", ssusb_phy_get_prop(ssusb));
+}
+static DEVICE_ATTR_RW(phy_prop);
+
 static struct attribute *ssusb_dr_attrs[] = {
 	&dev_attr_mode.attr,
 	&dev_attr_role_mode.attr,
@@ -802,6 +833,7 @@ static struct attribute *ssusb_dr_attrs[] = {
 	&dev_attr_saving.attr,
 	&dev_attr_u3_lpm.attr,
 	&dev_attr_host_dev.attr,
+	&dev_attr_phy_prop.attr,
 	NULL
 };
 

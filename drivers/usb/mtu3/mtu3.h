@@ -200,6 +200,32 @@ enum ssusb_offload_mode {
 	SSUSB_OFFLOAD_MODE_S_SS_EX /* super-speed or super-speed-plus S mode without vcore */
 };
 
+enum ssusb_phy_prop_state {
+	SSUSB_PHY_PROP_DEFAULT = 0,
+	SSUSB_PHY_PROP_SWITCHING,
+	SSUSB_PHY_PROP_APPLIED,
+};
+
+/* sync from phy-mtk-io.h */
+#define PHY_MODE_PROPERTY_MAX 15
+
+enum mtk_phy_submode {
+	PHY_MODE_BC11_SW_SET = 1,
+	PHY_MODE_BC11_SW_CLR,
+	PHY_MODE_DPDMPULLDOWN_SET,
+	PHY_MODE_DPDMPULLDOWN_CLR,
+	PHY_MODE_DPPULLUP_SET,
+	PHY_MODE_DPPULLUP_CLR,
+	PHY_MODE_NORMAL,
+	PHY_MODE_FLIP,
+	PHY_MODE_SUSPEND_DEV,
+	PHY_MODE_SUSPEND_NO_DEV,
+	PHY_MODE_DIS_PRE_EMP,
+	/* reserves for USB driving properpt switch use */
+	PHY_MODE_PROPERTY_SET = 0xfff0,
+	PHY_MODE_PROPERTY_SET_END = PHY_MODE_PROPERTY_SET + PHY_MODE_PROPERTY_MAX,
+};
+
 /**
  * @base: the base address of fifo
  * @limit: the bitmap size in bits
@@ -327,6 +353,10 @@ struct ssusb_mtk {
 	void __iomem *host_base;
 	struct phy **phys;
 	int num_phys;
+	int phy_u2_device_props;
+	int phy_u2_host_props;
+	int phy_prop_index;
+	enum ssusb_phy_prop_state phy_prop_state;
 	int wakeup_irq;
 	/* vbus gpio */
 	struct gpio_desc *vbus_gpio;
@@ -572,6 +602,27 @@ static inline void mtu3_clrbits(void __iomem *base, u32 offset, u32 bits)
 	writel((tmp & ~(bits)), addr);
 }
 
+/* sync from phy-mtk-io.h */
+static inline int mtk_phy_mode_property_to_index(int submode)
+{
+	int index = -EINVAL;
+
+	if (submode >= PHY_MODE_PROPERTY_SET && submode <= PHY_MODE_PROPERTY_SET_END)
+		index = submode - PHY_MODE_PROPERTY_SET;
+
+	return index;
+}
+
+static inline int mtk_phy_index_to_mode_property(int index)
+{
+	int submode = -EINVAL;
+
+	if (index >= 0 && index < PHY_MODE_PROPERTY_MAX)
+		submode = PHY_MODE_PROPERTY_SET + index;
+
+	return submode;
+}
+
 int ssusb_check_clocks(struct ssusb_mtk *ssusb, u32 ex_clks);
 void ssusb_toggle_vbus(struct ssusb_mtk *ssusb);
 void ssusb_set_force_vbus(struct ssusb_mtk *ssusb, bool vbus_on);
@@ -579,6 +630,7 @@ int ssusb_phy_power_on(struct ssusb_mtk *ssusb);
 void ssusb_phy_power_off(struct ssusb_mtk *ssusb);
 void ssusb_reset(struct ssusb_mtk *ssusb);
 void ssusb_phy_set_mode(struct ssusb_mtk *ssusb, enum phy_mode mode);
+void ssusb_phy_set_mode_ext(struct ssusb_mtk *ssusb, enum phy_mode mode, int submode);
 void ssusb_phy_dp_pullup(struct ssusb_mtk *ssusb);
 int ssusb_clks_enable(struct ssusb_mtk *ssusb);
 void ssusb_clks_disable(struct ssusb_mtk *ssusb);
@@ -594,6 +646,7 @@ void ssusb_set_noise_still_tr(struct ssusb_mtk *ssusb);
 void ssusb_set_ldm_resp_delay(struct ssusb_mtk *ssusb);
 void ssusb_vsvoter_set(struct ssusb_mtk *ssusb);
 void ssusb_vsvoter_clr(struct ssusb_mtk *ssusb);
+enum usb_device_speed ssusb_get_host_speed(struct ssusb_mtk *ssusb);
 void ssusb_set_host_low_speed_bypass(struct ssusb_mtk *ssusb);
 void ssusb_clear_host_low_speed_bypass(struct ssusb_mtk *ssusb);
 struct usb_request *mtu3_alloc_request(struct usb_ep *ep, gfp_t gfp_flags);
@@ -630,6 +683,12 @@ extern const struct usb_ep_ops mtu3_ep0_ops;
 
 int get_dp_switch_status(struct ssusb_mtk *ssusb);
 void ssusb_parse_toggle_vbus(struct ssusb_mtk *ssusb, struct device_node *nd);
+
+struct ssusb_mtk *ssusb_get_drvdata(struct device *dev);
+int ssusb_phy_set_prop(struct ssusb_mtk *ssusb, int index);
+int ssusb_phy_get_prop(struct ssusb_mtk *ssusb);
+void ssusb_phy_apply_prop(struct ssusb_mtk *ssusb, enum phy_mode mode);
+void ssusb_phy_clear_prop(struct ssusb_mtk *ssusb);
 
 void ssusb_offload_streaming(struct ssusb_offload *offload, bool start);
 

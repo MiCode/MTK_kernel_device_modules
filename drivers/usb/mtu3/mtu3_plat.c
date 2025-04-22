@@ -27,11 +27,6 @@
 #include "mtu3_dr.h"
 #include "mtu3_debug.h"
 
-#define PHY_MODE_DPPULLUP_SET 5
-#define PHY_MODE_DPPULLUP_CLR 6
-#define PHY_MODE_SUSPEND_DEV 9
-#define PHY_MODE_SUSPEND_NO_DEV 10
-
 #define VS_VOTER_EN_LO 0x0
 #define VS_VOTER_EN_LO_SET 0x1
 #define VS_VOTER_EN_LO_CLR 0x2
@@ -861,6 +856,143 @@ void ssusb_phy_dp_pullup(struct ssusb_mtk *ssusb)
 	queue_work(system_power_efficient_wq, &ssusb->dp_work);
 }
 
+struct ssusb_mtk *ssusb_get_drvdata(struct device *dev)
+{
+	struct device_node *udc_node;
+	struct platform_device *udc_pdev;
+	struct ssusb_mtk *ssusb = NULL;
+
+	if (!dev || !dev->of_node)
+		goto err;
+
+	udc_node = of_parse_phandle(dev->of_node, "mediatek,udc", 0);
+	if (udc_node) {
+		udc_pdev = of_find_device_by_node(udc_node);
+		if (!udc_pdev) {
+			dev_info(dev, "failed to find udc_pdev %s\n", __func__);
+		} else {
+			ssusb = platform_get_drvdata(udc_pdev);
+			if (!ssusb)
+				dev_info(dev, "failed to get ssusb %s\n", __func__);
+		}
+		of_node_put(udc_node);
+	} else
+		dev_info(dev, "failed to find udc_node %s\n", __func__);
+err:
+	return ssusb;
+}
+EXPORT_SYMBOL(ssusb_get_drvdata);
+
+int ssusb_phy_set_prop(struct ssusb_mtk *ssusb, int index)
+{
+	struct mtu3 *mtu;
+	struct otg_switch_mtk *otg_sx;
+	enum usb_role role;
+	enum usb_device_speed speed = USB_SPEED_UNKNOWN;
+	int max_num = 0;
+	int submode = 0;
+
+	if (IS_ERR_OR_NULL(ssusb))
+		return -EINVAL;
+
+	mtu = ssusb->u3d;
+	otg_sx = &ssusb->otg_switch;
+	role = otg_sx->current_role;
+
+	if (role == USB_ROLE_DEVICE) {
+		max_num = ssusb->phy_u2_device_props;
+		speed = mtu->g.speed;
+	} else if (role == USB_ROLE_HOST) {
+		max_num = ssusb->phy_u2_host_props;
+		speed = ssusb_get_host_speed(ssusb);
+	}
+
+	dev_info(ssusb->dev, "%s index %d, max_num %d, role %d, speed %d\n",
+		__func__, index, max_num, role, speed);
+
+	/* support u2 phy only for now */
+	if (speed < USB_SPEED_LOW || speed > USB_SPEED_HIGH) {
+		dev_info(ssusb->dev, "%s invalid speed\n", __func__);
+		return -EINVAL;
+	}
+
+	if (max_num <= 0 || index < 0 || index > max_num) {
+		dev_info(ssusb->dev, "%s invalid index", __func__);
+		return -EINVAL;
+	}
+
+	submode = mtk_phy_index_to_mode_property(index);
+	if (submode < 0)
+		return -EINVAL;
+
+	ssusb->phy_prop_index = index;
+	ssusb_set_mode(otg_sx, role, true);
+
+	return index;
+}
+EXPORT_SYMBOL(ssusb_phy_set_prop);
+
+int ssusb_phy_get_prop(struct ssusb_mtk *ssusb)
+{
+	if (IS_ERR_OR_NULL(ssusb))
+		return -EINVAL;
+	else
+		return ssusb->phy_prop_index;
+}
+EXPORT_SYMBOL(ssusb_phy_get_prop);
+
+void ssusb_phy_apply_prop(struct ssusb_mtk *ssusb, enum phy_mode mode)
+{
+	int submode =  0;
+
+	/* apply phy driving setting */
+	if (ssusb->phy_prop_state == SSUSB_PHY_PROP_SWITCHING) {
+		submode =  mtk_phy_index_to_mode_property(ssusb->phy_prop_index);
+		if (submode >= 0) {
+			ssusb_phy_set_mode_ext(ssusb, mode, submode);
+			ssusb->phy_prop_state = SSUSB_PHY_PROP_APPLIED;
+		}
+	}
+}
+
+void ssusb_phy_clear_prop(struct ssusb_mtk *ssusb)
+{
+	/* clean phy driving setting */
+	if (ssusb->phy_prop_state == SSUSB_PHY_PROP_APPLIED) {
+		ssusb->phy_prop_state = SSUSB_PHY_PROP_DEFAULT;
+		ssusb->phy_prop_index = 0;
+	}
+}
+
+static void ssusb_phy_parse_prop_table(struct ssusb_mtk *ssusb)
+{
+	struct device *dev = ssusb->dev;
+	struct device_node *np = NULL;
+	int ret;
+	u32 value;
+
+	np = of_find_node_with_property(NULL, "mediatek,u2-device-prop-number");
+	if (np) {
+		ret  = of_property_read_u32(np, "mediatek,u2-device-prop-number", &value);
+		if (!ret && value > 0 && value < PHY_MODE_PROPERTY_MAX)
+			ssusb->phy_u2_device_props = value;
+
+		of_node_put(np);
+	}
+
+	np = of_find_node_with_property(NULL, "mediatek,u2-host-prop-number");
+	if (np) {
+		ret  = of_property_read_u32(np, "mediatek,u2-host-prop-number", &value);
+		if (!ret && value > 0 && value < PHY_MODE_PROPERTY_MAX)
+			ssusb->phy_u2_host_props = value;
+
+		of_node_put(np);
+	}
+
+	dev_info(dev, "phy_u2_device_props=%d, phy_u2_host_props=%d\n",
+			ssusb->phy_u2_device_props, ssusb->phy_u2_host_props);
+}
+
 static int ssusb_phy_init(struct ssusb_mtk *ssusb)
 {
 	int i;
@@ -871,6 +1003,9 @@ static int ssusb_phy_init(struct ssusb_mtk *ssusb)
 		if (ret)
 			goto exit_phy;
 	}
+
+	ssusb_phy_parse_prop_table(ssusb);
+
 	return 0;
 
 exit_phy:
@@ -946,6 +1081,14 @@ void ssusb_phy_set_mode(struct ssusb_mtk *ssusb, enum phy_mode mode)
 
 	for (i = 0; i < ssusb->num_phys; i++)
 		phy_set_mode(ssusb->phys[i], mode);
+}
+
+void ssusb_phy_set_mode_ext(struct ssusb_mtk *ssusb, enum phy_mode mode, int submode)
+{
+	unsigned int i;
+
+	for (i = 0; i < ssusb->num_phys; i++)
+		phy_set_mode_ext(ssusb->phys[i], mode, submode);
 }
 
 int ssusb_clks_enable(struct ssusb_mtk *ssusb)

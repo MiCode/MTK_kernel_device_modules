@@ -74,9 +74,15 @@ enum ssusb_uwk_vers {
 	SSUSB_UWK_V1_7,		/* specific revision 1.07 */
 };
 
+#define USB3_PORT_SC		(0x420)
 #define USB2_PORT_SC(x)		(0x420 + 0x10 * (x))
 #define DEV_SPEED_MASK		(0xf << 10)
+#define DEV_UNDEFSPEED(p)	(((p) & DEV_SPEED_MASK) == (0x0 << 10))
+#define DEV_FULLSPEED(p)	(((p) & DEV_SPEED_MASK) == (0x1 << 10))
 #define DEV_LOWSPEED(p)		(((p) & DEV_SPEED_MASK) == (0x2 << 10))
+#define DEV_HIGHSPEED(p)	(((p) & DEV_SPEED_MASK) == (0x3 << 10))
+#define DEV_SUPERSPEED(p)	(((p) & DEV_SPEED_MASK) == (0x4 << 10))
+#define DEV_SUPERSPEED_PLUS(p)	(((p) & DEV_SPEED_MASK) == (0x5 << 10))
 
 /*
  * ip-sleep wakeup mode:
@@ -167,6 +173,37 @@ int ssusb_wakeup_of_property_parse(struct ssusb_mtk *ssusb,
 			ssusb->uwk_reg_base, ssusb->uwk_vers);
 
 	return PTR_ERR_OR_ZERO(ssusb->uwk);
+}
+
+enum usb_device_speed ssusb_get_host_speed(struct ssusb_mtk *ssusb)
+{
+	u32 value;
+	enum usb_device_speed speed;
+	int num_u3p = ssusb->u3_ports;
+
+	if (IS_ERR_OR_NULL(ssusb->host_base))
+		return USB_SPEED_UNKNOWN;
+
+	/* read from u3 port first */
+	value = readl(ssusb->host_base + USB3_PORT_SC);
+	/* read from u2 port if no valid speed */
+	if (DEV_UNDEFSPEED(value))
+		value = readl(ssusb->host_base + USB2_PORT_SC(num_u3p));
+
+	if (DEV_LOWSPEED(value))
+		speed = USB_SPEED_LOW;
+	else if (DEV_FULLSPEED(value))
+		speed = USB_SPEED_FULL;
+	else if (DEV_HIGHSPEED(value))
+		speed = USB_SPEED_HIGH;
+	else if (DEV_SUPERSPEED(value))
+		speed = USB_SPEED_SUPER;
+	else if (DEV_SUPERSPEED_PLUS(value))
+		speed = USB_SPEED_SUPER_PLUS;
+	else
+		speed = USB_SPEED_UNKNOWN;
+
+	return speed;
 }
 
 void ssusb_set_host_low_speed_bypass(struct ssusb_mtk *ssusb)
