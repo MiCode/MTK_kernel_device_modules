@@ -17,26 +17,30 @@ TRACE_EVENT(core_ctl_heaviest_util,
 	TP_PROTO(
 		unsigned int big_cpu_ts,
 		unsigned int heaviest_thres,
-		unsigned int max_util),
+		unsigned int max_util,
+		unsigned int rescue_big_core),
 
-	TP_ARGS(big_cpu_ts, heaviest_thres, max_util),
+	TP_ARGS(big_cpu_ts, heaviest_thres, max_util, rescue_big_core),
 
 	TP_STRUCT__entry(
 		__field(unsigned int, big_cpu_ts)
 		__field(unsigned int, heaviest_thres)
 		__field(unsigned int, max_util)
+		__field(unsigned int, rescue_big_core)
 	),
 
 	TP_fast_assign(
 		__entry->big_cpu_ts = big_cpu_ts;
 		__entry->heaviest_thres = heaviest_thres;
 		__entry->max_util = max_util;
+		__entry->rescue_big_core = rescue_big_core;
 	),
 
-	TP_printk("big_cpu_ts=%u heaviest_thres=%u max_util=%u",
+	TP_printk("big_cpu_ts=%u heaviest_thres=%u max_util=%u resc_b=%u",
 		__entry->big_cpu_ts,
 		__entry->heaviest_thres,
-		__entry->max_util)
+		__entry->max_util,
+		__entry->rescue_big_core)
 );
 
 TRACE_EVENT(core_ctl_algo_info,

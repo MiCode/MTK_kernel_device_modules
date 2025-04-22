@@ -143,6 +143,8 @@ struct cpu_data {
 	unsigned int cpu_active_loading[WIN_SIZE];
 	u64 last_wall_time;
 	u64 last_idle_time;
+	int max_nr_state;
+	int max_rt_nr_state;
 };
 
 static unsigned int enable_policy;
@@ -1941,13 +1943,16 @@ static void get_busy_cpus(void)
 				cpu_stat->is_busy = false;
 			/* else remain previous status */
 
-			busy_state[cpu] = (unsigned int)cpu_stat->is_busy;
-			max_nr_state[cpu] = get_max_nr_running(cpu);
-			max_rt_nr_state[cpu] = get_max_rt_nr_running(cpu);
+			cpu_stat->max_nr_state = get_max_nr_running(cpu);
+			cpu_stat->max_rt_nr_state = get_max_rt_nr_running(cpu);
 
-			over_nr_task = max_nr_state[cpu] > cluster->nr_task_thres;
+			busy_state[cpu] = (unsigned int)cpu_stat->is_busy;
+			max_nr_state[cpu] = cpu_stat->max_nr_state;
+			max_rt_nr_state[cpu] = cpu_stat->max_rt_nr_state;
+
+			over_nr_task = cpu_stat->max_nr_state > cluster->nr_task_thres;
 			over_act_load = cpu_stat->cpu_active_loading[idx] > cluster->active_loading_thres;
-			over_rt_nr_task = max_rt_nr_state[cpu] > cluster->rt_nr_task_thres;
+			over_rt_nr_task = cpu_stat->max_rt_nr_state > cluster->rt_nr_task_thres;
 
 			if (busy_state[cpu] && over_nr_task)
 				cpu_count++;
@@ -2074,6 +2079,13 @@ static inline bool window_check(void)
 	return do_check;
 }
 
+enum {
+	NO_NEED_RESCUE	= 0,
+	BUSY_NR	= 1,
+	BUSY_RT_NR	= 2,
+	HEAVY_NORMAL_TASK	= 4
+};
+
 static void check_heaviest_status(void)
 {
 	unsigned long flags;
@@ -2082,7 +2094,7 @@ static void check_heaviest_status(void)
 	unsigned int max_capacity, big_cpu_ts=0;
 	unsigned long heaviest_thres;
 	static unsigned int max_task_util;
-	int cpu;
+	int cpu, rescue_big_core = NO_NEED_RESCUE;
 	struct cpu_data *cpu_stat;
 
 	if (num_clusters <= 2)
@@ -2112,34 +2124,42 @@ static void check_heaviest_status(void)
 	/* rescue prime core when busy */
 	if (enable_policy != CAMERA_MODE) {
 		spin_lock_irqsave(&core_ctl_state_lock, flags);
-		for_each_cpu(cpu, &big_cluster->cpu_mask){
+		for_each_cpu(cpu, &big_cluster->cpu_mask) {
 			cpu_stat = &per_cpu(cpu_state, cpu);
-			if (cpu_stat->is_busy) {
-				if (mid_cluster->new_need_cpus < mid_cluster->num_cpus)
-					mid_cluster->new_need_cpus = mid_cluster->num_cpus;
+
+			if (cpu_stat->is_busy && cpu_stat->max_nr_state > 1) {
+				mid_cluster->new_need_cpus += (cpu_stat->max_nr_state - 1);
+				rescue_big_core |= BUSY_NR;
+			}
+			if (cpu_stat->max_rt_nr_state > big_cluster->rt_nr_task_thres) {
+				mid_cluster->new_need_cpus += cpu_stat->max_rt_nr_state;
+				rescue_big_core |= BUSY_RT_NR;
 			}
 		}
+
+		if (big_cluster->nr_down + big_cluster->nr_up > 1) {
+			mid_cluster->new_need_cpus += (big_cluster->nr_down + big_cluster->nr_up);
+			rescue_big_core |= HEAVY_NORMAL_TASK;
+		}
+
 		spin_unlock_irqrestore(&core_ctl_state_lock, flags);
 	}
 
 	if (big_cluster->new_need_cpus)
-		return;
+		goto print_log;
 
 	/* If max util is over threshold */
 	if (max_task_util > heaviest_thres) {
 		spin_lock_irqsave(&core_ctl_state_lock, flags);
 		big_cluster->new_need_cpus++;
-		if (enable_policy != CAMERA_MODE){
-			if (mid_cluster->new_need_cpus < mid_cluster->num_cpus)
-				mid_cluster->new_need_cpus = mid_cluster->num_cpus;
-		} else { /* only for camera mode */
-			if (mid_cluster->new_need_cpus > 0)
-				mid_cluster->new_need_cpus--;
-		}
+		if (mid_cluster->new_need_cpus > 0)
+			mid_cluster->new_need_cpus--;
+
 		spin_unlock_irqrestore(&core_ctl_state_lock, flags);
 	}
 
-	trace_core_ctl_heaviest_util(big_cpu_ts, heaviest_thres, max_task_util);
+print_log:
+	trace_core_ctl_heaviest_util(big_cpu_ts, heaviest_thres, max_task_util, rescue_big_core);
 }
 
 static inline void core_ctl_main_algo(void)
