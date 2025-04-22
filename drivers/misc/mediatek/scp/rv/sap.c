@@ -6,6 +6,7 @@
 #define pr_fmt(fmt) "sap " fmt
 
 #include <linux/of.h>
+#include <linux/of_gpio.h>
 #include <linux/io.h>
 #include <linux/soc/mediatek/mtk-mbox.h>
 #include <linux/soc/mediatek/mtk_tinysys_ipi.h>
@@ -53,6 +54,12 @@ struct sap_device {
 	struct mtk_mbox_device mbox_dev;
 	struct sap_status_reg status_reg;
 	struct struct_reg *reg_list;
+
+	bool dump_ois_pin_status;
+	int ois_avdd_pin;
+	int ois_vdd_pin;
+	int ois_scl_pin;
+	int ois_sda_pin;
 };
 
 #define INIT_STRUCT_REG(n)	\
@@ -126,6 +133,30 @@ void sap_dump_last_regs(void)
 	reg->sp_latch = readl(cfg_base + CFG_MON_SP_LATCH_OFFSET);
 }
 
+static void sap_dump_gpio_range(int start, int end)
+{
+	gpio_dump_regs_range(start, end);
+}
+
+static void sap_crash_dump_ois_pin_status(void)
+{
+	struct sap_device *dev = &sap_dev;
+
+	if (!dev->dump_ois_pin_status)
+		return;
+
+	if (dev->ois_avdd_pin >= 0)
+		pr_notice("ois avdd pin %d value %d\n",
+			dev->ois_avdd_pin, gpio_get_value(dev->ois_avdd_pin));
+	if (dev->ois_vdd_pin >= 0)
+		pr_notice("ois vdd pin %d value %d\n",
+			dev->ois_vdd_pin, gpio_get_value(dev->ois_vdd_pin));
+	if (dev->ois_scl_pin >= 0)
+		sap_dump_gpio_range(dev->ois_scl_pin, dev->ois_scl_pin);
+	if (dev->ois_sda_pin >= 0)
+		sap_dump_gpio_range(dev->ois_sda_pin, dev->ois_sda_pin);
+}
+
 void sap_show_last_regs(void)
 {
 	struct sap_status_reg *reg = &sap_dev.status_reg;
@@ -140,6 +171,7 @@ void sap_show_last_regs(void)
 	pr_notice("reg pc_latch = %08x\n", reg->pc_latch);
 	pr_notice("reg lr_latch = %08x\n", reg->lr_latch);
 	pr_notice("reg sp_latch = %08x\n", reg->sp_latch);
+	sap_crash_dump_ois_pin_status();
 }
 
 uint32_t sap_print_last_regs(char *buf, uint32_t size)
@@ -598,6 +630,23 @@ static int sap_device_probe(struct platform_device *pdev)
 	if (ret < 0) {
 		pr_err("register ipi fail %d\n", ret);
 		goto err_ipi;
+	}
+
+	dev->dump_ois_pin_status = of_property_read_bool(
+			pdev->dev.of_node, "dump-ois-pin-status");
+	if (dev->dump_ois_pin_status) {
+		dev->ois_avdd_pin = of_get_named_gpio(
+			pdev->dev.of_node, "ois-avdd-pin", 0);
+		dev->ois_vdd_pin = of_get_named_gpio(
+			pdev->dev.of_node, "ois-vdd-pin", 0);
+		ret = of_property_read_u32(
+			pdev->dev.of_node, "ois-scl-pin", &dev->ois_scl_pin);
+		if (ret < 0)
+			dev->ois_scl_pin = -EINVAL;
+		ret = of_property_read_u32(
+			pdev->dev.of_node, "ois-sda-pin", &dev->ois_sda_pin);
+		if (ret < 0)
+			dev->ois_sda_pin = -EINVAL;
 	}
 
 	return 0;

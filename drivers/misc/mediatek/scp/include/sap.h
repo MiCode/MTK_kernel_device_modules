@@ -28,6 +28,7 @@ enum {
 };
 
 extern struct mtk_ipi_device sap_ipidev;
+extern void gpio_dump_regs_range(int start, int end);
 
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SAP_SUPPORT)
 bool sap_enabled(void);

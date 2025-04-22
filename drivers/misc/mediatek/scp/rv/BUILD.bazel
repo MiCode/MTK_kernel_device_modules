@@ -59,6 +59,7 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
         "//kernel_device_modules-{}/sound/soc/mediatek/common:mtk-afe-external".format(kernel_version),
         "//kernel_device_modules-{}/drivers/memory/mediatek:emi-mpu".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/pinctrl/mediatek:pinctrl-mtk-common-v2_debug".format(kernel_version),
     ],
 
     includes = ["."],
