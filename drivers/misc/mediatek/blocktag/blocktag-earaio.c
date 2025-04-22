@@ -315,9 +315,8 @@ static int earaio_try_boost(bool boost)
 #if IS_ENABLED(CONFIG_MTK_FUSE_TRACER)
 	/* Establish threshold for top app fuse request count */
 	earaio_get_fuse_count(&fuse_total, &fuse_unlink);
-	if ((total_top_rw &&
-	     (fuse_total - earaio_ctrl.fuse_total_prev >
-	      earaio_ctrl.fuse_threshold)) ||
+	if ((fuse_total - earaio_ctrl.fuse_total_prev >
+	      earaio_ctrl.fuse_threshold) ||
 	    (fuse_unlink - earaio_ctrl.fuse_unlink_prev >
 	     earaio_ctrl.fuse_unlink_threshold))
 		goto need_boost;
