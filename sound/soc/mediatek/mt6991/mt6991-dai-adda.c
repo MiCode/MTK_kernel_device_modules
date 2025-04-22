@@ -100,6 +100,36 @@ enum {
 
 #define SDM_AUTO_RESET_THRESHOLD 0x190000
 
+static void mtk_final_dump(struct mtk_base_afe *afe)
+{
+	struct mt6991_afe_private *afe_priv = afe->platform_priv;
+
+	if (afe_priv->afe_dump){
+		unsigned int value = 0;
+
+		regmap_read(afe->regmap, AFE_AUD_PAD_TOP_CFG0, &value);
+		dev_info(afe->dev, "%s(), AFE_AUD_PAD_TOP_CFG0 = 0x%x\n",
+			 __func__, value);
+		regmap_read(afe->regmap, AFE_ADDA_MTKAIFV4_RX_CFG0, &value);
+		dev_info(afe->dev, "%s(), AFE_ADDA_MTKAIFV4_RX_CFG0 = 0x%x\n",
+			 __func__, value);
+		for (int i = 0; i <= 3; i++) {
+			regmap_read(afe->regmap, AFE_AUD_PAD_TOP_MON, &value);
+			dev_info(afe->dev, "%s(), AFE_AUD_PAD_TOP_MON = 0x%x\n",
+				 __func__, value);
+			regmap_read(afe->regmap, AFE_ADDA_MTKAIFV4_MON0, &value);
+			dev_info(afe->dev, "%s(), AFE_ADDA_MTKAIFV4_MON0 = 0x%x\n",
+				 __func__, value);
+			regmap_read(afe->regmap, AFE_ADDA_MTKAIFV4_MON1, &value);
+			dev_info(afe->dev, "%s(), AFE_ADDA_MTKAIFV4_MON1 = 0x%x\n",
+				 __func__, value);
+			regmap_read(afe->regmap, AFE_MTKAIF_MON, &value);
+			dev_info(afe->dev, "%s(), AFE_MTKAIF_MON = 0x%x\n",
+				 __func__, value);
+		}
+	}
+}
+
 #if !defined(IS_FPGA_EARLY_PORTING)
 static struct mtk_afe_adda_priv *get_adda_priv_by_name(struct mtk_base_afe *afe,
 		const char *name)
@@ -464,6 +494,7 @@ static int mtk_adda_ul_event(struct snd_soc_dapm_widget *w,
 					   0x0);
 			mtk_adda_ul_src_dmic(afe, MT6991_DAI_ADDA);
 		}
+		mtk_final_dump(afe);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
 		/* should delayed 1/fs(smallest is 8k) = 125us before afe off */
@@ -523,6 +554,7 @@ static int mtk_adda_ch34_ul_event(struct snd_soc_dapm_widget *w,
 					   RG_MTKAIF1_RXIF_SYNC_WORD1_DISABLE_MASK_SFT,
 					   0x1);
 		}
+		mtk_final_dump(afe);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
 		/* should delayed 1/fs(smallest is 8k) = 125us before afe off */
@@ -561,6 +593,7 @@ static int mtk_adda_ch56_ul_event(struct snd_soc_dapm_widget *w,
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
 		mt6991_afe_gpio_request(afe, true, MT6991_DAI_ADDA_CH56, 1);
+		mtk_final_dump(afe);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
 		/* should delayed 1/fs(smallest is 8k) = 125us before afe off */
@@ -810,6 +843,7 @@ static int mtk_adda_dl_event(struct snd_soc_dapm_widget *w,
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
 		mt6991_afe_gpio_request(afe, true, MT6991_DAI_ADDA, 0);
+		mtk_final_dump(afe);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
 		/* should delayed 1/fs(smallest is 8k) = 125us before afe off */
@@ -836,6 +870,7 @@ static int mtk_adda_ch34_dl_event(struct snd_soc_dapm_widget *w,
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
 		mt6991_afe_gpio_request(afe, true, MT6991_DAI_ADDA_CH34, 0);
+		mtk_final_dump(afe);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
 		/* should delayed 1/fs(smallest is 8k) = 125us before afe off */
@@ -1121,6 +1156,31 @@ static int mt6991_vow_enable_set(struct snd_kcontrol *kcontrol,
 
 	return 0;
 }
+
+static int mt6991_afe_dump_get(struct snd_kcontrol *kcontrol,
+				 struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
+	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
+	struct mt6991_afe_private *afe_priv = afe->platform_priv;
+
+	ucontrol->value.integer.value[0] = afe_priv->afe_dump;
+
+	return 0;
+}
+
+static int mt6991_afe_dump_set(struct snd_kcontrol *kcontrol,
+				 struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
+	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
+	struct mt6991_afe_private *afe_priv = afe->platform_priv;
+
+	afe_priv->afe_dump = ucontrol->value.integer.value[0];
+
+	return 0;
+}
+
 static const struct snd_kcontrol_new mtk_adda_controls[] = {
 	SOC_SINGLE("Sidetone_Gain", AFE_STF_GAIN,
 		   SIDE_TONE_GAIN_SFT, SIDE_TONE_GAIN_MASK, 0),
@@ -1140,6 +1200,8 @@ static const struct snd_kcontrol_new mtk_adda_controls[] = {
 		       mt6991_vow_enable_set),
 	SOC_ENUM_EXT("AP DMIC Used", mt6991_adda_enum[0],
 		     mt6991_adda_ap_dmic_get, mt6991_adda_ap_dmic_set),
+	SOC_ENUM_EXT("AFE_DUMP", mt6991_adda_enum[0],
+		     mt6991_afe_dump_get, mt6991_afe_dump_set),
 };
 
 static const struct snd_kcontrol_new stf_ctl =

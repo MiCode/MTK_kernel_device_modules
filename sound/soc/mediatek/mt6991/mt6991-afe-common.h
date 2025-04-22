@@ -679,6 +679,7 @@ struct mt6991_afe_private {
 	int ap_dmic;
 	unsigned int audio_r_miso1_enable;
 	unsigned int miso_only;
+	unsigned int afe_dump;
 
 	/* fmi2s gpio mode for A/B */
 	int fmi2s_gpio_mode;
