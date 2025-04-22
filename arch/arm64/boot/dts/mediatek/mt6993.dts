@@ -2589,7 +2589,7 @@
 		group-ctrl-list {
 			group_0: group-0 {
 				master-sel = <0x0 0x4108>;
-				debounce = <0xd>;
+				debounce = <0xff>;
 				strategy = <0x1>;
 				ignore-urgent = <0x1>;
 			};
