@@ -128,6 +128,7 @@ struct cluster_data {
 	unsigned long freq_thres;
 	bool boost_by_freq;
 	bool boost_by_wlan;
+	unsigned int deiso_reason;
 };
 
 struct cpu_data {
@@ -164,6 +165,17 @@ static unsigned int rt_nr_task_thres[MAX_CLUSTERS] = {2, 2, 2};
 static unsigned int active_loading_thres[MAX_CLUSTERS] = {80, 80, 80};
 static unsigned long freq_thres[MAX_CLUSTERS] = {5000000, 5000000, 5000000};
 struct cpumask cpu_force_pause_mask;
+
+enum {
+	DEISO_NONE	= 0,
+	DEISO_BUSY_NR_TASK	= 1,
+	DEISO_BUSY_ACT_LOAD	= 2,
+	DEISO_BUSY_RT_NR_TASK	= 4,
+	DEISO_HEAVY_TASK	= 8,
+	DEISO_NORMAL_TASK	= 16,
+	DEISO_OVER_FREQ_THRES	= 32,
+	DEISO_WLAN_REQ	= 64
+};
 
 /* ==================== module parameter ======================== */
 
@@ -431,8 +443,10 @@ static void check_freq_min_req(void)
 	spin_lock_irqsave(&core_ctl_state_lock, flags);
 	for_each_cluster(cluster, index) {
 		last_freq_qos_max_of_min = get_freq_qos_max_of_min(index);
-		if (last_freq_qos_max_of_min > cluster->freq_thres)
+		if (last_freq_qos_max_of_min > cluster->freq_thres) {
+			cluster->deiso_reason |= DEISO_OVER_FREQ_THRES;
 			cluster->boost_by_freq = true;
+		}
 		else
 			cluster->boost_by_freq = false;
 	}
@@ -458,12 +472,16 @@ static void check_wlan_request(void)
 		for_each_cpu(i, &cluster->cpu_mask)
 			cluster_cpu_mask |= (1U << i);
 		cluster->boost_by_wlan = (wlan_cpu_req & cluster_cpu_mask)?true:false;
+		if (cluster->boost_by_wlan)
+			cluster->deiso_reason |= DEISO_WLAN_REQ;
 
 		cluster = &cluster_state[M_CLUSTER_ID];
 		cluster_cpu_mask = 0;
 		for_each_cpu(i, &cluster->cpu_mask)
 			cluster_cpu_mask |= (1U << i);
 		cluster->boost_by_wlan = (wlan_cpu_req & cluster_cpu_mask)?true:false;
+		if (cluster->boost_by_wlan)
+			cluster->deiso_reason |= DEISO_WLAN_REQ;
 		spin_unlock_irqrestore(&core_ctl_state_lock, flags);
 	}
 }
@@ -1954,13 +1972,17 @@ static void get_busy_cpus(void)
 			over_act_load = cpu_stat->cpu_active_loading[idx] > cluster->active_loading_thres;
 			over_rt_nr_task = cpu_stat->max_rt_nr_state > cluster->rt_nr_task_thres;
 
-			if (busy_state[cpu] && over_nr_task)
+			if (busy_state[cpu] && over_nr_task) {
+				cluster->deiso_reason |= DEISO_BUSY_NR_TASK;
 				cpu_count++;
-			else if (enable_policy != CAMERA_MODE) {
-				if (busy_state[cpu] && over_act_load)
+			} else if (enable_policy != CAMERA_MODE) {
+				if (busy_state[cpu] && over_act_load) {
+					cluster->deiso_reason |= DEISO_BUSY_ACT_LOAD;
 					cpu_count++;
-				else if (over_rt_nr_task)
+				} else if (over_rt_nr_task) {
+					cluster->deiso_reason |= DEISO_BUSY_RT_NR_TASK;
 					cpu_count++;
+				}
 			}
 		}
 		cluster->need_spread_cpus = cpu_count;
@@ -2173,6 +2195,10 @@ static inline void core_ctl_main_algo(void)
 	unsigned int need_spread_cpu[MAX_CLUSTERS] = {0};
 	unsigned int boost_by_freq[MAX_CLUSTERS] = {0};
 	unsigned int boost_by_wlan[MAX_CLUSTERS] = {0};
+	unsigned int deiso_reason[MAX_CLUSTERS] = {0};
+
+	for_each_cluster(cluster, index)
+		cluster->deiso_reason = DEISO_NONE;
 
 	/* get each cpu loading */
 	get_cpu_active_loading();
@@ -2181,6 +2207,7 @@ static inline void core_ctl_main_algo(void)
 	/* get TLP of over threshold tasks */
 	get_nr_running_big_task();
 
+	index = 0;
 	spin_lock_irqsave(&core_ctl_state_lock, flags);
 	/* Apply TLP of tasks */
 	for_each_cluster(cluster, index) {
@@ -2190,6 +2217,12 @@ static inline void core_ctl_main_algo(void)
 		temp_need_cpus += cluster->nr_down;
 		temp_need_cpus += cluster->need_spread_cpus;
 		temp_need_cpus += get_prev_cluster_nr_assist(index);
+
+		if (cluster->nr_up)
+			cluster->deiso_reason |= DEISO_HEAVY_TASK;
+
+		if (cluster->nr_down)
+			cluster->deiso_reason |= DEISO_NORMAL_TASK;
 
 		if (index == L_CLUSTER_ID)
 			cluster->nr_assist = cluster->nr_up + cluster->need_spread_cpus;
@@ -2221,12 +2254,13 @@ static inline void core_ctl_main_algo(void)
 		need_spread_cpu[index] = cluster->need_spread_cpus;
 		boost_by_freq[index] = cluster->boost_by_freq;
 		boost_by_wlan[index] = cluster->boost_by_wlan;
+		deiso_reason[index] = cluster->deiso_reason;
 	}
 	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
 	cpumask_andnot(&active_cpus, cpu_online_mask, cpu_pause_mask);
 
 	trace_core_ctl_algo_info(enable_policy, need_spread_cpu, nr_assist_cpu, orig_need_cpu,
-				cpumask_bits(&active_cpus)[0], boost_by_freq, boost_by_wlan);
+				cpumask_bits(&active_cpus)[0], boost_by_freq, boost_by_wlan, deiso_reason);
 }
 
 unsigned long (*calc_eff_hook)(unsigned int first_cpu, int opp, unsigned int temp,

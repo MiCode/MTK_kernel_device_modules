@@ -52,10 +52,11 @@ TRACE_EVENT(core_ctl_algo_info,
 		unsigned int *orig_need_cpus,
 		unsigned int active_cpus,
 		unsigned int *boost_by_freq,
-		unsigned int *boost_by_wlan),
+		unsigned int *boost_by_wlan,
+		unsigned int *deiso_reason),
 
 	TP_ARGS(enable_policy, need_spread_cpu, nr_assist_cpu, orig_need_cpus,
-		active_cpus, boost_by_freq, boost_by_wlan),
+		active_cpus, boost_by_freq, boost_by_wlan, deiso_reason),
 
 	TP_STRUCT__entry(
 		__field(unsigned int, enable_policy)
@@ -65,6 +66,7 @@ TRACE_EVENT(core_ctl_algo_info,
 		__field(unsigned int, active_cpus)
 		__array(unsigned int, boost_by_freq, 3)
 		__array(unsigned int, boost_by_wlan, 3)
+		__array(unsigned int, deiso_reason, 3)
 	),
 
 	TP_fast_assign(
@@ -75,16 +77,18 @@ TRACE_EVENT(core_ctl_algo_info,
 		__entry->active_cpus = active_cpus;
 		memcpy(__entry->boost_by_freq, boost_by_freq, sizeof(unsigned int)*3);
 		memcpy(__entry->boost_by_wlan, boost_by_wlan, sizeof(unsigned int)*3);
+		memcpy(__entry->deiso_reason, deiso_reason, sizeof(unsigned int)*3);
 	),
 
-	TP_printk("en=%d spread=%u|%u|%u assist=%u|%u|%u orig_need=%u|%u|%u act=%x, bst_freq=%u|%u|%u bst_wlan=%u|%u|%u",
+	TP_printk("en=%d spread=%u|%u|%u assist=%u|%u|%u orig_need=%u|%u|%u act=%x, bst_freq=%u|%u|%u bst_wlan=%u|%u|%u, reason=%u|%u|%u",
 		__entry->enable_policy,
 		__entry->need_spread_cpu[0], __entry->need_spread_cpu[1], __entry->need_spread_cpu[2],
 		__entry->nr_assist_cpu[0], __entry->nr_assist_cpu[1], __entry->nr_assist_cpu[2],
 		__entry->orig_need_cpus[0], __entry->orig_need_cpus[1], __entry->orig_need_cpus[2],
 		__entry->active_cpus,
 		__entry->boost_by_freq[0], __entry->boost_by_freq[1], __entry->boost_by_freq[2],
-		__entry->boost_by_wlan[0], __entry->boost_by_wlan[1], __entry->boost_by_wlan[2])
+		__entry->boost_by_wlan[0], __entry->boost_by_wlan[1], __entry->boost_by_wlan[2],
+		__entry->deiso_reason[0], __entry->deiso_reason[1], __entry->deiso_reason[2])
 );
 
 TRACE_EVENT(core_ctl_demand_eval,
