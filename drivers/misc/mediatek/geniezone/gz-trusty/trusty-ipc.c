@@ -2051,6 +2051,13 @@ static int tipc_setup_virtqueue(struct tipc_virtio_dev *vds,
 
 	vds->txvq = devm_kcalloc(&vdev->dev, vds->txvq_num,
 			sizeof(struct virtqueue *), GFP_KERNEL);
+
+	if (unlikely(!vds->txvq)) {
+		/* Handle allocation failure */
+		err = -ENOMEM;
+		goto final;
+	}
+
 	for (size_t i = 0UL; i < vds->txvq_num; ++i) {
 		int txvq_start_idx = vds->rxvq_num;
 
