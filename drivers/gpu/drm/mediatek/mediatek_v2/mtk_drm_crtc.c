@@ -4883,7 +4883,7 @@ static void mtk_crtc_cwb_set_sec(struct drm_crtc *crtc)
 	}
 }
 
-/* static bool mtk_crtc_check_fb_secure(struct drm_crtc *crtc)
+static bool mtk_crtc_check_fb_secure(struct drm_crtc *crtc)
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct drm_framebuffer *fb;
@@ -4900,7 +4900,6 @@ static void mtk_crtc_cwb_set_sec(struct drm_crtc *crtc)
 	}
 	return false;
 }
-*/
 
 static void calc_mml_config(struct drm_crtc *crtc,
 	union mtk_addon_config *addon_config,
@@ -5733,6 +5732,8 @@ static void _mtk_crtc_wb_addon_module_connect(
 	enum addon_scenario scn;
 	u32 out_fence_idx;
 
+	mtk_crtc->skip_wb = false; //for skip_wb init
+
 	if (index != 0 || mtk_crtc_is_dc_mode(crtc) ||
 		!state->prop_val[CRTC_PROP_OUTPUT_ENABLE])
 		return;
@@ -5804,6 +5805,13 @@ static void _mtk_crtc_wb_addon_module_connect(
 		if (!fb) {
 			DDPPR_ERR("fb is NULL\n");
 			mtk_crtc->wb_error = 1;
+			return;
+		}
+		// sec in, non sec out
+		if (mtk_crtc_check_fb_secure(crtc) && !mtk_drm_fb_is_secure(fb)) {
+			mtk_crtc->skip_wb = true;
+			DDPINFO("%s:%d, sec in, non sec out! skip wb\n",
+					__func__, __LINE__);
 			return;
 		}
 		addon_config.addon_wdma_config.wdma_src_roi = src_roi;
@@ -20506,7 +20514,7 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 	int session_id = 0;
 	unsigned int fence_idx;
 	int ret = 0;
-	// struct pixel_type_map *pixel_types;
+	struct pixel_type_map *pixel_types;
 
 
 	if (!cmdq_handle) {
@@ -20787,7 +20795,7 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 		}
 
 		/* No need for DBI skip secure */
-		/* if (mtk_crtc_check_fb_secure(crtc)) {
+		if (mtk_crtc->skip_wb) {
 			fence_idx = state->prop_val[CRTC_PROP_OUTPUT_FENCE_IDX];
 			session_id = mtk_get_session_id(crtc);
 			if (mtk_crtc->pq_data) {
@@ -20804,7 +20812,6 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 			kfree(wb_cb_data);
 			return 0;
 		}
-		*/
 
 		mtk_crtc_pkt_create(&handle, crtc, client);
 		if (!handle) {

@@ -1421,6 +1421,8 @@ struct mtk_drm_crtc {
 	dma_addr_t lk_dma_addr;
 
 	unsigned int cur_present_fence_idx;
+
+	bool skip_wb;
 };
 
 enum BL_GAMMA_GAIN {
