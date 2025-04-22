@@ -75,6 +75,7 @@ struct spmi_pmic_dump_rg_info {
 	raw_spinlock_t spin_lock;
 	unsigned int npkt_cclp_err;
 	unsigned int npkt_cclp_clr;
+	unsigned int npkt_cclp_clr_en;
 };
 
 struct mtk_spmi_pmic_debug_data {
@@ -626,10 +627,15 @@ int mtk_spmi_pmic_dump_rg_data(u8 slvid, u32 *rdata, enum dump_rg rg_name)
 			break;
 		}
 		ret |= regmap_read(regmap, info->npkt_cclp_err, &val);
+		if (info->npkt_cclp_clr_en) {
+			ret |= regmap_write(regmap, info->npkt_cclp_clr, 1);
+			ret |= regmap_write(regmap, info->npkt_cclp_clr, 0);
+		} else {
+			/* clear in user, always send 1 to spmi to avoid BUG ON */
+			val = 1;
+		}
 		if (rdata != NULL)
 			*rdata = val;
-		ret |= regmap_write(regmap, info->npkt_cclp_clr, 1);
-		ret |= regmap_write(regmap, info->npkt_cclp_clr, 0);
 		break;
 	default:
 		pr_info("%s: rg_name is not defined\n", __func__);
@@ -864,6 +870,10 @@ static int mtk_spmi_debug_parse_dt(struct device *dev, struct mtk_spmi_pmic_debu
 	if (err)
 		dev_info(dev, "%s slvid 0x%x does not have 'rgs-npkt-cclp-clr' property\n",
 			 __func__, data->usid);
+	err = of_property_read_u32(node, "rgs-npkt-cclp-clr-enable", &(data->dump_rg_info.npkt_cclp_clr_en));
+	if (err)
+		dev_info(dev, "%s slvid 0x%x does not have 'rgs-npkt-cclp-clr-enable' property\n",
+			 __func__, data->usid);
 
 	return data->usid;
 }
@@ -905,6 +915,7 @@ static int mtk_spmi_pmic_debug_probe(struct platform_device *pdev)
 		dev_info(&pdev->dev, "success to create %s slave-%d sysfs file\n", pdev->name, usid);
 	} else
 		dev_info(&pdev->dev, "fail to create %s slave-%d sysfs file\n", pdev->name, usid);
+	pr_info("[pmic debug] usid: %d, clr enable: %d\n", usid, data->dump_rg_info.npkt_cclp_clr_en);
 
 #if MTK_SPMI_DBG
 	mtk_spmi_pmic_get_pre_ot_cnt(pre_ot_buf);
