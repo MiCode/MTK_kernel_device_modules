@@ -72,6 +72,10 @@
 #define RT5512_REG_ANA_TOP_CTRL0	(0xB5)
 #define RT5512_REG_ANA_TOP_CTRL1	(0xB6)
 
+#define RT5512_UVSTAT_MASK	        BIT(4)
+#define RT5512_ERROR_UNDER_VOLTAGE	BIT(4)
+#define RT5512_POLLING_TIME	        60000
+
 #if GENERIC_DEBUGFS
 struct dbg_internal {
 	struct dentry *rt_root;
@@ -115,6 +119,7 @@ struct rt5512_chip {
 	u8 bst_mode;
 	u8 dev_cnt;
 	struct pm_qos_request rt5512_qos_request;
+	struct delayed_work polling_error;
 };
 
 #if GENERIC_DEBUGFS
@@ -359,6 +364,31 @@ static inline void generic_debugfs_exit(struct dbg_info *di) {}
 #endif /* CONFIG_DEBUG_FS */
 #endif /* GENERIC_DEBUGFS */
 
+static int rt5512_get_error_flags(struct device *dev)
+{
+	struct rt5512_chip *chip = dev_get_drvdata(dev);
+	unsigned int val = 0;
+	int ret;
+
+	/* check UVP flag */
+	ret = regmap_read(chip->regmap, RT5512_REG_IRQ_STATUS1, &val);
+
+	if (val & RT5512_UVSTAT_MASK)
+		dev_info(dev, "Under-voltage occurred, status = 0x%04x\n", val);
+
+	return 0;
+}
+
+static void rt5512_polling_error_func(struct work_struct *work)
+{
+	struct rt5512_chip *chip = container_of(work, struct rt5512_chip, polling_error.work);
+	int ret = 0;
+
+	schedule_delayed_work(&chip->polling_error, msecs_to_jiffies(RT5512_POLLING_TIME));
+
+	ret = rt5512_get_error_flags(chip->dev);
+}
+
 static int rt5512_codec_dac_event(struct snd_soc_dapm_widget *w,
 	struct snd_kcontrol *kcontrol, int event)
 {
@@ -388,6 +418,7 @@ static int rt5512_codec_classd_event(struct snd_soc_dapm_widget *w,
 		snd_soc_dapm_to_component(w->dapm);
 	struct rt5512_chip *chip = snd_soc_component_get_drvdata(component);
 	int ret = 0;
+	unsigned int val = 0;
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
@@ -421,13 +452,27 @@ static int rt5512_codec_classd_event(struct snd_soc_dapm_widget *w,
 		*/
 		cpu_latency_qos_update_request(&chip->rt5512_qos_request,
 						     PM_QOS_DEFAULT_VALUE);
+
+		/* start check event flag */
+		schedule_delayed_work(&chip->polling_error, msecs_to_jiffies(RT5512_POLLING_TIME));
+
 		dev_info(component->dev, "Amp on\n");
 		break;
 	case SND_SOC_DAPM_PRE_PMD:
 		dev_info(component->dev, "Amp off\n");
+
+		/* stop check event flag */
+		cancel_delayed_work_sync(&chip->polling_error);
+
+		/* check UVP flag */
+		ret |= regmap_read(chip->regmap, RT5512_REG_IRQ_STATUS1, &val);
+
+		if (val & RT5512_UVSTAT_MASK)
+			dev_info(component->dev, "Under-voltage occurred, status = 0x%04x\n", val);
+
 		cpu_latency_qos_update_request(&chip->rt5512_qos_request, 150);
 		/* enable mute */
-		ret = snd_soc_component_update_bits(component, 0x03, 0x0002,
+		ret |= snd_soc_component_update_bits(component, 0x03, 0x0002,
 						    0x0002);
 		/* Headroom 1.1V */
 		ret |= snd_soc_component_update_bits(component, 0x41, 0x00ff,
@@ -1158,6 +1203,9 @@ int rt5512_i2c_probe(struct i2c_client *client)
 		dev_cnt++;
 		mtk_spk_set_type(MTK_SPK_MEDIATEK_RT5512);
 	}
+
+	INIT_DELAYED_WORK(&chip->polling_error, rt5512_polling_error_func);
+
 	return ret;
 probe_fail:
 	_rt5512_chip_power_on(chip, 0);
