@@ -17,10 +17,14 @@
 #include <linux/device.h>
 #include <linux/cdev.h>
 #include <linux/kfifo.h>
+#include <linux/workqueue.h>
 
 #include "videogo_driver.h"
 #include "videogo_public.h"
 
+#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
+#include "eas/group.h"
+#endif
 
 static DECLARE_KFIFO(service_fifo, struct vgo_powerhal_info, 16);
 
@@ -28,6 +32,12 @@ static DECLARE_WAIT_QUEUE_HEAD(passive_wq);
 
 static DECLARE_WAIT_QUEUE_HEAD(controller_wq);
 static atomic_t controller_wq_ready;
+
+struct workqueue_struct *delayed_wq;
+static atomic_t runnable_boost_enable_cnt;
+#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
+static atomic_t cgrp_cnt;
+#endif
 
 static DECLARE_WAIT_QUEUE_HEAD(service_wq);
 
@@ -63,8 +73,21 @@ static int target_fps_count[MAX_CODEC_TYPE] = {0};
 static int alive_count[MAX_CODEC_TYPE] = {0};
 static int isTranscoding;
 //static struct task_struct *kvideogo_active;
-//static bool videogo_enable;
 
+static void send_service_info(const char *log_msg, int service_type,
+								int data0, int data1, int data2)
+{
+	struct vgo_powerhal_info service_info;
+
+	pr_info("[vgo] %s\n", log_msg);
+	service_info.type = service_type;
+	service_info.data[0] = data0;
+	service_info.data[1] = data1;
+	service_info.data[2] = data2;
+	mutex_lock(&service_mutex);
+	kfifo_in(&service_fifo, &service_info, 1);
+	mutex_unlock(&service_mutex);
+}
 
 static void videogo_vcodec_send_fn(int iotype, void *data)
 {
@@ -93,6 +116,14 @@ static void videogo_vcodec_send_fn(int iotype, void *data)
 			return;
 		}
 		memcpy(entry->data, data, sizeof(struct inst_data));
+		break;
+	case VGO_RECV_STATE_OPEN:
+		entry->data = kmalloc(sizeof(struct oprate_data), GFP_KERNEL);
+		if (!entry->data) {
+			kfree(entry);
+			return;
+		}
+		memcpy(entry->data, data, sizeof(struct oprate_data));
 		break;
 	default:
 		pr_info("type: %d not support\n", iotype);
@@ -142,6 +173,50 @@ static int is_transcoding(struct inst_node *venc_info)
 	}
 
 	return ret;
+}
+
+static void videogo_work_handler(struct work_struct *work)
+{
+	struct vgo_delay_work *vgowork = container_of(to_delayed_work(work),
+										struct vgo_delay_work, delayed_work);
+
+	switch(vgowork->type) {
+	case VGO_REL_RUNNABLE_BOOST_ENABLE:
+		if (atomic_cmpxchg(&runnable_boost_enable_cnt, 1, 0) == 1)
+			send_service_info("rel Runnable_boost_enable",
+				VGO_RUNNABLE_BOOST_ENABLE, -1, 0, 0);
+		else
+			atomic_dec(&runnable_boost_enable_cnt);
+		break;
+	case VGO_REL_CGRP:
+#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
+		if (atomic_cmpxchg(&cgrp_cnt, 1, 0) == 1)
+			group_set_cgroup_colocate(CGRP_FG, -1);
+		else
+			atomic_dec(&cgrp_cnt);
+#endif
+		break;
+	}
+
+	kvfree(vgowork);
+}
+
+static void videogo_send_delay_work(enum work_type type, unsigned int delay_ms, struct oprate_data *info)
+{
+	struct vgo_delay_work *work =
+		kvzalloc(sizeof(struct vgo_delay_work), GFP_KERNEL);
+
+	if (!work)
+		return;
+
+	work->type = type;
+	work->inst_type = info->inst_type;
+	work->ctx_id = info->ctx_id;
+
+	INIT_DELAYED_WORK(&work->delayed_work, videogo_work_handler);
+
+	if (!queue_delayed_work(delayed_wq, &work->delayed_work, msecs_to_jiffies(delay_ms)))
+		kvfree(work);
 }
 
 static int videogo_process_data(int iotype, void *data)
@@ -236,15 +311,28 @@ static int videogo_process_data(int iotype, void *data)
 		//oprate_vgo.oprate = info0->oprate_avdvfs;
 		//mtk_vcodec_vgo_send(VGO_SEND_OPRATE, videogo_vcodec_send_fn);
 
-		if (!isTranscoding)
+		if (!isTranscoding && type == VENC)
 			isTranscoding = is_transcoding(info0);
-		//if (!isTranscoding && info0->oprate_avdvfs > 45 &&
-		//	type == VENC && alive_count[VDEC] > 0)
-		//	if (info0->oprate_avdvfs >= (info0->oprate * 11 + 9) / 10)
-		//		isTranscoding = 1;
 
 		pr_info("[vgo] oprate_avdvfs=%d, oprate=%d, type=%d, isTrans=%d\n",
 				info0->oprate_avdvfs, info0->oprate, type, isTranscoding);
+	} else if (iotype == VGO_RECV_STATE_OPEN) {
+		struct oprate_data *dev_data = (struct oprate_data *)data;
+
+		if (atomic_cmpxchg(&runnable_boost_enable_cnt, 0, 1) == 0)
+			send_service_info("ack Runnable_boost_enable",
+				VGO_RUNNABLE_BOOST_ENABLE, 1, 0, 0);
+		else
+			atomic_inc(&runnable_boost_enable_cnt);
+		videogo_send_delay_work(VGO_REL_RUNNABLE_BOOST_ENABLE, 40, dev_data);
+
+#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
+		if (atomic_cmpxchg(&cgrp_cnt, 0, 1) == 0)
+			group_set_cgroup_colocate(CGRP_FG, 0);
+		else
+			atomic_inc(&cgrp_cnt);
+		videogo_send_delay_work(VGO_REL_CGRP, 200, dev_data);
+#endif
 	}
 
 	return ret;
@@ -274,6 +362,7 @@ static int videogo_passive_fn(void *arg)
 			videogo_process_data(entry->type, entry->data);
 
 			list_del(&entry->list);
+			kfree(entry->data);
 			kfree(entry);
 		}
 		mutex_unlock(&passive_workqueue_mutex);
@@ -284,21 +373,6 @@ static int videogo_passive_fn(void *arg)
 	}
 
 	return 0;
-}
-
-static void send_service_info(const char *log_msg, int service_type,
-								int data0, int data1, int data2)
-{
-	struct vgo_powerhal_info service_info;
-
-	pr_info("[vgo] %s\n", log_msg);
-	service_info.type = service_type;
-	service_info.data[0] = data0;
-	service_info.data[1] = data1;
-	service_info.data[2] = data2;
-	mutex_lock(&service_mutex);
-	kfifo_in(&service_fifo, &service_info, 1);
-	mutex_unlock(&service_mutex);
 }
 
 static int videogo_controller_fn(void *arg)
@@ -504,6 +578,8 @@ static int __init videogo_init(void)
 
 	mtk_vcodec_vgo_send(VGO_SEND_UPDATE_FN, videogo_vcodec_send_fn);
 
+	delayed_wq = create_workqueue("videogo_delayed_wq");
+
 	pr_info("videogo: module loaded\n");
 
 	return 0;
@@ -542,9 +618,12 @@ static void videogo_exit(void)
 		entry = list_first_entry(&passive_workqueue, struct data_entry, list);
 
 		list_del(&entry->list);
+		kfree(entry->data);
 		kfree(entry);
 	}
 	mutex_unlock(&passive_workqueue_mutex);
+
+	destroy_workqueue(delayed_wq);
 
 	device_destroy(videogo_class, MKDEV(major_num, 0));
 	class_unregister(videogo_class);

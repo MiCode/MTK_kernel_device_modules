@@ -30,12 +30,25 @@ enum scenario_type {
 	VGO_VP_FEW_INST
 };
 
+enum work_type {
+	VGO_REL_RUNNABLE_BOOST_ENABLE,
+	VGO_REL_CGRP
+};
+
 enum vgo_powerhal_type {
 	VGO_CPU_FREQ_MIN,
 	VGO_GPU_FREQ_MIN,
 	VGO_MARGIN_CONTROL_0,
 	VGO_RUNNABLE_BOOST_DISABLE,
+	VGO_RUNNABLE_BOOST_ENABLE,
 	VGO_UCLAMP_MIN_TA
+};
+
+struct vgo_delay_work {
+	struct delayed_work delayed_work;
+	enum work_type type;
+	int inst_type;
+	int ctx_id;
 };
 
 struct vgo_powerhal_info {

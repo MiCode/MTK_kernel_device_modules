@@ -10,7 +10,8 @@ enum videogo_data_type {
 	VGO_SEND_OPRATE,
 	VGO_RECV_INSTANCE_INC,
 	VGO_RECV_INSTANCE_DEC,
-	VGO_RECV_RUNNING_UPDATE
+	VGO_RECV_RUNNING_UPDATE,
+	VGO_RECV_STATE_OPEN
 };
 
 // VGO_RECV_INSTANCE_INC
@@ -34,6 +35,7 @@ struct inst_data {
 };
 
 // VGO_SEND_OPRATE
+// VGO_RECV_STATE_OPEN
 struct oprate_data {
 	int inst_type;      /* VDEC/VENC */
 	int ctx_id;
