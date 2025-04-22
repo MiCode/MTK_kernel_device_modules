@@ -167,6 +167,7 @@ enum mtk_vcodec_flags {
 };
 
 enum mtk_vcodec_send_vgo_type {
+	MTK_VCODEC_VGO_OPEN,
 	MTK_VCODEC_VGO_ADD_INST,
 	MTK_VCODEC_VGO_DEL_INST,
 	MTK_VCODEC_VGO_UPDATE
@@ -471,7 +472,6 @@ void mtk_vcodec_send_info_to_vgo(struct mtk_vcodec_ctx *ctx, enum mtk_vcodec_sen
 
 void mtk_vcodec_set_cpu_hint(struct mtk_vcodec_dev *dev, bool enable,
 	enum mtk_instance_type type, int ctx_id, int caller_pid, const char *debug_str);
-void mtk_vcodec_set_cgrp(struct mtk_vcodec_ctx *ctx, bool enable, const char *debug_str);
 
 #ifdef MTK_SCHED_SUPPORT
 extern void set_top_grp_aware(int val, int force_ctrl);

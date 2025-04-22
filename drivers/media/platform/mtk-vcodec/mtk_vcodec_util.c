@@ -672,44 +672,6 @@ void mtk_vcodec_set_cpu_hint(struct mtk_vcodec_dev *dev, bool enable,
 }
 EXPORT_SYMBOL_GPL(mtk_vcodec_set_cpu_hint);
 
-void mtk_vcodec_set_cgrp(struct mtk_vcodec_ctx *ctx, bool enable, const char *debug_str)
-{
-	struct mtk_vcodec_dev *dev = ctx->dev;
-
-	vcodec_trace_begin("%s[%d](%d)(%s)", __func__, ctx->id, enable, debug_str);
-
-	mutex_lock(&dev->cgrp_mutex);
-	if (enable) {
-		if (!ctx->cgrp_enable) {
-			ctx->cgrp_enable = true;
-			dev->cgrp_ref_cnt++;
-#ifdef MTK_SCHED_SUPPORT
-			group_set_cgroup_colocate(1, 0); // enable
-			mtk_v4l2_debug(0, "[%s][%d] enable cgroup_colocate by %s (ref cnt %d)",
-				(ctx->type == MTK_INST_DECODER) ? "VDEC" : "VENC", ctx->id,
-				debug_str, dev->cgrp_ref_cnt);
-#endif
-		}
-	} else {
-		if (ctx->cgrp_enable) {
-			ctx->cgrp_enable = false;
-			dev->cgrp_ref_cnt--;
-#ifdef MTK_SCHED_SUPPORT
-			mtk_v4l2_debug(dev->cgrp_ref_cnt == 0 ? 0 : 2,
-				"[%s][%d] disable cgroup_colocate by %s (ref cnt %d)",
-				(ctx->type == MTK_INST_DECODER) ? "VDEC" : "VENC", ctx->id,
-				debug_str, dev->cgrp_ref_cnt);
-			if (dev->cgrp_ref_cnt == 0)
-				group_set_cgroup_colocate(1, -1); // disable, reset to default
-#endif
-		}
-	}
-	mutex_unlock(&dev->cgrp_mutex);
-
-	vcodec_trace_end();
-}
-EXPORT_SYMBOL_GPL(mtk_vcodec_set_cgrp);
-
 void mtk_vcodec_init_slice_info(struct mtk_vcodec_ctx *ctx, struct mtk_video_dec_buf *dst_buf_info)
 {
 	struct vb2_v4l2_buffer *dst_vb2_v4l2;
@@ -1777,6 +1739,18 @@ void mtk_vcodec_send_info_to_vgo(struct mtk_vcodec_ctx *ctx, enum mtk_vcodec_sen
 	}
 
 	switch (type) {
+	case MTK_VCODEC_VGO_OPEN: {
+		struct oprate_data data = {0};
+
+		vgo_type = VGO_RECV_STATE_OPEN;
+		data.inst_type = ctx->type;
+		data.ctx_id    = ctx->id;
+
+		mtk_v4l2_debug(2, "[%d] vgo open (type %d,%d): inst_type %s(%d)",
+			ctx->id, type, vgo_type, INST_TYPE_STR(data.inst_type), data.inst_type);
+		vcodec_to_vgo(vgo_type, &data);
+		break;
+	}
 	case MTK_VCODEC_VGO_ADD_INST:
 		vgo_type = VGO_RECV_INSTANCE_INC;
 		goto vgo_set_instance_data;
