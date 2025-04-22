@@ -115,6 +115,7 @@ enum BOU_MOD_ID {
 	mod_bt_uart,
 	mod_bt_mcu,
 	mod_bt_fw,
+	mod_md,
 	mod_max,
 };
 
@@ -151,7 +152,9 @@ enum BOU_LOG_ID {
 	log_ap_tx_tmo_uartcmm_tx_byte_cnt_err,
 	log_ap_tx_tmo_uartcmm_rx_byte_cnt_err,
 	log_ap_tx_tmo_apuart_rx_byte_cnt_err,
+	log_ap_tx_tmo_btuart_tx_byte_cnt_err,
 	log_ap_tx_tmo_apdma_err,
+	log_ap_tx_tmo_bypass_err,
 	log_uart0_rx_woffset_not_empty,
 	log_uart1_rx_woffset_not_empty,
 	log_uart2_rx_woffset_not_empty,
