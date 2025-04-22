@@ -70,11 +70,6 @@ struct mtu3_request;
 #define DP_SWITCH_MSK 1
 
 #define U2_LPM_LOCK_TIMEOUT 500
-#define U2_LPM_LOCK_INIT_TIMEOUT 3000
-
-/* quirks for U2 LPM flow control */
-#define MTU3_U2_LPM_DELAY		BIT(0)
-#define MTU3_U2_LPM_SW_MODE		BIT(1)
 
 /**
  * IP TRUNK version
@@ -180,7 +175,6 @@ enum mtu3_u2_lpm_mode {
 	MTU3_U2_LPM_DEFAULT = 0,
 	MTU3_U2_LPM_REJECT,
 	MTU3_U2_LPM_ACCEPT,
-	MTU3_U2_LPM_ACCEPT_ONCE,
 };
 
 enum mtu3_plat_type {
@@ -541,7 +535,6 @@ struct mtu3 {
 
 	unsigned u3_lpm:1;
 	unsigned u3_u1gou2:1;
-	unsigned int u2_lpm_quirks;
 	enum mtu3_u2_lpm_mode u2_lpm_reject;
 	struct timer_list lpm_timer;
 
@@ -680,8 +673,6 @@ void mtu3_gadget_disconnect(struct mtu3 *mtu);
 
 int mtu3_gadget_vbus_draw(struct usb_gadget *g, unsigned int mA);
 int mtu3_is_usb_pd(struct mtu3 *mtu);
-void mtu3_gadget_u2_lpm_lock_init(struct mtu3 *mtu);
-void mtu3_gadget_u2_lpm_lock_deinit(struct mtu3 *mtu);
 void mtu3_gadget_u2_lpm_lock(struct mtu3 *mtu, unsigned int timeout_ms);
 
 int mtu3_device_enable(struct mtu3 *mtu);
