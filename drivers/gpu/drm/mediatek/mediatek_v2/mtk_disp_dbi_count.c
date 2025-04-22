@@ -261,7 +261,8 @@
 
 static void mtk_dbi_hw_count_trigger(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, uint32_t slice_num,
-	uint32_t slice_id, uint32_t time_ms, u64 addr);
+	uint32_t slice_id, uint32_t time_ms, u64 addr, struct mtk_dbi_count_hw_param *count_param);
+
 static void mtk_dbi_count_config(struct mtk_ddp_comp *comp,
 		struct mtk_ddp_config *cfg,
 		struct cmdq_pkt *handle);
@@ -498,9 +499,13 @@ void mtk_crtc_dbi_count_cfg(struct mtk_drm_crtc *mtk_crtc, struct mtk_crtc_state
 	int sec;
 	unsigned long flags;
 	struct mtk_ddp_comp *dbi_count = NULL;
+	struct mtk_ddp_comp *oddmr = NULL;
 	struct mtk_disp_dbi_count *count_data;
 	int crtc_index = drm_crtc_index(&mtk_crtc->base);
 	uint32_t value = 0;
+	uint32_t panel_height;
+	int mode_id;
+	struct mtk_dbi_count_hw_param *count_param;
 
 	if (!mtk_crtc->dbi_data.support)
 		return;
@@ -533,10 +538,15 @@ void mtk_crtc_dbi_count_cfg(struct mtk_drm_crtc *mtk_crtc, struct mtk_crtc_state
 				}
 				if(atomic_read(&count_data->current_count_mode) !=
 					atomic_read(&count_data->new_count_mode)) {
+					DBI_COUNT_INFO("change count mode from %d to %d\n",
+						atomic_read(&count_data->current_count_mode),
+						atomic_read(&count_data->new_count_mode));
 					atomic_set(&count_data->current_count_mode,
 						atomic_read(&count_data->new_count_mode));
+					count_data->count_cnt = 0;
 					mtk_dbi_count_change_mode(dbi_count, handle);
 				}
+				count_data->count_cnt++;
 			}
 			mtk_crtc->dbi_data.fence_idx = fence;
 			mtk_crtc->dbi_data.fence_unreleased = 0;
@@ -546,9 +556,18 @@ void mtk_crtc_dbi_count_cfg(struct mtk_drm_crtc *mtk_crtc, struct mtk_crtc_state
 		}
 
 		if (mtk_crtc->dbi_data.slice_idx < mtk_crtc->dbi_data.slice_num){
+			mode_id = atomic_read(&count_data->current_count_mode);
+			count_param = &count_data->count_cfg.count_cfg.hw_count_param[mode_id];
+			if(count_param->irdrop_enable) {
+				oddmr = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_ODDMR, 0);
+				if (oddmr) {
+					panel_height = count_data->count_cfg.basic_info.panel_height;
+					mtk_oddmr_dbi_trigger_ir_drop(oddmr, handle, panel_height);
+				}
+			}
 			mtk_dbi_hw_count_trigger(dbi_count, handle, slice_num,
 					mtk_crtc->dbi_data.real_idx,
-					count_data->current_freq * 1000, count_data->count_buffer.iova);
+					count_data->current_freq * 1000, count_data->count_buffer.iova, count_param);
 			CRTC_MMP_MARK(crtc_index, dbi_trigger, (unsigned long)mtk_crtc->dbi_data.real_idx,
 				(unsigned long)((mtk_crtc->dbi_data.slice_num << 16) | mtk_crtc->dbi_data.slice_idx));
 			DBI_COUNT_INFO("%d %d %d\n", mtk_crtc->dbi_data.slice_idx,
@@ -565,6 +584,7 @@ void mtk_crtc_dbi_count_cfg(struct mtk_drm_crtc *mtk_crtc, struct mtk_crtc_state
 				mtk_dbi_count_write_mask(dbi_count, value,
 					DISP_DBI_COUNT_IRQ_MASK, value, handle);
 			}
+
 			disp_pq_set_test_flag(TEST_FLAG_DBI_COUNT);
 		}
 	} else {
@@ -573,7 +593,10 @@ void mtk_crtc_dbi_count_cfg(struct mtk_drm_crtc *mtk_crtc, struct mtk_crtc_state
 				session_id, mtk_crtc->dbi_data.fence_idx);
 			mtk_crtc->dbi_data.fence_unreleased = 0;
 		}
-		atomic_set(&mtk_crtc->dbi_data.disable_finish, 1);
+		if(!atomic_read(&mtk_crtc->dbi_data.disable_finish)){
+			atomic_set(&mtk_crtc->dbi_data.disable_finish, 1);
+			wake_up_all(&mtk_crtc->dbi_data.disable_finish_wq);
+		}
 	}
 
 	dbi_timer = &mtk_crtc->dbi_data.dbi_timer;
@@ -1288,6 +1311,88 @@ int mtk_dbi_curve_interpolate(struct mtk_dbi_curve_2d *curve, uint32_t x)
 	return 0;
 }
 
+void mtk_dbi_debug(struct drm_crtc *crtc, const char *opt)
+{
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_ddp_comp *comp;
+	struct mtk_disp_dbi_count *dbi_count;
+
+	comp = mtk_ddp_comp_sel_in_cur_crtc_path(mtk_crtc, MTK_DISP_DBI_COUNT, 0);
+	if (!comp) {
+		PC_ERR("%s, comp is null!\n", __func__);
+		return;
+	}
+	dbi_count = comp_to_dbi_count(comp);
+
+	if (strncmp(opt, "gain_log:", 9) == 0) {
+		dbi_count->show_gain = strncmp(opt + 9, "1", 1) == 0;
+		DBI_COUNT_MSG("gain_log = %d\n", dbi_count->show_gain);
+	}
+}
+
+void mtk_dbi_show_gain_status(uint32_t dbv, uint32_t fps, int temp,
+	uint32_t *dbv_gain, uint32_t *fps_gain, uint32_t *temp_gain, uint32_t *irdrop_gain)
+{
+	uint32_t b, rsh;
+
+	b = 4;
+	rsh = 10-b;
+
+	DBI_COUNT_MSG("dbv:%u, dbv_gain:R = %u / G = %u / B = %u (format=fix point .%d)\n",
+		dbv, dbv_gain[DBI_CH_R] >> rsh, dbv_gain[DBI_CH_G] >> rsh, dbv_gain[DBI_CH_B] >> rsh, b);
+	DBI_COUNT_MSG("fps:%u, fps_gain:R = %u / G = %u / B = %u (format=fix point .%d)\n",
+		fps, fps_gain[DBI_CH_R] >> rsh, fps_gain[DBI_CH_G] >> rsh, fps_gain[DBI_CH_B] >> rsh, b);
+	DBI_COUNT_MSG("dbv:%u, temp_gain:R = %u / G = %u / B = %u (format=fix point .%d)\n",
+		temp, temp_gain[DBI_CH_R] >> rsh, temp_gain[DBI_CH_G] >> rsh, temp_gain[DBI_CH_B] >> rsh, b);
+	DBI_COUNT_MSG("irdrop_gain:R = %u / G = %u / B = %u (format=fix point .%d)\n",
+		irdrop_gain[DBI_CH_R] >> rsh, irdrop_gain[DBI_CH_G] >> rsh, irdrop_gain[DBI_CH_B] >> rsh, b);
+
+}
+
+void mtk_dbi_show_irdrop_status(uint64_t *ir_drop_stat_acc, uint64_t *ir_drop_squa_acc)
+{
+	DBI_COUNT_MSG("ir_drop_stat_acc:R = %llu / G = %llu / B = %llu\n",
+		ir_drop_stat_acc[DBI_CH_R], ir_drop_stat_acc[DBI_CH_G], ir_drop_stat_acc[DBI_CH_B]);
+	DBI_COUNT_MSG("ir_drop_stat_squa_acc:R = %llu / G = %llu / B = %llu\n",
+		ir_drop_squa_acc[DBI_CH_R], ir_drop_squa_acc[DBI_CH_G], ir_drop_squa_acc[DBI_CH_B]);
+}
+
+void mtk_dbi_get_irdrop_gain(struct mtk_dbi_count_hw_param *count_param, uint32_t total_pixel,
+	uint32_t dbv, uint64_t *code_sum, uint64_t *code_square_sum, uint32_t *ret_irdrop_gain)
+{
+	uint32_t weight_code_sum = 0;
+	uint32_t weight_sum = 0;
+	uint32_t irdrop_gain_tmp[DBI_CHANNEL_NUM];
+	uint64_t avg_code;
+	uint32_t weight;
+	uint32_t ratio;
+	uint32_t ratio_gain;
+	uint32_t dbv_gain;
+	uint32_t total_code;
+	uint32_t total_code_gain;
+
+	for(int ch= 0;ch<DBI_CHANNEL_NUM;ch++) {
+		avg_code = ((code_sum[ch]<<10) + (total_pixel >> 1))/total_pixel;
+		weight = count_param->irdrop_total_weight[ch];
+		weight_code_sum += (avg_code*weight) >>10;
+		weight_sum += weight;
+
+		ratio = code_square_sum[ch] == 0 ? 0:(avg_code*code_sum[ch]/code_square_sum[ch])>>2;
+		ratio_gain = mtk_dbi_curve_interpolate(&count_param->irdrop_ratio_gain_curve[ch],ratio);
+		dbv_gain = mtk_dbi_curve_interpolate(&count_param->irdrop_dbv_gain_curve[ch],dbv);
+		irdrop_gain_tmp[ch] = (dbv_gain * ratio_gain) >> 10;
+	}
+
+	total_code = weight_code_sum / weight_sum;
+	total_code_gain = mtk_dbi_curve_interpolate(&count_param->irdrop_total_gain_curve,total_code);
+
+	for(int ch= 0;ch<DBI_CHANNEL_NUM;ch++) {
+		ret_irdrop_gain[ch] = (total_code_gain * irdrop_gain_tmp[ch]) >> 10;
+		ret_irdrop_gain[ch] = MIN(ret_irdrop_gain[ch], (1<<14)-1);
+	}
+
+}
+
 static void mtk_dbi_update_count_gain(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, uint32_t dbv, uint32_t fps, int temp)
 {
@@ -1295,28 +1400,103 @@ static void mtk_dbi_update_count_gain(struct mtk_ddp_comp *comp,
 	int mode_id = atomic_read(&dbi_count->current_count_mode);
 	struct mtk_dbi_count_hw_param *count_param = &dbi_count->count_cfg.count_cfg.hw_count_param[mode_id];
 	struct mtk_dbi_count_helper *count_helper = &dbi_count->count_cfg.count_helper;
-	uint32_t dbv_gain, fps_gain, temp_gain, gain_norm, total_gain;
+	uint32_t dbv_gain, fps_gain, temp_gain, gain_norm, total_gain, irdrop_gain;
 	uint32_t gains[DBI_CHANNEL_NUM] = { 0 };
 	uint32_t max_gain = 0;
 	uint32_t sh = 0;
+	uint32_t irdrop_gains[DBI_CHANNEL_NUM] = {1<<10, 1<<10, 1<<10};
+	uint32_t dbv_gains[DBI_CHANNEL_NUM];
+	uint32_t fps_gains[DBI_CHANNEL_NUM];
+	uint32_t temp_gains[DBI_CHANNEL_NUM];
+	int real_temp = temp;
+	uint64_t code_sum[DBI_CHANNEL_NUM] = { 0 };
+	uint64_t code_square_sum[DBI_CHANNEL_NUM] = { 0 };
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	uint32_t check_sum = 0;
+	uint32_t check_sum_cal = 0;
+	uint32_t stat_r, stat_g, stat_b, squa_r_0, squa_r_1, squa_g_0, squa_g_1, squa_b_0, squa_b_1 = 0;
+	uint32_t try_num = 10;
+	bool hit = false;
+	uint32_t panel_width, panel_height;
 
 	if(dbi_count->status < DBI_COUNT_SW_INIT)
 		return;
 
-	DBI_COUNT_INFO("dbv/fps/temp %d/%d/%d", dbv, fps, temp);
-
+	DBI_COUNT_INFO("dbv/fps/temp %d/%d/%d\n", dbv, fps, temp);
 	temp += count_helper->hw_count_temp_offset;
+
+	if(count_param->irdrop_enable && (dbi_count->count_cnt > 1)) {
+		for(int i = 0;i<try_num;i++){
+			stat_r = *(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
+				DISP_SLOT_DBI_IR_DROP_STAT_R);
+			stat_g = *(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
+				DISP_SLOT_DBI_IR_DROP_STAT_G);
+			stat_b = *(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
+				DISP_SLOT_DBI_IR_DROP_STAT_B);
+			squa_r_0 = *(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
+				DISP_SLOT_DBI_IR_DROP_SQUA_R_0);
+			squa_r_1 = *(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
+				DISP_SLOT_DBI_IR_DROP_SQUA_R_1);
+			squa_g_0 = *(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
+				DISP_SLOT_DBI_IR_DROP_SQUA_G_0);
+			squa_g_1 = *(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
+				DISP_SLOT_DBI_IR_DROP_SQUA_G_1);
+			squa_b_0 = *(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
+				DISP_SLOT_DBI_IR_DROP_SQUA_B_0);
+			squa_b_1 = *(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
+				DISP_SLOT_DBI_IR_DROP_SQUA_B_1);
+			check_sum = *(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
+				DISP_SLOT_DBI_IR_DROP_CHECK_SUM);
+			check_sum_cal = 0;
+			check_sum_cal += stat_r;
+			check_sum_cal += stat_g;
+			check_sum_cal += stat_b;
+			check_sum_cal += squa_r_0;
+			check_sum_cal += squa_r_1;
+			check_sum_cal += squa_g_0;
+			check_sum_cal += squa_g_1;
+			check_sum_cal += squa_b_0;
+			check_sum_cal += squa_b_1;
+			if(check_sum_cal == check_sum) {
+				hit = true;
+				break;
+			}
+		}
+		if(hit) {
+			code_sum[DBI_CH_R] = stat_r;
+			code_sum[DBI_CH_G] = stat_g;
+			code_sum[DBI_CH_B] = stat_b;
+			code_square_sum[DBI_CH_R] = (uint64_t)squa_r_1 << 32 | (uint64_t)squa_r_0;
+			code_square_sum[DBI_CH_G] = (uint64_t)squa_g_1 << 32 | (uint64_t)squa_g_0;
+			code_square_sum[DBI_CH_B] = (uint64_t)squa_b_1 << 32 | (uint64_t)squa_b_0;
+			if(dbi_count->show_gain)
+				mtk_dbi_show_irdrop_status(code_sum, code_square_sum);
+			panel_width = dbi_count->count_cfg.basic_info.panel_width;
+			panel_height = dbi_count->count_cfg.basic_info.panel_height;
+			mtk_dbi_get_irdrop_gain(count_param, panel_width * panel_height,
+				dbv, code_sum, code_square_sum, irdrop_gains);
+		}else
+			DBI_COUNT_MSG("read irdrop fail\n");
+	}
 
 	for (int ch = 0; ch < DBI_CHANNEL_NUM; ch++) {
 		dbv_gain = mtk_dbi_curve_interpolate(&count_param->dbv_gain_curve[ch],dbv);
 		fps_gain = mtk_dbi_curve_interpolate(&count_param->fps_gain_curve[ch],fps);
 		temp_gain = mtk_dbi_curve_interpolate(&count_param->temp_gain_curve[ch],temp);
+		irdrop_gain = irdrop_gains[ch];
 		gain_norm = count_param->gain_norm[ch];
-		total_gain = (((uint64_t)dbv_gain) * fps_gain * temp_gain * gain_norm)>>28;
+		total_gain = (((uint64_t)dbv_gain) * fps_gain * temp_gain)>>18;
+		total_gain = ((uint64_t)total_gain * irdrop_gain * gain_norm) >> 20;
 		gains[ch] = total_gain;
 		max_gain = MAX(max_gain, total_gain>>12);
+		dbv_gains[ch] = dbv_gain;
+		fps_gains[ch] = fps_gain;
+		temp_gains[ch] = temp_gain;
 	}
 
+	if(dbi_count->show_gain)
+		mtk_dbi_show_gain_status(dbv, fps, real_temp,
+			dbv_gains, fps_gains, temp_gains, irdrop_gains);
 	if(max_gain >= (1<<7))
 		sh = 0;
 	else if(max_gain >= (1<<6))
@@ -1366,7 +1546,7 @@ static void mtk_dbi_set_slice(struct mtk_ddp_comp *comp,
 
 static void mtk_dbi_hw_count_trigger(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, uint32_t slice_num,
-	uint32_t slice_id, uint32_t time_ms, u64 addr)
+	uint32_t slice_id, uint32_t time_ms, u64 addr, struct mtk_dbi_count_hw_param *count_param)
 {
 
 	uint32_t value = 0, mask = 0;
@@ -1388,8 +1568,10 @@ static void mtk_dbi_hw_count_trigger(struct mtk_ddp_comp *comp,
 				dbi_count->buffer_cfg.buf_reg_list.addr[i],
 				dbi_count->buffer_cfg.buf_reg_list.mask[i], handle);
 	}
-	if(dbi_count->temp_chg) {
-		dbi_count->temp_chg = false;
+
+	if(dbi_count->temp_chg || (count_param->irdrop_enable)) {
+		if(dbi_count->temp_chg)
+			dbi_count->temp_chg = false;
 		mtk_dbi_update_count_gain(comp, handle,
 			dbi_count->current_bl, dbi_count->current_fps, dbi_count->current_temp);
 	}
@@ -1557,7 +1739,6 @@ static void mtk_dbi_count_config(struct mtk_ddp_comp *comp,
 	struct mtk_disp_dbi_count *dbi_count = comp_to_dbi_count(comp);
 	int mode_idx;
 
-	DBI_COUNT_INFO("%s count_config\n", mtk_dump_comp_str(comp));
 	DBI_COUNT_INFO("%s +++ %d\n", mtk_dump_comp_str(comp), dbi_count->data->need_bypass_shadow);
 
 	if (dbi_count->data->need_bypass_shadow == true) {

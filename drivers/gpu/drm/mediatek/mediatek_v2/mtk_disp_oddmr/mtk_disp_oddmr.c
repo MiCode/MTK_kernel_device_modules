@@ -684,6 +684,20 @@
 #define DISP_ODDMR_OUTP_SUB_OUT_VSIZE 0x0F4
 
 
+#define REG_DBI_IR_DROP_STST_ACC_R (0x10c74)
+#define REG_DBI_IR_DROP_STST_ACC_G (0x10c78)
+#define REG_DBI_IR_DROP_STST_ACC_B (0x10c7c)
+#define REG_DBI_IR_DROP_STST_SQUA_ACC_R_0 (0x10c80)
+#define REG_DBI_IR_DROP_STST_SQUA_ACC_R_1 (0x10c84)
+#define REG_DBI_IR_DROP_STST_SQUA_ACC_G_0 (0x10c88)
+#define REG_DBI_IR_DROP_STST_SQUA_ACC_G_1 (0x10c8c)
+#define REG_DBI_IR_DROP_STST_SQUA_ACC_B_0 (0x10c90)
+#define REG_DBI_IR_DROP_STST_SQUA_ACC_B_1 (0x10c94)
+#define REG_DBI_IR_DROP_STST_CLEAR (0x10c98)
+#define REG_DBI_IR_DROP_STST_FORCE_UPDATE (0x10c9c)
+#define REG_DBI_IR_DROP_EN (0x10ca4)
+
+
 static bool debug_flow_log;
 #define ODDMRFLOW_LOG(fmt, arg...) do { \
 	if (debug_flow_log) \
@@ -845,8 +859,9 @@ static int mtk_oddmr_create_workqueue(struct mtk_disp_oddmr *oddmr_data);
 static int disp_oddmr_sof_kthread(void *data);
 static void mtk_oddmr_dmr_smi(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg);
 static void mtk_oddmr_dbi_smi(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg);
-
 static void mtk_oddmr_dbi_common_init(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg);
+static void mtk_oddmr_dbi_read_ir_drop(struct mtk_ddp_comp *comp,
+	struct cmdq_pkt *handle);
 
 static inline unsigned int mtk_oddmr_read(struct mtk_ddp_comp *comp,
 		unsigned int offset)
@@ -11473,6 +11488,9 @@ static void mtk_oddmr_config_trigger(struct mtk_ddp_comp *comp,
 				mtk_oddmr_od_ddren_en(comp, handle, 0);
 		}
 
+		if(oddmr_data->data->dbi_version >= MTK_DBI_V3)
+			mtk_oddmr_dbi_read_ir_drop(comp, handle);
+
 		if (priv && (!mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_ODDMR_OD_AEE)))
 			break;
@@ -11483,6 +11501,146 @@ static void mtk_oddmr_config_trigger(struct mtk_ddp_comp *comp,
 		break;
 	}
 }
+
+void mtk_oddmr_dbi_trigger_ir_drop(struct mtk_ddp_comp *comp,
+	struct cmdq_pkt *handle, uint32_t height)
+{
+	cmdq_pkt_write(handle, comp->cmdq_base,
+		comp->regs_pa + REG_DBI_IR_DROP_EN, 1, ~0);
+	mtk_oddmr_write(comp, height + 1,
+			MT6991_DISP_ODDMR_REG_ODDMR_OUTP_OUT_VSIZE, handle);
+}
+
+static void mtk_oddmr_dbi_read_ir_drop(struct mtk_ddp_comp *comp,
+	struct cmdq_pkt *handle)
+{
+	uint32_t value = 0, mask = 0;
+
+	GCE_COND_DECLARE;
+	struct cmdq_operand lop, rop;
+	const u16 var1 = CMDQ_THR_SPR_IDX2;
+	const u16 var2 = 0;
+
+	GCE_COND_ASSIGN(handle, CMDQ_THR_SPR_IDX1, CMDQ_GPR_R07);
+	/* get dbi status */
+	lop.reg = true;
+	lop.idx = var1;
+	rop.reg = false;
+	rop.value = 1;
+
+	cmdq_pkt_read(handle, NULL, comp->regs_pa + REG_DBI_IR_DROP_EN, var1);
+	cmdq_pkt_logic_command(handle, CMDQ_LOGIC_AND, var1, &lop, &rop);
+	lop.reg = true;
+	lop.idx = var1;
+	rop.reg = false;
+	rop.idx = var2;
+	rop.value = 1;
+	GCE_IF(lop, R_CMDQ_EQUAL, rop);
+	/* condition true: DBI enabled, enable dbi ddren */
+
+	cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + REG_DBI_IR_DROP_STST_FORCE_UPDATE, 1, ~0);
+
+	cmdq_pkt_mem_move(handle, NULL,
+		comp->regs_pa + REG_DBI_IR_DROP_STST_ACC_R,
+		mtk_get_gce_backup_slot_pa(comp->mtk_crtc,
+		DISP_SLOT_DBI_IR_DROP_STAT_R),
+		CMDQ_THR_SPR_IDX3);
+	cmdq_pkt_mem_move(handle, NULL,
+		comp->regs_pa + REG_DBI_IR_DROP_STST_ACC_G,
+		mtk_get_gce_backup_slot_pa(comp->mtk_crtc,
+		DISP_SLOT_DBI_IR_DROP_STAT_G),
+		CMDQ_THR_SPR_IDX3);
+	cmdq_pkt_mem_move(handle, NULL,
+		comp->regs_pa + REG_DBI_IR_DROP_STST_ACC_B,
+		mtk_get_gce_backup_slot_pa(comp->mtk_crtc,
+		DISP_SLOT_DBI_IR_DROP_STAT_B),
+		CMDQ_THR_SPR_IDX3);
+	cmdq_pkt_mem_move(handle, NULL,
+		comp->regs_pa + REG_DBI_IR_DROP_STST_SQUA_ACC_R_0,
+		mtk_get_gce_backup_slot_pa(comp->mtk_crtc,
+		DISP_SLOT_DBI_IR_DROP_SQUA_R_0),
+		CMDQ_THR_SPR_IDX3);
+	cmdq_pkt_mem_move(handle, NULL,
+		comp->regs_pa + REG_DBI_IR_DROP_STST_SQUA_ACC_R_1,
+		mtk_get_gce_backup_slot_pa(comp->mtk_crtc,
+		DISP_SLOT_DBI_IR_DROP_SQUA_R_1),
+		CMDQ_THR_SPR_IDX3);
+	cmdq_pkt_mem_move(handle, NULL,
+		comp->regs_pa + REG_DBI_IR_DROP_STST_SQUA_ACC_G_0,
+		mtk_get_gce_backup_slot_pa(comp->mtk_crtc,
+		DISP_SLOT_DBI_IR_DROP_SQUA_G_0),
+		CMDQ_THR_SPR_IDX3);
+	cmdq_pkt_mem_move(handle, NULL,
+		comp->regs_pa + REG_DBI_IR_DROP_STST_SQUA_ACC_G_1,
+		mtk_get_gce_backup_slot_pa(comp->mtk_crtc,
+		DISP_SLOT_DBI_IR_DROP_SQUA_G_1),
+		CMDQ_THR_SPR_IDX3);
+	cmdq_pkt_mem_move(handle, NULL,
+		comp->regs_pa + REG_DBI_IR_DROP_STST_SQUA_ACC_B_0,
+		mtk_get_gce_backup_slot_pa(comp->mtk_crtc,
+		DISP_SLOT_DBI_IR_DROP_SQUA_B_0),
+		CMDQ_THR_SPR_IDX3);
+	cmdq_pkt_mem_move(handle, NULL,
+		comp->regs_pa + REG_DBI_IR_DROP_STST_SQUA_ACC_B_1,
+		mtk_get_gce_backup_slot_pa(comp->mtk_crtc,
+		DISP_SLOT_DBI_IR_DROP_SQUA_B_1),
+		CMDQ_THR_SPR_IDX3);
+
+
+	cmdq_pkt_read(handle, NULL, mtk_get_gce_backup_slot_pa(comp->mtk_crtc,
+		DISP_SLOT_DBI_IR_DROP_STAT_R), var1);
+	cmdq_pkt_read(handle, NULL, mtk_get_gce_backup_slot_pa(comp->mtk_crtc,
+		DISP_SLOT_DBI_IR_DROP_STAT_G), CMDQ_THR_SPR_IDX3);
+	lop.reg = true;
+	lop.idx = var1;
+	rop.reg = true;
+	rop.value = CMDQ_THR_SPR_IDX3;
+	cmdq_pkt_logic_command(handle, CMDQ_LOGIC_ADD, var1, &lop, &rop);
+	cmdq_pkt_read(handle, NULL, mtk_get_gce_backup_slot_pa(comp->mtk_crtc,
+		DISP_SLOT_DBI_IR_DROP_STAT_B), CMDQ_THR_SPR_IDX3);
+	cmdq_pkt_logic_command(handle, CMDQ_LOGIC_ADD, var1, &lop, &rop);
+	cmdq_pkt_read(handle, NULL, mtk_get_gce_backup_slot_pa(comp->mtk_crtc,
+		DISP_SLOT_DBI_IR_DROP_SQUA_R_0), CMDQ_THR_SPR_IDX3);
+	cmdq_pkt_logic_command(handle, CMDQ_LOGIC_ADD, var1, &lop, &rop);
+	cmdq_pkt_read(handle, NULL, mtk_get_gce_backup_slot_pa(comp->mtk_crtc,
+		DISP_SLOT_DBI_IR_DROP_SQUA_R_1), CMDQ_THR_SPR_IDX3);
+	cmdq_pkt_logic_command(handle, CMDQ_LOGIC_ADD, var1, &lop, &rop);
+	cmdq_pkt_read(handle, NULL, mtk_get_gce_backup_slot_pa(comp->mtk_crtc,
+		DISP_SLOT_DBI_IR_DROP_SQUA_G_0), CMDQ_THR_SPR_IDX3);
+	cmdq_pkt_logic_command(handle, CMDQ_LOGIC_ADD, var1, &lop, &rop);
+	cmdq_pkt_read(handle, NULL, mtk_get_gce_backup_slot_pa(comp->mtk_crtc,
+		DISP_SLOT_DBI_IR_DROP_SQUA_G_1), CMDQ_THR_SPR_IDX3);
+	cmdq_pkt_logic_command(handle, CMDQ_LOGIC_ADD, var1, &lop, &rop);
+	cmdq_pkt_read(handle, NULL, mtk_get_gce_backup_slot_pa(comp->mtk_crtc,
+		DISP_SLOT_DBI_IR_DROP_SQUA_B_0), CMDQ_THR_SPR_IDX3);
+	cmdq_pkt_logic_command(handle, CMDQ_LOGIC_ADD, var1, &lop, &rop);
+	cmdq_pkt_read(handle, NULL, mtk_get_gce_backup_slot_pa(comp->mtk_crtc,
+		DISP_SLOT_DBI_IR_DROP_SQUA_B_1), CMDQ_THR_SPR_IDX3);
+	cmdq_pkt_logic_command(handle, CMDQ_LOGIC_ADD, var1, &lop, &rop);
+
+	cmdq_pkt_write_indriect(handle, comp->cmdq_base,
+		mtk_get_gce_backup_slot_pa(comp->mtk_crtc,
+		DISP_SLOT_DBI_IR_DROP_CHECK_SUM), var1, ~0);
+
+	cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + REG_DBI_IR_DROP_STST_CLEAR, 1, ~0);
+	cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + REG_DBI_IR_DROP_EN, 0, ~0);
+
+	lop.reg = true;
+	lop.idx = var1;
+	rop.reg = false;
+	rop.value = 1;
+	cmdq_pkt_read(handle, NULL, comp->regs_pa + MT6991_DISP_ODDMR_REG_ODDMR_OUTP_OUT_VSIZE, var1);
+	cmdq_pkt_logic_command(handle, CMDQ_LOGIC_SUBTRACT, var1, &lop, &rop);
+	cmdq_pkt_write_indriect(handle, comp->cmdq_base,
+			comp->regs_pa + MT6991_DISP_ODDMR_REG_ODDMR_OUTP_OUT_VSIZE, var1, ~0);
+	GCE_FI;
+}
+
+
+
 
 static void mtk_oddmr_remap_set_enable(struct mtk_ddp_comp *comp,
 		struct cmdq_pkt *pkg, bool en)

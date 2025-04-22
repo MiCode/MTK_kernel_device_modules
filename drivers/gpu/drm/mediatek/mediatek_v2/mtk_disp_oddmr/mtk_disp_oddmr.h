@@ -802,4 +802,7 @@ unsigned int mtk_oddmr_get_dbi_hw_enable(struct mtk_drm_crtc *mtk_crtc);
 unsigned int mtk_oddmr_get_dbi_init_done(struct mtk_drm_crtc *mtk_crtc);
 bool mtk_drm_dmr_backup(struct drm_crtc *crtc, void *get_phys, void *get_virt,
 	unsigned int offset, unsigned int size);
+void mtk_oddmr_dbi_trigger_ir_drop(struct mtk_ddp_comp *comp,
+	struct cmdq_pkt *handle, uint32_t height);
+
 #endif

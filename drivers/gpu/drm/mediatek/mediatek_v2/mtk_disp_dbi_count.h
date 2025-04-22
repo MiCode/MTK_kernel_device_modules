@@ -52,6 +52,7 @@ struct mtk_disp_dbi_count {
 	int current_mode;
 	atomic_t current_count_mode;
 	atomic_t new_count_mode;
+	uint64_t count_cnt;
 	uint32_t current_bl;
 	uint32_t current_fps;
 	int current_temp;
@@ -73,6 +74,7 @@ struct mtk_disp_dbi_count {
 	uint32_t last_qos_srt;
 	uint32_t last_hrt;
 	uint32_t irq_num;
+	uint32_t show_gain;
 };
 
 struct dbi_count_block_info {

@@ -4036,6 +4036,8 @@ static void process_dbg_opt(const char *opt)
 		disp_gamma_debug(crtc, opt + 6);
 	} else if (strncmp(opt, "oddmr:", 4) == 0) {
 		mtk_disp_oddmr_debug(crtc, opt + 6);
+	} else if (strncmp(opt, "dbi_count:", 10) == 0) {
+		mtk_dbi_debug(crtc, opt + 10);
 	} else if (strncmp(opt, "mtcmos:", 7) == 0) {
 		int ret;
 		unsigned int on;
