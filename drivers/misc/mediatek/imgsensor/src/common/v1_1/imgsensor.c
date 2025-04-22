@@ -579,7 +579,6 @@ int imgsensor_set_driver(struct IMGSENSOR_SENSOR *psensor)
 	imgsensor_i2c_filter_msg(&psensor_inst->i2c_cfg, true);
 
 	while (i < MAX_NUM_OF_SUPPORT_SENSOR && pimgsensor->psensor_list[i]) {
-		PK_DBG("[%s]:[Load Sensor Init][%s]\n", __func__, psensor_inst->psensor_list->name);
 		if (pimgsensor->psensor_list[i]->init) {
 			pimgsensor->psensor_list[i]->init(&psensor->pfunc);
 

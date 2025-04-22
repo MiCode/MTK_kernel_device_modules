@@ -98,40 +98,9 @@ struct IMGSENSOR_HW_POWER_SEQ sensor_power_sequence[] = {
 		},
 	},
 #endif
-#if defined(S5KJN1SQ03_MIPI_RAW)
-	{
-		SENSOR_DRVNAME_S5KJN1SQ03_MIPI_RAW,
-		{
-			{PDN, Vol_Low, 0},
-			{RST, Vol_Low, 0},
-			{DVDD, Vol_1800, 1},
-			{DOVDD, Vol_1000,1},
-			{AVDD, Vol_2800, 1},
-			{AFVDD, Vol_2800, 1},
-			{PDN, Vol_High, 0},
-			{RST, Vol_High, 3},
-			{SensorMCLK, Vol_High, 11},
-		},
-	},
-#endif
 #if defined(IMX586_MIPI_RAW)
 	{
 		SENSOR_DRVNAME_IMX586_MIPI_RAW,
-		{
-			{RST, Vol_Low, 1},
-			{DOVDD, Vol_1800, 1},
-			{AVDD, Vol_2800, 0},
-			{AVDD1, Vol_1800, 0},
-			{AFVDD, Vol_2800, 0},
-			{DVDD, Vol_1100, 0},
-			{SensorMCLK, Vol_High, 1},
-			{RST, Vol_High, 3}
-		},
-	},
-#endif
-#if defined(IMX06C_MIPI_RAW)
-	{
-		SENSOR_DRVNAME_IMX06C_MIPI_RAW,
 		{
 			{RST, Vol_Low, 1},
 			{DOVDD, Vol_1800, 1},
