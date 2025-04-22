@@ -17266,6 +17266,12 @@ void mtk_drm_crtc_first_enable(struct drm_crtc *crtc)
 
 	mtk_gce_backup_slot_init(mtk_crtc);
 
+	/* od aid setting */
+	if (priv->data->mmsys_id == MMSYS_MT6989 ||
+		priv->data->mmsys_id == MMSYS_MT6991 ||
+		priv->data->mmsys_id == MMSYS_MT6993)
+		cmdq_util_disp_smc_cmd(drm_crtc_index(crtc), DISP_CMD_CRTC_ENABLE);
+
 	/* 7. set vblank*/
 	drm_crtc_vblank_on(crtc);
 
