@@ -38,6 +38,7 @@
 #include "mtk_dsi_lpc.h"
 #include "mtk_dsi.h"
 #include "mtk-mml-dbgtp.h"
+#include "mtk_disp_vdisp_ao.h"
 
 /* Display Debug Top Regs */
 //DISP_DEBUG_TOP Base address: (+0x3EE8_0000)
@@ -2491,6 +2492,9 @@ void mtk_dbgtp_config(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cmdq_handl
 				val = readl(dbgtp_comp->regs + DISP_DBG_TOP_EN);
 				writel((val & ~mask) | value, dbgtp_comp->regs + DISP_DBG_TOP_EN);
 			}
+
+			/* Config AO FIFO mon */
+			mtk_vdisp_ao_for_debug_config(mtk_crtc, cmdq_handle);
 
 			/* No need config per frame */
 			priv->mtk_dbgtp_sta.need_update = false;

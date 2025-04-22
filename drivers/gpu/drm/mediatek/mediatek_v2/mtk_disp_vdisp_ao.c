@@ -38,6 +38,7 @@
 #define DISP_REG_VDISP_AO_RG_ELA_FIFO_MONITOR 0xD10
 #define RG_FLD_ELA_FIFO_MON_EN		REG_FLD_MSB_LSB(0, 0)
 #define RG_FLD_ELA_FIFO_MON_SEL		REG_FLD_MSB_LSB(6, 4)
+#define RG_FLD_FIFO_MON_SW_TRIG_EN		REG_FLD_MSB_LSB(12, 12)
 
 static void __iomem *vdisp_ao_base;
 struct mtk_ddp_comp *vdisp_ao_comp;
@@ -141,9 +142,11 @@ void mtk_vdisp_ao_for_debug_config(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pk
 	value = (REG_FLD_VAL((RG_FLD_ELA_FIFO_MON_EN),
 		priv->mtk_dbgtp_sta.fifo_mon_sel) |
 		REG_FLD_VAL((RG_FLD_ELA_FIFO_MON_SEL),
-		priv->mtk_dbgtp_sta.disp_bwr_sel));
+		priv->mtk_dbgtp_sta.disp_bwr_sel) |
+		REG_FLD_VAL((RG_FLD_FIFO_MON_SW_TRIG_EN), 1));
 	mask = REG_FLD_MASK(RG_FLD_ELA_FIFO_MON_EN) |
-		REG_FLD_MASK(RG_FLD_ELA_FIFO_MON_SEL);
+		REG_FLD_MASK(RG_FLD_ELA_FIFO_MON_SEL) |
+		REG_FLD_MASK(RG_FLD_FIFO_MON_SW_TRIG_EN);
 
 	if (cmdq_handle == NULL) {
 		val = readl(vdisp_ao_comp->regs + DISP_REG_VDISP_AO_RG_ELA_FIFO_MONITOR);
