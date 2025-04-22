@@ -777,6 +777,8 @@ static const char *mt6993_bus_id_to_master(uint32_t bus_id, uint32_t vio_addr,
 				return "UNKNOWN_USER_FROM_GPU";
 		} else
 			return infra_mi_trans(vio_addr, bus_id);
+	} else if (slave_type == SLAVE_TYPE_APINFRA_MMU) {
+		return infra_mi_tracer0_trans(bus_id >> 1);
 	} else if (vio_addr <= SRAM_END_ADDR) {
 		pr_info(PFX "vio_addr is from on-chip SRAMROM\n");
 		return infra_mi_tracer0_trans(bus_id);
