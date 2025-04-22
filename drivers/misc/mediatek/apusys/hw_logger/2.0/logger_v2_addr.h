@@ -15,14 +15,6 @@ extern void *apu_logtop, *apu_mbox;
 #define APU_LOGTOP_CON_SFT           (8)
 #define APU_LOGTOP_CON_MSK           (0xF << APU_LOGTOP_CON_SFT)
 
-/* APU_LOGTOP_CON_FLAG */
-#define APU_LOGTOP_CON_LBC_FULL_FLAG (0x1 << 0)
-#define APU_LOGTOP_CON_LBC_ERR_FLAG  (0x1 << 1)
-#define APU_LOGTOP_CON_OVWRITE_FLAG  (0x1 << 2)
-#define APU_LOGTOP_CON_LOCKBUS_FLAG  (0x1 << 3)
-
-#define GET_MASK_BITS(x) ((ioread32(x##_ADDR) & x##_MSK) >> x##_SFT)
-
 #define APU_MBOX_BASE                (apu_mbox)
 #define LOG_W_OFS_MBOX               (APU_MBOX_BASE + 0x40)
 

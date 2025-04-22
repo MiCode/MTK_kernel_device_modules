@@ -8,6 +8,7 @@
 #include <linux/sched/clock.h>
 
 #include "apu_config.h"
+#include "apusys_secure.h"
 #include "hw_logger.h"
 #include "logger_v2.h"
 #include "logger_v2_ipi.h"
@@ -26,6 +27,14 @@
 void *apu_logtop, *apu_mbox;
 static struct platform_device *g_pdev;
 
+enum SMC_OP_APU_LOG_DBG {
+	SMC_OP_APU_LOG_DBG_NULL = 0,
+	SMC_OP_APU_LOG_DBG_OUT_TO_HOST_MSK,
+	SMC_OP_APU_LOG_DBG_WAKE_HOST_MSK,
+	SMC_OP_APU_LOG_DBG_OUT_TO_HOST_STA_0,
+	SMC_OP_APU_LOG_DBG_OUT_TO_HOST_STA_1,
+};
+
 struct log_buf_info
 {
 	char *va;
@@ -37,7 +46,36 @@ struct log_buf_info
 static struct log_buf_info np_log_buf;
 static unsigned int intr_lbc_size;
 static unsigned int log_irq_num;
+static unsigned int irq_hdl_cnt;
 
+static unsigned int ioread_debug_atf(enum SMC_OP_APU_LOG_DBG dbg_read_op)
+{
+	struct arm_smccc_res res;
+
+	arm_smccc_smc(MTK_SIP_APUSYS_CONTROL,
+		MTK_APUSYS_KERNEL_OP_APUSYS_LOGTOP_DBG_READ,
+		dbg_read_op, 0, 0, 0, 0, 0, &res);
+
+	HWLOGR_DBG("arm_smccc_smc dbg_read a0 a1 / 0x%lx 0x%lx\n", res.a0, res.a1);
+
+	if (res.a0 != 0) {
+		HWLOGR_ERR("arm_smccc_smc dbg_read error ret: 0x%lx", res.a0);
+		return 0;
+	}
+	return res.a1;
+}
+
+static void irq_debug_status_dump(void)
+{
+	HWLOGR_INFO("OUT_TO_HOST_MSK: 0x%08x\n",
+		ioread_debug_atf(SMC_OP_APU_LOG_DBG_OUT_TO_HOST_MSK));
+	HWLOGR_INFO("WAKE_HOST_MSK: 0x%08x\n",
+		ioread_debug_atf(SMC_OP_APU_LOG_DBG_WAKE_HOST_MSK));
+	HWLOGR_INFO("OUT_TO_HOST_STA_0: 0x%08x\n",
+		ioread_debug_atf(SMC_OP_APU_LOG_DBG_OUT_TO_HOST_STA_0));
+	HWLOGR_INFO("OUT_TO_HOST_STA_1: 0x%08x\n",
+		ioread_debug_atf(SMC_OP_APU_LOG_DBG_OUT_TO_HOST_STA_1));
+}
 
 void logger_v2_buf_invalidate(enum LOG_BUFF_TYPE buff_type)
 {
@@ -130,9 +168,7 @@ static irqreturn_t apu_logtop_irq_handler(int irq, void *private_data)
 {
 	int reader_lock;
 	unsigned int ctrl_flag = 0, w_ptr_reg = 0, r_ptr_reg = 0;
-	unsigned long long handler_start_time;
-
-	handler_start_time = sched_clock();
+	unsigned long long handle_time = sched_clock();
 
 	// check apu power on and w1c reg
 	reader_lock = logger_v2_counting_hw_sema_reader_trylock();
@@ -147,14 +183,24 @@ static irqreturn_t apu_logtop_irq_handler(int irq, void *private_data)
 
 		logger_v2_counting_hw_sema_reader_unlock();
 		logger_v2_notify_mblog(0);
+		handle_time = sched_clock() - handle_time;
+
+		if ((irq_hdl_cnt++ % 100 == 0) || (handle_time > 1000000)) {
+			HWLOGR_INFO(
+				"ctrl_flag = 0x%x r_ptr = 0x%x w_ptr = 0x%x cnt = %d time = %lld us\n",
+				ctrl_flag, r_ptr_reg, w_ptr_reg, irq_hdl_cnt, handle_time / 1000);
+		}
+		if ((ctrl_flag & APU_LOGTOP_CON_MSK) == 0) {
+			HWLOGR_INFO("no irq pending: ctrl_flag = 0x%x\n", ctrl_flag);
+			irq_debug_status_dump();
+		}
 	} else if (reader_lock == -EBUSY)  {
 		HWLOGR_INFO("apu power off / s5 idle\n");
+		irq_debug_status_dump();
 	} else {
 		HWLOGR_INFO("hw_sema_reader_trylock operation error: %d\n", reader_lock);
 	}
 
-	HWLOGR_INFO("intr status = 0x%x r_ptr = 0x%x w_ptr = 0x%x handler_time = %lld ms\n",
-		ctrl_flag, r_ptr_reg, w_ptr_reg, (sched_clock() - handler_start_time) / 1000);
 	return IRQ_HANDLED;
 }
 

@@ -18,7 +18,8 @@ extern unsigned char g_hw_logger_log_lv;
 
 /* Log level control by g_hw_logger_log_lv */
 enum {
-	DBG_LOG_ERR = 0,
+	DBG_LOG_OFF = 0,
+	DBG_LOG_ERR,
 	DBG_LOG_WARN,
 	DBG_LOG_INFO,
 	DBG_LOG_DEBUG,
