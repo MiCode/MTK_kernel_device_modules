@@ -1348,9 +1348,14 @@ static void cam_qos_parse_m4u_port(struct platform_device *pdev)
 
 static int cam_qos_probe(struct platform_device *pdev)
 {
+	int ret;
 	LOG_INF("CAM QOS probe.\n");
 #ifndef EP_STAGE
-	dev_pm_opp_of_add_table(&pdev->dev);
+	ret = dev_pm_opp_of_add_table(&pdev->dev);
+	if (ret < 0) {
+		LOG_NOTICE("fail to add opp table: %d\n", ret);
+		return ret;
+	}
 	mmdvfsDev = &pdev->dev;
 	mmdvfsRegulator = devm_regulator_get(&pdev->dev, "dvfsrc-vcore");
 #endif
