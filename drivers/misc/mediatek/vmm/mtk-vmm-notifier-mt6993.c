@@ -130,18 +130,18 @@ typedef struct {
 CVFSCounter cvfsCNT;
 
 static const unsigned int isp_temperature_margin[TEMP_ZONE_MAX][OPP_LEVEL_TOTAL] = {
-	{0, 5, 5, 5, 5, 0},	// zone 1: no vb, please use signed off
-	{0, 5, 5, 5, 5, 0},	// zone 2
-	{0, 3, 3, 3, 3, 0},	// zone 3
-	{0, 5, 5, 5, 5, 0},	// zone 4
+	{0, 8, 8, 8, 8, 0},	// zone 1: no vb, please use signed off
+	{0, 8, 8, 8, 8, 0},	// zone 2
+	{0, 5, 5, 5, 5, 0},	// zone 3
+	{0, 8, 8, 8, 8, 0},	// zone 4
 };
 
 static const unsigned int isp_mssv_margin[OPP_LEVEL_TOTAL] = {
 	0,
 	STEP_TO_MARGIN(0),
 	STEP_TO_MARGIN(1),
-	STEP_TO_MARGIN(0),
-	STEP_TO_MARGIN(1),
+	STEP_TO_MARGIN(3),
+	STEP_TO_MARGIN(5),
 	0,
 };
 
@@ -163,7 +163,7 @@ static const unsigned int vde_mssv_margin[OPP_LEVEL_TOTAL] = {
 };
 
 static const unsigned int isp_cvfs_floor_margin[OPP_LEVEL_TOTAL] = {
-	0, 14, 18, 21, 24, 0,  // zone 2
+	0, 14, 18, 18, 20, 0,  // zone 2
 };
 
 static const unsigned int vde_cvfs_floor_margin[OPP_LEVEL_TOTAL] = {
@@ -171,7 +171,7 @@ static const unsigned int vde_cvfs_floor_margin[OPP_LEVEL_TOTAL] = {
 };
 
 static const unsigned int isp_avs20_floor_margin[OPP_LEVEL_TOTAL] = {
-	0, 11, 15, 18, 21, 0  // zone 2
+	0, 11, 15, 15, 17, 0  // zone 2
 };
 
 static const unsigned int vde_avs20_floor_margin[OPP_LEVEL_TOTAL] = {
