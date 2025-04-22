@@ -661,37 +661,45 @@ struct voter_map {
 #define CG_SET_OFS(x)       CCF_XPU_CG_SET(HWV_XPU_0, x)
 #define CG_CLR_OFS(x)       CCF_XPU_CG_CLR(HWV_XPU_0, x)
 #define CG_DONE_OFS(x)      CCF_VIP_CG_DONE(x)
+#define CG_STA_OFS(x)       CCF_VIP_CG_STA(x)
+#define CG_GLB_EN_OFS(x)    CCF_VIP_CG_EN(x)
 
 /* MUX PWR ON set/clr to ofs */
 #define MUX_PWR_SET_OFS     CCF_XPU_MUX_PWR_SET(HWV_XPU_0)
 #define MUX_PWR_CLR_OFS     CCF_XPU_MUX_PWR_CLR(HWV_XPU_0)
 #define MUX_PWR_DONE_OFS    CCF_MUX_PWR_DONE
+#define MUX_PWR_STA_OFS     CCF_MUX_PWR_STA
+#define MUX_PWR_GLB_EN_OFS  CCF_MUX_PWR_EN
 
 /* MTCMOS id to ofs */
 #define MTCMOS0_SET_OFS     CCF_XPU_MTCMOS0_SET(HWV_XPU_0)
 #define MTCMOS0_CLR_OFS     CCF_XPU_MTCMOS0_CLR(HWV_XPU_0)
 #define MTCMOS0_DONE_OFS    CCF_MTCMOS_DONE_0
+#define MTCMOS0_STA_OFS     CCF_MTCMOS_STA_0
+#define MTCMOS0_GLB_EN_OFS  CCF_MTCMOS_EN_0
 
 #define MTCMOS1_SET_OFS     CCF_XPU_MTCMOS1_SET(HWV_XPU_0)
 #define MTCMOS1_CLR_OFS     CCF_XPU_MTCMOS1_CLR(HWV_XPU_0)
 #define MTCMOS1_DONE_OFS    CCF_MTCMOS_DONE_1
+#define MTCMOS1_STA_OFS     CCF_MTCMOS_STA_1
+#define MTCMOS1_GLB_EN_OFS  CCF_MTCMOS_EN_1
 
 #define XPU_B0_SET          CCF_XPU_B1_SET(HWV_XPU_0)
 #define XPU_B0_CLR          CCF_XPU_B1_CLR(HWV_XPU_0)
 #define XPU_B0_DONE         CCF_BACKUP1_DONE
 #define XPU_B0_STA          CCF_BACKUP1_STA
-#define XPU_B0_ALL_EN       CCF_BACKUP1_EN
+#define XPU_B0_GLB_EN       CCF_BACKUP1_EN
 
 #define XPU_B1_SET          CCF_XPU_B2_SET(HWV_XPU_0)
 #define XPU_B1_CLR          CCF_XPU_B2_CLR(HWV_XPU_0)
 #define XPU_B1_DONE         CCF_BACKUP2_DONE
 #define XPU_B1_STA          CCF_BACKUP2_STA
-#define XPU_B1_ALL_EN       CCF_BACKUP2_EN
+#define XPU_B1_GLB_EN       CCF_BACKUP2_EN
 
 #define XPU_B2_SET          CCF_XPU_B3_SET(HWV_XPU_0)
 #define XPU_B2_CLR          CCF_XPU_B3_CLR(HWV_XPU_0)
 #define XPU_B2_DONE         CCF_BACKUP3_DONE
 #define XPU_B2_STA          CCF_BACKUP3_STA
-#define XPU_B2_ALL_EN       CCF_BACKUP3_EN
+#define XPU_B2_GLB_EN       CCF_BACKUP3_EN
 
 #endif /* _HWCCF_H_ */

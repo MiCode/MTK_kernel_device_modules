@@ -55,7 +55,11 @@ static bool _inited;
 static struct regmap *regmaps[MAX_HWCCF];
 static int regmap_count = 0;
 static DEFINE_SPINLOCK(hwccf_lock);
+static DEFINE_SPINLOCK(ap_hwccf_lock);
+static DEFINE_SPINLOCK(mm_hwccf_lock);
 static DEFINE_SPINLOCK(hwccf_irq_lock);
+static DEFINE_SPINLOCK(ap_hwccf_irq_lock);
+static DEFINE_SPINLOCK(mm_hwccf_irq_lock);
 struct hwccf_ops *hwccf_ops;
 
 /*usage*/
@@ -187,7 +191,7 @@ ERR:
 }
 
 /* clock voter support */
-static int _v1_hwccf_voter_ctrl(struct regmap *regmap, uint32_t setclr_ofs, uint32_t vote_val,
+static int _v1_ap_hwccf_voter_ctrl(struct regmap *regmap, uint32_t setclr_ofs, uint32_t vote_val,
 					  uint32_t done_ofs, uint32_t done_ack_msk)
 {
 	unsigned long flags;
@@ -201,7 +205,7 @@ static int _v1_hwccf_voter_ctrl(struct regmap *regmap, uint32_t setclr_ofs, uint
 		HWCCF_ERR("bad args\n");
 		return -HWV_EINVAL;
 	}
-	spin_lock_irqsave(&hwccf_lock, flags);
+	spin_lock_irqsave(&ap_hwccf_lock, flags);
 #ifdef HWCCF_TEST_MODE
 	hwccf_read(regmap, setclr_ofs);
 	goto skip;
@@ -246,7 +250,7 @@ static int _v1_hwccf_voter_ctrl(struct regmap *regmap, uint32_t setclr_ofs, uint
 	}
 
 skip:
-	spin_unlock_irqrestore(&hwccf_lock, flags);
+	spin_unlock_irqrestore(&ap_hwccf_lock, flags);
 #ifdef HWCCF_TEST_MODE
 	return 0;
 #else
@@ -257,7 +261,99 @@ ERR:
 	HWCCF_ERR("%s: vote[%x]=%x{%x}, done[%x]=%x{%x}\n", __func__,
 		setclr_ofs, vote_val, setclr_ofs ? hwccf_read(regmap, en_ofs) : 0,
 		done_ofs, done_ack_msk, done_ofs ? hwccf_read(regmap, done_ofs) : 0);
-	spin_unlock_irqrestore(&hwccf_lock, flags);
+	spin_unlock_irqrestore(&ap_hwccf_lock, flags);
+	return ret;
+}
+
+/* clock voter support */
+static int _v1_mm_hwccf_voter_ctrl(struct regmap *regmap, uint32_t setclr_ofs, uint32_t vote_val,
+				uint32_t done_ofs, uint32_t done_ack_msk, uint32_t sta_ofs, uint32_t all_en_ofs)
+{
+	unsigned long flags;
+	bool is_set = IS_SET_FROM_VOTER_ADDR(setclr_ofs);
+	uint32_t en_ofs = setclr_ofs + (is_set ? 0x8 : 0x4);
+	int ret = 0;
+	uint32_t val;
+
+	//HWCCF_LOG("==> regmap:%p, sta_ofs[%x], all_en_ofs[%x]\n", regmap, sta_ofs, all_en_ofs);
+
+	// Check args
+	if (!setclr_ofs || !vote_val || !done_ofs || !done_ack_msk || !sta_ofs || !all_en_ofs) {
+		HWCCF_ERR("bad args\n");
+		return -HWV_EINVAL;
+	}
+	spin_lock_irqsave(&mm_hwccf_lock, flags);
+#ifdef HWCCF_TEST_MODE
+	hwccf_read(regmap, setclr_ofs);
+	goto skip;
+#endif
+	// Check repeat vote
+	val = hwccf_read(regmap, en_ofs);
+	if (is_set ? IS_MASK_SET(val, vote_val) : IS_MASK_CLR(val, vote_val)) {
+		HWCCF_WARN("already %s, [%x]=%x{%x}\n",
+			is_set ? "set" : "clr", setclr_ofs, vote_val, val);
+		goto skip;
+	}
+
+	// Pre-Polling done
+	ret = regmap_read_poll_timeout_atomic(regmap, sta_ofs, val, IS_MASK_CLR(val, done_ack_msk),
+	    MTK_WAIT_GHWV_PREPARE_US, MTK_WAIT_GHWV_PREPARE_CNT);
+	if (ret) {
+		HWCCF_ERR("%s timeout\n", is_set ? "prepare" : "unprepare");
+		ret = -HWV_PREPARE_TIMEOUT;
+		goto ERR;
+	}
+
+	// XPU Voting & polling HW_CCF_XPU$_{CG/MTCMOS/PLL/BACKUP}_SET
+	hwccf_write(regmap, setclr_ofs, vote_val);
+
+	ret = regmap_read_poll_timeout_atomic(regmap, en_ofs, val,
+		is_set ? IS_MASK_SET(val, vote_val) : IS_MASK_CLR(val, vote_val),
+		MTK_WAIT_GHWV_VOTE_US, MTK_WAIT_GHWV_VOTE_CNT);
+	if (ret) {
+		HWCCF_ERR("%s timeout\n", is_set ? "vote" : "unvote");
+		ret = -HWV_VOTE_TIMEOUT;
+		goto ERR;
+	}
+
+	// Polling all_en
+	if (is_set) {
+		ret = regmap_read_poll_timeout_atomic(regmap, all_en_ofs, val,
+			IS_MASK_SET(val, done_ack_msk),
+			MTK_WAIT_GHWV_VOTE_US, MTK_WAIT_GHWV_DONE_CNT);
+		if (ret) {
+			HWCCF_ERR("%s polling all_en timeout\n", is_set ? "set" : "clr");
+			ret = -HWV_SET_TIMEOUT;
+			goto ERR;
+		}
+	} else {
+		udelay(100);
+	}
+
+
+	// Polling done
+	ret = regmap_read_poll_timeout_atomic(regmap, sta_ofs, val,
+		IS_MASK_CLR(val, done_ack_msk),
+		MTK_WAIT_GHWV_VOTE_US, MTK_WAIT_GHWV_DONE_CNT);
+	if (ret) {
+		HWCCF_ERR("%s polling sta timeout\n", is_set ? "set" : "clr");
+		ret = -HWV_SET_TIMEOUT;
+		goto ERR;
+	}
+
+skip:
+	spin_unlock_irqrestore(&mm_hwccf_lock, flags);
+#ifdef HWCCF_TEST_MODE
+	return 0;
+#else
+	return ret;
+#endif
+
+ERR:
+	HWCCF_ERR("%s: vote[%x]=%x{%x}, done[%x]=%x{%x}\n", __func__,
+		setclr_ofs, vote_val, setclr_ofs ? hwccf_read(regmap, en_ofs) : 0,
+		done_ofs, done_ack_msk, done_ofs ? hwccf_read(regmap, done_ofs) : 0);
+	spin_unlock_irqrestore(&mm_hwccf_lock, flags);
 	return ret;
 }
 
@@ -300,6 +396,8 @@ static int _v1_hwccf_voter_ctrl_wrapper(enum HWCCF_TYPE hwccf_type, uint32_t res
 	int ret = 0;
 	uint32_t setclr_ofs = 0x0;
 	uint32_t done_ofs = 0x0;
+	uint32_t sta_ofs = 0x0;
+	uint32_t all_en_ofs = 0x0;
 	struct regmap *map;
 
 	map = ((hwccf_type == AP_HWCCF) ? regmaps[AP_HWCCF]:regmaps[MM_HWCCF]);
@@ -308,25 +406,42 @@ static int _v1_hwccf_voter_ctrl_wrapper(enum HWCCF_TYPE hwccf_type, uint32_t res
 	if (resource_id <= HW_CCF_CG_GRP_29) {
 		setclr_ofs = ((hwccf_op == HWCCF_VOTE) ? CG_SET_OFS(resource_id) : CG_CLR_OFS(resource_id));
 		done_ofs = CG_DONE_OFS(resource_id);
+		sta_ofs = CG_STA_OFS(resource_id);
+		all_en_ofs = CG_GLB_EN_OFS(resource_id);
 	} else if((resource_id > HW_CCF_CG_GRP_29) && (resource_id <= HW_CCF_CG_GRP_51)
 														&& (hwccf_type == MM_HWCCF)) {
 		setclr_ofs = ((hwccf_op == HWCCF_VOTE) ? CG_SET_OFS(resource_id) : CG_CLR_OFS(resource_id));
 		done_ofs = CG_DONE_OFS(resource_id);
+		sta_ofs = CG_STA_OFS(resource_id);
+		all_en_ofs = CG_GLB_EN_OFS(resource_id);
 	} else if (resource_id == HW_CCF_MTCMOS_GRP_0) {
 		setclr_ofs = ((hwccf_op == HWCCF_VOTE) ? MTCMOS0_SET_OFS : MTCMOS0_CLR_OFS);
 		done_ofs = MTCMOS0_DONE_OFS;
+		sta_ofs = MTCMOS0_STA_OFS;
+		all_en_ofs = MTCMOS0_GLB_EN_OFS;
 	} else if (resource_id == HW_CCF_MTCMOS_GRP_1) {
 		setclr_ofs = ((hwccf_op == HWCCF_VOTE) ? MTCMOS1_SET_OFS : MTCMOS1_CLR_OFS);
 		done_ofs = MTCMOS1_DONE_OFS;
+		sta_ofs = MTCMOS1_STA_OFS;
+		all_en_ofs = MTCMOS1_GLB_EN_OFS;
 	} else if (resource_id == HW_CCF_MUX_PWR_GRP_0) {
 		setclr_ofs = ((hwccf_op == HWCCF_VOTE) ? MUX_PWR_SET_OFS : MUX_PWR_CLR_OFS);
 		done_ofs = MUX_PWR_DONE_OFS;
+		sta_ofs = MUX_PWR_STA_OFS;
+		all_en_ofs = MUX_PWR_GLB_EN_OFS;
 	} else {
 		ret = -HWV_WRONG_ID;
 		goto ERR;
 	}
-	// common hwccf voting function
-	ret = _v1_hwccf_voter_ctrl(map, setclr_ofs, vote_val, done_ofs, vote_val);
+
+	if (hwccf_type == AP_HWCCF) {
+		// AP hwccf voting function
+		ret = _v1_ap_hwccf_voter_ctrl(map, setclr_ofs, vote_val, done_ofs, vote_val);
+	} else {
+		// MM hwccf voting function
+		ret = _v1_mm_hwccf_voter_ctrl(map, setclr_ofs, vote_val, done_ofs, vote_val, sta_ofs, all_en_ofs);
+	}
+
 	if (ret)
 		goto ERR;
 	return ret;
@@ -367,13 +482,87 @@ ERR:
 	return ret;
 }
 
+/* without resource id info, for CCF remap */
+uint32_t V1_DONE_to_STA(uint32_t done_ofs)
+{
+	switch(done_ofs) {
+	case(MUX_PWR_DONE_OFS):
+		return MUX_PWR_STA_OFS;
+
+	case(MTCMOS0_DONE_OFS):
+		return MTCMOS0_STA_OFS;
+
+	case(MTCMOS1_DONE_OFS):
+		return MTCMOS1_STA_OFS;
+
+	case(XPU_B0_DONE):
+		return XPU_B0_STA;
+
+	case(XPU_B1_DONE):
+		return XPU_B1_STA;
+
+	case(XPU_B2_DONE):
+		return XPU_B2_STA;
+
+	default:
+		/* CG_DONE_OFS to STA*/
+		if((done_ofs >= CCF_VIP_CG_DONE(0)) && (done_ofs <= CCF_VIP_CG_DONE(51)))
+			return (done_ofs - 0xE00);
+
+		HWCCF_ERR("DONE_to_STA fail, done ofs: %x\n", done_ofs);
+		configASSERT(0);
+		return done_ofs;
+	}
+}
+
+/* without resource id info, for CCF remap */
+uint32_t V1_DONE_to_GLB_EN(uint32_t done_ofs)
+{
+	switch(done_ofs) {
+	case(MUX_PWR_DONE_OFS):
+		return MUX_PWR_GLB_EN_OFS;
+
+	case(MTCMOS0_DONE_OFS):
+		return MTCMOS0_GLB_EN_OFS;
+
+	case(MTCMOS1_DONE_OFS):
+		return MTCMOS1_GLB_EN_OFS;
+
+	case(XPU_B0_DONE):
+		return XPU_B0_GLB_EN;
+
+	case(XPU_B1_DONE):
+		return XPU_B1_GLB_EN;
+
+	case(XPU_B2_DONE):
+		return XPU_B2_GLB_EN;
+
+	default:
+		/* CG_DONE_OFS to_GLB_EN */
+		if((done_ofs >= CCF_VIP_CG_DONE(0)) && (done_ofs <= CCF_VIP_CG_DONE(51)))
+			return (done_ofs - 0x400);
+
+		HWCCF_ERR("DONE_to_GLB_EN fail, done ofs: %x\n", done_ofs);
+		configASSERT(0);
+		return done_ofs;
+	}
+}
+
+/* call from CCF with XPU_0 base */
 int v1_raw_hwccf_voter_ctrl(struct cb_params *params)
 {
 	int ret = 0;
 
-	// common hwccf voting function
-	ret = _v1_hwccf_voter_ctrl(params->regmap, CCF_XPU(HWV_XPU_0) + params->setclr_ofs,
-			BIT(params->vote_bit), params->done_ofs, BIT(params->vote_bit));
+	if (params->regmap == regmaps[AP_HWCCF]) {
+		// AP hwccf voting function
+		ret = _v1_ap_hwccf_voter_ctrl(params->regmap, CCF_XPU(HWV_XPU_0) + params->setclr_ofs,
+				BIT(params->vote_bit), params->done_ofs, BIT(params->vote_bit));
+	} else {
+		// MM hwccf voting function
+		ret = _v1_mm_hwccf_voter_ctrl(params->regmap, CCF_XPU(HWV_XPU_0) + params->setclr_ofs,
+				BIT(params->vote_bit), params->done_ofs, BIT(params->vote_bit),
+				V1_DONE_to_STA(params->done_ofs), V1_DONE_to_GLB_EN(params->done_ofs));
+	}
 
 	if (ret)
 		goto ERR;
@@ -803,7 +992,12 @@ static int _v1_hwccf_irq_voter_ctrl(struct regmap *regmap, uint32_t setclr_ofs, 
 	unsigned long flags;
 	//CCF_XPU(HWV_XPU_0)
 
-	spin_lock_irqsave(&hwccf_irq_lock, flags);
+	if (regmap == regmaps[AP_HWCCF])
+		spin_lock_irqsave(&ap_hwccf_irq_lock, flags);
+	else
+		spin_lock_irqsave(&mm_hwccf_irq_lock, flags);
+
+
 	// Voting hwccf irq voter without waiting hwccf done bit
 	ret = _v1_hwccf_irq_voter_nowait(regmap, setclr_ofs, vote_val, done_ofs, vote_val, sta_ofs);
 
@@ -816,12 +1010,21 @@ static int _v1_hwccf_irq_voter_ctrl(struct regmap *regmap, uint32_t setclr_ofs, 
 	if (ret)
 		goto ERR;
 
-	spin_unlock_irqrestore(&hwccf_irq_lock, flags);
+	if (regmap == regmaps[AP_HWCCF])
+		spin_unlock_irqrestore(&ap_hwccf_irq_lock, flags);
+	else
+		spin_unlock_irqrestore(&mm_hwccf_irq_lock, flags);
 
 	return ret;
 
 ERR:
-	spin_unlock_irqrestore(&hwccf_irq_lock, flags);
+
+	if (regmap == regmaps[AP_HWCCF])
+		spin_unlock_irqrestore(&ap_hwccf_irq_lock, flags);
+	else
+		spin_unlock_irqrestore(&mm_hwccf_irq_lock, flags);
+
+
 	configASSERT(0);
 	return ret;
 }
@@ -894,17 +1097,17 @@ int _v1_hwccf_irq_voter_ctrl_wrapper(enum HWCCF_TYPE hwccf_type, uint32_t resour
 		setclr_ofs = ((hwccf_op == HWCCF_VOTE) ? XPU_B0_SET : XPU_B0_CLR);
 		done_ofs = XPU_B0_DONE;
 		sta_ofs = XPU_B0_STA;
-		all_en_ofs = XPU_B0_ALL_EN;
+		all_en_ofs = XPU_B0_GLB_EN;
 	} else if (resource_id == HW_CCF_BACKUP_GRP_1) {
 		setclr_ofs = ((hwccf_op == HWCCF_VOTE) ? XPU_B1_SET : XPU_B1_CLR);
 		done_ofs = XPU_B1_DONE;
 		sta_ofs = XPU_B1_STA;
-		all_en_ofs = XPU_B1_ALL_EN;
+		all_en_ofs = XPU_B1_GLB_EN;
 	} else if (resource_id == HW_CCF_BACKUP_GRP_2) {
 		setclr_ofs = ((hwccf_op == HWCCF_VOTE) ? XPU_B2_SET : XPU_B2_CLR);
 		done_ofs = XPU_B2_DONE;
 		sta_ofs = XPU_B2_STA;
-		all_en_ofs = XPU_B2_ALL_EN;
+		all_en_ofs = XPU_B2_GLB_EN;
 	} else {
 		ret = -HWV_WRONG_ID;
 		goto ERR;
@@ -941,7 +1144,11 @@ void v1_hwccf_freeze(int is_MASK_XPC, struct regmap *regmap)
 					   hw_ccf_to_up_int_b_2 |
 					   hw_ccf_to_up_int_b_3);
 
-	spin_lock_irqsave(&hwccf_lock, flags);
+	if (regmap == regmaps[AP_HWCCF])
+		spin_lock_irqsave(&ap_hwccf_lock, flags);
+	else
+		spin_lock_irqsave(&mm_hwccf_lock, flags);
+
 	hwccf_update_bit(regmap, HWCCF_REG_EN6, block_voting, block_voting);
 
 	// Polling FSM to idle
@@ -968,11 +1175,21 @@ void v1_hwccf_freeze(int is_MASK_XPC, struct regmap *regmap)
 		ret = -HWV_PREPARE_TIMEOUT;
 		goto ERR;
 	}
-	spin_unlock_irqrestore(&hwccf_lock, flags);
+
+	if (regmap == regmaps[AP_HWCCF])
+		spin_unlock_irqrestore(&ap_hwccf_lock, flags);
+	else
+		spin_unlock_irqrestore(&mm_hwccf_lock, flags);
+
 	return;
 
 ERR:
-	spin_unlock_irqrestore(&hwccf_lock, flags);
+	if (regmap == regmaps[AP_HWCCF])
+		spin_unlock_irqrestore(&ap_hwccf_lock, flags);
+	else
+		spin_unlock_irqrestore(&mm_hwccf_lock, flags);
+
+
 	HWCCF_ERR("HWCCF freeze fail, error code: %x\n", abs(ret));
 	configASSERT(0);
 	return;
