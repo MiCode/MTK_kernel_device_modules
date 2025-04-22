@@ -214,6 +214,12 @@ bool mml_drm_query_hw_support(const struct mml_frame_info *info)
 			goto not_support;
 		}
 
+		if ((destw > crop_srcw && desth < crop_srch) ||
+		    (destw < crop_srcw && desth > crop_srch)) {
+			mml_err("[drm]not support shrink and expand h/v ratio at the same time");
+			goto not_support;
+		}
+
 		if ((dest->compose.width || dest->compose.height) &&
 			(dest->compose.width != dest->data.width ||
 			dest->compose.height != dest->data.height)) {
