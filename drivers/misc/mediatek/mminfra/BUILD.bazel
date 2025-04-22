@@ -63,6 +63,18 @@ define_mgk_ddk_ko(
     ],
 )
 
+define_mgk_ddk_ko(
+    name = "mtk-mminfra-util-dummy",
+    srcs = [
+        "mtk-mminfra-util-dummy.c",
+    ],
+    hdrs = glob(["**/*.h"]),
+    includes = ["."],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+    ],
+)
+
 ddk_headers(
     name = "mtk_mminfra_debug_headers",
     hdrs = glob([

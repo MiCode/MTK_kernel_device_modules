@@ -1182,6 +1182,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/sound/soc/mediatek/common:snd-soc-mtk-common".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mminfra:mm-fake-engine".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mminfra:mtk-mminfra-util".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/mminfra:mtk-mminfra-util-dummy".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mminfra:mtk-mminfra-debug".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mminfra:mtk-mminfra-imax".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/tinysys_scmi:tinysys-scmi".format(kernel_version),
