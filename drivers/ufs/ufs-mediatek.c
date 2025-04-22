@@ -3336,7 +3336,7 @@ static int ufs_mtk_system_suspend(struct device *dev)
 	struct arm_smccc_res res;
 
 	host = ufshcd_get_variant(hba);
-	if (down_trylock(&host->rpmb_sem))
+	if ((host->host_id == 0) && down_trylock(&host->rpmb_sem))
 		return -EBUSY;
 
 	/* Check if shutting down */
@@ -3356,7 +3356,7 @@ static int ufs_mtk_system_suspend(struct device *dev)
 	if (!ret && ufs_mtk_is_rtff_mtcmos(hba))
 		ufs_mtk_mtcmos_ctrl(host->host_id, false, res);
 out:
-	if (ret)
+	if ((host->host_id == 0) && ret)
 		up(&host->rpmb_sem);
 
 	return ret;
@@ -3381,7 +3381,8 @@ out:
 	ret = ufshcd_system_resume(dev);
 
 	if (!ret) {
-		up(&host->rpmb_sem);
+		if (host->host_id == 0)
+			up(&host->rpmb_sem);
 		hrtimer_start(&host->rq_timer, 500 * NSEC_PER_MSEC, HRTIMER_MODE_REL);
 	}
 
