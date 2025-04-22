@@ -368,6 +368,9 @@ static int mmdvfs_debug_v5_status_dump(struct seq_file *file)
 	// pwr: vcore, vmm, vdisp
 	MEM_PRINT_LOOP(SRAM_PWR_CNT, SRAM_PWR_IDX, SRAM_PWR_SEC, SRAM_PWR_VAL,
 		file, "lvl history of pwr from mmup", "pwr", "", "lvl");
+	// ccpro: vcore vmm
+	MEM_PRINT_LOOP(SRAM_CCPRO_CNT, SRAM_CCPRO_IDX, SRAM_CCPRO_SEC, SRAM_CCPRO_VAL,
+		file, "lvl history of ccpro from mmup", "ccpro", "", "lvl");
 	// clk: vcore, vmm, vdisp, cam, hop
 	if (clk_snapshot) {
 		mmdvfs_seq_print(file,  "lvl history of clk from snapshot");

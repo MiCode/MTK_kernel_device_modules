@@ -69,6 +69,7 @@ enum {
 	DUMP_CLK,
 	DUMP_CEIL,
 	DUMP_XPC,
+	DUMP_CCPRO,
 	DUMP_NUM
 };
 
@@ -99,13 +100,13 @@ enum {
 #define SRAM_XPC_CNT		(3) // mmpc, cpc, dpc
 #define SRAM_PROF_CNT		(9) // PROFILE_NUM
 #define SRAM_PWR_TOTAL_CNT	(4) // vcore, vmm, vdisp, cam
+#define SRAM_CCPRO_CNT		(2) // vcore, vmm
 
 #define SRAM_IRQ_IDX(x)		(SRAM_BASE + 4 * (0 + x))
 #define SRAM_PWR_IDX(x)		(SRAM_BASE + 4 * (5 + x))
 #define SRAM_CLK_IDX(x)		(SRAM_BASE + 4 * (8 + x))
 #define SRAM_CEIL_IDX(x)	(SRAM_BASE + 4 * (13 + x))
 #define SRAM_XPC_IDX(x)		(SRAM_BASE + 4 * (16 + x))
-// 19
 
 #define SRAM_IRQ_SEC(x, y)	(SRAM_BASE + 4 * (20 + MEM_OBJ_CNT * (MEM_REC_CNT * x + y) + 0))
 #define SRAM_IRQ_VAL(x, y)	(SRAM_BASE + 4 * (20 + MEM_OBJ_CNT * (MEM_REC_CNT * x + y) + 1))
@@ -129,7 +130,11 @@ enum {
 #define SRAM_PWR_TOTAL(x, y)	(SRAM_BASE + 4 * (350 + MEM_OBJ_CNT * (MEM_OPP_CNT * (x) + (y))))
 /* mbrain : u64(2) * SRAM_XPC_CNT * MEM_OPP_CNT = 48 */
 #define SRAM_USR_TOTAL(x, y)	(SRAM_BASE + 4 * (414 + MEM_OBJ_CNT * (MEM_OPP_CNT * (x) + (y)))) //mmpc, cpc, dpc
-//462
+
+#define SRAM_CCPRO_IDX(x)	(SRAM_BASE + 4 * (462 + x))
+#define SRAM_CCPRO_SEC(x, y)	(SRAM_BASE + 4 * (464 + MEM_OBJ_CNT * (MEM_REC_CNT * x + y) + 0))
+#define SRAM_CCPRO_VAL(x, y)	(SRAM_BASE + 4 * (464 + MEM_OBJ_CNT * (MEM_REC_CNT * x + y) + 1))
+//496
 
 #endif
 
