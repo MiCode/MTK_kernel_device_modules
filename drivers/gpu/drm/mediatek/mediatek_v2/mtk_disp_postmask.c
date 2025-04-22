@@ -446,8 +446,8 @@ static void mtk_postmask_config(struct mtk_ddp_comp *comp,
 
 		if (postmask->set_partial_update == MTK_PARTIAL_UPDATE_SISO)
 			force_relay = postmask->pu_force_relay;
-		if (addr == 0 || size == 0) {
-			DDPPR_ERR("invalid postmaks addr/size\n");
+		if (addr == 0) {
+			DDPPR_ERR("invalid postmask addr\n");
 			force_relay = 1;
 		} else if (postmask->postmask_force_relay) {
 			DDPMSG("postmask force relay\n");
@@ -1026,8 +1026,8 @@ static int mtk_postmask_set_partial_update(struct mtk_ddp_comp *comp,
 				__func__, &addr, size, pause_start, pause_end);
 		}
 
-		if (addr == 0 || size == 0) {
-			DDPPR_ERR("%s, invalid postmaks addr/size\n", __func__);
+		if (addr == 0) {
+			DDPPR_ERR("%s, invalid postmask addr\n", __func__);
 			force_relay = 1;
 		} else if (postmask->postmask_force_relay) {
 			DDPDBG("%s, postmask force relay\n", __func__);
@@ -1076,7 +1076,7 @@ static int mtk_postmask_set_partial_update(struct mtk_ddp_comp *comp,
 		postmask->pu_pause_end = pause_end;
 	} else {
 		if (addr == 0 || size == 0) {
-			DDPPR_ERR("%s, invalid postmaks addr/size: %d\n", __func__, size);
+			DDPPR_ERR("%s, invalid postmask addr/size: %d\n", __func__, size);
 			force_relay = 1;
 		} else if (postmask->postmask_force_relay) {
 			DDPINFO("%s, postmask force relay\n", __func__);
