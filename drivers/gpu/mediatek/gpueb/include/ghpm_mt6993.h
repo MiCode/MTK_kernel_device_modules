@@ -49,6 +49,10 @@
 #define MAINPLL_ACK_SKIP_RECORD            (BIT(27))
 #define STATE_RECORD                       (GENMASK(7,0))
 #define MFG_GHPM_RO2_CON                   (g_mfg_rpc_grst_base + 0x09AC)     /* 0x4B8089AC */
+#define MFG_GHPM_RO3_CON                   (g_mfg_rpc_grst_base + 0x09C0)     /* 0x4B8089C0 */
+#define MFG_GHPM_RO4_CON                   (g_mfg_rpc_grst_base + 0x09C4)     /* 0x4B8089C4 */
+#define MFG_GHPM_RO5_CON                   (g_mfg_rpc_grst_base + 0x09C8)     /* 0x4B8089C8 */
+#define MFG_GHPM_RO6_CON                   (g_mfg_rpc_grst_base + 0x09CC)     /* 0x4B8089CC */
 
 /* MFG_VCORE_AO_CONFIG */
 #define MFG_RPC_DUMMY_REG                  (g_mfg_vcore_ao_config_base + 0x18) /* 0x4B860018 */
@@ -68,6 +72,17 @@
 #define MFG_EB_CK_UPDATE_BIT               (BIT(25))
 #define CKSTA_REG                          (g_cksta_reg)
 #define CHG_MFG_EB                         (BIT(6))
+
+/* API to get sw_version for detection A0 and B0 */
+#define CHIP_VER_A0                        (0x0000)
+#define CHIP_VER_B0                        (0x0001)
+struct tag_chipid {
+	u32 size;
+	u32 hw_code;
+	u32 hw_subcode;
+	u32 hw_ver;
+	u32 sw_ver;
+};
 
 #define GHPM_TS_MON_STRING(type) \
 	( \

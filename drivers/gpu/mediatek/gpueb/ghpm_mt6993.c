@@ -36,6 +36,7 @@
 
 
 static bool __is_gpueb_exist(void);
+static int __mt6993_get_chipid(void);
 static int __ghpm_pdrv_probe(struct platform_device *pdev);
 static int __ghpm_init(void);
 static int __mfg0_on_if_not_duplicate(void);
@@ -81,6 +82,7 @@ static struct gpueb_slp_ipi_data msgbuf;
 static unsigned long g_pwr_irq_flags;
 static raw_spinlock_t ghpm_lock;
 static bool first_on_after_bootup;
+static int g_mt6993_chipid;
 #if GHPM_TIMESTAMP_MONITOR_EN
 static unsigned long long g_ghpm_ts64[GHPM_TS_MONITOR_NUM];
 #endif
@@ -527,6 +529,15 @@ static void __dump_ghpm_info(void)
 	gpueb_log_e(GHPM_TAG, "g_progress_status=%d, g_power_count=%d, g_gpueb_resume_fail_recovery_times=%d",
 		atomic_read(&g_progress_status), atomic_read(&g_power_count), g_gpueb_resume_fail_recovery_times);
 
+	/* ghpm dbg_enhance */
+	if (g_mt6993_chipid == CHIP_VER_B0) {
+		gpueb_log_e(GHPM_TAG, "MFG_GHPM_CFG0_CON=0x%x", readl(MFG_GHPM_CFG0_CON));
+		gpueb_log_e(GHPM_TAG, "MFG_GHPM_RO3_CON=0x%x", readl(MFG_GHPM_RO3_CON));
+		gpueb_log_e(GHPM_TAG, "MFG_GHPM_RO4_CON=0x%x", readl(MFG_GHPM_RO4_CON));
+		gpueb_log_e(GHPM_TAG, "MFG_GHPM_RO5_CON=0x%x", readl(MFG_GHPM_RO5_CON));
+		gpueb_log_e(GHPM_TAG, "MFG_GHPM_RO6_CON=0x%x", readl(MFG_GHPM_RO6_CON));
+	}
+
 #if GHPM_TIMESTAMP_MONITOR_EN
 	for (i = 0; i < GHPM_TS_MONITOR_NUM; i++) {
 		gpueb_log_e(GHPM_TAG, "[%s]: %lld",
@@ -546,6 +557,36 @@ static bool __is_gpueb_exist(void)
 	}
 
 	return true;
+}
+
+static int __mt6993_get_chipid(void)
+{
+	struct device_node *node;
+	struct tag_chipid *chip_id = NULL;
+	int len;
+
+	node = of_find_node_by_path("/chosen");
+	if (!node)
+		node = of_find_node_by_path("/chosen@0");
+
+	if (!node) {
+		pr_info("%s chosen node not found in device tree\n", __func__);
+		return -ENODEV;
+	}
+
+	chip_id = (struct tag_chipid *)of_get_property(node, "atag,chipid", &len);
+	if (!chip_id) {
+		pr_info("%s could not found atag,chipid in chosen\n", __func__);
+		return -ENODEV;
+	}
+
+	if (chip_id->sw_ver == CHIP_VER_A0)
+		return CHIP_VER_A0;
+	else if (chip_id->sw_ver == CHIP_VER_B0)
+		return CHIP_VER_B0;
+
+	gpueb_log_e(GHPM_TAG, "Unknown MT6993 chip ver value: %d, treat as A0\n", chip_id->sw_ver);
+	return CHIP_VER_A0;
 }
 
 static int __ghpm_pdrv_probe(struct platform_device *pdev)
@@ -713,6 +754,8 @@ static int __ghpm_pdrv_probe(struct platform_device *pdev)
 		gpueb_log_e(GPUEB_TAG, "fail to get gpueb slot size");
 		goto done;
 	}
+
+	g_mt6993_chipid = __mt6993_get_chipid();
 
 	atomic_set(&g_power_count, 0);
 	atomic_set(&g_progress_status, NOT_IN_PROGRESS);
