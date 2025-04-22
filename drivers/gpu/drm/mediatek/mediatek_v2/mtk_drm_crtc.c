@@ -11933,15 +11933,19 @@ int mtk_crtc_comp_is_busy(struct mtk_drm_crtc *mtk_crtc)
 static void trig_done_cb(struct cmdq_cb_data data)
 {
 	unsigned long crtc_id = (unsigned long)data.data;
+	bool real_frame_done = true;
 
 	if (crtc_id == 0) {
 		mtk_wakeup_frame_done_wq();
+		mtk_real_frame_done(&real_frame_done);
 	}
+
+	if (!real_frame_done)
+		return;
 
 	CRTC_MMP_MARK(crtc_id, trig_loop_done, 0, 0);
 	DRM_MMP_EVENT_END(drm, 0, 0);
 	drm_trace_tag_mark("trig_loop_done");
-	// DDPINFO("%s()\n", __func__);
 }
 
 static void event_done_cb(struct cmdq_cb_data data)

@@ -2640,6 +2640,48 @@ void mtk_wakeup_frame_done_wq(void)
 		wake_up_interruptible(&mtk_crtc->frame_done_fence_wq);
 	}
 }
+void mtk_real_frame_done(bool *real_frame_done)
+{
+	struct drm_crtc *crtc;
+	struct mtk_drm_crtc *mtk_crtc;
+	struct mtk_drm_private *priv = NULL;
+	int crtc_idx = 0;
+	static ktime_t last_present_ts;
+
+	if (IS_ERR_OR_NULL(drm_dev)) {
+		DDPPR_ERR("%s, invalid drm dev error\n", __func__);
+		return;
+	}
+
+	crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
+			typeof(*crtc), head);
+
+	if (IS_ERR_OR_NULL(crtc)) {
+		DDPPR_ERR("find crtc fail\n");
+		return;
+	}
+
+	mtk_crtc = to_mtk_crtc(crtc);
+	if (!mtk_crtc) {
+		DDPPR_ERR("%s errors with NULL mtk_crtc\n", __func__);
+		return;
+	}
+	if(!mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base))
+		return;
+
+	if (mtk_crtc->base.dev && mtk_crtc->base.dev->dev_private) {
+		priv = mtk_crtc->base.dev->dev_private;
+	} else if (!priv) {
+		DDPPR_ERR("%s errors with NULL mtk_crtc->base.dev->dev_private\n", __func__);
+		return;
+	}
+	crtc_idx = drm_crtc_index(crtc);
+	if (last_present_ts != priv->crtc_last_present_ts[crtc_idx])
+		last_present_ts = priv->crtc_last_present_ts[crtc_idx];
+	else
+		*real_frame_done = false;
+
+}
 
 void mtk_drm_cwb_backup_copy_size(void)
 {
