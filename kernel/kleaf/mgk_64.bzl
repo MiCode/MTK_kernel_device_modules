@@ -1413,6 +1413,7 @@ mgk_64_kleaf_platform_modules = {
     "//kernel_device_modules-{}/drivers/misc/mediatek/mmdvfs:mtk-mmdvfs-debug-v3".format(kernel_version): "mt6991 mt6858 mt6985 mt6886 mt6989 mt6855 mt6895",
     "//kernel_device_modules-{}/drivers/misc/mediatek/mmdvfs:mtk-mmdvfs-debug-v5".format(kernel_version): "mt6993",
     "//kernel_device_modules-{}/drivers/misc/mediatek/memory-amms:memory-amms".format(kernel_version): "mt6761 mt6765 mt6768 mt6781 mt6833 mt6853 mt6877",
+    "//kernel_device_modules-{}/drivers/misc/mediatek/mm_monitor:mm-monitor-platform-mt6858".format(kernel_version): "mt6858",
     "//kernel_device_modules-{}/drivers/misc/mediatek/mm_monitor:mm-monitor-platform-mt6789".format(kernel_version): "mt6789",
     "//kernel_device_modules-{}/drivers/misc/mediatek/mm_monitor:mm-monitor-platform-mt6855".format(kernel_version): "mt6855",
     "//kernel_device_modules-{}/drivers/misc/mediatek/mm_monitor:mm-monitor-platform-mt6895".format(kernel_version): "mt6895",
