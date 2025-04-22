@@ -3048,21 +3048,6 @@ int mtk_drm_crtc_enable_vblank(struct drm_crtc *crtc)
 		atomic_set(&mtk_crtc->vblank_enable_task_active, 1);
 		wake_up_interruptible(&mtk_crtc->vblank_enable_wq);
 
-		if (mtk_dsi_lpc_en(mtk_crtc)) {
-			struct mtk_ddp_comp *comp = mtk_ddp_comp_request_output_lpc(mtk_crtc);
-			int no_sof;
-
-			if (comp) {
-				mtk_ddp_comp_io_cmd(comp, NULL, DSI_LPC_GET_SOF_STATUS, &no_sof);
-
-				if (no_sof == 0) {
-					drm_trace_tag_mark("lpc_no_sof");
-					drm_trace_tag_end("vblank_en");
-
-					return -EPERM;
-				}
-			}
-		}
 	}
 	drm_trace_tag_start("vblank_en");
 	CRTC_MMP_MARK((int) pipe, enable_vblank, (unsigned long)comp,
