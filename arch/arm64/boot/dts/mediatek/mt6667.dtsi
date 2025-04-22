@@ -66,6 +66,7 @@
 						    MT6667_GPIO_PULLSEL0_5_SHIFT>;
 			rgs-npkt-cclp-err = <MT6667_RGS_NPKT_CCLP_ERR>;
 			rgs-npkt-cclp-clr = <MT6667_RGS_NPKT_CCLP_CLR>;
+			rgs-npkt-cclp-clr-enable = <1>;
 		};
 
 		mt6667_7_pio: mt6667-7-pinctrl {
@@ -154,6 +155,7 @@
 						    MT6667_GPIO_PULLSEL0_5_SHIFT>;
 			rgs-npkt-cclp-err = <MT6667_RGS_NPKT_CCLP_ERR>;
 			rgs-npkt-cclp-clr = <MT6667_RGS_NPKT_CCLP_CLR>;
+			rgs-npkt-cclp-clr-enable = <1>;
 		};
 
 		mt6667_8_pio: mt6667-8-pinctrl {
@@ -233,6 +235,7 @@
 						    MT6667_GPIO_PULLSEL0_5_SHIFT>;
 			rgs-npkt-cclp-err = <MT6667_RGS_NPKT_CCLP_ERR>;
 			rgs-npkt-cclp-clr = <MT6667_RGS_NPKT_CCLP_CLR>;
+			rgs-npkt-cclp-clr-enable = <1>;
 		};
 
 		mt6667_12_pio: mt6667-12-pinctrl {
@@ -312,6 +315,7 @@
 						    MT6667_GPIO_PULLSEL0_5_SHIFT>;
 			rgs-npkt-cclp-err = <MT6667_RGS_NPKT_CCLP_ERR>;
 			rgs-npkt-cclp-clr = <MT6667_RGS_NPKT_CCLP_CLR>;
+			rgs-npkt-cclp-clr-enable = <1>;
 		};
 
 		mt6667_13_pio: mt6667-13-pinctrl {

@@ -22952,6 +22952,13 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		vio18-switch-reg = <0x53 0x58>;
 	};
 };
+
+/* clear in APU  */
+&mt6661_3 {
+	mtk-spmi-pmic-debug {
+		rgs-npkt-cclp-clr-enable = <0>;
+	};
+};
 #include "mediatek/mt6993-clkitg.dtsi"
 #include "mediatek/mt6993-coresight.dtsi"
 #include "mediatek/mt6993-disable-unused.dtsi"
