@@ -752,6 +752,8 @@ static void dpc_enable_v2(const u8 en)
 	if (en == 2)
 		g_priv->vidle_mask = 0;
 
+	debug_irq = 0; /* disable irq for both vdo and cmd mode, remove this if needed */
+
 	if (en) {
 		if (g_priv->mmsys_id == MMSYS_MT6991) {
 			for (i = 0; i < DPC2_VIDLE_CNT; i ++) {
