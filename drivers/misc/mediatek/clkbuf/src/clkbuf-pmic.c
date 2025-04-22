@@ -1704,6 +1704,11 @@ static struct clkbuf_hdlr pmic_hdlr_lv1_6366 = {
 	.data = &mt6366_data,
 };
 
+static struct clkbuf_hdlr pmic_hdlr_lv1_6366_tb = {
+	.ops = &clkbuf_ops_lv1,
+	.data = &mt6366_tb_data,
+};
+
 static struct clkbuf_hdlr pmic_hdlr_lv1 = {
 	.ops = &clkbuf_ops_lv1,
 	.data = &mt6358_data,
@@ -1909,6 +1914,13 @@ static struct match_pmic mt6366_match_pmic = {
 	.parse_dts = &pmic_parse_dts_lv1,
 };
 
+static struct match_pmic mt6366_tb_match_pmic = {
+	.name = "mediatek,mt6366-tb-clkbuf",
+	.hdlr = &pmic_hdlr_lv1_6366_tb,
+	.init = &pmic_init_lv1,
+	.parse_dts = &pmic_parse_dts_lv1,
+};
+
 static struct match_pmic mt6358_tb_match_pmic = {
 	.name = "mediatek,mt6358-tb-clkbuf",
 	.hdlr = &pmic_hdlr_lv1_tb,
@@ -1955,6 +1967,7 @@ static struct match_pmic *matches_pmic[] = {
 	&mt6357_match_pmic,
 	&mt6358_match_pmic,
 	&mt6366_match_pmic,
+	&mt6366_tb_match_pmic,
 	&mt6358_tb_match_pmic,
 	&mt6685_match_pmic,
 	&mt6687_match_pmic,

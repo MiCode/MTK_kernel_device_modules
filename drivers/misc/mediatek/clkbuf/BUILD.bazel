@@ -35,6 +35,7 @@ define_mgk_ddk_ko(
         "src/dcxo-6358-tb.c",
         "src/dcxo-6359p.c",
         "src/dcxo-6366.c",
+        "src/dcxo-6366-tb.c",
         "src/dcxo-6685.c",
         "src/dcxo-6685-tb.c",
         "src/dcxo-6687.c",
