@@ -27,7 +27,7 @@
 #include <linux/thermal.h>
 #include <linux/interconnect.h>
 #include <soc/mediatek/dramc.h>
-
+#include <linux/suspend.h>
 #include <linux/io.h>
 #if IS_ENABLED(CONFIG_MTK_GPUFREQ_V2)
 #include "gpufreq_v2.h"
@@ -116,6 +116,8 @@ struct therm_intf_info {
 };
 
 static struct therm_intf_info tm_data;
+
+static bool skip_logs;
 
 #define USER_VSENSOR_NUM 6
 static struct user_vsensor_info u_vsensor[USER_VSENSOR_NUM];
@@ -2966,7 +2968,7 @@ static void __used thermal_task(struct work_struct *work)
 	log_remain = log_remain - next_duration;
 	hint_remain = hint_remain - next_duration;
 
-	if (log_remain <= 0) {
+	if (log_remain <= 0 && !skip_logs) {
 		dump_thermal_log();
 		log_remain = LOG_DURATION;
 	}
@@ -2986,6 +2988,23 @@ static void thermal_task_handler(struct timer_list *t)
 	if (!ret)
 		pr_notice("Error: %s (%d)\n", __func__, ret);
 }
+static int thermal_suspend_event(struct notifier_block *notifier, unsigned long pm_event,
+			void *unused)
+{
+	switch (pm_event) {
+	case PM_SUSPEND_PREPARE:
+		skip_logs = true;
+		return NOTIFY_DONE;
+	case PM_POST_SUSPEND:
+		skip_logs = false;
+		return NOTIFY_DONE;
+	}
+	return NOTIFY_OK;
+}
+
+static struct notifier_block thermal_suspend_notifier = {
+	.notifier_call = thermal_suspend_event,
+};
 
 static int therm_intf_probe(struct platform_device *pdev)
 {
@@ -3144,6 +3163,11 @@ static int therm_intf_probe(struct platform_device *pdev)
 	timer_setup(&thrmal_task_timer, thermal_task_handler, 0);
 	mod_timer(&thrmal_task_timer, jiffies + msecs_to_jiffies(TASK_INIT_DURATION));
 
+	ret = register_pm_notifier(&thermal_suspend_notifier);
+	if (ret) {
+		pr_debug("%s : Failed to register PM notifier.\n", __func__);
+		return ret;
+	}
 	return 0;
 }
 
@@ -3157,6 +3181,8 @@ static void therm_intf_remove(struct platform_device *pdev)
 
 	if (icc_thermal)
 		icc_set_bw(icc_thermal, 0, 0x0);
+
+	unregister_pm_notifier(&thermal_suspend_notifier);
 
 	therm_intf_debugfs_exit();
 	sysfs_remove_group(kernel_kobj, &thermal_attr_group);
