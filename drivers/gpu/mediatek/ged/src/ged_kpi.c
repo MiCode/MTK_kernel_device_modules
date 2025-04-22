@@ -2252,6 +2252,11 @@ static void update_t_gpu_for_fpsgo(unsigned long long ullWnd,
 	ged_kpi_output_gfx_info2(
 		t_gpu, gpu_freq, gpu_freq_max, ullWnd);
 
+	// update some gift data for ged_kpi_query_gpu_dvfs_info if EB_DVFS_V2 enabled
+	g_psGIFT->gpu_freq_cur = gpu_freq;
+	g_psGIFT->gpu_freq_max = gpu_freq_max;
+	g_psGIFT->gpu_time = t_gpu;
+
 	g_last_ts2.frameID = i32FrameID;
 	g_last_ts2.timeStamp = socTimeStamp;
 }
