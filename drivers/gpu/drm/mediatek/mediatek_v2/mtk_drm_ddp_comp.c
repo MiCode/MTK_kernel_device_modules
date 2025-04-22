@@ -1595,6 +1595,7 @@ struct mtk_ddp_comp *mtk_ddp_comp_sel_in_cur_crtc_path(struct mtk_drm_crtc *mtk_
 	DDPDBG("%s crtc %d, comp type %d num %d %s\n", __func__, index, comp_type, num, comp_name);
 	return ret;
 }
+EXPORT_SYMBOL(mtk_ddp_comp_sel_in_cur_crtc_path);
 
 struct mtk_ddp_comp *mtk_ddp_comp_sel_in_dual_pipe(struct mtk_drm_crtc *mtk_crtc,
 	enum mtk_ddp_comp_type comp_type, int num)

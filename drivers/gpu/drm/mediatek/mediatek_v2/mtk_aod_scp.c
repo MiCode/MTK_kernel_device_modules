@@ -11,12 +11,27 @@
 #include <linux/regmap.h>
 #include <linux/types.h>
 #include <linux/rtc.h>
+#include <linux/iommu.h>
+#include <mtk-smmu-v3.h>
 #include "mtk_drm_drv.h"
+#include "mtk_drm_ddp_comp.h"
 #include "scp.h"
 #include "mtk_log.h"
 #include "mtk_drm_crtc.h"
 #include "mtk_disp_pmqos.h"
 #include "mtk_disp_oddmr/mtk_disp_oddmr.h"
+
+/* AOD-SCP Support format: RGBA8888/ RGBA10101012/ YUYV
+ * This header is digit raw data for demo, customer can replace to their own picture
+ */
+#include "mtk_aod_scp_digit.h"
+
+
+/* AO Mode: trigger AOD SCP before switch to doze suspend
+ * It's only for early develop or debug purpsoe in MTK
+ */
+#define AO_MODE	(0)
+
 
 struct aod_scp_ipi_receive_info {
 	unsigned int aod_id;
@@ -26,24 +41,23 @@ static int CFG_DISPLAY_WIDTH;
 static int CFG_DISPLAY_HEIGHT;
 static int CFG_DISPLAY_VREFRESH;
 
-/* Set 1 to trigger AOD SCP in doze active mode
- * Only for early develop or debug purpsoe
- */
-#define AO_MODE	(0)
-
 #define ALIGN_TO(x, n)  (((x) + ((n) - 1)) & ~((n) - 1))
 #define MTK_FB_ALIGNMENT 32
 #define CFG_DISPLAY_ALIGN_WIDTH   ALIGN_TO(CFG_DISPLAY_WIDTH, MTK_FB_ALIGNMENT)
 #define AOD_TEMP_BACKLIGHT 1800
 
-#define DRAM_ADDR_DIGITS_OFFSET		0x3080000
-#define LK_DGT_SZ_OFFSET		0x1fa40
-
-#define AOD_BR_DSI0_OFFSET     0xF000
-#define AOD_BR_MIPITX0_OFFSET  0xE000
-#define AOD_BR_DSC0_OFFSET     0xD000
-#define AOD_BR_SPR0_OFFSET     0xC000
+/* Use SCP DRAM REGION for AOD shared info
+ * frame config: 0x0 ~ sizeof(disp_frame_config)
+ * layer config: sizeof(disp_frame_config) ~ sizeof(disp_input_config)*6
+ * module_backup: 0xA000 ~ 0xFFFF
+ * aod pictures: 0x10000 ~ scp_get_reserve_mem_size(SCP_AOD_MEM_ID)
+ */
 #define AOD_BR_ODDMR0_OFFSET   0xA000
+#define AOD_BR_SPR0_OFFSET     0xC000
+#define AOD_BR_DSC0_OFFSET     0xD000
+#define AOD_BR_MIPITX0_OFFSET  0xE000
+#define AOD_BR_DSI0_OFFSET     0xF000
+#define AOD_SCP_PICTURE_OFFSET 0x10000
 
 enum CLOCL_DIGIT {
 	SECONDS = BIT(0),
@@ -90,12 +104,12 @@ struct disp_module_backup_info {
 
 static struct aod_scp_ipi_receive_info aod_scp_msg;
 static int aod_state;
-static unsigned int aod_scp_pic;
-static unsigned int aod_scp_dgt_oft;
 static unsigned int aod_scp_ulps_wakeup_prd;
-static uint64_t dram_preloader_res_mem;
-static uint64_t dram_addr_digits;
 static struct mtk_aod_scp_cb aod_scp_cb;
+
+static phys_addr_t scp_aod_mem_pa;
+static phys_addr_t scp_aod_mem_va;
+static phys_addr_t scp_aod_mem_size;
 
 static struct disp_module_backup_info module_list[] = {
 	{"dsi0", 0x0, 0x0, AOD_BR_DSI0_OFFSET},
@@ -142,10 +156,12 @@ enum OVL_BLEND_MODE {
 
 void mtk_module_backup(struct drm_crtc *crtc, unsigned int ulps_wakeup_prd)
 {
+	struct mtk_ddp_comp *comp = NULL;
+	struct iommu_domain *domain;
 	struct disp_frame_config *frame0;
 	char *bkup_buf, *scp_sh_mem, *module_base;
 	void __iomem *va = 0;
-	int i, size;
+	int i, size, ret;
 
 	if (!AOD_STAT_MATCH(AOD_STAT_ENABLE) || !crtc)
 		return;
@@ -159,6 +175,30 @@ void mtk_module_backup(struct drm_crtc *crtc, unsigned int ulps_wakeup_prd)
 	if (!scp_sh_mem) {
 		DDPMSG("%s: Get shared memory fail\n", __func__);
 		return;
+	}
+
+	/* Setup exdma pa2va mode for AOD_SCP picture memory */
+	if (!AOD_STAT_MATCH(AOD_STAT_CONFIGED)) {
+		comp = mtk_ddp_comp_sel_in_cur_crtc_path(to_mtk_crtc(crtc), MTK_OVL_EXDMA, 0);
+		if (!comp)
+			return;
+
+		domain = iommu_get_domain_for_dev(mtk_smmu_get_shared_device(comp->dev));
+		if (domain == NULL) {
+			DDPPR_ERR("%s, aod-scp iommu_get_domain for MTK_OVL_EXDMA fail\n", __func__);
+			return;
+		}
+
+		ret = iommu_map(domain,
+				ROUNDUP(scp_aod_mem_pa + AOD_SCP_PICTURE_OFFSET, PAGE_SIZE),
+				ROUNDUP(scp_aod_mem_pa + AOD_SCP_PICTURE_OFFSET, PAGE_SIZE),
+				ROUNDUP(scp_aod_mem_size, PAGE_SIZE),
+				IOMMU_READ | IOMMU_WRITE, GFP_KERNEL);
+		if (ret < 0)
+			DDPPR_ERR("%s, aod-scp iommu_map fail\n", __func__);
+
+		DDPMSG("%s: set 0x%llx as pa2va for exdma success\n",
+			__func__, ROUNDUP(scp_aod_mem_pa + AOD_SCP_PICTURE_OFFSET, PAGE_SIZE));
 	}
 
 	frame0 = (void *)scp_sh_mem;
@@ -250,15 +290,10 @@ void mtk_prepare_config_map(void)
 	struct disp_frame_config *frame0;
 	struct disp_input_config *input[6];
 	int i;
-	unsigned int aod_scp_pic_sz = 0;
 	unsigned int dst_h = 0, dst_w = 0;
 
 	if (!AOD_STAT_MATCH(AOD_STAT_CONFIGED | AOD_STAT_ACTIVE))
 		DDPMSG("[AOD] %s: invalid state:0x%x\n", __func__, aod_state);
-
-	DDPMSG("%s: aod:%d scp rsv mem 0x%llx(0x%llx), size 0x%llx\n", __func__, SCP_AOD_MEM_ID,
-		scp_get_reserve_mem_virt(SCP_AOD_MEM_ID), scp_get_reserve_mem_phys(SCP_AOD_MEM_ID),
-		scp_get_reserve_mem_size(SCP_AOD_MEM_ID));
 
 	scp_sh_mem = (char *)scp_get_reserve_mem_virt(SCP_AOD_MEM_ID);
 
@@ -282,7 +317,7 @@ void mtk_prepare_config_map(void)
 	input[0]->layer	= 0;
 	input[0]->layer_en	= 0;	/* for background color */
 	input[0]->fmt		= OVL_INPUT_FORMAT_BGRA8888;
-	input[0]->addr		= dram_preloader_res_mem;
+	input[0]->addr		= scp_aod_mem_pa + AOD_SCP_PICTURE_OFFSET;
 	input[0]->src_x		= 0;
 	input[0]->src_y		= 0;
 	input[0]->src_pitch = CFG_DISPLAY_ALIGN_WIDTH*4;
@@ -330,19 +365,16 @@ void mtk_prepare_config_map(void)
 	frame0->frame_w = CFG_DISPLAY_WIDTH;
 
 	/* PA for SCP. */
-	frame0->layer_info_addr[0] = scp_get_reserve_mem_phys(SCP_AOD_MEM_ID) +
-					sizeof(struct disp_frame_config);
+	frame0->layer_info_addr[0] = scp_aod_mem_pa + sizeof(struct disp_frame_config);
 	frame0->layer_info_addr[1] = frame0->layer_info_addr[0] + sizeof(struct disp_input_config);
 	frame0->layer_info_addr[2] = frame0->layer_info_addr[1] + sizeof(struct disp_input_config);
 	frame0->layer_info_addr[3] = frame0->layer_info_addr[2] + sizeof(struct disp_input_config);
 	frame0->layer_info_addr[4] = frame0->layer_info_addr[3] + sizeof(struct disp_input_config);
 	frame0->layer_info_addr[5] = 0x0;
 
-	if (aod_scp_pic)
-		aod_scp_pic_sz = LK_DGT_SZ_OFFSET;
-
 	for (i = 0; i < 10; i++)
-		frame0->digits_addr[i] = dram_addr_digits + aod_scp_pic_sz * i;
+		frame0->digits_addr[i] = input[0]->addr + DIGITS_OFFSET + AOD_DIGIT_SZ * i;
+
 }
 
 int mtk_aod_scp_get_time(void)
@@ -587,19 +619,54 @@ static void mtk_aod_scp_set_is_ddic_spr(bool is_is_ddic_spr)
 	 */
 }
 
+static void prepare_aod_scp_picture(void *addr_va)
+{
+	char *dest;
+
+	DDPMSG("%s: prepare aod-scp demo picture to 0x%llx\n", __func__, (uint64_t)addr_va);
+	dest = addr_va + DIGITS_OFFSET;
+	memcpy(dest, &digit_0_raw, sizeof(digit_0_raw));
+
+	dest += sizeof(digit_0_raw);
+	memcpy(dest, &digit_1_raw, sizeof(digit_1_raw));
+
+	dest += sizeof(digit_1_raw);
+	memcpy(dest, &digit_2_raw, sizeof(digit_2_raw));
+
+	dest += sizeof(digit_2_raw);
+	memcpy(dest, &digit_3_raw, sizeof(digit_3_raw));
+
+	dest += sizeof(digit_3_raw);
+	memcpy(dest, &digit_4_raw, sizeof(digit_4_raw));
+
+	dest += sizeof(digit_4_raw);
+	memcpy(dest, &digit_5_raw, sizeof(digit_5_raw));
+
+	dest += sizeof(digit_5_raw);
+	memcpy(dest, &digit_6_raw, sizeof(digit_6_raw));
+
+	dest += sizeof(digit_6_raw);
+	memcpy(dest, &digit_7_raw, sizeof(digit_7_raw));
+
+	dest += sizeof(digit_7_raw);
+	memcpy(dest, &digit_8_raw, sizeof(digit_8_raw));
+
+	dest += sizeof(digit_8_raw);
+	memcpy(dest, &digit_9_raw, sizeof(digit_9_raw));
+}
+
 static int mtk_aod_scp_probe(struct platform_device *pdev)
 {
 	struct device_node *aod_scp_node = NULL;
 	struct device_node *smp_node = NULL;
-	struct device_node *preloader_mem = NULL;
 	struct platform_device *spm_pdev = NULL;
 	struct resource *res = NULL;
-	struct reserved_mem *rmem = NULL;
-	unsigned int ret = 0;
+	static unsigned int aod_scp_pic;
 
 	DDPMSG("%s+\n", __func__);
 
 	aod_state = 0;
+	aod_scp_pic = 0;
 
 	aod_scp_node = of_find_node_by_name(NULL, "AOD-SCP-ON");
 	if (aod_scp_node) {
@@ -640,35 +707,29 @@ static int mtk_aod_scp_probe(struct platform_device *pdev)
 
 		mtk_aod_scp_set_semaphore_noirq(1);
 
-		// for 0~9 digit buffer
-		preloader_mem = of_find_compatible_node(NULL, NULL, "mediatek,me_aod-scp_buf");
-		ret = of_property_read_u32(pdev->dev.of_node, "aod_scp_pic", &aod_scp_pic);
-		if (ret) {
-			aod_scp_pic = 0;
-			DDPMSG("%s can't find aod_scp_pic in FDT\n", __func__);
-		} else
-			DDPMSG("%s find aod_scp_pic %d in FDT\n", __func__, aod_scp_pic);
+		scp_aod_mem_pa = scp_get_reserve_mem_phys(SCP_AOD_MEM_ID);
+		scp_aod_mem_va = scp_get_reserve_mem_virt(SCP_AOD_MEM_ID);
+		scp_aod_mem_size = scp_get_reserve_mem_size(SCP_AOD_MEM_ID);
 
-		ret = of_property_read_u32(pdev->dev.of_node, "aod_scp_dgt_oft", &aod_scp_dgt_oft);
-		if (ret) {
-			aod_scp_dgt_oft = DRAM_ADDR_DIGITS_OFFSET;
-			DDPMSG("%s can't find aod_scp_dgt_oft in FDT\n", __func__);
-		} else
-			DDPMSG("%s find aod_scp_dgt_oft 0x%08x in FDT\n",
-				__func__, aod_scp_dgt_oft);
+		DDPMSG("%s: aod(id=%d) in scp rsv mem 0x%llx(0x%llx), size 0x%llx\n",
+			__func__, SCP_AOD_MEM_ID, scp_aod_mem_va, scp_aod_mem_pa, scp_aod_mem_size);
 
-		if (preloader_mem) {
-			rmem = of_reserved_mem_lookup(preloader_mem);
-			DDPMSG("rmem base : %pa, size : %pa\n", &rmem->base, &rmem->size);
-			dram_preloader_res_mem = rmem->base;
-			dram_addr_digits = rmem->base + DRAM_ADDR_DIGITS_OFFSET;
-			DDPMSG("rmem base pa : %llx\n", dram_addr_digits);
-		} else
-			DDPMSG("%s can't find me_aod-scp_buf reserved memory", __func__);
-
-		DDPMSG("%s: w/ mtk_aod_scp_ipi_register\n", __func__);
-	}	else
-		DDPMSG("%s: w/o mtk_aod_scp_ipi_register\n", __func__);
+		if (of_property_read_u32(pdev->dev.of_node, "aod-scp-pic", &aod_scp_pic)) {
+			DDPMSG("%s: aod_scp_pic not define, not to prepare demo picture\n", __func__);
+		} else {
+			DDPMSG("%s find aod_scp_pic(%d) in FDT\n", __func__, aod_scp_pic);
+			if (aod_scp_pic) {
+				if (scp_aod_mem_size >= (AOD_SCP_PICTURE_OFFSET + DIGITS_OFFSET + AOD_DIGIT_SZ*10)) {
+					prepare_aod_scp_picture((void *)(scp_aod_mem_va + AOD_SCP_PICTURE_OFFSET));
+					DDPMSG("%s prepare demo picture done\n", __func__);
+				} else {
+					DDPMSG("%s: can't prepare demo picture, check dts 'scp-mem-tbl' size\n",
+						__func__);
+					AOD_STAT_CLR(AOD_STAT_ENABLE);
+				}
+			}
+		}
+	}
 
 	DDPMSG("%s-\n", __func__);
 
