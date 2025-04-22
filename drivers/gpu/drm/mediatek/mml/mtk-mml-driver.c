@@ -361,13 +361,17 @@ void mml_dvfs_init(struct mml_dev *mml, struct platform_device *pdev)
 	struct dev_pm_opp *opp;
 	int num;
 	unsigned long freq = 0;
-	u32 i;
+	u32 i, opp_tbl_num;
 
 	mml_msg("%s mml %p", __func__, mml);
 	mutex_init(&dvfs->dvfs_mutex);
 
 	/* Create opp table from dts */
-	dev_pm_opp_of_add_table(dev);
+	opp_tbl_num = of_count_phandle_with_args(dev->of_node, "operating-points-v2", NULL);
+	if (opp_tbl_num > 1)
+		dev_pm_opp_of_add_table_indexed(dev, mml_get_chip_swver(mml));
+	else
+		dev_pm_opp_of_add_table(dev);
 
 	/* Get regulator instance by name. */
 	dvfs->reg = devm_regulator_get_optional(dev, "mmdvfs-dvfsrc-vcore");
@@ -2575,6 +2579,8 @@ static int mml_probe(struct platform_device *pdev)
 		goto err_sys_add;
 	}
 
+	mml_get_chipid(mml);
+
 	/* init each mml dvfs interface */
 	mml_dvfs_init(mml, pdev);
 
@@ -2613,8 +2619,6 @@ static int mml_probe(struct platform_device *pdev)
 	mml->v4l2_en = of_property_read_bool(dev->of_node, "v4l2-enable");
 
 	mml->tablet_ext = of_property_read_bool(dev->of_node, "tablet-ext");
-
-	mml_get_chipid(mml);
 
 	if (of_property_read_u8(dev->of_node, "racing-height", &mml->racing_height))
 		mml->racing_height = 64;	/* default height 64px */
