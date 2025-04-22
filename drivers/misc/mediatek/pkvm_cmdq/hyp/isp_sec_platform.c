@@ -180,11 +180,10 @@ int32_t cmdq_drv_imgsys_set_domain(void *data, bool isSet)
 		/* PQDIP-A */
 		cmdq_task_write_value_addr(pTask, (0x34219000 + 0x00), 0x00000000, UINT_MAX);
 		cmdq_task_write_value_addr(pTask, (0x34219200 + 0x00), 0x00000000, UINT_MAX);
-		#ifdef MTKCAM_SECURITY_CAM_NORMAL_PREVIEW_SUPPORT
-		cmdq_task_write_value_addr(pTask, (0x34252000 + 0xF30), 0x00000000, UINT_MAX);
-		#else
-		cmdq_task_write_value_addr(pTask, (0x34252000 + 0xF30), 0xA8800000, UINT_MAX);
-		#endif
+		if (mtkcam_security_cam_normal_preview_support)
+			cmdq_task_write_value_addr(pTask, (0x34252000 + 0xF30), 0x00000000, UINT_MAX);
+		else
+			cmdq_task_write_value_addr(pTask, (0x34252000 + 0xF30), 0xA8800000, UINT_MAX);
 		cmdq_task_write_value_addr(pTask, (0x34219200 + 0x04), 0x00000000, UINT_MAX);
 		cmdq_task_write_value_addr(pTask, (0x34219200 + 0x08), 0x00A8A8A8, UINT_MAX);
 		cmdq_task_write_value_addr(pTask, (0x34219200 + 0x0C), 0x00000000, UINT_MAX);

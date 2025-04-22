@@ -13,5 +13,6 @@ void kvm_nvhe_sym(cmdq_hyp_path_res_release)(struct user_pt_regs *);
 void kvm_nvhe_sym(cmdq_hyp_pkvm_init)(struct user_pt_regs *);
 void kvm_nvhe_sym(cmdq_hyp_pkvm_disable)(struct user_pt_regs *);
 void kvm_nvhe_sym(cmdq_hyp_get_memory)(struct user_pt_regs *);
+void kvm_nvhe_sym(cmdq_hyp_cam_preview_support)(struct user_pt_regs *);
 
 int kvm_nvhe_sym(cmdq_hyp_init)(const struct pkvm_module_ops *ops);

@@ -82,6 +82,8 @@
 #define CMDQ_IOVA
 #endif
 
+extern bool mtkcam_security_cam_normal_preview_support;
+
 struct cmdq_instruction {
 	uint16_t arg_c:16;
 	uint16_t arg_b:16;

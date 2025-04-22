@@ -15,6 +15,7 @@
 #include "pkvm_cmdq_host.h"
 
 static int cmdq_memory_mapping;
+static int cam_preview_support;
 
 static int cmdq_hvc_register(unsigned long token)
 {
@@ -51,6 +52,15 @@ static int cmdq_hvc_register(unsigned long token)
 
 	cmdq_memory_mapping = pkvm_register_el2_mod_call(
 		kvm_nvhe_sym(cmdq_hyp_get_memory), token);
+	arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_ADD_HVC,
+		SMC_ID_MTK_PKVM_CMDQ_GET_MEMORY,
+		cmdq_memory_mapping, 0, 0, 0, 0, &res);
+
+	cam_preview_support = pkvm_register_el2_mod_call(
+		kvm_nvhe_sym(cmdq_hyp_cam_preview_support), token);
+	arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_ADD_HVC,
+		SMC_ID_MTK_PKVM_CMDQ_CAM_PREVIEW_SUPPORT,
+		cam_preview_support, 0, 0, 0, 0, &res);
 
 	return 0;
 }
@@ -60,6 +70,8 @@ void cmdq_reserved_memory_probe(void)
 	struct device_node *node = NULL;
 	struct reserved_mem *rmem = NULL;
 	phys_addr_t base, size;
+	const char *support = NULL;
+	bool preview_support = false;
 
 	node = of_find_compatible_node(NULL, NULL, "mediatek,me_cmdq_reserved");
 	rmem = of_reserved_mem_lookup(node);
@@ -70,6 +82,18 @@ void cmdq_reserved_memory_probe(void)
 
 		pkvm_el2_mod_call(cmdq_memory_mapping, base, size);
 	}
+
+	node = of_find_node_by_name(NULL, "pkvm");
+	if (node) {
+		of_property_read_string(node, "mtkcam-security-cam-normal-preview-support",
+			&support);
+		if (strncmp(support, "okay", sizeof("okay")) == 0)
+			preview_support = true;
+
+		pkvm_el2_mod_call(cam_preview_support, preview_support);
+	}
+	pr_info("%s: mtkcam security cam normal preview support: %d\n",
+		__func__, preview_support);
 }
 
 static int __init cmdq_nvhe_init(void)

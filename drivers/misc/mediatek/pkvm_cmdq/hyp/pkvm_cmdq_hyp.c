@@ -21,6 +21,8 @@ const struct pkvm_module_ops *pkvm_cmdq_ops;
 void *reserved_mem_va_base;
 uint64_t reserved_mem_pa_base;
 
+bool mtkcam_security_cam_normal_preview_support;
+
 static struct ContextStruct gCmdqContext;
 static struct list_node gCmdqFreeTask[CMDQ_MAX_SECURE_CORE_COUNT][CMDQ_MAX_SECURE_THREAD_COUNT];
 
@@ -1446,5 +1448,13 @@ void cmdq_hyp_get_memory(struct user_pt_regs *regs)
 		CALL_FROM_OPS(putx64, ret);
 	}
 
+	regs->regs[0] = SMCCC_RET_SUCCESS;
+}
+
+void cmdq_hyp_cam_preview_support(struct user_pt_regs *regs)
+{
+	mtkcam_security_cam_normal_preview_support = regs->regs[1];
+	CALL_FROM_OPS(puts, PFX_CMDQ_MSG "mtkcam_security_cam_normal_preview_support:");
+	CALL_FROM_OPS(putx64, mtkcam_security_cam_normal_preview_support);
 	regs->regs[0] = SMCCC_RET_SUCCESS;
 }
