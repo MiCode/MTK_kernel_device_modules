@@ -256,7 +256,7 @@ static int videogo_process_data(int iotype, void *data)
 		list_add(&info0->list, &inst_list[type]);
 
 		alive_count[type]++;
-		if (info0->oprate <= TARGET_FPS)
+		if (info0->oprate && info0->oprate <= TARGET_FPS)
 			target_fps_count[type]++;
 		mutex_unlock(&inst_list_mutex[type]);
 
@@ -269,8 +269,6 @@ static int videogo_process_data(int iotype, void *data)
 
 		mutex_lock(&inst_list_mutex[type]);
 		alive_count[type]--;
-		if (inst_data->oprate <= TARGET_FPS)
-			target_fps_count[type]--;
 
 		list_for_each_entry_safe(info0, tmp, &inst_list[type], list) {
 			if (info0->ctx_id == inst_data->ctx_id &&
@@ -278,6 +276,8 @@ static int videogo_process_data(int iotype, void *data)
 
 				pr_info("[vgo] DEC inst_type: %d, ctx_id: %d\n",
 						info0->inst_type, info0->ctx_id);
+				if (info0->oprate_avdvfs && info0->oprate_avdvfs <= TARGET_FPS)
+					target_fps_count[type]--;
 				list_del(&info0->list);
 				kfree(info0);
 				break;
@@ -289,19 +289,23 @@ static int videogo_process_data(int iotype, void *data)
 
 	} else if (iotype == VGO_RECV_RUNNING_UPDATE) {
 		struct inst_data *run_data = (struct inst_data *)data;
+		struct inst_node *target_inst_info = NULL;
 		int type = run_data->inst_type;
 
 		mutex_lock(&inst_list_mutex[type]);
+		target_fps_count[type] = 0;
 		list_for_each_entry_safe(info0, tmp, &inst_list[type], list) {
 			if (info0->ctx_id == run_data->ctx_id &&
 				info0->inst_type == run_data->inst_type) {
 				info0->oprate_avdvfs = run_data->oprate;
 				memcpy(info0->hw_proc_time, run_data->hw_proc_time,
 					   sizeof(info0->hw_proc_time));
-				info0->updated = 1;
 
-				break;
+				target_inst_info = info0;
 			}
+
+			if (info0->oprate_avdvfs <= TARGET_FPS)
+				target_fps_count[type]++;
 		}
 		mutex_unlock(&inst_list_mutex[type]);
 
@@ -311,11 +315,14 @@ static int videogo_process_data(int iotype, void *data)
 		//oprate_vgo.oprate = info0->oprate_avdvfs;
 		//mtk_vcodec_vgo_send(VGO_SEND_OPRATE, videogo_vcodec_send_fn);
 
-		if (!isTranscoding && type == VENC)
-			isTranscoding = is_transcoding(info0);
+		if (target_inst_info != NULL) {
+			if (!isTranscoding && type == VENC)
+				isTranscoding = is_transcoding(target_inst_info);
 
-		pr_info("[vgo] oprate_avdvfs=%d, oprate=%d, type=%d, isTrans=%d\n",
-				info0->oprate_avdvfs, info0->oprate, type, isTranscoding);
+			pr_info("[vgo] oprate_avdvfs=%d, oprate=%d, type=%d, isTrans=%d\n",
+				target_inst_info->oprate_avdvfs, target_inst_info->oprate, type, isTranscoding);
+		} else
+			pr_info("[vgo] Cannot find Inst: %d %d\n", run_data->ctx_id, run_data->inst_type);
 	} else if (iotype == VGO_RECV_STATE_OPEN) {
 		struct oprate_data *dev_data = (struct oprate_data *)data;
 

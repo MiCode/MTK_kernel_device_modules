@@ -97,7 +97,6 @@ struct inst_node {
 	int height;
 	int hw_proc_time[3];
 	int post_proc_time;
-	int updated;
 	struct list_head list;
 };
 
