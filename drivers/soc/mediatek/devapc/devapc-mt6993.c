@@ -157,6 +157,12 @@ static struct mtk_device_num mtk6993_devices_num[] = {
 		IRQ_TYPE_APINFRA_HASH_CTRL,
 		DEVAPC_GET_INFRA
 	},
+	{	// SLAVE_TYPE_SSR
+		DEVAPC_TYPE_INFRA,
+		VIO_SLAVE_NUM_SSR,
+		IRQ_TYPE_SSR,
+		DEVAPC_GET_INFRA
+	},
 	{	// SLAVE_TYPE_PERI_PAR
 		DEVAPC_TYPE_PERI_PAR,
 		VIO_SLAVE_NUM_PERI_PAR,
@@ -884,6 +890,11 @@ const char *index_to_subsys(int slave_type, uint32_t vio_index,
 			if (vio_index == mt6993_devices_apinfra_hash_ctrl[i].vio_index)
 				return mt6993_devices_apinfra_hash_ctrl[i].device;
 		}
+	} else if (slave_type == SLAVE_TYPE_SSR) {
+		for (i = 0; i < VIO_SLAVE_NUM_SSR; i++) {
+			if (vio_index == mt6993_devices_ssr[i].vio_index)
+				return mt6993_devices_ssr[i].device;
+		}
 	} else if (slave_type == SLAVE_TYPE_PERI_PAR) {
 		if (g_sw_ver) {
 			int slave_num = ARRAY_SIZE(mt6993_devices_peri_par);
@@ -1118,6 +1129,7 @@ static const char * const slave_type_to_str[] = {
 	"SLAVE_TYPE_APINFRA_MMU",
 	"SLAVE_TYPE_APINFRA_HASH",
 	"SLAVE_TYPE_APINFRA_HASH_CTRL",
+	"SLAVE_TYPE_SSR",
 	"SLAVE_TYPE_PERI_PAR",
 	"SLAVE_TYPE_VLP",
 	"SLAVE_TYPE_ADSP",
@@ -1147,6 +1159,7 @@ static int mtk_vio_mask_sta_num[] = {
 	VIO_MASK_STA_NUM_APINFRA_MMU,
 	VIO_MASK_STA_NUM_APINFRA_HASH,
 	VIO_MASK_STA_NUM_APINFRA_HASH_CTRL,
+	VIO_MASK_STA_NUM_SSR,
 	VIO_MASK_STA_NUM_PERI_PAR,
 	VIO_MASK_STA_NUM_VLP,
 	VIO_MASK_STA_NUM_ADSP,
@@ -1223,6 +1236,7 @@ static struct mtk_devapc_soc mt6993_data = {
 	.device_info[SLAVE_TYPE_APINFRA_MMU] = mt6993_devices_apinfra_mmu,
 	.device_info[SLAVE_TYPE_APINFRA_HASH] = mt6993_devices_apinfra_hash,
 	.device_info[SLAVE_TYPE_APINFRA_HASH_CTRL] = mt6993_devices_apinfra_hash_ctrl,
+	.device_info[SLAVE_TYPE_SSR] = mt6993_devices_ssr,
 	.device_info[SLAVE_TYPE_PERI_PAR] = mt6993_devices_peri_par,
 	.device_info[SLAVE_TYPE_VLP] = mt6993_devices_vlp,
 	.device_info[SLAVE_TYPE_ADSP] = mt6993_devices_adsp,
