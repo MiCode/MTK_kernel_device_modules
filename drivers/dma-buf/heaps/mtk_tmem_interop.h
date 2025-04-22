@@ -34,24 +34,28 @@
 
 #define BASE_SEC_HEAP_SZ (PAGE_SIZE << 3)
 
+#define ENABLE_PKVM_PMM 1
+
 /* TMEM common functions */
 
-TMEM_PRIV int mtee_common_buffer_v2(struct ssheap_buf_info *ssheap,
+TMEM_PRIV int pmm_common_buffer_v2(struct ssheap_buf_info *ssheap,
 		u8 pmm_attr, int lock);
 
-TMEM_PRIV int mtee_assign_buffer_v2(struct ssheap_buf_info *ssheap,
+TMEM_PRIV int pmm_assign_buffer_v2(struct ssheap_buf_info *ssheap,
 		u8 pmm_attr);
 
-TMEM_PRIV int mtee_unassign_buffer_v2(struct ssheap_buf_info *ssheap,
+TMEM_PRIV int pmm_unassign_buffer_v2(struct ssheap_buf_info *ssheap,
 		u8 pmm_attr);
 
 TMEM_PRIV int paddr_cmp(void *priv, const struct list_head *a,
 		const struct list_head *b);
 
-TMEM_PRIV void pkvm_smmu_mapping(struct page *pmm_page, u8 pmm_attr,
-		u32 tmp_count, int lock);
+//TMEM_PRIV int pkvm_smmu_mapping(struct page *pmm_page, u8 pmm_attr,
+//		u32 tmp_count, int lock);
 
+#if (ENABLE_PKVM_PMM == 0)
 TMEM_PRIV void pkvm_smmu_merge_ptable(void);
+#endif
 
 TMEM_PRIV inline void pmm_set_msg_entry(u32 *pmm_msg, u32 index,
 		struct page *page);

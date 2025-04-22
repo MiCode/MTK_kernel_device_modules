@@ -14,10 +14,10 @@
 #include <asm/kvm_host.h>
 #include <asm/processor.h>
 #include <asm/kvm_hyp.h>
-#include "hyp_spinlock.h"
 #include <linux/arm-smccc.h>
-#include "../../../../arch/arm64/kvm/hyp/include/nvhe/trap_handler.h"
-#include "../../../../arch/arm64/kvm/hyp/include/nvhe/iommu.h"
+#include <nvhe/trap_handler.h>
+#include "hyp_spinlock.h"
+#include <nvhe/iommu.h>
 #include <kvm/iommu.h>
 
 #ifdef memset
@@ -532,7 +532,7 @@ static void broadcast_vmalls12e1is(void)
 	issue_hw_dvm();
 }
 
-static void mtk_smmu_sync(void)
+void mtk_smmu_sync(void)
 {
 	broadcast_vmalls12e1is();
 }
@@ -727,6 +727,7 @@ void mtk_smmu_unsecure(struct user_pt_regs *regs)
 	smmu_vm_map(1, region_start, region_size, vm1_default_mode);
 	hyp_spin_unlock(&smmu_all_vm_lock);
 }
+
 /*
  *  PMM_MSG_ENTRY format
  *  page number = PA >> PAGE_SHIFT
@@ -1918,6 +1919,13 @@ struct kvm_iommu_ops smmu_ops = {
 
 int smmu_hyp_init(const struct pkvm_module_ops *ops)
 {
+	int ret;
+
 	pkvm_smmu_ops = ops;
-	return 0;
+
+	ret = register_hyp_pmm_hal();
+	if (ret)
+		pkvm_smmu_ops->puts("SMMU: register pmm hal failed");
+
+	return ret;
 }

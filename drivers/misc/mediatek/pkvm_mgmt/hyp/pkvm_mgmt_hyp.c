@@ -5,14 +5,11 @@
 
 #include <asm/alternative-macros.h>
 #include <asm/kvm_pkvm_module.h>
+#include <nvhe/spinlock.h>
 
 #include <pkvm_mgmt/pkvm_mgmt.h>
-/*#include "pkvm_mgmt.h"*/
-/*#include "<pkvm_mgmt.h>"*/
-#include "../../../../arch/arm64/kvm/hyp/include/nvhe/spinlock.h"
-/*#include "ffa.h"*/
-/*#include "spinlock.h"*/
-#include "pkvm_ctrl.h"
+#include "include/pkvm_ctrl.h"
+#include "include/hyp_pmm.h"
 
 /*
  * Here saves all el2 smc call ids for blocking any invalid el1 smc
@@ -29,6 +26,7 @@ struct nlist {
 };
 
 #define HVC_TABLE_SIZE 64
+const struct pkvm_module_ops *pkvm_ops;
 static struct nlist hvc_table[HVC_TABLE_SIZE];
 static u32 hvc_cur_index;
 static hyp_spinlock_t handler_glist_lock;
@@ -95,9 +93,30 @@ void pkvm_print_tfa_char(const char ch)
 	arm_smccc_1_1_smc(MTK_SIP_HYP_PKVM_CONTROL, PKVM_HYP_PUTS, (unsigned long)ch, 0, 0);
 }
 
-int mtk_smc_handler_hyp_init(const struct pkvm_module_ops *ops)
+int pkvm_mgmt_hyp_init(const struct pkvm_module_ops *ops)
 {
+	int ret;
+
+	pkvm_ops = ops;
+
 	hyp_spin_lock_init(&handler_glist_lock);
+
 	ops->register_serial_driver(pkvm_print_tfa_char);
-	return ops->register_host_smc_handler(mtk_smc_handler);
+
+	ret = ops->register_host_smc_handler(mtk_smc_handler);
+	if (ret) {
+		ops->puts("register smc hanlder failed");
+		ops->putx64(ret);
+		return ret;
+	}
+
+	ret = hyp_pmm_init();
+	if (ret) {
+		ops->puts("hyp_pmm_init failed");
+		return ret;
+	}
+
+	register_cpu_hal();
+
+	return 0;
 }

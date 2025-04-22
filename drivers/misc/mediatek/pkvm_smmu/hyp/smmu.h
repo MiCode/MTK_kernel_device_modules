@@ -4,6 +4,7 @@
  */
 #ifndef __SMMU_H
 #define __SMMU_H
+
 #include "hyp_spinlock.h"
 
 typedef unsigned int uint;
@@ -268,5 +269,6 @@ void construct_cmd_sync(unsigned long long *cmd);
 void construct_cmd_tlbi_s12_vmall(unsigned long long *cmd, unsigned int vmid);
 int smmuv3_rd_meets_wr_idx(smmu_device_t *dev);
 unsigned int has_dma_coherent_in_devices(void);
+int register_hyp_pmm_hal(void);
 
 #endif

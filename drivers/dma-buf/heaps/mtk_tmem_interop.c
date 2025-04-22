@@ -11,15 +11,62 @@
 
 #include "mtk_tmem_interop.h"
 
-/* TMEM common functions */
+#define DEBUG_BITMAP 0
 
-TMEM_PRIV int mtee_common_buffer_v2(struct ssheap_buf_info *ssheap,
+#if (ENABLE_PKVM_PMM == 1)
+static int pkvm_mgmt_get_hcall(uint32_t smc_id)
+{
+	struct arm_smccc_res res;
+
+	arm_smccc_1_1_smc(smc_id, 0, 0, 0, 0, 0, 0, &res);
+	return (int)res.a1;
+}
+#endif
+
+static int pmm_prot_via_pkvm(struct page *pmm_ipc_pg, uint32_t pmm_attr, uint32_t count, int lock)
+{
+	int ret = 0;
+#if (ENABLE_PKVM_PMM == 1)
+	static int assign_hcall;
+	static int unassign_hcall;
+	int id;
+
+	if (!assign_hcall)
+		assign_hcall = pkvm_mgmt_get_hcall(SMC_ID_MTK_PKVM_PMM_ASSIGN_BUFFER_V2);
+	if (!unassign_hcall)
+		unassign_hcall = pkvm_mgmt_get_hcall(SMC_ID_MTK_PKVM_PMM_UNASSIGN_BUFFER_V2);
+
+	id = lock == 1 ? assign_hcall : unassign_hcall;
+	ret = pkvm_el2_mod_call(id, page_to_pfn(pmm_ipc_pg), pmm_attr, count);
+#else
+	ret = pkvm_smmu_mapping(pmm_ipc_pg, pmm_attr, count, lock);
+#endif
+	return ret;
+}
+
+static int pmm_prot_via_mtee(struct page *pmm_ipc_pg, uint32_t pmm_attr, uint32_t count, int lock )
+{
+	struct arm_smccc_res smc_res;
+	uint32_t smc_id;
+
+	smc_id = lock == 1 ? HYP_PMM_ASSIGN_BUFFER_V2 : HYP_PMM_UNASSIGN_BUFFER_V2;
+	arm_smccc_smc(smc_id, page_to_pfn(pmm_ipc_pg), pmm_attr, count, 0, 0, 0, 0, &smc_res);
+	if (smc_res.a0 != 0) {
+		pr_err("smc_id=%#x smc_res.a0=%#lx\n", smc_id, smc_res.a0);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+/* TMEM common functions */
+TMEM_PRIV int pmm_common_buffer_v2(struct ssheap_buf_info *ssheap,
 		u8 pmm_attr, int lock)
 {
 	struct page *pmm_page, *tmp_page;
-	uint32_t smc_id;
 	uint32_t tmp_count = 0;
 	int count = 0;
+	int ret;
 
 	if (!ssheap || !ssheap->pmm_page) {
 		pr_err("ssheap info not ready!\n");
@@ -34,37 +81,27 @@ TMEM_PRIV int mtee_common_buffer_v2(struct ssheap_buf_info *ssheap,
 				(uint32_t)PMM_MSG_ENTRIES_PER_PAGE :
 				(uint32_t)(count % PMM_MSG_ENTRIES_PER_PAGE);
 
-		if (is_pkvm_enabled()) {
-			pkvm_smmu_mapping(pmm_page, pmm_attr, tmp_count, lock);
-		} else {
-			struct arm_smccc_res smc_res;
-
-			smc_id = lock == 1 ? HYP_PMM_ASSIGN_BUFFER_V2 :
-							HYP_PMM_UNASSIGN_BUFFER_V2;
-			arm_smccc_smc(smc_id, page_to_pfn(pmm_page), pmm_attr,
-				      tmp_count, 0, 0, 0, 0, &smc_res);
-			if (smc_res.a0 != 0) {
-				pr_err("smc_id=%#x smc_res.a0=%#lx\n", smc_id,
-					   smc_res.a0);
-				return -EINVAL;
-			}
-		}
-
+		if (is_pkvm_enabled())
+			ret = pmm_prot_via_pkvm(pmm_page, pmm_attr, tmp_count, lock);
+		else
+			ret = pmm_prot_via_mtee(pmm_page, pmm_attr, tmp_count, lock);
+		if (ret)
+			return ret;
 		count -= PMM_MSG_ENTRIES_PER_PAGE;
 	}
 	return 0;
 }
 
-TMEM_PRIV int mtee_assign_buffer_v2(struct ssheap_buf_info *ssheap,
+TMEM_PRIV int pmm_assign_buffer_v2(struct ssheap_buf_info *ssheap,
 		u8 pmm_attr)
 {
-	return mtee_common_buffer_v2(ssheap, pmm_attr, 1);
+	return pmm_common_buffer_v2(ssheap, pmm_attr, 1);
 }
 
-TMEM_PRIV int mtee_unassign_buffer_v2(struct ssheap_buf_info *ssheap,
+TMEM_PRIV int pmm_unassign_buffer_v2(struct ssheap_buf_info *ssheap,
 		u8 pmm_attr)
 {
-	return mtee_common_buffer_v2(ssheap, pmm_attr, 0);
+	return pmm_common_buffer_v2(ssheap, pmm_attr, 0);
 }
 
 TMEM_PRIV int paddr_cmp(void *priv, const struct list_head *a,
@@ -83,10 +120,11 @@ TMEM_PRIV int paddr_cmp(void *priv, const struct list_head *a,
 	return 0;
 }
 
+#if (ENABLE_PKVM_PMM == 0)
 /* According to lock, map those scatter list page into mtk pkvm smmu page table with related
  * permission.
  */
-TMEM_PRIV void pkvm_smmu_mapping(struct page *pmm_page, u8 pmm_attr,
+TMEM_PRIV int pkvm_smmu_mapping(struct page *pmm_page, u8 pmm_attr,
 		u32 tmp_count, int lock)
 {
 #if IS_ENABLED(CONFIG_MTK_PKVM_SMMU)
@@ -118,8 +156,21 @@ TMEM_PRIV void pkvm_smmu_mapping(struct page *pmm_page, u8 pmm_attr,
 	} else
 		pr_info("%s hvc is invalid\n", __func__);
 #endif
+	return 0;
+}
+#endif
+
+void pkvm_pmm_defragment(void)
+{
+	static int defragment_hcall;
+
+	if (!defragment_hcall)
+		defragment_hcall = pkvm_mgmt_get_hcall(SMC_ID_MTK_PKVM_PMM_DEFRAGMENT);
+	else
+		pkvm_el2_mod_call(defragment_hcall);
 }
 
+#if (ENABLE_PKVM_PMM == 0)
 /* Merge SMMU normal VM page table into large page, when exit secure feature */
 TMEM_PRIV void pkvm_smmu_merge_ptable(void)
 {
@@ -143,6 +194,30 @@ TMEM_PRIV void pkvm_smmu_merge_ptable(void)
 	} else
 		pr_info("%s hvc is invalid\n", __func__);
 #endif /* IS_ENABLED(CONFIG_MTK_PKVM_SMMU) */
+}
+#endif
+
+int pmm_defragment(struct secure_heap_page *sec_heap)
+{
+	struct arm_smccc_res smc_res;
+
+	if (is_pkvm_enabled()) {
+#if (ENABLE_PKVM_PMM == 1)
+		pkvm_pmm_defragment();
+#else
+		pkvm_smmu_merge_ptable();
+#endif
+	} else {
+		arm_smccc_smc(HYP_PMM_MERGED_TABLE, page_to_pfn(sec_heap->bitmap),
+				0, 0, 0, 0, 0, 0, &smc_res);
+		if (smc_res.a0 != 0) {
+			pr_err("smc_res.a0=%#lx\n", smc_res.a0);
+			return -EINVAL;
+		}
+	}
+	memset(page_address(sec_heap->bitmap), 0, PAGE_SIZE);
+
+	return 0;
 }
 
 /*
@@ -401,12 +476,12 @@ TMEM_PRIV int page_alloc_v2(struct secure_heap_page *sec_heap,
 	atomic64_add(buffer->len, &sec_heap->total_size);
 
 	trusted_mem_enable_high_freq();
-	// mtee_assign assign pa to protected pa
-	smc_ret = mtee_assign_buffer_v2(buffer->ssheap, sec_heap->tmem_type);
+	// pmm_assign assign pa to protected pa
+	smc_ret = pmm_assign_buffer_v2(buffer->ssheap, sec_heap->tmem_type);
 	trusted_mem_disable_high_freq();
 
 	if (smc_ret != 0) {
-		pr_err("%s:mtee_assign_buffer_v2 smc_ret=%d\n", __func__,
+		pr_err("%s:pmm_assign_buffer_v2 smc_ret=%d\n", __func__,
 		       smc_ret);
 		kfree(buffer->ssheap);
 		goto free_pmm_page;
@@ -541,8 +616,9 @@ TMEM_PRIV int page_free_v2(struct secure_heap_page *sec_heap,
 	struct scatterlist *sg = NULL;
 	int smc_ret, i, j, page_count = 0;
 	uint32_t *bitmap = page_address(sec_heap->bitmap);
+	int ret;
 
-	smc_ret = mtee_unassign_buffer_v2(buffer->ssheap, sec_heap->tmem_type);
+	smc_ret = pmm_unassign_buffer_v2(buffer->ssheap, sec_heap->tmem_type);
 	if (smc_ret) {
 		pr_err("%s: error, unassign buffer smc_ret=%d\n", __func__,
 		       smc_ret);
@@ -599,29 +675,20 @@ TMEM_PRIV int page_free_v2(struct secure_heap_page *sec_heap,
 		pr_warn("%s, total memory overflow, %#llx!!\n", __func__,
 			atomic64_read(&sec_heap->total_size));
 
-	/* check need infra MPU lv1 bypass */
+	/* Defragment once the total size of sec heap is zero */
 	if (atomic64_read(&sec_heap->total_size) == 0) {
-		struct arm_smccc_res smc_res;
-		int i;
-
 		pr_info("%s: page count:%d, merge the cpu and infra-mpu pgtbl\n",
 				__func__, page_count);
+#if (DEBUG_BITMAP == 1)
 		pr_debug("bitmap:\n");
-		for (i = 0; i < 1024; ++i) {
+		for (int i = 0; i < 1024; ++i) {
 			if (bitmap[i] != 0)
 				pr_debug("%#4x: %#32x ", i, bitmap[i]);
 		}
-		if (is_pkvm_enabled()) {
-			pkvm_smmu_merge_ptable();
-		} else {
-			arm_smccc_smc(HYP_PMM_MERGED_TABLE, page_to_pfn(sec_heap->bitmap),
-					0, 0, 0, 0, 0, 0, &smc_res);
-			if (smc_res.a0 != 0) {
-				pr_err("smc_res.a0=%#lx\n", smc_res.a0);
-				return -EINVAL;
-			}
-		}
-		memset(page_address(sec_heap->bitmap), 0, PAGE_SIZE);
+#endif
+		ret = pmm_defragment(sec_heap);
+		if (ret)
+			return ret;
 	}
 
 	pr_debug("%s done, [%s] size:%#lx, total_size:%#llx\n", __func__,
