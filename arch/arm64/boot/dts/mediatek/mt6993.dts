@@ -7868,8 +7868,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x3e450000 0 0x1000>;
 			mediatek,smi-supply = <&smi_dram_sub_comm1 0 &smi_mmsram_sub_comm1 0>;
 			mediatek,larb-id = <32>;
-			clocks = <&dispsys_config_clk MM0_SMI_SUB_COMM0_SMI>;
-			clock-names = "apb";
+			clocks = <&disp_vdisp_ao_config_clk VDISP_AO_DISP_DPC_DISP>,
+				 <&disp_vdisp_ao_config_clk VDISP_AO_DISP_BUS_SMI>,
+				 <&dispsys_config_clk MM0_SMI_SUB_COMM0_SMI>;
+			clock-names = "apb", "smi", "smi0";
 			mediatek,pd-id = <MT6993_SMI_PD_DIS0_A>;
 			smi-user-id = <MTK_SMI_DISP>;
 			is-default-ostdl;
@@ -7883,8 +7885,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x3e650000 0 0x1000>;
 			mediatek,smi-supply = <&smi_dram_sub_comm2 0 &smi_mmsram_sub_comm0 0>;
 			mediatek,larb-id = <54>;
-			clocks = <&disp0b_dispsys_config_clk MM0B_SMI_SUB_COMM0_SMI>;
-			clock-names = "apb";
+			clocks = <&disp_vdisp_ao_config_clk VDISP_AO_DISP_DPC_DISP>,
+				 <&disp_vdisp_ao_config_clk VDISP_AO_DISP_BUS_SMI>,
+				 <&disp0b_dispsys_config_clk MM0B_SMI_SUB_COMM0_SMI>;
+			clock-names = "apb", "smi", "smi0";
 			mediatek,pd-id = <MT6993_SMI_PD_DIS0_B>;
 			smi-user-id = <MTK_SMI_DISP>;
 			is-default-ostdl;
@@ -7898,8 +7902,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x3e850000 0 0x1000>;
 			mediatek,smi-supply = <&smi_dram_sub_comm3 0 &smi_mmsram_sub_comm0_ext 0>;
 			mediatek,larb-id = <33>;
-			clocks = <&dispsys1_config_clk MM1_SMI_LARB0_SMI>;
-			clock-names = "apb";
+			clocks = <&disp_vdisp_ao_config_clk VDISP_AO_DISP_DPC_DISP>,
+				 <&disp_vdisp_ao_config_clk VDISP_AO_DISP_BUS_SMI>,
+				 <&dispsys1_config_clk MM1_SMI_LARB0_SMI>;
+			clock-names = "apb", "smi", "smi0";
 			mediatek,pd-id = <MT6993_SMI_PD_DIS1_A>;
 			smi-user-id = <MTK_SMI_DISP>;
 			is-default-ostdl;
@@ -7913,8 +7919,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x3ea50000 0 0x1000>;
 			mediatek,smi-supply = <&smi_dram_sub_comm0 0 &smi_mmsram_sub_comm1_ext 0>;
 			mediatek,larb-id = <55>;
-			clocks = <&disp1b_dispsys1_config_clk MM1B_SMI_LARB0_SMI>;
-			clock-names = "apb";
+			clocks = <&disp_vdisp_ao_config_clk VDISP_AO_DISP_DPC_DISP>,
+				 <&disp_vdisp_ao_config_clk VDISP_AO_DISP_BUS_SMI>,
+				 <&disp1b_dispsys1_config_clk MM1B_SMI_LARB0_SMI>;
+			clock-names = "apb", "smi", "smi0";
 			mediatek,pd-id = <MT6993_SMI_PD_DIS1_B>;
 			smi-user-id = <MTK_SMI_DISP>;
 			is-default-ostdl;
@@ -7928,8 +7936,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x32aa0000 0 0x1000>;
 			mediatek,smi-supply = <&smi_dram_sub_comm0 0 &smi_mmsram_sub_comm0_ext 0>;
 			mediatek,larb-id = <0>;
-			clocks = <&ovlsys_config_clk OVL_SMI_SUB_COMM0_SMI>;
-			clock-names = "apb";
+			clocks = <&disp_vdisp_ao_config_clk VDISP_AO_DISP_DPC_DISP>,
+				 <&disp_vdisp_ao_config_clk VDISP_AO_DISP_BUS_SMI>,
+				 <&ovlsys_config_clk OVL_SMI_SUB_COMM0_SMI>;
+			clock-names = "apb", "smi", "smi0";
 			mediatek,pd-id = <MT6993_SMI_PD_OVL0>;
 			smi-user-id = <MTK_SMI_DISP>;
 			is-default-ostdl;
@@ -7943,8 +7953,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x32ab0000 0 0x1000>;
 			mediatek,smi-supply = <&smi_dram_sub_comm2 0 &smi_mmsram_sub_comm1_ext 0>;
 			mediatek,larb-id = <1>;
-			clocks = <&ovlsys_config_clk OVL_SMI_SUB_COMM0_SMI>;
-			clock-names = "apb";
+			clocks = <&disp_vdisp_ao_config_clk VDISP_AO_DISP_DPC_DISP>,
+				 <&disp_vdisp_ao_config_clk VDISP_AO_DISP_BUS_SMI>,
+				 <&ovlsys_config_clk OVL_SMI_SUB_COMM0_SMI>;
+			clock-names = "apb", "smi", "smi0";
 			mediatek,pd-id = <MT6993_SMI_PD_OVL0>;
 			smi-user-id = <MTK_SMI_DISP>;
 			is-default-ostdl;
@@ -7958,8 +7970,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x32ac0000 0 0x1000>;
 			mediatek,smi-supply = <&smi_dram_sub_comm3 0 &smi_mmsram_sub_comm1_ext 0>;
 			mediatek,larb-id = <20>;
-			clocks = <&ovlsys_config_clk OVL_SMI_SUB_COMM0_SMI>;
-			clock-names = "apb";
+			clocks = <&disp_vdisp_ao_config_clk VDISP_AO_DISP_DPC_DISP>,
+				 <&disp_vdisp_ao_config_clk VDISP_AO_DISP_BUS_SMI>,
+				 <&ovlsys_config_clk OVL_SMI_SUB_COMM0_SMI>;
+			clock-names = "apb", "smi", "smi0";
 			mediatek,pd-id = <MT6993_SMI_PD_OVL0>;
 			smi-user-id = <MTK_SMI_DISP>;
 			is-default-ostdl;
@@ -7973,8 +7987,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x32ad0000 0 0x1000>;
 			mediatek,smi-supply = <&smi_dram_sub_comm1 0 &smi_mmsram_sub_comm0_ext 0>;
 			mediatek,larb-id = <21>;
-			clocks = <&ovlsys_config_clk OVL_SMI_SUB_COMM0_SMI>;
-			clock-names = "apb";
+			clocks = <&disp_vdisp_ao_config_clk VDISP_AO_DISP_DPC_DISP>,
+				 <&disp_vdisp_ao_config_clk VDISP_AO_DISP_BUS_SMI>,
+				 <&ovlsys_config_clk OVL_SMI_SUB_COMM0_SMI>;
+			clock-names = "apb", "smi", "smi0";
 			mediatek,pd-id = <MT6993_SMI_PD_OVL0>;
 			smi-user-id = <MTK_SMI_DISP>;
 			is-default-ostdl;
@@ -7988,8 +8004,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x32da0000 0 0x1000>;
 			mediatek,smi-supply = <&smi_dram_sub_comm1 0 &smi_mmsram_sub_comm0_ext 0>;
 			mediatek,larb-id = <34>;
-			clocks = <&ovl1_ovlsys_config_clk OVL1_SMI_SUB_COMM0_SMI>;
-			clock-names = "apb";
+			clocks = <&disp_vdisp_ao_config_clk VDISP_AO_DISP_DPC_DISP>,
+				 <&disp_vdisp_ao_config_clk VDISP_AO_DISP_BUS_SMI>,
+				 <&ovl1_ovlsys_config_clk OVL1_SMI_SUB_COMM0_SMI>;
+			clock-names = "apb", "smi", "smi0";
 			mediatek,pd-id = <MT6993_SMI_PD_OVL1>;
 			smi-user-id = <MTK_SMI_DISP>;
 			is-default-ostdl;
@@ -8003,8 +8021,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x32db0000 0 0x1000>;
 			mediatek,smi-supply = <&smi_dram_sub_comm3 0 &smi_mmsram_sub_comm1_ext 0>;
 			mediatek,larb-id = <35>;
-			clocks = <&ovl1_ovlsys_config_clk OVL1_SMI_SUB_COMM0_SMI>;
-			clock-names = "apb";
+			clocks = <&disp_vdisp_ao_config_clk VDISP_AO_DISP_DPC_DISP>,
+				 <&disp_vdisp_ao_config_clk VDISP_AO_DISP_BUS_SMI>,
+				 <&ovl1_ovlsys_config_clk OVL1_SMI_SUB_COMM0_SMI>;
+			clock-names = "apb", "smi", "smi0";
 			mediatek,pd-id = <MT6993_SMI_PD_OVL1>;
 			smi-user-id = <MTK_SMI_DISP>;
 			is-default-ostdl;
@@ -8018,8 +8038,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x32dc0000 0 0x1000>;
 			mediatek,smi-supply = <&smi_dram_sub_comm0 0 &smi_mmsram_sub_comm1_ext 0>;
 			mediatek,larb-id = <36>;
-			clocks = <&ovl1_ovlsys_config_clk OVL1_SMI_SUB_COMM0_SMI>;
-			clock-names = "apb";
+			clocks = <&disp_vdisp_ao_config_clk VDISP_AO_DISP_DPC_DISP>,
+				 <&disp_vdisp_ao_config_clk VDISP_AO_DISP_BUS_SMI>,
+				 <&ovl1_ovlsys_config_clk OVL1_SMI_SUB_COMM0_SMI>;
+			clock-names = "apb", "smi", "smi0";
 			mediatek,pd-id = <MT6993_SMI_PD_OVL1>;
 			smi-user-id = <MTK_SMI_DISP>;
 			is-default-ostdl;
@@ -8033,8 +8055,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x32dd0000 0 0x1000>;
 			mediatek,smi-supply = <&smi_dram_sub_comm2 0 &smi_mmsram_sub_comm0_ext 0>;
 			mediatek,larb-id = <37>;
-			clocks = <&ovl1_ovlsys_config_clk OVL1_SMI_SUB_COMM0_SMI>;
-			clock-names = "apb";
+			clocks = <&disp_vdisp_ao_config_clk VDISP_AO_DISP_DPC_DISP>,
+				 <&disp_vdisp_ao_config_clk VDISP_AO_DISP_BUS_SMI>,
+				 <&ovl1_ovlsys_config_clk OVL1_SMI_SUB_COMM0_SMI>;
+			clock-names = "apb", "smi", "smi0";
 			mediatek,pd-id = <MT6993_SMI_PD_OVL1>;
 			smi-user-id = <MTK_SMI_DISP>;
 			is-default-ostdl;
@@ -8048,8 +8072,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x3e1a0000 0 0x1000>;
 			mediatek,smi-supply = <&smi_dram_sub_comm2 0 &smi_mmsram_sub_comm0_ext 0>;
 			mediatek,larb-id = <50>;
-			clocks = <&ovl2_ovlsys_config_clk OVL2_SMI_SUB_COMM0_SMI>;
-			clock-names = "apb";
+			clocks = <&disp_vdisp_ao_config_clk VDISP_AO_DISP_DPC_DISP>,
+				 <&disp_vdisp_ao_config_clk VDISP_AO_DISP_BUS_SMI>,
+				 <&ovl2_ovlsys_config_clk OVL2_SMI_SUB_COMM0_SMI>;
+			clock-names = "apb", "smi", "smi0";
 			mediatek,pd-id = <MT6993_SMI_PD_OVL2>;
 			smi-user-id = <MTK_SMI_DISP>;
 			is-default-ostdl;
@@ -8063,8 +8089,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x3e1b0000 0 0x1000>;
 			mediatek,smi-supply = <&smi_dram_sub_comm0 0 &smi_mmsram_sub_comm1_ext 0>;
 			mediatek,larb-id = <51>;
-			clocks = <&ovl2_ovlsys_config_clk OVL2_SMI_SUB_COMM0_SMI>;
-			clock-names = "apb";
+			clocks = <&disp_vdisp_ao_config_clk VDISP_AO_DISP_DPC_DISP>,
+				 <&disp_vdisp_ao_config_clk VDISP_AO_DISP_BUS_SMI>,
+				 <&ovl2_ovlsys_config_clk OVL2_SMI_SUB_COMM0_SMI>;
+			clock-names = "apb", "smi", "smi0";
 			mediatek,pd-id = <MT6993_SMI_PD_OVL2>;
 			smi-user-id = <MTK_SMI_DISP>;
 			is-default-ostdl;
@@ -8078,8 +8106,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x3e1c0000 0 0x1000>;
 			mediatek,smi-supply = <&smi_dram_sub_comm1 0 &smi_mmsram_sub_comm1_ext 0>;
 			mediatek,larb-id = <52>;
-			clocks = <&ovl2_ovlsys_config_clk OVL2_SMI_SUB_COMM0_SMI>;
-			clock-names = "apb";
+			clocks = <&disp_vdisp_ao_config_clk VDISP_AO_DISP_DPC_DISP>,
+				 <&disp_vdisp_ao_config_clk VDISP_AO_DISP_BUS_SMI>,
+				 <&ovl2_ovlsys_config_clk OVL2_SMI_SUB_COMM0_SMI>;
+			clock-names = "apb", "smi", "smi0";
 			mediatek,pd-id = <MT6993_SMI_PD_OVL2>;
 			smi-user-id = <MTK_SMI_DISP>;
 			is-default-ostdl;
@@ -8093,8 +8123,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x3e1d0000 0 0x1000>;
 			mediatek,smi-supply = <&smi_dram_sub_comm3 0 &smi_mmsram_sub_comm0_ext 0>;
 			mediatek,larb-id = <53>;
-			clocks = <&ovl2_ovlsys_config_clk OVL2_SMI_SUB_COMM0_SMI>;
-			clock-names = "apb";
+			clocks = <&disp_vdisp_ao_config_clk VDISP_AO_DISP_DPC_DISP>,
+				 <&disp_vdisp_ao_config_clk VDISP_AO_DISP_BUS_SMI>,
+				 <&ovl2_ovlsys_config_clk OVL2_SMI_SUB_COMM0_SMI>;
+			clock-names = "apb", "smi", "smi0";
 			mediatek,pd-id = <MT6993_SMI_PD_OVL2>;
 			smi-user-id = <MTK_SMI_DISP>;
 			is-default-ostdl;
@@ -8114,8 +8146,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x321b0000 0 0x1000>;
 			mediatek,smi-supply = <&smi_dram_sub_comm3 0>;
 			mediatek,larb-id = <2>;
-			clocks = <&mmlsys_config_clk MML_SMI0_SMI>;
-			clock-names = "apb";
+			clocks = <&disp_vdisp_ao_config_clk VDISP_AO_DISP_DPC_DISP>,
+				 <&disp_vdisp_ao_config_clk VDISP_AO_DISP_BUS_SMI>,
+				 <&mmlsys_config_clk MML_SMI0_SMI>;
+			clock-names = "apb", "smi", "smi0";
 			mediatek,pd-id = <MT6993_SMI_PD_MML0>;
 			smi-user-id = <MTK_SMI_DISP MTK_SMI_MML0>;
 			is-default-ostdl;
@@ -8129,8 +8163,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x324b0000 0 0x1000>;
 			mediatek,smi-supply = <&smi_dram_sub_comm0 0>;
 			mediatek,larb-id = <3>;
-			clocks = <&mml1_mmlsys_config_clk MML1_SMI0_SMI>;
-			clock-names = "apb";
+			clocks = <&disp_vdisp_ao_config_clk VDISP_AO_DISP_DPC_DISP>,
+				 <&disp_vdisp_ao_config_clk VDISP_AO_DISP_BUS_SMI>,
+				 <&mml1_mmlsys_config_clk MML1_SMI0_SMI>;
+			clock-names = "apb", "smi", "smi0";
 			mediatek,pd-id = <MT6993_SMI_PD_MML1>;
 			smi-user-id = <MTK_SMI_DISP MTK_SMI_MML1>;
 			is-default-ostdl;
@@ -8144,8 +8180,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x327b0000 0 0x1000>;
 			mediatek,smi-supply = <&smi_dram_sub_comm2 0 &smi_mmsram_sub_comm1_ext 0>;
 			mediatek,larb-id = <56>;
-			clocks = <&mml2_mmlsys_config_clk MML2_SMI0_SMI>;
-			clock-names = "apb";
+			clocks = <&disp_vdisp_ao_config_clk VDISP_AO_DISP_DPC_DISP>,
+				 <&disp_vdisp_ao_config_clk VDISP_AO_DISP_BUS_SMI>,
+				 <&mml2_mmlsys_config_clk MML2_SMI0_SMI>;
+			clock-names = "apb", "smi", "smi0";
 			mediatek,pd-id = <MT6993_SMI_PD_MML2>;
 			smi-user-id = <MTK_SMI_DISP MTK_SMI_MML2>;
 			is-default-ostdl;
@@ -8159,8 +8197,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x327d0000 0 0x1000>;
 			mediatek,smi-supply = <&smi_dram_sub_comm1 0 &smi_mmsram_sub_comm0_ext 0>;
 			mediatek,larb-id = <57>;
-			clocks = <&mml2_mmlsys_config_clk MML2_SMI0_SMI>;
-			clock-names = "apb";
+			clocks = <&disp_vdisp_ao_config_clk VDISP_AO_DISP_DPC_DISP>,
+				 <&disp_vdisp_ao_config_clk VDISP_AO_DISP_BUS_SMI>,
+				 <&mml2_mmlsys_config_clk MML2_SMI0_SMI>;
+			clock-names = "apb", "smi", "smi0";
 			mediatek,pd-id = <MT6993_SMI_PD_MML2>;
 			smi-user-id = <MTK_SMI_DISP MTK_SMI_MML2>;
 			is-default-ostdl;
@@ -8174,8 +8214,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x3ef80000 0 0x1000>;
 			mediatek,smi-supply = <&smi_dram_sub_comm0 0 &smi_mmsram_sub_comm0 0>;
 			mediatek,larb-id = <60>;
-			clocks = <&disp_vdisp_ao_config_clk VDISP_AO_DISP_BUS_SMI>;
-			clock-names = "apb";
+			clocks = <&disp_vdisp_ao_config_clk VDISP_AO_DISP_DPC_DISP>,
+				 <&disp_vdisp_ao_config_clk VDISP_AO_DISP_BUS_SMI>;
+			clock-names = "apb", "smi";
 			mediatek,pd-id = <MT6993_SMI_PD_VDISP_PERI>;
 			smi-user-id = <MTK_SMI_DISP>;
 			is-default-ostdl;
@@ -8189,8 +8230,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x3ef90000 0 0x1000>;
 			mediatek,smi-supply = <&smi_dram_sub_comm2 0 &smi_mmsram_sub_comm1 0>;
 			mediatek,larb-id = <61>;
-			clocks = <&disp_vdisp_ao_config_clk VDISP_AO_DISP_BUS_SMI>;
-			clock-names = "apb";
+			clocks = <&disp_vdisp_ao_config_clk VDISP_AO_DISP_DPC_DISP>,
+				 <&disp_vdisp_ao_config_clk VDISP_AO_DISP_BUS_SMI>;
+			clock-names = "apb", "smi";
 			mediatek,pd-id = <MT6993_SMI_PD_VDISP_PERI>;
 			smi-user-id = <MTK_SMI_DISP>;
 			is-default-ostdl;
