@@ -403,11 +403,15 @@ void cmdq_util_error_disable(u8 hwid)
 			buf_va = (char *)(shared_mem->va + CMDQ_RECORD_SIZE + log_length);
 
 		buf_va_end = (char *)(shared_mem->va + CMDQ_RECORD_SIZE + CMDQ_STATUS_SIZE);
-		sec = util.err[hwid].nsec;
-		nsec = do_div(sec, 1000000000);
-		buf_va += scnprintf(buf_va, buf_va_end - buf_va, "%s[%5llu.%06lu]\n", title, sec, nsec);
-		buf_va += scnprintf(buf_va, buf_va_end - buf_va, "%s\n", util.err[hwid].buffer);
-		util.err[hwid].record = true;
+		if (buf_va < buf_va_end) {
+			sec = util.err[hwid].nsec;
+			nsec = do_div(sec, 1000000000);
+			buf_va += scnprintf(buf_va, buf_va_end - buf_va, "%s[%5llu.%06lu]\n", title, sec, nsec);
+			buf_va += scnprintf(buf_va, buf_va_end - buf_va, "%s\n", util.err[hwid].buffer);
+			util.err[hwid].record = true;
+		} else {
+			cmdq_err("buf_va exceeds buf_va_end for hwid:%d", hwid);
+		}
 	}
 }
 EXPORT_SYMBOL(cmdq_util_error_disable);

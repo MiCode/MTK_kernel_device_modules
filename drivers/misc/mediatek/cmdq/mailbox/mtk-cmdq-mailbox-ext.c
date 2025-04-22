@@ -4681,8 +4681,10 @@ s32 cmdq_pkt_set_capability(struct cmdq_pkt *pkt)
 		return -EINVAL;
 	}
 
-	if (!g_cmdq[cmdq->hwid])
+	if (!g_cmdq[cmdq->hwid]) {
 		cmdq_err("g_cmdq[%d] is null", cmdq->hwid);
+		return -EINVAL;
+	}
 
 	if (g_cmdq[cmdq->hwid]->spr3_timer)
 		pkt->support_spr3_timer = true;

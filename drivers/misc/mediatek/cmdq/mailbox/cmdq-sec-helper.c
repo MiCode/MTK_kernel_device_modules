@@ -176,6 +176,11 @@ s32 cmdq_sec_pkt_set_payload(struct cmdq_pkt *pkt, u8 idx,
 		return -EINVAL;
 	}
 
+	if (idx > CMDQ_IWC_MSG2) {
+		cmdq_err("not allow to set reserved payload > 2");
+		return -EINVAL;
+	}
+
 	if (!meta_size || !meta) {
 		cmdq_err("not allow empty size or buffer");
 		return -EINVAL;
