@@ -586,9 +586,13 @@ static int mdla_plat_v6_dbgfs_usage(struct seq_file *s, void *data)
 	seq_printf(s, "echo [mask(hex))] > /d/mdla/%s\n", mdla_plat_get_ipi_str(MDLA_IPI_DBG_OPTIONS));
 	seq_puts(s, "\tDisable preemption                               = 0x0001\n");
 	seq_puts(s, "\tPreempt once                                     = 0x0002\n");
+	seq_puts(s, "\tForce FW always cold boot                        = 0x0008\n");
 	seq_puts(s, "\tDump cmdbuf in seq log while CMD hang            = 0x0010\n");
 	seq_puts(s, "\tDump cmdbuf in /d/mdla/mdla_memory               = 0x0020\n");
 	seq_puts(s, "\tAlways dump mdla registers before power off      = 0x0040\n");
+	seq_puts(s, "\tDoesn't initialize DCM/PI/.. configurations      = 0x0100\n");
+	seq_puts(s, "\tDisable engine DCM                               = 0x0200\n");
+	seq_puts(s, "\tDisable stash                                    = 0x0400\n");
 	seq_puts(s, "\tForce assert when mdla exception. (need unlock)  = 0x0800\n");
 	seq_puts(s, "\n----------- set firmware log level -----------\n");
 	seq_printf(s, "echo [log_lv] > /d/mdla/%s\n", mdla_plat_get_ipi_str(MDLA_IPI_FW_LOG_LV));
