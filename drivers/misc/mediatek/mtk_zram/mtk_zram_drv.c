@@ -2067,14 +2067,12 @@ static unsigned long hwcomp_copy_to_zspool(struct zram *zram, void *buffer,
 	if (buffer == NULL && comp_len != PAGE_SIZE) {
 		/* Unexpected to be here... */
 		pr_info("%s: unexpected buffer & comp_len.\n", __func__);
-		return -ENOMEM;
+		return -EINVAL;
 	}
 
 	handle = alloc_zspool_memory(zram, comp_len);
-	if (IS_ERR_VALUE(handle)) {
-		pr_info("%s: failed to allocate zspool memory.\n", __func__);
+	if (IS_ERR_VALUE(handle))
 		return -ENOMEM;
-	}
 
 	dst = zs_map_object(zram->mem_pool, handle, ZS_MM_WO);
 	if (comp_len == PAGE_SIZE) {
