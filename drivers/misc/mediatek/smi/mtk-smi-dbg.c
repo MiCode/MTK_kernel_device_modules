@@ -206,6 +206,7 @@ static u32	smi_larb_regs[SMI_LARB_REGS_NR] = {
 /* COMM */
 #define SMI_L1LEN		(0x100)
 #define SMI_L1ARB(m)		(0x104 + ((m) << 2))
+#define SMI_L1TH_ARB(m)		(0x124 + ((m) << 2))
 #define SMI_MON_AXI_ENA		(0x1a0)
 #define SMI_MON_AXI_CLR		(0x1a4)
 #define SMI_MON_AXI_ACT_CNT	(0x1c0)
@@ -267,11 +268,13 @@ static u32	smi_larb_regs[SMI_LARB_REGS_NR] = {
 #define SMI_MON_CP_MAX(m)	(SMI_MON_ENA(m) + 0x3c)
 #define SMI_MON_COS_MAX(m)	(SMI_MON_ENA(m) + 0x40)
 
-#define SMI_COMM_REGS_NR	(66)
+#define SMI_COMM_REGS_NR	(74)
 static u32	smi_comm_regs[SMI_COMM_REGS_NR] = {
 	SMI_L1LEN,
 	SMI_L1ARB(0), SMI_L1ARB(1), SMI_L1ARB(2), SMI_L1ARB(3),
 	SMI_L1ARB(4), SMI_L1ARB(5), SMI_L1ARB(6), SMI_L1ARB(7),
+	SMI_L1TH_ARB(0), SMI_L1TH_ARB(1), SMI_L1TH_ARB(2), SMI_L1TH_ARB(3),
+	SMI_L1TH_ARB(4), SMI_L1TH_ARB(5), SMI_L1TH_ARB(6), SMI_L1TH_ARB(7),
 	SMI_MON_AXI_ENA, SMI_MON_AXI_CLR, SMI_MON_AXI_ACT_CNT,
 	SMI_BUS_SEL, SMI_WRR_REG0, SMI_WRR_REG1,
 	SMI_READ_FIFO_TH, SMI_M4U_TH, SMI_FIFO_TH1, SMI_FIFO_TH2,
