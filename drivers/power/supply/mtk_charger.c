@@ -3096,21 +3096,15 @@ static void kpoc_power_off_check(struct mtk_charger *info)
 		vbus = get_vbus(info);
 		if (vbus >= 0 && vbus < 2500 && !mtk_is_charger_on(info) &&
 			!info->ta_hardreset) {
-			chr_err("Unplug Charger/USB in KPOC mode, vbus=%d, shutdown\n", vbus);
-			while (1) {
-				if (counter >= 20000) {
-					chr_err("%s, wait too long\n", __func__);
+			chr_err("Unplug Charger/USB in KPOC mode, vbus=%d, shutdown prepare\n", vbus);
+			charger_send_kpoc_uevent(info);
+			while (1) { // Wait 200 sec for userspace shutdown before kernel power off
+				if (counter >= 200) {
+					chr_err("%s, wait too long kernel power off\n", __func__);
 					kernel_power_off();
 					break;
 				}
-				if (info->is_suspend == false) {
-					chr_err("%s, not in suspend, shutdown\n", __func__);
-					kernel_power_off();
-					break;
-				} else {
-					chr_err("%s, suspend! cannot shutdown\n", __func__);
-					msleep(20);
-				}
+				msleep(1000);
 				counter++;
 			}
 		}
