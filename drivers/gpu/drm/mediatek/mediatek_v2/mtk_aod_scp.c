@@ -556,6 +556,37 @@ static int mtk_aod_scp_ipi_register(void)
 	return ret;
 }
 
+static int mtk_aod_scp_get_scp_show_count(void)
+{
+	/* TODO: current mtk AOD_SCP do not sync status with
+	 * AOD_CPU, need implement the sync mechanism and
+	 * this API.
+	 * If customer want to use this API, please implement
+	 * this.
+	 */
+	return 0;
+}
+
+static void mtk_aod_scp_clear_scp_show_count(void)
+{
+	/* TODO: current mtk AOD_SCP do not sync status with
+	 * AOD_CPU, need implement the sync mechanism and
+	 * this API.
+	 * If customer want to use this API, please implement
+	 * this.
+	 */
+}
+
+static void mtk_aod_scp_set_is_ddic_spr(bool is_is_ddic_spr)
+{
+	/* TODO: current mtk AOD_SCP do not sync status with
+	 * AOD_CPU, need implement the sync mechanism and
+	 * this API.
+	 * If customer want to use this API, please implement
+	 * this.
+	 */
+}
+
 static int mtk_aod_scp_probe(struct platform_device *pdev)
 {
 	struct device_node *aod_scp_node = NULL;
@@ -578,6 +609,9 @@ static int mtk_aod_scp_probe(struct platform_device *pdev)
 
 		aod_scp_cb.send_ipi = mtk_aod_scp_doze_update;
 		aod_scp_cb.module_backup = mtk_module_backup;
+		aod_scp_cb.get_scp_show_count = mtk_aod_scp_get_scp_show_count;
+		aod_scp_cb.clear_scp_show_count = mtk_aod_scp_clear_scp_show_count;
+		aod_scp_cb.set_is_ddic_spr = mtk_aod_scp_set_is_ddic_spr;
 		mtk_aod_scp_ipi_init(&aod_scp_cb);
 
 		smp_node = of_find_compatible_node(NULL, NULL, "mediatek,sleep");

@@ -443,6 +443,9 @@ struct mtk_drm_disp_sec_cb {
 struct mtk_aod_scp_cb {
 	int (*send_ipi)(int value);
 	void (*module_backup)(struct drm_crtc *crtc, unsigned int ulps_wakeup_prd);
+	int (*get_scp_show_count)(void);
+	void (*clear_scp_show_count)(void);
+	void (*set_is_ddic_spr)(bool is_is_ddic_spr);
 };
 
 struct mtk_drm_disp_mtee_cb {
@@ -686,6 +689,8 @@ bool mtk_disp_is_svp_on_mtee(void);
 void _mtk_sent_aod_scp_sema(void __iomem *_SPM_SEMA_AP);
 void mtk_set_aod_scp_semaphore(int lock);
 unsigned int mtk_aod_scp_vdisp_sema_check(void);
+int mtk_get_scp_show_count(void);
+void mtk_clear_scp_show_count(void);
 int mtk_drm_get_mml_mode_caps(void);
 int mtk_drm_get_mml_hw_caps(void);
 bool mtk_drm_use_retrigger(struct mtk_drm_private *priv);

@@ -572,6 +572,7 @@ enum MTK_CRTC_PROP {
 #define USER_SCEN_BLANK (BIT(0))
 #define USER_SCEN_SKIP_PANEL_SWITCH (BIT(1))
 #define USER_SCEN_SAME_POWER_MODE (BIT(2))
+#define USER_SCEN_AOD_SCP_RESUME (BIT(3))
 
 enum MTK_CRTC_COLOR_FMT {
 	CRTC_COLOR_FMT_UNKNOWN = 0,
@@ -1423,6 +1424,11 @@ struct mtk_drm_crtc {
 	unsigned int cur_present_fence_idx;
 
 	bool skip_wb;
+
+	/* Num frames that AOD_SCP displayed during DOZE_SUSUPEND
+	 * mode (clear when AOD_CPU display a new frame).
+	 */
+	int scp_show_count;
 };
 
 enum BL_GAMMA_GAIN {

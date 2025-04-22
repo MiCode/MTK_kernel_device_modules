@@ -14855,6 +14855,13 @@ void mtk_crtc_check_trigger(struct mtk_drm_crtc *mtk_crtc, bool delay,
 		goto err;
 	}
 
+	if (mtk_crtc_is_frame_trigger_mode(crtc) &&
+		(mtk_state->prop_val[CRTC_PROP_USER_SCEN] & USER_SCEN_AOD_SCP_RESUME)) {
+		DDPINFO("%s:%d, Receive AOD_SCP_RESUME hint, not to trigger\n",
+				__func__, __LINE__);
+		goto err;
+	}
+
 	if (type) {
 		DDPINFO("%s:%d, trigger type %d\n", __func__, __LINE__, type);
 		CRTC_MMP_MARK(index, kick_trigger, 0xFF, type);
@@ -20679,14 +20686,45 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 		if (mtk_crtc->skip_frame ||
 		    (is_from_dal && (mtk_crtc->is_mml || mtk_crtc->is_mml_dl))) {
 			/* skip trigger when racing with mml */
-		} else {
-			/* DL with trigger loop */
-			if (!mtk_crtc->path_data->is_discrete_path) {
+		} else if (!mtk_crtc->path_data->is_discrete_path) {
+			/* Keep panel not refresh when receive AOD_SCP_RESUME hint,
+			 * and scp_show_count is not zero, because the content of
+			 * these frames have old AOD app buffer.
+			 */
+			if ((state->prop_val[CRTC_PROP_USER_SCEN] & USER_SCEN_AOD_SCP_RESUME)
+				&& (mtk_crtc->scp_show_count > 0)) {
+				unsigned int fence_idx = state->prop_val[CRTC_PROP_PRES_FENCE_IDX];
+
+				DDPINFO("%s:%d, Frame %u get old AOD app buffer, drop set dirty\n",
+						__func__, __LINE__, fence_idx);
+				mtk_crtc->skip_wb = true;
+				if (fence_idx != (unsigned int)-1) {
+					bool use_frame_submit =
+						mtk_drm_helper_get_opt(priv->helper_opt,
+							MTK_DRM_OPT_FRAME_SUBMIT) &&
+						crtc_index == 0;
+					int session_id = mtk_get_session_id(crtc);
+
+					atomic_set(&priv->crtc_rel_present[crtc_index], fence_idx);
+					if (use_frame_submit) {
+						mtk_release_union_fence(session_id, fence_idx, 0,
+							MTK_UNION_FENCE_PRESENT);
+						mtk_release_union_fence(session_id, fence_idx, 0,
+							MTK_UNION_FENCE_CONFIG);
+						mtk_release_union_fence(session_id, fence_idx, 0,
+							MTK_UNION_FENCE_FRAME_DONE);
+					} else {
+						mtk_release_present_fence(session_id, fence_idx, 0);
+					}
+				}
+			} else {
 				if(!is_from_dal)
 					mtk_crtc_dbi_count_cfg(mtk_crtc, state, cmdq_handle);
 				CRTC_MMP_MARK(0, set_dirty, GCE_FLUSH, (unsigned long)cmdq_handle);
 				cmdq_pkt_set_event(cmdq_handle,
 					   mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
+				mtk_crtc->skip_wb = false;
+				mtk_clear_scp_show_count();
 			}
 		}
 	} else {

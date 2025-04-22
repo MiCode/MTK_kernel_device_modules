@@ -218,6 +218,9 @@ void mtk_aod_scp_ipi_init(struct mtk_aod_scp_cb *cb)
 
 	aod_scp_ipi.send_ipi = cb->send_ipi;
 	aod_scp_ipi.module_backup = cb->module_backup;
+	aod_scp_ipi.get_scp_show_count = cb->get_scp_show_count;
+	aod_scp_ipi.clear_scp_show_count = cb->clear_scp_show_count;
+	aod_scp_ipi.set_is_ddic_spr = cb->set_is_ddic_spr;
 }
 EXPORT_SYMBOL(mtk_aod_scp_ipi_init);
 
@@ -1138,6 +1141,46 @@ static void mtk_atomic_doze_preparation(struct drm_device *dev,
 	int i;
 	struct mtk_drm_crtc *mtk_crtc = NULL;
 	struct mtk_ddp_comp *comp = NULL;
+	int crtc_id = 0;
+	struct drm_crtc_state *crtc_old_state, *crtc_new_state;
+	struct mtk_crtc_state *mtk_old_state, *mtk_new_state;
+
+	for_each_oldnew_crtc_in_state(old_state, crtc, crtc_old_state, crtc_new_state, i) {
+		mtk_crtc = to_mtk_crtc(crtc);
+		crtc_id = drm_crtc_index(crtc);
+		mtk_old_state = to_mtk_crtc_state(crtc_old_state);
+		mtk_new_state = to_mtk_crtc_state(crtc_new_state);
+
+		if (crtc_new_state->active && mtk_new_state->prop_val[CRTC_PROP_DOZE_ACTIVE]) {
+			mtk_crtc->scp_show_count = 0;
+			if (crtc_id == 0) {
+				/* Get scp_show_count to filter AOD_SCP_RESUME hint,
+				 * the hint only can be used after AOD_SCP display
+				 * any frame during DOZE_SUSUPEND mode.
+				 */
+				mtk_crtc->scp_show_count = mtk_get_scp_show_count();
+				mtk_drm_trace_begin("scp_show_count: [%d]",
+						mtk_crtc->scp_show_count);
+				mtk_drm_trace_end();
+				DDPINFO("%s:%d, get scp_show_count %d when DOZE mode\n",
+						__func__, __LINE__, mtk_crtc->scp_show_count);
+			}
+		}
+		if (!crtc_new_state->active && mtk_new_state->prop_val[CRTC_PROP_DOZE_ACTIVE]) {
+			if (crtc_id == 0) {
+				/* Tell AOD_SCP spr is ddic mode or not when enter
+				 * DOZE_SUSPEND mode, because AOD_SCP only can use
+				 * ddic mode spr.
+				 */
+				if (aod_scp_ipi.set_is_ddic_spr != NULL)
+					aod_scp_ipi.set_is_ddic_spr(!mtk_crtc->spr_is_on);
+				mtk_drm_trace_begin("spr_is_on: [%d]", mtk_crtc->spr_is_on);
+				mtk_drm_trace_end();
+				DDPINFO("%s:%d, enter doze suspend mode when spr_is_on is %d\n",
+						__func__, __LINE__, mtk_crtc->spr_is_on);
+			}
+		}
+	}
 
 	for_each_new_connector_in_state(old_state, connector,
 		old_conn_state, i) {
@@ -11013,6 +11056,7 @@ int mtk_drm_ioctl_retrig(struct drm_device *dev, void *data,
 	struct mtk_cmdq_cb_data *cb_data;
 	dma_addr_t addr;
 	unsigned int sleep_t;
+	struct mtk_crtc_state *mtk_state;
 
 #ifdef DRM_CMDQ_DISABLE
 	DDPPR_ERR("%s: not support DRM_CMDQ_DISABLE!\n", __func__);
@@ -11044,6 +11088,11 @@ int mtk_drm_ioctl_retrig(struct drm_device *dev, void *data,
 		DDPPR_ERR("%s: crtc_state is null (crtc_id: %d)\n", __func__, retrig->crtc_id);
 		return -ENOENT;
 	}
+	mtk_state = to_mtk_crtc_state(crtc_state);
+	if (!mtk_state) {
+		DDPPR_ERR("%s: error, mtk_state is null (crtc_id: %d)\n", __func__, retrig->crtc_id);
+		return -ENOENT;
+	}
 	crtc_idx = drm_crtc_index(crtc);
 	session_id = mtk_get_session_id(crtc);
 
@@ -11057,6 +11106,14 @@ int mtk_drm_ioctl_retrig(struct drm_device *dev, void *data,
 
 	if (!mtk_crtc_is_frame_trigger_mode(crtc)) {
 		// why enable retrig when vdo mode!!? handle this case anyway.
+		atomic_set(&private->crtc_rel_present[crtc_idx], retrig->present_fence_idx);
+		mtk_release_present_fence(session_id, retrig->present_fence_idx, 0);
+		return 0;
+	}
+
+	if (mtk_state->prop_val[CRTC_PROP_USER_SCEN] & USER_SCEN_AOD_SCP_RESUME) {
+		DDPPR_ERR("%s: error, receive AOD_SCP_RESUME hint, not to trigger (crtc_id: %d)\n",
+			__func__, retrig->crtc_id);
 		atomic_set(&private->crtc_rel_present[crtc_idx], retrig->present_fence_idx);
 		mtk_release_present_fence(session_id, retrig->present_fence_idx, 0);
 		return 0;
@@ -12619,6 +12676,19 @@ unsigned int mtk_aod_scp_vdisp_sema_check(void)
 	}
 
 	return 1; //default: vdisp power on
+}
+
+int mtk_get_scp_show_count(void)
+{
+	if (aod_scp_ipi.get_scp_show_count != NULL)
+		return aod_scp_ipi.get_scp_show_count();
+	return 0;
+}
+
+void mtk_clear_scp_show_count(void)
+{
+	if (aod_scp_ipi.clear_scp_show_count != NULL)
+		aod_scp_ipi.clear_scp_show_count();
 }
 
 static bool init_secure_static_path_switch(struct device *dev, struct mtk_drm_private *priv)
