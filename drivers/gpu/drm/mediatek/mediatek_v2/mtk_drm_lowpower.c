@@ -1073,6 +1073,7 @@ static void mtk_drm_idlemgr_enter_idle_nolock(struct drm_crtc *crtc)
 	unsigned int idle_interval;
 	bool mode;
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
 
 	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 
@@ -1082,6 +1083,13 @@ static void mtk_drm_idlemgr_enter_idle_nolock(struct drm_crtc *crtc)
 	mode = mtk_dsi_is_cmd_mode(output_comp);
 	idle_interval = mtk_drm_get_idle_check_interval(crtc);
 	CRTC_MMP_EVENT_START(index, enter_idle, mode, idle_interval);
+
+	if ((priv->data->mmsys_id == MMSYS_MT6993) &&
+			(priv->mtk_dbgtp_sta.fifo_mon_en[0]) && (index == 0)) {
+		/* Force trigger stop when suspend for fifo mon WA */
+		mtk_set_mmmc_rg(2, 3, 0x14, 0x1, 0xffff);
+		mtk_set_mmmc_rg(2, 3, 0x18, 0x1, 0xffff);
+	}
 
 	if (mode)
 		mtk_drm_cmd_mode_enter_idle(crtc);

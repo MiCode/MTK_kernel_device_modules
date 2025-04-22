@@ -555,10 +555,21 @@ void mtk_dbgtp_all_setting_dump(struct mtk_drm_private *priv)
 
 int mtk_dbgtp_dump(void)
 {
-	void __iomem *baddr = dbgtp_comp->regs;
+	void __iomem *baddr = NULL;
 
+	if (!dbgtp_comp) {
+		DDPPR_ERR("%s, %s is NULL!\n", __func__, "dbgtp comp");
+		return 0;
+	}
+
+	baddr = dbgtp_comp->regs;
 	if (!baddr) {
-		DDPDUMP("%s, %s is NULL!\n", __func__, mtk_dump_comp_str(dbgtp_comp));
+		DDPPR_ERR("%s, %s is NULL!\n", __func__, mtk_dump_comp_str(dbgtp_comp));
+		return 0;
+	}
+
+	if (!dbgtp_comp->regs_pa) {
+		DDPPR_ERR("%s, %s is NULL!\n", __func__, "dbgtp regs_pa");
 		return 0;
 	}
 
@@ -954,7 +965,7 @@ void mtk_dbgtp_default_cfg_load(struct mtk_drm_private *priv)
 	priv->mtk_dbgtp_sta.dbgtp_dpc_mon_cfg = 0x00FFE;
 
 	/* fifo mon default setting */
-	priv->mtk_dbgtp_sta.fifo_mon_en[0] = 1;
+	priv->mtk_dbgtp_sta.fifo_mon_en[0] = 0;
 	priv->mtk_dbgtp_sta.fifo_mon_trig_thrd[0] = 30;
 
 	/* dispsys default setting */

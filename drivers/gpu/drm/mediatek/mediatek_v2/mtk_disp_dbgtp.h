@@ -96,6 +96,7 @@ void mtk_dbgtp_switch(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cmdq_handl
 dma_addr_t mtk_get_dbgtp_comp_pa(void);
 void mtk_dbgtp_set_mminfra_funnel(bool en);
 void mtk_dbgtp_dump_mminfra_funnel(void);
+int mtk_dbgtp_dump(void);
 
 /* Just for mt6993*/
 void mtk_dbgtp_dsi_gce_event_config(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cmdq_handle);

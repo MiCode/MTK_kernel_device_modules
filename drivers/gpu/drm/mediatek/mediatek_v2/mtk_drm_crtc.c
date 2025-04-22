@@ -17518,9 +17518,12 @@ void mtk_drm_crtc_suspend(struct drm_crtc *crtc)
 	CRTC_MMP_EVENT_START(index, suspend,
 			mtk_crtc->enabled, 0);
 
-	/* Force trigger stop when suspend for fifo mon WA */
-	mtk_set_mmmc_rg(2, 3, 0x14, 0x1, 0xffff);
-	mtk_set_mmmc_rg(2, 3, 0x18, 0x1, 0xffff);
+	if ((priv->data->mmsys_id == MMSYS_MT6993) &&
+			(priv->mtk_dbgtp_sta.fifo_mon_en[0]) && (index == 0)) {
+		/* Force trigger stop when suspend for fifo mon WA */
+		mtk_set_mmmc_rg(2, 3, 0x14, 0x1, 0xffff);
+		mtk_set_mmmc_rg(2, 3, 0x18, 0x1, 0xffff);
+	}
 
 	mtk_drm_crtc_wait_blank(mtk_crtc);
 
