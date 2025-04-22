@@ -559,6 +559,7 @@ struct mtk_disp_oddmr_od_data {
 	int bpp;
 	uint32_t base_line_jump;
 	int od_sram_read_sel;
+	uint32_t spr_rgbg_mode;
 	uint32_t od_dram_sel[2];
 	int od_sram_table_idx[2];
 	/* TODO: sram 0,1 fixed pkg, need support sram1 update */

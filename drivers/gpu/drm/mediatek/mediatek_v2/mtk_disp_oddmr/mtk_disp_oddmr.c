@@ -1644,9 +1644,10 @@ static void mtk_oddmr_od_set_res_udma(struct mtk_ddp_comp *comp, struct cmdq_pkt
 	SET_VAL_MASK(reg_value, reg_mask, 1, REG_DE_ALIGN8_EN);
 	SET_VAL_MASK(reg_value, reg_mask, is_h_2x4x_sel, REG_HSD_2X4X_SEL);
 	if (oddmr_data->data->od_version >= MTK_OD_V2) {
-		if (oddmr_data->spr_enable == 1 && oddmr_data->spr_relay == 0 &&
+		if (oddmr_data->od_data.spr_rgbg_mode == 1 &&
+			(oddmr_data->spr_enable == 1 && oddmr_data->spr_relay == 0 &&
 				(oddmr_data->spr_format == MTK_PANEL_RGBG_BGRG_TYPE ||
-				oddmr_data->spr_format == MTK_PANEL_BGRG_RGBG_TYPE))
+				oddmr_data->spr_format == MTK_PANEL_BGRG_RGBG_TYPE)))
 			SET_VAL_MASK(reg_value, reg_mask, 1, MT6991_REG_SPR_RGBG_MODE);
 		else
 			SET_VAL_MASK(reg_value, reg_mask, 0, MT6991_REG_SPR_RGBG_MODE);
@@ -1905,9 +1906,10 @@ static int mtk_oddmr_od_bpp_v(struct mtk_ddp_comp *comp, int mode)
 
 	ODDMRAPI_LOG("+\n");
 	mtk_oddmr_od_get_scaling(scaling_mode, &hscaling, &vscaling);
-	if (oddmr_data->spr_enable == 1 && oddmr_data->spr_relay == 0 &&
+	if (oddmr_data->od_data.spr_rgbg_mode == 1 &&
+		(oddmr_data->spr_enable == 1 && oddmr_data->spr_relay == 0 &&
 		(oddmr_data->spr_format == MTK_PANEL_RGBG_BGRG_TYPE ||
-		oddmr_data->spr_format == MTK_PANEL_BGRG_RGBG_TYPE)) {
+		oddmr_data->spr_format == MTK_PANEL_BGRG_RGBG_TYPE))) {
 		switch (mode) {
 		case OD_MODE_TYPE_RGB444:
 		case OD_MODE_TYPE_COMPRESS_12:
@@ -8096,8 +8098,9 @@ static int mtk_oddmr_od_init(struct mtk_ddp_comp *comp, void *data)
 	int ret, idx, table_idx, pm_ret = 0;
 	struct cmdq_client *client = NULL;
 	bool od_support = oddmr_data->primary_data->od_support;
-	uint32_t value = 0, mask = 0;
+	uint32_t value = 0, mask = 0, i = 0;
 	uint32_t cnts = od_param->od_basic_info.basic_param.table_cnt;
+	struct mtk_oddmr_pq_param *basic_pq = &od_param->od_basic_info.basic_pq;
 
 	ODDMRAPI_LOG("+\n");
 	DDPMSG("%s+\n",__func__);
@@ -8143,6 +8146,17 @@ static int mtk_oddmr_od_init(struct mtk_ddp_comp *comp, void *data)
 			return -1;
 		}
 		oddmr_data->primary_data->od_state = ODDMR_LOAD_DONE;
+		if (oddmr_data->data->od_version >= MTK_OD_V3) {
+			for (i = 0; i < basic_pq->counts; i++) {
+				if (basic_pq->param[i].addr == MT6991_DISP_ODDMR_OD_SCALING_6) {
+					oddmr_data->od_data.spr_rgbg_mode = (basic_pq->param[i].value & 0x8) >> 3;
+					break;
+				}
+			}
+			ODDMRAPI_LOG("spr_rgbg_mode %d (0x%x = 0x%x)\n", oddmr_data->od_data.spr_rgbg_mode,
+				basic_pq->param[i].addr, basic_pq->param[i].value);
+		}
+
 		if (oddmr_data->data->od_version >= MTK_OD_V2) {
 			SET_VAL_MASK(value, mask, 1, REG_OD_RD_REG_EN); //for sram read
 			mtk_oddmr_write_mask(comp, value, DISP_ODDMR_OD_UDMA_CTR_0, mask, NULL);
