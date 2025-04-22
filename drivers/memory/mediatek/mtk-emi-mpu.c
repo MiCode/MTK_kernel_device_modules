@@ -24,7 +24,9 @@
 struct emi_mpu *global_emi_mpu;
 EXPORT_SYMBOL_GPL(global_emi_mpu);
 unsigned int smc_clear;
-unsigned int dump_axid;
+static unsigned int dump_axid;
+static unsigned int reset;
+unsigned int emi_mpu_irq_count;
 
 static void set_regs(
 	struct reg_info_t *reg_list, unsigned int reg_cnt,
@@ -187,6 +189,10 @@ ignore_violation:
 	for (emi_id = 0; emi_id < mpu->emi_cen_cnt; emi_id++)
 		clear_violation(mpu, emi_id);
 
+	if ((emi_mpu_irq_count > 100) && reset)
+		BUG_ON(1);
+	++emi_mpu_irq_count;
+
 	return IRQ_HANDLED;
 }
 
@@ -344,6 +350,8 @@ static int emimpu_probe(struct platform_device *pdev)
 	unsigned int *dump_list;
 	unsigned int *bypass_r_list;
 
+	emi_mpu_irq_count = 0;
+
 	dev_info(&pdev->dev, "driver probed\n");
 
 	if (!emicen_node) {
@@ -367,6 +375,12 @@ static int emimpu_probe(struct platform_device *pdev)
 		"dump-axid", &dump_axid);
 	if (!ret)
 		dev_info(&pdev->dev, "Need to dump axid\n");
+
+	reset = 0;
+	ret = of_property_read_u32(emimpu_node,
+		"reset", &reset);
+	if (!ret)
+		dev_info(&pdev->dev, "Need to reset\n");
 
 	size = of_property_count_elems_of_size(emimpu_node,
 		"bypass-r-axi", sizeof(char));
