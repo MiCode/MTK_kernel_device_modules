@@ -2220,25 +2220,25 @@ static inline void Prepare_Enable_ccf_clock(enum ISP_DEV_NODE_ENUM module)
 	/* must keep this clk open order: */
 	/* ISP PM domain -> CAMTG/CAMSV clock */
 
-	ret = pm_runtime_get_sync(isp_devs[ISP_CAMSYS_CONFIG_IDX].dev);
+	ret = pm_runtime_resume_and_get(isp_devs[ISP_CAMSYS_CONFIG_IDX].dev);
 	if (ret < 0)
 		LOG_NOTICE("cannot pm runtime get ISP_CAMSYS_CONFIG_IDX mtcmos\n");
 
 	if (module == ISP_CAM_A_IDX) {
-		ret = pm_runtime_get_sync(isp_devs[ISP_CAM_A_IDX].dev);
+		ret = pm_runtime_resume_and_get(isp_devs[ISP_CAM_A_IDX].dev);
 		if (ret < 0)
 			LOG_NOTICE("cannot pm runtime get ISP_CAM_A_IDX mtcmos\n");
 	}
 
 	if (module == ISP_CAM_B_IDX) {
-		ret = pm_runtime_get_sync(isp_devs[ISP_CAM_B_IDX].dev);
+		ret = pm_runtime_resume_and_get(isp_devs[ISP_CAM_B_IDX].dev);
 		if (ret < 0)
 			LOG_NOTICE("cannot pm runtime get ISP_CAM_B_IDX mtcmos\n");
 	}
 
 	if (IS_3RAW_PLATFORM(g_platform_id)) {
 		if (module == ISP_CAM_C_IDX) {
-			ret = pm_runtime_get_sync(isp_devs[ISP_CAM_C_IDX].dev);
+			ret = pm_runtime_resume_and_get(isp_devs[ISP_CAM_C_IDX].dev);
 			if (ret < 0)
 				LOG_NOTICE("cannot pm runtime get ISP_CAM_C_IDX mtcmos\n");
 		}
