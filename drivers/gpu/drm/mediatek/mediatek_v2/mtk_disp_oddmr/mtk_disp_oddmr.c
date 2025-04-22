@@ -1521,11 +1521,6 @@ static void mtk_oddmr_od_hsk(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg)
 	mtk_oddmr_write(comp, hsk_0, DISP_ODDMR_OD_HSK_0, pkg);
 	mtk_oddmr_write(comp, hsk_1, DISP_ODDMR_OD_HSK_1, pkg);
 	mtk_oddmr_write(comp, hsk_2, DISP_ODDMR_OD_HSK_2, pkg);
-	if (oddmr_data->data->od_version >= MTK_OD_V3) {
-		mtk_oddmr_write(comp, 0xFFF, DISP_ODDMR_OD_HSK_3, pkg);
-		mtk_oddmr_write(comp, 0x3, DISP_ODDMR_OD_HSK_4, pkg);
-		return;
-	}
 	mtk_oddmr_write(comp, 0, DISP_ODDMR_OD_HSK_3, pkg);
 	mtk_oddmr_write(comp, 0x8003, DISP_ODDMR_OD_HSK_4, pkg);
 }
@@ -1674,10 +1669,7 @@ static void mtk_oddmr_od_init_end(struct mtk_ddp_comp *comp, struct cmdq_pkt *ha
 		return;
 	}
 	//od reset
-	if (oddmr_data->data->od_version >= MTK_OD_V3) {
-		mtk_oddmr_set_top_clk_force(comp, 1, handle); //needed by writing sram and udma init
-		mtk_oddmr_set_od_clk(comp, 1, handle);
-	} else if (oddmr_data->data->od_version == MTK_OD_V2) {
+	if (oddmr_data->data->od_version >= MTK_OD_V2) {
 		mtk_oddmr_set_top_clk_force(comp, 1, handle); //needed by writing sram and udma init
 		mtk_oddmr_set_od_clk(comp, 1, handle);
 		mtk_oddmr_write(comp, 0x200, MT6991_DISP_ODDMR_OD_SW_RESET, handle);
