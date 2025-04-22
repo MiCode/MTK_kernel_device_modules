@@ -445,9 +445,6 @@ void engine_enc_self_check_before_kick(struct engine_control_t *ctrl)
 	if (!static_branch_unlikely(&engine_rtff_check))
 		return;
 
-	if (unlikely(!hwz))
-		return;
-
 	/*
 	 * Check fifo status
 	 */
@@ -501,9 +498,6 @@ void engine_dec_self_check_before_kick(struct engine_control_t *ctrl)
 	bool rtff_fail = false;
 
 	if (!static_branch_unlikely(&engine_rtff_check))
-		return;
-
-	if (unlikely(!hwz))
 		return;
 
 	/*
