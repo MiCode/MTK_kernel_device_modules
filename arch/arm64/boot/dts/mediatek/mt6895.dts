@@ -11728,6 +11728,12 @@
 		clock-names = "btifc","apdmac";
 	};
 
+	connscp: connscp {
+		compatible = "mediatek,mt6895-conn_scp";
+		scp-shm-size = <0x20000>;
+		ipi-mbox-size = <64>;
+	};
+
 	consys: consys@18000000 {
 		compatible = "mediatek,mt6895-consys";
 		#thermal-sensor-cells = <0>;
@@ -11761,8 +11767,6 @@
 		emi-alignment = <0x100000>;
 		emi-max-addr = <0x90000000>;
 		tcxo_support = "false";
-		scp-shm-addr = <0>;
-		scp-shm-size = <0x20000>;
 	};
 
 	bt: bt@18000000 {
