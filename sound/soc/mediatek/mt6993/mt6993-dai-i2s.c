@@ -1905,7 +1905,6 @@ static int mtk_is_i2s_low_power(int i2s_num)
 
 	i2s_bit_shift = i2s_num - MT6993_DAI_I2S_IN0;
 	if (i2s_bit_shift < 0 || i2s_bit_shift > MT6993_DAI_I2S_MAX_NUM) {
-		pr_debug("%s(), err i2s_num: %d\n", __func__, i2s_num);
 		return 0;
 	}
 	return (i2s_low_power_mask >> i2s_bit_shift) & 0x1;
@@ -2626,8 +2625,7 @@ static int mtk_i2s_en_event(struct snd_soc_dapm_widget *w,
 	}
 	etdm_data = mtk_etdm_data[id];
 
-	dev_info(cmpnt->dev, "%s(), name %s, event 0x%x\n",
-		 __func__, w->name, event);
+	/* dev_info(cmpnt->dev, "%s(), name %s, event 0x%x\n", __func__, w->name, event); */
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
@@ -4640,10 +4638,7 @@ static int mtk_dai_i2s_config(struct mtk_base_afe *afe,
 	int ret = 0;
 	int pad_top = 0;
 
-	dev_info(afe->dev, "%s(), id %d, rate %d, format %d\n",
-		 __func__,
-		 i2s_id,
-		 rate, format);
+	/* dev_info(afe->dev, "%s(), id %d, rate %d, format %d\n", __func__, i2s_id, rate, format); */
 
 	if (id < 0 || id >= DAI_I2S_NUM) {
 		dev_warn(afe->dev, "%s(), i2s id is invalid", __func__);

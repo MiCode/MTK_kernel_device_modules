@@ -276,7 +276,7 @@ static int apll_enable(struct mtk_base_afe *afe, int apll, bool enable)
 	unsigned int reg_apll_en, reg_apll_toggle, reg_apll_sdm_on, apll_tuner_en = 0x0;
 	struct regmap *map = NULL;
 
-	pr_info("%s(), apll id %d is_enable %d\n", __func__, apll, enable);
+	/* pr_info("%s(), apll id %d is_enable %d\n", __func__, apll, enable); */
 
 	switch (apll) {
 	case MT6993_APLL1:
@@ -432,13 +432,14 @@ CLK_CK_PD_ADSP_INFRA_ERR:
 void mt6993_afe_disable_clock(struct mtk_base_afe *afe)
 {
 	struct mt6993_afe_private *afe_priv = afe->platform_priv;
-	unsigned int value;
+	unsigned int value = 0x0;
 
 	if (!afe->regmap) {
-		dev_dbg(afe->dev, "%s() successfully start\n", __func__);
+		dev_dbg(afe->dev, "%s() afe->regmap == NULL\n", __func__);
 	} else {
 		regmap_read(afe->regmap, AFE_IRQ_MCU_STATUS, &value);
-		dev_dbg(afe->dev, "%s() start, AFE_IRQ_MCU_STATUS = 0x%x\n", __func__, value);
+		if (value != 0)
+			dev_info(afe->dev, "%s() AFE_IRQ_MCU_STATUS = 0x%x\n", __func__, value);
 	}
 
 

@@ -997,11 +997,11 @@ static int mtk_afe_src_en_connect(struct snd_soc_dapm_widget *source,
 		src_priv = afe_priv->dai_priv[MT6993_DAI_SRC_3];
 
 	ret = (src_priv->dl_rate > 0 && src_priv->ul_rate > 0) ? 1 : 0;
-	if (!ret)
-		dev_info(afe->dev,
-			 "%s(), Error: rate not support, source %s, sink %s, dl_rate %d, ul_rate %d\n",
-			 __func__, source->name, sink->name,
-			 src_priv->dl_rate, src_priv->ul_rate);
+	/*
+	 * if (ret)
+	 * dev_info(afe->dev, "%s(), source %s, sink %s, dl_rate %d, ul_rate %d\n",
+	 * __func__, source->name, sink->name, src_priv->dl_rate, src_priv->ul_rate);
+	 */
 
 	return ret;
 }
@@ -1245,10 +1245,7 @@ static int mtk_dai_src_hw_free(struct snd_pcm_substream *substream,
 #ifdef GSRC_REG
 	unsigned int reg, sft, mask;
 #endif
-	dev_info(afe->dev, "%s(), id %d, stream %d\n",
-		 __func__,
-		 id,
-		 substream->stream);
+	/* dev_info(afe->dev, "%s(), id %d, stream %d\n", _func__, id, substream->stream); */
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
 		src_priv->dl_rate = 0;
