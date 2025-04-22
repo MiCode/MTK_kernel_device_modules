@@ -1051,28 +1051,23 @@ static void dpc_hrt_bw_set_v2(const u32 subsys, const u32 bw_in_mb, bool force)
 			g_priv->dvfs_bw.mml0_bw[DPC_TOTAL_HRT] = bw_in_mb;
 		else if (subsys == DPC_SUBSYS_MML1)
 			g_priv->dvfs_bw.mml1_bw[DPC_TOTAL_HRT] = bw_in_mb;
-		else if (subsys == DPC_SUBSYS_MML2)
-			g_priv->dvfs_bw.mml2_bw[DPC_TOTAL_HRT] = bw_in_mb;
 	}
 	total_bw = g_priv->dvfs_bw.disp_bw[DPC_TOTAL_HRT] +
 		   g_priv->dvfs_bw.mml0_bw[DPC_TOTAL_HRT] +
-		   g_priv->dvfs_bw.mml1_bw[DPC_TOTAL_HRT] +
-		   g_priv->dvfs_bw.mml2_bw[DPC_TOTAL_HRT];
+		   g_priv->dvfs_bw.mml1_bw[DPC_TOTAL_HRT];
 	mutex_unlock(&g_priv->dvfs_bw.lock);
 
 	if (unlikely(debug_dvfs)) {
 		if (bw_in_mb == U32_MAX)
-			DPCFUNC("subsys(%u) updated(%u,%u,%u, %u)", subsys,
+			DPCFUNC("subsys(%u) updated(%u,%u,%u)", subsys,
 				g_priv->dvfs_bw.disp_bw[DPC_TOTAL_HRT],
 				g_priv->dvfs_bw.mml0_bw[DPC_TOTAL_HRT],
-				g_priv->dvfs_bw.mml1_bw[DPC_TOTAL_HRT],
-				g_priv->dvfs_bw.mml2_bw[DPC_TOTAL_HRT]);
+				g_priv->dvfs_bw.mml1_bw[DPC_TOTAL_HRT]);
 		else
-			DPCFUNC("subsys(%u) bw_in_mb(%u) trigger(%u) updated(%u,%u,%u, %u)", subsys, bw_in_mb, force,
+			DPCFUNC("subsys(%u) bw_in_mb(%u) trigger(%u) updated(%u,%u,%u)", subsys, bw_in_mb, force,
 				g_priv->dvfs_bw.disp_bw[DPC_TOTAL_HRT],
 				g_priv->dvfs_bw.mml0_bw[DPC_TOTAL_HRT],
-				g_priv->dvfs_bw.mml1_bw[DPC_TOTAL_HRT],
-				g_priv->dvfs_bw.mml2_bw[DPC_TOTAL_HRT]);
+				g_priv->dvfs_bw.mml1_bw[DPC_TOTAL_HRT]);
 	}
 	dpc_mmp(hrt_bw, MMPROFILE_FLAG_PULSE, subsys << 16 | force, bw_in_mb);
 
@@ -1163,28 +1158,23 @@ static void dpc_srt_bw_set_v2(const u32 subsys, const u32 bw_in_mb, bool force)
 			g_priv->dvfs_bw.mml0_bw[DPC_TOTAL_SRT] = bw_in_mb;
 		else if (subsys == DPC_SUBSYS_MML1)
 			g_priv->dvfs_bw.mml1_bw[DPC_TOTAL_SRT] = bw_in_mb;
-		else if (subsys == DPC_SUBSYS_MML2)
-			g_priv->dvfs_bw.mml2_bw[DPC_TOTAL_SRT] = bw_in_mb;
 	}
 	total_bw = g_priv->dvfs_bw.disp_bw[DPC_TOTAL_SRT] +
 		   g_priv->dvfs_bw.mml0_bw[DPC_TOTAL_SRT] +
-		   g_priv->dvfs_bw.mml1_bw[DPC_TOTAL_SRT] +
-		   g_priv->dvfs_bw.mml2_bw[DPC_TOTAL_SRT];
+		   g_priv->dvfs_bw.mml1_bw[DPC_TOTAL_SRT];
 	mutex_unlock(&g_priv->dvfs_bw.lock);
 
 	if (unlikely(debug_dvfs)) {
 		if (bw_in_mb == U32_MAX)
-			DPCFUNC("subsys(%u) updated(%u,%u,%u, %u)", subsys,
+			DPCFUNC("subsys(%u) updated(%u,%u,%u)", subsys,
 				g_priv->dvfs_bw.disp_bw[DPC_TOTAL_SRT],
 				g_priv->dvfs_bw.mml0_bw[DPC_TOTAL_SRT],
-				g_priv->dvfs_bw.mml1_bw[DPC_TOTAL_SRT],
-				g_priv->dvfs_bw.mml2_bw[DPC_TOTAL_SRT]);
+				g_priv->dvfs_bw.mml1_bw[DPC_TOTAL_SRT]);
 		else
-			DPCFUNC("subsys(%u) bw_in_mb(%u) trigger(%u) updated(%u,%u,%u, %u)", subsys, bw_in_mb, force,
+			DPCFUNC("subsys(%u) bw_in_mb(%u) trigger(%u) updated(%u,%u,%u)", subsys, bw_in_mb, force,
 				g_priv->dvfs_bw.disp_bw[DPC_TOTAL_SRT],
 				g_priv->dvfs_bw.mml0_bw[DPC_TOTAL_SRT],
-				g_priv->dvfs_bw.mml1_bw[DPC_TOTAL_SRT],
-				g_priv->dvfs_bw.mml2_bw[DPC_TOTAL_SRT]);
+				g_priv->dvfs_bw.mml1_bw[DPC_TOTAL_SRT]);
 	}
 	dpc_mmp(srt_bw, MMPROFILE_FLAG_PULSE, subsys << 16 | force, bw_in_mb);
 
