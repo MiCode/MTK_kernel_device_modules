@@ -66,7 +66,7 @@ static struct notifier_block *core_ctl_freq_qos_min_notifier;
 #define MAX_NR_POLICY	8
 
 static int init_thres_table(void);
-static unsigned int over_thres[MAX_CLUSTER_NR] = {50, 50, 50};
+static unsigned int over_thres[MAX_CLUSTER_NR] = {70, 70, 50};
 static struct cluster_over_thres_stats cluster_over_thres_table[MAX_CLUSTER_NR];
 
 void sched_max_util_task(int *util)
