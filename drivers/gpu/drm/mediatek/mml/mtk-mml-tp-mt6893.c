@@ -542,6 +542,8 @@ static const struct mml_topology_ops tp_ops_mt6893 = {
 
 static __init int mml_topology_ip_init(void)
 {
+	mml_dc = 0x1;
+
 	return mml_topology_register_ip(TOPOLOGY_PLATFORM, &tp_ops_mt6893);
 }
 module_init(mml_topology_ip_init);

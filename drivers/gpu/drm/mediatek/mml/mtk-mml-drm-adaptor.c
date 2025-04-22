@@ -44,8 +44,9 @@ module_param(drm_max_cache_cfg, int, 0644);
  * bit 0: enable dc mode primary path
  * bit 1: enable dc mode 2
  */
-int mml_dc = 0x3;
+int mml_dc;
 module_param(mml_dc, int, 0644);
+EXPORT_SYMBOL(mml_dc);
 
 int mml_hrt_overhead = 100;
 module_param(mml_hrt_overhead, int, 0644);

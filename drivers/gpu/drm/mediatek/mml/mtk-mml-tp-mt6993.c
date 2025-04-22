@@ -1764,6 +1764,7 @@ static __init int mml_topology_ip_init(void)
 {
 	/* init hrt mode as max ostd */
 	mtk_mml_hrt_mode = MML_HRT_ENABLE;
+	mml_dc = 0x3;
 
 	return mml_topology_register_ip(TOPOLOGY_PLATFORM, &tp_ops_mt6993);
 }

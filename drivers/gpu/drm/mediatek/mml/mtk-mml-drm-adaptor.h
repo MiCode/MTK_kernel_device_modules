@@ -12,6 +12,8 @@
 
 #include "mtk-mml.h"
 
+extern int mml_dc;
+
 struct mml_drm_ctx;
 struct cmdq_pkt;
 
