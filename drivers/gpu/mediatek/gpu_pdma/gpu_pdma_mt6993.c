@@ -1278,7 +1278,12 @@ static int gpu_pdma_probe(struct platform_device *pdev)
 	INIT_LIST_HEAD(&g_pdma_dev->ctx_list_active);
 	INIT_LIST_HEAD(&g_pdma_dev->ctx_list_retired);
 	mutex_init(&g_pdma_dev->pdma_device_lock);
-	dma_set_mask(g_pdma_dev->dev, DMA_BIT_MASK(64ULL));
+
+	ret = dma_set_mask(g_pdma_dev->dev, DMA_BIT_MASK(64ULL));
+	if (ret) {
+		pr_info("%s Fail to set DMA mask\n", __func__);
+		return ret;
+	}
 
 	g_pdma_dev->dummy_reg_page_virt = __get_free_pages(gfp, 0);
 	if (!g_pdma_dev->dummy_reg_page_virt) {
@@ -1421,8 +1426,6 @@ static int gpu_pdma_probe(struct platform_device *pdev)
 	ret = pdma_get_chipid(g_pdma_dev);
 	if (ret)
 		pr_info("@%s: __get sw version fail: %d\n", __func__, ret);
-
-	dma_set_mask(g_pdma_dev->dev, DMA_BIT_MASK(64ULL));
 
 	return ret;
 }
