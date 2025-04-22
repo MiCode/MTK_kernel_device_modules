@@ -209,18 +209,6 @@ enum MT_CPU_PM_LP_SMC_UID {
 	CPU_PM_CPU_RET_CTRL
 };
 
-enum mt_retention_mode {
-	MT_RET_CPU,
-	/* for driver to update the debounce of the specific CPU type */
-	MT_RET_LCPU,
-	MT_RET_MCPU,
-	MT_RET_BCPU,
-	MT_RET_DSU,
-	/* for driver to update the debounce of the specific DSU ret type */
-	MT_RET_DSU_FC,
-	MT_RET_DSU_FL,
-};
-
 enum MT_CPU_PM_CTRL {
 	BUCK_MODE_CTRL,
 	ARMPLL_MODE_CTRL,
