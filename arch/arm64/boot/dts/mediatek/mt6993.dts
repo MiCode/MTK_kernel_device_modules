@@ -22631,6 +22631,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 	pkvm: pkvm {
 		status = "disable";
+		mtkcam-security-cam-normal-preview-support = "disable";
 	};
 
 };

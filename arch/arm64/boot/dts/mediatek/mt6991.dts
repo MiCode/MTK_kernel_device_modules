@@ -20514,6 +20514,7 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 
 	pkvm: pkvm {
 		status = "disable";
+		mtkcam-security-cam-normal-preview-support = "disable";
 	};
 };
 
