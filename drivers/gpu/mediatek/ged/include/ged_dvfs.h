@@ -404,4 +404,10 @@ int ged_dvfs_query_power_state_time(u64 *off_time, u64 *idle_time, u64 *on_time,
 //GPU average loading part:
 int ged_dvfs_query_loading(u64 *sum_loading, u64 *sum_delta_time);
 /* MBrain end */
+
+void ged_trace_fw_soi_enabled(bool fw_soi_enabled);
+void ged_trace_scheduler_state(unsigned int scheduler_state);
+void ged_trace_ast_cond(int ast_cond);
+void ged_trace_ast(int ast);
+void ged_trace_idle_timer_enabled(bool val);
 #endif

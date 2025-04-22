@@ -221,6 +221,91 @@ TRACE_EVENT(GPU_Power__Policy__APO_Frame_Time,
 	TP_printk("apo_frame_time=%u", __entry->apo_frame_time)
 );
 
+TRACE_EVENT(GPU_Power__Policy__APO_FW_SOI_Enabled,
+
+	TP_PROTO(bool apo_fw_soi_enabled),
+
+	TP_ARGS(apo_fw_soi_enabled),
+
+	TP_STRUCT__entry(
+		__field(bool, apo_fw_soi_enabled)
+	),
+
+	TP_fast_assign(
+		__entry->apo_fw_soi_enabled = apo_fw_soi_enabled;
+	),
+
+	TP_printk("apo_fw_soi_enabled=%u", __entry->apo_fw_soi_enabled)
+);
+
+TRACE_EVENT(GPU_Power__Policy__APO_Scheduler_State,
+
+	TP_PROTO(unsigned int apo_scheduler_state),
+
+	TP_ARGS(apo_scheduler_state),
+
+	TP_STRUCT__entry(
+		__field(unsigned int, apo_scheduler_state)
+	),
+
+	TP_fast_assign(
+		__entry->apo_scheduler_state = apo_scheduler_state;
+	),
+
+	TP_printk("apo_scheduler_state=%u", __entry->apo_scheduler_state)
+);
+
+TRACE_EVENT(GPU_Power__Policy__APO_AST_Cond,
+
+	TP_PROTO(int apo_ast_cond),
+
+	TP_ARGS(apo_ast_cond),
+
+	TP_STRUCT__entry(
+		__field(int, apo_ast_cond)
+	),
+
+	TP_fast_assign(
+		__entry->apo_ast_cond = apo_ast_cond;
+	),
+
+	TP_printk("apo_ast_cond=%d", __entry->apo_ast_cond)
+);
+
+TRACE_EVENT(GPU_Power__Policy__APO_AST,
+
+	TP_PROTO(int apo_ast),
+
+	TP_ARGS(apo_ast),
+
+	TP_STRUCT__entry(
+		__field(int, apo_ast)
+	),
+
+	TP_fast_assign(
+		__entry->apo_ast = apo_ast;
+	),
+
+	TP_printk("apo_ast=%d", __entry->apo_ast)
+);
+
+TRACE_EVENT(GPU_Power__Policy__APO_Idle_Timer_Enabled,
+
+	TP_PROTO(bool apo_idle_timer_enabled),
+
+	TP_ARGS(apo_idle_timer_enabled),
+
+	TP_STRUCT__entry(
+		__field(bool, apo_idle_timer_enabled)
+	),
+
+	TP_fast_assign(
+		__entry->apo_idle_timer_enabled = apo_idle_timer_enabled;
+	),
+
+	TP_printk("apo_idle_timer_enabled=%u", __entry->apo_idle_timer_enabled)
+);
+
 TRACE_EVENT(GPU_DVFS__Policy__VERSION,
 
 	TP_PROTO(unsigned int kinfo, unsigned int ebinfo),

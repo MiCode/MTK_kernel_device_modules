@@ -1891,6 +1891,36 @@ EXPORT_SYMBOL(dump_pm_callback_kbase_info);
 #if IS_BUILTIN(CONFIG_MTK_GPU_SUPPORT)
 #endif /* CONFIG_MTK_GPU_SUPPORT */
 
+void ged_trace_fw_soi_enabled(bool fw_soi_enabled)
+{
+	trace_GPU_Power__Policy__APO_FW_SOI_Enabled(fw_soi_enabled);
+}
+EXPORT_SYMBOL(ged_trace_fw_soi_enabled);
+
+void ged_trace_scheduler_state(unsigned int scheduler_state)
+{
+	trace_GPU_Power__Policy__APO_Scheduler_State(scheduler_state);
+}
+EXPORT_SYMBOL(ged_trace_scheduler_state);
+
+void ged_trace_ast_cond(int ast_cond)
+{
+	trace_GPU_Power__Policy__APO_AST_Cond(ast_cond);
+}
+EXPORT_SYMBOL(ged_trace_ast_cond);
+
+void ged_trace_ast(int ast)
+{
+	trace_GPU_Power__Policy__APO_AST(ast);
+}
+EXPORT_SYMBOL(ged_trace_ast);
+
+void ged_trace_idle_timer_enabled(bool val)
+{
+	trace_GPU_Power__Policy__APO_Idle_Timer_Enabled(val);
+}
+EXPORT_SYMBOL(ged_trace_idle_timer_enabled);
+
 GED_ERROR ged_notify_sw_vsync_system_init(void)
 {
 	g_psNotifyWorkQueue = alloc_ordered_workqueue("ged_notify_sw_vsync",
