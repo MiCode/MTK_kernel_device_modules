@@ -866,6 +866,7 @@ enum MTK_CRTC_ABILITY {
 	ABILITY_STASH_CMD = BIT(15),
 	ABILITY_FRAME_SUBMIT = BIT(16),
 	ABILITY_HW_COUNTING = BIT(17),
+	ABILITY_WAIT_EPT = BIT(18),
 };
 
 struct mtk_drm_wb_caps {
@@ -2228,6 +2229,7 @@ enum MTK_REQUEST_RETRIG_TYPE : unsigned int {
 struct mtk_retrig {
 	unsigned int crtc_id;
 	unsigned int present_fence_idx;
+	uint64_t expected_present_ts;
 };
 
 enum MTK_PARTIAL_UPDATE_STATE {
