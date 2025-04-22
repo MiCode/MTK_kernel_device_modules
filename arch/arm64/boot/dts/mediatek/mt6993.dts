@@ -1732,7 +1732,7 @@
 		pwr-handle = <&disp_pwr_dev>;
 		bringup-stage = <0>;
 		disp-pd-id = <0>;
-		operating-points-v2 = <&opp_table_disp>;
+		operating-points-v2 = <&opp_table_disp>, <&opp_table_disp_b0>;
 		clocks =
 			<&mmdvfs_mux MMDVFS_USER_DISP>;
 		clock-names =
