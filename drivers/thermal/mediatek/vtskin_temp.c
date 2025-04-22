@@ -115,12 +115,13 @@ static int vtskin_get_temp(struct thermal_zone_device *tz, int *temp)
 {
 	struct vtskin_temp_tz *skin_tz = (struct vtskin_temp_tz *)tz->devdata;
 	struct vtskin_data *skin_data = skin_tz->skin_data;
+	int ret;
 
 	mutex_lock(&skin_data->lock);
-	__vtskin_get_temp(tz, temp);
+	ret = __vtskin_get_temp(tz, temp);
 	mutex_unlock(&skin_data->lock);
 
-	return 0;
+	return ret;
 }
 
 static const struct thermal_zone_device_ops vtskin_ops = {
