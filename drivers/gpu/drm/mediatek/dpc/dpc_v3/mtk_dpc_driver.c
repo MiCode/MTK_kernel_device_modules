@@ -1531,9 +1531,9 @@ static void mt6993_set_mtcmos(const u32 subsys, const enum mtk_dpc_mtcmos_mode m
 	}
 
 	if (subsys == DPC3_SUBSYS_DISP)
-		g_priv->mtcmos_cfg[DPC3_SUBSYS_DIS1A].mode = mode;
+		g_priv->mtcmos_cfg[DPC3_SUBSYS_DIS1A].mode = (enum mtk_dpc_mtcmos_mode)en;
 	else if (subsys < g_priv->subsys_cnt)
-		g_priv->mtcmos_cfg[subsys].mode = mode;
+		g_priv->mtcmos_cfg[subsys].mode = (enum mtk_dpc_mtcmos_mode)en;
 
 	spin_unlock_irqrestore(&g_priv->mtcmos_cfg_lock, flags);
 
