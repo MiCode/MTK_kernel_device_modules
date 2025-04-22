@@ -5723,6 +5723,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,usb-mbist = <&usbcfg_ao_mbist_clk>;
 			mediatek,vs-voter = <&mt6661_4 0x1787 0x01 1>;
 			mediatek,uds = <&usb_dp_selector 19>;
+			mediatek,u2-lpm-quirks = <0x1>;
 			usb-role-switch;
 			cdp-block;
 			usb-psy-name = "mtk-master-charger";
