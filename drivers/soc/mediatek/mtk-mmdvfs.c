@@ -707,7 +707,10 @@ static int mmdvfs_probe(struct platform_device *pdev)
 			     "mediatek,action", &drv_data->action);
 	drv_data->disp_parallel = of_property_read_bool(dev->of_node, "mediatek,disp-parallel");
 	/* Get voltage info from opp table */
-	dev_pm_opp_of_add_table(dev);
+	ret = dev_pm_opp_of_add_table(dev);
+	if (ret)
+		return ret;
+
 	freq = 0;
 	while (!IS_ERR(opp = dev_pm_opp_find_freq_ceil(dev, &freq))) {
 		drv_data->voltages[drv_data->num_voltages] =
