@@ -634,19 +634,22 @@ static int mt6993_client_input_show(struct seq_file *m, void *v)
 {
 	struct client_work *cw;
 
+	if (!first_dump) {
+		mt6993_request_opp_table();
+		first_dump = 1;
+	}
+
 	mutex_lock(&lock);
 
 	if (list_empty(&client_list)) {
 		seq_puts(m, "Client list is empty\n");
 	} else {
 		list_for_each_entry(cw, &client_list, list) {
-			seq_printf(m, "\nRequest ID: %d\nLower Limit: %d\nUpper Limit: %d\n\n",
-				cw->request_id, cw->lower_limit, cw->upper_limit);
+			if(cw->request_id == 5)
+				seq_printf(m, "%d,%d\n",
+					opp_level_pll_freq[cw->upper_limit], opp_level_pll_freq[cw->lower_limit]);
 		}
 	}
-
-	seq_printf(m, "Global Lower Limit now is: %d\n", global_lower_limit);
-	seq_printf(m, "Global Upper Limit now is: %d\n", global_upper_limit);
 
 	mutex_unlock(&lock);
 

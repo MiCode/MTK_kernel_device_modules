@@ -6,6 +6,7 @@
 #include "apu_top.h"
 #include "aputop_log.h"
 #include "aputop_rpmsg.h"
+#include <linux/delay.h>
 #include "mt6993_apupwr.h"
 #include "mt6993_apupwr_prot.h"
 #define LOCAL_DBG	(1)
@@ -495,17 +496,30 @@ out:
 void mt6993_request_opp_table(void)
 {
 	struct aputop_rpmsg_data rpmsg_data;
+	int retry = 10, ret = 0;
 
 	opp_request_bit = 1;
 	memset(&rpmsg_data, 0, sizeof(struct aputop_rpmsg_data));
 
 	rpmsg_data.cmd = APUTOP_DUMP_OPP_TBL;
 	rpmsg_data.data0 = 1; // pseudo data
-	aputop_send_rpmsg(&rpmsg_data, 100);
+	do {
+		ret = aputop_send_rpmsg(&rpmsg_data, 100);
+		if (opp_level_pll_freq[THERMAL_USER_MID_OPP_VAL - 1] != 0)
+			break;
+		udelay(1000);
+	} while (--retry);
 
+	retry = 10;
 	rpmsg_data.cmd = APUTOP_DUMP_OPP_TBL2;
 	rpmsg_data.data0 = 1; // pseudo data
-	aputop_send_rpmsg(&rpmsg_data, 100);
+	do {
+		ret = aputop_send_rpmsg(&rpmsg_data, 100);
+		if (opp_level_pll_freq[OPP_TABLE_SIZE - 1] != 0)
+			break;
+		udelay(1000);
+	} while (--retry);
+
 }
 
 static void save_opp_table(struct tiny_dvfs_opp_tbl *tbl, int start_index)
@@ -514,15 +528,6 @@ static void save_opp_table(struct tiny_dvfs_opp_tbl *tbl, int start_index)
 	int size, i, j;
 
 	size = tbl->tbl_size;
-#if LOCAL_DBG
-	pr_info("size = %d, Saving OPP Table Data:\n", size);
-	for (i = 0; i < size; i++) {
-		pr_info("OPP %d: vapu=%d, vsram=%d", i, tbl->opp[i].vapu, tbl->opp[i].vsram);
-		for (j = 0; j < PLL_TLA; j++)
-			pr_info(" pll_freq[%d]=%d", j, tbl->opp[i].pll_freq[j]);
-		pr_info("\n");
-	}
-#endif
 	memcpy(&mytbl, tbl, sizeof(struct tiny_dvfs_opp_tbl));
 	size = mytbl.tbl_size;
 
