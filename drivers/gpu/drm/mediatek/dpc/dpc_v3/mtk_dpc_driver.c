@@ -2777,8 +2777,13 @@ static void dpc_get_avail_urate_freq(struct device *dev)
 	int i = 0;
 	struct dev_pm_opp *opp;
 	unsigned long freq;
+	int ret;
 
-	dev_pm_opp_of_add_table(dev);
+	ret = dev_pm_opp_of_add_table(dev);
+	if (ret < 0) {
+		pr_info("fail to init opp table: %d\n", ret);
+		return;
+	}
 	step_size = dev_pm_opp_get_opp_count(dev);
 	g_urate_freq_steps = kcalloc(step_size, sizeof(unsigned long), GFP_KERNEL);
 	freq = 0;
