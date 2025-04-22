@@ -103,20 +103,22 @@
 #define IBUF_POLL_TIMEOUT	100
 
 /* dma debug info*/
-#define DMA_DEFAULT_VALUE	0
-#define DMA_NOT_TX_REQUEST	-1
-#define DMA_POLL_CNT		-2
-#define DMA_DESC_CNT		-3
-#define DMA_RESET_FAIL		-4
-#define DMA_TX_ENABLE_FAIL	-5
-#define DMA_U_STATE		-6
-#define DMA_D_STATE		-7
-#define DMA_RX_ENABLE_FAIL	-8
-#define DMA_FLUSH_FAIL		-9
-#define DMA_KFIFO_OP_ERR	-10
-#define DMA_DESC_NULL		-11
-#define DMA_RX_RETRY_FAIL	-12
-
+enum uart_dma_debug_info {
+	DMA_DEFAULT_VALUE,
+	DMA_NOT_TX_REQUEST,
+	DMA_POLL_CNT,
+	DMA_DESC_CNT,
+	DMA_RESET_FAIL,
+	DMA_TX_ENABLE_FAIL,
+	DMA_U_STATE,
+	DMA_D_STATE,
+	DMA_RX_ENABLE_FAIL,
+	DMA_FLUSH_FAIL,
+	DMA_KFIFO_OP_ERR,
+	DMA_DESC_NULL,
+	DMA_RX_RETRY_FAIL,
+	DEBUG_INFO_MAX = 31,
+};
 /* dma debug buf size*/
 #define LOG_BUG_SIZE		20
 
@@ -174,7 +176,7 @@ struct mtk_chan {
 	int chan_desc_count;
 	spinlock_t dma_lock;
 	atomic_t rxdma_state;
-	int chan_debug_value;
+	unsigned int chan_debug_value;
 
 	unsigned int irq_wg;
 	unsigned int rx_status;
@@ -199,6 +201,7 @@ struct mtk_chan {
 	struct uart_info rec_info[UART_RECORD_COUNT];
 	unsigned int dma_debug_buf[LOG_BUG_SIZE];
 	int rx_chan_retry;
+	atomic_t apdma_status;
 };
 
 static unsigned long long num;
@@ -253,6 +256,17 @@ static void mtk_uart_apdma_write(struct mtk_chan *c,
 static unsigned int mtk_uart_apdma_read(struct mtk_chan *c, unsigned int reg)
 {
 	return readl(c->base + reg);
+}
+
+static void mtk8250_set_dma_fail_info(struct mtk_chan *c , unsigned int err)
+{
+	if (c == NULL)
+		return;
+
+	if (err && err <= DEBUG_INFO_MAX)
+		c->chan_debug_value |= 1 << err;
+	else
+		c->chan_debug_value = DMA_DEFAULT_VALUE;
 }
 
 static void mtk_uart_apdma_desc_free(struct virt_dma_desc *vd)
@@ -539,6 +553,15 @@ int mtk_uart_get_apdma_rx_state(void)
 }
 EXPORT_SYMBOL(mtk_uart_get_apdma_rx_state);
 
+void mtk_uart_set_apdma_rx_state(bool enable)
+{
+	if (enable)
+		atomic_inc(&hub_dma_rx_chan->rxdma_state);
+	else
+		atomic_dec(&hub_dma_rx_chan->rxdma_state);
+}
+EXPORT_SYMBOL(mtk_uart_set_apdma_rx_state);
+
 bool mtk_uart_get_apdma_handler_state(void)
 {
 	bool state1 = true;
@@ -550,15 +573,6 @@ bool mtk_uart_get_apdma_handler_state(void)
 }
 EXPORT_SYMBOL(mtk_uart_get_apdma_handler_state);
 
-void mtk_uart_set_apdma_rx_state(bool enable)
-{
-	if (enable )
-		atomic_inc(&hub_dma_rx_chan->rxdma_state);
-	else
-		atomic_dec(&hub_dma_rx_chan->rxdma_state);
-}
-EXPORT_SYMBOL(mtk_uart_set_apdma_rx_state);
-
 void mtk_uart_set_apdma_rx_irq(bool enable)
 {
 	if (enable)
@@ -567,6 +581,32 @@ void mtk_uart_set_apdma_rx_irq(bool enable)
 		mtk_uart_apdma_write(hub_dma_rx_chan, VFF_INT_EN, VFF_INT_EN_CLR_B);
 }
 EXPORT_SYMBOL(mtk_uart_set_apdma_rx_irq);
+
+int mtk_uart_get_apdma_status(struct dma_chan *chan)
+{
+	struct mtk_chan *c = NULL;
+
+	if (!chan)
+		return 0;
+	c = to_mtk_uart_apdma_chan(chan);
+	if (c == NULL)
+		return 0;
+	return atomic_read(&c->apdma_status);
+}
+EXPORT_SYMBOL(mtk_uart_get_apdma_status);
+
+void mtk_uart_set_apdma_status(struct dma_chan *chan, unsigned int status)
+{
+	struct mtk_chan *c = NULL;
+
+	if (!chan)
+		return;
+	c = to_mtk_uart_apdma_chan(chan);
+	if (c == NULL)
+		return;
+	atomic_set(&c->apdma_status, status);
+}
+EXPORT_SYMBOL(mtk_uart_set_apdma_status);
 
 void mtk_uart_set_apdma_clk(bool enable)
 {
@@ -773,7 +813,7 @@ static void mtk_uart_apdma_start_tx(struct mtk_chan *c)
 #if IS_ENABLED(CONFIG_MTK_UARTHUB)
 	if (c->is_hub_port) {
 		if (!mtk_uart_get_tx_res_status()) {
-			c->chan_debug_value = DMA_NOT_TX_REQUEST; /* tx_request is not set */
+			mtk8250_set_dma_fail_info(c, DMA_NOT_TX_REQUEST); /* tx_request is not set */
 			return;
 		}
 	}
@@ -789,12 +829,12 @@ static void mtk_uart_apdma_start_tx(struct mtk_chan *c)
 	}
 
 	if (poll_cnt == 0) {
-		c->chan_debug_value = DMA_POLL_CNT; /* poll_cnt ==0 */
+		mtk8250_set_dma_fail_info(c, DMA_POLL_CNT); /* poll_cnt ==0 */
 		return;
 	}
 
 	if (c->chan_desc_count <= 0) {
-		c->chan_debug_value = DMA_DESC_CNT; /* chan_desc_count <=0 */
+		mtk8250_set_dma_fail_info(c, DMA_DESC_CNT); /* chan_desc_count <=0 */
 		return;
 	}
 	wpt = mtk_uart_apdma_read(c, VFF_ADDR);
@@ -809,7 +849,7 @@ static void mtk_uart_apdma_start_tx(struct mtk_chan *c)
 		rst_status = mtk_uart_apdma_read(c, VFF_RST);
 		if (rst_status != 0) {
 			udelay(5);
-			c->chan_debug_value = DMA_RESET_FAIL; /* apdma reset fail */
+			mtk8250_set_dma_fail_info(c, DMA_RESET_FAIL); /* apdma reset fail */
 		}
 	}
 
@@ -827,7 +867,7 @@ static void mtk_uart_apdma_start_tx(struct mtk_chan *c)
 
 	mtk_uart_apdma_write(c, VFF_EN, VFF_EN_B);
 	if (mtk_uart_apdma_read(c, VFF_EN) != VFF_EN_B)
-		c->chan_debug_value = DMA_TX_ENABLE_FAIL; /* Enable TX fail */
+		mtk8250_set_dma_fail_info(c, DMA_TX_ENABLE_FAIL); /* Enable TX fail */
 
 	if (!mtk_uart_apdma_read(c, VFF_LEFT_SIZE)) {
 		mtk_uart_apdma_write(c, VFF_INT_EN, VFF_TX_INT_EN_B);
@@ -864,10 +904,10 @@ static void mtk_uart_apdma_start_tx(struct mtk_chan *c)
 				ret = kfifo_out_peek(&u_state->port.xmit_fifo,c->rec_info[idx].rec_buf,
 					min((unsigned int)dump_len, c->rec_info[idx].trans_len));
 				if(ret <= 0)
-					c->chan_debug_value = DMA_KFIFO_OP_ERR;
+					mtk8250_set_dma_fail_info(c, DMA_KFIFO_OP_ERR);
 			}
 		} else {
-			c->chan_debug_value = DMA_U_STATE; /* u_state==NULL */
+			mtk8250_set_dma_fail_info(c, DMA_U_STATE); /* u_state==NULL */
 		}
 	}
 #endif
@@ -894,7 +934,7 @@ static void mtk_uart_apdma_start_tx(struct mtk_chan *c)
 			}
 			if (poll_flush_cnt <= 0) {
 				mtk_save_uart_apdma_reg(chan,dma_reg_buf);
-				c->chan_debug_value = DMA_FLUSH_FAIL;
+				mtk8250_set_dma_fail_info(c, DMA_FLUSH_FAIL);
 				memcpy(c->dma_debug_buf,dma_reg_buf,sizeof(dma_reg_buf));
 			}
 		}
@@ -910,7 +950,7 @@ static void mtk_uart_apdma_start_rx(struct mtk_chan *c)
 	int idx;
 
 	if (d == NULL) {
-		c->chan_debug_value = DMA_D_STATE; /* FIX ME1! */
+		mtk8250_set_dma_fail_info(c, DMA_D_STATE); /* FIX ME1! */
 		return;
 	}
 	idx = (unsigned int)(c->rec_idx % UART_RECORD_COUNT);
@@ -944,7 +984,7 @@ static void mtk_uart_apdma_start_rx(struct mtk_chan *c)
 #endif
 	mtk_uart_apdma_write(c, VFF_EN, VFF_EN_B);
 	if (mtk_uart_apdma_read(c, VFF_EN) != VFF_EN_B)
-		c->chan_debug_value = DMA_RX_ENABLE_FAIL;  /* Enable RX fail */
+		mtk8250_set_dma_fail_info(c, DMA_RX_ENABLE_FAIL); /* Enable RX fail */
 }
 
 /* vchan_cookie_complete use irq_thread */
@@ -1446,7 +1486,7 @@ static void mtk_uart_apdma_issue_pending(struct dma_chan *chan)
 	int debug_value = 0;
 
 	spin_lock_irqsave(&c->vc.lock, flags);
-	c->chan_debug_value = DMA_DEFAULT_VALUE;
+	mtk8250_set_dma_fail_info(c, DMA_DEFAULT_VALUE);
 	if (vchan_issue_pending(&c->vc)) {
 		vd = vchan_next_desc(&c->vc);
 		c->desc = to_mtk_uart_apdma_desc(&vd->tx);
@@ -1459,8 +1499,8 @@ static void mtk_uart_apdma_issue_pending(struct dma_chan *chan)
 	debug_value = c->chan_debug_value;
 	spin_unlock_irqrestore(&c->vc.lock, flags);
 	if (debug_value) {
-		pr_info("[WARN]%s, debug_value[%d]\n", __func__, debug_value);
-		if (debug_value == DMA_FLUSH_FAIL && c->dir == DMA_MEM_TO_DEV)
+		pr_info("[WARN]%s, debug_value[0x%x]\n", __func__, debug_value);
+		if ((debug_value & DMA_FLUSH_FAIL) && c->dir == DMA_MEM_TO_DEV)
 			mtk_print_apdma_reg("DMA_FLUSH_FAIL",c->dma_debug_buf);
 	}
 }
@@ -1477,6 +1517,9 @@ static int mtk_uart_apdma_slave_config(struct dma_chan *chan,
 
 static int mtk_uart_apdma_terminate_all(struct dma_chan *chan)
 {
+	if (!chan)
+		return -EINVAL;
+
 #if IS_ENABLED(CONFIG_MTK_UARTHUB)
 	struct mtk_uart_apdmadev *mtkd = to_mtk_uart_apdma_dev(chan->device);
 #endif
@@ -1488,15 +1531,17 @@ static int mtk_uart_apdma_terminate_all(struct dma_chan *chan)
 	bool state;
 
 #if IS_ENABLED(CONFIG_MTK_UARTHUB)
-	if (mtkd->support_hub && (mtkd->support_wakeup) && c->is_hub_port)
+	if (mtkd->support_hub && (mtkd->support_wakeup) && c->is_hub_port) {
+		if (!mtk_uart_get_apdma_status(chan))
+			return 0;
+
 		mtk_uart_set_apdma_clk(true);
+	}
 #endif
 	if (mtk_uart_apdma_read(c, VFF_INT_BUF_SIZE)) {
 		mtk_uart_apdma_write(c, VFF_FLUSH, VFF_FLUSH_B);
 		ret = readx_poll_timeout(readl, c->base + VFF_FLUSH,
 				  status, status != VFF_FLUSH_B, 10, 100);
-		dev_info(c->vc.chan.device->dev, "flush begin %s[%d]: %d\n",
-			c->dir == DMA_DEV_TO_MEM ? "RX":"TX", c->irq, ret);
 		/*
 		 * DMA hardware will generate a interrupt immediately
 		 * once flush done, so we need to wait the interrupt to be
@@ -1510,8 +1555,6 @@ static int mtk_uart_apdma_terminate_all(struct dma_chan *chan)
 		while (state)
 			irq_get_irqchip_state(c->irq,
 				IRQCHIP_STATE_ACTIVE, &state);
-		dev_info(c->vc.chan.device->dev, "flush end %s\n",
-			c->dir == DMA_DEV_TO_MEM ? "RX":"TX");
 	}
 
 	/*
@@ -1776,6 +1819,7 @@ static int mtk_uart_apdma_probe(struct platform_device *pdev)
 		c->cur_rec_idx = 0;
 		c->rx_chan_retry = 0;
 		atomic_set(&c->rxdma_state, 0);
+		atomic_set(&c->apdma_status, 0);
 	#if IS_ENABLED(CONFIG_MTK_UARTHUB)
 		c->is_hub_port = mtkd->support_hub & (1 << i);
 		if (c->is_hub_port) {

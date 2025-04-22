@@ -137,10 +137,14 @@ static struct uarthub_drv_cbs uarthub_drv_cbs;
 #define RX_SIZE_SCALE (1ULL << RX_SIZE_SHIFT)
 
 /* tx debug info */
-#define TX_DEFAULT_VALUE 0
-#define TX_RUNTING_STATUS_ERR -1
-#define TX_DMA_MAP_ERR -2
-#define TX_DMA_EBUSY -3
+enum uart_debug_info {
+	TX_DEFAULT_VALUE,
+	TX_RUNTING_STATUS_ERR,
+	TX_DMA_MAP_ERR,
+	TX_DMA_EBUSY,
+	DEBUG_INFO_MAX = 31,
+};
+
 
 #ifdef CONFIG_SERIAL_8250_DMA
 enum dma_rx_status {
@@ -228,7 +232,7 @@ struct mtk8250_data {
 	void *wakeup_param;
 	unsigned int apdma_peri_cg;
 	void __iomem *apdma_peri_cg_addr;
-	int tx_dbg_value;
+	unsigned int tx_dbg_value;
 };
 
 struct mtk8250_comp {
@@ -716,10 +720,15 @@ static void mtk8250_uart_tx_complete(void *param)
     uart_port_unlock_irqrestore(&p->port, flags);
 }
 
-static void mtk8250_set_tx_fail_info(struct mtk8250_data *data, int err)
+static void mtk8250_set_tx_fail_info(struct mtk8250_data *data, unsigned int err)
 {
-	if (data != NULL)
-		data->tx_dbg_value = err;
+	if (data == NULL)
+		return;
+
+	if (err && err <= DEBUG_INFO_MAX)
+		data->tx_dbg_value |= 1 << err;
+	else
+		data->tx_dbg_value = TX_DEFAULT_VALUE;
 }
 
 int mtk8250_uart_tx_dma(struct uart_8250_port *p)
@@ -2320,10 +2329,18 @@ static void mtk8250_dma_enable(struct uart_8250_port *up)
 
 static int mtk8250_startup(struct uart_port *port)
 {
-#ifdef CONFIG_SERIAL_8250_DMA
-	struct uart_8250_port *up = up_to_u8250p(port);
-	struct mtk8250_data *data = port->private_data;
+	struct uart_8250_port *up = NULL;
+	struct mtk8250_data *data = NULL;
 
+	if (!port)
+		return -EINVAL;
+	up = up_to_u8250p(port);
+	if (!up)
+		return -EINVAL;
+	data = port->private_data;
+	if (!data)
+		return -EINVAL;
+#ifdef CONFIG_SERIAL_8250_DMA
 	/* disable DMA for console */
 	if (uart_console(port))
 		up->dma = NULL;
@@ -2332,10 +2349,18 @@ static int mtk8250_startup(struct uart_port *port)
 		pr_info("[%s]: up->dma is null!!\n", __func__);
 		up->dma = data->dma;
 	}
-
 	if (up->dma) {
 		data->rx_status = DMA_RX_START;
 		kfifo_reset(&port->state->port.xmit_fifo);
+	#if IS_ENABLED(CONFIG_MTK_UARTHUB)
+		/*set dma status to START */
+		if (up->dma->txchan && up->dma->rxchan) {
+		#if defined(KERNEL_mtk_uart_set_apdma_status)
+			KERNEL_mtk_uart_set_apdma_status(up->dma->txchan, 0);
+			KERNEL_mtk_uart_set_apdma_status(up->dma->rxchan, 0);
+		#endif
+		}
+	#endif
 	}
 #endif
 	memset(&port->icount, 0, sizeof(port->icount));
@@ -2357,12 +2382,30 @@ static int mtk8250_startup(struct uart_port *port)
 static void mtk8250_shutdown(struct uart_port *port)
 {
 	int errflag_config = 0;
-#ifdef CONFIG_SERIAL_8250_DMA
-	struct uart_8250_port *up = up_to_u8250p(port);
-	struct mtk8250_data *data = port->private_data;
+	struct uart_8250_port *up = NULL;
+	struct mtk8250_data *data = NULL;
 
-	if (up->dma)
+	if (!port)
+		return;
+	up = up_to_u8250p(port);
+	if (!up)
+		return;
+	data = port->private_data;
+	if (!data)
+		return;
+#ifdef CONFIG_SERIAL_8250_DMA
+	if (up->dma) {
 		data->rx_status = DMA_RX_SHUTDOWN;
+	#if IS_ENABLED(CONFIG_MTK_UARTHUB)
+		/*set dma status to shutdown */
+		if (up->dma->txchan && up->dma->rxchan) {
+		#if defined(KERNEL_mtk_uart_set_apdma_status)
+			KERNEL_mtk_uart_set_apdma_status(up->dma->txchan, 1);
+			KERNEL_mtk_uart_set_apdma_status(up->dma->rxchan, 1);
+		#endif
+		}
+	#endif
+	}
 #endif
 
 	mutex_lock(&data->clk_mutex);
