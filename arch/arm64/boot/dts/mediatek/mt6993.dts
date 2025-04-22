@@ -6835,7 +6835,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,larb = <&smi_larb2 MTK_M4U_TO_PORT(SMMU_L2_P13_MDP_FAKE_ENG0)>;
 
 			/* dvfs */
-			operating-points-v2 = <&opp_table_disp>;
+			operating-points-v2 = <&opp_table_disp>, <&opp_table_disp_b0>;
 			mmqos-supply = <&mmqos>;
 
 			mediatek,mminfra-supply = <&mminfra_util>;
@@ -7080,7 +7080,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,larb = <&smi_larb3 MTK_M4U_TO_PORT(SMMU_L3_P13_MDP_FAKE_ENG0)>;
 
 			/* dvfs */
-			operating-points-v2 = <&opp_table_disp>;
+			operating-points-v2 = <&opp_table_disp>, <&opp_table_disp_b0>;
 			mmqos-supply = <&mmqos>;
 
 			mediatek,mminfra-supply = <&mminfra_util>;
@@ -7544,7 +7544,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,larb2 = <&smi_larb57 MTK_M4U_TO_PORT(SMMU_L57_P8_MDP_FAKE_ENG1)>;
 
 			/* dvfs */
-			operating-points-v2 = <&opp_table_disp>;
+			operating-points-v2 = <&opp_table_disp>, <&opp_table_disp_b0>;
 			mmqos-supply = <&mmqos>;
 
 			mediatek,mminfra-supply = <&mminfra_util>;
