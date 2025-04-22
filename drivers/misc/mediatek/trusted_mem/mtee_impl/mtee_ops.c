@@ -561,14 +561,15 @@ static int mtee_mem_reg_remove(void *peer_data, void *dev_desc)
 
 	UNUSED(ops_data);
 
+	/* GZ & FF-A */
+	MTEE_SESSION_LOCK();
+
 	if (is_pkvm_enabled()) {
 		/* pKVM & FF-A */
 		ret = pkvm_mtee_mem_reg_remove(peer_data, dev_desc);
+		MTEE_SESSION_UNLOCK();
 		return ret;
 	}
-
-	/* GZ & FF-A */
-	MTEE_SESSION_LOCK();
 
 	ret = KREE_ReleaseSecureMultichunkmem(sess_data->session_handle,
 					      sess_data->append_mem_handle);
