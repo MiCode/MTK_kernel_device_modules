@@ -68,9 +68,11 @@ module_param(debug_recover, int, 0644);
 #define VLP_MMINFRA_DONE_OFS 0x91c
 #define VOTE_RETRY_CNT 2500
 #define VOTE_DELAY_US 2
-#define POLL_DELAY_US 10
+#define POLL_DELAY_10US 10
+#define POLL_DELAY_1US 1
 #define TIMEOUT_300MS 300000
 #define TIMEOUT_30MS 30000
+#define TIMEOUT_10MS 10000
 
 #define HW_CCF_AP_VOTER_BIT			(0)
 #define HW_CCF_XPU0_BACKUP1_SET		(0x230)
@@ -202,6 +204,24 @@ static void set_devices_syscore(void)
 			dev_pm_syscore_device(d, true);
 		}
 	}
+}
+
+static u32 vdisp_hwccf_check_power(void)
+{
+#if IS_ENABLED(CONFIG_MTK_HWCCF)
+	return (hwccf_is_enabled(MM_HWCCF, HW_CCF_MTCMOS_GRP_0, HWCCF_VOTE, 19) << 19) | // DIS0A
+	       (hwccf_is_enabled(MM_HWCCF, HW_CCF_MTCMOS_GRP_0, HWCCF_VOTE, 20) << 20) | // DIS0B
+	       (hwccf_is_enabled(MM_HWCCF, HW_CCF_MTCMOS_GRP_0, HWCCF_VOTE, 21) << 21) | // DIS1A
+	       (hwccf_is_enabled(MM_HWCCF, HW_CCF_MTCMOS_GRP_0, HWCCF_VOTE, 22) << 22) | // DIS1B
+	       (hwccf_is_enabled(MM_HWCCF, HW_CCF_MTCMOS_GRP_0, HWCCF_VOTE, 23) << 23) | // OVL0
+	       (hwccf_is_enabled(MM_HWCCF, HW_CCF_MTCMOS_GRP_0, HWCCF_VOTE, 24) << 24) | // OVL1
+	       (hwccf_is_enabled(MM_HWCCF, HW_CCF_MTCMOS_GRP_0, HWCCF_VOTE, 25) << 25) | // OVL2
+	       (hwccf_is_enabled(MM_HWCCF, HW_CCF_MTCMOS_GRP_0, HWCCF_VOTE, 26) << 26) | // MML0
+	       (hwccf_is_enabled(MM_HWCCF, HW_CCF_MTCMOS_GRP_0, HWCCF_VOTE, 27) << 27) | // MML1
+	       (hwccf_is_enabled(MM_HWCCF, HW_CCF_MTCMOS_GRP_0, HWCCF_VOTE, 28) << 28);  // MML2
+#else
+	return 0;
+#endif
 }
 
 static s32 mtk_vdisp_get_power_cnt(void)
@@ -429,7 +449,7 @@ static void mminfra_hwv_pwr_ctrl(struct mtk_vdisp *priv, bool on)
 		mask = 0x3;
 
 	ret = readl_poll_timeout_atomic(priv->vlp_base + VLP_MMINFRA_DONE_OFS, value,
-					(value & 0x2) == 0x2, POLL_DELAY_US, TIMEOUT_300MS);
+					(value & 0x2) == 0x2, POLL_DELAY_10US, TIMEOUT_300MS);
 	if (ret < 0) {
 		VDISPERR("failed to wait voter free");
 		return;
@@ -439,15 +459,17 @@ static void mminfra_hwv_pwr_ctrl(struct mtk_vdisp *priv, bool on)
 
 	if (on) {
 		ret = readl_poll_timeout_atomic(priv->vlp_base + VLP_MMINFRA_DONE_OFS, value,
-						value == mask, POLL_DELAY_US, TIMEOUT_300MS);
+						value == mask, POLL_DELAY_10US, TIMEOUT_300MS);
 		if (ret < 0)
 			VDISPERR("failed to power on mminfra");
 	}
 }
 
+
 void mtk_vdisp_ctrl(int on_off, const char *c_n, uint32_t ops, uint32_t bit)
 {
-	int i = 0;
+	int i = 0, ret = 0;
+	u32 value = 0;
 
 	if (g_priv->bringup_stage)
 		return;
@@ -510,6 +532,11 @@ void mtk_vdisp_ctrl(int on_off, const char *c_n, uint32_t ops, uint32_t bit)
 
 			if (disp_dpc_driver.dpc_group_enable)
 				disp_dpc_driver.dpc_group_enable(7777, false);
+
+			ret = readx_poll_timeout(vdisp_hwccf_check_power, , value,
+						 value == 0, POLL_DELAY_1US, TIMEOUT_10MS);
+			if (ret)
+				VDISPERR("timeout waiting for all MTCMOS to be off (%#x)\n", value);
 
 		} else if (atomic_read(&g_vdisp_ctrl_cnt) == 0) {
 			/* POST OFF */
