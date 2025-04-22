@@ -3723,12 +3723,9 @@ static void vb2ops_vdec_buf_queue(struct vb2_buffer *vb)
 	 * bit2 for not support flag, other bits are reserved
 	 */
 	res_chg = ((src_chg & VDEC_RES_CHANGE) != 0U) ? true : false;
-	mtk_vcodec_unsupport = ((src_chg & VDEC_HW_NOT_SUPPORT) != 0) ?
-						   true : false;
-	need_seq_header = ((src_chg & VDEC_NEED_SEQ_HEADER) != 0U) ?
-					  true : false;
-	if (ret || !res_chg || mtk_vcodec_unsupport
-		|| need_seq_header) {
+	mtk_vcodec_unsupport = ((src_chg & VDEC_HW_NOT_SUPPORT) != 0) ? true : false;
+	need_seq_header = ((src_chg & VDEC_NEED_SEQ_HEADER) != 0U) ? true : false;
+	if (ret || !res_chg || mtk_vcodec_unsupport || need_seq_header) {
 		/*
 		 * fb == NULL menas to parse SPS/PPS header or
 		 * resolution info in src_mem. Decode can fail
@@ -3750,7 +3747,7 @@ static void vb2ops_vdec_buf_queue(struct vb2_buffer *vb)
 		src_vb = &src_vb2_v4l2->vb2_buf;
 		clean_free_bs_buffer(ctx, NULL);
 
-		need_log = ret || mtk_vcodec_unsupport || (need_seq_header && ctx->init_cnt < 5);
+		need_log = (ret && !mtk_vcodec_unsupport) || (need_seq_header && ctx->init_cnt < 5);
 		mtk_v4l2_debug((need_log ? 0 : 1),
 			"[%d] vdec_if_decode() src_buf=%d, size=%zu, fail=%d, res_chg=%d, mtk_vcodec_unsupport=%d, need_seq_header=%d, init_cnt=%d, BS %s",
 			ctx->id, src_vb->index,

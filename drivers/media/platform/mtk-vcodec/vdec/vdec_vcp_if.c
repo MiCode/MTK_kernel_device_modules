@@ -1510,6 +1510,7 @@ static int vdec_vcp_decode(unsigned long h_vdec, struct mtk_vcodec_mem *bs,
 	unsigned int bs_fourcc = inst->ctx->q_data[MTK_Q_DATA_SRC].fmt->fourcc;
 	unsigned int fm_fourcc = inst->ctx->q_data[MTK_Q_DATA_DST].fmt->fourcc;
 	unsigned int *errormap_info = &inst->ctx->errormap_info[0];
+	bool not_support = false, need_seq = false;
 	char debug_str[128] = {0};
 
 	/* bs == NULL means reset decoder */
@@ -1584,20 +1585,23 @@ static int vdec_vcp_decode(unsigned long h_vdec, struct mtk_vcodec_mem *bs,
 	if (!inst->vsi->output_async)
 		check_error_code(inst, MTK_VDEC_CORE);
 
-	if ((*src_chg & VDEC_NEED_SEQ_HEADER) != 0U)
+	if ((*src_chg & VDEC_NEED_SEQ_HEADER) != 0U) {
 		mtk_vcodec_debug(inst, "- need first seq header -");
-	else if ((*src_chg & VDEC_RES_CHANGE) != 0U)
+		need_seq = true;
+	} else if ((*src_chg & VDEC_RES_CHANGE) != 0U)
 		mtk_vcodec_debug(inst, "- resolution changed -");
-	else if ((*src_chg & VDEC_HW_NOT_SUPPORT) != 0U)
-		mtk_vcodec_err(inst, "- unsupported -");
+	else if ((*src_chg & VDEC_HW_NOT_SUPPORT) != 0U) {
+		mtk_vcodec_err(inst, "- unsupported (%d,%d) -", ret, inst->vcu.failure);
+		not_support = true;
+	}
 	/*ack timeout means vpud has crashed*/
-	if (ret != IPI_ACTION_DONE) {
-		mtk_vcodec_err(inst, "- IPI msg ack fail %d -", ret);
+	if (ret != IPI_ACTION_DONE && !not_support) {
+		mtk_vcodec_err(inst, "- IPI msg ack fail %d (failure %d) -", ret, inst->vcu.failure);
 		*src_chg = *src_chg | VDEC_HW_NOT_SUPPORT;
+		not_support = true;
 	}
 
-	if (ret < 0 || ((*src_chg & VDEC_HW_NOT_SUPPORT) != 0U)
-		|| ((*src_chg & VDEC_NEED_SEQ_HEADER) != 0U))
+	if (ret < 0 || not_support || need_seq)
 		goto err_free_fb_out;
 
 	inst->ctx->input_driven = inst->vsi->input_driven;
