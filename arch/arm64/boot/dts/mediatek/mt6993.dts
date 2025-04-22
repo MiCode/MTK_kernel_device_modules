@@ -14372,8 +14372,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			};
 		};
 
-		mmdebug-vcp {
+		mmdebug: mmdebug-vcp {
 			compatible = "mediatek,mmdebug-vcp";
+			vcp-supply = <&vcp>;
 		};
 
 		mmdvfs_mux: mmdvfs-mux {
@@ -14394,6 +14395,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,step-idx = /bits/ 8 <MMDVFS_VCP_CAM>;
 			mediatek,dpsw-thres = <1>;
 			mediatek,mmup-sram;
+			mmdebug-supply = <&mmdebug>;
+			vcp-supply = <&vcp>;
 		};
 
 		mmdvfs_debug: mmdvfs-debug {
