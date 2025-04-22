@@ -660,6 +660,10 @@ static s32 fg_config_frame(struct mml_comp *comp, struct mml_task *task,
 	mml_pq_msg("%s FG_CB_TBL_ADDR[%pad]", __func__, &fg_table_pa[1]);
 	mml_pq_msg("%s FG_CR_TBL_ADDR[%pad]", __func__, &fg_table_pa[2]);
 	mml_pq_msg("%s FG_LUT_TBL_ADDR[%pad]", __func__, &fg_table_pa[3]);
+	mml_pq_msg("%s FG_PPS_0[0x%x]", __func__, mml_pq_fg_get_pps0(fg_meta));
+	mml_pq_msg("%s FG_PPS_1[0x%x]", __func__, mml_pq_fg_get_pps1(fg_meta));
+	mml_pq_msg("%s FG_PPS_2[0x%x]", __func__, mml_pq_fg_get_pps2(fg_meta));
+	mml_pq_msg("%s FG_PPS_3[0x%x]", __func__, mml_pq_fg_get_pps3(fg_meta));
 
 	mml_write(comp->id, pkt, base_pa + fg->data->reg_table[FG_LUMA_TBL_BASE],
 		(u32)(fg_table_pa[0]),
@@ -877,6 +881,10 @@ static s32 fg_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 	mml_pq_msg("%s FG_CB_TBL_ADDR[%pad]", __func__, &fg_table_pa[1]);
 	mml_pq_msg("%s FG_CR_TBL_ADDR[%pad]", __func__, &fg_table_pa[2]);
 	mml_pq_msg("%s FG_LUT_TBL_ADDR[%pad]", __func__, &fg_table_pa[3]);
+	mml_pq_msg("%s FG_PPS_0[0x%x]", __func__, mml_pq_fg_get_pps0(fg_meta));
+	mml_pq_msg("%s FG_PPS_1[0x%x]", __func__, mml_pq_fg_get_pps1(fg_meta));
+	mml_pq_msg("%s FG_PPS_2[0x%x]", __func__, mml_pq_fg_get_pps2(fg_meta));
+	mml_pq_msg("%s FG_PPS_3[0x%x]", __func__, mml_pq_fg_get_pps3(fg_meta));
 
 	mml_update(comp->id, reuse, fg_frm->labels[FG_LUMA_TBL_BASE_LABEL],
 		(u32)(fg_table_pa[0]));
