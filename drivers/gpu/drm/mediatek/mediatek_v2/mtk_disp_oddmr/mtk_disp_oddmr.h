@@ -572,6 +572,7 @@ struct mtk_disp_oddmr_od_data {
 	struct mtk_drm_gem_obj *g_channel;
 	struct mtk_drm_gem_obj *b_channel;
 	struct mtk_drm_gem_obj *channel;
+	unsigned int hrt_idx;
 };
 
 struct mtk_disp_oddmr_dbi_data {

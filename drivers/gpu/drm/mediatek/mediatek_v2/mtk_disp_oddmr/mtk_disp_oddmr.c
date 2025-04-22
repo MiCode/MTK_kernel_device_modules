@@ -5790,8 +5790,10 @@ int mtk_oddmr_hrt_cal_notify(struct drm_device *dev, int disp_idx, int *oddmr_hr
 		od_support = oddmr_data->primary_data->od_support;
 		dbi_support = oddmr_data->primary_data->dbi_support;
 		if (od_support || dmr_support || dbi_support) {
-			if (atomic_read(&oddmr_data->primary_data->od_hrt_done) == 2)
+			if (atomic_read(&oddmr_data->primary_data->od_hrt_done) == 2) {
+				oddmr_data->od_data.hrt_idx = _layering_rule_get_hrt_idx(disp_idx);
 				atomic_set(&oddmr_data->primary_data->od_hrt_done, 1);
+			}
 			if (atomic_read(&oddmr_data->primary_data->dmr_hrt_done) == 2)
 				atomic_set(&oddmr_data->primary_data->dmr_hrt_done, 1);
 			if (atomic_read(&oddmr_data->primary_data->dbi_hrt_done) == 2)
@@ -5828,16 +5830,14 @@ int mtk_oddmr_hrt_cal_notify(struct drm_device *dev, int disp_idx, int *oddmr_hr
 				}
 				sum += temp_hrt;
 			}
-		
+
 			wakeup = true;
-			oddmr_data->od_enable = oddmr_data->od_enable_req && !oddmr_data->pq_od_bypass;
 			oddmr_data->dmr_enable = oddmr_data->dmr_enable_req;
 			oddmr_data->dbi_enable = oddmr_data->dbi_enable_req;
 			if (comp->mtk_crtc->is_dual_pipe) {
 				struct mtk_ddp_comp *comp1 = oddmr_data->companion;
 				struct mtk_disp_oddmr *oddmr1_data = comp_to_oddmr(comp1);
 
-				oddmr1_data->od_enable = oddmr1_data->od_enable_req && !oddmr_data->pq_od_bypass;
 				oddmr1_data->dmr_enable = oddmr1_data->dmr_enable_req;
 				oddmr1_data->dbi_enable = oddmr1_data->dbi_enable_req;
 			}
@@ -5850,8 +5850,9 @@ int mtk_oddmr_hrt_cal_notify(struct drm_device *dev, int disp_idx, int *oddmr_hr
 					mtk_crtc->base.state->adjusted_mode.hdisplay);
 			}
 			sum = sum * res_ratio / 1000;
-			DDPINFO("%s od %d dmr %d dbi %d sum %d res_ratio %llu\n", __func__,
-				oddmr_data->od_enable, oddmr_data->dmr_enable, oddmr_data->dbi_enable, sum, res_ratio);
+			DDPINFO("%s od %d (hrt_idx %d) dmr %d dbi %d sum %d res_ratio %llu\n", __func__,
+				oddmr_data->od_enable_req, oddmr_data->od_data.hrt_idx,
+				oddmr_data->dmr_enable, oddmr_data->dbi_enable, sum, res_ratio);
 		}
 	}
 	if (wakeup)
@@ -5873,6 +5874,9 @@ static int mtk_oddmr_sum_hrt(struct mtk_ddp_comp *comp, enum CHANNEL_TYPE type, 
 	int temp_hrt = 0;
 	bool dmr_support, od_support, dbi_support;
 	int od_enable, sec_on;
+	unsigned int prop_lye_idx = 0;
+	struct drm_crtc *crtc = NULL;
+	struct mtk_crtc_state *crtc_state = NULL;
 
 	ODDMRAPI_LOG("+\n");
 	if (comp == NULL || comp->mtk_crtc == NULL) {
@@ -5894,6 +5898,25 @@ static int mtk_oddmr_sum_hrt(struct mtk_ddp_comp *comp, enum CHANNEL_TYPE type, 
 		return 0;
 	if (g_oddmr_hrt_en == false)
 		return 0;
+
+	if (atomic_read(&oddmr_data->primary_data->od_hrt_done) == 1) {
+		crtc = &mtk_crtc->base;
+		crtc_state = to_mtk_crtc_state(crtc->state);
+		prop_lye_idx = crtc_state->prop_val[CRTC_PROP_LYE_IDX];
+		DDPINFO("%s, hrt_idx %d, prop_lye_idx %d, od_enable_req %d, pq_od_bypass %d\n",
+			__func__, oddmr_data->od_data.hrt_idx, prop_lye_idx,
+			oddmr_data->od_enable_req, oddmr_data->pq_od_bypass);
+		if (prop_lye_idx >= oddmr_data->od_data.hrt_idx) {
+			atomic_set(&oddmr_data->primary_data->od_hrt_done, 0);
+			oddmr_data->od_enable = oddmr_data->od_enable_req && !oddmr_data->pq_od_bypass;
+			if (comp->mtk_crtc->is_dual_pipe) {
+				struct mtk_ddp_comp *comp1 = oddmr_data->companion;
+				struct mtk_disp_oddmr *oddmr1_data = comp_to_oddmr(comp1);
+
+				oddmr1_data->od_enable = oddmr1_data->od_enable_req && !oddmr_data->pq_od_bypass;
+			}
+		}
+	}
 
 	sec_on = comp->mtk_crtc->sec_on;
 	od_enable = oddmr_data->od_enable && (!sec_on);
