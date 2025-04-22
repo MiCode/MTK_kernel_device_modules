@@ -4033,6 +4033,8 @@ static uint32_t mtk_oddmr_od_find_merge_lines(struct mtk_ddp_comp *comp, uint32_
 }
 
 /*
+ * Condition 1: (ln_offset*bpc)%(128*16) = 0
+ * Condition 2: ln_offset > (merge_width/hscaling)
  * hscaling : 1,2,4; vscaling: 1,2
  * merge_width = align_up((w+gb)*merge_lines, 8)
  * merge_lines = 8,10,20
@@ -4063,6 +4065,8 @@ static uint32_t mtk_oddmr_od_get_dram_size(struct mtk_ddp_comp *comp, uint32_t w
 	dram_ln_beats = merge_width * bpc / hscaling;
 	dram_ln_beats = DIV_ROUND_UP(dram_ln_beats, 128);
 	dram_ln_beats_aligned = DIV_ROUND_UP(dram_ln_beats, 16) * 16;
+	while ((dram_ln_beats_aligned * 128) % bpc != 0)
+		dram_ln_beats_aligned += 16;
 	ln_offset = dram_ln_beats_aligned * 128 / bpc;
 	size = dram_ln_beats_aligned * 128 * height / vscaling / merge_lines / 8;
 
