@@ -1199,7 +1199,7 @@ void smap2mbrain_notify(struct smap_mbrain *smap_mbrain_data)
 	int n = 0;
 	int pos = 0;
 
-	unsigned int version = 2;
+	unsigned int version = 3;
 	unsigned int cnt;
 	unsigned int type;
 	unsigned int enable;
@@ -1225,6 +1225,9 @@ void smap2mbrain_notify(struct smap_mbrain *smap_mbrain_data)
 	unsigned int apu_snapshot;
 	unsigned long long real_time_start;
 	unsigned long long real_time_end;
+	unsigned int dump_cnt;
+	unsigned int mitigation_cnt;
+	unsigned int mitigation_rate;
 
 	cnt = smap_mbrain_data->cnt;
 	type = smap_mbrain_data->type;
@@ -1251,6 +1254,9 @@ void smap2mbrain_notify(struct smap_mbrain *smap_mbrain_data)
 	apu_snapshot = smap_mbrain_data->apu_snapshot;
 	real_time_start = smap_mbrain_data->real_time_start;
 	real_time_end = smap_mbrain_data->real_time_end;
+	dump_cnt = smap_mbrain_data->dump_cnt;
+	mitigation_cnt = smap_mbrain_data->mitigation_cnt;
+	mitigation_rate = smap_mbrain_data->mitigation_rate;
 
 	n = snprintf(netlink_buf + pos,
 		NETLINK_EVENT_MESSAGE_SIZE - pos,
@@ -1291,6 +1297,18 @@ void smap2mbrain_notify(struct smap_mbrain *smap_mbrain_data)
 		apu_snapshot,
 		real_time_start,
 		real_time_end);
+
+	if (n < 0 || n >= NETLINK_EVENT_MESSAGE_SIZE - pos)
+		return;
+
+	pos += n;
+
+	n = snprintf(netlink_buf + pos,
+		NETLINK_EVENT_MESSAGE_SIZE - pos,
+		":%d:%d:%d",
+		dump_cnt,
+		mitigation_cnt,
+		mitigation_rate);
 
 	if (n < 0 || n >= NETLINK_EVENT_MESSAGE_SIZE - pos)
 		return;
