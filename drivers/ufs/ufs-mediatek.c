@@ -3151,6 +3151,7 @@ static void ufs_mtk_config_scsi_dev(struct scsi_device *sdev)
 
 	dev_dbg(hba->dev, "lu %llu scsi dev configured", sdev->lun);
 
+	blk_queue_flag_set(QUEUE_FLAG_SAME_FORCE, sdev->request_queue);
 	if (hba->luns_avail == 1) {
 		dev_info(hba->dev, "%s: LUNs ready", __func__);
 		complete(&host->luns_added);
