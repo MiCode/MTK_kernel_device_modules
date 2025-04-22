@@ -1178,6 +1178,7 @@
 			offs-thermal-limit = <0x1208 0x120c 0x1210 0x1214>;
 			offs-cap = <0xfa0>;
 			legacy-api-support = <1>;
+			freq-based-cost = <2>;
 		};
 
 		lkg: lkg@00114400 {
