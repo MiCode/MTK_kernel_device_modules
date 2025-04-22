@@ -343,7 +343,7 @@ static int conap_scp_shm_init(void)
 	mem_size = scp_get_reserve_mem_size(SCP_CONNSYS_MEM_ID);
 
 	if (mem_addr == 0 || mem_size == 0) {
-		pr_notice("[%s] incoorect shm setting [%pa][%pa]", __func__, &mem_addr, &mem_size);
+		pr_notice("[%s] incorrect shm setting [%pa][%pa]", __func__, &mem_addr, &mem_size);
 		return -1;
 	}
 

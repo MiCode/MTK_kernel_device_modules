@@ -10,7 +10,7 @@
 #include <linux/platform_device.h>
 
 struct conap_scp_shm_config {
-	uint32_t conap_scp_shm_offset;
+	uint32_t conap_scp_shm_addr;
 	uint32_t conap_scp_shm_size;
 	uint32_t conap_scp_ipi_mbox_size;
 	uint32_t conap_scp_max_msg_size;

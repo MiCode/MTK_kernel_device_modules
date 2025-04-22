@@ -11,37 +11,6 @@
 
 #define CONNSCP_DEFAULT_MAX_MSG_SIZE	1024
 
-/* 6893 */
-#if IS_ENABLED(CONFIG_MTK_COMBO_CHIP_CONSYS_6893)
-
-struct conap_scp_shm_config g_adp_shm_mt6893 = {
-	.conap_scp_shm_offset = 0x1E0000,
-	.conap_scp_shm_size = 0x50000,
-	.conap_scp_ipi_mbox_size = 40,
-};
-#endif
-#if IS_ENABLED(CONFIG_MTK_COMBO_CHIP_CONSYS_6983)
-struct conap_scp_shm_config g_adp_shm_mt6983 = {
-	.conap_scp_shm_offset = 0x2100000,
-	.conap_scp_shm_size = 0x20000,
-	.conap_scp_ipi_mbox_size = 64,
-};
-#endif
-#if IS_ENABLED(CONFIG_MTK_COMBO_CHIP_CONSYS_6895)
-struct conap_scp_shm_config g_adp_shm_mt6895 = {
-	.conap_scp_shm_offset = 0x2100000,
-	.conap_scp_shm_size = 0x20000,
-	.conap_scp_ipi_mbox_size = 64,
-};
-#endif
-#if IS_ENABLED(CONFIG_MTK_COMBO_CHIP_CONSYS_6886)
-struct conap_scp_shm_config g_adp_shm_mt6886 = {
-	.conap_scp_shm_offset = 0,
-	.conap_scp_shm_size = 0,
-	.conap_scp_ipi_mbox_size = 64,
-};
-#endif
-
 struct conap_scp_shm_config g_adp_shm;
 struct conap_scp_batching_config g_adp_batching;
 struct conap_dfd_config g_adp_dfd_cmd;
@@ -49,12 +18,12 @@ struct conap_dfd_config g_adp_dfd_value;
 
 uint32_t connsys_scp_shm_get_addr(void)
 {
-	return 0;
+	return g_adp_shm.conap_scp_shm_addr & 0xFFFFFFFF;
 }
 
 uint32_t connsys_scp_shm_get_size(void)
 {
-	return 0;
+	return g_adp_shm.conap_scp_shm_size;
 }
 
 uint32_t connsys_scp_get_max_msg_size(void)
@@ -108,6 +77,8 @@ int connsys_scp_plt_data_init(struct platform_device *pdev)
 	u64 value64 = 0, batching_buf_addr = 0;
 	u32 dfd_cmd_sz = 0, dfd_value_sz = 0;
 	u64 dfd_cmd_addr = 0, dfd_value_addr = 0;
+	u64 scp_shm_addr = 0;
+	u32 scp_shm_size = 0;
 
 	node = pdev->dev.of_node;
 
@@ -167,10 +138,26 @@ int connsys_scp_plt_data_init(struct platform_device *pdev)
 	else
 		dfd_value_sz = value;
 
-	pr_info("[%s] mx_msg_isze=[%x] ipi_mbox_size=[%x] batching=[%x][%llx] dfd=[%llx][%x]", __func__,
+	/* scp shm addr */
+	ret = of_property_read_u64(node, "scp-shm-addr", &value64);
+	if (ret < 0)
+		pr_notice("[%s] prop scp-shm-addr fail %d", __func__, ret);
+	else
+		scp_shm_addr = value64;
+
+	/* scp shm size */
+	ret = of_property_read_u32(node, "scp-shm-size", &value);
+	if (ret < 0)
+		pr_notice("[%s] prop scp-shm-size fail %d", __func__, ret);
+	else
+		scp_shm_size = value;
+
+	pr_info("[%s] mx_msg_size=[%x] ipi_mbox_size=[%x] batching=[%x][%llx] dfd=[%llx][%x] scp_shm=[%llx][%x]",
+			__func__,
 			max_msg_size, ipi_mbox_size,
 			batching_buf_sz, batching_buf_addr,
-			dfd_value_addr, dfd_value_sz);
+			dfd_value_addr, dfd_value_sz,
+			scp_shm_addr, scp_shm_size);
 
 	memset(&g_adp_shm, 0, sizeof(g_adp_shm));
 	memset(&g_adp_batching, 0, sizeof(g_adp_batching));
@@ -179,6 +166,8 @@ int connsys_scp_plt_data_init(struct platform_device *pdev)
 
 	g_adp_shm.conap_scp_ipi_mbox_size = ipi_mbox_size;
 	g_adp_shm.conap_scp_max_msg_size = max_msg_size;
+	g_adp_shm.conap_scp_shm_addr = scp_shm_addr;
+	g_adp_shm.conap_scp_shm_size = scp_shm_size;
 
 	g_adp_batching.buff_offset = batching_buf_addr;
 	g_adp_batching.buff_size = batching_buf_sz;

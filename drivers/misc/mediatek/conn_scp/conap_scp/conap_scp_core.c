@@ -33,6 +33,12 @@ const struct of_device_id conn_scp_of_ids[] = {
 	#endif
 	},
 	{
+		.compatible = "mediatek,mt6895-conn_scp",
+	#if IS_ENABLED(CONFIG_MTK_COMBO_CHIP_CONSYS_6895)
+		.data = NULL,
+	#endif
+	},
+	{
 		.compatible = "mediatek,mt6897-conn_scp",
 	#if IS_ENABLED(CONFIG_MTK_COMBO_CHIP_CONSYS_6897)
 		.data = NULL,
@@ -356,7 +362,7 @@ static int opfunc_scp_state_change(struct msg_op_data *op)
 	/* register DRV_TYPE_CONN */
 	ret = conap_scp_register_drv(DRV_TYPE_CONN, &g_conn_scp_drv_cb);
 	if (ret)
-		pr_info("conap init drv_type_conn fail");
+		pr_info("conap init drv_type_conn fail, ret=[%d]", ret);
 
 
 	pr_info("[%s] drv state=[%d]", __func__, g_conn_drv_state);
