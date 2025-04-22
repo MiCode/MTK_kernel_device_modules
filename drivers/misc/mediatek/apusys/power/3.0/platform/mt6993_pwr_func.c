@@ -265,21 +265,25 @@ static int aputop_dbg_set_parameter(int param, int argc, int *args)
 // opp range : 1 ~ USER_MIN_OPP_VAL (from fast to slow) , opp0 is turbo boost
 static int _apu_boost_to_opp(int boost)
 {
-	int opp = FINAL_USER_MAX_OPP_VAL;
+	int opp = USER_MAX_OPP_VAL;
 	int max_opp_dla_freq, min_opp_dla_freq, boost_to_freq;
 
-	if (boost > 100)
-		return FINAL_USER_MAX_OPP_VAL;
+	if (boost >= 100)
+		return USER_MAX_OPP_VAL;
 
 	if (boost < 0)
 		boost = 0;
 
-	max_opp_dla_freq = opp_tbl.opp[FINAL_USER_MAX_OPP_VAL].pll_freq[PLL_DLA];
-	min_opp_dla_freq = opp_tbl2.opp[opp_tbl2.tbl_size-1].pll_freq[PLL_DLA];
+	max_opp_dla_freq = opp_tbl.opp[USER_MAX_OPP_VAL].pll_freq[PLL_DLA];
 
-	boost_to_freq = boost * (max_opp_dla_freq-min_opp_dla_freq) / 100 + min_opp_dla_freq;
+	if (opp_tbl2.tbl_size > 0)
+		min_opp_dla_freq = opp_tbl2.opp[opp_tbl2.tbl_size - 1].pll_freq[PLL_DLA];
+	else
+		min_opp_dla_freq = opp_tbl.opp[USER_MIN_OPP_VAL].pll_freq[PLL_DLA];
 
-	for (int i = FINAL_USER_MAX_OPP_VAL ; i < opp_tbl.tbl_size ; i++){
+	boost_to_freq = boost * (max_opp_dla_freq - min_opp_dla_freq) / 100 + min_opp_dla_freq;
+
+	for (int i = USER_MAX_OPP_VAL ; i < opp_tbl.tbl_size ; i++){
 		if (boost_to_freq >= opp_tbl.opp[i].pll_freq[PLL_DLA]){
 			opp = i;
 			return opp;
@@ -310,8 +314,8 @@ static void plat_dump_boost_mapping(struct seq_file *s)
 			opp_cnt[opp]++;
 	}
 
-	for (i = FINAL_USER_MAX_OPP_VAL ; i <= USER_MIN_OPP_VAL ; i++){
-		if(i == FINAL_USER_MAX_OPP_VAL){
+	for (i = USER_MAX_OPP_VAL ; i <= USER_MIN_OPP_VAL ; i++){
+		if(i == USER_MAX_OPP_VAL){
 			seq_printf(s, "opp:%2d : boost:%3d ~ %3d (%2d)\n",
 					   i,
 					   max_boost,
@@ -505,7 +509,7 @@ void mt6993_request_opp_table(void)
 	rpmsg_data.data0 = 1; // pseudo data
 	do {
 		ret = aputop_send_rpmsg(&rpmsg_data, 100);
-		if (opp_level_pll_freq[THERMAL_USER_MID_OPP_VAL - 1] != 0)
+		if (opp_level_pll_freq[USER_MID_OPP_VAL - 1] != 0)
 			break;
 		udelay(1000);
 	} while (--retry);
@@ -569,7 +573,7 @@ int mt6993_apu_top_rpmsg_cb(int cmd, void *data, int len, void *priv, u32 src)
 		if (len) {
 			memcpy(&opp_tbl2, data, len);
 			if(opp_request_bit == 1) {
-				save_opp_table(&opp_tbl2, THERMAL_USER_MID_OPP_VAL);
+				save_opp_table(&opp_tbl2, USER_MID_OPP_VAL);
 				//memset(&opp_tbl, 0, sizeof(opp_tbl));
 				opp_request_bit = 0;
 			}

@@ -534,10 +534,10 @@ int mt6993_set_freq_limit(int upper_limit, int lower_limit, int *request_id, int
 
 	// mapping user opp to real opp
 	if (type == SW_THROTTLE_SYSFS) { // sysfs node
-		upper_limit = upper_limit + THERMAL_OPP_OFS;
-		lower_limit = lower_limit + THERMAL_OPP_OFS;
+		upper_limit = upper_limit + USER_MAX_OPP_VAL;
+		lower_limit = lower_limit + USER_MAX_OPP_VAL;
 	} else if (type == SW_THROTTLE_PT_THERMAL) // thermal/PT
-		upper_limit = upper_limit + THERMAL_OPP_OFS;
+		upper_limit = upper_limit + USER_MAX_OPP_VAL;
 	// type = 2 -> Limit HAL cmd -> do not shift.
 
 	// real opp range is from 0 to 15
@@ -689,7 +689,7 @@ static void mt6993_prepare_freq_input(int upper_limit, int lower_limit, int *opp
 		tmp_opp_min = tmp_opp_max;
 
 	if (lower_limit < opp_level_pll_freq[OPP_TABLE_SIZE-1])
-		tmp_opp_min = 15 - THERMAL_OPP_OFS; // set to opp15
+		tmp_opp_min = 15 - USER_MAX_OPP_VAL; // set to opp15
 
 	if (upper_limit > opp_level_pll_freq[0])
 		tmp_opp_max = USER_MAX_OPP_VAL; // set to opp0

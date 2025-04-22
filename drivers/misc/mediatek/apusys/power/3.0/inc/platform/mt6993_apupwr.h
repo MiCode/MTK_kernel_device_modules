@@ -16,7 +16,12 @@
 #define VAPU_DEF_VOLT		(750000)	// 0.75v
 
 #define OPP_OFS			(1) // final opp = opp + opp offset
+#if defined(DVFS_ENABLE_OD_OPP)
 #define USER_MAX_OPP_VAL	(0) // fastest speed user can specify
+#else
+#define USER_MAX_OPP_VAL	(3) // fastest speed user can specify
+#endif // DVFS_ENABLE_OD_OPP
+#define USER_MID_OPP_VAL	(7) // for dump 2nd opp table
 #define USER_MIN_OPP_VAL	(14 + OPP_OFS) // slowest speed user can specify
 #define TURBO_BOOST_OPP		USER_MAX_OPP_VAL
 #define TURBO_BOOST_VAL		(110)
@@ -25,18 +30,7 @@
 #define HW_SEMA_TIMEOUT_CNT	(7) // 7 * 10 = 70 us
 
 #define HW_VOTER_TOTAL_OPP_ENTRY		(20)
-
-#if defined(DVFS_ENABLE_OD_OPP)
-#define THERMAL_OPP_OFS			(0) // final opp = opp + opp offset
-#else
-#define THERMAL_OPP_OFS			(3) // final opp = opp + opp offset
-#endif // DVFS_ENABLE_OD_OPP
-
-#define THERMAL_USER_MAX_OPP_VAL	(0) // fastest speed user can specify
-#define THERMAL_USER_MID_OPP_VAL        (7) // for dump 2nd opp table
-#define THERMAL_USER_MIN_OPP_VAL	(15 - THERMAL_OPP_OFS) // slowest speed user can specify
 #define OPP_TABLE_SIZE				(USER_MIN_OPP_VAL + 1)
-#define FINAL_USER_MAX_OPP_VAL (USER_MAX_OPP_VAL + THERMAL_OPP_OFS) // final opp = opp + opp offset
 
 enum smc_rcx_pwr_op {
 	SMC_RCX_PWR_AFC_EN = 0,
