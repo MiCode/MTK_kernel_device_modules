@@ -2084,6 +2084,8 @@
 		ext-32k-ticks = <32768>;
 		/* pmic-uvlo-level: 0: skip, 1: 2.0V, 2: 2.1V, 3: 2.2V */
 		pmic-uvlo-level = <1>;
+		/* pmic-rising-uvlo-level: 0: skip, 1: 2.6V, 2: 2.7V, ..., 8: 3.3V */
+		pmic-rising-uvlo-level = <1>;
 		pinctrl-names = "connsys-pin-pmic-en-default",
 			"connsys-pin-pmic-en-set",
 			"connsys-pin-pmic-en-clr",
