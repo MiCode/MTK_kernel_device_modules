@@ -462,14 +462,24 @@ int ammu_DRAM_FB_alloc(uint64_t session, uint32_t vlm_size, uint32_t subcmd_num)
 	return ret;
 }
 
+static u64 ssid_alloc_cnt;
+
 static void ammu_SSID_alloc(struct apummu_session_tbl *sTable_ptr)
 {
 	static unsigned long ssid_idx = 0;
 	unsigned long ssid_max = g_adv->plat.ssid_max + 1;
+	unsigned long sess_num = g_adv->plat.reserved_session_num;
 	unsigned long flags;
 	unsigned long ssid;
 
 	spin_lock_irqsave(&ssid_lock, flags);
+
+	if (ssid_alloc_cnt < sess_num) {
+		AMMU_LOG_INFO("Use minimum ssid\n");
+		sTable_ptr->stable_info.SMMU_SSID = 0;
+		sTable_ptr->ssid_need_free = false;
+		goto exit;
+	}
 
 	ssid = find_first_bit(ssid_bitmap, ssid_max);
 	if (ssid >= ssid_max) {
@@ -485,7 +495,9 @@ static void ammu_SSID_alloc(struct apummu_session_tbl *sTable_ptr)
 	sTable_ptr->stable_info.SMMU_SSID = ssid;
 	sTable_ptr->ssid_need_free = true;
 exit:
+	ssid_alloc_cnt++;
 	AMMU_LOG_INFO("ssid: %d\n", sTable_ptr->stable_info.SMMU_SSID);
+
 	spin_unlock_irqrestore(&ssid_lock, flags);
 }
 
@@ -501,14 +513,16 @@ static void ammu_SSID_free(struct apummu_session_tbl *sTable_ptr)
 
 	AMMU_LOG_INFO("ssid: %d\n", ssid);
 
+	spin_lock_irqsave(&ssid_lock, flags);
+
 	if (ssid >= AMMU_SSID_MAX || !free)
 		goto exit;
 
-	spin_lock_irqsave(&ssid_lock, flags);
 	__set_bit(ssid, ssid_bitmap);
-	spin_unlock_irqrestore(&ssid_lock, flags);
 exit:
-	return;
+	ssid_alloc_cnt--;
+
+	spin_unlock_irqrestore(&ssid_lock, flags);
 }
 
 static int ammu_DRAM_FB_refcnt_adjust(uint64_t session, uint32_t subcmd_num)
@@ -1251,7 +1265,6 @@ int apummu_mgt_init(void)
 	INIT_DELAYED_WORK(&DRAM_free_work, ammu_DRAM_free_work);
 	ammu_workq = alloc_ordered_workqueue("ammu_dram_free", WQ_MEM_RECLAIM);
 	bitmap_fill(ssid_bitmap, AMMU_SSID_MAX);
-	__clear_bit(0, ssid_bitmap);
 exit:
 	return ret;
 }
