@@ -599,8 +599,19 @@ int mminfra_fake_eng_enable(const char *val, const struct kernel_param *kp)
 	return 0;
 }
 
+int mminfra_fake_eng_enable_status(char *buf, const struct kernel_param *kp)
+{
+	int len = 0;
+
+	len += snprintf(buf + len, PAGE_SIZE - len, "%s:%d", __func__, mm_fake_eng_enable ? 1 : 0);
+
+	return len;
+
+}
+
 static const struct kernel_param_ops mminfra_fake_eng_enable_ops = {
 	.set = mminfra_fake_eng_enable,
+	.get = mminfra_fake_eng_enable_status,
 };
 module_param_cb(mminfra_fake_eng_enable, &mminfra_fake_eng_enable_ops, NULL, 0644);
 MODULE_PARM_DESC(mminfra_fake_eng_enable, "mminfra fake eng enable");
