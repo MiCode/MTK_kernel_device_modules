@@ -459,7 +459,7 @@ void ged_eb_dvfs_frame_done_dump(void)
 	struct cmd_info custom_boost_info ={0};
 	int ui32CeilingID = ged_get_cur_limit_idx_ceil();
 	int ui32FloorID = ged_get_cur_limit_idx_floor();
-	static unsigned int gpu_counter, pre_gpu_counter;
+	static unsigned int gpu_counter, pre_gpu_counter,last_gpu_npu_hint_ms;
 
 	tmp_multi = mtk_gpueb_sysram_multi_read(SYSRAM_GPU_FB_MARGIN_PARAM);
 	tmp_multi_async = mtk_gpueb_sysram_multi_read(fdvfs_v2_table[GPU_FB_ASYNC_PARAM1].addr);
@@ -551,8 +551,6 @@ void ged_eb_dvfs_frame_done_dump(void)
 			mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_FB_MFRC].addr) & 0xFF);
 		trace_tracing_mark_write(5566, "mfrc_policy_done",
 			mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_FB_MFRC_2].addr) & 0xFF);
-		trace_tracing_mark_write(5566, "mfrc_policy_return",
-			mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_FB_MFRC_2].addr) >> 8);
 	}
 
 	trace_GPU_DVFS__Policy__Common__Check_Target(
@@ -563,7 +561,12 @@ void ged_eb_dvfs_frame_done_dump(void)
 			mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_T_GPU_FPS_TARGET].addr));
 
 	if (ged_npu_hint_enable)
-		trace_tracing_mark_write(5566, "gpu_npu_hint_ms", mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_FB_NPU_HINT_MS].addr));
+		trace_tracing_mark_write(5566, "gpu_npu_hint_ms", ged_npu_hint_enable);
+	else {
+		if (ged_npu_hint_enable != last_gpu_npu_hint_ms)
+			trace_tracing_mark_write(5566, "gpu_npu_hint_ms", ged_npu_hint_enable);
+	}
+	last_gpu_npu_hint_ms = ged_npu_hint_enable;
 
 	if (!ged_dvfs_get_async_ratio_support())
 		return;
