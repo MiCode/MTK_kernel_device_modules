@@ -10467,9 +10467,9 @@
 					"l30_tncso_r1";
 		};
 
-		camera_fsync_ccu {
-			compatible = "mediatek,camera_fsync_ccu";
-			mediatek,ccu_rproc = <&ccu_rproc>;
+		camera-fsync-ccu {
+			compatible = "mediatek,camera-fsync-ccu";
+			mediatek,ccu-rproc = <&ccu_rproc>;
 		};
 
 		camera_camsys_ccu {
