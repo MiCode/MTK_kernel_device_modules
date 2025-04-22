@@ -22,7 +22,7 @@ static ssize_t pmic_access_show(struct device *dev,
 	struct mt63xx_consumer_data *data = dev_get_drvdata(dev);
 
 	pr_info("[%s] 0x%x\n", __func__, data->reg_value);
-	return sprintf(buf, "0x%x\n", data->reg_value);
+	return snprintf(buf, sizeof(buf), "0x%x\n", data->reg_value);
 }
 
 static ssize_t pmic_access_store(struct device *dev,
