@@ -59,17 +59,24 @@ static void hds_1_0_plat_deinit(struct apu_hds_device *hdev)
 	hds_1_0_tag_deinit();
 }
 
-static int hds_1_0_cmd_postprocess_late(struct apu_hds_device *hdev, void *va, uint32_t size)
+static int hds_1_0_cmd_postprocess_late(struct apu_hds_device *hdev, void *va, uint32_t size,
+	uint32_t power_plcy)
 {
 	struct hds_plat_1_0_pmu_header *pmu_header = (struct hds_plat_1_0_pmu_header *)va;
 	struct hds_plat_1_0_pmu_sw_info *pmu_sw_info = NULL;
 	struct hds_plat_1_0_pmu_log *pmu_log = NULL;
 	uint64_t num_inst = 0, idx = 0;
-
 	/* boundary check */
 	if (size < sizeof(*pmu_header)) {
 		apu_hds_debug("appendix buffer(%u/%lu) check header size invalid\n", size, sizeof(*pmu_header));
 		return 0;
+	}
+
+	if (!hdev->pmu_tag_en &&
+		(power_plcy == APUSYS_POWERPOLICY_PERFORMANCE ||
+		power_plcy == APUSYS_POWERPOLICY_SUSTAINABLE)) {
+		apu_hds_debug("clear hds buffer only\n");
+		goto clear_buffer;
 	}
 
 	/* assign */
@@ -106,9 +113,9 @@ static int hds_1_0_cmd_postprocess_late(struct apu_hds_device *hdev, void *va, u
 			pmu_log[idx].ts_disp, pmu_log[idx].ts_int_recv);
 	}
 
+clear_buffer:
 	/* clear pmu buffer */
 	memset(va, 0, size);
-
 	return 0;
 }
 

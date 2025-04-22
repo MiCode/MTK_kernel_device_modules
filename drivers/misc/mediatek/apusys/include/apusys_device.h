@@ -66,6 +66,13 @@ enum {
 	APUSYS_PREEMPT_MAX,
 };
 
+enum {
+	APUSYS_POWERPOLICY_DEFAULT = 0, //do nothing
+	APUSYS_POWERPOLICY_SUSTAINABLE = 1,
+	APUSYS_POWERPOLICY_PERFORMANCE = 2,
+	APUSYS_POWERPOLICY_POWERSAVING = 3,
+};
+
 /* handle definition for send_cmd */
 struct apusys_power_hnd {
 	uint32_t opp;
@@ -100,6 +107,13 @@ struct apusys_cmd_handle {
 
 	int (*context_callback)(int a, int b, uint8_t c);
 	uint32_t vlm_ctx;
+};
+
+struct apusys_cmd_info {
+	uint64_t session_id;
+	uint64_t cmd_uid;
+	uint32_t num_subcmds;
+	uint32_t power_plcy;
 };
 
 struct apusys_usercmd_hnd {
@@ -192,9 +206,9 @@ enum apu_appendix_cb_type {
 };
 typedef uint32_t (*cb_apu_appendix_cmdbuf_size)(uint32_t num_subcmds);
 typedef int (*cb_apu_appendix_cmdbuf_process)(enum apu_appendix_cb_type process_type,
-        uint64_t session_id, uint64_t cmd_uid, uint32_t num_subcmds, void *va, uint32_t size);
+	struct apusys_cmd_info *cmd_info, void *va, uint32_t size);
 int apusys_request_cmdbuf_appendix(enum apu_appendix_cb_owner owner, cb_apu_appendix_cmdbuf_size cb_size,
-        cb_apu_appendix_cmdbuf_process cb_process);
+	cb_apu_appendix_cmdbuf_process cb_process);
 
 /* only used in cmd validation */
 int apusys_mem_validate_by_cmd(void *session, void *cmd, uint64_t eva, uint32_t size);

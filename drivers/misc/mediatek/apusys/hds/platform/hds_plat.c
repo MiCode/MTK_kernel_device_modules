@@ -20,7 +20,8 @@ static void hds_plat_deinit(struct apu_hds_device *hdev)
 	apu_hds_err("apu hds not initialized\n");
 }
 
-static int hds_cmd_postprocess_late(struct apu_hds_device *hdev, void *va, uint32_t size)
+static int hds_cmd_postprocess_late(struct apu_hds_device *hdev, void *va, uint32_t size,
+	uint32_t power_plcy)
 {
 	apu_hds_err("apu hds not initialized\n");
 	return -ENODEV;

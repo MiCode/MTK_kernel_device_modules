@@ -411,16 +411,18 @@ out:
 	return tmp;
 }
 
-static int mdw_dplcy_appendix_cb_process(enum apu_appendix_cb_type type, uint64_t session_id,
-					 uint64_t cmd_uid, uint32_t num_subcmds, void *va,
-					 uint32_t size)
+static int mdw_dplcy_appendix_cb_process(enum apu_appendix_cb_type type,
+	struct apusys_cmd_info *cmd_info, void *va, uint32_t size)
 {
 	int ret = 0;
 	struct policy_cb *cb = (struct policy_cb *)va;
 	struct mdw_dplcy_cmd_tb *cmd_tb = NULL;
 
+	if (cmd_info == NULL)
+		return -EINVAL;
+
 	/* check argument */
-	if (!size || va == NULL || !num_subcmds)
+	if (!size || va == NULL || !cmd_info->num_subcmds)
 		return -EINVAL;
 
 	/* check size */
@@ -429,17 +431,18 @@ static int mdw_dplcy_appendix_cb_process(enum apu_appendix_cb_type type, uint64_
 		return -EINVAL;
 	}
 
-	mdw_flw_debug("type(%u) id(0x%llx/0x%llx) appendix(%pK/%u)\n", type, session_id, cmd_uid,
-		      va, size);
+	mdw_flw_debug("type(%u) id(0x%llx/0x%llx) appendix(%pK/%u)\n",
+		type, cmd_info->session_id, cmd_info->cmd_uid, va, size);
 
 	switch (type) {
 	case APU_APPENDIX_CB_CREATE:
 		down_read(&g_dplcy_mgr->rw_sem);
-		cmd_tb = mdw_dplcy_find_cmd_tb(cb, session_id, cmd_uid);
+		cmd_tb = mdw_dplcy_find_cmd_tb(cb, cmd_info->session_id, cmd_info->cmd_uid);
 		up_read(&g_dplcy_mgr->rw_sem);
 
 		if (cmd_tb == NULL) {
-			cmd_tb = mdw_dplcy_create_cmd_tb(cb, session_id, cmd_uid, num_subcmds);
+			cmd_tb = mdw_dplcy_create_cmd_tb(cb, cmd_info->session_id, cmd_info->cmd_uid,
+				cmd_info->num_subcmds);
 			if (cmd_tb == NULL) {
 				ret = -EINVAL;
 				goto out;
@@ -449,12 +452,12 @@ static int mdw_dplcy_appendix_cb_process(enum apu_appendix_cb_type type, uint64_
 			up_write(&g_dplcy_mgr->rw_sem);
 		}
 
-		if (cmd_tb->num_subcmds != num_subcmds) {
+		if (cmd_tb->num_subcmds != cmd_info->num_subcmds) {
 			down_read(&g_dplcy_mgr->rw_sem);
 			mutex_lock(&cmd_tb->cmd_mtx);
 
 			mdw_dplcy_clear_cmd_tb(cmd_tb);
-			cmd_tb->num_subcmds = num_subcmds;
+			cmd_tb->num_subcmds = cmd_info->num_subcmds;
 
 			mutex_unlock(&cmd_tb->cmd_mtx);
 			up_read(&g_dplcy_mgr->rw_sem);
@@ -464,8 +467,8 @@ static int mdw_dplcy_appendix_cb_process(enum apu_appendix_cb_type type, uint64_
 		break;
 	case APU_APPENDIX_CB_PREPROCESS:
 		cmd_tb = (struct mdw_dplcy_cmd_tb *)cb->cmd_tb_id;
-		if (cmd_tb == NULL || cmd_tb->uid != cmd_uid) {
-			mdw_drv_err("dplcy cmd tbl not match(0x%llx/%pK)\n", cmd_uid, cmd_tb);
+		if (cmd_tb == NULL || cmd_tb->uid != cmd_info->cmd_uid) {
+			mdw_drv_err("dplcy cmd tbl not match(0x%llx/%pK)\n", cmd_info->cmd_uid, cmd_tb);
 			ret = -EINVAL;
 			goto out;
 		}
@@ -481,8 +484,8 @@ static int mdw_dplcy_appendix_cb_process(enum apu_appendix_cb_type type, uint64_
 		break;
 	case APU_APPENDIX_CB_POSTPROCESS_LATE:
 		cmd_tb = (struct mdw_dplcy_cmd_tb *)cb->cmd_tb_id;
-		if (cmd_tb == NULL || cmd_tb->uid != cmd_uid) {
-			mdw_drv_err("dplcy cmd tbl not match(0x%llx/%pK)\n", cmd_uid, cmd_tb);
+		if (cmd_tb == NULL || cmd_tb->uid != cmd_info->cmd_uid) {
+			mdw_drv_err("dplcy cmd tbl not match(0x%llx/%pK)\n", cmd_info->cmd_uid, cmd_tb);
 			ret = -EINVAL;
 			goto out;
 		}

@@ -1174,16 +1174,21 @@ static uint32_t ammu_appendix_cb_size(uint32_t num_subcmds)
 	return sizeof(struct ammu_stable_info);
 }
 
-static int ammu_appendix_cb_process(enum apu_appendix_cb_type type, uint64_t session_id,
-	uint64_t cmd_uid, uint32_t num_subcmds, void *va, uint32_t size)
+static int ammu_appendix_cb_process(enum apu_appendix_cb_type type,
+	struct apusys_cmd_info *cmd_info, void *va, uint32_t size)
 {
 	uint32_t szof;
 	int ret = 0;
 
+	if (cmd_info == NULL) {
+		AMMU_LOG_ERR("Invalid cmd_info\n");
+		return -EINVAL;
+	}
+
 	/* check argument */
-	if (!size || va == NULL || !num_subcmds) {
+	if (!size || va == NULL || !cmd_info->num_subcmds) {
 		AMMU_LOG_ERR("Invalid size: %u, va: %p, num_subcmds: %u\n",
-			size, va, num_subcmds);
+			size, va, cmd_info->num_subcmds);
 		return -EINVAL;
 	}
 
@@ -1202,7 +1207,7 @@ static int ammu_appendix_cb_process(enum apu_appendix_cb_type type, uint64_t ses
 		void *tbl_kva;
 		uint32_t tbl_size;
 
-		ret = get_session_table(session_id, &tbl_kva, &tbl_size);
+		ret = get_session_table(cmd_info->session_id, &tbl_kva, &tbl_size);
 		if (ret) {
 			AMMU_LOG_ERR("get_session_table fail: %d\n", ret);
 			break;

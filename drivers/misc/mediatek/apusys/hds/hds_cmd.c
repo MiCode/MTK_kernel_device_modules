@@ -29,27 +29,31 @@ static uint32_t hds_cmd_appendix_cb_size(uint32_t num_subcmds)
 	return appendix_size;
 }
 
-static int hds_cmd_appendix_cb_process(enum apu_appendix_cb_type type, uint64_t session_id,
-	uint64_t cmd_uid, uint32_t num_subcmds, void *va, uint32_t size)
+static int hds_cmd_appendix_cb_process(enum apu_appendix_cb_type type,
+	struct apusys_cmd_info *cmd_info, void *va, uint32_t size)
 {
 	int ret = 0;
 
+	if (cmd_info == NULL)
+		return -EINVAL;
+
 	/* check argument */
-	if (!size || va == NULL || !num_subcmds)
+	if (!size || va == NULL || !cmd_info->num_subcmds)
 		return 0;
 
 	/* check size */
-	if (size != g_hdev->per_cmd_appendix_size + num_subcmds * g_hdev->per_subcmd_appendix_size) {
+	if (size != g_hdev->per_cmd_appendix_size + cmd_info->num_subcmds * g_hdev->per_subcmd_appendix_size) {
 		apu_hds_err("size not matched(%u/%u)\n",
-			size, g_hdev->per_cmd_appendix_size + num_subcmds * g_hdev->per_subcmd_appendix_size);
+			size, g_hdev->per_cmd_appendix_size + cmd_info->num_subcmds * g_hdev->per_subcmd_appendix_size);
 		return -EINVAL;
 	}
 
-	apu_hds_debug("type(%u) id(0x%llx/0x%llx) appendix(%pK/%u)\n", type, session_id, cmd_uid, va, size);
+	apu_hds_debug("type(%u) id(0x%llx/0x%llx) appendix(%pK/%u)\n",
+		type, cmd_info->session_id, cmd_info->cmd_uid, va, size);
 
 	switch (type) {
 	case APU_APPENDIX_CB_POSTPROCESS_LATE:
-		ret = g_hdev->plat_func->cmd_postprocess_late(g_hdev, va, size);
+		ret = g_hdev->plat_func->cmd_postprocess_late(g_hdev, va, size, cmd_info->power_plcy);
 		if (ret)
 			apu_hds_err("cmd postprocess late failed(%d)\n", ret);
 		break;

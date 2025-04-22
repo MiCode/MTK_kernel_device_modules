@@ -61,9 +61,37 @@ static ssize_t plog_store(struct device *dev,
 }
 static DEVICE_ATTR_RW(plog);
 
+static ssize_t ptag_en_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	int ret = 0;
+
+	ret = snprintf(buf, 32, "%u\n", g_hdev->pmu_tag_en);
+	if (ret < 0)
+		apu_hds_err("show plog fail(%u)\n", g_hdev->pmu_tag_en);
+
+	return ret;
+}
+
+static ssize_t ptag_en_store(struct device *dev,
+	struct device_attribute *attr, const char *buf,
+	size_t count)
+{
+	uint32_t val = 0;
+
+	if (!kstrtouint(buf, 0, &val)) {
+		apu_hds_info("set ptag_en(%u)\n", val);
+		g_hdev->pmu_tag_en = val;
+	}
+
+	return count;
+}
+static DEVICE_ATTR_RW(ptag_en);
+
 static struct attribute *hds_log_attrs[] = {
 	&dev_attr_klog.attr,
 	&dev_attr_plog.attr,
+	&dev_attr_ptag_en.attr,
 	NULL,
 };
 

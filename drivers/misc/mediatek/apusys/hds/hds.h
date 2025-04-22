@@ -10,6 +10,7 @@
 #include <linux/rpmsg.h>
 #include <linux/dma-buf.h>
 #include <linux/types.h>
+#include <apusys_device.h>
 
 struct apu_hds_device;
 
@@ -17,7 +18,8 @@ struct apu_hds_device;
 struct hds_plat_func {
 	int (*plat_init)(struct apu_hds_device *hdev);
 	void (*plat_deinit)(struct apu_hds_device *hdev);
-	int (*cmd_postprocess_late)(struct apu_hds_device *hdev, void *va, uint32_t size);
+	int (*cmd_postprocess_late)(struct apu_hds_device *hdev, void *va, uint32_t size,
+		uint32_t power_plcy);
 };
 
 /* hds related structure */
@@ -32,6 +34,7 @@ struct apu_hds_device {
 
 	bool inited;
 	uint32_t pmu_lv;
+	uint32_t pmu_tag_en;
 
 	struct mutex power_mtx;
 	uint32_t power_cnt;

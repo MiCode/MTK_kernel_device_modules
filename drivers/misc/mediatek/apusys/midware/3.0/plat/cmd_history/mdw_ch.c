@@ -471,10 +471,12 @@ bool mdw_ch_cmd_exec_update(struct mdw_cmd *c)
 
 	/* initial or update h_exec_time */
 	if (!ch_tbl->h_exec_time ||
-		 mdw_ch_exec_time_check(ch_tbl->h_exec_time, c->einfos->c.total_us)) {
+		 mdw_ch_exec_time_check(ch_tbl->h_exec_time, c->einfos->c.total_us))
 		ch_tbl->h_exec_time = c->einfos->c.total_us;
-		mdw_cmd_debug("h_exec_time(%llu)\n", ch_tbl->h_exec_time);
-	}
+	else
+		ch_tbl->h_exec_time = min(ch_tbl->h_exec_time,  c->einfos->c.total_us);
+
+	mdw_cmd_debug("h_exec_time(%llu)\n", ch_tbl->h_exec_time);
 
 	if (mdw_ch_is_perf_mode(c)) {
 		mdw_flw_debug("perf mode cmd, bypass fast power off\n");

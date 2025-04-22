@@ -240,6 +240,7 @@ static void mdw_plat_v6_late_deinit(struct mdw_device *mdev)
 
 static void mdw_plat_v6_appendix_process(struct mdw_cmd *c, enum apu_appendix_cb_type type)
 {
+	struct apusys_cmd_info cmd_info;
 	struct mdw_rv_cmd *rv_cmd = (struct mdw_rv_cmd *)c->plat_priv;
 	struct mdw_rv_msg_cmd *rmc = NULL;
 	struct mdw_rv_msg_cb *rmcb = NULL;
@@ -247,13 +248,19 @@ static void mdw_plat_v6_appendix_process(struct mdw_cmd *c, enum apu_appendix_cb
 	uint32_t i = 0;
 	uint64_t oft = 0;
 
+	/* assign cmd info */
+	cmd_info.session_id = (uint64_t)c->mpriv;
+	cmd_info.cmd_uid = c->uid;
+	cmd_info.num_subcmds = c->num_subcmds;
+	cmd_info.power_plcy = c->power_plcy;
+
 	rmc = (struct mdw_rv_msg_cmd *)rv_cmd->cb->vaddr;
 	rmcb = (void*)rmc + rmc->cmdbuf_infos_offset;
 	rmaci = (void *)rmc + rmc->appendix_cmdbuf_infos_offset;
 
 	for (i = 0; i < rmc->appendix_cmdbuf_infos_num; i++) {
 		oft = rmcb[rmaci->cmdbuf_idx].device_va - rv_cmd->cb->device_va;
-		mdw_cb_appendix_process(type, i, (uint64_t)c->mpriv, c->uid, c->num_subcmds,
+		mdw_cb_appendix_process(type, i, &cmd_info,
 			(void *)rmc + oft, rmcb[rmaci->cmdbuf_idx].size);
 		mdw_flw_debug("rmc(%pK) rmcb-#%u(%pK) oft(%llu|0x%llx/0x%llx)\n",
 			rmc, rmaci->cmdbuf_idx, rmcb, oft, rmcb[rmaci->cmdbuf_idx].device_va, rv_cmd->cb->device_va);
@@ -264,6 +271,7 @@ static void mdw_plat_v6_appendix_process(struct mdw_cmd *c, enum apu_appendix_cb
 
 static struct mdw_mem_map *mdw_plat_v6_create_msg(struct mdw_cmd *c)
 {
+	struct apusys_cmd_info cmd_info;
 	struct mdw_mem_map *rv_cmdbuf = NULL;
 	struct mdw_fpriv *mpriv = c->mpriv;
 	uint64_t cb_size = 0;
@@ -436,6 +444,12 @@ static struct mdw_mem_map *mdw_plat_v6_create_msg(struct mdw_cmd *c)
 	memcpy((void *)rmc + rmc->end_vertices_offset, c->end_vertices,
 		c->end_vertices_size);
 
+	/* assign cmd info */
+	cmd_info.session_id = (uint64_t)c->mpriv;
+	cmd_info.cmd_uid = c->uid;
+	cmd_info.num_subcmds = c->num_subcmds;
+	cmd_info.power_plcy = c->power_plcy;
+
 	/* assign appendix cmdbufs infos and content by callback */
 	rmaci = (void *)rmc + rmc->appendix_cmdbuf_infos_offset;
 	tmp_ofs = appendix_cmdbufs_ofs;
@@ -450,8 +464,8 @@ static struct mdw_mem_map *mdw_plat_v6_create_msg(struct mdw_cmd *c)
 			rmaci->cmdbuf_idx, rmcb[rmaci->cmdbuf_idx].device_va,
 			rmcb[rmaci->cmdbuf_idx].size);
 
-		if (mdw_cb_appendix_process(APU_APPENDIX_CB_CREATE, i, (uint64_t)c->mpriv, c->uid,
-			c->num_subcmds, (void *)rmc + tmp_ofs, rmcb[rmaci->cmdbuf_idx].size))
+		if (mdw_cb_appendix_process(APU_APPENDIX_CB_CREATE, i, &cmd_info,
+			(void *)rmc + tmp_ofs, rmcb[rmaci->cmdbuf_idx].size))
 			mdw_drv_warn("appendix(%u) process(%d) failed\n", i, APU_APPENDIX_CB_CREATE);
 
 		tmp_ofs += rmcb[rmaci->cmdbuf_idx].size;

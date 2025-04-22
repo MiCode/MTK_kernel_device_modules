@@ -256,6 +256,7 @@ int apu_hds_dev_init(struct apu_hds_device *hdev)
 	mutex_init(&hdev->msg_mtx);
 
 	hdev->pmu_lv = 1;
+	hdev->pmu_tag_en = 0;
 
 	/* create allocator */
 	hdev->allocator = apu_sysmem_create_allocator(0xFFFFFFFD);

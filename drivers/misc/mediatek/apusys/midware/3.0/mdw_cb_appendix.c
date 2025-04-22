@@ -69,8 +69,8 @@ uint32_t mdw_cb_appendix_size_by_idx(uint32_t idx, uint32_t num_subcmds)
 	return ret;
 }
 
-int mdw_cb_appendix_process(int process_type, uint32_t idx, uint64_t session_id, uint64_t cmd_uid,
-	uint32_t num_subcmds, void *va, uint32_t size)
+int mdw_cb_appendix_process(int process_type, uint32_t idx, struct apusys_cmd_info *cmd_info,
+	void *va, uint32_t size)
 {
 	struct cb_appendix_info *acb_info = NULL;
 	int ret = -EINVAL;
@@ -81,8 +81,8 @@ int mdw_cb_appendix_process(int process_type, uint32_t idx, uint64_t session_id,
 	hash_for_each_possible(g_acb_hash, acb_info, hash_node, idx) {
 		if (acb_info->idx == idx) {
 			mdw_flw_debug("appendix-#%u owner(%u) id(0x%llx/0x%llx) process type(%d) cmdbuf(%pK/%u)\n",
-				idx, acb_info->owner, session_id, cmd_uid, process_type, va, size);
-			ret = acb_info->cb_process(process_type, session_id, cmd_uid, num_subcmds, va, size);
+				idx, acb_info->owner, cmd_info->session_id, cmd_info->cmd_uid, process_type, va, size);
+			ret = acb_info->cb_process(process_type, cmd_info, va, size);
 			break;
 		}
 	}
