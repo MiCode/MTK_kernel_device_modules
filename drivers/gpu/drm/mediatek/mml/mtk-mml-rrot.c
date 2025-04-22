@@ -121,7 +121,7 @@
 #define RROT_AFBC_PAYLOAD_OST		0xf50
 
 /* RROT debug monitor register count */
-#define RROT_MON_COUNT 39
+#define RROT_MON_COUNT 45
 #define RROT_HYFBC_MON_COUNT 4
 static u32 hyfbc_setting[RROT_HYFBC_MON_COUNT] = {0x6000, 0x18000, 0x3c000, 0x3e000};
 
@@ -2560,7 +2560,7 @@ static const char *rrot_state(u32 state)
 static void rrot_debug_dump(struct mml_comp *comp)
 {
 	void __iomem *base = comp->base;
-	u32 shadow_ctrl, value[RROT_MON_COUNT], state, greq, i;
+	u32 shadow_ctrl, value[8], state, greq, i;
 	u32 hyfbc_value[RROT_HYFBC_MON_COUNT];
 
 	mml_err("rrot component %u %s dump:", comp->id, comp->name ? comp->name : "");
@@ -2590,116 +2590,120 @@ static void rrot_debug_dump(struct mml_comp *comp)
 	value[1] = readl(base + RROT_RESET);
 	value[2] = readl(base + RROT_CON);
 	value[3] = readl(base + RROT_BINNING);
-	value[4] = readl(base + RROT_PREFETCH_CONTROL_0);
-	value[5] = readl(base + RROT_PREFETCH_CONTROL_1);
-	value[6] = readl(base + RROT_PREFETCH_CONTROL_2);
-	value[7] = readl(base + RROT_AUTO_SLICE_0);
-	value[8] = readl(base + RROT_AUTO_SLICE_1);
-
 	mml_err("RROT_EN %#010x SHADOW %#010x RROT_RESET %#010x RROT_CON %#010x RROT_BINNING %#010x",
 		value[0], shadow_ctrl, value[1], value[2], value[3]);
+
+	value[0] = readl(base + RROT_PREFETCH_CONTROL_0);
+	value[1] = readl(base + RROT_PREFETCH_CONTROL_1);
+	value[2] = readl(base + RROT_PREFETCH_CONTROL_2);
+	value[3] = readl(base + RROT_AUTO_SLICE_0);
+	value[4] = readl(base + RROT_AUTO_SLICE_1);
 	mml_err("RROT_PREFETCH_CONTROL 0 %#010x 1 %#010x 2 %#010x",
-		value[4], value[5], value[6]);
+		value[0], value[1], value[2]);
 	mml_err("RROT_AUTO_SLICE_0 %#010x RROT_AUTO_SLICE_1 %#010x",
-		value[7], value[8]);
+		value[3], value[4]);
 
-	value[2] = readl(base + RROT_SRC_CON);
-	value[3] = readl(base + RROT_COMP_CON);
-	value[4] = readl(base + RROT_TRANSFORM_0);
+	value[0] = readl(base + RROT_SRC_CON);
+	value[1] = readl(base + RROT_COMP_CON);
+	value[2] = readl(base + RROT_TRANSFORM_0);
 	mml_err("RROT_SRC_CON %#010x RROT_COMP_CON %#010x RROT_TRANSFORM_0 %#010x",
-		value[2], value[3], value[4]);
+		value[0], value[1], value[2]);
 
-	value[4] = readl(base + RROT_MF_BKGD_SIZE_IN_BYTE);
-	value[5] = readl(base + RROT_SF_BKGD_SIZE_IN_BYTE);
-	value[6] = readl(base + RROT_MF_BKGD_SIZE_IN_PXL);
-	value[7] = readl(base + RROT_MF_BKGD_H_SIZE_IN_PXL);
-	value[8] = readl(base + RROT_SRC_OFFSET_WP);
-	value[9] = readl(base + RROT_SRC_OFFSET_HP);
-	value[10] = readl(base + RROT_MF_SRC_SIZE);
-	value[11] = readl(base + RROT_MF_OFFSET_1);
-	value[12] = readl(base + RROT_MF_CLIP_SIZE);
-
+	value[0] = readl(base + RROT_MF_BKGD_SIZE_IN_BYTE);
+	value[1] = readl(base + RROT_SF_BKGD_SIZE_IN_BYTE);
 	mml_err("RROT_MF_BKGD_SIZE_IN_BYTE %#010x RROT_SF_BKGD_SIZE_IN_BYTE %#010x",
-		value[4], value[5]);
+		value[0], value[1]);
 
+	value[0] = readl(base + RROT_MF_BKGD_SIZE_IN_PXL);
+	value[1] = readl(base + RROT_MF_BKGD_H_SIZE_IN_PXL);
+	value[2] = readl(base + RROT_SRC_OFFSET_WP);
+	value[3] = readl(base + RROT_SRC_OFFSET_HP);
+	value[4] = readl(base + RROT_MF_SRC_SIZE);
+	value[5] = readl(base + RROT_MF_OFFSET_1);
+	value[6] = readl(base + RROT_MF_CLIP_SIZE);
 	/* following log dump by order out to in: bkgd(frame), src(tile), clip(crop) */
 	mml_err("RROT_MF_BKGD_SIZE_IN_PXL %#010x RROT_MF_BKGD_H_SIZE_IN_PXL %#010x",
-		value[6], value[7]);
+		value[0], value[1]);
 	mml_err("RROT_SRC_OFFSET_WP %#010x RROT_SRC_OFFSET_HP %#010x RROT_MF_SRC_SIZE %#010x",
-		value[8], value[9], value[10]);
+		value[2], value[3], value[4]);
 	mml_err("RROT_MF_OFFSET_1 %#010x RROT_MF_CLIP_SIZE %#010x",
-		value[11], value[12]);
+		value[5], value[6]);
 
-	value[13] = readl(base + RROT_SRC_BASE_0_MSB);
-	value[14] = readl(base + RROT_SRC_BASE_0);
-	value[15] = readl(base + RROT_SRC_BASE_1_MSB);
-	value[16] = readl(base + RROT_SRC_BASE_1);
-	value[17] = readl(base + RROT_SRC_BASE_2_MSB);
-	value[18] = readl(base + RROT_SRC_BASE_2);
-
+	value[0] = readl(base + RROT_SRC_BASE_0_MSB);
+	value[1] = readl(base + RROT_SRC_BASE_0);
+	value[2] = readl(base + RROT_SRC_BASE_1_MSB);
+	value[3] = readl(base + RROT_SRC_BASE_1);
+	value[4] = readl(base + RROT_SRC_BASE_2_MSB);
+	value[5] = readl(base + RROT_SRC_BASE_2);
 	mml_err("RROT_SRC     BASE_0 %#03x%08x     BASE_1 %#03x%08x     BASE_2 %#03x%08x",
-		value[13], value[14],
-		value[15], value[16],
-		value[17], value[18]);
+		value[0], value[1], value[2], value[3], value[4], value[5]);
 
-	value[13] = readl(base + RROT_SRC_OFFSET_0);
-	value[14] = readl(base + RROT_SRC_OFFSET_1);
-	value[15] = readl(base + RROT_SRC_OFFSET_2);
-	value[16] = readl(base + RROT_SRC_BASE_ADD_0);
-	value[17] = readl(base + RROT_SRC_BASE_ADD_1);
-	value[18] = readl(base + RROT_SRC_BASE_ADD_2);
-
+	value[0] = readl(base + RROT_SRC_OFFSET_0);
+	value[1] = readl(base + RROT_SRC_OFFSET_1);
+	value[2] = readl(base + RROT_SRC_OFFSET_2);
+	value[3] = readl(base + RROT_SRC_BASE_ADD_0);
+	value[4] = readl(base + RROT_SRC_BASE_ADD_1);
+	value[5] = readl(base + RROT_SRC_BASE_ADD_2);
 	mml_err("RROT_SRC   OFFSET_0 %#011x   OFFSET_1 %#011x   OFFSET_2 %#011x",
-		value[13], value[14], value[15]);
+		value[0], value[1], value[2]);
 	mml_err("RROT_SRC BASE_ADD_0 %#011x BASE_ADD_1 %#011x BASE_ADD_2 %#011x",
-		value[16], value[17], value[18]);
+		value[3], value[4], value[5]);
 
-	value[25] = readl(base + RROT_UFO_DEC_LENGTH_BASE_Y_MSB);
-	value[26] = readl(base + RROT_UFO_DEC_LENGTH_BASE_Y);
-	value[27] = readl(base + RROT_UFO_DEC_LENGTH_BASE_C_MSB);
-	value[28] = readl(base + RROT_UFO_DEC_LENGTH_BASE_C);
-	value[29] = readl(base + RROT_AFBC_PAYLOAD_OST);
-	value[30] = readl(base + RROT_GMCIF_CON);
-
+	value[0] = readl(base + RROT_UFO_DEC_LENGTH_BASE_Y_MSB);
+	value[1] = readl(base + RROT_UFO_DEC_LENGTH_BASE_Y);
+	value[2] = readl(base + RROT_UFO_DEC_LENGTH_BASE_C_MSB);
+	value[3] = readl(base + RROT_UFO_DEC_LENGTH_BASE_C);
+	value[4] = readl(base + RROT_AFBC_PAYLOAD_OST);
+	value[5] = readl(base + RROT_GMCIF_CON);
 	mml_err("RROT_UFO_DEC_LENGTH BASE_Y %#03x%08x BASE_C %#03x%08x",
-		value[25], value[26], value[27], value[28]);
+		value[0], value[1], value[2], value[3]);
 	mml_err("RROT_AFBC_PAYLOAD_OST %#010x RROT_GMCIF_CON %#010x",
-		value[29], value[30]);
+		value[4], value[5]);
 
 	if (mml_rdma_crc) {
-		value[31] = readl(base + RROT_CHKS_EXTR);
-		value[32] = readl(base + RROT_CHKS_ROTO);
-		value[33] = readl(base + RROT_DEBUG_CON);
+		value[0] = readl(base + RROT_CHKS_EXTR);
+		value[1] = readl(base + RROT_CHKS_ROTO);
+		value[2] = readl(base + RROT_DEBUG_CON);
 		mml_err("RROT_CHKS_EXTR %#010x RROT_CHKS_ROTO %#010x RROT_DEBUG_CON %#010x",
-			value[31], value[32], value[33]);
+			value[0], value[1], value[2]);
 	}
 
-	/* mon sta from 0 ~ 37 */
-	for (i = 0; i < RROT_MON_COUNT; i++)
-		value[i] = readl(base + RROT_MON_STA_0 + i * 8);
+	/* mon sta from 0 ~ 44 */
+	for (i = 0; i < RROT_MON_COUNT; i += 4) {
+		u32 j;
 
-	for (i = 0; i < RROT_MON_COUNT / 3; i++) {
-		mml_err("RROT_MON_STA_%-2u %#010x RROT_MON_STA_%-2u %#010x RROT_MON_STA_%-2u %#010x",
-			i * 3, value[i * 3],
-			i * 3 + 1, value[i * 3 + 1],
-			i * 3 + 2, value[i * 3 + 2]);
+		for (j = 0; j < min(4, RROT_MON_COUNT - i); j++)
+			value[j] = readl(base + RROT_MON_STA_0 + (i + j) * 8);
+		if (i + 3 < RROT_MON_COUNT)
+			mml_err("RROT_MON_STA_%-2u %#010x %#010x %#010x %#010x",
+				i, value[0], value[1], value[2], value[3]);
+		else if (i + 2 < RROT_MON_COUNT)
+			mml_err("RROT_MON_STA_%-2u %#010x %#010x %#010x",
+				i, value[0], value[1], value[2]);
+		else if (i + 1 < RROT_MON_COUNT)
+			mml_err("RROT_MON_STA_%-2u %#010x %#010x",
+				i, value[0], value[1]);
+		else
+			mml_err("RROT_MON_STA_%-2u %#010x",
+				i, value[0]);
 	}
-	mml_err("RROT_MON_STA_36 %#010x RROT_MON_STA_37 %#010x",
-		value[36], value[37]);
 
-	value[38] = readl(base + RROT_DUMMY_REG);
-	mml_err("RROT_DUMMY_REG %#010x", value[38]);
+	value[0] = readl(base + RROT_DUMMY_REG);
+	value[1] = readl(base + RROT_DDREN);
+	mml_err("RROT_DUMMY_REG %#010x RROT_DDREN %#010x", value[0], value[1]);
 
 	for (i = 0; i < RROT_HYFBC_MON_COUNT; i++) {
 		writel(hyfbc_setting[i], base + RROT_DEBUG_CON);
 		hyfbc_value[i] = readl(base + RROT_MON_STA_0 + 16 * 8);
 	}
-
 	mml_err("RROT_DEBUG_CON: RROT_MON_STA_16 %#06x: %#010x, %#06x: %#010x, %#06x: %#010x, %#06x: %#010x",
 		hyfbc_setting[0], hyfbc_value[0], hyfbc_setting[1], hyfbc_value[1],
 		hyfbc_setting[2], hyfbc_value[2], hyfbc_setting[3], hyfbc_value[3]);
 
 	/* parse state */
+	value[0] = readl(base + RROT_MON_STA_0);
+	value[1] = readl(base + RROT_MON_STA_0 + 8);
+	value[2] = readl(base + RROT_MON_STA_0 + 0xd0);
 	mml_err("RROT ack:%u req:%d ufo:%u",
 		(value[0] >> 11) & 0x1, (value[0] >> 10) & 0x1,
 		(value[0] >> 25) & 0x1);
@@ -2707,7 +2711,7 @@ static void rrot_debug_dump(struct mml_comp *comp)
 	greq = (value[0] >> 21) & 0x1;
 	mml_err("RROT state: %#x (%s)", state, rrot_state(state));
 	mml_err("RROT horz_cnt %u vert_cnt %u",
-		value[26] & 0xffff, (value[26] >> 16) & 0xffff);
+		value[2] & 0xffff, (value[2] >> 16) & 0xffff);
 	mml_err("RROT greq:%u => suggest to ask SMI help:%u", greq, greq);
 }
 
