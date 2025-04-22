@@ -161,7 +161,7 @@ struct TzInfo tzInfos[TZINFO_NUM] = {
 };
 
 #define TASK_INIT_DURATION       2000
-#define HINT_DURATION_LONG       5000
+#define HINT_DURATION_LONG       3000
 #define HINT_DURATION_SHORT       500
 #define LOG_DURATION            10000
 #define DEFAULT_HINT_SOC_TEMP  100000
@@ -2948,10 +2948,11 @@ static void __used kernel_thermal_hint(unsigned int *next_polling_duration)
 			thermal_hint_notify(1, 1);
 	}
 
-	if (max_temp > hint_temp || thermal_hint) {
+	if (max_temp > hint_temp || thermal_hint)
 		print = 1;
+
+	if (max_temp > (hint_temp - SOC_TEMP_TOLARANCE) || thermal_hint)
 		*next_polling_duration = HINT_DURATION_SHORT;
-	}
 
 	if (print)
 		pr_info("[T(M/t)=%d/%d][(CL)(CC)(Mm)=(%d/%d/%d)(%d/%d/%d)(%d/%d)][kTH=%d r/f=%d/%d][d:%d]\n",
