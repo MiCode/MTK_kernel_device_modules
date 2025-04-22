@@ -7,5 +7,6 @@
 
 bool mtk_dsi_lpc_en(struct mtk_drm_crtc *mtk_crtc);
 void mtk_dsi_lpc_for_debug_config(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cmdq_handle);
+void mtk_dsi_lpc_set_te_en(struct mtk_drm_crtc *mtk_crtc, bool en);
 
 #endif

@@ -5749,6 +5749,17 @@ test_2c_done:
 		if (relay_idx >= 0)
 			ret = mtk_disp_get_pq_data(relay_idx);
 		DDPMSG("get_pq_relay %d:%d\n", relay_idx, ret);
+	} else if (strncmp(opt, "lpc_te_en:", 10) == 0) {
+		int ret, value;
+
+		ret = sscanf(opt + 10, "%d\n", &value);
+		if (ret <= 0) {
+			DDPMSG("%d error to parse cmd %s\n", __LINE__, opt);
+			return;
+		}
+
+		DDPMSG("lpc_te_en:%d", value);
+		mtk_dsi_lpc_set_te_en(mtk_crtc, value);
 	}
 }
 
