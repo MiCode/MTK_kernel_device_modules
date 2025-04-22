@@ -770,7 +770,7 @@ void mtk_vidle_hrt_bw_set(const u32 bw_in_mb)
 				vidle_data.hrt_bw = vidle_data.hrt_bw * default_emi_eff / 10000;
 				DDPINFO("%s modify bw=%d\n", __func__, vidle_data.hrt_bw);
 			}
-			disp_dpc_driver.dpc_hrt_bw_set(DPC_SUBSYS_DISP, vidle_data.hrt_bw, true);
+			disp_dpc_driver.dpc_hrt_bw_set(0, vidle_data.hrt_bw, true);
 		}
 	} else
 		DDPINFO("%s NOT SET:%d\n", __func__, bw_in_mb);
@@ -783,7 +783,7 @@ void mtk_vidle_srt_bw_set(const u32 bw_in_mb)
 		if (vidle_data.dpc_version == DPC_VER1)
 			disp_dpc_driver.dpc_srt_bw_set(DPC_SUBSYS_DISP, bw_in_mb, !atomic_read(&g_ff_enabled));
 		else
-			disp_dpc_driver.dpc_srt_bw_set(DPC_SUBSYS_DISP, bw_in_mb, true);
+			disp_dpc_driver.dpc_srt_bw_set(0, bw_in_mb, true);
 	} else
 		DDPINFO("%s NOT SET:%d\n", __func__, bw_in_mb);
 }

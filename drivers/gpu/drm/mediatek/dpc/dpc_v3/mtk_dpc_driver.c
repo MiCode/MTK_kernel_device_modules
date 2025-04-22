@@ -1094,7 +1094,7 @@ static void dpc_hrt_bw_set_v3(const u32 subsys, const u32 bw_in_mb, bool force)
 	/* U32_MAX means no need to update, just read */
 	mutex_lock(&g_priv->dvfs_bw.lock);
 	if (bw_in_mb != U32_MAX) {
-		if (subsys == DPC_SUBSYS_DISP)
+		if (subsys == 0)
 			g_priv->dvfs_bw.disp_bw[DPC_TOTAL_HRT] = bw_in_mb;
 		else if (subsys == DPC3_SUBSYS_MML0)
 			g_priv->dvfs_bw.mml0_bw[DPC_TOTAL_HRT] = bw_in_mb;
@@ -1197,7 +1197,7 @@ static void dpc_srt_bw_set_v3(const u32 subsys, const u32 bw_in_mb, bool force)
 	/* U32_MAX means no need to update, just read */
 	mutex_lock(&g_priv->dvfs_bw.lock);
 	if (bw_in_mb != U32_MAX) {
-		if (subsys == DPC_SUBSYS_DISP)
+		if (subsys == 0)
 			g_priv->dvfs_bw.disp_bw[DPC_TOTAL_SRT] = bw_in_mb;
 		else if (subsys == DPC3_SUBSYS_MML0)
 			g_priv->dvfs_bw.mml0_bw[DPC_TOTAL_SRT] = bw_in_mb;
