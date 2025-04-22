@@ -193,6 +193,17 @@ void md_cd_lock_modem_clock_src(int locked)
 	int settle;
 	struct arm_smccc_res res = {0};
 
+
+	if (md_cd_plat_val_ptr.md_gen < 6295) {
+		CCCI_NORMAL_LOG(-1, TAG, "[md_gen < 6295] using spm\n");
+#if IS_ENABLED(CONFIG_MTK_SPM_V4)
+		spm_ap_mdsrc_req(locked);
+#else
+		if (s_md_clock_src_callback)
+			s_md_clock_src_callback(locked);
+#endif
+		return;
+	}
 	arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, MD_CLOCK_REQUEST,
 		MD_REG_AP_MDSRC_REQ, locked, 0, 0, 0, 0, &res);
 	if (res.a0) {
@@ -202,13 +213,6 @@ void md_cd_lock_modem_clock_src(int locked)
 		else
 			CCCI_ERROR_LOG(-1, TAG,
 				"md source release fail (0x%lX)\n", res.a0);
-	}
-
-	if (res.a0 && md_cd_plat_val_ptr.md_gen < 6295) {
-		CCCI_ERROR_LOG(-1, TAG, "[md_gen < 6295] using spm\n");
-		if (s_md_clock_src_callback)
-			s_md_clock_src_callback(locked);
-		return;
 	}
 
 	if (locked) {

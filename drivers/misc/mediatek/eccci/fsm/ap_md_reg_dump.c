@@ -10,9 +10,17 @@
 size_t mdreg_write32(size_t reg_id, size_t value)
 {
 	struct arm_smccc_res res;
+	static unsigned int ap_platform;
 
-	arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, MD_DBGSYS_REG_DUMP, reg_id,
-		value, 0, 0, 0, 0, &res);
+	if (!ap_platform)
+		ap_platform = ccci_get_ap_plat();
+
+	if (ap_platform == 6768)
+		arm_smccc_smc(MTK_SIP_KERNEL_CCCI_GET_INFO, reg_id, value,
+			0, 0, 0, 0, 0, &res);
+	else
+		arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, MD_DBGSYS_REG_DUMP, reg_id,
+			value, 0, 0, 0, 0, &res);
 
 	return res.a0;
 }
