@@ -2302,6 +2302,29 @@ static const struct dvfsrc_soc_data mt6878_data = {
 #endif
 };
 
+static const struct dvfsrc_opp dvfsrc_opp_mt6858[] = {
+	{0, 0}, {1, 0}, {2, 0}, {3, 0},
+	{0, 1}, {1, 1}, {2, 1}, {3, 1},
+	{0, 2}, {1, 2}, {2, 2}, {3, 2},
+	{1, 3}, {2, 3}, {3, 3},
+	{2, 4}, {3, 4},
+	{3, 5},
+};
+
+static const struct dvfsrc_opp_desc dvfsrc_opp_mt6858_desc[] = {
+	DVFSRC_OPP_DESC(dvfsrc_opp_mt6858),
+};
+
+static const struct dvfsrc_soc_data mt6858_data = {
+	DVFSRC_MT6983_SERIES_OPS,
+	.opps_desc = dvfsrc_opp_mt6858_desc,
+	.num_opp_desc = ARRAY_SIZE(dvfsrc_opp_mt6858_desc),
+	.regs = mt6983_regs,
+#ifdef DVFSRC_FORCE_OPP_SUPPORT
+	.set_force_opp_level = mt6985_set_force_opp_level,
+#endif
+};
+
 static const struct dvfsrc_opp_desc dvfsrc_opp_mt6991_desc[] = {
 	{
 		.opps = NULL,
