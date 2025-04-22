@@ -565,8 +565,6 @@ static struct mtk_panel_params ext_params = {
 	.msync2_enable = 1,
 	.msync_cmd_table = {
 		.te_type = REQUEST_TE,
-		.is_gce_delay = false,
-		.te_step_time = 16666,
 		.msync_max_fps = 120,
 		.msync_min_fps = 60,
 		.msync_level_num = 20,
@@ -597,6 +595,8 @@ static struct mtk_panel_params ext_params = {
 */
 		},
 	},
+	.is_gce_delay = false,
+	.real_te_duration = 16666,
 	.lp_perline_en = 1,
 #ifdef CONFIG_MTK_ROUND_CORNER_SUPPORT
 	.round_corner_en = 0,
@@ -665,8 +665,6 @@ static struct mtk_panel_params ext_params_90hz = {
 	.msync2_enable = 1,
 	.msync_cmd_table = {
 		.te_type = REQUEST_TE,
-		.is_gce_delay = false,
-		.te_step_time = 11111,
 		.msync_max_fps = 120,
 		.msync_min_fps = 60,
 		.msync_level_num = 20,
@@ -697,6 +695,8 @@ static struct mtk_panel_params ext_params_90hz = {
 */
 		},
 	},
+	.is_gce_delay = false,
+	.real_te_duration = 11111,
 	.lp_perline_en = 1,
 #ifdef CONFIG_MTK_ROUND_CORNER_SUPPORT
 	.round_corner_en = 0,
@@ -766,8 +766,6 @@ static struct mtk_panel_params ext_params_120hz = {
 	.msync2_enable = 1,
 	.msync_cmd_table = {
 		.te_type = REQUEST_TE,
-		.is_gce_delay = false,
-		.te_step_time = 8333,
 		.msync_max_fps = 120,
 		.msync_min_fps = 60,
 		.msync_level_num = 20,
@@ -798,6 +796,8 @@ static struct mtk_panel_params ext_params_120hz = {
 */
 		},
 	},
+	.is_gce_delay = false,
+	.real_te_duration = 8333,
 	.lp_perline_en = 1,
 #ifdef CONFIG_MTK_ROUND_CORNER_SUPPORT
 	.round_corner_en = 0,

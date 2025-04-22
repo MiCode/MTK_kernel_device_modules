@@ -120,7 +120,7 @@ static struct mtk_drm_property mtk_crtc_property[CRTC_PROP_MAX] = {
 	{DRM_MODE_PROP_ATOMIC, "USER_SCEN", 0, ULONG_MAX, 0},
 	{DRM_MODE_PROP_ATOMIC, "HDR_ENABLE", 0, ULONG_MAX, 0},
 	{DRM_MODE_PROP_ATOMIC, "MSYNC2_0_ENABLE", 0, ULONG_MAX, 0},
-	{DRM_MODE_PROP_ATOMIC, "MSYNC2_0_EPT", 0, ULONG_MAX, 0},
+	{DRM_MODE_PROP_ATOMIC, "EPT", 0, ULONG_MAX, 0},
 	{DRM_MODE_PROP_ATOMIC, "OVL_DSI_SEQ", 0, ULONG_MAX, 0},
 	{DRM_MODE_PROP_ATOMIC, "OUTPUT_SCENARIO", 0, ULONG_MAX, 0},
 	{DRM_MODE_PROP_ATOMIC | DRM_MODE_PROP_IMMUTABLE,
@@ -8987,10 +8987,9 @@ static void mtk_crtc_cmdq_timeout_cb(struct cmdq_cb_data data)
 	mtk_drm_crtc_analysis(crtc);
 	mtk_drm_crtc_dump(crtc);
 
-	if (mtk_crtc_is_frame_trigger_mode(crtc) &&
-		msync2_is_on && (id == 0) &&
+	if (mtk_crtc_is_frame_trigger_mode(crtc) && (id == 0) &&
 		(flush_add_delay_need == true) &&
-		(mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MSYNC2_0_WAIT_EPT))) {
+		(mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_WAIT_EPT))) {
 		unsigned long long current_time = ktime_get_boottime_ns();
 
 		DDPMSG("flush+delay:%llu callback:%llu\n", flush_add_delay_time,
@@ -10817,9 +10816,8 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 		mtk_crtc->skip_check_trigger);
 
 	if (mtk_crtc_is_frame_trigger_mode(crtc) &&
-		msync2_is_on && (id == 0) &&
-		(flush_add_delay_need == true) &&
-		(mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MSYNC2_0_WAIT_EPT))) {
+		(id == 0) && (flush_add_delay_need == true) &&
+		(mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_WAIT_EPT))) {
 		unsigned long long current_time = ktime_get_boottime_ns();
 
 		DDPINFO("flush+delay:%llu callback:%llu\n", flush_add_delay_time,
@@ -19248,13 +19246,13 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 
 	/* Msync2.0 Smoothness tuning */
 	if (mtk_crtc_is_frame_trigger_mode(crtc) &&
-		msync2_is_on && (crtc_index == 0) &&
-		(mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MSYNC2_0_WAIT_EPT))) {
+		(crtc_index == 0) &&
+		(mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_WAIT_EPT))) {
 		struct mtk_panel_params *params =
 			mtk_drm_get_lcm_ext_params(crtc);
 		unsigned int delay_us = 0;
 		unsigned long long current_time = ktime_get_boottime_ns();
-		unsigned long long ept_time = state->prop_val[CRTC_PROP_MSYNC2_0_EPT];
+		unsigned long long ept_time = state->prop_val[CRTC_PROP_EPT];
 		unsigned int frame_rate =
 			drm_mode_vrefresh(&crtc->state->adjusted_mode);
 		unsigned int te_step_time = 0;
@@ -19262,12 +19260,12 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 
 		DDPDBG("%s:%d systime:%lld\n", __func__, __LINE__, current_time);
 		DDPDBG("%s:%d last frame sof:%llu\n", __func__, __LINE__, g_pf_time);
-		DDPDBG("%s:%d MSYNC2_0_EPT:%llu\n", __func__, __LINE__, ept_time);
+		DDPDBG("%s:%d EPT:%llu\n", __func__, __LINE__, ept_time);
 		DDPDBG("%s:%d vrefresh%u frame_time:%u\n", __func__, __LINE__,
 			frame_rate, frame_time);
 
 		if (params) {
-			te_step_time = params->msync_cmd_table.te_step_time;
+			te_step_time = params->real_te_duration;
 			DDPDBG("%s:%d te_step_time:%u\n", __func__, __LINE__, te_step_time);
 		}
 
@@ -19277,13 +19275,13 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 		if ((ept_time > g_pf_time) &&
 			(ept_time - g_pf_time < frame_time)) {
 			ept_time += frame_time - (ept_time - g_pf_time);
-			DDPINFO("%s:%d > MSYNC2_0_EPT modified:%llu\n",
+			DDPINFO("%s:%d > EPT modified:%llu\n",
 				__func__, __LINE__, ept_time);
 		}
 
 		if (ept_time <= g_pf_time) {
 			ept_time = frame_time + g_pf_time;
-			DDPINFO("%s:%d < MSYNC2_0_EPT modified:%llu\n", __func__, __LINE__,
+			DDPINFO("%s:%d < EPT modified:%llu\n", __func__, __LINE__,
 				ept_time);
 		}
 
@@ -19300,7 +19298,7 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 			flush_add_delay_time = current_time/1000 + delay_us;
 			flush_add_delay_need = false;
 			//GCE wait EPT
-			if (params && params->msync_cmd_table.is_gce_delay &&
+			if (params && params->is_gce_delay &&
 					(delay_us < 1000000)) {
 				drm_trace_tag_value("msync2_delay", delay_us);
 				CRTC_MMP_MARK(crtc_index, atomic_delay, delay_us, 0);

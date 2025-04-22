@@ -532,11 +532,9 @@ struct msync_trigger_level_te_table {
 };
 
 struct msync_cmd_table {
-	bool is_gce_delay;
 	bool need_switch_level_tb;
 	bool need_close_when_lowfps;
 	unsigned int te_type;
-	unsigned int te_step_time;
 	unsigned int msync_max_fps;
 	unsigned int msync_min_fps;
 	unsigned int msync_level_num;
@@ -643,6 +641,7 @@ struct mtk_panel_params {
 	unsigned int merge_trig_offset;
 	unsigned int prefetch_offset;
 	unsigned int real_te_duration;
+	bool is_gce_delay;
 	bool skip_wait_real_te;	/* 0: wait real te by hwc, 1: skip */
 	unsigned int SilkyBrightnessDelay;
 

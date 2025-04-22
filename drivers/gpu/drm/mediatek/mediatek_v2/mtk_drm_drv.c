@@ -2274,6 +2274,65 @@ static void mtk_atomic_check_res_switch(struct mtk_drm_private *private,
 	}
 }
 
+static void mtk_atomic_delay(struct mtk_drm_private *private, struct drm_device *drm,
+			     struct drm_atomic_state *state)
+{
+	uint32_t crtc_mask;
+	struct drm_crtc *crtc;
+	int j = 0;
+	struct drm_crtc_state *new_crtc_state = NULL;
+
+	crtc_mask = mtk_atomic_crtc_mask(drm, state);
+	for_each_new_crtc_in_state(state, crtc, new_crtc_state, j) {
+		int crtc_index = drm_crtc_index(crtc);
+
+		/* check only crtc 0 for atomic delay */
+		if (!(crtc_mask & 0x1))
+			break;
+
+		/* First atomic_delay before commit LOCK: to second last little te*/
+		if (private && mtk_crtc_is_frame_trigger_mode(crtc) && (crtc_index == 0) &&
+			(mtk_drm_helper_get_opt(private->helper_opt, MTK_DRM_OPT_WAIT_EPT))) {
+			struct mtk_crtc_state *mtk_state = to_mtk_crtc_state(new_crtc_state);
+			struct mtk_panel_params *params = mtk_drm_get_lcm_ext_params(crtc);
+			unsigned int delay_us = 0;
+			unsigned long long current_time = ktime_get_boottime_ns();
+			unsigned long long ept_time = mtk_state->prop_val[CRTC_PROP_EPT];
+			unsigned int te_step_time = 0;
+
+			if (params) {
+				te_step_time = params->real_te_duration;
+				DDPDBG("%s:%d te_step_time:%u\n", __func__, __LINE__, te_step_time);
+			}
+			if ((ept_time != 0) && (te_step_time != 0) &&
+				(ept_time/1000 > current_time/1000) &&
+				(mtk_state->prop_val[CRTC_PROP_USER_SCEN] != 1)) {
+				unsigned long long x_time = ept_time/1000 - current_time/1000;
+				//MAX time of sleep in LOCK is 2ms
+				unsigned long long remain_time_before_TE = te_step_time + 2000;
+
+				if (x_time > remain_time_before_TE)
+					delay_us = x_time - remain_time_before_TE;
+				else
+					delay_us = 0;
+				if (delay_us < 1000000 && (delay_us != 0)) {
+					mtk_drm_trace_begin("delay_to_sec_last_te:%u", delay_us);
+					CRTC_MMP_EVENT_START(crtc_index, atomic_delay, delay_us, 0);
+
+					usleep_range(delay_us, delay_us + 1);
+
+					CRTC_MMP_EVENT_END(crtc_index, atomic_delay, delay_us, 0);
+					mtk_drm_trace_end();
+					DDPINFO("%s:%d CPU delay: atomic_delay st sleep %u us\n",
+						__func__, __LINE__, delay_us);
+				} else if (delay_us >= 1000000)
+					DDPINFO("%s:%d delay_us too much %u us\n",
+						__func__, __LINE__, delay_us);
+			}
+		}
+	}
+}
+
 static int mtk_atomic_commit(struct drm_device *drm,
 			     struct drm_atomic_state *state, bool async)
 {
@@ -2332,6 +2391,9 @@ static int mtk_atomic_commit(struct drm_device *drm,
 		}
 		break;
 	}
+
+	if (mtk_drm_helper_get_opt(private->helper_opt, MTK_DRM_OPT_WAIT_EPT))
+		mtk_atomic_delay(private, drm, state);
 
 	DDP_COMMIT_LOCK(&private->commit.lock, __func__, pf);
 	DRM_MMP_EVENT_START(mutex_lock, 0, 0);
@@ -11124,6 +11186,9 @@ int mtk_drm_ioctl_retrig(struct drm_device *dev, void *data,
 		mtk_release_present_fence(session_id, retrig->present_fence_idx, 0);
 		return 0;
 	}
+
+	//if (mtk_drm_helper_get_opt(private->helper_opt, MTK_DRM_OPT_WAIT_EPT))
+		//mtk_atomic_delay(private, drm, state);
 
 	DDP_PROFILE("[PROFILE] %s+\n", __func__);
 	DDP_COMMIT_LOCK(&private->commit.lock, __func__, retrig->present_fence_idx);

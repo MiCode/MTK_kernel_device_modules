@@ -747,6 +747,8 @@ int mtk_release_union_fence(unsigned int session_id, unsigned int fence_idx, kti
 		/* signal fence */
 		mtk_sync_timeline_inc(layer_info->timeline, fence_increment, time);
 		drm_trace_tag_value("release_present_fence", fence_idx);
+		if (idx == 0)
+			g_pf_time = ktime_get_boottime_ns();
 
 		/* print mmp log */
 		CRTC_MMP_MARK(idx, release_present_fence, 0, fence_idx);

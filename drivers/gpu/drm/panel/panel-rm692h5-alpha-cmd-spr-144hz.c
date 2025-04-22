@@ -1347,12 +1347,11 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 		.corner_pattern_size_per_line = (void *)top_rc_pattern_size_per_line,
 		.msync_cmd_table = {
 			.te_type = MULTI_TE,
-			.is_gce_delay = 1,
-			.te_step_time = 2777,
 		},
 		.phy_timcon = {
 			.lpx = 8, // HS Entry: DATA TLPX, 65ns
 		},
+		.is_gce_delay = 0,
 		.real_te_duration = 2778,
 	},
 	//90hz
@@ -1501,12 +1500,11 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 		.corner_pattern_size_per_line = (void *)top_rc_pattern_size_per_line,
 		.msync_cmd_table = {
 			.te_type = MULTI_TE,
-			.is_gce_delay = 1,
-			.te_step_time = 2777,
 		},
 		.phy_timcon = {
 			.lpx = 8, // HS Entry: DATA TLPX, 65ns
 		},
+		.is_gce_delay = 0,
 		.real_te_duration = 2778,
 	},
 	//72hz
@@ -1655,12 +1653,11 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 		.corner_pattern_size_per_line = (void *)top_rc_pattern_size_per_line,
 		.msync_cmd_table = {
 			.te_type = MULTI_TE,
-			.is_gce_delay = 1,
-			.te_step_time = 2777,
 		},
 		.phy_timcon = {
 			.lpx = 8, // HS Entry: DATA TLPX, 65ns
 		},
+		.is_gce_delay = 0,
 		.real_te_duration = 2778,
 	},
 	//60hz
@@ -1809,12 +1806,11 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 		.corner_pattern_size_per_line = (void *)top_rc_pattern_size_per_line,
 		.msync_cmd_table = {
 			.te_type = MULTI_TE,
-			.is_gce_delay = 1,
-			.te_step_time = 2777,
 		},
 		.phy_timcon = {
 			.lpx = 8, // HS Entry: DATA TLPX, 65ns
 		},
+		.is_gce_delay = 0,
 		.real_te_duration = 2778,
 	},
 #if MAINTAIN_MULTI_DISPLAY_MODE //only maintain MTE and fix360
