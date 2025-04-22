@@ -8,8 +8,8 @@
 #include <linux/kernel.h>
 #include <asm/kvm_pkvm_module.h>
 #include <linux/soc/mediatek/mtk_sip_svc.h>
+#include <pkvm_mgmt/pkvm_mgmt.h>
 
-#include "../include/pkvm_mgmt/pkvm_mgmt.h"
 #include "pkvm_tmem_host.h"
 
 #undef pr_fmt

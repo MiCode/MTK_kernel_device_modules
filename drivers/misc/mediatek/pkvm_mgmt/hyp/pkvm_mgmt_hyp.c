@@ -6,7 +6,7 @@
 #include <asm/alternative-macros.h>
 #include <asm/kvm_pkvm_module.h>
 
-#include "../../include/pkvm_mgmt/pkvm_mgmt.h"
+#include <pkvm_mgmt/pkvm_mgmt.h>
 /*#include "pkvm_mgmt.h"*/
 /*#include "<pkvm_mgmt.h>"*/
 #include "../../../../arch/arm64/kvm/hyp/include/nvhe/spinlock.h"

@@ -23,6 +23,9 @@ define_mgk_ddk_ko(
     name = "pkvm_mgmt",
     srcs = ["pkvm_mgmt_host.c"],
     out = "pkvm_mgmt.ko",
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+    ],
     ko_deps = [
         "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_mgmt/hyp:hyp".format(kernel_version),
     ],

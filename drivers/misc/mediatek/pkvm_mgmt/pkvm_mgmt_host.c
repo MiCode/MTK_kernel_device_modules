@@ -10,7 +10,7 @@
 
 #include <asm/kvm_pkvm_module.h>
 
-#include "../include/pkvm_mgmt/pkvm_mgmt.h"
+#include <pkvm_mgmt/pkvm_mgmt.h>
 
 #undef pr_fmt
 #define pr_fmt(fmt) "[PKVM_MGMT]: " fmt

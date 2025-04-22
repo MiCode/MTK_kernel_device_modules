@@ -78,10 +78,6 @@
 #define CMDQ_GET_COOKIE_CNT(thd) \
 	(CMDQ_REG_GET32(CMDQ_THR_EXEC_CNT(thd)) & CMDQ_MAX_COOKIE_VALUE)
 
-#ifndef CMDQ_IOVA
-#define CMDQ_IOVA
-#endif
-
 extern bool mtkcam_security_cam_normal_preview_support;
 
 struct cmdq_instruction {

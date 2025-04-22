@@ -12,7 +12,7 @@
 #include <asm/kvm_host.h>
 #include <crypto/sha2.h>
 #include <linux/soc/mediatek/mtk_sip_svc.h>
-#include "../include/pkvm_mgmt/pkvm_mgmt.h"
+#include <pkvm_mgmt/pkvm_mgmt.h>
 #include "pkvm_smmu_host.h"
 
 #undef pr_fmt
