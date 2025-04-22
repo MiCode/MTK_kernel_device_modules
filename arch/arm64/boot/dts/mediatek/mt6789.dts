@@ -2493,6 +2493,11 @@
 			pmif = <&pwrap 0>;
 		};
 
+		pmic_tia: pmic-tia@1001c020 {
+			compatible = "mediatek,pmic_tia";
+			reg = <0 0x1001c020 0 0>;
+		};
+
 		keypad: kp@10010000 {
 			compatible = "mediatek,kp";
 			reg = <0 0x10010000 0 0x1000>;
