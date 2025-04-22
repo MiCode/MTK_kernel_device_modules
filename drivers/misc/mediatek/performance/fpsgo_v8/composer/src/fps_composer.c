@@ -843,16 +843,25 @@ static void fpsgo_user_boost(int render_tid, unsigned long long buffer_id,
 	fpsgo_thread_lock(&iter->thr_mlock);
 	if (!iter->p_blc)
 		fpsgo_base2fbt_node_init(iter);
-	iter->enqueue_length = 0;
-	iter->enqueue_length_real = 0;
-	iter->dequeue_length = 0;
+
+	iter->raw_runtime = tcpu;
+	iter->running_time = tcpu;
+	iter->Q2Q_time = ts - iter->t_enqueue_end;
+
+	iter->t_enqueue_end = ts;
+	if (iter->t_enqueue_start && ts > iter->t_enqueue_start)
+		iter->enqueue_length = ts - iter->t_enqueue_start;
+	else
+		iter->enqueue_length = 0;
+	iter->enqueue_length_real = iter->enqueue_length;
+	if (iter->t_dequeue_start && iter->t_dequeue_end > iter->t_dequeue_start)
+		iter->dequeue_length = iter->t_dequeue_end - iter->t_dequeue_start;
+	else
+		iter->dequeue_length = 0;
+
 	if (iter->t_enqueue_end && !skip) {
-		iter->raw_runtime = tcpu;
-		iter->running_time = tcpu;
-		iter->Q2Q_time = ts - iter->t_enqueue_end;
 		fpsgo_comp2fbt_frame_start(iter, ts);
 	}
-	iter->t_enqueue_end = ts;
 	fpsgo_thread_unlock(&iter->thr_mlock);
 
 out:
@@ -994,6 +1003,43 @@ int fpsgo_other2comp_report_workload(int tgid, int render_tid, unsigned long lon
 	return 0;
 }
 EXPORT_SYMBOL(fpsgo_other2comp_report_workload);
+
+int fpsgo_other2comp_set_quedeq_ts(int tgid, int render_tid, unsigned long long buffer_id,
+	int flag, unsigned long long ts)
+{
+	int ret = 0;
+	struct render_info *iter = NULL;
+
+	fpsgo_render_tree_lock(__func__);
+	iter = fpsgo_search_and_add_render_info(render_tid, buffer_id, 0);
+	if (!iter) {
+		ret = -1;
+		goto out;
+	}
+	switch (flag) {
+	case FPSGO_DEQUEUE_START:
+		iter->t_dequeue_start = ts;
+		break;
+	case FPSGO_DEQUEUE_END:
+		iter->t_dequeue_end = ts;
+		break;
+	case FPSGO_ENQUEUE_START:
+		iter->t_enqueue_start = ts;
+		break;
+	case FPSGO_ENQUEUE_END:
+		iter->t_enqueue_end = ts;
+		break;
+	default:
+		ret = -1;
+		goto out;
+	}
+
+out:
+	fpsgo_render_tree_unlock(__func__);
+
+	return ret;
+}
+EXPORT_SYMBOL(fpsgo_other2comp_set_quedeq_ts);
 
 /*
  * General API for notify FPSGO control

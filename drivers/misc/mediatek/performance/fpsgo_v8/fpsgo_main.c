@@ -240,12 +240,14 @@ static void fpsgo_notifier_wq_cb_qudeq(int qudeq,
 		if (startend) {
 			FPSGO_LOGI("[FPSGO_CB] QUEUE Start: pid %d\n",
 					cur_pid);
+			cb_mask = 1 << GET_FPSGO_QUEUE_START;
+			fpsgo_notify_frame_info_callback(cur_pid, cb_mask, id, NULL);
 			fpsgo_ctrl2comp_enqueue_start(cur_pid,
 					curr_ts, id);
 		} else {
 			FPSGO_LOGI("[FPSGO_CB] QUEUE End: pid %d\n",
 					cur_pid);
-			cb_mask = 1 << GET_FPSGO_QUEUE_HINT;
+			cb_mask = 1 << GET_FPSGO_QUEUE_END;
 			fpsgo_notify_frame_info_callback(cur_pid, cb_mask, id, NULL);
 			fpsgo_ctrl2comp_enqueue_end(cur_pid, curr_ts,
 					id, sf_buf_id);
@@ -255,11 +257,15 @@ static void fpsgo_notifier_wq_cb_qudeq(int qudeq,
 		if (startend) {
 			FPSGO_LOGI("[FPSGO_CB] DEQUEUE Start: pid %d\n",
 					cur_pid);
+			cb_mask = 1 << GET_FPSGO_DEQUEUE_START;
+			fpsgo_notify_frame_info_callback(cur_pid, cb_mask, id, NULL);
 			fpsgo_ctrl2comp_dequeue_start(cur_pid,
 					curr_ts, id);
 		} else {
 			FPSGO_LOGI("[FPSGO_CB] DEQUEUE End: pid %d\n",
 					cur_pid);
+			cb_mask = 1 << GET_FPSGO_DEQUEUE_END;
+			fpsgo_notify_frame_info_callback(cur_pid, cb_mask, id, NULL);
 			fpsgo_ctrl2comp_dequeue_end(cur_pid,
 					curr_ts, id);
 		}

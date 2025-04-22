@@ -121,7 +121,7 @@ EXPORT_SYMBOL(engine_cooler_get_firtst_sleep_duration);
 
 static void engine_cooler_cb_from_fpsgo(unsigned long cmd, struct render_frame_info *iter)
 {
-	if (cmd == 1 << GET_FPSGO_QUEUE_HINT) {
+	if (cmd == 1 << GET_FPSGO_QUEUE_END) {
 		if (iter) 
 			update_engine_cooler_data(iter->pid); //need to check queue_end
 	}
@@ -144,12 +144,12 @@ static void engine_cooler_register_fpsgo_cb(bool enable_register)
 		goto end;
 	}
 	if (enable_register) {
-		((FUNC_REGISTER*)(pack->data))->is_register = true;
-		((FUNC_REGISTER*)(pack->data))->mask = 1 << GET_FPSGO_QUEUE_HINT;		
+		((FUNC_REGISTER *)(pack->data))->is_register = true;
+		((FUNC_REGISTER *)(pack->data))->mask = 1 << GET_FPSGO_QUEUE_END;
 	} else
-		((FUNC_REGISTER*)(pack->data))->is_register = false;
+		((FUNC_REGISTER *)(pack->data))->is_register = false;
 
-	((FUNC_REGISTER*)(pack->data))->register_cb = engine_cooler_cb_from_fpsgo;
+	((FUNC_REGISTER *)(pack->data))->register_cb = engine_cooler_cb_from_fpsgo;
 	game_queue_work(pack);
 end:
 	return;

@@ -40,32 +40,6 @@ static DEFINE_MUTEX(fi_cb_lock);
 
 static struct workqueue_struct *fi_target_fps_wq;
 
-extern int register_fpsgo_frame_info_callback(unsigned long mask, fpsgo_frame_info_callback cb);
-extern int unregister_fpsgo_frame_info_callback(fpsgo_frame_info_callback cb);
-extern int fpsgo_other2comp_user_create(int tgid, int render_tid, unsigned long long buffer_id,
-	int *dep_arr, int dep_num, unsigned long long target_time);
-extern int fpsgo_other2comp_report_workload(int tgid, int render_tid, unsigned long long buffer_id,
-	unsigned long long tcpu, unsigned long long ts);
-extern int switch_fpsgo_control(int mode, int pid, int set_ctrl, unsigned long long buffer_id);
-extern int fpsgo_other2fstb_get_fps_info(int pid, unsigned long long bufID,
-	struct render_fps_info *info);
-extern int fpsgo_other2fstb_set_target(int mode, int pid, int use, int priority,
-	int target_fps, unsigned long long target_time, unsigned long long bufID);
-extern int fpsgo_other2xgf_get_critical_tasks(int pid, int max_num,
-	struct task_info *arr, int filter_non_cfs, unsigned long long bufID);
-extern int fpsgo_other2xgf_set_critical_tasks(int rpid, unsigned long long bufID,
-	struct task_info *arr, int num, int use);
-extern void fpsgo_other2xgf_calculate_dep(int pid, unsigned long long bufID,
-	unsigned long long *raw_running_time, unsigned long long *ema_running_time,
-	unsigned long long *enq_running_time,
-	unsigned long long def_start_ts, unsigned long long def_end_ts,
-	unsigned long long t_dequeue_start, unsigned long long t_dequeue_end,
-	unsigned long long t_enqueue_start, unsigned long long t_enqueue_end,
-	int skip);
-extern int fpsgo_other2fstb_calculate_target_fps(int policy, int pid,
-	unsigned long long bufID, unsigned long long cur_ts);
-
-
 static long long fpsgo_task_sched_runtime(struct task_struct *p)
 {
 	//return task_sched_runtime(p);
@@ -215,6 +189,12 @@ static void frame_interpolate_fpsgo_render_control(struct game_render_info *iter
 static int game_register_queue_end_cb(int enable, int *is_registered, fpsgo_frame_info_callback cb)
 {
 	int ret = 0;
+	unsigned long cb_mask;
+
+	cb_mask = 1 << GET_FPSGO_QUEUE_END |
+		1 << GET_FPSGO_QUEUE_START |
+		1 << GET_FPSGO_DEQUEUE_START |
+		1 << GET_FPSGO_DEQUEUE_END;
 
 	switch(enable) {
 	case 0:
@@ -228,7 +208,7 @@ static int game_register_queue_end_cb(int enable, int *is_registered, fpsgo_fram
 	case 1:
 		if (!(*is_registered)) {
 			mutex_lock(&fi_cb_lock);
-			register_fpsgo_frame_info_callback(1 << GET_FPSGO_QUEUE_HINT, cb);
+			register_fpsgo_frame_info_callback(cb_mask, cb);
 			*is_registered = 1;
 			mutex_unlock(&fi_cb_lock);
 		}
@@ -377,11 +357,12 @@ static void game_set_fi_policy_val(int cmd, int value, int pid, int add)
 
 void fpsgo_fi_receive_q2q_cb(unsigned long cmd, struct render_frame_info *iter)
 {
-    int pid, add = 0;
+	int pid;
 	struct game_render_info *iter_thr = NULL;
 	struct fi_policy_info *fi_policy = NULL;
 	unsigned long long ts = 0;
 	int set_target_fps = 0;
+	int is_control_frame = 0;
 
 	if (!iter)
 		goto out;
@@ -390,9 +371,11 @@ void fpsgo_fi_receive_q2q_cb(unsigned long cmd, struct render_frame_info *iter)
 	pid = iter->tgid;
 
 	game_render_tree_lock();
-	iter_thr = frame_interp_search_and_add_render_info(pid, add);
+	iter_thr = frame_interp_search_and_add_render_info(pid, 0);
 	if (!iter_thr)
 		goto out;
+
+	is_control_frame = !(iter_thr->frame_count % iter_thr->interpolation_ratio);
 
 	if (test_bit(FI_ENABLE, &iter_thr->fi_enabled)) {
 		iter_thr->updated_ts = ts;
@@ -405,36 +388,47 @@ void fpsgo_fi_receive_q2q_cb(unsigned long cmd, struct render_frame_info *iter)
 			iter_thr->is_fpsgo_render_created = 1;
 		}
 
-		switch_fpsgo_control(0, iter_thr->frame_info.tgid, 0, 0);
+		if (is_control_frame && test_bit(GET_FPSGO_QUEUE_START, &cmd)) {
+			fpsgo_other2comp_set_quedeq_ts(iter_thr->frame_info.tgid, iter_thr->frame_info.pid,
+				iter_thr->frame_info.buffer_id, FPSGO_ENQUEUE_START, ts);
+		} else if (is_control_frame && test_bit(GET_FPSGO_DEQUEUE_START, &cmd)) {
+			fpsgo_other2comp_set_quedeq_ts(iter_thr->frame_info.tgid, iter_thr->frame_info.pid,
+				iter_thr->frame_info.buffer_id, FPSGO_DEQUEUE_START, ts);
+		} else if (is_control_frame && test_bit(GET_FPSGO_DEQUEUE_END, &cmd)) {
+			fpsgo_other2comp_set_quedeq_ts(iter_thr->frame_info.tgid, iter_thr->frame_info.pid,
+				iter_thr->frame_info.buffer_id, FPSGO_DEQUEUE_END, ts);
+		} else if (test_bit(GET_FPSGO_QUEUE_END, &cmd)) {
+			switch_fpsgo_control(0, iter_thr->frame_info.tgid, 0, 0);
 
-		fi_queuework_calculate_target_fps(iter_thr->frame_info.pid, iter_thr->frame_info.tgid,
+			fi_queuework_calculate_target_fps(iter_thr->frame_info.pid, iter_thr->frame_info.tgid,
 			iter_thr->frame_info.buffer_id, ts);
-		game_fi_policy_list_lock();
-		fi_policy = fi_get_policy_cmd(iter_thr->frame_info.tgid, 0, 0, 0);
-		if (fi_policy)
-			iter_thr->user_target_fps = fi_policy->user_target_fps;
-		game_fi_policy_list_unlock();
+			game_fi_policy_list_lock();
+			fi_policy = fi_get_policy_cmd(iter_thr->frame_info.tgid, 0, 0, 0);
+			if (fi_policy)
+				iter_thr->user_target_fps = fi_policy->user_target_fps;
+			game_fi_policy_list_unlock();
 
-		set_target_fps =
-			iter_thr->user_target_fps ? iter_thr->user_target_fps : iter_thr->fpsgo_target_fps;
-		do_div(set_target_fps, iter_thr->interpolation_ratio);
+			set_target_fps =
+				iter_thr->user_target_fps ? iter_thr->user_target_fps : iter_thr->fpsgo_target_fps;
+			do_div(set_target_fps, iter_thr->interpolation_ratio);
 
-		fpsgo_other2fstb_set_target(1, iter_thr->frame_info.pid, 1, 0, set_target_fps, 0,
-			iter_thr->frame_info.buffer_id);
+			fpsgo_other2fstb_set_target(1, iter_thr->frame_info.pid, 1, 0, set_target_fps, 0,
+				iter_thr->frame_info.buffer_id);
 
-#if IS_ENABLED(CONFIG_MTK_GPU_SUPPORT)
-		ged_kpi_set_target_FPS_margin(iter_thr->old_buffer_id, set_target_fps,
-			0, iter_thr->target_fps_diff, iter_thr->cpu_time);
-#endif  // IS_ENABLED(CONFIG_MTK_GPU_SUPPORT)
+	#if IS_ENABLED(CONFIG_MTK_GPU_SUPPORT)
+			ged_kpi_set_target_FPS_margin(iter_thr->old_buffer_id, set_target_fps,
+				0, iter_thr->target_fps_diff, iter_thr->cpu_time);
+	#endif  // IS_ENABLED(CONFIG_MTK_GPU_SUPPORT)
 
-		if (iter_thr->frame_count % iter_thr->interpolation_ratio == 0)
-			frame_interpolate_fpsgo_render_control(iter_thr, ts);
+			if (is_control_frame)
+				frame_interpolate_fpsgo_render_control(iter_thr, ts);
 
-		iter_thr->frame_count++;
-		iter_thr->frame_count = iter_thr->frame_count % GAME_MAX_FRAME_COUNT;
+			iter_thr->frame_count++;
+			iter_thr->frame_count = iter_thr->frame_count % GAME_MAX_FRAME_COUNT;
+		}
 
-		game_main_trace("[%s] tgid=%d, frame=%d, ts=%llu, target_fps=%d, set_fps=%d",
-			__func__, iter_thr->frame_info.tgid, iter_thr->frame_count, ts,
+		game_main_trace("[%s] cmd=%lu, tgid=%d, frame=%d, ts=%llu, target_fps=%d, set_fps=%d",
+			__func__, cmd, iter_thr->frame_info.tgid, iter_thr->frame_count, ts,
 			iter_thr->fpsgo_target_fps, set_target_fps);
 	} else {
 		if (iter_thr->is_fpsgo_render_created) {

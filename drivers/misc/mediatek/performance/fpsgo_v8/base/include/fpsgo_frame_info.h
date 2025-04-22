@@ -10,6 +10,13 @@
 #define FPSGO_MAX_RENDER_INFO_SIZE 30
 #define FPSGO_MAX_TASK_NUM 100
 
+enum FPSGO_QUEDEQUE_FLAG {
+	FPSGO_DEQUEUE_START = 0,
+	FPSGO_DEQUEUE_END = 1,
+	FPSGO_ENQUEUE_START = 2,
+	FPSGO_ENQUEUE_END = 3,
+};
+
 enum GET_FPSGO_FRAME_INFO {
 	GET_FPSGO_QUEUE_FPS = 0,
 	GET_FPSGO_TARGET_FPS = 1,
@@ -26,7 +33,10 @@ enum GET_FPSGO_FRAME_INFO {
 	GET_GED_GPU_TIME = 12,
 	GET_FPSGO_Q2Q_TIME = 13,
 	GET_FPSGO_JERK_BOOST = 15,
-	GET_FPSGO_QUEUE_HINT = 16,
+	GET_FPSGO_QUEUE_START = 16,
+	GET_FPSGO_QUEUE_END = 17,
+	GET_FPSGO_DEQUEUE_START = 18,
+	GET_FPSGO_DEQUEUE_END = 19,
 	FPSGO_FRAME_INFO_MAX_NUM
 };
 
@@ -266,6 +276,8 @@ extern int fpsgo_other2comp_user_create(int tgid, int render_tid, unsigned long 
 	int *dep_arr, int dep_num, unsigned long long target_time);
 extern int fpsgo_other2comp_report_workload(int tgid, int render_tid, unsigned long long buffer_id,
 	unsigned long long tcpu, unsigned long long ts);
+extern int fpsgo_other2comp_set_quedeq_ts(int tgid, int render_tid, unsigned long long buffer_id,
+	int flag, unsigned long long ts);
 extern void fpsgo_other2comp_control_resume(int render_tid, unsigned long long buffer_id);
 extern void fpsgo_other2comp_control_pause(int render_tid, unsigned long long buffer_id);
 extern void fpsgo_other2comp_user_close(int tgid, int render_tid, unsigned long long buffer_id);
