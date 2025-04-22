@@ -232,21 +232,178 @@ struct eusb2_repeater {
 	int discth;
 	int pre_emphasis;
 	int equalization;
+	int device_prop_num;
+	struct eusb2_prop_table *device_prop_table;
 	/* Host */
 	int host_vrt_sel;
 	int host_rx_sqth;
 	int host_discth;
 	int host_pre_emphasis;
 	int host_equalization;
+	int host_prop_num;
+	struct eusb2_prop_table *host_prop_table;
 	int submode;
 	/* Common */
 	int usb20_fs_sr;
 	int eusb20_fsrx_hys_sel;
+	int prop_index;
 	enum phy_mode mode;
 	struct proc_dir_entry *root;
 	struct work_struct procfs_work;
 	struct workqueue_struct *wq;
 };
+
+#define EUSB2_PROP_NUM 7
+
+struct eusb2_prop_table {
+	int vrt_sel;
+	int rx_sqth;
+	int discth;
+	int pre_emphasis;
+	int equalization;
+	int term_ofs;
+	int intr_ofs;
+};
+
+static void eusb2_rptr_prop_table_parse(struct eusb2_repeater *rptr)
+{
+	struct device *dev = rptr->dev;
+	struct device_node *np = dev->of_node;
+	struct eusb2_prop_table *prop_table;
+	const __be32 *list;
+	u32 size = 0;
+	int i;
+
+	/* get and save device prop table */
+	list = of_get_property(np, "mediatek,u2-device-prop-table", &size);
+	of_node_put(np);
+	if (!list)
+		goto host_prop_table;
+
+	size = size / sizeof(__be32);
+	if (size % EUSB2_PROP_NUM || (size / EUSB2_PROP_NUM) > PHY_MODE_PROPERTY_MAX) {
+		dev_info(dev, "%s mediatek,u2-device-prop-table size=%d\n", __func__, size);
+		goto host_prop_table;
+	}
+
+	rptr->device_prop_num = (size / EUSB2_PROP_NUM) + 1;
+
+	dev_info(dev, "%s device_prop_table=%d size=%d\n", __func__, rptr->device_prop_num, size);
+
+	rptr->device_prop_table = kcalloc(rptr->device_prop_num,
+			sizeof(*rptr->device_prop_table), GFP_KERNEL);
+	if (!rptr->device_prop_table) {
+		rptr->device_prop_num = 0;
+		goto host_prop_table;
+	}
+
+
+	prop_table = &rptr->device_prop_table[0];
+	/* save the default prop value */
+	prop_table->vrt_sel = rptr->vrt_sel;
+	prop_table->rx_sqth = rptr->rx_sqth;
+	prop_table->discth = rptr->discth;
+	prop_table->pre_emphasis = rptr->pre_emphasis;
+	prop_table->equalization = rptr->equalization;
+	prop_table->term_ofs = rptr->term_ofs;
+	prop_table->intr_ofs = rptr->intr_ofs;
+
+	for (i = 1; i < rptr->device_prop_num; i++) {
+		prop_table = &rptr->device_prop_table[i];
+		/* update prop value */
+		prop_table->vrt_sel = be32_to_cpu(*list++);
+		prop_table->rx_sqth = be32_to_cpu(*list++);
+		prop_table->discth = be32_to_cpu(*list++);
+		prop_table->pre_emphasis = be32_to_cpu(*list++);
+		prop_table->equalization = be32_to_cpu(*list++);
+		prop_table->term_ofs = be32_to_cpu(*list++);
+		prop_table->intr_ofs = be32_to_cpu(*list++);
+
+		dev_info(dev, "prop table%d, vrt-vref:%d, rx-sqth:%d, discth:%d\n",
+			i, prop_table->vrt_sel, prop_table->rx_sqth, prop_table->discth);
+		dev_info(dev, "pre-emphasis:%d, eq:%d, term-ofs:%d, intr-ofs:%d\n",
+			prop_table->pre_emphasis, prop_table->equalization, prop_table->term_ofs,
+			prop_table->intr_ofs);
+	}
+
+host_prop_table:
+	/* get and save host prop table */
+	list = of_get_property(np, "mediatek,u2-host-prop-table", &size);
+	of_node_put(np);
+	if (!list)
+		return;
+
+	size = size / sizeof(__be32);
+	if (size % EUSB2_PROP_NUM || (size / EUSB2_PROP_NUM) > PHY_MODE_PROPERTY_MAX) {
+		dev_info(dev, "%s mediatek,u2-host-prop-table size=%d\n", __func__, size);
+		return;
+	}
+
+	rptr->host_prop_num = (size / EUSB2_PROP_NUM) + 1;
+	rptr->host_prop_table = kcalloc(rptr->host_prop_num,
+			sizeof(*rptr->host_prop_table), GFP_KERNEL);
+	if (!rptr->host_prop_table) {
+		rptr->host_prop_num = 0;
+		return;
+	}
+
+	prop_table = &rptr->host_prop_table[0];
+	/* save the default prop value */
+	prop_table->vrt_sel = rptr->host_vrt_sel;
+	prop_table->rx_sqth = rptr->host_rx_sqth;
+	prop_table->discth = rptr->host_discth;
+	prop_table->pre_emphasis = rptr->host_pre_emphasis;
+	prop_table->equalization = rptr->host_equalization;
+	prop_table->term_ofs = rptr->host_term_ofs;
+	prop_table->intr_ofs = rptr->host_intr_ofs;
+
+	for (i = 1; i < rptr->host_prop_num; i++) {
+		prop_table = &rptr->host_prop_table[i];
+		/* update prop value */
+		prop_table->vrt_sel = be32_to_cpu(*list++);
+		prop_table->rx_sqth = be32_to_cpu(*list++);
+		prop_table->discth = be32_to_cpu(*list++);
+		prop_table->pre_emphasis = be32_to_cpu(*list++);
+		prop_table->equalization = be32_to_cpu(*list++);
+		prop_table->term_ofs = be32_to_cpu(*list++);
+		prop_table->intr_ofs = be32_to_cpu(*list++);
+
+		dev_info(dev, "prop table%d, host-vrt-vref:%d, host-rx-sqth:%d, host-discth:%d\n",
+			i, prop_table->vrt_sel, prop_table->rx_sqth, prop_table->discth);
+		dev_info(dev, "host-pre-emphasis:%d, host-eq:%d,  host-term-ofs:%d, host-intr-ofs:%d\n",
+			prop_table->pre_emphasis, prop_table->equalization, prop_table->term_ofs,
+			prop_table->intr_ofs);
+	}
+}
+
+static void eusb2_rptr_prop_apply(struct eusb2_repeater *rptr, bool is_host, int index)
+{
+	dev_info(rptr->dev, "%s, index=%d, is_host=%d\n", __func__, index, is_host);
+
+	if (!is_host) {
+		if (rptr->device_prop_table && rptr->device_prop_num > index) {
+			/* restore the default prop value */
+			rptr->vrt_sel = rptr->device_prop_table[index].vrt_sel;
+			rptr->rx_sqth = rptr->device_prop_table[index].rx_sqth;
+			rptr->discth = rptr->device_prop_table[index].discth;
+			rptr->pre_emphasis = rptr->device_prop_table[index].pre_emphasis;
+			rptr->equalization = rptr->device_prop_table[index].equalization;
+			rptr->term_ofs = rptr->device_prop_table[index].term_ofs;
+			rptr->intr_ofs = rptr->device_prop_table[index].intr_ofs;
+		}
+	} else {
+		if (rptr->host_prop_table && rptr->host_prop_num > index) {
+			/* restore the default prop value */
+			rptr->host_vrt_sel = rptr->host_prop_table[index].vrt_sel;
+			rptr->host_rx_sqth = rptr->host_prop_table[index].rx_sqth;
+			rptr->host_discth = rptr->host_prop_table[index].discth;
+			rptr->host_pre_emphasis = rptr->host_prop_table[index].pre_emphasis;
+			rptr->host_equalization = rptr->host_prop_table[index].equalization;
+			rptr->host_term_ofs = rptr->host_prop_table[index].term_ofs;
+			rptr->host_intr_ofs = rptr->host_prop_table[index].intr_ofs;
+		}
+	}
+}
 
 static void eusb2_rptr_prop_parse(struct eusb2_repeater *rptr)
 {
@@ -985,10 +1142,9 @@ static int eusb2_repeater_set_mode(struct phy *phy,
 				   enum phy_mode mode, int submode)
 {
 	struct eusb2_repeater *rptr = phy_get_drvdata(phy);
+	int index;
 
 	dev_info(rptr->dev, "rptr set mode:%d submode:%d\n", mode, submode);
-
-	rptr->submode = submode;
 
 	if (!submode) {
 		switch (mode) {
@@ -998,10 +1154,32 @@ static int eusb2_repeater_set_mode(struct phy *phy,
 		case PHY_MODE_USB_HOST:
 			eusb2_host_prop_set(rptr);
 			break;
+		case PHY_MODE_INVALID:
+			/* reset to default property */
+			if (rptr->prop_index != 0) {
+				rptr->prop_index = 0;
+				eusb2_rptr_prop_apply(rptr, false, rptr->prop_index);
+				eusb2_rptr_prop_apply(rptr, true, rptr->prop_index);
+			}
+			break;
 		default:
 			return -EINVAL;
 		}
 	} else {
+		/* special case for property setting */
+		index = mtk_phy_mode_property_to_index(submode);
+		if (index > 0) {
+			rptr->prop_index = index;
+			if (mode == PHY_MODE_USB_DEVICE) {
+				eusb2_rptr_prop_apply(rptr, false, index);
+				eusb2_device_prop_set(rptr);
+			} else if (mode == PHY_MODE_USB_HOST) {
+				eusb2_rptr_prop_apply(rptr, true, index);
+				eusb2_host_prop_set(rptr);
+			}
+			return 0;
+		}
+
 		switch (submode) {
 		case PHY_MODE_DPPULLUP_SET:
 			regmap_update_bits(rptr->regmap, rptr->base + PHYD_COM_CR2_0,
@@ -1018,6 +1196,8 @@ static int eusb2_repeater_set_mode(struct phy *phy,
 			return -EINVAL;
 		}
 	}
+
+	rptr->submode = submode;
 
 	return 0;
 }
@@ -1765,6 +1945,7 @@ static int eusb2_repeater_probe(struct platform_device *pdev)
 	rptr->base = res;
 
 	eusb2_rptr_prop_parse(rptr);
+	eusb2_rptr_prop_table_parse(rptr);
 
 	rptr->phy = devm_phy_create(dev, np, &eusb2_repeater_ops);
 	if (IS_ERR(rptr->phy)) {
@@ -1820,6 +2001,12 @@ static int eusb2_rptr_procfs_exit(struct eusb2_repeater *rptr)
 static void eusb2_repeater_remove(struct platform_device *pdev)
 {
 	struct eusb2_repeater *rptr = dev_get_drvdata(&pdev->dev);
+
+	kfree(rptr->host_prop_table);
+	rptr->host_prop_table = NULL;
+
+	kfree(rptr->device_prop_table);
+	rptr->device_prop_table = NULL;
 
 	eusb2_rptr_procfs_exit(rptr);
 }
