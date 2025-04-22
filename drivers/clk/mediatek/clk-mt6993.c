@@ -569,6 +569,9 @@
 #define MM_HW_CCF_HW_CCF_GRP_52_CLR		0x4
 #define MM_HW_CCF_HW_CCF_GRP_52_DONE		0x12600
 
+#define SW_VERSION_A0		0x0000
+#define SW_VERSION_B0		0x0001
+
 static DEFINE_SPINLOCK(mt6993_clk_lock);
 
 static const struct mtk_fixed_factor cksys_top_divs[] = {
@@ -951,6 +954,24 @@ static const char * const cksys_ch_infra_parents[] = {
 	"cksys_emipll_d2"
 };
 
+static const char * const cksys_ch_infra_parents_b0[] = {
+	"cksys_tck_26m_mx9_ck",
+	"cksys_osc_d20",
+	"cksys_mainpll_d7_d2",
+	"cksys_mainpll_d5_d2",
+	"cksys_mainpll_d4_d2",
+	"cksys_mainpll_d7",
+	"cksys_mainpll_d5",
+	"cksys_mainpll_d4",
+	"cksys_univpll_d4",
+	"cksys_mainpll_d3",
+	"cksys_univpll_d3",
+	"cksys_mainpll_d2",
+	"cksys_univpll_d2",
+	"cksys_emipll_d2",
+	"cksys_mmpll_d2"
+};
+
 static const char * const cksys_mem_sub_parents[] = {
 	"cksys_tck_26m_mx9_ck",
 	"cksys_osc_d20",
@@ -1042,6 +1063,20 @@ static const char * const cksys_emi_n_parents[] = {
 	"cksys_emipll_d3"
 };
 
+static const char * const cksys_emi_n_parents_b0[] = {
+	"cksys_tck_26m_mx9_ck",
+	"cksys_osc_d4",
+	"cksys_mainpll_d6_d2",
+	"cksys_mainpll_d5_d2",
+	"cksys_mainpll_d7",
+	"cksys_mainpll_d5",
+	"cksys_mainpll_d4",
+	"cksys_mainpll_d3",
+	"cksys_emipll_d3",
+	"cksys_mainpll_d9"
+};
+
+
 static const char * const cksys_emi_s_parents[] = {
 	"cksys_tck_26m_mx9_ck",
 	"cksys_osc_d4",
@@ -1054,10 +1089,34 @@ static const char * const cksys_emi_s_parents[] = {
 	"cksys_emipll_d3"
 };
 
+static const char * const cksys_emi_s_parents_b0[] = {
+	"cksys_tck_26m_mx9_ck",
+	"cksys_osc_d4",
+	"cksys_mainpll_d6_d2",
+	"cksys_mainpll_d5_d2",
+	"cksys_mainpll_d7",
+	"cksys_mainpll_d5",
+	"cksys_mainpll_d4",
+	"cksys_mainpll_d3",
+	"cksys_emipll_d3",
+	"cksys_mainpll_d9"
+};
+
 static const char * const cksys_emi_infra_parents[] = {
 	"cksys_tck_26m_mx9_ck",
 	"cksys_osc_d4",
 	"cksys_mainpll_d4_d2",
+	"cksys_mainpll_d7",
+	"cksys_mainpll_d5",
+	"cksys_mainpll_d3",
+	"cksys_mainpll_d2",
+	"cksys_emipll_d2"
+};
+
+static const char * const cksys_emi_infra_parents_b0[] = {
+	"cksys_tck_26m_mx9_ck",
+	"cksys_osc_d4",
+	"cksys_mainpll_d5_d2",
 	"cksys_mainpll_d7",
 	"cksys_mainpll_d5",
 	"cksys_mainpll_d3",
@@ -2427,6 +2486,492 @@ static const struct mtk_mux cksys_top_muxes[] = {
 #endif
 };
 
+
+
+static const struct mtk_mux cksys_top_muxes_b0[] = {
+	/* CLK_CFG_0 */
+	MUX_FENC_CLR_SET_UPD_CHK(CKSYS_TOP_AXI_SEL/* dts */, "cksys_axi_sel",
+		cksys_axi_parents/* parent */, CLK_CFG_0, CLK_CFG_0_SET,
+		CLK_CFG_0_CLR/* set parent */, 0/* lsb */, 2/* width */,
+		CLK_CFG_UPDATE/* upd ofs */, TOP_MUX_AXI_SHIFT/* upd shift */,
+		CKSTA_REG/* cksta ofs */, 31/* cksta shift */,
+		CLK_FENC_STATUS_MON_0/* fenc ofs */, 31/* fenc shift */),
+	MUX_FENC_CLR_SET_UPD_CHK(CKSYS_TOP_P_AXI_SEL/* dts */, "cksys_peri_axi_sel",
+		cksys_peri_axi_parents/* parent */, CLK_CFG_0, CLK_CFG_0_SET,
+		CLK_CFG_0_CLR/* set parent */, 8/* lsb */, 2/* width */,
+		CLK_CFG_UPDATE/* upd ofs */, TOP_MUX_PERI_AXI_SHIFT/* upd shift */,
+		CKSTA_REG/* cksta ofs */, 30/* cksta shift */,
+		CLK_FENC_STATUS_MON_0/* fenc ofs */, 30/* fenc shift */),
+	MUX_FENC_CLR_SET_UPD_CHK(CKSYS_TOP_CH_INFRA_AXI_SEL/* dts */, "cksys_ch_infra_axi_sel",
+		cksys_ch_infra_axi_parents/* parent */, CLK_CFG_0, CLK_CFG_0_SET,
+		CLK_CFG_0_CLR/* set parent */, 16/* lsb */, 2/* width */,
+		CLK_CFG_UPDATE/* upd ofs */, TOP_MUX_CH_INFRA_AXI_SHIFT/* upd shift */,
+		CKSTA_REG/* cksta ofs */, 29/* cksta shift */,
+		CLK_FENC_STATUS_MON_0/* fenc ofs */, 29/* fenc shift */),
+	MUX_FENC_CLR_SET_UPD_CHK(CKSYS_TOP_CH_INFRA_SEL/* dts */, "cksys_ch_infra_sel",
+		cksys_ch_infra_parents_b0/* parent */, CLK_CFG_0, CLK_CFG_0_SET,
+		CLK_CFG_0_CLR/* set parent */, 24/* lsb */, 4/* width */,
+		CLK_CFG_UPDATE/* upd ofs */, TOP_MUX_CH_INFRA_SHIFT/* upd shift */,
+		CKSTA_REG/* cksta ofs */, 28/* cksta shift */,
+		CLK_FENC_STATUS_MON_0/* fenc ofs */, 28/* fenc shift */),
+	/* CLK_CFG_1 */
+	MUX_FENC_CLR_SET_UPD_CHK(CKSYS_TOP_MEM_SUB_SEL/* dts */, "cksys_mem_sub_sel",
+		cksys_mem_sub_parents/* parent */, CLK_CFG_1, CLK_CFG_1_SET,
+		CLK_CFG_1_CLR/* set parent */, 0/* lsb */, 3/* width */,
+		CLK_CFG_UPDATE/* upd ofs */, TOP_MUX_MEM_SUB_SHIFT/* upd shift */,
+		CKSTA_REG/* cksta ofs */, 27/* cksta shift */,
+		CLK_FENC_STATUS_MON_0/* fenc ofs */, 27/* fenc shift */),
+	MUX_FENC_CLR_SET_UPD_CHK(CKSYS_TOP_HASH_SUB_SEL/* dts */, "cksys_hash_sub_sel",
+		cksys_hash_sub_parents/* parent */, CLK_CFG_1, CLK_CFG_1_SET,
+		CLK_CFG_1_CLR/* set parent */, 8/* lsb */, 3/* width */,
+		CLK_CFG_UPDATE/* upd ofs */, TOP_MUX_HASH_SUB_SHIFT/* upd shift */,
+		CKSTA_REG/* cksta ofs */, 26/* cksta shift */,
+		CLK_FENC_STATUS_MON_0/* fenc ofs */, 26/* fenc shift */),
+	MUX_FENC_CLR_SET_UPD_CHK(CKSYS_TOP_P_FMEM_SUB_SEL/* dts */, "cksys_peri_fmem_sub_sel",
+		cksys_peri_fmem_sub_parents/* parent */, CLK_CFG_1, CLK_CFG_1_SET,
+		CLK_CFG_1_CLR/* set parent */, 16/* lsb */, 3/* width */,
+		CLK_CFG_UPDATE/* upd ofs */, TOP_MUX_PERI_FMEM_SUB_SHIFT/* upd shift */,
+		CKSTA_REG/* cksta ofs */, 25/* cksta shift */,
+		CLK_FENC_STATUS_MON_0/* fenc ofs */, 25/* fenc shift */),
+	MUX_GATE_FENC_CLR_SET_UPD_CHK(CKSYS_TOP_ZRAM_SUB_SEL/* dts */, "cksys_zram_sub_sel",
+		cksys_zram_sub_parents/* parent */, CLK_CFG_1, CLK_CFG_1_SET,
+		CLK_CFG_1_CLR/* set parent */, 24/* lsb */, 3/* width */,
+		31/* pdn */, CLK_CFG_UPDATE/* upd ofs */,
+		TOP_MUX_ZRAM_SUB_SHIFT/* upd shift */, CKSTA_REG/* cksta ofs */,
+		24/* cksta shift */, CLK_FENC_STATUS_MON_0/* fenc ofs */,
+		24/* fenc shift */),
+	/* CLK_CFG_2 */
+	MUX_FENC_CLR_SET_UPD_CHK(CKSYS_TOP_IO_NOC_SEL/* dts */, "cksys_io_noc_sel",
+		cksys_io_noc_parents/* parent */, CLK_CFG_2, CLK_CFG_2_SET,
+		CLK_CFG_2_CLR/* set parent */, 0/* lsb */, 2/* width */,
+		CLK_CFG_UPDATE/* upd ofs */, TOP_MUX_IO_NOC_SHIFT/* upd shift */,
+		CKSTA_REG/* cksta ofs */, 23/* cksta shift */,
+		CLK_FENC_STATUS_MON_0/* fenc ofs */, 23/* fenc shift */),
+	MUX_FENC_CLR_SET_UPD_CHK(CKSYS_TOP_HASH_NOC_SEL/* dts */, "cksys_hash_noc_sel",
+		cksys_hash_noc_parents/* parent */, CLK_CFG_2, CLK_CFG_2_SET,
+		CLK_CFG_2_CLR/* set parent */, 8/* lsb */, 4/* width */,
+		CLK_CFG_UPDATE/* upd ofs */, TOP_MUX_HASH_NOC_SHIFT/* upd shift */,
+		CKSTA_REG/* cksta ofs */, 22/* cksta shift */,
+		CLK_FENC_STATUS_MON_0/* fenc ofs */, 22/* fenc shift */),
+	MUX_FENC_CLR_SET_UPD_CHK(CKSYS_TOP_P_NOC_SEL/* dts */, "cksys_peri_noc_sel",
+		cksys_peri_noc_parents/* parent */, CLK_CFG_2, CLK_CFG_2_SET,
+		CLK_CFG_2_CLR/* set parent */, 16/* lsb */, 3/* width */,
+		CLK_CFG_UPDATE/* upd ofs */, TOP_MUX_PERI_NOC_SHIFT/* upd shift */,
+		CKSTA_REG/* cksta ofs */, 21/* cksta shift */,
+		CLK_FENC_STATUS_MON_0/* fenc ofs */, 21/* fenc shift */),
+	MUX_FENC_CLR_SET_UPD_CHK(CKSYS_TOP_EMI_INTERFACE_546_SEL/* dts */, "cksys_md_emi_sel",
+		cksys_md_emi_parents/* parent */, CLK_CFG_2, CLK_CFG_2_SET,
+		CLK_CFG_2_CLR/* set parent */, 24/* lsb */, 1/* width */,
+		CLK_CFG_UPDATE/* upd ofs */, TOP_MUX_EMI_INTERFACE_546_SHIFT/* upd shift */,
+		CKSTA_REG/* cksta ofs */, 20/* cksta shift */,
+		CLK_FENC_STATUS_MON_0/* fenc ofs */, 20/* fenc shift */),
+	/* CLK_CFG_3 */
+	MUX_FENC_CLR_SET_UPD_CHK(CKSYS_TOP_EMI_N_SEL/* dts */, "cksys_emi_n_sel",
+		cksys_emi_n_parents_b0/* parent */, CLK_CFG_3, CLK_CFG_3_SET,
+		CLK_CFG_3_CLR/* set parent */, 0/* lsb */, 4/* width */,
+		CLK_CFG_UPDATE/* upd ofs */, TOP_MUX_EMI_N_SHIFT/* upd shift */,
+		CKSTA_REG/* cksta ofs */, 19/* cksta shift */,
+		CLK_FENC_STATUS_MON_0/* fenc ofs */, 19/* fenc shift */),
+	MUX_FENC_CLR_SET_UPD_CHK(CKSYS_TOP_EMI_S_SEL/* dts */, "cksys_emi_s_sel",
+		cksys_emi_s_parents_b0/* parent */, CLK_CFG_3, CLK_CFG_3_SET,
+		CLK_CFG_3_CLR/* set parent */, 8/* lsb */, 4/* width */,
+		CLK_CFG_UPDATE/* upd ofs */, TOP_MUX_EMI_S_SHIFT/* upd shift */,
+		CKSTA_REG/* cksta ofs */, 18/* cksta shift */,
+		CLK_FENC_STATUS_MON_0/* fenc ofs */, 18/* fenc shift */),
+	MUX_FENC_CLR_SET_UPD_CHK(CKSYS_TOP_EMI_INFRA_SEL/* dts */, "cksys_emi_infra_sel",
+		cksys_emi_infra_parents_b0/* parent */, CLK_CFG_3, CLK_CFG_3_SET,
+		CLK_CFG_3_CLR/* set parent */, 16/* lsb */, 3/* width */,
+		CLK_CFG_UPDATE/* upd ofs */, TOP_MUX_EMI_INFRA_SHIFT/* upd shift */,
+		CKSTA_REG/* cksta ofs */, 17/* cksta shift */,
+		CLK_FENC_STATUS_MON_0/* fenc ofs */, 17/* fenc shift */),
+	MUX_FENC_CLR_SET_UPD_CHK(CKSYS_TOP_EMI_INFRA_SSPM_SEL/* dts */, "cksys_emi_infra_sspm_sel",
+		cksys_emi_infra_sspm_parents/* parent */, CLK_CFG_3, CLK_CFG_3_SET,
+		CLK_CFG_3_CLR/* set parent */, 24/* lsb */, 3/* width */,
+		CLK_CFG_UPDATE/* upd ofs */, TOP_MUX_EMI_INFRA_SSPM_SHIFT/* upd shift */,
+		CKSTA_REG/* cksta ofs */, 16/* cksta shift */,
+		CLK_FENC_STATUS_MON_0/* fenc ofs */, 16/* fenc shift */),
+	/* CLK_CFG_4 */
+	MUX_FENC_CLR_SET_UPD_CHK(CKSYS_TOP_OSC_EMI_IFR_SEL/* dts */, "cksys_osc_emi_ifr_sel",
+		cksys_osc_emi_ifr_parents/* parent */, CLK_CFG_4, CLK_CFG_4_SET,
+		CLK_CFG_4_CLR/* set parent */, 0/* lsb */, 2/* width */,
+		CLK_CFG_UPDATE/* upd ofs */, TOP_MUX_ULPOSC_EMI_INFRA_SHIFT/* upd shift */,
+		CKSTA_REG/* cksta ofs */, 15/* cksta shift */,
+		CLK_FENC_STATUS_MON_0/* fenc ofs */, 15/* fenc shift */),
+	MUX_FENC_CLR_SET_UPD_CHK(CKSYS_TOP_EMI_INFRA_26M_SEL/* dts */, "cksys_emi_infra_26m_sel",
+		cksys_emi_infra_26m_parents/* parent */, CLK_CFG_4, CLK_CFG_4_SET,
+		CLK_CFG_4_CLR/* set parent */, 8/* lsb */, 1/* width */,
+		CLK_CFG_UPDATE/* upd ofs */, TOP_MUX_EMI_INFRA_26M_SHIFT/* upd shift */,
+		CKSTA_REG/* cksta ofs */, 14/* cksta shift */,
+		CLK_FENC_STATUS_MON_0/* fenc ofs */, 14/* fenc shift */),
+	MUX_FENC_CLR_SET_UPD_CHK(CKSYS_TOP_INFRA_26M_SEL/* dts */, "cksys_infra_26m_sel",
+		cksys_infra_26m_parents/* parent */, CLK_CFG_4, CLK_CFG_4_SET,
+		CLK_CFG_4_CLR/* set parent */, 16/* lsb */, 1/* width */,
+		CLK_CFG_UPDATE/* upd ofs */, TOP_MUX_CH_INFRA_SYS_26M_SHIFT/* upd shift */,
+		CKSTA_REG/* cksta ofs */, 13/* cksta shift */,
+		CLK_FENC_STATUS_MON_0/* fenc ofs */, 13/* fenc shift */),
+	MUX_FENC_CLR_SET_UPD_CHK(CKSYS_TOP_CBUS_PHY_SEL/* dts */, "cksys_cbus_phy_sel",
+		cksys_cbus_phy_parents/* parent */, CLK_CFG_4, CLK_CFG_4_SET,
+		CLK_CFG_4_CLR/* set parent */, 24/* lsb */, 3/* width */,
+		CLK_CFG_UPDATE/* upd ofs */, TOP_MUX_CBUS_PHY_SHIFT/* upd shift */,
+		CKSTA_REG/* cksta ofs */, 12/* cksta shift */,
+		CLK_FENC_STATUS_MON_0/* fenc ofs */, 12/* fenc shift */),
+	/* CLK_CFG_5 */
+	MUX_FENC_CLR_SET_UPD_CHK(CKSYS_TOP_ATB_SEL/* dts */, "cksys_atb_sel",
+		cksys_atb_parents/* parent */, CLK_CFG_5, CLK_CFG_5_SET,
+		CLK_CFG_5_CLR/* set parent */, 0/* lsb */, 3/* width */,
+		CLK_CFG_UPDATE/* upd ofs */, TOP_MUX_ATB_SHIFT/* upd shift */,
+		CKSTA_REG/* cksta ofs */, 11/* cksta shift */,
+		CLK_FENC_STATUS_MON_0/* fenc ofs */, 11/* fenc shift */),
+	MUX_FENC_CLR_SET_UPD_CHK(CKSYS_TOP_CIRQ_SEL/* dts */, "cksys_cirq_sel",
+		cksys_cirq_parents/* parent */, CLK_CFG_5, CLK_CFG_5_SET,
+		CLK_CFG_5_CLR/* set parent */, 8/* lsb */, 2/* width */,
+		CLK_CFG_UPDATE/* upd ofs */, TOP_MUX_CIRQ_SHIFT/* upd shift */,
+		CKSTA_REG/* cksta ofs */, 10/* cksta shift */,
+		CLK_FENC_STATUS_MON_0/* fenc ofs */, 10/* fenc shift */),
+	MUX_FENC_CLR_SET_UPD_CHK(CKSYS_TOP_MCU_INFRA_SEL/* dts */, "cksys_mcu_infra_sel",
+		cksys_mcu_infra_parents/* parent */, CLK_CFG_5, CLK_CFG_5_SET,
+		CLK_CFG_5_CLR/* set parent */, 16/* lsb */, 2/* width */,
+		CLK_CFG_UPDATE/* upd ofs */, TOP_MUX_MCU_INFRA_SHIFT/* upd shift */,
+		CKSTA_REG/* cksta ofs */, 9/* cksta shift */,
+		CLK_FENC_STATUS_MON_0/* fenc ofs */, 9/* fenc shift */),
+	/* CLK_CFG_6 */
+	MUX_FENC_CLR_SET_UPD_CHK(CKSYS_TOP_APU_EXT_SEL/* dts */, "cksys_apu_ext_sel",
+		cksys_apu_ext_parents/* parent */, CLK_CFG_6, CLK_CFG_6_SET,
+		CLK_CFG_6_CLR/* set parent */, 16/* lsb */, 3/* width */,
+		CLK_CFG_UPDATE/* upd ofs */, TOP_MUX_APU_EXT_SHIFT/* upd shift */,
+		CKSTA_REG/* cksta ofs */, 5/* cksta shift */,
+		CLK_FENC_STATUS_MON_0/* fenc ofs */, 5/* fenc shift */),
+	/* CLK_CFG_7 */
+	MUX_FENC_CLR_SET_UPD_CHK(CKSYS_TOP_SSR_PKA_SEL/* dts */, "cksys_ssr_pka_sel",
+		cksys_ssr_pka_parents/* parent */, CLK_CFG_7, CLK_CFG_7_SET,
+		CLK_CFG_7_CLR/* set parent */, 0/* lsb */, 3/* width */,
+		CLK_CFG_UPDATE/* upd ofs */, TOP_MUX_SSR_PKA_SHIFT/* upd shift */,
+		CKSTA_REG/* cksta ofs */, 3/* cksta shift */,
+		CLK_FENC_STATUS_MON_0/* fenc ofs */, 3/* fenc shift */),
+	MUX_FENC_CLR_SET_UPD_CHK(CKSYS_TOP_SSR_DMA_SEL/* dts */, "cksys_ssr_dma_sel",
+		cksys_ssr_dma_parents/* parent */, CLK_CFG_7, CLK_CFG_7_SET,
+		CLK_CFG_7_CLR/* set parent */, 8/* lsb */, 3/* width */,
+		CLK_CFG_UPDATE/* upd ofs */, TOP_MUX_SSR_DMA_SHIFT/* upd shift */,
+		CKSTA_REG/* cksta ofs */, 2/* cksta shift */,
+		CLK_FENC_STATUS_MON_0/* fenc ofs */, 2/* fenc shift */),
+	MUX_FENC_CLR_SET_UPD_CHK(CKSYS_TOP_SSR_KDF_SEL/* dts */, "cksys_ssr_kdf_sel",
+		cksys_ssr_kdf_parents/* parent */, CLK_CFG_7, CLK_CFG_7_SET,
+		CLK_CFG_7_CLR/* set parent */, 16/* lsb */, 2/* width */,
+		CLK_CFG_UPDATE/* upd ofs */, TOP_MUX_SSR_KDF_SHIFT/* upd shift */,
+		CKSTA_REG/* cksta ofs */, 1/* cksta shift */,
+		CLK_FENC_STATUS_MON_0/* fenc ofs */, 1/* fenc shift */),
+	MUX_FENC_CLR_SET_UPD_CHK(CKSYS_TOP_SSR_RNG_SEL/* dts */, "cksys_ssr_rng_sel",
+		cksys_ssr_rng_parents/* parent */, CLK_CFG_7, CLK_CFG_7_SET,
+		CLK_CFG_7_CLR/* set parent */, 24/* lsb */, 2/* width */,
+		CLK_CFG_UPDATE1/* upd ofs */, TOP_MUX_SSR_RNG_SHIFT/* upd shift */,
+		CKSTA_REG1/* cksta ofs */, 31/* cksta shift */,
+		CLK_FENC_STATUS_MON_0/* fenc ofs */, 0/* fenc shift */),
+	/* CLK_CFG_8 */
+	MUX_FENC_CLR_SET_UPD_CHK(CKSYS_TOP_EFUSE_SEL/* dts */, "cksys_efuse_sel",
+		cksys_efuse_parents/* parent */, CLK_CFG_8, CLK_CFG_8_SET,
+		CLK_CFG_8_CLR/* set parent */, 8/* lsb */, 1/* width */,
+		CLK_CFG_UPDATE1/* upd ofs */, TOP_MUX_EFUSE_SHIFT/* upd shift */,
+		CKSTA_REG1/* cksta ofs */, 29/* cksta shift */,
+		CLK_FENC_STATUS_MON_1/* fenc ofs */, 30/* fenc shift */),
+	MUX_FENC_CLR_SET_UPD_CHK(CKSYS_TOP_DPSW_CMP_26M_SEL/* dts */, "cksys_dpsw_cmp_26m_sel",
+		cksys_dpsw_cmp_26m_parents/* parent */, CLK_CFG_8, CLK_CFG_8_SET,
+		CLK_CFG_8_CLR/* set parent */, 24/* lsb */, 1/* width */,
+		CLK_CFG_UPDATE1/* upd ofs */, TOP_MUX_DPSW_CMP_26M_SHIFT/* upd shift */,
+		CKSTA_REG1/* cksta ofs */, 27/* cksta shift */,
+		CLK_FENC_STATUS_MON_1/* fenc ofs */, 28/* fenc shift */),
+	/* CLK_CFG_9 */
+	MUX_GENERIC_HWV(CKSYS_TOP_ADSP_UARTHUB_BCLK_SEL/* dts */, "cksys_adsp_uarthub_b_sel",
+		cksys_adsp_uarthub_b_parents/* parent */, CLK_CFG_9,
+		CLK_CFG_9_SET, CLK_CFG_9_CLR/* set parent */,
+		"hw-voter-regmap" /*comp*/, AP_HWV_HWV_CG_GRP_0_DONE,
+		AP_HWV_HWV_CG_GRP_0_SET, AP_HWV_HWV_CG_GRP_0_CLR, /* hwv */
+		0/* lsb */, 2/* width */,
+		7/* pdn */, CLK_CFG_UPDATE1/* upd ofs */,
+		TOP_MUX_ADSP_UARTHUB_BCLK_SHIFT/* upd shift */, CKSTA_REG1/* cksta ofs */,
+		26/* cksta shift */, CLK_FENC_STATUS_MON_1/* fenc ofs */,
+		27/* fenc shift */),
+	MUX_GATE_FENC_CLR_SET_UPD_CHK(CKSYS_TOP_AUD_1_SEL/* dts */, "cksys_aud_1_sel",
+		cksys_aud_1_parents/* parent */, CLK_CFG_9, CLK_CFG_9_SET,
+		CLK_CFG_9_CLR/* set parent */, 8/* lsb */, 1/* width */,
+		15/* pdn */, CLK_CFG_UPDATE1/* upd ofs */,
+		TOP_MUX_AUD_1_SHIFT/* upd shift */, CKSTA_REG1/* cksta ofs */,
+		25/* cksta shift */, CLK_FENC_STATUS_MON_1/* fenc ofs */,
+		26/* fenc shift */),
+	MUX_GATE_FENC_CLR_SET_UPD_CHK(CKSYS_TOP_AUD_2_SEL/* dts */, "cksys_aud_2_sel",
+		cksys_aud_2_parents/* parent */, CLK_CFG_9, CLK_CFG_9_SET,
+		CLK_CFG_9_CLR/* set parent */, 16/* lsb */, 1/* width */,
+		23/* pdn */, CLK_CFG_UPDATE1/* upd ofs */,
+		TOP_MUX_AUD_2_SHIFT/* upd shift */, CKSTA_REG1/* cksta ofs */,
+		24/* cksta shift */, CLK_FENC_STATUS_MON_1/* fenc ofs */,
+		25/* fenc shift */),
+	MUX_GATE_FENC_CLR_SET_UPD_CHK(CKSYS_TOP_DPMAIF_MAIN_SEL/* dts */, "cksys_dpmaif_main_sel",
+		cksys_dpmaif_main_parents/* parent */, CLK_CFG_9, CLK_CFG_9_SET,
+		CLK_CFG_9_CLR/* set parent */, 24/* lsb */, 3/* width */,
+		31/* pdn */, CLK_CFG_UPDATE1/* upd ofs */,
+		TOP_MUX_DPMAIF_MAIN_SHIFT/* upd shift */, CKSTA_REG1/* cksta ofs */,
+		23/* cksta shift */, CLK_FENC_STATUS_MON_1/* fenc ofs */,
+		24/* fenc shift */),
+	/* CLK_CFG_10 */
+	MUX_GATE_FENC_CLR_SET_UPD_CHK(CKSYS_TOP_IPSEAST_SEL/* dts */, "cksys_ipseast_sel",
+		cksys_ipseast_parents/* parent */, CLK_CFG_10, CLK_CFG_10_SET,
+		CLK_CFG_10_CLR/* set parent */, 0/* lsb */, 3/* width */,
+		7/* pdn */, CLK_CFG_UPDATE1/* upd ofs */,
+		TOP_MUX_IPSEAST_SHIFT/* upd shift */, CKSTA_REG1/* cksta ofs */,
+		22/* cksta shift */, CLK_FENC_STATUS_MON_1/* fenc ofs */,
+		23/* fenc shift */),
+	MUX_GATE_FENC_CLR_SET_UPD_CHK(CKSYS_TOP_IPSWEST_SEL/* dts */, "cksys_ipswest_sel",
+		cksys_ipswest_parents/* parent */, CLK_CFG_10, CLK_CFG_10_SET,
+		CLK_CFG_10_CLR/* set parent */, 8/* lsb */, 3/* width */,
+		15/* pdn */, CLK_CFG_UPDATE1/* upd ofs */,
+		TOP_MUX_IPSWEST_SHIFT/* upd shift */, CKSTA_REG1/* cksta ofs */,
+		21/* cksta shift */, CLK_FENC_STATUS_MON_1/* fenc ofs */,
+		22/* fenc shift */),
+	MUX_FENC_CLR_SET_UPD_CHK(CKSYS_TOP_SMAPCK_SEL/* dts */, "cksys_smapck_sel",
+		cksys_smapck_parents/* parent */, CLK_CFG_10, CLK_CFG_10_SET,
+		CLK_CFG_10_CLR/* set parent */, 16/* lsb */, 1/* width */,
+		CLK_CFG_UPDATE1/* upd ofs */, TOP_MUX_SMAPCK_SHIFT/* upd shift */,
+		CKSTA_REG1/* cksta ofs */, 20/* cksta shift */,
+		CLK_FENC_STATUS_MON_1/* fenc ofs */, 21/* fenc shift */),
+	MUX_FENC_CLR_SET_UPD_CHK(CKSYS_TOP_IPIC_SEL/* dts */, "cksys_ipic_sel",
+		cksys_ipic_parents/* parent */, CLK_CFG_10, CLK_CFG_10_SET,
+		CLK_CFG_10_CLR/* set parent */, 24/* lsb */, 2/* width */,
+		CLK_CFG_UPDATE1/* upd ofs */, TOP_MUX_IPIC_SHIFT/* upd shift */,
+		CKSTA_REG1/* cksta ofs */, 19/* cksta shift */,
+		CLK_FENC_STATUS_MON_1/* fenc ofs */, 20/* fenc shift */),
+	/* CLK_CFG_11 */
+	MUX_GENERIC_HWV(CKSYS_TOP_SPI0_BCLK_SEL/* dts */, "cksys_spi0_b_sel",
+		cksys_spi0_b_parents/* parent */, CLK_CFG_11,
+		CLK_CFG_11_SET, CLK_CFG_11_CLR/* set parent */,
+		"hw-voter-regmap" /*comp*/, AP_HWV_HWV_CG_GRP_1_DONE,
+		AP_HWV_HWV_CG_GRP_1_SET, AP_HWV_HWV_CG_GRP_1_CLR, /* hwv */
+		0/* lsb */, 3/* width */,
+		7/* pdn */, CLK_CFG_UPDATE1/* upd ofs */,
+		TOP_MUX_SPI0_BCLK_SHIFT/* upd shift */, CKSTA_REG1/* cksta ofs */,
+		18/* cksta shift */, CLK_FENC_STATUS_MON_1/* fenc ofs */,
+		19/* fenc shift */),
+	MUX_GENERIC_HWV(CKSYS_TOP_SPI1_BCLK_SEL/* dts */, "cksys_spi1_b_sel",
+		cksys_spi1_b_parents/* parent */, CLK_CFG_11,
+		CLK_CFG_11_SET, CLK_CFG_11_CLR/* set parent */,
+		"hw-voter-regmap" /*comp*/, AP_HWV_HWV_CG_GRP_1_DONE,
+		AP_HWV_HWV_CG_GRP_1_SET, AP_HWV_HWV_CG_GRP_1_CLR, /* hwv */
+		8/* lsb */, 3/* width */,
+		15/* pdn */, CLK_CFG_UPDATE1/* upd ofs */,
+		TOP_MUX_SPI1_BCLK_SHIFT/* upd shift */, CKSTA_REG1/* cksta ofs */,
+		17/* cksta shift */, CLK_FENC_STATUS_MON_1/* fenc ofs */,
+		18/* fenc shift */),
+	MUX_GENERIC_HWV(CKSYS_TOP_SPI2_BCLK_SEL/* dts */, "cksys_spi2_b_sel",
+		cksys_spi2_b_parents/* parent */, CLK_CFG_11,
+		CLK_CFG_11_SET, CLK_CFG_11_CLR/* set parent */,
+		"hw-voter-regmap" /*comp*/, AP_HWV_HWV_CG_GRP_1_DONE,
+		AP_HWV_HWV_CG_GRP_1_SET, AP_HWV_HWV_CG_GRP_1_CLR, /* hwv */
+		16/* lsb */, 3/* width */,
+		23/* pdn */, CLK_CFG_UPDATE1/* upd ofs */,
+		TOP_MUX_SPI2_BCLK_SHIFT/* upd shift */, CKSTA_REG1/* cksta ofs */,
+		16/* cksta shift */, CLK_FENC_STATUS_MON_1/* fenc ofs */,
+		17/* fenc shift */),
+	MUX_GENERIC_HWV(CKSYS_TOP_SPI3_BCLK_SEL/* dts */, "cksys_spi3_b_sel",
+		cksys_spi3_b_parents/* parent */, CLK_CFG_11,
+		CLK_CFG_11_SET, CLK_CFG_11_CLR/* set parent */,
+		"hw-voter-regmap" /*comp*/, AP_HWV_HWV_CG_GRP_1_DONE,
+		AP_HWV_HWV_CG_GRP_1_SET, AP_HWV_HWV_CG_GRP_1_CLR, /* hwv */
+		24/* lsb */, 3/* width */,
+		31/* pdn */, CLK_CFG_UPDATE1/* upd ofs */,
+		TOP_MUX_SPI3_BCLK_SHIFT/* upd shift */, CKSTA_REG1/* cksta ofs */,
+		15/* cksta shift */, CLK_FENC_STATUS_MON_1/* fenc ofs */,
+		16/* fenc shift */),
+	/* CLK_CFG_12 */
+	MUX_GENERIC_HWV(CKSYS_TOP_SPI4_BCLK_SEL/* dts */, "cksys_spi4_b_sel",
+		cksys_spi4_b_parents/* parent */, CLK_CFG_12,
+		CLK_CFG_12_SET, CLK_CFG_12_CLR/* set parent */,
+		"hw-voter-regmap" /*comp*/, AP_HWV_HWV_CG_GRP_2_DONE,
+		AP_HWV_HWV_CG_GRP_2_SET, AP_HWV_HWV_CG_GRP_2_CLR, /* hwv */
+		0/* lsb */, 3/* width */,
+		7/* pdn */, CLK_CFG_UPDATE1/* upd ofs */,
+		TOP_MUX_SPI4_BCLK_SHIFT/* upd shift */, CKSTA_REG1/* cksta ofs */,
+		14/* cksta shift */, CLK_FENC_STATUS_MON_1/* fenc ofs */,
+		15/* fenc shift */),
+	MUX_GENERIC_HWV(CKSYS_TOP_SPI5_BCLK_SEL/* dts */, "cksys_spi5_b_sel",
+		cksys_spi5_b_parents/* parent */, CLK_CFG_12,
+		CLK_CFG_12_SET, CLK_CFG_12_CLR/* set parent */,
+		"hw-voter-regmap" /*comp*/, AP_HWV_HWV_CG_GRP_2_DONE,
+		AP_HWV_HWV_CG_GRP_2_SET, AP_HWV_HWV_CG_GRP_2_CLR, /* hwv */
+		8/* lsb */, 3/* width */,
+		15/* pdn */, CLK_CFG_UPDATE1/* upd ofs */,
+		TOP_MUX_SPI5_BCLK_SHIFT/* upd shift */, CKSTA_REG1/* cksta ofs */,
+		13/* cksta shift */, CLK_FENC_STATUS_MON_1/* fenc ofs */,
+		14/* fenc shift */),
+	MUX_GENERIC_HWV(CKSYS_TOP_SPI6_BCLK_SEL/* dts */, "cksys_spi6_b_sel",
+		cksys_spi6_b_parents/* parent */, CLK_CFG_12,
+		CLK_CFG_12_SET, CLK_CFG_12_CLR/* set parent */,
+		"hw-voter-regmap" /*comp*/, AP_HWV_HWV_CG_GRP_2_DONE,
+		AP_HWV_HWV_CG_GRP_2_SET, AP_HWV_HWV_CG_GRP_2_CLR, /* hwv */
+		16/* lsb */, 3/* width */,
+		23/* pdn */, CLK_CFG_UPDATE1/* upd ofs */,
+		TOP_MUX_SPI6_BCLK_SHIFT/* upd shift */, CKSTA_REG1/* cksta ofs */,
+		12/* cksta shift */, CLK_FENC_STATUS_MON_1/* fenc ofs */,
+		13/* fenc shift */),
+	MUX_GENERIC_HWV(CKSYS_TOP_SPI7_BCLK_SEL/* dts */, "cksys_spi7_b_sel",
+		cksys_spi7_b_parents/* parent */, CLK_CFG_12,
+		CLK_CFG_12_SET, CLK_CFG_12_CLR/* set parent */,
+		"hw-voter-regmap" /*comp*/, AP_HWV_HWV_CG_GRP_2_DONE,
+		AP_HWV_HWV_CG_GRP_2_SET, AP_HWV_HWV_CG_GRP_2_CLR, /* hwv */
+		24/* lsb */, 3/* width */,
+		31/* pdn */, CLK_CFG_UPDATE1/* upd ofs */,
+		TOP_MUX_SPI7_BCLK_SHIFT/* upd shift */, CKSTA_REG1/* cksta ofs */,
+		11/* cksta shift */, CLK_FENC_STATUS_MON_1/* fenc ofs */,
+		12/* fenc shift */),
+	/* CLK_CFG_13 */
+	MUX_GATE_FENC_CLR_SET_UPD_CHK(CKSYS_TOP_TL_SEL/* dts */, "cksys_tl_sel",
+		cksys_tl_parents/* parent */, CLK_CFG_13, CLK_CFG_13_SET,
+		CLK_CFG_13_CLR/* set parent */, 8/* lsb */, 2/* width */,
+		15/* pdn */, CLK_CFG_UPDATE1/* upd ofs */,
+		TOP_MUX_TL_SHIFT/* upd shift */, CKSTA_REG1/* cksta ofs */,
+		9/* cksta shift */, CLK_FENC_STATUS_MON_1/* fenc ofs */,
+		10/* fenc shift */),
+	MUX_GATE_FENC_CLR_SET_UPD_CHK(CKSYS_TOP_TL_P1_SEL/* dts */, "cksys_tl_p1_sel",
+		cksys_tl_p1_parents/* parent */, CLK_CFG_13, CLK_CFG_13_SET,
+		CLK_CFG_13_CLR/* set parent */, 16/* lsb */, 2/* width */,
+		23/* pdn */, CLK_CFG_UPDATE1/* upd ofs */,
+		TOP_MUX_TL_P1_SHIFT/* upd shift */, CKSTA_REG1/* cksta ofs */,
+		8/* cksta shift */, CLK_FENC_STATUS_MON_1/* fenc ofs */,
+		9/* fenc shift */),
+	MUX_GATE_FENC_CLR_SET_UPD_CHK(CKSYS_TOP_PWM_SEL/* dts */, "cksys_pwm_sel",
+		cksys_pwm_parents/* parent */, CLK_CFG_13, CLK_CFG_13_SET,
+		CLK_CFG_13_CLR/* set parent */, 24/* lsb */, 2/* width */,
+		31/* pdn */, CLK_CFG_UPDATE1/* upd ofs */,
+		TOP_MUX_PWM_SHIFT/* upd shift */, CKSTA_REG1/* cksta ofs */,
+		7/* cksta shift */, CLK_FENC_STATUS_MON_1/* fenc ofs */,
+		8/* fenc shift */),
+	/* CLK_CFG_14 */
+	MUX_GATE_FENC_CLR_SET_UPD_CHK(CKSYS_TOP_AES_UFSFDE_0_SEL/* dts */, "cksys_aes_ufsfde_0_sel",
+		cksys_aes_ufsfde_0_parents/* parent */, CLK_CFG_14, CLK_CFG_14_SET,
+		CLK_CFG_14_CLR/* set parent */, 0/* lsb */, 2/* width */,
+		7/* pdn */, CLK_CFG_UPDATE1/* upd ofs */,
+		TOP_MUX_AES_UFSFDE_0_SHIFT/* upd shift */, CKSTA_REG1/* cksta ofs */,
+		6/* cksta shift */, CLK_FENC_STATUS_MON_1/* fenc ofs */,
+		7/* fenc shift */),
+	MUX_GATE_FENC_CLR_SET_UPD_CHK(CKSYS_TOP_U_0_SEL/* dts */, "cksys_u_0_sel",
+		cksys_u_0_parents/* parent */, CLK_CFG_14, CLK_CFG_14_SET,
+		CLK_CFG_14_CLR/* set parent */, 8/* lsb */, 3/* width */,
+		15/* pdn */, CLK_CFG_UPDATE1/* upd ofs */,
+		TOP_MUX_UFS_0_SHIFT/* upd shift */, CKSTA_REG1/* cksta ofs */,
+		5/* cksta shift */, CLK_FENC_STATUS_MON_1/* fenc ofs */,
+		6/* fenc shift */),
+	MUX_GATE_FENC_CLR_SET_UPD_CHK(CKSYS_TOP_AES_UFSFDE_1_SEL/* dts */, "cksys_aes_ufsfde_1_sel",
+		cksys_aes_ufsfde_1_parents/* parent */, CLK_CFG_14, CLK_CFG_14_SET,
+		CLK_CFG_14_CLR/* set parent */, 24/* lsb */, 2/* width */,
+		31/* pdn */, CLK_CFG_UPDATE1/* upd ofs */,
+		TOP_MUX_AES_UFSFDE_1_SHIFT/* upd shift */, CKSTA_REG1/* cksta ofs */,
+		3/* cksta shift */, CLK_FENC_STATUS_MON_1/* fenc ofs */,
+		4/* fenc shift */),
+	/* CLK_CFG_15 */
+	MUX_GATE_FENC_CLR_SET_UPD_CHK(CKSYS_TOP_U_1_SEL/* dts */, "cksys_u_1_sel",
+		cksys_u_1_parents/* parent */, CLK_CFG_15, CLK_CFG_15_SET,
+		CLK_CFG_15_CLR/* set parent */, 0/* lsb */, 3/* width */,
+		7/* pdn */, CLK_CFG_UPDATE1/* upd ofs */,
+		TOP_MUX_UFS_1_SHIFT/* upd shift */, CKSTA_REG1/* cksta ofs */,
+		2/* cksta shift */, CLK_FENC_STATUS_MON_1/* fenc ofs */,
+		3/* fenc shift */),
+	MUX_GENERIC_HWV(CKSYS_TOP_UARTHUB_BCLK_SEL/* dts */, "cksys_uarthub_b_sel",
+		cksys_uarthub_b_parents/* parent */, CLK_CFG_15,
+		CLK_CFG_15_SET, CLK_CFG_15_CLR/* set parent */,
+		"hw-voter-regmap" /*comp*/, AP_HWV_HWV_CG_GRP_3_DONE,
+		AP_HWV_HWV_CG_GRP_3_SET, AP_HWV_HWV_CG_GRP_3_CLR, /* hwv */
+		16/* lsb */, 2/* width */,
+		23/* pdn */, CLK_CFG_UPDATE2/* upd ofs */,
+		TOP_MUX_UARTHUB_BCLK_SHIFT/* upd shift */, CKSTA_REG2/* cksta ofs */,
+		31/* cksta shift */, CLK_FENC_STATUS_MON_1/* fenc ofs */,
+		1/* fenc shift */),
+	MUX_GENERIC_HWV(CKSYS_TOP_UART_SEL/* dts */, "cksys_uart_sel",
+		cksys_uart_parents/* parent */, CLK_CFG_15,
+		CLK_CFG_15_SET, CLK_CFG_15_CLR/* set parent */,
+		"hw-voter-regmap" /*comp*/, AP_HWV_HWV_CG_GRP_3_DONE,
+		AP_HWV_HWV_CG_GRP_3_SET, AP_HWV_HWV_CG_GRP_3_CLR, /* hwv */
+		24/* lsb */, 2/* width */,
+		31/* pdn */, CLK_CFG_UPDATE2/* upd ofs */,
+		TOP_MUX_UART_SHIFT/* upd shift */, CKSTA_REG2/* cksta ofs */,
+		30/* cksta shift */, CLK_FENC_STATUS_MON_1/* fenc ofs */,
+		0/* fenc shift */),
+	/* CLK_CFG_16 */
+	MUX_GATE_FENC_CLR_SET_UPD_CHK(CKSYS_TOP_I2C_PERI_SEL/* dts */, "cksys_i2c_peri_sel",
+		cksys_i2c_peri_parents/* parent */, CLK_CFG_16, CLK_CFG_16_SET,
+		CLK_CFG_16_CLR/* set parent */, 0/* lsb */, 2/* width */,
+		7/* pdn */, CLK_CFG_UPDATE2/* upd ofs */,
+		TOP_MUX_I2C_PERI_SHIFT/* upd shift */, CKSTA_REG2/* cksta ofs */,
+		29/* cksta shift */, CLK_FENC_STATUS_MON_2/* fenc ofs */,
+		31/* fenc shift */),
+	MUX_GATE_FENC_CLR_SET_UPD_CHK(CKSYS_TOP_I2C_NORTH_SEL/* dts */, "cksys_i2c_north_sel",
+		cksys_i2c_north_parents/* parent */, CLK_CFG_16, CLK_CFG_16_SET,
+		CLK_CFG_16_CLR/* set parent */, 8/* lsb */, 2/* width */,
+		15/* pdn */, CLK_CFG_UPDATE2/* upd ofs */,
+		TOP_MUX_I2C_NORTH_SHIFT/* upd shift */, CKSTA_REG2/* cksta ofs */,
+		28/* cksta shift */, CLK_FENC_STATUS_MON_2/* fenc ofs */,
+		30/* fenc shift */),
+	MUX_GATE_FENC_CLR_SET_UPD_CHK(CKSYS_TOP_I2C_EAST_SEL/* dts */, "cksys_i2c_east_sel",
+		cksys_i2c_east_parents/* parent */, CLK_CFG_16, CLK_CFG_16_SET,
+		CLK_CFG_16_CLR/* set parent */, 16/* lsb */, 2/* width */,
+		23/* pdn */, CLK_CFG_UPDATE2/* upd ofs */,
+		TOP_MUX_I2C_EAST_SHIFT/* upd shift */, CKSTA_REG2/* cksta ofs */,
+		27/* cksta shift */, CLK_FENC_STATUS_MON_2/* fenc ofs */,
+		29/* fenc shift */),
+	MUX_GATE_FENC_CLR_SET_UPD_CHK(CKSYS_TOP_I2C_WEST_SEL/* dts */, "cksys_i2c_west_sel",
+		cksys_i2c_west_parents/* parent */, CLK_CFG_16, CLK_CFG_16_SET,
+		CLK_CFG_16_CLR/* set parent */, 24/* lsb */, 2/* width */,
+		31/* pdn */, CLK_CFG_UPDATE2/* upd ofs */,
+		TOP_MUX_I2C_WEST_SHIFT/* upd shift */, CKSTA_REG2/* cksta ofs */,
+		26/* cksta shift */, CLK_FENC_STATUS_MON_2/* fenc ofs */,
+		28/* fenc shift */),
+	/* CLK_CFG_17 */
+	MUX_GATE_FENC_CLR_SET_UPD_CHK(CKSYS_TOP_MSDC_MACRO_1P_SEL/* dts */, "cksys_msdc_macro_1p_sel",
+		cksys_msdc_macro_1p_parents/* parent */, CLK_CFG_17, CLK_CFG_17_SET,
+		CLK_CFG_17_CLR/* set parent */, 0/* lsb */, 2/* width */,
+		7/* pdn */, CLK_CFG_UPDATE2/* upd ofs */,
+		TOP_MUX_MSDC_MACRO_1P_SHIFT/* upd shift */, CKSTA_REG2/* cksta ofs */,
+		25/* cksta shift */, CLK_FENC_STATUS_MON_2/* fenc ofs */,
+		27/* fenc shift */),
+	MUX_GATE_FENC_CLR_SET_UPD_CHK(CKSYS_TOP_MSDC_MACRO_2P_SEL/* dts */, "cksys_msdc_macro_2p_sel",
+		cksys_msdc_macro_2p_parents/* parent */, CLK_CFG_17, CLK_CFG_17_SET,
+		CLK_CFG_17_CLR/* set parent */, 8/* lsb */, 2/* width */,
+		15/* pdn */, CLK_CFG_UPDATE2/* upd ofs */,
+		TOP_MUX_MSDC_MACRO_2P_SHIFT/* upd shift */, CKSTA_REG2/* cksta ofs */,
+		24/* cksta shift */, CLK_FENC_STATUS_MON_2/* fenc ofs */,
+		26/* fenc shift */),
+	MUX_GATE_FENC_CLR_SET_UPD_CHK(CKSYS_TOP_MSDC30_1_SEL/* dts */, "cksys_msdc30_1_sel",
+		cksys_msdc30_1_parents/* parent */, CLK_CFG_17, CLK_CFG_17_SET,
+		CLK_CFG_17_CLR/* set parent */, 16/* lsb */, 2/* width */,
+		23/* pdn */, CLK_CFG_UPDATE2/* upd ofs */,
+		TOP_MUX_MSDC30_1_SHIFT/* upd shift */, CKSTA_REG2/* cksta ofs */,
+		23/* cksta shift */, CLK_FENC_STATUS_MON_2/* fenc ofs */,
+		25/* fenc shift */),
+	MUX_GATE_FENC_CLR_SET_UPD_CHK(CKSYS_TOP_MSDC30_2_SEL/* dts */, "cksys_msdc30_2_sel",
+		cksys_msdc30_2_parents/* parent */, CLK_CFG_17, CLK_CFG_17_SET,
+		CLK_CFG_17_CLR/* set parent */, 24/* lsb */, 2/* width */,
+		31/* pdn */, CLK_CFG_UPDATE2/* upd ofs */,
+		TOP_MUX_MSDC30_2_SHIFT/* upd shift */, CKSTA_REG2/* cksta ofs */,
+		22/* cksta shift */, CLK_FENC_STATUS_MON_2/* fenc ofs */,
+		24/* fenc shift */),
+	/* CLK_CFG_20 */
+	MUX_FENC_CLR_SET_UPD_CHK(CKSYS_TOP_GRIDSENSOR_SEL/* dts */, "cksys_gridsensor_sel",
+		cksys_gridsensor_parents/* parent */, CLK_CFG_20, CLK_CFG_20_SET,
+		CLK_CFG_20_CLR/* set parent */, 8/* lsb */, 1/* width */,
+		CLK_CFG_UPDATE2/* upd ofs */, TOP_MUX_GRIDSENSOR_SHIFT/* upd shift */,
+		CKSTA_REG2/* cksta ofs */, 12/* cksta shift */,
+		CLK_FENC_STATUS_MON_2/* fenc ofs */, 14/* fenc shift */),
+	MUX_FENC_CLR_SET_UPD_CHK(CKSYS_TOP_AOV_26M_SEL/* dts */, "cksys_aov_26m_sel",
+		cksys_aov_26m_parents/* parent */, CLK_CFG_20, CLK_CFG_20_SET,
+		CLK_CFG_20_CLR/* set parent */, 16/* lsb */, 1/* width */,
+		CLK_CFG_UPDATE2/* upd ofs */, TOP_MUX_AOV_26M_SHIFT/* upd shift */,
+		CKSTA_REG2/* cksta ofs */, 11/* cksta shift */,
+		CLK_FENC_STATUS_MON_2/* fenc ofs */, 13/* fenc shift */),
+	MUX_FENC_CLR_SET_UPD_CHK(CKSYS_TOP_EMI_WDAT_SEL/* dts */, "cksys_emi_wdat_sel",
+		cksys_emi_wdat_parents/* parent */, CLK_CFG_20, CLK_CFG_20_SET,
+		CLK_CFG_20_CLR/* set parent */, 24/* lsb */, 4/* width */,
+		CLK_CFG_UPDATE2/* upd ofs */, TOP_MUX_EMI_WDAT_SHIFT/* upd shift */,
+		CKSTA_REG2/* cksta ofs */, 10/* cksta shift */,
+		CLK_FENC_STATUS_MON_2/* fenc ofs */, 12/* fenc shift */),
+	/* CLK_AUDDIV_0 */
+};
+
 static const char * const vlp_sspm_26m_parents[] = {
 	"cksys_tck_26m_mx9_ck",
 	"cksys_osc_d20"
@@ -3419,7 +3964,16 @@ static const char * const mm_mmup_parents[] = {
 	"cksys_osc_d2",
 	"cksys_osc",
 	"cksys_mainpll_d4",
-	"mm_mainpll2_d3"
+	"mm_mainpll2_d3",
+};
+
+static const char * const mm_mmup_parents_b0[] = {
+	"cksys_tck_26m_mx9_ck",
+	"cksys_osc_d2",
+	"cksys_osc",
+	"cksys_mainpll_d4",
+	"mm_mainpll2_d3",
+	"cksys_mainpll_d3"
 };
 
 static const char * const mm_mminfra_ao_parents[] = {
@@ -4158,6 +4712,253 @@ static const struct mtk_mux cksys_mm_muxes[] = {
 #endif
 };
 
+
+static const struct mtk_mux cksys_mm_muxes_b0[] = {
+	/* CKSYS2_CLK_CFG_0 */
+	MUX_FENC_CLR_SET_UPD_CHK(CKSYS_MM_MMUP_SEL/* dts */, "mm_mmup_sel",
+		mm_mmup_parents_b0/* parent */, CKSYS2_CLK_CFG_0, CKSYS2_CLK_CFG_0_SET,
+		CKSYS2_CLK_CFG_0_CLR/* set parent */, 0/* lsb */, 3/* width */,
+		CKSYS2_CLK_CFG_UPDATE/* upd ofs */, TOP_MUX_MMUP_SHIFT/* upd shift */,
+		CKSYS2_CKSTA_REG/* cksta ofs */, 31/* cksta shift */,
+		CKSYS2_CLK_FENC_STATUS_MON_0/* fenc ofs */, 31/* fenc shift */),
+	MUX_GENERIC_HWV_AL(CKSYS_MM_MMINFRA_AO_SEL/* dts */, "mm_mminfra_ao_sel",
+		mm_mminfra_ao_parents/* parent */, CKSYS2_CLK_CFG_0,
+		CKSYS2_CLK_CFG_0_SET, CKSYS2_CLK_CFG_0_CLR/* set parent */,
+		"mm-hw-ccf-regmap" /*comp*/, MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_DONE,
+		MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_SET, MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_CLR, /* hwv */
+		8/* lsb */, 2/* width */,
+		12/* pdn */, CKSYS2_CLK_CFG_UPDATE/* upd ofs */,
+		TOP_MUX_MMINFRA_AO_SHIFT/* upd shift */, CKSYS2_CKSTA_REG/* cksta ofs */,
+		30/* cksta shift */, CKSYS2_CLK_FENC_STATUS_MON_0/* fenc ofs */,
+		30/* fenc shift */),
+	MUX_GENERIC_HWV_AL(CKSYS_MM_MMINFRA_SEL/* dts */, "mm_mminfra_sel",
+		mm_mminfra_parents/* parent */, CKSYS2_CLK_CFG_0,
+		CKSYS2_CLK_CFG_0_SET, CKSYS2_CLK_CFG_0_CLR/* set parent */,
+		"mm-hw-ccf-regmap" /*comp*/, MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_DONE,
+		MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_SET, MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_CLR, /* hwv */
+		16/* lsb */, 4/* width */,
+		10/* pdn */, CKSYS2_CLK_CFG_UPDATE/* upd ofs */,
+		TOP_MUX_MMINFRA_SHIFT/* upd shift */, CKSYS2_CKSTA_REG/* cksta ofs */,
+		29/* cksta shift */, CKSYS2_CLK_FENC_STATUS_MON_0/* fenc ofs */,
+		29/* fenc shift */),
+	MUX_GENERIC_HWV_AL(CKSYS_MM_MMINFRA_SNOC_SEL/* dts */, "mm_mminfra_snoc_sel",
+		mm_mminfra_snoc_parents/* parent */, CKSYS2_CLK_CFG_0,
+		CKSYS2_CLK_CFG_0_SET, CKSYS2_CLK_CFG_0_CLR/* set parent */,
+		"mm-hw-ccf-regmap" /*comp*/, MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_DONE,
+		MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_SET, MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_CLR, /* hwv */
+		24/* lsb */, 4/* width */,
+		11/* pdn */, CKSYS2_CLK_CFG_UPDATE/* upd ofs */,
+		TOP_MUX_MMINFRA_SNOC_SHIFT/* upd shift */, CKSYS2_CKSTA_REG/* cksta ofs */,
+		28/* cksta shift */, CKSYS2_CLK_FENC_STATUS_MON_0/* fenc ofs */,
+		28/* fenc shift */),
+	/* CKSYS2_CLK_CFG_1 */
+	MUX_GENERIC_HWV_AL(CKSYS_MM_VENC_SEL/* dts */, "mm_venc_sel",
+		mm_venc_parents/* parent */, CKSYS2_CLK_CFG_1,
+		CKSYS2_CLK_CFG_1_SET, CKSYS2_CLK_CFG_1_CLR/* set parent */,
+		"mm-hw-ccf-regmap" /*comp*/, MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_DONE,
+		MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_SET, MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_CLR, /* hwv */
+		0/* lsb */, 4/* width */,
+		6/* pdn */, CKSYS2_CLK_CFG_UPDATE/* upd ofs */,
+		TOP_MUX_VENC_SHIFT/* upd shift */, CKSYS2_CKSTA_REG/* cksta ofs */,
+		27/* cksta shift */, CKSYS2_CLK_FENC_STATUS_MON_0/* fenc ofs */,
+		27/* fenc shift */),
+	MUX_GENERIC_HWV_AL(CKSYS_MM_VENC_MDP_SEL/* dts */, "mm_venc_mdp_sel",
+		mm_venc_mdp_parents/* parent */, CKSYS2_CLK_CFG_1,
+		CKSYS2_CLK_CFG_1_SET, CKSYS2_CLK_CFG_1_CLR/* set parent */,
+		"mm-hw-ccf-regmap" /*comp*/, MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_DONE,
+		MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_SET, MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_CLR, /* hwv */
+		8/* lsb */, 4/* width */,
+		9/* pdn */, CKSYS2_CLK_CFG_UPDATE/* upd ofs */,
+		TOP_MUX_VENC_MDP_SHIFT/* upd shift */, CKSYS2_CKSTA_REG/* cksta ofs */,
+		26/* cksta shift */, CKSYS2_CLK_FENC_STATUS_MON_0/* fenc ofs */,
+		26/* fenc shift */),
+	MUX_GENERIC_HWV_AL(CKSYS_MM_VDEC_SEL/* dts */, "mm_vdec_sel",
+		mm_vdec_parents/* parent */, CKSYS2_CLK_CFG_1,
+		CKSYS2_CLK_CFG_1_SET, CKSYS2_CLK_CFG_1_CLR/* set parent */,
+		"mm-hw-ccf-regmap" /*comp*/, MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_DONE,
+		MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_SET, MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_CLR, /* hwv */
+		16/* lsb */, 4/* width */,
+		4/* pdn */, CKSYS2_CLK_CFG_UPDATE/* upd ofs */,
+		TOP_MUX_VDEC_SHIFT/* upd shift */, CKSYS2_CKSTA_REG/* cksta ofs */,
+		25/* cksta shift */, CKSYS2_CLK_FENC_STATUS_MON_0/* fenc ofs */,
+		25/* fenc shift */),
+	MUX_GENERIC_HWV_AL(CKSYS_MM_IMG1_SEL/* dts */, "mm_img1_sel",
+		mm_img1_parents/* parent */, CKSYS2_CLK_CFG_1,
+		CKSYS2_CLK_CFG_1_SET, CKSYS2_CLK_CFG_1_CLR/* set parent */,
+		"mm-hw-ccf-regmap" /*comp*/, MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_DONE,
+		MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_SET, MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_CLR, /* hwv */
+		24/* lsb */, 4/* width */,
+		0/* pdn */, CKSYS2_CLK_CFG_UPDATE/* upd ofs */,
+		TOP_MUX_IMG1_SHIFT/* upd shift */, CKSYS2_CKSTA_REG/* cksta ofs */,
+		24/* cksta shift */, CKSYS2_CLK_FENC_STATUS_MON_0/* fenc ofs */,
+		24/* fenc shift */),
+	/* CKSYS2_CLK_CFG_2 */
+	MUX_GENERIC_HWV_AL(CKSYS_MM_IPE_SEL/* dts */, "mm_ipe_sel",
+		mm_ipe_parents/* parent */, CKSYS2_CLK_CFG_2,
+		CKSYS2_CLK_CFG_2_SET, CKSYS2_CLK_CFG_2_CLR/* set parent */,
+		"mm-hw-ccf-regmap" /*comp*/, MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_DONE,
+		MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_SET, MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_CLR, /* hwv */
+		0/* lsb */, 4/* width */,
+		1/* pdn */, CKSYS2_CLK_CFG_UPDATE/* upd ofs */,
+		TOP_MUX_IPE_SHIFT/* upd shift */, CKSYS2_CKSTA_REG/* cksta ofs */,
+		23/* cksta shift */, CKSYS2_CLK_FENC_STATUS_MON_0/* fenc ofs */,
+		23/* fenc shift */),
+	MUX_GENERIC_HWV_AL(CKSYS_MM_DISP_SEL/* dts */, "mm_disp_sel",
+		mm_disp_parents/* parent */, CKSYS2_CLK_CFG_2,
+		CKSYS2_CLK_CFG_2_SET, CKSYS2_CLK_CFG_2_CLR/* set parent */,
+		"mm-hw-ccf-regmap" /*comp*/, MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_DONE,
+		MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_SET, MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_CLR, /* hwv */
+		8/* lsb */, 4/* width */,
+		7/* pdn */, CKSYS2_CLK_CFG_UPDATE/* upd ofs */,
+		TOP_MUX_DISP_SHIFT/* upd shift */, CKSYS2_CKSTA_REG/* cksta ofs */,
+		22/* cksta shift */, CKSYS2_CLK_FENC_STATUS_MON_0/* fenc ofs */,
+		22/* fenc shift */),
+	MUX_GENERIC_HWV_AL(CKSYS_MM_MML_SEL/* dts */, "mm_mml_sel",
+		mm_mml_parents/* parent */, CKSYS2_CLK_CFG_2,
+		CKSYS2_CLK_CFG_2_SET, CKSYS2_CLK_CFG_2_CLR/* set parent */,
+		"mm-hw-ccf-regmap" /*comp*/, MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_DONE,
+		MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_SET, MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_CLR, /* hwv */
+		16/* lsb */, 4/* width */,
+		8/* pdn */, CKSYS2_CLK_CFG_UPDATE/* upd ofs */,
+		TOP_MUX_MML_SHIFT/* upd shift */, CKSYS2_CKSTA_REG/* cksta ofs */,
+		21/* cksta shift */, CKSYS2_CLK_FENC_STATUS_MON_0/* fenc ofs */,
+		21/* fenc shift */),
+	MUX_GENERIC_HWV_AL(CKSYS_MM_DVO_DP_SEL/* dts */, "mm_dvo_dp_sel",
+		mm_dvo_dp_parents/* parent */, CKSYS2_CLK_CFG_2,
+		CKSYS2_CLK_CFG_2_SET, CKSYS2_CLK_CFG_2_CLR/* set parent */,
+		"mm-hw-ccf-regmap" /*comp*/, MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_DONE,
+		MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_SET, MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_CLR, /* hwv */
+		24/* lsb */, 3/* width */,
+		14/* pdn */, CKSYS2_CLK_CFG_UPDATE/* upd ofs */,
+		TOP_MUX_DVO_DP_SHIFT/* upd shift */, CKSYS2_CKSTA_REG/* cksta ofs */,
+		20/* cksta shift */, CKSYS2_CLK_FENC_STATUS_MON_0/* fenc ofs */,
+		20/* fenc shift */),
+	/* CKSYS2_CLK_CFG_3 */
+	MUX_GENERIC_HWV(CKSYS_MM_DVO_FAVT_DP_SEL/* dts */, "mm_dvo_favt_dp_sel",
+		mm_dvo_favt_dp_parents/* parent */, CKSYS2_CLK_CFG_3,
+		CKSYS2_CLK_CFG_3_SET, CKSYS2_CLK_CFG_3_CLR/* set parent */,
+		"mm-hw-ccf-regmap" /*comp*/, MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_DONE,
+		MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_SET, MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_CLR, /* hwv */
+		0/* lsb */, 3/* width */,
+		15/* pdn */, CKSYS2_CLK_CFG_UPDATE/* upd ofs */,
+		TOP_MUX_DVO_FAVT_DP_SHIFT/* upd shift */, CKSYS2_CKSTA_REG/* cksta ofs */,
+		19/* cksta shift */, CKSYS2_CLK_FENC_STATUS_MON_0/* fenc ofs */,
+		19/* fenc shift */),
+	MUX_GENERIC_HWV_AL(CKSYS_MM_CAM_SEL/* dts */, "mm_cam_sel",
+		mm_cam_parents/* parent */, CKSYS2_CLK_CFG_3,
+		CKSYS2_CLK_CFG_3_SET, CKSYS2_CLK_CFG_3_CLR/* set parent */,
+		"mm-hw-ccf-regmap" /*comp*/, MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_DONE,
+		MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_SET, MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_CLR, /* hwv */
+		8/* lsb */, 4/* width */,
+		2/* pdn */, CKSYS2_CLK_CFG_UPDATE/* upd ofs */,
+		TOP_MUX_CAM_SHIFT/* upd shift */, CKSYS2_CKSTA_REG/* cksta ofs */,
+		18/* cksta shift */, CKSYS2_CLK_FENC_STATUS_MON_0/* fenc ofs */,
+		18/* fenc shift */),
+	MUX_GENERIC_HWV(CKSYS_MM_CAMTM_SEL/* dts */, "mm_camtm_sel",
+		mm_camtm_parents/* parent */, CKSYS2_CLK_CFG_3,
+		CKSYS2_CLK_CFG_3_SET, CKSYS2_CLK_CFG_3_CLR/* set parent */,
+		"mm-hw-ccf-regmap" /*comp*/, MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_DONE,
+		MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_SET, MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_CLR, /* hwv */
+		16/* lsb */, 3/* width */,
+		3/* pdn */, CKSYS2_CLK_CFG_UPDATE/* upd ofs */,
+		TOP_MUX_CAMTM_SHIFT/* upd shift */, CKSYS2_CKSTA_REG/* cksta ofs */,
+		17/* cksta shift */, CKSYS2_CLK_FENC_STATUS_MON_0/* fenc ofs */,
+		17/* fenc shift */),
+	MUX_GENERIC_HWV_AL(CKSYS_MM_CCUSYS_SEL/* dts */, "mm_ccusys_sel",
+		mm_ccusys_parents/* parent */, CKSYS2_CLK_CFG_3,
+		CKSYS2_CLK_CFG_3_SET, CKSYS2_CLK_CFG_3_CLR/* set parent */,
+		"mm-hw-ccf-regmap" /*comp*/, MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_DONE,
+		MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_SET, MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_CLR, /* hwv */
+		24/* lsb */, 3/* width */,
+		5/* pdn */, CKSYS2_CLK_CFG_UPDATE/* upd ofs */,
+		TOP_MUX_CCUSYS_SHIFT/* upd shift */, CKSYS2_CKSTA_REG/* cksta ofs */,
+		16/* cksta shift */, CKSYS2_CLK_FENC_STATUS_MON_0/* fenc ofs */,
+		16/* fenc shift */),
+	/* CKSYS2_CLK_CFG_4 */
+	MUX_GENERIC_HWV_AL(CKSYS_MM_CCUTM_SEL/* dts */, "mm_ccutm_sel",
+		mm_ccutm_parents/* parent */, CKSYS2_CLK_CFG_4,
+		CKSYS2_CLK_CFG_4_SET, CKSYS2_CLK_CFG_4_CLR/* set parent */,
+		"mm-hw-ccf-regmap" /*comp*/, MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_DONE,
+		MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_SET, MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_CLR, /* hwv */
+		0/* lsb */, 3/* width */,
+		16/* pdn */, CKSYS2_CLK_CFG_UPDATE/* upd ofs */,
+		TOP_MUX_CCUTM_SHIFT/* upd shift */, CKSYS2_CKSTA_REG/* cksta ofs */,
+		15/* cksta shift */, CKSYS2_CLK_FENC_STATUS_MON_0/* fenc ofs */,
+		15/* fenc shift */),
+	MUX_GENERIC_HWV(CKSYS_MM_SENINF0_SEL/* dts */, "mm_seninf0_sel",
+		mm_seninf0_parents/* parent */, CKSYS2_CLK_CFG_4,
+		CKSYS2_CLK_CFG_4_SET, CKSYS2_CLK_CFG_4_CLR/* set parent */,
+		"mm-hw-ccf-regmap" /*comp*/, MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_DONE,
+		MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_SET, MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_CLR, /* hwv */
+		8/* lsb */, 4/* width */,
+		17/* pdn */, CKSYS2_CLK_CFG_UPDATE/* upd ofs */,
+		TOP_MUX_SENINF0_SHIFT/* upd shift */, CKSYS2_CKSTA_REG/* cksta ofs */,
+		14/* cksta shift */, CKSYS2_CLK_FENC_STATUS_MON_0/* fenc ofs */,
+		14/* fenc shift */),
+	MUX_GENERIC_HWV(CKSYS_MM_SENINF1_SEL/* dts */, "mm_seninf1_sel",
+		mm_seninf1_parents/* parent */, CKSYS2_CLK_CFG_4,
+		CKSYS2_CLK_CFG_4_SET, CKSYS2_CLK_CFG_4_CLR/* set parent */,
+		"mm-hw-ccf-regmap" /*comp*/, MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_DONE,
+		MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_SET, MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_CLR, /* hwv */
+		16/* lsb */, 4/* width */,
+		18/* pdn */, CKSYS2_CLK_CFG_UPDATE/* upd ofs */,
+		TOP_MUX_SENINF1_SHIFT/* upd shift */, CKSYS2_CKSTA_REG/* cksta ofs */,
+		13/* cksta shift */, CKSYS2_CLK_FENC_STATUS_MON_0/* fenc ofs */,
+		13/* fenc shift */),
+	MUX_GENERIC_HWV(CKSYS_MM_SENINF2_SEL/* dts */, "mm_seninf2_sel",
+		mm_seninf2_parents/* parent */, CKSYS2_CLK_CFG_4,
+		CKSYS2_CLK_CFG_4_SET, CKSYS2_CLK_CFG_4_CLR/* set parent */,
+		"mm-hw-ccf-regmap" /*comp*/, MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_DONE,
+		MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_SET, MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_CLR, /* hwv */
+		24/* lsb */, 4/* width */,
+		19/* pdn */, CKSYS2_CLK_CFG_UPDATE/* upd ofs */,
+		TOP_MUX_SENINF2_SHIFT/* upd shift */, CKSYS2_CKSTA_REG/* cksta ofs */,
+		12/* cksta shift */, CKSYS2_CLK_FENC_STATUS_MON_0/* fenc ofs */,
+		12/* fenc shift */),
+	/* CKSYS2_CLK_CFG_5 */
+	MUX_GENERIC_HWV(CKSYS_MM_SENINF3_SEL/* dts */, "mm_seninf3_sel",
+		mm_seninf3_parents/* parent */, CKSYS2_CLK_CFG_5,
+		CKSYS2_CLK_CFG_5_SET, CKSYS2_CLK_CFG_5_CLR/* set parent */,
+		"mm-hw-ccf-regmap" /*comp*/, MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_DONE,
+		MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_SET, MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_CLR, /* hwv */
+		0/* lsb */, 4/* width */,
+		20/* pdn */, CKSYS2_CLK_CFG_UPDATE/* upd ofs */,
+		TOP_MUX_SENINF3_SHIFT/* upd shift */, CKSYS2_CKSTA_REG/* cksta ofs */,
+		11/* cksta shift */, CKSYS2_CLK_FENC_STATUS_MON_0/* fenc ofs */,
+		11/* fenc shift */),
+	MUX_GENERIC_HWV(CKSYS_MM_SENINF4_SEL/* dts */, "mm_seninf4_sel",
+		mm_seninf4_parents/* parent */, CKSYS2_CLK_CFG_5,
+		CKSYS2_CLK_CFG_5_SET, CKSYS2_CLK_CFG_5_CLR/* set parent */,
+		"mm-hw-ccf-regmap" /*comp*/, MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_DONE,
+		MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_SET, MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_CLR, /* hwv */
+		8/* lsb */, 4/* width */,
+		21/* pdn */, CKSYS2_CLK_CFG_UPDATE/* upd ofs */,
+		TOP_MUX_SENINF4_SHIFT/* upd shift */, CKSYS2_CKSTA_REG/* cksta ofs */,
+		10/* cksta shift */, CKSYS2_CLK_FENC_STATUS_MON_0/* fenc ofs */,
+		10/* fenc shift */),
+	MUX_GENERIC_HWV(CKSYS_MM_SENINF5_SEL/* dts */, "mm_seninf5_sel",
+		mm_seninf5_parents/* parent */, CKSYS2_CLK_CFG_5,
+		CKSYS2_CLK_CFG_5_SET, CKSYS2_CLK_CFG_5_CLR/* set parent */,
+		"mm-hw-ccf-regmap" /*comp*/, MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_DONE,
+		MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_SET, MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_CLR, /* hwv */
+		16/* lsb */, 4/* width */,
+		22/* pdn */, CKSYS2_CLK_CFG_UPDATE/* upd ofs */,
+		TOP_MUX_SENINF5_SHIFT/* upd shift */, CKSYS2_CKSTA_REG/* cksta ofs */,
+		9/* cksta shift */, CKSYS2_CLK_FENC_STATUS_MON_0/* fenc ofs */,
+		9/* fenc shift */),
+	MUX_GENERIC_HWV_AL(CKSYS_MM_MMINFRA_SNOC_SLOW_SEL/* dts */, "mm_mminfra_snoc_slow_sel",
+		mm_mminfra_snoc_slow_parents/* parent */, CKSYS2_CLK_CFG_5,
+		CKSYS2_CLK_CFG_5_SET, CKSYS2_CLK_CFG_5_CLR/* set parent */,
+		"mm-hw-ccf-regmap" /*comp*/, MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_DONE,
+		MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_SET, MM_HW_CCF_HW_CCF_MUX_PWR_GRP_0_CLR, /* hwv */
+		24/* lsb */, 4/* width */,
+		23/* pdn */, CKSYS2_CLK_CFG_UPDATE/* upd ofs */,
+		TOP_MUX_MMINFRA_SNOC_SLOW_SHIFT/* upd shift */, CKSYS2_CKSTA_REG/* cksta ofs */,
+		8/* cksta shift */, CKSYS2_CLK_FENC_STATUS_MON_0/* fenc ofs */,
+		8/* fenc shift */),
+};
+
+
 static const struct mtk_composite cksys_top_composites[] = {
 	/* CLK_AUDDIV_0 */
 	MUX(CKSYS_TOP_APLL_I2SIN0_MCK_SEL/* dts */, "cksys_apll_i2sin0_m_sel",
@@ -4498,6 +5299,41 @@ static int clk_set_trace_event(struct platform_device *pdev)
 }
 #endif
 
+struct tag_chipid {
+	u32 size;
+	u32 hw_code;
+	u32 hw_subcode;
+	u32 hw_ver;
+	u32 sw_ver;
+};
+
+static u32 clk_mt6993_get_chipid(void)
+{
+	struct device_node *node;
+	struct tag_chipid *chip_id = NULL;
+	int len;
+	u32 chip_sw_ver = 0;
+
+	node = of_find_node_by_path("/chosen");
+	if (!node)
+		node = of_find_node_by_path("/chosen@0");
+	if (node) {
+		chip_id = (struct tag_chipid *) of_get_property(node, "atag,chipid", &len);
+		if (!chip_id) {
+			pr_info("%s could not found atag,chipid in chosen\n", __func__);
+			BUG_ON(1);
+		}
+	} else {
+		pr_info("%s chosen node not found in device tree\n", __func__);
+	}
+	if (chip_id) {
+		chip_sw_ver = chip_id->sw_ver;
+		pr_info("%s current sw version:0x%x\n", __func__, chip_sw_ver);
+	}
+
+	return chip_sw_ver;
+}
+
 static int clk_mt6993_apll1_ctrl_probe(struct platform_device *pdev)
 {
 	return clk_mt6993_pll_registration(APLL1_CTRL, apll1_ctrl_plls,
@@ -4538,7 +5374,17 @@ static int clk_mt6993_cksys_mm_probe(struct platform_device *pdev)
 
 	mtk_clk_register_factors(cksys_mm_divs, ARRAY_SIZE(cksys_mm_divs), clk_data);
 
-	mtk_clk_register_muxes(cksys_mm_muxes, ARRAY_SIZE(cksys_mm_muxes), node, &mt6993_clk_lock, clk_data);
+	if (clk_mt6993_get_chipid() == SW_VERSION_A0) {
+
+		mtk_clk_register_muxes(cksys_mm_muxes, ARRAY_SIZE(cksys_mm_muxes), node,
+			&mt6993_clk_lock, clk_data);
+	} else if (clk_mt6993_get_chipid() == SW_VERSION_B0) {
+		mtk_clk_register_muxes(cksys_mm_muxes_b0, ARRAY_SIZE(cksys_mm_muxes_b0), node,
+			&mt6993_clk_lock, clk_data);
+	} else {
+		pr_err("%s(): ck_muxes register failed since undefined sw_version(%x)\n",
+				__func__, clk_mt6993_get_chipid());
+	}
 
 	r = of_clk_add_provider(node, of_clk_src_onecell_get, clk_data);
 
@@ -4582,8 +5428,16 @@ static int clk_mt6993_cksys_top_probe(struct platform_device *pdev)
 	mtk_clk_register_factors(cksys_top_divs, ARRAY_SIZE(cksys_top_divs),
 			clk_data);
 
-	mtk_clk_register_muxes(cksys_top_muxes, ARRAY_SIZE(cksys_top_muxes), node,
+	if (clk_mt6993_get_chipid() == SW_VERSION_A0) {
+		mtk_clk_register_muxes(cksys_top_muxes, ARRAY_SIZE(cksys_top_muxes), node,
 			&mt6993_clk_lock, clk_data);
+	} else if (clk_mt6993_get_chipid() == SW_VERSION_B0) {
+		mtk_clk_register_muxes(cksys_top_muxes_b0, ARRAY_SIZE(cksys_top_muxes_b0), node,
+			&mt6993_clk_lock, clk_data);
+	} else {
+		pr_err("%s(): ck_muxes register failed since undefined sw_version(%x)\n",
+				__func__, clk_mt6993_get_chipid());
+	}
 
 	mtk_clk_register_composites(cksys_top_composites, ARRAY_SIZE(cksys_top_composites),
 			base, &mt6993_clk_lock, clk_data);
