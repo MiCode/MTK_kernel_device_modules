@@ -120,6 +120,18 @@ static const struct kernel_param_ops mmdvfs_debug_ap_set_rate_ops = {
 module_param_cb(ap_set_rate, &mmdvfs_debug_ap_set_rate_ops, NULL, 0644);
 MODULE_PARM_DESC(ap_set_rate, "set rate from dummy ap user");
 
+int mtk_mmdvfs_debug_release_step0(void)
+{
+	if (!ops.release_step_fp) {
+		pr_notice("[mmdvfs_dbg][dbg]%s:%d: without fp\n", __func__, __LINE__);
+		return -EINVAL;
+	}
+
+	ops.release_step_fp();
+	return 0;
+}
+EXPORT_SYMBOL_GPL(mtk_mmdvfs_debug_release_step0);
+
 MODULE_DESCRIPTION("MMDVFS Debug Driver");
 MODULE_AUTHOR("Anthony Huang<anthony.huang@mediatek.com>");
 MODULE_LICENSE("GPL");

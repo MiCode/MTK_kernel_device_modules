@@ -65,7 +65,7 @@ struct mmdvfs_res_mbrain_debug_ops {
 
 struct mmdvfs_res_mbrain_debug_ops *get_mmdvfs_mbrain_dbg_ops(void);
 struct mmdvfs_res_mbrain_debug_ops *get_mmdvfs_mbrain_usr_dbg_ops(void);
-void mtk_mmdvfs_debug_release_step0(void);
+int mtk_mmdvfs_debug_release_step0(void);
 void mtk_mmdvfs_debug_ulposc_enable(const bool enable);
 int mtk_mmdvfs_debug_force_vcore_notify(const u32 val);
 bool mtk_is_mmdvfs_v3_debug_init_done(void);
@@ -87,6 +87,7 @@ struct mmdvfs_debug_ops {
 	struct mmdvfs_res_mbrain_debug_ops *(*mmdvfs_mbrain_fp)(void);
 	struct mmdvfs_res_mbrain_debug_ops *(*mmdvfs_mbrain_usr_fp)(void);
 	int (*ap_set_rate_fp)(const char *val, const struct kernel_param *kp);
+	void (*release_step_fp)(void);
 };
 void mmdvfs_debug_ops_set(struct mmdvfs_debug_ops *_ops);
 #endif

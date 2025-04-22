@@ -103,7 +103,7 @@ static bool ftrace_v3_ena;
 static bool mmdvfs_met_freerun;
 static bool mmdvfs_v3_debug_init_done;
 
-void mtk_mmdvfs_debug_release_step0(void)
+static void mmdvfs_debug_v3_release_step0(void)
 {
 	if (!g_mmdvfs || !g_mmdvfs->release_step0)
 		return;
@@ -111,7 +111,6 @@ void mtk_mmdvfs_debug_release_step0(void)
 	if (!IS_ERR_OR_NULL(g_mmdvfs->reg))
 		regulator_set_voltage(g_mmdvfs->reg, 0, INT_MAX);
 }
-EXPORT_SYMBOL_GPL(mtk_mmdvfs_debug_release_step0);
 
 int mmdvfs_debug_force_step(const u8 idx, const s8 opp)
 {
@@ -1216,6 +1215,7 @@ static struct mmdvfs_debug_ops mmdvfs_debug_v3_ops = {
 	.status_dump_fp = mmdvfs_debug_v3_status_dump,
 	.force_vcore_fp = mmdvfs_debug_v3_force_vcore,
 	.mmdvfs_mbrain_fp = get_mmdvfs_mbrain_dbg_ops_v3,
+	.release_step_fp = mmdvfs_debug_v3_release_step0,
 };
 
 static int mmdvfs_debug_probe(struct platform_device *pdev)
