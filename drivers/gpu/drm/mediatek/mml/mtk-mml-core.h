@@ -785,6 +785,7 @@ struct mml_task {
 
 	bool done;
 	bool err;
+	bool timeout;
 	bool dump_full;
 
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)

@@ -1877,7 +1877,7 @@ void mml_record_track(struct mml_dev *mml, struct mml_task *task)
 	record->cfg_jobid = cfg->job_id;
 	record->task = (u32)(unsigned long)task;
 	record->state = task->state;
-	record->err = task->err;
+	record->err = task->err || task->timeout;
 	record->ref = kref_read(&task->ref);
 
 	for (i = 0; i < MML_PIPE_CNT; i++) {

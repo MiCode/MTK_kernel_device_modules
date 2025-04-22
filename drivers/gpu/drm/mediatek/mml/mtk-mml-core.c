@@ -1815,7 +1815,8 @@ static void core_taskdone(struct work_struct *work)
 	u32 *perf, hw_time = 0;
 	u32 jobid = task->job.jobid;
 
-	if (mml_iscouple(cfg->info.mode) && task->disp_fence_id.inst_offset) {
+	if (mml_iscouple(cfg->info.mode) && task->disp_fence_id.inst_offset &&
+		!task->timeout) {
 		u32 disp_fid = cmdq_pkt_backup_get(task->pkts[0], &task->disp_fence_id);
 
 		if (task->disp_fid_submit != disp_fid) {
@@ -2089,6 +2090,7 @@ static void core_taskdump(struct mml_task *task, u32 pipe, int err)
 
 	/* turn on cmdq save log */
 	mml_cmdq_err = 1;
+	task->timeout = true;
 	core_comp_dump(task, pipe, cnt);
 	if (cnt < 3)
 		mml_err("dump smi");
@@ -2662,6 +2664,7 @@ void mml_core_submit_task(struct mml_frame_config *cfg, struct mml_task *task)
 	/* reset to 0 in case reuse task */
 	atomic_set(&task->pipe_done, 0);
 	task->done = false;
+	task->timeout = false;
 	if (task->state == MML_TASK_INITIAL)
 		core_update_config(cfg);
 
