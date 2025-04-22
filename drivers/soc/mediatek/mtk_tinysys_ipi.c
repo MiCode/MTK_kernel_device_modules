@@ -92,22 +92,35 @@ static void ipi_monitor(struct mtk_ipi_device *ipidev, int id, int stage)
 static void ipi_timeout_dump(struct mtk_ipi_device *ipidev, int ipi_id)
 {
 	unsigned long flags = 0;
+	int32_t seqno, stage, ipi_record_idx[3], trysend_cnt, polling_cnt, last_done_ipi;
+	int64_t ipi_ts[3];
 	struct mtk_ipi_chan_table *chan;
 
 	chan = &ipidev->table[ipi_id];
 
 	spin_lock_irqsave(&ipidev->lock_monitor, flags);
 
-	pr_err("%s IPI %d timeout seq=%d, state=%d, t%d=%lld, t%d=%lld, t%d=%lld, trysend %d, polling %d, last done IPI %d\n",
-		ipidev->name, ipi_id,
-		chan->ipi_seqno, chan->ipi_stage,
-		chan->ipi_record[0].idx, chan->ipi_record[0].ts,
-		chan->ipi_record[1].idx, chan->ipi_record[1].ts,
-		chan->ipi_record[2].idx, chan->ipi_record[2].ts,
-		chan->trysend_count, chan->polling_count,
-		ipidev->ipi_last_done);
+	seqno = chan->ipi_seqno;
+	stage = chan->ipi_stage;
+	ipi_record_idx[0] = chan->ipi_record[0].idx;
+	ipi_record_idx[1] = chan->ipi_record[1].idx;
+	ipi_record_idx[2] = chan->ipi_record[2].idx;
+	ipi_ts[0] = chan->ipi_record[0].ts;
+	ipi_ts[1] = chan->ipi_record[1].ts;
+	ipi_ts[2] = chan->ipi_record[2].ts;
+	trysend_cnt = chan->trysend_count;
+	polling_cnt = chan->polling_count;
+	last_done_ipi = ipidev->ipi_last_done;
 
 	spin_unlock_irqrestore(&ipidev->lock_monitor, flags);
+	pr_info("%s IPI %d timeout seq=%d, state=%d, t%d=%lld, t%d=%lld, t%d=%lld, trysend %d, polling %d, last done IPI %d\n",
+		ipidev->name, ipi_id,
+		seqno, stage,
+		ipi_record_idx[0], ipi_ts[0],
+		ipi_record_idx[1], ipi_ts[1],
+		ipi_record_idx[2], ipi_ts[2],
+		trysend_cnt, polling_cnt,
+		last_done_ipi);
 }
 
 void ipi_monitor_dump(struct mtk_ipi_device *ipidev)

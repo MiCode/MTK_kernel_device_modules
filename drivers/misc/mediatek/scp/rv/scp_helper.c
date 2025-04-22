@@ -3622,9 +3622,8 @@ void scp_plat_ipi_timeout_cb(int ipi_id)
 	struct mtk_ipi_chan_table *chan;
 
 	chan = &scp_ipidev.table[ipi_id];
-
-	spin_lock_irqsave(&scp_ipidev.lock_monitor, flags);
 	pr_info("[SCP] ipi timeoutcb id: %d, seq: %d\n", ipi_id, chan->ipi_seqno);
+	spin_lock_irqsave(&scp_ipidev.lock_monitor, flags);
 	if (scp_pin_dump[ipi_id].last_seq == chan->ipi_seqno) {
 		scp_pin_dump[ipi_id].count++;
 	} else {
