@@ -1224,6 +1224,9 @@ static u32 mml_core_calc_tput_couple(struct mml_task *task, u32 pixel, u32 pipe)
 			/* workaround, increase mml throughput to avoid underrun */
 			task_tput = task_tput * 11 / 10;
 		}
+
+		if (cfg->panel_w > dest->data.width)
+			task_tput = (u32)((u64)task_tput * cfg->panel_w / dest->data.width);
 	} else if (info->mode == MML_MODE_DIRECT_LINK) {
 		/* workaround, increase mml throughput to avoid underrun */
 		if (cfg->panel_w > dest->data.width)
