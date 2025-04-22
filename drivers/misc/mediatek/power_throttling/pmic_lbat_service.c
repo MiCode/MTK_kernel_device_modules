@@ -449,8 +449,11 @@ static ssize_t lbat_user_modify_thd_ext_store(struct device *dev,
 
 	dev_info(dev, "input thd_volt array: ");
 	thd_volt_size = 0;
-	while (thd_volt[thd_volt_size] != 0)
+	while (thd_volt[thd_volt_size] != 0) {
 		dev_info(dev, "%d ", thd_volt[thd_volt_size++]);
+		if (thd_volt_size >= THD_VOLT_ARRAY_SIZE)
+			break;
+	}
 
 	for (i = 0; i < user_count; i++) {
 		if (!strcmp(lbat_user_table[i]->name, buf))
