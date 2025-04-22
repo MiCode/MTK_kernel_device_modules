@@ -1239,6 +1239,51 @@ static void sys_debug_dump(struct mml_comp *comp)
 	}
 }
 
+static const struct debug_reg mt6993_vdisp_ao_debug_regs[] = {
+	{"VDISP_AO_GALS_DBG0  ",	0x520},
+	{"VDISP_AO_GALS_DBG1  ",	0x524},
+	{"VDISP_AO_GALS_DBG2  ",	0x528},
+	{"VDISP_AO_GALS_DBG3  ",	0x52c},
+	{"VDISP_AO_GALS_DBG36 ",	0x610},
+	{"VDISP_AO_GALS_DBG37 ",	0x614},
+	{"VDISP_AO_GALS_DBG38 ",	0x618},
+	{"VDISP_AO_GALS_DBG39 ",	0x61c},
+};
+
+static void sys_debug_dump_mt6993(struct mml_comp *comp)
+{
+	void __iomem *base = comp->base;
+	struct mml_sys *sys = comp_to_sys(comp);
+	const u32 vdisp_ao = 0x3ee00000;
+	void *va = (void *)ioremap(vdisp_ao, 4096);
+	u32 shadow_ctrl;
+	u32 value;
+	u32 i;
+
+	/* Enable shadow read working */
+	shadow_ctrl = readl(base + SYS_SHADOW_CTRL);
+	shadow_ctrl |= 0x4;
+	writel(shadow_ctrl, base + SYS_SHADOW_CTRL);
+	shadow_ctrl = readl(base + SYS_SHADOW_CTRL);
+
+	mml_err("mmlsys comp %u base %#010x shadow %#x dump:",
+		comp->id, (u32)comp->base_pa, shadow_ctrl);
+	for (i = 0; i < sys->dbg_reg_cnt; i++) {
+		value = readl(base + sys->dbg_regs[i].offset);
+		mml_err("%s %#010x", sys->dbg_regs[i].name, value);
+	}
+
+	mml_err("dump vdisp_ao base %#010x", vdisp_ao);
+	for (i = 0; i < ARRAY_SIZE(mt6993_vdisp_ao_debug_regs); i++) {
+		value = readl(va + mt6993_vdisp_ao_debug_regs[i].offset);
+		mml_err("%s %#05x: %#010x",
+			mt6993_vdisp_ao_debug_regs[i].name,
+			mt6993_vdisp_ao_debug_regs[i].offset, value);
+	}
+
+	iounmap((void *)va);
+}
+
 static const struct debug_reg mt6991_ovl_debug_regs[] = {
 	{"OVL_DL_IN_RELAY1_SIZE   ",	0x264},
 	{"OVL_DLI_ASYNC1_STATUS0  ",	0x308},
@@ -1429,7 +1474,7 @@ static const struct mml_comp_debug_ops sys_debug_ops_mt6991_mml0 = {
 };
 
 static const struct mml_comp_debug_ops sys_debug_ops_mt6993 = {
-	.dump = &sys_debug_dump,
+	.dump = &sys_debug_dump_mt6993,
 	.dump_fast = &sys_debug_dump_fast_mml1,
 	.reset = &sys_reset_current,
 	.dump_dl = &sys_debug_dump_dl_mt6993,
