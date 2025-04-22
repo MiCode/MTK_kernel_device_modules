@@ -2766,7 +2766,7 @@ static int mtk_i2c_runtime_suspend(struct device *dev)
 
 	if (!i2c || atomic_read(&i2c->clk_count) <= 0) {
 		pr_info("%s, I2C[%d], i2c->clk_count <=0 [%d]\n",
-			__func__, i2c->adap.nr, atomic_read(&i2c->clk_count));
+			__func__, i2c ? i2c->adap.nr : -1, i2c ? atomic_read(&i2c->clk_count) : -1);
 		return ret;
 	}
 
@@ -2794,7 +2794,7 @@ static int mtk_i2c_runtime_resume(struct device *dev)
 
 	if (!i2c || atomic_read(&i2c->clk_count) > 0) {
 		pr_info("%s, I2C[%d], i2c->clk_count > 0 [%d]\n",
-			__func__, i2c->adap.nr, atomic_read(&i2c->clk_count));
+			__func__, i2c ? i2c->adap.nr : -1, i2c ? atomic_read(&i2c->clk_count) : -1);
 		return 0;
 	}
 	ret = mtk_i2c_clock_enable(i2c);
