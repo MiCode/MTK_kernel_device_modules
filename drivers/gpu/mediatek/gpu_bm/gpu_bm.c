@@ -102,6 +102,9 @@ _mgq_proc_write(struct file *file, const char __user *buffer,
 		} else if (mode >= GPU_BW_MLP_RATIO_FLOOR && mode <= GPU_BW_MLP_RATIO_CEIL) {
 			g_mode_hmlp_flag = GPU_BW_MLP_MODE;
 			g_value = mode;
+		} else if (mode == GPU_BW_PEAK_SP_PERF_MODE) {
+			g_mode_hmlp_flag = GPU_BW_PEAK_SP_PERF_MODE;
+			g_value = mode;
 		} else if (mode == GPU_BW_DEFAULT_MODE) {
 			g_mode = GPU_BW_DEFAULT_MODE;
 			g_value = 0;
@@ -128,7 +131,7 @@ _mgq_proc_write(struct file *file, const char __user *buffer,
 	if (mode != 1)
 		g_mode_sport_flag = 0;
 
-	if (mode < GPU_BW_MLP_RATIO_FLOOR || mode > GPU_BW_MLP_RATIO_CEIL)
+	if ((mode < GPU_BW_MLP_RATIO_FLOOR || mode > GPU_BW_MLP_RATIO_CEIL) && mode != GPU_BW_PEAK_SP_PERF_MODE)
 		g_mode_hmlp_flag = 0;
 
 	if (g_value != 0)
@@ -331,10 +334,16 @@ void MTKGPUQoS_mode(int seg_flag)
 				if (seg_flag && idx_freq <= low_freq)
 					gpu_info_buf->freq = GPU_BW_LP_MODE;
 				else if (idx_freq >= peak_perf_limit_freq)
-					gpu_info_buf->freq = GPU_BM_PEAK_PERF_MODE_LIMIT;
+					if (g_mode_hmlp_flag == GPU_BW_PEAK_SP_PERF_MODE)
+						gpu_info_buf->freq = g_value;
+					else
+						gpu_info_buf->freq = GPU_BM_PEAK_PERF_MODE_LIMIT;
 				else if (idx_freq >= high_freq)
-					gpu_info_buf->freq = GPU_BM_PEAK_PERF_MODE;
-				else if (g_mode_hmlp_flag && idx_freq < high_freq)
+					if (g_mode_hmlp_flag == GPU_BW_PEAK_SP_PERF_MODE)
+						gpu_info_buf->freq = g_value;
+					else
+						gpu_info_buf->freq = GPU_BM_PEAK_PERF_MODE;
+				else if (g_mode_hmlp_flag == GPU_BW_MLP_MODE && idx_freq < high_freq)
 					gpu_info_buf->freq = g_value;
 				else
 					gpu_info_buf->freq = 0;
@@ -350,10 +359,16 @@ void MTKGPUQoS_mode(int seg_flag)
 				if (seg_flag && idx >= low_idx)
 					gpu_info_buf->freq = GPU_BW_LP_MODE;
 				else if (idx <= GPU_BM_PEAK_INDEX_TOP_LIMIT)
-					gpu_info_buf->freq = GPU_BM_PEAK_PERF_MODE_LIMIT;
+					if (g_mode_hmlp_flag == GPU_BW_PEAK_SP_PERF_MODE)
+						gpu_info_buf->freq = g_value;
+					else
+						gpu_info_buf->freq = GPU_BM_PEAK_PERF_MODE_LIMIT;
 				else if (idx <= high_idx)
-					gpu_info_buf->freq = GPU_BM_PEAK_PERF_MODE;
-				else if (g_mode_hmlp_flag && idx > high_idx)
+					if (g_mode_hmlp_flag == GPU_BW_PEAK_SP_PERF_MODE)
+						gpu_info_buf->freq = g_value;
+					else
+						gpu_info_buf->freq = GPU_BM_PEAK_PERF_MODE;
+				else if (g_mode_hmlp_flag == GPU_BW_MLP_MODE && idx > high_idx)
 					gpu_info_buf->freq = g_value;
 				else
 					gpu_info_buf->freq = 0;
@@ -372,8 +387,11 @@ void MTKGPUQoS_mode(int seg_flag)
 			else if (idx <= GPU_BM_PEAK_INDEX_TOP_LIMIT)
 				gpu_info_buf->freq = GPU_BM_PEAK_PERF_MODE_LIMIT;
 			else if (idx <= high_idx)
-				gpu_info_buf->freq = GPU_BM_PEAK_PERF_MODE;
-			else if (g_mode_hmlp_flag && idx > high_idx)
+				if (g_mode_hmlp_flag == GPU_BW_PEAK_SP_PERF_MODE)
+					gpu_info_buf->freq = g_value;
+				else
+					gpu_info_buf->freq = GPU_BM_PEAK_PERF_MODE;
+			else if (g_mode_hmlp_flag == GPU_BW_MLP_MODE && idx > high_idx)
 				gpu_info_buf->freq = g_value;
 			else
 				gpu_info_buf->freq = 0;
@@ -433,6 +451,9 @@ void MTKGPUQoS_mode_ratio(int mode)
 	} else if (mode >= GPU_BW_MLP_RATIO_FLOOR && mode <= GPU_BW_MLP_RATIO_CEIL) {
 		g_mode_hmlp_flag = GPU_BW_MLP_MODE;
 		g_value = mode;
+	} else if (mode == GPU_BW_PEAK_SP_PERF_MODE) {
+		g_mode_hmlp_flag = GPU_BW_PEAK_SP_PERF_MODE;
+		g_value = mode;
 	} else if (mode == GPU_BW_DEFAULT_MODE) {
 		g_mode = GPU_BW_DEFAULT_MODE;
 		g_value = 0;
@@ -453,7 +474,7 @@ void MTKGPUQoS_mode_ratio(int mode)
 	if (mode != 1)
 		g_mode_sport_flag = 0;
 
-	if (mode < GPU_BW_MLP_RATIO_FLOOR || mode > GPU_BW_MLP_RATIO_CEIL)
+	if ((mode < GPU_BW_MLP_RATIO_FLOOR || mode > GPU_BW_MLP_RATIO_CEIL) && mode != GPU_BW_PEAK_SP_PERF_MODE)
 		g_mode_hmlp_flag = 0;
 
 	if (g_value != 0)
