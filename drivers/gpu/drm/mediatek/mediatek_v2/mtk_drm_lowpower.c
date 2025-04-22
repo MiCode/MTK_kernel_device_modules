@@ -2075,9 +2075,8 @@ static void mtk_drm_idlemgr_disable_crtc(struct drm_crtc *crtc)
 				"dis_addon", 5, perf_string, false);
 	/* 3. disconnect addon module and recover config */
 	mtk_crtc_disconnect_addon_module(crtc);
-	if (!mtk_drm_use_retrigger(priv) && crtc_state) {
+	if (crtc_state) {
 		crtc_state->lye_state.mml_ir_lye = 0;
-		crtc_state->lye_state.mml_dl_lye = 0;
 	}
 
 	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
@@ -2375,9 +2374,9 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 	 *    skip mml addon connect if kick idle by atomic commit
 	 */
 	if (crtc_state->lye_state.mml_ir_lye || crtc_state->lye_state.mml_dl_lye) {
-		if (mtk_drm_use_retrigger(priv))
+		if (crtc_state->lye_state.mml_dl_lye)
 			mtk_crtc_connect_addon_module(crtc, false);
-		else {
+		else if (crtc_state->lye_state.mml_ir_lye) {
 			mtk_crtc_addon_connector_connect(crtc, NULL);
 #if defined(DISP_BWM20_ENABLE)
 			if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BWM20))
