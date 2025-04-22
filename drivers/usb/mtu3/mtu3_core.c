@@ -528,6 +528,11 @@ void mtu3_dev_on_off(struct mtu3 *mtu, int is_on)
 		mtu3_hs_softconn_set(mtu, false);
 	}
 
+	if (is_on)
+		mtu3_gadget_u2_lpm_lock_init(mtu);
+	else
+		mtu3_gadget_u2_lpm_lock_deinit(mtu);
+
 	dev_info(mtu->dev, "gadget (%s) pullup D%s\n",
 		usb_speed_string(mtu->speed), is_on ? "+" : "-");
 }
@@ -1032,8 +1037,10 @@ static irqreturn_t mtu3_u2_common_isr(struct mtu3 *mtu)
 	if (u2comm & RESET_INTR)
 		mtu3_gadget_reset(mtu);
 
-	if (u2comm & LPM_RESUME_INTR)
-		mtu3_gadget_u2_lpm_lock(mtu, U2_LPM_LOCK_TIMEOUT);
+	if (u2comm & LPM_RESUME_INTR) {
+		if (mtu->u2_lpm_quirks & MTU3_U2_LPM_SW_MODE)
+			mtu3_gadget_u2_lpm_lock(mtu, U2_LPM_LOCK_TIMEOUT);
+	}
 
 	return IRQ_HANDLED;
 }
@@ -1272,6 +1279,11 @@ int ssusb_gadget_init(struct ssusb_mtk *ssusb)
 
 	dev_info(dev, "max_speed_host: %s\n", usb_speed_string(mtu->max_speed_host));
 
+	of_property_read_u32(dev->of_node, "mediatek,u2-lpm-quirks", &mtu->u2_lpm_quirks);
+	if (of_device_is_compatible(mtu->dev->of_node, "mediatek,mt6991-mtu3"))
+		mtu->u2_lpm_quirks |= MTU3_U2_LPM_SW_MODE;
+
+	dev_info(dev, "u2_lpm_quirks: 0x%x\n", mtu->u2_lpm_quirks);
 
 	ret = mtu3_set_dma_mask(mtu);
 	if (ret) {
