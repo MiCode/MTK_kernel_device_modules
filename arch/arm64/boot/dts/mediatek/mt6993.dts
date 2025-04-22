@@ -13396,6 +13396,11 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				memorydump = <0x020000>, /* l1c */
 					<0x003f00>, /* regdump */
 					<0x000100>; /* trace buffer */
+				dump-ois-pin-status = /bits/8 <0x1>;
+				ois-avdd-pin = <&mt6667_7_pio 1 0>;
+				ois-vdd-pin = <&mt6667_7_pio 4 0>;
+				ois-scl-pin = <116>;
+				ois-sda-pin = <117>;
 		};
 
 		vcodec_vdec: vdec@36000000 {
