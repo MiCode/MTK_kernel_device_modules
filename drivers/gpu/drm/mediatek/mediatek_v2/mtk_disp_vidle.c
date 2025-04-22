@@ -866,6 +866,9 @@ void mtk_vidle_dsi_pll_set(const u32 value)
 u32 mtk_vidle_hint_update(enum mtk_vidle_hint_type type)
 {
 	switch (type) {
+	case VIDLE_HINT_MTCMOS_INIT:
+		vidle_data.hint.mtcmos_debounce = -1;
+		break;
 	case VIDLE_HINT_MTCMOS_ON:
 		vidle_data.hint.mtcmos_debounce = VIDLE_MTCMOS_DEBOUNCE;
 		break;

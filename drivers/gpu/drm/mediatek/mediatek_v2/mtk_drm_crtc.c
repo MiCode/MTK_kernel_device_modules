@@ -16467,6 +16467,9 @@ void mtk_drm_crtc_atomic_resume(struct drm_crtc *crtc,
 	if (of_property_read_bool(priv->mmsys_dev->of_node, "enable-output-int-switch"))
 		mtk_drm_crtc_update_interface(crtc, atomic_state);
 
+	/* reset mtcmos debounce value */
+	mtk_vidle_hint_update(VIDLE_HINT_MTCMOS_INIT);
+
 	/* for display debug setting restore */
 	if (priv->data->mmsys_id == MMSYS_MT6993)
 		mtk_dbgtp_update(priv);

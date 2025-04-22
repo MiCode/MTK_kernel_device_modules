@@ -40,6 +40,7 @@ extern unsigned int default_emi_eff;
 
 enum mtk_vidle_hint_type {
 	VIDLE_HINT_GET,
+	VIDLE_HINT_MTCMOS_INIT,
 	VIDLE_HINT_MTCMOS_ON,
 	VIDLE_HINT_MODE_SWITCH,
 	VIDLE_HINT_DOZE,
