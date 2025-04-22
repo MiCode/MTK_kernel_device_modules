@@ -558,6 +558,7 @@ struct mtk_disp_oddmr_od_data {
 	uint32_t merge_lines;
 	int bpp;
 	uint32_t base_line_jump;
+	int od_set_pu_done;
 	int od_sram_read_sel;
 	uint32_t spr_rgbg_mode;
 	uint32_t od_dram_sel[2];
