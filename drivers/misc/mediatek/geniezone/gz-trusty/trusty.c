@@ -152,9 +152,11 @@ static ulong trusty_std_call_inner(struct device *dev, ulong smcnr,
 	while (true) {
 		ret = smc_asm(smcnr, a0, a1, a2);
 
-		while ((s32) ret == SM_ERR_FIQ_INTERRUPTED)
-			ret = smc_asm(MTEE_SMCNR(SMCF_SC_RESTART_FIQ, dev),
-				      0, 0, 0);
+		// while ((s32) ret == SM_ERR_FIQ_INTERRUPTED)
+		// ret = smc_asm(MTEE_SMCNR(SMCF_SC_RESTART_FIQ, dev),0, 0, 0);
+		if ((s32) ret == SM_ERR_FIQ_INTERRUPTED)
+			trusty_info(dev, "[%s/%s] got FIQ interrupt, ignore it and retry\n",
+				    __func__, get_tee_name(s->tee_id));
 
 		if (!is_busy(ret) || !retry)
 			break;
@@ -245,7 +247,9 @@ static void trusty_std_call_cpu_idle(struct trusty_state *s)
 
 static int trusty_interrupted_loop(struct trusty_state *s, u32 smcnr, int ret)
 {
-	while (ret == SM_ERR_INTERRUPTED || ret == SM_ERR_CPU_IDLE) {
+	while (ret == SM_ERR_INTERRUPTED || ret == SM_ERR_CPU_IDLE ||
+	       ret == SM_ERR_FIQ_INTERRUPTED) {
+		// We should re-entry GZ when got IRQ and FIQ.
 
 		trusty_dbg(s->dev, "[%s/%s] smc:0x%x ret:%d interrupted\n",
 			   __func__, get_tee_name(s->tee_id), smcnr, ret);
@@ -265,7 +269,9 @@ static int nebula_interrupted_loop(struct trusty_state *s, u32 smcnr, int ret)
 {
 	while (ret == SM_ERR_GZ_INTERRUPTED || ret == SM_ERR_GZ_CPU_IDLE ||
 	       ret == SM_ERR_NBL_INTERRUPTED || ret == SM_ERR_NBL_CPU_IDLE ||
-	       ret == SM_ERR_INTERRUPTED || ret == SM_ERR_CPU_IDLE) {
+	       ret == SM_ERR_INTERRUPTED || ret == SM_ERR_CPU_IDLE ||
+	       ret == SM_ERR_FIQ_INTERRUPTED) {
+		// We should re-entry GZ when got IRQ and FIQ.
 
 		trusty_dbg(s->dev, "[%s/%s] smc:0x%x ret:%d interrupted\n",
 			   __func__, get_tee_name(s->tee_id), smcnr, ret);
