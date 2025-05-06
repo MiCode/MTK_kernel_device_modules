@@ -11970,12 +11970,12 @@ static void trig_done_cb(struct cmdq_cb_data data)
 			mtk_dump_backup_tpr();
 	}
 
-	if (!real_frame_done)
-		return;
-
-	CRTC_MMP_MARK(crtc_id, trig_loop_done, 0, 0);
+	CRTC_MMP_MARK(crtc_id, trig_loop_done, 0, real_frame_done);
 	DRM_MMP_EVENT_END(drm, 0, 0);
 	drm_trace_tag_mark("trig_loop_done");
+
+//	if (!real_frame_done)
+//		return;
 }
 
 static void event_done_cb(struct cmdq_cb_data data)
