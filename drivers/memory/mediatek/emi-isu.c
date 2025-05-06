@@ -233,7 +233,7 @@ void mtk_emiisu_record_off(void)
 	set_isu_ctrl_flag(KERN_REC_OFF_OTHER_DRV);
 
 	// Prepare the timer to check if we need to restart ISU recording
-	mod_timer(&check_isu_timer, jiffies + msecs_to_jiffies(60 * 1000));
+	mod_timer(&check_isu_timer, jiffies + msecs_to_jiffies(100 * 1000));
 }
 EXPORT_SYMBOL(mtk_emiisu_record_off);
 
