@@ -152,7 +152,7 @@ static s32 merge_config_frame(struct mml_comp *comp, struct mml_task *task,
 		(cfg->shadow ? 0 : BIT(1)) | 0x1, U32_MAX);
 
 	if (cfg->rrot_dual) {
-		if (merge->data->px_per_tick == 4 && !cfg->merge2p) {
+		if (merge->data->px_per_tick == 4 && !cfg->merge_2p) {
 			/* bit[7:0] 8'd23:  CFG_2PI_2PI_4PO_0PO_MERGE */
 			cmdq_pkt_write(pkt, NULL, base_pa + VPP_MERGE_CFG_12, 23, U32_MAX);
 		} else {
@@ -232,7 +232,7 @@ static s32 merge_post(struct mml_comp *comp, struct mml_task *task, struct mml_c
 	const struct mml_comp_merge *merge = comp_to_merge(comp);
 	struct mml_pipe_cache *cache = &task->config->cache[ccfg->pipe];
 	struct merge_frame_data *merge_frm = merge_frm_data(ccfg);
-	u32 px_per_tick = task->config->merge2p ? 2 : merge->data->px_per_tick;
+	u32 px_per_tick = task->config->merge_2p ? 2 : merge->data->px_per_tick;
 
 	dvfs_cache_sz(cache, merge_frm->max_size.width / px_per_tick,
 		merge_frm->max_size.height, 0, 0);

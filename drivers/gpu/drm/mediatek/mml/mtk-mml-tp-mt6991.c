@@ -1334,7 +1334,7 @@ static void tp_select_path(struct mml_topology_cache *cache,
 	scene = scene_to_ovl1(cfg->info.ovlsys_id, scene);
 
 	cfg->rrot_dual = dual;
-	cfg->merge2p = scene == PATH_MML1_DL2_NOPQ;
+	cfg->merge_2p = scene == PATH_MML1_DL2_NOPQ;
 	cfg->rsz_front = scene_is_front_rsz(scene);
 
 	*path = &cache->paths[scene];

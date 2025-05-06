@@ -322,8 +322,8 @@ static struct mml_pq_tile_init_result *get_tile_init_result(struct mml_task *tas
 	return task->pq_task->tile_init.result;
 }
 
-static s32 prepare_tile_data(struct rsz_tile_data *data, struct mml_task *task,
-			     struct mml_comp_config *ccfg)
+static void prepare_tile_data(struct rsz_tile_data *data, struct mml_task *task,
+			      struct mml_comp_config *ccfg)
 {
 	struct mml_pq_tile_init_result *result;
 	struct mml_pq_rsz_tile_init_param *init_param;
@@ -336,6 +336,7 @@ static s32 prepare_tile_data(struct rsz_tile_data *data, struct mml_task *task,
 			mml_log("%s read rsz param index: %d job_id[%d]",
 				__func__, ccfg->node->out_idx, task->job.jobid);
 			init_param = &(result->rsz_param[ccfg->node->out_idx]);
+
 			data->coeff_step_x = init_param->coeff_step_x;
 			data->coeff_step_y = init_param->coeff_step_y;
 			data->precision_x = init_param->precision_x;
@@ -361,7 +362,25 @@ static s32 prepare_tile_data(struct rsz_tile_data *data, struct mml_task *task,
 		mml_err("get rsz param timeout: %d in %dms, job_id[%d]",
 			ret, RSZ_WAIT_TIMEOUT_MS, task->job.jobid);
 	}
-	return 0;
+}
+
+static void prepare_tile_data_fw(struct rsz_tile_data *data,
+				 const struct rsz_fw_out *fw_out)
+{
+	data->coeff_step_x = fw_out->hori_step;
+	data->coeff_step_y = fw_out->vert_step;
+	data->precision_x = fw_out->precision_x;
+	data->precision_y = fw_out->precision_y;
+	data->crop.r.left = fw_out->hori_int_ofst;
+	data->crop.x_sub_px = fw_out->hori_sub_ofst;
+	data->crop.r.top = fw_out->vert_int_ofst;
+	data->crop.y_sub_px = fw_out->vert_sub_ofst;
+	data->hor_scale = fw_out->hori_scale;
+	data->hor_algo = fw_out->hori_algo;
+	data->ver_scale = fw_out->vert_scale;
+	data->ver_algo = fw_out->vert_algo;
+	data->ver_first = fw_out->vert_first;
+	data->ver_cubic_trunc = fw_out->vert_cubic_trunc;
 }
 
 static s32 rsz_tile_prepare(struct mml_comp *comp, struct mml_task *task,
@@ -384,21 +403,7 @@ static s32 rsz_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 	if (!rsz_frm->relay_mode) {
 		data->rsz.use_121filter = rsz_frm->use121filter;
 		if (mml_rsz_fw_comb) {
-			data->rsz.coeff_step_x = rsz_frm->fw_out.hori_step;
-			data->rsz.coeff_step_y = rsz_frm->fw_out.vert_step;
-			data->rsz.precision_x = rsz_frm->fw_out.precision_x;
-			data->rsz.precision_y = rsz_frm->fw_out.precision_y;
-			data->rsz.crop.r.left = rsz_frm->fw_out.hori_int_ofst;
-			data->rsz.crop.x_sub_px = rsz_frm->fw_out.hori_sub_ofst;
-			data->rsz.crop.r.top = rsz_frm->fw_out.vert_int_ofst;
-			data->rsz.crop.y_sub_px = rsz_frm->fw_out.vert_sub_ofst;
-			data->rsz.hor_scale = rsz_frm->fw_out.hori_scale;
-			data->rsz.hor_algo = rsz_frm->fw_out.hori_algo;
-			data->rsz.ver_scale = rsz_frm->fw_out.vert_scale;
-			data->rsz.ver_algo = rsz_frm->fw_out.vert_algo;
-			data->rsz.ver_first = rsz_frm->fw_out.vert_first;
-			data->rsz.ver_cubic_trunc =
-				rsz_frm->fw_out.vert_cubic_trunc;
+			prepare_tile_data_fw(&data->rsz, &rsz_frm->fw_out);
 		} else {
 			mml_pq_msg("%s pipe_id[%d] engine_id[%d]", __func__,
 				ccfg->pipe, comp->id);
@@ -670,16 +675,9 @@ static const struct mml_comp_config_ops rsz_cfg_ops = {
 	.post = rsz_post,
 };
 
-static void rsz_task_done_callback(struct mml_comp *comp, struct mml_task *task,
-	struct mml_comp_config *ccfg)
-{
-	return;
-}
-
 static const struct mml_comp_hw_ops rsz_hw_ops = {
 	.clk_enable = &mml_comp_clk_enable,
 	.clk_disable = &mml_comp_clk_disable,
-	.task_done = rsz_task_done_callback,
 };
 
 const char *get_rsz_state(const u32 state)

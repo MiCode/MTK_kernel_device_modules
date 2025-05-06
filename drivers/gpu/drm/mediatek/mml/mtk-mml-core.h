@@ -612,20 +612,20 @@ struct mml_frame_config {
 
 	/* topology */
 	const struct mml_topology_path *path[MML_PIPE_CNT];
-	bool dual:1;
-	bool alpharot:1;
-	bool alpharsz:1;
-	bool rgbrot:1;
-	bool shadow:1;
+	bool dual:1;		/* dual-pipe path */
+	bool alpharot:1;	/* alpha rotate config */
+	bool alpharsz:1;	/* alpha resize config */
+	bool rgbrot:1;		/* rgb rotate (bypass matrix) */
+	bool shadow:1;		/* enable shadow register */
 	bool framemode:1;
 	bool nocmd:1;
 	bool err:1;
 	bool dpc:1;
 	bool dbgtp:1;
-	bool rrot_dual:1;
-	bool merge2p:1;
-	bool rsz_front:1;
-	bool rrot_no_rot_binning:1;
+	bool rrot_dual:1;	/* rrot and rrot-2nd together */
+	bool merge_2p:1;	/* merge output 1t2p */
+	bool rsz_front:1;	/* rsz in front of pq */
+	bool rrot_nrb:1;	/* rrot no rotate/binning */
 
 	/* tile */
 	struct mml_frame_tile *frame_tile[MML_PIPE_CNT];

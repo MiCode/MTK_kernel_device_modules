@@ -1333,7 +1333,7 @@ static void tp_select_path(struct mml_topology_cache *cache,
 			scene = PATH_MMLD_DL_NOPQ;
 	} else {
 		/* following code for DC and DC2 */
-		cfg->rrot_no_rot_binning = true;
+		cfg->rrot_nrb = true;
 		dual = false;
 		if (aipq || mml_aipq)
 			scene = PATH_MMLF_AIPQ;
@@ -1381,7 +1381,7 @@ static void tp_select_path(struct mml_topology_cache *cache,
 	scene = scene_to_ovl1(cfg->info.ovlsys_id, scene);
 
 	cfg->rrot_dual = dual;
-	cfg->merge2p = scene_is_merge2p(scene);
+	cfg->merge_2p = scene_is_merge2p(scene);
 	cfg->rsz_front = scene_is_front_rsz(scene);
 
 	*path = &cache->paths[scene];

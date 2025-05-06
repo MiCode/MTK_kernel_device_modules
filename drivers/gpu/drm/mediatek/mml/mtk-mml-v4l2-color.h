@@ -185,8 +185,8 @@ static const struct mml_m2m_format mml_m2m_formats[] = {
 		.num_planes	= 1,
 		.types		= MML_M2M_FMT_OUTPUT | MML_M2M_FMT_CAPTURE,
 	}, {
-		.pixelformat	= V4L2_PIX_FMT_RGB32,
-		.mml_color	= MML_FMT_RGBA8888,
+		.pixelformat	= V4L2_PIX_FMT_RGB32,	/* misunderstanding of mtk-vcodec */
+		.mml_color	= MML_FMT_RGBA8888,	/* not presenting RGB4(BA24) but XB24 */
 		.depth		= { 32 },
 		.row_depth	= { 32 },
 		.num_planes	= 1,

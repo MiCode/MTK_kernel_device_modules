@@ -790,7 +790,7 @@ static s32 hdr_config_frame(struct mml_comp *comp, struct mml_task *task,
 			regs[i].offset, regs[i].value, regs[i].mask);
 	}
 
-	if (mode == MML_MODE_MML_DECOUPLE || mode == MML_MODE_MML_DECOUPLE2) {
+	if (mml_isdc(mode)) {
 		if (hdr->data->two_curve) {
 			hdr_write_two_curve(comp, task, ccfg, ootf_curve, oetf_curve, update_curve);
 		} else {
@@ -844,7 +844,7 @@ static s32 hdr_config_frame(struct mml_comp *comp, struct mml_task *task,
 	cmdq_pkt_write(pkt, NULL,
 		base_pa + hdr->data->reg_table[HDR_HIST_CTRL_2], 1 << 31, 1 << 31);
 
-	if (mode == MML_MODE_MML_DECOUPLE || mode == MML_MODE_MML_DECOUPLE2) {
+	if (mml_isdc(mode)) {
 		if (hdr->data->two_curve) {
 			/* set lut_load_en = 0*/
 			cmdq_pkt_write(pkt, NULL, base_pa + hdr->data->reg_table[HDR_LUT_CTRL_0], 0 << 0, 0x1);
@@ -1274,7 +1274,7 @@ static s32 hdr_config_post(struct mml_comp *comp, struct mml_task *task,
 	if (!dest->pq_config.en_hdr)
 		goto exit;
 
-	if (mode != MML_MODE_MML_DECOUPLE && mode != MML_MODE_MML_DECOUPLE2)
+	if (!mml_isdc(mode))
 		goto comp_config_put;
 
 	if (vcp)
@@ -1406,7 +1406,7 @@ static s32 hdr_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 	oetf_curve = result->hdr_oetf;
 	update_curve = result->update_curve;
 
-	if (mode == MML_MODE_MML_DECOUPLE || mode == MML_MODE_MML_DECOUPLE2) {
+	if (mml_isdc(mode)) {
 		val_idx = 0;
 		for (i = 0; i < hdr_frm->reuse_reg.idx; i++)
 			for (j = 0; j < hdr_frm->reuse_reg.offs[i].cnt; j++, val_idx++)
@@ -1467,7 +1467,7 @@ static s32 hdr_config_repost(struct mml_comp *comp, struct mml_task *task,
 	if (!dest->pq_config.en_hdr)
 		goto exit;
 
-	if (mode != MML_MODE_MML_DECOUPLE && mode != MML_MODE_MML_DECOUPLE2)
+	if (!mml_isdc(mode))
 		goto comp_config_put;
 
 	if (vcp) {

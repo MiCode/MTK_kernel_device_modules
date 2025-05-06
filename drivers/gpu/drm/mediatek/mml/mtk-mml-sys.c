@@ -2514,7 +2514,7 @@ static s32 dl_config_tile(struct mml_comp *comp, struct mml_task *task,
 	u32 size = (dl_h << 16) + dl_w;
 	bool dl_4p = false;
 
-	if (cfg->info.mode == MML_MODE_DIRECT_LINK && !cfg->merge2p) {
+	if (cfg->info.mode == MML_MODE_DIRECT_LINK && !cfg->merge_2p) {
 		u8 comp_type = sys->sub_comp_type[comp->sub_idx];
 
 		/* only enable 4p in

@@ -813,7 +813,7 @@ static s32 tdshp_config_post(struct mml_comp *comp, struct mml_task *task,
 	s8 mode = task->config->info.mode;
 
 	/*Skip readback, need to add flow in IR//DL*/
-	if (mode != MML_MODE_MML_DECOUPLE && mode != MML_MODE_MML_DECOUPLE2)
+	if (!mml_isdc(mode))
 		goto put_comp_config;
 
 	if ((dest->pq_config.en_sharp && dest->pq_config.en_dre) ||
@@ -891,7 +891,7 @@ static s32 tdshp_config_repost(struct mml_comp *comp, struct mml_task *task,
 	u8 pipe = ccfg->pipe;
 	s8 mode = task->config->info.mode;
 
-	if (mode != MML_MODE_MML_DECOUPLE && mode != MML_MODE_MML_DECOUPLE2)
+	if (!mml_isdc(mode))
 		goto put_comp_config;
 
 	if ((dest->pq_config.en_sharp && dest->pq_config.en_dre) ||
