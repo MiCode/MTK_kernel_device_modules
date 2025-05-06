@@ -875,7 +875,11 @@ static void rrot_color_fmt(struct mml_frame_config *cfg,
 		profile_in = MML_YCBCR_PROFILE_BT709;
 
 	if (rrot_frm->color_tran) {
-		if (profile_in == MML_YCBCR_PROFILE_BT601)
+		if (mml_isdc(cfg->info.mode) &&
+		    MML_FMT_IS_RGB(cfg->info.dest[0].data.format) &&
+		    !cfg->info.dest[0].pq_config.en)
+			rrot_frm->matrix_sel = 1;
+		else if (profile_in == MML_YCBCR_PROFILE_BT601)
 			rrot_frm->matrix_sel = 2;
 		else if (profile_in == MML_YCBCR_PROFILE_BT709)
 			rrot_frm->matrix_sel = 3;
