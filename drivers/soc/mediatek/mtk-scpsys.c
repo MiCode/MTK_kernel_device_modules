@@ -1931,13 +1931,27 @@ int mtk_register_power_domains(struct platform_device *pdev,
 				struct scp *scp, int num)
 {
 	struct genpd_onecell_data *pd_data;
-	int i, ret = 0;
+
+	int i = 0, ret = 0;
+	struct scp_domain *scpd;
+	struct generic_pm_domain *genpd;
+	bool on = true;
+
+	for (i = num - 1; i >= 0; i--) {
+		scpd = &scp->domains[i];
+		genpd = &scpd->genpd;
+		if (MTK_SCPD_CAPS(scpd, MTK_SCPD_DISABLE_INIT_ON) &&
+			(scpsys_pwr_ack_2nd_is_on(scpd))) {
+			on = WARN_ON(genpd->power_off(genpd) < 0);
+			dev_notice(&pdev->dev, "disable not reset power_domain:%s, on:%d\n",
+				genpd->name, on);
+			pm_genpd_init(genpd, NULL, !on);
+		}
+	}
 
 	for (i = 0; i < num; i++) {
-		struct scp_domain *scpd = &scp->domains[i];
-		struct generic_pm_domain *genpd = &scpd->genpd;
-		bool on;
-
+		scpd = &scp->domains[i];
+		genpd = &scpd->genpd;
 		if (MTK_SCPD_CAPS(scpd, MTK_SCPD_BYPASS_CLK))
 			bypass_first_cg_off = true;
 
@@ -1971,7 +1985,6 @@ int mtk_register_power_domains(struct platform_device *pdev,
 	ret = of_genpd_add_provider_onecell(pdev->dev.of_node, pd_data);
 	if (ret)
 		dev_err(&pdev->dev, "Failed to add OF provider: %d\n", ret);
-
 	return ret;
 }
 EXPORT_SYMBOL(mtk_register_power_domains);
