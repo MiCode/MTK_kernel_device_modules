@@ -808,9 +808,6 @@ static int mtk_pinconf_bias_set_rsel(struct mtk_pinctrl *hw,
 {
 	int err, rsel_val;
 
-	if (!pullup && arg == MTK_DISABLE)
-		return 0;
-
 	if (hw->rsel_si_unit) {
 		/* find pin rsel_index from pin_rsel array*/
 		err = mtk_hw_pin_rsel_lookup(hw, desc, pullup, arg, &rsel_val);
@@ -850,6 +847,8 @@ int mtk_pinconf_bias_set_combo(struct mtk_pinctrl *hw,
 
 	if ((try_all_type & MTK_PULL_RSEL_TYPE)
 		&& hw->soc->reg_cal[PINCTRL_PIN_REG_RSEL].range) {
+		if ((arg == MTK_ENABLE) || (arg == MTK_DISABLE))
+			return mtk_pinconf_bias_set_pu_pd(hw, desc, pullup, arg);
 		err = mtk_pinconf_bias_set_rsel(hw, desc, pullup, arg);
 		if (!err)
 			return err;
