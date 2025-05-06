@@ -394,6 +394,9 @@ static void mtk_drm_crtc_destroy(struct drm_crtc *crtc)
 
 	mtk_disp_mutex_put(mtk_crtc->mutex[0]);
 
+	vfree(mtk_crtc->linetime);
+	mtk_crtc->linetime = NULL;
+
 	drm_crtc_cleanup(crtc);
 }
 
@@ -16780,6 +16783,8 @@ void mtk_drm_crtc_init_para(struct drm_crtc *crtc)
 		mtk_crtc->avail_modes = vzalloc(sizeof(struct drm_display_mode));
 	}
 
+	if (mtk_crtc->avail_modes_num)
+		mtk_crtc->linetime = vzalloc(sizeof(unsigned int)*mtk_crtc->avail_modes_num);
 	mtk_crtc->mml_cfg = NULL;
 	mtk_crtc->mml_cfg_pq = NULL;
 }

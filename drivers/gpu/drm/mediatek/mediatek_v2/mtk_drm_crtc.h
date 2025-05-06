@@ -1336,6 +1336,7 @@ struct mtk_drm_crtc {
 	struct mml_submit *mml_cfg_dc;
 	struct mml_submit *mml_cfg_pq;
 	struct mtk_mml_cb_para mml_cb;
+	unsigned int *linetime;// ns by mode
 
 	atomic_t wait_mml_last_job_is_flushed;
 	wait_queue_head_t signal_mml_last_job_is_flushed_wq;
