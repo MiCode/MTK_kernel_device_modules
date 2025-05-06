@@ -1116,6 +1116,11 @@ void vcp_set_clk(void)
 #if IS_ENABLED(CONFIG_DEVAPC_ARCH_MULTI)
 static bool devapc_power_cb(void)
 {
+	if (vcp_ao) {
+		pr_info("[VCP] %s vcp_ao on\n", __func__);
+		return 1;
+	}
+
 	pr_info("[VCP] %s %d\n", __func__, is_suspending);
 	return !is_suspending;
 }
