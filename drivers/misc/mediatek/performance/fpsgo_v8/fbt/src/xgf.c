@@ -38,7 +38,6 @@ static int xgf_enable;
 static int xgf_ko_ready;
 static int xgf_record_trace_enable;
 static int xgf_nr_cpus __read_mostly;
-static int xgf_extra_sub;
 static int xgf_force_no_extra_sub;
 static int xgf_latest_dep_frames = XGF_DEFAULT_DEP_FRAMES;
 static int xgf_dep_frames = XGF_DEFAULT_DEP_FRAMES;
@@ -431,7 +430,8 @@ static void xgf_delete_policy_cmd(int mode, struct xgf_policy_cmd *iter)
 	if (iter) {
 		if (iter->ema2_enable == BY_PID_DEFAULT_VAL &&
 			iter->filter_dep_task_enable == BY_PID_DEFAULT_VAL &&
-			iter->calculate_dep_enable == BY_PID_DEFAULT_VAL) {
+			iter->calculate_dep_enable == BY_PID_DEFAULT_VAL &&
+			iter->xgf_extra_sub == BY_PID_DEFAULT_VAL) {
 			min_iter = iter;
 			goto delete;
 		} else
@@ -482,6 +482,7 @@ static struct xgf_policy_cmd *xgf_get_policy_cmd(int mode, int id,
 	iter->ema2_enable = BY_PID_DEFAULT_VAL;
 	iter->filter_dep_task_enable = BY_PID_DEFAULT_VAL;
 	iter->calculate_dep_enable = BY_PID_DEFAULT_VAL;
+	iter->xgf_extra_sub = BY_PID_DEFAULT_VAL;
 	iter->bufid = mode ? bufID : 0;
 	iter->ts = fpsgo_get_time();
 
@@ -508,6 +509,8 @@ static void xgf_set_policy_cmd(int cmd, int mode, int id, int value, int op,
 			iter->filter_dep_task_enable = value;
 		else if (cmd == 2)
 			iter->calculate_dep_enable = value;
+		else if (cmd == 3)
+			iter->xgf_extra_sub = value;
 
 		if (!op)
 			xgf_delete_policy_cmd(mode, iter);
@@ -530,6 +533,8 @@ static void xgf_update_policy_cmd(struct xgf_render_if *iter)
 		iter->ema2_enable = policy->ema2_enable;
 	if (policy->filter_dep_task_enable != BY_PID_DEFAULT_VAL)
 		iter->filter_dep_task_enable = policy->filter_dep_task_enable;
+	if (policy->xgf_extra_sub != BY_PID_DEFAULT_VAL)
+		iter->xgf_extra_sub = policy->xgf_extra_sub;
 
 by_render:
 	policy = xgf_get_policy_cmd(1, iter->pid, iter->bufid, 0);
@@ -539,6 +544,8 @@ by_render:
 		iter->ema2_enable = policy->ema2_enable;
 	if (policy->filter_dep_task_enable != BY_PID_DEFAULT_VAL)
 		iter->filter_dep_task_enable = policy->filter_dep_task_enable;
+	if (policy->xgf_extra_sub != BY_PID_DEFAULT_VAL)
+		iter->xgf_extra_sub = policy->xgf_extra_sub;
 
 out:
 	mutex_unlock(&xgf_policy_cmd_lock);
@@ -1403,9 +1410,9 @@ void fpsgo_other2xgf_calculate_dep(int pid, unsigned long long bufID,
 		iter->spid = new_spid;
 	}
 
-	do_extra_sub = xgf_extra_sub;
+	do_extra_sub = iter->xgf_extra_sub;
 	t_dequeue_time = t_dequeue_end - t_dequeue_start;
-	if (t_dequeue_time > 2500000 && !xgf_extra_sub && !xgf_force_no_extra_sub) {
+	if (t_dequeue_time > 2500000 && !iter->xgf_extra_sub && !xgf_force_no_extra_sub) {
 		do_extra_sub = 1;
 		xgf_trace("[xgf][%d][0x%llx] do_extra_sub deq_time:%llu",
 			iter->pid, iter->bufid, t_dequeue_time);
@@ -1583,6 +1590,11 @@ int fpsgo_other2xgf_set_attr(int set, struct xgf_policy_cmd *request_attr)
 	xgf_set_policy_cmd(2, request_attr->mode,
 		request_attr->mode ? request_attr->pid : request_attr->tgid,
 		set ? request_attr->calculate_dep_enable : BY_PID_DEFAULT_VAL,
+		set,
+		request_attr->mode ? request_attr->bufid : 0);
+	xgf_set_policy_cmd(3, request_attr->mode,
+		request_attr->mode ? request_attr->pid : request_attr->tgid,
+		set ? request_attr->xgf_extra_sub : BY_PID_DEFAULT_VAL,
 		set,
 		request_attr->mode ? request_attr->bufid : 0);
 	mutex_unlock(&xgf_policy_cmd_lock);
@@ -2513,10 +2525,6 @@ XGF_SYSFS_WRITE_VALUE(xgf_dep_frames, xgf_main_lock, xgf_dep_frames,
 			XGF_DEP_FRAMES_MIN, XGF_DEP_FRAMES_MAX);
 static KOBJ_ATTR_RW(xgf_dep_frames);
 
-XGF_SYSFS_READ(xgf_extra_sub, 1, xgf_extra_sub);
-XGF_SYSFS_WRITE_VALUE(xgf_extra_sub, xgf_main_lock, xgf_extra_sub, 0, 1);
-static KOBJ_ATTR_RW(xgf_extra_sub);
-
 XGF_SYSFS_READ(xgf_force_no_extra_sub, 1, xgf_force_no_extra_sub);
 XGF_SYSFS_WRITE_VALUE(xgf_force_no_extra_sub, xgf_main_lock, xgf_force_no_extra_sub, 0, 1);
 static KOBJ_ATTR_RW(xgf_force_no_extra_sub);
@@ -2584,6 +2592,12 @@ static KOBJ_ATTR_WO(xgf_calculate_dep_enable_by_process);
 XGF_SYSFS_WRITE_POLICY_CMD_BY_RENDER(xgf_calculate_dep_enable_by_render, 2, 0, 1);
 static KOBJ_ATTR_WO(xgf_calculate_dep_enable_by_render);
 
+XGF_SYSFS_WRITE_POLICY_CMD_BY_PROCESS(xgf_extra_sub_by_process, 3, 0, 1);
+static KOBJ_ATTR_WO(xgf_extra_sub_by_process);
+
+XGF_SYSFS_WRITE_POLICY_CMD_BY_RENDER(xgf_extra_sub_by_render, 3, 0, 1);
+static KOBJ_ATTR_WO(xgf_extra_sub_by_render);
+
 static ssize_t xgf_policy_cmd_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
 		char *buf)
@@ -2607,11 +2621,12 @@ static ssize_t xgf_policy_cmd_show(struct kobject *kobj,
 		if (iter->mode == 0) {
 			length = scnprintf(temp + pos,
 				FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
-				"tgid:%d\tema2_enable:%d\tfilter_dep_task_enable:%d\tcalculate_dep_enable:%d\tts:%llu\n",
+				"tgid:%d\tema2_enable:%d\tfilter_dep_task_enable:%d\tcalculate_dep_enable:%d\txgf_extra_sub:%d\tts:%llu\n",
 				iter->tgid,
 				iter->ema2_enable,
 				iter->filter_dep_task_enable,
 				iter->calculate_dep_enable,
+				iter->xgf_extra_sub,
 				iter->ts);
 			pos += length;
 		}
@@ -2624,11 +2639,12 @@ static ssize_t xgf_policy_cmd_show(struct kobject *kobj,
 		if (iter->mode == 1) {
 			length = scnprintf(temp + pos,
 				FPSGO_SYSFS_MAX_BUFF_SIZE - pos,
-				"render:%d 0x%llx\tema2_enable:%d\tfilter_dep_task_enable:%d\tcalculate_dep_enable:%d\tts:%llu\n",
+				"render:%d 0x%llx\tema2_enable:%d\tfilter_dep_task_enable:%d\tcalculate_dep_enable:%d\txgf_extra_sub:%d\tts:%llu\n",
 				iter->pid, iter->bufid,
 				iter->ema2_enable,
 				iter->filter_dep_task_enable,
 				iter->calculate_dep_enable,
+				iter->xgf_extra_sub,
 				iter->ts);
 			pos += length;
 		}
@@ -2876,12 +2892,6 @@ void fpsgo_ktf2xgf_fuzz_test_node(char *input_data, int op, int cmd)
 		else
 			fpsgo_ktf_test_read_node(kobj, attr, buf, xgf_dep_frames_show);
 		break;
-	case XGF_EXTRA_SUB:
-		if (op)
-			fpsgo_ktf_test_write_node(kobj, attr, buf, xgf_extra_sub_store);
-		else
-			fpsgo_ktf_test_read_node(kobj, attr, buf, xgf_extra_sub_show);
-		break;
 	case XGF_FORCE_NO_EXTRA_SUB:
 		if (op)
 			fpsgo_ktf_test_write_node(kobj, attr, buf, xgf_force_no_extra_sub_store);
@@ -2940,7 +2950,6 @@ int __init init_xgf(void)
 	if (!fpsgo_sysfs_create_dir(NULL, "xgf", &xgf_kobj)) {
 		fpsgo_sysfs_create_file(xgf_kobj, &kobj_attr_xgf_cfg_spid);
 		fpsgo_sysfs_create_file(xgf_kobj, &kobj_attr_xgf_dep_frames);
-		fpsgo_sysfs_create_file(xgf_kobj, &kobj_attr_xgf_extra_sub);
 		fpsgo_sysfs_create_file(xgf_kobj, &kobj_attr_xgf_force_no_extra_sub);
 		fpsgo_sysfs_create_file(xgf_kobj, &kobj_attr_xgf_ema_dividend);
 		fpsgo_sysfs_create_file(xgf_kobj, &kobj_attr_xgf_spid_ck_period);
@@ -2956,6 +2965,8 @@ int __init init_xgf(void)
 		fpsgo_sysfs_create_file(xgf_kobj, &kobj_attr_xgf_record_trace_enable);
 		fpsgo_sysfs_create_file(xgf_kobj, &kobj_attr_xgf_calculate_dep_enable_by_process);
 		fpsgo_sysfs_create_file(xgf_kobj, &kobj_attr_xgf_calculate_dep_enable_by_render);
+		fpsgo_sysfs_create_file(xgf_kobj, &kobj_attr_xgf_extra_sub_by_process);
+		fpsgo_sysfs_create_file(xgf_kobj, &kobj_attr_xgf_extra_sub_by_render);
 	}
 
 	xgff_frame_startend_fp = xgff_frame_startend;
@@ -2973,7 +2984,6 @@ int __exit exit_xgf(void)
 
 	fpsgo_sysfs_remove_file(xgf_kobj, &kobj_attr_xgf_cfg_spid);
 	fpsgo_sysfs_remove_file(xgf_kobj, &kobj_attr_xgf_dep_frames);
-	fpsgo_sysfs_remove_file(xgf_kobj, &kobj_attr_xgf_extra_sub);
 	fpsgo_sysfs_remove_file(xgf_kobj, &kobj_attr_xgf_force_no_extra_sub);
 	fpsgo_sysfs_remove_file(xgf_kobj, &kobj_attr_xgf_ema_dividend);
 	fpsgo_sysfs_remove_file(xgf_kobj, &kobj_attr_xgf_spid_ck_period);
@@ -2989,6 +2999,8 @@ int __exit exit_xgf(void)
 	fpsgo_sysfs_remove_file(xgf_kobj, &kobj_attr_xgf_record_trace_enable);
 	fpsgo_sysfs_remove_file(xgf_kobj, &kobj_attr_xgf_calculate_dep_enable_by_process);
 	fpsgo_sysfs_remove_file(xgf_kobj, &kobj_attr_xgf_calculate_dep_enable_by_render);
+	fpsgo_sysfs_remove_file(xgf_kobj, &kobj_attr_xgf_extra_sub_by_process);
+	fpsgo_sysfs_remove_file(xgf_kobj, &kobj_attr_xgf_extra_sub_by_render);
 
 	fpsgo_sysfs_remove_dir(&xgf_kobj);
 

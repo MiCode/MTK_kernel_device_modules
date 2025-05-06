@@ -239,7 +239,7 @@ int (*magt2fpsgo_get_all_fps_control_pid_info)(struct fps_control_info *arr);
 EXPORT_SYMBOL(magt2fpsgo_get_all_fps_control_pid_info);
 
 int (*magt2fpsgo_get_fpsgo_frame_info)(int max_num, unsigned long mask,
-	struct render_frame_info *frame_info_arr);
+	int filter_bypass, int tgid, struct render_frame_info *frame_info_arr);
 EXPORT_SYMBOL(magt2fpsgo_get_fpsgo_frame_info);
 
 /*--------------------FPSGO SET THREAD STATUS------------------------*/
@@ -433,7 +433,7 @@ static long magt_ioctl(struct file *filp,
 			ret = -ENOMEM;
 			goto ret_ioctl;
 		}
-		ret = magt2fpsgo_get_fpsgo_frame_info(MAX_RENDER_TID, query_mask, render);
+		ret = magt2fpsgo_get_fpsgo_frame_info(MAX_RENDER_TID, query_mask, 1, -1, render);
 		if (ret >= 0) {
 			int i = 0;
 
@@ -474,7 +474,7 @@ static long magt_ioctl(struct file *filp,
 			ret = -ENOMEM;
 			goto ret_ioctl;
 		}
-		ret = magt2fpsgo_get_fpsgo_frame_info(MAX_RENDER_TID, query_mask, render);
+		ret = magt2fpsgo_get_fpsgo_frame_info(MAX_RENDER_TID, query_mask, 1, -1, render);
 
 		if (ret >= 0) {
 			int i = 0;
@@ -524,7 +524,7 @@ static long magt_ioctl(struct file *filp,
 			ret = -ENOMEM;
 			goto ret_ioctl;
 		}
-		ret = magt2fpsgo_get_fpsgo_frame_info(MAX_RENDER_TID, query_mask, render);
+		ret = magt2fpsgo_get_fpsgo_frame_info(MAX_RENDER_TID, query_mask, 1, -1, render);
 
 		if (ret >= 0) {
 			int i = 0;
@@ -577,7 +577,7 @@ static long magt_ioctl(struct file *filp,
 			ret = -ENOMEM;
 			goto ret_ioctl;
 		}
-		ret = magt2fpsgo_get_fpsgo_frame_info(MAX_RENDER_TID, query_mask, render);
+		ret = magt2fpsgo_get_fpsgo_frame_info(MAX_RENDER_TID, query_mask, 1, -1, render);
 
 		if (ret >= 0) {
 			int i = 0;
@@ -626,7 +626,7 @@ static long magt_ioctl(struct file *filp,
 			ret = -ENOMEM;
 			goto ret_ioctl;
 		}
-		ret = magt2fpsgo_get_fpsgo_frame_info(MAX_RENDER_TID, query_mask, render);
+		ret = magt2fpsgo_get_fpsgo_frame_info(MAX_RENDER_TID, query_mask, 1, -1, render);
 
 		if (ret >= 0) {
 			int i = 0;
@@ -680,7 +680,7 @@ static long magt_ioctl(struct file *filp,
 			ret = -ENOMEM;
 			goto ret_ioctl;
 		}
-		ret = magt2fpsgo_get_fpsgo_frame_info(MAX_RENDER_TID, query_mask, render);
+		ret = magt2fpsgo_get_fpsgo_frame_info(MAX_RENDER_TID, query_mask, 1, -1, render);
 
 		if (ret >= 0) {
 			int i = 0;

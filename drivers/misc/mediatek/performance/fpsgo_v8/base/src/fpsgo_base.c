@@ -2056,6 +2056,7 @@ out:
 }
 
 int fpsgo_ctrl2base_get_render_frame_info(int max_num, unsigned long mask,
+	int filter_bypass, int tgid,
 	struct render_frame_info *frame_info_arr)
 {
 	int i;
@@ -2071,7 +2072,8 @@ int fpsgo_ctrl2base_get_render_frame_info(int max_num, unsigned long mask,
 	for (rbn = rb_first(&render_pid_tree); rbn; rbn = rb_next(rbn)) {
 		r_iter = rb_entry(rbn, struct render_info, render_key_node);
 		fpsgo_thread_lock(&r_iter->thr_mlock);
-		if (r_iter->frame_type == BY_PASS_TYPE) {
+		if ((r_iter->frame_type == BY_PASS_TYPE && filter_bypass) ||
+				(r_iter->tgid != tgid && tgid >= 0)) {
 			fpsgo_thread_unlock(&r_iter->thr_mlock);
 			continue;
 		}
@@ -2098,6 +2100,12 @@ int fpsgo_ctrl2base_get_render_frame_info(int max_num, unsigned long mask,
 			f_iter->avg_frame_cap = r_iter->avg_freq;
 		if (test_bit(GET_FPSGO_PERF_IDX, &mask))
 			f_iter->blc = r_iter->boost_info.last_normal_blc;
+		if (test_bit(GET_FPSGO_QDQ_TS, &mask)) {
+			f_iter->t_enqueue_start = r_iter->t_enqueue_start;
+			f_iter->t_enqueue_end = r_iter->t_enqueue_end;
+			f_iter->t_dequeue_start = r_iter->t_dequeue_start;
+			f_iter->t_dequeue_end = r_iter->t_dequeue_end;
+		}
 		if (test_bit(GET_FPSGO_DEP_LIST, &mask) && r_iter->dep_arr) {
 			f_iter->dep_num = r_iter->dep_valid_size;
 			for (i = 0; i < r_iter->dep_valid_size; i++) {

@@ -868,7 +868,7 @@ int fpsgo_get_enable_signal(int tgid, int wait, int *ret) {
 }
 
 int get_fpsgo_frame_info(int max_num, unsigned long mask,
-	struct render_frame_info *frame_info_arr)
+	int filter_bypass, int tgid, struct render_frame_info *frame_info_arr)
 {
 	int ret = 0;
 
@@ -876,7 +876,8 @@ int get_fpsgo_frame_info(int max_num, unsigned long mask,
 		mask >= 1 << FPSGO_FRAME_INFO_MAX_NUM || !frame_info_arr)
 		return -EINVAL;
 
-	ret = fpsgo_ctrl2base_get_render_frame_info(max_num, mask, frame_info_arr);
+	ret = fpsgo_ctrl2base_get_render_frame_info(max_num, mask,
+			filter_bypass, tgid, frame_info_arr);
 
 	return ret;
 }

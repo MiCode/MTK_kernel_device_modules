@@ -39,7 +39,7 @@ void get_mutext_lock(void **lock)
 EXPORT_SYMBOL(get_mutext_lock);
 
 extern int get_fpsgo_frame_info(int max_num, unsigned long mask,
-	struct render_frame_info *frame_info_arr);
+	int filter_bypass, int tgid, struct render_frame_info *frame_info_arr);
 
 void engine_cooler_get_info(struct engine_cooler_data *ec_data)
 {
@@ -220,7 +220,7 @@ int get_render_frame_info(struct game_package *pack)
 		pr_debug("%s: allocate memory failed\n", __func__);
 		goto end;
 	}
-	ret = get_fpsgo_frame_info(MAX_RENDER_SIZE, query_mask, render_info);
+	ret = get_fpsgo_frame_info(MAX_RENDER_SIZE, query_mask, 1, -1, render_info);
 	for (j = 0; j < MAX_RENDER_SIZE; j++) {
 		max_dep_pid_loading = 0;
 		max_dep_loading_idx = 0;

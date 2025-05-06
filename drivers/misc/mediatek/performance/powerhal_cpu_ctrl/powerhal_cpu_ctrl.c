@@ -98,6 +98,8 @@ static struct render_frame_info render[MAX_RENDER_TID];
 int (*powerhal2fpsgo_get_fpsgo_frame_info_fp)(
 	int max_num,
 	unsigned long mask,
+	int filter_bypass,
+	int tgid,
 	struct render_frame_info *frame_info_arr
 );
 EXPORT_SYMBOL(powerhal2fpsgo_get_fpsgo_frame_info_fp);
@@ -920,7 +922,7 @@ int adpf_get_fpsgo_thread_loading(struct fpsgo_render_info *render_info)
 		(1 << GET_FPSGO_EMA_CPU_TIME) |
 		(1 << GET_FPSGO_TARGET_FPS);
 
-	render_count = powerhal2fpsgo_get_fpsgo_frame_info_fp(MAX_RENDER_TID, query_mask, render);
+	render_count = powerhal2fpsgo_get_fpsgo_frame_info_fp(MAX_RENDER_TID, query_mask, 1, -1, render);
 
 	if (render_count > 0) {
 		int target_index = 0;

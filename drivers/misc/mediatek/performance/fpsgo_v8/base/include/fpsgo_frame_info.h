@@ -32,6 +32,7 @@ enum GET_FPSGO_FRAME_INFO {
 	GET_FPSGO_DELETE_INFO = 11,
 	GET_GED_GPU_TIME = 12,
 	GET_FPSGO_Q2Q_TIME = 13,
+	GET_FPSGO_QDQ_TS = 14,
 	GET_FPSGO_JERK_BOOST = 15,
 	GET_FPSGO_QUEUE_START = 16,
 	GET_FPSGO_QUEUE_END = 17,
@@ -97,6 +98,10 @@ struct render_frame_info {
 	unsigned long long raw_t_cpu;
 	unsigned long long ema_t_cpu;
 	unsigned long long q2q_time;
+	unsigned long long t_enqueue_start;
+	unsigned long long t_enqueue_end;
+	unsigned long long t_dequeue_start;
+	unsigned long long t_dequeue_end;
 	struct task_info dep_arr[FPSGO_MAX_TASK_NUM];
 	struct task_info non_dep_arr[FPSGO_MAX_TASK_NUM];
 };
@@ -119,6 +124,7 @@ struct xgf_policy_cmd {
 	int ema2_enable;
 	int filter_dep_task_enable;
 	int calculate_dep_enable;
+	int xgf_extra_sub;
 	unsigned long long bufid;
 	unsigned long long ts;
 	struct hlist_node hlist;
@@ -260,7 +266,11 @@ struct render_frame_info_cb {
 	fpsgo_frame_info_callback func_cb;
 };
 
+/* filter_bypass-> 0: get all render frame info, 1: filter bypass
+ * tgid-> -1: no filter
+ */
 int fpsgo_ctrl2base_get_render_frame_info(int max_num, unsigned long mask,
+	int filter_bypass, int tgid,
 	struct render_frame_info *frame_info_arr);
 
 /* FPSGO General API of Composer */
@@ -316,8 +326,8 @@ extern unsigned int fpsgo_other2fbt_calculate_blc(long aa, unsigned long long ta
 	unsigned int *blc_wt);
 
 extern int (*powerhal2fpsgo_get_fpsgo_frame_info_fp)(int max_num, unsigned long mask,
-	struct render_frame_info *frame_info_arr);
+	int filter_bypass, int tgid, struct render_frame_info *frame_info_arr);
 extern int (*magt2fpsgo_get_fpsgo_frame_info)(int max_num, unsigned long mask,
-	struct render_frame_info *frame_info_arr);
+	int filter_bypass, int tgid, struct render_frame_info *frame_info_arr);
 
 #endif

@@ -43,7 +43,6 @@ enum FPSGO_XGF_KERNEL_NODE {
 	XGF_POLICY_CMD,
 	XGF_CFG_SPID,
 	XGF_DEP_FRAMES,
-	XGF_EXTRA_SUB,
 	XGF_FORCE_NO_EXTRA_SUB,
 	XGF_EMA_DIVIDEND,
 	XGF_SPID_CK_PERIOD,
@@ -82,6 +81,7 @@ struct xgf_render_if {
 
 	int ema2_enable;
 	int filter_dep_task_enable;
+	int xgf_extra_sub;
 
 	unsigned long master_type;
 };
