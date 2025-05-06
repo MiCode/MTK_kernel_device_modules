@@ -115,6 +115,9 @@
 	pinctrl-names = "mode_te_te";
 	pinctrl-0 = <&mtkfb_pins_lcm_dsi_te>;
 
+	helper-name-proj = "MTK_DRM_OPT_VIDLE_MTCMOS_DT_EN";
+	helper-value-proj = <1>;
+
 	status = "okay";
 };
 
@@ -536,6 +539,10 @@
 
 &mmlsys2_config {
 	dl-enable;
+};
+
+&disp_dpc {
+	vidle-mask = <0x13>;
 };
 
 #include "k6993v1_64/cust.dtsi"
