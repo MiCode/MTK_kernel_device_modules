@@ -766,6 +766,7 @@ static void cmdq_mtcmos_mminfra_ao(struct cmdq *cmdq, bool on)
 	if (cmdq->ao_ctrl_by_mminfra) {
 		int ret;
 
+#ifndef CMDQ_SKIP_BY_CMDQ_BUILT
 		if (on)
 			ret = cmdq->pwr_control_by_mminfra ?
 				mtk_mminfra_on_off(true, MM_PWR_MM_AO, MM_TYPE_CMDQ) :
@@ -774,7 +775,9 @@ static void cmdq_mtcmos_mminfra_ao(struct cmdq *cmdq, bool on)
 			ret = cmdq->pwr_control_by_mminfra ?
 				mtk_mminfra_on_off(false, MM_PWR_MM_AO, MM_TYPE_CMDQ) :
 				pm_runtime_put_sync(cmdq->pd_mminfra_ao);
-
+#else
+			ret = 0;
+#endif
 		if (ret != 0)
 			cmdq_err("%s err:%d",
 				on ? "vote mminfra on" : "vote mminfra off",
@@ -804,10 +807,14 @@ static void cmdq_mtcmos_by_fast(struct cmdq *cmdq, bool on)
 		usage = atomic_inc_return(&cmdq->fast_mtcmos_usage);
 		if (usage == 1) {
 			int ret;
+
+#ifndef CMDQ_SKIP_BY_CMDQ_BUILT
 			ret = cmdq->pwr_control_by_mminfra ?
 				mtk_mminfra_on_off(true, cmdq->mminfra_all_on_pwr_idx, MM_TYPE_CMDQ) :
 				pm_runtime_get_sync(cmdq->pd_mminfra_1);
-
+#else
+			ret = 0;
+#endif
 			if (ret < 0)
 				cmdq_err("vote mminfra on err:%d", ret);
 			if (mminfra_power_cb && !mminfra_power_cb())
@@ -824,10 +831,13 @@ static void cmdq_mtcmos_by_fast(struct cmdq *cmdq, bool on)
 			if (mminfra_power_cb && !mminfra_power_cb())
 				cmdq_err("hwid:%hu usage:%d mminfra power not enable",
 					cmdq->hwid, usage);
+#ifndef CMDQ_SKIP_BY_CMDQ_BUILT
 			ret = cmdq->pwr_control_by_mminfra ?
 				mtk_mminfra_on_off(false, cmdq->mminfra_all_on_pwr_idx, MM_TYPE_CMDQ) :
 				pm_runtime_put_sync(cmdq->pd_mminfra_1);
-
+#else
+			ret = 0;
+#endif
 			if (ret != 0)
 				cmdq_err("vote mminfra off err:%d", ret);
 		} else if (usage < 0)
@@ -3708,7 +3718,7 @@ static int cmdq_probe(struct platform_device *pdev)
 		cmdq->tbu = 0;
 	cmdq_msg("%s smmu_v3_enable:%d sid:%x axid:%x tbu:%x",
 		__func__, cmdq->smmu_v3_enabled, cmdq->sid, cmdq->axid, cmdq->tbu);
-
+#ifndef CMDQ_SKIP_BY_CMDQ_BUILT
 #if !IS_ENABLED(CONFIG_VIRTIO_CMDQ)
 	if (!of_parse_phandle_with_args(
 		dev->of_node, "iommus", "#iommu-cells", 0, &args)) {
@@ -3719,6 +3729,7 @@ static int cmdq_probe(struct platform_device *pdev)
 		mtk_iommu_register_fault_callback(
 			port, cmdq_iommu_fault_callback, cmdq, false);
 	}
+#endif
 #endif
 #endif
 	if (of_property_read_bool(dev->of_node, "error-irq-sw-req")) {
@@ -3788,6 +3799,7 @@ static const struct of_device_id cmdq_of_ids[] = {
 	{.compatible = "mediatek,mt6991-gce", .data = (void *)&gce_plat_v6},
 	{.compatible = "mediatek,mt6899-gce", .data = (void *)&gce_plat_v5},
 	{.compatible = "mediatek,mt6993-gce", .data = (void *)&gce_plat_v6},
+	{.compatible = "mediatek,mt6858-gce", .data = (void *)&gce_plat_v5},
 	{}
 };
 
@@ -3863,11 +3875,13 @@ void cmdq_mbox_enable(void *chan)
 	//skip_fast_mtcmos
 	if (thd_usage == 1 && cmdq->fast_mtcmos && cmdq->thread[i].skip_fast_mtcmos) {
 		int ret;
-
+#ifndef CMDQ_SKIP_BY_CMDQ_BUILT
 		ret = cmdq->pwr_control_by_mminfra ?
 			mtk_mminfra_on_off(true, cmdq->mminfra_all_on_pwr_idx, MM_TYPE_CMDQ) :
 			pm_runtime_get_sync(cmdq->pd_mminfra_1);
-
+#else
+			ret = 0;
+#endif
 		if (ret != 0)
 			cmdq_err("vote mminfra on err:%d", ret);
 
@@ -3890,11 +3904,13 @@ void cmdq_mbox_enable(void *chan)
 		if (!cmdq->fast_mtcmos &&
 			(cmdq->pd_mminfra_1 || cmdq->pwr_control_by_mminfra)) {
 			int ret;
-
+#ifndef CMDQ_SKIP_BY_CMDQ_BUILT
 			ret = cmdq->pwr_control_by_mminfra ?
 				mtk_mminfra_on_off(true, cmdq->mminfra_all_on_pwr_idx, MM_TYPE_CMDQ) :
 				pm_runtime_get_sync(cmdq->pd_mminfra_1);
-
+#else
+			ret = 0;
+#endif
 				if (ret != 0)
 					cmdq_err("vote mminfra on err:%d", ret);
 
@@ -4108,10 +4124,13 @@ void cmdq_mbox_disable(void *chan)
 			if (mminfra_power_cb && !mminfra_power_cb())
 				cmdq_err("hwid:%hu usage:%d mminfra power not enable",
 					cmdq->hwid, usage);
+#ifndef CMDQ_SKIP_BY_CMDQ_BUILT
 			ret = cmdq->pwr_control_by_mminfra ?
 				mtk_mminfra_on_off(false, cmdq->mminfra_all_on_pwr_idx, MM_TYPE_CMDQ) :
 				pm_runtime_put_sync(cmdq->pd_mminfra_1);
-
+#else
+			ret = 0;
+#endif
 			if (ret != 0) {
 				cmdq_err("vote mminfra off err:%d", ret);
 				pm_runtime_put_sync(cmdq->mbox.dev);
@@ -4131,9 +4150,13 @@ void cmdq_mbox_disable(void *chan)
 		if (mminfra_power_cb && !mminfra_power_cb())
 			cmdq_err("hwid:%hu thd_usage:%d mminfra power not enable",
 				cmdq->hwid, thd_usage);
+#ifndef CMDQ_SKIP_BY_CMDQ_BUILT
 		ret = cmdq->pwr_control_by_mminfra ?
 			mtk_mminfra_on_off(false, cmdq->mminfra_all_on_pwr_idx, MM_TYPE_CMDQ) :
 			pm_runtime_put_sync(cmdq->pd_mminfra_1);
+#else
+		ret = 0;
+#endif
 
 		if (ret != 0) {
 			cmdq_err("vote mminfra off err:%d", ret);
