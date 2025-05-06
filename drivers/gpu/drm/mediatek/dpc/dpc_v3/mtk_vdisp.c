@@ -218,7 +218,9 @@ static u32 vdisp_hwccf_check_power(void)
 	       (hwccf_is_enabled(MM_HWCCF, HW_CCF_MTCMOS_GRP_0, HWCCF_VOTE, 25) << 25) | // OVL2
 	       (hwccf_is_enabled(MM_HWCCF, HW_CCF_MTCMOS_GRP_0, HWCCF_VOTE, 26) << 26) | // MML0
 	       (hwccf_is_enabled(MM_HWCCF, HW_CCF_MTCMOS_GRP_0, HWCCF_VOTE, 27) << 27) | // MML1
-	       (hwccf_is_enabled(MM_HWCCF, HW_CCF_MTCMOS_GRP_0, HWCCF_VOTE, 28) << 28);  // MML2
+	       (hwccf_is_enabled(MM_HWCCF, HW_CCF_MTCMOS_GRP_0, HWCCF_VOTE, 28) << 28) |  // MML2
+	       (hwccf_is_enabled(MM_HWCCF, HW_CCF_MTCMOS_GRP_1, HWCCF_VOTE, 9) << 9) | // DISP_PERI
+	       (hwccf_is_enabled(MM_HWCCF, HW_CCF_MTCMOS_GRP_1, HWCCF_VOTE, 10) << 10);  // DPTX
 #else
 	return 0;
 #endif
