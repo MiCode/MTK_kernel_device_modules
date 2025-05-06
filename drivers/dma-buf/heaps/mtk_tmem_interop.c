@@ -355,9 +355,10 @@ TMEM_PRIV int page_alloc(struct secure_heap_page *sec_heap,
 		return -EINVAL;
 	}
 	ret = trusted_mem_api_alloc(
-		sec_heap->tmem_type, 0, (unsigned int *)&buffer->len, &refcount,
-		&sec_handle, (uint8_t *)dma_heap_get_name(sec_heap->heap), 0,
-		&ssheap);
+			sec_heap->tmem_type, 0, &buffer->len, &refcount,
+			&sec_handle,
+			(uint8_t *)dma_heap_get_name(sec_heap->heap), 0,
+			&ssheap);
 	if (!ssheap) {
 		pr_err("%s error, alloc page base failed\n", __func__);
 		return -ENOMEM;
@@ -379,7 +380,7 @@ TMEM_PRIV int page_alloc(struct secure_heap_page *sec_heap,
 	atomic64_add(buffer->len, &sec_heap->total_size);
 
 	pr_debug(
-		"%s done: [%s], req_size:%#lx(%#lx), align_sz:%#lx, nent:%u--%lu, align:%#lx, total_sz:%#llx\n",
+		"%s done: [%s], req_size:%#lx(%#lx), align_sz:%#x, nent:%u--%lu, align:%#lx, total_sz:%#llx\n",
 		__func__, dma_heap_get_name(sec_heap->heap),
 		buffer->ssheap->req_size, req_sz, buffer->len,
 		buffer->ssheap->table->orig_nents, buffer->ssheap->elems,
@@ -600,7 +601,7 @@ TMEM_PRIV int page_free(struct secure_heap_page *sec_heap,
 		pr_warn("%s, total memory overflow, 0x%llx!!\n", __func__,
 			atomic64_read(&sec_heap->total_size));
 
-	pr_debug("%s done, [%s] size:%#lx, total_size:%#llx\n", __func__,
+	pr_debug("%s done, [%s] size:%#x, total_size:%#llx\n", __func__,
 		 dma_heap_get_name(buffer->heap), buffer->len,
 		 atomic64_read(&sec_heap->total_size));
 
@@ -691,7 +692,7 @@ TMEM_PRIV int page_free_v2(struct secure_heap_page *sec_heap,
 			return ret;
 	}
 
-	pr_debug("%s done, [%s] size:%#lx, total_size:%#llx\n", __func__,
+	pr_debug("%s done, [%s] size:%#x, total_size:%#llx\n", __func__,
 		 dma_heap_get_name(buffer->heap), buffer->len,
 		 atomic64_read(&sec_heap->total_size));
 	return 0;
@@ -752,10 +753,9 @@ TMEM_PRIV int region_alloc(struct secure_heap_region *sec_heap,
 		return -EINVAL;
 	}
 	ret = trusted_mem_api_alloc(sec_heap->tmem_type, alignment,
-				    (unsigned int *)&buffer->len, &refcount,
-				    &sec_handle,
-				    (uint8_t *)dma_heap_get_name(buffer->heap),
-				    0, NULL);
+			&buffer->len, &refcount, &sec_handle,
+			(uint8_t *)dma_heap_get_name(buffer->heap),
+			0, NULL);
 	if (ret == -ENOMEM) {
 		pr_err("%s error: security out of memory!! heap:%s\n", __func__,
 		       dma_heap_get_name(buffer->heap));
@@ -810,7 +810,7 @@ TMEM_PRIV int region_alloc(struct secure_heap_region *sec_heap,
 	atomic64_add(buffer->len, &sec_heap->total_size);
 
 	pr_debug(
-		"%s done: [%s], req_size:%#lx, align_sz:%#lx, handle:%#llx, pa:%#llx, total_sz:%#llx\n",
+		"%s done: [%s], req_size:%#lx, align_sz:%#x, handle:%#llx, pa:%#llx, total_sz:%#llx\n",
 		__func__, dma_heap_get_name(buffer->heap), req_sz, buffer->len,
 		buffer->sec_handle, phy_addr,
 		atomic64_read(&sec_heap->total_size));
@@ -922,7 +922,7 @@ TMEM_PRIV int region_free(struct secure_heap_region *sec_heap,
 		mutex_unlock(&sec_heap->heap_lock);
 	}
 
-	pr_debug("%s done, [%s] size:%#lx, total_size:%#llx\n", __func__,
+	pr_debug("%s done, [%s] size:%#x, total_size:%#llx\n", __func__,
 		 dma_heap_get_name(buffer->heap), buffer->len,
 		 atomic64_read(&sec_heap->total_size));
 	return ret;

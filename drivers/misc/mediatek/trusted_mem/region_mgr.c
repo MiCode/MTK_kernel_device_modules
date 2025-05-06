@@ -309,7 +309,7 @@ create_reg_mgr_desc(enum TRUSTED_MEM_TYPE register_type,
 	t_mgr_desc->mem_device = NULL;
 	t_mgr_desc->active_mem_type = TRUSTED_MEM_INVALID;
 
-	snprintf(wq_name, 32, "tmem_regmgr_defer_off_%d", register_type);
+	(void)snprintf(wq_name, 32, "tmem_regmgr_defer_off_%d", register_type);
 	t_mgr_desc->defer_off_wq = create_singlethread_workqueue(wq_name);
 
 	return t_mgr_desc;

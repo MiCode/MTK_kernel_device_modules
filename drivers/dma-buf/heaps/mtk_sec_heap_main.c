@@ -442,7 +442,7 @@ mtk_sec_heap_page_map_dma_buf(struct dma_buf_attachment *attachment,
 		}
 		a->mapped = true;
 		pr_debug(
-			"%s done(has mapped), dev:%s(%s), sec_handle:%llu, len:%#lx, iova:%#lx, id:(%d,%d)\n",
+			"%s done(has mapped), dev:%s(%s), sec_handle:%llu, len:%#x, iova:%#lx, id:(%d,%d)\n",
 			__func__,
 			dev_name(cache_data->dev_info[dom_id].dev),
 			dev_name(attachment->dev), buffer->sec_handle,
@@ -480,7 +480,7 @@ mtk_sec_heap_page_map_dma_buf(struct dma_buf_attachment *attachment,
 	a->mapped = true;
 
 	pr_debug(
-		"%s done, dev:%s, sec_handle:%llu, len:%#lx, iova:%#lx, id:(%d,%d)\n",
+		"%s done, dev:%s, sec_handle:%llu, len:%#x, iova:%#lx, id:(%d,%d)\n",
 		__func__, dev_name(attachment->dev), buffer->sec_handle,
 		buffer->len, (unsigned long)sg_dma_address(table->sgl), tab_id,
 		dom_id);
@@ -592,7 +592,7 @@ mtk_sec_heap_region_map_dma_buf(struct dma_buf_attachment *attachment,
 		}
 		a->mapped = true;
 		pr_debug(
-			"%s done(has mapped), dev:%s(%s), sec_handle:%llu, len:%#lx, pa:%#llx, iova:%#lx, id:(%d,%d)\n",
+			"%s done(has mapped), dev:%s(%s), sec_handle:%llu, len:%#x, pa:%#llx, iova:%#lx, id:(%d,%d)\n",
 			__func__,
 			dev_name(cache_data->dev_info[dom_id].dev),
 			dev_name(attachment->dev), buffer->sec_handle,
@@ -682,7 +682,7 @@ map_done:
 	a->mapped = true;
 
 	pr_debug(
-		"%s done, dev:%s, sec_handle:%llu, len:%#lx(%#x), pa:%#llx, iova:%#lx, id:(%d,%d)\n",
+		"%s done, dev:%s, sec_handle:%llu, len:%#x(%#x), pa:%#llx, iova:%#lx, id:(%d,%d)\n",
 		__func__, dev_name(attachment->dev), buffer->sec_handle,
 		buffer->len, sg_dma_len(table->sgl), phy_addr,
 		(unsigned long)sg_dma_address(table->sgl), tab_id, dom_id);

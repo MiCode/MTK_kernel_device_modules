@@ -61,7 +61,7 @@ struct mtk_sec_heap_buffer {
 	struct dma_heap *heap;
 	struct list_head attachments;
 	struct mutex lock;
-	unsigned long len;
+	u32 len;
 	struct sg_table sg_table;
 	int vmap_cnt;
 	void *vaddr;
