@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2013-2024 TRUSTONIC LIMITED
+ * Copyright (c) 2013-2025 TRUSTONIC LIMITED
  * All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -89,7 +89,7 @@ MODULE_IMPORT_NS(DMA_BUF);
 #define MMU_EXT_XN		(((u64)1) << 54) /* XN */
 
 /* ION */
-/* Trustonic Specific flag to detect ION mem */
+/* TEE vendor Specific flag to detect ION mem */
 #define MMU_ION_BUF		BIT(24)
 
 #ifdef MC_SHADOW_BUFFER
@@ -345,7 +345,7 @@ static int tee_mmu_free(struct tee_mmu *mmu)
 
 					/* Note: RATIO_PAGE_SIZE can be greater
 					 * than 1. In this case, one kernel
-					 * page contains multiple kinibi pages.
+					 * page contains multiple TEE pages.
 					 * Jump to avoid unpin the same page
 					 * multiple times.
 					 */
@@ -369,13 +369,13 @@ static int tee_mmu_free(struct tee_mmu *mmu)
 			mmu->pages_locked -= nr_pages;
 		}
 
-		mc_dev_devel("free PTE #%lu", i);
+		mc_dev_verbose("free PTE #%lu", i);
 		free_page(pte_table->page);
 		mmu->pages_created--;
 	}
 
 	if (mmu->pmd_table.page) {
-		mc_dev_devel("free PMD");
+		mc_dev_verbose("free PMD");
 		free_page(mmu->pmd_table.page);
 		mmu->pages_created--;
 	}
@@ -471,8 +471,8 @@ static struct tee_mmu *tee_mmu_create_common(const struct mcp_buffer_map *b_map)
 	mmu->nr_pages = nr_pages;
 	mmu->nr_pmd_entries = (mmu->nr_pages + PTE_ENTRIES_MAX - 1) /
 			    PTE_ENTRIES_MAX;
-	mc_dev_devel("mmu->nr_pages %lu num_ptes_pages %zu",
-		     mmu->nr_pages, mmu->nr_pmd_entries);
+	mc_dev_verbose("mmu->nr_pages %lu num_ptes_pages %zu",
+		       mmu->nr_pages, mmu->nr_pmd_entries);
 
 	/* Allocate a page for the L1 table, always used for DomU */
 	mmu->pmd_table.page = get_zeroed_page(GFP_KERNEL);
@@ -712,7 +712,7 @@ static struct tee_mmu *mmu_create_instance(struct mm_struct *mm,
 		pages += nr_pages;
 	}
 	/*
-	 * Create mmu pte table for Kinibi. A readme is given in
+	 * Create mmu pte table for TEE. A readme is given in
 	 * mmu_readme.txt
 	 */
 	if (!mmu->use_pages_and_vas) {
@@ -789,7 +789,7 @@ static struct tee_mmu *mmu_create_instance(struct mm_struct *mm,
 		}
 		#ifndef MC_FFA_FASTCALL
 		/*
-		 * Update page offset value with kinibi-based one in
+		 * Update page offset value with TEE-based one in
 		 * case of legacy mode
 		 */
 		mmu->offset = ofs_kinibi;
@@ -817,10 +817,10 @@ end:
 
 	mmu->all_pages = all_pages;
 
-	mc_dev_devel(
-		"created mmu %p: %s va %llx len %u off %u flg %x pmd %lx",
-		mmu, mmu->user ? "user" : "kernel", buf->va, mmu->length,
-		mmu->offset, mmu->flags, mmu->pmd_table.page);
+	mc_dev_verbose(
+		       "created mmu %p:%s va %llx len %u off %u flg %x pmd %lx",
+		       mmu, mmu->user ? "user" : "kernel", buf->va, mmu->length,
+		       mmu->offset, mmu->flags, mmu->pmd_table.page);
 	return mmu;
 }
 
@@ -848,9 +848,9 @@ struct tee_mmu *tee_mmu_create(struct mm_struct *mm,
 {
 	struct tee_mmu *mmu;
 	struct mm_struct *temp_mm;
-	int i;
 	int ret = 0;
 	struct mc_ioctl_buffer buf_in;
+	bool registered;
 #ifdef MC_SHADOW_BUFFER
 	void *shadow_buffer = NULL;
 #endif
@@ -866,30 +866,19 @@ struct tee_mmu *tee_mmu_create(struct mm_struct *mm,
 	size = PAGE_ALIGN(offset + length);
 	order = size ? get_order(size) : 0;
 
-	i = 0;
-	do {
+	mmu = mmu_create_instance(temp_mm, &buf_in);
+
+	/* if failed, no mmu nor all_pages */
+	if (IS_ERR(mmu))
+		return mmu;
+
+	/* Check if register returns success or not */
+	/* tee_mmu_register_buffer returns 0 in case of success */
+	ret = tee_mmu_register_buffer(mmu, &buf_in);
+	registered = !ret;
+
 #ifdef MC_SHADOW_BUFFER
-		if (shadow_buffer)
-			temp_mm = NULL;/*handle shadow buffer*/
-#endif
-
-		mmu = mmu_create_instance(temp_mm, &buf_in);
-
-		/* if failed, no mmu nor all_pages */
-		if (IS_ERR(mmu))
-			return mmu;
-
-		ret = tee_mmu_register_buffer(mmu, &buf_in);
-		/*registered with success, break the loop*/
-		if (!ret)
-			break;
-#ifdef MC_SHADOW_BUFFER
-		/*memory register failed*/
-		if (shadow_buffer) {
-			free_pages((unsigned long)shadow_buffer, order);
-			return ERR_PTR(ret);
-		}
-
+	if (!registered) {
 		/*(re)allocate a shadow buffer in kernel space*/
 		shadow_buffer = mmu_allocate_shadow_buffer(order);
 		if (IS_ERR(shadow_buffer))
@@ -898,14 +887,30 @@ struct tee_mmu *tee_mmu_create(struct mm_struct *mm,
 		buf_in.va = (__u64)shadow_buffer + offset;
 		mc_dev_devel("shadow buffer %llx with order %lx",
 			     (u64)shadow_buffer, order);
-#else
-		return ERR_PTR(ret);
+
+		temp_mm = NULL;/*handle shadow buffer*/
+
+		mmu = mmu_create_instance(temp_mm, &buf_in);
+
+		/* if failed, no mmu nor all_pages */
+		if (IS_ERR(mmu))
+			return mmu;
+
+		/* Check if register returns success or not */
+		/* tee_mmu_register_buffer returns 0 in case of success */
+		ret = tee_mmu_register_buffer(mmu, &buf_in);
+		if (ret) {
+			/*memory register failed*/
+			free_pages((unsigned long)shadow_buffer, order);
+			return ERR_PTR(ret);
+		}
+
+		registered = true;
+	}
 #endif /* MC_SHADOW_BUFFER */
 
-		/* coverity[unreachable] Used with MC_SHADOW_BUFFER */
-		i++;
-
-	} while (i < 2);
+	if (!registered)
+		return ERR_PTR(ret);
 
 	mmu->shadow.order = order;
 	mmu->shadow.cva = (void *)buf->va;
@@ -917,9 +922,9 @@ struct tee_mmu *tee_mmu_create(struct mm_struct *mm,
 	}
 #endif /* MC_SHADOW_BUFFER */
 
-	mc_dev_devel("mmu %p shadow buffer %p client va %llx, order %d",
-		     mmu, mmu->shadow.buffer, (u64)mmu->shadow.cva,
-		     (int)mmu->shadow.order);
+	mc_dev_verbose("mmu %p shadow buffer %p client va %llx, order %d",
+		       mmu, mmu->shadow.buffer, (u64)mmu->shadow.cva,
+		       (int)mmu->shadow.order);
 	return mmu;
 }
 
@@ -977,9 +982,9 @@ struct tee_mmu *tee_mmu_wrap(struct tee_deleter *deleter, struct page **pages,
 
 	mmu->deleter = deleter;
 	mmu->handle = mmu->pmd_table.page;
-	mc_dev_devel("wrapped mmu %p: len %u off %u flg %x pmd table %lx",
-		     mmu, mmu->length, mmu->offset, mmu->flags,
-		     mmu->pmd_table.page);
+	mc_dev_verbose("wrapped mmu %p: len %u off %u flg %x pmd table %lx",
+		       mmu, mmu->length, mmu->offset, mmu->flags,
+		       mmu->pmd_table.page);
 	return mmu;
 
 err:
@@ -997,9 +1002,9 @@ static void tee_mmu_release(struct kref *kref)
 {
 	struct tee_mmu *mmu = container_of(kref, struct tee_mmu, kref);
 
-	mc_dev_devel("free mmu %p: %s len %u off %u pmd table %lx",
-		     mmu, mmu->user ? "user" : "kernel", mmu->length,
-		     mmu->offset, mmu->pmd_table.page);
+	mc_dev_verbose("free mmu %p: %s len %u off %u pmd table %lx",
+		       mmu, mmu->user ? "user" : "kernel", mmu->length,
+		       mmu->offset, mmu->pmd_table.page);
 	tee_mmu_delete(mmu);
 }
 

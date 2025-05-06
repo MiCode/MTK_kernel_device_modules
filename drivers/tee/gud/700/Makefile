@@ -1,4 +1,4 @@
-# Copyright (c) 2013-2018 TRUSTONIC LIMITED
+# Copyright (c) 2013-2025 TRUSTONIC LIMITED
 # All Rights Reserved.
 #
 # This program is free software; you can redistribute it and/or
@@ -11,7 +11,7 @@
 # GNU General Public License for more details.
 
 #
-# Makefile for the Kinibi core and trusted UI drivers
+# Makefile for the TEE core and trusted UI drivers
 #
 export GUD_ROOT_FOLDER := $(dir $(lastword $(MAKEFILE_LIST)))
 #obj-$(CONFIG_TRUSTONIC_TEE_SUPPORT) := MobiCoreDriver/

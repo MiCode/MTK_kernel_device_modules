@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 /*
- * Copyright (c) 2013-2021 TRUSTONIC LIMITED
+ * Copyright (c) 2013-2025 TRUSTONIC LIMITED
  * All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -94,7 +94,7 @@ struct tlc_tui_ioctl_ion_t {
 
 /* TLC_TUI_CMD_SET_RESOLUTION is for specific platforms
  * that rely on onConfigurationChanged to set resolution
- * it has no effect on Trustonic reference implementaton.
+ * it has no effect on the TEE reference implementaton.
  */
 #define TLC_TUI_CMD_SET_RESOLUTION      9
 

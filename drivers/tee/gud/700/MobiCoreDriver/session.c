@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2013-2024 TRUSTONIC LIMITED
+ * Copyright (c) 2013-2025 TRUSTONIC LIMITED
  * All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -637,7 +637,8 @@ int session_mc_open_session(struct tee_session *session,
 			    struct mcp_open_info *info)
 {
 	struct tee_wsm *wsm = &session->tci;
-	struct tee_object *obj;
+	struct tee_object *obj = NULL;
+	struct mc_ioctl_buffer buf;
 	bool tci_in_use = false;
 	int ret;
 
@@ -663,11 +664,13 @@ int session_mc_open_session(struct tee_session *session,
 
 	/* Create mapping for TCI */
 	if (info->tci_va) {
-		struct mc_ioctl_buffer buf = {
-			.va = info->tci_va,
-			.len = info->tci_len,
-			.flags = MC_IO_MAP_INPUT_OUTPUT,
-		};
+		/* Set memory to 0 */
+		memset(&buf, 0, sizeof(buf));
+
+		/* Fill in buf structure */
+		buf.va = info->tci_va;
+		buf.len = info->tci_len;
+		buf.flags = MC_IO_MAP_INPUT_OUTPUT;
 
 		ret = wsm_create(session, wsm, &buf);
 		if (ret)
@@ -681,37 +684,37 @@ int session_mc_open_session(struct tee_session *session,
 	}
 
 	/* Create or recover 'blob' */
-	if (info->ta_mmu) {
-		/* Nothing to do */
-		obj = NULL;
-	} else if (info->type == TEE_MC_UUID) {
-		/* Load driver using only uuid */
-		obj = tee_object_select(info->uuid);
-	} else if (info->type == TEE_MC_DRIVER_UUID) {
-		/* Load driver using only uuid */
-		obj = tee_object_select(info->uuid);
-		tci_in_use = false;
-	} else if (info->user) {
-		/* Create secure object from user-space trustlet binary */
-		obj = tee_object_read(info->va, info->len);
-	} else {
-		/* Create secure object from kernel-space trustlet binary */
-		obj = tee_object_copy(info->va, info->len);
-	}
-
-	if (IS_ERR(obj)) {
-		ret = PTR_ERR(obj);
-		goto err_blob;
-	}
-
-	if (obj) {
+	if (!info->ta_mmu) {
 		/* TA/driver header */
 		const struct mclf_header *header;
-		struct mc_ioctl_buffer buf = {
-			.va = (uintptr_t)obj->data,
-			.len = obj->length,
-			.flags = MC_IO_MAP_INPUT,
-		};
+
+		if (info->type == TEE_MC_UUID) {
+			/* Load driver using only uuid */
+			obj = tee_object_select(info->uuid);
+		} else if (info->type == TEE_MC_DRIVER_UUID) {
+			/* Load driver using only uuid */
+			obj = tee_object_select(info->uuid);
+			tci_in_use = false;
+		} else if (info->user) {
+			/* Create object from user-space trustlet binary */
+			obj = tee_object_read(info->va, info->len);
+		} else {
+			/* Create object from kernel-space trustlet binary */
+			obj = tee_object_copy(info->va, info->len);
+		}
+
+		if (IS_ERR(obj)) {
+			ret = PTR_ERR(obj);
+			goto err_blob;
+		}
+
+		/* Set memory to 0 */
+		memset(&buf, 0, sizeof(buf));
+
+		/* Fill in buf structure */
+		buf.va = (uintptr_t)obj->data;
+		buf.len = obj->length;
+		buf.flags = MC_IO_MAP_INPUT;
 
 		header = (const struct mclf_header *)(&obj->data);
 		if (info->type == TEE_MC_DRIVER &&
@@ -730,7 +733,6 @@ int session_mc_open_session(struct tee_session *session,
 		}
 	}
 
-	/* coverity[var_deref_model] FIXME */
 	ret = mcp_open_session(&session->mcp_session, info, tci_in_use);
 
 	if (obj)

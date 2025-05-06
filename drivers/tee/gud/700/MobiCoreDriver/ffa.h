@@ -24,7 +24,6 @@
 #include "fastcall.h"
 
 inline int ffa_fastcall(union fc_common *fc);
-inline int ffa_fastcall_vmid(union fc_common *fc, uint32_t vm_id);
 
 int ffa_register_module(void);
 void ffa_unregister_module(void);

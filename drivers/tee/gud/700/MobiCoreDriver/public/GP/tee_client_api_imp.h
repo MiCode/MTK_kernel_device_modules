@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 /*
- * Copyright (c) 2013-2022 TRUSTONIC LIMITED
+ * Copyright (c) 2013-2025 TRUSTONIC LIMITED
  * All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -15,7 +15,7 @@
 
 /*
  * This header file defines the implementation-dependent types,
- * constants and macros for all the Kinibi implementations of the TEE Client API
+ * constants and macros for the TEE Client API
  */
 #ifndef TEE_CLIENT_API_IMP_H
 #define TEE_CLIENT_API_IMP_H

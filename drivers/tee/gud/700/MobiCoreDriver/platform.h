@@ -23,6 +23,12 @@
  * else you can define it here using
  * #define MC_INTR_SSIQ	0
  */
+
+/* Define TEE Kernel driver class and name */
+#define DEVICE_CLASS  "trustonic_tee"
+#define DRIVER_VENDOR "Trustonic"
+#define DRIVER_NAME   "TEE"
+
 #ifndef MTK_ADAPTED
 #define MC_TEE_HOTPLUG
 #endif

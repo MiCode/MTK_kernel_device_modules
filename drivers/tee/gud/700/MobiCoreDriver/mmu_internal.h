@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
- * Copyright (c) 2013-2023 TRUSTONIC LIMITED
+ * Copyright (c) 2013-2025 TRUSTONIC LIMITED
  * All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -19,7 +19,7 @@
 #include <linux/kref.h>
 #include "platform.h"
 
-/* Kinibi uses 4k-pages so far */
+/* TEE uses 4k-pages so far */
 #define KINIBI_PAGE_SIZE		BIT(12)
 #define KINIBI_PAGE_MASK		~(KINIBI_PAGE_SIZE - 1)
 #define KINIBI_PAGE_ALIGN(addr)	ALIGN(addr, KINIBI_PAGE_SIZE)

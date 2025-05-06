@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
- * Copyright (c) 2013-2024 TRUSTONIC LIMITED
+ * Copyright (c) 2013-2025 TRUSTONIC LIMITED
  * All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -34,26 +34,38 @@
 		__ret__, __func__, ##__VA_ARGS__)
 
 #define mc_dev_warn(fmt, ...) \
-	dev_warn(g_ctx.mcd, "%s: " fmt "\n", \
-		__func__, ##__VA_ARGS__)
+	dev_warn(g_ctx.mcd, "%s: " fmt "\n", __func__, ##__VA_ARGS__)
 
 #define mc_dev_info(fmt, ...) \
-	dev_info(g_ctx.mcd, "%s: " fmt "\n", \
-		__func__, ##__VA_ARGS__)
+	dev_info(g_ctx.mcd, "%s: " fmt "\n", __func__, ##__VA_ARGS__)
 
 #ifdef DEBUG
 #define mc_dev_devel(fmt, ...) \
-	dev_info(g_ctx.mcd, "%s: " fmt "\n", \
-		__func__, ##__VA_ARGS__)
+	dev_info(g_ctx.mcd, "%s: " fmt "\n", __func__, ##__VA_ARGS__)
 #else /* DEBUG */
 #define mc_dev_devel(...)		do {} while (0)
 #endif /* !DEBUG */
+
+/*
+ * Enabling verbose logs could slow down the platform, which may lead to
+ * timeouts in the client application's behavior.
+ */
+/* #define DEBUG_VERBOSE */
+#if defined(DEBUG) && defined(DEBUG_VERBOSE)
+#define mc_dev_verbose(fmt, ...) \
+	dev_info(g_ctx.mcd, "%s: " fmt "\n", __func__, ##__VA_ARGS__)
+#else /* DEBUG_VERBOSE */
+#define mc_dev_verbose(...)		do {} while (0)
+#endif /* !DEBUG_VERBOSE */
 
 #define TEEC_TT_LOGIN_KERNEL		0x80000000
 #define MAX_OPEN_SESSION_RETRY		10
 #define OPEN_SESSION_RETRY_TIMEOUT_MS	500
 
-#define TEE_START_NOT_TRIGGERED 1
+/* value set to 0 so mc_wait_tee_start() is working even before probe */
+#define TEE_START_NOT_TRIGGERED 0
+/* value for main_ctx.start_ret */
+#define TEE_START_READY 1
 
 /* MobiCore Driver Kernel Module context data. */
 struct mc_device_ctx {

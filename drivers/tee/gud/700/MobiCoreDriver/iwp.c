@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2013-2024 TRUSTONIC LIMITED
+ * Copyright (c) 2013-2025 TRUSTONIC LIMITED
  * All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -303,8 +303,7 @@ static int iwp_cmd(struct iwp_session *iwp_session, u32 id,
 #if KERNEL_VERSION(6, 1, 0) <= LINUX_VERSION_CODE
 		ret = wait_for_completion_state(
 			&iwp_session->completion,
-			TASK_FREEZABLE | TASK_KILLABLE
-		);
+			TASK_FREEZABLE_UNSAFE | TASK_KILLABLE);
 #else
 		ret = wait_for_completion_killable(&iwp_session->completion);
 #endif

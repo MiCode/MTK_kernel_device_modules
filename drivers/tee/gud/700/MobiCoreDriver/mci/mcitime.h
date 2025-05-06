@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
- * Copyright (c) 2015-2021 TRUSTONIC LIMITED
+ * Copyright (c) 2015-2025 TRUSTONIC LIMITED
  * All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -16,7 +16,7 @@
 #ifndef MCITIME_H
 #define MCITIME_H
 
-/** Trustonic Timer structure:
+/** TEE Timer structure:
  * -seconds and nanoseconds since Jan 1, 1970, UTC
  * -monotonic counter
  */
@@ -27,8 +27,8 @@ struct time_t {
 	u64 monotonic_nsec;
 };
 
-/** Trustonic TEE RICH OS Time:
- * -Trustonic Timer structure
+/** TEE RICH OS Time:
+ * -TEE Timer structure
  * -sync_timer purpose chose the last update timer
  */
 struct mcp_time {

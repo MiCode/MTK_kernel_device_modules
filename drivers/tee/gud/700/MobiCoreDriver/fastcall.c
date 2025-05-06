@@ -469,7 +469,6 @@ int fc_yield(u32 session_id, u32 payload, struct fc_s_yield *resp)
 	return 0;
 }
 
-#ifndef MC_FFA_FASTCALL
 #ifdef CONFIG_XEN
 static int fc_register_shm(u64 phys_addr, u32 pte_count, u64 *handle)
 {
@@ -514,7 +513,6 @@ static int fc_reclaim_shm(u64 handle)
 
 	return 0;
 }
-#endif
 #endif
 
 int fc_register_buffer(struct page **pages, struct tee_mmu *mmu, u64 tag)

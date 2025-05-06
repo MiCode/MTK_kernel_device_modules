@@ -1,4 +1,4 @@
-# Copyright (c) 2013-2023 TRUSTONIC LIMITED
+# Copyright (c) 2013-2025 TRUSTONIC LIMITED
 # All Rights Reserved.
 #
 # This program is free software; you can redistribute it and/or
@@ -11,7 +11,7 @@
 # GNU General Public License for more details.
 
 #
-# Makefile for the Kinibi core driver
+# Makefile for the TEE core driver
 #
 
 GUD_ROOT_FOLDER := $(DEVICE_MODULES_PATH)/drivers/tee/gud/$(CONFIG_TRUSTONIC_TEE_VERSION)

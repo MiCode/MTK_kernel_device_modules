@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2013-2024 TRUSTONIC LIMITED
+ * Copyright (c) 2013-2025 TRUSTONIC LIMITED
  * All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -57,10 +57,13 @@
 #define DEFAULT_TIMEOUT_MS	20000	/* We do nothing on timeout anyway */
 #define AFFINTIY_TRIES_SLEEP	200 /* 1sec retry if affinity not available */
 #define AFFINITY_TRIES_MAX		5
+#define FC_TRIES_MAX			50
 
 #if !defined(NQ_TEE_WORKER_THREADS)
 #define NQ_TEE_WORKER_THREADS	4
 #endif
+
+#define TEE_IRQ_NAME "tee_irq"
 
 static struct {
 	struct task_struct *irq_bh_thread;
@@ -100,7 +103,7 @@ static struct {
 
 	/* TEE status */
 	struct tee_sched	*tee_sched;
-	unsigned int		tee_sched_page_count; /* Kinibi side */
+	unsigned int		tee_sched_page_count; /* TEE side */
 	unsigned int		kernel_sched_page_count; /* Kernel side */
 
 	/* Dump buffer */
@@ -293,7 +296,7 @@ static inline void nq_update_time(void)
 
 static inline void nq_notif_handler(u32 id, u32 payload)
 {
-	mc_dev_devel("NQ notif for id %x payload %x", id, payload);
+	mc_dev_verbose("NQ notif for id %x payload %x", id, payload);
 	if (is_iwp_id(id))
 		l_ctx.iwp_notif_handler(id, payload);
 	else
@@ -390,17 +393,17 @@ int tee_set_affinity(cpumask_t *old_affinity)
 
 #if KERNEL_VERSION(4, 0, 0) > LINUX_VERSION_CODE
 	cpulist_scnprintf(buf_aff, sizeof(buf_aff), &local_old_affinity);
-	mc_dev_devel("aff = %lx mask = %lx curr_aff = %s (pid = %u)",
-		     affinity,
-		     l_ctx.default_affinity_mask,
-		     buf_aff,
-		     current->pid);
+	mc_dev_verbose("aff = %lx mask = %lx curr_aff = %s (pid = %u)",
+		       affinity,
+		       l_ctx.default_affinity_mask,
+		       buf_aff,
+		       current->pid);
 #else
-	mc_dev_devel("aff = %lx mask = %lx curr_aff = %*pbl (pid = %u)",
-		     affinity,
-		     l_ctx.default_affinity_mask,
-		     cpumask_pr_args(&local_old_affinity),
-		     current->pid);
+	mc_dev_verbose("aff = %lx mask = %lx curr_aff = %*pbl (pid = %u)",
+		       affinity,
+		       l_ctx.default_affinity_mask,
+		       cpumask_pr_args(&local_old_affinity),
+		       current->pid);
 #endif
 	/* we only change affinity if current affinity is not
 	 * a subset of requested TEE affinity
@@ -453,11 +456,11 @@ void tee_restore_affinity(cpumask_t old_affinity)
 	cpulist_scnprintf(buf_cur_aff,
 			  sizeof(buf_cur_aff),
 			  &current->cpus_allowed);
-	mc_dev_devel("aff = %s mask = %lx curr_aff = %s (pid = %u)",
-		     buf_aff,
-		     l_ctx.default_affinity_mask,
-		     buf_cur_aff,
-		     current->pid);
+	mc_dev_verbose("aff = %s mask = %lx curr_aff = %s (pid = %u)",
+		       buf_aff,
+		       l_ctx.default_affinity_mask,
+		       buf_cur_aff,
+		       current->pid);
 	if (!cpumask_equal(&old_affinity, &current->cpus_allowed))
 		if (set_cpus_allowed_ptr(current, &old_affinity) != 0)
 			mc_dev_devel("restore cpus affinity failed");
@@ -476,11 +479,11 @@ void tee_restore_affinity(cpumask_t old_affinity)
 		return;
 	}
 
-	mc_dev_devel("aff = %*pbl mask = %lx curr_aff = %*pbl (pid = %u)",
-		     cpumask_pr_args(&old_affinity),
-		     l_ctx.default_affinity_mask,
-		     cpumask_pr_args(&current_affinity),
-		     current->pid);
+	mc_dev_verbose("aff = %*pbl mask = %lx curr_aff = %*pbl (pid = %u)",
+		       cpumask_pr_args(&old_affinity),
+		       l_ctx.default_affinity_mask,
+		       cpumask_pr_args(&current_affinity),
+		       current->pid);
 	if (!cpumask_equal(&old_affinity, &current_affinity))
 		if (set_cpus_allowed_ptr(current, &old_affinity) != 0)
 			mc_dev_devel("restore cpus affinity failed");
@@ -547,7 +550,7 @@ int nq_session_notify(struct nq_session *session, u32 id, u32 payload)
 		cpumask_t old_affinity;
 		int i = 0;
 
-		mc_dev_devel("send %x payload %x", session->id, payload);
+		mc_dev_verbose("send %x payload %x", session->id, payload);
 		notif_queue_push(session->id, payload);
 		session_state_update_internal(session, NQ_NOTIF_SENT);
 
@@ -557,9 +560,9 @@ int nq_session_notify(struct nq_session *session, u32 id, u32 payload)
 			mc_dev_err(ret, "failed to get requested tee cpus");
 		} else {
 			if (fc_nsiq(session->id, payload)) {
-				ret = -EPROTO;
 				mc_dev_err(ret, "unknown TEE response (0x%x) for nsiq",
 					   ret);
+				ret = -EPROTO;
 			}
 			tee_restore_affinity(old_affinity);
 
@@ -1104,6 +1107,7 @@ static s32 tee_schedule(uintptr_t arg, unsigned int *timeout_ms)
 	int ret, id = (int)arg;
 	cpumask_t old_affinity;
 
+	int affinity_tries = 0;
 	*timeout_ms = 0;
 
 	/* Adjust worker CPU affinity based on global TEE affinity.
@@ -1157,24 +1161,25 @@ static s32 tee_schedule(uintptr_t arg, unsigned int *timeout_ms)
 			/* NOTE: resp.code returns -1 (infinite), -2, 0, or   */
 			/* positive min. timeout value of internal time queue.*/
 			tee_worker_counter_inc(id, TEE_WORKER_COUNTER_SYIELD);
-			mc_dev_devel("[%d] MC_SMC_S_YIELD timeout=%d",
-				     id, resp.code);
-			mc_dev_devel("[%d] req workers=%d workers=%d",
-				     id,
-				     get_required_workers(),
-				     get_workers());
+			mc_dev_verbose("[%d] MC_SMC_S_YIELD timeout=%d",
+				       id, resp.code);
+			mc_dev_verbose("[%d] req workers=%d workers=%d",
+				       id,
+				       get_required_workers(),
+				       get_workers());
 
 			if ((s32)resp.code > 0) {
 				*timeout_ms = resp.code;
 			} else if (resp.code == 0) {
 				/* Reschedule the TEE immediately */
+				affinity_tries = 0;
 				continue;
 			}
 			break;
 
 		case MC_SMC_S_BUSY:
 			tee_worker_counter_inc(id, TEE_WORKER_COUNTER_BUSY);
-			mc_dev_devel("[%d] BUSY", id);
+			mc_dev_verbose("[%d] BUSY", id);
 			break;
 
 		case MC_SMC_S_RESUME:
@@ -1188,13 +1193,19 @@ static s32 tee_schedule(uintptr_t arg, unsigned int *timeout_ms)
 			goto exit;
 
 		default:
-			ret = -EIO;
 			mc_dev_err(ret, "[%d] unknown TEE response (0x%x)", id,
 				   resp.resp);
-			nq_signal_tee_hung(); /* Signal other workers */
-			goto exit;
+			affinity_tries++;
+			if (affinity_tries > FC_TRIES_MAX) {
+				mc_dev_err(ret, "Too many tries, stopping the TEE");
+				nq_signal_tee_hung(); /* Signal other workers */
+				goto exit;
+			}
+			msleep(AFFINTIY_TRIES_SLEEP);
+			continue;
 		}
 
+		affinity_tries = 0;
 		/* Probe TEE activity */
 		run         = get_workers();
 		req_workers = get_required_workers();
@@ -1208,8 +1219,8 @@ static s32 tee_schedule(uintptr_t arg, unsigned int *timeout_ms)
 			s32 worker = NQ_TEE_WORKER_THREADS - 1;
 
 			do {
-				mc_dev_devel("run=%d req=%d worker=%d", run,
-					     req_workers, worker);
+				mc_dev_verbose("run=%d req=%d worker=%d", run,
+					       req_workers, worker);
 				/* If SWd has less threads to run, then */
 				/* current worker likely goes sleeping. */
 				if (run > req_workers) {
@@ -1259,8 +1270,8 @@ static int tee_worker(void *arg)
 		if (ret)
 			break; /* Worker received a signal, exit */
 
-		mc_dev_devel("[%ld] wake up run=%d required_workers=%d",
-			     id, get_workers(), get_required_workers());
+		mc_dev_verbose("[%ld] wake up run=%d required_workers=%d",
+			       id, get_workers(), get_required_workers());
 		ret = tee_schedule(id, &timeout_ms);
 		if (ret)
 			break;
@@ -1399,7 +1410,7 @@ int nq_start(void)
 	}
 
 	ret = request_irq(l_ctx.irq, irq_handler, IRQF_NO_SUSPEND,
-			  "trustonic", NULL);
+			  TEE_IRQ_NAME, NULL);
 	if (ret)
 		return ret;
 

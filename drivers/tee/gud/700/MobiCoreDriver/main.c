@@ -43,7 +43,7 @@
 
 /* Define a MobiCore device structure for use with dev_debug() etc */
 static struct device_driver driver = {
-	.name = "Trustonic"
+	.name = DRIVER_VENDOR
 };
 
 static struct device device = {
@@ -273,10 +273,6 @@ static inline int device_user_init(void)
 		return ret;
 	}
 
-	/* Create debugfs structs entry */
-	debugfs_create_file("structs", 0400, g_ctx.debug_dir, NULL,
-			    &debug_structs_ops);
-
 	return 0;
 }
 
@@ -380,19 +376,23 @@ static inline int check_version(void)
 
 static int mobicore_start_fe(void)
 {
+	int ret;
+
 	mutex_lock(&main_ctx.start_mutex);
-	if (main_ctx.start_ret != TEE_START_NOT_TRIGGERED)
+	if (main_ctx.start_ret == TEE_START_READY)
 		goto end;
 
 	/* Must be called before creating the user device node to avoid race */
-	main_ctx.start_ret = check_version();
-	if (main_ctx.start_ret)
+	ret = device_user_init();
+	if (ret)
 		goto end;
 
-	main_ctx.start_ret = device_user_init();
+	main_ctx.start_ret =  TEE_START_READY;
+
 end:
+	ret = main_ctx.start_ret;
 	mutex_unlock(&main_ctx.start_mutex);
-	return main_ctx.start_ret;
+	return !(ret == TEE_START_READY);
 }
 
 static int mobicore_start(void)
@@ -400,7 +400,7 @@ static int mobicore_start(void)
 	int ret;
 
 	mutex_lock(&main_ctx.start_mutex);
-	if (main_ctx.start_ret != TEE_START_NOT_TRIGGERED)
+	if (main_ctx.start_ret == TEE_START_READY)
 		goto got_ret;
 
 	ret = nq_start();
@@ -444,7 +444,7 @@ static int mobicore_start(void)
 #endif
 #ifdef MC_TEE_HOTPLUG
 #if KERNEL_VERSION(4, 6, 0) <= LINUX_VERSION_CODE
-	ret = cpuhp_setup_state(CPUHP_AP_ONLINE_DYN, "Trustonic",
+	ret = cpuhp_setup_state(CPUHP_AP_ONLINE_DYN, DEVICE_CLASS,
 				nq_cpu_on, nq_cpu_off);
 #endif
 #endif
@@ -459,7 +459,7 @@ static int mobicore_start(void)
 	if (ret)
 		goto err_device_user;
 
-	main_ctx.start_ret = 0;
+	main_ctx.start_ret = TEE_START_READY;
 	goto got_ret;
 
 err_device_user:
@@ -477,10 +477,11 @@ err_iwp:
 err_mcp:
 	nq_stop();
 err_nq:
-	main_ctx.start_ret = ret;
+	main_ctx.start_ret = TEE_START_NOT_TRIGGERED;
 got_ret:
+	ret = main_ctx.start_ret;
 	mutex_unlock(&main_ctx.start_mutex);
-	return main_ctx.start_ret;
+	return !(ret == TEE_START_READY);
 }
 
 static void mobicore_stop(void)
@@ -512,23 +513,23 @@ int mc_wait_tee_start(void)
 
 	ret = main_ctx.start_ret;
 	mutex_unlock(&main_ctx.start_mutex);
-	return ret;
+	return !(ret == TEE_START_READY);
 }
 
 static inline int device_common_init(void)
 {
 	int ret;
 
-	ret = alloc_chrdev_region(&main_ctx.device, 0, 2, "trustonic_tee");
+	ret = alloc_chrdev_region(&main_ctx.device, 0, 2, DEVICE_CLASS);
 	if (ret) {
 		mc_dev_err(ret, "alloc_chrdev_region failed");
 		return ret;
 	}
 
 #if KERNEL_VERSION(6, 3, 0) > LINUX_VERSION_CODE
-	main_ctx.class = class_create(THIS_MODULE, "trustonic_tee");
+	main_ctx.class = class_create(THIS_MODULE, DEVICE_CLASS);
 #else
-	main_ctx.class = class_create("trustonic_tee");
+	main_ctx.class = class_create(DEVICE_CLASS);
 #endif
 	if (IS_ERR(main_ctx.class)) {
 		ret = PTR_ERR(main_ctx.class);
@@ -616,7 +617,7 @@ static int mobicore_probe(struct platform_device *pdev)
 #endif
 
 	/* Make sure we can create debugfs entries */
-	g_ctx.debug_dir = debugfs_create_dir("trustonic_tee", NULL);
+	g_ctx.debug_dir = debugfs_create_dir(DEVICE_CLASS, NULL);
 
 	/* Initialize debug counters */
 	atomic_set(&g_ctx.c_clients, 0);
@@ -710,7 +711,7 @@ static const struct of_device_id of_match_table[] = {
 static struct platform_driver mc_plat_driver = {
 	.probe = mobicore_probe,
 	.driver = {
-		.name = "mcd",
+		.name = DRIVER_NAME,
 		.owner = THIS_MODULE,
 		.of_match_table = of_match_table,
 	}
@@ -723,7 +724,7 @@ static int __init mobicore_init(void)
 	struct device_node *node;
 #endif
 
-	dev_set_name(g_ctx.mcd, "TEE");
+	dev_set_name(g_ctx.mcd, DRIVER_NAME);
 	/*
 	 * Do not remove or change the following trace.
 	 * The string "MobiCore" is used to detect if the TEE is in of the image

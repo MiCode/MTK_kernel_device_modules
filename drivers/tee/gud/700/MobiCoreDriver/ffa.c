@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (c) 2021-2023 TRUSTONIC LIMITED
+ * Copyright (c) 2021-2025 TRUSTONIC LIMITED
  * All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -171,16 +171,11 @@ static int ffa_share_continuous_buffer(const void *buf,
 	struct page	**pages = NULL;  /* Same as below, conveniently typed */
 	unsigned long	pages_page = 0;	/* Page to contain the page pointers */
 	struct page	*page = NULL;
-	struct tee_mmu *mmu = NULL;
+	struct tee_mmu mmu;
 	int		ret = 0;
 	int		i = 0;
 
-	/* Allocate the mmu */
-	mmu = kzalloc(sizeof(*mmu), GFP_KERNEL);
-	if (!mmu) {
-		ret = -ENOMEM;
-		goto end;
-	}
+	memset(&mmu, 0, sizeof(mmu));
 
 	/* Get a page to store page pointers */
 	pages_page = get_zeroed_page(GFP_KERNEL);
@@ -194,16 +189,15 @@ static int ffa_share_continuous_buffer(const void *buf,
 	for (i = 0; i < n_cont_pages; i++)
 		pages[i] = page++;
 
-	ret = ffa_shm_register(pages, n_cont_pages, mmu,
+	ret = ffa_shm_register(pages, n_cont_pages, &mmu,
 			       KINIBI_FFA_TAG_SHARED);
 	if (ret)
 		goto end;
 
 	if (ffa_handle)
-		*ffa_handle = mmu->handle;
+		*ffa_handle = mmu.handle;
 
 end:
-	kfree(mmu);
 	if (pages_page)
 		free_page(pages_page);
 
@@ -292,36 +286,6 @@ inline int ffa_fastcall(union fc_common *fc)
 	return 0;
 }
 
-/* Wrapper around FFA_MSG_SEND_DIRECT_REQ */
-inline int ffa_fastcall_vmid(union fc_common *fc, uint32_t vm_id)
-{
-	int ret;
-	struct ffa_send_direct_data data = {
-		.data0 = fc->in.cmd,
-		.data1 = fc->in.param[0],
-		.data2 = fc->in.param[1],
-		.data3 = 0x8000000000000000 | (((uint64_t)vm_id) << 32) | fc->in.param[2],
-	};
-
-#ifndef TRUSTONIC_USES_FFA_1_1
-	ret = l_ffa_ctx.ops->sync_send_receive(l_ffa_ctx.dev,
-					       &data);
-#else
-	ret = l_ffa_ctx.ops->msg_ops->sync_send_receive(l_ffa_ctx.dev,
-					       &data);
-#endif
-	if (ret)
-		return ret;
-
-	/* Copy out */
-	fc->out.resp = data.data0;
-	fc->out.ret = data.data1;
-	fc->out.param[0] = data.data2;
-	fc->out.param[1] = data.data3;
-
-	return 0;
-}
-
 static struct ffa_driver kinibi_ffa_driver = {
 	.name = "kinibi",
 	.probe = ffa_probe,
@@ -355,9 +319,9 @@ int tt_ffa_memory_lend(struct ffa_mem_ops_args *args)
 	if (!args->attrs)
 		return -EINVAL;
 
-	// Kinibi uses the TX FFA buffer to transmit memory descriptors
+	// TEE uses the TX FFA buffer to transmit memory descriptors
 	args->use_txbuf = true;
-	// Only overwrite the first attribute vm id with Kinibi's one
+	// Only overwrite the first attribute vm id with TEE's one
 	args->attrs[0].receiver = l_ffa_ctx.dev->vm_id;
 
 #ifndef TRUSTONIC_USES_FFA_1_1
