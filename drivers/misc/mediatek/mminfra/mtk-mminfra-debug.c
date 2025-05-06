@@ -714,13 +714,17 @@ MODULE_PARM_DESC(mminfra_ut, "mminfra ut");
 #if IS_ENABLED(CONFIG_MTK_MMINFRA_DEBUG)
 static int mminfra_pwr_monitor(char *buffer, const struct kernel_param *kp)
 {
-	if (!mminfra_power_mon_thread)
-		return sprintf(buffer, "%s", "power monitor isn't enable\n");
+	int len = 0;
 
-	return sprintf(buffer, "mminfra power_on ratio: MM_0[%u/%u], MM_1[%u/%u], MM_AO[%u/%u]\n",
-		mm_pwr_cnt_last[MM_0], mm_pwr_cnt_last_sample,
-		mm_pwr_cnt_last[MM_1], mm_pwr_cnt_last_sample,
-		mm_pwr_cnt_last[MM_AO], mm_pwr_cnt_last_sample);
+	if (!mminfra_power_mon_thread)
+		len += snprintf(buffer + len, PAGE_SIZE - len, "%s", "power monitor isn't enable\n");
+	else
+		len += snprintf(buffer + len, PAGE_SIZE - len,
+			"mminfra power_on ratio: MM_0[%u/%u], MM_1[%u/%u], MM_AO[%u/%u]\n",
+			mm_pwr_cnt_last[MM_0], mm_pwr_cnt_last_sample,
+			mm_pwr_cnt_last[MM_1], mm_pwr_cnt_last_sample,
+			mm_pwr_cnt_last[MM_AO], mm_pwr_cnt_last_sample);
+	return len;
 }
 
 static struct kernel_param_ops mminfra_pwr_mon_ops = {
