@@ -115,6 +115,10 @@
 #define MML_BYPASS_MUX_SHADOW	0x998
 #define MML_MOUT_RST		0x958
 #define MML_APU_DP_SEL		0x95c
+#define MML_GALS_DBG_0		0x9e4
+#define MML_GALS_DBG_1		0x9e8
+#define MML_GALS_DBG_2		0x9ec
+#define MML_GALS_DBG_3		0x9f0
 
 /* MML DL IN/OUT registers in mt6991 */
 #define MML_DLI_ASYNC0_SIZE	0xb0c	/* MMLSYS2_DLO3 MMLSYS2_DLO2 MMLSYS1_DLO0 */
