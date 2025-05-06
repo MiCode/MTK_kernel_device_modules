@@ -2593,8 +2593,10 @@ static void rrot_debug_dump(struct mml_comp *comp)
 	value[1] = readl(base + RROT_RESET);
 	value[2] = readl(base + RROT_CON);
 	value[3] = readl(base + RROT_BINNING);
+	value[4] = readl(base + RROT_DDREN);
 	mml_err("RROT_EN %#010x SHADOW %#010x RROT_RESET %#010x RROT_CON %#010x RROT_BINNING %#010x",
 		value[0], shadow_ctrl, value[1], value[2], value[3]);
+	mml_err("RROT_DDREN %#010x", value[4]);
 
 	value[0] = readl(base + RROT_PREFETCH_CONTROL_0);
 	value[1] = readl(base + RROT_PREFETCH_CONTROL_1);

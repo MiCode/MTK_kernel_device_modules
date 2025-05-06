@@ -2834,7 +2834,7 @@ static void wrot_debug_dump(struct mml_comp *comp)
 {
 	struct mml_comp_wrot *wrot = comp_to_wrot(comp);
 	void __iomem *base = comp->base;
-	u32 value[40];
+	u32 value[41];
 	u32 debug[33];
 	u32 dbg_id = 0, state, smi_req;
 	u32 shadow_ctrl;
@@ -2905,6 +2905,7 @@ static void wrot_debug_dump(struct mml_comp *comp)
 	value[37] = readl(base + wrot->reg[VIDO_DITHER]);
 	value[38] = readl(base + wrot->reg[VIDO_AFBC_YUVTRANS]);
 	value[39] = readl(base + wrot->reg[VIDO_BKGD]);
+	value[40] = readl(base + wrot->reg[VIDO_DDREN_REQ]);
 
 	/* debug id from 0x0100 ~ 0x2100, count 33 which is debug array size */
 	for (i = 0; i < ARRAY_SIZE(debug); i++) {
@@ -2923,6 +2924,7 @@ static void wrot_debug_dump(struct mml_comp *comp)
 		value[9], value[38], value[39]);
 	mml_err("VIDO_MAT_CTRL %#010x VIDO_DITHER_CON %#010x VIDO_DITHER %#010x",
 		value[35], value[36], value[37]);
+	mml_err("VIDO_DDREN_REQ %#010x", value[40]);
 	if (value[33] || value[34])
 		mml_err("VIDO_CRC_CTRL %#010x VIDO_CRC_VALUE %#010x", value[33], value[34]);
 	mml_err("VIDO_OFST ADDR_HIGH   %#010x ADDR   %#010x",
