@@ -69,6 +69,7 @@
 
 #define TIPC_READ_MAX_RETRY_CNT		5
 #define TIPC_READ_MAX_TIMEOUT_MS	1000
+//#define TRUSTY_IPC_DEBUG
 
 struct tipc_virtio_dev;
 
@@ -446,10 +447,12 @@ static int vds_select_cpu(struct tipc_virtio_dev *vds, int32_t cpu_affinity)
 	if (cpu < 0)
 		cpu = fls(online_cpus) - 1;
 
+#ifdef TRUSTY_IPC_DEBUG
 	dev_dbg(&vds->vdev->dev,
 		"%s: select cpu %d, o:0x%x, u:0x%x, a:0x%x, d:0x%x\n",
 		__func__, cpu, online_cpus, cpu_affinity,
 		atomic_read(&vds->allowed_cpus), vds->default_cpumask);
+#endif
 
 	return cpu;
 }
@@ -470,7 +473,9 @@ static int vds_chan_queue_txbuf(struct tipc_chan *chan, struct tipc_msg_buf *mb)
 
 	tipc_chan_prepared(chan);
 
+#ifdef TRUSTY_IPC_DEBUG
 	dev_dbg(&vds->vdev->dev, "%s: queue txvq id %d\n", __func__, txvq_id);
+#endif
 
 	if (vds->state == VDS_ONLINE) {
 		sg_init_one(&sg, mb->buf_va, mb->wpos);
@@ -679,8 +684,10 @@ int gz_tipc_chan_queue_msg(struct tipc_chan *chan, struct tipc_msg_buf *mb)
 	switch (chan->state) {
 	case TIPC_CONNECTED:
 		fill_msg_hdr(mb, chan->local, chan->remote);
+#ifdef TRUSTY_IPC_DEBUG
 		pr_debug("%s: TIPC-Send local %d remote %d chan %p\n",
 			 __func__, chan->local, chan->remote, chan);
+#endif
 		err = vds_chan_queue_txbuf(chan, mb);
 		if (err) {
 			/* this should never happen */
@@ -891,8 +898,10 @@ struct tipc_msg_buf *dn_handle_msg(void *data, struct tipc_msg_buf *rxbuf)
 		if (newbuf) {
 			/* queue an old buffer and return a new one */
 			list_add_tail(&rxbuf->node, &dn->rx_msg_queue);
+#ifdef TRUSTY_IPC_DEBUG
 			pr_debug("%s: TIPC-Receive chan %p get rx\n", __func__,
 				 dn->chan);
+#endif
 			wake_up_interruptible(&dn->readq);
 		} else {
 			/*
@@ -1328,8 +1337,10 @@ int gz_port_lookup_tid(const char *port, enum tee_id_t *o_tid)
 
 		if (strncmp(last_token, tr_obj->srv_name, MAX_SRV_NAME_LEN) == 0) {
 			*o_tid = tr_obj->tee_id;
+#ifdef TRUSTY_IPC_DEBUG
 			pr_info("[%s] find last_token %s, tee id %d\n",
 				 __func__, last_token, *o_tid);
+#endif
 			break;
 		}
 	}
@@ -1900,8 +1911,10 @@ static int _handle_rxbuf(struct tipc_virtio_dev *vds,
 		goto drop_it;
 	}
 
+#ifdef TRUSTY_IPC_DEBUG
 	dev_dbg(dev, "From: %d, To: %d, Len: %d, Flags: 0x%x, Reserved: %d\n",
 		msg->src, msg->dst, msg->len, msg->flags, msg->reserved);
+#endif
 
 	/* message directed to control endpoint is a special case */
 	if (msg->dst == TIPC_CTRL_ADDR) {
@@ -1913,9 +1926,11 @@ static int _handle_rxbuf(struct tipc_virtio_dev *vds,
 		if (chan) {
 			/* handle it */
 			tipc_chan_returned(chan);
+#ifdef TRUSTY_IPC_DEBUG
 			dev_dbg(dev,
 				"%s: IPC-Receive local %d remote %d chan %p\n",
 				__func__, msg->dst, msg->src, chan);
+#endif
 			rxbuf = chan->ops->handle_msg(chan->ops_arg, rxbuf);
 			WARN_ON(!rxbuf);
 			kref_put(&chan->refcount, _free_chan);
