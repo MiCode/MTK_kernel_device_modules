@@ -191,7 +191,7 @@ module_param_named(debug_enable, debug_enable, int, 0600);
 
 static void periodic_debug_handler(struct work_struct *work);
 static int periodic_debug_enable = 1;
-static int periodic_debug_delay = 1000;
+static int periodic_debug_delay = 100;
 module_param_named(periodic_debug_delay, periodic_debug_delay, int, 0600);
 static DECLARE_DELAYED_WORK(periodic_debug, periodic_debug_handler);
 
@@ -2518,13 +2518,13 @@ static void __ref do_core_ctl(struct cluster_data *cluster)
 
 		if (!pause_resume){
 			if (!cpumask_empty(&cpu_pause_res)){
-				pr_info("[Core Pause] pause_res=0x%lx, online=0x%lx, act=0x%lx, paused=0x%lx\n",
+				core_ctl_debug("[Core Pause] pause_res=0x%lx, online=0x%lx, act=0x%lx, paused=0x%lx\n",
 					cpu_pause_res.bits[0], cpu_online_mask->bits[0],
 					cpu_active_mask->bits[0], cpu_pause_mask->bits[0]);
 			}
 		} else {
 			if (!cpumask_empty(&cpu_resume_res)){
-				pr_info("[Core Pause] resume_res=0x%lx, online=0x%lx, act=0x%lx, paused=0x%lx\n",
+				core_ctl_debug("[Core Pause] resume_res=0x%lx, online=0x%lx, act=0x%lx, paused=0x%lx\n",
 					cpu_resume_res.bits[0], cpu_online_mask->bits[0],
 					cpu_active_mask->bits[0], cpu_pause_mask->bits[0]);
 			}
