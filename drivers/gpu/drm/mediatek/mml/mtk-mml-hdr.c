@@ -955,10 +955,19 @@ static s32 hdr_config_tile(struct mml_comp *comp, struct mml_task *task,
 	if (hdr_hist_end_x < hdr_hist_begin_x)
 		hdr_hist_end_x = hdr_hist_begin_x;
 
-	cmdq_pkt_write(pkt, NULL,
-		base_pa + hdr->data->reg_table[HDR_HIST_CTRL_0], hdr_hist_begin_x, 0x0000ffff);
-	cmdq_pkt_write(pkt, NULL,
-		base_pa + hdr->data->reg_table[HDR_HIST_CTRL_1], hdr_hist_end_x, 0x0000ffff);
+	if (hdr->data->two_curve) {
+		cmdq_pkt_write(pkt, NULL,
+			base_pa + hdr->data->reg_table[HDR_HIST_CTRL_0],
+			(hdr_crop_ys << 16) + hdr_hist_begin_x, U32_MAX);
+		cmdq_pkt_write(pkt, NULL,
+			base_pa + hdr->data->reg_table[HDR_HIST_CTRL_1],
+			(hdr_crop_ye << 16) + hdr_hist_end_x, U32_MAX);
+	} else {
+		cmdq_pkt_write(pkt, NULL,
+			base_pa + hdr->data->reg_table[HDR_HIST_CTRL_0], hdr_hist_begin_x, 0x0000ffff);
+		cmdq_pkt_write(pkt, NULL,
+			base_pa + hdr->data->reg_table[HDR_HIST_CTRL_1], hdr_hist_end_x, 0x0000ffff);
+	}
 
 	/* for n+1 tile*/
 	if (tile_cnt == 1) {
@@ -1250,7 +1259,7 @@ static void hdr_readback_cmdq(struct mml_comp *comp, struct mml_task *task,
 
 	if (hdr->data->two_curve) {
 		cmdq_pkt_write(pkt, NULL,
-			base_pa + hdr->data->reg_table[HDR_HIST_READ_0], 0 << 2, 0x2);
+			base_pa + hdr->data->reg_table[HDR_HIST_READ_0], 0 << 2, 1 << 2);
 	}
 
 	mml_pq_rb_msg("%s end job_id[%d] engine_id[%d] va[%p] pa[%pad] pkt[%p]",
