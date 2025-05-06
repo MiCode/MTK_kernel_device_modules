@@ -26,9 +26,6 @@
 #include "mtk_dsi_lpc.h"
 #include <linux/module.h>
 
-int lpc_disable;
-module_param(lpc_disable, int, 0644);
-
 #define DSI_LPC_EN (0x0)
 #define DSI_LPC_EN_BIT_FLD REG_FLD_MSB_LSB(0, 0)
 #define DSI_LPC_EN_BIT BIT(0)
@@ -170,50 +167,53 @@ struct mtk_dsi_lpc {
 	ktime_t ts_offset;	// arch_timer_get_cntfrq: MT6993 = 1,000,000,000
 };
 
-struct mtk_ddp_comp *dsi_lpc_comp;
-
 void mtk_dsi_lpc_for_debug_config(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cmdq_handle)
 {
 	unsigned int value = 0;
 	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
 	unsigned int val = 0;
 	unsigned int mask = 0;
-
+	struct mtk_ddp_comp *comp = mtk_ddp_comp_request_output_lpc(mtk_crtc);
 
 	DDPDBG("%s:%d dsi lpc mon en:%d\n", __func__, __LINE__, priv->mtk_dbgtp_sta.dsi_lpc_mon_en);
 
-	if (priv->mtk_dbgtp_sta.dsi_lpc_mon_en) {
+	if (!comp) {
+		DDPPR_ERR("%s: request lpc comp fail\n", __func__);
+		return;
+	}
+
+	if (priv && priv->mtk_dbgtp_sta.dsi_lpc_mon_en) {
 		value = (REG_FLD_VAL((DSI_LPC_DBG_MON_EN),
 			priv->mtk_dbgtp_sta.dsi_lpc_mon_en));
 		mask = REG_FLD_MASK(DSI_LPC_DBG_MON_EN);
 
 		DDPDBG("%s:%d value:%x mask:%x\n", __func__, __LINE__, value, mask);
 		if (cmdq_handle == NULL) {
-			val = readl(dsi_lpc_comp->regs + DSI_LPC_EN);
-			writel((val & ~mask) | value, dsi_lpc_comp->regs + DSI_LPC_EN);
+			val = readl(comp->regs + DSI_LPC_EN);
+			writel((val & ~mask) | value, comp->regs + DSI_LPC_EN);
 		} else
-			cmdq_pkt_write(cmdq_handle, dsi_lpc_comp->cmdq_base,
-					dsi_lpc_comp->regs_pa + DSI_LPC_EN, value, mask);
+			cmdq_pkt_write(cmdq_handle, comp->cmdq_base,
+					comp->regs_pa + DSI_LPC_EN, value, mask);
 
 	} else {
 		value = (REG_FLD_VAL((DSI_LPC_DBG_MON_RST), 0x1));
 		mask = REG_FLD_MASK(DSI_LPC_DBG_MON_RST);
 
 		if (cmdq_handle == NULL) {
-			val = readl(dsi_lpc_comp->regs + DSI_LPC_EN);
-			writel((val & ~mask) | value, dsi_lpc_comp->regs + DSI_LPC_EN);
+			val = readl(comp->regs + DSI_LPC_EN);
+			writel((val & ~mask) | value, comp->regs + DSI_LPC_EN);
 		} else
-			cmdq_pkt_write(cmdq_handle, dsi_lpc_comp->cmdq_base,
-					dsi_lpc_comp->regs_pa + DSI_LPC_EN, value, mask);
+			cmdq_pkt_write(cmdq_handle, comp->cmdq_base,
+					comp->regs_pa + DSI_LPC_EN, value, mask);
 
 		value = (REG_FLD_VAL((DSI_LPC_DBG_MON_RST), 0x0));
 
 		if (cmdq_handle == NULL) {
-			val = readl(dsi_lpc_comp->regs + DSI_LPC_EN);
-			writel((val & ~mask) | value, dsi_lpc_comp->regs + DSI_LPC_EN);
+			val = readl(comp->regs + DSI_LPC_EN);
+			writel((val & ~mask) | value, comp->regs + DSI_LPC_EN);
 		} else
-			cmdq_pkt_write(cmdq_handle, dsi_lpc_comp->cmdq_base,
-					dsi_lpc_comp->regs_pa + DSI_LPC_EN, value, mask);
+			cmdq_pkt_write(cmdq_handle, comp->cmdq_base,
+					comp->regs_pa + DSI_LPC_EN, value, mask);
 	}
 }
 
@@ -243,40 +243,20 @@ static int mtk_dsi_lpc_unit(struct mtk_drm_crtc *mtk_crtc)
 bool mtk_dsi_lpc_en(struct mtk_drm_crtc *mtk_crtc)
 {
 	int index = mtk_dsi_lpc_unit(mtk_crtc);
-	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
-	struct mtk_ddp_comp *comp = mtk_ddp_comp_request_output_lpc(mtk_crtc);
-	struct mtk_dsi_lpc *lpc = comp_to_dsi_lpc(comp);
-
-	if (!priv)
-		return false;
-
-	if (!priv->data->support_lpc)
-		return false;
-
-	if (lpc_disable) {
-		DDPDBG("%s, lpc_disable\n", __func__);
-		return false;
-	}
+	struct mtk_ddp_comp *comp = NULL;
+	struct mtk_dsi_lpc *lpc = NULL;
 
 	if (index != 0) {
-		DDPDBG("%s, only support dsi0\n", __func__);
+		DDPDBG("%s: only support dsi0\n", __func__);
 		return false;
 	}
 
-	if (!mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base)) {
-		DDPDBG("%s, lpc only support cmd mode\n", __func__);
+	comp = mtk_ddp_comp_request_output_lpc(mtk_crtc);
+	if (!comp)
 		return false;
-	}
 
-	if (!mtk_drm_lcm_is_connect(mtk_crtc)) {
-		DDPDBG("%s, lcm is not connected\n", __func__);
-		return false;
-	}
-
-	if (mtk_crtc && mtk_crtc->base.dev) {
-		if (!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_DSI_LPC_EN))
-			return false;
-	} else
+	lpc = comp_to_dsi_lpc(comp);
+	if (!lpc)
 		return false;
 
 	return lpc->dsi_lpc_en;
@@ -609,10 +589,10 @@ void mtk_dsi_lpc_init_config(struct drm_crtc *crtc, struct mtk_ddp_comp *comp)
 	struct mtk_panel_params *params = NULL;
 	struct mtk_drm_private *priv = NULL;
 	struct mtk_dsi_lpc *lpc = comp_to_dsi_lpc(comp);
-	int index = 0;
+	int index = mtk_dsi_lpc_unit(mtk_crtc);
 	unsigned int dsi_lpc_te_con = 0;
 	unsigned long dsi_lpc_fake_te_prd = 0;
-	bool lpc_en = false;
+	bool lpc_en = true;
 	bool te_en = false;
 
 	drm_trace_tag_start("lpc_init_config");
@@ -620,35 +600,49 @@ void mtk_dsi_lpc_init_config(struct drm_crtc *crtc, struct mtk_ddp_comp *comp)
 	set_pl_kernel_offset(comp);
 
 	params = mtk_drm_get_lcm_ext_params(crtc);
-	if (!params) {
-		DDPMSG("%s,lcm params pointer is NULL\n", __func__);
-		mtk_set_dsi_lpc_en(comp, false);
-	} else {
+	if (!params)
+		lpc_en = false;
+
+	if (!mtk_drm_lcm_is_connect(mtk_crtc))
+		lpc_en = false;
+
+	if (!mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base))
+		lpc_en = false;
+
+	priv = mtk_crtc->base.dev->dev_private;
+	if (!priv)
+		lpc_en = false;
+
+	if (!priv->data->support_lpc)
+		lpc_en = false;
+
+	if (!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_DSI_LPC_EN))
+		lpc_en = false;
+
+	mtk_set_dsi_lpc_en(comp, lpc_en);
+
+	if (lpc_en) {
 		/* set MTE mode */
 		dsi_lpc_te_con = 2;
-		if (params->skip_vblank) {
+		if (params->skip_vblank)
 			dsi_lpc_te_con |= params->skip_vblank << 8;
-		}
 		writel(dsi_lpc_te_con, comp->regs+ DSI_LPC_TE_CON0(index));
 
 		/* real_te_duration (us), FAKE_TE_PRD (26M clock cycle) */
 		dsi_lpc_fake_te_prd = params->real_te_duration * 26;
 		writel(dsi_lpc_fake_te_prd, comp->regs + DSI_LPC_TE_CON1(index));
+
+		DDPINFO("%s, lpc_en:%d, te_num:%d, fake_te_prd:%lu\n", __func__,
+			lpc_en, params->skip_vblank, dsi_lpc_fake_te_prd);
+
+		te_en = lpc->dsi_lpc_te_irq_en | mtk_drm_helper_get_opt(priv->helper_opt,
+			MTK_DRM_OPT_HRT_DEBUG);
+		mtk_dsi_lpc_set_te_en(mtk_crtc, te_en);
 	}
-
-	lpc_en = mtk_dsi_lpc_en(mtk_crtc);
-
-	DDPINFO("%s, lpc_en:%d, te_num:%d,fake_te_prd:%lu\n", __func__,
-		lpc_en, params->skip_vblank,dsi_lpc_fake_te_prd);
 
 	mtk_dsi_set_lpc_en(lpc_en, comp);
 	mtk_dsi_lpc_unit_en(lpc_en, index, comp);
 
-	priv = mtk_crtc->base.dev->dev_private;
-	if (priv) {
-		te_en = lpc->dsi_lpc_te_irq_en | mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_HRT_DEBUG);
-		mtk_dsi_lpc_set_te_en(mtk_crtc, te_en);
-	}
 	drm_trace_tag_end("lpc_init_config");
 }
 static int mtk_dsi_lpc_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
@@ -885,7 +879,6 @@ static int mtk_dsi_lpc_probe(struct platform_device *pdev)
 	dsi_lpc->dsi_lpc_en = true;
 
 	mtk_ddp_comp_pm_enable(&dsi_lpc->ddp_comp);
-	dsi_lpc_comp = &dsi_lpc->ddp_comp;
 
 	ret = component_add(dev, &mtk_dsi_lpc_component_ops);
 	if (ret != 0) {
