@@ -2287,6 +2287,8 @@ static void mtk_atomic_delay(struct mtk_drm_private *private,
 	unsigned long long ept_time = mtk_state->prop_val[CRTC_PROP_EPT];
 	unsigned int te_step_time = 0;
 	unsigned long long x_time = 0;
+	struct mtk_drm_crtc *mtk_crtc;
+	uint64_t atomic_commit_reserved_ns = 0;
 
 	if (!private|| !private->drm) {
 		DDPPR_ERR("%s:%d invalid fetching\n", __func__, __LINE__);
@@ -2302,9 +2304,10 @@ static void mtk_atomic_delay(struct mtk_drm_private *private,
 		return;
 	}
 
+	mtk_crtc = to_mtk_crtc(crtc);
 	params = mtk_drm_get_lcm_ext_params(crtc);
 	crtc_index = drm_crtc_index(crtc);
-
+	atomic_commit_reserved_ns = mtk_crtc->crtc_caps.atomic_commit_reserved_ns;
 	if (!params) {
 		DDPPR_ERR("%s:%d invalid fetching\n", __func__, __LINE__);
 		return;
@@ -2314,6 +2317,7 @@ static void mtk_atomic_delay(struct mtk_drm_private *private,
 	DDPDBG("%s:%d te_step_time:%u\n", __func__, __LINE__, te_step_time);
 
 	if ((ept_time == 0) || (te_step_time == 0) ||
+		(atomic_commit_reserved_ns == 0) ||
 		(ept_time/1000 <= current_time/1000) ||
 		(mtk_state->prop_val[CRTC_PROP_USER_SCEN] == 1))
 		return;
@@ -2321,8 +2325,8 @@ static void mtk_atomic_delay(struct mtk_drm_private *private,
 	// Sleep without LOCK: sleep to (EPT - 3ms)
 	// Ideally, atomic commit can be finished within 2ms
 	x_time = ept_time/1000 - current_time/1000;
-	if (x_time > 3000)
-		delay_us = x_time - 3000;
+	if (x_time > atomic_commit_reserved_ns/1000)
+		delay_us = x_time - atomic_commit_reserved_ns/1000;
 	else
 		delay_us = 0;
 	if (delay_us == 0)

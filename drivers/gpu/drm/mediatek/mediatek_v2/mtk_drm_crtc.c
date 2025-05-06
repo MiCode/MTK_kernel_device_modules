@@ -24100,6 +24100,7 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 			if (mtk_drm_helper_get_opt(priv->helper_opt,
 					MTK_DRM_OPT_WAIT_EPT)) {
 				mtk_crtc->crtc_caps.crtc_ability |= ABILITY_WAIT_EPT;
+				mtk_crtc->crtc_caps.atomic_commit_reserved_ns = 3000000;
 			}
 		} else {
 
