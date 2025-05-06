@@ -1737,6 +1737,10 @@
 		compatible = "mediatek,mtk_composite_v4l2_1";
 	};
 
+	kd_camera_hw1:kd-camera-hw1 {
+		compatible = "mediatek,imgsensor";
+	};
+
 	camera_af_hw_node: camera_af_hw_node {
 		compatible = "mediatek,camera_af_lens";
 	};
@@ -2436,10 +2440,6 @@
 				"TOP_UNIVP_192M_D32";
 			operating-points-v2 = <&opp_table_cam>;
 			dvfsrc-vcore-supply = <&dvfsrc_vcore>;
-		};
-
-		kd_camera_hw1:kd_camera_hw1@1a004000 {
-			compatible = "mediatek,imgsensor";
 		};
 
 		seninf_n3d_top: seninf_n3d_top@1a004000 {
