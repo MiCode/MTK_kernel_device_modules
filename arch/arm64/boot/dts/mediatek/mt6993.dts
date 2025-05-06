@@ -6764,7 +6764,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"RDMA0_AIDSEL", "WROT0_AIDSEL",
 				"WROT1_AIDSEL", "WROT2_AIDSEL",
 				"FAKE0_AIDSEL", "WDMA0_AIDSEL",
-				"WDMA1_AIDSEL";
+				"WDMA1_AIDSEL",
+
+				"MML0_GALS_DBG_0", "MML0_GALS_DBG_1",
+				"MML0_GALS_DBG_2", "MML0_GALS_DBG_3";
 			dbg-reg-offsets =
 				<MMLSYS_MISC>, <MML_CG_CON0>, <MML_CG_CON1>,
 				<MML_SW0_RST_B>, <MML_SW1_RST_B>, <MML_MOUT_RST>,
@@ -6805,7 +6808,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<MML_RDMA0_AIDSEL>, <MML_WROT0_AIDSEL>,
 				<MML_WROT1_AIDSEL>, <MML_WROT2_AIDSEL>,
 				<MML_FAKE0_AIDSEL>, <MML_WDMA0_AIDSEL>,
-				<MML_WDMA1_AIDSEL>;
+				<MML_WDMA1_AIDSEL>,
+
+				<MML_GALS_DBG_0>, <MML_GALS_DBG_1>,
+				<MML_GALS_DBG_2>, <MML_GALS_DBG_3>;
 			gce-event-sel-offset = /bits/ 16 <GCE_FRAME_DONE_SEL0>;
 			gce-merged-event = /bits/ 16 <CMDQ_EVENT_MML0_GCE_FRAME_DONE_0>;
 			gce-event-sels = /bits/ 16 <
@@ -7005,7 +7011,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"RDMA0_AIDSEL", "WROT0_AIDSEL",
 				"WROT1_AIDSEL", "WROT2_AIDSEL",
 				"FAKE0_AIDSEL", "WDMA0_AIDSEL",
-				"WDMA1_AIDSEL";
+				"WDMA1_AIDSEL",
+
+				"MML1_GALS_DBG_0", "MML1_GALS_DBG_1",
+				"MML1_GALS_DBG_2", "MML1_GALS_DBG_3";
 			dbg-reg-offsets =
 				<MMLSYS_MISC>, <MML_CG_CON0>, <MML_CG_CON1>,
 				<MML_SW0_RST_B>, <MML_SW1_RST_B>, <MML_MOUT_RST>,
@@ -7046,7 +7055,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<MML_RDMA0_AIDSEL>, <MML_WROT0_AIDSEL>,
 				<MML_WROT1_AIDSEL>, <MML_WROT2_AIDSEL>,
 				<MML_FAKE0_AIDSEL>, <MML_WDMA0_AIDSEL>,
-				<MML_WDMA1_AIDSEL>;
+				<MML_WDMA1_AIDSEL>,
+
+				<MML_GALS_DBG_0>, <MML_GALS_DBG_1>,
+				<MML_GALS_DBG_2>, <MML_GALS_DBG_3>;
 
 			gce-event-sel-offset = /bits/ 16 <GCE_FRAME_DONE_SEL0>;
 			gce-merged-event = /bits/ 16 <CMDQ_EVENT_MML1_GCE_FRAME_DONE_0>;
@@ -7400,7 +7412,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"RDMA0_AIDSEL", "WROT0_AIDSEL",
 				"WROT1_AIDSEL", "WROT2_AIDSEL",
 				"FAKE0_AIDSEL", "WDMA0_AIDSEL",
-				"WDMA1_AIDSEL";
+				"WDMA1_AIDSEL",
+
+				"MML2_GALS_DBG_0", "MML2_GALS_DBG_1",
+				"MML2_GALS_DBG_2", "MML2_GALS_DBG_3";
 			dbg-reg-offsets =
 				<MMLSYS_MISC>, <MML_CG_CON0>, <MML_CG_CON1>,
 				<MML_SW0_RST_B>, <MML_SW1_RST_B>, <MML_MOUT_RST>,
@@ -7468,7 +7483,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<MML_RDMA0_AIDSEL>, <MML_WROT0_AIDSEL>,
 				<MML_WROT1_AIDSEL>, <MML_WROT2_AIDSEL>,
 				<MML_FAKE0_AIDSEL>, <MML_WDMA0_AIDSEL>,
-				<MML_WDMA1_AIDSEL>;
+				<MML_WDMA1_AIDSEL>,
+
+				<MML_GALS_DBG_0>, <MML_GALS_DBG_1>,
+				<MML_GALS_DBG_2>, <MML_GALS_DBG_3>;
 
 			gce-event-sel-offset = /bits/ 16 <GCE_FRAME_DONE_SEL0>;
 			gce-merged-event = /bits/ 16 <CMDQ_EVENT_MML2_GCE_FRAME_DONE_0>;
