@@ -12969,7 +12969,7 @@
 
 	low_battery_throttling: low-battery-throttling {
 		compatible = "mediatek,low_battery_throttling";
-		vbat-thd-enable = <0>;
+		vbat-thd-enable = <1>;
 		lvsys-thd-enable = <0>;
 		bat0-thd-volts-l = <
 			3150 3000 2900
@@ -12988,6 +12988,7 @@
 				<0 1 2 3>,
 				<0 1 2 3>;
 		bootmode = <&chosen>;
+		gauge = <&mtk_gauge>;
 	};
 
 	pbm: pbm {
