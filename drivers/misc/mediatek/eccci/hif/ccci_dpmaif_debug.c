@@ -27,17 +27,18 @@ struct dpmaif_debug_buffer {
 	atomic_t          dbg_user_cnt;
 	wait_queue_head_t dbg_wq;
 	spinlock_t        dbg_lock;
-	atomic_t      status; //0:CLOSE, 1:OPEN
+
 	char         *data;
 	unsigned int  rd;
 	unsigned int  wr;
-	unsigned int  buf_len;
+
 	int           pre_call_wq;
 };
 
 
 static struct dpmaif_debug_buffer g_debug_buf;
-static atomic_t                   g_debug_buf_len;
+static unsigned int               g_debug_buf_len;
+
 unsigned int                      g_debug_flags;
 
 
@@ -167,10 +168,10 @@ void ccci_dpmaif_debug_add(void *data, int len)
 	if (g_debug_buf.data == NULL)
 		goto _func_exit_;
 
-	free_cnt = get_ringbuf_free_cnt(g_debug_buf.buf_len, g_debug_buf.rd, g_debug_buf.wr);
+	free_cnt = get_ringbuf_free_cnt(g_debug_buf_len, g_debug_buf.rd, g_debug_buf.wr);
 	if (len <= free_cnt) {
-		if ((g_debug_buf.wr + len) > g_debug_buf.buf_len) {
-			int s = g_debug_buf.buf_len - g_debug_buf.wr;
+		if ((g_debug_buf.wr + len) > g_debug_buf_len) {
+			int s = g_debug_buf_len - g_debug_buf.wr;
 
 			memcpy(g_debug_buf.data + g_debug_buf.wr, data, s);
 			memcpy(g_debug_buf.data, data + s, len - s);
@@ -180,9 +181,9 @@ void ccci_dpmaif_debug_add(void *data, int len)
 		/* for cpu exec. */
 		smp_wmb();
 
-		g_debug_buf.wr = get_ringbuf_next_idx(g_debug_buf.buf_len, g_debug_buf.wr, len);
+		g_debug_buf.wr = get_ringbuf_next_idx(g_debug_buf_len, g_debug_buf.wr, len);
 
-		len += (g_debug_buf.buf_len - free_cnt);
+		len += (g_debug_buf_len - free_cnt);
 		if (len > g_debug_buf.pre_call_wq) {
 			if ((len - g_debug_buf.pre_call_wq) > DEBUG_MIN_READ_LEN) {
 				g_debug_buf.pre_call_wq += DEBUG_MIN_READ_LEN;
@@ -199,52 +200,50 @@ _func_exit_:
 static ssize_t dpmaif_debug_read(struct file *file, char __user *buf,
 		size_t size, loff_t *ppos)
 {
-	unsigned int read_len = 0;
-	int ret = 0, len;
-	unsigned long flags = 0;
+	unsigned int read_len;
+	int ret, len;
 
-	spin_lock_irqsave(&g_debug_buf.dbg_lock, flags);
 	if (g_debug_buf.data == NULL)
-		goto _func_exit_;
+		return 0;
 
-	read_len = get_ringbuf_used_cnt(g_debug_buf.buf_len, g_debug_buf.rd, g_debug_buf.wr);
+	read_len = get_ringbuf_used_cnt(g_debug_buf_len, g_debug_buf.rd, g_debug_buf.wr);
 	if (read_len == 0)
-		goto _func_exit_;
+		return 0;
 
 	if (read_len > size)
 		read_len = size;
 
-	if ((g_debug_buf.rd + read_len) > g_debug_buf.buf_len) {
-		len = g_debug_buf.buf_len - g_debug_buf.rd;
+	if ((g_debug_buf.rd + read_len) > g_debug_buf_len) {
+		len = g_debug_buf_len - g_debug_buf.rd;
 
 		ret = copy_to_user(buf, g_debug_buf.data + g_debug_buf.rd, len);
-		if (ret)
-			goto _func_exit_;
+		if (ret) {
+			CCCI_ERROR_LOG(-1, TAG,
+				"[%s] error: copy_to_user() fail; len: %d(%d)\n",
+				__func__, len, ret);
+			return 0;
+		}
 
 		ret = copy_to_user(buf + len, g_debug_buf.data, read_len - len);
 
 	} else
 		ret = copy_to_user(buf, g_debug_buf.data + g_debug_buf.rd, read_len);
 
-	if (ret)
-		goto _func_exit_;
-
-	g_debug_buf.rd = get_ringbuf_next_idx(g_debug_buf.buf_len, g_debug_buf.rd, read_len);
-	spin_unlock_irqrestore(&g_debug_buf.dbg_lock, flags);
-	return read_len;
-
-_func_exit_:
-	spin_unlock_irqrestore(&g_debug_buf.dbg_lock, flags);
-	if (ret)
+	if (ret) {
 		CCCI_ERROR_LOG(-1, TAG,
 			"[%s] error: copy_to_user() fail; read_len: %d(%d)\n",
 			__func__, read_len, ret);
-	return 0;
+		return 0;
+	}
+
+	g_debug_buf.rd = get_ringbuf_next_idx(g_debug_buf_len, g_debug_buf.rd, read_len);
+
+	return read_len;
 }
 
 static void dpmaif_sysfs_parse(char *buf, int size)
 {
-	char *psub = NULL, *pname = NULL, *pvalue = NULL;
+	char *psub = NULL, *pname = NULL, *pvalue = NULL, *pdata = NULL;
 	unsigned int debug_buf_len = 0, wake_up_flag = 0;
 	unsigned long flags = 0;
 
@@ -288,10 +287,26 @@ static void dpmaif_sysfs_parse(char *buf, int size)
 		pname = psub;
 	}
 
-	spin_lock_irqsave(&g_debug_buf.dbg_lock, flags);
-	if ((debug_buf_len > 0) && (atomic_read(&g_debug_buf_len) != debug_buf_len))
-		atomic_set(&g_debug_buf_len, debug_buf_len);
-	spin_unlock_irqrestore(&g_debug_buf.dbg_lock, flags);
+	if ((debug_buf_len > 0) && (g_debug_buf_len != debug_buf_len)) {
+		spin_lock_irqsave(&g_debug_buf.dbg_lock, flags);
+
+		pdata = g_debug_buf.data;
+		g_debug_buf.data = NULL;
+		g_debug_buf.rd  = 0;
+		g_debug_buf.wr  = 0;
+		g_debug_buf.pre_call_wq = 0;
+		g_debug_buf_len = debug_buf_len;
+
+		spin_unlock_irqrestore(&g_debug_buf.dbg_lock, flags);
+
+		if (pdata)
+			vfree(pdata);
+
+		g_debug_buf.data = vmalloc(g_debug_buf_len);
+		CCCI_NORMAL_LOG(-1, TAG, "[%s] vmalloc(%u): %p\n",
+			__func__, g_debug_buf_len, g_debug_buf.data);
+
+	}
 }
 
 #define MAX_WRITE_LEN 300
@@ -320,83 +335,42 @@ static ssize_t dpmaif_debug_write(struct file *fp, const char __user *buf,
 
 static unsigned int dpmaif_debug_poll(struct file *fp, struct poll_table_struct *poll)
 {
-	unsigned long flags = 0;
-
 	poll_wait(fp, &g_debug_buf.dbg_wq, poll);
 
-	spin_lock_irqsave(&g_debug_buf.dbg_lock, flags);
-	if (get_ringbuf_used_cnt(g_debug_buf.buf_len, g_debug_buf.rd, g_debug_buf.wr)) {
-		spin_unlock_irqrestore(&g_debug_buf.dbg_lock, flags);
+	if (get_ringbuf_used_cnt(g_debug_buf_len, g_debug_buf.rd, g_debug_buf.wr))
 		return (POLLIN | POLLRDNORM);
-	}
-	spin_unlock_irqrestore(&g_debug_buf.dbg_lock, flags);
+
 	return 0;
 }
 
 static int dpmaif_debug_open(struct inode *inode, struct file *file)
 {
-	unsigned long flags = 0;
-	char *pdata = NULL, *pfreedata = NULL;
-	unsigned int plen = 0;
-	bool need_realloc = false;
-
-	spin_lock_irqsave(&g_debug_buf.dbg_lock, flags);
-	if (atomic_read(&g_debug_buf.dbg_user_cnt)) {
-		atomic_set(&g_debug_buf.status, 1);
-		spin_unlock_irqrestore(&g_debug_buf.dbg_lock, flags);
+	if (!g_debug_buf.data) {
+		if (!g_debug_buf_len)
+			g_debug_buf_len = 1024 * 1024; //1MB buffer size
+		g_debug_buf.data = vmalloc(g_debug_buf_len);
+		CCCI_NORMAL_LOG(-1, TAG, "[%s] vmalloc(%u): %p\n",
+			__func__, g_debug_buf_len, g_debug_buf.data);
+	}
+	if (atomic_inc_return(&g_debug_buf.dbg_user_cnt) > 1) {
+		atomic_set(&g_debug_buf.dbg_user_cnt, 1);
 		return -EBUSY;
 	}
 
-	atomic_inc(&g_debug_buf.dbg_user_cnt);
-	plen = atomic_read(&g_debug_buf_len);
-
-	if (!g_debug_buf.data || plen != g_debug_buf.buf_len) {
-		need_realloc = true;
-		pfreedata = g_debug_buf.data;
-		if (pfreedata) {
-			g_debug_buf.data = NULL;
-			g_debug_buf.rd  = 0;
-			g_debug_buf.wr  = 0;
-			g_debug_buf.pre_call_wq = 0;
-		}
-	}
-	spin_unlock_irqrestore(&g_debug_buf.dbg_lock, flags);
-
-	if (need_realloc) {
-		if (pfreedata)
-			vfree(pfreedata);
-		pdata = vmalloc(plen);
-		if (!pdata)
-			return -ENOMEM;
-		CCCI_NORMAL_LOG(-1, TAG, "[%s] vmalloc(%u):%p\n",
-			__func__, plen, pdata);
-	}
-
-	spin_lock_irqsave(&g_debug_buf.dbg_lock, flags);
-	if (need_realloc) {
-		g_debug_buf.buf_len = plen;
-		g_debug_buf.data = pdata;
-	}
 	g_debug_flags = 0xFFFFFFFF;
+	CCCI_NORMAL_LOG(-1, TAG, "[%s] name: %s\n", __func__, current->comm);
 
-	atomic_set(&g_debug_buf.status, 1);
-	spin_unlock_irqrestore(&g_debug_buf.dbg_lock, flags);
-	CCCI_NORMAL_LOG(-1, TAG, "[%s] name: %s:%p\n", __func__, current->comm, g_debug_buf.data);
 	return 0;
 }
 
 static int dpmaif_debug_close(struct inode *inode, struct file *file)
 {
-	unsigned long flags = 0;
+	if (atomic_dec_return(&g_debug_buf.dbg_user_cnt) < 0)
+		atomic_set(&g_debug_buf.dbg_user_cnt, 0);
 
-	/* wait until vmalloc is finished */
-	while (!atomic_read(&g_debug_buf.status))
-		udelay(500);
-	spin_lock_irqsave(&g_debug_buf.dbg_lock, flags);
-	atomic_dec(&g_debug_buf.dbg_user_cnt);
 	g_debug_flags = 0;
-	atomic_set(&g_debug_buf.status, 0);
-	spin_unlock_irqrestore(&g_debug_buf.dbg_lock, flags);
+	CCCI_NORMAL_LOG(-1, TAG, "[%s] name: %s\n", __func__, current->comm);
+
 	return 0;
 }
 
@@ -450,17 +424,16 @@ void ccci_dpmaif_debug_init(void)
 {
 	struct proc_dir_entry *dpmaif_debug_proc;
 
-	g_debug_buf.buf_len = 0;
+	g_debug_buf_len = 0;
 	g_debug_flags   = 0;
-	atomic_set(&g_debug_buf_len, 1024 * 1024);
+
 	atomic_set(&g_debug_buf.dbg_user_cnt, 0);
-	atomic_set(&g_debug_buf.status, 0);
 	g_debug_buf.data = NULL;
 	g_debug_buf.rd   = 0;
 	g_debug_buf.wr   = 0;
 	g_debug_buf.pre_call_wq = 0;
 
-	dpmaif_debug_proc = proc_create("dpmaif_debug", 0644, NULL, &g_dpmaif_debug_fops);
+	dpmaif_debug_proc = proc_create("dpmaif_debug", 0664, NULL, &g_dpmaif_debug_fops);
 	if (dpmaif_debug_proc == NULL) {
 		CCCI_ERROR_LOG(-1, TAG, "[%s] error: proc_create fail.\n", __func__);
 		return;
