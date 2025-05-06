@@ -21378,10 +21378,8 @@ static int mtk_crtc_partial_compute_ovl_roi(struct drm_crtc *crtc,
 		_assign_full_lcm_roi(crtc, result, true);
 	}
 
-	if (mtk_rect_is_empty(result)) {
-		DDPDBG(" total roi is empty, force full roi\n");
-		_assign_full_lcm_roi(crtc, result, true);
-	}
+	if (mtk_rect_is_empty(result))
+		DDPDBG(" total roi is empty, force min roi\n");
 
 	return 0;
 }
