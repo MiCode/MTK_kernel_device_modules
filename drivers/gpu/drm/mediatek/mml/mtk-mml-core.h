@@ -598,11 +598,11 @@ struct mml_frame_config {
 	const struct mml_task_ops *task_ops;
 	const struct mml_config_ops *cfg_ops;
 
-	/* workqueue for handling slow part of task done */
-	struct workqueue_struct *wq_done;
+	/* kthread worker for cmdq irq callback signal hardware done, assign from ctx */
+	struct kthread_worker *ctx_kt_hwdone;
 
-	/* kthread worker for task done, assign from ctx */
-	struct kthread_worker *ctx_kt_done;
+	/* kthread worker for task done slow part, assign from ctx */
+	struct kthread_worker *ctx_kt_taskdone;
 
 	/* use on context wq_destroy */
 	struct work_struct work_destroy;
@@ -770,8 +770,8 @@ struct mml_task {
 
 	/* config and done on thread */
 	struct kthread_work work_config[MML_PIPE_CNT];
-	struct work_struct work_done;
-	struct kthread_work kt_work_done;
+	struct kthread_work kt_work_hwdone;
+	struct kthread_work kt_work_taskdone;
 	atomic_t pipe_done;
 	atomic_t isr_ref;
 	struct mml_isr_node *isr_nodes;

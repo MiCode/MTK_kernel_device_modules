@@ -426,7 +426,7 @@ static const struct mml_config_ops dle_config_ops = {
 struct mml_dle_ctx *mml_dle_ctx_create(struct mml_dev *mml)
 {
 	static const char * const threads[] = {
-		"mml_dle_done", "mml_destroy_dl",
+		"mml_dle_done", "mml_dle_taskdone", "mml_destroy_dl",
 		NULL, NULL,
 	};
 	struct mml_dle_ctx *ctx;

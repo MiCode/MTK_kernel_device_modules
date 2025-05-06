@@ -1487,7 +1487,7 @@ static const struct v4l2_ioctl_ops mml_m2m_ioctl_ops __maybe_unused = {
 static struct mml_m2m_ctx *m2m_ctx_create(struct mml_dev *mml)
 {
 	static const char * const threads[] = {
-		"mml_m2m_done", "mml_destroy_m2m",
+		"mml_m2m_done", "mml_m2m_taskdone", "mml_destroy_m2m",
 		NULL, NULL,
 	};
 	struct mml_m2m_ctx *ctx;

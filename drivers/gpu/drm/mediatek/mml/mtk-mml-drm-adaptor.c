@@ -959,11 +959,12 @@ s32 mml_drm_submit(struct mml_drm_ctx *dctx, struct mml_submit *submit,
 		task->job.fence = -1;
 	}
 #endif
-	mml_msg("[drm]mml job %u fence fd %d task %p fence %p config %p mode %hhu%s act_t %u",
+	mml_msg("[drm]mml job %u fence fd %d task %p fence %p config %p mode %hhu%s act_t %u fid %u",
 		task->job.jobid, task->job.fence, task, task->fence, cfg,
 		cfg->info.mode,
 		(cfg->info.mode == MML_MODE_RACING && cfg->disp_dual) ? " disp dual" : "",
-		submit->info.act_time);
+		submit->info.act_time,
+		disp_fid);
 
 	/* copy job content back, must do before call submit */
 	if (submit->job)
@@ -1141,7 +1142,7 @@ static struct mml_drm_ctx *drm_ctx_create(struct mml_dev *mml,
 					  struct mml_drm_param *disp)
 {
 	static const char * const threads[] = {
-		"mml_drm_done", "mml_destroy",
+		"mml_drm_done", "mml_taskdone", "mml_destroy",
 		"mml_work0", "mml_work1",
 	};
 	struct mml_drm_ctx *ctx;
@@ -1278,7 +1279,7 @@ void mml_drm_kick_done(struct mml_drm_ctx *dctx)
 	}
 
 	mml_mmp(kick, MMPROFILE_FLAG_PULSE, U32_MAX, 0);
-	kthread_flush_worker(ctx->kt_done);
+	kthread_flush_worker(ctx->kt_hwdone);
 
 	mml_mmp(kick, MMPROFILE_FLAG_END, jobid, 0);
 	mml_msg("[drm]%s kick done job id %u", __func__, jobid);

@@ -21,7 +21,8 @@ struct mml_ctx {
 	atomic_t config_serial;
 	struct kthread_worker *kt_config[MML_PIPE_CNT];
 	struct workqueue_struct *wq_destroy;
-	struct kthread_worker *kt_done;
+	struct kthread_worker *kt_hwdone;
+	struct kthread_worker *kt_taskdone;
 	bool kt_priority;
 	bool disp_dual;
 	bool disp_vdo;
