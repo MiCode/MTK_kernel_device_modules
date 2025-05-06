@@ -2135,6 +2135,8 @@
 			led-mode = <6>;
 			gate-enable = <1>;
 			pwm-config = <0 1 0 0 0>;
+			reg-bat-percent-pt = <1>;
+			bl-bat-pt-percent = <100 100 100 67 67 67>;
 		};
 	};
 
