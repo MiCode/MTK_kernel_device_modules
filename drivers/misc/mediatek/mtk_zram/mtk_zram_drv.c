@@ -38,8 +38,11 @@
 #include <linux/cpuhotplug.h>
 #include <linux/part_stat.h>
 #include <linux/kcompressd.h>
+#include <linux/tracepoint.h>
 
 #include "hwcomp_bridge.h"
+
+#include <trace/hooks/mm.h>
 
 static DEFINE_IDR(zram_index_idr);
 /* idr index must be protected */
@@ -3423,6 +3426,83 @@ static ssize_t comp_mode_store(struct device *dev,
 	return len;
 }
 
+/* For probing interesting tracepoints */
+struct tracepoints_table {
+	const char *name;
+	void *func;
+	struct tracepoint *tp;
+};
+
+#define ZRAM_SWP_READ_SYNCHRONOUS_IO	(1 << 12)	/* __SWP_READ_SYNCHRONOUS_IO */
+static void probe_android_vh_adjust_swap_info_flags(void *ignore, unsigned long *flags)
+{
+	*flags |= ZRAM_SWP_READ_SYNCHRONOUS_IO;
+	pr_info("%s: New swap info flags: %lx\n", __func__, *flags);
+}
+
+static struct tracepoints_table zram_tracepoints[] = {
+{.name = "android_vh_adjust_swap_info_flags", .func = probe_android_vh_adjust_swap_info_flags, .tp = NULL},
+};
+
+#define FOR_EACH_INTEREST(i) \
+	for (i = 0; i < sizeof(zram_tracepoints) / sizeof(struct tracepoints_table); i++)
+
+static void lookup_tracepoints(struct tracepoint *tp, void *ignore)
+{
+	int i;
+
+	FOR_EACH_INTEREST(i) {
+		if (strcmp(zram_tracepoints[i].name, tp->name) == 0)
+			zram_tracepoints[i].tp = tp;
+	}
+}
+
+/* Find out interesting tracepoints and try to register them. */
+static void __init zram_hookup_tracepoints(void)
+{
+	int i, ret;
+
+	/* Find out interesting tracepoints */
+	for_each_kernel_tracepoint(lookup_tracepoints, NULL);
+
+	/* Probing found tracepoints */
+	FOR_EACH_INTEREST(i) {
+		if (zram_tracepoints[i].tp == NULL) {
+			pr_info("Error: %s not found\n", zram_tracepoints[i].name);
+			continue;
+		}
+
+		ret = tracepoint_probe_register(zram_tracepoints[i].tp,	zram_tracepoints[i].func, NULL);
+		if (ret) {
+			pr_info("Failed to register %s\n", zram_tracepoints[i].name);
+
+			/* Set tp as NULL to tell unhook function bypassing this tracepoint */
+			zram_tracepoints[i].tp = NULL;
+		}
+	}
+}
+
+/* Unhook probed tracepoints and try to unregister them. */
+static void __exit zram_unhook_tracepoints(void)
+{
+	int i, ret;
+
+	/* Unhooking probed tracepoints */
+	FOR_EACH_INTEREST(i) {
+		if (zram_tracepoints[i].tp == NULL) {
+			pr_info("%s is not probed\n", zram_tracepoints[i].name);
+			continue;
+		}
+
+		ret = tracepoint_probe_unregister(zram_tracepoints[i].tp, zram_tracepoints[i].func, NULL);
+		if (ret)
+			pr_info("Failed to unregister %s\n", zram_tracepoints[i].name);
+
+		/* Always set tp as NULL after unregister */
+		zram_tracepoints[i].tp = NULL;
+	}
+}
+
 /*
  * Handler function for all zram I/O requests.
  */
@@ -3964,6 +4044,9 @@ static int __init zram_init(void)
 		num_devices--;
 	}
 
+	/* Hook up related tracepoints */
+	zram_hookup_tracepoints();
+
 	return 0;
 
 out_error:
@@ -3973,6 +4056,9 @@ out_error:
 
 static void __exit zram_exit(void)
 {
+	/* Unhook probed tracepoints */
+	zram_unhook_tracepoints();
+
 	destroy_devices();
 }
 
