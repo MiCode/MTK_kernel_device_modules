@@ -59,8 +59,13 @@ struct sbe_render_info {
 	int dep_self_ctrl;
 	int dep_num;
 	int dep_arr[MAX_TASK_NUM];
+	int aff_dep_arr[MAX_TASK_NUM];
 	int ai_boost;
 	int ai_boost_ctl;
+	int frame_count;
+	int frame_cap_count;
+	unsigned long long frame_ctime_count;
+	int affinity_task_mask;
 	unsigned int sbe_rescue;
 	unsigned long long buffer_id;
 	unsigned long long frame_time;

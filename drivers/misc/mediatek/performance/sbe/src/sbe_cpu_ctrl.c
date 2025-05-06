@@ -31,12 +31,14 @@
 #include "sbe_cpu_ctrl.h"
 #include "sbe_usedext.h"
 #include "sbe_sysfs.h"
+#include "core_ctl.h"
 
 #define NSEC_PER_HUSEC 100000
 #define SBE_RESCUE_MODE_UNTIL_QUEUE_END 2
 #define RESCUE_MAX_MONITOR_DROP_ARR_SIZE 10
 #define UX_TARGET_DEFAULT_FPS 60
 #define GAS_ENABLE_FPS 70
+#define SBE_FRAME_CAP_THREASHOLD 35
 #define SBE_BUFFER_FILTER_DROP_THREASHOLD 2
 #define SBE_BUFFER_FILTER_THREASHOLD 2
 #define SBE_RESCUE_MORE_THREASHOLD 5
@@ -419,6 +421,41 @@ out:
 	return blc_wt;
 }
 
+static void sbe_set_dep_affinity(struct sbe_render_info *thr, int r_cpu_mask)
+{
+	int i;
+	struct task_struct *p;
+	struct cpumask new_mask;
+	int cpu;
+
+	if(!set_deplist_affinity || !thr)
+		return;
+
+	cpumask_clear(&new_mask);
+	for_each_possible_cpu (cpu) {
+		if (r_cpu_mask & (1 << cpu))
+			cpumask_set_cpu(cpu, &new_mask);
+	}
+
+	for (i = 0; i < thr->dep_num; i++) {
+		if (thr->aff_dep_arr[i] <= 0)
+			continue;
+
+		rcu_read_lock();
+		p = find_task_by_vpid(thr->aff_dep_arr[i]);
+		if (likely(p))
+			get_task_struct(p);
+		rcu_read_unlock();
+
+		if (likely(p)) {
+			if ((p->flags & PF_NO_SETAFFINITY) == 0)
+				set_cpus_allowed_ptr(p, &new_mask);
+
+			put_task_struct(p);
+		}
+	}
+}
+
 static void __sbe_set_per_task_cap(struct sbe_render_info *thr, int min_cap, int max_cap)
 {
 	int i;
@@ -645,6 +682,12 @@ void sbe_do_frame_end(struct sbe_render_info *thr, unsigned long long frameid,
 	sbe_systrace_c(thr->pid, thr->buffer_id, (int)loading, "[ux]compute_loading");
 
 	thr->ux_blc_next = sbe_cal_perf(runtime, targettime, thr, loading);
+
+	if (sbe_dy_rescue_enable) {
+		thr->frame_count++;
+		thr->frame_cap_count += thr->ux_blc_next;
+		thr->frame_ctime_count += nsec_to_100usec(runtime);
+	}
 
 	if ((thr->pid != global_ux_max_pid && thr->ux_blc_next > global_ux_blc) ||
 		thr->pid == global_ux_max_pid)
@@ -1070,6 +1113,8 @@ int sbe_calculate_dy_enhance(struct sbe_render_info *thr)
 	int result = -1;
 	int scroll_count = 0;
 	unsigned long long rescue_target_time = 0LLU;
+	int score = 0;
+	int max_avg_cap = 0;
 
 	if (!sbe_dy_rescue_enable || !thr || IS_ERR_OR_NULL(&thr->scroll_list))
 		return result;
@@ -1094,17 +1139,69 @@ int sbe_calculate_dy_enhance(struct sbe_render_info *thr)
 	}
 
 	list_for_each_entry (scroll_info, &thr->scroll_list, queue_list) {
-		if (IS_ERR_OR_NULL(&scroll_info->frame_list)
-				|| scroll_info->jank_count <= 0) {
+		if (IS_ERR_OR_NULL(&scroll_info->frame_list))
 			continue;
-		}
 
-		all_rescue_cap_count += scroll_info->rescue_cap_count;
-		all_rescue_frame_time_count += scroll_info->rescue_frame_time_count;
-		all_rescue_frame_count += scroll_info->rescue_frame_count;
+		//caclulate rescue info
+		if (scroll_info->jank_count > 0) {
+			int rescue_rate = 0;
+
+			all_rescue_cap_count += scroll_info->rescue_cap_count;
+			all_rescue_frame_time_count += scroll_info->rescue_frame_time_count;
+			all_rescue_frame_count += scroll_info->rescue_frame_count;
+
+			if (scroll_info->frame_count > 0) {
+				unsigned long long rescue_area =
+						scroll_info->rescue_frame_count * 100;
+				rescue_rate = (int)div64_u64(rescue_area,
+						scroll_info->frame_count);
+				if (rescue_rate >= 10)
+					score += 3;
+				else if (rescue_rate >= 7)
+					score += 2;
+				else if (rescue_rate >= 4)
+					score++;
+			}
+
+			if (scroll_info->rescue_frame_count >= 20)
+				score += 3;
+			else if (scroll_info->rescue_frame_count >= 10)
+				score += 2;
+			else if (scroll_info->rescue_frame_count > 6)
+				score++;
+		}
+		if (scroll_info->frame_count > 0) {
+			unsigned long long avg_tcpu_time = div64_u64(scroll_info->frame_ctime_count,
+						scroll_info->frame_count);
+			int avg_cap = (int)div64_u64(scroll_info->frame_cap_count,
+						scroll_info->frame_count);
+
+			if (avg_tcpu_time > nsec_to_100usec(target_time))
+				score++;
+
+			if (avg_cap >= SBE_FRAME_CAP_THREASHOLD) {
+				score += 4;
+				if (avg_cap > max_avg_cap)
+					max_avg_cap = avg_cap;
+			}
+		}
 	}
 
 	last_enhance = thr->sbe_dy_enhance_f > 0 ? thr->sbe_dy_enhance_f : sbe_enhance_f;
+	thr->affinity_task_mask = 0;
+
+	if (set_deplist_affinity
+			&& (all_rescue_frame_count > 20 || max_avg_cap >= SBE_FRAME_CAP_THREASHOLD)) {
+		if (last_enhance >= 60)
+			score += 2;
+		else if (last_enhance > SBE_FRAME_CAP_THREASHOLD)
+			score++;
+
+		if (score >= 5)
+			thr->affinity_task_mask = SBE_PREFER_M;
+		else
+			thr->affinity_task_mask = 0;
+	}
 
 	if (all_rescue_frame_count > 0 && all_rescue_frame_time_count > 0) {
 		int max_enhance = clamp(sbe_dy_max_enhance, 0, 100);
@@ -1203,6 +1300,27 @@ int sbe_calculate_dy_enhance(struct sbe_render_info *thr)
 	return result;
 }
 
+void sbe_ux_scrolling_start(int type, unsigned long long start_ts, struct sbe_render_info *thr)
+{
+	enqueue_ux_scroll_info(type, start_ts, thr);
+
+	// enable cluster 1
+	if (thr->affinity_task_mask) {
+		//CLEAR BEFORE SET
+		sbe_set_dep_affinity(thr, SBE_PREFER_NONE);
+
+		//copy dep set new
+		memset(thr->aff_dep_arr, 0, sizeof(int) * MAX_TASK_NUM);
+		memcpy(thr->aff_dep_arr, thr->dep_arr, sizeof(int) * MAX_TASK_NUM);
+
+		//Set new dep
+		sbe_set_affinity_on_scrolling(thr->tgid, thr->affinity_task_mask);
+		sbe_set_affinity_on_scrolling(thr->pid, thr->affinity_task_mask);
+		sbe_set_dep_affinity(thr, thr->affinity_task_mask);
+	}
+
+}
+
 void sbe_ux_scrolling_end(struct sbe_render_info *thr)
 {
 	struct ux_scroll_info *scroll_info;
@@ -1210,11 +1328,26 @@ void sbe_ux_scrolling_end(struct sbe_render_info *thr)
 	if (!thr || !sbe_dy_rescue_enable)
 		return;
 
-	//reset rescue affnity if needed
-	scroll_info = get_latest_ux_scroll_info(thr);
-	if (scroll_info && scroll_info->rescue_with_perf_mode > 0) {
+	//disable cluster 1 -> add device config
+	if (thr->affinity_task_mask) {
+		sbe_set_dep_affinity(thr, SBE_PREFER_NONE);
 		sbe_set_affinity_on_scrolling(thr->tgid, SBE_PREFER_NONE);
 		sbe_set_affinity_on_scrolling(thr->pid, SBE_PREFER_NONE);
+	}
+
+	//reset rescue affnity if needed
+	scroll_info = get_latest_ux_scroll_info(thr);
+	if (scroll_info) {
+		scroll_info->frame_count = thr->frame_count;
+		scroll_info->frame_cap_count = thr->frame_cap_count;
+		scroll_info->frame_ctime_count = thr->frame_ctime_count;
+		thr->frame_cap_count = 0;
+		thr->frame_ctime_count = 0;
+		thr->frame_count = 0;
+		if (scroll_info->rescue_with_perf_mode) {
+			sbe_set_affinity_on_scrolling(thr->tgid, SBE_PREFER_NONE);
+			sbe_set_affinity_on_scrolling(thr->pid, SBE_PREFER_NONE);
+		}
 	}
 
 	thr->sbe_dy_enhance_f = sbe_calculate_dy_enhance(thr);

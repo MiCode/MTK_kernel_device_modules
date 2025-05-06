@@ -80,6 +80,8 @@ struct ux_scroll_info {
 	unsigned long long end_ts;
 	unsigned long long dur_ts;
 	int frame_count;
+	int frame_cap_count;
+	int frame_ctime_count;
 	int jank_count;
 	int enhance;
 	int type;
@@ -133,6 +135,7 @@ void enqueue_ux_scroll_info(int type, unsigned long long start_ts, struct sbe_re
 struct ux_scroll_info *search_ux_scroll_info(unsigned long long ts, struct sbe_render_info *thr);
 int sbe_calculate_dy_enhance(struct sbe_render_info *thr);
 void sbe_ux_scrolling_end(struct sbe_render_info *thr);
+void sbe_ux_scrolling_start(int type, unsigned long long start_ts, struct sbe_render_info *thr);
 void update_fpsgo_hint_param(int scrolling, int tgid);
 
 void sbe_delete_frame_info(struct sbe_render_info *thr, struct ux_frame_info *info);

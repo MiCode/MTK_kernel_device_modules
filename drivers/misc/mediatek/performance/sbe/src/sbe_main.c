@@ -1025,7 +1025,7 @@ static int sbe_do_hwui_scrolling_status_policy(int tgid, char *name, unsigned lo
 			}
 			if (add_new_scrolling) {
 				//add new scroll_info into sbe_render_info struct
-				enqueue_ux_scroll_info(type, ts, thr);
+				sbe_ux_scrolling_start(type, ts, thr);
 			}
 
 			memset(&xgf_attr_iter, 0, sizeof(struct xgf_policy_cmd));

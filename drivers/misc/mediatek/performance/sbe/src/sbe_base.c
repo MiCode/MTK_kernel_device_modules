@@ -342,6 +342,8 @@ struct sbe_render_info *sbe_get_render_info(int pid,
 	tmp->tgid = sbe_get_tgid(pid);
 	tmp->buffer_count_filter = 0;
 	tmp->rescue_more_count = 0;
+	tmp->frame_count = 0;
+	tmp->affinity_task_mask = 0;
 	tmp->sbe_rescuing_frame_id = -1;
 	tmp->hwui_arr_idx = 0;
 	tmp->target_fps = sbe_get_display_rate();
@@ -350,6 +352,7 @@ struct sbe_render_info *sbe_get_render_info(int pid,
 	tmp->rescue_start_time = 0;
 	tmp->latest_use_ts = sbe_get_time();
 	tmp->ux_frame_info_tree = RB_ROOT;
+	memset(tmp->aff_dep_arr, 0, sizeof(int) * MAX_TASK_NUM);
 
 	INIT_LIST_HEAD(&(tmp->scroll_list));
 	mutex_init(&tmp->ux_mlock);

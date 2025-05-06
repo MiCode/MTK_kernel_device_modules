@@ -26,6 +26,7 @@ define_mgk_ddk_ko(
         "-Werror",
         "-I$(srctree)/include",
         "-I$(srctree)/kernel/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sched/core_ctl",
     ],
     header_deps = [
         "//kernel_device_modules-{}/drivers/misc/mediatek/performance/fpsgo_v8:fpsgo_v8_public_headers".format(kernel_version),
@@ -37,6 +38,7 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/misc/mediatek/sched:scheduler".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/sched:cpufreq_sugov_ext".format(kernel_version),
         "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:mediatek-drm".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/sched:mtk_core_ctl".format(kernel_version),
     ],
 )
 
