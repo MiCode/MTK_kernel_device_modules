@@ -548,9 +548,10 @@ static int fmt_gce_timeout_aee(struct cmdq_cb_data data)
 	if (pkt_ptr->err_data.wfe_timeout) {
 		fmt_err("wfe %d timeout", pkt_ptr->err_data.event);
 		return CMDQ_NO_AEE;
+	} else {
+		fmt_err("not wfe %d timeout", pkt_ptr->err_data.event);
+		return CMDQ_AEE_WARN;
 	}
-	fmt_err("not wfe %d timeout", pkt_ptr->err_data.event);
-	return CMDQ_AEE_WARN;
 }
 
 static int fmt_gce_cmd_flush(unsigned long arg)
@@ -822,7 +823,7 @@ static int fmt_gce_wait_callback(unsigned long arg)
 		mutex_unlock(fmt->mux_cmdq_pkt[identifier]);
 		return -EINVAL;
 	}
-	atomic_inc(&fmt->gce_task_wait_cnt[taskid]);
+
 	ret = cmdq_pkt_wait_complete(fmt->gce_task[taskid].pkt_ptr);
 
 	if (ret != 0L) {
@@ -867,6 +868,7 @@ static int fmt_gce_wait_callback(unsigned long arg)
 		fmt_unlock(identifier);
 
 	mutex_unlock(fmt->mux_gce_th[identifier]);
+	cmdq_pkt_destroy(fmt->gce_task[taskid].pkt_ptr);
 	atomic_dec(&fmt->gce_task_wait_cnt[taskid]);
 	fmt_clear_gce_task(taskid);
 	mutex_unlock(fmt->mux_cmdq_pkt[identifier]);
