@@ -21401,6 +21401,7 @@ static void mtk_crtc_validate_roi(struct drm_crtc *crtc,
 		struct mtk_rect *partial_roi)
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	static struct mtk_rect full_roi;
 	int slice_height = 40;
 	int dsc_min_height = 40;
@@ -21408,6 +21409,10 @@ static void mtk_crtc_validate_roi(struct drm_crtc *crtc,
 	struct mtk_panel_spr_params *spr_params;
 	struct mtk_ddp_comp *comp;
 	int i, j;
+
+	// for vidle TE + 500us power done issue
+	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_MTCMOS_DT_EN))
+		dsc_min_height = 300;
 
 	_assign_full_lcm_roi(crtc, &full_roi, true);
 
