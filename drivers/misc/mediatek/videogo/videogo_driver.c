@@ -273,9 +273,6 @@ static int videogo_process_data(int iotype, void *data)
 			if (!isTranscoding)
 				isTranscoding = is_transcoding(info0, type);
 
-			pr_info("[vgo] INC [%d][%d] caller_pid: %d, fourcc: %d, oprate: %d, (%d x %d)\n",
-				info0->ctx_id, info0->inst_type, info0->caller_pid,
-				info0->fourcc, info0->oprate, info0->width, info0->height);
 		} else {
 			pr_info("[vgo] Invalid inst_type: [%d] %d\n", init_data->ctx_id, init_data->inst_type);
 			return -EINVAL;
@@ -292,7 +289,6 @@ static int videogo_process_data(int iotype, void *data)
 				if (info0->ctx_id == inst_data->ctx_id &&
 					info0->inst_type == type) {
 
-					pr_info("[vgo] DEC [%d][%d]\n", info0->ctx_id, info0->inst_type);
 					if (info0->oprate_avdvfs && info0->oprate_avdvfs <= TARGET_FPS)
 						target_fps_count[type]--;
 					list_del(&info0->list);
