@@ -1641,6 +1641,8 @@ void dpc_group_enable_v3(const u16 group, bool en)
 
 			/* polling dpc mminfra req idle */
 			ret = readl_poll_timeout_atomic(hwccf_hw_irq_req, value, !(value & 0xc), 1, 2000);
+			if (ret < 0)
+				DPCERR("polling dpc req idle timeout %d", __LINE__);
 
 			/* enable off DT */
 			dpc_dt_set_update(19, g_priv->dpc2_dt_usage[19].val);
@@ -1648,6 +1650,8 @@ void dpc_group_enable_v3(const u16 group, bool en)
 		} else {
 			/* polling dpc mminfra req idle */
 			ret = readl_poll_timeout_atomic(hwccf_hw_irq_req, value, !(value & 0xc), 1, 2000);
+			if (ret < 0)
+				DPCERR("polling dpc req idle timeout %d", __LINE__);
 
 			dpc_disp_group_enable(en);
 
@@ -1729,24 +1733,40 @@ static void dpc_config_v3(const u32 subsys, bool en)
 	dpc_wait_pwr_ack_v3(DPC3_SUBSYS_DISP);
 
 	if (en) {
+		/* release forced vote req, SW_CTRL = 0, must clr before master_en */
+		writel(0, dpc_base + g_priv->mtcmos_cfg[DPC3_SUBSYS_DIS0A].cfg + 0x30);
+		writel(0, dpc_base + g_priv->mtcmos_cfg[DPC3_SUBSYS_DIS0B].cfg + 0x30);
+		writel(0, dpc_base + g_priv->mtcmos_cfg[DPC3_SUBSYS_DIS1A].cfg + 0x30);
+		writel(0, dpc_base + g_priv->mtcmos_cfg[DPC3_SUBSYS_DIS1B].cfg + 0x30);
+		writel(0, dpc_base + g_priv->mtcmos_cfg[DPC3_SUBSYS_OVL0].cfg + 0x30);
+		writel(0, dpc_base + g_priv->mtcmos_cfg[DPC3_SUBSYS_OVL1].cfg + 0x30);
+		writel(0, dpc_base + g_priv->mtcmos_cfg[DPC3_SUBSYS_OVL2].cfg + 0x30);
+		writel(0, dpc_base + g_priv->mtcmos_cfg[DPC3_SUBSYS_MML0].cfg + 0x30);
+		writel(0, dpc_base + g_priv->mtcmos_cfg[DPC3_SUBSYS_MML1].cfg + 0x30);
+		writel(0, dpc_base + g_priv->mtcmos_cfg[DPC3_SUBSYS_MML2].cfg + 0x30);
+
 		/* master_en, link/unlink */
 		g_priv->set_mtcmos(DPC3_SUBSYS_DISP, (enum mtk_dpc_mtcmos_mode)en);
 		g_priv->set_mtcmos(DPC3_SUBSYS_MML0, (enum mtk_dpc_mtcmos_mode)en);
 		g_priv->set_mtcmos(DPC3_SUBSYS_MML1, (enum mtk_dpc_mtcmos_mode)en);
 		g_priv->set_mtcmos(DPC3_SUBSYS_MML2, (enum mtk_dpc_mtcmos_mode)en);
 
-		/* forced vote pwr off */
-		writel(1, dpc_base + DISP_REG_DPC3_DTx_SW_TRIG(1));
+		/* forced vote req on, for apsrc and emireq */
 		writel(1, dpc_base + DISP_REG_DPC3_DTx_SW_TRIG(5));
+		writel(1, dpc_base + DISP_REG_DPC3_DTx_SW_TRIG(33));
 
 		/* polling dpc req idle */
 		ret = readl_poll_timeout_atomic(hwccf_hw_mtcmos_req, value, !(value & 0xffc0), 1, 2000);
+		if (ret < 0)
+			DPCERR("polling dpc req idle timeout %d", __LINE__);
 
 		/* trig_en = 0 */
 		dpc2_dt_en(1, true, false);
 		dpc2_dt_en(3, true, false);
 		dpc2_dt_en(5, true, false);
 		dpc2_dt_en(7, true, false);
+		dpc2_dt_en(33, true, false);
+		dpc2_dt_en(35, true, false);
 
 		/* set resource auto mode */
 		g_priv->group_enable(0, true);
@@ -1761,13 +1781,30 @@ static void dpc_config_v3(const u32 subsys, bool en)
 		dpc2_dt_en(3, true, true);
 		dpc2_dt_en(5, true, true);
 		dpc2_dt_en(7, true, true);
+		dpc2_dt_en(33, true, true);
+		dpc2_dt_en(35, true, true);
 
 		/* polling dpc req idle */
 		ret = readl_poll_timeout_atomic(hwccf_hw_mtcmos_req, value, !(value & 0xffc0), 1, 2000);
+		if (ret < 0)
+			DPCERR("polling dpc req idle timeout %d", __LINE__);
 
-		/* forced vote pwr off */
-		writel(1, dpc_base + DISP_REG_DPC3_DTx_SW_TRIG(3));
-		writel(1, dpc_base + DISP_REG_DPC3_DTx_SW_TRIG(7));
+		/* forced vote req off, by SW_CTRL = 1, val = 0 */
+		writel(BIT(4), dpc_base + g_priv->mtcmos_cfg[DPC3_SUBSYS_DIS0A].cfg + 0x30);
+		writel(BIT(4), dpc_base + g_priv->mtcmos_cfg[DPC3_SUBSYS_DIS0B].cfg + 0x30);
+		writel(BIT(4), dpc_base + g_priv->mtcmos_cfg[DPC3_SUBSYS_DIS1A].cfg + 0x30);
+		writel(BIT(4), dpc_base + g_priv->mtcmos_cfg[DPC3_SUBSYS_DIS1B].cfg + 0x30);
+		writel(BIT(4), dpc_base + g_priv->mtcmos_cfg[DPC3_SUBSYS_OVL0].cfg + 0x30);
+		writel(BIT(4), dpc_base + g_priv->mtcmos_cfg[DPC3_SUBSYS_OVL1].cfg + 0x30);
+		writel(BIT(4), dpc_base + g_priv->mtcmos_cfg[DPC3_SUBSYS_OVL2].cfg + 0x30);
+		writel(BIT(4), dpc_base + g_priv->mtcmos_cfg[DPC3_SUBSYS_MML0].cfg + 0x30);
+		writel(BIT(4), dpc_base + g_priv->mtcmos_cfg[DPC3_SUBSYS_MML1].cfg + 0x30);
+		writel(BIT(4), dpc_base + g_priv->mtcmos_cfg[DPC3_SUBSYS_MML2].cfg + 0x30);
+
+		/* polling dpc req idle */
+		ret = readl_poll_timeout_atomic(hwccf_hw_mtcmos_req, value, !(value & 0xffc0), 1, 2000);
+		if (ret < 0)
+			DPCERR("polling dpc req idle timeout %d", __LINE__);
 
 		/* master_en, link/unlink */
 		g_priv->set_mtcmos(DPC3_SUBSYS_DISP, (enum mtk_dpc_mtcmos_mode)en);
