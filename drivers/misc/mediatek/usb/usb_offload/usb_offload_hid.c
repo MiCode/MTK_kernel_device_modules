@@ -51,16 +51,6 @@ MODULE_PARM_DESC(hid_debug_sync, "Enable/Disable HID Offload sync log");
 #define HID_AP_QUEUE        2
 #define HID_ON_RESET        3
 
-#define wait_condition(condition, timeout) ({ struct timespec64 ref, cur;\
-	ktime_get_ts64(&ref); \
-	cur = ref; \
-	while (!condition && (cur.tv_nsec - ref.tv_nsec) < timeout) { \
-		mdelay(1); \
-		ktime_get_ts64(&cur); \
-	} \
-	(condition) ? 0 : -ETIMEDOUT; \
-})
-
 /* counter bit defined */
 #define HID_GIVEBACK_CNT_MASK	GENMASK(3, 0)
 #define HID_GIVEBACK_CNT_SHIFT	(0)

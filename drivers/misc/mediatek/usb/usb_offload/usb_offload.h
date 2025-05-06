@@ -292,6 +292,7 @@ struct usb_audio_dev {
 	unsigned int card_num;
 	atomic_t in_use;
 	struct kref kref;
+	int slot_id;
 
 	/* interface specific */
 	int num_intf;
@@ -304,6 +305,7 @@ struct usb_audio_dev {
 
 	/* xhci sideband */
 	struct xhci_sideband_ *sb;
+	struct usb_interface *sb_intf;
 
 	bool is_valid;
 	bool on_hub;
@@ -342,7 +344,6 @@ struct usb_offload_dev {
 	enum usb_device_speed speed;
 	bool hub_offloading;
 	struct ssusb_offload *ssusb_offload_notify;
-	struct mutex dev_lock;
 	void *tracer;
 	struct uo_provider provider[UO_PROV_NUM];
 	struct uo_buffer_array buf_array[UO_STRUCT_NUM];
@@ -351,6 +352,10 @@ struct usb_offload_dev {
 	/* interrupter */
 	struct xhci_interrupter *ir;
 	struct mutex ir_lock;
+
+	/* driver stage sync */
+	spinlock_t dev_lock;
+	unsigned long stage;
 };
 
 extern int ssusb_offload_register(struct ssusb_offload *offload);
@@ -387,6 +392,16 @@ extern unsigned int debug_memory_log;
 
 int xhci_mtk_realloc_transfer_ring(unsigned int slot_id, unsigned int ep_id,
 	enum uo_provider_type id, bool is_rsv);
+
+#define wait_condition(condition, timeout) ({ struct timespec64 ref, cur;\
+	ktime_get_ts64(&ref); \
+	cur = ref; \
+	while (!condition && (cur.tv_nsec - ref.tv_nsec) < timeout) { \
+		mdelay(1); \
+		ktime_get_ts64(&cur); \
+	} \
+	(condition) ? 0 : -ETIMEDOUT; \
+})
 
 /****
  * mmemory manager exported api
