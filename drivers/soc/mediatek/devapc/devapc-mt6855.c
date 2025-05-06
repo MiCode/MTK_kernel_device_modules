@@ -323,8 +323,6 @@ static const char *mt6855_bus_id_to_master(uint32_t bus_id, uint32_t vio_addr,
 #endif
 #if ENABLE_DEVAPC_MMUP
 	} else if (slave_type == SLAVE_TYPE_MMUP) {
-		if (domain < 0)
-			return NULL;
 		return mminfra_domain[domain];
 #endif
 	} else {
