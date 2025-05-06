@@ -509,11 +509,11 @@
 
 	spmi: spmi@1c01a000 {
 		compatible = "mediatek,mt6993-spmi";
-		reg = <0 0x1c01a000 0 0x0008ff>,
+		reg = <0 0x1c01a000 0 0x00111c>,
 		      <0 0x1c01c000 0 0x000100>,
-		      <0 0x1c018000 0 0x0008ff>,
+		      <0 0x1c018000 0 0x00111c>,
 		      <0 0x1c01c800 0 0x000100>;
-		reg-names = "pmif", "spmimst","pmif-p","spmimst-p";
+		reg-names = "pmif","spmimst","pmif-p","spmimst-p";
 		interrupts-extended = <&pio 272 IRQ_TYPE_LEVEL_HIGH>,
 				<&pio 273 IRQ_TYPE_LEVEL_HIGH>,
 				<&gic GIC_SPI 423 IRQ_TYPE_LEVEL_HIGH 0>,
@@ -523,8 +523,8 @@
 		interrupt-names = "rcs_irq","rcs_irq_p","pmif_irq","spmi_nack_irq","pmif_p_irq","spmi_p_nack_irq";
 		interrupt-controller;
 		#interrupt-cells = <1>;
-		irq-event-en = <0x0 0x0 0x0 0x0 0x0>;
-		irq-event-en-p = <0x0 0x0 0x0 0x0 0x0>;
+		irq-event-en = <0xc0000000 0x0 0x0 0x0 0x0>;
+		irq-event-en-p = <0xc0000000 0x0 0x0 0x0 0x0>;
 		spmi-dev-mask = <0x55a8>;
 		#address-cells = <2>;
 		#size-cells = <0>;
@@ -534,15 +534,15 @@
 
 	spmi_pmif_mpu: spmi-pmif-mpu@1c01a900 {
 		compatible = "mediatek,mt6993-spmi-pmif-mpu";
-		reg = <0 0x1c01a900 0 0x000500>,
-			  <0 0x1c018900 0 0x000500>;
+		// reg = <0 0x1c01a900 0 0x000808>,
+		//       <0 0x1c018900 0 0x000808>;
 		reg-names = "pmif_mpu", "pmif_p_mpu";
-		mediatek,pmic-all-rgn-en = <0x0>;
+		mediatek,pmic-all-rgn-en = <0x7031e8>;
 		mediatek,pmic-all-rgn-en-2 = <0x0>;
-		mediatek,pmic-all-rgn-en-p = <0x0>;
-		mediatek,pmic-all-rgn-en-p-2 = <0x0>;
+		mediatek,pmic-all-rgn-en-p = <0xf5508078>;
+		mediatek,pmic-all-rgn-en-p-2 = <0xf7ad06>;
 		mediatek,kernel-enable-time = <0x3c>;
-		disable = <1>;
+		disable = <0>;
 	};
 
 	mbraink_v6993: mbraink-plat {
