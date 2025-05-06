@@ -511,6 +511,11 @@ void __gpufreq_dump_shared_status(char *log_buf, int *log_len, int log_size)
 			g_shared_status->mfg_pwr_status, power_time,
 			g_shared_status->shader_present);
 		GPUFREQ_LOGB(log_buf, log_len, log_size,
+			"VCORE: %d, DDR: %d, EMI: %d",
+			(g_shared_status->vcore_level & VCORE_LEVEL_MASK) >> VCORE_LEVEL_SHIFT,
+			(g_shared_status->vcore_level & DDR_LEVEL_MASK) >> DDR_LEVEL_SHIFT,
+			(g_shared_status->vcore_level & EMI_LEVEL_MASK) >> EMI_LEVEL_SHIFT);
+		GPUFREQ_LOGB(log_buf, log_len, log_size,
 			"InFreq: %d/%d, OutFreq: %d/%d, CC:%d/%d, FC:%d/%d",
 			g_shared_status->ptp3_info.infreq0, g_shared_status->ptp3_info.infreq1,
 			g_shared_status->ptp3_info.outfreq0, g_shared_status->ptp3_info.outfreq1,

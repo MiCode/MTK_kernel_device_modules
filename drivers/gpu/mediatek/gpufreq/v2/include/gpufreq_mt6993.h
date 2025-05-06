@@ -9,7 +9,7 @@
 /**************************************************
  * GPUFREQ Config
  **************************************************/
-#define GPUFREQ_KDEBUG_VERSION              (0x20250311)
+#define GPUFREQ_KDEBUG_VERSION              (0x20250416)
 #define GPUFREQ_SLAVE_BUS_RECOVERY_ENABLE   (0)
 
 /**************************************************
@@ -138,6 +138,16 @@ struct gpufreq_core_mask_info g_core_mask_table[SHADER_CORE_NUM] = {
 	(DRV_Reg32(MFG_TOP_VOLT_TRACKER_CON_6))
 #define VTRACKER_TSTACK                     \
 	(DRV_Reg32(MFG_TOP_VOLT_TRACKER_CON_2))
+
+/**************************************************
+ * VCORE Level Setting
+ **************************************************/
+#define VCORE_LEVEL_MASK                    (0x000000FF)
+#define VCORE_LEVEL_SHIFT                   (0)
+#define DDR_LEVEL_MASK                      (0x0000FF00)
+#define DDR_LEVEL_SHIFT                     (8)
+#define EMI_LEVEL_MASK                      (0x00FF0000)
+#define EMI_LEVEL_SHIFT                     (16)
 
 /**************************************************
  * Enumeration
