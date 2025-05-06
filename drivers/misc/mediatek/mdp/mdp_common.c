@@ -1853,6 +1853,7 @@ s32 cmdq_mdp_flush_async_impl(struct cmdqRecStruct *handle)
 {
 	struct list_head *insert_pos = &mdp_ctx.tasks_wait;
 	struct cmdqRecStruct *entry;
+	s32 err = 0;
 
 	CMDQ_MSG("dispatch handle:0x%p\n", handle);
 
@@ -1882,9 +1883,11 @@ s32 cmdq_mdp_flush_async_impl(struct cmdqRecStruct *handle)
 
 	/* run consume to run task in thread */
 	CMDQ_MSG("cmdq_mdp_consume_handle:0x%p\n", handle);
-	cmdq_mdp_consume_handle();
+	err = cmdq_mdp_consume_handle();
+	if (err < 0)
+		CMDQ_ERR("consume handle in flush async fail:%d\n",err);
 
-	return 0;
+	return err;
 }
 
 struct cmdqRecStruct *cmdq_mdp_get_valid_handle(unsigned long job)
