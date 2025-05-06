@@ -259,7 +259,6 @@ static int zram_engine_tbu_pm_put(struct smmu_tbu_device *tbu)
 	return mtk_hwzram_suspend(tbu->dev);
 }
 
-#if IS_ENABLED(CONFIG_MTK_VM_DEBUG)
 static void engine_check_smmu_faulting_address(struct zram_engine_t *hwz)
 {
 	uint64_t fault_addr = engine_get_smmu_faulting_addr(&hwz->ctrl);
@@ -294,7 +293,6 @@ exit:
 	else
 		pr_info("%s: No matched faulting_addr:%x\n", __func__, check_addr);
 }
-#endif
 
 static void zram_engine_tbu_debug_dump(struct smmu_tbu_device *tbu, struct seq_file *s)
 {
@@ -313,9 +311,7 @@ static void zram_engine_tbu_debug_dump(struct smmu_tbu_device *tbu, struct seq_f
 		return;
 	}
 
-#if IS_ENABLED(CONFIG_MTK_VM_DEBUG)
 	engine_check_smmu_faulting_address(hwz);
-#endif
 
 	engine_get_smmu_reg_dump(&hwz->ctrl, s);
 
