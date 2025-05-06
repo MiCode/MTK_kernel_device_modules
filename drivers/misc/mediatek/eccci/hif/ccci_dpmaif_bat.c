@@ -713,8 +713,11 @@ static int dpmaif_alloc_bat_frg(int update_bat_cnt, atomic_t *paused)
 	buf_used = get_ringbuf_used_cnt(bat_req->bat_cnt,
 				atomic_read(&bat_req->bat_rd_idx),
 				atomic_read(&bat_req->bat_wr_idx));
-	if (buf_used >= alloc_frg_threshold)
+	if (buf_used >= alloc_frg_threshold) {
+		if (update_bat_cnt == 0)
+			return buf_used;
 		return 0;
+	}
 
 	request_cnt = (alloc_frg_threshold - buf_used);
 	buf_space = bat_req->bat_cnt - buf_used - 1;
@@ -723,7 +726,7 @@ static int dpmaif_alloc_bat_frg(int update_bat_cnt, atomic_t *paused)
 		request_cnt = buf_space;
 
 	if (request_cnt == 0)
-		return 0;
+		goto alloc_end;
 
 	bat_wr_idx = atomic_read(&bat_req->bat_wr_idx);
 
