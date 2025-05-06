@@ -160,6 +160,12 @@ struct TzInfo tzInfos[TZINFO_NUM] = {
 
 };
 
+struct TzInfo vcore_sensor[] = {
+	{"soc-bot0", NULL, -274000},
+	{"soc-smap0", NULL, -274000},
+	{"soc-smap1", NULL, -274000},
+};
+
 #define TASK_INIT_DURATION       2000
 #define HINT_DURATION_LONG       3000
 #define HINT_DURATION_SHORT       500
@@ -2869,8 +2875,10 @@ static void __used dump_thermal_log(void)
 static void __used kernel_thermal_hint(unsigned int *next_polling_duration)
 {
 	int max_temp, hint_temp, val1, i, print = 0;
+	int ret, temp, max_vcore_temp = THERMAL_TEMP_INVALID;
 	int max_val = 0, min_val = 0, cl[3], cc[3];
 	static int th_rasing_cnt, th_falling_cnt, thermal_hint;
+	struct thermal_zone_device *tz;
 
 	*next_polling_duration = HINT_DURATION_LONG;
 	max_temp = THERMAL_TEMP_INVALID;
@@ -2913,13 +2921,31 @@ static void __used kernel_thermal_hint(unsigned int *next_polling_duration)
 			min_val = cl[i];
 	}
 
+	for (i = 0; i < sizeof(vcore_sensor)/sizeof(struct TzInfo); i++) {
+		tz = thermal_zone_get_zone_by_name(vcore_sensor[i].name);
+		if(IS_ERR_OR_NULL(tz)) {
+			pr_info("%s: get %s thermal zone error\n", __func__, vcore_sensor[i].name);
+			continue;
+		}
+
+		ret = thermal_zone_get_temp(tz, &temp);
+		if(ret) {
+			pr_info("%s: get %s temp error, ret %d\n", __func__, vcore_sensor[i].name, ret);
+			continue;
+		}
+
+		if (temp > max_vcore_temp)
+			max_vcore_temp = temp;
+	}
+
 	if (tm_data.tj_info.catm_cpu_ttj <= 300000 && tm_data.tj_info.catm_cpu_ttj > DEFAULT_HINT_SOC_TEMP)
 		hint_temp = tm_data.tj_info.catm_cpu_ttj;
 	else
 		hint_temp = DEFAULT_HINT_SOC_TEMP;
 
 	if (!thermal_hint) {
-		if (max_temp > hint_temp + SOC_TEMP_TOLARANCE && max_val < KERNEL_HINT_EN_C_FREQ && max_val != 0) {
+		if ((max_temp > hint_temp + SOC_TEMP_TOLARANCE && max_val < KERNEL_HINT_EN_C_FREQ && max_val != 0)
+			|| (max_vcore_temp > hint_temp + SOC_TEMP_TOLARANCE) ) {
 			print = 1;
 			th_rasing_cnt ++;
 			if (th_rasing_cnt >= KERNEL_HINT_CNT) {
@@ -2932,8 +2958,9 @@ static void __used kernel_thermal_hint(unsigned int *next_polling_duration)
 			th_rasing_cnt = 0;
 		}
 	} else {
-		if ((max_temp < hint_temp - SOC_TEMP_TOLARANCE && min_val >= KERNEL_HINT_DIS_C_FREQ) ||
-			(max_temp < hint_temp - SOC_TEMP_TOLARANCE * 2)) {
+		if (((max_temp < hint_temp - SOC_TEMP_TOLARANCE && min_val >= KERNEL_HINT_DIS_C_FREQ) ||
+			(max_temp < hint_temp - SOC_TEMP_TOLARANCE * 2)) &&
+			(max_vcore_temp < hint_temp - SOC_TEMP_TOLARANCE * 2)) {
 			th_falling_cnt ++;
 			if (th_falling_cnt >= KERNEL_HINT_CNT) {
 				print = 1;
@@ -2948,17 +2975,17 @@ static void __used kernel_thermal_hint(unsigned int *next_polling_duration)
 			thermal_hint_notify(1, 1);
 	}
 
-	if (max_temp > hint_temp || thermal_hint)
+	if ((max_temp > hint_temp) || (max_vcore_temp > hint_temp) || thermal_hint)
 		print = 1;
 
-	if (max_temp > (hint_temp - SOC_TEMP_TOLARANCE) || thermal_hint)
+	if ((max_temp > (hint_temp - SOC_TEMP_TOLARANCE)) || (max_vcore_temp > hint_temp) || thermal_hint)
 		*next_polling_duration = HINT_DURATION_SHORT;
 
 	if (print)
-		pr_info("[T(M/t)=%d/%d][(CL)(CC)(Mm)=(%d/%d/%d)(%d/%d/%d)(%d/%d)][kTH=%d r/f=%d/%d][d:%d]\n",
-			max_temp, hint_temp, cl[0]/1000, cl[1]/1000, cl[2]/1000, cc[0]/1000, cc[1]/1000, cc[2]/1000,
-			max_val/1000, min_val/1000,  thermal_hint, th_rasing_cnt, th_falling_cnt,
-			*next_polling_duration);
+		pr_info("[T(C/V/h)=%d/%d/%d][(CL)(CC)(Mm)=(%d/%d/%d)(%d/%d/%d)(%d/%d)][kTH=%d r/f=%d/%d][d:%d]\n",
+			max_temp, max_vcore_temp, hint_temp, cl[0]/1000, cl[1]/1000, cl[2]/1000,
+			cc[0]/1000, cc[1]/1000, cc[2]/1000, max_val/1000, min_val/1000,
+			thermal_hint, th_rasing_cnt, th_falling_cnt, *next_polling_duration);
 }
 
 static void __used thermal_task(struct work_struct *work)
