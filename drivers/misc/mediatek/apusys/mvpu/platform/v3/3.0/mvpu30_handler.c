@@ -42,7 +42,7 @@ int mvpu30_handler_lite(int type, void *hnd, struct apusys_device *dev)
 
 	switch (type) {
 	case APUSYS_CMD_VALIDATE:
-		// ret = mvpu30_validation(hnd);
+		ret = mvpu30_validation(hnd);
 		break;
 	case APUSYS_CMD_SESSION_CREATE:
 		mvpu30_set_sec_log_lvl(mvpu_drv_loglv);

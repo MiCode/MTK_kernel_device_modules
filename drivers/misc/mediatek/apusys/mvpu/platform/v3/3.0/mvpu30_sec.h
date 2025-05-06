@@ -124,10 +124,10 @@ struct mvpu_hash_pool {
 	uint32_t *hash_offset[MAX_SAVE_HASH];
 };
 
-#define ITCM_VIRTUAL_BASE              0x19600000
-#define ITCM_VIRTUAL_BASE_END          0x19620000
-#define VIRTUAL_MVPU_TCM_BASE          0x19600000
-#define VIRTUAL_MVPU_TCM_BASE_END      0x19700000
+#define ITCM_VIRTUAL_BASE              0x19200000
+#define ITCM_VIRTUAL_BASE_END          0x19240000
+#define VIRTUAL_MVPU_TCM_BASE          0x19200000
+#define VIRTUAL_MVPU_TCM_BASE_END      0x19300000
 #define VIRTUAL_APUSYS_TCM_BASE        0x02000000
 #define VIRTUAL_APUSYS_TCM_BASE_END    0x03000000
 

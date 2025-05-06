@@ -127,8 +127,8 @@ int mvpu30_validation(void *hnd)
 		pr_info("[MVPU][Sec] [ERROR] get wrong cmdbuf size: 0x%x, should be 0x%lx\n",
 				cmdbuf[MVPU_CMD_INFO_IDX].size,
 				sizeof(struct mvpu_request_v30));
-		// ret = -1;
-		// goto END;
+		ret = -1;
+		goto END;
 	}
 
 	mvpu_req = (struct mvpu_request_v30 *)cmdbuf[MVPU_CMD_INFO_IDX].kva;
