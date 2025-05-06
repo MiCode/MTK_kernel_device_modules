@@ -7,6 +7,11 @@
 #define __MFD_MT6661_REGISTERS_H__
 
 /* PMIC Registers */
+/* PMIC info */
+#define MT6661_HWCID0                                                   (0x8)
+#define MT6661_RG_SLV_ID_ADDR                                           (0x150)
+#define MT6661_RG_SLV_ID_MASK                                           (0xff)
+#define MT6661_RG_SLV_ID_SHIFT                                          (0)
 /* PMIC interrupts */
 #define MT6661_TOPSTATUS                                                (0x23)
 #define MT6661_MISC_TOP_INT_CON0                                        (0x2e)

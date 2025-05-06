@@ -15,6 +15,9 @@
 #include <linux/regulator/mt6661-regulator.h>
 #include <linux/regulator/of_regulator.h>
 
+#define MT6661_HWCID0_E1_CODE	0x10
+#define MT6661_HWCID0_E2_CODE	0x20
+
 #define SET_OFFSET		0x1
 #define CLR_OFFSET		0x2
 #define HW_NORMAL_OP_EN		0x2
@@ -925,6 +928,7 @@ static int mt6661_regulator_probe(struct platform_device *pdev)
 	struct regulator_config config = {};
 	struct regulator_dev *rdev;
 	struct mt6661_regulator_info *info;
+	unsigned int slvid = 0, hwcid = 0;
 	int i, ret;
 
 	dev_info(&pdev->dev, "%s\n", __func__);
@@ -933,11 +937,25 @@ static int mt6661_regulator_probe(struct platform_device *pdev)
 	if (!config.regmap)
 		return -ENODEV;
 
+	ret = regmap_read(config.regmap, MT6661_HWCID0, &hwcid);
+	if (ret)
+		dev_err(&pdev->dev, "Failed to get mt6661 hwcid: ret=%d\n", ret);
+	ret = regmap_read(config.regmap, MT6661_RG_SLV_ID_ADDR, &slvid);
+	if (ret)
+		dev_err(&pdev->dev, "Failed to get mt6661 slvid: ret=%d\n", ret);
+	slvid &= 0xF;
+
 	for (i = 0; i < MT6661_MAX_REGULATOR; i++) {
 		info = &mt6661_regulators[i];
 		info->irq = platform_get_irq_byname_optional(pdev, info->desc.name);
 		config.driver_data = info;
 
+		/* skip registering MT6661-S5 LNC0_9 in MT6993 B0(MT6661-E2) to avoid disabled by kernel */
+		if (hwcid == MT6661_HWCID0_E1_CODE &&
+		    slvid == 5 && info->desc.id == MT6661_ID_LNC0_9) {
+			dev_info(&pdev->dev, "skip registering %s\n", info->desc.name);
+			continue;
+		}
 		rdev = devm_regulator_register(&pdev->dev, &info->desc, &config);
 		if (IS_ERR(rdev)) {
 			ret = PTR_ERR(rdev);
