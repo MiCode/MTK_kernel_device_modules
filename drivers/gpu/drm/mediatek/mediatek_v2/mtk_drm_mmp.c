@@ -250,8 +250,6 @@ void init_crtc_mmp_event(void)
 			mmprofile_register_event(crtc_mmp_root, "ESD check");
 		g_CRTC_MMP_Events[i].esd_recovery =
 			mmprofile_register_event(crtc_mmp_root, "ESD recovery");
-		g_CRTC_MMP_Events[i].target_time =
-			mmprofile_register_event(crtc_mmp_root, "target_time");
 		g_CRTC_MMP_Events[i].idle_async = mmprofile_register_event(
 			crtc_mmp_root, "idle_async");
 		g_CRTC_MMP_Events[i].idle_async_cb = mmprofile_register_event(

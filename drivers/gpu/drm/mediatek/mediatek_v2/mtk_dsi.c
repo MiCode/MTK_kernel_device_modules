@@ -4538,21 +4538,6 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 			}
 		}
 
-		if (status & TARGET_LINE_INT_FLAG) {
-			if (mtk_crtc && mtk_crtc->esd_ctx) {
-				if ((comp->id == DDP_COMPONENT_DSI0 ||
-					 comp->id == DDP_COMPONENT_DSI1 ||
-					 comp->id == DDP_COMPONENT_DSI2) &&
-					(priv->data->mmsys_id == MMSYS_MT6989 ||
-					 priv->data->mmsys_id == MMSYS_MT6991 ||
-					 priv->data->mmsys_id == MMSYS_MT6993)) {
-					CRTC_MMP_MARK(index, target_time, comp->id, 0xffff0001);
-					atomic_set(&mtk_crtc->esd_ctx->target_time, 1);
-					wake_up_interruptible(&mtk_crtc->esd_ctx->check_task_wq);
-				}
-			}
-		}
-
 		if (status & FRAME_DONE_INT_FLAG) {
 			if (mtk_dsi_is_cmd_mode(comp) &&
 				(inten & FRAME_DONE_INT_FLAG) && underrun_happened) {
@@ -4570,14 +4555,6 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 					writel(inten, dsi->regs + DSI_INTEN);
 				}
 				underrun_happened = 0;
-			}
-			if (mtk_crtc && mtk_crtc->esd_ctx) {
-				if (comp->id == DDP_COMPONENT_DSI0 ||
-					 comp->id == DDP_COMPONENT_DSI1 ||
-					 comp->id == DDP_COMPONENT_DSI2) {
-					CRTC_MMP_MARK(index, target_time, comp->id, 0xffff0000);
-					atomic_set(&mtk_crtc->esd_ctx->target_time, 0);
-				}
 			}
 
 			drm_trace_tag_mark("dsi_frame_done");
@@ -14315,30 +14292,6 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		if (panel_ext && panel_ext->funcs
 			&& panel_ext->funcs->reset)
 			panel_ext->funcs->reset(dsi->panel, *(int *)params);
-	}
-		break;
-	case ESD_CHECK_SET_INT:
-	{
-		struct mtk_dsi *dsi =
-			container_of(comp, struct mtk_dsi, ddp_comp);
-		unsigned int inten, status;
-		bool *en = (bool *)params;
-
-		if (!underrun_happened && mtk_dsi_is_cmd_mode(&dsi->ddp_comp)) {
-			mtk_vidle_user_power_keep(DISP_VIDLE_FORCE_KEEP);
-			status = readl(dsi->regs + DSI_INTSTA);
-			writel(status & (~(FRAME_DONE_INT_FLAG | TARGET_LINE_INT_FLAG)), dsi->regs + DSI_INTSTA);
-			inten = readl(dsi->regs + DSI_INTEN);
-			if (*en) {
-				inten |= (FRAME_DONE_INT_FLAG | TARGET_LINE_INT_FLAG);
-				CRTC_MMP_MARK(0, esd_check, 5, 1);
-			} else {
-				inten &= ~(FRAME_DONE_INT_FLAG | TARGET_LINE_INT_FLAG);
-				CRTC_MMP_MARK(0, esd_check, 5, 0);
-			}
-			writel(inten, dsi->regs + DSI_INTEN);
-			mtk_vidle_user_power_release(DISP_VIDLE_FORCE_KEEP);
-		}
 	}
 		break;
 	case LCM_CUST_FUNC:
