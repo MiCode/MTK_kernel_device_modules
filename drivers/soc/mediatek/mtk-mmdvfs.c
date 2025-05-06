@@ -68,6 +68,9 @@ struct mmdvfs_drv_data {
 	bool lp_mode;
 	u32 last_opp_level;
 	bool disp_parallel;
+	bool is_ccf_enable;
+	bool ccf_enable_boot;
+	struct mutex ccf_enable_mutex;
 };
 
 static struct regulator *vcore_reg_id;
@@ -250,8 +253,15 @@ static void set_all_clk(struct mmdvfs_drv_data *drv_data,
 
 	mutex_lock(&drv_data->lp_mutex);
 	do {
-		if (opp_level == drv_data->last_opp_level)
+		mutex_lock(&drv_data->ccf_enable_mutex);
+		if ((opp_level == drv_data->last_opp_level && !drv_data->ccf_enable_boot) || !drv_data->is_ccf_enable) {
+			mutex_unlock(&drv_data->ccf_enable_mutex);
 			break;
+		}
+
+		if (drv_data->ccf_enable_boot)
+			drv_data->ccf_enable_boot = false;
+		mutex_unlock(&drv_data->ccf_enable_mutex);
 
 		switch (drv_data->action) {
 		/* Voltage Increase: Hopping First, Decrease: MUX First*/
@@ -364,6 +374,37 @@ struct mmdvfs_dbg_data {
 };
 
 struct mmdvfs_dbg_data *dbg_data;
+
+int mmdvfs_ap_ccf_enable(bool enable)
+{
+	struct mmdvfs_drv_data *drv_data;
+
+	if (!dbg_data)  {
+		pr_notice("%s: dbg_data is not ready!\n", __func__);
+		return -EINVAL;
+	}
+	drv_data = dbg_data->drv_data;
+
+	if (enable) {
+		mutex_lock(&drv_data->ccf_enable_mutex);
+		drv_data->is_ccf_enable = true;
+		drv_data->ccf_enable_boot = true;
+		mutex_unlock(&drv_data->ccf_enable_mutex);
+		set_all_clk(drv_data, drv_data->request_voltage, true);
+		pr_notice("is_ccf_enable:%d ccf_enable_boot:%d",
+			drv_data->is_ccf_enable, drv_data->ccf_enable_boot);
+	} else {
+		mutex_lock(&drv_data->ccf_enable_mutex);
+		drv_data->is_ccf_enable = false;
+		drv_data->ccf_enable_boot = false;
+		mutex_unlock(&drv_data->ccf_enable_mutex);
+		pr_notice("is_ccf_enable:%d ccf_enable_boot:%d",
+			drv_data->is_ccf_enable, drv_data->ccf_enable_boot);
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(mmdvfs_ap_ccf_enable);
 
 /**
  * unregister_mmdvfs_notifier - unregister multimedia clk changing notifier
@@ -771,6 +812,7 @@ static int mmdvfs_probe(struct platform_device *pdev)
 		num_lp_clksrc++;
 	}
 	mutex_init(&drv_data->lp_mutex);
+	mutex_init(&drv_data->ccf_enable_mutex);
 	drv_data->last_opp_level = MAX_OPP_NUM;
 	mmdvfs_dbg = kzalloc(sizeof(*mmdvfs_dbg), GFP_KERNEL);
 	if (!mmdvfs_dbg)

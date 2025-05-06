@@ -40,6 +40,7 @@ int mmdvfs_tracing_mark_write(char *fmt, ...);
 
 int register_mmdvfs_notifier(struct notifier_block *nb);
 int unregister_mmdvfs_notifier(struct notifier_block *nb);
+int mmdvfs_ap_ccf_enable(bool enable);
 int mmdvfs_set_force_step(int force_step);
 int mmdvfs_set_vote_step(int vote_step);
 void mmdvfs_debug_record_opp_set_fp(record_opp fp);
@@ -49,6 +50,8 @@ static inline int register_mmdvfs_notifier(struct notifier_block *nb)
 { return -EINVAL; }
 static inline int unregister_mmdvfs_notifier(struct notifier_block *nb)
 { return -EINVAL; }
+static inline int mmdvfs_ap_ccf_enable(bool enable)
+{ return 0; }
 static inline int mmdvfs_set_force_step(int new_force_step)
 { return 0; }
 static inline int mmdvfs_set_vote_step(int new_force_step)
