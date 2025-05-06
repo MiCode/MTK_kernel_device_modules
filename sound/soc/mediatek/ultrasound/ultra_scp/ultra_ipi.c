@@ -88,6 +88,10 @@ static int ultra_ipi_recv_handler(unsigned int id,
 	struct ultra_ipi_receive_info *ipi_info =
 		(struct ultra_ipi_receive_info *)data;
 
+	/* check magic num */
+	if (ipi_info->param1 != ULTRA_IPI_MAGIC_NUM)
+		return 0;
+
 	ultra_ipi_rx_handle(ipi_info->msg_id, (void *)ipi_info->msg_data);
 	return 0;
 }
@@ -99,6 +103,10 @@ static int ultra_ipi_ack_handler(unsigned int id,
 {
 	struct ultra_ipi_ack_info *ipi_info =
 		(struct ultra_ipi_ack_info *)data;
+
+	/* check magic num */
+	if (ipi_info->param1 != ULTRA_IPI_MAGIC_NUM)
+		return 0;
 
 	ultra_ipi_tx_ack_handle(ipi_info->msg_id, ipi_info->msg_data);
 	atomic_set(&ipi_ack_return, ipi_info->msg_need_ack);
@@ -147,7 +155,7 @@ bool ultra_ipi_send_msg(unsigned int msg_id,
 	msg_need_ack = need_ack;
 	ipi_data.msg_id = msg_id;
 	ipi_data.msg_need_ack = msg_need_ack;
-	ipi_data.param1 = 0;
+	ipi_data.param1 = ULTRA_IPI_MAGIC_NUM;
 	ipi_data.param2 = param;
 	ipi_data.msg_length = payload_len;
 

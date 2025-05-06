@@ -22,6 +22,9 @@
 #define ULTRA_IPI_RESEND_TIMES          2
 #define ULTRA_IPI_SEND_CNT_TIMEOUT       500 /* 500ms */
 #define ULTRA_WAITCHECK_INTERVAL_MS      1
+
+#define ULTRA_IPI_MAGIC_NUM             (0x89)
+
 enum {
 	ULTRA_IPI_BYPASS_ACK = 0,
 	ULTRA_IPI_NEED_ACK,
