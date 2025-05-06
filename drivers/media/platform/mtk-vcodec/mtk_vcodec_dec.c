@@ -1702,6 +1702,7 @@ void mtk_vdec_queue_error_code_event(struct mtk_vcodec_ctx *ctx, unsigned int in
 		.type = V4L2_EVENT_MTK_VDEC_ERROR_INFO,
 	};
 	unsigned int prev_err_cnt = ctx->err_code_cnt[hw_id];
+	bool need_log = false;
 
 	memcpy((void *)ev_error.u.data, &info, sizeof(info));
 	v4l2_event_queue_fh(&ctx->fh, &ev_error);
@@ -1709,9 +1710,12 @@ void mtk_vdec_queue_error_code_event(struct mtk_vcodec_ctx *ctx, unsigned int in
 	if (ctx->prev_err_code[hw_id] != info)
 		ctx->err_code_cnt[hw_id] = 0;
 	ctx->err_code_cnt[hw_id]++;
-	if (ctx->err_code_cnt[hw_id] <= 5 || (ctx->err_code_cnt[hw_id] % 30) == 0)
-		mtk_v4l2_err("[%d] hw_id %d error_code %d (cnt %d)(prev_err_code %d, cnt %d)",
-			ctx->id, hw_id, info, ctx->err_code_cnt[hw_id], ctx->prev_err_code[hw_id], prev_err_cnt);
+	ctx->err_code_total_cnt++;
+	if (ctx->err_code_total_cnt <= 6 && (ctx->err_code_cnt[hw_id] <= 3 || (ctx->err_code_cnt[hw_id] % 30) == 0))
+		need_log = true;
+
+	mtk_v4l2_debug(need_log ? 0 : 1, "[%d] hw_id %d error_code %d (cnt %d)(prev_err_code %d, cnt %d)",
+		ctx->id, hw_id, info, ctx->err_code_cnt[hw_id], ctx->prev_err_code[hw_id], prev_err_cnt);
 	ctx->prev_err_code[hw_id] = info;
 }
 
