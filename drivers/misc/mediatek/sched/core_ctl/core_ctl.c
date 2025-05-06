@@ -191,7 +191,7 @@ module_param_named(debug_enable, debug_enable, int, 0600);
 
 static void periodic_debug_handler(struct work_struct *work);
 static int periodic_debug_enable = 1;
-static int periodic_debug_delay = 100;
+static int periodic_debug_delay = 2000;
 module_param_named(periodic_debug_delay, periodic_debug_delay, int, 0600);
 static DECLARE_DELAYED_WORK(periodic_debug, periodic_debug_handler);
 
