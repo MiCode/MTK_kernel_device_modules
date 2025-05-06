@@ -98,7 +98,7 @@ static int mt6379_regmap_write(void *context, const void *val_buf, size_t count)
 	bank_addr = reg_buf[1];
 
 	/* If using i2c interface, DO NOT ACCESS the address of RCS retrigger! */
-	if ((((u32)bank_idx << 2) || (u32)bank_addr) == MT6379_REG_SPMI_TXDRV2)
+	if ((((u32)bank_idx << 8) || (u32)bank_addr) == MT6379_REG_SPMI_TXDRV2)
 		return 0;
 
 	return i2c_smbus_write_i2c_block_data(priv->i2c_devs[bank_idx], bank_addr, len, wrdata);
@@ -109,23 +109,11 @@ static const struct regmap_bus mt6379_i2c_bus = {
 	.write	= mt6379_regmap_write,
 };
 
-static bool mt6379_i2c_writeable_reg(struct device *dev, unsigned int reg)
-{
-	switch (reg) {
-	/* If using i2c interface, DO NOT ACCESS the address of RCS retrigger! */
-	case MT6379_REG_SPMI_TXDRV2:
-		return false;
-	default:
-		return true;
-	}
-}
-
 static const struct regmap_config mt6379_i2c_config = {
 	.reg_bits		= 16,
 	.val_bits		= 8,
 	.reg_format_endian	= REGMAP_ENDIAN_BIG,
 	.max_register		= 0xdff,
-	.writeable_reg		= mt6379_i2c_writeable_reg,
 };
 
 static void mt6379_i2c_irq_bus_lock(struct irq_data *d)
