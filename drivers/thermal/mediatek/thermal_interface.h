@@ -239,6 +239,16 @@ struct TzInfo{
 	int temp;
 };
 
+/* For E1/E2/... chip discrimination */
+/* temporary function, and will be removed after B0 SB+2W. */
+struct chipid {
+	u32 size;
+	u32 hw_code;
+	u32 hw_subcode;
+	u32 hw_ver;
+	u32 sw_ver;
+};
+
 extern void update_ap_ntc_headroom(int temp, int polling_interval);
 extern int get_thermal_headroom(enum headroom_id id);
 extern int set_cpu_min_opp(int gear, int opp);

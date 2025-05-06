@@ -122,6 +122,8 @@ static bool skip_logs;
 #define USER_VSENSOR_NUM 6
 static struct user_vsensor_info u_vsensor[USER_VSENSOR_NUM];
 
+static struct chipid *chip_id; /* temporary function, and will be removed after B0 SB+2W. */
+
 void __iomem *thermal_csram_base;
 EXPORT_SYMBOL(thermal_csram_base);
 void __iomem *thermal_cputcm_base;
@@ -2289,6 +2291,41 @@ static ssize_t gpt_store(struct kobject *kobj,
 	return -EINVAL;
 }
 
+/* temporary function, and will be removed after B0 SB+2W. */
+static ssize_t chipid_show(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	struct device_node *node;
+	int len = 0;
+
+	/* chip-id already found */
+	if (!chip_id) {
+		node = of_find_node_by_path("/chosen");
+		if (!node)
+			node = of_find_node_by_path("/chosen@0");
+
+		if (node) {
+			chip_id = (struct chipid *)of_get_property(node,
+									"atag,chipid",
+									&len);
+			if (!chip_id) {
+				pr_notice("[%s] could not found atag,chipid in chosen\n", __func__);
+				return -ENODEV;
+			}
+		} else {
+			pr_notice("[%s] chosen node not found in device tree\n", __func__);
+			return -ENODEV;
+		}
+		pr_info("[%s] current sw version: %u\n", __func__, chip_id->sw_ver);
+	} else {
+		pr_info("[%s] saved sw version: %u\n", __func__, chip_id->sw_ver);
+	}
+
+	len = snprintf(buf + len, PAGE_SIZE - len, "%d,", chip_id->sw_ver);
+
+	return 1;
+}
+
 static struct kobj_attribute ttj_attr = __ATTR_RW(ttj);
 static struct kobj_attribute power_budget_attr = __ATTR_RW(power_budget);
 static struct kobj_attribute cpu_info_attr = __ATTR_RO(cpu_info);
@@ -2333,8 +2370,8 @@ static struct kobj_attribute lvts_info3_attr = __ATTR_RO(lvts_info3);
 static struct kobj_attribute thermal_hint_attr = __ATTR_RW(thermal_hint);
 static struct kobj_attribute boot_status_attr = __ATTR_RO(boot_status);
 static struct kobj_attribute gpt_attr = __ATTR_RW(gpt);
-
-
+/* temporary function, and will be removed after B0 SB+2W. */
+static struct kobj_attribute chipid_attr = __ATTR_RO(chipid);
 
 static struct attribute *thermal_attrs[] = {
 	&ttj_attr.attr,
@@ -2380,6 +2417,7 @@ static struct attribute *thermal_attrs[] = {
 	&thermal_hint_attr.attr,
 	&boot_status_attr.attr,
 	&gpt_attr.attr,
+	&chipid_attr.attr, /* temporary function, and will be removed after B0 SB+2W. */
 	NULL
 };
 static struct attribute_group thermal_attr_group = {
