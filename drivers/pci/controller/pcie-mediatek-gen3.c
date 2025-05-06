@@ -100,6 +100,9 @@
 
 #define PCIE_BASIC_STATUS		0x18
 
+#define PCIE_MAC_CTR1			0x74
+#define SWITCH_DN_L1PM			BIT(28)
+
 #define PCIE_SETTING_REG                0x80
 #define PCIE_RC_MODE                    BIT(0)
 #define PCIE_GEN_SUPPORT_MASK           GENMASK(14, 12)
@@ -3479,7 +3482,7 @@ static int mtk_pcie_pre_init_6993(struct mtk_pcie_port *port)
 	/* Set write completion timeout to 4ms */
 	writel_relaxed(WCPL_TIMEOUT_4MS, port->base + PCIE_WCPL_TIMEOUT);
 
-	/* Adjust SYS_CLK_RDY_TIME to 10us to avoid glitch*/
+	/* Adjust SYS_CLK_RDY_TIME to 10us to avoid glitch */
 	val = readl_relaxed(port->base + PCIE_RESOURCE_CTRL);
 	val &= ~SYS_CLK_RDY_TIME;
 	val |= SYS_CLK_RDY_TIME_TO_10US;
@@ -3489,6 +3492,11 @@ static int mtk_pcie_pre_init_6993(struct mtk_pcie_port *port)
 	val = readl_relaxed(port->pextpcfg + PEXTP_REQ_CTRL);
 	val |= RG_PEXTP_DDREN_ACK_SEL;
 	writel_relaxed(val, port->pextpcfg + PEXTP_REQ_CTRL);
+
+	/* Switch DN port will exit L1PM when UP port exit L1 */
+	val = readl_relaxed(port->base + PCIE_MAC_CTR1);
+	val |= SWITCH_DN_L1PM;
+	writel_relaxed(val, port->base + PCIE_MAC_CTR1);
 
 	val = readl_relaxed(port->pextpcfg + PEXTP_CLOCK_CON);
 	if (port->chipid == CHIP_VER_A0)
