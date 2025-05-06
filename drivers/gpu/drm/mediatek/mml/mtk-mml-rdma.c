@@ -445,6 +445,7 @@ struct rdma_data {
 	bool write_sec_reg;	/* WA: write rdma registers in secured domain */
 	bool tile_reset;	/* WA: write dummy register to clean up states */
 	bool stash;		/* enable stash prefetch with delay time */
+	bool ddren_reg;		/* platform with ddren reg */
 
 	/* threshold golden setting for racing mode */
 	struct rdma_golden golden[GOLDEN_FMT_TOTAL];
@@ -787,6 +788,7 @@ static const struct rdma_data mt6993_mmld_rdma_data = {
 	.px_per_tick = 2,
 	.sram_size = 512 * 1024,	/* 1MB sram divid to 512K + 512K */
 	.stash = true,
+	.ddren_reg = true,
 	.golden = {
 		[GOLDEN_FMT_ARGB] = {
 			.cnt = ARRAY_SIZE(th_argb_mt6985),
@@ -1652,7 +1654,8 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 		   gmcif_con, write_sec);
 	rdma_frm->gmcif_con = gmcif_con;
 
-	cmdq_pkt_write(pkt, NULL, comp->base_pa + RDMA_DDREN, ddren, U32_MAX);
+	if (rdma->data->ddren_reg)
+		cmdq_pkt_write(pkt, NULL, comp->base_pa + RDMA_DDREN, ddren, U32_MAX);
 
 	if (cfg->alpharot || cfg->rgbrot)
 		rdma_frm->color_tran = 0;
@@ -2247,8 +2250,10 @@ static void rdma_reset(struct mml_comp *comp, struct mml_task *task, struct mml_
 	cmdq_pkt_write(pkt, NULL, comp->base_pa + RDMA_SHADOW_CTRL, 0x3, U32_MAX);
 	cmdq_pkt_write(pkt, NULL, comp->base_pa + RDMA_CON, 0x8000, 0x8000);
 	cmdq_pkt_write(pkt, NULL, comp->base_pa + RDMA_CON, 0x0, 0x8000);
-	cmdq_pkt_write(pkt, NULL, comp->base_pa + RDMA_DDREN, 0x1, 0x1);
-	cmdq_pkt_write(pkt, NULL, comp->base_pa + RDMA_DDREN, 0x0, 0x1);
+	if (rdma->data->ddren_reg) {
+		cmdq_pkt_write(pkt, NULL, comp->base_pa + RDMA_DDREN, 0x1, 0x1);
+		cmdq_pkt_write(pkt, NULL, comp->base_pa + RDMA_DDREN, 0x0, 0x1);
+	}
 	cmdq_pkt_write(pkt, NULL, comp->base_pa + RDMA_SHADOW_CTRL, 0x1, U32_MAX);
 }
 
@@ -2617,12 +2622,11 @@ static void rdma_debug_dump(struct mml_comp *comp)
 	value[30] = readl(base + RDMA_GMCIF_CON);
 	value[33] = readl(base + RDMA_CON);
 	value[34] = readl(base + RDMA_TRANSFORM_0);
-	value[35] = readl(base + RDMA_DDREN);
 
 	mml_err("RDMA_EN %#010x RDMA_RESET %#010x RDMA_SRC_CON %#010x RDMA_COMP_CON %#010x",
 		value[0], value[1], value[2], comp_con);
-	mml_err("RDMA_CON %#010x RDMA_TRANSFORM_0 %#010x RDMA_DDREN %#010x",
-		value[33], value[34], value[35]);
+	mml_err("RDMA_CON %#010x RDMA_TRANSFORM_0 %#010x",
+		value[33], value[34]);
 	mml_err("RDMA_MF_BKGD_SIZE_IN_BYTE %#010x RDMA_MF_BKGD_SIZE_IN_PXL %#010x",
 		value[4], value[5]);
 	mml_err("RDMA_MF_SRC_SIZE %#010x RDMA_MF_CLIP_SIZE %#010x RDMA_MF_OFFSET_1 %#010x",
@@ -2665,6 +2669,11 @@ static void rdma_debug_dump(struct mml_comp *comp)
 		value[32] = readl(base + RDMA_DEBUG_CON);
 		mml_err("RDMA_CHKS_EXTR %#010x RDMA_DEBUG_CON %#010x",
 			value[31], value[32]);
+	}
+
+	if (rdma->data->ddren_reg) {
+		value[35] = readl(base + RDMA_DDREN);
+		mml_err("RDMA_DDREN %#010x", value[35]);
 	}
 
 	if (apu_en) {
