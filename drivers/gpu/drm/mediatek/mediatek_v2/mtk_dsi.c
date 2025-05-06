@@ -4370,9 +4370,9 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 				DDPPR_ERR(pr_fmt("[IRQ] %s: buffer underrun\n"),
 					mtk_dump_comp_str(comp));
 
-			mtk_vidle_force_power_ctrl_by_cpu(true);
-			if (mtk_crtc)
-				atomic_set(&mtk_crtc->force_high_step, 1);
+			mtk_vidle_hint_update(VIDLE_HINT_UDR_HIGH_ON);
+			mtk_vidle_config_ff(false);
+			atomic_set(&mtk_crtc->force_high_step, 1);
 
 			mtk_ddp_comp_io_cmd(comp, NULL, IRQ_UNDERRUN, &underrun_int_en);
 			++underrun_cnt;
@@ -5932,7 +5932,8 @@ static void mtk_output_dsi_enable(struct mtk_dsi *dsi,
 		}
 	}
 
-	mtk_vidle_force_power_ctrl_by_cpu(true);
+	/* usually inside NST_LOCK(atomic commit) or CRTC_LOCK(for esd recover) */
+	mtk_vidle_user_power_keep(DISP_VIDLE_USER_NST_LOCK);
 
 	/* For fifo mon config need to config gce event */
 	if (priv->data->mmsys_id == MMSYS_MT6993)
@@ -6185,13 +6186,13 @@ static void mtk_output_dsi_enable(struct mtk_dsi *dsi,
 	dsi->doze_enabled = new_doze_state;
 
 out:
-	mtk_vidle_force_power_ctrl_by_cpu(false);
+	mtk_vidle_user_power_release(DISP_VIDLE_USER_NST_LOCK);
 	return;
 
 err_dsi_power_off:
 	mtk_dsi_stop(dsi);
 	mtk_dsi_poweroff(dsi);
-	mtk_vidle_force_power_ctrl_by_cpu(false);
+	mtk_vidle_user_power_release(DISP_VIDLE_USER_NST_LOCK);
 }
 
 static int mtk_dsi_stop_vdo_mode(struct mtk_dsi *dsi, void *handle);
@@ -6308,7 +6309,8 @@ static void mtk_output_dsi_disable(struct mtk_dsi *dsi, struct cmdq_pkt *cmdq_ha
 		goto SKIP_WAIT_FRAME_DONE;
 	}
 
-	mtk_vidle_force_power_ctrl_by_cpu(true);
+	/* usually inside NST_LOCK(atomic commit) or CRTC_LOCK(for esd recover) */
+	mtk_vidle_user_power_keep(DISP_VIDLE_USER_NST_LOCK);
 
 	/* 2. If VDO mode, stop it and set to CMD mode */
 	if (!mtk_dsi_is_cmd_mode(&dsi->ddp_comp)) {
@@ -6397,16 +6399,8 @@ SKIP_WAIT_FRAME_DONE:
 	dsi->output_en = false;
 	dsi->doze_enabled = new_doze_state;
 
-	mtk_vidle_force_power_ctrl_by_cpu(false);
-
-	/* vlp release when suspend */
-	if (underrun_cnt > 0) {
-		DDPMSG("%s, underrun force release:%u\n", __func__, underrun_cnt);
-		while (underrun_cnt > 0) {
-			mtk_vidle_force_power_ctrl_by_cpu(false);
-			underrun_cnt--;
-		}
-	}
+	/* usually inside NST_LOCK(atomic commit) or CRTC_LOCK(for esd recover) */
+	mtk_vidle_user_power_release(DISP_VIDLE_USER_NST_LOCK);
 
 	DDPINFO("%s-\n", __func__);
 }

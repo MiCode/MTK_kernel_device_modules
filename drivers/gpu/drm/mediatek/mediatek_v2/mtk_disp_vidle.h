@@ -44,6 +44,8 @@ enum mtk_vidle_hint_type {
 	VIDLE_HINT_MTCMOS_ON,
 	VIDLE_HINT_MODE_SWITCH,
 	VIDLE_HINT_DOZE,
+	VIDLE_HINT_UDR_HIGH_ON,
+	VIDLE_HINT_UDR_HIGH_OFF,
 	VIDLE_HINT_MULTI_CRTC_ON,
 	VIDLE_HINT_MULTI_CRTC_OFF,
 	VIDLE_HINT_TUI_ON,
@@ -81,7 +83,7 @@ void mtk_vidle_user_power_keep_by_gce(enum mtk_vidle_voter_user user,
 				      struct cmdq_pkt *pkt, u16 gpr);
 void mtk_vidle_user_power_release_by_gce(enum mtk_vidle_voter_user user, struct cmdq_pkt *pkt);
 void mtk_dpc_monitor_config(struct cmdq_pkt *pkt, const u32 value);
-int mtk_vidle_force_power_ctrl_by_cpu(bool power_on);
+int mtk_vidle_force_power_ctrl_by_cpu(bool power_on); /* deprecated */
 int mtk_vidle_pq_power_get(const char *caller);
 void mtk_vidle_pq_power_put(const char *caller);
 void mtk_set_vidle_stop_flag(unsigned int flag, unsigned int stop);

@@ -13307,7 +13307,7 @@ static void mtk_drm_shutdown(struct platform_device *pdev)
 		return;
 	}
 
-	ret = mtk_vidle_force_power_ctrl_by_cpu(true);
+	ret = mtk_vidle_user_power_keep(DISP_VIDLE_USER_NST_LOCK);
 	if (ret < 0) {
 		DDPMSG("%s skipped, power keep ret(%d)\n", __func__, ret);
 		return;
@@ -13315,7 +13315,7 @@ static void mtk_drm_shutdown(struct platform_device *pdev)
 	mtk_drm_pm_ctrl(private, DISP_PM_GET);
 	drm_atomic_helper_shutdown(drm);
 	mtk_drm_pm_ctrl(private, DISP_PM_PUT);
-	mtk_vidle_force_power_ctrl_by_cpu(false);
+	mtk_vidle_user_power_release(DISP_VIDLE_USER_NST_LOCK);
 }
 
 static void mtk_drm_remove(struct platform_device *pdev)

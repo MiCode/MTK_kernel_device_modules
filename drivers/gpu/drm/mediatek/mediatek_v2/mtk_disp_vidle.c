@@ -116,35 +116,6 @@ void mtk_vidle_flag_init(void *_crtc)
 	}
 }
 
-//static unsigned int mtk_vidle_check(unsigned int vidle_item)
-//{
-//	return mtk_disp_vidle_flag.vidle_en & vidle_item;
-//}
-
-//static void mtk_vidle_dt_enable(unsigned int en)
-//{
-//	if (disp_dpc_driver.dpc_group_enable == NULL)
-//		return;
-
-//	disp_dpc_driver.dpc_group_enable(DPC_DISP_VIDLE_MTCMOS,
-//		(en && mtk_vidle_check(DISP_VIDLE_MTCMOS_DT_EN)));
-//	disp_dpc_driver.dpc_group_enable(DPC_DISP_VIDLE_MTCMOS_DISP1,
-//		(en && mtk_vidle_check(DISP_VIDLE_MTCMOS_DT_EN)));
-
-//	disp_dpc_driver.dpc_group_enable(DPC_DISP_VIDLE_MMINFRA_OFF,
-//		(en && mtk_vidle_check(DISP_VIDLE_MMINFRA_DT_EN)));
-//	disp_dpc_driver.dpc_group_enable(DPC_DISP_VIDLE_INFRA_OFF,
-//		(en && mtk_vidle_check(DISP_VIDLE_MMINFRA_DT_EN)));
-
-//	disp_dpc_driver.dpc_group_enable(DPC_DISP_VIDLE_VDISP_DVFS,
-//		(en && mtk_vidle_check(DISP_VIDLE_DVFS_DT_EN)));
-
-//	disp_dpc_driver.dpc_group_enable(DPC_DISP_VIDLE_HRT_BW,
-//		(en && mtk_vidle_check(DISP_VIDLE_QOS_DT_EN)));
-//	disp_dpc_driver.dpc_group_enable(DPC_DISP_VIDLE_SRT_BW,
-//		(en && mtk_vidle_check(DISP_VIDLE_QOS_DT_EN)));
-//}
-
 void mtk_vidle_clear_wfe_event(enum mtk_vidle_voter_user user, struct cmdq_pkt *pkt, int event)
 {
 	if (disp_dpc_driver.dpc_clear_wfe_event == NULL)
@@ -178,6 +149,7 @@ void mtk_dpc_monitor_config(struct cmdq_pkt *pkt, const u32 value)
 	disp_dpc_driver.dpc_monitor_config(pkt, value);
 }
 
+ /* deprecated */
 int mtk_vidle_force_power_ctrl_by_cpu(bool power_on)
 {
 	int ret = 0;
@@ -878,9 +850,11 @@ u32 mtk_vidle_hint_update(enum mtk_vidle_hint_type type)
 	case VIDLE_HINT_DOZE:
 		vidle_data.hint.doze_debounce = VIDLE_DOZE_DEBOUNCE;
 		break;
+	case VIDLE_HINT_UDR_HIGH_ON:
 	case VIDLE_HINT_MULTI_CRTC_ON:
 		vidle_data.hint.crtc_fuse++;
 		break;
+	case VIDLE_HINT_UDR_HIGH_OFF:
 	case VIDLE_HINT_MULTI_CRTC_OFF:
 		vidle_data.hint.crtc_fuse--;
 		break;
