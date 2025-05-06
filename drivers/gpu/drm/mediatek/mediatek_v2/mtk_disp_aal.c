@@ -1063,15 +1063,17 @@ static int disp_aal_update_dre3_sram(struct mtk_ddp_comp *comp,
 	mtk_drm_trace_end();
 
 	/* Write DRE 3.0 gain */
-	mtk_drm_trace_begin("write_dre3_curve");
-	if (!atomic_read(&aal_data->first_frame)) {
-		mutex_lock(&aal_data->primary_data->config_lock);
-		disp_aal_write_dre3_curve(comp, false);
-		if (comp1)
-			disp_aal_write_dre3_curve(comp1, false);
-		mutex_unlock(&aal_data->primary_data->config_lock);
+	if (aal_data->primary_data->aal_param.local_curve_trigger) {
+		mtk_drm_trace_begin("write_dre3_curve");
+		if (!atomic_read(&aal_data->first_frame)) {
+			mutex_lock(&aal_data->primary_data->config_lock);
+			disp_aal_write_dre3_curve(comp, false);
+			if (comp1)
+				disp_aal_write_dre3_curve(comp1, false);
+			mutex_unlock(&aal_data->primary_data->config_lock);
+		}
+		mtk_drm_trace_end();
 	}
-	mtk_drm_trace_end();
 	CRTC_MMP_EVENT_END(0, aal_dre30_rw, comp->id, 2);
 	return 0;
 }
@@ -1087,6 +1089,7 @@ static void disp_aal_write_dre3_curve_full(struct mtk_ddp_comp *comp)
 	SET_VAL_MASK(reg_value, reg_mask, 0, REG_FORCE_HIST_SRAM_APB);
 	SET_VAL_MASK(reg_value, reg_mask, 1, REG_FORCE_HIST_SRAM_INT);
 	if (aal_dre3_curve_sram) {
+		AALFLOW_LOG("%s %d FLIP LOCAL_CURVE_SRAM\n", __func__, __LINE__);
 		SET_VAL_MASK(reg_value, reg_mask, 1, REG_FORCE_CURVE_SRAM_EN);
 		SET_VAL_MASK(reg_value, reg_mask, 0, REG_FORCE_CURVE_SRAM_APB);
 		SET_VAL_MASK(reg_value, reg_mask, 1, REG_FORCE_CURVE_SRAM_INT);
@@ -1100,6 +1103,7 @@ static void disp_aal_write_dre3_curve_full(struct mtk_ddp_comp *comp)
 	SET_VAL_MASK(reg_value, reg_mask, 1, REG_FORCE_HIST_SRAM_APB);
 	SET_VAL_MASK(reg_value, reg_mask, 0, REG_FORCE_HIST_SRAM_INT);
 	if (aal_dre3_curve_sram) {
+		AALFLOW_LOG("%s %d FLIP LOCAL_CURVE_SRAM\n", __func__, __LINE__);
 		SET_VAL_MASK(reg_value, reg_mask, 1, REG_FORCE_CURVE_SRAM_EN);
 		SET_VAL_MASK(reg_value, reg_mask, 1, REG_FORCE_CURVE_SRAM_APB);
 		SET_VAL_MASK(reg_value, reg_mask, 0, REG_FORCE_CURVE_SRAM_INT);
@@ -1302,8 +1306,10 @@ void disp_aal_flip_sram(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		hist_int = 0;
 	} else
 		PQ_ERR("%s, [SRAM] Error when get hist_apb in %s\n", __func__, caller);
+	AALFLOW_LOG("%s %d FLIP LOCAL_HIST_SRAM\n", __func__, __LINE__);
 
-	if (aal_dre3_curve_sram) {
+	if (aal_dre3_curve_sram && aal_data->primary_data->aal_param.local_curve_trigger) {
+		AALFLOW_LOG("%s %d FLIP LOCAL_CURVE_SRAM\n", __func__, __LINE__);
 		if (dre30_write) {
 			if (atomic_cmpxchg(curve_sram_apb, 0, 1) == 0) {
 				curve_apb = 0;
@@ -1327,7 +1333,8 @@ void disp_aal_flip_sram(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	SET_VAL_MASK(sram_cfg, sram_mask, 1, REG_FORCE_HIST_SRAM_EN);
 	SET_VAL_MASK(sram_cfg, sram_mask, hist_apb, REG_FORCE_HIST_SRAM_APB);
 	SET_VAL_MASK(sram_cfg, sram_mask, hist_int, REG_FORCE_HIST_SRAM_INT);
-	if (aal_dre3_curve_sram) {
+	if (aal_dre3_curve_sram && aal_data->primary_data->aal_param.local_curve_trigger) {
+		AALFLOW_LOG("%s %d FLIP LOCAL_CURVE_SRAM\n", __func__, __LINE__);
 		SET_VAL_MASK(sram_cfg, sram_mask, 1, REG_FORCE_CURVE_SRAM_EN);
 		SET_VAL_MASK(sram_cfg, sram_mask, curve_apb, REG_FORCE_CURVE_SRAM_APB);
 		SET_VAL_MASK(sram_cfg, sram_mask, curve_int, REG_FORCE_CURVE_SRAM_INT);
@@ -1828,6 +1835,7 @@ static int disp_aal_write_129bin_dre_to_reg(struct mtk_ddp_comp *comp,
 	int i = 0, j = 0;
 
 	AALFLOW_LOG("\n");
+	disp_pq_set_test_flag(TEST_FLAG_DRE);
 	gain = param->dre_global_tone_129entry;
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
@@ -2030,7 +2038,6 @@ static int disp_aal_set_dre3_curve(struct mtk_ddp_comp *comp,
 	struct DISP_DRE30_PARAM *dre30_gain = &aal_data->primary_data->dre30_gain_cpy;
 
 	AALFLOW_LOG("\n");
-	disp_pq_set_test_flag(TEST_FLAG_DRE);
 	if (atomic_read(&aal_data->primary_data->change_to_dre30) == 0x3) {
 
 		if (copy_from_user(dre30_gain, (struct DISP_DRE30_PARAM *)param->dre30_gain,
@@ -2073,17 +2080,25 @@ int disp_aal_set_param(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		usleep_range(260-time_use, 270-time_use);
 	}
 
-	if (aal_data->primary_data->aal_fo->mtk_dre30_support && aal_data->primary_data->dre30_enabled)
+	if (aal_data->primary_data->aal_fo->mtk_dre30_support &&
+		aal_data->primary_data->dre30_enabled && param->local_curve_trigger) {
 		ret = disp_aal_set_dre3_curve(comp, handle, param);
-	disp_aal_write_dre_to_reg(comp, handle, &aal_data->primary_data->aal_param);
-	disp_aal_write_cabc_to_reg(comp, handle, &aal_data->primary_data->aal_param);
-	if (comp->mtk_crtc->is_dual_pipe) {
-		disp_aal_write_dre_to_reg(aal_data->companion, handle, &aal_data->primary_data->aal_param);
-		disp_aal_write_cabc_to_reg(aal_data->companion, handle, &aal_data->primary_data->aal_param);
+		atomic_set(&aal_data->primary_data->dre30_write, 1);
 	}
-	atomic_set(&aal_data->primary_data->dre30_write, 1);
-	aal_data->primary_data->aal_param_valid = true;
-	if (aal_data->primary_data->aal_fo->mtk_dre30_support)
+
+	if (param->global_curve_trigger)
+		disp_aal_write_dre_to_reg(comp, handle, &aal_data->primary_data->aal_param);
+	if (param->cabc_trigger)
+		disp_aal_write_cabc_to_reg(comp, handle, &aal_data->primary_data->aal_param);
+	if (comp->mtk_crtc->is_dual_pipe) {
+		if (param->global_curve_trigger)
+			disp_aal_write_dre_to_reg(aal_data->companion, handle, &aal_data->primary_data->aal_param);
+		if (param->cabc_trigger)
+			disp_aal_write_cabc_to_reg(aal_data->companion, handle, &aal_data->primary_data->aal_param);
+	}
+	if (param->global_curve_trigger | param->cabc_trigger)
+		aal_data->primary_data->aal_param_valid = true;
+	if (aal_data->primary_data->aal_fo->mtk_dre30_support && param->local_curve_trigger)
 		disp_mdp_aal_set_valid(aal_data->comp_dmdp_aal, true);
 	return ret;
 }
@@ -2608,6 +2623,9 @@ static int disp_aal_cfg_set_param(struct mtk_ddp_comp *comp,
 	/* Not need to protect g_aal_param, */
 	/* since only AALService can set AAL parameters. */
 	memcpy(&aal_data->primary_data->aal_param, param, sizeof(*param));
+	DDPINFO(" %s global_curve_trigger:%d, local_curve_trigger:%d, cabc_trigger:%d\n",
+		__func__, param->global_curve_trigger, param->local_curve_trigger,
+		param->cabc_trigger);
 
 	prev_backlight = aal_data->primary_data->backlight_set;
 	aal_data->primary_data->backlight_set = aal_data->primary_data->aal_param.FinalBacklight;

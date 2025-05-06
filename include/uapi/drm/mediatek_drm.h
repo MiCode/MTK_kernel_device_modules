@@ -2050,6 +2050,9 @@ struct DISP_AAL_PARAM {
 	unsigned int silky_bright_gain[3];
 	unsigned long long dre30_gain;
 	int dre_global_tone_129entry[AAL_DRE_POINT_NUM_HIGH];
+	bool global_curve_trigger;
+	bool local_curve_trigger;
+	bool cabc_trigger;
 };
 
 struct DISP_DRE30_INIT {
