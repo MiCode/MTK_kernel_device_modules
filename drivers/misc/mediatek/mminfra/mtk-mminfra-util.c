@@ -422,8 +422,11 @@ static int mminfra_util_probe(struct platform_device *pdev)
 	u32 i, j, tmp, vlp_base_pa;
 
 	g_mm_pd = devm_kzalloc(&pdev->dev, sizeof(*g_mm_pd), GFP_KERNEL);
+	if (!g_mm_pd)
+		return -ENOMEM;
+
 	g_mminfra_util = devm_kzalloc(&pdev->dev, sizeof(*g_mminfra_util), GFP_KERNEL);
-	if (!g_mm_pd || !g_mminfra_util)
+	if (!g_mminfra_util)
 		return -ENOMEM;
 
 	g_dev = &pdev->dev;
