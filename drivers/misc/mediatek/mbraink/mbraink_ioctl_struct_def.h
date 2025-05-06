@@ -77,6 +77,7 @@
 #define NETLINK_EVENT_DISPLAY_HRT "NLEventDispHRT"
 #define NETLINK_EVENT_ISP_HRT "NLEventIspHRT"
 #define NETLINK_EVENT_AUDIOADSPNOTIFY "NLEvent_ADSPEvt"
+#define NETLINK_EVENT_SYSCPUFREQ "NLEvent_SysCpufreq"
 
 #define NETLINK_EVENT_MESSAGE_SIZE		1024
 
@@ -817,6 +818,19 @@ struct mbraink_memory_cmProfileInfo {
 	u64 info[MAX_CM_WRAP_NUM];
 	int32_t totalCmWrapNum;
 	unsigned long updateCnt;
+};
+
+struct mbraink_cpufreq_trace {
+	unsigned short tgid;
+	u64 cputime_l;
+	u64 cputime_m;
+	u64 cputime_b;
+};
+
+struct mbraink_cpufreq_trace_data {
+	unsigned short tracing_idx;
+	unsigned short tracing_count;
+	struct mbraink_cpufreq_trace drv_data[MAX_TRACE_PID_NUM];
 };
 
 #endif

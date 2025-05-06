@@ -67,7 +67,6 @@
 #define UFS_INFO				'J'
 #define WIFI_TXTIMEOUT_INFO		'K'
 #define VDEC_FPS_INFO			'L'
-
 #define POWER_SCP_TASK_INFO		'M'
 #define TOUCH_GHOST_INFO		'N'
 #define NETLINK_TRIGGER_RECV	'O'
@@ -82,6 +81,9 @@
 #define TIMER_MAPPING_INFO	'X'
 #define MMQOS_BW_INFO			'Y'
 #define MEMORY_CM_PROFILE_INFO	'Z'
+
+#define NR_CODE_LAGACY_MAX      122 // ('z')
+#define TRACE_CPUFREQ_INFO      (NR_CODE_LAGACY_MAX + 1)
 
 /*Mbrain Delegate IOCTL List*/
 #define AUTO_IOCTL_INFO			_IOR(IOC_MAGIC, AUTO_IOCTL, \
@@ -204,6 +206,8 @@
 
 #define RO_POWER_SPMI_GLITCH_INFO	_IOR(IOC_MAGIC, POWER_SPMI_GLITCH_INFO, \
 					struct mbraink_spmi_glitch_struct_data*)
+#define RO_TRACE_CPUFREQ	_IOR(IOC_MAGIC, TRACE_CPUFREQ_INFO,      \
+					struct mbraink_cpufreq_trace_data*)
 
 #define RO_POWER_DVFSRC_INFO	_IOR(IOC_MAGIC, POWER_DVFSRC_INFO, \
 					struct mbraink_dvfsrc_struct_data*)

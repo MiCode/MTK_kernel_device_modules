@@ -33,6 +33,7 @@
 #include <linux/mm_inline.h>
 #include <asm/page.h>
 #include <linux/tracepoint.h>
+#include <trace/hooks/cpufreq.h>
 
 #include "mbraink_process.h"
 #include <binder_internal.h>
@@ -63,6 +64,11 @@ struct mbraink_tracing_pidlist mbraink_tracing_pidlist_data[MAX_TRACE_NUM];
 static DEFINE_SPINLOCK(binder_trace_lock);
 /*Please make sure that binder trace list is protected by spinlock*/
 struct mbraink_binder_tracelist mbraink_binder_tracelist_data[MAX_BINDER_TRACE_NUM];
+
+/*spinlock for mbraink cpufreq provider tracelist*/
+static DEFINE_SPINLOCK(cpufreq_trace_lock);
+/*Please make sure that cpufreq trace list is protected by spinlock*/
+struct mbraink_cpufreq_tracelist mbraink_cpufreq_tracelist_data[MAX_CPUFREQ_TRACE_NUM];
 
 void mbraink_get_process_memory_info(pid_t current_pid, unsigned int cnt,
 				struct mbraink_process_memory_data *process_memory_buffer)
@@ -925,6 +931,92 @@ static void mbraink_binder_transaction(void *data,
 	spin_unlock_irqrestore(&binder_trace_lock, flags);
 }
 
+#if IS_ENABLED(CONFIG_ANDROID_VENDOR_HOOKS)
+static void mbraink_trace_android_vh_cpufreq_acct_update_power(void *data,
+							       u64 cputime,
+							       struct task_struct *p,
+							       unsigned int state)
+{
+	unsigned long  flags;
+	int idx = 0;
+
+	spin_lock_irqsave(&cpufreq_trace_lock, flags);
+
+	for (idx = 0; idx < MAX_CPUFREQ_TRACE_NUM; idx++) {
+		if (mbraink_cpufreq_tracelist_data[idx].dirty == true &&
+		    mbraink_cpufreq_tracelist_data[idx].tgid == p->tgid)
+			break;
+	}
+
+	if (idx < MAX_CPUFREQ_TRACE_NUM) {
+		if (task_cpu(p) <= CPUFREQ_L)
+			mbraink_cpufreq_tracelist_data[idx].cputime_l += cputime;
+		else if (task_cpu(p) > CPUFREQ_L && task_cpu(p) <= CPUFREQ_M)
+			mbraink_cpufreq_tracelist_data[idx].cputime_m += cputime;
+		else
+			mbraink_cpufreq_tracelist_data[idx].cputime_b += cputime;
+	} else {
+		for (idx = 0; idx < MAX_CPUFREQ_TRACE_NUM; idx++) {
+			if (mbraink_cpufreq_tracelist_data[idx].dirty == false)
+				break;
+		}
+		if (idx == MAX_CPUFREQ_TRACE_NUM) {
+			char netlink_buf[NETLINK_EVENT_MESSAGE_SIZE] = {'\0'};
+			int n = 0;
+			int pos = 0;
+
+			pr_info("%s: cpufreq record is full %d\n", __func__, idx);
+
+			for (idx = 0; idx < MAX_CPUFREQ_TRACE_NUM; idx++) {
+				if (idx % 16 == 0) {
+					pos = 0;
+					n = snprintf(netlink_buf,
+						NETLINK_EVENT_MESSAGE_SIZE, "%s ",
+						NETLINK_EVENT_SYSCPUFREQ);
+					if (n < 0 || n >= NETLINK_EVENT_MESSAGE_SIZE)
+						break;
+					pos += n;
+				}
+				n = snprintf(netlink_buf + pos,
+					NETLINK_EVENT_MESSAGE_SIZE - pos, "%u:%llu:%llu:%llu ",
+					mbraink_cpufreq_tracelist_data[idx].tgid,
+					mbraink_cpufreq_tracelist_data[idx].cputime_l,
+					mbraink_cpufreq_tracelist_data[idx].cputime_m,
+					mbraink_cpufreq_tracelist_data[idx].cputime_b);
+				if (n < 0 || n >= NETLINK_EVENT_MESSAGE_SIZE - pos)
+					break;
+				pos += n;
+
+				if (idx % 16 == 15) {
+					mbraink_netlink_send_msg(netlink_buf);
+					memset(netlink_buf, 0, NETLINK_EVENT_MESSAGE_SIZE);
+				}
+			}
+			memset(mbraink_cpufreq_tracelist_data, 0,
+			sizeof(struct mbraink_cpufreq_tracelist) * MAX_CPUFREQ_TRACE_NUM);
+			mbraink_cpufreq_tracelist_data[0].tgid = (unsigned short)(p->tgid);
+			if (task_cpu(p) <= CPUFREQ_L)
+				mbraink_cpufreq_tracelist_data[0].cputime_l += cputime;
+			else if (task_cpu(p) > CPUFREQ_L && task_cpu(p) <= CPUFREQ_M)
+				mbraink_cpufreq_tracelist_data[0].cputime_m += cputime;
+			else
+				mbraink_cpufreq_tracelist_data[0].cputime_b += cputime;
+			mbraink_cpufreq_tracelist_data[0].dirty = true;
+		} else {
+			mbraink_cpufreq_tracelist_data[idx].tgid = (unsigned short)(p->tgid);
+			if (task_cpu(p) <= CPUFREQ_L)
+				mbraink_cpufreq_tracelist_data[idx].cputime_l += cputime;
+			else if (task_cpu(p) > CPUFREQ_L && task_cpu(p) <= CPUFREQ_M)
+				mbraink_cpufreq_tracelist_data[idx].cputime_m += cputime;
+			else
+				mbraink_cpufreq_tracelist_data[idx].cputime_b += cputime;
+			mbraink_cpufreq_tracelist_data[idx].dirty = true;
+		}
+	}
+	spin_unlock_irqrestore(&cpufreq_trace_lock, flags);
+}
+#endif
+
 struct tracepoints_table {
 	const char *name;
 	void *func;
@@ -936,6 +1028,10 @@ static struct tracepoints_table mbraink_tracepoints[] = {
 {.name = "sched_process_fork", .func = mbraink_sched_process_fork, .tp = NULL},
 {.name = "sched_process_exit", .func = mbraink_sched_process_exit, .tp = NULL},
 {.name = "binder_transaction", .func = mbraink_binder_transaction, .tp = NULL},
+#if IS_ENABLED(CONFIG_ANDROID_VENDOR_HOOKS)
+	{.name = "android_vh_cpufreq_acct_update_power",
+	.func = mbraink_trace_android_vh_cpufreq_acct_update_power, .tp = NULL},
+#endif
 };
 
 #define FOR_EACH_INTEREST(i) \
@@ -1003,6 +1099,9 @@ int mbraink_process_tracer_init(void)
 
 	memset(mbraink_binder_tracelist_data, 0,
 		sizeof(struct mbraink_binder_tracelist) * MAX_BINDER_TRACE_NUM);
+
+	memset(mbraink_cpufreq_tracelist_data, 0,
+		sizeof(struct mbraink_cpufreq_tracelist) * MAX_CPUFREQ_TRACE_NUM);
 
 	mbraink_hookup_tracepoints();
 
@@ -1103,3 +1202,48 @@ void mbraink_get_binder_trace_info(unsigned short current_idx,
 	}
 	spin_unlock_irqrestore(&binder_trace_lock, flags);
 }
+
+#if IS_ENABLED(CONFIG_ANDROID_VENDOR_HOOKS)
+void mbraink_get_cpufreq_trace_info(unsigned short current_idx,
+				struct mbraink_cpufreq_trace_data *cpufreq_trace_buffer)
+{
+	int i = 0;
+	unsigned long flags;
+	unsigned short tracing_cnt = 0;
+
+	spin_lock_irqsave(&cpufreq_trace_lock, flags);
+
+	memset(cpufreq_trace_buffer, 0, sizeof(struct mbraink_cpufreq_trace_data));
+
+	for (i = current_idx; i < MAX_CPUFREQ_TRACE_NUM; i++) {
+		if (mbraink_cpufreq_tracelist_data[i].dirty == false)
+			continue;
+		else {
+			tracing_cnt = cpufreq_trace_buffer->tracing_count;
+			if (tracing_cnt < MAX_TRACE_PID_NUM) {
+				cpufreq_trace_buffer->drv_data[tracing_cnt].tgid =
+					mbraink_cpufreq_tracelist_data[i].tgid;
+				cpufreq_trace_buffer->drv_data[tracing_cnt].cputime_l =
+					nsec_to_clock_t(mbraink_cpufreq_tracelist_data[i].cputime_l);
+				cpufreq_trace_buffer->drv_data[tracing_cnt].cputime_m =
+					nsec_to_clock_t(mbraink_cpufreq_tracelist_data[i].cputime_m);
+				cpufreq_trace_buffer->drv_data[tracing_cnt].cputime_b =
+					nsec_to_clock_t(mbraink_cpufreq_tracelist_data[i].cputime_b);
+				cpufreq_trace_buffer->tracing_count++;
+				memset(&mbraink_cpufreq_tracelist_data[i], 0,
+					sizeof(struct mbraink_cpufreq_tracelist));
+			} else {
+				cpufreq_trace_buffer->tracing_idx = i;
+				break;
+			}
+		}
+	}
+
+	spin_unlock_irqrestore(&cpufreq_trace_lock, flags);
+}
+#else
+void mbraink_get_cpufreq_trace_info(unsigned short current_idx,
+				struct mbraink_cpufreq_trace_data *cpufreq_trace_buffer)
+{
+}
+#endif

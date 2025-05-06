@@ -1469,6 +1469,39 @@ static long handleMemoryCmProfileInfo(unsigned long arg, void *mbraink_data)
 	return ret;
 }
 
+static long handle_trace_cpufreq(unsigned long arg, void *mbraink_data)
+{
+	struct mbraink_cpufreq_trace_data *cpufreq_trace_buffer =
+		(struct mbraink_cpufreq_trace_data *)(mbraink_data);
+	unsigned short tracing_idx = 0;
+	long ret = 0;
+
+	if (copy_from_user(cpufreq_trace_buffer,
+			(struct mbraink_cpufreq_trace_data *) arg,
+			sizeof(struct mbraink_cpufreq_trace_data))) {
+		pr_notice("copy cpufreq_trace_buffer data from user Err!\n");
+		return -EPERM;
+	}
+
+	if (cpufreq_trace_buffer->tracing_idx > MAX_CPUFREQ_TRACE_NUM) {
+		pr_notice("invalid cpufreq tracing_idx %u !\n",
+			cpufreq_trace_buffer->tracing_idx);
+		return -EINVAL;
+	}
+
+	tracing_idx = cpufreq_trace_buffer->tracing_idx;
+
+	mbraink_get_cpufreq_trace_info(tracing_idx, cpufreq_trace_buffer);
+
+	if (copy_to_user((struct mbraink_cpufreq_trace_data *) arg,
+			cpufreq_trace_buffer, sizeof(struct mbraink_cpufreq_trace_data))) {
+		pr_notice("%s: Copy cpufreq_trace_buffer to UserSpace error!\n",
+			__func__);
+		return -EPERM;
+	}
+	return ret;
+}
+
 static long mbraink_ioctl(struct file *filp,
 							unsigned int cmd,
 							unsigned long arg)
@@ -2017,6 +2050,15 @@ static long mbraink_ioctl(struct file *filp,
 		if (!mbraink_data)
 			goto End;
 		ret = handleMemoryCmProfileInfo(arg, mbraink_data);
+		kfree(mbraink_data);
+		break;
+	}
+	case RO_TRACE_CPUFREQ:
+	{
+		mbraink_data = kmalloc(sizeof(struct mbraink_cpufreq_trace_data), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handle_trace_cpufreq(arg, mbraink_data);
 		kfree(mbraink_data);
 		break;
 	}

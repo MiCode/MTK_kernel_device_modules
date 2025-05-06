@@ -15,6 +15,11 @@
 #define MAX_RT_PRIO			100
 #define MAX_TRACE_NUM			1536
 #define MAX_BINDER_TRACE_NUM	2048
+#define MAX_CPUFREQ_TRACE_NUM	2048
+
+#define CPUFREQ_L	3
+#define CPUFREQ_M	6
+#define CPUFREQ_B	7
 
 struct mbraink_monitor_pidlist {
 	unsigned short is_set;
@@ -42,6 +47,14 @@ struct mbraink_binder_tracelist {
 	bool dirty;
 };
 
+struct mbraink_cpufreq_tracelist {
+	unsigned short tgid;
+	u64 cputime_l;
+	u64 cputime_m;
+	u64 cputime_b;
+	bool dirty;
+};
+
 extern int mbraink_netlink_send_msg(const char *msg); //EXPORT_SYMBOL_GPL
 
 void mbraink_show_process_info(void);
@@ -61,6 +74,8 @@ void mbraink_get_tracing_pid_info(unsigned short current_idx,
 			struct mbraink_tracing_pid_data *tracing_pid_buffer);
 void mbraink_get_binder_trace_info(unsigned short current_idx,
 				struct mbraink_binder_trace_data *binder_trace_buffer);
+void mbraink_get_cpufreq_trace_info(unsigned short current_idx,
+				struct mbraink_cpufreq_trace_data *cpufreq_trace_buffer);
 char *kstrdup_quotable_cmdline(struct task_struct *task, gfp_t gfp);
 void task_cputime_adjusted(struct task_struct *p, u64 *ut, u64 *st);
 void thread_group_cputime_adjusted(struct task_struct *p, u64 *ut, u64 *st);
