@@ -109,8 +109,6 @@ BOU_UARTHUB_ERROR_LOG_INFO lst_uarthub_log_info[] = {
 #define BT_OVER_UAER_DUMP_LOG(_err, _log, _tag, _detail) \
 	do {\
 		int _mod_id, _next_mod_id;\
-		if (_log < 0 || _log >= log_max)\
-			break;\
 		_mod_id = lst_uarthub_log_info[_log].mod_id;\
 		_next_mod_id = lst_uarthub_log_info[_log].next_mod_id;\
 		if (_mod_id < 0 || _mod_id >= mod_max)\
