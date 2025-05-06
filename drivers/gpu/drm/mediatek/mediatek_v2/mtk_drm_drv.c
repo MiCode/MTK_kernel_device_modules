@@ -13314,7 +13314,6 @@ static void mtk_drm_shutdown(struct platform_device *pdev)
 {
 	struct mtk_drm_private *private = platform_get_drvdata(pdev);
 	struct drm_device *drm = private->drm;
-	int ret = 0;
 
 	if (!drm)
 		return;
@@ -13329,11 +13328,7 @@ static void mtk_drm_shutdown(struct platform_device *pdev)
 		return;
 	}
 
-	ret = mtk_vidle_user_power_keep(DISP_VIDLE_USER_NST_LOCK);
-	if (ret < 0) {
-		DDPMSG("%s skipped, power keep ret(%d)\n", __func__, ret);
-		return;
-	}
+	mtk_vidle_user_power_keep(DISP_VIDLE_USER_NST_LOCK);
 	mtk_drm_pm_ctrl(private, DISP_PM_GET);
 	drm_atomic_helper_shutdown(drm);
 	mtk_drm_pm_ctrl(private, DISP_PM_PUT);
