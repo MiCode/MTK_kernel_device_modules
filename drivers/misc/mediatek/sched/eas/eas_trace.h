@@ -227,6 +227,7 @@ TRACE_EVENT(dsu_pwr_cal,
 		__field(int, dst_cpu)
 		__field(unsigned long, task_util)
 		__field(unsigned long, total_util)
+		__field(unsigned int, soc_idx)
 		__field(unsigned int, dsu_bw)
 		__field(unsigned int, mem_bw)
 		__field(int, temp)
@@ -246,6 +247,7 @@ TRACE_EVENT(dsu_pwr_cal,
 		__entry->dst_cpu    = dst_cpu;
 		__entry->task_util   = task_util;
 		__entry->total_util     = total_util;
+		__entry->soc_idx   = data[12];
 		__entry->dsu_bw   = data[0];
 		__entry->mem_bw   = data[1];
 		__entry->temp    = data[2];
@@ -261,10 +263,11 @@ TRACE_EVENT(dsu_pwr_cal,
 		__entry->active_ratio_new   = data[11];
 	),
 
-	TP_printk("dst_cpu=%d task_util=%lu total_util=%lu dsu_bw=%u mem_bw=%u temp=%d dsu_freq=%u dsu_volt=%u extern_volt=%u dsu_dyn_pwr=%u dsu_lkg_pwr=%u mcusys_dyn_pwr=%u dsu_swpm_ver=%u new_active_ratio_from_tcm=%u active_ratio_base=%u active_ratio_new=%u",
+	TP_printk("dst_cpu=%d task_util=%lu total_util=%lu soc_idx=%d dsu_bw=%u mem_bw=%u temp=%d dsu_freq=%u dsu_volt=%u extern_volt=%u dsu_dyn_pwr=%u dsu_lkg_pwr=%u mcusys_dyn_pwr=%u dsu_swpm_ver=%u new_active_ratio_from_tcm=%u active_ratio_base=%u active_ratio_new=%u",
 		__entry->dst_cpu,
 		__entry->task_util,
 		__entry->total_util,
+		__entry->soc_idx,
 		__entry->dsu_bw,
 		__entry->mem_bw,
 		__entry->temp,

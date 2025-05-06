@@ -208,7 +208,7 @@ unsigned long get_dsu_pwr(int wl, int dst_cpu, unsigned long task_util,
 {
 	if (mtk_get_dsu_pwr_hook) {
 		unsigned long ret;
-		int data[12];
+		int data[13] = {[0 ... 12] = 6666};
 
 		ret = mtk_get_dsu_pwr_hook(wl, dst_cpu, task_util,
 			total_util, private, extern_volt, dsu_pwr_enable,
