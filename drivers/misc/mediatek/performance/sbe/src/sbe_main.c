@@ -62,6 +62,10 @@ struct scroll_policy_details_info {
 	struct task_info local_specific_action_arr[FPSGO_MAX_RENDER_INFO_SIZE];
 };
 
+static int sbe_get_render_tid_by_render_name(int tgid, char *name,
+	int *out_tid_arr, unsigned long long *out_bufID_arr,
+	int *out_tid_num, int out_tid_max_num);
+
 static void sbe_do_recycle(struct work_struct *work)
 {
 	int non_empty = 0;
@@ -400,6 +404,54 @@ void sbe_set_critical_task(int cur_pid, unsigned long long id,
 	}
 }
 
+static int sbe_check_render_tasks_exist(int tgid, char *dep_name, int dep_num)
+{
+	char *token, *str, *tmp_str;
+	int out_tid_arr[FPSGO_MAX_RENDER_INFO_SIZE];
+	unsigned long long out_bufID_arr[FPSGO_MAX_RENDER_INFO_SIZE];
+	int out_tid_num;
+	int found_tid = 0;
+
+	if (!dep_name || dep_num <= 0)
+		return 0;
+
+	str = kstrdup(dep_name, GFP_KERNEL);
+	if (!str)
+		return 0;
+
+	tmp_str = str;
+	while ((token = strsep(&tmp_str, ",")) != NULL) {
+		out_tid_num = 0;
+		if (!sbe_get_render_tid_by_render_name(tgid, token,
+				out_tid_arr, out_bufID_arr, &out_tid_num, FPSGO_MAX_RENDER_INFO_SIZE)
+				&& out_tid_num > 0) {
+			found_tid = 1;
+			break;
+		}
+	}
+
+	kfree(str);
+	return found_tid;
+}
+
+void sbe_del_dep_if_render_in_same_proc(int cur_pid, unsigned long long id,
+		int dep_mode, char *dep_name, int dep_num)
+{
+	int found_tid;
+	int tgid;
+
+	if (!dep_name || dep_num <= 0)
+		return;
+
+	tgid = sbe_get_tgid(cur_pid);
+	if (tgid <= 0)
+		return;
+
+	found_tid = sbe_check_render_tasks_exist(tgid, dep_name, dep_num);
+	if (found_tid > 0)
+		sbe_set_critical_task(cur_pid, id, dep_mode, dep_name, dep_num);
+}
+
 static void sbe_notifier_wq_cb_rescue(int pid, int start, int enhance,
 	int rescue_type, unsigned long long rescue_target, unsigned long long frameID)
 {
@@ -425,7 +477,7 @@ static void sbe_notifier_wq_cb_hwui_frame_hint(int start,
 		break;
 	case 0:
 		sbe_receive_frame_start(cur_pid, frameID, curr_ts, id);
-		sbe_set_critical_task(cur_pid, id, dep_mode, dep_name, dep_num);
+		sbe_del_dep_if_render_in_same_proc(cur_pid, id, dep_mode, dep_name, dep_num);
 		break;
 	case 1:
 		sbe_receive_frame_end(cur_pid, frameID, curr_ts, id);
