@@ -1822,7 +1822,6 @@ static int fbt_filter_dep_list(struct fpsgo_loading *dep_arr, int *num,
 		fpsgo_main_trace("[fbt][%d][0x%llx] %dth filter mode:%d id:%d",
 			pid, buffer_id, i+1, filter_arr[i].mode, filter_arr[i].specific_id);
 	}
-	kfree(filter_arr);
 
 	sort(dep_arr, orig_num, sizeof(struct fpsgo_loading), __cmp2, NULL);
 	for (i = orig_num-1; i >= 0; i--) {
@@ -1833,6 +1832,7 @@ static int fbt_filter_dep_list(struct fpsgo_loading *dep_arr, int *num,
 	}
 
 out:
+	kfree(filter_arr);
 	return 0;
 }
 
