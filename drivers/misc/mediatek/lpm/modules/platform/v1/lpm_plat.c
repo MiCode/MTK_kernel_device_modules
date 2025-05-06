@@ -52,10 +52,6 @@ static int __init lpm_early_initcall(void)
 	return 0;
 }
 
-#ifndef MTK_LPM_MODE_MODULE
-subsys_initcall(lpm_early_initcall);
-#endif
-
 static int __init lpm_device_initcall(void)
 {
 	return 0;
@@ -73,16 +69,13 @@ static int __init lpm_late_initcall(void)
 
 	return 0;
 }
-#ifndef MTK_LPM_MODE_MODULE
-late_initcall_sync(lpm_late_initcall);
-#endif
 
 static int __init lpm_plat_init(void)
 {
 	int ret = 0;
-#ifdef MTK_LPM_MODE_MODULE
+
 	ret = lpm_early_initcall();
-#endif
+
 	if (ret)
 		goto lpm_plat_init_fail;
 
@@ -91,9 +84,7 @@ static int __init lpm_plat_init(void)
 	if (ret)
 		goto lpm_plat_init_fail;
 
-#ifdef MTK_LPM_MODE_MODULE
 	ret = lpm_late_initcall();
-#endif
 
 	if (ret)
 		goto lpm_plat_init_fail;

@@ -14,6 +14,12 @@ obj-$(CONFIG_MTK_LPM_MT6985) += mt6985/
 endif
 endif
 
+ifeq ($(CONFIG_MTK_LPM_MT6858),m)
+ifneq ($(wildcard $(src)/mt6858),)
+obj-$(CONFIG_MTK_LPM_MT6858) += v6858/
+endif
+endif
+
 ifeq ($(CONFIG_MTK_LPM_MT6886),m)
 ifneq ($(wildcard $(src)/mt6886),)
 obj-$(CONFIG_MTK_LPM_MT6886) += mt6886/

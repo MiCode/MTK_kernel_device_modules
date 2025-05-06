@@ -32,7 +32,7 @@
 #include <lpm_call.h>
 #include <lpm_type.h>
 #include <lpm_call_type.h>
-#include <lpm_dbg_common_v1.h>
+#include <lpm_dbg_common_v2.h>
 
 #include "lpm_plat.h"
 #include "lpm_plat_comm.h"
@@ -290,6 +290,9 @@ static int lpm_s2idle_barrier(void)
 	unsigned int s2idle_block_value;
 
 	if (!drv)
+		return -1;
+
+	if (drv->state_count < 2)
 		return -1;
 
 	i = drv->state_count - 1;
