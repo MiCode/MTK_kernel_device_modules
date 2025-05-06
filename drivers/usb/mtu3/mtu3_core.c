@@ -442,7 +442,7 @@ void mtu3_set_speed(struct mtu3 *mtu, enum usb_device_speed speed)
 	if (!mtu->ssusb->is_host)
 		mtu->speed = speed;
 
-	dev_info(mtu->dev, "set speed: %s\n", usb_speed_string(speed));
+	dev_dbg(mtu->dev, "set speed: %s\n", usb_speed_string(speed));
 }
 
 /* CSR registers will be reset to default value if port is disabled */
@@ -601,7 +601,7 @@ void mtu3_check_params(struct mtu3 *mtu)
 
 	mtu->speed = mtu->max_speed;
 
-	dev_info(mtu->dev, "max_speed: %s\n",
+	dev_dbg(mtu->dev, "max_speed: %s\n",
 		 usb_speed_string(mtu->max_speed));
 }
 
@@ -972,7 +972,7 @@ static irqreturn_t mtu3_link_isr(struct mtu3 *mtu)
 		udev_speed = USB_SPEED_UNKNOWN;
 		break;
 	}
-	dev_dbg(mtu->dev, "%s: %s\n", __func__, usb_speed_string(udev_speed));
+	dev_info(mtu->dev, "%s: %s\n", __func__, usb_speed_string(udev_speed));
 	mtu3_dbg_trace(mtu->dev, "link speed %s",
 		       usb_speed_string(udev_speed));
 

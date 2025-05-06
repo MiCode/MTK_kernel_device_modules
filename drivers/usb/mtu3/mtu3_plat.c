@@ -118,8 +118,6 @@ static void ssusb_hwrscs_req_v2_v3(struct ssusb_mtk *ssusb,
 	int ret;
 	bool vcore_req_support = (ssusb->hwrscs_vers == SSUSB_HWRECS_V3);
 
-	dev_info(ssusb->dev, "%s state = %d\n", __func__, state);
-
 	/* unlock usb hw req bit */
 	if (ssusb->clkgate) {
 		regmap_update_bits(ssusb->clkgate, REQ_GATE0, 0xF, 0xF);
@@ -181,7 +179,8 @@ static void ssusb_hwrscs_req_v2_v3(struct ssusb_mtk *ssusb,
 		return;
 	}
 
-	dev_info(ssusb->dev, "%s spm_ctrl=0x%x\n", __func__, spm_ctrl);
+	dev_info(ssusb->dev, "%s state=%d, spm_ctrl=0x%x\n",
+		__func__, state, spm_ctrl);
 	/* write spm_ctrl */
 	mtu3_writel(ibase, U3D_SSUSB_SPM_CTRL_V2, spm_ctrl);
 
