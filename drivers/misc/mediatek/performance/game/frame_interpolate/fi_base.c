@@ -210,7 +210,7 @@ out:
 void fi_delete_policy_cmd(struct fi_policy_info *iter)
 {
 	unsigned long long min_ts = ULLONG_MAX;
-	struct fi_policy_info *tmp_iter = NULL, *min_iter = NULL;
+	struct fi_policy_info *tmp_iter = NULL, *min_iter = iter;
 	struct hlist_node *h = NULL;
 
 	if (iter)
