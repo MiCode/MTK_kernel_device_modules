@@ -183,6 +183,7 @@ struct mddp_dev_ipv4_conntrack_event_t {
 	uint8_t proto_num;
 	uint8_t mac[6];
 	int wan_netif_id;
+	uint32_t ct_timeout;
 };
 
 struct mddp_dev_ipv6_conntrack_event_t {
@@ -193,6 +194,7 @@ struct mddp_dev_ipv6_conntrack_event_t {
 	uint8_t proto_num;
 	uint8_t mac[6];
 	int wan_netif_id;
+	uint32_t ct_timeout;
 };
 
 /*

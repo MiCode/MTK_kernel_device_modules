@@ -460,6 +460,8 @@ static void mddp_f_out_nf_ipv6(struct sk_buff *skb, struct mddp_f_cb *cb)
 	cb->ip_ver = ip6->version;
 	switch (nexthdr) {
 	case IPPROTO_TCP:
+		if (mddp_connection_base_activated_s)
+			break;
 		tcp = (struct tcpheader *) (skb_network_header(skb) + sizeof(struct ip6header));
 
 		ipv6_addr_copy(&(t.saddr), (struct in6_addr *)&(ip6->saddr));
