@@ -2342,11 +2342,30 @@ int scp_check_resource(void)
 #if SCP_RECOVERY_SUPPORT
 void scp_region_info_init(void)
 {
-	/*get scp loader/firmware info from scp sram*/
-	scp_region_info = (SCP_TCM + SCP_REGION_INFO_OFFSET);
-	pr_debug("[SCP] scp_region_info = %px\n", scp_region_info);
-	memcpy_from_scp(&scp_region_info_copy,
-		scp_region_info, sizeof(scp_region_info_copy));
+#if SCP_RESERVED_MEM && IS_ENABLED(CONFIG_OF_RESERVED_MEM)
+	uint32_t scp_region_info_copy_arr[sizeof(scp_region_info_copy)/sizeof(uint32_t)];
+	uint32_t i;
+
+	pr_debug("[SCP] scp_region_info_init\n");
+	/*get scp loader/firmware info from tfa. */
+	if (scpreg.secure_dump) {
+
+		for (i = 0; i < sizeof(scp_region_info_copy_arr)/sizeof(uint32_t); i++)
+			scp_region_info_copy_arr[i] = scp_do_get_region_info(i);
+
+		memcpy_from_scp(&scp_region_info_copy,
+			&scp_region_info_copy_arr, sizeof(scp_region_info_copy));
+
+	} else {
+#else
+	{
+#endif
+		/*get scp loader/firmware info from scp sram*/
+		scp_region_info = (SCP_TCM + SCP_REGION_INFO_OFFSET);
+		pr_debug("[SCP] scp_region_info = %p\n", scp_region_info);
+		memcpy_from_scp(&scp_region_info_copy,
+			scp_region_info, sizeof(scp_region_info_copy));
+	}
 }
 #else
 void scp_region_info_init(void) {}

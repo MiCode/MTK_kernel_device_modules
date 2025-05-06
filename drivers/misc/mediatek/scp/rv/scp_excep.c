@@ -931,7 +931,15 @@ int scp_excep_init(void)
  *****************************************************************************/
 void scp_ram_dump_init(void)
 {
-	scp_A_task_context_addr = scp_region_info->TaskContext_ptr;
+#if SCP_RESERVED_MEM && IS_ENABLED(CONFIG_OF_RESERVED_MEM)
+	if (scpreg.secure_dump) {
+		scp_A_task_context_addr = scp_region_info_copy.TaskContext_ptr;
+	} else {
+#else
+	{
+#endif
+		scp_A_task_context_addr = scp_region_info->TaskContext_ptr;
+	}
 	pr_debug("[SCP] get scp_A_task_context_addr: 0x%x\n",
 		scp_A_task_context_addr);
 }
