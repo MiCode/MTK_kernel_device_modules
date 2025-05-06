@@ -22883,6 +22883,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 	regulator-always-on;
 };
 
+&mt6661_5_lnc0_9 {
+	regulator-always-on;
+};
+
 &mt6661_6_buck1 {
 	regulator-always-on;
 };
