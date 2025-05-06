@@ -913,8 +913,6 @@ static s32 core_enable(struct mml_task *task, u32 pipe)
 	} else if (mml_isdc(cfg->info.mode) || !cfg->dpc) {
 		mml_msg_dpc("%s dpc exception flow enable for mode %u", __func__, cfg->info.mode);
 		mml_dpc_dc_enable(cfg->mml, path->mmlsys->sysid, true);
-		if (path->mmlsys2)
-			mml_dpc_dc_enable(cfg->mml, path->mmlsys2->sysid, true);
 	}
 
 	mml_trace_ex_begin("%s_%s_%u", __func__, "clk", pipe);
@@ -1001,8 +999,6 @@ static s32 core_disable(struct mml_task *task, u32 pipe)
 	} else if (mml_isdc(cfg->info.mode) || !cfg->dpc) {
 		mml_msg_dpc("%s dpc exception flow disable for mode %u", __func__, cfg->info.mode);
 		/* must before pw_disable */
-		if (path->mmlsys2)
-			mml_dpc_dc_enable(cfg->mml, path->mmlsys2->sysid, false);
 		mml_dpc_dc_enable(cfg->mml, path->mmlsys->sysid, false);
 	}
 

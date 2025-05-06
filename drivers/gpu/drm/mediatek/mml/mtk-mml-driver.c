@@ -125,7 +125,7 @@ module_param(mml_opp_rsv, int, 0644);
 struct mml_dpc {
 	atomic_t task_cnt[mml_max_sys];
 	atomic_t exc_pw_cnt[mml_max_sys];
-	atomic_t dc_force_cnt;
+	atomic_t dc_force_cnt[mml_max_sys];
 	struct mutex dpc_mutex[mml_max_sys];
 };
 
@@ -1318,7 +1318,7 @@ void mml_dpc_dc_enable(struct mml_dev *mml, u32 sysid, bool dcen)
 	s32 cur_dc_force_cnt;
 
 	if (dcen) {
-		cur_dc_force_cnt = atomic_inc_return(&mml->dpc.dc_force_cnt);
+		cur_dc_force_cnt = atomic_inc_return(&mml->dpc.dc_force_cnt[sysid]);
 
 		if (cur_dc_force_cnt > 1)
 			return;
@@ -1327,9 +1327,9 @@ void mml_dpc_dc_enable(struct mml_dev *mml, u32 sysid, bool dcen)
 			return;
 		}
 
-		mml_mmp(dpc_dc, MMPROFILE_FLAG_START, 0, 0);
+		mml_mmp(dpc_dc, MMPROFILE_FLAG_START, sysid, 0);
 	} else {
-		cur_dc_force_cnt = atomic_dec_return(&mml->dpc.dc_force_cnt);
+		cur_dc_force_cnt = atomic_dec_return(&mml->dpc.dc_force_cnt[sysid]);
 
 		if (cur_dc_force_cnt > 0)
 			return;
@@ -1338,11 +1338,11 @@ void mml_dpc_dc_enable(struct mml_dev *mml, u32 sysid, bool dcen)
 			return;
 		}
 
-		mml_mmp(dpc_dc, MMPROFILE_FLAG_END, 0, 0);
+		mml_mmp(dpc_dc, MMPROFILE_FLAG_END, sysid, 0);
 	}
 
-	mml_msg_dpc("%s group en group %s",
-		__func__, dcen ? "false" : "true");
+	mml_msg_dpc("%s group en sys %u group %s",
+		__func__, sysid, dcen ? "false" : "true");
 	mml_dpc_group_enable(sysid, !dcen);
 }
 
