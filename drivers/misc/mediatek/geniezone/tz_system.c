@@ -1219,7 +1219,7 @@ TZ_RESULT KREE_TeeServiceCallPlus(KREE_SESSION_HANDLE handle, uint32_t command,
 	ret = TZ_RESULT_SUCCESS;
 
 tee_service_call_plus_out:
-	if (!is_locked)
+	if (!IS_ERR_OR_NULL((const void *)session_handle) && !is_locked)
 		mutex_unlock(&session_handle->sess_lock);
 
 	kfree(cparam);
