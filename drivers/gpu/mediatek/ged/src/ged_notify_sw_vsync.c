@@ -376,6 +376,10 @@ void ged_eb_dvfs_trace_dump(void)
 			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_TARGET_GPU));
 		trace_tracing_mark_write(5566, "async_opp_diff",
 			mtk_gpueb_sysram_read(SYSRAM_GPU_EB_USE_ASYNC_OPP_DIFF));
+		if (is_fdvfs_enable() & POLICY_MODE_V2) { // EB side debug
+			trace_tracing_mark_write(5566, "dbg_set_f_back",
+				mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_EB_IS_ENTER_SET_FREQ_BACK].addr));
+		}
 		if ((is_fdvfs_enable() & POLICY_MODE_V2)) {
 			trace_GPU_DVFS__Policy__Common__Check_Target(
 				mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_T_GPU_FPS_PID].addr),

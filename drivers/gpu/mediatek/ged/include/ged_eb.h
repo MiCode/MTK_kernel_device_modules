@@ -1012,7 +1012,7 @@ GEN("Gpu_debug_5566", GPU_DEBUG4, 4, "5566_debug4") \
  GEN("Gpu_debug_5566", GPU_DEBUG6, 1, "5566_debug6") \
  GEN("Gpu_debug_5566", GPU_DEBUG7, 1, "5566_debug7") \
  GEN("Gpu_debug_5566", GPU_DEBUG8, 1, "5566_debug8") \
- GEN("Gpu_debug_5566", GPU_DEBUG9, 1, "5566_debug9") \
+GEN("enter_set_freq_back", GPU_EB_IS_ENTER_SET_FREQ_BACK, 1, "enter_set_freq_back") \
 GEN("policy_state_v2", GPU_EB_USE_POLICY_STATE_V2, 1, "policy_state_v2")\
  GEN("t_gpu", GPU_T_GPU, 1, "t_gpu") \
  GEN("t_gpu_target", GPU_T_GPU_TARGET, 1, "t_gpu_target") \
