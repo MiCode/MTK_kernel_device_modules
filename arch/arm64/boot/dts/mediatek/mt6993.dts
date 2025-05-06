@@ -9962,6 +9962,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"disp_cmd_mode_trig_start",
 				"disp_vdo_mode_trig_start",
 				"disp_tail_target_line",
+				"disp_vdo_sof",
 				"disp_dbi_count_eof";
 
 			gce-events =
@@ -10021,6 +10022,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<&gce CMDQ_EVENT_DISP1_A_DISP_DSI0_ENG_EVENT_3>,
 				<&gce CMDQ_EVENT_DISP1_A_DISP_DSI0_ENG_EVENT_4>,
 				<&gce CMDQ_EVENT_DISP1_A_DISP_DSI0_ENG_EVENT_5>,
+				<&gce CMDQ_EVENT_DISP1_A_DISP_DSI0_ENG_EVENT_6>,
 				<&gce CMDQ_EVENT_DISP1_A_GCE_FRAME_DONE_6>;
 
 			helper-name = "MTK_DRM_OPT_STAGE",
