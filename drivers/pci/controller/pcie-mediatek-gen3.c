@@ -3522,6 +3522,7 @@ static int mtk_pcie_pre_init_6993(struct mtk_pcie_port *port)
 static int mtk_pcie_post_init_6993(struct mtk_pcie_port *port)
 {
 	u32 val, max_payload_sup;
+	void __iomem *phy;
 
 	/* Adjust max payload size to maximum */
 	max_payload_sup = readl_relaxed(port->base + PCIE_CONF_DEV_CAP_REG);
@@ -3531,8 +3532,38 @@ static int mtk_pcie_post_init_6993(struct mtk_pcie_port *port)
 	val |= FIELD_PREP(PCI_EXP_DEVCTL_PAYLOAD, max_payload_sup);
 	writel_relaxed(val, port->base + PCIE_CONF_DEV_CTL_STS_REG);
 
-	dev_info(port->dev, "max payload size register, DEV_CTL=%#x",
+	dev_info(port->dev, "max payload size register, DEV_CTL= %#x",
 		 readl_relaxed(port->base + PCIE_CONF_DEV_CTL_STS_REG));
+
+	if (port->port_num == 0) {
+		phy = ioremap(0x16900000, 0x10000);
+		dev_info(port->dev, "Before link: PHY dig_ln_trx_64 = %#x, PHY dig_ln_rx_30 = %#x, MAC MISC_CTRL = %#x\n",
+			 readl_relaxed(phy + 0x3064),
+			 readl_relaxed(phy + 0x5030),
+			 readl_relaxed(port->base + PCIE_MISC_CTRL_REG));
+
+		/* Skip RMTX stage */
+		val = readl_relaxed(phy + 0x3064);
+		val |= (BIT(23) | GENMASK(29, 28));
+		writel_relaxed(val, phy + 0x3064);
+
+		val = readl_relaxed(phy + 0x5030);
+		val &= ~GENMASK(28, 16);
+		val |= (0x96 << 16);
+		writel_relaxed(val, phy + 0x5030);
+
+		/* Disable redo EQ */
+		val = readl_relaxed(port->base + PCIE_MISC_CTRL_REG);
+		val |= BIT(14);
+		writel_relaxed(val, port->base + PCIE_MISC_CTRL_REG);
+
+		dev_info(port->dev, "After link: PHY dig_ln_trx_64 = %#x, PHY dig_ln_rx_30 = %#x, MAC MISC_CTRL = %#x\n",
+			 readl_relaxed(phy + 0x3064),
+			 readl_relaxed(phy + 0x5030),
+			 readl_relaxed(port->base + PCIE_MISC_CTRL_REG));
+
+		iounmap(phy);
+	}
 
 	if (port->port_num == 1) {
 		/*
