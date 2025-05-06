@@ -280,7 +280,7 @@ static int set_tgd(const char *buf, const struct kernel_param *kp)
 	if (set_tgd_param < 0 || set_tgd_param > PID_MAX_DEFAULT)
 		return -EINVAL;
 
-	if (set_tgd_hook) {
+	if (set_tgd_hook && tt_vip_enable) {
 		set_tgd_hook(set_tgd_param);
 		trace_turbo_vip(INVALID_LOADING, INVALID_LOADING, "DEBUG set: tgd_hook:",
 						set_tgd_param, "-1", INVALID_VAL, enforced_qualified_mask);
@@ -348,7 +348,7 @@ static int set_td(const char *buf, const struct kernel_param *kp)
 	if (set_td_param < 0 || set_td_param > PID_MAX_DEFAULT)
 		return -EINVAL;
 
-	if (set_td_hook) {
+	if (set_td_hook && tt_vip_enable) {
 		set_td_hook(set_td_param);
 		trace_turbo_vip(INVALID_LOADING, INVALID_LOADING, "DEBUG set: td_hook:",
 						set_td_param, "-1", INVALID_VAL, enforced_qualified_mask);
@@ -399,6 +399,60 @@ static const struct kernel_param_ops unset_td_ops = {
 module_param_cb(unset_td, &unset_td_ops, &unset_td_param, 0664);
 MODULE_PARM_DESC(unset_td, "unset td to vip for debug");
 
+static int set_vvtd_param;
+static int set_vvtd(const char *buf, const struct kernel_param *kp)
+{
+	int retval = 0;
+
+	set_vvtd_param = -1;
+	retval = kstrtouint(buf, 0, &set_vvtd_param);
+
+	if (retval)
+		return -EINVAL;
+
+	if (set_vvtd_param < 0 || set_vvtd_param > PID_MAX_DEFAULT)
+		return -EINVAL;
+
+	set_vip_ctrl_node(set_vvtd_param, VVIP, 12);
+
+	return retval;
+}
+
+static const struct kernel_param_ops set_vvtd_ops = {
+	.set = set_vvtd,
+	.get = param_get_int,
+};
+
+module_param_cb(set_vvtd, &set_vvtd_ops, &set_vvtd_param, 0664);
+MODULE_PARM_DESC(set_vvtd, "set td to vvip for debug");
+
+static int unset_vvtd_param;
+static int unset_vvtd(const char *buf, const struct kernel_param *kp)
+{
+	int retval = 0;
+
+	unset_vvtd_param = -1;
+	retval = kstrtouint(buf, 0, &unset_vvtd_param);
+
+	if (retval)
+		return -EINVAL;
+
+	if (unset_vvtd_param < 0 || unset_vvtd_param > PID_MAX_DEFAULT)
+		return -EINVAL;
+
+	unset_vip_ctrl_node(unset_vvtd_param, VVIP);
+
+	return retval;
+}
+
+static const struct kernel_param_ops unset_vvtd_ops = {
+	.set = unset_vvtd,
+	.get = param_get_int,
+};
+
+module_param_cb(unset_vvtd, &unset_vvtd_ops, &unset_vvtd_param, 0664);
+MODULE_PARM_DESC(unset_vvtd, "unset td to vvip for debug");
+
 void (*set_tdtgd_hook)(int tgd) = NULL;
 EXPORT_SYMBOL(set_tdtgd_hook);
 
@@ -417,7 +471,7 @@ static int set_tdtgd(const char *buf, const struct kernel_param *kp)
 	if (set_tdtgd_param < 0 || set_tdtgd_param > PID_MAX_DEFAULT)
 		return -EINVAL;
 
-	if (set_tdtgd_hook) {
+	if (set_tdtgd_hook && tt_vip_enable) {
 		rcu_read_lock();
 		p = find_task_by_vpid(set_tdtgd_param);
 		if (p)
@@ -1787,6 +1841,45 @@ int set_task_priority(struct task_struct *task, int prio)
 EXPORT_SYMBOL(set_task_priority);
 /* end of task rt prio interface */
 
+void set_vip_ctrl_node(int pid, int vip_prio, unsigned int throttle_time)
+{
+	if (!tt_vip_enable)
+		return;
+
+	switch (vip_prio) {
+	case WORKER_VIP:
+		if (set_td_hook)
+			set_td_hook(pid);
+		break;
+	case MIN_PRIORITY_BASED_VIP ... MAX_PRIORITY_BASED_VIP:
+		set_task_priority_based_vip_and_throttle(pid, vip_prio, throttle_time);
+		break;
+	case VVIP:
+		set_task_vvip_and_throttle(pid, throttle_time);
+		break;
+	default:
+		break;
+	}
+}
+
+void unset_vip_ctrl_node(int pid, int vip_prio)
+{
+	switch (vip_prio) {
+	case WORKER_VIP:
+		if (unset_td_hook)
+			unset_td_hook(pid);
+		break;
+	case MIN_PRIORITY_BASED_VIP ... MAX_PRIORITY_BASED_VIP:
+		unset_task_priority_based_vip(pid);
+		break;
+	case VVIP:
+		unset_task_vvip(pid);
+		break;
+	default:
+		break;
+	}
+}
+
 static char set_tdp_param[64] = "";
 static int set_tdp(const char *buf, const struct kernel_param *kp)
 {
@@ -1901,6 +1994,10 @@ static int __init init_vip_engine(void)
 	task_turbo_do_unset_binder_uclamp_param = do_unset_binder_uclamp_param;
 	task_turbo_do_binder_uclamp_stuff = do_binder_uclamp_stuff;
 	task_turbo_do_enable_binder_uclamp_inheritance = do_enable_binder_uclamp_inheritance;
+	vip_engine_set_vip_ctrl_node_cs = set_vip_ctrl_node;
+	vip_engine_unset_vip_ctrl_node_cs = unset_vip_ctrl_node;
+	vip_engine_set_vip_ctrl_node_sbe = set_vip_ctrl_node;
+	vip_engine_unset_vip_ctrl_node_sbe = unset_vip_ctrl_node;
 	uclamp_wq = create_singlethread_workqueue("uclamp_singlethread_wq");
 
 failed:

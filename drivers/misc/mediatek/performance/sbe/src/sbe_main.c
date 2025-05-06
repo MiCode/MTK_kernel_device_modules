@@ -53,6 +53,10 @@ void (*task_turbo_do_binder_uclamp_stuff)(int cmd);
 EXPORT_SYMBOL_GPL(task_turbo_do_binder_uclamp_stuff);
 void (*task_turbo_do_enable_binder_uclamp_inheritance)(int enable);
 EXPORT_SYMBOL_GPL(task_turbo_do_enable_binder_uclamp_inheritance);
+void (*vip_engine_set_vip_ctrl_node_cs)(int pid, int vip_prio, unsigned int throttle_time);
+EXPORT_SYMBOL_GPL(vip_engine_set_vip_ctrl_node_cs);
+void (*vip_engine_unset_vip_ctrl_node_cs)(int pid, int vip_prio);
+EXPORT_SYMBOL_GPL(vip_engine_unset_vip_ctrl_node_cs);
 
 struct scroll_policy_details_info {
 	char thread_name[MAX_PROCESS_NAME_LEN];
@@ -1355,14 +1359,17 @@ void sbe_consistency_policy(int enabled, int pid, int uclamp_min, int uclamp_max
 	sbe_trace("Consistency_policy, pid=%d enable=%d uclamp_min=%d uclamp_max=%d",
 			pid, enabled, uclamp_min, uclamp_max);
 #if IS_ENABLED(CONFIG_MTK_SCHEDULER) && IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
-	if (enabled == 1) {
-		// turn_on_tgid_vip();
-		// set_tgid_vip(pid);
-		set_task_vvip(pid);
-	} else {
-		unset_task_vvip(pid);
-		// unset_tgid_vip(pid);
-		// turn_off_tgid_vip();
+	if (vip_engine_set_vip_ctrl_node_cs &&
+			vip_engine_unset_vip_ctrl_node_cs) {
+		if (enabled == 1) {
+			// turn_on_tgid_vip();
+			// set_tgid_vip(pid);
+			vip_engine_set_vip_ctrl_node_cs(pid, VVIP, 12);
+		} else {
+			vip_engine_unset_vip_ctrl_node_cs(pid, VVIP);
+			// unset_tgid_vip(pid);
+			// turn_off_tgid_vip();
+		}
 	}
 #endif
 	if (task_turbo_do_enable_binder_uclamp_inheritance &&

@@ -67,12 +67,20 @@ struct sched_attr_work {
 	int toSet;
 };
 
+void set_vip_ctrl_node(int pid, int vip_prio, unsigned int throttle_time);
+void unset_vip_ctrl_node(int pid, int vip_prio);
 extern int (*task_turbo_enforce_ct_to_vip_fp)(int val, int caller_id);
 extern void (*task_turbo_do_set_binder_uclamp_param)(pid_t pid, int binder_uclamp_max, int binder_uclamp_min);
 extern void (*task_turbo_do_unset_binder_uclamp_param)(pid_t pid);
 extern void (*task_turbo_do_binder_uclamp_stuff)(int cmd);
 extern void (*task_turbo_do_enable_binder_uclamp_inheritance)(int enable);
+extern void (*vip_engine_set_vip_ctrl_node_cs)(int pid, int vip_prio, unsigned int throttle_time);
+extern void (*vip_engine_unset_vip_ctrl_node_cs)(int pid, int vip_prio);
+extern void (*vip_engine_set_vip_ctrl_node_sbe)(int pid, int vip_prio, unsigned int throttle_time);
+extern void (*vip_engine_unset_vip_ctrl_node_sbe)(int pid, int vip_prio);
+
 extern inline bool launch_turbo_enable(void);
+extern void unset_task_priority_based_vip(int pid);
 extern int get_cpu_gear_uclamp_max_capacity(unsigned int cpu, int ret_type);
 #if IS_ENABLED(CONFIG_MTK_TASK_TURBO)
 extern int *tt_vip_enable_p;

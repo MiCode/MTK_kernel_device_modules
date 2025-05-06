@@ -99,6 +99,11 @@ EXPORT_SYMBOL(sbe_frame_hint_fp);
 void (*enable_ux_jank_detection_fp)(bool enable, const char *info, int tgid, int pid);
 EXPORT_SYMBOL(enable_ux_jank_detection_fp);
 
+void (*vip_engine_set_vip_ctrl_node_sbe)(int pid, int vip_prio, unsigned int throttle_time);
+EXPORT_SYMBOL_GPL(vip_engine_set_vip_ctrl_node_sbe);
+void (*vip_engine_unset_vip_ctrl_node_sbe)(int pid, int vip_prio);
+EXPORT_SYMBOL_GPL(vip_engine_unset_vip_ctrl_node_sbe);
+
 #if IS_ENABLED(CONFIG_ARM64)
 #define SMART_LAUNCH_BOOST_SUPPORT_CLUSTER_NUM 3
 static int smart_launch_off_on;
@@ -283,11 +288,12 @@ void sbe_set_deplist_policy(struct sbe_render_info *thr, int policy)
 				&& strlen(pid_buf) + strlen(pid_str) < sizeof(pid_buf))
 			strcat(pid_buf, pid_str);
 
-		if (set_deplist_vip) {
+		if (set_deplist_vip && vip_engine_set_vip_ctrl_node_sbe &&
+				vip_engine_unset_vip_ctrl_node_sbe) {
 			if (policy == SBE_TASK_DISABLE)
-				unset_task_basic_vip(thr->dep_arr[i]);
+				vip_engine_unset_vip_ctrl_node_sbe(thr->dep_arr[i], WORKER_VIP);
 			else if (policy == SBE_TASK_ENABLE)
-				set_task_basic_vip(thr->dep_arr[i]);
+				vip_engine_set_vip_ctrl_node_sbe(thr->dep_arr[i], WORKER_VIP, 12);
 		}
 		if (set_deplist_ls)
 			sbe_set_task_ls(thr->dep_arr[i], policy, SBE_PREFER_NONE);
@@ -1028,20 +1034,22 @@ void set_sbe_thread_vip(int set_vip, int tgid, char *dep_name, int dep_num)
 		goto out;
 	}
 
-	if (set_vip) {
-		set_task_basic_vip(sbe_pid);
-		for (i = 0; i < local_specific_tid_num; i++) {
-			if (local_specific_tid_arr[i] > 0)
-				set_task_basic_vip(local_specific_tid_arr[i]);
+	if(vip_engine_set_vip_ctrl_node_sbe && vip_engine_unset_vip_ctrl_node_sbe) {
+		if (set_vip) {
+			vip_engine_set_vip_ctrl_node_sbe(sbe_pid, 0, 12);
+			for (i = 0; i < local_specific_tid_num; i++) {
+				if (local_specific_tid_arr[i] > 0)
+					vip_engine_set_vip_ctrl_node_sbe(local_specific_tid_arr[i], WORKER_VIP, 12);
+			}
+			sbe_trace("[SBE] set sbe task as vip %d", sbe_pid);
+		} else {
+			vip_engine_unset_vip_ctrl_node_sbe(sbe_pid, 0);
+			for (i = 0; i < local_specific_tid_num; i++) {
+				if (local_specific_tid_arr[i] > 0)
+					vip_engine_unset_vip_ctrl_node_sbe(local_specific_tid_arr[i], WORKER_VIP);
+			}
+			sbe_trace("[SBE] reset sbe task priority");
 		}
-		sbe_trace("[SBE] set sbe task as vip %d", sbe_pid);
-	} else {
-		unset_task_basic_vip(sbe_pid);
-		for (i = 0; i < local_specific_tid_num; i++) {
-			if (local_specific_tid_arr[i] > 0)
-				unset_task_basic_vip(local_specific_tid_arr[i]);
-		}
-		sbe_trace("[SBE] reset sbe task priority");
 	}
 out:
 	kfree(local_specific_tid_arr);
@@ -2047,14 +2055,15 @@ int sbe_get_fpsgo_info(int tgid, int pid, int blc,
 		unsigned long mask, int jerk_boost_flag, struct task_info *dep_arr)
 {
 	if (tgid == atomic_read(&g_web_or_flutter_tgid)
-			&& dep_arr) {
+			&& dep_arr && vip_engine_set_vip_ctrl_node_sbe &&
+			vip_engine_unset_vip_ctrl_node_sbe) {
 		sbe_get_tree_lock(__func__);
 		for (size_t i = 0; i < FPSGO_MAX_TASK_NUM; i++) {
 			struct task_info *dep_task = g_dep_arr_last;
 
 			if (dep_task && dep_task[i].pid > 0) {
 				if (set_deplist_vip)
-					unset_task_basic_vip(dep_task[i].pid);
+					vip_engine_unset_vip_ctrl_node_sbe(dep_task[i].pid, WORKER_VIP);
 				if (set_deplist_affinity)
 					sbe_set_affinity_on_scrolling(dep_task[i].pid, SBE_PREFER_NONE);
 			}
@@ -2069,7 +2078,7 @@ int sbe_get_fpsgo_info(int tgid, int pid, int blc,
 
 			if (dep_task && dep_task[i].pid > 0) {
 				if (set_deplist_vip)
-					set_task_basic_vip(dep_task[i].pid);
+					vip_engine_set_vip_ctrl_node_sbe(dep_task[i].pid, WORKER_VIP, 12);
 				if (set_deplist_affinity)
 					sbe_set_affinity_on_scrolling(dep_task[i].pid, SBE_PREFER_M);
 			}
