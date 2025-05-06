@@ -8140,7 +8140,7 @@ static void mtk_oddmr_od_trigger_frame(struct mtk_ddp_comp *comp)
 	int ret = 0;
 
 	atomic_set(&oddmr_data->primary_data->sof_irq_for_od_sram, 0);
-	mtk_crtc_check_trigger(comp->mtk_crtc, false, true);
+	drm_trigger_repaint(DRM_REPAINT_FOR_IDLE, comp->mtk_crtc->base.dev);
 	ret = wait_event_interruptible_timeout(oddmr_data->primary_data->od_sram_wq,
 			atomic_read(&oddmr_data->primary_data->sof_irq_for_od_sram) == 1,
 			msecs_to_jiffies(200));
@@ -8184,6 +8184,8 @@ static int mtk_oddmr_od_init(struct mtk_ddp_comp *comp, void *data)
 		ODDMRFLOW_LOG("panelid does not match\n");
 		return -1;
 	}
+
+	oddmr_data->primary_data->od_state = ODDMR_LOAD_DONE;
 	mtk_oddmr_od_table_fps_minmax(oddmr_data);
 	if (oddmr_data->primary_data->od_fps_mode == 1 &&
 			oddmr_data->primary_data->od_wait_time == 0) {
@@ -8194,12 +8196,41 @@ static int mtk_oddmr_od_init(struct mtk_ddp_comp *comp, void *data)
 	oddmr_data->roi_y_last = 0;
 	oddmr_data->roi_height_last = mtk_crtc_get_height_by_comp(__func__,
 		&comp->mtk_crtc->base, comp, true);
+	if (oddmr_data->data->od_version >= MTK_OD_V3) {
+		for (i = 0; i < basic_pq->counts; i++) {
+			if (basic_pq->param[i].addr == MT6991_DISP_ODDMR_OD_SCALING_6) {
+				oddmr_data->od_data.spr_rgbg_mode = (basic_pq->param[i].value & 0x8) >> 3;
+				break;
+			}
+		}
+		ODDMRAPI_LOG("spr_rgbg_mode %d (0x%x = 0x%x)\n", oddmr_data->od_data.spr_rgbg_mode,
+			basic_pq->param[i].addr, basic_pq->param[i].value);
+	}
+
+	if (oddmr_data->data->od_version == MTK_OD_V3) {
+		mtk_drm_idlemgr_kick(__func__, &comp->mtk_crtc->base, 1);
+		ret = mtk_oddmr_acquire_clock(comp);
+		ODDMRAPI_LOG("od_init_ret-1, %d\n", ret);
+		if (ret == 0) {
+			pm_ret = mtk_vidle_pq_power_get(__func__);
+			if (pm_ret) {
+				PC_ERR("%s pq_power_get failed %d, skip\n", __func__, pm_ret);
+				mtk_oddmr_release_clock(comp);
+				return -1;
+			}
+			mtk_oddmr_set_top_clk_force(comp, 1, NULL); //needed by writing sram and udma init
+			if (!pm_ret)
+				mtk_vidle_pq_power_put(__func__);
+			mtk_oddmr_release_clock(comp);
+
+			mtk_oddmr_od_trigger_frame(comp);
+		}
+	}
 
 	mtk_crtc = comp->mtk_crtc;
-	mtk_crtc_check_trigger(comp->mtk_crtc, true, true);
 	mtk_drm_idlemgr_kick(__func__, &comp->mtk_crtc->base, 1);
 	ret = mtk_oddmr_acquire_clock(comp);
-	ODDMRAPI_LOG("od_init_ret, %d\n", ret);
+	ODDMRAPI_LOG("od_init_ret-2, %d\n", ret);
 	if (ret == 0) {
 		pm_ret = mtk_vidle_pq_power_get(__func__);
 		if (pm_ret) {
@@ -8207,30 +8238,15 @@ static int mtk_oddmr_od_init(struct mtk_ddp_comp *comp, void *data)
 			mtk_oddmr_release_clock(comp);
 			return -1;
 		}
-		oddmr_data->primary_data->od_state = ODDMR_LOAD_DONE;
-		if (oddmr_data->data->od_version >= MTK_OD_V3) {
-			for (i = 0; i < basic_pq->counts; i++) {
-				if (basic_pq->param[i].addr == MT6991_DISP_ODDMR_OD_SCALING_6) {
-					oddmr_data->od_data.spr_rgbg_mode = (basic_pq->param[i].value & 0x8) >> 3;
-					break;
-				}
-			}
-			ODDMRAPI_LOG("spr_rgbg_mode %d (0x%x = 0x%x)\n", oddmr_data->od_data.spr_rgbg_mode,
-				basic_pq->param[i].addr, basic_pq->param[i].value);
-		}
 
 		if (oddmr_data->data->od_version >= MTK_OD_V2) {
 			SET_VAL_MASK(value, mask, 1, REG_OD_RD_REG_EN); //for sram read
 			mtk_oddmr_write_mask(comp, value, DISP_ODDMR_OD_UDMA_CTR_0, mask, NULL);
 			value = 0; mask = 0;
-			mtk_oddmr_set_top_clk_force(comp, 1, NULL); //needed by writing sram and udma init
+			if (oddmr_data->data->od_version != MTK_OD_V3)
+				mtk_oddmr_set_top_clk_force(comp, 1, NULL); //needed by writing sram and udma init
 		}
-		if (oddmr_data->data->od_version == MTK_OD_V3)
-			mtk_oddmr_od_trigger_frame(comp);
-
 		mtk_oddmr_od_common_init_dual(comp, NULL);
-		ret = mtk_crtc_user_cmd(&comp->mtk_crtc->base,
-				comp, ODDMR_CMD_SET_SPR2RGB, NULL);
 		if (oddmr_data->data->od_version >= MTK_OD_V2) {
 			SET_VAL_MASK(value, mask, 0, MT6991_REG_OD_SPR2RGB_BYPASS); // =1 will cause OD bypass
 			mtk_oddmr_write_mask(comp, value, MT6991_DISP_ODDMR_TOP_OD_S2R_BYPASS, mask, NULL);
@@ -8383,7 +8399,6 @@ static int mtk_oddmr_od_init(struct mtk_ddp_comp *comp, void *data)
 				oddmr1_data->od_data.od_sram_read_sel = 1;
 			}
 		}
-
 		cmdq_mbox_disable(client->chan);
 
 		mtk_oddmr_od_set_res_udma_dual(comp, NULL);
@@ -8393,11 +8408,15 @@ static int mtk_oddmr_od_init(struct mtk_ddp_comp *comp, void *data)
 		if (!pm_ret)
 			mtk_vidle_pq_power_put(__func__);
 		mtk_oddmr_release_clock(comp);
+
+		ret = mtk_crtc_user_cmd(&comp->mtk_crtc->base,
+				comp, ODDMR_CMD_SET_SPR2RGB, NULL);
 		if (oddmr_data->data->od_version < MTK_OD_V2)
 			ret = mtk_crtc_user_cmd(&comp->mtk_crtc->base,
 					comp, ODDMR_CMD_OD_INIT_END, NULL);
 		if (oddmr_data->data->od_version == MTK_OD_V2 && !oddmr_data->dmr_enable)
 			mtk_oddmr_set_top_clk_force(comp, 0, NULL);
+		mtk_crtc_check_trigger(comp->mtk_crtc, false, true);
 	}
 	return ret;
 }
