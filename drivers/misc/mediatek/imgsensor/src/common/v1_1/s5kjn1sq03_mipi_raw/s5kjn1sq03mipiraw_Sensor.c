@@ -125,7 +125,7 @@ static struct imgsensor_info_struct imgsensor_info = {
 	.ae_shut_delay_frame = 0,
 	.ae_sensor_gain_delay_frame = 0,
 	.ae_ispGain_delay_frame = 2,	/* isp gain delay frame for AE cycle */
-	.ihdr_support = HDR_SUPPORT_STAGGER,	/* 1, support; 0,not support */
+	.ihdr_support = HDR_NONE,	/* 1, support; 0,not support */
 	//.ihdr_support = 0,	/* 1, support; 0,not support */
 	.ihdr_le_firstline = 0,	/* 1,le first ; 0, se first */
 	.sensor_mode_num = 5,	/* support sensor mode num */
@@ -1624,7 +1624,7 @@ kal_uint16 addr_data_pair_video_jn1[] = {
 	0x034C, 0x0FF0,
 	0x034E, 0x08F8,
 	0x0350, 0x0008,
-	0x0352, 0x0009,
+	0x0352, 0x0008,
 	0x0900, 0x0122,
 	0x0380, 0x0002,
 	0x0382, 0x0002,
@@ -2450,7 +2450,7 @@ static kal_uint32 get_info(enum MSDK_SCENARIO_ID_ENUM scenario_id,
 	sensor_info->SensorWidthSampling = 0; /* 0 is default 1x */
 	sensor_info->SensorHightSampling = 0; /* 0 is default 1x */
 	sensor_info->SensorPacketECCOrder = 1;
-	sensor_info->HDR_Support = HDR_SUPPORT_STAGGER;
+	sensor_info->HDR_Support = HDR_NONE;
 
 	switch (scenario_id) {
 	case MSDK_SCENARIO_ID_CAMERA_PREVIEW:

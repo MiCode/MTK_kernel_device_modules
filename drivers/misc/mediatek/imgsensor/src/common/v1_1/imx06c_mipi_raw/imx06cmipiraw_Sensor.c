@@ -191,7 +191,7 @@ static struct imgsensor_info_struct imgsensor_info = {
 };
 
 static struct imgsensor_struct imgsensor = {
-	.mirror = IMAGE_NORMAL,	/* mirrorflip information */
+	.mirror = IMAGE_HV_MIRROR,	/* mirrorflip information */
 	.sensor_mode = IMGSENSOR_MODE_INIT,
 	/* IMGSENSOR_MODE enum value,record current sensor mode,such as:
 	 * INIT, Preview, Capture, Video,High Speed Video, Slim Video
