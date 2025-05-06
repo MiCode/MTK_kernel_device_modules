@@ -12569,7 +12569,11 @@ static int mt6991_afe_pcm_dev_probe(struct platform_device *pdev)
 		return PTR_ERR(afe->base_addr);
 
 	/* enable clock for regcache get default value from hw */
-	pm_runtime_get_sync(&pdev->dev);
+	ret = pm_runtime_get_sync(&pdev->dev);
+	if (ret < 0) {
+		dev_info(&pdev->dev, "Failed to get runtime pm sync: %d\n", ret);
+		pm_runtime_put_noidle(&pdev->dev);
+	}
 
 	afe->regmap = devm_regmap_init_mmio(&pdev->dev, afe->base_addr,
 					    &mt6991_afe_regmap_config);
