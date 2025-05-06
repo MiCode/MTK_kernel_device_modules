@@ -921,6 +921,7 @@ struct mtk_drm_crtc_caps {
 	unsigned int crtc_ability;
 	unsigned int ovl_csc_bit_number;
 	unsigned int rpo_support_num;
+	uint64_t atomic_commit_reserved_ns;
 };
 
 #define MTK_PANEL_NUM 5
