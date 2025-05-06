@@ -861,7 +861,8 @@ calc_sharebuck_done:
 		dst_idx = 0;
 	}
 
-	if ((share_buck.gear_idx != -1)) {
+	if ((share_buck.gear_idx != -1) &&
+		(eenv->gear_max_util[share_buck.gear_idx][dst_idx] != -1)) {
 		gear_idx = eenv->gear_idx;
 		eenv->gear_idx = share_buck.gear_idx;
 		pd_idx = cpumask_first(share_buck.cpus);
