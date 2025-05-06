@@ -20631,6 +20631,8 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 		DDPDBG("%s:%d EPT time:%llu\n", __func__, __LINE__, ept_time);
 		DDPDBG("%s:%d vrefresh%u frame_time:%u\n", __func__, __LINE__,
 			frame_rate, frame_time);
+		drm_trace_tag_value("atomic_delay g_pf_time", g_pf_time);
+		drm_trace_tag_value("atomic_delay ept_time", ept_time);
 
 		if (params) {
 			te_step_time = params->real_te_duration;
@@ -20643,6 +20645,7 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 			ept_time = frame_time + g_pf_time;
 			DDPINFO("%s:%d < EPT modified:%llu\n", __func__, __LINE__,
 				ept_time);
+			drm_trace_tag_value("atomic_delay new_ept_time", ept_time);
 		}
 
 		if ((ept_time != 0) && (te_step_time != 0) &&
@@ -20659,7 +20662,7 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 			//GCE wait EPT
 			if (params && params->is_gce_delay && (delay_us != 0) &&
 					(delay_us < 1000000)) {
-				drm_trace_tag_value("delay_to_last_te", delay_us);
+				drm_trace_tag_value("atomic_delay_sec_sleep", delay_us);
 				CRTC_MMP_MARK(crtc_index, atomic_delay, delay_us, 0);
 				mtk_drm_atomic_gce_delay(cmdq_handle, mtk_crtc,
 					CMDQ_US_TO_TICK(delay_us));
@@ -20669,11 +20672,11 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 				flush_add_delay_need = true;
 			//CPU wait EPT
 			} else if (delay_us < 1000000 && (delay_us != 0)) {
-				mtk_drm_trace_begin("delay_to_last_te:%u", delay_us);
+				mtk_drm_trace_begin("atomic_delay_sec_sleep:%u", delay_us);
 				CRTC_MMP_EVENT_START(crtc_index, atomic_delay, delay_us, 0);
 
 				mtk_vidle_user_power_release(DISP_VIDLE_USER_CRTC);
-				mtk_drm_trace_begin("[DEBUG]usleep_to_last_te");
+				mtk_drm_trace_begin("[DEBUG]usleep_of_sec_sleep");
 				usleep_range(delay_us, delay_us + 1);
 				mtk_drm_trace_end();
 				mtk_vidle_user_power_keep(DISP_VIDLE_USER_CRTC);
