@@ -2257,9 +2257,10 @@ static ssize_t gpt_store(struct kobject *kobj,
 	if (sscanf(buf, "%3s %10d %10d %10d ", cmd, &index, &temp, &opp)
 		== 4) {
 		if (strncmp(cmd, "gpt", 3) == 0) {
+			therm_intf_write_csram(1, GPU_PRE_THROTTLE_OFFSET);
 			set_gpu_pre_throttle(temp, index);
 			set_gpu_pre_throttle_opp(opp, index);
-
+			therm_intf_write_csram(0, GPU_PRE_THROTTLE_OFFSET);
 			return count;
 		}
 	}
