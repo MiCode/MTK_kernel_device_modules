@@ -37,6 +37,8 @@
 #define MAX_ENTER_IDLE_RSZ_RATIO 300
 #define MTK_DRM_CPU_MAX_COUNT 8
 
+static struct freq_qos_request *cpu_req[MTK_DRM_CPU_MAX_COUNT];
+
 #ifdef SHARE_WROT_SRAM
 static int register_share_sram;
 static unsigned int is_wrot_sram_enabled;
@@ -309,55 +311,127 @@ static void mtk_drm_idlemgr_bind_cpu(struct task_struct *task, struct drm_crtc *
 	free_cpumask_var(cm);
 }
 
-static int mtk_drm_enhance_cpu_freq(struct freq_qos_request *req,
-		unsigned int cpu_id, unsigned int cpu_freq, int *cpu_first, int *cpu_last)
+static unsigned int mtk_drm_get_cpu_data(struct drm_crtc *crtc, unsigned int *cpus)
 {
-	struct cpufreq_policy *policy = NULL;
-	int ret = 0, j = 0, retry_cnt = 5;
-	unsigned int cpufreq_ret = 0;
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_drm_idlemgr *idlemgr = mtk_crtc->idlemgr;
+	struct mtk_drm_idlemgr_context *idlemgr_ctx = idlemgr->idlemgr_ctx;
+	unsigned int mask = 0, count = 0, i = 0;
 
-	if (req == NULL) {
-		DDPMSG("%s, invalid req\n", __func__);
-		return -EINVAL;
-	}
+	if (idlemgr_ctx->priv.cpu_mask == 0 ||
+		idlemgr_ctx->priv.cpu_freq == 0)
+		return 0;
 
-	policy = cpufreq_cpu_get(cpu_id);
-	if (policy == NULL) {
-		DDPMSG("%s, failed to get cpu %u policy\n", __func__, cpu_id);
-		return -EFAULT;
-	}
-
-	ret = freq_qos_add_request(&policy->constraints, req, FREQ_QOS_MIN, cpu_freq);
-	if (cpu_first != NULL)
-		*cpu_first = cpumask_first(policy->related_cpus);
-	if (cpu_last != NULL)
-		*cpu_last = cpumask_last(policy->related_cpus);
-	if (ret < 0) {
-		DDPMSG("%s, failed to enhance cpu%u freq%u,first:%d,last:%d,ret:%d\n",
-			__func__, cpu_id, cpu_freq,  *cpu_first, *cpu_last, ret);
-		cpufreq_cpu_put(policy);
-		return ret;
-	}
-
-	for (j = 0; j < retry_cnt; j++) {
-		usleep_range(100, 150);
-		ret = cpufreq_get_policy(policy, cpu_id);
-		if (ret) {
-			DDPMSG("%s, polling err, cpu%u freq:%u, ret:%d\n",
-				__func__, cpu_id, cpu_freq, ret);
-			break;
+	mask = idlemgr_ctx->priv.cpu_mask;
+	while (mask > 0 && i < MTK_DRM_CPU_MAX_COUNT) {
+		if ((mask & 0x1) == 0x1) {
+			cpus[count] = i;
+			count++;
 		}
-		if (policy->cur >= cpu_freq)
-			break;
+		mask = mask >> 1;
+		i++;
 	}
-	cpufreq_ret = policy->cur;
-	cpufreq_cpu_put(policy);
 
-	if (j >= retry_cnt)
-		DDPINFO("%s, failed to polling cpu%u freq%u,retry:%u,cur_freq:%u\n",
-			__func__, cpu_id, cpu_freq, j, cpufreq_ret);
+	return count;
+}
 
-	return 0;
+static int mtk_drm_add_cpu_freq(struct drm_crtc *crtc)
+{
+	int ret = 0, cpu_first = -1, cpu_last = -1;
+	struct cpufreq_policy *cpu_policy = NULL;
+	unsigned int cpus[MTK_DRM_CPU_MAX_COUNT] = { 0 };
+	unsigned int count = 0, i;
+	int crtc_id;
+
+	if (IS_ERR_OR_NULL(crtc)) {
+		DDPPR_ERR("%s, invalid crtc\n", __func__);
+		return 0;
+	}
+
+	crtc_id = drm_crtc_index(crtc);
+	if (crtc_id != 0) {
+		DDPPR_ERR("%s, invalid crtc id:%d\n", __func__, crtc_id);
+		return 0;
+	}
+
+	count = mtk_drm_get_cpu_data(crtc, cpus);
+	if (count == 0) {
+		DDPPR_ERR("%s, invalid cpu count:%u\n", __func__, count);
+		return 0;
+	}
+
+	for (i = 0; i < count; i++) {
+		if (cpu_req[i] != NULL)
+			continue;
+
+		if (cpus[i] >= cpu_first && cpus[i] <= cpu_last)
+			continue;
+
+		cpu_req[i] = kzalloc(sizeof(struct freq_qos_request), GFP_KERNEL);
+		if (IS_ERR_OR_NULL(cpu_req[i])) {
+			DDPPR_ERR("%s, alloc cpu request:%d failed\n", __func__, cpus[i]);
+			cpu_req[i] = NULL;
+			continue;
+		}
+
+		mtk_drm_trace_begin("cpu_get");
+		cpu_policy = cpufreq_cpu_get(cpus[i]);
+		mtk_drm_trace_end();
+		if (IS_ERR_OR_NULL(cpu_policy)) {
+			DDPMSG("%s, failed to get cpu %u policy\n", __func__, cpus[i]);
+			kfree(cpu_req[i]);
+			cpu_req[i] = NULL;
+			continue;
+		}
+
+		mtk_drm_trace_begin("add cpu request:%u-0x%llx", cpus[i], (unsigned long long)cpu_req[i]);
+		ret = freq_qos_add_request(&cpu_policy->constraints, cpu_req[i], FREQ_QOS_MIN, 0);
+		mtk_drm_trace_end();
+
+		cpu_first = cpumask_first(cpu_policy->related_cpus);
+		cpu_last = cpumask_last(cpu_policy->related_cpus);
+		DDPMSG("%s, add cpu request:0x%llx, cpu%u(%d~%d),ret:%d\n",
+			__func__, (unsigned long long)cpu_req[i],
+			cpus[i],  cpu_first, cpu_last, ret);
+
+		mtk_drm_trace_begin("cpu_put");
+		cpufreq_cpu_put(cpu_policy);
+		mtk_drm_trace_end();
+
+		if (ret < 0) {
+			DDPMSG("%s, failed to add cpu request:%u-0x%llx, ret:%d",
+				__func__, cpus[i], (unsigned long long)cpu_req[i], ret);
+			kfree(cpu_req[i]);
+			cpu_req[i] = NULL;
+		}
+	}
+
+	return count;
+}
+
+static void mtk_drm_remove_cpu_freq(struct drm_crtc *crtc)
+{
+	unsigned int i;
+	int ret = 0, crtc_id;
+
+	if (IS_ERR_OR_NULL(crtc))
+		return;
+
+	crtc_id = drm_crtc_index(crtc);
+	if (crtc_id != 0)
+		return;
+
+	for (i = 0; i < MTK_DRM_CPU_MAX_COUNT; i++) {
+		if (cpu_req[i] == NULL)
+			continue;
+		mtk_drm_trace_begin("remove cpu_req:0x%llx", (unsigned long long)cpu_req[i]);
+		ret = freq_qos_remove_request(cpu_req[i]);
+		mtk_drm_trace_end();
+		DDPMSG("%s, remove cpu request:0x%llx, ret:%d\n",
+				__func__, (unsigned long long)cpu_req[i], ret);
+		kfree(cpu_req[i]);
+		cpu_req[i] = NULL;
+	}
 }
 
 void mtk_drm_idlemgr_cpu_control(struct drm_crtc *crtc, int cmd, unsigned int data)
@@ -405,30 +479,6 @@ void mtk_drm_idlemgr_cpu_control(struct drm_crtc *crtc, int cmd, unsigned int da
 	DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 }
 
-static unsigned int mtk_drm_get_cpu_data(struct drm_crtc *crtc, unsigned int *cpus)
-{
-	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
-	struct mtk_drm_idlemgr *idlemgr = mtk_crtc->idlemgr;
-	struct mtk_drm_idlemgr_context *idlemgr_ctx = idlemgr->idlemgr_ctx;
-	unsigned int mask = 0, count = 0, i = 0;
-
-	if (idlemgr_ctx->priv.cpu_mask == 0 ||
-		idlemgr_ctx->priv.cpu_freq == 0)
-		return 0;
-
-	mask = idlemgr_ctx->priv.cpu_mask;
-	while (mask > 0 && i < MTK_DRM_CPU_MAX_COUNT) {
-		if ((mask & 0x1) == 0x1) {
-			cpus[count] = i;
-			count++;
-		}
-		mask = mask >> 1;
-		i++;
-	}
-
-	return count;
-}
-
 static void mtk_drm_adjust_cpu_latency(struct drm_crtc *crtc, bool enable)
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
@@ -455,19 +505,24 @@ static void mtk_drm_adjust_cpu_latency(struct drm_crtc *crtc, bool enable)
 
 static void mtk_drm_idlemgr_perf_reset(struct drm_crtc *crtc);
 static void mtk_drm_adjust_cpu_freq(struct drm_crtc *crtc, bool bind,
-		struct freq_qos_request **req, unsigned int *cpus, unsigned int count)
+		unsigned int *cpus, unsigned int count)
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_drm_idlemgr *idlemgr = mtk_crtc->idlemgr;
 	struct mtk_drm_idlemgr_context *idlemgr_ctx = idlemgr->idlemgr_ctx;
 	struct mtk_drm_idlemgr_perf *perf = idlemgr->perf;
 	unsigned long long start, end, period;
+	struct cpufreq_policy cpu_policy;
 	unsigned int freq = 0;
-	static int cpu_first = -1, cpu_last = -1;
-	int ret = 0, i = 0, detail = 0;
+	int ret = 0, i = 0, detail = 0, j = 0, retry_cnt = 5, crtc_id;
+	bool updated = false;
 
 	if (count == 0 || cpus == NULL ||
 		idlemgr_ctx->priv.cpu_freq == 0)
+		return;
+
+	crtc_id = drm_crtc_index(crtc);
+	if (crtc_id != 0)
 		return;
 
 	if (perf != NULL) {
@@ -477,42 +532,70 @@ static void mtk_drm_adjust_cpu_freq(struct drm_crtc *crtc, bool bind,
 			mtk_drm_trace_begin("adjust_cpu_freq:%d", count);
 	}
 
+	for (i = 0; i < count; i++) {
+		if (cpu_req[i])
+			break;
+	}
+
+	if (i == count) {
+		DDPMSG("add cpu req, count:%u\n", count);
+		mtk_drm_add_cpu_freq(crtc);
+	}
+
 	if (bind == true) {
 		freq = idlemgr_ctx->priv.cpu_freq;
 		for (i = 0; i < count; i++) {
-			if ((int)cpus[i] >= cpu_first && (int)cpus[i] <= cpu_last)
+			if (cpu_req[i] == NULL)
 				continue;
-
-			req[i] = kzalloc(sizeof(struct freq_qos_request), GFP_KERNEL);
-			if (req[i] == NULL) {
-				DDPPR_ERR("%s, alloc req:%d failed\n", __func__, i);
-				continue;
-			}
 
 			if (detail != 0)
-				mtk_drm_trace_begin("cpu_adjust:%d,%u", cpus[i], freq);
-			ret = mtk_drm_enhance_cpu_freq(req[i], cpus[i], freq, &cpu_first, &cpu_last);
+				mtk_drm_trace_begin("update cpu:%d %uMhz",
+					cpus[i], freq / 1000);
+			ret = freq_qos_update_request(cpu_req[i], freq);
 			if (detail != 0)
 				mtk_drm_trace_end();
+
 			if (ret < 0) {
-				kfree(req[i]);
-				req[i] = NULL;
+				DDPMSG("%s failed to enhance cpu:%u\n", __func__, i);
 				continue;
 			}
+
+			/*polling cpu freq done*/
+			for (j = 0; j < retry_cnt; j++) {
+				if (detail != 0)
+					mtk_drm_trace_begin("polling:%u", j);
+				usleep_range(100, 150);
+				ret = cpufreq_get_policy(&cpu_policy, cpus[i]);
+				if (detail != 0)
+					mtk_drm_trace_end();
+				if (ret) {
+					DDPMSG("%s, polling err, cpu%u freq:%u, ret:%d\n",
+						__func__, cpus[i], freq, ret);
+					break;
+				}
+				if (cpu_policy.cur >= freq) {
+					updated = true;
+					break;
+				}
+			}
+			if (updated)
+				break;
+
+			DDPINFO("%s, failed to polling cpu%u freq%u,retry:%u,cur_freq:%uKhz\n",
+				__func__, cpus[i], freq, j, cpu_policy.cur);
 		}
 	} else {
 		for (i = 0; i < count; i++) {
-			if (req[i] == NULL)
+			if (cpu_req[i] == NULL)
 				continue;
-			ret = freq_qos_remove_request(req[i]);
-			if (ret < 0)
-				DDPMSG("%s, failed to rollback freq, id:%d, ret:%d, cluster:%d~%d\n",
-					__func__, i, ret, cpu_first, cpu_last);
-			kfree(req[i]);
-			req[i] = NULL;
+
+			if (detail != 0)
+				mtk_drm_trace_begin("update cpu:%u 0Mhz",
+					cpus[i]);
+			ret = freq_qos_update_request(cpu_req[i], 0);
+			if (detail != 0)
+				mtk_drm_trace_end();
 		}
-		cpu_first = -1;
-		cpu_last = -1;
 	}
 
 	if (perf != NULL) {
@@ -989,21 +1072,20 @@ static void mtk_drm_vdo_mode_enter_idle(struct drm_crtc *crtc)
 
 static void mtk_drm_cmd_mode_enter_idle(struct drm_crtc *crtc)
 {
-	struct freq_qos_request *req[MTK_DRM_CPU_MAX_COUNT] = {0};
 	unsigned int cpus[MTK_DRM_CPU_MAX_COUNT] = { 0 };
 	unsigned int count = 0;
 
 	mtk_drm_adjust_cpu_latency(crtc, true);
 	count = mtk_drm_get_cpu_data(crtc, cpus);
 	if (count > 0)
-		mtk_drm_adjust_cpu_freq(crtc, true, req, cpus, count);
+		mtk_drm_adjust_cpu_freq(crtc, true, cpus, count);
 
 	mtk_drm_idlemgr_disable_crtc(crtc);
 	lcm_fps_ctx_reset(crtc);
 
 	mtk_drm_adjust_cpu_latency(crtc, false);
 	if (count > 0)
-		mtk_drm_adjust_cpu_freq(crtc, false, req, cpus, count);
+		mtk_drm_adjust_cpu_freq(crtc, false, cpus, count);
 }
 
 static void mtk_drm_vdo_mode_leave_idle(struct drm_crtc *crtc)
@@ -1049,21 +1131,23 @@ static void mtk_drm_vdo_mode_leave_idle(struct drm_crtc *crtc)
 
 static void mtk_drm_cmd_mode_leave_idle(struct drm_crtc *crtc)
 {
-	struct freq_qos_request *req[MTK_DRM_CPU_MAX_COUNT] = {0};
 	unsigned int cpus[MTK_DRM_CPU_MAX_COUNT] = { 0 };
 	unsigned int count = 0;
 
 	mtk_drm_adjust_cpu_latency(crtc, true);
 	count = mtk_drm_get_cpu_data(crtc, cpus);
 	if (count > 0)
-		mtk_drm_adjust_cpu_freq(crtc, true, req, cpus, count);
+		mtk_drm_adjust_cpu_freq(crtc, true, cpus, count);
+
+	mtk_vidle_mminfra_on_off(true);
 
 	mtk_drm_idlemgr_enable_crtc(crtc);
 	lcm_fps_ctx_reset(crtc);
 
+	mtk_vidle_mminfra_on_off(false);
 	mtk_drm_adjust_cpu_latency(crtc, false);
 	if (count > 0)
-		mtk_drm_adjust_cpu_freq(crtc, false, req, cpus, count);
+		mtk_drm_adjust_cpu_freq(crtc, false, cpus, count);
 }
 
 static void mtk_drm_idlemgr_enter_idle_nolock(struct drm_crtc *crtc)
@@ -1466,12 +1550,14 @@ unsigned int mtk_drm_set_idlemgr(struct drm_crtc *crtc, unsigned int flag,
 
 	if (flag) {
 		DDPINFO("[LP] enable idlemgr\n");
+		mtk_drm_add_cpu_freq(crtc);
 		atomic_set(&idlemgr->idlemgr_task_active, 1);
 		wake_up_interruptible(&idlemgr->idlemgr_wq);
 	} else {
 		DDPINFO("[LP] disable idlemgr\n");
 		atomic_set(&idlemgr->idlemgr_task_active, 0);
 		mtk_drm_idlemgr_kick(__func__, crtc, need_lock);
+		mtk_drm_remove_cpu_freq(crtc);
 	}
 
 	return idlemgr->old_flag;
@@ -1926,6 +2012,7 @@ int mtk_drm_idlemgr_init(struct drm_crtc *crtc, int index)
 			wake_up_process(idlemgr->async_vblank_task);
 		}
 
+		mtk_drm_add_cpu_freq(crtc);
 		cpu_latency_qos_add_request(&idlemgr->cpu_qos_req, PM_QOS_DEFAULT_VALUE);
 	}
 
