@@ -413,8 +413,9 @@ static struct SV_LOG_STR gSvLog[MFB_IRQ_TYPE_AMOUNT];
 			_cnt[ppb][logT]]);    \
 	avaLen = str_leng - 1 - gSvLog[irq]._cnt[ppb][logT];\
 	if (avaLen > 1) {\
-		snprintf((char *)(pDes), avaLen, fmt,\
-			##__VA_ARGS__);   \
+		if (snprintf((char *)(pDes), avaLen, fmt,\
+			##__VA_ARGS__) < 0) \
+			LOG_ERR("log snprintf fail"); \
 		if ('\0' != gSvLog[irq]._str[ppb][logT][str_leng - 1]) {\
 			LOG_ERR("log str over flow(%d)", irq);\
 		} \
@@ -798,10 +799,12 @@ void MFBQOS_Update(bool start, unsigned int scen, unsigned long bw)
 	if (ret)
 		LOG_ERR("PMQOS error ret = %d", ret);
 
+	spin_lock(&SpinLockMfbPmqos);
 	if (qos_total > 2000000000)
 		qos_report = 2000000000;
 	else
 		qos_report = qos_total;
+	spin_unlock(&SpinLockMfbPmqos);
 
 	for (i = 0; i < MFB_PORT_NUM; i++)
 		mtk_icc_set_bw(path_mfb[i], Bps_to_icc(qos_report), 0);
@@ -3321,7 +3324,7 @@ static int compat_get_MFB_read_register_data(
 	struct MFB_REG_IO_STRUCT *data)
 {
 	long ret = -1;
-	struct compat_MFB_REG_IO_STRUCT data32;
+	struct compat_MFB_REG_IO_STRUCT data32 = {0};
 
 	ret = (long)copy_from_user(&data32, compat_ptr(arg),
 		(unsigned long)sizeof(struct compat_MFB_REG_IO_STRUCT));
@@ -3342,7 +3345,7 @@ static int compat_put_MFB_read_register_data(
 	struct MFB_REG_IO_STRUCT *data)
 {
 	long ret = -1;
-	struct compat_MFB_REG_IO_STRUCT data32;
+	struct compat_MFB_REG_IO_STRUCT data32 = {0};
 
 	data32.Count = (compat_uint_t)(data->Count);
 
@@ -3359,7 +3362,7 @@ static int compat_get_MFB_mss_enque_req_data(
 	struct MFB_MSSRequest *data)
 {
 	long ret = -1;
-	struct compat_MFB_MSSRequest data32;
+	struct compat_MFB_MSSRequest data32 = {0};
 
 	ret = (long)copy_from_user(&data32, compat_ptr(arg),
 		(unsigned long)sizeof(struct compat_MFB_MSSRequest));
@@ -3381,7 +3384,7 @@ static int compat_put_MFB_mss_enque_req_data(
 	struct MFB_MSSRequest *data)
 {
 	long ret = -1;
-	struct compat_MFB_MSSRequest data32;
+	struct compat_MFB_MSSRequest data32 = {0};
 
 	data32.m_ReqNum = (compat_uint_t)(data->m_ReqNum);
 
@@ -3399,7 +3402,7 @@ static int compat_get_MFB_mss_deque_req_data(
 	struct MFB_MSSRequest *data)
 {
 	long ret = -1;
-	struct compat_MFB_MSSRequest data32;
+	struct compat_MFB_MSSRequest data32 = {0};
 
 	ret = (long)copy_from_user(&data32, compat_ptr(arg),
 		(unsigned long)sizeof(struct compat_MFB_MSSRequest));
@@ -3421,8 +3424,8 @@ static int compat_put_MFB_mss_deque_req_data(
 	struct MFB_MSSRequest *data)
 {
 	long ret = -1;
+	struct compat_MFB_MSSRequest data32 = {0};
 
-	struct compat_MFB_MSSRequest data32;
 	data32.m_ReqNum = (compat_uint_t)(data->m_ReqNum);
 
 	if (copy_to_user(compat_ptr(arg), &data32,
@@ -3438,7 +3441,7 @@ static int compat_get_MFB_msf_enque_req_data(
 	struct MFB_MSFRequest *data)
 {
 	long ret = -1;
-	struct compat_MFB_MSFRequest data32;
+	struct compat_MFB_MSFRequest data32 = {0};
 
 	ret = (long)copy_from_user(&data32, compat_ptr(arg),
 		(unsigned long)sizeof(struct compat_MFB_MSFRequest));
@@ -3460,7 +3463,7 @@ static int compat_put_MFB_msf_enque_req_data(
 	struct MFB_MSFRequest *data)
 {
 	long ret = -1;
-	struct compat_MFB_MSFRequest data32;
+	struct compat_MFB_MSFRequest data32 = {0};
 
 	data32.m_ReqNum = (compat_uint_t)(data->m_ReqNum);
 
@@ -3478,7 +3481,7 @@ static int compat_get_MFB_msf_deque_req_data(
 	struct MFB_MSFRequest *data)
 {
 	long ret = -1;
-	struct compat_MFB_MSFRequest data32;
+	struct compat_MFB_MSFRequest data32 = {0};
 
 	ret = (long)copy_from_user(&data32, compat_ptr(arg),
 		(unsigned long)sizeof(struct compat_MFB_MSFRequest));
@@ -3500,8 +3503,8 @@ static int compat_put_MFB_msf_deque_req_data(
 	struct MFB_MSFRequest *data)
 {
 	long ret = -1;
+	struct compat_MFB_MSFRequest data32 = {0};
 
-	struct compat_MFB_MSFRequest data32;
 	data32.m_ReqNum = (compat_uint_t)(data->m_ReqNum);
 
 	if (copy_to_user(compat_ptr(arg), &data32,

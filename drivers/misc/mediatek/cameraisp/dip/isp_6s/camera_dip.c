@@ -105,7 +105,7 @@
 #endif
 
 struct dip_fd_list_template {
-	int fd;
+	unsigned int fd;
 	struct dma_buf *buf;
 	struct dma_buf_attachment *attach;
 	struct sg_table *sgt;
