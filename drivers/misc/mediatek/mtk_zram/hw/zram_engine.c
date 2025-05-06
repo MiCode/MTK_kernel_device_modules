@@ -259,6 +259,43 @@ static int zram_engine_tbu_pm_put(struct smmu_tbu_device *tbu)
 	return mtk_hwzram_suspend(tbu->dev);
 }
 
+#if IS_ENABLED(CONFIG_MTK_VM_DEBUG)
+static void engine_check_smmu_faulting_address(struct zram_engine_t *hwz)
+{
+	uint64_t fault_addr = engine_get_smmu_faulting_addr(&hwz->ctrl);
+	struct hwfifo *fifo;
+	struct compress_cmd *cmdp;
+	uint32_t check_addr;
+	uint32_t *dst_addr;
+	bool found = false;
+	int i, j, k;
+
+	for (i = 0; i < MAX_COMP_NR; i++) {
+		fifo = &hwz->comp_fifo[i];
+		for (j = 0; j < (1 << ENGINE_COMP_FIFO_ENTRY_BITS); j++) {
+			cmdp = COMP_CMD(fifo, j);
+			check_addr = PHYS_ADDR_TO_DST(fault_addr);
+			dst_addr = (uint32_t *)&cmdp->word_4_value;
+			for (k = 0; k < 7; k++) {
+				if (*dst_addr == check_addr) {
+					found = true;
+					goto exit;
+				}
+
+				/* Move to the position of next DST buffer */
+				dst_addr++;
+			}
+		}
+	}
+
+exit:
+	if (found)
+		pr_info("%s: faulting_addr:%x matched at cmd:(%d,%d,%d)\n", __func__, check_addr, i, j, k);
+	else
+		pr_info("%s: No matched faulting_addr:%x\n", __func__, check_addr);
+}
+#endif
+
 static void zram_engine_tbu_debug_dump(struct smmu_tbu_device *tbu, struct seq_file *s)
 {
 	struct zram_engine_t *hwz = dev_get_drvdata(tbu->dev);
@@ -275,6 +312,10 @@ static void zram_engine_tbu_debug_dump(struct smmu_tbu_device *tbu, struct seq_f
 		dev_info(tbu->dev, "%s: failed to enable clk/mtcmos\n", __func__);
 		return;
 	}
+
+#if IS_ENABLED(CONFIG_MTK_VM_DEBUG)
+	engine_check_smmu_faulting_address(hwz);
+#endif
 
 	engine_get_smmu_reg_dump(&hwz->ctrl, s);
 
@@ -2747,6 +2788,9 @@ static int kick_hwe_exp(const char *val, const struct kernel_param *kp)
 		dump_fifo_idx(hwz, NULL, 0);
 		engine_gear_get_status(&hwz->gear_ctrl, NULL);
 		engine_get_smmu_reg_dump(&hwz->ctrl, NULL);
+#if IS_ENABLED(CONFIG_MTK_VM_DEBUG)
+		engine_check_smmu_faulting_address(hwz);
+#endif
 		break;
 	default:
 		pr_info("%s invalid ops!\n", __func__);

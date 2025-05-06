@@ -617,4 +617,13 @@ static inline void engine_clock_partial_disable(struct engine_control_t *ctrl, u
 	writel(val, ctrl->zram_config_base + ZRAM_CONFIG_ZRAM_CG_SET0);
 }
 
+/* Query SMMU TBU faulting address */
+static inline uint64_t engine_get_smmu_faulting_addr(struct engine_control_t *ctrl)
+{
+	uint32_t reg_val;
+
+	reg_val = readl(ctrl->zram_smmu_base + SMMU_TBU0_WTFM1);
+	return ((uint64_t)(reg_val & 0xF) << 32) | (reg_val & 0xFFFFFFF0);
+}
+
 #endif /* _ENGINE_REGS_H_ */
