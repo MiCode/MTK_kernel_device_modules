@@ -13,6 +13,7 @@ enum LOG_BUFF_TYPE {
 	MAX_LOG_BUFF_TYPE
 };
 
+extern void mt_irq_dump_status(unsigned int irq);
 void logger_v2_buf_invalidate(enum LOG_BUFF_TYPE buff_type);
 void logger_v2_clear_buf(enum LOG_BUFF_TYPE buff_type);
 int logger_v2_get_buf_info(enum LOG_BUFF_TYPE buff_type,

@@ -736,6 +736,7 @@ define_mgk_ddk_ko(
 		"//kernel_device_modules-{}/drivers/iommu:mtk_iommu".format(kernel_version),
 		"//kernel_device_modules-{}/drivers/iommu/arm/arm-smmu-v3:arm_smmu_v3".format(kernel_version),
 		"//kernel_device_modules-{}/drivers/misc/mediatek/tinysys_scmi:tinysys-scmi".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/sda:irq-dbg".format(kernel_version),
 	],
 )
 

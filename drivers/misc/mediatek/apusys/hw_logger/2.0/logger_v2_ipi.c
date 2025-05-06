@@ -13,7 +13,8 @@ struct hw_log_level_data {
 	unsigned int level;
 };
 
-static int check_g_apu_init(void) {
+static int check_g_apu_init(void)
+{
 	if (!g_apu) {
 		HWLOGR_ERR("IPI not init yet\n");
 		return -EINVAL;
@@ -21,7 +22,24 @@ static int check_g_apu_init(void) {
 	return 0;
 }
 
-int logger_v2_counting_hw_sema_reader_trylock(void) {
+int logger_v2_rpc_dump(void)
+{
+	if (check_g_apu_init())
+		return -EINVAL;
+
+	if (g_apu->apu_rpc == NULL)
+		return -EINVAL;
+
+	HWLOGR_INFO("RPC_IO_DEBUG: 0x%08x\n",
+		ioread32(g_apu->apu_rpc + 0xc));
+	HWLOGR_INFO("CE_CTRL_RDATA: 0x%08x\n",
+		ioread32(g_apu->apu_rpc + 0x28));
+
+	return 0;
+}
+
+int logger_v2_counting_hw_sema_reader_trylock(void)
+{
 	if (check_g_apu_init())
 		return -EINVAL;
 
@@ -37,7 +55,8 @@ int logger_v2_counting_hw_sema_reader_unlock(void) {
 		g_apu, MBOX_HW_SEMA_RD_KRN_USR_LOGGER);
 }
 
-int logger_v2_debug_info_dump(struct seq_file *s) {
+int logger_v2_debug_info_dump(struct seq_file *s)
+{
 	struct mtk_apu_hw_ops *hw_ops;
 
 	if (check_g_apu_init())
@@ -54,7 +73,8 @@ int logger_v2_debug_info_dump(struct seq_file *s) {
 	return 0;
 }
 
-void set_log_level(int level) {
+void set_log_level(int level)
+{
 	int ret;
 	struct hw_log_level_data hw_ipi_loglv_data;
 

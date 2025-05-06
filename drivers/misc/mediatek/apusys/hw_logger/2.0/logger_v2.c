@@ -23,6 +23,8 @@
 #define add_mrdump(...)
 #endif
 
+#define HW_LOG_INTR_BURST_THRESHOLD 10
+
 /* control register ioremap address */
 void *apu_logtop, *apu_mbox;
 static struct platform_device *g_pdev;
@@ -47,6 +49,9 @@ static struct log_buf_info np_log_buf;
 static unsigned int intr_lbc_size;
 static unsigned int log_irq_num;
 static unsigned int irq_hdl_cnt;
+static int last_irq_reader_lock;
+static unsigned int burst_intr_cnt;
+static unsigned int burst_intr_aee_triggered;
 
 static unsigned int ioread_debug_atf(enum SMC_OP_APU_LOG_DBG dbg_read_op)
 {
@@ -67,6 +72,8 @@ static unsigned int ioread_debug_atf(enum SMC_OP_APU_LOG_DBG dbg_read_op)
 
 static void irq_debug_status_dump(void)
 {
+	logger_v2_rpc_dump();
+
 	HWLOGR_INFO("OUT_TO_HOST_MSK: 0x%08x\n",
 		ioread_debug_atf(SMC_OP_APU_LOG_DBG_OUT_TO_HOST_MSK));
 	HWLOGR_INFO("WAKE_HOST_MSK: 0x%08x\n",
@@ -75,6 +82,8 @@ static void irq_debug_status_dump(void)
 		ioread_debug_atf(SMC_OP_APU_LOG_DBG_OUT_TO_HOST_STA_0));
 	HWLOGR_INFO("OUT_TO_HOST_STA_1: 0x%08x\n",
 		ioread_debug_atf(SMC_OP_APU_LOG_DBG_OUT_TO_HOST_STA_1));
+
+	mt_irq_dump_status(log_irq_num);
 }
 
 void logger_v2_buf_invalidate(enum LOG_BUFF_TYPE buff_type)
@@ -191,16 +200,30 @@ static irqreturn_t apu_logtop_irq_handler(int irq, void *private_data)
 				ctrl_flag, r_ptr_reg, w_ptr_reg, irq_hdl_cnt, handle_time / 1000);
 		}
 		if ((ctrl_flag & APU_LOGTOP_CON_MSK) == 0) {
-			HWLOGR_INFO("no irq pending: ctrl_flag = 0x%x\n", ctrl_flag);
+			HWLOGR_INFO("no irq pending: ctrl_flag = 0x%x burst_intr_cnt = %d\n",
+				ctrl_flag, burst_intr_cnt);
 			irq_debug_status_dump();
+			burst_intr_cnt++;
+		} else {
+			burst_intr_cnt = 0;
 		}
 	} else if (reader_lock == -EBUSY)  {
-		HWLOGR_INFO("apu power off / s5 idle\n");
-		irq_debug_status_dump();
+		if (last_irq_reader_lock != -EBUSY) {
+			HWLOGR_INFO("apu power off / s5 idle\n");
+			irq_debug_status_dump();
+		}
+		burst_intr_cnt++;
 	} else {
 		HWLOGR_INFO("hw_sema_reader_trylock operation error: %d\n", reader_lock);
 	}
 
+	if (burst_intr_cnt == HW_LOG_INTR_BURST_THRESHOLD &&
+		burst_intr_aee_triggered == 0) {
+		apusys_logger_exception_aee_warn("BURST_INTR_DETECT");
+		burst_intr_aee_triggered++;
+	}
+
+	last_irq_reader_lock = reader_lock;
 	return IRQ_HANDLED;
 }
 

@@ -42,6 +42,17 @@ enum {
 #define HWLOGR_DBG(string, ...) {\
 	if (HWLOGR_DBG_ON) {HWLOGR_PRINT("[debug]", string, ##__VA_ARGS__)} }
 
+#if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
+	#define apusys_logger_exception_aee_warn(module) \
+	do { \
+		HWLOGR_ERR("APUSYS_RV_EXCEPTION_APUSYS_LOGGER: %s\n", module); \
+		aee_kernel_exception("APUSYS_RV_EXCEPTION_APUSYS_LOGGER", \
+			"\nCRDISPATCH_KEY:%s\n", module); \
+	} while (0)
+#else
+#define apusys_logger_exception_aee_warn(...)
+#endif
+
 struct hw_logger_v1_ops {
 	int (*power_on)(void);
 	int (*deep_idle_enter_pre)(void);
