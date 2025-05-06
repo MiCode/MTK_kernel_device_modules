@@ -1741,7 +1741,7 @@ err_clk_init:
 static void mtk_pcie_power_down(struct mtk_pcie_port *port)
 {
 	struct device *dev = port->dev;
-	int err = 0;
+	int val, err;
 
 	if (!device_find_child(dev, NULL, match_any)) {
 		err = pm_runtime_put_sync(dev);
@@ -1750,6 +1750,17 @@ static void mtk_pcie_power_down(struct mtk_pcie_port *port)
 
 		pm_runtime_disable(dev);
 	}
+
+	/* Force mac sleep to avoid race condition before power off */
+	val = readl_relaxed(port->base + PCIE_MISC_CTRL_REG);
+	val |= PCIE_MAC_SLP_DIS;
+	writel_relaxed(val, port->base + PCIE_MISC_CTRL_REG);
+
+	err = readl_poll_timeout(port->base + PCIE_RES_STATUS, val,
+				 ((val & ALL_RES_ACK) == ALL_RES_ACK),
+				 20, 1000);
+	if (err)
+		dev_info(port->dev, "Polling resource ack fail\n");
 
 	if (port->data->mtcmos_ctrl_mode == SPM_CTRL_MTCMOS_MODE)
 		mtk_pcie_mtcmos_disable_hwccf_ctrl(port, false);
@@ -1763,6 +1774,7 @@ static void mtk_pcie_power_down(struct mtk_pcie_port *port)
 	 * to ensure the MTCOMS off sequence
 	 */
 	clk_bulk_disable_unprepare(port->num_clks, port->clks);
+	mdelay(1);
 	reset_control_assert(port->mac_reset);
 	reset_control_assert(port->phy_reset);
 
