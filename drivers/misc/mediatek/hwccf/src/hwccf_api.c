@@ -582,41 +582,46 @@ static int _v1_hwccf_is_enabled(struct regmap *regmap, uint32_t setclr_ofs, uint
 {
 	bool is_set = IS_SET_FROM_VOTER_ADDR(setclr_ofs);
 	uint32_t en_ofs = setclr_ofs + (is_set ? 0x8 : 0x4);
-	uint32_t all_status_ofs = 0;
-	uint32_t val;
+	uint32_t all_enable_ofs = 0, all_status_ofs = 0;
+	int en = -1, done = -1, ret;
 
 	// Check args
-	if (!setclr_ofs || !vote_val || !done_ofs || !done_ack_msk) {
+	if (!regmap || !setclr_ofs || !vote_val || !done_ofs || !done_ack_msk) {
 		HWCCF_ERR("bad args\n");
-		return 0;
+		return -HWV_EINVAL;
 	}
 
 	// XPU en_ofs replaced by ALL_XXX due to autolink
 	switch (en_ofs & 0xFFF) {
 		case 0x708:
-			en_ofs = CCF_ALL_MTCMOS_EN_0;
+			all_enable_ofs = CCF_ALL_MTCMOS_EN_0;
 			all_status_ofs = CCF_ALL_MTCMOS_STA_0;
 			break;
 		case 0x714:
-			en_ofs = CCF_ALL_MTCMOS_EN_1;
+			all_enable_ofs = CCF_ALL_MTCMOS_EN_1;
 			all_status_ofs = CCF_ALL_MTCMOS_STA_1;
-			break;
-		case 0x608:
-			en_ofs = CCF_ALL_MUX_EN;
-			all_status_ofs = CCF_ALL_MUX_STA;
 			break;
 		default:
 			break;
 	}
 
-	val = hwccf_read(regmap, en_ofs);
-	if (IS_MASK_SET(val, vote_val)) {
-
-		// Polling done
-		val = (all_status_ofs ? hwccf_read(regmap, all_status_ofs) : hwccf_read(regmap, done_ofs));
-		return (all_status_ofs ? IS_MASK_SET(~val, done_ack_msk) : IS_MASK_SET(val, done_ack_msk));
+	if ((all_enable_ofs != 0) && (all_status_ofs != 0)) {
+		en = IS_MASK_SET(hwccf_read(regmap, all_enable_ofs) & done_ack_msk, done_ack_msk);
+		done = IS_MASK_CLR(hwccf_read(regmap, all_status_ofs) & done_ack_msk, done_ack_msk);
+		if (done) {
+			ret = en;
+			goto RETURN;
+		} else {
+			ret = -HWV_EINPROGRESS;
+			goto RETURN;
+		}
+	} else {
+		ret = -HWV_EINVAL;
+		goto RETURN;
 	}
-	return 0;
+
+RETURN:
+	return ret;
 }
 
 int v1_raw_hwccf_is_enabled(struct cb_params *params)

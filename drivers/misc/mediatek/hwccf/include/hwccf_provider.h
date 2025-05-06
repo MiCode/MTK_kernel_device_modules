@@ -23,6 +23,7 @@ enum HWCCF_VOTER_CTRL_ERRNO {
 	HWV_TEST_EARLY_RET  = 0x1006,
 	HWV_WRONG_ID        = 0x1007,
 	HWV_EINVAL          = 0x2000,
+	HWV_EINPROGRESS     = 0x2001,
 };
 
 struct hwccf_ops {

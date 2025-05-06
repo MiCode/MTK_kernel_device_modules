@@ -211,7 +211,7 @@ static bool __is_hwccf_mtcmos_on(const char * const *name)
 				ret = callback[CLK_REQUEST_RAW_HWCCF_IS_ENABLED_CB](&params);
 
 				if (ret) {
-					pr_pd_dbg("suspend warning: %s is on\n", *name);
+					pr_pd_dbg("suspend warning: %s is on, ret=%d\n", *name, ret);
 					valid++;
 				}
 			}
