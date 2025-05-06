@@ -13083,13 +13083,10 @@ skip_prete:
 			}
 		}
 
-		GCE_DO(wfe, EVENT_CMD_EOF);
-		if (profile_trig && (crtc_id == 0))
-			mtk_crtc_backup_tpr_to_slot(mtk_crtc, cmdq_handle, DISP_SLOT_TRIG_TICK(4));
-
 		/* For dbgtp fifo mon WA */
 		if ((priv->data->mmsys_id == MMSYS_MT6993) &&
 			(priv->mtk_dbgtp_sta.fifo_mon_en[0]) && (crtc_id == 0)) {
+			GCE_DO(wfe, EVENT_TAIL_TARGET_LINE);
 			mtk_dbgtp_fifo_mon_config(mtk_crtc, cmdq_handle);
 			if (!priv->mtk_dbgtp_sta.is_validation_mode &&
 				priv->mtk_dbgtp_sta.dbgtp_en)
@@ -13136,6 +13133,10 @@ skip_prete:
 			cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base, slot_src_addr, 0, ~0);
 			GCE_FI;
 		}
+
+		GCE_DO(wfe, EVENT_CMD_EOF);
+		if (profile_trig && (crtc_id == 0))
+			mtk_crtc_backup_tpr_to_slot(mtk_crtc, cmdq_handle, DISP_SLOT_TRIG_TICK(4));
 
 		for_each_comp_in_cur_crtc_path(dbi_comp, mtk_crtc, i, j) {
 			if (mtk_ddp_comp_get_type(dbi_comp->id) == MTK_DISP_DBI_COUNT) {
@@ -19180,9 +19181,9 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 
 #ifndef DRM_CMDQ_DISABLE
 	/* Display Debug Top and FIFO mon config */
-	if ((priv->data->mmsys_id == MMSYS_MT6993) &&
+	if ((priv->data->mmsys_id == MMSYS_MT6993) && (crtc_idx == 0) &&
 		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_HRT_DEBUG)) {
-		if ((priv->mtk_dbgtp_sta.fifo_mon_en[0]) && (crtc_idx == 0))
+		if (priv->mtk_dbgtp_sta.fifo_mon_en[0])
 			mtk_dbgtp_fifo_mon_config(mtk_crtc, mtk_crtc_state->cmdq_handle);
 		mtk_dbgtp_config(mtk_crtc, mtk_crtc_state->cmdq_handle);
 	}
@@ -19316,12 +19317,36 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 		if (!partial_enable &&
 		    !old_mtk_state->prop_val[CRTC_PROP_PARTIAL_UPDATE_ENABLE] &&
 		    (!mtk_crtc_state->disp_mode_changed ||
-		    (mtk_crtc_state->disp_mode_changed && !(mtk_crtc->mode_change_index & MODE_DSI_RES))))
+		    (mtk_crtc_state->disp_mode_changed && !(mtk_crtc->mode_change_index & MODE_DSI_RES)))) {
 			DDPDBG("partial update is disable and equal to old\n");
-		else
+
+			/* For FIFO mon and dbgtp wait targetline and stop before release ddren */
+			if ((priv->data->mmsys_id == MMSYS_MT6993) && (crtc_idx == 0) &&
+				(output_comp->id == DDP_COMPONENT_DSI0) &&
+				mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_HRT_DEBUG)) {
+				struct mtk_dsi *mtk_dsi = NULL;
+
+				mtk_dsi = container_of(output_comp, struct mtk_dsi, ddp_comp);
+				if (mtk_dsi)
+					mtk_dsi_set_targetline3(output_comp, mtk_crtc_state->cmdq_handle,
+						mtk_dsi_get_virtual_heigh(mtk_dsi, crtc), __func__);
+			}
+		} else
 			/* set partial update */
 			mtk_drm_crtc_set_partial_update(crtc, old_crtc_state,
 					mtk_crtc_state->cmdq_handle, partial_enable);
+	} else {
+		/* For FIFO mon and dbgtp wait targetline and stop before release ddren */
+		if ((priv->data->mmsys_id == MMSYS_MT6993) && (crtc_idx == 0) &&
+			(output_comp->id == DDP_COMPONENT_DSI0) &&
+			mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_HRT_DEBUG)) {
+			struct mtk_dsi *mtk_dsi = NULL;
+
+			mtk_dsi = container_of(output_comp, struct mtk_dsi, ddp_comp);
+			if (mtk_dsi)
+				mtk_dsi_set_targetline3(output_comp, mtk_crtc_state->cmdq_handle,
+					mtk_dsi_get_virtual_heigh(mtk_dsi, crtc), __func__);
+		}
 	}
 
 	if (priv->data->mmsys_id == MMSYS_MT6991)
@@ -22823,6 +22848,9 @@ static void mtk_crtc_get_event_name(struct mtk_drm_crtc *mtk_crtc, char *buf,
 		break;
 	case EVENT_VDO_TRIG_START:
 		len = snprintf(buf, buf_len, "disp_vdo_mode_trig_start");
+		break;
+	case EVENT_TAIL_TARGET_LINE:
+		len = snprintf(buf, buf_len, "disp_tail_target_line");
 		break;
 	case EVENT_DBI_COUNT_EOF:
 		len = snprintf(buf, buf_len, "disp_dbi_count_eof");

@@ -366,6 +366,7 @@ module_param(dbg_output_valid, int, 0644);
 
 #define DSI_TARGET_NL(data)	(data->dsi_target_nl ? data->dsi_target_nl : 0x300)
 #define DSI_TARGET_NL2(data)	(data->dsi_target_nl2 ? data->dsi_target_nl2 : 0x300)
+#define DSI_TARGET_NL3(data)	(data->dsi_target_nl3 ? data->dsi_target_nl3 : 0x300)
 #define TARGET_NL	REG_FLD_MSB_LSB(14, 0)
 #define TARGET_NL_EN BIT(16)
 #define MT6993_TARGET_NL REG_FLD_MSB_LSB(31, 12)
@@ -1988,21 +1989,22 @@ void mtk_dsi_gce_event_cfg(struct mtk_dsi *dsi, struct mtk_ddp_comp *comp,
 	}
 
 	if (handle == NULL) {
-		writel(0x0918, dsi->regs + DSI_GCE_EVENT_CON0);
+		writel(0x190918, dsi->regs + DSI_GCE_EVENT_CON0);
 		writel(0x1000, dsi->regs + 0xE4);
 		if (dsi->slave_dsi)
-			writel(0x0918, dsi->slave_dsi->ddp_comp.regs + DSI_GCE_EVENT_CON0);
+			writel(0x190918, dsi->slave_dsi->ddp_comp.regs + DSI_GCE_EVENT_CON0);
 		DDPINFO("%s:%d\n", __func__, __LINE__);
 		return;
 	}
 
 	/*ENG_EVENT_SEL0:dsi targetline2(0x18) ENG_EVENT_SEL1:vm_vact_start(0x09)*/
+	/*ENG_EVENT_SEL2:dsi targetline3(0x19) */
 	cmdq_pkt_write(handle, comp->cmdq_base,
-		comp->regs_pa + DSI_GCE_EVENT_CON0, 0x0918, ~0);
+		comp->regs_pa + DSI_GCE_EVENT_CON0, 0x190918, ~0);
 	if (dsi->slave_dsi)
 		cmdq_pkt_write(handle, dsi->slave_dsi->ddp_comp.cmdq_base,
 			dsi->slave_dsi->ddp_comp.regs_pa + DSI_GCE_EVENT_CON0,
-			0x0918, ~0);
+			0x190918, ~0);
 }
 
 static int  mtk_dsi_dbg_monitor_config0(struct mtk_dsi *dsi, struct mtk_ddp_comp *comp,
@@ -2690,6 +2692,9 @@ static void mtk_dsi_ps_control_vact(struct mtk_dsi *dsi)
 	writel(val, dsi->regs + DSI_PSCTRL(dsi->driver_data));
 
 	writel(size, dsi->regs + DSI_SIZE_CON(dsi->driver_data));
+
+	/* For FIFO mon and dbgtp wait targetline and stop before release ddren */
+	mtk_dsi_set_targetline3(comp, NULL, (size >> 16) & 0xFFFF, __func__);
 
 	if (priv && (priv->data->mmsys_id == MMSYS_MT6991 ||
 		priv->data->mmsys_id == MMSYS_MT6993) &&
@@ -13628,6 +13633,33 @@ static void mtk_dsi_set_targetline(struct mtk_ddp_comp *comp,
 
 }
 
+void mtk_dsi_set_targetline3(struct mtk_ddp_comp *comp,
+		struct cmdq_pkt *handle, unsigned int hactive, const char *caller)
+{
+	u32 val = 0;
+	struct mtk_dsi *dsi = container_of(comp, struct mtk_dsi, ddp_comp);
+	struct mtk_drm_crtc *crtc = comp->mtk_crtc;
+	struct mtk_drm_private *priv = (crtc->base).dev->dev_private;
+
+	if (!(priv && (priv->data->mmsys_id == MMSYS_MT6993)))
+		return;
+
+	if (!(hactive < (crtc->scaling_ctx.lcm_height * 5 / 100)))
+		val = REG_FLD_VAL(MT6993_TARGET_NL, (hactive * 95) / 100);
+	else
+		val = REG_FLD_VAL(MT6993_TARGET_NL, 1);
+
+	DDPINFO("%s:%s -> h:%u, val:0x%x\n", __func__, caller, hactive, val);
+	if (handle) {
+		/* For mt6993 debug sys fifo mon HW bug cmd mode WA */
+		mtk_ddp_write(comp, val, DSI_TARGET_NL3(dsi->driver_data), handle);
+	} else {
+		/* For mt6993 debug sys fifo mon HW bug cmd mode WA */
+		writel(val, comp->regs + DSI_TARGET_NL3(dsi->driver_data));
+	}
+
+}
+
 static u32 mtk_dsi_get_line_time_ns(struct mtk_dsi *dsi,
 	struct mtk_drm_crtc *mtk_crtc, int mode_idx)
 {
@@ -15293,6 +15325,9 @@ static int mtk_dsi_set_partial_update(struct mtk_ddp_comp *comp,
 			comp->regs_pa + DSI_SIZE_CON(dsi->driver_data),
 			dsi->roi_height << 16, 0xffff0000);
 
+		/* For FIFO mon and dbgtp wait targetline and stop before release ddren */
+		mtk_dsi_set_targetline3(comp, handle, dsi->roi_height, __func__);
+
 		rw_times = mtk_dsi_calculate_rw_times(dsi, partial_roi.width, dsi->roi_height);
 	} else {
 		cmdq_pkt_write(handle, comp->cmdq_base,
@@ -15302,6 +15337,9 @@ static int mtk_dsi_set_partial_update(struct mtk_ddp_comp *comp,
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DSI_SIZE_CON(dsi->driver_data),
 			full_height << 16, 0xffff0000);
+
+		/* For FIFO mon and dbgtp wait targetline and stop before release ddren */
+		mtk_dsi_set_targetline3(comp, handle, full_height, __func__);
 
 		rw_times = mtk_dsi_calculate_rw_times(dsi, partial_roi.width, full_height);
 
@@ -15901,6 +15939,7 @@ static const struct mtk_dsi_driver_data mt6993_dsi_driver_data = {
 	.dsi_scramble_con = 0xf8,
 	.dsi_target_nl = 0xe0,
 	.dsi_target_nl2 = 0xe4,
+	.dsi_target_nl3 = 0xe8,
 	.dsi_buf_con_base = 0x300,
 	.dsi_phy_syncon = 0x1D8,
 	.dsi_ltpo_vdo_con = 0x1A8,

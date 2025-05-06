@@ -97,6 +97,7 @@ struct mtk_dsi_driver_data {
 	const u32 dsi_scramble_con;
 	const u32 dsi_target_nl;
 	const u32 dsi_target_nl2;
+	const u32 dsi_target_nl3;
 	const u32 dsi_buf_con_base;
 	const u32 dsi_phy_syncon;
 	//vdo ltpo
@@ -240,6 +241,8 @@ enum dsi_cmd_verion mtk_dsi_cmd_version(void);
 unsigned int mtk_dsi_get_line_time_vdo(struct mtk_drm_crtc *mtk_crtc,
 	struct mtk_dsi *dsi, unsigned int ps_wc);
 unsigned int mtk_dsi_get_dsc_compress_rate(struct mtk_dsi *dsi);
+void mtk_dsi_set_targetline3(struct mtk_ddp_comp *comp,
+		struct cmdq_pkt *handle, unsigned int hactive, const char *caller);
 
 extern u32 mtk_set_mmmc_rg(u32 hw, u32 id, u32 offset, u32 value, u32 mask);
 extern int mtk_hrt_issue_flag_set(bool is_hrt_issue);
