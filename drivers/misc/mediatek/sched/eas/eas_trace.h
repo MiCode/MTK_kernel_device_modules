@@ -1287,6 +1287,41 @@ TRACE_EVENT(sched_pause_mig_task,
 		__entry->task_mask, __entry->kthread, __entry->dest_cpu,
 		__entry->pause_cpus, __entry->online_cpus, __entry->active_cpus)
 );
+
+TRACE_EVENT(sched_is_cpus_allowed,
+	TP_PROTO(struct task_struct *p, bool kthread, unsigned int cpu,
+		struct cpumask *avail_mask, struct cpumask *pause_cpus),
+
+	TP_ARGS(p, kthread, cpu, avail_mask, pause_cpus),
+
+	TP_STRUCT__entry(
+		__field(pid_t, pid)
+		__field(bool, kthread)
+		__field(unsigned int, cpu)
+		__field(long, task_mask)
+		__field(unsigned int, avail_mask)
+		__field(unsigned int, pause_cpus)
+		__field(unsigned int, online_cpus)
+		__field(unsigned int, active_cpus)
+	),
+
+	TP_fast_assign(
+		__entry->pid = p->pid;
+		__entry->cpu = cpu;
+		__entry->kthread = kthread;
+		__entry->task_mask = p->cpus_ptr->bits[0];
+		__entry->avail_mask = cpumask_bits(avail_mask)[0];
+		__entry->pause_cpus = cpumask_bits(pause_cpus)[0];
+		__entry->online_cpus = cpumask_bits(cpu_online_mask)[0];
+		__entry->active_cpus = cpumask_bits(cpu_active_mask)[0];
+	),
+
+	TP_printk("p=%d, cpu=%d, k=%d, allow=0x%lx, avail=0x%x, pause=0x%x, online=0x%x, active=0x%x",
+		  __entry->pid, __entry->cpu, __entry->kthread,
+		  __entry->task_mask, __entry->avail_mask,
+		  __entry->pause_cpus, __entry->online_cpus, __entry->active_cpus)
+);
+
 #endif
 
 #if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)

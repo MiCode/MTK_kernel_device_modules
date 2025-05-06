@@ -604,11 +604,50 @@ EXPORT_SYMBOL(sched_resume_cpu);
 
 void hook_rvh_is_cpus_allowed(void *unused, struct task_struct *p, int cpu, bool *allowed)
 {
+	cpumask_t avail_cpus;
+
+	if (is_per_cpu_kthread(p)) {
+		*allowed = true;
+		return;
+	}
+
 	if (cpu_paused(cpu)) {
-		if (is_per_cpu_kthread(p))
-			*allowed = true;
-		else
-			*allowed = false;
+		if (!(p->flags & PF_KTHREAD)) {
+			/* User thread */
+			cpumask_andnot(&avail_cpus, cpu_active_mask, cpu_pause_mask);
+			cpumask_and(&avail_cpus, &avail_cpus, p->cpus_ptr);
+
+			/*
+			 * Allow user space task can use paused cpu
+			 * when allowed cpus are all offline or pause.
+			 */
+			if (cpumask_empty(&avail_cpus))
+				*allowed = true;
+			else
+				*allowed = false;
+
+			if (trace_sched_is_cpus_allowed_enabled())
+				trace_sched_is_cpus_allowed(p, 0, cpu, &avail_cpus, cpu_pause_mask);
+
+		} else {
+			/* Kernel thread */
+			cpumask_andnot(&avail_cpus, cpu_online_mask, cpu_dying_mask);
+			cpumask_andnot(&avail_cpus, &avail_cpus, cpu_pause_mask);
+			cpumask_and(&avail_cpus, &avail_cpus, p->cpus_ptr);
+
+			/*
+			 * Allow kernel space task can use paused cpu
+			 * when allowed cpus are all offline or dying or pause.
+			 */
+			if (cpumask_empty(&avail_cpus))
+				*allowed = true;
+			else
+				*allowed = false;
+
+			if (trace_sched_is_cpus_allowed_enabled())
+				trace_sched_is_cpus_allowed(p, 1, cpu, &avail_cpus, cpu_pause_mask);
+
+		}
 	}
 }
 
@@ -618,6 +657,9 @@ void hook_rvh_set_cpus_allowed_by_task(void __always_unused *data,
 {
 	cpumask_t avail_cpus, valid_mask, new;
 	int best_cpu;
+
+	if (is_per_cpu_kthread(p))
+		return;
 
 	if (cpu_paused(*dest_cpu)) {
 		cpumask_andnot(&avail_cpus, cpu_valid_mask, cpu_pause_mask);
