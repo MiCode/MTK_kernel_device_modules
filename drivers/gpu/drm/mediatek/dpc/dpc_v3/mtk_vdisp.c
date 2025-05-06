@@ -228,8 +228,16 @@ static u32 vdisp_hwccf_check_power(void)
 	       ((hwccf_is_enabled(MM_HWCCF, HW_CCF_MTCMOS_GRP_0, HWCCF_VOTE, 26) != 0) << 26) | // MML0
 	       ((hwccf_is_enabled(MM_HWCCF, HW_CCF_MTCMOS_GRP_0, HWCCF_VOTE, 27) != 0) << 27) | // MML1
 	       ((hwccf_is_enabled(MM_HWCCF, HW_CCF_MTCMOS_GRP_0, HWCCF_VOTE, 28) != 0) << 28) | // MML2
-	       ((hwccf_is_enabled(MM_HWCCF, HW_CCF_MTCMOS_GRP_1, HWCCF_VOTE,  9) != 0) <<  9) | // PERI
 	       ((hwccf_is_enabled(MM_HWCCF, HW_CCF_MTCMOS_GRP_1, HWCCF_VOTE, 10) != 0) << 10);  // DPTX
+#else
+	return 0;
+#endif
+}
+
+static u32 vdisp_hwccf_check_peri(void)
+{
+#if IS_ENABLED(CONFIG_MTK_HWCCF)
+	return hwccf_is_enabled(MM_HWCCF, HW_CCF_MTCMOS_GRP_1, HWCCF_VOTE, 9); // PERI
 #else
 	return 0;
 #endif
@@ -523,9 +531,14 @@ void mtk_vdisp_ctrl(int on_off, const char *c_n, uint32_t ops, uint32_t bit)
 	} else if (on_off == 0) {
 		atomic_dec(&g_vdisp_ctrl_cnt);
 
-		if (atomic_read(&g_vdisp_ctrl_cnt) == 1) {
-			/* PRE OFF */
-
+		if (atomic_read(&g_vdisp_ctrl_cnt) == 2) {
+			ret = readx_poll_timeout(vdisp_hwccf_check_power, , value,
+						 value == 0, POLL_DELAY_1US, TIMEOUT_10MS);
+			if (ret) {
+				VDISPERR("timeout waiting for subsys MTCMOS to be off (%#x)\n", value);
+				clkchk_external_dump();
+			}
+		} else if (atomic_read(&g_vdisp_ctrl_cnt) == 1) {
 			/* enable vdisp_ao merge irq, to fix burst irq when mtcmos on */
 			if (g_priv->vdisp_ao_merge_irq)
 				writel(0, g_priv->vdisp_ao_merge_irq);
@@ -544,14 +557,13 @@ void mtk_vdisp_ctrl(int on_off, const char *c_n, uint32_t ops, uint32_t bit)
 			if (disp_dpc_driver.dpc_group_enable)
 				disp_dpc_driver.dpc_group_enable(7777, false);
 
-			ret = readx_poll_timeout(vdisp_hwccf_check_power, , value,
+			ret = readx_poll_timeout(vdisp_hwccf_check_peri, , value,
 						 value == 0, POLL_DELAY_1US, TIMEOUT_10MS);
-			if (ret)
-				VDISPERR("timeout waiting for all MTCMOS to be off (%#x)\n", value);
-
+			if (ret) {
+				VDISPERR("timeout waiting for peri MTCMOS to be off (%#x)\n", value);
+				clkchk_external_dump();
+			}
 		} else if (atomic_read(&g_vdisp_ctrl_cnt) == 0) {
-			/* POST OFF */
-
 			vdisp_hwccf_ctrl(g_priv, false);
 
 			/* power off disp vcore by mtcmos voter */

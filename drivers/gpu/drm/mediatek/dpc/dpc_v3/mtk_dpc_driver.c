@@ -2553,6 +2553,7 @@ static int dpc_vidle_power_keep_v3(const enum mtk_vidle_voter_user _user)
 	dpc_mminfra_on_off(VOTE_SET, user);
 	clk_prepare_enable(g_priv->pwr_clk[0]);
 	clk_prepare_enable(g_priv->pwr_clk[1]);
+	clk_prepare_enable(g_priv->pwr_clk[2]);
 	dpc_ap_ref_cnt(VOTE_SET, user);
 	writel(0x1, dpc_base + DISP_REG_DPC_DUMMY1);
 	mutex_unlock(&g_priv->excp_lock);
@@ -2615,6 +2616,7 @@ static void dpc_vidle_power_release_v3(const enum mtk_vidle_voter_user _user)
 	}
 
 	dpc_ap_ref_cnt(VOTE_CLR, user);
+	clk_disable_unprepare(g_priv->pwr_clk[2]);
 	clk_disable_unprepare(g_priv->pwr_clk[1]);
 	clk_disable_unprepare(g_priv->pwr_clk[0]);
 	dpc_mminfra_on_off(VOTE_CLR, user);
