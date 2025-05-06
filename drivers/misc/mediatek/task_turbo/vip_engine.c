@@ -29,6 +29,7 @@
 #include "trace_vip_engine.h"
 
 LIST_HEAD(uclamp_data_head);
+LIST_HEAD(vipServer_data_head);
 
 #define TAG			"VIP-Engine"
 #define VIP_PRIO_OFFSET		5
@@ -44,6 +45,7 @@ LIST_HEAD(uclamp_data_head);
 
 static DEFINE_SPINLOCK(check_lock);
 static DEFINE_SPINLOCK(binder_uclamp_lock);
+static DEFINE_SPINLOCK(binder_vipServer_lock);
 static DEFINE_MUTEX(cpu_lock);
 static DEFINE_MUTEX(cpu_loading_lock);
 static DEFINE_MUTEX(wi_lock);
@@ -60,6 +62,8 @@ static int binder_nonvip_inheritance_enable;
 #endif
 static int binder_uclamp_inheritance_enable;
 static int binder_uclamp_inheritance_enable_authority = 1;
+static int binder_vipServer_enable;
+static int binder_stuff_cmd;
 static pid_t unset_binder_uclamp_pid;
 static struct workqueue_struct *uclamp_wq;
 static struct cpu_info ci;
@@ -954,8 +958,215 @@ static const struct kernel_param_ops binder_uclamp_stuff_ops = {
 };
 
 module_param_cb(binder_uclamp_stuff
-		, &binder_uclamp_stuff_ops, &unset_binder_uclamp_pid, 0664);
+		, &binder_uclamp_stuff_ops, &binder_stuff_cmd, 0664);
 MODULE_PARM_DESC(binder_uclamp_stuff, "unset binder uclamp parameters");
+
+int write_vipServer_to_list(pid_t proc_pid, pid_t pid)
+{
+	unsigned long flags;
+	struct vipServer_data_node *newNode = kmalloc(sizeof(struct vipServer_data_node), GFP_NOWAIT);
+
+	if(!newNode)
+		return -ENOMEM;
+
+	newNode->proc_pid = proc_pid;
+	newNode->pid = pid;
+	INIT_LIST_HEAD(&newNode->list);
+	spin_lock_irqsave(&binder_vipServer_lock, flags);
+	list_add_tail(&newNode->list, &vipServer_data_head);
+	spin_unlock_irqrestore(&binder_vipServer_lock, flags);
+	return 0;
+}
+
+void reset_and_erase_proc_vipServer_in_list(pid_t proc_pid)
+{
+	struct task_turbo_t *task_turbo_data;
+	struct task_struct *task_struct_data;
+	struct list_head *pos, *n;
+	struct vipServer_data_node *tmp_node;
+	unsigned long flags;
+
+	spin_lock_irqsave(&binder_vipServer_lock, flags);
+	list_for_each_safe(pos, n, &vipServer_data_head){
+		tmp_node = list_entry(pos, struct vipServer_data_node, list);
+		if((proc_pid != 0) && (tmp_node->proc_pid != proc_pid))
+			continue;
+		rcu_read_lock();
+		task_struct_data = find_task_by_vpid(tmp_node->pid);
+		if(!task_struct_data){
+			rcu_read_unlock();
+			list_del(&tmp_node->list);
+			kfree(tmp_node);
+			continue;
+		}
+		get_task_struct(task_struct_data);
+		rcu_read_unlock();
+		task_turbo_data = get_task_turbo_t(task_struct_data);
+		if(!task_turbo_data){
+			put_task_struct(task_struct_data);
+			list_del(&tmp_node->list);
+			kfree(tmp_node);
+			continue;
+		}
+		if(task_turbo_data->is_binder_vip_server_done){
+			task_turbo_data->is_binder_vip_server_done = 0;
+			unset_task_basic_vip(tmp_node->pid);
+			trace_binder_vip_server_vip_set(tmp_node->pid, 0);
+		}
+		put_task_struct(task_struct_data);
+		list_del(&tmp_node->list);
+		kfree(tmp_node);
+	}
+	spin_unlock_irqrestore(&binder_vipServer_lock, flags);
+}
+
+void check_dirty_vipServer_in_list(void)
+{
+	struct task_struct *task_struct_data;
+	struct list_head *pos, *n;
+	struct vipServer_data_node *tmp_node;
+	unsigned long flags;
+
+	spin_lock_irqsave(&binder_vipServer_lock, flags);
+	list_for_each_safe(pos, n, &vipServer_data_head){
+		tmp_node = list_entry(pos, struct vipServer_data_node, list);
+		rcu_read_lock();
+		task_struct_data = find_task_by_vpid(tmp_node->pid);
+		if(!task_struct_data){
+			list_del(&tmp_node->list);
+			kfree(tmp_node);
+		}
+		rcu_read_unlock();
+	}
+	spin_unlock_irqrestore(&binder_vipServer_lock, flags);
+}
+
+void print_vipServer_list(void)
+{
+	struct list_head *pos, *n;
+	struct vipServer_data_node *tmp_node;
+	unsigned long flags;
+
+	spin_lock_irqsave(&binder_vipServer_lock, flags);
+	list_for_each_safe(pos, n, &vipServer_data_head){
+		tmp_node = list_entry(pos, struct vipServer_data_node, list);
+		pr_info("%s: %d:%d", __func__, tmp_node->proc_pid, tmp_node->pid);
+	}
+	spin_unlock_irqrestore(&binder_vipServer_lock, flags);
+}
+
+
+void do_binder_vipServer_stuff(int cmd)
+{
+	if(cmd == PRINT_UCLAMP_LIST)
+		print_vipServer_list();
+	else if (cmd == CLEAR_UCLAMP_LIST)
+		reset_and_erase_proc_vipServer_in_list(0);
+}
+
+void do_enable_binder_vipServer(int enable)
+{
+	if (!enable)
+		reset_and_erase_proc_vipServer_in_list(0);
+	binder_vipServer_enable = !!enable;
+}
+EXPORT_SYMBOL_GPL(do_enable_binder_vipServer);
+
+int do_set_server_vip(pid_t pid, int enable)
+{
+	struct task_turbo_t *task_turbo_data;
+	struct task_struct *task_struct_data;
+
+	if (pid <= 0)
+		return -EINVAL;
+	if (enable < 0)
+		return -EINVAL;
+
+	check_dirty_vipServer_in_list();
+	trace_binder_vip_server_parameters_set(pid, enable);
+	rcu_read_lock();
+	task_struct_data = find_task_by_vpid(pid);
+	if(!task_struct_data){
+		rcu_read_unlock();
+		return -ESRCH;
+	}
+	get_task_struct(task_struct_data);
+	rcu_read_unlock();
+	task_turbo_data = get_task_turbo_t(task_struct_data);
+	if(!task_turbo_data){
+		put_task_struct(task_struct_data);
+		return -ESRCH;
+	}
+	task_turbo_data->is_binder_vip_server = !!enable;
+	if(!enable)
+		reset_and_erase_proc_vipServer_in_list(pid);
+	put_task_struct(task_struct_data);
+	return 0;
+}
+EXPORT_SYMBOL_GPL(do_set_server_vip);
+
+static int binder_vipServer_stuff(const char *buf, const struct kernel_param *kp)
+{
+	int retval = 0, val = 0;
+
+	retval = kstrtoint(buf, 0, &val);
+	if (retval)
+		return -EINVAL;
+	do_binder_vipServer_stuff(val);
+	return retval;
+}
+
+static const struct kernel_param_ops binder_vipServer_stuff_ops = {
+	.set = binder_vipServer_stuff,
+	.get = param_get_int,
+};
+
+module_param_cb(binder_vipServer_stuff
+		, &binder_vipServer_stuff_ops, &binder_stuff_cmd, 0664);
+MODULE_PARM_DESC(binder_vipServer_stuff, "unset binder vipServer parameters");
+
+static int enable_binder_vipServer(const char *buf, const struct kernel_param *kp)
+{
+	int retval = 0, val = 0;
+
+	retval = kstrtoint(buf, 0, &val);
+	if (retval)
+		return -EINVAL;
+	if (val < 0)
+		return -EINVAL;
+	do_enable_binder_vipServer(val);
+	return retval;
+}
+
+static const struct kernel_param_ops enable_binder_vipServer_ops = {
+	.set = enable_binder_vipServer,
+	.get = param_get_int,
+};
+
+module_param_cb(enable_binder_vipServer
+		, &enable_binder_vipServer_ops, &binder_vipServer_enable, 0664);
+MODULE_PARM_DESC(enable_binder_vipServer, "Enable or disable binder vip server");
+
+static char binder_server_vip_param[64] = "";
+static int set_server_vip(const char *buf, const struct kernel_param *kp)
+{
+	pid_t pid = 0;
+	int enable = 0, retval = 0;
+
+	if (sscanf(buf, "%d %d", &pid, &enable) != 2)
+		return -EINVAL;
+	retval = do_set_server_vip(pid, enable);
+	return retval;
+}
+
+static const struct kernel_param_ops set_server_vip_ops = {
+	.set = set_server_vip,
+	.get = param_get_int,
+};
+
+module_param_cb(set_server_vip
+		, &set_server_vip_ops, &binder_server_vip_param, 0664);
+MODULE_PARM_DESC(set_server_vip, "set server vip");
 
 /*
  * update_cpu_loading - Update the average CPU loading
@@ -1404,6 +1615,29 @@ void binder_stop_uclamp_inherit(struct task_struct *p)
 	}
 }
 
+void binder_start_set_vipServer(struct task_struct *from,
+					struct task_struct *to)
+{
+	struct task_turbo_t *to_turbo_data;
+	struct task_turbo_t *to_proc_turbo_data;
+
+	if (!from || !to)
+		return;
+	to_turbo_data = get_task_turbo_t(to);
+	if(to_turbo_data->is_binder_vip_server_done)
+		return;
+
+	to_proc_turbo_data = get_task_turbo_t(to->group_leader);
+	if(to_proc_turbo_data->is_binder_vip_server){
+		if(unlikely(write_vipServer_to_list(to->tgid, to->pid)))
+			return;
+		to_turbo_data->is_binder_vip_server_done = 1;
+		set_task_basic_vip(to->pid);
+		trace_binder_vip_server_vip_set(to->pid, 1);
+	}
+}
+
+
 static void probe_android_vh_binder_set_priority(void *ignore, struct binder_transaction *t,
 							struct task_struct *task)
 {
@@ -1411,6 +1645,8 @@ static void probe_android_vh_binder_set_priority(void *ignore, struct binder_tra
 	if (binder_vip_inheritance_enable && tt_vip_enable && binder_start_vip_inherit_hook)
 		binder_start_vip_inherit(t->from ? t->from->task : NULL, task);
 #endif
+	if (binder_vipServer_enable && tt_vip_enable)
+		binder_start_set_vipServer(t->from ? t->from->task : NULL, task);
 	if (binder_uclamp_inheritance_enable && binder_uclamp_inheritance_enable_authority)
 		binder_start_uclamp_inherit(t->from ? t->from->task : NULL, task);
 }
@@ -1436,6 +1672,8 @@ static void init_turbo_attr(struct task_struct *p)
 	turbo_data->uclamp_binder_cnt = 0;
 	turbo_data->uclamp_value_min = 0;
 	turbo_data->uclamp_value_max = 0;
+	turbo_data->is_binder_vip_server = 0;
+	turbo_data->is_binder_vip_server_done = 0;
 }
 
 int init_cpu_time(void)

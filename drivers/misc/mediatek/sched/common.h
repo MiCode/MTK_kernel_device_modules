@@ -209,6 +209,8 @@ struct task_turbo_t {
 	int uclamp_binder_cnt;
 	unsigned short uclamp_value_min:11;
 	unsigned short uclamp_value_max:11;
+	int is_binder_vip_server;
+	int is_binder_vip_server_done;
 };
 
 struct flt_task_struct {

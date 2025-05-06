@@ -55,7 +55,7 @@ TRACE_EVENT(binder_vip_restore,
 		__entry->b_pid = b_pid;
 		__entry->restore_vip_prio = restore_vip_prio;
 	),
-	TP_printk("%d: restore to: %d",
+	TP_printk("pid=%d: restore to: %d",
 		__entry->b_pid,
 		__entry->restore_vip_prio)
 );
@@ -74,10 +74,44 @@ TRACE_EVENT(binder_uclamp_parameters_set,
 		__entry->max = max;
 		__entry->min = min;
 	),
-	TP_printk("%d set uclamp parameters: max=%d, min=%d",
+	TP_printk("pid=%d set uclamp parameters: max=%d, min=%d",
 		__entry->b_pid,
 		__entry->max,
 		__entry->min)
+);
+
+TRACE_EVENT(binder_vip_server_parameters_set,
+	TP_PROTO(pid_t b_pid, int enable),
+	TP_ARGS(b_pid,enable),
+
+	TP_STRUCT__entry(
+		__field(pid_t, b_pid)
+		__field(int, enable)
+	),
+	TP_fast_assign(
+		__entry->b_pid = b_pid;
+		__entry->enable = enable;
+	),
+	TP_printk("pid=%d set vip server parameters: enable=%d",
+		__entry->b_pid,
+		__entry->enable)
+);
+
+TRACE_EVENT(binder_vip_server_vip_set,
+	TP_PROTO(pid_t b_pid, int enable),
+	TP_ARGS(b_pid,enable),
+
+	TP_STRUCT__entry(
+		__field(pid_t, b_pid)
+		__field(int, enable)
+	),
+	TP_fast_assign(
+		__entry->b_pid = b_pid;
+		__entry->enable = enable;
+	),
+	TP_printk("pid=%d set vip_prio = %d",
+		__entry->b_pid,
+		__entry->enable)
 );
 
 TRACE_EVENT(binder_uclamp_set,
@@ -96,7 +130,7 @@ TRACE_EVENT(binder_uclamp_set,
 		__entry->min = min;
 		__entry->ret = ret;
 	),
-	TP_printk("%d set uclamp: max=%d, min=%d, ret:%d",
+	TP_printk("pid=%d set uclamp: max=%d, min=%d, ret:%d",
 		__entry->b_pid,
 		__entry->max,
 		__entry->min,
@@ -136,7 +170,7 @@ TRACE_EVENT(binder_stop_uclamp_inherit,
 	TP_fast_assign(
 		__entry->b_pid = b_pid;
 	),
-	TP_printk("%d stop uclamp",
+	TP_printk("pid=%d stop uclamp",
 		__entry->b_pid)
 );
 
@@ -152,7 +186,7 @@ TRACE_EVENT(binder_uclamp_debug,
 		__entry->b_pid = b_pid;
 		__entry->code = code;
 	),
-	TP_printk("pid:%d code:%d",
+	TP_printk("pid=%d code:%d",
 		__entry->b_pid,
 		__entry->code)
 );

@@ -1,5 +1,6 @@
 load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
 load("@mgk_info//:kernel_version.bzl","kernel_version",)
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
 
 package(
     default_visibility = [
@@ -40,6 +41,14 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/misc/mediatek/sched:scheduler".format(kernel_version),
     ],
     out = "task_turbo.ko",
+)
+
+ddk_headers(
+   name = "headers",
+   hdrs = [
+           "vip_engine.h",
+   ],
+   includes = ["."],
 )
 
 define_mgk_ddk_ko(

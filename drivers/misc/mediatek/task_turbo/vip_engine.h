@@ -6,6 +6,7 @@
 #define _VIP_ENGINE_H_
 
 #include <linux/list.h>
+#include <uapi/linux/sched/types.h>
 #include "common.h"
 
 #define get_task_turbo_t(p)	\
@@ -53,6 +54,12 @@ struct uclamp_data_node {
 	struct list_head list;
 };
 
+struct vipServer_data_node {
+	pid_t pid;
+	pid_t proc_pid;
+	struct list_head list;
+};
+
 struct sched_attr_work {
 	struct work_struct work;
 	struct task_struct *task;
@@ -70,5 +77,6 @@ extern int get_cpu_gear_uclamp_max_capacity(unsigned int cpu, int ret_type);
 #if IS_ENABLED(CONFIG_MTK_TASK_TURBO)
 extern int *tt_vip_enable_p;
 #endif
-
+int do_set_server_vip(pid_t pid, int enable);
+void do_enable_binder_vipServer(int enable);
 #endif /* _VIP_ENGINE_H_ */
