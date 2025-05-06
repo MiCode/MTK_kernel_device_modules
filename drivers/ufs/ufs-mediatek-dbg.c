@@ -317,26 +317,6 @@ static u32 ufs_mtk_ahit_to_us(u32 ahit)
 	return timer;
 }
 
-/**
- * ufshcd_is_hba_crypto_enable - Get controller crypto state
- * @hba: per adapter instance
- *
- * Return: true if and only if the controller crypto is enable.
- */
-bool ufshcd_is_hba_crypto_enable(struct ufs_hba *hba)
-{
-	bool crypto_en;
-
-	ufshcd_hold(hba);
-
-	crypto_en = (ufshcd_readl(hba, REG_CONTROLLER_ENABLE) &
-			CRYPTO_GENERAL_ENABLE) ? true : false;
-
-	ufshcd_release(hba);
-
-	return crypto_en;
-}
-
 static void ufs_mtk_dbg_print_info(struct ufs_hba *hba, char **buff,
 				unsigned long *size, struct seq_file *m)
 {
@@ -414,10 +394,9 @@ static void ufs_mtk_dbg_print_info(struct ufs_hba *hba, char **buff,
 		      hba->capabilities, hba->caps, host->caps);
 
 	SPREAD_PRINTF(buff, size, m,
-		      "Host crypto support=%s, caps=%s, enable:%s\n",
+		      "Host crypto support=%s, caps=%s\n",
 		      (hba->capabilities & MASK_CRYPTO_SUPPORT) ? "Yes" : "No",
-		      (hba->caps & UFSHCD_CAP_CRYPTO) ? "Yes" : "No",
-		      ufshcd_is_hba_crypto_enable(hba) ? "Yes" : "No");
+		      (hba->caps & UFSHCD_CAP_CRYPTO) ? "Yes" : "No");
 
 	SPREAD_PRINTF(buff, size, m,
 		      "quirks=0x%x, dev. quirks=0x%x\n", hba->quirks,
