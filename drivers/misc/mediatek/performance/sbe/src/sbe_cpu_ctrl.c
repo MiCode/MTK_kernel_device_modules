@@ -689,11 +689,11 @@ int sbe_query_cur_buffer_count(struct sbe_render_info *thr)
 	int tmp_render_num = 0;
 	struct render_fw_info *tmp_render_arr = NULL;
 
-	tmp_render_arr = kcalloc(10, sizeof(struct render_fw_info), GFP_KERNEL);
+	tmp_render_arr = kcalloc(FPSGO_MAX_RENDER_INFO_SIZE, sizeof(struct render_fw_info), GFP_KERNEL);
 	if (!tmp_render_arr)
 		return -ENOMEM;
 
-	fpsgo_other2comp_get_render_fw_info(0, 10, &tmp_render_num, tmp_render_arr);
+	fpsgo_other2comp_get_render_fw_info(0, FPSGO_MAX_RENDER_INFO_SIZE, &tmp_render_num, tmp_render_arr);
 	thr->cur_buffer_count = 0;
 	for (i = 0; i < tmp_render_num; i++) {
 		// TODO: need to consider if same render tid has different buffer id
