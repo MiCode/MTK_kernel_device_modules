@@ -7926,7 +7926,7 @@ static void disp_oddmr_on_start_of_frame(struct mtk_ddp_comp *comp)
 		oddmr_data->primary_data->sof_time = comp->mtk_crtc->sof_time;
 	}
 
-	if (od_support == true && oddmr_data->primary_data->od_state >= ODDMR_LOAD_DONE) {
+	if (od_support == true && oddmr_data->primary_data->od_state >= ODDMR_LOAD_PARTS) {
 		if (!atomic_read(&oddmr_data->primary_data->sof_irq_for_od_sram)) {
 			atomic_set(&oddmr_data->primary_data->sof_irq_for_od_sram, 1);
 			wake_up_interruptible(&oddmr_data->primary_data->od_sram_wq);
@@ -8185,7 +8185,6 @@ static int mtk_oddmr_od_init(struct mtk_ddp_comp *comp, void *data)
 		return -1;
 	}
 
-	oddmr_data->primary_data->od_state = ODDMR_LOAD_DONE;
 	mtk_oddmr_od_table_fps_minmax(oddmr_data);
 	if (oddmr_data->primary_data->od_fps_mode == 1 &&
 			oddmr_data->primary_data->od_wait_time == 0) {
@@ -8238,6 +8237,7 @@ static int mtk_oddmr_od_init(struct mtk_ddp_comp *comp, void *data)
 			mtk_oddmr_release_clock(comp);
 			return -1;
 		}
+		oddmr_data->primary_data->od_state = ODDMR_LOAD_DONE;
 
 		if (oddmr_data->data->od_version >= MTK_OD_V2) {
 			SET_VAL_MASK(value, mask, 1, REG_OD_RD_REG_EN); //for sram read
