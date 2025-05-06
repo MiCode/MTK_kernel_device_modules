@@ -892,7 +892,7 @@ void mtk_drm_crtc_check_blender_connect(struct mtk_drm_crtc *mtk_crtc,
 	}
 
 	if (comp->id > mtk_crtc->last_blender->id && !plane_state->pending.enable) {
-		DDPMSG("plane is over last usable layer\n");
+		DDPINFO("plane is over last usable layer\n");
 		return;
 	}
 
@@ -7692,7 +7692,7 @@ unsigned int mtk_crtc_get_idle_interval(struct drm_crtc *crtc, unsigned int fps)
 	if (idle_interval > 50)
 		idle_interval = 50;
 
-	DDPMSG("[fps]:%s,[fps->idle interval][%d fps->%d ms]\n",
+	DDPINFO("[fps]:%s,[fps->idle interval][%d fps->%d ms]\n",
 		__func__, fps, idle_interval);
 
 	return idle_interval;
@@ -8280,7 +8280,7 @@ static void mtk_crtc_disp_mode_switch_begin(struct drm_crtc *crtc,
 		old_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX],
 		mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX]);
 
-	DDPMSG("%s++ from %llu to %llu\n", __func__,
+	DDPINFO("%s++ from %llu to %llu\n", __func__,
 		old_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX],
 		mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX]);
 
@@ -8392,7 +8392,7 @@ static void mtk_crtc_disp_mode_switch_begin(struct drm_crtc *crtc,
 	mtk_drm_idlemgr_kick(__func__, crtc, 0);
 
 	CRTC_MMP_EVENT_END((int) drm_crtc_index(crtc), mode_switch, fps_src, fps_dst);
-	DDPMSG("%s--\n", __func__);
+	DDPINFO("%s--\n", __func__);
 }
 
 static void mtk_crtc_msync2_switch_begin(struct drm_crtc *crtc)
@@ -23424,7 +23424,7 @@ static int mtk_drm_mode_switch_thread(void *data)
 			mtk_crtc->mode_switch_wq,
 			atomic_read(&mtk_crtc->singal_for_mode_switch));
 
-		DDPMSG("%s++\n", __func__);
+		DDPINFO("%s++\n", __func__);
 
 		output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 
@@ -23465,7 +23465,7 @@ static int mtk_drm_mode_switch_thread(void *data)
 
 		CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 1, 3);
 
-		DDPMSG("%s--\n", __func__);
+		DDPINFO("%s--\n", __func__);
 
 		if (kthread_should_stop())
 			break;

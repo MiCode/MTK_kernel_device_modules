@@ -2641,7 +2641,7 @@ static int mtk_dbi_count_pq_ioctl_transact(struct mtk_ddp_comp *comp,
 {
 	int ret = -1;
 
-	DBI_COUNT_MSG("+ cmd %d", cmd);
+	DBI_COUNT_INFO("+ cmd %d", cmd);
 
 	switch (cmd) {
 	case PQ_DBI_COUNT_IDLE_TIMER_INIT:

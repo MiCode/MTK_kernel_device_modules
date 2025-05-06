@@ -74,7 +74,7 @@ void drm_invoke_fps_chg_callbacks(unsigned int new_fps)
 {
 	unsigned int i = 0;
 
-	DDPMSG("[fps]: %s,new_fps =%d\n", __func__, new_fps);
+	DDPINFO("[fps]: %s,new_fps =%d\n", __func__, new_fps);
 	mutex_lock(&cb_table_lock);
 	for (i = 0; i < DISP_MAX_FPSCHG_CALLBACK; i++) {
 		if (fps_chg_callback_table[i]) {

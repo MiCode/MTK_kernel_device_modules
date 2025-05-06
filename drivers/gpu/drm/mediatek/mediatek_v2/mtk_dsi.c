@@ -3570,7 +3570,7 @@ static void mtk_dsi_config_vdo_timing(struct mtk_dsi *dsi)
 	writel(dsi->hsa_byte, dsi->regs + DSI_HSA_WC(dsi->driver_data));
 	writel(dsi->hbp_byte, dsi->regs + DSI_HBP_WC(dsi->driver_data));
 	writel(dsi->hfp_byte, dsi->regs + DSI_HFP_WC(dsi->driver_data));
-	DDPDUMP("%s, 0x58=0x%x\n", __func__, readl(dsi->regs + DSI_HFP_WC(dsi->driver_data)));
+	DDPINFO("%s, 0x58=0x%x\n", __func__, readl(dsi->regs + DSI_HFP_WC(dsi->driver_data)));
 
 	if (dsi->ext && dsi->ext->params->vdo_keep_hs_perline) {
 		unsigned int lpx = 0, da_hs_exit = 0, da_hs_prep = 0;
@@ -3582,9 +3582,9 @@ static void mtk_dsi_config_vdo_timing(struct mtk_dsi *dsi)
 		da_hs_prep = (readl(dsi->regs + DSI_PHY_TIMECON0(dsi->driver_data)) >> 8) & 0xff;
 		da_hs_zero = (readl(dsi->regs + DSI_PHY_TIMECON0(dsi->driver_data)) >> 16) & 0xff;
 		ps_wc = readl(dsi->regs + DSI_PSCTRL(dsi->driver_data)) & 0x7fff;
-		DDPDUMP("%s, lpx=0x%x, da_hs_exit=0x%x, da_hs_prep=0x%x\n",
+		DDPINFO("%s, lpx=0x%x, da_hs_exit=0x%x, da_hs_prep=0x%x\n",
 			__func__, lpx, da_hs_exit, da_hs_prep);
-		DDPDUMP("%s, da_hs_zero=0x%x, ps_wc=0x%x, lane_num=0x%x\n",
+		DDPINFO("%s, da_hs_zero=0x%x, ps_wc=0x%x, lane_num=0x%x\n",
 			__func__, da_hs_zero, ps_wc, dsi->lanes);
 
 		if (dsi->ext->params->is_cphy)
@@ -3596,15 +3596,15 @@ static void mtk_dsi_config_vdo_timing(struct mtk_dsi *dsi)
 				(lpx + da_hs_exit + da_hs_prep + da_hs_zero + 2)
 				* dsi->lanes;
 
-		DDPDUMP("%s, hs_vb_ps_wc=0x%x\n", __func__, hs_vb_ps_wc);
-		DDPDUMP("%s, dsi->data_phy_cycle=0x%x, hs_vb_ps_wc=0x%x\n", __func__,
+		DDPINFO("%s, hs_vb_ps_wc=0x%x\n", __func__, hs_vb_ps_wc);
+		DDPINFO("%s, dsi->data_phy_cycle=0x%x, hs_vb_ps_wc=0x%x\n", __func__,
 			dsi->data_phy_cycle, ps_wc-dsi->data_phy_cycle * dsi->lanes);
 
 		value = REG_FLD_VAL(HFP_WC_FLD_REG_HFP_HS_EN, 1)
 			| REG_FLD_VAL(HFP_WC_FLD_REG_HFP_HS_VB_PS_WC, hs_vb_ps_wc)
 			| REG_FLD_VAL(HFP_WC_FLD_REG_DSI_HFP_WC, dsi->hfp_byte);
 		writel(value, dsi->regs + DSI_HFP_WC(dsi->driver_data));
-		DDPDUMP("%s, 0x58=0x%x\n", __func__, readl(dsi->regs + DSI_HFP_WC(dsi->driver_data)));
+		DDPINFO("%s, 0x58=0x%x\n", __func__, readl(dsi->regs + DSI_HFP_WC(dsi->driver_data)));
 	}
 }
 

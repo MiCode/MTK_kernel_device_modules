@@ -2158,7 +2158,7 @@ static void mtk_atomic_check_res_switch(struct mtk_drm_private *private,
 				(mode->vdisplay == old_mode->vdisplay))
 				return;
 
-			DDPMSG("%s++ resolution switch:%dx%d->%dx%d,fps:%d->%d\n", __func__,
+			DDPINFO("%s++ resolution switch:%dx%d->%dx%d,fps:%d->%d\n", __func__,
 				old_mode->hdisplay, old_mode->vdisplay,
 				mode->hdisplay, mode->vdisplay,
 				drm_mode_vrefresh(old_mode), drm_mode_vrefresh(mode));
