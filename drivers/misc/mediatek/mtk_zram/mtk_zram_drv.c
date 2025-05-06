@@ -2688,7 +2688,7 @@ static void hwcomp_compress_post_process_dc(int err, void *buffer, unsigned int 
 
 		/* Fallback to SW compression */
 		if (zram_write_page(zram, pp_info->page, index)) {
-			pr_info("%s: fallback to SW compression fail\n", __func__);
+			pr_info_ratelimited("%s: fallback to SW compression fail\n", __func__);
 			goto out;
 		}
 
