@@ -76,6 +76,7 @@ struct mtk_drm_qos_ctx {
 	unsigned int last_channel_req[BW_CHANNEL_NR];
 	unsigned int last_channel_req_begin[BW_CHANNEL_NR];
 	unsigned int last_channel_write_req[BW_CHANNEL_NR];
+	unsigned int mmclk_need_up_now;
 	atomic_t last_hrt_idx;
 	atomic_t hrt_cond_sig;
 	wait_queue_head_t hrt_cond_wq;
