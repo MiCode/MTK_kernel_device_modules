@@ -1206,6 +1206,7 @@ int mtk_smmu_tf_detect(enum mtk_smmu_type type,
 		       u32 sid, u32 tbu,
 		       u32 *axids, u32 num_axids,
 		       struct mtk_smmu_fault_param *param);
+void mtk_smmu_hyp_dump_pgtable(enum mtk_smmu_type type);
 #else
 static inline void mtk_smmu_reg_dump(enum mtk_smmu_type type,
 				     struct device *master_dev,
@@ -1220,6 +1221,10 @@ static inline int mtk_smmu_tf_detect(enum mtk_smmu_type type,
 				     struct mtk_smmu_fault_param *param)
 {
 	return 0;
+}
+
+static inline void mtk_smmu_hyp_dump_pgtable(enum mtk_smmu_type type)
+{
 }
 #endif /* CONFIG_DEVICE_MODULES_ARM_SMMU_V3 && CONFIG_MTK_IOMMU_DEBUG */
 

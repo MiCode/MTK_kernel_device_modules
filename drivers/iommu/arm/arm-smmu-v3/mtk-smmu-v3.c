@@ -3861,6 +3861,23 @@ int mtk_smmu_tf_detect(enum mtk_smmu_type type,
 			      0, param);
 }
 EXPORT_SYMBOL_GPL(mtk_smmu_tf_detect);
+
+void mtk_smmu_hyp_dump_pgtable(enum mtk_smmu_type type)
+{
+	struct arm_smmu_device *smmu;
+	struct mtk_smmu_data *data;
+
+	data = mkt_get_smmu_data(type);
+	if (!data || data->hw_init_flag != 1)
+		return;
+
+	smmu = &data->smmu;
+
+	/* dump s2 pgtable via translation fault smc and invalid sid 255 */
+	mtk_hyp_smmu_debug_dump(smmu, 0x0, 0, 255, EVENT_ID_TRANSLATION_FAULT,
+				true);
+}
+EXPORT_SYMBOL_GPL(mtk_smmu_hyp_dump_pgtable);
 #endif
 
 static struct arm_smmu_device *get_smmu_dev_for_pmu(struct smmuv3_pmu_device *pmu_device)
