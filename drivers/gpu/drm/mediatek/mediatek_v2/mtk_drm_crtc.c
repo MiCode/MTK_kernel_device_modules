@@ -9588,6 +9588,7 @@ void mtk_crtc_release_output_buffer_fence_by_idx(
 		return;
 
 	if (fence_idx && fence_idx != -1) {
+		drm_trace_tag_value("release_output_fence", fence_idx);
 		DDPINFO("output fence_idx:%d\n", fence_idx);
 		mtk_release_fence(session_id,
 			mtk_fence_get_output_timeline_id(), fence_idx);
@@ -9608,6 +9609,7 @@ void mtk_crtc_release_output_buffer_fence(
 	fence_idx = *(unsigned int *)
 		mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_CUR_OUTPUT_FENCE);
 	if (fence_idx && fence_idx != -1) {
+		drm_trace_tag_value("release_output_fence", fence_idx);
 		DDPINFO("output fence_idx:%d\n", fence_idx);
 		mtk_release_fence(session_id,
 			mtk_fence_get_output_timeline_id(), fence_idx);
