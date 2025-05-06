@@ -1787,6 +1787,32 @@ void mtk8250_set_runtime_active_status(struct tty_struct *tty)
 }
 EXPORT_SYMBOL(mtk8250_set_runtime_active_status);
 
+/*status: true: skip terminate_all flow,only run flush action*/
+void mtk8250_set_flush_flag(struct tty_struct *tty, bool status)
+{
+	struct uart_8250_port *up = NULL;
+	struct uart_8250_dma *dma = NULL;
+
+	if (tty == NULL) {
+		pr_info("[%s] current tty is null\n", __func__);
+		return;
+	}
+	up = mtk8250_get_up_from_tty(tty);
+	if (up == NULL) {
+		pr_info("[%s] current up is null\n", __func__);
+		return;
+	}
+	dma = up->dma;
+	if (dma == NULL || dma->rxchan == NULL || dma->txchan == NULL) {
+		pr_info("[%s] current dma is null\n", __func__);
+		return;
+	}
+#ifdef KERNEL_mtk_uart_set_apdma_status
+	KERNEL_mtk_uart_set_apdma_status(dma->rxchan, status);
+	KERNEL_mtk_uart_set_apdma_status(dma->txchan, status);
+#endif
+}
+EXPORT_SYMBOL(mtk8250_set_flush_flag);
 
 static int mtk8250_polling_rx_handle_complete(unsigned int count)
 {
@@ -2352,15 +2378,6 @@ static int mtk8250_startup(struct uart_port *port)
 	if (up->dma) {
 		data->rx_status = DMA_RX_START;
 		kfifo_reset(&port->state->port.xmit_fifo);
-	#if IS_ENABLED(CONFIG_MTK_UARTHUB)
-		/*set dma status to START */
-		if (up->dma->txchan && up->dma->rxchan) {
-		#if defined(KERNEL_mtk_uart_set_apdma_status)
-			KERNEL_mtk_uart_set_apdma_status(up->dma->txchan, 0);
-			KERNEL_mtk_uart_set_apdma_status(up->dma->rxchan, 0);
-		#endif
-		}
-	#endif
 	}
 #endif
 	memset(&port->icount, 0, sizeof(port->icount));
@@ -2394,18 +2411,8 @@ static void mtk8250_shutdown(struct uart_port *port)
 	if (!data)
 		return;
 #ifdef CONFIG_SERIAL_8250_DMA
-	if (up->dma) {
+	if (up->dma)
 		data->rx_status = DMA_RX_SHUTDOWN;
-	#if IS_ENABLED(CONFIG_MTK_UARTHUB)
-		/*set dma status to shutdown */
-		if (up->dma->txchan && up->dma->rxchan) {
-		#if defined(KERNEL_mtk_uart_set_apdma_status)
-			KERNEL_mtk_uart_set_apdma_status(up->dma->txchan, 1);
-			KERNEL_mtk_uart_set_apdma_status(up->dma->rxchan, 1);
-		#endif
-		}
-	#endif
-	}
 #endif
 
 	mutex_lock(&data->clk_mutex);

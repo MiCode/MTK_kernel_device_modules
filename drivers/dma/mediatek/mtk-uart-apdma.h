@@ -50,6 +50,6 @@ void mtk_uart_apdma_enable_vff(bool enable);
 bool mtk_uart_get_apdma_handler_state(void);
 int mtk_uart_apdma_polling_tx_finish(void);
 void mtk_uart_apdma_debug_dump(const char *debug_string);
-void mtk_uart_set_apdma_status(struct dma_chan *chan, unsigned int status);
+void mtk_uart_set_apdma_status(struct dma_chan *chan, bool status);
 
 #endif /* MTK_UART_APDMA_H */

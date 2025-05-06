@@ -119,6 +119,13 @@ enum uart_dma_debug_info {
 	DMA_RX_RETRY_FAIL,
 	DEBUG_INFO_MAX = 31,
 };
+
+/*apdma flush flag*/
+enum apdma_flush_flag {
+	DMA_NEED_TERMINATE,
+	DMA_ONLY_FLUSH_BUFFER,
+};
+
 /* dma debug buf size*/
 #define LOG_BUG_SIZE		20
 
@@ -595,16 +602,23 @@ int mtk_uart_get_apdma_status(struct dma_chan *chan)
 }
 EXPORT_SYMBOL(mtk_uart_get_apdma_status);
 
-void mtk_uart_set_apdma_status(struct dma_chan *chan, unsigned int status)
+void mtk_uart_set_apdma_status(struct dma_chan *chan, bool status)
 {
 	struct mtk_chan *c = NULL;
 
-	if (!chan)
+	if (!chan) {
+		pr_info("[%s] current dma_chan is null\n", __func__);
 		return;
+	}
 	c = to_mtk_uart_apdma_chan(chan);
-	if (c == NULL)
+	if (c == NULL) {
+		pr_info("[%s] current mtk_chan is null\n", __func__);
 		return;
-	atomic_set(&c->apdma_status, status);
+	}
+	if (status)
+		atomic_set(&c->apdma_status, DMA_ONLY_FLUSH_BUFFER);
+	else
+		atomic_set(&c->apdma_status, DMA_NEED_TERMINATE);
 }
 EXPORT_SYMBOL(mtk_uart_set_apdma_status);
 
@@ -1532,7 +1546,7 @@ static int mtk_uart_apdma_terminate_all(struct dma_chan *chan)
 
 #if IS_ENABLED(CONFIG_MTK_UARTHUB)
 	if (mtkd->support_hub && (mtkd->support_wakeup) && c->is_hub_port) {
-		if (!mtk_uart_get_apdma_status(chan))
+		if (mtk_uart_get_apdma_status(chan))
 			return 0;
 
 		mtk_uart_set_apdma_clk(true);
