@@ -47,6 +47,11 @@ enum mt_lpm_smc_user_id {
 	mt_lpm_smc_user_spm_dbg,
 	mt_lpm_smc_user_spm,
 	mt_lpm_smc_user_cpu_pm_lp,
+	mt_lpm_smc_user_secure_cpu_pm,
+	mt_lpm_smc_user_secure_spm_dbg,
+	mt_lpm_smc_user_secure_spm,
+	mt_lpm_smc_user_platform_igov,
+	mt_lpm_smc_user_platform_igov_dbg,
 	mt_lpm_smc_user_max,
 };
 
