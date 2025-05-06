@@ -469,9 +469,10 @@ int dpc_buck_status(int op)
 			dump_stack();
 			DPCERR("voter 0:%#x 6:%#x G:%#x", v1, v2, v3);
 		}
-	} else if (op == 1)
+	} else if (op == 1) {
+		writel(U32_MAX, dpc_base + DISP_DPC_INTSTA_INTF_PWR_RDY_STATE);
 		atomic_set_release(&buck_ref, 1);
-	else
+	} else
 		return atomic_read(&buck_ref);
 
 	return op;
@@ -1008,10 +1009,6 @@ static void dpc_enable_v3(const u8 en)
 
 	/* enable gce event */
 	writel(en, dpc_base + DISP_DPC_EVENT_CFG);
-
-	/* clear mask, move from dpc_config */
-	writel(0, dpc_base + DISP_REG_DPC_DISP_MASK_CFG);
-	writel(0, dpc_base + DISP_REG_DPC_MML_MASK_CFG);
 
 	g_priv->enabled = en;
 }
@@ -1579,7 +1576,7 @@ static void dpc_disp_group_enable(bool en)
 
 	/* mminfra request */
 	writel(0x00080008, dpc_base + 0xb0);
-	value = (en && has_cap(DPC_CAP_MMINFRA_PLL)) ? 0x000200 : 0x1a1a1a;
+	value = (en && has_cap(DPC_CAP_MMINFRA_PLL)) ? 0x000200 : 0x1a0a1a;
 	writel(value, dpc_base + DISP_REG_DPC_DISP_INFRA_PLL_OFF_CFG);
 
 	/* dsi pll auto */
@@ -1614,7 +1611,7 @@ static void dpc_mml_group_enable(bool en)
 
 	/* mminfra request */
 	writel(0x00080008, dpc_base + 0xb0);
-	value = (en && has_cap(DPC_CAP_MMINFRA_PLL)) ? 0x000a00 : 0x1a0a1a;
+	value = (en && has_cap(DPC_CAP_MMINFRA_PLL)) ? 0x000a00 : 0x1a0a1a; /* mminfrq req always off */
 	writel(value, dpc_base + DISP_REG_DPC_MML_INFRA_PLL_OFF_CFG);
 
 	/* vcore off */
@@ -1640,30 +1637,30 @@ void dpc_group_enable_v3(const u16 group, bool en)
 		writel(0x080808, dpc_base + DISP_REG_DPC_MML_INFRA_PLL_OFF_CFG);
 	} else if (group == DPC_SUBSYS_DISP) {
 		if (en) {
-			/* forced vote 1 */
-			dpc2_dt_en(18, true, true);
-			writel(1, dpc_base + DISP_REG_DPC3_DTx_SW_TRIG(18));
-			dpc2_dt_en(18, true, false);
+			dpc_disp_group_enable(en);
 
 			/* polling dpc mminfra req idle */
 			ret = readl_poll_timeout_atomic(hwccf_hw_irq_req, value, !(value & 0xc), 1, 2000);
-
-			dpc_disp_group_enable(en);
 
 			/* enable off DT */
 			dpc_dt_set_update(19, g_priv->dpc2_dt_usage[19].val);
 			dpc2_dt_en(19, true, false);
 		} else {
-			/* disable off DT */
-			dpc2_dt_en(19, false, false);
-
 			/* polling dpc mminfra req idle */
 			ret = readl_poll_timeout_atomic(hwccf_hw_irq_req, value, !(value & 0xc), 1, 2000);
 
 			dpc_disp_group_enable(en);
+
+			/* disable off DT */
+			dpc2_dt_en(19, false, false);
+
+			/* unmask dpc sideband */
+			writel(0, dpc_base + DISP_REG_DPC_DISP_MASK_CFG);
 		}
-	} else
+	} else {
 		dpc_mml_group_enable(en);
+		writel(0, dpc_base + DISP_REG_DPC_DISP_MASK_CFG);
+	}
 }
 
 static void dpc_config_v2(const u32 subsys, bool en)
@@ -1729,36 +1726,55 @@ static void dpc_config_v3(const u32 subsys, bool en)
 		is_mminfra_ctrl_by_dpc = false;
 	}
 
-	writel(en ? 0 : U32_MAX, dpc_base + DISP_REG_DPC_DISP_MASK_CFG);
-	writel(en ? 0 : U32_MAX, dpc_base + DISP_REG_DPC_MML_MASK_CFG);
-
-	/* set resource auto or manual mode */
-	g_priv->group_enable(0, en);
-	dpc_mml_group_enable(en);
-
 	dpc_wait_pwr_ack_v3(DPC3_SUBSYS_DISP);
 
 	if (en) {
-		if (!(dt_strategy & 0b01)) {
-			dpc2_dt_en(1, g_priv->dpc2_dt_usage[1].en, false);
-			dpc2_dt_en(5, g_priv->dpc2_dt_usage[5].en, false);
-			dpc2_dt_en(33, g_priv->dpc2_dt_usage[33].en, false);
-		}
-	} else {
-		/* disable power on dt */
-		dpc2_dt_en(1, false, false);
-		dpc2_dt_en(5, false, false);
-		dpc2_dt_en(33, false, false);
+		/* master_en, link/unlink */
+		g_priv->set_mtcmos(DPC3_SUBSYS_DISP, (enum mtk_dpc_mtcmos_mode)en);
+		g_priv->set_mtcmos(DPC3_SUBSYS_MML0, (enum mtk_dpc_mtcmos_mode)en);
+		g_priv->set_mtcmos(DPC3_SUBSYS_MML1, (enum mtk_dpc_mtcmos_mode)en);
+		g_priv->set_mtcmos(DPC3_SUBSYS_MML2, (enum mtk_dpc_mtcmos_mode)en);
+
+		/* forced vote pwr off */
+		writel(1, dpc_base + DISP_REG_DPC3_DTx_SW_TRIG(1));
+		writel(1, dpc_base + DISP_REG_DPC3_DTx_SW_TRIG(5));
 
 		/* polling dpc req idle */
 		ret = readl_poll_timeout_atomic(hwccf_hw_mtcmos_req, value, !(value & 0xffc0), 1, 2000);
-	}
 
-	/* set mtcmos auto or manual mode */
-	g_priv->set_mtcmos(DPC3_SUBSYS_DISP, (enum mtk_dpc_mtcmos_mode)en);
-	g_priv->set_mtcmos(DPC3_SUBSYS_MML0, (enum mtk_dpc_mtcmos_mode)en);
-	g_priv->set_mtcmos(DPC3_SUBSYS_MML1, (enum mtk_dpc_mtcmos_mode)en);
-	g_priv->set_mtcmos(DPC3_SUBSYS_MML2, (enum mtk_dpc_mtcmos_mode)en);
+		/* trig_en = 0 */
+		dpc2_dt_en(1, true, false);
+		dpc2_dt_en(3, true, false);
+		dpc2_dt_en(5, true, false);
+		dpc2_dt_en(7, true, false);
+
+		/* set resource auto mode */
+		g_priv->group_enable(0, true);
+		dpc_mml_group_enable(true);
+	} else {
+		/* set resource manual mode */
+		g_priv->group_enable(0, false);
+		dpc_mml_group_enable(false);
+
+		/* trig_en = 1 */
+		dpc2_dt_en(1, true, true);
+		dpc2_dt_en(3, true, true);
+		dpc2_dt_en(5, true, true);
+		dpc2_dt_en(7, true, true);
+
+		/* polling dpc req idle */
+		ret = readl_poll_timeout_atomic(hwccf_hw_mtcmos_req, value, !(value & 0xffc0), 1, 2000);
+
+		/* forced vote pwr off */
+		writel(1, dpc_base + DISP_REG_DPC3_DTx_SW_TRIG(3));
+		writel(1, dpc_base + DISP_REG_DPC3_DTx_SW_TRIG(7));
+
+		/* master_en, link/unlink */
+		g_priv->set_mtcmos(DPC3_SUBSYS_DISP, (enum mtk_dpc_mtcmos_mode)en);
+		g_priv->set_mtcmos(DPC3_SUBSYS_MML0, (enum mtk_dpc_mtcmos_mode)en);
+		g_priv->set_mtcmos(DPC3_SUBSYS_MML1, (enum mtk_dpc_mtcmos_mode)en);
+		g_priv->set_mtcmos(DPC3_SUBSYS_MML2, (enum mtk_dpc_mtcmos_mode)en);
+	}
 
 	if (en && has_cap(DPC_CAP_MMINFRA_PLL) && !is_mminfra_ctrl_by_dpc) {
 		dpc_mminfra_on_off(false, DISP_VIDLE_USER_NST_LOCK);
