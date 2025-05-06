@@ -17422,7 +17422,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		camsys_yuva_cbip_axi_monitor_0: mm-axi-monitor@3a7c1000 {
 			compatible = "mediatek,mm-axi-monitor";
 			reg = <0 0x3a7c1000 0 0x1000>;
-			power-domain = <MT6993_SMI_PD_CAM_RAWB>;
+			power-domain = <MT6993_SMI_PD_CAM_RAWA>;
 			axi-limiter-supply = <&axi_monitor_limiter>;
 			axi-mux-id = <2>;
 			hw-id = <18>;
@@ -17446,7 +17446,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		camsys_yuvb_cbip_axi_monitor: mm-axi-monitor@3a9c1000 {
 			compatible = "mediatek,mm-axi-monitor";
 			reg = <0 0x3a9c1000 0 0x1000>;
-			power-domain = <MT6993_SMI_PD_CAM_RAWC>;
+			power-domain = <MT6993_SMI_PD_CAM_RAWB>;
 			axi-limiter-supply = <&axi_monitor_limiter>;
 			axi-mux-id = <2>;
 			hw-id = <20>;
@@ -17458,7 +17458,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		camsys_yuvc_cbip_axi_monitor: mm-axi-monitor@3abc1000 {
 			compatible = "mediatek,mm-axi-monitor";
 			reg = <0 0x3abc1000 0 0x1000>;
-			power-domain = <MT6993_SMI_PD_CAM_RAWA>;
+			power-domain = <MT6993_SMI_PD_CAM_RAWC>;
 			axi-limiter-supply = <&axi_monitor_limiter>;
 			axi-mux-id = <2>;
 			hw-id = <21>;
