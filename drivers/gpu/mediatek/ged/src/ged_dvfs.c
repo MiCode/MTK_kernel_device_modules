@@ -205,6 +205,10 @@ static unsigned int api_sync_counter;
 static unsigned int policy_api_sync_counter;
 #define API_SYNC_DURATION_US 1000
 
+static unsigned long long g_api_boost_start_ts_ns;
+static unsigned long long g_api_boost_end_ts_ns;
+static unsigned long long g_api_boost_interval_ns;
+
 /* need to sync to EB */
 #define BATCH_MAX_READ_COUNT 32
 /* formatted pattern |xxxx|yyyy 5x2 */
@@ -2771,10 +2775,35 @@ int get_api_sync_flag(void)
 }
 EXPORT_SYMBOL(get_api_sync_flag);
 
+unsigned long long ged_get_api_boost_start_ts_ns(void)
+{
+	return g_api_boost_start_ts_ns;
+}
+EXPORT_SYMBOL(ged_get_api_boost_start_ts_ns);
+
+unsigned long long ged_get_api_boost_end_ts_ns(void)
+{
+	return g_api_boost_end_ts_ns;
+}
+EXPORT_SYMBOL(ged_get_api_boost_end_ts_ns);
+
+unsigned long long ged_get_api_boost_interval_ns(void)
+{
+	return g_api_boost_interval_ns;
+}
+EXPORT_SYMBOL(ged_get_api_boost_interval_ns);
+
+void ged_reset_api_boost_interval_ns(void)
+{
+	g_api_boost_interval_ns = 0;
+}
+EXPORT_SYMBOL(ged_reset_api_boost_interval_ns);
+
 void set_api_sync_flag(int flag)
 {
 	unsigned int tmp_sysram_val = 0;
-	unsigned long long cur_ts_us = div_u64(ged_get_time(), 1000);
+	unsigned long long cur_ts_ns = ged_get_time();
+	unsigned long long cur_ts_us = div_u64(cur_ts_ns, 1000);
 
 	if (flag == 1 || flag == 0) {
 		// update counter when api sync finish (1 => 0)
@@ -2789,10 +2818,16 @@ void set_api_sync_flag(int flag)
 		tmp_sysram_val = api_sync_flag << COMMON_LOW_BIT;
 		tmp_sysram_val += api_sync_counter << COMMON_MID_BIT;
 		ged_eb_dvfs_task(EB_UPDATE_API_BOOST, tmp_sysram_val);
-		if (flag)
+		if (flag) {
 			g_latest_api_sync_ts_ms = div_u64(cur_ts_us, 1000);
-		else
+			g_api_boost_start_ts_ns = cur_ts_ns;
+
+			if (g_api_boost_end_ts_ns > 0)
+				g_api_boost_interval_ns = cur_ts_ns - g_api_boost_end_ts_ns;
+		} else {
 			g_latest_api_sync_done_ts_us = cur_ts_us;
+			g_api_boost_end_ts_ns = cur_ts_ns;
+		}
 	} else if (flag == 2) {
 		dcs_set_fix_num(0);
 		cancel_mewtwo_timer();

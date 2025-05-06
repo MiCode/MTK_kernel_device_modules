@@ -1988,6 +1988,38 @@ static ssize_t apo_lp_thr_us_store(struct kobject *kobj,
 }
 static KOBJ_ATTR_RW(apo_lp_thr_us);
 
+static ssize_t apo_api_boost_thr_us_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	unsigned long long apo_api_boost_thr_us = 0;
+	int pos = 0;
+
+	apo_api_boost_thr_us = ged_get_apo_api_boost_thr_ns()/1000;
+
+	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"[APO_API_Boost_Thr]: %llu us\n", apo_api_boost_thr_us);
+
+	return pos;
+}
+
+static ssize_t apo_api_boost_thr_us_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+	char acBuffer[GED_SYSFS_MAX_BUFF_SIZE];
+	u32 i32Value = 0;
+
+	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
+		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf))
+			if (kstrtoint(acBuffer, 0, &i32Value) == 0)
+				ged_set_apo_api_boost_thr_ns((unsigned long long)i32Value*1000);
+	}
+
+	return count;
+}
+static KOBJ_ATTR_RW(apo_api_boost_thr_us);
+
 static ssize_t apo_force_hint_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
 		char *buf)
@@ -2189,6 +2221,35 @@ static ssize_t apo_legacy_store(struct kobject *kobj,
 	return count;
 }
 static KOBJ_ATTR_RW(apo_legacy);
+
+static ssize_t apo_api_sync_status_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	int pos = 0;
+
+	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"[APO API_Sync]: %d\n", g_ged_apo_api_sync_support);
+
+	return pos;
+}
+
+static ssize_t apo_api_sync_status_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+	char acBuffer[GED_SYSFS_MAX_BUFF_SIZE];
+	u32 i32Value = 0;
+
+	if ((count > 0) && (count < GED_SYSFS_MAX_BUFF_SIZE)) {
+		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf))
+			if (kstrtoint(acBuffer, 0, &i32Value) == 0)
+				ged_set_apo_api_sync_status((int)i32Value);
+	}
+
+	return count;
+}
+static KOBJ_ATTR_RW(apo_api_sync_status);
 
 #endif /* CONFIG_MTK_GPU_APO_SUPPORT */
 
@@ -3151,6 +3212,12 @@ GED_ERROR ged_hal_init(void)
 		goto ERROR;
 	}
 
+	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_apo_api_boost_thr_us);
+	if (unlikely(err != GED_OK)) {
+		GED_LOGE("Failed to create apo_api_boost_thr_us entry!\n");
+		goto ERROR;
+	}
+
 	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_apo_force_hint);
 	if (unlikely(err != GED_OK)) {
 		GED_LOGE("Failed to create apo_force_hint entry!\n");
@@ -3178,6 +3245,12 @@ GED_ERROR ged_hal_init(void)
 	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_apo_legacy);
 	if (unlikely(err != GED_OK)) {
 		GED_LOGE("Failed to create apo_legacy entry!\n");
+		goto ERROR;
+	}
+
+	err = ged_sysfs_create_file(hal_kobj, &kobj_attr_apo_api_sync_status);
+	if (unlikely(err != GED_OK)) {
+		GED_LOGE("Failed to create apo_api_sync_status entry!\n");
 		goto ERROR;
 	}
 #endif /* CONFIG_MTK_GPU_APO_SUPPORT */
@@ -3406,11 +3479,13 @@ void ged_hal_exit(void)
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_apo_thr_us);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_apo_wakeup_us);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_apo_lp_thr_us);
+	ged_sysfs_remove_file(hal_kobj, &kobj_attr_apo_api_boost_thr_us);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_apo_force_hint);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_apo_autosuspend_delay_target_ref_count);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_apo_autosuspend_delay_ms);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_apo_status);
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_apo_legacy);
+	ged_sysfs_remove_file(hal_kobj, &kobj_attr_apo_api_sync_status);
 #endif /* CONFIG_MTK_GPU_APO_SUPPORT */
 	ged_sysfs_remove_file(hal_kobj, &kobj_attr_autosuspend_stress);
 

@@ -210,17 +210,22 @@ void ged_set_apo_wakeup_ns_nolock(unsigned long long apo_wakeup_ns);
 void ged_set_apo_wakeup_ns(unsigned long long apo_wakeup_ns);
 unsigned long long ged_get_apo_lp_thr_ns(void);
 void ged_set_apo_lp_thr_ns(unsigned long long apo_lp_thr_ns);
+unsigned long long ged_get_apo_api_boost_thr_ns(void);
+void ged_set_apo_api_boost_thr_ns(unsigned long long apo_api_boost_thr_ns);
 int ged_get_apo_hint(void);
 int ged_get_apo_force_hint(void);
 void ged_set_apo_force_hint(int apo_force_hint);
 void ged_set_apo_status(int apo_status);
 void ged_set_apo_legacy(enum ged_apo_legacy apo_legacy);
 enum ged_apo_legacy ged_get_apo_legacy(void);
-
+void ged_set_apo_api_sync_status(int apo_api_sync_status);
+unsigned int ged_gpu_apo_api_sync_support(void);
 
 void ged_get_gpu_frame_time(int frame_time);
 void ged_get_active_time(void);
 void ged_get_idle_time(void);
+bool ged_check_apo_api_boost(int api_sync_flag);
+bool ged_get_apo_api_boost(void);
 void ged_check_power_duration(void);
 unsigned long long ged_get_power_duration(void);
 void ged_gpu_apo_init_nolock(void);
@@ -320,6 +325,10 @@ void set_api_sync_flag(int flag);
 int get_api_sync_flag(void);
 void ged_reset_api_sync_ts(void);
 unsigned long long ged_get_api_sync_ts(void);
+unsigned long long ged_get_api_boost_start_ts_ns(void);
+unsigned long long ged_get_api_boost_end_ts_ns(void);
+unsigned long long ged_get_api_boost_interval_ns(void);
+void ged_reset_api_boost_interval_ns(void);
 #define LOADING_ACTIVE 0
 #define LOADING_MAX_3DTA_COM 1
 #define LOADING_MAX_3DTA 2

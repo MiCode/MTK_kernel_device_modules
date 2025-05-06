@@ -108,6 +108,7 @@ static struct ged_gpu_frame_time_table g_ged_gpu_frame_time[GED_FRAME_TIME_CONFI
 
 #define GED_APO_THR_NS 2000000
 #define GED_APO_LP_THR_NS 4000000
+#define GED_APO_API_BOOST_THR_NS 5000000
 
 #define GED_APO_WAKEUP_THR_NS (GED_APO_THR_NS + GED_APO_VAR_NS)
 #define GED_APO_LONG_WAKEUP_THR_NS 100000000
@@ -121,6 +122,7 @@ static unsigned long long g_apo_thr_ns;
 
 static unsigned long long g_apo_wakeup_ns;
 static unsigned long long g_apo_lp_thr_ns;
+static unsigned long long g_apo_api_boost_thr_ns;
 static unsigned long long g_gpu_frame_time_ns;
 
 static unsigned int g_apo_autosuspend_delay_ms;
@@ -145,6 +147,7 @@ static unsigned long long g_ns_gpu_predict_prev_I_to_A_duration;
 
 static bool g_bGPUAPO;
 static bool g_bGPUPredictAPO;
+static bool g_bapo_api_boost;
 static int g_apo_hint;
 static int g_apo_force_hint;
 
@@ -1092,6 +1095,24 @@ void ged_set_apo_lp_thr_ns(unsigned long long apo_lp_thr_ns)
 }
 EXPORT_SYMBOL(ged_set_apo_lp_thr_ns);
 
+unsigned long long ged_get_apo_api_boost_thr_ns(void)
+{
+	return g_apo_api_boost_thr_ns;
+}
+EXPORT_SYMBOL(ged_get_apo_api_boost_thr_ns);
+
+void ged_set_apo_api_boost_thr_ns(unsigned long long apo_api_boost_thr_ns)
+{
+	unsigned long ulIRQFlags;
+
+	spin_lock_irqsave(&g_sApoLock, ulIRQFlags);
+
+	g_apo_api_boost_thr_ns = apo_api_boost_thr_ns;
+
+	spin_unlock_irqrestore(&g_sApoLock, ulIRQFlags);
+}
+EXPORT_SYMBOL(ged_set_apo_api_boost_thr_ns);
+
 void ged_set_all_apo_thr_ns_nolock(unsigned long long apo_thr_ns)
 {
 	g_apo_thr_ns = apo_thr_ns;
@@ -1283,7 +1304,7 @@ void ged_set_apo_status(int apo_status)
 
 	spin_lock_irqsave(&g_sApoLock, ulIRQFlags);
 
-	g_ged_apo_support = apo_status;
+	g_ged_apo_support = (unsigned int)apo_status;
 
 	spin_unlock_irqrestore(&g_sApoLock, ulIRQFlags);
 }
@@ -1306,6 +1327,24 @@ enum ged_apo_legacy ged_get_apo_legacy(void)
 	return g_apo_legacy;
 }
 EXPORT_SYMBOL(ged_get_apo_legacy);
+
+void ged_set_apo_api_sync_status(int apo_api_sync_status)
+{
+	unsigned long ulIRQFlags;
+
+	spin_lock_irqsave(&g_sApoLock, ulIRQFlags);
+
+	g_ged_apo_api_sync_support = (unsigned int)apo_api_sync_status;
+
+	spin_unlock_irqrestore(&g_sApoLock, ulIRQFlags);
+}
+EXPORT_SYMBOL(ged_set_apo_api_sync_status);
+
+unsigned int ged_gpu_apo_api_sync_support(void)
+{
+	return g_ged_apo_api_sync_support;
+}
+EXPORT_SYMBOL(ged_gpu_apo_api_sync_support);
 
 void ged_get_active_time(void)
 {
@@ -1356,6 +1395,55 @@ bool ged_gpu_is_heavy(void)
 }
 EXPORT_SYMBOL(ged_gpu_is_heavy);
 
+bool ged_check_apo_api_boost(int api_sync_flag)
+{
+	unsigned long long api_boost_interval_ns = ged_get_api_boost_interval_ns();
+	unsigned long long api_boost_end_ts_ns = ged_get_api_boost_end_ts_ns();
+	unsigned long long cur_ts_ns = ged_get_time();
+
+	if (api_boost_interval_ns > 0) {
+		if (api_sync_flag == 1) {
+			if (api_boost_interval_ns <= g_apo_api_boost_thr_ns) {
+				g_bapo_api_boost = true;
+				trace_GPU_Power__Policy__APO_API_Boost_Cond(1);
+			} else {
+				/* g_bapo_api_boost = false; */
+				/* Trace for debug */
+				trace_GPU_Power__Policy__APO_API_Boost_Cond(2);
+			}
+		} else if (api_sync_flag == 0) {
+			if (api_boost_end_ts_ns > 0 &&
+				cur_ts_ns > api_boost_end_ts_ns &&
+				((cur_ts_ns - api_boost_end_ts_ns) > g_apo_api_boost_thr_ns)) {
+				ged_reset_api_boost_interval_ns();
+				g_bapo_api_boost = false;
+				trace_GPU_Power__Policy__APO_API_Boost_Cond(3);
+			} else {
+				/* Trace for debug */
+				trace_GPU_Power__Policy__APO_API_Boost_Cond(4);
+			}
+		}
+	} else {
+		/* Trace for debug */
+		trace_GPU_Power__Policy__APO_API_Boost_Cond(5);
+	}
+
+	trace_GPU_Power__Policy__APO_API_Boost(g_bapo_api_boost);
+	trace_GPU_Power__Policy__APO_API_Boost_Invl_US(div64_u64(api_boost_interval_ns, 1000));
+	trace_GPU_Power__Policy__APO_API_Boost_End_US(div64_u64(api_boost_end_ts_ns, 1000));
+	trace_GPU_Power__Policy__APO_API_Boost_Cur_US(div64_u64(cur_ts_ns, 1000));
+	trace_GPU_Power__Policy__APO_API_Boost_Thr_US(div64_u64(g_apo_api_boost_thr_ns, 1000));
+
+	return g_bapo_api_boost;
+}
+EXPORT_SYMBOL(ged_check_apo_api_boost);
+
+bool ged_get_apo_api_boost(void)
+{
+	return g_bapo_api_boost;
+}
+EXPORT_SYMBOL(ged_get_apo_api_boost);
+
 void ged_check_power_duration(void)
 {
 	unsigned long ulIRQFlags;
@@ -1365,7 +1453,7 @@ void ged_check_power_duration(void)
 	spin_lock_irqsave(&g_sApoLock, ulIRQFlags);
 
 	/* Condition-1 */
-	bforce = ged_gpu_is_heavy();
+	bforce = ged_gpu_is_heavy() || ged_check_apo_api_boost(get_api_sync_flag());
 	if (true == bforce)
 		goto direct_check;
 
@@ -1412,6 +1500,7 @@ EXPORT_SYMBOL(ged_get_power_duration);
 void ged_gpu_apo_init_nolock(void)
 {
 	g_bGPUAPO = false;
+	g_bapo_api_boost = false;
 	g_ns_gpu_A_ts = 0;
 	g_ns_gpu_I_ts = 0;
 	g_ns_gpu_I_to_A_duration = 0;
@@ -1573,7 +1662,7 @@ void ged_check_predict_power_duration(void)
 	spin_lock_irqsave(&g_sApoLock, ulIRQFlags);
 
 	/* Condition-1 */
-	bPredict_force = ged_gpu_is_heavy();
+	bPredict_force = ged_gpu_is_heavy() || ged_check_apo_api_boost(get_api_sync_flag());
 	if (true == bPredict_force) {
 		ged_set_apo_wakeup_ns_nolock(GED_APO_LONG_WAKEUP_THR_NS);
 		goto direct_check;
@@ -1635,6 +1724,7 @@ EXPORT_SYMBOL(ged_get_predict_power_duration);
 void ged_gpu_predict_apo_init_nolock(void)
 {
 	g_bGPUPredictAPO = false;
+	g_bapo_api_boost = false;
 	g_ns_gpu_predict_prevA_ts = 0;
 	g_ns_gpu_predict_A_ts = 0;
 	g_ns_gpu_predict_I_ts = 0;
@@ -1925,6 +2015,7 @@ GED_ERROR ged_notify_sw_vsync_system_init(void)
 	g_apo_autosuspend_delay_ms = GED_APO_AUTOSUSPEND_DELAY_MS;
 
 	g_apo_lp_thr_ns = GED_APO_LP_THR_NS;
+	g_apo_api_boost_thr_ns = GED_APO_API_BOOST_THR_NS;
 
 	g_apo_legacy = GED_APO_LEGACY_INVALID;
 

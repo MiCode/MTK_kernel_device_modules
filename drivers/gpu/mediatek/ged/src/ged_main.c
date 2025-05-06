@@ -148,6 +148,7 @@ unsigned int g_ged_segment_id;
 unsigned int g_ged_efuse_id;
 #if IS_ENABLED(CONFIG_MTK_GPU_APO_SUPPORT)
 unsigned int g_ged_apo_support;
+unsigned int g_ged_apo_api_sync_support;
 #endif /* CONFIG_MTK_GPU_APO_SUPPORT */
 unsigned int g_ged_frame_base_optimize = 1;
 int prom_enable;
@@ -616,8 +617,13 @@ GED_ERROR check_apo_policy(void)
 			GED_LOGE("fail to read APO policy (%d)", ret_temp);
 	}
 
-	GED_LOGI("%s. APO policy support: %d",
-		__func__, g_ged_apo_support);
+	if (g_ged_apo_support > 0)
+		g_ged_apo_api_sync_support = 1;
+	else
+		g_ged_apo_api_sync_support = 0;
+
+	GED_LOGI("%s. APO policy support: %d, API_Sync support: %d",
+		__func__, g_ged_apo_support, g_ged_apo_api_sync_support);
 
 	return ret;
 }

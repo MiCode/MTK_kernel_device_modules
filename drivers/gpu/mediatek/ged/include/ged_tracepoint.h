@@ -306,6 +306,108 @@ TRACE_EVENT(GPU_Power__Policy__APO_Idle_Timer_Enabled,
 	TP_printk("apo_idle_timer_enabled=%u", __entry->apo_idle_timer_enabled)
 );
 
+TRACE_EVENT(GPU_Power__Policy__APO_API_Boost,
+
+	TP_PROTO(bool apo_api_boost),
+
+	TP_ARGS(apo_api_boost),
+
+	TP_STRUCT__entry(
+		__field(bool, apo_api_boost)
+	),
+
+	TP_fast_assign(
+		__entry->apo_api_boost = apo_api_boost;
+	),
+
+	TP_printk("apo_api_boost=%u", __entry->apo_api_boost)
+);
+
+TRACE_EVENT(GPU_Power__Policy__APO_API_Boost_Invl_US,
+
+	TP_PROTO(unsigned int api_boost_invl_us),
+
+	TP_ARGS(api_boost_invl_us),
+
+	TP_STRUCT__entry(
+		__field(unsigned int, api_boost_invl_us)
+	),
+
+	TP_fast_assign(
+		__entry->api_boost_invl_us = api_boost_invl_us;
+	),
+
+	TP_printk("api_boost_invl_us=%d", __entry->api_boost_invl_us)
+);
+
+TRACE_EVENT(GPU_Power__Policy__APO_API_Boost_End_US,
+
+	TP_PROTO(unsigned int api_boost_end_us),
+
+	TP_ARGS(api_boost_end_us),
+
+	TP_STRUCT__entry(
+		__field(unsigned int, api_boost_end_us)
+	),
+
+	TP_fast_assign(
+		__entry->api_boost_end_us = api_boost_end_us;
+	),
+
+	TP_printk("api_boost_end_us=%d", __entry->api_boost_end_us)
+);
+
+TRACE_EVENT(GPU_Power__Policy__APO_API_Boost_Cur_US,
+
+	TP_PROTO(unsigned int api_boost_cur_us),
+
+	TP_ARGS(api_boost_cur_us),
+
+	TP_STRUCT__entry(
+		__field(unsigned int, api_boost_cur_us)
+	),
+
+	TP_fast_assign(
+		__entry->api_boost_cur_us = api_boost_cur_us;
+	),
+
+	TP_printk("api_boost_cur_us=%d", __entry->api_boost_cur_us)
+);
+
+TRACE_EVENT(GPU_Power__Policy__APO_API_Boost_Thr_US,
+
+	TP_PROTO(unsigned int apo_api_boost_thr_us),
+
+	TP_ARGS(apo_api_boost_thr_us),
+
+	TP_STRUCT__entry(
+		__field(unsigned int, apo_api_boost_thr_us)
+	),
+
+	TP_fast_assign(
+		__entry->apo_api_boost_thr_us = apo_api_boost_thr_us;
+	),
+
+	TP_printk("apo_api_boost_thr_us=%d", __entry->apo_api_boost_thr_us)
+);
+
+TRACE_EVENT(GPU_Power__Policy__APO_API_Boost_Cond,
+
+	TP_PROTO(unsigned int apo_api_boost_cond),
+
+	TP_ARGS(apo_api_boost_cond),
+
+	TP_STRUCT__entry(
+		__field(unsigned int, apo_api_boost_cond)
+	),
+
+	TP_fast_assign(
+		__entry->apo_api_boost_cond = apo_api_boost_cond;
+	),
+
+	TP_printk("apo_api_boost_cond=%d", __entry->apo_api_boost_cond)
+);
+
 TRACE_EVENT(GPU_DVFS__Policy__VERSION,
 
 	TP_PROTO(unsigned int kinfo, unsigned int ebinfo),

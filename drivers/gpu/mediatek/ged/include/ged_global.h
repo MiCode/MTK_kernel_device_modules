@@ -77,6 +77,7 @@ extern unsigned int g_ged_power_stress_test_support;
 #endif /* MTK_GPU_POWER_ON_OFF_TEST */
 #if IS_ENABLED(CONFIG_MTK_GPU_APO_SUPPORT)
 extern unsigned int g_ged_apo_support;
+extern unsigned int g_ged_apo_api_sync_support;
 #endif /* CONFIG_MTK_GPU_APO_SUPPORT */
 extern unsigned int g_ged_frame_base_optimize;
 extern unsigned int g_ged_pre_fence_chk;
