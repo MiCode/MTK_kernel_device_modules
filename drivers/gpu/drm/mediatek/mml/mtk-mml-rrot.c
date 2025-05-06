@@ -1325,7 +1325,6 @@ static s32 rrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 		gmcif_con |= BIT(16) | BIT(14) | BIT(12);	/* PRE_ULTRA, URGENT_EN and ULTRA_EN */
 		rrot_select_threshold_hrt(rrot, pkt, comp->base_pa, src->format,
 			frame_in->width, frame_in->height, rrot_frm->rotate);
-		ddren = ddren | BIT(1);
 	} else {
 		rrot_reset_threshold(rrot, pkt, comp->base_pa);
 	}
