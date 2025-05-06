@@ -78,6 +78,8 @@
 #define REG_DBI_COUNTING_GAIN_B (0x0718)
 	#define COUNTING_GAIN_B REG_FLD_MSB_LSB(15, 0)
 #define REG_DBI_COUNTING_SH1 (0x0728)
+	#define DBI_COUNTING_SH1 REG_FLD_MSB_LSB(2, 0)
+	#define DBI_COUNTING_SH2 REG_FLD_MSB_LSB(4, 7)
 
 #define REG_DBI_COUNTING_MODE (0x0730)
 	#define COUNTING_MODE REG_FLD_MSB_LSB(0, 0)
@@ -268,8 +270,7 @@ static void mtk_dbi_count_config(struct mtk_ddp_comp *comp,
 		struct cmdq_pkt *handle);
 static void mtk_dbi_count_srt_cal(struct mtk_ddp_comp *comp, int en, int slice_num);
 static void mtk_dbi_count_change_mode(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle);
-
-
+static int mtk_dbi_count_get_mode_by_fmt(struct mtk_dbi_count_helper *helper, enum MTK_PANEL_SPR_MODE data_fmt);
 
 #define DBI_SPIN_LOCK(lock, name, line, flag)                        \
 	do {                                                         \
@@ -1235,8 +1236,6 @@ void mtk_dbi_count_close_clk_if_no_error(struct mtk_ddp_comp *comp,
 void mtk_oddmr_dbi_count_clk_off(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle)
 {
-	uint32_t value = 0, mask = 0;
-
 	GCE_COND_DECLARE;
 	struct cmdq_operand lop, rop;
 	const u16 var1 = CMDQ_THR_SPR_IDX2;
@@ -1342,7 +1341,7 @@ void mtk_dbi_show_gain_status(uint32_t dbv, uint32_t fps, int temp,
 		dbv, dbv_gain[DBI_CH_R] >> rsh, dbv_gain[DBI_CH_G] >> rsh, dbv_gain[DBI_CH_B] >> rsh, b);
 	DBI_COUNT_MSG("fps:%u, fps_gain:R = %u / G = %u / B = %u (format=fix point .%d)\n",
 		fps, fps_gain[DBI_CH_R] >> rsh, fps_gain[DBI_CH_G] >> rsh, fps_gain[DBI_CH_B] >> rsh, b);
-	DBI_COUNT_MSG("dbv:%u, temp_gain:R = %u / G = %u / B = %u (format=fix point .%d)\n",
+	DBI_COUNT_MSG("temp:%u, temp_gain:R = %u / G = %u / B = %u (format=fix point .%d)\n",
 		temp, temp_gain[DBI_CH_R] >> rsh, temp_gain[DBI_CH_G] >> rsh, temp_gain[DBI_CH_B] >> rsh, b);
 	DBI_COUNT_MSG("irdrop_gain:R = %u / G = %u / B = %u (format=fix point .%d)\n",
 		irdrop_gain[DBI_CH_R] >> rsh, irdrop_gain[DBI_CH_G] >> rsh, irdrop_gain[DBI_CH_B] >> rsh, b);
@@ -1418,6 +1417,7 @@ static void mtk_dbi_update_count_gain(struct mtk_ddp_comp *comp,
 	uint32_t try_num = 10;
 	bool hit = false;
 	uint32_t panel_width, panel_height;
+	uint32_t value = 0, mask = 0;
 
 	if(dbi_count->status < DBI_COUNT_SW_INIT)
 		return;
@@ -1510,22 +1510,29 @@ static void mtk_dbi_update_count_gain(struct mtk_ddp_comp *comp,
 
 	for (int ch = 0; ch < DBI_CHANNEL_NUM; ch++) {
 		if (ch == DBI_CH_R) {
-			mtk_dbi_count_write(comp, MIN(gains[ch]>>(4-sh), 0xffff),
-				REG_DBI_COUNTING_GAIN_R, handle);
+			value = 0;
+			mask = 0;
+			SET_VAL_MASK(value, mask, MIN(gains[ch]>>(4-sh), 0xffff), COUNTING_GAIN_R);
+			mtk_dbi_count_write_mask(comp, value, REG_DBI_COUNTING_GAIN_R, mask, handle);
 		}
 		if (ch == DBI_CH_G) {
-			mtk_dbi_count_write(comp, MIN(gains[ch]>>(4-sh), 0xffff),
-				REG_DBI_COUNTING_GAIN_G, handle);
+			value = 0;
+			mask = 0;
+			SET_VAL_MASK(value, mask, MIN(gains[ch]>>(4-sh), 0xffff), COUNTING_GAIN_G);
+			mtk_dbi_count_write_mask(comp, value, REG_DBI_COUNTING_GAIN_G, mask, handle);
 		}
 		if (ch == DBI_CH_B) {
-			mtk_dbi_count_write(comp, MIN(gains[ch]>>(4-sh), 0xffff),
-				REG_DBI_COUNTING_GAIN_B, handle);
+			value = 0;
+			mask = 0;
+			SET_VAL_MASK(value, mask, MIN(gains[ch]>>(4-sh), 0xffff), COUNTING_GAIN_B);
+			mtk_dbi_count_write_mask(comp, value, REG_DBI_COUNTING_GAIN_B, mask, handle);
 		}
 	}
 
-	mtk_dbi_count_write(comp, sh,
-				REG_DBI_COUNTING_SH1, handle);
-
+	value = 0;
+	mask = 0;
+	SET_VAL_MASK(value, mask, sh, DBI_COUNTING_SH1);
+	mtk_dbi_count_write_mask(comp, value, REG_DBI_COUNTING_SH1, mask, handle);
 }
 
 static void mtk_dbi_set_slice(struct mtk_ddp_comp *comp,
@@ -1881,7 +1888,7 @@ static void mtk_dbi_count_srt_cal(struct mtk_ddp_comp *comp, int en, int slice_n
 		dbi_count->qos_srt = 0;
 }
 
-int mtk_dbi_count_get_mode_by_fmt(struct mtk_dbi_count_helper *helper, enum MTK_PANEL_SPR_MODE data_fmt)
+static int mtk_dbi_count_get_mode_by_fmt(struct mtk_dbi_count_helper *helper, enum MTK_PANEL_SPR_MODE data_fmt)
 {
 
 	if(data_fmt == MTK_PANEL_RGBG_BGRG_TYPE)
@@ -2267,7 +2274,7 @@ static int mtk_dbi_count_init(struct mtk_ddp_comp *comp, struct mtk_drm_dbi_cfg_
 	memcpy(count_cfg, cfg_info, sizeof(struct mtk_drm_dbi_cfg_info));
 
 	data = vmalloc(sizeof(void *) * max_len);
-	DBI_COUNT_MSG("dbi can not init, state %d\n", sizeof(void *) * max_len);
+	DBI_COUNT_MSG("dbi can not init, state %lu\n", sizeof(void *) * max_len);
 	if(!data) {
 		PC_ERR("%s:%d dbi count init fail\n", __func__, __LINE__);
 		return -1;
@@ -2885,6 +2892,7 @@ static irqreturn_t mtk_dbi_count_irq_handler(int irq, void *dev_id)
 	if(status & DBI_COUNT_FRAME_DONE) {
 
 		value = 0;
+		mask = 0;
 		mask |= DBI_COUNT_FRAME_DONE;
 		mtk_dbi_count_write_mask(comp, value,
 			DISP_DBI_COUNT_IRQ_MASK, mask, NULL);
