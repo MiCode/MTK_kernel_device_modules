@@ -255,9 +255,9 @@ static ssize_t vbus_limit_cur_show(struct device *dev,
 	struct regulator *vbus = extcon->vbus;
 
 	if (!vbus)
-		return sprintf(buf, "0");
+		return snprintf(buf, PAGE_SIZE, "0");
 	else
-		return sprintf(buf, "%d\n", extcon->vbus_cur_inlimit);
+		return snprintf(buf, PAGE_SIZE, "%d\n", extcon->vbus_cur_inlimit);
 }
 
 static ssize_t vbus_limit_cur_store(struct device *dev,
@@ -306,9 +306,9 @@ static ssize_t vbus_switch_show(struct device *dev,
 	struct regulator *vbus = extcon->vbus;
 
 	if (!vbus)
-		return sprintf(buf, "0");
+		return snprintf(buf, PAGE_SIZE, "0");
 	else
-		return sprintf(buf, "%d\n", extcon->vbus_on);
+		return snprintf(buf, PAGE_SIZE, "%d\n", extcon->vbus_on);
 }
 
 static ssize_t vbus_switch_store(struct device *dev,
