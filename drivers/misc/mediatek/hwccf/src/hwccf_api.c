@@ -326,6 +326,8 @@ static int _v1_mm_hwccf_voter_ctrl(struct regmap *regmap, uint32_t setclr_ofs, u
 			ret = -HWV_SET_TIMEOUT;
 			goto ERR;
 		}
+	} else {
+		udelay(100);
 	}
 
 
