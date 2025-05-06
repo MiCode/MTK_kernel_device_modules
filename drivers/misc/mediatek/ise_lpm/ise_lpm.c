@@ -23,6 +23,11 @@
 #include <linux/string.h>
 #include <linux/timer.h>
 #include <linux/proc_fs.h>
+#include <linux/interconnect.h>
+
+#if IS_ENABLED(CONFIG_MTK_DVFSRC)
+#include "dvfsrc-exp.h"
+#endif
 
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 #include <linux/scmi_protocol.h>
@@ -101,6 +106,12 @@ static uint32_t ise_lpm_deinit_bypass;
 static uint32_t ise_req_pending_cnt;
 static uint32_t ise_awake_user_list[ISE_AWAKE_ID_NUM];
 static uint64_t ise_boot_cnt;
+
+static uint32_t ise_vote_dram_en;
+ /* DRAM qos */
+static struct icc_path *ise_perf_path;
+static int ise_perf_num;
+static uint32_t ise_perf_vote_bw;
 
 static void ise_power_on(void);
 static void ise_power_off(void);
@@ -214,6 +225,16 @@ enum mtk_ise_awake_ack_t mtk_ise_awake_unlock(enum mtk_ise_awake_id_t mtk_ise_aw
 }
 EXPORT_SYMBOL_GPL(mtk_ise_awake_unlock);
 
+static void ise_dram_vote(void)
+{
+	icc_set_bw(ise_perf_path, 0, ise_perf_vote_bw);
+}
+
+static void ise_dram_unvote(void)
+{
+	icc_set_bw(ise_perf_path, 0, 0);
+}
+
 static void ise_power_on(void)
 {
 	int ret = 0;
@@ -230,6 +251,8 @@ static void ise_power_on(void)
 		pr_notice("pm_runtime_resume_and_get failed, ret=%d\n", ret);
 
 	ise_req_dram();
+	if (ise_vote_dram_en)
+		ise_dram_vote();
 
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 	ise_scmi_data.cmd = SCMI_MBOX_CMD_ISE_PWR_ON;
@@ -296,6 +319,8 @@ static void ise_power_off(void)
 	} while (++retry);
 #endif
 
+	if (ise_vote_dram_en)
+		ise_dram_unvote();
 	ise_rel_dram();
 	ret = pm_runtime_put_sync(ise_lpm_dev);
 	if (ret)
@@ -452,6 +477,14 @@ ssize_t ise_lpm_dbg(struct file *file, const char __user *buffer,
 	if (err)
 		return err;
 
+#ifdef ISE_LPM_MEASURE_VOTE_BW
+	if (!strncmp(cmd_str, "ise_pwr_vote", sizeof("ise_pwr_vote"))) {
+		pr_notice("%s: change ddr bw from %d to %ld\n", __func__, ise_perf_vote_bw, param);
+		ise_perf_vote_bw = param;
+		return count;
+	}
+#endif
+
 	if (!strncmp(cmd_str, "ise_pwr", sizeof("ise_pwr"))) {
 		if (param == ISE_AWAKE_LOCK)
 			mtk_ise_awake_lock(ISE_PM_INIT);
@@ -503,6 +536,29 @@ static int ise_lpm_probe(struct platform_device *pdev)
 	ise_lpm_deinit_bypass = 0;
 	if (!of_property_read_u32(pdev->dev.of_node, "ise-lpm-deinit-bypass", &ise_lpm_deinit_bypass))
 		pr_notice("ise_lpm_deinit_bypass %d\n", ise_lpm_deinit_bypass);
+
+	ise_vote_dram_en = 0;
+	if (!of_property_read_u32(pdev->dev.of_node, "ise-lpm-vote-dram", &ise_vote_dram_en))
+		pr_notice("ise-lpm-vote-dram %d\n", ise_vote_dram_en);
+
+	if (ise_vote_dram_en) {
+		ise_perf_path = devm_of_icc_get(&pdev->dev, "ise-perf-bw");
+		if (IS_ERR(ise_perf_path)) {
+			dev_info(&pdev->dev, "get ise-perf-bw failed = %ld\n",
+					PTR_ERR(ise_perf_path));
+			return -EINVAL;
+		}
+#if IS_ENABLED(CONFIG_MTK_DVFSRC)
+		ise_perf_num = of_count_phandle_with_args(pdev->dev.of_node,
+							"required-opps", NULL);
+		ise_perf_vote_bw = dvfsrc_get_required_opp_peak_bw(pdev->dev.of_node, 0);
+		if (ise_perf_num != 1)
+			pr_notice("ise: only vote 1st opp:%d!!\n", ise_perf_num);
+#else
+		ise_perf_vote_bw = 0;
+#endif
+		pr_notice("ise: vote bw %d\n", ise_perf_vote_bw);
+	}
 
 	if (ise_wakelock_en) {
 		mutex_init(&mutex_ise_lpm);
