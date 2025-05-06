@@ -494,6 +494,11 @@ static void fsm_routine_exception(struct ccci_fsm_ctl *ctl,
 		fsm_md_wdt_handler(&ctl->ee_ctl);
 		break;
 	case EXCEPTION_EE:
+#if !IS_ENABLED(CONFIG_MTK_EMI_LEGACY)
+		mtk_emiisu_record_off();
+		CCCI_NORMAL_LOG(0, FSM, "Turn off EMIISU\n");
+#endif
+
 		if (s_dpmaif_debug_push_data_to_stack)
 			s_dpmaif_debug_push_data_to_stack();
 
