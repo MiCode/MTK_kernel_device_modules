@@ -1336,9 +1336,12 @@ s32 mml_drm_racing_config_sync(struct mml_drm_ctx *dctx, struct cmdq_pkt *pkt, u
 	rhs.value = MML_NEXTSPR_NEXT;
 	cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_OR, MML_CMDQ_NEXT_SPR, &lhs, &rhs);
 
-	cmdq_pkt_assign_command(pkt, CMDQ_CPR_MML_DISP_FENCE, disp_fid);
 	cmdq_pkt_set_event(pkt, mml_ir_get_disp_ready_event(ctx->mml));
 	cmdq_pkt_wfe(pkt, mml_ir_get_mml_ready_event(ctx->mml));
+	/* assign fence id should execute before mml readback,
+	 * since disp pkt has higher priority.
+	 */
+	cmdq_pkt_assign_command(pkt, CMDQ_CPR_MML_DISP_FENCE, disp_fid);
 
 	/* clear next bit since disp with new mml now */
 	rhs.value = ~(u16)MML_NEXTSPR_NEXT;

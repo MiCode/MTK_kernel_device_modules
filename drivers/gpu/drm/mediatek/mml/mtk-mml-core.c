@@ -1806,6 +1806,20 @@ static void mml_core_mminfra_disable(struct mml_dev *mml, u32 pipe, struct mml_c
 	mml_clock_unlock(mml);
 }
 
+#if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
+static void core_taskdone_fid_aee(struct mml_task *task, u32 disp_fid)
+{
+	static u64 aee_ts;
+	u64 aee_ts_new = sched_clock();
+
+	if (aee_ts_new - aee_ts > 30000000000) { // 30s
+		mml_aee("MM_MML_FENCE", "fence id miss match job %u fence %u/%u",
+			task->job.jobid, task->disp_fid_submit, disp_fid);
+		aee_ts = aee_ts_new;
+	}
+}
+#endif
+
 static void core_taskdone(struct kthread_work *work)
 {
 	struct mml_task *task = container_of(work, struct mml_task, kt_work_taskdone);
@@ -1818,11 +1832,12 @@ static void core_taskdone(struct kthread_work *work)
 		u32 disp_fid = cmdq_pkt_backup_get(task->pkts[0], &task->disp_fence_id);
 
 		if (task->disp_fid_submit != disp_fid) {
-			mml_err("%s job %u disp fence submit %u readback %u",
+			mml_err("%s fence id miss match job %u fence %u/%u",
 				__func__, task->job.jobid, task->disp_fid_submit, disp_fid);
+#if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 			if (!task->timeout)
-				mml_aee("MM_MML", "fence id miss match job %u fence %u/%u",
-					task->job.jobid, task->disp_fid_submit, disp_fid);
+				core_taskdone_fid_aee(task, disp_fid);
+#endif
 		}
 	}
 

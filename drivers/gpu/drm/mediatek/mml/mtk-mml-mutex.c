@@ -259,10 +259,7 @@ static s32 mutex_trigger(struct mml_comp *comp, struct mml_task *task,
 
 			cmdq_pkt_set_event(pkt, mml_ir_get_mml_ready_event(cfg->mml));
 			cmdq_pkt_wfe(pkt, mml_ir_get_disp_ready_event(cfg->mml));
-
-#if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 			cmdq_pkt_backup_cpr(pkt, &task->disp_fence_id, CMDQ_CPR_MML_DISP_FENCE);
-#endif
 
 			/* Note insert disp ready stamp after disp ready event in last mutex,
 			 * but update and retrieve data in first mutex.
