@@ -132,6 +132,8 @@ struct mtk_crtc_ovl_csc_config {
 struct mtk_drm_plane {
 	struct drm_plane base;
 	struct drm_property *plane_property[PLANE_PROP_MAX];
+	int csc_bc_en;
+	struct mtk_crtc_ovl_csc_config occ;
 };
 
 #define to_mtk_plane(x) container_of(x, struct mtk_drm_plane, base)

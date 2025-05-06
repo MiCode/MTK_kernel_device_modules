@@ -1709,12 +1709,13 @@ void mtk_ovl_exdma_transpose(int *matrix, int size)
 }
 
 void mtk_ovl_get_ovl_exdma_csc_data(struct drm_crtc *crtc,
-	struct mtk_plane_state *mtk_plane_state, int *csc_bc_en,
-	struct mtk_crtc_ovl_csc_config *occ)
+	struct mtk_plane_state *mtk_plane_state, struct mtk_drm_plane *mtk_plane,
+	unsigned int ocfbn)
 {
-	int blob_id;
+	int blob_id = 0;
 	struct drm_property_blob *blob1 = NULL;
 	struct drm_property_blob *blob2 = NULL;
+	int i = 0;
 
 	/* get brightness 4x4 by blob_id */
 	blob_id = mtk_plane_state->prop_val[PLANE_PROP_OVL_CSC_SET_BRIGHTNESS];
@@ -1722,14 +1723,19 @@ void mtk_ovl_get_ovl_exdma_csc_data(struct drm_crtc *crtc,
 		blob1 = drm_property_lookup_blob(crtc->dev, blob_id);
 		if (blob1 && blob1->data && blob1->length ==
 			(sizeof(int) * 16)/* 4x4 matrix */) {
-			memcpy(occ->setbrightness, blob1->data, blob1->length);
-			mtk_ovl_exdma_transpose(occ->setbrightness, 4);
-			*csc_bc_en = 1;
+			memcpy(mtk_plane->occ.setbrightness, blob1->data, blob1->length);
+			mtk_ovl_exdma_transpose(mtk_plane->occ.setbrightness, 4);
+			mtk_plane->csc_bc_en = 1;
 		} else {
+			mtk_plane->csc_bc_en = 0;
 			DDPINFO("Cannot get ovl_csc_config: SET_BRIGHTNESS, blob: %d!\n",
 										blob_id);
 			if (blob1)
 				DDPINFO("size of blob1->data is %lu\n", blob1->length);
+
+			for (i = 0; i < 4; i++) { /* set matrix identity */
+				mtk_plane->occ.setbrightness[i * 4 + i] = 1 << ocfbn;
+			}
 		}
 
 		if (blob1)
@@ -1742,14 +1748,19 @@ void mtk_ovl_get_ovl_exdma_csc_data(struct drm_crtc *crtc,
 		blob2 = drm_property_lookup_blob(crtc->dev, blob_id);
 		if (blob2 && blob2->data && blob2->length ==
 			(sizeof(int) * 16)/* 4x4 matrix */) {
-			memcpy(occ->setcolortransform, blob2->data, blob2->length);
-			mtk_ovl_exdma_transpose(occ->setcolortransform, 4);
-			*csc_bc_en = 1;
+			memcpy(mtk_plane->occ.setcolortransform, blob2->data, blob2->length);
+			mtk_ovl_exdma_transpose(mtk_plane->occ.setcolortransform, 4);
+			mtk_plane->csc_bc_en = 1;
 		} else {
+			mtk_plane->csc_bc_en = 0;
 			DDPINFO("Cannot get ovl_csc_config: SET_COLORTRANSFORM, blob: %d!\n",
 										blob_id);
 			if (blob2)
 				DDPINFO("size of blob2->data is %lu\n", blob2->length);
+
+			for (i = 0; i < 4; i++) { /* set matrix identity */
+				mtk_plane->occ.setcolortransform[i * 4 + i] = 1 << ocfbn;
+			}
 		}
 		if (blob2)
 			drm_property_blob_put(blob2);
@@ -1771,15 +1782,14 @@ static int mtk_ovl_color_manage(struct mtk_ddp_comp *comp, unsigned int idx,
 	enum mtk_drm_dataspace lcm_ds = 0, plane_ds = 0;
 	struct mtk_panel_params *params;
 	int i;
-	int csc_bc_en = 0; /* csc setbright & setcolortransform enable */
 	int csc_bc_support = 0; /* csc setbright & setcolortransform support or not */
 	unsigned int ocfbn = 0;
-	struct mtk_crtc_ovl_csc_config occ = {0};
 	s32 csc_final[16] = {0}; /* 4x4 matrix */
 	static s32 csc_tmp;
 	struct mtk_disp_ovl_exdma *exdma = comp_to_ovl_exdma(comp);
 	const u16 *regs = exdma->data->regs;
 	const u32 *reg_fld = exdma->data->reg_fld;
+	struct mtk_drm_plane *mtk_plane = NULL;
 
 	if (state->comp_state.comp_id) {
 		lye_idx = state->comp_state.lye_id;
@@ -1790,26 +1800,28 @@ static int mtk_ovl_color_manage(struct mtk_ddp_comp *comp, unsigned int idx,
 	if (!crtc)
 		goto done;
 
+	mtk_plane = to_mtk_plane(state->base.plane);
+	if (!mtk_plane)
+		goto done;
+
 	/* init */
 	if (comp && comp->mtk_crtc) /* get ocfbn */
 		ocfbn = comp->mtk_crtc->crtc_caps.ovl_csc_bit_number;
 	if (ocfbn > 0)
 		csc_bc_support = 1;
 	for (i = 0; i < 4; i++) { /* set matrix identity */
-		occ.setbrightness[i * 4 + i] = 1 << ocfbn;
-		occ.setcolortransform[i * 4 + i] = 1 << ocfbn;
 		csc_final[i * 4 + i] = 1 << ocfbn;
 	}
 
 	/* get brightness/layercolortransform csc */
 	if (csc_bc_support)
-		mtk_ovl_get_ovl_exdma_csc_data(crtc, state, &csc_bc_en, &occ);
+		mtk_ovl_get_ovl_exdma_csc_data(crtc, state, mtk_plane, ocfbn);
 
 	priv = crtc->dev->dev_private;
 	if ((mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_WCG) &&
 		(mtk_crtc_dynamic_WCG_off(crtc) == 0) &&
 		pending->enable) ||	/* WCG condition */
-	    csc_bc_en) {	/* ovl csc condition */
+	    mtk_plane->csc_bc_en) {	/* ovl csc condition */
 		params = mtk_drm_get_lcm_ext_params(crtc);
 		if (params)
 			lcm_cm = params->lcm_color_mode;
@@ -1835,9 +1847,9 @@ static int mtk_ovl_color_manage(struct mtk_ddp_comp *comp, unsigned int idx,
 		__func__, gamma_en, igamma_en, gamma_sel, igamma_sel);
 
 	/* csc combination */
-	if (csc_wcg_en || csc_bc_en)
+	if (csc_wcg_en || mtk_plane->csc_bc_en)
 		mtk_ovl_csc_exdma_combination(csc_wcg_en, ocfbn,
-			csc, &occ, csc_final);
+			csc, &mtk_plane->occ, csc_final);
 
 done:
 	if (ext_lye_idx != LYE_NORMAL) {
@@ -1845,7 +1857,8 @@ done:
 			     FLD_ELn_IGAMMA_EN(ext_lye_idx - 1));
 		SET_VAL_MASK(wcg_value, wcg_mask, gamma_en,
 			     FLD_ELn_GAMMA_EN(ext_lye_idx - 1));
-		SET_VAL_MASK(wcg_value, wcg_mask, ((csc_wcg_en || csc_bc_en) ? 1 : 0),
+		SET_VAL_MASK(wcg_value, wcg_mask, ((csc_wcg_en ||
+				 (mtk_plane ? mtk_plane->csc_bc_en : 0)) ? 1 : 0),
 			     FLD_ELn_CSC_EN(ext_lye_idx - 1));
 		SET_VAL_MASK(sel_value, sel_mask, igamma_sel,
 			     FLD_ELn_IGAMMA_SEL(ext_lye_idx - 1));
@@ -1856,7 +1869,8 @@ done:
 			     reg_fld[FLD_L0_IGAMMA_EN]);
 		SET_VAL_MASK(wcg_value, wcg_mask, gamma_en,
 			     reg_fld[FLD_L0_GAMMA_EN]);
-		SET_VAL_MASK(wcg_value, wcg_mask, ((csc_wcg_en || csc_bc_en) ? 1 : 0),
+		SET_VAL_MASK(wcg_value, wcg_mask, ((csc_wcg_en ||
+				 (mtk_plane ? mtk_plane->csc_bc_en : 0)) ? 1 : 0),
 			     reg_fld[FLD_L0_CSC_EN]);
 		SET_VAL_MASK(sel_value, sel_mask, igamma_sel,
 			     reg_fld[FLD_L0_IGAMMA_SEL]);
@@ -1865,7 +1879,8 @@ done:
 	}
 
 	DDPDBG("%s, lye_idx%d,ext_lye_idx%d,csc_wcg_en%d,ovl_csc_en%d,wcg_value0x%x,sel_value0x%x\n",
-		__func__, lye_idx, ext_lye_idx, csc_wcg_en, csc_bc_en, wcg_value, sel_value);
+		__func__, lye_idx, ext_lye_idx, csc_wcg_en, mtk_plane ? mtk_plane->csc_bc_en : 0,
+		wcg_value, sel_value);
 	DDPDBG("%s, WCG Dymanic off = %d, WCG by color mode[%d][%d]\n", __func__,
 		mtk_crtc_dynamic_WCG_off(crtc),
 		mtk_crtc_WCG_by_color_mode(crtc),
