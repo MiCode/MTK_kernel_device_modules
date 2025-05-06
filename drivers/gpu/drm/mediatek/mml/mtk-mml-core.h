@@ -903,6 +903,7 @@ struct mml_comp_hw_ops {
 	void (*qos_clear)(struct mml_comp *comp, struct mml_task *task, bool dpc);
 	void (*task_done)(struct mml_comp *comp, struct mml_task *task,
 			  struct mml_comp_config *ccfg);
+	void (*irq_off)(struct mml_comp *comp, struct mml_task *task);
 };
 
 struct mml_comp_debug_ops {

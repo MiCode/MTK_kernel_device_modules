@@ -2520,6 +2520,43 @@ static void rrot_task_done(struct mml_comp *comp, struct mml_task *task,
 	rrot_store_crc(comp, task, ccfg);
 }
 
+#define rrot_pipe_mmp(_pipe, flag, v1, v2) do { \
+	if (_pipe == 0) \
+		mml_mmp(rrot0, flag, v1, v2); \
+	else \
+		mml_mmp(rrot1, flag, v1, v2); \
+} while (0)
+
+#define RROT_IRQ_UNDERRUN		(BIT(2))
+#define RROT_IRQ_FRAME_COMPLETE		(BIT(0))
+
+static void rrot_irq_off(struct mml_comp *comp, struct mml_task *task)
+{
+	struct mml_comp_rrot *rrot = comp_to_rrot(comp);
+	unsigned long irq_status;
+
+	if (!mml_isr_alive(rrot->mml, comp, &rrot->isr_nodes))
+		goto out;
+
+	irq_status = readl(comp->base + RROT_INTERRUPT_STATUS);
+	rrot_pipe_mmp(rrot->pipe, MMPROFILE_FLAG_PULSE, comp->id, irq_status);
+
+	if (!irq_status)
+		goto out;
+
+	if (irq_status & RROT_IRQ_UNDERRUN) {
+		mml_mmp(underrun, MMPROFILE_FLAG_PULSE, comp->id, 0);
+		mml_log("%s comp %u %s irq underrun status %#010lx",
+			__func__, comp->id, comp->name, irq_status);
+	}
+
+	if (irq_status & RROT_IRQ_FRAME_COMPLETE)
+		rrot_pipe_mmp(rrot->pipe, MMPROFILE_FLAG_END, comp->id, 0);
+
+out:
+	writel(0, comp->base + RROT_INTERRUPT_STATUS);
+}
+
 static const struct mml_comp_hw_ops rrot_hw_ops = {
 	.init_frame_done_event = &rrot_init_frame_done_event,
 	.clk_enable = &mml_comp_clk_enable,
@@ -2530,6 +2567,7 @@ static const struct mml_comp_hw_ops rrot_hw_ops = {
 	.qos_set = &mml_comp_qos_set,
 	.qos_clear = &mml_comp_qos_clear,
 	.task_done = rrot_task_done,
+	.irq_off = rrot_irq_off,
 };
 
 static const char *rrot_state(u32 state)
@@ -2788,16 +2826,6 @@ static const struct component_ops mml_comp_ops = {
 	.bind	= mml_bind,
 	.unbind = mml_unbind,
 };
-
-#define rrot_pipe_mmp(_pipe, flag, v1, v2) do { \
-	if (_pipe == 0) \
-		mml_mmp(rrot0, flag, v1, v2); \
-	else \
-		mml_mmp(rrot1, flag, v1, v2); \
-} while (0)
-
-#define RROT_IRQ_UNDERRUN		(BIT(2))
-#define RROT_IRQ_FRAME_COMPLETE		(BIT(0))
 
 static irqreturn_t mml_rrot_irq_handler(int irq, void *dev_id)
 {

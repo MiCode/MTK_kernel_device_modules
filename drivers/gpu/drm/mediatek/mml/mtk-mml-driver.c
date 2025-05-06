@@ -2421,9 +2421,19 @@ void mml_isr_wait(struct mml_dev *mml, struct mml_task *task)
 
 	ret = wait_event_interruptible_timeout(mml->isr_waitq,
 		atomic_read(&task->isr_ref) == 0, msecs_to_jiffies(10));
-	if (ret <= 1)
+	if (ret <= 1) {
+		const struct mml_topology_path *path = task->config->path[0];
+		u32 i;
+
 		mml_err("%s timeout as isr_ref %d ret %ld",
 			__func__, atomic_read(&task->isr_ref), ret);
+
+		for (i = 0; i < path->node_cnt; i++) {
+			struct mml_comp *comp = path->nodes[i].comp;
+
+			call_hw_op(comp, irq_off, task);
+		}
+	}
 
 	if (task->isr_nodes) {
 		unsigned long flags = 0;
