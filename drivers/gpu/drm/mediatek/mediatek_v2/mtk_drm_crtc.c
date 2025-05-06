@@ -10915,6 +10915,11 @@ void mtk_bwm_calc_hrt_bw(struct drm_crtc *crtc,
 		DDPMSG("%s %d\n", __func__, __LINE__);
 		return;
 	}
+	if (!mtk_ddp_comp_io_cmd(comp, NULL, MTK_IO_CMD_BWM_IDLE_CHECK, NULL)) {
+		DDPINFO("%s idle check fail\n", __func__);
+		return;
+	}
+
 	comp->qos_bw = 0;
 	memset(&mtk_bwm_sort_list, 0, sizeof(struct sort_list));
 
@@ -20789,7 +20794,6 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 		if (ret)
 			DDPMSG("Wait event result ret %d\n", ret);
 	}
-
 #if defined(DISP_BWM20_ENABLE)
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BWM20) &&
 		(crtc_index == 0))

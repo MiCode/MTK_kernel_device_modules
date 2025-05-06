@@ -23,7 +23,7 @@
 #include "mtk_drm_plane.h"
 #include "mtk_drm_fb.h"
 
-
+#define DISP_REG_BWM_STA					(0x000UL)
 #define DISP_REG_BWM_INTEN					(0x004UL)
 	#define FLD_BWM_REG_CMT_INTEN REG_FLD_MSB_LSB(0, 0)
 	#define FLD_BWM_FME_CPL_INTEN REG_FLD_MSB_LSB(1, 1)
@@ -105,6 +105,7 @@ struct mtk_disp_bwm {
 
 int active_layer_avg_info[OVL_LAYER_NR];
 int active_layer_peak_info[OVL_LAYER_NR];
+int enable_check;
 
 void __iomem *mtk_bwm_mmsys_mapping_MT6991(struct mtk_ddp_comp *comp)
 {
@@ -237,6 +238,7 @@ static void mtk_bwm_enable(struct mtk_ddp_comp *comp,
 	unsigned int bw_monitor_config, line_time, h;
 
 	DDPINFO("bwm_enable:%s\n", mtk_dump_comp_str(comp));
+	enable_check = 0;
 
 	SET_VAL_MASK(value, mask, 1, FLD_BWM_EN);
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_REG_BWM_EN,
@@ -297,6 +299,7 @@ void mtk_bwm_trigger(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 	reg_val2 = readl(comp->regs + DISP_REG_BWM_DDREN_DEBUG);
 	writel(0x1, comp->regs + DISP_REG_BWM_TRIG);
 	CRTC_MMP_MARK(0, bwm20, (unsigned long)(0x30000 | reg_val2), (unsigned long)reg_val1);
+	enable_check = 0;
 }
 
 void mtk_bwm_calc_ratio(struct mtk_ddp_comp *comp)
@@ -358,9 +361,25 @@ void mtk_bwm_calc_ratio(struct mtk_ddp_comp *comp)
 	writel(0x0, comp->regs + DISP_REG_BWM_INTSTA);
 	writel(0x1, comp->regs + DISP_REG_BWM_RST);
 	writel(0x0, comp->regs + DISP_REG_BWM_RST);
+	if (enable_check == 0)
+		enable_check = 1;
 	//add memory barrior to avoid bwm work after atomic commit
 	wmb();
 }
+
+int mtk_bwm_idle_check(struct mtk_ddp_comp *comp)
+{
+	s32 reg_val1,reg_val2;
+
+	reg_val1 = readl(comp->regs + DISP_REG_BWM_STA);
+	reg_val2 = readl(comp->regs + DISP_REG_BWM_INTSTA);
+	CRTC_MMP_MARK(0, bwm20, (unsigned long)reg_val1, (unsigned long)reg_val2);
+	if (!(reg_val2 & 0x8) && enable_check == 1)
+		return 0;
+	else
+		return 1;
+}
+
 
 static int mtk_bwm_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			  enum mtk_ddp_io_cmd io_cmd, void *params)
@@ -384,6 +403,10 @@ static int mtk_bwm_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		}
 		case MTK_IO_CMD_BWM_ENABLE: {
 			mtk_bwm_enable(comp, handle);
+			break;
+		}
+		case MTK_IO_CMD_BWM_IDLE_CHECK: {
+			ret = mtk_bwm_idle_check(comp);
 			break;
 		}
 		default:
@@ -678,6 +701,8 @@ static int mtk_disp_bwm_bind(struct device *dev, struct device *master,
 		mtk_disp_pmqos_get_icc_path_name(buf, sizeof(buf),
 						&priv->ddp_comp, "qos");
 		priv->ddp_comp.qos_req = of_mtk_icc_get(dev, buf);
+		if (!IS_ERR(priv->ddp_comp.qos_req))
+			DDPMSG("%s, %s create success, dev:%s\n", __func__, buf, dev_name(dev));
 	}
 
 	DDPINFO("%s+\n", __func__);
