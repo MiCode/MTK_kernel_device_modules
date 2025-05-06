@@ -6777,7 +6777,7 @@
 			reg = <0 0x14420000 0 0x1000>;
 		};
 
-		dp_tx: dp_tx@14800000 {
+		dp_tx: dp-tx@14800000 {
 			compatible = "mediatek,mt6895-dp_tx",
 						"mediatek,dp_tx";
 			reg = <0 0x14800000 0 0x800000>;
