@@ -159,7 +159,7 @@ static bool hrt_debug_enabled;
 
 int validate_r_ostdbl(const char *val, const struct kernel_param *kp)
 {
-	int param_val, index, power_domain_id;
+	int param_val = 0, index, power_domain_id;
 	int ret = kstrtoint(val, 0, &param_val);
 	u32 bwr_total_cnt;
 	struct mtk_mmmc_power_domain *mmmc_power_domain;
@@ -201,7 +201,7 @@ const struct kernel_param_ops ostdbl_r_ops = {
 
 int validate_w_ostdbl(const char *val, const struct kernel_param *kp)
 {
-	int param_val, index, power_domain_id;
+	int param_val = 0, index, power_domain_id;
 	int ret = kstrtoint(val, 0, &param_val);
 	u32 bwr_total_cnt;
 	struct mtk_mmmc_power_domain *mmmc_power_domain;
@@ -252,7 +252,7 @@ int mtk_mmmc_set_rw_ostdbl(const char *val, const struct kernel_param *kp)
 	u32 bwr_total_cnt;
 
 	result = sscanf(val, "%d %d %d", &subsys_id, &r_ostdbl, &w_ostdbl);
-	if (result != 3 || subsys_id > get_mmmc_subsys_max()) {
+	if (result != 3 || subsys_id >= get_mmmc_subsys_max()) {
 		MM_MONITOR_ERR("subsys_id:%d set ostdbl RD%d WR%d fail result:%d",
 			subsys_id, r_ostdbl, w_ostdbl, result);
 
@@ -297,7 +297,7 @@ int mtk_mmmc_set_ostdbl_en(const char *val, const struct kernel_param *kp)
 	u32 bwr_total_cnt;
 
 	result = sscanf(val, "%d %d", &subsys_id, &ostdbl_enable);
-	if (result != 2 || subsys_id > get_mmmc_subsys_max()) {
+	if (result != 2 || subsys_id >= get_mmmc_subsys_max()) {
 		MM_MONITOR_ERR("subsys_id:%d enable:%d fail result:%d", subsys_id, ostdbl_enable, result);
 
 		return result;
@@ -484,7 +484,6 @@ static int mtk_mmmc_set_smmu_factor(const char *val, const struct kernel_param *
 		MM_MONITOR_ERR("fail ret=%d", ret);
 		return ret;
 	}
-
 
 	MM_MONITOR_INFO("update bef_r=%u bef_w=%u af_r=%u af_w=%u", bef_r, bef_w, af_r, af_w);
 	g_mtk_axi_mon->ostdbl_bef_smmu_r_factor = bef_r;
@@ -1129,7 +1128,7 @@ u32 mtk_set_mmmc_rg(u32 hw, u32 id, u32 offset, u32 value, u32 mask)
 
 	switch (hw) {
 	case MM_AXI:
-		if (id > BWR_NUM_MAX || id < 0 || g_mtk_bwr[id] == NULL) {
+		if (id >= BWR_NUM_MAX || g_mtk_bwr[id] == NULL) {
 			MM_MONITOR_ERR("unknown HW:%d id:%d", hw, id);
 			return -EINVAL;
 		}
@@ -1139,7 +1138,7 @@ u32 mtk_set_mmmc_rg(u32 hw, u32 id, u32 offset, u32 value, u32 mask)
 			limiter_debug = true;
 		break;
 	case MM_ELA:
-		if (id > ELA_NUM_MAX || id < 0 || g_mtk_ela[id] == NULL) {
+		if (id >= ELA_NUM_MAX || g_mtk_ela[id] == NULL) {
 			MM_MONITOR_ERR("unknown HW:%d id:%d", hw, id);
 			return -EINVAL;
 		}
@@ -1147,7 +1146,7 @@ u32 mtk_set_mmmc_rg(u32 hw, u32 id, u32 offset, u32 value, u32 mask)
 		base_addr_pa = g_mtk_ela[id]->base_addr_pa;
 		break;
 	case MM_CTI:
-		if (id > CTI_NUM_MAX || id < 0 || g_mtk_cti[id] == NULL) {
+		if (id >= CTI_NUM_MAX || g_mtk_cti[id] == NULL) {
 			MM_MONITOR_ERR("unknown HW:%d id:%d", hw, id);
 			return -EINVAL;
 		}
@@ -1337,6 +1336,11 @@ int mtk_mmmc_set_rg(const char *val, const struct kernel_param *kp)
 	u32 result, hw, id, offset, value, mask;
 
 	result = sscanf(val, "%d %d %x %x %x", &hw, &id, &offset, &value, &mask);
+	if (result != 5 || hw > MM_MONITOR_ENGINE_MAX) {
+		MM_MONITOR_ERR("hw:%d id:%d offset:%#x value:%#x set fail",
+			hw, id, offset, value);
+		return result;
+	}
 
 	if (!hrt_debug_enabled) {
 		MM_MONITOR_ERR("restrict api in user load, hrt_debug_enabled:%d", hrt_debug_enabled);
@@ -1345,11 +1349,6 @@ int mtk_mmmc_set_rg(const char *val, const struct kernel_param *kp)
 
 	MM_MONITOR_DBG("hw:%d id:%d offset:%#x value:%#x mask:%#x set result:%d",
 		hw, id, offset, value, mask, result);
-	if (result != 5 || hw > MM_MONITOR_ENGINE_MAX) {
-		MM_MONITOR_ERR("hw:%d id:%d offset:%#x value:%#x set fail",
-			hw, id, offset, value);
-		return result;
-	}
 
 	result = is_valid_offset_value(hw, id, offset, value);
 	if (result < 0) {
@@ -1384,7 +1383,7 @@ int mtk_mmmc_fake_engine(const char *val, const struct kernel_param *kp)
 
 	result = sscanf(val, "%d %d %d %d %d %d %d %d %d %d",
 		&id, &wr_pat, &length, &burst, &dis_rd, &dis_wr, &latency, &loop, &dma, &start);
-	if (result != 10 || latency > 1023 || latency < 0) {
+	if (result != 10 || latency > 1023) {
 		MM_MONITOR_ERR("id:%d wr_pat:%d len:%d burst:%d dis_r:%d dis_w:%d lat:%d loop:%d dma:%d start:%d",
 			id, wr_pat, length, burst, dis_rd, dis_wr, latency, loop, dma, start);
 
@@ -1686,14 +1685,14 @@ int mtk_mm_axi_mon_limiter_probe(struct platform_device *pdev)
 		MM_MONITOR_ERR("Failed to get ostdbl-lut size");
 		return -EINVAL;
 	}
-	ostdbl_lut = devm_kzalloc(dev, ostdbl_lut_size * sizeof(*ostdbl_lut), GFP_KERNEL);
+	ostdbl_lut = kzalloc(ostdbl_lut_size * sizeof(*ostdbl_lut), GFP_KERNEL);
 	if (!ostdbl_lut) {
 		MM_MONITOR_ERR("Failed to allocate memory for ostdbl_lut");
 		return -ENOMEM;
 	}
 	ret = of_property_read_u32_array(np, "ostdbl-lut", (uint32_t *)ostdbl_lut, ostdbl_lut_size * 2);
 	if (ret) {
-		devm_kfree(dev, ostdbl_lut);
+		kfree(ostdbl_lut);
 		MM_MONITOR_ERR("Failed to read ostdbl-lut");
 		return ret;
 	}

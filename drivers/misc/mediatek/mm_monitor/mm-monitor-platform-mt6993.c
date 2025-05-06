@@ -97,7 +97,7 @@ u32 is_valid_offset_value(u32 hw, u32 id, u32 offset, u32 value)
 {
 	switch (hw) {
 	case MM_AXI:
-		if (id >= MM_MONITOR_AXI_MAX || id < 0) {
+		if (id >= MM_MONITOR_AXI_MAX) {
 			MM_MONITOR_ERR("unknown HW:%d id:%d", hw, id);
 			return -EINVAL;
 		}
