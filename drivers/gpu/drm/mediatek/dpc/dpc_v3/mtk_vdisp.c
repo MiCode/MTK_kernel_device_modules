@@ -209,18 +209,27 @@ static void set_devices_syscore(void)
 static u32 vdisp_hwccf_check_power(void)
 {
 #if IS_ENABLED(CONFIG_MTK_HWCCF)
-	return (hwccf_is_enabled(MM_HWCCF, HW_CCF_MTCMOS_GRP_0, HWCCF_VOTE, 19) << 19) | // DIS0A
-	       (hwccf_is_enabled(MM_HWCCF, HW_CCF_MTCMOS_GRP_0, HWCCF_VOTE, 20) << 20) | // DIS0B
-	       (hwccf_is_enabled(MM_HWCCF, HW_CCF_MTCMOS_GRP_0, HWCCF_VOTE, 21) << 21) | // DIS1A
-	       (hwccf_is_enabled(MM_HWCCF, HW_CCF_MTCMOS_GRP_0, HWCCF_VOTE, 22) << 22) | // DIS1B
-	       (hwccf_is_enabled(MM_HWCCF, HW_CCF_MTCMOS_GRP_0, HWCCF_VOTE, 23) << 23) | // OVL0
-	       (hwccf_is_enabled(MM_HWCCF, HW_CCF_MTCMOS_GRP_0, HWCCF_VOTE, 24) << 24) | // OVL1
-	       (hwccf_is_enabled(MM_HWCCF, HW_CCF_MTCMOS_GRP_0, HWCCF_VOTE, 25) << 25) | // OVL2
-	       (hwccf_is_enabled(MM_HWCCF, HW_CCF_MTCMOS_GRP_0, HWCCF_VOTE, 26) << 26) | // MML0
-	       (hwccf_is_enabled(MM_HWCCF, HW_CCF_MTCMOS_GRP_0, HWCCF_VOTE, 27) << 27) | // MML1
-	       (hwccf_is_enabled(MM_HWCCF, HW_CCF_MTCMOS_GRP_0, HWCCF_VOTE, 28) << 28) |  // MML2
-	       (hwccf_is_enabled(MM_HWCCF, HW_CCF_MTCMOS_GRP_1, HWCCF_VOTE, 9) << 9) | // DISP_PERI
-	       (hwccf_is_enabled(MM_HWCCF, HW_CCF_MTCMOS_GRP_1, HWCCF_VOTE, 10) << 10);  // DPTX
+/*
+ * The return values for the hwccf_is_enabled function:
+ *     -1 : unstable
+ *      0 : off
+ *      1 : on
+ *
+ * If all MTCMOS modules are off, the function returns 0;
+ * otherwise, it returns a bitmask indicating which modules are not off.
+ */
+	return ((hwccf_is_enabled(MM_HWCCF, HW_CCF_MTCMOS_GRP_0, HWCCF_VOTE, 19) != 0) << 19) | // DIS0A
+	       ((hwccf_is_enabled(MM_HWCCF, HW_CCF_MTCMOS_GRP_0, HWCCF_VOTE, 20) != 0) << 20) | // DIS0B
+	       ((hwccf_is_enabled(MM_HWCCF, HW_CCF_MTCMOS_GRP_0, HWCCF_VOTE, 21) != 0) << 21) | // DIS1A
+	       ((hwccf_is_enabled(MM_HWCCF, HW_CCF_MTCMOS_GRP_0, HWCCF_VOTE, 22) != 0) << 22) | // DIS1B
+	       ((hwccf_is_enabled(MM_HWCCF, HW_CCF_MTCMOS_GRP_0, HWCCF_VOTE, 23) != 0) << 23) | // OVL0
+	       ((hwccf_is_enabled(MM_HWCCF, HW_CCF_MTCMOS_GRP_0, HWCCF_VOTE, 24) != 0) << 24) | // OVL1
+	       ((hwccf_is_enabled(MM_HWCCF, HW_CCF_MTCMOS_GRP_0, HWCCF_VOTE, 25) != 0) << 25) | // OVL2
+	       ((hwccf_is_enabled(MM_HWCCF, HW_CCF_MTCMOS_GRP_0, HWCCF_VOTE, 26) != 0) << 26) | // MML0
+	       ((hwccf_is_enabled(MM_HWCCF, HW_CCF_MTCMOS_GRP_0, HWCCF_VOTE, 27) != 0) << 27) | // MML1
+	       ((hwccf_is_enabled(MM_HWCCF, HW_CCF_MTCMOS_GRP_0, HWCCF_VOTE, 28) != 0) << 28) | // MML2
+	       ((hwccf_is_enabled(MM_HWCCF, HW_CCF_MTCMOS_GRP_1, HWCCF_VOTE,  9) != 0) <<  9) | // PERI
+	       ((hwccf_is_enabled(MM_HWCCF, HW_CCF_MTCMOS_GRP_1, HWCCF_VOTE, 10) != 0) << 10);  // DPTX
 #else
 	return 0;
 #endif

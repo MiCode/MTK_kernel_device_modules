@@ -3162,10 +3162,7 @@ static int dpc_smi_force_on_callback(struct notifier_block *nb, unsigned long ac
 
 static int dpc_smi_pwr_get_if_in_use(void *data)
 {
-	int ret;
-
-	ret = hwccf_is_enabled(MM_HWCCF,HW_CCF_MTCMOS_GRP_0, HWCCF_VOTE, 18);
-	if (!ret) {
+	if (hwccf_is_enabled(MM_HWCCF,HW_CCF_MTCMOS_GRP_0, HWCCF_VOTE, 18) != 1) {
 		DPCFUNC("disp vcore mtcmos not on");
 		return -1;
 	}
