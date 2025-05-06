@@ -7512,6 +7512,8 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 			*addr = 0;
 			/* Re-enable mminfor funnel */
 			mtk_dbgtp_set_mminfra_funnel(true);
+			/* When dump finished, release stop, let other could trigger start */
+			mtk_set_mmmc_rg(2, 3, 0x18, 0x1, 0xffff);
 			/* Clear flags */
 			priv->mtk_dbgtp_sta.is_disp_hrt_issue = false;
 			priv->mtk_dbgtp_sta.disp_hrt_time_count = 0;
