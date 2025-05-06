@@ -79,6 +79,8 @@
 #define HBM_BYPASS_PQ 0x10000
 #define DOZE_BYPASS_PQ 0x1
 
+struct mtk_fence_info;
+
 /* TODO: BW report module should not hardcode */
 enum DISP_PMQOS_SLOT {
 	DISP_PMQOS_OVL0_BW = 0,
@@ -1560,7 +1562,8 @@ int mtk_drm_crtc_getfence_ioctl(struct drm_device *dev, void *data,
 				struct drm_file *file_priv);
 int mtk_drm_get_union_fence(struct mtk_union_fence *args,
 				struct mtk_drm_private *priv, struct drm_crtc *crtc,
-				int crtc_index, int session_id);
+				int crtc_index, int session_id,
+				struct mtk_fence_info *config_layer_info);
 int mtk_drm_frame_submit_ioctl(struct drm_device *dev,
 				void *data, struct drm_file *file_priv);
 int mtk_drm_crtc_get_sf_fence_ioctl(struct drm_device *dev, void *data,

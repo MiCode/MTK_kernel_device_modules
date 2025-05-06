@@ -24608,12 +24608,11 @@ int mtk_drm_crtc_getfence_ioctl(struct drm_device *dev, void *data,
 
 int mtk_drm_get_union_fence(struct mtk_union_fence *args,
 	struct mtk_drm_private *priv, struct drm_crtc *crtc,
-	int crtc_index, int session_id)
+	int crtc_index, int session_id, struct mtk_fence_info *config_layer_info)
 {
 	int ret = 0;
 
 	int config_timeline_id = 0;
-	struct mtk_fence_info *config_layer_info = NULL;
 	unsigned int curr_config_fence_idx = 0;
 	struct fence_data config_fence;
 
@@ -24638,7 +24637,6 @@ int mtk_drm_get_union_fence(struct mtk_union_fence *args,
 		goto create_config_fence_done;
 	}
 	config_timeline_id = mtk_fence_get_config_timeline_id(session_id);
-	config_layer_info = mtk_fence_get_layer_info(session_id, config_timeline_id);
 	if (!config_layer_info) {
 		DDPPR_ERR("%s: config_layer_info is null\n", __func__);
 		return -EFAULT;
@@ -24755,6 +24753,7 @@ int mtk_drm_frame_submit_ioctl(struct drm_device *dev,
 	struct mtk_drm_private *priv = NULL;
 	int crtc_index = 0;
 	int session_id = 0;
+	struct mtk_fence_info *config_layer_info = NULL;
 
 	crtc = drm_crtc_find(dev, file_priv, union_fence->crtc_id);
 	if (!crtc) {
@@ -24792,8 +24791,10 @@ int mtk_drm_frame_submit_ioctl(struct drm_device *dev,
 	mtk_drm_idlemgr_kick_async(crtc);
 
 	/* create pf, cfg, and fdone fence */
+	config_layer_info = mtk_fence_get_layer_info(session_id,
+		mtk_fence_get_config_timeline_id(session_id));
 	ret = mtk_drm_get_union_fence(union_fence, priv, crtc,
-		crtc_index, session_id);
+		crtc_index, session_id, config_layer_info);
 
 	/* prepare buf */
 	for (i = 0; i < layer_num; i++) {
@@ -24801,7 +24802,7 @@ int mtk_drm_frame_submit_ioctl(struct drm_device *dev,
 		gem_submits[i].index = 0;
 		if (gem_submits[i].layer_en) {
 			buf = mtk_fence_prepare_buf(dev, &gem_submits[i],
-				false, NULL, true);
+				false, NULL, true, config_layer_info);
 			if (buf != NULL) {
 				gem_submits[i].fence_fd = -1;
 				gem_submits[i].index = 0;

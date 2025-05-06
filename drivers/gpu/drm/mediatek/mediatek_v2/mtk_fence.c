@@ -974,7 +974,8 @@ int mtk_fence_convert_input_to_fence_layer_info(
  */
 struct mtk_fence_buf_info *mtk_fence_prepare_buf(struct drm_device *dev,
 						 struct drm_mtk_gem_submit *buf, bool is_implicit,
-						 struct dma_resv *resv, bool use_frame_submit)
+						 struct dma_resv *resv, bool use_frame_submit,
+						 struct mtk_fence_info *config_layer_info)
 {
 	int ret = 0;
 	unsigned int session_id = 0;
@@ -982,7 +983,6 @@ struct mtk_fence_buf_info *mtk_fence_prepare_buf(struct drm_device *dev,
 	struct mtk_fence_buf_info *buf_info = NULL;
 	struct fence_data data;
 	struct mtk_fence_info *layer_info = NULL;
-	struct mtk_fence_session_sync_info *session_info = NULL;
 	struct dma_fence *fence = NULL;
 	struct mtk_drm_private *priv = dev->dev_private;
 
@@ -994,11 +994,11 @@ struct mtk_fence_buf_info *mtk_fence_prepare_buf(struct drm_device *dev,
 	session_id = buf->session_id;
 	if (use_frame_submit) {
 		timeline_id = mtk_fence_get_config_timeline_id(session_id);
+		layer_info = config_layer_info;
 	} else {
 		timeline_id = buf->layer_id;
+		layer_info = _disp_sync_get_sync_info(session_id, timeline_id);
 	}
-	session_info = _get_session_sync_info(session_id);
-	layer_info = _disp_sync_get_sync_info(session_id, timeline_id);
 
 	if (layer_info == NULL) {
 		DDPPR_ERR("%s:%d layer_info is null\n", __func__, __LINE__);
