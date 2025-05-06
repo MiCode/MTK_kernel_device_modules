@@ -989,6 +989,151 @@ static int md1_disable_sequencer_setting(struct ccci_modem *md)
 	return 0;
 }
 
+static void md_cd_vmodem_ext_iso_en_control(struct ccci_modem *md, unsigned int mode)
+{
+	void __iomem *reg = NULL;
+	unsigned int reg_value;
+	const char *powerstr = NULL;
+
+	if (mode)
+		powerstr = "POWER ON";
+	else
+		powerstr = "POWER OFF";
+	if (!(md_cd_plat_val_ptr.power_flow_config & (1 << VMD_EXT_ISO_EN))) {
+		CCCI_BOOTUP_LOG(0, TAG,
+			"[%s] bypass %s step\n", powerstr, __func__);
+		CCCI_ERROR_LOG(0, TAG,
+			"[%s] bypass %s step\n", powerstr, __func__);
+		return;
+	}
+
+	CCCI_BOOTUP_LOG(0, TAG, "[%s] %s start\n", powerstr, __func__);
+	CCCI_NORMAL_LOG(0, TAG, "[%s] %s start\n", powerstr, __func__);
+
+	reg = md->hw_info->md_buck_iso_con_base;
+	if (reg == NULL) {
+		CCCI_ERROR_LOG(0, TAG,
+			"ioremap md_buck_iso_con_base fail\n");
+		return;
+	}
+
+	reg_value = ccci_read32(reg, 0x0);
+	if (mode)
+		reg_value &= (~0x1);
+	else
+		reg_value |= 0x1;
+	ccci_write32(reg, 0x0, reg_value);
+
+	CCCI_BOOTUP_LOG(0, TAG,
+		"[%s] %s end: set md_buck_iso_con = 0x%x\n",
+		powerstr, __func__, ccci_read32(reg, 0x0));
+	CCCI_NORMAL_LOG(0, TAG,
+		"[%s] %s end: set md_buck_iso_con = 0x%x\n",
+		powerstr, __func__, ccci_read32(reg, 0x0));
+}
+
+
+static void ccci_md_PMRC_req_mask(struct ccci_modem *md, unsigned int mask)
+{
+	void __iomem *reg = NULL;
+	unsigned int PMRC_value[4] = {0};
+	unsigned int timeout = 0;
+	unsigned int step = 4;
+
+	reg = md->hw_info->PMRC_req_base;
+	if (reg == NULL) {
+		CCCI_ERROR_LOG(0, TAG,
+			"ioremap PMRC_req_base fail\n");
+		return;
+	}
+
+	if (mask) {
+		CCCI_BOOTUP_LOG(0, TAG, "[POWER OFF] PMRC mask start\n");
+		CCCI_NORMAL_LOG(0, TAG, "[POWER OFF] PMRC mask start\n");
+		/* set 0x1C00D030 [4:3] = 2b'01 */
+		ccci_write32(reg, 0x30, ccci_read32(reg, 0x30) & (~0x18) | 0x08);
+		PMRC_value[3] = ccci_read32(reg, 0x30);
+		timeout = 16; // wait 0x1C00D124[1]=1b'0 timeout is 150us
+		while ((ccci_read32(reg, 0x124) & 0x2) != 0) {
+			if (--timeout == 0)
+				goto mask_dump;
+			udelay(10);
+		}
+		step--;
+
+		/* set 0x1C00D02C [4:3] = 2b'01 */
+		ccci_write32(reg, 0x2C, ccci_read32(reg, 0x2C) & (~0x18) | 0x08);
+		PMRC_value[2] = ccci_read32(reg, 0x2C);
+		timeout = 16; // wait 0x1C00D120[1]=1b'0 timeout is 150us
+		while ((ccci_read32(reg, 0x120) & 0x2) != 0) {
+			if (--timeout == 0)
+				goto mask_dump;
+			udelay(10);
+		}
+		step--;
+
+		/* set 0x1C00D028 [4:3] = 2b'01 */
+		ccci_write32(reg, 0x28, ccci_read32(reg, 0x28) & (~0x18) | 0x08);
+		PMRC_value[1] = ccci_read32(reg, 0x28);
+		timeout = 16; // wait 0x1C00D11C[1]=1b'0 timeout is 150us
+		while ((ccci_read32(reg, 0x11C) & 0x2) != 0) {
+			if (--timeout == 0)
+				goto mask_dump;
+			udelay(10);
+		}
+		step--;
+
+		/* set 0x1C00D024 [4:3] = 2b'01 */
+		ccci_write32(reg, 0x24, ccci_read32(reg, 0x24) & (~0x18) | 0x08);
+		PMRC_value[0] = ccci_read32(reg, 0x24);
+		timeout = 16; // wait 0x1C00D118[1]=1b'0 timeout is 150us
+		while ((ccci_read32(reg, 0x118) & 0x2) != 0) {
+			if (--timeout == 0)
+				goto mask_dump;
+			udelay(10);
+		}
+		step--;
+mask_dump:
+		/* ret = 0 means success, ret = 1~4 means MD_PMRC1~4 timeout */
+		CCCI_BOOTUP_LOG(0, TAG,
+			"[POWER OFF] PMRC mask end, ret = %d, PMRC1~4 = 0x%x, 0x%x, 0x%x, 0x%x\n",
+			step, PMRC_value[0], PMRC_value[1], PMRC_value[2], PMRC_value[3]);
+		CCCI_NORMAL_LOG(0, TAG,
+			"[POWER OFF] PMRC mask end, ret = %d, PMRC1~4 = 0x%x, 0x%x, 0x%x, 0x%x\n",
+			step, PMRC_value[0], PMRC_value[1], PMRC_value[2], PMRC_value[3]);
+	} else {
+		CCCI_BOOTUP_LOG(0, TAG, "[POWER ON] PMRC unmask start\n");
+		CCCI_NORMAL_LOG(0, TAG, "[POWER ON] PMRC unmask start\n");
+
+		/* set 0x1C00D024 [4:3] = 2b'00, delay 300us */
+		ccci_write32(reg, 0x24, ccci_read32(reg, 0x24) & (~0x18));
+		PMRC_value[0] = ccci_read32(reg, 0x24);
+		udelay(300);
+
+		/* set 0x1C00D028 [4:3] = 2b'00, delay 300us */
+		ccci_write32(reg, 0x28, ccci_read32(reg, 0x28) & (~0x18));
+		PMRC_value[1] = ccci_read32(reg, 0x28);
+		udelay(300);
+
+		/* set 0x1C00D02C [4:3] = 2b'00, delay 700us*/
+		ccci_write32(reg, 0x2C, ccci_read32(reg, 0x2C) & (~0x18));
+		PMRC_value[2] = ccci_read32(reg, 0x2C);
+		udelay(700);
+
+		/* set 0x1C00D030 [4:3] = 2b'00, delay 300us */
+		ccci_write32(reg, 0x30, ccci_read32(reg, 0x30) & (~0x18));
+		PMRC_value[3] = ccci_read32(reg, 0x30);
+		udelay(300);
+
+		CCCI_BOOTUP_LOG(0, TAG,
+			"[POWER ON] PMRC unmask end, PMRC1~4 = 0x%x, 0x%x, 0x%x, 0x%x\n",
+			PMRC_value[0], PMRC_value[1], PMRC_value[2], PMRC_value[3]);
+		CCCI_NORMAL_LOG(0, TAG,
+			"[POWER ON] PMRC unmask end, PMRC1~4 = 0x%x, 0x%x, 0x%x, 0x%x\n",
+			PMRC_value[0], PMRC_value[1], PMRC_value[2], PMRC_value[3]);
+	}
+}
+
 static int md_cd_power_off(struct ccci_modem *md, unsigned int timeout)
 {
 	int ret= 0;
@@ -1093,6 +1238,13 @@ static int md_cd_power_off(struct ccci_modem *md, unsigned int timeout)
 	}
 
 	flight_mode_set_by_atf(md, true);
+
+	/* fix SW&HW bonding issue */
+	md_cd_vmodem_ext_iso_en_control(md, 0);
+
+	/* mask MD PMRC req only for 6858 */
+	if (ap_plat_info == 6858)
+		ccci_md_PMRC_req_mask(md, 1);
 
 	/* enable sequencer setting to AOC2.5 for gen98 */
 	if ((md_cd_plat_val_ptr.md_gen == 6298) && ccci_get_hs2_done_status()) {
@@ -2211,6 +2363,13 @@ static int md_cd_power_on(struct ccci_modem *md)
 			return ret;
 	}
 
+	/* unmask MD PMRC req only for 6858 */
+	if (ap_plat_info == 6858)
+		ccci_md_PMRC_req_mask(md, 0);
+
+	/* fix SW&HW bonding issue */
+	md_cd_vmodem_ext_iso_en_control(md, 1);
+
 	/* step 3: power on MD_INFRA and MODEM_TOP */
 	flight_mode_set_by_atf(md, false);
 	CCCI_BOOTUP_LOG(0, TAG,
@@ -2523,6 +2682,18 @@ static int md_cd_get_modem_hw_info(struct platform_device *dev_ptr,
 			__func__, md_cd_plat_val_ptr.boot_status_value);
 
 	ret = of_property_read_u32(dev_ptr->dev.of_node,
+		"mediatek,md-buck-iso-con",
+		&md_cd_plat_val_ptr.md_buck_iso_con_addr);
+	if (ret < 0) {
+		md_cd_plat_val_ptr.md_buck_iso_con_addr = 0;
+		CCCI_ERROR_LOG(0, TAG, "%s: get DTS: md-buck-iso-con fail\n", __func__);
+	} else {
+		CCCI_NORMAL_LOG(0, TAG, "%s: get md_buck_iso_con_addr success\n", __func__);
+		hw_info->md_buck_iso_con_base =
+			ioremap_wc(md_cd_plat_val_ptr.md_buck_iso_con_addr, 0x4);
+	}
+
+	ret = of_property_read_u32(dev_ptr->dev.of_node,
 		"mediatek,mdsrc-settle-time",
 		&md_cd_plat_val_ptr.mdsrc_settle_time);
 	if (ret < 0) {
@@ -2565,6 +2736,10 @@ static int md_cd_get_modem_hw_info(struct platform_device *dev_ptr,
 
 	CCCI_DEBUG_LOG(0, TAG,
 		"md_wdt_irq:%d\n", hw_info->md_wdt_irq_id);
+
+	if (ap_plat_info == 6858) {
+		hw_info->PMRC_req_base = ioremap_wc(0x1C00D000, 0x200);
+	}
 
 	if ((md_cd_plat_val_ptr.md_gen == 6293) || (md_cd_plat_val_ptr.ccci_ctrl_mtcmos)) {
 		CCCI_NORMAL_LOG(0, TAG, "[POWER ON] skip dummy MD MTCMOS enable\n");

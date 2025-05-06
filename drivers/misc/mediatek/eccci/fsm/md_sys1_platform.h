@@ -58,6 +58,7 @@ struct  ccci_plat_val {
 	unsigned int mdsrc_settle_time;
 	unsigned int ccci_ctrl_mtcmos;
 	unsigned int load_md_stage;
+	unsigned int md_buck_iso_con_addr;
 };
 
 struct ccci_clk_node {
@@ -132,6 +133,8 @@ struct md_hw_info {
 	struct ccci_plat_ops *plat_ptr;
 	struct ccci_plat_val *plat_val;
 	void __iomem *sequencer_base;
+	void __iomem *PMRC_req_base;
+	void __iomem *md_buck_iso_con_base;
 };
 
 enum {
@@ -141,6 +144,7 @@ enum {
 	MD_PLL_SETTING,
 	MD_DPSW_SETTING,
 	TOP_CLK_GEN_ON,
+	VMD_EXT_ISO_EN,
 };
 
 enum MD_REG_DUMP_ID {

@@ -1713,8 +1713,8 @@ static int ccif_hif_hw_init(struct device *dev, struct md_ccif_ctrl *ccif_ctrl)
 	ccif_ctrl->ccif_md_base = of_iomap(node, 1);
 	ccif_ctrl->ccif_hw_reset_addr = of_iomap(node, 2);
 	if (!ccif_ctrl->ccif_hw_reset_addr) {
-		CCCI_ERROR_LOG(-1, TAG,
-			"[%s] ccif_hw_reset_addr fail\n", __func__);
+		CCCI_NORMAL_LOG(-1, TAG,
+			"[%s] waring ccif_hw_reset_addr fail\n", __func__);
 	}
 
 	if (!ccif_ctrl->ccif_ap_base || !ccif_ctrl->ccif_md_base) {
