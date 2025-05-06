@@ -3643,6 +3643,8 @@ static void mtk_dsi_set_interrupt_enable(struct mtk_dsi *dsi)
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 	struct mtk_drm_private *priv = NULL;
 	int index = 0;
+	struct mtk_ddp_comp *lpc_comp = NULL;
+	bool lpc_en = false;
 
 	if (!mtk_crtc) {
 		DDPPR_ERR("%s, mtk_crtc is NULL\n", __func__);
@@ -3671,7 +3673,9 @@ static void mtk_dsi_set_interrupt_enable(struct mtk_dsi *dsi)
 			inten |= DSI_DONE_INT_FLAG | SLEEPIN_ULPS_DONE_INT_FLAG | SLEEPOUT_DONE_INT_FLAG;
 		}
 	} else {
-		if (!mtk_dsi_lpc_en(mtk_crtc))
+		lpc_comp = mtk_ddp_comp_request_output_lpc(mtk_crtc);
+		mtk_ddp_comp_io_cmd(lpc_comp, NULL, DSI_LPC_GET_EN, &lpc_en);
+		if (!lpc_en)
 			inten |= TE_RDY_INT_FLAG;
 		if (priv && (priv->data->mmsys_id == MMSYS_MT6989 ||
 						priv->data->mmsys_id == MMSYS_MT6991))
@@ -4204,6 +4208,8 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 	struct mtk_ddp_comp *comp = NULL;
 	unsigned int irq_mask = 0;
 	unsigned int *addr = NULL;
+	struct mtk_ddp_comp *lpc_comp = NULL;
+	bool lpc_en = false;
 
 	if (IS_ERR_OR_NULL(dsi) || IS_ERR_OR_NULL(dsi->driver_data)) {
 		DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
@@ -4276,7 +4282,10 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 		irq_mask |= TE_RDY_INT_FLAG | INTERNAL_SOF_INT_FLAG | LTPO_VSYNC_INT_FLAG;
 		irq_mask |= DSI_DONE_INT_FLAG | SLEEPIN_ULPS_DONE_INT_FLAG | SLEEPOUT_DONE_INT_FLAG;
 	}
-	if (mtk_dsi_lpc_en(mtk_crtc))
+
+	lpc_comp = mtk_ddp_comp_request_output_lpc(mtk_crtc);
+	mtk_ddp_comp_io_cmd(lpc_comp, NULL, DSI_LPC_GET_EN, &lpc_en);
+	if (lpc_en)
 		status &= ~TE_RDY_INT_FLAG;
 
 	status &= irq_mask;
@@ -4864,17 +4873,17 @@ static void mtk_dsi_cmdq_pack_gce(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 static void mtk_update_panel_param(struct mtk_drm_crtc *mtk_crtc, struct mtk_dsi *dsi)
 {
 	struct mtk_panel_params *params = dsi->ext->params;
+	struct mtk_ddp_comp *lpc_comp = NULL;
+	bool lpc_en = false;
 
 	if ((dsi->cur_panel_param_changed) ||
 		((params->cur_te_duration != 0) && (params->real_te_duration != params->cur_te_duration))) {
 		mtk_vidle_update_dt_by_period(&mtk_crtc->base, params->cur_te_duration, params->cur_skip_vblank);
 
-		if (mtk_dsi_lpc_en(mtk_crtc)) {
-			struct mtk_ddp_comp *comp = mtk_ddp_comp_request_output_lpc(mtk_crtc);
-
-			if (comp)
-				mtk_ddp_comp_io_cmd(comp, NULL, DSI_LPC_PANEL_PARAMS, params);
-		}
+		lpc_comp = mtk_ddp_comp_request_output_lpc(mtk_crtc);
+		mtk_ddp_comp_io_cmd(lpc_comp, NULL, DSI_LPC_GET_EN, &lpc_en);
+		if (lpc_en)
+			mtk_ddp_comp_io_cmd(lpc_comp, NULL, DSI_LPC_PANEL_PARAMS, params);
 		DDPINFO("%s,skip_vblank:%d->%d, duration:%d->%d\n", __func__,
 			params->skip_vblank, params->cur_skip_vblank,
 			params->real_te_duration, params->cur_te_duration);
@@ -14174,6 +14183,8 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		struct mtk_drm_private *priv = (crtc->base).dev->dev_private;
 		unsigned int inten = 0;
 		int index = 0;
+		struct mtk_ddp_comp *lpc_comp = NULL;
+		bool lpc_en = false;
 
 		if (!handle) {
 			DDPPR_ERR("GCE handle is NULL\n");
@@ -14209,13 +14220,15 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 					comp->regs_pa + DSI_INTEN, inten, inten);
 
 		} else {
-			if (!mtk_dsi_lpc_en(crtc))
+			lpc_comp = mtk_ddp_comp_request_output_lpc(crtc);
+			mtk_ddp_comp_io_cmd(lpc_comp, NULL, DSI_LPC_GET_EN, &lpc_en);
+			if (!lpc_en)
 				inten |= TE_RDY_INT_FLAG;
 
 			cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + DSI_INTEN, inten, inten);
 			if (dsi->slave_dsi) {
-				if (!mtk_dsi_lpc_en(crtc))
+				if (!lpc_en)
 					inten |= TE_RDY_INT_FLAG;
 
 				cmdq_pkt_write(handle, comp->cmdq_base,
@@ -14230,6 +14243,8 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		struct mtk_drm_private *priv = (crtc->base).dev->dev_private;
 		unsigned int inten = 0;
 		int index = 0;
+		struct mtk_ddp_comp *lpc_comp = NULL;
+		bool lpc_en = false;
 
 		if (!handle) {
 			DDPPR_ERR("GCE handle is NULL\n");
@@ -14263,13 +14278,15 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 					comp->regs_pa + DSI_INTEN, inten, inten);
 
 		} else {
-			if (!mtk_dsi_lpc_en(crtc))
+			lpc_comp = mtk_ddp_comp_request_output_lpc(crtc);
+			mtk_ddp_comp_io_cmd(lpc_comp, NULL, DSI_LPC_GET_EN, &lpc_en);
+			if (!lpc_en)
 				inten |= TE_RDY_INT_FLAG;
 
 			cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + DSI_INTEN, inten, inten);
 			if (dsi->slave_dsi) {
-				if (!mtk_dsi_lpc_en(crtc))
+				if (!lpc_en)
 					inten |= TE_RDY_INT_FLAG;
 
 				cmdq_pkt_write(handle, comp->cmdq_base,

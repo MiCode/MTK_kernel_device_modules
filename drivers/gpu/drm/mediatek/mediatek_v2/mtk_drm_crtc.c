@@ -3862,8 +3862,7 @@ int mtk_drm_aod_setbacklight(struct drm_crtc *crtc, unsigned int level)
 		mtk_crtc_vdisp_ao_config(crtc);
 
 		comp = mtk_ddp_comp_request_output_lpc(mtk_crtc);
-		if (comp)
-			mtk_ddp_comp_io_cmd(comp, NULL, DSI_LPC_INIT_CONFIG, NULL);
+		mtk_ddp_comp_io_cmd(comp, NULL, DSI_LPC_INIT_CONFIG, NULL);
 
 		/*APSRC control*/
 		mtk_crtc_v_idle_apsrc_control(crtc, NULL, false, false, crtc_id, true);
@@ -8248,21 +8247,24 @@ static void mtk_crtc_disp_mode_switch_begin(struct drm_crtc *crtc,
 	struct drm_crtc_state *old_state, struct mtk_crtc_state *mtk_state,
 	struct cmdq_pkt *cmdq_handle)
 {
-	int i, j;
+	int i = 0, j = 0;
 	struct mtk_crtc_state *old_mtk_state = to_mtk_crtc_state(old_state);
 	struct mtk_ddp_config cfg;
 	struct mtk_oddmr_timing oddmr_timing;
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
-	struct mtk_ddp_comp *comp;
-	unsigned int fps_src, fps_dst;
+	struct mtk_ddp_comp *comp = NULL;
+	unsigned int fps_src = 0, fps_dst = 0;
 	unsigned int mode_chg_index = 0;
 	unsigned int _idle_timeout = 50;/*ms*/
 	int en = 1;
-	struct mtk_ddp_comp *output_comp;
-	struct mtk_ddp_comp *oddmr_comp;
-	struct mtk_ddp_comp *dbi_comp;
+	struct mtk_ddp_comp *output_comp = NULL;
+	struct mtk_ddp_comp *oddmr_comp = NULL;
+	struct mtk_ddp_comp *dbi_comp = NULL;
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	struct mtk_modeswitch_param modeswitch_param;
+	struct mtk_ddp_comp *lpc_comp = NULL;
+	struct mtk_panel_params *panel_ext = NULL;
+	bool lpc_en = false;
 
 	/* Check if disp_mode_idx change */
 	if (old_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX] ==
@@ -8317,19 +8319,17 @@ static void mtk_crtc_disp_mode_switch_begin(struct drm_crtc *crtc,
 		}
 	}
 
-	if (mtk_dsi_lpc_en(mtk_crtc)) {
-		// update LPC panel params
-		struct mtk_panel_params *panel_ext = mtk_drm_get_lcm_ext_params(crtc);
-
+	lpc_comp = mtk_ddp_comp_request_output_lpc(mtk_crtc);
+	mtk_ddp_comp_io_cmd(lpc_comp, NULL, DSI_LPC_GET_EN, &lpc_en);
+	if (lpc_en) {
+		panel_ext = mtk_drm_get_lcm_ext_params(crtc);
 		if (unlikely(!panel_ext))
-			DDPMSG("%s:can't find panel_ext handle\n", __func__);
-		else {
-			struct mtk_ddp_comp *comp = mtk_ddp_comp_request_output_lpc(mtk_crtc);
-
-			if (comp)
-				mtk_ddp_comp_io_cmd(comp, cmdq_handle, DSI_LPC_PANEL_PARAMS, panel_ext);
-		}
+			DDPMSG("%s: can't find panel_ext handle\n", __func__);
+		else
+			mtk_ddp_comp_io_cmd(lpc_comp, cmdq_handle, DSI_LPC_PANEL_PARAMS,
+				panel_ext);
 	}
+
 
 	mtk_ddp_comp_io_cmd(output_comp, cmdq_handle, DSI_LFR_SET, &en);
 	//vdo ltpo
@@ -16001,8 +16001,7 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc, bool need_report_bw)
 	mtk_crtc_vdisp_ao_config(crtc);
 
 	comp = mtk_ddp_comp_request_output_lpc(mtk_crtc);
-	if (comp)
-		mtk_ddp_comp_io_cmd(comp, NULL, DSI_LPC_INIT_CONFIG, NULL);
+	mtk_ddp_comp_io_cmd(comp, NULL, DSI_LPC_INIT_CONFIG, NULL);
 
 	/*
 	 * for case display does not have multiple display mode,
@@ -17332,8 +17331,7 @@ void mtk_drm_crtc_first_enable(struct drm_crtc *crtc)
 	mtk_crtc_vdisp_ao_config(crtc);
 
 	comp = mtk_ddp_comp_request_output_lpc(mtk_crtc);
-	if (comp)
-		mtk_ddp_comp_io_cmd(comp, NULL, DSI_LPC_INIT_CONFIG, NULL);
+	mtk_ddp_comp_io_cmd(comp, NULL, DSI_LPC_INIT_CONFIG, NULL);
 
 	mtk_set_dpc_dsi_clk(mtk_crtc, true);
 
@@ -22674,13 +22672,12 @@ void mtk_crtc_vblank_irq_for_lpc_resync(struct drm_crtc *crtc)
 	int index = drm_crtc_index(crtc);
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	char tag_name[100] = {'\0'};
-	long long ts;
+	long long ts = 0;
 	ktime_t ktime;
 	struct mtk_ddp_comp *comp = mtk_ddp_comp_request_output_lpc(mtk_crtc);
 
-	if (comp)
-		mtk_ddp_comp_io_cmd(comp, NULL, DSI_LPC_GET_RESYNC_TS, &ts);
-	else
+	mtk_ddp_comp_io_cmd(comp, NULL, DSI_LPC_GET_RESYNC_TS, &ts);
+	if (ts == 0)
 		ts = ktime_get();
 
 	ktime = (ktime_t)ts;
@@ -23590,15 +23587,17 @@ static int dc_main_path_commit_thread(void *data)
 static int mtk_drm_pf_release_thread(void *data)
 {
 	struct sched_param param = {.sched_priority = 87};
-	struct mtk_drm_private *private;
+	struct mtk_drm_private *private = NULL;
 	struct mtk_drm_crtc *mtk_crtc = (struct mtk_drm_crtc *)data;
-	struct drm_crtc *crtc;
-	unsigned int crtc_idx;
-	bool use_frame_submit;
+	struct drm_crtc *crtc = NULL;
+	unsigned int crtc_idx = 0;
+	bool use_frame_submit = false;
 #ifndef DRM_CMDQ_DISABLE
-	ktime_t pf_time;
+	ktime_t pf_time = 0;
 	unsigned int fence_idx = 0;
 #endif
+	struct mtk_ddp_comp *lpc_comp = NULL;
+	bool lpc_en = false;
 
 	crtc = &mtk_crtc->base;
 	private = crtc->dev->dev_private;
@@ -23615,7 +23614,9 @@ static int mtk_drm_pf_release_thread(void *data)
 
 #ifndef DRM_CMDQ_DISABLE
 		if (likely(mtk_drm_lcm_is_connect(mtk_crtc))) {
-			if (mtk_dsi_lpc_en(mtk_crtc))
+			lpc_comp = mtk_ddp_comp_request_output_lpc(mtk_crtc);
+			mtk_ddp_comp_io_cmd(lpc_comp, NULL, DSI_LPC_GET_EN, &lpc_en);
+			if (lpc_en)
 				pf_time = mtk_crtc->sof_time;
 			else
 				pf_time = mtk_check_preset_fence_timestamp(crtc);

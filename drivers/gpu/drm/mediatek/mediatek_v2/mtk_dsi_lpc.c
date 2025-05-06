@@ -240,27 +240,6 @@ static int mtk_dsi_lpc_unit(struct mtk_drm_crtc *mtk_crtc)
 	}
 	return index;
 }
-bool mtk_dsi_lpc_en(struct mtk_drm_crtc *mtk_crtc)
-{
-	int index = mtk_dsi_lpc_unit(mtk_crtc);
-	struct mtk_ddp_comp *comp = NULL;
-	struct mtk_dsi_lpc *lpc = NULL;
-
-	if (index != 0) {
-		DDPDBG("%s: only support dsi0\n", __func__);
-		return false;
-	}
-
-	comp = mtk_ddp_comp_request_output_lpc(mtk_crtc);
-	if (!comp)
-		return false;
-
-	lpc = comp_to_dsi_lpc(comp);
-	if (!lpc)
-		return false;
-
-	return lpc->dsi_lpc_en;
-}
 void mtk_dsi_lpc_te_irq_en(struct mtk_drm_crtc *mtk_crtc,
 	struct mtk_ddp_comp *comp, bool en)
 {
@@ -294,8 +273,14 @@ int mtk_dsi_lpc_dump(struct mtk_ddp_comp *comp)
 {
 	int i = 0;
 	void __iomem *baddr = comp->regs;
+	struct mtk_dsi_lpc *lpc = NULL;
+	bool lpc_en = false;
 
-	if (!mtk_dsi_lpc_en(comp->mtk_crtc))
+	lpc = comp_to_dsi_lpc(comp);
+	if (!lpc)
+		return 0;
+
+	if (!lpc->dsi_lpc_en)
 		return 0;
 
 	if (!baddr)
@@ -315,11 +300,17 @@ int mtk_dsi_lpc_dump(struct mtk_ddp_comp *comp)
 }
 void mtk_dsi_lpc_analysis(struct mtk_ddp_comp *comp)
 {
-	unsigned int reg_val;
+	unsigned int reg_val = 0;
 	int i = 0;
 	void __iomem *baddr = comp->regs;
+	struct mtk_dsi_lpc *lpc = NULL;
+	bool lpc_en = false;
 
-	if (!mtk_dsi_lpc_en(comp->mtk_crtc))
+	lpc = comp_to_dsi_lpc(comp);
+	if (!lpc)
+		return;
+
+	if (!lpc->dsi_lpc_en)
 		return;
 
 	if (!baddr)
@@ -703,6 +694,19 @@ static int mtk_dsi_lpc_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle
 		struct mtk_dsi_lpc *lpc = comp_to_dsi_lpc(comp);
 
 		*sof_status = lpc->lpc_sof_status;
+	}
+		break;
+	case DSI_LPC_GET_EN:
+	{
+		bool *lpc_en = (bool *)params;
+		struct mtk_dsi_lpc *lpc = comp_to_dsi_lpc(comp);
+		int index = mtk_dsi_lpc_unit(comp->mtk_crtc);
+
+		if (index != 0) {
+			DDPDBG("%s: only support dsi0\n", __func__);
+			*lpc_en = false;
+		} else
+			*lpc_en = lpc->dsi_lpc_en;
 	}
 		break;
 	default:

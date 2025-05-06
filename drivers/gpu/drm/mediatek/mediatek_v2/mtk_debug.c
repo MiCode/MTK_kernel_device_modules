@@ -2539,13 +2539,15 @@ bool mtk_drm_set_cwb_roi(struct mtk_rect rect)
 
 void mtk_wakeup_pf_wq(unsigned int m_id)
 {
-	struct drm_crtc *crtc;
-	struct mtk_drm_crtc *mtk_crtc;
-	unsigned int pf_idx;
-	unsigned int crtc_idx;
-	struct mtk_drm_private *drm_priv;
-	ktime_t sof_time;
-	long long sof_ts;
+	struct drm_crtc *crtc = NULL;
+	struct mtk_drm_crtc *mtk_crtc = NULL;
+	unsigned int pf_idx = 0;
+	unsigned int crtc_idx = 0;
+	struct mtk_drm_private *drm_priv = NULL;
+	ktime_t sof_time = 0;
+	long long sof_ts = 0;
+	struct mtk_ddp_comp *lpc_comp = NULL;
+	bool lpc_en = false;
 
 	if (IS_ERR_OR_NULL(drm_dev)) {
 		DDPPR_ERR("%s, invalid drm dev\n", __func__);
@@ -2574,14 +2576,10 @@ void mtk_wakeup_pf_wq(unsigned int m_id)
 		return;
 	}
 
-	if (mtk_dsi_lpc_en(mtk_crtc)) {
-		struct mtk_ddp_comp *comp = mtk_ddp_comp_request_output_lpc(mtk_crtc);
-
-		if (comp)
-			mtk_ddp_comp_io_cmd(comp, NULL, DSI_LPC_GET_SOF_TS, &sof_ts);
-		else
-			sof_ts = ktime_get();
-
+	lpc_comp = mtk_ddp_comp_request_output_lpc(mtk_crtc);
+	mtk_ddp_comp_io_cmd(lpc_comp, NULL, DSI_LPC_GET_EN, &lpc_en);
+	if (lpc_en) {
+		mtk_ddp_comp_io_cmd(lpc_comp, NULL, DSI_LPC_GET_SOF_TS, &sof_ts);
 		sof_time = (ktime_t) sof_ts;
 	} else
 		sof_time = ktime_get();

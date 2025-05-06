@@ -9424,8 +9424,11 @@ int mtk_drm_hwvsync_on_ioctl(struct drm_device *dev, void *data,
 {
 	int ret = 0;
 	unsigned int *crtc_id = data;
-	struct drm_crtc *crtc;
+	struct drm_crtc *crtc = NULL;
 	struct mtk_drm_crtc *mtk_crtc = NULL;
+	struct mtk_ddp_comp *lpc_comp = NULL;
+	bool lpc_en = false;
+	int no_sof = 0;
 
 	crtc = drm_crtc_find(dev, file_priv, *crtc_id);
 	if (!crtc) {
@@ -9444,22 +9447,16 @@ int mtk_drm_hwvsync_on_ioctl(struct drm_device *dev, void *data,
 	/* hwvsync_en*/
 	mtk_crtc->hwvsync_en = 1;
 
-	if (mtk_dsi_lpc_en(mtk_crtc)) {
-		struct mtk_ddp_comp *comp = mtk_ddp_comp_request_output_lpc(mtk_crtc);
-
-		if (comp) {
-			int no_sof;
-
-			mtk_ddp_comp_io_cmd(comp, NULL, DSI_LPC_GET_SOF_STATUS, &no_sof);
-			if (no_sof == 0) {
-				drm_trace_tag_mark("lpc_hwvsync_on_ioctl_no_sof");
-				return -EPERM;
-			}
-			mtk_ddp_comp_io_cmd(comp, NULL, DSI_LPC_IRQ_EN, NULL);
-		} else
-			return -EFAULT;
+	lpc_comp = mtk_ddp_comp_request_output_lpc(mtk_crtc);
+	mtk_ddp_comp_io_cmd(lpc_comp, NULL, DSI_LPC_GET_EN, &lpc_en);
+	if (!lpc_en)
+		return ret;
+	mtk_ddp_comp_io_cmd(lpc_comp, NULL, DSI_LPC_GET_SOF_STATUS, &no_sof);
+	if (no_sof == 0) {
+		drm_trace_tag_mark("lpc_hwvsync_on_ioctl_no_sof");
+		return -EPERM;
 	}
-
+	mtk_ddp_comp_io_cmd(lpc_comp, NULL, DSI_LPC_IRQ_EN, NULL);
 	return ret;
 }
 
