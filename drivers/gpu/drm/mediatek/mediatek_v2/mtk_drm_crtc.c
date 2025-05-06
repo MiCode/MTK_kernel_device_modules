@@ -17794,7 +17794,8 @@ static void mtk_crtc_partial_update_wait_cabc(struct drm_crtc *crtc,
 	dma_addr_t slot;
 
 	if (!mtk_drm_helper_get_opt(priv->helper_opt,
-			MTK_DRM_OPT_PARTIAL_UPDATE) || crtc_id != 0)
+			MTK_DRM_OPT_PARTIAL_UPDATE) || crtc_id != 0
+			|| !mtk_crtc_is_frame_trigger_mode(crtc))
 		return;
 
 	if (!debug_pu_wait)
@@ -21565,7 +21566,8 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 	}
 
 	if (!mtk_crtc->panel_ext->funcs->lcm_update_roi_cmdq_v2 &&
-		!mtk_crtc->panel_ext->funcs->lcm_update_roi_cmdq) {
+		!mtk_crtc->panel_ext->funcs->lcm_update_roi_cmdq &&
+		!mtk_crtc->panel_ext->funcs->lcm_update_roi_grp_cmdq) {
 		//DDPMSG("LCM does not support partial update!\n");
 		return ret;
 	}
