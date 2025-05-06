@@ -613,6 +613,11 @@ static void update_thresholds(int temp_stage, int aging_stage, int lvsys_aging_s
 	int i;
 	u32 *lvsys_volt_thd;
 
+	if(!lvsys_table_data || !lbat_data) {
+		pr_info("[%s] lvsys/lbat data not init\n", __func__);
+		return;
+	}
+
 	if (aging_stage == 0)
 		ag_offset = 0;
 	else
@@ -858,9 +863,14 @@ static ssize_t low_battery_modify_threshold_show(struct device *dev,
 	struct lbat_thd_tbl *thd_info;
 	int len = 0, i, j;
 
+	if (!lbat_data) {
+		pr_info("[%s] Failed to create lbat_data\n", __func__);
+		return -EINVAL;
+	}
+
 	len += snprintf(buf + len, PAGE_SIZE, "modify enable: %d\n", lbat_data->lbat_thd_modify);
 
-	for (j = 0; j < 4; j++) {
+	for (j = 0; j <= lbat_data->temp_max_stage; j++) {
 		for (i = 0; i < lbat_data->lbat_intr_num; i++) {
 			thd_info = &lbat_data->lbat_thd[i][j];
 			len += snprintf(buf + len, PAGE_SIZE - len, "volts intr%d: %d %d %d %d\n",
@@ -885,6 +895,11 @@ static ssize_t low_battery_modify_threshold_store(struct device *dev,
 	int temp_stage, aging_stage, lvsys_aging_stage;
 	u32 thd_volts_tbl[12];
 
+	if (!lbat_data) {
+		pr_info("[%s] Failed to create lbat_data\n", __func__);
+		return -EINVAL;
+	}
+
 	if (sscanf(buf, "%u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u %u\n",
 		&intr_no, &thd_0[0], &thd_1[0], &thd_2[0], &thd_3[0], &thd_0[1], &thd_1[1], &thd_2[1], &thd_3[1],
 		&thd_0[2], &thd_1[2], &thd_2[2], &thd_3[2], &thd_0[3], &thd_1[3], &thd_2[3], &thd_3[3]) != 17) {
@@ -900,7 +915,7 @@ static ssize_t low_battery_modify_threshold_store(struct device *dev,
 		dev_info(dev, "invalid input\n");
 		return -EINVAL;
 	}
-	for (i = 0; i < 4 ; i++) {
+	for (i = 0; i <= lbat_data->temp_max_stage; i++) {
 		volt_l[0] = thd_1[i];
 		volt_l[1] = thd_2[i];
 		volt_l[2] = thd_3[i];
@@ -978,6 +993,11 @@ static ssize_t lvsys_modify_threshold_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	int len = 0, i, j;
+
+	if(!lvsys_table_data || !lbat_data) {
+		pr_info("[%s] lvsys/lbat data not init\n", __func__);
+		return -EINVAL;
+	}
 
 	len += snprintf(buf + len, PAGE_SIZE, "LVSYS table_idx: %d\n", lvsys_table_data->selected_table);
 
