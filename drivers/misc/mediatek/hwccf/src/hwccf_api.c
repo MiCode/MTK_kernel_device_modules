@@ -304,6 +304,18 @@ static int _v1_mm_hwccf_voter_ctrl(struct regmap *regmap, uint32_t setclr_ofs, u
 		goto ERR;
 	}
 
+	// Pre-Polling fsm idle for vote
+	if (is_set) {
+		/* status[15:0] = 0x1(cg/mux/mtcmos voter idle), status[15:0] = 0x0(irq voter on-going) */
+		ret = regmap_read_poll_timeout_atomic(regmap, CCF_STATUS, val, (val & 0xffff) <= 0x1,
+			MTK_WAIT_GHWV_DONE_US, MTK_WAIT_GHWV_DONE_CNT);
+		if (ret) {
+			HWCCF_ERR("vote_idle timeout %x\n", hwccf_read(regmap, CCF_STATUS));
+			ret = -HWV_FSM_IDLE_TIMEOUT;
+			goto ERR;
+		}
+	}
+
 	// XPU Voting & polling HW_CCF_XPU$_{CG/MTCMOS/PLL/BACKUP}_SET
 	hwccf_write(regmap, setclr_ofs, vote_val);
 

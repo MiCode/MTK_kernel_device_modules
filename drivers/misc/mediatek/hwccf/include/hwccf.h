@@ -74,6 +74,7 @@ enum CCF_OUTPUT_STATUS_BIT {
 	hw_ccf_to_up_int_b_2         = (1u << 30),
 	hw_ccf_to_up_int_b_3         = (1u << 31),
 };
+#define CCF_FSM_REQ_ACK	      CCF_OFS(0x10008)
 // CG VIP Status
 #define CCF_VIP_CG_STA(x)     CCF_OFS(0x11800 + (x) * 0x4)
 #define CCF_VIP_CG_EN(x)      CCF_OFS(0x12200 + (x) * 0x4)
