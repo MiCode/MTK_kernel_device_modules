@@ -366,7 +366,7 @@ void fpsgo2mbrain_hint_perfinfo(unsigned long cmd, struct render_frame_info *ite
 	perf_idx = iter->blc;
 	ts = fpsgo_get_time();
 
-	opMode = (sbe_ctrl > 0) ? mbraink_op_mode_sbe : mbraink_v6993_gpu_getOpMode();
+	opMode = mbraink_v6993_gpu_getOpMode();
 
 	mutex_lock(&mbk_g_perfidx_lock);
 
@@ -642,6 +642,11 @@ static void sendGpuWorkerEventNotify(void)
 			"%s:%d",
 			NETLINK_EVENT_GPUWORKERNOTIFY,
 			gWorkerEvtCount);
+	if (n < 0 || n >= NETLINK_EVENT_MESSAGE_SIZE - pos) {
+		pr_info("%s(%d): n(%d), pos(%d), over nl size\n",
+			__func__, __LINE__, n, pos);
+		goto out;
+	}
 	pos += n;
 
 	hlist_for_each_entry_safe(iter, h, &mbk_g_workerevt_list, hlist) {

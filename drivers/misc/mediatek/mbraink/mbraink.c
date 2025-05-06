@@ -2342,7 +2342,7 @@ static ssize_t mbraink_info_show(struct device *dev,
 								char *buf)
 {
 	mbraink_netlink_send_msg("aee_db_close");
-	return sprintf(buf, "show the process information...\n");
+	return snprintf(buf, PAGE_SIZE, "show the process information...\n");
 }
 
 static ssize_t mbraink_info_store(struct device *dev,
@@ -2377,6 +2377,7 @@ static ssize_t mbraink_gpu_store(struct device *dev,
 	struct mbraink_dvfsrc_struct_data mbraink_dvfsrc_data;
 
 	memset(&mbraink_dvfsrc_data, 0x00, sizeof(struct mbraink_dvfsrc_struct_data));
+
 	retSize = sscanf(buf, "%d %llu", &command, &value);
 	if (retSize == -1)
 		return 0;

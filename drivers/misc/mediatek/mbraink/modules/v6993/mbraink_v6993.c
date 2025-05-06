@@ -17,7 +17,7 @@ static ssize_t mbraink_platform_info_show(struct device *dev,
 								struct device_attribute *attr,
 								char *buf)
 {
-	return sprintf(buf, "show mbraink v6993 information...\n");
+	return snprintf(buf, PAGE_SIZE, "show mbraink v6993 information...\n");
 }
 
 static ssize_t mbraink_platform_info_store(struct device *dev,

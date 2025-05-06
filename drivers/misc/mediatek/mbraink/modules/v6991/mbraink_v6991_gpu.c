@@ -642,6 +642,11 @@ static void sendGpuWorkerEventNotify(void)
 			"%s:%d",
 			NETLINK_EVENT_GPUWORKERNOTIFY,
 			gWorkerEvtCount);
+	if (n < 0 || n >= NETLINK_EVENT_MESSAGE_SIZE - pos) {
+		pr_info("%s(%d): n(%d), pos(%d), over nl size\n",
+			__func__, __LINE__, n, pos);
+		goto out;
+	}
 	pos += n;
 
 	hlist_for_each_entry_safe(iter, h, &mbk_g_workerevt_list, hlist) {
