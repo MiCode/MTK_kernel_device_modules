@@ -245,6 +245,7 @@ void dptx_shutdown(void)
 		if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6993)
 			clk_disable_unprepare(g_mtk_dp->dp_phy_clk);
 		clk_disable_unprepare(g_mtk_dp->priv->pwr_clks[CLK_DPTX]);
+		clk_disable_unprepare(g_mtk_dp->priv->pwr_clks[CLK_VDISP_PERI]);
 		clk_disable_unprepare(g_mtk_dp->priv->pwr_clks[CLK_DISP_VCORE]);
 	} else {
 		pm_ret = pm_runtime_put_sync(g_mtk_dp->dev);
@@ -1719,6 +1720,7 @@ void mdrv_DPTx_put_device(void)
 			if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6993)
 				clk_disable_unprepare(g_mtk_dp->dp_phy_clk);
 			clk_disable_unprepare(g_mtk_dp->priv->pwr_clks[CLK_DPTX]);
+			clk_disable_unprepare(g_mtk_dp->priv->pwr_clks[CLK_VDISP_PERI]);
 			clk_disable_unprepare(g_mtk_dp->priv->pwr_clks[CLK_DISP_VCORE]);
 		} else {
 			pm_ret = pm_runtime_put_sync(g_mtk_dp->dev);
@@ -4428,6 +4430,7 @@ void mtk_dp_HPDInterruptSet(int bstatus)
 			g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6993) {
 				if (g_mtk_dp->priv->pwr_node) {
 					clk_prepare_enable(g_mtk_dp->priv->pwr_clks[CLK_DISP_VCORE]);
+					clk_prepare_enable(g_mtk_dp->priv->pwr_clks[CLK_VDISP_PERI]);
 					if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6993) {
 						// set sram sleep mode
 						base = ioremap(0x3EFF1A10, 0x10);
