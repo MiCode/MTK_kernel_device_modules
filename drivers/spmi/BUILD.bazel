@@ -50,6 +50,9 @@ define_mgk_ddk_ko(
     hdrs = [
         "spmi-mtk.h",
     ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/spmi:spmi-mtk-pmif".format(kernel_version),
+    ],
     includes = ["include"],
 )
 

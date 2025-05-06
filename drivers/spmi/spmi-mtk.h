@@ -163,9 +163,14 @@ struct spmi_nack_monitor_pair {
 	unsigned int addr;
 };
 
+struct spmi_acc_vio_info {
+	unsigned int chan;
+	unsigned int slvid;
+};
+
 /* pmif debug API declaration */
 extern void spmi_dump_wdt_reg(void);
-extern u32 spmi_dump_pmif_acc_vio_reg(void);
+extern struct spmi_acc_vio_info spmi_dump_pmif_acc_vio_reg(void);
 extern void spmi_dump_pmic_acc_vio_reg(void);
 extern void spmi_dump_pmif_busy_reg(void);
 extern void spmi_dump_pmif_swinf_reg(void);
@@ -178,5 +183,6 @@ extern int spmi_pmif_create_attr(struct device_driver *driver);
 extern int spmi_pmif_dbg_init(struct spmi_controller *ctrl);
 extern void spmi_slvid_nack_cnt_add(unsigned int nack_m, unsigned int nack_p);
 extern void get_spmi_slvid_nack_cnt(unsigned int *buf);
+extern void __iomem	*ext_pmif_base[];
 #endif /*__SPMI_MTK_H__*/
 

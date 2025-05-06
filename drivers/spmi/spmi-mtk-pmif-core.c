@@ -59,6 +59,7 @@
 #define MONITOR_PAIR_ITEM_NUM	2
 
 #define PMIF_CH_MD_DVFS_HW	1
+#define PMIF_CH_TIA_HW2	6
 
 #define PMIF_IRQDESC(name) { #name, pmif_##name##_irq_handler, -1}
 
@@ -424,6 +425,8 @@ static struct spmi_dev spmidev[16];
 static struct spmi_nack_monitor_pair nack_monitor_list[MAX_MONITOR_LIST_SIZE];
 static int nack_monitor_list_size;
 static struct pmif_irq_timer irq_timer[3];
+void __iomem *ext_pmif_base[3];
+EXPORT_SYMBOL(ext_pmif_base);
 
 struct spmi_dev *get_spmi_device(int slaveid)
 {
@@ -938,6 +941,19 @@ static struct pmif mt6991_pmif_arb[] = {
 	},
 };
 
+static struct pmif mt6993_pmif_arb[] = {
+	{
+		.regs = mt6xxx_regs,
+		.spmimst_regs = mt6853_spmi_regs,
+		.soc_chan = 2,
+		.mstid = SPMI_MASTER_1,
+		.pmifid = PMIF_PMIFID_SPMI0,
+		.read_cmd = pmif_spmi_read_cmd,
+		.write_cmd = pmif_spmi_write_cmd,
+		.caps = 5,
+	},
+};
+
 int (*register_spmi_md_force_assert)(unsigned int id, char *buf, unsigned int len) = NULL;
 EXPORT_SYMBOL(register_spmi_md_force_assert);
 
@@ -945,8 +961,22 @@ static void pmif_pmif_acc_vio_irq_handler(int irq, void *data)
 {
 	struct pmif *arb = data;
 	u32 vio_chan = 0xFFFFFFFF;
+	u32 vio_slvid = 0;
+	int aee_warning_flag = 0;
+	/* Mark vio_info as uninitialized */
+	struct spmi_acc_vio_info vio_info = {
+		.chan = 0xFFFFFFFF,
+		.slvid = 16,
+	};
+
 	spmi_dump_pmif_record_reg(0, 0, 0);
-	vio_chan = spmi_dump_pmif_acc_vio_reg();
+
+	vio_info = spmi_dump_pmif_acc_vio_reg();
+	if (vio_info.chan != 0xFFFFFFFF) {
+		vio_chan = vio_info.chan;
+		vio_slvid = vio_info.slvid;
+	}
+
 	if (vio_chan == PMIF_CH_MD_DVFS_HW) {
 		/* Trigger MDEE */
 		pr_notice("[PMIF] MD DVFS HW MPU violation!\n");
@@ -954,15 +984,29 @@ static void pmif_pmif_acc_vio_irq_handler(int irq, void *data)
 			pr_notice("[PMIF]:Trigger MD assert DONE\n");
 			register_spmi_md_force_assert(ID_SPMI_FORCE_MD_ASSERT, NULL, 0);
 		}
+		aee_warning_flag = 1;
+	} else if ((vio_chan == PMIF_CH_TIA_HW2) && (vio_slvid == 0)) {
+		pr_notice("[PMIF] TIA HW2 write SLVID:0 MPU violation!\n");
+		if (arb->caps == 5) {
+			pr_notice("[PMIF] False alarm, ignored\n");
+			aee_warning_flag = 0;
+		} else {
+			aee_warning_flag = 1;
+		}
 	} else {
 		pr_notice("[PMIF] Other channel violation!\n");
+		aee_warning_flag = 1;
 	}
 
-	store_nack_info(arb, 0, 0);
+	if (arb->caps == 4)
+		store_nack_info(arb, 0, 0);
 
 #if (IS_ENABLED(CONFIG_MTK_AEE_FEATURE))
-	aee_kernel_warning("PMIF", "PMIF:pmif_acc_vio");
+	if (aee_warning_flag)
+		aee_kernel_warning("PMIF", "PMIF:pmif_acc_vio");
 #endif
+	if (aee_warning_flag)
+		pr_notice("[PMIF] MPU violation irq handle done\n");
 	pr_notice("[PMIF]:pmif_acc_vio\n");
 }
 
@@ -2522,6 +2566,15 @@ static int mtk_spmi_probe(struct platform_device *pdev)
 	if (err)
 		goto err_domain_remove;
 
+	/* export symbol for pmif mpu */
+	// pmif_arb = arb;
+	if (!IS_ERR_OR_NULL(arb->pmif_base[0]))
+		ext_pmif_base[0] = arb->pmif_base[0];
+	if (!IS_ERR_OR_NULL(arb->pmif_base[1]))
+		ext_pmif_base[1] = arb->pmif_base[1];
+	if (!IS_ERR_OR_NULL(arb->pmif_base[2]))
+		ext_pmif_base[2] = arb->pmif_base[2];
+
 	return 0;
 
 err_domain_remove:
@@ -2535,6 +2588,7 @@ err_put_ctrl:
 	spmi_controller_put(ctrl);
 	return err;
 }
+
 
 static void mtk_spmi_remove(struct platform_device *pdev)
 {
@@ -2595,7 +2649,7 @@ static const struct of_device_id mtk_spmi_match_table[] = {
 		.data = &mt6991_pmif_arb,
 	}, {
 		.compatible = "mediatek,mt6993-spmi",
-		.data = &mt6xxx_pmif_arb,
+		.data = &mt6993_pmif_arb,
 	}, {
 		/* sentinel */
 	},

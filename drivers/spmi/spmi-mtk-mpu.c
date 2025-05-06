@@ -4,12 +4,14 @@
 
 #include <linux/device.h>
 #include <linux/io.h>
+#include <linux/irq.h>
 #include <linux/module.h>
 #include <linux/of_device.h>
 #include <linux/of.h>
 #include <linux/platform_device.h>
 #include <linux/timer.h>
 #include <linux/jiffies.h>
+#include "spmi-mtk.h"
 struct pmif_mpu_data {
 	const u32	*regs;
 };
@@ -37,6 +39,12 @@ static const u32 pmif_mpu_regs[] = {
 	[PMIF_PMIC_ALL_RGN_EN_2] =		0x430,
 };
 
+static const u32 mt6993_pmif_mpu_regs[] = {
+	[PMIF_MPU_CTRL] =			0x900,
+	[PMIF_PMIC_ALL_RGN_EN] =		0x1100,
+	[PMIF_PMIC_ALL_RGN_EN_2] =		0x1104,
+};
+
 static struct pmif_mpu_timer mpu_timer;
 
 static u32 pmif_mpu_readl(void __iomem *addr, struct pmif_mpu *arb, enum pmif_mpu_regs reg)
@@ -51,6 +59,10 @@ static void pmif_mpu_writel(void __iomem *addr, struct pmif_mpu *arb, u32 val, e
 
 static const struct pmif_mpu_data pmif_mpu_arb = {
 	.regs = pmif_mpu_regs,
+};
+
+static const struct pmif_mpu_data mt6993_pmif_mpu_arb = {
+	.regs = mt6993_pmif_mpu_regs,
 };
 
 static void enable_kernel_mpu(void)
@@ -151,14 +163,30 @@ static int mtk_spmi_pmif_mpu_probe(struct platform_device *pdev)
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "pmif_mpu");
 	arb->pmif_mpu_base[0] = devm_ioremap_resource(&pdev->dev, res);
-	if (IS_ERR(arb->pmif_mpu_base[0]))
+	if (IS_ERR_OR_NULL(arb->pmif_mpu_base[0])) {
 		dev_info(&pdev->dev, "failed to get remapped pmif-m-mpu address\n");
+		if (!IS_ERR_OR_NULL(ext_pmif_base[0])) {
+			arb->pmif_mpu_base[0] = ext_pmif_base[0];
+			dev_info(&pdev->dev, "get remapped pmif-m-mpu address from pmif\n");
+		} else {
+			dev_info(&pdev->dev, "failed to get remapped pmif-m-mpu address from pmif\n");
+			return 0;
+		}
+	}
 
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "pmif_p_mpu");
 	arb->pmif_mpu_base[1] = devm_ioremap_resource(&pdev->dev, res);
-	if (IS_ERR(arb->pmif_mpu_base[1]))
+	if (IS_ERR_OR_NULL(arb->pmif_mpu_base[1])) {
 		dev_info(&pdev->dev, "failed to get remapped pmif-p-mpu address\n");
+		if (!IS_ERR_OR_NULL(ext_pmif_base[1])) {
+			arb->pmif_mpu_base[1] = ext_pmif_base[1];
+			dev_info(&pdev->dev, "get remapped pmif-p-mpu address from pmif\n");
+		} else {
+			dev_info(&pdev->dev, "failed to get remapped pmif-p-mpu address from pmif\n");
+			return 0;
+		}
+	}
 
 
 	platform_set_drvdata(pdev, arb);
@@ -223,7 +251,7 @@ static const struct of_device_id mtk_spmi_pmif_mpu_match_table[] = {
 		.data = &pmif_mpu_arb,
 	}, {
 		.compatible = "mediatek,mt6993-spmi-pmif-mpu",
-		.data = &pmif_mpu_arb,
+		.data = &mt6993_pmif_mpu_arb,
 	}, {
 		/* sentinel */
 	},
