@@ -899,32 +899,24 @@ static int mt6661_of_parse_cb(struct device_node *np,
 	return 0;
 }
 
-/*
- * Clear UVLO info from LK2
+/* Clear UVLO info from LK2 */
 static void pmic_clear_uvlo_info(struct regulator_dev *rdev)
 {
+	int ret = 0;
 	unsigned int val = 0;
 
-	val = 0x29;
-	regmap_write(rdev->regmap, MT6363_CPSWKEY, val);
-	val = 0x47;
-	regmap_write(rdev->regmap, MT6363_CPSWKEY_H, val);
-
-	val = 0;
-	regmap_write(rdev->regmap, MT6363_CPSDSA31, val);
-	regmap_write(rdev->regmap, MT6363_CPSDSA32, val);
-	regmap_write(rdev->regmap, MT6363_CPSDSA33, val);
-
-	regmap_write(rdev->regmap, MT6363_CPSWKEY, val);
-	regmap_write(rdev->regmap, MT6363_CPSWKEY_H, val);
+	ret |= regmap_write(rdev->regmap, MT6661_VRC_CON2, val);
+	ret |= regmap_write(rdev->regmap, MT6661_VRC_CON3, val);
+	if (ret)
+		pr_info("%s: failed to access register.\n", __func__);
 }
-*/
 
 static int mt6661_regulator_probe(struct platform_device *pdev)
 {
 	struct regulator_config config = {};
 	struct regulator_dev *rdev;
 	struct mt6661_regulator_info *info;
+	const char *compatible;
 	int i, ret;
 
 	dev_info(&pdev->dev, "%s\n", __func__);
@@ -958,9 +950,13 @@ static int mt6661_regulator_probe(struct platform_device *pdev)
 			continue;
 		}
 	}
-#if 0
-	pmic_clear_uvlo_info(rdev);
-#endif
+	ret = of_property_read_string(pdev->dev.of_node, "compatible", &compatible);
+	if (ret) {
+		dev_err(&pdev->dev, "Failed to get compatible property, ret=%d\n", ret);
+		return ret;
+	}
+	if (!strcmp(compatible, "mediatek,mt6661-4-regulator"))
+		pmic_clear_uvlo_info(rdev);
 
 	return 0;
 }

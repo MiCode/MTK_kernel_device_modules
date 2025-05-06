@@ -44,6 +44,8 @@ enum mt6661_regulator_id {
 #define MT6661_TOP_TMA_KEY_L                        (0x3b4)
 #define MT6661_CPSWKEY                              (0xa2f)
 #define MT6661_CPSWKEY_H                            (0xa30)
+#define MT6661_VRC_CON2                             (0x209)
+#define MT6661_VRC_CON3                             (0x20a)
 #define MT6661_BUCK_TOP_KEY_PROT_LO                 (0x1444)
 #define MT6661_BUCK1_OP_EN_1                        (0x14a4)
 #define MT6661_BUCK1_OP_EN_1_SET                    (0x14a5)
