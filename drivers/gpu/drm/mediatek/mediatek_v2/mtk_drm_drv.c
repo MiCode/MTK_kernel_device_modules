@@ -2313,8 +2313,8 @@ static void mtk_atomic_delay(struct mtk_drm_private *private,
 	te_step_time = params->real_te_duration;
 	DDPDBG("%s:%d te_step_time:%u\n", __func__, __LINE__, te_step_time);
 
-	if ((ept_time == 0) || (te_step_time == 0) &&
-		(ept_time/1000 <= current_time/1000) &&
+	if ((ept_time == 0) || (te_step_time == 0) ||
+		(ept_time/1000 <= current_time/1000) ||
 		(mtk_state->prop_val[CRTC_PROP_USER_SCEN] == 1))
 		return;
 
