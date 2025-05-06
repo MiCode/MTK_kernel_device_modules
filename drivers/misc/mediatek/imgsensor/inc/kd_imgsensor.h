@@ -415,6 +415,7 @@
 #define IMX355_SENSOR_ID                        0x0355
 #define OV13B10LZ_SENSOR_ID                     0x0d42
 #define OV13B10_SENSOR_ID                       0x560d42
+#define OV13B10MAIN_SENSOR_ID                   0x560d42
 #define OV02B10_SENSOR_ID                       0x002b
 
 
@@ -431,6 +432,7 @@
 #define OV16A10_SENSOR_ID                       0x561641
 #define GC02M1B_SENSOR_ID                       0x02e0
 #define GC08A3_SENSOR_ID                        0x08a3
+#define SC800CS_LY_SENSOR_ID                    0xd126
 #define MAX96712MIPI_SENSOR_ID  0x52
 #define MAX96712ISXMIPI_SENSOR_ID  0x54
 #define MAX96712AMIPI_SENSOR_ID   0xA4
@@ -670,6 +672,7 @@
 /*Others*/
 #define SENSOR_DRVNAME_SHARP3D_MIPI_YUV         "sharp3d_mipi_yuv"
 #define SENSOR_DRVNAME_T8EV5_YUV                "t8ev5_yuv"
+#define SENSOR_DRVNAME_SC800CS_MIPI_RAW         "sc800cs_mipi_raw"
 /*Test*/
 #define SENSOR_DRVNAME_IMX135_MIPI_RAW_5MP      "imx135_mipi_raw_5mp"
 #define SENSOR_DRVNAME_IMX135_MIPI_RAW_8MP      "imx135_mipi_raw_8mp"
@@ -697,6 +700,7 @@
 #define SENSOR_DRVNAME_OV48C_MIPI_RAW           "ov48c_mipi_raw"
 #define SENSOR_DRVNAME_IMX355_MIPI_RAW          "imx355_mipi_raw"
 #define SENSOR_DRVNAME_OV13B10_MIPI_RAW         "ov13b10_mipi_raw"
+#define SENSOR_DRVNAME_OV13B10MAIN_MIPI_RAW         "ov13b10main_mipi_raw"
 #define SENSOR_DRVNAME_OV02B10_MIPI_RAW         "ov02b10_mipi_raw"
 #define SENSOR_DRVNAME_MAX96712_MIPI_YUV        "max96712_mipi_yuv"
 #define SENSOR_DRVNAME_MAX96712ISX_MIPI_YUV        "max96712isx_mipi_yuv"

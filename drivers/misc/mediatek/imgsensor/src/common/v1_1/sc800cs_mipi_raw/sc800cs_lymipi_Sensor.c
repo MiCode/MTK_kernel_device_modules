@@ -204,7 +204,7 @@ static void set_max_framerate(UINT16 framerate, kal_bool min_framelength_en)
     kal_uint32 frame_length = imgsensor.frame_length;
     //unsigned long flags;
 
-    LOG_INF("framerate = %d, min framelength should enable? \n", framerate,min_framelength_en);
+	LOG_INF("framerate = %d, min framelength should enable %d\n", framerate,min_framelength_en);
 	frame_length = imgsensor.pclk / framerate * 10 / imgsensor.line_length;
 	spin_lock(&imgsensor_drv_lock);
     imgsensor.frame_length = (frame_length > imgsensor.min_frame_length) ? frame_length : imgsensor.min_frame_length;
