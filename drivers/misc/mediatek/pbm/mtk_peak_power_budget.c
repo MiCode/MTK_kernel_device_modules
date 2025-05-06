@@ -2965,6 +2965,19 @@ static ssize_t mt_combo0_uisoc_proc_write
 	return count;
 }
 
+static int mt_hpt_debug_info_proc_show(struct seq_file *m, void *v)
+{
+	struct ppb3_dbg_t ppb3_dbg_data;
+
+	memset(&ppb3_dbg_data, 0, sizeof(ppb3_dbg_data));
+	get_ppb3_debug_info(&ppb3_dbg_data);
+
+	seq_printf(m, "%d,%d\n",
+		ppb3_dbg_data.oc_count, ppb3_dbg_data.oc_duration_us);
+
+	return 0;
+}
+
 #define PROC_FOPS_RW(name)						\
 static int mt_ ## name ## _proc_open(struct inode *inode, struct file *file)\
 {									\
@@ -3007,6 +3020,7 @@ PROC_FOPS_RW(hpt_ctrl);
 PROC_FOPS_RW(hpt_sf_setting);
 PROC_FOPS_RO(xpu_dbg_dump);
 PROC_FOPS_RW(combo0_uisoc);
+PROC_FOPS_RO(hpt_debug_info);
 
 static int mt_ppb_create_procfs(void)
 {
@@ -3035,6 +3049,7 @@ static int mt_ppb_create_procfs(void)
 		PROC_ENTRY(hpt_sf_setting),
 		PROC_ENTRY(xpu_dbg_dump),
 		PROC_ENTRY(combo0_uisoc),
+		PROC_ENTRY(hpt_debug_info),
 	};
 
 	dir = proc_mkdir("ppb", NULL);
