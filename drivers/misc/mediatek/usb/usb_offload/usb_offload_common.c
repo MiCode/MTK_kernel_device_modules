@@ -94,6 +94,8 @@ static void uaudio_dev_intf_lift(struct usb_audio_dev *dev, struct intf_info *in
 static void uaudio_dev_cleanup(struct usb_audio_dev *dev);
 static void uaudio_dev_release(struct kref *kref);
 static void uaudio_dev_shutdown(struct usb_audio_dev *dev);
+static int uaudio_dev_create_sideband(struct usb_audio_dev *dev);
+static void uaudio_dev_remove_sideband(struct usb_audio_dev *dev);
 static struct usb_audio_dev *uaudio_dev_match(struct xhci_virt_device *vdev);
 
 /* disable state */
@@ -290,8 +292,7 @@ done:
 
 static void sound_usb_connect(struct snd_usb_audio *chip)
 {
-	struct xhci_sideband_ *sb = NULL;
-	struct usb_interface *intf;
+	struct usb_interface *intf = NULL;
 	struct usb_device *rhdev;
 	bool support, on_hub;
 	int if_idx;
@@ -311,17 +312,12 @@ static void sound_usb_connect(struct snd_usb_audio *chip)
 	if (chip->num_interfaces > 0 && chip->intf[chip->num_interfaces - 1]) {
 		if_idx = (chip->num_interfaces - 1);
 		intf = chip->intf[if_idx];
-		if (intf)
-			sb = xhci_sideband_register_(intf, XHCI_SIDEBAND_VENDOR, NULL);
 	}
 
-	if (!sb) {
-		USB_OFFLOAD_ERR("fail to register sideband, interface:%d\n", if_idx);
-		uo_mbrain_update(UO_PHASE_CONNECT, UO_ERROR_ALLOC_SB_FAIL);
+	if (!intf) {
+		USB_OFFLOAD_ERR("sideband interface can't be NULL\n");
 		goto err;
 	}
-
-	USB_OFFLOAD_INFO("create sideband:%p\n", sb);
 
 	rhdev = (xhci_to_hcd(uodev->xhci))->self.root_hub;
 	check_valid_device(rhdev, chip->dev, &support, &on_hub);
@@ -331,7 +327,6 @@ static void sound_usb_connect(struct snd_usb_audio *chip)
 	uadev[chip->card->number].on_hub = on_hub;
 	uadev[chip->card->number].chip = chip;
 	uadev[chip->card->number].slot_id = chip->dev->slot_id;
-	uadev[chip->card->number].sb = sb;
 	uadev[chip->card->number].sb_intf = intf;
 	atomic_set(&uadev[chip->card->number].connected, 1);
 
@@ -395,32 +390,27 @@ static void monitor_alloc_virt_device(void *unused, struct xhci_virt_device *vde
 	struct xhci_sideband_ *sb = NULL;
 	struct usb_audio_dev *dev;
 
+	USB_OFFLOAD_INFO("slot_id:%d vdev:%p\n", vdev->slot_id, vdev);
+
 	dev = uaudio_dev_match(vdev);
 	if (dev && dev->chip)
-		USB_OFFLOAD_INFO("found match (slot%d card:%d)\n", vdev->slot_id, dev->card_num);
-	else {
-		USB_OFFLOAD_INFO("doesn't match (slot%d)\n", vdev->slot_id);
+		USB_OFFLOAD_INFO("allocate virtual device after uac connect??\n");
+	else
 		goto not_match;
-	}
 
 	if (stage_occupy(DRV_STAGE_XHCI_TRACE) < 0)
 		goto busy;
 
-	if (!dev->sb) {
-		/* virtual device might be freed before */
-		if (dev->sb_intf)
-			sb = xhci_sideband_register_(dev->sb_intf, XHCI_SIDEBAND_VENDOR, NULL);
-
-		if (!sb) {
-			USB_OFFLOAD_ERR("fail to register sideband, sb_intf:%p\n", dev->sb_intf);
-			goto done;
+	sb = dev->sb;
+	if (sb) {
+		if (sb->vdev && sb->vdev != vdev) {
+			/* seems virtual device was released before, assign it manually */
+			USB_OFFLOAD_INFO("virtual device unmatch %p <-> %p\n", sb->vdev, vdev);
+			sb->vdev = vdev;
+			vdev->sideband = sb;
 		}
-
-		dev->sb = sb;
-		USB_OFFLOAD_INFO("create sideband:%p\n", dev->sb);
 	}
 
-done:
 	stage_vacate(DRV_STAGE_XHCI_TRACE);
 busy:
 not_match:
@@ -431,22 +421,16 @@ static void monitor_free_virt_device(void *unused, struct xhci_virt_device *vdev
 {
 	struct usb_audio_dev *dev;
 
+	USB_OFFLOAD_INFO("slot_id:%d vdev:%p\n", vdev->slot_id, vdev);
+
 	dev = uaudio_dev_match(vdev);
 	if (dev && dev->chip)
-		USB_OFFLOAD_INFO("found match (slot%d card:%d)\n", vdev->slot_id, dev->card_num);
-	else {
-		USB_OFFLOAD_INFO("doesn't match (slot%d)\n", vdev->slot_id);
+		USB_OFFLOAD_INFO("free virtual device before uac disconnect??\n");
+	else
 		goto not_match;
-	}
 
 	if (stage_occupy(DRV_STAGE_XHCI_TRACE) < 0)
 		goto busy;
-
-	if (dev->sb) {
-		USB_OFFLOAD_INFO("unregister sideband:%p interrupter:%p\n", dev->sb, dev->sb->ir);
-		xhci_sideband_unregister_(dev->sb);
-		dev->sb = NULL;
-	}
 
 	stage_vacate(DRV_STAGE_XHCI_TRACE);
 busy:
@@ -656,6 +640,57 @@ static void uaudio_dev_intf_lift(struct usb_audio_dev *dev, struct intf_info *in
 	}
 }
 
+static int uaudio_dev_create_sideband(struct usb_audio_dev *dev)
+{
+	struct usb_interface *intf = NULL;
+	struct xhci_sideband_ *sb = NULL;
+
+	if (!dev || !dev->sb_intf)
+		return -EINVAL;
+
+	intf = dev->sb_intf;
+	sb = xhci_sideband_register_(intf, XHCI_SIDEBAND_VENDOR, NULL);
+	if (!sb) {
+		USB_OFFLOAD_ERR("fail to register sideband, sb_intf:%p\n", intf);
+		return -ENOMEM;
+	}
+
+	USB_OFFLOAD_INFO("register sideband:%p vdev:%p\n", sb, sb->vdev);
+	dev->sb = sb;
+
+	return 0;
+}
+
+static void uaudio_dev_remove_sideband(struct usb_audio_dev *dev)
+{
+	struct xhci_hcd *xhci = uodev->xhci;
+	struct xhci_virt_device *vdev;
+	struct xhci_sideband_ *sb;
+	u32 max_devies;
+
+	if (!dev || !dev->sb)
+		return;
+
+	sb = dev->sb;
+	max_devies = HCS_MAX_SLOTS(xhci->cap_regs->hcs_params1);
+	if (dev->slot_id < max_devies && dev->slot_id >= 0) {
+		vdev = xhci->devs[dev->slot_id];
+		if (vdev == sb->vdev) {
+			USB_OFFLOAD_INFO("unregister sideband:%p\n", sb);
+			xhci_sideband_unregister_(sb);
+		} else {
+			/* seems virtual device was released before, just releasing sideband */
+			USB_OFFLOAD_ERR("virtual device unmatch %p <-> %p\n", sb->vdev, vdev);
+			kfree(sb);
+		}
+	} else {
+		USB_OFFLOAD_ERR("invalid slot:%d\n", dev->slot_id);
+		kfree(sb);
+	}
+
+	dev->sb = NULL;
+}
+
 static void uaudio_dev_cleanup(struct usb_audio_dev *dev)
 {
 	int if_idx;
@@ -694,7 +729,12 @@ static void uaudio_dev_release(struct kref *kref)
 		goto skip_remove;
 	}
 	USB_OFFLOAD_ERR("remove interrupter%d:%p (sb:%p)\n", sb->ir->intr_num, sb->ir, sb);
-	xhci_sideband_remove_interrupter_(dev->sb);
+
+	/* interrupter */
+	xhci_sideband_remove_interrupter_(sb);
+
+	/* sideband */
+	uaudio_dev_remove_sideband(dev);
 
 skip_remove:
 	atomic_set(&dev->in_use, 0);
@@ -734,10 +774,6 @@ static void uaudio_dev_shutdown(struct usb_audio_dev *dev)
 	}
 
 skip_disable:
-	USB_OFFLOAD_INFO("unregister sideband:%p interrupter:%p\n", dev->sb, dev->sb->ir);
-	xhci_sideband_unregister_(dev->sb);
-	dev->sb = NULL;
-
 	uaudio_dev_cleanup(dev);
 	dev->chip = NULL;
 }
@@ -1332,7 +1368,11 @@ skip_sync_ep:
 	}
 
 	if (!atomic_read(&audio_dev->in_use)) {
-		/* setup audio device */
+		/* sideband */
+		if (uaudio_dev_create_sideband(audio_dev) < 0)
+			return -ENODEV;
+
+		/* interrupter */
 		if (xhci_sideband_create_interrupter_(audio_dev->sb, 1,
 			true, uodev->xhci->imod_interval, XHCI1_INTR_TARGET) < 0) {
 			USB_OFFLOAD_ERR("fail to create interrupter%d\n", XHCI1_INTR_TARGET);
@@ -1340,12 +1380,15 @@ skip_sync_ep:
 		}
 		uodev->ir = audio_dev->sb->ir;
 
+		/* setup audio device */
 		kref_init(&audio_dev->kref);
 		init_waitqueue_head(&audio_dev->disabling_wq);
 		audio_dev->num_intf = subs->dev->config->desc.bNumInterfaces;
 		audio_dev->info = kcalloc(audio_dev->num_intf, sizeof(struct intf_info), GFP_KERNEL);
 		if (!audio_dev->info) {
 			xhci_sideband_remove_interrupter_(audio_dev->sb);
+			uaudio_dev_remove_sideband(audio_dev);
+			audio_dev->sb = NULL;
 			return -ENOMEM;
 		}
 		audio_dev->udev = subs->dev;
