@@ -1649,6 +1649,8 @@ int mt63xx_pinctrl_probe(struct platform_device *pdev,
 
 	hw->base = devm_kmalloc_array(&pdev->dev, 1, sizeof(*hw->base),
 			GFP_KERNEL | __GFP_ZERO);
+	if (!hw->base)
+		return -ENOMEM;
 	if (IS_ERR(hw->base))
 		return PTR_ERR(hw->base);
 	hw->base[0] = (struct regmap *)dev_get_regmap(pdev->dev.parent, NULL);
