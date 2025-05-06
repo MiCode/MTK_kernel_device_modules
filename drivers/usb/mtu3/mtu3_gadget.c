@@ -875,6 +875,7 @@ static void mtu3_state_reset(struct mtu3 *mtu)
 	mtu->delayed_status = false;
 	mtu->test_mode = false;
 	mtu->u2_lpm_reject = MTU3_U2_LPM_DEFAULT;
+	mtu->qmu_err_count = 0;
 }
 
 static void init_hw_ep(struct mtu3 *mtu, struct mtu3_ep *mep,
@@ -949,6 +950,7 @@ int mtu3_gadget_setup(struct mtu3 *mtu)
 	mtu->is_active = 0;
 	mtu->delayed_status = false;
 	mtu->u2_lpm_reject = MTU3_U2_LPM_DEFAULT;
+	mtu->qmu_err_count = 0;
 
 	timer_setup(&mtu->lpm_timer, mtu3_u2_lpm_timer_func, 0);
 

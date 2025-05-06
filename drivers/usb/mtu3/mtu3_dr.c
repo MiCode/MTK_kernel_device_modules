@@ -138,6 +138,11 @@ static void switch_port_to_off(struct ssusb_mtk *ssusb)
 	ssusb_phy_power_off(ssusb);
 	ssusb_set_power_state(ssusb, MTU3_STATE_POWER_OFF);
 	ssusb_phy_clear_prop(ssusb);
+
+	/* reset usb if bus is busy */
+	if (ssusb->usb_bus_busy)
+		ssusb_reset(ssusb);
+
 	ssusb_clks_disable(ssusb);
 	ssusb_pds_disable(ssusb);
 	ssusb_vsvoter_clr(ssusb);

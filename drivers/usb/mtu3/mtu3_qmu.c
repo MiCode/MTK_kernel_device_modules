@@ -70,6 +70,8 @@
 #define HILO_DMA(hi, lo)	\
 	((dma_addr_t)HILO_GEN64((le32_to_cpu(hi)), (le32_to_cpu(lo))))
 
+#define QMU_ERR_RETRY 5
+
 static dma_addr_t read_txq_cur_addr(void __iomem *mbase, u8 epnum)
 {
 	u32 txcpr;
@@ -395,8 +397,15 @@ void mtu3_qmu_stop(struct mtu3_ep *mep)
 			!(value & QMU_Q_ACTIVE), 1, 10000);
 	if (ret) {
 		dev_err(mtu->dev, "stop %s's qmu failed\n", mep->name);
-		WARN_ONCE(1, "stop qmu failed\n");
-		BUG_ON(1);
+
+		if (mtu->qmu_err_count <= QMU_ERR_RETRY) {
+			if (mtu->qmu_err_count == QMU_ERR_RETRY) {
+				dev_info(mtu->dev, "start recovery flow\n");
+				queue_work(system_power_efficient_wq, &mtu->recovery_work);
+			}
+			mtu->qmu_err_count++;
+		}
+
 		return;
 	}
 

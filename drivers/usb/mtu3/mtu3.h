@@ -411,6 +411,8 @@ struct ssusb_mtk {
 	u32 clkgate_oft;
 	/* usb bus related address */
 	struct regmap *usb_mbist;
+	/* usb bus state */
+	bool usb_bus_busy;
 	/* usb power domain */
 	struct device *genpd_u2;
 	struct device *genpd_u3;
@@ -532,6 +534,10 @@ struct mtu3 {
 	unsigned async_callbacks:1;
 	unsigned separate_fifo:1;
 	int ep_slot_mode;
+
+	/* stop qmu failed error recovery */
+	int qmu_err_count;
+	struct work_struct recovery_work;
 
 	unsigned u3_lpm:1;
 	unsigned u3_u1gou2:1;

@@ -32,6 +32,15 @@
 
 #define MTU3_IRQ_PERIOD_BURST 16666 /* 60000 irqs per sec */
 
+static void mtu3_recovery_work(struct work_struct *data)
+{
+	struct mtu3 *mtu = container_of(data, struct mtu3, recovery_work);
+	struct otg_switch_mtk *otg_sx = &mtu->ssusb->otg_switch;
+
+	dev_info(mtu->dev, "reset and re-enumerate the device\n");
+	ssusb_set_mode(otg_sx, otg_sx->current_role, true);
+}
+
 static int ep_fifo_alloc(struct mtu3_ep *mep, u32 seg_size)
 {
 	struct mtu3_fifo_info *fifo = mep->fifo;
@@ -1253,6 +1262,9 @@ int ssusb_gadget_init(struct ssusb_mtk *ssusb)
 		dev_info(mtu->dev, "usb psy: %s\n", mtu->usb_psy_name);
 		INIT_WORK(&mtu->draw_work, mtu3_vbus_draw_work);
 	}
+
+	/* work for error recovery */
+	INIT_WORK(&mtu->recovery_work, mtu3_recovery_work);
 
 	if (device_property_read_string(mtu->dev, "typec-name", &mtu->typec_name) >= 0)
 		dev_info(mtu->dev, "typec: %s\n", mtu->typec_name);
