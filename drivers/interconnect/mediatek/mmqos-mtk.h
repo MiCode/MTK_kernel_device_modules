@@ -220,8 +220,8 @@ int tracing_mark_write(char *fmt, ...);
 #define MMQOS_TRACE_FORCE_BEGIN(fmt, args...) \
 	MMQOS_TRACE_FORCE_BEGIN_TID(current->tgid, fmt, ##args)
 
-#define MMQOS_TRACE_FORCE_END() \
-	tracing_mark_write("E\n")
+#define MMQOS_TRACE_FORCE_END(tid, fmt, args...) \
+	tracing_mark_write("E|%d|" fmt "\n", tid, ##args)
 
 #define MMQOS_SYSTRACE_BEGIN(fmt, args...) do { \
 	if (mmqos_systrace_enabled()) { \
@@ -229,9 +229,9 @@ int tracing_mark_write(char *fmt, ...);
 	} \
 } while (0)
 
-#define MMQOS_SYSTRACE_END() do { \
+#define MMQOS_SYSTRACE_END(fmt, args...) do { \
 	if (mmqos_systrace_enabled()) { \
-		MMQOS_TRACE_FORCE_END(); \
+		MMQOS_TRACE_FORCE_END(current->tgid, fmt, ##args); \
 	} \
 } while (0)
 #endif /* MMQOS_MTK_H */

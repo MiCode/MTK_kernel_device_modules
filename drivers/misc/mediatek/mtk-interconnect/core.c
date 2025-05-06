@@ -195,25 +195,25 @@ static int aggregate_requests(struct icc_node *node)
 	node->avg_bw = 0;
 	node->peak_bw = 0;
 
-	MMQOS_ICC_SYSTRACE_BEGIN("%s pre_aggr\n", __func__);
+	MMQOS_ICC_SYSTRACE_BEGIN("%s pre_aggr", __func__);
 	if (p->pre_aggregate)
 		p->pre_aggregate(node);
-	MMQOS_ICC_SYSTRACE_END();
+	MMQOS_ICC_SYSTRACE_END("%s pre_aggr", __func__);
 
 	for (i = 0; i < node->num_reverse_links; i++) {
 		rl = node->reverse_links[i];
-		MMQOS_ICC_SYSTRACE_BEGIN("%s node:%s r1:%s\n", __func__, node->name, rl->name);
+		MMQOS_ICC_SYSTRACE_BEGIN("%s node:%s r1:%s", __func__, node->name, rl->name);
 		p->aggregate(node, 0, rl->avg_bw, rl->peak_bw,
 			     &node->avg_bw, &node->peak_bw);
-		MMQOS_ICC_SYSTRACE_END();
+		MMQOS_ICC_SYSTRACE_END("%s node:%s r1:%s", __func__, node->name, rl->name);
 	}
 
 	/* update leave node */
 	hlist_for_each_entry(r, &node->direct_req_list, req_node) {
-		MMQOS_ICC_SYSTRACE_BEGIN("%s node:%s direct_req_list\n", __func__, node);
+		MMQOS_ICC_SYSTRACE_BEGIN("%s node:%s direct_req_list", __func__, node->name);
 		p->aggregate(node, r->tag, r->avg_bw, r->peak_bw,
 			     &node->avg_bw, &node->peak_bw);
-		MMQOS_ICC_SYSTRACE_END();
+		MMQOS_ICC_SYSTRACE_END("%s node:%s direct_req_list", __func__, node->name);
 	}
 
 	return 0;
@@ -555,23 +555,23 @@ int mtk_icc_set_bw(struct icc_path *path, u32 avg_bw, u32 peak_bw)
 	size_t i;
 	int ret;
 
-	MMQOS_ICC_SYSTRACE_BEGIN("%s set bw\n", __func__);
+	MMQOS_ICC_SYSTRACE_BEGIN("%s set bw", __func__);
 	if (IS_ERR_OR_NULL(path) || !path->num_nodes) {
-		MMQOS_ICC_SYSTRACE_END();
+		MMQOS_ICC_SYSTRACE_END("%s set bw fail", __func__);
 		return 0;
 	}
 
-	MMQOS_ICC_SYSTRACE_BEGIN("%s lock\n", __func__);
+	MMQOS_ICC_SYSTRACE_BEGIN("%s lock", __func__);
 	mutex_lock(&icc_lock);
-	MMQOS_ICC_SYSTRACE_END();
+	MMQOS_ICC_SYSTRACE_END("%s lock", __func__);
 
 	restore_avg_bw = path->reqs[0].avg_bw;
 	restore_peak_bw = path->reqs[0].peak_bw;
 
 #ifdef ENABLE_INTERCONNECT_V2
-	MMQOS_ICC_SYSTRACE_BEGIN("[v2] %s aggregate\n", __func__);
+	MMQOS_ICC_SYSTRACE_BEGIN("[v2] %s aggregate", __func__);
 	aggregate_requests_v2(path, avg_bw, peak_bw);
-	MMQOS_ICC_SYSTRACE_END(); //v2 aggr
+	MMQOS_ICC_SYSTRACE_END("[v2] %s aggregate", __func__); //v2 aggr
 #endif
 
 	for (i = 0; i < path->num_nodes; i++) {
@@ -592,9 +592,9 @@ int mtk_icc_set_bw(struct icc_path *path, u32 avg_bw, u32 peak_bw)
 	}
 
 	update_apply_comm_chn_info(path); //update path comm & channel id
-	MMQOS_ICC_SYSTRACE_BEGIN("%s apply_constraints\n", __func__);
+	MMQOS_ICC_SYSTRACE_BEGIN("%s apply_constraints", __func__);
 	ret = apply_constraints(path);
-	MMQOS_ICC_SYSTRACE_END(); //apply_constraints
+	MMQOS_ICC_SYSTRACE_END("%s apply_constraints", __func__); //apply_constraints
 
 	if (ret) {
 		pr_debug("interconnect: error applying constraints (%d)\n",
@@ -609,11 +609,11 @@ int mtk_icc_set_bw(struct icc_path *path, u32 avg_bw, u32 peak_bw)
 		apply_constraints(path);
 	}
 
-	MMQOS_ICC_SYSTRACE_BEGIN("%s unlock\n", __func__);
+	MMQOS_ICC_SYSTRACE_BEGIN("%s unlock", __func__);
 	mutex_unlock(&icc_lock);
-	MMQOS_ICC_SYSTRACE_END(); //unlock
+	MMQOS_ICC_SYSTRACE_END("%s unlock", __func__); //unlock
 	trace_mtk_icc_set_bw_end(path, ret);
-	MMQOS_ICC_SYSTRACE_END(); //full icc set
+	MMQOS_ICC_SYSTRACE_END("%s set bw", __func__); //full icc set
 
 	return ret;
 }
@@ -988,12 +988,17 @@ module_exit(mtk_icc_exit);
 
 bool mmqos_icc_systrace_enabled(void)
 {
+#if IS_ENABLED(CONFIG_MTK_INTERCONNECT_DEBUG)
+	return true;
+#else
 	return ftrace_ena & (1 << MMQOS_ICC_PROFILE_SYSTRACE);
+#endif
 }
 
 noinline int icc_tracing_mark_write(char *fmt, ...)
 {
-#if IS_ENABLED(CONFIG_MTK_FTRACER)
+#if IS_ENABLED(CONFIG_MTK_INTERCONNECT_DEBUG)
+#if IS_ENABLED(CONFIG_TRACING)
 	char buf[TRACE_MSG_LEN];
 	va_list args;
 	int len;
@@ -1008,6 +1013,7 @@ noinline int icc_tracing_mark_write(char *fmt, ...)
 	}
 
 	trace_puts(buf);
+#endif
 #endif
 	return 0;
 }

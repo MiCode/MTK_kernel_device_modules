@@ -39,8 +39,8 @@ int icc_tracing_mark_write(char *fmt, ...);
 #define MMQOS_ICC_TRACE_FORCE_BEGIN(fmt, args...) \
 	MMQOS_ICC_TRACE_FORCE_BEGIN_TID(current->tgid, fmt, ##args)
 
-#define MMQOS_ICC_TRACE_FORCE_END() \
-	icc_tracing_mark_write("E\n")
+#define MMQOS_ICC_TRACE_FORCE_END(tid, fmt, args...) \
+	icc_tracing_mark_write("E|%d|" fmt "\n", tid, ##args)
 
 #define MMQOS_ICC_SYSTRACE_BEGIN(fmt, args...) do { \
 	if (mmqos_icc_systrace_enabled()) { \
@@ -48,9 +48,9 @@ int icc_tracing_mark_write(char *fmt, ...);
 	} \
 } while (0)
 
-#define MMQOS_ICC_SYSTRACE_END() do { \
+#define MMQOS_ICC_SYSTRACE_END(fmt, args...) do { \
 	if (mmqos_icc_systrace_enabled()) { \
-		MMQOS_ICC_TRACE_FORCE_END(); \
+		MMQOS_ICC_TRACE_FORCE_END(current->tgid, fmt, ##args); \
 	} \
 } while (0)
 

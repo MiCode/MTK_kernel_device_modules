@@ -486,11 +486,11 @@ static void set_total_bw_to_emi(struct common_node *comm_node)
 			MMQOS_DBG("comm%d avg %d peak %d",
 				comm_id, (int)icc_to_MBps(avg_bw), (int)icc_to_MBps(peak_bw));
 
-		MMQOS_SYSTRACE_BEGIN("to EMI avg %d peak %d\n",
-			icc_to_MBps(avg_bw), icc_to_MBps(peak_bw));
+		MMQOS_SYSTRACE_BEGIN("%s to EMI avg %d peak %d", __func__,
+			(int)icc_to_MBps(avg_bw), (int)icc_to_MBps(peak_bw));
 			icc_set_bw(comm_node->icc_path, avg_bw, 0);
 			icc_set_bw(comm_node->icc_hrt_path, peak_bw, 0);
-		MMQOS_SYSTRACE_END();
+		MMQOS_SYSTRACE_END("%s set emi bw done", __func__);
 	}
 
 	comm_node->sum_up_peak_bw = sum_up_peak_bw;
@@ -765,6 +765,8 @@ static void set_freq_by_vmmrc(const u32 comm_id)
 	u32 off_h_r_bw;
 	u32 off_h_w_bw;
 
+	MMQOS_SYSTRACE_BEGIN("%s %d", __func__, comm_id);
+
 	if (log_level & 1 << log_comm_freq) {
 		for (i = 0; i < MMQOS_MAX_COMM_NUM; i++) {
 			for (j = 0; j < MMQOS_COMM_CHANNEL_NUM; j++) {
@@ -832,6 +834,7 @@ static void set_freq_by_vmmrc(const u32 comm_id)
 	}
 	if (is_reg_value_changed)
 		set_channel_bw_to_hw();
+	MMQOS_SYSTRACE_END("%s %d", __func__, comm_id);
 }
 
 static void set_comm_icc_bw(struct common_node *comm_node)
@@ -840,7 +843,7 @@ static void set_comm_icc_bw(struct common_node *comm_node)
 	unsigned long smi_clk = 0;
 	u32 comm_id, i, j;
 
-	MMQOS_SYSTRACE_BEGIN("%s %s\n", __func__, comm_node->base->icc_node->name);
+	MMQOS_SYSTRACE_BEGIN("%s %s", __func__, comm_node->base->icc_node->name);
 
 	set_total_bw_to_emi(comm_node);
 
@@ -881,7 +884,7 @@ static void set_comm_icc_bw(struct common_node *comm_node)
 		set_freq_by_vmmrc(comm_id);
 	}
 
-	MMQOS_SYSTRACE_END();
+	MMQOS_SYSTRACE_END("%s %s", __func__, comm_node->base->icc_node->name);
 }
 
 static void update_hrt_bw(struct mtk_mmqos *mmqos)
@@ -1236,7 +1239,7 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 	const char *r_w_type = "w";
 	mux_axi_mon_pair *pair;
 
-	MMQOS_SYSTRACE_BEGIN("%s %s->%s\n", __func__, src->name, dst->name);
+	MMQOS_SYSTRACE_BEGIN("%s %s->%s", __func__, src->name, dst->name);
 	switch (NODE_TYPE(dst->id)) {
 	case MTK_MMQOS_NODE_COMMON:
 		comm_node = (struct common_node *)dst->data;
@@ -1508,7 +1511,7 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 	default:
 		break;
 	}
-	MMQOS_SYSTRACE_END();
+	MMQOS_SYSTRACE_END("%s %s->%s", __func__, src->name, dst->name);
 	return 0;
 }
 
@@ -1523,7 +1526,7 @@ static int mtk_mmqos_aggregate(struct icc_node *node,
 	if (!node || !node->data)
 		return 0;
 
-	MMQOS_SYSTRACE_BEGIN("%s %s\n", __func__, node->name);
+	MMQOS_SYSTRACE_BEGIN("%s %s", __func__, node->name);
 	switch (NODE_TYPE(node->id)) {
 	case MTK_MMQOS_NODE_LARB_PORT:
 		larb_port_node = (struct larb_port_node *)node->data;
@@ -1556,7 +1559,7 @@ static int mtk_mmqos_aggregate(struct icc_node *node,
 	else
 		*agg_peak += peak_bw;
 
-	MMQOS_SYSTRACE_END();
+	MMQOS_SYSTRACE_END("%s %s", __func__, node->name);
 	return 0;
 }
 
@@ -2868,12 +2871,17 @@ bool mmqos_met_enabled(void)
 
 bool mmqos_systrace_enabled(void)
 {
+#if IS_ENABLED(CONFIG_MTK_MMQOS_DEBUG)
+	return true;
+#else
 	return ftrace_ena & (1 << MMQOS_PROFILE_SYSTRACE);
+#endif
 }
 
 noinline int tracing_mark_write(char *fmt, ...)
 {
-#if IS_ENABLED(CONFIG_MTK_FTRACER)
+#if IS_ENABLED(CONFIG_MTK_MMQOS_DEBUG)
+#if IS_ENABLED(CONFIG_TRACING)
 	char buf[TRACE_MSG_LEN];
 	va_list args;
 	int len;
@@ -2888,6 +2896,7 @@ noinline int tracing_mark_write(char *fmt, ...)
 	}
 
 	trace_puts(buf);
+#endif
 #endif
 	return 0;
 }

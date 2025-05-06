@@ -22,6 +22,14 @@ config INTERCONNECT_MTK_MMQOS_COMMON
 	  camera, mdp and video codec, and configure SMI settings dynamically
 	  according to the aggregated BW.
 
+config MTK_MMQOS_DEBUG
+	tristate "enable MTK MMQOS driver debug extension"
+	help
+	  This extension enables mmqos systrace for mmqos driver, we
+	  only default enable mmqos systrace feature in userdebug/eng load,
+	  and avoid user load for performance concern. But for systrace feature,
+	  user can enable/disable it with adb command.
+
 config INTERCONNECT_MTK_MMQOS_MT6789
 	tristate "Mediatek MT6789 MMQoS interconnect driver"
 	depends on INTERCONNECT_MTK
