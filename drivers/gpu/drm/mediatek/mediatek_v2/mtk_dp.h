@@ -310,7 +310,6 @@ unsigned int mtk_de_get_con1(void);
 void mtk_dp_vsvoter_set(struct mtk_dp *mtk_dp);
 void mtk_dp_vsvoter_clr(struct mtk_dp *mtk_dp);
 void dptx_write_reg(u32 offset, u32 val);
-void dptx_shutdown(void);
 void mdrv_DPTx_put_device(void);
 void mtk_dp_reset_all(void);
 void mtk_dp_set_delay(bool enable, unsigned int mode, unsigned int delay_time);

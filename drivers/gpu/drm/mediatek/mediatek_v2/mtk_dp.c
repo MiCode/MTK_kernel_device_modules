@@ -236,34 +236,6 @@ int notify_uevent_user(struct notify_dev *sdev, int state)
 
 	return 0;
 }
-void dptx_shutdown(void)
-{
-	int pm_ret = 0;
-	g_mtk_dp->shutdown = 1;
-	DPTXMSG("unprepare dptx shutdown\n");
-	if (g_mtk_dp->priv->pwr_node) {
-		if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6993)
-			clk_disable_unprepare(g_mtk_dp->dp_phy_clk);
-		clk_disable_unprepare(g_mtk_dp->priv->pwr_clks[CLK_DPTX]);
-		clk_disable_unprepare(g_mtk_dp->priv->pwr_clks[CLK_VDISP_PERI]);
-		clk_disable_unprepare(g_mtk_dp->priv->pwr_clks[CLK_DISP_VCORE]);
-	} else {
-		pm_ret = pm_runtime_put_sync(g_mtk_dp->dev);
-		if (pm_ret < 0)
-			DPTXERR("Failed to disable dptx power: %d\n", pm_ret);
-	}
-
-	if (g_mtk_dp->priv->pwr_node) {
-		mtk_vidle_mminfra_on_off(false);
-		DPTXMSG("%s successfully disable dpc\n", __func__);
-	} else if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6991 && g_mtk_dp->priv->dpc_dev) {
-		pm_ret = pm_runtime_put_sync(g_mtk_dp->priv->dpc_dev);
-		if (pm_ret < 0)
-			DPTXERR("Failed to disable dpc power: %d\n", pm_ret);
-		else
-			DPTXMSG("successfully disable dpc\n");
-	}
-}
 
 void mtk_dp_set_delay(bool enable, unsigned int mode, unsigned int delay_time)
 {
@@ -1715,32 +1687,31 @@ void mdrv_DPTx_put_device(void)
 		writel(readl(base + 0x78) |  (1 << 4), base + 0x78); // set bit 4 to 1 (enable)
 		iounmap(base);
 	}
-	if(g_mtk_dp->shutdown == 0) {
-		if (g_mtk_dp->priv->pwr_node) {
-			if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6993)
-				clk_disable_unprepare(g_mtk_dp->dp_phy_clk);
-			clk_disable_unprepare(g_mtk_dp->priv->pwr_clks[CLK_DPTX]);
-			clk_disable_unprepare(g_mtk_dp->priv->pwr_clks[CLK_VDISP_PERI]);
-			clk_disable_unprepare(g_mtk_dp->priv->pwr_clks[CLK_DISP_VCORE]);
-		} else {
-			pm_ret = pm_runtime_put_sync(g_mtk_dp->dev);
-			if (pm_ret < 0)
-				DPTXERR("Failed to disable dptx power: %d\n", pm_ret);
-			else
-				DPTXMSG("successfully disable dptx\n");
-		}
-		if (g_mtk_dp->priv->pwr_node) {
-			mtk_vidle_mminfra_on_off(false);
-			DPTXMSG("%s successfully disable dpc\n", __func__);
-		} else if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6991 && g_mtk_dp->priv->dpc_dev) {
-			pm_ret = pm_runtime_put_sync(g_mtk_dp->priv->dpc_dev);
-			if (pm_ret < 0)
-				DPTXERR("Failed to disable dpc power: %d\n", pm_ret);
-			else
-				DPTXMSG("successfully disable dpc\n");
-		}
-	} else
-		DPTXMSG("thread dptx_shutdown\n");
+
+	if (g_mtk_dp->priv->pwr_node) {
+		if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6993)
+			clk_disable_unprepare(g_mtk_dp->dp_phy_clk);
+		clk_disable_unprepare(g_mtk_dp->priv->pwr_clks[CLK_DPTX]);
+		clk_disable_unprepare(g_mtk_dp->priv->pwr_clks[CLK_VDISP_PERI]);
+		clk_disable_unprepare(g_mtk_dp->priv->pwr_clks[CLK_DISP_VCORE]);
+	} else {
+		pm_ret = pm_runtime_put_sync(g_mtk_dp->dev);
+		if (pm_ret < 0)
+			DPTXERR("Failed to disable dptx power: %d\n", pm_ret);
+		else
+			DPTXMSG("successfully disable dptx\n");
+	}
+
+	if (g_mtk_dp->priv->pwr_node) {
+		mtk_vidle_mminfra_on_off(false);
+		DPTXMSG("%s successfully disable dpc\n", __func__);
+	} else if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6991 && g_mtk_dp->priv->dpc_dev) {
+		pm_ret = pm_runtime_put_sync(g_mtk_dp->priv->dpc_dev);
+		if (pm_ret < 0)
+			DPTXERR("Failed to disable dpc power: %d\n", pm_ret);
+		else
+			DPTXMSG("successfully disable dpc\n");
+	}
 
 	if (g_mtk_dp->info.bPatternGen) {
 		if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6993)
@@ -1768,7 +1739,6 @@ int mdrv_DPTx_HPD_HandleInThread(struct mtk_dp *mtk_dp)
 		} else {
 			DPTXMSG("HPD_DISCON\n");
 			data = 0x2;
-			drm_dp_dpcd_write(&mtk_dp->aux, DPCD_00600, &data, 1);
 			mdrv_DPTx_VideoMute(mtk_dp, true);
 			mdrv_DPTx_AudioMute(mtk_dp, true);
 			mdelay(20);
@@ -1797,8 +1767,9 @@ int mdrv_DPTx_HPD_HandleInThread(struct mtk_dp *mtk_dp)
 				mhal_DPTx_EnableFEC(mtk_dp, true);
 			mdrv_DPTx_StopSentSDP(mtk_dp);
 			mhal_DPTx_AnalogPowerOnOff(mtk_dp, false);
-			DPTXMSG("%s dptx disabled\n", __func__);
 
+			mdrv_DPTx_put_device();
+			DPTXMSG("%s dptx disabled\n", __func__);
 			fakecablein = false;
 			fakeres = FAKE_DEFAULT_RES;
 			fakebpc = DP_COLOR_DEPTH_8BIT;
@@ -4429,8 +4400,14 @@ void mtk_dp_HPDInterruptSet(int bstatus)
 			if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6991 ||
 			g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6993) {
 				if (g_mtk_dp->priv->pwr_node) {
-					clk_prepare_enable(g_mtk_dp->priv->pwr_clks[CLK_DISP_VCORE]);
-					clk_prepare_enable(g_mtk_dp->priv->pwr_clks[CLK_VDISP_PERI]);
+					ret = clk_prepare_enable(g_mtk_dp->priv->pwr_clks[CLK_DISP_VCORE]);
+					if (ret < 0)
+						DPTXERR("Failed to enable vcore power: %d\n", ret);
+
+					ret = clk_prepare_enable(g_mtk_dp->priv->pwr_clks[CLK_VDISP_PERI]);
+					if (ret < 0)
+						DPTXERR("Failed to enable peri power: %d\n", ret);
+
 					if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6993) {
 						// set sram sleep mode
 						base = ioremap(0x3EFF1A10, 0x10);
@@ -4447,21 +4424,30 @@ void mtk_dp_HPDInterruptSet(int bstatus)
 						writel(0x20000, base + 0xA8);
 						iounmap(base);
 					}
-					clk_prepare_enable(g_mtk_dp->priv->pwr_clks[CLK_DPTX]);
-					if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6993)
-						clk_prepare_enable(g_mtk_dp->dp_phy_clk);
-					pm_runtime_get_sync(g_mtk_dp->dev);
-				}
-				else
-					pm_runtime_get_sync(g_mtk_dp->dev);
+					ret = clk_prepare_enable(g_mtk_dp->priv->pwr_clks[CLK_DPTX]);
+					if (ret < 0)
+						DPTXERR("Failed to enable dptx power: %d\n", ret);
 
+					if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6993) {
+						ret = clk_prepare_enable(g_mtk_dp->dp_phy_clk);
+						if (ret < 0)
+							DPTXERR("Failed to enable phy power: %d\n", ret);
+					} else {
+						ret = pm_runtime_get_sync(g_mtk_dp->dev);
+						if (ret < 0)
+							DPTXERR("Failed to enable phy power: %d\n", ret);
+					}
+				} else {
+					ret = pm_runtime_get_sync(g_mtk_dp->dev);
+					if (ret < 0)
+						DPTXERR("Failed to enable phy & dptx power: %d\n", ret);
+				}
 				if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6991) {
 					// control slice(mac->phy)
 					base = ioremap(0x31b50000, 0x100);
 					writel(readl(base + 0x78) | (1 << 0), base + 0x78); // Set bit 0 to 1 (reset)
 					writel(readl(base + 0x78) & ~(1 << 4), base + 0x78); // Clear bit 4 (enable)
 					iounmap(base);
-					mtk_dp_intf_prepare_clk();
 				} else if (g_mtk_dp->priv->data->mmsys_id == MMSYS_MT6993) {
 					//sram debug
 					base = ioremap(0x3EFF1A40, 0x10);
@@ -4470,13 +4456,13 @@ void mtk_dp_HPDInterruptSet(int bstatus)
 					//Check if 3eff1a40[9:8]=0x3 sram is pdn
 					if ((value & 0x0300) == 0x0300)
 						DPTXERR("SRAM is power down mode\n");
-
-					/* Enable 26M to enable aux */
-					mtk_dp_dvo_prepare_clk();
 				}
 			} else {
-				pm_runtime_get_sync(g_mtk_dp->dev);
+				ret = pm_runtime_get_sync(g_mtk_dp->dev);
+				if (ret < 0)
+					DPTXERR("Failed to enable phy & dptx power: %d\n", ret);
 			}
+
 			mdrv_DPTx_InitPort(g_mtk_dp);
 			mhal_DPTx_USBC_HPD(g_mtk_dp, true);
 			g_mtk_dp->bPowerOn = true;
@@ -4577,7 +4563,7 @@ void mtk_dp_poweroff(void)
 	DPTXFUNC();
 
 	mutex_lock(&dp_lock);
-	if (g_mtk_dp->disp_status == DPTX_DISP_NONE) {
+	if (!g_mtk_dp->bPowerOn) {
 		DPTXMSG("DPTX has been powered off\n");
 		mutex_unlock(&dp_lock);
 		return;

@@ -235,6 +235,7 @@ struct mtk_dp_dvo {
 	struct clk *hf_fdp_ck_src[10];
 	int irq;
 	struct drm_display_mode mode;
+	struct mtk_drm_private *priv;
 	int enable;
 	int res;
 };
@@ -364,8 +365,6 @@ static void mtk_dp_dvo_prepare(struct mtk_ddp_comp *comp)
 {
 	struct mtk_dp_dvo *dp_dvo = NULL;
 	int ret;
-	struct mtk_drm_crtc *mtk_crtc;
-	struct mtk_drm_private *priv;
 
 	DPTXFUNC();
 	mtk_dp_poweron();
@@ -374,41 +373,32 @@ static void mtk_dp_dvo_prepare(struct mtk_ddp_comp *comp)
 
 	/* Enable dp dvo clk */
 	if (dp_dvo != NULL) {
+		ret = clk_prepare_enable(dp_dvo->priv->pwr_clks[CLK_DPTX]);
+		if (ret < 0)
+			DPTXERR("Failed to enable dptx power: %d\n", ret);
+
+		ret = clk_prepare_enable(dp_dvo->hf_fdp_ck_src_mux);
+		if (ret < 0)
+			DPTXERR("%s Failed to enable mux: %d\n",
+				__func__, ret);
+
 		ret = clk_prepare_enable(dp_dvo->hf_fmm_ck);
 		if (ret < 0)
 			DPTXERR("%s Failed to enable hf_fmm_ck clock: %d\n",
 				__func__, ret);
+
 		ret = clk_prepare_enable(dp_dvo->hf_fdp_ck);
 		if (ret < 0)
 			DPTXERR("%s Failed to enable hf_fdp_ck clock: %d\n",
 				__func__, ret);
-		mtk_crtc = dp_dvo->ddp_comp.mtk_crtc;
-		priv = mtk_crtc->base.dev->dev_private;
+
 		ret = clk_prepare_enable(dp_dvo->hf_fdp_ck_src_pll);
 		if (ret < 0)
 			DPTXERR("%s Failed to enable pll clock: %d\n",
 				__func__, ret);
-
 	} else
 		DPTXERR("Failed to enable dp_dvo clock\n");
 }
-
-void mtk_dp_dvo_unprepare_clk(void)
-{
-	struct mtk_drm_crtc *mtk_crtc;
-	struct mtk_drm_private *priv;
-
-	DPTXFUNC();
-	mtk_crtc = g_dp_dvo->ddp_comp.mtk_crtc;
-	priv = mtk_crtc->base.dev->dev_private;
-	/* disable dp dvo clk */
-	if (g_dp_dvo != NULL) {
-		clk_set_rate(g_dp_dvo->hf_fdp_ck_src_pll, 594000000);
-		clk_disable_unprepare(g_dp_dvo->hf_fdp_ck_src_mux);
-	} else
-		DPTXERR("Failed to disable dp_dvo clock\n");
-}
-EXPORT_SYMBOL(mtk_dp_dvo_unprepare_clk);
 
 void mtk_dp_dvo_PatternGenEn(bool enable)
 {
@@ -428,29 +418,18 @@ EXPORT_SYMBOL(mtk_dp_dvo_PatternGenEn);
 static void mtk_dp_dvo_unprepare(struct mtk_ddp_comp *comp)
 {
 	struct mtk_dp_dvo *dp_dvo = NULL;
-	struct mtk_drm_crtc *mtk_crtc;
-	struct mtk_drm_private *priv;
 
 	DPTXFUNC();
 	dp_dvo = comp_to_dp_dvo(comp);
 
 	/* disable dp dvo clk */
 	if (dp_dvo != NULL) {
-		mtk_crtc = dp_dvo->ddp_comp.mtk_crtc;
-		if(mtk_crtc) {
-			priv = mtk_crtc->base.dev->dev_private;
-			if(atomic_read(&priv->kernel_pm.status) == KERNEL_SHUTDOWN)
-				dptx_shutdown();
-		}
-
-		mtk_crtc = dp_dvo->ddp_comp.mtk_crtc;
-		priv = mtk_crtc->base.dev->dev_private;
-
-		mtk_dp_dvo_unprepare_clk();
-		clk_disable_unprepare(dp_dvo->hf_fmm_ck);
-		clk_disable_unprepare(dp_dvo->hf_fdp_ck);
 		clk_disable_unprepare(dp_dvo->hf_fdp_ck_src_pll);
-		mdrv_DPTx_put_device();
+		clk_disable_unprepare(dp_dvo->hf_fdp_ck);
+		clk_disable_unprepare(dp_dvo->hf_fmm_ck);
+		clk_set_rate(dp_dvo->hf_fdp_ck_src_pll, 594000000);
+		clk_disable_unprepare(dp_dvo->hf_fdp_ck_src_mux);
+		clk_disable_unprepare(dp_dvo->priv->pwr_clks[CLK_DPTX]);
 	} else
 		DPTXERR("Failed to disable dp_dvo clock\n");
 }
@@ -489,20 +468,6 @@ void mtk_dvo_video_clock(struct mtk_dp_dvo *dp_dvo)
 	DPTXMSG("%s dp dvo->hf_fdp_ck_src_pll =  %ld\n",
 		__func__, clk_get_rate(g_dp_dvo->hf_fdp_ck_src_pll));
 }
-
-void mtk_dp_dvo_prepare_clk(void)
-{
-	int ret;
-
-	DPTXFUNC();
-
-	ret = clk_prepare_enable(g_dp_dvo->hf_fdp_ck_src_mux);
-	if (ret < 0)
-		DPTXERR("%s Failed to enable pclk: %d\n",
-			__func__, ret);
-}
-EXPORT_SYMBOL(mtk_dp_dvo_prepare_clk);
-
 
 static void mtk_dp_dvo_golden_setting(struct mtk_ddp_comp *comp,
 					    struct cmdq_pkt *handle)
@@ -873,6 +838,7 @@ static int mtk_dvo_bind(struct device *dev, struct device *master,
 	int ret;
 
 	DPTXMSG("%s+\n", __func__);
+	dp_dvo->priv = drm_dev->dev_private;
 	ret = mtk_ddp_comp_register(drm_dev, &dp_dvo->ddp_comp);
 	if (ret < 0) {
 		dev_err(dev, "Failed to register component %s: %d\n",
