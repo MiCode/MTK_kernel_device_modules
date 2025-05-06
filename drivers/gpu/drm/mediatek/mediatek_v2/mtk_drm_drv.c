@@ -11068,12 +11068,9 @@ void mtk_request_retrig(struct drm_device *dev,
 }
 
 unsigned int mtk_get_retrig_target_us(unsigned int base_t, unsigned int step_dur,
-	unsigned int ept_t)
+	unsigned int cur_t, unsigned int ept_t)
 {
-	unsigned int cur_t = 0, diff_t = 0;
-	unsigned int step = 0;
-
-	cur_t = ktime_get_ns() / 1000;
+	unsigned int diff_t = 0;
 
 	if (base_t >= cur_t) {
 		DDPPR_ERR("%s: fail, time corrupted, base_t:%u, cur_t:%u\n",
@@ -11087,33 +11084,26 @@ unsigned int mtk_get_retrig_target_us(unsigned int base_t, unsigned int step_dur
 	if (diff_t > 500000)
 		return 0;
 
-	// max use 60 fps
-	if (step_dur > 16666)
-		step_dur = 16666;
-
-	// ept_t == 0               -> HWC do not set ept
-	// ept_t < cur_t           -> HWC set ept to system before calling retrig
+	// ept_t == 0              -> HWC do not set ept
+	// ept_t <= cur_t          -> HWC set ept to system time when calling retrig
 	// (ept_t - cur_t) > 100ms -> HWC set a corrupted ept
-	if (ept_t == 0 || ept_t < cur_t || (ept_t - cur_t) > 100000) {
-		mtk_drm_trace_begin("ept_t:%u cur_t:%u", ept_t, cur_t);
-		mtk_drm_trace_end();
-	} else {
-		cur_t = ept_t - (step_dur / 2);
+	if (ept_t == 0 || ept_t <= cur_t || (ept_t - cur_t) > 100000) {
+		unsigned int step = 0;
 
-		if (base_t >= cur_t) {
-			DDPPR_ERR("%s: fail, time corrupted, ept_t:%u, step_dur:%u, base_t:%u, cur_t:%u\n",
-				__func__, ept_t, step_dur, base_t, cur_t);
-			return 0;
-		}
+		// max use 60 fps
+		if (step_dur > 16666)
+			step_dur = 16666;
 
-		diff_t = cur_t - base_t;
-		mtk_drm_trace_begin("ept_t:%u step_dur:%u", ept_t, step_dur);
+		mtk_drm_trace_begin("base_t:%u ept_t:%u cur_t:%u step_dur:%u",
+			base_t, ept_t, cur_t, step_dur);
 		mtk_drm_trace_end();
+
+		step = diff_t / step_dur;
+		step += 1;
+		return base_t + step * step_dur;
 	}
 
-	step = diff_t / step_dur;
-	step += 1;
-	return base_t + step * step_dur;
+	return ept_t;
 }
 
 int mtk_drm_ioctl_retrig(struct drm_device *dev, void *data,
@@ -11204,16 +11194,16 @@ int mtk_drm_ioctl_retrig(struct drm_device *dev, void *data,
 	}
 
 	// get target TE time
+	current_t = ktime_get_ns() / 1000;
 	step_dur = 1000000 / drm_mode_vrefresh(&crtc->state->adjusted_mode);
 	target_t = mtk_get_retrig_target_us(
 		private->crtc_rel_present_ts[crtc_idx] / 1000,
-		step_dur,
+		step_dur, current_t,
 		retrig->expected_present_ts / 1000);
 
 	// wait to target TE - 4ms
 	if (target_t > 0) {
 		wakeup_t = target_t - 4000;
-		current_t = ktime_get_ns() / 1000;
 
 		if (current_t < wakeup_t) {
 			sleep_t = wakeup_t - current_t;
