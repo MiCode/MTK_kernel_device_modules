@@ -2832,6 +2832,10 @@ void set_api_sync_flag(int flag)
 	} else if (flag == 6) {
 		dcs_set_fix_num(2);
 		start_mewtwo_timer();
+	} else if (flag == 5566) {
+		// hint SF edge effect, [0:7] for api_sync_flag
+		tmp_sysram_val = 0xFF << COMMON_LOW_BIT;
+		ged_eb_dvfs_task(EB_UPDATE_API_BOOST, tmp_sysram_val);
 	} else if (((flag & 0xFFFF0000) == 0x60000) || ((flag & 0xFFFF0000) == 0x70000) ||
 		((flag & 0xFF000000) == 0x39000000)) {
 		if (api_sync_flag != flag)

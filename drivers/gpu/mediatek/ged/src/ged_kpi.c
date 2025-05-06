@@ -2413,6 +2413,8 @@ static GED_ERROR ged_kpi_push_timestamp(
 
 				mtk_gpueb_sysram_rb_write(tmp_sram_rb_write_idx, temp_ts);
 				mtk_gpueb_sysram_write(SYSRAM_GPU_TS_RB_IDX, tmp_sram_rb_write_idx);
+				// reset SF edge effect api_boost
+				ged_eb_dvfs_task(EB_UPDATE_API_BOOST, 0);
 				latest_done_ts = socTimeStamp;
 				latest_done_fid = i32FrameID;
 				break;
