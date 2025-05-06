@@ -11751,6 +11751,8 @@ static void SMI_INFO_DUMP(enum ISP_IRQ_TYPE_ENUM irq_module)
 
 				mtk_smi_dbg_hang_detect("camera_isp");
 
+			} else if (irq_module == ISP_IRQ_TYPE_INT_CAM_B_ST) {
+				mtk_smi_dbg_hang_detect("camera_isp_camb");
 			}
 			g_ISPIntStatus_SMI[irq_module].ispIntErr =
 				g_ISPIntStatus_SMI[irq_module].ispInt5Err = 0;
