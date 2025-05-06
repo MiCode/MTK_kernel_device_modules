@@ -641,7 +641,7 @@ static int mminfra_bw_monitor_test(void *data)
 	int i;
 	u32 report_bw[FAKE_ENG_NR] = {0};
 	u32 temp_bw[4] = {0}, temp_port[4] = {0};
-	ktime_t start_time, end_time;
+	ktime_t start_time = 0, end_time = 0;
 
 	while (!kthread_should_stop()) {
 		end_time = ktime_get();
@@ -764,7 +764,7 @@ MODULE_PARM_DESC(mminfra_bw_fuzzer_para, "mminfra bw_fuzzer para");
 static int mminfra_imax_probe(struct platform_device *pdev)
 {
 	int i;
-	u32 tmp;
+	u32 tmp = 0;
 
 	g_pdev = pdev;
 	dev = &pdev->dev;
