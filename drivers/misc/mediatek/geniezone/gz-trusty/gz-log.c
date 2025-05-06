@@ -355,7 +355,7 @@ static int do_gz_log_read(struct gz_log_state *gls,
 	rmb();
 	alloc = log->alloc;
 
-	if (alloc - get > log->sz) {
+	if (alloc > get + log->sz) {
 		pr_notice("trusty: log overflow, lose some msg.");
 		get = alloc - log->sz;
 	}
