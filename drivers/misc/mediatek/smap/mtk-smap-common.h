@@ -41,8 +41,10 @@ struct smap_mbrain {
 	unsigned int type;
 	unsigned int enable;
 	unsigned int mode;
+	unsigned int temp_mask;
 	unsigned int dump_cnt;
 	unsigned int mitigation_cnt;
+	unsigned int total_mitigation_cnt;
 	unsigned int dect_cnt;
 	unsigned int temp_cnt;
 	unsigned int mitigation_rate;
