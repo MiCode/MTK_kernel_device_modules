@@ -227,12 +227,20 @@ EXPORT_SYMBOL_GPL(mtk_ise_awake_unlock);
 
 static void ise_dram_vote(void)
 {
-	icc_set_bw(ise_perf_path, 0, ise_perf_vote_bw);
+	int ret;
+
+	ret = icc_set_bw(ise_perf_path, 0, ise_perf_vote_bw);
+	if (ret < 0)
+		pr_notice("%s: set_bw %u ret %d\n", __func__, ise_perf_vote_bw, ret);
 }
 
 static void ise_dram_unvote(void)
 {
-	icc_set_bw(ise_perf_path, 0, 0);
+	int ret;
+
+	ret = icc_set_bw(ise_perf_path, 0, 0);
+	if (ret < 0)
+		pr_notice("%s: set_bw 0 ret %d\n", __func__, ret);
 }
 
 static void ise_power_on(void)
@@ -479,7 +487,7 @@ ssize_t ise_lpm_dbg(struct file *file, const char __user *buffer,
 
 #ifdef ISE_LPM_MEASURE_VOTE_BW
 	if (!strncmp(cmd_str, "ise_pwr_vote", sizeof("ise_pwr_vote"))) {
-		pr_notice("%s: change ddr bw from %d to %ld\n", __func__, ise_perf_vote_bw, param);
+		pr_notice("%s: change ddr bw from %u to %ld\n", __func__, ise_perf_vote_bw, param);
 		ise_perf_vote_bw = param;
 		return count;
 	}
@@ -557,7 +565,7 @@ static int ise_lpm_probe(struct platform_device *pdev)
 #else
 		ise_perf_vote_bw = 0;
 #endif
-		pr_notice("ise: vote bw %d\n", ise_perf_vote_bw);
+		pr_notice("ise: vote bw %u\n", ise_perf_vote_bw);
 	}
 
 	if (ise_wakelock_en) {
