@@ -38,6 +38,13 @@
 #include "mtk-smmu-v3.h"
 #include "mtk-smmu-ssid.h"
 
+#define smmu_dbg(dev, cond, fmt, args...) \
+	do { \
+		if ((cond)) { \
+			dev_info((dev), fmt, ##args); \
+		} \
+	} while (0)
+
 #define LINK_WITH_APU			BIT(0)
 /* For SMMU EP/bring up phase: smi not ready */
 #define SMMU_EN_PRE			BIT(1)
@@ -143,7 +150,8 @@ struct ste_mpam_cmax {
 static struct mtk_smmu_data *mtk_smmu_datas[SMMU_TYPE_NUM];
 static unsigned int smmuwp_consume_intr(struct arm_smmu_device *smmu,
 					unsigned int irq_bit);
-static unsigned int smmuwp_process_intr(struct arm_smmu_device *smmu);
+static unsigned int smmuwp_process_intr(struct arm_smmu_device *smmu,
+					bool log_enable);
 static bool smmuwp_process_tf(struct arm_smmu_device *smmu,
 			      struct arm_smmu_master *master,
 			      struct mtk_iommu_fault_event *fault_evt);
@@ -1797,6 +1805,8 @@ static irqreturn_t mtk_smmu_sec_irq_process(int irq, void *dev)
 
 static int mtk_smmu_irq_handler(int irq, void *dev)
 {
+	static DEFINE_RATELIMIT_STATE(irq_rs, SMMU_FAULT_RS_INTERVAL,
+				      SMMU_FAULT_RS_BURST);
 	struct arm_smmu_device *smmu = dev;
 	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
 	u32 gerror, gerrorn, active, irq_sta;
@@ -1804,6 +1814,11 @@ static int mtk_smmu_irq_handler(int irq, void *dev)
 	struct smmuv3_pmu_device *pmu_device;
 	unsigned long flags;
 #endif
+
+	if (!__ratelimit(&irq_rs)) {
+		smmuwp_process_intr(smmu, false);
+		return IRQ_HANDLED;
+	}
 
 	gerror = readl_relaxed(smmu->base + ARM_SMMU_GERROR);
 	gerrorn = readl_relaxed(smmu->base + ARM_SMMU_GERRORN);
@@ -1824,9 +1839,7 @@ static int mtk_smmu_irq_handler(int irq, void *dev)
 			 __func__, irq, gerror, gerrorn, active);
 	}
 
-	smmuwp_process_intr(smmu);
-
-	mtk_smmu_irq_record(data);
+	smmuwp_process_intr(smmu, true);
 
 #if IS_ENABLED(CONFIG_MTK_IOMMU_DEBUG)
 	spin_lock_irqsave(&data->pmu_lock, flags);
@@ -3257,7 +3270,7 @@ static void smmuwp_clear_tf(struct arm_smmu_device *smmu)
 }
 
 /* Process SMMU wrapper interrupt */
-static unsigned int smmuwp_process_intr(struct arm_smmu_device *smmu)
+static unsigned int smmuwp_process_intr(struct arm_smmu_device *smmu, bool log_enable)
 {
 	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
 	unsigned int irq_sta = 0, pend_cnt = 0, i = 0, tbu_cnt = 0;
@@ -3268,7 +3281,7 @@ static unsigned int smmuwp_process_intr(struct arm_smmu_device *smmu)
 		return 0;
 
 	if (irq_sta >= STA_TCU_RAS_CRI)
-		dev_info(smmu->dev,
+		smmu_dbg(smmu->dev, log_enable,
 			 "IRQ_STA:0x%x CTL:[0x%x 0x%x 0x%x] MON:[0x%x 0x%x 0x%x 0x%x 0x%x]\n",
 			 irq_sta,
 			 smmu_read_reg(wp_base, SMMUWP_GLB_CTL0),
@@ -3282,52 +3295,57 @@ static unsigned int smmuwp_process_intr(struct arm_smmu_device *smmu)
 
 	if (irq_sta & STA_TCU_GLB_INTR) {
 		pend_cnt = smmuwp_consume_intr(smmu, STA_TCU_GLB_INTR);
-		dev_info(smmu->dev,
+		smmu_dbg(smmu->dev, log_enable,
 			 "IRQ_STA:0x%x, Non-secure TCU global interrupt detected %d\n",
 			 irq_sta, pend_cnt);
 	}
 
 	if (irq_sta & STA_TCU_CMD_SYNC_INTR) {
 		pend_cnt = smmuwp_consume_intr(smmu, STA_TCU_CMD_SYNC_INTR);
-		dev_info(smmu->dev,
+		smmu_dbg(smmu->dev, log_enable,
 			 "IRQ_STA:0x%x, Non-secure TCU CMD_SYNC interrupt detected %d\n",
 			 irq_sta, pend_cnt);
 	}
 
 	if (irq_sta & STA_TCU_EVTQ_INTR) {
 		pend_cnt = smmuwp_consume_intr(smmu, STA_TCU_EVTQ_INTR);
-		dev_info(smmu->dev,
+		smmu_dbg(smmu->dev, log_enable,
 			 "IRQ_STA:0x%x, Non-secure TCU EVTQ interrupt detected %d\n",
 			 irq_sta, pend_cnt);
 	}
 
 	if (irq_sta & STA_TCU_PRI_INTR) {
 		pend_cnt = smmuwp_consume_intr(smmu, STA_TCU_PRI_INTR);
-		dev_info(smmu->dev, "IRQ_STA:0x%x, TCU PRI interrupt detected %d\n",
+		smmu_dbg(smmu->dev, log_enable,
+			 "IRQ_STA:0x%x, TCU PRI interrupt detected %d\n",
 			 irq_sta, pend_cnt);
 	}
 
 	if (irq_sta & STA_TCU_PMU_INTR) {
 		pend_cnt = smmuwp_consume_intr(smmu, STA_TCU_PMU_INTR);
-		dev_info(smmu->dev, "IRQ_STA:0x%x, TCU PMU interrupt detected %d\n",
+		smmu_dbg(smmu->dev, log_enable,
+			 "IRQ_STA:0x%x, TCU PMU interrupt detected %d\n",
 			 irq_sta, pend_cnt);
 	}
 
 	if (irq_sta & STA_TCU_RAS_CRI) {
 		pend_cnt = smmuwp_consume_intr(smmu, STA_TCU_RAS_CRI);
-		dev_info(smmu->dev, "IRQ_STA:0x%x, TCU RAS CRI detected %d\n",
+		smmu_dbg(smmu->dev, log_enable,
+			 "IRQ_STA:0x%x, TCU RAS CRI detected %d\n",
 			 irq_sta, pend_cnt);
 	}
 
 	if (irq_sta & STA_TCU_RAS_ERI) {
 		pend_cnt = smmuwp_consume_intr(smmu, STA_TCU_RAS_ERI);
-		dev_info(smmu->dev, "IRQ_STA:0x%x, TCU RAS ERI detected %d\n",
+		smmu_dbg(smmu->dev, log_enable,
+			 "IRQ_STA:0x%x, TCU RAS ERI detected %d\n",
 			 irq_sta, pend_cnt);
 	}
 
 	if (irq_sta & STA_TCU_RAS_FHI) {
 		pend_cnt = smmuwp_consume_intr(smmu, STA_TCU_RAS_FHI);
-		dev_info(smmu->dev, "IRQ_STA:0x%x, TCU RAS FHI detected %d\n",
+		smmu_dbg(smmu->dev, log_enable,
+			 "IRQ_STA:0x%x, TCU RAS FHI detected %d\n",
 			 irq_sta, pend_cnt);
 	}
 
@@ -3335,21 +3353,24 @@ static unsigned int smmuwp_process_intr(struct arm_smmu_device *smmu)
 	for (i = 0; i < tbu_cnt; i++) {
 		if (irq_sta & STA_TBUx_RAS_CRI(i)) {
 			pend_cnt = smmuwp_consume_intr(smmu, STA_TBUx_RAS_CRI(i));
-			dev_info(smmu->dev, "IRQ_STA:0x%x, TBU%d RAS CRI detected %d\n",
+			smmu_dbg(smmu->dev, log_enable,
+				 "IRQ_STA:0x%x, TBU%d RAS CRI detected %d\n",
 				 irq_sta, i, pend_cnt);
 		}
 
 		if (irq_sta & STA_TBUx_RAS_ERI(tbu_cnt, i)) {
 			pend_cnt = smmuwp_consume_intr(smmu, STA_TBUx_RAS_ERI(
 						       tbu_cnt, i));
-			dev_info(smmu->dev, "IRQ_STA:0x%x, TBU%d RAS ERI detected %d\n",
+			smmu_dbg(smmu->dev, log_enable,
+				 "IRQ_STA:0x%x, TBU%d RAS ERI detected %d\n",
 				 irq_sta, i, pend_cnt);
 		}
 
 		if (irq_sta & STA_TBUx_RAS_FHI(tbu_cnt, i)) {
 			pend_cnt = smmuwp_consume_intr(smmu, STA_TBUx_RAS_FHI(
 						       tbu_cnt, i));
-			dev_info(smmu->dev, "IRQ_STA:0x%x, TBU%d RAS FHI detected %d\n",
+			smmu_dbg(smmu->dev, log_enable,
+				 "IRQ_STA:0x%x, TBU%d RAS FHI detected %d\n",
 				 irq_sta, i, pend_cnt);
 		}
 	}
