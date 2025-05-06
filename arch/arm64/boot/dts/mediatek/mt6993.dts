@@ -7576,7 +7576,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x32620000 0 0x1000>;
 			comp-ids = <MML2_MUTEX>;
 			comp-names = "mml2_mutex0";
-			interrupts = <GIC_SPI 445 IRQ_TYPE_LEVEL_HIGH 0>;
+			interrupts = <GIC_SPI 455 IRQ_TYPE_LEVEL_HIGH 0>;
 
 			/* !!Following code generate by topology parser (tpparser.py)!! */
 			mutex-comps = "rdma1", "wrot0",
