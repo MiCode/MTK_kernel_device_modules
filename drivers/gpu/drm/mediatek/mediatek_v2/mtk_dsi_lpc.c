@@ -230,20 +230,13 @@ void mtk_set_dsi_lpc_en(struct mtk_ddp_comp *comp, bool en)
 static int mtk_dsi_lpc_unit(struct mtk_drm_crtc *mtk_crtc)
 {
 	struct mtk_ddp_comp *output_comp = NULL;
-	int index = 0;
+	int index = -1;
 
 	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 	if (output_comp && (mtk_ddp_comp_get_type(output_comp->id) == MTK_DSI)) {
-		/* temp support dsi0
-		 * if (output_comp->id == DDP_COMPONENT_DSI0)
-		 * index = 0;
-		 * else if (output_comp->id == DDP_COMPONENT_DSI1)
-		 * index = 1;
-		 * else if (output_comp->id == DDP_COMPONENT_DSI2)
-		 * index = 2;
-		 * return index;
-		 */
-		 index = 0;
+		/* temp support dsi0 */
+		if (output_comp->id == DDP_COMPONENT_DSI0)
+			index = 0;
 	}
 	return index;
 }
