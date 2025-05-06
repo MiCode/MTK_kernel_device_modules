@@ -1108,6 +1108,7 @@ static const struct mtk_mmqos_desc mmqos_desc_mt6895 = {
 			HRT_NONE, HRT_CAM, HRT_NONE, HRT_NONE },
 	},
 	.dual_pipe_larbs = { SLAVE_LARB(1), SLAVE_LARB(20) },
+	.freq_mode = BY_REGULATOR,
 };
 static const struct of_device_id mtk_mmqos_mt6895_of_ids[] = {
 	{
