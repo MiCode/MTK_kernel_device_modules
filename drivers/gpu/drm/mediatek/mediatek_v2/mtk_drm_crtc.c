@@ -13146,6 +13146,13 @@ skip_prete:
 			GCE_FI;
 		}
 
+		/* back up dsi status */
+		if (crtc_id == 0) {
+			slot_addr = mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_DSI_DEBUG_STATUS);
+			cmdq_pkt_mem_move(cmdq_handle, mtk_crtc->gce_obj.base,
+				output_comp->regs_pa + 0x0C, slot_addr, CMDQ_THR_SPR_IDX3);
+		}
+
 		GCE_DO(wfe, EVENT_CMD_EOF);
 		if (profile_trig && (crtc_id == 0))
 			mtk_crtc_backup_tpr_to_slot(mtk_crtc, cmdq_handle, DISP_SLOT_TRIG_TICK(4));

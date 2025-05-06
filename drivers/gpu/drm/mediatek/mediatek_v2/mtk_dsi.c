@@ -7679,6 +7679,7 @@ int mtk_dsi_analysis(struct mtk_ddp_comp *comp)
 	void __iomem *baddr = comp->regs;
 	unsigned int reg_val;
 	struct mtk_dsi *dsi = container_of(comp, struct mtk_dsi, ddp_comp);
+	unsigned int dsi_frame_status = 0;
 
 	if (!baddr) {
 		DDPDUMP("%s, %s is NULL!\n", __func__, mtk_dump_comp_str(comp));
@@ -7748,6 +7749,10 @@ int mtk_dsi_analysis(struct mtk_ddp_comp *comp)
 							baddr + DSI_CON_CTRL(dsi->driver_data)),
 		REG_FLD_VAL_GET(CMD_TYPE1_HS_FLD_HFP_BLANKING_NULL_EN, reg_val),
 		REG_FLD_VAL_GET(CMD_TYPE1_HS_FLD_HFP_BLANKING_NULL_LEN, reg_val));
+
+	dsi_frame_status = *(unsigned int *)mtk_get_gce_backup_slot_va(comp->mtk_crtc,
+				DISP_SLOT_DSI_DEBUG_STATUS);
+	DDPDUMP("dsi_frame_status:0x%x\n", dsi_frame_status);
 
 	return 0;
 }

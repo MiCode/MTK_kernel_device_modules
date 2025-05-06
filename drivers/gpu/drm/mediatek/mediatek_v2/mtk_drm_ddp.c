@@ -38176,6 +38176,11 @@ REDUMP:
 		0x090, readl_relaxed(module_base + 0x090),
 		0x094, readl_relaxed(module_base + 0x094),
 		0x098, readl_relaxed(module_base + 0x098));
+	DDPDUMP("0x%03x=0x%08x 0x%03x=0x%08x 0x%03x=0x%08x 0x%03x=0x%08x\n",
+		0x328, readl_relaxed(module_base + 0x328),
+		0x32c, readl_relaxed(module_base + 0x32c),
+		0x330, readl_relaxed(module_base + 0x330),
+		0x334, readl_relaxed(module_base + 0x334));
 
 	if (cnt == 0 && ddp->side_regs != NULL) {
 		cnt = 1;
