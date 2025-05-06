@@ -1466,7 +1466,7 @@ void exec_BAT_EC(struct mtk_battery *gm, int cmd, int param)
 		{
 			fg_cust_data->difference_fgc_fgv_th2 = param;
 			bm_err(gm,
-				"exe_BAT_EC cmd %d, fg_cust_data->difference_fgc_fgv_th1=%d\n",
+				"exe_BAT_EC cmd %d, fg_cust_data->difference_fgc_fgv_th2=%d\n",
 				cmd, param);
 		}
 		break;

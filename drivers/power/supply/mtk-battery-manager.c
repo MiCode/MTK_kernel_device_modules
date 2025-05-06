@@ -570,11 +570,13 @@ static enum alarmtimer_restart power_misc_kthread_gm1_timer_func(
 
 static ktime_t check_power_misc_time(struct mtk_battery_manager *bm)
 {
+	struct battery_data *bs_data;
 	ktime_t ktime;
 	int vsys = 0;
 
+	bs_data = &bm->bs_data;
 
-	if (bm->disable_quick_shutdown == 1) {
+	if (bm->disable_quick_shutdown == 1 || bs_data->bat_capacity == 0) {
 		ktime = ktime_set(10, 0);
 		goto out;
 	}
@@ -636,7 +638,7 @@ static int power_misc_routine_thread(void *arg)
 		bm->sdc.timeout = 0;
 		spin_unlock_irqrestore(&bm->sdc.slock, flags);
 
-		pr_err("[%s] before %d\n", __func__, pending_flags);
+		pr_debug("[%s] before %d\n", __func__, pending_flags);
 
 		if(pending_flags & 1<<BATTERY_MAIN)
 			polling[BATTERY_MAIN] = shutdown_event_handler(bm->gm1);
@@ -651,7 +653,7 @@ static int power_misc_routine_thread(void *arg)
 		pending_flags = bm->sdc.timeout;
 		spin_unlock_irqrestore(&bm->sdc.slock, flags);
 
-		pr_err("[%s] after %d M:%d F:%d S:%d\n", __func__,pending_flags, polling[0], polling[1], polling[2]);
+		pr_debug("[%s] after %d M:%d F:%d S:%d\n", __func__,pending_flags, polling[0], polling[1], polling[2]);
 		time_now  = ktime_get_boottime();
 		ktime = check_power_misc_time(bm);
 		for (i = 0; i < BATTERY_SDC_MAX; i++ ) {
@@ -825,11 +827,11 @@ static int battery_manager_routine_thread(void *arg)
 
 		time_now  = ktime_get_boottime();
 		tmp_time_now  = ktime_to_timespec64(time_now);
-		end_time.tv_sec = tmp_time_now.tv_sec + 10;
+		end_time.tv_sec = tmp_time_now.tv_sec + 60;
 		end_time.tv_nsec = tmp_time_now.tv_nsec;
 		bm->endtime = end_time;
 #ifdef BM_USE_HRTIMER
-		ktime = ktime_set(10, 0);
+		ktime = ktime_set(60, 0);
 		hrtimer_start(&bm->bm_hrtimer, ktime, HRTIMER_MODE_REL);
 #endif
 #ifdef BM_USE_ALARM_TIMER
@@ -1026,14 +1028,14 @@ static int bm_update_psy_property(struct mtk_battery *gm, enum bm_psy_prop prop)
 
 	switch (prop) {
 	case CURRENT_NOW:
-		ret = gauge_get_property_control(gm, GAUGE_PROP_BATTERY_CURRENT,
+		ret = gauge_get_property_control(gm, GAUGE_PROP_CIC2,
 			&curr_now, 1);
 
 		if (ret == -EHOSTDOWN)
-			ret_val = gm->ibat;
+			ret_val = gm->cic2;
 		else {
 			ret_val = curr_now;
-			gm->ibat = curr_now;
+			gm->cic2 = curr_now;
 		}
 		break;
 	case CURRENT_AVG:
@@ -1041,7 +1043,7 @@ static int bm_update_psy_property(struct mtk_battery *gm, enum bm_psy_prop prop)
 			&curr_avg, 1);
 
 		if (ret == -EHOSTDOWN)
-			ret_val = gm->ibat;
+			ret_val = gm->cic2;
 		else
 			ret_val = curr_avg;
 		break;

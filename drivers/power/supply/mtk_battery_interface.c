@@ -104,6 +104,8 @@ int prop_control_mapping(enum gauge_property gp)
 		return CONTROL_GAUGE_PROP_BATTERY_VOLTAGE;
 	case GAUGE_PROP_BATTERY_TEMPERATURE_ADC:
 		return CONTROL_GAUGE_PROP_BATTERY_TEMPERATURE_ADC;
+	case GAUGE_PROP_CIC2:
+		return CONTROL_GAUGE_PROP_BATTERY_CIC2;
 	default:
 		return -1;
 	}
@@ -131,7 +133,6 @@ int gauge_get_property_control(struct mtk_battery *gm, enum gauge_property gp,
 		dtime = ktime_sub(ctime, prop_control->last_prop_update_time[prop_map]);
 		diff = ktime_to_ms(dtime);
 		prop_control->binder_counter += 1;
-
 		if (diff > prop_control->diff_time_th[prop_map]) {
 			ret = gauge_get_property(gm, gp, val);
 			prop_control->val[prop_map] = *val;

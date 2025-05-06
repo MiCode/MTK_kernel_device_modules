@@ -2476,6 +2476,7 @@ static int regmap_type_get(struct mtk_gauge *gauge,
 static int battery_cic2_get(struct mtk_gauge *gauge, struct mtk_gauge_sysfs_field_info *attr,
 			    int *val)
 {
+	*val = instant_current(gauge);
 	return 0;
 }
 

@@ -147,6 +147,7 @@ enum property_control_data {
 	CONTROL_GAUGE_PROP_AVERAGE_CURRENT,
 	CONTROL_GAUGE_PROP_BATTERY_VOLTAGE,
 	CONTROL_GAUGE_PROP_BATTERY_TEMPERATURE_ADC,
+	CONTROL_GAUGE_PROP_BATTERY_CIC2,
 	CONTROL_MAX,
 };
 
@@ -1181,6 +1182,7 @@ struct mtk_battery {
 	int baton;
 	int vbat;
 	int ibat;
+	int cic2;
 	int tbat;
 	int soc;
 	int ui_soc;

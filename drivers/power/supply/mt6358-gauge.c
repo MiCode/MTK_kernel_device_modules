@@ -2846,6 +2846,7 @@ static int boot_zcv_get(struct mtk_gauge *gauge_dev,
 static int battery_cic2_get(struct mtk_gauge *gauge, struct mtk_gauge_sysfs_field_info *attr,
 			    int *val)
 {
+	*val = instant_current(gauge);
 	return 0;
 }
 

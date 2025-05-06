@@ -3328,6 +3328,8 @@ int fg_prop_control_init(struct mtk_battery *gm)
 		PROP_BATTERY_VOLTAGE_TIMEOUT * 100;
 	prop_control->diff_time_th[CONTROL_GAUGE_PROP_BATTERY_TEMPERATURE_ADC] =
 		PROP_BATTERY_TEMPERATURE_ADC_TIMEOUT * 100;
+	prop_control->diff_time_th[CONTROL_GAUGE_PROP_BATTERY_CIC2] =
+		PROP_BATTERY_CURRENT_TIMEOUT * 100;
 	prop_control->i2c_fail_th = I2C_FAIL_TH;
 	prop_control->binder_counter = 0;
 	return 0;
