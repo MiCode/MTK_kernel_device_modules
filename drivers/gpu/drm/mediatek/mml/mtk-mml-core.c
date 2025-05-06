@@ -1841,9 +1841,6 @@ static void core_taskdone(struct kthread_work *work)
 	mml_mmp(taskdone, MMPROFILE_FLAG_START, jobid, task->disp_fid_submit);
 	mml_msg("%s job %u", __func__, jobid);
 
-	if (cfg->isr_count)
-		mml_isr_wait(cfg->mml, task);
-
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 	mml_dump_output(cfg->mml, path, task);
 #endif
@@ -1853,6 +1850,9 @@ static void core_taskdone(struct kthread_work *work)
 		mml_core_mminfra_enable(cfg->mml, 0, path->mmlsys);
 		mml_dpc_exc_keep_task(task, path);
 	}
+
+	if (cfg->isr_count)
+		mml_isr_wait(cfg->mml, task);
 
 	/* remove task in qos list and setup next */
 	if (task->pkts[0])
