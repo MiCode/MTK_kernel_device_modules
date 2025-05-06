@@ -16,6 +16,7 @@
 
 extern void mtk_vcodec_vgo_send(int type, void *data);
 extern int videogo_active_fn(void *arg);
+extern int enforce_ct_to_vip(int val, int caller_id);
 
 
 enum codec_type {

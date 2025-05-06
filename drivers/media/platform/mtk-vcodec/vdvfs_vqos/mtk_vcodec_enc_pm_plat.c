@@ -497,13 +497,6 @@ void mtk_venc_dvfs_sync_vsi_data(struct mtk_vcodec_ctx *ctx)
 	dev->venc_dvfs_params.target_freq = inst->vsi->config.target_freq;
 	dev->venc_dvfs_params.target_bw_factor = inst->vsi->config.target_bw_factor;
 	mtk_vcodec_cpu_adaptive_ctrl(ctx, inst->vsi->config.cpu_hint);
-	if (inst->vsi->config.cpu_hint) {
-		mtk_vcodec_dvfs_qos_log(true, "[VENC] enable ct to TA");
-		enforce_ct_to_vip(1, 3);
-	} else {
-		mtk_vcodec_dvfs_qos_log(true, "[VENC] disable ct to TA");
-		enforce_ct_to_vip(0, 3);
-	}
 }
 
 void mtk_venc_dvfs_begin_inst(struct mtk_vcodec_ctx *ctx)

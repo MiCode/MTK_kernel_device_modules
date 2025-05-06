@@ -67,6 +67,7 @@ static struct cdev videogo_cdev;
 static int set_runnable_boost_disable;
 static int set_margin_control;
 static int set_uclamp_min_ta;
+static int set_ct_to_vip;
 //static int set_cpu_freq_min;
 static int set_gpu_freq_min;
 static int target_fps_count[MAX_CODEC_TYPE] = {0};
@@ -87,6 +88,8 @@ static void send_service_info(const char *log_msg, int service_type,
 	mutex_lock(&service_mutex);
 	kfifo_in(&service_fifo, &service_info, 1);
 	mutex_unlock(&service_mutex);
+
+	wake_up_interruptible(&service_wq);
 }
 
 static void videogo_vcodec_send_fn(int iotype, void *data)
@@ -138,34 +141,38 @@ static void videogo_vcodec_send_fn(int iotype, void *data)
 	wake_up_interruptible(&passive_wq);
 }
 
-static int is_transcoding(struct inst_node *venc_info)
+static int is_transcoding(struct inst_node *info0, enum codec_type type)
 {
-	struct inst_node *vdec_info, *tmp;
+	struct inst_node *info1, *tmp;
+	enum codec_type list_type = abs(MAX_CODEC_TYPE - type - 1);
 	int ret = 0;
 
 	// Check has the same caller_pid of venc from vdec list
 	// One VENC can be paired with multiple VDECs
-	list_for_each_entry_safe(vdec_info, tmp, &inst_list[VDEC], list) {
-		if (vdec_info->caller_pid == venc_info->caller_pid) {
+	list_for_each_entry_safe(info1, tmp, &inst_list[list_type], list) {
+		if (info1->caller_pid == info0->caller_pid) {
 			// abnormal oprate, it means best effort mode
-			if (vdec_info->oprate > 960 || venc_info->oprate > 960)
+			if (info1->oprate > 960 || info0->oprate > 960)
 				ret = 1;
 
 			// oprate is 0, it means best effort mode
 			// Need to avoid Vilte Scenario
-			if (vdec_info->oprate == 0 && venc_info->oprate == 0) {
+			if (info1->oprate == 0 && info0->oprate == 0) {
 				ret = 1;
 
 				// Could be Vilte Scenario
-				if (venc_info->width * venc_info->height <= FHD_SIZE &&
-					venc_info->oprate_avdvfs < 35)
+				// TODO: Need to check by ViLTE Scenario Hints
+				if (info0->width * info0->height <= FHD_SIZE &&
+					info0->oprate_avdvfs < 35)
 					ret = 0;
 			}
 
-			if ((vdec_info->oprate != 0 || venc_info->oprate != 0) &&
-				((abs(vdec_info->oprate - vdec_info->oprate_avdvfs) > 10) ||
-				(abs(venc_info->oprate - venc_info->oprate_avdvfs) > 10)))
-				ret = 1;
+			if (info1->oprate_avdvfs != 0 && info0->oprate_avdvfs != 0) {
+				if ((info1->oprate != 0 || info0->oprate != 0) &&
+					((abs(info1->oprate - info1->oprate_avdvfs) > 10) ||
+					 (abs(info0->oprate - info0->oprate_avdvfs) > 10)))
+					ret = 1;
+			}
 		}
 
 		if (ret)
@@ -197,6 +204,7 @@ static void videogo_work_handler(struct work_struct *work)
 #endif
 		break;
 	}
+
 
 	kvfree(vgowork);
 }
@@ -261,8 +269,11 @@ static int videogo_process_data(int iotype, void *data)
 				target_fps_count[type]++;
 			mutex_unlock(&inst_list_mutex[type]);
 
-			pr_info("[vgo] INC inst_type: %d, ctx_id: %d, caller_pid: %d, fourcc: %d, oprate: %d, width: %d, height: %d\n",
-				info0->inst_type, info0->ctx_id, info0->caller_pid,
+			if (!isTranscoding)
+				isTranscoding = is_transcoding(info0, type);
+
+			pr_info("[vgo] INC [%d][%d] caller_pid: %d, fourcc: %d, oprate: %d, (%d x %d)\n",
+				info0->ctx_id, info0->inst_type, info0->caller_pid,
 				info0->fourcc, info0->oprate, info0->width, info0->height);
 		} else {
 			pr_info("[vgo] Invalid inst_type: [%d] %d\n", init_data->ctx_id, init_data->inst_type);
@@ -280,8 +291,7 @@ static int videogo_process_data(int iotype, void *data)
 				if (info0->ctx_id == inst_data->ctx_id &&
 					info0->inst_type == type) {
 
-					pr_info("[vgo] DEC inst_type: %d, ctx_id: %d\n",
-							info0->inst_type, info0->ctx_id);
+					pr_info("[vgo] DEC [%d][%d]\n", info0->ctx_id, info0->inst_type);
 					if (info0->oprate_avdvfs && info0->oprate_avdvfs <= TARGET_FPS)
 						target_fps_count[type]--;
 					list_del(&info0->list);
@@ -327,15 +337,15 @@ static int videogo_process_data(int iotype, void *data)
 
 			if (target_inst_info != NULL) {
 				if (!isTranscoding && type == VENC)
-					isTranscoding = is_transcoding(target_inst_info);
+					isTranscoding = is_transcoding(target_inst_info, type);
 
 				pr_info("[vgo][%d][%d] oprate_avdvfs=%d, oprate=%d, isTrans=%d\n",
 					target_inst_info->ctx_id, target_inst_info->inst_type,
 					target_inst_info->oprate_avdvfs, target_inst_info->oprate, isTranscoding);
 			} else
-				pr_info("[vgo] Cannot find Inst: [%d] %d\n", run_data->ctx_id, run_data->inst_type);
+				pr_info("[vgo][%d][%d] Cannot find Inst\n", run_data->ctx_id, run_data->inst_type);
 		} else {
-			pr_info("[vgo] Invalid inst_type: [%d] %d\n", run_data->ctx_id, run_data->inst_type);
+			pr_info("[vgo][%d][%d] Invalid inst_type\n", run_data->ctx_id, run_data->inst_type);
 			return -EINVAL;
 		}
 	} else if (iotype == VGO_RECV_STATE_OPEN) {
@@ -454,6 +464,11 @@ static int videogo_controller_fn(void *arg)
 								VGO_GPU_FREQ_MIN, 7, 0, 0);
 				set_gpu_freq_min = 1;
 			}
+			if (!set_ct_to_vip) {
+				pr_info("[vgo] ack ct_to_vip\n");
+				enforce_ct_to_vip(1, 3);
+				set_ct_to_vip = 1;
+			}
 		} else {
 			if (set_uclamp_min_ta) {
 				send_service_info("rel uclamp_min_ta",
@@ -465,10 +480,12 @@ static int videogo_controller_fn(void *arg)
 								VGO_GPU_FREQ_MIN, -1, 0, 0);
 				set_gpu_freq_min = 0;
 			}
+			if (set_ct_to_vip) {
+				pr_info("[vgo] rel ct_to_vip\n");
+				enforce_ct_to_vip(0, 3);
+				set_ct_to_vip = 0;
+			}
 		}
-
-		if (!kfifo_is_empty(&service_fifo))
-			wake_up_interruptible(&service_wq);
 
 	}
 	return 0;
@@ -476,13 +493,11 @@ static int videogo_controller_fn(void *arg)
 
 static int videogo_open(struct inode *inode, struct file *file)
 {
-	pr_info("videogo: Device opened\n");
 	return 0;
 }
 
 static int videogo_release(struct inode *inode, struct file *file)
 {
-	pr_info("videogo: Device closed\n");
 	return 0;
 }
 
@@ -498,7 +513,7 @@ static long videogo_ioctl(struct file *file, unsigned int cmd, unsigned long arg
 			pr_err("VGO_IOCTL_SET_PROCTIME: copy_from_user is fail\n");
 			return -EFAULT;
 		}
-		pr_info("Recv data: ctx_id=%d, avg=%d, max=%d, min=%d, count=%d\n",
+		pr_info("[VGO] Recv data: ctx_id=%d, avg=%d, max=%d, min=%d, count=%d\n",
 				data.ctx_id, data.avg_proc_time, data.max_proc_time,
 				data.min_proc_time, data.count);
 		break;

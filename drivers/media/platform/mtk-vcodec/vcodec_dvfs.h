@@ -17,8 +17,6 @@
 #define BW_FACTOR_10BIT 125
 #define BW_FACTOR_NONAFBC 114
 
-extern int enforce_ct_to_vip(int val, int caller_id);
-
 struct mtk_vcodec_dev;
 struct mtk_vcodec_ctx;
 
