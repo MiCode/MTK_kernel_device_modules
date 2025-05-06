@@ -452,7 +452,7 @@ static void hdr_init(struct mml_comp *comp, struct cmdq_pkt *pkt, const phys_add
 }
 
 static void hdr_relay(struct mml_comp *comp, struct cmdq_pkt *pkt, const phys_addr_t base_pa,
-		      u32 relay, u32 is_timeout)
+		      struct mml_frame_data *src, u32 relay, u32 is_timeout)
 {
 	struct mml_comp_hdr *hdr = comp_to_hdr(comp);
 	if (hdr->data->two_curve) {
@@ -473,7 +473,20 @@ static void hdr_relay(struct mml_comp *comp, struct cmdq_pkt *pkt, const phys_ad
 				base_pa + hdr->data->reg_table[HDR_3x3_COEF_00], 0x1, 0x1);
 			cmdq_pkt_write(pkt, NULL,
 				base_pa + hdr->data->reg_table[HDR_RELAY], 0, 0x1);
-			mml_pq_err("%s: get hdr timeout, set linear effect\n", __func__);
+			/* Y2R R2Y setting */
+			if (MML_FMT_IS_YUV(src->format)) {
+				cmdq_pkt_write(pkt, NULL,
+					base_pa + hdr->data->reg_table[HDR_R2Y_09], 0x23, 0x7F);
+				cmdq_pkt_write(pkt, NULL,
+					base_pa + hdr->data->reg_table[HDR_Y2R_09], 0x43, 0xFF);
+			} else {
+				cmdq_pkt_write(pkt, NULL,
+					base_pa + hdr->data->reg_table[HDR_R2Y_09], 0x11, 0x7F);
+				cmdq_pkt_write(pkt, NULL,
+					base_pa + hdr->data->reg_table[HDR_Y2R_09], 0x0, 0x1);
+			}
+			mml_pq_err("%s:hdr timeout, set linear effect and %s input CSC setting",
+				__func__, MML_FMT_IS_YUV(src->format) ? "YUV" : "RGB");
 		} else {
 			if(relay) {
 				cmdq_pkt_write(pkt,
@@ -728,19 +741,19 @@ static s32 hdr_config_frame(struct mml_comp *comp, struct mml_task *task,
 
 	if (!dest->pq_config.en_hdr) {
 		/* relay mode */
-		hdr_relay(comp, pkt, base_pa, 0x1, 0x0);
+		hdr_relay(comp, pkt, base_pa, src, 0x1, 0x0);
 		return 0;
 	}
 
-	hdr_relay(comp, pkt, base_pa, 0x0, 0x0);
+	hdr_relay(comp, pkt, base_pa, src, 0x0, 0x0);
 
 	do {
 		ret = mml_pq_get_comp_config_result(task, HDR_WAIT_TIMEOUT_MS);
 		if (ret) {
 			mml_pq_comp_config_clear(task);
 			hdr_frm->config_success = false;
-			if (!hdr->data->tile_loss && !MML_FMT_IS_RGB(src->format))
-				hdr_relay(comp, pkt, base_pa, 0x1, 0x1);
+			if (!hdr->data->tile_loss)
+				hdr_relay(comp, pkt, base_pa, src, 0x1, 0x1);
 			else
 				hdr_disable_curve(comp, pkt, src, base_pa);
 			mml_pq_err("%s: get hdr param timeout: %d in %dms",
@@ -752,8 +765,8 @@ static s32 hdr_config_frame(struct mml_comp *comp, struct mml_task *task,
 		result = get_hdr_comp_config_result(task);
 		if (!result) {
 			hdr_frm->config_success = false;
-			if (!hdr->data->tile_loss && !MML_FMT_IS_RGB(src->format))
-				hdr_relay(comp, pkt, base_pa, 0x1, 0x1);
+			if (!hdr->data->tile_loss)
+				hdr_relay(comp, pkt, base_pa, src, 0x1, 0x1);
 			else
 				hdr_disable_curve(comp, pkt, src, base_pa);
 			mml_pq_err("%s: not get result from user lib", __func__);
