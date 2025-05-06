@@ -82,9 +82,6 @@ module_param(fsw_ctrl_time_ns, uint, 0644);
 module_param(fsw_ctrl_time_2, uint, 0644);
 module_param(fsw_ctrl_time_ns_2, uint, 0644);
 
-static int test_mivr = -1;
-module_param(test_mivr, int, 0644);
-
 static const struct rt_charger_data mt6379_data = {
 	.name = "mt6379",
 	.id = CHARGER_ID_MT6379,
@@ -1139,8 +1136,9 @@ static int mt6379_charger_set_property(struct power_supply *psy, enum power_supp
 		if (cdata->bypass_mode_entered)
 			return 0;
 
-		if (test_mivr != -1)
-			return mt6379_charger_field_set(cdata, F_VBUS_MIVR, test_mivr);
+		if (cdata->target_mivr_uV > 0)
+			return mt6379_charger_field_set(cdata, F_VBUS_MIVR,
+							(u32)cdata->target_mivr_uV);
 
 		return mt6379_charger_field_set(cdata, F_VBUS_MIVR, val->intval);
 	case POWER_SUPPLY_PROP_PRECHARGE_CURRENT:
@@ -1265,13 +1263,18 @@ static int mt6379_get_ipeak(struct mt6379_charger_data *cdata, int *ipeak)
 
 	ret = iio_read_channel_processed(&cdata->iio_adcs[ADC_CHAN_IBUS], &ibus);
 	if (ret) {
-		dev_info(dev, "%s Failed to get ibus (ret:%d)\n", __func__, ret);
+		dev_info(dev, "%s, Failed to get ibus (ret:%d)\n", __func__, ret);
 		return ret;
 	}
 
 	vbus = U_TO_M(vbus) > 22000 ? 22000 : U_TO_M(vbus);
 	ibus = U_TO_M(ibus) > 5000 ? 5000 : U_TO_M(ibus);
 	vsys = U_TO_M(vsys) > 5500 ? 5500 : U_TO_M(vsys);
+
+	if (vbus == 0 || vsys == 0) {
+		dev_info(dev, "%s, vbus (%d mV) or vsys(%d mV) is invalid\n", __func__, vbus, vsys);
+		return -EINVAL;
+	}
 
 	tmp = (int)((vbus * ibus) * 9 / (vsys * 10) + (vbus - vsys) * vsys / (vbus * 2));
 	*ipeak = tmp;
@@ -1883,8 +1886,15 @@ static ssize_t lock_icc_and_aicr_en_store(struct device *dev, struct device_attr
 	cdata->target_aicr_uA = val[2];
 
 	if (cdata->lock_icc_and_aicr) {
-		mt6379_charger_field_set(cdata, F_CC, cdata->target_icc_uA);
-		mt6379_charger_field_set(cdata, F_IBUS_AICR, cdata->target_aicr_uA);
+		ret = mt6379_charger_field_set(cdata, F_CC, cdata->target_icc_uA);
+		if (ret)
+			dev_info(dev, "%s, Failed to set ICC to %d uA\n",
+				 __func__, cdata->target_icc_uA);
+
+		ret = mt6379_charger_field_set(cdata, F_IBUS_AICR, cdata->target_aicr_uA);
+		if (ret)
+			dev_info(dev, "%s, Failed to set AICR to %d uA\n",
+				 __func__, cdata->target_aicr_uA);
 	} else {
 		cdata->target_icc_uA = MT6379_DEFAULT_TARGET_ICC_WHEN_LOCK_uA;
 		cdata->target_aicr_uA = MT6379_DEFAULT_TARGET_AICR_WHEN_LOCK_uA;
@@ -4031,6 +4041,7 @@ static int mt6379_charger_probe(struct platform_device *pdev)
 
 	cdata->target_icc_uA = MT6379_DEFAULT_TARGET_ICC_WHEN_LOCK_uA;
 	cdata->target_aicr_uA = MT6379_DEFAULT_TARGET_AICR_WHEN_LOCK_uA;
+	cdata->target_mivr_uV = -1;
 
 	mt6379_charger_check_pwr_rdy(cdata);
 	return 0;

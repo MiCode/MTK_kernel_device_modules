@@ -440,6 +440,7 @@ struct mt6379_charger_data {
 	bool lock_icc_and_aicr;
 	u32 target_aicr_uA;
 	u32 target_icc_uA;
+	int target_mivr_uV;
 
 	enum mt6379_chip_rev rev;
 	u32 waferid;
