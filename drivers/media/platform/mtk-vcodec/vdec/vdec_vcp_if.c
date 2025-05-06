@@ -114,7 +114,7 @@ static void get_dpb_size(struct vdec_inst *inst, unsigned int *dpb_sz)
 		return;
 
 	*dpb_sz = inst->vsi->dec.dpb_sz;
-	if (inst->vsi->low_pw_mode)
+	if (inst->vsi->low_pw_mode && inst->ctx->q_data[MTK_Q_DATA_SRC].fmt->fourcc != V4L2_PIX_FMT_HEIF)
 		*dpb_sz += mtk_vdec_lpw_limit;
 	mtk_vcodec_debug(inst, "sz=%d", *dpb_sz);
 }
