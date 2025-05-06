@@ -746,6 +746,7 @@ extern void (*ged_notify_gpu_fix_freq_volt_fp)(unsigned int fgpu, unsigned int v
  **************************************************/
 /* Common */
 unsigned int gpufreq_bringup(void);
+unsigned int gpufreq_wrapper_ready(void);
 unsigned int gpufreq_power_ctrl_enable(void);
 unsigned int gpufreq_active_sleep_ctrl_enable(void);
 unsigned int gpufreq_get_power_state(void);

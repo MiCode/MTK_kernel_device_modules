@@ -1517,6 +1517,13 @@ static int __gpufreq_pdrv_probe(struct platform_device *pdev)
 		goto done;
 	}
 
+	/* defer probe when gpufreq wrapper isn't ready */
+	if (!gpufreq_wrapper_ready()) {
+		GPUFREQ_LOGE("gpufreq wrapper has not been probed, defer gpufreq platform probe");
+		ret = -EPROBE_DEFER;
+		goto done;
+	}
+
 	/* init footprint */
 	__gpufreq_reset_footprint();
 

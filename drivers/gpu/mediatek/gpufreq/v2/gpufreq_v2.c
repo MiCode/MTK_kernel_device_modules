@@ -148,6 +148,19 @@ unsigned int gpufreq_bringup(void)
 EXPORT_SYMBOL(gpufreq_bringup);
 
 /***********************************************************************************
+ * Function Name      : gpufreq_wrapper_ready
+ * Inputs             : -
+ * Outputs            : -
+ * Returns            : status - Current status of driver probe
+ * Description        : Check GPUFREQ bring-up status
+ ***********************************************************************************/
+unsigned int gpufreq_wrapper_ready(void)
+{
+	return g_gpufreq_ready;
+}
+EXPORT_SYMBOL(gpufreq_wrapper_ready);
+
+/***********************************************************************************
  * Function Name      : gpufreq_power_ctrl_enable
  * Inputs             : -
  * Outputs            : -
