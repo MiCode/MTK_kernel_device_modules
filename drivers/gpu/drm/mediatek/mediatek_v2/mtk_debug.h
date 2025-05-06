@@ -80,6 +80,7 @@ void disp_dbg_deinit(void);
 void mtk_wakeup_pf_wq(unsigned int m_id);
 void mtk_wakeup_frame_done_wq(void);
 void mtk_real_frame_done(bool *real_frame_done);
+void mtk_dump_backup_tpr(void);
 void mtk_drm_cwb_backup_copy_size(void);
 int mtk_dprec_mmp_dump_ovl_layer(struct mtk_plane_state *plane_state);
 int mtk_dprec_mmp_dump_wdma_layer(struct drm_crtc *crtc,

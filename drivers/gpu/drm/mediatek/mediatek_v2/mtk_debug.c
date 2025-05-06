@@ -2683,6 +2683,66 @@ void mtk_real_frame_done(bool *real_frame_done)
 
 }
 
+void mtk_dump_backup_tpr(void)
+{
+	struct drm_crtc *crtc;
+	struct mtk_drm_crtc *mtk_crtc;
+	int i;
+	unsigned int *slot_va;
+	u32 first_time, curr_time, diff_time;
+
+	if (IS_ERR_OR_NULL(drm_dev)) {
+		DDPPR_ERR("%s, invalid drm dev error\n", __func__);
+		return;
+	}
+
+	crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
+			typeof(*crtc), head);
+
+	if (IS_ERR_OR_NULL(crtc)) {
+		DDPPR_ERR("find crtc fail\n");
+		return;
+	}
+
+	mtk_crtc = to_mtk_crtc(crtc);
+	if (!mtk_crtc) {
+		DDPPR_ERR("%s errors with NULL mtk_crtc\n", __func__);
+		return;
+	}
+	if(!mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base))
+		return;
+
+	first_time = 0;
+	for (i = 0 ; i < TRIG_TICK_NR ; i++) {
+		slot_va = mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_TRIG_TICK(i));
+		if (IS_ERR_OR_NULL(slot_va))
+			continue;
+
+		curr_time = readl(slot_va);
+		if (curr_time == 0)
+			continue;
+		writel(0, slot_va);
+		CMDQ_TICK_TO_US(curr_time);
+
+		if ((first_time == 0) || (curr_time < first_time))
+			first_time = curr_time;
+
+		diff_time = curr_time - first_time;
+		DDPFENCE("t%d=%u,%u\n", i, diff_time, curr_time);
+
+		if (i == 1)
+			drm_trace_tag_value_state("trig_CABC_dur", diff_time);
+		else if (i == 2)
+			drm_trace_tag_value_state("trig_TE_dur", diff_time);
+		else if (i == 3)
+			drm_trace_tag_value_state("trig_prefetch_dur", diff_time);
+		else if (i == 4)
+			drm_trace_tag_value_state("trig_fdone_dur", diff_time);
+		else if (i == 5)
+			drm_trace_tag_value_state("trig_dbi_cnt_dur", diff_time);
+	}
+}
+
 void mtk_drm_cwb_backup_copy_size(void)
 {
 	struct drm_crtc *crtc;

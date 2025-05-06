@@ -191,7 +191,10 @@ enum EVENT_TRIGGER_PT {
 #define DISP_SLOT_TRIG_STARTED (DISP_SLOT_PU_NEED_WAIT + 0x4)
 #define DISP_SLOT_CONDITION (DISP_SLOT_TRIG_STARTED + 0x4)
 #define DISP_SLOT_UNDERRUNED (DISP_SLOT_CONDITION + 0x4)
-#define DISP_SLOT_READ_DDIC_BASE (DISP_SLOT_UNDERRUNED + 0x4)
+
+#define TRIG_TICK_NR 10
+#define DISP_SLOT_TRIG_TICK(n) (DISP_SLOT_UNDERRUNED + 0x4 + (0x4 * (n)))
+#define DISP_SLOT_READ_DDIC_BASE (DISP_SLOT_TRIG_TICK(TRIG_TICK_NR))
 #define DISP_SLOT_READ_DDIC_BASE_END		\
 	(DISP_SLOT_READ_DDIC_BASE + READ_DDIC_SLOT_NUM * 0x4)
 #define DISP_SLOT_READ_DDIC_V2_BASE (DISP_SLOT_READ_DDIC_BASE_END)
@@ -1508,6 +1511,8 @@ struct mtk_cmdq_cb_data {
 extern unsigned int disp_spr_bypass;
 extern int debug_drm_prop_force_reset;
 
+void mtk_crtc_backup_tpr_to_slot(struct mtk_drm_crtc *mtk_crtc,
+	struct cmdq_pkt *cmdq_handle, unsigned int slot_index);
 int mtk_drm_crtc_enable_vblank(struct drm_crtc *crtc);
 void mtk_drm_crtc_disable_vblank(struct drm_crtc *crtc);
 bool mtk_crtc_get_vblank_timestamp(struct drm_crtc *crtc,
