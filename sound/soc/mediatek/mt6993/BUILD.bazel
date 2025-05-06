@@ -39,12 +39,14 @@ define_mgk_ddk_ko(
         "-I$(DEVICE_MODULES_PATH)/sound/soc/mediatek/audio_dsp",
         "-I$(DEVICE_MODULES_PATH)/sound/soc/mediatek/ultrasound/ultra_scp",
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sched/eas",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/task_turbo",
         "-I$(srctree)/kernel/",
     ],
     header_deps = [
         "//kernel_device_modules-{}/sound/soc/mediatek/common:ddk_public_headers".format(kernel_version),
         "//kernel_device_modules-{}/sound/soc/codecs:ddk_public_headers".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/pbm:pbm_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/task_turbo:headers".format(kernel_version),
         "//kernel_device_modules-{}/sound/soc/mediatek/ultrasound/ultra_scp:headers".format(kernel_version),
     ],
     ko_deps = [
@@ -56,6 +58,7 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/sound/soc/mediatek/ultrasound/ultra_scp:snd-soc-mtk-scp-ultra".format(kernel_version),
         "//kernel_device_modules-{}/sound/soc/codecs:snd-soc-mt6681".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/sched:scheduler".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/task_turbo:vip_engine".format(kernel_version),
     ],
 )
 

@@ -48,6 +48,7 @@
 #include <linux/sched/cputime.h>
 #include <sched/sched.h>
 #include "vip.h"
+#include "vip_engine.h"
 #endif
 
 #if IS_ENABLED(CONFIG_NEBULA_SND_PASSTHROUGH)
@@ -1848,6 +1849,30 @@ static int mt6993_audio_vip_set(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+// ALPS09870438: AudioQOS, set VIP
+static int mt6993_binderthread_vip_get(struct snd_kcontrol *kcontrol,
+			       struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = 0;
+	return 0;
+}
+
+static int mt6993_binderthread_vip_set(struct snd_kcontrol *kcontrol,
+			       struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
+	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
+	int pid = ucontrol->value.integer.value[0];
+
+	dev_info(afe->dev, "%s(), set process binder thread as VIP, process id %d\n", __func__, pid);
+
+	// API has no return value
+	do_enable_binder_vipServer(true);
+	do_set_server_vip(pid, true);
+	return 0;
+}
+
+
 // ALPS08907586: media.swcodec set VIP
 static pid_t find_process_by_name(const char *name)
 {
@@ -2130,6 +2155,8 @@ static const struct snd_kcontrol_new mt6993_pcm_kcontrols[] = {
 		       mt6993_audio_vip_get, mt6993_audio_vip_set),
 	SOC_SINGLE_EXT("SWCODEC_VIP", SND_SOC_NOPM, 0, 0x3fffff, 0,
 		       mt6993_swcodec_vip_get, mt6993_swcodec_vip_set),
+	SOC_SINGLE_EXT("BinderThread_VIP", SND_SOC_NOPM, 0, 0x3fffff, 0,
+		       mt6993_binderthread_vip_get, mt6993_binderthread_vip_set),
 #endif
 	SOC_SINGLE_EXT("aaudio_clean_buffer",
 		       SND_SOC_NOPM, 0, 0xffffffff, 0,
