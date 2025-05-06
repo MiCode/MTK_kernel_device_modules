@@ -531,3 +531,11 @@ config CONNINFRA_BUILD_MODE
           This config is used to identify the build type.
           Eng(1)/Userdebug(2)/User(3)
 
+config CONN_WMT_DEBUG
+        bool "Enable wmt debug mode"
+        help
+          This config is used to choose whether to support
+          debug mode or not.
+          Will support debug mode if set to 'y',
+          otherwise will not support debug mode.
+
