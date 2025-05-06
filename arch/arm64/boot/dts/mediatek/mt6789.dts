@@ -4212,7 +4212,7 @@
 				&smi_larb4 &smi_larb7 &smi_larb9 &smi_larb13
 				&smi_larb14 &smi_larb16 &smi_larb17 &smi_larb20>;
 			mediatek,commons-supply = <&smi_disp_common>;
-			mmqos-state = <0x7>;
+			mmqos-state = <0x6>;
 			mmqos-log-level = <0>;
 			clocks = <&topckgen_clk CLK_TOP_DISP_SEL>;
 			clock-names = "mm";
