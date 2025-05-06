@@ -2330,7 +2330,7 @@ static int vidioc_vdec_reqbufs(struct file *file, void *priv, struct v4l2_reques
 	if (rb->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE && rb->count == 0 && vq != NULL && vb2_get_num_buffers(vq) > 0)
 		cap_req_0 = true;
 
-	mtk_v4l2_debug(cap_req_0 ? 0 : 1, "[%d] reqbufs count %d, type %d, ctx state %d",
+	mtk_v4l2_debug(1, "[%d] reqbufs count %d, type %d, ctx state %d",
 		ctx->id, rb->count, rb->type, mtk_vcodec_get_state(ctx));
 
 	if (cap_req_0 && (mtk_vcodec_is_state(ctx, MTK_STATE_HEADER) || mtk_vcodec_is_state(ctx, MTK_STATE_STOP)))
