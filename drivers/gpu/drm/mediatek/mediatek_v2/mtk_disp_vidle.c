@@ -702,6 +702,10 @@ static void mtk_vidle_enable_v2(bool _en, void *_drm_priv)
 		en = mtk_crtc_is_frame_trigger_mode(drm_priv->crtc[0]) ? 1 : 2;
 
 	disp_dpc_driver.dpc_enable(en);
+
+	/* reset status to config dpc setting at first time*/
+	if (!en && !mtk_vidle_is_ff_enabled())
+		atomic_set(&g_ff_enabled, -1);
 }
 
 void mtk_vidle_enable(bool _en, void *_drm_priv)
