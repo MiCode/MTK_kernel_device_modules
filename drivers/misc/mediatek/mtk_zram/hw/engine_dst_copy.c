@@ -429,6 +429,10 @@ static int fill_comp_fifo_dst_buffers(struct hwfifo *fifo, int id)
 		/* Set invariant information */
 		cmdp->buf_enable = ENGINE_BUF_ENABLE;
 		cmdp->fifo = id;
+
+		/* Copy cmdp word_0 to word_4 and word_6 */
+		cmdp->word_4_value = cmdp->word_0_value;
+		cmdp->word_6_value = cmdp->word_0_value;
 	}
 
 #ifdef ZRAM_ENGINE_DEBUG

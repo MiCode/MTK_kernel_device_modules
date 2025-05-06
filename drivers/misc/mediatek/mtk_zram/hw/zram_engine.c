@@ -230,6 +230,10 @@ GLAFLAG(DecRst, decrst);
 
 static unsigned long gla_flags;
 
+#if IS_ENABLED(CONFIG_MTK_VM_DEBUG)
+static struct proc_dir_entry *engine_cmd_file;
+#endif
+
 /**************************************************/
 
 static int __maybe_unused mtk_hwzram_suspend(struct device *dev);
@@ -2666,7 +2670,7 @@ static int __init zram_engine_init(void)
 		pr_info("%s: failed to register platform driver.\n", __func__);
 
 #if IS_ENABLED(CONFIG_MTK_VM_DEBUG)
-	proc_create("engine_cmd_file", 0, NULL, &engine_cmd_proc_ops);
+	engine_cmd_file = proc_create("engine_cmd_file", 0, NULL, &engine_cmd_proc_ops);
 #endif
 
 	return ret;
@@ -2675,6 +2679,11 @@ module_init(zram_engine_init);
 
 static void __exit zram_engine_exit(void)
 {
+#if IS_ENABLED(CONFIG_MTK_VM_DEBUG)
+	if (engine_cmd_file)
+		proc_remove(engine_cmd_file);
+#endif
+
 	platform_driver_unregister(&mtk_hwzram);
 }
 module_exit(zram_engine_exit);
