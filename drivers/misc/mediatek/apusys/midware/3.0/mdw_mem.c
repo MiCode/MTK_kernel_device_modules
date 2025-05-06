@@ -28,25 +28,31 @@
 		m->buf_type, m->flags, m->vaddr, m->device_va, m->size, \
 		kref_read(&m->ref), task_pid_nr(current))
 
-static struct mdw_mem_map *mdw_mem_get_map_by_handle(struct mdw_fpriv *mpriv, int handle)
+static struct mdw_mem_map *mdw_mem_get_map_by_handle(struct mdw_fpriv *mpriv, int handle,
+	uint64_t device_va)
 {
 	struct dma_buf *dbuf = NULL;
 	struct mdw_mem_map *map = NULL;
 
 	dbuf = dma_buf_get(handle);
+
 	if (IS_ERR_OR_NULL(dbuf)) {
 		mdw_drv_err("get dma_buf handle(%d) fail\n", handle);
 		goto out;
 	}
 
 	hash_for_each_possible(mpriv->u_map_hash, map, fpriv_node, (uint64_t)dbuf) {
-		if (map->dbuf == dbuf) {
+		if (map->dbuf == dbuf && map->device_va == device_va) {
 			mdw_map_show(map);
 			goto put_dbuf;
+		} else {
+			mdw_mem_debug("found same dbuf but diff params: dbuf(0x%llx/0x%llx) dva(0x%llx/0x%llx) find next\n",
+				(uint64_t)dbuf, (uint64_t)APU_SYSMEM_GET_DMABUF(map->sysmap),
+				device_va, map->device_va);
 		}
 	}
 
-	mdw_drv_err("can't find map by handle(%d)\n", handle);
+	mdw_drv_err("can't find map by handle(%d/0x%llx)\n", handle, device_va);
 	map = NULL;
 
 put_dbuf:
@@ -604,7 +610,7 @@ static int mdw_mem_ioctl_unmap(struct mdw_fpriv *mpriv,
 
 	mutex_lock(&mpriv->mtx);
 
-	map = mdw_mem_get_map_by_handle(mpriv, args->in.unmap.handle);
+	map = mdw_mem_get_map_by_handle(mpriv, args->in.unmap.handle, args->in.unmap.device_va);
 	if (!map) {
 		mdw_drv_err("can't find map by handle(%llu)\n", args->in.unmap.handle);
 		ret = -EINVAL;

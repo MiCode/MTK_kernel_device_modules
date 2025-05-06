@@ -122,6 +122,7 @@ struct mdw_mem_in {
 		} map;
 		struct {
 			uint64_t handle;
+			uint64_t device_va;
 		} unmap;
 
 		/* cache operation */
