@@ -2298,6 +2298,14 @@ void cmdq_thread_reset_timer(void *chan)
 }
 EXPORT_SYMBOL(cmdq_thread_reset_timer);
 
+bool cmdq_thread_check_list_empty(void *chan)
+{
+	struct cmdq_thread *thread = ((struct mbox_chan *)chan)->con_priv;
+
+	return list_empty(&thread->task_busy_list);
+}
+EXPORT_SYMBOL(cmdq_thread_check_list_empty);
+
 static void cmdq_thread_handle_timeout_work(struct work_struct *work_item)
 {
 	struct cmdq_thread *thread = container_of(work_item,
