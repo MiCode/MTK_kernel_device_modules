@@ -11053,55 +11053,39 @@ void mtk_request_retrig(struct drm_device *dev,
 		dev);
 }
 
-#define RT_MIN_FPS 60
-#define RT_PRETE_DUR 2000
-
-int mtk_get_retrig_sleep_us(unsigned int base_t, unsigned int vrefresh_t, unsigned int *sleep_t)
+unsigned int mtk_get_retrig_target_us(unsigned int base_t, unsigned int step_dur,
+	unsigned long long ept_ns)
 {
-	unsigned int cur_t = 0, diff_t = 0, target_t = 0;
-	unsigned int step = 0, step_dur = 0, next_tgt_dur = 0;
+	unsigned long long cur_ns;
+	unsigned int cur_t = 0, diff_t = 0;
+	unsigned int step = 0;
 
-	if (!sleep_t) {
-		DDPPR_ERR("%s: sleep_t is null\n", __func__);
-		return -EINVAL;
-	}
+	cur_ns = ktime_get();
 
-	cur_t = ktime_get() / 1000;
+	// ept_ns == 0               -> HWC do not set ept
+	// ept_ns < cur_ns           -> HWC set ept to system before calling retrig
+	// (ept_ns - cur_ns) > 500ms -> HWC set a corrupted ept
+	if (ept_ns == 0 || ept_ns < cur_ns || (ept_ns - cur_ns) > 500000000)
+		cur_t = cur_ns / 1000;
+	else
+		cur_t = (ept_ns / 1000) - (step_dur / 2);
+
 	if (base_t >= cur_t) {
 		DDPPR_ERR("%s: time corrupted base_t:%u, cur_t:%u\n",
 			__func__, base_t, cur_t);
-		return -EINVAL;
+		return 0;
 	}
 
 	diff_t = cur_t - base_t;
 	// if diff_t > 500ms, the target_t may become inaccurate,
 	// do not use retrig_sleep.
 	if (diff_t > 500000) {
-		*sleep_t = 0;
 		return 0;
 	}
 
-	if (vrefresh_t < RT_MIN_FPS)
-		vrefresh_t = RT_MIN_FPS;
-	step_dur = 1000000 / vrefresh_t;
-
 	step = diff_t / step_dur;
 	step += 1;
-	target_t = base_t + step * step_dur;
-	next_tgt_dur = target_t - cur_t;
-
-	if (next_tgt_dur > step_dur) {
-		DDPPR_ERR("%s: cal error next_tgt_dur:%u > step_dur:%u\n",
-			__func__, next_tgt_dur, step_dur);
-		return -EINVAL;
-	}
-
-	if (next_tgt_dur > RT_PRETE_DUR)
-		*sleep_t = next_tgt_dur - RT_PRETE_DUR;
-	else
-		*sleep_t = 0;
-
-	return 0;
+	return base_t + step * step_dur;
 }
 
 int mtk_drm_ioctl_retrig(struct drm_device *dev, void *data,
@@ -11117,6 +11101,9 @@ int mtk_drm_ioctl_retrig(struct drm_device *dev, void *data,
 	struct cmdq_pkt *cmdq_handle;
 	struct mtk_cmdq_cb_data *cb_data;
 	dma_addr_t addr;
+	unsigned int target_t;
+	unsigned int wakeup_t;
+	unsigned int current_t;
 	unsigned int sleep_t;
 	struct mtk_crtc_state *mtk_state;
 
@@ -11187,8 +11174,25 @@ int mtk_drm_ioctl_retrig(struct drm_device *dev, void *data,
 		return 0;
 	}
 
-	//if (mtk_drm_helper_get_opt(private->helper_opt, MTK_DRM_OPT_WAIT_EPT))
-		//mtk_atomic_delay(private, drm, state);
+	// get target TE time
+	target_t = mtk_get_retrig_target_us(
+		private->crtc_rel_present_ts[crtc_idx] / 1000,
+		1000000 / drm_mode_vrefresh(&crtc->state->adjusted_mode),
+		retrig->expected_present_ts);
+
+	// wait to target TE - 4ms
+	if (target_t > 0) {
+		wakeup_t = target_t - 4000;
+		current_t = ktime_get() / 1000;
+
+		if (current_t < wakeup_t) {
+			sleep_t = wakeup_t - current_t;
+
+			mtk_drm_trace_begin("retrig_sleep1 %u", sleep_t);
+			usleep_range(sleep_t, sleep_t + 100);
+			mtk_drm_trace_end();
+		}
+	}
 
 	DDP_PROFILE("[PROFILE] %s+\n", __func__);
 	DDP_COMMIT_LOCK(&private->commit.lock, __func__, retrig->present_fence_idx);
@@ -11267,34 +11271,17 @@ int mtk_drm_ioctl_retrig(struct drm_device *dev, void *data,
 
 	mtk_vidle_user_power_release_by_gce(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle);
 
-	// wait to TE - 1ms
-	if (mtk_get_retrig_sleep_us(
-			private->crtc_rel_present_ts[crtc_idx] / 1000,
-			drm_mode_vrefresh(&crtc->state->adjusted_mode),
-			&sleep_t) < 0) {
-		atomic_set(&private->crtc_rel_present[crtc_idx], retrig->present_fence_idx);
-		mtk_release_present_fence(session_id, retrig->present_fence_idx, 0);
-		mtk_crtc_release_cmdq_pkt(mtk_crtc->gce_obj.pkt_info);
-		goto retrig_end;
-	}
+	// wait to target TE - 2ms
+	if (target_t > 0) {
+		wakeup_t = target_t - 2000;
+		current_t = ktime_get() / 1000;
 
-	if (sleep_t > 0) {
-		DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
-		DDP_COMMIT_UNLOCK(&private->commit.lock, __func__, retrig->present_fence_idx);
+		if (current_t < wakeup_t) {
+			sleep_t = wakeup_t - current_t;
 
-		mtk_drm_trace_begin("retrig_sleep %u", sleep_t);
-		usleep_range(sleep_t, sleep_t + 100);
-		mtk_drm_trace_end();
-
-		DDP_COMMIT_LOCK(&private->commit.lock, __func__, retrig->present_fence_idx);
-		DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
-
-		/* Must double check, if crtc is disabled, gce mbox will be disabled too */
-		if (!mtk_crtc->enabled) {
-			atomic_set(&private->crtc_rel_present[crtc_idx], retrig->present_fence_idx);
-			mtk_release_present_fence(session_id, retrig->present_fence_idx, 0);
-			mtk_crtc_release_cmdq_pkt(mtk_crtc->gce_obj.pkt_info);
-			goto retrig_end;
+			mtk_drm_trace_begin("retrig_sleep2 %u", sleep_t);
+			usleep_range(sleep_t, sleep_t + 100);
+			mtk_drm_trace_end();
 		}
 	}
 
