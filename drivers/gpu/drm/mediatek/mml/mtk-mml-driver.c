@@ -561,8 +561,11 @@ struct mml_drm_ctx *mml_dev_get_drm_ctx(struct mml_dev *mml,
 		goto exit;
 	}
 
-	if (atomic_inc_return(&mml->drm_cnt) == 1)
+	if (atomic_inc_return(&mml->drm_cnt) == 1) {
 		mml->drm_ctx = ctx_create(mml, disp);
+		if (IS_ERR(mml->drm_ctx))
+			atomic_dec(&mml->drm_cnt);
+	}
 	ctx = mml->drm_ctx;
 
 exit:
@@ -582,7 +585,7 @@ void mml_dev_put_drm_ctx(struct mml_dev *mml,
 	if (cnt == 0)
 		mml->drm_ctx = NULL;
 	mutex_unlock(&mml->ctx_mutex);
-	if (cnt == 0)
+	if (cnt == 0 && !IS_ERR(ctx))
 		ctx_release(ctx);
 
 	WARN_ON(cnt < 0);
