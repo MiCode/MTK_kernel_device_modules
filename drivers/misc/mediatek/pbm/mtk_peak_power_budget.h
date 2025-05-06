@@ -216,8 +216,30 @@ enum {
 };
 #endif
 
+struct plt_ipi_data_s {
+	unsigned int cmd;
+	union {
+		struct {
+			unsigned int phys;
+			unsigned int size;
+		} ctrl;
+		struct {
+			unsigned int enable;
+		} logger;
+		struct {
+			unsigned int BMCPU;
+			unsigned int LDCPU;
+		} hwpt;
+	} u;
+};
+
 extern void kicker_ppb_request_power(enum ppb_kicker kicker, unsigned int power);
 extern int ppb_set_wifi_pwr_addr(unsigned int val);
+extern u32 get_mcupms_ipidev_number(void);
+extern void *get_mcupm_ipidev(void);
+#define GET_MCUPM_IPIDEV(t) \
+(t < get_mcupms_ipidev_number() ? (&(((struct mtk_ipi_device *)get_mcupm_ipidev())[t])) : NULL)
+#define PLT_HWPT_IPI_DATA 0x504C5404
 
 /*save CPU power limiter times*/
 #define SPBM_LCPU_PWR_LIMIT_TIMES_OFFSET         (0x00)
@@ -308,4 +330,5 @@ extern int ppb_set_wifi_pwr_addr(unsigned int val);
 #define SPBM_OC_COUNT_OFFSET            (0xF8)
 #define SPBM_OC_DURATION_OFFSET         (0xFC)
 
+#define APU_LIMIT_FREQ_OFFSET  (0xDC)
 #endif /* __MTK_PEAK_POWER_BUDGETING_H__ */

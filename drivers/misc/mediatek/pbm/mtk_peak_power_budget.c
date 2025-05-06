@@ -20,6 +20,7 @@
 #include "mtk_bp_thl.h"
 #include "mtk_peak_power_budget_mbrain.h"
 #include <linux/soc/mediatek/mtk_tinysys_ipi.h>
+#include <mcupm_ipi_id.h>
 #if !IS_ENABLED(CONFIG_MTK_GPU_LEGACY)
 #include <include/gpueb_ipi.h>
 #endif
@@ -35,6 +36,7 @@
 #include <tinysys-scmi.h>
 #endif
 #include "mtk_peak_power_budget.h"
+#include <gpufreq_v2.h>
 
 #define STR_SIZE 1024
 #define MAX_VALUE 0x7FFF
@@ -71,6 +73,7 @@ static struct notifier_block ppb_nb;
 static int channel_id;
 static unsigned int ack_data;
 #endif
+static unsigned int bcpu_hpt_freq, mcpu_hpt_freq, lcpu_hpt_freq, dcpu_hpt_freq, gpu_hpt_freq, apu_hpt_freq;
 struct xpu_dbg_t last_mbrain_xpu_dbg, last_klog_xpu_dbg;
 static ppb_mbrain_func cb_func;
 static struct timer_list ppb_dbg_timer;
@@ -2920,6 +2923,77 @@ static ssize_t mt_hpt_sf_setting_proc_write
 	return count;
 }
 
+static int mt_uvlo_freq_setting_proc_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "BCPU: %u\n", bcpu_hpt_freq);
+	seq_printf(m, "MCPU: %u\n", mcpu_hpt_freq);
+	seq_printf(m, "LCPU: %u\n", lcpu_hpt_freq);
+	seq_printf(m, "DCPU: %u\n", dcpu_hpt_freq);
+	seq_printf(m, "GPU: %u\n", gpu_hpt_freq);
+	seq_printf(m, "APU: %u\n", apu_hpt_freq);
+	return 0;
+}
+
+static ssize_t mt_uvlo_freq_setting_proc_write
+(struct file *file, const char __user *buffer, size_t count, loff_t *data)
+{
+	char desc[64];
+	char xpu_type[5];
+	unsigned int freq, len = 0;
+	struct plt_ipi_data_s hwpt_data;
+	int ret = 0;
+
+	len = (count < (sizeof(desc) - 1)) ? count : (sizeof(desc) - 1);
+	if (copy_from_user(desc, buffer, len))
+		return 0;
+	desc[len] = '\0';
+
+	if (sscanf(desc, "%4s %u", xpu_type, &freq) != 2) {
+		pr_notice("parameter number not correct\n");
+		return -EPERM;
+	}
+
+	hwpt_data.cmd = PLT_HWPT_IPI_DATA;
+
+	if (strcmp(xpu_type, "BCPU") == 0) {
+		bcpu_hpt_freq = freq;
+		freq /= 1000;
+		hwpt_data.u.hwpt.BMCPU = (freq << 16);
+		ret = mtk_ipi_send_compl(GET_MCUPM_IPIDEV(0), CHAN_PLATFORM, IPI_SEND_POLLING,
+			&hwpt_data, sizeof(struct plt_ipi_data_s) / 4, 2000);
+	} else if (strcmp(xpu_type, "MCPU") == 0) {
+		mcpu_hpt_freq = freq;
+		freq /= 1000;
+		hwpt_data.u.hwpt.BMCPU = freq;
+		ret = mtk_ipi_send_compl(GET_MCUPM_IPIDEV(0), CHAN_PLATFORM, IPI_SEND_POLLING,
+			&hwpt_data, sizeof(struct plt_ipi_data_s) / 4, 2000);
+	} else if (strcmp(xpu_type, "LCPU") == 0) {
+		lcpu_hpt_freq = freq;
+		freq /= 1000;
+		hwpt_data.u.hwpt.LDCPU = (freq << 16);
+		ret = mtk_ipi_send_compl(GET_MCUPM_IPIDEV(0), CHAN_PLATFORM, IPI_SEND_POLLING,
+			&hwpt_data, sizeof(struct plt_ipi_data_s) / 4, 2000);
+	} else if (strcmp(xpu_type, "DCPU") == 0) {
+		dcpu_hpt_freq = freq;
+		freq /= 1000;
+		hwpt_data.u.hwpt.LDCPU = freq;
+		ret = mtk_ipi_send_compl(GET_MCUPM_IPIDEV(0), CHAN_PLATFORM, IPI_SEND_POLLING,
+			&hwpt_data, sizeof(struct plt_ipi_data_s) / 4, 2000);
+	} else if (strcmp(xpu_type, "GPU") == 0) {
+		gpu_hpt_freq = freq;
+		gpufreq_set_mfgsys_config(CONFIG_PREUVLO, freq);
+	} else if (strcmp(xpu_type, "APU") == 0) {
+		apu_hpt_freq = freq;
+		writel(apu_hpt_freq, (void __iomem *)(ppb_sram_base + APU_LIMIT_FREQ_OFFSET));
+	} else {
+		pr_notice("Invalid XPU type\n");
+		return -EPERM;
+	}
+	if (ret)
+		pr_info("Failed to send IPI message: %d\n", ret);
+	return count;
+}
+
 static int mt_xpu_dbg_dump_proc_show(struct seq_file *m, void *v)
 {
 	struct xpu_dbg_t dbg_data;
@@ -3021,6 +3095,7 @@ PROC_FOPS_RW(hpt_sf_setting);
 PROC_FOPS_RO(xpu_dbg_dump);
 PROC_FOPS_RW(combo0_uisoc);
 PROC_FOPS_RO(hpt_debug_info);
+PROC_FOPS_RW(uvlo_freq_setting);
 
 static int mt_ppb_create_procfs(void)
 {
@@ -3050,6 +3125,7 @@ static int mt_ppb_create_procfs(void)
 		PROC_ENTRY(xpu_dbg_dump),
 		PROC_ENTRY(combo0_uisoc),
 		PROC_ENTRY(hpt_debug_info),
+		PROC_ENTRY(uvlo_freq_setting),
 	};
 
 	dir = proc_mkdir("ppb", NULL);
