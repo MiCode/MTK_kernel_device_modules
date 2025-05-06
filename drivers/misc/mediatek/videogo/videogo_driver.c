@@ -64,7 +64,6 @@ static struct device *videogo_device;
 static struct cdev videogo_cdev;
 
 // RUNNABLE_BOOST/MARGIN_CONTROL
-#define TARGET_FPS 30
 static int set_runnable_boost_disable;
 static int set_margin_control;
 static int set_uclamp_min_ta;
@@ -289,7 +288,8 @@ static int videogo_process_data(int iotype, void *data)
 				if (info0->ctx_id == inst_data->ctx_id &&
 					info0->inst_type == type) {
 
-					if (info0->oprate_avdvfs && info0->oprate_avdvfs <= TARGET_FPS)
+					if (info0->oprate_avdvfs &&
+						TARGET_FPS_CHECKER(info0->oprate_avdvfs, TARGET_FPS, 20))
 						target_fps_count[type]--;
 					list_del(&info0->list);
 					kfree(info0);
@@ -321,7 +321,7 @@ static int videogo_process_data(int iotype, void *data)
 					target_inst_info = info0;
 				}
 
-				if (info0->oprate_avdvfs <= TARGET_FPS)
+				if (TARGET_FPS_CHECKER(info0->oprate_avdvfs, TARGET_FPS, 20))
 					target_fps_count[type]++;
 			}
 			mutex_unlock(&inst_list_mutex[type]);
@@ -425,12 +425,12 @@ static int videogo_controller_fn(void *arg)
 			break;
 		atomic_dec(&controller_wq_ready);
 
-		int total_vdec_30fps = target_fps_count[VDEC];
+		int total_vdec_target_fps = target_fps_count[VDEC];
 		int total_vdec = alive_count[VDEC];
 		int total_venc = alive_count[VENC];
 
-		if (total_vdec_30fps > 0 && total_vdec_30fps <= 2 &&
-			!total_venc && total_vdec_30fps == total_vdec) {
+		if (total_vdec_target_fps > 0 && total_vdec_target_fps <= 2 &&
+			!total_venc && total_vdec_target_fps == total_vdec) {
 			if (!set_runnable_boost_disable && mtk_vgo_runnable_boost_disable) {
 				send_service_info("ack Runnable_boost_disable",
 								VGO_RUNNABLE_BOOST_DISABLE, 1, 0, 0);

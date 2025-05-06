@@ -12,7 +12,14 @@
 #define CLASS_NAME "videogo_class"
 #define VGO_IOCTL_SET_PROCTIME _IOWR('v', 1, struct inst_data_user)
 #define VGO_IOCTL_GET _IOR('a', 'a', struct vgo_powerhal_info*)
-#define FHD_SIZE (1920*1080)
+
+
+#define TARGET_FPS  (60ULL)
+#define FHD_SIZE    (1920*1080)
+#define TARGET_FPS_CHECKER(val0, val1, val2) \
+	(((unsigned long long)(val0) * 10ULL) <= \
+	(((unsigned long long)(val1)) * ((unsigned long long)(val2)) * \
+	((unsigned long long)(10 + ((val2) / 10)))))
 
 extern void mtk_vcodec_vgo_send(int type, void *data);
 extern int videogo_active_fn(void *arg);
