@@ -541,7 +541,7 @@ s32 cmdq_pkt_backup_update(struct cmdq_pkt *pkt, struct cmdq_backup *backup);
  *
  * Return: dram value
  */
-u32 cmdq_pkt_backup_get(struct cmdq_pkt *pkt, struct cmdq_backup *backup);
+s32 cmdq_pkt_backup_get(struct cmdq_pkt *pkt, struct cmdq_backup *backup);
 
 void cmdq_pkt_reuse_buf_va(struct cmdq_pkt *pkt, struct cmdq_reuse *reuse,
 	const u32 count);

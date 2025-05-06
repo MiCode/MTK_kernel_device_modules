@@ -245,6 +245,19 @@ const char *cmdq_event_module_dispatch(phys_addr_t gce_pa, const u16 event,
 		case CMDQ_SYNC_TOKEN_DPE_POOL_1
 			... CMDQ_SYNC_TOKEN_DPE_POOL_14:
 			return "MM_IMG_FRM";
+		/* sw event for sec*/
+		case CMDQ_SYNC_TOKEN_TZMP_ISC_WAIT
+			... CMDQ_SYNC_TOKEN_TZMP_ISC_SET:
+			return "MM_IMG_ISC";
+		case CMDQ_SYNC_TOKEN_TZMP_ISP_WAIT
+			... CMDQ_SYNC_TOKEN_TZMP_ISP_SET:
+			return "MM_IMG_ISP";
+		case CMDQ_SYNC_TOKEN_TZMP_AIE_WAIT
+			... CMDQ_SYNC_TOKEN_TZMP_AIE_SET:
+			return "MM_IMG_AIE";
+		case CMDQ_SYNC_TOKEN_TZMP_ADL_WAIT
+			... CMDQ_SYNC_TOKEN_TZMP_ADL_SET:
+			return "MM_IMG_ADL";
 		default:
 			return "MM_GCEM";
 		}

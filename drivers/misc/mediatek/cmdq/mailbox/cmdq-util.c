@@ -332,7 +332,7 @@ u32 cmdq_util_get_hw_id(u32 pa)
 }
 EXPORT_SYMBOL(cmdq_util_get_hw_id);
 
-u32 cmdq_util_get_mdp_min_thrd(void)
+s32 cmdq_util_get_mdp_min_thrd(void)
 {
 	if (!cmdq_platform || !cmdq_platform->get_mdp_min_thread) {
 		cmdq_msg("%s cmdq_platform->get_mdp_min_thread is NULL ",
@@ -342,7 +342,7 @@ u32 cmdq_util_get_mdp_min_thrd(void)
 	return cmdq_platform->get_mdp_min_thread();
 }
 
-u32 cmdq_util_test_get_subsys_list(u32 **regs_out)
+s32 cmdq_util_test_get_subsys_list(u32 **regs_out)
 {
 	if (!cmdq_platform->test_get_subsys_list) {
 		cmdq_err("%s test_get_subsys_list is NULL ", __func__);

@@ -2049,7 +2049,7 @@ s32 cmdq_pkt_backup_update(struct cmdq_pkt *pkt, struct cmdq_backup *backup)
 }
 EXPORT_SYMBOL(cmdq_pkt_backup_update);
 
-u32 cmdq_pkt_backup_get(struct cmdq_pkt *pkt, struct cmdq_backup *backup)
+s32 cmdq_pkt_backup_get(struct cmdq_pkt *pkt, struct cmdq_backup *backup)
 {
 	struct cmdq_client *cl = pkt->cl;
 	u32 *va, value;
