@@ -234,6 +234,7 @@ static unsigned int fn;
 unsigned int ovl_win_size;
 int bwm20_overlap;
 bool no_bwm20_layer;
+int no_bwm20_bw;
 struct sort_list{
 	struct bwm_hrt_sort_entry entry[100];
 	int size;
@@ -7436,9 +7437,14 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 #if defined(DISP_BWM20_ENABLE)
 	if ((crtc_idx == 0) && mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BWM20)) {
 		if (flush || no_bwm20_layer)
-			mtk_crtc->qos_ctx->last_hrt_req = bw;
-		else
+			if (bw > no_bwm20_bw)
+				mtk_crtc->qos_ctx->last_hrt_req = no_bwm20_bw;
+			else
+				mtk_crtc->qos_ctx->last_hrt_req = bw;
+		else {
 			mtk_crtc->cur_lyeblob = lyeblob_ids;
+			no_bwm20_bw = bw;
+		}
 	} else
 #endif
 		mtk_crtc->qos_ctx->last_hrt_req = bw;
@@ -10221,7 +10227,8 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 
 		if ((ext_lye_id) &&
 			(plane_state->pending.enable) && (!need_skip)) {
-			if (priv->data->mmsys_id == MMSYS_MT6991) {
+			if (priv->data->mmsys_id == MMSYS_MT6991 ||
+				priv->data->mmsys_id == MMSYS_MT6993) {
 				comp_idx = plane_state->comp_state.comp_id -
 					DDP_COMPONENT_OVL_EXDMA2;
 				pre_avg_slot = mtk_get_gce_backup_slot_pa(mtk_crtc,
@@ -10283,7 +10290,8 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 			cmdq_pkt_write_indriect(state->cmdq_handle, comp->cmdq_base,
 				avg_slot, CMDQ_THR_SPR_IDX1, ~0);
 
-			if (priv->data->mmsys_id == MMSYS_MT6991) {
+			if (priv->data->mmsys_id == MMSYS_MT6991 ||
+				priv->data->mmsys_id == MMSYS_MT6993) {
 				comp_idx = plane_state->comp_state.comp_id -
 					DDP_COMPONENT_OVL_EXDMA2;
 				pre_peak_slot = mtk_get_gce_backup_slot_pa(mtk_crtc,
@@ -10348,7 +10356,8 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 				peak_slot, CMDQ_THR_SPR_IDX1, ~0);
 
 		} else if (plane_state->pending.enable && (!need_skip)) {
-			if (priv->data->mmsys_id == MMSYS_MT6991) {
+			if (priv->data->mmsys_id == MMSYS_MT6991 ||
+				priv->data->mmsys_id == MMSYS_MT6993) {
 				/* (phy_lye + ext_lye * 3) * (evg + peak) */
 				comp_idx = plane_state->comp_state.comp_id -
 					DDP_COMPONENT_OVL_EXDMA2;
@@ -10411,7 +10420,8 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 			cmdq_pkt_write_indriect(state->cmdq_handle, comp->cmdq_base,
 				avg_slot, CMDQ_THR_SPR_IDX1, ~0);
 
-			if (priv->data->mmsys_id == MMSYS_MT6991) {
+			if (priv->data->mmsys_id == MMSYS_MT6991 ||
+				priv->data->mmsys_id == MMSYS_MT6993) {
 				comp_idx = plane_state->comp_state.comp_id -
 					DDP_COMPONENT_OVL_EXDMA2;
 				pre_peak_slot = mtk_get_gce_backup_slot_pa(mtk_crtc,
