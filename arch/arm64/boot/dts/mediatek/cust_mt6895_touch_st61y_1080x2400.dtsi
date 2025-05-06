@@ -15,7 +15,8 @@
 		reg = <0x0>;
 		interrupt-parent = <&pio>;
 		interrupts = <135 0x2008>;
-		pinctrl-names = "pmx_ts_active", "pmx_ts_suspend", "pmx_ts_spi_mode", "pmx_ts_dvdd_enable", "pmx_ts_dvdd_disable";
+		pinctrl-names = "pmx_ts_active", "pmx_ts_suspend", "pmx_ts_spi_mode",
+						"pmx_ts_dvdd_enable", "pmx_ts_dvdd_disable";
 		pinctrl-0 = <&ts_reset_active &ts_int_active>;
 		pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
 		pinctrl-2 = <&ts_spi_mode>;
@@ -31,10 +32,10 @@
 		fts,reset-gpio = <&pio 3 0x0>;
 		fts,reset-gpio-name = "fts_rst";
 		fts,irq-flags = <0x2008>;/* 1:rising, 2:falling;*/
-		fts,x-max = <14400>;/*Super resolution*/
-		fts,y-max = <32000>;/*Super resolution*/
-		fts,screen-x = <1440>;
-		fts,screen-y = <3200>;
+		fts,x-max = <10800>;/*Super resolution*/
+		fts,y-max = <24000>;/*Super resolution*/
+		fts,screen-x = <1080>;
+		fts,screen-y = <2400>;
 		//fts,fod-lx = <4180>;
 		//fts,fod-ly = <16810>;
 		fts,support-super-resolution = <1>;
@@ -106,7 +107,7 @@
 
 &mt6368_vtp {
 	regulator-boot-on;
-	regulator-min-microvolt = <3300000>;
+	regulator-min-microvolt = <2800000>;
 	regulator-max-microvolt = <3300000>;
 };
 
