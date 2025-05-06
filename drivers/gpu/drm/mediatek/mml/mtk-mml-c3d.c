@@ -339,14 +339,13 @@ static s32 c3d_config_frame(struct mml_comp *comp, struct mml_task *task,
 
 	cmdq_pkt_write(pkt, NULL, base_pa + c3d->data->reg_table[C3D_SRAM_CFG],
 		(0 << 6)|(0 << 5)|(1 << 4), (0x7 << 4));
-	for (i = 0, addr=0; i < result->c3d_lut_num; i++, addr+=4) {
-		cmdq_pkt_write(pkt, NULL,
-			base_pa + c3d->data->reg_table[C3D_SRAM_RW_IF_0], addr, U32_MAX);
-		cmdq_pkt_poll(pkt, NULL, (0x1 << 16),
-			base_pa + c3d->data->reg_table[C3D_SRAM_STATUS], (0x1 << 16), gpr);
+	cmdq_pkt_write(pkt, NULL,
+		base_pa + c3d->data->reg_table[C3D_SRAM_RW_IF_0], addr, U32_MAX);
+	cmdq_pkt_poll(pkt, NULL, (0x1 << 16),
+		base_pa + c3d->data->reg_table[C3D_SRAM_STATUS], (0x1 << 16), gpr);
+	for (i = 0, addr=0; i < result->c3d_lut_num; i++, addr+=4)
 		mml_write(comp->id, pkt, base_pa + c3d->data->reg_table[C3D_SRAM_RW_IF_1],
 			c3d_lut[i], U32_MAX, reuse, cache, &c3d_frm->labels[i]);
-	}
 
 	mml_pq_msg("%s:config c3d regs, count: %d", __func__, result->c3d_reg_cnt);
 	c3d_frm->config_success = true;

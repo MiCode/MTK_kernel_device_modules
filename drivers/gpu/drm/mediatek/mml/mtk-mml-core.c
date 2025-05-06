@@ -1244,8 +1244,8 @@ static u64 mml_core_calc_tput(struct mml_task *task, u32 pixel, u32 pipe,
 {
 	u64 duration = mml_core_time_dur_us(end, start);
 	u32 dpc = task->config->dpc;
-	u32 reserve = task->config->info.dest[0].pq_config.en_region_pq ?
-		pq_sw_reserve : dc_sw_reserve;
+	u32 reserve = (task->config->info.dest[0].pq_config.en_region_pq ||
+		task->config->info.dest[0].pq_config.en_c3d) ? pq_sw_reserve : dc_sw_reserve;
 
 	if (!duration || duration <= reserve)
 		duration = 1;
