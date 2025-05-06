@@ -22,6 +22,7 @@ define_mgk_ddk_ko(
         "videogo_driver.c",
         "videogo_driver.h",
         "videogo_public.h",
+        "videogo_param_config.h",
     ],
     ko_deps = [
         "//kernel_device_modules-{}/drivers/media/platform/mtk-vcodec:mtk-vcodec-common".format(kernel_version),

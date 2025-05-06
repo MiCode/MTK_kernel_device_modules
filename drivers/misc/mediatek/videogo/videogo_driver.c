@@ -21,6 +21,7 @@
 
 #include "videogo_driver.h"
 #include "videogo_public.h"
+#include "videogo_param_config.h"
 
 #if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
 #include "eas/group.h"
@@ -351,19 +352,23 @@ static int videogo_process_data(int iotype, void *data)
 	} else if (iotype == VGO_RECV_STATE_OPEN) {
 		struct oprate_data *dev_data = (struct oprate_data *)data;
 
-		if (atomic_cmpxchg(&runnable_boost_enable_cnt, 0, 1) == 0)
-			send_service_info("ack Runnable_boost_enable",
-				VGO_RUNNABLE_BOOST_ENABLE, 1, 0, 0);
-		else
-			atomic_inc(&runnable_boost_enable_cnt);
-		videogo_send_delay_work(VGO_REL_RUNNABLE_BOOST_ENABLE, 40, dev_data);
+		if (mtk_vgo_runnable_boost_enable) {
+			if (atomic_cmpxchg(&runnable_boost_enable_cnt, 0, 1) == 0)
+				send_service_info("ack Runnable_boost_enable",
+					VGO_RUNNABLE_BOOST_ENABLE, 1, 0, 0);
+			else
+				atomic_inc(&runnable_boost_enable_cnt);
+			videogo_send_delay_work(VGO_REL_RUNNABLE_BOOST_ENABLE, 40, dev_data);
+		}
 
 #if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
-		if (atomic_cmpxchg(&cgrp_cnt, 0, 1) == 0)
-			group_set_cgroup_colocate(CGRP_FG, 0);
-		else
-			atomic_inc(&cgrp_cnt);
-		videogo_send_delay_work(VGO_REL_CGRP, 200, dev_data);
+		if (mtk_vgo_cgroup_colocate) {
+			if (atomic_cmpxchg(&cgrp_cnt, 0, 1) == 0)
+				group_set_cgroup_colocate(CGRP_FG, 0);
+			else
+				atomic_inc(&cgrp_cnt);
+			videogo_send_delay_work(VGO_REL_CGRP, 200, dev_data);
+		}
 #endif
 	}
 
@@ -430,12 +435,12 @@ static int videogo_controller_fn(void *arg)
 
 		if (total_vdec_30fps > 0 && total_vdec_30fps <= 2 &&
 			!total_venc && total_vdec_30fps == total_vdec) {
-			if (!set_runnable_boost_disable) {
+			if (!set_runnable_boost_disable && mtk_vgo_runnable_boost_disable) {
 				send_service_info("ack Runnable_boost_disable",
 								VGO_RUNNABLE_BOOST_DISABLE, 1, 0, 0);
 				set_runnable_boost_disable = 1;
 			}
-			if (!set_margin_control) {
+			if (!set_margin_control && mtk_vgo_margin_control) {
 				send_service_info("ack margin_control",
 								VGO_MARGIN_CONTROL_0, 1000, 20, 0);
 				set_margin_control = 1;
@@ -454,17 +459,17 @@ static int videogo_controller_fn(void *arg)
 		}
 
 		if (isTranscoding) {
-			if (!set_uclamp_min_ta) {
+			if (!set_uclamp_min_ta && mtk_vgo_uclamp_min_ta) {
 				send_service_info("ack uclamp_min_ta",
 								VGO_UCLAMP_MIN_TA, 100, 0, 0);
 				set_uclamp_min_ta = 1;
 			}
-			if (!set_gpu_freq_min) {
+			if (!set_gpu_freq_min && mtk_vgo_gpu_freq_min) {
 				send_service_info("ack gpu_freq_min",
 								VGO_GPU_FREQ_MIN, 7, 0, 0);
 				set_gpu_freq_min = 1;
 			}
-			if (!set_ct_to_vip) {
+			if (!set_ct_to_vip && mtk_vgo_ct_to_vip) {
 				pr_info("[vgo] ack ct_to_vip\n");
 				enforce_ct_to_vip(1, 3);
 				set_ct_to_vip = 1;
