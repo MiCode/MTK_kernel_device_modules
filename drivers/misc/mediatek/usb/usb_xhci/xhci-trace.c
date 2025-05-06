@@ -18,3 +18,5 @@ EXPORT_TRACEPOINT_SYMBOL_GPL(xhci_urb_enqueue_);
 EXPORT_TRACEPOINT_SYMBOL_GPL(xhci_urb_dequeue_);
 EXPORT_TRACEPOINT_SYMBOL_GPL(xhci_handle_transfer_);
 EXPORT_TRACEPOINT_SYMBOL_GPL(xhci_urb_giveback_);
+EXPORT_TRACEPOINT_SYMBOL_GPL(xhci_alloc_virt_device);
+EXPORT_TRACEPOINT_SYMBOL_GPL(xhci_free_virt_device);
