@@ -53,7 +53,7 @@ enum mtk_vidle_hint_type {
 };
 
 struct mtk_vidle_hint {
-	u8 mtcmos_debounce;		/* 0: okay */
+	u32 mtcmos_debounce;		/* 0: okay */
 	u8 mode_switch_debounce;	/* 0: okay */
 	u8 doze_debounce;		/* 0: okay */
 	u8 crtc_fuse;			/* 0: okay, or +1 by others(multi crtc, DP, ...) */
