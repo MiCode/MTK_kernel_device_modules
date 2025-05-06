@@ -1990,10 +1990,10 @@ void mtk_dsi_gce_event_cfg(struct mtk_dsi *dsi, struct mtk_ddp_comp *comp,
 	}
 
 	if (handle == NULL) {
-		writel(0x190918, dsi->regs + DSI_GCE_EVENT_CON0);
+		writel(0x13190918, dsi->regs + DSI_GCE_EVENT_CON0);
 		writel(0x1000, dsi->regs + 0xE4);
 		if (dsi->slave_dsi)
-			writel(0x190918, dsi->slave_dsi->ddp_comp.regs + DSI_GCE_EVENT_CON0);
+			writel(0x13190918, dsi->slave_dsi->ddp_comp.regs + DSI_GCE_EVENT_CON0);
 		DDPINFO("%s:%d\n", __func__, __LINE__);
 		return;
 	}
@@ -2001,11 +2001,11 @@ void mtk_dsi_gce_event_cfg(struct mtk_dsi *dsi, struct mtk_ddp_comp *comp,
 	/*ENG_EVENT_SEL0:dsi targetline2(0x18) ENG_EVENT_SEL1:vm_vact_start(0x09)*/
 	/*ENG_EVENT_SEL2:dsi targetline3(0x19) */
 	cmdq_pkt_write(handle, comp->cmdq_base,
-		comp->regs_pa + DSI_GCE_EVENT_CON0, 0x190918, ~0);
+		comp->regs_pa + DSI_GCE_EVENT_CON0, 0x13190918, ~0);
 	if (dsi->slave_dsi)
 		cmdq_pkt_write(handle, dsi->slave_dsi->ddp_comp.cmdq_base,
 			dsi->slave_dsi->ddp_comp.regs_pa + DSI_GCE_EVENT_CON0,
-			0x190918, ~0);
+			0x13190918, ~0);
 }
 
 static int  mtk_dsi_dbg_monitor_config0(struct mtk_dsi *dsi, struct mtk_ddp_comp *comp,
