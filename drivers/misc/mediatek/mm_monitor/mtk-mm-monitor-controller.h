@@ -158,6 +158,9 @@ struct mtk_bwr {
 	u32 cam_sel_id_1[2];
 	u32 cam_sel_id_2[2];
 	u32 cam_sel_id_3[2];
+	bool	disable_limiter;
+	int r_ostdbl;
+	int w_ostdbl;
 };
 
 struct mtk_ela {

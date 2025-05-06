@@ -154,29 +154,183 @@ EXPORT_SYMBOL(mmmc_fixed_r_ostdbl);
 int mmmc_fixed_w_ostdbl = 120;
 EXPORT_SYMBOL(mmmc_fixed_w_ostdbl);
 
-int validate_ostdbl(const char *val, const struct kernel_param *kp)
+u32 mmmc_state;
+static bool hrt_debug_enabled;
+
+int validate_r_ostdbl(const char *val, const struct kernel_param *kp)
 {
-	int param_val;
+	int param_val, index, power_domain_id;
 	int ret = kstrtoint(val, 0, &param_val);
+	u32 bwr_total_cnt;
+	struct mtk_mmmc_power_domain *mmmc_power_domain;
 
 	if (ret != 0 || param_val <= 0 || param_val > 0xFFF) {
 		MM_MONITOR_ERR("Invalid value for ostdbl: %d\n", param_val);
 		return -EINVAL;
 	}
 	MM_MONITOR_DBG("Change %s from %d to %d", kp->name, *(int *)kp->arg, param_val);
+	for (index = 0; index < get_mmmc_subsys_max(); index++) {
+		int i;
+
+		if (!g_mmmc_power_domain[index])
+			continue;
+		power_domain_id = g_mmmc_power_domain[index]->power_domain_id;
+		if (g_mmmc_power_domain[index]->kernel_no_ctrl) {
+			MM_MONITOR_DBG("power_domain_id:%d kernel_no_control:%d",
+				power_domain_id, g_mmmc_power_domain[index]->kernel_no_ctrl);
+				continue;
+		}
+		mmmc_power_domain = g_mmmc_power_domain[index];
+		bwr_total_cnt = mmmc_power_domain->bwr_total_cnt;
+		for (i = 0; i < bwr_total_cnt; i++) {
+			struct mtk_bwr *bwr = mmmc_power_domain->bwr[i];
+
+			if (!bwr)
+				continue;
+			bwr->r_ostdbl = param_val;
+		}
+	}
+
 	return param_set_int(val, kp);
 }
 
-const struct kernel_param_ops ostdbl_ops = {
-	.set = validate_ostdbl,
+const struct kernel_param_ops ostdbl_r_ops = {
+	.set = validate_r_ostdbl,
 	.get = param_get_int,
 };
 
-module_param_cb(mmmc_fixed_r_ostdbl, &ostdbl_ops, &mmmc_fixed_r_ostdbl, 0644);
-module_param_cb(mmmc_fixed_w_ostdbl, &ostdbl_ops, &mmmc_fixed_w_ostdbl, 0644);
+int validate_w_ostdbl(const char *val, const struct kernel_param *kp)
+{
+	int param_val, index, power_domain_id;
+	int ret = kstrtoint(val, 0, &param_val);
+	u32 bwr_total_cnt;
+	struct mtk_mmmc_power_domain *mmmc_power_domain;
 
-u32 mmmc_state;
-static bool hrt_debug_enabled;
+	if (ret != 0 || param_val <= 0 || param_val > 0xFFF) {
+		MM_MONITOR_ERR("Invalid value for ostdbl: %d\n", param_val);
+		return -EINVAL;
+	}
+	MM_MONITOR_DBG("Change %s from %d to %d", kp->name, *(int *)kp->arg, param_val);
+	for (index = 0; index < get_mmmc_subsys_max(); index++) {
+		int i;
+
+		if (!g_mmmc_power_domain[index])
+			continue;
+		power_domain_id = g_mmmc_power_domain[index]->power_domain_id;
+		if (g_mmmc_power_domain[index]->kernel_no_ctrl) {
+			MM_MONITOR_DBG("power_domain_id:%d kernel_no_control:%d",
+				power_domain_id, g_mmmc_power_domain[index]->kernel_no_ctrl);
+				continue;
+		}
+		mmmc_power_domain = g_mmmc_power_domain[index];
+		bwr_total_cnt = mmmc_power_domain->bwr_total_cnt;
+		for (i = 0; i < bwr_total_cnt; i++) {
+			struct mtk_bwr *bwr = mmmc_power_domain->bwr[i];
+
+			if (!bwr)
+				continue;
+			bwr->w_ostdbl = param_val;
+		}
+	}
+
+	return param_set_int(val, kp);
+}
+
+const struct kernel_param_ops ostdbl_w_ops = {
+	.set = validate_w_ostdbl,
+	.get = param_get_int,
+};
+
+module_param_cb(mmmc_fixed_r_ostdbl, &ostdbl_r_ops, &mmmc_fixed_r_ostdbl, 0644);
+module_param_cb(mmmc_fixed_w_ostdbl, &ostdbl_w_ops, &mmmc_fixed_w_ostdbl, 0644);
+
+int mtk_mmmc_set_rw_ostdbl(const char *val, const struct kernel_param *kp)
+{
+	u32 result, subsys_id, r_ostdbl, w_ostdbl;
+	int i;
+	struct mtk_mmmc_power_domain *mmmc_power_domain;
+	u32 bwr_total_cnt;
+
+	result = sscanf(val, "%d %d %d", &subsys_id, &r_ostdbl, &w_ostdbl);
+	if (result != 3 || subsys_id > get_mmmc_subsys_max()) {
+		MM_MONITOR_ERR("subsys_id:%d set ostdbl RD%d WR%d fail result:%d",
+			subsys_id, r_ostdbl, w_ostdbl, result);
+
+		return result;
+	}
+
+	if (!hrt_debug_enabled) {
+		MM_MONITOR_ERR("restrict api in user load, hrt_debug_enabled:%d", hrt_debug_enabled);
+		return 0;
+	}
+
+	mmmc_power_domain = g_mmmc_power_domain[subsys_id];
+	if (!mmmc_power_domain) {
+		MM_MONITOR_ERR("power_domain:%d empty data", subsys_id);
+		return -EINVAL;
+	}
+	bwr_total_cnt = mmmc_power_domain->bwr_total_cnt;
+	for (i = 0; i < bwr_total_cnt; i++) {
+		struct mtk_bwr *bwr = mmmc_power_domain->bwr[i];
+
+		if (!bwr)
+			continue;
+		MM_MONITOR_DBG("Change bwr %d from RD%d to RD%d, WR%d to WR%d",
+			bwr->hwid, bwr->r_ostdbl, r_ostdbl, bwr->w_ostdbl, w_ostdbl);
+		bwr->r_ostdbl = r_ostdbl;
+		bwr->w_ostdbl = w_ostdbl;
+	}
+
+	return 0;
+}
+static const struct kernel_param_ops mmmc_set_ostbl_ops = {
+	.set = mtk_mmmc_set_rw_ostdbl,
+};
+module_param_cb(mtk_mmmc_set_rw_ostdbl, &mmmc_set_ostbl_ops, NULL, 0644);
+MODULE_PARM_DESC(mtk_mmmc_set_rw_ostdbl, "set ostdbl by power domain");
+
+int mtk_mmmc_set_ostdbl_en(const char *val, const struct kernel_param *kp)
+{
+	u32 result, subsys_id, ostdbl_enable;
+	int i;
+	struct mtk_mmmc_power_domain *mmmc_power_domain;
+	u32 bwr_total_cnt;
+
+	result = sscanf(val, "%d %d", &subsys_id, &ostdbl_enable);
+	if (result != 2 || subsys_id > get_mmmc_subsys_max()) {
+		MM_MONITOR_ERR("subsys_id:%d enable:%d fail result:%d", subsys_id, ostdbl_enable, result);
+
+		return result;
+	}
+
+	if (!hrt_debug_enabled) {
+		MM_MONITOR_ERR("restrict api in user load, hrt_debug_enabled:%d", hrt_debug_enabled);
+		return 0;
+	}
+
+	mmmc_power_domain = g_mmmc_power_domain[subsys_id];
+	if (!mmmc_power_domain) {
+		MM_MONITOR_ERR("power_domain:%d empty data", subsys_id);
+		return -EINVAL;
+	}
+	bwr_total_cnt = mmmc_power_domain->bwr_total_cnt;
+	for (i = 0; i < bwr_total_cnt; i++) {
+		struct mtk_bwr *bwr = mmmc_power_domain->bwr[i];
+
+		if (!bwr)
+			continue;
+		MM_MONITOR_DBG("Change bwr %d enable from %d to %d",
+			bwr->hwid, bwr->disable_limiter, bwr->disable_limiter^ostdbl_enable);
+		bwr->disable_limiter ^= ostdbl_enable;
+	}
+
+	return 0;
+}
+static const struct kernel_param_ops mmmc_set_ostbl_en_ops = {
+	.set = mtk_mmmc_set_ostdbl_en,
+};
+module_param_cb(mtk_mmmc_set_ostdbl_en, &mmmc_set_ostbl_en_ops, NULL, 0644);
+MODULE_PARM_DESC(mtk_mmmc_set_ostdbl_en, "set ostdbl by power domain");
 
 u32 mmmc_get_state(void)
 {
@@ -779,10 +933,12 @@ void init_bwr(struct mtk_mmmc_power_domain *mmmc_power_domain, bool dump)
 	for (i = 0; i < bwr_total_cnt; i++) {
 		struct mtk_bwr *bwr = mmmc_power_domain->bwr[i];
 		void *base;
+		bool bwr_limiter_disable = false;
 
 		if (!bwr)
 			continue;
 
+		bwr_limiter_disable = bwr->disable_limiter;
 		base = bwr->base_addr_va;
 		if (bwr->bwr_ela == NULL) {
 			writel(0x10, base + MON_BMAN);
@@ -812,19 +968,26 @@ void init_bwr(struct mtk_mmmc_power_domain *mmmc_power_domain, bool dump)
 			writel(0x640008, base + MON_BWLMTE2_WA);
 			writel(0x100010, base + MON_BWLMTE3);
 			writel(0x100010, base + MON_BWLMTE3_WA);
-			writel((readl(base + MON_BMAN2) & ~0xc03) | 0xc03, base + MON_BMAN2);
+			if (bwr_limiter_disable)
+				writel(readl(base + MON_BMAN2) & ~0xc03, base + MON_BMAN2);
+			else
+				writel((readl(base + MON_BMAN2) & ~0xc03) | 0xc03, base + MON_BMAN2);
 		}
 		if (mmmc_state & FIXED_OSTDBL_ENABLE) {
 			writel(0xFFFFFFFF, base + MON_BWLMTE1);
 			writel(0xFFFFFFFF, base + MON_BWLMTE1_WA);
 			writel(0xFFFFFFFF, base + MON_BWLMTE2);
 			writel(0xFFFFFFFF, base + MON_BWLMTE2_WA);
-			value = ((mmmc_fixed_w_ostdbl & 0xFFF) << 16) + (mmmc_fixed_r_ostdbl & 0xFFF);
+			value = ((bwr->w_ostdbl & 0xFFF) << 16) + (bwr->r_ostdbl & 0xFFF);
 			writel(value,   base + MON_BWLMTE3);
 			writel(value,   base + MON_BWLMTE3_WA);
-			writel((readl(base + MON_BMAN2) & ~0xc03) | 0x403, base + MON_BMAN2);
-			MM_MONITOR_INFO("FIXED_OSTDBL_ENABLE, r_ostdbl:%d, w_ostdbl:%d, value:%#x",
-				mmmc_fixed_r_ostdbl, mmmc_fixed_w_ostdbl, value);
+			if (bwr_limiter_disable)
+				writel(readl(base + MON_BMAN2) & ~0xc03, base + MON_BMAN2);
+			else {
+				writel((readl(base + MON_BMAN2) & ~0xc03) | 0x403, base + MON_BMAN2);
+				MM_MONITOR_INFO("FIXED_OSTDBL_ENABLE, r_ostdbl:%d, w_ostdbl:%d, value:%#x",
+					bwr->r_ostdbl, bwr->w_ostdbl, value);
+			}
 		}
 		if (mmmc_state & CAM_ID_FILTER_ENABLE) {
 			MM_MONITOR_INFO("CAM_ID_FILTER_ENABLE");
@@ -1086,7 +1249,6 @@ u32 mtk_dump_monitor(u32 power_domain_id)
 	return mtk_dump_monitor_by_subsys_id(subsys_id);
 }
 EXPORT_SYMBOL(mtk_dump_monitor);
-
 
 int mtk_mmmc_reinit(const char *val, const struct kernel_param *kp)
 {
@@ -1631,15 +1793,22 @@ int mtk_mm_bwr_probe(struct platform_device *pdev, u32 power_domain_id)
 	of_property_read_u32(dev->of_node, "ostdbl-r-nps", &mtk_bwr->ostdbl_r_nps);
 	of_property_read_u32(dev->of_node, "ostdbl-w-nps", &mtk_bwr->ostdbl_w_nps);
 
+	mtk_bwr->r_ostdbl = mmmc_fixed_r_ostdbl;
+	mtk_bwr->w_ostdbl = mmmc_fixed_w_ostdbl;
+
 	node = of_parse_phandle(dev->of_node, "bwr-ela", 0);
 	if (node) {
 		mtk_bwr->bwr_ela = of_find_device_by_node(node);
 	} else
 		mtk_bwr->bwr_ela = NULL;
 
-	MM_MONITOR_DBG("BWR hwid:%d ostdbl_r_nps:%d ostdbl_w_nps:%d bwr_ela:%s",
+	if (of_property_read_bool(dev->of_node, "disable-limiter"))
+		mtk_bwr->disable_limiter = true;
+
+	MM_MONITOR_DBG("BWR hwid:%d ostdbl_r_nps:%d ostdbl_w_nps:%d bwr_ela:%s disable_limiter:%d",
 		mtk_bwr->hwid, mtk_bwr->ostdbl_r_nps, mtk_bwr->ostdbl_w_nps,
-		node ? dev_name(&mtk_bwr->bwr_ela->dev) : "NULL");
+		node ? dev_name(&mtk_bwr->bwr_ela->dev) : "NULL",
+		mtk_bwr->disable_limiter);
 
 	if (of_property_read_u32(dev->of_node, "axi-common-id", &commid) == 0) {
 		if (g_mtk_axi_mon->aximon_comm_map_size == 0)
