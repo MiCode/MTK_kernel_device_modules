@@ -18,6 +18,7 @@
 	ise-wakelock = <1>;
 	ise-lpm-freerun = <1>;
 	ise-lpm-deinit-bypass = <0>;
+	ise-lpm-vote-dram = <1>;
 };
 
 &ise_mbox {

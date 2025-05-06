@@ -656,6 +656,10 @@
 		ise-wakelock = <0>;
 		ise-lpm-freerun = <0>;
 		ise-lpm-deinit-bypass = <1>;
+		ise-lpm-vote-dram = <0>;
+		interconnects = <&dvfsrc MT6873_MASTER_ISE &dvfsrc MT6873_SLAVE_DDR_EMI>;
+		interconnect-names = "ise-perf-bw";
+		required-opps = <&dvfsrc_freq_opp3>;
 	};
 
 	ise_trusty: ise-trusty {
