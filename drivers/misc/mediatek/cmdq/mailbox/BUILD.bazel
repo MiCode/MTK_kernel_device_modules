@@ -29,6 +29,7 @@ PLATFORMS_SMMU = [
 ]
 
 PLATFORMS = [
+    "mt6858",
     "mt6855",
     "mt6789",
     "mt6878",
