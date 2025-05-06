@@ -70,7 +70,7 @@ static DEFINE_SPINLOCK(imgsensor_drv_lock);
 static struct imgsensor_info_struct imgsensor_info = {
 	.sensor_id = IMX06C_SENSOR_ID,
 
-	.checksum_value = 0xa4c32546,
+	.checksum_value = 0xaf3e324f,
 
 	.pre = {
 		.pclk = 1504000000,
