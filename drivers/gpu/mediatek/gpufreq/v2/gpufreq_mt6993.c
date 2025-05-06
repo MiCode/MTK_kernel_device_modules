@@ -39,7 +39,7 @@
 /* misc function */
 static void __iomem *__gpufreq_of_ioremap(const char *node_name, int idx);
 static void __gpufreq_dump_power_tracker_status(void);
-static void __gpufreq_dump_freq_volt_tracker_status(char *log_buf, int *log_len, int log_size);
+static void __gpufreq_dump_fv_tracker_status(char *log_buf, int *log_len, int log_size);
 static void __gpufreq_dump_bus_tracker_status(char *log_buf, int *log_len, int log_size);
 static irqreturn_t __gpufreq_bus_tracker_irq_handler(int irq, void *data);
 /* bringup function */
@@ -444,7 +444,7 @@ void __gpufreq_dump_internal_status(char *log_buf, int *log_len, int log_size)
 		"AFIFO_RX_EMPTY", (unsigned int)(DRV_Reg32(MFG_ACP_GALS0_SLV_RX_STA0) & GENMASK(3, 0)));
 
 	__gpufreq_dump_power_tracker_status();
-	__gpufreq_dump_freq_volt_tracker_status(log_buf, log_len, log_size);
+	__gpufreq_dump_fv_tracker_status(log_buf, log_len, log_size);
 	__gpufreq_dump_bus_tracker_status(log_buf, log_len, log_size);
 }
 
@@ -790,7 +790,7 @@ static void __gpufreq_dump_power_tracker_status(void)
 	}
 }
 
-static void __gpufreq_dump_freq_volt_tracker_status(char *log_buf, int *log_len, int log_size)
+static void __gpufreq_dump_fv_tracker_status(char *log_buf, int *log_len, int log_size)
 {
 	int i = 0;
 	unsigned int w_ptr_gpu = 0, r_ptr_gpu = 0, w_ptr_stk = 0, r_ptr_stk = 0;
@@ -809,7 +809,7 @@ static void __gpufreq_dump_freq_volt_tracker_status(char *log_buf, int *log_len,
 		w_ptr_stk = (DRV_Reg32(MFG_TOP_STACK_FREQ_TRACKER_CON_3) & GENMASK(16, 11)) >> 11;
 		GPUFREQ_LOGB(log_buf, log_len, log_size,
 			"== [FREQ VOLT TRACKER STATUS: GPU=%02u, STK=%02u] ==", w_ptr_gpu, w_ptr_stk);
-		for (i = 1; i <= 32; i++) {
+		for (i = 1; i <= 16; i++) {
 			/* only dump last 16 record */
 			r_ptr_gpu = (w_ptr_gpu + ~i + 1) & GENMASK(5, 0);
 			DRV_FieldReg32(MFG_TOP_TOP_FREQ_TRACKER_CON_1, r_ptr_gpu, GENMASK(19, 14));
@@ -820,9 +820,9 @@ static void __gpufreq_dump_freq_volt_tracker_status(char *log_buf, int *log_len,
 			udelay(1);
 
 			GPUFREQ_LOGB(log_buf, log_len, log_size,
-				"[GPU][%02u][%u] Freq=%lu, Volt=%lu [STK][%02u][%u] Freq=%lu, Volt=%lu",
-				r_ptr_gpu, FTRACKER_TGPU, FTRACKER_FGPU, VTRACKER_VGPU,
-				r_ptr_stk, FTRACKER_TSTACK, FTRACKER_FSTACK, VTRACKER_VSTACK);
+				"[GPU][%02u][%u] Freq=%lu [%u] Volt=%lu [STK][%02u][%u] Freq=%lu [%u] Volt=%lu",
+				r_ptr_gpu, FTRACKER_TGPU, FTRACKER_FGPU, VTRACKER_TGPU, VTRACKER_VGPU,
+				r_ptr_stk, FTRACKER_TSTACK, FTRACKER_FSTACK, VTRACKER_TSTACK, VTRACKER_VSTACK);
 		}
 	}
 }
