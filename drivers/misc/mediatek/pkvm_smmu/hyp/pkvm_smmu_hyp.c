@@ -1309,9 +1309,17 @@ static void handle_guest_write_prod(u64 cmdq_prod_reg_value, smmu_device_t *dev)
 	q_max_entries = 1U << cmdq_entries_log2;
 	new_wrap = EXTRACT(new_prod_reg, cmdq_entries_log2, WRAP_MASK);
 	cur_wrap = EXTRACT(cur_prod_reg, cmdq_entries_log2, WRAP_MASK);
-	if (new_wrap == cur_wrap)
-		cmd_num = new_prod_idx - cur_prod_idx;
-	else
+	if (new_wrap == cur_wrap) {
+		if (new_prod_idx >= cur_prod_idx)
+			cmd_num = new_prod_idx - cur_prod_idx;
+		else {
+			cmd_num = 0;
+			pkvm_smmu_ops->puts("abnormal index [new] [cur]");
+			pkvm_smmu_ops->putx64((u64)new_prod_idx);
+			pkvm_smmu_ops->putx64((u64)cur_prod_idx);
+			WARN_ON(1);
+		}
+	} else
 		cmd_num = (new_prod_idx + q_max_entries) - cur_prod_idx;
 	if (cmd_num > q_max_entries)
 		pkvm_smmu_ops->puts("cmd_num error");
