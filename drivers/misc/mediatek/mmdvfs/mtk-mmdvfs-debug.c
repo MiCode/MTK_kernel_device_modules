@@ -132,6 +132,22 @@ int mtk_mmdvfs_debug_release_step0(void)
 }
 EXPORT_SYMBOL_GPL(mtk_mmdvfs_debug_release_step0);
 
+static int mmdvfs_debug_set_ftrace(const char *val,
+	const struct kernel_param *kp)
+{
+	if (!ops.mmdvfs_ftrace_fp) {
+		pr_notice("[mmdvfs_dbg][dbg]%s:%d: without fp\n", __func__, __LINE__);
+		return -EINVAL;
+	}
+
+	return ops.mmdvfs_ftrace_fp(val, kp);
+}
+static const struct kernel_param_ops mmdvfs_debug_set_ftrace_ops = {
+	.set = mmdvfs_debug_set_ftrace,
+};
+module_param_cb(ftrace, &mmdvfs_debug_set_ftrace_ops, NULL, 0644);
+MODULE_PARM_DESC(ftrace, "mmdvfs ftrace log");
+
 MODULE_DESCRIPTION("MMDVFS Debug Driver");
 MODULE_AUTHOR("Anthony Huang<anthony.huang@mediatek.com>");
 MODULE_LICENSE("GPL");

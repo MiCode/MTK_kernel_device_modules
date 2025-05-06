@@ -26,6 +26,7 @@
 
 #include "mtk-mmdvfs-debug.h"
 #include "mtk-mmdvfs-v5-memory.h"
+#include "mtk-mmdvfs-ftrace.h"
 
 #define mmdvfs_seq_print(file, fmt, args...)		\
 ({							\
@@ -58,6 +59,9 @@ static u8 *fmeter_type;
 
 static int dpsw_thr;
 static bool met_freerun;
+#if IS_ENABLED(CONFIG_MTK_MMDVFS_VCP)
+static bool ftrace_v5_ena;
+#endif
 static bool mmdvfs_pm_suspend;
 
 static u8 user_count;
@@ -685,6 +689,105 @@ static struct mmdvfs_res_mbrain_debug_ops *mmdvfs_debug_v5_mbrain_usr_get(void)
 	return &mmdvfs_mbrain_usr_ops;
 }
 
+#if IS_ENABLED(CONFIG_MTK_MMDVFS_VCP)
+static int mmdvfs_v5_dbg_ftrace_thread(void *data)
+{
+	int i, j, ret;
+
+	if (!SRAM_BASE) {
+		MMDVFS_DBG("mmdvfs_v5 SRAM_BASE not ready");
+		ftrace_v5_ena = false;
+		return 0;
+	}
+
+	MMDVFS_DBG("mmdvfs_v5 SRAM_BASE ready");
+	ftrace_v5_ena = true;
+	while (!kthread_should_stop()) {
+		//sram
+		mtk_mmdvfs_enable_vcp(true, user ? user[0].id : 0);
+		mmdvfs_mmup_cb_mutex_lock();
+		ret = mmdvfs_mmup_cb_ready_get();
+		if (!ret || !unlikely(SRAM_BASE)) {
+			mmdvfs_mmup_cb_mutex_unlock();
+			mtk_mmdvfs_enable_vcp(false, user ? user[0].id : 0);
+			MMDVFS_DBG("mmup_cb_ready:%d SRAM_BASE:%#lx", ret, (unsigned long)(void *)SRAM_BASE);
+			continue;
+		}
+
+		// power opp
+		for (i = 0; i < SRAM_PWR_CNT; i++) {
+			j = (readl(SRAM_PWR_IDX(i)) - 1 + MEM_REC_CNT) % MEM_REC_CNT;
+			ftrace_pwr_opp_v3(i, MEM_DEC_LVL(readl(SRAM_PWR_VAL(i, j))));
+		}
+
+		//sram, hw users
+		for (i = MMDVFS_USER_13; i < MMDVFS_USER_OPP_RECORD_NUM; i++) {
+			j = (readl(SRAM_XPC_IDX(i - MMDVFS_USER_13)) - 1 + MEM_REC_CNT) % MEM_REC_CNT;
+			ftrace_user_opp_v3(i, MEM_DEC_LVL(readl(SRAM_XPC_VAL(i - MMDVFS_USER_13, j))));
+		}
+
+		mmdvfs_mmup_cb_mutex_unlock();
+		mtk_mmdvfs_enable_vcp(false, user ? user[0].id : 0);
+
+		//dram, sw users
+		for (i = 0; i < MMDVFS_USER_13; i++) {
+			j = (readl(DRAM_USR_IDX(i)) - 1 + MEM_REC_CNT) % MEM_REC_CNT;
+			ftrace_user_opp_v3(i, MEM_DEC_LVL(readl(DRAM_USR_VAL(i, j))));
+		}
+
+		msleep(1);
+	}
+
+	ftrace_v5_ena = false;
+	MMDVFS_DBG("kthread mmdvfs-dbg-ftrace-v5 end");
+	return 0;
+}
+#endif
+
+static int mmdvfs_debug_v5_set_ftrace(const char *val,
+	const struct kernel_param *kp)
+{
+#if IS_ENABLED(CONFIG_MTK_MMDVFS_VCP)
+	static struct task_struct *kthr_v5;
+#endif
+	u32 ver = 0, ena = 0;
+	int ret;
+
+	ret = sscanf(val, "%u %u", &ver, &ena);
+	if (ret != 2) {
+		MMDVFS_DBG("failed:%d ver:%hhu ena:%hhu", ret, ver, ena);
+		return -EINVAL;
+	}
+
+	if (!met_freerun) {
+		MMDVFS_DBG("mmdvfs met not freerun");
+		return 0;
+	}
+
+#if IS_ENABLED(CONFIG_MTK_MMDVFS_VCP)
+	if (ena) {
+		if (ftrace_v5_ena)
+			MMDVFS_DBG("kthread mmdvfs-dbg-ftrace-v5 already created");
+		else {
+			kthr_v5 = kthread_run(
+				mmdvfs_v5_dbg_ftrace_thread, NULL, "mmdvfs-dbg-ftrace-v5");
+			if (IS_ERR(kthr_v5))
+				MMDVFS_DBG("create kthread mmdvfs-dbg-ftrace-v5 failed");
+		}
+	} else {
+		if (ftrace_v5_ena) {
+			ret = kthread_stop(kthr_v5);
+			if (!ret) {
+				MMDVFS_DBG("stop kthread mmdvfs-dbg-ftrace-v5");
+				ftrace_v5_ena = false;
+			}
+		}
+	}
+#endif
+
+	return 0;
+}
+
 static struct mmdvfs_debug_ops mmdvfs_debug_v5_ops = {
 	.force_step_fp = mmdvfs_debug_v5_set_force_step,
 	.vote_step_fp = mmdvfs_debug_v5_set_vote_step,
@@ -694,6 +797,7 @@ static struct mmdvfs_debug_ops mmdvfs_debug_v5_ops = {
 	.mmdvfs_mbrain_fp = mmdvfs_debug_v5_mbrain_pwr_get,
 	.mmdvfs_mbrain_usr_fp = mmdvfs_debug_v5_mbrain_usr_get,
 	.ap_set_rate_fp = mmdvfs_debug_v5_ap_set_rate,
+	.mmdvfs_ftrace_fp = mmdvfs_debug_v5_set_ftrace,
 };
 
 static int mmdvfs_debug_pm_notifier(struct notifier_block *notifier, unsigned long pm_event, void *unused)

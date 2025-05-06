@@ -834,7 +834,7 @@ static int mmdvfs_v3_dbg_ftrace_thread(void *data)
 }
 #endif
 
-static int mmdvfs_debug_set_ftrace(const char *val,
+static int mmdvfs_debug_v3_set_ftrace(const char *val,
 	const struct kernel_param *kp)
 {
 	static struct task_struct *kthr_v1;
@@ -901,12 +901,6 @@ static int mmdvfs_debug_set_ftrace(const char *val,
 
 	return 0;
 }
-
-static struct kernel_param_ops mmdvfs_debug_set_ftrace_ops = {
-	.set = mmdvfs_debug_set_ftrace,
-};
-module_param_cb(ftrace, &mmdvfs_debug_set_ftrace_ops, NULL, 0644);
-MODULE_PARM_DESC(ftrace, "mmdvfs ftrace log");
 
 static struct mmdvfs_res_mbrain_header mmdvfs_mbrain_header;
 
@@ -1216,6 +1210,7 @@ static struct mmdvfs_debug_ops mmdvfs_debug_v3_ops = {
 	.force_vcore_fp = mmdvfs_debug_v3_force_vcore,
 	.mmdvfs_mbrain_fp = get_mmdvfs_mbrain_dbg_ops_v3,
 	.release_step_fp = mmdvfs_debug_v3_release_step0,
+	.mmdvfs_ftrace_fp = mmdvfs_debug_v3_set_ftrace,
 };
 
 static int mmdvfs_debug_probe(struct platform_device *pdev)

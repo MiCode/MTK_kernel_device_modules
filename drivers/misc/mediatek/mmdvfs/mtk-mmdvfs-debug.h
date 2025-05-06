@@ -88,6 +88,7 @@ struct mmdvfs_debug_ops {
 	struct mmdvfs_res_mbrain_debug_ops *(*mmdvfs_mbrain_usr_fp)(void);
 	int (*ap_set_rate_fp)(const char *val, const struct kernel_param *kp);
 	void (*release_step_fp)(void);
+	int (*mmdvfs_ftrace_fp)(const char *val, const struct kernel_param *kp);
 };
 void mmdvfs_debug_ops_set(struct mmdvfs_debug_ops *_ops);
 #endif
