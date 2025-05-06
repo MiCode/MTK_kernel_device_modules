@@ -144,6 +144,7 @@ static void dec_ise_awake_cnt(enum mtk_ise_awake_id_t mtk_ise_awake_id)
 enum mtk_ise_awake_ack_t mtk_ise_awake_lock(enum mtk_ise_awake_id_t mtk_ise_awake_id)
 {
 	uint64_t start_time, end_time;
+
 	if (!ise_wakelock_en) {
 		pr_notice("ise wakelock disable!!\n");
 		return ISE_ERR_WAKELOCK_DISABLE;
@@ -153,9 +154,8 @@ enum mtk_ise_awake_ack_t mtk_ise_awake_lock(enum mtk_ise_awake_id_t mtk_ise_awak
 		return ISE_ERR_UID;
 	}
 
-	start_time = cpu_clock(0);
 	mutex_lock(&mutex_ise_lpm);
-	pr_notice("%s cnt%d user%d\n", __func__, ise_awake_cnt, mtk_ise_awake_id);
+	start_time = cpu_clock(0);
 	inc_ise_awake_cnt(mtk_ise_awake_id);
 	if (ise_awake_cnt == 1) {
 		if (ise_req_pending_cnt == 1)
@@ -164,10 +164,11 @@ enum mtk_ise_awake_ack_t mtk_ise_awake_lock(enum mtk_ise_awake_id_t mtk_ise_awak
 			ise_power_on();
 	}
 	end_time = cpu_clock(0);
+	mutex_unlock(&mutex_ise_lpm);
+
 	pr_notice("%s cnt%d user%d start=%llu, end=%llu diff=%llu\n",
 		__func__, ise_awake_cnt, mtk_ise_awake_id,
 		start_time, end_time, end_time - start_time);
-	mutex_unlock(&mutex_ise_lpm);
 
 	return ISE_SUCCESS;
 }
@@ -176,6 +177,7 @@ EXPORT_SYMBOL_GPL(mtk_ise_awake_lock);
 enum mtk_ise_awake_ack_t mtk_ise_awake_unlock(enum mtk_ise_awake_id_t mtk_ise_awake_id)
 {
 	uint64_t start_time, end_time;
+
 	if (!ise_wakelock_en) {
 		pr_notice("ise wakelock disable!!\n");
 		return ISE_ERR_WAKELOCK_DISABLE;
@@ -193,9 +195,8 @@ enum mtk_ise_awake_ack_t mtk_ise_awake_unlock(enum mtk_ise_awake_id_t mtk_ise_aw
 		return ISE_ERR_REF_CNT;
 	}
 
-	start_time = cpu_clock(0);
 	mutex_lock(&mutex_ise_lpm);
-	pr_notice("%s cnt%d user%d\n", __func__, ise_awake_cnt, mtk_ise_awake_id);
+	start_time = cpu_clock(0);
 	dec_ise_awake_cnt(mtk_ise_awake_id);
 	if (ise_awake_cnt == 0) {
 		ise_req_pending_cnt++;
@@ -203,10 +204,11 @@ enum mtk_ise_awake_ack_t mtk_ise_awake_unlock(enum mtk_ise_awake_id_t mtk_ise_aw
 			jiffies + msecs_to_jiffies(ISE_LPM_PWR_OFF_DEBOUNCE_MS));
 	}
 	end_time = cpu_clock(0);
+	mutex_unlock(&mutex_ise_lpm);
+
 	pr_notice("%s cnt%d user%d start=%llu, end=%llu diff=%llu\n",
 		__func__, ise_awake_cnt, mtk_ise_awake_id,
 		start_time, end_time, end_time - start_time);
-	mutex_unlock(&mutex_ise_lpm);
 
 	return ISE_SUCCESS;
 }
