@@ -8,9 +8,9 @@
 
 extern bool vip_enable;
 
-#define VIP_TIME_SLICE     3000000U
-#define VIP_TIME_LIMIT_DEFAULT     (4 * VIP_TIME_SLICE)
-#define VIP_TIME_LIMIT_MAX         (125 * VIP_TIME_LIMIT_DEFAULT)
+#define VIP_TIME_SLICE              (3 * NSEC_PER_MSEC)
+#define VIP_TIME_LIMIT_DEFAULT      (4 * VIP_TIME_SLICE)
+#define VIP_TIME_LIMIT_MAX          (125 * VIP_TIME_LIMIT_DEFAULT)
 
 enum {
 	WORKER_VIP,
@@ -63,6 +63,8 @@ extern void unset_task_basic_vip(int pid);
 extern void set_task_vvip(int pid);
 extern void unset_task_vvip(int pid);
 extern void set_ls_task_vip(unsigned int prio);
+extern void set_vip_switch_push(void);
+extern void unset_vip_switch_push(void);
 extern int set_group_vip_prio(unsigned int cpuctl_id, unsigned int prio);
 extern void set_top_app_vip(unsigned int prio);
 extern void set_foreground_vip(unsigned int prio);

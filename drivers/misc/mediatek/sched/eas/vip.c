@@ -14,6 +14,7 @@
 
 unsigned int ls_vip_threshold                   =  DEFAULT_VIP_PRIO_THRESHOLD;
 bool vip_enable;
+static bool vip_switch_push;
 
 #define link_with_others(lh) (!list_empty(lh))
 #define NUM_MAXIMUM_TGID 12
@@ -39,7 +40,7 @@ inline unsigned int get_num_higher_prio_vip(int cpu, int vip_prio)
 {
 	int sum_num = 0;
 
-	for (vip_prio+=1; vip_prio<NUM_VIP_PRIO; vip_prio++)
+	for (vip_prio += 1; vip_prio < NUM_VIP_PRIO; vip_prio++)
 		sum_num += num_vip_in_cpu(cpu, vip_prio);
 
 	return sum_num;
@@ -201,10 +202,10 @@ out:
 	if (trace_sched_find_min_num_vip_cpus_enabled()) {
 		u64 num_vip_in_cpu_bit = 0;
 
-		for(cpu=0; cpu<MAX_NR_CPUS; cpu++) {
+		for(cpu = 0; cpu < MAX_NR_CPUS; cpu++) {
 			num_vip_in_cpu_bit <<= MAX_NUM_VIP_IN_CPU_BIT;
 			if (num_vip_in_cpu_arr[cpu] != -1)
-				num_vip_in_cpu_bit |= (num_vip_in_cpu_arr[cpu]<<1);
+				num_vip_in_cpu_bit |= (num_vip_in_cpu_arr[cpu] << 1);
 			else
 				num_vip_in_cpu_bit |= 1;
 		}
@@ -298,6 +299,18 @@ void turn_off_vip_balance_overutilized(void)
 }
 EXPORT_SYMBOL_GPL(turn_off_vip_balance_overutilized);
 
+void set_vip_switch_push(void)
+{
+	vip_switch_push = true;
+}
+EXPORT_SYMBOL_GPL(set_vip_switch_push);
+
+void unset_vip_switch_push(void)
+{
+	vip_switch_push = false;
+}
+EXPORT_SYMBOL_GPL(unset_vip_switch_push);
+
 int find_imbalanced_vvip_gear(void)
 {
 	int gear = -1;
@@ -316,7 +329,7 @@ int find_imbalanced_vvip_gear(void)
 		cpumask_and(&cpus, perf_domain_span(pd), cpu_active_mask);
 		for_each_cpu(cpu, &cpus) {
 			num_vvip_in_gear += num_vip_in_cpu(cpu, VVIP);
-			num_cpu += 1;
+			num_cpu++;
 
 			if (trace_sched_find_imbalanced_vvip_gear_enabled())
 				trace_sched_find_imbalanced_vvip_gear(cpu, num_vvip_in_gear);
@@ -383,14 +396,14 @@ void check_vip_num(struct rq *rq)
 
 	/* temp patch for counter issue*/
 	if (list_empty(&vrq->vip_tasks)) {
-		if (vrq->sum_num_vip_tasks != 0) {
+		if (vrq->sum_num_vip_tasks) {
 			vrq->sum_num_vip_tasks = 0;
 			pr_info("cpu=%d error VIP number\n", cpu_of(rq));
 		}
-		for (; vip_prio<NUM_VIP_PRIO; vip_prio++) {
+		for (; vip_prio < NUM_VIP_PRIO; vip_prio++) {
 			if (vrq->num_vip_tasks[vip_prio] != 0) {
 				vrq->num_vip_tasks[vip_prio] = 0;
-			pr_info("cpu=%d error vip_prio=%d number\n", cpu_of(rq), vrq->num_vip_tasks[vip_prio]);
+				pr_info("cpu=%d error vip_prio=%d number\n", cpu_of(rq), vrq->num_vip_tasks[vip_prio]);
 			}
 		}
 	}
@@ -407,7 +420,7 @@ static void insert_vip_task(struct rq *rq, struct vip_task_struct *vts,
 	if (vts_to_ts(vts)->se.sched_delayed)
 		return;
 
-	if (vts->vip_list.next == NULL || link_with_others(&vts->vip_list))
+	if (!vts->vip_list.next || link_with_others(&vts->vip_list))
 		return;
 
 	/* change vip_prio inside lock to prevent NOT_VIP inserted.
@@ -433,15 +446,15 @@ static void insert_vip_task(struct rq *rq, struct vip_task_struct *vts,
 	}
 	list_add(entry, pos->prev);
 	if (!requeue) {
-		vrq->num_vip_tasks[vts->vip_prio] += 1;
-		vrq->sum_num_vip_tasks += 1;
+		vrq->num_vip_tasks[vts->vip_prio]++;
+		vrq->sum_num_vip_tasks++;
 	}
 
 	/* vip inserted trace event */
 	if (trace_sched_insert_vip_task_enabled()) {
 		pid_t prev_pid = list_is_first(entry, &vrq->vip_tasks) ? 0 : list_head_to_pid(entry->prev);
 		pid_t next_pid = list_is_last(entry, &vrq->vip_tasks) ? 0 : list_head_to_pid(entry->next);
-		bool is_first_entry = (prev_pid == 0) ? true : false;
+		bool is_first_entry = prev_pid ? false : true;
 		struct task_struct *p = vts_to_ts(vts);
 
 		trace_sched_insert_vip_task(p, cpu_of(rq), vts->vip_prio,
@@ -461,8 +474,8 @@ static void deactivate_vip_task(struct task_struct *p, struct rq *rq)
 	list_del_init(entry);
 
 	if (vts->vip_prio != NOT_VIP) {
-		vrq->num_vip_tasks[vts->vip_prio] -= 1;
-		vrq->sum_num_vip_tasks -= 1;
+		vrq->num_vip_tasks[vts->vip_prio]--;
+		vrq->sum_num_vip_tasks--;
 	}
 
 	vts->vip_prio = NOT_VIP;
@@ -580,10 +593,7 @@ int get_group_threshold(struct task_struct *p)
 
 bool is_VIP_task_group(struct task_struct *p)
 {
-	if (p->prio <= get_group_threshold(p))
-		return true;
-
-	return false;
+	return p->prio <= get_group_threshold(p);
 }
 
 /* ls vip interface */
@@ -602,10 +612,7 @@ EXPORT_SYMBOL_GPL(unset_ls_task_vip);
 
 bool is_VIP_latency_sensitive(struct task_struct *p)
 {
-	if (is_task_latency_sensitive(p) && p->prio <= ls_vip_threshold)
-		return true;
-
-	return false;
+	return is_task_latency_sensitive(p) && p->prio <= ls_vip_threshold;
 }
 
 void set_task_vvip_and_throttle(int pid, unsigned int throttle_time)
@@ -620,7 +627,7 @@ void set_task_vvip_and_throttle(int pid, unsigned int throttle_time)
 		get_task_struct(p);
 		vts = &((struct mtk_static_vendor_task *)p->android_vendor_data1)->vip_task;
 		vts->vvip = true;
-		vts->throttle_time = min(throttle_time * 1000000, VIP_TIME_LIMIT_MAX);
+		vts->throttle_time = min(throttle_time * NSEC_PER_MSEC, VIP_TIME_LIMIT_MAX);
 		done = 1;
 		put_task_struct(p);
 	}
@@ -649,7 +656,7 @@ void set_task_vvip(int pid)
 	rcu_read_unlock();
 
 	if (trace_sched_set_vip_enabled())
-		trace_sched_set_vip(pid, done, "vvip", VVIP, VIP_TIME_LIMIT_DEFAULT/1000000, 0);
+		trace_sched_set_vip(pid, done, "vvip", VVIP, VIP_TIME_LIMIT_DEFAULT / NSEC_PER_MSEC, 0);
 }
 EXPORT_SYMBOL_GPL(set_task_vvip);
 
@@ -691,7 +698,7 @@ void set_task_priority_based_vip_and_throttle(int pid, int prio, unsigned int th
 		get_task_struct(p);
 		vts = &((struct mtk_static_vendor_task *)p->android_vendor_data1)->vip_task;
 		vts->priority_based_prio = prio;
-		vts->throttle_time = min(throttle_time * 1000000, VIP_TIME_LIMIT_MAX);
+		vts->throttle_time = min(throttle_time * NSEC_PER_MSEC, VIP_TIME_LIMIT_MAX);
 		done = 1;
 		put_task_struct(p);
 	}
@@ -721,7 +728,7 @@ void set_task_priority_based_vip(int pid, int prio)
 	rcu_read_unlock();
 
 	if (trace_sched_set_vip_enabled())
-		trace_sched_set_vip(pid, done, "priority_based_vip", prio, VIP_TIME_LIMIT_DEFAULT/1000000, 0);
+		trace_sched_set_vip(pid, done, "priority_based_vip", prio, VIP_TIME_LIMIT_DEFAULT / NSEC_PER_MSEC, 0);
 }
 EXPORT_SYMBOL_GPL(set_task_priority_based_vip);
 
@@ -758,7 +765,7 @@ EXPORT_SYMBOL_GPL(show_tgid);
 
 int set_tgid_vip(int tgid)
 {
-	int slot_id = 0, set_state;
+	int slot_id, set_state;
 
 	rcu_read_lock();
 	if (find_task_by_vpid(tgid) == NULL) {
@@ -780,7 +787,8 @@ int set_tgid_vip(int tgid)
 
 out:
 	if (trace_sched_set_vip_enabled())
-		trace_sched_set_vip(tgid, set_state, "tgid", WORKER_VIP, VIP_TIME_LIMIT_DEFAULT/1000000, slot_id);
+		trace_sched_set_vip(tgid, set_state, "tgid", WORKER_VIP,
+			VIP_TIME_LIMIT_DEFAULT / NSEC_PER_MSEC, slot_id);
 
 	return set_state;
 }
@@ -788,7 +796,7 @@ EXPORT_SYMBOL(set_tgid_vip);
 
 int unset_tgid_vip(int tgid)
 {
-	int slot_id = 0, unset_state;
+	int slot_id, unset_state;
 
 	for (slot_id = 0; slot_id < NUM_MAXIMUM_TGID; slot_id++) {
 		if (tgid_vip_arr[slot_id] == tgid) {
@@ -810,7 +818,7 @@ EXPORT_SYMBOL(unset_tgid_vip);
 
 bool is_VIP_tgid(struct task_struct *p)
 {
-	int slot_id = 0;
+	int slot_id;
 
 	for (slot_id = 0; slot_id < NUM_MAXIMUM_TGID; slot_id++) {
 		if (p->tgid == tgid_vip_arr[slot_id])
@@ -851,7 +859,7 @@ void set_task_basic_vip_and_throttle(int pid, unsigned int throttle_time)
 		get_task_struct(p);
 		vts = &((struct mtk_static_vendor_task *)p->android_vendor_data1)->vip_task;
 		vts->basic_vip = true;
-		vts->throttle_time = min(throttle_time * 1000000, VIP_TIME_LIMIT_MAX);
+		vts->throttle_time = min(throttle_time * NSEC_PER_MSEC, VIP_TIME_LIMIT_MAX);
 		done = 1;
 		put_task_struct(p);
 	}
@@ -880,7 +888,7 @@ void set_task_basic_vip(int pid)
 	rcu_read_unlock();
 
 	if (trace_sched_set_vip_enabled())
-		trace_sched_set_vip(pid, done, "basic_vip", WORKER_VIP, VIP_TIME_LIMIT_DEFAULT/1000000, 0);
+		trace_sched_set_vip(pid, done, "basic_vip", WORKER_VIP, VIP_TIME_LIMIT_DEFAULT / NSEC_PER_MSEC, 0);
 }
 EXPORT_SYMBOL(set_task_basic_vip);
 
@@ -1025,7 +1033,7 @@ static void account_vip_runtime(struct rq *rq, struct task_struct *curr)
 		deactivate_vip_task(curr, rq);
 		if (trace_sched_vip_throttled_enabled())
 			trace_sched_vip_throttled(curr->pid, cpu_of(rq), vts->vip_prio,
-				vts->throttle_time/1000000, vts->total_exec/1000000);
+				vts->throttle_time / NSEC_PER_MSEC, vts->total_exec / NSEC_PER_MSEC);
 		return;
 	}
 
@@ -1034,7 +1042,7 @@ static void account_vip_runtime(struct rq *rq, struct task_struct *curr)
 		return;
 
 	/* slice expired. re-queue the task */
-	if (vts->vip_list.next == NULL || !link_with_others(&vts->vip_list))
+	if (!vts->vip_list.next || !link_with_others(&vts->vip_list))
 		return;
 
 	list_del_init(&vts->vip_list);
@@ -1045,18 +1053,18 @@ void vip_check_preempt_wakeup(void *unused, struct rq *rq, struct task_struct *p
 				bool *preempt, bool *nopreempt, int wake_flags,
 				struct sched_entity *se, struct sched_entity *pse)
 {
-	struct vip_rq *vrq = &per_cpu(vip_rq, cpu_of(rq));
-	struct vip_task_struct *vts_p = &((struct mtk_static_vendor_task *)p->android_vendor_data1)->vip_task;
+	struct vip_rq *vrq;
+	struct vip_task_struct *vts_p, *vts_c;
 	struct task_struct *c = rq->curr;
-	struct vip_task_struct *vts_c;
 	bool resched = false;
 	bool p_is_vip, curr_is_vip;
-
-	vts_c = &((struct mtk_static_vendor_task *)rq->curr->android_vendor_data1)->vip_task;
 
 	if (unlikely(!vip_enable))
 		return;
 
+	vrq = &per_cpu(vip_rq, cpu_of(rq));
+	vts_c = &((struct mtk_static_vendor_task *)rq->curr->android_vendor_data1)->vip_task;
+	vts_p = &((struct mtk_static_vendor_task *)p->android_vendor_data1)->vip_task;
 	p_is_vip = vts_p->vip_list.next && link_with_others(&vts_p->vip_list);
 	curr_is_vip = vts_c->vip_list.next && link_with_others(&vts_c->vip_list);
 	/*
@@ -1126,12 +1134,10 @@ void vip_lb_tick(struct rq *rq)
 
 void vip_scheduler_tick(void *unused, struct rq *rq)
 {
-	struct task_struct *p = rq->curr;
-
 	if (unlikely(!vip_enable))
 		return;
 
-	if (!vip_fair_task(p))
+	if (!vip_fair_task(rq->curr))
 		return;
 
 	vip_lb_tick(rq);
@@ -1199,14 +1205,14 @@ void init_vip_task_struct(struct task_struct *p)
 	struct vip_task_struct *vts = &((struct mtk_static_vendor_task *)p->android_vendor_data1)->vip_task;
 
 	INIT_LIST_HEAD(&vts->vip_list);
-	vts->sum_exec_snapshot = 0;
-	vts->total_exec = 0;
-	vts->vip_prio = NOT_VIP;
-	vts->basic_vip = false;
-	vts->vvip = false;
-	vts->faster_compute_eng = false;
-	vts->priority_based_prio = NOT_VIP;
-	vts->throttle_time = VIP_TIME_LIMIT_DEFAULT;
+	vts->sum_exec_snapshot		= 0;
+	vts->total_exec				= 0;
+	vts->vip_prio				= NOT_VIP;
+	vts->basic_vip				= false;
+	vts->vvip					= false;
+	vts->faster_compute_eng		= false;
+	vts->priority_based_prio	= NOT_VIP;
+	vts->throttle_time			= VIP_TIME_LIMIT_DEFAULT;
 }
 
 void init_task_gear_hints(struct task_struct *p)
@@ -1222,12 +1228,12 @@ void init_dpt_v2_task_struct(struct task_struct *p)
 {
 	struct dpt_task_struct *dts = &((struct mtk_task *) android_task_vendor_data(p))->dpt_task;
 
-	dts->util_cpu_sum = 0;
-	dts->util_coef2_sum = 0;
-	dts->util_cpu_avg = 0;
-	dts->util_coef2_avg = 0;
-	dts->util_cpu_est = 0;
-	dts->util_coef2_est = 0;
+	dts->util_cpu_sum	= 0;
+	dts->util_coef2_sum	= 0;
+	dts->util_cpu_avg	= 0;
+	dts->util_coef2_avg	= 0;
+	dts->util_cpu_est	= 0;
+	dts->util_coef2_est	= 0;
 }
 
 void vip_new_tasks(void *unused, struct task_struct *new)
@@ -1328,19 +1334,52 @@ void vip_sched_switch(struct task_struct *prev, struct task_struct *next, struct
 	if (in_interrupt())
 		return;
 
-	if (!task_is_vip(prev, NOT_VIP))
-		return;
+	if (vip_switch_push && !task_is_vip(next, NOT_VIP)) {
+		struct vip_task_struct *vts = NULL;
+		struct task_struct *p = NULL;
+		struct list_head *pos;
+		struct vip_rq *vrq = &per_cpu(vip_rq, cpu_of(rq));
+		unsigned long long max_last_queued = 0;
 
-	if (READ_ONCE(prev->__state) != TASK_RUNNING)
-		return;
+		list_for_each(pos, &vrq->vip_tasks) {
+			struct vip_task_struct *tmp_vts = container_of(pos, struct vip_task_struct, vip_list);
+			struct task_struct *tmp_p = vts_to_ts(tmp_vts);
 
-	if (next->prio == 0)
-		return;
+			if (tmp_p->sched_info.last_queued > max_last_queued) {
+				vts = container_of(pos, struct vip_task_struct, vip_list);
+				p = vts_to_ts(vts);
+				max_last_queued = tmp_p->sched_info.last_queued;
+			}
+		}
 
-	/* VIP task is runnable, push it. */
-	get_task_struct(prev);
-	per_cpu(runnable_vip, rq->cpu) = prev;
-	queue_balance_callback(rq, &per_cpu(vip_push_head, rq->cpu), vip_push_runnable);
+		if ( !vts || !p )
+			return;
+		if (task_current(rq, p) || task_current_donor(rq, p))
+			return;
+		if (p->nr_cpus_allowed == 1 || p->se.sched_delayed)
+			return;
+		if (task_rq(p) != rq || !task_on_rq_queued(p))
+			return;
+
+		/* VIP task is runnable, push it. */
+		get_task_struct(p);
+		per_cpu(runnable_vip, rq->cpu) = p;
+		queue_balance_callback(rq, &per_cpu(vip_push_head, rq->cpu), vip_push_runnable);
+	} else {
+		if (!task_is_vip(prev, NOT_VIP))
+			return;
+
+		if (READ_ONCE(prev->__state) != TASK_RUNNING)
+			return;
+
+		if (next->prio == 0)
+			return;
+
+		/* VIP task is runnable, push it. */
+		get_task_struct(prev);
+		per_cpu(runnable_vip, rq->cpu) = prev;
+		queue_balance_callback(rq, &per_cpu(vip_push_head, rq->cpu), vip_push_runnable);
+	}
 }
 
 void register_vip_hooks(void)
@@ -1396,7 +1435,7 @@ void vip_init(void)
 
 		INIT_LIST_HEAD(&vrq->vip_tasks);
 		vrq->sum_num_vip_tasks = 0;
-		for (; vip_prio<NUM_VIP_PRIO; vip_prio++) {
+		for (; vip_prio < NUM_VIP_PRIO; vip_prio++) {
 			vrq->num_vip_tasks[vip_prio] = 0;
 			vrq->sum_num_vip_tasks = 0;
 		}
