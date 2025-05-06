@@ -515,6 +515,9 @@ int mtk_oddmr_od_tuning_read(struct mtk_ddp_comp *comp, uint32_t table_idx,
 	map_id = (sw_reg->reg & 0xFFFF) / 4;
 	val = &sw_reg->val;
 	switch (map_id) {
+	case OD_BASIC_BIN_VERSION:
+		*val = pparam->od_basic_info.basic_param.bin_version;
+		break;
 	case OD_BASIC_RESOLUTION_SWITCH_MODE:
 		*val = pparam->od_basic_info.basic_param.resolution_switch_mode;
 		break;
@@ -550,6 +553,9 @@ int mtk_oddmr_od_tuning_read(struct mtk_ddp_comp *comp, uint32_t table_idx,
 		break;
 	case OD_BASIC_RESERVED:
 		break;
+	case OD_BASIC_NONLINEAR_NODE_CNT:
+		*val = pparam->od_basic_info.basic_param.nonlinear_node_cnt;
+		break;
 	case OD_TABLE_WIDTH:
 		*val = pparam->od_tables[table_idx]->table_basic_info.width;
 		break;
@@ -575,6 +581,12 @@ int mtk_oddmr_od_tuning_read(struct mtk_ddp_comp *comp, uint32_t table_idx,
 		*val = pparam->od_tables[table_idx]->table_basic_info.max_dbv;
 		break;
 	case OD_TABLE_RESERVED:
+		break;
+	case OD_TABLE_REMAP_GIAN:
+		*val = pparam->od_tables[table_idx]->table_basic_info.remap_gian;
+		break;
+	case OD_TABLE_TABLE_OFFSET:
+		*val = pparam->od_tables[table_idx]->table_basic_info.table_offset;
 		break;
 	case OD_TABLE_FPS_CNT:
 		*val = pparam->od_tables[table_idx]->fps_cnt;
@@ -626,6 +638,50 @@ int mtk_oddmr_od_tuning_read(struct mtk_ddp_comp *comp, uint32_t table_idx,
 		*val = pparam->od_tables[table_idx]->fps_table[idx].value;
 		break;
 	}
+	case OD_TABLE_FPS_WEIGHT0_R:
+	case OD_TABLE_FPS_WEIGHT1_R:
+	case OD_TABLE_FPS_WEIGHT2_R:
+	case OD_TABLE_FPS_WEIGHT3_R:
+	case OD_TABLE_FPS_WEIGHT4_R:
+	case OD_TABLE_FPS_WEIGHT5_R:
+	case OD_TABLE_FPS_WEIGHT6_R:
+	case OD_TABLE_FPS_WEIGHT7_R:
+	case OD_TABLE_FPS_WEIGHT8_R:
+	case OD_TABLE_FPS_WEIGHT9_R:
+	case OD_TABLE_FPS_WEIGHT10_R:
+	case OD_TABLE_FPS_WEIGHT11_R:
+	case OD_TABLE_FPS_WEIGHT12_R:
+	case OD_TABLE_FPS_WEIGHT13_R:
+	case OD_TABLE_FPS_WEIGHT14_R:
+	{
+		int idx;
+
+		idx = map_id - OD_TABLE_FPS_WEIGHT0_R;
+		*val = pparam->od_tables[table_idx]->fps_table[idx].value_r;
+		break;
+	}
+	case OD_TABLE_FPS_WEIGHT0_B:
+	case OD_TABLE_FPS_WEIGHT1_B:
+	case OD_TABLE_FPS_WEIGHT2_B:
+	case OD_TABLE_FPS_WEIGHT3_B:
+	case OD_TABLE_FPS_WEIGHT4_B:
+	case OD_TABLE_FPS_WEIGHT5_B:
+	case OD_TABLE_FPS_WEIGHT6_B:
+	case OD_TABLE_FPS_WEIGHT7_B:
+	case OD_TABLE_FPS_WEIGHT8_B:
+	case OD_TABLE_FPS_WEIGHT9_B:
+	case OD_TABLE_FPS_WEIGHT10_B:
+	case OD_TABLE_FPS_WEIGHT11_B:
+	case OD_TABLE_FPS_WEIGHT12_B:
+	case OD_TABLE_FPS_WEIGHT13_B:
+	case OD_TABLE_FPS_WEIGHT14_B:
+	{
+		int idx;
+
+		idx = map_id - OD_TABLE_FPS_WEIGHT0_B;
+		*val = pparam->od_tables[table_idx]->fps_table[idx].value_b;
+		break;
+	}
 	case OD_TABLE_BL0:
 	case OD_TABLE_BL1:
 	case OD_TABLE_BL2:
@@ -670,6 +726,50 @@ int mtk_oddmr_od_tuning_read(struct mtk_ddp_comp *comp, uint32_t table_idx,
 		*val = pparam->od_tables[table_idx]->bl_table[idx].value;
 		break;
 	}
+	case OD_TABLE_BL_WEIGHT0_R:
+	case OD_TABLE_BL_WEIGHT1_R:
+	case OD_TABLE_BL_WEIGHT2_R:
+	case OD_TABLE_BL_WEIGHT3_R:
+	case OD_TABLE_BL_WEIGHT4_R:
+	case OD_TABLE_BL_WEIGHT5_R:
+	case OD_TABLE_BL_WEIGHT6_R:
+	case OD_TABLE_BL_WEIGHT7_R:
+	case OD_TABLE_BL_WEIGHT8_R:
+	case OD_TABLE_BL_WEIGHT9_R:
+	case OD_TABLE_BL_WEIGHT10_R:
+	case OD_TABLE_BL_WEIGHT11_R:
+	case OD_TABLE_BL_WEIGHT12_R:
+	case OD_TABLE_BL_WEIGHT13_R:
+	case OD_TABLE_BL_WEIGHT14_R:
+	{
+		int idx;
+
+		idx = map_id - OD_TABLE_BL_WEIGHT0_R;
+		*val = pparam->od_tables[table_idx]->bl_table[idx].value_r;
+		break;
+	}
+	case OD_TABLE_BL_WEIGHT0_B:
+	case OD_TABLE_BL_WEIGHT1_B:
+	case OD_TABLE_BL_WEIGHT2_B:
+	case OD_TABLE_BL_WEIGHT3_B:
+	case OD_TABLE_BL_WEIGHT4_B:
+	case OD_TABLE_BL_WEIGHT5_B:
+	case OD_TABLE_BL_WEIGHT6_B:
+	case OD_TABLE_BL_WEIGHT7_B:
+	case OD_TABLE_BL_WEIGHT8_B:
+	case OD_TABLE_BL_WEIGHT9_B:
+	case OD_TABLE_BL_WEIGHT10_B:
+	case OD_TABLE_BL_WEIGHT11_B:
+	case OD_TABLE_BL_WEIGHT12_B:
+	case OD_TABLE_BL_WEIGHT13_B:
+	case OD_TABLE_BL_WEIGHT14_B:
+	{
+		int idx;
+
+		idx = map_id - OD_TABLE_BL_WEIGHT0_B;
+		*val = pparam->od_tables[table_idx]->bl_table[idx].value_b;
+		break;
+	}
 	case ODDMR_BASE_ADDRESS:
 	{
 		*val = (uint32_t)comp->regs_pa;
@@ -693,6 +793,9 @@ int mtk_oddmr_od_tuning_write(struct mtk_ddp_comp *comp, uint32_t table_idx,
 	map_id = (sw_reg->reg & 0xFFFF) / 4;
 	val = sw_reg->val;
 	switch (map_id) {
+	case OD_BASIC_BIN_VERSION:
+		pparam->od_basic_info.basic_param.bin_version = val;
+		break;
 	case OD_BASIC_RESOLUTION_SWITCH_MODE:
 		pparam->od_basic_info.basic_param.resolution_switch_mode = val;
 		break;
@@ -728,6 +831,9 @@ int mtk_oddmr_od_tuning_write(struct mtk_ddp_comp *comp, uint32_t table_idx,
 		break;
 	case OD_BASIC_RESERVED:
 		break;
+	case OD_BASIC_NONLINEAR_NODE_CNT:
+		pparam->od_basic_info.basic_param.nonlinear_node_cnt = val;
+		break;
 	case OD_TABLE_WIDTH:
 		pparam->od_tables[table_idx]->table_basic_info.width = val;
 		break;
@@ -753,6 +859,12 @@ int mtk_oddmr_od_tuning_write(struct mtk_ddp_comp *comp, uint32_t table_idx,
 		pparam->od_tables[table_idx]->table_basic_info.max_dbv = val;
 		break;
 	case OD_TABLE_RESERVED:
+		break;
+	case OD_TABLE_REMAP_GIAN:
+		pparam->od_tables[table_idx]->table_basic_info.remap_gian = val;
+		break;
+	case OD_TABLE_TABLE_OFFSET:
+		pparam->od_tables[table_idx]->table_basic_info.table_offset = val;
 		break;
 	case OD_TABLE_FPS_CNT:
 		pparam->od_tables[table_idx]->fps_cnt = val;
@@ -804,6 +916,50 @@ int mtk_oddmr_od_tuning_write(struct mtk_ddp_comp *comp, uint32_t table_idx,
 		pparam->od_tables[table_idx]->fps_table[idx].value = val;
 		break;
 	}
+	case OD_TABLE_FPS_WEIGHT0_R:
+	case OD_TABLE_FPS_WEIGHT1_R:
+	case OD_TABLE_FPS_WEIGHT2_R:
+	case OD_TABLE_FPS_WEIGHT3_R:
+	case OD_TABLE_FPS_WEIGHT4_R:
+	case OD_TABLE_FPS_WEIGHT5_R:
+	case OD_TABLE_FPS_WEIGHT6_R:
+	case OD_TABLE_FPS_WEIGHT7_R:
+	case OD_TABLE_FPS_WEIGHT8_R:
+	case OD_TABLE_FPS_WEIGHT9_R:
+	case OD_TABLE_FPS_WEIGHT10_R:
+	case OD_TABLE_FPS_WEIGHT11_R:
+	case OD_TABLE_FPS_WEIGHT12_R:
+	case OD_TABLE_FPS_WEIGHT13_R:
+	case OD_TABLE_FPS_WEIGHT14_R:
+	{
+		int idx;
+
+		idx = map_id - OD_TABLE_FPS_WEIGHT0_R;
+		pparam->od_tables[table_idx]->fps_table[idx].value_r = val;
+		break;
+	}
+	case OD_TABLE_FPS_WEIGHT0_B:
+	case OD_TABLE_FPS_WEIGHT1_B:
+	case OD_TABLE_FPS_WEIGHT2_B:
+	case OD_TABLE_FPS_WEIGHT3_B:
+	case OD_TABLE_FPS_WEIGHT4_B:
+	case OD_TABLE_FPS_WEIGHT5_B:
+	case OD_TABLE_FPS_WEIGHT6_B:
+	case OD_TABLE_FPS_WEIGHT7_B:
+	case OD_TABLE_FPS_WEIGHT8_B:
+	case OD_TABLE_FPS_WEIGHT9_B:
+	case OD_TABLE_FPS_WEIGHT10_B:
+	case OD_TABLE_FPS_WEIGHT11_B:
+	case OD_TABLE_FPS_WEIGHT12_B:
+	case OD_TABLE_FPS_WEIGHT13_B:
+	case OD_TABLE_FPS_WEIGHT14_B:
+	{
+		int idx;
+
+		idx = map_id - OD_TABLE_FPS_WEIGHT0_B;
+		pparam->od_tables[table_idx]->fps_table[idx].value_b = val;
+		break;
+	}
 	case OD_TABLE_BL0:
 	case OD_TABLE_BL1:
 	case OD_TABLE_BL2:
@@ -846,6 +1002,50 @@ int mtk_oddmr_od_tuning_write(struct mtk_ddp_comp *comp, uint32_t table_idx,
 
 		idx = map_id - OD_TABLE_BL_WEIGHT0;
 		pparam->od_tables[table_idx]->bl_table[idx].value = val;
+		break;
+	}
+	case OD_TABLE_BL_WEIGHT0_R:
+	case OD_TABLE_BL_WEIGHT1_R:
+	case OD_TABLE_BL_WEIGHT2_R:
+	case OD_TABLE_BL_WEIGHT3_R:
+	case OD_TABLE_BL_WEIGHT4_R:
+	case OD_TABLE_BL_WEIGHT5_R:
+	case OD_TABLE_BL_WEIGHT6_R:
+	case OD_TABLE_BL_WEIGHT7_R:
+	case OD_TABLE_BL_WEIGHT8_R:
+	case OD_TABLE_BL_WEIGHT9_R:
+	case OD_TABLE_BL_WEIGHT10_R:
+	case OD_TABLE_BL_WEIGHT11_R:
+	case OD_TABLE_BL_WEIGHT12_R:
+	case OD_TABLE_BL_WEIGHT13_R:
+	case OD_TABLE_BL_WEIGHT14_R:
+	{
+		int idx;
+
+		idx = map_id - OD_TABLE_BL_WEIGHT0_R;
+		pparam->od_tables[table_idx]->bl_table[idx].value_r = val;
+		break;
+	}
+	case OD_TABLE_BL_WEIGHT0_B:
+	case OD_TABLE_BL_WEIGHT1_B:
+	case OD_TABLE_BL_WEIGHT2_B:
+	case OD_TABLE_BL_WEIGHT3_B:
+	case OD_TABLE_BL_WEIGHT4_B:
+	case OD_TABLE_BL_WEIGHT5_B:
+	case OD_TABLE_BL_WEIGHT6_B:
+	case OD_TABLE_BL_WEIGHT7_B:
+	case OD_TABLE_BL_WEIGHT8_B:
+	case OD_TABLE_BL_WEIGHT9_B:
+	case OD_TABLE_BL_WEIGHT10_B:
+	case OD_TABLE_BL_WEIGHT11_B:
+	case OD_TABLE_BL_WEIGHT12_B:
+	case OD_TABLE_BL_WEIGHT13_B:
+	case OD_TABLE_BL_WEIGHT14_B:
+	{
+		int idx;
+
+		idx = map_id - OD_TABLE_BL_WEIGHT0_B;
+		pparam->od_tables[table_idx]->bl_table[idx].value_b = val;
 		break;
 	}
 	default:
