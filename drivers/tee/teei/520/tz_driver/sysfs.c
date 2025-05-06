@@ -65,7 +65,7 @@ EXPORT_SYMBOL_GPL(get_imsg_log_level);
 static ssize_t imsg_log_level_show(struct device *cd,
 			struct device_attribute *attr, char *buf)
 {
-	return sprintf(buf, "%u\n", get_imsg_log_level());
+	return snprintf(buf, PAGE_SIZE, "%u\n", get_imsg_log_level());
 }
 
 #if IS_ENABLED(CONFIG_MICROTRUST_DEBUG)
@@ -97,7 +97,7 @@ static DEVICE_ATTR_RO(imsg_log_level);
 static ssize_t teei_log_level_show(struct device *cd,
 			struct device_attribute *attr, char *buf)
 {
-	return sprintf(buf, "%lu\n", TEEI_log_level);
+	return snprintf(buf, PAGE_SIZE, "%lu\n", TEEI_log_level);
 }
 
 static ssize_t teei_log_level_store(struct device *dev,
@@ -503,7 +503,7 @@ static ssize_t dcih_notify_test_show(struct device *dev,
 
 	ret = get_dcih_notify_test_result();
 
-	s += sprintf(s, "%d", ret);
+	s += snprintf(s, PAGE_SIZE, "%d", ret);
 
 	return (ssize_t)(s - buf);
 }
@@ -526,7 +526,7 @@ static ssize_t dcih_wait_notify_test_show(struct device *dev,
 
 	ret = get_dcih_wait_notify_test_result();
 
-	s += sprintf(s, "%d", ret);
+	s += snprintf(s, PAGE_SIZE, "%d", ret);
 
 	return (ssize_t)(s - buf);
 }
@@ -553,7 +553,7 @@ static ssize_t notify_ree_dci_handler_show(struct device *dev,
 
 	mutex_lock(&notify_ree_result_mutex);
 	IMSG_DEBUG("notify_ree_result %d\n", notify_ree_result);
-	s += sprintf(s, "%d\n", notify_ree_result);
+	s += snprintf(s, PAGE_SIZE, "%d\n", notify_ree_result);
 	notify_ree_result = -EINVAL;
 	mutex_unlock(&notify_ree_result_mutex);
 
@@ -584,7 +584,7 @@ static ssize_t current_bind_cpu_show(struct device *dev,
 	char *s = buf;
 	int cpu = get_current_teei_cpuid();
 
-	s += sprintf(s, "%d\n", cpu);
+	s += snprintf(s, PAGE_SIZE, "%d\n", cpu);
 	return (ssize_t)(s - buf);
 }
 static DEVICE_ATTR_RO(current_bind_cpu);
@@ -596,7 +596,7 @@ static ssize_t tzdriver_dynamical_debug_show(struct device *dev,
 {
 	char *s = buf;
 
-	s += sprintf(s, "%d\n", tzdriver_dynamical_debug_flag);
+	s += snprintf(s, PAGE_SIZE, "%d\n", tzdriver_dynamical_debug_flag);
 	return (ssize_t)(s - buf);
 }
 
