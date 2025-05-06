@@ -16056,7 +16056,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		flashlight_core: flashlight-core {
 			compatible = "mediatek,flashlight_core";
 			low-battery-level = <5>;
-			battery-percent-level = <1>;
+			battery-percent-level = <3>;
 			battery-oc-level = <5>;
 		};
 
@@ -19106,7 +19106,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			compatible = "mediatek,md-power-throttling";
 			lbat-max-level = <2>;
 			lbat-reduce-tx-lv1 = <0>;
-			lbat-reduce-tx-lv2 = <0>;
+			lbat-reduce-tx-lv2 = <6>;
 
 			oc-max-level = <2>;
 			oc-reduce-tx-lv1 = <0>;
@@ -19122,14 +19122,14 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 		bp_thl: bp-thl {
 			compatible = "mediatek,mtk-bp-thl";
-			max-throttle-level = <2>;
-			soc-throttle-level = <0 1 2>, //temperature stage 0
-							<0 1 2>, //temperature stage 1
-							<0 1 2>, //temperature stage 2
-							<0 1 2>; //temperature stage 3
+			max-throttle-level = <3>;
+			soc-throttle-level = <0 1 2 3>, //temperature stage 0
+							<0 1 2 3>, //temperature stage 1
+							<0 1 2 3>, //temperature stage 2
+							<0 1 2 3>; //temperature stage 3
 
-			soc-max-stage = <2>;
-			soc-limit-threshold = <15 3>;
+			soc-max-stage = <3>;
+			soc-limit-threshold = <25 15 10>;
 
 			temperature-max-stage = <3>;
 			temperature-stage-threshold = <25 10 0>;
