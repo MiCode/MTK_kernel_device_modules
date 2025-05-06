@@ -1583,19 +1583,19 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 		/* Enable shadow */
 		cmdq_pkt_write(pkt, NULL, base_pa + RDMA_SHADOW_CTRL,
 			(cfg->shadow ? 0 : BIT(1)) | 0x1, U32_MAX);
-	}
 
-	if (mml_rdma_crc) {
-		if (MML_FMT_COMPRESS(src->format))
+		if (mml_rdma_crc) {
+			if (MML_FMT_COMPRESS(src->format))
+				cmdq_pkt_write(pkt, NULL, base_pa + RDMA_DEBUG_CON,
+					(mml_rdma_dbg << 13) + 0x1, U32_MAX);
+			else
+				cmdq_pkt_write(pkt, NULL, base_pa + RDMA_DEBUG_CON,
+					0x1, U32_MAX);
+		} else if (MML_FMT_COMPRESS(src->format)) {
+			/* debug for compress to dump crc */
 			cmdq_pkt_write(pkt, NULL, base_pa + RDMA_DEBUG_CON,
 				(mml_rdma_dbg << 13) + 0x1, U32_MAX);
-		else
-			cmdq_pkt_write(pkt, NULL, base_pa + RDMA_DEBUG_CON,
-				0x1, U32_MAX);
-	} else if (MML_FMT_COMPRESS(src->format)) {
-		/* debug for compress to dump crc */
-		cmdq_pkt_write(pkt, NULL, base_pa + RDMA_DEBUG_CON,
-			(mml_rdma_dbg << 13) + 0x1, U32_MAX);
+		}
 	}
 
 	rdma_color_fmt(cfg, rdma_frm);
@@ -2656,19 +2656,19 @@ static void rdma_debug_dump(struct mml_comp *comp)
 			value[27], value[28]);
 		mml_err("RDMA_AFBC_PAYLOAD_OST %#010x RDMA_GMCIF_CON %#010x",
 			value[29], value[30]);
-	}
 
-	if (mml_rdma_crc) {
-		value[31] = readl(base + RDMA_CHKS_EXTR);
-		value[32] = readl(base + RDMA_DEBUG_CON);
-		mml_err("RDMA_CHKS_EXTR %#010x RDMA_DEBUG_CON %#010x",
-			value[31], value[32]);
-	} else if (comp_con & BIT(12)) {
-		/* debug for compress to dump crc */
-		value[31] = readl(base + RDMA_CHKS_EXTR);
-		value[32] = readl(base + RDMA_DEBUG_CON);
-		mml_err("RDMA_CHKS_EXTR %#010x RDMA_DEBUG_CON %#010x",
-			value[31], value[32]);
+		if (mml_rdma_crc) {
+			value[31] = readl(base + RDMA_CHKS_EXTR);
+			value[32] = readl(base + RDMA_DEBUG_CON);
+			mml_err("RDMA_CHKS_EXTR %#010x RDMA_DEBUG_CON %#010x",
+				value[31], value[32]);
+		} else if (comp_con & BIT(12)) {
+			/* debug for compress to dump crc */
+			value[31] = readl(base + RDMA_CHKS_EXTR);
+			value[32] = readl(base + RDMA_DEBUG_CON);
+			mml_err("RDMA_CHKS_EXTR %#010x RDMA_DEBUG_CON %#010x",
+				value[31], value[32]);
+		}
 	}
 
 	if (rdma->data->ddren_reg) {
@@ -2705,7 +2705,7 @@ static void rdma_debug_dump(struct mml_comp *comp)
 		value[27], value[28]);
 
 	/* ufbdc enable, dump more */
-	if (comp_con & BIT(12)) {
+	if ((comp_con & BIT(12)) && !write_sec) {
 		writel(rdma_ufbdc_debug_sel[0] << 13, base + RDMA_DEBUG_CON);
 		value[10] = readl(base + RDMA_MON_STA_27);
 		writel(rdma_ufbdc_debug_sel[1] << 13, base + RDMA_DEBUG_CON);
