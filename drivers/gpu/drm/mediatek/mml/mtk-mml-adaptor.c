@@ -212,6 +212,7 @@ struct mml_frame_config *frame_config_create(
 
 s32 frame_buf_to_task_buf(struct mml_file_buf *fbuf,
 			  struct mml_buffer *user_buf,
+			  u32 format,
 			  const char *name)
 {
 	u8 i;
@@ -228,6 +229,9 @@ s32 frame_buf_to_task_buf(struct mml_file_buf *fbuf,
 	fbuf->cnt = user_buf->cnt;
 	fbuf->flush = user_buf->flush;
 	fbuf->invalid = user_buf->invalid;
+
+	if (!fbuf->cnt)
+		fbuf->cnt = MML_FMT_PLANE(format);
 
 	return ret;
 }

@@ -277,6 +277,7 @@ s32 mml_dle_config(struct mml_dle_ctx *dctx, struct mml_submit *submit,
 	task->ctx = ctx;
 	result = frame_buf_to_task_buf(&task->buf.src,
 		&submit->buffer.src,
+		submit->info.src.format,
 		"mml_dle_rdma");
 	if (result) {
 		mml_err("[dle]%s get dma buf fail", __func__);
@@ -286,6 +287,7 @@ s32 mml_dle_config(struct mml_dle_ctx *dctx, struct mml_submit *submit,
 	if (submit->info.dest[0].pq_config.en_region_pq) {
 		result = frame_buf_to_task_buf(&task->buf.seg_map,
 			&submit->buffer.seg_map,
+			submit->info.seg_map.format,
 			"mml_dle_rdma_seg");
 		if (result) {
 			mml_err("[dle]%s get dma buf fail", __func__);
@@ -297,6 +299,7 @@ s32 mml_dle_config(struct mml_dle_ctx *dctx, struct mml_submit *submit,
 	for (i = 0; i < submit->buffer.dest_cnt; i++) {
 		result = frame_buf_to_task_buf(&task->buf.dest[i],
 			&submit->buffer.dest[i],
+			submit->info.dest[i].data.format,
 			"mml_dle_wrot");
 		if (result) {
 			mml_err("[dle]%s get dma buf fail", __func__);

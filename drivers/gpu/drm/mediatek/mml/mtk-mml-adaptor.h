@@ -64,6 +64,7 @@ void dump_pq_en(u32 idx, struct mml_pq_param *pq_param,
 
 s32 frame_buf_to_task_buf(struct mml_file_buf *fbuf,
 			  struct mml_buffer *user_buf,
+			  u32 format,
 			  const char *name);
 void task_buf_put(struct mml_task *task);
 void frame_calc_plane_offset(struct mml_frame_data *data,

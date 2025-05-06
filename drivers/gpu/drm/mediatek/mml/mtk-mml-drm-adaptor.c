@@ -528,7 +528,7 @@ EXPORT_SYMBOL_GPL(mml_drm_try_frame);
 
 static s32 drm_frame_buf_to_task_buf(struct mml_ctx *ctx,
 	struct mml_file_buf *fbuf, struct mml_buffer *user_buf,
-	bool secure, const char *name)
+	u32 format, bool secure, const char *name)
 {
 	s32 ret;
 	struct device *mmu_dev = mml_get_mmu_dev(ctx->mml, secure);
@@ -538,7 +538,7 @@ static s32 drm_frame_buf_to_task_buf(struct mml_ctx *ctx,
 		return -EFAULT;
 	}
 
-	ret = frame_buf_to_task_buf(fbuf, user_buf, name);
+	ret = frame_buf_to_task_buf(fbuf, user_buf, format, name);
 	if (ret)
 		return ret;
 
@@ -560,8 +560,8 @@ static s32 drm_frame_buf_to_task_buf(struct mml_ctx *ctx,
 			atomic_read(&ctx->job_serial),
 			(unsigned long)fbuf->dma[0].iova);
 
-		mml_msg("[drm]%s %s dmabuf %p iova %#11llx (%u) %#11llx (%u) %#11llx (%u)",
-			__func__, name, fbuf->dma[0].dmabuf,
+		mml_msg("[drm]%s %s dmabuf %p plane %u iova %#11llx (%u) %#11llx (%u) %#11llx (%u)",
+			__func__, name, fbuf->dma[0].dmabuf, fbuf->cnt,
 			fbuf->dma[0].iova, fbuf->size[0],
 			fbuf->dma[1].iova, fbuf->size[1],
 			fbuf->dma[2].iova, fbuf->size[2]);
@@ -917,7 +917,7 @@ s32 mml_drm_submit(struct mml_drm_ctx *dctx, struct mml_submit *submit,
 		task->buf.src.apu_handle = mml_get_apu_handle(&submit->buffer.src);
 	} else {
 		result = drm_frame_buf_to_task_buf(ctx, &task->buf.src,
-			&submit->buffer.src, submit->info.src.secure,
+			&submit->buffer.src, submit->info.src.format, submit->info.src.secure,
 			"mml_drm_rdma");
 		if (result) {
 			mml_err("[drm]%s get src dma buf fail", __func__);
@@ -927,7 +927,8 @@ s32 mml_drm_submit(struct mml_drm_ctx *dctx, struct mml_submit *submit,
 
 	if (submit->info.dest[0].pq_config.en_region_pq) {
 		result = drm_frame_buf_to_task_buf(ctx, &task->buf.seg_map,
-			&submit->buffer.seg_map, submit->info.seg_map.secure,
+			&submit->buffer.seg_map, submit->info.seg_map.format,
+			submit->info.seg_map.secure,
 			"mml_drm_rdma_seg");
 		if (result) {
 			mml_err("[drm]%s get seg map dma buf fail", __func__);
@@ -938,7 +939,8 @@ s32 mml_drm_submit(struct mml_drm_ctx *dctx, struct mml_submit *submit,
 	task->buf.dest_cnt = submit->buffer.dest_cnt;
 	for (i = 0; i < submit->buffer.dest_cnt; i++) {
 		result = drm_frame_buf_to_task_buf(ctx, &task->buf.dest[i],
-			&submit->buffer.dest[i], submit->info.dest[i].data.secure,
+			&submit->buffer.dest[i], submit->info.dest[i].data.format,
+			submit->info.dest[i].data.secure,
 			"mml_drm_wrot");
 		if (result) {
 			mml_err("[drm]%s get dest %u dma buf fail", __func__, i);
