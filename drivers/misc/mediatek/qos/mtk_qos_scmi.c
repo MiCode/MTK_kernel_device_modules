@@ -129,6 +129,11 @@ void qos_ipi_init(struct mtk_qos *qos)
 	unsigned int ret;
 
 	_tinfo = get_scmi_tinysys_info();
+	if (!_tinfo || !_tinfo->sdev) {
+		pr_info("Failed to get SCMI tinysys info\n");
+		qos_sspm_ready = -1;
+		return;
+	}
 
 	ret = of_property_read_u32(_tinfo->sdev->dev.of_node, "scmi-qos",
 			&scmi_qos_id);
