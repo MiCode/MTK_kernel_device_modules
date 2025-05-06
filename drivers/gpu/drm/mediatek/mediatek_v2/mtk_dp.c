@@ -2744,13 +2744,10 @@ int mdrv_DPTx_Handle(struct mtk_dp *mtk_dp)
 			mdrv_DPTx_I2S_Audio_Enable(mtk_dp, true);
 		}
 
-		if (mtk_dp->video_enable || mtk_dp->audio_enable) {
-			mtk_dp->state = DPTXSTATE_NORMAL;
+		if (mtk_dp->video_enable || mtk_dp->audio_enable)
 			queue_work(mtk_dp->hdcp_wq, &mtk_dp->hdcp_work);
-		} else {
-			ret = DPTX_WAIT_TRIGGER;
-		}
 
+		mtk_dp->state = DPTXSTATE_NORMAL;
 		break;
 	case DPTXSTATE_NORMAL:
 		if (mtk_dp->training_state != DPTX_NTSTATE_NORMAL) {
