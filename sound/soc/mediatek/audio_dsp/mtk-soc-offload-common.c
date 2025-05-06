@@ -535,14 +535,17 @@ static int mtk_compr_offload_set_params(struct snd_soc_component *component,
 	/* send audio_hw_buffer to SCP side */
 	ipi_audio_buf =
 		(void *)dsp->dsp_mem[ID].msg_atod_share_buf.va_addr;
+#ifdef DEBUG_VERBOSE
 	pr_debug("%s offload ipi_audio_buf = %p\n", __func__, ipi_audio_buf);
+#endif
 	memcpy((void *)ipi_audio_buf,
 	       (void *)&dsp->dsp_mem[ID].adsp_buf,
 	       sizeof(struct audio_hw_buffer));
 
 	dump_audio_hwbuffer(ipi_audio_buf);
+#ifdef DEBUG_VERBOSE
 	dump_rbuf_s(__func__, &dsp->dsp_mem[ID].ring_buf);
-
+#endif
 	/* send to task with hw_param information , buffer and pcm attribute */
 	mtk_scp_ipi_send(get_dspscene_by_dspdaiid(ID),
 			 AUDIO_IPI_PAYLOAD,
@@ -577,7 +580,6 @@ static int mtk_compr_offload_get_caps(struct snd_soc_component *component,
 				      struct snd_compr_stream *stream,
 				      struct snd_compr_caps *caps)
 {
-	pr_debug("%s\n", __func__);
 	caps->num_codecs        = 2;
 	caps->codecs[0]         = SND_AUDIOCODEC_PCM;
 	caps->codecs[1]         = SND_AUDIOCODEC_MP3;
