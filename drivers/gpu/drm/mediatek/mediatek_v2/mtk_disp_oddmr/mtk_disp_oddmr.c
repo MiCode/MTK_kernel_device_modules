@@ -7129,6 +7129,7 @@ static void mtk_oddmr_set_od_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 
 			mtk_oddmr_od_init_end(comp, handle);
 			if (oddmr_data->data->od_version >= MTK_OD_V2 &&
+				!force_config &&
 				oddmr_data->od_data.od_set_pu_done == 0)
 				mtk_oddmr_od_set_full_height(comp, handle);
 			if (oddmr_data->data->od_version >= MTK_OD_V3) {
