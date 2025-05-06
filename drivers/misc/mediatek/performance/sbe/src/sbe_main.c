@@ -144,6 +144,44 @@ void _sbe_set_vip_with_scroll(struct sbe_render_info *thr)
 		sbe_set_deplist_policy(thr, SBE_TASK_ENABLE);
 }
 
+int sbe_validate_time(unsigned long long start, unsigned long long end,
+			unsigned long long t_dequeue_start, unsigned long long t_dequeue_end,
+			unsigned long long t_enqueue_start, unsigned long long t_enqueue_end)
+{
+
+	// Check basic condition
+	if (start >= end)
+		return -1;
+
+	// Check if all time points are between start and end
+	if (t_dequeue_start <= start || t_dequeue_end >= end ||
+		t_enqueue_start <= start || t_enqueue_end >= end) {
+		return -1;
+	}
+
+	// Verify chronological order
+	if (t_dequeue_start >= t_dequeue_end ||
+		t_dequeue_end >= t_enqueue_start ||
+		t_enqueue_start >= t_enqueue_end) {
+		return -1;
+	}
+
+	// All conditions satisfied
+	return 0;
+}
+
+int sbe_validate_dequeue_time_span(unsigned long long t_dequeue_start,
+				unsigned long long t_dequeue_end)
+{
+	unsigned long long t_dequeue_time = t_dequeue_end - t_dequeue_start;
+	unsigned long long dequeue_margin_time = get_sbe_extra_sub_deque_margin_time();
+
+	if (t_dequeue_time >= dequeue_margin_time)
+		return 0;
+
+	return -1;
+}
+
 static void __sbe_receive_frame_end(struct sbe_render_info *f_render,
 	unsigned long long frame_start_time,
 	unsigned long long frame_end_time,
@@ -154,11 +192,63 @@ static void __sbe_receive_frame_end(struct sbe_render_info *f_render,
 	unsigned long long local_ema = 0, local_raw = 0;
 	unsigned long long enq_running_time = 0;
 	struct task_info *tmp_dep_arr = NULL;
+	struct render_frame_info *fpsgo_render_info = NULL;
+	int find_match_render = 0;
+	int render_num = 0;
+	unsigned long long t_dequeue_start = 0;
+	unsigned long long t_dequeue_end   = 0;
+	unsigned long long t_enqueue_start = 0;
+	unsigned long long t_enqueue_end   = 0;
 
-	fpsgo_other2xgf_calculate_dep(f_render->pid, f_render->buffer_id,
-		&local_raw, &local_ema, &enq_running_time,
-		frame_start_time, frame_end_time,
-		0, 0, 0, 0, 0);
+	if (get_sbe_extra_sub_en_deque_enable()) {
+		fpsgo_render_info = kcalloc(FPSGO_MAX_RENDER_INFO_SIZE, sizeof(struct render_frame_info), GFP_KERNEL);
+		if (!fpsgo_render_info) {
+			fpsgo_other2xgf_calculate_dep(f_render->pid, f_render->buffer_id,
+				&local_raw, &local_ema, &enq_running_time,
+				frame_start_time, frame_end_time,
+				0, 0, 0, 0, 0);
+			sbe_trace("[SBE]: failed to allocate memory for fpsgo_render_info");
+		} else {
+			render_num = get_fpsgo_frame_info(FPSGO_MAX_RENDER_INFO_SIZE, 1 << GET_FPSGO_QDQ_TS,
+						0, -1, fpsgo_render_info);
+			sbe_trace("[SBE]: get f_render_info: %d", render_num);
+			for (i = 0; i < render_num; i++) {
+				if (fpsgo_render_info[i].pid == f_render->pid) {
+					t_dequeue_start = fpsgo_render_info[i].t_dequeue_start;
+					t_dequeue_end   = fpsgo_render_info[i].t_dequeue_end;
+					t_enqueue_start = fpsgo_render_info[i].t_enqueue_start;
+					t_enqueue_end   = fpsgo_render_info[i].t_enqueue_end;
+					find_match_render = 1;
+					break;
+				}
+			}
+			kfree(fpsgo_render_info);
+		}
+
+		if (find_match_render
+			&& !sbe_validate_time(frame_start_time, frame_end_time, t_dequeue_start,
+			t_dequeue_end, t_enqueue_start, t_enqueue_end)
+			&& !sbe_validate_dequeue_time_span(t_dequeue_start, t_dequeue_end)) {
+			fpsgo_other2xgf_calculate_dep(f_render->pid, f_render->buffer_id,
+				&local_raw, &local_ema, &enq_running_time,
+				frame_start_time, frame_end_time,
+				t_dequeue_start, t_dequeue_end,
+				t_enqueue_start, t_enqueue_end, 0);
+			sbe_trace("[SBE]:id:%llu,f_s:%llu,f_e:%llu,t_dq_s:%llu,t_dq_e:%llu,t_eq_s:%llu,t_eq_e:%llu\n",
+			frameid, frame_start_time, frame_end_time, t_dequeue_start,
+			t_dequeue_end, t_enqueue_start, t_enqueue_end);
+		} else {
+			fpsgo_other2xgf_calculate_dep(f_render->pid, f_render->buffer_id,
+				&local_raw, &local_ema, &enq_running_time,
+				frame_start_time, frame_end_time,
+				0, 0, 0, 0, 0);
+		}
+	} else
+		fpsgo_other2xgf_calculate_dep(f_render->pid, f_render->buffer_id,
+			&local_raw, &local_ema, &enq_running_time,
+			frame_start_time, frame_end_time,
+			0, 0, 0, 0, 0);
+
 	f_render->raw_running_time = local_raw;
 	f_render->ema_running_time = local_ema;
 	sbe_systrace_c(f_render->pid, bufID, (int)local_raw, "[ux]raw_t_cpu");
@@ -455,7 +545,7 @@ void sbe_del_dep_if_render_in_same_proc(int cur_pid, unsigned long long id,
 static void sbe_notifier_wq_cb_rescue(int pid, int start, int enhance,
 	int rescue_type, unsigned long long rescue_target, unsigned long long frameID)
 {
-	unsigned long long buffer_id = 5566; // align with HWUI buffer id
+	unsigned long long buffer_id = SBE_HWUI_BUFFER_ID; // align with HWUI buffer id
 	struct sbe_render_info *f_render;
 
 	sbe_get_tree_lock(__func__);
@@ -942,6 +1032,18 @@ static int sbe_do_hwui_scrolling_status_policy(int tgid, char *name, unsigned lo
 			xgf_attr_iter.ts = sbe_get_time();
 			fpsgo_other2xgf_set_attr(1, &xgf_attr_iter);
 
+			if (get_sbe_extra_sub_en_deque_enable()) {
+				memset(&xgf_attr_iter, 0, sizeof(struct xgf_policy_cmd));
+				xgf_attr_iter.mode = 1;
+				xgf_attr_iter.pid = scroll_policy_info.final_pid_arr[i];
+				xgf_attr_iter.bufid = SBE_HWUI_BUFFER_ID;
+				xgf_attr_iter.ts = sbe_get_time();
+				xgf_attr_iter.xgf_extra_sub = 1;
+				sbe_trace("xgf_extra_sub enable: pid = %d, buffer_id: 0x%llx ",
+					xgf_attr_iter.pid, xgf_attr_iter.bufid);
+				fpsgo_other2xgf_set_attr(1, &xgf_attr_iter);
+			}
+
 			memset(&attr_iter, 0, sizeof(struct fpsgo_boost_attr));
 			attr_iter.aa_enable_by_pid = 1;
 			attr_iter.rescue_enable_by_pid = 1;
@@ -969,6 +1071,18 @@ static int sbe_do_hwui_scrolling_status_policy(int tgid, char *name, unsigned lo
 			xgf_attr_iter.bufid = scroll_policy_info.final_bufID_arr[i];
 			xgf_attr_iter.ts = sbe_get_time();
 			fpsgo_other2xgf_set_attr(0, &xgf_attr_iter);
+
+			if (get_sbe_extra_sub_en_deque_enable()) {
+				memset(&xgf_attr_iter, 0, sizeof(struct xgf_policy_cmd));
+				xgf_attr_iter.mode = 1;
+				xgf_attr_iter.pid = scroll_policy_info.final_pid_arr[i];
+				xgf_attr_iter.bufid = SBE_HWUI_BUFFER_ID;
+				xgf_attr_iter.ts = sbe_get_time();
+				xgf_attr_iter.xgf_extra_sub = 0;
+				sbe_trace("xgf_extra_sub disable: pid = %d, buffer_id: 0x%llx ",
+					xgf_attr_iter.pid, xgf_attr_iter.bufid);
+				fpsgo_other2xgf_set_attr(0, &xgf_attr_iter);
+			}
 
 			memset(&attr_iter, 0, sizeof(struct fpsgo_boost_attr));
 			attr_iter.aa_enable_by_pid = 1;
@@ -1159,7 +1273,7 @@ int sbe_notify_hwui_frame_hint(int start,
 	vpPush->frameID = frameID;
 	vpPush->frame_flags = frame_flags;
 	// SBE UX: bufid magic number.
-	vpPush->identifier = 5566;
+	vpPush->identifier = SBE_HWUI_BUFFER_ID;
 	vpPush->mode = dep_mode;
 	if (dep_mode && dep_num > 0) {
 		memcpy(vpPush->specific_name, dep_name, 1000);

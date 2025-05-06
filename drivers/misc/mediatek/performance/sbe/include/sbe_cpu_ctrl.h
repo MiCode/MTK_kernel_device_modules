@@ -156,6 +156,8 @@ void sbe_do_rescue_legacy(struct sbe_render_info *thr, int start, int enhance,
 
 int sbe_get_perf(void);
 int get_sbe_disable_runnable_util_est_status(void);
+int get_sbe_extra_sub_en_deque_enable(void);
+unsigned long long get_sbe_extra_sub_deque_margin_time(void);
 void fbt_ux_set_perf(int cur_pid, int cur_blc);
 void sbe_set_global_sbe_dy_enhance(int cur_pid, int cur_dy_enhance);
 void sbe_register_jank_cb(unsigned long mask);

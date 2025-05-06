@@ -74,4 +74,7 @@ extern int (*sbe_set_sbb_fp)(int pid, int set, int active_ratio);
 extern void sbe_notify_update_fpsgo_jerk_boost_info(int tgid, int pid, int blc,
 		unsigned long mask, int jerk_boost_flag, struct task_info *dep_arr_fpsgo);
 
+extern int get_fpsgo_frame_info(int max_num, unsigned long mask,
+	int filter_bypass, int tgid, struct render_frame_info *frame_info_arr);
+
 #endif
