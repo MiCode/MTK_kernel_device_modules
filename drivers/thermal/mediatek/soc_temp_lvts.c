@@ -35,7 +35,7 @@
  *==================================================
  */
 #define DUMP_MORE_LOG
-
+#define MT6993_MCU2_DOMAIN_INDEX (4)
 #ifdef DUMP_MORE_LOG
 #define NUM_LVTS_DEVICE_REG (9)
 #define LVTS_CONTROLLER_DEBUG_NUM (12)
@@ -1333,17 +1333,23 @@ static int of_update_lvts_data(struct lvts_data *lvts_data,
 
 	for (i = 0; i < lvts_data->num_domain; i++) {
 		/* Get base address */
-		res = platform_get_resource(pdev, IORESOURCE_MEM, i);
-		if (!res) {
-			dev_err(dev, "No IO resource, index %d\n", i);
-			return -ENXIO;
-		}
+		if (i != MT6993_MCU2_DOMAIN_INDEX) {
+			res = platform_get_resource(pdev, IORESOURCE_MEM, i);
+			if (!res) {
+				// Check service FAIL !, Cosimo suggested using pr_info
+				//dev_err(dev, "No IO resource, index %d\n", i);
+				pr_info("No IO resource, index %d\n", i);
+				return -ENXIO;
+			}
 
-		domain[i].base = devm_ioremap_resource(dev, res);
-		if (IS_ERR(domain[i].base)) {
-			dev_err(dev, "Failed to remap io, index %d\n", i);
-			return PTR_ERR(domain[i].base);
-		}
+			domain[i].base = devm_ioremap_resource(dev, res);
+			if (IS_ERR(domain[i].base)) {
+				// Check service FAIL !, Cosimo suggested using pr_info
+				//dev_err(dev, "Failed to remap io, index %d\n", i);
+				pr_info("Failed to remap io, index %d\n", i);
+				return PTR_ERR(domain[i].base);
+			}
+	}
 
 		/* Get interrupt number */
 		irq = platform_get_irq(pdev, i);
@@ -1558,6 +1564,13 @@ static void lvts_debug_to_sysram(struct lvts_data *lvts_data, int tc_id)
 	}
 }
 
+static irqreturn_t irq_handler_ldro(int irq, void *dev_id)
+{
+	writel(irq, (void __iomem *)(thermal_csram_base + 0x380));
+	writel(irq+1, (void __iomem *)(thermal_csram_base + 0x384));
+	return IRQ_HANDLED;
+}
+
 static irqreturn_t irq_handler(int irq, void *dev_id)
 {
 	struct lvts_data *lvts_data = (struct lvts_data *) dev_id;
@@ -1639,10 +1652,13 @@ static int lvts_register_irq_handler(struct lvts_data *lvts_data)
 		if(lvts_data->ap_domain_no_irq)
 			if (i == 0)
 				continue;
-
-		ret = devm_request_irq(dev, lvts_data->domain[i].irq_num,
-			irq_handler, IRQF_TRIGGER_HIGH, "mtk_lvts", lvts_data);
-
+		if(i == MT6993_MCU2_DOMAIN_INDEX) {
+			ret = devm_request_irq(dev, lvts_data->domain[i].irq_num,
+				irq_handler_ldro, IRQF_TRIGGER_HIGH, "mtk_lvts_ldro", lvts_data);
+		} else {
+			ret = devm_request_irq(dev, lvts_data->domain[i].irq_num,
+				irq_handler, IRQF_TRIGGER_HIGH, "mtk_lvts", lvts_data);
+		}
 		if (ret) {
 			dev_err(dev,
 				"Failed to register LVTS IRQ, ret %d, domain %d irq_num %d\n",
@@ -6945,6 +6961,7 @@ enum mt6993_lvts_domain {
 	MT6993_MCU_DOMAIN,
 	MT6993_APU_DOMAIN,
 	MT6993_GPU_DOMAIN,
+	MT6993_MCU2_DOMAIN,
 	MT6993_NUM_DOMAIN
 };
 
