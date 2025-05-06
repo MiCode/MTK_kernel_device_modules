@@ -3620,6 +3620,7 @@ static int mtk_dpc_probe_v3(struct platform_device *pdev)
 	int ret = 0, genpd_num = 0, clk_num = 0, i;
 
 	DPCFUNC("+");
+
 	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
 		return -ENOMEM;
@@ -3672,6 +3673,10 @@ static int mtk_dpc_probe_v3(struct platform_device *pdev)
 	if (of_property_read_u32(dev->of_node, "vidle-mask", &priv->vidle_mask)) {
 		DPCERR("failed to get vidle mask:%#x", priv->vidle_mask);
 		priv->vidle_mask = 0;
+	}
+
+	if (of_property_read_s32(dev->of_node, "debug-irq", &debug_irq)) {
+		DPCERR("failed to get vidle debug irq:%#x", debug_irq);
 	}
 #endif
 
