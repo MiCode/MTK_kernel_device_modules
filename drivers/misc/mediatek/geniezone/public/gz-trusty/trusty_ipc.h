@@ -43,7 +43,6 @@ struct tipc_dn_chan {
 	struct completion reply_comp;
 	struct list_head rx_msg_queue;
 	u32 session;
-	struct mutex sess_lock;
 	enum tee_id_t tee_id;
 	int32_t cpumask;
 };
@@ -100,6 +99,7 @@ static inline void *mb_get_data(struct tipc_msg_buf *mb, size_t len)
 }
 
 struct tipc_k_handle {
+	struct mutex sess_lock;
 	struct tipc_dn_chan *dn;
 };
 int gz_tipc_k_connect(struct tipc_k_handle *h, const char *port);

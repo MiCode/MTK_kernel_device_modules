@@ -81,7 +81,6 @@
 #define RETRY_REQUIRED(cnt) (cnt <= TIPC_RETRY_MAX_COUNT)
 
 DEFINE_MUTEX(fd_mutex);
-DEFINE_MUTEX(session_mutex);
 
 /* For high performance required and do not use mutiha API user, it may have
  * some delay when run into multi HA situation. Use servicecall_lock to ensure
@@ -111,8 +110,7 @@ static char *gz_sys_service_name[] = {
 };
 
 static struct tipc_k_handle
-	_kree_session_handle_pool[KREE_SESSION_HANDLE_MAX_SIZE];
-static uint32_t _kree_session_handle_idx;
+		_kree_session_handle_pool[KREE_SESSION_HANDLE_MAX_SIZE];
 
 #define debugFg 0
 
@@ -208,33 +206,48 @@ static int _tipc_k_connect_retry(struct tipc_k_handle *h, const char *port_name)
 	return rc;
 }
 
-int32_t _setSessionHandle(struct tipc_k_handle h)
+int32_t _setSessionHandle(const struct tipc_k_handle h)
 {
-	int32_t session;
-	int32_t i;
+	static uint32_t handle_idx;
+	int32_t __maybe_unused session = 0;
+	size_t i = 0UL;
 
 	mutex_lock(&fd_mutex);
-	for (i = 0; i < KREE_SESSION_HANDLE_MAX_SIZE; i++) {
-		if (_kree_session_handle_pool[_kree_session_handle_idx].dn == 0)
-			break;
-		_kree_session_handle_idx = (_kree_session_handle_idx + 1)
-					   % KREE_SESSION_HANDLE_MAX_SIZE;
+
+	for (i = 0; i < KREE_SESSION_HANDLE_MAX_SIZE; ++i) {
+		struct tipc_k_handle *session_handle =
+				&_kree_session_handle_pool[handle_idx];
+
+		session = handle_idx;
+		handle_idx = (handle_idx + 1) % KREE_SESSION_HANDLE_MAX_SIZE;
+
+		if (!IS_ERR_OR_NULL((const void *)session_handle->dn))
+			continue;
+		if (!mutex_trylock(&session_handle->sess_lock))
+			continue;
+
+		if (!IS_ERR_OR_NULL((const void *)session_handle->dn)) {
+			mutex_unlock(&session_handle->sess_lock);
+			continue;
+		}
+
+		session_handle->dn = h.dn;
+		mutex_unlock(&session_handle->sess_lock);
+		break;
 	}
-	if (i == KREE_SESSION_HANDLE_MAX_SIZE) {
+
+	mutex_unlock(&fd_mutex);
+
+	if (i >= KREE_SESSION_HANDLE_MAX_SIZE) {
 		KREE_ERR(" %s: can not get empty slot for session!\n",
 			 __func__);
-		return -1;
+		session = 0;
 	}
-	_kree_session_handle_pool[_kree_session_handle_idx].dn = h.dn;
-	session = _kree_session_handle_idx;
-	_kree_session_handle_idx =
-		(_kree_session_handle_idx + 1) % KREE_SESSION_HANDLE_MAX_SIZE;
-	mutex_unlock(&fd_mutex);
 
 	return session;
 }
 
-void _clearSessionHandle(int32_t session);
+void _clearSessionHandle(const int32_t session);
 
 int _getSessionHandle(int32_t session, struct tipc_k_handle **h)
 {
@@ -266,68 +279,66 @@ int32_t _HandleToFd(struct tipc_k_handle h)
 	return _setSessionHandle(h);
 }
 
-static inline struct tipc_dn_chan *_HandleToChanInfo(struct tipc_k_handle *handle)
+static inline struct tipc_dn_chan *_HandleToChanInfo(
+		const struct tipc_k_handle *handle)
 {
-	return handle ? (struct tipc_dn_chan *)(handle->dn) : NULL;
+	return !IS_ERR_OR_NULL((const void *)handle) ?
+			(struct tipc_dn_chan *)(handle->dn) : NULL;
 }
 
-void _clearSessionHandle(int32_t session)
+void _clearSessionHandle(const int32_t session)
 {
-	struct tipc_k_handle *handle = _FdToHandle(session);
+	struct tipc_k_handle *session_handle = _FdToHandle(session);
+	bool is_locked = false;
+
+	mutex_lock(&fd_mutex);
 
 	do {
-		if (IS_ERR_OR_NULL((const void *)handle))
+		if (IS_ERR_OR_NULL((const void *)session_handle))
 			break;
+		is_locked = mutex_is_locked(&session_handle->sess_lock);
+		if (!is_locked)
+			mutex_lock(&session_handle->sess_lock);
 
-		mutex_lock(&fd_mutex);
-		handle->dn = NULL;
-		mutex_unlock(&fd_mutex);
+		session_handle->dn = NULL;
 	} while (false);
+
+	if (!IS_ERR_OR_NULL((const void *)session_handle) && !is_locked)
+		mutex_unlock(&session_handle->sess_lock);
+
+	mutex_unlock(&fd_mutex);
 }
 
 TZ_RESULT KREE_SessionToTID(KREE_SESSION_HANDLE session, enum tee_id_t *o_tid)
 {
-	struct tipc_dn_chan *dn = _HandleToChanInfo(_FdToHandle(session));
+	TZ_RESULT __maybe_unused ret = TZ_RESULT_ERROR_BAD_PARAMETERS;
+	struct tipc_k_handle *session_handle = _FdToHandle(session);
+	struct tipc_dn_chan *dn = NULL;
 
-	if (dn) {
+	do {
+		if (IS_ERR_OR_NULL((const void *)session_handle))
+			break;
+		mutex_lock(&session_handle->sess_lock);
+
+		dn = _HandleToChanInfo(session_handle);
+		if (IS_ERR_OR_NULL((const void *)dn)) {
+			(void)gz_port_lookup_tid("com.default.tee_id", o_tid);
+			pr_info("[%s] session %d to tee id failed, return default %d\n",
+					__func__, session, *o_tid);
+			ret = TZ_RESULT_ERROR_NO_DATA;
+			break;
+		}
+
 		*o_tid = dn->tee_id;
-		return TZ_RESULT_SUCCESS;
-	}
+		ret = TZ_RESULT_SUCCESS;
+	} while (false);
 
-	gz_port_lookup_tid("com.default.tee_id", o_tid);
-	pr_info("[%s] session %d to tee id failed, return default %d\n",
-		__func__, session, *o_tid);
-	return TZ_RESULT_ERROR_NO_DATA;
+	if (!IS_ERR_OR_NULL((const void *)session_handle))
+		mutex_unlock(&session_handle->sess_lock);
+
+	return ret;
 }
 EXPORT_SYMBOL(KREE_SessionToTID);
-
-void KREE_SESSION_LOCK(int32_t handle)
-{
-	struct tipc_dn_chan *chan_p = _HandleToChanInfo(_FdToHandle(handle));
-
-	if (!chan_p)
-		return;
-
-	if (!is_tee_id(chan_p->tee_id))
-		return;
-
-	if (handle != _sys_service_Fd[chan_p->tee_id])
-		mutex_lock(&chan_p->sess_lock);
-}
-
-void KREE_SESSION_UNLOCK(int32_t handle)
-{
-	struct tipc_dn_chan *chan_p = _HandleToChanInfo(_FdToHandle(handle));
-
-	if (!chan_p)
-		return;
-
-	if (!is_tee_id(chan_p->tee_id))
-		return;
-
-	if (handle != _sys_service_Fd[chan_p->tee_id])
-		mutex_unlock(&chan_p->sess_lock);
-}
 
 static TZ_RESULT KREE_OpenSysFd(uint32_t tee_id)
 {
@@ -1007,19 +1018,18 @@ static void kree_perf_boost(int enable)
 
 TZ_RESULT KREE_CreateSession(const char *ta_uuid, KREE_SESSION_HANDLE *pHandle)
 {
-	TZ_RESULT ret = TZ_RESULT_SUCCESS;
-	int32_t chan_fd;
-	struct tipc_dn_chan *chan_p;
-	union MTEEC_PARAM p[4];
-	KREE_SESSION_HANDLE session;
-	uint tee_id;
+	TZ_RESULT __maybe_unused ret = TZ_RESULT_ERROR_BAD_PARAMETERS;
+	int32_t chan_fd = 0;
+	struct tipc_k_handle *session_handle = NULL;
+	struct tipc_dn_chan *chan_p = NULL;
+	union MTEEC_PARAM p[4] = { 0 };
+	KREE_SESSION_HANDLE session = 0;
+	enum tee_id_t tee_id = TEE_ID_END;
 
 	KREE_DEBUG("%s: %s\n", __func__, ta_uuid);
 
 	if (!pHandle || !ta_uuid)
 		return TZ_RESULT_ERROR_BAD_PARAMETERS;
-
-	mutex_lock(&session_mutex);
 
 	/* connect to target service */
 	ret = KREE_OpenFd(ta_uuid, &chan_fd);
@@ -1028,7 +1038,14 @@ TZ_RESULT KREE_CreateSession(const char *ta_uuid, KREE_SESSION_HANDLE *pHandle)
 		goto create_session_out;
 	}
 
-	chan_p = _HandleToChanInfo(_FdToHandle(chan_fd));
+	session_handle = _FdToHandle(chan_fd);
+	if (IS_ERR_OR_NULL((const void *)session_handle)) {
+		ret = TZ_RESULT_ERROR_INVALID_HANDLE;
+		goto create_session_out;
+	}
+	mutex_lock(&session_handle->sess_lock);
+
+	chan_p = _HandleToChanInfo(session_handle);
 	if (!chan_p) {
 		KREE_ERR("%s: NULL chan_p, invalid Fd\n", __func__);
 		ret = TZ_RESULT_ERROR_BAD_PARAMETERS;
@@ -1065,11 +1082,13 @@ TZ_RESULT KREE_CreateSession(const char *ta_uuid, KREE_SESSION_HANDLE *pHandle)
 	KREE_DEBUG(" ===> %s: Get session = %d.\n", __func__, (int)session);
 
 	chan_p->session = session;
-	mutex_init(&chan_p->sess_lock);
+	ret = TZ_RESULT_SUCCESS;
 
 create_session_out:
+	if (!IS_ERR_OR_NULL((const void *)session_handle))
+		mutex_unlock(&session_handle->sess_lock);
+
 	*pHandle = chan_fd;
-	mutex_unlock(&session_mutex);
 
 	return ret;
 }
@@ -1077,21 +1096,25 @@ EXPORT_SYMBOL(KREE_CreateSession);
 
 TZ_RESULT KREE_CloseSession(KREE_SESSION_HANDLE handle)
 {
-	TZ_RESULT ret = TZ_RESULT_SUCCESS;
-	int32_t Fd;
-	KREE_SESSION_HANDLE session;
-	union MTEEC_PARAM p[4];
-	struct tipc_dn_chan *chan_p;
-	enum tee_id_t tee_id;
+	TZ_RESULT __maybe_unused ret = TZ_RESULT_ERROR_BAD_PARAMETERS;
+	int32_t Fd = handle;
+	struct tipc_k_handle *session_handle = NULL;
+	KREE_SESSION_HANDLE session = 0;
+	union MTEEC_PARAM p[4] = { 0 };
+	struct tipc_dn_chan *chan_p = NULL;
+	enum tee_id_t tee_id = TEE_ID_END;
 
 	KREE_DEBUG(" ===> %s: Close session ...\n", __func__);
 
-	mutex_lock(&session_mutex);
-
-	Fd = handle;
+	session_handle = _FdToHandle(Fd);
+	if (IS_ERR_OR_NULL((const void *)session_handle)) {
+		ret = TZ_RESULT_ERROR_INVALID_HANDLE;
+		goto close_session_out;
+	}
+	mutex_lock(&session_handle->sess_lock);
 
 	/* get session from Fd */
-	chan_p = _HandleToChanInfo(_FdToHandle(Fd));
+	chan_p = _HandleToChanInfo(session_handle);
 	if (!chan_p) {
 		KREE_ERR("%s: NULL chan_p, invalid Fd\n", __func__);
 		ret = TZ_RESULT_ERROR_BAD_PARAMETERS;
@@ -1118,8 +1141,6 @@ TZ_RESULT KREE_CloseSession(KREE_SESSION_HANDLE handle)
 		goto close_session_out;
 	}
 
-	mutex_destroy(&chan_p->sess_lock);
-
 	/* close Fd */
 	ret = KREE_CloseFd(Fd);
 	if (ret != TZ_RESULT_SUCCESS) {
@@ -1127,28 +1148,41 @@ TZ_RESULT KREE_CloseSession(KREE_SESSION_HANDLE handle)
 		goto close_session_out;
 	}
 
+	ret = TZ_RESULT_SUCCESS;
+
 close_session_out:
-	mutex_unlock(&session_mutex);
+	if (!IS_ERR_OR_NULL((const void *)session_handle))
+		mutex_unlock(&session_handle->sess_lock);
 
 	return ret;
 }
 EXPORT_SYMBOL(KREE_CloseSession);
 
 TZ_RESULT KREE_TeeServiceCallPlus(KREE_SESSION_HANDLE handle, uint32_t command,
-				  uint32_t paramTypes, union MTEEC_PARAM param[4],
-				  int32_t cpumask)
+		uint32_t paramTypes, union MTEEC_PARAM param[4],
+		int32_t cpumask)
 {
-	int iret;
+	TZ_RESULT __maybe_unused ret = TZ_RESULT_ERROR_BAD_PARAMETERS;
 	struct gz_syscall_cmd_param *cparam = NULL;
-	int32_t Fd;
-	struct tipc_dn_chan *chan_p;
+	int32_t Fd = handle;
+	struct tipc_k_handle *session_handle = NULL;
+	struct tipc_dn_chan *chan_p = NULL;
+	bool is_locked = false;
 
-	Fd = handle;
+	session_handle = _FdToHandle(handle);
+	if (IS_ERR_OR_NULL((const void *)session_handle)) {
+		ret = TZ_RESULT_ERROR_INVALID_HANDLE;
+		goto tee_service_call_plus_out;
+	}
+	is_locked = mutex_is_locked(&session_handle->sess_lock);
+	if (!is_locked)
+		mutex_lock(&session_handle->sess_lock);
 
-	chan_p = _HandleToChanInfo(_FdToHandle(handle));
+	chan_p = _HandleToChanInfo(session_handle);
 	if (!chan_p) {
 		KREE_ERR("%s: get tipc dn channel failed\n", __func__);
-		return TZ_RESULT_ERROR_BAD_PARAMETERS;
+		ret = TZ_RESULT_ERROR_BAD_PARAMETERS;
+		goto tee_service_call_plus_out;
 	}
 
 	/* pass cpumask to channel */
@@ -1157,7 +1191,8 @@ TZ_RESULT KREE_TeeServiceCallPlus(KREE_SESSION_HANDLE handle, uint32_t command,
 	cparam = kzalloc(sizeof(struct gz_syscall_cmd_param), GFP_KERNEL);
 	if (!cparam) {
 		KREE_ERR("%s: alloc cparam failed\n", __func__);
-		return TZ_RESULT_ERROR_OUT_OF_MEMORY;
+		ret = TZ_RESULT_ERROR_OUT_OF_MEMORY;
+		goto tee_service_call_plus_out;
 	}
 
 	cparam->command = command;
@@ -1170,24 +1205,27 @@ TZ_RESULT KREE_TeeServiceCallPlus(KREE_SESSION_HANDLE handle, uint32_t command,
 	if (cpumask == -1)
 		mutex_lock(&servicecall_lock);
 
-	KREE_SESSION_LOCK(Fd);
 	kree_perf_boost(1);
 
-	iret = _GzServiceCall_body(Fd, command, cparam, param);
+	ret = _GzServiceCall_body(Fd, command, cparam, param);
 
 	kree_perf_boost(0);
-	KREE_SESSION_UNLOCK(Fd);
 
 	if (cpumask == -1)
 		mutex_unlock(&servicecall_lock);
 
 	memcpy(param, cparam->param, sizeof(union MTEEC_PARAM) * 4);
 
+	ret = TZ_RESULT_SUCCESS;
+
+tee_service_call_plus_out:
+	if (!is_locked)
+		mutex_unlock(&session_handle->sess_lock);
+
 	kfree(cparam);
 
-	return iret;
+	return ret;
 }
-
 EXPORT_SYMBOL(KREE_TeeServiceCallPlus);
 
 TZ_RESULT KREE_TeeServiceCall(KREE_SESSION_HANDLE handle, uint32_t command,
@@ -1285,20 +1323,39 @@ int tz_system_std_call32(u32 smcnr, u32 a0, u32 a1, u32 a2)
 
 static int __init tz_system_init(void)
 {
-	int ret = 0;
+	int __maybe_unused ret = -EINVAL;
 
-	ret = platform_driver_register(&tz_system_driver);
-	if (ret) {
-		KREE_ERR("%s driver register fail, ret %d\n", __func__, ret);
-		return ret;
-	}
+	do {
+		for (size_t i = 0; i < TEE_ID_END; ++i)
+			mutex_init(&_sys_service_h[i].sess_lock);
+		for (size_t i = 0; i < KREE_SESSION_HANDLE_MAX_SIZE; ++i)
+			mutex_init(&_kree_session_handle_pool[i].sess_lock);
 
-	return 0;
+		ret = platform_driver_register(&tz_system_driver);
+		if (!!ret)
+			KREE_ERR("%s driver register fail, ret %d\n",
+					__func__, ret);
+
+		ret = 0;
+	} while (false);
+
+	return ret;
 }
 
 static void __exit tz_system_exit(void)
 {
-	platform_driver_unregister(&tz_system_driver);
+	int __maybe_unused ret = -EINVAL;
+
+	do {
+		(void)platform_driver_unregister(&tz_system_driver);
+
+		for (size_t i = 0; i < KREE_SESSION_HANDLE_MAX_SIZE; ++i)
+			mutex_destroy(&_kree_session_handle_pool[i].sess_lock);
+		for (size_t i = 0; i < TEE_ID_END; ++i)
+			mutex_destroy(&_sys_service_h[i].sess_lock);
+
+		ret = 0;
+	} while (false);
 }
 
 module_init(tz_system_init);
