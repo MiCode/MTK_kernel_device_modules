@@ -370,6 +370,7 @@ struct rrot_frame_data {
 	u8 blk_tile;
 	u8 color_tran;
 	u8 matrix_sel;
+	u8 ext_matrix;
 	u32 bits_per_pixel_y;
 	u32 bits_per_pixel_uv;
 	u32 hor_shift_uv;
@@ -1354,7 +1355,9 @@ static s32 rrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 
 	cmdq_pkt_write(pkt, NULL, base_pa + RROT_TRANSFORM_0,
 		   (rrot_frm->matrix_sel << 23) +
-		   (rrot_frm->color_tran << 16),
+		   (rrot_frm->ext_matrix << 20) +
+		   (rrot_frm->color_tran << 16) +
+		   (1 << 15),	/* BITEXTEND_WITH_ZERO */
 		   U32_MAX);
 
 	if (MML_FMT_V_SUBSAMPLE(src->format) &&
