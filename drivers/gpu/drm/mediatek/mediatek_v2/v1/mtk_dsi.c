@@ -7312,11 +7312,11 @@ static void mtk_dsi_config_trigger(struct mtk_ddp_comp *comp,
 		}
 		mtk_dsi_poll_for_idle(dsi, handle);
 		/* TODO: avoid hardcode: 0xF0 register offset  */
+		//tablet may also need lp_perline_en == 1 case in future
 		if (ext->params->lp_perline_en == 0 &&
 			mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base)) {
 			// hs mode
-			if (priv && priv->data && (priv->data->mmsys_id == MMSYS_MT6855 ||
-			    priv->data->mmsys_id == MMSYS_MT6886 ||
+			if (priv && priv->data && (priv->data->mmsys_id == MMSYS_MT6886 ||
 				priv->data->mmsys_id == MMSYS_MT6897))
 				cmdq_pkt_write(handle, comp->cmdq_base,
 						comp->regs_pa + DSI_CON_CTRL(dsi->driver_data),
