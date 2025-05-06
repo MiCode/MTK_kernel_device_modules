@@ -926,6 +926,7 @@ static int _v1_hwccf_irq_voter_wait_done(struct regmap *regmap, uint32_t setclr_
 
 			if (i == MTK_WAIT_GHWV_MTCMOS_DONE_CNT) {
 				HWCCF_ERR("%s polling all_en timeout\n", is_set ? "set" : "clr");
+				ret = -HWV_SET_TIMEOUT;
 				goto ERR;
 			}
 		}
