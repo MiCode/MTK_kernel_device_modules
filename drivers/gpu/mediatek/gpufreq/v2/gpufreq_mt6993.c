@@ -769,7 +769,7 @@ static void __gpufreq_dump_power_tracker_status(void)
 
 	if (g_shared_status && g_shared_status->power_count &&
 		g_shared_status->power_tracker_mode) {
-		w_ptr = (DRV_Reg32(MFG_TOP_POWER_TRACKER_SETTING) & GENMASK(5, 0)) >> 10;
+		w_ptr = (DRV_Reg32(MFG_TOP_POWER_TRACKER_SETTING) & GENMASK(15, 10)) >> 10;
 		GPUFREQ_LOGI("== [PDC POWER TRACKER STATUS: %02u] ==", w_ptr);
 		for (i = 1; i <= 16; i++) {
 			/* only dump last 16 record */
@@ -777,13 +777,15 @@ static void __gpufreq_dump_power_tracker_status(void)
 			DRV_FieldReg32(MFG_TOP_POWER_TRACKER_SETTING, r_ptr, GENMASK(9, 4));
 			udelay(1);
 
-			GPUFREQ_LOGI("[%02u][%u] STA 1=0x%08x, 2=0x%08x, 3=0x%08x, 4=0x%08x, 5=0x%08x",
+			GPUFREQ_LOGI("[%02u][%u] 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x 0x%08x",
 				r_ptr, DRV_Reg32(MFG_TOP_POWER_TRACKER_PDC_STATUS0),
 				DRV_Reg32(MFG_TOP_POWER_TRACKER_PDC_STATUS1),
 				DRV_Reg32(MFG_TOP_POWER_TRACKER_PDC_STATUS2),
 				DRV_Reg32(MFG_TOP_POWER_TRACKER_PDC_STATUS3),
 				DRV_Reg32(MFG_TOP_POWER_TRACKER_PDC_STATUS4),
-				DRV_Reg32(MFG_TOP_POWER_TRACKER_PDC_STATUS5));
+				DRV_Reg32(MFG_TOP_POWER_TRACKER_PDC_STATUS5),
+				DRV_Reg32(MFG_TOP_POWER_TRACKER_PDC_STATUS6),
+				DRV_Reg32(MFG_TOP_POWER_TRACKER_PDC_STATUS7));
 		}
 	}
 }

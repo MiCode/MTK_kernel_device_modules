@@ -41,6 +41,8 @@
 #define MFG_TOP_POWER_TRACKER_PDC_STATUS3      (g_mfg_top_base + 0x0FF0)           /* 0x48500FF0 */
 #define MFG_TOP_POWER_TRACKER_PDC_STATUS4      (g_mfg_top_base + 0x0FF4)           /* 0x48500FF4 */
 #define MFG_TOP_POWER_TRACKER_PDC_STATUS5      (g_mfg_top_base + 0x0FF8)           /* 0x48500FF8 */
+#define MFG_TOP_POWER_TRACKER_PDC_STATUS6      (g_mfg_top_base + 0x0FFC)           /* 0x48500FFC */
+#define MFG_TOP_POWER_TRACKER_PDC_STATUS7      (g_mfg_top_base + 0x1940)           /* 0x48501940 */
 #define MFG_TOP_VOLT_TRACKER_CON_1             (g_mfg_top_base + 0x1644)           /* 0x48501644 */
 #define MFG_TOP_VOLT_TRACKER_CON_2             (g_mfg_top_base + 0x1648)           /* 0x48501648 */
 #define MFG_TOP_VOLT_TRACKER_CON_3             (g_mfg_top_base + 0x164C)           /* 0x4850164C */
