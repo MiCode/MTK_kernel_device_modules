@@ -12,14 +12,19 @@
 #ifdef ADSP_BASE
 #undef ADSP_BASE
 #endif
+#ifdef ADSP_BASE_CFG2
+#undef ADSP_BASE_CFG2
+#endif
 
 #define ADSP_BASE                  mt_base
+#define ADSP_BASE_CFG2             mt_base_cfg2
 
 #define SET_BITS(addr, mask) writel(readl(addr) | (mask), addr)
 #define CLR_BITS(addr, mask) writel(readl(addr) & ~(mask), addr)
 #define READ_BITS(addr, mask) (readl(addr) & (mask))
 
 static void __iomem *mt_base;
+static void __iomem *mt_base_cfg2;
 static u32 axibus_idle_val;
 
 /* below access adsp register necessary */
@@ -105,6 +110,28 @@ u32 adsp_mt_get_semaphore(u32 bit)
 	return (readl(ADSP_SEMAPHORE) >> bit) & 0x1;
 }
 
+ssize_t adsp_mt_get_dpsw_status(char *buf, u32 buf_size)
+{
+	int n = 0;
+	u32 req, ack, vcore_ack, vlp_ack;
+
+	if (!buf)
+		return n;
+
+	req = readl(ADSP_DPSW_REQ) & ADSP_DPSW_REQ_MASK;
+	ack = readl(ADSP_DPSW_ACK) & ADSP_DPSW_ACK_MASK;
+	vcore_ack = readl(DPSW_AD_VLOGIC_ON_ACK_STATUS);
+	vlp_ack = readl(DPSW_AD_SRAM_ON_ACK_STATUS);
+
+	n += scnprintf(buf + n, buf_size - n,
+			"dpsw req = 0x%x, ack = 0x%x\n",
+			req, ack);
+	n += scnprintf(buf + n, buf_size - n,
+			"vcore_ack = 0x%x, vlp_ack = 0x%x\n",
+			vcore_ack, vlp_ack);
+	return n;
+}
+
 void adsp_hardware_init(struct adspsys_priv *adspsys)
 {
 	struct adsp_hardware_operations *hw_ops;
@@ -113,6 +140,7 @@ void adsp_hardware_init(struct adspsys_priv *adspsys)
 		return;
 
 	mt_base = adspsys->cfg;
+	mt_base_cfg2 = adspsys->cfg2;
 	axibus_idle_val = adspsys->desc->axibus_idle_val;
 
 	/* platform operation initialization */
@@ -125,4 +153,5 @@ void adsp_hardware_init(struct adspsys_priv *adspsys)
 	hw_ops->check_hifi_status = adsp_mt_check_hifi_status;
 	hw_ops->read_adsp_sys_status = adsp_mt_read_adsp_sys_status;
 	hw_ops->is_adsp_axibus_idle = adsp_mt_is_adsp_axibus_idle;
+	hw_ops->get_dpsw_status = adsp_mt_get_dpsw_status;
 }

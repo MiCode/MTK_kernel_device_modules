@@ -237,6 +237,41 @@ const struct file_operations adsp_debug_ops = {
 	.write = adsp_debug_write,
 };
 
+/* ---------------------------- sysinfo fs ----------------------------------- */
+static inline ssize_t dpsw_info_show(struct device *dev,
+				     struct device_attribute *attr,
+				     char *buf)
+{
+	int n = 0;
+
+	if (!adspsys)
+		return n;
+
+	if (!adspsys->hw_ops.get_dpsw_status)
+		return scnprintf(buf, PAGE_SIZE,
+				 "get_dpsw_status is not support");
+
+	if (!is_adsp_system_running())
+		return scnprintf(buf, PAGE_SIZE, "ADSP is not running");
+
+	if (_adsp_register_feature(ADSP_A_ID, SYSTEM_FEATURE_ID, 0) == 0) {
+		n = adspsys->hw_ops.get_dpsw_status(buf, PAGE_SIZE);
+		_adsp_deregister_feature(ADSP_A_ID, SYSTEM_FEATURE_ID, 0);
+	}
+
+	return n;
+}
+DEVICE_ATTR_RO(dpsw_info);
+
+static struct attribute *adsp_sysinfo_attrs[] = {
+	&dev_attr_dpsw_info.attr,
+	NULL,
+};
+
+struct attribute_group adsp_sysinfo_attr_group = {
+	.attrs = adsp_sysinfo_attrs,
+};
+
 /* ---------------------------- trace fs ----------------------------------- */
 #define ADSP_TRACE_SIZE   (256 * 1024) /* bottom of debug memory, Must align firmware */
 

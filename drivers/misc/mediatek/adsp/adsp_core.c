@@ -49,6 +49,7 @@ struct adspsys_priv *adspsys;
 
 const struct attribute_group *adspsys_attr_groups[] = {
 	&adsp_excep_attr_group,
+	&adsp_sysinfo_attr_group,
 	NULL,
 };
 

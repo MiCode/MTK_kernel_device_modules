@@ -128,6 +128,7 @@ struct adspsys_priv {
 
 extern const struct file_operations adspsys_file_ops;
 extern struct attribute_group adsp_excep_attr_group;
+extern struct attribute_group adsp_sysinfo_attr_group;
 extern const struct file_operations adsp_debug_ops;
 extern const struct file_operations adsp_trace_ops;
 extern const struct file_operations adsp_mbrain_ops;

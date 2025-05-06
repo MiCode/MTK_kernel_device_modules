@@ -38,6 +38,7 @@ struct adsp_hardware_operations {
 	bool (*is_adsp_axibus_idle)(u32 *backup);
 	bool (*check_core_active)(u32 cid);
 	int (*pre_lock)(u32 cid, bool is_lock);
+	ssize_t (*get_dpsw_status)(char *buf, u32 buf_size);
 };
 
 /* platform wrap methods */

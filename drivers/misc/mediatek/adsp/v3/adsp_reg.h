@@ -41,4 +41,10 @@
 #define ADSP_B_IS_WFI               (1 << 1)
 #define ADSP_AXI_BUS_IS_IDLE        (1 << 2)
 
+#define ADSP_DPSW_REQ                      (ADSP_BASE + 0x0590)
+#define ADSP_DPSW_ACK                      (ADSP_BASE + 0x0594)
+#define ADSP_DPSW_REQ_MASK                 (0x1 << 0)
+#define ADSP_DPSW_ACK_MASK                 (0x1 << 0)
+#define DPSW_AD_VLOGIC_ON_ACK_STATUS       (ADSP_BASE_CFG2 + 0x0050)
+#define DPSW_AD_SRAM_ON_ACK_STATUS         (ADSP_BASE_CFG2 + 0x0054)
 #endif
