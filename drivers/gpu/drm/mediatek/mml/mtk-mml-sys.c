@@ -327,6 +327,10 @@ struct dl_frame_data {
 #define call_hw_op(_comp, op, ...) \
 	(_comp->hw_ops->op ? _comp->hw_ops->op(_comp, ##__VA_ARGS__) : 0)
 
+#define call_dbg_op(_comp, op, ...) \
+	((_comp->debug_ops && _comp->debug_ops->op) ? \
+		_comp->debug_ops->op(_comp, ##__VA_ARGS__) : 0)
+
 static inline struct sys_frame_data *sys_frm_data(struct mml_comp_config *ccfg)
 {
 	return ccfg->data;
@@ -1681,7 +1685,9 @@ static void mml_sys_taskdone(struct mml_comp *comp, struct mml_task *task,
 
 	if (mml_dbgtp_dump && cfg->dbgtp) {
 		mml_dbgtp_config_dump(comp->sysid, comp->base);
-		sys_debug_dump(comp);
+		call_dbg_op(comp, dump);
+		if (cfg->info.mode == MML_MODE_DIRECT_LINK)
+			call_dbg_op(comp, dump_dl);
 	}
 }
 
@@ -2341,10 +2347,6 @@ static void sys_unprepare(struct mtk_ddp_comp *ddp_comp)
 	if (task->config->dual)
 		sys_ddp_disable(sys, task, 1);
 }
-
-#define call_dbg_op(_comp, op, ...) \
-	((_comp->debug_ops && _comp->debug_ops->op) ? \
-		_comp->debug_ops->op(_comp, ##__VA_ARGS__) : 0)
 
 static void ddp_comp_dump(const struct mml_topology_path *path)
 {
