@@ -13883,6 +13883,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			clear-md = <0x1fc 0x80000000 1>;
 			smc-clear = <1>;
 			dump-axid = <1>;
+			reset = <1>;
 		};
 
 		apinfra-fake-eng@14139000 {
