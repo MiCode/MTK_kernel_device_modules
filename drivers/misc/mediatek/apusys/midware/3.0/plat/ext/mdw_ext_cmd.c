@@ -54,9 +54,6 @@ out:
 
 void mdw_ext_cmd_put_id(struct mdw_cmd *c)
 {
-	if (c->mpriv->mdev->mdw_ver < 4)
-		return;
-
 	mdwext_cmd_debug("c(0x%llx) extid(0x%llx) tgid(%d/%d)\n",
 		c->kid, c->ext_id, task_tgid_nr(current), c->tgid);
 
@@ -85,11 +82,6 @@ static int mdw_ext_cmd_ioctl_run(union mdw_ext_cmd_args *args)
 		goto unlock_extlock;
 	}
 
-	/* check support */
-	if (c->mpriv->mdev->mdw_ver < 4) {
-		mdwext_drv_warn("no support mdw ext\n");
-		goto unlock_extlock;
-	}
 	/* check cmd */
 	if (c->ext_id != args->in.ext_id) {
 		mdwext_drv_err("c(0x%llx) extid not available(0x%llx/0x%llx)\n",

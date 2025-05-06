@@ -280,6 +280,24 @@ static void mdw_plat_v2_show_msg(struct mdw_mem_map *map)
 }
 
 /* plat funcs for v2 */
+static int mdw_plat_v2_late_init(struct mdw_device *mdev)
+{
+	int ret = 0;
+
+	mdw_drv_debug("\n");
+
+	/* assign library version */
+	mdev->mdw_ver = 2;
+	mdw_drv_info("mdw_ver = %u\n", mdev->mdw_ver);
+
+	/* support rv execution */
+	ret = mdw_rv_late_init(mdev);
+	if (ret)
+		mdw_drv_err("mdw rv late init failed\n");
+
+	return ret;
+}
+
 static int mdw_plat_v2_register_device(struct apusys_device *adev)
 {
 	mdw_drv_debug("\n");
@@ -573,7 +591,7 @@ out:
 
 /* mdw_plat_func for v2 */
 const struct mdw_plat_func mdw_plat_func_v2 = {
-	.late_init =   mdw_rv_late_init,
+	.late_init =   mdw_plat_v2_late_init,
 	.late_deinit = mdw_rv_late_deinit,
 	.sw_init =     mdw_rv_sw_init,
 	.sw_deinit =   mdw_rv_sw_deinit,

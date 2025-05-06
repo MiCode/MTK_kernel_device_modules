@@ -52,12 +52,19 @@ int mdw_ext_init(struct mdw_device *mdw_dev)
 {
 	int ret = -EINVAL;
 
-	/* check support ext by version */
+	/* check mdw_dev exist */
 	if (mdw_dev) {
+		/* check ext support */
 		if (mdw_dev->mdw_ver < 4) {
+			pr_info("%s mdw_dev->mdw_ver = %d, no apuext\n",
+				__func__, mdw_dev->mdw_ver);
 			ret = 0;
 			goto out;
 		}
+	}else {
+		pr_info("%s mdw_dev is null\n", __func__);
+		ret = -ENOMEM;
+		goto out;
 	}
 
 	pr_info("%s register misc...\n", __func__);
@@ -69,6 +76,7 @@ int mdw_ext_init(struct mdw_device *mdw_dev)
 	/* alloc ext device */
 	mdw_ext_dev = kzalloc(sizeof(*mdw_ext_dev), GFP_KERNEL);
 	if (mdw_ext_dev == NULL) {
+		ret = -ENOMEM;
 		goto deregister_ext;
 	}
 

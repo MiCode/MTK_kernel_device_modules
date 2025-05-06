@@ -283,11 +283,17 @@ static int mdw_rpmsg_probe(struct rpmsg_device *rpdev)
 	if (ret)
 		goto deinit_dbg;
 
+	/* init apu ext function */
+	ret = mdw_ext_init(mdev);
+	if (ret)
+		goto deinit_dev;
 
 	pr_info("%s -\n", __func__);
 
 	goto out;
 
+deinit_dev:
+	mdw_dev_deinit(mdev);
 deinit_dbg:
 	mdw_dbg_deinit();
 	mdw_sysfs_deinit(mdev);
@@ -363,18 +369,9 @@ int mdw_init(struct apusys_core_info *info)
 		goto unregister_platform_driver;
 	}
 
-	/* init apu ext function */
-	ret = mdw_ext_init(mdw_dev);
-	if (ret) {
-		pr_info("failed to do ext init\n");
-		goto unregister_rpmsg_driver;
-	}
-
 	pr_info("%s init done\n", __func__);
 	goto out;
 
-unregister_rpmsg_driver:
-	unregister_rpmsg_driver(&mdw_rpmsg_driver);
 unregister_platform_driver:
 	platform_driver_unregister(&mdw_platform_driver);
 unregister_misc_dev:
