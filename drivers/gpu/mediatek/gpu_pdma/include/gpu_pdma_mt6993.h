@@ -9,8 +9,9 @@
 #define PDMA_RINGBUF_PA_NUM		8
 
 enum CCMD_CACHE_MODE {
-	SMART_CACHE_API = 0,
+	DYNAMIC_CACHE_API = 0,
 	COMPUTE_TLS,
+	AUTO_MODE,
 	UNSUPPORTED_MODE
 };
 
@@ -160,6 +161,7 @@ struct pdma_hw_lock {
 	struct {
 		unsigned int kctx_id;
 		unsigned int mode;
+		unsigned int fixed_policy;
 	} in;
 	struct {
 		unsigned int status;

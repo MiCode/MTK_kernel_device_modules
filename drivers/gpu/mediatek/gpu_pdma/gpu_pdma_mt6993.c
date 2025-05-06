@@ -444,8 +444,10 @@ static int init_ccmd_hw(struct pdma_device *pdma_dev,
 static int reset_ccmd_hw(struct pdma_device *pdma_dev,
 	struct ccmd_context *ccmd_ctx)
 {
-
 	int ret = 0;
+	struct list_head *entry, *tmp;
+	struct ccmd_context *ctx;
+	bool is_last_auto_ctx = true;
 
 	if (!pdma_dev || !ccmd_ctx) {
 		pr_info("[CCMD] %s, Invalid arguments.\n", __func__);
@@ -457,8 +459,22 @@ static int reset_ccmd_hw(struct pdma_device *pdma_dev,
 		return -EINVAL;
 	}
 
+	/* restore last slcv1 at last autoslc ctx */
+	if (ccmd_ctx->mode == AUTO_MODE) {
+		list_for_each_safe(entry, tmp, &g_pdma_dev->ctx_list_active) {
+			ctx = list_entry(entry, struct ccmd_context, entry);
+			if (ctx->mode == AUTO_MODE && ccmd_ctx != ctx) {
+				is_last_auto_ctx = false;
+				break;
+			}
+		}
+		if (is_last_auto_ctx)
+			ged_gpu_slc_dynamic_mode(0xF);
+	}
+
 	if (pdma_dev->config_mode == CCMD_CONFIG_MODE_GPUEB)
 		return ret;
+
 #ifndef CCMD_DEBUG_MODE
 	if (ccmd_power_control(CCMD_POWER_ON))
 		return 1;
@@ -933,11 +949,9 @@ static long gpu_pdma_unlocked_ioctl(struct file *filp, unsigned int cmd,
 			pr_info("[CCMD] GPU_PDMA_LOCKHW success pid/tid: %d/%d, (%u)(%u)\n",
 				current->tgid, current->pid, hw_lock.in.kctx_id, ccmd_ctx->cid);
 
-			/*if (hw_lock.in.mode == 1){
-				pdma_dev->dynamic_mode = ged_gpu_slc_get_dynamic_mode();
-				ged_gpu_slc_dynamic_mode(POLICY_TEX_CACHE_LSC_ALLOC);
-			}
-*/
+			if (hw_lock.in.mode == AUTO_MODE)
+				ged_gpu_slc_dynamic_mode(hw_lock.in.fixed_policy);
+
 		} else
 			memset(&hw_lock, 0, sizeof(struct pdma_hw_lock));
 
@@ -1166,7 +1180,7 @@ static ssize_t gpu_pdma_show(struct device *dev,
 				"kctx:			0x%x\n", ctx->kctx_id);
 			pos += scnprintf(buf + pos, PAGE_SIZE - pos,
 				"mode:			[%s]\n", (ctx->mode == COMPUTE_TLS)
-				? "COMPUTE_TLS" : "DYNAMIC API");
+				? "COMPUTE_TLS" : (ctx->mode == AUTO_MODE ? "AUTO_MODE" : "DYNAMIC API"));
 			pos += scnprintf(buf + pos, PAGE_SIZE - pos,
 				"pbha owned		: ");
 			list_for_each_safe(pbha_entry, pbha_tmp, &ctx->pbha_list) {
@@ -1191,7 +1205,7 @@ static ssize_t gpu_pdma_show(struct device *dev,
 				"kctx:			0x%x\n", ctx->kctx_id);
 			pos += scnprintf(buf + pos, PAGE_SIZE - pos,
 				"mode:			[%s]\n", (ctx->mode == COMPUTE_TLS)
-				? "COMPUTE_TLS" : "DYNAMIC API");
+				? "COMPUTE_TLS" : (ctx->mode == AUTO_MODE ? "AUTO_MODE" : "DYNAMIC API"));
 			pos += scnprintf(buf + pos, PAGE_SIZE - pos,
 				"pbha owned		: ");
 			list_for_each_safe(pbha_entry, pbha_tmp, &ctx->pbha_list) {
