@@ -62,6 +62,7 @@ static int scroll_cnt;
 static int global_ux_blc;
 static int global_ux_max_pid;
 static int set_deplist_vip;
+static int set_deplist_affinity;
 static int set_deplist_ls;
 static int ux_general_policy;
 static int ux_general_policy_type;
@@ -119,6 +120,7 @@ module_param(sbe_dy_max_enhance, int, 0644);
 module_param(sbe_dy_enhance_margin, int, 0644);
 module_param(scroll_cnt, int, 0644);
 module_param(set_deplist_vip, int, 0644);
+module_param(set_deplist_affinity, int, 0644);
 module_param(set_deplist_ls, int, 0644);
 module_param(ux_general_policy, int, 0644);
 module_param(ux_general_policy_type, int, 0644);
@@ -232,7 +234,7 @@ out_put_task:
 	return retval;
 }
 
-void sbe_set_affinity_on_rescue(int pid, int r_cpu_mask)
+void sbe_set_affinity_on_scrolling(int pid, int r_cpu_mask)
 {
 	int ret;
 	int cpu;
@@ -1203,8 +1205,8 @@ void sbe_ux_scrolling_end(struct sbe_render_info *thr)
 	//reset rescue affnity if needed
 	scroll_info = get_latest_ux_scroll_info(thr);
 	if (scroll_info && scroll_info->rescue_with_perf_mode > 0) {
-		sbe_set_affinity_on_rescue(thr->tgid, SBE_PREFER_NONE);
-		sbe_set_affinity_on_rescue(thr->pid, SBE_PREFER_NONE);
+		sbe_set_affinity_on_scrolling(thr->tgid, SBE_PREFER_NONE);
+		sbe_set_affinity_on_scrolling(thr->pid, SBE_PREFER_NONE);
 	}
 
 	thr->sbe_dy_enhance_f = sbe_calculate_dy_enhance(thr);
@@ -1482,13 +1484,13 @@ void sbe_do_rescue(struct sbe_render_info *thr, int start, int enhance,
 				last_scroll->rescue_with_perf_mode = (rescue_type & RESCUE_TYPE_ENABLE_MARGIN);
 
 			if (last_scroll && last_scroll->rescue_with_perf_mode > 0) {
-				sbe_set_affinity_on_rescue(thr->tgid, SBE_PREFER_M);
-				sbe_set_affinity_on_rescue(thr->pid, SBE_PREFER_M);
+				sbe_set_affinity_on_scrolling(thr->tgid, SBE_PREFER_M);
+				sbe_set_affinity_on_scrolling(thr->pid, SBE_PREFER_M);
 			}
 		} else {
 			#if SBE_AFFNITY_TASK
-			sbe_set_affinity_on_rescue(thr->tgid, SBE_PREFER_M);
-			sbe_set_affinity_on_rescue(thr->pid, SBE_PREFER_M);
+			sbe_set_affinity_on_scrolling(thr->tgid, SBE_PREFER_M);
+			sbe_set_affinity_on_scrolling(thr->pid, SBE_PREFER_M);
 			#endif
 		}
 
@@ -1515,13 +1517,13 @@ void sbe_do_rescue(struct sbe_render_info *thr, int start, int enhance,
 			thr->rescue_start_time = 0;
 			//frame->rescue_reason is update in doframe end
 			if (last_scroll && last_scroll->rescue_with_perf_mode > 0) {
-				sbe_set_affinity_on_rescue(thr->tgid, SBE_PREFER_NONE);
-				sbe_set_affinity_on_rescue(thr->pid, SBE_PREFER_NONE);
+				sbe_set_affinity_on_scrolling(thr->tgid, SBE_PREFER_NONE);
+				sbe_set_affinity_on_scrolling(thr->pid, SBE_PREFER_NONE);
 			}
 		} else {
 			#if SBE_AFFNITY_TASK
-			sbe_set_affinity_on_rescue(thr->tgid, SBE_PREFER_NONE);
-			sbe_set_affinity_on_rescue(thr->pid, SBE_PREFER_NONE);
+			sbe_set_affinity_on_scrolling(thr->tgid, SBE_PREFER_NONE);
+			sbe_set_affinity_on_scrolling(thr->pid, SBE_PREFER_NONE);
 			#endif
 		}
 
@@ -2017,9 +2019,6 @@ void fpsgo2sbe_hint_frameinfo(unsigned long cmd, struct render_frame_info *iter)
 
 void update_fpsgo_hint_param(int scrolling, int tgid)
 {
-	if (!set_deplist_vip)
-		return;
-
 	if (scrolling) {
 		if (tgid > 0)
 			atomic_set(&g_web_or_flutter_tgid, tgid);
@@ -2032,8 +2031,12 @@ void update_fpsgo_hint_param(int scrolling, int tgid)
 		for (size_t i = 0; i < FPSGO_MAX_TASK_NUM; i++) {
 			struct task_info *dep_task = g_dep_arr_last;
 
-			if (dep_task && dep_task[i].pid > 0)
-				unset_task_basic_vip(dep_task[i].pid);
+			if (dep_task && dep_task[i].pid > 0) {
+				if (set_deplist_vip)
+					unset_task_basic_vip(dep_task[i].pid);
+				if (set_deplist_affinity)
+					sbe_set_affinity_on_scrolling(dep_task[i].pid, SBE_PREFER_NONE);
+			}
 		}
 		memset(g_dep_arr_last, 0, sizeof(struct task_info) * FPSGO_MAX_TASK_NUM);
 		sbe_put_tree_lock(__func__);
@@ -2043,15 +2046,18 @@ void update_fpsgo_hint_param(int scrolling, int tgid)
 int sbe_get_fpsgo_info(int tgid, int pid, int blc,
 		unsigned long mask, int jerk_boost_flag, struct task_info *dep_arr)
 {
-	if (set_deplist_vip
-			&& tgid == atomic_read(&g_web_or_flutter_tgid)
+	if (tgid == atomic_read(&g_web_or_flutter_tgid)
 			&& dep_arr) {
 		sbe_get_tree_lock(__func__);
 		for (size_t i = 0; i < FPSGO_MAX_TASK_NUM; i++) {
 			struct task_info *dep_task = g_dep_arr_last;
 
-			if (dep_task && dep_task[i].pid > 0)
-				unset_task_basic_vip(dep_task[i].pid);
+			if (dep_task && dep_task[i].pid > 0) {
+				if (set_deplist_vip)
+					unset_task_basic_vip(dep_task[i].pid);
+				if (set_deplist_affinity)
+					sbe_set_affinity_on_scrolling(dep_task[i].pid, SBE_PREFER_NONE);
+			}
 		}
 
 		//copy once reset when scrolling end!!!!
@@ -2061,8 +2067,12 @@ int sbe_get_fpsgo_info(int tgid, int pid, int blc,
 		for (size_t i = 0; i < FPSGO_MAX_TASK_NUM; i++) {
 			struct task_info *dep_task = g_dep_arr_last;
 
-			if (dep_task && dep_task[i].pid > 0)
-				set_task_basic_vip(dep_task[i].pid);
+			if (dep_task && dep_task[i].pid > 0) {
+				if (set_deplist_vip)
+					set_task_basic_vip(dep_task[i].pid);
+				if (set_deplist_affinity)
+					sbe_set_affinity_on_scrolling(dep_task[i].pid, SBE_PREFER_M);
+			}
 		}
 		sbe_put_tree_lock(__func__);
 	}
@@ -2093,6 +2103,7 @@ int __init sbe_cpu_ctrl_init(void)
 	sbe_dy_rescue_enable = 1;
 	scroll_cnt = 6;
 	set_deplist_vip = 1;
+	set_deplist_affinity = 1;
 	set_deplist_ls = 1;
 	gas_threshold = 10;
 	gas_threshold_for_low_TLP = 10;
