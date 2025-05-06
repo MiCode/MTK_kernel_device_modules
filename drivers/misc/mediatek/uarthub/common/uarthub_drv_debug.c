@@ -767,3 +767,17 @@ int uarthub_core_debug_monitor_clr(void)
 
 	return state;
 }
+
+int uarthub_core_emiisu_record_off(void)
+{
+	if (g_uarthub_disable == 1)
+		return 0;
+
+	if (!g_plat_ic_debug_ops)
+		return UARTHUB_ERR_PLAT_API_NOT_EXIST;
+
+	if (g_plat_ic_debug_ops->uarthub_plat_emiisu_record_off)
+		g_plat_ic_debug_ops->uarthub_plat_emiisu_record_off();
+
+	return 0;
+}

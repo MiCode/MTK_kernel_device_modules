@@ -1443,6 +1443,10 @@ static void trigger_uarthub_error_worker_handler(struct work_struct *work)
 	int err_index = 0;
 	struct timespec64 now;
 
+	/* turn off EMIISU if dev0_tx_timeout_err */
+	if (err_type & (0x1 << dev0_tx_timeout_err))
+		uarthub_core_emiisu_record_off();
+
 	ktime_get_real_ts64(&now);
 	tv_now_assert.tv_sec = now.tv_sec;
 	tv_now_assert.tv_nsec = now.tv_nsec;

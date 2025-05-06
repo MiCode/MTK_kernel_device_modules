@@ -164,6 +164,7 @@ int uarthub_dump_sspm_log_mt6993(const char *tag);
 int uarthub_trigger_fpga_testing_mt6993(int type);
 int uarthub_trigger_dvt_ut_testing_mt6993(int type);
 int uarthub_trigger_dvt_it_testing_mt6993(int type);
+int uarthub_emiisu_record_off_mt6993(void);
 int uarthub_read_dbg_monitor_mt6993(int *sel, int *tx_monitor, int *rx_monitor);
 int uarthub_record_check_data_mode_sta_to_buffer_mt6993(
 	unsigned char *dmp_info_buf, int len,

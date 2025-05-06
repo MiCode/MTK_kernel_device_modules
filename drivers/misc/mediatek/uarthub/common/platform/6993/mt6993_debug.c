@@ -6,6 +6,8 @@
 #include <linux/regmap.h>
 #include <linux/sched/clock.h>
 
+#include <soc/mediatek/emi.h>
+
 #include "clk-mt6993-fmeter.h"
 #include "clk-fmeter.h"
 #include "uarthub_drv_core.h"
@@ -55,6 +57,7 @@ struct uarthub_debug_ops_struct mt6993_plat_debug_data = {
 	.uarthub_plat_trigger_fpga_testing = uarthub_trigger_fpga_testing_mt6993,
 	.uarthub_plat_trigger_dvt_ut_testing = uarthub_trigger_dvt_ut_testing_mt6993,
 	.uarthub_plat_trigger_dvt_it_testing = uarthub_trigger_dvt_it_testing_mt6993,
+	.uarthub_plat_emiisu_record_off = uarthub_emiisu_record_off_mt6993,
 };
 
 uint64_t uarthub_get_xoff_ts_mt6993(unsigned int dev_index, unsigned int is_recv, unsigned int is_xoff)
@@ -2503,6 +2506,15 @@ int uarthub_trigger_dvt_ut_testing_mt6993(int type)
 
 #else
 	pr_info("[%s] NOT support DVT\n", __func__);
+#endif
+	return 0;
+}
+
+int uarthub_emiisu_record_off_mt6993(void)
+{
+#if !IS_ENABLED(CONFIG_MTK_EMI_LEGACY)
+	mtk_emiisu_record_off();
+	pr_info("[%s] Turn off EMIISU\n", __func__);
 #endif
 	return 0;
 }

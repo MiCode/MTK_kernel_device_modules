@@ -123,6 +123,7 @@ typedef int(*UARTHUB_PLAT_TRIGGER_FPGA_TESTING) (int type);
 typedef int(*UARTHUB_PLAT_TRIGGER_DVT_UT_TESTING) (int type);
 typedef int(*UARTHUB_PLAT_TRIGGER_DVT_IT_TESTING) (int type);
 typedef int(*UARTHUB_PLAT_VERIFY_COMBO_CONNECT_STA) (int type, int rx_delay_ms);
+typedef int(*UARTHUB_PLAT_EMIISU_RECORD_OFF) (void);
 
 struct uarthub_debug_ops_struct {
 	UARTHUB_PLAT_DUMP_APUART_DEBUG_CTRL uarthub_plat_dump_apuart_debug_ctrl;
@@ -148,6 +149,7 @@ struct uarthub_debug_ops_struct {
 	UARTHUB_PLAT_TRIGGER_DVT_UT_TESTING uarthub_plat_trigger_dvt_ut_testing;
 	UARTHUB_PLAT_TRIGGER_DVT_IT_TESTING uarthub_plat_trigger_dvt_it_testing;
 	UARTHUB_PLAT_VERIFY_COMBO_CONNECT_STA uarthub_plat_verify_combo_connect_sta;
+	UARTHUB_PLAT_EMIISU_RECORD_OFF uarthub_plat_emiisu_record_off;
 };
 
 typedef int(*UARTHUB_PLAT_IS_UT_TESTING) (void);
@@ -448,6 +450,7 @@ int uarthub_core_debug_info(const char *tag);
 int uarthub_core_debug_dump_tx_rx_count(const char *tag, int trigger_point);
 int uarthub_core_debug_monitor_stop(int stop);
 int uarthub_core_debug_monitor_clr(void);
+int uarthub_core_emiisu_record_off(void);
 
 /* FPGA test API only */
 int uarthub_core_is_host_uarthub_ready_state(int dev_index);

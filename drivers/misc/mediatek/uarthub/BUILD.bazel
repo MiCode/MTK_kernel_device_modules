@@ -111,5 +111,6 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
         "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:mtk_disp_notify".format(kernel_version),
         "//kernel_device_modules-{}/drivers/tty/serial/8250:8250_mtk".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/memory/mediatek:emi".format(kernel_version),
     ],
 )
