@@ -3557,32 +3557,39 @@ static int mtk_pcie_post_init_6993(struct mtk_pcie_port *port)
 
 	if (port->port_num == 0) {
 		phy = ioremap(0x16900000, 0x10000);
-		dev_info(port->dev, "Before link: PHY dig_ln_trx_64 = %#x, PHY dig_ln_rx_30 = %#x, MAC MISC_CTRL = %#x\n",
-			 readl_relaxed(phy + 0x3064),
-			 readl_relaxed(phy + 0x5030),
-			 readl_relaxed(port->base + PCIE_MISC_CTRL_REG));
+		if (phy) {
+			dev_info(port->dev, "Before link: PHY dig_ln_trx_64 = %#x, PHY dig_ln_rx_30 = %#x, PHY dig_glb_4c = %#x, MAC MISC_CTRL = %#x\n",
+				readl_relaxed(phy + 0x3064),
+				readl_relaxed(phy + 0x5030),
+				readl_relaxed(phy + 0x4c),
+				readl_relaxed(port->base + PCIE_MISC_CTRL_REG));
 
-		/* Skip RMTX stage */
-		val = readl_relaxed(phy + 0x3064);
-		val |= (BIT(23) | GENMASK(29, 28));
-		writel_relaxed(val, phy + 0x3064);
+			/* Skip RMTX stage */
+			val = readl_relaxed(phy + 0x3064);
+			val |= (BIT(23) | GENMASK(29, 28));
+			writel_relaxed(val, phy + 0x3064);
+			/* Adjust aeqen_wait_us 128us -> 150us */
+			val = readl_relaxed(phy + 0x5030);
+			val &= ~GENMASK(28, 16);
+			val |= (0x96 << 16);
+			writel_relaxed(val, phy + 0x5030);
+			/* Enable auto K */
+			val = readl_relaxed(phy + 0x4c);
+			val |= BIT(29);
+			writel_relaxed(val, phy + 0x4c);
+			/* Disable redo EQ */
+			val = readl_relaxed(port->base + PCIE_MISC_CTRL_REG);
+			val |= BIT(14);
+			writel_relaxed(val, port->base + PCIE_MISC_CTRL_REG);
 
-		val = readl_relaxed(phy + 0x5030);
-		val &= ~GENMASK(28, 16);
-		val |= (0x96 << 16);
-		writel_relaxed(val, phy + 0x5030);
+			dev_info(port->dev, "After link: PHY dig_ln_trx_64 = %#x, PHY dig_ln_rx_30 = %#x, PHY dig_glb_4c = %#x, MAC MISC_CTRL = %#x\n",
+				readl_relaxed(phy + 0x3064),
+				readl_relaxed(phy + 0x5030),
+				readl_relaxed(phy + 0x4c),
+				readl_relaxed(port->base + PCIE_MISC_CTRL_REG));
 
-		/* Disable redo EQ */
-		val = readl_relaxed(port->base + PCIE_MISC_CTRL_REG);
-		val |= BIT(14);
-		writel_relaxed(val, port->base + PCIE_MISC_CTRL_REG);
-
-		dev_info(port->dev, "After link: PHY dig_ln_trx_64 = %#x, PHY dig_ln_rx_30 = %#x, MAC MISC_CTRL = %#x\n",
-			 readl_relaxed(phy + 0x3064),
-			 readl_relaxed(phy + 0x5030),
-			 readl_relaxed(port->base + PCIE_MISC_CTRL_REG));
-
-		iounmap(phy);
+			iounmap(phy);
+		}
 	}
 
 	if (port->port_num == 1) {
