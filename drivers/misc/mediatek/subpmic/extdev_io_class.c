@@ -327,9 +327,9 @@ int devm_extdev_io_device_general_create(struct device *parent, struct platform_
 {
 	const char *compatilble_name, *bus_name, *chip_name;
 	char pdev_name[EXTDEV_IO_PDEV_NAME_SIZE] = "\0";
+	struct extdev_desc extdev_desc = { 0 };
 	size_t buf_size = sizeof(pdev_name);
 	struct fwnode_handle *dbg_fwnode;
-	struct extdev_desc extdev_desc;
 	int ret = 0, offset = 0;
 
 	if (!parent) {
