@@ -2036,6 +2036,7 @@ static const struct mtk_disp_rdma_data mt6855_rdma_driver_data = {
 	.need_bypass_shadow = false,
 	.has_greq_urg_num = true,
 	.dsi_buffer = false,
+	.disable_underflow = true,
 };
 
 static const struct of_device_id mtk_disp_rdma_driver_dt_match[] = {
