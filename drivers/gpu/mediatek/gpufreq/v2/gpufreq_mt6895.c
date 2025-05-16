@@ -48,12 +48,16 @@
  * ===============================================
  */
 /* misc function */
-static void __gpufreq_dump_bringup_status(struct platform_device *pdev);
 static void __iomem *__gpufreq_of_ioremap(const char *node_name, int idx);
+/* bringup function */
+static unsigned int __gpufreq_bringup(void);
+static void __gpufreq_dump_bringup_status(struct platform_device *pdev);
 /* get function */
 static unsigned int __gpufreq_get_fmeter_fgpu(void);
 static unsigned int __gpufreq_get_real_fgpu(void);
+static unsigned int __gpufreq_get_real_fstack(void);
 static unsigned int __gpufreq_get_real_vgpu(void);
+static unsigned int __gpufreq_get_real_vstack(void);
 static unsigned int __gpufreq_get_real_vsram(void);
 
 /* init function */
@@ -101,19 +105,18 @@ static void __iomem *g_topckgen_base;
 static void __iomem *g_mali_base;
 static struct gpufreq_pmic_info *g_pmic;
 static struct gpufreq_clk_info *g_clk;
-static struct gpufreq_status g_gpu;
 static unsigned int g_gpueb_support;
 static unsigned int g_aging_load;
 static unsigned int g_mcl50_load;
 static DEFINE_MUTEX(gpufreq_lock);
 
-static struct gpufreq_platform_fp platform_ap_fp = {
-
-};
-
 static struct gpufreq_platform_fp platform_eb_fp = {
 	.dump_external_status = __gpufreq_dump_external_status,
 	.get_dyn_pgpu = __gpufreq_get_dyn_pgpu,
+	.get_dyn_pstack = __gpufreq_get_dyn_pstack,
+	.get_core_mask_table = __gpufreq_get_core_mask_table,
+	.get_core_num = __gpufreq_get_core_num,
+	.pdca_config = __gpufreq_pdca_config,
 };
 
 /**
@@ -208,17 +211,6 @@ int __gpufreq_get_idx_by_pstack(unsigned int power)
 /* API: get dynamic Power of GPU */
 unsigned int __gpufreq_get_dyn_pgpu(unsigned int freq, unsigned int volt)
 {
-#if 0
-	unsigned int p_dynamic = GPU_ACT_REF_POWER;
-	unsigned int ref_freq = GPU_ACT_REF_FREQ;
-	unsigned int ref_volt = GPU_ACT_REF_VOLT;
-
-	p_dynamic = p_dynamic *
-	    ((freq * 100) / ref_freq) *
-	    ((volt * 100) / ref_volt) * ((volt * 100) / ref_volt) / (100 * 100 * 100);
-
-	return p_dynamic;
-#endif
 	GPUFREQ_UNREFERENCED(freq);
 	GPUFREQ_UNREFERENCED(volt);
 
@@ -273,18 +265,12 @@ void __gpufreq_dump_external_status(char *log_buf, int *log_len, int log_size)
 	u32 val = 0;
 
 	GPUFREQ_LOGI("== [GPUFREQ INFRA STATUS] ==");
-	if (g_gpueb_support) {
-		GPUFREQ_LOGI("[Regulator] Vcore: %d, Vsram: %d",
-			__gpufreq_get_real_vgpu(), __gpufreq_get_real_vsram());
-		GPUFREQ_LOGI("[Clk] MFG_PLL: %d, MFGSC_PLL: %d, MFG_SEL_1: 0x%x",
-			__gpufreq_get_real_fgpu(),
-			readl(g_topckgen_base + 0x1F0) & MFG_SEL_0_MASK,
-			readl(g_topckgen_base + 0x1F0) & MFG_SEL_1_MASK);
-	} else {
-		GPUFREQ_LOGI("GPU[%d] Freq: %d, Vgpu: %d, Vsram: %d",
-			g_gpu.cur_oppidx, g_gpu.cur_freq,
-			g_gpu.cur_volt, g_gpu.cur_vsram);
-	}
+	GPUFREQ_LOGI("[Regulator] Vcore: %d, Vsram: %d, Vstack: %d",
+		__gpufreq_get_real_vgpu(), __gpufreq_get_real_vsram(), __gpufreq_get_real_vstack());
+	GPUFREQ_LOGI("[Clk] MFG_PLL: %d, MFGSC_PLL: %d, MFG_SEL_0: 0x%x, MFG_SEL_1: 0x%x",
+		__gpufreq_get_real_fgpu(), __gpufreq_get_real_fstack(),
+		readl(g_topckgen_base + 0x1F0) & MFG_SEL_0_MASK,
+		readl(g_topckgen_base + 0x1F0) & MFG_SEL_1_MASK);
 
 	/* 0x13FBF000, 0x13F90000 */
 	if (g_mfg_top_base && g_mfg_rpc_base) {
@@ -383,6 +369,300 @@ void __gpufreq_dump_external_status(char *log_buf, int *log_len, int log_size)
 			(0x1C001000 + PWR_STATUS_OFS), readl(g_sleep + PWR_STATUS_OFS),
 			(0x1C001000 + PWR_STATUS_2ND_OFS), readl(g_sleep + PWR_STATUS_2ND_OFS));
 	}
+}
+
+/* API: get core_mask table */
+struct gpufreq_core_mask_info *__gpufreq_get_core_mask_table(void)
+{
+	return g_core_mask_table;
+}
+
+/* API: get max number of shader cores */
+unsigned int __gpufreq_get_core_num(void)
+{
+	return SHADER_CORE_NUM;
+}
+
+/* PDCv2: GPU IP automatically control GPU shader MTCMOS */
+void __gpufreq_pdca_config(enum gpufreq_power_state power)
+{
+#if GPUFREQ_PDCv2_ENABLE
+	u32 val = 0;
+
+	if (power == GPU_PWR_ON) {
+		/* MFG_ACTIVE_POWER_CON_00 0x13FBF400 [0] rg_sc0_active_pwrctl_en = 1'b1 */
+		val = readl(g_mfg_top_base + 0x400);
+		val |= (1UL << 0);
+		writel(val, g_mfg_top_base + 0x400);
+
+		/* MFG_ACTIVE_POWER_CON_06 0x13FBF418 [0] rg_sc1_active_pwrctl_en = 1'b1 */
+		val = readl(g_mfg_top_base + 0x418);
+		val |= (1UL << 0);
+		writel(val, g_mfg_top_base + 0x418);
+
+		/* MFG_ACTIVE_POWER_CON_12 0x13FBF430 [0] rg_sc2_active_pwrctl_en = 1'b1 */
+		val = readl(g_mfg_top_base + 0x430);
+		val |= (1UL << 0);
+		writel(val, g_mfg_top_base + 0x430);
+
+		/* MFG_ACTIVE_POWER_CON_18 0x13FBF448 [0] rg_sc3_active_pwrctl_en = 1'b1 */
+		val = readl(g_mfg_top_base + 0x448);
+		val |= (1UL << 0);
+		writel(val, g_mfg_top_base + 0x448);
+
+		/* MFG_ACTIVE_POWER_CON_24 0x13FBF460 [0] rg_sc4_active_pwrctl_en = 1'b1 */
+		val = readl(g_mfg_top_base + 0x460);
+		val |= (1UL << 0);
+		writel(val, g_mfg_top_base + 0x460);
+
+		/* MFG_ACTIVE_POWER_CON_30 0x13FBF478 [0] rg_sc5_active_pwrctl_en = 1'b1 */
+		val = readl(g_mfg_top_base + 0x478);
+		val |= (1UL << 0);
+		writel(val, g_mfg_top_base + 0x478);
+
+		/* MFG_ACTIVE_POWER_CON_36 0x13FBF490 [0] rg_sc6_active_pwrctl_en = 1'b1 */
+		val = readl(g_mfg_top_base + 0x490);
+		val |= (1UL << 0);
+		writel(val, g_mfg_top_base + 0x490);
+
+		/* MFG_ACTIVE_POWER_CON_42 0x13FBF4A8 [0] rg_sc7_active_pwrctl_en = 1'b1 */
+		val = readl(g_mfg_top_base + 0x4A8);
+		val |= (1UL << 0);
+		writel(val, g_mfg_top_base + 0x4A8);
+
+		/* MFG_ACTIVE_POWER_CON_48 0x13FBF4C0 [0] rg_sc8_active_pwrctl_en = 1'b1 */
+		val = readl(g_mfg_top_base + 0x4C0);
+		val |= (1UL << 0);
+		writel(val, g_mfg_top_base + 0x4C0);
+
+		/* MFG_ACTIVE_POWER_CON_54 0x13FBF4D8 [0] rg_sc9_active_pwrctl_en = 1'b1 */
+		val = readl(g_mfg_top_base + 0x4D8);
+		val |= (1UL << 0);
+		writel(val, g_mfg_top_base + 0x4D8);
+
+		/* MFG_ACTIVE_POWER_CON_CG_06 0x13FBF100 [0] rg_cg_active_pwrctl_en = 1'b1 */
+		val = readl(g_mfg_top_base + 0x100);
+		val |= (1UL << 0);
+		writel(val, g_mfg_top_base + 0x100);
+
+		/* MFG_ACTIVE_POWER_CON_ST0_06 0x13FBF120 [0] rg_st0_active_pwrctl_en = 1'b1 */
+		val = readl(g_mfg_top_base + 0x120);
+		val |= (1UL << 0);
+		writel(val, g_mfg_top_base + 0x120);
+
+		/* MFG_ACTIVE_POWER_CON_ST1_06 0x13FBF140 [0] rg_st1_active_pwrctl_en = 1'b1 */
+		val = readl(g_mfg_top_base + 0x140);
+		val |= (1UL << 0);
+		writel(val, g_mfg_top_base + 0x140);
+
+		/* MFG_ACTIVE_POWER_CON_ST2_06 0x13FBF118 [0] rg_st2_active_pwrctl_en = 1'b1 */
+		val = readl(g_mfg_top_base + 0x118);
+		val |= (1UL << 0);
+		writel(val, g_mfg_top_base + 0x118);
+
+		/* MFG_ACTIVE_POWER_CON_ST4_06 0x13FBF0C0 [0] rg_st4_active_pwrctl_en = 1'b1 */
+		val = readl(g_mfg_top_base + 0xC0);
+		val |= (1UL << 0);
+		writel(val, g_mfg_top_base + 0xC0);
+
+		/* MFG_ACTIVE_POWER_CON_ST5_06 0x13FBF098 [0] rg_st5_active_pwrctl_en = 1'b1 */
+		val = readl(g_mfg_top_base + 0x98);
+		val |= (1UL << 0);
+		writel(val, g_mfg_top_base + 0x98);
+
+		/* MFG_ACTIVE_POWER_CON_ST6_06 0x13FBF1C0 [0] rg_st6_active_pwrctl_en = 1'b1 */
+		val = readl(g_mfg_top_base + 0x1C0);
+		val |= (1UL << 0);
+		writel(val, g_mfg_top_base + 0x1C0);
+
+		/* MFG_ACTIVE_POWER_CON_01 0x13FBF404 [31] rg_sc0_active_pwrctl_rsv = 1'b1 */
+		val = readl(g_mfg_top_base + 0x404);
+		val |= (1UL << 31);
+		writel(val, g_mfg_top_base + 0x404);
+
+		/* MFG_ACTIVE_POWER_CON_07 0x13FBF41C [31] rg_sc1_active_pwrctl_rsv = 1'b1 */
+		val = readl(g_mfg_top_base + 0x41C);
+		val |= (1UL << 31);
+		writel(val, g_mfg_top_base + 0x41C);
+
+		/* MFG_ACTIVE_POWER_CON_13 0x13FBF434 [31] rg_sc2_active_pwrctl_rsv = 1'b1 */
+		val = readl(g_mfg_top_base + 0x434);
+		val |= (1UL << 31);
+		writel(val, g_mfg_top_base + 0x434);
+
+		/* MFG_ACTIVE_POWER_CON_19 0x13FBF44C [31] rg_sc3_active_pwrctl_rsv = 1'b1 */
+		val = readl(g_mfg_top_base + 0x44C);
+		val |= (1UL << 31);
+		writel(val, g_mfg_top_base + 0x44C);
+
+		/* MFG_ACTIVE_POWER_CON_25 0x13FBF464 [31] rg_sc4_active_pwrctl_rsv = 1'b1 */
+		val = readl(g_mfg_top_base + 0x464);
+		val |= (1UL << 31);
+		writel(val, g_mfg_top_base + 0x464);
+
+		/* MFG_ACTIVE_POWER_CON_31 0x13FBF47C [31] rg_sc5_active_pwrctl_rsv = 1'b1 */
+		val = readl(g_mfg_top_base + 0x47C);
+		val |= (1UL << 31);
+		writel(val, g_mfg_top_base + 0x47C);
+
+		/* MFG_ACTIVE_POWER_CON_37 0x13FBF494 [31] rg_sc6_active_pwrctl_rsv = 1'b1 */
+		val = readl(g_mfg_top_base + 0x494);
+		val |= (1UL << 31);
+		writel(val, g_mfg_top_base + 0x494);
+
+		/* MFG_ACTIVE_POWER_CON_43 0x13FBF4AC [31] rg_sc7_active_pwrctl_rsv = 1'b1 */
+		val = readl(g_mfg_top_base + 0x4AC);
+		val |= (1UL << 31);
+		writel(val, g_mfg_top_base + 0x4AC);
+
+		/* MFG_ACTIVE_POWER_CON_49 0x13FBF4C4 [31] rg_sc8_active_pwrctl_rsv = 1'b1 */
+		val = readl(g_mfg_top_base + 0x4C4);
+		val |= (1UL << 31);
+		writel(val, g_mfg_top_base + 0x4C4);
+
+		/* MFG_ACTIVE_POWER_CON_55 0x13FBF4DC [31] rg_sc9_active_pwrctl_rsv = 1'b1 */
+		val = readl(g_mfg_top_base + 0x4DC);
+		val |= (1UL << 31);
+		writel(val, g_mfg_top_base + 0x4DC);
+	} else {
+		/* MFG_ACTIVE_POWER_CON_00 0x13FBF400 [0] rg_sc0_active_pwrctl_en = 1'b0 */
+		val = readl(g_mfg_top_base + 0x400);
+		val &= ~(1UL << 0);
+		writel(val, g_mfg_top_base + 0x400);
+
+		/* MFG_ACTIVE_POWER_CON_06 0x13FBF418 [0] rg_sc1_active_pwrctl_en = 1'b0 */
+		val = readl(g_mfg_top_base + 0x418);
+		val &= ~(1UL << 0);
+		writel(val, g_mfg_top_base + 0x418);
+
+		/* MFG_ACTIVE_POWER_CON_12 0x13FBF430 [0] rg_sc2_active_pwrctl_en = 1'b0 */
+		val = readl(g_mfg_top_base + 0x430);
+		val &= ~(1UL << 0);
+		writel(val, g_mfg_top_base + 0x430);
+
+		/* MFG_ACTIVE_POWER_CON_18 0x13FBF448 [0] rg_sc3_active_pwrctl_en = 1'b0 */
+		val = readl(g_mfg_top_base + 0x448);
+		val &= ~(1UL << 0);
+		writel(val, g_mfg_top_base + 0x448);
+
+		/* MFG_ACTIVE_POWER_CON_24 0x13FBF460 [0] rg_sc4_active_pwrctl_en = 1'b0 */
+		val = readl(g_mfg_top_base + 0x460);
+		val &= ~(1UL << 0);
+		writel(val, g_mfg_top_base + 0x460);
+
+		/* MFG_ACTIVE_POWER_CON_30 0x13FBF478 [0] rg_sc5_active_pwrctl_en = 1'b0 */
+		val = readl(g_mfg_top_base + 0x478);
+		val &= ~(1UL << 0);
+		writel(val, g_mfg_top_base + 0x478);
+
+		/* MFG_ACTIVE_POWER_CON_36 0x13FBF490 [0] rg_sc6_active_pwrctl_en = 1'b0 */
+		val = readl(g_mfg_top_base + 0x490);
+		val &= ~(1UL << 0);
+		writel(val, g_mfg_top_base + 0x490);
+
+		/* MFG_ACTIVE_POWER_CON_42 0x13FBF4A8 [0] rg_sc7_active_pwrctl_en = 1'b0 */
+		val = readl(g_mfg_top_base + 0x4A8);
+		val &= ~(1UL << 0);
+		writel(val, g_mfg_top_base + 0x4A8);
+
+		/* MFG_ACTIVE_POWER_CON_48 0x13FBF4C0 [0] rg_sc8_active_pwrctl_en = 1'b0 */
+		val = readl(g_mfg_top_base + 0x4C0);
+		val &= ~(1UL << 0);
+		writel(val, g_mfg_top_base + 0x4C0);
+
+		/* MFG_ACTIVE_POWER_CON_54 0x13FBF4D8 [0] rg_sc9_active_pwrctl_en = 1'b0 */
+		val = readl(g_mfg_top_base + 0x4D8);
+		val &= ~(1UL << 0);
+		writel(val, g_mfg_top_base + 0x4D8);
+
+		/* MFG_ACTIVE_POWER_CON_CG_06 0x13FBF100 [0] rg_cg_active_pwrctl_en = 1'b0 */
+		val = readl(g_mfg_top_base + 0x100);
+		val &= ~(1UL << 0);
+		writel(val, g_mfg_top_base + 0x100);
+
+		/* MFG_ACTIVE_POWER_CON_ST0_06 0x13FBF120 [0] rg_st0_active_pwrctl_en = 1'b0 */
+		val = readl(g_mfg_top_base + 0x120);
+		val &= ~(1UL << 0);
+		writel(val, g_mfg_top_base + 0x120);
+
+		/* MFG_ACTIVE_POWER_CON_ST1_06 0x13FBF140 [0] rg_st1_active_pwrctl_en = 1'b0 */
+		val = readl(g_mfg_top_base + 0x140);
+		val &= ~(1UL << 0);
+		writel(val, g_mfg_top_base + 0x140);
+
+		/* MFG_ACTIVE_POWER_CON_ST2_06 0x13FBF118 [0] rg_st2_active_pwrctl_en = 1'b0 */
+		val = readl(g_mfg_top_base + 0x118);
+		val &= ~(1UL << 0);
+		writel(val, g_mfg_top_base + 0x118);
+
+		/* MFG_ACTIVE_POWER_CON_ST4_06 0x13FBF0C0 [0] rg_st4_active_pwrctl_en = 1'b0 */
+		val = readl(g_mfg_top_base + 0xC0);
+		val &= ~(1UL << 0);
+		writel(val, g_mfg_top_base + 0xC0);
+
+		/* MFG_ACTIVE_POWER_CON_ST5_06 0x13FBF098 [0] rg_st5_active_pwrctl_en = 1'b0 */
+		val = readl(g_mfg_top_base + 0x98);
+		val &= ~(1UL << 0);
+		writel(val, g_mfg_top_base + 0x98);
+
+		/* MFG_ACTIVE_POWER_CON_ST6_06 0x13FBF1C0 [0] rg_st6_active_pwrctl_en = 1'b0 */
+		val = readl(g_mfg_top_base + 0x1C0);
+		val &= ~(1UL << 0);
+		writel(val, g_mfg_top_base + 0x1C0);
+
+		/* MFG_ACTIVE_POWER_CON_01 0x13FBF404 [31] rg_sc0_active_pwrctl_rsv = 1'b0 */
+		val = readl(g_mfg_top_base + 0x404);
+		val &= ~(1UL << 31);
+		writel(val, g_mfg_top_base + 0x404);
+
+		/* MFG_ACTIVE_POWER_CON_07 0x13FBF41C [31] rg_sc1_active_pwrctl_rsv = 1'b0 */
+		val = readl(g_mfg_top_base + 0x41C);
+		val &= ~(1UL << 31);
+		writel(val, g_mfg_top_base + 0x41C);
+
+		/* MFG_ACTIVE_POWER_CON_13 0x13FBF434 [31] rg_sc2_active_pwrctl_rsv = 1'b0 */
+		val = readl(g_mfg_top_base + 0x434);
+		val &= ~(1UL << 31);
+		writel(val, g_mfg_top_base + 0x434);
+
+		/* MFG_ACTIVE_POWER_CON_19 0x13FBF44C [31] rg_sc3_active_pwrctl_rsv = 1'b0 */
+		val = readl(g_mfg_top_base + 0x44C);
+		val &= ~(1UL << 31);
+		writel(val, g_mfg_top_base + 0x44C);
+
+		/* MFG_ACTIVE_POWER_CON_25 0x13FBF464 [31] rg_sc4_active_pwrctl_rsv = 1'b0 */
+		val = readl(g_mfg_top_base + 0x464);
+		val &= ~(1UL << 31);
+		writel(val, g_mfg_top_base + 0x464);
+
+		/* MFG_ACTIVE_POWER_CON_31 0x13FBF47C [31] rg_sc5_active_pwrctl_rsv = 1'b0 */
+		val = readl(g_mfg_top_base + 0x47C);
+		val &= ~(1UL << 31);
+		writel(val, g_mfg_top_base + 0x47C);
+
+		/* MFG_ACTIVE_POWER_CON_37 0x13FBF494 [31] rg_sc6_active_pwrctl_rsv = 1'b0 */
+		val = readl(g_mfg_top_base + 0x494);
+		val &= ~(1UL << 31);
+		writel(val, g_mfg_top_base + 0x494);
+
+		/* MFG_ACTIVE_POWER_CON_43 0x13FBF4AC [31] rg_sc7_active_pwrctl_rsv = 1'b0 */
+		val = readl(g_mfg_top_base + 0x4AC);
+		val &= ~(1UL << 31);
+		writel(val, g_mfg_top_base + 0x4AC);
+
+		/* MFG_ACTIVE_POWER_CON_49 0x13FBF4C4 [31] rg_sc8_active_pwrctl_rsv = 1'b0 */
+		val = readl(g_mfg_top_base + 0x4C4);
+		val &= ~(1UL << 31);
+		writel(val, g_mfg_top_base + 0x4C4);
+
+		/* MFG_ACTIVE_POWER_CON_55 0x13FBF4DC [31] rg_sc9_active_pwrctl_rsv = 1'b0 */
+		val = readl(g_mfg_top_base + 0x4DC);
+		val &= ~(1UL << 31);
+		writel(val, g_mfg_top_base + 0x4DC);
+	}
+#else
+	GPUFREQ_UNREFERENCED(power);
+#endif /* GPUFREQ_PDCv2_ENABLE */
 }
 
 /* API: commit DVFS by given both GPU and STACK OPP index */
@@ -492,15 +772,15 @@ static void __gpufreq_dump_bringup_status(struct platform_device *pdev)
 	 * Power ON: 0011 1111 1111 1110 (0x3FFE)
 	 * [13:1]: MFG0-12
 	 */
-	GPUFREQ_LOGI("[GPU]     MALI_ID:    0x%08x, MFG_TOP_CONFIG: 0x%08x",
+	GPUFREQ_LOGI("[GPU] MALI_ID: 0x%08x, MFG_TOP_CONFIG: 0x%08x",
 		readl(g_mali_base), readl(g_mfg_top_base));
 	GPUFREQ_LOGI("[MFG0-12] PWR_STATUS: 0x%08x, PWR_STATUS_2ND: 0x%08x",
 		readl(g_sleep + PWR_STATUS_OFS) & MFG_0_12_PWR_MASK,
 		readl(g_sleep + PWR_STATUS_2ND_OFS) & MFG_0_12_PWR_MASK);
-	GPUFREQ_LOGI("[TOP]   CON1: %d, MFG_SEL_0: 0x%08x, MFG_REF_SEL:   0x%08x",
+	GPUFREQ_LOGI("[TOP] CON1: %d, MFG_SEL_0: 0x%08x, MFG_REF_SEL:   0x%08x",
 		__gpufreq_get_real_fgpu(), mfg_sel_0, mfg_ref_sel);
-	GPUFREQ_LOGI("[STACK] MFG_SEL_1: 0x%08x, MFGSC_REF_SEL: 0x%08x",
-		mfg_sel_1, mfgsc_ref_sel);
+	GPUFREQ_LOGI("[STACK] CON1: %d, MFG_SEL_1: 0x%08x, MFGSC_REF_SEL: 0x%08x",
+		__gpufreq_get_real_fstack(),mfg_sel_1, mfgsc_ref_sel);
 
 done:
 	return;
@@ -591,6 +871,29 @@ static unsigned int __gpufreq_get_real_fgpu(void)
 	return freq;
 }
 
+/*
+ * API: get real current frequency from CON1 (khz)
+ * Freq = ((PLL_CON1[21:0] * 26M) / 2^14) / 2^PLL_CON1[26:24]
+ */
+static unsigned int __gpufreq_get_real_fstack(void)
+{
+	unsigned int mfgpll = 0;
+	unsigned int posdiv_power = 0;
+	unsigned int freq = 0;
+	unsigned int pcw = 0;
+
+	mfgpll = readl(MFGSC_PLL_CON1);
+
+	pcw = mfgpll & (0x3FFFFF);
+
+	posdiv_power = (mfgpll & (0x7 << POSDIV_SHIFT)) >> POSDIV_SHIFT;
+
+	freq = (((pcw * TO_MHZ_TAIL + ROUNDING_VALUE) * MFGPLL_FIN) >> DDS_SHIFT) /
+		(1 << posdiv_power) * TO_MHZ_HEAD;
+
+	return freq;
+}
+
 /* API: get real current Vgpu from regulator (mV * 100) */
 static unsigned int __gpufreq_get_real_vgpu(void)
 {
@@ -599,6 +902,18 @@ static unsigned int __gpufreq_get_real_vgpu(void)
 	if (regulator_is_enabled(g_pmic->reg_vcore))
 		/* regulator_get_voltage return volt with uV */
 		volt = regulator_get_voltage(g_pmic->reg_vcore) / 10;
+
+	return volt;
+}
+
+/* API: get real current Vstack from regulator (mV * 100) */
+static unsigned int __gpufreq_get_real_vstack(void)
+{
+	unsigned int volt = 0;
+
+	if (regulator_is_enabled(g_pmic->reg_vstack))
+		/* regulator_get_voltage return volt with uV */
+		volt = regulator_get_voltage(g_pmic->reg_vstack) / 10;
 
 	return volt;
 }
@@ -958,11 +1273,11 @@ static int __gpufreq_pdrv_probe(struct platform_device *pdev)
 		goto done;
 	}
 
-		/*
+	/*
 	 * GPUFREQ PLATFORM INIT DONE
 	 * register differnet platform fp to wrapper depending on AP or EB mode
 	 */
-		gpufreq_register_gpufreq_fp(&platform_eb_fp);
+	gpufreq_register_gpufreq_fp(&platform_eb_fp);
 
 	/* init gpu ppm */
 	ret = gpuppm_init(TARGET_STACK, g_gpueb_support);
