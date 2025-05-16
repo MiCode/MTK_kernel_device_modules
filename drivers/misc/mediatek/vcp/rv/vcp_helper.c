@@ -1502,10 +1502,6 @@ int reset_vcp(int reset)
 		writel((unsigned int)vcp_mem_size, DRAM_RESV_SIZE_REG);
 		vcp_set_clk();
 
-#if VCP_BOOT_TIME_OUT_MONITOR
-		vcp_ready_timer[VCP_A_ID].tl.expires = jiffies + VCP_READY_TIMEOUT;
-		add_timer(&vcp_ready_timer[VCP_A_ID].tl);
-#endif
 		if (reset == VCP_ALL_SUSPEND) {
 			arm_smccc_smc(MTK_SIP_TINYSYS_VCP_CONTROL,
 				MTK_TINYSYS_VCP_KERNEL_OP_RESET_RELEASE,
@@ -1521,6 +1517,11 @@ int reset_vcp(int reset)
 			readl(DRAM_RESV_ADDR_REG), readl(DRAM_RESV_SIZE_REG),
 			readl(R_CORE0_SW_RSTN_CLR), res.a0,
 			mt_get_fmeter_freq(vcpreg.fmeter_ck, vcpreg.fmeter_type));
+#endif
+
+#if VCP_BOOT_TIME_OUT_MONITOR
+		vcp_ready_timer[VCP_A_ID].tl.expires = jiffies + VCP_READY_TIMEOUT;
+		add_timer(&vcp_ready_timer[VCP_A_ID].tl);
 #endif
 
 	}
