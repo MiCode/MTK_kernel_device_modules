@@ -14,6 +14,9 @@
 
 #include <adsp_platform_driver.h>
 
+#define ADSPINDEX_SLOT 80
+#define ADSP_KEY 0x7A7A
+
 static int mbraink_v6993_audio_getIdleRatioInfo(
 	struct mbraink_audio_idleRatioInfo *pmbrainkAudioIdleRatioInfo)
 {
@@ -53,38 +56,100 @@ End:
 	return ret;
 }
 
-static void sendAudioAdspNotifyEvent(const char *data, uint32_t totalCount)
+void sendAudioAdspNotifyEvent(const struct adsp_mbrain_t *data, uint32_t totalCount)
 {
 	char netlink_buf[NETLINK_EVENT_MESSAGE_SIZE] = {'\0'};
-
+	const struct adsp_mbrain_t *pdata = NULL;
 	int n = 0;
 	int pos = 0;
+	int i = 0, j = 0;
 
 	if (data == NULL)
 		return;
 
+	//reset nl buffer.
+	memset(netlink_buf, 0x00, sizeof(netlink_buf));
+
 	n = snprintf(netlink_buf + pos,
 			NETLINK_EVENT_MESSAGE_SIZE - pos,
-			"%s:%s",
-			NETLINK_EVENT_AUDIOADSPNOTIFY,
-			data);
-
+			"%s:",
+			NETLINK_EVENT_AUDIOADSPNOTIFY);
 	if (n < 0 || n >= NETLINK_EVENT_MESSAGE_SIZE - pos)
 		return;
+	pos += n;
 
+	for (i = 0; i < totalCount; i++) {
+		if (pos+ADSPINDEX_SLOT > NETLINK_EVENT_MESSAGE_SIZE) {
+			pr_info("WG: over buffer size (%d) pos (%d), ADSPINDEX_SLOT(%d)\n",
+				NETLINK_EVENT_MESSAGE_SIZE,
+				pos,
+				ADSPINDEX_SLOT);
+			return;
+		}
+
+		pdata = &data[i];
+
+		if (pdata == NULL)
+			return;
+		else if (pdata->magic_num != ADSP_KEY) {
+			pr_info("WG: key not match(%d)\n", pdata->magic_num);
+			continue;
+		} else if (pdata->data_size == 0) {
+			pr_info("WG: data size is 0\n");
+			continue;
+		} else if (pdata->data_size > ADSP_MBRAIN_EVENT_DATA_SIZE) {
+			pr_info("WG: data size (%d) over limit(%d)\n",
+				pdata->data_size,
+				ADSP_MBRAIN_EVENT_DATA_SIZE);
+			return;
+		}
+
+		//userID:eventType:counter:version:timestamp:data_size:data1:data2:data3:...
+		n = snprintf(netlink_buf + pos,
+				NETLINK_EVENT_MESSAGE_SIZE - pos,
+				"%d:%d:%d:%d:%lld:%d",
+				pdata->user_id,
+				pdata->event_type,
+				pdata->event_counter,
+				pdata->version,
+				pdata->time_stamp,
+				pdata->data_size);
+		if (n < 0 || n >= NETLINK_EVENT_MESSAGE_SIZE - pos)
+			return;
+		pos += n;
+
+		for (j = 0; j < pdata->data_size; j++) {
+			n = snprintf(netlink_buf + pos,
+					NETLINK_EVENT_MESSAGE_SIZE - pos,
+					":%d",
+					pdata->data[j]);
+			if (n < 0 || n >= NETLINK_EVENT_MESSAGE_SIZE - pos)
+				return;
+			pos += n;
+		}
+
+		n = snprintf(netlink_buf + pos,
+				NETLINK_EVENT_MESSAGE_SIZE - pos,
+				"\n");
+		if (n < 0 || n >= NETLINK_EVENT_MESSAGE_SIZE - pos)
+			return;
+		pos += n;
+	}
+
+	pr_info("(%s) final nl: (%s)\n", __func__, netlink_buf);
 	mbraink_netlink_send_msg(netlink_buf);
 
 }
 
 void audio2mbrain_hint_adspnotifyinfo(const void *info, const size_t size)
 {
-	const char *byte_data = (const char *)info;
+	const struct adsp_mbrain_t *pstAdspMbrain = (const struct adsp_mbrain_t *)info;
 	uint32_t totalCount = (uint32_t)size;
 
 	if (info == NULL)
 		return;
 
-	sendAudioAdspNotifyEvent(byte_data, totalCount);
+	sendAudioAdspNotifyEvent(pstAdspMbrain, totalCount);
 }
 
 static struct mbraink_audio_ops mbraink_v6993_audio_ops = {
