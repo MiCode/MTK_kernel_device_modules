@@ -9428,16 +9428,16 @@ int mtk_drm_hwvsync_on_ioctl(struct drm_device *dev, void *data,
 		struct drm_file *file_priv)
 {
 	int ret = 0;
-	unsigned int *crtc_id = data;
+	struct mtk_drm_hwvsync_on_info *args = (struct mtk_drm_hwvsync_on_info *)data;
 	struct drm_crtc *crtc = NULL;
 	struct mtk_drm_crtc *mtk_crtc = NULL;
 	struct mtk_ddp_comp *lpc_comp = NULL;
 	bool lpc_en = false;
 	int no_sof = 0;
 
-	crtc = drm_crtc_find(dev, file_priv, *crtc_id);
+	crtc = drm_crtc_find(dev, file_priv, args->crtc_id);
 	if (!crtc) {
-		DDPPR_ERR("Unknown CRTC ID %d\n", *crtc_id);
+		DDPPR_ERR("error,unknown CRTC ID %d\n", args->crtc_id);
 		ret = -ENOENT;
 		return ret;
 	}
@@ -9447,10 +9447,12 @@ int mtk_drm_hwvsync_on_ioctl(struct drm_device *dev, void *data,
 		DDPPR_ERR("%s mtk_crtc is null\n", __func__);
 		return  -EFAULT;
 	}
-	DDPINFO("[%s CRTC:%d:%s]\n", __func__, crtc->base.id, crtc->name);
+	if (drm_crtc_index(crtc) != 0)
+		return 0;
 
 	/* hwvsync_en*/
-	mtk_crtc->hwvsync_en = 1;
+	mtk_crtc->hwvsync_en = args->hw_vsync_on;
+	DDPINFO("[%s CRTC:%d:%s,hwvsyncon:%d]\n", __func__, crtc->base.id, crtc->name, mtk_crtc->hwvsync_en);
 
 	lpc_comp = mtk_ddp_comp_request_output_lpc(mtk_crtc);
 	mtk_ddp_comp_io_cmd(lpc_comp, NULL, DSI_LPC_GET_EN, &lpc_en);
@@ -9461,7 +9463,7 @@ int mtk_drm_hwvsync_on_ioctl(struct drm_device *dev, void *data,
 		drm_trace_tag_mark("lpc_hwvsync_on_ioctl_no_sof");
 		return -EPERM;
 	}
-	mtk_ddp_comp_io_cmd(lpc_comp, NULL, DSI_LPC_IRQ_EN, NULL);
+	mtk_ddp_comp_io_cmd(lpc_comp, NULL, DSI_LPC_IRQ_EN, mtk_crtc->hwvsync_en);
 	return ret;
 }
 
