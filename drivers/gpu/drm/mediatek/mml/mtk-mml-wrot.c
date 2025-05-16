@@ -436,6 +436,7 @@ struct wrot_data {
 	bool sideband;		/* sideband setting */
 	u32 ostdl_stash_min;
 	u32 ostdl_afbc_stash_min;
+	bool ddren_reg;		/* platform with ddren reg */
 };
 
 static const struct wrot_data mt6983_wrot_data = {
@@ -485,6 +486,7 @@ static const struct wrot_data mt6991_wrot_data = {
 	.read_mode = MML_PQ_SOF_MODE,
 	.yuv_pending = true,
 	.stash = true,
+	.ddren_reg = true,
 };
 
 static const struct wrot_data mt6993_mmlf_wrot_data = {
@@ -499,6 +501,7 @@ static const struct wrot_data mt6993_mmlf_wrot_data = {
 	.sideband = true,
 	.ostdl_stash_min = 49,
 	.ostdl_afbc_stash_min = 513,
+	.ddren_reg = true,
 };
 
 static const struct wrot_data mt6993_mmld_wrot_data = {
@@ -513,6 +516,7 @@ static const struct wrot_data mt6993_mmld_wrot_data = {
 	.sideband = true,
 	.ostdl_stash_min = 49,
 	.ostdl_afbc_stash_min = 513,
+	.ddren_reg = true,
 };
 
 struct mml_comp_wrot {
@@ -1626,17 +1630,19 @@ static s32 wrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 		cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_IN_LINE_ROT], 0, U32_MAX);
 	}
 
-	if (cfg->info.mode == MML_MODE_RACING ||
-		cfg->info.mode == MML_MODE_DIRECT_LINK) {
-		if (wrot->data->sideband)
-			cmdq_pkt_write(pkt, NULL,
-				base_pa + wrot->reg[VIDO_SIDEBAND_SEL],
-				0x11, U32_MAX);
-		cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_DDREN_REQ],
-			BIT(2) | BIT(1), U32_MAX);
-	} else {
-		cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_DDREN_REQ],
-			BIT(2), U32_MAX);
+	if (wrot->data->ddren_reg) {
+		if (cfg->info.mode == MML_MODE_RACING ||
+			cfg->info.mode == MML_MODE_DIRECT_LINK) {
+			if (wrot->data->sideband)
+				cmdq_pkt_write(pkt, NULL,
+					base_pa + wrot->reg[VIDO_SIDEBAND_SEL],
+					0x11, U32_MAX);
+			cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_DDREN_REQ],
+				BIT(2) | BIT(1), U32_MAX);
+		} else {
+			cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_DDREN_REQ],
+				BIT(2), U32_MAX);
+		}
 	}
 
 	/* Write frame related registers */
@@ -2905,7 +2911,6 @@ static void wrot_debug_dump(struct mml_comp *comp)
 	value[37] = readl(base + wrot->reg[VIDO_DITHER]);
 	value[38] = readl(base + wrot->reg[VIDO_AFBC_YUVTRANS]);
 	value[39] = readl(base + wrot->reg[VIDO_BKGD]);
-	value[40] = readl(base + wrot->reg[VIDO_DDREN_REQ]);
 
 	/* debug id from 0x0100 ~ 0x2100, count 33 which is debug array size */
 	for (i = 0; i < ARRAY_SIZE(debug); i++) {
@@ -2924,7 +2929,10 @@ static void wrot_debug_dump(struct mml_comp *comp)
 		value[9], value[38], value[39]);
 	mml_err("VIDO_MAT_CTRL %#010x VIDO_DITHER_CON %#010x VIDO_DITHER %#010x",
 		value[35], value[36], value[37]);
-	mml_err("VIDO_DDREN_REQ %#010x", value[40]);
+	if (wrot->data->ddren_reg) {
+		value[40] = readl(base + wrot->reg[VIDO_DDREN_REQ]);
+		mml_err("VIDO_DDREN_REQ %#010x", value[40]);
+	}
 	if (value[33] || value[34])
 		mml_err("VIDO_CRC_CTRL %#010x VIDO_CRC_VALUE %#010x", value[33], value[34]);
 	mml_err("VIDO_OFST ADDR_HIGH   %#010x ADDR   %#010x",
