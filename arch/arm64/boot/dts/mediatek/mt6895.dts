@@ -564,6 +564,7 @@
 		prot-region-based-size = <0 0x8000000>;
 		prot-page-based-size = <0 0>;
 		sapu-data-shm-size = <0 0x2000000>;
+		cma-ssheap-add-size = <0 0x6400000>;
 	};
 
 	ssmr {
