@@ -240,6 +240,8 @@ void get_dram_range(phys_addr_t *phy_dram_start, phys_addr_t *phy_dram_size)
 		if (!memcell_buf || len <= 0)
 			continue;
 		array_size = of_property_count_u64_elems(memory, "reg");
+		if (ARRAY_SIZE(property_array_64) < array_size)
+			return;
 		ret = of_property_read_u64_array(memory, "reg",
 						 property_array_64, array_size);
 
