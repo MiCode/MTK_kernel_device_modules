@@ -5116,8 +5116,6 @@
 			vlpck-bypass-phase1;
 			dvfs-opp =
 			/* vlp		vsram	dvfsrc_opp	spm_vcore	freq mux resource */
-			< 750000	750000	0xff		0xfff		100  0	0x0>,
-			< 750000	750000	0xff		0xfff		133  0	0x0>,
 			< 750000	750000	0xff		0xfff		200  0	0x0>,
 			< 750000	750000	0xff		0xfff		400  0	0x0>,
 			< 750000	750000	0xff		0xfff		624  1	0x1>,
@@ -5137,10 +5135,9 @@
 			< 36		1>; /* OSC2_CK */
 			scp-clk-hw-ver = "v1";
 			ulposc-cali-ver = "v2";
-			ulposc-cali-alg-ver = <2>;
+			ulposc-cali-alg-ver = <0>;
 			ulposc-cali-num = <1>;
 			ulposc-cali-target = <400>;
-			fmeter-id-ulposc2 = <36>;
 			secure-access = "enable"; /* enable: need to secure access scp */
 			ulposc-cali-config =
 				/* con0		con1	con2 */
