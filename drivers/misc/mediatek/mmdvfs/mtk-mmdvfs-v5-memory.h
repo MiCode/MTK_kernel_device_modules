@@ -48,14 +48,14 @@ static inline void __iomem *mmdvfs_get_mmup_sram(void) { return; }
 
 #define DRAM_USR_NUM		(16)
 #define DRAM_USR_IDX(x)		(DRAM_VCP_BASE + 0x4 * (0 + (x))) // DRAM_USR_NUM
-#define DRAM_USR_SEC(x, y)	(DRAM_VCP_BASE + 0x4 * (DRAM_USR_NUM + MEM_OBJ_CNT * (MEM_REC_CNT * x + y) + 0))
-#define DRAM_USR_VAL(x, y)	(DRAM_VCP_BASE + 0x4 * (DRAM_USR_NUM + MEM_OBJ_CNT * (MEM_REC_CNT * x + y) + 1))
+#define DRAM_USR_SEC(x, y)	(DRAM_VCP_BASE + 0x4 * (DRAM_USR_NUM + MEM_OBJ_CNT * (MEM_REC_CNT * (x) + (y)) + 0))
+#define DRAM_USR_VAL(x, y)	(DRAM_VCP_BASE + 0x4 * (DRAM_USR_NUM + MEM_OBJ_CNT * (MEM_REC_CNT * (x) + (y)) + 1))
 
 #define DRAM_CMD_NUM		(24)
 #define DRAM_CMD_VCP_IDX	(12)
 #define DRAM_CMD_IDX(x)		(DRAM_VCP_BASE + 0x4 * (272 + (x))) // DRAM_CMD_NUM
-#define DRAM_CMD_SEC(x, y)	(DRAM_VCP_BASE + 0x4 * (272 + DRAM_CMD_NUM + MEM_OBJ_CNT * (MEM_REC_CNT * x + y) + 0))
-#define DRAM_CMD_VAL(x, y)	(DRAM_VCP_BASE + 0x4 * (272 + DRAM_CMD_NUM + MEM_OBJ_CNT * (MEM_REC_CNT * x + y) + 1))
+#define DRAM_CMD_SEC(x, y)	(DRAM_VCP_BASE + 0x4 * (272+ DRAM_CMD_NUM + MEM_OBJ_CNT * (MEM_REC_CNT * (x)+(y))+0))
+#define DRAM_CMD_VAL(x, y)	(DRAM_VCP_BASE + 0x4 * (272 + DRAM_CMD_NUM + MEM_OBJ_CNT * (MEM_REC_CNT * (x)+(y))+1))
 
 /* mbrain : u64(2) * DRAM_USR_NUM * MEM_OPP_CNT = 256 */
 #define DRAM_USR_TOTAL(x, y)	(DRAM_VCP_BASE + 0x4 * (680 + MEM_OBJ_CNT * (MEM_OPP_CNT * (x) + (y))))
@@ -102,26 +102,26 @@ enum {
 #define SRAM_PWR_TOTAL_CNT	(4) // vcore, vmm, vdisp, cam
 #define SRAM_CCPRO_CNT		(2) // vcore, vmm
 
-#define SRAM_IRQ_IDX(x)		(SRAM_BASE + 4 * (0 + x))
-#define SRAM_PWR_IDX(x)		(SRAM_BASE + 4 * (5 + x))
-#define SRAM_CLK_IDX(x)		(SRAM_BASE + 4 * (8 + x))
-#define SRAM_CEIL_IDX(x)	(SRAM_BASE + 4 * (13 + x))
-#define SRAM_XPC_IDX(x)		(SRAM_BASE + 4 * (16 + x))
+#define SRAM_IRQ_IDX(x)		(SRAM_BASE + 4 * (0 + (x)))
+#define SRAM_PWR_IDX(x)		(SRAM_BASE + 4 * (5 + (x)))
+#define SRAM_CLK_IDX(x)		(SRAM_BASE + 4 * (8 + (x)))
+#define SRAM_CEIL_IDX(x)	(SRAM_BASE + 4 * (13 + (x)))
+#define SRAM_XPC_IDX(x)		(SRAM_BASE + 4 * (16 + (x)))
 
-#define SRAM_IRQ_SEC(x, y)	(SRAM_BASE + 4 * (20 + MEM_OBJ_CNT * (MEM_REC_CNT * x + y) + 0))
-#define SRAM_IRQ_VAL(x, y)	(SRAM_BASE + 4 * (20 + MEM_OBJ_CNT * (MEM_REC_CNT * x + y) + 1))
+#define SRAM_IRQ_SEC(x, y)	(SRAM_BASE + 4 * (20 + MEM_OBJ_CNT * (MEM_REC_CNT * (x) + (y)) + 0))
+#define SRAM_IRQ_VAL(x, y)	(SRAM_BASE + 4 * (20 + MEM_OBJ_CNT * (MEM_REC_CNT * (x) + (y)) + 1))
 
-#define SRAM_PWR_SEC(x, y)	(SRAM_BASE + 4 * (100 + MEM_OBJ_CNT * (MEM_REC_CNT * x + y) + 0))
-#define SRAM_PWR_VAL(x, y)	(SRAM_BASE + 4 * (100 + MEM_OBJ_CNT * (MEM_REC_CNT * x + y) + 1))
+#define SRAM_PWR_SEC(x, y)	(SRAM_BASE + 4 * (100 + MEM_OBJ_CNT * (MEM_REC_CNT * (x) + (y)) + 0))
+#define SRAM_PWR_VAL(x, y)	(SRAM_BASE + 4 * (100 + MEM_OBJ_CNT * (MEM_REC_CNT * (x) + (y)) + 1))
 
-#define SRAM_CLK_SEC(x, y)	(SRAM_BASE + 4 * (150 + MEM_OBJ_CNT * (MEM_REC_CNT * x + y) + 0))
-#define SRAM_CLK_VAL(x, y)	(SRAM_BASE + 4 * (150 + MEM_OBJ_CNT * (MEM_REC_CNT * x + y) + 1))
+#define SRAM_CLK_SEC(x, y)	(SRAM_BASE + 4 * (150 + MEM_OBJ_CNT * (MEM_REC_CNT * (x) + (y)) + 0))
+#define SRAM_CLK_VAL(x, y)	(SRAM_BASE + 4 * (150 + MEM_OBJ_CNT * (MEM_REC_CNT * (x) + (y)) + 1))
 
-#define SRAM_CEIL_SEC(x, y)	(SRAM_BASE + 4 * (230 + MEM_OBJ_CNT * (MEM_REC_CNT * x + y) + 0))
-#define SRAM_CEIL_VAL(x, y)	(SRAM_BASE + 4 * (230 + MEM_OBJ_CNT * (MEM_REC_CNT * x + y) + 1))
+#define SRAM_CEIL_SEC(x, y)	(SRAM_BASE + 4 * (230 + MEM_OBJ_CNT * (MEM_REC_CNT * (x) + (y)) + 0))
+#define SRAM_CEIL_VAL(x, y)	(SRAM_BASE + 4 * (230 + MEM_OBJ_CNT * (MEM_REC_CNT * (x) + (y)) + 1))
 
-#define SRAM_XPC_SEC(x, y)	(SRAM_BASE + 4 * (280 + MEM_OBJ_CNT * (MEM_REC_CNT * x + y) + 0))
-#define SRAM_XPC_VAL(x, y)	(SRAM_BASE + 4 * (280 + MEM_OBJ_CNT * (MEM_REC_CNT * x + y) + 1))
+#define SRAM_XPC_SEC(x, y)	(SRAM_BASE + 4 * (280 + MEM_OBJ_CNT * (MEM_REC_CNT * (x) + (y)) + 0))
+#define SRAM_XPC_VAL(x, y)	(SRAM_BASE + 4 * (280 + MEM_OBJ_CNT * (MEM_REC_CNT * (x) + (y)) + 1))
 
 #define SRAM_PROF_SEC(x)	(SRAM_BASE + 4 * (330 + MEM_OBJ_CNT * (x) + 0))
 #define SRAM_PROF_VAL(x)	(SRAM_BASE + 4 * (330 + MEM_OBJ_CNT * (x) + 1))
@@ -131,9 +131,9 @@ enum {
 /* mbrain : u64(2) * SRAM_XPC_CNT * MEM_OPP_CNT = 48 */
 #define SRAM_USR_TOTAL(x, y)	(SRAM_BASE + 4 * (414 + MEM_OBJ_CNT * (MEM_OPP_CNT * (x) + (y)))) //mmpc, cpc, dpc
 
-#define SRAM_CCPRO_IDX(x)	(SRAM_BASE + 4 * (462 + x))
-#define SRAM_CCPRO_SEC(x, y)	(SRAM_BASE + 4 * (464 + MEM_OBJ_CNT * (MEM_REC_CNT * x + y) + 0))
-#define SRAM_CCPRO_VAL(x, y)	(SRAM_BASE + 4 * (464 + MEM_OBJ_CNT * (MEM_REC_CNT * x + y) + 1))
+#define SRAM_CCPRO_IDX(x)	(SRAM_BASE + 4 * (462 + (x)))
+#define SRAM_CCPRO_SEC(x, y)	(SRAM_BASE + 4 * (464 + MEM_OBJ_CNT * (MEM_REC_CNT * (x) + (y)) + 0))
+#define SRAM_CCPRO_VAL(x, y)	(SRAM_BASE + 4 * (464 + MEM_OBJ_CNT * (MEM_REC_CNT * (x) + (y)) + 1))
 //496
 
 #endif
