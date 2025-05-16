@@ -2839,7 +2839,7 @@ static void initialize_tzinfos(void)
 
 static void __used dump_thermal_log(void)
 {
-	char read_buf[128] = {0};
+	char read_buf[256] = {0};
 	int cm0, cm1, cm2;
 	int cl0, cl1, cl2;
 	int cc0, cc1, cc2;
