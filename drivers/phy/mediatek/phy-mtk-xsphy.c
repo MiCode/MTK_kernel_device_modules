@@ -269,6 +269,7 @@
 
 #define SSPXTP_PHYA_LN_10	((SSPXTP_SIFSLV_PHYA_LN) + 0x010)
 #define RG_XTP_LN0_RX_LVSH_CM_SEL		GENMASK(15, 12)
+#define RG_XTP_LN0_RX_LFPS_VTH			GENMASK(9, 8)
 
 #define SSPXTP_PHYA_LN_14	((SSPXTP_SIFSLV_PHYA_LN) + 0x014)
 #define RG_XTP_LN0_RX_IMPSEL		GENMASK(3, 0)
@@ -1673,10 +1674,11 @@ static void u3_phy_sw_efsue_set(struct mtk_xsphy *xsphy,
 	/* RG_SSPXTP0_DAIF_LN_G2_RX_AEQ_EGEQ_RATIO 6'b010000 */
 	mtk_phy_update_field(pbase + SSPXTP_DAIG_LN_DAIF_34, RG_SSPXTP0_DAIF_LN_G2_RX_AEQ_EGEQ_RATIO, 0x10);
 
-	/* For N3E -> N3P */
 	if (of_device_is_compatible(np, "mediatek,mt6993-xsphy")) {
 		/* RG_XTP_LN0_RX_LVSH_CM_SEL 4'b0110 */
 		mtk_phy_update_field(pbase + SSPXTP_PHYA_LN_10, RG_XTP_LN0_RX_LVSH_CM_SEL, 0x6);
+		/* RG_XTP_LN0_RX_LFPS_VTH 2'b01 */
+		mtk_phy_update_field(pbase + SSPXTP_PHYA_LN_10, RG_XTP_LN0_RX_LFPS_VTH, 0x1);
 		mtk_phy_update_field(pbase + SSPXTP_PHYA_LN_0C, RG_XTP_LN0_RX_FE_RESERVE_6, 0x0);
 	}
 
