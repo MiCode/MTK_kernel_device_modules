@@ -15624,6 +15624,18 @@ skip:
 		mtk_drm_crtc_init_bind_comp(mtk_crtc);
 
 	atomic_set(&mtk_crtc->force_high_step, 0);
+
+	// clean up gce xpu vote
+	mtk_crtc_pkt_create(&cmdq_handle, &mtk_crtc->base,
+		mtk_crtc->gce_obj.client[CLIENT_CFG]);
+	if (!cmdq_handle) {
+		DDPPR_ERR("%s:%d NULL cmdq handle\n", __func__, __LINE__);
+		return;
+	}
+	mtk_vidle_user_power_clean_up_by_gce(cmdq_handle);
+	cmdq_pkt_flush(cmdq_handle);
+	cmdq_pkt_destroy(cmdq_handle);
+
 	DDPINFO("%s:%d -\n", __func__, __LINE__);
 #endif
 }

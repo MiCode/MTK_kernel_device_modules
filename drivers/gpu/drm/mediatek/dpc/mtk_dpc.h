@@ -248,6 +248,7 @@ struct dpc_funcs {
 	int (*dpc_mminfra_on_off)(bool en, const enum mtk_vidle_voter_user user);
 	int (*dpc_buck_status)(int op);
 	void (*dpc_pre_cg_ctrl)(bool en);
+	void (*dpc_power_clean_up_by_gce)(struct cmdq_pkt *pkt);
 
 	/* V1 ONLY */
 	void (*dpc_dc_force_enable)(const bool en);

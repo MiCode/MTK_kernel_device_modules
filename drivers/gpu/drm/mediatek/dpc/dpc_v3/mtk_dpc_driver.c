@@ -2880,6 +2880,23 @@ static void dpc_vidle_power_release_by_gce_v3(struct cmdq_pkt *pkt, const enum m
 	dpc_mmp(vlp_vote, MMPROFILE_FLAG_PULSE, BIT(user), 0x22222222);
 }
 
+static void dpc_power_clean_up_by_gce(struct cmdq_pkt *pkt)
+{
+	u32 val = 0;
+	int user;
+
+	val = readl(mmpc_dummy_voter);
+	if (val == 0)
+		return;
+	for (user = 0; user < 32; user++) {
+		if (val & (1 << user)) {
+			DPCERR("user:%d did not release", user);
+			cmdq_pkt_set_event(pkt, g_priv->event_hwccf_vote);
+			dpc_vidle_power_release_by_gce_v3(pkt, user, NULL);
+		}
+	}
+}
+
 static void dpc_hwccf_vote(bool on, struct cmdq_pkt *pkt, const enum mtk_vidle_voter_user user, bool lock)
 {
 	int ret = 0;
@@ -3849,6 +3866,7 @@ static int mtk_dpc_probe_v3(struct platform_device *pdev)
 		funcs_v3.dpc_check_pll = NULL;
 		funcs_v3.dpc_mtcmos_on_off = dpc_hwccf_vote;
 		funcs_v3.dpc_pre_cg_ctrl = dpc_pre_cg_ctrl;
+		funcs_v3.dpc_power_clean_up_by_gce = dpc_power_clean_up_by_gce;
 	}
 
 	mtk_vidle_register(&funcs_v3, DPC_VER3);

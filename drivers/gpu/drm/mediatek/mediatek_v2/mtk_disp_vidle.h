@@ -106,6 +106,7 @@ u32 mtk_vidle_hint_update(enum mtk_vidle_hint_type type);
 int mtk_vidle_hint_decision(const char *caller);
 void mtk_vidle_mminfra_on_off(bool en);
 void mtk_vidle_pre_cg_ctrl(bool en);
+void mtk_vidle_user_power_clean_up_by_gce(struct cmdq_pkt *pkt);
 
 void mtk_vdisp_register(const struct mtk_vdisp_funcs *fp, enum mtk_vdisp_version version);
 void mtk_vidle_wait_init(void);
