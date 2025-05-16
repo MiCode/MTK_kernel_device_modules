@@ -31,9 +31,6 @@ static int uarthub_dump_debug_monitor_packet_info_mode_mt6993(const char *tag);
 static int uarthub_dump_debug_monitor_check_data_mode_mt6993(const char *tag);
 static int uarthub_dump_debug_monitor_crc_result_mode_mt6993(const char *tag);
 
-static int uarthub_record_intfhub_fsm_sta_to_buffer(
-	unsigned char *dmp_info_buf, int len, int fsm_dbg_sta);
-
 struct uarthub_debug_ops_struct mt6993_plat_debug_data = {
 	.uarthub_plat_get_intfhub_base_addr = uarthub_get_intfhub_base_addr_mt6993,
 	.uarthub_plat_get_uartip_base_addr = uarthub_get_uartip_base_addr_mt6993,
@@ -84,17 +81,14 @@ uint32_t uarthub_get_debug_fifo_data_mt6993(unsigned int dev_index, unsigned int
 {
 	if (dev_index == 0) { // UART0
 		UART0_FIFO_DUMP_CTRL_SET_uart_0_debug_raddr_set(UART0_FIFO_DUMP_CTRL_ADDR, offset);
-		UART0_FIFO_DUMP_CTRL_SET_uart_0_debug_dir(UART0_FIFO_DUMP_CTRL_ADDR, is_rx);
 		return UART0_FIFO_DUMP_CTRL_GET_uart_0_debug_fifo_data(UART0_FIFO_DUMP_CTRL_ADDR);
 	} else if (dev_index == 1) { //UART1. Not supported.
 		return 0;
 	} else if (dev_index == 2) { // UART2
 		UART2_FIFO_DUMP_CTRL_SET_uart_2_debug_raddr_set(UART2_FIFO_DUMP_CTRL_ADDR, offset);
-		UART2_FIFO_DUMP_CTRL_SET_uart_2_debug_dir(UART2_FIFO_DUMP_CTRL_ADDR, is_rx);
 		return UART2_FIFO_DUMP_CTRL_GET_uart_2_debug_fifo_data(UART2_FIFO_DUMP_CTRL_ADDR);
 	} else if (dev_index == 3) { // UART CMM
 		UART_CMM_FIFO_DUMP_CRTL_SET_uart_cmm_debug_raddr_set(UART_CMM_FIFO_DUMP_CRTL_ADDR, offset);
-		UART_CMM_FIFO_DUMP_CRTL_SET_uart_cmm_debug_dir(UART_CMM_FIFO_DUMP_CRTL_ADDR, is_rx);
 		return UART_CMM_FIFO_DUMP_CRTL_GET_uart_cmm_debug_fifo_data(UART_CMM_FIFO_DUMP_CRTL_ADDR);
 	} else
 		return 0;
@@ -103,6 +97,7 @@ uint32_t uarthub_get_debug_fifo_data_mt6993(unsigned int dev_index, unsigned int
 uint32_t uarthub_get_debug_fifo_cur_mt6993(unsigned int dev_index, unsigned int is_rx)
 {
 	if (dev_index == 0 ) { // UART 0
+		UART0_FIFO_DUMP_CTRL_SET_uart_0_debug_dir(UART0_FIFO_DUMP_CTRL_ADDR, is_rx);
 		if (is_rx)
 			return UART0_FIFO_DUMP_CTRL_GET_uart_0_rxfifo_waddr(UART0_FIFO_DUMP_CTRL_ADDR);
 		else
@@ -110,11 +105,13 @@ uint32_t uarthub_get_debug_fifo_cur_mt6993(unsigned int dev_index, unsigned int 
 	} else if (dev_index == 1) { // UART 1. Not supported.
 		return 0;
 	} else if (dev_index == 2 ) { // UART 2
+		UART2_FIFO_DUMP_CTRL_SET_uart_2_debug_dir(UART2_FIFO_DUMP_CTRL_ADDR, is_rx);
 		if (is_rx)
 			return UART2_FIFO_DUMP_CTRL_GET_uart_2_rxfifo_waddr(UART2_FIFO_DUMP_CTRL_ADDR);
 		else
 			return UART2_FIFO_DUMP_CTRL_GET_uart_2_txfifo_waddr(UART2_FIFO_DUMP_CTRL_ADDR);
 	} else if (dev_index == 3) { // UART CMM
+		UART_CMM_FIFO_DUMP_CRTL_SET_uart_cmm_debug_dir(UART_CMM_FIFO_DUMP_CRTL_ADDR, is_rx);
 		if (is_rx)
 			return UART_CMM_FIFO_DUMP_CRTL_GET_uart_cmm_rxfifo_waddr(UART_CMM_FIFO_DUMP_CRTL_ADDR);
 		else
@@ -511,7 +508,7 @@ int uarthub_dump_intfhub_debug_info_mt6993(const char *tag)
 	if (val >= 0) {
 		/* the expect value is 0x2 */
 		ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
-			",HUB/UART/ADSP_MUX=[0x%x(%s)-0x%x(%s)-0x%x(%s)]", val,
+			",HUB/UART/ADSP_MUX=[%d(%s)-%d(%s)-%d(%s)]", val,
 			((val == 0) ? "26M" : ((val == 1) ? "104M" : "208M")), val1,
 			((val1 == 0) ? "26M" : ((val1 == 1) ? "52M" :
 				((val1 == 2) ? "104M" : "208M"))), val2,
@@ -815,20 +812,11 @@ int uarthub_dump_extend_debug_info_mt6993(const char *tag)
 	unsigned char dmp_info_buf[DBG_LOG_LEN];
 	int len = 0, ret = 0;
 	const char *def_tag = "HUB_DBG_EX";
-	uint32_t cur;
-	uint32_t separate_pos;
 	int peri_cken;
 	uint64_t peri_par_ts;
 	uint64_t peri_par_ts_l, peri_par_ts_h;
-	uint32_t fifo_cur_t0 = 0, fifo_cur_r0 = 0;
-	uint32_t fifo_cur_t2 = 0, fifo_cur_r2 = 0;
-	uint32_t fifo_cur_tcmm = 0, fifo_cur_rcmm = 0;
-	uint8_t fifo_data_t0[32] = { 0 };
-	uint8_t fifo_data_r0[32] = { 0 };
-	uint8_t fifo_data_t2[32] = { 0 };
-	uint8_t fifo_data_r2[32] = { 0 };
-	uint8_t fifo_data_tcmm[32] = { 0 };
-	uint8_t fifo_data_rcmm[32] = { 0 };
+	uint8_t fifo_cur_idx[2][4] = {0};
+	uint8_t fifo_cur_data[2][4][32] = {0};
 
 	// Dump xon/xoff timestamp
 	len = 0;
@@ -870,158 +858,11 @@ int uarthub_dump_extend_debug_info_mt6993(const char *tag)
 	pr_info("%s\n", dmp_info_buf);
 
 	// Dump UART fifo data
-	fifo_cur_t0 = uarthub_get_debug_fifo_cur_mt6993(uartip_id_ap, 0);
-	for (cur = 0; cur < 32; cur++)
-		fifo_data_t0[cur] = uarthub_get_debug_fifo_data_mt6993(uartip_id_ap, cur, 0);
+	UARTHUB_DEBUG_GET_DEBUG_FIFO_32_BYTE_DATA(0xF);
+	UARTHUB_DEBUG_PRINT_DEBUG_FIFO_32_BYTE_DATA_BY_DEV(def_tag, tag, uartip_id_ap);
+	UARTHUB_DEBUG_PRINT_DEBUG_FIFO_32_BYTE_DATA_BY_DEV(def_tag, tag, uartip_id_adsp);
+	UARTHUB_DEBUG_PRINT_DEBUG_FIFO_32_BYTE_DATA_BY_DEV(def_tag, tag, uartip_id_cmm);
 
-	fifo_cur_r0 = uarthub_get_debug_fifo_cur_mt6993(uartip_id_ap, 1);
-	for (cur = 0; cur < 32; cur++)
-		fifo_data_r0[cur] = uarthub_get_debug_fifo_data_mt6993(uartip_id_ap, cur, 1);
-
-	fifo_cur_t2 = uarthub_get_debug_fifo_cur_mt6993(uartip_id_adsp, 0);
-	for (cur = 0; cur < 32; cur++)
-		fifo_data_t2[cur] = uarthub_get_debug_fifo_data_mt6993(uartip_id_adsp, cur, 0);
-
-	fifo_cur_r2 = uarthub_get_debug_fifo_cur_mt6993(uartip_id_adsp, 1);
-	for (cur = 0; cur < 32; cur++)
-		fifo_data_r2[cur] = uarthub_get_debug_fifo_data_mt6993(uartip_id_adsp, cur, 1);
-
-	fifo_cur_tcmm = uarthub_get_debug_fifo_cur_mt6993(uartip_id_cmm, 0);
-	for (cur = 0; cur < 32; cur++)
-		fifo_data_tcmm[cur] = uarthub_get_debug_fifo_data_mt6993(uartip_id_cmm, cur, 0);
-
-	fifo_cur_rcmm = uarthub_get_debug_fifo_cur_mt6993(uartip_id_cmm, 1);
-	for (cur = 0; cur < 32; cur++)
-		fifo_data_rcmm[cur] = uarthub_get_debug_fifo_data_mt6993(uartip_id_cmm, cur, 1);
-
-	len = 0;
-	ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
-		"[%s][%s] UART_0_FIFO[0:31]=[R(%u):",
-		def_tag, ((tag == NULL) ? "null" : tag), fifo_cur_r0);
-	if (ret > 0)
-		len += ret;
-
-	if (fifo_cur_r0 != 0)
-		separate_pos = len + ((fifo_cur_r0 * 3) - 1);
-	ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
-		"%s%02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X",
-		((fifo_cur_r0 == 0) ? "|" : ""),
-		UARTHUB_DEBUG_GET_DEBUG_FIFO_16_BYTES(fifo_data_r0, 0),
-		UARTHUB_DEBUG_GET_DEBUG_FIFO_16_BYTES(fifo_data_r0, 8),
-		UARTHUB_DEBUG_GET_DEBUG_FIFO_16_BYTES(fifo_data_r0, 16),
-		UARTHUB_DEBUG_GET_DEBUG_FIFO_16_BYTES(fifo_data_r0, 24));
-	if (ret > 0)
-		len += ret;
-
-	if (fifo_cur_r0 != 0)
-		dmp_info_buf[separate_pos] = '|';
-
-	ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len, ",T(%u):", fifo_cur_t0);
-	if (ret > 0)
-		len += ret;
-
-	if (fifo_cur_t0 != 0)
-		separate_pos = len + ((fifo_cur_t0 * 3) - 1);
-	ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
-		"%s%02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X]",
-		((fifo_cur_t0 == 0) ? "|" : ""),
-		UARTHUB_DEBUG_GET_DEBUG_FIFO_16_BYTES(fifo_data_t0, 0),
-		UARTHUB_DEBUG_GET_DEBUG_FIFO_16_BYTES(fifo_data_t0, 8),
-		UARTHUB_DEBUG_GET_DEBUG_FIFO_16_BYTES(fifo_data_t0, 16),
-		UARTHUB_DEBUG_GET_DEBUG_FIFO_16_BYTES(fifo_data_t0, 24));
-	if (ret > 0)
-		len += ret;
-
-	if (fifo_cur_t0 != 0)
-		dmp_info_buf[separate_pos] = '|';
-
-	pr_info("%s\n", dmp_info_buf);
-
-	len = 0;
-	ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
-		"[%s][%s] UART_2_FIFO[0:31]=[R(%u):",
-		def_tag, ((tag == NULL) ? "null" : tag), fifo_cur_r2);
-	if (ret > 0)
-		len += ret;
-
-	if (fifo_cur_r2 != 0)
-		separate_pos = len + ((fifo_cur_r2 * 3) - 1);
-	ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
-		"%s%02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X",
-		((fifo_cur_r2 == 0) ? "|" : ""),
-		UARTHUB_DEBUG_GET_DEBUG_FIFO_16_BYTES(fifo_data_r2, 0),
-		UARTHUB_DEBUG_GET_DEBUG_FIFO_16_BYTES(fifo_data_r2, 8),
-		UARTHUB_DEBUG_GET_DEBUG_FIFO_16_BYTES(fifo_data_r2, 16),
-		UARTHUB_DEBUG_GET_DEBUG_FIFO_16_BYTES(fifo_data_r2, 24));
-	if (ret > 0)
-		len += ret;
-
-	if (fifo_cur_r2 != 0)
-		dmp_info_buf[separate_pos] = '|';
-
-	ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len, ",T(%u):", fifo_cur_t2);
-	if (ret > 0)
-		len += ret;
-
-	if (fifo_cur_t2 != 0)
-		separate_pos = len + ((fifo_cur_t2 * 3) - 1);
-	ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
-		"%s%02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X]",
-		((fifo_cur_t2 == 0) ? "|" : ""),
-		UARTHUB_DEBUG_GET_DEBUG_FIFO_16_BYTES(fifo_data_t2, 0),
-		UARTHUB_DEBUG_GET_DEBUG_FIFO_16_BYTES(fifo_data_t2, 8),
-		UARTHUB_DEBUG_GET_DEBUG_FIFO_16_BYTES(fifo_data_t2, 16),
-		UARTHUB_DEBUG_GET_DEBUG_FIFO_16_BYTES(fifo_data_t2, 24));
-	if (ret > 0)
-		len += ret;
-
-	if (fifo_cur_t2 != 0)
-		dmp_info_buf[separate_pos] = '|';
-
-	pr_info("%s\n", dmp_info_buf);
-
-	len = 0;
-	ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
-		"[%s][%s] UART_CMM_FIFO[0:31]=[R(%u):",
-		def_tag, ((tag == NULL) ? "null" : tag), fifo_cur_rcmm);
-	if (ret > 0)
-		len += ret;
-
-	if (fifo_cur_rcmm != 0)
-		separate_pos = len + ((fifo_cur_rcmm * 3) - 1);
-	ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
-		"%s%02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X",
-		((fifo_cur_rcmm == 0) ? "|" : ""),
-		UARTHUB_DEBUG_GET_DEBUG_FIFO_16_BYTES(fifo_data_rcmm, 0),
-		UARTHUB_DEBUG_GET_DEBUG_FIFO_16_BYTES(fifo_data_rcmm, 8),
-		UARTHUB_DEBUG_GET_DEBUG_FIFO_16_BYTES(fifo_data_rcmm, 16),
-		UARTHUB_DEBUG_GET_DEBUG_FIFO_16_BYTES(fifo_data_rcmm, 24));
-	if (ret > 0)
-		len += ret;
-
-	if (fifo_cur_rcmm != 0)
-		dmp_info_buf[separate_pos] = '|';
-
-	ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len, ",T(%u):", fifo_cur_tcmm);
-	if (ret > 0)
-		len += ret;
-
-	if (fifo_cur_tcmm != 0)
-		separate_pos = len + ((fifo_cur_tcmm * 3) - 1);
-	ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
-		"%s%02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X]",
-		((fifo_cur_tcmm == 0) ? "|" : ""),
-		UARTHUB_DEBUG_GET_DEBUG_FIFO_16_BYTES(fifo_data_tcmm, 0),
-		UARTHUB_DEBUG_GET_DEBUG_FIFO_16_BYTES(fifo_data_tcmm, 8),
-		UARTHUB_DEBUG_GET_DEBUG_FIFO_16_BYTES(fifo_data_tcmm, 16),
-		UARTHUB_DEBUG_GET_DEBUG_FIFO_16_BYTES(fifo_data_tcmm, 24));
-	if (ret > 0)
-		len += ret;
-
-	if (fifo_cur_tcmm != 0)
-		dmp_info_buf[separate_pos] = '|';
-
-	pr_info("%s\n", dmp_info_buf);
 	return 0;
 }
 
@@ -1270,7 +1111,6 @@ int uarthub_dump_debug_tx_rx_count_mt6993(const char *tag, int trigger_point)
 	static int rx_monitor[4] = { 0 };
 	static int tx_monitor_pointer;
 	static int rx_monitor_pointer;
-	static int check_data_mode_sel;
 	static int fsm_dbg_sta;
 	static int d0_wait_for_send_xoff, d1_wait_for_send_xoff, d2_wait_for_send_xoff;
 	static int cmm_wait_for_send_xoff, ap_wait_for_send_xoff;
@@ -1287,10 +1127,8 @@ int uarthub_dump_debug_tx_rx_count_mt6993(const char *tag, int trigger_point)
 	struct uarthub_uartip_debug_info pkt_cnt = {0};
 	struct uarthub_uartip_debug_info debug1 = {0}, debug2 = {0}, debug3 = {0}, debug4 = {0};
 	struct uarthub_uartip_debug_info debug5 = {0}, debug6 = {0}, debug7 = {0}, debug8 = {0};
-	uint32_t cur;
-	static uint32_t fifo_cur_t0, fifo_cur_r0, fifo_cur_t2, fifo_cur_r2;
-	static uint8_t fifo_data_t0[32] = { 0 }, fifo_data_r0[32] = { 0 };
-	static uint8_t fifo_data_t2[32] = { 0 }, fifo_data_r2[32] = { 0 };
+	uint8_t fifo_cur_idx[2][4] = {0};
+	uint8_t fifo_cur_data[2][4][32] = {0};
 	static int d0_tx_fifoc, d1_tx_fifoc, d2_tx_fifoc, cmm_tx_fifoc, ap_tx_fifoc;
 	static int d0_rx_fifoc, d1_rx_fifoc, d2_rx_fifoc, cmm_rx_fifoc, ap_rx_fifoc;
 	static struct uarthub_gpio_trx_info gpio_base_addr;
@@ -1391,13 +1229,10 @@ int uarthub_dump_debug_tx_rx_count_mt6993(const char *tag, int trigger_point)
 		if (debug_monitor_sel == 0x1) {
 			len = uarthub_record_check_data_mode_sta_to_buffer_mt6993(
 				dmp_info_buf, len, debug_monitor_sel, tx_monitor, rx_monitor,
-				tx_monitor_pointer, rx_monitor_pointer, check_data_mode_sel, NULL);
+				tx_monitor_pointer, rx_monitor_pointer, NULL);
 		}
 
-		len = uarthub_record_uart_fifo_sta_to_buffer_mt6993(
-			dmp_info_buf, len, NULL,
-			fifo_cur_t0, fifo_cur_r0, fifo_cur_t2, fifo_cur_r2, 0, 0,
-			fifo_data_t0, fifo_data_r0, fifo_data_t2, fifo_data_r2, NULL, NULL);
+		UARTHUB_DEBUG_PRINT_DEBUG_FIFO_32_BYTE_DATA_ONE_LINE(NULL, 0xF);
 
 		len = uarthub_record_intfhub_fsm_sta_to_buffer(
 			dmp_info_buf, len, fsm_dbg_sta);
@@ -1454,27 +1289,11 @@ int uarthub_dump_debug_tx_rx_count_mt6993(const char *tag, int trigger_point)
 				DEBUG_MODE_CRTL_ADDR);
 			rx_monitor_pointer = DEBUG_MODE_CRTL_GET_check_data_mode_rx_monitor_pointer(
 				DEBUG_MODE_CRTL_ADDR);
-			check_data_mode_sel = DEBUG_MODE_CRTL_GET_check_data_mode_select(
-				DEBUG_MODE_CRTL_ADDR);
 		}
 	}
 
 	// Dump UART fifo data
-	fifo_cur_t0 = uarthub_get_debug_fifo_cur_mt6993(uartip_id_ap, 0);
-	for (cur = 0; cur < 32; cur++)
-		fifo_data_t0[cur] = uarthub_get_debug_fifo_data_mt6993(uartip_id_ap, cur, 0);
-
-	fifo_cur_r0 = uarthub_get_debug_fifo_cur_mt6993(uartip_id_ap, 1);
-	for (cur = 0; cur < 32; cur++)
-		fifo_data_r0[cur] = uarthub_get_debug_fifo_data_mt6993(uartip_id_ap, cur, 1);
-
-	fifo_cur_t2 = uarthub_get_debug_fifo_cur_mt6993(uartip_id_adsp, 0);
-	for (cur = 0; cur < 32; cur++)
-		fifo_data_t2[cur] = uarthub_get_debug_fifo_data_mt6993(uartip_id_adsp, cur, 0);
-
-	fifo_cur_r2 = uarthub_get_debug_fifo_cur_mt6993(uartip_id_adsp, 1);
-	for (cur = 0; cur < 32; cur++)
-		fifo_data_r2[cur] = uarthub_get_debug_fifo_data_mt6993(uartip_id_adsp, cur, 1);
+	UARTHUB_DEBUG_GET_DEBUG_FIFO_32_BYTE_DATA(0xF);
 
 	fsm_dbg_sta = UARTHUB_REG_READ(DBG_STATE_ADDR);
 
@@ -1642,13 +1461,10 @@ int uarthub_dump_debug_tx_rx_count_mt6993(const char *tag, int trigger_point)
 		if (debug_monitor_sel == 0x1) {
 			len = uarthub_record_check_data_mode_sta_to_buffer_mt6993(
 				dmp_info_buf, len, debug_monitor_sel, tx_monitor, rx_monitor,
-				tx_monitor_pointer, rx_monitor_pointer, check_data_mode_sel, NULL);
+				tx_monitor_pointer, rx_monitor_pointer, NULL);
 		}
 
-		len = uarthub_record_uart_fifo_sta_to_buffer_mt6993(
-			dmp_info_buf, len, NULL,
-			fifo_cur_t0, fifo_cur_r0, fifo_cur_t2, fifo_cur_r2, 0, 0,
-			fifo_data_t0, fifo_data_r0, fifo_data_t2, fifo_data_r2, NULL, NULL);
+		UARTHUB_DEBUG_PRINT_DEBUG_FIFO_32_BYTE_DATA_ONE_LINE(NULL, 0xF);
 
 		len = uarthub_record_intfhub_fsm_sta_to_buffer(
 			dmp_info_buf, len, fsm_dbg_sta);
@@ -1708,7 +1524,6 @@ int uarthub_dump_debug_clk_info_mt6993(const char *tag)
 #if !(UARTHUB_SUPPORT_FPGA)
 	int spm_res_uarthub = 0, spm_res_internal = 0;
 	int topckgen_cg = 0, peri_cg = 0;
-	uint32_t timer_h = 0, timer_l = 0;
 #endif
 	unsigned char dmp_info_buf[DBG_LOG_LEN];
 	int dev0_sta = 0, dev1_sta = 0, dev2_sta = 0;
@@ -1718,15 +1533,9 @@ int uarthub_dump_debug_clk_info_mt6993(const char *tag)
 	int tx_monitor[4] = { 0 };
 	int rx_monitor[4] = { 0 };
 	int tx_monitor_pointer = 0, rx_monitor_pointer = 0;
-	int check_data_mode_sel = 0;
 	int fsm_dbg_sta = 0;
-	uint32_t cur;
-	uint32_t fifo_cur_t0 = 0, fifo_cur_r0 = 0;
-	uint32_t fifo_cur_t2 = 0, fifo_cur_r2 = 0;
-	uint8_t fifo_data_t0[32] = { 0 };
-	uint8_t fifo_data_r0[32] = { 0 };
-	uint8_t fifo_data_t2[32] = { 0 };
-	uint8_t fifo_data_r2[32] = { 0 };
+	uint8_t fifo_cur_idx[2][4] = {0};
+	uint8_t fifo_cur_data[2][4][32] = {0};
 	struct uarthub_uartip_debug_info pkt_cnt = {0};
 	int cur_tx_pkt_cnt_d0;
 	int cur_tx_pkt_cnt_d1;
@@ -1762,12 +1571,10 @@ int uarthub_dump_debug_clk_info_mt6993(const char *tag)
 		len += ret;
 
 	val = uarthub_is_apb_bus_clk_enable_mt6993();
-	ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
-		",APB=[0x%x]", val);
-	if (ret > 0)
-		len += ret;
-
 	if (val == 0) {
+		ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len, ",APB=[0x0]");
+		if (ret > 0)
+			len += ret;
 		pr_info("%s\n", dmp_info_buf);
 		return -1;
 	}
@@ -1862,7 +1669,7 @@ int uarthub_dump_debug_clk_info_mt6993(const char *tag)
 	if (val >= 0) {
 		/* the expect value is 0x2 */
 		ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
-			",HUB/UART/ADSP_MUX=[0x%x(%s)-0x%x(%s)-0x%x(%s)]", val,
+			",HUB/UART/ADSP_MUX=[%d(%s)-%d(%s)-%d(%s)]", val,
 			((val == 0) ? "26M" : ((val == 1) ? "104M" : "208M")), val1,
 			((val1 == 0) ? "26M" : ((val1 == 1) ? "52M" :
 				((val1 == 2) ? "104M" : "208M"))), val2,
@@ -1877,14 +1684,6 @@ int uarthub_dump_debug_clk_info_mt6993(const char *tag)
 		mt_get_fmeter_freq(F_FADSP_UARTHUB_BCLK_CK, CKGEN));
 	if (ret > 0)
 		len += ret;
-
-	val = uarthub_get_spm_sys_timer_mt6993(&timer_h, &timer_l);
-	if (val == 1) {
-		ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
-			",sys_timer=[H:%x,L:%x]", timer_h, timer_l);
-		if (ret > 0)
-			len += ret;
-	}
 #endif
 
 	dev0_sta = UARTHUB_REG_READ(DEV0_STA_ADDR);
@@ -1920,36 +1719,16 @@ int uarthub_dump_debug_clk_info_mt6993(const char *tag)
 				DEBUG_MODE_CRTL_ADDR);
 			rx_monitor_pointer = DEBUG_MODE_CRTL_GET_check_data_mode_rx_monitor_pointer(
 				DEBUG_MODE_CRTL_ADDR);
-			check_data_mode_sel = DEBUG_MODE_CRTL_GET_check_data_mode_select(
-				DEBUG_MODE_CRTL_ADDR);
 
 			len = uarthub_record_check_data_mode_sta_to_buffer_mt6993(
 				dmp_info_buf, len, debug_monitor_sel, tx_monitor, rx_monitor,
-				tx_monitor_pointer, rx_monitor_pointer, check_data_mode_sel, NULL);
+				tx_monitor_pointer, rx_monitor_pointer, NULL);
 		}
 	}
 
 	// Dump UART fifo data
-	fifo_cur_t0 = uarthub_get_debug_fifo_cur_mt6993(uartip_id_ap, 0);
-	for (cur = 0; cur < 32; cur++)
-		fifo_data_t0[cur] = uarthub_get_debug_fifo_data_mt6993(uartip_id_ap, cur, 0);
-
-	fifo_cur_r0 = uarthub_get_debug_fifo_cur_mt6993(uartip_id_ap, 1);
-	for (cur = 0; cur < 32; cur++)
-		fifo_data_r0[cur] = uarthub_get_debug_fifo_data_mt6993(uartip_id_ap, cur, 1);
-
-	fifo_cur_t2 = uarthub_get_debug_fifo_cur_mt6993(uartip_id_adsp, 0);
-	for (cur = 0; cur < 32; cur++)
-		fifo_data_t2[cur] = uarthub_get_debug_fifo_data_mt6993(uartip_id_adsp, cur, 0);
-
-	fifo_cur_r2 = uarthub_get_debug_fifo_cur_mt6993(uartip_id_adsp, 1);
-	for (cur = 0; cur < 32; cur++)
-		fifo_data_r2[cur] = uarthub_get_debug_fifo_data_mt6993(uartip_id_adsp, cur, 1);
-
-	len = uarthub_record_uart_fifo_sta_to_buffer_mt6993(
-		dmp_info_buf, len, NULL,
-		fifo_cur_t0, fifo_cur_r0, fifo_cur_t2, fifo_cur_r2, 0, 0,
-		fifo_data_t0, fifo_data_r0, fifo_data_t2, fifo_data_r2, NULL, NULL);
+	UARTHUB_DEBUG_GET_DEBUG_FIFO_32_BYTE_DATA(0xF);
+	UARTHUB_DEBUG_PRINT_DEBUG_FIFO_32_BYTE_DATA_ONE_LINE(NULL, 0xF);
 
 	fsm_dbg_sta = UARTHUB_REG_READ(DBG_STATE_ADDR);
 	len = uarthub_record_intfhub_fsm_sta_to_buffer(dmp_info_buf, len, fsm_dbg_sta);
@@ -1976,13 +1755,8 @@ int uarthub_dump_debug_byte_cnt_info_mt6993(const char *tag)
 	int cur_rx_pkt_cnt_d0;
 	int cur_rx_pkt_cnt_d1;
 	int cur_rx_pkt_cnt_d2;
-	uint32_t cur;
-	uint32_t fifo_cur_t0 = 0, fifo_cur_r0 = 0;
-	uint32_t fifo_cur_t2 = 0, fifo_cur_r2 = 0;
-	uint8_t fifo_data_t0[32] = { 0 };
-	uint8_t fifo_data_r0[32] = { 0 };
-	uint8_t fifo_data_t2[32] = { 0 };
-	uint8_t fifo_data_r2[32] = { 0 };
+	uint8_t fifo_cur_idx[2][4] = {0};
+	uint8_t fifo_cur_data[2][4][32] = {0};
 	int dev0_sta = 0, dev1_sta = 0, dev2_sta = 0;
 	unsigned char dmp_info_buf[DBG_LOG_LEN];
 	int len = 0;
@@ -1992,11 +1766,7 @@ int uarthub_dump_debug_byte_cnt_info_mt6993(const char *tag)
 	int tx_monitor[4] = { 0 };
 	int rx_monitor[4] = { 0 };
 	int tx_monitor_pointer = 0, rx_monitor_pointer = 0;
-	int check_data_mode_sel = 0;
 	int fsm_dbg_sta = 0;
-#if !(UARTHUB_SUPPORT_FPGA)
-	uint32_t timer_h = 0, timer_l = 0;
-#endif
 
 	val = DBG_CTRL_GET_intfhub_dbg_sel(DBG_CTRL_ADDR);
 	len = 0;
@@ -2048,9 +1818,6 @@ int uarthub_dump_debug_byte_cnt_info_mt6993(const char *tag)
 	UARTHUB_DEBUG_PRINT_DEBUG_2_REG(debug2, 0xF0, 4, debug3, 0x3, 4, ",T:%d-%d-%d-%d-%d]");
 	UARTHUB_DEBUG_PRINT_DEBUG_1_REG(debug7, 0x3F, 0, ",fifo_woffset=[R:%d-%d-%d-%d-%d");
 	UARTHUB_DEBUG_PRINT_DEBUG_1_REG(debug4, 0x3F, 0, ",T:%d-%d-%d-%d-%d]");
-	UARTHUB_DEBUG_PRINT_DEBUG_2_REG(debug4, 0xC0, 6, debug5, 0xF, 2, ",fifo_tx_roffset=[%d-%d-%d-%d-%d]");
-	UARTHUB_DEBUG_PRINT_DEBUG_1_REG(debug6, 0xFC, 2, ",offset_dma=[R:%d-%d-%d-%d-%d");
-	UARTHUB_DEBUG_PRINT_DEBUG_1_REG(debug3, 0xFC, 2, ",T:%d-%d-%d-%d-%d]");
 	UARTHUB_DEBUG_PRINT_DEBUG_WSEND_XOFF_REG(debug1, ",wsend_xoff=[%d-%d-%d-%d-%d]", 0);
 	UARTHUB_DEBUG_PRINT_DEBUG_DET_XOFF_REG(debug8, ",det_xoff=[%d-%d-%d-%d-%d]", 0);
 
@@ -2079,7 +1846,7 @@ int uarthub_dump_debug_byte_cnt_info_mt6993(const char *tag)
 	if (val >= 0) {
 		/* the expect value is 0x2 */
 		ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
-			",HUB/UART/ADSP_MUX=[0x%x(%s)-0x%x(%s)-0x%x(%s)]", val,
+			",HUB/UART/ADSP_MUX=[%d(%s)-%d(%s)-%d(%s)]", val,
 			((val == 0) ? "26M" : ((val == 1) ? "104M" : "208M")), val1,
 			((val1 == 0) ? "26M" : ((val1 == 1) ? "52M" :
 				((val1 == 2) ? "104M" : "208M"))), val2,
@@ -2094,14 +1861,6 @@ int uarthub_dump_debug_byte_cnt_info_mt6993(const char *tag)
 		mt_get_fmeter_freq(F_FADSP_UARTHUB_BCLK_CK, CKGEN));
 	if (ret > 0)
 		len += ret;
-
-	val = uarthub_get_spm_sys_timer_mt6993(&timer_h, &timer_l);
-	if (val == 1) {
-		ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
-			",sys_timer=[H:%x,L:%x]", timer_h, timer_l);
-		if (ret > 0)
-			len += ret;
-	}
 #endif
 
 	dev0_sta = UARTHUB_REG_READ(DEV0_STA_ADDR);
@@ -2130,36 +1889,16 @@ int uarthub_dump_debug_byte_cnt_info_mt6993(const char *tag)
 				DEBUG_MODE_CRTL_ADDR);
 			rx_monitor_pointer = DEBUG_MODE_CRTL_GET_check_data_mode_rx_monitor_pointer(
 				DEBUG_MODE_CRTL_ADDR);
-			check_data_mode_sel = DEBUG_MODE_CRTL_GET_check_data_mode_select(
-				DEBUG_MODE_CRTL_ADDR);
 
 			len = uarthub_record_check_data_mode_sta_to_buffer_mt6993(
 				dmp_info_buf, len, debug_monitor_sel, tx_monitor, rx_monitor,
-				tx_monitor_pointer, rx_monitor_pointer, check_data_mode_sel, NULL);
+				tx_monitor_pointer, rx_monitor_pointer, NULL);
 		}
 	}
 
 	// Dump UART fifo data
-	fifo_cur_t0 = uarthub_get_debug_fifo_cur_mt6993(uartip_id_ap, 0);
-	for (cur = 0; cur < 32; cur++)
-		fifo_data_t0[cur] = uarthub_get_debug_fifo_data_mt6993(uartip_id_ap, cur, 0);
-
-	fifo_cur_r0 = uarthub_get_debug_fifo_cur_mt6993(uartip_id_ap, 1);
-	for (cur = 0; cur < 32; cur++)
-		fifo_data_r0[cur] = uarthub_get_debug_fifo_data_mt6993(uartip_id_ap, cur, 1);
-
-	fifo_cur_t2 = uarthub_get_debug_fifo_cur_mt6993(uartip_id_adsp, 0);
-	for (cur = 0; cur < 32; cur++)
-		fifo_data_t2[cur] = uarthub_get_debug_fifo_data_mt6993(uartip_id_adsp, cur, 0);
-
-	fifo_cur_r2 = uarthub_get_debug_fifo_cur_mt6993(uartip_id_adsp, 1);
-	for (cur = 0; cur < 32; cur++)
-		fifo_data_r2[cur] = uarthub_get_debug_fifo_data_mt6993(uartip_id_adsp, cur, 1);
-
-	len = uarthub_record_uart_fifo_sta_to_buffer_mt6993(
-		dmp_info_buf, len, NULL,
-		fifo_cur_t0, fifo_cur_r0, fifo_cur_t2, fifo_cur_r2, 0, 0,
-		fifo_data_t0, fifo_data_r0, fifo_data_t2, fifo_data_r2, NULL, NULL);
+	UARTHUB_DEBUG_GET_DEBUG_FIFO_32_BYTE_DATA(0xF);
+	UARTHUB_DEBUG_PRINT_DEBUG_FIFO_32_BYTE_DATA_ONE_LINE(NULL, 0xF);
 
 	fsm_dbg_sta = UARTHUB_REG_READ(DBG_STATE_ADDR);
 	len = uarthub_record_intfhub_fsm_sta_to_buffer(dmp_info_buf, len, fsm_dbg_sta);
@@ -2236,13 +1975,8 @@ int uarthub_dump_debug_bus_status_info_mt6993(const char *tag)
 	int cur_rx_pkt_cnt_d0;
 	int cur_rx_pkt_cnt_d1;
 	int cur_rx_pkt_cnt_d2;
-	uint32_t cur;
-	uint32_t fifo_cur_t0 = 0, fifo_cur_r0 = 0;
-	uint32_t fifo_cur_t2 = 0, fifo_cur_r2 = 0;
-	uint8_t fifo_data_t0[32] = { 0 };
-	uint8_t fifo_data_r0[32] = { 0 };
-	uint8_t fifo_data_t2[32] = { 0 };
-	uint8_t fifo_data_r2[32] = { 0 };
+	uint8_t fifo_cur_idx[2][4] = {0};
+	uint8_t fifo_cur_data[2][4][32] = {0};
 	int dev0_sta = 0, dev1_sta = 0, dev2_sta = 0;
 	unsigned char dmp_info_buf[DBG_LOG_LEN];
 	int len = 0;
@@ -2252,7 +1986,6 @@ int uarthub_dump_debug_bus_status_info_mt6993(const char *tag)
 	int tx_monitor[4] = { 0 };
 	int rx_monitor[4] = { 0 };
 	int tx_monitor_pointer = 0, rx_monitor_pointer = 0;
-	int check_data_mode_sel = 0;
 	int fsm_dbg_sta = 0;
 
 	val = DBG_CTRL_GET_intfhub_dbg_sel(DBG_CTRL_ADDR);
@@ -2311,9 +2044,6 @@ int uarthub_dump_debug_bus_status_info_mt6993(const char *tag)
 	UARTHUB_DEBUG_PRINT_DEBUG_2_REG(debug2, 0xF0, 4, debug3, 0x3, 4, ",T:%d-%d-%d-%d-%d]");
 	UARTHUB_DEBUG_PRINT_DEBUG_1_REG(debug7, 0x3F, 0, ",fifo_woffset=[R:%d-%d-%d-%d-%d");
 	UARTHUB_DEBUG_PRINT_DEBUG_1_REG(debug4, 0x3F, 0, ",T:%d-%d-%d-%d-%d]");
-	UARTHUB_DEBUG_PRINT_DEBUG_2_REG(debug4, 0xC0, 6, debug5, 0xF, 2, ",fifo_tx_roffset=[%d-%d-%d-%d-%d]");
-	UARTHUB_DEBUG_PRINT_DEBUG_1_REG(debug6, 0xFC, 2, ",offset_dma=[R:%d-%d-%d-%d-%d");
-	UARTHUB_DEBUG_PRINT_DEBUG_1_REG(debug3, 0xFC, 2, ",T:%d-%d-%d-%d-%d]");
 	UARTHUB_DEBUG_PRINT_DEBUG_WSEND_XOFF_REG(debug1, ",wsend_xoff=[%d-%d-%d-%d-%d]", 0);
 	UARTHUB_DEBUG_PRINT_DEBUG_DET_XOFF_REG(debug8, ",det_xoff=[%d-%d-%d-%d-%d]", 0);
 
@@ -2337,36 +2067,16 @@ int uarthub_dump_debug_bus_status_info_mt6993(const char *tag)
 				DEBUG_MODE_CRTL_ADDR);
 			rx_monitor_pointer = DEBUG_MODE_CRTL_GET_check_data_mode_rx_monitor_pointer(
 				DEBUG_MODE_CRTL_ADDR);
-			check_data_mode_sel = DEBUG_MODE_CRTL_GET_check_data_mode_select(
-				DEBUG_MODE_CRTL_ADDR);
 
 			len = uarthub_record_check_data_mode_sta_to_buffer_mt6993(
 				dmp_info_buf, len, debug_monitor_sel, tx_monitor, rx_monitor,
-				tx_monitor_pointer, rx_monitor_pointer, check_data_mode_sel, NULL);
+				tx_monitor_pointer, rx_monitor_pointer, NULL);
 		}
 	}
 
 	// Dump UART fifo data
-	fifo_cur_t0 = uarthub_get_debug_fifo_cur_mt6993(uartip_id_ap, 0);
-	for (cur = 0; cur < 32; cur++)
-		fifo_data_t0[cur] = uarthub_get_debug_fifo_data_mt6993(uartip_id_ap, cur, 0);
-
-	fifo_cur_r0 = uarthub_get_debug_fifo_cur_mt6993(uartip_id_ap, 1);
-	for (cur = 0; cur < 32; cur++)
-		fifo_data_r0[cur] = uarthub_get_debug_fifo_data_mt6993(uartip_id_ap, cur, 1);
-
-	fifo_cur_t2 = uarthub_get_debug_fifo_cur_mt6993(uartip_id_adsp, 0);
-	for (cur = 0; cur < 32; cur++)
-		fifo_data_t2[cur] = uarthub_get_debug_fifo_data_mt6993(uartip_id_adsp, cur, 0);
-
-	fifo_cur_r2 = uarthub_get_debug_fifo_cur_mt6993(uartip_id_adsp, 1);
-	for (cur = 0; cur < 32; cur++)
-		fifo_data_r2[cur] = uarthub_get_debug_fifo_data_mt6993(uartip_id_adsp, cur, 1);
-
-	len = uarthub_record_uart_fifo_sta_to_buffer_mt6993(
-		dmp_info_buf, len, NULL,
-		fifo_cur_t0, fifo_cur_r0, fifo_cur_t2, fifo_cur_r2, 0, 0,
-		fifo_data_t0, fifo_data_r0, fifo_data_t2, fifo_data_r2, NULL, NULL);
+	UARTHUB_DEBUG_GET_DEBUG_FIFO_32_BYTE_DATA(0x7);
+	UARTHUB_DEBUG_PRINT_DEBUG_FIFO_32_BYTE_DATA_ONE_LINE(NULL, 0x7);
 
 	fsm_dbg_sta = UARTHUB_REG_READ(DBG_STATE_ADDR);
 	len = uarthub_record_intfhub_fsm_sta_to_buffer(dmp_info_buf, len, fsm_dbg_sta);
@@ -2562,72 +2272,48 @@ int uarthub_record_check_data_mode_sta_to_buffer_mt6993(
 	unsigned char *dmp_info_buf, int len,
 	int debug_monitor_sel,
 	int *tx_monitor, int *rx_monitor,
-	int tx_monitor_pointer, int rx_monitor_pointer,
-	int check_data_mode_sel, const char *tag)
+	int tx_monitor_pointer, int rx_monitor_pointer, const char *tag)
 {
 	int ret = 0;
-	char sel_result_buf[16];
-	int sel_result_len = 0;
-	int separate_pos;
-
-	sel_result_len = 0;
-	ret = snprintf(sel_result_buf + sel_result_len, 16 - sel_result_len, "(%d)", check_data_mode_sel);
-	if (ret > 0)
-		sel_result_len += ret;
 
 	if (debug_monitor_sel == 0x1) {
 		ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
-			",%s%s=[R(%d):",
-			((tag == NULL) ? "CHK_DATA_MON[0:15]" : tag),
-			((tag == NULL) ? sel_result_buf : ""),
-			rx_monitor_pointer);
+			",%s=[R(%d):", ((tag == NULL) ? "dataMon" : tag), rx_monitor_pointer);
 		if (ret > 0)
 			len += ret;
 
-		if (rx_monitor_pointer != 15)
-			separate_pos = len + ((rx_monitor_pointer * 3) + 2);
 		ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
-			"%s%02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X",
-			((rx_monitor_pointer == 15) ? "|" : ""),
-			UARTHUB_DEBUG_GET_DBG_MONITOR_CHECK_DATA(rx_monitor[0]),
-			UARTHUB_DEBUG_GET_DBG_MONITOR_CHECK_DATA(rx_monitor[1]),
-			UARTHUB_DEBUG_GET_DBG_MONITOR_CHECK_DATA(rx_monitor[2]),
-			UARTHUB_DEBUG_GET_DBG_MONITOR_CHECK_DATA(rx_monitor[3]));
+			"%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X",
+			UARTHUB_DEBUG_GET_DBG_MONITOR_CHECK_DATA_WITH_SEPARATE(rx_monitor[0], 0, rx_monitor_pointer),
+			UARTHUB_DEBUG_GET_DBG_MONITOR_CHECK_DATA_WITH_SEPARATE(rx_monitor[1], 1, rx_monitor_pointer),
+			UARTHUB_DEBUG_GET_DBG_MONITOR_CHECK_DATA_WITH_SEPARATE(rx_monitor[2], 2, rx_monitor_pointer),
+			UARTHUB_DEBUG_GET_DBG_MONITOR_CHECK_DATA_WITH_SEPARATE(rx_monitor[3], 3, rx_monitor_pointer));
 		if (ret > 0)
 			len += ret;
-
-		if (rx_monitor_pointer != 15)
-			dmp_info_buf[separate_pos] = '|';
 
 		ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
 			",T(%d):", tx_monitor_pointer);
 		if (ret > 0)
 			len += ret;
 
-		if (tx_monitor_pointer != 15)
-			separate_pos = len + ((tx_monitor_pointer * 3) + 2);
 		ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
-			"%s%02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X]",
-			((tx_monitor_pointer == 15) ? "|" : ""),
-			UARTHUB_DEBUG_GET_DBG_MONITOR_CHECK_DATA(tx_monitor[0]),
-			UARTHUB_DEBUG_GET_DBG_MONITOR_CHECK_DATA(tx_monitor[1]),
-			UARTHUB_DEBUG_GET_DBG_MONITOR_CHECK_DATA(tx_monitor[2]),
-			UARTHUB_DEBUG_GET_DBG_MONITOR_CHECK_DATA(tx_monitor[3]));
+			"%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X]",
+			UARTHUB_DEBUG_GET_DBG_MONITOR_CHECK_DATA_WITH_SEPARATE(tx_monitor[0], 0, tx_monitor_pointer),
+			UARTHUB_DEBUG_GET_DBG_MONITOR_CHECK_DATA_WITH_SEPARATE(tx_monitor[1], 1, tx_monitor_pointer),
+			UARTHUB_DEBUG_GET_DBG_MONITOR_CHECK_DATA_WITH_SEPARATE(tx_monitor[2], 2, tx_monitor_pointer),
+			UARTHUB_DEBUG_GET_DBG_MONITOR_CHECK_DATA_WITH_SEPARATE(tx_monitor[3], 3, tx_monitor_pointer));
 		if (ret > 0)
 			len += ret;
-
-		if (tx_monitor_pointer != 15)
-			dmp_info_buf[separate_pos] = '|';
 	}
 
 	return len;
 }
 
 int uarthub_record_uart_fifo_sta_to_buffer_mt6993(
-	unsigned char *dmp_info_buf, int len, const char *tag,
-	uint32_t fifo_cur_t0, uint32_t fifo_cur_r0,
-	uint32_t fifo_cur_t2, uint32_t fifo_cur_r2,
-	uint32_t fifo_cur_tcmm, uint32_t fifo_cur_rcmm,
+	unsigned char *dmp_info_buf, int len, const char *tag, unsigned char type,
+	uint8_t fifo_cur_t0, uint8_t fifo_cur_r0,
+	uint8_t fifo_cur_t2, uint8_t fifo_cur_r2,
+	uint8_t fifo_cur_tcmm, uint8_t fifo_cur_rcmm,
 	uint8_t *fifo_data_t0, uint8_t *fifo_data_r0,
 	uint8_t *fifo_data_t2, uint8_t *fifo_data_r2,
 	uint8_t *fifo_data_tcmm, uint8_t *fifo_data_rcmm)
@@ -2636,11 +2322,11 @@ int uarthub_record_uart_fifo_sta_to_buffer_mt6993(
 	int is_first = 1;
 
 	ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
-		",%s=[", ((tag == NULL) ? "UART_FIFO[0:31]" : tag));
+		",%s=[", ((tag == NULL) ? "UART_FIFO" : tag));
 	if (ret > 0)
 		len += ret;
 
-	if (fifo_data_t0 != NULL && fifo_data_r0 != NULL) {
+	if (type & 0x1) {
 		ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
 			"R0(%u):%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X",
 			fifo_cur_r0,
@@ -2664,7 +2350,7 @@ int uarthub_record_uart_fifo_sta_to_buffer_mt6993(
 		is_first = 0;
 	}
 
-	if (fifo_data_t2 != NULL && fifo_data_r2 != NULL) {
+	if (type & 0x4) {
 		ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
 			"%sR2(%u):%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X",
 			((is_first == 0) ? "," : ""),
@@ -2689,7 +2375,7 @@ int uarthub_record_uart_fifo_sta_to_buffer_mt6993(
 		is_first = 0;
 	}
 
-	if (fifo_data_tcmm != NULL && fifo_data_rcmm != NULL) {
+	if (type & 0x8) {
 		ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
 			"%sRcmm(%u):%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X%s%02X",
 			((is_first == 0) ? "," : ""),
@@ -2715,6 +2401,56 @@ int uarthub_record_uart_fifo_sta_to_buffer_mt6993(
 	ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len, "]");
 	if (ret > 0)
 		len += ret;
+
+	return len;
+}
+
+int uarthub_record_uart_fifo_sta_to_buffer_by_dev_mt6993(
+	unsigned char *dmp_info_buf, int len, uint32_t dev,
+	uint8_t fifo_cur_idx_rx, uint8_t fifo_cur_idx_tx,
+	uint8_t *fifo_cur_data_rx, uint8_t *fifo_cur_data_tx)
+{
+	int ret = 0;
+	uint32_t separate_pos = 0;
+
+	ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
+		"UART_%d_FIFO[0:31]=[R(%u):", dev, fifo_cur_idx_rx);
+	if (ret > 0)
+		len += ret;
+
+	if (fifo_cur_idx_rx != 0)
+		separate_pos = len + ((fifo_cur_idx_rx * 3) - 1);
+	ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
+		"%s%02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X",
+		((fifo_cur_idx_rx == 0) ? "|" : ""),
+		UARTHUB_DEBUG_GET_DEBUG_FIFO_16_BYTES(fifo_cur_data_rx, 0),
+		UARTHUB_DEBUG_GET_DEBUG_FIFO_16_BYTES(fifo_cur_data_rx, 8),
+		UARTHUB_DEBUG_GET_DEBUG_FIFO_16_BYTES(fifo_cur_data_rx, 16),
+		UARTHUB_DEBUG_GET_DEBUG_FIFO_16_BYTES(fifo_cur_data_rx, 24));
+	if (ret > 0)
+		len += ret;
+
+	if (fifo_cur_idx_rx != 0)
+		dmp_info_buf[separate_pos] = '|';
+
+	ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len, ",T(%u):", fifo_cur_idx_tx);
+	if (ret > 0)
+		len += ret;
+
+	if (fifo_cur_idx_tx != 0)
+		separate_pos = len + ((fifo_cur_idx_tx * 3) - 1);
+	ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
+		"%s%02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X]",
+		((fifo_cur_idx_tx == 0) ? "|" : ""),
+		UARTHUB_DEBUG_GET_DEBUG_FIFO_16_BYTES(fifo_cur_data_tx, 0),
+		UARTHUB_DEBUG_GET_DEBUG_FIFO_16_BYTES(fifo_cur_data_tx, 8),
+		UARTHUB_DEBUG_GET_DEBUG_FIFO_16_BYTES(fifo_cur_data_tx, 16),
+		UARTHUB_DEBUG_GET_DEBUG_FIFO_16_BYTES(fifo_cur_data_tx, 24));
+	if (ret > 0)
+		len += ret;
+
+	if (fifo_cur_idx_tx != 0)
+		dmp_info_buf[separate_pos] = '|';
 
 	return len;
 }
@@ -2757,44 +2493,48 @@ int uarthub_record_intfhub_fsm_sta_to_buffer(
 	val = ((fsm_dbg_sta & REG_FLD_MASK(DBG_STATE_FLD_dbg_intfhub_ctrl_fsm_state)) >>
 		REG_FLD_SHIFT(DBG_STATE_FLD_dbg_intfhub_ctrl_fsm_state));
 
+	/* ID:IDLE, PP:PREPARE, RD:READY, CO:CKON, CF:CKOFF, WI:WAIT */
 	ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
 		",fsm=[hub:%s",
-		((val == 0) ? "IDLE" : ((val == 1) ? "PREPARE" :
-			((val == 2) ? "READY" : ((val == 3) ? "CKON" :
-			((val == 4) ? "CKOFF" : "WAIT"))))));
+		((val == 0) ? "ID" : ((val == 1) ? "PP" :
+			((val == 2) ? "RD" : ((val == 3) ? "CO" :
+			((val == 4) ? "CF" : "WI"))))));
 	if (ret > 0)
 		len += ret;
 
 	val = ((fsm_dbg_sta & REG_FLD_MASK(DBG_STATE_FLD_dbg_tx_fsm_state)) >>
 		REG_FLD_SHIFT(DBG_STATE_FLD_dbg_tx_fsm_state));
 
+	/* ID:IDLE, HD:HEADER, PL:PAYLOAD, CC:CRC, ES:ESP, ED:END */
 	ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
 		",tx:%s",
-		((val == 0) ? "IDLE" : ((val == 1) ? "HEADER" :
-			((val == 2) ? "PAYLOAD" : ((val == 3) ? "CRC" :
-			((val == 4) ? "ESP" : "END"))))));
+		((val == 0) ? "ID" : ((val == 1) ? "HD" :
+			((val == 2) ? "PL" : ((val == 3) ? "CC" :
+			((val == 4) ? "ES" : "ED"))))));
 	if (ret > 0)
 		len += ret;
 
 	val = ((fsm_dbg_sta & REG_FLD_MASK(DBG_STATE_FLD_dbg_rx_fsm_state)) >>
 		REG_FLD_SHIFT(DBG_STATE_FLD_dbg_rx_fsm_state));
 
+	/* ID:IDLE, DE:DEC, D0:DEV0, D1:DEV1, D2:DEV2, ED:END */
 	ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
 		",rx:%s",
-		((val == 0) ? "IDLE" : ((val == 1) ? "DEC" :
-			((val == 2) ? "DEV0" : ((val == 3) ? "DEV1" :
-			((val == 4) ? "DEV2" : "END"))))));
+		((val == 0) ? "ID" : ((val == 1) ? "DE" :
+			((val == 2) ? "D0" : ((val == 3) ? "D1" :
+			((val == 4) ? "D2" : "ED"))))));
 	if (ret > 0)
 		len += ret;
 
 	val = ((fsm_dbg_sta & REG_FLD_MASK(DBG_STATE_FLD_dbg_dev0_rx_fsm_state)) >>
 		REG_FLD_SHIFT(DBG_STATE_FLD_dbg_dev0_rx_fsm_state));
 
+	/* ID:IDLE, HD:HEADER, PL:PAYLOAD, CC:CRC, ES:ESP, ED:END */
 	ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
-		",d0_rx:%s",
-		((val == 0) ? "IDLE" : ((val == 1) ? "HEADER" :
-			((val == 2) ? "PAYLOAD" : ((val == 3) ? "CRC" :
-			((val == 4) ? "ESP" : "END"))))));
+		"-%s",
+		((val == 0) ? "ID" : ((val == 1) ? "HD" :
+			((val == 2) ? "PL" : ((val == 3) ? "CC" :
+			((val == 4) ? "ES" : "ED"))))));
 	if (ret > 0)
 		len += ret;
 
@@ -2802,10 +2542,10 @@ int uarthub_record_intfhub_fsm_sta_to_buffer(
 		REG_FLD_SHIFT(DBG_STATE_FLD_dbg_dev1_rx_fsm_state));
 
 	ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
-		",d1_rx:%s",
-		((val == 0) ? "IDLE" : ((val == 1) ? "HEADER" :
-			((val == 2) ? "PAYLOAD" : ((val == 3) ? "CRC" :
-			((val == 4) ? "ESP" : "END"))))));
+		"-%s",
+		((val == 0) ? "ID" : ((val == 1) ? "HD" :
+			((val == 2) ? "PL" : ((val == 3) ? "CC" :
+			((val == 4) ? "ES" : "ED"))))));
 	if (ret > 0)
 		len += ret;
 
@@ -2813,20 +2553,15 @@ int uarthub_record_intfhub_fsm_sta_to_buffer(
 		REG_FLD_SHIFT(DBG_STATE_FLD_dbg_dev2_rx_fsm_state));
 
 	ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
-		",d2_rx:%s",
-		((val == 0) ? "IDLE" : ((val == 1) ? "HEADER" :
-			((val == 2) ? "PAYLOAD" : ((val == 3) ? "CRC" :
-			((val == 4) ? "ESP" : "END"))))));
+		"-%s]",
+		((val == 0) ? "ID" : ((val == 1) ? "HD" :
+			((val == 2) ? "PL" : ((val == 3) ? "CC" :
+			((val == 4) ? "ES" : "ED"))))));
 	if (ret > 0)
 		len += ret;
 
 	val = ((fsm_dbg_sta & REG_FLD_MASK(DBG_STATE_FLD_intfhub_dbg)) >>
 		REG_FLD_SHIFT(DBG_STATE_FLD_intfhub_dbg));
-
-	ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len,
-		",dbg:0x%x]", val);
-	if (ret > 0)
-		len += ret;
 
 	return len;
 }

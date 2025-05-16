@@ -266,6 +266,16 @@
 		((_mon & 0xFF0000) >> 16),\
 		((_mon & 0xFF000000) >> 24)
 
+#define UARTHUB_DEBUG_GET_DBG_MONITOR_CHECK_DATA_WITH_SEPARATE(_mon, _s, _idx) \
+		(((_s * 4) == ((_idx + 1) % 16)) ? "|" : ""),\
+		((_mon & 0xFF) >> 0),\
+		((((_s * 4) + 1) == ((_idx + 1) % 16)) ? "|" : ""),\
+		((_mon & 0xFF00) >> 8),\
+		((((_s * 4) + 2) == ((_idx + 1) % 16)) ? "|" : ""),\
+		((_mon & 0xFF0000) >> 16),\
+		((((_s * 4) + 3) == ((_idx + 1) % 16)) ? "|" : ""),\
+		((_mon & 0xFF000000) >> 24)
+
 #define UARTHUB_DEBUG_PRINT_DBG_MONITOR_CHECK_DATA(_def_tag, _tag, _str, _monitor) \
 	pr_info("[%s][%s] "_str"=[%02X-%02X-%02X-%02X--%02X-%02X-%02X-%02X--"\
 		"%02X-%02X-%02X-%02X--%02X-%02X-%02X-%02X]",\
@@ -309,5 +319,49 @@
 		(((s+5) == idx) ? "|" : ""), (_d[(s)+5]),\
 		(((s+6) == idx) ? "|" : ""), (_d[(s)+6]),\
 		(((s+7) == idx) ? "|" : ""), (_d[(s)+7])
+
+#define UARTHUB_DEBUG_GET_DEBUG_FIFO_32_BYTE_DATA_BY_DEV(_dev, _type) \
+	do {\
+		if (_type & (0x1 << _dev)) {\
+			fifo_cur_idx[1][_dev] = uarthub_get_debug_fifo_cur_mt6993(_dev, 0);\
+			for (int cur = 0; cur < 32; cur++)\
+				fifo_cur_data[1][_dev][cur] = uarthub_get_debug_fifo_data_mt6993(_dev, cur, 0);\
+			fifo_cur_idx[0][_dev] = uarthub_get_debug_fifo_cur_mt6993(_dev, 1);\
+			for (int cur = 0; cur < 32; cur++)\
+				fifo_cur_data[0][_dev][cur] = uarthub_get_debug_fifo_data_mt6993(_dev, cur, 1);\
+		}\
+	} while (0)
+
+#define UARTHUB_DEBUG_GET_DEBUG_FIFO_32_BYTE_DATA(_type) \
+	do {\
+		UARTHUB_DEBUG_GET_DEBUG_FIFO_32_BYTE_DATA_BY_DEV(uartip_id_ap, _type);\
+		UARTHUB_DEBUG_GET_DEBUG_FIFO_32_BYTE_DATA_BY_DEV(uartip_id_adsp, _type);\
+		UARTHUB_DEBUG_GET_DEBUG_FIFO_32_BYTE_DATA_BY_DEV(uartip_id_cmm, _type);\
+	} while (0)
+
+#define UARTHUB_DEBUG_PRINT_DEBUG_FIFO_32_BYTE_DATA_ONE_LINE(_tag, _type) \
+	({ \
+		len = uarthub_record_uart_fifo_sta_to_buffer_mt6993( \
+			dmp_info_buf, len, _tag, _type, \
+			fifo_cur_idx[1][0], fifo_cur_idx[0][0], fifo_cur_idx[1][2], \
+			fifo_cur_idx[0][2], fifo_cur_idx[1][3], fifo_cur_idx[0][3], \
+			fifo_cur_data[1][0], fifo_cur_data[0][0], fifo_cur_data[1][2], \
+			fifo_cur_data[0][2], fifo_cur_data[1][3], fifo_cur_data[0][3]); \
+	})
+
+#define UARTHUB_DEBUG_PRINT_DEBUG_FIFO_32_BYTE_DATA_BY_DEV(_def_tag, _tag, _dev) \
+	do {\
+		len = 0;\
+		ret = snprintf(dmp_info_buf + len, DBG_LOG_LEN - len, \
+			"[%s]%s%s%s", _def_tag, ((_tag == NULL) ? "" : "["), \
+			((_tag == NULL) ? "" : tag), ((_tag == NULL) ? " " : "] "));\
+		if (ret > 0)\
+			len += ret;\
+		len = uarthub_record_uart_fifo_sta_to_buffer_by_dev_mt6993(\
+			dmp_info_buf, len, _dev, \
+			fifo_cur_idx[0][_dev], fifo_cur_idx[1][_dev], \
+			fifo_cur_data[0][_dev], fifo_cur_data[1][_dev]);\
+		pr_info("%s\n", dmp_info_buf);\
+	} while (0)
 
 #endif

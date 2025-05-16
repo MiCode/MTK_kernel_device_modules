@@ -170,22 +170,27 @@ int uarthub_record_check_data_mode_sta_to_buffer_mt6993(
 	unsigned char *dmp_info_buf, int len,
 	int debug_monitor_sel,
 	int *tx_monitor, int *rx_monitor,
-	int tx_monitor_pointer, int rx_monitor_pointer,
-	int check_data_mode_sel, const char *tag);
+	int tx_monitor_pointer, int rx_monitor_pointer, const char *tag);
 int uarthub_record_packet_info_mode_sta_to_buffer_mt6993(
 	unsigned char *dmp_info_buf, int len,
 	int debug_monitor_sel,
 	int *tx_monitor, int *rx_monitor,
 	int tx_monitor_pointer, int rx_monitor_pointer, const char *tag);
 int uarthub_record_uart_fifo_sta_to_buffer_mt6993(
-	unsigned char *dmp_info_buf, int len, const char *tag,
-	uint32_t fifo_cur_t0, uint32_t fifo_cur_r0,
-	uint32_t fifo_cur_t2, uint32_t fifo_cur_r2,
-	uint32_t fifo_cur_tcmm, uint32_t fifo_cur_rcmm,
+	unsigned char *dmp_info_buf, int len, const char *tag, unsigned char type,
+	uint8_t fifo_cur_t0, uint8_t fifo_cur_r0,
+	uint8_t fifo_cur_t2, uint8_t fifo_cur_r2,
+	uint8_t fifo_cur_tcmm, uint8_t fifo_cur_rcmm,
 	uint8_t *fifo_data_t0, uint8_t *fifo_data_r0,
 	uint8_t *fifo_data_t2, uint8_t *fifo_data_r2,
 	uint8_t *fifo_data_tcmm, uint8_t *fifo_data_rcmm);
+int uarthub_record_uart_fifo_sta_to_buffer_by_dev_mt6993(
+	unsigned char *dmp_info_buf, int len, uint32_t dev,
+	uint8_t fifo_cur_idx_rx, uint8_t fifo_cur_idx_tx,
+	uint8_t *fifo_cur_data_rx, uint8_t *fifo_cur_data_tx);
 uint32_t uarthub_get_debug_fifo_data_mt6993(unsigned int dev_index, unsigned int offset, unsigned int is_rx);
 uint32_t uarthub_get_debug_fifo_cur_mt6993(unsigned int dev_index, unsigned int is_rx);
+int uarthub_record_intfhub_fsm_sta_to_buffer(
+	unsigned char *dmp_info_buf, int len, int fsm_dbg_sta);
 
 #endif /* MT6993_H */
