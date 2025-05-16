@@ -79,8 +79,8 @@
 #define SEMAPHORE_3WAY_TIMEOUT 5000
 /* vcp ready timeout definition */
 #define VCP_30MHZ 30000
-#define VCP_READY_TIMEOUT (HZ / 5 * 4) /* 800 milliseconds*/
-#define VCP_READY_TIMEOUT_MS 800
+#define VCP_READY_TIMEOUT (HZ * 3) /* 3000 milliseconds*/
+#define VCP_READY_TIMEOUT_MS 3000
 #define VCP_A_TIMER 0
 
 /* vcp ipi message buffer */
@@ -1158,6 +1158,10 @@ int reset_vcp(void)
 		writel((unsigned int)VCP_PACK_IOVA(vcp_mem_logger_phys),
 			DRAM_RESV_LOGGER_REG_MMUP);
 
+#if VCP_BOOT_TIME_OUT_MONITOR
+		vcp_ready_timer[MMUP_ID].tl.expires = jiffies + VCP_READY_TIMEOUT;
+		add_timer(&vcp_ready_timer[MMUP_ID].tl);
+#endif
 		/* To do: fix 33 smc */
 		arm_smccc_smc(MTK_SIP_TINYSYS_VCP_CONTROL,
 			MTK_TINYSYS_MMUP_KERNEL_OP_RESET_RELEASE,
@@ -1168,11 +1172,6 @@ int reset_vcp(void)
 			readl(DRAM_RESV_ADDR_REG_MMUP), readl(DRAM_RESV_SIZE_REG_MMUP),
 			readl(DRAM_RESV_LOGGER_REG_MMUP), readl(R_CORE1_SW_RSTN_CLR), res.a0,
 			mt_get_fmeter_freq(vcpreg.fmeter_ck, vcpreg.fmeter_type));
-#endif
-
-#if VCP_BOOT_TIME_OUT_MONITOR
-		vcp_ready_timer[MMUP_ID].tl.expires = jiffies + VCP_READY_TIMEOUT;
-		add_timer(&vcp_ready_timer[MMUP_ID].tl);
 #endif
 
 		while (!is_vcp_ready_by_coreid(MMUP_ID)) {
@@ -1195,6 +1194,10 @@ int reset_vcp(void)
 	writel((unsigned int)VCP_PACK_IOVA(vcp_mem_logger_phys + vcp_mem_logger_size),
 		DRAM_RESV_LOGGER_REG_VCP);
 
+#if VCP_BOOT_TIME_OUT_MONITOR
+	vcp_ready_timer[VCP_ID].tl.expires = jiffies + VCP_READY_TIMEOUT;
+	add_timer(&vcp_ready_timer[VCP_ID].tl);
+#endif
 	arm_smccc_smc(MTK_SIP_TINYSYS_VCP_CONTROL,
 		MTK_TINYSYS_VCP_KERNEL_OP_RESET_RELEASE,
 		1, 0, 0, 0, 0, 0, &res);
@@ -1204,11 +1207,6 @@ int reset_vcp(void)
 		readl(DRAM_RESV_ADDR_REG_VCP), readl(DRAM_RESV_SIZE_REG_VCP),
 		readl(R_CORE0_SW_RSTN_CLR), res.a0,
 		mt_get_fmeter_freq(vcpreg.fmeter_ck, vcpreg.fmeter_type));
-#endif
-
-#if VCP_BOOT_TIME_OUT_MONITOR
-	vcp_ready_timer[VCP_ID].tl.expires = jiffies + VCP_READY_TIMEOUT;
-	add_timer(&vcp_ready_timer[VCP_ID].tl);
 #endif
 
 	while (!is_vcp_ready_by_coreid(VCP_ID)) {
