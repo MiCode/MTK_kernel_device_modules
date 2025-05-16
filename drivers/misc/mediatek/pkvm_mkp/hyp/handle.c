@@ -266,7 +266,7 @@ int validate_handle(struct handle_object *obj, enum mkp_policy_id policy, u32 ch
 	return 0;
 }
 
-void init_handle_manipulation(u64 start_ipa, u64 dram_size, u64 smccc_trng_available)
+int init_handle_manipulation(u64 start_ipa, u64 dram_size, u64 smccc_trng_available)
 {
 	int i;
 	hash_bucket_t *bucket;
@@ -291,6 +291,8 @@ void init_handle_manipulation(u64 start_ipa, u64 dram_size, u64 smccc_trng_avail
 	/* Get maintainable IPA range */
 	HANDLE_IPA_START = start_ipa;
 	HANDLE_IPA_END = HANDLE_IPA_START + platform_dram_size;
+	if (HANDLE_IPA_END < HANDLE_IPA_START)
+		return -1;
 	//trace_hyp_printk("[MKP] init_handle_manipulation:%d - (0x%llx..0x%llx)",
 	//	__LINE__, HANDLE_IPA_START, HANDLE_IPA_END);
 
@@ -337,6 +339,7 @@ void init_handle_manipulation(u64 start_ipa, u64 dram_size, u64 smccc_trng_avail
 
 	/* TODO: Check whether we support s2 mapping compaction */
 	// support_s2_mapping_compaction = mkp_support_s2_mapping_compaction();
+	return 0;
 }
 
 static void del_from_handle_glist(struct handle_object *obj)
@@ -514,7 +517,7 @@ int destroy_handle(u32 handle, enum mkp_policy_id policy)
 	ret = validate_handle(handle_obj, policy, HANDLE_PERMANENT, true);
 	if (ret != 0) {
 		// err_line = __LINE__;
-		goto err;
+		goto exit;
 	}
 
 	/* Recover to original s2 mapping attrs for MT_MEM */
@@ -522,7 +525,7 @@ int destroy_handle(u32 handle, enum mkp_policy_id policy)
 		ret = reset_to_s2_mapping_attrs(handle_obj);
 		if (ret != 0) {
 			// err_line = __LINE__;
-			goto err;
+			goto exit;
 		}
 	}
 
@@ -530,11 +533,10 @@ int destroy_handle(u32 handle, enum mkp_policy_id policy)
 	del_from_handle_glist(handle_obj);
 	destroy_handle_object(handle_obj);
 
-	return 0;
-
-err:
+exit:
 	/* Put the handle back */
-	add_to_handle_htab(handle_obj);
+	if (ret != 0)
+		add_to_handle_htab(handle_obj);
 	//trace_hyp_printk("[MKP] destroy_handle: error occurs at (%d)", err_line);
 
 	return ret;

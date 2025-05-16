@@ -53,6 +53,8 @@ static int sbrk(size_t nr_bytes)
 
 	heap_phys_start = heap_phys_end;
 	heap_phys_end = heap_phys_start + nr_bytes;
+	if (heap_phys_end <= heap_phys_start)
+		return -1;
 	heap_size += nr_bytes;
 	hyp_ptr = (void *)(module_ops->hyp_va((u64)heap_phys_start));
 	module_ops->memset(hyp_ptr, 0, nr_bytes);
@@ -65,6 +67,11 @@ static int sbrk(size_t nr_bytes)
 int malloc_init(struct pkvm_module_ops *ops, u64 heap_start, u64 heap_size)
 {
 	int ret = 0;
+
+	if (ops == NULL || (heap_start + heap_size) < heap_start ||
+		heap_size < CFG_MKP_CHUNK_SIZE)
+		goto failed;
+
 	// initialize global variable
 	module_ops = ops;
 	heap_phys_start = heap_start;

@@ -66,13 +66,17 @@ int mkp_hyp_prepare1(u64 start_ipa, u64 dram_size, u64 heap_start, u64 heap_size
 	if (ret)
 		return ret;
 
-	init_handle_manipulation(start_ipa, dram_size, smccc_trng_available);
+	ret = init_handle_manipulation(start_ipa, dram_size, smccc_trng_available);
+	if (ret)
+		return ret;
 
 	return 0;
 }
 
 int mkp_hyp_prepare2(u64 fixaddr_top, u64 fixaddr_real_start)
 {
+	if (fixaddr_top < fixaddr_real_start)
+		return -1;
 	FIX_END = fixaddr_top;
 	FIX_START = fixaddr_real_start;
 
