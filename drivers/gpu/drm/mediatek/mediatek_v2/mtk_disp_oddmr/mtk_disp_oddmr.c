@@ -1537,6 +1537,11 @@ static void mtk_oddmr_od_hsk(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg)
 	mtk_oddmr_write(comp, hsk_0, DISP_ODDMR_OD_HSK_0, pkg);
 	mtk_oddmr_write(comp, hsk_1, DISP_ODDMR_OD_HSK_1, pkg);
 	mtk_oddmr_write(comp, hsk_2, DISP_ODDMR_OD_HSK_2, pkg);
+	if (oddmr_data->data->od_version >= MTK_OD_V3) {
+		mtk_oddmr_write(comp, 0xFFF, DISP_ODDMR_OD_HSK_3, pkg);
+		mtk_oddmr_write(comp, 0x3, DISP_ODDMR_OD_HSK_4, pkg);
+		return;
+	}
 	mtk_oddmr_write(comp, 0, DISP_ODDMR_OD_HSK_3, pkg);
 	mtk_oddmr_write(comp, 0x8003, DISP_ODDMR_OD_HSK_4, pkg);
 }
@@ -13024,7 +13029,7 @@ static const struct mtk_disp_oddmr_data mt6993_oddmr_driver_data = {
 	.need_bypass_shadow = true,
 	.is_od_support_table_update = false,
 	.is_support_rtff = false,
-	.is_od_support_hw_skip_first_frame = true,
+	.is_od_support_hw_skip_first_frame = false,
 	.is_od_need_crop_garbage = false,
 	.is_od_need_force_clk = false,
 	.is_od_support_sec = false,
