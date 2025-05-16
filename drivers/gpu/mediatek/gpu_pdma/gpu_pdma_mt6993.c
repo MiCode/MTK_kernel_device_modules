@@ -19,6 +19,12 @@
 #include <linux/delay.h>
 #include <linux/printk.h>
 #include <linux/dma-mapping.h>
+#include <linux/string.h>
+
+#include <linux/io.h>
+#include <linux/types.h>
+#include <linux/ktime.h>
+#include <linux/timekeeping.h>
 
 /* gpu header */
 #include <gpu_pdma_mt6993.h>
@@ -1308,7 +1314,7 @@ static int gpu_pdma_probe(struct platform_device *pdev)
 #ifdef CCMD_DEBUG_MODE
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
 #else
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
 #endif
 	if (res == NULL) {
 		pr_info("PDMA platform_get_resource fail\n");
@@ -1634,6 +1640,55 @@ void pdma_release_extended_pbha(u32 kctx_id, u32 pbha_id)
 }
 EXPORT_SYMBOL_GPL(pdma_release_extended_pbha);
 
+void kill_all_zombie(void)
+{
+	int cid = 0;
+	unsigned int CID_mask = 0, RG_mask = 0, command = 0;
+
+	for (cid = 0; cid < 4; cid++) {
+		CID_mask = cid << 8;
+		RG_mask = 1 << 10;
+		//iterate 8th and 9th bit for all CID, 10th bit for cleaning other bit is 0
+		command = CID_mask | RG_mask;
+
+		writel(command, g_pdma_dev->pdma_reg_base_kva + CCMD_CID_COMMAND);
+	}
+}
+#define ALWAYS_KILL_ZOMBIES 0
+void pdma_zombie_entry_clean_up(void)
+{
+	static struct timespec64 laseTime;
+	static bool first = true;
+	struct timespec64 ts;
+
+	mutex_lock(&g_pdma_dev->pdma_device_lock);
+
+	if (g_pdma_dev->ccmd_locked_ctx_id != 0) {
+		static unsigned int count;
+
+		count++;
+		if (count >= 1000) {
+			ktime_get_ts64(&ts);
+			if (first) {
+				kill_all_zombie();
+				pr_info("MTK_SLC: Really kill zombies!\n");
+				ktime_get_ts64(&laseTime);
+				first = false;
+			} else if (ts.tv_sec - laseTime.tv_sec > 600) { //10 minutes
+				kill_all_zombie();
+				pr_info("MTK_SLC: Really kill zombies!\n");
+				laseTime = ts;
+			}
+			count = 0;
+		}
+	}
+#if ALWAYS_KILL_ZOMBIES
+	kill_all_zombie();
+#endif /* ALWAYS_KILL_ZOMBIES */
+
+	mutex_unlock(&g_pdma_dev->pdma_device_lock);
+}
+EXPORT_SYMBOL_GPL(pdma_zombie_entry_clean_up);
 
 module_init(gpu_pdma_init);
 module_exit(gpu_pdma_exit);

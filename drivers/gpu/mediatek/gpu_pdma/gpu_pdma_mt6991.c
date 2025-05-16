@@ -20,7 +20,6 @@
 #include <linux/printk.h>
 #include <linux/dma-mapping.h>
 
-
 /* gpu header */
 #include <gpu_pdma_mt6991.h>
 #include <mtk_gpufreq.h>
@@ -1273,6 +1272,11 @@ void pdma_release_extended_pbha(u32 kctx_id, u32 pbha_id)
 }
 EXPORT_SYMBOL_GPL(pdma_release_extended_pbha);
 
+void pdma_zombie_entry_clean_up(void)
+{
+
+}
+EXPORT_SYMBOL_GPL(pdma_zombie_entry_clean_up);
 
 module_init(gpu_pdma_init);
 module_exit(gpu_pdma_exit);
