@@ -1844,8 +1844,6 @@ static int vidioc_venc_s_fmt_cap(struct file *file, void *priv,
 		}
 		mtk_vcodec_set_state_from(ctx, MTK_STATE_INIT, MTK_STATE_FREE);
 	}
-	// format change, trigger encode header
-	mtk_vcodec_set_state_from(ctx, MTK_STATE_INIT, MTK_STATE_STOP);
 	mutex_unlock(&ctx->init_lock);
 
 	return 0;
@@ -2585,9 +2583,6 @@ static int vb2ops_venc_queue_setup(struct vb2_queue *vq,
 	}
 #endif
 
-	// previously stream off with task not empty
-	mtk_vcodec_set_state_from(ctx, MTK_STATE_FLUSH, MTK_STATE_STOP);
-
 	return 0;
 }
 
@@ -3110,11 +3105,8 @@ static int vb2ops_venc_start_streaming(struct vb2_queue *q, unsigned int count)
 			goto err_set_param;
 		}
 		mtk_vcodec_set_state(ctx, MTK_STATE_HEADER);
-	} else if (mtk_vcodec_set_state_from(ctx, MTK_STATE_HEADER, MTK_STATE_FLUSH)
-			== MTK_STATE_FLUSH) // flush and reset
-		mtk_v4l2_debug(1, "recover from flush");
-	else
-		mtk_vcodec_set_state_except(ctx, MTK_STATE_INIT, MTK_STATE_FLUSH);
+	} else
+		mtk_vcodec_set_state(ctx, MTK_STATE_INIT);
 
 	vcodec_trace_begin("dvfs(stream_on)");
 	mutex_lock(&ctx->dev->enc_dvfs_mutex);
