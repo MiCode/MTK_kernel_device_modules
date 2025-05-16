@@ -152,6 +152,7 @@ struct utp_cmd_struct {
 	u16 tag;
 	u32 doorbell;
 	u32 intr;
+	u32 hwq_id;
 	int transfer_len;
 	u64 lba;
 };
@@ -163,6 +164,7 @@ struct dev_cmd_struct {
 	u8 index;
 	u8 selector;
 	u16 tag;
+	u32 hwq_id;
 };
 
 struct uic_cmd_struct {

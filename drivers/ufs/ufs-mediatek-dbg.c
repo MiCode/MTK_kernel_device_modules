@@ -561,6 +561,10 @@ static void cmd_hist_add_dev_cmd(struct ufs_hba *hba,
 		return;
 
 	mdbg->cmd_hist[ptr].cmd.dev.tag = lrbp->task_tag;
+	if (hba->mcq_enabled)
+		mdbg->cmd_hist[ptr].cmd.dev.hwq_id = hba->dev_cmd_queue->id;
+	else
+		mdbg->cmd_hist[ptr].cmd.dev.hwq_id = 0;
 	mdbg->cmd_hist[ptr].cmd.dev.opcode =
 		hba->dev_cmd.query.request.upiu_req.opcode;
 	mdbg->cmd_hist[ptr].cmd.dev.idn =
@@ -641,6 +645,7 @@ static void probe_ufshcd_command(void *data, struct scsi_device *sdev,
 	cmd_hist[ptr].cmd.utp.opcode = opcode;
 	cmd_hist[ptr].cmd.utp.doorbell = doorbell;
 	cmd_hist[ptr].cmd.utp.intr = intr;
+	cmd_hist[ptr].cmd.utp.hwq_id = hwq_id;
 
 	cmd_hist[ptr].cmd.utp.crypt_en = (lrbp->crypto_key_slot < 0 ? 0 : 1);
 	cmd_hist[ptr].cmd.utp.crypt_keyslot = lrbp->crypto_key_slot;
@@ -2269,7 +2274,7 @@ static void ufs_mtk_dbg_print_utp_event(struct ufs_mtk_dbg *mdbg,
 	if (cmd_hist[ptr].cmd.utp.lba == 0xFFFFFFFFFFFFFFFF)
 		cmd_hist[ptr].cmd.utp.lba = 0;
 	SPREAD_PRINTF(buff, size, m,
-		"%3d-UTP_CMD(%d),%6llu.%09lu,%5d,%2d,0x%2x,t=%2d,db:0x%8x,is:0x%8x,crypt:%d,%d,lba=%10llu,len=%6d,\t%llu\n",
+		"%3d-UTP_CMD(%d),%6llu.%09lu,%5d,%2d,0x%2x,t=%2d(%1d),db:0x%8x,is:0x%8x,crypt:%d,%d,lba=%10llu,len=%6d,\t%llu\n",
 		ptr,
 		cmd_hist[ptr].cpu,
 		dur.tv_sec, dur.tv_nsec,
@@ -2277,6 +2282,7 @@ static void ufs_mtk_dbg_print_utp_event(struct ufs_mtk_dbg *mdbg,
 		cmd_hist[ptr].event,
 		cmd_hist[ptr].cmd.utp.opcode,
 		cmd_hist[ptr].cmd.utp.tag,
+		cmd_hist[ptr].cmd.utp.hwq_id,
 		cmd_hist[ptr].cmd.utp.doorbell,
 		cmd_hist[ptr].cmd.utp.intr,
 		cmd_hist[ptr].cmd.utp.crypt_en,
@@ -2297,7 +2303,7 @@ static void ufs_mtk_dbg_print_dev_event(struct ufs_mtk_dbg *mdbg,
 	dur = ns_to_timespec64(cmd_hist[ptr].time);
 
 	SPREAD_PRINTF(buff, size, m,
-		"%3d-DEV_CMD(%d),%6llu.%09lu,%5d,%2d,%4u,t=%2d,op:%u,idn:%u,idx:%u,sel:%u\n",
+		"%3d-DEV_CMD(%d),%6llu.%09lu,%5d,%2d,%4u,t=%2d(%1d),op:%u,idn:%u,idx:%u,sel:%u\n",
 		ptr,
 		cmd_hist[ptr].cpu,
 		dur.tv_sec, dur.tv_nsec,
@@ -2305,6 +2311,7 @@ static void ufs_mtk_dbg_print_dev_event(struct ufs_mtk_dbg *mdbg,
 		cmd_hist[ptr].event,
 		cmd_hist[ptr].cmd.dev.type,
 		cmd_hist[ptr].cmd.dev.tag,
+		cmd_hist[ptr].cmd.dev.hwq_id,
 		cmd_hist[ptr].cmd.dev.opcode,
 		cmd_hist[ptr].cmd.dev.idn,
 		cmd_hist[ptr].cmd.dev.index,
