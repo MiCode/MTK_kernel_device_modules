@@ -21746,6 +21746,11 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 		partial_roi.x, partial_roi.y, partial_roi.width,
 		partial_roi.height, enable, partial_enable);
 
+	mtk_drm_trace_begin("pu_roi(x:%d y:%d w:%d h:%d) pu_en(%d,%d)",
+		partial_roi.x, partial_roi.y, partial_roi.width,
+		partial_roi.height, enable, partial_enable);
+	mtk_drm_trace_end();
+
 	CRTC_MMP_MARK(0, pu_final_roi,
 		partial_roi.y << 16 | partial_roi.height,
 		enable << 16 | partial_enable);
