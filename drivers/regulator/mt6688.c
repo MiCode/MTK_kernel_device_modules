@@ -19,6 +19,7 @@
 #define MT6688_REG_TOP_STAT3		0x22
 #define MT6688_REG_LDO_STAT1		0x23
 #define MT6688_REG_BST_STAT1		0x25
+#define MT6688_REG_TOP_ANA_2		0x51
 
 #define MT6688_MASK_VENID		GENMASK(7, 4)
 #define MT6688_MASK_REVISION		GENMASK(3, 0)
@@ -486,6 +487,41 @@ static const struct regulator_desc mt6688_e2_regulator_desc[MT6688_MAX_REGULATOR
 	MT6688_ALL_REGULATOR_DESC(mt6688_vck18_aux18_e2_volt_table, mt6688_vdig18_e2_volt_table,
 				  mt6688_regulator_vdig18_e2_ctrl);
 
+static ssize_t ecid_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct regmap *regmap = dev_get_regmap(dev, NULL);
+	static bool already_got;
+	static u8 val[3];
+	int ret = 0;
+
+	if (!regmap)
+		return -EINVAL;
+
+	if (already_got)
+		goto out;
+
+	ret = regmap_bulk_read(regmap, MT6688_REG_TOP_ANA_2, &val, 3);
+	if (ret) {
+		dev_info(dev, "%s, Failed to get ecid data (ret:%d)\n", __func__, ret);
+		return sysfs_emit(buf, "Failed_To_Get_Ecid_ret_%d\n", ret);
+	}
+
+	already_got = true;
+
+out:
+	dev_info(dev, "%s, MT6688_ECID=0x%02X,0x%02X,0x%02X\n", __func__, val[0], val[1], val[2]);
+
+	return sysfs_emit(buf, "MT6688_ECID_0x%02X_0x%02X_0x%02X\n", val[0], val[1], val[2]);
+}
+static DEVICE_ATTR_RO(ecid);
+
+static void mt6688_destroy_ecid_attr(void *data)
+{
+	struct device *dev = data;
+
+	device_remove_file(dev, &dev_attr_ecid);
+}
+
 static int mt6688_probe(struct spmi_device *sdev)
 {
 	const struct regulator_desc *desc;
@@ -525,6 +561,14 @@ static int mt6688_probe(struct spmi_device *sdev)
 			return dev_err_probe(dev, ret, "Failed to register (%d) regulator\n", i);
 		}
 	}
+
+	ret = device_create_file(dev, &dev_attr_ecid);
+	if (ret)
+		dev_info(dev, "Failed to create ECID device attr (ret:%d)\n", ret);
+
+	ret = devm_add_action_or_reset(dev, mt6688_destroy_ecid_attr, dev);
+	if (ret)
+		dev_info(dev, "Failed to add ECID device attr to devm list (ret:%d)\n", ret);
 
 	/* Used for SPAR & connsys device to register */
 	return devm_of_platform_populate(dev);
