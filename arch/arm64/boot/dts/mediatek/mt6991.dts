@@ -1587,6 +1587,11 @@
 		// nvmem-cell-names = "lkginfo";
 	};
 
+	pf_ctrl: pf-ctrl {
+		compatible = "mediatek,pf-ctrl";
+		version = <1>;
+	};
+
 	infracfg_ao_clk: syscon@10001000 {
 		compatible = "mediatek,mt6991-infracfg_ao", "syscon";
 		reg = <0 0x10001000 0 0x1000>;

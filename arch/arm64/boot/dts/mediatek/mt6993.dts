@@ -1895,6 +1895,11 @@
 		// nvmem-cell-names = "lkginfo";
 	};
 
+	pf_ctrl: pf-ctrl {
+		compatible = "mediatek,pf-ctrl";
+		version = <1>;
+	};
+
 	eas_info: eas-info {
 		compatible = "mediatek,eas-info";
 		csram-base = <0x051c0000>;
