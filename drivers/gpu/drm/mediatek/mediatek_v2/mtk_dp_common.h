@@ -280,6 +280,7 @@ struct DPTX_INFO {
 	bool bAudioMute : 1;
 	bool bVideoMute : 1;
 	bool bForceHDCP1x : 1;
+	int fakeRX_mode;
 
 #ifdef DPTX_HDCP_ENABLE
 	BYTE bAuthStatus;

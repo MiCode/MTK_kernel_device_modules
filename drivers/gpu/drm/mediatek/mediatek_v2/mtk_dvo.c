@@ -215,7 +215,6 @@
 #define DP_BUF_URGENT_HIGH				0x0250
 #define DP_BUF_URGENT_LOW				0x0254
 
-
 static const struct of_device_id mtk_dvo_driver_dt_match[];
 /**
  * struct mtk_dp_dvo - DP_dvo driver structure
@@ -400,13 +399,18 @@ static void mtk_dp_dvo_prepare(struct mtk_ddp_comp *comp)
 		DPTXERR("Failed to enable dp_dvo clock\n");
 }
 
-void mtk_dp_dvo_PatternGenEn(bool enable)
+void mtk_dp_dvo_PatternGenEn(int mode)
 {
 
-	if (enable) {
+	if (mode) {
 		// pattern gen open
 		writel(0x141, g_dp_dvo->regs + DVO_PATTERN_CTRL);
 		DPTXMSG("[DP Debug]dp dvo pg enable\n");
+	} else if (mode == 2) {
+		// pattern gen open (force pattern gen)
+		// replace previous module data with pattern generator data
+		writel(0x41, g_dp_dvo->regs + DVO_PATTERN_CTRL);
+		DPTXMSG("[DP Debug]dp dvo forced pg enable\n");
 	} else {
 		// pattern gen close
 		writel(0x0, g_dp_dvo->regs + DVO_PATTERN_CTRL);

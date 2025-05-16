@@ -866,11 +866,11 @@ void mtk_dp_intf_unprepare_clk(void)
 }
 EXPORT_SYMBOL(mtk_dp_intf_unprepare_clk);
 
-void mtk_dp_intf_PatternGenEn(bool enable)
+void mtk_dp_intf_PatternGenEn(int mode)
 {
 	uint32_t reg_val;
 
-	if (enable) {
+	if (mode) {
 		reg_val = readl(g_dp_intf->regs + 0xF00);
 		// Modify the specific bits
 		reg_val &= ~((0x7 << 4) | 0x1);  // Clear bits [0] and [4:6]

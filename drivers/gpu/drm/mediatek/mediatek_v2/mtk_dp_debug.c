@@ -30,45 +30,7 @@ void mtk_dp_debug(const char *opt)
 {
 	DPTXFUNC("[debug]: %s\n", opt);
 
-	if (strncmp(opt, "fakecablein:", 12) == 0) {
-		if (strncmp(opt + 12, "enable", 6) == 0) {
-			if (strncmp(opt + 12, "enable4k30P6", 12) == 0)
-				mtk_dp_fake_plugin(SINK_3840_2160_30, 0);
-			else if (strncmp(opt + 12, "enable4k30p8", 12) == 0)
-				mtk_dp_fake_plugin(SINK_3840_2160_30, 1);
-			else if (strncmp(opt + 12, "enable4k30p10", 13) == 0)
-				mtk_dp_fake_plugin(SINK_3840_2160_30, 2);
-
-			else if (strncmp(opt + 12, "enable4k60p6", 12) == 0)
-				mtk_dp_fake_plugin(SINK_3840_2160, 0);
-			else if (strncmp(opt + 12, "enable4k60p8", 12) == 0)
-				mtk_dp_fake_plugin(SINK_3840_2160, 1);
-			else if (strncmp(opt + 12, "enable4k60p10", 13) == 0)
-				mtk_dp_fake_plugin(SINK_3840_2160, 2);
-
-			else if (strncmp(opt + 12, "enable720p6", 11) == 0)
-				mtk_dp_fake_plugin(SINK_1280_720, 0);
-			else if (strncmp(opt + 12, "enable720p8", 11) == 0)
-				mtk_dp_fake_plugin(SINK_1280_720, 1);
-			else if (strncmp(opt + 12, "enable720p10", 12) == 0)
-				mtk_dp_fake_plugin(SINK_1280_720, 2);
-
-			else if (strncmp(opt + 12, "enable480p6", 11) == 0)
-				mtk_dp_fake_plugin(SINK_640_480, 0);
-			else if (strncmp(opt + 12, "enable480p8", 11) == 0)
-				mtk_dp_fake_plugin(SINK_640_480, 1);
-			else if (strncmp(opt + 12, "enable480p10", 12) == 0)
-				mtk_dp_fake_plugin(SINK_640_480, 2);
-
-			else if (strncmp(opt + 12, "enable1080p6", 12) == 0)
-				mtk_dp_fake_plugin(SINK_1920_1080, 0);
-			else if (strncmp(opt + 12, "enable1080p8", 12) == 0)
-				mtk_dp_fake_plugin(SINK_1920_1080, 1);
-			else if (strncmp(opt + 12, "enable1080p10", 13) == 0)
-				mtk_dp_fake_plugin(SINK_1920_1080, 2);
-		} else
-			DDPINFO("fakecablein error msg\n");
-	} else if (strncmp(opt, "force_cvt:", 10) == 0) {
+	if (strncmp(opt, "force_cvt:", 10) == 0) {
 		unsigned int ret, res_h, res_v, fps;
 
 		ret = sscanf(opt, "force_cvt:%d,%d,%d\n", &res_h, &res_v, &fps);
@@ -86,7 +48,9 @@ void mtk_dp_debug(const char *opt)
 			return;
 		}
 		mtk_dp_force_timing_cea(res_h, res_v, fps);
-	} else if (strncmp(opt, "force_detail:", 13) == 0) {
+	} else if (strncmp(opt, "cancel_force_timing", 19) == 0)
+		mtk_dp_cancel_force_timing();
+	else if (strncmp(opt, "force_detail:", 13) == 0) {
 		unsigned int ret;
 		unsigned int value[9];
 
@@ -111,30 +75,6 @@ void mtk_dp_debug(const char *opt)
 			mtk_dp_power_save(0x1);
 		else if (strncmp(opt + 6, "off", 3) == 0)
 			mtk_dp_power_save(0x0);
-
-	} else if (strncmp(opt, "audio:", 6) == 0) {
-		if (strncmp(opt + 6, "2ch", 3) == 0)
-			mtk_dp_force_audio(0, 0xff, 0xff);
-		else if (strncmp(opt + 6, "8ch", 3) == 0)
-			mtk_dp_force_audio(6, 0xff, 0xff);
-
-		if (strncmp(opt + min_t(int, strlen(opt), 9), "32fs", 4) == 0)
-			mtk_dp_force_audio(0xff, 0, 0xff);
-		else if (strncmp(opt + min_t(int, strlen(opt), 9), "44fs", 4) == 0)
-			mtk_dp_force_audio(0xff, 1, 0xff);
-		else if (strncmp(opt + min_t(int, strlen(opt), 9), "48fs", 4) == 0)
-			mtk_dp_force_audio(0xff, 2, 0xff);
-		else if (strncmp(opt + min_t(int, strlen(opt), 9), "96fs", 4) == 0)
-			mtk_dp_force_audio(0xff, 3, 0xff);
-		else if (strncmp(opt + min_t(int, strlen(opt), 9), "192f", 4) == 0)
-			mtk_dp_force_audio(0xff, 4, 0xff);
-
-		if (strncmp(opt + min_t(int, strlen(opt), 13), "16bit", 5) == 0)
-			mtk_dp_force_audio(0xff, 0xff, 0);
-		else if (strncmp(opt + min_t(int, strlen(opt), 13), "20bit", 5) == 0)
-			mtk_dp_force_audio(0xff, 0xff, 1);
-		else if (strncmp(opt + min_t(int, strlen(opt), 13), "24bit", 5) == 0)
-			mtk_dp_force_audio(0xff, 0xff, 2);
 
 	} else if (strncmp(opt, "dptest:", 7) == 0) {
 		if (strncmp(opt + 7, "2", 1) == 0)
@@ -165,7 +105,10 @@ void mtk_dp_debug(const char *opt)
 		mtk_dp_SWInterruptSet(2);
 		mdelay(100);
 		mtk_dp_SWInterruptSet(4);
-	} else if (strncmp(opt, "pattern:", 8) == 0) {
+
+	} else if (strncmp(opt, "setdisconmode", 13) == 0)
+		mtk_dp_SWInterruptSet(2);
+	else if (strncmp(opt, "pattern:", 8) == 0) {
 		int ret = 0;
 		int enable, resolution;
 
@@ -270,16 +213,14 @@ void mtk_dp_debug(const char *opt)
 		mtk_dp_MacAudioPatternGenEn(enable);
 	} else if (strncmp(opt, "dpintf_pg:", 10) == 0) {
 		int ret = 0;
-		unsigned int pg_enable;
-		bool enable;
+		int pg_mode;
 
-		ret = sscanf(opt, "dpintf_pg:%d\n", &pg_enable);
+		ret = sscanf(opt, "dpintf_pg:%d\n", &pg_mode);
 		if (ret != 1) {
 			DPTXERR("[DP Debug]invalid input, ret = %d\n", ret);
 			return;
 		}
-		enable = (pg_enable!= 0);
-		mtk_dp_intfPatternGenEn(enable);
+		mtk_dp_intfPatternGenEn(pg_mode);
 	} else if (strncmp(opt, "force_timing:", 13) == 0) {
 		unsigned int ret = 0;
 		unsigned int force_timing_enable;
@@ -307,6 +248,16 @@ void mtk_dp_debug(const char *opt)
 		dptx_mute_all_command(enable);
 	} else if (strncmp(opt, "dp_con", 6) == 0) {
 		mtk_dp_dpconnector_setting();
+	} else if (strncmp(opt, "dp_fakeRX_en:", 13) == 0) {
+		int ret = 0;
+		int mode;
+
+		ret = sscanf(opt, "dp_fakeRX_en:%d\n", &mode);
+		if (ret != 1) {
+			DPTXERR("ret = %d\n", ret);
+			return;
+		}
+		mtk_dp_fakeRX_enable(mode);
 	}
 }
 
