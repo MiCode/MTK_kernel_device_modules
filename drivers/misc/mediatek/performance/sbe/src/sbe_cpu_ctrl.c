@@ -25,6 +25,7 @@
 #include "eas/grp_awr.h"
 #include "eas/group.h"
 #include "eas/eas_plus.h"
+#include "eas/vip.h"
 #include "sugov/cpufreq.h"
 #include "fpsgo_frame_info.h"
 #include "sbe_base.h"
@@ -1049,6 +1050,14 @@ void sbe_set_ux_general_policy(int scrolling, unsigned long ux_mask)
 	}
 }
 
+void sbe_enable_vip_sitch(int start, int tgid)
+{
+	if (start)
+		set_vip_switch_push();
+	else
+		unset_vip_switch_push();
+}
+
 void set_sbe_thread_vip(int set_vip, int tgid, char *dep_name, int dep_num)
 {
 #if IS_ENABLED(CONFIG_MTK_SCHEDULER) && IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
@@ -1622,7 +1631,7 @@ void sbe_do_rescue(struct sbe_render_info *thr, int start, int enhance,
 			struct ux_scroll_info *last_scroll = get_latest_ux_scroll_info(thr);
 
 			if (last_scroll && !last_scroll->rescue_with_perf_mode)
-				last_scroll->rescue_with_perf_mode = (rescue_type & RESCUE_TYPE_ENABLE_MARGIN);
+				last_scroll->rescue_with_perf_mode = 0;
 
 			if (last_scroll && last_scroll->rescue_with_perf_mode > 0) {
 				sbe_set_affinity_on_scrolling(thr->tgid, SBE_PREFER_M);

@@ -146,6 +146,7 @@ void sbe_boost_non_hwui_policy(struct sbe_render_info *thr, int set_vip);
 void sbe_set_ux_general_policy(int scrolling, unsigned long ux_mask);
 int get_ux_general_policy(void);
 void set_sbe_thread_vip(int set_vip, int tgid, char *dep_name, int dep_num);
+void sbe_enable_vip_sitch(int start, int tgid);
 void sbe_reset_deplist_task_priority(struct sbe_render_info *thr);
 void sbe_set_group_dvfs(int start);
 void sbe_set_gas_policy(int start);

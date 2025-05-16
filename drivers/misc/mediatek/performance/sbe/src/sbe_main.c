@@ -711,6 +711,7 @@ static int sbe_do_hwui_scrolling_policy(int tgid, int start, char *specific_name
 	sbe_put_tree_lock(__func__);
 
 	set_sbe_thread_vip(start, tgid, specific_name, num);
+	sbe_enable_vip_sitch(start, tgid);
 
 	if (!start && (test_bit(SBE_PAGE_FLUTTER, &mask)
 			|| test_bit(SBE_PAGE_WEBVIEW, &mask))) {
