@@ -36,6 +36,7 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/mme:mme".format(kernel_version),
         "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mminfra:mtk-mminfra-util".format(kernel_version),
     ],
     copts = [
         "-I$(DEVICE_MODULES_PATH)/drivers/memory",

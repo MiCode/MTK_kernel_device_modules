@@ -24,6 +24,7 @@
 #include <linux/kthread.h>
 #include <linux/of_address.h>
 #include "clkchk.h"
+#include "mtk-mminfra-util.h"
 
 #if IS_ENABLED(CONFIG_MTK_MME_SUPPORT)
 #include "mmevent_function.h"
@@ -164,6 +165,7 @@ struct mtk_smi_common_plat {
 	u32		*bwl;
 	bool		has_p2_ostdl;
 	struct mtk_smi_reg_pair *misc;
+	int (*resource_ctrl[MTK_COMMON_NR_MAX])(struct device *dev, bool is_enable);
 };
 
 struct mtk_smi_larb_gen {
@@ -171,6 +173,7 @@ struct mtk_smi_larb_gen {
 	int port_in_larb_gen2[MTK_LARB_NR_MAX + 1];
 	void (*config_port)(struct device *);
 	void (*sleep_ctrl)(struct device *dev, bool toslp);
+	int (*resource_ctrl[MTK_LARB_NR_MAX])(struct device *dev, bool is_enable);
 	unsigned long			larb_direct_to_common_mask;
 	bool				has_gals;
 	bool		has_bwl;
@@ -2777,6 +2780,18 @@ mtk_smi_larb_mt6993_misc[MTK_LARB_NR_MAX][SMI_LARB_MISC_NR] = {
 	{{SMI_LARB_CMD_THRT_CON, 0x370256}, {SMI_LARB_SW_FLAG, 0x1},},	/*LARB61*/
 };
 
+static int mtk_smi_mt6993_disp_resource_ctrl(struct device *dev, bool is_enable)
+{
+	int ret;
+
+	ret = mtk_mminfra_on_off(is_enable, MM_PWR_MM_2, MM_TYPE_SMI);
+	if (ret)
+		dev_notice(dev, "%s: fail to ctrl resource, is_enable:%d, ret=%d\n",
+								__func__, is_enable, ret);
+
+	return ret;
+}
+
 /* Start mt6781 */
 static struct mtk_smi_reg_pair mtk_smi_larb_mt6781_misc[MTK_LARB_NR_MAX][SMI_LARB_MISC_NR] = {
 	/* From mt6781/smi_conf.h, smi_larbX_conf_pair */
@@ -3646,6 +3661,30 @@ static const struct mtk_smi_larb_gen mtk_smi_larb_mt6993 = {
 	.misc = (struct mtk_smi_reg_pair *)mtk_smi_larb_mt6993_misc,
 	.cmd_group                  = (u8 *)mtk_smi_larb_mt6993_cmd_group,
 	.bw_thrt_en                 = (u8 *)mtk_smi_larb_mt6993_bw_thrt_en,
+	.resource_ctrl		    = {
+		[0] = mtk_smi_mt6993_disp_resource_ctrl,
+		[1] = mtk_smi_mt6993_disp_resource_ctrl,
+		[2] = mtk_smi_mt6993_disp_resource_ctrl,
+		[3] = mtk_smi_mt6993_disp_resource_ctrl,
+		[20] = mtk_smi_mt6993_disp_resource_ctrl,
+		[21] = mtk_smi_mt6993_disp_resource_ctrl,
+		[32] = mtk_smi_mt6993_disp_resource_ctrl,
+		[33] = mtk_smi_mt6993_disp_resource_ctrl,
+		[34] = mtk_smi_mt6993_disp_resource_ctrl,
+		[35] = mtk_smi_mt6993_disp_resource_ctrl,
+		[36] = mtk_smi_mt6993_disp_resource_ctrl,
+		[37] = mtk_smi_mt6993_disp_resource_ctrl,
+		[50] = mtk_smi_mt6993_disp_resource_ctrl,
+		[51] = mtk_smi_mt6993_disp_resource_ctrl,
+		[52] = mtk_smi_mt6993_disp_resource_ctrl,
+		[53] = mtk_smi_mt6993_disp_resource_ctrl,
+		[54] = mtk_smi_mt6993_disp_resource_ctrl,
+		[55] = mtk_smi_mt6993_disp_resource_ctrl,
+		[56] = mtk_smi_mt6993_disp_resource_ctrl,
+		[57] = mtk_smi_mt6993_disp_resource_ctrl,
+		[60] = mtk_smi_mt6993_disp_resource_ctrl,
+		[61] = mtk_smi_mt6993_disp_resource_ctrl,
+	}
 };
 
 static const struct mtk_smi_larb_gen mtk_smi_larb_mt8183 = {
@@ -4117,7 +4156,8 @@ static int __maybe_unused mtk_smi_larb_resume(struct device *dev, enum smi_ctrl_
 	rs_start = ktime_get();
 	SMI_MME_INFO("larb:%d is to enable clk in callback get new ref_count:%d\n",
 		larb->larbid, atomic_read(&larb->smi.ref_count));
-
+	if (larb_gen->resource_ctrl[larb->larbid])
+		larb_gen->resource_ctrl[larb->larbid](dev, true);
 	clk_start = ktime_get();
 	ret = mtk_smi_clk_enable(&larb->smi, ctrl_type);
 	clk_end = ktime_get();
@@ -4125,6 +4165,8 @@ static int __maybe_unused mtk_smi_larb_resume(struct device *dev, enum smi_ctrl_
 		larb->larbid, atomic_read(&larb->smi.ref_count));
 	if (ret < 0) {
 		dev_err(dev, "Failed to enable clock(%d).\n", ret);
+		if (larb_gen->resource_ctrl[larb->larbid])
+			larb_gen->resource_ctrl[larb->larbid](dev, false);
 		return ret;
 	}
 
@@ -4140,7 +4182,8 @@ static int __maybe_unused mtk_smi_larb_resume(struct device *dev, enum smi_ctrl_
 		clkchk_external_dump();
 		smi_ut_result |= 1;
 	}
-
+	if (larb_gen->resource_ctrl[larb->larbid])
+		larb_gen->resource_ctrl[larb->larbid](dev, false);
 	/* check rpm resume spend time */
 	rs_end = ktime_get();
 	if (ktime_ms_delta(rs_end, rs_start) > timeout)
@@ -4381,6 +4424,8 @@ static int __maybe_unused mtk_smi_larb_suspend(struct device *dev, enum smi_ctrl
 	SMI_MME_INFO("larb:%d is to disable clk in callback put new ref_count:%d\n",
 		larb->larbid, atomic_read(&larb->smi.ref_count));
 
+	if (larb_gen->resource_ctrl[larb->larbid])
+		larb_gen->resource_ctrl[larb->larbid](dev, true);
 	if (!larb->skip_busy_check
 		&& (readl_relaxed(larb->base + SMI_LARB_STAT) ||
 		readl_relaxed(larb->base + INT_SMI_LARB_STAT))) {
@@ -4394,6 +4439,8 @@ static int __maybe_unused mtk_smi_larb_suspend(struct device *dev, enum smi_ctrl
 	smi_pd_ctrl_notify_off(larb->pd_id);
 
 	mtk_smi_clk_disable(&larb->smi, ctrl_type);
+	if (larb_gen->resource_ctrl[larb->larbid])
+		larb_gen->resource_ctrl[larb->larbid](dev, false);
 	SMI_MME_INFO("larb:%d has disabled clk in callback put new ref_count:%d\n",
 		larb->larbid, atomic_read(&larb->smi.ref_count));
 
@@ -5480,6 +5527,16 @@ static const struct mtk_smi_common_plat mtk_smi_common_mt6993 = {
 	.bwl      = (u32 *)mtk_smi_common_mt6993_bwl,
 	.has_p2_ostdl  = true,
 	.misc     = (struct mtk_smi_reg_pair *)mtk_smi_common_mt6993_misc,
+	.resource_ctrl		    = {
+		[5] = mtk_smi_mt6993_disp_resource_ctrl,
+		[6] = mtk_smi_mt6993_disp_resource_ctrl,
+		[9] = mtk_smi_mt6993_disp_resource_ctrl,
+		[10] = mtk_smi_mt6993_disp_resource_ctrl,
+		[11] = mtk_smi_mt6993_disp_resource_ctrl,
+		[12] = mtk_smi_mt6993_disp_resource_ctrl,
+		[13] = mtk_smi_mt6993_disp_resource_ctrl,
+		[14] = mtk_smi_mt6993_disp_resource_ctrl,
+	}
 };
 
 static const struct mtk_smi_common_plat mtk_smi_common_mt8183 = {
@@ -5835,12 +5892,15 @@ static int __maybe_unused mtk_smi_common_resume(struct device *dev, enum smi_ctr
 	rs_start = ktime_get();
 	SMI_MME_INFO("common:%d is to enable clk in callback get old ref_count:%d\n",
 		common->commid, atomic_read(&common->ref_count));
-
+	if (common->plat->resource_ctrl[common->commid])
+		common->plat->resource_ctrl[common->commid](dev, true);
 	clk_start = ktime_get();
 	ret = mtk_smi_clk_enable(common, ctrl_type);
 	clk_end = ktime_get();
 	if (ret) {
 		dev_err(common->dev, "Failed to enable clock(%d).\n", ret);
+		if (common->plat->resource_ctrl[common->commid])
+			common->plat->resource_ctrl[common->commid](dev, false);
 		return ret;
 	}
 	SMI_MME_INFO("common:%d has enabled clk in callback get new ref_count:%d\n",
@@ -5883,6 +5943,8 @@ static int __maybe_unused mtk_smi_common_resume(struct device *dev, enum smi_ctr
 		clkchk_external_dump();
 		smi_ut_result |= 1;
 	}
+	if (common->plat->resource_ctrl[common->commid])
+		common->plat->resource_ctrl[common->commid](dev, false);
 
 	/* check rpm resume spend time */
 	rs_end = ktime_get();
@@ -5918,7 +5980,8 @@ static int __maybe_unused mtk_smi_common_suspend(struct device *dev, enum smi_ct
 	SMI_MME_INFO("common:%d is to disable clk in callback put old ref_count:%d\n",
 		common->commid, atomic_read(&common->ref_count));
 
-
+	if (common->plat->resource_ctrl[common->commid])
+		common->plat->resource_ctrl[common->commid](dev, true);
 	if (!common->skip_busy_check && !(readl_relaxed(common->base + SMI_DEBUG_MISC) & 0x1)) {
 		pr_notice("[SMI]common:%d suspend but busy\n", common->commid);
 		raw_notifier_call_chain(&smi_driver_notifier_list, common->commid, NULL);
@@ -5927,6 +5990,8 @@ static int __maybe_unused mtk_smi_common_suspend(struct device *dev, enum smi_ct
 	smi_pd_ctrl_notify_off(common->pd_id);
 
 	mtk_smi_clk_disable(common, ctrl_type);
+	if (common->plat->resource_ctrl[common->commid])
+		common->plat->resource_ctrl[common->commid](dev, false);
 	SMI_MME_INFO("common:%d has disabled clk in callback put new ref_count:%d\n",
 		common->commid, atomic_read(&common->ref_count));
 

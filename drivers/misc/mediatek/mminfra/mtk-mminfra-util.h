@@ -13,6 +13,7 @@ enum mm_type {
 	MM_TYPE_DISP,
 	MM_TYPE_MML,
 	MM_TYPE_MMINFRA_DBG,
+	MM_TYPE_SMI,
 	MM_TYPE_NR
 };
 
