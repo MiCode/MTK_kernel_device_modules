@@ -4222,7 +4222,7 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 			node-63 = "SSPM_SLBC_BW",
 				"mm,apu,mm_est";
 			node-64 = "SSPM_SLBC_PMU",
-				"hit,miss,apu_r,apu_w,mm_r,mm_w";
+				"hit,miss,gpul_wb,gpuh_wb,mm_r,mm_w";
 			node-65 = "SSPM_SLBC_WAY",
 				"aov_dc,venc,venc_ext,aov_apu,bif,",
 				"slb,slc,left";
