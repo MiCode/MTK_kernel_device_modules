@@ -2196,10 +2196,9 @@ static int ul_cm0_event(struct snd_soc_dapm_widget *w,
 	struct snd_soc_component *cmpnt = snd_soc_dapm_to_component(w->dapm);
 	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
 	unsigned int channels = 0;
-
-	dev_dbg(afe->dev, "%s(), event 0x%x, name %s\n",
-		 __func__, event, w->name);
-
+	/*
+	 * dev_dbg(afe->dev, "%s(), event 0x%x, name %s\n", __func__, event, w->name);
+	 */
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
 		channels = mtk_get_channel_value();
@@ -3698,10 +3697,10 @@ static int cm_mux_set(struct snd_kcontrol *kcontrol,
 	struct snd_soc_dapm_widget *widget = snd_soc_dapm_kcontrol_widget(kcontrol);
 	struct snd_soc_component *cmpnt = snd_soc_dapm_to_component(widget->dapm);
 	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
-
-	dev_info(afe->dev, "%s(), %s: mux %ld\n",
-			 __func__, widget->name, ucontrol->value.integer.value[0]);
-
+	/*
+	 * dev_info(afe->dev, "%s(), %s: mux %ld\n",
+	 * __func__, widget->name, ucontrol->value.integer.value[0]);
+	 */
 	if (!strcmp(widget->name, "CM2_UL_MUX"))
 		mt6993_set_cm_mux(CM2, ucontrol->value.integer.value[0]);
 	else if (!strcmp(widget->name, "CM1_UL_MUX"))
@@ -12655,6 +12654,7 @@ static int mt6993_afe_pcm_dev_probe(struct platform_device *pdev)
 	if (ret < 0) {
 		dev_info(&pdev->dev, "Failed to get runtime pm sync: %d\n", ret);
 		pm_runtime_put_noidle(&pdev->dev);
+		return ret;
 	}
 
 	afe->regmap = devm_regmap_init_mmio(&pdev->dev, afe->base_addr,
