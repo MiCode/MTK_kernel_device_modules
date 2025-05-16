@@ -33,13 +33,20 @@ static struct nlist hvc_table[HVC_TABLE_SIZE];
 static u32 hvc_cur_index;
 static hyp_spinlock_t handler_glist_lock;
 
-void add_hvc(u64 smc_id, int hvc_id)
+int add_hvc(u64 smc_id, int hvc_id)
 {
+	int ret = 0;
 	hyp_spin_lock(&handler_glist_lock);
-	hvc_table[hvc_cur_index].key = smc_id;
-	hvc_table[hvc_cur_index].val = hvc_id;
-	hvc_cur_index++;
+	if (hvc_cur_index >= HVC_TABLE_SIZE)
+		ret = -1;
+	else {
+		hvc_table[hvc_cur_index].key = smc_id;
+		hvc_table[hvc_cur_index].val = hvc_id;
+		hvc_cur_index++;
+	}
 	hyp_spin_unlock(&handler_glist_lock);
+
+	return ret;
 }
 
 int lookup_hvc(u64 smc_id)
@@ -67,7 +74,8 @@ static bool check_ffa_call(u64 func_id)
 
 bool mtk_smc_handler(struct user_pt_regs *ctxt)
 {
-	u64 smc_id = ctxt->regs[0] & ~ARM_SMCCC_CALL_HINTS;
+	__u64 *regs = ctxt->regs;
+	u64 smc_id = regs[0] & ~ARM_SMCCC_CALL_HINTS;
 	u64 smc_key_id;
 	int hvc_id;
 	size_t i = 0;
@@ -84,7 +92,7 @@ bool mtk_smc_handler(struct user_pt_regs *ctxt)
 
 	hvc_id = lookup_hvc(smc_id);
 	if (hvc_id != -1) {
-		ctxt->regs[1] = hvc_id;
+		regs[1] = hvc_id;
 		return true;
 	}
 
@@ -92,14 +100,18 @@ bool mtk_smc_handler(struct user_pt_regs *ctxt)
 	case SMC_ID_MTK_PKVM_ADD_HVC:
 		hvc_id = lookup_hvc(smc_id);
 		if (hvc_id != -1) {
-			ctxt->regs[0] = SMC_RET_MTK_PKVM_SMC_HANDLER_DUPLICATED_ID;
-			ctxt->regs[1] = hvc_id;
+			regs[0] = SMC_RET_MTK_PKVM_SMC_HANDLER_DUPLICATED_ID;
+			regs[1] = hvc_id;
 			return true;
 		}
 
-		smc_key_id = ctxt->regs[1];
-		hvc_id = ctxt->regs[2];
-		add_hvc(smc_key_id, hvc_id);
+		smc_key_id = regs[1];
+		hvc_id = regs[2];
+		if (add_hvc(smc_key_id, hvc_id)) {
+			regs[0] = SMC_RET_MTK_PKVM_SMC_HANDLER_OUT_OF_HVC_COUNT;
+			regs[1] = hvc_id;
+		}
+
 		return true;
 	}
 	return false;
