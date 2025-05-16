@@ -909,6 +909,11 @@ enum SWITCH_MODE_DELAY {
 	DELAY_10,
 };
 
+struct mtk_drm_hwvsync_on_info {
+	unsigned int crtc_id;
+	bool hw_vsync_on;
+};
+
 struct mtk_drm_mode_ext_info {
 	unsigned int crtc_id;
 	unsigned int mode_num;
@@ -1941,7 +1946,7 @@ struct CRTC_READY_INFO {
 			DRM_MTK_GET_MODE_EXT_INFO, struct mtk_drm_mode_ext_info)
 
 #define DRM_IOCTL_MTK_HWVSYNC_ON DRM_IOWR(DRM_COMMAND_BASE + \
-			DRM_MTK_HWVSYNC_ON, unsigned int)
+			DRM_MTK_HWVSYNC_ON, struct mtk_drm_hwvsync_on_info)
 
 #define DRM_IOCTL_MTK_DEBUG_LOG     DRM_IOWR(DRM_COMMAND_BASE + \
 			DRM_MTK_DEBUG_LOG, int)
