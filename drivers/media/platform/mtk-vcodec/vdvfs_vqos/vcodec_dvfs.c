@@ -854,9 +854,11 @@ void mtk_vcodec_cpu_adaptive_ctrl(struct mtk_vcodec_ctx *ctx, int enable)
 void mtk_vcodec_cpu_pf_ctrl(struct mtk_vcodec_ctx *ctx, int enable)
 {
 	if (!mtk_vcodec_has_active_inst(ctx->dev, MTK_INST_DECODER)) {
-		mtk_set_pf_ctrl_enable((bool)enable);
-		mtk_vcodec_dvfs_qos_log(false, "[VDVFS] pf dynamic control %s\n",
-			mtk_get_pf_ctrl_enable() ? "enable" : "disable");
+		mtk_set_pf_ctrl_enable((bool)enable, PF_CTRL_USER_VP);
+		int ret = mtk_get_pf_ctrl_enable();
+
+		mtk_vcodec_dvfs_qos_log(false, "[VDVFS] pf dynamic control %s:%d\n",
+			ret ? "enable" : "disable", ret);
 	}
 }
 
