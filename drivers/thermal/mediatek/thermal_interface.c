@@ -2323,6 +2323,14 @@ static ssize_t chipid_show(struct kobject *kobj,
 
 	len = snprintf(buf + len, PAGE_SIZE - len, "%d,", chip_id->sw_ver);
 
+	if (len < 0) {
+		pr_info("[%s] snprintf failed\n", __func__);
+		return -1;
+	} else if (len >= PAGE_SIZE) {
+		pr_info("[%s] Buffer overflow detected\n", __func__);
+		return -1;
+	}
+
 	return 1;
 }
 
