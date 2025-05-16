@@ -80,6 +80,7 @@ module_param(dbg_log_en, bool, 0644);
 #define MT6375_REG_CHG_STAT0	0x1E0
 #define MT6375_REG_CHG_STAT1	0x1E1
 #define FGADC_SYS_INFO_CON0     0x2F9
+#define MT6375_REG_DIE_X	0x515
 
 #define MT6375_MSK_BATFET_DIS	0x40
 #define MT6375_MSK_BLEED_DIS_EN	BIT(7)
@@ -255,6 +256,7 @@ struct mt6375_chg_data {
 	atomic_t tchg;
 	int vbat0_flag;
 	atomic_t no_6pin_used;
+	u8 ecid_val[3];
 };
 
 struct mt6375_chg_platform_data {
@@ -2792,6 +2794,26 @@ static int mt6375_chg_get_iio_adc(struct mt6375_chg_data *ddata)
 	return 0;
 }
 
+
+
+static ssize_t ecid_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct mt6375_chg_data *ddata = power_supply_get_drvdata(to_power_supply(dev));
+
+	dev_info(dev, "%s, MT6375_ECID=0x%02X,0x%02X,0x%02X\n",
+		 __func__, ddata->ecid_val[0], ddata->ecid_val[1], ddata->ecid_val[2]);
+
+	return sysfs_emit(buf, "MT6375_ECID_0x%02X_0x%02X_0x%02X\n",
+			  ddata->ecid_val[0], ddata->ecid_val[1], ddata->ecid_val[2]);
+}
+static DEVICE_ATTR_RO(ecid);
+
+static struct attribute *mt6375_chg_psy_sysfs_attrs[] = {
+	&dev_attr_ecid.attr,
+	NULL
+};
+ATTRIBUTE_GROUPS(mt6375_chg_psy_sysfs); /* mt6375_chg_psy_sysfs_groups */
+
 static int mt6375_chg_init_psy(struct mt6375_chg_data *ddata)
 {
 	struct mt6375_chg_platform_data *pdata = dev_get_platdata(ddata->dev);
@@ -2800,6 +2822,7 @@ static int mt6375_chg_init_psy(struct mt6375_chg_data *ddata)
 		.of_node = ddata->dev->of_node,
 		.supplied_to = mt6375_psy_supplied_to,
 		.num_supplicants = ARRAY_SIZE(mt6375_psy_supplied_to),
+		.attr_grp = mt6375_chg_psy_sysfs_groups,
 	};
 
 	mt_dbg(ddata->dev, "%s: entry. Init power supply now.\n", __func__);
@@ -2965,6 +2988,23 @@ static ssize_t shipping_mode_store(struct device *dev,
 }
 static const DEVICE_ATTR_WO(shipping_mode);
 
+static int mt6375_enable_tm(struct mt6375_chg_data *ddata, bool en)
+{
+	u8 tm_pascode[] = { 0x69, 0x96, 0x63, 0x75 };
+	int ret = 0;
+
+	mutex_lock(&ddata->hm_lock);
+	if (en)
+		ret = regmap_bulk_write(ddata->rmap, MT6375_REG_TM_PAS_CODE1,
+					tm_pascode, ARRAY_SIZE(tm_pascode));
+	else
+		ret = regmap_write(ddata->rmap, MT6375_REG_TM_PAS_CODE1, 0);
+
+	mutex_unlock(&ddata->hm_lock);
+
+	return ret;
+}
+
 static int mt6375_chg_probe(struct platform_device *pdev)
 {
 	int i, ret;
@@ -2982,6 +3022,18 @@ static int mt6375_chg_probe(struct platform_device *pdev)
 		dev_err(dev, "failed to get regmap\n");
 		return -ENODEV;
 	}
+
+	ret = mt6375_enable_tm(ddata, true);
+	if (ret)
+		dev_info(dev, "%s, Failed to enable tm (ret:%d)\n", __func__, ret);
+
+	ret = regmap_bulk_read(ddata->rmap, MT6375_REG_DIE_X, &ddata->ecid_val, 3);
+	if (ret)
+		dev_info(dev, "%s, Failed to get ecid data (ret:%d)\n", __func__, ret);
+
+	ret = mt6375_enable_tm(ddata, false);
+	if (ret)
+		dev_info(dev, "%s, Failed to disable tm (ret:%d)\n", __func__, ret);
 
 	for (i = 0; i < F_MAX; i++) {
 		ddata->rmap_fields[i] = devm_regmap_field_alloc(dev,

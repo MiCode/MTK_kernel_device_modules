@@ -103,6 +103,7 @@ extern unsigned int dbg_log_level;
 #define MT6379_REG_CHRD_CTRL2		(0x194)
 
 /* For store icc calibrated result */
+#define MT6379_REG_DIE_X		(0x305)
 #define MT6379_REG_WAFER_ID		(0x307)
 #define MT6379_REG_TM_SAVED_ICC_ORIGIN	(0x380)
 #define MT6379_REG_TM_TBTAD		(0x3CB)
@@ -130,7 +131,7 @@ extern unsigned int dbg_log_level;
 enum {
 	CHARGER_ID_MT6379,
 	CHARGER_ID_MT6720,
-	CHARGER_ID_MAX,
+	CHARGER_ID_MAX
 };
 
 enum mt6379_charger_reg_field {
@@ -445,6 +446,7 @@ struct mt6379_charger_data {
 	enum mt6379_chip_rev rev;
 	u32 waferid;
 	u8 id; /* mt6379 or mt6720 */
+	u8 ecid_val[3];
 };
 
 extern int mt6379_charger_init_chgdev(struct mt6379_charger_data *cdata);
@@ -455,56 +457,7 @@ extern int mt6379_charger_field_get(struct mt6379_charger_data *cdata,
 extern int mt6379_charger_fsw_control(struct mt6379_charger_data *cdata);
 extern int mt6379_charger_set_non_switching_setting(struct mt6379_charger_data *cdata);
 
-static inline int mt6379_enable_tm(struct mt6379_charger_data *cdata, bool en)
-{
-	u8 tm_pascode[] = { 0x69, 0x96, 0x63, 0x79 };
-	int ret = 0;
-
-	if (cdata->id == CHARGER_ID_MT6720) {
-		tm_pascode[2] = 0x67;
-		tm_pascode[3] = 0x20;
-	}
-
-	mutex_lock(&cdata->tm_lock);
-	if (en) {
-		if (cdata->tm_use_cnt == 0) {
-			ret = regmap_bulk_write(cdata->rmap, MT6379_REG_TM_PAS_CODE1,
-						tm_pascode, ARRAY_SIZE(tm_pascode));
-			if (ret < 0)
-				goto out;
-		}
-		cdata->tm_use_cnt++;
-	} else {
-		if (cdata->tm_use_cnt == 1) {
-			ret = regmap_write(cdata->rmap, MT6379_REG_TM_PAS_CODE1, 0);
-			if (ret < 0)
-				goto out;
-		}
-		if (cdata->tm_use_cnt > 0)
-			cdata->tm_use_cnt--;
-	}
-out:
-	mutex_unlock(&cdata->tm_lock);
-	return ret;
-}
-
-static inline enum mt6379_chip_rev mt6379_charger_get_chip_rev(struct mt6379_charger_data *cdata)
-{
-	enum mt6379_chip_rev rev = MT6379_CHIP_REV_E4;
-	int ret;
-	u32 val;
-
-	ret = regmap_read(cdata->rmap, MT6379_REG_DEV_INFO, &val);
-	if (ret) {
-		dev_info(cdata->dev, "%s, Failed to get dev_info, use default rev%d\n",
-			 __func__, rev);
-		return rev;
-	}
-
-	val = FIELD_GET(MT6379_CHIP_REV_MSK, val);
-	rev = val < MT6379_CHIP_REV_MAX ? (enum mt6379_chip_rev)val : rev;
-
-	return rev;
-}
+extern int mt6379_enable_tm(struct mt6379_charger_data *cdata, bool en);
+extern enum mt6379_chip_rev mt6379_charger_get_chip_rev(struct mt6379_charger_data *cdata);
 
 #endif /* __LINUX_MT6379_CHARGER_H */

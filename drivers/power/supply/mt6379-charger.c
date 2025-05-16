@@ -447,6 +447,58 @@ int mt6379_charger_field_set(struct mt6379_charger_data *cdata, enum mt6379_char
 	return regmap_field_write(cdata->rmap_fields[idx], val);
 }
 
+int mt6379_enable_tm(struct mt6379_charger_data *cdata, bool en)
+{
+	u8 tm_pascode[] = { 0x69, 0x96, 0x63, 0x79 };
+	int ret = 0;
+
+	if (cdata->id == CHARGER_ID_MT6720) {
+		tm_pascode[2] = 0x67;
+		tm_pascode[3] = 0x20;
+	}
+
+	mutex_lock(&cdata->tm_lock);
+	if (en) {
+		if (cdata->tm_use_cnt == 0) {
+			ret = regmap_bulk_write(cdata->rmap, MT6379_REG_TM_PAS_CODE1,
+						tm_pascode, ARRAY_SIZE(tm_pascode));
+			if (ret < 0)
+				goto out;
+		}
+		cdata->tm_use_cnt++;
+	} else {
+		if (cdata->tm_use_cnt == 1) {
+			ret = regmap_write(cdata->rmap, MT6379_REG_TM_PAS_CODE1, 0);
+			if (ret < 0)
+				goto out;
+		}
+		if (cdata->tm_use_cnt > 0)
+			cdata->tm_use_cnt--;
+	}
+out:
+	mutex_unlock(&cdata->tm_lock);
+	return ret;
+}
+
+enum mt6379_chip_rev mt6379_charger_get_chip_rev(struct mt6379_charger_data *cdata)
+{
+	enum mt6379_chip_rev rev = MT6379_CHIP_REV_E4;
+	int ret;
+	u32 val;
+
+	ret = regmap_read(cdata->rmap, MT6379_REG_DEV_INFO, &val);
+	if (ret) {
+		dev_info(cdata->dev, "%s, Failed to get dev_info, use default rev%d\n",
+			 __func__, rev);
+		return rev;
+	}
+
+	val = FIELD_GET(MT6379_CHIP_REV_MSK, val);
+	rev = val < MT6379_CHIP_REV_MAX ? (enum mt6379_chip_rev)val : rev;
+
+	return rev;
+}
+
 static const struct mt6379_charger_platform_data mt6379_charger_pdata_def = {
 	.aicr = 3225,
 	.mivr = 4400,
@@ -1184,6 +1236,20 @@ static const struct power_supply_desc mt6379_charger_psy_desc = {
 	.set_property = mt6379_charger_set_property,
 	.property_is_writeable = mt6379_charger_property_is_writeable,
 };
+
+static ssize_t ecid_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct mt6379_charger_data *cdata = power_supply_get_drvdata(to_power_supply(dev));
+
+	dev_info(dev, "%s, %s_ECID=0x%02X,0x%02X,0x%02X\n",
+		 __func__, cdata->id == CHARGER_ID_MT6720 ? "MT6720" : "MT6379",
+		 cdata->ecid_val[0], cdata->ecid_val[1], cdata->ecid_val[2]);
+
+	return sysfs_emit(buf, "%s_ECID_0x%02X_0x%02X_0x%02X\n",
+			  cdata->id == CHARGER_ID_MT6720 ? "MT6720" : "MT6379",
+			  cdata->ecid_val[0], cdata->ecid_val[1], cdata->ecid_val[2]);
+}
+static DEVICE_ATTR_RO(ecid);
 
 static int mt6379_set_shipping_mode(struct mt6379_charger_data *cdata)
 {
@@ -2109,6 +2175,7 @@ static DEVICE_ATTR_WO(test_mode);
 
 static struct attribute *mt6379_charger_psy_sysfs_attrs[] = {
 	&dev_attr_bypass_mode.attr,
+	&dev_attr_ecid.attr,
 	&dev_attr_shipping_mode.attr,
 	&dev_attr_bypass_iq.attr,
 	&dev_attr_icc_cali.attr,
@@ -3897,6 +3964,18 @@ static int mt6379_charger_probe(struct platform_device *pdev)
 		dev_info(dev, "%s, Failed to init mutex\n", __func__);
 		return ret;
 	}
+
+	ret = mt6379_enable_tm(cdata, true);
+	if (ret)
+		dev_info(dev, "%s, Failed to enable tm (ret:%d)\n", __func__, ret);
+
+	ret = regmap_bulk_read(cdata->rmap, MT6379_REG_DIE_X, &cdata->ecid_val, 3);
+	if (ret)
+		dev_info(dev, "%s, Failed to get ecid data (ret:%d)\n", __func__, ret);
+
+	ret = mt6379_enable_tm(cdata, false);
+	if (ret)
+		dev_info(dev, "%s, Failed to disable tm (ret:%d)\n", __func__, ret);
 
 	cdata->wq = create_singlethread_workqueue(dev_name(cdata->dev));
 	if (!cdata->wq) {
