@@ -39,6 +39,7 @@
 #include "pcm.h"
 
 #include "xhci.h"
+#include "xhci-debugfs.h"
 #include "xhci-mtk.h"
 #include "quirks.h"
 
@@ -1354,6 +1355,8 @@ static int __init xhci_mtk_init(void)
 {
 	int ret;
 
+	xhci_debugfs_create_root();
+
 	xhci_init_driver_(&xhci_mtk_hc_driver, &xhci_mtk_overrides);
 	ret = platform_driver_register(&mtk_xhci_p2_driver);
 	if (ret < 0)
@@ -1367,6 +1370,8 @@ module_init(xhci_mtk_init);
 
 static void __exit xhci_mtk_exit(void)
 {
+	xhci_debugfs_remove_root();
+
 	platform_driver_unregister(&mtk_xhci_p2_driver);
 	platform_driver_unregister(&mtk_xhci_p1_driver);
 	platform_driver_unregister(&mtk_xhci_driver);

@@ -714,7 +714,7 @@ void xhci_debugfs_exit(struct xhci_hcd *xhci)
 
 void __init xhci_debugfs_create_root(void)
 {
-	xhci_debugfs_root = debugfs_create_dir("xhci", usb_debug_root);
+	xhci_debugfs_root = debugfs_create_dir("xhci-mtk", usb_debug_root);
 }
 
 void __exit xhci_debugfs_remove_root(void)
