@@ -26,6 +26,8 @@
 #include <linux/sched.h>
 #include <linux/wait.h>
 #include <linux/mm.h>
+#include <linux/cpumask.h>
+#include <linux/bitmap.h>
 #if KERNEL_VERSION(4, 11, 0) <= LINUX_VERSION_CODE
 #include <linux/sched/clock.h>	/* local_clock */
 #endif
@@ -150,9 +152,9 @@ enum counter_id {
 	TEE_WORKER_COUNTER_RESUME
 };
 
-static long get_tee_affinity(void)
+static unsigned long get_tee_affinity(void)
 {
-	return atomic_read(&l_ctx.tee_affinity);
+	return (unsigned long)atomic_read(&l_ctx.tee_affinity);
 }
 
 static u32 get_workers(void)
@@ -375,6 +377,8 @@ int tee_set_affinity(cpumask_t *old_affinity)
 {
 	int ret = 0;
 	cpumask_t local_old_affinity;
+	cpumask_t mask;
+	unsigned int cpu;
 	unsigned long affinity = get_tee_affinity();
 #if KERNEL_VERSION(4, 0, 0) > LINUX_VERSION_CODE
 	char buf_aff[64];
@@ -408,15 +412,22 @@ int tee_set_affinity(cpumask_t *old_affinity)
 	/* we only change affinity if current affinity is not
 	 * a subset of requested TEE affinity
 	 */
+	cpumask_clear(&mask);
+	for_each_set_bit(cpu, &affinity, BITS_PER_LONG) {
+		if (cpu < nr_cpu_ids)
+			cpumask_set_cpu(cpu, &mask);
+		else
+			mc_dev_warn("Invalid CPU %u (max=%d)\n", cpu, nr_cpu_ids);
+	}
 	l_ctx.stat_set_affinity++;
-	if (!cpumask_subset(&local_old_affinity, to_cpumask(&affinity))) {
+	if (!cpumask_subset(&local_old_affinity, &mask)) {
 #ifdef MTK_ADAPTED
-		if (set_cpus_allowed_ptr(current, to_cpumask(&affinity)) != 0)
+		if (set_cpus_allowed_ptr(current, &mask) != 0)
 			mc_dev_devel("set cpus affinity failed");
 		l_ctx.stat_set_cpu_allowed++;
 #else
 		int affinity_tries = 0;
-		ret = set_cpus_allowed_ptr(current, to_cpumask(&affinity));
+		ret = set_cpus_allowed_ptr(current, &mask);
 		/* set affinity may fail if CPU has been disconnected.
 		 * may not be fatal, just retry few time before exit...
 		 */
@@ -1829,6 +1840,8 @@ int nq_cpu_off(unsigned int cpu)
 	unsigned long tee_affinity = get_tee_affinity();
 	unsigned long new_affinity = tee_affinity & (~(1 << cpu));
 	cpumask_t old_affinity;
+	cpumask_t mask;
+	unsigned int i;
 
 	mc_dev_devel("%s cpu %d tee_affinity = %lx new_affinity = %lx",
 		     __func__,
@@ -1842,10 +1855,19 @@ int nq_cpu_off(unsigned int cpu)
 	old_affinity = current->cpus_allowed;
 #endif
 
+	cpumask_clear(&mask);
+	for_each_set_bit(i, &new_affinity, BITS_PER_LONG) {
+		if (i < nr_cpu_ids)
+			cpumask_set_cpu(i, &mask);
+		else
+			mc_dev_warn("Invalid CPU %u (max=%d)\n", i, nr_cpu_ids);
+	}
+	cpumask_test_and_clear_cpu(cpu, &mask);
+
 	/* No need to check the threads's affinity flags as this handle is
 	 * called by a kernel thread
 	 */
-	set_cpus_allowed_ptr(current, to_cpumask(&new_affinity));
+	set_cpus_allowed_ptr(current, &mask);
 
 	err = fc_cpu_off();
 	set_cpus_allowed_ptr(current, &old_affinity);
