@@ -2999,6 +2999,11 @@ static void cmdq_mdp_begin_task_virtual(struct cmdqRecStruct *handle,
 				isp_throughput,
 				isp_curr_bandwidth);
 
+			cmdq_mdp_get_func()->qosCheckBWLimit(thread_id,
+				mdp_curr_pmqos->qos2_isp_port[i],
+				mdp_curr_pmqos->qos2_isp_bandwidth[i],
+				isp_curr_bandwidth);
+
 			CMDQ_LOG_PMQOS(
 				"[%d]begin task, update target isp-bw of port[%d](0x%x) from %u to %u\n",
 				thread_id, i,
@@ -3295,6 +3300,12 @@ static void cmdq_mdp_end_task_virtual(struct cmdqRecStruct *handle,
 				target_pmqos->isp_total_pixel,
 				isp_throughput,
 				isp_curr_bandwidth);
+
+			cmdq_mdp_get_func()->qosCheckBWLimit(thread_id,
+				mdp_curr_pmqos->qos2_isp_port[i],
+				mdp_curr_pmqos->qos2_isp_bandwidth[i],
+				isp_curr_bandwidth);
+
 			CMDQ_LOG_PMQOS(
 				"[%d]end task, update target isp-bw of port[%d](0x%x) from %u to %u\n",
 				thread_id, i,
@@ -3418,6 +3429,11 @@ static void *mdp_qos_get_path_virtual(u32 thread_id, u32 port)
 }
 
 static void mdp_qos_clear_all_virtual(u32 thread_id)
+{
+}
+
+static void mdp_qos_check_bw_limit_virtual(u32 thread_id,
+	u32 port, u32 user_bw, u32 set_bw)
 {
 }
 
@@ -3908,6 +3924,7 @@ void cmdq_mdp_virtual_function_setting(void)
 	pFunc->qosGetPath = mdp_qos_get_path_virtual;
 	pFunc->qosClearAll = mdp_qos_clear_all_virtual;
 	pFunc->qosClearAllIsp = mdp_qos_clear_all_virtual;
+	pFunc->qosCheckBWLimit = mdp_qos_check_bw_limit_virtual;
 	pFunc->getGroupMax = mdp_get_dummy;
 	pFunc->getGroupIsp = mdp_get_dummy_isp;
 	pFunc->getGroupMdp = mdp_get_dummy_mdp;
