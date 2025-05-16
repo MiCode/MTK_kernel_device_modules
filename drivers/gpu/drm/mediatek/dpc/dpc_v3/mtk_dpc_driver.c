@@ -54,6 +54,8 @@
 
 int debug_mmp = 1;
 module_param(debug_mmp, int, 0644);
+int debug_trace = 1;
+module_param(debug_trace, int, 0644);
 int debug_dvfs;
 module_param(debug_dvfs, int, 0644);
 int debug_irq = BIT(0) | BIT(7);
@@ -124,10 +126,22 @@ static atomic_t g_user_17 = ATOMIC_INIT(0);
 
 static const char trace_buf_mml_on[] = "C|-65536|MML1_power|1\n";
 static const char trace_buf_mml_off[] = "C|-65536|MML1_power|0\n";
+static const char * const trace_buf_keep[4][2] = {
+	{"B|-65536|vidle_keep_0\n", "E|-65536|vidle_keep_0\n"},
+	{"B|-65536|vidle_keep_1\n", "E|-65536|vidle_keep_1\n"},
+	{"B|-65536|vidle_keep_2\n", "E|-65536|vidle_keep_2\n"},
+	{"B|-65536|vidle_keep_3\n", "E|-65536|vidle_keep_3\n"}};
+static const char * const trace_buf_release[4][2] = {
+	{"B|-65536|vidle_release_0\n", "E|-65536|vidle_release_0\n"},
+	{"B|-65536|vidle_release_1\n", "E|-65536|vidle_release_1\n"},
+	{"B|-65536|vidle_release_2\n", "E|-65536|vidle_release_2\n"},
+	{"B|-65536|vidle_release_3\n", "E|-65536|vidle_release_3\n"}};
+
 static noinline int tracing_mark_write(const char buf[])
 {
 #ifdef CONFIG_TRACING
-	trace_puts(buf);
+	if (debug_trace)
+		trace_puts(buf);
 #endif
 	return 0;
 }
@@ -471,7 +485,7 @@ int dpc_buck_status(int op)
 			DPCERR("voter 0:%#x 6:%#x G:%#x", v1, v2, v3);
 		}
 	} else if (op == 1) {
-		writel(U32_MAX, dpc_base + DISP_DPC_INTSTA_INTF_PWR_RDY_STATE);
+		writel(0, dpc_base + DISP_DPC_INTSTA_INTF_PWR_RDY_STATE);
 		atomic_set_release(&buck_ref, 1);
 	} else
 		return atomic_read(&buck_ref);
@@ -2012,15 +2026,15 @@ irqreturn_t mt6993_irq_handler(int irq, void *dev_id)
 	}
 
 	if (mtcmos_busy)
-		writel(~mtcmos_busy, dpc_base + DISP_DPC_INTSTA_MTCMOS_BUSY);
+		writel(0, dpc_base + DISP_DPC_INTSTA_MTCMOS_BUSY);
 	if (mtcmos_sta)
-		writel(~mtcmos_sta, dpc_base + DISP_DPC_INTSTA_MTCMOS_ON_OFF);
+		writel(0, dpc_base + DISP_DPC_INTSTA_MTCMOS_ON_OFF);
 	if (err_sta)
-		writel(~err_sta, dpc_base + DISP_DPC_INTSTA_DISP_PM_CFG_ERROR);
+		writel(0, dpc_base + DISP_DPC_INTSTA_DISP_PM_CFG_ERROR);
 	if (dt_sta)
-		writel(~dt_sta, dpc_base + DISP_DPC_INTSTA_DT_TE_THREAD);
+		writel(0, dpc_base + DISP_DPC_INTSTA_DT_TE_THREAD);
 	if (pwr_rdy)
-		writel(~pwr_rdy, dpc_base + DISP_DPC_INTSTA_INTF_PWR_RDY_STATE);
+		writel(0, dpc_base + DISP_DPC_INTSTA_INTF_PWR_RDY_STATE);
 
 	if (err_sta) {
 		dpc_mmp(folder, MMPROFILE_FLAG_PULSE, err_sta, readl(hwccf_global_en));
@@ -2598,6 +2612,7 @@ static int dpc_vidle_power_keep_v3(const enum mtk_vidle_voter_user _user)
 		return ret;
 	}
 
+	tracing_mark_write(trace_buf_keep[0][0]);
 	mutex_lock(&g_priv->excp_lock);
 
 	switch (user) {
@@ -2621,13 +2636,23 @@ static int dpc_vidle_power_keep_v3(const enum mtk_vidle_voter_user _user)
 		break;
 	}
 
+	tracing_mark_write(trace_buf_keep[1][0]);
 	dpc_mminfra_on_off(VOTE_SET, user);
+
+	tracing_mark_write(trace_buf_keep[2][0]);
 	clk_prepare_enable(g_priv->pwr_clk[0]);
 	clk_prepare_enable(g_priv->pwr_clk[1]);
 	clk_prepare_enable(g_priv->pwr_clk[2]);
+
+	tracing_mark_write(trace_buf_keep[3][0]);
 	dpc_ap_ref_cnt(VOTE_SET, user);
 	writel(0x1, dpc_base + DISP_REG_DPC_DUMMY1);
+
 	mutex_unlock(&g_priv->excp_lock);
+	tracing_mark_write(trace_buf_keep[3][1]);
+	tracing_mark_write(trace_buf_keep[2][1]);
+	tracing_mark_write(trace_buf_keep[1][1]);
+	tracing_mark_write(trace_buf_keep[0][1]);
 
 	return ret;
 }
@@ -2663,6 +2688,7 @@ static void dpc_vidle_power_release_v3(const enum mtk_vidle_voter_user _user)
 		return;
 	}
 
+	tracing_mark_write(trace_buf_release[0][0]);
 	mutex_lock(&g_priv->excp_lock);
 
 	switch (user) {
@@ -2686,13 +2712,22 @@ static void dpc_vidle_power_release_v3(const enum mtk_vidle_voter_user _user)
 		break;
 	}
 
+	tracing_mark_write(trace_buf_release[1][0]);
 	dpc_ap_ref_cnt(VOTE_CLR, user);
+
+	tracing_mark_write(trace_buf_release[2][0]);
 	clk_disable_unprepare(g_priv->pwr_clk[2]);
 	clk_disable_unprepare(g_priv->pwr_clk[1]);
 	clk_disable_unprepare(g_priv->pwr_clk[0]);
+
+	tracing_mark_write(trace_buf_release[3][0]);
 	dpc_mminfra_on_off(VOTE_CLR, user);
 
 	mutex_unlock(&g_priv->excp_lock);
+	tracing_mark_write(trace_buf_release[3][1]);
+	tracing_mark_write(trace_buf_release[2][1]);
+	tracing_mark_write(trace_buf_release[1][1]);
+	tracing_mark_write(trace_buf_release[0][1]);
 
 	return;
 }
@@ -3096,7 +3131,8 @@ static void dpc_analysis_v3(void)
 {
 	char msg[512] = {0};
 	int written = 0;
-	struct timespec64 ts = {0};
+//	uint64_t time;
+//	unsigned long rem_nsec;
 	int i;
 
 	if (!dpc_is_power_on_v2()) {
@@ -3107,13 +3143,17 @@ static void dpc_analysis_v3(void)
 	if (dpc_pm_ctrl(true))
 		return;
 
-	ktime_get_ts64(&ts);
-	written = scnprintf(msg, 512, "[%lu.%06lu]:", (unsigned long)ts.tv_sec,
-		(unsigned long)DO_COMMMON_MOD(DO_COMMON_DIV(ts.tv_nsec, NSEC_PER_USEC), 1000000));
+//	time = sched_clock();
+//	rem_nsec = do_div(time, NSEC_PER_SEC);
+//	written = scnprintf(msg, 512, "[%5lu.%06lu]",
+//			(unsigned long)time, DO_COMMON_DIV(rem_nsec, NSEC_PER_USEC));
 
-	written += scnprintf(msg + written, 512 - written,
-		"vidle(%#x) dpc_en(%#x) voter(%#x) ",
-		g_priv->vidle_mask, readl(dpc_base), readl(g_priv->voter_set_va));
+	written = scnprintf(msg + written, 512 - written,
+		"caps(%#x) dpc_en(%#x) voter(%#x) SWHW(%#x) 0(%#x) 6(%#x)",
+		g_priv->vidle_mask, readl(dpc_base), readl(mmpc_dummy_voter),
+		readl(hwccf_mtcmos_en),
+		readl(hwccf_xpu0_local_en),
+		readl(hwccf_xpu6_local_en));
 
 	written += scnprintf(msg + written, 512 - written,
 		"vdisp[cfg val](%#04x %#04x)(%#04x %#04x) swreq4(%#x) disp_sel(%#x) ",
@@ -3139,8 +3179,7 @@ static void dpc_analysis_v3(void)
 
 	if (unlikely(dump_to_kmsg))
 		DPCDUMP("%s", msg);
-	else
-		mtk_dprec_logger_pr(DPREC_LOGGER_DUMP, "%s\n", msg);
+	mtk_dprec_logger_pr(DPREC_LOGGER_DUMP, "%s\n", msg);
 
 	written = scnprintf(msg, 512, "mtcmos(%#x %#x %#x %#x %#x) ",
 		readl(dpc_base + g_priv->mtcmos_cfg[DPC3_SUBSYS_OVL0].cfg),
@@ -3169,8 +3208,7 @@ static void dpc_analysis_v3(void)
 
 	if (unlikely(dump_to_kmsg))
 		DPCDUMP("%s", msg);
-	else
-		mtk_dprec_logger_pr(DPREC_LOGGER_DUMP, "%s\n", msg);
+	mtk_dprec_logger_pr(DPREC_LOGGER_DUMP, "%s\n", msg);
 
 	dpc_pm_ctrl(false);
 	// clkchk_external_dump();
@@ -3449,7 +3487,7 @@ static void process_dbg_opt(const char *opt)
 	} else if (strncmp(opt, "dump", 4) == 0) {
 		dpc_dump();
 	} else if (strncmp(opt, "analysis", 8) == 0) {
-		dpc_analysis_v2();
+		g_priv->analysis();
 	} else if (strncmp(opt, "thread:", 7) == 0) {
 		ret = sscanf(opt, "thread:%u\n", &v1);
 		if (ret != 1) {
