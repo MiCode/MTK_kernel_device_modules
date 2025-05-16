@@ -380,9 +380,7 @@ static void enc_timeout_dump(struct mtk_vcodec_ctx *ctx, struct venc_frm_buf *pf
 	struct venc_vcu_config *pconfig = &inst->vsi->config;
 	char *pbuf;
 
-	if (pfrm->fb_addr[0].va == NULL)
-		pfrm->fb_addr[0].va = vb2_plane_vaddr(src_vb, 0) + (size_t)src_vb->planes[0].data_offset;
-
+	pfrm->fb_addr[0].va = vb2_plane_vaddr(src_vb, 0) + (size_t)src_vb->planes[0].data_offset;
 	if (pfrm->fb_addr[0].va == NULL)
 		return;
 
