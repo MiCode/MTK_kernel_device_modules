@@ -1001,7 +1001,7 @@ int fpsgo_other2comp_report_workload(int tgid, int render_tid, unsigned long lon
 }
 EXPORT_SYMBOL(fpsgo_other2comp_report_workload);
 
-int fpsgo_other2comp_set_quedeq_ts(int tgid, int render_tid, unsigned long long buffer_id,
+int fpsgo_other2comp_set_timestamp(int tgid, int render_tid, unsigned long long buffer_id,
 	int flag, unsigned long long ts)
 {
 	int ret = 0;
@@ -1013,6 +1013,8 @@ int fpsgo_other2comp_set_quedeq_ts(int tgid, int render_tid, unsigned long long 
 		ret = -1;
 		goto out;
 	}
+
+	fpsgo_thread_lock(&iter->thr_mlock);
 	switch (flag) {
 	case FPSGO_DEQUEUE_START:
 		iter->t_dequeue_start = ts;
@@ -1026,17 +1028,21 @@ int fpsgo_other2comp_set_quedeq_ts(int tgid, int render_tid, unsigned long long 
 	case FPSGO_ENQUEUE_END:
 		iter->t_enqueue_end = ts;
 		break;
+	case FPSGO_BUFFER_QUOTA:
+		iter->buffer_quota_ts = ts;
+		break;
 	default:
 		ret = -1;
-		goto out;
+		break;
 	}
+	fpsgo_thread_unlock(&iter->thr_mlock);
 
 out:
 	fpsgo_render_tree_unlock(__func__);
 
 	return ret;
 }
-EXPORT_SYMBOL(fpsgo_other2comp_set_quedeq_ts);
+EXPORT_SYMBOL(fpsgo_other2comp_set_timestamp);
 
 /*
  * General API for notify FPSGO control

@@ -6608,6 +6608,38 @@ void fpsgo_comp2fbt_deq_end(struct render_info *thr,
 	}
 }
 
+int fpsgo_other2fbt_deq_end(int tgid, int render_tid, unsigned long long buffer_id)
+{
+	int ret = 0;
+	struct render_info *iter = NULL;
+	struct fbt_jerk *jerk;
+
+	fpsgo_render_tree_lock(__func__);
+	iter = fpsgo_search_and_add_render_info(render_tid, buffer_id, 0);
+	if (!iter) {
+		ret = -1;
+		goto out;
+	}
+	if (!fbt_is_enable())
+		goto out;
+
+	fpsgo_thread_lock(&iter->thr_mlock);
+	jerk = &(iter->boost_info.proc.jerks[
+			iter->boost_info.proc.active_jerk_id]);
+
+	if (jerk->postpone) {
+		jerk->postpone = 0;
+		schedule_work(&jerk->work);
+	}
+	fpsgo_thread_unlock(&iter->thr_mlock);
+
+out:
+	fpsgo_render_tree_unlock(__func__);
+
+	return ret;
+}
+EXPORT_SYMBOL(fpsgo_other2fbt_deq_end);
+
 int fpsgo_base2fbt_node_init(struct render_info *obj)
 {
 	int i;

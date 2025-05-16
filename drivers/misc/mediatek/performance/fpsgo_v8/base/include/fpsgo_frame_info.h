@@ -10,11 +10,12 @@
 #define FPSGO_MAX_RENDER_INFO_SIZE 30
 #define FPSGO_MAX_TASK_NUM 100
 
-enum FPSGO_QUEDEQUE_FLAG {
+enum FPSGO_SET_TIMESTAMP_FLAG {
 	FPSGO_DEQUEUE_START = 0,
 	FPSGO_DEQUEUE_END = 1,
 	FPSGO_ENQUEUE_START = 2,
 	FPSGO_ENQUEUE_END = 3,
+	FPSGO_BUFFER_QUOTA = 4,
 };
 
 enum GET_FPSGO_FRAME_INFO {
@@ -38,6 +39,7 @@ enum GET_FPSGO_FRAME_INFO {
 	GET_FPSGO_QUEUE_END = 17,
 	GET_FPSGO_DEQUEUE_START = 18,
 	GET_FPSGO_DEQUEUE_END = 19,
+	GET_FPSGO_BUFFER_TIME = 20,
 	FPSGO_FRAME_INFO_MAX_NUM
 };
 
@@ -286,7 +288,7 @@ extern int fpsgo_other2comp_user_create(int tgid, int render_tid, unsigned long 
 	int *dep_arr, int dep_num, unsigned long long target_time);
 extern int fpsgo_other2comp_report_workload(int tgid, int render_tid, unsigned long long buffer_id,
 	unsigned long long tcpu, unsigned long long ts);
-extern int fpsgo_other2comp_set_quedeq_ts(int tgid, int render_tid, unsigned long long buffer_id,
+extern int fpsgo_other2comp_set_timestamp(int tgid, int render_tid, unsigned long long buffer_id,
 	int flag, unsigned long long ts);
 extern void fpsgo_other2comp_control_resume(int render_tid, unsigned long long buffer_id);
 extern void fpsgo_other2comp_control_pause(int render_tid, unsigned long long buffer_id);
@@ -324,6 +326,7 @@ extern int fpsgo_other2fbt_calculate_frame_loading(long loading,
 extern unsigned int fpsgo_other2fbt_calculate_blc(long aa, unsigned long long target_time,
 	unsigned int blc_when_err, unsigned long long t_q2q, int is_retarget,
 	unsigned int *blc_wt);
+extern int fpsgo_other2fbt_deq_end(int tgid, int render_tid, unsigned long long buffer_id);
 
 extern int (*powerhal2fpsgo_get_fpsgo_frame_info_fp)(int max_num, unsigned long mask,
 	int filter_bypass, int tgid, struct render_frame_info *frame_info_arr);

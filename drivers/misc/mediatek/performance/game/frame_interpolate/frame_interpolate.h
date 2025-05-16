@@ -40,7 +40,7 @@ extern void fpsgo_other2xgf_calculate_dep(int pid, unsigned long long bufID,
 	int skip);
 extern int fpsgo_other2fstb_calculate_target_fps(int policy, int pid,
 	unsigned long long bufID, unsigned long long cur_ts);
-extern int fpsgo_other2comp_set_quedeq_ts(int tgid, int render_tid, unsigned long long buffer_id,
+extern int fpsgo_other2comp_set_timestamp(int tgid, int render_tid, unsigned long long buffer_id,
 	int flag, unsigned long long ts);
 
 #endif  // _FRAME_INTERPOLATION_H_

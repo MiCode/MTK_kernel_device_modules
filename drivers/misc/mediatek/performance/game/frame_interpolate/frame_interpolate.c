@@ -194,7 +194,8 @@ static int game_register_queue_end_cb(int enable, int *is_registered, fpsgo_fram
 	cb_mask = 1 << GET_FPSGO_QUEUE_END |
 		1 << GET_FPSGO_QUEUE_START |
 		1 << GET_FPSGO_DEQUEUE_START |
-		1 << GET_FPSGO_DEQUEUE_END;
+		1 << GET_FPSGO_DEQUEUE_END |
+		1 << GET_FPSGO_BUFFER_TIME;
 
 	switch(enable) {
 	case 0:
@@ -388,15 +389,20 @@ void fpsgo_fi_receive_q2q_cb(unsigned long cmd, struct render_frame_info *iter)
 			iter_thr->is_fpsgo_render_created = 1;
 		}
 
-		if (is_control_frame && test_bit(GET_FPSGO_QUEUE_START, &cmd)) {
-			fpsgo_other2comp_set_quedeq_ts(iter_thr->frame_info.tgid, iter_thr->frame_info.pid,
+		if (test_bit(GET_FPSGO_BUFFER_TIME, &cmd)) {
+			fpsgo_other2comp_set_timestamp(iter_thr->frame_info.tgid, iter_thr->frame_info.pid,
+				iter_thr->frame_info.buffer_id, FPSGO_BUFFER_QUOTA, ts);
+		} else if (is_control_frame && test_bit(GET_FPSGO_QUEUE_START, &cmd)) {
+			fpsgo_other2comp_set_timestamp(iter_thr->frame_info.tgid, iter_thr->frame_info.pid,
 				iter_thr->frame_info.buffer_id, FPSGO_ENQUEUE_START, ts);
 		} else if (is_control_frame && test_bit(GET_FPSGO_DEQUEUE_START, &cmd)) {
-			fpsgo_other2comp_set_quedeq_ts(iter_thr->frame_info.tgid, iter_thr->frame_info.pid,
+			fpsgo_other2comp_set_timestamp(iter_thr->frame_info.tgid, iter_thr->frame_info.pid,
 				iter_thr->frame_info.buffer_id, FPSGO_DEQUEUE_START, ts);
 		} else if (is_control_frame && test_bit(GET_FPSGO_DEQUEUE_END, &cmd)) {
-			fpsgo_other2comp_set_quedeq_ts(iter_thr->frame_info.tgid, iter_thr->frame_info.pid,
+			fpsgo_other2comp_set_timestamp(iter_thr->frame_info.tgid, iter_thr->frame_info.pid,
 				iter_thr->frame_info.buffer_id, FPSGO_DEQUEUE_END, ts);
+			fpsgo_other2fbt_deq_end(iter_thr->frame_info.tgid, iter_thr->frame_info.pid,
+				iter_thr->frame_info.buffer_id);
 		} else if (test_bit(GET_FPSGO_QUEUE_END, &cmd)) {
 			switch_fpsgo_control(0, iter_thr->frame_info.tgid, 0, 0);
 

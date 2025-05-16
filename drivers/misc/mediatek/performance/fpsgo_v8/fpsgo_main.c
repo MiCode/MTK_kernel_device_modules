@@ -183,17 +183,23 @@ static void fpsgo_notifier_wq_cb_swap_buffer(int pid)
 static void fpsgo_notifier_wq_cb_buffer_quota(unsigned long long curr_ts,
 		int pid, int quota, unsigned long long id)
 {
+	unsigned long cb_mask = 0;
+
 	FPSGO_LOGI("[FPSGO_CB] buffer_quota: ts %llu, pid %d,quota %d, id %llu\n",
 		curr_ts, pid, quota, id);
 
 	if (!fpsgo_is_enable())
 		return;
 
+	cb_mask = 1 << GET_FPSGO_BUFFER_TIME;
+
 	fpsgo_ctrl2comp_buffer_count(pid, quota, id);
 
 	// only no buffer count pass, remain origin design
-	if (quota == 1)
+	if (quota == 1) {
+		fpsgo_notify_frame_info_callback(pid, cb_mask, id, NULL);
 		fpsgo_ctrl2fbt_buffer_quota(curr_ts, pid, 0, id);
+	}
 }
 
 
