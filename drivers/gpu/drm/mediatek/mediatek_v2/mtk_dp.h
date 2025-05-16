@@ -206,6 +206,11 @@ enum DPTX_VIDEO_MODE {
 	DPTX_VIDEO_PROGRESSIVE  = 1,
 };
 
+enum HDCP_VER {
+	HDCP_VER_NONE = 0x0,
+	HDCP_VER_1_3 = 0x1,
+	HDCP_VER_2_3 = 0x2,
+};
 
 #define FAKE_DEFAULT_RES 0xFF
 
@@ -322,4 +327,5 @@ void mtk_dp_MacAudioPatternGenEn(bool enable);
 void mtk_dp_intfPatternGenEn(int mode);
 void mtk_dp_force_timing(bool enable, unsigned int mode);
 void dptx_mute_all_command(bool enable);
+void mdrv_DPTx_UpdateHDCPVersion(struct mtk_dp *mtk_dp, bool connect);
 #endif //__MTK_DP__H__

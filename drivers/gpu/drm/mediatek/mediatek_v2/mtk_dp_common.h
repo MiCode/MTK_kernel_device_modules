@@ -281,6 +281,7 @@ struct DPTX_INFO {
 	bool bVideoMute : 1;
 	bool bForceHDCP1x : 1;
 	int fakeRX_mode;
+	bool HDCP_fence : 1;
 
 #ifdef DPTX_HDCP_ENABLE
 	BYTE bAuthStatus;
@@ -380,6 +381,7 @@ struct mtk_dp {
 	int cfg_ver;
 
 	struct FORCE_TIMING force_timing;
+	struct drm_property *hdcp_ver_property;
 };
 
 #endif /*__DRTX_TYPE_H__*/

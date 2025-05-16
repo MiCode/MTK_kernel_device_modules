@@ -1519,6 +1519,7 @@ void mdrv_DPTx_CheckSinkHPDEvent(struct mtk_dp *mtk_dp)
 
 		if (!mtk_dp->bUeventToHwc) {
 			mtk_dp->disp_status = DPTX_DISP_NONE;
+			mdrv_DPTx_UpdateHDCPVersion(mtk_dp, false);
 			mtk_dp_hotplug_uevent(0);
 			mtk_dp->bUeventToHwc = true;
 		}
@@ -1735,6 +1736,7 @@ int mdrv_DPTx_HPD_HandleInThread(struct mtk_dp *mtk_dp)
 			mdelay(20);
 
 			if (mtk_dp->bUeventToHwc) {
+				mdrv_DPTx_UpdateHDCPVersion(mtk_dp, false);
 				mtk_dp_hotplug_uevent(0);
 				mtk_dp->bUeventToHwc = false;
 				mtk_dp->disp_status = DPTX_DISP_NONE;
@@ -2514,6 +2516,11 @@ int mdrv_DPTx_Training_Handler(struct mtk_dp *mtk_dp)
 			mtk_dp->training_state = DPTX_NTSTATE_CHECKTIMING;
 			mtk_dp->dp_ready = true;
 			mhal_DPTx_EnableFEC(mtk_dp, mtk_dp->has_fec);
+#ifdef DPTX_HDCP_ENABLE
+			// Queue the work for HDCP processing
+			mtk_dp->info.HDCP_fence = true;
+			queue_work(mtk_dp->hdcp_wq, &mtk_dp->hdcp_work);
+#endif
 		} else if (ret == DPTX_RETRANING) {
 			ret = DPTX_NOERR;
 		} else {
@@ -2527,18 +2534,29 @@ int mdrv_DPTx_Training_Handler(struct mtk_dp *mtk_dp)
 		}
 		break;
 	case DPTX_NTSTATE_CHECKTIMING:
+#ifdef DPTX_HDCP_ENABLE
+		if (mtk_dp->info.HDCP_fence == false)
+			mtk_dp->training_state = DPTX_NTSTATE_NORMAL;
+		else {
+			msleep(50);
+			break;
+		}
+#else
 		mtk_dp->training_state = DPTX_NTSTATE_NORMAL;
+#endif
+
 		if (mtk_dp->training_info.ubSinkCountNum == 0) {
 			DPTXMSG("no sink count, skip uevent\n");
 			break;
 		}
 
 		if (mtk_dp->bUeventToHwc) {
+			//report HDCP ver
+			mdrv_DPTx_UpdateHDCPVersion(mtk_dp, true);
 			mtk_dp_hotplug_uevent(1);
 			mtk_dp->bUeventToHwc = false;
 		} else
 			DPTXMSG("Skip Uevent(1)\n");
-
 
 		break;
 	case DPTX_NTSTATE_NORMAL:
@@ -2554,12 +2572,41 @@ int mdrv_DPTx_Training_Handler(struct mtk_dp *mtk_dp)
 	return ret;
 }
 
+void mdrv_DPTx_UpdateHDCPVersion(struct mtk_dp *mtk_dp, bool connect)
+{
+	// Set the maximum HDCP version (store the version info in the upper 8 bits)
+	uint64_t version = HDCP_VER_2_3 << 8;
+	int ret;
+
+#ifdef DPTX_HDCP_ENABLE
+	if (connect == true && mtk_dp->info.bAuthStatus == AUTH_PASS) {
+		if (mtk_dp->info.hdcp2_info.bEnable)
+			version |= HDCP_VER_2_3;
+		else
+			version |= HDCP_VER_1_3;
+	} else
+		version |= HDCP_VER_NONE;
+#else
+		// When DPTX_HDCP_ENABLE is not defined, mark as no HDCP support.
+		version |= HDCP_VER_NONE;
+#endif
+	// Print HDCP version value
+	DPTXMSG("HDCP version value: 0x%llx\n", version);
+
+	// Report HDCP version
+	ret = drm_object_property_set_value(&mtk_dp->conn.base,
+			mtk_dp->hdcp_ver_property, version);
+	if (ret)
+		DPTXERR("Failed to set hdcp_ver_property, ret=%d\n", ret);
+}
+
 #ifdef DPTX_HDCP_ENABLE
 void mdrv_DPTx_reAuthentication(struct mtk_dp *mtk_dp)
 {
 	if (!mtk_dp->training_info.bCablePlugIn || !mtk_dp->dp_ready)
 		return;
 
+	mtk_dp->info.HDCP_fence = true;
 	queue_work(mtk_dp->hdcp_wq, &mtk_dp->hdcp_work);
 }
 
@@ -2627,6 +2674,7 @@ end:
 	}
 
 	mutex_unlock(&mtk_dp->hdcp_mutex);
+	mtk_dp->info.HDCP_fence = false;
 }
 
 static void mtk_dp_hdcp_check_work(struct work_struct *work)
@@ -2705,11 +2753,9 @@ int mdrv_DPTx_Handle(struct mtk_dp *mtk_dp)
 			mdrv_DPTx_I2S_Audio_Enable(mtk_dp, true);
 		}
 
-		if (mtk_dp->video_enable || mtk_dp->audio_enable)
-			queue_work(mtk_dp->hdcp_wq, &mtk_dp->hdcp_work);
-
 		mtk_dp->state = DPTXSTATE_NORMAL;
 		break;
+
 	case DPTXSTATE_NORMAL:
 		if (mtk_dp->training_state != DPTX_NTSTATE_NORMAL) {
 			mdrv_DPTx_VideoMute(mtk_dp, true);
@@ -4390,6 +4436,7 @@ void mtk_dp_HPDInterruptSet(int bstatus)
 	if (bstatus == HPD_CONNECT && g_mtk_dp->bPowerOn &&
 		g_mtk_dp->bUeventToHwc) {
 		DPTXMSG("force send uevent\n");
+		mdrv_DPTx_UpdateHDCPVersion(g_mtk_dp, true);
 		mtk_dp_hotplug_uevent(1);
 		g_mtk_dp->bUeventToHwc = false;
 	}
@@ -4449,6 +4496,7 @@ void mtk_dp_SWInterruptSet(int bstatus)
 	if (!g_mtk_dp->bPowerOn && bstatus == HPD_DISCONNECT
 		&& g_mtk_dp->disp_status == DPTX_DISP_SUSPEND) {
 		DPTXMSG("System is sleeping, Plug Out\n");
+		mdrv_DPTx_UpdateHDCPVersion(g_mtk_dp, false);
 		mtk_dp_hotplug_uevent(0);
 		g_mtk_dp->disp_status = DPTX_DISP_NONE;
 		mutex_unlock(&dp_lock);
@@ -4535,6 +4583,25 @@ static int mtk_dp_create_workqueue(struct mtk_dp *mtk_dp)
 	return 0;
 }
 
+static void mtk_dp_connector_attach_property(struct drm_connector *conn)
+{
+	static struct drm_property *hdcp_ver_prop;
+	struct mtk_dp *mtk_dp = mtk_dp_ctx_from_conn(conn);
+	int ret;
+
+	if (!hdcp_ver_prop) {
+		hdcp_ver_prop = drm_property_create_range(conn->dev, DRM_MODE_PROP_IMMUTABLE,
+						"HDCP_VER", 0, ULONG_MAX);
+		if (!hdcp_ver_prop)
+			DPTXERR("fail to create hdcp_ver property\n");
+	}
+
+	if (hdcp_ver_prop) {
+		mtk_dp->hdcp_ver_property = hdcp_ver_prop;
+		drm_object_attach_property(&conn->base, mtk_dp->hdcp_ver_property, 0);
+	}
+}
+
 static int mtk_dp_bind(struct device *dev, struct device *master, void *data)
 {
 	struct mtk_dp *mtk_dp = dev_get_drvdata(dev);
@@ -4554,6 +4621,9 @@ static int mtk_dp_bind(struct device *dev, struct device *master, void *data)
 		return ret;
 	}
 	drm_connector_helper_add(&mtk_dp->conn, &mtk_dp_connector_helper_funcs);
+
+	mtk_dp_connector_attach_property(&mtk_dp->conn);
+
 	if (drm_encoder_init(drm, &mtk_dp->enc,	&mtk_dp_enc_funcs,
 		DRM_MODE_ENCODER_DPMST, "DP MST"))
 		goto err_encoder_init;
