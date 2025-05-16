@@ -12,6 +12,7 @@
 #include <linux/smp.h>
 #include <linux/arm-smccc.h>
 #include <linux/perf_event.h>
+#include <linux/kallsyms.h>
 
 #include "cpufreq-dbg-lite.h"
 #include "pf_ctrl.h"
@@ -26,12 +27,12 @@
 
 #define PF_CTRL_DEBUG			0
 
-u32 *g_pf_ctrl_enable;
-u32 *g_pf_ctrl_max_freq;
-u32 *g_pf_ctrl_min_freq;
-u32 *g_pf_ctrl_interval;
-u32 *g_pf_ctrl_buf;
-u32 *g_pf_ctrl_ipc_buf;
+static u32 *g_pf_ctrl_enable;
+static u32 *g_pf_ctrl_max_freq;
+static u32 *g_pf_ctrl_min_freq;
+static u32 *g_pf_ctrl_interval;
+static u32 *g_pf_ctrl_buf;
+static u32 *g_pf_ctrl_ipc_buf;
 
 static DEFINE_MUTEX(pf_ctrl_proc_mutex);
 static int pf_ctrl_enable;
@@ -251,10 +252,8 @@ static int pf_ctrl_enable_proc_show(struct seq_file *m, void *v)
 
 	if (pf_ctrl_en == 0)
 		seq_puts(m, "pf_ctrl is disabled[0]\n");
-	else if (pf_ctrl_en == 1)
-		seq_puts(m, "pf_ctrl is enabled[1]\n");
 	else
-		seq_printf(m, "pf_ctrl is Unknown mode [%d]\n", pf_ctrl_en);
+		seq_printf(m, "pf_ctrl is enabled[%d]\n", pf_ctrl_en);
 
 	if (READ_ONCE(last_pf_dis))
 		seq_printf(m, "pf is turned off, counter=%d\n", pf_counter);
@@ -286,19 +285,35 @@ static int pf_ctrl_setting_check(void)
 	return 0;
 }
 
-int __set_pf_ctrl_enable(bool enable)
+static inline bool __get_pf_ctrl_enable_by_user(unsigned int user)
 {
+	return (READ_ONCE(pf_ctrl_enable) & (1 << user));
+}
+
+static int __set_pf_ctrl_enable(bool enable, unsigned int user)
+{
+	int pf_ctrl_enable_old, pf_ctrl_enable_new;
+
 	if (enable && pf_ctrl_setting_check())
 		return -EINVAL;
 
 	mutex_lock(&pf_ctrl_proc_mutex);
-	WRITE_ONCE(pf_ctrl_enable, enable);
 
-	if (!READ_ONCE(pf_ctrl_enable)) {
-		pr_notice_ratelimited("%s pf_ctrl_enable=false, turn on pf\n", __func__);
+	pf_ctrl_enable_old = READ_ONCE(pf_ctrl_enable);
+	if (enable)
+		pf_ctrl_enable_new = (pf_ctrl_enable_old | (1 << user));
+	else
+		pf_ctrl_enable_new = (pf_ctrl_enable_old & ~(1 << user));
+
+	WRITE_ONCE(pf_ctrl_enable, pf_ctrl_enable_new);
+
+	if (pf_ctrl_enable_old && !pf_ctrl_enable_new)
 		cancel_delayed_work_sync(&pf_top_work);
-	}
-	schedule_delayed_work(&pf_top_work, 0);
+
+	if ((pf_ctrl_enable_old && !pf_ctrl_enable_new) ||
+	    (!pf_ctrl_enable_old && pf_ctrl_enable_new))
+		schedule_delayed_work(&pf_top_work, 0);
+
 	mutex_unlock(&pf_ctrl_proc_mutex);
 
 	return 0;
@@ -308,8 +323,8 @@ int __set_pf_ctrl_enable(bool enable)
 static ssize_t pf_ctrl_enable_proc_write(struct file *file,
 	const char __user *buffer, size_t count, loff_t *pos)
 {
-	unsigned int enable = 0;
-	int rc, ret;
+	int enable, ret;
+	unsigned int user;
 	char *buf = (char *) __get_free_page(GFP_USER);
 
 	if (!buf)
@@ -325,18 +340,26 @@ static ssize_t pf_ctrl_enable_proc_write(struct file *file,
 		return -EINVAL;
 	}
 
-	rc = kstrtoint(buf, 10, &enable);
+	if (sscanf(buf, "%d %u", &enable, &user) != 2) {
+		free_page((unsigned long)buf);
+		return -EINVAL;
+	}
 
-	if (rc < 0)
-		pr_info("Usage: echo (0:disable 1:enable)\n");
-	else if (enable == READ_ONCE(pf_ctrl_enable))
-		pr_info("Duplicated operation!\n");
-	else if (enable == 0 || enable == 1) {
-		ret = __set_pf_ctrl_enable(enable);
-		if (ret) {
-			free_page((unsigned long)buf);
-			return ret;
-		}
+	if (enable < 0 || enable > 1 || user >= PF_CTRL_USER_NUM) {
+		free_page((unsigned long)buf);
+		return -EINVAL;
+	}
+
+	if (enable == __get_pf_ctrl_enable_by_user(user)) {
+		pr_notice_ratelimited("Duplicated operation!\n");
+		free_page((unsigned long)buf);
+		return count;
+	}
+
+	ret = __set_pf_ctrl_enable(enable, user);
+	if (ret) {
+		free_page((unsigned long)buf);
+		return ret;
 	}
 
 	free_page((unsigned long)buf);
@@ -709,23 +732,31 @@ static void pf_main_work(struct work_struct *work)
 		schedule_delayed_work(&pf_top_work, msecs_to_jiffies(pf_ctrl_interval));
 }
 
-bool mtk_get_pf_ctrl_enable(void)
+int mtk_get_pf_ctrl_enable(void)
 {
 	return READ_ONCE(pf_ctrl_enable);
 }
 EXPORT_SYMBOL_GPL(mtk_get_pf_ctrl_enable);
 
-int mtk_set_pf_ctrl_enable(bool enable)
+int mtk_set_pf_ctrl_enable(bool enable, unsigned int user)
 {
+	char caller_info[KSYM_SYMBOL_LEN];
+
 	if (!pf_ctrl_wq)
 		return -EINVAL;
 
-	if (enable == READ_ONCE(pf_ctrl_enable)) {
+	if (user >= PF_CTRL_USER_NUM)
+		return -EINVAL;
+
+	sprint_symbol(caller_info, (unsigned long)__builtin_return_address(0));
+	trace_set_pf_ctrl_enable(READ_ONCE(pf_ctrl_enable), enable, user, caller_info);
+
+	if (enable == __get_pf_ctrl_enable_by_user(user)) {
 		pr_notice_ratelimited("Duplicated operation!\n");
 		return 0;
 	}
 
-	return __set_pf_ctrl_enable(enable);
+	return __set_pf_ctrl_enable(enable, user);
 }
 EXPORT_SYMBOL_GPL(mtk_set_pf_ctrl_enable);
 

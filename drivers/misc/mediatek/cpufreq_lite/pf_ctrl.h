@@ -52,7 +52,14 @@ struct pf_ipc_buf {
 	int tail;
 };
 
+enum pf_ctrl_user {
+	PF_CTRL_USER_VP,
+	PF_CTRL_USER_CAM,
+
+	PF_CTRL_USER_NUM,
+};
+
 int mtk_pf_ctrl_init(void);
 void mtk_pf_ctrl_exit(void);
-bool mtk_get_pf_ctrl_enable(void);
-int mtk_set_pf_ctrl_enable(bool enable);
+int mtk_get_pf_ctrl_enable(void);
+int mtk_set_pf_ctrl_enable(bool enable, unsigned int user);

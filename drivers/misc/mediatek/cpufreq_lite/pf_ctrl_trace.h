@@ -29,6 +29,29 @@ TRACE_EVENT(trigger_pf_work,
 		__entry->pf_off_total_time)
 );
 
+TRACE_EVENT(set_pf_ctrl_enable,
+	TP_PROTO(int pf_ctrl_enable, bool enable, unsigned int user, char *caller),
+	TP_ARGS(pf_ctrl_enable, enable, user, caller),
+
+	TP_STRUCT__entry(
+		__field(int, pf_ctrl_enable)
+		__field(bool, enable)
+		__field(unsigned int, user)
+		__string(caller, caller)
+	),
+	TP_fast_assign(
+		__entry->pf_ctrl_enable = pf_ctrl_enable;
+		__entry->enable = enable;
+		__entry->user = user;
+		__assign_str(caller);
+	),
+	TP_printk("pf_ctrl_enable=%d enable=%d user=%u caller=%s",
+		__entry->pf_ctrl_enable,
+		__entry->enable,
+		__entry->user,
+		__get_str(caller))
+);
+
 #endif /* _PF_CTRL_TRACE_H */
 
 #undef TRACE_INCLUDE_PATH
