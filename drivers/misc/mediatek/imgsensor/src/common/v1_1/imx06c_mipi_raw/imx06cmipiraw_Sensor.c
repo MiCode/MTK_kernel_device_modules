@@ -145,15 +145,15 @@ static struct imgsensor_info_struct imgsensor_info = {
 		.max_framerate = 300,
 	},
 
-	.margin = 48,		/* sensor framelength & shutter margin */
+	.margin = 64,		/* sensor framelength & shutter margin */
 	.min_shutter = 6,	/* min shutter */
-	.min_gain = 73,
-	.max_gain = 4096,
+	.min_gain = 64,
+	.max_gain = 8192,
 	.min_gain_iso = 100,
-	.exp_step = 2,
+	.exp_step = 4,
 	.gain_step = 1,
 	.gain_type = 0,
-	.max_frame_length = 0xffff,
+	.max_frame_length = 0xfffc,
 	.ae_shut_delay_frame = 0,
 	.ae_sensor_gain_delay_frame = 0,
 	.ae_ispGain_delay_frame = 2,	/* isp gain delay frame for AE cycle */
@@ -179,11 +179,11 @@ static struct imgsensor_info_struct imgsensor_info = {
 	/* 0,MIPI_OPHY_NCSI2;  1,MIPI_OPHY_CSI2 */
 	.mipi_sensor_type = MIPI_CPHY, /* 0,MIPI_OPHY_NCSI2; 1,MIPI_OPHY_CSI2 */
 	.mipi_settle_delay_mode = 0,
-	.sensor_output_dataformat = SENSOR_OUTPUT_FORMAT_RAW_4CELL_HW_BAYER_R,
+	.sensor_output_dataformat = SENSOR_OUTPUT_FORMAT_RAW_4CELL_HW_BAYER_B,
 	.mclk = 24, /* mclk value, suggest 24 or 26 for 24Mhz or 26Mhz */
 	.mipi_lane_num = SENSOR_MIPI_3_LANE,
 
-	.i2c_addr_table = {0x34, 0x20, 0x52, 0x66, 0xff},
+	.i2c_addr_table = {0x34, 0xff},
 	/* record sensor support all write id addr,
 	 * only supprt 4 must end with 0xff
 	 */
@@ -440,7 +440,6 @@ static void read_sensor_Cali(void)
 		pr_info("OTP type: No Data, 0x0008 = %d, 0x0009 = %d",
 		read_cmos_eeprom_8(0x0008), read_cmos_eeprom_8(0x0009));
 	}
-
 
 }
 
@@ -725,7 +724,7 @@ static kal_uint16 gain2reg(const kal_uint16 gain)
 {
 	kal_uint16 reg_gain = 0x0;
 
-	reg_gain = 1024 - (1024*64)/gain;
+	reg_gain = (16384 - (16384 * BASEGAIN) / gain);
 	return (kal_uint16) reg_gain;
 }
 
@@ -747,14 +746,7 @@ static kal_uint16 gain2reg(const kal_uint16 gain)
  *************************************************************************/
 static kal_uint16 set_gain(kal_uint16 gain)
 {
-	kal_uint16 reg_gain, max_gain = 64 * BASEGAIN;
-
-	spin_lock(&imgsensor_drv_lock);
-	if (imgsensor.sensor_mode == IMGSENSOR_MODE_CUSTOM3) {
-		/* 48M@30FPS */
-		max_gain = 16 * BASEGAIN;
-	}
-	spin_unlock(&imgsensor_drv_lock);
+	kal_uint16 reg_gain, max_gain = 128 * BASEGAIN;
 
 	if (gain < BASEGAIN || gain > max_gain) {
 		pr_debug("Error max gain setting: %d\n", max_gain);
@@ -4649,7 +4641,7 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 		break;
 	case SENSOR_FEATURE_GET_OFFSET_TO_START_OF_EXPOSURE:
 		if (IS_MT6893(g_platform_id) || IS_MT6885(g_platform_id))
-			*(MUINT32 *)(uintptr_t)(*(feature_data + 1)) = 1500000;
+			*(MUINT32 *)(uintptr_t)(*(feature_data + 1)) = 5693360;
 		break;
 	case SENSOR_FEATURE_GET_PERIOD_BY_SCENARIO:
 		switch (*feature_data) {
@@ -4827,21 +4819,21 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 				(void *)&imgsensor_pd_info_binning,
 				sizeof(struct SET_PD_BLOCK_INFO_T));
 			break;
-		case MSDK_SCENARIO_ID_VIDEO_PREVIEW:  //4000*2600
+		case MSDK_SCENARIO_ID_VIDEO_PREVIEW:  //4096*2304
 			imgsensor_pd_info_binning.i4BlockNumX = 496;
 			imgsensor_pd_info_binning.i4BlockNumY = 162;
 			memcpy((void *)PDAFinfo,
 				(void *)&imgsensor_pd_info_binning,
 				sizeof(struct SET_PD_BLOCK_INFO_T));
 			break;
-		case MSDK_SCENARIO_ID_SLIM_VIDEO: // 4000*2256
+		case MSDK_SCENARIO_ID_SLIM_VIDEO: // 1280*720
 			imgsensor_pd_info_binning.i4BlockNumX = 496;
 			imgsensor_pd_info_binning.i4BlockNumY = 140;
 			memcpy((void *)PDAFinfo,
 				(void *)&imgsensor_pd_info_binning,
 				sizeof(struct SET_PD_BLOCK_INFO_T));
 			break;
-		case MSDK_SCENARIO_ID_CUSTOM1: // 4000*2256
+		case MSDK_SCENARIO_ID_CUSTOM1: // 4096*2304
 			imgsensor_pd_info_binning.i4BlockNumX = 496;
 			imgsensor_pd_info_binning.i4BlockNumY = 162;
 			memcpy((void *)PDAFinfo,
@@ -4861,10 +4853,10 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 		case MSDK_SCENARIO_ID_CAMERA_PREVIEW:
 		case MSDK_SCENARIO_ID_CAMERA_CAPTURE_JPEG:
 		case MSDK_SCENARIO_ID_VIDEO_PREVIEW:
-		case MSDK_SCENARIO_ID_SLIM_VIDEO:
+		case MSDK_SCENARIO_ID_HIGH_SPEED_VIDEO:
 			*(MUINT32 *)(uintptr_t)(*(feature_data+1)) = 1;
 			break;
-		case MSDK_SCENARIO_ID_HIGH_SPEED_VIDEO:
+		case MSDK_SCENARIO_ID_SLIM_VIDEO:
 		default:
 			*(MUINT32 *)(uintptr_t)(*(feature_data+1)) = 0;
 			break;
