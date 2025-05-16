@@ -112,7 +112,7 @@ int mtk_effective_cpu_util_total(int cpu, struct task_struct *p, int dst_cpu, in
 		unsigned long *tsk_min_clp, unsigned long *tsk_max_clp,
 		struct cpumask *sg_cpumask, unsigned long cpu_util_iowait, int curr_task_uclamp)
 {
-	int cpu_util_cfs, cpu_util_eff, cpu_util_mgn, cpu_util_clp, cpu_util_tal;
+	int cpu_util_cfs = 0, cpu_util_eff, cpu_util_mgn, cpu_util_clp, cpu_util_tal;
 	struct task_struct *tsk = NULL;
 	int source = -1;
 
@@ -133,9 +133,11 @@ int mtk_effective_cpu_util_total(int cpu, struct task_struct *p, int dst_cpu, in
 	}
 
 	if (sg_cpumask) { /* sugov */
+		/* TBD:need scx export symbol
 		cpu_util_cfs = scx_cpuperf_target(cpu);
 
 		if (!scx_switched_all())
+		*/
 			cpu_util_cfs += mtk_cpu_util_next(cpu, NULL, -1, 1);
 	} else if (p && !rt_task(p)) /* normal */
 		cpu_util_cfs = mtk_cpu_util_next(cpu, p, dst_cpu, runnable_boost);

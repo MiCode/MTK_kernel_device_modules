@@ -183,7 +183,7 @@ static struct task_struct *choose_task_fair(struct rq *rq)
 	return NULL;
 }
 
-#ifdef CONFIG_SCHED_CLASS_EXT
+/* TBD:need scx export symbol
 static struct task_struct *first_local_task(struct rq *rq)
 {
 	return list_first_entry_or_null(&rq->scx.local_dsq.list,
@@ -215,7 +215,7 @@ static struct task_struct *pick_task_scx_clone(struct rq *rq)
 		}
 	}
 }
-#endif
+*/
 
 #define STOP 0x1
 #define DL 0x2
@@ -247,7 +247,7 @@ static struct task_struct *mtk_pick_migrate_task(struct rq *rq)
 		goto out;
 	}
 
-#ifdef CONFIG_SCHED_CLASS_EXT
+/* TBD:need scx export symbol
 	if (!scx_switched_all()) {
 		next = choose_task_fair(rq);
 		if (next) {
@@ -263,13 +263,12 @@ static struct task_struct *mtk_pick_migrate_task(struct rq *rq)
 			goto out;
 		}
 	}
-#else
+*/
 	next = choose_task_fair(rq);
 	if (next) {
 		class_num = FAIR;
 		goto out;
 	}
-#endif
 
 	if (next == NULL) {
 		next = rq->idle;
