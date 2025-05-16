@@ -19,6 +19,7 @@ ccflags-y += -I$(srctree)/include/
 ccflags-y += -I$(srctree)/include/scsi/
 ccflags-y += -I$(srctree)/include/ufs/
 ccflags-y += -I$(srctree)/drivers/mmc/core
+ccflags-y += -I$(srctree)/drivers/mmc/host
 ccflags-y += -I$(srctree)/drivers/ufs/core
 ccflags-y += -I$(srctree)/fs/fuse/
 

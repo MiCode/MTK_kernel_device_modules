@@ -46,6 +46,7 @@ define_mgk_ddk_ko(
 	header_deps = [
 		"//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:headers".format(kernel_version),
 		"//kernel_device_modules-{}/drivers/ufs:headers".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/mmc/host:msdc_headers".format(kernel_version),
 	],
 
 	hdrs = [
@@ -97,10 +98,12 @@ define_mgk_ddk_ko(
 		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/",
 		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
 		"-I$(DEVICE_MODULES_PATH)/drivers/ufs/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/mmc/host/",
 		"-I$(srctree)/include/",
 		"-I$(srctree)/include/scsi/",
 		"-I$(srctree)/include/ufs/",
 		"-I$(srctree)/drivers/mmc/core",
+		"-I$(srctree)/drivers/mmc/host",
 		"-I$(srctree)/fs/fuse/",
 	],
 )

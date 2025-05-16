@@ -141,6 +141,7 @@ define_mgk_ddk_ko(
 		"//kernel_device_modules-{}/drivers/char/rpmb:rpmb-mtk".format(kernel_version),
 		"//kernel_device_modules-{}/drivers/mmc/host:mtk-mmc-dbg".format(kernel_version),
 		"//kernel_device_modules-{}/drivers/pinctrl/mediatek:pinctrl-mtk-common-v2_debug".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/soc/mediatek:mtk-dvfsrc".format(kernel_version),
 	],
 	includes = [
 		".",

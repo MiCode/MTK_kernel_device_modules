@@ -72,6 +72,7 @@ int mtk_btag_mictx_register(struct mtk_btag_mictx_id *mictx_id,
 			    const char *btag_name, const char *mictx_name,
 			    struct mtk_btag_mictx_vops *vops);
 void mtk_btag_mictx_unregister(struct mtk_btag_mictx_id *mictx_id);
+void set_mmc_perf_mode(struct mmc_host *mmc, bool boost);
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_SCSI_UFS_MEDIATEK)
 struct mtk_blocktag *mtk_btag_ufs_init(struct ufs_mtk_host *host,
@@ -109,6 +110,7 @@ void mmc_mtk_biolog_check(struct mmc_host *mmc, unsigned long req_mask);
 #define mmc_mtk_biolog_init(...)
 #define mmc_mtk_biolog_exit(...)
 #define mmc_mtk_biolog_check(...)
+#define set_mmc_perf_mode(...)
 
 #endif
 #endif

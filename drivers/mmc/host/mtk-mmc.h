@@ -27,6 +27,7 @@
 #include <linux/sched/clock.h>
 #include <linux/slab.h>
 #include <linux/spinlock.h>
+#include <linux/interconnect.h>
 #include <linux/interrupt.h>
 #include <linux/reset.h>
 
@@ -665,6 +666,9 @@ struct msdc_host {
 	bool sdcard_aggressive_pm;
 	bool msdc_spm_hw_supp;
 	struct pm_qos_request pm_qos_req;
+	bool qos_enable;
+	struct icc_path *bw_path;
+	unsigned int peak_bw;
 	u8 tf_ver; /* save trust frameware version. e.g: atf, tf-a */
 	struct err_info_bag err_bag;
 	atomic_t err_dropped;
