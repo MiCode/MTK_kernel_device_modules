@@ -123,6 +123,15 @@ static int fops_vcodec_open(struct file *file)
 	}
 #endif
 
+	/*
+	 * Fill in the num_planes and
+	 * plane length for the flush buffer
+	 * as vb2_set_plane_payload will check num_planes and
+	 * lane length before setting the bytes_used
+	 */
+	mtk_buf->vb.vb2_buf.num_planes = 1;
+	mtk_buf->vb.vb2_buf.planes[0].length = 1;
+
 	mutex_lock(&dev->dev_mutex);
 	ctx->dec_flush_buf = mtk_buf;
 	ctx->type = MTK_INST_DECODER;
