@@ -38,6 +38,7 @@ int gCmdqRdmaPrebuiltSupport;
 /* support register MSB */
 int gMdpRegMSBSupport = 1;
 
+static atomic_t mdp_smi_clk_usage;
 /* use to generate [CMDQ_ENGINE_ENUM_id and name] mapping for status print */
 #define CMDQ_FOREACH_MODULE_PRINT(ACTION)\
 {		\
@@ -1460,32 +1461,38 @@ static s32 mdp_enable_larb(bool enable, struct device *larb)
 {
 	s32 ret = 0;
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI)
+	s32 mdp_clk_usage;
 	if (!larb) {
 		CMDQ_ERR("%s smi larb not support\n", __func__);
 		return TASK_STATE_ERROR;
 	}
 
 	if (enable) {
-		ret = pm_runtime_resume_and_get(larb);
+		mdp_clk_usage = atomic_inc_return(&mdp_smi_clk_usage);
+		if (mdp_clk_usage == 1) {
+			ret = pm_runtime_resume_and_get(larb);
 
-		if (ret != 0) {
-			CMDQ_ERR("%s enable fail ret:%d\n",
-				__func__, ret);
-			return TASK_STATE_ERROR;
+			if (ret != 0) {
+				CMDQ_ERR("%s enable fail ret:%d\n",
+					__func__, ret);
+				return TASK_STATE_ERROR;
+			}
+			cmdq_mdp_enable_clock_APB(enable);
+			cmdq_mdp_enable_clock_MDP_MUTEX0(enable);
 		}
-
-		cmdq_mdp_enable_clock_APB(enable);
-		cmdq_mdp_enable_clock_MDP_MUTEX0(enable);
 	} else {
+		mdp_clk_usage = atomic_dec_return(&mdp_smi_clk_usage);
+		if (mdp_clk_usage == 0) {
 		/* disable, reverse the sequence */
-		cmdq_mdp_enable_clock_MDP_MUTEX0(enable);
-		cmdq_mdp_enable_clock_APB(enable);
-		ret = pm_runtime_put_sync(larb);
+			cmdq_mdp_enable_clock_MDP_MUTEX0(enable);
+			cmdq_mdp_enable_clock_APB(enable);
+			ret = pm_runtime_put_sync(larb);
 
-		if (ret != 0) {
-			CMDQ_ERR("%s disable fail ret:%d\n",
-				__func__, ret);
-			return TASK_STATE_ERROR;
+			if (ret != 0) {
+				CMDQ_ERR("%s disable fail ret:%d\n",
+					__func__, ret);
+				return TASK_STATE_ERROR;
+			}
 		}
 	}
 #endif
