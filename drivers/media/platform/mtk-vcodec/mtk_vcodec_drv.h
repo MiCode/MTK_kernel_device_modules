@@ -636,11 +636,6 @@ struct metadata_info {
 	struct meta_describe metadata_dsc[MTK_MAX_METADATA_NUM];
 };
 
-struct vdec_set_frame_work_struct {
-	struct work_struct work;
-	struct mtk_vcodec_ctx *ctx;
-};
-
 struct vdec_check_alive_work_struct {
 	struct work_struct work;
 	struct mtk_vcodec_ctx *ctx;
@@ -800,8 +795,9 @@ struct mtk_vcodec_ctx {
 	u64 lpw_last_disp_ts;
 	u64 lpw_ts_diff;
 
-	struct workqueue_struct *vdec_set_frame_wq;
-	struct vdec_set_frame_work_struct vdec_set_frame_work;
+	struct work_struct vdec_set_frame_work;
+	bool vdec_set_frame_waiting;
+	struct mutex vdec_set_frame_lock;
 
 	/* for user lock HW case release check */
 	struct mutex hw_status;
@@ -1022,6 +1018,7 @@ struct mtk_vcodec_dev {
 	struct venc_larb_port venc_ports[MTK_VENC_MAX_HW_NUM];
 	struct workqueue_struct *vdec_buf_wq;
 	struct work_struct vdec_buf_work;
+	struct workqueue_struct *vdec_set_frame_wq;
 
 	int vdec_op_rate_cnt;
 	//int venc_op_rate_cnt;

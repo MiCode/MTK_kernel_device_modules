@@ -990,50 +990,69 @@ static int mtk_vdec_set_frame(struct mtk_vcodec_ctx *ctx,
 
 static void mtk_vdec_set_frame_handler(struct work_struct *ws)
 {
-	struct vdec_set_frame_work_struct *sws;
-	struct mtk_vcodec_ctx *ctx;
+	struct mtk_vcodec_ctx *ctx = container_of(ws, struct mtk_vcodec_ctx, vdec_set_frame_work);
 	struct mtk_video_dec_buf *buf;
 	struct vb2_v4l2_buffer *dst_vb2_v4l2;
 
-	sws = container_of(ws, struct vdec_set_frame_work_struct, work);
-	ctx = sws->ctx;
+	mutex_lock(&ctx->vdec_set_frame_lock);
 
 	if (ctx->input_driven != INPUT_DRIVEN_PUT_FRM || ctx->is_flushing == true ||
 	    !mtk_vcodec_state_in_range(ctx, MTK_STATE_HEADER, MTK_STATE_STOP))
-		return;
+		goto set_frame_handle_done;
 
 	dst_vb2_v4l2 = v4l2_m2m_next_dst_buf(ctx->m2m_ctx);
 	if (dst_vb2_v4l2 != NULL) {
 		buf = to_video_dec_buf(dst_vb2_v4l2);
-		mtk_vdec_set_frame(ctx, buf);
+		mtk_vdec_set_frame(ctx, buf); // loop set all frame
+	}
+set_frame_handle_done:
+	ctx->vdec_set_frame_waiting = false;
+	mutex_unlock(&ctx->vdec_set_frame_lock);
+}
+
+static void mtk_vdec_init_set_frame_wq(struct mtk_vcodec_dev *dev)
+{
+	vcodec_trace_begin("create_workqueue(vdec_set_frame)");
+	dev->vdec_set_frame_wq = create_workqueue("vdec_set_frame");
+	vcodec_trace_end();
+}
+
+static void mtk_vdec_deinit_set_frame_wq(struct mtk_vcodec_dev *dev)
+{
+	if (dev->vdec_set_frame_wq != NULL) {
+		flush_workqueue(dev->vdec_set_frame_wq);
+		destroy_workqueue(dev->vdec_set_frame_wq);
+		dev->vdec_set_frame_wq = NULL;
 	}
 }
 
-static void mtk_vdec_init_set_frame_wq(struct mtk_vcodec_ctx *ctx)
+static void mtk_vdec_init_set_frame_work(struct mtk_vcodec_ctx *ctx)
 {
-	vcodec_trace_begin("create_singlethread_workqueue(vdec_set_frame)");
-	ctx->vdec_set_frame_wq = create_singlethread_workqueue("vdec_set_frame");
-	vcodec_trace_end();
-	INIT_WORK(&ctx->vdec_set_frame_work.work, mtk_vdec_set_frame_handler);
-	ctx->vdec_set_frame_work.ctx = ctx;
+	mutex_init(&ctx->vdec_set_frame_lock);
+	INIT_WORK(&ctx->vdec_set_frame_work, mtk_vdec_set_frame_handler);
 }
 
-static void mtk_vdec_flush_set_frame_wq(struct mtk_vcodec_ctx *ctx)
+static void mtk_vdec_flush_set_frame_work(struct mtk_vcodec_ctx *ctx)
 {
-	if (ctx->vdec_set_frame_wq != NULL)
-		flush_workqueue(ctx->vdec_set_frame_wq);
-}
+	bool need_wait;
 
-static void mtk_vdec_deinit_set_frame_wq(struct mtk_vcodec_ctx *ctx)
-{
-	if (ctx->vdec_set_frame_wq != NULL)
-		destroy_workqueue(ctx->vdec_set_frame_wq);
+	mutex_lock(&ctx->vdec_set_frame_lock);
+	need_wait = ctx->vdec_set_frame_waiting;
+	mutex_unlock(&ctx->vdec_set_frame_lock);
+	if (need_wait)
+		flush_work(&ctx->vdec_set_frame_work);
 }
 
 static void mtk_vdec_trigger_set_frame(struct mtk_vcodec_ctx *ctx)
 {
-	if (ctx->input_driven == INPUT_DRIVEN_PUT_FRM && ctx->is_flushing == false)
-		queue_work(ctx->vdec_set_frame_wq, &ctx->vdec_set_frame_work.work);
+	if (ctx->input_driven == INPUT_DRIVEN_PUT_FRM && ctx->is_flushing == false) {
+		mutex_lock(&ctx->vdec_set_frame_lock);
+		if (!ctx->vdec_set_frame_waiting) {
+			ctx->vdec_set_frame_waiting = true;
+			queue_work(ctx->dev->vdec_set_frame_wq, &ctx->vdec_set_frame_work);
+		}
+		mutex_unlock(&ctx->vdec_set_frame_lock);
+	}
 }
 
 /*
@@ -2322,7 +2341,7 @@ void mtk_vcodec_dec_release(struct mtk_vcodec_ctx *ctx)
 	int i;
 #endif
 	mtk_vdec_deinit_work(ctx);
-	mtk_vdec_deinit_set_frame_wq(ctx);
+	mtk_vdec_flush_set_frame_work(ctx);
 	mtk_vdec_lpw_deinit_timer(ctx);
 	vdec_if_deinit(ctx);
 	mtk_vcodec_set_state(ctx, MTK_STATE_FREE);
@@ -4212,7 +4231,7 @@ static void vb2ops_vdec_stop_streaming(struct vb2_queue *q)
 		return;
 	}
 
-	mtk_vdec_flush_set_frame_wq(ctx);
+	mtk_vdec_flush_set_frame_work(ctx);
 
 	if (mtk_vcodec_state_in_range(ctx, MTK_STATE_HEADER, MTK_STATE_NULL)) { // >= HEADER
 
@@ -4693,6 +4712,8 @@ void vdec_worker_probe(struct mtk_vcodec_dev *dev)
 	init_waitqueue_head(&dev->worker_mq.wq);
 	atomic_set(&dev->worker_mq.cnt, 0);
 	dev->worker_thread = kthread_run(mtk_vdec_worker_loop, dev, "vdec_worker");
+
+	mtk_vdec_init_set_frame_wq(dev);
 }
 
 void vdec_worker_remove(struct mtk_vcodec_dev *dev)
@@ -4708,6 +4729,8 @@ void vdec_worker_remove(struct mtk_vcodec_dev *dev)
 		}
 	}
 	kthread_stop(dev->worker_thread);
+
+	mtk_vdec_deinit_set_frame_wq(dev);
 }
 
 static void m2mops_vdec_device_run(void *priv)
@@ -5213,7 +5236,7 @@ void mtk_vcodec_dec_set_default_params(struct mtk_vcodec_ctx *ctx)
 	}
 
 	vdec_works_init(ctx);
-	mtk_vdec_init_set_frame_wq(ctx);
+	mtk_vdec_init_set_frame_work(ctx);
 	mtk_vdec_lpw_init_timer(ctx);
 	vcodec_trace_end();
 }
