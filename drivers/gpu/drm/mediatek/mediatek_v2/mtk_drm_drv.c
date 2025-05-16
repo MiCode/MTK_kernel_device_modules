@@ -4141,8 +4141,6 @@ static struct pwr_clk_map pwr_clk_map[] = {
 
 static const enum pwr_clk_id mt6993_pwr_on_order[] = {
 	CLK_DSI_PHY0,
-	CLK_DISP_VCORE,
-	CLK_VDISP_PERI,
 	CLK_DIS0_A,
 	CLK_DIS0_B,
 	CLK_DIS1_A,
@@ -4167,8 +4165,6 @@ static const enum pwr_clk_id mt6993_pwr_off_order[] = {
 	CLK_MML0,
 	CLK_MML1,
 	CLK_MML2,
-	CLK_VDISP_PERI,
-	CLK_DISP_VCORE,
 	CLK_DSI_PHY0,
 };
 
@@ -7994,6 +7990,7 @@ int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action action)
 #endif
 		if (priv->pwr_node) {
 			mtk_vidle_mminfra_on_off(true);
+			mtk_vidle_pre_cg_ctrl(true);
 			for (i = 0; i < priv->data->pwr_length; i++)
 				clk_prepare_enable(priv->pwr_clks[priv->data->pwr_on_order[i]]);
 		} else {
@@ -8034,6 +8031,7 @@ int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action action)
 		if (priv->pwr_node) {
 			for (i = 0; i < priv->data->pwr_length; i++)
 				clk_disable_unprepare(priv->pwr_clks[priv->data->pwr_off_order[i]]);
+			mtk_vidle_pre_cg_ctrl(false);
 			mtk_vidle_mminfra_on_off(false);
 		} else {
 			if (priv->side_ovlsys_dev)
@@ -8063,6 +8061,7 @@ int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action action)
 		if (priv->pwr_node) {
 			for (i = 0; i < priv->data->pwr_length; i++)
 				clk_disable_unprepare(priv->pwr_clks[priv->data->pwr_off_order[i]]);
+			mtk_vidle_pre_cg_ctrl(false);
 			mtk_vidle_mminfra_on_off(false);
 		} else {
 			if (priv->side_ovlsys_dev)

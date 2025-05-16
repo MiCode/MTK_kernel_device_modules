@@ -117,6 +117,7 @@ static void __iomem *mmpc_dummy_voter;	/* 0x160(RU) 0x164(SET) 0x168(CLR) */
 static atomic_t g_mminfra_cnt = ATOMIC_INIT(0);
 static atomic_t buck_ref = ATOMIC_INIT(0);
 static atomic_t hwccf_ref = ATOMIC_INIT(0);
+static atomic_t pre_cg_ref = ATOMIC_INIT(0);
 
 static atomic_t g_user_9 = ATOMIC_INIT(0);
 static atomic_t g_user_14 = ATOMIC_INIT(0);
@@ -469,6 +470,29 @@ static inline bool dpc_pm_check_and_get(void)
 		return false;
 
 	return pm_runtime_get_if_in_use(g_priv->pd_dev) > 0 ? true : false;
+}
+
+void dpc_pre_cg_ctrl(bool en)
+{
+	s32 cnt;
+
+	if (en) {
+		cnt = atomic_inc_return(&pre_cg_ref);
+		if (cnt == 1) {
+			clk_prepare_enable(g_priv->pwr_clk[0]);
+			clk_prepare_enable(g_priv->pwr_clk[1]);
+			clk_prepare_enable(g_priv->pwr_clk[2]);
+		}
+	} else {
+		cnt = atomic_dec_return(&pre_cg_ref);
+		if (cnt == 0) {
+			clk_disable_unprepare(g_priv->pwr_clk[2]);
+			clk_disable_unprepare(g_priv->pwr_clk[1]);
+			clk_disable_unprepare(g_priv->pwr_clk[0]);
+		}
+	}
+	if (cnt < 0)
+		DPCERR("pre_cg_ref cnt underflow");
 }
 
 int dpc_buck_status(int op)
@@ -2640,9 +2664,7 @@ static int dpc_vidle_power_keep_v3(const enum mtk_vidle_voter_user _user)
 	dpc_mminfra_on_off(VOTE_SET, user);
 
 	tracing_mark_write(trace_buf_keep[2][0]);
-	clk_prepare_enable(g_priv->pwr_clk[0]);
-	clk_prepare_enable(g_priv->pwr_clk[1]);
-	clk_prepare_enable(g_priv->pwr_clk[2]);
+	dpc_pre_cg_ctrl(true);
 
 	tracing_mark_write(trace_buf_keep[3][0]);
 	dpc_ap_ref_cnt(VOTE_SET, user);
@@ -2716,9 +2738,7 @@ static void dpc_vidle_power_release_v3(const enum mtk_vidle_voter_user _user)
 	dpc_ap_ref_cnt(VOTE_CLR, user);
 
 	tracing_mark_write(trace_buf_release[2][0]);
-	clk_disable_unprepare(g_priv->pwr_clk[2]);
-	clk_disable_unprepare(g_priv->pwr_clk[1]);
-	clk_disable_unprepare(g_priv->pwr_clk[0]);
+	dpc_pre_cg_ctrl(false);
 
 	tracing_mark_write(trace_buf_release[3][0]);
 	dpc_mminfra_on_off(VOTE_CLR, user);
@@ -3828,6 +3848,7 @@ static int mtk_dpc_probe_v3(struct platform_device *pdev)
 		funcs_v3.dpc_dsi_pll_set = NULL;
 		funcs_v3.dpc_check_pll = NULL;
 		funcs_v3.dpc_mtcmos_on_off = dpc_hwccf_vote;
+		funcs_v3.dpc_pre_cg_ctrl = dpc_pre_cg_ctrl;
 	}
 
 	mtk_vidle_register(&funcs_v3, DPC_VER3);

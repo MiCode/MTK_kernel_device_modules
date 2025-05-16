@@ -322,6 +322,14 @@ int mtk_vidle_pq_power_get(const char *caller)
 	return ret;
 }
 
+void mtk_vidle_pre_cg_ctrl(bool en)
+{
+	if (disp_dpc_driver.dpc_pre_cg_ctrl == NULL)
+		return;
+
+	disp_dpc_driver.dpc_pre_cg_ctrl(en);
+}
+
 void mtk_vidle_pq_power_put(const char *caller)
 {
 	s32 ref;
