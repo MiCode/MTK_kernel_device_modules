@@ -274,9 +274,11 @@ static struct vcodec_work *dequeue_dec_work(struct mtk_vcodec_dev *dev)
 
 static void complete_dec_work(struct mtk_vcodec_ctx *ctx, struct vcodec_work *work)
 {
+	bool is_run = (work == &ctx->worker_node);
+
 	work->is_working = false;
 	complete_all(&work->done);
-	mtk_v4l2_debug(8, "[%d][WORK] type %d work complete", ctx->id, work->type);
+	mtk_v4l2_debug(is_run ? 8 : 2, "[%d][WORK] type %d work complete", ctx->id, work->type);
 }
 
 static void flush_dec_work(struct mtk_vcodec_ctx *ctx, enum vcodec_work_type type)
@@ -300,9 +302,13 @@ static void flush_dec_work(struct mtk_vcodec_ctx *ctx, enum vcodec_work_type typ
 		return;
 	}
 
-	do {
-		ret = wait_for_completion_interruptible(&work->done);
-	} while (!ret);
+	mtk_v4l2_debug(2, "[%d][WORK] type %d work start wait complete", ctx->id, type);
+wait_flush_done:
+	ret = wait_for_completion_interruptible(&work->done);
+	if (ret == -ERESTARTSYS) {
+		mtk_v4l2_debug(1, "[%d][WORK] type %d work re-start wait complete (ret %d)", ctx->id, type, ret);
+		goto wait_flush_done;
+	}
 	mtk_v4l2_debug(2, "[%d][WORK] type %d work flush done", ctx->id, type);
 }
 
