@@ -2846,7 +2846,7 @@ static void dpc_hwccf_vote(bool on, struct cmdq_pkt *pkt, const enum mtk_vidle_v
 		if (lock)
 			cmdq_pkt_wfe(pkt, g_priv->event_hwccf_vote);
 		if (on) {
-			cmdq_pkt_poll_sleep(pkt, 0, 0x3141131c, mask);			/* polling status idle */
+			// cmdq_pkt_poll_sleep(pkt, 0, 0x3141131c, mask);		/* polling status idle */
 			cmdq_pkt_write(pkt, NULL, xpu_base, mask, U32_MAX);		/* vote xpu6 mtcmos voter */
 			cmdq_pkt_poll_sleep(pkt, mask, xpu_base + 0x8, mask);		/* check xpu6 local enable */
 			cmdq_pkt_poll_sleep(pkt, 0, 0x3141131c, mask);			/* polling status idle */
@@ -2856,7 +2856,7 @@ static void dpc_hwccf_vote(bool on, struct cmdq_pkt *pkt, const enum mtk_vidle_v
 			cmdq_pkt_poll_sleep(pkt, 0, 0x3141131c, mask);			/* polling status idle */
 			cmdq_pkt_write(pkt, NULL, xpu_base + 0x4, mask, U32_MAX);	/* vote xpu6 mtcmos voter */
 			cmdq_pkt_poll_sleep(pkt, 0, xpu_base + 0x8, mask);		/* check xpu6 local enable */
-			cmdq_pkt_poll_sleep(pkt, 0, 0x3141131c, mask);			/* polling status idle */
+			// cmdq_pkt_poll_sleep(pkt, 0, 0x3141131c, mask);		/* polling status idle */
 			cmdq_pkt_write(pkt, NULL, g_priv->dpc_pa + DISP_REG_DPC3_DTx_SW_TRIG(56), 1, U32_MAX);
 		}
 		if (lock)
