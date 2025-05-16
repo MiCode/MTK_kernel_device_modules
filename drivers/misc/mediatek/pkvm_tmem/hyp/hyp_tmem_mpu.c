@@ -109,22 +109,13 @@ static int PKVM_MPU_ShareMemProtRequest(enum MPU_REQ_ORIGIN_ZONE_ID zone_id,
 {
 	uint64_t rc;
 	struct mpu_record *rec = &pkvm_mpu_rec[zone_id];
-	int ret;
 
 	if (is_enable) {
 		/*
 		 * EL1S2 unmap
 		 */
-		ret = tmem_ops->host_stage2_enable_lazy_pte(addr >> ONE_PAGE_OFFSET,
-			size/ONE_PAGE_SIZE);
-		if (ret) {
-			tmem_ops->puts("mpu: host_stage2_enable_lazy_pte failed{");
-			tmem_ops->putx64((u64)ret);
-			tmem_ops->putx64((u64)addr);
-			tmem_ops->putx64((u64)size);
-			tmem_ops->puts("}");
-			WARN_ON(ret != 0);
-		}
+		tmem_ops->host_stage2_mod_prot(addr >> ONE_PAGE_OFFSET, 0,
+			       size / ONE_PAGE_SIZE, false);
 
 		tmem_ops->puts("pkvm_tmem: platform_mpu_set\n");
 		rc = platform_mpu_set(zone_id, addr, size, tmem_ops);
@@ -143,16 +134,8 @@ static int PKVM_MPU_ShareMemProtRequest(enum MPU_REQ_ORIGIN_ZONE_ID zone_id,
 		/*
 		 * EL1S2 map
 		 */
-		ret = tmem_ops->host_stage2_disable_lazy_pte(rec->addr >> ONE_PAGE_OFFSET,
-			rec->size/ONE_PAGE_SIZE);
-		if (ret) {
-			tmem_ops->puts("mpu: host_stage2_disable_lazy_pte failed{");
-			tmem_ops->putx64((u64)ret);
-			tmem_ops->putx64((u64)rec->addr);
-			tmem_ops->putx64((u64)rec->size);
-			tmem_ops->puts("}");
-			WARN_ON(ret != 0);
-		}
+		tmem_ops->host_stage2_mod_prot(rec->addr >> ONE_PAGE_OFFSET, 7,
+			       rec->size / ONE_PAGE_SIZE, false);
 	}
 
 	if (is_enable) {
