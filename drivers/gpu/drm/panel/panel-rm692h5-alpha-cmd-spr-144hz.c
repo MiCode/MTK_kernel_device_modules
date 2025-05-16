@@ -1337,7 +1337,7 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 	.cmd_null_pkt_en = 1,
 	.cmd_null_pkt_len = 185,
 	.data_rate = MIPI_DATA_RATE_120HZ,
-		.skip_vblank = 3,
+		.skip_vblank = 1,
 		.msync2_enable = 1,
 		.round_corner_en = 1,
 		.corner_pattern_height = ROUND_CORNER_H_TOP,
@@ -1352,7 +1352,7 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 			.lpx = 8, // HS Entry: DATA TLPX, 65ns
 		},
 		.is_gce_delay = 0,
-		.real_te_duration = 2778,
+		.real_te_duration = 6944,
 	},
 	//90hz
 	[FHD_90_360TE] = {
