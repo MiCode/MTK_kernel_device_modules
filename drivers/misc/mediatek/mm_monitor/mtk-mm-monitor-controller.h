@@ -26,6 +26,7 @@
 #define CTI_SETTINGS_MAX	4
 
 #define BUS_WIDTH		16
+#define DUMP_ALL_BWR	-1
 
 enum smi_pd_cb_ids {
 	DISP_VCORE = 0,
@@ -241,7 +242,7 @@ do { \
 
 
 #if IS_ENABLED(CONFIG_MTK_MM_MONITOR)
-u32 is_valid_offset_value(u32 hw, u32 id, u32 offset, u32 value);
+s32 is_valid_offset_value(u32 hw, u32 id, u32 offset, u32 value);
 void enable_mminfra_funnel(void);
 void mminfra_fake_engine_bus_settings(void);
 void emi_moniter_settings(void);
@@ -266,8 +267,13 @@ u32 get_ostdbl_smmu_factor(void);
 u32 get_axi_mon_threshold_us(void);
 int mtk_mmmc_smmu_factor_register_notifier(struct notifier_block *nb);
 int mtk_mmmc_threshold_us_register_notifier(struct notifier_block *nb);
+s32 mtk_dump_bwr(u32 power_domain_id, s32 bwr_hwid);
 #else
-static inline u32 is_valid_offset_value(u32 hw, u32 id, u32 offset, u32 value)
+static inline s32 mtk_dump_bwr(u32 power_domain_id, s32 bwr_hwid)
+{
+	return 0;
+}
+static inline s32 is_valid_offset_value(u32 hw, u32 id, u32 offset, u32 value)
 {
 	return 0;
 }

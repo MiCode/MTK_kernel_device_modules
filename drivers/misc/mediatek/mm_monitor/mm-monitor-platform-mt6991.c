@@ -36,7 +36,7 @@ u32 get_mminfra_pd(void)
 }
 EXPORT_SYMBOL(get_mminfra_pd);
 
-u32 is_valid_offset_value(u32 hw, u32 id, u32 offset, u32 value)
+s32 is_valid_offset_value(u32 hw, u32 id, u32 offset, u32 value)
 {
 	return 0;
 }

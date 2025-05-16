@@ -787,12 +787,13 @@ void enable_ela(struct mtk_mmmc_power_domain *mmmc_power_domain)
 	}
 }
 
-void dump_bwr(struct mtk_mmmc_power_domain *mmmc_power_domain)
+void dump_bwr(struct mtk_mmmc_power_domain *mmmc_power_domain, s32 bwr_hwid)
 {
 	u32 bwr_total_cnt = mmmc_power_domain->bwr_total_cnt;
 	int i;
 	u32 val;
 	s32 j, len, ret = 0;
+	bool dump_all = (bwr_hwid == DUMP_ALL_BWR) ? true:false;
 
 	for (i = 0; i < bwr_total_cnt; i++) {
 		struct mtk_bwr *bwr = mmmc_power_domain->bwr[i];
@@ -800,6 +801,9 @@ void dump_bwr(struct mtk_mmmc_power_domain *mmmc_power_domain)
 		char	buf[LINE_MAX_LEN + 1] = {0};
 
 		if (!bwr)
+			continue;
+
+		if (!dump_all && bwr_hwid != bwr->hwid)
 			continue;
 
 		base = bwr->base_addr_va;
@@ -1023,7 +1027,7 @@ void init_bwr(struct mtk_mmmc_power_domain *mmmc_power_domain, bool dump)
 		}
 	}
 	if (dump)
-		dump_bwr(mmmc_power_domain);
+		dump_bwr(mmmc_power_domain, DUMP_ALL_BWR);
 }
 
 void init_ela(struct mtk_mmmc_power_domain *mmmc_power_domain, bool dump)
@@ -1120,7 +1124,7 @@ void init_cti(struct mtk_mmmc_power_domain *mmmc_power_domain, bool dump)
 		dump_cti(mmmc_power_domain);
 }
 
-u32 mtk_set_mmmc_rg(u32 hw, u32 id, u32 offset, u32 value, u32 mask)
+s32 mtk_set_mmmc_rg(u32 hw, u32 id, u32 offset, u32 value, u32 mask)
 {
 	void *base = NULL;
 	u32 base_addr_pa = 0;
@@ -1233,7 +1237,7 @@ u32 mtk_dump_monitor_by_subsys_id(u32 subsys_id)
 	if (mmmc_power_domain->kernel_no_ctrl)
 		return 0;
 
-	dump_bwr(mmmc_power_domain);
+	dump_bwr(mmmc_power_domain, DUMP_ALL_BWR);
 	dump_ela(mmmc_power_domain);
 	dump_cti(mmmc_power_domain);
 
@@ -1248,6 +1252,24 @@ u32 mtk_dump_monitor(u32 power_domain_id)
 	return mtk_dump_monitor_by_subsys_id(subsys_id);
 }
 EXPORT_SYMBOL(mtk_dump_monitor);
+
+s32 mtk_dump_bwr(u32 power_domain_id, s32 bwr_hwid)
+{
+	u32 subsys_id;
+	struct mtk_mmmc_power_domain *mmmc_power_domain;
+
+	subsys_id = MTK_SMI_ID2SUBSYS_ID(power_domain_id);
+	mmmc_power_domain = g_mmmc_power_domain[subsys_id];
+	if (!mmmc_power_domain) {
+		MM_MONITOR_ERR("power_domain:%d empty data", subsys_id);
+		return -EINVAL;
+	}
+
+	dump_bwr(mmmc_power_domain, bwr_hwid);
+
+	return 0;
+}
+EXPORT_SYMBOL(mtk_dump_bwr);
 
 int mtk_mmmc_reinit(const char *val, const struct kernel_param *kp)
 {
@@ -1333,7 +1355,8 @@ MODULE_PARM_DESC(mtk_mmmc_dump, "dump all settings by power domain");
 
 int mtk_mmmc_set_rg(const char *val, const struct kernel_param *kp)
 {
-	u32 result, hw, id, offset, value, mask;
+	u32 hw, id, offset, value, mask;
+	s32 result;
 
 	result = sscanf(val, "%d %d %x %x %x", &hw, &id, &offset, &value, &mask);
 	if (result != 5 || hw > MM_MONITOR_ENGINE_MAX) {
@@ -1522,7 +1545,7 @@ static int mmmc_smi_monitor(void *data)
 					continue;
 
 				mmmc_power_domain = g_mmmc_power_domain[index];
-				dump_bwr(mmmc_power_domain);
+				dump_bwr(mmmc_power_domain, DUMP_ALL_BWR);
 			}
 		}
 		msleep(mmmc_smi_mon_dump_interval);
