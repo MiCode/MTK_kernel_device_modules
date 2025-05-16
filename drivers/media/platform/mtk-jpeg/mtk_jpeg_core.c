@@ -2218,7 +2218,7 @@ static int mtk_jpeg_probe(struct platform_device *pdev)
 
 	dev_info(&pdev->dev, "yuv420 bw %d", jpeg->yuv420_bw);
 
-	if ((jpeg->support_34bits != MTK_JPEG_NON_SUPPORT_34BITS) || jpeg->is_mmqos_level) {
+	if ((jpeg->support_34bits == MTK_JPEG_FAKE_34BITS) || jpeg->is_mmqos_level) {
 		res = platform_get_resource(pdev, IORESOURCE_MEM, VENC_GCON);
 		jpeg->gcon_base = devm_ioremap(&pdev->dev, res->start,  resource_size(res));
 		if (IS_ERR(jpeg->gcon_base)) {
