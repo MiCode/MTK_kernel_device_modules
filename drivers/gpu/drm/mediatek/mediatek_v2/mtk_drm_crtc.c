@@ -19082,6 +19082,9 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 	if (crtc_idx == 0)
 		DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->blank_lock, __func__, __LINE__, false);
 
+	/* init wb state for this round */
+	mtk_crtc->skip_wb = false;
+
 	if (mtk_disp_get_dump_prop_enable()) {
 		int i = 0;
 		int written = 0;
@@ -20833,7 +20836,6 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 				CRTC_MMP_MARK(0, set_dirty, GCE_FLUSH, (unsigned long)cmdq_handle);
 				cmdq_pkt_set_event(cmdq_handle,
 					   mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
-				mtk_crtc->skip_wb = false;
 				mtk_clear_scp_show_count();
 			}
 		}
