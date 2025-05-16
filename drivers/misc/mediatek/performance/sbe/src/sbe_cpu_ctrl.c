@@ -1159,9 +1159,11 @@ int sbe_calculate_dy_enhance(struct sbe_render_info *thr)
 			all_rescue_frame_time_count += scroll_info->rescue_frame_time_count;
 			all_rescue_frame_count += scroll_info->rescue_frame_count;
 
-			if (scroll_info->frame_count > 0) {
-				unsigned long long rescue_area =
-						scroll_info->rescue_frame_count * 100;
+			if (scroll_info->frame_count > 0
+					//overflow check
+					&& scroll_info->rescue_frame_count <= 100000000ULL) {
+				unsigned long long rescue_f = scroll_info->rescue_frame_count;
+				unsigned long long rescue_area = rescue_f * 100ULL;
 				rescue_rate = (int)div64_u64(rescue_area,
 						scroll_info->frame_count);
 				if (rescue_rate >= 10)
@@ -1216,6 +1218,7 @@ int sbe_calculate_dy_enhance(struct sbe_render_info *thr)
 
 	if (thr->dy_compute_rescue
 			&& all_rescue_frame_count > 0 && all_rescue_frame_time_count > 0) {
+		int limit_min = thr->affinity_task_mask ? 15 : 10;
 		int max_enhance = clamp(sbe_dy_max_enhance, 0, 100);
 		int new = clamp((int)
 			(div64_u64(all_rescue_cap_count, all_rescue_frame_count) + last_enhance), 0, 100);
@@ -1223,7 +1226,7 @@ int sbe_calculate_dy_enhance(struct sbe_render_info *thr)
 				div64_u64(all_rescue_frame_time_count, all_rescue_frame_count);
 		//TODO: consider msync case, how to compute new enhance
 		new_enhance = (int)(div64_u64(new *avg_frame_time, target_time) - last_enhance);
-		new_enhance = clamp(new_enhance, 0, max_enhance);
+		new_enhance = clamp(new_enhance, limit_min, max_enhance);
 	}
 
 	result = last_enhance;
