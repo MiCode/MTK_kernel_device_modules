@@ -542,7 +542,7 @@
 };
 
 &disp_dpc {
-	vidle-mask = <0x0>;
+	vidle-mask = <0x3>;
 };
 
 #include "k6993v1_64/cust.dtsi"
