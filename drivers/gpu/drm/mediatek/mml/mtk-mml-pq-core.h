@@ -24,6 +24,7 @@
 #define AAL_DUAL_INFO_NUM (16)
 #define AAL_CLARITY_STATUS_NUM (7)
 #define C3D_LUT_NUM (4913) // 17*17*17
+#define C3D_PROG_IDX_REG_NUM (27)
 #define HDR_OOTF_NUM (513)
 #define HDR_OETF_NUM (513)
 

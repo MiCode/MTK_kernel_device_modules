@@ -118,6 +118,8 @@ struct mml_pq_comp_config_result {
 	struct mml_pq_reg *c3d_regs;
 	u32 c3d_lut_num;
 	u32 *c3d_lut; // 9*9*9*3
+	u32 c3d_prog_idx_reg_num;
+	u32 *c3d_prog_idx;	/* size: 27 * sizeof(u32) */
 	bool is_set_test;
 	u32 *hdr_ootf;
 	u32 *hdr_oetf;

@@ -376,6 +376,7 @@ static void release_comp_config_result(void *data)
 	kfree(result->color_regs);
 	kfree(result->c3d_regs);
 	kfree(result->c3d_lut);
+	kfree(result->c3d_prog_idx);
 	kfree(result->hdr_ootf);
 	kfree(result->hdr_oetf);
 	kfree(result->fg_regs);
@@ -2095,6 +2096,7 @@ static void handle_comp_config_result(struct mml_pq_chan *chan,
 	u32 *aal_curve = NULL;
 	u32 *hdr_curve = NULL;
 	u32 *c3d_lut = NULL;
+	u32 *c3d_prog_idx = NULL;
 	u32 *hdr_ootf = NULL;
 	u32 *hdr_oetf = NULL;
 	s32 ret;
@@ -2263,12 +2265,27 @@ static void handle_comp_config_result(struct mml_pq_chan *chan,
 		goto free_c3d_lut_curve;
 	}
 
+	c3d_prog_idx = kmalloc_array(result->c3d_prog_idx_reg_num, sizeof(u32),
+				  GFP_KERNEL);
+	if (unlikely(!c3d_prog_idx)) {
+		mml_pq_err("err: create c3d_prog_idx failed, size:%d\n",
+			result->c3d_prog_idx_reg_num);
+		goto free_c3d_lut_curve;
+	}
+
+	ret = copy_from_user(c3d_prog_idx, result->c3d_prog_idx,
+		result->c3d_prog_idx_reg_num * sizeof(u32));
+	if (unlikely(ret)) {
+		mml_pq_err("copy c3d_prog_idx failed!: %d\n", ret);
+		goto free_c3d_prog_idx;
+	}
+
 	hdr_ootf = kmalloc_array(HDR_OOTF_NUM, sizeof(u32),
 				  GFP_KERNEL);
 	if (unlikely(!hdr_ootf)) {
 		mml_pq_err("err: create hdr_ootf failed, size:%d\n",
 			HDR_OOTF_NUM);
-		goto free_c3d_lut_curve;
+		goto free_c3d_prog_idx;
 	}
 
 	ret = copy_from_user(hdr_ootf, result->hdr_ootf,
@@ -2323,6 +2340,7 @@ static void handle_comp_config_result(struct mml_pq_chan *chan,
 	result->color_regs = color_regs;
 	result->c3d_regs = c3d_regs;
 	result->c3d_lut = c3d_lut;
+	result->c3d_prog_idx = c3d_prog_idx;
 	result->hdr_ootf = hdr_ootf;
 	result->hdr_oetf = hdr_oetf;
 	result->fg_regs = fg_regs;
@@ -2337,6 +2355,8 @@ free_hdr_oetf:
 	kfree(hdr_oetf);
 free_hdr_ootf:
 	kfree(hdr_ootf);
+free_c3d_prog_idx:
+	kfree(c3d_prog_idx);
 free_c3d_lut_curve:
 	kfree(c3d_lut);
 free_c3d_regs:
