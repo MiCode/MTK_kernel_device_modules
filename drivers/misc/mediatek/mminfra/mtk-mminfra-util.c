@@ -419,7 +419,7 @@ static void mminfra_util_shutdown(struct platform_device *pdev)
 
 static int mminfra_util_probe(struct platform_device *pdev)
 {
-	u32 i, j, tmp, vlp_base_pa;
+	u32 i, j, tmp = 0, vlp_base_pa;
 
 	g_mm_pd = devm_kzalloc(&pdev->dev, sizeof(*g_mm_pd), GFP_KERNEL);
 	if (!g_mm_pd)
