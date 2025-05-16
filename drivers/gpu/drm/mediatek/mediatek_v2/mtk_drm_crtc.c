@@ -5028,6 +5028,7 @@ static void mml_addon_module_connect(struct drm_crtc *crtc, unsigned int ddp_mod
 			mtk_addon_connect_before(crtc, ddp_mode, m[i], addon_config, cmdq_handle);
 		}
 	}
+	mml_drm_put_context(c->ctx);	/* ref cnt dec */
 	DDPINFO("%s -\n", __func__);
 }
 
@@ -5046,10 +5047,11 @@ static void mml_addon_module_disconnect(struct drm_crtc *crtc,
 	unsigned int i = 0;
 	const struct mtk_addon_module_data *m[] = {addon_module, addon_module_dual};
 	u32 tgt_comp[2];
+	struct mml_drm_ctx *mml_ctx = mtk_drm_get_mml_drm_ctx(crtc->dev, crtc);
 
 	addon_config->config_type.type = ADDON_DISCONNECT;
 	addon_config->config_type.module = addon_module->module;
-	addon_config->addon_mml_config.ctx = mtk_drm_get_mml_drm_ctx(crtc->dev, crtc);
+	addon_config->addon_mml_config.ctx = mml_ctx;
 
 	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 	if (output_comp &&
@@ -5092,6 +5094,8 @@ static void mml_addon_module_disconnect(struct drm_crtc *crtc,
 			mtk_addon_disconnect_before(crtc, ddp_mode, m[i],
 						    addon_config, cmdq_handle);
 	}
+
+	mml_drm_put_context(mml_ctx);	/* ref cnt dec */
 }
 
 static void mtk_addon_path_io_cmd(struct drm_crtc *crtc, const enum addon_scenario scn,
@@ -17502,9 +17506,13 @@ void mtk_drm_crtc_disable(struct drm_crtc *crtc, bool need_wait)
 		}
 	}
 
-	if ((crtc_id == 0) && priv && priv->mml_ctx && mml_drm_ctx_idle(priv->mml_ctx)) {
-		mml_drm_put_context(priv->mml_ctx);
-		priv->mml_ctx = NULL;
+	if (crtc_id == 0 && priv) {
+		mutex_lock(&mtk_crtc->mml_lock);
+		if (priv->mml_ctx && mml_drm_ctx_idle(priv->mml_ctx)) {
+			mml_drm_put_context(priv->mml_ctx);
+			priv->mml_ctx = NULL;
+		}
+		mutex_unlock(&mtk_crtc->mml_lock);
 	}
 
 	/* for dbi idle count timer */
@@ -17748,7 +17756,7 @@ void mml_cmdq_pkt_init(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle)
 	u8 i = 0;
 	struct mtk_addon_config_type c;
 	struct mtk_drm_crtc *mtk_crtc = NULL;
-	struct mml_drm_ctx *mml_ctx = NULL;
+	struct mml_drm_ctx *mml_ctx;
 	struct mtk_drm_private *priv = NULL;
 	struct mtk_ddp_comp *comp = NULL;
 	struct mtk_crtc_state *mtk_crtc_state = NULL;
@@ -17807,6 +17815,8 @@ void mml_cmdq_pkt_init(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle)
 	default:
 		break;
 	}
+
+	mml_drm_put_context(mml_ctx);	/* ref cnt dec */
 }
 static void mtk_crtc_partial_update_wait_cabc(struct drm_crtc *crtc,
 	struct cmdq_pkt *handle)
@@ -20997,7 +21007,12 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 
 int mtk_crtc_retrig_mml(struct drm_device *dev, struct mtk_cmdq_pkt_info *pkt_info)
 {
-	struct mtk_drm_crtc *mtk_crtc = NULL;
+	struct mtk_drm_crtc *mtk_crtc;
+	struct drm_crtc *crtc;
+	struct mml_drm_ctx *mml_ctx;
+	struct mtk_crtc_state *crtc_state;
+	struct mtk_lye_ddp_state *lye_state;
+	int ret;
 
 	if (!pkt_info) {
 		DDPPR_ERR("%s: pkt_info is null\n", __func__);
@@ -21006,58 +21021,54 @@ int mtk_crtc_retrig_mml(struct drm_device *dev, struct mtk_cmdq_pkt_info *pkt_in
 
 	// need retrig mml when mml_ir or mml_dl
 	mtk_crtc = pkt_info->mtk_crtc;
-	if (mtk_crtc->is_mml_submit &&
-		(mtk_crtc->is_mml || mtk_crtc->is_mml_dl)) {
-		struct drm_crtc *crtc = &mtk_crtc->base;
-		struct mml_drm_ctx *mml_ctx = mtk_drm_get_mml_drm_ctx(dev, crtc);
-		struct mtk_crtc_state *crtc_state = NULL;
-		struct mtk_lye_ddp_state *lye_state = NULL;
-		int ret = 0;
+	if (!mtk_crtc->is_mml_submit || !(mtk_crtc->is_mml || mtk_crtc->is_mml_dl))
+		return -EINVAL;
 
-		if (mtk_crtc->is_mml) {
-			DDPINFO("%s: not support mml_ir yet\n", __func__);
-			return -EINVAL;
-		}
+	if (mtk_crtc->is_mml) {
+		DDPINFO("%s: not support mml_ir yet\n", __func__);
+		return -EINVAL;
+	}
 
-		if (mtk_crtc->mml_cfg == NULL) {
-			DDPPR_ERR("%s: mml_cfg is null\n", __func__);
-			return -EINVAL;
-		}
+	if (!mtk_crtc->mml_cfg) {
+		DDPPR_ERR("%s: mml_cfg is null\n", __func__);
+		return -EINVAL;
+	}
 
-		crtc_state  = to_mtk_crtc_state(crtc->state);
-		if (crtc_state  == NULL) {
-			DDPPR_ERR("%s: crtc_state is null\n", __func__);
-			return -EINVAL;
-		}
+	crtc = &mtk_crtc->base;
+	crtc_state = to_mtk_crtc_state(crtc->state);
+	if (!crtc_state) {
+		DDPPR_ERR("%s: crtc_state is null\n", __func__);
+		return -EINVAL;
+	}
 
-		lye_state = &crtc_state->lye_state;
-		if (lye_state == NULL) {
-			DDPPR_ERR("%s: lye_state is null\n", __func__);
-			return -EINVAL;
-		}
+	lye_state = &crtc_state->lye_state;
+	if (lye_state == NULL) {
+		DDPPR_ERR("%s: lye_state is null\n", __func__);
+		return -EINVAL;
+	}
 
-		if (unlikely(!mml_ctx)) {
-			DDPPR_ERR("%s: mml_ctx is NULL\n", __func__);
-			return -EINVAL;
-		}
+	if (mtk_crtc->mml_link_state != MML_DIRECT_LINKING) {
+		DDPPR_ERR("%s: mml_link_state is %d\n", __func__,
+			mtk_crtc->mml_link_state);
+		return -EINVAL;
+	}
 
-		if (mtk_crtc->mml_link_state != MML_DIRECT_LINKING) {
-			DDPPR_ERR("%s: mml_link_state is %d\n", __func__,
-				mtk_crtc->mml_link_state);
-			return -EINVAL;
-		}
+	mml_ctx = mtk_drm_get_mml_drm_ctx(dev, crtc);
+	if (unlikely(!mml_ctx)) {
+		DDPPR_ERR("%s: mml_ctx is NULL\n", __func__);
+		return -EINVAL;
+	}
 
-		mtk_drm_trace_begin("retrig_kick_mml_submit");
-		mtk_drm_idlemgr_kick(__func__, crtc, 0);
-		mtk_crtc->mml_cfg->disp_id = mtk_crtc->cur_present_fence_idx;
-		ret = mml_drm_submit(mml_ctx, mtk_crtc->mml_cfg, &(mtk_crtc->mml_cb));
-		if (ret) {
-			DDPPR_ERR("%s: err_submit %d\n", __func__, ret);
-			return -EINVAL;
-		}
-		mtk_drm_trace_end();
+	mtk_drm_trace_begin("retrig_kick_mml_submit");
+	mtk_drm_idlemgr_kick(__func__, crtc, 0);
+	mtk_crtc->mml_cfg->disp_id = mtk_crtc->cur_present_fence_idx;
+	ret = mml_drm_submit(mml_ctx, mtk_crtc->mml_cfg, &(mtk_crtc->mml_cb));
+	mtk_drm_trace_end();
+	if (unlikely(ret)) {
+		DDPPR_ERR("%s: err_submit %d\n", __func__, ret);
+		ret = -EINVAL;
+	} else {
 		CRTC_MMP_MARK(0, mml_dbg, crtc_state->prop_val[CRTC_PROP_LYE_IDX], MMP_MML_SUBMIT);
-
 		mml_cmdq_pkt_init(crtc, pkt_info->cmdq_handle);
 
 		mtk_drm_trace_begin("retrig_wait_mml_submit_done");
@@ -21065,7 +21076,8 @@ int mtk_crtc_retrig_mml(struct drm_device *dev, struct mtk_cmdq_pkt_info *pkt_in
 		mtk_drm_trace_end();
 	}
 
-	return 0;
+	mml_drm_put_context(mml_ctx);	/* ref cnt dec */
+	return ret;
 }
 
 int mtk_crtc_retrig_flush(struct mtk_cmdq_pkt_info *pkt_info)
@@ -23876,6 +23888,7 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 
 	mutex_init(&mtk_crtc->lock);
 	mutex_init(&mtk_crtc->cwb_lock);
+	mutex_init(&mtk_crtc->mml_lock);
 	mutex_init(&mtk_crtc->mml_ir_sram.lock);
 	spin_lock_init(&mtk_crtc->pf_time_lock);
 	mtk_crtc->config_regs = priv->config_regs;
@@ -27075,15 +27088,21 @@ void mtk_crtc_mml_racing_resubmit(struct drm_crtc *crtc, struct cmdq_pkt *_cmdq_
 	bool flush = false;
 	struct cmdq_pkt *cmdq_handle = NULL;
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
-	struct mml_drm_ctx *mml_ctx = mtk_drm_get_mml_drm_ctx(crtc->dev, crtc);
+	struct mml_drm_ctx *mml_ctx;
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	struct mtk_ddp_comp *comp = NULL;
 	const enum mtk_ddp_comp_id id[] = {DDP_COMPONENT_INLINE_ROTATE0,
 					   DDP_COMPONENT_INLINE_ROTATE1};
 	struct mtk_crtc_state *state = to_mtk_crtc_state(mtk_crtc->base.state);
 
-	if (!mml_ctx || !mtk_crtc->is_mml) {
-		DDPMSG("%s !mml_ctx or !is_mml\n", __func__);
+	if (!mtk_crtc->is_mml) {
+		DDPMSG("%s !is_mml\n", __func__);
+		return;
+	}
+
+	mml_ctx = mtk_drm_get_mml_drm_ctx(crtc->dev, crtc);
+	if (!mml_ctx) {
+		DDPMSG("%s !mml_ctx\n", __func__);
 		return;
 	}
 	mml_drm_submit(mml_ctx, mtk_crtc->mml_cfg, &(mtk_crtc->mml_cb));
@@ -27097,7 +27116,7 @@ void mtk_crtc_mml_racing_resubmit(struct drm_crtc *crtc, struct cmdq_pkt *_cmdq_
 
 	if (!cmdq_handle) {
 		DDPPR_ERR("%s:%d NULL cmdq handle\n", __func__, __LINE__);
-		return;
+		goto out;
 	}
 
 	for (; i <= mtk_crtc->is_dual_pipe; ++i) {
@@ -27116,6 +27135,9 @@ void mtk_crtc_mml_racing_resubmit(struct drm_crtc *crtc, struct cmdq_pkt *_cmdq_
 		cmdq_pkt_flush(cmdq_handle);
 		cmdq_pkt_destroy(cmdq_handle);
 	}
+
+out:
+	mml_drm_put_context(mml_ctx);	/* ref cnt dec */
 }
 
 void mtk_crtc_mml_racing_stop_sync(struct drm_crtc *crtc, struct cmdq_pkt *_cmdq_handle,
@@ -27140,7 +27162,7 @@ void mtk_crtc_mml_racing_stop_sync(struct drm_crtc *crtc, struct cmdq_pkt *_cmdq
 
 	if (!cmdq_handle) {
 		DDPPR_ERR("%s:%d NULL cmdq handle\n", __func__, __LINE__);
-		return;
+		goto out;
 	}
 
 	if (force && mtk_crtc->mml_cfg)
@@ -27152,6 +27174,9 @@ void mtk_crtc_mml_racing_stop_sync(struct drm_crtc *crtc, struct cmdq_pkt *_cmdq
 		cmdq_pkt_flush(cmdq_handle);
 		cmdq_pkt_destroy(cmdq_handle);
 	}
+
+out:
+	mml_drm_put_context(mml_ctx);	/* ref cnt dec */
 }
 
 void mtk_crtc_store_total_overhead(struct mtk_drm_crtc *mtk_crtc,

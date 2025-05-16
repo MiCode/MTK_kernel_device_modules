@@ -1196,11 +1196,10 @@ static struct mml_drm_ctx *drm_ctx_create(struct mml_dev *mml,
 }
 
 struct mml_drm_ctx *mml_drm_get_context(struct platform_device *pdev,
-					struct mml_drm_param *disp)
+	struct mml_drm_param *disp, struct mml_drm_ctx *dctx)
 {
-	struct mml_dev *mml = platform_get_drvdata(pdev);
+	struct mml_dev *mml = dctx ? dctx->ctx.mml : platform_get_drvdata(pdev);
 
-	mml_msg("[drm]%s", __func__);
 	if (!mml) {
 		mml_err("[drm]%s not init mml", __func__);
 		return ERR_PTR(-EPERM);
@@ -1254,10 +1253,7 @@ static void drm_ctx_release(struct mml_drm_ctx *dctx)
 
 void mml_drm_put_context(struct mml_drm_ctx *ctx)
 {
-	if (IS_ERR_OR_NULL(ctx))
-		return;
-	mml_log("[drm]%s instance %p", __func__, ctx);
-	mml_sys_put_dle_ctx(ctx->ctx.mml);
+	WARN_ON(IS_ERR_OR_NULL(ctx));
 	mml_dev_put_drm_ctx(ctx->ctx.mml, drm_ctx_release);
 }
 EXPORT_SYMBOL_GPL(mml_drm_put_context);

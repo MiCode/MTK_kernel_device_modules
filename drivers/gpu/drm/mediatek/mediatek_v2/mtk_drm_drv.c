@@ -1554,6 +1554,7 @@ static enum mml_mode _mtk_atomic_mml_plane(struct drm_device *dev,
 		mtk_crtc->mml_cfg->disp_id = mtk_crtc->cur_present_fence_idx;
 
 		ret = mml_drm_submit(mml_ctx, mtk_crtc->mml_cfg, &(mtk_crtc->mml_cb));
+		mml_drm_put_context(mml_ctx);	/* ref cnt dec */
 		if (ret) {
 			DDPPR_ERR("%s:err_submit\n", __func__);
 			goto err_submit;
@@ -1705,6 +1706,7 @@ static enum mml_mode _mtk_atomic_mml_plane(struct drm_device *dev,
 
 	submit_kernel->disp_id = mtk_crtc->cur_present_fence_idx;
 	ret = mml_drm_submit(mml_ctx, submit_kernel, &(mtk_crtc->mml_cb));
+	mml_drm_put_context(mml_ctx);	/* ref cnt dec */
 	if (ret) {
 		DDPPR_ERR("%s:err_submit\n", __func__);
 		goto err_submit;
@@ -9879,18 +9881,22 @@ struct mml_drm_ctx *mtk_drm_get_mml_drm_ctx(struct drm_device *dev,
 	struct drm_crtc *crtc)
 {
 	struct mtk_drm_private *priv = dev->dev_private;
-	struct platform_device *plat_dev = NULL;
+	struct platform_device *plat_dev;
 	struct platform_device *mml_pdev = NULL;
-	struct mml_drm_ctx *mml_ctx = NULL;
+	struct mml_drm_ctx *mml_ctx;
 	struct mml_drm_param disp_param = {};
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
-	struct mtk_ddp_comp *output_comp = NULL;
+	struct mtk_ddp_comp *output_comp;
 
-	if (priv->mml_ctx != NULL)
-		return priv->mml_ctx;
+	mutex_lock(&mtk_crtc->mml_lock);
+	mml_ctx = priv->mml_ctx;
+	if (mml_ctx)
+		goto done;
 
-	if (drm_crtc_index(crtc) != 0)
-		return NULL;
+	if (drm_crtc_index(crtc) != 0) {
+		mml_ctx = NULL;
+		goto done;
+	}
 
 	plat_dev = of_find_device_by_node(priv->mutex_node);
 	if (!plat_dev) {
@@ -9913,7 +9919,7 @@ struct mml_drm_ctx *mtk_drm_get_mml_drm_ctx(struct drm_device *dev,
 	disp_param.disp_crtc = (void *)crtc;
 	disp_param.disp_dump_dl_cb = mtk_drm_mmlsys_dump_cb;
 
-	mml_ctx = mml_drm_get_context(mml_pdev, &disp_param);
+	mml_ctx = mml_drm_get_context(mml_pdev, &disp_param, NULL);
 	if (IS_ERR_OR_NULL(mml_ctx)) {
 		DDPPR_ERR("mml_drm_get_context fail. mml_ctx:%p\n", mml_ctx);
 		goto err_handle_mtk_drm_get_mml_drm_ctx;
@@ -9932,11 +9938,17 @@ struct mml_drm_ctx *mtk_drm_get_mml_drm_ctx(struct drm_device *dev,
 		}
 	}
 
-	return priv->mml_ctx;
+done:
+	mutex_unlock(&mtk_crtc->mml_lock);
+	/* ref cnt inc, to 2 or more to hold context for caller */
+	if (mml_ctx)
+		mml_drm_get_context(mml_pdev, &disp_param, mml_ctx);
+	return mml_ctx;
 
 err_handle_mtk_drm_get_mml_drm_ctx:
 	priv->mml_ctx = NULL;
-	return priv->mml_ctx;
+	mutex_unlock(&mtk_crtc->mml_lock);
+	return NULL;
 }
 
 static void mtk_drm_init_dummy_table(struct mtk_drm_private *priv)

@@ -966,17 +966,14 @@ int mtk_drm_ioctl_mml_gem_submit(struct drm_device *dev, void *data,
 	crtc = list_first_entry(&(dev)->mode_config.crtc_list,
 		typeof(*crtc), head);
 	mtk_crtc = to_mtk_crtc(crtc);
-
-	mtk_drm_idlemgr_kick(__func__, crtc, true);
-	mml_ctx = mtk_drm_get_mml_drm_ctx(dev, crtc);
-
 	if (mtk_crtc->mml_debug & DISP_MML_DBG_LOG) {
 		DDPINFO("%s:%d\n", __func__, __LINE__);
 		print_mml_submit(submit_kernel);
 		DDPINFO("%s:%d\n", __func__, __LINE__);
 	}
 
-	if (mml_ctx > 0) {
+	mml_ctx = mtk_drm_get_mml_drm_ctx(dev, crtc);
+	if (mml_ctx) {
 		DDPINFO("%s:%d mml_drm_submit +\n", __func__, __LINE__);
 		ret = mml_drm_submit(mml_ctx, submit_kernel, NULL);
 		DDPINFO("%s:%d mml_drm_submit - ret:%d, job(id,fence):(%d,%d)\n",
@@ -1035,6 +1032,7 @@ int mtk_drm_ioctl_mml_gem_submit(struct drm_device *dev, void *data,
 			DDPMSG("[%s][%d][%d] copy_to_user fail\n", __func__, __LINE__, ret);
 	}
 
+	mml_drm_put_context(mml_ctx);	/* ref cnt dec */
 	if (skip_free)
 		return ret;
 

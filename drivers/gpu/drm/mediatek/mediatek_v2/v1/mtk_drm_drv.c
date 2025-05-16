@@ -9388,7 +9388,7 @@ struct mml_drm_ctx *mtk_drm_get_mml_drm_ctx(struct drm_device *dev,
 	disp_param.kick_idle_cb = mtk_drm_mmlsys_kick_idle_cb;
 	disp_param.disp_crtc = (void *)crtc;
 
-	mml_ctx = mml_drm_get_context(mml_pdev, &disp_param);
+	mml_ctx = mml_drm_get_context(mml_pdev, &disp_param, NULL);
 	if (IS_ERR_OR_NULL(mml_ctx)) {
 		DDPPR_ERR("mml_drm_get_context fail. mml_ctx:%p\n", mml_ctx);
 		goto err_handle_mtk_drm_get_mml_drm_ctx;

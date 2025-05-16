@@ -4514,6 +4514,7 @@ static enum MTK_LAYERING_CAPS query_MML(struct drm_device *dev, struct drm_crtc 
 	if (mml_ctx != NULL) {
 		mode = mml_drm_query_cap(mml_ctx, mml_info);
 		DDPINFO("%s,q:%d,mml_drm_query_cap mode:%d\n", __func__, query_mode, mode);
+		mml_drm_put_context(mml_ctx);	/* ref cnt dec */
 	} else
 		return ret;
 
@@ -4683,6 +4684,7 @@ static void check_is_mml_layer(const int disp_idx,
 			return;
 		}
 		mml_drm_query_multi_layer(mml_ctx, multi_mml_info, mml_cnt, mml_duration);
+		mml_drm_put_context(mml_ctx);	/* ref cnt dec */
 	}
 
 	for (i = 0; i < disp_info->layer_num[disp_idx]; i++) {

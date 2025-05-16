@@ -555,13 +555,13 @@ struct mml_drm_ctx *mml_dev_get_drm_ctx(struct mml_dev *mml,
 
 	mutex_lock(&mml->ctx_mutex);
 
-	create_dev_topology_locked(mml);
-	if (IS_ERR(mml->topology)) {
-		ctx = ERR_CAST(mml->topology);
-		goto exit;
-	}
-
 	if (atomic_inc_return(&mml->drm_cnt) == 1) {
+		create_dev_topology_locked(mml);
+		if (IS_ERR(mml->topology)) {
+			ctx = ERR_CAST(mml->topology);
+			atomic_dec(&mml->drm_cnt);
+			goto exit;
+		}
 		mml->drm_ctx = ctx_create(mml, disp);
 		if (IS_ERR(mml->drm_ctx))
 			atomic_dec(&mml->drm_cnt);
@@ -582,8 +582,10 @@ void mml_dev_put_drm_ctx(struct mml_dev *mml,
 	mutex_lock(&mml->ctx_mutex);
 	ctx = mml->drm_ctx;
 	cnt = atomic_dec_if_positive(&mml->drm_cnt);
-	if (cnt == 0)
+	if (cnt == 0) {
+		mml_sys_put_dle_ctx(mml);
 		mml->drm_ctx = NULL;
+	}
 	mutex_unlock(&mml->ctx_mutex);
 	if (cnt == 0 && !IS_ERR(ctx))
 		ctx_release(ctx);

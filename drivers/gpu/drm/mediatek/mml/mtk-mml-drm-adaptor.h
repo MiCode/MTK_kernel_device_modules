@@ -138,19 +138,21 @@ int mml_drm_query_multi_layer(struct mml_drm_ctx *dctx,
 void mml_drm_try_frame(struct mml_drm_ctx *dctx, struct mml_frame_info *info);
 
 /*
- * mml_drm_get_context - Get mml drm context to control mml.
+ * mml_drm_get_context - Get mml drm context to control mml, increase ref count of context.
  *
  * pdev:	The mml driver platform device pointer. Client driver must call
  *		mml_get_plat_device by giving user client driver platoform
  *		device which contains "mediatek,mml" property link to mml node
- *		in dts.
- * @disp:	Display parameters. See struct.
+ *		in dts. Can be NULL if provide dctx.
+ * @disp:	Display parameters. See struct. Can be NULL if provide dctx.
+ * @dctx:	Context of mml drm adaptor. Return by this API, and can be NULL when
+ *		first time call to this API.
  *
  * Return:	The drm context pointer to represent mml driver instance.
  *
  */
 struct mml_drm_ctx *mml_drm_get_context(struct platform_device *pdev,
-	struct mml_drm_param *disp);
+	struct mml_drm_param *disp, struct mml_drm_ctx *dctx);
 
 /*
  * mml_drm_ctx_idle - Check if all tasks in this drm ctx stop.

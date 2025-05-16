@@ -470,7 +470,7 @@ static void case_general_submit_ut(struct mml_test *test,
 		ctx = main_test->drm_ctx;
 
 	if (!ctx) {
-		ctx = mml_drm_get_context(mml_pdev, &disp);
+		ctx = mml_drm_get_context(mml_pdev, &disp, NULL);
 		if (IS_ERR_OR_NULL(ctx)) {
 			kfree(pq_param);
 			mml_err("[test]get mml context failed %pe", ctx);
@@ -1333,7 +1333,7 @@ static void case_run_read_sram(struct mml_test *test, struct mml_ut *cur)
 
 	/* create context */
 	mml_pdev = mml_get_plat_device(test->pdev);
-	ctx = mml_drm_get_context(mml_pdev, &disp);
+	ctx = mml_drm_get_context(mml_pdev, &disp, NULL);
 
 	/* hold sram, for wrot out and rdma in */
 	dev = &mml_pdev->dev;
@@ -1410,7 +1410,7 @@ static void case_run_wr_sram(struct mml_test *test, struct mml_ut *cur)
 		mml_err("%s mml_pdev = null", __func__);
 		return;
 	}
-	ctx = mml_drm_get_context(mml_pdev, &disp);
+	ctx = mml_drm_get_context(mml_pdev, &disp, NULL);
 	if (unlikely(!ctx)) {
 		mml_err("%s mml_ctx = null", __func__);
 		return;
@@ -1573,7 +1573,7 @@ static void case_run_sram_frame(struct mml_test *test, struct mml_ut *cur)
 		mml_err("%s mml_pdev = null", __func__);
 		return;
 	}
-	ctx = mml_drm_get_context(mml_pdev, &disp);
+	ctx = mml_drm_get_context(mml_pdev, &disp, NULL);
 
 	/* hold sram, for wrot out and rdma in */
 	dev = &mml_pdev->dev;
