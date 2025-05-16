@@ -607,6 +607,7 @@ static void probe_android_vh_ufs_compl_command(void *data, struct ufs_hba *hba,
 }
 
 static void probe_ufshcd_command(void *data, struct scsi_device *sdev,
+				 struct ufs_hba *hba,
 				 enum ufs_trace_str_t str_t, unsigned int tag,
 				 u32 doorbell, u32 hwq_id, int transfer_len,
 				 u32 intr, u64 lba, u8 opcode, u8 group_id)
@@ -614,7 +615,6 @@ static void probe_ufshcd_command(void *data, struct scsi_device *sdev,
 	int ptr, ptr_cur;
 	enum cmd_hist_event event;
 	struct cmd_hist_struct *cmd_hist;
-	struct ufs_hba *hba = shost_priv(sdev->host);
 	struct ufs_mtk_dbg *mdbg = ufshcd_to_dbg(hba);
 	struct ufshcd_lrb *lrbp = &hba->lrb[tag];
 
@@ -661,17 +661,14 @@ static void probe_ufshcd_command(void *data, struct scsi_device *sdev,
 	}
 }
 
-static void probe_ufshcd_uic_command(void *data, const char *dev_name,
+static void probe_ufshcd_uic_command(void *data, struct ufs_hba *hba,
 				     enum ufs_trace_str_t str_t, u32 cmd,
 				     u32 arg1, u32 arg2, u32 arg3)
 {
 	int ptr, ptr_cur;
 	enum cmd_hist_event event;
 	struct cmd_hist_struct *cmd_hist;
-	struct ufs_mtk_dbg *mdbg = data;
-
-	if (strcmp(dev_name, "16890000.ufshci") == 0)
-		mdbg = ufshcd_to_dbg(ufshba[1]);
+	struct ufs_mtk_dbg *mdbg = ufshcd_to_dbg(hba);
 
 	if (IS_ERR_OR_NULL(mdbg))
 		return;
@@ -1747,24 +1744,13 @@ void ufs_mtk_dbg_l2_dump(struct ufs_hba *hba)
 }
 EXPORT_SYMBOL_GPL(ufs_mtk_dbg_l2_dump);
 
-static void probe_ufshcd_clk_gating(void *data, const char *dev_name,
+static void probe_ufshcd_clk_gating(void *data, struct ufs_hba *hba,
 				    int state)
 {
 	int ptr;
-	struct ufs_hba *hba;
-	struct ufs_mtk_host *host;
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 	struct cmd_hist_struct *cmd_hist;
 	struct ufs_mtk_dbg *mdbg;
-
-	if (strcmp(dev_name, "16890000.ufshci") == 0)
-		hba = ufshba[1];
-	else
-		hba = ufshba[0];
-
-	if (IS_ERR_OR_NULL(hba))
-		return;
-
-	host = ufshcd_get_variant(hba);
 
 	if (IS_ERR_OR_NULL(host))
 		return;
@@ -1798,15 +1784,12 @@ static void probe_ufshcd_clk_gating(void *data, const char *dev_name,
 #endif
 }
 
-static void probe_ufshcd_profile_clk_scaling(void *data, const char *dev_name,
+static void probe_ufshcd_profile_clk_scaling(void *data, struct ufs_hba *hba,
 	const char *profile_info, s64 time_us, int err)
 {
 	int ptr;
 	struct cmd_hist_struct *cmd_hist;
-	struct ufs_mtk_dbg *mdbg = data;
-
-	if (strcmp(dev_name, "16890000.ufshci") == 0)
-		mdbg = ufshcd_to_dbg(ufshba[1]);
+	struct ufs_mtk_dbg *mdbg = ufshcd_to_dbg(hba);
 
 	if (IS_ERR_OR_NULL(mdbg))
 		return;
@@ -1825,17 +1808,14 @@ static void probe_ufshcd_profile_clk_scaling(void *data, const char *dev_name,
 	cmd_hist[ptr].cmd.clk_scaling.err = err;
 }
 
-static void probe_ufshcd_pm(void *data, const char *dev_name,
+static void probe_ufshcd_pm(void *data, struct ufs_hba *hba,
 			    int err, s64 time_us,
 			    int pwr_mode, int link_state,
 			    enum ufsdbg_pm_state state)
 {
 	int ptr;
 	struct cmd_hist_struct *cmd_hist;
-	struct ufs_mtk_dbg *mdbg = data;
-
-	if (strcmp(dev_name, "16890000.ufshci") == 0)
-		mdbg = ufshcd_to_dbg(ufshba[1]);
+	struct ufs_mtk_dbg *mdbg = ufshcd_to_dbg(hba);
 
 	if (IS_ERR_OR_NULL(mdbg))
 		return;
@@ -1854,35 +1834,35 @@ static void probe_ufshcd_pm(void *data, const char *dev_name,
 	cmd_hist[ptr].cmd.pm.link_state = link_state;
 }
 
-static void probe_ufshcd_runtime_suspend(void *data, const char *dev_name,
+static void probe_ufshcd_runtime_suspend(void *data, struct ufs_hba *hba,
 			    int err, s64 time_us,
 			    int pwr_mode, int link_state)
 {
-	probe_ufshcd_pm(data, dev_name, err, time_us, pwr_mode, link_state,
+	probe_ufshcd_pm(data, hba, err, time_us, pwr_mode, link_state,
 			UFSDBG_RUNTIME_SUSPEND);
 }
 
-static void probe_ufshcd_runtime_resume(void *data, const char *dev_name,
+static void probe_ufshcd_runtime_resume(void *data, struct ufs_hba *hba,
 			    int err, s64 time_us,
 			    int pwr_mode, int link_state)
 {
-	probe_ufshcd_pm(data, dev_name, err, time_us, pwr_mode, link_state,
+	probe_ufshcd_pm(data, hba, err, time_us, pwr_mode, link_state,
 			UFSDBG_RUNTIME_RESUME);
 }
 
-static void probe_ufshcd_system_suspend(void *data, const char *dev_name,
+static void probe_ufshcd_system_suspend(void *data, struct ufs_hba *hba,
 			    int err, s64 time_us,
 			    int pwr_mode, int link_state)
 {
-	probe_ufshcd_pm(data, dev_name, err, time_us, pwr_mode, link_state,
+	probe_ufshcd_pm(data, hba, err, time_us, pwr_mode, link_state,
 			UFSDBG_SYSTEM_SUSPEND);
 }
 
-static void probe_ufshcd_system_resume(void *data, const char *dev_name,
+static void probe_ufshcd_system_resume(void *data, struct ufs_hba *hba,
 			    int err, s64 time_us,
 			    int pwr_mode, int link_state)
 {
-	probe_ufshcd_pm(data, dev_name, err, time_us, pwr_mode, link_state,
+	probe_ufshcd_pm(data, hba, err, time_us, pwr_mode, link_state,
 			UFSDBG_SYSTEM_RESUME);
 }
 
@@ -2617,7 +2597,7 @@ int ufs_mtk_dbg_tp_register(struct ufs_hba *hba)
 
 		tracepoint_probe_register(interests[i].tp,
 					  interests[i].func,
-					  ufshcd_to_dbg(hba));
+					  NULL);
 		interests[i].init = true;
 	}
 
@@ -2637,7 +2617,7 @@ void ufs_mtk_dbg_tp_unregister(struct ufs_hba *hba)
 		if (interests[i].init) {
 			tracepoint_probe_unregister(interests[i].tp,
 						    interests[i].func,
-						    ufshcd_to_dbg(hba));
+						    NULL);
 			interests[i].init = false;
 		}
 	}
