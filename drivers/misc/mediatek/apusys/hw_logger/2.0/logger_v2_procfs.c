@@ -178,15 +178,7 @@ static int proc_log_level_sqopen(struct inode *inode, struct file *file)
 
 static int proc_debug_attr_seq_show(struct seq_file *s, void *v)
 {
-	unsigned int raw_w_ofs = 0, raw_buf_size = 0;
 	unsigned long flags;
-	char *raw_buf_base;
-
-	logger_v2_get_buf_info(LOG_BUFF_NP, &raw_buf_base, &raw_buf_size);
-	raw_w_ofs = logger_v2_get_w_ofs();
-
-	seq_printf(s, "raw_buf_base: 0x%p\nraw_buf_size: 0x%08x\nraw_w_ofs: 0x%08x\n",
-		raw_buf_base, raw_buf_size, raw_w_ofs);
 
 	spin_lock_irqsave(&prev_block_session_lock, flags);
 	seq_printf(s, "prev_block_session_r_ofs: 0x%08x \n "
@@ -453,9 +445,6 @@ static void *seq_start(struct seq_file *s, loff_t *pos, bool block_mode)
 	}
 
 	logger_v2_get_buf_info(LOG_BUFF_NP, &raw_buf_base, &raw_buf_size);
-
-	HWLOGR_DBG("raw_buf_base: 0x%p raw_buf_size: 0x%08x\n",
-				raw_buf_base, raw_buf_size);
 
 	session = kzalloc(sizeof(struct seq_local_data), GFP_KERNEL);
 	if (!session)
