@@ -2751,7 +2751,7 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 		/* if format is DRM_FORMAT_Y410, enable Y2R inside OVL */
 	}
 
-	if (fmt == DRM_FORMAT_Y410)
+	if (fmt == DRM_FORMAT_Y410 || fmt == DRM_FORMAT_UYVY || fmt == DRM_FORMAT_YUYV)
 		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_EN_CON],
 			OP_8_BIT_MODE, REG_FLD_MASK(reg_fld[FLD_OP_8BIT_MODE]));
 	else
