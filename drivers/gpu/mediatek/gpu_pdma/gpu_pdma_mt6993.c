@@ -410,7 +410,7 @@ static int init_ccmd_hw(struct pdma_device *pdma_dev,
 
 #if CCMD_V2_SUPPORT
 	/* CCMD mode */
-	writel(0x401B8000, pdma_dev->pdma_reg_base_kva);
+	writel(0x433B8000, pdma_dev->pdma_reg_base_kva);
 #endif
 
 	for (page_num = 0; page_num < (1 << pdma_dev->page_order); page_num++) {
