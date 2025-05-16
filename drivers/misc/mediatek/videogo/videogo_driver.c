@@ -67,6 +67,7 @@ static struct cdev videogo_cdev;
 static int set_runnable_boost_disable;
 static int set_margin_control;
 static int set_uclamp_min_ta;
+static int set_util_est_boost;
 static int set_ct_to_vip;
 //static int set_cpu_freq_min;
 static int set_gpu_freq_min;
@@ -265,7 +266,7 @@ static int videogo_process_data(int iotype, void *data)
 			list_add(&info0->list, &inst_list[type]);
 
 			alive_count[type]++;
-			if (info0->oprate && info0->oprate <= TARGET_FPS)
+			if (info0->oprate <= TARGET_FPS)
 				target_fps_count[type]++;
 			mutex_unlock(&inst_list_mutex[type]);
 
@@ -282,14 +283,13 @@ static int videogo_process_data(int iotype, void *data)
 
 		if (type >= 0 && type < MAX_CODEC_TYPE) {
 			mutex_lock(&inst_list_mutex[type]);
-			alive_count[type]--;
 
 			list_for_each_entry_safe(info0, tmp, &inst_list[type], list) {
 				if (info0->ctx_id == inst_data->ctx_id &&
 					info0->inst_type == type) {
 
-					if (info0->oprate_avdvfs &&
-						TARGET_FPS_CHECKER(info0->oprate_avdvfs, TARGET_FPS, 20))
+					alive_count[type]--;
+					if (TARGET_FPS_CHECKER(info0->oprate_avdvfs, TARGET_FPS, 20))
 						target_fps_count[type]--;
 					list_del(&info0->list);
 					kfree(info0);
@@ -441,6 +441,11 @@ static int videogo_controller_fn(void *arg)
 								VGO_MARGIN_CONTROL_0, 1000, 20, 0);
 				set_margin_control = 1;
 			}
+			if (!set_util_est_boost && mtk_vgo_util_est_boost) {
+				send_service_info("ack util_est_boost",
+								VGO_UTIL_EST_BOOST, 0, 0, 0);
+				set_util_est_boost = 1;
+			}
 		} else {
 			if (set_runnable_boost_disable) {
 				send_service_info("rel Runnable_boost_disable",
@@ -451,6 +456,11 @@ static int videogo_controller_fn(void *arg)
 				send_service_info("rel margin_control",
 								VGO_MARGIN_CONTROL_0, -1, 0, 0);
 				set_margin_control = 0;
+			}
+			if (set_util_est_boost) {
+				send_service_info("rel util_est_boost",
+								VGO_UTIL_EST_BOOST, -1, 0, 0);
+				set_util_est_boost = 0;
 			}
 		}
 

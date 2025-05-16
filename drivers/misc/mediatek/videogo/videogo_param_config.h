@@ -30,4 +30,6 @@ module_param(mtk_vgo_runnable_boost_enable, bool, 0644);
 static bool mtk_vgo_cgroup_colocate = true;
 module_param(mtk_vgo_cgroup_colocate, bool, 0644);
 
+static bool mtk_vgo_util_est_boost = true;
+module_param(mtk_vgo_util_est_boost, bool, 0644);
 #endif // VIDEOGO_PARAM_CONFIG_H
