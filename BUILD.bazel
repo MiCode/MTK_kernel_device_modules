@@ -39,6 +39,11 @@ filegroup(
         "include/dtc/**",
     ]),
 )
+load("//kernel_device_modules-6.12:kernel/kleaf/ack_headers.bzl","ack_headers")
+filegroup(
+    name = "mtk_use_gki_unsafe_headers",
+    srcs = ack_headers,
+)
 
 # mgk_64_k612
 load("//kernel_device_modules-6.12:kernel/kleaf/mgk_64.bzl",
