@@ -30,6 +30,7 @@
 #define MT6661_REGULATOR_MODE_ULP	3
 
 #define DEFAULT_DELAY_MS		10
+#define BUF_SIZE			20
 
 /*
  * MT6661 regulator lock register
@@ -54,6 +55,7 @@
  */
 struct mt6661_regulator_info {
 	int irq;
+	int lp_irq;
 	int oc_irq_enable_delay_ms;
 	struct delayed_work oc_work;
 	struct regulator_desc desc;
@@ -867,6 +869,7 @@ static void mt6661_oc_irq_enable_work(struct work_struct *work)
 		= container_of(dwork, struct mt6661_regulator_info, oc_work);
 
 	enable_irq(info->irq);
+	enable_irq(info->lp_irq);
 }
 
 static irqreturn_t mt6661_oc_irq(int irq, void *data)
@@ -875,6 +878,7 @@ static irqreturn_t mt6661_oc_irq(int irq, void *data)
 	struct mt6661_regulator_info *info = rdev_get_drvdata(rdev);
 
 	disable_irq_nosync(info->irq);
+	disable_irq_nosync(info->lp_irq);
 	if (!regulator_is_enabled_regmap(rdev))
 		goto delayed_enable;
 	regulator_notifier_call_chain(rdev, REGULATOR_EVENT_OVER_CURRENT,
@@ -892,7 +896,8 @@ static int mt6661_of_parse_cb(struct device_node *np,
 	struct mt6661_regulator_info *info = config->driver_data;
 	int ret;
 
-	if (info->irq > 0) {
+	if ((desc->id >= MT6661_ID_LD20_1 && info->lp_irq > 0) ||
+	    (desc->id < MT6661_ID_LD20_1 && info->irq > 0)) {
 		ret = of_property_read_u32(np, "mediatek,oc-irq-enable-delay-ms",
 					   &info->oc_irq_enable_delay_ms);
 		if (ret || !info->oc_irq_enable_delay_ms)
@@ -929,7 +934,8 @@ static int mt6661_regulator_probe(struct platform_device *pdev)
 	struct regulator_dev *rdev;
 	struct mt6661_regulator_info *info;
 	unsigned int slvid = 0, hwcid = 0;
-	int i, ret;
+	int i = 0, j = -1, ret;
+	char **ldo_name;
 
 	dev_info(&pdev->dev, "%s\n", __func__);
 	config.dev = pdev->dev.parent;
@@ -945,31 +951,59 @@ static int mt6661_regulator_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Failed to get mt6661 slvid: ret=%d\n", ret);
 	slvid &= 0xF;
 
+	ldo_name = devm_kzalloc(&pdev->dev, (MT6661_ID_LDC0_4_EINT_LOW - MT6661_ID_LD20_1 + 1) *
+				sizeof(char *), GFP_KERNEL);
+	if (!ldo_name)
+		return -ENOMEM;
 	for (i = 0; i < MT6661_MAX_REGULATOR; i++) {
 		info = &mt6661_regulators[i];
 		info->irq = platform_get_irq_byname_optional(pdev, info->desc.name);
+		/* For LDO LP INT */
+		if (i >= MT6661_ID_LD20_1) {
+			++j;
+			ldo_name[j] = devm_kzalloc(&pdev->dev, BUF_SIZE, GFP_KERNEL);
+			if (!ldo_name[j])
+				return -ENOMEM;
+			snprintf(ldo_name[j], BUF_SIZE, "%s_LP", info->desc.name);
+			info->lp_irq = platform_get_irq_byname_optional(pdev, ldo_name[j]);
+		}
 		config.driver_data = info;
 
-		/* skip registering MT6661-S5 LNC0_9 in MT6993 B0(MT6661-E2) to avoid disabled by kernel */
+		/* skip registering MT6661-S5 LNC0_9 in MT6993 A0(MT6661-E1) to avoid OC */
 		if (hwcid == MT6661_HWCID0_E1_CODE &&
 		    slvid == 5 && info->desc.id == MT6661_ID_LNC0_9) {
-			dev_info(&pdev->dev, "skip registering %s\n", info->desc.name);
+			dev_info(&pdev->dev, "Skip registering %s\n", info->desc.name);
 			continue;
 		}
 		rdev = devm_regulator_register(&pdev->dev, &info->desc, &config);
 		if (IS_ERR(rdev)) {
 			ret = PTR_ERR(rdev);
-			dev_err(&pdev->dev, "failed to register %s, ret=%d\n",
+			dev_err(&pdev->dev, "Failed to register %s, ret=%d\n",
 				info->desc.name, ret);
 			continue;
 		}
-		if (info->irq <= 0)
+		if (info->irq <= 0) {
+			dev_err(&pdev->dev, "Failed to get IRQ for %s\n", info->desc.name);
 			continue;
+		}
 		ret = devm_request_threaded_irq(&pdev->dev, info->irq, NULL,
 						mt6661_oc_irq,
 						IRQF_TRIGGER_HIGH,
 						info->desc.name,
 						rdev);
+		/* For LDO LP INT */
+		if (i >= MT6661_ID_LD20_1) {
+			if (info->lp_irq <= 0) {
+				dev_err(&pdev->dev, "Failed to get IRQ for %s\n", ldo_name[j]);
+				continue;
+			}
+			ret |= devm_request_threaded_irq(&pdev->dev, info->lp_irq, NULL,
+						mt6661_oc_irq,
+						IRQF_TRIGGER_HIGH,
+						ldo_name[j],
+						rdev);
+		}
+
 		if (ret) {
 			dev_err(&pdev->dev, "Failed to request IRQ:%s, ret=%d",
 				info->desc.name, ret);
