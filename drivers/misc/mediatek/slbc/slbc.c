@@ -427,6 +427,15 @@ int slbc_get_cust_pmu(unsigned char idx, u64 *cnt, u64 *timestamp)
 }
 EXPORT_SYMBOL_GPL(slbc_get_cust_pmu);
 
+int slbc_get_gpu_wb(uint32_t *val)
+{
+	if (common_ops && common_ops->slbc_get_gpu_wb)
+		return common_ops->slbc_get_gpu_wb(val);
+	else
+		return -ENODEV;
+}
+EXPORT_SYMBOL_GPL(slbc_get_gpu_wb);
+
 void slbc_register_common_ops(struct slbc_common_ops *ops)
 {
 	common_ops = ops;

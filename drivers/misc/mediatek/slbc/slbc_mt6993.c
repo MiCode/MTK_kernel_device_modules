@@ -545,6 +545,26 @@ static int slbc_set_policy(uint32_t type)
 #endif /* CONFIG_MTK_TINYSYS_SCMI */
 }
 
+static int slbc_get_gpu_wb(uint32_t *val)
+{
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
+	int ret = 0;
+	struct scmi_tinysys_slbc_ctrl_status rvalue = {0};
+
+	ret = slbc_ctrl_scmi_info(IPI_SLBC_GET_GPU_WB, 0, 0, 0, 0, &rvalue);
+	if (ret)
+		return ret;
+
+	if (!val)
+		return -1;
+	*val = rvalue.slbc_resv1;
+
+	return 0;
+#else
+	return 0;
+#endif /* CONFIG_MTK_TINYSYS_SCMI */
+}
+
 static int slbc_activate_thread(void *arg)
 {
 	struct slbc_ops *ops = arg;
@@ -1600,6 +1620,7 @@ static ssize_t dbg_slbc_proc_write(struct file *file,
 	unsigned long val_1;
 	unsigned long val_2;
 	unsigned long val_3;
+	unsigned int val_1_32_bit = 0;
 	unsigned long long val_1_64_bit = 0;
 	unsigned long long val_2_64_bit = 0;
 
@@ -1763,6 +1784,10 @@ static ssize_t dbg_slbc_proc_write(struct file *file,
 		SLBC_TRACE_REC(LVL_NORM, TYPE_C, 0, 0,
 		"cust_pmu[%lu] = %llu, timestamp = %llu",
 		val_1, val_1_64_bit, val_2_64_bit);
+	} else if (!strcmp(cmd, "slbc_get_gpu_wb")) {
+		slbc_get_gpu_wb(&val_1_32_bit);
+		SLBC_TRACE_REC(LVL_NORM, TYPE_C, 0, 0,
+		"gpu_wb = %u", val_1_32_bit);
 	} else if (!strcmp(cmd, "slbc_get_cust_pmu_config")) {
 		for (i = 0; i < SLC_CUST_PMU_NUM; i++)
 			SLBC_TRACE_REC(LVL_NORM, TYPE_C, 0, 0,
@@ -1977,6 +2002,7 @@ static struct slbc_common_ops common_ops = {
 	.slbc_get_cache_hit_bw = slbc_get_cache_hit_bw,
 	.slbc_get_cache_usage = slbc_get_cache_usage,
 	.slbc_get_cust_pmu = slbc_get_cust_pmu,
+	.slbc_get_gpu_wb = slbc_get_gpu_wb,
 };
 
 static struct slbc_ipi_ops ipi_ops = {
