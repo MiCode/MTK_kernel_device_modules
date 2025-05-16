@@ -4906,10 +4906,6 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 		/* margin info by scenario */
 		*(feature_data + 2) = imgsensor_info.margin;
 		break;
-	case SENSOR_FEATURE_SET_HDR_SHUTTER:
-		pr_debug("SENSOR_FEATURE_SET_HDR_SHUTTER LE=%d, SE=%d\n",
-			(UINT16)*feature_data, (UINT16)*(feature_data+1));
-		break;
 	case SENSOR_FEATURE_SET_STREAMING_SUSPEND:
 		pr_debug("SENSOR_FEATURE_SET_STREAMING_SUSPEND\n");
 		streaming_control(KAL_FALSE);
@@ -5090,6 +5086,131 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 				break;
 			}
 		}
+		break;
+	}
+	case SENSOR_FEATURE_SET_HDR_SHUTTER://for 2EXP
+	{
+		pr_info("SENSOR_FEATURE_SET_HDR_SHUTTER LE=%d, SE=%d\n",
+				(UINT16) *feature_data, (UINT16) *(feature_data + 1));
+		// implement write shutter for NE/SE
+		if (imgsensor.current_scenario_id == MSDK_SCENARIO_ID_CUSTOM1)
+			set_shutter((UINT16) *feature_data);
+		break;
+	}
+	case SENSOR_FEATURE_SET_DUAL_GAIN://for 2EXP
+	{
+		pr_info("SENSOR_FEATURE_SET_DUAL_GAIN LE=%d, SE=%d\n",
+				(UINT16) *feature_data, (UINT16) *(feature_data + 1));
+		// implement write gain for NE/SE
+		if (imgsensor.current_scenario_id == MSDK_SCENARIO_ID_CUSTOM1)
+			set_gain((UINT16) *feature_data);
+		break;
+	}
+	case SENSOR_FEATURE_GET_STAGGER_TARGET_SCENARIO:
+	{
+		if (*feature_data == MSDK_SCENARIO_ID_VIDEO_PREVIEW) {
+			switch (*(feature_data + 1)) {
+			case HDR_RAW_DCG_COMPOSE_RAW12:
+				*(feature_data + 2) = MSDK_SCENARIO_ID_CUSTOM1;
+				break;
+			default:
+				break;
+			}
+		} else if (*feature_data == MSDK_SCENARIO_ID_CUSTOM1) {
+			switch (*(feature_data + 1)) {
+			case HDR_NONE :
+				*(feature_data + 2) = MSDK_SCENARIO_ID_VIDEO_PREVIEW;
+				break;
+			default:
+				break;
+			}
+		}
+		pr_info("[%s][SENSOR_FEATURE_GET_STAGGER_TARGET_SCENARIO] %d %d<->%d\n",
+				__func__,
+				(UINT16) (*feature_data),
+				(UINT16) *(feature_data + 1),
+				(UINT16) *(feature_data + 2));
+		break;
+	}
+	case SENSOR_FEATURE_GET_RAW_BIT_BY_SCENARIO:
+	{
+		switch (*feature_data) {
+		case MSDK_SCENARIO_ID_CUSTOM1:
+			*(MUINT32 *)(uintptr_t)(*(feature_data + 1))
+				= 12;
+			break;
+		case MSDK_SCENARIO_ID_CAMERA_PREVIEW:
+		case MSDK_SCENARIO_ID_CAMERA_CAPTURE_JPEG:
+		case MSDK_SCENARIO_ID_VIDEO_PREVIEW:
+		case MSDK_SCENARIO_ID_HIGH_SPEED_VIDEO:
+		case MSDK_SCENARIO_ID_SLIM_VIDEO:
+		default:
+			*(MUINT32 *)(uintptr_t)(*(feature_data + 1))
+				= 10;
+			break;
+		}
+		pr_info("[%s][SENSOR_FEATURE_GET_RAW_BIT_BY_SCENARIO] get mode(%llu) raw bit(%d)\n",
+			__func__, *feature_data, *(MUINT32 *)(uintptr_t)(*(feature_data + 1)));
+		break;
+	}
+	case SENSOR_FEATURE_GET_SATURATION_LEVEL_BY_SCENARIO:
+	{
+		switch (*feature_data) {
+		case MSDK_SCENARIO_ID_CUSTOM1:
+			*(MUINT32 *)(uintptr_t)(*(feature_data + 1))
+				= 3900;
+			break;
+		case MSDK_SCENARIO_ID_CAMERA_PREVIEW:
+		case MSDK_SCENARIO_ID_CAMERA_CAPTURE_JPEG:
+		case MSDK_SCENARIO_ID_VIDEO_PREVIEW:
+		case MSDK_SCENARIO_ID_HIGH_SPEED_VIDEO:
+		case MSDK_SCENARIO_ID_SLIM_VIDEO:
+		default:
+			*(MUINT32 *)(uintptr_t)(*(feature_data + 1))
+				= 1023;
+			break;
+		}
+		pr_info("[%s][SENSOR_FEATURE_GET_SATURATION_LEVEL_BY_SCENARIO] mode(%llu) s_max(%d)\n",
+			__func__, *feature_data, *(MUINT32 *)(uintptr_t)(*(feature_data + 1)));
+		break;
+	}
+	case SENSOR_FEATURE_GET_GAIN_RATIO_BY_SCENARIO:
+	{
+		switch (*feature_data) {
+		case MSDK_SCENARIO_ID_CUSTOM1:
+			*(MUINT32 *)(uintptr_t)(*(feature_data + 1))
+				= 4000;
+			break;
+		case MSDK_SCENARIO_ID_CAMERA_PREVIEW:
+		case MSDK_SCENARIO_ID_CAMERA_CAPTURE_JPEG:
+		case MSDK_SCENARIO_ID_VIDEO_PREVIEW:
+		case MSDK_SCENARIO_ID_HIGH_SPEED_VIDEO:
+		case MSDK_SCENARIO_ID_SLIM_VIDEO:
+		default:
+			*(MUINT32 *)(uintptr_t)(*(feature_data + 1))
+				= 1000;
+			break;
+		}
+		pr_info("[%s][SENSOR_FEATURE_GET_GAIN_RATIO_BY_SCENARIO] mode(%llu) ratio(%d)\n",
+			__func__, *feature_data, *(MUINT32 *)(uintptr_t)(*(feature_data + 1)));
+		break;
+	}
+	case SENSOR_FEATURE_GET_DCG_GAIN_MODE_BY_SCENARIO:
+	{
+		switch (*feature_data) {
+		case MSDK_SCENARIO_ID_CUSTOM1:
+		case MSDK_SCENARIO_ID_CAMERA_PREVIEW:
+		case MSDK_SCENARIO_ID_CAMERA_CAPTURE_JPEG:
+		case MSDK_SCENARIO_ID_VIDEO_PREVIEW:
+		case MSDK_SCENARIO_ID_HIGH_SPEED_VIDEO:
+		case MSDK_SCENARIO_ID_SLIM_VIDEO:
+		default:
+			*(MUINT32 *)(uintptr_t)(*(feature_data + 1))
+				= IMGSENSOR_DCG_RATIO_MODE;
+			break;
+		}
+		pr_info("[%s][SENSOR_FEATURE_GET_DCG_GAIN_MODE_BY_SCENARIO] mode(%llu) gain_mode(%d)\n",
+			__func__, *feature_data, *(MUINT32 *)(uintptr_t)(*(feature_data + 1)));
 		break;
 	}
 	default:
