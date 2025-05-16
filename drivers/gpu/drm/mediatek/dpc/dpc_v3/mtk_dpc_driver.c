@@ -3303,7 +3303,7 @@ static int dpc_smi_pwr_get_if_in_use(void *data)
 		return -1;
 	}
 
-	return 0;
+	return -1;
 }
 
 static int dpc_smi_pwr_get(void *data)
