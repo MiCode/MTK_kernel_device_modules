@@ -21026,7 +21026,7 @@ int mtk_crtc_retrig_mml(struct drm_device *dev, struct mtk_cmdq_pkt_info *pkt_in
 	// need retrig mml when mml_ir or mml_dl
 	mtk_crtc = pkt_info->mtk_crtc;
 	if (!mtk_crtc->is_mml_submit || !(mtk_crtc->is_mml || mtk_crtc->is_mml_dl))
-		return -EINVAL;
+		return 0;
 
 	if (mtk_crtc->is_mml) {
 		DDPINFO("%s: not support mml_ir yet\n", __func__);
