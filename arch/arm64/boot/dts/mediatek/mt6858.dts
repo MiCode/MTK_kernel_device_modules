@@ -81,6 +81,7 @@
 	/* chosen */
 	chosen: chosen {
 		bootargs = "console=tty0 root=/dev/ram \
+			    nosoftlockup \
 			    8250.nr_uarts=3 \
 			    androidboot.hardware=mt6858 \
 			    vmalloc=400M swiotlb=noforce cma=64M \
@@ -822,30 +823,6 @@
 		#clock-cells = <1>;
 	};
 
-	systimer: systimer@1c030000 {
-		compatible = "mediatek,legacy-timer";
-		reg = <0 0x1c030000 0 0x1000>;
-		interrupts = <GIC_SPI 249 IRQ_TYPE_LEVEL_HIGH 0>,
-				<GIC_SPI 250 IRQ_TYPE_LEVEL_HIGH 0>,
-				<GIC_SPI 251 IRQ_TYPE_LEVEL_HIGH 0>;
-		// clocks = <&clk13m>;
-	};
-
-	mem_mapped_timer: mem-mapped-timer@1c033000 {
-		#address-cells = <2>;
-		#size-cells = <2>;
-		ranges;
-		compatible = "arm,armv7-timer-mem";
-		reg = <0 0x1c033000 0 0x1000>; //CNTCTLBase frame
-		clock-frequency = <13000000>;
-		frame@1c034000 {
-			frame-number = <0>;
-			interrupts = <GIC_SPI 249 IRQ_TYPE_LEVEL_HIGH 0>, //phys irq
-						<GIC_SPI 586 IRQ_TYPE_LEVEL_HIGH 0>; // virt irq
-			reg = <0 0x1c034000 0 0x1000>; //CNTBase0
-		};
-	};
-
 	mdpsys_config_clk: syscon@1f000000 {
 		compatible = "mediatek,mt6858-mdpsys", "syscon";
 		reg = <0 0x1f000000 0 0x1000>;
@@ -1197,16 +1174,6 @@
 			reg = <0 0x10006000 0 0x1000>;
 		};
 
-		toprgu@10007000 {
-			compatible = "mediatek,toprgu";
-			reg = <0 0x10007000 0 0x1000>;
-		};
-
-		apxgpt@10008000 {
-			compatible = "mediatek,apxgpt";
-			reg = <0 0x10008000 0 0x1000>;
-		};
-
 		sej@1000a000 {
 			compatible = "mediatek,sej";
 			reg = <0 0x1000a000 0 0x1000>;
@@ -1361,11 +1328,6 @@
 		aes-top0@10016000 {
 			compatible = "mediatek,aes_top0";
 			reg = <0 0x10016000 0 0x1000>;
-		};
-
-		sys-timer@10017000 {
-			compatible = "mediatek,sys_timer";
-			reg = <0 0x10017000 0 0x1000>;
 		};
 
 		modem-temp-share@10018000 {
@@ -3555,6 +3517,30 @@ dramc: dramc@10230000 {
 				mode-ddr-reserve = <BOOT_DDR_RSVD>;
 				mode-meta = <BOOT_META>;
 				mode-rpmbpk = <BOOT_RPMBPK>;
+			};
+		};
+
+		systimer: systimer@1c030000 {
+			compatible = "mediatek,legacy-timer";
+			reg = <0 0x1c030000 0 0x1000>;
+			interrupts = <GIC_SPI 249 IRQ_TYPE_LEVEL_HIGH 0>,
+					<GIC_SPI 250 IRQ_TYPE_LEVEL_HIGH 0>,
+					<GIC_SPI 251 IRQ_TYPE_LEVEL_HIGH 0>;
+			// clocks = <&clk13m>;
+		};
+
+		mem_mapped_timer: mem-mapped-timer@1c033000 {
+			#address-cells = <2>;
+			#size-cells = <2>;
+			ranges;
+			compatible = "arm,armv7-timer-mem";
+			reg = <0 0x1c033000 0 0x1000>; //CNTCTLBase frame
+			clock-frequency = <13000000>;
+			frame@1c034000 {
+				frame-number = <0>;
+				interrupts = <GIC_SPI 249 IRQ_TYPE_LEVEL_HIGH 0>, //phys irq
+						<GIC_SPI 586 IRQ_TYPE_LEVEL_HIGH 0>; // virt irq
+				reg = <0 0x1c034000 0 0x1000>; //CNTBase0
 			};
 		};
 
