@@ -1469,11 +1469,10 @@ void mtk_drm_crtc_mini_dump(struct drm_crtc *crtc)
 	}
 
 	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
-		if (!priv->pwr_node)
+		if (!priv->pwr_node || (priv->pwr_node && !in_interrupt())) {
 			mtk_drm_pm_ctrl(priv, DISP_PM_GET);
-		/* mini dump may be called in irq */
-		if (!in_interrupt())
 			mtk_vidle_user_power_keep(DISP_VIDLE_USER_DPC_DUMP);
+		}
 	}
 
 	switch (priv->data->mmsys_id) {
@@ -1649,10 +1648,10 @@ void mtk_drm_crtc_mini_dump(struct drm_crtc *crtc)
 	}
 
 	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
-		if (!in_interrupt())
+		if (!priv->pwr_node || (priv->pwr_node && !in_interrupt())) {
 			mtk_vidle_user_power_release(DISP_VIDLE_USER_DPC_DUMP);
-		if (!priv->pwr_node)
 			mtk_drm_pm_ctrl(priv, DISP_PM_PUT);
+		}
 	}
 
 	return;
@@ -1679,10 +1678,8 @@ void mtk_drm_crtc_dump(struct drm_crtc *crtc)
 
 		if (!mtk_drm_crtc_pwr_check(priv))
 			return;
-		if (!priv->pwr_node)
+		if (!priv->pwr_node || (priv->pwr_node && !in_interrupt())) {
 			mtk_drm_pm_ctrl(priv, DISP_PM_GET);
-		if (!in_interrupt()) {
-			mtk_drm_pm_ctrl(priv, DISP_PRE_CG_GET);
 			mtk_vidle_user_power_keep(DISP_VIDLE_USER_DPC_DUMP);
 		}
 	}
@@ -1984,11 +1981,9 @@ void mtk_drm_crtc_dump(struct drm_crtc *crtc)
 	}
 
 	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
-		if (!priv->pwr_node)
-			mtk_drm_pm_ctrl(priv, DISP_PM_PUT);
-		if (!in_interrupt()) {
+		if (!priv->pwr_node || (priv->pwr_node && !in_interrupt())) {
 			mtk_vidle_user_power_release(DISP_VIDLE_USER_DPC_DUMP);
-			mtk_drm_pm_ctrl(priv, DISP_PRE_CG_PUT);
+			mtk_drm_pm_ctrl(priv, DISP_PM_PUT);
 		}
 	}
 
@@ -2050,10 +2045,8 @@ void mtk_drm_crtc_dump_vr_rg(struct drm_crtc *crtc)
 	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
 		if (!mtk_drm_crtc_pwr_check(priv))
 			return;
-		if (!priv->pwr_node)
+		if (!priv->pwr_node || (priv->pwr_node && !in_interrupt())) {
 			mtk_drm_pm_ctrl(priv, DISP_PM_GET);
-		if (!in_interrupt()) {
-			mtk_drm_pm_ctrl(priv, DISP_PRE_CG_GET);
 			mtk_vidle_user_power_keep(DISP_VIDLE_USER_DPC_DUMP);
 		}
 	}
@@ -2062,11 +2055,9 @@ void mtk_drm_crtc_dump_vr_rg(struct drm_crtc *crtc)
 
 done_return:
 	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
-		if (!priv->pwr_node)
-			mtk_drm_pm_ctrl(priv, DISP_PM_PUT);
-		if (!in_interrupt()) {
+		if (!priv->pwr_node || (priv->pwr_node && !in_interrupt())) {
 			mtk_vidle_user_power_release(DISP_VIDLE_USER_DPC_DUMP);
-			mtk_drm_pm_ctrl(priv, DISP_PRE_CG_PUT);
+			mtk_drm_pm_ctrl(priv, DISP_PM_PUT);
 		}
 	}
 }
@@ -2085,10 +2076,10 @@ void mtk_drm_crtc_mini_analysis(struct drm_crtc *crtc)
 	}
 
 	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
-		if (!priv->pwr_node)
+		if (!priv->pwr_node || (priv->pwr_node && !in_interrupt())) {
 			mtk_drm_pm_ctrl(priv, DISP_PM_GET);
-		if (!in_interrupt())
 			mtk_vidle_user_power_keep(DISP_VIDLE_USER_DPC_DUMP);
+		}
 	}
 
 	switch (priv->data->mmsys_id) {
@@ -2294,10 +2285,10 @@ void mtk_drm_crtc_mini_analysis(struct drm_crtc *crtc)
 
 done_return:
 	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
-		if (!in_interrupt())
+		if (!priv->pwr_node || (priv->pwr_node && !in_interrupt())) {
 			mtk_vidle_user_power_release(DISP_VIDLE_USER_DPC_DUMP);
-		if (!priv->pwr_node)
 			mtk_drm_pm_ctrl(priv, DISP_PM_PUT);
+		}
 	}
 
 	return;
@@ -2322,10 +2313,8 @@ void mtk_drm_crtc_analysis(struct drm_crtc *crtc)
 	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
 		if (!mtk_drm_crtc_pwr_check(priv))
 			return;
-		if (!priv->pwr_node)
+		if (!priv->pwr_node || (priv->pwr_node && !in_interrupt())) {
 			mtk_drm_pm_ctrl(priv, DISP_PM_GET);
-		if (!in_interrupt()) {
-			mtk_drm_pm_ctrl(priv, DISP_PRE_CG_GET);
 			mtk_vidle_user_power_keep(DISP_VIDLE_USER_DPC_DUMP);
 		}
 	}
@@ -2680,11 +2669,9 @@ void mtk_drm_crtc_analysis(struct drm_crtc *crtc)
 	}
 
 	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
-		if (!priv->pwr_node)
-			mtk_drm_pm_ctrl(priv, DISP_PM_PUT);
-		if (!in_interrupt()) {
+		if (!priv->pwr_node || (priv->pwr_node && !in_interrupt())) {
 			mtk_vidle_user_power_release(DISP_VIDLE_USER_DPC_DUMP);
-			mtk_drm_pm_ctrl(priv, DISP_PRE_CG_PUT);
+			mtk_drm_pm_ctrl(priv, DISP_PM_PUT);
 		}
 	}
 
