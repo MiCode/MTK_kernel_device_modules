@@ -288,20 +288,55 @@ void ssusb_set_polling_scdlfps_time(struct ssusb_mtk *ssusb)
 
 void ssusb_set_txdeemph(struct ssusb_mtk *ssusb)
 {
-	u32 txdeemph;
+	u32 tmp;
 
-	if (!ssusb->gen1_txdeemph)
-		return;
+	/* gen1 txdeemph */
+	if (ssusb->gen1_txdeemph) {
+		tmp = mtu3_readl(ssusb->mac_base, U3D_TXDEEMPH);
+		tmp &= ~PIPE_TXDEEMPH_MASK;
+		tmp |= PIPE_TXDEEMPH(ssusb->gen1_txdeemph);
+		mtu3_writel(ssusb->mac_base, U3D_TXDEEMPH, tmp);
+	}
 
-	txdeemph = mtu3_readl(ssusb->mac_base, U3D_TXDEEMPH);
-	txdeemph &= ~PIPE_TXDEEMPH_MASK;
-	txdeemph |= PIPE_TXDEEMPH(0x1);
-	mtu3_writel(ssusb->mac_base, U3D_TXDEEMPH, txdeemph);
+	/* gen1 txdeemph cp5 cp7 */
+	if (ssusb->cp5_cp7_txdeemph) {
+		tmp = mtu3_readl(ssusb->mac_base, U3D_CP5_CP7_TXDEEMPH);
+		tmp &= ~CP5_CP7_TXDEEMPH_MASK;
+		tmp |= CP5_CP7_TXDEEMPH(ssusb->cp5_cp7_txdeemph);
+		mtu3_writel(ssusb->mac_base, U3D_CP5_CP7_TXDEEMPH, tmp);
+	}
 
-	txdeemph = mtu3_readl(ssusb->mac_base, U3D_CP5_CP7_TXDEEMPH);
-	txdeemph &= ~PIPE_CP5_CP7_TXDEEMPH_MASK;
-	txdeemph |= PIPE_CP5_CP7_TXDEEMPH(0x1);
-	mtu3_writel(ssusb->mac_base, U3D_CP5_CP7_TXDEEMPH, txdeemph);
+	/* gen2 txdeemph */
+	if (ssusb->gen2_txdeemph) {
+		tmp = mtu3_readl(ssusb->mac_base, U3D_TXDEEMPH_GEN2);
+		tmp &= ~PIPE_TXDEEMPH_GEN2_MASK;
+		tmp |= PIPE_TXDEEMPH_GEN2(ssusb->gen2_txdeemph);
+		mtu3_writel(ssusb->mac_base, U3D_TXDEEMPH_GEN2, tmp);
+	}
+
+	/* gen2 cp13 txdeemph */
+	if (ssusb->cp13_txdeemph) {
+		tmp = mtu3_readl(ssusb->mac_base, U3D_CP13_TXDEEMPH);
+		tmp &= ~CP13_TXDEEMPH_MASK;
+		tmp |= CP13_TXDEEMPH(ssusb->cp13_txdeemph);
+		mtu3_writel(ssusb->mac_base, U3D_CP13_TXDEEMPH, tmp);
+	}
+
+	/* gen2 cp14 txdeemph */
+	if (ssusb->cp14_txdeemph) {
+		tmp = mtu3_readl(ssusb->mac_base, U3D_CP14_TXDEEMPH);
+		tmp &= ~CP14_TXDEEMPH_MASK;
+		tmp |= CP14_TXDEEMPH(ssusb->cp14_txdeemph);
+		mtu3_writel(ssusb->mac_base, U3D_CP14_TXDEEMPH, tmp);
+	}
+
+	/* gen2 cp15 txdeemph */
+	if (ssusb->cp15_txdeemph) {
+		tmp = mtu3_readl(ssusb->mac_base, U3D_CP15_TXDEEMPH);
+		tmp &= ~CP15_TXDEEMPH_MASK;
+		tmp |= CP15_TXDEEMPH(ssusb->cp15_txdeemph);
+		mtu3_writel(ssusb->mac_base, U3D_CP15_TXDEEMPH, tmp);
+	}
 }
 
 void ssusb_set_noise_still_tr(struct ssusb_mtk *ssusb)
@@ -1314,8 +1349,20 @@ get_phy:
 	ssusb->clk_mgr = of_property_read_bool(node, "mediatek,clk-mgr");
 	ssusb->noise_still_tr =
 		of_property_read_bool(node, "mediatek,noise-still-tr");
-	ssusb->gen1_txdeemph =
-		of_property_read_bool(node, "mediatek,gen1-txdeemph");
+
+	/* compatible with old device tree setting */
+	if (of_property_read_bool(node, "mediatek,gen1-txdeemph")) {
+		ssusb->gen1_txdeemph = 0x8a01;
+		ssusb->cp5_cp7_txdeemph = 0x8a01;
+	}
+	of_property_read_u32(node, "mediatek,gen1-txdeemph", &ssusb->gen1_txdeemph);
+
+	/* update ge2n txdeemph */
+	of_property_read_u32(node, "mediatek,gen2-txdeemph", &ssusb->gen2_txdeemph);
+	of_property_read_u32(node, "mediatek,cp13-txdeemph", &ssusb->cp13_txdeemph);
+	of_property_read_u32(node, "mediatek,cp14-txdeemph", &ssusb->cp14_txdeemph);
+	of_property_read_u32(node, "mediatek,cp15-txdeemph", &ssusb->cp15_txdeemph);
+
 	if (of_property_read_u32(node, "mediatek,hwrscs-vers",
 			     &ssusb->hwrscs_vers)) {
 		/* compatible to devie tree setting */

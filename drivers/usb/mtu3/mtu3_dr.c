@@ -830,6 +830,97 @@ static ssize_t phy_prop_show(struct device *dev,
 }
 static DEVICE_ATTR_RW(phy_prop);
 
+
+static ssize_t gen1_txdeemph_store(struct device *dev,
+				 struct device_attribute *attr,
+				 const char *buf, size_t count)
+{
+	struct ssusb_mtk *ssusb = dev_get_drvdata(dev);
+	u32 txdeemph, cp5_cp7_txdeemph;
+	int ret;
+
+	ret = sscanf(buf, "%x %x", &txdeemph, &cp5_cp7_txdeemph);
+	if (ret != 2)
+		return -EINVAL;
+
+	ssusb->gen1_txdeemph = PIPE_TXDEEMPH(txdeemph);
+	ssusb->cp5_cp7_txdeemph = CP5_CP7_TXDEEMPH(cp5_cp7_txdeemph);
+	ssusb_set_txdeemph(ssusb);
+
+	return count;
+}
+
+static ssize_t gen1_txdeemph_show(struct device *dev,
+				struct device_attribute *attr,
+				char *buf)
+{
+	struct ssusb_mtk *ssusb = dev_get_drvdata(dev);
+
+	if (!ssusb->gen1_txdeemph)
+		ssusb->gen1_txdeemph = PIPE_TXDEEMPH(mtu3_readl(ssusb->mac_base, U3D_TXDEEMPH));
+
+	if (!ssusb->cp5_cp7_txdeemph)
+		ssusb->cp5_cp7_txdeemph =
+			CP5_CP7_TXDEEMPH(mtu3_readl(ssusb->mac_base, U3D_CP5_CP7_TXDEEMPH));
+
+	return snprintf(buf, PAGE_SIZE, "gen1_txdeemph=0x%x cp5_cp7_txdeemph=0x%x\n",
+		ssusb->gen1_txdeemph, ssusb->cp5_cp7_txdeemph);
+}
+static DEVICE_ATTR_RW(gen1_txdeemph);
+
+
+static ssize_t gen2_txdeemph_store(struct device *dev,
+				 struct device_attribute *attr,
+				 const char *buf, size_t count)
+{
+	struct ssusb_mtk *ssusb = dev_get_drvdata(dev);
+	u32 gen2_txdeemph, cp13_txdeemph, cp14_txdeemph, cp15_txdeemph;
+	int ret;
+
+	ret = sscanf(buf, "%x %x %x %x",
+			&gen2_txdeemph, &cp13_txdeemph, &cp14_txdeemph, &cp15_txdeemph);
+	if (ret != 4)
+		return -EINVAL;
+
+	ssusb->gen2_txdeemph = PIPE_TXDEEMPH_GEN2(gen2_txdeemph);
+	ssusb->cp13_txdeemph = CP13_TXDEEMPH(cp13_txdeemph);
+	ssusb->cp14_txdeemph = CP14_TXDEEMPH(cp14_txdeemph);
+	ssusb->cp15_txdeemph = CP15_TXDEEMPH(cp15_txdeemph);
+	ssusb_set_txdeemph(ssusb);
+
+	return count;
+}
+
+static ssize_t gen2_txdeemph_show(struct device *dev,
+				struct device_attribute *attr,
+				char *buf)
+{
+	struct ssusb_mtk *ssusb = dev_get_drvdata(dev);
+
+	if (!ssusb->gen2_txdeemph)
+		ssusb->gen2_txdeemph =
+			PIPE_TXDEEMPH_GEN2(mtu3_readl(ssusb->mac_base, U3D_TXDEEMPH_GEN2));
+
+	if (!ssusb->cp13_txdeemph)
+		ssusb->cp13_txdeemph =
+			CP13_TXDEEMPH(mtu3_readl(ssusb->mac_base, U3D_CP13_TXDEEMPH));
+
+	if (!ssusb->cp14_txdeemph)
+		ssusb->cp14_txdeemph =
+			CP14_TXDEEMPH(mtu3_readl(ssusb->mac_base, U3D_CP14_TXDEEMPH));
+
+	if (!ssusb->cp15_txdeemph)
+		ssusb->cp15_txdeemph =
+			CP15_TXDEEMPH(mtu3_readl(ssusb->mac_base, U3D_CP15_TXDEEMPH));
+
+	return snprintf(buf, PAGE_SIZE,
+		"gen2_txdeemph=0x%x cp13_txdeemph=0x%x cp14_txdeemph=0x%x cp15_txdeemph=0x%x\n",
+		ssusb->gen2_txdeemph, ssusb->cp13_txdeemph,
+		ssusb->cp14_txdeemph, ssusb->cp15_txdeemph
+	);
+}
+static DEVICE_ATTR_RW(gen2_txdeemph);
+
 static struct attribute *ssusb_dr_attrs[] = {
 	&dev_attr_mode.attr,
 	&dev_attr_role_mode.attr,
@@ -839,6 +930,8 @@ static struct attribute *ssusb_dr_attrs[] = {
 	&dev_attr_u3_lpm.attr,
 	&dev_attr_host_dev.attr,
 	&dev_attr_phy_prop.attr,
+	&dev_attr_gen1_txdeemph.attr,
+	&dev_attr_gen2_txdeemph.attr,
 	NULL
 };
 

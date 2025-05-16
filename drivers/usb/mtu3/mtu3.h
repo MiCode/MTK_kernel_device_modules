@@ -391,7 +391,13 @@ struct ssusb_mtk {
 	u32 uwk_vers;
 	bool clk_mgr;
 	bool noise_still_tr;
-	bool gen1_txdeemph;
+	/* gen1 and gen2 txdeemph */
+	u32 gen1_txdeemph;
+	u32 cp5_cp7_txdeemph;
+	u32 gen2_txdeemph;
+	u32 cp13_txdeemph;
+	u32 cp14_txdeemph;
+	u32 cp15_txdeemph;
 	/* fpga */
 	enum mtu3_plat_type plat_type;
 	enum mtu3_fpga_phy fpga_phy;
