@@ -311,6 +311,12 @@ static int mtk_eint_set_type(struct irq_data *d, unsigned int type)
 					  eint->comp->regs->pol_set,
 					  &instance, &index);
 
+	if (!reg) {
+		dev_err(eint->dev, "%s invalid eint_num %lu\n",
+			__func__, d->hwirq);
+		return 0;
+	}
+
 	mask = BIT(index & 0x1f);
 	writel(mask, reg);
 

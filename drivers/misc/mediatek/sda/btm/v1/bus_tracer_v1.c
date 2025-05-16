@@ -276,6 +276,7 @@ static int set_recording(struct bus_tracer_plt *plt, unsigned char pause)
 
 static int dump_setting(struct bus_tracer_plt *plt, char *buf, int len)
 {
+/*
 	int i;
 
 	if (!plt->tracer) {
@@ -311,7 +312,7 @@ static int dump_setting(struct bus_tracer_plt *plt, char *buf, int len)
 		(unsigned long) readl(plt->dbgao_base + 0x98),
 		(unsigned long) readl(plt->dbgao_base + 0x9c),
 		(unsigned long) readl(plt->dbgao_base + 0xa0));
-
+*/
 	return 0;
 }
 
