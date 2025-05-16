@@ -1157,6 +1157,8 @@ void fg_custom_init_from_header(struct mtk_battery *gm)
 
 	fg_cust_data->moving_battemp_en = MOVING_BATTEMP_EN;
 	fg_cust_data->moving_battemp_thr = MOVING_BATTEMP_THR;
+	fg_cust_data->overheat_temp = BATTERY_SHUTDOWN_TEMPERATURE;
+	fg_cust_data->enable_overheat_shutdown = ENABLE_OVERHEAT_SHUTDOWN;
 
 	gm->no_prop_timeout_control = NO_PROP_TIMEOUT_CONTROL;
 
@@ -2178,6 +2180,13 @@ void fg_custom_init_from_dts(struct platform_device *dev,
 
 	bm_err(gm, "fg active table:%d\n",
 		fg_table_cust_data->active_table_number);
+
+	/* overheat shutdown */
+	fg_read_dts_val(gm, np, "BATTERY_SHUTDOWN_TEMPERATURE",
+		&(fg_cust_data->overheat_temp), 1);
+	fg_read_dts_val(gm, np, "ENABLE_OVERHEAT_SHUTDOWN",
+		&(fg_cust_data->enable_overheat_shutdown), 1);
+
 
 	fg_read_dts_val(gm, np, "ENABLE_R_RATIO",
 		&(fg_table_cust_data->enable_r_ratio), 1);

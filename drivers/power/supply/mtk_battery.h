@@ -752,6 +752,10 @@ struct fuel_gauge_custom_data {
 	int lower_score_cycle;
 	int rl_score_th;
 	int rl_region[MAX_RL_REGION + 1];
+
+	/* overheat shutdown */
+	int overheat_temp;
+	int enable_overheat_shutdown;
 };
 
 struct fgd_cmd_param_t_custom {
@@ -963,6 +967,7 @@ struct irq_controller {
 #define AVGVBAT_ARRAY_SIZE 30
 #define INIT_VOLTAGE 3450
 #define BATTERY_SHUTDOWN_TEMPERATURE 60
+#define ENABLE_OVERHEAT_SHUTDOWN 1
 #define DISABLE_POWER_PATH_VOLTAGE 2800
 
 struct shutdown_condition {
