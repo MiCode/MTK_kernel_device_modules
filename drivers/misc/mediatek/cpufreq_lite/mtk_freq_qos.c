@@ -49,8 +49,7 @@ static void mtk_freq_qos_write_buf(struct mtk_freq_qos_data *freq_req, int type)
 		circ_buf.tail = (circ_buf.tail + 1) & (FREQ_QOS_CIRC_BUF_SIZE - 1);
 	spin_unlock_irqrestore(&mtk_freq_qos_buf_lock, flags);
 
-	strscpy(record->caller_info1, freq_req->caller_info1, sizeof(record->caller_info1));
-	strscpy(record->caller_info2, freq_req->caller_info2, sizeof(record->caller_info2));
+	strscpy(record->caller_info, freq_req->caller_info, sizeof(record->caller_info));
 	record->min_value = freq_req->min_value;
 	record->max_value = freq_req->max_value;
 	if (type == FREQ_QOS_REMOVE)
@@ -111,8 +110,7 @@ static struct mtk_freq_qos_data *find_and_update_req_data(
 #if DEBUG
 		pr_info("%s: Then.....\n", __func__);
 #endif
-		sprint_symbol(freq_req->caller_info1, (unsigned long)__builtin_return_address(2));
-		sprint_symbol(freq_req->caller_info2, (unsigned long)__builtin_return_address(3));
+		sprint_symbol(freq_req->caller_info, (unsigned long)__builtin_return_address(3));
 #if DEBUG
 		pr_info("%s: Add.....\n", __func__);
 #endif
@@ -229,7 +227,7 @@ void mtk_freq_qos_add_request(void *data, struct freq_constraints *qos,
 	mtk_freq_qos_write_buf(freq_req, FREQ_QOS_ADD);
 #if DEBUG
 	pr_info("%s: %lu: %s: cpu: %d, t: %lu, Add done\n",
-		__func__, (unsigned long)freq_req->req, freq_req->caller_info2,
+		__func__, (unsigned long)freq_req->req, freq_req->caller_info,
 		policy->cpu, freq_req->last_update);
 #endif
 }
@@ -459,7 +457,7 @@ void dump_list(void) {
 	hash_for_each(mtk_freq_qos_ht, key, cur_req, req_node) {
 		pr_info("k: %lu, min_v: %7d, max_v: %7d, cpu: %d, c2: %s\n",
 			(unsigned long)cur_req->req, cur_req->min_value, cur_req->max_value,
-			cur_req->cpu, cur_req->caller_info2);
+			cur_req->cpu, cur_req->caller_info);
 	}
 }
 #endif
@@ -502,24 +500,24 @@ static int freq_req_proc_show(struct seq_file *m, void *v)
 				(void *)mtk_freq_req[policy_idx].min_dominant->req,
 				mtk_freq_req[policy_idx].min_dominant->min_value);
 
-		seq_printf(m, "%10s, %10s, %10s, %21s, %45s, %60s\n",
-				"Request", "Min Value", "Prio Value", "Duration Time(ms)", "Caller1", "Caller2");
+		seq_printf(m, "%10s, %10s, %10s, %21s, %70s\n",
+				"Request", "Min Value", "Prio Value", "Duration Time(ms)", "Caller");
 		c = &policy->constraints.min_freq;
 		plist_for_each(cur_node, &c->list) {
 			cur_freq_req = container_of(cur_node, struct freq_qos_request, pnode);
 			cur_req = get_req_data(cur_freq_req);
 			if (cur_req)
-				seq_printf(m, "%10p, %10d, %10d, %21d, %45s, %60s\n",
+				seq_printf(m, "%10p, %10d, %10d, %21d, %70s\n",
 					(void *)cur_freq_req,
 					cur_req->min_value,
 					cur_node->prio,
 					jiffies_to_msecs(cur_time - cur_req->last_update),
-					cur_req->caller_info1, cur_req->caller_info2);
+					cur_req->caller_info);
 			else
-				seq_printf(m, "%10p, %10d, %10d, %21s, %45s, %60s\n",
+				seq_printf(m, "%10p, %10d, %10d, %21s, %70s\n",
 					(void *)cur_freq_req,
 					cur_node->prio, cur_node->prio,
-					"N/A", "N/A", "N/A");
+					"N/A", "N/A");
 		}
 
 		if (mtk_freq_req[policy_idx].last_max_req)
@@ -534,25 +532,24 @@ static int freq_req_proc_show(struct seq_file *m, void *v)
 				(void *)mtk_freq_req[policy_idx].max_dominant->req,
 				mtk_freq_req[policy_idx].max_dominant->max_value);
 
-		seq_printf(m, "%10s, %10s, %10s, %21s, %45s, %60s\n",
-				"Request", "Max Value", "Prio Value", "Duration Time(ms)", "Caller1", "Caller2");
+		seq_printf(m, "%10s, %10s, %10s, %21s, %70s\n",
+				"Request", "Max Value", "Prio Value", "Duration Time(ms)", "Caller");
 		c = &policy->constraints.max_freq;
 		plist_for_each(cur_node, &c->list) {
 			cur_freq_req = container_of(cur_node, struct freq_qos_request, pnode);
 			cur_req = get_req_data(cur_freq_req);
 			if (cur_req)
-				seq_printf(m, "%10p, %10d, %10d, %21d, %45s, %60s\n",
+				seq_printf(m, "%10p, %10d, %10d, %21d, %70s\n",
 					(void *)cur_freq_req,
 					cur_req->max_value,
 					cur_node->prio,
 					jiffies_to_msecs(cur_time - cur_req->last_update),
-					cur_req->caller_info1, cur_req->caller_info2);
+					cur_req->caller_info);
 			else
-				seq_printf(m, "%10p, %10d, %10d, %21s, %45s, %60s\n",
+				seq_printf(m, "%10p, %10d, %10d, %21s, %70s\n",
 					(void *)cur_freq_req,
 					cur_node->prio,
 					cur_node->prio,
-					"N/A",
 					"N/A",
 					"N/A");
 		}
@@ -603,24 +600,24 @@ static int min_freq_req_proc_show(struct seq_file *m, void *v)
 				(void *)mtk_freq_req[policy_idx].min_dominant->req,
 				mtk_freq_req[policy_idx].min_dominant->min_value);
 
-		seq_printf(m, "%10s, %10s, %10s, %21s, %45s, %60s\n",
-				"Request", "Min Value", "Prio Value", "Duration Time(ms)", "Caller1", "Caller2");
+		seq_printf(m, "%10s, %10s, %10s, %21s, %70s\n",
+				"Request", "Min Value", "Prio Value", "Duration Time(ms)", "Caller");
 		c = &policy->constraints.min_freq;
 		plist_for_each(cur_node, &c->list) {
 			cur_freq_req = container_of(cur_node, struct freq_qos_request, pnode);
 			cur_req = get_req_data(cur_freq_req);
 			if (cur_req)
-				seq_printf(m, "%10p, %10d, %10d, %21d, %45s, %60s\n",
+				seq_printf(m, "%10p, %10d, %10d, %21d, %70s\n",
 					(void *)cur_freq_req,
 					cur_req->min_value,
 					cur_node->prio,
 					jiffies_to_msecs(cur_time - cur_req->last_update),
-					cur_req->caller_info1, cur_req->caller_info2);
+					cur_req->caller_info);
 			else
-				seq_printf(m, "%10p, %10d, %10d, %21s, %45s, %60s\n",
+				seq_printf(m, "%10p, %10d, %10d, %21s, %70s\n",
 					(void *)cur_freq_req,
 					cur_node->prio, cur_node->prio,
-					"N/A", "N/A", "N/A");
+					"N/A", "N/A");
 		}
 
 		cpu = cpumask_last(policy->related_cpus);
@@ -669,25 +666,24 @@ static int max_freq_req_proc_show(struct seq_file *m, void *v)
 				(void *)mtk_freq_req[policy_idx].max_dominant->req,
 				mtk_freq_req[policy_idx].max_dominant->max_value);
 
-		seq_printf(m, "%10s, %10s, %10s, %21s, %45s, %60s\n",
-				"Request", "Max Value", "Prio Value", "Duration Time(ms)", "Caller1", "Caller2");
+		seq_printf(m, "%10s, %10s, %10s, %21s, %70s\n",
+				"Request", "Max Value", "Prio Value", "Duration Time(ms)", "Caller");
 		c = &policy->constraints.max_freq;
 		plist_for_each(cur_node, &c->list) {
 			cur_freq_req = container_of(cur_node, struct freq_qos_request, pnode);
 			cur_req = get_req_data(cur_freq_req);
 			if (cur_req)
-				seq_printf(m, "%10p, %10d, %10d, %21d, %45s, %60s\n",
+				seq_printf(m, "%10p, %10d, %10d, %21d, %70s\n",
 					(void *)cur_freq_req,
 					cur_req->max_value,
 					cur_node->prio,
 					jiffies_to_msecs(cur_time - cur_req->last_update),
-					cur_req->caller_info1, cur_req->caller_info2);
+					cur_req->caller_info);
 			else
-				seq_printf(m, "%10p, %10d, %10d, %21s, %45s, %60s\n",
+				seq_printf(m, "%10p, %10d, %10d, %21s, %70s\n",
 					(void *)cur_freq_req,
 					cur_node->prio,
 					cur_node->prio,
-					"N/A",
 					"N/A",
 					"N/A");
 		}
@@ -710,8 +706,8 @@ static int min_dominant_proc_show(struct seq_file *m, void *v)
 	struct cpufreq_policy *policy;
 	unsigned long cur_time = jiffies;
 
-	seq_printf(m, "%10s, %10s, %10s, %21s, %45s, %60s\n",
-			"Policy", "Request", "Min Value", "Duration Time(ms)", "Caller1", "Caller2");
+	seq_printf(m, "%10s, %10s, %10s, %21s, %70s\n",
+			"Policy", "Request", "Min Value", "Duration Time(ms)", "Caller");
 
 	for_each_possible_cpu(cpu) {
 		policy = cpufreq_cpu_get(cpu);
@@ -727,16 +723,16 @@ static int min_dominant_proc_show(struct seq_file *m, void *v)
 
 		if (mtk_freq_req[policy_idx].min_dominant) {
 			cur_req = mtk_freq_req[policy_idx].min_dominant;
-			seq_printf(m, "%10d, %10p, %10d, %21d, %45s, %60s\n",
+			seq_printf(m, "%10d, %10p, %10d, %21d, %70s\n",
 				control_group_master[cpu].master,
 				(void *)cur_req->req,
 				cur_req->min_value,
 				jiffies_to_msecs(cur_time - cur_req->last_update),
-				cur_req->caller_info1, cur_req->caller_info2);
+				cur_req->caller_info);
 		} else
-			seq_printf(m, "%10d, %10s, %10s, %21s, %45s, %60s\n",
+			seq_printf(m, "%10d, %10s, %10s, %21s, %70s\n",
 				control_group_master[cpu].master,
-				"N/A", "N/A", "N/A", "N/A", "N/A");
+				"N/A", "N/A", "N/A", "N/A");
 
 		cpu = cpumask_last(policy->related_cpus);
 		cpufreq_cpu_put(policy);
@@ -756,8 +752,8 @@ static int max_dominant_proc_show(struct seq_file *m, void *v)
 	struct cpufreq_policy *policy;
 	unsigned long cur_time = jiffies;
 
-	seq_printf(m, "%10s, %10s, %10s, %21s, %45s, %60s\n",
-			"Policy", "Request", "Max Value", "Duration Time(ms)", "Caller1", "Caller2");
+	seq_printf(m, "%10s, %10s, %10s, %21s, %70s\n",
+			"Policy", "Request", "Max Value", "Duration Time(ms)", "Caller");
 
 	for_each_possible_cpu(cpu) {
 		policy = cpufreq_cpu_get(cpu);
@@ -773,16 +769,16 @@ static int max_dominant_proc_show(struct seq_file *m, void *v)
 
 		if (mtk_freq_req[policy_idx].max_dominant) {
 			cur_req = mtk_freq_req[policy_idx].max_dominant;
-			seq_printf(m, "%10d, %10p, %10d, %21d, %45s, %60s\n",
+			seq_printf(m, "%10d, %10p, %10d, %21d, %70s\n",
 				control_group_master[cpu].master,
 				(void *)cur_req->req,
 				cur_req->max_value,
 				jiffies_to_msecs(cur_time - cur_req->last_update),
-				cur_req->caller_info1, cur_req->caller_info2);
+				cur_req->caller_info);
 		} else
-			seq_printf(m, "%10d, %10s, %10s, %21s, %45s, %60s\n",
+			seq_printf(m, "%10d, %10s, %10s, %21s, %70s\n",
 				control_group_master[cpu].master,
-				"N/A", "N/A", "N/A", "N/A", "N/A");
+				"N/A", "N/A", "N/A", "N/A");
 
 		cpu = cpumask_last(policy->related_cpus);
 		cpufreq_cpu_put(policy);
@@ -801,14 +797,14 @@ static int freq_req_tbl_proc_show(struct seq_file *m, void *v)
 	int key;
 	unsigned long cur_time = jiffies;
 
-	seq_printf(m, "%10s, %10s, %10s, %3s, %21s, %45s, %60s\n",
-				"Request", "Min Value", "Max Value", "CPU", "Last Time(ms)", "Caller1", "Caller2");
+	seq_printf(m, "%10s, %10s, %10s, %3s, %21s, %70s\n",
+				"Request", "Min Value", "Max Value", "CPU", "Last Time(ms)", "Caller");
 	hash_for_each(mtk_freq_qos_ht, key, cur_req, req_node) {
-		seq_printf(m, "%10p, %10d, %10d, %3d, %21d, %45s, %60s\n",
+		seq_printf(m, "%10p, %10d, %10d, %3d, %21d, %70s\n",
 				(void *)cur_req->req,
 				cur_req->min_value, cur_req->max_value,
 				cur_req->cpu, jiffies_to_msecs(cur_time - cur_req->last_update),
-				cur_req->caller_info1, cur_req->caller_info2);
+				cur_req->caller_info);
 	}
 
 	return 0;
@@ -827,22 +823,21 @@ static void print_record(struct seq_file *m, int i, unsigned long cur_time)
 	else
 		record_type = "UNKNOWN";
 
-	seq_printf(m, "%7s, %10d, %10d, %3d, %21d, %45s, %60s\n",
+	seq_printf(m, "%7s, %10d, %10d, %3d, %21d, %70s\n",
 			record_type,
 			circ_buf.buf[i].min_value,
 			circ_buf.buf[i].max_value,
 			circ_buf.buf[i].cpu,
 			jiffies_to_msecs(cur_time - circ_buf.buf[i].ts),
-			circ_buf.buf[i].caller_info1,
-			circ_buf.buf[i].caller_info2);
+			circ_buf.buf[i].caller_info);
 }
 static int freq_req_buf_proc_show(struct seq_file *m, void *v)
 {
 	int i;
 	unsigned long cur_time = jiffies;
 
-	seq_printf(m, "%7s, %10s, %10s, %3s, %21s, %45s, %60s\n",
-				"Type", "Min Value", "Max Value", "CPU", "Last Time(ms)", "Caller1", "Caller2");
+	seq_printf(m, "%7s, %10s, %10s, %3s, %21s, %70s\n",
+				"Type", "Min Value", "Max Value", "CPU", "Last Time(ms)", "Caller");
 	if (circ_buf.tail == circ_buf.head) {
 		// buffer empty
 		return 0;

@@ -12,32 +12,31 @@
 #include <linux/list.h>
 
 struct mtk_freq_qos_data {
-    struct freq_qos_request *req;
-    struct hlist_node req_node;
-    unsigned long addr;
-    char caller_info1[KSYM_SYMBOL_LEN];
-    char caller_info2[KSYM_SYMBOL_LEN];
-    s32 min_value;
-    s32 max_value;
-    unsigned long last_update;
-    unsigned int cpu;
+	struct freq_qos_request *req;
+	struct hlist_node req_node;
+	unsigned long addr;
+	char caller_info[KSYM_SYMBOL_LEN];
+	s32 min_value;
+	s32 max_value;
+	unsigned long last_update;
+	unsigned int cpu;
 };
 
 struct mtk_freq_qos_req {
-    struct mtk_freq_qos_data *last_min_req;
-    struct mtk_freq_qos_data *min_dominant;
-    struct mtk_freq_qos_data *last_max_req;
-    struct mtk_freq_qos_data *max_dominant;
-    s32 min_value;
-    s32 max_value;
-    struct notifier_block nb_min;
-    struct notifier_block nb_max;
-    unsigned int policy_idx;
+	struct mtk_freq_qos_data *last_min_req;
+	struct mtk_freq_qos_data *min_dominant;
+	struct mtk_freq_qos_data *last_max_req;
+	struct mtk_freq_qos_data *max_dominant;
+	s32 min_value;
+	s32 max_value;
+	struct notifier_block nb_min;
+	struct notifier_block nb_max;
+	unsigned int policy_idx;
 };
 
 struct control_mapping {
-    int master;
-    int policy_idx;
+	int master;
+	int policy_idx;
 };
 
 enum mtk_freq_qos_record_type {
@@ -47,8 +46,7 @@ enum mtk_freq_qos_record_type {
 };
 
 struct mtk_freq_qos_record {
-	char caller_info1[KSYM_SYMBOL_LEN];
-	char caller_info2[KSYM_SYMBOL_LEN];
+	char caller_info[KSYM_SYMBOL_LEN];
 	s32 min_value;
 	s32 max_value;
 	unsigned long ts;
@@ -63,8 +61,8 @@ struct mtk_freq_qos_circ_buf {
 };
 
 void mtk_freq_qos_add_request(void *data, struct freq_constraints *qos,
-    struct freq_qos_request * req, enum freq_qos_req_type type,
-    int value, int ret);
+	struct freq_qos_request *req, enum freq_qos_req_type type,
+	int value, int ret);
 void mtk_freq_qos_update_request(void *data, struct freq_qos_request *req, int value);
 void mtk_freq_qos_remove_request(void *data, struct freq_qos_request *req);
 void dump_list(void);
