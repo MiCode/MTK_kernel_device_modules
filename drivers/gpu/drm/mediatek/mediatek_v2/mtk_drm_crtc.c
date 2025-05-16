@@ -2696,11 +2696,16 @@ struct mtk_ddp_comp *mtk_ddp_comp_request_output(struct mtk_drm_crtc *mtk_crtc)
 	struct mtk_ddp_comp *comp;
 	int i, j;
 
+	if (mtk_crtc->ddp_ctx[mtk_crtc->ddp_mode].output_comp)
+		return mtk_crtc->ddp_ctx[mtk_crtc->ddp_mode].output_comp;
+
 	for_each_comp_in_crtc_path_reverse(
 		comp, mtk_crtc, i,
 		j)
-		if (mtk_ddp_comp_is_output(comp))
-			return comp;
+		if (mtk_ddp_comp_is_output(comp)) {
+			mtk_crtc->ddp_ctx[mtk_crtc->ddp_mode].output_comp = comp;
+			return mtk_crtc->ddp_ctx[mtk_crtc->ddp_mode].output_comp;
+		}
 
 	/* This CRTC does not contain output comp */
 	return NULL;

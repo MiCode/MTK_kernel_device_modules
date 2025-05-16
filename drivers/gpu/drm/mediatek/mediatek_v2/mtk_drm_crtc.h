@@ -881,6 +881,7 @@ struct mtk_crtc_ddp_ctx {
 	struct drm_framebuffer *wb_fb;
 	struct drm_framebuffer *dc_fb;
 	unsigned int dc_fb_idx;
+	struct mtk_ddp_comp *output_comp;
 };
 
 struct mtk_scaling_ctx {
