@@ -3390,6 +3390,11 @@ int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level,
 		return -EINVAL;
 	}
 
+	if (is_frame_mode)
+		mtk_vidle_user_power_keep_by_gce(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle, 0);
+	else
+		mtk_vidle_user_power_keep_by_gce(DISP_VIDLE_USER_DDIC_CMDQ, cmdq_handle, 0);
+
 	if (mtk_crtc_with_sub_path(crtc, mtk_crtc->ddp_mode))
 		mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle,
 			DDP_SECOND_PATH, 0);
@@ -3464,6 +3469,11 @@ int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level,
 
 	cb_data->crtc = crtc;
 	cb_data->cmdq_handle = cmdq_handle;
+
+	if (is_frame_mode)
+		mtk_vidle_user_power_release_by_gce(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle);
+	else
+		mtk_vidle_user_power_release_by_gce(DISP_VIDLE_USER_DDIC_CMDQ, cmdq_handle);
 
 	if (cmdq_pkt_flush_threaded(cmdq_handle, bl_cmdq_cb, cb_data) < 0) {
 		DDPPR_ERR("failed to flush bl_cmdq_cb\n");
