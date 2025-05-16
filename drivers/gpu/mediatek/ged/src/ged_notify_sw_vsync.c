@@ -467,6 +467,7 @@ void ged_eb_dvfs_frame_done_dump(void)
 	int ui32CeilingID = ged_get_cur_limit_idx_ceil();
 	int ui32FloorID = ged_get_cur_limit_idx_floor();
 	static unsigned int gpu_counter, pre_gpu_counter,last_gpu_npu_hint_ms;
+	static int ultra_loading_flag, pre_ultra_loading_flag;
 
 	tmp_multi = mtk_gpueb_sysram_multi_read(SYSRAM_GPU_FB_MARGIN_PARAM);
 	tmp_multi_async = mtk_gpueb_sysram_multi_read(fdvfs_v2_table[GPU_FB_ASYNC_PARAM1].addr);
@@ -558,6 +559,12 @@ void ged_eb_dvfs_frame_done_dump(void)
 			mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_FB_MFRC].addr) & 0xFF);
 		trace_tracing_mark_write(5566, "mfrc_policy_done",
 			mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_FB_MFRC_2].addr) & 0xFF);
+	}
+
+	ultra_loading_flag = mtk_gpueb_sysram_read(fdvfs_v2_table[ULTRA_LOADING_FLAG].addr);
+	if(pre_ultra_loading_flag != ultra_loading_flag) {
+		trace_tracing_mark_write(5566, "fb_ultra", ultra_loading_flag);
+		pre_ultra_loading_flag = ultra_loading_flag;
 	}
 
 	trace_GPU_DVFS__Policy__Common__Check_Target(
