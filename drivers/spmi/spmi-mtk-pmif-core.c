@@ -59,6 +59,7 @@
 #define MONITOR_PAIR_ITEM_NUM	2
 
 #define PMIF_CH_MD_DVFS_HW	1
+#define PMIF_CH_MD_HW	0
 #define PMIF_CH_TIA_HW2	6
 
 #define PMIF_IRQDESC(name) { #name, pmif_##name##_irq_handler, -1}
@@ -983,6 +984,14 @@ static void pmif_pmif_acc_vio_irq_handler(int irq, void *data)
 		if (register_spmi_md_force_assert != NULL) {
 			pr_notice("[PMIF]:Trigger MD assert DONE\n");
 			register_spmi_md_force_assert(ID_SPMI_FORCE_MD_ASSERT, NULL, 0);
+		}
+		aee_warning_flag = 1;
+	} else if (vio_chan == PMIF_CH_MD_HW) {
+		/* Trigger MDEE */
+		pr_notice("[PMIF] MD HW MPU violation!\n");
+		if (register_spmi_md_force_assert != NULL) {
+			pr_notice("[PMIF]:Trigger MD assert DONE\n");
+			register_spmi_md_force_assert(ID_PMIF_FORCE_MD_ASSERT, NULL, 0);
 		}
 		aee_warning_flag = 1;
 	} else if ((vio_chan == PMIF_CH_TIA_HW2) && (vio_slvid == 0)) {
