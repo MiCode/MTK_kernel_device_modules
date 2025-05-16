@@ -3440,8 +3440,17 @@ static void probe_android_vh_adjust_swap_info_flags(void *ignore, unsigned long 
 	pr_info("%s: New swap info flags: %lx\n", __func__, *flags);
 }
 
+#define MAX_ALLOWABLE_BATCH_ALLOCATION_SIZE	(189)
+static void probe_android_vh_rmqueue_pcplist_override_batch(void *ignore, int *batch)
+{
+	if (*batch > MAX_ALLOWABLE_BATCH_ALLOCATION_SIZE)
+		*batch = MAX_ALLOWABLE_BATCH_ALLOCATION_SIZE;
+}
+
 static struct tracepoints_table zram_tracepoints[] = {
 {.name = "android_vh_adjust_swap_info_flags", .func = probe_android_vh_adjust_swap_info_flags, .tp = NULL},
+{.name = "android_vh_rmqueue_pcplist_override_batch", .func = probe_android_vh_rmqueue_pcplist_override_batch,
+	.tp = NULL},
 };
 
 #define FOR_EACH_INTEREST(i) \
