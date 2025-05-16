@@ -1839,7 +1839,7 @@ UINT8 mhal_DPTx_AuxRead_Bytes(struct mtk_dp *mtk_dp, BYTE ubCmd,
 	unsigned int WaitReplyCount = AuxWaitReplyLpCntNum;
 	u32 aux_state = 0;
 
-	if (mtk_dp->fake_comeplete_irq && (ubCmd == AUX_CMD_NATIVE_R)) {
+	if (mtk_dp->fake_comeplete_irq && ((ubCmd == AUX_CMD_NATIVE_R) || (ubCmd == AUX_CMD_I2C_R))) {
 		if (mtk_dp->cfg_ver == 2)
 			msWrite4ByteMask(mtk_dp, REG_36F4_AUX_TX_P0,
 				1<<IDLE_TO_PRECHARGE_DATA_ONE_EN_AUX_TX_P0_FLDMASK_POS,
@@ -1896,9 +1896,17 @@ UINT8 mhal_DPTx_AuxRead_Bytes(struct mtk_dp *mtk_dp, BYTE ubCmd,
 
 		if (uAuxIrqStatus & AUX_RX_EDID_RECV_COMPLETE_IRQ_AUX_TX_P0_FLDMASK) {
 			if (ubCmd == AUX_CMD_I2C_R) {
-				bVaildCmd = true;
-				DPTXDBG("[AUX] AUX_RX_EDID_RECV_COMPLETE_IRQ\n");
-				break;
+				aux_state = (msRead2Byte(mtk_dp, REG_3644_AUX_TX_P0)
+					& AUX_STATE_AUX_TX_P0_FLDMASK)
+					>> AUX_STATE_AUX_TX_P0_FLDMASK_POS;
+
+				if (aux_state == 0x1) {
+					bVaildCmd = true;
+					DPTXDBG("[AUX] AUX_RX_EDID_RECV_COMPLETE_IRQ\n");
+					break;
+				}
+				mtk_dp->fake_comeplete_irq = true;
+				DPTXERR("[AUX] Fake Complete irq in EDID read! Clear IRQ\n");
 			}
 			msWriteByteMask(mtk_dp, REG_3640_AUX_TX_P0,
 			1 << AUX_RX_EDID_RECV_COMPLETE_IRQ_AUX_TX_P0_FLDMASK_POS,
@@ -1913,7 +1921,7 @@ UINT8 mhal_DPTx_AuxRead_Bytes(struct mtk_dp *mtk_dp, BYTE ubCmd,
 		}
 	}
 
-	if (mtk_dp->fake_comeplete_irq && (ubCmd == AUX_CMD_NATIVE_R)) {
+	if (mtk_dp->fake_comeplete_irq && ((ubCmd == AUX_CMD_NATIVE_R) || (ubCmd == AUX_CMD_I2C_R))) {
 		if (mtk_dp->cfg_ver == 2)
 			msWrite4ByteMask(mtk_dp, REG_36F4_AUX_TX_P0, 0x0,
 				IDLE_TO_PRECHARGE_DATA_ONE_EN_AUX_TX_P0_FLDMASK);
