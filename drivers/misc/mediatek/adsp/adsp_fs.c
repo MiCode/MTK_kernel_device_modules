@@ -430,7 +430,7 @@ static void adsp_mbrain_notify_dump(int id, void *buf, unsigned int len)
 {
 	struct adsp_priv *pdata = NULL;
 	u32 *data = (u32 *)buf;
-	unsigned int cid, size, flag;
+	unsigned int cid, size, flag, count;
 	int ret;
 	uint8_t *vbuf;
 
@@ -464,8 +464,10 @@ static void adsp_mbrain_notify_dump(int id, void *buf, unsigned int len)
 			return;
 		}
 
-		if (adsp_mbrain_notify_cbk)
-			adsp_mbrain_notify_cbk(vbuf, ret);
+		if (adsp_mbrain_notify_cbk) {
+			count = ret / sizeof(struct adsp_mbrain_t);
+			adsp_mbrain_notify_cbk(vbuf, count);
+		}
 
 		vfree(vbuf);
 	}
@@ -478,7 +480,8 @@ static void adsp_mbrain_notify_dump(int id, void *buf, unsigned int len)
 int adsp_mbrain_enable(struct adsp_priv *pdata)
 {
 	char *buffer = NULL;
-	char msg[64] = {0};
+	uint64_t info[2] = {0};
+	uint64_t addr;
 	size_t size;
 	unsigned int memid;
 
@@ -488,18 +491,22 @@ int adsp_mbrain_enable(struct adsp_priv *pdata)
 	if (!kfifo_initialized(&pdata->mbrainfifo)) {
 		/* mbrain kfifo initialize, use bottom of debug memory */
 		if (pdata->id == ADSP_A_ID)
-			memid = ADSP_A_DEBUG_DUMP_MEM_ID;
+			memid = ADSP_A_MBRAIN_MEM_ID;
 		else
-			memid = ADSP_B_DEBUG_DUMP_MEM_ID;
+			memid = ADSP_B_MBRAIN_MEM_ID;
 
 		buffer = adsp_get_reserve_mem_virt(memid);
+		addr = adsp_get_reserve_mem_phys(memid);
 		size = adsp_get_reserve_mem_size(memid);
 
-		if (!buffer || size < ADSP_MBRAIN_SIZE)
+		if (!buffer || !addr || size < ADSP_MBRAIN_SIZE)
 			return -ENOMEM;
 
-		buffer += size - ADSP_TRACE_SIZE - ADSP_MBRAIN_SIZE;
-		kfifo_init(&pdata->mbrainfifo, buffer, ADSP_MBRAIN_SIZE);
+		kfifo_init(&pdata->mbrainfifo, buffer, size);
+
+		info[0] = addr;
+		info[1] = size;
+		pr_info("%s(), rsv mem addr:%llx, size:%llu", __func__, info[0], info[1]);
 
 		/* register MBrain callback */
 		adsp_ipi_registration(ADSP_IPI_MBRAIN_DONE,
@@ -507,14 +514,13 @@ int adsp_mbrain_enable(struct adsp_priv *pdata)
 
 		/* enable ADSP MBrain */
 		kfifo_reset(&pdata->mbrainfifo);
-		strscpy(msg, "mbrain_start", sizeof(msg) - 1);
 
-		pr_info("%s(), send '%s' to adsp kfifo:%d/%d", __func__, msg,
+		pr_info("%s(), send info to adsp kfifo:%d/%d", __func__,
 			kfifo_avail(&pdata->mbrainfifo),
 			kfifo_size(&pdata->mbrainfifo));
 
 		if (_adsp_register_feature(pdata->id, SYSTEM_FEATURE_ID, 0) == 0) {
-			adsp_push_message(ADSP_IPI_ADSP_TIMER, msg, sizeof(msg), 0, pdata->id);
+			adsp_push_message(ADSP_IPI_MBRAIN_ENABLE, info, sizeof(info), 0, pdata->id);
 			_adsp_deregister_feature(pdata->id, SYSTEM_FEATURE_ID, 0);
 		}
 

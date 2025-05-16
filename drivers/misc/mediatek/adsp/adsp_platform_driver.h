@@ -139,7 +139,19 @@ extern struct adsp_priv *adsp_cores[ADSP_CORE_TOTAL];
 extern struct adspsys_priv *adspsys;
 
 /* MBrain */
-typedef void (*audio_adsp_mbrain_notify_callback)(const void *info, const size_t size);
+#define ADSP_MBRAIN_EVENT_DATA_SIZE 10
+struct adsp_mbrain_t {
+	uint64_t time_stamp;
+	uint32_t event_counter;
+	uint32_t event_type;
+	uint16_t magic_num;
+	uint16_t user_id;
+	uint16_t version;
+	uint16_t data_size;
+	uint32_t data[ADSP_MBRAIN_EVENT_DATA_SIZE];
+};
+
+typedef void (*audio_adsp_mbrain_notify_callback)(const void *info, const size_t count);
 int adsp_mbrain_register_callback(audio_adsp_mbrain_notify_callback mbrain_cbk);
 int adsp_mbrain_unregister_callback(void);
 void set_adsp_mbrain_cbk(audio_adsp_mbrain_notify_callback mbrain_cbk);
