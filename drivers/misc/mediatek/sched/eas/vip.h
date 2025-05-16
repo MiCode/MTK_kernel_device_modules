@@ -95,5 +95,6 @@ extern bool balance_vvip_overutilied;
 extern bool balance_vip_overutilized;
 extern struct cpumask *get_gear_cpumask(unsigned int gear);
 extern int vip_in_gh;
+extern unsigned int sum_num_vip_in_cpu(int cpu);
 
 #endif /* _VIP_H */

@@ -22,12 +22,13 @@ static int *tgid_vip_arr;
 int tgid_vip_status;
 
 DEFINE_PER_CPU(struct vip_rq, vip_rq);
-inline unsigned int sum_num_vip_in_cpu(int cpu)
+unsigned int sum_num_vip_in_cpu(int cpu)
 {
 	struct vip_rq *vrq = &per_cpu(vip_rq, cpu);
 
 	return vrq->sum_num_vip_tasks;
 }
+EXPORT_SYMBOL_GPL(sum_num_vip_in_cpu);
 
 inline unsigned int num_vip_in_cpu(int cpu, int vip_prio)
 {

@@ -146,6 +146,7 @@ struct cpu_data {
 	u64 last_idle_time;
 	int max_nr_state;
 	int max_rt_nr_state;
+	int max_vip_nr_state;
 };
 
 static unsigned int enable_policy;
@@ -1936,7 +1937,8 @@ static void get_busy_cpus(void)
 	unsigned int busy_state[MAX_NR_CPUS] = {0};
 	unsigned int max_nr_state[MAX_NR_CPUS] = {0};
 	unsigned int max_rt_nr_state[MAX_NR_CPUS] = {0};
-	unsigned int over_nr_task = 0, over_act_load = 0, over_rt_nr_task = 0;
+	unsigned int max_vip_nr_state[MAX_NR_CPUS] = {0};
+	unsigned int over_nr_task = 0, over_act_load = 0, over_rt_vip_nr_task = 0;
 
 	spin_lock_irqsave(&core_ctl_state_lock, flags);
 	/* Define need spread cpus */
@@ -1963,14 +1965,16 @@ static void get_busy_cpus(void)
 
 			cpu_stat->max_nr_state = get_max_nr_running(cpu);
 			cpu_stat->max_rt_nr_state = get_max_rt_nr_running(cpu);
+			cpu_stat->max_vip_nr_state = get_max_vip_nr_running(cpu);
 
 			busy_state[cpu] = (unsigned int)cpu_stat->is_busy;
 			max_nr_state[cpu] = cpu_stat->max_nr_state;
 			max_rt_nr_state[cpu] = cpu_stat->max_rt_nr_state;
+			max_vip_nr_state[cpu] = cpu_stat->max_vip_nr_state;
 
-			over_nr_task = cpu_stat->max_nr_state > cluster->nr_task_thres;
+			over_nr_task = max_nr_state[cpu] > cluster->nr_task_thres;
 			over_act_load = cpu_stat->cpu_active_loading[idx] > cluster->active_loading_thres;
-			over_rt_nr_task = cpu_stat->max_rt_nr_state > cluster->rt_nr_task_thres;
+			over_rt_vip_nr_task = max_rt_nr_state[cpu] + max_vip_nr_state[cpu] > cluster->rt_nr_task_thres;
 
 			if (busy_state[cpu] && over_nr_task) {
 				cluster->deiso_reason |= DEISO_BUSY_NR_TASK;
@@ -1979,7 +1983,7 @@ static void get_busy_cpus(void)
 				if (busy_state[cpu] && over_act_load) {
 					cluster->deiso_reason |= DEISO_BUSY_ACT_LOAD;
 					cpu_count++;
-				} else if (over_rt_nr_task) {
+				} else if (over_rt_vip_nr_task) {
 					cluster->deiso_reason |= DEISO_BUSY_RT_NR_TASK;
 					cpu_count++;
 				}
@@ -1989,7 +1993,7 @@ static void get_busy_cpus(void)
 	}
 	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
 
-	trace_core_ctl_busy_cpus(busy_state, max_nr_state, max_rt_nr_state);
+	trace_core_ctl_busy_cpus(busy_state, max_nr_state, max_rt_nr_state, max_vip_nr_state);
 }
 
 #define BIG_TASK_AVG_THRESHOLD 25

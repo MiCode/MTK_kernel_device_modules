@@ -34,6 +34,7 @@ extern unsigned int pd_get_opp_leakage(unsigned int cpu,
 extern unsigned long pd_get_opp_capacity_legacy(int cpu, int opp);
 extern int get_max_nr_running(int cpu);
 extern int get_max_rt_nr_running(int cpu);
+extern int get_max_vip_nr_running(int cpu);
 extern void policy_chg_notify(void);
 extern unsigned int core_ctl_get_policy(void);
 extern unsigned long _capacity_of(int cpu);

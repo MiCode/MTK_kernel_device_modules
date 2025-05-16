@@ -16,6 +16,7 @@
 #include "sched_avg.h"
 #include "common.h"
 #include <mt-plat/mtk_irq_mon.h>
+#include <eas/vip.h>
 
 #define TAG "sched_avg"
 
@@ -48,6 +49,8 @@ static DEFINE_PER_CPU(u64, nr);
 static DEFINE_PER_CPU(u64, nr_max);
 static DEFINE_PER_CPU(u64, rt_nr);
 static DEFINE_PER_CPU(u64, rt_nr_max);
+static DEFINE_PER_CPU(u64, vip_nr);
+static DEFINE_PER_CPU(u64, vip_nr_max);
 static DEFINE_PER_CPU(u64, last_time);
 static DEFINE_PER_CPU(spinlock_t, nr_lock) = __SPIN_LOCK_UNLOCKED(nr_lock);
 static DEFINE_PER_CPU(spinlock_t, nr_over_thres_lock) = __SPIN_LOCK_UNLOCKED(nr_over_thres_lock);
@@ -167,11 +170,14 @@ void sched_update_nr_prod(int cpu, unsigned long nr_running, unsigned long rt_nr
 	/* To prevent to add count, because already do outside */
 	per_cpu(nr, cpu) = nr_running;
 	per_cpu(rt_nr, cpu) = rt_nr_running;
+	per_cpu(vip_nr, cpu) = sum_num_vip_in_cpu(cpu);
 
 	if (per_cpu(nr, cpu) > per_cpu(nr_max, cpu))
 		per_cpu(nr_max, cpu) = per_cpu(nr, cpu);
 	if (per_cpu(rt_nr, cpu) > per_cpu(rt_nr_max, cpu))
 		per_cpu(rt_nr_max, cpu) = per_cpu(rt_nr, cpu);
+	if (per_cpu(vip_nr, cpu) > per_cpu(vip_nr_max, cpu))
+		per_cpu(vip_nr_max, cpu) = per_cpu(vip_nr, cpu);
 	spin_unlock_irqrestore(&per_cpu(nr_lock, cpu), flags);
 }
 
@@ -325,6 +331,20 @@ int get_max_rt_nr_running(int cpu)
 	return max_rt_nr;
 }
 EXPORT_SYMBOL(get_max_rt_nr_running);
+
+int get_max_vip_nr_running(int cpu)
+{
+	int max_vip_nr = 0;
+	unsigned long flags;
+
+	spin_lock_irqsave(&per_cpu(nr_lock, cpu), flags);
+	max_vip_nr = per_cpu(vip_nr_max, cpu);
+	/* reset max_nr value */
+	per_cpu(vip_nr_max, cpu) = per_cpu(vip_nr, cpu);
+	spin_unlock_irqrestore(&per_cpu(nr_lock, cpu), flags);
+	return max_vip_nr;
+}
+EXPORT_SYMBOL(get_max_vip_nr_running);
 
 int sched_get_nr_over_thres_avg(int cluster_id,
 				int *dn_avg,
