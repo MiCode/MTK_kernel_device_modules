@@ -1686,8 +1686,6 @@ static void mml_sys_taskdone(struct mml_comp *comp, struct mml_task *task,
 	if (mml_dbgtp_dump && cfg->dbgtp) {
 		mml_dbgtp_config_dump(comp->sysid, comp->base);
 		call_dbg_op(comp, dump);
-		if (cfg->info.mode == MML_MODE_DIRECT_LINK)
-			call_dbg_op(comp, dump_dl);
 	}
 }
 

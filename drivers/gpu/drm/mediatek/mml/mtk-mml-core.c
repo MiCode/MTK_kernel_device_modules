@@ -868,11 +868,9 @@ static void core_comp_dump(struct mml_task *task, u32 pipe, int cnt)
 		call_dbg_op(comp, dump);
 	}
 
-	if (cfg->info.mode == MML_MODE_DIRECT_LINK) {
+	if (cfg->info.mode == MML_MODE_DIRECT_LINK && mml_dl_disp_dump) {
 		call_dbg_op(path->mmlsys, dump_dl);
-
-		if (mml_dl_disp_dump)
-			cfg->task_ops->disp_dump(task);
+		cfg->task_ops->disp_dump(task);
 	}
 
 	if (cnt >= 0)
