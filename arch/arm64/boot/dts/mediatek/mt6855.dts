@@ -4507,7 +4507,7 @@
 				"path_jpegenc_bsdma";
 			operating-points-v2 = <&opp_table_venc>;
 			mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
-			support-34bits = <0>;
+			support-34bits = <1>;
 			interconnect-num = <4>;
 		};
 		mbist@17060000 {
