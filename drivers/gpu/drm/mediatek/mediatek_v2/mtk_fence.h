@@ -167,7 +167,7 @@ int mtk_release_present_fence(unsigned int session_id, unsigned int fence_idx, k
 int mtk_release_sf_present_fence(unsigned int session_id,
 				 unsigned int fence_idx);
 int mtk_release_union_fence(unsigned int session_id, unsigned int fence_idx, ktime_t time,
-		int fence_type);
+		int fence_type, struct mtk_drm_crtc *mtk_crtc);
 int mtk_fence_get_output_timeline_id(void);
 int mtk_fence_get_dbi_count_timeline_id(void);
 

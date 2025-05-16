@@ -637,7 +637,7 @@ done:
 }
 
 int mtk_release_union_fence(unsigned int session_id, unsigned int fence_idx, ktime_t time,
-		int fence_type)
+		int fence_type, struct mtk_drm_crtc *mtk_crtc)
 {
 	int fence_increment = 0;
 	int timeline_id = 0;
@@ -789,6 +789,12 @@ int mtk_release_union_fence(unsigned int session_id, unsigned int fence_idx, kti
 		CRTC_MMP_MARK(idx, release_frame_done_fence, 0, fence_idx);
 
 		mutex_unlock(&layer_info->sync_lock);
+
+		/* WA: force signal pf when pf delay signal*/
+		if (mtk_crtc == NULL)
+			return 1;
+		mtk_release_union_fence(session_id, fence_idx, mtk_crtc->sof_time,
+			MTK_UNION_FENCE_PRESENT, NULL);
 	} else {
 		DDPFENCE("%s: fence_type is invalid\n", __func__);
 		return -1;

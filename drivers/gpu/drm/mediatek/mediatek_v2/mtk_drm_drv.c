@@ -7768,11 +7768,14 @@ int mtk_drm_suspend_release_fence(struct device *dev)
 
 	if (mtk_drm_helper_get_opt(private->helper_opt, MTK_DRM_OPT_FRAME_SUBMIT)) {
 		mtk_release_union_fence(private->session_id[0],
-			atomic_read(&private->crtc_config[0]), 0, MTK_UNION_FENCE_CONFIG);
+			atomic_read(&private->crtc_config[0]), 0, MTK_UNION_FENCE_CONFIG,
+			NULL);
 		mtk_release_union_fence(private->session_id[0],
-			atomic_read(&private->crtc_present[0]), 0, MTK_UNION_FENCE_PRESENT);
+			atomic_read(&private->crtc_present[0]), 0, MTK_UNION_FENCE_PRESENT,
+			NULL);
 		mtk_release_union_fence(private->session_id[0],
-			atomic_read(&private->crtc_frame_done[0]), 0, MTK_UNION_FENCE_FRAME_DONE);
+			atomic_read(&private->crtc_frame_done[0]), 0, MTK_UNION_FENCE_FRAME_DONE,
+			NULL);
 		return 0;
 	}
 

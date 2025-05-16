@@ -11538,7 +11538,7 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 
 			if (use_frame_submit) {
 				mtk_release_union_fence(session_id, cb_data->pres_fence_idx,
-						pf_time, MTK_UNION_FENCE_PRESENT);
+						pf_time, MTK_UNION_FENCE_PRESENT, NULL);
 			} else {
 				mtk_release_present_fence(session_id, cb_data->pres_fence_idx,
 						pf_time);
@@ -11637,7 +11637,8 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 		 * if fence index is used for present fence,
 		 * we need get it from cb_data to force signal N pf.
 		 */
-		mtk_release_union_fence(session_id, fence_idx, 0, MTK_UNION_FENCE_CONFIG);
+		mtk_release_union_fence(session_id, fence_idx, 0,
+			MTK_UNION_FENCE_CONFIG, NULL);
 	} else {
 		mtk_crtc_release_input_layer_fence(crtc, session_id);
 	}
@@ -11649,7 +11650,7 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 				__func__, fence_idx, cb_data->pres_fence_idx);
 			if (use_frame_submit) {
 				mtk_release_union_fence(session_id, cb_data->pres_fence_idx,
-						0, MTK_UNION_FENCE_PRESENT);
+						0, MTK_UNION_FENCE_PRESENT, NULL);
 			} else {
 				mtk_release_present_fence(session_id, cb_data->pres_fence_idx,
 						0);
@@ -11660,7 +11661,7 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 				cb_data->msync2_enable) {
 			if (use_frame_submit) {
 				mtk_release_union_fence(session_id, cb_data->pres_fence_idx,
-						ktime_get(), MTK_UNION_FENCE_PRESENT);
+						ktime_get(), MTK_UNION_FENCE_PRESENT, NULL);
 			} else {
 				mtk_release_present_fence(session_id, cb_data->pres_fence_idx,
 						ktime_get());
@@ -11817,7 +11818,8 @@ static void ddp_cmdq_cb_blocking(struct mtk_cmdq_cb_data *cb_data)
 		 */
 		unsigned int fence_idx = readl(mtk_get_gce_backup_slot_va(mtk_crtc,
 				DISP_SLOT_PRESENT_FENCE(drm_crtc_index(crtc))));
-		mtk_release_union_fence(session_id, fence_idx, 0, MTK_UNION_FENCE_CONFIG);
+		mtk_release_union_fence(session_id, fence_idx, 0,
+			MTK_UNION_FENCE_CONFIG, NULL);
 	} else {
 		mtk_crtc_release_input_layer_fence(crtc, session_id);
 	}
@@ -17566,9 +17568,11 @@ static void mtk_drm_crtc_release_fence(struct drm_crtc *crtc)
 
 	if (use_frame_submit) {
 		mtk_release_union_fence(session_id,
-			atomic_read(&priv->crtc_config[id]), 0, MTK_UNION_FENCE_CONFIG);
+			atomic_read(&priv->crtc_config[id]), 0, MTK_UNION_FENCE_CONFIG,
+			NULL);
 		mtk_release_union_fence(session_id,
-			atomic_read(&priv->crtc_present[id]), 0, MTK_UNION_FENCE_PRESENT);
+			atomic_read(&priv->crtc_present[id]), 0, MTK_UNION_FENCE_PRESENT,
+			NULL);
 		return;
 	}
 
@@ -20841,11 +20845,11 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 					atomic_set(&priv->crtc_rel_present[crtc_index], fence_idx);
 					if (use_frame_submit) {
 						mtk_release_union_fence(session_id, fence_idx, 0,
-							MTK_UNION_FENCE_PRESENT);
+							MTK_UNION_FENCE_PRESENT, NULL);
 						mtk_release_union_fence(session_id, fence_idx, 0,
-							MTK_UNION_FENCE_CONFIG);
+							MTK_UNION_FENCE_CONFIG, NULL);
 						mtk_release_union_fence(session_id, fence_idx, 0,
-							MTK_UNION_FENCE_FRAME_DONE);
+							MTK_UNION_FENCE_FRAME_DONE, NULL);
 					} else {
 						mtk_release_present_fence(session_id, fence_idx, 0);
 					}
@@ -23655,7 +23659,7 @@ static int mtk_drm_pf_release_thread(void *data)
 
 		if (use_frame_submit) {
 			if (mtk_release_union_fence(private->session_id[crtc_idx],
-						fence_idx, pf_time, MTK_UNION_FENCE_PRESENT) == 1) {
+					fence_idx, pf_time, MTK_UNION_FENCE_PRESENT, NULL) == 1) {
 				private->crtc_last_present_ts[crtc_idx] = pf_time;
 				//TODO:Confirm why can't just use rel or last
 				private->crtc_rel_present_ts[crtc_idx] = pf_time;
@@ -23707,7 +23711,7 @@ static int mtk_drm_frame_done_release_thread(void *data)
 			unsigned int fence_idx = readl(mtk_get_gce_backup_slot_va(mtk_crtc,
 					DISP_SLOT_FRAME_DONE_FENCE(crtc_idx)));
 			mtk_release_union_fence(private->session_id[crtc_idx], fence_idx,
-					0, MTK_UNION_FENCE_FRAME_DONE);
+					0, MTK_UNION_FENCE_FRAME_DONE, mtk_crtc);
 		}
 #endif
 	}
