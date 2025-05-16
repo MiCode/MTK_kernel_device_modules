@@ -1007,6 +1007,12 @@ static int sbe_do_hwui_scrolling_status_policy(int tgid, char *name, unsigned lo
 		thr->latest_use_ts = ts;
 		thr->scroll_status = start;
 
+		if (test_bit(SBE_PAGE_FLUTTER, &mask)
+				|| test_bit(SBE_PAGE_WEBVIEW, &mask))
+			thr->dy_compute_rescue = 0;
+		else
+			thr->dy_compute_rescue = 1;
+
 		if (start) {
 			type = test_bit(SBE_MOVEING, &mask) ? SBE_MOVEING :
 						(test_bit(SBE_FLING, &mask) ? SBE_FLING : 0);
@@ -1028,7 +1034,6 @@ static int sbe_do_hwui_scrolling_status_policy(int tgid, char *name, unsigned lo
 				//add new scroll_info into sbe_render_info struct
 				sbe_ux_scrolling_start(type, ts, thr);
 			}
-
 			memset(&xgf_attr_iter, 0, sizeof(struct xgf_policy_cmd));
 			xgf_attr_iter.mode = 1;
 			xgf_attr_iter.pid = scroll_policy_info.final_pid_arr[i];

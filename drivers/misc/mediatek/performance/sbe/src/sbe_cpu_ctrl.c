@@ -1212,7 +1212,8 @@ int sbe_calculate_dy_enhance(struct sbe_render_info *thr)
 			thr->affinity_task_mask = 0;
 	}
 
-	if (all_rescue_frame_count > 0 && all_rescue_frame_time_count > 0) {
+	if (thr->dy_compute_rescue
+			&& all_rescue_frame_count > 0 && all_rescue_frame_time_count > 0) {
 		int max_enhance = clamp(sbe_dy_max_enhance, 0, 100);
 		int new = clamp((int)
 			(div64_u64(all_rescue_cap_count, all_rescue_frame_count) + last_enhance), 0, 100);
@@ -1225,7 +1226,8 @@ int sbe_calculate_dy_enhance(struct sbe_render_info *thr)
 
 	result = last_enhance;
 
-	if (new_enhance > 0 && new_enhance != last_enhance) {
+	if (thr->dy_compute_rescue
+			&& new_enhance > 0 && new_enhance != last_enhance) {
 		int max_monitor_drop_frame = RESCUE_MAX_MONITOR_DROP_ARR_SIZE - 1;
 		long long new_dur;
 		long long old_tmp;
