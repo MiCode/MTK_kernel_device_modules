@@ -592,7 +592,7 @@ static int vidioc_venc_s_ctrl(struct v4l2_ctrl *ctrl)
 		struct vb2_queue *dst_vq;
 
 		if (ctrl->val) {
-			if (vcp_get_io_device_ex(VCP_IOMMU_SEC)) {
+			if (vcp_get_io_device_ex(VCP_IOMMU_SEC) && mtk_vcodec_is_vcp(MTK_INST_ENCODER)) {
 				dst_vq = v4l2_m2m_get_vq(ctx->m2m_ctx,
 					V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE);
 				if (!dst_vq) {
