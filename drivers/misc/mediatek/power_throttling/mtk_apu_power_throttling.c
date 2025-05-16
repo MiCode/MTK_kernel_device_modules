@@ -63,8 +63,6 @@ static void apu_pt_low_battery_cb(enum LOW_BATTERY_LEVEL_TAG level, void *data)
 	ret = apu_pt_info[LBAT_POWER_THROTTLING].cb(&id, opp_limit);
 	if (ret)
 		pr_notice("[%s] apu pt low battery throttle failed:%d\n", __func__, ret);
-
-	pr_notice("[%s] opp:%d\n", __func__, opp_limit);
 }
 #endif
 
@@ -91,8 +89,6 @@ static void apu_pt_over_current_cb(enum BATTERY_OC_LEVEL_TAG level, void *data)
 	ret = apu_pt_info[LBAT_POWER_THROTTLING].cb(&id, opp_limit);
 	if (ret)
 		pr_notice("[%s] apu pt low battery throttle failed:%d\n", __func__, ret);
-
-	pr_notice("[%s] opp:%d\n", __func__, opp_limit);
 }
 #endif
 
@@ -119,9 +115,6 @@ static void apu_pt_battery_percent_cb(enum BATTERY_PERCENT_LEVEL_TAG level)
 	ret = apu_pt_info[LBAT_POWER_THROTTLING].cb(&id, opp_limit);
 	if (ret)
 		pr_notice("[%s] apu pt low battery throttle failed:%d\n", __func__, ret);
-
-	pr_notice("[%s] opp:%d\n", __func__, opp_limit);
-
 }
 #endif
 

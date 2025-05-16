@@ -135,6 +135,7 @@ static DEFINE_MUTEX(exe_thr_lock);
 static int lvsys_thd_enable;
 static int vbat_thd_enable;
 unsigned int pmic_level_num;
+bool lvsys_lv1_trigger;
 
 static unsigned int __used KTF_check_vbat(void)
 {
@@ -336,8 +337,12 @@ static unsigned int convert_to_thl_lv(enum LOW_BATTERY_USER_TAG intr_type, unsig
 				intr_type, input_lv, temp_stage, input_lv);
 	} else if (intr_type == LVSYS_INTR) {
 		if (input_lv && temp_stage <= lbat_data->temp_max_stage) {
-			thl_lv = lbat_data->thl_lv[temp_stage * pmic_level_num + (pmic_level_num -
-						lbat_data->lvsys_volt_size - 1) + input_lv];
+			if (lvsys_lv1_trigger) {
+				thl_lv = lbat_data->thl_lv[temp_stage * pmic_level_num + input_lv];
+			} else {
+				thl_lv = lbat_data->thl_lv[temp_stage * pmic_level_num + (pmic_level_num -
+							lbat_data->lvsys_volt_size - 1) + input_lv];
+			}
 		}
 		else if (temp_stage > lbat_data->temp_max_stage)
 			pr_info("%s:Out of boundary: intr_type=%d pmic_lv=%d temp_stage=%d return %d\n", __func__,
@@ -388,8 +393,13 @@ static int __used decide_and_throttle(enum LOW_BATTERY_USER_TAG user, unsigned i
 		} else {
 			lbat_thl_lv = convert_to_thl_lv(LBAT_INTR_1, lbat_data->temp_cur_stage, lbat_data->l_lbat_lv);
 			lvsys_thl_lv = convert_to_thl_lv(LVSYS_INTR, lbat_data->temp_cur_stage, lbat_data->lvsys_lv);
-			lbat_data->l_pmic_lv = MAX(lbat_data->l_lbat_lv, lbat_data->lvsys_lv ?
-				(pmic_level_num - lbat_data->lvsys_volt_size + lbat_data->lvsys_lv - 1):0);
+			if (lvsys_lv1_trigger) {
+				lbat_data->l_pmic_lv = MAX(lbat_data->l_lbat_lv, lbat_data->lvsys_lv ?
+							(lbat_data->lvsys_lv):0);
+			} else {
+				lbat_data->l_pmic_lv = MAX(lbat_data->l_lbat_lv, lbat_data->lvsys_lv ?
+					(pmic_level_num - lbat_data->lvsys_volt_size + lbat_data->lvsys_lv - 1):0);
+			}
 			exec_throttle(MAX(lbat_thl_lv, lvsys_thl_lv), user, thd_volt, input);
 		}
 		mutex_unlock(&exe_thr_lock);
@@ -401,8 +411,13 @@ static int __used decide_and_throttle(enum LOW_BATTERY_USER_TAG user, unsigned i
 		} else {
 			lbat_thl_lv = convert_to_thl_lv(LBAT_INTR_1, lbat_data->temp_cur_stage, lbat_data->l_lbat_lv);
 			lvsys_thl_lv = convert_to_thl_lv(LVSYS_INTR, lbat_data->temp_cur_stage, lbat_data->lvsys_lv);
-			lbat_data->l_pmic_lv = MAX(lbat_data->l_lbat_lv, lbat_data->lvsys_lv ?
-				(pmic_level_num - lbat_data->lvsys_volt_size + lbat_data->lvsys_lv - 1):0);
+			if (lvsys_lv1_trigger) {
+				lbat_data->l_pmic_lv = MAX(lbat_data->l_lbat_lv, lbat_data->lvsys_lv ?
+							(lbat_data->lvsys_lv):0);
+			} else {
+				lbat_data->l_pmic_lv = MAX(lbat_data->l_lbat_lv, lbat_data->lvsys_lv ?
+					(pmic_level_num - lbat_data->lvsys_volt_size + lbat_data->lvsys_lv - 1):0);
+			}
 			exec_throttle(MAX(lbat_thl_lv, lvsys_thl_lv), user, thd_volt, input);
 		}
 		mutex_unlock(&exe_thr_lock);
@@ -1390,7 +1405,6 @@ static int lvsys_notifier_call(struct notifier_block *this,
 		if (lbat_lv == -1)
 			return NOTIFY_DONE;
 		decide_and_throttle(LVSYS_INTR, lbat_lv, event);
-		pr_info("[%s] event:%lu, lbat_lv:%d\n", __func__, event, lbat_lv);
 	} else {
 		if (event == lbat_data->lvsys_thd_volt_l)
 			decide_and_throttle(LVSYS_INTR, 1, lbat_data->lvsys_thd_volt_l);
@@ -2148,8 +2162,15 @@ static int low_battery_throttling_probe(struct platform_device *pdev)
 
 	ret = of_property_read_u32(np, "pt-shutdown-enable", &priv->pt_shutdown_en);
 	if (ret) {
-		dev_notice(&pdev->dev, "[%s] failed to getpt-shutdown, set to 1\n", __func__);
+		dev_notice(&pdev->dev, "[%s] failed to get pt-shutdown, set to 1\n", __func__);
 		priv->pt_shutdown_en = 1;
+	}
+
+	if (of_property_read_bool(np, "lvsys-LV1-trigger")) {
+		lvsys_lv1_trigger = true;
+	} else {
+		dev_notice(&pdev->dev, "[%s] set lvsys as last level\n", __func__);
+		lvsys_lv1_trigger = false;
 	}
 
 	ret = device_create_file(&(pdev->dev),

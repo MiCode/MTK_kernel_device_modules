@@ -2923,7 +2923,7 @@ static ssize_t mt_hpt_sf_setting_proc_write
 	return count;
 }
 
-static int mt_uvlo_freq_setting_proc_show(struct seq_file *m, void *v)
+static int mt_hpt_freq_setting_proc_show(struct seq_file *m, void *v)
 {
 	seq_printf(m, "BCPU: %u\n", bcpu_hpt_freq);
 	seq_printf(m, "MCPU: %u\n", mcpu_hpt_freq);
@@ -2934,7 +2934,7 @@ static int mt_uvlo_freq_setting_proc_show(struct seq_file *m, void *v)
 	return 0;
 }
 
-static ssize_t mt_uvlo_freq_setting_proc_write
+static ssize_t mt_hpt_freq_setting_proc_write
 (struct file *file, const char __user *buffer, size_t count, loff_t *data)
 {
 	char desc[64];
@@ -3095,7 +3095,7 @@ PROC_FOPS_RW(hpt_sf_setting);
 PROC_FOPS_RO(xpu_dbg_dump);
 PROC_FOPS_RW(combo0_uisoc);
 PROC_FOPS_RO(hpt_debug_info);
-PROC_FOPS_RW(uvlo_freq_setting);
+PROC_FOPS_RW(hpt_freq_setting);
 
 static int mt_ppb_create_procfs(void)
 {
@@ -3125,7 +3125,7 @@ static int mt_ppb_create_procfs(void)
 		PROC_ENTRY(xpu_dbg_dump),
 		PROC_ENTRY(combo0_uisoc),
 		PROC_ENTRY(hpt_debug_info),
-		PROC_ENTRY(uvlo_freq_setting),
+		PROC_ENTRY(hpt_freq_setting),
 	};
 
 	dir = proc_mkdir("ppb", NULL);
