@@ -216,6 +216,96 @@ static void get_vcu_vpud_log(struct mtk_vcodec_ctx *ctx, void *out)
 		mtk_v4l2_err("[%d] Error!! Cannot get param : GET_PARAM_VDEC_VCU_VPUD_LOG ERR", ctx->id);
 }
 
+static void vdec_works_init(struct mtk_vcodec_ctx *ctx)
+{
+	INIT_LIST_HEAD(&ctx->worker_node.node);
+	init_completion(&ctx->worker_node.done);
+	INIT_LIST_HEAD(&ctx->init_node.node);
+	init_completion(&ctx->init_node.done);
+	INIT_LIST_HEAD(&ctx->start_node.node);
+	init_completion(&ctx->start_node.done);
+	mtk_v4l2_debug(4, "[%d][WORK] done", ctx->id);
+}
+
+static void queue_dec_work(struct mtk_vcodec_ctx *ctx, enum vcodec_work_type type)
+{
+	struct mtk_vcodec_dev *dev = ctx->dev;
+	struct vcodec_work *work;
+	unsigned long flags;
+	bool is_run = false;
+
+	if (type == VCODEC_WORK_INIT)
+		work = &ctx->init_node;
+	else if (type == VCODEC_WORK_START)
+		work = &ctx->start_node;
+	else if (type == VCODEC_WORK_RUN) {
+		work = &ctx->worker_node;
+		is_run = true;
+	} else {
+		mtk_v4l2_err("[%d][WORK] invalid work type %d", ctx->id, type);
+		return;
+	}
+	work->ctx = ctx;
+	work->type = type;
+	reinit_completion(&work->done);
+	work->is_working = true;
+	mtk_v4l2_debug(is_run ? 8 : 2, "[%d][WORK] queue type %d work", ctx->id, type);
+
+	spin_lock_irqsave(&dev->worker_mq.lock, flags);
+	list_add_tail(&work->node, &dev->worker_mq.head);
+	atomic_inc(&dev->worker_mq.cnt);
+	spin_unlock_irqrestore(&dev->worker_mq.lock, flags);
+	wake_up(&dev->worker_mq.wq);
+}
+
+static struct vcodec_work *dequeue_dec_work(struct mtk_vcodec_dev *dev)
+{
+	struct vcodec_work *work;
+	unsigned long flags;
+
+	spin_lock_irqsave(&dev->worker_mq.lock, flags);
+	work = list_entry(dev->worker_mq.head.next, struct vcodec_work, node);
+	list_del(&work->node);
+	atomic_dec(&dev->worker_mq.cnt);
+	spin_unlock_irqrestore(&dev->worker_mq.lock, flags);
+
+	return work;
+}
+
+static void complete_dec_work(struct mtk_vcodec_ctx *ctx, struct vcodec_work *work)
+{
+	work->is_working = false;
+	complete_all(&work->done);
+	mtk_v4l2_debug(8, "[%d][WORK] type %d work complete", ctx->id, work->type);
+}
+
+static void flush_dec_work(struct mtk_vcodec_ctx *ctx, enum vcodec_work_type type)
+{
+	struct vcodec_work *work;
+	int ret;
+
+	if (type == VCODEC_WORK_INIT)
+		work = &ctx->init_node;
+	else if (type == VCODEC_WORK_START)
+		work = &ctx->start_node;
+	else if (type == VCODEC_WORK_RUN)
+		work = &ctx->worker_node;
+	else {
+		mtk_v4l2_err("[%d] invalid work type %d", ctx->id, type);
+		return;
+	}
+
+	if (!work->is_working) {
+		mtk_v4l2_debug(1, "[%d][WORK] type %d not working, no need flush", ctx->id, type);
+		return;
+	}
+
+	do {
+		ret = wait_for_completion_interruptible(&work->done);
+	} while (!ret);
+	mtk_v4l2_debug(2, "[%d][WORK] type %d work flush done", ctx->id, type);
+}
+
 static void get_supported_format(struct mtk_vcodec_ctx *ctx)
 {
 	unsigned int i;
@@ -2198,11 +2288,32 @@ static int mtk_vcodec_dec_init(struct mtk_vcodec_ctx *ctx, struct mtk_q_data *q_
 			mtk_vdec_error_handle(ctx, "init");
 		else
 			mtk_vdec_set_unsupport(ctx);
-	} else
+	} else {
 		mtk_vcodec_set_state_from(ctx, MTK_STATE_INIT, MTK_STATE_FREE);
+		queue_dec_work(ctx, VCODEC_WORK_INIT);
+	}
 
 	mutex_unlock(&ctx->init_lock);
 	return ret;
+}
+
+// deinit for mtk_vdec_init_work
+void mtk_vdec_deinit_work(struct mtk_vcodec_ctx *ctx)
+{
+	flush_dec_work(ctx, VCODEC_WORK_INIT);
+	if (!ctx->init_work_done) {
+		mtk_v4l2_debug(2, "[%d] no need deinit work", ctx->id);
+		return;
+	}
+
+	if (mtk_vdec_slc_enable && ctx->dev->dec_slc_ver == VDEC_SLC_V2) {
+		vcodec_trace_begin("SLC(deinit)");
+		mtk_vdec_slc_gid_release(ctx, &ctx->dev->dec_slc_frame);
+		mtk_vdec_slc_gid_release(ctx, &ctx->dev->dec_slc_ube);
+		vcodec_trace_end();
+	}
+	ctx->init_work_done = false;
+	mtk_v4l2_debug(4, "[%d] done", ctx->id);
 }
 
 void mtk_vcodec_dec_release(struct mtk_vcodec_ctx *ctx)
@@ -2210,7 +2321,7 @@ void mtk_vcodec_dec_release(struct mtk_vcodec_ctx *ctx)
 #if ENABLE_META_BUF
 	int i;
 #endif
-
+	mtk_vdec_deinit_work(ctx);
 	mtk_vdec_deinit_set_frame_wq(ctx);
 	mtk_vdec_lpw_deinit_timer(ctx);
 	vdec_if_deinit(ctx);
@@ -3982,48 +4093,6 @@ static int vb2ops_vdec_buf_init(struct vb2_buffer *vb)
 	return 0;
 }
 
-static void queue_dec_work(struct mtk_vcodec_ctx *ctx, enum vcodec_work_type type)
-{
-	struct mtk_vcodec_dev *dev = ctx->dev;
-	struct vcodec_work *work;
-	int ret = -1;
-	unsigned long flags;
-
-	if (type == VCODEC_WORK_START) {
-		// get start work semaphore
-		while (ret != 0)
-			ret = down_interruptible(&ctx->start_work_sem);
-		work = &ctx->start_node;
-	} else if (type == VCODEC_WORK_DEC)
-		work = &ctx->worker_node;
-	else {
-		mtk_v4l2_err("[%d] invalid work type %d", ctx->id, type);
-		return;
-	}
-	work->ctx = ctx;
-	work->type = type;
-
-	spin_lock_irqsave(&dev->worker_mq.lock, flags);
-	list_add_tail(&work->node, &dev->worker_mq.head);
-	atomic_inc(&dev->worker_mq.cnt);
-	spin_unlock_irqrestore(&dev->worker_mq.lock, flags);
-	wake_up(&dev->worker_mq.wq);
-}
-
-static struct vcodec_work *dequeue_dec_work(struct mtk_vcodec_dev *dev)
-{
-	struct vcodec_work *work;
-	unsigned long flags;
-
-	spin_lock_irqsave(&dev->worker_mq.lock, flags);
-	work = list_entry(dev->worker_mq.head.next, struct vcodec_work, node);
-	list_del(&work->node);
-	atomic_dec(&dev->worker_mq.cnt);
-	spin_unlock_irqrestore(&dev->worker_mq.lock, flags);
-
-	return work;
-}
-
 static int vb2ops_vdec_start_streaming(struct vb2_queue *q, unsigned int count)
 {
 	struct mtk_vcodec_ctx *ctx = vb2_get_drv_priv(q);
@@ -4201,12 +4270,9 @@ static void vb2ops_vdec_stop_streaming(struct vb2_queue *q)
 	bitmap_zero(ctx->output_slot_map, VB2_MAX_FRAME);
 	mutex_unlock(&ctx->buf_lock);
 
-	// check start work done by get semaphore
+	// check start work done
 	vcodec_trace_begin("wait start work");
-	ret = -1;
-	while (ret != 0)
-		ret = down_interruptible(&ctx->start_work_sem);
-	up(&ctx->start_work_sem);
+	flush_dec_work(ctx, VCODEC_WORK_START);
 	vcodec_trace_end();
 
 	vcodec_trace_begin("dvfs(stream_off)");
@@ -4235,7 +4301,7 @@ static void vb2ops_vdec_stop_streaming(struct vb2_queue *q)
 	mutex_unlock(&ctx->dev->dec_dvfs_mutex);
 	vcodec_trace_end();
 
-	if (mtk_vdec_slc_enable && ctx->dev->dec_slc_ver >= VDEC_SLC_V1 && ctx->dev->dec_slc_ver < VDEC_SLC_VER_MAX) {
+	if (mtk_vdec_slc_enable && ctx->dev->dec_slc_ver == VDEC_SLC_V1) {
 		vcodec_trace_begin("SLC(stream_off)");
 		mtk_vdec_slc_gid_release(ctx, &ctx->dev->dec_slc_frame);
 		mtk_vdec_slc_gid_release(ctx, &ctx->dev->dec_slc_ube);
@@ -4258,6 +4324,18 @@ static const struct vb2_ops mtk_vdec_vb2_ops = {
 	.stop_streaming = vb2ops_vdec_stop_streaming,
 };
 
+
+static void mtk_vdec_init_work(struct mtk_vcodec_ctx *ctx)
+{
+	if (mtk_vdec_slc_enable && ctx->dev->dec_slc_ver == VDEC_SLC_V2) {
+		vcodec_trace_begin("SLC(init)");
+		mtk_vdec_slc_gid_request(ctx, &ctx->dev->dec_slc_frame);
+		mtk_vdec_slc_gid_request(ctx, &ctx->dev->dec_slc_ube);
+		vcodec_trace_end();
+	}
+	ctx->init_work_done = true;
+	mtk_v4l2_debug(2, "[%d] done", ctx->id);
+}
 
 static void mtk_vdec_start_work(struct mtk_vcodec_ctx *ctx)
 {
@@ -4291,15 +4369,14 @@ static void mtk_vdec_start_work(struct mtk_vcodec_ctx *ctx)
 	mutex_unlock(&ctx->dev->dec_dvfs_mutex);
 	vcodec_trace_end();
 
-	if (mtk_vdec_slc_enable && ctx->dev->dec_slc_ver >= VDEC_SLC_V1 && ctx->dev->dec_slc_ver < VDEC_SLC_VER_MAX) {
+	if (mtk_vdec_slc_enable && ctx->dev->dec_slc_ver == VDEC_SLC_V1) {
 		vcodec_trace_begin("SLC(stream_on)");
 		mtk_vdec_slc_gid_request(ctx, &ctx->dev->dec_slc_frame);
 		mtk_vdec_slc_gid_request(ctx, &ctx->dev->dec_slc_ube);
 		vcodec_trace_end();
 	}
 
-	// start work done signal semaphore
-	up(&ctx->start_work_sem);
+	mtk_v4l2_debug(2, "[%d] done", ctx->id);
 }
 
 static void mtk_vdec_worker(struct mtk_vcodec_ctx *ctx)
@@ -4596,10 +4673,13 @@ static int mtk_vdec_worker_loop(void *arg)
 		vcodec_trace_begin_func();
 		work = dequeue_dec_work(dev);
 		ctx = work->ctx;
-		if (work->type == VCODEC_WORK_START)
+		if (work->type == VCODEC_WORK_INIT)
+			mtk_vdec_init_work(ctx);
+		else if (work->type == VCODEC_WORK_START)
 			mtk_vdec_start_work(ctx);
-		else if (work->type == VCODEC_WORK_DEC)
+		else if (work->type == VCODEC_WORK_RUN)
 			mtk_vdec_worker(ctx);
+		complete_dec_work(ctx, work);
 		vcodec_trace_end();
 	} while (!kthread_should_stop());
 
@@ -4634,7 +4714,7 @@ static void m2mops_vdec_device_run(void *priv)
 {
 	struct mtk_vcodec_ctx *ctx = priv;
 
-	queue_dec_work(ctx, VCODEC_WORK_DEC);
+	queue_dec_work(ctx, VCODEC_WORK_RUN);
 }
 
 static int m2mops_vdec_job_ready(void *m2m_priv)
@@ -5132,6 +5212,7 @@ void mtk_vcodec_dec_set_default_params(struct mtk_vcodec_ctx *ctx)
 		q_data->bytesperline[1] = q_data->coded_width;
 	}
 
+	vdec_works_init(ctx);
 	mtk_vdec_init_set_frame_wq(ctx);
 	mtk_vdec_lpw_init_timer(ctx);
 	vcodec_trace_end();

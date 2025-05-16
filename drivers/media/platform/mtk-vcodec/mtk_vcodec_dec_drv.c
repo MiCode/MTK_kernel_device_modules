@@ -164,9 +164,6 @@ static int fops_vcodec_open(struct file *file)
 	spin_lock_init(&ctx->lpw_lock);
 	atomic_set(&ctx->output_cnt_in_driver, 0);
 
-	INIT_LIST_HEAD(&ctx->worker_node.node);
-	INIT_LIST_HEAD(&ctx->start_node.node);
-	sema_init(&ctx->start_work_sem, 1);
 	ctx->trace_count_tgid = current->tgid;
 
 	ret = mtk_vcodec_dec_ctrls_setup(ctx);

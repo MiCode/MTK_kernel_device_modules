@@ -17,6 +17,7 @@
 #include <linux/list.h>
 #include <linux/clk.h>
 #include <linux/bitmap.h>
+#include <linux/completion.h>
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
 #include <media/v4l2-ioctl.h>
@@ -647,15 +648,18 @@ struct vdec_check_alive_work_struct {
 };
 
 enum vcodec_work_type {
+	VCODEC_WORK_INIT,
 	VCODEC_WORK_START,
-	VCODEC_WORK_DEC,
-	VCODEC_WORK_ENC,
+	VCODEC_WORK_RUN,
+	VCODEC_WORK_TYPE_NUM
 };
 
 struct vcodec_work {
 	struct list_head node;
 	struct mtk_vcodec_ctx *ctx;
 	enum vcodec_work_type type;
+	struct completion done;
+	bool is_working;
 };
 
 /**
@@ -709,11 +713,6 @@ struct mtk_vcodec_ctx {
 	struct list_head list;
 	int cpu_caller_pid;
 
-	/* for vdec open set cgroup colocate */
-	struct workqueue_struct *cgrp_wq;
-	struct delayed_work cgrp_delay_work;
-	bool cgrp_enable;
-
 	struct v4l2_fh fh;
 	struct v4l2_m2m_ctx *m2m_ctx;
 	struct device *general_dev;
@@ -721,6 +720,7 @@ struct mtk_vcodec_ctx {
 	int id;
 	enum mtk_instance_state state;
 	bool is_unsupport;
+	bool init_work_done;
 	spinlock_t state_lock;
 	struct mtk_dec_params dec_params;
 	struct hdr10plus_info hdr10plus_buf;
@@ -763,7 +763,7 @@ struct mtk_vcodec_ctx {
 	unsigned int irq_status;
 
 	struct v4l2_ctrl_handler ctrl_hdl;
-	struct semaphore start_work_sem;
+	struct vcodec_work init_node;
 	struct vcodec_work start_node;
 	struct vcodec_work worker_node;
 	struct vdec_pic_info last_decoded_picinfo;
