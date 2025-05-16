@@ -1210,6 +1210,8 @@ int sbe_calculate_dy_enhance(struct sbe_render_info *thr)
 			thr->affinity_task_mask = SBE_PREFER_M;
 		else
 			thr->affinity_task_mask = 0;
+
+		sbe_systrace_c(thr->pid, thr->buffer_id, thr->affinity_task_mask, "[ux]affinity_task");
 	}
 
 	if (thr->dy_compute_rescue
@@ -1317,6 +1319,8 @@ void sbe_ux_scrolling_start(int type, unsigned long long start_ts, struct sbe_re
 
 	// enable cluster 1
 	if (thr->affinity_task_mask) {
+		core_ctl_set_min_cpus(1/*Cluster 1*/, 3/*3 core*/,
+				3/*UX Scenario*/, 1/*consider UX Scenario*/);
 		//CLEAR BEFORE SET
 		sbe_set_dep_affinity(thr, SBE_PREFER_NONE);
 
@@ -1344,6 +1348,7 @@ void sbe_ux_scrolling_end(struct sbe_render_info *thr)
 		sbe_set_dep_affinity(thr, SBE_PREFER_NONE);
 		sbe_set_affinity_on_scrolling(thr->tgid, SBE_PREFER_NONE);
 		sbe_set_affinity_on_scrolling(thr->pid, SBE_PREFER_NONE);
+		core_ctl_set_min_cpus(1, 0, 3, 0);
 	}
 
 	//reset rescue affnity if needed
