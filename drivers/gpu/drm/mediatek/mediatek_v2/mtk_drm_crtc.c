@@ -13268,7 +13268,10 @@ skip_prete:
 				/*for dynamic Msync on/off,set vfp period token*/
 				GCE_DO(set_event, EVENT_SYNC_TOKEN_VFP_PERIOD);
 			} else {
-				GCE_DO(wfe, EVENT_CMD_EOF);
+				GCE_DO(wait_no_clear, EVENT_CMD_EOF);
+				GCE_DO(wfe, EVENT_VDO_CABC_EOF);
+				GCE_DO(clear_event, EVENT_CMD_EOF);
+				GCE_DO(set_event, EVENT_VDO_CABC_EOF);
 				/* For dbgtp fifo mon WA */
 				if ((priv->data->mmsys_id == MMSYS_MT6993) &&
 					(priv->mtk_dbgtp_sta.fifo_mon_en[0]) && (crtc_id == 0)) {
@@ -26705,6 +26708,8 @@ int mtk_crtc_lcm_ATA(struct drm_crtc *crtc)
 			__func__, __LINE__);
 			return -EINVAL;
 		}
+		cmdq_pkt_wfe(cmdq_handle,
+				mtk_crtc->gce_obj.event[EVENT_VDO_CABC_EOF]);
 
 		mtk_ddp_comp_io_cmd(output_comp,
 			cmdq_handle, DSI_STOP_VDO_MODE, NULL);
@@ -26729,6 +26734,8 @@ int mtk_crtc_lcm_ATA(struct drm_crtc *crtc)
 		mtk_disp_mutex_trigger(mtk_crtc->mutex[0], cmdq_handle);
 		mtk_ddp_comp_io_cmd(output_comp, cmdq_handle, COMP_REG_START,
 				    NULL);
+		cmdq_pkt_set_event(cmdq_handle,
+				mtk_crtc->gce_obj.event[EVENT_VDO_CABC_EOF]);
 		cmdq_pkt_flush(cmdq_handle);
 		cmdq_pkt_destroy(cmdq_handle);
 	}
