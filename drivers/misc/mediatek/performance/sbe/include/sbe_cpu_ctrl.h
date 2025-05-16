@@ -57,6 +57,8 @@ void sbe_set_per_task_cap(struct sbe_render_info *thr);
 int sbe_set_sbb(int pid, int set, int active_ratio);
 int sbe_get_fpsgo_info(int tgid, int pid, int blc, unsigned long mask, int jerk_boost_flag, struct task_info *dep_arr);
 void sbe_reset_frame_cap(struct sbe_render_info *thr);
+void __sbe_set_per_task_cap(struct sbe_render_info *thr, int min_cap, int max_cap);
+int get_sbe_critical_basic_cap(void);
 
 struct ux_frame_info {
 	unsigned long long frameID;

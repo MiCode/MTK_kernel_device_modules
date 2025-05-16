@@ -665,7 +665,10 @@ void sbe_enforce_update_sbe_info_by_thread_name(int tgid, char *thread_name,
 	if (!start) {
 		sbe_thr->latest_use_ts = ts;
 		sbe_thr->scroll_status = 0;
+		__sbe_set_per_task_cap(sbe_thr, 0, 100);
 		sbe_systrace_c(sbe_thr->pid, sbe_thr->buffer_id, 0, "[ux]sbe_set_ctrl");
+		sbe_systrace_c(sbe_thr->pid, sbe_thr->buffer_id, 0, "[ux]perf_idx");
+		sbe_systrace_c(sbe_thr->pid, sbe_thr->buffer_id, 100, "[ux]perf_idx_max");
 	}
 }
 
@@ -927,6 +930,7 @@ static int sbe_do_clear_scrolling_info(int tgid, char *name, unsigned long long 
 			thr->target_time = div_u64(NSEC_PER_SEC, SBE_DEFAULT_TARGET_FPS);
 		thr->dep_self_ctrl = 0;
 		thr->latest_use_ts = ts;
+		thr->dep_self_ctrl = 1;
 
 		clear_ux_info(thr);
 		sbe_put_tree_lock(__func__);
@@ -945,6 +949,7 @@ static int sbe_do_hwui_scrolling_status_policy(int tgid, char *name, unsigned lo
 	int final_pid_arr_idx = 0;
 	int add_new_scrolling = 1;
 	int local_specific_tid_num = 0;
+	int critical_basic_cap = 0;
 	unsigned int display_rate = 0;
 	struct sbe_render_info *thr = NULL;
 	struct ux_scroll_info *last = NULL;
@@ -999,13 +1004,20 @@ static int sbe_do_hwui_scrolling_status_policy(int tgid, char *name, unsigned lo
 			thr->target_time = div_u64(NSEC_PER_SEC, display_rate);
 		else
 			thr->target_time = div_u64(NSEC_PER_SEC, SBE_DEFAULT_TARGET_FPS);
-		thr->dep_self_ctrl = 0;
 		/*
 		 * It's essential to update the status here.
 		 * This ensures timely reclamation of buffer information.
 		 */
 		thr->latest_use_ts = ts;
 		thr->scroll_status = start;
+		thr->dep_self_ctrl = 1;
+		thr->critical_basic_cap = 0;
+		critical_basic_cap = get_sbe_critical_basic_cap();
+		if (start) {
+			if (critical_basic_cap > 0)
+				thr->critical_basic_cap = clamp(critical_basic_cap, 0, 100);
+		} else
+			sbe_reset_frame_cap(thr);
 
 		if (test_bit(SBE_PAGE_FLUTTER, &mask)
 				|| test_bit(SBE_PAGE_WEBVIEW, &mask))

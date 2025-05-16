@@ -344,6 +344,8 @@ struct sbe_render_info *sbe_get_render_info(int pid,
 	tmp->rescue_more_count = 0;
 	tmp->frame_count = 0;
 	tmp->affinity_task_mask = 0;
+	tmp->ux_affinity_task_basic_cap = 0;
+	tmp->critical_basic_cap = 0;
 	tmp->sbe_rescuing_frame_id = -1;
 	tmp->hwui_arr_idx = 0;
 	tmp->target_fps = sbe_get_display_rate();
@@ -378,7 +380,7 @@ void sbe_delete_render_info(struct sbe_render_info *iter)
 			iter->ux_blc_next = 0;
 			iter->ux_blc_cur = 0;
 			iter->sbe_enhance = 0;
-			sbe_set_per_task_cap(iter);
+			__sbe_set_per_task_cap(iter, 0, 100);
 			fpsgo_other2comp_set_no_boost_info(1, iter->dep_arr[i], 0);
 		}
 		sbe_set_deplist_policy(iter, 0);

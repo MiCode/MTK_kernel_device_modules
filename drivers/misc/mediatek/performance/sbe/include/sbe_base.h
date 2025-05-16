@@ -18,6 +18,8 @@
 #define SBE_HWUI_BUFFER_ID 5566
 #define SBE_DEFAULT_DEUQUE_MARGIN_TIME_NS 2500000
 #define SBE_DEFAULT_DEUQUE_MARGIN_MAX_TIME_NS 8333333
+#define SBE_DEFAULT_AFFINITY_TASK_MIN_CAP 7
+#define SBE_DEFAULT_AFFINITY_TASK_LOW_THRESHOLD_CAP 30
 
 #define IS_BIT_SET(mask, bit) (test_bit((bit), &(mask)))
 
@@ -67,6 +69,8 @@ struct sbe_render_info {
 	int dy_compute_rescue;
 	unsigned long long frame_ctime_count;
 	int affinity_task_mask;
+	int ux_affinity_task_basic_cap;
+	int critical_basic_cap;
 	unsigned int sbe_rescue;
 	unsigned long long buffer_id;
 	unsigned long long frame_time;

@@ -81,6 +81,8 @@ static int sbe_uclamp_margin;
 static int sbe_runnable_util_est_disable;
 static int sbe_extra_sub_en_deque_enable;
 static int sbe_extra_sub_deque_margin_time;
+static int sbe_affinity_task_min_cap;
+static int sbe_affinity_task_low_threshold_cap;
 /*For AI jank detection*/
 static int ai_rescuing_frame_id;
 static int registered;
@@ -142,6 +144,9 @@ module_param(sbe_uclamp_margin, int, 0644);
 module_param(sbe_runnable_util_est_disable, int, 0644);
 module_param(sbe_extra_sub_en_deque_enable, int, 0644);
 module_param(sbe_extra_sub_deque_margin_time, int, 0644);
+module_param(sbe_affinity_task_min_cap, int, 0644);
+module_param(sbe_affinity_task_low_threshold_cap, int, 0644);
+
 
 static void update_hwui_frame_info(struct sbe_render_info *info,
 		struct hwui_frame_info *frame, unsigned long long id,
@@ -158,6 +163,11 @@ static int nsec_to_100usec(unsigned long long nsec)
 	husec = div64_u64(nsec, (unsigned long long)NSEC_PER_HUSEC);
 
 	return (int)husec;
+}
+
+int get_sbe_critical_basic_cap(void)
+{
+	return sbe_critical_basic_cap;
 }
 
 int get_sbe_extra_sub_en_deque_enable(void)
@@ -457,7 +467,7 @@ static void sbe_set_dep_affinity(struct sbe_render_info *thr, int r_cpu_mask)
 	}
 }
 
-static void __sbe_set_per_task_cap(struct sbe_render_info *thr, int min_cap, int max_cap)
+void __sbe_set_per_task_cap(struct sbe_render_info *thr, int min_cap, int max_cap)
 {
 	int i;
 	char temp[7] = {"\0"};
@@ -552,14 +562,31 @@ void sbe_set_per_task_cap(struct sbe_render_info *thr)
 	int local_min_cap = 0;
 	int local_max_cap = 100;
 	int ai_boost = 0;
+	bool is_valid_affinity;
+	bool is_valid_threshold;
 
 	set_blc_wt = thr->ux_blc_cur + thr->sbe_enhance;
-	if (sbe_critical_basic_cap > 0) {
-		sbe_critical_basic_cap = clamp(sbe_critical_basic_cap, 0, 100);
-		set_blc_wt = sbe_critical_basic_cap + set_blc_wt;
-	}
+
+	if (thr->critical_basic_cap > 0)
+		set_blc_wt += thr->critical_basic_cap;
+
 	set_blc_wt = clamp(set_blc_wt, 0, 100);
 
+	/* Check affinity task conditions */
+	is_valid_affinity = (thr->affinity_task_mask > 0) &&
+		(thr->ux_affinity_task_basic_cap > 0) &&
+		(thr->ux_affinity_task_basic_cap <= 100);
+
+	is_valid_threshold = (sbe_affinity_task_low_threshold_cap > 0) &&
+		(sbe_affinity_task_low_threshold_cap <= 100);
+
+	/* Apply affinity task boost if conditions are met */
+	if (is_valid_affinity && is_valid_threshold) {
+		if ((set_blc_wt >= 0) && (set_blc_wt < sbe_affinity_task_low_threshold_cap)) {
+			set_blc_wt += thr->ux_affinity_task_basic_cap;
+			set_blc_wt = clamp(set_blc_wt, 0, 100);
+		}
+	}
 
 	if (!sbe_ai_ctrl_enabled) {
 		local_min_cap = set_blc_wt;
@@ -612,6 +639,10 @@ void sbe_do_frame_start(struct sbe_render_info *thr, unsigned long long frameid,
 
 	thr->ux_blc_cur = thr->ux_blc_next;
 
+	thr->ux_affinity_task_basic_cap = 0;
+	if (thr->affinity_task_mask)
+		thr->ux_affinity_task_basic_cap = clamp(sbe_affinity_task_min_cap, 0, 100);
+
 	sbe_set_per_task_cap(thr);
 
 	sbe_notify_ai_frame_hint(1, -1, thr, frameid);
@@ -632,6 +663,7 @@ void sbe_reset_frame_cap(struct sbe_render_info *thr)
 		return;
 
 	thr->ux_blc_cur = 0;
+	thr->ux_affinity_task_basic_cap = 0;
 	__sbe_set_per_task_cap(thr, 0, 100);
 	sbe_systrace_c(thr->pid, thr->buffer_id, 0, "[ux]perf_idx");
 	sbe_systrace_c(thr->pid, thr->buffer_id, 100, "[ux]perf_idx_max");
@@ -1215,6 +1247,12 @@ int sbe_calculate_dy_enhance(struct sbe_render_info *thr)
 
 		sbe_systrace_c(thr->pid, thr->buffer_id, thr->affinity_task_mask, "[ux]affinity_task");
 	}
+
+	if (thr->affinity_task_mask)
+		thr->ux_affinity_task_basic_cap = clamp(sbe_affinity_task_min_cap, 0, 100);
+	else
+		thr->ux_affinity_task_basic_cap = 0;
+	sbe_systrace_c(thr->pid, thr->buffer_id, thr->ux_affinity_task_basic_cap, "[ux]affinity_task_min_cap");
 
 	if (thr->dy_compute_rescue
 			&& all_rescue_frame_count > 0 && all_rescue_frame_time_count > 0) {
@@ -2271,6 +2309,8 @@ int __init sbe_cpu_ctrl_init(void)
 	gas_threshold_for_high_TLP = 5;
 	sbe_runnable_util_est_disable = 1;
 	sbe_extra_sub_en_deque_enable = 1;
+	sbe_affinity_task_min_cap = SBE_DEFAULT_AFFINITY_TASK_MIN_CAP;
+	sbe_affinity_task_low_threshold_cap = SBE_DEFAULT_AFFINITY_TASK_LOW_THRESHOLD_CAP;
 	sbe_extra_sub_deque_margin_time = SBE_DEFAULT_DEUQUE_MARGIN_TIME_NS;
 
 	ai_rescuing_frame_id = -1;
