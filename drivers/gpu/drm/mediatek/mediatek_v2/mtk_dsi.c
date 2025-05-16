@@ -394,7 +394,9 @@ module_param(dbg_output_valid, int, 0644);
 
 #define DSI_BUF_CON0(data)	(data->dsi_buf_con_base ? data->dsi_buf_con_base : 0x400)
 #define BUF_BUF_EN BIT(0)
-#define BUF_VDE_BLOCK_URGENT BIT(3)
+#define MT6989_BUF_VDE_BLOCK_URGENT BIT(3)
+#define MT6991_BUF_VDE_BLOCK_URGENT BIT(1)
+#define MT6991_BUF_VDE_BLOCK_ULTRA BIT(3)
 #define BUF_PREURGENT_EN BIT(20)
 #define BUF_PREURGENT_MODE BIT(21)
 #define DSI_BUF_CON1(data)	(DSI_BUF_CON0(data) + 0x4)
@@ -3103,10 +3105,14 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 			__func__, buf_preurgent_high, prefetch_time);
 
 		if (line_time_ns != 0 && mode) {
-			if (prefetch_time - buf_preurgent_high > 0 &&
+			if (priv->data->mmsys_id == MMSYS_MT6993) {
+				buf_preurgent_high = 0;
+				mtk_dsi_mask(dsi, DSI_BUF_CON0(dsi->driver_data), MT6991_BUF_VDE_BLOCK_ULTRA, 0);
+			}
+			if (prefetch_time > buf_preurgent_high &&
 				prefetch_time - buf_preurgent_high >= buf_preurgent_high) {
 				buf_preurgent_high = prefetch_time - buf_preurgent_high;
-			} else if (prefetch_time - buf_preurgent_high > 0 &&
+			} else if (prefetch_time > buf_preurgent_high &&
 					prefetch_time - buf_preurgent_high < buf_preurgent_high) {
 				buf_preurgent_high = prefetch_time - buf_preurgent_high;
 				DDPINFO("prefetch_time is too small! urgent signal will usually be sent\n");
@@ -3117,14 +3123,22 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 
 			mtk_dsi_mask(dsi, DSI_BUF_CON0(dsi->driver_data), BUF_PREURGENT_MODE, 0);
 			writel(buf_preurgent_high, dsi->regs + DSI_BUF_PREURGENT_HIGH(dsi->driver_data));
-			mtk_dsi_mask(dsi, DSI_BUF_CON0(dsi->driver_data), BUF_VDE_BLOCK_URGENT, 0);
+			if (priv && priv->data &&
+				priv->data->mmsys_id == MMSYS_MT6989) // MT6989 MT6878 MT6899
+				mtk_dsi_mask(dsi, DSI_BUF_CON0(dsi->driver_data), MT6989_BUF_VDE_BLOCK_URGENT, 0);
+			else
+				mtk_dsi_mask(dsi, DSI_BUF_CON0(dsi->driver_data), MT6991_BUF_VDE_BLOCK_URGENT, 0);
 			mtk_dsi_mask(dsi, DSI_BUF_CON0(dsi->driver_data), BUF_PREURGENT_EN, BUF_PREURGENT_EN);
 		} else {
 			writel(0, dsi->regs + DSI_BUF_PREURGENT_HIGH(dsi->driver_data));
-			mtk_dsi_mask(dsi, DSI_BUF_CON0(dsi->driver_data), BUF_VDE_BLOCK_URGENT, 1);
+			if (priv && priv->data &&
+				priv->data->mmsys_id == MMSYS_MT6989) // MT6989 MT6878 MT6899
+				mtk_dsi_mask(dsi, DSI_BUF_CON0(dsi->driver_data), MT6989_BUF_VDE_BLOCK_URGENT, 1);
+			else
+				mtk_dsi_mask(dsi, DSI_BUF_CON0(dsi->driver_data), MT6991_BUF_VDE_BLOCK_URGENT, 1);
 			mtk_dsi_mask(dsi, DSI_BUF_CON0(dsi->driver_data), BUF_PREURGENT_EN, 0);
 			DDPINFO("line_time/mode err, disable preurgent\n");
-			}
+		}
 	} else if(mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base) &&
 		(dsi->driver_data->support_pre_urgent & PREURGENT_SUPPORT_CMD)) {
 		/* absolute timer mode for cmd mode */
@@ -3147,7 +3161,11 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 					urgent_time : urgent_hi_fifo_us;
 
 		urgent_threshold = urgent_time * dsi->data_rate / 8 / 64;
-		mtk_dsi_mask(dsi, DSI_BUF_CON0(dsi->driver_data), BUF_VDE_BLOCK_URGENT, 0);
+		if (priv && priv->data &&
+			priv->data->mmsys_id == MMSYS_MT6989) // MT6989 MT6878 MT6899
+			mtk_dsi_mask(dsi, DSI_BUF_CON0(dsi->driver_data), MT6989_BUF_VDE_BLOCK_URGENT, 0);
+		else
+			mtk_dsi_mask(dsi, DSI_BUF_CON0(dsi->driver_data), MT6991_BUF_VDE_BLOCK_URGENT, 0);
 		mtk_dsi_mask(dsi, DSI_BUF_CON0(dsi->driver_data), BUF_PREURGENT_MODE, 1);
 		writel(urgent_threshold, dsi->regs + DSI_BUF_PREURGENT_HIGH(dsi->driver_data));
 		mtk_dsi_mask(dsi, DSI_BUF_CON0(dsi->driver_data), BUF_PREURGENT_EN, BUF_PREURGENT_EN);
