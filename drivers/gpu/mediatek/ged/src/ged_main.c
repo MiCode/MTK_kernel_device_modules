@@ -161,8 +161,6 @@ unsigned int g_default_log_level;
 //Bring up flag
 u32 g_is_bringup;
 
-#define MAX_BUF_SIZE 10
-
 /******************************************************************************
  * GED File operations
  *****************************************************************************/
@@ -211,9 +209,6 @@ static long ged_dispatch(struct file *pFile,
 {
 	int ret = -EFAULT;
 	void *pvIn = NULL, *pvOut = NULL;
-	bool oversize = false;
-	static int inData[MAX_BUF_SIZE];
-	static int outData[MAX_BUF_SIZE] = {0};
 
 	/* We make sure the both size are GE 0 integer.
 	 */
@@ -237,15 +232,7 @@ static long ged_dispatch(struct file *pFile,
 			}
 		}
 
-		if (inputBufferSize > MAX_BUF_SIZE * sizeof(int) ||
-			psBridgePackageKM->i32OutBufferSize > MAX_BUF_SIZE * sizeof(int)) {
-			oversize = true;
-			pvIn = kmalloc(inputBufferSize, GFP_KERNEL);
-		} else {
-			memset(inData, 0, sizeof(inData));
-			pvIn = &inData;
-		}
-
+		pvIn = kmalloc(inputBufferSize, GFP_KERNEL);
 		if (pvIn == NULL)
 			goto dispatch_exit;
 
@@ -256,13 +243,8 @@ static long ged_dispatch(struct file *pFile,
 			goto dispatch_exit;
 		}
 
-		if (oversize)
-			pvOut = kzalloc(psBridgePackageKM->i32OutBufferSize,
-				GFP_KERNEL);
-		else {
-			memset(outData, 0, sizeof(outData));
-			pvOut = &outData;
-		}
+		pvOut = kzalloc(psBridgePackageKM->i32OutBufferSize,
+			GFP_KERNEL);
 		if (pvOut == NULL)
 			goto dispatch_exit;
 
@@ -394,10 +376,8 @@ static long ged_dispatch(struct file *pFile,
 	}
 
 dispatch_exit:
-	if (oversize) {
-		kfree(pvIn);
-		kfree(pvOut);
-	}
+	kfree(pvIn);
+	kfree(pvOut);
 
 	return ret;
 }
