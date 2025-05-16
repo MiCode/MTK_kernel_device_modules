@@ -72,9 +72,7 @@ static int hds_1_0_cmd_postprocess_late(struct apu_hds_device *hdev, void *va, u
 		return 0;
 	}
 
-	if (!hdev->pmu_tag_en &&
-		(power_plcy == APUSYS_POWERPOLICY_PERFORMANCE ||
-		power_plcy == APUSYS_POWERPOLICY_SUSTAINABLE)) {
+	if (!hdev->pmu_tag_en) {
 		apu_hds_debug("clear hds buffer only\n");
 		goto clear_buffer;
 	}

@@ -380,6 +380,7 @@ struct mdw_cmd {
 
 	struct mutex mtx;
 	struct list_head map_invokes; //for mdw_cmd_map_invoke
+	struct mutex cm_mtx;  // for map_invokes
 	struct list_head d_node; //mdev->d_cmds for delete async
 
 	int id;

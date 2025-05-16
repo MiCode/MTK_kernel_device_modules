@@ -455,6 +455,7 @@ void mdw_cmd_unvoke_map(struct mdw_cmd *c)
 {
 	struct mdw_cmd_map_invoke *cm_invoke = NULL, *tmp = NULL;
 
+	mutex_lock(&c->cm_mtx);
 	list_for_each_entry_safe(cm_invoke, tmp, &c->map_invokes, c_node) {
 		list_del(&cm_invoke->c_node);
 		mdw_cmd_debug("s(0x%llx)c(0x%llx) unvoke m(0x%llx/%llu)\n",
@@ -464,33 +465,46 @@ void mdw_cmd_unvoke_map(struct mdw_cmd *c)
 		cm_invoke->map->put(cm_invoke->map);
 		kfree(cm_invoke);
 	}
+	mutex_unlock(&c->cm_mtx);
 }
 
 int mdw_cmd_invoke_map(struct mdw_cmd *c, struct mdw_mem_map *map)
 {
 	struct mdw_cmd_map_invoke *cm_invoke = NULL;
+	int ret = 0;
 
 	if (map == NULL)
 		return -EINVAL;
 
+	mutex_lock(&c->cm_mtx);
 	/* query */
 	list_for_each_entry(cm_invoke, &c->map_invokes, c_node) {
 		/* already invoked */
-		if (cm_invoke->map == map)
-			return 0;
+		if (cm_invoke->map == map) {
+			mdw_cmd_debug("s(0x%llx)c(0x%llx)m(0x%llx/%llu) already invoked\n",
+				(uint64_t)c->mpriv, (uint64_t)c, map->device_va, map->size);
+			goto unlock;
+		}
 	}
 
 	cm_invoke = kzalloc(sizeof(*cm_invoke), GFP_KERNEL);
-	if (cm_invoke == NULL)
-		return -ENOMEM;
+	if (cm_invoke == NULL) {
+		mdw_drv_err("s(0x%llx)c(0x%llx)m(0x%llx/%llu) create cm_invoke failed\n",
+			(uint64_t)c->mpriv, (uint64_t)c, map->device_va, map->size);
+		ret = -ENOMEM;
+		goto unlock;
+	}
 
 	map->get(map);
 	cm_invoke->map = map;
 	list_add_tail(&cm_invoke->c_node, &c->map_invokes);
+
 	mdw_cmd_debug("s(0x%llx)c(0x%llx) invoke m(0x%llx/%llu)\n",
 		(uint64_t)c->mpriv, (uint64_t)c, map->device_va, map->size);
 
-	return 0;
+unlock:
+	mutex_unlock(&c->cm_mtx);
+	return ret;
 }
 
 static void mdw_cmd_release(struct kref *ref)
@@ -503,9 +517,7 @@ static void mdw_cmd_release(struct kref *ref)
 	mdw_trace_begin("apumdw:cmd_release|inf_id(0x%08x,0x%08x)",
 			 (uint32_t)(c->inference_id >> 32),
 			 (uint32_t)(c->inference_id & 0xFFFFFFFF));
-	mutex_lock(&mpriv->mdev->mctl_mtx);
 	mdw_cmd_unvoke_map(c);
-	mutex_unlock(&mpriv->mdev->mctl_mtx);
 	if (mpriv->mdev->plat_funcs->delete_cmd_priv(c))
 		mdw_drv_err("delete plat priv failed\n");
 	mdw_cmd_delete_infos(c->mpriv, c);
@@ -717,6 +729,7 @@ static struct mdw_cmd *mdw_cmd_create(struct mdw_fpriv *mpriv,
 		goto out;
 
 	mutex_init(&c->mtx);
+	mutex_init(&c->cm_mtx);
 	INIT_LIST_HEAD(&c->map_invokes);
 	c->mpriv = mpriv;
 	//atomic_set(&c->is_running, 0);

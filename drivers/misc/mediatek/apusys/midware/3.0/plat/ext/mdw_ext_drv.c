@@ -56,8 +56,7 @@ int mdw_ext_init(struct mdw_device *mdw_dev)
 	if (mdw_dev) {
 		/* check ext support */
 		if (mdw_dev->mdw_ver < 4) {
-			pr_info("%s mdw_dev->mdw_ver = %d, no apuext\n",
-				__func__, mdw_dev->mdw_ver);
+			pr_info("%s no support apuext\n", __func__);
 			ret = 0;
 			goto out;
 		}
