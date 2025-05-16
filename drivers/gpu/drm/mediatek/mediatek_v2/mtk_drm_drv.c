@@ -2285,7 +2285,7 @@ static void mtk_atomic_delay(struct mtk_drm_private *private,
 	struct mtk_panel_params *params;
 	int crtc_index;
 	unsigned int delay_us = 0;
-	unsigned long long current_time = ktime_get_boottime_ns();
+	unsigned long long current_time = ktime_get();
 	unsigned long long ept_time = mtk_state->prop_val[CRTC_PROP_EPT];
 	unsigned int te_step_time = 0;
 	unsigned long long x_time = 0;

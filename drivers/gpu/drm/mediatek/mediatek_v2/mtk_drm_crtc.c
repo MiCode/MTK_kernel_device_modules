@@ -9505,7 +9505,7 @@ static void mtk_crtc_cmdq_timeout_cb(struct cmdq_cb_data data)
 	if (mtk_crtc_is_frame_trigger_mode(crtc) &&
 		(id == 0) && (flush_add_delay_need == true) &&
 		(mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_WAIT_EPT))) {
-		unsigned long long current_time = ktime_get_boottime_ns();
+		unsigned long long current_time = ktime_get();
 
 		DDPMSG("flush+delay:%llu callback:%llu\n", flush_add_delay_time,
 			current_time/1000);
@@ -11493,7 +11493,7 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 	if (mtk_crtc_is_frame_trigger_mode(crtc) &&
 		(id == 0) && (flush_add_delay_need == true) &&
 		(mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_WAIT_EPT))) {
-		unsigned long long current_time = ktime_get_boottime_ns();
+		unsigned long long current_time = ktime_get();
 
 		DDPINFO("flush+delay:%llu callback:%llu\n", flush_add_delay_time,
 			current_time/1000);
@@ -20711,7 +20711,7 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 		struct mtk_panel_params *params =
 			mtk_drm_get_lcm_ext_params(crtc);
 		unsigned int delay_us = 0;
-		unsigned long long current_time = ktime_get_boottime_ns();
+		unsigned long long current_time = ktime_get();
 		unsigned long long ept_time = state->prop_val[CRTC_PROP_EPT];
 		unsigned int frame_rate =
 			drm_mode_vrefresh(&crtc->state->adjusted_mode);
