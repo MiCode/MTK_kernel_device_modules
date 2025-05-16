@@ -1219,9 +1219,9 @@ TRACE_EVENT(sched_find_lowest_rq,
 );
 
 TRACE_EVENT(sched_pause_pick_task,
-	TP_PROTO(int cpu, struct task_struct *p, int class_num, struct cpumask *pause_cpus),
+	TP_PROTO(int cpu, struct task_struct *p, struct cpumask *pause_cpus),
 
-	TP_ARGS(cpu, p, class_num, pause_cpus),
+	TP_ARGS(cpu, p, pause_cpus),
 
 	TP_STRUCT__entry(
 		__field(int, cpu)
@@ -1229,7 +1229,6 @@ TRACE_EVENT(sched_pause_pick_task,
 		__field(int, prio)
 		__field(long, task_mask)
 		__field(bool, kthread)
-		__field(int, class_num)
 		__field(unsigned int, pause_cpus)
 		__field(unsigned int, online_cpus)
 		__field(unsigned int, active_cpus)
@@ -1241,15 +1240,14 @@ TRACE_EVENT(sched_pause_pick_task,
 		__entry->prio = p->prio;
 		__entry->task_mask = p->cpus_ptr->bits[0];
 		__entry->kthread = p->flags & PF_KTHREAD;
-		__entry->class_num = class_num;
 		__entry->pause_cpus = cpumask_bits(pause_cpus)[0];
 		__entry->online_cpus = cpumask_bits(cpu_online_mask)[0];
 		__entry->active_cpus = cpumask_bits(cpu_active_mask)[0];
 	),
 
-	TP_printk("cpu=%d, p=%d, prio=%d, allow=0x%lx, k=%d, class=%d, pause=0x%x, online=0x%x, active=0x%x",
+	TP_printk("cpu=%d, p=%d, prio=%d, allow=0x%lx, k=%d, pause=0x%x, online=0x%x, active=0x%x",
 		__entry->cpu, __entry->pid, __entry->prio,
-		__entry->task_mask, __entry->kthread, __entry->class_num,
+		__entry->task_mask, __entry->kthread,
 		__entry->pause_cpus, __entry->online_cpus, __entry->active_cpus)
 );
 
