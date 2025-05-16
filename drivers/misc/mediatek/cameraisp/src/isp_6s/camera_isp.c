@@ -11410,7 +11410,7 @@ irqreturn_t ISP_Irq_CAM(
 			else {
 				IRQ_LOG_KEEPER(
 				module, m_CurrentPPB, _LOG_INF,
-				"%s,%s,CAM_%c P1_SOF_%d_%d(0x%08x_0x%08x,0x%08x_0x%08x,0x%08x,0x%08x,0x%x/0x%x),int_us:%d,FBC:0x%08x,cq:0x%08x_0x%08x 0x%08x_0x%08x 0x%08x_0x%08x,Don(0x%08x_0x%08x 0x%08x_0x%08x,0x%08x_0x%08x 0x%08x_0x%08x),DMA(0x%x_0x%x,0x%x_0x%x,0x%x_0x%x,0x%x_0x%x,0x%x_0x%x,0x%x_0x%x),CTL_EN(0x%x_0x%x 0x%x_0x%x 0x%x_0x%x),CTL_EN2(0x%x_0x%x 0x%x_0x%x 0x%x_0x%x)\n",
+				"%s,%s,CAM_%c P1_SOF_%d_%d(0x%08x_0x%08x,0x%08x_0x%08x,0x%08x,0x%08x,0x%x/0x%x),int_us:%d,FBC:0x%08x,cq:0x%08x_0x%08x 0x%08x_0x%08x 0x%08x_0x%08x,Don(0x%08x_0x%08x 0x%08x_0x%08x,0x%08x_0x%08x 0x%08x_0x%08x),DMA(0x%x_0x%x,0x%x_0x%x,0x%x_0x%x,0x%x_0x%x,0x%x_0x%x,0x%x_0x%x),CTL_EN(0x%x_0x%x 0x%x_0x%x 0x%x_0x%x),CTL_EN2(0x%x_0x%x 0x%x_0x%x 0x%x_0x%x), AFO(0x%x)\n",
 				gPass1doneLog[module]._str,
 				gLostPass1doneLog[module]._str,
 				'A' + cardinalNum, sof_count[module], cur_v_cnt,
@@ -11530,7 +11530,8 @@ irqreturn_t ISP_Irq_CAM(
 					CAM_REG_CTL_EN2(ISP_CAM_C_IDX)),
 				(unsigned int)ISP_RD32(
 					CAM_REG_CTL_EN2(
-						ISP_CAM_C_INNER_IDX)));
+						ISP_CAM_C_INNER_IDX)),
+				(unsigned int)ISP_RD32(CAM_REG_AFO_BASE_ADDR(ISP_CAM_A_IDX)));
 			}
 
 			if (snprintf(gPass1doneLog[module]._str, P1DONE_STR_LEN, "\\") < 0)
@@ -11740,11 +11741,11 @@ static void SMI_INFO_DUMP(enum ISP_IRQ_TYPE_ENUM irq_module)
 	case ISP_IRQ_TYPE_INT_CAM_A_ST:
 	case ISP_IRQ_TYPE_INT_CAM_B_ST:
 	case ISP_IRQ_TYPE_INT_CAM_C_ST:
-		if ((g_ISPIntStatus_SMI[irq_module].ispIntErr & DMA_ERR_ST) &&
-			!(g_ISPIntStatus_SMI[irq_module].ispIntErr
-			& TG_GBERR_ST)){
-			if (g_ISPIntStatus_SMI[irq_module].ispInt5Err &
-			    INT_ST_MASK_CAM_WARN) {
+		if (((g_ISPIntStatus_SMI[irq_module].ispIntErr & DMA_ERR_ST) &&
+			!(g_ISPIntStatus_SMI[irq_module].ispIntErr & TG_GBERR_ST)) ||
+			(g_ISPIntStatus_SMI[irq_module].ispIntErr & TG_ERR_ST)){
+			if ((g_ISPIntStatus_SMI[irq_module].ispInt5Err & INT_ST_MASK_CAM_WARN) ||
+				(g_ISPIntStatus_SMI[irq_module].ispIntErr & TG_ERR_ST)) {
 
 				LOG_NOTICE("ERR:SMI_DUMP by module:%d\n",
 					   irq_module);
