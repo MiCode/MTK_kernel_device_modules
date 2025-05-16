@@ -35,6 +35,7 @@ static u32 *g_pf_ctrl_buf;
 static u32 *g_pf_ctrl_ipc_buf;
 
 static DEFINE_MUTEX(pf_ctrl_proc_mutex);
+static int pf_ctrl_version;
 static int pf_ctrl_enable;
 static int pf_ctrl_min_freq = DEFAULT_PF_MIN_FREQ;
 static int pf_ctrl_max_freq = DEFAULT_PF_MAX_FREQ;
@@ -734,6 +735,9 @@ static void pf_main_work(struct work_struct *work)
 
 int mtk_get_pf_ctrl_enable(void)
 {
+	if (!pf_ctrl_version || !pf_ctrl_wq)
+		return -EINVAL;
+
 	return READ_ONCE(pf_ctrl_enable);
 }
 EXPORT_SYMBOL_GPL(mtk_get_pf_ctrl_enable);
@@ -742,7 +746,7 @@ int mtk_set_pf_ctrl_enable(bool enable, unsigned int user)
 {
 	char caller_info[KSYM_SYMBOL_LEN];
 
-	if (!pf_ctrl_wq)
+	if (!pf_ctrl_version || !pf_ctrl_wq)
 		return -EINVAL;
 
 	if (user >= PF_CTRL_USER_NUM)
@@ -763,6 +767,19 @@ EXPORT_SYMBOL_GPL(mtk_set_pf_ctrl_enable);
 int mtk_pf_ctrl_init(void)
 {
 	int cpu, ret;
+	struct device_node *pf_ctrl_node;
+
+	pf_ctrl_node = of_find_node_by_name(NULL, "pf-ctrl");
+	if (pf_ctrl_node == NULL) {
+		pr_info("%s: pf_ctrl not supports\n", __func__);
+		return -ENODEV;
+	}
+	ret = of_property_read_u32(pf_ctrl_node, "version", &pf_ctrl_version);
+	if (ret) {
+		pr_info("%s: failed to get version\n", __func__);
+		return -EINVAL;
+	}
+	pr_info("%s: pf_ctrl version: %u\n", __func__, pf_ctrl_version);
 
 	pf_ctrl_wq = alloc_workqueue("pf_ctrl_wq", __WQ_LEGACY, 1);
 	if (!pf_ctrl_wq) {
