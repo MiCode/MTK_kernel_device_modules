@@ -1,0 +1,53 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (c) 2024 MediaTek Inc.
+ */
+
+/dts-v1/;
+/plugin/;
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/interrupt-controller/irq.h>
+#include <dt-bindings/phy/phy.h>
+#include <dt-bindings/pinctrl/mt6858-pinfunc.h>
+
+/* chosen */
+&chosen {
+	bootargs_ext = "arm64.nopauth arm64.nosme arm64.nosve";
+};
+
+&ssusb {
+	phys = <&u3fpgaport0 PHY_TYPE_USB3>;
+	plat-type = <1>; /* FPGA */
+	fpga-phy = <3>; /* A60931 */
+	dr_mode = "peripheral";
+	status = "okay";
+};
+
+&mt6363keys {
+	pinctrl-names = "kpcol0_mode";
+	pinctrl-0 = <&kpcol0_pins_gpio_mode>;
+	home2 {
+		linux,keycodes = <114>;
+		wakeup-source;
+	};
+};
+
+&pio {
+	kpcol0_pins_gpio_mode: gpio-mode {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO120__FUNC_GPIO120>;
+			input-enable;
+		};
+	};
+};
+
+&u3fpgaphy {
+	status = "okay";
+};
+
+&u2phy {
+	status = "disabled";
+};
+
+#include "mediatek/cust_mt6858_camera_v4l2.dtsi"
+/*End of this file, DO NOT ADD ANYTHING HERE*/
