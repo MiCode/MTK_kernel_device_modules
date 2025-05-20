@@ -59,6 +59,14 @@ define_mgk_ddk_ko(
 )
 
 define_mgk_ddk_ko(
+    name = "mt6720",
+    srcs = [
+    	"mt6720.c",
+    ],
+    includes = ["include"],
+)
+
+define_mgk_ddk_ko(
     name = "mt6379s",
     srcs = [
         "mt6379.h",
