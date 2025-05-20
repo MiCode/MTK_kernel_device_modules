@@ -291,6 +291,11 @@ EXPORT_SYMBOL(fpsgo_set_rl_expected_l2q_us_fp);
 void (*fpsgo_set_rl_l2q_enable_fp)(int enable);
 EXPORT_SYMBOL(fpsgo_set_rl_l2q_enable_fp);
 
+int (*fpsgo_get_now_logic_head_fp)(unsigned long long sf_buffer_id,
+	int *pid, unsigned long long *logic_head_ts, unsigned int *is_logic_head_alive,
+	unsigned long long *now_ts);
+EXPORT_SYMBOL(fpsgo_get_now_logic_head_fp);
+
 static long fpsgo_lr_ioctl_impl(struct file *filp,
 		unsigned int cmd, unsigned long arg, void *pKM)
 {
@@ -303,6 +308,7 @@ static long fpsgo_lr_ioctl_impl(struct file *filp,
 	unsigned long long cur_queue_end_ts = 0;
 	unsigned int is_logic_head_alive = 0;
 	unsigned long long ktime_ns = 0;
+	int pid = 0;
 
 	msgKM = (struct _FPSGO_LR_PAIR_PACKAGE *)pKM;
 	if (!msgKM) {
@@ -359,6 +365,26 @@ static long fpsgo_lr_ioctl_impl(struct file *filp,
 		// rl_exp_l2q_us value is higher than exp_vsync_multiple value.
 		fpsgo_set_rl_expected_l2q_us_fp(msgKM->exp_vsync_multiple,
 			msgKM->rl_exp_l2q_us);
+		break;
+	case FPSGO_GET_LOGIC_HEAD_ONLY:
+		if (!fpsgo_get_now_logic_head_fp) {
+			ret = -EAGAIN;
+			goto ret_ioctl;
+		}
+
+		ret = fpsgo_get_now_logic_head_fp(msgKM->buffer_id, &pid, &logical_head_ts,
+			&is_logic_head_alive, &ktime_ns);
+
+		if (pid)
+			msgKM->tid = pid;
+		if (logical_head_ts)
+			msgKM->logic_head_ts = logical_head_ts;
+		if (is_logic_head_alive)
+			msgKM->is_logic_head_valid = is_logic_head_alive;
+		if (ktime_ns)
+			msgKM->ktime_now_ns = ktime_ns;
+
+		perfctl_copy_to_user(msgUM, msgKM, sizeof(struct _FPSGO_LR_PAIR_PACKAGE));
 		break;
 
 	default:
@@ -769,7 +795,7 @@ static long device_ioctl(struct file *filp,
 		if (fpsgo_notify_qudeq_fp)
 			fpsgo_notify_qudeq_fp(0,
 					msgKM->start, msgKM->tid,
-					msgKM->identifier, 0);
+					msgKM->identifier, msgKM->sf_buf_id);
 		break;
 	case FPSGO_QUEUE_CONNECT:
 		if (fpsgo_notify_connect_fp)

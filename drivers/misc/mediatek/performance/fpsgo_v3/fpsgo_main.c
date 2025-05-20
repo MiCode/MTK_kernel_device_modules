@@ -312,7 +312,7 @@ static void fpsgo_notifier_wq_cb_qudeq(int qudeq,
 			FPSGO_LOGI("[FPSGO_CB] DEQUEUE End: pid %d\n",
 					cur_pid);
 			fpsgo_ctrl2comp_dequeue_end(cur_pid,
-					curr_ts, id);
+					curr_ts, id, sf_buf_id);
 		}
 		break;
 	default:
@@ -1493,6 +1493,7 @@ static int __init fpsgo_init(void)
 	fpsgo_set_rl_expected_l2q_us_fp = fpsgo_set_expected_l2q_us;
 
 	fpsgo_get_lr_pair_fp = fpsgo_get_lr_pair;
+	fpsgo_get_now_logic_head_fp = fpsgo_get_now_logic_head;
 	fpsgo_set_rl_l2q_enable_fp = fpsgo_set_rl_l2q_enable;
 	fpsgo_set_rl_expected_l2q_us_fp = fpsgo_set_expected_l2q_us;
 

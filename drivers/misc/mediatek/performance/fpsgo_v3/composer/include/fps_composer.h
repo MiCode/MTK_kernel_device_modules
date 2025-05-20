@@ -56,7 +56,8 @@ void fpsgo_composer_exit(void);
 
 void fpsgo_ctrl2comp_dequeue_end(int pid,
 			unsigned long long dequeue_end_time,
-			unsigned long long identifier);
+			unsigned long long identifier,
+			unsigned long long sf_buf_id);
 void fpsgo_ctrl2comp_dequeue_start(int pid,
 			unsigned long long dequeue_start_time,
 			unsigned long long identifier);
@@ -122,6 +123,10 @@ int fpsgo_ctrl2comp_set_dep_list(int tgid, int render_tid, unsigned long long bu
 	int *dep_arr, int dep_num);
 int notify_fpsgo_touch_latency_ko_ready(void);
 int fpsgo_com_get_mfrc_is_on(void);
+
+int fpsgo_get_now_logic_head(unsigned long long sf_buffer_id,
+	int *pid, unsigned long long *logic_head_ts, unsigned int *is_logic_head_alive,
+	unsigned long long *now_ts);
 
 #endif
 

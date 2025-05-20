@@ -390,6 +390,8 @@ struct fbt_powerRL_limit {
 };
 
 struct FSTB_FRAME_L2Q_INFO {
+	int pid;
+	unsigned long long buf_id;
 	unsigned long long sf_buf_id;
 	unsigned long long queue_end_ns;
 	unsigned long long logic_head_ts;
@@ -437,6 +439,7 @@ struct render_info {
 	unsigned long long enqueue_length_real;
 	unsigned long long dequeue_length;
 	unsigned long long prev_t_enqueue_end;
+	unsigned long long prev_t_dequeue_end;
 	unsigned long long Q2Q_time;
 	unsigned long long running_time;
 	unsigned long long raw_runtime;
@@ -496,6 +499,9 @@ struct render_info {
 	/* touch latency */
 	struct FSTB_FRAME_L2Q_INFO l2q_info[MAX_SF_BUFFER_SIZE];
 	int l2q_index;
+	unsigned long long logic_head_ts;
+	int has_logic_head;
+	int is_logic_valid;
 
 	int target_fps_origin;
 };

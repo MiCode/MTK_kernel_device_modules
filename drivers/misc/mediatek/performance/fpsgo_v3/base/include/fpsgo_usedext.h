@@ -68,5 +68,8 @@ extern int (*fpsgo_get_lr_pair_fp)(unsigned long long sf_buffer_id,
 extern void (*fpsgo_set_rl_expected_l2q_us_fp)(int vsync_multiple,
 	unsigned long long user_expected_l2q_us);
 extern void (*fpsgo_set_rl_l2q_enable_fp)(int enable);
+extern int (*fpsgo_get_now_logic_head_fp)(unsigned long long sf_buffer_id,
+	int *pid, unsigned long long *logic_head_ts, unsigned int *is_logic_head_alive,
+	unsigned long long *now_ts);
 
 #endif
