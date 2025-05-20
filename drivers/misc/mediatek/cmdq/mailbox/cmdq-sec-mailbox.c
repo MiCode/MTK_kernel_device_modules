@@ -1093,7 +1093,8 @@ static s32 cmdq_sec_session_send(struct cmdq_sec_context *context,
 		return -EFAULT;
 	}
 
-	if (iwc_cmd != CMD_CMDQ_TL_PATH_RES_ALLOCATE && !task) {
+	if ((iwc_cmd != CMD_CMDQ_TL_PATH_RES_ALLOCATE)
+		&& (iwc_cmd != CMD_CMDQ_TL_PATH_RES_RELEASE) && !task) {
 		cmdq_err("task is null");
 		return -EFAULT;
 	}
