@@ -12761,6 +12761,12 @@ static void cmdq_pkt_reset_ovl(struct cmdq_pkt *cmdq_handle,
 	int type;
 	int i, j;
 	unsigned int index = 0;
+	struct mtk_drm_private *priv = NULL;
+
+	priv = mtk_crtc->base.dev->dev_private;
+
+	if (priv->data->ovl_exdma_rule)
+		return;
 
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
 		type = mtk_ddp_comp_get_type(comp->id);
