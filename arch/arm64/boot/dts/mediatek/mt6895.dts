@@ -4697,6 +4697,11 @@
 			iommus = <&disp_iommu M4U_LARB34_APU_SECURE>;
 		};
 
+		iommu-test-ktf1 {
+			compatible = "mediatek,mm-iommu-test-ktf1";
+			iommus = <&disp_iommu M4U_LARB0_PORT15>;
+		};
+
 		mtk_iommu_debug {
 			compatible = "mediatek,mt6895-iommu-debug";
 		};
