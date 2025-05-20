@@ -60,6 +60,7 @@ extern unsigned long g_desire_freq_top;
 extern unsigned int g_ged_gpueb_support;
 extern unsigned int g_ged_fdvfs_support;
 extern unsigned int g_ged_gpu_freq_notify_support;
+extern unsigned int g_ged_reduce_mips_flag;
 extern unsigned int g_ged_segment_id;
 extern unsigned int g_ged_efuse_id;
 extern unsigned int g_fastdvfs_margin;

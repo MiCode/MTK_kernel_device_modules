@@ -782,17 +782,25 @@ int ged_to_fdvfs_command(unsigned int cmd, struct fdvfs_ipi_data *ipi_data)
 	break;
 
 	case GPUFDVFS_IPI_SET_CONFIG:
-		ret = mtk_ipi_send_compl_to_gpueb(
-			g_fast_dvfs_ipi_channel,
-			IPI_SEND_POLLING, ipi_data,
-			FDVFS_IPI_DATA_LEN,
-			FASTDVFS_IPI_TIMEOUT);
+		if (g_ged_reduce_mips_flag > 1) {
+			ret = mtk_ipi_send_compl_to_gpueb(
+				g_fast_dvfs_ipi_channel,
+				IPI_SEND_POLLING, ipi_data,
+				FDVFS_IPI_DATA_LEN,
+				FASTDVFS_IPI_TIMEOUT);
 
-		ipi_data->u.set_para.arg[0] = fdvfs_ipi_rcv_msg.u.set_para.arg[0];
-		ipi_data->u.set_para.arg[1] = fdvfs_ipi_rcv_msg.u.set_para.arg[1];
-		ipi_data->u.set_para.arg[2] = fdvfs_ipi_rcv_msg.u.set_para.arg[2];
-		ipi_data->u.set_para.arg[3] = fdvfs_ipi_rcv_msg.u.set_para.arg[3];
-		ipi_data->u.set_para.arg[4] = fdvfs_ipi_rcv_msg.u.set_para.arg[4];
+			ipi_data->u.set_para.arg[0] = fdvfs_ipi_rcv_msg.u.set_para.arg[0];
+			ipi_data->u.set_para.arg[1] = fdvfs_ipi_rcv_msg.u.set_para.arg[1];
+			ipi_data->u.set_para.arg[2] = fdvfs_ipi_rcv_msg.u.set_para.arg[2];
+			ipi_data->u.set_para.arg[3] = fdvfs_ipi_rcv_msg.u.set_para.arg[3];
+			ipi_data->u.set_para.arg[4] = fdvfs_ipi_rcv_msg.u.set_para.arg[4];
+		} else {
+			GPUFDVFS_LOGI("(%d), cmd[%u] not support: ipi_data(%u,%u,%u,%u,%u)\n",
+				__LINE__, cmd, ipi_data->u.set_para.arg[0], ipi_data->u.set_para.arg[1],
+				ipi_data->u.set_para.arg[2], ipi_data->u.set_para.arg[3],
+				ipi_data->u.set_para.arg[4]);
+			ret = -1;
+		}
 	break;
 
 	default:

@@ -207,11 +207,11 @@ void dcs_init_dts_with_eb(void)
 
 		if (ret)
 			GED_LOGD("%s err:%d\n", __func__, ret);
-
-		has_init = true;
-
-		g_has_gov_support = ipi_data.u.set_para.arg[0];
-		g_gov_enable = ipi_data.u.set_para.arg[1];
+		else {
+			g_has_gov_support = ipi_data.u.set_para.arg[0];
+			g_gov_enable = ipi_data.u.set_para.arg[1];
+			has_init = true;
+		}
 	}
 }
 
@@ -602,8 +602,10 @@ void dcs_set_gov_enable(unsigned int enable, unsigned int src)
 	ipi_data.u.set_para.arg[1] = enable;
 	ret = ged_to_fdvfs_command(GPUFDVFS_IPI_SET_CONFIG, &ipi_data);
 
-	if (ret)
+	if (ret) {
 		GED_LOGD("%s err:%d\n", __func__, ret);
+		return;
+	}
 
 	g_has_gov_support = ipi_data.u.set_para.arg[0];
 	g_gov_enable = ipi_data.u.set_para.arg[1];

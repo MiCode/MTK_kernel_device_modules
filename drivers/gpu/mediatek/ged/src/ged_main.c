@@ -141,6 +141,7 @@ static const struct proc_ops ged_proc_fops = {
 unsigned int g_ged_gpueb_support;
 unsigned int g_ged_fdvfs_support;
 unsigned int g_ged_gpu_freq_notify_support;
+unsigned int g_ged_reduce_mips_flag;
 unsigned int g_fastdvfs_margin;
 #define GED_TARGET_UNLIMITED_FPS 240
 unsigned int vGed_Tmp;
@@ -561,7 +562,7 @@ EXPORT_SYMBOL(ged_is_fdvfs_support);
 
 GED_ERROR check_eb_config(void)
 {
-	struct device_node *gpueb_node, *fdvfs_node;
+	struct device_node *gpueb_node, *fdvfs_node, *reduce_mips_dvfs_node;
 	int ret = GED_OK, ret_temp;
 
 	gpueb_node = of_find_compatible_node(NULL, NULL, "mediatek,gpueb");
@@ -576,6 +577,9 @@ GED_ERROR check_eb_config(void)
 	}
 
 	fdvfs_node = of_find_compatible_node(NULL, NULL, "mediatek,gpu_fdvfs");
+
+	/* find node to support FASTDVFS (reduce mips) feature */
+	reduce_mips_dvfs_node = of_find_compatible_node(NULL, NULL, "mediatek,gpu_reduce_mips");
 	if (!fdvfs_node) {
 		GED_LOGE("No fdvfs node.");
 		g_ged_fdvfs_support = 0;
@@ -592,9 +596,20 @@ GED_ERROR check_eb_config(void)
 			GED_LOGE("fail to read gpu-freq-notify-support (%d)", ret_temp);
 	}
 
-	GED_LOGI("%s. gpueb_support: %d, fdvfs_support: %d, gpu_freq_notify_support: %d",
+	if (unlikely(!reduce_mips_dvfs_node)) {
+		GED_LOGI("No reduce_mips_dvfs_node");
+		g_ged_reduce_mips_flag = 0;
+	} else {
+		ret_temp = of_property_read_u32(reduce_mips_dvfs_node, "reduce-mips-support",
+				&g_ged_reduce_mips_flag);
+		if (unlikely(ret_temp))
+			GED_LOGE("fail to read reduce-mips-support (%d)", ret_temp);
+	}
+
+
+	GED_LOGI("%s. gpueb_support: %d, fdvfs_support: %d, gpu_freq_notify_support: %d, reduce_mips: %d",
 		__func__, g_ged_gpueb_support, g_ged_fdvfs_support,
-		g_ged_gpu_freq_notify_support);
+		g_ged_gpu_freq_notify_support, g_ged_reduce_mips_flag);
 
 	return ret;
 }
