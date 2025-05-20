@@ -9426,6 +9426,12 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			token-timeout = /bits/ 16 <CMDQ_SYNC_TOKEN_PREBUILT_MML_LOCK>;
 		};
 
+		cmdq_config: cmdq-config@0 {
+			gce-core-num = <4>;
+			sec-cmdq-enable = <0 0 1 0>;
+			cmdq-first-err-disable = <0 1 0 0>;
+		};
+
 		mminfra-imax {
 			compatible = "mediatek,mminfra-imax";
 			reg = <0 0x32900000 0 0x1000>, /* dispsys */
