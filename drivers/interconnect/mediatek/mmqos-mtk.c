@@ -19,6 +19,8 @@
 #include <linux/regulator/consumer.h>
 #include <linux/soc/mediatek/mtk_mmdvfs.h>
 #include <linux/sched/clock.h>
+#include <linux/workqueue.h>
+#include <linux/jiffies.h>
 #include <soc/mediatek/smi.h>
 #include <soc/mediatek/dramc.h>
 #include <soc/mediatek/mmdvfs_public.h>
@@ -231,6 +233,9 @@ u32 log_level;
 
 static struct mtk_mmqos *gmmqos;
 static struct mmqos_hrt *g_hrt;
+static struct workqueue_struct *mmqos_wq;
+static struct delayed_work mmqos_delayed_work;
+
 u32 stop_record;
 
 static u32 chn_hrt_r_bw[MMQOS_MAX_COMM_NUM][MMQOS_COMM_CHANNEL_NUM] = {};
@@ -2241,6 +2246,52 @@ static const struct proc_ops mmqos_debug_fops = {
 	.proc_release = single_release,
 };
 
+static char *get_subsys_name(int sid)
+{
+	switch(sid) {
+	case 0: return "CAM";
+	case 1: return "IMG";
+	case 2:
+		if (mmqos_state & MMPC_V2_ENABLE)
+			return "VDEC";
+		else
+			return "MDP";
+	case 3:
+		if (mmqos_state & MMPC_V2_ENABLE)
+			return "VENC";
+		else
+			return "DISP";
+	case 4:
+		if (mmqos_state & MMPC_V2_ENABLE)
+			return "DISP";
+		else
+			return "VENC";
+	case 5:
+		if (mmqos_state & MMPC_V2_ENABLE)
+			return "MDP";
+		else
+			return "VDEC";
+	default: return "???";
+	}
+}
+
+static char buf[PAGE_SIZE];
+static void mmpc_dvfsrc_dump_func(struct work_struct *work)
+{
+	char *p = buf;
+	ssize_t dump_size = PAGE_SIZE - 1;
+	char *buff_end = buf + dump_size;
+
+	for (int sid = 0; sid < MAX_SUBSYS_NUM; sid++) {
+		p += snprintf(p, buff_end - p, "%s ", get_subsys_name(sid));
+		p += snprintf(p, buff_end - p, "%5u,%5u ",
+			read_register(SUBSYS_V2_HW_BW_HRT(sid)),
+			read_register(SUBSYS_V2_HW_BW_SRT(sid)));
+	}
+	pr_info("[thermal][core]%s", buf);
+	queue_delayed_work(mmqos_wq, &mmqos_delayed_work, msecs_to_jiffies(10000));
+}
+
 static bool mmqos_met_not_freerun;
 int mtk_mmqos_probe(struct platform_device *pdev)
 {
@@ -2625,6 +2676,17 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 	else
 		mmqos->last_proc = last_proc;
 
+	/* add delay worker for dump mmpc dvfsrc */
+	if (mmqos_desc->thermal_info_en) {
+		mmqos_wq = create_workqueue("mmqos_wq");
+		if (!mmqos_wq) {
+			MMQOS_ERR("Failed to create mmqos_wq");
+			return 0;
+		}
+		INIT_DELAYED_WORK(&mmqos_delayed_work, mmpc_dvfsrc_dump_func);
+		queue_delayed_work(mmqos_wq, &mmqos_delayed_work, msecs_to_jiffies(10000)); //10s
+		MMQOS_DBG("create mmqos_ws for dump mmpc dvfsrc");
+	}
 	return 0;
 err:
 	list_for_each_entry_safe(node, temp, &mmqos->prov.nodes, node_list) {
@@ -2745,6 +2807,7 @@ int mtk_mmqos_v2_probe(struct platform_device *pdev)
 		gmmqos->bwl_hrt_r_margin, gmmqos->bwl_hrt_w_margin,
 		gmmqos->bwl_srt_r_margin, gmmqos->bwl_srt_w_margin);
 
+
 	return probe_ret;
 }
 EXPORT_SYMBOL_GPL(mtk_mmqos_v2_probe);
@@ -2762,6 +2825,10 @@ void mtk_mmqos_remove(struct platform_device *pdev)
 	unregister_mmdvfs_notifier(&mmqos->nb);
 	//destroy_workqueue(mmqos->wq);
 	mtk_mmqos_unregister_hrt_sysfs(&pdev->dev);
+
+	/* destroy work queue */
+	cancel_delayed_work_sync(&mmqos_delayed_work);
+	destroy_workqueue(mmqos_wq);
 }
 
 void clear_chnn_bw(void)
@@ -2899,35 +2966,6 @@ noinline int tracing_mark_write(char *fmt, ...)
 #endif
 #endif
 	return 0;
-}
-
-static char *get_subsys_name(int sid)
-{
-	switch(sid) {
-	case 0: return "CAM";
-	case 1: return "IMG";
-	case 2:
-		if (mmqos_state & MMPC_V2_ENABLE)
-			return "VDEC";
-		else
-			return "MDP";
-	case 3:
-		if (mmqos_state & MMPC_V2_ENABLE)
-			return "VENC";
-		else
-			return "DISP";
-	case 4:
-		if (mmqos_state & MMPC_V2_ENABLE)
-			return "DISP";
-		else
-			return "VENC";
-	case 5:
-		if (mmqos_state & MMPC_V2_ENABLE)
-			return "MDP";
-		else
-			return "VDEC";
-	default: return "???";
-	}
 }
 
 static u32 get_bw_from_reg(u32 reg_value, int bw_idx)

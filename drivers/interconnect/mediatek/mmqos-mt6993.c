@@ -851,6 +851,7 @@ static const struct mtk_mmqos_desc mmqos_desc_mt6993 = {
 		SLAVE_LARB(34), SLAVE_LARB(35),},
 	.disp_virt_larbs = { },
 	.freq_mode = BY_VMMRC,
+	.thermal_info_en = true,
 };
 static const struct of_device_id mtk_mmqos_mt6993_of_ids[] = {
 	{

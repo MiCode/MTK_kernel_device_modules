@@ -157,6 +157,7 @@ struct mtk_mmqos_desc {
 	const u32 report_bw_real_larbs[MMQOS_MAX_REPORT_LARB_NUM];
 	const u32 disp_virt_larbs[MMQOS_MAX_DISP_VIRT_LARB_NUM];
 	const u32 freq_mode;
+	const bool thermal_info_en;
 };
 
 #define DEFINE_MNODE(_name, _id, _bw_ratio, _is_write, _channel, _link) {	\
