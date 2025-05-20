@@ -2702,6 +2702,10 @@ void vcp_sys_reset_ws(struct work_struct *ws)
 	writel((unsigned int)VCP_PACK_IOVA(vcp_mem_base_phys), DRAM_RESV_ADDR_REG);
 	writel((unsigned int)vcp_mem_size, DRAM_RESV_SIZE_REG);
 
+#if VCP_BOOT_TIME_OUT_MONITOR
+	mod_timer(&vcp_ready_timer[VCP_A_ID].tl, jiffies + VCP_READY_TIMEOUT);
+#endif
+
 	/* start vcp */
 	arm_smccc_smc(MTK_SIP_TINYSYS_VCP_CONTROL,
 			MTK_TINYSYS_VCP_KERNEL_OP_RESET_RELEASE,
@@ -2716,9 +2720,6 @@ void vcp_sys_reset_ws(struct work_struct *ws)
 
 	dsb(SY); /* may take lot of time */
 
-#if VCP_BOOT_TIME_OUT_MONITOR
-	mod_timer(&vcp_ready_timer[VCP_A_ID].tl, jiffies + VCP_READY_TIMEOUT);
-#endif
 	/* clear vcp reset by cmd flag*/
 	vcp_reset_by_cmd = 0;
 }
