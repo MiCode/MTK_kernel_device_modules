@@ -16996,7 +16996,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 			reg-names = "apu_logtop",
 					"apu_mbox";
-			interrupts = <GIC_SPI 783 IRQ_TYPE_LEVEL_HIGH 0>;
+			interrupts = <GIC_SPI 783 IRQ_TYPE_EDGE_RISING 0>;
 			interrupt-names = "apu_logtop";
 
 			mtk,iommu-group = <&apu_iommu_group_2>;
