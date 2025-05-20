@@ -20723,6 +20723,7 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 		DDPDBG("%s:%d EPT time:%llu\n", __func__, __LINE__, ept_time);
 		DDPDBG("%s:%d vrefresh%u frame_time:%u\n", __func__, __LINE__,
 			frame_rate, frame_time);
+		drm_trace_tag_value("atomic_delay current_time", current_time);
 		drm_trace_tag_value("atomic_delay g_pf_time", g_pf_time);
 		drm_trace_tag_value("atomic_delay ept_time", ept_time);
 
