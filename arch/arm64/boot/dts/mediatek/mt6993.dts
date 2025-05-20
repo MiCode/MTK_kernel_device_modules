@@ -13949,8 +13949,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			assert = <0>;
 			error-flags {
 				int-sts = <0xd40 0xd44 0xd84 0xd88>;
-				int-sts-msk = <0xe00000 0xe00000 0x7e5 0x7e5>;
-				int-sts-fatal = <0xe00000 0xe00000 0x7a5 0x7a5>;
+				int-sts-msk = <0xe04000 0xe04000 0x7e5 0x7e5>;
+				int-sts-fatal = <0xe04000 0xe04000 0x7a5 0x7a5>;
 				int-sts-clr = <0x504 0x494>;
 				mux-sel = <0x50c>;
 				mux-vals = <13 14 18 19 20 21 22 23 24 25 26 27>;
@@ -13964,6 +13964,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					sram-sel = <0x56c 0x570>;
 				};
 				tag-ecc {
+					ce-int-sts-msk = <0x2000 0x2000 0x0 0x0>;
+					ue-int-sts-msk = <0x4000 0x4000 0x0 0x0>;
 					mux-sel = <0x6fc>;
 					mux-num = <30>;
 					mux-data = <0xe44 0xe48>;
