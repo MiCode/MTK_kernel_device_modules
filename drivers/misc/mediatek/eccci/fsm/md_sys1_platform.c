@@ -133,6 +133,27 @@ static int md_cd_io_remap_md_side_register(struct ccci_modem *md)
 	struct md_pll_reg *md_reg;
 	struct md_sys1_info *md_info = (struct md_sys1_info *)md->private_data;
 
+	/* md_boot_status register remap */
+	if (md_cd_plat_val_ptr.md_gen == 6295) {
+		md_cd_plat_val_ptr.md_boot_status0 = ioremap(0x1020E300, 0x4);
+		md_cd_plat_val_ptr.md_boot_status1 = ioremap(0x1020E700, 0x4);
+	} else if (md_cd_plat_val_ptr.md_gen < 6295) {
+		md_cd_plat_val_ptr.md_boot_status0 = ioremap(0x1020E300, 0x4);
+		md_cd_plat_val_ptr.md_boot_status1 = ioremap(0x1020E304, 0x4);
+	}
+
+	if (md_cd_plat_val_ptr.md_gen <= 6295 &&
+		(md_cd_plat_val_ptr.md_boot_status0 == NULL ||
+			md_cd_plat_val_ptr.md_boot_status1 == NULL)) {
+		CCCI_MEM_LOG_TAG(-1, TAG,
+				"%s:md_boot_status0 or md_boot_status1 ioremap failed\n", __func__);
+
+		if (md_cd_plat_val_ptr.md_boot_status0)
+			iounmap(md_cd_plat_val_ptr.md_boot_status0);
+		if (md_cd_plat_val_ptr.md_boot_status1)
+			iounmap(md_cd_plat_val_ptr.md_boot_status1);
+	}
+
 	arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, MD_DEBUG_DUMP,
 		MD_REG_GET_DUMP_ADDRESS, MD_REG_DUMP_MAGIC, 0, 0, 0, 0, &res);
 
@@ -269,7 +290,9 @@ static void md_cd_get_md_bootup_status(unsigned int *buff, int length)
 	void __iomem *md_boot_status0;
 	void __iomem *md_boot_status1;
 	unsigned int i = 0, reg_val = 0;
-	void __iomem *md_boot_status_select;
+
+	md_boot_status0 = md_cd_plat_val_ptr.md_boot_status0;
+	md_boot_status1 = md_cd_plat_val_ptr.md_boot_status1;
 
 	if (md_cd_plat_val_ptr.md_gen > 6295) {
 		arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, MD_POWER_CONFIG,
@@ -282,18 +305,14 @@ static void md_cd_get_md_bootup_status(unsigned int *buff, int length)
 			"[%s] AP: boot_ret=%lu, boot_status_0=%lX, boot_status_1=%lX\n",
 			__func__, res.a0, res.a1, res.a2);
 	} else if (md_cd_plat_val_ptr.md_gen == 6295) {
-		md_boot_status_select = ioremap(0x1020E700, 0x4);
-		md_boot_status0 = ioremap(0x1020E300, 0x4);
-
-		if (md_boot_status_select == NULL || md_boot_status0 == NULL) {
-			CCCI_MEM_LOG_TAG(0, TAG, "md_boot_status_select md_boot_status0 ioremap failed\n");
-			iounmap(md_boot_status_select);
-			iounmap(md_boot_status0);
+		if (md_boot_status1 == NULL || md_boot_status0 == NULL) {
+			CCCI_MEM_LOG_TAG(0, TAG, "md_boot_status1 or md_boot_status0 ioremap failed\n");
 			return;
 		}
 
 		for(i = 0; i < 2; i++) {
-			ccci_write32(md_boot_status_select, 0, i);
+			/* gen95, md_boot_status1 register is a function selection register */
+			ccci_write32(md_boot_status1, 0, i);
 			ccci_read32(md_boot_status0, 0);	/* dummy read */
 			ccci_read32(md_boot_status0, 0);	/* dummy read */
 			reg_val = ccci_read32(md_boot_status0, 0);
@@ -301,21 +320,9 @@ static void md_cd_get_md_bootup_status(unsigned int *buff, int length)
 				buff[i] = reg_val;
 			CCCI_NORMAL_LOG(0, TAG, "md_boot_status%d: 0x%X\n", i, reg_val);
 		}
-
-		iounmap(md_boot_status_select);
-		iounmap(md_boot_status0);
 	} else {
-		md_boot_status0 = ioremap(0x1020E300, 0x4);
-		md_boot_status1 = ioremap(0x1020E304, 0x4);
-
-		if (md_boot_status0 == NULL) {
-			CCCI_MEM_LOG_TAG(0, TAG, "md_boot_status0 ioremap failed\n");
-			return;
-		}
-
-		if (md_boot_status1 == NULL) {
-			CCCI_MEM_LOG_TAG(0, TAG, "md_boot_status1 ioremap failed\n");
-			iounmap(md_boot_status0);
+		if (md_boot_status1 == NULL || md_boot_status0 == NULL) {
+			CCCI_MEM_LOG_TAG(0, TAG, "md_boot_status1 or md_boot_status0 ioremap failed\n");
 			return;
 		}
 		if (buff && (length >= 2)) {
@@ -326,8 +333,6 @@ static void md_cd_get_md_bootup_status(unsigned int *buff, int length)
 		CCCI_NORMAL_LOG(0, TAG,
 			"kernel: md_boot_status0=0x%x, md_boot_status1=0x%x\n",
 			ccci_read32(md_boot_status0, 0), ccci_read32(md_boot_status1, 0));
-		iounmap(md_boot_status0);
-		iounmap(md_boot_status1);
 	}
 }
 
@@ -2819,6 +2824,11 @@ unsigned int ccci_get_ap_plat(void)
 static void ccci_modem_remove(struct platform_device *dev)
 {
 	ccci_remove_spm_resource();
+
+	if (md_cd_plat_val_ptr.md_boot_status0)
+		iounmap(md_cd_plat_val_ptr.md_boot_status0);
+	if (md_cd_plat_val_ptr.md_boot_status1)
+		iounmap(md_cd_plat_val_ptr.md_boot_status1);
 }
 
 static void ccci_modem_shutdown(struct platform_device *dev)

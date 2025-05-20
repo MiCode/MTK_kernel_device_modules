@@ -55,6 +55,8 @@ struct  ccci_plat_val {
 	int srclken_o1_bit;
 	unsigned int md_first_power_on;
 	unsigned int boot_status_value;
+	void __iomem *md_boot_status0;
+	void __iomem *md_boot_status1;
 	unsigned int mdsrc_settle_time;
 	unsigned int ccci_ctrl_mtcmos;
 	unsigned int load_md_stage;
