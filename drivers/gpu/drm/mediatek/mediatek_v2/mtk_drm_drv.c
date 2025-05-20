@@ -2324,10 +2324,15 @@ static void mtk_atomic_delay(struct mtk_drm_private *private,
 		(mtk_state->prop_val[CRTC_PROP_USER_SCEN] == 1))
 		return;
 
+	x_time = ept_time/1000 - current_time/1000;
+	//real_te_duration = 8.3ms > 3ms, then wait to the last TE
+	if ((te_step_time > atomic_commit_reserved_ns/1000) &&
+		(x_time > te_step_time))
+		delay_us = x_time - te_step_time;
 	// Sleep without LOCK: sleep to (EPT - 3ms)
 	// Ideally, atomic commit can be finished within 2ms
-	x_time = ept_time/1000 - current_time/1000;
-	if (x_time > atomic_commit_reserved_ns/1000)
+	else if ((atomic_commit_reserved_ns/1000 >= te_step_time) &&
+		(x_time > atomic_commit_reserved_ns/1000))
 		delay_us = x_time - atomic_commit_reserved_ns/1000;
 	else
 		delay_us = 0;
