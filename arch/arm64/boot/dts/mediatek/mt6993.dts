@@ -10247,6 +10247,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x32950000 0 0x1000>;
 			mtk,smmu-shared = <&mm_smmu_disp>;
 			mtk,smmu-shared-sec = <&mm_smmu_svp_disp>;
+			iommus-ovl = <SMMU_L0_P2_OVL_EXDMA2>; // Tf debug tool
 			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L0_P2_OVL_EXDMA2)
 					 &mmqos SLAVE_COMMON(1)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L0_P2_OVL_EXDMA2)
@@ -10281,6 +10282,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x32960000 0 0x1000>;
 			mtk,smmu-shared = <&mm_smmu_disp>;
 			mtk,smmu-shared-sec = <&mm_smmu_svp_disp>;
+			iommus-ovl = <SMMU_L1_P2_OVL_EXDMA3>; // Tf debug tool
 			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L1_P2_OVL_EXDMA3)
 					 &mmqos SLAVE_COMMON(0)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L1_P2_OVL_EXDMA3)
@@ -10306,6 +10308,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x32970000 0 0x1000>;
 			mtk,smmu-shared = <&mm_smmu_disp>;
 			mtk,smmu-shared-sec = <&mm_smmu_svp_disp>;
+			iommus-ovl = <SMMU_L20_P2_OVL_EXDMA4>; // Tf debug tool
 			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L20_P2_OVL_EXDMA4)
 					 &mmqos SLAVE_COMMON(0)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L20_P2_OVL_EXDMA4)
@@ -10331,6 +10334,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x32980000 0 0x1000>;
 			mtk,smmu-shared = <&mm_smmu_disp>;
 			mtk,smmu-shared-sec = <&mm_smmu_svp_disp>;
+			iommus-ovl = <SMMU_L21_P2_OVL_EXDMA5>; // Tf debug tool
 			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L21_P2_OVL_EXDMA5)
 					 &mmqos SLAVE_COMMON(1)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L21_P2_OVL_EXDMA5)
@@ -10356,6 +10360,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x32990000 0 0x1000>;
 			mtk,smmu-shared = <&mm_smmu_disp>;
 			mtk,smmu-shared-sec = <&mm_smmu_svp_disp>;
+			iommus-ovl = <SMMU_L1_P3_OVL_EXDMA6>; // Tf debug tool
 			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L1_P3_OVL_EXDMA6)
 					 &mmqos SLAVE_COMMON(0)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L1_P3_OVL_EXDMA6)
@@ -10381,6 +10386,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x329a0000 0 0x1000>;
 			mtk,smmu-shared = <&mm_smmu_disp>;
 			mtk,smmu-shared-sec = <&mm_smmu_svp_disp>;
+			iommus-ovl = <SMMU_L0_P3_OVL_EXDMA7>; // Tf debug tool
 			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L0_P3_OVL_EXDMA7)
 					 &mmqos SLAVE_COMMON(1)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L0_P3_OVL_EXDMA7)
@@ -10490,6 +10496,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x32c50000 0 0x1000>;
 			mtk,smmu-shared = <&mm_smmu_disp>;
 			mtk,smmu-shared-sec = <&mm_smmu_svp_disp>;
+			iommus-ovl = <SMMU_L34_P2_OVL_EXDMA2>; // Tf debug tool
 			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L34_P2_OVL_EXDMA2)
 					 &mmqos SLAVE_COMMON(1)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L34_P2_OVL_EXDMA2)
@@ -10516,6 +10523,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x32c60000 0 0x1000>;
 			mtk,smmu-shared = <&mm_smmu_disp>;
 			mtk,smmu-shared-sec = <&mm_smmu_svp_disp>;
+			iommus-ovl = <SMMU_L35_P2_OVL_EXDMA3>; // Tf debug tool
 			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L35_P2_OVL_EXDMA3)
 					 &mmqos SLAVE_COMMON(0)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L35_P2_OVL_EXDMA3)
@@ -10541,6 +10549,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x32c70000 0 0x1000>;
 			mtk,smmu-shared = <&mm_smmu_disp>;
 			mtk,smmu-shared-sec = <&mm_smmu_svp_disp>;
+			iommus-ovl = <SMMU_L36_P2_OVL_EXDMA4>; // Tf debug tool
 			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L36_P2_OVL_EXDMA4)
 					 &mmqos SLAVE_COMMON(1)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L36_P2_OVL_EXDMA4)
@@ -10566,6 +10575,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x32c80000 0 0x1000>;
 			mtk,smmu-shared = <&mm_smmu_disp>;
 			mtk,smmu-shared-sec = <&mm_smmu_svp_disp>;
+			iommus-ovl = <SMMU_L37_P2_OVL_EXDMA5>; // Tf debug tool
 			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L37_P2_OVL_EXDMA5)
 					 &mmqos SLAVE_COMMON(0)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L37_P2_OVL_EXDMA5)
@@ -10591,6 +10601,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x32c90000 0 0x1000>;
 			mtk,smmu-shared = <&mm_smmu_disp>;
 			mtk,smmu-shared-sec = <&mm_smmu_svp_disp>;
+			iommus-ovl = <SMMU_L35_P3_OVL_EXDMA6>; // Tf debug tool
 			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L35_P3_OVL_EXDMA6)
 					 &mmqos SLAVE_COMMON(0)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L35_P3_OVL_EXDMA6)
@@ -10616,6 +10627,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x32ca0000 0 0x1000>;
 			mtk,smmu-shared = <&mm_smmu_disp>;
 			mtk,smmu-shared-sec = <&mm_smmu_svp_disp>;
+			iommus-ovl = <SMMU_L34_P3_OVL_EXDMA7>; // Tf debug tool
 			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L34_P3_OVL_EXDMA7)
 					 &mmqos SLAVE_COMMON(1)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L34_P3_OVL_EXDMA7)
@@ -10725,6 +10737,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x3e050000 0 0x1000>;
 			mtk,smmu-shared = <&mm_smmu_disp>;
 			mtk,smmu-shared-sec = <&mm_smmu_svp_disp>;
+			iommus-ovl = <SMMU_L50_P2_OVL_EXDMA2>; // Tf debug tool
 			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L50_P2_OVL_EXDMA2)
 					 &mmqos SLAVE_COMMON(0)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L50_P2_OVL_EXDMA2)
@@ -10751,6 +10764,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x3e060000 0 0x1000>;
 			mtk,smmu-shared = <&mm_smmu_disp>;
 			mtk,smmu-shared-sec = <&mm_smmu_svp_disp>;
+			iommus-ovl = <SMMU_L51_P2_OVL_EXDMA3>; // Tf debug tool
 			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L51_P2_OVL_EXDMA3)
 					 &mmqos SLAVE_COMMON(1)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L51_P2_OVL_EXDMA3)
@@ -10776,6 +10790,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x3e070000 0 0x1000>;
 			mtk,smmu-shared = <&mm_smmu_disp>;
 			mtk,smmu-shared-sec = <&mm_smmu_svp_disp>;
+			iommus-ovl = <SMMU_L52_P2_OVL_EXDMA4>; // Tf debug tool
 			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L52_P2_OVL_EXDMA4)
 					 &mmqos SLAVE_COMMON(1)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L52_P2_OVL_EXDMA4)
@@ -10801,6 +10816,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x3e080000 0 0x1000>;
 			mtk,smmu-shared = <&mm_smmu_disp>;
 			mtk,smmu-shared-sec = <&mm_smmu_svp_disp>;
+			iommus-ovl = <SMMU_L53_P2_OVL_EXDMA5>; // Tf debug tool
 			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L53_P2_OVL_EXDMA5)
 					 &mmqos SLAVE_COMMON(0)>,
 					<&mmqos MASTER_LARB_PORT(SMMU_L53_P2_OVL_EXDMA5)
