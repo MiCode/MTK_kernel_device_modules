@@ -73,6 +73,8 @@ struct dfd_data{
 };
 
 struct tag_ecc_data{
+	unsigned int *ce_int_sts_msk;
+	unsigned int *ue_int_sts_msk;
 	unsigned int mux_sel;
 	unsigned int mux_num;
 	unsigned int *mux_data;
@@ -81,7 +83,7 @@ struct tag_ecc_data{
 static int err_flag_dump(struct slc_drvdata *drvdata, char slc_err_mesg[], int *slc_err_mesg_idx,
 	enum error_type *total_error_type);
 static void dfd_dump(struct slc_drvdata *drvdata, char slc_err_mesg[], int *slc_err_mesg_idx);
-static void tag_ecc_dump(struct slc_drvdata *drvdata, char slc_err_mesg[], int *slc_err_mesg_idx);
+static void tag_ecc_dump(struct edac_device_ctl_info *dci, char slc_err_mesg[], int *slc_err_mesg_idx);
 
 static enum error_type read_parity_status(struct edac_device_ctl_info *dci, unsigned int emi_idx)
 {
@@ -185,15 +187,10 @@ static irqreturn_t slc_err_handler(int irq, void *dev_id)
 		BUG_ON(1);
 	if ((total_error_type == CORRECTABLE_ERROR) && drvdata->assert)
 		BUG_ON(1);
-
 	for (emi_idx = 0; emi_idx < drvdata->slc_parity_cnt; emi_idx++) {
 		slc_clear_violation(emi_idx);
 	}
-	if (total_error_type == UNCORRECTABLE_ERROR) {
-		pr_info("error type: %d bit error\n", total_error_type);
-		if (slc_err_mesg_idx)
-			aee_kernel_exception("SLC_PARITY", slc_err_mesg);
-	}
+
 	//error flag
 	slc_err_mesg_idx = 0;
 	total_error_type = NO_ERROR;
@@ -218,14 +215,11 @@ static irqreturn_t slc_err_handler(int irq, void *dev_id)
 		}
 		//tag_ecc
 		if (drvdata->error_flags->tag_ecc_enable == 1) {
-			tag_ecc_dump(drvdata, slc_err_mesg, &slc_err_mesg_idx);
-			if (dump_log == 1) {
-				pr_info("%s", slc_err_mesg);
-				memset(slc_err_mesg, '\0', SLC_BUF_SIZE);
-				slc_err_mesg_idx = 0;
-			}
+			tag_ecc_dump(dci, slc_err_mesg, &slc_err_mesg_idx);
 		}
 		if (total_error_type == UNCORRECTABLE_ERROR)
+			BUG_ON(1);
+		if ((total_error_type == CORRECTABLE_ERROR) && drvdata->assert)
 			BUG_ON(1);
 		//clear error flag
 		for (emi_idx = 0; emi_idx < drvdata->slc_parity_cnt; emi_idx++) {
@@ -355,11 +349,26 @@ static void dfd_dump(struct slc_drvdata *drvdata, char slc_err_mesg[], int *slc_
 	}
 }
 
-static void tag_ecc_dump(struct slc_drvdata *drvdata, char slc_err_mesg[], int *slc_err_mesg_idx)
+static void tag_ecc_dump(struct edac_device_ctl_info *dci, char slc_err_mesg[], int *slc_err_mesg_idx)
 {
-	unsigned int emi_idx, chn_idx, mux_idx;
+	struct slc_drvdata *drvdata = dci->pvt_info;
+	unsigned int emi_idx, chn_idx, mux_idx, i, reg_val;
+	int tag_ecc_ce = 0;
+	int tag_ecc_ue = 0;
 	struct arm_smccc_res smc_res;
 	struct tag_ecc_data *tag_ecc = drvdata->error_flags->tag_ecc;
+
+	for (emi_idx = 0; emi_idx < drvdata->slc_parity_cnt; emi_idx++) {
+		for (i=0; i<drvdata->error_flags->int_sts_len; ++i) {
+			reg_val = readl(drvdata->base[emi_idx] + drvdata->error_flags->int_sts[i]);
+			if ((reg_val & tag_ecc->ce_int_sts_msk[i]) != 0 )
+				tag_ecc_ce = 1;
+			if ((reg_val & tag_ecc->ue_int_sts_msk[i]) != 0 )
+				tag_ecc_ue = 1;
+		}
+	}
+	if (!tag_ecc_ce && !tag_ecc_ue)
+		return;
 
 	if (*slc_err_mesg_idx < SLC_BUF_SIZE)
 		*slc_err_mesg_idx += snprintf(slc_err_mesg + *slc_err_mesg_idx,
@@ -395,6 +404,15 @@ static void tag_ecc_dump(struct slc_drvdata *drvdata, char slc_err_mesg[], int *
 			pr_info("%s:%d MTK_SLC_TAG_ECC_CLEAR failed, ret=0x%lx\n",
 				__func__, __LINE__, smc_res.a0);
 		}
+	}
+	if (tag_ecc_ce) {
+		edac_device_handle_ce_count(dci, 1, 0, 0, "tag");
+	}
+	if (tag_ecc_ue) {
+		edac_device_handle_ue_count(dci, 2, 0, 0, "tag");
+		pr_info("%s", slc_err_mesg);
+		memset(slc_err_mesg, '\0', SLC_BUF_SIZE);
+		slc_err_mesg_idx = 0;
 	}
 }
 
@@ -750,6 +768,32 @@ static int slc_err_probe(struct platform_device *pdev)
 				goto err2;
 			}
 			tag_ecc = drvdata->error_flags->tag_ecc;
+
+			//ce-int-sts-msk
+			tag_ecc->ce_int_sts_msk = devm_kzalloc(&pdev->dev, drvdata->error_flags->int_sts_msk_len * sizeof(u32), GFP_KERNEL);
+			if (!tag_ecc->ce_int_sts_msk) {
+				dev_info(&pdev->dev, "Failed to allocate memory for ce-int-sts-msk\n");
+				ret = -ENOMEM;
+				goto err2;
+			}
+			ret = of_property_read_u32_array(tag_ecc_node, "ce-int-sts-msk", tag_ecc->ce_int_sts_msk, drvdata->error_flags->int_sts_msk_len);
+			if (ret) {
+				dev_info(&pdev->dev, "Failed to read ce-int-sts-msk property\n");
+				goto err2;
+			}
+
+			//ue-int-sts-msk
+			tag_ecc->ue_int_sts_msk = devm_kzalloc(&pdev->dev, drvdata->error_flags->int_sts_msk_len * sizeof(u32), GFP_KERNEL);
+			if (!tag_ecc->ue_int_sts_msk) {
+				dev_info(&pdev->dev, "Failed to allocate memory for ue-int-sts-msk\n");
+				ret = -ENOMEM;
+				goto err2;
+			}
+			ret = of_property_read_u32_array(tag_ecc_node, "ue-int-sts-msk", tag_ecc->ue_int_sts_msk, drvdata->error_flags->int_sts_msk_len);
+			if (ret) {
+				dev_info(&pdev->dev, "Failed to read ue-int-sts-msk property\n");
+				goto err2;
+			}
 
 			//mux-sel
 			ret = of_property_read_u32(tag_ecc_node, "mux-sel", &(tag_ecc->mux_sel));
