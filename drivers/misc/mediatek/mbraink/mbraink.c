@@ -1253,6 +1253,37 @@ static long handle_power_spmi_glitch_info(unsigned long arg, void *mbraink_data)
 	return ret;
 }
 
+static long handle_oom_info(unsigned long arg, void *mbraink_data)
+{
+	long ret = 0;
+	struct mbraink_oom_tracing_data *oom_trace_buffer =
+		(struct mbraink_oom_tracing_data *)(mbraink_data);
+	unsigned short tracing_idx = 0;
+
+	if (copy_from_user(oom_trace_buffer,
+		(struct mbraink_oom_tracing_data *) arg,
+		sizeof(struct mbraink_oom_tracing_data))) {
+		pr_notice("copy oom_trace_buffer data from user Err!\n");
+		return -EPERM;
+	}
+	if (oom_trace_buffer->tracing_idx > MAX_OOM_TRACE_NUM) {
+		pr_notice("invalid oom tracing_idx %u !\n",
+			oom_trace_buffer->tracing_idx);
+		return -EINVAL;
+	}
+	tracing_idx = oom_trace_buffer->tracing_idx;
+	mbraink_get_oom_trace_info(tracing_idx, oom_trace_buffer);
+
+	if (copy_to_user((struct mbraink_oom_tracing_data *) arg,
+		oom_trace_buffer, sizeof(struct mbraink_oom_tracing_data))) {
+		pr_notice("%s: Copy oom_trace_buffer to UserSpace error!\n",
+			__func__);
+		return -EPERM;
+	}
+
+	return ret;
+}
+
 static long handle_power_dvfsrc_info(unsigned long arg, void *mbraink_data)
 {
 	struct mbraink_dvfsrc_struct_data *power_dvfsrc_buffer =
@@ -2059,6 +2090,15 @@ static long mbraink_ioctl(struct file *filp,
 		if (!mbraink_data)
 			goto End;
 		ret = handle_trace_cpufreq(arg, mbraink_data);
+		kfree(mbraink_data);
+		break;
+	}
+	case RO_TRACE_OOM:
+	{
+		mbraink_data = kmalloc(sizeof(struct mbraink_oom_tracing_data), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handle_oom_info(arg, mbraink_data);
 		kfree(mbraink_data);
 		break;
 	}

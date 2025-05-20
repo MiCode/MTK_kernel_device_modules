@@ -64,6 +64,7 @@
 #define WIFI_LP_INFO			'F'
 #define POWER_THROTTLE_HW_INFO	'G'
 #define LPM_STATE_INFO			'H'
+#define TRACE_OOM_INFO                  'I'
 #define UFS_INFO				'J'
 #define WIFI_TXTIMEOUT_INFO		'K'
 #define VDEC_FPS_INFO			'L'
@@ -180,6 +181,8 @@
 #define RO_LPM_STATE_INFO		_IOR(IOC_MAGIC, LPM_STATE_INFO, \
 						struct mbraink_lpm_state_data*)
 
+#define RO_TRACE_OOM            _IOR(IOC_MAGIC, TRACE_OOM_INFO, \
+					struct mbraink_oom_tracing_data*)
 #define RO_UFS_INFO	_IOR(IOC_MAGIC, UFS_INFO, \
 								struct mbraink_ufs_info*)
 #define RO_WIFI_TXTIMEOUT_INFO	_IOR(IOC_MAGIC, WIFI_TXTIMEOUT_INFO, \

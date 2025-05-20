@@ -21,6 +21,8 @@
 #define CPUFREQ_M	6
 #define CPUFREQ_B	7
 
+#define MAX_OOM_TRACE_NUM		2048
+
 struct mbraink_monitor_pidlist {
 	unsigned short is_set;
 	unsigned short monitor_process_count;
@@ -55,6 +57,25 @@ struct mbraink_cpufreq_tracelist {
 	bool dirty;
 };
 
+struct mbraink_oom_tracelist {
+	long long timestamp;
+	unsigned short pid;
+	unsigned short stage;
+	unsigned int order;
+	int retry_times;
+	unsigned long did_some_progress;
+	char nodemask[32];
+	gfp_t gfp_mask;
+	int node_id;
+	unsigned int highest_zoneidx;
+	unsigned int alloc_order;
+	unsigned int reclaim_order;
+	int prio;
+	enum compact_result  rc;
+	unsigned long alloc_start;
+	bool dirty;
+};
+
 extern int mbraink_netlink_send_msg(const char *msg); //EXPORT_SYMBOL_GPL
 
 void mbraink_show_process_info(void);
@@ -70,6 +91,8 @@ void mbraink_get_process_memory_info(pid_t current_pid, unsigned int cnt,
 			struct mbraink_process_memory_data *process_memory_buffer);
 int mbraink_process_tracer_init(void);
 void mbraink_process_tracer_exit(void);
+void mbraink_get_oom_trace_info(unsigned short current_idx,
+				struct mbraink_oom_tracing_data *tracing_oom_buffer);
 void mbraink_get_tracing_pid_info(unsigned short current_idx,
 			struct mbraink_tracing_pid_data *tracing_pid_buffer);
 void mbraink_get_binder_trace_info(unsigned short current_idx,

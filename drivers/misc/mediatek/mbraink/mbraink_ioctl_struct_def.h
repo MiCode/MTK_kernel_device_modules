@@ -6,6 +6,8 @@
 #define MBRAINK_IOCTL_STRUCT_H
 
 #include <linux/kallsyms.h>
+#include <linux/oom.h>
+#include <linux/compaction.h>
 
 #define MAX_STRUCT_SZ				64
 #define MAX_MEM_LIST_SZ				32
@@ -51,6 +53,7 @@
 #define MAX_MMQOS_BW_SUBSYS_NUMS			6
 #define MAX_MMQOS_BW_VALUE_NUMS				24
 #define MAX_CM_WRAP_NUM				8
+#define MAX_DDR_TRACE_OOM_NUM		8
 
 #define NETLINK_EVENT_Q2QTIMEOUT		"NLEvent_Q2QTimeout"
 #define NETLINK_EVENT_UDMFETCH			"M&"
@@ -78,6 +81,7 @@
 #define NETLINK_EVENT_ISP_HRT "NLEventIspHRT"
 #define NETLINK_EVENT_AUDIOADSPNOTIFY "NLEvent_ADSPEvt"
 #define NETLINK_EVENT_SYSCPUFREQ "NLEvent_SysCpufreq"
+#define NETLINK_EVENT_SYSOOM		"NLEvent_SysOOM"
 
 #define NETLINK_EVENT_MESSAGE_SIZE		1024
 
@@ -831,6 +835,30 @@ struct mbraink_cpufreq_trace_data {
 	unsigned short tracing_idx;
 	unsigned short tracing_count;
 	struct mbraink_cpufreq_trace drv_data[MAX_TRACE_PID_NUM];
+};
+
+struct mbraink_oom_tracing {
+	long long timestamp;
+	unsigned short pid;
+	unsigned short stage;
+	unsigned int order;
+	int retry_times;
+	unsigned long did_some_progress;
+	char nodemask[32];
+	gfp_t gfp_mask;
+	int node_id;
+	unsigned int highest_zoneidx;
+	unsigned int alloc_order;
+	unsigned int reclaim_order;
+	int prio;
+	enum compact_result rc;
+	unsigned long alloc_start;
+};
+
+struct mbraink_oom_tracing_data {
+	unsigned short tracing_idx;
+	unsigned short tracing_count;
+	struct mbraink_oom_tracing drv_data[MAX_DDR_TRACE_OOM_NUM];
 };
 
 #endif

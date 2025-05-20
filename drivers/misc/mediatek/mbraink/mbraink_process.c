@@ -34,6 +34,9 @@
 #include <asm/page.h>
 #include <linux/tracepoint.h>
 #include <trace/hooks/cpufreq.h>
+#include <trace/hooks/compaction.h>
+#include <trace/hooks/mm.h>
+#include <trace/hooks/vmscan.h>
 
 #include "mbraink_process.h"
 #include <binder_internal.h>
@@ -69,6 +72,11 @@ struct mbraink_binder_tracelist mbraink_binder_tracelist_data[MAX_BINDER_TRACE_N
 static DEFINE_SPINLOCK(cpufreq_trace_lock);
 /*Please make sure that cpufreq trace list is protected by spinlock*/
 struct mbraink_cpufreq_tracelist mbraink_cpufreq_tracelist_data[MAX_CPUFREQ_TRACE_NUM];
+
+/*spinlock for mbraink oom provider tracelist*/
+static DEFINE_SPINLOCK(oom_trace_lock);
+/*Please make sure that memory oom trace list is protected by spinlock*/
+struct mbraink_oom_tracelist mbraink_oom_tracelist_data[MAX_OOM_TRACE_NUM];
 
 void mbraink_get_process_memory_info(pid_t current_pid, unsigned int cnt,
 				struct mbraink_process_memory_data *process_memory_buffer)
@@ -1017,6 +1025,449 @@ static void mbraink_trace_android_vh_cpufreq_acct_update_power(void *data,
 }
 #endif
 
+/*******************************************************************
+ *	mbraink_oom_data_send must be called between
+ *	spin_lock_irqsave(&oom_trace_lock, flags) and
+ *	spin_unlock_irqrestore(&oom_trace_lock, flags);
+ *******************************************************************/
+static void mbraink_oom_data_send(void)
+{
+	char netlink_buf[NETLINK_EVENT_MESSAGE_SIZE] = {'\0'};
+	int n = 0;
+	int pos = 0;
+	int idx = 0;
+	int valid_count = 0;
+
+	for (idx = 0; idx < MAX_OOM_TRACE_NUM; idx++) {
+		if (mbraink_oom_tracelist_data[idx].dirty) {
+			if (valid_count % 8 == 0) {
+				pos = 0;
+				n = snprintf(netlink_buf,
+						NETLINK_EVENT_MESSAGE_SIZE, "%s ",
+						NETLINK_EVENT_SYSOOM);
+				if (n < 0 || n >= NETLINK_EVENT_MESSAGE_SIZE)
+					break;
+				pos += n;
+			}
+			n = snprintf(netlink_buf + pos, NETLINK_EVENT_MESSAGE_SIZE - pos,
+				"%llu:%u:%u:%u:%d:%lu:%s:%#x:%d:%u:%u:%u:%d:%d:%lu ",
+				mbraink_oom_tracelist_data[idx].timestamp,
+				mbraink_oom_tracelist_data[idx].pid,
+				mbraink_oom_tracelist_data[idx].stage,
+				mbraink_oom_tracelist_data[idx].order,
+				mbraink_oom_tracelist_data[idx].retry_times,
+				mbraink_oom_tracelist_data[idx].did_some_progress,
+				mbraink_oom_tracelist_data[idx].nodemask,
+				mbraink_oom_tracelist_data[idx].gfp_mask,
+				mbraink_oom_tracelist_data[idx].node_id,
+				mbraink_oom_tracelist_data[idx].highest_zoneidx,
+				mbraink_oom_tracelist_data[idx].alloc_order,
+				mbraink_oom_tracelist_data[idx].reclaim_order,
+				mbraink_oom_tracelist_data[idx].prio,
+				mbraink_oom_tracelist_data[idx].rc,
+				mbraink_oom_tracelist_data[idx].alloc_start);
+			if (n < 0 || n >= NETLINK_EVENT_MESSAGE_SIZE - pos)
+				break;
+			pos += n;
+
+			valid_count++;
+			if (valid_count % 8 == 0)
+				mbraink_netlink_send_msg(netlink_buf);
+		}
+	}
+	if (valid_count % 8 != 0)
+		mbraink_netlink_send_msg(netlink_buf);
+	memset(mbraink_oom_tracelist_data, 0,
+			sizeof(struct mbraink_oom_tracelist) * MAX_OOM_TRACE_NUM);
+}
+
+static void mbraink_trace_mm_vmscan_kswapd_wake(void *data,
+					int node_id,
+					int highest_zoneidx,
+					int alloc_order)
+{
+	unsigned long flags;
+	int idx = 0;
+	struct timespec64 tv = { 0 };
+	u64 timestamp;
+
+	ktime_get_real_ts64(&tv);
+	timestamp = (tv.tv_sec*1000)+(tv.tv_nsec/1000000);
+
+	if (!spin_trylock_irqsave(&oom_trace_lock, flags)) {
+		pr_info("%s: skip record trace [%llu]\n", __func__, timestamp);
+		return;
+	}
+
+	for (idx = 0; idx < MAX_OOM_TRACE_NUM; idx++) {
+		if (mbraink_oom_tracelist_data[idx].dirty == false)
+			break;
+	}
+
+	if (idx == MAX_OOM_TRACE_NUM) {
+		mbraink_oom_data_send();
+		idx = 0;
+	}
+	mbraink_oom_tracelist_data[idx].timestamp = timestamp;
+	mbraink_oom_tracelist_data[idx].pid = current->pid;
+	mbraink_oom_tracelist_data[idx].stage = 1;
+	mbraink_oom_tracelist_data[idx].node_id = node_id;
+	mbraink_oom_tracelist_data[idx].highest_zoneidx = highest_zoneidx;
+	mbraink_oom_tracelist_data[idx].alloc_order = alloc_order;
+	mbraink_oom_tracelist_data[idx].dirty = true;
+
+	spin_unlock_irqrestore(&oom_trace_lock, flags);
+}
+
+static void mbraink_trace_mm_compaction_try_to_compact_pages(void *data,
+							int order,
+							gfp_t gfp_mask,
+							int prio)
+{
+	unsigned long flags;
+	int idx = 0;
+	struct timespec64 tv = { 0 };
+	u64 timestamp;
+
+	ktime_get_real_ts64(&tv);
+	timestamp = (tv.tv_sec*1000)+(tv.tv_nsec/1000000);
+
+	if (!spin_trylock_irqsave(&oom_trace_lock, flags)) {
+		pr_info("%s: skip record trace [%llu]\n", __func__, timestamp);
+		return;
+	}
+
+	for (idx = 0; idx < MAX_OOM_TRACE_NUM; idx++) {
+		if (mbraink_oom_tracelist_data[idx].dirty == false)
+			break;
+	}
+
+	if (idx == MAX_OOM_TRACE_NUM) {
+		mbraink_oom_data_send();
+		idx = 0;
+	}
+
+	mbraink_oom_tracelist_data[idx].timestamp = timestamp;
+	mbraink_oom_tracelist_data[idx].pid = current->pid;
+	mbraink_oom_tracelist_data[idx].stage = 7;
+	mbraink_oom_tracelist_data[idx].order = order;
+	mbraink_oom_tracelist_data[idx].gfp_mask = gfp_mask;
+	mbraink_oom_tracelist_data[idx].prio = prio;
+	mbraink_oom_tracelist_data[idx].dirty = true;
+
+	spin_unlock_irqrestore(&oom_trace_lock, flags);
+}
+
+static void mbraink_trace_mm_compaction_kcompactd_wake(void *data,
+						int node_id,
+						int order,
+						enum zone_type highest_zoneidx)
+{
+	unsigned long flags;
+	int idx = 0;
+	struct timespec64 tv = { 0 };
+	u64 timestamp;
+
+	ktime_get_real_ts64(&tv);
+	timestamp = (tv.tv_sec*1000)+(tv.tv_nsec/1000000);
+
+	if (!spin_trylock_irqsave(&oom_trace_lock, flags)) {
+		pr_info("%s: skip record trace [%llu]\n", __func__, timestamp);
+		return;
+	}
+
+	for (idx = 0; idx < MAX_OOM_TRACE_NUM; idx++) {
+		if (mbraink_oom_tracelist_data[idx].dirty == false)
+			break;
+	}
+
+	if (idx == MAX_OOM_TRACE_NUM) {
+		mbraink_oom_data_send();
+		idx = 0;
+	}
+
+	mbraink_oom_tracelist_data[idx].timestamp = timestamp;
+	mbraink_oom_tracelist_data[idx].pid = current->pid;
+	mbraink_oom_tracelist_data[idx].stage = 5;
+	mbraink_oom_tracelist_data[idx].node_id = node_id;
+	mbraink_oom_tracelist_data[idx].order = order;
+	mbraink_oom_tracelist_data[idx].highest_zoneidx = highest_zoneidx;
+	mbraink_oom_tracelist_data[idx].dirty = true;
+
+	spin_unlock_irqrestore(&oom_trace_lock, flags);
+}
+
+static void mbraink_trace_mark_victim(void *data,
+				struct task_struct *task,
+				uid_t uid)
+{
+	unsigned long flags;
+	int idx = 0;
+	struct timespec64 tv = { 0 };
+	u64 timestamp;
+
+	ktime_get_real_ts64(&tv);
+	timestamp = (tv.tv_sec*1000)+(tv.tv_nsec/1000000);
+
+	if (!spin_trylock_irqsave(&oom_trace_lock, flags)) {
+		pr_info("%s: skip record trace [%llu]\n", __func__, timestamp);
+		return;
+	}
+
+	for (idx = 0; idx < MAX_OOM_TRACE_NUM; idx++) {
+		if (mbraink_oom_tracelist_data[idx].dirty == false)
+			break;
+	}
+
+	if (idx == MAX_OOM_TRACE_NUM) {
+		mbraink_oom_data_send();
+		idx = 0;
+	}
+	mbraink_oom_tracelist_data[idx].timestamp = timestamp;
+	if(task)
+		mbraink_oom_tracelist_data[idx].pid = task->pid;
+
+	mbraink_oom_tracelist_data[idx].stage = 9;
+	mbraink_oom_tracelist_data[idx].dirty = true;
+
+	spin_unlock_irqrestore(&oom_trace_lock, flags);
+}
+
+#if IS_ENABLED(CONFIG_ANDROID_VENDOR_HOOKS)
+static void mbraink_trace_android_vh_vmscan_kswapd_done(void *data,
+						int node_id,
+						unsigned int highest_zoneidx,
+						unsigned int alloc_order,
+						unsigned int reclaim_order)
+{
+	unsigned long flags;
+	int idx = 0;
+	struct timespec64 tv = { 0 };
+	u64 timestamp;
+
+	ktime_get_real_ts64(&tv);
+	timestamp = (tv.tv_sec*1000)+(tv.tv_nsec/1000000);
+
+	if (!spin_trylock_irqsave(&oom_trace_lock, flags)) {
+		pr_info("%s: skip record trace [%llu]\n", __func__, timestamp);
+		return;
+	}
+
+	for (idx = 0; idx < MAX_OOM_TRACE_NUM; idx++) {
+		if (mbraink_oom_tracelist_data[idx].dirty == false)
+			break;
+	}
+
+	if (idx == MAX_OOM_TRACE_NUM) {
+		mbraink_oom_data_send();
+		idx = 0;
+	}
+
+	mbraink_oom_tracelist_data[idx].timestamp = timestamp;
+	mbraink_oom_tracelist_data[idx].pid = current->pid;
+	mbraink_oom_tracelist_data[idx].stage = 2;
+	mbraink_oom_tracelist_data[idx].node_id = node_id;
+	mbraink_oom_tracelist_data[idx].highest_zoneidx = highest_zoneidx;
+	mbraink_oom_tracelist_data[idx].alloc_order = alloc_order;
+	mbraink_oom_tracelist_data[idx].reclaim_order = reclaim_order;
+	mbraink_oom_tracelist_data[idx].dirty = true;
+
+	spin_unlock_irqrestore(&oom_trace_lock, flags);
+}
+
+static void mbraink_trace_android_vh_mm_direct_reclaim_enter(void *data,
+							unsigned int order)
+{
+	unsigned long flags;
+	int idx = 0;
+	struct timespec64 tv = { 0 };
+	u64 timestamp;
+
+	ktime_get_real_ts64(&tv);
+	timestamp = (tv.tv_sec*1000)+(tv.tv_nsec/1000000);
+
+	if (!spin_trylock_irqsave(&oom_trace_lock, flags)) {
+		pr_info("%s: skip record trace [%llu]\n", __func__, timestamp);
+		return;
+	}
+
+	for (idx = 0; idx < MAX_OOM_TRACE_NUM; idx++) {
+		if (mbraink_oom_tracelist_data[idx].dirty == false)
+			break;
+	}
+
+	if (idx == MAX_OOM_TRACE_NUM) {
+		mbraink_oom_data_send();
+		idx = 0;
+	}
+
+	mbraink_oom_tracelist_data[idx].timestamp = timestamp;
+	mbraink_oom_tracelist_data[idx].pid = current->pid;
+	mbraink_oom_tracelist_data[idx].stage = 3;
+	mbraink_oom_tracelist_data[idx].order = order;
+	mbraink_oom_tracelist_data[idx].did_some_progress = 0;
+	mbraink_oom_tracelist_data[idx].dirty = true;
+
+	spin_unlock_irqrestore(&oom_trace_lock, flags);
+}
+
+static void mbraink_trace_android_vh_mm_direct_reclaim_exit(void *data,
+							unsigned long did_some_progress,
+							int retry_times)
+{
+	unsigned long flags;
+	int idx = 0;
+	struct timespec64 tv = { 0 };
+	u64 timestamp;
+
+	ktime_get_real_ts64(&tv);
+	timestamp = (tv.tv_sec*1000)+(tv.tv_nsec/1000000);
+
+	if (!spin_trylock_irqsave(&oom_trace_lock, flags)) {
+		pr_info("%s: skip record trace [%llu]\n", __func__, timestamp);
+		return;
+	}
+
+	for (idx = 0; idx < MAX_OOM_TRACE_NUM; idx++) {
+		if (mbraink_oom_tracelist_data[idx].dirty == false)
+			break;
+	}
+
+	if (idx == MAX_OOM_TRACE_NUM) {
+		mbraink_oom_data_send();
+		idx = 0;
+	}
+
+	mbraink_oom_tracelist_data[idx].timestamp = timestamp;
+	mbraink_oom_tracelist_data[idx].pid = current->pid;
+	mbraink_oom_tracelist_data[idx].stage = 4;
+	mbraink_oom_tracelist_data[idx].did_some_progress =
+		did_some_progress;
+	mbraink_oom_tracelist_data[idx].retry_times = retry_times;
+	mbraink_oom_tracelist_data[idx].dirty = true;
+
+	spin_unlock_irqrestore(&oom_trace_lock, flags);
+}
+
+static void mbraink_trace_android_vh_mm_may_oom_exit(void *data,
+						struct oom_control *oc,
+						unsigned long did_some_progress)
+{
+	unsigned long flags;
+	int idx = 0;
+	struct timespec64 tv = { 0 };
+	u64 timestamp;
+	int n = 0;
+
+	ktime_get_real_ts64(&tv);
+	timestamp = (tv.tv_sec*1000)+(tv.tv_nsec/1000000);
+
+	if (!spin_trylock_irqsave(&oom_trace_lock, flags)) {
+		pr_info("%s: skip record trace [%llu]\n", __func__, timestamp);
+		return;
+	}
+
+	for (idx = 0; idx < MAX_OOM_TRACE_NUM; idx++) {
+		if (mbraink_oom_tracelist_data[idx].dirty == false)
+			break;
+	}
+
+	if (idx == MAX_OOM_TRACE_NUM) {
+		mbraink_oom_data_send();
+		idx = 0;
+	}
+	mbraink_oom_tracelist_data[idx].timestamp = timestamp;
+	mbraink_oom_tracelist_data[idx].pid = current->pid;
+	mbraink_oom_tracelist_data[idx].stage = 10;
+	mbraink_oom_tracelist_data[idx].did_some_progress =
+		did_some_progress;
+	n = snprintf(mbraink_oom_tracelist_data[idx].nodemask, 32, "%*pbl",
+		nodemask_pr_args(oc->nodemask));
+	if (n < 0 || n > 32)
+		pr_info("%s : snprintf error n = %d\n", __func__, n);
+	mbraink_oom_tracelist_data[idx].order = oc->order;
+	mbraink_oom_tracelist_data[idx].gfp_mask = oc->gfp_mask;
+	mbraink_oom_tracelist_data[idx].dirty = true;
+
+	spin_unlock_irqrestore(&oom_trace_lock, flags);
+}
+
+static void mbraink_trace_android_vh_compaction_exit(void *data,
+						int node_id,
+						int order,
+						const int highest_zoneidx)
+{
+	unsigned long flags;
+	int idx = 0;
+	struct timespec64 tv = { 0 };
+	u64 timestamp;
+
+	ktime_get_real_ts64(&tv);
+	timestamp = (tv.tv_sec*1000)+(tv.tv_nsec/1000000);
+
+	if (!spin_trylock_irqsave(&oom_trace_lock, flags)) {
+		pr_info("%s: skip record trace [%llu]\n", __func__, timestamp);
+		return;
+	}
+
+	for (idx = 0; idx < MAX_OOM_TRACE_NUM; idx++) {
+		if (mbraink_oom_tracelist_data[idx].dirty == false)
+			break;
+	}
+
+	if (idx == MAX_OOM_TRACE_NUM) {
+		mbraink_oom_data_send();
+		idx = 0;
+	}
+
+	mbraink_oom_tracelist_data[idx].timestamp = timestamp;
+	mbraink_oom_tracelist_data[idx].pid = current->pid;
+	mbraink_oom_tracelist_data[idx].stage = 6;
+	mbraink_oom_tracelist_data[idx].node_id = node_id;
+	mbraink_oom_tracelist_data[idx].order = order;
+	mbraink_oom_tracelist_data[idx].highest_zoneidx = highest_zoneidx;
+	mbraink_oom_tracelist_data[idx].dirty = true;
+
+	spin_unlock_irqrestore(&oom_trace_lock, flags);
+}
+
+static void mbraink_trace_android_vh_compaction_try_to_compact_exit(void *data,
+							enum compact_result *compact_result)
+{
+	unsigned long flags;
+	int idx = 0;
+	struct timespec64 tv = { 0 };
+	u64 timestamp;
+
+	ktime_get_real_ts64(&tv);
+	timestamp = (tv.tv_sec*1000)+(tv.tv_nsec/1000000);
+
+	if (!spin_trylock_irqsave(&oom_trace_lock, flags)) {
+		pr_info("%s: skip record trace [%llu]\n", __func__, timestamp);
+		return;
+	}
+
+	for (idx = 0; idx < MAX_OOM_TRACE_NUM; idx++) {
+		if (mbraink_oom_tracelist_data[idx].dirty == false)
+			break;
+	}
+
+	if (idx == MAX_OOM_TRACE_NUM) {
+		mbraink_oom_data_send();
+		idx = 0;
+	}
+
+	mbraink_oom_tracelist_data[idx].timestamp = timestamp;
+	mbraink_oom_tracelist_data[idx].pid = current->pid;
+	mbraink_oom_tracelist_data[idx].stage = 8;
+	mbraink_oom_tracelist_data[idx].rc = *compact_result;
+	mbraink_oom_tracelist_data[idx].dirty = true;
+
+	spin_unlock_irqrestore(&oom_trace_lock, flags);
+}
+
+#endif
+
 struct tracepoints_table {
 	const char *name;
 	void *func;
@@ -1025,12 +1476,32 @@ struct tracepoints_table {
 };
 
 static struct tracepoints_table mbraink_tracepoints[] = {
-{.name = "sched_process_fork", .func = mbraink_sched_process_fork, .tp = NULL},
-{.name = "sched_process_exit", .func = mbraink_sched_process_exit, .tp = NULL},
-{.name = "binder_transaction", .func = mbraink_binder_transaction, .tp = NULL},
+	{.name = "sched_process_fork", .func = mbraink_sched_process_fork, .tp = NULL},
+	{.name = "sched_process_exit", .func = mbraink_sched_process_exit, .tp = NULL},
+	{.name = "binder_transaction", .func = mbraink_binder_transaction, .tp = NULL},
 #if IS_ENABLED(CONFIG_ANDROID_VENDOR_HOOKS)
 	{.name = "android_vh_cpufreq_acct_update_power",
-	.func = mbraink_trace_android_vh_cpufreq_acct_update_power, .tp = NULL},
+	 .func = mbraink_trace_android_vh_cpufreq_acct_update_power, .tp = NULL},
+#endif
+	{.name = "mm_vmscan_kswapd_wake", .func = mbraink_trace_mm_vmscan_kswapd_wake, .tp = NULL},
+	{.name = "mm_compaction_kcompactd_wake",
+	 .func = mbraink_trace_mm_compaction_kcompactd_wake, .tp = NULL},
+	{.name = "mm_compaction_try_to_compact_pages",
+	 .func = mbraink_trace_mm_compaction_try_to_compact_pages, .tp = NULL},
+	{.name = "mark_victim", .func = mbraink_trace_mark_victim, .tp = NULL},
+#if IS_ENABLED(CONFIG_ANDROID_VENDOR_HOOKS)
+	{.name = "android_vh_vmscan_kswapd_done",
+	 .func = mbraink_trace_android_vh_vmscan_kswapd_done, .tp = NULL},
+	{.name = "android_vh_mm_direct_reclaim_enter",
+	 .func = mbraink_trace_android_vh_mm_direct_reclaim_enter, .tp = NULL},
+	{.name = "android_vh_mm_direct_reclaim_exit",
+	 .func = mbraink_trace_android_vh_mm_direct_reclaim_exit, .tp = NULL},
+	{.name = "android_vh_mm_may_oom_exit",
+	 .func = mbraink_trace_android_vh_mm_may_oom_exit, .tp = NULL},
+	{.name = "android_vh_compaction_exit",
+	 .func = mbraink_trace_android_vh_compaction_exit, .tp = NULL},
+	{.name = "android_vh_compaction_try_to_compact_exit",
+	 .func = mbraink_trace_android_vh_compaction_try_to_compact_exit, .tp = NULL},
 #endif
 };
 
@@ -1103,6 +1574,8 @@ int mbraink_process_tracer_init(void)
 	memset(mbraink_cpufreq_tracelist_data, 0,
 		sizeof(struct mbraink_cpufreq_tracelist) * MAX_CPUFREQ_TRACE_NUM);
 
+	memset(mbraink_oom_tracelist_data, 0,
+		sizeof(struct mbraink_oom_tracelist) * MAX_OOM_TRACE_NUM);
 	mbraink_hookup_tracepoints();
 
 	return ret;
@@ -1247,3 +1720,63 @@ void mbraink_get_cpufreq_trace_info(unsigned short current_idx,
 {
 }
 #endif
+
+void mbraink_get_oom_trace_info(unsigned short current_idx,
+				struct mbraink_oom_tracing_data *tracing_oom_buffer)
+{
+	int i = 0;
+	unsigned long flags;
+	unsigned short tracing_count = 0;
+
+	memset(tracing_oom_buffer, 0, sizeof(struct mbraink_oom_tracing_data));
+
+	spin_lock_irqsave(&oom_trace_lock, flags);
+
+	for (i = current_idx; i < MAX_OOM_TRACE_NUM; i++) {
+		if (mbraink_oom_tracelist_data[i].dirty == true) {
+			tracing_count = tracing_oom_buffer->tracing_count;
+			if (tracing_count < MAX_DDR_TRACE_OOM_NUM) {
+				tracing_oom_buffer->drv_data[tracing_count].timestamp =
+					mbraink_oom_tracelist_data[i].timestamp;
+				tracing_oom_buffer->drv_data[tracing_count].pid =
+					mbraink_oom_tracelist_data[i].pid;
+				tracing_oom_buffer->drv_data[tracing_count].stage =
+					mbraink_oom_tracelist_data[i].stage;
+				tracing_oom_buffer->drv_data[tracing_count].order =
+					mbraink_oom_tracelist_data[i].order;
+				tracing_oom_buffer->drv_data[tracing_count].retry_times =
+					mbraink_oom_tracelist_data[i].retry_times;
+				tracing_oom_buffer->drv_data[tracing_count].did_some_progress =
+					mbraink_oom_tracelist_data[i].did_some_progress;
+				memcpy(tracing_oom_buffer->drv_data[tracing_count].nodemask,
+					mbraink_oom_tracelist_data[i].nodemask, 32);
+				tracing_oom_buffer->drv_data[tracing_count].gfp_mask =
+					mbraink_oom_tracelist_data[i].gfp_mask;
+				tracing_oom_buffer->drv_data[tracing_count].node_id =
+					mbraink_oom_tracelist_data[i].node_id;
+				tracing_oom_buffer->drv_data[tracing_count].highest_zoneidx =
+					mbraink_oom_tracelist_data[i].highest_zoneidx;
+				tracing_oom_buffer->drv_data[tracing_count].alloc_order =
+					mbraink_oom_tracelist_data[i].alloc_order;
+				tracing_oom_buffer->drv_data[tracing_count].reclaim_order =
+					mbraink_oom_tracelist_data[i].reclaim_order;
+				tracing_oom_buffer->drv_data[tracing_count].prio =
+					mbraink_oom_tracelist_data[i].prio;
+				tracing_oom_buffer->drv_data[tracing_count].rc =
+					mbraink_oom_tracelist_data[i].rc;
+				tracing_oom_buffer->drv_data[tracing_count].alloc_start =
+					mbraink_oom_tracelist_data[i].alloc_start;
+				tracing_oom_buffer->tracing_count++;
+
+				memset(&mbraink_oom_tracelist_data[i], 0,
+					sizeof(struct mbraink_oom_tracelist));
+			} else {
+				tracing_oom_buffer->tracing_idx = i;
+				break;
+			}
+		}
+	}
+	pr_info("%s: current_idx = %u, count = %u\n",
+		__func__, tracing_oom_buffer->tracing_idx, tracing_oom_buffer->tracing_count);
+	spin_unlock_irqrestore(&oom_trace_lock, flags);
+}
