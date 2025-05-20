@@ -279,19 +279,19 @@ int apu_hds_dev_init(struct apu_hds_device *hdev)
 	if (!hdev->ept)
 		return -ENODEV;
 
-	/* handshake for init */
-	ret = apu_hds_dev_handshake_query_info(hdev);
-	if (ret) {
-		apu_hds_err("handshake failed(%d)\n", ret);
-		goto destroy_ept;
-	}
-
 	/* init default platform function */
 	hdev->plat_func = hds_plat_get_funcs(0, 0, 0);
 	if (hdev->plat_func == NULL) {
 		apu_hds_err("no plat funcs for version(0x%x.0x%x.0x%x)\n",
 			hdev->version_hw, hdev->version_date, hdev->version_revision);
 		ret = -EINVAL;
+		goto destroy_ept;
+	}
+
+	/* handshake for init */
+	ret = apu_hds_dev_handshake_query_info(hdev);
+	if (ret) {
+		apu_hds_err("handshake failed(%d)\n", ret);
 		goto destroy_ept;
 	}
 
