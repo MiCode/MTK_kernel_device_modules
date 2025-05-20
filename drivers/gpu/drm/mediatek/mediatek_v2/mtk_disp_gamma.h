@@ -63,6 +63,8 @@ struct mtk_disp_gamma_primary {
 	bool need_refinalize;
 	atomic_t gamma_sram_hw_init;
 	unsigned int relay_state;
+	struct mtk_cmdq_cb_data *cb_data;
+	atomic_t pkt_async_flush;
 };
 
 struct mtk_disp_gamma {
@@ -74,7 +76,7 @@ struct mtk_disp_gamma {
 	struct mtk_disp_gamma_tile_overhead_v tile_overhead_v;
 	struct mtk_ddp_comp *companion;
 	struct mtk_disp_gamma_primary *primary_data;
-	atomic_t is_clock_on;
+	atomic_t clock_ref;
 	bool pkt_reused[GAMMA_CMDQ_MAX];
 	struct cmdq_reuse reuse_gamma_lut[GAMMA_CMDQ_MAX][DISP_GAMMA_12BIT_LUT_SIZE * 2 + 7];
 	unsigned int set_partial_update;

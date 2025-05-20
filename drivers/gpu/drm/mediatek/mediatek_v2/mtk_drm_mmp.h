@@ -206,6 +206,8 @@ struct CRTC_MMP_Events {
 	mmp_event dbi_merge;
 	mmp_event dbi_drop;
 	mmp_event dbi_count_done;
+	/* c3d frame config */
+	mmp_event c3d_frame_config;
 };
 
 struct PKT_MMP_Events {

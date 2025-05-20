@@ -1514,6 +1514,7 @@ struct mtk_cmdq_cb_data {
 	uint64_t pts;
 	bool is_retrig;
 	struct mtk_cmdq_pkt_info *pkt_info;
+	struct mtk_ddp_comp *comp;
 };
 #define TIGGER_INTERVAL_S(x) ((unsigned long long)x*1000*1000*1000)
 extern unsigned int disp_spr_bypass;

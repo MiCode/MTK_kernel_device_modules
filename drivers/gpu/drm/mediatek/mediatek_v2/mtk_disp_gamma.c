@@ -106,23 +106,60 @@ static int disp_gamma_create_gce_pkt(struct mtk_ddp_comp *comp, struct cmdq_pkt 
 	return 0;
 }
 
-static bool disp_gamma_clock_is_on(struct mtk_ddp_comp *comp)
+static int disp_gamma_acquire_clock(struct mtk_ddp_comp *comp)
 {
 	struct mtk_disp_gamma *gamma_data = comp_to_gamma(comp);
-	struct mtk_disp_gamma *comp_gamma_data = NULL;
 
-	if (!comp->mtk_crtc->is_dual_pipe &&
-			atomic_read(&gamma_data->is_clock_on) == 1)
-		return true;
+	DDPINFO("%s: ref: %d+\n", __func__, atomic_read(&gamma_data->clock_ref));
 
-	if (comp->mtk_crtc->is_dual_pipe) {
-		comp_gamma_data = comp_to_gamma(gamma_data->companion);
-		if (atomic_read(&gamma_data->is_clock_on) == 1 &&
-			comp_gamma_data && atomic_read(&comp_gamma_data->is_clock_on) == 1)
-			return true;
+	mutex_lock(&gamma_data->primary_data->clk_lock);
+	if (atomic_read(&gamma_data->clock_ref) == 0) {
+		DDPINFO("%s: top clock is off\n", __func__);
+		mutex_unlock(&gamma_data->primary_data->clk_lock);
+		return -1;
 	}
+	if (comp->mtk_crtc->is_dual_pipe) {
+		struct mtk_disp_gamma *gamma1_data = comp_to_gamma(gamma_data->companion);
 
-	return false;
+		if (atomic_read(&gamma1_data->clock_ref) == 0) {
+			DDPINFO("%s: top clock is off\n", __func__);
+			mutex_unlock(&gamma_data->primary_data->clk_lock);
+			return -1;
+		}
+		atomic_inc(&gamma1_data->clock_ref);
+	}
+	atomic_inc(&gamma_data->clock_ref);
+	mutex_unlock(&gamma_data->primary_data->clk_lock);
+	DDPINFO("%s: ref: %d-\n", __func__, atomic_read(&gamma_data->clock_ref));
+	return 0;
+}
+
+static int disp_gamma_release_clock(struct mtk_ddp_comp *comp)
+{
+	struct mtk_disp_gamma *gamma_data = comp_to_gamma(comp);
+
+	DDPINFO("%s: ref: %d+\n", __func__, atomic_read(&gamma_data->clock_ref));
+
+	mutex_lock(&gamma_data->primary_data->clk_lock);
+	if (atomic_read(&gamma_data->clock_ref) == 0) {
+		DDPINFO("%s: top clock is off\n", __func__);
+		mutex_unlock(&gamma_data->primary_data->clk_lock);
+		return -1;
+	}
+	if (comp->mtk_crtc->is_dual_pipe) {
+		struct mtk_disp_gamma *gamma1_data = comp_to_gamma(gamma_data->companion);
+
+		if (atomic_read(&gamma1_data->clock_ref) == 0) {
+			DDPINFO("%s: top clock is off\n", __func__);
+			mutex_unlock(&gamma_data->primary_data->clk_lock);
+			return -1;
+		}
+		atomic_dec(&gamma1_data->clock_ref);
+	}
+	atomic_dec(&gamma_data->clock_ref);
+	mutex_unlock(&gamma_data->primary_data->clk_lock);
+	DDPINFO("%s: ref: %d-\n", __func__, atomic_read(&gamma_data->clock_ref));
+	return 0;
 }
 
 static void disp_gamma_bypass(struct mtk_ddp_comp *comp, int bypass,
@@ -331,6 +368,8 @@ static int disp_gamma_write_sram_v2(struct mtk_ddp_comp *comp,
 	}
 
 	if (!gamma->pkt_reused[cmd_type]) {
+		if (cmd_type == GAMMA_USERSPACE)
+			mtk_vidle_user_power_keep_by_gce(DISP_VIDLE_USER_PQ_CMDQ, handle, 0);
 		cmdq_pkt_write_value_addr_reuse(handle, comp->regs_pa + DISP_GAMMA_STATUS,
 				0x0 << 26, 0x1 << 26, &reuse_lut[offset++]);
 		for (i = 0; i < block_num; i++) {
@@ -351,6 +390,9 @@ static int disp_gamma_write_sram_v2(struct mtk_ddp_comp *comp,
 		cmdq_pkt_write_value_addr_reuse(handle, comp->regs_pa + DISP_GAMMA_STATUS,
 				0x1 << 26, 0x1 << 26, &reuse_lut[offset++]);
 		gamma->pkt_reused[cmd_type] = true;
+
+		if (cmd_type == GAMMA_USERSPACE)
+			mtk_vidle_user_power_release_by_gce(DISP_VIDLE_USER_PQ_CMDQ, handle);
 	} else {
 		for (i = 0; i < block_num; i++) {
 			reuse_lut[++offset].val = i | (gamma->primary_data->data_mode - 1) << 2;
@@ -379,61 +421,88 @@ gamma_write_lut_unlock:
 	return ret;
 }
 
+static void disp_gamma_async_flush_done_cb(struct cmdq_cb_data data)
+{
+	struct mtk_cmdq_cb_data *cb_data = data.data;
+
+	if (cb_data != NULL) {
+		struct mtk_ddp_comp *comp = cb_data->comp;
+		struct cmdq_pkt *cmdq_handle = cb_data->cmdq_handle;
+		struct mtk_disp_gamma *gamma_data = comp_to_gamma(comp);
+
+		atomic_dec(&gamma_data->clock_ref);
+		if (comp->mtk_crtc->is_dual_pipe) {
+			struct mtk_disp_gamma *gamma1_data = comp_to_gamma(gamma_data->companion);
+
+			atomic_dec(&gamma1_data->clock_ref);
+		}
+
+		CRTC_MMP_MARK(0, gamma_ioctl,
+			atomic_read(&gamma_data->clock_ref), (unsigned long)cmdq_handle);
+		DDPINFO("%s: clk_ref: %d\n", __func__, atomic_read(&gamma_data->clock_ref));
+	}
+}
+
 static bool disp_gamma_flush_sram(struct mtk_ddp_comp *comp, int cmd_type)
 {
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 	struct mtk_disp_gamma *gamma_data = comp_to_gamma(comp);
 	struct mtk_disp_gamma_primary *primary_data = gamma_data->primary_data;
 	struct cmdq_pkt *cmdq_handle = primary_data->sram_pkt[cmd_type];
-	struct cmdq_client *client = NULL;
-	struct drm_crtc *crtc = NULL;
-	bool async = false;
+	struct mtk_cmdq_cb_data *cb_data = primary_data->cb_data;
+	struct drm_crtc *crtc = &mtk_crtc->base;
 
 	if (!cmdq_handle) {
 		DDPMSG("%s: cmdq handle is null.\n", __func__);
 		return false;
 	}
 
-	if (disp_gamma_clock_is_on(comp) == false)
+	if (!cb_data) {
+		DDPMSG("%s: cb_data is null.\n", __func__);
 		return false;
-
-	if (mtk_crtc->gce_obj.client[CLIENT_PQ])
-		client = mtk_crtc->gce_obj.client[CLIENT_PQ];
-	else
-		client = mtk_crtc->gce_obj.client[CLIENT_CFG];
-
-	crtc = &mtk_crtc->base;
-	if (IS_ERR_OR_NULL(crtc))
-		cmdq_mbox_enable(client->chan);
-	else {
-		async = mtk_drm_idlemgr_get_async_status(crtc);
-		if (async == false) {
-			cmdq_mbox_enable(client->chan);
-			mtk_drm_clear_async_cb_list(crtc);
-		}
 	}
 
-	CRTC_MMP_MARK(0, gamma_ioctl, comp->id, (unsigned long)cmdq_handle);
-
-	mtk_drm_trace_begin("gamma flush sram:%d", async);
 	switch (cmd_type) {
 	case GAMMA_USERSPACE:
-		if (gamma_data->auto_flip == 0)
-			primary_data->table_out_sel = primary_data->table_config_sel;
-		cmdq_pkt_refinalize(cmdq_handle);
-		cmdq_pkt_flush(cmdq_handle);
-		if (async == false)
-			cmdq_mbox_disable(client->chan);
-		break;
+		CRTC_MMP_MARK(0, gamma_ioctl, comp->id, (unsigned long)cmdq_handle);
+		if (gamma_data->auto_flip == 1) {
+			cmdq_pkt_refinalize(cmdq_handle);
+			atomic_inc(&gamma_data->clock_ref);
+			if (comp->mtk_crtc->is_dual_pipe) {
+				struct mtk_disp_gamma *gamma1_data = comp_to_gamma(gamma_data->companion);
 
+				atomic_inc(&gamma1_data->clock_ref);
+			}
+
+			if (cmdq_pkt_flush_async(cmdq_handle,
+					disp_gamma_async_flush_done_cb, (void *)cb_data) < 0) {
+				PQ_ERR("failed to flush %s\n", __func__);
+				atomic_dec(&gamma_data->clock_ref);
+				if (comp->mtk_crtc->is_dual_pipe) {
+					struct mtk_disp_gamma *gamma1_data = comp_to_gamma(gamma_data->companion);
+
+					atomic_dec(&gamma1_data->clock_ref);
+				}
+			} else
+				atomic_set(&primary_data->pkt_async_flush, 1);
+		} else {
+			primary_data->table_out_sel = primary_data->table_config_sel;
+			cmdq_pkt_refinalize(cmdq_handle);
+			cmdq_pkt_flush(cmdq_handle);
+		}
+		break;
 	case GAMMA_RESUME:
+		bool async = mtk_drm_idlemgr_get_async_status(crtc);
+
+		mtk_drm_trace_begin("gamma flush sram:%d", async);
+		if (async == false)
+			mtk_drm_clear_async_cb_list(crtc);
 		if (gamma_data->auto_flip == 0)
 			primary_data->table_out_sel = primary_data->table_config_sel;
 		cmdq_pkt_refinalize(cmdq_handle);
-		if (async == false) {
+		if (async == false)
 			cmdq_pkt_flush(cmdq_handle);
-			cmdq_mbox_disable(client->chan);
-		} else {
+		else {
 			int ret = 0;
 
 			ret = mtk_drm_idle_async_flush_cust(crtc, comp->id,
@@ -443,11 +512,11 @@ static bool disp_gamma_flush_sram(struct mtk_ddp_comp *comp, int cmd_type)
 				DDPMSG("%s, failed of async flush, %d\n", __func__, ret);
 			}
 		}
+		mtk_drm_trace_end();
 		break;
 	default:
 		PQ_ERR("%s, invalid cmd_type:%d\n", __func__, cmd_type);
 	}
-	mtk_drm_trace_end();
 
 	return true;
 }
@@ -487,6 +556,16 @@ static int disp_gamma_update_sram(struct mtk_ddp_comp *comp, struct cmdq_pkt *ha
 		if (comp->mtk_crtc->is_dual_pipe && gamma->companion)
 			disp_gamma_flip_sram(gamma->companion, handle);
 	} else {
+		struct cmdq_pkt *handle = NULL;
+
+		// wait prev frame config pkt async flush done
+		handle = gamma->primary_data->sram_pkt[cmd_type];
+		if ((handle != NULL) &&
+			(atomic_read(&gamma->primary_data->pkt_async_flush) == 1)) {
+			cmdq_pkt_wait_complete(handle);
+			atomic_set(&gamma->primary_data->pkt_async_flush, 0);
+		}
+
 		if (disp_gamma_write_sram_v2(comp, 0, cmd_type) < 0) {
 			PQ_ERR("%s: failed\n", __func__);
 			ret = -EFAULT;
@@ -520,7 +599,7 @@ static int disp_gamma_cfg_set_12bit_gammalut(struct mtk_ddp_comp *comp,
 	struct mtk_disp_gamma *gamma = comp_to_gamma(comp);
 	struct mtk_disp_gamma_primary *primary_data = gamma->primary_data;
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
-	int ret = -1, pm_ret = 0;
+	int ret = -1, pm_ret = 0, clock_ret = -1;
 
 	if (!data || !mtk_crtc) {
 		PQ_ERR("%s, invalid data or crtc!\n", __func__);
@@ -542,39 +621,35 @@ static int disp_gamma_cfg_set_12bit_gammalut(struct mtk_ddp_comp *comp,
 
 	CRTC_MMP_EVENT_START(0, gamma_ioctl, 0, 0);
 	// 2. lock for protect crtc & power
-	mutex_lock(&primary_data->clk_lock);
-	if (!disp_gamma_clock_is_on(comp) || !mtk_crtc->enabled) {
-		mutex_unlock(&primary_data->clk_lock);
-		DDPMSG("%s, skip write sram, power is off!\n", __func__);
-		CRTC_MMP_EVENT_END(0, gamma_ioctl, 0, 2);
-		return 0;
-	}
-	memcpy(&primary_data->gamma_12b_lut, (struct DISP_GAMMA_12BIT_LUT_T *)data,
-			sizeof(struct DISP_GAMMA_12BIT_LUT_T));
-	pm_ret = mtk_vidle_pq_power_get(__func__);
-	if (pm_ret) {
-		PQ_ERR("%s pq_power_get failed %d, skip\n", __func__, pm_ret);
-		ret = -EFAULT;
-		goto _return;
-	}
+	clock_ret = disp_gamma_acquire_clock(comp);
+	if (clock_ret == 0) {
+		memcpy(&primary_data->gamma_12b_lut, data,
+				sizeof(struct DISP_GAMMA_12BIT_LUT_T));
+		pm_ret = mtk_vidle_pq_power_get(__func__);
+		if (pm_ret) {
+			PQ_ERR("%s pq_power_get failed %d, skip\n", __func__, pm_ret);
+			ret = -EFAULT;
+			goto _return;
+		}
 
-	mutex_lock(&primary_data->data_lock);
-	ret = disp_gamma_update_sram(comp, handle, GAMMA_USERSPACE);
-	if (ret < 0) {
+		mutex_lock(&primary_data->data_lock);
+		ret = disp_gamma_update_sram(comp, handle, GAMMA_USERSPACE);
+		if (ret < 0) {
+			mutex_unlock(&primary_data->data_lock);
+			goto _return;
+		}
 		mutex_unlock(&primary_data->data_lock);
-		goto _return;
-	}
-	mutex_unlock(&primary_data->data_lock);
 
-	if (!atomic_read(&primary_data->gamma_sram_hw_init)) {
-		atomic_set(&primary_data->gamma_sram_hw_init, 1);
-		disp_gamma_bypass(comp, 0, PQ_FEATURE_DEFAULT, handle);
-		DDPINFO("%s, set gamma unrelay\n", __func__);
-	}
+		if (!atomic_read(&primary_data->gamma_sram_hw_init)) {
+			atomic_set(&primary_data->gamma_sram_hw_init, 1);
+			disp_gamma_bypass(comp, 0, PQ_FEATURE_DEFAULT, handle);
+			DDPINFO("%s, set gamma unrelay\n", __func__);
+		}
 _return:
-	if (!pm_ret)
-		mtk_vidle_pq_power_put(__func__);
-	mutex_unlock(&primary_data->clk_lock);
+		if (!pm_ret)
+			mtk_vidle_pq_power_put(__func__);
+		disp_gamma_release_clock(comp);
+	}
 	CRTC_MMP_EVENT_END(0, gamma_ioctl, 0, 1);
 
 	return ret;
@@ -794,6 +869,21 @@ int disp_gamma_set_gain(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	return ret;
 }
 
+static void disp_gamma_init_cmdq_flush_cb_data(struct mtk_ddp_comp *comp)
+{
+	struct mtk_disp_gamma *gamma_data = comp_to_gamma(comp);
+	struct mtk_disp_gamma_primary *primary_data = gamma_data->primary_data;
+
+	primary_data->cb_data = kmalloc(sizeof(struct mtk_cmdq_cb_data), GFP_KERNEL);
+	if (!primary_data->cb_data) {
+		PQ_ERR("%s: cb data creation failed\n", __func__);
+		return;
+	}
+
+	primary_data->cb_data->comp = comp;
+	primary_data->cb_data->cmdq_handle = primary_data->sram_pkt[GAMMA_USERSPACE];
+}
+
 static void disp_gamma_init_primary_data(struct mtk_ddp_comp *comp)
 {
 	struct mtk_disp_gamma *data = comp_to_gamma(comp);
@@ -817,6 +907,8 @@ static void disp_gamma_init_primary_data(struct mtk_ddp_comp *comp)
 	disp_gamma_create_gce_pkt(comp, &primary_data->sram_pkt[GAMMA_RESUME]);
 	atomic_set(&primary_data->gamma_sram_hw_init, 0);
 	primary_data->relay_state = 0x1 << PQ_FEATURE_DEFAULT;
+	atomic_set(&primary_data->pkt_async_flush, 0);
+	disp_gamma_init_cmdq_flush_cb_data(comp);
 }
 
 static void disp_gamma_config_overhead(struct mtk_ddp_comp *comp,
@@ -1046,23 +1138,49 @@ static int disp_gamma_user_cmd(struct mtk_ddp_comp *comp,
 
 static void disp_gamma_prepare(struct mtk_ddp_comp *comp)
 {
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 	struct mtk_disp_gamma *gamma = comp_to_gamma(comp);
+	struct cmdq_client *client = NULL;
 
 	mtk_ddp_comp_clk_prepare(comp);
-	atomic_set(&gamma->is_clock_on, 1);
+	atomic_set(&gamma->clock_ref, 1);
+	if (mtk_crtc->gce_obj.client[CLIENT_PQ]) {
+		client = mtk_crtc->gce_obj.client[CLIENT_PQ];
+		cmdq_mbox_enable(client->chan);
+	}
 }
 
 static void disp_gamma_unprepare(struct mtk_ddp_comp *comp)
 {
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 	struct mtk_disp_gamma *gamma = comp_to_gamma(comp);
 	struct mtk_disp_gamma_primary *primary_data = gamma->primary_data;
+	struct cmdq_client *client = NULL;
+	int retry = 0;
 
-	DDPINFO("%s: compid: %d\n", __func__, comp->id);
+	DDPINFO("%s: compid +: %d\n", __func__, comp->id);
 	mutex_lock(&primary_data->clk_lock);
-	atomic_set(&gamma->is_clock_on, 0);
+	atomic_dec(&gamma->clock_ref);
 	primary_data->need_refinalize = true;
+	while (atomic_read(&gamma->clock_ref) > 0) {
+		if (retry >= 5) {
+			PQ_ERR("%s: can't wait clk_ref to 0\n", __func__);
+			break;
+		}
+		DDPMSG("%s: retry: %d\n", __func__, retry);
+		mutex_unlock(&primary_data->clk_lock);
+		usleep_range(50, 100);
+		retry++;
+		mutex_lock(&primary_data->clk_lock);
+	}
+
+	if (mtk_crtc->gce_obj.client[CLIENT_PQ]) {
+		client = mtk_crtc->gce_obj.client[CLIENT_PQ];
+		cmdq_mbox_disable(client->chan);
+	}
 	mtk_ddp_comp_clk_unprepare(comp);
 	mutex_unlock(&primary_data->clk_lock);
+	DDPINFO("%s: compid -: %d\n", __func__, comp->id);
 }
 
 int disp_gamma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
