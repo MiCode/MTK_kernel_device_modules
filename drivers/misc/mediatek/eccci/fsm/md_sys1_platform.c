@@ -16,6 +16,7 @@
 #include <linux/of_platform.h>
 #include <linux/regmap.h>
 #include <linux/regulator/consumer.h>
+#include <linux/regulator/mt6661-regulator.h>
 #include <linux/sched/clock.h>
 #include <linux/spmi.h>
 #include "ccci_config.h"
@@ -69,6 +70,14 @@ static struct ccci_clk_node clk_table[] = {
 /* #ifdef USING_PM_RUNTIME */
 	{ NULL, "scp-sys-md1-main"},
 /* #endif */
+};
+
+struct tag_chipid {
+	uint32_t size;
+	uint32_t hw_code;
+	uint32_t hw_subcode;
+	uint32_t hw_ver;
+	uint32_t sw_ver;
 };
 
 #define TAG "mcd"
@@ -2089,7 +2098,32 @@ void md1_rf_voter_enable(void)
 	CCCI_NORMAL_LOG(0, TAG, "[POWER ON]%s end success\n", __func__);
 }
 
-#define PMRC_REG 0x190
+/* A0: sw_ver == 0x0
+ * B0: sw_ver == 0x1
+ */
+static int ccci_get_chipid(void)
+{
+	struct device_node *node;
+	struct tag_chipid *chip_id;
+
+	node = of_find_node_by_path("/chosen");
+	if (!node)
+		node = of_find_node_by_path("/chosen@0");
+
+	if (!node) {
+		CCCI_ERROR_LOG(0, TAG, "%s: chosen node not found in dts\n", __func__);
+		return -ENODEV;
+	}
+
+	chip_id = (struct tag_chipid *)of_get_property(node, "atag,chipid", NULL);
+	if (!chip_id) {
+		CCCI_ERROR_LOG(0, TAG, "%s: can't find atag,chipid in chosen\n", __func__);
+		return -ENODEV;
+	}
+
+	return chip_id->sw_ver;
+}
+
 void md1_set_rf_pmic_lp(struct platform_device *plat_dev)
 {
 	struct arm_smccc_res res = {0};
@@ -2231,9 +2265,25 @@ void md1_set_rf_pmic_lp(struct platform_device *plat_dev)
 	ret = regulator_enable(reg_vrfio12);
 	if (ret)
 		CCCI_ERROR_LOG(0, TAG, "%s fail to enable reg_vrfio12: %d\n", __func__, ret);
-	ret = regulator_enable(reg_va10);
-	if (ret)
-		CCCI_ERROR_LOG(0, TAG, "%s fail to enable reg_va10: %d\n", __func__, ret);
+
+	if (ccci_get_chipid() == 0x0) {
+		ret = regulator_enable(reg_va10);
+		if (ret)
+			CCCI_ERROR_LOG(0, TAG, "%s fail to enable reg_va10: %d\n", __func__, ret);
+	} else {
+		ret = regmap_read(map_slave6, MT6661_LDO_LN60_7_CON0, &val);
+		if (ret < 0) {
+			CCCI_ERROR_LOG(0, TAG, "[POWER ON]%s:fail read LDO_LN60_7_CON0: ret: %d\n",
+				__func__, ret);
+			return;
+		}
+		ret = regmap_write(map_slave6, MT6661_LDO_LN60_7_CON0, val & 0xFFFFFFFE);
+		if (ret < 0) {
+			CCCI_ERROR_LOG(0, TAG, "[POWER ON]%s:fail mask write LDO_LN60_7_CON0 ret: %d\n",
+				__func__, ret);
+			return;
+		}
+	}
 
 	/* tfa Step 2: Vsram_rf, VRFIO12 mapping */
 	arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, MD_POWER_CONFIG,
@@ -2259,7 +2309,8 @@ void md1_set_rf_pmic_lp(struct platform_device *plat_dev)
 	udelay(500);
 
 	/* Turn off PMRC4 PMIC */
-	ret = regmap_read(map_slave6, PMRC_REG, &val);
+	val = 0;
+	ret = regmap_read(map_slave6, MT6661_PMRC_CON0, &val);
 	if (ret < 0) {
 		CCCI_ERROR_LOG(0, TAG, "[POWER ON]%s:fail read PMRC4: ret: %d\n",
 			__func__, ret);
@@ -2267,7 +2318,7 @@ void md1_set_rf_pmic_lp(struct platform_device *plat_dev)
 	}
 
 	// Mask PMRC4 and write PMRC0~7
-	ret = regmap_write(map_slave6, PMRC_REG, val & 0xEF);
+	ret = regmap_write(map_slave6, MT6661_PMRC_CON0, val & 0xEF);
 	if (ret < 0) {
 		CCCI_ERROR_LOG(0, TAG, "[POWER ON]%s:fail mask write PMRC0~7: ret: %d\n",
 			__func__, ret);
@@ -2283,7 +2334,7 @@ void md1_set_rf_pmic_lp(struct platform_device *plat_dev)
 	}
 
 	/* Turn on PMRC4 @ PMIC, Set PMRC4 and write PMRC0~7 */
-	ret = regmap_write(map_slave6, PMRC_REG, val | 0x10);
+	ret = regmap_write(map_slave6, MT6661_PMRC_CON0, val | 0x10);
 	if (ret < 0) {
 		CCCI_ERROR_LOG(0, TAG, "[POWER ON]%s:fail Turn on PMRC4: ret: %d\n",
 			__func__, ret);
