@@ -5,6 +5,9 @@
 
 ffa_config = {
 	"local_defines": [
+		# Override Kconfig defines to force enabling FFA support
+		"CONFIG_ARM_FFA_SMCCC=1",
+		"CONFIG_ARM_FFA_TRANSPORT=1",
 		# MTK adpated implementations
 		"MTK_ADAPTED=1",
 		# MTK adapted workarounds, must use with MTK_ADAPTED

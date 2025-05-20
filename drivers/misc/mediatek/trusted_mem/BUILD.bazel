@@ -64,21 +64,10 @@ define_mgk_ddk_ko(
 	name = "ffa",
 	out = "{}.ko".format(ffa_module),
 	srcs = [
-		"dummy.c",
+		"{}/bus.c".format(ffa_module),
+		"{}/driver.c".format(ffa_module),
+		"{}/smccc.c".format(ffa_module),
 	],
-	conditional_srcs = {
-		"CONFIG_ARM_FFA_TRANSPORT": {
-			True: [
-				"{}/bus.c".format(ffa_module),
-				"{}/driver.c".format(ffa_module),
-			],
-		},
-		"CONFIG_ARM_FFA_SMCCC": {
-			True: [
-				"{}/smccc.c".format(ffa_module),
-			],
-		},
-	},
 	hdrs = [
 		":ffa_hdrs",
 	],
