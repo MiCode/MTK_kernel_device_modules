@@ -3423,7 +3423,7 @@ s32 cmdq_pkt_refinalize(struct cmdq_pkt *pkt)
 	inst->arg_c = CMDQ_GET_ARG_C(off);
 	inst->arg_b = CMDQ_GET_ARG_B(off);
 
-	init_completion(&pkt->cmplt);
+	reinit_completion(&pkt->cmplt);
 	return 0;
 }
 EXPORT_SYMBOL(cmdq_pkt_refinalize);
