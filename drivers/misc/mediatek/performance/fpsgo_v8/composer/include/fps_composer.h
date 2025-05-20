@@ -36,7 +36,8 @@ void fpsgo_composer_exit(void);
 
 void fpsgo_ctrl2comp_dequeue_end(int pid,
 			unsigned long long dequeue_end_time,
-			unsigned long long identifier);
+			unsigned long long identifier,
+			unsigned long long sf_buf_id);
 void fpsgo_ctrl2comp_dequeue_start(int pid,
 			unsigned long long dequeue_start_time,
 			unsigned long long identifier);
@@ -56,6 +57,9 @@ void fpsgo_notify_frame_info_callback(int pid, unsigned long cmd,
 	unsigned long long buffer_id, struct render_frame_info *r_iter);
 
 int notify_fpsgo_touch_latency_ko_ready(void);
+int fpsgo_get_now_logic_head(unsigned long long sf_buffer_id,
+	int *pid, unsigned long long *logic_head_ts, unsigned int *is_logic_head_alive,
+	unsigned long long *now_ts);
 
 int fpsgo_ctrl2comp_get_receive_fw_info_enable(void);
 int fpsgo_ctrl2comp_wait_receive_fw_info_enable(int tgid, int *ret);
