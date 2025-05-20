@@ -25,6 +25,8 @@
 #define SENINF_CLK_CONTROL 1
 #endif
 
+#define DFS_CTRL_BY_OPP_COMPAT_CCF_API 1
+
 enum DFS_OPTION {
 	DFS_CTRL_ENABLE,
 	DFS_CTRL_DISABLE,
@@ -43,6 +45,9 @@ struct seninf_dfs_ctx {
 	unsigned long *freqs;
 	unsigned long *volts;
 	int cnt;
+#ifdef DFS_CTRL_BY_OPP_COMPAT_CCF_API
+	struct clk *opp_clk_sel;
+#endif
 };
 int seninf_dfs_init(struct seninf_dfs_ctx *ctx, struct device *dev);
 void seninf_dfs_exit(struct seninf_dfs_ctx *ctx);

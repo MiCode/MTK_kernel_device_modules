@@ -15,6 +15,7 @@ int seninf_dfs_init(struct seninf_dfs_ctx *ctx, struct device *dev)
 	int ret, i;
 	struct dev_pm_opp *opp;
 	unsigned long freq;
+	int mmdvfs_clk_probed = 0;
 
 	ctx->dev = dev;
 
@@ -24,10 +25,23 @@ int seninf_dfs_init(struct seninf_dfs_ctx *ctx, struct device *dev)
 		return ret;
 	}
 
-	ctx->reg = devm_regulator_get_optional(dev, "dvfsrc-vcore");
-	if (IS_ERR(ctx->reg)) {
-		dev_info(dev, "can't get dvfsrc-vcore\n");
-		return PTR_ERR(ctx->reg);
+#ifdef DFS_CTRL_BY_OPP_COMPAT_CCF_API
+	ctx->reg = NULL;
+	ctx->opp_clk_sel = devm_clk_get(dev, "mmdvfs_clk");
+	mmdvfs_clk_probed = 1;
+	if ((ctx->opp_clk_sel == NULL) || IS_ERR(ctx->opp_clk_sel)) {
+		dev_info(dev, "cannot get mmdvfs_clk, try regulator\n");
+		ctx->opp_clk_sel = NULL;
+		mmdvfs_clk_probed = 0;
+	}
+#endif
+
+	if (!mmdvfs_clk_probed) {
+		ctx->reg = devm_regulator_get_optional(dev, "dvfsrc-vcore");
+		if (IS_ERR(ctx->reg)) {
+			dev_info(dev, "can't get dvfsrc-vcore\n");
+			return PTR_ERR(ctx->reg);
+		}
 	}
 
 	ctx->cnt = dev_pm_opp_get_opp_count(dev);
@@ -86,7 +100,12 @@ int seninf_dfs_ctrl(struct seninf_dfs_ctx *ctx,
 		volt = dev_pm_opp_get_voltage(opp);
 		dev_pm_opp_put(opp);
 		pr_debug("%s: freq=%ld Hz, volt=%ld\n", __func__, freq, volt);
-		regulator_set_voltage(ctx->reg, volt, INT_MAX);
+		if (ctx->reg)
+			regulator_set_voltage(ctx->reg, volt, INT_MAX);
+#ifdef DFS_CTRL_BY_OPP_COMPAT_CCF_API
+		else if (ctx->opp_clk_sel)
+			clk_set_rate(ctx->opp_clk_sel, freq);
+#endif
 	}
 		break;
 	case DFS_RELEASE:
@@ -116,13 +135,19 @@ int seninf_dfs_ctrl(struct seninf_dfs_ctx *ctx,
 		int i, cur_volt;
 
 		pGetIspclk = (unsigned int *) pbuff;
-		cur_volt = regulator_get_voltage(ctx->reg);
+		if (ctx->reg) {
+			cur_volt = regulator_get_voltage(ctx->reg);
 
-		for (i = 0; i < ctx->cnt; i++) {
-			if (ctx->volts[i] == cur_volt) {
-				*pGetIspclk = (u32)ctx->freqs[i];
-				break;
+			for (i = 0; i < ctx->cnt; i++) {
+				if (ctx->volts[i] == cur_volt) {
+					*pGetIspclk = (u32)ctx->freqs[i];
+					break;
+				}
 			}
+#ifdef DFS_CTRL_BY_OPP_COMPAT_CCF_API
+		} else if (ctx->opp_clk_sel) {
+			*pGetIspclk = (u32)clk_get_rate(ctx->opp_clk_sel);
+#endif
 		}
 	}
 		break;
