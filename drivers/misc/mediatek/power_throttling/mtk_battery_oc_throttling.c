@@ -38,6 +38,11 @@
 #define MT6379_BAT2_FGADC_CUR_CON2	0xAEB
 #define MT6379_BAT2_FGADC_ANA_ELR4	0xA63
 
+
+#define MT6720_FGADC_CUR_CON1		0x7E9
+#define MT6720_FGADC_CUR_CON2		0x7EB
+#define MT6720_FGADC_ANA_ELR4		0x763
+
 #define FG_GAINERR_SEL_MASK		GENMASK(1, 0)
 
 /* Customize the setting in dts node */
@@ -66,6 +71,7 @@
 #define	MT6377_UNIT_FGCURRENT		(610352)
 
 #define	MT6379_UNIT_FGCURRENT		(915527)
+#define	MT6720_UNIT_FGCURRENT		(915527)
 
 #define MTK_BATOC_DIR_NAME		"mtk_batoc_throttling"
 #define DEFAULT_BUF_LEN			512
@@ -154,6 +160,17 @@ struct battery_oc_data_t mt6379_bat2_battery_oc_data = {
 	.cust_rfg = true,
 	.unit_fg_current = MT6379_UNIT_FGCURRENT,
 	.reg_default_rfg = {MT6379_BAT2_FGADC_ANA_ELR4, FG_GAINERR_SEL_MASK, 1},
+};
+
+struct battery_oc_data_t mt6720_battery_oc_data = {
+	.regmap_source = "dev_get_regmap",
+	.gauge_node_name = "mtk-gauge",
+	.fg_cur_hth = { MT6720_FGADC_CUR_CON2, 0xFFFF, 2 },
+	.fg_cur_lth = { MT6720_FGADC_CUR_CON1, 0xFFFF, 2 },
+	.spmi_intf = false,
+	.cust_rfg = true,
+	.unit_fg_current = MT6720_UNIT_FGCURRENT,
+	.reg_default_rfg = { MT6720_FGADC_ANA_ELR4, FG_GAINERR_SEL_MASK, 1 },
 };
 
 struct battery_oc_priv {
@@ -952,6 +969,9 @@ static const struct of_device_id battery_oc_throttling_of_match[] = {
 	}, {
 		.compatible = "mediatek,mt6379-battery-oc-throttling-2",
 		.data = &mt6379_bat2_battery_oc_data,
+	}, {
+		.compatible = "mediatek,mt6720-battery-oc-throttling",
+		.data = &mt6720_battery_oc_data,
 	}, {
 		/* sentinel */
 	}
