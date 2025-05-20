@@ -213,23 +213,62 @@ extern int mml_trace;
 
 #define MML_TTAG_OVERDUE	"mml_endtime_overdue"
 #define MML_TID_IRQ		0	/* trace on <idle>-0 process */
+#define MML_TRACE_ID		0xff0000
 
+#if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 #define mml_trace_begin_tid(tid, fmt, args...) \
 	mml_tracing_mark_write("B|%d|" fmt "\n", tid, ##args)
+
+#define mml_trace_end_tid(tid) \
+	mml_tracing_mark_write("E|%d\n", tid)
+
+#define mml_trace_c_val(tag, c) \
+	mml_tracing_mark_write("C|%d|%s|%d\n", MML_TRACE_ID, tag, c)
+
+#define mml_trace_c(tag, c) do { \
+	mml_tracing_mark_write("C|%d|%s|%d\n", MML_TRACE_ID, tag, c); \
+	mml_tracing_mark_write("C|%d|%s|0\n", MML_TRACE_ID, tag); \
+} while (0)
+
+#else
+#define mml_trace_begin_tid(tid, fmt, args...) do { \
+	if (mml_trace) \
+		mml_tracing_mark_write("B|%d|" fmt "\n", tid, ##args); \
+} while (0)
+
+#define mml_trace_end_tid(tid) do { \
+	if (mml_trace) \
+		mml_tracing_mark_write("E|%d\n", tid); \
+} while (0)
+
+#define mml_trace_c_val(tag, c) do { \
+	if (mml_trace) \
+		mml_tracing_mark_write("C|%d|%s|%d\n", MML_TRACE_ID, tag, c); \
+} while (0)
+
+#define mml_trace_c(tag, c) do { \
+	if (mml_trace) { \
+		mml_tracing_mark_write("C|%d|%s|%d\n", MML_TRACE_ID, tag, c); \
+		mml_tracing_mark_write("C|%d|%s|\n", MML_TRACE_ID, tag, 0); \
+	} \
+} while (0)
+#endif
 
 #define mml_trace_begin(fmt, args...) \
 	mml_trace_begin_tid(current->tgid, fmt, ##args)
 
 #define mml_trace_end() \
-	mml_tracing_mark_write("E|%d\n", current->tgid)
+	mml_trace_end_tid(current->tgid)
 
-#define mml_trace_c(tag, c) \
-	mml_tracing_mark_write("C|%d|%s|%d\n", current->tgid, tag, c)
+#define mml_trace_tag_begin(fmt, args...) \
+	mml_trace_begin_tid(MML_TRACE_ID, fmt, ##args)
 
-#define mml_trace_tag_start(tag) mml_trace_c(tag, 1)
+#define mml_trace_tag_end() \
+	mml_trace_end_tid(MML_TRACE_ID)
 
-#define mml_trace_tag_end(tag) mml_trace_c(tag, 0)
+#define mml_trace_tag_mark(tag) mml_trace_c(tag, 1)
 
+#if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 #define mml_trace_ex_begin(fmt, args...) do { \
 	if (mml_trace) \
 		mml_trace_begin(fmt, ##args); \
@@ -239,6 +278,15 @@ extern int mml_trace;
 	if (mml_trace) \
 		mml_trace_end(); \
 } while (0)
+
+#else
+#define mml_trace_ex_begin(fmt, args...) \
+	mml_trace_begin(fmt, ##args)
+
+#define mml_trace_ex_end() \
+	mml_trace_end()
+
+#endif
 
 /* mml pq control */
 extern int mml_pq_disable;

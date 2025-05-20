@@ -711,12 +711,17 @@ s32 mml_drm_submit(struct mml_drm_ctx *dctx, struct mml_submit *submit,
 	s32 result = -EINVAL;
 	u32 i;
 	struct fence_data fence = {0};
+	u32 pre_jobid = atomic_read(&ctx->job_serial) + 1;
 
-	mml_trace_begin("%s", __func__);
+	mml_trace_begin("%s_%u_%u", __func__, pre_jobid, disp_fid);
 
+#if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 	mml_mmp_raw(submit, MMPROFILE_FLAG_PULSE,
-		atomic_read(&ctx->job_serial) + 1, submit->info.mode,
+		pre_jobid, submit->info.mode,
 		&submit->info, sizeof(submit->info));
+#else
+	mml_mmp(submit, MMPROFILE_FLAG_PULSE, pre_jobid, submit->info.mode);
+#endif
 
 	if (mtk_mml_msg || mml_pq_disable) {
 		for (i = 0; i < MML_MAX_OUTPUTS; i++) {
@@ -797,7 +802,7 @@ s32 mml_drm_submit(struct mml_drm_ctx *dctx, struct mml_submit *submit,
 
 	/* +1 for real id assign to next task */
 	mml_mmp(submit, MMPROFILE_FLAG_START,
-		atomic_read(&ctx->job_serial) + 1, submit->info.mode);
+		pre_jobid, submit->info.mode);
 
 	mutex_lock(&ctx->config_mutex);
 
@@ -814,7 +819,7 @@ s32 mml_drm_submit(struct mml_drm_ctx *dctx, struct mml_submit *submit,
 			mml_msg("[drm]reuse task %p pkt %p %p",
 				task, task->pkts[0], task->pkts[1]);
 		} else {
-			task = mml_core_create_task(atomic_read(&ctx->job_serial));
+			task = mml_core_create_task(pre_jobid);
 			if (IS_ERR(task)) {
 				result = PTR_ERR(task);
 				mml_err("[drm]%s create task for reuse frame fail", __func__);
@@ -835,7 +840,7 @@ s32 mml_drm_submit(struct mml_drm_ctx *dctx, struct mml_submit *submit,
 			mml_err("[drm]%s create frame config fail", __func__);
 			goto err_unlock_exit;
 		}
-		task = mml_core_create_task(atomic_read(&ctx->job_serial));
+		task = mml_core_create_task(pre_jobid);
 		if (IS_ERR(task)) {
 			list_del_init(&cfg->entry);
 			frame_config_destroy(cfg);
@@ -982,14 +987,14 @@ s32 mml_drm_submit(struct mml_drm_ctx *dctx, struct mml_submit *submit,
 	/* submit to core */
 	mml_core_submit_task(cfg, task);
 
-	mml_mmp(submit, MMPROFILE_FLAG_END, atomic_read(&ctx->job_serial), disp_fid);
+	mml_mmp(submit, MMPROFILE_FLAG_END, pre_jobid, disp_fid);
 	mml_trace_end();
 	return 0;
 
 err_unlock_exit:
 	mutex_unlock(&ctx->config_mutex);
 err_buf_exit:
-	mml_mmp(submit, MMPROFILE_FLAG_END, atomic_read(&ctx->job_serial), disp_fid);
+	mml_mmp(submit, MMPROFILE_FLAG_END, pre_jobid, disp_fid);
 	mml_trace_end();
 	mml_log("[drm]%s fail result %d task %p", __func__, result, task);
 	if (task) {

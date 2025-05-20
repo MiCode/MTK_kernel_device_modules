@@ -1457,7 +1457,6 @@ static void mml_core_dvfs_end(struct mml_task *task, u32 pipe)
 
 	if (mml_isdc(cfg->info.mode) && timespec64_compare(&curr_time, &task->end_time) > 0) {
 		overdue = true;
-		mml_trace_tag_start(MML_TTAG_OVERDUE);
 		mml_mmp(overdue, MMPROFILE_FLAG_PULSE, task->job.jobid, 0);
 	}
 
@@ -1589,7 +1588,7 @@ done:
 		throughput, bandwidth, max_pixel, dpc);
 exit:
 	if (overdue)
-		mml_trace_tag_end(MML_TTAG_OVERDUE);
+		mml_trace_tag_mark(MML_TTAG_OVERDUE);
 	mutex_unlock(&tp->qos_mutex);
 	mml_trace_ex_end();
 }
@@ -2400,10 +2399,11 @@ static void core_config_task(struct mml_task *task)
 {
 	struct mml_frame_config *cfg = task->config;
 	const u32 jobid = task->job.jobid;
+	const u32 disp_fid = task->disp_fid_submit;
 	enum mml_mode mode = cfg->info.mode;
 	s32 err;
 
-	mml_trace_begin("%s_%u", __func__, jobid);
+	mml_trace_begin("%s_%u_%u", __func__, jobid, disp_fid);
 	if (mode == MML_MODE_DDP_ADDON)
 		mml_mmp2(config_dle, MMPROFILE_FLAG_START,
 			cfg->info.src.width, cfg->info.src.height,
@@ -2859,19 +2859,16 @@ void mml_update_array(u32 comp_id, struct mml_task_reuse *reuse,
 }
 
 #ifdef CONFIG_TRACING
-#if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 static noinline int tracing_mark_write(char *buf)
 {
 	trace_puts(buf);
 	return 0;
 }
 #endif
-#endif
 
 int mml_tracing_mark_write(char *fmt, ...)
 {
 #ifdef CONFIG_TRACING
-#if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 	char buf[MML_TRACE_MSG_LEN];
 	va_list args;
 	int len;
@@ -2886,7 +2883,6 @@ int mml_tracing_mark_write(char *fmt, ...)
 	}
 
 	tracing_mark_write(buf);
-#endif
 #endif
 	return 0;
 }
