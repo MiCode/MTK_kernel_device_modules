@@ -273,6 +273,7 @@ enum GCE_COND_REVERSE_COND {
 #define DISP_DPC_DISP_DT_TE_MON_SEL_G1                   0x03CUL
 #define DISP_DPC_MML_DT_TE_MON_SEL_G0                    0x040UL
 #define DISP_DPC_MML_DT_TE_MON_SEL_G1                    0x044UL
+#define DISP_DPC_MMINFRA_HWVOTE_CFG                      0x0B0UL
 
 #define DISP_REG_DPC3_DTx_SW_TRIG(n)                     (0x300UL + 0x4 * (n))	// n = 0 ~ 80
 

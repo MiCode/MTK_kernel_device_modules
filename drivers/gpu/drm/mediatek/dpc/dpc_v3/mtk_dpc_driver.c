@@ -1610,7 +1610,7 @@ static void dpc_disp_group_enable(bool en)
 	writel(value, dpc_base + DISP_REG_DPC_DISP_VDISP_DVFS_CFG);
 
 	/* mminfra request */
-	writel(0x00080008, dpc_base + 0xb0);
+	writel(0x00080008, dpc_base + DISP_DPC_MMINFRA_HWVOTE_CFG);
 	value = (en && has_cap(DPC_CAP_MMINFRA_PLL)) ? 0x000200 : 0x1a0a1a;
 	writel(value, dpc_base + DISP_REG_DPC_DISP_INFRA_PLL_OFF_CFG);
 
@@ -1645,7 +1645,7 @@ static void dpc_mml_group_enable(bool en)
 	writel(value, dpc_base + DISP_REG_DPC_MML_HRTBW_SRTBW_CFG);
 
 	/* mminfra request */
-	writel(0x00080008, dpc_base + 0xb0);
+	writel(0x00080008, dpc_base + DISP_DPC_MMINFRA_HWVOTE_CFG);
 	value = (en && has_cap(DPC_CAP_MMINFRA_PLL)) ? 0x000a00 : 0x1a0a1a; /* mminfrq req always off */
 	writel(value, dpc_base + DISP_REG_DPC_MML_INFRA_PLL_OFF_CFG);
 
@@ -1668,8 +1668,28 @@ void dpc_group_enable_v3(const u16 group, bool en)
 	u32 value = 0;
 
 	if (group == 7777) {
-		writel(0x080808, dpc_base + DISP_REG_DPC_DISP_INFRA_PLL_OFF_CFG);
-		writel(0x080808, dpc_base + DISP_REG_DPC_MML_INFRA_PLL_OFF_CFG);
+		/* force vote mminfra req */
+		writel(0x00080008, dpc_base + DISP_DPC_MMINFRA_HWVOTE_CFG);
+		writel(0x0a0a0a, dpc_base + DISP_REG_DPC_DISP_INFRA_PLL_OFF_CFG);
+		writel(0x0a0a0a, dpc_base + DISP_REG_DPC_MML_INFRA_PLL_OFF_CFG);
+
+		/* [0] urgent from 1:MML_DDREN_URG & DISP1_HRT_URG, 0:all subsys */
+		/* [1] disp_vcore controlled by 1:DPC_EN, 0:DUMMY1 */
+		writel(0b01, dpc_base + DISP_REG_DPC_DUMMY0);
+
+		/* [0] disp_vcore SW_CTRL */
+		/* [1] disp_vcore SW_CTRL_VALUE */
+		writel(0b01, dpc_base + DISP_REG_DPC_DUMMY1);
+
+		/* polling disp vcore req idle */
+		ret = readl_poll_timeout_atomic(hwccf_hw_mtcmos_req, value, !(value & BIT(5)), 1, 2000);
+		if (ret < 0)
+			DPCERR("polling dpc req idle timeout %d", __LINE__);
+
+		/* polling dpc mminfra req idle */
+		ret = readl_poll_timeout_atomic(hwccf_hw_irq_req, value, !(value & 0xc), 1, 2000);
+		if (ret < 0)
+			DPCERR("polling dpc req idle timeout %d", __LINE__);
 	} else if (group == DPC_SUBSYS_DISP) {
 		if (en) {
 			dpc_disp_group_enable(en);
@@ -2344,7 +2364,7 @@ static int dpc_res_init_v3(struct mtk_dpc *priv)
 	writel(0x0D0D0D0D, dpc_base + DISP_REG_DPC_MML_DDRSRC_EMIREQ_CFG);
 
 	/* DISP_DPC_MMINFRA_HWVOTE_CFG */
-	writel(0x00080008, dpc_base + 0xb0);
+	writel(0x00080008, dpc_base + DISP_DPC_MMINFRA_HWVOTE_CFG);
 	writel(0x1a1a1a, dpc_base + DISP_REG_DPC_DISP_INFRA_PLL_OFF_CFG);
 	writel(0x1a1a1a, dpc_base + DISP_REG_DPC_MML_INFRA_PLL_OFF_CFG);
 

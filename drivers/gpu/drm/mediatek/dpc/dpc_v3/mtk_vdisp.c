@@ -554,6 +554,7 @@ void mtk_vdisp_ctrl(int on_off, const char *c_n, uint32_t ops, uint32_t bit)
 				if (g_priv->vdisp_ao_cg_con)
 					writel((BIT(0) | BIT(1) | BIT(2)), g_priv->vdisp_ao_cg_con + 0x4);
 
+			/* dpc hw unvote disp vcore and mminfra */
 			if (disp_dpc_driver.dpc_group_enable)
 				disp_dpc_driver.dpc_group_enable(7777, false);
 
