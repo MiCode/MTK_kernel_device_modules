@@ -287,6 +287,15 @@ void mtk_dbgtp_update(struct mtk_drm_private *priv)
 {
 	int i = 0;
 
+	/* enable fifo mon and dbgtp when enable Underrun AEE */
+	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_DSI_UNDERRUN_AEE)) {
+		priv->mtk_dbgtp_sta.fifo_mon_en[0] = 1;
+		priv->mtk_dbgtp_sta.fifo_mon_trig_thrd[0] = 30;
+	} else {
+		priv->mtk_dbgtp_sta.fifo_mon_en[0] = 0;
+		priv->mtk_dbgtp_sta.fifo_mon_trig_thrd[0] = 0;
+	}
+
 	if (priv->mtk_dbgtp_sta.dbgtp_en) {
 		for (i = 0; i < DISPSYS_NUM; i++) {
 			if (priv->mtk_dbgtp_sta.dispsys[i].subsys_mon_en) {
