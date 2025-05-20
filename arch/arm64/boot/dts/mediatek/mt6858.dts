@@ -600,6 +600,14 @@
 		/* secure-sspm-md2spm-clr = <1>; */
 	};
 
+	fm: fm {
+		compatible = "mediatek,fm";
+		family-id = <0x6983>;
+		host-id = <0x6858>;
+		conn-id = <0x0205>;
+		interrupts = <GIC_SPI 486 IRQ_TYPE_LEVEL_HIGH 0>;
+	};
+
 	bus-parity@c538800 {
 		compatible = "mediatek,bus-parity-disabled";
 		reg = <0 0x0c538800 0 0x20>,	/* M0, MST_CCIM0 */
