@@ -24,7 +24,8 @@
 			"vc536421_vc576821",		/* [15] SKU1 VC536421/576821 */
 			"qm42655_qm45655_was",		/* [16] SKU5-1 2G+1A+1A */
 			"ipa_qm45655",			/* [17] SKU2 2G iPA+1A+1A */
-			"vc536411_vc576811";		/* [18] SKU1 VC536411/VC576811 2G+2A */
+			"vc536411_vc576811",		/* [18] SKU1 VC536411/VC576811 2G+2A */
+			"qm42655_qm45655_wf2_ifem";	/* [19] SKU5-1 2G+1A+1A(WF2 iFEM) */
 
 		hwid {
 			/* HWID bit[0]
@@ -876,6 +877,54 @@
 				flags {
 					efem-mode = [03]; /* 3:epa_elna, 2:epa, 1:elna, 0:bypass */
 					rx-mode = [34]; /* 0x34: G-band RxL, HBBT RxH */
+				};
+			};
+		};
+
+		/***************************************************************
+		 * [HW][19] 2G+2A+1A (WF2 iFEM)
+		 **************************************************************/
+		hw-19 {
+			using-fems =
+				<&qm42655>,
+				<&qm45655>,
+				<&nofemspdt3>;
+
+			layout-flag = <0x00000000>;
+			layout =
+				<&g_wf0_bt0_qm42655>,
+				<&g_wf1_bt1_qm42655>,
+				<&a_wf0_qm45655>,
+				<&a_wf1_qm45655>,
+				<&a_wf2_nofemspdt3>;
+
+			layout-spdt =
+				<&spdt_a2_trx>,
+				<&spdt_bt0_cs>,
+				<&spdt_a_wf0_antswap>,
+				<&spdt_g_bt1_antswap>;
+
+			common {
+				flags {
+					fe-ant-cnt = [86];
+					fe-conn-dpdt-sp3t = [80];
+					fe-conn-spdt = [94];
+					fe-bt-wf-usage = [98];
+					fe-conn-spdt-2 = [91];
+				};
+			};
+
+			wifi {
+				using-states =
+					<&qm42655_rxl>,
+					<&qm45655_rxl_rxh>,
+					<&nofemspdt3_state>;
+			};
+
+			bt {
+				flags {
+					efem-mode = [03]; /* 3:epa_elna, 2:epa, 1:elna, 0:bypass */
+					rx-mode = [24]; /* 0x24: G-band RxL */
 				};
 			};
 		};
