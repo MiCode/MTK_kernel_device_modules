@@ -68,6 +68,8 @@ static DEFINE_SPINLOCK(sched_ravg_window_lock);
 DEFINE_PER_CPU(struct flt_rq, flt_rq);
 #define NEW_TASK_ACTIVE_TIME ((u64)sched_ravg_window * sched_ravg_hist_size)
 #define scale_demand(d) ((d) / flt_scale_demand_divisor)
+static int flt_cal_wt = FLT_GP_NWT;
+#define SANITY_NWT(wt)	(((wt) == FLT_GP_NWT) ? 1 : 0)
 
 /* Debug */
 //#define FLT_DEBUG 1
@@ -208,7 +210,7 @@ static void fixup_busy_time(struct task_struct *p, int new_cpu)
 
 void flt_android_rvh_set_task_cpu(void *unused, struct task_struct *p, unsigned int new_cpu)
 {
-	if (unlikely(flt_get_mode() == FLT_MODE_0))
+	if (unlikely(flt_get_mode() == FLT_MODE_0) || SANITY_NWT(flt_cal_wt))
 		return;
 	fixup_busy_time(p, (int) new_cpu);
 }
@@ -822,8 +824,10 @@ static inline void run_flt_irq_work(u64 old_window_start, struct rq *rq)
 
 	result = atomic64_cmpxchg(&flt_irq_work_lastq_ws, old_window_start,
 				   fsrq->window_start);
-	if (result == old_window_start)
+	if (result == old_window_start) {
+		flt_cal_wt = flt_get_grp_weight();
 		flt_irq_work_queue(&flt_irq_work);
+	}
 }
 
 static void flt_update_task_ravg(struct task_struct *p, struct rq *rq, int event,
@@ -866,7 +870,7 @@ static void flt_update_task_ravg(struct task_struct *p, struct rq *rq, int event
 	irq_log_store();
 	old_window_start = update_window_start(rq, wallclock, event);
 
-	if (!fts->mark_start)
+	if (!fts->mark_start || SANITY_NWT(flt_cal_wt))
 		goto done;
 
 	group_id = get_grp_id(p);
@@ -997,6 +1001,8 @@ static int flt_sync_all_cpu(void)
 		}
 		irq_log_store();
 	}
+	if (SANITY_NWT(flt_cal_wt))
+		goto out;
 
 	irq_log_store();
 	for (grp_idx = 0; grp_idx < GROUP_ID_RECORD_MAX; ++grp_idx) {
@@ -1114,6 +1120,7 @@ static int flt_sync_all_cpu(void)
 			WRITE_ONCE(fsrq->group_util_rtratio[grp_idx], res);
 		}
 	}
+out:
 	return 0;
 }
 #if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
@@ -1273,7 +1280,7 @@ void flt_android_rvh_try_to_wake_up(void *unused, struct task_struct *p)
 	u64 wallclock;
 	unsigned long irq_flags;
 
-	if (unlikely(flt_get_mode() == FLT_MODE_0))
+	if (unlikely(flt_get_mode() == FLT_MODE_0) || SANITY_NWT(flt_cal_wt))
 		return;
 	irq_log_store();
 
@@ -1315,7 +1322,7 @@ void flt_android_rvh_schedule(void *unused,
 {
 	u64 wallclock;
 
-	if (unlikely(flt_get_mode() == FLT_MODE_0))
+	if (unlikely(flt_get_mode() == FLT_MODE_0) || SANITY_NWT(flt_cal_wt))
 		return;
 	irq_log_store();
 	wallclock = get_current_time();
