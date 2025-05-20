@@ -128,6 +128,7 @@
 #define DISP_ODDMR_OD_CTRL_EN (0x0040 + DISP_ODDMR_REG_OD_BASE)
 #define REG_OD_EN REG_FLD_MSB_LSB(0, 0)
 #define REG_OD_MODE REG_FLD_MSB_LSB(3, 1)
+#define REG_OD_FORCE_EN REG_FLD_MSB_LSB(13, 13)
 #define DISP_ODDMR_OD_PQ_0 (0x0044 + DISP_ODDMR_REG_OD_BASE)
 #define DISP_ODDMR_OD_BASE_ADDR_R_LSB (0x0054 + DISP_ODDMR_REG_OD_BASE)
 #define DISP_ODDMR_OD_BASE_ADDR_R_MSB (0x0058 + DISP_ODDMR_REG_OD_BASE)
@@ -7147,7 +7148,10 @@ static void mtk_oddmr_set_od_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 			if (oddmr_data->data->od_version >= MTK_OD_V3) {
 				if (oddmr_data->data->sodi_config)
 					oddmr_data->data->sodi_config(comp->mtk_crtc->base.dev, comp->id, handle, &en);
-				mtk_oddmr_write_mask(comp, 1, MT6991_DISP_ODDMR_OD_CTRL_EN, 0x01, handle);
+				SET_VAL_MASK(value, mask, 1, REG_OD_EN);
+				SET_VAL_MASK(value, mask, 1, REG_OD_FORCE_EN);
+				mtk_oddmr_write_mask(comp, value, MT6991_DISP_ODDMR_OD_CTRL_EN, mask, handle);
+				value = 0; mask = 0;
 				mtk_oddmr_write(comp, 0, DISP_ODDMR_TOP_OD_BYASS, handle);
 				//OD DDREN ctrl
 				SET_VAL_MASK(value, mask, 0, REG_OD_DDREN_REQ_DISABLE);
@@ -7182,7 +7186,10 @@ static void mtk_oddmr_set_od_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 			}
 		} else {
 			if (oddmr_data->data->od_version >= MTK_OD_V3) {
-				mtk_oddmr_write_mask(comp, 0, MT6991_DISP_ODDMR_OD_CTRL_EN, 0x01, handle);
+				SET_VAL_MASK(value, mask, 0, REG_OD_EN);
+				SET_VAL_MASK(value, mask, 0, REG_OD_FORCE_EN);
+				mtk_oddmr_write_mask(comp, value, MT6991_DISP_ODDMR_OD_CTRL_EN, mask, handle);
+				value = 0; mask = 0;
 				mtk_oddmr_od_bypass(comp, handle);
 				//OD DDREN ctrl
 				SET_VAL_MASK(value, mask, 1, REG_OD_DDREN_REQ_DISABLE);
