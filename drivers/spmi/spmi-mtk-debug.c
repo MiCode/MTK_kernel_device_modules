@@ -2672,12 +2672,14 @@ void get_spmi_slvid_nack_cnt(unsigned int *buf)
 		/* Dump accumulated NACK count */
 		pr_notice("[SPMI] HW NACK count Version: %d\n", slvid_nack_cnt[0]);
 		for (i = 1; i < slvid_cnt + 1; i++) {
-			pr_notice("[SPMI-M] SLVID: %d, NACK Count: %d\n",
-						i - 1, slvid_nack_cnt[i]);
+			if (slvid_nack_cnt[i] != 0)
+				pr_notice("[SPMI-M] SLVID: %d, NACK Count: %d\n",
+							i - 1, slvid_nack_cnt[i]);
 		}
 		for (i = slvid_cnt + 1; i < spmi_nack_idx_cnt; i++) {
-			pr_notice("[SPMI-P] SLVID: %d, NACK Count: %d\n",
-						i - 1 - slvid_cnt, slvid_nack_cnt[i]);
+			if (slvid_nack_cnt[i] != 0)
+				pr_notice("[SPMI-P] SLVID: %d, NACK Count: %d\n",
+							i - 1 - slvid_cnt, slvid_nack_cnt[i]);
 		}
 	}
 }
