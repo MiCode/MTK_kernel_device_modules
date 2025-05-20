@@ -27,8 +27,8 @@ extern int (*powerhal_adpf_resume_fp)(unsigned int sid);
 extern int (*powerhal_adpf_close_fp)(unsigned int sid);
 extern int (*powerhal_adpf_sent_hint_fp)(unsigned int sid, int hint);
 extern int (*powerhal_adpf_set_threads_fp)(unsigned int sid, int *threadIds, int threadIds_size);
+extern int (*powerhal_adpf_get_cpu_headroom_fp)(void);
 extern int (*powerhal_dsu_sport_mode_fp)(unsigned int mode);
-extern int (*powerhal_adpf_get_fpsgo_thread_loading_fp)(struct fpsgo_render_info *render_info);
 
 
 enum _SESSION_HINT {

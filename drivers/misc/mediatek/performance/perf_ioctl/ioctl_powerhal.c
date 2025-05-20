@@ -28,9 +28,8 @@ int (*powerhal_adpf_sent_hint_fp)(unsigned int sid, int hint);
 EXPORT_SYMBOL_GPL(powerhal_adpf_sent_hint_fp);
 int (*powerhal_adpf_set_threads_fp)(unsigned int sid, int *threadIds, int threadIds_size);
 EXPORT_SYMBOL_GPL(powerhal_adpf_set_threads_fp);
-
-int (*powerhal_adpf_get_fpsgo_thread_loading_fp)(struct fpsgo_render_info *render_info);
-EXPORT_SYMBOL_GPL(powerhal_adpf_get_fpsgo_thread_loading_fp);
+int (*powerhal_adpf_get_cpu_headroom_fp)(void);
+EXPORT_SYMBOL_GPL(powerhal_adpf_get_cpu_headroom_fp);
 
 // DSU
 int (*powerhal_dsu_sport_mode_fp)(unsigned int mode);
@@ -214,23 +213,20 @@ static long adpf_device_ioctl(struct file *filp,
 				ret = -EFAULT;
 				goto ret_ioctl;
 			}
-		}
+		} else if (t_msgKM->cmd == ADPF_GET_CPU_HEADROOM) {
+			int headroom;
 
-		if (t_msgKM->cmd == ADPF_GET_FPSGO_THREAD_LOADING) {
-			struct fpsgo_render_info render_info;
-
-			if(!powerhal_adpf_get_fpsgo_thread_loading_fp) {
-				ret = -EAGAIN;
-				goto ret_ioctl;
+			if (!powerhal_adpf_get_cpu_headroom_fp) {
+				pr_info("powerhal_adpf_get_cpu_headroom_fp is NULL");
+				headroom = -1;
+			} else {
+				headroom = powerhal_adpf_get_cpu_headroom_fp();
+				pr_debug("[%s] headroom: %d", __func__, headroom);
 			}
 
-			powerhal_adpf_get_fpsgo_thread_loading_fp(&render_info);
-			t_msgKM->raw_t_cpu = render_info.raw_t_cpu;
-			t_msgKM->ema_t_cpu = render_info.ema_t_cpu;
-			t_msgKM->target_fps = render_info.target_fps;
+			t_msgKM->cpuHeadroomResult = headroom;
 
-			if (perfctl_copy_to_user(t_msgUM, t_msgKM,
-					sizeof(struct _ADPF_PACKAGE))) {
+			if (perfctl_copy_to_user(t_msgUM, t_msgKM, sizeof(struct _ADPF_PACKAGE))) {
 				pr_debug("POWERHAL_GET_ADPF_DATA copy from user error");
 				ret = -EFAULT;
 				goto ret_ioctl;

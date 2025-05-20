@@ -93,7 +93,7 @@ static int enable_cpu_timing_hint = 1;
 static struct _SESSION *sessionList[ADPF_MAX_SESSION];
 static adpfCallback adpfCallbackList[ADPF_MAX_CALLBACK];
 static DEFINE_MUTEX(adpf_mutex);
-static struct render_frame_info render[MAX_RENDER_TID];
+static struct render_frame_info fpsgo_frame_info[MAX_RENDER_TID];
 
 int (*powerhal2fpsgo_get_fpsgo_frame_info_fp)(
 	int max_num,
@@ -602,6 +602,54 @@ int adpf_create_session_hint(unsigned int sid, unsigned int tgid,
 	return 0;
 }
 
+int get_max_fpsgo_perf_idx(void)
+{
+	int render_count = 0;
+	unsigned long query_mask = 0;
+	int i = 0;
+	int max_perf_idx = -1;
+
+	if (!powerhal2fpsgo_get_fpsgo_frame_info_fp) {
+		pr_info("[%s] powerhal2fpsgo_get_fpsgo_frame_info_fp not found!",  __func__);
+		return -1;
+	}
+
+	memset(fpsgo_frame_info, 0, sizeof(struct render_frame_info) * MAX_RENDER_TID);
+
+	query_mask = (1 << GET_FPSGO_PERF_IDX);
+
+	render_count = powerhal2fpsgo_get_fpsgo_frame_info_fp(MAX_RENDER_TID, query_mask, 1, -1, fpsgo_frame_info);
+	if (render_count <= 0) {
+		pr_debug("[%s] no render_info found from fpsgo",  __func__);
+		return -1;
+	}
+
+	for (i = 0; i < render_count; i++) {
+		pr_debug("[%s] tgid=%d, pid=%d, perf_idx=%d",
+			__func__, fpsgo_frame_info[i].tgid, fpsgo_frame_info[i].pid, fpsgo_frame_info[i].blc);
+
+		if (fpsgo_frame_info[i].blc > max_perf_idx)
+			max_perf_idx = fpsgo_frame_info[i].blc;
+	}
+
+	return max_perf_idx;
+}
+
+int adpf_get_cpu_headroom(void)
+{
+	int headroom = -1;
+	int perf_idx = get_max_fpsgo_perf_idx();
+
+	if (perf_idx < 0 || perf_idx > 100) {
+		pr_debug("[%s] invalid perf_idx: %d", __func__, perf_idx);
+		return -1;
+	}
+
+	headroom = 100 - perf_idx;
+
+	return headroom;
+}
+
 int adpf_get_hint_session_preferred_rate(long long *preferredRate)
 {
 	// Implement in the native layer
@@ -904,59 +952,6 @@ int dsu_sport_mode(unsigned int mode)
 	return 0;
 }
 
-int adpf_get_fpsgo_thread_loading(struct fpsgo_render_info *render_info)
-{
-	int i = 0;
-	int render_count = 0;
-	unsigned long query_mask = 0;
-
-	if (!powerhal2fpsgo_get_fpsgo_frame_info_fp) {
-		pr_info("[%s] powerhal2fpsgo_get_fpsgo_frame_info_fp not found!",  __func__);
-		return -1;
-	}
-
-	memset(render, 0, sizeof(struct render_frame_info) * MAX_RENDER_TID);
-
-	query_mask =
-		(1 << GET_FPSGO_RAW_CPU_TIME) |
-		(1 << GET_FPSGO_EMA_CPU_TIME) |
-		(1 << GET_FPSGO_TARGET_FPS);
-
-	render_count = powerhal2fpsgo_get_fpsgo_frame_info_fp(MAX_RENDER_TID, query_mask, 1, -1, render);
-
-	if (render_count > 0) {
-		int target_index = 0;
-		int max_loading = 0;
-
-		for (i = 0; i < render_count; i++) {
-			unsigned long long target_frame_time = 0;
-			unsigned long long scaled_cpu_running_time = 0;
-			int loading = 0;
-
-			if (render[i].target_fps == 0) {
-				pr_info("[%s] target_fps cannot be zero", __func__);
-			} else {
-				target_frame_time = div64_u64(NSEC_PER_SEC, render[i].target_fps);
-				scaled_cpu_running_time = render[i].ema_t_cpu * 100;
-				loading = scaled_cpu_running_time / target_frame_time;
-			}
-
-			if (loading > max_loading) {
-				max_loading = loading;
-				target_index = i;
-			}
-		}
-
-		render_info->ema_t_cpu = render[target_index].ema_t_cpu;
-		render_info->raw_t_cpu = render[target_index].raw_t_cpu;
-		render_info->target_fps = render[target_index].target_fps;
-	} else {
-		pr_info("[%s] no render thread found from fpsgo",  __func__);
-	}
-
-	return 0;
-}
-
 static int __init powerhal_cpu_ctrl_init(void)
 {
 	int cpu_num = 0;
@@ -1078,7 +1073,7 @@ static int __init powerhal_cpu_ctrl_init(void)
 	powerhal_adpf_close_fp = adpf_close;
 	powerhal_adpf_sent_hint_fp = adpf_sent_hint;
 	powerhal_adpf_set_threads_fp = adpf_set_threads;
-	powerhal_adpf_get_fpsgo_thread_loading_fp = adpf_get_fpsgo_thread_loading;
+	powerhal_adpf_get_cpu_headroom_fp = adpf_get_cpu_headroom;
 
 	// DSU
 	powerhal_dsu_sport_mode_fp = dsu_sport_mode;

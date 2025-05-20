@@ -33,7 +33,7 @@ enum _ADPF_CMD {
 	ADPF_CLOSE,
 	ADPF_SENT_HINT,
 	ADPF_SET_THREADS,
-	ADPF_GET_FPSGO_THREAD_LOADING,
+	ADPF_GET_CPU_HEADROOM,
 };
 
 struct _ADPF_WORK_DURATION {
@@ -56,15 +56,7 @@ struct _ADPF_PACKAGE {
 		__s64 durationNanos;
 		__s64 targetDurationNanos;
 	};
-	__s32 target_fps;
-	__u64 raw_t_cpu;
-	__u64 ema_t_cpu;
-};
-
-struct fpsgo_render_info {
-	int target_fps;
-	unsigned long long raw_t_cpu;
-	unsigned long long ema_t_cpu;
+	__s32 cpuHeadroomResult;
 };
 
 struct _POWERHAL_PACKAGE {

@@ -6337,6 +6337,7 @@ void fbt_reset_boost(struct render_info *thr)
 	boost->last_blc = 0;
 	boost->target_time = 0;
 	boost->target_fps = -1;
+	boost->last_normal_blc = 0;
 
 	memset(boost->frame_info, 0, WINDOW * sizeof(struct fbt_frame_info));
 	boost->f_iter = 0;
