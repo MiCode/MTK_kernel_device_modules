@@ -33,6 +33,7 @@ static void __iomem *qos_sram_base;
 static unsigned int qos_sram_bound;
 unsigned int evt_tri_dbg_tbl[NR_TRI];
 unsigned int mtk_qos_enable = 1;
+unsigned int is_enable_qos_ltr_buffer = 0xFFFF;
 
 unsigned int is_mtk_qos_enable(void)
 {
@@ -203,6 +204,8 @@ int mtk_qos_probe(struct platform_device *pdev,
 	qos_add_interface(&pdev->dev);
 	qos->regsize = (unsigned int) resource_size(res);
 	qos_sram_init(qos->regs, qos->regsize);
+	if (qos->legacy_support_v1)
+		is_enable_qos_ltr_buffer = 0;
 
 	if (!qos->legacy_support_v1) {
 		res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
@@ -232,10 +235,12 @@ int mtk_qos_probe(struct platform_device *pdev,
 		res = platform_get_resource(pdev, IORESOURCE_MEM, 3);
 		qos->regs = devm_ioremap_resource(&pdev->dev, res);
 		if (IS_ERR(qos->regs))
-			return PTR_ERR(qos->regs);
-		pr_info("mtkqos: find share sram dbg node\n");
-		qos->regsize = (unsigned int) resource_size(res);
-		qos_share_init_sram_dbg(qos->regs, qos->regsize);
+			pr_info("mtkqos: not using dbg\n");
+		else {
+			pr_info("mtkqos: find share sram dbg node\n");
+			qos->regsize = (unsigned int) resource_size(res);
+			qos_share_init_sram_dbg(qos->regs, qos->regsize);
+		}
 	}
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SSPM_SUPPORT)
 	if (mtk_qos_enable) {

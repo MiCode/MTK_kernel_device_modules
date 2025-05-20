@@ -28,7 +28,6 @@ static int qos_share_use_sram_ext;
 /* share dram for subsys related table communication */
 static phys_addr_t rec_phys_addr, rec_virt_addr;
 static unsigned long long rec_size;
-unsigned int is_enable_qos_ltr_buffer = 0xFFFF;
 
 static void qos_share_sspm_setup(void)
 {
@@ -185,6 +184,8 @@ int qos_share_init_sram(void __iomem *regs, unsigned int bound)
 	qos_share_use_sram = 1;
 	if (qos_share_sram_bound > 0x200)
 		is_enable_qos_ltr_buffer = 1;
+	else
+		is_enable_qos_ltr_buffer = 0;
 
 	/* init zero except for version addr */
 	for (i = 0; i < bound; i += 4)
