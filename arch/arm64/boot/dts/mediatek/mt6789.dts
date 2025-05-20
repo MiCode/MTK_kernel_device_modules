@@ -4341,6 +4341,7 @@
 			mediatek,comm-port-range = <0x4 0x8>;
 			main-power;
 			power-domains = <&scpsys MT6789_POWER_DOMAIN_CAM>;
+			bus-protect;
 		};
 
 		smi_pd_cam_rawa: smi-pd-cam-rawa {
@@ -4349,6 +4350,7 @@
 			mediatek,comm-port-range = <0x4>;
 			power-domains = <&scpsys MT6789_POWER_DOMAIN_CAM_RAWA>;
 			power-reset = <0x1a04f00c 0>;
+			bus-protect;
 		};
 
 		smi_pd_cam_rawb: smi-pd-cam-rawb {
@@ -4357,6 +4359,7 @@
 			mediatek,comm-port-range = <0x8>;
 			power-domains = <&scpsys MT6789_POWER_DOMAIN_CAM_RAWB>;
 			power-reset = <0x1a06f00c 0>;
+			bus-protect;
 		};
 
 		smi-dbg {
