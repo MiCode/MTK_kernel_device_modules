@@ -46,6 +46,7 @@ SIMPLE_CHG_MODULES = [
     "rt9490-charger",
     "rt9758-charger",
     "rt9759",
+    "mt6720-div2",
 ]
 
 SPLIT_TYPE_CHG_MODULES = [

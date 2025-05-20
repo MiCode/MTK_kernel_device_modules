@@ -124,6 +124,8 @@ extern unsigned int dbg_log_level;
 
 #define MT6720_REG_VSYS_INTB		(0x19)
 #define MT6720_REG_CHG_IBUS_AICR	(0x10A)
+#define MT6720_REG_CHG_AD		(0x123)
+#define MT6720_REG_CHG_UUG_DUMMY0	(0x142)
 #define MT6720_REG_CHG_BYPASS_IQ	(0x146)
 
 #define MT6379_CHIP_REV_MSK		GENMASK(3, 0)

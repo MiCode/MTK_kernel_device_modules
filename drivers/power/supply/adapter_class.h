@@ -23,6 +23,8 @@ struct adapter_power_cap {
 	int ma[ADAPTER_CAP_MAX_NR];
 	int maxwatt[ADAPTER_CAP_MAX_NR];
 	int minwatt[ADAPTER_CAP_MAX_NR];
+	int step_mv[ADAPTER_CAP_MAX_NR];
+	int step_ma[ADAPTER_CAP_MAX_NR];
 	uint8_t type[ADAPTER_CAP_MAX_NR];
 	int info[ADAPTER_CAP_MAX_NR];
 };

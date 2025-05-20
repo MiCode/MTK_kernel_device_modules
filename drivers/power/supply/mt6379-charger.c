@@ -72,7 +72,7 @@ unsigned int fsw_ctrl_time = MT6379_FSW_CONTROL_TIME;
 unsigned int fsw_ctrl_time_ns = MT6379_FSW_CONTROL_TIME_NS;
 unsigned int fsw_ctrl_time_2 = MT6379_FSW_CONTROL_TIME_2;
 unsigned int fsw_ctrl_time_ns_2 = MT6379_FSW_CONTROL_TIME_NS_2;
-unsigned int support_fsw_wakeup = 1;
+unsigned int support_fsw_wakeup;
 
 module_param(support_fsw_wakeup, uint, 0644);
 module_param(fast_fsw_control, uint, 0644);
@@ -621,12 +621,19 @@ static int mt6379_otg_regulator_enable(struct regulator_dev *rdev)
 {
 	struct mt6379_charger_data *cdata = rdev->reg_data;
 	int ret = 0;
+	u16 addr = 0;
+	u8 msk = 0;
 
 	if (mt6379_charger_is_usb_killer(cdata))
 		return -EIO;
 
-	if (cdata->id != CHARGER_ID_MT6379)
-		return regulator_enable_regmap(rdev);
+	if (cdata->id != CHARGER_ID_MT6379) {
+		addr = MT6720_REG_CHG_AD;
+		msk = BIT(4);
+	} else {
+		addr = MT6379_REG_CHG_HD_PP7;
+		msk = BIT(5);
+	}
 
 	/* disable PP_CV_FLOW_IDLE */
 	ret = mt6379_enable_tm(cdata, true);
@@ -635,7 +642,7 @@ static int mt6379_otg_regulator_enable(struct regulator_dev *rdev)
 		return ret;
 	}
 
-	ret = regmap_update_bits(cdata->rmap, MT6379_REG_CHG_HD_PP7, BIT(5), 0);
+	ret = regmap_update_bits(cdata->rmap, addr, msk, 0);
 	if (ret) {
 		ret = mt6379_enable_tm(cdata, false);
 		if (ret)
@@ -657,18 +664,24 @@ static int mt6379_otg_regulator_disable(struct regulator_dev *rdev)
 {
 	struct mt6379_charger_data *cdata = rdev->reg_data;
 	int ret = 0;
+	u16 addr = 0;
+	u8 msk = 0;
 
-	if (cdata->id != CHARGER_ID_MT6379)
-		return regulator_disable_regmap(rdev);
+	if (cdata->id != CHARGER_ID_MT6379) {
+		addr = MT6720_REG_CHG_AD;
+		msk = BIT(4);
+	} else {
+		addr = MT6379_REG_CHG_HD_PP7;
+		msk = BIT(5);
+	}
 
-	/* enable PP_CV_FLOW_IDLE */
 	ret = mt6379_enable_tm(cdata, true);
 	if (ret) {
 		dev_info(cdata->dev, "%s, Failed to enable tm(ret:%d)\n", __func__, ret);
 		return ret;
 	}
 
-	ret = regmap_update_bits(cdata->rmap, MT6379_REG_CHG_HD_PP7, BIT(5), BIT(5));
+	ret = regmap_update_bits(cdata->rmap, addr, msk, msk);
 	if (ret) {
 		ret = mt6379_enable_tm(cdata, false);
 		if (ret)
@@ -1329,7 +1342,7 @@ static int mt6379_get_ipeak(struct mt6379_charger_data *cdata, int *ipeak)
 
 	ret = iio_read_channel_processed(&cdata->iio_adcs[ADC_CHAN_IBUS], &ibus);
 	if (ret) {
-		dev_info(dev, "%s, Failed to get ibus (ret:%d)\n", __func__, ret);
+		dev_info(dev, "%s Failed to get ibus (ret:%d)\n", __func__, ret);
 		return ret;
 	}
 
@@ -2030,6 +2043,30 @@ static ssize_t target_icc_uA_show(struct device *dev, struct device_attribute *a
 }
 static DEVICE_ATTR_RW(target_icc_uA);
 
+static ssize_t target_mivr_uV_store(struct device *dev, struct device_attribute *attr,
+				    const char *buf, size_t count)
+{
+	struct mt6379_charger_data *cdata = power_supply_get_drvdata(to_power_supply(dev));
+	int ret = 0, val = 0;
+
+	ret = kstrtoint(buf, 0, &val);
+	if (ret) {
+		dev_info(dev, "%s, Failed to parse token\n", __func__);
+		return ret;
+	}
+
+	cdata->target_mivr_uV = val;
+	return count;
+}
+
+static ssize_t target_mivr_uV_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct mt6379_charger_data *cdata = power_supply_get_drvdata(to_power_supply(dev));
+
+	return sysfs_emit(buf, "%d\n", cdata->target_mivr_uV);
+}
+static DEVICE_ATTR_RW(target_mivr_uV);
+
 static const u16 mt6xxx_charger_bypass_iq[] = {
 	MT6379_REG_CHG_BYPASS_IQ,
 	MT6720_REG_CHG_BYPASS_IQ,
@@ -2184,6 +2221,7 @@ static struct attribute *mt6379_charger_psy_sysfs_attrs[] = {
 	&dev_attr_force_set_icc_offset_step.attr,
 	&dev_attr_target_icc_uA.attr,
 	&dev_attr_target_aicr_uA.attr,
+	&dev_attr_target_mivr_uV.attr,
 	&dev_attr_lock_icc_and_aicr_en.attr,
 	&dev_attr_test_mode.attr,
 	NULL

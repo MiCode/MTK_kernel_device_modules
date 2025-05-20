@@ -478,6 +478,25 @@ static int mt6379_enable_buck(struct charger_device *chgdev, bool en)
 			if (ret)
 				dev_info(dev, "%s, set non switching ramp failed\n", __func__);
 		}
+	} else { /* MT6720 */
+		ret = mt6379_enable_tm(cdata, true);
+		if (ret) {
+			dev_info(cdata->dev, "%s, Failed to enable hm\n", __func__);
+			return ret;
+		}
+
+		ret = regmap_update_bits(cdata->rmap, MT6720_REG_CHG_UUG_DUMMY0,
+					 BIT(3), en ? 0 : BIT(3));
+		if (ret) {
+			dev_info(cdata->dev, "%s, Failed to set %x\n", __func__,
+				 MT6720_REG_CHG_UUG_DUMMY0);
+		}
+
+		ret = mt6379_enable_tm(cdata, false);
+		if (ret) {
+			dev_info(cdata->dev, "%s, Failed to disable hm\n", __func__);
+			return ret;
+		}
 	}
 
 	return ret;
@@ -613,6 +632,8 @@ static int mt6379_run_aicc(struct charger_device *chgdev, u32 *uA)
 		goto out;
 	}
 
+	if (cdata->id == CHARGER_ID_MT6720 && *uA >= 100000)
+		*uA = MAX(*uA - 50000, 100000);
 	dev_info(cdata->dev, "%s, AICC Report = %d mA\n", __func__, U_TO_M(*uA));
 out:
 	ret = mt6379_charger_field_set(cdata, F_AICC_EN, 0);
@@ -890,6 +911,12 @@ static int mt6379_dump_registers(struct charger_device *chgdev)
 		{ .reg = MT6379_REG_CHG_HD_TRIM6, .name = "HD_TRIM6" },
 	};
 
+	if (cdata->id == CHARGER_ID_MT6720) {
+		ret = regmap_write(cdata->rmap, MT6379_REG_CHG_STAT, 0x00);
+		if (ret)
+			dev_info(cdata->dev, "%s, write CHG_STAT = 0 failed\n", __func__);
+	}
+
 	for (i = 0; i < ARRAY_SIZE(settings); i++) {
 		ret = mt6379_charger_field_get(cdata, settings[i].fd, &val);
 		if (ret)
@@ -961,9 +988,18 @@ static int mt6379_enable_hz(struct charger_device *chgdev, bool en)
 	struct mt6379_charger_data *cdata = charger_get_data(chgdev);
 	int ret = 0;
 
-	ret = mt6379_charger_field_set(cdata, F_HZ, en ? 1 : 0);
-	if (ret)
-		dev_info(cdata->dev, "%s, Failed to %s HZ\n", __func__, en ? "enable" : "disable");
+	dev_info(cdata->dev, "%s, en = %d\n", __func__, en);
+	if (cdata->id == CHARGER_ID_MT6720) {
+		ret = mt6379_enable_buck(chgdev, !en);
+		if (ret)
+			dev_info(cdata->dev, "%s, Failed to %s buck en\n",
+				 __func__, !en ? "enable" : "disable");
+	} else {
+		ret = mt6379_charger_field_set(cdata, F_HZ, en ? 1 : 0);
+		if (ret)
+			dev_info(cdata->dev, "%s, Failed to %s HZ\n",
+				 __func__, en ? "enable" : "disable");
+	}
 
 	return ret;
 }

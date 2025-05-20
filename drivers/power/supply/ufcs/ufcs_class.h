@@ -90,6 +90,7 @@ enum ufcs_dpm_request {
 	UFCS_DPM_VDM = 7,
 	UFCS_DPM_SRC_CAP = 8,
 	UFCS_DPM_EXIT_UFCS_MODE = 9,
+	UFCS_DPM_SOFT_RESET = 10,
 };
 
 union ufcs_dpm_input {
@@ -112,6 +113,8 @@ struct ufcs_src_cap {
 	u32 max_mV;
 	u32 min_mA;
 	u32 max_mA;
+	u32 step_mV;
+	u32 step_mA;
 };
 
 union ufcs_dpm_output {
@@ -177,6 +180,7 @@ struct ufcs_dev {
 	int (*transmit)(struct ufcs_dev *dev, const struct ufcs_message *msg, u8 msglen);
 	int (*send_hard_reset)(struct ufcs_dev *dev, enum ufcs_hard_reset_type type);
 	int (*config_tx_hiz)(struct ufcs_dev *dev, bool enable);
+	int (*set_msg_retry_cnt)(struct ufcs_dev *dev, int cnt);
 };
 
 extern struct class *ufcs_class;

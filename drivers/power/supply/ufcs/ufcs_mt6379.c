@@ -14,6 +14,7 @@
 #include <linux/ktime.h>
 #include <linux/mod_devicetable.h>
 #include <linux/module.h>
+#include <linux/of.h>
 #include <linux/platform_device.h>
 #include <linux/pm_wakeirq.h>
 #include <linux/regmap.h>
@@ -41,6 +42,7 @@
 #define MT6379_SNDCMD_MASK		BIT(2)
 #define MT6379_SNDHRST_MASK		GENMASK(1, 0)
 #define MT6379_DMHZ_MASK		BIT(0)
+#define MT6379_MSGRETRY_MASK		GENMASK(5, 3)
 
 /* MT6379_REG_UFCS_FLAG1: 0x644 */
 #define MT6379_EVT_UFCS_ACK_TIMEOUT	BIT(0)
@@ -64,6 +66,7 @@
 
 #define MT6379_UFCS_RX_DATA_NO_READ	BIT(6)
 #define MT6379_SRAM_DATA_UPDATE_MASK	BIT(5)
+#define MT6379_SRAM_DIRECT_READ_MASK	BIT(4)
 #define UFCS_MAX_RXBUFF_SIZE		63
 #define MT6379_DEV_ADDRID_MASK		BIT(1)
 
@@ -79,12 +82,28 @@
  */
 #define UFCS_MSG_TRANS_DELAY           4000 /* us */
 
+unsigned int test_direct_read = 1; //also manual enable rg by sysfs
+module_param(test_direct_read, int, 0644);
+
+struct ufcs_drvdata {
+	bool direct_read_buffer;
+};
+
+static const struct ufcs_drvdata mt6379_drvdata = {
+	.direct_read_buffer = false,
+};
+
+static const struct ufcs_drvdata mt6720_drvdata = {
+	.direct_read_buffer = true,
+};
+
 struct mt6379_data {
 	struct device *dev;
 	struct regmap *regmap;
 	struct ufcs_dev ufcs;
 	struct ufcs_port *port;
 	ktime_t last_rx_time;
+	const struct ufcs_drvdata *drvdata;
 };
 
 static int mt6379_ufcs_init(struct ufcs_dev *ufcs)
@@ -214,6 +233,15 @@ static int mt6379_ufcs_config_tx_hiz(struct ufcs_dev *ufcs, bool enable)
 	return regmap_update_bits(data->regmap, MT6379_REG_UFCS_CTRL2, MT6379_DMHZ_MASK, val);
 }
 
+static int mt6379_ufcs_set_msg_retry_cnt(struct ufcs_dev *ufcs, int cnt)
+{
+	struct mt6379_data *data = container_of(ufcs, struct mt6379_data, ufcs);
+	unsigned int val;
+
+	val = FIELD_PREP(MT6379_MSGRETRY_MASK, cnt);
+	return regmap_update_bits(data->regmap, MT6379_REG_UFCS_CTRL2, MT6379_MSGRETRY_MASK, val);
+}
+
 static int mt6379_recover_rx_buffer(struct mt6379_data *udata, int last_ret)
 {
 	int ret;
@@ -271,23 +299,27 @@ static int mt6379_get_message(struct mt6379_data *udata, struct ufcs_message *ms
 		return mt6379_recover_rx_buffer(udata, -EINVAL);
 	}
 
-	for (i = 0; i < lens; i++) {
-		ret = regmap_write(udata->regmap, MT6379_REG_UFCS_RX_BUFFER0 + i, 0);
-		if (ret) {
-			dev_info(udata->dev, "%s, Failed to write 0 to rx_buf[%d] (ret:%d)\n",
-				 __func__, i, ret);
-			return mt6379_recover_rx_buffer(udata, ret);
-		}
+	if (test_direct_read && udata->drvdata->direct_read_buffer) {
+		ret = regmap_raw_read(udata->regmap, MT6379_REG_UFCS_RX_BUFFER0, buf, lens);
+	} else {
+		for (i = 0; i < lens; i++) {
+			ret = regmap_write(udata->regmap, MT6379_REG_UFCS_RX_BUFFER0 + i, 0);
+			if (ret) {
+				dev_info(udata->dev, "%s, Failed to write 0 to rx_buf[%d] (ret:%d)\n",
+					 __func__, i, ret);
+				return mt6379_recover_rx_buffer(udata, ret);
+			}
 
-		ret = regmap_read(udata->regmap, MT6379_REG_UFCS_RX_BUFFER0 + i, &rdata);
-		if (ret) {
-			dev_info(udata->dev, "%s, Failed to read rx_buf[%d] (ret:%d)\n",
-				 __func__, i, ret);
-			return mt6379_recover_rx_buffer(udata, ret);
-		}
+			ret = regmap_read(udata->regmap, MT6379_REG_UFCS_RX_BUFFER0 + i, &rdata);
+			if (ret) {
+				dev_info(udata->dev, "%s, Failed to read rx_buf[%d] (ret:%d)\n",
+					 __func__, i, ret);
+				return mt6379_recover_rx_buffer(udata, ret);
+			}
 
-		*(buf + i) = rdata;
-		dev_dbg(udata->dev, "%s: buf[%d]:0x%x\n", __func__, i, rdata);
+			*(buf + i) = rdata;
+			dev_dbg(udata->dev, "%s: buf[%d]:0x%x\n", __func__, i, rdata);
+		}
 	}
 
 	memcpy(msg, buf, lens);
@@ -380,6 +412,15 @@ static int mt6379_ufcs_probe(struct platform_device *pdev)
 	if (!data->regmap)
 		return dev_err_probe(dev, -ENODEV, "Failed to init regmap\n");
 
+	data->drvdata = of_device_get_match_data(&pdev->dev);
+	if (!data->drvdata) {
+		dev_info(&pdev->dev, "failed to get driver data\n");
+		return -ENODEV;
+	}
+	if (data->drvdata->direct_read_buffer)
+		ret = regmap_update_bits(data->regmap, MT6379_REG_SRAM_CONTROL,
+					 MT6379_SRAM_DIRECT_READ_MASK, 0xFF);
+
 	irq = platform_get_irq(pdev, 0);
 	if (irq < 0)
 		return dev_err_probe(dev, irq, "Failed to get ufcs irq\n");
@@ -390,6 +431,7 @@ static int mt6379_ufcs_probe(struct platform_device *pdev)
 	data->ufcs.transmit = mt6379_ufcs_transmit;
 	data->ufcs.send_hard_reset = mt6379_ufcs_send_hard_reset;
 	data->ufcs.config_tx_hiz = mt6379_ufcs_config_tx_hiz;
+	data->ufcs.set_msg_retry_cnt = mt6379_ufcs_set_msg_retry_cnt;
 
 	data->port = devm_ufcs_register_port(dev, &data->ufcs);
 	if (IS_ERR(data->port))
@@ -406,7 +448,8 @@ static int mt6379_ufcs_probe(struct platform_device *pdev)
 }
 
 static const struct of_device_id mt6379_ufcs_dev_match[] = {
-	{ .compatible = "mediatek,mt6379-ufcs" },
+	{ .compatible = "mediatek,mt6379-ufcs", .data = &mt6379_drvdata },
+	{ .compatible = "mediatek,mt6720-ufcs", .data = &mt6720_drvdata },
 	{}
 };
 MODULE_DEVICE_TABLE(of, mt6379_ufcs_dev_match);

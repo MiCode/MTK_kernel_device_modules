@@ -9,6 +9,7 @@
 #include <linux/mod_devicetable.h>
 #include <linux/module.h>
 #include <linux/notifier.h>
+#include <linux/of.h>
 #include <linux/platform_device.h>
 
 #include "adapter_class.h"
@@ -20,6 +21,7 @@ struct mtk_ufcs_adapter_info {
 	struct adapter_device *adapter;
 	struct notifier_block ufcs_nb;
 	atomic_t ufcs_type;
+	bool force_cv;
 };
 
 static int put_ufcs_dpm_reaction(struct ufcs_port *port, enum ufcs_dpm_request req,
@@ -83,6 +85,20 @@ static int ufcs_adapter_get_status(struct adapter_device *adap, struct adapter_s
 	return MTK_ADAPTER_OK;
 }
 
+static int ufcs_adapter_exit_mode(struct adapter_device *adap)
+{
+	struct mtk_ufcs_adapter_info *info = adapter_dev_get_drvdata(adap);
+	struct device *dev = info->dev;
+	int ret;
+
+	ret = put_ufcs_dpm_reaction(info->port, UFCS_DPM_EXIT_UFCS_MODE, NULL, NULL);
+	if (ret) {
+		dev_info(dev, "%s: Failed to exit mode(%d)\n", __func__, ret);
+		return ret == -ETIMEDOUT ? MTK_ADAPTER_TIMEOUT : MTK_ADAPTER_ERROR;
+	}
+	return MTK_ADAPTER_OK;
+}
+
 static int ufcs_adapter_set_cap(struct adapter_device *adap, enum adapter_cap_type type,
 				int mV, int mA)
 {
@@ -91,6 +107,16 @@ static int ufcs_adapter_set_cap(struct adapter_device *adap, enum adapter_cap_ty
 	union ufcs_dpm_input input;
 	union ufcs_dpm_output output;
 	int ret;
+
+	dev_info(dev, "%s: type=%d\n", __func__, type);
+	if (type == MTK_PD_APDO_END) {
+		ret = ufcs_adapter_exit_mode(adap);
+		if (ret) {
+			dev_info(dev, "%s: Failed to exit mode(%d)\n", __func__, ret);
+			return MTK_ADAPTER_ERROR;
+		}
+		return MTK_ADAPTER_OK;
+	}
 
 	input.req_millivolt = mV;
 	input.req_milliamp = mA;
@@ -124,10 +150,13 @@ static int ufcs_adapter_get_cap(struct adapter_device *adap, enum adapter_cap_ty
 	for (i = 0; i < cap->nr; i++) {
 		cap->min_mv[i] = output.src_cap[i].min_mV;
 		cap->max_mv[i] = output.src_cap[i].max_mV;
+		cap->step_mv[i] = output.src_cap[i].step_mV;
+		cap->step_ma[i] = output.src_cap[i].step_mA;
 		cap->ma[i] = output.src_cap[i].max_mA;
 		cap->type[i] = MTK_UFCS;
-		dev_info(dev, "%s: cap_idx[%d], %d ~ %d mV, %d mA\n", __func__,
-			 i, cap->min_mv[i], cap->max_mv[i], cap->ma[i]);
+		dev_info(dev, "%s: cap_idx[%d]: %d ~ %d mV, %d mA, step %d mV %d mA\n",
+			 __func__, i, cap->min_mv[i], cap->max_mv[i], cap->ma[i],
+			 cap->step_mv[i], cap->step_ma[i]);
 	}
 
 	return MTK_ADAPTER_OK;
@@ -156,22 +185,79 @@ static int ufcs_adapter_get_output(struct adapter_device *adap, int *mV, int *mA
 	return MTK_ADAPTER_OK;
 }
 
-static int ufcs_adapter_authentication(struct adapter_device *dev,
+static int ufcs_adapter_authentication(struct adapter_device *adap,
 			     struct adapter_auth_data *data)
 {
-	/* TODO: */
-	return MTK_ADAPTER_NOT_SUPPORT;
+	struct mtk_ufcs_adapter_info *info = adapter_dev_get_drvdata(adap);
+	struct adapter_power_cap acap = {};
+	int i, ret, sel_idx = -1;
+
+	ret = ufcs_adapter_get_cap(adap, MTK_UFCS, &acap);
+	if (ret != MTK_ADAPTER_OK)
+		return ret;
+
+	for (i = 0; i < acap.nr; i++) {
+		if (acap.min_mv[i] > data->vcap_min ||
+		    acap.max_mv[i] < data->vcap_max ||
+		    acap.ma[i] < data->icap_min)
+			continue;
+		if (sel_idx == -1 || acap.ma[i] > acap.ma[sel_idx]) {
+			sel_idx = i;
+			dev_info(info->dev, "%s: select cap_idx:%d\n",
+				 __func__, sel_idx);
+		}
+	}
+	if (sel_idx == -1) {
+		dev_info(info->dev, "%s: can't find suitable cap\n", __func__);
+		return MTK_ADAPTER_NOT_SUPPORT;
+	}
+
+	data->vta_min = acap.min_mv[sel_idx];
+	data->vta_max = acap.max_mv[sel_idx];
+	data->ita_max = acap.ma[sel_idx];
+
+	data->pwr_lmt = 0;
+	data->support_meas_cap = true;
+	data->support_status = true;
+	data->support_cc = true;
+	data->vta_step = acap.step_mv[sel_idx];
+	data->ita_step = acap.step_ma[sel_idx];
+	data->ita_gap_per_vstep = acap.step_ma[sel_idx] * 10; //TODO: assume 10 times of step_ma
+
+	if (info->force_cv)
+		data->support_cc = false;
+	dev_info(info->dev, "%s: done, support_cc = %d\n", __func__, data->support_cc);
+	return MTK_ADAPTER_OK;
 }
 
-static int ufcs_adapter_exit_mode(struct adapter_device *adap)
+static int ufcs_is_cc(struct adapter_device *adap, bool *cc)
+{
+	/* TODO: implement later, used to check in ta support cc mode in pe5p */
+	return MTK_ADAPTER_OK;
+}
+
+static int ufcs_set_wdt(struct adapter_device *adap, u32 ms)
+{
+	/* TODO: implement when needed */
+	return MTK_ADAPTER_OK;
+}
+
+static int ufcs_enable_wdt(struct adapter_device *adap, bool en)
+{
+	/* TODO: implement when needed */
+	return MTK_ADAPTER_OK;
+}
+
+static int ufcs_send_hardreset(struct adapter_device *adap)
 {
 	struct mtk_ufcs_adapter_info *info = adapter_dev_get_drvdata(adap);
 	struct device *dev = info->dev;
 	int ret;
 
-	ret = put_ufcs_dpm_reaction(info->port, UFCS_DPM_EXIT_UFCS_MODE, NULL, NULL);
+	/* hardreset will disable ufcs, use soft reset instead */
+	ret = put_ufcs_dpm_reaction(info->port, UFCS_DPM_SOFT_RESET, NULL, NULL);
 	if (ret) {
-		dev_info(dev, "%s: Failed to exit mode(%d)\n", __func__, ret);
+		dev_info(dev, "%s: Failed to send soft reset(%d)\n", __func__, ret);
 		return ret == -ETIMEDOUT ? MTK_ADAPTER_TIMEOUT : MTK_ADAPTER_ERROR;
 	}
 	return MTK_ADAPTER_OK;
@@ -185,6 +271,10 @@ static struct adapter_ops adapter_ops = {
 	.get_output = ufcs_adapter_get_output,
 	.authentication = ufcs_adapter_authentication,
 	.exit_mode = ufcs_adapter_exit_mode,
+	.is_cc = ufcs_is_cc,
+	.set_wdt = ufcs_set_wdt,
+	.enable_wdt = ufcs_enable_wdt,
+	.send_hardreset = ufcs_send_hardreset,
 };
 
 static int ufcs_notifier_call(struct notifier_block *nb, unsigned long event,
@@ -235,6 +325,8 @@ static int mtk_ufcs_adapter_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	info->dev = dev;
+
+	info->force_cv = of_property_read_bool(dev->of_node, "force-cv");
 
 	info->port = ufcs_port_get_by_name("port.0");
 	if (!info->port) {
