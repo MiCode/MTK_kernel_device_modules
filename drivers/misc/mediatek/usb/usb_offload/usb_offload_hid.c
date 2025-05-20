@@ -133,7 +133,7 @@ static inline struct hid_ep_info *get_hid_ep_safe(int dir, int slot, int ep)
 
 /* flow control */
 static int start_dsp(struct hid_ep_info *hid);
-static void stop_dsp(struct hid_ep_info *hid, bool inform_dsp);
+static void stop_dsp(struct hid_ep_info *hid);
 static void hid_offload_reset(struct hid_ep_info *hid);
 static bool hid_wait_reset(struct hid_ep_info *hid);
 
@@ -253,11 +253,9 @@ static int hid_dsp_irq(struct hid_ep_info *hid, struct usb_offload_urb_complete 
 	int delay_ms = 0;
 	int ret = 0;
 
-	hid_info("buffer:0x%llx actual_length:%d status:0x%x more_complete:%d\n",
+	hid_info("buffer:0x%llx actual_length:%d status:%d more_complete:%d\n",
 		urb_complete->urb_start_addr, urb_complete->actual_length,
 		urb_complete->status, urb_complete->more_complete);
-
-	hid_dump_ep(hid, "<DSP IRQ Start>");
 
 	/* create a new payload */
 	payload = new_payload(urb_complete->actual_length);
@@ -265,13 +263,17 @@ static int hid_dsp_irq(struct hid_ep_info *hid, struct usb_offload_urb_complete 
 		payload->actual_length = urb_complete->actual_length;
 		if ((unsigned long long)hid->buf_payload->phys == urb_complete->urb_start_addr) {
 			memcpy(payload->data, (void *)hid->buf_payload->virt, payload->actual_length);
-			payload->status = 0;
+			if (urb_complete->status < 0)
+				payload->status = -EPROTO;
+			else
+				payload->status = 0;
 		} else {
 			hid_err("buffer unmatch, phy:0x%llx\n", urb_complete->urb_start_addr);
 			payload->data = NULL;
 			payload->status = -EPROTO;
 		}
-		hid_info("new payload!! (length:%d status:0x%x)\n", payload->actual_length, payload->status);
+		hid_info("new payload:%p!! (length:%d status:%d)\n",
+			payload, payload->actual_length, payload->status);
 	} else {
 		hid_err("fail allocating payload\n");
 		uo_mbrain_update(UO_PHASE_HID_ONGOING, UO_ERROR_INSUFFICIENT_SPACE);
@@ -280,6 +282,12 @@ static int hid_dsp_irq(struct hid_ep_info *hid, struct usb_offload_urb_complete 
 
 	hid_lock(hid, __func__);
 
+	hid_dump_ep(hid, "<DSP IRQ Start>");
+	if (test_bit(HID_ON_RESET, &hid->sync_flag)) {
+		hid_info("driver's on resetting (might be EP_STOP event), clear payload:%p\n", payload);
+		goto on_resetting;
+	}
+
 	/* update synchronization */
 	list_add_tail(&payload->list, &hid->payload_list);
 	add_cnt(hid, PAYLOAD);
@@ -287,6 +295,7 @@ static int hid_dsp_irq(struct hid_ep_info *hid, struct usb_offload_urb_complete 
 		clear_bit(HID_DSP_RUNNING, &hid->sync_flag);
 	giveback = (test_bit(HID_AP_QUEUE, &hid->sync_flag) != 0);
 
+on_resetting:
 	hid_dump_ep(hid, "<DSP IRQ End>");
 	hid_unlock(hid, __func__);
 
@@ -349,7 +358,7 @@ static void giveback_hid(struct work_struct *work_struct)
 	clear_bit(HID_AP_QUEUE, &hid->sync_flag);
 	sub_cnt(hid, PAYLOAD);
 	add_cnt(hid, GIVEBACK);
-	hid_dbg("payload:%p actual_length:%d status:%d\n", payload,
+	hid_info("giveback payload:%p!! actual_length:%d status:%d\n", payload,
 		payload->actual_length, payload->status);
 	hid_dump_ep(hid, "<Finish Giveback Check>");
 	press_complete = (get_cnt(hid, GIVEBACK) == GIVEBACK_COMPLTETE);
@@ -381,14 +390,12 @@ static void hid_offload_reset(struct hid_ep_info *hid)
 {
 	struct timespec64 start, end;
 	bool giveback = false;
-	bool inform_dsp = false;
 
 	ktime_get_ts64(&start);
 
 	/* update synchorization */
 	hid_lock(hid, __func__);
 	set_bit(HID_ON_RESET, &hid->sync_flag);
-	inform_dsp = test_bit(HID_DSP_RUNNING, &hid->sync_flag);
 	hid_dump_ep(hid, "<HID RESET Start>");
 	if (test_bit(HID_AP_QUEUE, &hid->sync_flag)){
 		clear_payload_list(hid);
@@ -397,7 +404,7 @@ static void hid_offload_reset(struct hid_ep_info *hid)
 	}
 	hid_unlock(hid, __func__);
 
-	stop_dsp(hid, inform_dsp);
+	stop_dsp(hid);
 
 	/* giveback urb with error status if there's still skipped urb */
 	if (giveback)
@@ -640,34 +647,44 @@ static int start_dsp(struct hid_ep_info *hid)
  * inform dsp driver to stop offloading hid packets and
  * recycle xhci resources which we arranged before
  */
-static void stop_dsp(struct hid_ep_info *hid, bool inform_dsp)
+static void stop_dsp(struct hid_ep_info *hid)
 {
-	struct usb_offload_urb_msg msg = {0};
+	struct usb_offload_urb_msg msg = {
+		.flag = 0,
+		.slot_id = hid->slot_id,
+		.enable = false,
+		.direction = (unsigned char)hid->dir,
+		.urb_size = 0,
+		.urb_start_addr = 0,
+		.first_trb = 0,
+	};
 	struct xhci_hcd *xhci = uodev->xhci;
 	struct xhci_virt_device *virt_dev;
 
-	/* it's unnecessary to issue stop to dsp while it had already finished */
-	if (inform_dsp) {
-		/* fill message */
-		msg.slot_id = hid->slot_id;
-		msg.enable = false;
-		msg.direction = (unsigned char)hid->dir;
-		msg.urb_size = 0;
-		msg.urb_start_addr = 0;
-		msg.first_trb = 0;
-
-		/* inform dsp to stop */
-		if (!usb_offload_send_ipi_msg(UOI_DISABLE_HID, &msg, sizeof(struct usb_offload_urb_msg))) {
-			clear_bit(HID_DSP_RUNNING, &hid->sync_flag);
-			hid_dump_ep(hid, "<End DSP>");
+	/* stop endpoint first */
+	if ((xhci->xhc_state & XHCI_STATE_DYING) || (xhci->xhc_state & XHCI_STATE_HALTED)) {
+		hid_info("xhci was halted or dying\n");
+		msg.flag |= HID_FLAG_XHCI_HALT;
+	} else {
+		virt_dev = uodev->xhci->devs[hid->slot_id];
+		if (!virt_dev) {
+			hid_err("virtual device was empty\n");
+			goto skip_stop_ep;
 		}
+
+		if (xhci_stop_endpoint_sync_(xhci, &virt_dev->eps[hid->ep_id], 0, GFP_ATOMIC) < 0) {
+			hid_err("fail to stop endpoint\n");
+			msg.flag |= HID_FLAG_XHCI_HALT;
+		} else
+			hid_info("success to stop endpoint\n");
 	}
 
-	/* stop endpoint first */
-	virt_dev = uodev->xhci->devs[hid->slot_id];
-	if (virt_dev &&
-		xhci_stop_endpoint_sync_(xhci, &virt_dev->eps[hid->ep_id], 0, GFP_ATOMIC) < 0)
-		hid_err("fail to stop endpoint\n");
+skip_stop_ep:
+	/* inform dsp to stop */
+	if (!usb_offload_send_ipi_msg(UOI_DISABLE_HID, &msg, sizeof(struct usb_offload_urb_msg))) {
+		clear_bit(HID_DSP_RUNNING, &hid->sync_flag);
+		hid_dump_ep(hid, "<End DSP>");
+	}
 
 	/* UO_PROV_NUM would identify as moving transfer ring back to ap view */
 	xhci_realloc_hid_ring(hid, UO_PROV_NUM);
@@ -777,6 +794,7 @@ static void clear_payload_list(struct hid_ep_info *hid)
 	struct dsp_payload *pos, *next;
 
 	list_for_each_entry_safe(pos, next, &hid->payload_list, list) {
+		hid_info("clear payload:%p!!\n", pos);
 		list_del(&pos->list);
 		free_payload(pos);
 		sub_cnt(hid, PAYLOAD);

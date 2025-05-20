@@ -230,7 +230,10 @@ struct usb_audio_stream_msg {
 	struct usb_audio_stream_info uainfo;
 };
 
+#define HID_FLAG_XHCI_HALT  (0x1U <<0)
+
 struct usb_offload_urb_msg {
+	unsigned char flag;
 	unsigned char enable;
 	unsigned char direction;
 	unsigned int slot_id;
