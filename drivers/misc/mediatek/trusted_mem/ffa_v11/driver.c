@@ -1743,13 +1743,17 @@ static int __init ffa_init(void)
 	u32 buf_sz = 0U;
 	size_t rxtx_bufsz = SZ_4K;
 
-	ret = ffa_transport_init(&invoke_ffa_fn);
-	if (ret)
-		return ret;
-
 #if defined(MTK_ADAPTED) && MTK_ADAPTED
 	ret = arm_ffa_bus_init();
 	if (ret)
+		return ret;
+#endif /* defined(MTK_ADAPTED) && MTK_ADAPTED */
+
+	ret = ffa_transport_init(&invoke_ffa_fn);
+	if (ret)
+#if defined(MTK_ADAPTED) && MTK_ADAPTED
+		goto ffa_bus_only_exit;
+#else
 		return ret;
 #endif /* defined(MTK_ADAPTED) && MTK_ADAPTED */
 
@@ -1758,7 +1762,7 @@ static int __init ffa_init(void)
 #if defined(MTK_ADAPTED) && MTK_ADAPTED
 	{
 		ret = -ENOMEM;
-		goto ffa_bus_exit;
+		goto ffa_bus_only_exit;
 	}
 #else
 		return -ENOMEM;
@@ -1834,8 +1838,9 @@ free_pages:
 free_drv_info:
 	kfree(drv_info);
 #if defined(MTK_ADAPTED) && MTK_ADAPTED
-ffa_bus_exit:
-	arm_ffa_bus_exit();
+ffa_bus_only_exit:
+	pr_info("fallback to support FFA bus only\n");
+	ret = 0;
 #endif /* defined(MTK_ADAPTED) && MTK_ADAPTED */
 	return ret;
 }
