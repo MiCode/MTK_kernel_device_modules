@@ -3861,11 +3861,21 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 	struct drm_crtc *crtc = NULL;
 	struct mtk_ddp_comp *comp = NULL;
 	unsigned int irq_mask = 0;
+	int i = 0, j = 0;
+	bool find_work = false;
+	static int work_id;
 
+	If_FIND_WORK(dsi->ddp_comp.irq_debug,
+		dsi->ddp_comp.ts_works, work_id, find_work, j)
+	IF_DEBUG_IRQ_TS(find_work,
+		dsi->ddp_comp.ts_works[work_id].irq_time, i)
 	if (IS_ERR_OR_NULL(dsi) || IS_ERR_OR_NULL(dsi->driver_data)) {
 		DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
 		return IRQ_NONE;
 	}
+	IF_DEBUG_IRQ_TS(find_work,
+		dsi->ddp_comp.ts_works[work_id].irq_time, i)
+
 	comp = &dsi->ddp_comp;
 	if (mtk_drm_top_clk_isr_get(comp) == false) {
 		DDPIRQ("%s, top clk off\n", __func__);
@@ -3893,11 +3903,15 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 		goto out;
 	}
 
+	IF_DEBUG_IRQ_TS(find_work,
+		dsi->ddp_comp.ts_works[work_id].irq_time, i)
 	status = readl(dsi->regs + DSI_INTSTA);
 	if (!status) {
 		ret = IRQ_NONE;
 		goto out;
 	}
+	IF_DEBUG_IRQ_TS(find_work,
+		dsi->ddp_comp.ts_works[work_id].irq_time, i)
 
 	if (status & BUFFER_UNDERRUN_INT_FLAG) {
 		if (__ratelimit(&mmp_rate)) {
@@ -3909,12 +3923,14 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 				DRM_MMP_MARK(dsi, underrun_cnt|(2<<16), status);
 			}
 	} else {
-		if (comp->id == DDP_COMPONENT_DSI0)
-			DRM_MMP_MARK(dsi0, status, mtk_crtc->is_mml_dl);
-		else if (comp->id == DDP_COMPONENT_DSI1)
-			DRM_MMP_MARK(dsi1, status, 0);
-		else if (comp->id == DDP_COMPONENT_DSI2)
-			DRM_MMP_MARK(dsi2, status, 0);
+		if (dsi->ddp_comp.id == DDP_COMPONENT_DSI0)
+			DRM_MMP_MARK(dsi0,  dsi->ddp_comp.regs_pa, status);
+		else if (dsi->ddp_comp.id == DDP_COMPONENT_DSI1)
+			DRM_MMP_MARK(dsi1, dsi->ddp_comp.regs_pa, status);
+		else
+			DRM_MMP_MARK(IRQ, dsi->ddp_comp.regs_pa, status);
+		IF_DEBUG_IRQ_TS(find_work,
+			dsi->ddp_comp.ts_works[work_id].irq_time, i)
 	}
 
 	DDPIRQ("%s irq, val:0x%x\n", mtk_dump_comp_str(comp), status);
@@ -3937,6 +3953,10 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 	status &= irq_mask;
 	if (status) {
 		writel(~status, dsi->regs + DSI_INTSTA);
+
+		IF_DEBUG_IRQ_TS(find_work,
+			dsi->ddp_comp.ts_works[work_id].irq_time, i)
+
 		inten = readl(dsi->regs + DSI_INTEN);
 		if ((status & BUFFER_UNDERRUN_INT_FLAG)	&& (atomic_read(&mtk_crtc->force_high_step) == 0)) {
 			unsigned long long aee_now_ts = sched_clock();
@@ -4195,8 +4215,13 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 			drm_trace_tag_mark("dsi_frame_done");
 
 			if (mtk_drm_helper_get_opt(priv->helper_opt,
-							   MTK_DRM_OPT_HBM))
+							   MTK_DRM_OPT_HBM)){
+				IF_DEBUG_IRQ_TS(find_work,
+					dsi->ddp_comp.ts_works[work_id].irq_time, i)
 				wakeup_dsi_wq(&dsi->frame_done);
+				IF_DEBUG_IRQ_TS(find_work,
+					dsi->ddp_comp.ts_works[work_id].irq_time, i)
+			}
 
 			if (!mtk_dsi_is_cmd_mode(comp) &&
 				(comp->id == DDP_COMPONENT_DSI0 ||
@@ -4217,7 +4242,11 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 				if (panel_ext && panel_ext->params->skip_vblank) {
 					if (dsi->cnt % dsi->skip_vblank == 0) {
 						dsi->skip_vblank = panel_ext->params->skip_vblank;
+						IF_DEBUG_IRQ_TS(find_work,
+							dsi->ddp_comp.ts_works[work_id].irq_time, i)
 						mtk_crtc_vblank_irq(&mtk_crtc->base);
+						IF_DEBUG_IRQ_TS(find_work,
+							dsi->ddp_comp.ts_works[work_id].irq_time, i)
 						dsi->cnt = 0;
 					}
 					dsi->cnt++;
@@ -4258,6 +4287,9 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 out:
 	mtk_drm_top_clk_isr_put(comp);
 
+	IF_DEBUG_IRQ_TS(find_work,
+		dsi->ddp_comp.ts_works[work_id].irq_time, i)
+	IF_QUEUE_WORK(find_work, dsi->ddp_comp, work_id, i)
 	return ret;
 }
 
@@ -14884,6 +14916,7 @@ static const struct mtk_dsi_driver_data mt6886_dsi_driver_data = {
 	.sram_unit = 18,
 	.max_vfp = 0xffe,
 	.mmclk_by_datarate = mtk_dsi_set_mmclk_by_datarate_V1,
+	.dsi_irq_ts_debug = true,
 };
 
 static const struct mtk_dsi_driver_data mt6873_dsi_driver_data = {
@@ -15332,6 +15365,10 @@ static int mtk_dsi_probe(struct platform_device *pdev)
 	//wake_up_process(dsi->hotplug_task);
 #endif
 
+
+	if (dsi->driver_data->dsi_irq_ts_debug)
+		mtk_ddp_comp_create_workqueue(&dsi->ddp_comp);
+
 	DDPINFO("%s-\n", __func__);
 	return ret;
 
@@ -15351,6 +15388,9 @@ static void mtk_dsi_remove(struct platform_device *pdev)
 	component_del(&pdev->dev, &mtk_dsi_component_ops);
 
 	mtk_ddp_comp_pm_disable(&dsi->ddp_comp);
+
+	if (!IS_ERR_OR_NULL(dsi->ddp_comp.wq))
+		destroy_workqueue(dsi->ddp_comp.wq);
 }
 
 struct platform_driver mtk_dsi_driver = {
