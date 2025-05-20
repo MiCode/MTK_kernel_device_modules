@@ -130,7 +130,6 @@ void fmt_start_dvfs_emi_bw(struct mtk_vdec_fmt *fmt, struct fmt_pmqos pmqos_para
 	int volt = 0;
 	int ret = 0;
 	unsigned long request_freq;
-	u64 request_freq64;
 	struct timespec64 curr_time;
 	s32 duration;
 	u32 bandwidth;
@@ -146,8 +145,7 @@ void fmt_start_dvfs_emi_bw(struct mtk_vdec_fmt *fmt, struct fmt_pmqos pmqos_para
 	fmt_debug(1, "curr time tv_sec %lld tv_nsec %ld", curr_time.tv_sec, curr_time.tv_nsec);
 
 	FMT_TIMER_GET_DURATION_IN_MS(curr_time, pmqos_param, duration);
-	request_freq64 = (u64)pmqos_param.pixel_size * 1000 / duration;
-	request_freq = (unsigned long)((request_freq64 > ULONG_MAX) ? ULONG_MAX : request_freq64);
+	request_freq = (unsigned long)pmqos_param.pixel_size * 1000 / duration;
 
 	fmt_debug(1, "request_freq %lu", request_freq);
 
