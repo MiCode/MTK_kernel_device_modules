@@ -3367,6 +3367,102 @@ dramc: dramc@10230000 {
 			b13b14-status-addr = <0x1c000008>;
 		};
 
+		seninf1@1a004000 {
+			compatible = "mediatek,seninf1";
+			reg = <0 0x1a004000 0 0x1000>;
+		};
+		seninf2@1a005000 {
+			compatible = "mediatek,seninf2";
+			reg = <0 0x1a005000 0 0x1000>;
+		};
+		seninf3@1a006000 {
+			compatible = "mediatek,seninf3";
+			reg = <0 0x1a006000 0 0x1000>;
+		};
+		seninf4@1a007000 {
+			compatible = "mediatek,seninf4";
+			reg = <0 0x1a007000 0 0x1000>;
+		};
+		seninf5@1a008000 {
+			compatible = "mediatek,seninf5";
+			reg = <0 0x1a008000 0 0x1000>;
+		};
+		seninf6@1a009000 {
+			compatible = "mediatek,seninf6";
+			reg = <0 0x1a009000 0 0x1000>;
+		};
+		seninf_top:seninf_top@1a004000 {
+			compatible = "mediatek,seninf_top";
+			reg = <0 0x1a004000 0 0x1000>;
+	#if 0
+			interrupts = <GIC_SPI 251 IRQ_TYPE_LEVEL_LOW>;
+	#endif
+
+			mediatek,platform = "mt6858";
+			mediatek,seninf_max_num = "8";
+	#if 0
+			power-domains = <&scpsys MT6858_POWER_DOMAIN_CAM_MAIN>,
+					<&scpsys MT6858_POWER_DOMAIN_CSI_RX>;
+			clocks = <&camsys_main_clk CLK_CAM_M_SENINF>,
+					<&cksys_reg_clk CLK_TOP_SENINF_SEL>,
+					<&cksys_reg_clk CLK_TOP_SENINF1_SEL>,
+					<&cksys_reg_clk CLK_TOP_SENINF2_SEL>,
+					<&vlp_cksys_top_clk CLK_VLP_TOP_CAMTG0_SEL>,
+					<&vlp_cksys_top_clk CLK_VLP_TOP_CAMTG1_SEL>,
+					<&vlp_cksys_top_clk CLK_VLP_TOP_CAMTG2_SEL>,
+					<&vlp_cksys_top_clk CLK_VLP_TOP_CAMTG3_SEL>,
+					<&cksys_reg_clk CLK_TOP_TCK_26M_MX9>,
+					<&cksys_reg_clk CLK_TOP_UNIVPLL_192M_D8>,
+					<&cksys_reg_clk CLK_TOP_UNIVPLL_D6_D8>,
+					<&cksys_reg_clk CLK_TOP_UNIVPLL_192M_D4>,
+					<&cksys_reg_clk CLK_TOP_F26M_CK_D2>,
+					<&cksys_reg_clk CLK_TOP_UNIVPLL_192M_D16>,
+					<&cksys_reg_clk CLK_TOP_UNIVPLL_192M_D32>,
+					<&mmdvfs_clk CLK_MMDVFS_CAM>;
+			clock-names = "CAMSYS_SENINF_CGPDN",
+					"TOP_MUX_SENINF",
+					"TOP_MUX_SENINF1",
+					"TOP_MUX_SENINF2",
+					"TOP_MUX_CAMTG",
+					"TOP_MUX_CAMTG2",
+					"TOP_MUX_CAMTG3",
+					"TOP_MUX_CAMTG4",
+					"TOP_CLK26M",
+					"TOP_UNIVP_192M_D8",
+					"TOP_UNIVPLL_D6_D8",
+					"TOP_UNIVP_192M_D4",
+					"TOP_F26M_CK_D2",
+					"TOP_UNIVP_192M_D16",
+					"TOP_UNIVP_192M_D32",
+					"mmdvfs_clk";
+
+			operating-points-v2 = <&opp_table_cam>;
+	#endif
+		};
+		kd_camera_hw1:kd_camera_hw1@1a004000 {
+			compatible = "mediatek,imgsensor";
+		};
+		seninf_n3d_top: seninf_n3d_top@1a004000 {
+			compatible = "mediatek,seninf_n3d_top";
+			interrupts = <GIC_SPI 135 IRQ_TYPE_LEVEL_HIGH 0>;
+			power-domains = <&scpsys MT6858_POWER_DOMAIN_CAM_MAIN>;
+
+			reg = <0 0x1a004000 0 0x100>,
+			      <0 0x1a004100 0 0x100>,
+			      <0 0x1a004200 0 0x100>;
+			reg-names = "seninf_top",
+				    "seninf_n3d_a",
+				    "seninf_n3d_b";
+			clocks = <&camsys_main_clk CLK_CAM_M_SENINF>,
+				 <&camsys_main_clk CLK_CAM_M_CAM>,
+				 <&camsys_main_clk CLK_CAM_M_CAMTG>,
+				 <&cksys_reg_clk CLK_TOP_CAMTM_SEL>;
+			clock-names = "CAMSYS_SENINF_CGPDN",
+				      "CAMSYS_CAM_CGPDN",
+				      "CAMSYS_CAMTG_CGPDN",
+				      "CAMSYS_CAMTM_SEL";
+		};
+
 		vcp: vcp@1ea00000 {
 			#address-cells = <2>;
 			#size-cells = <2>;
