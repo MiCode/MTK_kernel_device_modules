@@ -1733,6 +1733,7 @@
 
 	vdisp_ctrl: vdisp-ctrl@0 {
 		compatible = "mediatek,mt6993-vdisp-ctrl-v3";
+		drm-supply = <&dispsys_config>;
 		pwr-handle = <&disp_pwr_dev>;
 		bringup-stage = <0>;
 		disp-pd-id = <0>;
@@ -11372,6 +11373,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 */
 		disp_dpc: disp-dpc@3eff0000 {
 			compatible = "mediatek,mt6993-disp-dpc-v3";
+			drm-supply = <&dispsys_config>;
+			vdisp-supply = <&vdisp_ctrl>;
 			reg =
 				<0 0x3eff0000 0 0x2000>,
 				<0 0x31b501b8 0 0x4>,             // hfrp rtff pwr con
