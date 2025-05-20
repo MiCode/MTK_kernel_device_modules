@@ -1585,51 +1585,19 @@ int cmdq_util_init(void)
 {
 	struct dentry	*dir;
 	bool exists = false;
-	u32 first_error_disable[CMDQ_MBOX_NUM], i;
-	char node_name[] = CMDQ_CONFIG_NODE_NAME;
-	struct device_node *np;
-	int ret, gce_core_num;
+	u32 i;
 
 	cmdq_msg("%s begin", __func__);
 
-	np = of_find_node_by_name(NULL, node_name);
-	if (!np) {
-		cmdq_err("failed to find %s node", CMDQ_CONFIG_NODE_NAME);
-		cmdq_err("error end");
-		return -EINVAL;
-	}
+	cmdq_controller_set_fp(&controller_fp);
+	cmdq_helper_set_fp(&helper_fp);
 
-	ret = of_property_read_u32(np, "gce-core-num", &gce_core_num);
-	if (ret) {
-		cmdq_err("failed to read gce-core-num property");
-		cmdq_err("error end");
-		return -EINVAL;
-	}
-
-	cmdq_msg("%s core_num:%d", __func__, gce_core_num);
-
-	ret = of_property_read_u32_array(np, "cmdq-first-err-disable", first_error_disable, gce_core_num);
-	if (ret) {
-		cmdq_err("failed to read cmdq-first-err-disable property");
-		cmdq_err("error end");
-		return -EINVAL;
-	}
-
-	of_node_put(np);
-
-	for (i = 0; i < gce_core_num; i++) {
-		cmdq_msg("%s i:%u alloc:%u", __func__, i, first_error_disable[i]);
-		if (first_error_disable[i])
-			continue;
+	for (i = 0; i < CMDQ_HW_MAX; i++) {
 		spin_lock_init(&util.err[i].lock);
 		util.err[i].buffer = vzalloc(CMDQ_FIRST_ERR_SIZE);
 		if (!util.err[i].buffer)
 			return -ENOMEM;
 	}
-
-	cmdq_controller_set_fp(&controller_fp);
-	cmdq_helper_set_fp(&helper_fp);
-
 	util.buf_rec_buffer = vzalloc(CMDQ_BUF_REC_BUFFER_SIZE);
 	if (!util.buf_rec_buffer)
 		return -ENOMEM;

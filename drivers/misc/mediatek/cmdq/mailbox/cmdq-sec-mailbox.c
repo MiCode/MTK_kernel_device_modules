@@ -2106,38 +2106,8 @@ static s32 cmdq_sec_prealloc_mem(void)
 	static u32 i;
 	s32 err, retry_cnt = 0, total_retry_cnt = 5;
 	const char *mod = "CMDQ";
-	char node_name[] = CMDQ_CONFIG_NODE_NAME;
-	u32 gce_ena_sec[CMDQ_HW_MAX];
-	struct device_node *np;
-	int ret, gce_core_num;
 
-	np = of_find_node_by_name(NULL, node_name);
-	if (!np) {
-		cmdq_err("failed to find %s node pre-alloc fail", node_name);
-		return -EINVAL;
-	}
-
-	ret = of_property_read_u32(np, "gce-core-num", &gce_core_num);
-	if (ret) {
-		cmdq_err("failed to read gce-core-num property, pre-alloc fail");
-		return -EINVAL;
-	}
-
-	ret = of_property_read_u32_array(np, "sec-cmdq-enable", gce_ena_sec, gce_core_num);
-	if (ret) {
-		cmdq_err("failed to read sec-cmdq-enable property, pre-alloc fail");
-		return -EINVAL;
-	}
-
-	of_node_put(np);
-
-
-	for (i = 0; i < gce_core_num; i++) {
-		cmdq_msg("%s i:%u alloc:%u", __func__, i, gce_ena_sec[i]);
-		if (!gce_ena_sec[i]) {
-			cmdq_msg("%s hwid:%d skip prealloc mem", __func__, i);
-			continue;
-		}
+	for (i = 0; i < gce_hw_cnt; i++) {
 		do {
 			context = kzalloc(sizeof(struct cmdq_sec_context), GFP_ATOMIC);
 			if (context)
