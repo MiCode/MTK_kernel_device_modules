@@ -7,6 +7,7 @@
 #if IS_ENABLED(CONFIG_TCPC_CLASS)
 #include <linux/interrupt.h>
 #include <linux/of.h>
+#include <linux/of_irq.h>
 #include <linux/regmap.h>
 #include <linux/iio/consumer.h>
 #include <linux/sched/clock.h>
@@ -24,20 +25,24 @@
 #define VBUS_TO_CC_DEBOUNCE	100
 #define MT6379_FOD_SRC_EN	0
 
+/* use ddata->ofdata to print chip name so that ddata should exist in advance */
 #define MT6379_INFO(fmt, ...) \
 	do { \
 		if (MT6379_INFO_EN) \
-			pd_dbg_info("%s " fmt, __func__, ##__VA_ARGS__); \
+			pd_dbg_info("%s: %s: " fmt, dev_name(ddata->dev), \
+			__func__, ##__VA_ARGS__); \
 	} while (0)
 
 #define MT6379_DBGINFO(fmt, ...) \
 	do { \
 		if (MT6379_DBGINFO_EN) \
-			pd_dbg_info("%s " fmt, __func__, ##__VA_ARGS__); \
+			pd_dbg_info("%s: %s: " fmt, dev_name(ddata->dev), \
+			__func__, ##__VA_ARGS__); \
 	} while (0)
 
 #define MT6379_VID	0x29CF
 #define MT6379_PID	0x6379
+#define MT6720_PID	0x6720
 
 #define MT6379_IRQ_WAKE_TIME	(500) /* ms */
 
@@ -108,6 +113,8 @@
 #define MT6379_REG_WD0SET	(0xDA)
 #define MT6379_REG_WDSET	(0xDB)
 #define MT6379_REG_WDSET1	(0xDC)
+#define MT6379_REG_TXHRSTCTRL	(0xDD)
+#define MT6379_REG_RXLIQIDLECTRL	(0xE2)
 
 /* RT2 */
 #define MT6379_REG_WDSET2	(0x520)
@@ -137,11 +144,11 @@
 #define MT6379_MSK_VCON_RVPCPEN	BIT(1)
 #define MT6379_MSK_VCON_RVPEN	BIT(3)
 #define MT6379_MSK_VCON_OVCCEN	BIT(7)
-#define MT6379_MSK_VCON_PROTEN	\
-	(MT6379_MSK_VCON_RVPEN | MT6379_MSK_VCON_OVCCEN | \
-	 MT6379_MSK_VCON_RVPCPEN)
-/* MT6379_REG_VCONCTRL2: 0x8C */
-#define MT6379_MSK_VCON_OVPEN	BIT(4)
+#define MT6379_MSK_VCON_RVOVEN	\
+	(MT6379_MSK_VCON_RVPEN | MT6379_MSK_VCON_OVCCEN)
+/* MT6379_REG_VCONCTRL3: 0x8C */
+#define MT6379_MSK_VCON_CLIMITEN BIT(0)
+#define MT6379_MSK_VCON_OVPCPEN	BIT(4)
 /* MT6379_REG_SYSCTRL1: 0x8F */
 #define MT6379_MSK_AUTOIDLE_TOUT	GENMASK(2, 0)
 #define MT6379_MSK_AUTOIDLE_EN	BIT(3)
@@ -276,8 +283,36 @@
 #define MT6379_MSK_WD0_TDET	GENMASK(2, 0)
 #define MT6379_SFT_WD0_TDET	(0)
 
+struct tcpc_ofdata {
+	u16 pid;
+	u8 lp_rplvl_sel_mask;
+	bool new_auto_idle;
+	bool vconn_clmt;
+};
+
+enum {
+	OFDATA_MT6379,
+	OFDATA_MT6720,
+	OFDATA_MAX,
+};
+
+static const struct tcpc_ofdata tcpc_ofdatas[OFDATA_MAX] = {
+	[OFDATA_MT6379] = {
+		.pid = MT6379_PID,
+		.lp_rplvl_sel_mask = 0x30,
+		.new_auto_idle = false,
+		.vconn_clmt = true,
+	}, [OFDATA_MT6720] = {
+		.pid = MT6720_PID,
+		.lp_rplvl_sel_mask = 0x10,
+		.new_auto_idle = true,
+		.vconn_clmt = false, /* Auto Enable in soft-start only */
+	},
+};
+
 struct mt6379_tcpc_data {
 	struct device *dev;
+	const struct tcpc_ofdata *ofdata;
 	struct regmap *rmap;
 	struct tcpc_desc *desc;
 	struct tcpc_device *tcpc;
@@ -294,6 +329,7 @@ struct mt6379_tcpc_data {
 	struct delayed_work fod_polling_dwork;
 
 	struct delayed_work vbus_to_cc_dwork;
+	bool use_i2c;
 };
 
 enum mt6379_vend_int {
@@ -866,8 +902,6 @@ static int mt6379_init_wd(struct mt6379_tcpc_data *ddata)
 	/* WD0_RPULL_EN = 1, WD0_DISCHG_EN = 1 */
 	mt6379_write8(ddata, MT6379_REG_WD0SET, 0x06);
 
-	mt6379_set_wd_ldo(ddata, MT6379_WD_LDO_1_8V);
-
 	mt6379_bulk_write(ddata, MT6379_REG_WDSET2, mt6379_rt2_wd_init_setting,
 			  ARRAY_SIZE(mt6379_rt2_wd_init_setting));
 	return 0;
@@ -1413,6 +1447,7 @@ static int mt6379_tcpc_init(struct tcpc_device *tcpc, bool sw_reset)
 {
 	int ret;
 	struct mt6379_tcpc_data *ddata = tcpc_get_dev_data(tcpc);
+	const struct tcpc_ofdata *ofdata = ddata->ofdata;
 
 	if (sw_reset) {
 		ret = mt6379_sw_reset(ddata);
@@ -1454,8 +1489,9 @@ static int mt6379_tcpc_init(struct tcpc_device *tcpc, bool sw_reset)
 	/* Retry period = 26.208us */
 	mt6379_write8(ddata, MT6379_REG_PHYCTRL9, 0x3C);
 
-	/* Enable PD Vconn current limit mode, ocp sel 300mA, and analog OVP */
-	mt6379_write8(ddata, MT6379_REG_VCONCTRL3, 0x51);
+	/* Enable PD Vconn current limit mode */
+	if (ofdata->vconn_clmt)
+		mt6379_set_bits(ddata, MT6379_REG_VCONCTRL3, MT6379_MSK_VCON_CLIMITEN);
 
 	/* VBUS_VALID debounce time: 375us */
 	mt6379_write8(ddata, MT6379_REG_LPWRCTRL5, 0x2F);
@@ -1463,16 +1499,13 @@ static int mt6379_tcpc_init(struct tcpc_device *tcpc, bool sw_reset)
 	/* Set HILOCCFILTER 250us */
 	mt6379_write8(ddata, MT6379_REG_HILOCTRL9, 0xAA);
 
-	/* Enable CC open 40ms when PMIC SYSUV */
+	/* Enable CC open 40ms when BATON disconnect */
 	mt6379_set_bits(ddata, MT6379_REG_SHIELDCTRL1, MT6379_MSK_OPEN40MS_EN);
 	mt6379_set_bits(ddata, MT6379_REG_CORECTRL2, MT6379_MSK_CCOPEN_SEL);
 
-	/*
-	 * Enable Alert.CCStatus assertion
-	 * when CCStatus.Looking4Connection changes
-	 */
-	mt6379_set_bits(ddata, TCPC_V10_REG_TCPC_CTRL,
-			TCPC_V10_REG_TCPC_CTRL_EN_LOOK4CONNECTION_ALERT);
+	if (ddata->use_i2c)
+		mt6379_set_bits(ddata, MT6379_REG_I2CTORSTCTRL,
+				MT6379_MSK_I2CTORST_EN | MT6379_MSK_I2CTORST_SEL);
 
 	mt6379_init_mask(tcpc);
 
@@ -1480,12 +1513,18 @@ static int mt6379_tcpc_init(struct tcpc_device *tcpc, bool sw_reset)
 	mt6379_set_bits(ddata, MT6379_REG_WATCHDOGCTRL,
 			MT6379_MSK_VBUSDISCHG_OPT);
 
-	/* Disable bleed dischg for IQ about 2mA consumption */
-	mt6379_clr_bits(ddata, TCPC_V10_REG_POWER_CTRL,
-			TCPC_V10_REG_BLEED_DISC_EN);
+	/* Set Rp Low Power LDO to 2V */
+	mt6379_set_bits(ddata, MT6379_REG_LPWRCTRL3, ofdata->lp_rplvl_sel_mask);
 
-	/* Set Low Power LDO to 2V */
-	mt6379_write8(ddata, MT6379_REG_LPWRCTRL3, 0xF8);
+	if (ofdata->new_auto_idle) {
+		/* Fix tx blocked by MT6720 auto idle */
+		mt6379_set_bits(ddata, MT6379_REG_TXHRSTCTRL, 0xE0);
+		/* Enable new RX low IQ idle mode in MT6720 */
+		mt6379_write8(ddata, 0xF1, 0x62); //test mode entry
+		mt6379_write8(ddata, 0xF0, 0x86);
+		mt6379_set_bits(ddata, MT6379_REG_RXLIQIDLECTRL, 0x01);
+		mt6379_write8(ddata, 0xF1, 0x00); // test mode exit
+	}
 
 	/* Sync IRQ to 3M path */
 	mt6379_set_bits(ddata, MT6379_REG_SYSCTRL1, MT6379_MSK_INTN_SELECT);
@@ -1707,28 +1746,32 @@ static int mt6379_set_vconn(struct tcpc_device *tcpc, int en)
 	 * Otherwise vconn present fail will be triggered
 	 */
 	if (en) {
-		mt6379_set_bits(ddata, MT6379_REG_VCONCTRL3,
-				MT6379_MSK_VCON_OVPEN);
-		mt6379_set_bits(ddata, MT6379_REG_VCONCTRL2,
-				MT6379_MSK_VCON_PROTEN);
+		/* vconn depends on vconn_det_en in MT6720 */
+		ret = mt6379_set_bits(ddata, MT6379_REG_VCONCTRL1, MT6379_MSK_VCON_DET_EN);
+		// vconn rcp is reserved in MT6720
+		ret |= mt6379_set_bits(ddata, MT6379_REG_VCONCTRL2,
+				       MT6379_MSK_VCON_RVOVEN);
 		usleep_range(20, 50);
-		ret = mt6379_is_vconn_fault(ddata, &fault);
-		if (ret >= 0 && fault)
-			return -EINVAL;
+		ret |= mt6379_is_vconn_fault(ddata, &fault);
+		if (ret)
+			return ret;
+		if (fault) {
+			MT6379_INFO("fault:0x%02x\n", fault);
+			return -EFAULT;
+		}
 	}
+
 	ret = (en ? mt6379_set_bits : mt6379_clr_bits)
 		(ddata, TCPC_V10_REG_POWER_CTRL, TCPC_V10_REG_POWER_CTRL_VCONN);
-	if (!en) {
-		mt6379_clr_bits(ddata, MT6379_REG_VCONCTRL2,
-				MT6379_MSK_VCON_PROTEN);
+	if (ret)
+		return ret;
 
-		mt6379_clr_bits(ddata, MT6379_REG_VCONCTRL3,
-				MT6379_MSK_VCON_OVPEN);
+	if (!en) {
+		ret = mt6379_clr_bits(ddata, MT6379_REG_VCONCTRL1, MT6379_MSK_VCON_DET_EN);
+		ret |= mt6379_clr_bits(ddata, MT6379_REG_VCONCTRL2,
+				MT6379_MSK_VCON_RVOVEN);
 	}
 	mdelay(1);
-	ret = (en ? mt6379_set_bits : mt6379_clr_bits)
-		(ddata, MT6379_REG_I2CTORSTCTRL, MT6379_MSK_VCONN_UVP_OCP_CPEN);
-
 	return ret;
 }
 
@@ -2451,6 +2494,7 @@ static int mt6379_parse_dt(struct mt6379_tcpc_data *ddata)
 
 static int mt6379_check_revision(struct mt6379_tcpc_data *ddata)
 {
+	const struct tcpc_ofdata *ofdata = ddata->ofdata;
 	int ret;
 	u16 id;
 
@@ -2469,8 +2513,9 @@ static int mt6379_check_revision(struct mt6379_tcpc_data *ddata)
 		dev_err(ddata->dev, "failed to read pid(%d)\n", ret);
 		return ret;
 	}
-	if (id != MT6379_PID) {
-		dev_err(ddata->dev, "incorrect pid(0x%04X)\n", id);
+
+	if (id != ofdata->pid && id != MT6379_PID) {
+		dev_err(ddata->dev, "pid:0x%04X not match ofpid:0x%04X\n", id, ofdata->pid);
 		return -ENODEV;
 	}
 
@@ -2481,6 +2526,23 @@ static int mt6379_check_revision(struct mt6379_tcpc_data *ddata)
 	}
 	dev_info(ddata->dev, "did = 0x%04X\n", id);
 	return 0;
+}
+
+static void mt6720_check_of_irq(struct mt6379_tcpc_data *ddata)
+{
+	struct device_node *parent;
+
+	ddata->use_i2c = false;
+
+	parent = of_irq_find_parent(ddata->dev->parent->of_node);
+	if (parent) {
+		if (of_property_read_bool(parent, "gpio-controller"))
+			ddata->use_i2c = true;
+
+		of_node_put(parent);
+	}
+
+	dev_info(ddata->dev, "%s: use_i2c: %d\n", __func__, ddata->use_i2c);
 }
 
 static int mt6379_tcpc_probe(struct platform_device *pdev)
@@ -2495,6 +2557,8 @@ static int mt6379_tcpc_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	ddata->dev = &pdev->dev;
 	platform_set_drvdata(pdev, ddata);
+
+	ddata->ofdata = of_device_get_match_data(&pdev->dev);
 
 	ddata->rmap = dev_get_regmap(ddata->dev->parent, NULL);
 	if (!ddata->rmap) {
@@ -2584,6 +2648,8 @@ static int mt6379_tcpc_probe(struct platform_device *pdev)
 		}
 	}
 
+	mt6720_check_of_irq(ddata);
+
 	ret = mt6379_tcpc_init_irq(ddata);
 	if (ret < 0) {
 		dev_err(ddata->dev, "failed to init irq\n");
@@ -2658,9 +2724,10 @@ static const struct dev_pm_ops mt6379_tcpc_pm_ops = {
 #endif	/* CONFIG_PM_SLEEP */
 };
 
-static const struct of_device_id mt6379_tcpc_of_match[] = {
-	{.compatible = "mediatek,mt6379-tcpc",},
-	{}
+static const struct of_device_id __maybe_unused mt6379_tcpc_of_match[] = {
+	{ .compatible = "mediatek,mt6379-tcpc", .data = &tcpc_ofdatas[OFDATA_MT6379], },
+	{ .compatible = "mediatek,mt6720-tcpc", .data = &tcpc_ofdatas[OFDATA_MT6720], },
+	{ }
 };
 MODULE_DEVICE_TABLE(of, mt6379_tcpc_of_match);
 
