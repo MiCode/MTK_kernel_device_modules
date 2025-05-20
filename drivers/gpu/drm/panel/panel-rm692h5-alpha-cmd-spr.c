@@ -288,27 +288,27 @@ static int lcm_panel_init(struct drm_panel *panel)
 	case FHD_60_360TE:
 	case VFHD_60_360TE:
 		if (mte_support == MTE_SUPPORT)
-			push_table(ctx, cmd_set_fps_mte, ARRAY_SIZE(cmd_set_fps_mte), 0);
+			push_table(ctx, cmd_set_fps_mte_minfps_to_60, ARRAY_SIZE(cmd_set_fps_mte_minfps_to_60), 0);
 		else
 			push_table(ctx, cmd_set_fps_360te, ARRAY_SIZE(cmd_set_fps_360te), 0);
 		break;
 	case FHD_90_360TE:
 	case VFHD_90_360TE:
 		if (mte_support == MTE_SUPPORT)
-			push_table(ctx, cmd_set_fps_mte, ARRAY_SIZE(cmd_set_fps_mte), 0);
+			push_table(ctx, cmd_set_fps_mte_minfps_to_90, ARRAY_SIZE(cmd_set_fps_mte_minfps_to_90), 0);
 		else
 			push_table(ctx, cmd_set_fps_360te, ARRAY_SIZE(cmd_set_fps_360te), 0);
 		break;
 	case FHD_120_360TE:
 	case VFHD_120_360TE:
 		if (mte_support == MTE_SUPPORT)
-			push_table(ctx, cmd_set_fps_mte, ARRAY_SIZE(cmd_set_fps_mte), 0);
+			push_table(ctx, cmd_set_fps_mte_minfps_to_60, ARRAY_SIZE(cmd_set_fps_mte_minfps_to_60), 0);
 		else
 			push_table(ctx, cmd_set_fps_360te, ARRAY_SIZE(cmd_set_fps_360te), 0);
 		break;
 	default:
 		if (mte_support == MTE_SUPPORT)
-			push_table(ctx, cmd_set_fps_mte, ARRAY_SIZE(cmd_set_fps_mte), 0);
+			push_table(ctx, cmd_set_fps_mte_minfps_to_60, ARRAY_SIZE(cmd_set_fps_mte_minfps_to_60), 0);
 		else
 			push_table(ctx, cmd_set_fps_360te, ARRAY_SIZE(cmd_set_fps_360te), 0);
 		break;
@@ -447,7 +447,8 @@ static int lcm_panel_init_v2(void *dsi_drv, struct drm_panel *panel, void *handl
 	static struct mipi_dsi_msg fps_60hz[ARRAY_SIZE(cmd_set_fps_360te)] = { 0 };
 	static struct mipi_dsi_msg fps_90hz[ARRAY_SIZE(cmd_set_fps_360te)] = { 0 };
 	static struct mipi_dsi_msg fps_120hz[ARRAY_SIZE(cmd_set_fps_360te)] = { 0 };
-	static struct mipi_dsi_msg fps_mte[ARRAY_SIZE(cmd_set_fps_mte)] = { 0 };
+	static struct mipi_dsi_msg fps_mte_60hz[ARRAY_SIZE(cmd_set_fps_mte_minfps_to_60)] = { 0 };
+	static struct mipi_dsi_msg fps_mte_90hz[ARRAY_SIZE(cmd_set_fps_mte_minfps_to_90)] = { 0 };
 
 	if (!panel) {
 		pr_err("%s, error, panel is NULL\n", __func__);
@@ -502,9 +503,13 @@ static int lcm_panel_init_v2(void *dsi_drv, struct drm_panel *panel, void *handl
 			fps_120hz[i].tx_len= cmd_set_fps_360te[i].count;
 			fps_120hz[i].tx_buf = cmd_set_fps_360te[i].para_list;
 		}
-		for (i = 0; i < ARRAY_SIZE(cmd_set_fps_mte); i++) {
-			fps_mte[i].tx_len= cmd_set_fps_mte[i].count;
-			fps_mte[i].tx_buf = cmd_set_fps_mte[i].para_list;
+		for (i = 0; i < ARRAY_SIZE(cmd_set_fps_mte_minfps_to_60); i++) {
+			fps_mte_60hz[i].tx_len= cmd_set_fps_mte_minfps_to_60[i].count;
+			fps_mte_60hz[i].tx_buf = cmd_set_fps_mte_minfps_to_60[i].para_list;
+		}
+		for (i = 0; i < ARRAY_SIZE(cmd_set_fps_mte_minfps_to_90); i++) {
+			fps_mte_90hz[i].tx_len= cmd_set_fps_mte_minfps_to_90[i].count;
+			fps_mte_90hz[i].tx_buf = cmd_set_fps_mte_minfps_to_90[i].para_list;
 		}
 	}
 
@@ -580,13 +585,22 @@ static int lcm_panel_init_v2(void *dsi_drv, struct drm_panel *panel, void *handl
 		.cmd_msg = fps_120hz,
 	};
 
-	struct mtk_dsi_cmd_msg fps_mte_cmd = {
+	struct mtk_dsi_cmd_msg fps_mte_cmd_60hz = {
 		.is_rd = 0, /* 0:write 1:read */
 		.is_package = 0,
 		.rd_to_slot = 0,
-		.cmd_num = ARRAY_SIZE(cmd_set_fps_mte),
+		.cmd_num = ARRAY_SIZE(cmd_set_fps_mte_minfps_to_60),
 		.transfer_mode = PACKET_LP_MODE,
-		.cmd_msg = fps_mte,
+		.cmd_msg = fps_mte_60hz,
+	};
+
+	struct mtk_dsi_cmd_msg fps_mte_cmd_90hz = {
+		.is_rd = 0, /* 0:write 1:read */
+		.is_package = 0,
+		.rd_to_slot = 0,
+		.cmd_num = ARRAY_SIZE(cmd_set_fps_mte_minfps_to_90),
+		.transfer_mode = PACKET_LP_MODE,
+		.cmd_msg = fps_mte_90hz,
 	};
 
 	if (ctx->dvv == DV1)
@@ -605,27 +619,27 @@ static int lcm_panel_init_v2(void *dsi_drv, struct drm_panel *panel, void *handl
 	case FHD_60_360TE:
 	case VFHD_60_360TE:
 		if (mte_support == MTE_SUPPORT)
-			cb(dsi_drv, handle, cmd_opt, &fps_mte_cmd);
+			cb(dsi_drv, handle, cmd_opt, &fps_mte_cmd_60hz);
 		else
 			cb(dsi_drv, handle, cmd_opt, &fps_60hz_cmd);
 		break;
 	case FHD_90_360TE:
 	case VFHD_90_360TE:
 		if (mte_support == MTE_SUPPORT)
-			cb(dsi_drv, handle, cmd_opt, &fps_mte_cmd);
+			cb(dsi_drv, handle, cmd_opt, &fps_mte_cmd_90hz);
 		else
 			cb(dsi_drv, handle, cmd_opt, &fps_90hz_cmd);
 		break;
 	case FHD_120_360TE:
 	case VFHD_120_360TE:
 		if (mte_support == MTE_SUPPORT)
-			cb(dsi_drv, handle, cmd_opt, &fps_mte_cmd);
+			cb(dsi_drv, handle, cmd_opt, &fps_mte_cmd_60hz);
 		else
 			cb(dsi_drv, handle, cmd_opt, &fps_120hz_cmd);
 		break;
 	default:
 		if (mte_support == MTE_SUPPORT)
-			cb(dsi_drv, handle, cmd_opt, &fps_mte_cmd);
+			cb(dsi_drv, handle, cmd_opt, &fps_mte_cmd_60hz);
 		else
 			cb(dsi_drv, handle, cmd_opt, &fps_120hz_cmd);
 		break;
@@ -909,8 +923,10 @@ static int mode_switch(struct drm_panel *panel,
 
 	pr_info("%s cur_mode = %d dst_mode %d vrefresh %d\n", __func__, cur_mode, dst_mode, drm_mode_vrefresh(m));
 
-	if (mte_support == MTE_SUPPORT)
-		push_table(ctx, cmd_set_fps_mte, ARRAY_SIZE(cmd_set_fps_mte), 0);
+	if (mte_support == MTE_SUPPORT && drm_mode_vrefresh(m) != 90)
+		push_table(ctx, cmd_set_fps_mte_minfps_to_60, ARRAY_SIZE(cmd_set_fps_mte_minfps_to_60), 0);
+	else if (mte_support == MTE_SUPPORT && drm_mode_vrefresh(m) == 90)
+		push_table(ctx, cmd_set_fps_mte_minfps_to_90, ARRAY_SIZE(cmd_set_fps_mte_minfps_to_90), 0);
 	else if (drm_mode_vrefresh(m) == 120)
 		push_table(ctx, cmd_set_fps_360te, ARRAY_SIZE(cmd_set_fps_360te), 0);
 	else if (drm_mode_vrefresh(m) == 90)
@@ -935,7 +951,8 @@ static int mode_switch_v2(void *dsi_drv, struct drm_panel *panel, void *handle,
 	static struct mipi_dsi_msg fps_60hz[ARRAY_SIZE(cmd_set_fps_360te)] = { 0 };
 	static struct mipi_dsi_msg fps_90hz[ARRAY_SIZE(cmd_set_fps_360te)] = { 0 };
 	static struct mipi_dsi_msg fps_120hz[ARRAY_SIZE(cmd_set_fps_360te)] = { 0 };
-	static struct mipi_dsi_msg fps_mte[ARRAY_SIZE(cmd_set_fps_mte)] = { 0 };
+	static struct mipi_dsi_msg fps_mte_60hz[ARRAY_SIZE(cmd_set_fps_mte_minfps_to_60)] = { 0 };
+	static struct mipi_dsi_msg fps_mte_90hz[ARRAY_SIZE(cmd_set_fps_mte_minfps_to_90)] = { 0 };
 
 	pr_info("%s cur_mode = %d dst_mode %d vrefresh %d\n", __func__, cur_mode, dst_mode, drm_mode_vrefresh(m));
 
@@ -953,9 +970,13 @@ static int mode_switch_v2(void *dsi_drv, struct drm_panel *panel, void *handle,
 			fps_120hz[i].tx_len= cmd_set_fps_360te[i].count;
 			fps_120hz[i].tx_buf = cmd_set_fps_360te[i].para_list;
 		}
-		for (i = 0; i < ARRAY_SIZE(cmd_set_fps_mte); i++) {
-			fps_mte[i].tx_len= cmd_set_fps_mte[i].count;
-			fps_mte[i].tx_buf = cmd_set_fps_mte[i].para_list;
+		for (i = 0; i < ARRAY_SIZE(cmd_set_fps_mte_minfps_to_60); i++) {
+			fps_mte_60hz[i].tx_len= cmd_set_fps_mte_minfps_to_60[i].count;
+			fps_mte_60hz[i].tx_buf = cmd_set_fps_mte_minfps_to_60[i].para_list;
+		}
+		for (i = 0; i < ARRAY_SIZE(cmd_set_fps_mte_minfps_to_90); i++) {
+			fps_mte_90hz[i].tx_len= cmd_set_fps_mte_minfps_to_90[i].count;
+			fps_mte_90hz[i].tx_buf = cmd_set_fps_mte_minfps_to_90[i].para_list;
 		}
 	}
 	struct mtk_dsi_cmd_msg fps_60hz_cmd = {
@@ -985,17 +1006,28 @@ static int mode_switch_v2(void *dsi_drv, struct drm_panel *panel, void *handle,
 		.cmd_msg = fps_120hz,
 	};
 
-	struct mtk_dsi_cmd_msg fps_mte_cmd = {
+	struct mtk_dsi_cmd_msg fps_mte_cmd_60hz = {
 		.is_rd = 0, /* 0:write 1:read */
 		.is_package = 0,
 		.rd_to_slot = 0,
-		.cmd_num = ARRAY_SIZE(cmd_set_fps_mte),
+		.cmd_num = ARRAY_SIZE(cmd_set_fps_mte_minfps_to_60),
 		.transfer_mode = PACKET_LP_MODE,
-		.cmd_msg = fps_mte,
+		.cmd_msg = fps_mte_60hz,
 	};
 
-	if (mte_support == MTE_SUPPORT)
-		cb(dsi_drv, handle, cmd_opt, &fps_mte_cmd);
+	struct mtk_dsi_cmd_msg fps_mte_cmd_90hz = {
+		.is_rd = 0, /* 0:write 1:read */
+		.is_package = 0,
+		.rd_to_slot = 0,
+		.cmd_num = ARRAY_SIZE(cmd_set_fps_mte_minfps_to_90),
+		.transfer_mode = PACKET_LP_MODE,
+		.cmd_msg = fps_mte_90hz,
+	};
+
+	if (mte_support == MTE_SUPPORT && drm_mode_vrefresh(m) != 90)
+		cb(dsi_drv, handle, cmd_opt, &fps_mte_cmd_60hz);
+	else if (mte_support == MTE_SUPPORT && drm_mode_vrefresh(m) == 90)
+		cb(dsi_drv, handle, cmd_opt, &fps_mte_cmd_90hz);
 	else if (drm_mode_vrefresh(m) == 120)
 		cb(dsi_drv, handle, cmd_opt, &fps_120hz_cmd);
 	else if (drm_mode_vrefresh(m) == 90)
