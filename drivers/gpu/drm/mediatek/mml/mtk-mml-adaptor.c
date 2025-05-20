@@ -322,9 +322,12 @@ void task_submit_done(struct mml_task *task)
 	if (ctx->config_cb) {
 		ctx->config_cb(task, task->cb_param);
 	} else {
-		mml_mmp(submit_cb, MMPROFILE_FLAG_PULSE, task->job.jobid, 0);
+		mml_trace_begin("%s_%u_%u", __func__, task->job.jobid, task->disp_fid_submit);
+		mml_mmp(submit_cb, MMPROFILE_FLAG_START, task->job.jobid, task->disp_fid_submit);
 		if (ctx->submit_cb)
 			ctx->submit_cb(task->cb_param);
+		mml_mmp(submit_cb, MMPROFILE_FLAG_END, task->job.jobid, task->disp_fid_submit);
+		mml_trace_end();
 	}
 
 	mutex_lock(&ctx->config_mutex);
