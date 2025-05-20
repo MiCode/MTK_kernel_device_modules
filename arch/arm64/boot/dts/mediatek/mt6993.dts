@@ -19132,9 +19132,11 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 		md_power_throttling: md-power-throttling {
 			compatible = "mediatek,md-power-throttling";
-			lbat-max-level = <2>;
+			lbat-dedicate-volts = <3390 3290 3000 2800>;
+			lbat-max-level = <3>;
 			lbat-reduce-tx-lv1 = <0>;
 			lbat-reduce-tx-lv2 = <6>;
+			lbat-reduce-tx-lv3 = <6>;
 
 			oc-max-level = <2>;
 			oc-reduce-tx-lv1 = <0>;
