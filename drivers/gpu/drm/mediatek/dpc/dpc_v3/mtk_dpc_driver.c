@@ -1755,6 +1755,7 @@ static void dpc_config_v3(const u32 subsys, bool en)
 	u32 hwvote_bk = 0, swhw_bk = 0;
 	static bool is_mminfra_ctrl_by_dpc;
 
+	dpc_vidle_power_keep_v3(DISP_VIDLE_USER_DISP_DPC_CFG);
 	if (!en && is_mminfra_ctrl_by_dpc) {
 		if (unlikely(dump_to_kmsg))
 			DPCDUMP("dpc get mminfra");
@@ -1893,7 +1894,7 @@ static void dpc_config_v3(const u32 subsys, bool en)
 		else
 			mtk_dprec_logger_pr(DPREC_LOGGER_FENCE, "dpc put mminfra\n");
 	}
-
+	dpc_vidle_power_release_v3(DISP_VIDLE_USER_DISP_DPC_CFG);
 	dpc_mmp(config, MMPROFILE_FLAG_PULSE, subsys, en);
 }
 
