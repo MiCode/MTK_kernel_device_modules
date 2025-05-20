@@ -119,6 +119,7 @@ static atomic_t buck_ref = ATOMIC_INIT(0);
 static atomic_t hwccf_ref = ATOMIC_INIT(0);
 static atomic_t pre_cg_ref = ATOMIC_INIT(0);
 
+static atomic_t excep_ret[32] = { ATOMIC_INIT(0) };
 static atomic_t g_user_9 = ATOMIC_INIT(0);
 static atomic_t g_user_14 = ATOMIC_INIT(0);
 static atomic_t g_user_15 = ATOMIC_INIT(0);
@@ -2640,8 +2641,10 @@ static int dpc_vidle_power_keep_v3(const enum mtk_vidle_voter_user _user)
 	enum mtk_vidle_voter_user user = _user & DISP_VIDLE_USER_MASK;
 	unsigned long flags;
 
-	if (!dpc_buck_status(-1)) /* buck off */
+	if (!dpc_buck_status(-1)) { /* buck off */
 		dpc_mmp(folder, MMPROFILE_FLAG_PULSE, BIT(28) | user, 0xdead0011);
+		return VOTER_PM_SKIP_PWR_OFF;
+	}
 
 	if (user == DISP_VIDLE_USER_TOP_CLK_ISR || user == DISP_VIDLE_USER_MML_CLK_ISR) {
 		spin_lock_irqsave(&g_priv->excp_spin_lock, flags);
@@ -2653,6 +2656,7 @@ static int dpc_vidle_power_keep_v3(const enum mtk_vidle_voter_user _user)
 			dpc_ap_ref_cnt(VOTE_SET, user);
 		}
 
+		atomic_inc(&excep_ret[user]);
 		spin_unlock_irqrestore(&g_priv->excp_spin_lock, flags);
 		return ret;
 	}
@@ -2691,6 +2695,7 @@ static int dpc_vidle_power_keep_v3(const enum mtk_vidle_voter_user _user)
 	dpc_ap_ref_cnt(VOTE_SET, user);
 	writel(0x1, dpc_base + DISP_REG_DPC_DUMMY1);
 
+	atomic_inc(&excep_ret[user]);
 	mutex_unlock(&g_priv->excp_lock);
 	tracing_mark_write(trace_buf_keep[3][1]);
 	tracing_mark_write(trace_buf_keep[2][1]);
@@ -2706,8 +2711,10 @@ static void dpc_vidle_power_release_v3(const enum mtk_vidle_voter_user _user)
 	enum mtk_vidle_voter_user user = _user & DISP_VIDLE_USER_MASK;
 	unsigned long flags;
 
-	if (!dpc_buck_status(-1)) /* buck off */
-		dpc_mmp(folder, MMPROFILE_FLAG_PULSE, BIT(28) | user, 0xdead00ff);
+	if (atomic_read(&excep_ret[user]) <= 0) {
+		dpc_mmp(folder, MMPROFILE_FLAG_PULSE, BIT(29) | user, 0xdead0011);
+		return;
+	}
 
 	if (user == DISP_VIDLE_USER_TOP_CLK_ISR || user == DISP_VIDLE_USER_MML_CLK_ISR) {
 		spin_lock_irqsave(&g_priv->excp_spin_lock, flags);
@@ -2726,6 +2733,7 @@ static void dpc_vidle_power_release_v3(const enum mtk_vidle_voter_user _user)
 			return;
 		}
 
+		atomic_dec(&excep_ret[user]);
 		spin_unlock_irqrestore(&g_priv->excp_spin_lock, flags);
 		dpc_mmp(user_15, user_cnt == 0 ? MMPROFILE_FLAG_END : MMPROFILE_FLAG_PULSE, 1, user_cnt);
 		return;
@@ -2737,19 +2745,19 @@ static void dpc_vidle_power_release_v3(const enum mtk_vidle_voter_user _user)
 	switch (user) {
 	case DISP_VIDLE_USER_NST_LOCK:
 		user_cnt = atomic_dec_if_positive(&g_user_9);
-		dpc_mmp(user_9, user_cnt == 0 ? MMPROFILE_FLAG_END : MMPROFILE_FLAG_PULSE, 1, user_cnt);
+		dpc_mmp(user_9, user_cnt == 0 ? MMPROFILE_FLAG_END : MMPROFILE_FLAG_PULSE, 0, user_cnt);
 		break;
 	case DISP_VIDLE_USER_FOR_FRAME:
 		user_cnt = atomic_dec_if_positive(&g_user_14);
-		dpc_mmp(user_14, user_cnt == 0 ? MMPROFILE_FLAG_END : MMPROFILE_FLAG_PULSE, 1, user_cnt);
+		dpc_mmp(user_14, user_cnt == 0 ? MMPROFILE_FLAG_END : MMPROFILE_FLAG_PULSE, 0, user_cnt);
 		break;
 	case DISP_VIDLE_USER_CRTC:
 		user_cnt = atomic_dec_if_positive(&g_user_16);
-		dpc_mmp(user_16, user_cnt == 0 ? MMPROFILE_FLAG_END : MMPROFILE_FLAG_PULSE, 1, user_cnt);
+		dpc_mmp(user_16, user_cnt == 0 ? MMPROFILE_FLAG_END : MMPROFILE_FLAG_PULSE, 0, user_cnt);
 		break;
 	case DISP_VIDLE_USER_PQ:
 		user_cnt = atomic_dec_if_positive(&g_user_17);
-		dpc_mmp(user_17, user_cnt == 0 ? MMPROFILE_FLAG_END : MMPROFILE_FLAG_PULSE, 1, user_cnt);
+		dpc_mmp(user_17, user_cnt == 0 ? MMPROFILE_FLAG_END : MMPROFILE_FLAG_PULSE, 0, user_cnt);
 		break;
 	default:
 		break;
@@ -2764,6 +2772,7 @@ static void dpc_vidle_power_release_v3(const enum mtk_vidle_voter_user _user)
 	tracing_mark_write(trace_buf_release[3][0]);
 	dpc_mminfra_on_off(VOTE_CLR, user);
 
+	atomic_dec(&excep_ret[user]);
 	mutex_unlock(&g_priv->excp_lock);
 	tracing_mark_write(trace_buf_release[3][1]);
 	tracing_mark_write(trace_buf_release[2][1]);
