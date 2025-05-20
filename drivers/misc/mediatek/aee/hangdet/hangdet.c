@@ -1727,6 +1727,7 @@ static void hrtimer_expire_entry_tracer(void *data, struct hrtimer *hrtimer_t, k
 	u64 temp_count = 0;
 	unsigned long flags = 0;
 	int i;
+	int done;
 
 	irq_log_entry_store(hrtimer_t->function);
 	spin_lock_irqsave(&hrtimer_lock, flags);
@@ -1744,6 +1745,7 @@ static void hrtimer_expire_entry_tracer(void *data, struct hrtimer *hrtimer_t, k
 		*last_time_ptr = sched_clock();
 	}
 
+	done = 0;
 	for (i = 0; i < HRTIMER_COUNT_ARRAY_SIZE; i++) {
 		if (cpu_counts[i].timer_caller_ip == (unsigned long)hrtimer_t->function) {
 			cpu_counts[i].count++;
@@ -1758,15 +1760,24 @@ static void hrtimer_expire_entry_tracer(void *data, struct hrtimer *hrtimer_t, k
 				burst_hrtimer_history[temp_count].caller_cpu = smp_processor_id();
 				burst_hrtimer_history[temp_count].count = cpu_counts[i].count;
 				strscpy(burst_hrtimer_history[temp_count].comm, current->comm, TASK_COMM_LEN);
-				*last_time_ptr = sched_clock();
+				if (cpu_counts[i].count % 10000 == 0)
+					*last_time_ptr = sched_clock();
 			}
+			done = 1;
 			break;
-		} else if (cpu_counts[i].timer_caller_ip == 0) {
-			cpu_counts[i].timer_caller_ip = (unsigned long)hrtimer_t->function;
-			cpu_counts[i].count = 1;
-			cpu_counts[i].start_time = sched_clock();
-			cpu_counts[i].last_time = cpu_counts[i].start_time;
-			break;
+		}
+	}
+
+	if (!done) {
+		for (i = 0; i < HRTIMER_COUNT_ARRAY_SIZE; i++) {
+			if ((cpu_counts[i].timer_caller_ip == 0) ||
+			((sched_clock() - cpu_counts[i].start_time > 250000000) && (cpu_counts[i].count) < 100)) {
+				cpu_counts[i].timer_caller_ip = (unsigned long)hrtimer_t->function;
+				cpu_counts[i].count = 1;
+				cpu_counts[i].start_time = sched_clock();
+				cpu_counts[i].last_time = cpu_counts[i].start_time;
+				break;
+			}
 		}
 	}
 
@@ -1786,6 +1797,7 @@ static int hrtimer_wakeup_entry_pre(struct kprobe *p, struct pt_regs *regs)
 	u64 temp_count = 0;
 	unsigned long flags = 0;
 	int i;
+	int done;
 
 	spin_lock_irqsave(&hrtimer_lock, flags);
 
@@ -1802,7 +1814,7 @@ static int hrtimer_wakeup_entry_pre(struct kprobe *p, struct pt_regs *regs)
 		*last_time_ptr = sched_clock();
 	}
 
-
+	done = 0;
 	for (i = 0; i < HRTIMER_COUNT_ARRAY_SIZE; i++) {
 		if (t->task == NULL)
 			break;
@@ -1820,16 +1832,29 @@ static int hrtimer_wakeup_entry_pre(struct kprobe *p, struct pt_regs *regs)
 				burst_hrtimer_history[temp_count].caller_cpu = smp_processor_id();
 				burst_hrtimer_history[temp_count].count = cpu_counts[i].count;
 				strscpy(burst_hrtimer_history[temp_count].comm, t->task->comm, TASK_COMM_LEN);
-				*last_time_ptr = sched_clock();
+				if (cpu_counts[i].count % 10000 == 0)
+					*last_time_ptr = sched_clock();
 			}
-			break;
-		} else if (strcmp(cpu_counts[i].comm, "N/A") == 0) {
-			strscpy(cpu_counts[i].comm, t->task->comm, TASK_COMM_LEN);
-			cpu_counts[i].count = 1;
-			cpu_counts[i].start_time = sched_clock();
-			cpu_counts[i].last_time = cpu_counts[i].start_time;
+			done = 1;
 			break;
 		}
+	}
+
+	if (!done) {
+		for (i = 0; i < HRTIMER_COUNT_ARRAY_SIZE; i++) {
+			if (t->task == NULL)
+				break;
+
+			if (strcmp(cpu_counts[i].comm, "N/A") == 0 ||
+			((sched_clock() - cpu_counts[i].start_time > 250000000) && (cpu_counts[i].count) < 100)) {
+				strscpy(cpu_counts[i].comm, t->task->comm, TASK_COMM_LEN);
+				cpu_counts[i].count = 1;
+				cpu_counts[i].start_time = sched_clock();
+				cpu_counts[i].last_time = cpu_counts[i].start_time;
+				break;
+			}
+		}
+
 	}
 
 	spin_unlock_irqrestore(&hrtimer_lock, flags);
