@@ -380,4 +380,8 @@ enum mt6661_regulator_id {
 #define MT6661_RG_LDO_LDC0_4_EINT_DB_SEL_MASK       (0x1)
 #define MT6661_RG_LDO_LDC0_4_EINT_DB_SEL_SHIFT      (4)
 
+/* AVDD10_DRF related REG */
+#define MT6661_PMRC_CON0                            (0x190)
+#define MT6661_LDO_LN60_7_CON0                      (0x2047)
+
 #endif /* __LINUX_REGULATOR_MT6661_H */
