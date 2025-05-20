@@ -5832,6 +5832,11 @@ static void _mtk_crtc_wb_addon_module_connect(
 			DDPINFO("%s:%d, sec in, non sec out! skip wb\n",
 					__func__, __LINE__);
 			return;
+		} else if (mtk_crtc->crtc_blank) {
+			mtk_crtc->skip_wb = true;
+			DDPINFO("%s:%d, entered TUI! skip wb\n",
+					__func__, __LINE__);
+			return;
 		}
 		addon_config.addon_wdma_config.wdma_src_roi = src_roi;
 		addon_config.addon_wdma_config.wdma_dst_roi = dst_roi;
