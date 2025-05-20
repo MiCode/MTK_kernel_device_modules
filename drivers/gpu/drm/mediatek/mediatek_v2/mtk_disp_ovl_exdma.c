@@ -266,10 +266,30 @@ static s32 sRGB_to_DCI_P3[CSC_COEF_NUM] = {
 8702,   253442,      0,
 4478,    18979, 238687};
 
+static s32 sRGB_to_BT2020[CSC_COEF_NUM] = {
+164470,  86320,  11354,
+18113,  241052,   2979,
+4297,    23072, 234775};
+
 static s32 DCI_P3_to_sRGB[CSC_COEF_NUM] = {
 321111, -58967,      0,
 -11025, 273169,      0,
 -5148,  -20614, 287906};
+
+static s32 DCI_P3_to_BT2020[CSC_COEF_NUM] = {
+197613,  52061,  12470,
+11991,  246881,   3271,
+-317,     4614, 257847};
+
+static s32 BT2020_to_sRGB[CSC_COEF_NUM] = {
+435288,-154047, -19097,
+-32650, 296983,  -2189,
+-4758,  -26366, 293268};
+
+static s32 BT2020_to_DCI_P3[CSC_COEF_NUM] = {
+352211, -73972, -16095,
+-17117, 282011,  -2750,
+740,     -5138, 266542};
 
 static s32 identity[CSC_COEF_NUM] = {
 262144,      0,      0,
@@ -280,6 +300,7 @@ static s32 identity[CSC_COEF_NUM] = {
 #define DECLARE_MTK_OVL_COLORSPACE(EXPR)                                       \
 	{EXPR(OVL_SRGB)                                                         \
 	EXPR(OVL_P3)                                                           \
+	EXPR(OVL_BT2020)                                                       \
 	EXPR(OVL_CS_NUM)                                                       \
 	EXPR(OVL_CS_UNKNOWN)}
 
@@ -1332,13 +1353,13 @@ static enum mtk_ovl_colorspace mtk_ovl_map_cs(enum mtk_drm_dataspace ds)
 	case MTK_DRM_DATASPACE_STANDARD_DCI_P3:
 		cs = OVL_P3;
 		break;
-	case MTK_DRM_DATASPACE_STANDARD_ADOBE_RGB:
-		DDPPR_ERR("%s: ovl get cs ADOBE_RGB\n", __func__);
-		fallthrough;
 	case MTK_DRM_DATASPACE_STANDARD_BT2020:
 		fallthrough;
 	case MTK_DRM_DATASPACE_STANDARD_BT2020_CONSTANT_LUMINANCE:
-		//DDPPR_ERR("%s: ovl does not support BT2020\n", __func__);
+		cs = OVL_BT2020;
+		break;
+	case MTK_DRM_DATASPACE_STANDARD_ADOBE_RGB:
+		DDPINFO("%s: ovl get cs ADOBE_RGB\n", __func__);
 		fallthrough;
 	default:
 		cs = OVL_SRGB;
@@ -1355,6 +1376,9 @@ static enum mtk_ovl_transfer mtk_ovl_map_transfer(enum mtk_drm_dataspace ds)
 	switch (ds & MTK_DRM_DATASPACE_TRANSFER_MASK) {
 	case MTK_DRM_DATASPACE_TRANSFER_LINEAR:
 		xfr = OVL_LINEAR;
+		break;
+	case MTK_DRM_DATASPACE_TRANSFER_SMPTE_170M:
+		xfr = OVL_GAMMA2;
 		break;
 	case MTK_DRM_DATASPACE_TRANSFER_GAMMA2_6:
 		fallthrough;
@@ -1465,16 +1489,34 @@ static s32 *mtk_get_ovl_csc(enum mtk_ovl_colorspace in,
 				ovl_csc[i][j] = identity;
 
 		switch (color_mode) {
+		case HAL_COLOR_MODE_BT2020:
+		case HAL_COLOR_MODE_DISPLAY_BT2020:
+			DDPDBG("WCG by color mode[%d], BT2020 mode\n", color_mode);
+			ovl_csc[OVL_SRGB][OVL_SRGB] = sRGB_to_BT2020;
+			ovl_csc[OVL_SRGB][OVL_P3] = sRGB_to_BT2020;
+			ovl_csc[OVL_SRGB][OVL_BT2020] = sRGB_to_BT2020;
+			ovl_csc[OVL_P3][OVL_SRGB] = DCI_P3_to_BT2020;
+			ovl_csc[OVL_P3][OVL_P3] = DCI_P3_to_BT2020;
+			ovl_csc[OVL_P3][OVL_BT2020] = DCI_P3_to_BT2020;
+			break;
 		case HAL_COLOR_MODE_DISPLAY_P3:
 		case HAL_COLOR_MODE_DCI_P3:
 			DDPDBG("WCG by color mode[%d], P3 mode\n", color_mode);
 			ovl_csc[OVL_SRGB][OVL_SRGB] = sRGB_to_DCI_P3;
 			ovl_csc[OVL_SRGB][OVL_P3] = sRGB_to_DCI_P3;
+			ovl_csc[OVL_SRGB][OVL_BT2020] = sRGB_to_DCI_P3;
+			ovl_csc[OVL_BT2020][OVL_SRGB] = BT2020_to_DCI_P3;
+			ovl_csc[OVL_BT2020][OVL_P3] = BT2020_to_DCI_P3;
+			ovl_csc[OVL_BT2020][OVL_BT2020] = BT2020_to_DCI_P3;
 			break;
 		case HAL_COLOR_MODE_SRGB:
 			DDPDBG("WCG by color mode[%d], SRGB mode\n", color_mode);
 			ovl_csc[OVL_P3][OVL_SRGB] = DCI_P3_to_sRGB;
 			ovl_csc[OVL_P3][OVL_P3] = DCI_P3_to_sRGB;
+			ovl_csc[OVL_P3][OVL_BT2020] = DCI_P3_to_sRGB;
+			ovl_csc[OVL_BT2020][OVL_SRGB] = BT2020_to_sRGB;
+			ovl_csc[OVL_BT2020][OVL_P3] = BT2020_to_sRGB;
+			ovl_csc[OVL_BT2020][OVL_BT2020] = BT2020_to_sRGB;
 			break;
 		case HAL_COLOR_MODE_NATIVE:
 		default:
@@ -1494,7 +1536,11 @@ static s32 *mtk_get_ovl_csc(enum mtk_ovl_colorspace in,
 
 		DDPDBG("original WCG mode\n");
 		ovl_csc[OVL_SRGB][OVL_P3] = sRGB_to_DCI_P3;
+		ovl_csc[OVL_SRGB][OVL_BT2020] = sRGB_to_BT2020;
 		ovl_csc[OVL_P3][OVL_SRGB] = DCI_P3_to_sRGB;
+		ovl_csc[OVL_P3][OVL_BT2020] = DCI_P3_to_BT2020;
+		ovl_csc[OVL_BT2020][OVL_SRGB] = BT2020_to_sRGB;
+		ovl_csc[OVL_BT2020][OVL_P3] = BT2020_to_DCI_P3;
 		inited = 1;
 	}
 
@@ -1548,6 +1594,12 @@ mtk_ovl_map_lcm_color_mode(enum mtk_drm_color_mode cm)
 	enum mtk_drm_dataspace ds = MTK_DRM_DATASPACE_SRGB;
 
 	switch (cm) {
+	case HAL_COLOR_MODE_BT2100_PQ:
+		ds = MTK_DRM_DATASPACE_BT2020_PQ;
+		break;
+	case HAL_COLOR_MODE_DISPLAY_BT2020:
+		ds = MTK_DRM_DATASPACE_DISPLAY_BT2020;
+		break;
 	case MTK_DRM_COLOR_MODE_DISPLAY_P3:
 		ds = MTK_DRM_DATASPACE_DISPLAY_P3;
 		break;

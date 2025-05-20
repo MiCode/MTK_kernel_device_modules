@@ -8637,6 +8637,11 @@ int mtk_drm_get_display_caps_ioctl(struct drm_device *dev, void *data,
 		}
 	}
 #endif
+
+	if (mtk_drm_helper_get_opt(private->helper_opt, MTK_DRM_OPT_OVL_WCG_BY_COLOR_MODE))
+		caps_info->disp_feature_flag |=
+				DRM_DISP_FEATURE_WCG_BY_COLOR_MODE;
+
 	return ret;
 }
 
