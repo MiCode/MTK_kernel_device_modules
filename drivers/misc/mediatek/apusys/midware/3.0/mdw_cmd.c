@@ -996,6 +996,7 @@ static int mdw_cmd_ioctl_run(struct mdw_fpriv *mpriv, union mdw_cmd_args *args)
 		mdw_cmd_debug("run stale mode\n");
 	} else {
 		mdw_drv_err("unexcept operation op(%d) id(%lld)\n", in->op, in->id);
+		ret = -EINVAL;
 		goto out;
 	}
 
@@ -1018,11 +1019,18 @@ static int mdw_cmd_ioctl_run(struct mdw_fpriv *mpriv, union mdw_cmd_args *args)
 		}
 		mutex_lock(&c->mtx);
 
+		/* prepare sync_file fd */
+		fd = get_unused_fd_flags(O_CLOEXEC);
+		if (fd < 0) {
+			mdw_drv_err("get unused fd(%d) fail\n", fd);
+			goto remove_idr;
+		}
+
 		/* prepare fence */
 		ret = mdw_fence_init(c);
 		if (ret) {
 			mdw_drv_err("create fence fail, ret(%d)\n", ret);
-			goto remove_idr;
+			goto put_fd;
 		}
 
 		/* assign dma_fence */
@@ -1052,15 +1060,16 @@ static int mdw_cmd_ioctl_run(struct mdw_fpriv *mpriv, union mdw_cmd_args *args)
 				(uint64_t)c->mpriv, c->inference_id);
 			run_ret = mdw_cmd_run(c);
 		} else {
+			/* wait fence from wq */
+			schedule_work(&c->t_wk);
+
 			mdw_flw_debug("wait fence, fd(%d)\n", wait_fd);
 			if (c->wait_fence->ops->get_timeline_name && c->wait_fence->ops->get_driver_name) {
 				mdw_flw_debug("wait fence, fence name(%s-%s)\n",
 					c->wait_fence->ops->get_driver_name(f),
 					c->wait_fence->ops->get_timeline_name(f));
+			}
 		}
-		/* wait fence from wq */
-		schedule_work(&c->t_wk);
-	}
 
 		if (run_ret < 0) {
 			mdw_drv_err("run cmd fail, ret(%d)\n", run_ret);
@@ -1072,12 +1081,6 @@ static int mdw_cmd_ioctl_run(struct mdw_fpriv *mpriv, union mdw_cmd_args *args)
 		}
 
 		/* assign sync file to fd */
-		fd = get_unused_fd_flags(O_CLOEXEC);
-		if (fd < 0) {
-			mdw_drv_err("get unused fd fail\n");
-			goto put_sync_file;
-		}
-
 		fd_install(fd, sync_file->file);
 	}
 
@@ -1099,6 +1102,8 @@ put_sync_file:
 	fput(sync_file->file);
 delete_fence:
 	mdw_fence_delete(c);
+put_fd:
+	put_unused_fd(fd);
 remove_idr:
 	if (c != idr_remove(&mpriv->cmds, c->id))
 		mdw_drv_warn("remove id(%d) conflict\n", c->id);
