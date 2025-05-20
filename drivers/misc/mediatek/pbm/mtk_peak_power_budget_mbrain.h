@@ -32,10 +32,18 @@ struct ppb_mbrain_data {
 	int ppb_g_flavor;
 };
 
+struct hpt_mbrain_data {
+	unsigned int oc_count;
+	unsigned int oc_duration_us;
+};
+
 typedef void (*ppb_mbrain_func)(void);
 
 extern int register_ppb_mbrian_cb(ppb_mbrain_func func_p);
 extern int unregister_ppb_mbrian_cb(void);
+extern int register_hpt_mbrian_cb(ppb_mbrain_func func_p);
+extern int unregister_hpt_mbrian_cb(void);
 extern int get_ppb_mbrain_data(struct ppb_mbrain_data *data);
+extern int get_hpt_mbrain_data(struct hpt_mbrain_data *data);
 
 #endif /* __MTK_PEAK_POWER_MBRAIN_H__ */

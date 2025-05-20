@@ -76,6 +76,7 @@ static unsigned int ack_data;
 static unsigned int bcpu_hpt_freq, mcpu_hpt_freq, lcpu_hpt_freq, dcpu_hpt_freq, gpu_hpt_freq, apu_hpt_freq;
 struct xpu_dbg_t last_mbrain_xpu_dbg, last_klog_xpu_dbg;
 static ppb_mbrain_func cb_func;
+static ppb_mbrain_func cb_func_hpt;
 static struct timer_list ppb_dbg_timer;
 struct ppb_cgppt_dbg_operation *cgppt_dbg_ops;
 
@@ -1129,6 +1130,7 @@ static void __used ppb3_print_dbg_log(struct timer_list *timer)
 	int offset, ret;
 	char str[STR_SIZE];
 	int i;
+	static int prev_oc_count;
 
 	if (ppb_ctrl.ppb_drv_done) {
 
@@ -1236,6 +1238,11 @@ static void __used ppb3_print_dbg_log(struct timer_list *timer)
 		pr_info("%s\n", str);
 
 		mod_timer(&ppb_dbg_timer, jiffies + PPB3_LOG_DURATION);
+
+		if ((ppb3_dbg_data.oc_count != prev_oc_count) && (cb_func_hpt != NULL))
+			cb_func_hpt();
+
+		prev_oc_count = ppb3_dbg_data.oc_count;
 	}
 }
 
@@ -2526,6 +2533,21 @@ int get_ppb_mbrain_data(struct ppb_mbrain_data *data)
 }
 EXPORT_SYMBOL(get_ppb_mbrain_data);
 
+int get_hpt_mbrain_data(struct hpt_mbrain_data *data)
+{
+	struct ppb3_dbg_t ppb3_dbg_data;
+
+	memset(&ppb3_dbg_data, 0, sizeof(ppb3_dbg_data));
+
+	get_ppb3_debug_info(&ppb3_dbg_data);
+
+	data->oc_count = ppb3_dbg_data.oc_count;
+	data->oc_duration_us = ppb3_dbg_data.oc_duration_us;
+
+	return 0;
+}
+EXPORT_SYMBOL(get_hpt_mbrain_data);
+
 int register_ppb_cgppt_cb(struct ppb_cgppt_dbg_operation *ops)
 {
 	if (!ops)
@@ -2552,6 +2574,23 @@ int unregister_ppb_mbrian_cb(void)
 	return 0;
 }
 EXPORT_SYMBOL(unregister_ppb_mbrian_cb);
+
+int register_hpt_mbrian_cb(ppb_mbrain_func func_p)
+{
+	if (!func_p)
+		return -EINVAL;
+
+	cb_func_hpt = func_p;
+	return 0;
+}
+EXPORT_SYMBOL(register_hpt_mbrian_cb);
+
+int unregister_hpt_mbrian_cb(void)
+{
+	cb_func_hpt = NULL;
+	return 0;
+}
+EXPORT_SYMBOL(unregister_hpt_mbrian_cb);
 
 static int mt_ppb_stop_proc_show(struct seq_file *m, void *v)
 {
