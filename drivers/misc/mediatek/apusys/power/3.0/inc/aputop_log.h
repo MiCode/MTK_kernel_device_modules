@@ -8,12 +8,12 @@
 
 #include <linux/ratelimit.h>
 
-/* allow in 5s burst 40 times message print */
+/* allow in 5s burst 30 times message print */
 #define apu_info_ratelimited(dev, fmt, ...)  \
 {                                                \
 	static DEFINE_RATELIMIT_STATE(_rs,           \
 				      HZ * 5,                    \
-				      40);                       \
+				      30);                       \
 	if (__ratelimit(&_rs))                       \
 		dev_info(dev, fmt, ##__VA_ARGS__);       \
 }
