@@ -574,6 +574,9 @@ struct mtk_disp_oddmr_od_data {
 	struct mtk_drm_gem_obj *b_channel;
 	struct mtk_drm_gem_obj *channel;
 	unsigned int hrt_idx;
+	bool od_sram_check;
+	bool od_sram_reading;
+	uint8_t *buf_read_sram;
 };
 
 struct mtk_disp_oddmr_dbi_data {

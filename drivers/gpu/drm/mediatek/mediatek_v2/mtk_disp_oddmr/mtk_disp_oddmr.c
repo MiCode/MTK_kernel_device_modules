@@ -814,7 +814,9 @@ static int mtk_oddmr_od_set_partial_update(struct mtk_ddp_comp *comp,
 		struct cmdq_pkt *handle, unsigned int top_overhead_v,
 		unsigned int bot_overhead_v, unsigned int full_height);
 static void mtk_oddmr_od_set_full_height(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle);
-static void mtk_oddmr_od_trigger_frame(struct mtk_ddp_comp *comp);
+static int mtk_oddmr_od_trigger_frame(struct mtk_ddp_comp *comp);
+static int mtk_oddmr_od_dump_sram(struct mtk_ddp_comp *comp, int sram_idx,
+		int channel, bool od_sram_check);
 
 static void mtk_oddmr_dmr_gain_cfg(struct mtk_ddp_comp *comp,
 		struct cmdq_pkt *pkg, unsigned int dbv_node, unsigned int fps_node,
@@ -3833,6 +3835,9 @@ void mtk_disp_oddmr_debug(struct drm_crtc *crtc, const char *opt)
 		}
 		ODDMRFLOW_LOG("od_merge_lines = %u\n", lines);
 		g_od_udma_merge_lines = lines;
+	} else if (strncmp(opt, "od_sram_check:", 14) == 0) {
+		oddmr_data->od_data.od_sram_check = strncmp(opt + 14, "1", 1) == 0;
+		ODDMRFLOW_LOG("od_sram_check:%d\n", oddmr_data->od_data.od_sram_check);
 	} else if (strncmp(opt, "oddmr_err_trigger:", 18) == 0) {
 		unsigned int val, ret;
 
@@ -6110,14 +6115,15 @@ static void mtk_cal_oddmr_valid_partial_roi(struct mtk_ddp_comp *comp,
 		__func__, __LINE__, partial_roi->y, partial_roi->height);
 
 	if (oddmr_data->primary_data->od_support &&
-		oddmr_data->primary_data->od_state >= ODDMR_INIT_DONE &&
+		(oddmr_data->primary_data->od_state >= ODDMR_INIT_DONE ||
+		oddmr_data->od_data.od_sram_reading) &&
 		oddmr_data->data->od_version >= MTK_OD_V2) {
 		od_en = oddmr_data->od_enable && !comp->mtk_crtc->sec_on;
 		od_en_last = oddmr_data->od_enable_last;
 		roi_y_cur = partial_roi->y;
 		roi_height_cur = partial_roi->height;
 		/* When OD on, 1st frame needs full frame */
-		if (!od_en_last && od_en) {
+		if ((!od_en_last && od_en) || oddmr_data->od_data.od_sram_reading) {
 			//update current roi y, height
 			partial_roi->y = 0;
 			partial_roi->height = mtk_crtc_get_height_by_comp(__func__,
@@ -7795,13 +7801,65 @@ static void mtk_oddmr_od_tuning_write_sram_dual(struct mtk_ddp_comp *comp,
 static void mtk_oddmr_od_tuning_read_sram(struct mtk_ddp_comp *comp,
 	struct mtk_oddmr_od_tuning_sram *tuning_data)
 {
-	uint32_t channel, sram, idx, ctl;
-	uint32_t value = 0, mask = 0, tmp_r_sel = 0, tmp_w_sel = 0;
-	uint32_t sram_write_change;
-	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
+	uint32_t channel, sram, idx;
+	int ret, cols, rows, i, raw_idx = 0;
 	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
 
-	ODDMRAPI_LOG("+\n");
+	ODDMRFLOW_LOG("+\n");
+	if (oddmr_data->data->od_version == MTK_OD_V3) {
+		channel = tuning_data->channel;
+		sram = tuning_data->sram;
+		idx = tuning_data->idx;
+		if (sram == 1 && idx == 0) {
+			ODDMRAPI_LOG("channel %d, sram %d, idx %d: read start\n");
+			if (oddmr_data->od_data.buf_read_sram != NULL) {
+				kfree(oddmr_data->od_data.buf_read_sram);
+				oddmr_data->od_data.buf_read_sram = NULL;
+			}
+			oddmr_data->od_data.buf_read_sram = kzalloc(33 * 33 * sizeof(uint8_t), GFP_KERNEL);
+			if (oddmr_data->od_data.buf_read_sram == NULL) {
+				PC_ERR("%s fail kzalloc size 33*33\n", __func__);
+				tuning_data->value = 0;
+				return;
+			}
+			oddmr_data->od_data.od_sram_reading = true;
+			ret = mtk_oddmr_od_dump_sram(comp, -1, channel, 0);
+			oddmr_data->od_data.od_sram_reading = false;
+			ODDMRAPI_LOG("od_dump_sram done, %d\n", ret);
+			if (ret < 0) {
+				kfree(oddmr_data->od_data.buf_read_sram);
+				oddmr_data->od_data.buf_read_sram = NULL;
+				tuning_data->value = 0;
+				return;
+			}
+		} else {
+			if (oddmr_data->od_data.buf_read_sram == NULL) {
+				tuning_data->value = 0;
+				return;
+			}
+		}
+
+		for (i = 1; i < sram; i++) {
+			rows = (i < 3) ? 17 : 16;
+			cols = (i % 2 == 1) ? 17 : 16;
+			raw_idx += rows * cols;
+		}
+		raw_idx += idx;
+		tuning_data->value = oddmr_data->od_data.buf_read_sram[raw_idx];
+		// ODDMRAPI_LOG("raw_idx %d, value %d\n", raw_idx, tuning_data->value);
+
+		if (raw_idx == 33 * 33 - 1) {
+			kfree(oddmr_data->od_data.buf_read_sram);
+			oddmr_data->od_data.buf_read_sram = NULL;
+			ODDMRAPI_LOG("channel %d, sram %d, idx %d: read done, free buffer\n");
+		}
+		return;
+	}
+
+	uint32_t ctl, value = 0, mask = 0, tmp_r_sel = 0, tmp_w_sel = 0;
+	uint32_t sram_write_change;
+	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
+
 	if (priv->data->mmsys_id != MMSYS_MT6897)
 		sram_write_change = 1;
 	else
@@ -7846,6 +7904,197 @@ static void mtk_oddmr_od_tuning_read_sram(struct mtk_ddp_comp *comp,
 			(DISP_ODDMR_OD_SRAM_CTRL_3 + 12 * (sram - 1)));
 		mtk_oddmr_write_cpu(comp, ctl, DISP_ODDMR_OD_SRAM_CTRL_0);
 	}
+}
+
+#define NUM_OD_SRAM_READ 7
+#define NUM_OD_SRAM_READ_RETRY 23
+
+static uint8_t mtk_oddmr_od_find_most_repeated(uint8_t *ptr)
+{
+	uint32_t freq[NUM_OD_SRAM_READ] = {0};
+	uint32_t i, j, max_freq = 0;
+	uint8_t most_repeated = ptr[0];
+
+	// Count the occurrences of each value
+	for (i = 0; i < NUM_OD_SRAM_READ; i++) {
+		for (j = 0; j < NUM_OD_SRAM_READ; j++) {
+			if (ptr[i] == ptr[j])
+				freq[i]++;
+		}
+	}
+	// Find the most repeated value
+	for (i = 0; i < NUM_OD_SRAM_READ; i++) {
+		if (freq[i] >= max_freq) {
+			max_freq = freq[i];
+			most_repeated = ptr[i];
+		}
+	}
+	return most_repeated;
+}
+
+static int mtk_oddmr_od_sram_compare_dram(struct mtk_ddp_comp *comp, int sram_idx,
+		uint8_t (*read_buf)[NUM_OD_SRAM_READ], int channel)
+{
+	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
+	struct mtk_oddmr_od_param *od_param = &oddmr_data->primary_data->od_param;
+	int table_idx = oddmr_data->od_data.od_dram_sel[sram_idx];
+	struct mtk_oddmr_od_table *table = od_param->od_tables[table_idx];
+	uint8_t *raw_table = table->raw_table.value;
+	uint8_t read_val, tmp_data;
+	int raw_offset = 33 * 33 * channel; //raw_table contains all 3 channels
+	uint32_t check_cnt = 0, num_wrong = 0;
+	int srams, cols, rows, raw_idx, i;
+
+	ODDMRAPI_LOG("read sram %d, compared to dram %d\n", sram_idx, table_idx);
+	for (srams = 1; srams < 5; srams++) {
+		rows = (srams < 3) ? 17 : 16;
+		cols = (srams % 2 == 1) ? 17 : 16;
+		for (i = 0; i < rows * cols; i++) {
+			read_val = mtk_oddmr_od_find_most_repeated(read_buf[raw_idx]);
+			tmp_data = raw_table[raw_idx + raw_offset];
+			if (tmp_data != read_val) {
+				num_wrong += 1;
+				if (num_wrong <= 10) {
+					for (check_cnt = 0; check_cnt < NUM_OD_SRAM_READ; check_cnt++)
+						PC_ERR("%s, channel %d, srams %d, i %d: %dth-read %d, target %d\n",
+							__func__, channel, srams, i, check_cnt,
+							read_buf[raw_idx][check_cnt], tmp_data);
+				}
+			}
+			raw_idx++;
+		}
+	}
+	ODDMRAPI_LOG("num_check %d, num_wrong %d\n", raw_idx, num_wrong);
+	if (num_wrong > 0)
+		PC_ERR("%s, num_check %d, num_wrong %d\n", __func__, raw_idx, num_wrong);
+	return num_wrong;
+}
+
+static int mtk_oddmr_od_dump_sram(struct mtk_ddp_comp *comp, int sram_idx,
+		int channel, bool od_sram_check)
+{
+	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
+	int srams, cols, rows, raw_idx, i, change_channel;
+	uint32_t value, mask, tmp_r_sel, tmp_w_sel, ctl;
+	uint32_t check_cnt = 0, num_wrong = 0, num_retry = 0;
+	int ret = 0, pm_ret = 0;
+	uint8_t read_val;
+	uint8_t (*read_buf)[NUM_OD_SRAM_READ] = NULL;
+	ktime_t time_diff;
+
+	ODDMRFLOW_LOG("+\n");
+	/* 1.create sram readback buffer */
+	read_buf = kzalloc(33 * 33 * NUM_OD_SRAM_READ * sizeof(uint8_t), GFP_KERNEL);
+	if (read_buf == NULL) {
+		PC_ERR("%s fail kzalloc size %d\n", __func__, 33 * 33 * NUM_OD_SRAM_READ);
+		goto fail;
+	}
+	//B:0-bit1, G:1-bit2, R:2-bit3 -->> B:2-bit1, G:1-bit2, R:0-bit3
+	change_channel = channel - (channel-1)*2;
+
+	/* 5.read sram NUM_OD_SRAM_READ times */
+	do {
+		ret = mtk_oddmr_od_trigger_frame(comp);
+		if (ret <= 0)
+			goto fail;
+		ODDMRAPI_LOG("Read%d: od_trigger_frame done %d\n", check_cnt, ret);
+
+		//mtk_drm_idlemgr_kick(__func__, &comp->mtk_crtc->base, 1);
+		ret = mtk_oddmr_acquire_clock(comp);
+		if (ret != 0)
+			goto fail;
+		pm_ret = mtk_vidle_pq_power_get(__func__);
+		if (pm_ret) {
+			PC_ERR("%s pq_power_get failed %d, skip\n", __func__, pm_ret);
+			mtk_oddmr_release_clock(comp);
+			goto fail;
+		}
+
+		time_diff = div_u64(ktime_get() - oddmr_data->primary_data->sof_time, 1000); //us
+		if (time_diff > 3000 && num_retry < NUM_OD_SRAM_READ_RETRY) {
+			num_retry++;
+			ODDMRAPI_LOG("Read%d: start after %d ms, retry %d\n", check_cnt, time_diff, num_retry);
+			if (!pm_ret)
+				mtk_vidle_pq_power_put(__func__);
+			mtk_oddmr_release_clock(comp);
+			continue;
+		}
+
+		ctl = mtk_oddmr_read(comp, MT6991_DISP_ODDMR_OD_SRAM_CTRL_0);
+		value = 0;
+		mask = 0;
+		if (sram_idx == -1) {
+			tmp_r_sel = (ctl & 0x20) >> 5;
+			tmp_w_sel = tmp_r_sel;
+		} else {
+			tmp_w_sel = sram_idx;
+			tmp_r_sel = !sram_idx;
+		}
+		SET_VAL_MASK(value, mask, 1 << (change_channel  + 1), REG_WBGR_OD_SRAM_IO_EN);
+		SET_VAL_MASK(value, mask, 0, REG_AUTO_SRAM_ADR_INC_EN);
+		SET_VAL_MASK(value, mask, tmp_w_sel, REG_OD_SRAM_WRITE_SEL);
+		SET_VAL_MASK(value, mask, tmp_r_sel, REG_OD_SRAM_READ_SEL);
+		SET_VAL_MASK(value, mask, 1, REG_OD_SRAM_READ_BACK_SEL);
+		SET_VAL_MASK(value, mask, 1, REG_OD_TABLE_DB_EFF_EN);
+		mtk_oddmr_write_mask_cpu(comp, value, MT6991_DISP_ODDMR_OD_SRAM_CTRL_0, mask);
+
+		raw_idx = 0;
+		for (srams = 1; srams < 5; srams++) {
+			rows = (srams < 3) ? 17 : 16;
+			cols = (srams % 2 == 1) ? 17 : 16;
+			for (i = 0; i < rows * cols; i++) {
+				mtk_oddmr_write_cpu(comp, 0x4000 | (i & 0x1FF),
+					(MT6991_DISP_ODDMR_OD_SRAM_CTRL_1 + 12 * (srams - 1)));
+				read_buf[raw_idx][check_cnt] = mtk_oddmr_read(comp,
+					(MT6991_DISP_ODDMR_OD_SRAM_CTRL_3 + 12 * (srams - 1)));
+				raw_idx++;
+			}
+		}
+		mtk_oddmr_write_cpu(comp, ctl, MT6991_DISP_ODDMR_OD_SRAM_CTRL_0);
+
+		time_diff = div_u64(ktime_get() - oddmr_data->primary_data->sof_time, 1000); //us
+		if (time_diff > 7000 && num_retry < NUM_OD_SRAM_READ_RETRY) {
+			num_retry++;
+			ODDMRAPI_LOG("Read%d: end after %d ms, retry %d\n", check_cnt, time_diff, num_retry);
+			if (!pm_ret)
+				mtk_vidle_pq_power_put(__func__);
+			mtk_oddmr_release_clock(comp);
+			continue;
+		}
+
+		if (!pm_ret)
+			mtk_vidle_pq_power_put(__func__);
+		mtk_oddmr_release_clock(comp);
+
+		ODDMRAPI_LOG("Read%d: sram %d channel %d\n", check_cnt, tmp_w_sel, channel);
+		check_cnt++;
+	} while (check_cnt < NUM_OD_SRAM_READ);
+
+	/* 6.find the most repeated value from NUM_OD_SRAM_READ values */
+	raw_idx = 0;
+	if (od_sram_check) {
+		// compared to dram (table from bin file)
+		num_wrong = mtk_oddmr_od_sram_compare_dram(comp, sram_idx, read_buf, channel);
+	} else {
+		// save to buffer for tuning tool
+		for (srams = 1; srams < 5; srams++) {
+			rows = (srams < 3) ? 17 : 16;
+			cols = (srams % 2 == 1) ? 17 : 16;
+			for (i = 0; i < rows * cols; i++) {
+				read_val = mtk_oddmr_od_find_most_repeated(read_buf[raw_idx]);
+				if (oddmr_data->od_data.buf_read_sram != NULL)
+					oddmr_data->od_data.buf_read_sram[raw_idx] = read_val;
+				raw_idx++;
+			}
+		}
+	}
+	kfree(read_buf);
+	return num_wrong;
+
+fail:
+	if (read_buf != NULL)
+		kfree(read_buf);
+	return -EFAULT;
 }
 
 /* all oddmr user cmd use handle dualpipe itself because it is not drm atomic */
@@ -8153,7 +8402,7 @@ static void mtk_oddmr_od_gce_pkt_init(struct mtk_drm_crtc *mtk_crtc,
 		oddmr_data->od_data.od_sram_pkgs[dram_id][1], dram_id, 1);
 }
 
-static void mtk_oddmr_od_trigger_frame(struct mtk_ddp_comp *comp)
+static int mtk_oddmr_od_trigger_frame(struct mtk_ddp_comp *comp)
 {
 	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
 	int ret = 0;
@@ -8164,7 +8413,10 @@ static void mtk_oddmr_od_trigger_frame(struct mtk_ddp_comp *comp)
 			atomic_read(&oddmr_data->primary_data->sof_irq_for_od_sram) == 1,
 			msecs_to_jiffies(200));
 	if (ret <= 0)
-		DDPPR_ERR("od_trigger_frame timeout %d\n", ret);
+		PC_ERR("od_trigger_frame timeout %d\n", ret);
+	else if (oddmr_data->primary_data->od_fps_mode != 1)
+		oddmr_data->primary_data->sof_time = comp->mtk_crtc->sof_time;
+	return ret;
 }
 
 static int mtk_oddmr_od_init(struct mtk_ddp_comp *comp, void *data)
@@ -8241,7 +8493,7 @@ static int mtk_oddmr_od_init(struct mtk_ddp_comp *comp, void *data)
 				mtk_vidle_pq_power_put(__func__);
 			mtk_oddmr_release_clock(comp);
 
-			mtk_oddmr_od_trigger_frame(comp);
+			ret = mtk_oddmr_od_trigger_frame(comp);
 		}
 	}
 
@@ -12445,7 +12697,8 @@ static int mtk_oddmr_set_partial_update(struct mtk_ddp_comp *comp,
 		}
 	}
 	if (od_support && oddmr_data->data->od_version >= MTK_OD_V2 &&
-		oddmr_data->od_enable && !comp->mtk_crtc->sec_on) {
+		((oddmr_data->od_enable && !comp->mtk_crtc->sec_on) ||
+		oddmr_data->od_data.od_sram_reading)) {
 		mtk_oddmr_od_set_partial_update(comp, handle, top_overhead_v,
 						bot_overhead_v, full_height);
 	}
@@ -12776,12 +13029,30 @@ static void mtk_oddmr_update_table_handle(struct work_struct *work_item)
 		cmdq_mbox_disable(client->chan);
 		ODDMRFLOW_LOG("now sram %d, update_sram %d, dram %d\n",
 			oddmr_data->od_data.od_sram_read_sel,update_sram_idx, updata_dram_idx);
-		oddmr_data->primary_data->od_state = ODDMR_INIT_DONE;
-		ODDMRFLOW_LOG("ODDMR_INIT_DONE\n");
+		if (!oddmr_data->od_data.od_sram_check) {
+			oddmr_data->primary_data->od_state = ODDMR_INIT_DONE;
+			ODDMRFLOW_LOG("ODDMR_INIT_DONE\n");
+		}
+
 		CRTC_MMP_EVENT_END(0, oddmr_ctl, update_sram_idx, updata_dram_idx);
 		if (!pm_ret)
 			mtk_vidle_pq_power_put(__func__);
 		mtk_oddmr_release_clock(comp);
+
+		if (oddmr_data->od_data.od_sram_check) {
+			/* SRAM read back checking */
+			ODDMRFLOW_LOG("od sram %d check\n", update_sram_idx);
+			oddmr_data->od_data.od_sram_reading = true;
+			mtk_oddmr_od_dump_sram(comp, update_sram_idx, 0,
+				oddmr_data->od_data.od_sram_check);
+			mtk_oddmr_od_dump_sram(comp, update_sram_idx, 1,
+				oddmr_data->od_data.od_sram_check);
+			mtk_oddmr_od_dump_sram(comp, update_sram_idx, 2,
+				oddmr_data->od_data.od_sram_check);
+			oddmr_data->od_data.od_sram_reading = false;
+			oddmr_data->primary_data->od_state = ODDMR_INIT_DONE;
+			ODDMRFLOW_LOG("ODDMR_INIT_DONE\n");
+		}
 	} else {
 		ODDMRFLOW_LOG("clock not on %d\n", ret);
 	}
