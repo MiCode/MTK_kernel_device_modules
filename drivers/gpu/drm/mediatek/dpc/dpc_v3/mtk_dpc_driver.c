@@ -2646,7 +2646,8 @@ static int dpc_vidle_power_keep_v3(const enum mtk_vidle_voter_user _user)
 		return VOTER_PM_SKIP_PWR_OFF;
 	}
 
-	if (user == DISP_VIDLE_USER_TOP_CLK_ISR || user == DISP_VIDLE_USER_MML_CLK_ISR) {
+	if (user == DISP_VIDLE_USER_TOP_CLK_ISR || user == DISP_VIDLE_USER_MML_CLK_ISR
+			|| user == DISP_VIDLE_USER_DISP_DPC_CFG) {
 		spin_lock_irqsave(&g_priv->excp_spin_lock, flags);
 
 		user_cnt = atomic_inc_return(&g_user_15);
@@ -2716,7 +2717,8 @@ static void dpc_vidle_power_release_v3(const enum mtk_vidle_voter_user _user)
 		return;
 	}
 
-	if (user == DISP_VIDLE_USER_TOP_CLK_ISR || user == DISP_VIDLE_USER_MML_CLK_ISR) {
+	if (user == DISP_VIDLE_USER_TOP_CLK_ISR || user == DISP_VIDLE_USER_MML_CLK_ISR
+			|| user == DISP_VIDLE_USER_DISP_DPC_CFG) {
 		spin_lock_irqsave(&g_priv->excp_spin_lock, flags);
 
 		user_cnt = atomic_dec_return(&g_user_15);
