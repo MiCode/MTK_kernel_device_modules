@@ -2073,7 +2073,7 @@ static void dmabuf_count_size(struct dump_fd_data *fddata, const struct dma_buf 
 {
 	struct dmabuf_count_info *plist = NULL;
 	struct dmabuf_count_info *n = NULL;
-	struct dmabuf_count_info *new_info;
+	struct dmabuf_count_info *new_info = NULL;
 	char *name = NULL;
 
 	/* Add to dmabuf_count_info if exist */
