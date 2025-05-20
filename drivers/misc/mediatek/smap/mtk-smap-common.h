@@ -37,6 +37,7 @@ struct smap_entry {
 };
 
 struct smap_mbrain {
+	int chipid;
 	unsigned int cnt;
 	unsigned int type;
 	unsigned int enable;
@@ -75,6 +76,7 @@ struct mtk_smap {
 	void __iomem *regs;
 	unsigned int reg_value;
 	unsigned int mode;
+	int chipid;
 	struct workqueue_struct *smap_wq;
 	struct delayed_work defer_work;
 	unsigned int delay_ms;

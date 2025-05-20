@@ -22,6 +22,15 @@
 #include "mtk-smap-common.h"
 #include "smap-v6993.h"
 
+struct tag_chipid {
+	u32 size;
+	u32 hw_code;
+	u32 hw_subcode;
+	u32 hw_ver;
+	u32 sw_ver;
+};
+
+static struct tag_chipid *chip_id;
 static struct mtk_smap *smap_data;
 static smap_mbrain_callback mbrain_cb;
 static DEFINE_MUTEX(smap_dump_lock);
@@ -73,6 +82,31 @@ static inline void smap_write(u32 offset, u32 val)
 	writel(val, smap_data->regs + offset);
 }
 
+static int smap_get_chipid(void)
+{
+	struct device_node *node;
+
+	if (!chip_id) {
+		node = of_find_node_by_path("/chosen");
+		if (!node)
+			node = of_find_node_by_path("/chosen@0");
+		if (node) {
+			chip_id = (struct tag_chipid *) of_get_property(node, "atag,chipid", NULL);
+			if (!chip_id) {
+				smap_print("could not find atag,chipid in chosen\n");
+				return -ENODEV;
+			}
+		} else {
+			smap_print("chosen node not found in device tree\n");
+			return -ENODEV;
+		}
+
+		smap_print("sw version: %u\n", chip_id->sw_ver);
+	}
+
+	return chip_id->sw_ver;
+}
+
 static int smap_set_entry(struct smap_entry *entry)
 {
 	int i, ret = 0;
@@ -98,14 +132,39 @@ static void smap_init(enum SMAP_MODE mode)
 		return;
 	}
 
-	if (mode == MODE_NORMAL)
-		smap_set_entry(SMAP_NORMAL_MODE_ENTRY);
-	else if (mode == MODE_THRESHOLD_10GB)
-		smap_set_entry(SMAP_MODE_THRESHOLD_10GB);
-	else if (mode == MODE_THRESHOLD_10GB_BYPASS_TEMP)
-		smap_set_entry(SMAP_MODE_THRESHOLD_10GB_BYPASS_TEMP);
-	else
-		smap_print("wrong mode\n");
+	if (smap_data->chipid == 0) {
+		switch (mode) {
+		case MODE_NORMAL:
+			smap_set_entry(SMAP_NORMAL_MODE_ENTRY);
+			break;
+		case MODE_THRESHOLD_10GB:
+			smap_set_entry(SMAP_MODE_THRESHOLD_10GB);
+			break;
+		case MODE_THRESHOLD_10GB_BYPASS_TEMP:
+			smap_set_entry(SMAP_MODE_THRESHOLD_10GB_BYPASS_TEMP);
+			break;
+		default:
+			smap_print("wrong mode\n");
+			break;
+		}
+	} else if (smap_data->chipid == 1) {
+		switch (mode) {
+		case MODE_NORMAL:
+			smap_set_entry(SMAP_NORMAL_MODE_ENTRY_1);
+			break;
+		case MODE_THRESHOLD_10GB:
+			smap_set_entry(SMAP_MODE_THRESHOLD_10GB_1);
+			break;
+		case MODE_THRESHOLD_10GB_BYPASS_TEMP:
+			smap_set_entry(SMAP_MODE_THRESHOLD_10GB_BYPASS_TEMP_1);
+			break;
+		default:
+			smap_print("wrong mode\n");
+			break;
+		}
+	} else {
+		smap_print("wrong chipid\n");
+	}
 }
 
 static ssize_t dump_and_send_smap_staus(char *buf, enum SMAP_DUMP_LOG_TYPE log_type,
@@ -124,6 +183,7 @@ static ssize_t dump_and_send_smap_staus(char *buf, enum SMAP_DUMP_LOG_TYPE log_t
 	dbg = &smap_data->debug_data;
 
 	dm_cnt = smap_read(VSMR_LEN_CON);
+	dbg->chipid = smap_data->chipid;
 	dbg->enable = smap_read(SMAP_ENABLE);
 	dbg->temp_mask = smap_read(HIGH_TEMP_MASK_EN);
 	dbg->mode = smap_data->mode;
@@ -163,6 +223,7 @@ static ssize_t dump_and_send_smap_staus(char *buf, enum SMAP_DUMP_LOG_TYPE log_t
 	smap_write(VSMR_LEN_CON, 0x0);
 
 	if (log_type == DUMP_HEADER) {
+		len += snprintf(buf + len, PAGE_SIZE - len, "CHIPID=%u\n", dbg->chipid);
 		len += snprintf(buf + len, PAGE_SIZE - len, "ENABLE=%u\n", dbg->enable);
 		len += snprintf(buf + len, PAGE_SIZE - len, "MODE=%u\n", dbg->mode);
 		len += snprintf(buf + len, PAGE_SIZE - len, "TEMP_MASK=%u\n", dbg->temp_mask);
@@ -191,8 +252,8 @@ static ssize_t dump_and_send_smap_staus(char *buf, enum SMAP_DUMP_LOG_TYPE log_t
 			dbg->emi_s_snapshot, dbg->zram_snapshot, dbg->apu_snapshot);
 	} else if (log_type == DUMP_NO_HEADER)
 		len += snprintf(buf + len, PAGE_SIZE - len,
-			"%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x\n",
-			dbg->enable, dbg->mode, dbg->temp_mask,
+			"%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x,0x%x\n",
+			dbg->chipid, dbg->enable, dbg->mode, dbg->temp_mask,
 			dbg->sys_time, dbg->mitigation_rate, dbg->mitigation_cnt,
 			dbg->total_mitigation_cnt, dbg->dump_cnt,
 			dbg->dect_cnt, dbg->temp_cnt, dbg->dect_result,
@@ -204,6 +265,7 @@ static ssize_t dump_and_send_smap_staus(char *buf, enum SMAP_DUMP_LOG_TYPE log_t
 			dbg->venc2_smap_snapshot, dbg->emi_snapshot,
 			dbg->emi_s_snapshot, dbg->zram_snapshot, dbg->apu_snapshot);
 	else if (log_type == DUMP_KERNEL) {
+		len += snprintf(buf + len, PAGE_SIZE - len, "CHIPID=%u ", dbg->chipid);
 		len += snprintf(buf + len, PAGE_SIZE - len, "ENABLE=%u ", dbg->enable);
 		len += snprintf(buf + len, PAGE_SIZE - len, "MODE=%u ", dbg->mode);
 		len += snprintf(buf + len, PAGE_SIZE - len, "TEMP_MASK=%u ", dbg->temp_mask);
@@ -463,6 +525,12 @@ static int smap_probe(struct platform_device *pdev)
 			queue_delayed_work(priv->smap_wq, &priv->defer_work,
 				msecs_to_jiffies(priv->delay_ms));
 		}
+	}
+
+	priv->chipid = smap_get_chipid();
+	if (priv->chipid < 0 || priv->chipid > 1) {
+		priv->chipid = 1;
+		smap_print("get chipid fail, default set to 1\n");
 	}
 
 	smap_register_sysfs(dev);
