@@ -612,6 +612,11 @@ struct IMGSENSOR_SENSOR_LIST
 {SC800CS_LY_SENSOR_ID, SENSOR_DRVNAME_SC800CS_MIPI_RAW, SC800CS_MIPI_RAW_SensorInit},
 #endif
 
+#if defined(S5KHP3_MIPI_RAW)
+{S5KHP3_SENSOR_ID, SENSOR_DRVNAME_S5KHP3_MIPI_RAW,
+	S5KHP3_MIPI_RAW_SensorInit},
+#endif
+
 	/*  ADD sensor driver before this line */
 	{0, {0}, NULL}, /* end of list */
 };

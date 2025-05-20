@@ -65,6 +65,21 @@ struct IMGSENSOR_HW_POWER_SEQ sensor_power_sequence[] = {
 		},
 	},
 #endif
+
+#if defined(S5KHP3_MIPI_RAW)
+	{
+		SENSOR_DRVNAME_S5KHP3_MIPI_RAW,
+		{
+			{RST, Vol_Low, 1},
+			{DVDD, Vol_1000, 1},  //0.9v
+			{AVDD,  Vol_2500, 1},  //2.2v
+			{DOVDD, Vol_1800, 1},
+			{RST, 1, 1},
+			{SensorMCLK, Vol_High, 1},
+		},
+	},
+#endif
+
 #if defined(IMX766_MIPI_RAW)
 	{
 		SENSOR_DRVNAME_IMX766_MIPI_RAW,

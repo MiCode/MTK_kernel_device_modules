@@ -305,6 +305,7 @@
 #define S5K5E9_SENSOR_ID                        0x559b
 #define S5KHM2SP_SENSOR_ID                      0x1AD2
 #define S5K4H7ALPHA_SENSOR_ID                   0x487B
+#define S5KHP3_SENSOR_ID                        0x1B73
 #define S5KGD2_SENSOR_ID                        0x0842
 
 /*HI*/
@@ -599,9 +600,10 @@
 #define SENSOR_DRVNAME_S5K5E8YXREAR2_MIPI_RAW   "s5k5e8yxrear2_mipi_raw"
 #define SENSOR_DRVNAME_S5K5E9_MIPI_RAW          "s5k5e9_mipi_raw"
 #define SENSOR_DRVNAME_S5KHM2SP_MIPI_RAW        "s5khm2sp_mipi_raw"
-#define SENSOR_DRVNAME_S5KJN1_MIPI_RAW			"s5kjn1_mipi_raw"
+#define SENSOR_DRVNAME_S5KJN1_MIPI_RAW          "s5kjn1_mipi_raw"
 #define SENSOR_DRVNAME_S5KJN1SQ03_MIPI_RAW      "s5kjn1sq03_mipi_raw"
 #define SENSOR_DRVNAME_S5K4H7ALPHA_MIPI_RAW     "s5k4h7alpha_mipi_raw"
+#define SENSOR_DRVNAME_S5KHP3_MIPI_RAW          "s5khp3_mipi_raw"
 #define SENSOR_DRVNAME_S5KGD2_MIPI_RAW          "s5kgd2_mipi_raw"
 /*HI*/
 #define SENSOR_DRVNAME_HI841_MIPI_RAW           "hi841_mipi_raw"
@@ -703,16 +705,16 @@
 #define SENSOR_DRVNAME_OV48C_MIPI_RAW           "ov48c_mipi_raw"
 #define SENSOR_DRVNAME_IMX355_MIPI_RAW          "imx355_mipi_raw"
 #define SENSOR_DRVNAME_OV13B10_MIPI_RAW         "ov13b10_mipi_raw"
-#define SENSOR_DRVNAME_OV13B10MAIN_MIPI_RAW         "ov13b10main_mipi_raw"
+#define SENSOR_DRVNAME_OV13B10MAIN_MIPI_RAW     "ov13b10main_mipi_raw"
 #define SENSOR_DRVNAME_OV02B10_MIPI_RAW         "ov02b10_mipi_raw"
 #define SENSOR_DRVNAME_MAX96712_MIPI_YUV        "max96712_mipi_yuv"
-#define SENSOR_DRVNAME_MAX96712ISX_MIPI_YUV        "max96712isx_mipi_yuv"
-#define SENSOR_DRVNAME_MAX96712A_MIPI_YUV        "max96712a_mipi_yuv"
-#define SENSOR_DRVNAME_MAX96712A0_MIPI_YUV        "max96712a0_mipi_yuv"
-#define SENSOR_DRVNAME_MAX96712A1_MIPI_YUV        "max96712a1_mipi_yuv"
-#define SENSOR_DRVNAME_MAX96712A2_MIPI_YUV        "max96712a2_mipi_yuv"
-#define SENSOR_DRVNAME_MAX96712A3_MIPI_YUV        "max96712a3_mipi_yuv"
-#define SENSOR_DRVNAME_LT7911_MIPI_YUV        "lt7911_mipi_yuv"
+#define SENSOR_DRVNAME_MAX96712ISX_MIPI_YUV     "max96712isx_mipi_yuv"
+#define SENSOR_DRVNAME_MAX96712A_MIPI_YUV       "max96712a_mipi_yuv"
+#define SENSOR_DRVNAME_MAX96712A0_MIPI_YUV      "max96712a0_mipi_yuv"
+#define SENSOR_DRVNAME_MAX96712A1_MIPI_YUV      "max96712a1_mipi_yuv"
+#define SENSOR_DRVNAME_MAX96712A2_MIPI_YUV      "max96712a2_mipi_yuv"
+#define SENSOR_DRVNAME_MAX96712A3_MIPI_YUV      "max96712a3_mipi_yuv"
+#define SENSOR_DRVNAME_LT7911_MIPI_YUV          "lt7911_mipi_yuv"
 /************************************
  * I3C SENSOR PID (TOTAL 48-BITS)
  ************************************/
