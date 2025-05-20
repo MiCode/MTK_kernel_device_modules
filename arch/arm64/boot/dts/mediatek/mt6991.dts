@@ -6931,6 +6931,12 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			gce-hwid = <1>;
 		};
 
+		cmdq_config: cmdq-config@0 {
+			gce-core-num = <2>;
+			sec-cmdq-enable = <1 1>;
+			cmdq-first-err-disable = <0 0>;
+		};
+
 		cmdq_test: cmdq-test@0 {
 			compatible = "mediatek,cmdq-test";
 			mediatek,gce = <&gce>;
