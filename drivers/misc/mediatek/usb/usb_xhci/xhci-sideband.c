@@ -446,7 +446,8 @@ xhci_sideband_unregister_(struct xhci_sideband_ *sb)
 
 	spin_lock_irq(&xhci->lock);
 	sb->xhci = NULL;
-	sb->vdev->sideband = NULL;
+	if (sb->vdev)
+		sb->vdev->sideband = NULL;
 	spin_unlock_irq(&xhci->lock);
 
 	kfree(sb);
