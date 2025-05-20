@@ -2468,14 +2468,12 @@ static int mtk_atomic_commit(struct drm_device *drm,
 
 	drm_atomic_state_get(state);
 	mtk_atomic_check_res_switch(private, state);
-#if defined(DISP_BWM20_ENABLE)
 	if (mtk_drm_helper_get_opt(private->helper_opt, MTK_DRM_OPT_OVL_BWM20) &&
 		drm_crtc_index(crtc) == 0 && atomic_read(&private->kernel_pm.wakelock_cnt) != 0 &&
 		mtk_crtc->enabled) {
 		mtk_drm_idlemgr_kick(__func__, crtc, false);
 		mtk_bwm_calc_hrt_bw(crtc, state);
 	}
-#endif
 
 #ifdef IF_ZERO /*TODO: use async atomic_commit would occur crtc_state and crtc race condition */
 	if (async)

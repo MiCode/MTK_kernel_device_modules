@@ -2475,10 +2475,8 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 			mtk_crtc_connect_addon_module(crtc, false);
 		else if (crtc_state->lye_state.mml_ir_lye) {
 			mtk_crtc_addon_connector_connect(crtc, NULL);
-#if defined(DISP_BWM20_ENABLE)
 			if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BWM20))
 				mtk_crtc_bwm_enable(crtc, NULL);
-#endif
 		}
 	} else if ((crtc_state->prop_val[CRTC_PROP_OUTPUT_ENABLE] == 1) && (crtc_id == 0)) {
 		DDPINFO("%s, is cwb, skip it\n", __func__);
