@@ -13514,6 +13514,7 @@ static struct platform_driver mtk_drm_platform_driver = {
 			.name = "mediatek-drm",
 			.of_match_table = mtk_drm_of_ids,
 			.pm = &mtk_drm_pm_ops,
+			.sync_state = mtk_vidle_sync_state,
 		},
 };
 

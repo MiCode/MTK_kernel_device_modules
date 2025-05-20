@@ -840,8 +840,13 @@ void mtk_vidle_debug_cmd_adapter(const char *opt)
 void mtk_vidle_wait_init(void)
 {
 	DDPFUNC("wait_for_completion +");
-	wait_for_completion_interruptible_timeout(&dpc_registered, msecs_to_jiffies(5000));
+	wait_for_completion(&dpc_registered);
 	DDPFUNC("wait_for_completion -");
+}
+
+void mtk_vidle_sync_state(struct device *dev)
+{
+	complete(&dpc_registered);
 }
 
 void mtk_vidle_dsi_pll_set(const u32 value)
@@ -959,8 +964,6 @@ void mtk_vidle_register(const struct dpc_funcs *funcs, enum mtk_dpc_version vers
 		mtk_vidle_register_v1(funcs);
 	else
 		atomic_set(&g_ff_enabled, -1);	/* indicate not initialized yet */
-
-	complete(&dpc_registered);
 }
 EXPORT_SYMBOL(mtk_vidle_register);
 
