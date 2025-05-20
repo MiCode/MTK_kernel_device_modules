@@ -10947,12 +10947,12 @@ void mtk_bwm_calc_hrt_bw(struct drm_crtc *crtc,
 		DDPMSG("%s %d\n", __func__, __LINE__);
 		return;
 	}
+	comp->qos_bw = 0;
 	if (!mtk_ddp_comp_io_cmd(comp, NULL, MTK_IO_CMD_BWM_IDLE_CHECK, NULL)) {
 		DDPINFO("%s idle check fail\n", __func__);
 		return;
 	}
 
-	comp->qos_bw = 0;
 	memset(&mtk_bwm_sort_list, 0, sizeof(struct sort_list));
 
 	/*clear bwm 2.0 table*/
