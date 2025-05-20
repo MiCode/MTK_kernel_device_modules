@@ -60,6 +60,7 @@ void cmdq_controller_set_fp(struct cmdq_util_controller_fp *cust_cmdq_util);
 /* CMDQ FUNCTION RETURN VALUE*/
 #define CMDQ_FIND_INST_BY_PC_FAIL	(0xFFFFFFFF)
 #define CMDQ_OPCODE_MATCH_FAIL		(0xFFFFFFFE)
+#define CMDQ_CONFIG_NODE_NAME		"cmdq-config"
 
 enum CMDQ_PKT_ID_ARR_IDX {
 	CMDQ_PKT_ID_CNT,
