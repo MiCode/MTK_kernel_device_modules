@@ -5870,11 +5870,6 @@ test_2c_done:
 		}
 
 		priv->mtk_dbgtp_sta.fifo_mon_trig_thrd[fifo_mon_id] = fifo_mon_trig_thrd;
-
-		if (mtk_crtc_with_trigger_loop(crtc)) {
-			mtk_crtc_stop_trig_loop(crtc);
-			mtk_crtc_start_trig_loop(crtc);
-		}
 		//mtk_dbgtp_fifo_mon_set_trig_threshold(mtk_crtc, NULL);
 		DDPMSG("%d %s\n", __LINE__, opt);
 	} else if (strncmp(opt, "disp_ela_sel:", 13) == 0) {
