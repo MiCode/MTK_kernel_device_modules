@@ -378,6 +378,7 @@ struct mml_frame_info_cache {
 	u32 remain;
 	u8 dl_opp;
 	u8 dc_opp;
+	u32 mode_caps;
 };
 
 struct mml_topology_info {
@@ -482,6 +483,18 @@ struct mml_topology_ops {
 				    struct mml_frame_info *info,
 				    u32 *reason);
 	enum mml_mode (*query_mode2)(struct mml_dev *mml,
+				     struct mml_frame_info *info,
+				     u32 *reason,
+				     u32 panel_width,
+				     u32 panel_height,
+				     struct mml_frame_info_cache *info_cache);
+	enum mml_mode (*query_mode3)(struct mml_dev *mml,
+				     struct mml_frame_info *info,
+				     u32 *reason,
+				     u32 panel_width,
+				     u32 panel_height,
+				     struct mml_frame_info_cache *info_cache);
+	void (*cache_mode_caps)(struct mml_dev *mml,
 				     struct mml_frame_info *info,
 				     u32 *reason,
 				     u32 panel_width,

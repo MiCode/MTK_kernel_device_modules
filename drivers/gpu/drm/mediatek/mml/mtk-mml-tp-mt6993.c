@@ -1628,15 +1628,57 @@ decouple:
 	return MML_MODE_MML_DECOUPLE;
 }
 
-static enum mml_mode tp_query_mode(struct mml_dev *mml, struct mml_frame_info *info,
+static enum mml_mode tp_query_mode_dc(struct mml_frame_info *info)
+{
+	if (info->dest[0].pq_config.en_fg)
+		goto not_support;
+
+	return MML_MODE_MML_DECOUPLE;
+
+not_support:
+	return MML_MODE_MML_DECOUPLE2;
+}
+
+static enum mml_mode tp_query_mode_dc2(struct mml_frame_info *info)
+{
+	bool en_pq = info->dest[0].pq_config.en || MML_FMT_IS_AYUV(info->dest[0].data.format)
+		|| mml_force_rsz == 2;
+	bool aipq = en_pq && info->dest[0].pq_config.en_hdr && info->dest[0].pq_config.en_region_pq;
+
+	if (aipq) {
+		mml_msg("%s dc2 not support aipq", __func__);
+		goto not_support;
+	}
+
+	if (info->dest[0].pq_config.en_sharp||
+		info->dest[0].pq_config.en_ur ||
+		info->dest[0].pq_config.en_dc ||
+		info->dest[0].pq_config.en_color ||
+		info->dest[0].pq_config.en_ccorr ||
+		info->dest[0].pq_config.en_dre ||
+		info->dest[0].pq_config.en_region_pq ||
+		info->dest[0].pq_config.en_c3d ||
+		info->dest[0].pq_config.en_clarity ||
+		info->dest[0].pq_config.en_color_adaptive ||
+		info->dest[0].pq_config.en_cv_based_sdr)
+		goto not_support;
+
+	return MML_MODE_MML_DECOUPLE2;
+
+not_support:
+	return MML_MODE_MML_DECOUPLE;
+}
+
+static void tp_pre_query_mode(struct mml_dev *mml, struct mml_frame_info *info,
 	u32 *reason, u32 panel_width, u32 panel_height, struct mml_frame_info_cache *info_cache)
 {
 	struct mml_topology_cache *tp = mml_topology_get_cache(mml);
-	enum mml_mode mode;
+	enum mml_mode mode_check;
 
 	if (unlikely(mml_path_mode)) {
 		mml_log("%s force use path mode %d", __func__, mml_path_mode);
-		return mml_path_mode;
+		info->mode = mml_path_mode;
+		return;
 	}
 
 	if (unlikely(!tp))
@@ -1646,38 +1688,54 @@ static enum mml_mode tp_query_mode(struct mml_dev *mml, struct mml_frame_info *i
 	if (info->alpha) {
 		*reason = mml_query_alpha;
 		if (!MML_FMT_ALPHA(info->src.format) ||
-		    info->src.width <= 32 ||
-		    info->dest_cnt != 1 ||
-		    info->dest[0].crop.r.width < 50 ||
-		    info->dest[0].compose.width <= 9)
+			info->src.width <= 32 ||
+			info->dest_cnt != 1 ||
+			info->dest[0].crop.r.width < 50 ||
+			info->dest[0].compose.width <= 9)
 			goto not_support;
-		if (mml_isdc(info->mode))
-			mode = info->mode;
-		else
-			mode = MML_MODE_MML_DECOUPLE;
-		goto check_dc_tput;
 	}
 
 	/* skip all racing mode check if use prefer dc */
 	if (mml_isdc(info->mode) || info->mode == MML_MODE_MDP_DECOUPLE) {
 		*reason = mml_query_userdc;
-		mode = info->mode;
-		goto check_dc_tput;
+		return;
 	}
 
 	if (info->mode == MML_MODE_APUDC) {
 		*reason = mml_query_apudc;
-		return info->mode;
+		return;
 	}
 
-	/* rotate go to racing (inline rotate) */
 	if (mml_racing == 1 &&
-		(info->dest[0].rotate == MML_ROT_90 || info->dest[0].rotate == MML_ROT_270))
-		mode = tp_query_mode_racing(mml, info, reason);
-	else
-		mode = tp_query_mode_dl(mml, info, reason, panel_width, panel_height, info_cache);
+		(info->dest[0].rotate == MML_ROT_90 || info->dest[0].rotate == MML_ROT_270)) {
+		mode_check = tp_query_mode_racing(mml, info, reason);
+		if (mode_check == MML_MODE_RACING)
+			info_cache->mode_caps |= (1 << MML_MODE_RACING);
+	} else {
+		mode_check = tp_query_mode_dl(mml, info, reason, panel_width, panel_height, info_cache);
+		if (mode_check == MML_MODE_DIRECT_LINK)
+			info_cache->mode_caps |= (1 << MML_MODE_DIRECT_LINK);
+	}
+	mode_check = tp_query_mode_dc2(info);
+	if (mode_check == MML_MODE_MML_DECOUPLE2)
+		info_cache->mode_caps |= (1 << MML_MODE_MML_DECOUPLE2);
+	mode_check = tp_query_mode_dc(info);
+	if (mode_check == MML_MODE_MML_DECOUPLE)
+		info_cache->mode_caps |= (1 << MML_MODE_MML_DECOUPLE);
 
-check_dc_tput:
+	tp_check_tput_dc(info, tp, panel_width, panel_height, info_cache);
+	return;
+
+not_support:
+	info->mode = MML_MODE_NOT_SUPPORT;
+}
+
+static enum mml_mode tp_query_mode(struct mml_dev *mml, struct mml_frame_info *info,
+	u32 *reason, u32 panel_width, u32 panel_height, struct mml_frame_info_cache *info_cache)
+{
+	struct mml_topology_cache *tp = mml_topology_get_cache(mml);
+	enum mml_mode mode = info->mode;
+
 	if (mml_isdc(mode)) {
 		if (info->pry_mode == MML_PERFORMANCE_PRY || mml_perf_pry) {
 			*reason = mml_query_performance_prioritize;
@@ -1699,9 +1757,6 @@ check_dc_tput:
 	}
 
 	return mode;
-
-not_support:
-	return MML_MODE_NOT_SUPPORT;
 }
 
 static struct cmdq_client *get_racing_clt(struct mml_topology_cache *cache, u32 pipe)
@@ -1748,7 +1803,8 @@ static enum mml_hw_caps support_hw_caps(void)
 }
 
 static const struct mml_topology_ops tp_ops_mt6993 = {
-	.query_mode2 = tp_query_mode,
+	.query_mode3 = tp_query_mode,
+	.cache_mode_caps = tp_pre_query_mode,
 	.init_cache = tp_init_cache,
 	.select = tp_select,
 	.get_racing_clt = get_racing_clt,

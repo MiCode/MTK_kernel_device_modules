@@ -300,17 +300,44 @@ enum mml_mode mml_drm_query_frame(struct mml_drm_ctx *dctx, struct mml_frame_inf
 		goto not_support;
 	}
 
-	if (!tp || (!tp->op->query_mode && !tp->op->query_mode2)) {
+	if (!tp || (!tp->op->query_mode && !tp->op->query_mode2 && !tp->op->cache_mode_caps)) {
 		reason = mml_query_tp;
 		goto not_support;
 	}
 
-	if (tp->op->query_mode2)
+	if (tp->op->cache_mode_caps) {
+		tp->op->cache_mode_caps(dctx->ctx.mml, info, &reason,
+			dctx->panel_width, dctx->panel_height, info_cache);
+		if (info->mode == MML_MODE_NOT_SUPPORT)
+			goto not_support;
+		else {
+			if (info_cache->mode_caps & BIT(MML_MODE_DIRECT_LINK))
+				mode = MML_MODE_DIRECT_LINK;
+			else if ((info_cache->mode_caps & BIT(MML_MODE_MML_DECOUPLE)) &&
+				(info_cache->mode_caps & BIT(MML_MODE_MML_DECOUPLE2)))
+				mode = MML_MODE_MML_DECOUPLE;
+			else if (info_cache->mode_caps & BIT(MML_MODE_MML_DECOUPLE2))
+				mode = MML_MODE_MML_DECOUPLE2;
+			else if (info_cache->mode_caps & BIT(MML_MODE_MML_DECOUPLE))
+				mode = MML_MODE_MML_DECOUPLE;
+			else {
+				mode = MML_MODE_UNKNOWN;
+				reason = mml_query_unknown;
+				mml_err("Unknown mode");
+			}
+
+			mml_msg("[query_frame] choosing mode %u mode_caps %u",
+				mode, info_cache->mode_caps);
+			goto support;
+		}
+	} else if (tp->op->query_mode2)
 		mode = tp->op->query_mode2(dctx->ctx.mml, info, &reason,
 			dctx->panel_width, dctx->panel_height, info_cache);
 	else
 		mode = tp->op->query_mode(dctx->ctx.mml, info, &reason);
-	if (mode == MML_MODE_MML_DECOUPLE && mml_dev_get_couple_cnt(dctx->ctx.mml)) {
+
+	if (!tp->op->cache_mode_caps
+		&& mode == MML_MODE_MML_DECOUPLE && mml_dev_get_couple_cnt(dctx->ctx.mml)) {
 		/* if mml hw running racing mode and query info need dc,
 		 * go back to MDP decouple to avoid hw conflict.
 		 *
@@ -338,6 +365,7 @@ enum mml_mode mml_drm_query_frame(struct mml_drm_ctx *dctx, struct mml_frame_inf
 		reason = mml_query_dc_off;
 	}
 
+support:
 	mml_mmp2(query_mode, MMPROFILE_FLAG_PULSE, info->mode, mode, 0, reason);
 	mml_msg("[drm]query mode %u result mode %u reason %d", info->mode, mode, (s32)reason);
 	return mode;
@@ -365,14 +393,16 @@ int mml_drm_query_multi_layer(struct mml_drm_ctx *dctx,
 {
 	/* TODO: put into drm context */
 	struct mml_frame_info_cache info_cache[MML_MAX_LAYER] = {0};
+	struct mml_topology_cache *tp = mml_topology_get_cache(dctx->ctx.mml);
 
 	enum mml_mode mode = MML_MODE_UNKNOWN;
 	u32 remain[mml_max_sys] = {0};
-	u32 mml_layer_cnt = 0;
-	u32 i;
+	u32 mml_layer_cnt = 0, mml_last_layer;
+	u32 i, j;
 	bool couple_used = false;
 	struct mml_dev *mml = dctx->ctx.mml;
 	s32 max_layer = mml_max_layers ? mml_max_layers : mml_max_layer(mml);
+	u32 reason = 0;
 
 	max_layer = min(max_layer, MML_MAX_LAYER);
 
@@ -382,6 +412,140 @@ int mml_drm_query_multi_layer(struct mml_drm_ctx *dctx,
 
 	remain[mml_sys_frame] = duration_us -  dc_layer_reserve;
 	remain[mml_sys_tile] = duration_us -  dc_layer_reserve;
+
+	/* Count the duration needed */
+	if (!tp) {
+		mml_log("tp not support");
+		return 1;
+	}
+	if (tp->op->cache_mode_caps) {
+		/* First round:
+		 * 1. check hw support
+		 * 2. get duration and all layers to plan
+		 * index 'i' for 'infos' (some maybe not support); 'mml_layer_cnt' for 'info_cache'
+		 */
+		mml_layer_cnt = 0;
+		for (i = 0; i < cnt; i++) {
+			if (mml_layer_cnt >= max_layer) {
+				infos[i].mode = MML_MODE_NOT_SUPPORT;
+				continue;
+			}
+
+			mml_msg("[query][R1] infos[%d].mode %d", i, infos[i].mode);
+			mode = mml_drm_query_frame(dctx, &infos[i], &info_cache[mml_layer_cnt]);
+			if (remain[mml_sys_frame] < info_cache[mml_layer_cnt].duration) {
+				infos[i].mode = MML_MODE_NOT_SUPPORT;
+				mml_msg("[drm][query][R1]layer %u not support remain %u need %u",
+					i, remain[mml_sys_frame], info_cache[mml_layer_cnt].duration);
+				continue;
+			}
+			mml_msg("[R1] after query caps layer %u choosing mode %u mode_caps %u",
+				i, infos[i].mode, info_cache[mml_layer_cnt].mode_caps);
+			mml_layer_cnt++;
+			mml_last_layer = i;
+		}
+
+		/* Second round: if DC only, then clear all DL options */
+		for (i = 0; i < mml_layer_cnt; i++) {
+			if (info_cache[i].mode_caps == BIT(MML_MODE_MML_DECOUPLE)) {
+				mml_msg("[drm][query][R2] layer %u use DC only", i);
+				for (j = 0; j < mml_layer_cnt; j++)
+					info_cache[j].mode_caps &= ~BIT(MML_MODE_DIRECT_LINK);
+			}
+		}
+
+		/* Third round:
+		 * 1. Choose first DL
+		 * 2. If support only one of DC and DC2, calculate again to check the remain time.
+		 * 3. If support DC & DC2 at the same time, calculate throughput then queue
+		 * 4. query_mode3, and assign infos[i].mode
+		 */
+		mml_layer_cnt = 0;
+		for (i = 0; i < mml_last_layer + 1; i++) {
+			if (infos[i].mode == MML_MODE_NOT_SUPPORT) {
+				mml_msg("[drm][query][R3] not support this layer %u", i);
+				continue;
+			}
+
+			if (!couple_used &&
+				(info_cache[mml_layer_cnt].mode_caps & BIT(MML_MODE_DIRECT_LINK))) {
+				mml_msg("[drm][query][R3] pick layer %u to use DL", i);
+				infos[i].mode = MML_MODE_DIRECT_LINK;
+				couple_used = true;
+			} else
+				info_cache[mml_layer_cnt].mode_caps &=
+					~(BIT(MML_MODE_DIRECT_LINK) | BIT(MML_MODE_MML_DECOUPLE));
+
+
+			if ((info_cache[mml_layer_cnt].mode_caps & BIT(MML_MODE_MML_DECOUPLE)) &&
+				(info_cache[mml_layer_cnt].mode_caps & BIT(MML_MODE_MML_DECOUPLE2))) {
+				if (remain[mml_sys_frame] < remain[mml_sys_tile])
+					infos[i].mode = MML_MODE_MML_DECOUPLE2;
+				else if (remain[mml_sys_tile]< remain[mml_sys_frame])
+					infos[i].mode = MML_MODE_MML_DECOUPLE;
+			} else if (info_cache[mml_layer_cnt].mode_caps & BIT(MML_MODE_MML_DECOUPLE2))
+				infos[i].mode = MML_MODE_MML_DECOUPLE2;
+			else if (info_cache[mml_layer_cnt].mode_caps & BIT(MML_MODE_MML_DECOUPLE))
+				infos[i].mode = MML_MODE_MML_DECOUPLE;
+			else {
+				infos[i].mode = MML_MODE_NOT_SUPPORT;
+				mml_msg("[warn][R3] layer dispatch to not support");
+				continue;
+			}
+
+			/* user preference? */
+			mml_msg("[R3] after select layer %u choosing mode %u mode_caps %u",
+				i, infos[i].mode, info_cache[mml_layer_cnt].mode_caps);
+
+			info_cache[mml_layer_cnt].remain = remain[mml_sys_frame];
+
+			mode = tp->op->query_mode3(mml, &infos[i], &reason,
+				dctx->panel_width, dctx->panel_height, &info_cache[mml_layer_cnt]);
+			if (mode == MML_MODE_MML_DECOUPLE) {
+				if (remain[mml_sys_frame] < info_cache[mml_layer_cnt].duration) {
+					mml_msg("[drm][query][R3]layer %u dc not support remain %u need %u",
+						i, remain[mml_sys_frame],
+						info_cache[mml_layer_cnt].duration);
+					mode = info_cache[mml_layer_cnt].mode_caps & BIT(MML_MODE_MML_DECOUPLE2) ?
+						MML_MODE_MML_DECOUPLE2 : MML_MODE_NOT_SUPPORT;
+				} else {
+					remain[mml_sys_frame] -= info_cache[mml_layer_cnt].duration;
+					mml_msg("[drm][query][R3]layer %u mode dc  remain %u",
+						i, remain[mml_sys_frame]);
+				}
+			} else if (mode == MML_MODE_MML_DECOUPLE2) {
+				if (remain[mml_sys_tile] < info_cache[mml_layer_cnt].duration) {
+					mode =  info_cache[mml_layer_cnt].mode_caps & BIT(MML_MODE_MML_DECOUPLE) ?
+						MML_MODE_MML_DECOUPLE : MML_MODE_NOT_SUPPORT;
+					mml_msg("[drm][query][R3]layer %u dc2 not support remain %u need %u",
+						i, remain[mml_sys_tile],
+						info_cache[mml_layer_cnt].duration);
+				} else {
+					remain[mml_sys_tile] -= info_cache[mml_layer_cnt].duration;
+					mml_msg("[drm][query][R3]layer %u mode dc2 remain %u",
+						i, remain[mml_sys_tile]);
+				}
+			}
+
+			if (mode == MML_MODE_MML_DECOUPLE && !(mml_dc & 0x1)) {
+				mode = tp->op->support_dc2() ?
+					MML_MODE_MML_DECOUPLE2 : MML_MODE_MDP_DECOUPLE;
+				reason = mml_query_dc_off;
+			}
+
+			if (mode == MML_MODE_MML_DECOUPLE2 && !(mml_dc & 0x2)) {
+				mode = MML_MODE_NOT_SUPPORT;
+				reason = mml_query_dc_off;
+			}
+
+			infos[i].mode = mode;
+
+			mml_mmp(query_layer, MMPROFILE_FLAG_PULSE,
+				i << 16 | (atomic_read(&dctx->ctx.job_serial) & 0xffff), mode);
+			mml_layer_cnt++;
+		}
+		return 0;
+	}
 
 	for (i = 0; i < cnt; i++) {
 		bool balance = false;
