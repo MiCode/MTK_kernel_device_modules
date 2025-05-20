@@ -14,10 +14,10 @@
 
 /* iova region definition */
 #define NORMAL_DOM				(0)
-#define LK_RESV_DOM				(1)
-#define VIDEO_UP_DOM0				(2)
-#define VIDEO_UP_DOM1				(3)
-#define CAM_DOM					(4)
+#define CAM_DOM					(1)
+#define LK_RESV_DOM				(2)
+#define VIDEO_UP_DOM0				(3)
+#define VIDEO_UP_DOM1				(4)
 
 /* Larb0 -- 7 */
 #define M4U_L0_P0_OVL0_RDMA_HDR			MTK_M4U_PORT_ID(MM_TAB, NORMAL_DOM, 0, 0)
