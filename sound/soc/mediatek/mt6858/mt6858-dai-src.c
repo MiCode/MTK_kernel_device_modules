@@ -1141,10 +1141,10 @@ static const struct snd_soc_dapm_route mtk_dai_src_routes[] = {
 	{"HW_SRC_3_In", NULL, HW_SRC_3_EN_W_NAME, mtk_afe_src_en_connect},
 	{"HW_SRC_3_Out", NULL, HW_SRC_3_EN_W_NAME, mtk_afe_src_en_connect},
 #if !defined(IS_FPGA_EARLY_PORTING)
-	{HW_SRC_0_EN_W_NAME, NULL, "vlp_mux_audio_h"},
-	{HW_SRC_1_EN_W_NAME, NULL, "vlp_mux_audio_h"},
-	{HW_SRC_2_EN_W_NAME, NULL, "vlp_mux_audio_h"},
-	{HW_SRC_3_EN_W_NAME, NULL, "vlp_mux_audio_h"},
+	{HW_SRC_0_EN_W_NAME, NULL, "clk_top_audio_h_sel"},
+	{HW_SRC_1_EN_W_NAME, NULL, "clk_top_audio_h_sel"},
+	{HW_SRC_2_EN_W_NAME, NULL, "clk_top_audio_h_sel"},
+	{HW_SRC_3_EN_W_NAME, NULL, "clk_top_audio_h_sel"},
 #endif
 	/* hires source from apll1 */
 	{HW_SRC_0_EN_W_NAME, NULL, APLL2_W_NAME, mtk_afe_src_apll_connect},

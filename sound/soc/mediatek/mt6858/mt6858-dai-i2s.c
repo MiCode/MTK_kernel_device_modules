@@ -2280,8 +2280,6 @@ static const struct snd_soc_dapm_route mtk_dai_i2s_routes[] = {
 	{"I2SOUT4_CH2", "DL8_CH2", "DL8"},
 	{"I2SOUT4_CH8", "DL8_CH1", "DL8"},
 	{"I2SOUT4_CH8", "DL8_CH2", "DL8"},
-	{"I2SOUT4_CH1", "DL_4CH_CH1", "DL_4CH"},
-	{"I2SOUT4_CH2", "DL_4CH_CH2", "DL_4CH"},
 	{"I2SOUT4_CH1", "DL_24CH_CH1", "DL_24CH"},
 	{"I2SOUT4_CH2", "DL_24CH_CH2", "DL_24CH"},
 	{"I2SOUT4_CH3", "DL_24CH_CH3", "DL_24CH"},

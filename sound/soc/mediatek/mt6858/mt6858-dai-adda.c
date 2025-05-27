@@ -1353,6 +1353,7 @@ static int mtk_afe_adc_hires_connect(struct snd_soc_dapm_widget *source,
 static const struct snd_soc_dapm_route mtk_dai_adda_routes[] = {
 	/* playback */
 	{"ADDA_DL_CH1", "DL0_CH1", "DL0"},
+	{"ADDA_DL_CH2", "DL0_CH1", "DL0"},
 	{"ADDA_DL_CH2", "DL0_CH2", "DL0"},
 
 	{"ADDA_DL_CH1", "DL1_CH1", "DL1"},
@@ -1379,9 +1380,6 @@ static const struct snd_soc_dapm_route mtk_dai_adda_routes[] = {
 	{"ADDA_DL_CH1", "DL8_CH1", "DL8"},
 	{"ADDA_DL_CH2", "DL8_CH2", "DL8"},
 
-	{"ADDA_DL_CH1", "DL_4CH_CH1", "DL_4CH"},
-	{"ADDA_DL_CH2", "DL_4CH_CH2", "DL_4CH"},
-
 	{"ADDA_DL_CH1", "DL_24CH_CH1", "DL_24CH"},
 	{"ADDA_DL_CH2", "DL_24CH_CH2", "DL_24CH"},
 
@@ -1405,7 +1403,6 @@ static const struct snd_soc_dapm_route mtk_dai_adda_routes[] = {
 
 	{"ADDA Playback", NULL, "ADDA Enable"},
 	{"ADDA Playback", NULL, "ADDA Playback Enable"},
-	{"ADDA Playback", NULL, "AUD_PAD_CLK"},
 	{"ADDA Playback", NULL, "AUD_PAD_TOP"},
 #ifdef MT6681_NO_VS1_VOTE
 	{"ADDA Playback", NULL, "VS1_VOTER_DL"},
@@ -1420,7 +1417,6 @@ static const struct snd_soc_dapm_route mtk_dai_adda_routes[] = {
 
 	{"ADDA Capture", NULL, "ADDA Enable"},
 	{"ADDA Capture", NULL, "ADDA Capture Enable"},
-	{"ADDA Capture", NULL, "AUD_PAD_CLK"},
 	{"ADDA Capture", NULL, "AUD_PAD_TOP"},
 	{"ADDA Capture", NULL, "ADDA_MTKAIF_CFG"},
 #ifdef MT6681_NO_VS1_VOTE
@@ -1434,7 +1430,6 @@ static const struct snd_soc_dapm_route mtk_dai_adda_routes[] = {
 
 	{"ADDA CH34 Capture", NULL, "ADDA Enable"},
 	{"ADDA CH34 Capture", NULL, "ADDA CH34 Capture Enable"},
-	{"ADDA CH34 Capture", NULL, "AUD_PAD_CLK"},
 	{"ADDA CH34 Capture", NULL, "AUD_PAD_TOP"},
 	{"ADDA CH34 Capture", NULL, "ADDA6_MTKAIF_CFG"},
 #ifdef MT6681_NO_VS1_VOTE
@@ -1466,12 +1461,12 @@ static const struct snd_soc_dapm_route mtk_dai_adda_routes[] = {
 	{"ADDA Capture Enable", NULL, "afe_ul0_adc_audio"},
 	{"ADDA Capture Enable", NULL, "afe_ul0_adc_hires_audio",
 	 mtk_afe_adc_hires_connect},
-	{"ADDA CH34 Capture Enable", NULL, "aud_ul1_adc_clk"},
-	{"ADDA CH34 Capture Enable", NULL, "aud_ul1_adc_hires_clk",
+	{"ADDA CH34 Capture Enable", NULL, "afe_ul1_adc_audio"},
+	{"ADDA CH34 Capture Enable", NULL, "afe_ul1_adc_hires_audio",
 	 mtk_afe_adc_hires_connect},
 
-	{"afe_ul0_adc_hires_audio", NULL, "vlp_mux_audio_h"},
-	{"afe_ul1_adc_hires_audio", NULL, "vlp_mux_audio_h"},
+	{"afe_ul0_adc_hires_audio", NULL, "clk_top_audio_h_sel"},
+	{"afe_ul1_adc_hires_audio", NULL, "clk_top_audio_h_sel"},
 #endif
 };
 

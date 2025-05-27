@@ -188,7 +188,6 @@ static const struct snd_soc_dapm_route mtk_dai_hostless_routes[] = {
 	{"HW_SRC_3_IN_CH1", "I2SIN4_CH7", "Hostless_SRC_3_DL"},
 	{"HW_SRC_3_IN_CH2", "I2SIN4_CH8", "Hostless_SRC_3_DL"},
 	{"Hostless_SRC_3_UL", NULL, "HW_SRC_3_Out"},
-	{"Hostless_HW_SRC_3_IN_UL", NULL, "HW_SRC_3_Out"},
 
 	/* Hostless_SRC_bargein */
 	{"HW_SRC_0_IN_CH1", "I2SIN1_CH1", "Hostless_SRC_Bargein_DL"},
@@ -644,6 +643,25 @@ static struct snd_soc_dai_driver mtk_dai_hostless_driver[] = {
 		.id = MT6858_DAI_HOSTLESS_UL4,
 		.capture = {
 			.stream_name = "Hostless_UL4 UL",
+			.channels_min = 1,
+			.channels_max = 2,
+			.rates = MTK_HOSTLESS_RATES,
+			.formats = MTK_HOSTLESS_FORMATS,
+		},
+		.ops = &mtk_dai_hostless_ops,
+	},
+	{
+		.name = "Hostless_UL24 DAI",
+		.id = MT6858_DAI_HOSTLESS_UL24,
+		.capture = {
+			.stream_name = "Hostless_UL24 UL",
+			.channels_min = 1,
+			.channels_max = 4,
+			.rates = MTK_HOSTLESS_RATES,
+			.formats = MTK_HOSTLESS_FORMATS,
+		},
+		.playback = {
+			.stream_name = "Hostless_UL24 DL",
 			.channels_min = 1,
 			.channels_max = 2,
 			.rates = MTK_HOSTLESS_RATES,
