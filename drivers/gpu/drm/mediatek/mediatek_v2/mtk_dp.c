@@ -27,6 +27,7 @@
 #include <linux/module.h>
 #include <linux/pm_domain.h>
 #include <linux/device.h>
+#include <linux/nvmem-consumer.h>
 
 #include <drm/drm_atomic_helper.h>
 #include <drm/drm_crtc.h>
@@ -2893,7 +2894,7 @@ void mdrv_DPTx_InitPort(struct mtk_dp *mtk_dp)
 	mhal_DPTx_HPDDetectSetting(mtk_dp);
 
 	mhal_DPTx_DigitalSwReset(mtk_dp);
-	mhal_DPTx_Set_Efuse_Value(mtk_dp);
+	mhal_DPTx_Set_Efuse_Value(mtk_dp, aux_swap);
 
 	if (mtk_dp->priv->data->mmsys_id == MMSYS_MT6993)
 		mhal_recover_safe_mode_settting(mtk_dp);
@@ -4675,6 +4676,37 @@ static const struct component_ops mtk_dp_component_ops = {
 	.bind = mtk_dp_bind, .unbind = mtk_dp_unbind,
 };
 
+static const char *efuse_field[EFUSE_FIELD_CNT] = {
+	"phy_data1", "phy_data2", "phy_data3", "phy_data4"};
+
+static int mtk_dp_parse_efuse(struct mtk_dp *mtk_dp, struct platform_device *pdev)
+{
+	struct device *dev = &pdev->dev;
+	struct nvmem_cell *cell[EFUSE_FIELD_CNT];
+	u32 *buf;
+	size_t len[EFUSE_FIELD_CNT];
+	int i;
+
+	for (i = 0; i<EFUSE_FIELD_CNT; i++) {
+		cell[i] = nvmem_cell_get(dev, efuse_field[i]);
+		if (IS_ERR(cell[i])) {
+			if (PTR_ERR(cell[i]) == -EPROBE_DEFER)
+				return PTR_ERR(cell[i]);
+			return -1;
+		}
+
+		buf = (u32 *)nvmem_cell_read(cell[i], &len[i]);
+		mtk_dp-> read_from_efuse[i] = *buf;
+
+		DPTXMSG("efuse value=%x\n", mtk_dp-> read_from_efuse[i]);
+		nvmem_cell_put(cell[i]);
+
+		if (IS_ERR(buf))
+			return PTR_ERR(buf);
+	}
+	return 0;
+}
+
 static int mtk_drm_dp_probe(struct platform_device *pdev)
 {
 	struct mtk_dp *mtk_dp;
@@ -4731,6 +4763,11 @@ static int mtk_drm_dp_probe(struct platform_device *pdev)
 		return -EPROBE_DEFER;
 	}
 	#endif
+
+	ret = mtk_dp_parse_efuse(mtk_dp, pdev);
+	if (ret)
+		DPTXERR("fail to get efuse");
+
 	dptx_notify_data.name = "hdmi";  // now hwc not support DP
 	dptx_notify_data.index = 0;
 	dptx_notify_data.state = DPTX_STATE_NO_DEVICE;

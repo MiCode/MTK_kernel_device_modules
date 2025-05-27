@@ -301,7 +301,7 @@ void mhal_DPTx_SetChunkSize(struct mtk_dp *mtk_dp,
 	BYTE remainder, BYTE lane_count,
 	BYTE hde_last_num, BYTE hde_num_even);
 void mhal_DPTx_InitialSetting(struct mtk_dp *mtk_dp);
-void mhal_DPTx_Set_Efuse_Value(struct mtk_dp *mtk_dp);
+void mhal_DPTx_Set_Efuse_Value(struct mtk_dp *mtk_dp, bool enable);
 void mhal_DPTx_VideoMuteSW(struct mtk_dp *mtk_dp, bool bENABLE);
 void mhal_DPTx_VideoMute(struct mtk_dp *mtk_dp, bool bENABLE);
 void mhal_DPTx_AudioMute(struct mtk_dp *mtk_dp, bool bENABLE);

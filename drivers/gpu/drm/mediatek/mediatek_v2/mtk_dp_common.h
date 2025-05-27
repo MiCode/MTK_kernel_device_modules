@@ -45,6 +45,7 @@
 #define DPTX_SUPPORT_DSC                0 // confirm DSC scenario before open this.
 #define DPTX_PHY_LEVEL_COUNT            6
 #define DPTX_PHY_REG_COUNT              6
+#define EFUSE_FIELD_CNT			4
 
 #define DPTX_AutoTest_ENABLE		0x1
 #if DPTX_AutoTest_ENABLE
@@ -349,6 +350,7 @@ struct mtk_dp {
 	u32 max_hdisplay;
 	u32 max_vdisplay;
 	u32 aux_deffer_count;
+	u32 read_from_efuse[EFUSE_FIELD_CNT];
 
 	void __iomem *regs;
 	void __iomem *phyd_regs;

@@ -295,20 +295,127 @@ void mhal_recover_safe_mode_settting(struct mtk_dp *mtk_dp)
 	msWrite4ByteMask(mtk_dp, 0x3004 , 0x0, 0x100);
 }
 
-void mhal_DPTx_Set_Efuse_Value(struct mtk_dp *mtk_dp)
+void mhal_DPTx_Set_Efuse_Value(struct mtk_dp *mtk_dp, bool plug_orientation)
 {
-	u32 efuse = 0;
-	//get_devinfo_with_index(114);
+	void *base;
+	uint32_t efuse_value;
+	uint32_t efuse_base[4] = {
+		mtk_dp->read_from_efuse[0],// 0x132601b4
+		mtk_dp->read_from_efuse[1],// 0x132601bc
+		mtk_dp->read_from_efuse[2],// 0x132601b8
+		mtk_dp->read_from_efuse[3]//  0x132601c0
+	};
 
-	DPTXMSG("DPTX Efuse(0x11C101B8) = 0x%x\n", efuse);
+	if ((efuse_base[0] == 0x0) || (efuse_base[1] == 0x0
+			|| efuse_base[2] == 0x0) || (efuse_base[3] ==
+			0x0)) {
+		DPTXMSG("no efuse, use default value!\n");
+		return;
+	}
 
-	if (efuse) {
-		msWrite4ByteMask(mtk_dp, 0x0008, efuse >> 1, BITMASK(23 : 20));
-		msWrite4ByteMask(mtk_dp, 0x0000, efuse, BITMASK(20 : 16));
-		msWrite4ByteMask(mtk_dp, 0x0104, efuse, BITMASK(15 : 12));
-		msWrite4ByteMask(mtk_dp, 0x0104, efuse << 8, BITMASK(19 : 16));
-		msWrite4ByteMask(mtk_dp, 0x0204, efuse << 8, BITMASK(15 : 12));
-		msWrite4ByteMask(mtk_dp, 0x0204, efuse << 16, BITMASK(19 : 16));
+	// Bandgap
+	if (plug_orientation == 1) { // Normal
+		// RG_XTP_GLB_BIAS_V2V_VTRIM[3:0]
+		efuse_value = (efuse_base[1] >> 6) & 0xF;
+		msPhyWrite4ByteMask(mtk_dp, 0x0604, efuse_value << 10, 0xF << 10);
+
+		// RG_XTP_GLB_BIAS_INTR_CTRL[3:0]
+		efuse_value = efuse_base[1] & 0xF;
+		msPhyWrite4ByteMask(mtk_dp, 0x0088, efuse_value << 0, 0xF << 0);
+	} else { // Flipped
+		// RG_XTP_GLB_BIAS_V2V_VTRIM[3:0]
+		efuse_value = (efuse_base[0] >> 6) & 0xF;
+		msPhyWrite4ByteMask(mtk_dp, 0x0604, efuse_value << 10, 0xF << 10);
+
+		// RG_XTP_GLB_BIAS_INTR_CTRL[3:0]
+		efuse_value = efuse_base[0] & 0xF;
+		msPhyWrite4ByteMask(mtk_dp, 0x0088, efuse_value << 0, 0xF << 0);
+	}
+
+	// AUX R50
+	if (plug_orientation == 1) { // Normal
+		// RG_CKM_CKTX_IMPSEL_PMOS[3:0]
+		efuse_value = (efuse_base[1] >> 10) & 0xF;
+		msPhyWrite4ByteMask(mtk_dp, 0x0600, efuse_value << 8, 0xF << 8);
+
+		// RG_XTP_GLB_BIAS_INTR_CTRL[5:0]
+		efuse_value = (efuse_base[1] >> 14) & 0xF;
+		msPhyWrite4ByteMask(mtk_dp, 0x0600, efuse_value << 12, 0xF << 12);
+	} else { // Flipped
+		// RG_CKM_CKTX_IMPSEL_PMOS[3:0]
+		efuse_value = (efuse_base[0] >> 10) & 0xF;
+		msPhyWrite4ByteMask(mtk_dp, 0x0600, efuse_value << 8, 0xF << 8);
+
+		// RG_XTP_GLB_BIAS_INTR_CTRL[5:0]
+		efuse_value = (efuse_base[0] >> 14) & 0xF;
+		msPhyWrite4ByteMask(mtk_dp, 0x0600, efuse_value << 12, 0xF << 12);
+	}
+
+	// Main-Link
+	if (plug_orientation == 1) { // Normal
+		// RG_XTP_LN0_TX_IMPSEL_PMOS[4:0]
+		efuse_value = (efuse_base[1] >> 22) & 0x1F;
+		msPhyWrite4ByteMask(mtk_dp, 0x0088, efuse_value << 10, 0x1F << 10);
+
+		// RG_XTP_LN0_TX_IMPSEL_NMOS[4:0]
+		efuse_value = (efuse_base[1] >> 27) & 0x1F;
+		msPhyWrite4ByteMask(mtk_dp, 0x0088, efuse_value << 15, 0x1F << 15);
+
+		// RG_XTP_LN1_TX_IMPSEL_PMOS[4:0]
+		efuse_value = (efuse_base[3] >> 19) & 0x1F;
+		msPhyWrite4ByteMask(mtk_dp, 0x0088, efuse_value << 20, 0x1F << 20);
+
+		// RG_XTP_LN1_TX_IMPSEL_NMOS[4:0]
+		efuse_value = (efuse_base[3] >> 24) & 0x1F;
+		msPhyWrite4ByteMask(mtk_dp, 0x0088, efuse_value << 25, 0x1F << 25);
+
+		// RG_XTP_LN2_TX_IMPSEL_PMOS[4:0]
+		efuse_value = (efuse_base[2] >> 19) & 0x1F;
+		msPhyWrite4ByteMask(mtk_dp, 0x008C, efuse_value << 0, 0x1F << 0);
+
+		// RG_XTP_LN2_TX_IMPSEL_NMOS[4:0]
+		efuse_value = (efuse_base[2] >> 24) & 0x1F;
+		msPhyWrite4ByteMask(mtk_dp, 0x008C, efuse_value << 8, 0x1F << 8);
+
+		// RG_XTP_LN3_TX_IMPSEL_PMOS[4:0]
+		efuse_value = (efuse_base[0] >> 22) & 0x1F;
+		msPhyWrite4ByteMask(mtk_dp, 0x008C, efuse_value << 16, 0x1F << 16);
+
+		// RG_XTP_LN3_TX_IMPSEL_NMOS[4:0]
+		efuse_value = (efuse_base[0] >> 27) & 0x1F;
+		msPhyWrite4ByteMask(mtk_dp, 0x008C, efuse_value << 24, 0x1F << 24);
+	} else { // Flipped
+		// RG_XTP_LN0_TX_IMPSEL_PMOS[4:0]
+		efuse_value = (efuse_base[0] >> 22) & 0x1F;
+		msPhyWrite4ByteMask(mtk_dp, 0x0088, efuse_value << 10, 0x1F << 10);
+
+		// RG_XTP_LN0_TX_IMPSEL_NMOS[4:0]
+		efuse_value = (efuse_base[0] >> 27) & 0x1F;
+		msPhyWrite4ByteMask(mtk_dp, 0x0088, efuse_value << 15, 0x1F << 15);
+
+		// RG_XTP_LN1_TX_IMPSEL_PMOS[4:0]
+		efuse_value = (efuse_base[2] >> 19) & 0x1F;
+		msPhyWrite4ByteMask(mtk_dp, 0x0088, efuse_value << 20, 0x1F << 20);
+
+		// RG_XTP_LN1_TX_IMPSEL_NMOS[4:0]
+		efuse_value = (efuse_base[2] >> 24) & 0x1F;
+		msPhyWrite4ByteMask(mtk_dp, 0x0088, efuse_value << 25, 0x1F << 25);
+
+		// RG_XTP_LN2_TX_IMPSEL_PMOS[4:0]
+		efuse_value = (efuse_base[3] >> 19) & 0x1F;
+		msPhyWrite4ByteMask(mtk_dp, 0x008C, efuse_value << 0, 0x1F << 0);
+
+		// RG_XTP_LN2_TX_IMPSEL_NMOS[4:0]
+		efuse_value = (efuse_base[3] >> 24) & 0x1F;
+		msPhyWrite4ByteMask(mtk_dp, 0x008C, efuse_value << 8, 0x1F << 8);
+
+		// RG_XTP_LN3_TX_IMPSEL_PMOS[4:0]
+		efuse_value = (efuse_base[1] >> 22) & 0x1F;
+		msPhyWrite4ByteMask(mtk_dp, 0x008C, efuse_value << 16, 0x1F << 16);
+
+		// RG_XTP_LN3_TX_IMPSEL_NMOS[4:0]
+		efuse_value = (efuse_base[1] >> 27) & 0x1F;
+		msPhyWrite4ByteMask(mtk_dp, 0x008C, efuse_value << 24, 0x1F << 24);
 	}
 }
 
