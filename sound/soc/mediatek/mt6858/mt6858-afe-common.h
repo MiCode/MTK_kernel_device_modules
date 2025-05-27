@@ -23,7 +23,7 @@
 #endif
 
 /* Remove this after SB (Sanity) */
-#define SKIP_SB
+/* #define SKIP_SB */
 
 /* define SKIP_SB to skip all feature */
 #ifdef SKIP_SB
@@ -45,11 +45,11 @@
  * section, we can easily identify which features are disabled when sample back,
  * as feature owners should not modify the previous part.
  */
-#define SKIP_ACCDET
+/* #define SKIP_ACCDET */
 #define SKIP_SB_BTCVSD
-#define SKIP_SB_CLK
+/* #define SKIP_SB_CLK */
 #define SKIP_SB_DSP
-#define SKIP_SB_GPIO
+/* #define SKIP_SB_GPIO */
 #define SKIP_SB_OFFLOAD
 #define SKIP_SB_PBM
 #define SKIP_SB_ULTRA
