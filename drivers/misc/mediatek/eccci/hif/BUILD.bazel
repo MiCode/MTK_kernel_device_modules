@@ -109,6 +109,7 @@ define_mgk_ddk_ko(
 		"//kernel_device_modules-{}/drivers/misc/mediatek/eccci:ccci_md_all".format(kernel_version),
 		"//kernel_device_modules-{}/drivers/misc/mediatek/sda:irq-dbg".format(kernel_version),
 		"//kernel_device_modules-{}/drivers/soc/mediatek:mtk-dvfsrc".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/slbc:mtk_slbc".format(kernel_version),
 	],
 	header_deps = [
 		"//kernel_device_modules-{}/drivers/misc/mediatek/ccci_util:ccci_util_header".format(kernel_version),

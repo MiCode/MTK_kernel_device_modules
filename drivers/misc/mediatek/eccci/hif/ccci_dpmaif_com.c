@@ -2928,6 +2928,8 @@ static int dpmaif_stop(unsigned char hif_id)
 
 static void dpmaif_total_spd_cb(u64 total_ul_speed, u64 total_dl_speed)
 {
+	static unsigned int tput_700_cnt;
+
 	if (g_dpmaif_ctrl->capability & MODEM_CAP_LIM_UDP_GRO)
 		ccmni_set_cur_speed(total_dl_speed);
 
@@ -3031,6 +3033,27 @@ static void dpmaif_total_spd_cb(u64 total_ul_speed, u64 total_dl_speed)
 		g_rx_flush_pkt_cnt = 0;
 #endif
 	}
+
+	if (g_plat_inf != 6993)
+		return;
+
+	if (total_dl_speed >= 700000000LL) {
+		if (tput_700_cnt != SLBC_DCC_DISABLE_FLAG) {
+			tput_700_cnt++;
+			if (tput_700_cnt == 10) { // 10s
+				slbc_disable_dcc(1);
+				tput_700_cnt = SLBC_DCC_DISABLE_FLAG;
+				CCCI_NORMAL_LOG(0, TAG, "[%s] slbc_disable_dcc 1!\n", __func__);
+			}
+		}
+	} else if (tput_700_cnt) {
+		if (tput_700_cnt == SLBC_DCC_DISABLE_FLAG) {
+			slbc_disable_dcc(0);
+			CCCI_NORMAL_LOG(0, TAG, "[%s] slbc_disable_dcc 0!\n", __func__);
+		}
+		tput_700_cnt = 0;
+	}
+
 }
 
 static int dpmaif_init_cap(struct device *dev)

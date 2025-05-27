@@ -576,4 +576,7 @@ extern inline void dpmaif_start_dev_queue(struct dpmaif_tx_queue *txq);
 extern inline int dpmaif_wait_resume_done(void);
 extern int dpmaif_tx_send_skb_to_md(struct ccmni_tx_para_info *tx_info);
 extern void dpmaif_handle_wakeup_skb(unsigned int is_rx, struct sk_buff *skb);
+extern int slbc_disable_dcc(bool disable);
+#define SLBC_DCC_DISABLE_FLAG   (100)
+
 #endif				/* __CCCI_MODEM_DPMA_COMM_H__ */
