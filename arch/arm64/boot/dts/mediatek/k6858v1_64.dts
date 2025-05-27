@@ -117,6 +117,24 @@
 	};
 };
 
+&i2c6 {
+	spk: speaker-amp@5c {
+		compatible = "richtek,rt5512";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		#sound-dai-cells = <0>;
+		reg = <0x5c>;
+		status = "okay";
+		sound-name-prefix = "Left";
+	};
+};
+
+&sound {
+	mediatek,spk-i2s = <23 22>;
+	mediatek,speaker-codec {
+		sound-dai = <&spk>;
+	};
+};
 
 #include <k6858v1_64/cust.dtsi>
 #include "mediatek/cust_mt6858_camera_v4l2.dtsi"
