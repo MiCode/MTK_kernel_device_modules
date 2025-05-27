@@ -6103,9 +6103,9 @@ dramc: dramc@10230000 {
 			scp-dram-region = "enable";	/* enable scp dram region manage */
 			scp-protect = "disable";	/* enable scp protections */
 			secure-dump = "enable";		/* enable dump via secure world*/
-			scp-pm-notify = "enable";
+			scp-pm-notify = "disable";
 			scp-thermal-wq = "disable";
-			scp-low-pwr-dbg = "enable";
+			scp-low-pwr-dbg = "disable";
 			scp-cfgreg-ap-en = "enable";
 			scp-read-infra-irq-status = "disable";
 			scp-scpsys-regmap = "enable";
