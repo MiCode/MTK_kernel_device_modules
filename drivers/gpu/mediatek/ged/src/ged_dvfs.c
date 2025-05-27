@@ -2855,6 +2855,8 @@ void set_api_sync_flag(int flag)
 		MTKGPUQoS_mode_ratio(0);
 	} else if (flag == 9) {
 		MTKGPUQoS_mode_ratio(6080);
+	} else if (flag == 10) {
+		MTKGPUQoS_mode_ratio(8);
 #if !IS_ENABLED(CONFIG_MTK_LEGACY_THERMAL) && !IS_ENABLED(CONFIG_MTK_PLAT_POWER_6781) \
 	&& !IS_ENABLED(CONFIG_MTK_GPU_MT6855_SUPPORT)
 	} else if ((flag & 0xFFF00000) == 0x55600000) {
