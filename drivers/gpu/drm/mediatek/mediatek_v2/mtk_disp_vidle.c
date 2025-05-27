@@ -824,6 +824,7 @@ void mtk_vidle_config_ff(bool en)
 
 	atomic_set(&g_ff_enabled, en);
 }
+EXPORT_SYMBOL(mtk_vidle_config_ff);
 
 void mtk_vidle_dpc_analysis(void)
 {
@@ -870,6 +871,9 @@ u32 mtk_vidle_hint_update(enum mtk_vidle_hint_type type)
 	case VIDLE_HINT_DOZE:
 		vidle_data.hint.doze_debounce = VIDLE_DOZE_DEBOUNCE;
 		break;
+	case VIDLE_HINT_SMI_DUMP:
+		vidle_data.hint.smi_dump_debounce = VIDLE_ERR_DUMP_DEBOUNCE;
+		break;
 	case VIDLE_HINT_UDR_HIGH_ON:
 	case VIDLE_HINT_MULTI_CRTC_ON:
 		vidle_data.hint.crtc_fuse++;
@@ -899,6 +903,7 @@ u32 mtk_vidle_hint_update(enum mtk_vidle_hint_type type)
 	       (vidle_data.hint.mode_switch_debounce << 8) |
 		vidle_data.hint.mtcmos_debounce;
 }
+EXPORT_SYMBOL(mtk_vidle_hint_update);
 
 int mtk_vidle_hint_decision(const char *caller)
 {
@@ -907,13 +912,15 @@ int mtk_vidle_hint_decision(const char *caller)
 	vidle_data.hint.mode_switch_debounce -= (vidle_data.hint.mode_switch_debounce > 0);
 	vidle_data.hint.mtcmos_debounce -= (vidle_data.hint.mtcmos_debounce > 0);
 	vidle_data.hint.doze_debounce -= (vidle_data.hint.doze_debounce > 0);
+	vidle_data.hint.smi_dump_debounce -= (vidle_data.hint.smi_dump_debounce > 0);
 
 	decision = !(vidle_data.hint.crtc_fuse |
 		     vidle_data.hint.tui_fuse |
 		     vidle_data.hint.hsidle_fuse |
 		     vidle_data.hint.doze_debounce |
 		     vidle_data.hint.mode_switch_debounce |
-		     vidle_data.hint.mtcmos_debounce);
+		     vidle_data.hint.mtcmos_debounce |
+		     vidle_data.hint.smi_dump_debounce);
 
 	mtk_vidle_config_ff(decision);
 

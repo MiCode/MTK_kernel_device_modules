@@ -3315,13 +3315,30 @@ static void dpc_dump(void)
 static int dpc_smi_force_on_callback(struct notifier_block *nb, unsigned long action, void *data)
 {
 	int i;
+	int ret = 0;
 
 	DPCFUNC("action(%lu)", action);
+
+	if (g_priv->root_dev) {
+		/* only for dpc v2 */
+		if (action == true) {
+			dpc_pm_ctrl(true);
+			dpc_vidle_power_keep_v3(DISP_VIDLE_USER_SMI_DUMP);
+			ret = pm_runtime_get_sync(g_priv->root_dev);
+			if (ret < 0)
+				DPCERR("get root_dev failed(%d)", ret);
+		} else {
+			ret = pm_runtime_put_sync(g_priv->root_dev);
+			if (ret < 0)
+				DPCERR("put root_dev failed(%d)", ret);
+			dpc_vidle_power_release_v3(DISP_VIDLE_USER_SMI_DUMP);
+			dpc_pm_ctrl(false);
+		}
+		return NOTIFY_DONE;
+	}
+
 	if (action == true) {
-		dpc_pm_ctrl(true);
-		dpc_vidle_power_keep_v3(DISP_VIDLE_USER_SMI_DUMP);
-		if (g_priv->root_dev)
-			pm_runtime_get_sync(g_priv->root_dev);
+		dpc_mminfra_on_off(VOTE_SET, DISP_VIDLE_USER_SMI_DUMP);
 		for (i = 0; i < g_priv->pwr_clk_num; i++) {
 			if (IS_ERR(g_priv->pwr_clk[i])) {
 				DPCDUMP("%s invalid %d clk\n", __func__, i);
@@ -3329,10 +3346,9 @@ static int dpc_smi_force_on_callback(struct notifier_block *nb, unsigned long ac
 			}
 			clk_prepare_enable(g_priv->pwr_clk[i]);
 		}
-
+		dpc_vidle_power_keep_v3(DISP_VIDLE_USER_SMI_DUMP);
 	} else {
-		if (g_priv->root_dev)
-			pm_runtime_put_sync(g_priv->root_dev);
+		dpc_vidle_power_release_v3(DISP_VIDLE_USER_SMI_DUMP);
 		for (i = g_priv->pwr_clk_num - 1; i >= 0; i--) {
 			if (IS_ERR(g_priv->pwr_clk[i])) {
 				DPCDUMP("%s invalid %d clk\n", __func__, i);
@@ -3340,8 +3356,7 @@ static int dpc_smi_force_on_callback(struct notifier_block *nb, unsigned long ac
 			}
 			clk_disable_unprepare(g_priv->pwr_clk[i]);
 		}
-		dpc_vidle_power_release_v3(DISP_VIDLE_USER_SMI_DUMP);
-		dpc_pm_ctrl(false);
+		dpc_mminfra_on_off(VOTE_CLR, DISP_VIDLE_USER_SMI_DUMP);
 	}
 
 	return NOTIFY_DONE;
@@ -3355,11 +3370,12 @@ static int dpc_smi_pwr_get_if_in_use(void *data)
 	}
 
 	if (g_priv && g_priv->mtcmos_cfg && (g_priv->mtcmos_cfg[DPC3_SUBSYS_DIS1A].mode == DPC_MTCMOS_AUTO)) {
-		DPCFUNC("skipped due to fast on off");
-		return -1;
+		mtk_vidle_hint_update(VIDLE_HINT_SMI_DUMP);
+		mtk_vidle_config_ff(false);
+		DPCFUNC("disable ff and add debounce");
 	}
 
-	return -1;
+	return 0;
 }
 
 static int dpc_smi_pwr_get(void *data)

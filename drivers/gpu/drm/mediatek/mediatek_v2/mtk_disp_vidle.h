@@ -35,8 +35,9 @@ extern unsigned int default_emi_eff;
 #define VIDLE_STOP_VDO_HIGH_FPS     BIT(3)
 
 #define VIDLE_MTCMOS_DEBOUNCE 6	/* 6 for resync */
-#define VIDLE_MODE_SWITCH_DEBOUNCE 3
+#define VIDLE_MODE_SWITCH_DEBOUNCE 4
 #define VIDLE_DOZE_DEBOUNCE 3
+#define VIDLE_ERR_DUMP_DEBOUNCE 6
 
 enum mtk_vidle_hint_type {
 	VIDLE_HINT_GET,
@@ -44,6 +45,7 @@ enum mtk_vidle_hint_type {
 	VIDLE_HINT_MTCMOS_ON,
 	VIDLE_HINT_MODE_SWITCH,
 	VIDLE_HINT_DOZE,
+	VIDLE_HINT_SMI_DUMP,
 	VIDLE_HINT_UDR_HIGH_ON,
 	VIDLE_HINT_UDR_HIGH_OFF,
 	VIDLE_HINT_MULTI_CRTC_ON,
@@ -58,6 +60,7 @@ struct mtk_vidle_hint {
 	u32 mtcmos_debounce;		/* 0: okay */
 	u8 mode_switch_debounce;	/* 0: okay */
 	u8 doze_debounce;		/* 0: okay */
+	u8 smi_dump_debounce;		/* 0: okay */
 	u8 crtc_fuse;			/* 0: okay, or +1 by others(multi crtc, DP, ...) */
 	u8 tui_fuse;			/* 0: okay, or +1 by enter tui */
 	u8 hsidle_fuse;			/* 0: okay, or +1 by enter hs idle */
