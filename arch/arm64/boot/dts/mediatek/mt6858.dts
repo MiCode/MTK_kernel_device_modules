@@ -397,9 +397,6 @@
 	nfc:nfc {
 	};
 
-	dsi_te:dsi-te {
-	};
-
 	mrdump_ext_rst: mrdump-ext-rst {
 	};
 
