@@ -1339,7 +1339,7 @@ mgk_64_kleaf_platform_modules = {
     "//kernel_device_modules-{}/drivers/misc/mediatek/dcm:mt6991_dcm".format(kernel_version): "mt6991",
     "//kernel_device_modules-{}/drivers/misc/mediatek/dcm:mt6993_dcm".format(kernel_version): "mt6993",
     "//kernel_device_modules-{}/drivers/misc/mediatek/flashlight/v4l2:lm3643".format(kernel_version): "mt6789",
-    "//kernel_device_modules-{}/drivers/misc/mediatek/flashlight/v4l2:lm3644".format(kernel_version): "mt6855 mt6858 mt6895",
+    "//kernel_device_modules-{}/drivers/misc/mediatek/flashlight/v4l2:lm3644".format(kernel_version): "mt6789 mt6855 mt6858 mt6895",
     "//kernel_device_modules-{}/drivers/misc/mediatek/hwccf:hwccf".format(kernel_version) : "mt6991 mt6993",
     "//kernel_device_modules-{}/drivers/misc/mediatek/imgsensor/src:imgsensor_isp4_t".format(kernel_version): "mt6768",
     "//kernel_device_modules-{}/drivers/misc/mediatek/imgsensor/src:imgsensor_isp6s".format(kernel_version): "mt6789 mt6855 mt6858",
