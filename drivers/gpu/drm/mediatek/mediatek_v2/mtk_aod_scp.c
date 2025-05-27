@@ -657,20 +657,21 @@ static void prepare_aod_scp_picture(void *addr_va)
 
 static int mtk_aod_scp_probe(struct platform_device *pdev)
 {
-	struct device_node *aod_scp_node = NULL;
 	struct device_node *smp_node = NULL;
 	struct platform_device *spm_pdev = NULL;
 	struct resource *res = NULL;
 	static unsigned int aod_scp_pic;
+	const char *status = NULL;
+	int ret = 0;
 
 	DDPMSG("%s+\n", __func__);
 
-	aod_state = 0;
-	aod_scp_pic = 0;
-
-	aod_scp_node = of_find_node_by_name(NULL, "AOD-SCP-ON");
-	if (aod_scp_node) {
-		of_node_put(aod_scp_node);
+	ret = of_property_read_string(pdev->dev.of_node, "status", &status);
+	if (ret < 0 || strncmp(status, "okay", sizeof("okay"))) {
+		DDPMSG("aod scp not enabled\n");
+	} else {
+		aod_state = 0;
+		aod_scp_pic = 0;
 
 		mtk_aod_scp_ipi_register();
 

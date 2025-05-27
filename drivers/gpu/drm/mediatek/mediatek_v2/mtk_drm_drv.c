@@ -13080,14 +13080,17 @@ SKIP_MMLSYS_CONFIG:
 	mtk_drm_get_top_clk(private);
 
 	/* Get AOD-SCP config */
-	aod_scp_node = of_find_node_by_name(NULL, "AOD-SCP-ON");
-	if (!aod_scp_node) {
-		aod_scp_flag = 0;
-		DDPMSG("%s AOD-SCP OFF\n", __func__);
-	}	else {
-		aod_scp_flag = 1;
-		DDPMSG("%s AOD-SCP ON\n", __func__);
+	aod_scp_flag = 0;
+	aod_scp_node = of_find_node_by_name(NULL, "aod-scp");
+	if (aod_scp_node) {
+		const char *status = NULL;
+
+		if (!of_property_read_string(aod_scp_node, "status", &status)) {
+			if (strncmp(status, "okay", sizeof("okay")) == 0)
+				aod_scp_flag = 1;
+		}
 	}
+	DDPMSG("%s AOD-SCP %s\n", __func__, aod_scp_flag ? "ON" : "OFF");
 
 	ret = of_property_read_u32(disp_plat_dbg_node, "disp_plat_dbg_addr", &g_disp_plat_dbg_addr);
 	if (ret) {
