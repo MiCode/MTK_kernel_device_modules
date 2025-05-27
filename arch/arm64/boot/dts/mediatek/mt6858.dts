@@ -91,7 +91,7 @@
 			    androidboot.hardware=mt6858 \
 			    vmalloc=400M swiotlb=noforce cma=64M \
 			    firmware_class.path=/vendor/firmware \
-			    maxcpus=1";
+			    maxcpus=4";
 	};
 
 	cpus {
