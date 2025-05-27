@@ -16127,7 +16127,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		flashlight_core: flashlight-core {
 			compatible = "mediatek,flashlight_core";
 			low-battery-level = <5>;
-			battery-percent-level = <3>;
+			battery-percent-level = <1>;
 			battery-oc-level = <5>;
 		};
 
@@ -19119,13 +19119,11 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			oc-limit-freq-lv1 = < 2147483647  2147483647 2147483647>;
 			oc-limit-freq-lv2 = < 2147483647  2147483647 2147483647>;
 
-			soc-max-level = <3>;
+			soc-max-level = <2>;
 			soc-core-active-lv1 = < 1 1 1 1 1 1 1 1 >;
 			soc-core-active-lv2 = < 1 1 1 1 1 1 1 1 >;
-			soc-core-active-lv3 = < 1 1 1 1 1 1 1 1 >;
 			soc-limit-freq-lv1 = < 2147483647  2147483647 2147483647>;
-			soc-limit-freq-lv2 = < 2147483647 2147483647 2147483647>;
-			soc-limit-freq-lv3 = < 2147483647 2147483647 2147483647>;
+			soc-limit-freq-lv2 = < 1800000 2800000 2600000>;
 		};
 
 		gpu_power_throttling: gpu-power-throttling {
@@ -19147,10 +19145,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			oc-limit-freq-lv1 = <2147483647>;
 			oc-limit-freq-lv2 = <2147483647>;
 
-			soc-max-level = <3>;
+			soc-max-level = <2>;
 			soc-limit-freq-lv1 = <2147483647>;
-			soc-limit-freq-lv2 = <2147483647>;
-			soc-limit-freq-lv3 = <2147483647>;
+			soc-limit-freq-lv2 = <702000>;
 		};
 
 		apu_power_throttling: apu-power-throttling {
@@ -19163,10 +19160,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			oc-limit-opp-lv1 = <0>;
 			oc-limit-opp-lv2 = <0>;
 
-			soc-max-level = <3>;
+			soc-max-level = <2>;
 			soc-limit-opp-lv1 = <0>;
 			soc-limit-opp-lv2 = <0>;
-			soc-limit-opp-lv3 = <0>;
 		};
 
 		md_power_throttling: md-power-throttling {
@@ -19174,31 +19170,30 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			lbat-dedicate-volts = <3390 3290 3000 2800>;
 			lbat-max-level = <3>;
 			lbat-reduce-tx-lv1 = <0>;
-			lbat-reduce-tx-lv2 = <6>;
-			lbat-reduce-tx-lv3 = <6>;
+			lbat-reduce-tx-lv2 = <0>;
+			lbat-reduce-tx-lv3 = <0>;
 
 			oc-max-level = <2>;
 			oc-reduce-tx-lv1 = <0>;
 			oc-reduce-tx-lv2 = <0>;
 
-			soc-max-level = <3>;
+			soc-max-level = <2>;
 			soc-reduce-tx-lv1 = <0>;
 			soc-reduce-tx-lv2 = <0>;
-			soc-reduce-tx-lv3 = <0>;
 
 			lbat-dedicate-temperature = <25 10 0>;
 		};
 
 		bp_thl: bp-thl {
 			compatible = "mediatek,mtk-bp-thl";
-			max-throttle-level = <3>;
-			soc-throttle-level = <0 1 2 3>, //temperature stage 0
-							<0 1 2 3>, //temperature stage 1
-							<0 1 2 3>, //temperature stage 2
-							<0 1 2 3>; //temperature stage 3
+			max-throttle-level = <2>;
+			soc-throttle-level = <0 1 2>, //temperature stage 0
+							<0 1 2>, //temperature stage 1
+							<0 1 2>, //temperature stage 2
+							<0 1 2>; //temperature stage 3
 
-			soc-max-stage = <3>;
-			soc-limit-threshold = <25 15 10>;
+			soc-max-stage = <2>;
+			soc-limit-threshold = <15 3>;
 
 			temperature-max-stage = <3>;
 			temperature-stage-threshold = <25 10 0>;
