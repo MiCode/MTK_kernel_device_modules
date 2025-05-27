@@ -88,6 +88,9 @@ int seninf_dfs_ctrl(struct seninf_dfs_ctx *ctx,
 	{
 		unsigned long freq, volt;
 		struct dev_pm_opp *opp;
+#ifdef DFS_CTRL_BY_OPP_COMPAT_CCF_API
+		int ret;
+#endif
 
 		freq = *(unsigned int *)pbuff;
 		freq = freq * 1000000; /*MHz->Hz*/
@@ -103,8 +106,14 @@ int seninf_dfs_ctrl(struct seninf_dfs_ctx *ctx,
 		if (ctx->reg)
 			regulator_set_voltage(ctx->reg, volt, INT_MAX);
 #ifdef DFS_CTRL_BY_OPP_COMPAT_CCF_API
-		else if (ctx->opp_clk_sel)
-			clk_set_rate(ctx->opp_clk_sel, freq);
+		else if (ctx->opp_clk_sel) {
+			ret = clk_set_rate(ctx->opp_clk_sel, freq);
+			if (ret) {
+				pr_info("Failed to set rate for frequency %lu, ret = %d\n",
+					freq, ret);
+				return -EFAULT;
+			}
+		}
 #endif
 	}
 		break;
