@@ -889,7 +889,8 @@ static void cmdq_access_sub_impl(struct cmdq_test *test,
 	struct cmdq_client *clt, const char *tag)
 {
 	struct cmdq_pkt *pkt;
-	u32 *regs, count, *va, i;
+	u32 *regs, *va, i;
+	s8 count;
 	dma_addr_t pa;
 	u8 swap_reg = CMDQ_THR_SPR_IDX1;
 	u32 pat = 0xadceabce, pat_init = 0xdeaddead, pat_src = 0xbeefbeef;
