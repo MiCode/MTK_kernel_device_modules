@@ -39,6 +39,24 @@
 #define SKIP_SB_VOW
 #define SKIP_SMCC_SB
 #define SKIP_VIP
+#else
+/* The 'else' part is identical to the 'if' part to allow feature owners to
+ * comment out their macros when `SKIP_SB` is removed. By referring the previous
+ * section, we can easily identify which features are disabled when sample back,
+ * as feature owners should not modify the previous part.
+ */
+#define SKIP_ACCDET
+#define SKIP_SB_BTCVSD
+#define SKIP_SB_CLK
+#define SKIP_SB_DSP
+#define SKIP_SB_GPIO
+#define SKIP_SB_OFFLOAD
+#define SKIP_SB_PBM
+#define SKIP_SB_ULTRA
+#define SKIP_SB_USB_OFFLOAD
+#define SKIP_SB_VOW
+#define SKIP_SMCC_SB
+#define SKIP_VIP
 #endif
 
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE) && !defined(IS_FPGA_EARLY_PORTING)
