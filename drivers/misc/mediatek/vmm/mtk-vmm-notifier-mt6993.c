@@ -80,7 +80,7 @@
 #define STEP_TO_MARGIN(step)		(VMM_ONE_STEP_MARGIN * (step))
 #define ISP_GUARDBAND_MARGIN_MICROVOLT	STEP_TO_MARGIN(2)
 #define ISP_AGING_MARGIN_MICROVOLT		STEP_TO_MARGIN(1)
-#define ISP_TEMP_PHASE1_MARGIN_STEP		(5)
+#define ISP_TEMP_PHASE1_MARGIN_STEP		(8)
 #define ISP_TEMP_PHASE1_MARGIN_MICROVOLT	STEP_TO_MARGIN(ISP_TEMP_PHASE1_MARGIN_STEP)
 #define ISP_CONST_MARGIN	(ISP_GUARDBAND_MARGIN_MICROVOLT + ISP_AGING_MARGIN_MICROVOLT + \
 							ISP_TEMP_PHASE1_MARGIN_MICROVOLT)
@@ -89,6 +89,7 @@
 #define VDE_CONST_MARGIN	(VDE_GUARDBAND_MARGIN_MICROVOLT + VDE_AGING_MARGIN_MICROVOLT)
 #define VMM_ROUNDUP(x, y)			((((x) + (y - 1)) / y) * y)
 #define DBG_VMM_DUMP_EFUSE_VAL		(520)
+#define TEMPDIFF		(3)
 
 enum temp_zone_idx {
 	TEMP_ZONE_1 = 0,
@@ -146,10 +147,10 @@ static const unsigned int isp_mssv_margin[OPP_LEVEL_TOTAL] = {
 };
 
 static const unsigned int vde_temperature_margin[TEMP_ZONE_MAX][OPP_LEVEL_TOTAL] = {
-	{0, 9, 6, 6, 6, 0},	// zone 1: no vb, please use signed off
-	{0, 9, 6, 6, 6, 0},	// zone 2
+	{0, 10, 7, 7, 7, 0},	// zone 1: no vb, please use signed off
+	{0, 10, 7, 7, 7, 0},	// zone 2
 	{0, 7, 4, 4, 4, 0},	// zone 3
-	{0, 9, 6, 6, 6, 0},	// zone 4
+	{0, 10, 7, 7, 7, 0},	// zone 4
 };
 
 
@@ -163,7 +164,7 @@ static const unsigned int vde_mssv_margin[OPP_LEVEL_TOTAL] = {
 };
 
 static const unsigned int isp_cvfs_floor_margin[OPP_LEVEL_TOTAL] = {
-	0, 14, 18, 18, 20, 0,  // zone 2
+	0, 8, 12, 10, 12, 0,  // zone 2
 };
 
 static const unsigned int vde_cvfs_floor_margin[OPP_LEVEL_TOTAL] = {
@@ -171,7 +172,7 @@ static const unsigned int vde_cvfs_floor_margin[OPP_LEVEL_TOTAL] = {
 };
 
 static const unsigned int isp_avs20_floor_margin[OPP_LEVEL_TOTAL] = {
-	0, 11, 15, 15, 17, 0  // zone 2
+	0, 6, 10, 10, 12, 0  // zone 2
 };
 
 static const unsigned int vde_avs20_floor_margin[OPP_LEVEL_TOTAL] = {
@@ -424,21 +425,10 @@ EXPORT_SYMBOL_GPL(mtk_vmm_ctrl_dbg_use);
 
 static bool vmm_check_efuse_valid(void)
 {
-	ISP_LOGI("EFUSE_ISP_VB_VER: %d", EFUSE_ISP_VB_VERSION);
 	ISP_LOGI("EFUSE_ISP_VMIN_REG: %d", EFUSE_ISP_VMIN_REG);
 	ISP_LOGI("EFUSE_VDE_VMIN_REG: %d", EFUSE_VDE_VMIN_REG);
-	if (EFUSE_ISP_VB_VERSION == 0 || EFUSE_ISP_VMIN_REG < 4 || EFUSE_VDE_VMIN_REG < 4) {
+	if (EFUSE_ISP_VMIN_REG < 4 || EFUSE_VDE_VMIN_REG < 4) {
 		ISP_LOGI("vmin efuse check fail! disable avs flow!");
-		return false;
-	}
-
-	if ((EFUSE_IMG_DMIN_OP6570 <= 1) ||
-		(EFUSE_IMG_DMIN_OP5760 <= 1) ||
-		(EFUSE_IPE_DMIN_OP6570 <= 1) ||
-		(EFUSE_IPE_DMIN_OP5760 <= 1) ||
-		(EFUSE_CAM_DMIN_OP6570 <= 1) ||
-		(EFUSE_CAM_DMIN_OP5760 <= 1)) {
-		ISP_LOGI("dmin efuse check fail! disable avs flow!");
 		return false;
 	}
 
@@ -578,7 +568,7 @@ static void vmm_update_isp_avs_info(bool enable_avs)
 	/* temp margin */
 	AVS_MARGIN_TEMP_OPP0_1_VAL.Bits.AVS_MARGIN_TEMP_OPP0_Z1 = enable_avs ? 0 : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP0_1_VAL.Bits.AVS_MARGIN_TEMP_OPP0_Z2 = enable_avs ? 0 : FORCE_ZERO;
-	AVS_MARGIN_TEMP_OPP0_1_VAL.Bits.AVS_MARGIN_TEMP_OPP0_Z3 = enable_avs ? 2 : FORCE_ZERO;
+	AVS_MARGIN_TEMP_OPP0_1_VAL.Bits.AVS_MARGIN_TEMP_OPP0_Z3 = enable_avs ? TEMPDIFF : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP0_1_VAL.Bits.AVS_MARGIN_TEMP_OPP0_Z4 = enable_avs ? 0 : FORCE_ZERO;
 	VMM_WRITE_REG_BY_NAME(AVS_MARGIN_TEMP_OPP0_1);
 
@@ -588,7 +578,7 @@ static void vmm_update_isp_avs_info(bool enable_avs)
 
 	AVS_MARGIN_TEMP_OPP1_1_VAL.Bits.AVS_MARGIN_TEMP_OPP1_Z1 = enable_avs ? 0 : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP1_1_VAL.Bits.AVS_MARGIN_TEMP_OPP1_Z2 = enable_avs ? 0 : FORCE_ZERO;
-	AVS_MARGIN_TEMP_OPP1_1_VAL.Bits.AVS_MARGIN_TEMP_OPP1_Z3 = enable_avs ? 2 : FORCE_ZERO;
+	AVS_MARGIN_TEMP_OPP1_1_VAL.Bits.AVS_MARGIN_TEMP_OPP1_Z3 = enable_avs ? TEMPDIFF : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP1_1_VAL.Bits.AVS_MARGIN_TEMP_OPP1_Z4 = enable_avs ? 0 : FORCE_ZERO;
 	VMM_WRITE_REG_BY_NAME(AVS_MARGIN_TEMP_OPP1_1);
 
@@ -598,7 +588,7 @@ static void vmm_update_isp_avs_info(bool enable_avs)
 
 	AVS_MARGIN_TEMP_OPP2_1_VAL.Bits.AVS_MARGIN_TEMP_OPP2_Z1 = enable_avs ? 0 : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP2_1_VAL.Bits.AVS_MARGIN_TEMP_OPP2_Z2 = enable_avs ? 0 : FORCE_ZERO;
-	AVS_MARGIN_TEMP_OPP2_1_VAL.Bits.AVS_MARGIN_TEMP_OPP2_Z3 = enable_avs ? 2 : FORCE_ZERO;
+	AVS_MARGIN_TEMP_OPP2_1_VAL.Bits.AVS_MARGIN_TEMP_OPP2_Z3 = enable_avs ? TEMPDIFF : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP2_1_VAL.Bits.AVS_MARGIN_TEMP_OPP2_Z4 = enable_avs ? 0 : FORCE_ZERO;
 	VMM_WRITE_REG_BY_NAME(AVS_MARGIN_TEMP_OPP2_1);
 
@@ -608,7 +598,7 @@ static void vmm_update_isp_avs_info(bool enable_avs)
 
 	AVS_MARGIN_TEMP_OPP3_1_VAL.Bits.AVS_MARGIN_TEMP_OPP3_Z1 = enable_avs ? 0 : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP3_1_VAL.Bits.AVS_MARGIN_TEMP_OPP3_Z2 = enable_avs ? 0 : FORCE_ZERO;
-	AVS_MARGIN_TEMP_OPP3_1_VAL.Bits.AVS_MARGIN_TEMP_OPP3_Z3 = enable_avs ? 2 : FORCE_ZERO;
+	AVS_MARGIN_TEMP_OPP3_1_VAL.Bits.AVS_MARGIN_TEMP_OPP3_Z3 = enable_avs ? TEMPDIFF : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP3_1_VAL.Bits.AVS_MARGIN_TEMP_OPP3_Z4 = enable_avs ? 0 : FORCE_ZERO;
 	VMM_WRITE_REG_BY_NAME(AVS_MARGIN_TEMP_OPP3_1);
 
@@ -630,7 +620,7 @@ static void vmm_update_isp_avs_info(bool enable_avs)
 	/* lower bound temp */
 	AVS_MARGIN_TEMP_OPP0_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP0_Z1_partial = enable_avs ? 0 : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP0_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP0_Z2_partial = enable_avs ? 0 : FORCE_ZERO;
-	AVS_MARGIN_TEMP_OPP0_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP0_Z3_partial = enable_avs ? 2 : FORCE_ZERO;
+	AVS_MARGIN_TEMP_OPP0_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP0_Z3_partial = enable_avs ? TEMPDIFF : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP0_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP0_Z4_partial = enable_avs ? 0 : FORCE_ZERO;
 	VMM_WRITE_REG_BY_NAME(AVS_MARGIN_TEMP_OPP0_partial_1);
 
@@ -640,7 +630,7 @@ static void vmm_update_isp_avs_info(bool enable_avs)
 
 	AVS_MARGIN_TEMP_OPP1_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP1_Z1_partial = enable_avs ? 0 : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP1_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP1_Z2_partial = enable_avs ? 0 : FORCE_ZERO;
-	AVS_MARGIN_TEMP_OPP1_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP1_Z3_partial = enable_avs ? 2 : FORCE_ZERO;
+	AVS_MARGIN_TEMP_OPP1_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP1_Z3_partial = enable_avs ? TEMPDIFF : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP1_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP1_Z4_partial = enable_avs ? 0 : FORCE_ZERO;
 	VMM_WRITE_REG_BY_NAME(AVS_MARGIN_TEMP_OPP1_partial_1);
 
@@ -650,7 +640,7 @@ static void vmm_update_isp_avs_info(bool enable_avs)
 
 	AVS_MARGIN_TEMP_OPP2_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP2_Z1_partial = enable_avs ? 0 : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP2_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP2_Z2_partial = enable_avs ? 0 : FORCE_ZERO;
-	AVS_MARGIN_TEMP_OPP2_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP2_Z3_partial = enable_avs ? 2 : FORCE_ZERO;
+	AVS_MARGIN_TEMP_OPP2_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP2_Z3_partial = enable_avs ? TEMPDIFF : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP2_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP2_Z4_partial = enable_avs ? 0 : FORCE_ZERO;
 	VMM_WRITE_REG_BY_NAME(AVS_MARGIN_TEMP_OPP2_partial_1);
 
@@ -660,7 +650,7 @@ static void vmm_update_isp_avs_info(bool enable_avs)
 
 	AVS_MARGIN_TEMP_OPP3_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP3_Z1_partial = enable_avs ? 0 : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP3_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP3_Z2_partial = enable_avs ? 0 : FORCE_ZERO;
-	AVS_MARGIN_TEMP_OPP3_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP3_Z3_partial = enable_avs ? 2 : FORCE_ZERO;
+	AVS_MARGIN_TEMP_OPP3_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP3_Z3_partial = enable_avs ? TEMPDIFF : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP3_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP3_Z4_partial = enable_avs ? 0 : FORCE_ZERO;
 	VMM_WRITE_REG_BY_NAME(AVS_MARGIN_TEMP_OPP3_partial_1);
 
@@ -685,7 +675,7 @@ static void vmm_update_isp_avs20_info(bool enable_avs)
 	/* temp margin */
 	AVS_MARGIN_TEMP_OPP4_1_VAL.Bits.AVS_MARGIN_TEMP_OPP4_Z1 = enable_avs ? 0 : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP4_1_VAL.Bits.AVS_MARGIN_TEMP_OPP4_Z2 = enable_avs ? 0 : FORCE_ZERO;
-	AVS_MARGIN_TEMP_OPP4_1_VAL.Bits.AVS_MARGIN_TEMP_OPP4_Z3 = enable_avs ? 2 : FORCE_ZERO;
+	AVS_MARGIN_TEMP_OPP4_1_VAL.Bits.AVS_MARGIN_TEMP_OPP4_Z3 = enable_avs ? TEMPDIFF : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP4_1_VAL.Bits.AVS_MARGIN_TEMP_OPP4_Z4 = enable_avs ? 0 : FORCE_ZERO;
 	VMM_WRITE_REG_BY_NAME(AVS_MARGIN_TEMP_OPP4_1);
 
@@ -695,7 +685,7 @@ static void vmm_update_isp_avs20_info(bool enable_avs)
 
 	AVS_MARGIN_TEMP_OPP5_1_VAL.Bits.AVS_MARGIN_TEMP_OPP5_Z1 = enable_avs ? 0 : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP5_1_VAL.Bits.AVS_MARGIN_TEMP_OPP5_Z2 = enable_avs ? 0 : FORCE_ZERO;
-	AVS_MARGIN_TEMP_OPP5_1_VAL.Bits.AVS_MARGIN_TEMP_OPP5_Z3 = enable_avs ? 2 : FORCE_ZERO;
+	AVS_MARGIN_TEMP_OPP5_1_VAL.Bits.AVS_MARGIN_TEMP_OPP5_Z3 = enable_avs ? TEMPDIFF : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP5_1_VAL.Bits.AVS_MARGIN_TEMP_OPP5_Z4 = enable_avs ? 0 : FORCE_ZERO;
 	VMM_WRITE_REG_BY_NAME(AVS_MARGIN_TEMP_OPP5_1);
 
@@ -705,7 +695,7 @@ static void vmm_update_isp_avs20_info(bool enable_avs)
 
 	AVS_MARGIN_TEMP_OPP6_1_VAL.Bits.AVS_MARGIN_TEMP_OPP6_Z1 = enable_avs ? 0 : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP6_1_VAL.Bits.AVS_MARGIN_TEMP_OPP6_Z2 = enable_avs ? 0 : FORCE_ZERO;
-	AVS_MARGIN_TEMP_OPP6_1_VAL.Bits.AVS_MARGIN_TEMP_OPP6_Z3 = enable_avs ? 2 : FORCE_ZERO;
+	AVS_MARGIN_TEMP_OPP6_1_VAL.Bits.AVS_MARGIN_TEMP_OPP6_Z3 = enable_avs ? TEMPDIFF : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP6_1_VAL.Bits.AVS_MARGIN_TEMP_OPP6_Z4 = enable_avs ? 0 : FORCE_ZERO;
 	VMM_WRITE_REG_BY_NAME(AVS_MARGIN_TEMP_OPP6_1);
 
@@ -715,7 +705,7 @@ static void vmm_update_isp_avs20_info(bool enable_avs)
 
 	AVS_MARGIN_TEMP_OPP7_1_VAL.Bits.AVS_MARGIN_TEMP_OPP7_Z1 = enable_avs ? 0 : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP7_1_VAL.Bits.AVS_MARGIN_TEMP_OPP7_Z2 = enable_avs ? 0 : FORCE_ZERO;
-	AVS_MARGIN_TEMP_OPP7_1_VAL.Bits.AVS_MARGIN_TEMP_OPP7_Z3 = enable_avs ? 2 : FORCE_ZERO;
+	AVS_MARGIN_TEMP_OPP7_1_VAL.Bits.AVS_MARGIN_TEMP_OPP7_Z3 = enable_avs ? TEMPDIFF : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP7_1_VAL.Bits.AVS_MARGIN_TEMP_OPP7_Z4 = enable_avs ? 0 : FORCE_ZERO;
 	VMM_WRITE_REG_BY_NAME(AVS_MARGIN_TEMP_OPP7_1);
 
@@ -737,7 +727,7 @@ static void vmm_update_isp_avs20_info(bool enable_avs)
 	/* lower bound temp */
 	AVS_MARGIN_TEMP_OPP4_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP4_Z1_partial = enable_avs ? 0 : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP4_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP4_Z2_partial = enable_avs ? 0 : FORCE_ZERO;
-	AVS_MARGIN_TEMP_OPP4_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP4_Z3_partial = enable_avs ? 2 : FORCE_ZERO;
+	AVS_MARGIN_TEMP_OPP4_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP4_Z3_partial = enable_avs ? TEMPDIFF : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP4_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP4_Z4_partial = enable_avs ? 0 : FORCE_ZERO;
 	VMM_WRITE_REG_BY_NAME(AVS_MARGIN_TEMP_OPP4_partial_1);
 
@@ -747,7 +737,7 @@ static void vmm_update_isp_avs20_info(bool enable_avs)
 
 	AVS_MARGIN_TEMP_OPP5_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP5_Z1_partial = enable_avs ? 0 : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP5_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP5_Z2_partial = enable_avs ? 0 : FORCE_ZERO;
-	AVS_MARGIN_TEMP_OPP5_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP5_Z3_partial = enable_avs ? 2 : FORCE_ZERO;
+	AVS_MARGIN_TEMP_OPP5_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP5_Z3_partial = enable_avs ? TEMPDIFF : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP5_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP5_Z4_partial = enable_avs ? 0 : FORCE_ZERO;
 	VMM_WRITE_REG_BY_NAME(AVS_MARGIN_TEMP_OPP5_partial_1);
 
@@ -757,7 +747,7 @@ static void vmm_update_isp_avs20_info(bool enable_avs)
 
 	AVS_MARGIN_TEMP_OPP6_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP6_Z1_partial = enable_avs ? 0 : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP6_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP6_Z2_partial = enable_avs ? 0 : FORCE_ZERO;
-	AVS_MARGIN_TEMP_OPP6_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP6_Z3_partial = enable_avs ? 2 : FORCE_ZERO;
+	AVS_MARGIN_TEMP_OPP6_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP6_Z3_partial = enable_avs ? TEMPDIFF : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP6_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP6_Z4_partial = enable_avs ? 0 : FORCE_ZERO;
 	VMM_WRITE_REG_BY_NAME(AVS_MARGIN_TEMP_OPP6_partial_1);
 
@@ -767,7 +757,7 @@ static void vmm_update_isp_avs20_info(bool enable_avs)
 
 	AVS_MARGIN_TEMP_OPP7_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP7_Z1_partial = enable_avs ? 0 : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP7_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP7_Z2_partial = enable_avs ? 0 : FORCE_ZERO;
-	AVS_MARGIN_TEMP_OPP7_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP7_Z3_partial = enable_avs ? 2 : FORCE_ZERO;
+	AVS_MARGIN_TEMP_OPP7_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP7_Z3_partial = enable_avs ? TEMPDIFF : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP7_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP7_Z4_partial = enable_avs ? 0 : FORCE_ZERO;
 	VMM_WRITE_REG_BY_NAME(AVS_MARGIN_TEMP_OPP7_partial_1);
 
@@ -791,7 +781,7 @@ static void vmm_update_vde_avs20_info(bool enable_avs)
 	/* temp margin */
 	AVS_MARGIN_TEMP_OPP8_1_VAL.Bits.AVS_MARGIN_TEMP_OPP8_Z1 = enable_avs ? 0 : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP8_1_VAL.Bits.AVS_MARGIN_TEMP_OPP8_Z2 = enable_avs ? 0 : FORCE_ZERO;
-	AVS_MARGIN_TEMP_OPP8_1_VAL.Bits.AVS_MARGIN_TEMP_OPP8_Z3 = enable_avs ? 2 : FORCE_ZERO;
+	AVS_MARGIN_TEMP_OPP8_1_VAL.Bits.AVS_MARGIN_TEMP_OPP8_Z3 = enable_avs ? TEMPDIFF : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP8_1_VAL.Bits.AVS_MARGIN_TEMP_OPP8_Z4 = enable_avs ? 0 : FORCE_ZERO;
 	VMM_WRITE_REG_BY_NAME(AVS_MARGIN_TEMP_OPP8_1);
 
@@ -801,7 +791,7 @@ static void vmm_update_vde_avs20_info(bool enable_avs)
 
 	AVS_MARGIN_TEMP_OPP9_1_VAL.Bits.AVS_MARGIN_TEMP_OPP9_Z1 = enable_avs ? 0 : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP9_1_VAL.Bits.AVS_MARGIN_TEMP_OPP9_Z2 = enable_avs ? 0 : FORCE_ZERO;
-	AVS_MARGIN_TEMP_OPP9_1_VAL.Bits.AVS_MARGIN_TEMP_OPP9_Z3 = enable_avs ? 2 : FORCE_ZERO;
+	AVS_MARGIN_TEMP_OPP9_1_VAL.Bits.AVS_MARGIN_TEMP_OPP9_Z3 = enable_avs ? TEMPDIFF : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP9_1_VAL.Bits.AVS_MARGIN_TEMP_OPP9_Z4 = enable_avs ? 0 : FORCE_ZERO;
 	VMM_WRITE_REG_BY_NAME(AVS_MARGIN_TEMP_OPP9_1);
 
@@ -811,7 +801,7 @@ static void vmm_update_vde_avs20_info(bool enable_avs)
 
 	AVS_MARGIN_TEMP_OPP10_1_VAL.Bits.AVS_MARGIN_TEMP_OPP10_Z1 = enable_avs ? 0 : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP10_1_VAL.Bits.AVS_MARGIN_TEMP_OPP10_Z2 = enable_avs ? 0 : FORCE_ZERO;
-	AVS_MARGIN_TEMP_OPP10_1_VAL.Bits.AVS_MARGIN_TEMP_OPP10_Z3 = enable_avs ? 2 : FORCE_ZERO;
+	AVS_MARGIN_TEMP_OPP10_1_VAL.Bits.AVS_MARGIN_TEMP_OPP10_Z3 = enable_avs ? TEMPDIFF : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP10_1_VAL.Bits.AVS_MARGIN_TEMP_OPP10_Z4 = enable_avs ? 0 : FORCE_ZERO;
 	VMM_WRITE_REG_BY_NAME(AVS_MARGIN_TEMP_OPP10_1);
 
@@ -821,7 +811,7 @@ static void vmm_update_vde_avs20_info(bool enable_avs)
 
 	AVS_MARGIN_TEMP_OPP11_1_VAL.Bits.AVS_MARGIN_TEMP_OPP11_Z1 = enable_avs ? 0 : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP11_1_VAL.Bits.AVS_MARGIN_TEMP_OPP11_Z2 = enable_avs ? 0 : FORCE_ZERO;
-	AVS_MARGIN_TEMP_OPP11_1_VAL.Bits.AVS_MARGIN_TEMP_OPP11_Z3 = enable_avs ? 2 : FORCE_ZERO;
+	AVS_MARGIN_TEMP_OPP11_1_VAL.Bits.AVS_MARGIN_TEMP_OPP11_Z3 = enable_avs ? TEMPDIFF : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP11_1_VAL.Bits.AVS_MARGIN_TEMP_OPP11_Z4 = enable_avs ? 0 : FORCE_ZERO;
 	VMM_WRITE_REG_BY_NAME(AVS_MARGIN_TEMP_OPP11_1);
 
@@ -843,7 +833,7 @@ static void vmm_update_vde_avs20_info(bool enable_avs)
 	/* lower bound temp margin */
 	AVS_MARGIN_TEMP_OPP8_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP8_Z1_partial = enable_avs ? 0 : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP8_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP8_Z2_partial = enable_avs ? 0 : FORCE_ZERO;
-	AVS_MARGIN_TEMP_OPP8_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP8_Z3_partial = enable_avs ? 2 : FORCE_ZERO;
+	AVS_MARGIN_TEMP_OPP8_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP8_Z3_partial = enable_avs ? TEMPDIFF : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP8_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP8_Z4_partial = enable_avs ? 0 : FORCE_ZERO;
 	VMM_WRITE_REG_BY_NAME(AVS_MARGIN_TEMP_OPP8_partial_1);
 
@@ -853,7 +843,7 @@ static void vmm_update_vde_avs20_info(bool enable_avs)
 
 	AVS_MARGIN_TEMP_OPP9_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP9_Z1_partial = enable_avs ? 0 : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP9_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP9_Z2_partial = enable_avs ? 0 : FORCE_ZERO;
-	AVS_MARGIN_TEMP_OPP9_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP9_Z3_partial = enable_avs ? 2 : FORCE_ZERO;
+	AVS_MARGIN_TEMP_OPP9_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP9_Z3_partial = enable_avs ? TEMPDIFF : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP9_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP9_Z4_partial = enable_avs ? 0 : FORCE_ZERO;
 	VMM_WRITE_REG_BY_NAME(AVS_MARGIN_TEMP_OPP9_partial_1);
 
@@ -863,7 +853,7 @@ static void vmm_update_vde_avs20_info(bool enable_avs)
 
 	AVS_MARGIN_TEMP_OPP10_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP10_Z1_partial = enable_avs ? 0 : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP10_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP10_Z2_partial = enable_avs ? 0 : FORCE_ZERO;
-	AVS_MARGIN_TEMP_OPP10_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP10_Z3_partial = enable_avs ? 2 : FORCE_ZERO;
+	AVS_MARGIN_TEMP_OPP10_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP10_Z3_partial = enable_avs ? TEMPDIFF : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP10_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP10_Z4_partial = enable_avs ? 0 : FORCE_ZERO;
 	VMM_WRITE_REG_BY_NAME(AVS_MARGIN_TEMP_OPP10_partial_1);
 
@@ -873,7 +863,7 @@ static void vmm_update_vde_avs20_info(bool enable_avs)
 
 	AVS_MARGIN_TEMP_OPP11_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP11_Z1_partial = enable_avs ? 0 : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP11_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP11_Z2_partial = enable_avs ? 0 : FORCE_ZERO;
-	AVS_MARGIN_TEMP_OPP11_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP11_Z3_partial = enable_avs ? 2 : FORCE_ZERO;
+	AVS_MARGIN_TEMP_OPP11_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP11_Z3_partial = enable_avs ? TEMPDIFF : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP11_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP11_Z4_partial = enable_avs ? 0 : FORCE_ZERO;
 	VMM_WRITE_REG_BY_NAME(AVS_MARGIN_TEMP_OPP11_partial_1);
 
@@ -897,7 +887,7 @@ static void vmm_update_isp_vde_avs20_info(bool enable_avs)
 	/* temp margin */
 	AVS_MARGIN_TEMP_OPP12_1_VAL.Bits.AVS_MARGIN_TEMP_OPP12_Z1 = enable_avs ? 0 : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP12_1_VAL.Bits.AVS_MARGIN_TEMP_OPP12_Z2 = enable_avs ? 0 : FORCE_ZERO;
-	AVS_MARGIN_TEMP_OPP12_1_VAL.Bits.AVS_MARGIN_TEMP_OPP12_Z3 = enable_avs ? 2 : FORCE_ZERO;
+	AVS_MARGIN_TEMP_OPP12_1_VAL.Bits.AVS_MARGIN_TEMP_OPP12_Z3 = enable_avs ? TEMPDIFF : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP12_1_VAL.Bits.AVS_MARGIN_TEMP_OPP12_Z4 = enable_avs ? 0 : FORCE_ZERO;
 	VMM_WRITE_REG_BY_NAME(AVS_MARGIN_TEMP_OPP12_1);
 
@@ -907,7 +897,7 @@ static void vmm_update_isp_vde_avs20_info(bool enable_avs)
 
 	AVS_MARGIN_TEMP_OPP13_1_VAL.Bits.AVS_MARGIN_TEMP_OPP13_Z1 = enable_avs ? 0 : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP13_1_VAL.Bits.AVS_MARGIN_TEMP_OPP13_Z2 = enable_avs ? 0 : FORCE_ZERO;
-	AVS_MARGIN_TEMP_OPP13_1_VAL.Bits.AVS_MARGIN_TEMP_OPP13_Z3 = enable_avs ? 2 : FORCE_ZERO;
+	AVS_MARGIN_TEMP_OPP13_1_VAL.Bits.AVS_MARGIN_TEMP_OPP13_Z3 = enable_avs ? TEMPDIFF : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP13_1_VAL.Bits.AVS_MARGIN_TEMP_OPP13_Z4 = enable_avs ? 0 : FORCE_ZERO;
 	VMM_WRITE_REG_BY_NAME(AVS_MARGIN_TEMP_OPP13_1);
 
@@ -917,7 +907,7 @@ static void vmm_update_isp_vde_avs20_info(bool enable_avs)
 
 	AVS_MARGIN_TEMP_OPP14_1_VAL.Bits.AVS_MARGIN_TEMP_OPP14_Z1 = enable_avs ? 0 : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP14_1_VAL.Bits.AVS_MARGIN_TEMP_OPP14_Z2 = enable_avs ? 0 : FORCE_ZERO;
-	AVS_MARGIN_TEMP_OPP14_1_VAL.Bits.AVS_MARGIN_TEMP_OPP14_Z3 = enable_avs ? 2 : FORCE_ZERO;
+	AVS_MARGIN_TEMP_OPP14_1_VAL.Bits.AVS_MARGIN_TEMP_OPP14_Z3 = enable_avs ? TEMPDIFF : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP14_1_VAL.Bits.AVS_MARGIN_TEMP_OPP14_Z4 = enable_avs ? 0 : FORCE_ZERO;
 	VMM_WRITE_REG_BY_NAME(AVS_MARGIN_TEMP_OPP14_1);
 
@@ -927,7 +917,7 @@ static void vmm_update_isp_vde_avs20_info(bool enable_avs)
 
 	AVS_MARGIN_TEMP_OPP15_1_VAL.Bits.AVS_MARGIN_TEMP_OPP15_Z1 = enable_avs ? 0 : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP15_1_VAL.Bits.AVS_MARGIN_TEMP_OPP15_Z2 = enable_avs ? 0 : FORCE_ZERO;
-	AVS_MARGIN_TEMP_OPP15_1_VAL.Bits.AVS_MARGIN_TEMP_OPP15_Z3 = enable_avs ? 2 : FORCE_ZERO;
+	AVS_MARGIN_TEMP_OPP15_1_VAL.Bits.AVS_MARGIN_TEMP_OPP15_Z3 = enable_avs ? TEMPDIFF : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP15_1_VAL.Bits.AVS_MARGIN_TEMP_OPP15_Z4 = enable_avs ? 0 : FORCE_ZERO;
 	VMM_WRITE_REG_BY_NAME(AVS_MARGIN_TEMP_OPP15_1);
 
@@ -949,7 +939,7 @@ static void vmm_update_isp_vde_avs20_info(bool enable_avs)
 	/* lower bound temp */
 	AVS_MARGIN_TEMP_OPP12_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP12_Z1_partial = enable_avs ? 0 : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP12_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP12_Z2_partial = enable_avs ? 0 : FORCE_ZERO;
-	AVS_MARGIN_TEMP_OPP12_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP12_Z3_partial = enable_avs ? 2 : FORCE_ZERO;
+	AVS_MARGIN_TEMP_OPP12_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP12_Z3_partial = enable_avs ? TEMPDIFF : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP12_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP12_Z4_partial = enable_avs ? 0 : FORCE_ZERO;
 	VMM_WRITE_REG_BY_NAME(AVS_MARGIN_TEMP_OPP12_partial_1);
 
@@ -959,7 +949,7 @@ static void vmm_update_isp_vde_avs20_info(bool enable_avs)
 
 	AVS_MARGIN_TEMP_OPP13_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP13_Z1_partial = enable_avs ? 0 : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP13_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP13_Z2_partial = enable_avs ? 0 : FORCE_ZERO;
-	AVS_MARGIN_TEMP_OPP13_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP13_Z3_partial = enable_avs ? 2 : FORCE_ZERO;
+	AVS_MARGIN_TEMP_OPP13_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP13_Z3_partial = enable_avs ? TEMPDIFF : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP13_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP13_Z4_partial = enable_avs ? 0 : FORCE_ZERO;
 	VMM_WRITE_REG_BY_NAME(AVS_MARGIN_TEMP_OPP13_partial_1);
 
@@ -969,7 +959,7 @@ static void vmm_update_isp_vde_avs20_info(bool enable_avs)
 
 	AVS_MARGIN_TEMP_OPP14_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP14_Z1_partial = enable_avs ? 0 : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP14_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP14_Z2_partial = enable_avs ? 0 : FORCE_ZERO;
-	AVS_MARGIN_TEMP_OPP14_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP14_Z3_partial = enable_avs ? 2 : FORCE_ZERO;
+	AVS_MARGIN_TEMP_OPP14_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP14_Z3_partial = enable_avs ? TEMPDIFF : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP14_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP14_Z4_partial = enable_avs ? 0 : FORCE_ZERO;
 	VMM_WRITE_REG_BY_NAME(AVS_MARGIN_TEMP_OPP14_partial_1);
 
@@ -979,7 +969,7 @@ static void vmm_update_isp_vde_avs20_info(bool enable_avs)
 
 	AVS_MARGIN_TEMP_OPP15_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP15_Z1_partial = enable_avs ? 0 : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP15_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP15_Z2_partial = enable_avs ? 0 : FORCE_ZERO;
-	AVS_MARGIN_TEMP_OPP15_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP15_Z3_partial = enable_avs ? 2 : FORCE_ZERO;
+	AVS_MARGIN_TEMP_OPP15_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP15_Z3_partial = enable_avs ? TEMPDIFF : FORCE_ZERO;
 	AVS_MARGIN_TEMP_OPP15_partial_1_VAL.Bits.AVS_MARGIN_TEMP_OPP15_Z4_partial = enable_avs ? 0 : FORCE_ZERO;
 	VMM_WRITE_REG_BY_NAME(AVS_MARGIN_TEMP_OPP15_partial_1);
 
@@ -1035,28 +1025,23 @@ static unsigned int vmm_cal_avs_phase1(unsigned int OPP, unsigned int efuse_bin,
 {
 	unsigned int result_vol = 0;
 	unsigned int vmm_sign = 0;
-	unsigned int vmm_sign_norm = 0;
 
 	switch (OPP) {
 	case OPP_LEVEL_1:
 		result_vol = ATE_575V;
 		vmm_sign = SIGNED_OFF_575V;
-		vmm_sign_norm = SIGNED_OFF_575V_NORM;
 		break;
 	case OPP_LEVEL_2:
 		result_vol = ATE_600V;
 		vmm_sign = SIGNED_OFF_600V;
-		vmm_sign_norm = SIGNED_OFF_600V_NORM;
 		break;
 	case OPP_LEVEL_3:
 		result_vol = ATE_650V;
 		vmm_sign = SIGNED_OFF_650V;
-		vmm_sign_norm = SIGNED_OFF_650V_NORM;
 		break;
 	case OPP_LEVEL_4:
 		result_vol = ATE_700V;
 		vmm_sign = SIGNED_OFF_700V;
-		vmm_sign_norm = SIGNED_OFF_700V_NORM;
 		break;
 	default:
 		return 0;
@@ -1068,14 +1053,14 @@ static unsigned int vmm_cal_avs_phase1(unsigned int OPP, unsigned int efuse_bin,
 	switch (mode) {
 	case VMM_AVS_ISP:
 		result_vol = result_vol + ISP_CONST_MARGIN + isp_mssv_margin[OPP];
-		result_vol = result_vol < (vmm_sign_norm-isp_avs20_floor_margin[OPP]) ?
-						(vmm_sign_norm-isp_avs20_floor_margin[OPP]) : result_vol;
+		result_vol = result_vol < (vmm_sign-STEP_TO_MARGIN(isp_avs20_floor_margin[OPP])) ?
+				(vmm_sign-STEP_TO_MARGIN(isp_avs20_floor_margin[OPP])) : result_vol;
 		break;
 	case VMM_AVS_VDE:
 		result_vol = result_vol + VDE_CONST_MARGIN + vde_mssv_margin[OPP]
-						+ STEP_TO_MARGIN(vde_temperature_margin[TEMP_ZONE_2][OPP]);
-		result_vol = result_vol < (vmm_sign_norm-vde_avs20_floor_margin[OPP]) ?
-						(vmm_sign_norm-vde_avs20_floor_margin[OPP]) : result_vol;
+				+ STEP_TO_MARGIN(vde_temperature_margin[TEMP_ZONE_2][OPP]);
+		result_vol = result_vol < (vmm_sign-STEP_TO_MARGIN(vde_avs20_floor_margin[OPP])) ?
+				(vmm_sign-STEP_TO_MARGIN(vde_avs20_floor_margin[OPP])) : result_vol;
 		break;
 	default:
 		return 0;
