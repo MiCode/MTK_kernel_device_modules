@@ -131,6 +131,7 @@ unsigned int disp_spr_bypass;
 unsigned int disp_cm_bypass;
 unsigned int g_mml_mode;
 unsigned int g_pq_test_flag;
+uint32_t g_ovl_bgclr;
 bool g_y2r_en;
 #if IS_ENABLED(CONFIG_MTK_DISP_DEBUG)
 struct wr_online_dbg g_wr_reg;
@@ -4074,6 +4075,18 @@ static void process_dbg_opt(const char *opt)
 		mtk_crtc->fake_layer.fake_layer_mask = mask;
 
 		DDPINFO("fake_layer:0x%x enable\n", mask);
+	} else if (!strncmp(opt, "ovl_bgclr:", 10)) {
+		unsigned int bgclr;
+		int ret = 0;
+
+		ret = sscanf(opt, "ovl_bgclr:0x%x\n", &bgclr);
+		if (ret != 1) {
+			DDPPR_ERR("%d error to parse cmd %s\n",
+				__LINE__, opt);
+			return;
+		}
+		g_ovl_bgclr = bgclr;
+		DDPINFO("ovl_bgclr:0x%x enable\n", bgclr);
 	} else if (!strncmp(opt, "mipi_ccci:", 10)) {
 		unsigned int en, ret;
 

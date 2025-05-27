@@ -1173,8 +1173,14 @@ static void mtk_ovl_blender_layer_config(struct mtk_ddp_comp *comp, unsigned int
 			ratio_tmp = vtotal * 100 / vact;
 		} else
 			ratio_tmp = 125;
-
-		mtk_ovl_blender_layer_on(comp, lye_idx, ext_lye_idx, handle);
+		if (unlikely(g_ovl_bgclr)) {
+			// debug for getting pure disp img from blender1 bgclr, other blenders off
+			if (crtc_idx == 0 && comp->id == DDP_COMPONENT_OVL0_BLENDER1) {
+				cmdq_pkt_write(handle, comp->cmdq_base,
+					comp->regs_pa + regs[OVL_BLD_BGCLR_CLR], g_ovl_bgclr, ~0);
+			}
+		} else
+			mtk_ovl_blender_layer_on(comp, lye_idx, ext_lye_idx, handle);
 	}
 }
 

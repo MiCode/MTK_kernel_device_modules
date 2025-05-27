@@ -53,4 +53,6 @@ struct blender_compress_info {
 			struct cmdq_pkt *handle);
 };
 
+extern uint32_t g_ovl_bgclr;
+
 #endif
