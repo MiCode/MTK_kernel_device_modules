@@ -1642,6 +1642,8 @@ mgk_64_kleaf_platform_modules = {
     "//kernel_device_modules-{}/sound/soc/mediatek/common:mtk-btcvsd".format(kernel_version): "mt6858 mt6789 mt6855 mt6895",
     "//kernel_device_modules-{}/sound/soc/mediatek/mt6855:snd-soc-mt6855-afe".format(kernel_version): "mt6855",
     "//kernel_device_modules-{}/sound/soc/mediatek/mt6855:mt6855-mt6369".format(kernel_version): "mt6855",
+    "//kernel_device_modules-{}/sound/soc/mediatek/mt6858:snd-soc-mt6858-afe".format(kernel_version): "mt6858",
+    "//kernel_device_modules-{}/sound/soc/mediatek/mt6858:mt6858-mt6369".format(kernel_version): "mt6858",
     "//kernel_device_modules-{}/sound/soc/mediatek/mt6991:snd-soc-mt6991-afe".format(kernel_version): "mt6991",
     "//kernel_device_modules-{}/sound/soc/mediatek/mt6991:mt6991-mt6681".format(kernel_version): "mt6991",
     "//kernel_device_modules-{}/sound/soc/mediatek/mt6993:snd-soc-mt6993-afe".format(kernel_version): "mt6993",
@@ -1652,7 +1654,7 @@ mgk_64_kleaf_platform_modules = {
     "//kernel_device_modules-{}/sound/soc/mediatek/mt6895:mt6895-mt6368".format(kernel_version): "mt6895",
 
     "//kernel_device_modules-{}/sound/soc/codecs:snd-soc-mt6366".format(kernel_version): "mt6789",
-    "//kernel_device_modules-{}/sound/soc/codecs:snd-soc-mt6369".format(kernel_version): "mt6855",
+    "//kernel_device_modules-{}/sound/soc/codecs:snd-soc-mt6369".format(kernel_version): "mt6855 mt6858",
     "//kernel_device_modules-{}/drivers/input/touchscreen/hxchipset:hxchipset".format(kernel_version): "mt6789",
 
     "//kernel_device_modules-{}/drivers/regulator:fan53870-ldo".format(kernel_version): "mt6789",
