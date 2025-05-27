@@ -246,8 +246,7 @@ static void mtk_btag_eara_get_data(struct earaio_iostat *data)
 	spin_unlock_irqrestore(&earaio_ctrl.lock, flags);
 }
 
-/* #define EARAIO_BOOST_EVAL_THRESHOLD_PAGES ((32 * 1024 * 1024) >> PAGE_SHIFT) */
-#define EARAIO_BOOST_EVAL_THRESHOLD_PAGES ((16 * 1024 * 1024) >> PAGE_SHIFT)
+#define EARAIO_BOOST_EVAL_THRESHOLD_PAGES ((32 * 1024 * 1024) >> PAGE_SHIFT)
 
 /**
  * earaio_try_boost - try to send an ACCEL_NORMAL boost message if needed
@@ -266,6 +265,7 @@ static int earaio_try_boost(bool boost)
 {
 	struct mtk_btag_mictx_id *mictx_id;
 	unsigned long flags;
+	__u32 top_r_sum = 0, top_w_sum = 0;
 	__u32 top_r, top_w;
 	int index, ret = 1;
 #if IS_ENABLED(CONFIG_MTK_FUSE_TRACER)
@@ -304,13 +304,15 @@ static int earaio_try_boost(bool boost)
 		top_r = 0;
 		top_w = 0;
 		mtk_btag_mictx_get_top_rw(mictx_id, &top_r, &top_w);
-		if (top_r >= EARAIO_BOOST_EVAL_THRESHOLD_PAGES ||
-		    top_w >= EARAIO_BOOST_EVAL_THRESHOLD_PAGES)
-			goto need_boost;
 #if IS_ENABLED(CONFIG_MTK_FUSE_TRACER)
 		total_top_rw += (top_r + top_w);
 #endif
+		top_r_sum += top_r;
+		top_w_sum += top_w;
 	}
+	if (top_r_sum >= EARAIO_BOOST_EVAL_THRESHOLD_PAGES ||
+	    top_w_sum >= EARAIO_BOOST_EVAL_THRESHOLD_PAGES)
+		goto need_boost;
 
 #if IS_ENABLED(CONFIG_MTK_FUSE_TRACER)
 	/* Establish threshold for top app fuse request count */
@@ -623,8 +625,10 @@ static void earaio_top_io_notify(enum mtk_btag_io_type type, __u32 top_pages_r,
 		if (top_rnd_cnt > earaio_ctrl.rand_rw_threshold) {
 			early_notification = ACCEL_RAND;
 			mtk_btag_earaio_boost_fill(ACCEL_RAND);
-			if (!earaio_ctrl.start_collect)
+			if (!earaio_ctrl.start_collect) {
+				earaio_ctrl.start_collect = true;
 				earaio_ctrl.boosted = true;
+			}
 		}
 	}
 
@@ -634,14 +638,18 @@ static void earaio_top_io_notify(enum mtk_btag_io_type type, __u32 top_pages_r,
 		    top_pages_r > earaio_ctrl.seq_r_threshold) {
 			early_notification = ACCEL_SEQ;
 			mtk_btag_earaio_boost_fill(ACCEL_SEQ);
-			if (!earaio_ctrl.start_collect)
+			if (!earaio_ctrl.start_collect) {
+				earaio_ctrl.start_collect = true;
 				earaio_ctrl.boosted = true;
+			}
 		} else if (type == BTAG_IO_WRITE && top_pages_r == 0 &&
 			   top_pages_w > earaio_ctrl.seq_w_threshold) {
 			early_notification = ACCEL_SEQ;
 			mtk_btag_earaio_boost_fill(ACCEL_SEQ);
-			if (!earaio_ctrl.start_collect)
+			if (!earaio_ctrl.start_collect) {
+				earaio_ctrl.start_collect = true;
 				earaio_ctrl.boosted = true;
+			}
 		}
 	}
 
