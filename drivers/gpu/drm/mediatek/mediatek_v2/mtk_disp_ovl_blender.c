@@ -658,39 +658,17 @@ static void mtk_ovl_blender_connect(struct mtk_ddp_comp *comp, struct cmdq_pkt *
 	int crtc_first_layer = 0;
 	struct mtk_disp_ovl_blender *bld = comp_to_ovl_blender(comp);
 	const u16 *regs = bld->data->regs;
+	unsigned int ovl_bld_con_val = 0;
 
 	if (comp->funcs->first_layer)
 		crtc_first_layer = comp->funcs->first_layer(comp);
 	DDPINFO("%s,%d, prev %s, next %s, %d\n", __func__, __LINE__,
 		mtk_dump_comp_str_id(prev), mtk_dump_comp_str_id(next), comp->id);
 
-	if (handle == NULL)
-		writel_relaxed(0, comp->regs + regs[OVL_BLD_DATAPATH_CON]);
+	if (prev == 0 || crtc_first_layer)
+		ovl_bld_con_val &= ~DISP_BGCLR_IN_SEL;
 	else
-		cmdq_pkt_write(handle, comp->cmdq_base,
-				       comp->regs_pa + regs[OVL_BLD_DATAPATH_CON], 0, ~0);
-
-	if (prev == 0 || crtc_first_layer) {
-		if (handle == NULL)
-			mtk_ddp_cpu_mask_write(comp, regs[OVL_BLD_DATAPATH_CON],
-					   0,
-					   DISP_BGCLR_IN_SEL);
-		else
-			cmdq_pkt_write(handle, comp->cmdq_base,
-					   comp->regs_pa + regs[OVL_BLD_DATAPATH_CON],
-					   0,
-					   DISP_BGCLR_IN_SEL);
-	} else {
-		if (handle == NULL)
-			mtk_ddp_cpu_mask_write(comp, regs[OVL_BLD_DATAPATH_CON],
-					       DISP_BGCLR_IN_SEL,
-					       DISP_BGCLR_IN_SEL);
-		else
-			cmdq_pkt_write(handle, comp->cmdq_base,
-				       comp->regs_pa + regs[OVL_BLD_DATAPATH_CON],
-				       DISP_BGCLR_IN_SEL,
-				       DISP_BGCLR_IN_SEL);
-	}
+		ovl_bld_con_val |= DISP_BGCLR_IN_SEL;
 
 	if (comp->mtk_crtc->last_blender != comp ||
 			((mtk_ddp_comp_get_type(next) == MTK_OVL_BLENDER ||
@@ -700,31 +678,19 @@ static void mtk_ovl_blender_connect(struct mtk_ddp_comp *comp, struct cmdq_pkt *
 		DDPDBG("%s,%d, %s, to Blender\n", __func__, __LINE__,
 			mtk_dump_comp_str_id(prev));
 
-
-		if (handle == NULL)
-			mtk_ddp_cpu_mask_write(comp, regs[OVL_BLD_DATAPATH_CON],
-					   DISP_BGCLR_OUT_TO_NEXT_LAYER,
-					   DISP_BGCLR_OUT_TO_NEXT_LAYER);
-		else
-			cmdq_pkt_write(handle, comp->cmdq_base,
-					   comp->regs_pa + regs[OVL_BLD_DATAPATH_CON],
-					   DISP_BGCLR_OUT_TO_NEXT_LAYER,
-					   DISP_BGCLR_OUT_TO_NEXT_LAYER);
-
+		ovl_bld_con_val |= DISP_BGCLR_OUT_TO_NEXT_LAYER;
 	} else {
 		DDPDBG("%s,%d, %s, to OUT_PROC\n", __func__, __LINE__,
 			mtk_dump_comp_str_id(prev));
 
-		if (handle == NULL)
-			mtk_ddp_cpu_mask_write(comp, regs[OVL_BLD_DATAPATH_CON],
-				       DISP_BGCLR_OUT_TO_PROC,
-				       DISP_BGCLR_OUT_TO_PROC);
-		else
-			cmdq_pkt_write(handle, comp->cmdq_base,
-				       comp->regs_pa + regs[OVL_BLD_DATAPATH_CON],
-				       DISP_BGCLR_OUT_TO_PROC,
-				       DISP_BGCLR_OUT_TO_PROC);
+		ovl_bld_con_val |= DISP_BGCLR_OUT_TO_PROC;
 	}
+
+	if (handle == NULL)
+		writel_relaxed(ovl_bld_con_val, comp->regs + regs[OVL_BLD_DATAPATH_CON]);
+	else
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + regs[OVL_BLD_DATAPATH_CON], ovl_bld_con_val, ~0);
 }
 
 static int mtk_ovl_blender_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
