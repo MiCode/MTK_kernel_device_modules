@@ -185,7 +185,7 @@ static void init_ccmd_reg_dummy_page(struct pdma_device *pdma_dev, u32 page_orde
 
 	/* Cache Sync for dummy page */
 	dma_addr = dma_map_single(pdma_dev->dev, (void *)dummy_page,
-		(PAGE_SIZE << pdma_dev->page_order), DMA_BIDIRECTIONAL);
+		(PAGE_SIZE << page_order), DMA_BIDIRECTIONAL);
 	if (dma_mapping_error(pdma_dev->dev, dma_addr)) {
 		pr_info("%s fail to performance cache sync via dma\n", __func__);
 		return;
