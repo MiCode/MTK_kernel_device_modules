@@ -3302,15 +3302,18 @@ static void mtk_dsi_calc_vdo_timing(struct mtk_dsi *dsi)
 			horizontal_frontporch_byte = 1;
 
 		/* Check CPHY HFP minimum limitation */
-		if (dsi->mode_flags & MIPI_DSI_CLOCK_NON_CONTINUOUS) {
+		if (dsi->ext && !dsi->ext->params->vdo_keep_hs_perline) {
 			hfp_minimum = 2 * (32 + 1) *
 				dsi->lanes - 6 * dsi->lanes - 14;
 
-			if (horizontal_frontporch_byte < hfp_minimum)
+			if (horizontal_frontporch_byte < hfp_minimum) {
 				DDPPR_ERR(
 				"%s HFP:%d < CPHY HFP minimum limitation:%d !!\n",
 					__func__, (horizontal_frontporch_byte / 2),
 					(hfp_minimum / 2));
+				if (dsi->driver_data->n_verion >= VER_N3)
+					horizontal_frontporch_byte = hfp_minimum;
+			}
 		}
 
 		if (dsi->driver_data->n_verion >= VER_N3) {
