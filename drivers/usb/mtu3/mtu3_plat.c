@@ -49,6 +49,14 @@ enum ssusb_hwrscs_vers {
 static DEFINE_MUTEX(vsv_mutex);
 static unsigned int vsv_use_count;
 
+struct tag_chipid {
+	u32 size;
+	u32 hw_code;
+	u32 hw_submode;
+	u32 hw_ver;
+	u32 sw_ver;
+};
+
 static void ssusb_hwrscs_req(struct ssusb_mtk *ssusb,
 	enum mtu3_power_state state)
 {
@@ -141,7 +149,7 @@ static void ssusb_hwrscs_req_v2_v3(struct ssusb_mtk *ssusb,
 	switch (state) {
 	case MTU3_STATE_POWER_OFF:
 		spm_ctrl &= ~spm_msk;
-		if (of_device_is_compatible(ssusb->dev->of_node, "mediatek,mt6993-mtu3"))
+		if (of_device_is_compatible(ssusb->dev->of_node, "mediatek,mt6993-mtu3") && !ssusb->sw_ver)
 			spm_ctrl &= ~SSUSB_SPM_VCORE_EN;
 		break;
 	case MTU3_STATE_POWER_ON:
@@ -157,7 +165,7 @@ static void ssusb_hwrscs_req_v2_v3(struct ssusb_mtk *ssusb,
 	case MTU3_STATE_OFFLOAD_EX:
 		spm_ctrl |= SSUSB_SPM_REQ_OFFLOAD_EX_MSK;
 		spm_ctrl &= ~(SSUSB_SPM_REQ_OFFLOAD_EX_MSK ^ spm_msk);
-		if (of_device_is_compatible(ssusb->dev->of_node, "mediatek,mt6993-mtu3"))
+		if (of_device_is_compatible(ssusb->dev->of_node, "mediatek,mt6993-mtu3") && !ssusb->sw_ver)
 			spm_ctrl |= SSUSB_SPM_VCORE_EN;
 		break;
 	case MTU3_STATE_OFFLOAD_IDLE:
@@ -1162,12 +1170,38 @@ void ssusb_pds_disable(struct ssusb_mtk *ssusb)
 	clk_bulk_disable_unprepare(BULK_PDS_CNT, ssusb->pds);
 }
 
+static void ssusb_get_chip_version(struct ssusb_mtk *ssusb)
+{
+	struct device_node *chosen;
+	struct tag_chipid *chip_id;
+	int length;
+
+	chosen = of_find_node_by_path("/chosen");
+	if (!chosen)
+		chosen = of_find_node_by_path("/chosen@0");
+
+	ssusb->sw_ver = 0;
+
+	if (chosen) {
+		chip_id = (struct tag_chipid *)of_get_property(chosen, "atag,chipid", &length);
+		if (chip_id)
+			ssusb->sw_ver = chip_id->sw_ver;
+		else
+			dev_info(ssusb->dev, "error finding atag,chipid in chosen\n");
+	} else
+		dev_info(ssusb->dev, "error finding chosen node\n");
+
+	dev_info(ssusb->dev, "sw chip version:%d\n", ssusb->sw_ver);
+}
+
 static int ssusb_rscs_init(struct ssusb_mtk *ssusb)
 {
 	int ret = 0;
 
 	if (ssusb->plat_type == PLAT_FPGA)
 		goto phy_init;
+
+	ssusb_get_chip_version(ssusb);
 
 	ret = regulator_enable(ssusb->vusb33);
 	if (ret) {

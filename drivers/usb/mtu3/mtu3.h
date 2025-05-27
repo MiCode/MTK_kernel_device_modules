@@ -442,6 +442,8 @@ struct ssusb_mtk {
 	bool ls_slp_quirk;
 	bool ldm_resp_delay;
 	int ls_slp_bypass;
+	/* chip version*/
+	u32 sw_ver;
 };
 
 /**
