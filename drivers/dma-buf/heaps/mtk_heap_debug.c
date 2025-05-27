@@ -1918,6 +1918,9 @@ unsigned int dmabuf_rbtree_cal_stats(struct dump_fd_data *fd_data,
 	}
 #endif
 
+	if (rbroot == NULL)
+		return -EINVAL;
+
 	for (i = 0; i < TOTAL_PID_CNT; i++) {
 		int pid = fd_data->pid_map[i].id;
 
@@ -2327,7 +2330,7 @@ void dmabuf_rbtree_dump_all(struct dma_heap *heap, unsigned long flag,
 	time2 = get_current_time_ms();
 	pid_cnt = dmabuf_rbtree_cal_stats(fddata, &krn_rss, flag);
 
-	if (dump_egl) {
+	if (dump_egl && pid_cnt) {
 		unsigned long flags;
 
 		spin_lock_irqsave(&egl_cache_lock, flags);
