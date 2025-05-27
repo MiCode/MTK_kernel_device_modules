@@ -18,7 +18,9 @@ then
 fi
 
 KLEAF_OUT=("--output_user_root=${OUT_DIR} --output_base=${OUT_DIR}/bazel/output_user_root/output_base")
-KLEAF_ARGS=("${DEBUG_ARGS} ${SANDBOX_ARGS} --experimental_writable_outputs --allow_ddk_unsafe_headers=1")
+KLEAF_ARGS=("${DEBUG_ARGS} ${SANDBOX_ARGS} --experimental_writable_outputs --allow_ddk_unsafe_headers=1
+            --experimental_optimize_ddk_config_actions
+            --user_ddk_unsafe_headers=//${DEVICE_MODULES_DIR}:mtk_use_gki_unsafe_headers")
 
 set -x
 (
