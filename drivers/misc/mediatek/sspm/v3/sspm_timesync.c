@@ -108,7 +108,7 @@ static u64 timesync_tick_read(const struct cyclecounter *cc)
 	return arch_timer_read_counter();
 }
 
-static struct cyclecounter timesync_cc __ro_after_init = {
+static struct cyclecounter timesync_cc = {
 	.read	= timesync_tick_read,
 };
 

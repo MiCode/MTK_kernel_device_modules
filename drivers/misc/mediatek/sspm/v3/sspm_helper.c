@@ -127,9 +127,6 @@ static int sspm_device_probe(struct platform_device *pdev)
 	unsigned int fake_sspm;
 	int ret;
 
-	if (atomic_inc_return(&sspm_dev_inited) != 1)
-		return -1;
-
 	ret = of_property_read_u32(pdev->dev.of_node,
 		"mediatek,fake-sspm", &fake_sspm);
 
@@ -144,6 +141,9 @@ static int sspm_device_probe(struct platform_device *pdev)
 		return -EPROBE_DEFER;
 	}
 #endif
+
+	if (atomic_inc_return(&sspm_dev_inited) != 1)
+		return -1;
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "cfgreg");
 	if (!res) {
