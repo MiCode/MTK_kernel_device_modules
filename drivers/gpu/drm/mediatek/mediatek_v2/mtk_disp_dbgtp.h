@@ -63,10 +63,9 @@ struct mtk_dbgtp {
 
 	/* For camera ELA trace be covered issues */
 	bool is_cam_hrt_issue;
-	unsigned int cam_hrt_time_count;
 	/* For debug top trace cover other trace issues */
 	bool is_disp_hrt_issue;
-	unsigned int disp_hrt_time_count;
+	unsigned int hrt_time_count;
 
 	/* debug FIFO mon */
 	bool fifo_mon_en[FIFO_MON_NUM];

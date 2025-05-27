@@ -7485,41 +7485,27 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 		       mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_CUR_HRT_IDX),
 		       crtc_state->prop_val[CRTC_PROP_LYE_IDX], ~0);
 
-	if (priv->mtk_dbgtp_sta.is_cam_hrt_issue &&
-		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_HRT_DEBUG)) {
-		priv->mtk_dbgtp_sta.cam_hrt_time_count--;
-		if (priv->mtk_dbgtp_sta.cam_hrt_time_count <= 0) {
-			DDPMSG("After cam issues delay enable dbgtp\n");
+	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_HRT_DEBUG) &&
+		(priv->mtk_dbgtp_sta.is_cam_hrt_issue || priv->mtk_dbgtp_sta.is_disp_hrt_issue)) {
+		priv->mtk_dbgtp_sta.hrt_time_count--;
+		if (priv->mtk_dbgtp_sta.hrt_time_count <= 0) {
+			DDPMSG("After disp/cam HRT issues delay enable dbgtp\n");
 			/* Enable dbgtp en config */
 			priv->mtk_dbgtp_sta.dbgtp_en = true;
 			mtk_dbgtp_update(priv);
 			/* Clear dsi underrun slot */
 			addr = mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_UNDERRUNED);
 			*addr = 0;
+			if (priv->mtk_dbgtp_sta.is_disp_hrt_issue) {
+				/* Re-enable mminfra funnel */
+				mtk_dbgtp_set_mminfra_funnel(true);
+				/* When dump finished, release stop, let other could trigger start */
+				mtk_set_mmmc_rg(2, 3, 0x18, 0x1, 0xffff);
+			}
 			/* Clear flags */
 			priv->mtk_dbgtp_sta.is_cam_hrt_issue = false;
-			priv->mtk_dbgtp_sta.cam_hrt_time_count = 0;
-		}
-	}
-
-	if (priv->mtk_dbgtp_sta.is_disp_hrt_issue &&
-		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_HRT_DEBUG)) {
-		priv->mtk_dbgtp_sta.disp_hrt_time_count--;
-		if (priv->mtk_dbgtp_sta.disp_hrt_time_count <= 0) {
-			DDPMSG("After DSI underrun delay enable dbgtp\n");
-			/* Enable dbgtp en config */
-			priv->mtk_dbgtp_sta.dbgtp_en = true;
-			mtk_dbgtp_update(priv);
-			/* Clear dsi underrun slot */
-			addr = mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_UNDERRUNED);
-			*addr = 0;
-			/* Re-enable mminfor funnel */
-			mtk_dbgtp_set_mminfra_funnel(true);
-			/* When dump finished, release stop, let other could trigger start */
-			mtk_set_mmmc_rg(2, 3, 0x18, 0x1, 0xffff);
-			/* Clear flags */
 			priv->mtk_dbgtp_sta.is_disp_hrt_issue = false;
-			priv->mtk_dbgtp_sta.disp_hrt_time_count = 0;
+			priv->mtk_dbgtp_sta.hrt_time_count = 0;
 		}
 	}
 
