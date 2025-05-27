@@ -428,7 +428,7 @@ static long magt_ioctl(struct file *filp,
 		}
 
 		query_mask = (1 << GET_FPSGO_PERF_IDX);
-		render = kcalloc(MAX_RENDER_TID, sizeof(struct render_frame_info), GFP_KERNEL);
+		render = kvmalloc_array(MAX_RENDER_TID, sizeof(struct render_frame_info), GFP_KERNEL);
 		if (!render) {
 			ret = -ENOMEM;
 			goto ret_ioctl;
@@ -446,7 +446,7 @@ static long magt_ioctl(struct file *filp,
 			perfctl_copy_to_user((void *)arg, &pid_support, sizeof(struct fpsgo_pid_support));
 			ret = 0;
 		}
-		kfree(render);
+		kvfree(render);
 		break;
 	}
 	case MAGT_GET_FPSGO_STATUS:
@@ -469,7 +469,7 @@ static long magt_ioctl(struct file *filp,
 		query_mask = (1 << GET_FPSGO_TARGET_FPS | 1 << GET_FPSGO_QUEUE_FPS
 			| 1 << GET_FRS_TARGET_FPS_DIFF | 1 << GET_GED_GPU_TIME);
 
-		render = kcalloc(MAX_RENDER_TID, sizeof(struct render_frame_info), GFP_KERNEL);
+		render = kvmalloc_array(MAX_RENDER_TID, sizeof(struct render_frame_info), GFP_KERNEL);
 		if (!render) {
 			ret = -ENOMEM;
 			goto ret_ioctl;
@@ -489,7 +489,7 @@ static long magt_ioctl(struct file *filp,
 
 			if (render_item == -1) {
 				ret = -EINVAL;
-				kfree(render);
+				kvfree(render);
 				break;
 			}
 			render_status.curFps = render[render_item].queue_fps;
@@ -499,7 +499,7 @@ static long magt_ioctl(struct file *filp,
 			perfctl_copy_to_user((void *)arg, &render_status, sizeof(struct fpsgo_render_status));
 			ret = 0;
 		}
-		kfree(render);
+		kvfree(render);
 		break;
 	}
 	case MAGT_GET_FPSGO_CRITICAL_THREAD_BG:
@@ -519,7 +519,7 @@ static long magt_ioctl(struct file *filp,
 		}
 
 		query_mask = (1 << GET_FPSGO_MINITOP_LIST);
-		render = kcalloc(MAX_RENDER_TID, sizeof(struct render_frame_info), GFP_KERNEL);
+		render = kvmalloc_array(MAX_RENDER_TID, sizeof(struct render_frame_info), GFP_KERNEL);
 		if (!render) {
 			ret = -ENOMEM;
 			goto ret_ioctl;
@@ -539,7 +539,7 @@ static long magt_ioctl(struct file *filp,
 
 			if (render_item == -1) {
 				ret = -EINVAL;
-				kfree(render);
+				kvfree(render);
 				break;
 			}
 			bg_info.bg_num = render[render_item].non_dep_num;
@@ -552,7 +552,7 @@ static long magt_ioctl(struct file *filp,
 			perfctl_copy_to_user((void *)arg, &bg_info, sizeof(struct fpsgo_bg_info));
 			ret = 0;
 		}
-		kfree(render);
+		kvfree(render);
 		break;
 	}
 	case MAGT_GET_FPSGO_CPU_FRAMETIME:
@@ -572,7 +572,7 @@ static long magt_ioctl(struct file *filp,
 		}
 
 		query_mask = (1 << GET_FPSGO_RAW_CPU_TIME | 1 << GET_FPSGO_EMA_CPU_TIME);
-		render = kcalloc(MAX_RENDER_TID, sizeof(struct render_frame_info), GFP_KERNEL);
+		render = kvmalloc_array(MAX_RENDER_TID, sizeof(struct render_frame_info), GFP_KERNEL);
 		if (!render) {
 			ret = -ENOMEM;
 			goto ret_ioctl;
@@ -592,7 +592,7 @@ static long magt_ioctl(struct file *filp,
 
 			if (render_item == -1) {
 				ret = -EINVAL;
-				kfree(render);
+				kvfree(render);
 				break;
 			}
 			cpu_time_info.raw_t_cpu = render[render_item].raw_t_cpu;
@@ -601,7 +601,7 @@ static long magt_ioctl(struct file *filp,
 			perfctl_copy_to_user((void *)arg, &cpu_time_info, sizeof(struct fpsgo_cpu_frametime));
 			ret = 0;
 		}
-		kfree(render);
+		kvfree(render);
 		break;
 	}
 	case MAGT_GET_FPSGO_THREAD_LOADING:
@@ -621,7 +621,7 @@ static long magt_ioctl(struct file *filp,
 		}
 
 		query_mask = (1 << GET_FPSGO_AVG_FRAME_CAP | 1 << GET_FPSGO_DEP_LIST);
-		render = kcalloc(MAX_RENDER_TID, sizeof(struct render_frame_info), GFP_KERNEL);
+		render = kvmalloc_array(MAX_RENDER_TID, sizeof(struct render_frame_info), GFP_KERNEL);
 		if (!render) {
 			ret = -ENOMEM;
 			goto ret_ioctl;
@@ -641,7 +641,7 @@ static long magt_ioctl(struct file *filp,
 
 			if (render_item == -1) {
 				ret = -EINVAL;
-				kfree(render);
+				kvfree(render);
 				break;
 			}
 
@@ -655,7 +655,7 @@ static long magt_ioctl(struct file *filp,
 			perfctl_copy_to_user((void *)arg, &thread_loading, sizeof(struct fpsgo_thread_loading));
 			ret = 0;
 		}
-		kfree(render);
+		kvfree(render);
 		break;
 	}
 	case MAGT_GET_FPSGO_RENDER_PERFIDX:
@@ -675,7 +675,7 @@ static long magt_ioctl(struct file *filp,
 		}
 
 		query_mask = (1 << GET_FPSGO_PERF_IDX);
-		render = kcalloc(MAX_RENDER_TID, sizeof(struct render_frame_info), GFP_KERNEL);
+		render = kvmalloc_array(MAX_RENDER_TID, sizeof(struct render_frame_info), GFP_KERNEL);
 		if (!render) {
 			ret = -ENOMEM;
 			goto ret_ioctl;
@@ -695,14 +695,14 @@ static long magt_ioctl(struct file *filp,
 
 			if (render_item == -1) {
 				ret = -EINVAL;
-				kfree(render);
+				kvfree(render);
 				break;
 			}
 			render_perf.perf_idx = render[render_item].blc;
 			perfctl_copy_to_user((void *)arg, &render_perf, sizeof(struct fpsgo_render_perf));
 			ret = 0;
 		}
-		kfree(render);
+		kvfree(render);
 		break;
 	}
 	case MAGT_NOTIFY_THREAD_STATUS:
