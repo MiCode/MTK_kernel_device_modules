@@ -85,7 +85,7 @@ static void show_data(unsigned long addr, int nbytes, const char *name)
 	int i, j, invalid, nlines;
 	u32 *p, data[8] = {0};
 
-	addr = untagged_addr(addr);
+	addr = __untagged_addr(addr);
 	if (addr < (UL(0xffffffffffffffff) - (UL(1) << VA_BITS) + 1) ||
 			addr > UL(0xFFFFFFFFFFFFF000))
 		return;
