@@ -356,6 +356,9 @@ module_param(mml_wrot_bkgd, int, 0644);
 int wrot_stash_delay = 20;
 module_param(wrot_stash_delay, int, 0644);
 
+int mml_mat_fw;
+module_param(mml_mat_fw, int, 0644);
+
 /* ceil_m and floor_m helper function */
 static u32 ceil_m(u64 n, u64 d)
 {
@@ -431,6 +434,7 @@ struct wrot_data {
 	u8 px_per_tick;
 	u8 rb_swap;		/* WA: version for rb channel swap behavior */
 	bool yuv_pending;	/* WA: enable wrot yuv422/420 pending zero */
+	bool ext_mat;
 	bool stash;		/* enable stash prefetch with leading time */
 	u8 stash_delay_cnt;
 	bool sideband;		/* sideband setting */
@@ -485,6 +489,7 @@ static const struct wrot_data mt6991_wrot_data = {
 	.px_per_tick = 2,
 	.read_mode = MML_PQ_SOF_MODE,
 	.yuv_pending = true,
+	.ext_mat = true,
 	.stash = true,
 	.ddren_reg = true,
 };
@@ -511,6 +516,7 @@ static const struct wrot_data mt6993_mmld_wrot_data = {
 	.sram_size = 512 * 1024,
 	.px_per_tick = 2,
 	.read_mode = MML_PQ_SOF_MODE,
+	.ext_mat = true,
 	.stash = true,
 	.stash_delay_cnt = 16,
 	.sideband = true,
@@ -582,7 +588,18 @@ struct wrot_frame_data {
 	/* following data calculate in init and use in tile command */
 	u8 mat_en;
 	u8 mat_sel;
+	u8 ext_mat;
 	u32 dither_con;
+	struct {
+		/* pre-add vector, 9-bit */
+		u16 i0, i1, i2;
+		/* post-add vector, 9-bit */
+		u16 o0, o1, o2;
+		/* matrix coefficient, 15-bit */
+		u16 c00, c01, c02;
+		u16 c10, c11, c12;
+		u16 c20, c21, c22;
+	} m;
 	/* bits per pixel y */
 	u32 bbp_y;
 	/* bits per pixel uv */
@@ -1083,7 +1100,71 @@ static u32 wrot_get_label_count(struct mml_comp *comp, struct mml_task *task,
 	return WROT_LABEL_TOTAL;
 }
 
-static void wrot_color_fmt(struct mml_frame_config *cfg,
+static bool wrot_color_mat(const struct mml_frame_config *cfg,
+			   struct wrot_frame_data *wrot_frm)
+{
+	u32 fmt = cfg->info.dest[wrot_frm->out_idx].data.format;
+	u16 profile_in = cfg->info.src.profile;
+	u16 profile_out = cfg->info.dest[wrot_frm->out_idx].data.profile;
+	u16 profile;
+
+	if (mml_mat_fw) {
+		/* TODO: call mtk-mml-mat-fw.c */
+		return true;
+	}
+
+	if (cfg->info.dest[wrot_frm->out_idx].pq_config.en_hdr ||
+	    cfg->info.dest[wrot_frm->out_idx].pq_config.en_ccorr ||
+	    cfg->info.dest[wrot_frm->out_idx].pq_config.en_c3d) {
+		profile = profile_out;
+		if (profile_in == MML_YCBCR_PROFILE_BT2020 ||
+		    profile_in == MML_YCBCR_PROFILE_FULL_BT2020)
+			profile = MML_YCBCR_PROFILE_BT709;
+	} else
+		profile = profile_in;
+
+	if (wrot_frm->mat_en == 1) {
+		if (profile == MML_YCBCR_PROFILE_BT709 && MML_FMT_10BIT(fmt)) {
+			wrot_frm->m.i0 = GENMASK(8, 0) & (u16)-16;
+			wrot_frm->m.i1 = GENMASK(8, 0) & (u16)-128;
+			wrot_frm->m.i2 = GENMASK(8, 0) & (u16)-128;
+			/* o0 = 0; o1 = 0; o2 = 0; */
+			wrot_frm->m.c00 = GENMASK(14, 0) & (u16)1196;
+			wrot_frm->m.c01 = GENMASK(14, 0) & (u16)0;
+			wrot_frm->m.c02 = GENMASK(14, 0) & (u16)1841;
+			wrot_frm->m.c10 = GENMASK(14, 0) & (u16)1196;
+			wrot_frm->m.c11 = GENMASK(14, 0) & (u16)-219;
+			wrot_frm->m.c12 = GENMASK(14, 0) & (u16)-547;
+			wrot_frm->m.c20 = GENMASK(14, 0) & (u16)1196;
+			wrot_frm->m.c21 = GENMASK(14, 0) & (u16)2169;
+			wrot_frm->m.c22 = GENMASK(14, 0) & (u16)0;
+		} else if (profile == MML_YCBCR_PROFILE_BT2020) {
+			wrot_frm->m.i0 = GENMASK(8, 0) & (u16)-16;
+			wrot_frm->m.i1 = GENMASK(8, 0) & (u16)-128;
+			wrot_frm->m.i2 = GENMASK(8, 0) & (u16)-128;
+			/* o0 = 0; o1 = 0; o2 = 0; */
+			wrot_frm->m.c00 = GENMASK(14, 0) & (u16)1196;
+			wrot_frm->m.c01 = GENMASK(14, 0) & (u16)0;
+			wrot_frm->m.c02 = GENMASK(14, 0) & (u16)1724;
+			wrot_frm->m.c10 = GENMASK(14, 0) & (u16)1196;
+			wrot_frm->m.c11 = GENMASK(14, 0) & (u16)-192;
+			wrot_frm->m.c12 = GENMASK(14, 0) & (u16)-668;
+			wrot_frm->m.c20 = GENMASK(14, 0) & (u16)1196;
+			wrot_frm->m.c21 = GENMASK(14, 0) & (u16)2200;
+			wrot_frm->m.c22 = GENMASK(14, 0) & (u16)0;
+		} else {
+			return false;
+		}
+	} else {
+		return false;
+	}
+
+	wrot_frm->ext_mat = 1;
+	return true;
+}
+
+static void wrot_color_fmt(const struct mml_comp_wrot *wrot,
+			   const struct mml_frame_config *cfg,
 			   struct wrot_frame_data *wrot_frm)
 {
 	u32 fmt = cfg->info.dest[wrot_frm->out_idx].data.format;
@@ -1192,6 +1273,11 @@ static void wrot_color_fmt(struct mml_frame_config *cfg,
 		break;
 	}
 
+	if (wrot->data->ext_mat) {
+		if (wrot_color_mat(cfg, wrot_frm))
+			goto dither;
+	}
+
 	/*
 	 * 4'b0000:  0 RGB to JPEG
 	 * 4'b0001:  1 RGB to FULL709
@@ -1269,9 +1355,13 @@ static void wrot_color_fmt(struct mml_frame_config *cfg,
 			   profile_out == MML_YCBCR_PROFILE_FULL_BT709) {
 			wrot_frm->mat_en = 1;
 			wrot_frm->mat_sel = 10;
+		} else if (profile_in != profile_out) {
+			mml_err("[wrot] unknown profile conversion %x %x",
+				profile_in, profile_out);
 		}
 	}
 
+dither:
 	/* Enable 10-bit input */
 	if (!MML_FMT_10BIT(fmt)) {
 		wrot_frm->mat_en = 1;
@@ -1484,7 +1574,7 @@ static s32 wrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 	/* clear event */
 	cmdq_pkt_clear_event(pkt, wrot->event_eof);
 
-	wrot_color_fmt(cfg, wrot_frm);
+	wrot_color_fmt(wrot, cfg, wrot_frm);
 
 	/* calculate for later config tile use */
 	wrot_calc_hw_buf_setting(wrot, cfg, dest, wrot_frm);
@@ -1713,7 +1803,33 @@ static s32 wrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 	/* Write matrix control */
 	cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_MAT_CTRL],
 		       (wrot_frm->mat_sel << 4) +
+		       (wrot_frm->ext_mat << 1) +
 		       (wrot_frm->mat_en << 0), U32_MAX);
+	/* Write matrix coefficient */
+	if (wrot->data->ext_mat) {
+		cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_CSC_COEFFICIENT_1],
+			((u32)wrot_frm->m.i0 << 0) |
+			((u32)wrot_frm->m.i1 << 10) |
+			((u32)wrot_frm->m.i2 << 20), U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_CSC_COEFFICIENT_2],
+			((u32)wrot_frm->m.o0 << 0) |
+			((u32)wrot_frm->m.o1 << 10) |
+			((u32)wrot_frm->m.o2 << 20), U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_CSC_COEFFICIENT_3],
+			((u32)wrot_frm->m.c00 << 0) |
+			((u32)wrot_frm->m.c01 << 16), U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_CSC_COEFFICIENT_4],
+			((u32)wrot_frm->m.c02 << 0) |
+			((u32)wrot_frm->m.c10 << 16), U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_CSC_COEFFICIENT_5],
+			((u32)wrot_frm->m.c11 << 0) |
+			((u32)wrot_frm->m.c12 << 16), U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_CSC_COEFFICIENT_6],
+			((u32)wrot_frm->m.c20 << 0) |
+			((u32)wrot_frm->m.c21 << 16), U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_CSC_COEFFICIENT_7],
+			((u32)wrot_frm->m.c22 << 0), U32_MAX);
+	}
 
 	/* Set the fixed ALPHA as 0xff */
 	cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_DITHER], 0xff000000, U32_MAX);
@@ -2840,7 +2956,7 @@ static void wrot_debug_dump(struct mml_comp *comp)
 {
 	struct mml_comp_wrot *wrot = comp_to_wrot(comp);
 	void __iomem *base = comp->base;
-	u32 value[41];
+	u32 value[48];
 	u32 debug[33];
 	u32 dbg_id = 0, state, smi_req;
 	u32 shadow_ctrl;
@@ -2911,6 +3027,13 @@ static void wrot_debug_dump(struct mml_comp *comp)
 	value[37] = readl(base + wrot->reg[VIDO_DITHER]);
 	value[38] = readl(base + wrot->reg[VIDO_AFBC_YUVTRANS]);
 	value[39] = readl(base + wrot->reg[VIDO_BKGD]);
+	value[41] = readl(base + wrot->reg[VIDO_CSC_COEFFICIENT_1]);
+	value[42] = readl(base + wrot->reg[VIDO_CSC_COEFFICIENT_2]);
+	value[43] = readl(base + wrot->reg[VIDO_CSC_COEFFICIENT_3]);
+	value[44] = readl(base + wrot->reg[VIDO_CSC_COEFFICIENT_4]);
+	value[45] = readl(base + wrot->reg[VIDO_CSC_COEFFICIENT_5]);
+	value[46] = readl(base + wrot->reg[VIDO_CSC_COEFFICIENT_6]);
+	value[47] = readl(base + wrot->reg[VIDO_CSC_COEFFICIENT_7]);
 
 	/* debug id from 0x0100 ~ 0x2100, count 33 which is debug array size */
 	for (i = 0; i < ARRAY_SIZE(debug); i++) {
@@ -2955,6 +3078,14 @@ static void wrot_debug_dump(struct mml_comp *comp)
 		value[29], value[30]);
 	mml_err("VIDO_BASE ADDR_HIGH_V %#010x ADDR_V %#010x",
 		value[31], value[32]);
+	if (value[35] & BIT(1)) {
+		mml_err("VIDO_CSC_COEFFICIENT_1 %#010x VIDO_CSC_COEFFICIENT_2 %#010x",
+			value[41], value[42]);
+		mml_err("VIDO_CSC_COEFFICIENT_3 %#010x VIDO_CSC_COEFFICIENT_4 %#010x VIDO_CSC_COEFFICIENT_5 %#010x",
+			value[43], value[44], value[45]);
+		mml_err("VIDO_CSC_COEFFICIENT_6 %#010x VIDO_CSC_COEFFICIENT_7 %#010x",
+			value[46], value[47]);
+	}
 
 	for (i = 0; i < ARRAY_SIZE(debug) / 3; i++) {
 		mml_err("VIDO_DEBUG %02X %#010x VIDO_DEBUG %02X %#010x VIDO_DEBUG %02X %#010x",

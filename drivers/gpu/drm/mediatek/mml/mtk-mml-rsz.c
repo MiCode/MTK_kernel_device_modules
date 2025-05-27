@@ -85,8 +85,8 @@
 
 #define RSZ_WAIT_TIMEOUT_MS 5000
 
-int mml_rsz_fw_comb = 1;
-module_param(mml_rsz_fw_comb, int, 0644);
+int mml_rsz_fw = 1;
+module_param(mml_rsz_fw, int, 0644);
 
 int mml_force_rsz;
 module_param(mml_force_rsz, int, 0644);
@@ -289,7 +289,7 @@ static s32 rsz_prepare(struct mml_comp *comp, struct mml_task *task,
 	rsz_frm->use121filter = !MML_FMT_H_SUBSAMPLE(src->format);
 
 	if (!rsz_frm->relay_mode) {
-		if (mml_rsz_fw_comb) {
+		if (mml_rsz_fw) {
 			fw_in.in_width = cfg->frame_tile_sz.width;
 			fw_in.in_height = cfg->frame_tile_sz.height;
 			fw_in.out_width = frame_out->width;
@@ -402,7 +402,7 @@ static s32 rsz_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 	data->rsz.crop = *crop;
 	if (!rsz_frm->relay_mode) {
 		data->rsz.use_121filter = rsz_frm->use121filter;
-		if (mml_rsz_fw_comb) {
+		if (mml_rsz_fw) {
 			prepare_tile_data_fw(&data->rsz, &rsz_frm->fw_out);
 		} else {
 			mml_pq_msg("%s pipe_id[%d] engine_id[%d]", __func__,
@@ -505,7 +505,7 @@ static s32 rsz_config_frame(struct mml_comp *comp, struct mml_task *task,
 	} else
 		cmdq_pkt_write(pkt, NULL, base_pa + RSZ_CG_CFG, 0x1f, U32_MAX);
 
-	if (mml_rsz_fw_comb) {
+	if (mml_rsz_fw) {
 		cmdq_pkt_write(pkt, NULL, base_pa + RSZ_ETC_CONTROL,
 			       rsz_frm->fw_out.etc_ctrl, U32_MAX);
 		cmdq_pkt_write(pkt, NULL, base_pa + RSZ_ETC_SWITCH_MAX_MIN_1,
@@ -611,7 +611,7 @@ static s32 rsz_config_tile(struct mml_comp *comp, struct mml_task *task,
 	rsz_output_w = tile->out.xe - tile->out.xs + 1;
 	rsz_output_h = tile->out.ye - tile->out.ys + 1;
 
-	if (mml_rsz_fw_comb)
+	if (mml_rsz_fw)
 		cmdq_pkt_write(pkt, NULL, base_pa + RSZ_CON_2,
 			       (rsz_frm->fw_out.con2 & (~0x00003800)) +
 			       (drs_lclip_en << 11) +
