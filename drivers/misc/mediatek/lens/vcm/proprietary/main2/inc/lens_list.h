@@ -35,6 +35,20 @@ extern int AK7374AF_PowerDown(struct i2c_client *pstAF_I2Cclient,
 				int *pAF_Opened);
 extern int AK7374AF_GetFileName(unsigned char *pFileName);
 
+#define AW8601CSRAF_SetI2Cclient AW8601CSRAF_SetI2Cclient_Main2
+#define AW8601CSRAF_Ioctl AW8601CSRAF_Ioctl_Main2
+#define AW8601CSRAF_Release AW8601CSRAF_Release_Main2
+#define AW8601CSRAF_PowerDown AW8601CSRAF_PowerDown_Main2
+#define AW8601CSRAF_GetFileName AW8601CSRAF_GetFileName_Main2
+extern int AW8601CSRAF_SetI2Cclient(struct i2c_client *pstAF_I2Cclient,
+				spinlock_t *pAF_SpinLock, int *pAF_Opened);
+extern long AW8601CSRAF_Ioctl(struct file *a_pstFile, unsigned int a_u4Command,
+				unsigned long a_u4Param);
+extern int AW8601CSRAF_Release(struct inode *a_pstInode, struct file *a_pstFile);
+extern int AW8601CSRAF_PowerDown(struct i2c_client *pstAF_I2Cclient,
+				int *pAF_Opened);
+extern int AW8601CSRAF_GetFileName(unsigned char *pFileName);
+
 #define GT9772AF_SetI2Cclient GT9772AF_SetI2Cclient_Main2
 #define GT9772AF_Ioctl GT9772AF_Ioctl_Main2
 #define GT9772AF_Release GT9772AF_Release_Main2
