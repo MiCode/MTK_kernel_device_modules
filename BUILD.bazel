@@ -16,7 +16,9 @@ ddk_headers(
     ],
     visibility = ["//visibility:public"],
 )
-mgk_kmi_symbol_list = None #"//kernel-6.12:android/abi_gki_aarch64_mtk"
+mgk_kmi_symbol_list = "//kernel-6.12:gki/aarch64/symbols/mtk"
+mgk_additional_kmi_symbol_lists = ["//kernel-6.12:aarch64_additional_kmi_symbol_lists"]
+KMI_white_list = ["//kernel_device_modules-6.12:KMI_white_list"]
 
 filegroup(
     name = "mgk_configs",
@@ -106,4 +108,6 @@ define_mgk(
     device_user_modules = mgk_64_device_user_modules,
     platform_device_user_modules = mgk_64_platform_device_user_modules,
     symbol_list = mgk_kmi_symbol_list,
+    additional_symbol_lists = mgk_additional_kmi_symbol_lists,
+    KMI_white_list = KMI_white_list,
 )
