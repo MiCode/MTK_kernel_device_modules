@@ -22,6 +22,7 @@
 #include "videogo_driver.h"
 #include "videogo_public.h"
 #include "videogo_param_config.h"
+#include "videogo_utils.h"
 
 #if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
 #include "eas/group.h"
@@ -68,6 +69,7 @@ static int set_runnable_boost_disable;
 static int set_margin_control;
 static int set_uclamp_min_ta;
 static int set_util_est_boost;
+static int set_rt_non_idle_preempt;
 static int set_ct_to_vip;
 //static int set_cpu_freq_min;
 static int set_gpu_freq_min;
@@ -81,7 +83,7 @@ static void send_service_info(const char *log_msg, int service_type,
 {
 	struct vgo_powerhal_info service_info;
 
-	pr_info("[vgo] %s\n", log_msg);
+	mtk_vgo_debug("%s: %d %d %d", log_msg, data0, data1, data2);
 	service_info.type = service_type;
 	service_info.data[0] = data0;
 	service_info.data[1] = data1;
@@ -130,7 +132,7 @@ static void videogo_vcodec_send_fn(int iotype, void *data)
 		memcpy(entry->data, data, sizeof(struct oprate_data));
 		break;
 	default:
-		pr_info("type: %d not support\n", iotype);
+		mtk_vgo_err("type: %d not support", iotype);
 		kfree(entry);
 		return;
 	}
@@ -274,7 +276,7 @@ static int videogo_process_data(int iotype, void *data)
 				isTranscoding = is_transcoding(info0, type);
 
 		} else {
-			pr_info("[vgo] Invalid inst_type: [%d] %d\n", init_data->ctx_id, init_data->inst_type);
+			mtk_vgo_err("Invalid inst_type: [%d] %d", init_data->ctx_id, init_data->inst_type);
 			return -EINVAL;
 		}
 	} else if (iotype == VGO_RECV_INSTANCE_DEC) {
@@ -300,7 +302,7 @@ static int videogo_process_data(int iotype, void *data)
 
 			isTranscoding = alive_count[VENC] == 0 ? 0 : isTranscoding;
 		} else {
-			pr_info("[vgo] Invalid inst_type: [%d] %d\n", inst_data->ctx_id, inst_data->inst_type);
+			mtk_vgo_err("Invalid inst_type: [%d] %d", inst_data->ctx_id, inst_data->inst_type);
 			return -EINVAL;
 		}
 	} else if (iotype == VGO_RECV_RUNNING_UPDATE) {
@@ -336,13 +338,13 @@ static int videogo_process_data(int iotype, void *data)
 				if (!isTranscoding && type == VENC)
 					isTranscoding = is_transcoding(target_inst_info, type);
 
-				pr_info("[vgo][%d][%d] oprate_avdvfs=%d, oprate=%d, isTrans=%d\n",
+				mtk_vgo_info("[%d][%d] oprate_avdvfs:%d oprate:%d isTrans:%d",
 					target_inst_info->ctx_id, target_inst_info->inst_type,
 					target_inst_info->oprate_avdvfs, target_inst_info->oprate, isTranscoding);
 			} else
-				pr_info("[vgo][%d][%d] Cannot find Inst\n", run_data->ctx_id, run_data->inst_type);
+				mtk_vgo_err("[%d][%d] Cannot find Inst", run_data->ctx_id, run_data->inst_type);
 		} else {
-			pr_info("[vgo][%d][%d] Invalid inst_type\n", run_data->ctx_id, run_data->inst_type);
+			mtk_vgo_err("[%d][%d] Invalid inst_type", run_data->ctx_id, run_data->inst_type);
 			return -EINVAL;
 		}
 	} else if (iotype == VGO_RECV_STATE_OPEN) {
@@ -350,7 +352,7 @@ static int videogo_process_data(int iotype, void *data)
 
 		if (mtk_vgo_runnable_boost_enable) {
 			if (atomic_cmpxchg(&runnable_boost_enable_cnt, 0, 1) == 0)
-				send_service_info("ack Runnable_boost_enable",
+				send_service_info("acq runnable_boost_enable",
 					VGO_RUNNABLE_BOOST_ENABLE, 1, 0, 0);
 			else
 				atomic_inc(&runnable_boost_enable_cnt);
@@ -359,9 +361,10 @@ static int videogo_process_data(int iotype, void *data)
 
 #if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
 		if (mtk_vgo_cgroup_colocate) {
-			if (atomic_cmpxchg(&cgrp_cnt, 0, 1) == 0)
+			if (atomic_cmpxchg(&cgrp_cnt, 0, 1) == 0) {
+				mtk_vgo_debug("acq cgroup_colocate");
 				group_set_cgroup_colocate(CGRP_FG, 0);
-			else
+			} else
 				atomic_inc(&cgrp_cnt);
 			videogo_send_delay_work(VGO_REL_CGRP, 200, dev_data);
 		}
@@ -381,7 +384,7 @@ static int videogo_passive_fn(void *arg)
 				kthread_should_stop());
 
 		if (ret < 0) {
-			pr_info("[vgo] wait event return=%d\n", ret);
+			mtk_vgo_info("wait event return=%d", ret);
 			continue;
 		}
 
@@ -400,6 +403,7 @@ static int videogo_passive_fn(void *arg)
 		}
 		mutex_unlock(&passive_workqueue_mutex);
 
+		mtk_vgo_debug("Notify controller_wq");
 		// if need to notify controller thread
 		atomic_inc(&controller_wq_ready);
 		wake_up_interruptible(&controller_wq);
@@ -417,7 +421,7 @@ static int videogo_controller_fn(void *arg)
 				 atomic_read(&controller_wq_ready) > 0 || kthread_should_stop());
 
 		if (ret < 0) {
-			pr_info("[vgo] wait event return=%d\n", ret);
+			mtk_vgo_info("wait event return=%d", ret);
 			continue;
 		}
 
@@ -432,20 +436,28 @@ static int videogo_controller_fn(void *arg)
 		if (total_vdec_target_fps > 0 && total_vdec_target_fps <= 2 &&
 			!total_venc && total_vdec_target_fps == total_vdec) {
 			if (!set_runnable_boost_disable && mtk_vgo_runnable_boost_disable) {
-				send_service_info("ack Runnable_boost_disable",
+				send_service_info("acq runnable_boost_disable",
 								VGO_RUNNABLE_BOOST_DISABLE, 1, 0, 0);
 				set_runnable_boost_disable = 1;
 			}
 			if (!set_margin_control && mtk_vgo_margin_control) {
-				send_service_info("ack margin_control",
+				send_service_info("acq margin_control",
 								VGO_MARGIN_CONTROL_0, 1000, 20, 0);
 				set_margin_control = 1;
 			}
 			if (!set_util_est_boost && mtk_vgo_util_est_boost) {
-				send_service_info("ack util_est_boost",
+				send_service_info("acq util_est_boost",
 								VGO_UTIL_EST_BOOST, 0, 0, 0);
 				set_util_est_boost = 1;
 			}
+			if (!set_rt_non_idle_preempt && mtk_vgo_rt_non_idle_preempt) {
+				send_service_info("acq rt_non_idle_preempt",
+								VGO_RT_NON_IDLE_PREEMPT, 1, 0, 0);
+				set_rt_non_idle_preempt = 1;
+			}
+			mtk_vgo_info("[VP] runnable_disable:%d margin_ctrl:%d util_boost:%d rt_non_idle:%d",
+				set_runnable_boost_disable, set_margin_control,
+				set_util_est_boost, set_rt_non_idle_preempt);
 		} else {
 			if (set_runnable_boost_disable) {
 				send_service_info("rel Runnable_boost_disable",
@@ -462,24 +474,31 @@ static int videogo_controller_fn(void *arg)
 								VGO_UTIL_EST_BOOST, -1, 0, 0);
 				set_util_est_boost = 0;
 			}
+			if (set_rt_non_idle_preempt) {
+				send_service_info("acq rt_non_idle_preempt",
+								VGO_RT_NON_IDLE_PREEMPT, -1, 0, 0);
+				set_rt_non_idle_preempt = 0;
+			}
 		}
 
 		if (isTranscoding) {
 			if (!set_uclamp_min_ta && mtk_vgo_uclamp_min_ta) {
-				send_service_info("ack uclamp_min_ta",
-								VGO_UCLAMP_MIN_TA, 100, 0, 0);
+				send_service_info("acq uclamp_min_ta",
+					VGO_UCLAMP_MIN_TA, mtk_vgo_uclamp_min_ta_val, 0, 0);
 				set_uclamp_min_ta = 1;
 			}
 			if (!set_gpu_freq_min && mtk_vgo_gpu_freq_min) {
-				send_service_info("ack gpu_freq_min",
-								VGO_GPU_FREQ_MIN, 7, 0, 0);
+				send_service_info("acq gpu_freq_min",
+					VGO_GPU_FREQ_MIN, mtk_vgo_gpu_freq_min_opp, 0, 0);
 				set_gpu_freq_min = 1;
 			}
 			if (!set_ct_to_vip && mtk_vgo_ct_to_vip) {
-				pr_info("[vgo] ack ct_to_vip\n");
+				mtk_vgo_debug("acq ct_to_vip");
 				enforce_ct_to_vip(1, 3);
 				set_ct_to_vip = 1;
 			}
+			mtk_vgo_info("[TRANS] uclamp_min:%d gpu_min:%d ta_vip:%d",
+				set_uclamp_min_ta, set_gpu_freq_min, set_ct_to_vip);
 		} else {
 			if (set_uclamp_min_ta) {
 				send_service_info("rel uclamp_min_ta",
@@ -492,12 +511,17 @@ static int videogo_controller_fn(void *arg)
 				set_gpu_freq_min = 0;
 			}
 			if (set_ct_to_vip) {
-				pr_info("[vgo] rel ct_to_vip\n");
+				mtk_vgo_debug("rel ct_to_vip");
 				enforce_ct_to_vip(0, 3);
 				set_ct_to_vip = 0;
 			}
 		}
 
+		mtk_vgo_debug("runnable_disable:%d margin_ctrl:%d "
+			"util_boost:%d rt_non_idle:%d uclamp_min:%d gpu_min:%d ta_vip:%d",
+			set_runnable_boost_disable, set_margin_control,
+			set_util_est_boost, set_rt_non_idle_preempt,
+			set_uclamp_min_ta, set_gpu_freq_min, set_ct_to_vip);
 	}
 	return 0;
 }
@@ -521,10 +545,10 @@ static long videogo_ioctl(struct file *file, unsigned int cmd, unsigned long arg
 	switch (cmd) {
 	case VGO_IOCTL_SET_PROCTIME:
 		if (copy_from_user(&data, (struct inst_data_user __user *)arg, sizeof(data))) {
-			pr_err("VGO_IOCTL_SET_PROCTIME: copy_from_user is fail\n");
+			mtk_vgo_err("VGO_IOCTL_SET_PROCTIME: copy_from_user is fail");
 			return -EFAULT;
 		}
-		pr_info("[VGO] Recv data: ctx_id=%d, avg=%d, max=%d, min=%d, count=%d\n",
+		mtk_vgo_debug("Recv data: ctx_id=%d, avg=%d, max=%d, min=%d, count=%d",
 				data.ctx_id, data.avg_proc_time, data.max_proc_time,
 				data.min_proc_time, data.count);
 		break;
@@ -534,7 +558,7 @@ static long videogo_ioctl(struct file *file, unsigned int cmd, unsigned long arg
 		ret = kfifo_out(&service_fifo, &service_info, 1);
 		mutex_unlock(&service_mutex);
 		if (ret != 1) {
-			pr_info("kfifo_out is abnormal: %d\n", ret);
+			mtk_vgo_err("kfifo_out is abnormal: %d", ret);
 			return -EFAULT;
 		}
 		if (copy_to_user((struct vgo_powerhal_info __user *)arg,
@@ -572,15 +596,14 @@ static int __init videogo_init(void)
 	mutex_init(&passive_workqueue_mutex);
 	mutex_init(&service_mutex);
 
-	pr_info("videogo: _init\n");
+	mtk_vgo_info("videogo: _init");
 
 	ret = register_chrdev(0, DEVICE_NAME, &fops);
 	if (ret < 0) {
-		pr_err("videogo: Failed to register character device:%s\n", DEVICE_NAME);
+		mtk_vgo_err("Failed to register character device:%s", DEVICE_NAME);
 		return ret;
 	}
 	major_num = ret;
-	pr_info("videogo: Registered with major number %d\n", major_num);
 
 	cdev_init(&videogo_cdev, &fops);
 	videogo_cdev.owner = THIS_MODULE;
@@ -589,37 +612,35 @@ static int __init videogo_init(void)
 	ret = cdev_add(&videogo_cdev, dev, 1);
 	if (ret <0) {
 		unregister_chrdev(major_num, DEVICE_NAME);
-		pr_err("videogo: Adding cdev failed with:%d\n", ret);
+		mtk_vgo_err("Adding cdev failed with:%d", ret);
 		return ret;
 	}
 
 	videogo_class = class_create(CLASS_NAME);
 	if (IS_ERR(videogo_class)) {
 		unregister_chrdev(major_num, DEVICE_NAME);
-		pr_err("videogo: Failed to register device class:%s\n", CLASS_NAME);
+		mtk_vgo_err("videogo: Failed to register device class:%s", CLASS_NAME);
 		return PTR_ERR(videogo_class);
 	}
-	pr_info("videogo: Device class registered\n");
 
 	videogo_device = device_create(videogo_class, NULL,
 						 MKDEV(major_num, 0), NULL, DEVICE_NAME);
 	if (IS_ERR(videogo_device)) {
 		class_destroy(videogo_class);
 		unregister_chrdev(major_num, DEVICE_NAME);
-		pr_err("videogo: Failed to create the device:%s\n", DEVICE_NAME);
+		mtk_vgo_err("Failed to create the device:%s", DEVICE_NAME);
 		return PTR_ERR(videogo_device);
 	}
-	pr_info("videogo: Device class created\n");
 
 	passive_thread = kthread_run(videogo_passive_fn, NULL, "videogo_passive");
 	if (IS_ERR(passive_thread)) {
-		pr_err("videogo: Failed to create videogo_passive thread\n");
+		mtk_vgo_err("Failed to create videogo_passive thread");
 		return PTR_ERR(passive_thread);
 	}
 
 	controller_thread = kthread_run(videogo_controller_fn, NULL, "videogo_controller");
 	if (IS_ERR(controller_thread)) {
-		pr_err("videogo: Failed to create videogo_controller thread\n");
+		mtk_vgo_err("Failed to create videogo_controller thread");
 		kthread_stop(passive_thread);
 		return PTR_ERR(controller_thread);
 	}
@@ -628,7 +649,7 @@ static int __init videogo_init(void)
 
 	delayed_wq = create_workqueue("videogo_delayed_wq");
 
-	pr_info("videogo: module loaded\n");
+	mtk_vgo_info("videogo: module loaded");
 
 	return 0;
 }
