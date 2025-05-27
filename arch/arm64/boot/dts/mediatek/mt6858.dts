@@ -5919,7 +5919,7 @@ dramc: dramc@10230000 {
 			/* charger: mtk_charger_thread */
 			mediatek,charger = <&lk_charger>;
 			/* 2000~2900mV, one gear per 100mV */
-			uvlo-level = <2500>;
+			uvlo-level = <2400>;
 			vbb-uvlo-level = <2500>;
 			bob-check-flag = <1>;
 			io-channels = <&mt6375_auxadc MT6375_AUXADC_IMP>,
@@ -5964,6 +5964,14 @@ dramc: dramc@10230000 {
 				regulator-enable-ramp-delay = <256>;
 				regulator-allowed-modes = <0 1 2>;
 			};
+			mt6319_6_vbuck3: 6-vbuck3 {
+				regulator-compatible = "vbuck3";
+				regulator-name = "6_vbuck3";
+				regulator-min-microvolt = <300000>;
+				regulator-max-microvolt = <1193750>;
+				regulator-enable-ramp-delay = <256>;
+				regulator-allowed-modes = <0 1 2>;
+			};
 			mt6319_6_vbuck4: 6-vbuck4 {
 				regulator-compatible = "vbuck4";
 				regulator-name = "6_vbuck4";
@@ -5971,13 +5979,12 @@ dramc: dramc@10230000 {
 				regulator-max-microvolt = <1193750>;
 				regulator-enable-ramp-delay = <256>;
 				regulator-allowed-modes = <0 1 2>;
-				regulator-always-on;
 			};
 		};
 	};
 };
 
-&mt6319_6_vbuck2 {
+&mt6319_6_vbuck1 {
 	regulator-always-on;
 };
 
@@ -6040,6 +6047,22 @@ dramc: dramc@10230000 {
 /* vufs18 is used by DVDD18_IORB(GPIO), so must always on. */
 &mt6363_vufs18 {
 	regulator-always-on;
+};
+
+&mt6363_vufs12 {
+	regulator-always-on;
+};
+
+&mt6363_vemc {
+	regulator-always-on;
+};
+
+&mt6363_va15 {
+	/delete-property/ regulator-always-on;
+};
+
+&mt6363_vio075 {
+	/delete-property/ regulator-always-on;
 };
 
 &mt6369_vbuck1 {
