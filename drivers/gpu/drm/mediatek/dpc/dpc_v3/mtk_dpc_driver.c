@@ -3801,6 +3801,9 @@ static int mtk_dpc_probe_v3(struct platform_device *pdev)
 	struct clk *clk;
 	const struct of_device_id *of_id;
 	int ret = 0, genpd_num = 0, clk_num = 0, i;
+#if defined(DISP_VIDLE_ENABLE)
+	int sw_ver = 0;
+#endif
 
 	DPCFUNC("+");
 
@@ -3856,6 +3859,14 @@ static int mtk_dpc_probe_v3(struct platform_device *pdev)
 	if (of_property_read_u32(dev->of_node, "vidle-mask", &priv->vidle_mask)) {
 		DPCERR("failed to get vidle mask:%#x", priv->vidle_mask);
 		priv->vidle_mask = 0;
+	}
+
+	/* Vidle separate operation */
+	// A0/B0 chip discrimination
+	sw_ver = vdisp_get_chipid();
+	if(sw_ver == 0) {
+		priv->vidle_mask = (priv->vidle_mask & ~BIT(DPC_CAP_MMINFRA_PLL));
+		DPCERR("E1: No MMINFRA_QOF: %#x", priv->vidle_mask);
 	}
 
 	if (of_property_read_s32(dev->of_node, "debug-irq", &debug_irq)) {

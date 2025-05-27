@@ -1279,6 +1279,37 @@ static int mtk_vdisp_probe(struct platform_device *pdev)
 	return ret;
 }
 
+struct tag_chipid {
+	u32 size;
+	u32 hw_code;
+	u32 hw_subcode;
+	u32 hw_ver;
+	u32 sw_ver;
+};
+
+int vdisp_get_chipid(void)
+{
+	struct device_node *node = of_find_node_by_path("/chosen");
+	struct tag_chipid *chip_id = NULL;
+	int len;
+
+	if (!node)
+		node = of_find_node_by_path("/chosen@0");
+	if (!node) {
+		VDISPERR("chosen node not found in device tree");
+		return -ENODEV;
+	}
+
+	chip_id = (struct tag_chipid *)of_get_property(node, "atag,chipid", &len);
+	if (!chip_id) {
+		VDISPERR("could not found atag,chipid in chosen");
+		return -ENODEV;
+	}
+
+	return chip_id->sw_ver;
+}
+EXPORT_SYMBOL(vdisp_get_chipid);
+
 void mtk_vdisp_dpc_register(const struct dpc_funcs *funcs)
 {
 	disp_dpc_driver = *funcs;
