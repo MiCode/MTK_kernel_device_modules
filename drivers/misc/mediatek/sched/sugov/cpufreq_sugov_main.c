@@ -952,10 +952,8 @@ static bool sugov_hold_freq(struct sugov_cpu *sg_cpu)
 	* performance target comes directly from the BPF scheduler. Let's just
 	* follow it.
 	*/
-	/* TBD:need scx export symbol
 	if (scx_switched_all())
 		return false;
-	*/
 
 	/* if capped by uclamp_max, always update to be in compliance */
 	if (mtk_uclamp_rq_is_capped(cpu_rq(sg_cpu->cpu)))
