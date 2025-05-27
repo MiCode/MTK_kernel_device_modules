@@ -6711,37 +6711,12 @@ dramc: dramc@10230000 {
 		};
 		mt6319_6_regulator: mt6319-6-regulator {
 			compatible = "mediatek,mt6315_6-regulator";
-			buck-size = <4>;
+			buck-size = <1>;
 			buck1-modeset-mask = <0x1>;
-			buck3-modeset-mask = <0x4>;
 
 			mt6319_6_vbuck1: 6-vbuck1 {
 				regulator-compatible = "vbuck1";
 				regulator-name = "6_vbuck1";
-				regulator-min-microvolt = <300000>;
-				regulator-max-microvolt = <1193750>;
-				regulator-enable-ramp-delay = <256>;
-				regulator-allowed-modes = <0 1 2>;
-			};
-			mt6319_6_vbuck2: 6-vbuck2 {
-				regulator-compatible = "vbuck2";
-				regulator-name = "6_vbuck2";
-				regulator-min-microvolt = <300000>;
-				regulator-max-microvolt = <1193750>;
-				regulator-enable-ramp-delay = <256>;
-				regulator-allowed-modes = <0 1 2>;
-			};
-			mt6319_6_vbuck3: 6-vbuck3 {
-				regulator-compatible = "vbuck3";
-				regulator-name = "6_vbuck3";
-				regulator-min-microvolt = <300000>;
-				regulator-max-microvolt = <1193750>;
-				regulator-enable-ramp-delay = <256>;
-				regulator-allowed-modes = <0 1 2>;
-			};
-			mt6319_6_vbuck4: 6-vbuck4 {
-				regulator-compatible = "vbuck4";
-				regulator-name = "6_vbuck4";
 				regulator-min-microvolt = <300000>;
 				regulator-max-microvolt = <1193750>;
 				regulator-enable-ramp-delay = <256>;
