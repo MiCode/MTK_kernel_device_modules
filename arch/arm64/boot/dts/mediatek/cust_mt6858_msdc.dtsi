@@ -23,8 +23,11 @@
 	sd-uhs-sdr50;
 	sd-uhs-sdr104;
 	sd-uhs-ddr50;
+	msdc-spm-hw-supp;
+	enable-dll;
 	cd-debounce-delay-ms = <0>;
 	cd-gpios = <&pio 9 GPIO_ACTIVE_LOW>;
+	cd-gpio-num = <9>;
 	vmmc-supply = <&mt6369_vmch_eint_high>;
 	vqmmc-supply = <&mt6369_vmc>;
 	no-mmc;
