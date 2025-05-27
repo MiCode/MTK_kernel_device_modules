@@ -465,12 +465,12 @@
 		clock-frequency = <13000000>;
 	};
 
-	cpuhvfs: cpuhvfs@114400{
+	cpuhvfs: cpuhvfs@c57d400 {
 		compatible = "mediatek,cpufreq-hybrid";
-		reg = <0 0x00114400 0 0xc00>,
-			<0 0x0011bc00 0 0x1400>,
-			<0 0x00118000 0 0x800>,
-			<0 0x00114f40 0 0xc0>;
+		reg = <0 0x0c57d400 0 0xc00>,
+			<0 0x0c57c000 0 0x1400>,
+			<0 0x0c57e18c 0 0x800>,
+			<0 0x0c57df40 0 0xc0>;
 
 		reg-names = "USRAM", "CSRAM", "ESRAM";
 		cslog-range =  <0x03d0>, <0x0fa0>;
@@ -484,9 +484,12 @@
 		clk-div = <0xa2a0>, <0xa2a4>, <0xa2e0>;
 
 		/* regulator */
-		proc1-supply = <&mt6363_vbuck6>;  //L
+		proc1-supply = <&mt6363_vbuck6>;   //L
 		proc2-supply = <&mt6319_6_vbuck1>; //B
-		proc3-supply = <&mt6363_vbuck6>;  //DSU
+		proc3-supply = <&mt6363_vbuck6>;   //DSU
+
+		/* csram sysram base */
+		csram-sys-base = <&csram_sys>;
 
 		/* leakage info */
 		// nvmem-cells = <&lkginfo>;
@@ -495,7 +498,7 @@
 
 	eas_info: eas-info {
 		compatible = "mediatek,eas-info";
-		csram-base = <0x0011bc00>;
+		csram-base = <0x0c57c000>;
 	};
 
 	/* firmware: firmware { */
@@ -1319,15 +1322,15 @@
 			};
 		};
 
-		lkg: lkg@114400{
+		lkg: lkg@c57d400 {
 			compatible = "mediatek,mtk-lkg";
-			reg = <0 0x00114400 0 0xc00>;
+			reg = <0 0x0c57d400 0 0xc00>;
 		};
 
-		performance: performance-controller@11bc10 {
+		performance: performance-controller@c57c010 {
 			compatible = "mediatek,cpufreq-hw";
-			reg = <0 0x0011bc10 0 0x120>,
-					<0 0x0011bd30 0 0x120>;
+			reg = <0 0x0c57c010 0 0x120>,
+					<0 0x0c57c130 0 0x120>;
 			reg-names = "performance-domain0",
 					"performance-domain1";
 			#performance-domain-cells = <1>;
@@ -1339,6 +1342,10 @@
 
 		cpu_pll: mcusys-pll1u-top@1000c000 {
 			reg = <0 0x1000c000 0 0x1000>; /* 4KB */
+		};
+
+		csram_sys: csram-sysram@11bc00 {
+			reg = <0 0x0011bc00 0 0x1400>; /* 5KB */
 		};
 
 		devapc-ao-mm@1001c000 {
