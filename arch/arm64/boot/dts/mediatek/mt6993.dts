@@ -5704,11 +5704,13 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		};
 
 		usb_sram: usb-sram@16730000 {
-			compatible = "mediatek,usb-sram";
+			compatible = "mediatek,usb-sram", "mediatek,mt6993-usb-sram";
 			reg = <0 0x16730000 0 0x12000>;
 			block-size = <0x400>;
 			bus-clk = <0x1c200000 0xc0 0xc4 0xc8 0x08 0x08 0x0e 0xf>;
 			dcm-sel = <0x16781024 0x108>;
+			vlp-mem-clk = <0x16790344 0x1>;
+			fuse-latch = <0x167a0064 0x2>;
 			allow-request;
 		};
 
@@ -20760,7 +20762,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		xhci-host = <&usb_host>;
 		mediatek,smc-ctrl;
 		mediatek,main-sram = "usb-sram";
-		mediatek,secondary-sram = "afe-sram";
 		mediatek,reserved-sram-size = <0x4000>;
 		mediatek,ready-for-xhci;
 		mediatek,explicit-feedback;
