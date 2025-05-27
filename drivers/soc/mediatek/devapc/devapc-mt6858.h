@@ -961,12 +961,11 @@ static const struct mtk_device_info mt6858_devices_vlp[] = {
 	{-1, -1, 105, "OOB_way_en", true},
 	{-1, -1, 106, "OOB_way_en", true},
 	{-1, -1, 107, "OOB_way_en", true},
-	{-1, -1, 108, "Decode_error", true},
+	{-1, -1, 108, "Decode_error", false},
 	{-1, -1, 109, "PMIF1", false},
 	{-1, -1, 110, "PMIF2", false},
 	{-1, -1, 111, "DEVICE_APC_VLP _AO", false},
 	{-1, -1, 112, "DEVICE_APC_VLP_PDN", false},
-
 };
 
 #if ENABLE_DEVAPC_ADSP
