@@ -569,19 +569,37 @@ static s32 translate_meta(struct op_meta *meta,
 	}
 	case CMDQ_MOP_POLL:
 	{
-		u32 gpr;
-
 		reg_addr = cmdq_mdp_get_hw_reg(meta->engine, meta->offset);
 		if (!reg_addr)
 			return -EINVAL;
 
-		/* get gpr based on meta->engine */
-		gpr = cmdq_mdp_get_poll_gpr(meta->engine, reg_addr);
-		if (!gpr)
-			return -EINVAL;
+		if (cmdq_mdp_poll_sleep_support()) {
+			if (!handle->use_gpr) {
+				handle->use_gpr = cmdq_mdp_get_input_engine_gpr(handle->engineFlag);
+				if (!handle->use_gpr)
+					handle->use_gpr = cmdq_mdp_get_poll_gpr(meta->engine, reg_addr);
+				if (!handle->use_gpr)
+					return -EINVAL;
+			}
 
-		status = cmdq_op_poll_ex(handle, cmd_buf, reg_addr,
-			meta->value, meta->mask, gpr);
+			CMDQ_MSG("poll %#x val %#x mask %#x gpr %u engine flag %#llx\n",
+				reg_addr, meta->value, meta->mask, handle->use_gpr,
+				handle->engineFlag);
+			cmdq_handle_flush_cmd_buf(handle, cmd_buf);
+			status = cmdq_pkt_poll_timeout(handle->pkt, meta->value, SUBSYS_NO_SUPPORT,
+				reg_addr, meta->mask, CMDQ_US_TO_TICK(100), handle->use_gpr);
+		} else {
+			u32 gpr;
+
+			/* get gpr based on meta->engine */
+			gpr = cmdq_mdp_get_poll_gpr(meta->engine, reg_addr);
+			if (!gpr)
+				return -EINVAL;
+
+			status = cmdq_op_poll_ex(handle, cmd_buf, reg_addr,
+				meta->value, meta->mask, gpr);
+		}
+
 		break;
 	}
 	case CMDQ_MOP_WAIT:

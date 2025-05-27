@@ -2063,6 +2063,38 @@ bool mdp_eng_support_readback(u16 engine)
 	return ((1ll << engine) & CMDQ_ENG_SUPPORT_READBACK_GROUP_BITS);
 }
 
+static u16 mdp_get_input_engine_flag_gpr(u64 engine_flag)
+{
+	if (engine_flag & BIT(CMDQ_ENG_MDP_RDMA0)) {
+		if (engine_flag & (BIT(CMDQ_ENG_WPEI) | BIT(CMDQ_ENG_ISP_IMGI)))
+			CMDQ_ERR("%s input engine gpr conflict:%#llx\n",
+				__func__, engine_flag);
+		return CMDQ_GPR_R10;
+	}
+
+	if (engine_flag & BIT(CMDQ_ENG_WPEI)) {
+		if (engine_flag & (BIT(CMDQ_ENG_MDP_RDMA0) | BIT(CMDQ_ENG_ISP_IMGI)))
+			CMDQ_ERR("%s input engine gpr conflict:%#llx\n",
+				__func__, engine_flag);
+		return CMDQ_GPR_R12;
+	}
+
+	if (engine_flag & BIT(CMDQ_ENG_ISP_IMGI)) {
+		if (engine_flag & (BIT(CMDQ_ENG_MDP_RDMA0) | BIT(CMDQ_ENG_WPEI)))
+			CMDQ_ERR("%s input engine gpr conflict:%#llx\n",
+				__func__, engine_flag);
+		return CMDQ_GPR_R14;
+	}
+
+	CMDQ_ERR("%s engine not support:%#llx\n", __func__, engine_flag);
+	return CMDQ_GPR_R14;
+}
+
+static bool mdp_get_poll_sleep_support(void)
+{
+	return true;
+}
+
 void cmdq_mdp_platform_function_setting(void)
 {
 	struct cmdqMDPFuncStruct *pFunc = cmdq_mdp_get_func();
@@ -2121,5 +2153,7 @@ void cmdq_mdp_platform_function_setting(void)
 	pFunc->getRegMSBOffset = mdp_get_reg_msb_offset;
 	pFunc->mdpIsCaminSupport = mdp_check_camin_support_virtual;
 	pFunc->mdpSvpSupportMetaData = mdp_svp_support_meta_data;
+	pFunc->mdpGetInputEngineFlagGpr = mdp_get_input_engine_flag_gpr;
+	pFunc->mdpGetPollSleepSupport = mdp_get_poll_sleep_support;
 }
 MODULE_LICENSE("GPL");

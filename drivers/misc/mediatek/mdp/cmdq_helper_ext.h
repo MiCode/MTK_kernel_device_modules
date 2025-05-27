@@ -694,6 +694,7 @@ struct cmdqRecStruct {
 	u32 mdp_extension;
 	struct mdp_readback_engine readback_engs[CMDQ_MAX_READBACK_ENG];
 	u32 readback_cnt;
+	u16 use_gpr;
 
 	struct cmdqSecDataStruct secData;	/* secure execution data */
 	void *sec_isp_msg1;

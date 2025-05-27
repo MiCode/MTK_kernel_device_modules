@@ -3860,6 +3860,16 @@ static bool mdp_svp_support_meta_data_virtual(void)
 	return true;
 }
 
+static u16 mdp_get_input_engine_flag_gpr_virtual(u64 engine_flag)
+{
+	return 0;
+}
+
+static bool mdp_get_poll_sleep_support_virtual(void)
+{
+	return false;
+}
+
 void cmdq_mdp_virtual_function_setting(void)
 {
 	struct cmdqMDPFuncStruct *pFunc;
@@ -3947,7 +3957,8 @@ void cmdq_mdp_virtual_function_setting(void)
 	pFunc->mdpGetReadbackEventUnlock = mdp_get_rb_event_unlock;
 	pFunc->mdpGetPollGpr = mdp_get_poll_gpr_dummy;
 	pFunc->mdpIsEngineSupportReadback = mdp_is_eng_support_readback_virtual;
-
+	pFunc->mdpGetInputEngineFlagGpr = mdp_get_input_engine_flag_gpr_virtual;
+	pFunc->mdpGetPollSleepSupport = mdp_get_poll_sleep_support_virtual;
 }
 
 struct cmdqMDPFuncStruct *cmdq_mdp_get_func(void)
@@ -4932,6 +4943,16 @@ void cmdq_mdp_vcp_pq_readback(struct cmdqRecStruct *handle, u16 engine,
 u32 cmdq_mdp_get_poll_gpr(u16 engine, u32 reg_addr)
 {
 	return cmdq_mdp_get_func()->mdpGetPollGpr(engine, reg_addr);
+}
+
+u32 cmdq_mdp_get_input_engine_gpr(u64 engine_flag)
+{
+	return cmdq_mdp_get_func()->mdpGetInputEngineFlagGpr(engine_flag);
+}
+
+bool cmdq_mdp_poll_sleep_support(void)
+{
+	return cmdq_mdp_get_func()->mdpGetPollSleepSupport();
 }
 
 #ifdef MDP_COMMON_ENG_SUPPORT
