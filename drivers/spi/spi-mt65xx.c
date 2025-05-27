@@ -229,6 +229,22 @@ static const struct mtk_spi_compatible mt2712_compat = {
 	.must_tx = true,
 };
 
+static const struct mtk_spi_compatible mt6858_compat = {
+	.need_pad_sel = true,
+	.must_rx = false,
+	.must_tx = false,
+	.enhance_timing = true,
+	.dma_ext = true,
+	.ipm_design = true,
+	.support_quad = true,
+	.sw_cs = true,
+	.enhance_packet_len = true,
+	.slice_en = false,
+	.dummy_cycle = true,
+	.infra_req = false,
+	.hw_reset = true,
+};
+
 static const struct mtk_spi_compatible mt6899_compat = {
 	.need_pad_sel = true,
 	.must_rx = false,
@@ -383,6 +399,9 @@ static const struct of_device_id mtk_spi_of_match[] = {
 	},
 	{ .compatible = "mediatek,mt6899-spi",
 		.data = (void *)&mt6899_compat,
+	},
+	{ .compatible = "mediatek,mt6858-spi",
+		.data = (void *)&mt6858_compat,
 	},
 	{}
 };
