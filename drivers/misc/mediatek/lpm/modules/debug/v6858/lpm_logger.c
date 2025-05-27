@@ -36,11 +36,10 @@
 #define PCM_32K_TICKS_PER_SEC		(32768)
 #define PCM_TICK_TO_SEC(TICK)	(TICK / PCM_32K_TICKS_PER_SEC)
 
-#define SPM_HW_CG_CHECK_MASK (0x1)
-#define SPM_HW_CG_CHECK_MASK1 (0x7F)
-#define SPM_HW_CG_CHECK_SHIFT (31)
+#define SPM_HW_CG_CHECK_MASK (0xFF)
+#define SPM_HW_CG_CHECK_SHIFT (19)
 
-#define SPM_REQ_STA_NUM (((SPM_REQ_STA_12 - SPM_REQ_STA_0) / 4) + 1)
+#define SPM_REQ_STA_NUM (((SPM_REQ_STA_13 - SPM_REQ_STA_0) / 4) + 1)
 
 #define plat_mmio_read(offset)	__raw_readl(lpm_spm_base + offset)
 
@@ -62,19 +61,19 @@ const char *wakesrc_str[32] = {
 	[14] = " R12_USB_CDSC_B",
 	[15] = " R12_USB_POWERDWN_B",
 	[16] = " R12_RESERVED_BIT",
-	[17] = " R12_UART2SPM_IRQ_B",
+	[17] = " R12_ERROR_FLAG_WDT_IRQ_B",
 	[18] = " R12_SYSTIMER_EVENT_B",
 	[19] = " R12_EINT_EVENT_SECURED",
 	[20] = " R12_AFE_IRQ_MCU_B",
 	[21] = " R12_THERM_CTRL_EVENT_B",
 	[22] = " R12_SYS_CIRQ_IRQ_B",
-	[23] = " R12_MD2AP_PEER_EVENT_B",
+	[23] = " R12_RESERVED_BIT",
 	[24] = " R12_CSYSPWREQ_B",
 	[25] = " R12_MD1_WDT_B",
 	[26] = " R12_AP2AP_PEER_WAKEUPEVENT_B",
 	[27] = " R12_SEJ_EVENT_B",
 	[28] = " R12_SPM_CPU_WAKEUPEVENT_B",
-	[29] = " R12_APUSYS_WAKE_HOST",
+	[29] = " R12_RESERVED_BIT",
 	[30] = " R12_PERI_WAKEUPEVENT_B",
 	[31] = " R12_RESERVED_BIT",
 };
@@ -389,15 +388,15 @@ static char *pwr_ctrl_str[PW_MAX_COUNT] = {
 };
 
 struct subsys_req plat_subsys_req[] = {
-	{"md", SPM_REQ_STA_9, (0xFF << 24), SPM_REQ_STA_10, 0x1, 0},
-	{"conn", SPM_REQ_STA_4, (0x1FF << 7), 0, 0, 0},
-	{"disp", SPM_REQ_STA_4, (0x7F << 23), 0, 0, 0},
-	{"scp", SPM_REQ_STA_10, (0x1 << 31), SPM_REQ_STA_11, 0x7F, 0},
-	{"ufs", SPM_REQ_STA_11, (0x1F << 27), SPM_REQ_STA_12, 0x3, 0},
+	{"md", SPM_REQ_STA_10, (0xFF << 24), SPM_REQ_STA_11, 0x1, 0},
+	{"conn", SPM_REQ_STA_4, (0x1F << 27), SPM_REQ_STA_5, 0xF, 0},
+	{"disp", SPM_REQ_STA_5, (0x3FFF << 11), 0, 0, 0},
+	{"scp", SPM_REQ_STA_11, (0x1 << 31), SPM_REQ_STA_12, 0x7F, 0},
+	{"ufs", SPM_REQ_STA_12, (0x1F << 27), SPM_REQ_STA_13, 0x7, 0},
 	{"apu", SPM_REQ_STA_0, 0x7F, 0, 0, 0},
-	{"gce_d", SPM_REQ_STA_6, (0x7F << 19), 0, 0, 0},
-	{"gce_m", SPM_REQ_STA_6, (0x3F << 26), SPM_REQ_STA_7, 0x1, 0},
-	{"srclkeni", SPM_REQ_STA_11, (0x7 << 7), 0, 0, 0},
+	{"gce_d", SPM_REQ_STA_7, (0x7F << 7), 0, 0, 0},
+	{"gce_m", SPM_REQ_STA_7, (0x7F << 14), 0, 0, 0},
+	{"srclkeni", SPM_REQ_STA_12, (0x3F << 7), 0, 0, 0},
 	{"spm", SPM_SRC_REQ, 0x18F6, 0, 0, 0},
 };
 
@@ -467,11 +466,11 @@ static int lpm_get_wakeup_status(void)
 	help->wakesrc->req_sta10 = plat_mmio_read(SPM_REQ_STA_10);
 	help->wakesrc->req_sta11 = plat_mmio_read(SPM_REQ_STA_11);
 	help->wakesrc->req_sta12 = plat_mmio_read(SPM_REQ_STA_12);
+	help->wakesrc->req_sta13 = plat_mmio_read(SPM_REQ_STA_13);
 
 	/* get HW CG check status */
 	help->wakesrc->cg_check_sta =
-		(((plat_mmio_read(SPM_REQ_STA_3) >> SPM_HW_CG_CHECK_SHIFT) & SPM_HW_CG_CHECK_MASK)|
-		((plat_mmio_read(SPM_REQ_STA_4)& SPM_HW_CG_CHECK_MASK1) << 1));
+		(((plat_mmio_read(SPM_REQ_STA_4) >> SPM_HW_CG_CHECK_SHIFT) & SPM_HW_CG_CHECK_MASK));
 
 	/* get debug flag for PCM execution check */
 	help->wakesrc->debug_flag = plat_mmio_read(PCM_WDT_LATCH_SPARE_0);
@@ -699,12 +698,12 @@ static int lpm_show_message(int type, const char *prefix, void *data)
 
 		log_size += scnprintf(log_buf + log_size,
 			  LOG_BUF_OUT_SZ - log_size,
-			  "req_sta =  0x%x 0x%x 0x%x 0x%x | 0x%x 0x%x 0x%x 0x%x | 0x%x 0x%x 0x%x 0x%x | 0x%x, ",
+			  "req_sta =  0x%x 0x%x 0x%x 0x%x | 0x%x 0x%x 0x%x 0x%x | 0x%x 0x%x 0x%x 0x%x | 0x%x 0x%x, ",
 			  wakesrc->req_sta0, wakesrc->req_sta1, wakesrc->req_sta2,
 			  wakesrc->req_sta3, wakesrc->req_sta4, wakesrc->req_sta5,
 			  wakesrc->req_sta6, wakesrc->req_sta7, wakesrc->req_sta8,
 			  wakesrc->req_sta9, wakesrc->req_sta10, wakesrc->req_sta11,
-			  wakesrc->req_sta12);
+			  wakesrc->req_sta12, wakesrc->req_sta13);
 
 		log_size += scnprintf(log_buf + log_size,
 			  LOG_BUF_OUT_SZ - log_size,
