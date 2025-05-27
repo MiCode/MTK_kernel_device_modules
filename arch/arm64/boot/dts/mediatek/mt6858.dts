@@ -396,6 +396,15 @@
 		chg-supply = <&mt6720_chg>;
 	};
 
+	nfc:nfc {
+	};
+
+	dsi_te:dsi-te {
+	};
+
+	mrdump_ext_rst: mrdump-ext-rst {
+	};
+
 	subpmic_pmu_eint: subpmic-pmu-eint {
 
 	};
@@ -4045,6 +4054,9 @@ dramc: dramc@10230000 {
 						<GIC_SPI 586 IRQ_TYPE_LEVEL_HIGH 0>; // virt irq
 				reg = <0 0x1c034000 0 0x1000>; //CNTBase0
 			};
+		};
+
+		smart_pa: smart-pa {
 		};
 
 		scp_clk_ctrl_vlp: scp-clk-ctrl-vlp@1c00c92c {

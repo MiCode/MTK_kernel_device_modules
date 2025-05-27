@@ -34,6 +34,7 @@
 };
 
 
+#include <k6858v1_64/cust.dtsi>
 #include "mediatek/cust_mt6858_camera_v4l2.dtsi"
 #include "mediatek/cust_mt6858_camera.dtsi"
 #include "mediatek/cust_mt6858_touch_1080x2400.dtsi"
