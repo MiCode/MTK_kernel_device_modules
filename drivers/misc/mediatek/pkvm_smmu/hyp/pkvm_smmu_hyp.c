@@ -1802,7 +1802,7 @@ void mtk_smmu_free_domain(struct kvm_hyp_iommu_domain *domain)
 }
 
 static int mtk_smmu_attach_dev(struct kvm_hyp_iommu *iommu, struct kvm_hyp_iommu_domain *domain,
-			   u32 sid, u32 pasid, u32 pasid_bits)
+			   u32 sid, u32 pasid, u32 pasid_bits, unsigned long flags)
 {
 	return 0;
 }
