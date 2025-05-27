@@ -869,6 +869,7 @@ static void mtk_drm_vidle_control(struct drm_crtc *crtc, bool enable)
 {
 	struct mtk_drm_private *priv = NULL;
 	static bool vidle_status;
+	bool is_ff_enabled = false;
 
 	if (crtc == NULL || crtc->dev == NULL)
 		return;
@@ -881,8 +882,9 @@ static void mtk_drm_vidle_control(struct drm_crtc *crtc, bool enable)
 		!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_HOME_SCREEN_IDLE))
 		return;
 
-	DDPINFO("%s, enable:%d, vidle:%d, ff:%d\n", __func__, enable, vidle_status, mtk_vidle_is_ff_enabled());
-	if (enable && !mtk_vidle_is_ff_enabled() && !vidle_status) {
+	is_ff_enabled = mtk_vidle_is_ff_enabled();
+	DDPINFO("%s, enable:%d, vidle:%d, ff:%d\n", __func__, enable, vidle_status, is_ff_enabled);
+	if (enable && !is_ff_enabled && !vidle_status) {
 		CRTC_MMP_MARK((int)drm_crtc_index(crtc), enter_vidle, 0x1d1e, enable);
 		mtk_vidle_enable(true, priv);
 		mtk_vidle_force_enable_mml(true);
@@ -1359,13 +1361,17 @@ void mtk_drm_idlemgr_kick_async(struct drm_crtc *crtc)
 	// wake_up_interruptible is very expensive,
 	// skip wake_up_interruptible if no need.
 	idlemgr_ctx = idlemgr->idlemgr_ctx;
-	mutex_lock(&idlemgr_ctx->idle_check_lock);
-	if (!idlemgr_ctx->is_idle) {
-		idlemgr_ctx->idlemgr_last_kick_time = sched_clock();
+	// since we do not want to block caller when the
+	// lock is hold by idlemgr that is entering idle,
+	// just let kick_wq to handle the kick event.
+	if (mutex_trylock(&idlemgr_ctx->idle_check_lock)) {
+		if (!idlemgr_ctx->is_idle) {
+			idlemgr_ctx->idlemgr_last_kick_time = sched_clock();
+			mutex_unlock(&idlemgr_ctx->idle_check_lock);
+			return;
+		}
 		mutex_unlock(&idlemgr_ctx->idle_check_lock);
-		return;
 	}
-	mutex_unlock(&idlemgr_ctx->idle_check_lock);
 
 	atomic_set(&idlemgr->kick_task_active, 1);
 	wake_up_interruptible(&idlemgr->kick_wq);

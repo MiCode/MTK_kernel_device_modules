@@ -78,6 +78,17 @@ extern int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...);
 #define SPM_REQ_MMINFRA_STATE_MT6899  BIT(19)
 #define SPM_REQ_MAINPLL_STATE_MT6899  BIT(22)
 
+/* mt6858 private registers */
+#define SPM_PWR_STATUS_MT6858 0xf3C
+#define SPM_PWR_FLD_DISP_VCORE_MASK_MT6858   BIT(27)
+#define SPM_PWR_FLD_MMINFRA_MASK_MT6858      BIT(29)
+
+#define SPM_REQ_STA_4_MT6858 0x868
+#define SPM_REQ_APSRC_STATE_MT6858    BIT(11)
+#define SPM_REQ_EMI_STATE_MT6858      BIT(13)
+#define SPM_REQ_INFRA_STATE_MT6858    BIT(14)
+#define SPM_REQ_MAINPLL_STATE_MT6858  BIT(17)
+
 /* common registers*/
 #define VCORE_DVFSRC_HRT_BW_MASK      0x3FF
 #define VCORE_DVFSRC_SRT_BW_MASK      0xFFC

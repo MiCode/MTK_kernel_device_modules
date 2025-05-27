@@ -13065,6 +13065,9 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			dur_line = 1000000000UL / fps / vtotal;
 			dur_vblank = dur_line * vfp_low_power / 1000;
 			dur_frame = dur_line * vtotal_lowpower / 1000;
+			DDPMSG("%s, cmd:%d idle+ vidle update DT, dur:%uus,%uus, fps:%u, vtotal:%d->%d\n",
+				__func__, cmd, dur_frame, dur_vblank,
+				fps, vtotal, vtotal_lowpower);
 			if (mtk_vidle_update_dt_by_period(&crtc->base, dur_frame, dur_vblank) < 0)
 				DDPMSG("%s, cmd:%d idle+ vidle err, dur:%uus,%uus, fps:%u, vtotal:%d->%d\n",
 					__func__, cmd, dur_frame, dur_vblank,
@@ -13159,6 +13162,8 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			dur_vblank = dur_line * vfp / 1000;
 			dur_frame = 1000000 / fps;
 
+			DDPMSG("%s, cmd:%d idle- vidle update DT, fps:%u, dur:%uus,%uus\n",
+				__func__, cmd, fps, dur_frame, dur_vblank);
 			if (mtk_vidle_update_dt_by_period(&(crtc->base), dur_frame, dur_vblank) < 0)
 				DDPMSG("%s, cmd:%d idle- vidle err, fps:%u, dur:%uus,%uus\n",
 					__func__, cmd, fps, dur_frame, dur_vblank);

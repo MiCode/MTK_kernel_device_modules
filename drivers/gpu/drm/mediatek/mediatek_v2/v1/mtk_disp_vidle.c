@@ -98,8 +98,7 @@ void mtk_vidle_flag_init(void *_crtc)
 		DDPMSG("%s, lcm is not connected\n", __func__);
 	else if (mtk_dsi_is_cmd_mode(output_comp))
 		type = PANEL_TYPE_CMD;
-	else if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_FULL_SCENARIO) ||
-		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_VDO_PANEL))
+	else if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_VDO_PANEL))
 		type = PANEL_TYPE_VDO;
 	else
 		DDPMSG("%s, invalid panel type:%d\n", __func__, type);
@@ -452,12 +451,12 @@ int mtk_vidle_update_dt_v1_by_type(void *_crtc, enum mtk_panel_type type)
 	if (ret < 0 &&
 		!(mtk_disp_vidle_flag.vidle_stop & VIDLE_STOP_VDO_HIGH_FPS)) {
 		mtk_set_vidle_stop_flag(VIDLE_STOP_VDO_HIGH_FPS, 1);
-		DDPINFO("%s forbid vidle mode, panel:%d, dur_frame:%u, dur_vb:%uus, flag:0x%x\n",
+		DDPMSG("%s forbid vidle mode, panel:%d, dur_frame:%u, dur_vb:%uus, flag:0x%x\n",
 			__func__, type, dur_frame, dur_vblank, mtk_disp_vidle_flag.vidle_stop);
 	} else if (ret >= 0 &&
 		(mtk_disp_vidle_flag.vidle_stop & VIDLE_STOP_VDO_HIGH_FPS)) {
 		mtk_set_vidle_stop_flag(VIDLE_STOP_VDO_HIGH_FPS, 0);
-		DDPINFO("%s allow vidle mode, panel:%d, dur_frame:%u, dur_vb:%uus, flag:0x%x\n",
+		DDPMSG("%s allow vidle mode, panel:%d, dur_frame:%u, dur_vb:%uus, flag:0x%x\n",
 			__func__, type, dur_frame, dur_vblank, mtk_disp_vidle_flag.vidle_stop);
 	}
 

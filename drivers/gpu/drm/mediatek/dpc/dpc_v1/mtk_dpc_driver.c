@@ -493,6 +493,7 @@ static struct mtk_dpc_dt_usage mt6878_mml_cmd_dt_usage[DPC_MML_DT_CNT] = {
 static unsigned int mt6989_get_sys_status(enum dpc_sys_status_id, unsigned int *status);
 static unsigned int mt6878_get_sys_status(enum dpc_sys_status_id, unsigned int *status);
 static unsigned int mt6899_get_sys_status(enum dpc_sys_status_id, unsigned int *status);
+static unsigned int mt6858_get_sys_status(enum dpc_sys_status_id, unsigned int *status);
 
 static struct mtk_dpc mt6989_dpc_driver_data = {
 	.mmsys_id = MMSYS_MT6989,
@@ -533,9 +534,22 @@ static struct mtk_dpc mt6899_dpc_driver_data = {
 	.mtcmos_mask = 0x1f,
 };
 
+static struct mtk_dpc mt6858_dpc_driver_data = {
+	.mmsys_id = MMSYS_MT6858,
+	.disp_cmd_dt_usage = mt6878_disp_cmd_dt_usage,
+	.mml_cmd_dt_usage = mt6878_mml_cmd_dt_usage,
+	.disp_vdo_dt_usage = mt6878_disp_vdo_dt_usage,
+	.mml_vdo_dt_usage = mt6878_mml_vdo_dt_usage,
+	.get_sys_status = mt6858_get_sys_status,
+	.mmdvfs_power_sync = false,
+	.mmdvfs_settings_addr = mt6878_mmdvfs_settings_addr,
+	.mmdvfs_settings_count = 0, //pending by mmdvfs ready
+	.mtcmos_mask = 0x3f,
+};
+
 static void _dpc_analysis(bool detail);
 static void mtk_disp_enable_gce_vote(bool enable);
-static void dpc_mtcmos_vote_v1(const enum mtk_dpc_subsys subsys, const u8 thread, const bool en);
+static void dpc_mtcmos_vote_v1(const u32 subsys, const u8 thread, const bool en);
 
 static const struct dpc_funcs funcs_v1;
 
@@ -621,7 +635,7 @@ static void mtk_dpc_dump_caps(void)
 	DPCDUMP("vidle mask:0x%x%s", g_priv->vidle_mask, buf);
 }
 
-static unsigned int mtk_dpc_get_vidle_mask(const enum mtk_dpc_subsys subsys, bool en)
+static unsigned int mtk_dpc_get_vidle_mask(const u32 subsys, bool en)
 {
 	unsigned int mask = 0x0;
 
@@ -717,7 +731,7 @@ static inline bool dpc_pm_check_and_get(void)
 	return pm_runtime_get_if_in_use(g_priv->pd_dev) > 0 ? true : false;
 }
 
-static int mtk_disp_wait_pwr_ack(const enum mtk_dpc_subsys subsys)
+static int mtk_disp_wait_pwr_ack(const u32 subsys)
 {
 	int ret = 0;
 	u32 value = 0;
@@ -879,6 +893,79 @@ static unsigned int mt6878_get_sys_status(enum dpc_sys_status_id id, unsigned in
 		mask = SPM_REQ_EMI_STATE_MT6878;
 		if (g_priv->sys_va[SPM_BASE])
 			addr = g_priv->sys_va[SPM_BASE] + SPM_REQ_STA_4_MT6878;
+		break;
+	case SYS_STATE_HRT_BW:
+		mask = VCORE_DVFSRC_HRT_BW_MASK;
+		if (g_priv->sys_va[VCORE_DVFSRC_DEBUG])
+			addr = g_priv->sys_va[VCORE_DVFSRC_DEBUG];
+		break;
+	case SYS_STATE_SRT_BW:
+		mask = VCORE_DVFSRC_SRT_BW_MASK;
+		if (g_priv->sys_va[VCORE_DVFSRC_DEBUG])
+			addr = g_priv->sys_va[VCORE_DVFSRC_DEBUG];
+		break;
+	case SYS_STATE_VLP_VOTE:
+		break;
+#ifdef ENABLE_DEVAPC_PERMISSION_OF_HFRP
+	case SYS_STATE_VDISP_DVFS:
+		mask = 0x3;
+		if (g_priv->sys_va[VDISP_DVFSRC_DEBUG])
+			addr = g_priv->sys_va[VDISP_DVFSRC_DEBUG];
+		break;
+#endif
+	case SYS_VALUE_VDISP_DVFS_LEVEL:
+		if (!dbg_vdisp_level)
+			return 0;
+		mask = 0x1c;
+		if (g_priv->sys_va[VDISP_DVFSRC_DEBUG])
+			addr = g_priv->sys_va[VDISP_DVFSRC_DEBUG];
+		break;
+	default:
+		return 0;
+	}
+
+	if (addr == NULL)
+		return 0;
+
+	value = readl(addr);
+	if (status)
+		*status = value;
+
+	return (value & mask);
+}
+
+static unsigned int mt6858_get_sys_status(enum dpc_sys_status_id id, unsigned int *status)
+{
+	unsigned int mask = 0, value = 0;
+	void __iomem *addr = NULL;
+
+	switch (id) {
+	case SYS_POWER_ACK_MMINFRA:
+		mask = SPM_PWR_FLD_MMINFRA_MASK_MT6858;
+		if (g_priv->sys_va[SPM_BASE])
+			addr = g_priv->sys_va[SPM_BASE] + SPM_PWR_STATUS_MT6858;
+		break;
+	case SYS_POWER_ACK_DISP1_SUBSYS:
+	case SYS_POWER_ACK_MML1_SUBSYS:
+	case SYS_POWER_ACK_DPC:
+		mask = SPM_PWR_FLD_DISP_VCORE_MASK_MT6858;
+		if (g_priv->sys_va[SPM_BASE])
+			addr = g_priv->sys_va[SPM_BASE] + SPM_PWR_STATUS_MT6858;
+		break;
+	case SYS_STATE_MMINFRA:
+		mask = SPM_REQ_INFRA_STATE_MT6858;
+		if (g_priv->sys_va[SPM_BASE])
+			addr = g_priv->sys_va[SPM_BASE] + SPM_REQ_STA_4_MT6858;
+		break;
+	case SYS_STATE_APSRC:
+		mask = SPM_REQ_APSRC_STATE_MT6858;
+		if (g_priv->sys_va[SPM_BASE])
+			addr = g_priv->sys_va[SPM_BASE] + SPM_REQ_STA_4_MT6858;
+		break;
+	case SYS_STATE_EMI:
+		mask = SPM_REQ_EMI_STATE_MT6858;
+		if (g_priv->sys_va[SPM_BASE])
+			addr = g_priv->sys_va[SPM_BASE] + SPM_REQ_STA_4_MT6858;
 		break;
 	case SYS_STATE_HRT_BW:
 		mask = VCORE_DVFSRC_HRT_BW_MASK;
@@ -1473,7 +1560,7 @@ static void mtk_update_dpc_state(unsigned int mask, bool off)
 	spin_unlock_irqrestore(&dpc_state_lock, flags);
 }
 
-static void dpc_update_group_auto_state(const enum mtk_dpc_subsys subsys, const bool en, unsigned int flag)
+static void dpc_update_group_auto_state(const u32 subsys, const bool en, unsigned int flag)
 {
 	if (MTK_DPC_OF_DISP_SUBSYS(subsys)) {
 		if (en)
@@ -1498,7 +1585,7 @@ static void dpc_update_group_auto_state(const enum mtk_dpc_subsys subsys, const 
 	}
 }
 
-static void dpc_update_mtcmos_auto_state(const enum mtk_dpc_subsys subsys, const bool en, unsigned int flag)
+static void dpc_update_mtcmos_auto_state(const u32 subsys, const bool en, unsigned int flag)
 {
 	if (MTK_DPC_OF_DISP_SUBSYS(subsys)) {
 		if (en)
@@ -1728,7 +1815,7 @@ static void dpc_dsi_pll_set_v1(const u32 value)
 	}
 }
 
-static void dpc_irq_enable(const enum mtk_dpc_subsys subsys, bool en, bool manual)
+static void dpc_irq_enable(const u32 subsys, bool en, bool manual)
 {
 	u32 mask = 0;
 
@@ -1944,7 +2031,7 @@ static void dpc_mml_vidle_pause(bool en)
 	}
 }
 
-static void dpc_ddr_force_enable_v1(const enum mtk_dpc_subsys subsys, const bool en)
+static void dpc_ddr_force_enable_v1(const u32 subsys, const bool en)
 {
 	u32 addr = 0;
 	u32 value = en ? 0x000D000D : 0x00050005;
@@ -1972,7 +2059,7 @@ static void dpc_ddr_force_enable_v1(const enum mtk_dpc_subsys subsys, const bool
 	dpc_pm_ctrl(false, __func__);
 }
 
-static void dpc_infra_force_enable_v1(const enum mtk_dpc_subsys subsys, const bool en)
+static void dpc_infra_force_enable_v1(const u32 subsys, const bool en)
 {
 	u32 addr = 0;
 	u32 value = en ? 0x00181818 : 0x00080808;
@@ -2171,7 +2258,7 @@ static void dpc_init_panel_type_v1(enum mtk_panel_type type)
 	DPCDUMP("type:%d", g_panel_type);
 }
 
-static int dpc_enable_vcp(bool en, const enum mtk_dpc_subsys subsys)
+static int dpc_enable_vcp(bool en, const u32 subsys)
 {
 	u32 mmdvfs_user;
 
@@ -2340,7 +2427,7 @@ out:
 			atomic_read(&g_priv->dpc_en_cnt), atomic_read(&g_vidle_window));
 }
 
-static void dpc_hrt_bw_set_v1(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb, bool force)
+static void dpc_hrt_bw_set_v1(const u32 subsys, const u32 bw_in_mb, bool force)
 {
 	u32 addr1 = 0, addr2 = 0, avail = 0;
 	static u32 disp_bw, mml_bw;
@@ -2385,7 +2472,7 @@ out:
 	dpc_pm_ctrl(false, __func__);
 }
 
-static void dpc_srt_bw_set_v1(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb, bool force)
+static void dpc_srt_bw_set_v1(const u32 subsys, const u32 bw_in_mb, bool force)
 {
 	u32 addr1 = 0, addr2 = 0, avail = 0;
 	static u32 disp_bw, mml_bw;
@@ -2535,7 +2622,7 @@ out:
 }
 #endif
 
-static int vdisp_level_set_vcp(const enum mtk_dpc_subsys subsys, const u8 level, bool mmdvfs_state)
+static int vdisp_level_set_vcp(const u32 subsys, const u8 level, bool mmdvfs_state)
 {
 	u32 addr = 0;
 	u32 state = 0, value = 0, count = 0;
@@ -2600,7 +2687,7 @@ static int vdisp_level_set_vcp(const enum mtk_dpc_subsys subsys, const u8 level,
 
 #define DPC_VDISP_LEVEL_IGNORE  (0xFF)
 #define DPC_SUBSYS_VDISP_LEVEL_OF_BW  (DPC_SUBSYS_DISP)
-static u8 dpc_max_dvfs_level(const enum mtk_dpc_subsys subsys)
+static u8 dpc_max_dvfs_level(const u32 subsys)
 {
 	u8 max_level = 0;
 	u32 addr;
@@ -2691,7 +2778,7 @@ u8 dpc_dvfs_bw_to_level(const u32 bw_in_mb)
 	return bw_level;
 }
 
-static void dpc_dvfs_set_v1(const enum mtk_dpc_subsys subsys, const u8 level, bool force)
+static void dpc_dvfs_set_v1(const u32 subsys, const u8 level, bool force)
 {
 	u32 addr = 0, avail = 0;
 	u32 mmdvfs_user = U32_MAX;
@@ -2792,7 +2879,7 @@ out:
 	dpc_pm_ctrl(false, __func__);
 }
 
-static void dpc_channel_bw_set_by_idx(const enum mtk_dpc_subsys subsys, const u8 idx, const u32 bw_in_mb)
+static void dpc_channel_bw_set_by_idx(const u32 subsys, const u8 idx, const u32 bw_in_mb)
 {
 	u8 max_bw_level, last_bw_level;
 	u32 last_bw = 0;
@@ -2876,7 +2963,7 @@ out:
 	dpc_pm_ctrl(false, __func__);
 }
 
-static void dpc_dvfs_bw_set_v1(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb)
+static void dpc_dvfs_bw_set_v1(const u32 subsys, const u32 bw_in_mb)
 {
 	u8 max_bw_level, last_bw_level;
 	u32 total_bw = 0;
@@ -2947,7 +3034,7 @@ out:
 	dpc_pm_ctrl(false, __func__);
 }
 
-static void dpc_dvfs_both_set_v1(const enum mtk_dpc_subsys subsys, const u8 level, bool force,
+static void dpc_dvfs_both_set_v1(const u32 subsys, const u8 level, bool force,
 	const u32 bw_in_mb)
 {
 	u32 addr = 0, avail = 0, total_bw = 0;
@@ -3084,7 +3171,7 @@ void dpc_group_enable_func(const u16 group, bool en, bool lock)
 	dpc_pm_ctrl(false, __func__);
 }
 
-static void dpc_pause_v1(const enum mtk_dpc_subsys subsys, bool en)
+static void dpc_pause_v1(const u32 subsys, bool en)
 {
 	unsigned long flags = 0;
 
@@ -3194,7 +3281,7 @@ out:
 		DPCDUMP("subsys:%d, en:%d", subsys, en);
 }
 
-static void dpc_mtcmos_auto_v1(const enum mtk_dpc_subsys subsys, const enum mtk_dpc_mtcmos_mode mode)
+static void dpc_mtcmos_auto_v1(const u32 subsys, const enum mtk_dpc_mtcmos_mode mode)
 {
 	unsigned long flags = 0;
 	bool en = (mode == DPC_MTCMOS_AUTO) ? true : false;
@@ -3236,7 +3323,7 @@ out:
 		DPCDUMP("subsys:%d, en:%d", subsys, en);
 }
 
-static void dpc_config_v1(const enum mtk_dpc_subsys subsys, bool en)
+static void dpc_config_v1(const u32 subsys, bool en)
 {
 	unsigned int mask = 0x0;
 	unsigned long flags = 0;
@@ -3439,7 +3526,7 @@ out:
 			subsys, en, atomic_read(&is_mminfra_ctrl_by_dpc));
 }
 
-static void dpc_mtcmos_vote_v1(const enum mtk_dpc_subsys subsys, const u8 thread, const bool en)
+static void dpc_mtcmos_vote_v1(const u32 subsys, const u8 thread, const bool en)
 {
 	static u32 st_ovl0, st_disp1, st_mml1;
 	u32 addr = 0, val;
@@ -3986,6 +4073,9 @@ static void mtk_disp_vlp_vote_by_cpu_v1(unsigned int vote_set, unsigned int thre
 static void dpc_vidle_power_keep_by_gce_v1(struct cmdq_pkt *pkt, const enum mtk_vidle_voter_user user,
 					   const u16 gpr, void *reuse)
 {
+	if (mtk_dpc_support_cap(DPC_VIDLE_MTCMOS_OFF) == 0)
+		return;
+
 	mtk_disp_vlp_vote_by_gce_v1(pkt, VOTE_SET, user);
 	if (gpr)
 		cmdq_pkt_poll_timeout_reuse(pkt, 0xb, SUBSYS_NO_SUPPORT,
@@ -3996,12 +4086,18 @@ static void dpc_vidle_power_keep_by_gce_v1(struct cmdq_pkt *pkt, const enum mtk_
 static void dpc_vidle_power_release_by_gce_v1(struct cmdq_pkt *pkt, const enum mtk_vidle_voter_user user,
 					      void *reuse)
 {
+	if (mtk_dpc_support_cap(DPC_VIDLE_MTCMOS_OFF) == 0)
+		return;
+
 	mtk_disp_vlp_vote_by_gce_v1(pkt, VOTE_CLR, user);
 }
 
 static int dpc_vidle_power_keep_v1(const enum mtk_vidle_voter_user user)
 {
 	unsigned long flags = 0;
+
+	if (mtk_dpc_support_cap(DPC_VIDLE_MTCMOS_OFF) == 0)
+		return 0;
 
 	spin_lock_irqsave(&g_priv->skip_force_power_lock, flags);
 	if (unlikely(g_priv->skip_force_power)) {
@@ -4028,6 +4124,9 @@ static int dpc_vidle_power_keep_v1(const enum mtk_vidle_voter_user user)
 static void dpc_vidle_power_release_v1(const enum mtk_vidle_voter_user user)
 {
 	unsigned long flags = 0;
+
+	if (mtk_dpc_support_cap(DPC_VIDLE_MTCMOS_OFF) == 0)
+		return;
 
 	spin_lock_irqsave(&g_priv->skip_force_power_lock, flags);
 	if (unlikely(g_priv->skip_force_power)) {
@@ -4489,6 +4588,7 @@ static const struct of_device_id mtk_dpc_driver_v1_dt_match[] = {
 	{.compatible = "mediatek,mt6989-disp-dpc-v1", .data = &mt6989_dpc_driver_data},
 	{.compatible = "mediatek,mt6878-disp-dpc-v1", .data = &mt6878_dpc_driver_data},
 	{.compatible = "mediatek,mt6899-disp-dpc-v1", .data = &mt6899_dpc_driver_data},
+	{.compatible = "mediatek,mt6858-disp-dpc-v1", .data = &mt6858_dpc_driver_data},
 	{},
 };
 MODULE_DEVICE_TABLE(of, mtk_dpc_driver_v1_dt_match);
@@ -4587,8 +4687,10 @@ static int mtk_dpc_probe_v1(struct platform_device *pdev)
 	mdp_dpc_register(&funcs_v1, DPC_VER1);
 
 #if IS_ENABLED(CONFIG_MTK_MMDVFS_VCP)
-	if (priv->mmdvfs_settings_count > 0)
+	if (priv->mmdvfs_settings_count > 0) {
+		DPCFUNC("enable mmdvfs notifier");
 		mmdvfs_rc_enable_set_fp(&mtk_dpc_mmdvfs_notifier);
+	}
 #endif
 
 	init_waitqueue_head(&priv->dpc_state_wq);
@@ -4622,7 +4724,8 @@ static int mtk_dpc_probe_v1(struct platform_device *pdev)
 		dbg_irq = 0;
 		dbg_mtcmos_off = 0;
 	}
-	DPCFUNC("- mmsys:0x%x, panel:%d", priv->mmsys_id, g_panel_type);
+	DPCFUNC("- mmsys:0x%x, panel:%d, vidle:0x%x, ret:%d",
+		priv->mmsys_id, g_panel_type, priv->vidle_mask, ret);
 	return ret;
 }
 
