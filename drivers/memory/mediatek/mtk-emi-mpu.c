@@ -140,10 +140,8 @@ static irqreturn_t emimpu_violation_irq(int irq, void *dev_id)
 			}
 		}
 
-		if (dump_reg[2].value & hp_mask) {
+		if (dump_reg[2].value & hp_mask)
 			violation = false;
-			BUG_ON(1);
-		}
 
 		if ((mpu->bypass_r_cnt) && (dump_reg[0].value & r_vio)) {
 			axi_id = (dump_reg[2].value >> 4) & 0xf;
