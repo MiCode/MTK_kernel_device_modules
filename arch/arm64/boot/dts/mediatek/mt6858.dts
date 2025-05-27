@@ -646,6 +646,17 @@
 		interrupts = <GIC_SPI 486 IRQ_TYPE_LEVEL_HIGH 0>;
 	};
 
+	wifi: wifi@18000000 {
+		compatible = "mediatek,wifi";
+		reg = <0 0x18000000 0 0x700000>;
+		interrupts = <GIC_SPI 484 IRQ_TYPE_LEVEL_HIGH 0>,
+				<GIC_SPI 692 IRQ_TYPE_LEVEL_HIGH 0>;
+		emi-addr = <0>;
+		emi-size = <0x1400000>;
+		emi-alignment = <0x1000000>;
+		emi-max-addr = <0xc0000000>;
+	};
+
 	bus-parity@c538800 {
 		compatible = "mediatek,bus-parity-disabled";
 		reg = <0 0x0c538800 0 0x20>,	/* M0, MST_CCIM0 */
