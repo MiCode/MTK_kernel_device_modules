@@ -7125,8 +7125,8 @@ dramc: dramc@10230000 {
 					  "VBAT2_H", "VBAT2_L", "NAFG", "BAT_IN", "BAT_OUT", "ZCV",
 					  "FG_N_CHARGE_L", "FG_IAVG_H", "FG_IAVG_L", "BAT_TMP_H",
 					  "BAT_TMP_L";
-			//nvmem-cells = <&fg_init>, <&fg_soc>;
-			//nvmem-cell-names = "initialization", "state-of-charge";
+			nvmem-cells = <&fg_init>, <&fg_soc>;
+			nvmem-cell-names = "initialization", "state-of-charge";
 		};
 
 		mt6720_adc: mt6720-adc {
@@ -7402,6 +7402,10 @@ dramc: dramc@10230000 {
 	};
 };
 
+&mt6685_rtc {
+	status = "okay";
+};
+
 &mtk_gauge {
 	disable-mtkbattery = <1>;
 	fixed-battery-temperature = <25>;
@@ -7430,9 +7434,3 @@ dramc: dramc@10230000 {
 	};
 };
 #endif
-
-#include "mediatek/mt6685.dtsi"
-
-&mt6685_rtc {
-	status = "disabled";
-};
