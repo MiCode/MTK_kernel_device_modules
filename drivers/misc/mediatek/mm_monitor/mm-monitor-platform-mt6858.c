@@ -5,7 +5,6 @@
 #include "mtk-mm-monitor-controller.h"
 #include <linux/io.h>
 #include <linux/of_device.h>
-#include <dt-bindings/memory/mt6991-smi-pd.h>
 
 #define MM_MONITOR_SUBSYS_MAX 28
 #define MM_MONITOR_AXI_MAX 32
@@ -29,7 +28,7 @@ EXPORT_SYMBOL(get_mmmc_subsys_max);
 
 u32 get_mminfra_pd(void)
 {
-	return MT6991_SMI_PD_MMINFRA1;
+	return 0;
 }
 EXPORT_SYMBOL(get_mminfra_pd);
 
