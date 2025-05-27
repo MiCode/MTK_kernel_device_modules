@@ -2473,24 +2473,12 @@ dramc: dramc@10230000 {
 				<0 0x10006000 0 0x1000>; /* SLEEP BASE */
 			mr4-version = <0>;
 			mr4-rg = <0x0090 0x0000ffff 0>;
-			fmeter-version = <3>;
+			fmeter-version = <41>;
 			use-real-freq = <1>;
-			crystal-freq = <26>;
-			pll-id = <0x0e98 0x02000000 25>;
-			shu-lv = <0x0e98 0x0000c000 14>;
-			shu-of = <0x700>;
-			sdmpcw = <0x0908 0x0007fff8 3>,
-				 <0x0928 0x0007fff8 3>;
-			posdiv = <0x090c 0x00003800 11>,
-				 <0x092c 0x00003800 11>;
-			fbksel = <0x0910 0x00000040 6>,
-				 <0x0910 0x00000040 6>;
-			dqsopen = <0x0d94 0x04000000 26>,
-				 <0x0d94 0x04000000 26>;
-			async-ca = <0x0d08 0x00000001 0>,
-				 <0x0d08 0x00000001 0>;
-			dq-ser-mode = <0x0dc4 0x00000018 3>,
-				 <0x0dc4 0x00000018 3>;
+			crystal-freq = <87>;
+			pll-id = <0x15c4 0x00007fff 0>;
+			shu-lv = <0x0c6c 0x0000d000 14>;
+			shu-of = <0x8d0>;
 		};
 
 		dramc-ch0-top1@10232000 {
