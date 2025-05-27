@@ -75,17 +75,17 @@ void vsmr_dump_header_data(struct mtk_vsmr_header *header)
 {
 	int i, j;
 
-	pr_info("VSMR_DBG VSMR_LEN_CON = 0x%x\n", vsmr_read(vsmr_drv, VSMR_LEN_CON));
-	pr_info("VSMR_DBG VSMR_TIMER_STA = 0x%x\n", vsmr_read(vsmr_drv, VSMR_TIMER_STA));
+	pr_cont("VSMR_DBG VSMR_LEN_CON = 0x%x\n", vsmr_read(vsmr_drv, VSMR_LEN_CON));
+	pr_cont("VSMR_DBG VSMR_TIMER_STA = 0x%x\n", vsmr_read(vsmr_drv, VSMR_TIMER_STA));
 
-	for (i = 0; i < MAX_DATA_SIZE; i += PRINT_ITEMS_PER_LINE) {
-		pr_info("VSMR_DBG 0x%04x = ",
+	for (i = 0; i < MAX_VSMR_DATA_SIZE; i += PRINT_ITEMS_PER_LINE) {
+		pr_cont("VSMR_DBG 0x%04x = ",
 		vsmr_drv->dvd->config->regs[VSMR_LAST_DAT_START] + 4 * i);
 
 		for (j = 0; j < PRINT_ITEMS_PER_LINE; j++)
-			pr_info("0x%08x ", header->last_data[i + j]);
+			pr_cont("0x%08x ", header->last_data[i + j]);
 
-		pr_info("\n");
+		pr_cont("\n");
 	}
 }
 
@@ -93,7 +93,7 @@ void vsmr_mt6993_get_last_data(struct mtk_vsmr_header *header)
 {
 	header->vsmr_support = vsmr_drv->vsmr_support;
 	if (!header->vsmr_support) {
-		pr_info("VSMR not support\n");
+		pr_cont("VSMR not support\n");
 		return;
 	}
 
@@ -140,7 +140,7 @@ void vsmr_get_data(struct mtk_vsmr_header *header)
 }
 EXPORT_SYMBOL(vsmr_get_data);
 
-const struct mtk_dvfsrc_config vsmr_mt6993_config = {
+const struct mtk_dvfsrc_vsmr_config vsmr_mt6993_config = {
 	.get_data = &vsmr_mt6993_get_last_data,
 	.regs = mt6993_regs,
 };
@@ -169,7 +169,6 @@ static int dvfsrc_vsmr_probe(struct platform_device *pdev)
 	struct platform_device *parent_dev;
 	struct resource *res;
 	struct mtk_vsmr *vsmr;
-
 
 	vsmr = devm_kzalloc(&pdev->dev, sizeof(*vsmr), GFP_KERNEL);
 	if (!vsmr)

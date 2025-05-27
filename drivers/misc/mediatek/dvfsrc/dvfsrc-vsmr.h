@@ -3,21 +3,21 @@
  * Copyright (c) 2024 MediaTek Inc.
  */
 
-#ifndef __DVFSRC_MB_H__
-#define __DVFSRC_MB_H__
-#define MAX_DATA_SIZE 288
+#ifndef __DVFSRC_VSMR_H__
+#define __DVFSRC_VSMR_H__
+#define MAX_VSMR_DATA_SIZE 288
 
 struct mtk_vsmr_header{
 	uint8_t module_id;
 	uint8_t version;
 	uint16_t data_offset;
 	uint32_t data_length;
-	uint32_t last_data[MAX_DATA_SIZE];
+	uint32_t last_data[MAX_VSMR_DATA_SIZE];
 	uint32_t timer;
 	bool vsmr_support;
 };
 
-struct mtk_dvfsrc_config {
+struct mtk_dvfsrc_vsmr_config {
 	void (*get_data)(struct mtk_vsmr_header *header);
 	const int *regs;
 };
@@ -27,7 +27,7 @@ struct mtk_vsmr_data {
 	uint8_t version;
 	uint16_t data_offset;
 	uint32_t data_length;
-	const struct mtk_dvfsrc_config *config;
+	const struct mtk_dvfsrc_vsmr_config *config;
 };
 
 struct mtk_vsmr {
@@ -61,4 +61,4 @@ enum vsmr_last_data_regs {
 
 void vsmr_get_data(struct mtk_vsmr_header *header);
 
-#endif /*__DVFSRC_MB_H__*/
+#endif /*__DVFSRC_VSMR_H__*/
