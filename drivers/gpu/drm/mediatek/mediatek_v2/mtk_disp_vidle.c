@@ -336,7 +336,7 @@ void mtk_vidle_pre_cg_ctrl(bool en)
 	if (disp_dpc_driver.dpc_pre_cg_ctrl == NULL)
 		return;
 
-	disp_dpc_driver.dpc_pre_cg_ctrl(en);
+	disp_dpc_driver.dpc_pre_cg_ctrl(en, true);
 }
 
 void mtk_vidle_pq_power_put(const char *caller)

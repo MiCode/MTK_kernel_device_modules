@@ -473,9 +473,12 @@ static inline bool dpc_pm_check_and_get(void)
 	return pm_runtime_get_if_in_use(g_priv->pd_dev) > 0 ? true : false;
 }
 
-void dpc_pre_cg_ctrl(bool en)
+void dpc_pre_cg_ctrl(bool en, bool lock)
 {
 	s32 cnt;
+
+	if (lock)
+		mutex_lock(&g_priv->excp_lock);
 
 	if (en) {
 		cnt = atomic_inc_return(&pre_cg_ref);
@@ -492,6 +495,10 @@ void dpc_pre_cg_ctrl(bool en)
 			clk_disable_unprepare(g_priv->pwr_clk[0]);
 		}
 	}
+
+	if (lock)
+		mutex_unlock(&g_priv->excp_lock);
+
 	if (cnt < 0)
 		DPCERR("pre_cg_ref cnt underflow");
 }
@@ -2690,7 +2697,7 @@ static int dpc_vidle_power_keep_v3(const enum mtk_vidle_voter_user _user)
 	dpc_mminfra_on_off(VOTE_SET, user);
 
 	tracing_mark_write(trace_buf_keep[2][0]);
-	dpc_pre_cg_ctrl(true);
+	dpc_pre_cg_ctrl(VOTE_SET, false);
 
 	tracing_mark_write(trace_buf_keep[3][0]);
 	dpc_ap_ref_cnt(VOTE_SET, user);
@@ -2769,7 +2776,7 @@ static void dpc_vidle_power_release_v3(const enum mtk_vidle_voter_user _user)
 	dpc_ap_ref_cnt(VOTE_CLR, user);
 
 	tracing_mark_write(trace_buf_release[2][0]);
-	dpc_pre_cg_ctrl(false);
+	dpc_pre_cg_ctrl(VOTE_CLR, false);
 
 	tracing_mark_write(trace_buf_release[3][0]);
 	dpc_mminfra_on_off(VOTE_CLR, user);
