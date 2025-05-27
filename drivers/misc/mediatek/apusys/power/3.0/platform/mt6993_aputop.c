@@ -45,11 +45,13 @@
 #define SW_THROTTLE_LIMIT_HAL	(2)
 static uint32_t mbox_data;
 
+unsigned int mt6993_user_max_opp;
+
 static struct apu_power apupw = {
 	.env = MP,
 };
 
-static int global_upper_limit = USER_MAX_OPP_VAL - 1;
+static int global_upper_limit;
 static int global_lower_limit = USER_MIN_OPP_VAL + 1;
 static struct mutex lock;
 static int sys_request_id = 5; // for sysfs input
@@ -392,7 +394,7 @@ static void limit_timer_callback(struct timer_list *t)
 /* for apu_sw_throttle update upper/lower bounds */
 static int mt6993_update_bounds(void)
 {
-	int new_upper_limit = USER_MAX_OPP_VAL - 1;
+	int new_upper_limit = mt6993_user_max_opp - 1;
 	int new_lower_limit = USER_MIN_OPP_VAL + 1;
 	int irregular_limits[CLIENT_NUM];
 	int irregular_count = 0;
@@ -417,7 +419,7 @@ static int mt6993_update_bounds(void)
 			}
 		}
 
-		new_upper_limit = USER_MAX_OPP_VAL - 1;
+		new_upper_limit = mt6993_user_max_opp - 1;
 		new_lower_limit = USER_MIN_OPP_VAL + 1;
 		list_for_each_entry(cw, &client_list, list) {
 			skip = 0;
@@ -477,7 +479,7 @@ static void mt6993_verify_bounds(void)
 {
 	struct client_work *cw;
 	int expected_lower_limit = USER_MIN_OPP_VAL + 1;
-	int expected_upper_limit = USER_MAX_OPP_VAL - 1;
+	int expected_upper_limit = mt6993_user_max_opp - 1;
 	int irregular_limits[CLIENT_NUM];
 	int irregular_count = 0;
 	int skip;
@@ -496,7 +498,7 @@ static void mt6993_verify_bounds(void)
 		}
 
 		expected_lower_limit = USER_MIN_OPP_VAL + 1;
-		expected_upper_limit = USER_MAX_OPP_VAL - 1;
+		expected_upper_limit = mt6993_user_max_opp - 1;
 
 		list_for_each_entry(cw, &client_list, list) {
 			skip = 0;
@@ -534,15 +536,15 @@ int mt6993_set_freq_limit(int upper_limit, int lower_limit, int *request_id, int
 
 	// mapping user opp to real opp
 	if (type == SW_THROTTLE_SYSFS) { // sysfs node
-		upper_limit = upper_limit + USER_MAX_OPP_VAL;
-		lower_limit = lower_limit + USER_MAX_OPP_VAL;
+		upper_limit = upper_limit + mt6993_user_max_opp;
+		lower_limit = lower_limit + mt6993_user_max_opp;
 	} else if (type == SW_THROTTLE_PT_THERMAL) // thermal/PT
-		upper_limit = upper_limit + USER_MAX_OPP_VAL;
+		upper_limit = upper_limit + mt6993_user_max_opp;
 	// type = 2 -> Limit HAL cmd -> do not shift.
 
 	// real opp range is from 0 to 15
-	if ((lower_limit > USER_MIN_OPP_VAL || lower_limit < USER_MAX_OPP_VAL) ||
-		(upper_limit > USER_MIN_OPP_VAL || upper_limit < USER_MAX_OPP_VAL)) {
+	if ((lower_limit > USER_MIN_OPP_VAL || lower_limit < mt6993_user_max_opp) ||
+		(upper_limit > USER_MIN_OPP_VAL || upper_limit < mt6993_user_max_opp)) {
 #if LOCAL_DBG
 		pr_info("%s: Error, limits out of range: lower_limit (%d), upper_limit (%d)\n",
 				__func__, lower_limit, upper_limit);
@@ -689,10 +691,10 @@ static void mt6993_prepare_freq_input(int upper_limit, int lower_limit, int *opp
 		tmp_opp_min = tmp_opp_max;
 
 	if (lower_limit < opp_level_pll_freq[OPP_TABLE_SIZE-1])
-		tmp_opp_min = 15 - USER_MAX_OPP_VAL; // set to opp15
+		tmp_opp_min = 15 - mt6993_user_max_opp; // set to opp15
 
 	if (upper_limit > opp_level_pll_freq[0])
-		tmp_opp_max = USER_MAX_OPP_VAL; // set to opp0
+		tmp_opp_max = mt6993_user_max_opp; // set to opp0
 
 	if (tmp_opp_min < tmp_opp_max) {
 		pr_info("%s: opp_max=%d, opp_min=%d\n , lower limit cannot be greater than upper limit!\n",
@@ -788,7 +790,7 @@ void mt6993_activate_apu_cooling_device(struct platform_device *pdev)
 	if (apu_cdev->status == APUCDEV_NOT_READY){
 		apu_cdev->target_state = APU_COOLING_UNLIMITED_STATE;
 		apu_cdev->unlimite_state = APU_COOLING_UNLIMITED_STATE;
-		apu_cdev->max_state = APU_COOLING_MAX_STATE;
+		apu_cdev->max_state = USER_MIN_OPP_VAL - mt6993_user_max_opp;
 		apu_cdev->status = APUCDEV_READY;
 		thermal_cooling_device_update(apu_cdev->cdev);
 		pr_info("%s: %s ready.\n", __func__, apu_cdev->name);
@@ -827,9 +829,44 @@ static const struct proc_ops opp_proc_ops = {
 
 static struct proc_dir_entry *apudvfs_dir;
 
+static int mt6993_init_user_max_opp(struct platform_device *pdev)
+{
+	struct device_node *node;
+	struct tag_chipid *chip_id = NULL;
+	int len;
+
+	node = of_find_node_by_path("/chosen");
+	if (!node)
+		node = of_find_node_by_path("/chosen@0");
+
+	if (!node) {
+		dev_info(&pdev->dev, "%s chosen node not found in device tree\n", __func__);
+		return -ENODEV;
+	}
+
+	chip_id = (struct tag_chipid *)of_get_property(node, "atag,chipid", &len);
+	if (!chip_id) {
+		dev_info(&pdev->dev, "%s could not found atag,chipid in chosen\n", __func__);
+		return -ENODEV;
+	}
+
+	mt6993_user_max_opp = chip_id->sw_ver == CHIP_VER_E1 ? 3 : 0;
+	dev_info(&pdev->dev, "%s current sw version:%s, minimum_opp:%d\n", __func__,
+		chip_id->sw_ver == CHIP_VER_E1 ? "E1" : "E2", USER_MIN_OPP_VAL - mt6993_user_max_opp);
+
+	global_upper_limit = mt6993_user_max_opp;
+
+	return 0;
+}
+
 static int mt6993_apu_top_pb(struct platform_device *pdev)
 {
 	int ret = 0, val = 0;
+
+	/* Initialize max_user_opp first */
+	ret = mt6993_init_user_max_opp(pdev);
+	if (ret)
+		dev_info(&pdev->dev, "%s failed to init max_user_opp, set to 0\n", __func__);
 
 	pr_info("%s +%d\n", __func__, apupw.env);
 

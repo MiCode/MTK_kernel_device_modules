@@ -9,6 +9,18 @@
 #include <linux/io.h>
 #include <linux/clk.h>
 
+#define CHIP_VER_E1		0x0000
+
+extern unsigned int mt6993_user_max_opp;
+
+struct tag_chipid {
+	u32 size;
+	u32 hw_code;
+	u32 hw_subcode;
+	u32 hw_ver;
+	u32 sw_ver;
+};
+
 #define APMCU_REQ_RPC_SLEEP	(0)	// rpm suspend trigger sleep req to rpc
 #define APUPW_DUMP_FROM_APMCU	(0)	// 1: dump reg from APMCU, 0: from ATF
 #define PRELOAD_ACE_FW		(0)	// 1: preload ace fw by kernel 0: by LK2

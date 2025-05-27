@@ -34,8 +34,8 @@ static inline int over_range_check(int opp)
 	// we treat opp -1 as a special hint regard to unlimit opp !
 	if (opp == -1)
 		return -1;
-	else if (opp < USER_MAX_OPP_VAL)
-		return USER_MAX_OPP_VAL;
+	else if (opp < mt6993_user_max_opp)
+		return mt6993_user_max_opp;
 	else if (opp > USER_MIN_OPP_VAL)
 		return USER_MIN_OPP_VAL;
 	else
@@ -265,16 +265,16 @@ static int aputop_dbg_set_parameter(int param, int argc, int *args)
 // opp range : 1 ~ USER_MIN_OPP_VAL (from fast to slow) , opp0 is turbo boost
 static int _apu_boost_to_opp(int boost)
 {
-	int opp = USER_MAX_OPP_VAL;
+	int opp = mt6993_user_max_opp;
 	int max_opp_dla_freq, min_opp_dla_freq, boost_to_freq;
 
 	if (boost >= 100)
-		return USER_MAX_OPP_VAL;
+		return mt6993_user_max_opp;
 
 	if (boost < 0)
 		boost = 0;
 
-	max_opp_dla_freq = opp_tbl.opp[USER_MAX_OPP_VAL].pll_freq[PLL_DLA];
+	max_opp_dla_freq = opp_tbl.opp[mt6993_user_max_opp].pll_freq[PLL_DLA];
 
 	if (opp_tbl2.tbl_size > 0)
 		min_opp_dla_freq = opp_tbl2.opp[opp_tbl2.tbl_size - 1].pll_freq[PLL_DLA];
@@ -283,7 +283,7 @@ static int _apu_boost_to_opp(int boost)
 
 	boost_to_freq = boost * (max_opp_dla_freq - min_opp_dla_freq) / 100 + min_opp_dla_freq;
 
-	for (int i = USER_MAX_OPP_VAL ; i < opp_tbl.tbl_size ; i++){
+	for (int i = mt6993_user_max_opp ; i < opp_tbl.tbl_size ; i++){
 		if (boost_to_freq >= opp_tbl.opp[i].pll_freq[PLL_DLA]){
 			opp = i;
 			return opp;
@@ -314,8 +314,8 @@ static void plat_dump_boost_mapping(struct seq_file *s)
 			opp_cnt[opp]++;
 	}
 
-	for (i = USER_MAX_OPP_VAL ; i <= USER_MIN_OPP_VAL ; i++){
-		if(i == USER_MAX_OPP_VAL){
+	for (i = mt6993_user_max_opp ; i <= USER_MIN_OPP_VAL ; i++){
+		if(i == mt6993_user_max_opp){
 			seq_printf(s, "opp:%2d : boost:%3d ~ %3d (%2d)\n",
 					   i,
 					   max_boost,
