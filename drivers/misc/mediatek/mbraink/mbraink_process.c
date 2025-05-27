@@ -946,80 +946,23 @@ static void mbraink_trace_android_vh_cpufreq_acct_update_power(void *data,
 							       unsigned int state)
 {
 	unsigned long  flags;
-	int idx = 0;
+	int pid_idx = 0;
 
 	spin_lock_irqsave(&cpufreq_trace_lock, flags);
 
-	for (idx = 0; idx < MAX_CPUFREQ_TRACE_NUM; idx++) {
-		if (mbraink_cpufreq_tracelist_data[idx].dirty == true &&
-		    mbraink_cpufreq_tracelist_data[idx].tgid == p->tgid)
-			break;
-	}
+	pid_idx = p->tgid;
 
-	if (idx < MAX_CPUFREQ_TRACE_NUM) {
+	if (pid_idx >= 0 && pid_idx < MAX_CPUFREQ_TRACE_NUM) {
+		mbraink_cpufreq_tracelist_data[pid_idx].tgid = (unsigned short)(pid_idx);
+
 		if (task_cpu(p) <= CPUFREQ_L)
-			mbraink_cpufreq_tracelist_data[idx].cputime_l += cputime;
+			mbraink_cpufreq_tracelist_data[pid_idx].cputime_l += cputime;
 		else if (task_cpu(p) > CPUFREQ_L && task_cpu(p) <= CPUFREQ_M)
-			mbraink_cpufreq_tracelist_data[idx].cputime_m += cputime;
+			mbraink_cpufreq_tracelist_data[pid_idx].cputime_m += cputime;
 		else
-			mbraink_cpufreq_tracelist_data[idx].cputime_b += cputime;
-	} else {
-		for (idx = 0; idx < MAX_CPUFREQ_TRACE_NUM; idx++) {
-			if (mbraink_cpufreq_tracelist_data[idx].dirty == false)
-				break;
-		}
-		if (idx == MAX_CPUFREQ_TRACE_NUM) {
-			char netlink_buf[NETLINK_EVENT_MESSAGE_SIZE] = {'\0'};
-			int n = 0;
-			int pos = 0;
+			mbraink_cpufreq_tracelist_data[pid_idx].cputime_b += cputime;
 
-			pr_info("%s: cpufreq record is full %d\n", __func__, idx);
-
-			for (idx = 0; idx < MAX_CPUFREQ_TRACE_NUM; idx++) {
-				if (idx % 16 == 0) {
-					pos = 0;
-					n = snprintf(netlink_buf,
-						NETLINK_EVENT_MESSAGE_SIZE, "%s ",
-						NETLINK_EVENT_SYSCPUFREQ);
-					if (n < 0 || n >= NETLINK_EVENT_MESSAGE_SIZE)
-						break;
-					pos += n;
-				}
-				n = snprintf(netlink_buf + pos,
-					NETLINK_EVENT_MESSAGE_SIZE - pos, "%u:%llu:%llu:%llu ",
-					mbraink_cpufreq_tracelist_data[idx].tgid,
-					mbraink_cpufreq_tracelist_data[idx].cputime_l,
-					mbraink_cpufreq_tracelist_data[idx].cputime_m,
-					mbraink_cpufreq_tracelist_data[idx].cputime_b);
-				if (n < 0 || n >= NETLINK_EVENT_MESSAGE_SIZE - pos)
-					break;
-				pos += n;
-
-				if (idx % 16 == 15) {
-					mbraink_netlink_send_msg(netlink_buf);
-					memset(netlink_buf, 0, NETLINK_EVENT_MESSAGE_SIZE);
-				}
-			}
-			memset(mbraink_cpufreq_tracelist_data, 0,
-			sizeof(struct mbraink_cpufreq_tracelist) * MAX_CPUFREQ_TRACE_NUM);
-			mbraink_cpufreq_tracelist_data[0].tgid = (unsigned short)(p->tgid);
-			if (task_cpu(p) <= CPUFREQ_L)
-				mbraink_cpufreq_tracelist_data[0].cputime_l += cputime;
-			else if (task_cpu(p) > CPUFREQ_L && task_cpu(p) <= CPUFREQ_M)
-				mbraink_cpufreq_tracelist_data[0].cputime_m += cputime;
-			else
-				mbraink_cpufreq_tracelist_data[0].cputime_b += cputime;
-			mbraink_cpufreq_tracelist_data[0].dirty = true;
-		} else {
-			mbraink_cpufreq_tracelist_data[idx].tgid = (unsigned short)(p->tgid);
-			if (task_cpu(p) <= CPUFREQ_L)
-				mbraink_cpufreq_tracelist_data[idx].cputime_l += cputime;
-			else if (task_cpu(p) > CPUFREQ_L && task_cpu(p) <= CPUFREQ_M)
-				mbraink_cpufreq_tracelist_data[idx].cputime_m += cputime;
-			else
-				mbraink_cpufreq_tracelist_data[idx].cputime_b += cputime;
-			mbraink_cpufreq_tracelist_data[idx].dirty = true;
-		}
+		mbraink_cpufreq_tracelist_data[pid_idx].dirty = true;
 	}
 	spin_unlock_irqrestore(&cpufreq_trace_lock, flags);
 }

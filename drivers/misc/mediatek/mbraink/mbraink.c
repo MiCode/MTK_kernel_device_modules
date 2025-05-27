@@ -2805,8 +2805,6 @@ static void mbraink_exit(void)
 	mbraink_dev_exit();
 	mbraink_genetlink_exit();
 	mbraink_process_tracer_exit();
-	mbraink_gpu_deinit();
-	mbraink_audio_deinit();
 	mbraink_cpufreq_notify_exit();
 	mbraink_memory_deinit();
 	mbraink_audio_deinit();
