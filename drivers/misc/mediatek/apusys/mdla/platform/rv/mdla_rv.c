@@ -396,7 +396,11 @@ static const struct file_operations mdla_rv_dbg_mem_fops = {
 static void mdla_plat_v6_aee_handler(u32 type, u64 val)
 {
 	if (type == MDLA_IPI_MICROP_MSG_TIMEOUT) {
-		mdla_aee_exception("MDLA", "MDLA timeout : reset core map = 0x%llx", val & 0xf);
+		mdla_aee_exception("MDLA", "MDLA timeout : reset core map = 0x%llx, features(%lld) = 0x%llx, 0x%llx,",
+								val & 0xf,
+								(val >> 4) & 0xf,
+								(val >> 8) & 0xfff,
+								(val >> 20) & 0xfff);
 	} else if (type == MDLA_IPI_MICROP_MSG_DBG_CHECK_FAILED) {
 		u32 idx;
 		struct msg_type {
@@ -573,16 +577,26 @@ static int mdla_plat_v5_dbgfs_usage(struct seq_file *s, void *data)
 
 static int mdla_plat_v6_dbgfs_usage(struct seq_file *s, void *data)
 {
-	seq_puts(s, "\n---------- Command timeout setting ----------\n");
+	seq_puts(s, "\n-------------- Command timeout setting ---------------\n");
 	seq_printf(s, "echo [us(dec)] > /d/mdla/%s\n", ipi_dbgfs_file[MDLA_IPI_TIMEOUT].str);
 
-	seq_puts(s, "\n------------- show information -------------\n");
+	seq_puts(s, "\n------------------ Profile control -------------------\n");
+	seq_printf(s, "echo [0|1] > /d/mdla/%s\n", mdla_plat_get_ipi_str(MDLA_IPI_PROFILE_EN));
+	seq_puts(s, "\t0: stop profiling\n");
+	seq_puts(s, "\t1: start to profile\n");
+
+	seq_puts(s, "\n------------- Show information in uP log -------------\n");
 	seq_printf(s, "echo [item] > /d/mdla/%s\n", mdla_plat_get_ipi_str(MDLA_IPI_INFO));
 	seq_puts(s, "and then cat /proc/apusys_logger/seq_log\n");
-	seq_printf(s, "\t%d: show register value\n", MDLA_IPI_INFO_REG);
-	seq_printf(s, "\t%d: show profiling result\n", MDLA_IPI_INFO_PROF);
+	seq_printf(s, "\t%2d: show register value\n", MDLA_IPI_INFO_REG);
+	seq_printf(s, "\t%2d: show profiling result\n", MDLA_IPI_INFO_PROF);
+	seq_puts(s, "\t10: show HDSCE SRAM\n");
+	seq_puts(s, "\t12: show TF status\n");
+	seq_puts(s, "\t13: show snapshot data (available only when mdla is powered on)\n");
+	seq_puts(s, "\t14: show fw status/backup data (available only when mdla is powered on)\n");
+	seq_puts(s, "\t17: show TCU data\n");
 
-	seq_puts(s, "\n----------- set debug options -----------\n");
+	seq_puts(s, "\n----------------- Set debug options ------------------\n");
 	seq_printf(s, "echo [mask(hex))] > /d/mdla/%s\n", mdla_plat_get_ipi_str(MDLA_IPI_DBG_OPTIONS));
 	seq_puts(s, "\tDisable preemption                               = 0x0001\n");
 	seq_puts(s, "\tPreempt once                                     = 0x0002\n");
@@ -594,7 +608,9 @@ static int mdla_plat_v6_dbgfs_usage(struct seq_file *s, void *data)
 	seq_puts(s, "\tDisable engine DCM                               = 0x0200\n");
 	seq_puts(s, "\tDisable stash                                    = 0x0400\n");
 	seq_puts(s, "\tForce assert when mdla exception. (need unlock)  = 0x0800\n");
-	seq_puts(s, "\n----------- set firmware log level -----------\n");
+	seq_puts(s, "\t    unlock cmd: echo 4409527 > /d/mdla/info\n");
+
+	seq_puts(s, "\n--------------- Set firmware log level ---------------\n");
 	seq_printf(s, "echo [log_lv] > /d/mdla/%s\n", mdla_plat_get_ipi_str(MDLA_IPI_FW_LOG_LV));
 	seq_puts(s, "\t0: off\n");
 	seq_puts(s, "\t1: error\n");
