@@ -295,7 +295,7 @@ static ssize_t dump_and_send_smap_staus(char *buf, enum SMAP_DUMP_LOG_TYPE log_t
 			dbg->zram_snapshot, dbg->apu_snapshot);
 	}
 
-	if (send_type == SEND_MBRAIN && mbrain_cb) {
+	if (send_type == SEND_MBRAIN && mbrain_cb && dbg->chipid == 1) {
 		ktime_get_real_ts64(&tv);
 		dbg->real_time_end = (tv.tv_sec*1000) + (tv.tv_nsec/1000000);
 		dbg->real_time_start = dbg->real_time_end - smap_data->delay_ms;
