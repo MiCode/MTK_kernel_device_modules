@@ -797,7 +797,7 @@ void mtk_hook_after_enqueue_task(void *data, struct rq *rq,
 	irq_log_store();
 
 #if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
-	if (vip_fair_task(p))
+	if (fair_task(p))
 		vip_enqueue_task(rq, p);
 #endif
 

@@ -443,6 +443,16 @@ enum {
 };
 
 #if IS_ENABLED(CONFIG_SMP)
+
+static inline bool fair_task(struct task_struct *p)
+{
+	return p->prio >= MAX_RT_PRIO &&
+#ifdef CONFIG_SCHED_CLASS_EXT
+		!p->scx.flags &&
+#endif
+		!is_idle_task(p);
+}
+
 static inline unsigned long cpu_util_rt_dpt_v2(struct rq *rq, int type)
 {
 	dpt_rq_t *dpt_rq = &per_cpu(__dpt_rq, cpu_of(rq));

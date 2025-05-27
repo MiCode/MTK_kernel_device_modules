@@ -227,12 +227,12 @@ static void sched_queue_task_hook(void *data, struct rq *rq, struct task_struct 
 				WRITE_ONCE(sugov_data_ptr->enq_dvfs, true);
 			}
 		}
-		if (p->prio >= MAX_RT_PRIO && !is_idle_task(p))
+		if (fair_task(p))
 			mtk_enqueue_task_fair(data, rq, p, flags);
 	}
 
 	if (type == dequeue) {
-		if (p->prio >= MAX_RT_PRIO && !is_idle_task(p))
+		if (fair_task(p))
 			mtk_dequeue_task_fair(data, rq, p, flags);
 	}
 

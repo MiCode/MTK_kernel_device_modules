@@ -1138,7 +1138,7 @@ void vip_scheduler_tick(void *unused, struct rq *rq)
 	if (unlikely(!vip_enable))
 		return;
 
-	if (!vip_fair_task(rq->curr))
+	if (!fair_task(rq->curr))
 		return;
 
 	vip_lb_tick(rq);
@@ -1152,7 +1152,6 @@ void vip_replace_next_task_fair(void *unused, struct rq *rq, struct task_struct 
 	struct vip_task_struct *vts;
 	struct task_struct *vip;
 
-
 	if (unlikely(!vip_enable))
 		return;
 
@@ -1165,6 +1164,11 @@ void vip_replace_next_task_fair(void *unused, struct rq *rq, struct task_struct 
 	/* Return the first task from VIP queue */
 	vts = list_first_entry(&vrq->vip_tasks, struct vip_task_struct, vip_list);
 	vip = vts_to_ts(vts);
+
+#ifdef CONFIG_SCHED_CLASS_EXT
+	if (vip->scx.flags & SCX_TASK_QUEUED)
+		return;
+#endif
 
 	if (task_cpu(vip) != cpu_of(rq)) {
 		pr_info("pick task not in rq, vip=%d in cpu=%d but picked at cpu=%d\n", vip->pid, task_cpu(vip), cpu_of(rq));
@@ -1194,11 +1198,6 @@ void vip_dequeue_task(struct rq *rq, struct task_struct *p)
 
 	if (READ_ONCE(p->__state) != TASK_RUNNING)
 		vts->total_exec = 0;
-}
-
-inline bool vip_fair_task(struct task_struct *p)
-{
-	return p->prio >= MAX_RT_PRIO && !is_idle_task(p);
 }
 
 void init_vip_task_struct(struct task_struct *p)
@@ -1332,6 +1331,9 @@ put_task:
 DEFINE_PER_CPU(struct balance_callback, vip_push_head);
 void vip_sched_switch(struct task_struct *prev, struct task_struct *next, struct rq *rq)
 {
+	if (unlikely(!vip_enable))
+		return;
+
 	if (in_interrupt())
 		return;
 

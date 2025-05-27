@@ -194,6 +194,9 @@ int drain_rq_cpu_stop(void *data)
 	struct rq_flags rf;
 
 	rq_lock_irqsave(rq, &rf);
+#ifdef CONFIG_SCHED_CLASS_EXT
+	rq->scx.flags &= ~(SCX_RQ_BAL_PENDING | SCX_RQ_BAL_KEEP);
+#endif
 	migrate_tasks(rq, &rf);
 
 	rq_unpin_lock(rq, &rf);
