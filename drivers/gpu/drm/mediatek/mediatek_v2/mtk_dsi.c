@@ -3166,7 +3166,7 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 			mtk_dsi_mask(dsi, DSI_BUF_CON0(dsi->driver_data), MT6989_BUF_VDE_BLOCK_URGENT, 0);
 		else
 			mtk_dsi_mask(dsi, DSI_BUF_CON0(dsi->driver_data), MT6991_BUF_VDE_BLOCK_URGENT, 0);
-		mtk_dsi_mask(dsi, DSI_BUF_CON0(dsi->driver_data), BUF_PREURGENT_MODE, 1);
+		mtk_dsi_mask(dsi, DSI_BUF_CON0(dsi->driver_data), BUF_PREURGENT_MODE, BUF_PREURGENT_MODE);
 		writel(urgent_threshold, dsi->regs + DSI_BUF_PREURGENT_HIGH(dsi->driver_data));
 		mtk_dsi_mask(dsi, DSI_BUF_CON0(dsi->driver_data), BUF_PREURGENT_EN, BUF_PREURGENT_EN);
 
