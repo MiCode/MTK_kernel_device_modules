@@ -1383,7 +1383,7 @@ mgk_64_kleaf_platform_modules = {
     "//kernel_device_modules-{}/drivers/misc/mediatek/vmm_spm:mtk_vmm_spm".format(kernel_version): "mt6895",
     "//kernel_device_modules-{}/drivers/misc/mediatek/vmm_spm:mtk_vmm_spm_mt6989".format(kernel_version): "mt6989",
     "//kernel_device_modules-{}/drivers/misc/mediatek/mcupm/v3:mcupm".format(kernel_version): "mt6993",
-    "//kernel_device_modules-{}/drivers/misc/mediatek/mcupm/v2:mcupm".format(kernel_version): "mt6991 mt6789 mt6895 mt6855",
+    "//kernel_device_modules-{}/drivers/misc/mediatek/mcupm/v2:mcupm".format(kernel_version): "mt6991 mt6789 mt6895 mt6855 mt6858",
     "//kernel_device_modules-{}/drivers/misc/mediatek/wla:wla-v1".format(kernel_version): "mt6991 mt6899",
     "//kernel_device_modules-{}/drivers/misc/mediatek/wla:wla-v1-dbg".format(kernel_version): "mt6991 mt6899",
     "//kernel_device_modules-{}/drivers/misc/mediatek/wla:wla-v2".format(kernel_version): "mt6993",
