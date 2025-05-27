@@ -929,6 +929,16 @@ CONFIG_REG:
 		dsi->hfp_minimum_wc_dphy = (clk_hs_post + 1 + clk_hs_trail + clk_hs_exit + 1 +
 										lpx + clk_hs_prep + clk_hs_zero) * dsi->lanes - 2;
 
+	if (dsi->driver_data->n_verion >= VER_N3 &&
+		dsi->mode_flags & MIPI_DSI_MODE_VIDEO_BURST) {
+		u32 bllp_wc = 0;
+
+		if (dsi->hfp_minimum_wc_dphy >= bllp_wc + 6)
+			dsi->hfp_minimum_wc_dphy -= bllp_wc + 6;
+		else
+			dsi->hfp_minimum_wc_dphy = 0;
+	}
+
 	value = REG_FLD_VAL(FLD_LPX, lpx)
 		| REG_FLD_VAL(FLD_HS_PREP, da_hs_prep)
 		| REG_FLD_VAL(FLD_HS_ZERO, da_hs_zero)
@@ -3307,6 +3317,13 @@ static void mtk_dsi_calc_vdo_timing(struct mtk_dsi *dsi)
 				horizontal_frontporch_byte -= 2 * dsi->data_phy_cycle * dsi->lanes;
 			else
 				horizontal_frontporch_byte = 1;
+		if (dsi->driver_data->n_verion >= VER_N3 &&
+			dsi->mode_flags & MIPI_DSI_MODE_VIDEO_BURST) {
+			if (horizontal_frontporch_byte > 6 * dsi->lanes + bllp_wc + 14)
+				horizontal_frontporch_byte -= 6 * dsi->lanes + bllp_wc + 14;
+			else
+				horizontal_frontporch_byte = 1;
+		}
 		if (dsi->driver_data->n_verion <= VER_N4 && horizontal_frontporch_byte < 8)
 			horizontal_frontporch_byte = 8;
 		else if (dsi->driver_data->n_verion >= VER_N3 && horizontal_frontporch_byte < 1)
@@ -3316,6 +3333,13 @@ static void mtk_dsi_calc_vdo_timing(struct mtk_dsi *dsi)
 		if (dsi->ext && !dsi->ext->params->vdo_keep_hs_perline) {
 			hfp_minimum = 2 * (32 + 1) *
 				dsi->lanes - 6 * dsi->lanes - 14;
+			if (dsi->driver_data->n_verion >= VER_N3 &&
+				dsi->mode_flags & MIPI_DSI_MODE_VIDEO_BURST) {
+				if (hfp_minimum >= 6 * dsi->lanes + bllp_wc + 14)
+					hfp_minimum -= 6 * dsi->lanes + bllp_wc + 14;
+				else
+					hfp_minimum = 0;
+			}
 
 			if (horizontal_frontporch_byte < hfp_minimum) {
 				DDPPR_ERR(
@@ -3385,6 +3409,14 @@ static void mtk_dsi_calc_vdo_timing(struct mtk_dsi *dsi)
 			dsi->driver_data->n_verion >= VER_N3) {
 			if (t_hfp * dsi_tmp_buf_bpp - 12 > dsi->data_phy_cycle * dsi->lanes)
 				horizontal_frontporch_byte = t_hfp * dsi_tmp_buf_bpp - 12 - dsi->data_phy_cycle * dsi->lanes;
+			else
+				horizontal_frontporch_byte = 1;
+		}
+
+		if (dsi->driver_data->n_verion >= VER_N3 &&
+			dsi->mode_flags & MIPI_DSI_MODE_VIDEO_BURST) {
+			if (horizontal_frontporch_byte > bllp_wc + 6)
+				horizontal_frontporch_byte -= bllp_wc + 6;
 			else
 				horizontal_frontporch_byte = 1;
 		}
