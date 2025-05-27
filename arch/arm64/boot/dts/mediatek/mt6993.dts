@@ -11011,6 +11011,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				  <0 0x13920000 0 0x1500>,
 				  <0 0x1002d800 0 0x100>;
 			interrupts = <GIC_SPI 474 IRQ_TYPE_LEVEL_HIGH 0>;
+			nvmem-cells = <&u3_phy_data1>, <&u3_phy_data2>, <&u3_phy_data3>, <&u3_phy_data4>;
+			nvmem-cell-names = "phy_data1", "phy_data2", "phy_data3", "phy_data4";
 			clocks = <&ap_pd_clk CLK_PD_SSUSB_DP_PHY_P0_SSUSB>;
 			clock-names = "dp_phy";
 			dptx,phy-params = <0x110e0c08 0x1012110c 0x00001814
