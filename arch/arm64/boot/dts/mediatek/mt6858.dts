@@ -8201,10 +8201,6 @@ dramc: dramc@10230000 {
 	status = "okay";
 };
 
-&mtk_gauge {
-	disable-mtkbattery = <1>;
-	fixed-battery-temperature = <25>;
-};
 #include "mediatek/bat_setting/mt6858_battery_prop.dtsi"
 
 /delete-node/ &mt6363_vbuck1_sshub;
