@@ -5508,12 +5508,13 @@ dramc: dramc@10230000 {
 
 	extcon_usb: extcon-usb {
 		compatible = "mediatek,extcon-usb";
-		/* vbus-supply = <&mt6375_otg_vbus>; */
-		/* vbus-voltage = <5000000>; */
-		/* vbus-current = <1800000>; */
-		/* charger = <&mt6375_chg>; */
-		/* tcpc = "type_c_port0"; */
+		vbus-supply = <&mt6720_otg_vbus>;
+		vbus-voltage = <5000000>;
+		vbus-current = <1800000>;
+		charger = <&mt6720_chg>;
+		tcpc = "type_c_port0";
 		mediatek,bypss-typec-sink = <1>;
+		mediatek,u2;
 		port {
 			usb_role: endpoint {
 				remote-endpoint = <&mtu3_drd_switch>;

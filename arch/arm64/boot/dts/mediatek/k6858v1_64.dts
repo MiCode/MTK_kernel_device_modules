@@ -15,14 +15,6 @@
 	bootargs_ext = "";
 };
 
-&ssusb {
-	phys = <&u3fpgaport0 PHY_TYPE_USB3>;
-	plat-type = <1>; /* FPGA */
-	fpga-phy = <3>; /* A60931 */
-	dr_mode = "peripheral";
-	status = "okay";
-};
-
 &mt6363keys {
 	pinctrl-names = "kpcol0_mode";
 	pinctrl-0 = <&kpcol0_pins_gpio_mode>;
@@ -41,13 +33,6 @@
 	};
 };
 
-&u3fpgaphy {
-	status = "okay";
-};
-
-&u2phy {
-	status = "disabled";
-};
 
 #include "mediatek/cust_mt6858_camera_v4l2.dtsi"
 #include "mediatek/cust_mt6858_camera.dtsi"
