@@ -88,6 +88,11 @@ void cm_ipi_init(void)
 
 	_tinfo = get_scmi_tinysys_info();
 
+	if (!(_tinfo && _tinfo->sdev)) {
+		pr_info("call get_scmi_tinysys_info() fail\n");
+		return;
+	}
+
 	ret = of_property_read_u32(_tinfo->sdev->dev.of_node, "scmi-cm",
 				   &scmi_cm_id);
 	if (ret) {
