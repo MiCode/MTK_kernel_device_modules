@@ -1899,7 +1899,8 @@ static int mtk_drm_idlemgr_monitor_thread(void *data)
 			vblank = &crtc->dev->vblank[crtc_id];
 
 			/* enter idle state */
-			if (!vblank || atomic_read(&vblank->refcount) == 0) {
+			if ((!vblank || atomic_read(&vblank->refcount) == 0) &&
+				mtk_crtc->hwvsync_en == 0) {
 				DDPINFO("[LP] enter idle\n");
 				mtk_vidle_hint_update(VIDLE_HINT_HSIDLE_ENTER);
 				mtk_vidle_user_power_keep(DISP_VIDLE_USER_CRTC);

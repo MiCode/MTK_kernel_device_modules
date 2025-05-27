@@ -9440,7 +9440,6 @@ int mtk_drm_hwvsync_on_ioctl(struct drm_device *dev, void *data,
 	struct mtk_drm_crtc *mtk_crtc = NULL;
 	struct mtk_ddp_comp *lpc_comp = NULL;
 	bool lpc_en = false;
-	int no_sof = 0;
 
 	crtc = drm_crtc_find(dev, file_priv, args->crtc_id);
 	if (!crtc) {
@@ -9465,13 +9464,7 @@ int mtk_drm_hwvsync_on_ioctl(struct drm_device *dev, void *data,
 	mtk_ddp_comp_io_cmd(lpc_comp, NULL, DSI_LPC_GET_EN, &lpc_en);
 	if (!lpc_en)
 		return ret;
-	mtk_ddp_comp_io_cmd(lpc_comp, NULL, DSI_LPC_GET_SOF_STATUS, &no_sof);
-	if (no_sof == 0) {
-		drm_trace_tag_mark("lpc_hwvsync_on_ioctl_no_sof");
-		return -EPERM;
-	}
-	mtk_ddp_comp_io_cmd(lpc_comp, NULL, DSI_LPC_IRQ_EN, mtk_crtc->hwvsync_en);
-	return ret;
+	return mtk_ddp_comp_io_cmd(lpc_comp, NULL, DSI_LPC_IRQ_EN, mtk_crtc->hwvsync_en);
 }
 
 int mtk_drm_get_mode_ext_info_ioctl(struct drm_device *dev, void *data,
