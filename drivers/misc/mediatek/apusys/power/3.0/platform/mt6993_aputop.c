@@ -649,7 +649,7 @@ static int mt6993_client_input_show(struct seq_file *m, void *v)
 		list_for_each_entry(cw, &client_list, list) {
 			if(cw->request_id == 5)
 				seq_printf(m, "%d,%d\n",
-					opp_level_pll_freq[cw->upper_limit], opp_level_pll_freq[cw->lower_limit]);
+					mt6993_mdla_pll_freq[cw->upper_limit], mt6993_mvpu_pll_freq[cw->upper_limit]);
 		}
 	}
 
@@ -670,7 +670,7 @@ static void mt6993_prepare_freq_input(int upper_limit, int lower_limit, int *opp
 	}
 
 	for (int i = OPP_TABLE_SIZE-1; i >= 0; i--) {
-		int freq = opp_level_pll_freq[i];
+		int freq = mt6993_mdla_pll_freq[i];
 
 		if (freq >= lower_limit) {
 			tmp_opp_min = i;
@@ -679,7 +679,7 @@ static void mt6993_prepare_freq_input(int upper_limit, int lower_limit, int *opp
 	}
 
 	for (int i = 0; i < OPP_TABLE_SIZE; i++) {
-		int freq = opp_level_pll_freq[i];
+		int freq = mt6993_mdla_pll_freq[i];
 
 		if (freq <= upper_limit) {
 			tmp_opp_max = i;
@@ -690,10 +690,10 @@ static void mt6993_prepare_freq_input(int upper_limit, int lower_limit, int *opp
 	if (upper_limit == lower_limit)
 		tmp_opp_min = tmp_opp_max;
 
-	if (lower_limit < opp_level_pll_freq[OPP_TABLE_SIZE-1])
+	if (lower_limit < mt6993_mdla_pll_freq[OPP_TABLE_SIZE-1])
 		tmp_opp_min = 15 - mt6993_user_max_opp; // set to opp15
 
-	if (upper_limit > opp_level_pll_freq[0])
+	if (upper_limit > mt6993_mdla_pll_freq[0])
 		tmp_opp_max = mt6993_user_max_opp; // set to opp0
 
 	if (tmp_opp_min < tmp_opp_max) {
@@ -707,12 +707,14 @@ static void mt6993_prepare_freq_input(int upper_limit, int lower_limit, int *opp
 
 }
 
-static ssize_t mt6993_handle_client_input(struct file *file, const char __user *buf, size_t count, loff_t *ppos)
+static ssize_t mt6993_handle_client_input(struct file *file,
+	const char __user *buf, size_t count, loff_t *ppos)
 {
-	int lower_limit, upper_limit;
+	int lower_limit = 0, upper_limit = 0;
 	int ret;
 	int opp_max, opp_min;
-	char *input, *token;
+	char *input;
+	char *pos, *pos2;
 
 	input = kzalloc(count + 1, GFP_KERNEL);
 	if (!input)
@@ -723,30 +725,35 @@ static ssize_t mt6993_handle_client_input(struct file *file, const char __user *
 		return -EFAULT;
 	}
 
-	token = strsep(&input, " ");
-	if (!token) {
-		ret = -EINVAL;
-		goto out;
-	}
+	input[count] = '\0';
+	pos = strchr(input, ' ');
+	if (pos) {
+		*pos = '\0';
+		ret = kstrtoint(input, 0, &upper_limit);
+		if (ret)
+			goto out;
 
-	ret = kstrtoint(token, 0, &upper_limit);
-	if (ret)
-		goto out;
-
-	token = strsep(&input, " ");
-	if (!token) {
-		ret = -EINVAL;
-		goto out;
-	}
-
-	ret = kstrtoint(token, 0, &lower_limit);
-	if (ret)
-		goto out;
-
-	token = strsep(&input, " ");
-	if (token && *token != '\0' && *token != '\n') {
-		ret = -EINVAL;
-		goto out;
+		pos++;
+		if (!*pos) {
+			lower_limit = 0;
+		} else {
+			pos2 = strchr(pos, ' ');
+			if (pos2) {
+				*pos2 = '\0';
+				if (*(pos2 + 1) && *(pos2 + 1) != '\n') {
+					ret = -EINVAL;
+					goto out;
+				}
+			}
+			ret = kstrtoint(pos, 0, &lower_limit);
+			if (ret)
+				goto out;
+		}
+	} else {
+		/* only one token, take it as upper_limit */
+		ret = kstrtoint(input, 0, &upper_limit);
+		if (ret)
+			goto out;
 	}
 
 	if (lower_limit > upper_limit) {
@@ -764,7 +771,6 @@ static ssize_t mt6993_handle_client_input(struct file *file, const char __user *
 		pr_info("Generated request_id: %d\n", sys_request_id);
 
 	ret = count;
-
 out:
 	kfree(input);
 	return ret;
@@ -802,26 +808,111 @@ static int mt6993_opp_proc_show(struct seq_file *m, void *v)
 	int i;
 
 	mt6993_request_opp_table();
-	seq_puts(m, "APU Support Frequency points(Unit is KHZ):\n");
-	for (i = 0; i < ARRAY_SIZE(opp_level_pll_freq); i++) {
-		if (opp_level_pll_freq[i] == 0)
-			continue; /* cause bin 0.9v was set as opp0 */
-		else if (opp_level_pll_freq[i] > 1000000)
-			seq_printf(m, "%d\n", opp_level_pll_freq[i]);
-		else
-			seq_printf(m, " %d\n", opp_level_pll_freq[i]);
+	seq_puts(m, "APU Support Frequency points (Unit is KHZ), (MDLA, MVPU)\n");
+	for (i = 0; i < ARRAY_SIZE(mt6993_mdla_pll_freq); i++) {
+		if (mt6993_mdla_pll_freq[i] == 0)
+			continue;
+		else if (mt6993_mdla_pll_freq[i] > 1000000) {
+			seq_printf(m, "%d, ", mt6993_mdla_pll_freq[i]);
+			if (mt6993_mvpu_pll_freq[i] < 1000000)
+				seq_printf(m, " %d\n", mt6993_mvpu_pll_freq[i]);
+			else
+				seq_printf(m, "%d\n", mt6993_mvpu_pll_freq[i]);
+		} else {
+			seq_printf(m, " %d, ", mt6993_mdla_pll_freq[i]);
+			seq_printf(m, " %d\n", mt6993_mvpu_pll_freq[i]);
+		}
 	}
 
 	return 0;
 }
 
-static int opp_proc_open(struct inode *inode, struct file *file)
+static int mt6993_opp_proc_open(struct inode *inode, struct file *file)
 {
 	return single_open(file, mt6993_opp_proc_show, NULL);
 }
 
 static const struct proc_ops opp_proc_ops = {
-	.proc_open    = opp_proc_open,
+	.proc_open    = mt6993_opp_proc_open,
+	.proc_read    = seq_read,
+	.proc_lseek   = seq_lseek,
+	.proc_release = single_release,
+};
+
+/* show engine current frequency in procfs */
+static int mt6993_engine_freq_proc_show(struct seq_file *m, void *v)
+{
+	uint32_t opp = 0, mbox_status = 0;
+	int nearest_freq, mdla_ret = 0, mvpu_ret = 0;
+	const char *type = (const char *)m->private;
+
+	mbox_status = apu_readl(
+			(apupw.regs[apu_md32_mbox] + ENGINE_ONOFF_OPP_SYNC_REG));
+	pr_info("%s, mbox_status = %08x", __func__, mbox_status);
+	opp = (mbox_status >> 16) & 0xF;
+	mbox_status = mbox_status & 0xFFFF;
+	mbox_status = mbox_status >> 2;
+
+	if (!mbox_status) {
+		seq_puts(m, "0\n");
+		goto out;
+	}
+
+	if (!first_dump) {
+		mt6993_request_opp_table();
+		first_dump = 1;
+	}
+
+	if (opp > 2)
+		opp = opp - 1;// since opp 2 is only for thermal throttle usage
+
+	if (((mbox_status >> 0) & 0x1) != 0x1)
+		mdla_ret += 1;
+
+	if (((mbox_status >> 1) & 0x1) != 0x1)
+		mdla_ret += 1;
+
+	if (((mbox_status >> 2) & 0x1) != 0x1)
+		mdla_ret += 1;
+
+	if (((mbox_status >> 3) & 0x1) != 0x1)
+		mdla_ret += 1;
+
+	if (((mbox_status >> 4) & 0x1) != 0x1)
+		mvpu_ret += 1;
+
+
+	if (strcmp(type, "mdla") == 0) {
+		if (mdla_ret == 4) {
+			nearest_freq = 0;
+			seq_printf(m, "%d\n", nearest_freq);
+			goto out;
+		}
+
+		nearest_freq = mt6993_mdla_pll_freq[opp];
+	} else if (strcmp(type, "mvpu") == 0) {
+		if (mvpu_ret == 1) {
+			nearest_freq = 0;
+			seq_printf(m, "%d\n", nearest_freq);
+			goto out;
+		}
+
+		nearest_freq = mt6993_mvpu_pll_freq[opp];
+	} else
+		nearest_freq = 0;
+
+	seq_printf(m, "%d\n", nearest_freq);
+out:
+	return 0;
+}
+
+static int mt6993_engine_freq_proc_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, mt6993_engine_freq_proc_show, pde_data(inode));
+}
+
+static const struct proc_ops engine_freq_proc_ops = {
+	.proc_open    = mt6993_engine_freq_proc_open,
 	.proc_read    = seq_read,
 	.proc_lseek   = seq_lseek,
 	.proc_release = single_release,
@@ -902,12 +993,24 @@ static int mt6993_apu_top_pb(struct platform_device *pdev)
 		return -ENOMEM;
 
 	if (!proc_create("apu_opp_table", 0, apudvfs_dir, &opp_proc_ops)) {
-		remove_proc_entry("apudvfs", NULL);
+		//remove_proc_entry("apudvfs", NULL);
+		pr_info("%s: create apu_opp_table failed\n", __func__);
 		return -ENOMEM;
 	}
 
-	if (!proc_create("user_limit", 0644, apudvfs_dir, &client_input_ops)) {
-		remove_proc_entry("apudvfs", NULL);
+	if (!proc_create_data("apu_cur_mdla_freq", 0, apudvfs_dir, &engine_freq_proc_ops, "mdla")) {
+		pr_info("%s: create apu_cur_mdla_freq failed\n", __func__);
+		return -ENOMEM;
+	}
+
+	if (!proc_create_data("apu_cur_mvpu_freq", 0, apudvfs_dir, &engine_freq_proc_ops, "mvpu")) {
+		pr_info("%s: create apu_cur_mvpu_freq failed\n", __func__);
+		return -ENOMEM;
+	}
+
+	if (!proc_create("apu_user_limit", 0644, apudvfs_dir, &client_input_ops)) {
+		//remove_proc_entry("apudvfs", NULL);
+		pr_info("%s: create user_limit failed\n", __func__);
 		return -ENOMEM;
 	}
 
@@ -938,7 +1041,9 @@ static int mt6993_apu_top_rm(struct platform_device *pdev)
 	mutex_unlock(&lock);
 	mutex_destroy(&lock);
 	// rm client input and apudvfs opp table
-	remove_proc_entry("user_limit", apudvfs_dir);
+	remove_proc_entry("apu_user_limit", apudvfs_dir);
+	remove_proc_entry("apu_cur_mvpu_freq", apudvfs_dir);
+	remove_proc_entry("apu_cur_mdla_freq", apudvfs_dir);
 	remove_proc_entry("apu_opp_table", apudvfs_dir);
 	remove_proc_entry("apudvfs", NULL);
 

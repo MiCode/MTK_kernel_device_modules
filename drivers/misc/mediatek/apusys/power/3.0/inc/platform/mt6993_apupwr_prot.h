@@ -33,6 +33,7 @@
  * The following are used for data exchange through spare register(s)
  * direction : uP write -> APMCU read
  */
+#define ENGINE_ONOFF_OPP_SYNC_REG		SPARE_DBG_REG6
 #define DRV_STAT_SYNC_REG               SPARE_DBG_REG7
 #define MBRAIN_DATA_SYNC_0_REG          SPARE_DBG_REG8  // pll recording
 #define MBRAIN_DATA_SYNC_1_REG          SPARE_DBG_REG9  // vapu recording
@@ -142,7 +143,8 @@ struct tiny_dvfs_opp_tbl {
 	int tbl_size;   // entry number
 	struct tiny_dvfs_opp_entry opp[USER_MIN_OPP_VAL + 1];   // entry data
 };
-extern int opp_level_pll_freq[OPP_TABLE_SIZE];
+extern int mt6993_mdla_pll_freq[OPP_TABLE_SIZE];
+extern int mt6993_mvpu_pll_freq[OPP_TABLE_SIZE];
 
 void mt6993_aputop_opp_limit(int upper_opp, int low_opp,
 		enum apu_opp_limit_type type);

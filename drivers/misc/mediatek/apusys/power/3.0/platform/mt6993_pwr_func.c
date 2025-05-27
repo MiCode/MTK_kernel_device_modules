@@ -15,7 +15,8 @@ static void __iomem *spare_reg_base;
 static struct tiny_dvfs_opp_tbl opp_tbl;
 static struct tiny_dvfs_opp_tbl opp_tbl2;
 static struct apu_pwr_curr_info curr_info;
-int opp_level_pll_freq[OPP_TABLE_SIZE];
+int mt6993_mdla_pll_freq[OPP_TABLE_SIZE];
+int mt6993_mvpu_pll_freq[OPP_TABLE_SIZE];
 int opp_request_bit;
 static const char * const pll_name[] = {
 				"PLL_CONN", "PLL_RV33", "PLL_MVPU", "PLL_MDLA"};
@@ -509,7 +510,7 @@ void mt6993_request_opp_table(void)
 	rpmsg_data.data0 = 1; // pseudo data
 	do {
 		ret = aputop_send_rpmsg(&rpmsg_data, 100);
-		if (opp_level_pll_freq[USER_MID_OPP_VAL - 1] != 0)
+		if (mt6993_mdla_pll_freq[USER_MID_OPP_VAL - 1] != 0)
 			break;
 		udelay(1000);
 	} while (--retry);
@@ -519,7 +520,7 @@ void mt6993_request_opp_table(void)
 	rpmsg_data.data0 = 1; // pseudo data
 	do {
 		ret = aputop_send_rpmsg(&rpmsg_data, 100);
-		if (opp_level_pll_freq[OPP_TABLE_SIZE - 1] != 0)
+		if (mt6993_mdla_pll_freq[OPP_TABLE_SIZE - 1] != 0)
 			break;
 		udelay(1000);
 	} while (--retry);
@@ -541,11 +542,16 @@ static void save_opp_table(struct tiny_dvfs_opp_tbl *tbl, int start_index)
 		for (j = 0; j < 4; j++)
 			pr_info(" pll_freq[%d]=%d", j, mytbl.opp[i].pll_freq[j]);
 		if (i + start_index < OPP_TABLE_SIZE)
-			opp_level_pll_freq[i + start_index] = mytbl.opp[i].pll_freq[PLL_DLA];
+			mt6993_mdla_pll_freq[i + start_index] = mytbl.opp[i].pll_freq[PLL_DLA];
+		pr_info("\n");
+	}
+
+	for (i = 0; i < size; i++) {
+		if (i + start_index < OPP_TABLE_SIZE)
+			mt6993_mvpu_pll_freq[i + start_index] = mytbl.opp[i].pll_freq[PLL_VPU];
 		pr_info("\n");
 	}
 }
-EXPORT_SYMBOL(opp_level_pll_freq);
 
 int mt6993_apu_top_rpmsg_cb(int cmd, void *data, int len, void *priv, u32 src)
 {
