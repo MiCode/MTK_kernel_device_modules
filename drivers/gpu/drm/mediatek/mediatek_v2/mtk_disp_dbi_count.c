@@ -1965,9 +1965,9 @@ int mtk_dbi_count_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		if (data->type != CHANNEL_HRT_READ && data->type != CHANNEL_HRT_WRITE)
 			break;
 
-		if (comp->larb_num == 1)
+		if (IS_ERR_OR_NULL(comp->larb_ids))
 			data->larb_id = comp->larb_id;
-		else if (comp->larb_num > 1)
+		else
 			data->larb_id = comp->larb_ids[0];
 
 		if (data->larb_id < 0)

@@ -754,9 +754,9 @@ static int mtk_postmask_io_cmd(struct mtk_ddp_comp *comp,
 		if (data->type != CHANNEL_HRT_RW)
 			break;
 
-		if (comp->larb_num == 1)
+		if (IS_ERR_OR_NULL(comp->larb_ids))
 			data->larb_id = comp->larb_id;
-		else if (comp->larb_num > 1)
+		else
 			data->larb_id = comp->larb_ids[0];
 
 		if (data->larb_id < 0)
