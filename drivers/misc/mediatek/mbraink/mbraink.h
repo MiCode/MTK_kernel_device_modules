@@ -85,6 +85,7 @@
 
 #define NR_CODE_LAGACY_MAX      122 // ('z')
 #define TRACE_CPUFREQ_INFO      (NR_CODE_LAGACY_MAX + 1)
+#define POWER_THROTTLE_HW_OC_INFO	(NR_CODE_LAGACY_MAX + 2)
 
 /*Mbrain Delegate IOCTL List*/
 #define AUTO_IOCTL_INFO			_IOR(IOC_MAGIC, AUTO_IOCTL, \
@@ -227,6 +228,8 @@
 						struct mbraink_mmqos_bw_info*)
 #define RO_MEMORY_CM_PROFILE_INFO		_IOR(IOC_MAGIC, MEMORY_CM_PROFILE_INFO, \
 							struct mbraink_memory_cmProfileInfo*)
+#define RO_POWER_THROTTLE_HW_OC_INFO	_IOR(IOC_MAGIC, POWER_THROTTLE_HW_OC_INFO, \
+							struct mbraink_power_throttle_hw_oc_data*)
 
 #define SUSPEND_DATA	0
 #define RESUME_DATA		1

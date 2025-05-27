@@ -82,6 +82,7 @@
 #define NETLINK_EVENT_AUDIOADSPNOTIFY "NLEvent_ADSPEvt"
 #define NETLINK_EVENT_SYSCPUFREQ "NLEvent_SysCpufreq"
 #define NETLINK_EVENT_SYSOOM		"NLEvent_SysOOM"
+#define NETLINK_EVENT_HPT_NOTIFY "NLEvent_HPTNotify"
 
 #define NETLINK_EVENT_MESSAGE_SIZE		1024
 
@@ -859,6 +860,12 @@ struct mbraink_oom_tracing_data {
 	unsigned short tracing_idx;
 	unsigned short tracing_count;
 	struct mbraink_oom_tracing drv_data[MAX_DDR_TRACE_OOM_NUM];
+};
+
+struct mbraink_power_throttle_hw_oc_data {
+	unsigned int version;
+	unsigned int oc_count;
+	unsigned int oc_duration_us;
 };
 
 #endif

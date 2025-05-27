@@ -60,6 +60,7 @@ struct mbraink_power_ops {
 	int (*getMMBWInfo)(struct mbraink_mmqos_bw_info *mmqos_bw_info);
 	int (*deviceSuspend)(struct device *dev);
 	int (*deviceResume)(struct device *dev);
+	int (*getPowerThrottleHwOcInfo)(struct mbraink_power_throttle_hw_oc_data *pt_hw_oc_data);
 };
 int register_mbraink_power_ops(struct mbraink_power_ops *ops);
 int unregister_mbraink_power_ops(void);

@@ -1381,6 +1381,50 @@ static int mbraink_v6993_power_get_mmqos_bw_info(struct mbraink_mmqos_bw_info *m
 	return ret;
 }
 
+void pt2mbrain_hpt_notify_func(void)
+{
+	char netlink_buf[NETLINK_EVENT_MESSAGE_SIZE] = {'\0'};
+	int n = 0;
+	int pos = 0;
+
+	n = snprintf(netlink_buf + pos,
+			NETLINK_EVENT_MESSAGE_SIZE - pos,
+			"%s",
+			NETLINK_EVENT_HPT_NOTIFY);
+
+	if (n < 0 || n >= NETLINK_EVENT_MESSAGE_SIZE - pos)
+		return;
+
+	pr_info("[%s] send (%s)\n", __func__, netlink_buf);
+	mbraink_netlink_send_msg(netlink_buf);
+}
+
+static int mbraink_v6993_power_get_power_throttle_hw_oc_info
+	(struct mbraink_power_throttle_hw_oc_data *pt_hw_oc_data)
+{
+	int ret = 0;
+	struct hpt_mbrain_data  res_hpt_mbrain_data;
+
+	if (pt_hw_oc_data == NULL)
+		return -1;
+
+	memset(&res_hpt_mbrain_data, 0x00, sizeof(struct hpt_mbrain_data));
+	ret = get_hpt_mbrain_data(&res_hpt_mbrain_data);
+	if (ret < 0) {
+		pr_info("failed to get pt ot info");
+		return ret;
+	}
+
+	pt_hw_oc_data->version = 1;
+	pt_hw_oc_data->oc_count = res_hpt_mbrain_data.oc_count;
+	pt_hw_oc_data->oc_duration_us = res_hpt_mbrain_data.oc_duration_us;
+	pr_info("[%s] oc_count(%d), oc_duration_us(%d)",
+		__func__,
+		pt_hw_oc_data->oc_count, pt_hw_oc_data->oc_duration_us);
+
+	return ret;
+}
+
 static struct mbraink_power_ops mbraink_v6993_power_ops = {
 	.getVotingInfo = NULL,
 	.getPowerInfo = NULL,
@@ -1406,6 +1450,7 @@ static struct mbraink_power_ops mbraink_v6993_power_ops = {
 	.getMMBWInfo = mbraink_v6993_power_get_mmqos_bw_info,
 	.deviceSuspend = mbraink_v6993_power_device_suspend,
 	.deviceResume = mbraink_v6993_power_device_resume,
+	.getPowerThrottleHwOcInfo = mbraink_v6993_power_get_power_throttle_hw_oc_info,
 };
 
 int mbraink_v6993_power_init(struct device *dev)
@@ -1444,6 +1489,12 @@ int mbraink_v6993_power_init(struct device *dev)
 		return ret;
 	}
 
+	ret = register_hpt_mbrian_cb(pt2mbrain_hpt_notify_func);
+	if (ret != 0) {
+		pr_info("register hpt callback failed by: %d", ret);
+		return ret;
+	}
+
 	device_enable_async_suspend(dev);
 
 	return ret;
@@ -1464,6 +1515,12 @@ int mbraink_v6993_power_deinit(void)
 	ret = ccci_mbrain_unregister();
 	if (ret != 0) {
 		pr_info("ccci unregister callback failed by: %d", ret);
+		return ret;
+	}
+
+	ret = unregister_hpt_mbrian_cb();
+	if (ret != 0) {
+		pr_info("hpt unregister callback failed by: %d", ret);
 		return ret;
 	}
 

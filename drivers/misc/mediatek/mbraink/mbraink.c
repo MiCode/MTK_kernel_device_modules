@@ -1533,6 +1533,30 @@ static long handle_trace_cpufreq(unsigned long arg, void *mbraink_data)
 	return ret;
 }
 
+static long handlePowerThrottleHwOcInfo(unsigned long arg, void *mbraink_data)
+{
+	long ret = 0;
+	struct mbraink_power_throttle_hw_oc_data *power_throttle_oc_data =
+		(struct mbraink_power_throttle_hw_oc_data *)(mbraink_data);
+
+	pr_notice("mbraink %s\n", __func__);
+	memset(power_throttle_oc_data,
+		0,
+		sizeof(struct mbraink_power_throttle_hw_oc_data));
+
+	ret = mbraink_power_get_power_throttle_hw_oc_info(power_throttle_oc_data);
+	if (ret == 0) {
+		if (copy_to_user((struct mbraink_power_throttle_hw_oc_data *)arg,
+				power_throttle_oc_data,
+				sizeof(struct mbraink_power_throttle_hw_oc_data))) {
+			pr_notice("Copy power throttle oc info to UserSpace error!\n");
+			ret = -EPERM;
+		}
+	}
+
+	return ret;
+}
+
 static long mbraink_ioctl(struct file *filp,
 							unsigned int cmd,
 							unsigned long arg)
@@ -2102,6 +2126,16 @@ static long mbraink_ioctl(struct file *filp,
 		kfree(mbraink_data);
 		break;
 	}
+	case RO_POWER_THROTTLE_HW_OC_INFO:
+	{
+		mbraink_data =
+			kmalloc(sizeof(struct mbraink_power_throttle_hw_oc_data), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handlePowerThrottleHwOcInfo(arg, mbraink_data);
+		kfree(mbraink_data);
+		break;
+	}
 	default:
 		pr_notice("%s:illegal ioctl number %u.\n", __func__, cmd);
 		return -EINVAL;
@@ -2414,9 +2448,6 @@ static ssize_t mbraink_gpu_store(struct device *dev,
 	unsigned int command;
 	unsigned long long value;
 	int retSize = 0;
-	struct mbraink_dvfsrc_struct_data mbraink_dvfsrc_data;
-
-	memset(&mbraink_dvfsrc_data, 0x00, sizeof(struct mbraink_dvfsrc_struct_data));
 
 	retSize = sscanf(buf, "%d %llu", &command, &value);
 	if (retSize == -1)
@@ -2430,9 +2461,6 @@ static ssize_t mbraink_gpu_store(struct device *dev,
 
 	if (command == 5)
 		mbraink_gpu_setOpMode((int)value);
-
-	if (command == 6)
-		mbraink_power_get_dvfsrc_info(&mbraink_dvfsrc_data);
 
 	return count;
 }

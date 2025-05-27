@@ -35,6 +35,7 @@ int mbraink_power_init(void)
 	_mbraink_power_ops.getMMBWInfo = NULL;
 	_mbraink_power_ops.deviceSuspend = NULL;
 	_mbraink_power_ops.deviceResume = NULL;
+	_mbraink_power_ops.getPowerThrottleHwOcInfo = NULL;
 	return 0;
 }
 
@@ -64,6 +65,7 @@ int mbraink_power_deinit(void)
 	_mbraink_power_ops.getMMBWInfo = NULL;
 	_mbraink_power_ops.deviceSuspend = NULL;
 	_mbraink_power_ops.deviceResume = NULL;
+	_mbraink_power_ops.getPowerThrottleHwOcInfo = NULL;
 	return 0;
 }
 
@@ -98,6 +100,7 @@ int register_mbraink_power_ops(struct mbraink_power_ops *ops)
 	_mbraink_power_ops.getMMBWInfo = ops->getMMBWInfo;
 	_mbraink_power_ops.deviceSuspend = ops->deviceSuspend;
 	_mbraink_power_ops.deviceResume = ops->deviceResume;
+	_mbraink_power_ops.getPowerThrottleHwOcInfo = ops->getPowerThrottleHwOcInfo;
 	return 0;
 }
 EXPORT_SYMBOL(register_mbraink_power_ops);
@@ -130,6 +133,7 @@ int unregister_mbraink_power_ops(void)
 	_mbraink_power_ops.getMMBWInfo = NULL;
 	_mbraink_power_ops.deviceSuspend = NULL;
 	_mbraink_power_ops.deviceResume = NULL;
+	_mbraink_power_ops.getPowerThrottleHwOcInfo = NULL;
 	return 0;
 }
 EXPORT_SYMBOL(unregister_mbraink_power_ops);
@@ -503,3 +507,22 @@ int mbraink_power_get_mmqos_bw_info(struct mbraink_mmqos_bw_info *mmqos_bw_info)
 
 	return ret;
 }
+
+int mbraink_power_get_power_throttle_hw_oc_info(
+	struct mbraink_power_throttle_hw_oc_data *pt_hw_oc_data)
+{
+	int ret = 0;
+
+	if (pt_hw_oc_data == NULL) {
+		pr_info("%s: power throttle hw oc info is null.\n", __func__);
+		return -1;
+	}
+
+	if (_mbraink_power_ops.getPowerThrottleHwOcInfo)
+		ret = _mbraink_power_ops.getPowerThrottleHwOcInfo(pt_hw_oc_data);
+	else
+		pr_info("%s: Do not support ioctl get pt hw oc info query.\n", __func__);
+
+	return ret;
+}
+

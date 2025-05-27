@@ -58,4 +58,7 @@ int mbraink_power_get_dvfsrc_info(struct mbraink_dvfsrc_struct_data *mbraink_dvf
 
 int mbraink_power_get_mmqos_bw_info(struct mbraink_mmqos_bw_info *mmqos_bw_info);
 
+int mbraink_power_get_power_throttle_hw_oc_info(
+	struct mbraink_power_throttle_hw_oc_data *pt_hw_oc_data);
+
 #endif /*end of MBRAINK_POWER_H*/
