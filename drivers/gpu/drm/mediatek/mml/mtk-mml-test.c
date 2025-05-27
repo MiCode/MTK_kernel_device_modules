@@ -583,6 +583,9 @@ static void case_general_submit_ut(struct mml_test *test,
 	task.info.act_time = utcfg->interval * 1000000;
 
 	fences = kcalloc(utcfg->round, sizeof(*fences), GFP_KERNEL);
+	if (!fences)
+		goto err_done;
+
 	ktime_get_real_ts64((struct timespec64 *)&task.end);
 	for (i = 0; i < utcfg->round; i++) {
 		timespec64_add_ns((struct timespec64 *)&task.end,
