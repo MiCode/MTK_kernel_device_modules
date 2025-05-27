@@ -346,6 +346,7 @@ struct workqueue_struct *isr_log_wq;
 #ifdef CONFIG_OF
 
 #include <linux/clk.h>
+#define MAX_FREQ_MHZ_ISP6S	624
 struct ISP_CLK_STRUCT {
 	struct clk *ISP_CAM_CAMSYS;
 	struct clk *ISP_CAM_CAMTG;
@@ -380,6 +381,8 @@ struct ISP_CLK_STRUCT {
 	struct clk *ISP_TOP_MUX_CAMTM;
 };
 struct ISP_CLK_STRUCT isp_clk;
+
+static struct clk *cam_mmdvfs_clk;
 
 struct isp_device {
 	void __iomem *regs;
@@ -5060,8 +5063,21 @@ static long ISP_ioctl(struct file *pFile, unsigned int Cmd, unsigned long Param)
 
 		if (copy_from_user(&dfs_ctrl, (void *)Param,
 				   sizeof(unsigned int)) == 0) {
-			ISP_SetPMQOS(E_CLK_CLR, ISP_IRQ_TYPE_INT_CAM_A_ST,
+			if (IS_MT6858(g_platform_id)) {
+				int ret = 0, freq = 0;
+
+				if (IS_ERR_OR_NULL(cam_mmdvfs_clk))
+					LOG_NOTICE("ERROR: cam_mmdvfs_clk is ERR or NULL\n");
+				else {
+					LOG_NOTICE("ISP_DFS_CTRL: set cam_mmdvfs_clk(%d)\n", freq);
+					ret = clk_set_rate(cam_mmdvfs_clk, freq);
+					if (ret)
+						LOG_NOTICE("ISP_DFS_CTRL: E_CLK_CLR failed!\n");
+				}
+			} else {
+				ISP_SetPMQOS(E_CLK_CLR, ISP_IRQ_TYPE_INT_CAM_A_ST,
 				     NULL);
+			}
 		} else {
 			LOG_NOTICE("ISP_DFS_CTRL copy_from_user failed\n");
 			Ret = -EFAULT;
@@ -5072,8 +5088,25 @@ static long ISP_ioctl(struct file *pFile, unsigned int Cmd, unsigned long Param)
 
 		if (copy_from_user(&dfs_update, (void *)Param,
 				   sizeof(unsigned int)) == 0) {
-			ISP_SetPMQOS(E_CLK_UPDATE, ISP_IRQ_TYPE_INT_CAM_A_ST,
+			if (IS_MT6858(g_platform_id)) {
+				int ret = 0;
+				unsigned long freq;
+
+				dfs_update = (dfs_update > MAX_FREQ_MHZ_ISP6S)? MAX_FREQ_MHZ_ISP6S : dfs_update;
+				freq = dfs_update * 1000000;	// MHz to Hz
+
+				if (IS_ERR_OR_NULL(cam_mmdvfs_clk))
+					LOG_NOTICE("ERROR: cam_mmdvfs_clk is ERR or NULL\n");
+				else {
+					LOG_NOTICE("ISP_DFS_UPDATE: set cam_mmdvfs_clk(%lu)\n", freq);
+					ret = clk_set_rate(cam_mmdvfs_clk, freq);
+					if (ret)
+						LOG_NOTICE("ISP_DFS_UPDATE: E_CLK_UPDATE(%lu) failed!\n", freq);
+				}
+			} else {
+				ISP_SetPMQOS(E_CLK_UPDATE, ISP_IRQ_TYPE_INT_CAM_A_ST,
 				     &dfs_update);
+			}
 		} else {
 			LOG_NOTICE("ISP_DFS_UPDATE copy_from_user failed\n");
 			Ret = -EFAULT;
@@ -6887,6 +6920,13 @@ static int ISP_probe(struct platform_device *pDev)
 			LOG_NOTICE("cannot get ISP_TOP_MUX_CAMTM clock\n");
 			return PTR_ERR(isp_clk.ISP_TOP_MUX_CAMTM);
 		}
+
+		if (IS_MT6858(g_platform_id)) {
+			cam_mmdvfs_clk = devm_clk_get(&pDev->dev, "MMDVFS_CAM");
+			if (IS_ERR_OR_NULL(cam_mmdvfs_clk))
+				LOG_NOTICE("cannot get CLK_MMDVFS_CAM clock\n");
+		}
+
 #endif
 		/*  */
 		for (i = 0; i < ISP_IRQ_TYPE_AMOUNT; i++)
