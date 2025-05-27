@@ -248,6 +248,7 @@ static void esd_check_done_cb(struct cmdq_cb_data data)
 	CRTC_MMP_MARK(index, esd_check, 2, 8);
 	ret = mtk_ddp_comp_io_cmd(output_comp, NULL, ESD_CHECK_CMP,
 					 (void *)mtk_crtc);
+	mtk_vidle_user_power_release(DISP_VIDLE_USER_CRTC);
 	CRTC_MMP_MARK(index, esd_check, 2, ret);
 
 	if (ret || debug_force_esd || esd_ctx->chk_sta == 0xff) {
@@ -291,7 +292,6 @@ check_done:
 		mtk_disp_esd_check_switch(crtc, false);
 
 		if (need_lock) {
-			mtk_vidle_user_power_release(DISP_VIDLE_USER_CRTC);
 			DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
 			DDP_COMMIT_UNLOCK(&private->commit.lock, __func__, __LINE__);
 		}
@@ -302,7 +302,6 @@ check_done:
 		atomic_set(&mtk_crtc->esd_notice_status, 0);
 	}
 	if (need_lock) {
-		mtk_vidle_user_power_release(DISP_VIDLE_USER_CRTC);
 		DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
 		DDP_COMMIT_UNLOCK(&private->commit.lock, __func__, __LINE__);
 	}
@@ -333,6 +332,7 @@ int _mtk_esd_check_read(struct drm_crtc *crtc)
 		DDPINFO("[ESD%u]%s esd check in idle\n", index, __func__);
 		mtk_drm_idlemgr_kick(__func__, &mtk_crtc->base, index);
 	}
+	mtk_vidle_user_power_keep(DISP_VIDLE_USER_CRTC);
 
 	esd_ctx = mtk_crtc->esd_ctx;
 
@@ -403,6 +403,7 @@ int _mtk_esd_check_read(struct drm_crtc *crtc)
 	}
 	CRTC_MMP_MARK(index, esd_check, 2, 4);
 	cmdq_pkt_flush_threaded(cmdq_handle, esd_check_done_cb, (void *)cb_data);
+	mtk_vidle_user_power_release(DISP_VIDLE_USER_CRTC);
 	CRTC_MMP_MARK(index, esd_check, 2, 5);
 
 	return 0;
@@ -593,7 +594,6 @@ static int mtk_drm_esd_recover(struct drm_crtc *crtc)
 
 	if (mtk_vidle_is_ff_enabled()) {
 		mtk_vidle_config_ff(false);
-		mtk_vidle_enable(false, priv);
 		if (!mtk_vidle_is_ff_enabled())
 			CRTC_MMP_MARK(index, leave_vidle, 0xe5d, 0);
 		CRTC_MMP_MARK(index, esd_recovery, 0, 0x11);
@@ -730,7 +730,7 @@ int mtk_drm_esd_testing_process(struct mtk_drm_esd_ctx *esd_ctx, bool need_lock)
 		}
 		if (need_lock) {
 			DDP_COMMIT_LOCK(&private->commit.lock, __func__, __LINE__);
-			DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
+			DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
 			CRTC_MMP_MARK(crtc_idx, esd_check, 0x10CF, 0);
 		}
 
@@ -772,7 +772,7 @@ int mtk_drm_esd_testing_process(struct mtk_drm_esd_ctx *esd_ctx, bool need_lock)
 		mtk_drm_trace_end("esd");
 
 		if (need_lock) {
-			DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+			DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
 			DDP_COMMIT_UNLOCK(&private->commit.lock, __func__, __LINE__);
 		}
 
