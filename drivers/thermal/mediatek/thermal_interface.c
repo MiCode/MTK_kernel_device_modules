@@ -1721,8 +1721,8 @@ static ssize_t vtskin_info_show(struct kobject *kobj,
 	for (i = 0; i < plat_vtskin_info->num_sensor; i++) {
 		param = &plat_vtskin_info->params[i];
 		len += snprintf(buf + len, PAGE_SIZE - len,
-			"   vtskin id=%d, name=%s, ref_num=%d op=%d\n",
-			i, param->tz_name, param->ref_num, param->operation);
+			"   vtskin id=%d, name=%s, ref_num=%d op=%d offset=%d\n",
+			i, param->tz_name, param->ref_num, param->operation, param->offset);
 		for (j = 0; j < param->ref_num; j++) {
 			len += snprintf(buf + len, PAGE_SIZE - len,
 				"      %20s, %10lld\n", param->vtskin_ref[j].sensor_name,
@@ -1738,7 +1738,7 @@ static ssize_t vtskin_info_show(struct kobject *kobj,
 static ssize_t vtskin_info_store(struct kobject *kobj,
 	struct kobj_attribute *attr, const char *buf, size_t count)
 {
-	int len = 0, ref_num = 0, op;
+	int len = 0, ref_num = 0, op, offset = 0;
 	char skin_name[THERMAL_NAME_LENGTH + 1], ref_name[THERMAL_NAME_LENGTH + 1];
 	long long ref_coef;
 	unsigned int skin_id, i;
@@ -1751,8 +1751,8 @@ static ssize_t vtskin_info_store(struct kobject *kobj,
 		return -ENODATA;
 	}
 
-	if (sscanf(buf, "%20s %10d %10d%n", skin_name, &op, &ref_num, &len) != 3) {
-		pr_info("wrong skin_name, op, or ref_num %s\n", buf);
+	if (sscanf(buf, "%20s %10d %10d %10d%n", skin_name, &op, &ref_num, &offset, &len) != 4) {
+		pr_info("wrong skin_name, op, ref_num, or offset %s\n", buf);
 		return -EINVAL;
 	}
 	buf += len;
@@ -1803,6 +1803,7 @@ static ssize_t vtskin_info_store(struct kobject *kobj,
 	param = &plat_vtskin_info->params[skin_id];
 	param->operation = op;
 	param->ref_num = (unsigned int)ref_num;
+	param->offset = offset;
 	memcpy(&param->vtskin_ref[0], &coef[0], sizeof(struct vtskin_coef) * MAX_VTSKIN_REF_NUM);
 	for (i = 0; i < MAX_VTSKIN_REF_NUM; i++)
 		param->tzd[i] = tzd[i];

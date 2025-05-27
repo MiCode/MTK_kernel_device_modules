@@ -107,6 +107,10 @@ static int __vtskin_get_temp(struct thermal_zone_device *tz, int *temp)
 				*temp = (int)div_s64(vtskin, 100000000);
 		}
 	}
+	*temp += skin_param[skin_tz->id].offset;
+
+	if (*temp < THERMAL_TEMP_INVALID)
+		*temp = THERMAL_TEMP_INVALID;
 
 	return 0;
 }
