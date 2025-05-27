@@ -1309,7 +1309,7 @@ mgk_64_kleaf_platform_modules = {
     "//kernel_device_modules-{}/drivers/mfd:mt6379i".format(kernel_version): "mt6991 mt6993",
     "//kernel_device_modules-{}/drivers/mfd:mt6379s".format(kernel_version): "mt6991 mt6993",
     "//kernel_device_modules-{}/drivers/mfd:mt63xx-debug".format(kernel_version): "mt6789",
-    "//kernel_device_modules-{}/drivers/mfd:mt6685-core".format(kernel_version): "mt6855 mt6886 mt6895 mt6878 mt6897 mt6899 mt6983 mt6985 mt6991",
+    "//kernel_device_modules-{}/drivers/mfd:mt6685-core".format(kernel_version): "mt6855 mt6858 mt6886 mt6895 mt6878 mt6897 mt6899 mt6983 mt6985 mt6991",
     "//kernel_device_modules-{}/drivers/mfd:mt6687-core".format(kernel_version): "mt6993",
     "//kernel_device_modules-{}/drivers/mfd:mt6720".format(kernel_version): "mt6858",
     "//kernel_device_modules-{}/drivers/media/platform/mtk-vcu:mtk-vcu".format(kernel_version): "mt6768 mt6781 mt6789 mt6833 mt6853 mt6855 mt6877 mt6893 mt8188 mt8192",
