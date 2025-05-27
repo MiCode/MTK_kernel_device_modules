@@ -2962,7 +2962,12 @@ GED_ERROR ged_kpi_system_init(void)
 	is_GED_KPI_enabled = ged_gpufreq_bringup() ? 0 : 1;
 	g_eb_workload = 0;
 	force_loading_based_enable = 0;
+
+#if !IS_ENABLED(CONFIG_MTK_GPU_LEGACY) /* MTK_GPU_EB_SUPPORT */
 	update_gpu_fps_table(1);
+#else
+	update_gpu_fps_table(0);
+#endif
 
 	g_psGIFT = (struct GED_KPI_MEOW_DVFS_FREQ_PRED *)
 		ged_alloc_atomic(sizeof(struct GED_KPI_MEOW_DVFS_FREQ_PRED));
