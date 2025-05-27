@@ -500,6 +500,8 @@
 	eas_info: eas-info {
 		compatible = "mediatek,eas-info";
 		csram-base = <0x0c57c000>;
+		/* EAS_5_5 : 550, EAS_5_5_1 : 551, EAS_6_1 : 600, EAS_6_5 : 650, EAS_6_12 : 612 */
+		version = <612>;
 	};
 
 	firmware: firmware {
