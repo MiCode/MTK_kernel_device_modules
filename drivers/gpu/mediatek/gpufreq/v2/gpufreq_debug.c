@@ -824,6 +824,9 @@ static int mfgsys_config_proc_show(struct seq_file *m, void *v)
 		g_shared_status->test_mode == TEST_PRIVILEGE ? "Privilege" :
 		g_shared_status->test_mode == TEST_ADVANCED ? "Advanced" : "Normal",
 		g_shared_status->checker_result);
+	seq_printf(m, "%-8s Flavor: %s\n",
+		"[Misc]",
+		g_shared_status->flavor);
 
 	seq_puts(m, "\n[##*] [TOP Vaging] [##*] [TOP Vavs] [##*] [STK Vaging] [##*] [STK Vavs]\n");
 	for (i = 0; i < adj_num; i++) {

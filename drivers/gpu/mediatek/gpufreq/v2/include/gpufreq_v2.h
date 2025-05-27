@@ -617,6 +617,7 @@ struct gpufreq_shared_status {
 	unsigned int checker_result;
 	unsigned int vcore_level;
 	unsigned long long profile_time[PROF_TYPE_NUM][PROF_IDX_NUM];
+	char flavor[32];
 	struct gpufreq_reg_info reg_stack_sel;
 	struct gpufreq_reg_info reg_top_delsel;
 	struct gpufreq_reg_info reg_stack_delsel;
