@@ -2341,12 +2341,10 @@
 				interrupt-names = "rcs_irq", "pmif_irq","spmi_nack_irq";
 				interrupt-controller;
 				#interrupt-cells = <1>;
-				irq-event-en = <0x40000000 0x0 0x0 0x0 0x0>;
+				irq-event-en = <0x0 0x0 0x0 0x0 0x0>;
 				spmi-dev-mask = <0x0>;
 				#address-cells = <2>;
 				#size-cells = <0>;
-				hwinf-err-irq-idx = <0x20 0x2a>;
-				swinf-err-irq-idx = <0x57 0x5c>;
 		};
 
 		gce: gce@1e980000 {
