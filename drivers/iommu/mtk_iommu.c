@@ -2124,6 +2124,7 @@ static struct iommu_group *mtk_iommu_device_group(struct device *dev)
 
 	hw_list = c_data->hw_list;
 	if (!hw_list) {
+		dump_stack();
 		dev_info(dev, "hw_list is NULL\n");
 		return ERR_PTR(-ENODEV);
 	}
