@@ -6198,6 +6198,7 @@ static void disp_oddmr_primary_data_init(struct mtk_ddp_comp *comp)
 	init_waitqueue_head(&primary_data->sof_irq_wq);
 	init_waitqueue_head(&primary_data->hrt_wq);
 	init_waitqueue_head(&primary_data->od_sram_wq);
+	init_waitqueue_head(&primary_data->frame_dirty_wq);
 	mutex_init(&primary_data->clock_lock);
 	mutex_init(&primary_data->timing_lock);
 	mutex_init(&primary_data->dbi_data_lock);
@@ -6279,7 +6280,10 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	{
 		if (oddmr_data->is_right_pipe)
 			break;
-		atomic_set(&oddmr_data->primary_data->frame_dirty, 1);
+		if (!atomic_read(&oddmr_data->primary_data->frame_dirty)) {
+			atomic_set(&oddmr_data->primary_data->frame_dirty, 1);
+			wake_up_interruptible(&oddmr_data->primary_data->frame_dirty_wq);
+		}
 	}
 		break;
 	case ODDMR_TRIG_CTL:
@@ -8219,6 +8223,7 @@ static void disp_oddmr_sof_handle(struct mtk_ddp_comp *comp)
 	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
 	atomic_t *od_weight_trigger = &oddmr_data->primary_data->od_weight_trigger;
 	uint32_t od_fps_mode = oddmr_data->primary_data->od_fps_mode;
+	int ret = 0;
 
 	ODDMRAPI_LOG("+\n");
 	CRTC_MMP_EVENT_START(0, oddmr_sof_thread, 0, 0);
@@ -8256,24 +8261,30 @@ static void disp_oddmr_sof_handle(struct mtk_ddp_comp *comp)
 		frame_req_trig = (atomic_read(&oddmr_data->primary_data->frame_dirty) == 1);
 		if (od_fps_mode == 1)
 			oddmr_data->primary_data->frame_dirty_last = frame_req_trig;
-		atomic_set(&oddmr_data->primary_data->frame_dirty, 0);
-		if (priv->data->mmsys_id != MMSYS_MT6989)
-		{
+
+		if (priv->data->mmsys_id != MMSYS_MT6989) {
 			uint32_t second = 1000000, eof;
 			u16 fps = oddmr_data->primary_data->current_timing.vrefresh;
 
 			if (fps <= 0)
 				fps = 10;
 			eof = 1 * second / fps;
-
 			ODDMRLOW_LOG("fps: %u eof %u\n", fps, eof);
-			if (eof >= 2000)
-				usleep_range(eof - 2000, eof - 1500);
+
+			atomic_set(&oddmr_data->primary_data->frame_dirty, 0);
+			if (eof > 2000) {
+				ret = wait_event_interruptible_timeout(oddmr_data->primary_data->frame_dirty_wq,
+					atomic_read(&oddmr_data->primary_data->frame_dirty) == 1,
+					usecs_to_jiffies(eof - 2000));
+			}
+		} else {
+			atomic_set(&oddmr_data->primary_data->frame_dirty, 0);
 		}
+
 		CRTC_MMP_MARK(0, oddmr_sof_thread, 0, 2);
 		/* 3. check & trigger */
-		ODDMRLOW_LOG("frame %d,weight_trigger%d\n",
-			frame_req_trig,atomic_read(od_weight_trigger));
+		ODDMRLOW_LOG("frame %d,weight_trigger%d, ret %d\n",
+			frame_req_trig,atomic_read(od_weight_trigger), ret);
 		if ((frame_req_trig && od_fps_mode == 0) ||
 				atomic_read(od_weight_trigger)) {
 			ODDMRLOW_LOG("%d,%d,%d\n",

@@ -676,6 +676,7 @@ struct mtk_disp_oddmr_primary {
 	struct wait_queue_head sof_irq_wq;
 	struct wait_queue_head hrt_wq;
 	struct wait_queue_head od_sram_wq;
+	struct wait_queue_head frame_dirty_wq;
 	struct mutex clock_lock;
 	struct mutex timing_lock;
 	struct mutex dbi_data_lock;
