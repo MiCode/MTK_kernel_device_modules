@@ -367,14 +367,27 @@ static inline void generic_debugfs_exit(struct dbg_info *di) {}
 static int rt5512_get_error_flags(struct device *dev)
 {
 	struct rt5512_chip *chip = dev_get_drvdata(dev);
+	struct device *snd_soc = chip->component->dev;
 	unsigned int val = 0;
 	int ret;
+
+	ret = pm_runtime_resume_and_get(snd_soc);
+	if (ret) {
+		dev_info(dev, "%s: Failed to resume %s: %d\n",
+			 __func__, dev_name(snd_soc), ret);
+		return ret;
+	}
 
 	/* check UVP flag */
 	ret = regmap_read(chip->regmap, RT5512_REG_IRQ_STATUS1, &val);
 
 	if (val & RT5512_UVSTAT_MASK)
 		dev_info(dev, "Under-voltage occurred, status = 0x%04x\n", val);
+
+	/* Since this worker is called periodically, immediately decrement the
+	 * device's usage counter to prevent unnecessary occupation
+	 */
+	pm_runtime_put_sync(snd_soc);
 
 	return 0;
 }
