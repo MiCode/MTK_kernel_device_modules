@@ -332,7 +332,7 @@ bool mtk_offload_hold_vcore(void)
 	int i = 0;
 
 	for (i = UO_PROV_SRAM; i <= UO_PROV_SRAM_2; i++) {
-		provider = get_provider(UO_PROV_SRAM);
+		provider = get_provider(i);
 		if (!check_provider_valid(provider))
 			continue;
 		cnt = uo_get_cnt_power_sensitive(provider);

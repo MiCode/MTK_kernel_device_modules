@@ -65,47 +65,7 @@ void usb_offload_improve_idle_power(bool start)
 
 void usb_offload_platform_action(struct device *dev, enum usb_plat_action action)
 {
-	if (of_device_is_compatible(dev->of_node, "mediatek,mt6993-usb-offload")) {
-		phys_addr_t clk_addr = 0x16790344;
-		phys_addr_t sel_addr = 0x1c2000c0;
-		void __iomem *sram_clk;
-		void __iomem *sram_sel;
-		u32 value;
-
-		sram_clk = ioremap(clk_addr, sizeof(u32));
-		if (!sram_clk) {
-			USB_OFFLOAD_ERR("fail to map 0x%llx\n", clk_addr);
-			return;
-		}
-
-		sram_sel = ioremap(sel_addr, sizeof(u32));
-		if (!sram_sel) {
-			USB_OFFLOAD_ERR("fail to map 0x%llx\n", sel_addr);
-			iounmap(sram_clk);
-			return;
-		}
-
-		value = readl(sram_clk);
-		switch (action) {
-		case UO_PLAT_ACTION_SUSPEND:
-			value |= (0x1U);
-			break;
-		case UO_PLAT_ACTION_RESUME:
-			value &= ~(0x1U);
-			break;
-		default:
-			USB_OFFLOAD_ERR("unknown action:%d\n", action);
-			goto unmap;
-		}
-
-		writel(value, sram_clk);
-		USB_OFFLOAD_INFO("action:%d <0x%llx>=0x%x <0x%llx>=0x%x\n",
-			action, clk_addr, readl(sram_clk), sel_addr, readl(sram_sel));
-unmap:
-		iounmap(sram_clk);
-		iounmap(sram_sel);
-
-	}
+	USB_OFFLOAD_DBG("action:%d\n", action);
 }
 
 enum offload_smc_request {
