@@ -1257,6 +1257,7 @@ const struct mtk_mmsys_driver_data mt6789_mmsys_driver_data = {
 	.mode_tb = mt6789_mode_tb,
 	.sodi_config = mt6789_mtk_sodi_config,
 	.bypass_infra_ddr_control = true,
+	.pf_ts_type = IRQ_CMDQ_CB,
 };
 
 // mipi_tx
