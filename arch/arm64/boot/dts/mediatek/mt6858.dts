@@ -881,6 +881,15 @@
 		#clock-cells = <1>;
 	};
 
+	qos:qos@11bb00 {
+		compatible = "mediatek,mt6893-qos";
+			reg = <0 0x0011bb00 0 0x100>,
+			<0 0x0011b9c0 0 0x140>,
+			<0 0x0011b920 0 0xa0>;
+			reg-names = "sram", "share_sram", "share_sram_ext";
+		mediatek,enable = <0>;
+	};
+
 	cache-parity-disabled {
 		compatible = "mediatek,mt6873-cache-parity-disabled";
 		ecc-irq-support = <1>;
