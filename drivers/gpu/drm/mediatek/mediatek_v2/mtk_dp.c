@@ -382,6 +382,10 @@ bool mdrv_DPTx_AuxWrite_Bytes(struct mtk_dp *mtk_dp, u8 ubCmd,
 		if (bReplyStatus) {
 			udelay(50);
 			DPTXFUNC("Retry Num = %d\n", ubRetryLimit);
+			if ((ubCmd & 0x7) <= 5) { // only check edid cmd
+				if (bReplyStatus == 2)
+					mtk_dp->aux_deffer_count = mtk_dp->aux_deffer_count + 1;
+			}
 		} else
 			return true;
 	} while (ubRetryLimit > 0);
@@ -2468,37 +2472,49 @@ int mdrv_DPTx_Training_Handler(struct mtk_dp *mtk_dp)
 		break;
 
 	case DPTX_NTSTATE_CHECKEDID:
-		mtk_dp->edid = mtk_dp_handle_edid(mtk_dp);
-		if (mtk_dp->edid) {
-			DPTXMSG("READ EDID done!\n");
+		unsigned long start_time = jiffies;
 
-			u8 *raw_edid = (u8 *)mtk_dp->edid;
-			int num_blocks;
+		// Add retry to fit certain hub
+		while (time_before(jiffies, start_time + msecs_to_jiffies(1000))) {
+			mtk_dp->edid = mtk_dp_handle_edid(mtk_dp);
+			if (mtk_dp->edid) {
+				DPTXMSG("READ EDID done!\n");
 
-			DPTXMSG("Raw EDID:\n");
-			print_hex_dump(KERN_NOTICE,
-					"\t", DUMP_PREFIX_NONE, 16, 1,
-					raw_edid, EDID_LENGTH, false);
+				u8 *raw_edid = (u8 *)mtk_dp->edid;
+				int num_blocks;
 
-			num_blocks = raw_edid[0x7E] + 1; // +1 to include the base block
-			for (int i = 1; i < num_blocks; i++) {
+				DPTXMSG("Raw EDID:\n");
 				print_hex_dump(KERN_NOTICE,
 						"\t", DUMP_PREFIX_NONE, 16, 1,
-						(raw_edid + (i * 128)), EDID_LENGTH,
-						false);
-			}
-			mdelay(10);
-			ubTempBuffer[0x0] = mtk_dp->edid->checksum;
-			drm_dp_dpcd_write(&mtk_dp->aux, DPCD_00261,
-				ubTempBuffer, 0x1);
-			ubTempBuffer[0x0] = 0x4;
-			drm_dp_dpcd_write(&mtk_dp->aux, DPCD_00260,
-				ubTempBuffer, 0x1);
+						raw_edid, EDID_LENGTH, false);
 
-			mtk_dp->info.audio_caps
-				= mdrv_DPTx_getAudioCaps(mtk_dp);
-		} else
+				num_blocks = raw_edid[0x7E] + 1; // +1 to include the base block
+				for (int i = 1; i < num_blocks; i++) {
+					print_hex_dump(KERN_NOTICE,
+							"\t", DUMP_PREFIX_NONE, 16, 1,
+							(raw_edid + (i * 128)), EDID_LENGTH,
+							false);
+				}
+				mdelay(10);
+				ubTempBuffer[0x0] = mtk_dp->edid->checksum;
+				drm_dp_dpcd_write(&mtk_dp->aux, DPCD_00261,
+					ubTempBuffer, 0x1);
+				ubTempBuffer[0x0] = 0x4;
+				drm_dp_dpcd_write(&mtk_dp->aux, DPCD_00260,
+					ubTempBuffer, 0x1);
+
+				mtk_dp->info.audio_caps
+					= mdrv_DPTx_getAudioCaps(mtk_dp);
+				break;
+			}
 			DPTXMSG("Read EDID Fail!\n");
+			// The total number of commands for the EDID retrieval process is approximately 270
+			if (mtk_dp->aux_deffer_count <= 250 || mtk_dp->training_info.ubSinkCountNum == 0) {
+				DPTXMSG("Sink count is 0, stop retry to get EDID\n");
+				break;
+			}
+			mdelay(50); // wait 50 ms
+		}
 
 		mtk_dp->training_state = DPTX_NTSTATE_TRAINING_PRE;
 		break;
@@ -3548,6 +3564,7 @@ struct edid *mtk_dp_handle_edid(struct mtk_dp *mtk_dp)
 		DPTXMSG("%s, duplicate edid from mtk_dp->edid!\n", __func__);
 		return drm_edid_duplicate(mtk_dp->edid);
 	}
+	mtk_dp->aux_deffer_count = 0;
 
 	DPTXMSG("Get edid from RX!\n");
 	return drm_get_edid(connector, &mtk_dp->aux.ddc);

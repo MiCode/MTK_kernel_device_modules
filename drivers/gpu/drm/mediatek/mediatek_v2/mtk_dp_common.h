@@ -348,6 +348,7 @@ struct mtk_dp {
 	u32 max_clock;
 	u32 max_hdisplay;
 	u32 max_vdisplay;
+	u32 aux_deffer_count;
 
 	void __iomem *regs;
 	void __iomem *phyd_regs;
