@@ -9,7 +9,7 @@
 #include <dt-bindings/iio/mt635x-auxadc.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/interrupt-controller/irq.h>
-#include <dt-bindings/interconnect/mtk,mt6873-emi.h>
+#include <dt-bindings/interconnect/mtk,emi.h>
 #include <dt-bindings/reset/ti-syscon.h>
 #include <dt-bindings/pinctrl/mt6858-pinfunc.h>
 #include <dt-bindings/soc/mediatek,boot-mode.h>
@@ -1770,7 +1770,7 @@
 
 			dvfsrc-helper {
 				compatible = "mediatek,dvfsrc-helper";
-				// vcore-supply = <&mt6363_vbuck5>;
+				vcore-supply = <&mt6363_vbuck5>;
 				rc-vcore-supply = <&dvfsrc_vcore>;
 				interconnects = <&dvfsrc MT6873_MASTER_DBGIF
 							&dvfsrc MT6873_SLAVE_DDR_EMI>,
