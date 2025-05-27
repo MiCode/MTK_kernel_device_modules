@@ -1163,8 +1163,9 @@ static int get_i2s_id_by_name(struct mtk_base_afe *afe,
 		return MT6858_DAI_I2S_OUT2;
 	else if (strncmp(name, "I2SOUT4", 7) == 0)
 		return MT6858_DAI_I2S_OUT4;
-	else if (strncmp(name, "FMI2S_MASTER", 12) == 0)
-		return MT6858_DAI_FM_I2S_MASTER;
+	/* else if (strncmp(name, "FMI2S_MASTER", 12) == 0)
+	 *	return MT6858_DAI_FM_I2S_MASTER;
+	 */
 	else
 		return -EINVAL;
 }
@@ -2343,33 +2344,34 @@ static const struct snd_soc_dapm_route mtk_dai_i2s_routes[] = {
 	{I2SOUT4_MCLK_EN_W_NAME, NULL, APLL2_W_NAME, mtk_afe_mclk_apll_connect},
 
 	/* fmi2s */
-	{"FMI2S_MASTER", NULL, "I2SIN1_EN", mtk_afe_i2s_share_connect},
-	{"FMI2S_MASTER", NULL, "I2SIN2_EN", mtk_afe_i2s_share_connect},
-	{"FMI2S_MASTER", NULL, "I2SIN4_EN", mtk_afe_i2s_share_connect},
-	{"FMI2S_MASTER", NULL, "I2SOUT1_EN", mtk_afe_i2s_share_connect},
-	{"FMI2S_MASTER", NULL, "I2SOUT2_EN", mtk_afe_i2s_share_connect},
-	{"FMI2S_MASTER", NULL, "I2SOUT4_EN", mtk_afe_i2s_share_connect},
-	{"FMI2S_MASTER", NULL, "FMI2S_MASTER_EN"},
-
-	{"FMI2S_MASTER", NULL, I2SIN1_HD_EN_W_NAME, mtk_afe_i2s_hd_connect},
-	{"FMI2S_MASTER", NULL, I2SIN2_HD_EN_W_NAME, mtk_afe_i2s_hd_connect},
-	{"FMI2S_MASTER", NULL, I2SIN4_HD_EN_W_NAME, mtk_afe_i2s_hd_connect},
-	{"FMI2S_MASTER", NULL, I2SOUT1_HD_EN_W_NAME, mtk_afe_i2s_hd_connect},
-	{"FMI2S_MASTER", NULL, I2SOUT2_HD_EN_W_NAME, mtk_afe_i2s_hd_connect},
-	{"FMI2S_MASTER", NULL, I2SOUT4_HD_EN_W_NAME, mtk_afe_i2s_hd_connect},
-	{"FMI2S_MASTER", NULL, FMI2S_MASTER_HD_EN_W_NAME, mtk_afe_i2s_hd_connect},
-	{FMI2S_MASTER_HD_EN_W_NAME, NULL, APLL1_W_NAME, mtk_afe_i2s_apll_connect},
-	{FMI2S_MASTER_HD_EN_W_NAME, NULL, APLL2_W_NAME, mtk_afe_i2s_apll_connect},
-
-	{"FMI2S_MASTER", NULL, I2SIN1_MCLK_EN_W_NAME, mtk_afe_i2s_mclk_connect},
-	{"FMI2S_MASTER", NULL, I2SIN2_MCLK_EN_W_NAME, mtk_afe_i2s_mclk_connect},
-	{"FMI2S_MASTER", NULL, I2SIN4_MCLK_EN_W_NAME, mtk_afe_i2s_mclk_connect},
-	{"FMI2S_MASTER", NULL, I2SOUT1_MCLK_EN_W_NAME, mtk_afe_i2s_mclk_connect},
-	{"FMI2S_MASTER", NULL, I2SOUT2_MCLK_EN_W_NAME, mtk_afe_i2s_mclk_connect},
-	{"FMI2S_MASTER", NULL, I2SOUT4_MCLK_EN_W_NAME, mtk_afe_i2s_mclk_connect},
-	{"FMI2S_MASTER", NULL, FMI2S_MASTER_MCLK_EN_W_NAME, mtk_afe_i2s_mclk_connect},
-	{FMI2S_MASTER_MCLK_EN_W_NAME, NULL, APLL1_W_NAME, mtk_afe_mclk_apll_connect},
-	{FMI2S_MASTER_MCLK_EN_W_NAME, NULL, APLL2_W_NAME, mtk_afe_mclk_apll_connect},
+	/* {"FMI2S_MASTER", NULL, "I2SIN1_EN", mtk_afe_i2s_share_connect},
+	 * {"FMI2S_MASTER", NULL, "I2SIN2_EN", mtk_afe_i2s_share_connect},
+	 * {"FMI2S_MASTER", NULL, "I2SIN4_EN", mtk_afe_i2s_share_connect},
+	 * {"FMI2S_MASTER", NULL, "I2SOUT1_EN", mtk_afe_i2s_share_connect},
+	 * {"FMI2S_MASTER", NULL, "I2SOUT2_EN", mtk_afe_i2s_share_connect},
+	 * {"FMI2S_MASTER", NULL, "I2SOUT4_EN", mtk_afe_i2s_share_connect},
+	 * {"FMI2S_MASTER", NULL, "FMI2S_MASTER_EN"},
+	 *
+	 * {"FMI2S_MASTER", NULL, I2SIN1_HD_EN_W_NAME, mtk_afe_i2s_hd_connect},
+	 * {"FMI2S_MASTER", NULL, I2SIN2_HD_EN_W_NAME, mtk_afe_i2s_hd_connect},
+	 * {"FMI2S_MASTER", NULL, I2SIN4_HD_EN_W_NAME, mtk_afe_i2s_hd_connect},
+	 * {"FMI2S_MASTER", NULL, I2SOUT1_HD_EN_W_NAME, mtk_afe_i2s_hd_connect},
+	 * {"FMI2S_MASTER", NULL, I2SOUT2_HD_EN_W_NAME, mtk_afe_i2s_hd_connect},
+	 * {"FMI2S_MASTER", NULL, I2SOUT4_HD_EN_W_NAME, mtk_afe_i2s_hd_connect},
+	 * {"FMI2S_MASTER", NULL, FMI2S_MASTER_HD_EN_W_NAME, mtk_afe_i2s_hd_connect},
+	 * {FMI2S_MASTER_HD_EN_W_NAME, NULL, APLL1_W_NAME, mtk_afe_i2s_apll_connect},
+	 * {FMI2S_MASTER_HD_EN_W_NAME, NULL, APLL2_W_NAME, mtk_afe_i2s_apll_connect},
+	 *
+	 * {"FMI2S_MASTER", NULL, I2SIN1_MCLK_EN_W_NAME, mtk_afe_i2s_mclk_connect},
+	 * {"FMI2S_MASTER", NULL, I2SIN2_MCLK_EN_W_NAME, mtk_afe_i2s_mclk_connect},
+	 * {"FMI2S_MASTER", NULL, I2SIN4_MCLK_EN_W_NAME, mtk_afe_i2s_mclk_connect},
+	 * {"FMI2S_MASTER", NULL, I2SOUT1_MCLK_EN_W_NAME, mtk_afe_i2s_mclk_connect},
+	 * {"FMI2S_MASTER", NULL, I2SOUT2_MCLK_EN_W_NAME, mtk_afe_i2s_mclk_connect},
+	 * {"FMI2S_MASTER", NULL, I2SOUT4_MCLK_EN_W_NAME, mtk_afe_i2s_mclk_connect},
+	 * {"FMI2S_MASTER", NULL, FMI2S_MASTER_MCLK_EN_W_NAME, mtk_afe_i2s_mclk_connect},
+	 * {FMI2S_MASTER_MCLK_EN_W_NAME, NULL, APLL1_W_NAME, mtk_afe_mclk_apll_connect},
+	 * {FMI2S_MASTER_MCLK_EN_W_NAME, NULL, APLL2_W_NAME, mtk_afe_mclk_apll_connect},
+	 */
 
 	/* allow i2s on without codec on */
 	{"I2SIN1", NULL, "I2S_IN1_Mux"},
@@ -3020,18 +3022,19 @@ static struct snd_soc_dai_driver mtk_dai_i2s_driver[] = {
 		},
 		.ops = &mtk_dai_i2s_ops,
 	},
-	{
-		.name = "FMI2S_MASTER",
-		.id = MT6858_DAI_FM_I2S_MASTER,
-		.capture = {
-			.stream_name = "FMI2S_MASTER",
-			.channels_min = 1,
-			.channels_max = 2,
-			.rates = MTK_I2S_RATES,
-			.formats = MTK_I2S_FORMATS,
-		},
-		.ops = &mtk_dai_i2s_ops,
-	},
+	/* {
+	 *	.name = "FMI2S_MASTER",
+	 *	.id = MT6858_DAI_FM_I2S_MASTER,
+	 *	.capture = {
+	 *		.stream_name = "FMI2S_MASTER",
+	 *		.channels_min = 1,
+	 *		.channels_max = 2,
+	 *		.rates = MTK_I2S_RATES,
+	 *		.formats = MTK_I2S_FORMATS,
+	 *	},
+	 *	.ops = &mtk_dai_i2s_ops,
+	 * },
+	 */
 };
 
 static const struct mtk_afe_i2s_priv mt6858_i2s_priv[DAI_I2S_NUM] = {
