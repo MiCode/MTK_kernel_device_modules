@@ -622,7 +622,7 @@ retry:
 	spin_lock(&gear_ctrl->lock);
 
 	if (gear_ctrl->engine_gear_in_change) {
-		pr_info("%s: gear is in change!\n", __func__);
+		pr_info_ratelimited("%s: gear is in change!\n", __func__);
 
 		/* Retry until we can fix the gear level */
 		spin_unlock(&gear_ctrl->lock);
