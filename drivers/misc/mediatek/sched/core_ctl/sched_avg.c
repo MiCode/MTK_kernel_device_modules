@@ -770,8 +770,12 @@ void inc_nr_over_thres_running(void *data, struct rq *rq, struct task_struct *p,
 
 #if IS_ENABLED(CONFIG_CFS_BANDWIDTH)
 	struct cfs_rq *cfs_rq;
-	struct sched_entity *se = &p->se;
+	struct sched_entity *se;
 
+	if (!p)
+		return;
+
+	se = &p->se;
 	for_each_sched_entity(se) {
 		cfs_rq = cfs_rq_of(se);
 
@@ -792,8 +796,12 @@ void dec_nr_over_thres_running(void *data, struct rq *rq, struct task_struct *p,
 
 #if IS_ENABLED(CONFIG_CFS_BANDWIDTH)
 	struct cfs_rq *cfs_rq;
-	struct sched_entity *se = &p->se;
+	struct sched_entity *se;
 
+	if (!p)
+		return;
+
+	se = &p->se;
 	for_each_sched_entity(se) {
 		cfs_rq = cfs_rq_of(se);
 
