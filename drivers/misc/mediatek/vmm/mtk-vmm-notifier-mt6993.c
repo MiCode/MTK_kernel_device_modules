@@ -21,6 +21,8 @@
 #include <mt-plat/mtk-vmm-notifier.h>
 #include <linux/of_address.h>
 #include "clk-mtk.h"
+#include <linux/proc_fs.h>
+#include <linux/seq_file.h>
 
 #define IS_CVFS_OPP(lvl)		(((lvl) >= OPP_LEVEL_1) && ((lvl) <= OPP_LEVEL_4))
 #if IS_ENABLED(CONFIG_MTK_HWCCF)
@@ -199,6 +201,8 @@ static unsigned int vmm_cal_cvfs_floor_phase1(unsigned int OPP, enum AVS_SUBSYS 
 static unsigned int vmm_cal_cross_avs_phase1(unsigned int OPP);
 static unsigned int vmm_cal_cross_avs20_phase1(unsigned int OPP);
 static void vmm_compare_cross_floor_phase1(bool enable_avs);
+static int vmm_cvfs_reg_open(struct inode *inode, struct file *file);
+static int vmm_cvfs_reg_show(struct seq_file *m, void *v);
 
 int update_cvfs_table(CVFSCounter *cnts, enum VMM_CVFS_USR_ID usrID, enum VMM_CVFS_SEL_ID selID, int8_t vote)
 {
@@ -515,6 +519,13 @@ static int vmm_notifier_probe(struct platform_device *pdev)
 	return 0;
 }
 
+static const struct proc_ops vmm_cvfs_reg_fops = {
+	.proc_open = vmm_cvfs_reg_open,
+	.proc_read = seq_read,
+	.proc_lseek = seq_lseek,
+	.proc_release = single_release,
+};
+
 static const struct of_device_id of_vmm_notifier_match_tbl[] = {
 	{
 		.compatible = "mediatek,vmm_notifier_mt6993",
@@ -550,6 +561,8 @@ static int __init mtk_vmm_notifier_init(void)
 		return -ENODEV;
 	}
 
+	proc_create("vmm_cvfs_reg", 0, NULL, &vmm_cvfs_reg_fops);
+
 	mutex_lock(&ctrl_mutex);
 	// vmm_locked_buck_ctrl(false);
 	ISP_LOGI("[%s][%d] end, vmm_user_counter=%d\n", __func__, __LINE__, vmm_user_counter);
@@ -559,6 +572,7 @@ static int __init mtk_vmm_notifier_init(void)
 
 static void __exit mtk_vmm_notifier_exit(void)
 {
+	remove_proc_entry("vmm_cvfs_reg", NULL);
 	platform_driver_unregister(&drv_vmm_notifier);
 }
 
@@ -1217,63 +1231,86 @@ static void vmm_compare_cross_floor_phase1(bool enable_avs)
 	}
 }
 
-void mtk_vmm_dump_cvfs_reg(void)
+static int vmm_cvfs_reg_show(struct seq_file *m, void *v)
 {
 	vmm_regs.vmm_efuse_va = ioremap(0x10165A00, 0x200);
 	vmm_regs.vmm_cvfs_va = ioremap(0x31AC4000, 0x1000);
 
-	ISP_LOGI("AVS_PHASE1_OPP0~3: 0x%x", readl(AVS_PHASE1_VMIN_1_REG));
-	ISP_LOGI("AVS_PARTIAL_OPP0~3: 0x%x", readl(AVS_PHASE1_VMIN_1_partial_REG));
-	ISP_LOGI("AVS_TEMP_OPP0~3: 0x%x, 0x%x, 0x%x, 0x%x",
+	if (!vmm_regs.vmm_efuse_va || !vmm_regs.vmm_cvfs_va) {
+		seq_puts(m, "ioremap failed\n");
+		goto out;
+	}
+
+	seq_printf(m, "VB_SEARCH_VMM_ISP_0p575: %dmV\n",
+		(readl(AVS_PHASE1_VMIN_2_REG) & 0xff)*(VMM_ONE_STEP_MARGIN/1000));
+	seq_printf(m, "VB_SEARCH_VMM_ISP_0p60: %dmV\n",
+		((readl(AVS_PHASE1_VMIN_2_REG) >> 8) & 0xff)*(VMM_ONE_STEP_MARGIN/1000));
+	seq_printf(m, "VB_SEARCH_VMM_ISP_0p65: %dmV\n",
+		((readl(AVS_PHASE1_VMIN_2_REG) >> 16) & 0xff)*(VMM_ONE_STEP_MARGIN/1000));
+	seq_printf(m, "VB_SEARCH_VMM_ISP_0p70: %dmV\n",
+		((readl(AVS_PHASE1_VMIN_2_REG) >> 24) & 0xff)*(VMM_ONE_STEP_MARGIN/1000));
+
+	seq_printf(m, "VB_SEARCH_VDEC_0P575V: %dmV\n",
+		(readl(AVS_PHASE1_VMIN_3_REG) & 0xff)*(VMM_ONE_STEP_MARGIN/1000));
+	seq_printf(m, "VB_SEARCH_VDEC_0P60V: %dmV\n",
+		((readl(AVS_PHASE1_VMIN_3_REG) >> 8) & 0xff)*(VMM_ONE_STEP_MARGIN/1000));
+	seq_printf(m, "VB_SEARCH_VDEC_0P65V: %dmV\n",
+		((readl(AVS_PHASE1_VMIN_3_REG) >> 16) & 0xff)*(VMM_ONE_STEP_MARGIN/1000));
+	seq_printf(m, "VB_SEARCH_VDEC_0P70V: %dmV\n",
+		((readl(AVS_PHASE1_VMIN_3_REG) >> 24) & 0xff)*(VMM_ONE_STEP_MARGIN/1000));
+
+	seq_printf(m, "AVS_PHASE1_OPP0~3: 0x%x\n", readl(AVS_PHASE1_VMIN_1_REG));
+	seq_printf(m, "AVS_PARTIAL_OPP0~3: 0x%x\n", readl(AVS_PHASE1_VMIN_1_partial_REG));
+	seq_printf(m, "AVS_TEMP_OPP0~3: 0x%x, 0x%x, 0x%x, 0x%x\n",
 		readl(AVS_MARGIN_TEMP_OPP0_1_REG),
 		readl(AVS_MARGIN_TEMP_OPP1_1_REG),
 		readl(AVS_MARGIN_TEMP_OPP2_1_REG),
 		readl(AVS_MARGIN_TEMP_OPP3_1_REG));
-	ISP_LOGI("AVS_PARTIAL_TEMP_OPP0~3: 0x%x, 0x%x, 0x%x, 0x%x",
+	seq_printf(m, "AVS_PARTIAL_TEMP_OPP0~3: 0x%x, 0x%x, 0x%x, 0x%x\n",
 		readl(AVS_MARGIN_TEMP_OPP0_partial_1_REG),
 		readl(AVS_MARGIN_TEMP_OPP1_partial_1_REG),
 		readl(AVS_MARGIN_TEMP_OPP2_partial_1_REG),
 		readl(AVS_MARGIN_TEMP_OPP3_partial_1_REG));
 
-	ISP_LOGI("AVS_PHASE1_OPP4~7: 0x%x", readl(AVS_PHASE1_VMIN_2_REG));
-	ISP_LOGI("AVS_PARTIAL_OPP4~7: 0x%x", readl(AVS_PHASE1_VMIN_2_partial_REG));
-	ISP_LOGI("AVS_TEMP_OPP4~7: 0x%x, 0x%x, 0x%x, 0x%x",
+	seq_printf(m, "AVS_PHASE1_OPP4~7: 0x%x\n", readl(AVS_PHASE1_VMIN_2_REG));
+	seq_printf(m, "AVS_PARTIAL_OPP4~7: 0x%x\n", readl(AVS_PHASE1_VMIN_2_partial_REG));
+	seq_printf(m, "AVS_TEMP_OPP4~7: 0x%x, 0x%x, 0x%x, 0x%x\n",
 		readl(AVS_MARGIN_TEMP_OPP4_1_REG),
 		readl(AVS_MARGIN_TEMP_OPP5_1_REG),
 		readl(AVS_MARGIN_TEMP_OPP6_1_REG),
 		readl(AVS_MARGIN_TEMP_OPP7_1_REG));
-	ISP_LOGI("AVS_PARTIAL_TEMP_OPP4~7: 0x%x, 0x%x, 0x%x, 0x%x",
+	seq_printf(m, "AVS_PARTIAL_TEMP_OPP4~7: 0x%x, 0x%x, 0x%x, 0x%x\n",
 		readl(AVS_MARGIN_TEMP_OPP4_partial_1_REG),
 		readl(AVS_MARGIN_TEMP_OPP5_partial_1_REG),
 		readl(AVS_MARGIN_TEMP_OPP6_partial_1_REG),
 		readl(AVS_MARGIN_TEMP_OPP7_partial_1_REG));
 
-	ISP_LOGI("AVS_PHASE1_OPP8~11: 0x%x", readl(AVS_PHASE1_VMIN_3_REG));
-	ISP_LOGI("AVS_PARTIAL_OPP8~11: 0x%x", readl(AVS_PHASE1_VMIN_3_partial_REG));
-	ISP_LOGI("AVS_TEMP_OPP8~11: 0x%x, 0x%x, 0x%x, 0x%x",
+	seq_printf(m, "AVS_PHASE1_OPP8~11: 0x%x\n", readl(AVS_PHASE1_VMIN_3_REG));
+	seq_printf(m, "AVS_PARTIAL_OPP8~11: 0x%x\n", readl(AVS_PHASE1_VMIN_3_partial_REG));
+	seq_printf(m, "AVS_TEMP_OPP8~11: 0x%x, 0x%x, 0x%x, 0x%x\n",
 		readl(AVS_MARGIN_TEMP_OPP8_1_REG),
 		readl(AVS_MARGIN_TEMP_OPP9_1_REG),
 		readl(AVS_MARGIN_TEMP_OPP10_1_REG),
 		readl(AVS_MARGIN_TEMP_OPP11_1_REG));
-	ISP_LOGI("AVS_PARTIAL_TEMP_OPP8~11: 0x%x, 0x%x, 0x%x, 0x%x",
+	seq_printf(m, "AVS_PARTIAL_TEMP_OPP8~11: 0x%x, 0x%x, 0x%x, 0x%x\n",
 		readl(AVS_MARGIN_TEMP_OPP8_partial_1_REG),
 		readl(AVS_MARGIN_TEMP_OPP9_partial_1_REG),
 		readl(AVS_MARGIN_TEMP_OPP10_partial_1_REG),
 		readl(AVS_MARGIN_TEMP_OPP11_partial_1_REG));
 
-	ISP_LOGI("AVS_PHASE1_OPP12~15: 0x%x", readl(AVS_PHASE1_VMIN_4_REG));
-	ISP_LOGI("AVS_PARTIAL_OPP12~15: 0x%x", readl(AVS_PHASE1_VMIN_4_partial_REG));
-	ISP_LOGI("AVS_TEMP_OPP12~15: 0x%x, 0x%x, 0x%x, 0x%x",
+	seq_printf(m, "AVS_PHASE1_OPP12~15: 0x%x\n", readl(AVS_PHASE1_VMIN_4_REG));
+	seq_printf(m, "AVS_PARTIAL_OPP12~15: 0x%x\n", readl(AVS_PHASE1_VMIN_4_partial_REG));
+	seq_printf(m, "AVS_TEMP_OPP12~15: 0x%x, 0x%x, 0x%x, 0x%x\n",
 		readl(AVS_MARGIN_TEMP_OPP12_1_REG),
 		readl(AVS_MARGIN_TEMP_OPP13_1_REG),
 		readl(AVS_MARGIN_TEMP_OPP14_1_REG),
 		readl(AVS_MARGIN_TEMP_OPP15_1_REG));
-	ISP_LOGI("AVS_PARTIAL_TEMP_OPP12~15: 0x%x, 0x%x, 0x%x, 0x%x",
+	seq_printf(m, "AVS_PARTIAL_TEMP_OPP12~15: 0x%x, 0x%x, 0x%x, 0x%x\n",
 		readl(AVS_MARGIN_TEMP_OPP12_partial_1_REG),
 		readl(AVS_MARGIN_TEMP_OPP13_partial_1_REG),
 		readl(AVS_MARGIN_TEMP_OPP14_partial_1_REG),
 		readl(AVS_MARGIN_TEMP_OPP15_partial_1_REG));
-
+out:
 	if (vmm_regs.vmm_efuse_va) {
 		iounmap(vmm_regs.vmm_efuse_va);
 		vmm_regs.vmm_efuse_va = 0L;
@@ -1282,6 +1319,13 @@ void mtk_vmm_dump_cvfs_reg(void)
 		iounmap(vmm_regs.vmm_cvfs_va);
 		vmm_regs.vmm_cvfs_va = 0L;
 	}
+
+	return 0;
+}
+
+static int vmm_cvfs_reg_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, vmm_cvfs_reg_show, NULL);
 }
 
 int mtk_vmm_notify_ut_ctrl(const char *val, const struct kernel_param *kp)
@@ -1379,12 +1423,6 @@ int mtk_vmm_dbg_ctrl(const char *val, const struct kernel_param *kp)
 	if (ret)
 		return ret;
 	ISP_LOGI("[%s][%d] vmm adb cmd[%u]", __func__, __LINE__, enable);
-
-	if (enable == DBG_VMM_DUMP_EFUSE_VAL) {
-		mtk_vmm_dump_cvfs_reg();
-
-		return 0;
-	}
 
 #if IS_ENABLED(CONFIG_MTK_HWCCF)
 	vote_val = MUX_PARSE_VOTE(0, enable);
