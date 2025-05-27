@@ -25,6 +25,8 @@
 #define RECORD_NUM		(10)
 #define RECORD_NUM_LARB_PORT		(20)
 
+#define MMQOS_MAX_LARB_SSC_OSTDL		(10)
+
 extern u32 stop_record;
 
 enum {
@@ -126,6 +128,7 @@ struct larb_node {
 	u16 bw_ratio;
 	bool is_write;
 	bool is_report_bw_larbs;
+	int sub_comm_port;
 };
 
 struct mtk_node_desc {

@@ -320,7 +320,9 @@ static void mmqos_update_comm_ostdl(struct device *dev, u32 comm_port,
 	} else
 		value = 0;
 
-	mtk_smi_common_ostdl_set(dev, comm_port, larb_node->is_write, value);
+	mtk_smi_common_ostdl_set(dev,
+		larb_node->sub_comm_port >= 0? larb_node->sub_comm_port : comm_port,
+		larb_node->is_write, value);
 	if (log_level & 1 << log_bw)
 		dev_notice(dev, "%s larb_id=%d comm port=%d is_write=%d bw_ratio=%d avg_bw=%d ostdl=%d\n",
 			__func__, LARB_ID(larb->id), comm_port, larb_node->is_write,
@@ -808,14 +810,10 @@ static void set_freq_by_vmmrc(const u32 comm_id)
 				off_h_w_bw = chn_hrt_w_bw[comm_id][i] - div_u64(disp_hrt_w_bw[comm_id][i] * 10, 7);
 			}
 
-			store_bw_value(comm_id, i, is_srt, !is_write, !IS_ON_TABLE,
-				change_to_unit(off_s_r_bw));
-			store_bw_value(comm_id, i, is_srt, is_write, !IS_ON_TABLE,
-				change_to_unit(off_s_w_bw));
-			store_bw_value(comm_id, i, !is_srt, !is_write, !IS_ON_TABLE,
-				change_to_unit(off_h_r_bw));
-			store_bw_value(comm_id, i, !is_srt, is_write, !IS_ON_TABLE,
-				change_to_unit(off_h_w_bw));
+			store_bw_value(comm_id, i, is_srt, !is_write, !IS_ON_TABLE, off_s_r_bw);
+			store_bw_value(comm_id, i, is_srt, is_write, !IS_ON_TABLE, off_s_w_bw);
+			store_bw_value(comm_id, i, !is_srt, !is_write, !IS_ON_TABLE, off_h_r_bw);
+			store_bw_value(comm_id, i, !is_srt, is_write, !IS_ON_TABLE, off_h_w_bw);
 
 			if (mmqos_met_enabled())
 				trace_mmqos__chn_bw(comm_id, i,
@@ -2292,6 +2290,23 @@ static void mmpc_dvfsrc_dump_func(struct work_struct *work)
 	queue_delayed_work(mmqos_wq, &mmqos_delayed_work, msecs_to_jiffies(10000));
 }
 
+typedef struct {
+	int larb_ids[MMQOS_MAX_LARB_SSC_OSTDL];
+	int sub_comm_port[MMQOS_MAX_LARB_SSC_OSTDL];
+	int size;
+} larb_sub_comm_ostdl;
+
+static int get_from_larb_ssc_map(larb_sub_comm_ostdl *larb_ssc_ostdl, int larb_id)
+{
+	int i;
+
+	for (i = 0; i < larb_ssc_ostdl->size; i++) {
+		if(larb_ssc_ostdl->larb_ids[i] == larb_id)
+			return larb_ssc_ostdl->sub_comm_port[i];
+	}
+	return -1;
+}
+
 static bool mmqos_met_not_freerun;
 int mtk_mmqos_probe(struct platform_device *pdev)
 {
@@ -2320,6 +2335,8 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 	phys_addr_t pa = 0ULL;
 	unsigned long va;
 #endif
+	larb_sub_comm_ostdl larb_ssc_ostdl;
+	struct of_phandle_args args;
 
 	mmqos = devm_kzalloc(&pdev->dev, sizeof(*mmqos), GFP_KERNEL);
 	if (!mmqos)
@@ -2360,6 +2377,7 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 	if (!larb_port_bw_rec)
 		return -ENOMEM;
 
+	larb_ssc_ostdl.size = 0;
 	of_for_each_phandle(
 		&it, ret, pdev->dev.of_node, "mediatek,larbs-supply", NULL, 0) {
 		np = of_node_get(it.node);
@@ -2377,6 +2395,14 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 		if (of_property_read_u32(np, "mediatek,larb-id", &id))
 			id = num_larbs;
 		smi_imu->larb_imu[id].dev = &larb_pdev->dev;
+		if (!of_parse_phandle_with_fixed_args(np, "mediatek,smi-ssc-ostdl", 1, 0, &args)
+			&& larb_ssc_ostdl.size < MMQOS_MAX_LARB_SSC_OSTDL) {
+			larb_ssc_ostdl.larb_ids[larb_ssc_ostdl.size] = id;
+			larb_ssc_ostdl.sub_comm_port[larb_ssc_ostdl.size] = args.args[0];
+			MMQOS_DBG("larb id:%d sub comm:%d", id,
+				larb_ssc_ostdl.sub_comm_port[larb_ssc_ostdl.size]);
+			larb_ssc_ostdl.size++;
+		}
 		num_larbs += 1;
 	}
 	INIT_LIST_HEAD(&mmqos->comm_list);
@@ -2557,6 +2583,9 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 					larb_node->is_report_bw_larbs = true;
 					id = mmqos_desc->report_bw_real_larbs[j];
 					larb_dev = smi_imu->larb_imu[id & (MTK_LARB_NR_MAX-1)].dev;
+					larb_node->sub_comm_port =
+						get_from_larb_ssc_map(&larb_ssc_ostdl,
+						id & (MTK_LARB_NR_MAX-1));
 					larb_node->larb_dev = larb_dev;
 				}
 			}
