@@ -24,6 +24,7 @@
 #include <dt-bindings/iio/adc/mediatek,mt6720_adc.h>
 #include <dt-bindings/mfd/mt6720.h>
 #include <dt-bindings/power/mt6375-gauge.h>
+#include <dt-bindings/interconnect/mtk,mmqos.h>
 
 / {
 	model = "MT6858";
@@ -1488,6 +1489,33 @@
 					  &smi_cam_sub_comm1>;
 		dbg-version = <2>;
 		hwccf-support;
+	};
+
+	mmqos-wrapper {
+			compatible = "mediatek,mt6858-mmqos-wrapper";
+	};
+
+	mmqos: interconnect {
+		compatible = "mediatek,mt6858-mmqos";
+		#mtk-interconnect-cells = <1>;
+		mediatek,larbs-supply = <&smi_larb0 &smi_larb1 &smi_larb2
+					&smi_larb4  &smi_larb7 &smi_larb9
+					&smi_larb11 &smi_larb13 &smi_larb14
+					&smi_larb16 &smi_larb17 &smi_larb20>;
+		mediatek,commons-supply = <&smi_disp_common>;
+		mmqos-state = <0x0>;
+		mmqos-log-level = <0>;
+		interconnects = <&dvfsrc MT6873_MASTER_MMSYS &dvfsrc MT6873_SLAVE_DDR_EMI>,
+				<&dvfsrc MT6873_MASTER_HRT_MMSYS
+				&dvfsrc MT6873_SLAVE_HRT_DDR_EMI>;
+		interconnect-names = "icc-bw", "icc-hrt-bw";
+		vmmrc-base = <0x1ec00000>;
+		vmmrc-mask = <0x2e814>;
+		vmmrc-mask-bit = <8>;
+		vmmrc-on-table = <0x2e788>;
+		vmmrc-off-table = <0x2e7a8>;
+		mminfra-base = <0x1e800000>;
+		mediatek,mmqos-met-not-freerun;
 	};
 
 	soc {
