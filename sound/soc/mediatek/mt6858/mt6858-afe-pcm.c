@@ -9791,9 +9791,10 @@ static int mt6858_afe_pcm_dev_probe(struct platform_device *pdev)
 		return PTR_ERR(afe->base_addr);
 
 	/* enable clock for regcache get default value from hw */
-	ret = pm_runtime_get_sync(&pdev->dev);
+	ret = pm_runtime_resume_and_get(&pdev->dev);
 	if (ret < 0) {
-		pm_runtime_put_noidle(&pdev->dev);
+		dev_err(&pdev->dev, "%s: failed to resume: %d\n",
+			__func__, ret);
 		return ret;
 	}
 

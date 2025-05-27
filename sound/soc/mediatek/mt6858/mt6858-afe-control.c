@@ -248,9 +248,10 @@ int mt6858_set_adda_predistortion(int hp_impedance)
 	if (pm_runtime_status_suspended(local_afe->dev))
 		dev_info(local_afe->dev, "%s(), status suspended\n", __func__);
 
-	ret = pm_runtime_get_sync(local_afe->dev);
+	ret = pm_runtime_resume_and_get(local_afe->dev);
 	if (ret < 0) {
-		pm_runtime_put_noidle(local_afe->dev);
+		dev_err(local_afe->dev, "%s: failed to resume: %d\n",
+			__func__, ret);
 		return ret;
 	}
 

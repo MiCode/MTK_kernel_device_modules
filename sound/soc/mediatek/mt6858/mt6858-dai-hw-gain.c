@@ -172,11 +172,12 @@ static int mt6858_gain0_get(struct snd_kcontrol *kcontrol,
 	unsigned int value = 0x0;
 	int ret;
 
-	ret = pm_runtime_get_sync(afe->dev);
+	ret = pm_runtime_resume_and_get(afe->dev);
 	if (ret < 0) {
-		pm_runtime_put_noidle(afe->dev);
+		dev_err(afe->dev, "%s: failed to resume: %d\n", __func__, ret);
 		return ret;
 	}
+
 	regmap_read(afe->regmap, AFE_GAIN0_CUR_L, &value);
 	ret = pm_runtime_put(afe->dev);
 	if (ret < 0) {
@@ -209,11 +210,12 @@ static int mt6858_gain0_set(struct snd_kcontrol *kcontrol,
 		}
 	}
 
-	ret = pm_runtime_get_sync(afe->dev);
+	ret = pm_runtime_resume_and_get(afe->dev);
 	if (ret < 0) {
-		pm_runtime_put_noidle(afe->dev);
+		dev_err(afe->dev, "%s: failed to resume: %d\n", __func__, ret);
 		return ret;
 	}
+
 	regmap_update_bits(afe->regmap,
 			   AFE_GAIN0_CON1_L,
 			   GAIN_TARGET_L_MASK_SFT,
@@ -240,9 +242,9 @@ static int mt6858_gain1_get(struct snd_kcontrol *kcontrol,
 	unsigned int value = 0x0;
 	int ret = 0;
 
-	ret = pm_runtime_get_sync(afe->dev);
+	ret = pm_runtime_resume_and_get(afe->dev);
 	if (ret < 0) {
-		pm_runtime_put_noidle(afe->dev);
+		dev_err(afe->dev, "%s: failed to resume: %d\n", __func__, ret);
 		return ret;
 	}
 	regmap_read(afe->regmap, AFE_GAIN1_CUR_L, &value);
@@ -274,9 +276,9 @@ static int mt6858_gain1_set(struct snd_kcontrol *kcontrol,
 		}
 	}
 
-	ret = pm_runtime_get_sync(afe->dev);
+	ret = pm_runtime_resume_and_get(afe->dev);
 	if (ret < 0) {
-		pm_runtime_put_noidle(afe->dev);
+		dev_err(afe->dev, "%s: failed to resume: %d\n", __func__, ret);
 		return ret;
 	}
 	regmap_update_bits(afe->regmap,
@@ -315,9 +317,9 @@ static int mt6858_gain_l_set(struct snd_kcontrol *kcontrol,
 	if (val > max)
 		return 0;
 
-	ret = pm_runtime_get_sync(afe->dev);
+	ret = pm_runtime_resume_and_get(afe->dev);
 	if (ret < 0) {
-		pm_runtime_put_noidle(afe->dev);
+		dev_err(afe->dev, "%s: failed to resume: %d\n", __func__, ret);
 		return ret;
 	}
 	regmap_update_bits(afe->regmap, reg,
@@ -342,9 +344,9 @@ static int mt6858_gain_l_get(struct snd_kcontrol *kcontrol,
 	unsigned int reg = mc->reg;
 	int ret = 0;
 
-	ret = pm_runtime_get_sync(afe->dev);
+	ret = pm_runtime_resume_and_get(afe->dev);
 	if (ret < 0) {
-		pm_runtime_put_noidle(afe->dev);
+		dev_err(afe->dev, "%s: failed to resume: %d\n", __func__, ret);
 		return ret;
 	}
 	regmap_read(afe->regmap, reg, &val);
@@ -380,9 +382,9 @@ static int mt6858_gain_r_set(struct snd_kcontrol *kcontrol,
 		return 0;
 
 
-	ret = pm_runtime_get_sync(afe->dev);
+	ret = pm_runtime_resume_and_get(afe->dev);
 	if (ret < 0) {
-		pm_runtime_put_noidle(afe->dev);
+		dev_err(afe->dev, "%s: failed to resume: %d\n", __func__, ret);
 		return ret;
 	}
 	regmap_update_bits(afe->regmap, reg,
@@ -407,9 +409,9 @@ static int mt6858_gain_r_get(struct snd_kcontrol *kcontrol,
 	unsigned int reg = mc->reg;
 	int ret = 0;
 
-	ret = pm_runtime_get_sync(afe->dev);
+	ret = pm_runtime_resume_and_get(afe->dev);
 	if (ret < 0) {
-		pm_runtime_put_noidle(afe->dev);
+		dev_err(afe->dev, "%s: failed to resume: %d\n", __func__, ret);
 		return ret;
 	}
 	regmap_read(afe->regmap, reg, &val);
