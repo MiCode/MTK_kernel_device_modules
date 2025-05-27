@@ -406,20 +406,23 @@ static void mdla_plat_v6_aee_handler(u32 type, u64 val)
 		struct msg_type {
 			u64 val;
 			char *msg;
-		} dbg_info[5] = {
+		} dbg_info[] = {
 			{ 0x10000, "Command buffer is NULL" },
 			{ 0x10001, "Command buffer number error" },
 			{ 0x10002, "Command buffer size error" },
 			{ 0x10003, "CE abort ack timeout" },
-			{ 0x10004, "Power off in abort state" }
+			{ 0x10004, "Power off in abort state" },
+			{ 0x10005, "Pattern OP version mismatched" }
 		};
-		for (idx = 0; idx < 5; idx++) {
+		u32 num = sizeof(dbg_info) / sizeof(struct msg_type);
+
+		for (idx = 0; idx < num; idx++) {
 			if (dbg_info[idx].val == val) {
 				mdla_aee_exception("MDLA", "MDLA check failed: %s", dbg_info[idx].msg);
 				break;
 			}
 		}
-		if (idx == 5)
+		if (idx == num)
 			mdla_aee_exception("MDLA", "MDLA check failed (%llu)", val);
 	} else if (type == MDLA_IPI_MICROP_MSG_CMD_FAILED) {
 		mdla_aee_exception("MDLA", "MDLA cmd failed (%llu)", val);
