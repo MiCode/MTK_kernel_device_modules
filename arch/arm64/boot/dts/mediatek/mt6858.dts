@@ -4623,6 +4623,14 @@ dramc: dramc@10230000 {
 			#iommu-cells = <1>;
 		};
 
+		cam_mem {
+			compatible = "mediatek,cam_mem";
+			dma-ranges = <0x0 0x0 0x0 0x0 0x1 0x0>;
+			mediatek,platform = "mt6858";
+			/* Dummy iommus for multi-iommu architecture. */
+			iommus = <&disp_iommu M4U_L16_P0_CAM_RAWA_SMI_IMGO_R1_U0>;
+		};
+
 		opp_table_disp: opp-table-disp {
 			compatible = "operating-points-v2";
 			opp-0 {
