@@ -241,6 +241,7 @@ struct mtk_disp_dbgtp_data {
 	bool is_support_34bits;
 	bool need_bypass_shadow;
 	unsigned int mminfra_funnel_addr;
+	unsigned int trace_top_funnel_addr;
 };
 
 struct mtk_disp_dbgtp {
@@ -249,6 +250,7 @@ struct mtk_disp_dbgtp {
 	unsigned int underflow_cnt;
 	unsigned int abnormal_cnt;
 	void __iomem *mminfra_funnel;
+	void __iomem *trace_top_funnel;
 	const struct mtk_disp_dbgtp_data *data;
 };
 
@@ -272,6 +274,26 @@ void mtk_dbgtp_set_mminfra_funnel(bool en)
 			writel(0xFF, priv->mminfra_funnel);
 		else
 			writel(0x0, priv->mminfra_funnel);
+	}
+}
+
+void mtk_dbgtp_set_trace_top_funnel(bool en)
+{
+	struct mtk_disp_dbgtp *priv = comp_to_dbgtp(dbgtp_comp);
+	unsigned int tmp  = 0;
+	static unsigned int funnel_port;
+
+	if (priv && priv->trace_top_funnel) {
+		DDPMSG("%s: %s trace top funnel\n", __func__, en ? "enalbe" : "disable");
+		if (en)
+			writel(funnel_port, priv->trace_top_funnel);
+		else {
+			tmp = readl(priv->trace_top_funnel);
+			if (tmp) {
+				funnel_port = readl(priv->trace_top_funnel);
+				writel(0x0, priv->trace_top_funnel);
+			}
+		}
 	}
 }
 
@@ -2713,6 +2735,8 @@ static int mtk_disp_dbgtp_probe(struct platform_device *pdev)
 	/* For Camera ELA affect display ELA issue */
 	if (priv->data->mminfra_funnel_addr)
 		priv->mminfra_funnel = ioremap(priv->data->mminfra_funnel_addr, 0x4);
+	if (priv->data->trace_top_funnel_addr)
+		priv->trace_top_funnel = ioremap(priv->data->trace_top_funnel_addr, 0x4);
 
 	platform_set_drvdata(pdev, priv);
 
@@ -2754,6 +2778,7 @@ static const struct mtk_disp_dbgtp_data mt6993_dbgtp_driver_data = {
 	.is_support_34bits = true,
 	.need_bypass_shadow = true,
 	.mminfra_funnel_addr = 0x30a2f000,
+	.trace_top_funnel_addr = 0x0d070000,
 };
 
 static const struct of_device_id mtk_disp_dbgtp_driver_dt_match[] = {

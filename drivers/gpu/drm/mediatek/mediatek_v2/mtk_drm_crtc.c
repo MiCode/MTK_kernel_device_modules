@@ -7502,6 +7502,8 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 				/* When dump finished, release stop, let other could trigger start */
 				mtk_set_mmmc_rg(2, 3, 0x18, 0x1, 0xffff);
 			}
+			/* Re-enable trace funnel */
+			mtk_dbgtp_set_trace_top_funnel(true);
 			/* Clear flags */
 			priv->mtk_dbgtp_sta.is_cam_hrt_issue = false;
 			priv->mtk_dbgtp_sta.is_disp_hrt_issue = false;

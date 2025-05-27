@@ -4206,6 +4206,9 @@ int mtk_hrt_issue_flag_set(bool is_hrt_issue)
 		}
 		mtk_drm_idlemgr_kick(__func__, crtc, 0);
 		mtk_vidle_user_power_keep(DISP_VIDLE_USER_CRTC);
+		/* Disable trace top funnel */
+		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_HRT_DEBUG))
+			mtk_dbgtp_set_trace_top_funnel(false);
 		/* dbgtp dely 12000 frames and auto enable */
 		priv->mtk_dbgtp_sta.is_cam_hrt_issue = true;
 		priv->mtk_dbgtp_sta.hrt_time_count = 12000;
@@ -4356,6 +4359,9 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 				/* Disable mminfra funnel */
 				mtk_dbgtp_dump_mminfra_funnel();
 				mtk_dbgtp_set_mminfra_funnel(false);
+				/* Disable trace top funnel */
+				if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_HRT_DEBUG))
+					mtk_dbgtp_set_trace_top_funnel(false);
 			}
 
 			dump_cur_pos(mtk_crtc);
