@@ -7,6 +7,7 @@
  */
 
 #include <linux/platform_device.h>
+#include <linux/of_platform.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
 #include <linux/of_address.h>
@@ -43,10 +44,18 @@ struct usb_sram_block {
 
 struct mtk_usb_sram {
 	struct device *dev;
+	struct device_link *to_mtu3;
+	struct device_link *to_offload;
+	bool xfer_in_suspend;
+	atomic_t req_cnt;
+	u32 chip_ver;
+
+	/* sram space */
 	void *virt;
 	dma_addr_t phys;
 	size_t size;
 
+	/* bus clock */
 	void __iomem *clk_reg;
 	void __iomem *clk_set;
 	void __iomem *clk_clr;
@@ -55,23 +64,67 @@ struct mtk_usb_sram {
 	u32 upd_bit;
 	u32 pdn_bit;
 
+	/* usb dcm */
 	void __iomem *dcm_sel;
 	u32 dcm_mask;
 
+	/* vlp_mem_clk */
+	void __iomem *vlp_mem_clk;
+	u32 vlp_mem_clk_msk;
+
+	/* fuse_latch_en */
+	void __iomem *fuse_latch;
+	u32 fuse_latch_msk;
+
+	/* block & region management */
 	spinlock_t block_lock;
 	size_t block_size;
 	int block_num;
 	struct usb_sram_block *blocks;
-
 	spinlock_t list_lock;
 	struct list_head region_list;
 };
 
+struct tag_chipid {
+	u32 size;
+	u32 hw_code;
+	u32 hw_submode;
+	u32 hw_ver;
+	u32 sw_ver;
+};
+
+static void usb_sram_get_chip_version(struct mtk_usb_sram *manager)
+{
+	struct device_node *chosen;
+	struct tag_chipid *chip_id;
+	int length;
+
+	chosen = of_find_node_by_path("/chosen");
+	if (!chosen)
+		chosen = of_find_node_by_path("/chosen@0");
+
+	manager->chip_ver = 0;
+
+	if (chosen) {
+		chip_id = (struct tag_chipid *)of_get_property(chosen, "atag,chipid", &length);
+		if (chip_id)
+			manager->chip_ver = chip_id->sw_ver;
+		else
+			dev_info(manager->dev, "error finding atag,chipid in chosen\n");
+	} else
+		dev_info(manager->dev, "error finding chosen node\n");
+
+	dev_info(manager->dev, "sw chip version:%d\n", manager->chip_ver);
+}
+
 #define USB_SRAM_MIN_ORDER  8
 
 static struct mtk_usb_sram *g_manager;
-static void bus_clk_pdn(bool on);
-static void dcm_select(bool on);
+static void bus_clk_pdn(struct mtk_usb_sram *manager, bool on);
+static void dcm_select(struct mtk_usb_sram *manager, bool on);
+static void vlp_mem_clk_change(struct mtk_usb_sram *manager, bool on);
+static void fuse_latch_change(struct mtk_usb_sram *manager, bool on);
+static void bus_clk_change(struct mtk_usb_sram *manager, bool high_speed);
 
 #define INFO_MAX_LEN 500
 static char parse_info[INFO_MAX_LEN];
@@ -284,9 +337,11 @@ next_block:
 		dev_info(manager->dev, "allocate [%s]\n", parse_region_info(region));
 
 		spin_lock(&manager->list_lock);
+		atomic_inc(&manager->req_cnt);
+		dev_info(manager->dev, "req_cnt:%d\n", atomic_read(&manager->req_cnt));
 		if (list_empty(&manager->region_list)) {
-			bus_clk_pdn(false);
-			dcm_select(false);
+			bus_clk_pdn(manager, false);
+			dcm_select(manager, false);
 		}
 		list_add_tail(&region->list, &manager->region_list);
 		dump_region(manager);
@@ -312,10 +367,12 @@ static int _mtk_usb_sram_free(struct mtk_usb_sram *manager, struct mtk_usb_sram_
 	iounmap(region->virt);
 
 	spin_lock(&manager->list_lock);
+	atomic_dec(&manager->req_cnt);
+	dev_info(manager->dev, "req_cnt:%d\n", atomic_read(&manager->req_cnt));
 	list_del(&region->list);
 	if (list_empty(&manager->region_list)) {
-		bus_clk_pdn(true);
-		dcm_select(true);
+		bus_clk_pdn(manager, true);
+		dcm_select(manager, true);
 	}
 	dump_region(manager);
 	spin_unlock(&manager->list_lock);
@@ -388,79 +445,78 @@ static int free_for_offload(dma_addr_t phys_addr)
 	return mtk_usb_sram_free(phys_addr);
 }
 
-static void dcm_select(bool on)
+static void bit_op(struct device *dev, void __iomem *addr,
+	u32 mask, bool on, const char *name)
 {
-	struct mtk_usb_sram *manager = g_manager;
-	void __iomem *operation;
 	u32 value;
 
-	if (manager->dcm_sel == NULL || manager->dcm_mask == 0)
+	if (!dev || !addr)
 		return;
 
-	operation = manager->dcm_sel;
-	value = readl(operation);
+	value = readl(addr);
 	if (on)
-		value |= manager->dcm_mask;
+		value |= mask;
 	else
-		value &= ~(manager->dcm_mask);
-	writel(value, operation);
+		value &= ~(mask);
+	writel(value, addr);
 
-	dev_info(manager->dev, "%s on:%d operation:0x%llx value:0x%x\n",
-		__func__, on, virt_to_phys(operation), readl(manager->dcm_sel));
+	dev_info(dev, "%s(on:%d) <%s[msk:0x%x]>=0x%x\n", __func__, on, name, mask, readl(addr));
 }
 
-static void bus_clk_pdn(bool on)
+static void dcm_select(struct mtk_usb_sram *manager, bool on)
 {
-	struct mtk_usb_sram *manager = g_manager;
-	void __iomem *operation;
-	u32 value;
-
-	if (!manager->clk_reg) {
-		dev_info(manager->dev, "%s not defined bus clk!!", __func__);
+	if (!manager || !manager->dcm_sel)
 		return;
-	}
 
-	operation = manager->clk_reg;
-	value = readl(operation);
-	if (on)
-		value |= (0x1U << manager->pdn_bit);
-	else
-		value &= ~(0x1U << manager->pdn_bit);
-	writel(value, operation);
-
-	dev_info(manager->dev, "%s on:%d operation:0x%llx value:0x%x\n",
-		__func__, on, virt_to_phys(operation), readl(manager->clk_reg));
+	bit_op(manager->dev, manager->dcm_sel, manager->dcm_mask, on, "usb-dcm");
 }
 
-static void bus_clk_change(bool high_speed)
+static void vlp_mem_clk_change(struct mtk_usb_sram *manager, bool on)
 {
-	struct mtk_usb_sram *manager = g_manager;
-	void __iomem *operation;
-	u32 value;
-
-	if (!manager->clk_reg || !manager->clk_set ||
-		!manager->clk_clr || !manager->clk_upd) {
-		dev_info(manager->dev, "%s not defined bus clk!!", __func__);
+	if (!manager || !manager->vlp_mem_clk)
 		return;
-	}
+
+	bit_op(manager->dev, manager->vlp_mem_clk,
+		manager->vlp_mem_clk_msk, on, "vlp-mem-clk");
+}
+
+static void fuse_latch_change(struct mtk_usb_sram *manager, bool on)
+{
+	if (!manager || !manager->fuse_latch)
+		return;
+
+	bit_op(manager->dev, manager->fuse_latch,
+		manager->fuse_latch_msk, on, "fuse-latch-en");
+}
+
+static void bus_clk_pdn(struct mtk_usb_sram *manager, bool on)
+{
+	u32 mask;
+
+	if (!manager || !manager->clk_reg)
+		return;
+	mask = (0x1U << manager->pdn_bit);
+
+	bit_op(manager->dev, manager->clk_reg, mask, on, "bus-clk-pdn");
+}
+
+static void bus_clk_change(struct mtk_usb_sram *manager, bool high_speed)
+{
+	void __iomem *operation;
+
+	if (!manager || !manager->clk_reg || !manager->clk_set ||
+		!manager->clk_clr || !manager->clk_upd)
+		return;
 
 	/* clear(0):26m set(1):ocs */
 	operation = high_speed ? manager->clk_set : manager->clk_clr;
-	value = readl(operation);
-	value |= (0x1U << manager->clk_bit);
-	writel(value, operation);
+	bit_op(manager->dev, operation, (0x1U << manager->clk_bit), true,
+		high_speed ? "clk-set" : "clk-clr");
 
 	/* update */
-	value = readl(manager->clk_upd);
-	value |= (0x1U << manager->upd_bit);
-	writel(value, manager->clk_upd);
+	bit_op(manager->dev, manager->clk_upd, (0x1U << manager->upd_bit), true, "clk-upd");
 
-	/* check */
-	value = readl(manager->clk_reg);
-	value &= (0x1U << manager->clk_bit);
-	value >>= manager->clk_bit;
-	dev_info(manager->dev, "%s high:%d operation:0x%llx value:0x%x (0x%x)\n",
-		__func__, high_speed, virt_to_phys(operation), value, readl(manager->clk_reg));
+	dev_info(manager->dev, "%s high:%d bus-clk:0x%x\n", __func__, high_speed, readl(manager->clk_reg));
 }
 
 #define BUS_CLK_INFO_COUNT	8
@@ -501,9 +557,41 @@ static void usb_sram_bus_clk_parse(struct mtk_usb_sram *manager)
 		manager->clk_clr = ioremap((phys_addr_t)clr_physical, sizeof(u32));
 		manager->clk_upd = ioremap((phys_addr_t)upd_physical, sizeof(u32));
 
-		dev_info(manager->dev, "reg:0x%lx set:0x%lx clr:0x%lx upd:0x%lx (clkt:0x%x upd:0x%x pdn:0x%x)\n",
+		dev_info(manager->dev, "reg:0x%lx set:0x%lx clr:0x%lx upd:0x%lx (clk:0x%x upd:0x%x pdn:0x%x)\n",
 			reg_physical, set_physical,	clr_physical, upd_physical,
 			manager->clk_bit, manager->upd_bit, manager->pdn_bit);
+	}
+}
+
+static void usb_sram_unmap_all(struct mtk_usb_sram *manager)
+{
+	if (manager->clk_reg) {
+		iounmap(manager->clk_reg);
+		manager->clk_reg = NULL;
+	}
+	if (manager->clk_set) {
+		iounmap(manager->clk_set);
+		manager->clk_set = NULL;
+	}
+	if (manager->clk_clr) {
+		iounmap(manager->clk_clr);
+		manager->clk_clr = NULL;
+	}
+	if (manager->clk_upd) {
+		iounmap(manager->clk_upd);
+		manager->clk_upd = NULL;
+	}
+	if (manager->dcm_sel) {
+		iounmap(manager->dcm_sel);
+		manager->dcm_sel = NULL;
+	}
+	if (manager->vlp_mem_clk) {
+		iounmap(manager->vlp_mem_clk);
+		manager->vlp_mem_clk = NULL;
+	}
+	if (manager->fuse_latch) {
+		iounmap(manager->fuse_latch);
+		manager->fuse_latch = NULL;
 	}
 }
 
@@ -615,10 +703,10 @@ static const struct attribute_group usb_sram_group = {
 	.attrs = usb_sram_attrs,
 };
 
-#define DCM_SEL_INFO_COUNT	2
+#define RG_INFO_CNT		2
 static void usb_sram_dts_parse(struct device_node *node, struct mtk_usb_sram *manager)
 {
-	u32 dcm_sel_info[DCM_SEL_INFO_COUNT];
+	u32 rg_info[RG_INFO_CNT];
 	u32 block_size;
 
 	if (!node || !manager)
@@ -631,16 +719,110 @@ static void usb_sram_dts_parse(struct device_node *node, struct mtk_usb_sram *ma
 
 	allow_request = of_property_read_bool(node, "allow-request");
 
-
-	/* dcm select */
+	/* map usb dcm rg */
 	manager->dcm_sel = NULL;
 	manager->dcm_mask = 0;
-
-	if (!device_property_read_u32_array(manager->dev, "dcm-sel", dcm_sel_info, DCM_SEL_INFO_COUNT)) {
-		manager->dcm_sel = ioremap((phys_addr_t)(uintptr_t)dcm_sel_info[0], sizeof(u32));
-		manager->dcm_mask = dcm_sel_info[1];
+	if (!device_property_read_u32_array(manager->dev, "dcm-sel", rg_info, RG_INFO_CNT)) {
+		dev_info(manager->dev, "[usb-dcm] addr:0x%x mask:0x%x\n", rg_info[0], rg_info[1]);
+		manager->dcm_sel = ioremap((phys_addr_t)(uintptr_t)rg_info[0], sizeof(u32));
+		manager->dcm_mask = rg_info[1];
 	}
 
+	/* map vlp_mem_clk mux */
+	manager->vlp_mem_clk = NULL;
+	manager->vlp_mem_clk_msk = 0;
+	if (!device_property_read_u32_array(manager->dev, "vlp-mem-clk", rg_info, RG_INFO_CNT)) {
+		dev_info(manager->dev, "[vlp-mem-clk] addr:0x%x bit:%d\n", rg_info[0], rg_info[1]);
+		manager->vlp_mem_clk = ioremap((phys_addr_t)(uintptr_t)rg_info[0], sizeof(u32));
+		manager->vlp_mem_clk_msk = rg_info[1];
+	}
+
+	/* map fuse_latch_en rg*/
+	manager->fuse_latch = NULL;
+	manager->fuse_latch_msk = 0;
+	if (manager->chip_ver != 0 &&
+		of_device_is_compatible(node, "mediatek,mt6993-usb-sram") &&
+		!device_property_read_u32_array(manager->dev, "fuse-latch", rg_info, RG_INFO_CNT)) {
+		dev_info(manager->dev, "[fuse-latch] addr:0x%x bit:%d\n", rg_info[0], rg_info[1]);
+		manager->fuse_latch = ioremap((phys_addr_t)(uintptr_t)rg_info[0], sizeof(u32));
+		manager->fuse_latch_msk = rg_info[1];
+	}
+
+}
+
+static struct device *get_target_device(const char *name)
+{
+	struct platform_device *pdev = NULL;
+	struct device_node *node;
+	struct device *dev = NULL;
+
+	node = of_find_node_by_name(NULL, name);
+	if (node) {
+		pdev = of_find_device_by_node(node);
+		if (pdev)
+			dev = &pdev->dev;
+		of_node_put(node);
+	}
+
+	return dev;
+}
+
+static void usb_sram_unlink(struct mtk_usb_sram *manager)
+{
+	if (manager->to_mtu3) {
+		device_link_del(manager->to_mtu3);
+		manager->to_mtu3 = NULL;
+	}
+
+	if (manager->to_offload) {
+		device_link_del(manager->to_offload);
+		manager->to_offload = NULL;
+	}
+}
+
+/* suspend seq: usb_offload.ko => usb_sram.ko => mtu3.ko
+ * resume seq : usb_offload.ko <= usb_sram.ko <= mtu3.ko
+ */
+static int usb_sram_link(struct mtk_usb_sram *manager)
+{
+	struct device *mtu3;
+	struct device *usb_offload;
+
+	manager->to_mtu3 = NULL;
+	manager->to_offload = NULL;
+
+	/* link mtu3.ko */
+	mtu3 = get_target_device("usb0");
+	if (mtu3) {
+		manager->to_mtu3 =  device_link_add(
+			manager->dev, mtu3, DL_FLAG_PM_RUNTIME | DL_FLAG_STATELESS);
+		if (!manager->to_mtu3) {
+			dev_info(manager->dev, "fail to link mtu3\n");
+			goto error;
+		}
+	} else {
+		dev_info(manager->dev, "fail to get mtu3 device!\n");
+		goto error;
+	}
+
+	/* link usb_offload.ko */
+	usb_offload = get_target_device("usb-offload");
+	if (usb_offload) {
+		manager->to_offload =  device_link_add(
+			usb_offload, manager->dev, DL_FLAG_PM_RUNTIME | DL_FLAG_STATELESS);
+		if (!manager->to_offload) {
+			dev_info(manager->dev, "fail to link usb_offload\n");
+			goto error;
+		}
+	} else {
+		dev_info(manager->dev, "fail to get usb_offload device!\n");
+		goto error;
+	}
+
+	return 0;
+error:
+	usb_sram_unlink(manager);
+	return -EINVAL;
 }
 
 static int usb_sram_probe(struct platform_device *pdev)
@@ -650,16 +832,23 @@ static int usb_sram_probe(struct platform_device *pdev)
 	struct mtk_usb_sram *manager;
 	const __be32 *regaddr_p;
 	u64 regaddr64, size64;
-
-
 	int ret = 0, i;
 
 	manager = devm_kzalloc(dev, sizeof(*manager), GFP_KERNEL);
 	if (!manager)
 		return -ENOMEM;
+	manager->dev = dev;
+	manager->xfer_in_suspend = false;
+
+	/* get chip version (A0 or B0) */
+	usb_sram_get_chip_version(manager);
+
+	/* link to mtu3.ko & usb_offload.ko */
+	ret = usb_sram_link(manager);
+	if (ret < 0)
+		return -ENODEV;
 
 	platform_set_drvdata(pdev, manager);
-	manager->dev = dev;
 	spin_lock_init(&manager->block_lock);
 	spin_lock_init(&manager->list_lock);
 
@@ -667,7 +856,8 @@ static int usb_sram_probe(struct platform_device *pdev)
 	manager->virt = of_iomap(node, 0);
 	if (!manager->virt) {
 		dev_info(manager->dev, "fail get virtual address\n");
-		return -ENODEV;
+		ret = -ENODEV;
+		goto unlink;
 	}
 
 	/* get physical address*/
@@ -681,9 +871,11 @@ static int usb_sram_probe(struct platform_device *pdev)
 	manager->phys = (dma_addr_t)regaddr64;
 	manager->size = (size_t)size64;
 
+	/* parse dts properties */
 	usb_sram_dts_parse(node, manager);
 	usb_sram_bus_clk_parse(manager);
 
+	/* initialize blocks */
 	manager->block_num = (manager->size / manager->block_size);
 	manager->blocks = devm_kcalloc(dev, manager->block_num, sizeof(struct usb_sram_block), GFP_KERNEL);
 	if (!manager->blocks) {
@@ -707,18 +899,21 @@ static int usb_sram_probe(struct platform_device *pdev)
 	INIT_LIST_HEAD(&manager->region_list);
 	g_manager = manager;
 
+	/* register callback function of usb_offload.ko */
 	mtk_register_usb_sram_ops(allocate_for_offload, free_for_offload);
 
 	if (sysfs_create_group(&dev->kobj, &usb_sram_group))
 		USB_OFFLOAD_ERR("fail to create sysfs attribtues\n");
 
-	/* set pdn down */
-	bus_clk_pdn(true);
+	/* set pdn down in the last */
+	bus_clk_pdn(manager, true);
 
 	return ret;
 
 unmap:
-	iounmap(manager->virt );
+	iounmap(manager->virt);
+unlink:
+	usb_sram_unlink(manager);
 	return ret;
 }
 
@@ -737,63 +932,84 @@ static void usb_sram_remove(struct platform_device *pdev)
 		}
 	}
 
-	if (manager->clk_reg) {
-		iounmap(manager->clk_reg);
-		manager->clk_reg = NULL;
-	}
-	if (manager->clk_set) {
-		iounmap(manager->clk_set);
-		manager->clk_set = NULL;
-	}
-	if (manager->clk_clr) {
-		iounmap(manager->clk_clr);
-		manager->clk_clr = NULL;
-	}
-	if (manager->clk_upd) {
-		iounmap(manager->clk_upd);
-		manager->clk_upd = NULL;
-	}
-	if (manager->dcm_sel) {
-		iounmap(manager->dcm_sel);
-		manager->dcm_sel = NULL;
-	}
+	usb_sram_unlink(manager);
+	usb_sram_unmap_all(manager);
 }
 
-static bool usb_sram_empty_request(void)
+static int usb_sram_common_suspend(struct device *dev)
 {
-	struct mtk_usb_sram *manager = g_manager;
+	struct mtk_usb_sram *manager = dev_get_drvdata(dev);
 
-	return list_empty(&manager->region_list);
+	dev_info(dev, "%s ++\n", __func__);
+
+	/* req_cnt=1 for basic reserved part */
+	if (atomic_read(&manager->req_cnt) > 1)
+		manager->xfer_in_suspend = true;
+
+	dev_info(dev, "req_cnt:%d xfer_in_suspend:%d\n",
+		atomic_read(&manager->req_cnt), manager->xfer_in_suspend);
+
+	if (manager->xfer_in_suspend) {
+		/* select vlp clock */
+		vlp_mem_clk_change(manager, true);
+
+		/* set fuse_latch_en */
+		fuse_latch_change(manager, true);
+
+	} else {
+		/* switch vcore clock to 26m */
+		bus_clk_change(manager, false);
+	}
+
+	dev_info(dev, "%s --\n", __func__);
+
+	return 0;
+}
+
+static int usb_sram_common_resume(struct device *dev)
+{
+	struct mtk_usb_sram *manager = dev_get_drvdata(dev);
+
+	dev_info(dev, "%s ++\n", __func__);
+	dev_info(dev, "xfer_in_suspend:%d\n", manager->xfer_in_suspend);
+
+	if (manager->xfer_in_suspend) {
+		/* select vcore clock */
+		vlp_mem_clk_change(manager, false);
+
+		/* clear fuse_latch_en */
+		fuse_latch_change(manager, false);
+
+		manager->xfer_in_suspend = false;
+
+	} else {
+		/* switch vcore clock to ocs */
+		bus_clk_change(manager, true);
+	}
+
+	dev_info(dev, "%s --\n", __func__);
+
+	return 0;
 }
 
 static int __maybe_unused usb_sram_suspend(struct device *dev)
 {
-	if (usb_sram_empty_request())
-		/* set speed of bus-clk to low under standby */
-		bus_clk_change(false);
-
-	return 0;
+	return usb_sram_common_suspend(dev);
 }
 
 static int __maybe_unused usb_sram_resume(struct device *dev)
 {
-	bus_clk_change(true);
-	return 0;
+	return usb_sram_common_resume(dev);
 }
 
 static int __maybe_unused usb_sram_runtime_suspend(struct device *dev)
 {
-	if (usb_sram_empty_request())
-		/* set speed of bus-clk to low under standby */
-		bus_clk_change(false);
-
-	return 0;
+	return usb_sram_common_suspend(dev);
 }
 
 static int __maybe_unused usb_sram_runtime_resume(struct device *dev)
 {
-	bus_clk_change(true);
-	return 0;
+	return usb_sram_common_resume(dev);
 }
 
 static const struct dev_pm_ops usb_sram_pm_ops = {
