@@ -20768,11 +20768,11 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 				mtk_drm_trace_begin("atomic_delay_sec_sleep:%u", delay_us);
 				CRTC_MMP_EVENT_START(crtc_index, atomic_delay, delay_us, 0);
 
-				mtk_vidle_user_power_release(DISP_VIDLE_USER_CRTC);
+				// mtk_vidle_user_power_release(DISP_VIDLE_USER_CRTC);
 				mtk_drm_trace_begin("[DEBUG]usleep_of_sec_sleep");
 				usleep_range(delay_us, delay_us + 1);
 				mtk_drm_trace_end();
-				mtk_vidle_user_power_keep(DISP_VIDLE_USER_CRTC);
+				// mtk_vidle_user_power_keep(DISP_VIDLE_USER_CRTC);
 
 				CRTC_MMP_EVENT_END(crtc_index, atomic_delay, delay_us, 0);
 				mtk_drm_trace_end();
