@@ -52,7 +52,7 @@ static DEFINE_SPINLOCK(imgsensor_drv_lock);
 
 static struct imgsensor_info_struct imgsensor_info = {
 	.sensor_id = S5KJN1SQ03_SENSOR_ID,
-	.checksum_value = 0xef68f1f2,
+	.checksum_value = 0x1163d60f,
 	.pre = {
 		.pclk = 560000000,
 		.linelength = 4584,
@@ -2642,9 +2642,9 @@ static kal_uint32 set_test_pattern_mode(kal_bool enable)
 	LOG_INF("enable: %d\n", enable);
 
 	if (enable)
-		write_cmos_sensor_8(0x0600, 0x02);
+		write_cmos_sensor(0x0600, 0x02);
 	else
-		write_cmos_sensor_8(0x0600, 0x00);
+		write_cmos_sensor(0x0600, 0x00);
 	spin_lock(&imgsensor_drv_lock);
 	imgsensor.test_pattern = enable;
 	spin_unlock(&imgsensor_drv_lock);
