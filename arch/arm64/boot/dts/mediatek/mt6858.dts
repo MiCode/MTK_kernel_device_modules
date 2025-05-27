@@ -682,19 +682,19 @@
 	};
 
 	clkchk {
-		// compatible = "mediatek,mt6858-clkchk";
+		compatible = "mediatek,mt6858-clkchk";
 		// interrupts = <GIC_SPI 235 IRQ_TYPE_LEVEL_HIGH 0>;
 		// interrupt-names = "hwv_irq";
 	};
 
 	pdchk {
-		// compatible = "mediatek,mt6858-pdchk";
+		compatible = "mediatek,mt6858-pdchk";
 		// interrupts = <GIC_SPI 235 IRQ_TYPE_LEVEL_HIGH 0>;
 		// interrupt-names = "hwv_irq";
 	};
 
 	clocks {
-		// compatible = "clk-ftrace";
+		compatible = "clk-ftrace";
 		clk32k: clk32k {
 			compatible = "fixed-clock";
 			#clock-cells = <0>;
@@ -713,7 +713,7 @@
 		ulposc: ulposc {
 			compatible = "fixed-clock";
 			#clock-cells = <0>;
-			clock-frequency = <520000000>;
+			clock-frequency = <260000000>;
 		};
 	};
 
@@ -733,11 +733,6 @@
 		compatible = "mediatek,mt6858-apmixedsys", "syscon";
 		reg = <0 0x1000c000 0 0x1000>;
 		#clock-cells = <1>;
-	};
-
-	nemicfg_ao_mem_reg_bus: syscon@10270000 {
-		compatible = "mediatek,mt6858-nemicfg_ao_mem_reg_bus", "syscon";
-		reg = <0 0x10270000 0 0x1000>;
 	};
 
 	ssr_top: syscon@10400000 {
@@ -860,8 +855,41 @@
 		compatible = "mediatek,mt6858-scpsys", "syscon";
 		reg = <0 0x1c001000 0 0x1000>;
 		#power-domain-cells = <1>;
+			clocks = <&cksys_reg_clk CLK_TOP_AUD_INTBUS_SEL>,
+				<&cksys_reg_clk CLK_TOP_MMINFRA_SEL>,
+				<&cksys_reg_clk CLK_TOP_MMUP_SEL>,
+				<&cksys_reg_clk CLK_TOP_IPE_SEL>,
+				<&cksys_reg_clk CLK_TOP_VDEC_SEL>,
+				<&cksys_reg_clk CLK_TOP_VENC_SEL>,
+				<&cksys_reg_clk CLK_TOP_CAM_SEL>,
+				<&cksys_reg_clk CLK_TOP_DISP0_SEL>,
+				<&cksys_reg_clk CLK_TOP_IMG1_SEL>,
+				<&imgsys1_clk CLK_IMGSYS1_LARB9_GENPD>,
+				<&imgsys1_clk CLK_IMGSYS1_LARB10_GENPD>,
+				<&ipesys_clk CLK_IPE_SMI_SUBCOM_GENPD>,
+				<&camsys_main_clk CLK_CAM_M_CAM2MM_GALS_GENPD>,
+				<&camsys_main_clk CLK_CAM_M_LARB13_GENPD>,
+				<&camsys_main_clk CLK_CAM_M_LARB14_GENPD>,
+				<&dispsys_config_clk CLK_MM_SMI_COMMON_GENPD>,
+				<&mdpsys_config_clk CLK_MDP_SMI0_GENPD>;
+			clock-names = "audio_0",
+				"mm_infra_0",
+				"mm_proc_0",
+				"isp_ipe_0",
+				"vde0_0",
+				"ven0_0",
+				"cam_0",
+				"dis0_0",
+				"isp_img_0",
+				"isp_img-0",
+				"isp_img-1",
+				"isp_ipe-0",
+				"cam_main-0",
+				"cam_main-1",
+				"cam_main-2",
+				"dis0-0",
+				"dis0_lp-0";
 		infra-infracfg-ao-reg-bus = <&infra_infracfg_ao_reg_clk>;
-		nemicfg-ao-mem-reg-bus = <&nemicfg_ao_mem_reg_bus>;
 		ssr-top = <&ssr_top>;
 		img-sub0-bus = <&img_sub0_bus>;
 		cam-sub1-bus = <&cam_sub1_bus>;
@@ -902,6 +930,12 @@
 	ipesys_clk: syscon@1b000000 {
 		compatible = "mediatek,mt6858-ipesys", "syscon";
 		reg = <0 0x1b000000 0 0x1000>;
+		#clock-cells = <1>;
+	};
+
+	mminfra_config_clk: syscon@1e800000 {
+		compatible = "mediatek,mt6858-mminfra_config", "syscon";
+		reg = <0 0x1e800000 0 0x1000>;
 		#clock-cells = <1>;
 	};
 
@@ -6840,7 +6874,7 @@ dramc: dramc@10230000 {
 #include "mediatek/trusty.dtsi"
 #include "mediatek/cust_mt6858_msdc.dtsi"
 #include "mediatek/mt6858-clkitg.dtsi"
-// #include "mediatek/mt6858-disable-unused.dtsi"
+#include "mediatek/mt6858-disable-unused.dtsi"
 
 &spmi {
 // PMIC TODO:

@@ -428,25 +428,13 @@
 			<&imp_iic_wrap_s_clk CLK_IMPS_I2C11_I2C>;
 	};
 
-	bring-up-genpd@1a {
+	bring-up-gce@1a {
 		compatible = "mediatek,clk-bring-up";
-		reg = <0x1a>;
+		reg = <0x10>;
 		clocks =
-			<&camsys_main_clk CLK_CAM_M_CAM2MM_GALS_GENPD>,
-			<&dispsys_config_clk CLK_MM_SMI_COMMON_GENPD>,
-			<&mdpsys_config_clk CLK_MDP_SMI0_GENPD>;
-	};
-
-	bring-up-pd-md@1b {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x1b>;
-		power-domains = <&scpsys MT6858_POWER_DOMAIN_MD>;
-	};
-
-	bring-up-pd-conn@1c {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x1c>;
-		power-domains = <&scpsys MT6858_POWER_DOMAIN_CONN>;
+			<&mminfra_config_clk CLK_MMINFRA_GCE_D_GCE>,
+			<&mminfra_config_clk CLK_MMINFRA_GCE_M_GCE>,
+			<&mminfra_config_clk CLK_MMINFRA_GCE_26M_GCE>;
 	};
 
 	bring-up-pd-audio@1d {
