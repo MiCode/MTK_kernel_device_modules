@@ -1970,6 +1970,7 @@
 
 	aod_scp: aod-scp {
 		compatible = "mediatek,aod_scp";
+		status = "disabled";
 		aod-scp-pic = <1>; /* prepare digit raw data for MTK internal use */
 
 		/* backup modules*/
@@ -12220,7 +12221,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<11 0x100 0x0>, /* sensor custom writer */
 				<12 0x100 0x0>, /* sensor custom reader */
 				<13 0x780000 0x0>, /* aov */
-				<15 0x10000 0x0>, /* aod */
+				<15 0x4010000 0x1000>, /* aod */
 				<17 0x8000 0x0>, /* scp chre from */
 				<18 0x8000 0x0>, /* scp chre to */
 				<19 0x200 0x0>,  /* low power debug */
