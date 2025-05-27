@@ -1443,6 +1443,7 @@ mgk_64_kleaf_platform_modules = {
     "//kernel_device_modules-{}/drivers/interconnect/mediatek:mmqos-mt6993".format(kernel_version): "mt6993",
     "//kernel_device_modules-{}/drivers/interconnect/mediatek:mmqos-mt6855".format(kernel_version): "mt6855",
     "//kernel_device_modules-{}/drivers/interconnect/mediatek:mmqos-mt6895".format(kernel_version): "mt6895",
+    "//kernel_device_modules-{}/drivers/interconnect/mediatek:mmqos-mt6858".format(kernel_version): "mt6858",
     "//kernel_device_modules-{}/drivers/clk/mediatek:clk-chk-mt6789".format(kernel_version): "mt6789",
     "//kernel_device_modules-{}/drivers/clk/mediatek:clk-dbg-mt6789".format(kernel_version): "mt6789",
     "//kernel_device_modules-{}/drivers/clk/mediatek:clk-fmeter-mt6789".format(kernel_version): "mt6789",
