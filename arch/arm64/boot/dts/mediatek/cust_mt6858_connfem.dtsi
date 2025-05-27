@@ -1,0 +1,74 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (c) 2020 MediaTek Inc.
+ */
+/* Connsys FEM Start */
+&connfem {
+	/* PINCTRL States*/
+	pinctrl-names =	"sky85320-sky85720",	/* pinctrl-0 */
+			"mxd7751s-mxd7751s";	/* pinctrl-1 */
+
+	pinctrl-0 = <&sky85320_wf0>, <&sky85720_wf0>;
+	pinctrl-1 = <&mxd7751s_wf0>;
+
+	/* FEM ID */
+	nofem: nofem {
+		vid = <0>;
+		pid = <0>;
+	};
+	sky85320: sky85320 {
+		vid = <1>;
+		pid = <1>;
+	};
+	sky85720: sky85720 {
+		vid = <1>;
+		pid = <2>;
+	};
+	mxd7751s: mxd7751s {
+		vid = <4>;
+		pid = <1>;
+	};
+};
+
+/* ANTSEL PINMUX and FEM Func Mapping */
+&pio {
+	sky85320_wf0: sky85320-wf0 {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO99__FUNC_ANT_SEL0>,
+				<PINMUX_GPIO100__FUNC_ANT_SEL1>,
+				<PINMUX_GPIO101__FUNC_ANT_SEL2>,
+				<PINMUX_GPIO102__FUNC_ANT_SEL3>;
+			mapping = <0 0xc 0>,	/* ANTSEL 0 <-> PIN #12: VC0 */
+				<1 0xd 0>,	/* ANTSEL 1 <-> PIN #13: VC1 */
+				<2 0x2 0>,	/* ANTSEL 2 <-> PIN #2: VC2 */
+				<3 0xb 0>;	/* ANTSEL 3 <-> PIN #11: VCTRL */
+		};
+	};
+
+	sky85720_wf0: sky85720-wf0 {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO103__FUNC_ANT_SEL4>,
+				<PINMUX_GPIO104__FUNC_ANT_SEL5>;
+			mapping = <4 0x47 0>,	/* ANTSEL 4 <-> PIN #7: PAEN5 */
+				<5 0x4b 0>;	/* ANTSEL 5 <-> PIN #11: LNAEN5 */
+		};
+	};
+
+	mxd7751s_wf0: mxd7751s-wf0 {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO100__FUNC_ANT_SEL1>,
+				<PINMUX_GPIO101__FUNC_ANT_SEL2>,
+				<PINMUX_GPIO102__FUNC_ANT_SEL3>,
+				<PINMUX_GPIO103__FUNC_ANT_SEL4>,
+				<PINMUX_GPIO104__FUNC_ANT_SEL5>,
+				<PINMUX_GPIO105__FUNC_ANT_SEL6>;
+			mapping = <1 0xb 0>,	/* ANTSEL 1 <-> PIN #11: BT_EN */
+				<2 0xd 0>,	/* ANTSEL 2 <-> PIN #13: 2G_PA_EN */
+				<3 0xc 0>,	/* ANTSEL 3 <-> PIN #12: switch */
+				<4 0x42 0>,	/* ANTSEL 4 <-> PIN #2: 5G_PA_EN */
+				<5 0x45 0>,	/* ANTSEL 5 <-> PIN #5: 5G_LNA_EN */
+				<6 0x10 0>;	/* ANTSEL 6 <-> PIN #16: 2G_LNA_EN */
+		};
+	};
+};
+/* Connsys FEM End */

@@ -129,6 +129,26 @@
 	};
 };
 
+&connfem {
+/* Enable epa_elna node to support Wifi & BT ePA/eLNA FEM on customer load */
+#if 0
+	epa-elna {
+		parts = <&wlan7207h &wlan7207c>;
+		wifi {
+			flags-0 {
+				open-loop;
+			};
+		};
+		bt {
+			flags-0 {
+				/* choose one of: epa-elna/epa/elna/bypass */
+				epa-elna;
+			};
+		};
+	};
+#endif
+};
+
 &sound {
 	mediatek,spk-i2s = <23 22>;
 	mediatek,speaker-codec {
@@ -139,5 +159,6 @@
 #include <k6858v1_64/cust.dtsi>
 #include "mediatek/cust_mt6858_camera_v4l2.dtsi"
 #include "mediatek/cust_mt6858_camera.dtsi"
+#include "mediatek/cust_k6858_connfem.dtsi"
 #include "mediatek/cust_mt6858_touch_1080x2400.dtsi"
 /*End of this file, DO NOT ADD ANYTHING HERE*/

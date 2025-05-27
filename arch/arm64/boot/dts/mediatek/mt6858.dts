@@ -7393,6 +7393,10 @@ dramc: dramc@10230000 {
 		compatible = "mediatek,tfa_debug";
 	};
 
+	connfem: connfem {
+		compatible = "mediatek,connfem";
+	};
+
 	sound: sound {
 		compatible = "mediatek,mt6858-mt6369-sound";
 		/* mediatek,snd_audio_dsp = <&snd_audio_dsp>; */
@@ -7615,6 +7619,7 @@ dramc: dramc@10230000 {
 #include "mediatek/trusty.dtsi"
 #include "mediatek/cust_mt6858_msdc.dtsi"
 #include "mediatek/mt6858-clkitg.dtsi"
+#include "mediatek/cust_mt6858_connfem.dtsi"
 #include "mediatek/mt6858-disable-unused.dtsi"
 
 &spmi {
