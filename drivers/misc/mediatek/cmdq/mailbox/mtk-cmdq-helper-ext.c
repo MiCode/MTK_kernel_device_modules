@@ -2777,8 +2777,16 @@ s32 cmdq_pkt_sleep_reuse(struct cmdq_pkt *pkt, u32 tick, u16 reg_gpr,
 		rop.idx = CMDQ_THR_SPR_IDX3;
 	else
 		rop.idx = CMDQ_GPR_CNT_ID + reg_gpr;
+
+	cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_SUBTRACT,
+		CMDQ_THR_SPR_IDX1, &lop, &rop);
+	cmdq_pkt_assign_command(pkt, CMDQ_CPR_OVERFLOW_CHK, 0x80000000);
+	lop.reg = true;
+	lop.idx = CMDQ_THR_SPR_IDX1;
+	rop.reg = true;
+	rop.idx = CMDQ_CPR_OVERFLOW_CHK;
 	cmdq_pkt_cond_jump_abs(pkt, CMDQ_SPR_FOR_TEMP, &lop, &rop,
-		CMDQ_GREATER_THAN_AND_EQUAL);
+		CMDQ_LESS_THAN_AND_EQUAL);
 
 	cmdq_pkt_assign_command(pkt, CMDQ_CPR_SLP_GPR_MAX, 0xFFFFFF00);
 	lop.reg = true;
@@ -2840,14 +2848,15 @@ s32 cmdq_pkt_poll_timeout_reuse(struct cmdq_pkt *pkt, u32 value, u8 subsys,
 	else
 		reg_counter = CMDQ_THR_SPR_IDX3;
 	pkt->write_addr_high = 0;
-	/* assign compare value as compare target later */
-	cmdq_pkt_assign_command(pkt, reg_val, value);
 
 	/* init loop counter as 0, counter can be count poll limit or debug */
 	cmdq_pkt_assign_command(pkt, reg_counter, 0);
 
 	/* mark begin offset of this operation */
 	begin_mark = pkt->cmd_buf_size;
+	/* assign compare value as compare target later */
+	cmdq_pkt_assign_command(pkt, reg_val, value);
+
 	if (poll_reuse)
 		poll_reuse->jump_to_begin.val = pkt->cmd_buf_size;
 	/* read target address */

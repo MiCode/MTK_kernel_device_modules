@@ -63,6 +63,8 @@ void cmdq_helper_set_fp(struct cmdq_util_helper_fp *cust_cmdq_util);
 #define CMDQ_CPR_DISP_CNT		0x8001
 #define CMDQ_CPR_DDR_USR_CNT		0x8002
 #define CMDQ_CPR_SLP_GPR_MAX		0x8003
+#define CMDQ_CPR_OVERFLOW_CHK		0x8004
+
 /* 0x8128 to 0x812f use by MML */
 #define CMDQ_CPR_MML_PQ0_ADDR		0x8008
 #define CMDQ_CPR_MML_PQ0_ADDRH		0x8009
