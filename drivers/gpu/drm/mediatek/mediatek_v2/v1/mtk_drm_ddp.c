@@ -32563,13 +32563,13 @@ static int mtk_ddp_sout_sel_MT6858(const struct mtk_mmsys_reg_data *data,
 	} else if (cur == DDP_COMPONENT_COLOR0 && next == DDP_COMPONENT_AAL0) {
 		*addr = MT6858_DISP_COLOR0_SOUT_SEL;
 		value = MT6858_COLOR0_SOUT_SEL_TO_AAL0;
-	} else if (cur == DDP_COMPONENT_CCORR1 && next == DDP_COMPONENT_C3D0) {
+	} else if (cur == DDP_COMPONENT_CCORR0 && next == DDP_COMPONENT_C3D0) {
 		*addr = MT6858_DISP_CCORR1_SOUT_SEL;
 		value = MT6858_CCORR1_SOUT_SEL_TO_C3D0;
-	} else if (cur == DDP_COMPONENT_CCORR1 && next == DDP_COMPONENT_GAMMA0) {
+	} else if (cur == DDP_COMPONENT_CCORR0 && next == DDP_COMPONENT_GAMMA0) {
 		*addr = MT6858_DISP_CCORR1_SOUT_SEL;
 		value = MT6858_CCORR1_SOUT_SEL_TO_GAMMA0;
-	} else if (cur == DDP_COMPONENT_CCORR1 && next == DDP_COMPONENT_AAL0) {
+	} else if (cur == DDP_COMPONENT_CCORR0 && next == DDP_COMPONENT_AAL0) {
 		*addr = MT6858_DISP_CCORR1_SOUT_SEL;
 		value = MT6858_CCORR1_SOUT_SEL_TO_AAL0;
 	} else if (cur == DDP_COMPONENT_C3D0 && next == DDP_COMPONENT_COLOR0) {
@@ -32654,7 +32654,7 @@ static int mtk_ddp_sel_in_MT6858(const struct mtk_mmsys_reg_data *data,
 	} else if (cur == DDP_COMPONENT_TDSHP0 && next == DDP_COMPONENT_C3D0) {
 		*addr = MT6858_DISP_C3D0_SEL_IN;
 		value = MT6858_C3D0_SEL_IN_FROM_TDSHP0;
-	} else if (cur == DDP_COMPONENT_CCORR1 && next == DDP_COMPONENT_C3D0) {
+	} else if (cur == DDP_COMPONENT_CCORR0 && next == DDP_COMPONENT_C3D0) {
 		*addr = MT6858_DISP_C3D0_SEL_IN;
 		value = MT6858_C3D0_SEL_IN_FROM_CCORR1;
 	} else if (cur == DDP_COMPONENT_AAL0 && next == DDP_COMPONENT_C3D0) {
@@ -32663,7 +32663,7 @@ static int mtk_ddp_sel_in_MT6858(const struct mtk_mmsys_reg_data *data,
 	} else if (cur == DDP_COMPONENT_C3D0 && next == DDP_COMPONENT_AAL0) {
 		*addr = MT6858_DISP_AAL0_SEL_IN;
 		value = MT6858_AAL0_SEL_IN_FROM_C3D0;
-	} else if (cur == DDP_COMPONENT_CCORR1 && next == DDP_COMPONENT_AAL0) {
+	} else if (cur == DDP_COMPONENT_CCORR0 && next == DDP_COMPONENT_AAL0) {
 		*addr = MT6858_DISP_AAL0_SEL_IN;
 		value = MT6858_AAL0_SEL_IN_FROM_CCORR1;
 	} else if (cur == DDP_COMPONENT_COLOR0 && next == DDP_COMPONENT_AAL0) {
@@ -32675,7 +32675,7 @@ static int mtk_ddp_sel_in_MT6858(const struct mtk_mmsys_reg_data *data,
 	} else if (cur == DDP_COMPONENT_C3D0 && next == DDP_COMPONENT_GAMMA0) {
 		*addr = MT6858_DISP_GAMMA0_SEL_IN;
 		value = MT6858_GAMMA0_SEL_IN_FROM_C3D0;
-	} else if (cur == DDP_COMPONENT_CCORR1 && next == DDP_COMPONENT_GAMMA0) {
+	} else if (cur == DDP_COMPONENT_CCORR0 && next == DDP_COMPONENT_GAMMA0) {
 		*addr = MT6858_DISP_GAMMA0_SEL_IN;
 		value = MT6858_GAMMA0_SEL_IN_FROM_CCORR1;
 	} else if (cur == DDP_COMPONENT_AAL0 && next == DDP_COMPONENT_GAMMA0) {
