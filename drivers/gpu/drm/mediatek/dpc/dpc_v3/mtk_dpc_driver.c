@@ -126,8 +126,12 @@ static atomic_t g_user_15 = ATOMIC_INIT(0);
 static atomic_t g_user_16 = ATOMIC_INIT(0);
 static atomic_t g_user_17 = ATOMIC_INIT(0);
 
-static const char trace_buf_mml_on[] = "C|-65536|MML1_power|1\n";
-static const char trace_buf_mml_off[] = "C|-65536|MML1_power|0\n";
+static const char trace_buf_mml_on[] = "C|-65536|power_MML|1\n";
+static const char trace_buf_mml_off[] = "C|-65536|power_MML|0\n";
+static const char trace_buf_disp_on[] = "C|-65536|power_DISP|1\n";
+static const char trace_buf_disp_off[] = "C|-65536|power_DISP|0\n";
+static const char trace_buf_mminfra_on[] = "C|-65536|power_MMINFRA|1\n";
+static const char trace_buf_mminfra_off[] = "C|-65536|power_MMINFRA|0\n";
 static const char * const trace_buf_keep[4][2] = {
 	{"B|-65536|vidle_keep_0\n", "E|-65536|vidle_keep_0\n"},
 	{"B|-65536|vidle_keep_1\n", "E|-65536|vidle_keep_1\n"},
@@ -460,7 +464,13 @@ static int dpc_mminfra_on_off(bool en, const enum mtk_vidle_voter_user user)
 		return -1;
 	}
 
+	if (en && cnt == 1)
+		dpc_mmp(mminfra, MMPROFILE_FLAG_START, user, 0x11111111);
+
 	dpc_pm_ctrl(en);
+
+	if (!en && cnt == 0)
+		dpc_mmp(mminfra, MMPROFILE_FLAG_END, user, 0x22222222);
 
 	return 0;
 }
@@ -966,22 +976,14 @@ static void dpc_enable_v3(const u8 en)
 			       dpc_base + DISP_DPC_INTEN_DT_TE_THREAD);
 
 		if (debug_irq & BIT(3))
-			writel(//INTEN_MTCMOS_ON_OFF_FLD_INTEN_DISP_DT_DONE2_0 |
-			       //INTEN_MTCMOS_ON_OFF_FLD_INTEN_DISP_DT_DONE6_0 |
-			       //INTEN_MTCMOS_ON_OFF_FLD_INTEN_DISP_DT_DONE1 |
-			       //INTEN_MTCMOS_ON_OFF_FLD_INTEN_DISP_DT_DONE3 |
-			       //INTEN_MTCMOS_ON_OFF_FLD_INTEN_DISP_DT_DONE5 |
-			       //INTEN_MTCMOS_ON_OFF_FLD_INTEN_DISP_DT_DONE7 |
-			       INTEN_MTCMOS_ON_OFF_FLD_INTEN_OVL0_MTCMOS_ON |
-			       INTEN_MTCMOS_ON_OFF_FLD_INTEN_OVL0_MTCMOS_OFF |
-			       INTEN_MTCMOS_ON_OFF_FLD_INTEN_MML2_MTCMOS_ON |
-			       INTEN_MTCMOS_ON_OFF_FLD_INTEN_MML2_MTCMOS_OFF |
-			       //INTEN_MTCMOS_ON_OFF_FLD_INTEN_DISP0A_MTCMOS_ON |
-			       //INTEN_MTCMOS_ON_OFF_FLD_INTEN_DISP0A_MTCMOS_OFF |
-			       INTEN_MTCMOS_ON_OFF_FLD_INTEN_DISP1A_MTCMOS_ON |
+			writel(INTEN_MTCMOS_ON_OFF_FLD_INTEN_DISP1A_MTCMOS_ON |
 			       INTEN_MTCMOS_ON_OFF_FLD_INTEN_DISP1A_MTCMOS_OFF,
 			       dpc_base + DISP_DPC_INTEN_MTCMOS_ON_OFF);
 
+		if (debug_irq & BIT(8))
+			writel(INTSTA_MML2_HWVOTE_SIGN_HI |
+			       INTSTA_MML2_HWVOTE_SIGN_LO,
+			       dpc_base + DISP_DPC_INTEN_HWVOTE_STATE);
 
 		if (debug_irq & BIT(4))	/* mminfra DT*/
 			writel(BIT(24) | BIT(25) | BIT(26),
@@ -990,7 +992,6 @@ static void dpc_enable_v3(const u8 en)
 		if (debug_irq & BIT(5))	/* mminfra on off rdy rising */
 			writel(BIT(20) | BIT(21),
 			       dpc_base + DISP_DPC_INTEN_INTF_PWR_RDY_STATE);
-
 
 		writel(g_priv->dt_follow_cfg, dpc_base + DISP_REG_DPC_DISP_DT_FOLLOW_CFG);
 		writel(g_priv->dt_follow_cfg, dpc_base + DISP_REG_DPC_MML_DT_FOLLOW_CFG);
@@ -2045,9 +2046,11 @@ out:
 irqreturn_t mt6993_irq_handler(int irq, void *dev_id)
 {
 	struct mtk_dpc *priv = dev_id;
-	u32 mtcmos_sta = 0, err_sta = 0, dt_sta = 0, mtcmos_busy = 0, pwr_rdy = 0;
+	u32 mtcmos_sta = 0, err_sta = 0, dt_sta = 0, mtcmos_busy = 0, pwr_rdy = 0, hwvote_sta = 0;
 	irqreturn_t ret = IRQ_NONE;
 	static DEFINE_RATELIMIT_STATE(err_rate, HZ, 1);
+	static bool disp1_has_begin = true;
+	static bool mml2_has_begin = true;
 
 	if (IS_ERR_OR_NULL(priv))
 		return ret;
@@ -2065,12 +2068,13 @@ irqreturn_t mt6993_irq_handler(int irq, void *dev_id)
 		return IRQ_NONE;
 	}
 
+	hwvote_sta =  readl(dpc_base + DISP_DPC_INTSTA_HWVOTE_STATE);
 	mtcmos_busy = readl(dpc_base + DISP_DPC_INTSTA_MTCMOS_BUSY);
 	mtcmos_sta = readl(dpc_base + DISP_DPC_INTSTA_MTCMOS_ON_OFF);
 	err_sta = readl(dpc_base + DISP_DPC_INTSTA_DISP_PM_CFG_ERROR);
 	dt_sta = readl(dpc_base + DISP_DPC_INTSTA_DT_TE_THREAD);
 	pwr_rdy =  readl(dpc_base + DISP_DPC_INTSTA_INTF_PWR_RDY_STATE);
-	if ((!mtcmos_sta) && (!err_sta) && (!dt_sta) && (!mtcmos_busy) && (!pwr_rdy)) {
+	if (!(mtcmos_sta || err_sta || dt_sta || mtcmos_busy || pwr_rdy || hwvote_sta)) {
 		if (__ratelimit(&err_rate)) {
 			DPCERR("irq err clksq");
 			debug_irq = 0;
@@ -2088,6 +2092,8 @@ irqreturn_t mt6993_irq_handler(int irq, void *dev_id)
 		writel(0, dpc_base + DISP_DPC_INTSTA_DT_TE_THREAD);
 	if (pwr_rdy)
 		writel(0, dpc_base + DISP_DPC_INTSTA_INTF_PWR_RDY_STATE);
+	if (hwvote_sta)
+		writel(0, dpc_base + DISP_DPC_INTSTA_HWVOTE_STATE);
 
 	if (err_sta) {
 		dpc_mmp(folder, MMPROFILE_FLAG_PULSE, err_sta, readl(hwccf_global_en));
@@ -2133,45 +2139,58 @@ irqreturn_t mt6993_irq_handler(int irq, void *dev_id)
 			dpc_mmp(mtcmos_mml1, MMPROFILE_FLAG_PULSE, 0, 0);
 
 	if (debug_irq & BIT(3)) {
-		if (mtcmos_sta & INTEN_MTCMOS_ON_OFF_FLD_INTEN_MML2_MTCMOS_ON)
-			dpc_mmp(mtcmos_mml1, MMPROFILE_FLAG_START, 0, 1);
-		if (mtcmos_sta & INTEN_MTCMOS_ON_OFF_FLD_INTEN_MML2_MTCMOS_OFF)
-			dpc_mmp(mtcmos_mml1, MMPROFILE_FLAG_END, 0, 0);
-
-		if (mtcmos_sta & INTEN_MTCMOS_ON_OFF_FLD_INTEN_DISP1A_MTCMOS_ON)
-			dpc_mmp(mtcmos_disp1, MMPROFILE_FLAG_START, 0, 1);
-		if (mtcmos_sta & INTEN_MTCMOS_ON_OFF_FLD_INTEN_DISP1A_MTCMOS_OFF)
+		if ((mtcmos_sta & INTEN_MTCMOS_ON_OFF_FLD_INTEN_DISP1A_MTCMOS_OFF) && disp1_has_begin) {
 			dpc_mmp(mtcmos_disp1, MMPROFILE_FLAG_END, 0, 0);
+			tracing_mark_write(trace_buf_disp_off);
+			disp1_has_begin = false;
+		}
+		if ((mtcmos_sta & INTEN_MTCMOS_ON_OFF_FLD_INTEN_DISP1A_MTCMOS_ON) && !disp1_has_begin) {
+			dpc_mmp(mtcmos_disp1, MMPROFILE_FLAG_START, 0, 1);
+			tracing_mark_write(trace_buf_disp_on);
+			disp1_has_begin = true;
+		}
+	}
 
-		if (mtcmos_sta & INTEN_MTCMOS_ON_OFF_FLD_INTEN_OVL0_MTCMOS_ON)
-			dpc_mmp(mtcmos_ovl0, MMPROFILE_FLAG_START, 0, 1);
-		if (mtcmos_sta & INTEN_MTCMOS_ON_OFF_FLD_INTEN_OVL0_MTCMOS_OFF)
-			dpc_mmp(mtcmos_ovl0, MMPROFILE_FLAG_END, 0, 0);
+	if (debug_irq & BIT(8)) {
+		if ((hwvote_sta & INTSTA_MML2_HWVOTE_SIGN_LO) && mml2_has_begin) {
+			dpc_mmp(mtcmos_mml1, MMPROFILE_FLAG_END, 0, 0);
+			tracing_mark_write(trace_buf_mml_off);
+			mml2_has_begin = false;
+		}
+		if ((hwvote_sta & INTSTA_MML2_HWVOTE_SIGN_HI) && !mml2_has_begin) {
+			dpc_mmp(mtcmos_mml1, MMPROFILE_FLAG_START, 0, 1);
+			tracing_mark_write(trace_buf_mml_on);
+			mml2_has_begin = true;
+		}
 	}
 
 	if (debug_irq & BIT(4)) {
 		if (mtcmos_busy & BIT(24))	// DT17 mminfra off
 			dpc_mmp(debug1, MMPROFILE_FLAG_PULSE, 0x24, 0);
-		if (mtcmos_busy & BIT(25))	// DT18 mminfra on
-			dpc_mmp(debug1, MMPROFILE_FLAG_PULSE, 0x25, 1);
 		if (mtcmos_busy & BIT(26))	// DT19 mminfra off
 			dpc_mmp(debug1, MMPROFILE_FLAG_PULSE, 0x26, 0);
+		if (mtcmos_busy & BIT(25))	// DT18 mminfra on
+			dpc_mmp(debug1, MMPROFILE_FLAG_PULSE, 0x25, 1);
 	}
 
 	if (debug_irq & BIT(5)) {
-		if (pwr_rdy & BIT(21))		// mminfra on rdy rising
-			dpc_mmp(debug2, MMPROFILE_FLAG_START, 0x21, 1);
-		if (pwr_rdy & BIT(20))		// mminfra off rdy rising
+		if (pwr_rdy & BIT(20)) {	// mminfra off rdy rising
 			dpc_mmp(debug2, MMPROFILE_FLAG_END, 0x20, 0);
+			tracing_mark_write(trace_buf_mminfra_off);
+		}
+		if (pwr_rdy & BIT(21)) {	// mminfra on rdy rising
+			dpc_mmp(debug2, MMPROFILE_FLAG_START, 0x21, 1);
+			tracing_mark_write(trace_buf_mminfra_on);
+		}
 	}
 
 	/* Reserved DT for gce exception voter debug */
 	if (debug_irq & BIT(7)) {
-		if (dt_sta & INTEN_DT_TE_THREAD_FLD_INTEN_DISP_DT_TE_SEL_4)
-			dpc_mmp(hwccf_gce_vote, MMPROFILE_FLAG_START,
-				readl(hwccf_xpu6_local_en), readl(hwccf_global_en));
 		if (dt_sta & INTEN_DT_TE_THREAD_FLD_INTEN_DISP_DT_TE_SEL_5)
 			dpc_mmp(hwccf_gce_vote, MMPROFILE_FLAG_END,
+				readl(hwccf_xpu6_local_en), readl(hwccf_global_en));
+		if (dt_sta & INTEN_DT_TE_THREAD_FLD_INTEN_DISP_DT_TE_SEL_4)
+			dpc_mmp(hwccf_gce_vote, MMPROFILE_FLAG_START,
 				readl(hwccf_xpu6_local_en), readl(hwccf_global_en));
 		if (dt_sta & INTEN_DT_TE_THREAD_FLD_INTEN_DISP_DT_TE_SEL_7) {
 			dpc_mmp(hwccf_gce_vote, MMPROFILE_FLAG_PULSE,
@@ -3225,7 +3244,7 @@ static void dpc_analysis_v3(void)
 //			(unsigned long)time, DO_COMMON_DIV(rem_nsec, NSEC_PER_USEC));
 
 	written = scnprintf(msg + written, 512 - written,
-		"caps(%#x) dpc_en(%#x) voter(%#x) SWHW(%#x) 0(%#x) 6(%#x)",
+		"caps(%#x) dpc_en(%#x) voter(%#x) SWHW(%#x) 0(%#x) 6(%#x) ",
 		g_priv->vidle_mask, readl(dpc_base), readl(mmpc_dummy_voter),
 		readl(hwccf_mtcmos_en),
 		readl(hwccf_xpu0_local_en),
