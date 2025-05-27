@@ -1615,7 +1615,7 @@ mgk_64_kleaf_platform_modules = {
     "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/dip/isp_6s:camera_dip_isp6s".format(kernel_version): "mt6789 mt6855",
     "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/mfb/isp_6s:camera_mfb_isp6s".format(kernel_version): "mt6855",
     "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/wpe/isp_6s:camera_wpe_isp6s".format(kernel_version): "mt6855",
-    "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/fdvt/5.1:camera_fdvt_isp51".format(kernel_version): "mt6789 mt6855",
+    "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/fdvt/5.1:camera_fdvt_isp51".format(kernel_version): "mt6789 mt6855 mt6858",
     "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/rsc:camera_rsc_isp6s".format(kernel_version): "mt6789 mt6855",
 
     "//vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m:wlan_drv_gen4m_6789":"mt6789",
