@@ -3250,6 +3250,16 @@ dramc: dramc@10230000 {
 				"MTK_DRM_OPT_SDPA_OVL_SWITCH",
 				"MTK_DRM_OPT_HRT_BY_LARB",
 				"MTK_DRM_OPT_RES_SWITCH_ON_AP",
+				"MTK_DRM_OPT_DPC_EN",
+				"MTK_DRM_OPT_VIDLE_TOP_EN",
+				"MTK_DRM_OPT_VIDLE_MTCMOS_DT_EN",
+				"MTK_DRM_OPT_VIDLE_MMINFRA_DT_EN",
+				"MTK_DRM_OPT_VIDLE_DVFS_DT_EN",
+				"MTK_DRM_OPT_VIDLE_QOS_DT_EN",
+				"MTK_DRM_OPT_VIDLE_GCE_TS_EN",
+				"MTK_DRM_OPT_VIDLE_FULL_SCENARIO",
+				"MTK_DRM_OPT_VIDLE_VDO_PANEL",
+				"MTK_DRM_OPT_DPC_PRE_TE_EN",
 				"MTK_DRM_OPT_TILE_OVERHEAD";
 
 			helper-value = <1>, /*MTK_DRM_OPT_STAGE*/
@@ -3317,6 +3327,16 @@ dramc: dramc@10230000 {
 				<0>, /*MTK_DRM_OPT_SDPA_OVL_SWITCH*/
 				<0>, /*MTK_DRM_OPT_HRT_BY_LARB*/
 				<0>, /*MTK_DRM_OPT_RES_SWITCH_ON_AP*/
+				<1>, /*MTK_DRM_OPT_DPC_EN*/
+				<0>, /*MTK_DRM_OPT_VIDLE_TOP_EN*/
+				<0>, /*MTK_DRM_OPT_VIDLE_MTCMOS_DT_EN*/
+				<0>, /*MTK_DRM_OPT_VIDLE_MMINFRA_DT_EN*/
+				<0>, /*MTK_DRM_OPT_VIDLE_DVFS_DT_EN*/
+				<0>, /*MTK_DRM_OPT_VIDLE_QOS_DT_EN*/
+				<0>, /*MTK_DRM_OPT_VIDLE_GCE_TS_EN*/
+				<0>, /*MTK_DRM_OPT_VIDLE_FULL_SCENARIO*/
+				<0>, /*MTK_DRM_OPT_VIDLE_VDO_PANEL*/
+				<0>, /*MTK_DRM_OPT_DPC_PRE_TE_EN*/
 				<0>; /*MTK_DRM_OPT_TILE_OVERHEAD*/
 		};
 
@@ -3576,10 +3596,30 @@ dramc: dramc@10230000 {
 			reg = <0 0x1401d000 0 0x1000>;
 		};
 
-		disp-dpc@14020000 {
-			compatible = "mediatek,disp_dpc";
-			reg = <0 0x14020000 0 0x1000>;
-			interrupts = <GIC_SPI 343 IRQ_TYPE_LEVEL_HIGH 0>;
+		disp_dpc: disp-dpc@14020000 {
+			compatible = "mediatek,mt6858-disp-dpc-v1";
+
+			reg = <0 0x14020000 0 0x1000>,        /* dpc base */
+				<0 0x1c000000 0 0x1000>,          /* vlp base */
+				<0 0x1c001000 0 0x1000>,          /* spm base */
+				<0 0x1ec45130 0 0x4>,             /* hwvote */
+				<0 0x1ec352b8 0 0x4>,             /* hfrp */
+				<0 0x1c00f000 0 0x4>,             /* dvfsrc_apb */
+				<0 0x1c00f2a0 0 0x4>,             /* dvfsrc_apb */
+				<0 0x1e80090c 0 0x4>;             /* mminfra */
+			reg-names =
+				"DPC_BASE",
+				"VLP_BASE",
+				"SPM_BASE",
+				"hw_vote_status",
+				"vdisp_dvsrc_debug_sta_7",
+				"dvfsrc_en",
+				"dvfsrc_debug_sta_1",
+				"mminfra_hangfree";
+			interrupts =
+				<GIC_SPI 343 IRQ_TYPE_LEVEL_HIGH 0>, /* DPC_DISP_IRQ_BIT */
+				<GIC_SPI 344 IRQ_TYPE_LEVEL_HIGH 0>; /* DPC_MML_IRQ_BIT */
+			vidle-mask = <0>; //<0x43e>;
 		};
 
 		reserved@14021000 {
