@@ -1717,7 +1717,8 @@ s32 cmdq_mdp_handle_flush(struct cmdqRecStruct *handle)
 	CMDQ_MSG("%s finalize\n", __func__);
 	handle->finalized = true;
 
-	cmdq_pkt_finalize(handle->pkt);
+	/* handle by GCE */
+	// cmdq_pkt_finalize(handle->pkt);
 
 	/* Dispatch handle to get correct thread or wait in list.
 	 * Task may flush directly if no engine conflict and no waiting task
