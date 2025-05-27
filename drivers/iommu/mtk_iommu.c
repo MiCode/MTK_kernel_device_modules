@@ -3763,7 +3763,7 @@ static const struct mtk_iommu_plat_data mt6858_data_disp = {
 	.m4u_plat	= M4U_MT6858,
 	.flags          = OUT_ORDER_WR_EN | GET_DOM_ID_LEGACY |
 			  NOT_STD_AXI_MODE | TLB_SYNC_EN | IOMMU_SEC_EN |
-			  SKIP_CFG_PORT | IOVA_34_EN | SMI_DEV_LINK_SKIP |
+			  SKIP_CFG_PORT | IOVA_34_EN |
 			  HAS_SMI_SUB_COMM | SAME_SUBSYS | PGTABLE_PA_35_EN |
 			  PM_OPS_SKIP | PM_DOMAIN_SKIP | IOMMU_CLK_AO_EN,
 	.hw_list        = &mm_iommu_list,
