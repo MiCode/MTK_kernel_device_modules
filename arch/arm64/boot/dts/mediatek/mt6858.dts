@@ -4551,6 +4551,7 @@ dramc: dramc@10230000 {
 			reg = <0 0x11201000 0 0x2e00>,
 				<0 0x11203e00  0 0x0100>;
 			reg-names = "mac", "ippc";
+			vusb33-supply = <&mt6369_vusb>;
 			interrupts = <GIC_SPI 394 IRQ_TYPE_LEVEL_HIGH 0>;
 			phy-cells = <1>;
 			phys = <&u2port0 PHY_TYPE_USB2>;
