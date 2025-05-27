@@ -3388,8 +3388,8 @@ static int dpc_smi_pwr_get_if_in_use(void *data)
 		return -1;
 	}
 
+	mtk_vidle_hint_update(VIDLE_HINT_SMI_DUMP);
 	if (g_priv && g_priv->mtcmos_cfg && (g_priv->mtcmos_cfg[DPC3_SUBSYS_DIS1A].mode == DPC_MTCMOS_AUTO)) {
-		mtk_vidle_hint_update(VIDLE_HINT_SMI_DUMP);
 		mtk_vidle_config_ff(false);
 		DPCFUNC("disable ff and add debounce");
 	}
