@@ -441,8 +441,8 @@ int mml_drm_query_multi_layer(struct mml_drm_ctx *dctx,
 					i, remain[mml_sys_frame], info_cache[mml_layer_cnt].duration);
 				continue;
 			}
-			mml_msg("[R1] after query caps layer %u choosing mode %u mode_caps %u",
-				i, infos[i].mode, info_cache[mml_layer_cnt].mode_caps);
+			mml_msg("[R1] after query layer %u lay_cnt %d choosing mode %u mode_caps %u",
+				i, mml_layer_cnt, infos[i].mode, info_cache[mml_layer_cnt].mode_caps);
 			mml_layer_cnt++;
 			mml_last_layer = i;
 		}
@@ -454,6 +454,8 @@ int mml_drm_query_multi_layer(struct mml_drm_ctx *dctx,
 				for (j = 0; j < mml_layer_cnt; j++)
 					info_cache[j].mode_caps &= ~BIT(MML_MODE_DIRECT_LINK);
 			}
+			mml_msg("[R2] lay_cnt %d mode_caps %u",
+				i, info_cache[i].mode_caps);
 		}
 
 		/* Third round:
@@ -474,10 +476,11 @@ int mml_drm_query_multi_layer(struct mml_drm_ctx *dctx,
 				mml_msg("[drm][query][R3] pick layer %u to use DL", i);
 				infos[i].mode = MML_MODE_DIRECT_LINK;
 				couple_used = true;
-			} else
-				info_cache[mml_layer_cnt].mode_caps &=
-					~(BIT(MML_MODE_DIRECT_LINK) | BIT(MML_MODE_MML_DECOUPLE));
-
+			} else {
+				if (couple_used)
+					info_cache[mml_layer_cnt].mode_caps &=
+						~(BIT(MML_MODE_DIRECT_LINK) | BIT(MML_MODE_MML_DECOUPLE));
+			}
 
 			if ((info_cache[mml_layer_cnt].mode_caps & BIT(MML_MODE_MML_DECOUPLE)) &&
 				(info_cache[mml_layer_cnt].mode_caps & BIT(MML_MODE_MML_DECOUPLE2))) {
@@ -491,7 +494,8 @@ int mml_drm_query_multi_layer(struct mml_drm_ctx *dctx,
 				infos[i].mode = MML_MODE_MML_DECOUPLE;
 			else {
 				infos[i].mode = MML_MODE_NOT_SUPPORT;
-				mml_msg("[warn][R3] layer dispatch to not support");
+				mml_msg("[warn][R3] layer %u not support lay_cnt %d mode %u mode_caps %u",
+					i, mml_layer_cnt, infos[i].mode, info_cache[mml_layer_cnt].mode_caps);
 				continue;
 			}
 
