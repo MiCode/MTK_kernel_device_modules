@@ -24,6 +24,7 @@
 #include <linux/of_device.h>
 #include <linux/of_platform.h>
 #include <linux/of_irq.h>
+#include <linux/ratelimit.h>
 #include <linux/regmap.h>
 #include <linux/spmi.h>
 
@@ -790,6 +791,9 @@ static struct irq_chip mtk_spmi_pmic_irq_chip = {
 	.irq_bus_sync_unlock = mtk_spmi_pmic_irq_sync_unlock,
 };
 
+static struct ratelimit_state ratelimit_log =
+	RATELIMIT_STATE_INIT("ratelimit_log", 5 * HZ, 2);
+
 static void mtk_spmi_pmic_irq_sp_handler(struct pmic_core *core,
 					 unsigned int top_gp)
 {
@@ -820,8 +824,9 @@ static void mtk_spmi_pmic_irq_sp_handler(struct pmic_core *core,
 			hwirq = pmic_int->hwirq_base + MTK_SPMI_PMIC_REG_WIDTH * i + j;
 
 			virq = irq_find_mapping(core->irq_domain, hwirq);
-			dev_info(core->dev, "[%x]Reg[0x%x]=0x%x,hwirq=%d\n",
-				 core->chip_id, sta_reg, irq_status, hwirq);
+			if (__ratelimit(&ratelimit_log))
+				dev_info(core->dev, "[%x]Reg[0x%x]=0x%x,hwirq=%d\n",
+					 core->chip_id, sta_reg, irq_status, hwirq);
 			if (virq)
 				handle_nested_irq(virq);
 
@@ -847,7 +852,8 @@ static irqreturn_t mtk_spmi_pmic_irq_handler(int irq, void *data)
 		return IRQ_NONE;
 	}
 
-	dev_info(core->dev, "top_irq_sts:0x%x\n", top_irq_status);
+	if (__ratelimit(&ratelimit_log))
+		dev_info(core->dev, "top_irq_sts:0x%x\n", top_irq_status);
 	for (i = 0; i < chip_data->num_top; i++) {
 		bit = BIT(chip_data->pmic_ints[i].top_offset);
 		if (top_irq_status & bit) {
