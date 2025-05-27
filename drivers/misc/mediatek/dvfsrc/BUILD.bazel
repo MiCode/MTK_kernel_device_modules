@@ -62,6 +62,9 @@ define_mgk_ddk_ko(
       "CONFIG_MTK_DVFSRC_DEBUGFS": {
         True: ["dvfsrc-debugfs.c"],
       },
+       "CONFIG_MTK_DVFSRC_VSMR": {
+        True: ["dvfsrc-vsmr.c"],
+      },
     },
     hdrs = glob(["**/*.h"]),
     copts = [

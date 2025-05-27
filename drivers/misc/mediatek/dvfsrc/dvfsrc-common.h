@@ -57,3 +57,5 @@ extern int __init mtk_dvfsrc_mb_init(void);
 extern void __exit mtk_dvfsrc_mb_exit(void);
 extern int __init mtk_dvfsrc_debugfs_init(void);
 extern void __exit mtk_dvfsrc_debugfs_exit(void);
+extern int __init mtk_dvfsrc_vsmr_init(void);
+extern void __exit mtk_dvfsrc_vsmr_exit(void);
