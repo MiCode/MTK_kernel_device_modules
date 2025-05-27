@@ -2061,7 +2061,7 @@ static char *get_spmimst_all_reg_dump(void)
 					"(0x%x)=0x%x ", offset, tmp_dat);
 	}
 	offset = arb->spmimst_regs[SPMI_MST_DBG];
-	tmp_dat = readl(arb->spmimst_base[1] + offset);
+	tmp_dat = readl(arb->spmimst_base[0] + offset);
 	log_size += snprintf(wp + log_size, wp_size - log_size,
 				"(0x%x)=0x%x\n", offset, tmp_dat);
 
@@ -2720,6 +2720,10 @@ int spmi_pmif_dbg_init(struct spmi_controller *ctrl)
 				    "mediatek,mt6877-pmif-m")) {
 		arb->dbgregs = mt6833_pmif_dbg_regs;
 		arb->dbgver = 3;
+	} else if (of_device_is_compatible(ctrl->dev.parent->of_node,
+				    "mediatek,mt6858-spmi")) {
+		arb->dbgregs = mt6833_pmif_dbg_regs;
+		arb->dbgver = 4;
 	} else if (of_device_is_compatible(ctrl->dev.parent->of_node,
 				    "mediatek,mt6886-spmi")) {
 		arb->dbgregs = mt6833_pmif_dbg_regs;
