@@ -1926,7 +1926,7 @@ static int _btif_vfifo_init(struct _mtk_btif_dma_ *p_dma)
 
 /*vFIFO memory allocation*/
 	p_vfifo->p_vir_addr = dma_alloc_coherent(dev, p_vfifo->vfifo_size,
-			&p_vfifo->phy_addr, GFP_DMA | GFP_DMA32 | __GFP_ZERO);
+			&p_vfifo->phy_addr, GFP_KERNEL | __GFP_ZERO);
 	if (p_vfifo->p_vir_addr == NULL) {
 		BTIF_ERR_FUNC("alloc vFIFO memory for BTIF failed\n");
 		return E_BTIF_FAIL;
