@@ -229,6 +229,7 @@ enum mddp_f_mddp_wh_v1_e {
 	MDDP_WH_V1_QOS_UL,
 	MDDP_WH_V1_MWD,
 	MDDP_WH_V1_NUM,
+	MDDP_WH_CONNECTION_BASED,
 };
 
 #define COM_NUM COM_LEN2B
