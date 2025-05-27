@@ -1182,6 +1182,7 @@ void mtk_dbi_count_bypass(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 	mtk_dbi_count_write_mask(comp, value, REG_DBI_COUNTING_HW_ENABLE, mask, handle);
 
 	value = 0; mask = 0;
+	SET_VAL_MASK(value, mask, 0, SAMPLING_PQ_SINGLE_TRIGGER);
 	SET_VAL_MASK(value, mask, 1, SAMPLING_PQ_SINGLE_TRIGGER_SW_EN);
 	mtk_dbi_count_write_mask(comp, value, REG_DBI_SAMPLING_PQ_SINGLE_TRIGGER_SW_EN, mask, handle);
 
