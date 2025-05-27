@@ -412,7 +412,7 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 	bool best_cpu_has_lt, cpu_has_lt;
 	unsigned long pwr_eff, this_pwr_eff;
 	struct perf_domain *target_pd, *pd;
-	bool _rt_aggre_preempt_enable = rt_ea_output->rt_aggre_preempt_enable;
+	bool __rt_aggre_preempt_enable = rt_ea_output->rt_aggre_preempt_enable;
 	int dpt_v2_support = is_dpt_v2_support();
 	dpt_v2_cap_params_struct dpt_v2_cap_params[MAX_NR_CPUS];
 	int compress_cpu;
@@ -530,7 +530,7 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 			irq_log_store();
 
 			util_cum[cpu] = cpu_util_cum;
-			if (_rt_aggre_preempt_enable &&
+			if (__rt_aggre_preempt_enable &&
 				!cpu_has_lt && ((cpu_rq(cpu)->curr->policy) == SCHED_NORMAL)) {
 				if (((cpu_rq(cpu)->curr->prio) > non_idle_cpu_prio) ||
 					(((cpu_rq(cpu)->curr->prio) == non_idle_cpu_prio)

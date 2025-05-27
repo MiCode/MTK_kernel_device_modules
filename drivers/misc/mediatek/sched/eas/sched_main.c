@@ -705,10 +705,8 @@ static long eas_ioctl_impl(struct file *filp,
 			return -1;
 		set_rt_aggre_preempt(val);
 		break;
-	case EAS_RT_AGGRE_PREEMPT_GET:
-		val = get_rt_aggre_preempt();
-		if (easctl_copy_to_user((void *)arg, &val, sizeof(unsigned int)))
-			return -1;
+	case EAS_RT_AGGRE_PREEMPT_RESET:
+		set_rt_aggre_preempt(sched_rt_aggre_preempt_enable_get());
 		break;
 
 	case EAS_SET_SHORTCUT_COMPRESS_RATE:
