@@ -15,6 +15,53 @@
 	bootargs_ext = "";
 };
 
+&mtkfb {
+	pinctrl-names = "lcd_bias_enp0_gpio",
+		"lcd_bias_enn0_gpio",
+		"lcm_rst_out0_gpio",
+		"mode_te_te",
+		"lcm_led_en0_gpio";
+	pinctrl-0 = <&mtkfb_pins_lcd_bias_enp0>;
+	pinctrl-1 = <&mtkfb_pins_lcd_bias_enn0>;
+	pinctrl-2 = <&mtkfb_pins_lcm_rst_out0_gpio>;
+	pinctrl-3 = <&mtkfb_pins_lcm_dsi_te>;
+	pinctrl-4 = <&mtkfb_pins_lcm_led_en0>;
+
+	status = "okay";
+};
+
+&dispsys_config {
+	pinctrl-names = "mode_te_te";
+	pinctrl-0 = <&mtkfb_pins_lcm_dsi_te>;
+	status = "okay";
+};
+
+&dsi0 {
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	panel1@0 {
+		compatible = "jdi,nt36672e,vdo,120hz";
+		reg = <0>;
+		pm-enable-gpios = <&pio 130 0>;
+		reset-gpios = <&pio 97 0>;
+		gate-ic = <4831>;
+		pinctrl-names = "default";
+		port {
+			panel_in1: endpoint {
+				remote-endpoint = <&dsi_out1>;
+			};
+		};
+	};
+	ports {
+		port {
+			dsi_out1: endpoint@0 {
+				remote-endpoint = <&panel_in1>;
+			};
+		};
+	};
+};
+
 &mt6363keys {
 	pinctrl-names = "kpcol0_mode";
 	pinctrl-0 = <&kpcol0_pins_gpio_mode>;
@@ -29,6 +76,43 @@
 		pins-cmd-dat {
 			pinmux = <PINMUX_GPIO120__FUNC_GPIO120>;
 			input-enable;
+		};
+	};
+
+	mtkfb_pins_lcd_bias_enp0: lcd-bias-enp0-gpio {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO130__FUNC_GPIO130>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+
+	mtkfb_pins_lcd_bias_enn0: lcd-bias-enn0-gpio {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO130__FUNC_GPIO130>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+
+	mtkfb_pins_lcm_rst_out0_gpio: lcm-rst-out0-gpio {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO97__FUNC_GPIO97>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+	mtkfb_pins_lcm_dsi_te: lcm-dsi-te {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO96__FUNC_DSI_TE>;
+		};
+	};
+
+	mtkfb_pins_lcm_led_en0: lcm-led-en0-gpio {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO130__FUNC_GPIO130>;
+			slew-rate = <1>;
+			output-low;
 		};
 	};
 };
