@@ -1262,9 +1262,8 @@ static char *dvfsrc_dump_therm_idx_mt6993(struct mtk_dvfsrc *dvfsrc, char *p, u3
 	if (dvfsrc->vcore_power)
 		vcore_uv = regulator_get_voltage(dvfsrc->vcore_power);
 
-#if IS_ENABLED(CONFIG_MTK_DRAMC)
-	data_rate = mtk_dramc_get_data_rate();
-#endif
+	data_rate = mtk_dvfsrc_query_opp_info(MTK_DVFSRC_CURR_DRAM_KHZ) / 1000;
+
 	p += snprintf(p, buff_end - p, "%s", "[on/v/d/f/op/s_r/b_r/sta]=");
 
 	p += snprintf(p, buff_end - p, "%d/%d/%d/%d/%d",
