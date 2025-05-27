@@ -5764,6 +5764,10 @@ dramc: dramc@10230000 {
 		mtk_composite_v4l2_1: mtk-composite-v4l2-1 {
 			compatible = "mediatek,mtk_composite_v4l2_1";
 		};
+
+		camera_af_hw_node: camera-af-hw-node {
+			compatible = "mediatek,camera_af_lens";
+		};
 	};
 
 	low_battery_throttling: low-battery-throttling {
