@@ -555,8 +555,6 @@ void get_adsp_aee_buffer(unsigned long *vaddr, unsigned long *size)
 		n += copy_from_iomem(buf + n, len - n,
 					adspsys->cfg, adspsys->cfg_size, 0, -1);
 		n += copy_from_iomem(buf + n, len - n,
-					adspsys->cfg2, adspsys->cfg2_size, 0, -1);
-		n += copy_from_iomem(buf + n, len - n,
 					adspsys->cfg3, adspsys->cfg3_size, 0, -1);
 		n += copy_from_iomem(buf + n, len - n,
 					pdata->dtcm, pdata->dtcm_size, 0, -1);
