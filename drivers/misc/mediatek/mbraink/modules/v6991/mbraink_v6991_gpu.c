@@ -33,6 +33,7 @@
 #define PERFINDEX_SLOT 20
 #define PERFINDEX_LO_ALARM_COUNT 60
 #define GPU_WORKEREVT_QUEUE_LIMIT 10
+#define IS_GAME_MODE 0 //off
 
 struct mbraink_gpu_perfidx_info {
 	struct hlist_node hlist;
@@ -59,6 +60,7 @@ struct mbraink_gpu_workerevt_info {
 };
 
 static unsigned long long gq2qTimeoutInNs = Q2QTIMEOUT;
+static int gisGameMode = IS_GAME_MODE;
 unsigned int TimeoutCounter[10] = {0};
 unsigned int TimeoutRange[10] = {70, 120, 170, 220, 270, 320, 370, 420, 470, 520};
 
@@ -220,7 +222,7 @@ void fpsgo2mbrain_hint_frameinfo(unsigned long cmd, struct render_frame_info *it
 	if (time > Q2QTIMEOUT_HIST)
 		calculateTimeoutCouter(time);
 
-	if (time > gq2qTimeoutInNs) {
+	if (time > gq2qTimeoutInNs && gisGameMode) {
 		pr_info("q2q (%d) (%llu) (%llu) ns limit (%llu) ns\n",
 			pid,
 			bufID,
@@ -773,6 +775,11 @@ void mbraink_v6991_gpu_setQ2QTimeoutInNS(unsigned long long q2qTimeoutInNS)
 unsigned long long mbraink_v6991_gpu_getQ2QTimeoutInNS(void)
 {
 	return gq2qTimeoutInNs;
+}
+
+void mbraink_v6991_gpu_fpsgoSetGameMode(int isGameMode)
+{
+	gisGameMode= isGameMode;
 }
 
 static int mbraink_v6991_gpu_getOppInfo(struct mbraink_gpu_opp_info *gOppInfo)

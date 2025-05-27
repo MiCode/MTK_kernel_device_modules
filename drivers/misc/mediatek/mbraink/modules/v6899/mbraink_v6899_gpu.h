@@ -15,6 +15,7 @@ void mbraink_v6899_gpu_setQ2QTimeoutInNS(unsigned long long q2qTimeoutInNS);
 void mbraink_v6899_gpu_setPerfIdxTimeoutInNS(unsigned long long perfIdxTimeoutInNS);
 void mbraink_v6899_gpu_setPerfIdxLimit(int perfIdxLimit);
 void mbraink_v6899_gpu_dumpPerfIdxList(void);
+void mbraink_v6899_gpu_fpsgoSetGameMode(int isGameMode);
 
 #if IS_ENABLED(CONFIG_MTK_FPSGO_V3) || IS_ENABLED(CONFIG_MTK_FPSGO)
 

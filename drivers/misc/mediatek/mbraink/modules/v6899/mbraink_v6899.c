@@ -47,6 +47,8 @@ static ssize_t mbraink_platform_info_store(struct device *dev,
 		mbraink_v6899_gpu_setPerfIdxLimit(value);
 	if (command == 4)
 		mbraink_v6899_gpu_dumpPerfIdxList();
+	if (command == 5)
+		mbraink_v6899_gpu_fpsgoSetGameMode(value);
 	return count;
 }
 static DEVICE_ATTR_RW(mbraink_platform_info);

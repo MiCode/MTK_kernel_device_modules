@@ -15,6 +15,7 @@ void mbraink_v6993_gpu_setQ2QTimeoutInNS(unsigned long long q2qTimeoutInNS);
 void mbraink_v6993_gpu_setPerfIdxTimeoutInNS(unsigned long long perfIdxTimeoutInNS);
 void mbraink_v6993_gpu_setPerfIdxLimit(int perfIdxLimit);
 void mbraink_v6993_gpu_dumpPerfIdxList(void);
+void mbraink_v6993_gpu_fpsgoSetGameMode(int isGameMode);
 
 #if IS_ENABLED(CONFIG_MTK_GPU_SUPPORT)
 void gpu2mbrain_hint_fenceTimeoutNotify(int pid, void *data, unsigned long long time);
