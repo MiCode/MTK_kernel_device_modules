@@ -337,6 +337,11 @@ const char * const *get_mt6858_all_clk_names(void)
 		"ipe_fd",
 		"ipe_rsc",
 
+		/* mminfra_config */
+		"mminfra_gce_d",
+		"mminfra_gce_m",
+		"mminfra_gce_26m",
+
 		/* mdpsys_config */
 		"mdp_mutex0",
 		"mdp_apb_bus",

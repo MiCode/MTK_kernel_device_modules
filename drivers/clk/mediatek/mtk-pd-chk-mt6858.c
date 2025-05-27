@@ -22,7 +22,7 @@
 #define PWR_ID_SHIFT			0
 #define PWR_STA_SHIFT			8
 #define HWV_INT_MTCMOS_TRIGGER		0x0008
-#define HWV_IRQ_STATUS			0x0500
+#define HWV_IRQ_STATUS			0x1500
 
 static DEFINE_SPINLOCK(pwr_trace_lock);
 static unsigned int pwr_event[EVT_LEN];
@@ -69,6 +69,49 @@ static void dump_power_event(void)
  * The clk names in Mediatek CCF.
  */
 
+/* afe */
+struct pd_check_swcg afe_swcgs[] = {
+	SWCG("afe_aud_pad_mosi"),
+	SWCG("afe_dl0_dac_tml"),
+	SWCG("afe_dl0_dac_hires"),
+	SWCG("afe_dl0_dac"),
+	SWCG("afe_dl0_predis"),
+	SWCG("afe_dl0_nle"),
+	SWCG("afe_pcm1"),
+	SWCG("afe_pcm0"),
+	SWCG("afe_cm1"),
+	SWCG("afe_cm0"),
+	SWCG("afe_stf"),
+	SWCG("afe_hw_gain23"),
+	SWCG("afe_hw_gain01"),
+	SWCG("afe_ul1_aht"),
+	SWCG("afe_ul1_adc_hires"),
+	SWCG("afe_ul1_tml"),
+	SWCG("afe_ul1_adc"),
+	SWCG("afe_ul0_aht"),
+	SWCG("afe_ul0_adc_hires"),
+	SWCG("afe_ul0_tml"),
+	SWCG("afe_ul0_adc"),
+	SWCG("afe_etdm_in4"),
+	SWCG("afe_etdm_in2"),
+	SWCG("afe_etdm_in1"),
+	SWCG("afe_etdm_out4"),
+	SWCG("afe_etdm_out2"),
+	SWCG("afe_etdm_out1"),
+	SWCG("afe_general3_asrc"),
+	SWCG("afe_general2_asrc"),
+	SWCG("afe_general1_asrc"),
+	SWCG("afe_general0_asrc"),
+	SWCG("afe_connsys_i2s_asrc"),
+	SWCG("afe_audio_hopping_ck"),
+	SWCG("afe_audio_f26m_ck"),
+	SWCG("afe_apll1_ck"),
+	SWCG("afe_apll2_ck"),
+	SWCG("afe_h208m_ck"),
+	SWCG("afe_apll_tuner2"),
+	SWCG("afe_apll_tuner1"),
+	SWCG(NULL),
+};
 /* dispsys_config */
 struct pd_check_swcg dispsys_config_swcgs[] = {
 	SWCG("mm_disp_ovl0_2l"),
@@ -212,6 +255,7 @@ struct subsys_cgs_check {
 };
 
 struct subsys_cgs_check mtk_subsys_check[] = {
+	{MT6858_CHK_PD_AUDIO, PD_NULL, afe_swcgs, afe},
 	{MT6858_CHK_PD_DIS0, MT6858_CHK_PD_MM_INFRA, dispsys_config_swcgs, mm},
 	{MT6858_CHK_PD_ISP_IMG1, MT6858_CHK_PD_MM_INFRA, imgsys1_swcgs, imgsys1},
 	{MT6858_CHK_PD_ISP_IMG2, MT6858_CHK_PD_ISP_IMG1, imgsys2_swcgs, imgsys2},
@@ -253,7 +297,6 @@ static void dump_subsys_reg(unsigned int id)
 }
 
 unsigned int pd_list[] = {
-	MT6858_CHK_PD_MD1,
 	MT6858_CHK_PD_CONN,
 	MT6858_CHK_PD_AUDIO,
 	MT6858_CHK_PD_ISP_IMG1,
@@ -293,7 +336,6 @@ static enum chk_sys_id debug_dump_id[] = {
 	vlpcfg_reg_bus,
 	vlp_top,
 	hwv,
-	hwv_ext,
 	chk_sys_num,
 };
 
@@ -339,22 +381,6 @@ static void debug_dump(unsigned int id, unsigned int pwr_sta)
 	BUG_ON(1);
 }
 
-static enum chk_sys_id log_dump_id[] = {
-	spm,
-	chk_sys_num,
-};
-
-static void log_dump(unsigned int id, unsigned int pwr_sta)
-{
-	if (id >= MT6858_CHK_PD_NUM)
-		return;
-
-	if (id == MT6858_CHK_PD_MD1) {
-		set_subsys_reg_dump_mt6858(log_dump_id);
-		get_subsys_reg_dump_mt6858();
-	}
-}
-
 static void external_dump(void)
 {
 	const struct fmeter_clk *fclks;
@@ -375,7 +401,6 @@ static void external_dump(void)
 }
 
 static struct pd_sta pd_pwr_sta[] = {
-	{MT6858_CHK_PD_MD1, spm, 0x0E00, GENMASK(31, 30)},
 	{MT6858_CHK_PD_CONN, spm, 0x0E04, GENMASK(31, 30)},
 	{MT6858_CHK_PD_AUDIO, spm, 0x0E18, GENMASK(31, 30)},
 	{MT6858_CHK_PD_ISP_IMG1, spm, 0x0E28, GENMASK(31, 30)},
@@ -414,6 +439,30 @@ static u32 get_pd_pwr_status(int pd_id)
 	return 0;
 }
 
+#if BYPASS_SUSPEND_CLK_PWR_CHK
+static int off_mtcmos_id[] = {
+	PD_NULL,
+};
+
+static int notice_mtcmos_id[] = {
+	MT6858_CHK_PD_ISP_IMG1,
+	MT6858_CHK_PD_ISP_IMG2,
+	MT6858_CHK_PD_ISP_IPE,
+	MT6858_CHK_PD_VDE0,
+	MT6858_CHK_PD_VEN0,
+	MT6858_CHK_PD_CAM_MAIN,
+	MT6858_CHK_PD_CAM_SUBA,
+	MT6858_CHK_PD_CAM_SUBB,
+	MT6858_CHK_PD_DIS0,
+	MT6858_CHK_PD_MM_INFRA,
+	MT6858_CHK_PD_MM_PROC,
+	MT6858_CHK_PD_CSI_RX,
+	MT6858_CHK_PD_CONN,
+	MT6858_CHK_PD_AUDIO,
+	MT6858_CHK_PD_SSUSB,
+	PD_NULL,
+};
+#else
 static int off_mtcmos_id[] = {
 	MT6858_CHK_PD_ISP_IMG1,
 	MT6858_CHK_PD_ISP_IMG2,
@@ -431,12 +480,12 @@ static int off_mtcmos_id[] = {
 };
 
 static int notice_mtcmos_id[] = {
-	MT6858_CHK_PD_MD1,
 	MT6858_CHK_PD_CONN,
 	MT6858_CHK_PD_AUDIO,
 	MT6858_CHK_PD_SSUSB,
 	PD_NULL,
 };
+#endif
 
 static int *get_off_mtcmos_id(void)
 {
@@ -486,7 +535,7 @@ static void check_hwv_irq_sta(void)
 {
 	u32 irq_sta;
 
-	irq_sta = get_mt6858_reg_value(hwv_ext, HWV_IRQ_STATUS);
+	irq_sta = get_mt6858_reg_value(hwv, HWV_IRQ_STATUS);
 
 	if ((irq_sta & HWV_INT_MTCMOS_TRIGGER) == HWV_INT_MTCMOS_TRIGGER)
 		debug_dump(MT6858_CHK_PD_NUM, 0);
@@ -501,7 +550,6 @@ static struct pdchk_ops pdchk_mt6858_ops = {
 	.dump_subsys_reg = dump_subsys_reg,
 	.is_in_pd_list = is_in_pd_list,
 	.debug_dump = debug_dump,
-	.log_dump = log_dump,
 	.external_dump = external_dump,
 	.get_pd_pwr_status = get_pd_pwr_status,
 	.get_off_mtcmos_id = get_off_mtcmos_id,

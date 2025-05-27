@@ -23,16 +23,13 @@
 
 #include <dt-bindings/power/mt6858-power.h>
 
-#define SCPSYS_BRINGUP			(1)
+#define SCPSYS_BRINGUP			(0)
 #if SCPSYS_BRINGUP
 #define default_cap			(MTK_SCPD_BYPASS_OFF)
 #else
 #define default_cap			(0)
 #endif
 
-#define MT6858_TOP_AXI_PROT_EN_INFRASYS_STA_1_MD	(BIT(9))
-#define MT6858_TOP_AXI_PROT_EN_INFRASYS_STA_0_MD	(BIT(11))
-#define MT6858_NEMICFG_AO_MEM_REG_PROT_EN_GLITCH_MD	(BIT(6) | BIT(7))
 #define MT6858_TOP_AXI_PROT_EN_MCU_STA_0_CONN	(BIT(1))
 #define MT6858_TOP_AXI_PROT_EN_INFRASYS_STA_1_CONN	(BIT(12))
 #define MT6858_TOP_AXI_PROT_EN_MCU_STA_0_CONN_2ND	(BIT(0))
@@ -74,18 +71,16 @@
 enum regmap_type {
 	INVALID_TYPE = 0,
 	IFR_TYPE = 1,
-	NEMICFG_AO_MEM_REG_TYPE = 2,
-	IMG_SUB0_TYPE = 3,
-	IPE_SUB0_TYPE = 4,
-	CAM_SUB0_TYPE = 5,
-	CAM_SUB1_TYPE = 6,
-	VLP_TYPE = 7,
+	IMG_SUB0_TYPE = 2,
+	IPE_SUB0_TYPE = 3,
+	CAM_SUB0_TYPE = 4,
+	CAM_SUB1_TYPE = 5,
+	VLP_TYPE = 6,
 	BUS_TYPE_NUM,
 };
 
 static const char *bus_list[BUS_TYPE_NUM] = {
 	[IFR_TYPE] = "infra-infracfg-ao-reg-bus",
-	[NEMICFG_AO_MEM_REG_TYPE] = "nemicfg-ao-mem-reg-bus",
 	[IMG_SUB0_TYPE] = "img-sub0-bus",
 	[IPE_SUB0_TYPE] = "ipe-sub0-bus",
 	[CAM_SUB0_TYPE] = "cam-sub0-bus",
@@ -98,22 +93,6 @@ static const char *bus_list[BUS_TYPE_NUM] = {
  */
 
 static const struct scp_domain_data scp_domain_mt6858_spm_data[] = {
-	[MT6858_POWER_DOMAIN_MD] = {
-		.name = "md",
-		.ctl_offs = 0xE00,
-		.extb_iso_offs = 0xF20,
-		.extb_iso_bits = 0x3,
-		.bp_table = {
-			BUS_PROT(IFR_TYPE, 0x0C54, 0x0C58, 0x0C50, 0x0C5C,
-				MT6858_TOP_AXI_PROT_EN_INFRASYS_STA_1_MD),
-			BUS_PROT(IFR_TYPE, 0x0C44, 0x0C48, 0x0C40, 0x0C4C,
-				MT6858_TOP_AXI_PROT_EN_INFRASYS_STA_0_MD),
-			BUS_PROT(NEMICFG_AO_MEM_REG_TYPE, 0x84, 0x88, 0x80, 0x8c,
-				MT6858_NEMICFG_AO_MEM_REG_PROT_EN_GLITCH_MD),
-		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_MD_OPS |
-			MTK_SCPD_BYPASS_INIT_ON | MTK_SCPD_REMOVE_MD_RSTB,
-	},
 	[MT6858_POWER_DOMAIN_CONN] = {
 		.name = "conn",
 		.ctl_offs = 0xE04,
@@ -134,6 +113,7 @@ static const struct scp_domain_data scp_domain_mt6858_spm_data[] = {
 		.ctl_offs = 0xE18,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
+		.basic_clk_name = {"audio_0"},
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x0C84, 0x0C88, 0x0C80, 0x0C8C,
 				MT6858_TOP_AXI_PROT_EN_PERISYS_STA_0_AUDIO),
@@ -145,6 +125,8 @@ static const struct scp_domain_data scp_domain_mt6858_spm_data[] = {
 		.ctl_offs = 0xE28,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
+		.basic_clk_name = {"isp_img_0"},
+		.subsys_clk_prefix = "isp_img",
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x0C14, 0x0C18, 0x0C10, 0x0C1C,
 				MT6858_TOP_AXI_PROT_EN_MMSYS_STA_0_ISP_IMG1),
@@ -160,6 +142,8 @@ static const struct scp_domain_data scp_domain_mt6858_spm_data[] = {
 		.ctl_offs = 0xE2C,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
+		.basic_clk_name = {"isp_img_0"},
+		.subsys_clk_prefix = "isp_img",
 		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
 	},
 	[MT6858_POWER_DOMAIN_ISP_IPE] = {
@@ -167,6 +151,8 @@ static const struct scp_domain_data scp_domain_mt6858_spm_data[] = {
 		.ctl_offs = 0xE30,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
+		.basic_clk_name = {"isp_ipe_0"},
+		.subsys_clk_prefix = "isp_ipe",
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x0C14, 0x0C18, 0x0C10, 0x0C1C,
 				MT6858_TOP_AXI_PROT_EN_MMSYS_STA_0_ISP_IPE),
@@ -182,6 +168,7 @@ static const struct scp_domain_data scp_domain_mt6858_spm_data[] = {
 		.ctl_offs = 0xE34,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
+		.basic_clk_name = {"vde0_0"},
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x0C14, 0x0C18, 0x0C10, 0x0C1C,
 				MT6858_TOP_AXI_PROT_EN_MMSYS_STA_0_VDE0),
@@ -195,6 +182,7 @@ static const struct scp_domain_data scp_domain_mt6858_spm_data[] = {
 		.ctl_offs = 0xE3C,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
+		.basic_clk_name = {"ven0_0"},
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x0C14, 0x0C18, 0x0C10, 0x0C1C,
 				MT6858_TOP_AXI_PROT_EN_MMSYS_STA_0_VEN0),
@@ -208,6 +196,8 @@ static const struct scp_domain_data scp_domain_mt6858_spm_data[] = {
 		.ctl_offs = 0xE44,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
+		.basic_clk_name = {"cam_0"},
+		.subsys_clk_prefix = "cam_main",
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x0C14, 0x0C18, 0x0C10, 0x0C1C,
 				MT6858_TOP_AXI_PROT_EN_MMSYS_STA_0_CAM_MAIN),
@@ -225,6 +215,7 @@ static const struct scp_domain_data scp_domain_mt6858_spm_data[] = {
 		.ctl_offs = 0xE4C,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
+		.basic_clk_name = {"cam_0"},
 		.bp_table = {
 			BUS_PROT_IGN(CAM_SUB1_TYPE, 0x3c4, 0x3c8, 0x3c0, 0x3c0,
 				MT6858_CAM_SUB1_PROT_EN_SMI_CAM_SUBA),
@@ -236,6 +227,7 @@ static const struct scp_domain_data scp_domain_mt6858_spm_data[] = {
 		.ctl_offs = 0xE50,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
+		.basic_clk_name = {"cam_0"},
 		.bp_table = {
 			BUS_PROT_IGN(CAM_SUB0_TYPE, 0x3c4, 0x3c8, 0x3c0, 0x3c0,
 				MT6858_CAM_SUB0_PROT_EN_SMI_CAM_SUBB),
@@ -247,6 +239,8 @@ static const struct scp_domain_data scp_domain_mt6858_spm_data[] = {
 		.ctl_offs = 0xE6C,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
+		.basic_clk_name = {"dis0_0"},
+		.subsys_clk_prefix = "dis0",
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x0C14, 0x0C18, 0x0C10, 0x0C1C,
 				MT6858_TOP_AXI_PROT_EN_MMSYS_STA_0_DIS0),
@@ -258,6 +252,7 @@ static const struct scp_domain_data scp_domain_mt6858_spm_data[] = {
 		.ctl_offs = 0xE74,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
+		.basic_clk_name = {"mm_infra_0"},
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x0C24, 0x0C28, 0x0C20, 0x0C2C,
 				MT6858_TOP_AXI_PROT_EN_MMSYS_STA_1_MM_INFRA),
@@ -277,6 +272,7 @@ static const struct scp_domain_data scp_domain_mt6858_spm_data[] = {
 		.ctl_offs = 0xE78,
 		.sram_slp_bits = GENMASK(9, 9),
 		.sram_slp_ack_bits = GENMASK(13, 13),
+		.basic_clk_name = {"mm_proc_0"},
 		.bp_table = {
 			BUS_PROT_IGN(VLP_TYPE, 0x0214, 0x0218, 0x0210, 0x0220,
 				MT6858_VLP_AXI_PROT_EN_MM_PROC),

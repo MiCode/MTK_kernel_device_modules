@@ -14,7 +14,7 @@
 
 #include <dt-bindings/clock/mt6858-clk.h>
 
-#define MT_CCF_BRINGUP		1
+#define MT_CCF_BRINGUP		0
 
 /* Regular Number Definition */
 #define INV_OFS			-1
@@ -344,11 +344,15 @@ static const struct mtk_gate cam_m_clks[] = {
 			"cam_m_larb13"/* parent */),
 	GATE_CAM_M_V(CLK_CAM_M_LARB13_SMI, "cam_m_larb13_smi",
 			"cam_m_larb13"/* parent */),
+	GATE_CAM_M_V(CLK_CAM_M_LARB13_GENPD, "cam_m_larb13_genpd",
+			"cam_m_larb13"/* parent */),
 	GATE_CAM_M(CLK_CAM_M_LARB14, "cam_m_larb14",
 			"top_cam_ck"/* parent */, 2),
 	GATE_CAM_M_V(CLK_CAM_M_LARB14_CAM, "cam_m_larb14_cam",
 			"cam_m_larb14"/* parent */),
 	GATE_CAM_M_V(CLK_CAM_M_LARB14_SMI, "cam_m_larb14_smi",
+			"cam_m_larb14"/* parent */),
+	GATE_CAM_M_V(CLK_CAM_M_LARB14_GENPD, "cam_m_larb14_genpd",
 			"cam_m_larb14"/* parent */),
 	GATE_CAM_M(CLK_CAM_M_CAM, "cam_m_cam",
 			"top_cam_ck"/* parent */, 6),
@@ -681,9 +685,13 @@ static const struct mtk_gate imgsys1_clks[] = {
 			"imgsys1_larb9"/* parent */),
 	GATE_IMGSYS1_V(CLK_IMGSYS1_LARB9_SMI, "imgsys1_larb9_smi",
 			"imgsys1_larb9"/* parent */),
+	GATE_IMGSYS1_V(CLK_IMGSYS1_LARB9_GENPD, "imgsys1_larb9_genpd",
+			"imgsys1_larb9"/* parent */),
 	GATE_IMGSYS1(CLK_IMGSYS1_LARB10, "imgsys1_larb10",
 			"top_img1_ck"/* parent */, 1),
 	GATE_IMGSYS1_V(CLK_IMGSYS1_LARB10_SMI, "imgsys1_larb10_smi",
+			"imgsys1_larb10"/* parent */),
+	GATE_IMGSYS1_V(CLK_IMGSYS1_LARB10_GENPD, "imgsys1_larb10_genpd",
 			"imgsys1_larb10"/* parent */),
 	GATE_IMGSYS1(CLK_IMGSYS1_DIP, "imgsys1_dip",
 			"top_img1_ck"/* parent */, 2),
@@ -1060,6 +1068,8 @@ static const struct mtk_gate ipe_clks[] = {
 			"top_ipe_ck"/* parent */, 2),
 	GATE_IPE_V(CLK_IPE_SMI_SUBCOM_SMI, "ipe_smi_subcom_smi",
 			"ipe_smi_subcom"/* parent */),
+	GATE_IPE_V(CLK_IPE_SMI_SUBCOM_GENPD, "ipe_smi_subcom_genpd",
+			"ipe_smi_subcom"/* parent */),
 	GATE_IPE(CLK_IPE_FD, "ipe_fd",
 			"top_ipe_ck"/* parent */, 3),
 	GATE_IPE_V(CLK_IPE_FD_CAM_FD, "ipe_fd_cam_fd",
@@ -1211,7 +1221,69 @@ static const struct mtk_clk_desc mdp_mcd = {
 	.num_clks = CLK_MDP_NR_CLK,
 };
 
+static const struct mtk_gate_regs mminfra_config0_cg_regs = {
+	.set_ofs = 0x104,
+	.clr_ofs = 0x108,
+	.sta_ofs = 0x100,
+};
 
+static const struct mtk_gate_regs mminfra_config1_cg_regs = {
+	.set_ofs = 0x114,
+	.clr_ofs = 0x118,
+	.sta_ofs = 0x110,
+};
+
+#define GATE_MMINFRA_CONFIG0(_id, _name, _parent, _shift) {	\
+		.id = _id,				\
+		.name = _name,				\
+		.parent_name = _parent,			\
+		.regs = &mminfra_config0_cg_regs,			\
+		.shift = _shift,			\
+		.ops = &mtk_clk_gate_ops_setclr,	\
+	}
+
+#define GATE_MMINFRA_CONFIG0_V(_id, _name, _parent) {    \
+		.id = _id,				\
+		.name = _name,				\
+		.parent_name = _parent,			\
+	}
+
+#define GATE_MMINFRA_CONFIG1(_id, _name, _parent, _shift) {	\
+		.id = _id,				\
+		.name = _name,				\
+		.parent_name = _parent,			\
+		.regs = &mminfra_config1_cg_regs,			\
+		.shift = _shift,			\
+		.ops = &mtk_clk_gate_ops_setclr,	\
+	}
+
+#define GATE_MMINFRA_CONFIG1_V(_id, _name, _parent) {	\
+	.id = _id,		\
+	.name = _name,		\
+	.parent_name = _parent,		\
+	}
+
+static const struct mtk_gate mminfra_config_clks[] = {
+	/* MMINFRA_CONFIG0 */
+	GATE_MMINFRA_CONFIG0(CLK_MMINFRA_GCE_D, "mminfra_gce_d",
+			"top_mminfra_ck"/* parent */, 0),
+	GATE_MMINFRA_CONFIG0_V(CLK_MMINFRA_GCE_D_GCE, "mminfra_gce_d_gce",
+			"mminfra_gce_d"/* parent */),
+	GATE_MMINFRA_CONFIG0(CLK_MMINFRA_GCE_M, "mminfra_gce_m",
+			"top_mminfra_ck"/* parent */, 1),
+	GATE_MMINFRA_CONFIG0_V(CLK_MMINFRA_GCE_M_GCE, "mminfra_gce_m_gce",
+			"mminfra_gce_m"/* parent */),
+	/* MMINFRA_CONFIG1 */
+	GATE_MMINFRA_CONFIG1(CLK_MMINFRA_GCE_26M, "mminfra_gce_26m",
+			"top_mminfra_ck"/* parent */, 17),
+	GATE_MMINFRA_CONFIG1_V(CLK_MMINFRA_GCE_26M_GCE, "mminfra_gce_26m_gce",
+			"mminfra_gce_26m"/* parent */),
+};
+
+static const struct mtk_clk_desc mminfra_config_mcd = {
+	.clks = mminfra_config_clks,
+	.num_clks = CLK_MMINFRA_CONFIG_NR_CLK,
+};
 
 static const struct mtk_gate_regs perao0_cg_regs = {
 	.set_ofs = 0x24,
@@ -1656,6 +1728,9 @@ static const struct of_device_id of_match_clk_mt6858_cg[] = {
 	}, {
 		.compatible = "mediatek,mt6858-mdpsys",
 		.data = &mdp_mcd,
+	}, {
+		.compatible = "mediatek,mt6858-mminfra_config",
+		.data = &mminfra_config_mcd,
 	}, {
 		.compatible = "mediatek,mt6858-pericfg_ao",
 		.data = &perao_mcd,

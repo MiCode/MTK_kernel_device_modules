@@ -442,7 +442,7 @@ static u8 mtk_clk_mux_get_parent(struct clk_hw *hw)
 	return val;
 }
 
-static int __mtk_clk_mux_set_parent_lock(struct clk_hw *hw, u8 index, bool setclr, bool upd)
+static int __mtk_clk_mux_set_parent_lock(struct clk_hw *hw, u8 index, bool setclr, bool upd, u32 cksta_delay_us)
 {
 	struct mtk_clk_mux *mux = to_mtk_clk_mux(hw);
 	struct clk_hw *qs_hw;
@@ -537,6 +537,9 @@ static int __mtk_clk_mux_set_parent_lock(struct clk_hw *hw, u8 index, bool setcl
 			}
 			i++;
 		}
+	} else if (cksta_delay_us) {
+		// Delay to ensure clk stability after switch
+		udelay(cksta_delay_us);
 	}
 
 null_pointer_error:
@@ -550,17 +553,23 @@ null_pointer_error:
 
 static int mtk_clk_mux_set_parent_lock(struct clk_hw *hw, u8 index)
 {
-	return __mtk_clk_mux_set_parent_lock(hw, index, false, false);
+	return __mtk_clk_mux_set_parent_lock(hw, index, false, false, 0);
 }
 
 static int mtk_clk_mux_set_parent_setclr_lock(struct clk_hw *hw, u8 index)
 {
-	return __mtk_clk_mux_set_parent_lock(hw, index, true, false);
+	return __mtk_clk_mux_set_parent_lock(hw, index, true, false, 0);
 }
 
 static int mtk_clk_mux_set_parent_setclr_upd_lock(struct clk_hw *hw, u8 index)
 {
-	return __mtk_clk_mux_set_parent_lock(hw, index, true, true);
+	return __mtk_clk_mux_set_parent_lock(hw, index, true, true, 0);
+}
+
+static int mtk_clk_mux_set_parent_setclr_upd_lock_fenc_delay(struct clk_hw *hw, u8 index)
+{
+	// For FENC mux missing CKSTA reg, requires adding delay to ensure clk ready.
+	return __mtk_clk_mux_set_parent_lock(hw, index, true, true, MTK_FENC_SET_PARENT_WAIT_US);
 }
 
 static int mtk_clk_hwv_mux_set_parent(struct clk_hw *hw, u8 index)
@@ -869,6 +878,25 @@ const struct clk_ops mtk_mux_clr_set_upd_ops = {
 	.determine_rate = mtk_clk_mux_determine_rate_dummy,
 };
 EXPORT_SYMBOL_GPL(mtk_mux_clr_set_upd_ops);
+
+// Workaround for FENC mux without CKSTA
+const struct clk_ops mtk_mux_clr_set_upd_fenc_delay_ops = {
+	.get_parent = mtk_clk_mux_get_parent,
+	.set_parent = mtk_clk_mux_set_parent_setclr_upd_lock_fenc_delay,
+	.determine_rate = mtk_clk_mux_determine_rate_dummy,
+};
+EXPORT_SYMBOL_GPL(mtk_mux_clr_set_upd_fenc_delay_ops);
+
+// Workaround for GATING FENC mux without CKSTA
+const struct clk_ops mtk_mux_gate_fenc_clr_set_upd_fenc_delay_ops = {
+	.enable = mtk_clk_mux_fenc_enable_setclr,
+	.disable = mtk_clk_mux_disable_setclr,
+	.is_enabled = mtk_clk_mux_fenc_is_enabled,
+	.get_parent = mtk_clk_mux_get_parent,
+	.set_parent = mtk_clk_mux_set_parent_setclr_upd_lock_fenc_delay,
+	.determine_rate = mtk_clk_mux_determine_rate_dummy,
+};
+EXPORT_SYMBOL_GPL(mtk_mux_gate_fenc_clr_set_upd_fenc_delay_ops);
 
 const struct clk_ops mtk_mux_fenc_clr_set_upd_ops = {
 	.is_enabled = mtk_clk_mux_fenc_is_enabled,

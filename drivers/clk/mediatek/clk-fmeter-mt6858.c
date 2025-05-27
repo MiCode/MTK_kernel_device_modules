@@ -40,8 +40,8 @@ static DEFINE_SPINLOCK(subsys_meter_lock);
 /* check from topckgen&vlpcksys CODA */
 #define CLK26CALI_0					(0x220)
 #define CLK26CALI_1					(0x224)
-#define CLK_MISC_CFG_0					(0x240)
-#define CLK_DBG_CFG					(0x28C)
+#define CLK_MISC_CFG_0					(0x140)
+#define CLK_DBG_CFG					(0x17C)
 #define VLP_FQMTR_CON0					(0x230)
 #define VLP_FQMTR_CON1					(0x234)
 
@@ -307,9 +307,9 @@ static int __mt_get_freq(unsigned int ID, int type)
 	set_test_clk_en(type, ID, true);
 
 	if (type == CKGEN && check_pdn(fm_base[FM_CKSYS_REG], CKGEN, ID)) {
-		pr_notice("ID-%d: MUX PDN, return 0.\n", ID);
+		pr_notice("ID-%d: MUX PDN, return -1.\n", ID);
 		fmeter_unlock(flags);
-		return 0;
+		return -1;
 	}
 
 	while (clk_readl(cali0_addr) & 0x10) {
