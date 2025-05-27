@@ -11439,7 +11439,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			operating-points-v2 = <&opp_table_disp>;
 			clocks = <&disp_vdisp_ao_config_clk VDISP_AO_DISP_DPC_DISP>,
 				 <&disp_vdisp_ao_config_clk VDISP_AO_DISP_BUS_DISP>,
-				 <&mm_pd_clk CLK_PD_VDISP_PERI_DISP>;
+				 <&disp_vdisp_ao_config_clk VDISP_AO_CONFIG_DISP>;
 		};
 /*
 		mipi_tx_config0: mipi-tx-config@130b0000 {
