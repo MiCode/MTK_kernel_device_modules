@@ -12,7 +12,7 @@
 
 /* chosen */
 &chosen {
-	bootargs_ext = "arm64.nopauth arm64.nosme arm64.nosve";
+	bootargs_ext = "";
 };
 
 &ssusb {
