@@ -87,6 +87,8 @@
 #define VDE_GUARDBAND_MARGIN_MICROVOLT	STEP_TO_MARGIN(2)
 #define VDE_AGING_MARGIN_MICROVOLT		STEP_TO_MARGIN(2)
 #define VDE_CONST_MARGIN	(VDE_GUARDBAND_MARGIN_MICROVOLT + VDE_AGING_MARGIN_MICROVOLT)
+#define AGING_DEGRADE		STEP_TO_MARGIN(1)
+#define EXTRA_DEGRADE		STEP_TO_MARGIN(5)
 #define VMM_ROUNDUP(x, y)			((((x) + (y - 1)) / y) * y)
 #define DBG_VMM_DUMP_EFUSE_VAL		(520)
 #define TEMPDIFF		(3)
@@ -163,19 +165,19 @@ static const unsigned int vde_mssv_margin[OPP_LEVEL_TOTAL] = {
 	0,
 };
 
-static const unsigned int isp_cvfs_floor_margin[OPP_LEVEL_TOTAL] = {
+static unsigned int isp_cvfs_floor_margin[OPP_LEVEL_TOTAL] = {
 	0, 8, 12, 10, 12, 0,  // zone 2
 };
 
-static const unsigned int vde_cvfs_floor_margin[OPP_LEVEL_TOTAL] = {
+static unsigned int vde_cvfs_floor_margin[OPP_LEVEL_TOTAL] = {
 	0, 12, 14, 12, 16, 0,	// zone 2
 };
 
-static const unsigned int isp_avs20_floor_margin[OPP_LEVEL_TOTAL] = {
+static unsigned int isp_avs20_floor_margin[OPP_LEVEL_TOTAL] = {
 	0, 6, 10, 10, 12, 0  // zone 2
 };
 
-static const unsigned int vde_avs20_floor_margin[OPP_LEVEL_TOTAL] = {
+static unsigned int vde_avs20_floor_margin[OPP_LEVEL_TOTAL] = {
 	0, 9, 11, 9, 13, 0  // zone 2
 };
 
@@ -184,6 +186,8 @@ static unsigned int cross_avs20_floor_margin[OPP_LEVEL_TOTAL] = {
 };
 
 bool vmm_debug_dump;
+bool vmm_aging;
+bool vmm_extra_deterioration;
 static void vmm_update_isp_avs_info(bool enable_avs);
 static void vmm_update_isp_avs20_info(bool enable_avs);
 static void vmm_update_vde_avs20_info(bool enable_avs);
@@ -470,11 +474,23 @@ static int vmm_notifier_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	u32 pd_id;
 
+	vmm_aging = false;
+	vmm_extra_deterioration = false;
+
 	ret = of_property_read_u32(dev->of_node, "pd-id", &pd_id);
 	if (ret) {
 		ISP_LOGE("vmm property read fail(%d)", ret);
 		return -ENODEV;
 	}
+
+	vmm_aging = of_property_read_bool(dev->of_node, "vmm-aging");
+	if (vmm_aging)
+		ISP_LOGI("vmm aging load enabled");
+
+	vmm_extra_deterioration =
+		of_property_read_bool(dev->of_node, "vmm-extra-deterioration");
+	if (vmm_extra_deterioration)
+		ISP_LOGI("vmm extra deterioration load enabled");
 
 	vmm_regs.vmm_efuse_va = ioremap(0x10165A00, 0x200);
 	vmm_regs.vmm_cvfs_va = ioremap(0x31AC4000, 0x1000);
@@ -1025,6 +1041,7 @@ static unsigned int vmm_cal_avs_phase1(unsigned int OPP, unsigned int efuse_bin,
 {
 	unsigned int result_vol = 0;
 	unsigned int vmm_sign = 0;
+	unsigned int degrade = 0;
 
 	switch (OPP) {
 	case OPP_LEVEL_1:
@@ -1049,6 +1066,13 @@ static unsigned int vmm_cal_avs_phase1(unsigned int OPP, unsigned int efuse_bin,
 
 	if (efuse_bin >= ATE_BASE_BIN)
 		result_vol = result_vol - (efuse_bin-ATE_BASE_BIN) * VMM_ONE_STEP_MARGIN;
+
+	if (vmm_aging)
+		degrade = AGING_DEGRADE;
+	else if (vmm_extra_deterioration)
+		degrade = EXTRA_DEGRADE;
+
+	result_vol = result_vol-degrade > 0 ? result_vol-degrade : 0;
 
 	switch (mode) {
 	case VMM_AVS_ISP:
@@ -1172,10 +1196,22 @@ static unsigned int vmm_cal_cross_avs20_phase1(unsigned int OPP)
 
 static void vmm_compare_cross_floor_phase1(bool enable_avs)
 {
+	unsigned int degrade = 0;
 	if (enable_avs == false)
 		return;
 
+	if (vmm_aging)
+		degrade = 1;
+	else if (vmm_extra_deterioration)
+		degrade = 5;
+
 	for (int i = OPP_LEVEL_0; i <= OPP_LEVEL_5; i++) {
+		isp_avs20_floor_margin[i] = isp_avs20_floor_margin[i] + degrade;
+
+		vde_avs20_floor_margin[i] = vde_avs20_floor_margin[i] + degrade;
+
+		isp_cvfs_floor_margin[i] = isp_cvfs_floor_margin[i] + degrade;
+
 		cross_avs20_floor_margin[i] = isp_avs20_floor_margin[i] > vde_avs20_floor_margin[i] ?
 			 vde_avs20_floor_margin[i] : isp_avs20_floor_margin[i];
 	}
