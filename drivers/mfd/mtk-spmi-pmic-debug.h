@@ -5,6 +5,7 @@
 #ifndef __MTK_SPMI_PMIC_DEBUG_H__
 #define __MTK_SPMI_PMIC_DEBUG_H__
 
+#define PMIC_HWCID_E2                   (0x20)
 #define PMIC_MBRAIN_VER_INFO_IDX        0
 #define spmi_glitch_idx_cnt             65
 #define spmi_parity_err_idx_cnt         33

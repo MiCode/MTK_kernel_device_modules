@@ -462,23 +462,26 @@ void mtk_spmi_pmic_get_pre_lvsys_cnt(u16 *buf)
 		info = mtk_spmi_pmic_debug[i]->pre_lvsys_info;
 		if (info.enable) {
 			regmap = mtk_spmi_pmic_debug[i]->regmap;
-			/* read pre-lvsys count */
-			regmap_read(regmap, info.cnt_reg, &val);
-			pre_lvsys_cnt[PMIC_PRE_LVSYS_CNT_NUM*i+1] = val;
+			regmap_read(regmap, mtk_spmi_pmic_debug[i]->cid_addr_l, &val);
+			if (val >= PMIC_HWCID_E2) {
+				/* read pre-lvsys count */
+				regmap_read(regmap, info.cnt_reg, &val);
+				pre_lvsys_cnt[PMIC_PRE_LVSYS_CNT_NUM*i+1] = val;
 #if MTK_SPMI_DBG
-			pre_lvsys_cnt[PMIC_PRE_LVSYS_CNT_NUM*i+1] = 3;
-			pr_info("slvid: 0x%x, pre_lvsys_cnt: %d\n",
-				 i, pre_lvsys_cnt[PMIC_PRE_LVSYS_CNT_NUM*i+1]);
+				pre_lvsys_cnt[PMIC_PRE_LVSYS_CNT_NUM*i+1] = 3;
+				pr_info("slvid: 0x%x, pre_lvsys_cnt: %d\n",
+					i, pre_lvsys_cnt[PMIC_PRE_LVSYS_CNT_NUM*i+1]);
 #endif
-			/* clear pre-lvsys count */
-			/*
-			regmap_update_bits(regmap,
-					   info.cnt_clr_reg,
-					   info.cnt_clr_mask << info.cnt_clr_shift, 1);
-			regmap_update_bits(regmap,
-					   info.cnt_clr_reg,
-					   info.cnt_clr_mask << info.cnt_clr_shift, 0);
-			*/
+				/* clear pre-lvsys count */
+				/*
+				 * regmap_update_bits(regmap,
+				 *		info.cnt_clr_reg,
+				 *		info.cnt_clr_mask << info.cnt_clr_shift, 1);
+				 * regmap_update_bits(regmap,
+				 *		info.cnt_clr_reg,
+				 *		info.cnt_clr_mask << info.cnt_clr_shift, 0);
+				 */
+			}
 		}
 	}
 	if (buf != NULL)
