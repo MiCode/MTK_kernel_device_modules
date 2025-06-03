@@ -25,7 +25,6 @@ static const struct mtk_node_desc node_descs_mt6858[] = {
 	DEFINE_MNODE(MDP_larb2, SLAVE_LARB(2), 0, false, 0x0, MASTER_COMMON_PORT(0, 2)),
 	DEFINE_MNODE(IMG_larb9, SLAVE_LARB(9), 0, false, 0x0, MASTER_COMMON_PORT(0, 3)),
 	DEFINE_MNODE(IMG_larb11, SLAVE_LARB(11), 0, false, 0x0, MASTER_COMMON_PORT(0, 3)),
-	DEFINE_MNODE(IMG_larb19, SLAVE_LARB(19), 0x7, false, 0x2, MASTER_COMMON_PORT(0, 3)), //img virt
 	DEFINE_MNODE(IMG_larb20, SLAVE_LARB(20), 0x8, true, 0x2, MASTER_COMMON_PORT(0, 3)),
 	DEFINE_MNODE(VENC_larb7, SLAVE_LARB(7), 0x7, false, 0x1, MASTER_COMMON_PORT(0, 4)),
 	DEFINE_MNODE(VENC_larb8, SLAVE_LARB(8), 0x8, true, 0x1, MASTER_COMMON_PORT(0, 4)), //venc virt
@@ -423,10 +422,8 @@ static const struct mtk_mmqos_desc mmqos_desc_mt6858 = {
 		{ HRT_MAX_BWL, HRT_MAX_BWL, HRT_NONE, HRT_NONE,
 			HRT_NONE, HRT_NONE, HRT_CAM, HRT_CAM },
 	},
-	.report_bw_larbs = { SLAVE_LARB(4), SLAVE_LARB(5), SLAVE_LARB(7), SLAVE_LARB(8),
-				SLAVE_LARB(19), SLAVE_LARB(20) },
-	.report_bw_real_larbs = { SLAVE_LARB(4), SLAVE_LARB(4), SLAVE_LARB(7), SLAVE_LARB(7),
-				SLAVE_LARB(20), SLAVE_LARB(20) },
+	.report_bw_larbs = { SLAVE_LARB(4), SLAVE_LARB(5), SLAVE_LARB(7), SLAVE_LARB(8)},
+	.report_bw_real_larbs = { SLAVE_LARB(4), SLAVE_LARB(4), SLAVE_LARB(7), SLAVE_LARB(7)},
 	.freq_mode = BY_VMMRC,
 };
 static const struct of_device_id mtk_mmqos_mt6858_of_ids[] = {
