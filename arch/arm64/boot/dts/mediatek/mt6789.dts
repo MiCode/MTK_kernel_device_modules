@@ -3307,6 +3307,12 @@
 			clock-names = "gce";
 		};
 
+		cmdq_config: cmdq-config@0 {
+			gce-core-num = <1>;
+			sec-cmdq-enable = <1>;
+			cmdq-first-err-disable = <0>;
+		};
+
 		cmdq-test {
 			compatible = "mediatek,cmdq-test";
 			mediatek,gce = <&gce>;
