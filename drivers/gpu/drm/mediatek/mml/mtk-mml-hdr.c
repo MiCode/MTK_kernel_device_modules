@@ -66,8 +66,30 @@ enum mml_hdr_reg_index {
 	HDR_CURSOR_BUF0,
 	HDR_CURSOR_BUF1,
 	HDR_CURSOR_BUF2,
+	HDR_R2Y_00,
+	HDR_R2Y_01,
+	HDR_R2Y_02,
+	HDR_R2Y_03,
+	HDR_R2Y_04,
+	HDR_R2Y_05,
+	HDR_R2Y_06,
+	HDR_R2Y_07,
+	HDR_R2Y_08,
 	HDR_R2Y_09,
+	HDR_Y2R_00,
+	HDR_Y2R_01,
+	HDR_Y2R_13,
+	HDR_Y2R_02,
+	HDR_Y2R_03,
+	HDR_Y2R_04,
+	HDR_Y2R_05,
+	HDR_Y2R_06,
+	HDR_Y2R_07,
+	HDR_Y2R_08,
 	HDR_Y2R_09,
+	HDR_Y2R_10,
+	HDR_Y2R_11,
+	HDR_Y2R_12,
 	HDR_TONE_MAP_TOP,
 	HDR_3x3_COEF_00,
 	HDR_B_CHANNEL_NR,
@@ -91,6 +113,8 @@ enum mml_hdr_reg_index {
 	HDR_HIST_READ_0,
 	HDR_HIST_READ_1,
 	HDR_OOTF_CTRL_0,
+	HDR_OOTF_CTRL_1,
+	HDR_OOTF_CTRL_2,
 	HDR_REG_MAX_COUNT
 };
 
@@ -121,8 +145,30 @@ static const u16 hdr_reg_table_mt6983[HDR_REG_MAX_COUNT] = {
 	[HDR_CURSOR_BUF0] = 0x11c,
 	[HDR_CURSOR_BUF1] = 0x120,
 	[HDR_CURSOR_BUF2] = 0x124,
+	[HDR_R2Y_00] = REG_NOT_SUPPORT,
+	[HDR_R2Y_01] = REG_NOT_SUPPORT,
+	[HDR_R2Y_02] = REG_NOT_SUPPORT,
+	[HDR_R2Y_03] = REG_NOT_SUPPORT,
+	[HDR_R2Y_04] = REG_NOT_SUPPORT,
+	[HDR_R2Y_05] = REG_NOT_SUPPORT,
+	[HDR_R2Y_06] = REG_NOT_SUPPORT,
+	[HDR_R2Y_07] = REG_NOT_SUPPORT,
+	[HDR_R2Y_08] = REG_NOT_SUPPORT,
 	[HDR_R2Y_09] = 0x14c,
+	[HDR_Y2R_00] = REG_NOT_SUPPORT,
+	[HDR_Y2R_01] = REG_NOT_SUPPORT,
+	[HDR_Y2R_13] = REG_NOT_SUPPORT,
+	[HDR_Y2R_02] = REG_NOT_SUPPORT,
+	[HDR_Y2R_03] = REG_NOT_SUPPORT,
+	[HDR_Y2R_04] = REG_NOT_SUPPORT,
+	[HDR_Y2R_05] = REG_NOT_SUPPORT,
+	[HDR_Y2R_06] = REG_NOT_SUPPORT,
+	[HDR_Y2R_07] = REG_NOT_SUPPORT,
+	[HDR_Y2R_08] = REG_NOT_SUPPORT,
 	[HDR_Y2R_09] = 0x178,
+	[HDR_Y2R_10] = REG_NOT_SUPPORT,
+	[HDR_Y2R_11] = REG_NOT_SUPPORT,
+	[HDR_Y2R_12] = REG_NOT_SUPPORT,
 	[HDR_TONE_MAP_TOP] = 0x1b0,
 	[HDR_DEBUG] = REG_NOT_SUPPORT,
 	[HDR_DUMMY0] = 0x1d4,
@@ -143,6 +189,8 @@ static const u16 hdr_reg_table_mt6983[HDR_REG_MAX_COUNT] = {
 	[HDR_HIST_READ_0] = REG_NOT_SUPPORT,
 	[HDR_HIST_READ_1] = REG_NOT_SUPPORT,
 	[HDR_OOTF_CTRL_0] = REG_NOT_SUPPORT,
+	[HDR_OOTF_CTRL_1] = REG_NOT_SUPPORT,
+	[HDR_OOTF_CTRL_2] = REG_NOT_SUPPORT,
 };
 
 static const u16 hdr_reg_table_mt6993[HDR_REG_MAX_COUNT] = {
@@ -172,6 +220,30 @@ static const u16 hdr_reg_table_mt6993[HDR_REG_MAX_COUNT] = {
 	[HDR_CURSOR_BUF0] = 0x11c,
 	[HDR_CURSOR_BUF1] = 0x120,
 	[HDR_CURSOR_BUF2] = 0x124,
+	[HDR_R2Y_00] = 0x128,
+	[HDR_R2Y_01] = 0x12c,
+	[HDR_R2Y_02] = 0x130,
+	[HDR_R2Y_03] = 0x134,
+	[HDR_R2Y_04] = 0x138,
+	[HDR_R2Y_05] = 0x13c,
+	[HDR_R2Y_06] = 0x140,
+	[HDR_R2Y_07] = 0x144,
+	[HDR_R2Y_08] = 0x148,
+	[HDR_R2Y_09] = 0x14c,
+	[HDR_Y2R_00] = 0x150,
+	[HDR_Y2R_01] = 0x154,
+	[HDR_Y2R_13] = 0x158,
+	[HDR_Y2R_02] = 0x15c,
+	[HDR_Y2R_03] = 0x160,
+	[HDR_Y2R_04] = 0x164,
+	[HDR_Y2R_05] = 0x168,
+	[HDR_Y2R_06] = 0x16c,
+	[HDR_Y2R_07] = 0x170,
+	[HDR_Y2R_08] = 0x174,
+	[HDR_Y2R_09] = 0x178,
+	[HDR_Y2R_10] = 0x17c,
+	[HDR_Y2R_11] = 0x180,
+	[HDR_Y2R_12] = 0x184,
 	[HDR_TONE_MAP_TOP] = 0x1b0,
 	[HDR_DEBUG] = 0x1e8,
 	[HDR_DUMMY0] = 0x1d4,
@@ -192,6 +264,8 @@ static const u16 hdr_reg_table_mt6993[HDR_REG_MAX_COUNT] = {
 	[HDR_HIST_READ_0] = 0x0dc,
 	[HDR_HIST_READ_1] = 0x0e0,
 	[HDR_OOTF_CTRL_0] = 0x1a4,
+	[HDR_OOTF_CTRL_1] = 0x1a8,
+	[HDR_OOTF_CTRL_2] = 0x1ac,
 };
 
 struct hdr_data {
@@ -458,52 +532,223 @@ static void hdr_init(struct mml_comp *comp, struct cmdq_pkt *pkt, const phys_add
 }
 
 static void hdr_relay(struct mml_comp *comp, struct cmdq_pkt *pkt, const phys_addr_t base_pa,
-		      struct mml_frame_data *src, u32 relay, u32 is_timeout)
+		      struct mml_frame_data *src, u32 relay, u32 is_timeout, bool is_sdr_path)
 {
 	struct mml_comp_hdr *hdr = comp_to_hdr(comp);
 	if (hdr->data->two_curve) {
 		if (is_timeout) {
-			/* enable eotf and oetf,and set hdr_abort_en = 0 to make HDR Linear effect*/
-			cmdq_pkt_write(pkt, NULL,
-				base_pa + hdr->data->reg_table[HDR_TOP],
-				1<<27 | 1<<19 | 0<<16 | 0<<1 | 1, 0x080b0003);
-			cmdq_pkt_write(pkt, NULL,
-				base_pa + hdr->data->reg_table[HDR_OOTF_CTRL_0], 0x0, 0x1);
-			/* make HDR Fixed Linear effect with panel nist 400 from ALG*/
-			cmdq_pkt_write(pkt, NULL,
-				base_pa + hdr->data->reg_table[HDR_EOTF_CTRL],
-				1<<18 | 2<<16 | 25600, 0x7FFFF);
-			cmdq_pkt_write(pkt,NULL,
-				base_pa + hdr->data->reg_table[HDR_TONE_MAP_TOP], 0x0, 0x1);
-			cmdq_pkt_write(pkt, NULL,
-				base_pa + hdr->data->reg_table[HDR_3x3_COEF_00], 0x1, 0x1);
-			cmdq_pkt_write(pkt, NULL,
-				base_pa + hdr->data->reg_table[HDR_RELAY], 0, 0x1);
-			/* Y2R R2Y setting */
-			if (MML_FMT_IS_YUV(src->format)) {
+			if (is_sdr_path) {
 				cmdq_pkt_write(pkt, NULL,
-					base_pa + hdr->data->reg_table[HDR_R2Y_09], 0x23, 0x7F);
+					base_pa + hdr->data->reg_table[HDR_TOP],
+					0 << 27 | 0 << 19 | 3 << 16  | 0 << 9 | 0 << 8 | 0 << 1 | 1 << 0,
+					0x080b0303);
 				cmdq_pkt_write(pkt, NULL,
-					base_pa + hdr->data->reg_table[HDR_Y2R_09], 0x43, 0xFF);
+					base_pa + hdr->data->reg_table[HDR_OOTF_CTRL_0],
+					3 << 7 | 0 << 2 | 1 << 1 | 0 << 0,
+					0x3FF);
+				cmdq_pkt_write(pkt, NULL,
+					base_pa + hdr->data->reg_table[HDR_OOTF_CTRL_1],
+					11718 << 16 | 3483 << 0,
+					0xFFFFFFFF);
+				cmdq_pkt_write(pkt, NULL,
+					base_pa + hdr->data->reg_table[HDR_OOTF_CTRL_2],
+					1183 << 0,
+					0xFFFF);
+				cmdq_pkt_write(pkt, NULL,
+					base_pa + hdr->data->reg_table[HDR_EOTF_CTRL],
+					0 << 18 | 2 << 16 | 1024 << 0,
+					0x7FFFF);
+				cmdq_pkt_write(pkt, NULL,
+					base_pa + hdr->data->reg_table[HDR_TONE_MAP_TOP],
+					0 << 0,
+					0x1);
+				cmdq_pkt_write(pkt, NULL,
+					base_pa + hdr->data->reg_table[HDR_3x3_COEF_00],
+					0 << 2 | 1 << 1 | 0 << 0,
+					0xF);
+				cmdq_pkt_write(pkt, NULL,
+					base_pa + hdr->data->reg_table[HDR_RELAY],
+					0,
+					0x1);
+				/* Y2R R2Y setting */
+				if (MML_FMT_IS_YUV(src->format)) {
+					cmdq_pkt_write(pkt, NULL,
+						base_pa + hdr->data->reg_table[HDR_R2Y_00],
+						2508 << 16 | 746 << 0,
+						0xFFFFFFFF);
+					cmdq_pkt_write(pkt, NULL,
+						base_pa + hdr->data->reg_table[HDR_R2Y_01],
+						65126 << 16 | 253 << 0,
+						0xFFFFFFFF);
+					cmdq_pkt_write(pkt, NULL,
+						base_pa + hdr->data->reg_table[HDR_R2Y_02],
+						1794 << 16 | 64152 << 0,
+						0xFFFFFFFF);
+					cmdq_pkt_write(pkt, NULL,
+						base_pa + hdr->data->reg_table[HDR_R2Y_03],
+						63906 << 16 | 1794 << 0,
+						0xFFFFFFFF);
+					cmdq_pkt_write(pkt, NULL,
+						base_pa + hdr->data->reg_table[HDR_R2Y_04],
+						65372 << 0,
+						0xFFFF);
+					cmdq_pkt_write(pkt, NULL,
+						base_pa + hdr->data->reg_table[HDR_R2Y_05],
+						16384 << 16 | 2048 << 0,
+						0xFFFFFFFF);
+					cmdq_pkt_write(pkt, NULL,
+						base_pa + hdr->data->reg_table[HDR_R2Y_06],
+						0 << 16 | 16384 << 0,
+						0x7FFFFFFF);
+					cmdq_pkt_write(pkt, NULL,
+						base_pa + hdr->data->reg_table[HDR_R2Y_07],
+						0 << 16 | 0 << 0,
+						0x7FFF7FFF);
+					cmdq_pkt_write(pkt, NULL,
+						base_pa + hdr->data->reg_table[HDR_R2Y_08],
+						32767 << 16 | 32767 << 0,
+						0x7FFF7FFF);
+					cmdq_pkt_write(pkt, NULL,
+						base_pa + hdr->data->reg_table[HDR_R2Y_09],
+						32767 << 16 | 1 << 5 | 1 << 4 | 0 << 2 | 1 << 1 | 1 << 0,
+						0x7FFF007F);
+					cmdq_pkt_write(pkt, NULL,
+						base_pa + hdr->data->reg_table[HDR_Y2R_00],
+						0 << 16 | 9567 << 0,
+						0xFFFFFFFF);
+					cmdq_pkt_write(pkt, NULL,
+						base_pa + hdr->data->reg_table[HDR_Y2R_01],
+						9567 << 16 | 14728 << 0,
+						0xFFFFFFFF);
+					cmdq_pkt_write(pkt, NULL,
+						base_pa + hdr->data->reg_table[HDR_Y2R_02],
+						61159 << 16 | 63996 << 0,
+						0xFFFFFFFF);
+					cmdq_pkt_write(pkt, NULL,
+						base_pa + hdr->data->reg_table[HDR_Y2R_03],
+						17354 << 16 | 9567 << 0,
+						0xFFFFFFFF);
+					cmdq_pkt_write(pkt, NULL,
+						base_pa + hdr->data->reg_table[HDR_Y2R_04],
+						17354 << 0,
+						0xFFFF);
+					cmdq_pkt_write(pkt, NULL,
+						base_pa + hdr->data->reg_table[HDR_Y2R_05],
+						122809221 << 0,
+						0xFFFFFFFF);
+					cmdq_pkt_write(pkt, NULL,
+						base_pa + hdr->data->reg_table[HDR_Y2R_06],
+						122809221 << 0,
+						0xFFFFFFFF);
+					cmdq_pkt_write(pkt, NULL,
+						base_pa + hdr->data->reg_table[HDR_Y2R_07],
+						4248393744 << 0,
+						0xFFFFFFFF);
+					cmdq_pkt_write(pkt, NULL,
+						base_pa + hdr->data->reg_table[HDR_Y2R_08],
+						0 << 24 | 65536 << 0,
+						0x10FFFFF);
+					cmdq_pkt_write(pkt, NULL,
+						base_pa + hdr->data->reg_table[HDR_Y2R_09],
+						128 << 8 | 1 << 6 | 1 << 5 | 2 << 2 | 1 << 1 | 1 << 0,
+						0xFFFF);
+					cmdq_pkt_write(pkt, NULL,
+						base_pa + hdr->data->reg_table[HDR_Y2R_10],
+						0 << 16 | 0 << 0,
+						0xFFFFFFFF);
+					cmdq_pkt_write(pkt, NULL,
+						base_pa + hdr->data->reg_table[HDR_Y2R_11],
+						9796608 << 0,
+						0xFFFFFFFF);
+					cmdq_pkt_write(pkt, NULL,
+						base_pa + hdr->data->reg_table[HDR_Y2R_12],
+						9796608 << 0,
+						0xFFFFFFFF);
+					cmdq_pkt_write(pkt, NULL,
+						base_pa + hdr->data->reg_table[HDR_Y2R_13],
+						65535 << 16 | 0 << 0,
+						0xFFFFFFFF);
+				} else {
+					cmdq_pkt_write(pkt, NULL,
+						base_pa + hdr->data->reg_table[HDR_R2Y_09],
+						0 << 0,
+						0x1);
+					cmdq_pkt_write(pkt, NULL,
+						base_pa + hdr->data->reg_table[HDR_Y2R_09],
+						0 << 0,
+						0x1);
+				}
+				mml_pq_err("%s:sdr case timeout, set linear effect and %s input CSC setting",
+					__func__, MML_FMT_IS_YUV(src->format) ? "YUV" : "RGB");
 			} else {
+				/* enable eotf and oetf,and set hdr_abort_en = 0 to make HDR Linear effect*/
 				cmdq_pkt_write(pkt, NULL,
-					base_pa + hdr->data->reg_table[HDR_R2Y_09], 0x11, 0x7F);
+					base_pa + hdr->data->reg_table[HDR_TOP],
+					1 << 27 | 1 << 19 | 0 << 16 | 0 << 1 | 1 << 0,
+					0x080b0003);
 				cmdq_pkt_write(pkt, NULL,
-					base_pa + hdr->data->reg_table[HDR_Y2R_09], 0x0, 0x1);
+					base_pa + hdr->data->reg_table[HDR_OOTF_CTRL_0],
+					0 << 0,
+					0x1);
+				/* make HDR Fixed Linear effect with panel nist 400 from ALG*/
+				cmdq_pkt_write(pkt, NULL,
+					base_pa + hdr->data->reg_table[HDR_EOTF_CTRL],
+					1 << 18 | 2 << 16 | 25600,
+					0x7FFFF);
+				cmdq_pkt_write(pkt,NULL,
+					base_pa + hdr->data->reg_table[HDR_TONE_MAP_TOP],
+					0 << 0,
+					0x1);
+				cmdq_pkt_write(pkt, NULL,
+					base_pa + hdr->data->reg_table[HDR_3x3_COEF_00],
+					1 << 0,
+					0x1);
+				cmdq_pkt_write(pkt, NULL,
+					base_pa + hdr->data->reg_table[HDR_RELAY],
+					0 << 0,
+					0x1);
+				/* Y2R R2Y setting */
+				if (MML_FMT_IS_YUV(src->format)) {
+					cmdq_pkt_write(pkt, NULL,
+						base_pa + hdr->data->reg_table[HDR_R2Y_09],
+						0x23,
+						0x7F);
+					cmdq_pkt_write(pkt, NULL,
+						base_pa + hdr->data->reg_table[HDR_Y2R_09],
+						0x43,
+						0xFF);
+				} else {
+					cmdq_pkt_write(pkt, NULL,
+						base_pa + hdr->data->reg_table[HDR_R2Y_09],
+						0x11,
+						0x7F);
+					cmdq_pkt_write(pkt, NULL,
+						base_pa + hdr->data->reg_table[HDR_Y2R_09],
+						0x0,
+						0x1);
+				}
+				mml_pq_err("%s:hdr case timeout, set linear effect and %s input CSC setting",
+					__func__, MML_FMT_IS_YUV(src->format) ? "YUV" : "RGB");
 			}
-			mml_pq_err("%s:hdr timeout, set linear effect and %s input CSC setting",
-				__func__, MML_FMT_IS_YUV(src->format) ? "YUV" : "RGB");
 		} else {
 			if(relay) {
-				cmdq_pkt_write(pkt,
-					NULL, base_pa + hdr->data->reg_table[HDR_TOP], 1 << 1, 0x2);
-				cmdq_pkt_write(pkt,
-					NULL, base_pa + hdr->data->reg_table[HDR_RELAY], 0, 0x1);
+				cmdq_pkt_write(pkt, NULL,
+					base_pa + hdr->data->reg_table[HDR_TOP],
+					1 << 1,
+					0x2);
+				cmdq_pkt_write(pkt, NULL,
+					base_pa + hdr->data->reg_table[HDR_RELAY],
+					0,
+					0x1);
 			} else {
-				cmdq_pkt_write(pkt,
-					NULL, base_pa + hdr->data->reg_table[HDR_TOP], 0 << 1, 0x2);
-				cmdq_pkt_write(pkt,
-					NULL, base_pa + hdr->data->reg_table[HDR_RELAY], 0, 0x1);
+				cmdq_pkt_write(pkt, NULL,
+					base_pa + hdr->data->reg_table[HDR_TOP],
+					0 << 1,
+					0x2);
+				cmdq_pkt_write(pkt, NULL,
+					base_pa + hdr->data->reg_table[HDR_RELAY],
+					0,
+					0x1);
 			}
 		}
 	} else
@@ -728,9 +973,10 @@ static s32 hdr_config_frame(struct mml_comp *comp, struct mml_task *task,
 	s32 ret;
 	u32 i;
 	s8 mode = task->config->info.mode;
+	bool is_sdr_path = dest->pq_config.en_region_pq || dest->pq_config.en_cv_based_sdr;
 
-	mml_pq_msg("%s pipe_id[%d] engine_id[%d] en_hdr[%d] mode[%d] pkt[%p]", __func__,
-		ccfg->pipe, comp->id, dest->pq_config.en_hdr, mode, pkt);
+	mml_pq_msg("%s pipe_id[%d] engine_id[%d] en_hdr[%d] mode[%d] pkt[%p] is_sdr_path[%d]",
+		__func__, ccfg->pipe, comp->id, dest->pq_config.en_hdr, mode, pkt, is_sdr_path);
 
 	/* clear event */
 	if (hdr->event_eof)
@@ -747,11 +993,11 @@ static s32 hdr_config_frame(struct mml_comp *comp, struct mml_task *task,
 
 	if (!dest->pq_config.en_hdr) {
 		/* relay mode */
-		hdr_relay(comp, pkt, base_pa, src, 0x1, 0x0);
+		hdr_relay(comp, pkt, base_pa, src, 0x1, 0x0, is_sdr_path);
 		return 0;
 	}
 
-	hdr_relay(comp, pkt, base_pa, src, 0x0, 0x0);
+	hdr_relay(comp, pkt, base_pa, src, 0x0, 0x0, is_sdr_path);
 
 	do {
 		ret = mml_pq_get_comp_config_result(task, HDR_WAIT_TIMEOUT_MS);
@@ -759,7 +1005,7 @@ static s32 hdr_config_frame(struct mml_comp *comp, struct mml_task *task,
 			mml_pq_comp_config_clear(task);
 			hdr_frm->config_success = false;
 			if (!hdr->data->tile_loss)
-				hdr_relay(comp, pkt, base_pa, src, 0x1, 0x1);
+				hdr_relay(comp, pkt, base_pa, src, 0x1, 0x1, is_sdr_path);
 			else
 				hdr_disable_curve(comp, pkt, src, base_pa);
 			mml_pq_err("%s: get hdr param timeout: %d in %dms",
@@ -772,7 +1018,7 @@ static s32 hdr_config_frame(struct mml_comp *comp, struct mml_task *task,
 		if (!result) {
 			hdr_frm->config_success = false;
 			if (!hdr->data->tile_loss)
-				hdr_relay(comp, pkt, base_pa, src, 0x1, 0x1);
+				hdr_relay(comp, pkt, base_pa, src, 0x1, 0x1, is_sdr_path);
 			else
 				hdr_disable_curve(comp, pkt, src, base_pa);
 			mml_pq_err("%s: not get result from user lib", __func__);
