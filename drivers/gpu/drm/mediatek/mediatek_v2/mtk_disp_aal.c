@@ -1140,6 +1140,18 @@ static void disp_aal_write_dre3_curve_full(struct mtk_ddp_comp *comp)
 		atomic_set(&aal_data->force_curve_sram_apb, 0);
 }
 
+int disp_aal_write_dre3_curve_full_async(void *data)
+{
+	struct mtk_ddp_comp *comp = (struct mtk_ddp_comp *)data;
+	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
+
+	mutex_lock(&aal_data->primary_data->config_lock);
+	disp_aal_write_dre3_curve_full(comp);
+	mutex_unlock(&aal_data->primary_data->config_lock);
+
+	return 0;
+}
+
 static bool disp_aal_dre3_write_linear_curve(struct mtk_disp_aal *aal_data, const unsigned int *dre3_gain,
 	const int block_x, const int block_y, const int dre_blk_x_num, int check)
 {
@@ -3222,7 +3234,10 @@ static void disp_aal_config(struct mtk_ddp_comp *comp,
 	unsigned int top_overhead_v = 0, bot_overhead_v = 0;
 	int width = cfg->w, height = cfg->h;
 	int out_width = cfg->w;
+	int ret = 0;
 	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	struct drm_crtc *crtc = &mtk_crtc->base;
 	phys_addr_t dre3_pa = disp_aal_dre3_pa(comp);
 
 	mtk_drm_trace_begin("aal_config:%u", comp->id);
@@ -3278,9 +3293,21 @@ static void disp_aal_config(struct mtk_ddp_comp *comp,
 		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_AAL_DRE_MAPPING_00, 1, 1 << 4);
 
 	if (aal_data->primary_data->aal_fo->mtk_dre30_support) {
-		mutex_lock(&aal_data->primary_data->config_lock);
-		disp_aal_write_dre3_curve_full(comp);
-		mutex_unlock(&aal_data->primary_data->config_lock);
+		if (mtk_drm_idlemgr_get_async_status(crtc) == false) {
+			mutex_lock(&aal_data->primary_data->config_lock);
+			disp_aal_write_dre3_curve_full(comp);
+			mutex_unlock(&aal_data->primary_data->config_lock);
+		} else {
+			ret = mtk_drm_sw_async_trigger(crtc, USER_SW_ASYNC_AAL,
+						disp_aal_write_dre3_curve_full_async, (void *)comp);
+			if (ret < 0) {
+				PQ_ERR("%s: sw_async_trigger ret: %d\n", __func__, ret);
+
+				mutex_lock(&aal_data->primary_data->config_lock);
+				disp_aal_write_dre3_curve_full(comp);
+				mutex_unlock(&aal_data->primary_data->config_lock);
+			}
+		}
 	}
 
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_AAL_SIZE, val, ~0);
