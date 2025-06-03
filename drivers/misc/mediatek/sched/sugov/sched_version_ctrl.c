@@ -26,6 +26,7 @@ bool _dsu_pwr_enable;
 bool _legacy_api_support;
 bool _dpt_v2_enable;
 unsigned int _dpt_v2_swpm_mode;
+int _shortcut_compress_rate;
 
 int init_sched_ctrl(void)
 {
@@ -65,6 +66,7 @@ int init_sched_ctrl(void)
 		_dsu_pwr_enable = false;
 		_dpt_v2_enable = false;
 		_dpt_v2_swpm_mode = 0;
+		_shortcut_compress_rate = 0;
 		break;
 	case EAS_5_5_1:
 		am_support = 0;
@@ -80,6 +82,7 @@ int init_sched_ctrl(void)
 		_dsu_pwr_enable = false;
 		_dpt_v2_enable = false;
 		_dpt_v2_swpm_mode = 0;
+		_shortcut_compress_rate = 0;
 		break;
 	case EAS_6_1:
 		am_support = 1;
@@ -95,6 +98,7 @@ int init_sched_ctrl(void)
 		_dsu_pwr_enable = true;
 		_dpt_v2_enable = false;
 		_dpt_v2_swpm_mode = 0;
+		_shortcut_compress_rate = 0;
 		break;
 	case EAS_6_5:
 		am_support = 1;
@@ -110,6 +114,7 @@ int init_sched_ctrl(void)
 		_dsu_pwr_enable = true;
 		_dpt_v2_enable = false;
 		_dpt_v2_swpm_mode = 0;
+		_shortcut_compress_rate = 0;
 		break;
 	case EAS_6_12:
 		am_support = 1;
@@ -125,6 +130,7 @@ int init_sched_ctrl(void)
 		_dsu_pwr_enable = true;
 		_dpt_v2_enable = false;
 		_dpt_v2_swpm_mode = 2;
+		_shortcut_compress_rate = 1;
 		break;
 	default:
 		am_support = 0;
@@ -139,6 +145,7 @@ int init_sched_ctrl(void)
 		_percore_l3_bw = false;
 		_dpt_v2_enable = false;
 		_dpt_v2_swpm_mode = 0;
+		_shortcut_compress_rate = 0;
 		break;
 	}
 	return 0;
@@ -239,3 +246,9 @@ void sched_dsu_pwr_enable_set(bool enable)
 	_dsu_pwr_enable = enable;
 }
 EXPORT_SYMBOL_GPL(sched_dsu_pwr_enable_set);
+
+int sched_shortcut_compress_rate_get(void)
+{
+	return _shortcut_compress_rate;
+}
+EXPORT_SYMBOL_GPL(sched_shortcut_compress_rate_get);

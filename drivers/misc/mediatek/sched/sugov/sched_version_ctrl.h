@@ -25,3 +25,4 @@ extern bool sched_dpt_v2_enable_get(void);
 extern void sched_dpt_v2_enable_set(unsigned int status);
 extern unsigned int sched_dpt_v2_swpm_mode_get(void);
 extern void sched_dpt_v2_swpm_mode_set(unsigned int);
+extern int sched_shortcut_compress_rate_get(void);

@@ -12,13 +12,12 @@
 #include "eas/eas_plus.h"
 #include "eas/eas_trace.h"
 #include "util/cpu_util.h"
+#include "sugov/sched_version_ctrl.h"
 #include "sugov/cpufreq.h"
-
-#define DEFAULT_SHORTCUT_COMPRESS_RATE 1
 
 #define DEFAULT_RELAX_ENOUGH_TSK_UTIL 30
 
-static int shortcut_compress_rate = DEFAULT_SHORTCUT_COMPRESS_RATE;
+static int shortcut_compress_rate = -1;
 
 static struct relax_enough_util *relax_enough_cpu_util;
 static struct relax_enough_util *relax_enough_tsk_util;
@@ -30,7 +29,7 @@ void compress_init(void)
 	int num_sched_clusters = get_nr_gears();
 	int cpu_idx;
 
-	shortcut_compress_rate = DEFAULT_SHORTCUT_COMPRESS_RATE;
+	shortcut_compress_rate = sched_shortcut_compress_rate_get();
 
 	relax_enough_cpu_util = kcalloc(num_sched_clusters, sizeof(struct relax_enough_util), GFP_KERNEL);
 	relax_enough_tsk_util = kcalloc(num_sched_clusters, sizeof(struct relax_enough_util), GFP_KERNEL);
@@ -160,7 +159,7 @@ void set_shortcut_compress_rate(int rate)
 		return;
 
 	if (rate == -1) {
-		shortcut_compress_rate = DEFAULT_SHORTCUT_COMPRESS_RATE;
+		shortcut_compress_rate = sched_shortcut_compress_rate_get();
 		return;
 	}
 
