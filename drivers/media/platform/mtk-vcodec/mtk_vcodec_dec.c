@@ -4320,10 +4320,6 @@ static void vb2ops_vdec_stop_streaming(struct vb2_queue *q)
 	ctx->is_active = 0;
 	if (ctx->dev->vdec_dvfs_params.mmdvfs_in_vcp) {
 		mtk_vdec_unprepare_vcp_dvfs_data(ctx, vcp_dvfs_data);
-		//mtk_vcodec_cpu_margin_ctrl(ctx);
-		//mtk_vcodec_cpu_runnable_boost_ctrl(ctx);
-		mtk_vcodec_cpu_pf_ctrl(ctx, false);
-		mtk_vcodec_slc_wce_ctrl(ctx, false);
 		ret = vdec_if_set_param(ctx, SET_PARAM_MMDVFS, vcp_dvfs_data);
 		if (ret != 0)
 			mtk_vcodec_dvfs_qos_err("[VDVFS][%d] stream off ipi fail, ret %d", ctx->id, ret);
@@ -4386,11 +4382,7 @@ static void mtk_vdec_start_work(struct mtk_vcodec_ctx *ctx)
 		mtk_vcodec_send_info_to_vgo(ctx, MTK_VCODEC_VGO_ADD_INST);
 	ctx->is_active = 1;
 	if (ctx->dev->vdec_dvfs_params.mmdvfs_in_vcp) {
-		mtk_vcodec_cpu_pf_ctrl(ctx, true);
-		mtk_vcodec_slc_wce_ctrl(ctx, true);
 		mtk_vdec_prepare_vcp_dvfs_data(ctx, vcp_dvfs_data);
-		//mtk_vcodec_cpu_margin_ctrl(ctx);
-		//mtk_vcodec_cpu_runnable_boost_ctrl(ctx);
 		ret = vdec_if_set_param(ctx, SET_PARAM_MMDVFS, vcp_dvfs_data);
 		if (ret != 0)
 			mtk_vcodec_dvfs_qos_err("[VDVFS][%d] stream on ipi fail, ret %d", ctx->id, ret);

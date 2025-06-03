@@ -32,11 +32,17 @@ module_param(mtk_vgo_margin_control, bool, 0644);
 static bool mtk_vgo_runnable_boost_disable = true;
 module_param(mtk_vgo_runnable_boost_disable, bool, 0644);
 
-static bool mtk_vgo_util_est_boost = true;
+static bool mtk_vgo_util_est_boost;
 module_param(mtk_vgo_util_est_boost, bool, 0644);
 
 static bool mtk_vgo_rt_non_idle_preempt = true;
 module_param(mtk_vgo_rt_non_idle_preempt, bool, 0644);
+
+static bool mtk_vgo_cpu_pf_ctrl = true;
+module_param(mtk_vgo_cpu_pf_ctrl, bool, 0644);
+
+static bool mtk_vgo_slc_wce_ctrl = true;
+module_param(mtk_vgo_slc_wce_ctrl, bool, 0644);
 
 // Instance device open
 static bool mtk_vgo_runnable_boost_enable = true;

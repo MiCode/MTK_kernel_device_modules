@@ -27,6 +27,8 @@
 #if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
 #include "eas/group.h"
 #endif
+#include "pf_ctrl.h"
+#include "slbc_sdk.h"
 
 static DECLARE_KFIFO(service_fifo, struct vgo_powerhal_info, 16);
 
@@ -70,6 +72,8 @@ static int set_margin_control;
 static int set_uclamp_min_ta;
 static int set_util_est_boost;
 static int set_rt_non_idle_preempt;
+static int set_cpu_pf_ctrl;
+static int set_slc_wce_ctrl;
 static int set_ct_to_vip;
 //static int set_cpu_freq_min;
 static int set_gpu_freq_min;
@@ -442,7 +446,7 @@ static int videogo_controller_fn(void *arg)
 			}
 			if (!set_margin_control && mtk_vgo_margin_control) {
 				send_service_info("acq margin_control",
-								VGO_MARGIN_CONTROL_0, 1000, 20, 0);
+								VGO_MARGIN_CONTROL_0, 1000000, 20, 0);
 				set_margin_control = 1;
 			}
 			if (!set_util_est_boost && mtk_vgo_util_est_boost) {
@@ -455,9 +459,23 @@ static int videogo_controller_fn(void *arg)
 								VGO_RT_NON_IDLE_PREEMPT, 1, 0, 0);
 				set_rt_non_idle_preempt = 1;
 			}
-			mtk_vgo_info("[VP] runnable_disable:%d margin_ctrl:%d util_boost:%d rt_non_idle:%d",
+			if (!set_cpu_pf_ctrl && mtk_vgo_cpu_pf_ctrl) {
+				if (mtk_set_pf_ctrl_enable(true, PF_CTRL_USER_VP) == 0)
+					set_cpu_pf_ctrl = 1;
+				else
+					mtk_vgo_err("Failed to mtk_set_pf_ctrl_enable");
+				ret = mtk_get_pf_ctrl_enable();
+				mtk_vgo_debug("acq cpu_pf_ctrl_%s: %d", ret ? "enable" : "disable", ret);
+			}
+			if (!set_slc_wce_ctrl && mtk_vgo_slc_wce_ctrl) {
+				slbc_disable_dcc(true); // 1: disable WCE, 0: enable (default)
+				mtk_vgo_debug("acq slc_wce_ctrl");
+				set_slc_wce_ctrl = 1;
+			}
+			mtk_vgo_info("[VP] runnable_disable:%d margin_ctrl:%d util_boost:%d rt_non_idle:%d pf_ctrl:%d slc_wce_ctrl:%d",
 				set_runnable_boost_disable, set_margin_control,
-				set_util_est_boost, set_rt_non_idle_preempt);
+				set_util_est_boost, set_rt_non_idle_preempt,
+				set_cpu_pf_ctrl, set_slc_wce_ctrl);
 		} else {
 			if (set_runnable_boost_disable) {
 				send_service_info("rel Runnable_boost_disable",
@@ -475,12 +493,22 @@ static int videogo_controller_fn(void *arg)
 				set_util_est_boost = 0;
 			}
 			if (set_rt_non_idle_preempt) {
-				send_service_info("acq rt_non_idle_preempt",
+				send_service_info("rel rt_non_idle_preempt",
 								VGO_RT_NON_IDLE_PREEMPT, -1, 0, 0);
 				set_rt_non_idle_preempt = 0;
 			}
+			if (set_cpu_pf_ctrl) {
+				mtk_set_pf_ctrl_enable(false, PF_CTRL_USER_VP);
+				ret = mtk_get_pf_ctrl_enable();
+				mtk_vgo_debug("rel cpu_pf_ctrl_%s: %d", ret ? "enable" : "disable", ret);
+				set_cpu_pf_ctrl = 0;
+			}
+			if (set_slc_wce_ctrl) {
+				slbc_disable_dcc(false);
+				mtk_vgo_debug("rel slc_wce_ctrl");
+				set_slc_wce_ctrl = 0;
+			}
 		}
-
 		if (isTranscoding) {
 			if (!set_uclamp_min_ta && mtk_vgo_uclamp_min_ta) {
 				send_service_info("acq uclamp_min_ta",
