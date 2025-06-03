@@ -390,25 +390,33 @@ __weak void mt_irq_dump_status(unsigned int irq)
 
 static uint32_t get_s2idle_state(void)
 {
-	if (is_s2idle_status) {
-		struct arm_smccc_res res;
+	struct device_node *node;
+
+	node = of_find_node_by_name(NULL, "atf-logger");
+	if (!node || !of_property_read_bool(node, "mediatek,afl-fuzzer-enabled")) {
+		if (is_s2idle_status) {
+			struct arm_smccc_res res;
 #if IS_ENABLED(CONFIG_ARM64)
-		arm_smccc_smc(MTK_SIP_KERNEL_RGU_CONTROL,
-				RGU_GET_S2IDLE,
-				0, 0, 0,
-				0, 0, 0,
-				&res);
+			arm_smccc_smc(MTK_SIP_KERNEL_RGU_CONTROL,
+					RGU_GET_S2IDLE,
+					0, 0, 0,
+					0, 0, 0,
+					&res);
 #endif
 #if IS_ENABLED(CONFIG_ARM_PSCI)
-		arm_smccc_smc(MTK_SIP_KERNEL_RGU_CONTROL,
-				RGU_GET_S2IDLE,
-				0, 0, 0,
-				0, 0, 0,
-				&res);
+			arm_smccc_smc(MTK_SIP_KERNEL_RGU_CONTROL,
+					RGU_GET_S2IDLE,
+					0, 0, 0,
+					0, 0, 0,
+					&res);
 #endif
-		return (uint32_t) res.a1;
-	} else
+			return (uint32_t) res.a1;
+		} else
+			return 0xff;
+	} else {
+		pr_notice("%s:afl_fuzzer enable\n", __func__);
 		return 0xff;
+	}
 };
 
 static unsigned int get_check_bit(void)
