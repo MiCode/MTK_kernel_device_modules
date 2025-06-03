@@ -3,6 +3,7 @@
  * Copyright (c) 2023 MediaTek Inc.
  */
 #include <linux/rbtree.h>
+#include <linux/atomic.h>
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/cpufreq.h>
@@ -55,6 +56,8 @@ static struct kmem_cache *frame_info_cachep __ro_after_init;
 static struct kmem_cache *ux_scroll_info_cachep __ro_after_init;
 static struct kmem_cache *hwui_frame_info_cachep __ro_after_init;
 
+static int sbe_notify_fpsgo_vir_boost;
+static atomic_t sbe_notify_fpsgo_vir_boost_status = ATOMIC_INIT(0);
 static int sbe_rescue_enable;
 static int sbe_enhance_f;
 static int sbe_dy_max_enhance;
@@ -148,6 +151,7 @@ module_param(sbe_uclamp_margin, int, 0644);
 module_param(sbe_runnable_util_est_disable, int, 0644);
 module_param(sbe_extra_sub_en_deque_enable, int, 0644);
 module_param(sbe_extra_sub_deque_margin_time, int, 0644);
+module_param(sbe_notify_fpsgo_vir_boost, int, 0644);
 module_param(sbe_dptv2_enable, int, 0644);
 module_param(sbe_force_bypass_dptv2, int, 0644);
 module_param(sbe_affinity_task_min_cap, int, 0644);
@@ -257,6 +261,65 @@ void sbe_set_global_sbe_dy_enhance(int cur_pid, int cur_dy_enhance)
 {
 	global_sbe_dy_enhance = cur_dy_enhance;
 	global_sbe_dy_enhance_max_pid = cur_pid;
+}
+
+/**
+ * sbe_notify_fpsgo_do_virtual_boost - Control virtual boost for FPSGO
+ * @enable: Enable/disable virtual boost
+ * @tgid: Task group ID
+ * @render_tid: Render thread ID
+ *
+ * This function manages the virtual boost state for FPSGO performance optimization.
+ * It handles the creation and cleanup of virtual boost components based on the
+ * enable flag and current system state.
+ *
+ * Return: void
+ */
+void sbe_notify_fpsgo_do_virtual_boost(int enable, int tgid, int render_tid)
+{
+	int ret = 0;
+
+	/* Parameter validation */
+	if (tgid <= 0 || render_tid <= 0) {
+		sbe_systrace_c(tgid, SBE_HWUI_VIRTUAL_BUFFER_ID, -1, "virtual_boost");
+		return;
+	}
+
+	/* Handle disabled state */
+	if (!sbe_notify_fpsgo_vir_boost) {
+		if (atomic_read(&sbe_notify_fpsgo_vir_boost_status)) {
+			sbe_trace("Cleaning up virtual boost: tgid=%d, render_tid=%d\n",
+				  tgid, render_tid);
+			fpsgo_other2comp_control_pause(render_tid, SBE_HWUI_VIRTUAL_BUFFER_ID);
+			fpsgo_other2comp_user_close(tgid, render_tid, SBE_HWUI_VIRTUAL_BUFFER_ID);
+			atomic_set(&sbe_notify_fpsgo_vir_boost_status, 0);
+		}
+		sbe_systrace_c(tgid, SBE_HWUI_VIRTUAL_BUFFER_ID, 0, "virtual_boost");
+		return;
+	}
+
+	/* Handle enable/disable requests */
+	if (enable) {
+		sbe_trace("Creating virtual boost: tgid=%d, render_tid=%d\n",
+			  tgid, render_tid);
+		ret = fpsgo_other2comp_user_create(tgid, render_tid,
+						 SBE_HWUI_VIRTUAL_BUFFER_ID,
+						 NULL, 0, 0);
+		if (ret) {
+			sbe_systrace_c(tgid, SBE_HWUI_VIRTUAL_BUFFER_ID, -2, "virtual_boost");
+			return;
+		}
+		fpsgo_other2comp_control_resume(render_tid, SBE_HWUI_VIRTUAL_BUFFER_ID);
+		atomic_set(&sbe_notify_fpsgo_vir_boost_status, 1);
+	} else {
+		sbe_trace("Disabling virtual boost: tgid=%d, render_tid=%d\n",
+			  tgid, render_tid);
+		fpsgo_other2comp_control_pause(render_tid, SBE_HWUI_VIRTUAL_BUFFER_ID);
+		fpsgo_other2comp_user_close(tgid, render_tid, SBE_HWUI_VIRTUAL_BUFFER_ID);
+		atomic_set(&sbe_notify_fpsgo_vir_boost_status, 0);
+	}
+
+	sbe_systrace_c(tgid, SBE_HWUI_VIRTUAL_BUFFER_ID, enable, "virtual_boost");
 }
 
 static int sbe_set_affinity(int pid, const struct cpumask *in_mask)
@@ -2357,6 +2420,7 @@ int __init sbe_cpu_ctrl_init(void)
 	gas_threshold_for_high_TLP = 5;
 	sbe_runnable_util_est_disable = 1;
 	sbe_extra_sub_en_deque_enable = 1;
+	sbe_notify_fpsgo_vir_boost = 1;
 	sbe_dptv2_enable = 1;
 	sbe_affinity_task_min_cap = SBE_DEFAULT_AFFINITY_TASK_MIN_CAP;
 	sbe_affinity_task_low_threshold_cap = SBE_DEFAULT_AFFINITY_TASK_LOW_THRESHOLD_CAP;

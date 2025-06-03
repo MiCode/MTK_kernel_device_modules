@@ -951,6 +951,9 @@ static int sbe_do_hwui_scrolling_status_policy(int tgid, char *name, unsigned lo
 	int local_specific_tid_num = 0;
 	int critical_basic_cap = 0;
 	unsigned int display_rate = 0;
+	int is_flutter = 0;
+	int is_webview = 0;
+	int is_multi_window = 0;
 	struct sbe_render_info *thr = NULL;
 	struct ux_scroll_info *last = NULL;
 	struct xgf_policy_cmd xgf_attr_iter;
@@ -972,6 +975,8 @@ static int sbe_do_hwui_scrolling_status_policy(int tgid, char *name, unsigned lo
 	sbe_get_render_tid_by_render_name(tgid, scroll_policy_info.thread_name,
 		scroll_policy_info.final_pid_arr, scroll_policy_info.final_bufID_arr,
 		&final_pid_arr_idx, FPSGO_MAX_RENDER_INFO_SIZE);
+
+	sbe_notify_fpsgo_do_virtual_boost(start, tgid, tgid);
 
 	if (!final_pid_arr_idx) {
 		sbe_get_tree_lock(__func__);
@@ -1036,10 +1041,11 @@ static int sbe_do_hwui_scrolling_status_policy(int tgid, char *name, unsigned lo
 				sbe_systrace_c(thr->pid, thr->buffer_id, 1, "[ux]byPassWebFut");
 			} else {
 				thr->dpt_policy_enable = 0;
+				is_flutter = test_bit(SBE_PAGE_FLUTTER, &mask);
+				is_webview = test_bit(SBE_PAGE_WEBVIEW, &mask);
+				is_multi_window = test_bit(SBE_PAGE_MULTI_WINDOW, &mask);
 				sbe_systrace_c(thr->pid, thr->buffer_id,
-					((int)test_bit(SBE_PAGE_FLUTTER, &mask) << 1) |
-					((int)test_bit(SBE_PAGE_WEBVIEW, &mask) << 2) |
-					((int)test_bit(SBE_PAGE_MULTI_WINDOW, &mask) << 3),
+					(is_flutter << 1) | (is_webview << 2) | (is_multi_window << 3),
 					"[ux]page_type");
 			}
 		}
