@@ -46,6 +46,11 @@
 #define CKSYS_AUD_TOP_CFG 0x032c
 #define CKSYS_AUD_TOP_MON 0x0330
 
+#define APLL1_EN	BIT(5)
+#define APLL1_CLR	BIT(5)
+#define APLL2_EN	BIT(6)
+#define APLL2_CLR	BIT(6)
+
 /* CLK_AUDDIV_0 */
 #define APLL12_DIV_I2SIN1_PDN_SFT               1
 #define APLL12_DIV_I2SIN1_PDN_MASK              0x1

@@ -354,6 +354,30 @@ CLK_PERAO_P_AUDIO2_AUDIO_ERR:
 	return ret;
 }
 
+static void apll_enable(struct mtk_base_afe *afe, u32 apll, bool enable)
+{
+	struct mt6858_afe_private *afe_priv = afe->platform_priv;
+	u32 en, clr;
+
+	switch (apll) {
+	case MT6858_APLL1:
+		en = APLL1_EN;
+		clr = APLL1_CLR;
+		break;
+	case MT6858_APLL2:
+		en = APLL2_EN;
+		clr = APLL2_CLR;
+		break;
+	default:
+		pr_info("%s: invalid apll id: %d\n", __func__, apll);
+		return;
+	}
+	if (enable)
+		regmap_update_bits(afe_priv->apmixed, PLLEN_ALL_SET, en, en);
+	else
+		regmap_update_bits(afe_priv->apmixed, PLLEN_ALL_SET, clr, clr);
+}
+
 int mt6858_afe_apll_init(struct mtk_base_afe *afe)
 {
 	struct mt6858_afe_private *afe_priv = afe->platform_priv;
@@ -461,13 +485,20 @@ int mt6858_afe_dram_request(struct device *dev)
 	mutex_lock(&mutex_request_dram);
 
 	/* use arm_smccc_smc to notify SPM */
-	if (afe_priv->dram_resource_counter == 0)
+	if (afe_priv->dram_resource_counter == 0) {
 #if !defined(SKIP_SMCC_SB)
 		arm_smccc_smc(MTK_SIP_AUDIO_CONTROL,
 			      MTK_AUDIO_SMC_OP_DRAM_REQUEST,
 			      0, 0, 0, 0, 0, 0, &res);
 #endif
-
+		/* set dram request */
+		regmap_update_bits(afe->regmap, AFE_SPM_CONTROL_REQ,
+				   AFE_DDREN_REQ_MASK_SFT,
+				   AFE_DDREN_REQ_MASK_SFT);
+		regmap_update_bits(afe->regmap, AFE_SPM_CONTROL_REQ,
+				   AFE_APSRC_REQ_MASK_SFT,
+				   AFE_APSRC_REQ_MASK_SFT);
+	}
 	afe_priv->dram_resource_counter++;
 	mutex_unlock(&mutex_request_dram);
 	return 0;
@@ -488,12 +519,18 @@ int mt6858_afe_dram_release(struct device *dev)
 	afe_priv->dram_resource_counter--;
 
 	/* use arm_smccc_smc to notify SPM */
+	if (afe_priv->dram_resource_counter == 0) {
 #if !defined(SKIP_SMCC_SB)
-	if (afe_priv->dram_resource_counter == 0)
 		arm_smccc_smc(MTK_SIP_AUDIO_CONTROL,
 			      MTK_AUDIO_SMC_OP_DRAM_RELEASE,
 			      0, 0, 0, 0, 0, 0, &res);
 #endif
+		/* reset dram request */
+		regmap_update_bits(afe->regmap, AFE_SPM_CONTROL_REQ,
+				   AFE_DDREN_REQ_MASK_SFT, 0);
+		regmap_update_bits(afe->regmap, AFE_SPM_CONTROL_REQ,
+				   AFE_APSRC_REQ_MASK_SFT, 0);
+	}
 
 	if (afe_priv->dram_resource_counter < 0) {
 		dev_info(dev, "%s(), dram_resource_counter %d\n",
@@ -544,6 +581,8 @@ int mt6858_apll1_enable(struct mtk_base_afe *afe)
 		goto ERR_CLK_APLL1;
 	}
 
+	apll_enable(afe, MT6858_APLL1, true);
+
 	ret = clk_prepare_enable(afe_priv->clk[CLK_AFE_APLL_TUNER1_AUDIO]);
 	if (ret) {
 		dev_info(afe->dev, "%s clk_prepare_enable %s fail %d\n",
@@ -579,6 +618,8 @@ void mt6858_apll1_disable(struct mtk_base_afe *afe)
 
 	regmap_update_bits(afe->regmap, AFE_APLL1_TUNER_CFG, 0x1, 0x0);
 
+	apll_enable(afe, MT6858_APLL1, false);
+
 	clk_disable_unprepare(afe_priv->clk[CLK_AFE_APLL_TUNER1_AUDIO]);
 	clk_disable_unprepare(afe_priv->clk[CLK_AFE_APLL1_AUDIO]);
 
@@ -599,6 +640,8 @@ int mt6858_apll2_enable(struct mtk_base_afe *afe)
 			__func__, aud_clks[CLK_AFE_APLL2_AUDIO], ret);
 		goto ERR_CLK_APLL2;
 	}
+
+	apll_enable(afe, MT6858_APLL2, true);
 
 	ret = clk_prepare_enable(afe_priv->clk[CLK_AFE_APLL_TUNER2_AUDIO]);
 	if (ret) {
@@ -630,6 +673,8 @@ ERR_CLK_APLL2:
 void mt6858_apll2_disable(struct mtk_base_afe *afe)
 {
 	struct mt6858_afe_private *afe_priv = afe->platform_priv;
+
+	apll_enable(afe, MT6858_APLL2, false);
 
 	regmap_update_bits(afe->regmap, AUDIO_ENGEN_CON0,
 			   AUDIO_APLL2_EN_ON_MASK_SFT,
