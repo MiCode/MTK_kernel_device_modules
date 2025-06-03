@@ -555,12 +555,11 @@ static int mtk_compr_offload_set_params(struct snd_soc_component *component,
 			 (char *)
 			 &dsp->dsp_mem[ID].msg_atod_share_buf.phy_addr);
 
-	pr_debug("%s AUDIO_DSP_TASK_HWPARAM Done\n", __func__);
 	mtk_scp_ipi_send(get_dspscene_by_dspdaiid(ID),
 			 AUDIO_IPI_MSG_ONLY,
 			 AUDIO_IPI_MSG_NEED_ACK,
 			 OFFLOAD_SCENE, OFFLOAD_TYPE, OFFLOAD_TYPE, NULL);
-	pr_debug("%s OFFLOAD_SCENE Done\n", __func__);
+	pr_debug("%s Done\n", __func__);
 	return ret;
 
 ERROR:
