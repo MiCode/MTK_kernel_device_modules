@@ -5996,6 +5996,14 @@ dramc: dramc@10230000 {
 			etdm-ip-mode = <0 0 0>; /* 0: One IP multi-channel 1: Multi-IP 2-channel */
 		};
 
+		audio_sram: audio-sram@11060000 {
+			compatible = "mediatek,audio_sram";
+			reg = <0 0x11060000 0 0x10000>;
+			prefer-mode = <0>;
+			mode-size = <0x10000 0x10000>;
+			block-size = <0x1000>;
+		};
+
 		opp_table_disp: opp-table-disp {
 			compatible = "operating-points-v2";
 			opp-0 {
