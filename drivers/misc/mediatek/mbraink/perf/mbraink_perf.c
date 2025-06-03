@@ -7,12 +7,30 @@
 #include <linux/perf/arm_pmuv3.h>
 #include "mbraink_perf.h"
 
+static DEFINE_PER_CPU(struct perf_event *, inst_spec_events);
+static DEFINE_PER_CPU(struct perf_event *, cycle_events);
 static DEFINE_PER_CPU(struct perf_event *, l1dc_events);
 static DEFINE_PER_CPU(struct perf_event *, l1dc_ref_events);
 static DEFINE_PER_CPU(struct perf_event *, l2dc_events);
 static DEFINE_PER_CPU(struct perf_event *, l2dc_ref_events);
+static DEFINE_PER_CPU(struct perf_event *, l3dc_events);
 static DEFINE_PER_CPU(struct perf_event *, l3dc_ref_events);
 
+static struct perf_event_attr inst_spec_event_attr = {
+	.type           = PERF_TYPE_RAW,
+/*	.config         = 0x1B, */
+	.config         = ARMV8_PMUV3_PERFCTR_INST_SPEC, /* 0x1B */
+	.size           = sizeof(struct perf_event_attr),
+	.pinned         = 1,
+/*	.disabled       = 1, */
+};
+static struct perf_event_attr cycle_event_attr = {
+	.type           = PERF_TYPE_HARDWARE,
+	.config         = PERF_COUNT_HW_CPU_CYCLES,
+	.size           = sizeof(struct perf_event_attr),
+	.pinned         = 1,
+/*	.disabled       = 1, */
+};
 static struct perf_event_attr l1dc_event_attr = {
 	.type           = PERF_TYPE_RAW,
 /*	.config         = 0x04, */
@@ -45,6 +63,14 @@ static struct perf_event_attr l2dc_ref_event_attr = {
 	.pinned         = 1,
 /*	.disabled       = 1, */
 };
+static struct perf_event_attr l3dc_event_attr = {
+	.type           = PERF_TYPE_RAW,
+/*	.config         = 0x2B, */
+	.config         = ARMV8_PMUV3_PERFCTR_L3D_CACHE, /* 0x2B */
+	.size           = sizeof(struct perf_event_attr),
+	.pinned         = 1,
+/*	.disabled       = 1, */
+};
 static struct perf_event_attr l3dc_ref_event_attr = {
 	.type           = PERF_TYPE_RAW,
 /*	.config         = 0x2A, */
@@ -56,12 +82,19 @@ static struct perf_event_attr l3dc_ref_event_attr = {
 
 static void mbraink_perf_start(int cpu)
 {
+	struct perf_event *i_event = per_cpu(inst_spec_events, cpu);
+	struct perf_event *c_event = per_cpu(cycle_events, cpu);
 	struct perf_event *l1_event = per_cpu(l1dc_events, cpu);
 	struct perf_event *l1r_event = per_cpu(l1dc_ref_events, cpu);
 	struct perf_event *l2_event = per_cpu(l2dc_events, cpu);
 	struct perf_event *l2r_event = per_cpu(l2dc_ref_events, cpu);
+	struct perf_event *l3_event = per_cpu(l3dc_events, cpu);
 	struct perf_event *l3r_event = per_cpu(l3dc_ref_events, cpu);
 
+	if (i_event)
+		perf_event_enable(i_event);
+	if (c_event)
+		perf_event_enable(c_event);
 	if (l1_event)
 		perf_event_enable(l1_event);
 	if (l1r_event)
@@ -70,18 +103,27 @@ static void mbraink_perf_start(int cpu)
 		perf_event_enable(l2_event);
 	if (l2r_event)
 		perf_event_enable(l2r_event);
+	if (l3_event)
+		perf_event_enable(l3_event);
 	if (l3r_event)
 		perf_event_enable(l3r_event);
 }
 
 static void mbraink_perf_stop(int cpu)
 {
+	struct perf_event *i_event = per_cpu(inst_spec_events, cpu);
+	struct perf_event *c_event = per_cpu(cycle_events, cpu);
 	struct perf_event *l1_event = per_cpu(l1dc_events, cpu);
 	struct perf_event *l1r_event = per_cpu(l1dc_ref_events, cpu);
 	struct perf_event *l2_event = per_cpu(l2dc_events, cpu);
 	struct perf_event *l2r_event = per_cpu(l2dc_ref_events, cpu);
+	struct perf_event *l3_event = per_cpu(l3dc_events, cpu);
 	struct perf_event *l3r_event = per_cpu(l3dc_ref_events, cpu);
 
+	if (i_event)
+		perf_event_disable(i_event);
+	if (c_event)
+		perf_event_disable(c_event);
 	if (l1_event)
 		perf_event_disable(l1_event);
 	if (l1r_event)
@@ -90,6 +132,8 @@ static void mbraink_perf_stop(int cpu)
 		perf_event_disable(l2_event);
 	if (l2r_event)
 		perf_event_disable(l2r_event);
+	if (l3_event)
+		perf_event_disable(l3_event);
 	if (l3r_event)
 		perf_event_disable(l3r_event);
 }
@@ -97,14 +141,35 @@ static void mbraink_perf_stop(int cpu)
 static int mbraink_perf_probe_cpu_enable(int cpu, int enable)
 {
 	struct perf_event *event = NULL;
+	struct perf_event *i_event = per_cpu(inst_spec_events, cpu);
+	struct perf_event *c_event = per_cpu(cycle_events, cpu);
 	struct perf_event *l1_event = per_cpu(l1dc_events, cpu);
 	struct perf_event *l1r_event = per_cpu(l1dc_ref_events, cpu);
 	struct perf_event *l2_event = per_cpu(l2dc_events, cpu);
 	struct perf_event *l2r_event = per_cpu(l2dc_ref_events, cpu);
+	struct perf_event *l3_event = per_cpu(l3dc_events, cpu);
 	struct perf_event *l3r_event = per_cpu(l3dc_ref_events, cpu);
 	int ret = 0;
 
 	if (enable) {
+		if (!i_event) {
+			event = perf_event_create_kernel_counter(
+				&inst_spec_event_attr, cpu, NULL, NULL, NULL);
+			if (IS_ERR(event)) {
+				pr_notice("create (%d) inst_spec error (%d)\n", cpu, (int)PTR_ERR(event));
+				goto FAIL;
+			}
+			per_cpu(inst_spec_events, cpu) = event;
+		}
+		if (!c_event) {
+			event = perf_event_create_kernel_counter(
+				&cycle_event_attr, cpu, NULL, NULL, NULL);
+			if (IS_ERR(event)) {
+				pr_notice("create (%d) cycle error (%d)\n", cpu, (int)PTR_ERR(event));
+				goto FAIL;
+			}
+			per_cpu(cycle_events, cpu) = event;
+		}
 		if (!l1_event) {
 			event = perf_event_create_kernel_counter(
 				&l1dc_event_attr, cpu, NULL, NULL, NULL);
@@ -141,6 +206,15 @@ static int mbraink_perf_probe_cpu_enable(int cpu, int enable)
 			}
 			per_cpu(l2dc_ref_events, cpu) = event;
 		}
+		if (!l3_event) {
+			event = perf_event_create_kernel_counter(
+				&l3dc_event_attr, cpu, NULL, NULL, NULL);
+			if (IS_ERR(event)) {
+				pr_notice("create (%d) l3dc counter error (%d)\n", cpu, (int)PTR_ERR(event));
+				goto FAIL;
+			}
+			per_cpu(l3dc_events, cpu) = event;
+		}
 		if (!l3r_event) {
 			event = perf_event_create_kernel_counter(
 				&l3dc_ref_event_attr, cpu, NULL, NULL, NULL);
@@ -153,6 +227,14 @@ static int mbraink_perf_probe_cpu_enable(int cpu, int enable)
 		mbraink_perf_start(cpu);
 	} else {
 		mbraink_perf_stop(cpu);
+		if (i_event) {
+			perf_event_release_kernel(i_event);
+			per_cpu(inst_spec_events, cpu) = NULL;
+		}
+		if (c_event) {
+			perf_event_release_kernel(c_event);
+			per_cpu(cycle_events, cpu) = NULL;
+		}
 		if (l1_event) {
 			perf_event_release_kernel(l1_event);
 			per_cpu(l1dc_events, cpu) = NULL;
@@ -168,6 +250,10 @@ static int mbraink_perf_probe_cpu_enable(int cpu, int enable)
 		if (l2r_event) {
 			perf_event_release_kernel(l2r_event);
 			per_cpu(l2dc_ref_events, cpu) = NULL;
+		}
+		if (l3_event) {
+			perf_event_release_kernel(l3_event);
+			per_cpu(l3dc_events, cpu) = NULL;
 		}
 		if (l3r_event) {
 			perf_event_release_kernel(l3r_event);
@@ -198,6 +284,12 @@ unsigned long long mbraink_perf_pmu_get_count(unsigned int evt_id, unsigned int 
 		return 0;
 
 	switch (evt_id) {
+	case MBK_INST_SPEC_EVT:
+		event = per_cpu(inst_spec_events, cpu);
+		break;
+	case MBK_CYCLES_EVT:
+		event = per_cpu(cycle_events, cpu);
+		break;
 	case MBK_L1DC_EVT:
 		event = per_cpu(l1dc_events, cpu);
 		break;
@@ -209,6 +301,9 @@ unsigned long long mbraink_perf_pmu_get_count(unsigned int evt_id, unsigned int 
 		break;
 	case MBK_L2DC_ERF_EVT:
 		event = per_cpu(l2dc_ref_events, cpu);
+		break;
+	case MBK_L3DC_EVT:
+		event = per_cpu(l3dc_events, cpu);
 		break;
 	case MBK_L3DC_ERF_EVT:
 		event = per_cpu(l3dc_ref_events, cpu);

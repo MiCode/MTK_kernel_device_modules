@@ -7,7 +7,6 @@
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/perf_event.h>
-#include <swpm_perf_arm_pmu.h>
 #include <mbraink_modules_ops_def.h>
 
 #include "mbraink_v6991_pmu.h"
@@ -36,7 +35,7 @@ static unsigned long long mbraink_pmu_get_inst_count(int cpu)
 	unsigned long long old = per_cpu(inst_spec_count, cpu);
 	unsigned long long diff = 0;
 
-	new = swpm_pmu_get_count(INST_SPEC_EVT, cpu);
+	new = mbraink_perf_pmu_get_count(MBK_INST_SPEC_EVT, cpu);
 	if (new > old && old > 0)
 		diff = (unsigned long long)(new - old);
 
@@ -52,7 +51,7 @@ static unsigned long long mbraink_pmu_get_cpu_cycles(int cpu)
 	unsigned long long old = per_cpu(cycles_count, cpu);
 	unsigned long long diff = 0;
 
-	new = swpm_pmu_get_count(CYCLES_EVT, cpu);
+	new = mbraink_perf_pmu_get_count(MBK_CYCLES_EVT, cpu);
 	if (new > old && old > 0)
 		diff = (unsigned long long)(new - old);
 
@@ -132,7 +131,7 @@ static unsigned long long mbraink_pmu_get_l3dc(int cpu)
 	unsigned long long old = per_cpu(l3dc_count, cpu);
 	unsigned long long diff = 0;
 
-	new = swpm_pmu_get_count(L3DC_EVT, cpu);
+	new = mbraink_perf_pmu_get_count(MBK_L3DC_EVT, cpu);
 	if (new > old && old > 0)
 		diff = (unsigned long long)(new - old);
 
