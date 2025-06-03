@@ -77,6 +77,7 @@
 #define MAX_BW_UNIT		(1023)
 #define CHNN_BW_UNIT_SHIFT	(4)	/* channel bw unit is 16MB/s */
 #define DRAM_BW_UNIT_SHIFT	(6)	/* dram bw unit is 64MB/s */
+#define BW_UNIT_TO_MBS(unit)	((unit) << CHNN_BW_UNIT_SHIFT)
 
 #define APMCU_MASK_OFFSET	(gmmqos->apmcu_mask_offset)
 #define APMCU_ON_BW_OFFSET(i)	(gmmqos->apmcu_on_bw_offset + 4 * i)
@@ -1967,7 +1968,7 @@ static void mmpc_subsys_hw_mode_full_dump_line(int sid)
 
 	if (mmqos_state & MMPC_V2_ENABLE) {
 		for (int i = 0; i < MAX_BW_VALUE_NUM; i++) {
-				hw_bw = read_register(SUBSYS_V2_HW_BW_OFFSET(sid, i));
+			hw_bw = read_register(SUBSYS_V2_HW_BW_OFFSET(sid, i));
 			if (i == 0) {
 				ret = snprintf(buf + len, MAX_BUF_LEN - len,
 					"i:%d, offset:%#x, value:%5u ",
@@ -2145,6 +2146,60 @@ static void mmpc_total_bw_full_dump_line(void)
 	}
 	pr_notice("%s\n", buf);
 }
+
+static void vmmrc_full_dump_with_table(struct seq_file *file, const char *table_name, u32 table_offset)
+{
+	uint offset, value;
+
+	mmqos_debug_dump_line(file, "%s\n", table_name);
+	for (int i = 0; i < MAX_REG_VALUE_NUM; i++) {
+		offset = table_offset + i * 4;
+		value = read_register(offset);
+		mmqos_debug_dump_line(file, "i:%d, %#x: %#5x, %5u %5u %5u\n", i, offset, value,
+			BW_UNIT_TO_MBS(value & 0x3FF), BW_UNIT_TO_MBS((value >> 10) & 0x3FF),
+			BW_UNIT_TO_MBS((value >> 20) & 0x3FF));
+	}
+}
+
+static void vmmrc_full_dump(struct seq_file *file)
+{
+	mmqos_debug_dump_line(file, "\nVMMRC MMInfra Channel BW Dump:\n");
+	vmmrc_full_dump_with_table(file, "apmcu_on", APMCU_ON_BW_OFFSET(0));
+	vmmrc_full_dump_with_table(file, "apmcu_off", APMCU_OFF_BW_OFFSET(0));
+}
+
+static void vmmrc_full_dump_line_with_table(char *table_name, u32 table_offset)
+{
+	s32 len = 0, ret = 0;
+	char buf[MAX_BUF_LEN] = {0};
+	u32 value, offset;
+
+	ret = snprintf(buf + len, MAX_BUF_LEN - len, "[mmqos] %s: ", table_name);
+	if (ret < 0 || ret >= MAX_BUF_LEN -len)
+		MMQOS_ERR("Failed to print vmmrc dump");
+	len += ret;
+	for (int i = 0; i < MAX_REG_VALUE_NUM; i++) {
+		offset = table_offset + i * 4;
+		value = read_register(offset);
+		ret = snprintf(buf + len, MAX_BUF_LEN - len, "%5u %5u %5u ",
+			BW_UNIT_TO_MBS(value & 0x3FF), BW_UNIT_TO_MBS((value >> 10) & 0x3FF),
+			BW_UNIT_TO_MBS((value >> 20) & 0x3FF));
+		if (ret < 0 || ret >= MAX_BUF_LEN - len) {
+			MMQOS_ERR("err ret:%d, buf:%s\n", ret, buf);
+			len = 0;
+			memset(buf, '\0', sizeof(char) * ARRAY_SIZE(buf));
+		}
+		len += ret;
+	}
+	pr_notice("%s\n", buf);
+}
+
+static void vmmrc_full_dump_line(void)
+{
+	vmmrc_full_dump_line_with_table("apmcu_on ", APMCU_ON_BW_OFFSET(0));
+	vmmrc_full_dump_line_with_table("apmcu_off", APMCU_OFF_BW_OFFSET(0));
+}
+
 static void mmpc_dvfsrc_full_dump(struct seq_file *file)
 {
 	for (int sid = 0; sid < MAX_SUBSYS_NUM; sid++)
@@ -2191,6 +2246,8 @@ static int mmqos_bw_dump(struct seq_file *file, void *data)
 	for (larb_id = 0; larb_id < MAX_RECORD_LARB_NUM; larb_id++)
 		larb_port_ostdl_full_dump(file, larb_id);
 
+	if (mmqos_state & VMMRC_ENABLE)
+		vmmrc_full_dump(file);
 	if ((mmqos_state & MMPC_ENABLE) || (mmqos_state & MMPC_V2_ENABLE))
 		mmpc_dvfsrc_full_dump(file);
 
@@ -2220,6 +2277,9 @@ void mmqos_hrt_dump(void)
 		MMQOS_DBG("mmqos not enable");
 		return;
 	}
+
+	if (mmqos_state & VMMRC_ENABLE)
+		vmmrc_full_dump_line();
 
 	//mmpc dvfsrc dump
 	if ((mmqos_state & MMPC_ENABLE) || (mmqos_state & MMPC_V2_ENABLE))
