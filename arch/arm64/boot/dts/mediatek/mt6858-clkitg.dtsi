@@ -35,8 +35,6 @@
 			<&cksys_reg_clk CLK_TOP_SENINF2_SEL>,
 			<&cksys_reg_clk CLK_TOP_AUD_ENGEN1_SEL>,
 			<&cksys_reg_clk CLK_TOP_AUD_ENGEN2_SEL>,
-			<&cksys_reg_clk CLK_TOP_AES_UFSFDE_SEL>,
-			<&cksys_reg_clk CLK_TOP_UFS_SEL>,
 			<&cksys_reg_clk CLK_TOP_AUD_1_SEL>,
 			<&cksys_reg_clk CLK_TOP_AUD_2_SEL>,
 			<&cksys_reg_clk CLK_TOP_VENC_SEL>,
@@ -369,14 +367,8 @@
 		compatible = "mediatek,clk-bring-up";
 		reg = <0x16>;
 		clocks =
-			<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_TX_SYM_UFS>,
-			<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_SYS_UFS>,
-			<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_SAP_CFG_UFS>,
-			<&ufscfg_ao_clk CLK_UFSAO_UFS_AO_FREE_26M_UFS>,
-			<&ufscfg_pdn_clk CLK_UFSPDN_UFSHCI_UFS_UFS>,
-			<&ufscfg_pdn_clk CLK_UFSPDN_UFSHCI_AES_UFS>,
-			<&ufscfg_pdn_clk CLK_UFSPDN_UFSHCI_UFS_AHB_UFS>,
-			<&ufscfg_pdn_clk CLK_UFSPDN_UFS_26M_UFS>;
+			  /* UFS_AO_FREE_26M must AO */
+			<&ufscfg_ao_clk CLK_UFSAO_UFS_AO_FREE_26M_UFS>;
 	};
 
 	bring-up-disp-pwm-0@17 {
