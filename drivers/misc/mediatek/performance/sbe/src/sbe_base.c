@@ -354,6 +354,10 @@ struct sbe_render_info *sbe_get_render_info(int pid,
 	tmp->rescue_start_time = 0;
 	tmp->latest_use_ts = sbe_get_time();
 	tmp->ux_frame_info_tree = RB_ROOT;
+	tmp->dpt_policy_enable = 0;
+	tmp->dpt_policy_force_disable = 0;
+	tmp->affinity_task_mask_cnt = 0;
+	tmp->calculate_dy_enhance_idx = 0;
 	memset(tmp->aff_dep_arr, 0, sizeof(int) * MAX_TASK_NUM);
 
 	INIT_LIST_HEAD(&(tmp->scroll_list));
@@ -410,7 +414,7 @@ int sbe_check_render_info_status(void)
 	rbn = rb_first(&sbe_render_info_tree);
 	while (rbn) {
 		iter = rb_entry(rbn, struct sbe_render_info, entry);
-		if (((cur_ts - iter->latest_use_ts > NSEC_PER_SEC)
+		if (((cur_ts - iter->latest_use_ts > 60*10*NSEC_PER_SEC)
 			&& (!iter->scroll_status)) ||
 			!sbe_get_tgid(iter->pid)) {
 			sbe_delete_render_info(iter);

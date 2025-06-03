@@ -81,6 +81,9 @@ static int sbe_uclamp_margin;
 static int sbe_runnable_util_est_disable;
 static int sbe_extra_sub_en_deque_enable;
 static int sbe_extra_sub_deque_margin_time;
+static int sbe_dptv2_enable;
+static int sbe_dptv2_status;
+static int sbe_force_bypass_dptv2;
 static int sbe_affinity_task_min_cap;
 static int sbe_affinity_task_low_threshold_cap;
 /*For AI jank detection*/
@@ -88,6 +91,7 @@ static int ai_rescuing_frame_id;
 static int registered;
 static int curr_pid;
 static unsigned long long curr_idf;
+
 
 atomic_t g_web_or_flutter_tgid = ATOMIC_INIT(0);
 struct task_info g_dep_arr_last[FPSGO_MAX_TASK_NUM];
@@ -144,9 +148,10 @@ module_param(sbe_uclamp_margin, int, 0644);
 module_param(sbe_runnable_util_est_disable, int, 0644);
 module_param(sbe_extra_sub_en_deque_enable, int, 0644);
 module_param(sbe_extra_sub_deque_margin_time, int, 0644);
+module_param(sbe_dptv2_enable, int, 0644);
+module_param(sbe_force_bypass_dptv2, int, 0644);
 module_param(sbe_affinity_task_min_cap, int, 0644);
 module_param(sbe_affinity_task_low_threshold_cap, int, 0644);
-
 
 static void update_hwui_frame_info(struct sbe_render_info *info,
 		struct hwui_frame_info *frame, unsigned long long id,
@@ -163,6 +168,11 @@ static int nsec_to_100usec(unsigned long long nsec)
 	husec = div64_u64(nsec, (unsigned long long)NSEC_PER_HUSEC);
 
 	return (int)husec;
+}
+
+int get_sbe_force_bypass_dptv2(void)
+{
+	return sbe_force_bypass_dptv2;
 }
 
 int get_sbe_critical_basic_cap(void)
@@ -197,6 +207,31 @@ int get_ux_general_policy(void)
 int sbe_get_perf(void)
 {
 	return global_ux_blc;
+}
+
+void sbe_set_dptv2_policy(struct sbe_render_info *thr, int start)
+{
+	if (!sbe_dptv2_enable) {
+		if (sbe_dptv2_status) {
+			set_flt_coef_margin_ctrl(0);
+			sbe_dptv2_status = 0;
+			sbe_trace("%s: force set disable", __func__);
+		}
+		sbe_systrace_c(thr->pid, thr->buffer_id, 0, "[ux]dpt_policy");
+		return;
+	}
+
+	if (start) {
+		set_flt_coef_margin_ctrl(1);
+		sbe_dptv2_status = 1;
+		sbe_systrace_c(thr->pid, thr->buffer_id, 1, "[ux]dpt_policy");
+		sbe_trace("%s: set enable", __func__);
+	} else {
+		set_flt_coef_margin_ctrl(0);
+		sbe_dptv2_status = 0;
+		sbe_systrace_c(thr->pid, thr->buffer_id, 0, "[ux]dpt_policy");
+		sbe_trace("%s: set disable", __func__);
+	}
 }
 
 int sbe_set_sbb(int pid, int set, int active_ratio)
@@ -1246,6 +1281,19 @@ int sbe_calculate_dy_enhance(struct sbe_render_info *thr)
 			thr->affinity_task_mask = 0;
 
 		sbe_systrace_c(thr->pid, thr->buffer_id, thr->affinity_task_mask, "[ux]affinity_task");
+	}
+
+	if (thr->calculate_dy_enhance_idx < 6) {
+		thr->calculate_dy_enhance_idx += 1;
+		if (thr->affinity_task_mask > 0)
+			thr->affinity_task_mask_cnt += 1;
+	}
+
+	if (thr->calculate_dy_enhance_idx == 6 && thr->affinity_task_mask_cnt > 2) {
+		thr->dpt_policy_force_disable = 1;
+		sbe_set_dptv2_policy(thr, 0);
+		sbe_systrace_c(thr->pid, thr->buffer_id, thr->affinity_task_mask_cnt, "[ux]dpt_affinity_cnt");
+		sbe_systrace_c(thr->pid, thr->buffer_id, 1, "[ux]dpt_affinity");
 	}
 
 	if (thr->affinity_task_mask)
@@ -2309,9 +2357,12 @@ int __init sbe_cpu_ctrl_init(void)
 	gas_threshold_for_high_TLP = 5;
 	sbe_runnable_util_est_disable = 1;
 	sbe_extra_sub_en_deque_enable = 1;
+	sbe_dptv2_enable = 1;
 	sbe_affinity_task_min_cap = SBE_DEFAULT_AFFINITY_TASK_MIN_CAP;
 	sbe_affinity_task_low_threshold_cap = SBE_DEFAULT_AFFINITY_TASK_LOW_THRESHOLD_CAP;
 	sbe_extra_sub_deque_margin_time = SBE_DEFAULT_DEUQUE_MARGIN_TIME_NS;
+	sbe_force_bypass_dptv2 = 0;
+	sbe_dptv2_status = 0;
 
 	ai_rescuing_frame_id = -1;
 	registered = 0;

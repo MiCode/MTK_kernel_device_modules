@@ -1010,6 +1010,7 @@ static int sbe_do_hwui_scrolling_status_policy(int tgid, char *name, unsigned lo
 		 */
 		thr->latest_use_ts = ts;
 		thr->scroll_status = start;
+		thr->dpt_policy_enable = 1;
 		thr->dep_self_ctrl = 1;
 		thr->critical_basic_cap = 0;
 		critical_basic_cap = get_sbe_critical_basic_cap();
@@ -1024,6 +1025,35 @@ static int sbe_do_hwui_scrolling_status_policy(int tgid, char *name, unsigned lo
 			thr->dy_compute_rescue = 0;
 		else
 			thr->dy_compute_rescue = 1;
+
+		sbe_systrace_c(thr->pid, thr->buffer_id, 0, "[ux]page_type");
+		sbe_systrace_c(thr->pid, thr->buffer_id, 0, "[ux]byPassWebFut");
+		sbe_systrace_c(thr->pid, thr->buffer_id, 0, "[ux]byPass_affinity");
+		if (test_bit(SBE_PAGE_FLUTTER, &mask)
+			|| test_bit(SBE_PAGE_WEBVIEW, &mask)
+			|| test_bit(SBE_PAGE_MULTI_WINDOW, &mask)) {
+			if (get_sbe_force_bypass_dptv2()) {
+				sbe_systrace_c(thr->pid, thr->buffer_id, 1, "[ux]byPassWebFut");
+			} else {
+				thr->dpt_policy_enable = 0;
+				sbe_systrace_c(thr->pid, thr->buffer_id,
+					((int)test_bit(SBE_PAGE_FLUTTER, &mask) << 1) |
+					((int)test_bit(SBE_PAGE_WEBVIEW, &mask) << 2) |
+					((int)test_bit(SBE_PAGE_MULTI_WINDOW, &mask) << 3),
+					"[ux]page_type");
+			}
+		}
+
+		if (thr->dpt_policy_force_disable) {
+			sbe_systrace_c(thr->pid, thr->buffer_id, 1, "[ux]affinity_force_off_dpt");
+			sbe_systrace_c(thr->pid, thr->buffer_id, thr->affinity_task_mask_cnt, "[ux]dpt_affinity_cnt");
+			sbe_set_dptv2_policy(thr, 0);
+		} else {
+			if (!thr->dpt_policy_enable)
+				sbe_set_dptv2_policy(thr, 0);
+			else
+				sbe_set_dptv2_policy(thr, start);
+		}
 
 		if (start) {
 			type = test_bit(SBE_MOVEING, &mask) ? SBE_MOVEING :

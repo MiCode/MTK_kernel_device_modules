@@ -57,6 +57,8 @@ struct sbe_render_info {
 	int scroll_status;
 	int ux_blc_next;
 	int ux_blc_cur;
+	int dpt_policy_enable;
+	int dpt_policy_force_disable;
 	int target_fps;
 	int dep_self_ctrl;
 	int dep_num;
@@ -69,6 +71,8 @@ struct sbe_render_info {
 	int dy_compute_rescue;
 	unsigned long long frame_ctime_count;
 	int affinity_task_mask;
+	int affinity_task_mask_cnt;
+	int calculate_dy_enhance_idx;
 	int ux_affinity_task_basic_cap;
 	int critical_basic_cap;
 	unsigned int sbe_rescue;
