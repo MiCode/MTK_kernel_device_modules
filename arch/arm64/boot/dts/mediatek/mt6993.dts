@@ -19055,12 +19055,12 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			lvsys-thd-volt-h-size = <2>;
 			lvsys-thd-volt-l = <3100 2700
 					3100 2700
-					3100 2700
-					3100 2700>;
+					3900 3300
+					3900 3300>;
 			lvsys-thd-volt-h = <3200 3000
 					3200 3000
-					3200 3000
-					3200 3000>;
+					4000 3800
+					4000 3800>;
 			lvsys-thd-volt-tb1-l = <3400 3100
 					3500 3200
 					3800 3600
