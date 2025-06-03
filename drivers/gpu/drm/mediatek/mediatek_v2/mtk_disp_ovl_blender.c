@@ -579,6 +579,8 @@ static void mtk_ovl_blender_layer_off(struct mtk_ddp_comp *comp, unsigned int id
 		DDPINFO("REMOVE EXT BLENDER %d\n", comp->id);
 		cmdq_pkt_write(handle, comp->cmdq_base,
 		   comp->regs_pa + OVL_BLD_ELX_EN(bld, (ext_idx-1)), 0x0, ~0);
+		if (comp->blender_hold)
+			comp->blender_hold = false;
 	} else {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 		   comp->regs_pa + regs[OVL_BLD_L0_EN], 0x0, ~0);
