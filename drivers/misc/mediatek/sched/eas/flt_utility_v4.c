@@ -31,7 +31,7 @@
 #include "eas_trace.h"
 
 #define CPU_NUM		8
-#define RESERVED_LEN	508
+#define RESERVED_LEN	476
 #define WP_LEN		16
 #define WC_LEN		16
 #define WC_MASK	0xffff
@@ -47,9 +47,10 @@
 #define GP_MAX_NIDWP	(RQ_O + (PER_ENTRY * CPU_NUM))
 #define GP_MIN_NIDWP	(GP_MAX_NIDWP + (PER_ENTRY * GROUP_ID_RECORD_MAX))
 #define PER_CPUGP_NIDWP	(GP_MIN_NIDWP + (PER_ENTRY * GROUP_ID_RECORD_MAX))
+#define NS_CPU		(PER_CPUGP_NIDWP + (PER_ENTRY * GROUP_ID_RECORD_MAX * CPU_NUM))
 
-#define AP_CPU_SETTING_ADDR (PER_CPUGP_NIDWP \
-					+ (PER_ENTRY * GROUP_ID_RECORD_MAX * CPU_NUM)  \
+#define AP_CPU_SETTING_ADDR (NS_CPU \
+					+ (PER_ENTRY * CPU_NUM)  \
 					+ RESERVED_LEN)
 #define AP_GP_SETTING_STA_ADDR (AP_CPU_SETTING_ADDR + (PER_ENTRY * CPU_NUM))
 #define AP_FLT_CTL (AP_GP_SETTING_STA_ADDR + (PER_ENTRY * GROUP_ID_RECORD_MAX))
@@ -244,6 +245,33 @@ static int FLT_FN(get_cpu_by_wp)(int cpu)
 	return cpu_dmand_util;
 }
 
+static int FLT_FN(get_cpu_by_type)(int cpu, enum _flt_cpu_type type)
+{
+	int res = 0;
+	unsigned int offset, sta;
+
+	if (!cpumask_test_cpu(cpu, cpu_possible_mask) ||
+	    FLT_FN(is_valid)() != 1 ||
+	    type >= FLT_CPU_NUM ||
+	    type < FLT_CPU_S)
+		return -1;
+
+	switch (type) {
+	case FLT_CPU_S:
+		sta = CPU_S;
+		break;
+	case FLT_CPU_NS:
+		sta = NS_CPU;
+		break;
+	default:
+		return -1;
+	}
+
+	offset = cpu * PER_ENTRY;
+	res = flt_get_data(sta + offset);
+	return res;
+}
+
 static int FLT_FN(sched_get_cpu_group_eas)(int cpu_idx, int group_id)
 {
 	int res = 0, flt_util = 0;
@@ -342,6 +370,7 @@ const struct flt_class FLT_FN(api_hooks) = {
 	.flt_sched_get_cpu_policy_eas_api = FLT_FN(sched_get_cpu_policy_eas),
 	.flt_get_max_group_api = FLT_FN(get_max_group),
 	.flt_get_cpu_by_wp_api = FLT_FN(get_cpu_by_wp),
+	.flt_get_cpu_by_type_api = FLT_FN(get_cpu_by_type),
 	.flt_sched_get_cpu_group_eas_api = FLT_FN(sched_get_cpu_group_eas),
 	.flt_get_grp_h_eas_api = FLT_FN(get_grp_hint),
 	.flt_get_cpu_r_api = FLT_FN(get_cpu_r),

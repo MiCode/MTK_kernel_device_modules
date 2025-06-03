@@ -224,6 +224,17 @@ int flt_get_cpu_by_wp(int cpu)
 }
 EXPORT_SYMBOL(flt_get_cpu_by_wp);
 
+int flt_get_cpu_by_type(int cpu, enum _flt_cpu_type type)
+{
+	if (unlikely(flt_get_mode() == FLT_MODE_0))
+		return -1;
+	else if (flt_class_mode && flt_class_mode->flt_get_cpu_by_type_api)
+		return flt_class_mode->flt_get_cpu_by_type_api(cpu, type);
+	else
+		return -1;
+}
+EXPORT_SYMBOL(flt_get_cpu_by_type);
+
 int flt_get_task_by_wp(struct task_struct *p, int wc, int task_wp)
 {
 	if (unlikely(flt_get_mode() == FLT_MODE_0))
@@ -249,10 +260,22 @@ unsigned long flt_get_cpu(int cpu)
 	}
 out:
 	if (trace_sched_flt_get_cpu_enabled())
-		trace_sched_flt_get_cpu(cpu, cpu_demand);
+		trace_sched_flt_get_cpu(cpu, cpu_demand, FLT_CPU_TAR);
 	return cpu_demand;
 }
 EXPORT_SYMBOL(flt_get_cpu);
+
+int flt_query_cpu_util(int cpu, enum _flt_cpu_type type)
+{
+	int cpu_demand = 0;
+
+	cpu_demand = flt_get_cpu_by_type(cpu, type);
+
+	if (trace_sched_flt_get_cpu_enabled())
+		trace_sched_flt_get_cpu(cpu, cpu_demand, type);
+	return cpu_demand;
+}
+EXPORT_SYMBOL(flt_query_cpu_util);
 
 unsigned long flt_sched_get_cpu_group(int cpu, int grp_id)
 {

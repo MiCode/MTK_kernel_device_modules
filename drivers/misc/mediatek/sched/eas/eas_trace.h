@@ -1345,22 +1345,23 @@ TRACE_EVENT(sched_flt_set_cpu,
 
 TRACE_EVENT(sched_flt_get_cpu,
 
-	TP_PROTO(int cpu, int util),
+	TP_PROTO(int cpu, int util, int type),
 
-	TP_ARGS(cpu, util),
+	TP_ARGS(cpu, util, type),
 
 	TP_STRUCT__entry(
 		__field(int,		cpu)
 		__field(int,		util)
+		__field(int,		type)
 	),
 
 	TP_fast_assign(
 		__entry->cpu		= cpu;
 		__entry->util		= util;
+		__entry->type		= type;
 	),
 
-	TP_printk("cpu=%d util=%d",
-		__entry->cpu, __entry->util)
+	TP_printk("cpu=%d util=%d type=%d", __entry->cpu, __entry->util, __entry->type)
 );
 
 TRACE_EVENT(sched_flt_get_cpu_group,

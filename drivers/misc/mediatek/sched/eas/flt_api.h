@@ -26,6 +26,14 @@ enum _flt_weight_mode {
 	FLT_GP_WT_NUM,
 };
 
+/* weight mode */
+enum _flt_cpu_type {
+	FLT_CPU_TAR = 0,
+	FLT_CPU_S = 1,
+	FLT_CPU_NS = 2,
+	FLT_CPU_NUM,
+};
+
 /* API Function pointer*/
 struct flt_class {
 	int (*flt_get_ws_api)(void);
@@ -46,6 +54,7 @@ struct flt_class {
 	int (*flt_sched_get_gear_max_group_eas_api)(int gear_id, int grp_id);
 	int (*flt_sched_get_cpu_group_eas_api)(int cpu, int grp_id);
 	int (*flt_get_cpu_by_wp_api)(int cpu);
+	int (*flt_get_cpu_by_type_api)(int cpu, enum _flt_cpu_type type);
 	int (*flt_get_task_by_wp_api)(struct task_struct *p, int wc, int task_wp);
 	int (*flt_get_grp_h_eas_api)(int grp_id);
 	int (*flt_get_cpu_r_api)(int cpu);
@@ -94,6 +103,7 @@ int flt_get_grp_thr_weight(void);
 
 /* Note: cpu related API */
 int flt_get_cpu_by_wp(int cpu);
+int flt_query_cpu_util(int cpu, enum _flt_cpu_type type);
 unsigned long flt_get_cpu(int cpu);
 int flt_get_cpu_r(int cpu);
 
