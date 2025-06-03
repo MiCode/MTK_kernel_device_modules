@@ -480,30 +480,34 @@ int mml_drm_query_multi_layer(struct mml_drm_ctx *dctx,
 				if (couple_used)
 					info_cache[mml_layer_cnt].mode_caps &=
 						~(BIT(MML_MODE_DIRECT_LINK) | BIT(MML_MODE_MML_DECOUPLE));
+
+				if ((info_cache[mml_layer_cnt].mode_caps & BIT(MML_MODE_MML_DECOUPLE)) &&
+					(info_cache[mml_layer_cnt].mode_caps & BIT(MML_MODE_MML_DECOUPLE2))) {
+					if (remain[mml_sys_frame] < remain[mml_sys_tile])
+						infos[i].mode = MML_MODE_MML_DECOUPLE2;
+					else
+						infos[i].mode = MML_MODE_MML_DECOUPLE;
+				} else if (info_cache[mml_layer_cnt].mode_caps & BIT(MML_MODE_MML_DECOUPLE2))
+					infos[i].mode = MML_MODE_MML_DECOUPLE2;
+				else if (info_cache[mml_layer_cnt].mode_caps & BIT(MML_MODE_MML_DECOUPLE))
+					infos[i].mode = MML_MODE_MML_DECOUPLE;
+				else {
+					infos[i].mode = MML_MODE_NOT_SUPPORT;
+					mml_msg("[warn][R3] layer %u not support lay_cnt %d mode %u mode_caps %u",
+						i, mml_layer_cnt, infos[i].mode, info_cache[mml_layer_cnt].mode_caps);
+					continue;
+				}
 			}
 
-			if ((info_cache[mml_layer_cnt].mode_caps & BIT(MML_MODE_MML_DECOUPLE)) &&
-				(info_cache[mml_layer_cnt].mode_caps & BIT(MML_MODE_MML_DECOUPLE2))) {
-				if (remain[mml_sys_frame] < remain[mml_sys_tile])
-					infos[i].mode = MML_MODE_MML_DECOUPLE2;
-				else if (remain[mml_sys_tile]< remain[mml_sys_frame])
-					infos[i].mode = MML_MODE_MML_DECOUPLE;
-			} else if (info_cache[mml_layer_cnt].mode_caps & BIT(MML_MODE_MML_DECOUPLE2))
-				infos[i].mode = MML_MODE_MML_DECOUPLE2;
-			else if (info_cache[mml_layer_cnt].mode_caps & BIT(MML_MODE_MML_DECOUPLE))
-				infos[i].mode = MML_MODE_MML_DECOUPLE;
-			else {
-				infos[i].mode = MML_MODE_NOT_SUPPORT;
-				mml_msg("[warn][R3] layer %u not support lay_cnt %d mode %u mode_caps %u",
-					i, mml_layer_cnt, infos[i].mode, info_cache[mml_layer_cnt].mode_caps);
-				continue;
-			}
+			if (infos[i].mode == MML_MODE_MML_DECOUPLE2)
+				info_cache[mml_layer_cnt].remain = remain[mml_sys_tile];
+			else
+				info_cache[mml_layer_cnt].remain = remain[mml_sys_frame];
 
 			/* user preference? */
 			mml_msg("[R3] after select layer %u choosing mode %u mode_caps %u",
 				i, infos[i].mode, info_cache[mml_layer_cnt].mode_caps);
 
-			info_cache[mml_layer_cnt].remain = remain[mml_sys_frame];
 
 			mode = tp->op->query_mode3(mml, &infos[i], &reason,
 				dctx->panel_width, dctx->panel_height, &info_cache[mml_layer_cnt]);
@@ -519,7 +523,9 @@ int mml_drm_query_multi_layer(struct mml_drm_ctx *dctx,
 					mml_msg("[drm][query][R3]layer %u mode dc  remain %u",
 						i, remain[mml_sys_frame]);
 				}
-			} else if (mode == MML_MODE_MML_DECOUPLE2) {
+			}
+
+			if (mode == MML_MODE_MML_DECOUPLE2) {
 				if (remain[mml_sys_tile] < info_cache[mml_layer_cnt].duration) {
 					mode =  info_cache[mml_layer_cnt].mode_caps & BIT(MML_MODE_MML_DECOUPLE) ?
 						MML_MODE_MML_DECOUPLE : MML_MODE_NOT_SUPPORT;
