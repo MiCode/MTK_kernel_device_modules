@@ -362,7 +362,7 @@ void fpsgo_fi_receive_q2q_cb(unsigned long cmd, struct render_frame_info *iter)
 	struct game_render_info *iter_thr = NULL;
 	struct fi_policy_info *fi_policy = NULL;
 	unsigned long long ts = 0;
-	int set_target_fps = 0;
+	int set_target_fps = 0, gpu_set_target_fps = 0;
 	int is_control_frame = 0;
 
 	if (!iter)
@@ -416,13 +416,17 @@ void fpsgo_fi_receive_q2q_cb(unsigned long cmd, struct render_frame_info *iter)
 
 			set_target_fps =
 				iter_thr->user_target_fps ? iter_thr->user_target_fps : iter_thr->fpsgo_target_fps;
+			gpu_set_target_fps = set_target_fps;
 			do_div(set_target_fps, iter_thr->interpolation_ratio);
 
 			fpsgo_other2fstb_set_target(1, iter_thr->frame_info.pid, 1, 0, set_target_fps, 0,
 				iter_thr->frame_info.buffer_id);
 
 	#if IS_ENABLED(CONFIG_MTK_GPU_SUPPORT)
-			ged_kpi_set_target_FPS_margin(iter_thr->old_buffer_id, set_target_fps,
+			if (!test_bit(FI_DETECTION, &iter_thr->fi_enabled))  // mfrc only
+				do_div(gpu_set_target_fps, iter_thr->interpolation_ratio);
+
+			ged_kpi_set_target_FPS_margin(iter_thr->old_buffer_id, gpu_set_target_fps,
 				0, iter_thr->target_fps_diff, iter_thr->cpu_time);
 	#endif  // IS_ENABLED(CONFIG_MTK_GPU_SUPPORT)
 
@@ -455,7 +459,6 @@ void fpsgo_fi_receive_fi_detect_cb(unsigned long cmd, struct render_frame_info *
 	int pid = 0;
 	struct game_render_info *iter_thr = NULL;
 	int target_fps = 0, is_interpolation_on = 0;
-	unsigned long fi_enabled = 0;
 
 	if (!iter)
 		goto out;
@@ -480,24 +483,25 @@ void fpsgo_fi_receive_fi_detect_cb(unsigned long cmd, struct render_frame_info *
 	if (!test_bit(FI_DETECTION, &iter_thr->fi_enabled))
 		goto out;
 
-	fi_enabled = iter_thr->fi_enabled;
 	if (fstb_get_is_interpolation_is_on_fp)
 		is_interpolation_on = fstb_get_is_interpolation_is_on_fp(iter_thr->frame_info.pid,
 			iter_thr->frame_info.buffer_id, iter_thr->frame_info.tgid, 0, &target_fps);
-
-	if (test_bit(FI_DETECTION, &iter_thr->fi_enabled)) {
-		if (is_interpolation_on == 1) {
-			iter_thr->interpolation_ratio = 2;
-			iter_thr->user_target_fps = target_fps;
-		} else {
-			iter_thr->interpolation_ratio = 1;
-			iter_thr->user_target_fps = 0;
-		}
+	if (is_interpolation_on == 1) {
+		iter_thr->interpolation_ratio = 2;
+		iter_thr->user_target_fps = target_fps;
+	} else {
+		iter_thr->interpolation_ratio = 1;
+		iter_thr->user_target_fps = 0;
 	}
 
-	game_main_trace("[%s] pid=%d, buf=%llx, tgid=%d, target_fps=%d, fi_enabled=%lu, interpol=%d",
+	if (iter_thr->target_fps_diff != 0) {
+		iter_thr->interpolation_ratio = 1;
+		iter_thr->user_target_fps = 0;
+	}
+
+	game_main_trace("[%s] pid=%d, buf=%llx, tgid=%d, target_fps=%d, fi_enabled=%lu, interpol=%d, frs=%d",
 		__func__, iter_thr->frame_info.pid, iter_thr->frame_info.buffer_id, iter_thr->frame_info.tgid,
-		target_fps, fi_enabled, is_interpolation_on);
+		target_fps, iter_thr->fi_enabled, is_interpolation_on, iter_thr->target_fps_diff);
 out:
 	game_render_tree_unlock();
 	return;
@@ -521,18 +525,29 @@ void fpsgo_fi_receive_all_fi_cb(unsigned long cmd, struct render_frame_info *ite
 	if (!iter_thr)
 		goto out;
 
-	if (fstb_get_is_interpolation_is_on_fp)
-		fstb_get_is_interpolation_is_on_fp(iter->pid, iter->buffer_id,
-			iter->tgid, 0, &target_fps);
-
 	if (!test_bit(FI_ENABLE, &iter_thr->fi_enabled)) {
 		set_bit(FI_DETECTION, &iter_thr->fi_enabled);
 		set_bit(FI_ENABLE, &iter_thr->fi_enabled);
+		iter_thr->frame_info = *iter;
+		iter_thr->frame_info.buffer_id = FRAME_INTERPOLATE_BUFFER_ID;
+		if (fstb_get_is_interpolation_is_on_fp)
+			fstb_get_is_interpolation_is_on_fp(iter_thr->frame_info.pid, iter_thr->frame_info.buffer_id,
+				iter_thr->frame_info.tgid, 0, &target_fps);
+		iter_thr->interpolation_ratio = 2;
 		iter_thr->user_target_fps = target_fps;
 	}
 
-	game_main_trace("[%s] pid=%d, buf=%llu, tgid=%d, target_fps=%d, fi_enabled=%lu",
-		__func__, iter->pid, iter->buffer_id, iter->tgid, target_fps, iter_thr->fi_enabled);
+	if (test_bit(FI_DETECTION, &iter_thr->fi_enabled)) {
+		if (iter_thr->target_fps_diff != 0) {
+			iter_thr->interpolation_ratio = 1;
+			iter_thr->user_target_fps = 0;
+		}
+	}
+
+	game_main_trace("[%s] pid=%d, buf=%llu, tgid=%d, target_fps=%d, fi_enabled=%lu, ratio=%d, frs=%d",
+		__func__, iter->pid, iter->buffer_id, iter->tgid, target_fps,
+		iter_thr->fi_enabled, iter_thr->interpolation_ratio,
+		iter_thr->target_fps_diff);
 out:
 	game_render_tree_unlock();
 }
@@ -553,16 +568,22 @@ static int game_switch_fi_detect_onoff(int fi_detect_active)
 		break;
 	case 1:
 		fstb_fi_detect_enable = 1;
+		game_clear_render_info(1);
+		game_register_queue_end_cb(0, &is_registered_all_fi_cb,
+			&fpsgo_fi_receive_all_fi_cb);
 		game_register_queue_end_cb(1, &is_registered_detect_cb,
 			&fpsgo_fi_receive_fi_detect_cb);
 		game_register_queue_end_cb(1, &is_registered_cb, &fpsgo_fi_receive_q2q_cb);
 		break;
 	case 3:
 		// TODO(Ann): Activate 3.
-		// fstb_fi_detect_enable = 1;
-		// game_register_queue_end_cb(1, &is_registered_all_fi_cb,
-			// &fpsgo_fi_receive_all_fi_cb);
-		// game_register_queue_end_cb(1, &is_registered_cb, &fpsgo_fi_receive_q2q_cb);
+		fstb_fi_detect_enable = 1;
+		game_clear_render_info(1);
+		game_register_queue_end_cb(0, &is_registered_detect_cb,
+			&fpsgo_fi_receive_fi_detect_cb);
+		game_register_queue_end_cb(1, &is_registered_all_fi_cb,
+			&fpsgo_fi_receive_all_fi_cb);
+		game_register_queue_end_cb(1, &is_registered_cb, &fpsgo_fi_receive_q2q_cb);
 		break;
 	}
 
