@@ -13514,6 +13514,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			vdec-mmdvfs-in-vcp = <1>;
 			vdec-mmdvfs-in-adaptive = <1>;
 			vdec-cpu-hint-mode = <2>; /* cpu grp awr mode */
+			vdec-thermal-hint-mode; /* vdec thermal throttle enable */
 
 			vp-mode-buf-size-multi = <1>;
 
@@ -13587,6 +13588,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			venc-mmdvfs-in-vcp = <1>;
 			venc-mmdvfs-in-adaptive = <1>;
 			venc-cpu-hint-mode = <2>; /* cpu grp awr mode */
+			venc-thermal-hint-mode; /* venc thermal throttle enable */
 
 			/* slbc params*/
 			venc-slb-cpu-used-perf = <27648000>;
