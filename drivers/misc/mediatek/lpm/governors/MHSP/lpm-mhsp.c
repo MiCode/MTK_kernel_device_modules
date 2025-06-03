@@ -22,10 +22,15 @@
 #include <trace/events/ipi.h>
 #include <trace/hooks/cpuidle.h>
 #define CREATE_TRACE_POINTS
+#include "lpm_gov_dbg_fs.h"
 #include "lpm_gov_trace_event.h"
 #include "lpm-mhsp.h"
+#include <lpm_module.h>
 
 static bool traces_registered;
+#if IS_ENABLED(CONFIG_MTK_CPU_RETENTION_SUPPORT)
+static bool reten_enable;
+#endif
 static struct gov_criteria gov_crit = {
 	.stddev = 500,
 	.remedy_times2_ratio = 35,
@@ -34,6 +39,123 @@ static struct gov_criteria gov_crit = {
 };
 
 static DEFINE_PER_CPU(struct gov_info, gov_infos);
+
+#if IS_ENABLED(CONFIG_MTK_CPU_RETENTION_SUPPORT)
+static void update_reten_info(struct cpuidle_device *dev)
+{
+	struct gov_info *gov = this_cpu_ptr(&gov_infos);
+
+	if (gov->reten.nsamp < RETENTION_VALID_MAX)
+		gov->reten.nsamp++;
+	else
+		gov->reten.count[gov->reten.state_hist[gov->reten.cur]]--;
+
+	if (dev->last_residency_ns < gov->shallow.state_ns) {
+		gov->reten.cont_wfi_count++;
+		gov->reten.state_hist[gov->reten.cur] = 0;
+	} else {
+		gov->reten.cont_wfi_count = 0;
+		gov->reten.state_hist[gov->reten.cur] = 1;
+	}
+
+	gov->reten.count[gov->reten.state_hist[gov->reten.cur]]++;
+	gov->reten.cur = ((gov->reten.cur + 1) & RETENTION_VALID_MASK);
+	if (gov->reten.nsamp >= RETENTION_VALID_MAX) {
+		if ((gov->reten.count[0] >= gov->reten.count[1]) ||
+		    (gov->reten.cont_wfi_count >= 3))
+			gov->reten.disable = true;
+		else
+			gov->reten.disable = false;
+	}
+	trace_reten_info(gov->cpu, gov->reten.count[0], gov->reten.count[1],
+			 gov->reten.disable, dev->last_residency_ns,
+			 gov->reten.state_hist[gov->reten.cur],
+			 gov->reten.cont_wfi_count);
+}
+
+static void reten_switch(void)
+{
+	struct gov_info *gov = this_cpu_ptr(&gov_infos);
+	int i;
+	uint32_t flow = 0;
+	int ret = 0;
+
+	gov->reten.disable = false;
+	for (i = 4; i <= 7; i++) {
+		struct gov_info *gov_o = per_cpu_ptr(&gov_infos, i);
+
+		if (!cpu_online(i))
+			continue;
+
+		flow |= (1 << (24+i));
+		if (!gov_o->reten.last_enter_time) {
+			gov->reten.disable = true;
+			flow |= 1;
+			break;
+		}
+		if (gov_o->reten.disable) {
+			if (gov_o->last_cstate > 0) {
+				ktime_t sleep_time = ktime_sub(
+							gov->reten.last_enter_time,
+							gov_o->reten.last_enter_time);
+				if (sleep_time > RETENTION_REMEDY_THRES3_NS)
+					flow |= (1 << (8+i));
+				else if (sleep_time > RETENTION_REMEDY_THRES2_NS) {
+					if (gov_o->reten.count[0] >=
+					    (gov_o->reten.count[1] + 2)) {
+						gov->reten.disable = true;
+						flow |= (1 << 4);
+						break;
+					}
+				} else if (sleep_time > RETENTION_REMEDY_THRES1_NS) {
+					if (gov_o->reten.count[0] >=
+					    (gov_o->reten.count[1] + 1)) {
+						gov->reten.disable = true;
+						flow |= (1 << 3);
+						break;
+					}
+				} else {
+					gov->reten.disable = true;
+					flow |= (1 << 2);
+					break;
+				}
+			} else {
+				gov->reten.disable = true;
+				flow |= (1 << 1);
+				break;
+			}
+		}
+	}
+	if (gov->reten.pre_reten_result == gov->reten.disable)
+		gov->reten.reverse = 0;
+	else {
+#ifdef MTK_SIP_KERNEL_CPU_CONTROL
+		struct arm_smccc_res res;
+
+		gov->reten.reverse = 1;
+		if (gov->reten.disable)
+			arm_smccc_smc(MTK_SIP_KERNEL_CPU_CONTROL,
+				      MT_RET_SMC_ACT_DEBOUNCE_SET,
+				      RETENTION_CPU_OFF,
+				      0, 0, 0, 0, 0, &res);
+		else
+			arm_smccc_smc(MTK_SIP_KERNEL_CPU_CONTROL,
+				      MT_RET_SMC_ACT_DEBOUNCE_SET,
+				      RETENTION_CPU_DEBOUNCE,
+				      0, 0, 0, 0, 0, &res);
+		ret = res.a0;
+#endif
+	}
+	if (ret)
+		flow |= (1 << 6);
+	else {
+		gov->reten.pre_reten_result = gov->reten.disable;
+		flow |= (1 << 7);
+	}
+	trace_reten_status(gov->last_cstate, gov->cpu, !gov->reten.disable,
+			   0, flow, gov->reten.reverse);
+}
+#endif
 
 static inline bool check_cpu_isactive(int cpu)
 {
@@ -68,6 +190,15 @@ static int lpm_offline_cpu(unsigned int cpu)
 
 	dev_pm_qos_remove_notifier(dev, &gov->nb, DEV_PM_QOS_RESUME_LATENCY);
 
+#if IS_ENABLED(CONFIG_MTK_CPU_RETENTION_SUPPORT)
+	gov->reten.disable = false;
+	gov->reten.nsamp = 0;
+	gov->reten.cur = 0;
+	gov->reten.count[0] = 0;
+	gov->reten.count[1] = 0;
+	gov->reten.cont_wfi_count = 0;
+#endif
+
 	return 0;
 }
 
@@ -81,6 +212,15 @@ static int lpm_online_cpu(unsigned int cpu)
 
 	gov->nb.notifier_call = lpm_cpu_qos_notify;
 	dev_pm_qos_add_notifier(dev, &gov->nb, DEV_PM_QOS_RESUME_LATENCY);
+
+#if IS_ENABLED(CONFIG_MTK_CPU_RETENTION_SUPPORT)
+	gov->reten.disable = false;
+	gov->reten.nsamp = 0;
+	gov->reten.cur = 0;
+	gov->reten.count[0] = 0;
+	gov->reten.count[1] = 0;
+	gov->reten.cont_wfi_count = 0;
+#endif
 
 	return 0;
 }
@@ -501,6 +641,20 @@ static int gov_select(struct cpuidle_driver *drv, struct cpuidle_device *dev,
 #if IS_ENABLED(CONFIG_MTK_CPU_IDLE_IPI_SUPPORT)
 	gov->ipi_hist.stddev = 0;
 #endif
+#if IS_ENABLED(CONFIG_MTK_CPU_RETENTION_SUPPORT)
+	if (!reten_enable && !gov->reten.disable && (dev->cpu < 4)) {
+#ifdef MTK_SIP_KERNEL_CPU_CONTROL
+		struct arm_smccc_res res;
+
+		arm_smccc_smc(MTK_SIP_KERNEL_CPU_CONTROL,
+			      MT_RET_SMC_ACT_DEBOUNCE_SET,
+			      RETENTION_CPU_OFF,
+			      0, 0, 0, 0, 0, &res);
+		if (!res.a0)
+			gov->reten.disable = true;
+#endif
+	}
+#endif
 
 	/* determine the expected residency time, round up */
 	delta = tick_nohz_get_sleep_length(&delta_tick);
@@ -528,6 +682,13 @@ static int gov_select(struct cpuidle_driver *drv, struct cpuidle_device *dev,
 			gov->predict_info |= PREDICT_ERR_LATENCY_REQ;
 		else
 			gov->predict_info |= PREDICT_ERR_NEXT_EVENT_SHORT;
+#if IS_ENABLED(CONFIG_MTK_CPU_RETENTION_SUPPORT)
+		if (reten_enable) {
+			gov->reten.last_enter_time = ktime_get();
+			if (dev->cpu < 4)
+				reten_switch();
+		}
+#endif
 		return 0;
 	}
 
@@ -564,6 +725,18 @@ static int gov_select(struct cpuidle_driver *drv, struct cpuidle_device *dev,
 		gov->predict_info |= PREDICT_ERR_NO_STATE_ENABLE;
 
 	gov->last_cstate = idx;
+#if IS_ENABLED(CONFIG_MTK_CPU_RETENTION_SUPPORT)
+	if (reten_enable) {
+		gov->reten.last_enter_time = ktime_get();
+		if (dev->cpu < 4) {
+			if (gov->last_cstate == 0)
+				reten_switch();
+			else
+				trace_reten_status(gov->last_cstate, gov->cpu,
+						   !gov->reten.disable, 0, 0, 0);
+		}
+	}
+#endif
 	start_prediction_timer(gov, drv, (uint64_t)delta);
 
 	return idx;
@@ -579,6 +752,19 @@ static void gov_reflect(struct cpuidle_device *dev, int index)
 		gov->shallow.timer_need_cancel = false;
 	}
 	dev->last_state_idx = index;
+
+#if IS_ENABLED(CONFIG_MTK_CPU_RETENTION_SUPPORT)
+	if (reten_enable) {
+		if (dev->cpu >= 4)
+			update_reten_info(dev);
+		else {
+			trace_reten_status(gov->last_cstate, gov->cpu,
+					   !gov->reten.disable,
+					   dev->last_residency_ns, 0, 0);
+		}
+		gov->reten.last_enter_time = 0;
+	}
+#endif
 }
 
 static void ipi_raise(void *ignore, const struct cpumask *mask, const char *unused)
@@ -643,6 +829,29 @@ static void cpuidle_exit_post(void *unused, int state, struct cpuidle_device *de
 
 	trace_lpm_gov(-1, smp_processor_id(), 0, 0, 0, 0, 0, 0, 0, 0);
 }
+
+#if IS_ENABLED(CONFIG_MTK_CPU_RETENTION_SUPPORT)
+bool get_reten_status(void)
+{
+	return reten_enable;
+}
+
+void set_reten_status(uint32_t en)
+{
+	reten_enable = !!en;
+	if (!en) {
+		int cpu;
+
+		for (cpu = 0; cpu < 4; cpu++) {
+			preempt_disable();
+			if (cpu != smp_processor_id() && cpu_online(cpu) &&
+			    check_cpu_isactive(cpu))
+				wake_up_if_idle(cpu);
+			preempt_enable();
+		}
+	}
+}
+#endif
 
 static void lpm_cpu_gov_info_parsing(struct gov_info *gov, struct cpuidle_driver *drv)
 {
@@ -740,6 +949,25 @@ static int gov_enable_device(struct cpuidle_driver *drv,
 	gov->cpu = dev->cpu;
 	lpm_cpu_gov_info_parsing(gov, drv);
 	gov->enable = true;
+#if IS_ENABLED(CONFIG_MTK_CPU_RETENTION_SUPPORT)
+	if (dev->cpu < 4) {
+#ifdef MTK_SIP_KERNEL_CPU_CONTROL
+		struct arm_smccc_res res;
+
+		arm_smccc_smc(MTK_SIP_KERNEL_CPU_CONTROL,
+			      MT_RET_SMC_ACT_DEBOUNCE_SUPPORTED, 0,
+			      0, 0, 0, 0, 0, &res);
+		if (res.a0)
+			pr_info("[mtk-gov] cpu retention is not available\n");
+		else {
+			pr_info("[mtk-gov] enable cpu retention\n");
+			reten_enable = true;
+		}
+#else
+		pr_info("[mtk-gov] cpu retention smc is not defined\n");
+#endif
+	}
+#endif
 
 	return 0;
 }
@@ -780,6 +1008,24 @@ static void gov_disable_device(struct cpuidle_driver *drv,
 
 		traces_registered = false;
 	}
+#if IS_ENABLED(CONFIG_MTK_CPU_RETENTION_SUPPORT)
+	if (dev->cpu < 4) {
+#ifdef MTK_SIP_KERNEL_CPU_CONTROL
+		struct arm_smccc_res res;
+
+		arm_smccc_smc(MTK_SIP_KERNEL_CPU_CONTROL,
+			      MT_RET_SMC_ACT_DEBOUNCE_SET,
+			      RETENTION_CPU_OFF,
+			      0, 0, 0, 0, 0, &res);
+		if (res.a0)
+			pr_info("[mtk-gov] disable cpu retention fail\n");
+		else
+			reten_enable = false;
+#else
+		pr_info("[mtk-gov] cpu retention smc is not defined\n");
+#endif
+	}
+#endif
 }
 
 static struct cpuidle_governor mtk_gov_drv = {
@@ -810,6 +1056,7 @@ static int __init mtk_cpuidle_gov_init(void)
 	lpm_gov_enabled();
 	cpuhp_setup_state(CPUHP_AP_ONLINE_DYN, "mtk-cpu-lpm",
 			  lpm_online_cpu, lpm_offline_cpu);
+	lpm_gov_fs_init();
 	return cpuidle_register_governor(&mtk_gov_drv);
 }
 

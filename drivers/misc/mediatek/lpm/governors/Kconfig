@@ -20,3 +20,12 @@ config MTK_CPU_IDLE_IPI_SUPPORT
 	  Mediatek cpuidle ipi prediction policy.
 	  The mechanism is based on ipi duration to
 	  predict this cpu idle time.
+
+config MTK_CPU_RETENTION_SUPPORT
+	bool "Meditaek Idle governor support CPU retention"
+	default y
+	help
+	  Set MTK_CPU_RETENTION_SUPPORT for
+	  Mediatek cpu retention policy.
+	  The mechanism is based on cpu idle count to
+	  decide cpu retention on/off.

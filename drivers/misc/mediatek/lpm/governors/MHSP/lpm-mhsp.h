@@ -15,6 +15,25 @@
 
 #define HRWKUP_MAX_SAMPLES	16
 
+#if IS_ENABLED(CONFIG_MTK_CPU_RETENTION_SUPPORT)
+#define RETENTION_VALID_POWER	4
+#define RETENTION_VALID_MAX	(1u << RETENTION_VALID_POWER)
+#define RETENTION_VALID_MASK	(RETENTION_VALID_MAX - 1)
+#define RETENTION_REMEDY_THRES1_NS	4000000
+#define RETENTION_REMEDY_THRES2_NS	6000000
+#define RETENTION_REMEDY_THRES3_NS	10000000
+
+#define RETENTION_CPU_OFF		(0x0u)
+#define RETENTION_CPU_DEBOUNCE		(0x7u)
+
+#define MT_RET_SMC_ACT_DEBOUNCE_GET		(0)
+#define MT_RET_SMC_ACT_DEBOUNCE_SET		(1)
+#define MT_RET_SMC_ACT_DEBOUNCE_SUPPORTED	(2)
+
+#define MT_RET_SMC_DSU_FC		(0)
+#define MT_RET_SMC_DSU_FL		(1)
+#endif
+
 /* Prediction error code */
 #define PREDICT_ERR_SLP_HIST_SAMPLE	(1u << 0)
 #define PREDICT_ERR_SLP_HIST_SPECIFIC	(1u << 1)
@@ -112,6 +131,20 @@ struct history_ipi {
 };
 #endif
 
+#if IS_ENABLED(CONFIG_MTK_CPU_RETENTION_SUPPORT)
+struct reten_info {
+	bool disable;
+	int nsamp;
+	uint32_t state_hist[RETENTION_VALID_MAX];
+	uint32_t cur;
+	uint32_t count[2];
+	uint32_t cont_wfi_count;
+	bool pre_reten_result;
+	uint32_t reverse;
+	ktime_t last_enter_time;
+};
+#endif
+
 struct gov_info {
 	bool htmr_wkup;
 	atomic_t ipi_pending;
@@ -136,4 +169,13 @@ struct gov_info {
 #if IS_ENABLED(CONFIG_MTK_CPU_IDLE_IPI_SUPPORT)
 	struct history_ipi ipi_hist;
 #endif
+#if IS_ENABLED(CONFIG_MTK_CPU_RETENTION_SUPPORT)
+	struct reten_info reten;
+#endif
 };
+
+#if IS_ENABLED(CONFIG_MTK_CPU_RETENTION_SUPPORT)
+bool get_reten_status(void);
+void set_reten_status(uint32_t en);
+#endif
+
