@@ -121,7 +121,7 @@ void sendAudioAdspNotifyEvent(const struct adsp_mbrain_t *data, uint32_t totalCo
 		for (j = 0; j < pdata->data_size; j++) {
 			n = snprintf(netlink_buf + pos,
 					NETLINK_EVENT_MESSAGE_SIZE - pos,
-					":%d",
+					":%u",
 					pdata->data[j]);
 			if (n < 0 || n >= NETLINK_EVENT_MESSAGE_SIZE - pos)
 				return;
