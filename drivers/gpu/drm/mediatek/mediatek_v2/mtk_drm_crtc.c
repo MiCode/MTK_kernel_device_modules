@@ -22306,8 +22306,8 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 		drm_trace_tag_value("update_present_fence",
 			mtk_crtc_state->prop_val[CRTC_PROP_PRES_FENCE_IDX]);
 
-		// if (mtk_crtc_state->prop_val[CRTC_PROP_PRES_FENCE_IDX] > 0)
-		//	mtk_vidle_user_power_keep(DISP_VIDLE_USER_FOR_FRAME | VOTER_ONLY);
+		if (mtk_crtc_state->prop_val[CRTC_PROP_PRES_FENCE_IDX] > 0)
+			mtk_vidle_user_power_keep(DISP_VIDLE_USER_FOR_FRAME);
 	}
 
 	/* for wfd latency debug */

@@ -783,7 +783,7 @@ int mtk_release_union_fence(unsigned int session_id, unsigned int fence_idx, kti
 		mtk_sync_timeline_inc(layer_info->timeline, fence_increment, time);
 		drm_trace_tag_value("release_frame_done_fence", fence_idx);
 
-		// mtk_vidle_user_power_release(DISP_VIDLE_USER_FOR_FRAME | VOTER_ONLY);
+		mtk_vidle_user_power_release(DISP_VIDLE_USER_FOR_FRAME);
 
 		/* print mmp log */
 		CRTC_MMP_MARK(idx, release_frame_done_fence, 0, fence_idx);
