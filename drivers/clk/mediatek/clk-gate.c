@@ -376,6 +376,27 @@ static int mtk_cg_enable_generic_hwv(struct clk_hw *hw)
 		goto ERR;
 	}
 
+	if ((cg->flags & TYPE_MTCMOS) != TYPE_MTCMOS) {
+		/* WA for venc cg issue */
+		if (callback[CLK_REQUEST_MTCMOS_FSM_RETRIGGER]) {
+			ret = callback[CLK_REQUEST_MTCMOS_FSM_RETRIGGER](&params);
+
+			if (ret < 0) {
+				pr_cg_err("fail fsm retrigger - %s, ret: %x\n", c_n, -ret);
+				goto ERR;
+			} else if (ret == 0x100A) {
+				pr_cg_dbg("fsm retrigger bypassed - %s, ret: %x\n", c_n, ret);
+			} else {
+				ret = mtk_cg_enable(hw);
+
+				if (ret) {
+					pr_cg_err("fail cg enable - %s, ret: %x\n", c_n, -ret);
+					goto ERR;
+				}
+			}
+		}
+	}
+
 	if (((cg->flags & TYPE_MTCMOS) != TYPE_MTCMOS)
 			&& ((cg->flags & BYPASS_CHECK) != BYPASS_CHECK)) {
 		ret = __hwv_cg_dma_back(hw, false);
@@ -418,6 +439,27 @@ static int mtk_cg_enable_generic_hwv_inv(struct clk_hw *hw)
 	if (ret) {
 		pr_cg_err("fail enable - %s, ret: %x\n", c_n, -ret);
 		goto ERR;
+	}
+
+	if ((cg->flags & TYPE_MTCMOS) != TYPE_MTCMOS) {
+		/* WA for venc cg issue */
+		if (callback[CLK_REQUEST_MTCMOS_FSM_RETRIGGER]) {
+			ret = callback[CLK_REQUEST_MTCMOS_FSM_RETRIGGER](&params);
+
+			if (ret < 0) {
+				pr_cg_err("fail fsm retrigger - %s, ret: %x\n", c_n, -ret);
+				goto ERR;
+			} else if (ret == 0x100A) {
+				pr_cg_dbg("fsm retrigger bypassed - %s, ret: %x\n", c_n, ret);
+			} else {
+				ret = mtk_cg_enable_inv(hw);
+
+				if (ret) {
+					pr_cg_err("fail cg enable - %s, ret: %x\n", c_n, -ret);
+					goto ERR;
+				}
+			}
+		}
 	}
 
 	if (((cg->flags & TYPE_MTCMOS) != TYPE_MTCMOS)

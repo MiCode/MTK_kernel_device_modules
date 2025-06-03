@@ -1224,6 +1224,114 @@ void v1_hwccf_unfreeze(int is_MASK_XPC, struct regmap *regmap)
 	hwccf_update_bit(regmap, HWCCF_REG_EN6, block_voting, 0);
 }
 
+int _v1_mm_hwccf_mtcmos_fsm_err_handle(struct cb_params *params)
+{
+	int ret = 0;
+	uint32_t mtcmos_pm_ack_ofs = 0, mtcmos_pm_ack_val = 0, cg_map_mtcmos_val = 0;
+	uint32_t m = 0, n = 0;
+	uint32_t resource_id = 0, cg_map_mtcmos_id = 0;
+	uint32_t mtcmos_id_msk = 0, mtcmos_id = 0, mtcmos_id_shift = 0;
+	uint32_t val = 0;
+
+	/* No need for AP_HWCCF */
+	if (params->regmap == regmaps[AP_HWCCF])
+		return HWV_FSM_RETRIGGER_BYPASS;
+
+	resource_id = GET_ID_FROM_SET_ADDR(params->setclr_ofs);
+	if ((resource_id == 0xffffffff) || (resource_id > HW_CCF_CG_GRP_51)) {
+		ret = HWV_FSM_RETRIGGER_BYPASS;
+		goto ERR;
+	}
+	cg_map_mtcmos_id = resource_id / 4;
+	mtcmos_id_shift = 7 * (resource_id % 4);
+	mtcmos_id_msk = 0x7F << mtcmos_id_shift;
+	cg_map_mtcmos_val = hwccf_read(params->regmap, INIT_CCF_CG_MAP_MTCMOS(cg_map_mtcmos_id));
+	mtcmos_id = (cg_map_mtcmos_val & mtcmos_id_msk) >> mtcmos_id_shift;
+
+	if (mtcmos_id < 32) {
+		mtcmos_pm_ack_ofs = CCF_MTCMOS_PM_ACK_0;
+		m = mtcmos_id;
+	} else if (mtcmos_id < 64) {
+		mtcmos_pm_ack_ofs = CCF_MTCMOS_PM_ACK_1;
+		m = mtcmos_id - 32;
+	} else {
+		ret = HWV_FSM_RETRIGGER_BYPASS;
+		goto ERR;
+	}
+
+	n = HWV_XPU_0;
+
+	/* Start mtcmos fsm re-trigger */
+	/* step1 */
+	mtcmos_pm_ack_val = hwccf_read(params->regmap, mtcmos_pm_ack_ofs);
+	if ((mtcmos_pm_ack_val & BIT(m)) == 0x0) {
+		/* step2 */
+		hwccf_write(params->regmap, CG_SET_OFS(47), BIT(n));
+		/* step3 */
+		ret = regmap_read_poll_timeout_atomic(params->regmap, CG_GLB_EN_OFS(47), val,
+			IS_MASK_SET(val, BIT(n)),
+			MTK_WAIT_GHWV_VOTE_US, MTK_WAIT_GHWV_VOTE_CNT);
+		if (ret) {
+			HWCCF_ERR("%s set cg voter 47(%x = %x) timeout\n",
+					__func__, CG_GLB_EN_OFS(47), val);
+			ret = -HWV_FSM_RETRIGGER_TIMEOUT;
+			goto ERR;
+		}
+		/* step4 */
+		ret = regmap_read_poll_timeout_atomic(params->regmap, CG_STA_OFS(47), val,
+			IS_MASK_CLR(val, BIT(n)),
+			MTK_WAIT_GHWV_DONE_US, MTK_WAIT_GHWV_DONE_CNT);
+		if (ret) {
+			HWCCF_ERR("%s polling set cg voter 47 sta(%x = %x) timeout\n",
+					__func__, CG_STA_OFS(47), val);
+			ret = -HWV_FSM_RETRIGGER_TIMEOUT;
+			goto ERR;
+		}
+		/* step5 */
+		hwccf_write(params->regmap, CG_CLR_OFS(47), BIT(n));
+		/* step6 */
+		ret = regmap_read_poll_timeout_atomic(params->regmap, CG_GLB_EN_OFS(47), val,
+			IS_MASK_CLR(val, BIT(n)),
+			MTK_WAIT_GHWV_VOTE_US, MTK_WAIT_GHWV_VOTE_CNT);
+		if (ret) {
+			HWCCF_ERR("%s clr cg voter 47(%x = %x) timeout\n",
+					__func__, CG_GLB_EN_OFS(47), val);
+			ret = -HWV_FSM_RETRIGGER_TIMEOUT;
+			goto ERR;
+		}
+		/* step7 */
+		ret = regmap_read_poll_timeout_atomic(params->regmap, CG_STA_OFS(47), val,
+			IS_MASK_CLR(val, BIT(n)),
+			MTK_WAIT_GHWV_DONE_US, MTK_WAIT_GHWV_DONE_CNT);
+		if (ret) {
+			HWCCF_ERR("%s polling clr cg voter 47 sta(%x = %x) timeout\n",
+					__func__, CG_STA_OFS(47), val);
+			ret = -HWV_FSM_RETRIGGER_TIMEOUT;
+			goto ERR;
+		}
+		/* step8 */
+		ret = regmap_read_poll_timeout_atomic(params->regmap, mtcmos_pm_ack_ofs, val,
+			IS_MASK_CLR(val, BIT(m)),
+			MTK_WAIT_GHWV_VOTE_US, MTK_WAIT_GHWV_VOTE_CNT);
+		if (ret) {
+			HWCCF_ERR("%s polling pm_ack(%x = %x) timeout\n",
+					__func__, mtcmos_pm_ack_ofs, val);
+			ret = -HWV_FSM_RETRIGGER_TIMEOUT;
+			goto ERR;
+		}
+	}
+
+	return ret;
+
+ERR:
+	HWCCF_ERR("Dump variables:\n");
+	HWCCF_ERR("mtcmos_pm_ack_ofs=%x, mtcmos_pm_ack_val=%x, cg_map_mtcmos_val=%x, m=%u, n=%u\n",
+		mtcmos_pm_ack_ofs, mtcmos_pm_ack_val, cg_map_mtcmos_val, m, n);
+	HWCCF_ERR("resource_id=%u, cg_map_mtcmos_id=%u, mtcmos_id_msk=%x, mtcmos_id=%u, mtcmos_id_shift=%u\n",
+		resource_id, cg_map_mtcmos_id, mtcmos_id_msk, mtcmos_id, mtcmos_id_shift);
+	return ret;
+}
+
 static int hwccf_drv_probe(struct platform_device *pdev)
 {
 	struct device_node *node = pdev->dev.of_node;
@@ -1273,6 +1381,13 @@ static int hwccf_drv_probe(struct platform_device *pdev)
 												"register_raw_hwccf_is_enabled fail");
 		if (ret) {
 			HWCCF_ERR("Failed to register raw_hwccf_is_enabled callback\n");
+		}
+
+		if (hwccf_ops->fsm_retrigger) {
+			ret = register_mtk_clk_external_api_cb(CLK_REQUEST_MTCMOS_FSM_RETRIGGER,
+				hwccf_ops->fsm_retrigger, "register_fsm_retrigger fail");
+			if (ret)
+				HWCCF_ERR("Failed to register fsm_retrigger callback\n");
 		}
 
 		HWCCF_LOG("hwccf init done\n");
@@ -1432,6 +1547,7 @@ static struct hwccf_ops v0_hwccf_ops = {
 	.raw_hwccf_voter_ctrl = v0_raw_hwccf_voter_ctrl,
 	.hwccf_irq_voter_ctrl = v0_hwccf_irq_voter_ctrl,
 	.hwccf_irq_multi_voter_ctrl = v0_hwccf_irq_multi_voter_ctrl,
+	.fsm_retrigger = NULL,
 };
 
 static struct hwccf_ops v1_hwccf_ops = {
@@ -1444,6 +1560,7 @@ static struct hwccf_ops v1_hwccf_ops = {
 	.hwccf_unfreeze = v1_hwccf_unfreeze,
 	.hwccf_irq_voter_ctrl = v1_hwccf_irq_voter_ctrl,
 	.hwccf_irq_multi_voter_ctrl = v1_hwccf_irq_multi_voter_ctrl,
+	.fsm_retrigger = _v1_mm_hwccf_mtcmos_fsm_err_handle,
 };
 
 static const struct hwccf_match_data v0_data = {

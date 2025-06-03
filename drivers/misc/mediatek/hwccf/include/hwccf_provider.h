@@ -23,6 +23,8 @@ enum HWCCF_VOTER_CTRL_ERRNO {
 	HWV_TEST_EARLY_RET   = 0x1006,
 	HWV_WRONG_ID         = 0x1007,
 	HWV_FSM_IDLE_TIMEOUT = 0x1008,
+	HWV_FSM_RETRIGGER_TIMEOUT = 0x1009,
+	HWV_FSM_RETRIGGER_BYPASS = 0x100A,
 	HWV_EINVAL           = 0x2000,
 	HWV_EINPROGRESS      = 0x2001,
 };
@@ -42,6 +44,7 @@ struct hwccf_ops {
 						enum HWCCF_OP hwccf_op, uint32_t vote_val);
 	void (*hwccf_freeze)(int is_MASK_XPC, struct regmap *regmap);
 	void (*hwccf_unfreeze)(int is_MASK_XPC, struct regmap *regmap);
+	int (*fsm_retrigger)(struct cb_params *);
 };
 
 struct hwccf_match_data {

@@ -17,6 +17,11 @@
 #define IS_SET_FROM_VOTER_ADDR(ofs)  (((ofs) & 0x7ff) < 0x700 ? \
 					(((ofs) & 0x7ff) % 0xc) == 0 : \
 					(((ofs) & 0x7ff) % 0xc) == 4)
+#define GET_ID_FROM_SET_ADDR(ofs) \
+	((((ofs) & 0xfff) <= 0x264) ? (((ofs) & 0xfff) / 0xc) : \
+	(((ofs) & 0xfff) == 0x600) ? 54 : \
+	(((ofs) & 0xfff) == 0x700) ? 52 : \
+	(((ofs) & 0xfff) == 0x70c) ? 53 : 0xffffffff)
 
 /* XPU local Voter */
 #define CCF_OFS(ofs)  (ofs)
@@ -129,6 +134,10 @@ enum CCF_OUTPUT_STATUS_BIT {
 
 #define CCF_MASK_HW_MTCMOS_REQ_0    CCF_OFS(0x5854)
 #define CCF_MASK_HW_IRQ_REQ_0       CCF_OFS(0x5858)
+
+// PM REQ & ACK offset
+#define CCF_MTCMOS_PM_ACK_0         CCF_OFS(0x12900)
+#define CCF_MTCMOS_PM_ACK_1         CCF_OFS(0x12904)
 
 /* IRQ Status (vip w1c) */
 #define CCF_INT_STATUS                 CCF_OFS(0x50)

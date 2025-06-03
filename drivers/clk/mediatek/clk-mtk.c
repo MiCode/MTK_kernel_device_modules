@@ -48,6 +48,7 @@ const char *cb_name[CLK_REQUEST_CB_NUM] = {
 	"REQUEST_VDISP_CB",
 	"REQUEST_RAW_HWCCF_VOTER_CB",
 	"REQUEST_RAW_HWCCF_IS_ENABLED_CB",
+	"REQUEST_MTCMOS_FSM_RETRIGGER",
 };
 
 int (*callback[CLK_REQUEST_CB_NUM])(struct cb_params *) = {NULL};

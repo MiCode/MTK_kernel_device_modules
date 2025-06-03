@@ -14,7 +14,7 @@
 	pr_err("[CLKCG][Error] %s:%d: " fmt, __func__, __LINE__, ##__VA_ARGS__)
 
 #define pr_cg_dbg(fmt, ...) \
-	pr_notice("[CLKCG] %s:%d: " fmt, __func__, __LINE__, ##__VA_ARGS__)
+	pr_debug("[CLKCG] %s:%d: " fmt, __func__, __LINE__, ##__VA_ARGS__)
 
 #define pr_pd_dbg(fmt, ...) \
 	pr_notice("[CLKPD] %s:%d: " fmt, __func__, __LINE__, ##__VA_ARGS__)
