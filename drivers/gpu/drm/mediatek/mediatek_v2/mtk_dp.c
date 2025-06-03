@@ -3731,6 +3731,14 @@ static int mtk_dp_dt_parse_pdata(struct mtk_dp *mtk_dp,
 	}
 	mtk_dp->cfg_ver = config_version;
 
+	memset(mtk_dp->project_support_max_h_v, 0, sizeof(mtk_dp->project_support_max_h_v));
+	ret = of_property_read_u32_array(dev->of_node, "max-support-h-v",
+		mtk_dp->project_support_max_h_v, ARRAY_SIZE(mtk_dp->project_support_max_h_v));
+	if (ret) {
+		mtk_dp->project_support_max_h_v[0] = 4096;
+		mtk_dp->project_support_max_h_v[1] = 2160;
+		DPTXMSG("get project_support_max_h_v fail, use default val, ret %d\n", ret);
+	}
 	return 0;
 }
 
@@ -3932,8 +3940,7 @@ static enum drm_mode_status mtk_dp_conn_mode_valid(struct drm_connector *conn,
 		struct drm_display_mode *mode)
 {
 	struct mtk_dp *mtk_dp = mtk_dp_ctx_from_conn(conn);
-	unsigned int bandwidth = mtk_dp->training_info.ubLinkLaneCount *
-		mtk_dp->training_info.ubLinkRate * 27000 * 8 / 24;
+	unsigned int bandwidth, bpp;
 	unsigned int vsize = 0, vpw = 0, vfp = 0, vbp = 0, vrefresh = 0, vtotal = 0;
 	unsigned int line_time = 0, vblank_time = 0;
 	unsigned int adjusted_clock = mode->clock;
@@ -3945,6 +3952,35 @@ static enum drm_mode_status mtk_dp_conn_mode_valid(struct drm_connector *conn,
 		mtk_dp->training_info.ubLinkLaneCount <= DP_LANECOUNT_2)
 		bandwidth = bandwidth * 594 * 10 / 2025;
 #endif
+
+	switch (mtk_dp->info.depth) {
+	case DP_COLOR_DEPTH_6BIT:
+		bpp = 18;
+		DPTXDBG("calculate bandwidth by 6 bit color depth\n");
+		break;
+	case DP_COLOR_DEPTH_8BIT:
+		bpp = 24;
+		DPTXDBG("calculate bandwidth by 8 bit color depth\n");
+		break;
+	case DP_COLOR_DEPTH_10BIT:
+		bpp = 30;
+		DPTXDBG("calculate bandwidth by 10 bit color depth\n");
+		break;
+	case DP_COLOR_DEPTH_12BIT:
+		bpp = 36;
+		DPTXDBG("calculate bandwidth by 12 bit color depth\n");
+		break;
+	case DP_COLOR_DEPTH_16BIT:
+		bpp = 48;
+		DPTXDBG("calculate bandwidth by 16 bit color depth\n");
+		break;
+	default:
+		bpp = 24;
+		DPTXDBG("calculate bandwidth by default 24 bit color depth\n");
+		break;
+	}
+	bandwidth = mtk_dp->training_info.ubLinkLaneCount *
+			mtk_dp->training_info.ubLinkRate * 27000 * 8 / bpp;
 
 	if (mtk_dp->has_fec)
 		adjusted_clock = mode->clock * 1024 / 1000; // fec function add 2.4% bandwidth in spec
@@ -3984,17 +4020,19 @@ static enum drm_mode_status mtk_dp_conn_mode_valid(struct drm_connector *conn,
 		return MODE_VIRTUAL_Y;
 	}
 
-	if (mode->hdisplay > 4095 || mode->hdisplay < 640) { // dual exdma && spec 640*480
+	// dual exdma && spec 640*480
+	if (mode->hdisplay > mtk_dp->project_support_max_h_v[0] || mode->hdisplay < 640) {
 		DPTXDBG("Returning MODE_BAD_HVALUE: Horizontal display value is out of range");
 		return MODE_BAD_HVALUE;
 	}
 
-	if (mode->vdisplay > 2160 || mode->vdisplay < 480) { // internal monitor max is 2160 && spec 640*480
+	// internal monitor max is 2160 && spec 640*480
+	if (mode->vdisplay > mtk_dp->project_support_max_h_v[1] || mode->vdisplay < 480) {
 		DPTXDBG("Returning MODE_BAD_VVALUE: Vertical display value is out of range");
 		return MODE_BAD_VVALUE;
 	}
 
-	if (drm_mode_vrefresh(mode) > 240) { // no environment
+	if (drm_mode_vrefresh(mode) > 120) { // not support over 120 fps
 		DPTXDBG("Returning MODE_NOMODE: FPS is too high");
 		return MODE_NOMODE;
 	}
@@ -4459,10 +4497,12 @@ void mtk_dp_HPDInterruptSet(int bstatus)
 
 	if (bstatus == HPD_CONNECT && g_mtk_dp->bPowerOn &&
 		g_mtk_dp->bUeventToHwc) {
-		DPTXMSG("force send uevent\n");
-		mdrv_DPTx_UpdateHDCPVersion(g_mtk_dp, true);
-		mtk_dp_hotplug_uevent(1);
-		g_mtk_dp->bUeventToHwc = false;
+		// To be: remove this code (trigger db for debug)
+		DDPAEE("trigger force send uevnet\n");
+		// DPTXMSG("force send uevent\n");
+		// mdrv_DPTx_UpdateHDCPVersion(g_mtk_dp, true);
+		// mtk_dp_hotplug_uevent(1);
+		// g_mtk_dp->bUeventToHwc = false;
 	}
 }
 

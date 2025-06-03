@@ -377,6 +377,7 @@ struct mtk_dp {
 	u32 vsv_vers;
 	u32 phy_params[DPTX_PHY_LEVEL_COUNT];
 	u32 usb_last_state;
+	u32 project_support_max_h_v[2];
 	unsigned long long starttime;
 	bool trigger_db_flag;
 
