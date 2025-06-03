@@ -8561,6 +8561,16 @@ dramc: dramc@10230000 {
 	};
 };
 
+&i2c6 {
+	gate_ic: gate-ic@11 {
+		compatible = "mediatek,gate-ic-i2c";
+		gate-power-gpios = <&pio 130 0>;
+		reg = <0x11>;
+		id = <6>;
+		status = "okay";
+	};
+};
+
 &mt6685_rtc {
 	status = "okay";
 };
