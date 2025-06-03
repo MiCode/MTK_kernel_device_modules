@@ -2343,6 +2343,9 @@ static GED_ERROR ged_kpi_push_timestamp(
 		case GED_TIMESTAMP_TYPE_2:
 			atomic_dec_return(&event_3d_fence_cnt);
 			ged_eb_dvfs_task(EB_UPDATE_FB_TARGET_TIME_DONE, div_u64(fb_timeout, 1000));
+			// reset SF edge effect api_boost
+			if (get_sf_edge_hint() == SF_EDGE_EFFECT)
+				reset_sf_edge_hint();
 			break;
 		case GED_TIMESTAMP_TYPE_P:
 			break;
@@ -2414,7 +2417,8 @@ static GED_ERROR ged_kpi_push_timestamp(
 				mtk_gpueb_sysram_rb_write(tmp_sram_rb_write_idx, temp_ts);
 				mtk_gpueb_sysram_write(SYSRAM_GPU_TS_RB_IDX, tmp_sram_rb_write_idx);
 				// reset SF edge effect api_boost
-				ged_eb_dvfs_task(EB_UPDATE_API_BOOST, 0);
+				if (get_sf_edge_hint() == SF_EDGE_EFFECT)
+					ged_eb_dvfs_task(EB_UPDATE_API_BOOST, 0);
 				latest_done_ts = socTimeStamp;
 				latest_done_fid = i32FrameID;
 				break;

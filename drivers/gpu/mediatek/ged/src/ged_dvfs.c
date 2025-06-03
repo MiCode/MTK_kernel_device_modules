@@ -339,6 +339,7 @@ static unsigned int g_last_api_boost_counter;
 static unsigned int g_is_gpu_uncomplete;
 static int g_fix_opp_by_cmd = -1;
 static bool g_force_commit;
+static int g_sf_edge_hint;
 
 unsigned int ged_npu_hint_enable = 0;
 
@@ -421,6 +422,8 @@ static unsigned int ged_dvfs_ultra_high_step_size_query(void)
 		gx_dvfs_loading_mode == LOADING_MAX_ITERMCU &&
 		early_force_fallback_enable)
 		return ULTRA_HIGH_STEP_SIZE ;
+	else if (g_sf_edge_hint == SF_EDGE_EFFECT)
+		return (dvfs_step_mode & 0xff) * 2;
 	else
 		return (dvfs_step_mode & 0xff);
 }
@@ -2775,6 +2778,18 @@ int get_api_sync_flag(void)
 }
 EXPORT_SYMBOL(get_api_sync_flag);
 
+int get_sf_edge_hint(void)
+{
+	return g_sf_edge_hint;
+}
+EXPORT_SYMBOL(get_sf_edge_hint);
+
+void reset_sf_edge_hint(void)
+{
+	g_sf_edge_hint = 0;
+}
+EXPORT_SYMBOL(reset_sf_edge_hint);
+
 unsigned long long ged_get_api_boost_start_ts_ns(void)
 {
 	return g_api_boost_start_ts_ns;
@@ -2845,8 +2860,9 @@ void set_api_sync_flag(int flag)
 		start_mewtwo_timer();
 	} else if (flag == 5566) {
 		// hint SF edge effect, [0:7] for api_sync_flag
-		tmp_sysram_val = 0xFF << COMMON_LOW_BIT;
+		tmp_sysram_val = SF_EDGE_EFFECT << COMMON_LOW_BIT;
 		ged_eb_dvfs_task(EB_UPDATE_API_BOOST, tmp_sysram_val);
+		g_sf_edge_hint = SF_EDGE_EFFECT;
 	} else if (((flag & 0xFFFF0000) == 0x60000) || ((flag & 0xFFFF0000) == 0x70000) ||
 		((flag & 0xFF000000) == 0x39000000)) {
 		if (api_sync_flag != flag)
@@ -3061,7 +3077,10 @@ static bool ged_dvfs_policy(
 			t_fps_use = info.uncompleted_bq.t_gpu_fps_reason;
 			t_fps = info.uncompleted_bq.t_gpu_fps;
 			ged_update_margin_by_fps(t_gpu_target);
-			if (g_tb_dvfs_margin_mode & DYNAMIC_TB_PERF_MODE_MASK)
+			if (g_sf_edge_hint == SF_EDGE_EFFECT)
+				t_gpu_target_hd = div_u64((u64)t_gpu_target
+					* (100 - SF_EDGE_HEADROOM), 100);
+			else if (g_tb_dvfs_margin_mode & DYNAMIC_TB_PERF_MODE_MASK)
 				t_gpu_target_hd = div_u64((u64)t_gpu_target
 					* (100 - g_tb_dvfs_margin_value_min), 100);
 			else
@@ -3115,7 +3134,10 @@ static bool ged_dvfs_policy(
 
 				ged_update_margin_by_fps(t_gpu_target);
 				// overwrite t_gpu_target_hd in perf mode
-				if (g_tb_dvfs_margin_mode & DYNAMIC_TB_PERF_MODE_MASK)
+				if (g_sf_edge_hint == SF_EDGE_EFFECT)
+					t_gpu_target_hd = div_u64((u64)t_gpu_target
+						* (100 - SF_EDGE_HEADROOM), 100);
+				else if (g_tb_dvfs_margin_mode & DYNAMIC_TB_PERF_MODE_MASK)
 					t_gpu_target_hd = div_u64((u64)t_gpu_target
 						* (100 - g_tb_dvfs_margin_value_min), 100);
 
@@ -3233,6 +3255,11 @@ static bool ged_dvfs_policy(
 			ui32GPUFreq = g_last_commit_before_api_boost;
 			i32NewFreqID = ui32GPUFreq;
 			is_enter_set_cur_freq_back = 1; // debug
+		} else if (g_sf_edge_hint == SF_EDGE_EFFECT &&
+			uncomplete_flag &&
+			ui32GPUFreq > ged_get_oppidx_by_stack_freq(SF_EDGE_FB_FREQ_FLOOR)) {
+			ui32GPUFreq = ged_get_oppidx_by_stack_freq(SF_EDGE_FB_FREQ_FLOOR);
+			i32NewFreqID = ui32GPUFreq;
 		}
 		trace_tracing_mark_write(5566, "dbg_set_f_back", is_enter_set_cur_freq_back); // AP side debug
 

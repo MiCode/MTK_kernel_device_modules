@@ -323,6 +323,8 @@ int ged_dvfs_get_margin_value_min_cmd(void);
 int ged_dvfs_get_margin_step(void);
 void set_api_sync_flag(int flag);
 int get_api_sync_flag(void);
+int get_sf_edge_hint(void);
+void reset_sf_edge_hint(void);
 void ged_reset_api_sync_ts(void);
 unsigned long long ged_get_api_sync_ts(void);
 unsigned long long ged_get_api_boost_start_ts_ns(void);
@@ -343,6 +345,10 @@ void ged_reset_api_boost_interval_ns(void);
 #define WORKLOAD_ITER 4
 #define WORKLOAD_MAX_ITERMCU 5
 #define WORKLOAD_UNION_ITERMCU 6
+
+#define SF_EDGE_EFFECT 0xFF
+#define SF_EDGE_HEADROOM 50
+#define SF_EDGE_FB_FREQ_FLOOR 800000
 
 extern void (*mtk_dvfs_loading_mode_fp)(int i32LoadingMode);
 extern int (*mtk_get_dvfs_loading_mode_fp)(void);
