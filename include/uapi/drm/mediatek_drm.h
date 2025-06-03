@@ -1554,6 +1554,10 @@ struct drm_mtk_ccorr_caps {
 	unsigned int ccorr_linear;//1st byte:high 4 bit:CCORR1,low 4 bit:CCORR0
 };
 
+struct drm_mtk_dbi_caps {
+	unsigned int compress_support;
+};
+
 struct mtk_drm_pq_caps_info {
 	struct drm_mtk_ccorr_caps ccorr_caps;
 };
@@ -1702,6 +1706,7 @@ enum mtk_pq_frame_cfg_cmd {
 	PQ_ODDMR_DBI_GET_FPS,
 	PQ_ODDMR_DBI_GET_SCP,
 	PQ_ODDMR_OD_READ_SW_REG,
+	PQ_ODDMR_DBI_GET_CAPS,
 	PQ_VIRTUAL_GET_MASTER_INFO = 60700,
 	PQ_VIRTUAL_GET_IRQ,
 	PQ_VIRTUAL_WAIT_CRTC_READY,

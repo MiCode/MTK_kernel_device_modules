@@ -466,6 +466,35 @@ struct bitstream_buffer {
 	struct mtk_drm_dmr_fps_dbv_change_cfg fps_dbv_change_cfg;
 };
 
+enum DBICompTableFormat {
+	DBI_COMP_TABLE_TRUNC = 0,
+	DBI_COMP_TABLE_COMPRESSION = 1
+};
+
+struct bitstream_buffer_v2{
+	uint8_t *_self;
+	uint8_t *_buffer;
+	bool _buffer_from_external;
+	uint32_t used_entry;
+	uint32_t used_bit;
+	uint32_t size;
+	uint32_t read_bit;
+};
+
+struct mtk_dbi_alg_comp_hw_param {
+
+	void *_mem_base_addr; // support share mem
+	uint32_t _mem_used_size;
+	struct bitstream_buffer_v2 dram_table;
+	uint32_t table_format;
+	uint32_t slice_height;
+	uint32_t slice_num;
+	uint32_t *slice_offset;
+	uint32_t max_line_size; // byte
+	struct mtk_drm_dmr_static_cfg static_cfg;
+	struct mtk_drm_dmr_fps_dbv_change_cfg fps_dbv_change_cfg;
+};
+
 struct mtk_drm_dbi_rg_backup {
 	unsigned int size;
 	unsigned int backup_offset_pa;
@@ -551,6 +580,7 @@ struct mtk_disp_oddmr_data {
 	int slc_period;
 	void (*sodi_config)(struct drm_device *drm, enum mtk_ddp_comp_id id,
 			    struct cmdq_pkt *handle, void *data);
+	bool dbi_compress_support;
 };
 
 struct mtk_disp_oddmr_od_data {
@@ -590,6 +620,18 @@ struct mtk_disp_oddmr_dbi_data {
 	unsigned int dbi_table_block_h[2];
 	unsigned int dbi_table_block_v[2];
 	unsigned int dbi_table_size[2];
+	int table_format[2];
+	unsigned int slice_height[2];
+	unsigned int slice_num[2];
+	unsigned int *slice_offset[2];
+	unsigned int used_entry[2];
+
+	int curr_table_format;
+	unsigned int curr_slice_height;
+	unsigned int curr_slice_num;
+	unsigned int *curr_slice_offset;
+	unsigned int curr_used_entry;
+
 	unsigned int table_size;
 	unsigned int min_block_v;
 	unsigned int min_block_h;
@@ -703,6 +745,7 @@ struct mtk_disp_oddmr_primary {
 	ktime_t sof_time;
 	ktime_t sof_time_last;
 	int slc_frame_cnt[ODDMR_SLC_NUM];
+	struct drm_mtk_dbi_caps dbi_caps;
 };
 
 /**

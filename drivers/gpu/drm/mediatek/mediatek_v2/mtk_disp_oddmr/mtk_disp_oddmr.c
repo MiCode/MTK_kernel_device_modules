@@ -1089,6 +1089,43 @@ mtk_oddmr_load_buffer(struct drm_crtc *crtc,
 	return gem;
 }
 
+	static inline struct mtk_drm_gem_obj *
+mtk_oddmr_dbi_load_buffer(struct drm_crtc *crtc,
+	size_t size, size_t copy_size, void *addr, bool secu)
+{
+	struct mtk_drm_gem_obj *gem;
+
+	ODDMRAPI_LOG("+\n");
+
+	if (!size) {
+		DDPMSG("%s invalid size\n",
+				__func__);
+		return NULL;
+	}
+	if (secu) {
+		//mtk_svp_page-uncached,mtk_mm-uncached
+		gem = mtk_drm_gem_create_from_heap(crtc->dev,
+				"mtk_svp_page-uncached", size);
+	} else {
+		gem = mtk_drm_gem_create(
+				crtc->dev, size, true);
+	}
+
+	if (!gem) {
+		DDPMSG("%s gem create fail\n", __func__);
+		return NULL;
+	}
+	DDPMSG("%s gem create %p iommu %llx buffer size %lu, copy size %lu\n", __func__,
+		gem->kvaddr, gem->dma_addr, size, copy_size);
+
+	if ((addr != NULL) && (!secu))
+		memcpy(gem->kvaddr, addr, copy_size);
+
+	/* if demura and dbi opened at the same time need combine */
+
+	return gem;
+}
+
 static int mtk_oddmr_create_gce_pkt(struct drm_crtc *crtc,
 		struct cmdq_pkt **pkt)
 {
@@ -2984,6 +3021,35 @@ static void mtk_oddmr_dbi_set_slc(struct mtk_ddp_comp *comp, struct cmdq_pkt *ha
 	}
 }
 
+unsigned int mtk_oddmr_dbi_find_start_slice(uint32_t slice_num, uint32_t slice_height, uint32_t start_line)
+{
+	unsigned int i;
+
+	for(i= 0;i<= slice_num;i++){
+		if(i * slice_height > start_line)
+			break;
+	}
+	i--;
+	return i;
+}
+
+static void mtk_oddmr_dbi_vfree(void *ptr_t)
+{
+	if(ptr_t)
+		vfree(ptr_t);
+}
+
+static void *mtk_oddmr_dbi_vmalloc(unsigned int size)
+{
+	void *ptr_t;
+
+	ptr_t = vmalloc(size);
+	if (!ptr_t)
+		PC_ERR("%s:%d, param buffer alloc fail\n",
+			__func__, __LINE__);
+	return ptr_t;
+}
+
 static void mtk_oddmr_dbi_config(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
 	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
@@ -2996,12 +3062,15 @@ static void mtk_oddmr_dbi_config(struct mtk_ddp_comp *comp, struct cmdq_pkt *han
 	struct mtk_drm_dbi_cfg_info *dbi_cfg_data_tb1 = &oddmr_data->primary_data->dbi_cfg_info_tb1;
 	unsigned int scale_factor_v = dbi_cfg_data->basic_info.partial_update_scale_factor_v;
 	dma_addr_t addr = 0;
+	uint32_t dbi_table_size ;
+	uint32_t dbi_udma_width ;
+	uint32_t dbi_udma_height;
 
 	unsigned int crop_height;
 	unsigned int top_overhead_v, bot_overhead_v;
 	unsigned int top_comp_overhead_v, bot_comp_overhead_v;
 	unsigned int idx;
-	unsigned int width;
+	unsigned int width,height,reg_val;
 
 	struct mtk_ddp_comp *output_comp = mtk_ddp_comp_request_output(comp->mtk_crtc);
 	struct mtk_dsi *dsi = container_of(output_comp, struct mtk_dsi, ddp_comp);
@@ -3011,6 +3080,10 @@ static void mtk_oddmr_dbi_config(struct mtk_ddp_comp *comp, struct cmdq_pkt *han
 	unsigned int gain_ratio;
 	uint32_t value, mask;
 	unsigned int dbi_size_as_block = 0;
+	unsigned int size;
+	void *ptr_t = NULL;
+
+	unsigned int pu_y_ini,pu_height,start_slice_idx,start_slice_offset;
 
 	if (oddmr_data->primary_data->dbi_support && oddmr_data->primary_data->dbi_state == ODDMR_INIT_DONE
 		&& atomic_read(&oddmr_data->dbi_data.update_table_done)) {
@@ -3101,6 +3174,26 @@ static void mtk_oddmr_dbi_config(struct mtk_ddp_comp *comp, struct cmdq_pkt *han
 				dbi_cfg_data->basic_info.partial_update_scale_factor_h =
 					oddmr_data->dbi_data.dbi_table_block_h[idx];
 				scale_factor_v = dbi_cfg_data->basic_info.partial_update_scale_factor_v;
+				if(oddmr_data->dbi_data.table_format[idx] == DBI_COMP_TABLE_COMPRESSION){
+					oddmr_data->dbi_data.curr_table_format = oddmr_data->dbi_data.table_format[idx];
+					oddmr_data->dbi_data.curr_slice_height = oddmr_data->dbi_data.slice_height[idx];
+					oddmr_data->dbi_data.curr_used_entry = oddmr_data->dbi_data.used_entry[idx];
+					if(oddmr_data->dbi_data.curr_slice_num != oddmr_data->dbi_data.slice_num[idx]){
+						mtk_oddmr_dbi_vfree(oddmr_data->dbi_data.curr_slice_offset);
+						oddmr_data->dbi_data.curr_slice_offset = NULL;
+						size = oddmr_data->dbi_data.slice_num[idx] * sizeof(uint32_t);
+						ptr_t = mtk_oddmr_dbi_vmalloc(size);
+						memcpy(ptr_t, oddmr_data->dbi_data.slice_offset[idx], size);
+						oddmr_data->dbi_data.curr_slice_offset= ptr_t;
+						oddmr_data->dbi_data.curr_slice_num =
+							oddmr_data->dbi_data.table_format[idx];
+					}else {
+						size = oddmr_data->dbi_data.slice_num[idx] * sizeof(uint32_t);
+						memcpy(oddmr_data->dbi_data.curr_slice_offset,
+							oddmr_data->dbi_data.slice_offset[idx], size);
+					}
+				}else
+					oddmr_data->dbi_data.curr_table_format = DBI_COMP_TABLE_TRUNC;
 			}
 			oddmr_data->primary_data->slc_frame_cnt[DBI_SLC] = 0;
 			mutex_unlock(&oddmr_data->primary_data->dbi_data_lock);
@@ -3157,7 +3250,7 @@ static void mtk_oddmr_dbi_config(struct mtk_ddp_comp *comp, struct cmdq_pkt *han
 						(oddmr_data->roi_height + top_overhead_v + bot_overhead_v),
 						DISP_ODDMR_REG_DMR_FRAME_HEIGHT, handle);
 					mtk_oddmr_write(comp, oddmr_data->dbi_pu_data.dbi_y_ini,
-						0xb8, handle);
+						MT6993_DISP_ODDMR_REG_DMR_Y_INI, handle);
 				} else {
 					mtk_oddmr_write(comp,
 						(oddmr_data->roi_height + top_overhead_v + bot_overhead_v),
@@ -3166,64 +3259,122 @@ static void mtk_oddmr_dbi_config(struct mtk_ddp_comp *comp, struct cmdq_pkt *han
 					mtk_oddmr_write(comp, oddmr_data->dbi_pu_data.dbi_y_ini,
 						MT6991_DISP_ODDMR_REG_DMR_Y_INI, handle);
 				}
-				//DBI udma size
-				mtk_oddmr_write(comp, oddmr_data->dbi_pu_data.dbi_y_ini / scale_factor_v,
-					MT6991_DISP_ODDMR_REG_DBI_UDMA_Y_INI, handle);
 
-				//DBI table size as block
-				dbi_size_as_block = (oddmr_data->roi_height + top_overhead_v +
-					bot_overhead_v + scale_factor_v -1) / scale_factor_v;
-				if ( (dbi_size_as_block < 0x10) && (oddmr_data->data->dbi_version == MTK_DBI_V2)) {
-					dbi_size_as_block = 0x10;
-					mtk_oddmr_write(comp, dbi_size_as_block,
-						MT6991_DISP_ODDMR_REG_DBI_VSIZE, handle);
-					mtk_oddmr_write(comp,
-						dbi_size_as_block * scale_factor_v,
-						MT6991_DISP_ODDMR_REG_DBI_SCL_VSIZE, handle);
-					mtk_oddmr_write(comp, dbi_size_as_block,
+				if(oddmr_data->dbi_data.curr_table_format == DBI_COMP_TABLE_COMPRESSION){
+					pu_y_ini = oddmr_data->dbi_pu_data.dbi_y_ini;
+					pu_height = oddmr_data->roi_height + top_overhead_v + bot_overhead_v;
+					start_slice_idx =
+						mtk_oddmr_dbi_find_start_slice(oddmr_data->dbi_data.curr_slice_num,
+						oddmr_data->dbi_data.curr_slice_height, pu_y_ini);
+					start_slice_offset = oddmr_data->dbi_data.curr_slice_offset[start_slice_idx];
+
+					dbi_table_size = oddmr_data->dbi_data.curr_used_entry;
+					dbi_udma_width =
+						oddmr_data->dbi_data.curr_used_entry >= (1<<24)?(1<<12):(1<<11);
+					dbi_udma_height = (dbi_table_size + dbi_udma_width -1)/dbi_udma_width;
+
+					mtk_oddmr_write(comp, start_slice_offset/dbi_udma_width,
+						MT6991_DISP_ODDMR_REG_DBI_UDMA_Y_INI, handle);
+					dbi_udma_height -= start_slice_offset/dbi_udma_width;
+					mtk_oddmr_write(comp, dbi_udma_height,
 						MT6991_DISP_ODDMR_REG_DBI_UDMA_HEIGHT, handle);
-					value = 0;
-					mask = 0;
+					mtk_oddmr_write(comp, start_slice_offset%dbi_udma_width,
+						MT6991_DISP_ODDMR_REG_DBI_UDMA_X_INI, handle);
+
+					value = 0;mask = 0;
 					SET_VAL_MASK(value, mask, 1, MT6991_REG_DBI_V_CROP_EN_R);
-					SET_VAL_MASK(value, mask, 0, MT6991_REG_DBI_V_ST_R);
-					SET_VAL_MASK(value, mask, (oddmr_data->roi_height +
-						top_overhead_v + bot_overhead_v),
+					SET_VAL_MASK(value, mask,
+						pu_y_ini -start_slice_idx*oddmr_data->dbi_data.curr_slice_height,
+						MT6991_REG_DBI_V_ST_R);
+					SET_VAL_MASK(value, mask,
+						pu_height,
 						MT6991_REG_DBI_V_LENGTH_R);
 					mtk_oddmr_write(comp, value,
 						MT6991_DISP_ODDMR_REG_DBI_V_CROP_EN_R, handle);
-					value = 0;
-					mask = 0;
+
+					value = 0;mask = 0;
 					SET_VAL_MASK(value, mask, 1, MT6991_REG_DBI_V_CROP_EN_G);
-					SET_VAL_MASK(value, mask, 0, MT6991_REG_DBI_V_ST_G);
-					SET_VAL_MASK(value, mask, (oddmr_data->roi_height +
-						top_overhead_v + bot_overhead_v),
+					SET_VAL_MASK(value, mask,
+						pu_y_ini -start_slice_idx*oddmr_data->dbi_data.curr_slice_height,
+						MT6991_REG_DBI_V_ST_G);
+					SET_VAL_MASK(value, mask,
+						pu_height,
 						MT6991_REG_DBI_V_LENGTH_G);
 					mtk_oddmr_write(comp, value,
 						MT6991_DISP_ODDMR_REG_DBI_V_CROP_EN_G, handle);
-					value = 0;
-					mask = 0;
+
+					value = 0;mask = 0;
 					SET_VAL_MASK(value, mask, 1, MT6991_REG_DBI_V_CROP_EN_B);
-					SET_VAL_MASK(value, mask, 0, MT6991_REG_DBI_V_ST_B);
-					SET_VAL_MASK(value, mask, (oddmr_data->roi_height +
-						top_overhead_v + bot_overhead_v),
+					SET_VAL_MASK(value, mask,
+						pu_y_ini -start_slice_idx*oddmr_data->dbi_data.curr_slice_height,
+						MT6991_REG_DBI_V_ST_B);
+					SET_VAL_MASK(value, mask,
+						pu_height,
 						MT6991_REG_DBI_V_LENGTH_B);
 					mtk_oddmr_write(comp, value,
 						MT6991_DISP_ODDMR_REG_DBI_V_CROP_EN_B, handle);
 				} else {
-					mtk_oddmr_write(comp, dbi_size_as_block,
-						MT6991_DISP_ODDMR_REG_DBI_VSIZE, handle);
+					scale_factor_v = dbi_cfg_data->basic_info.partial_update_scale_factor_v;
+					//DBI udma size
+					mtk_oddmr_write(comp, oddmr_data->dbi_pu_data.dbi_y_ini / scale_factor_v,
+						MT6991_DISP_ODDMR_REG_DBI_UDMA_Y_INI, handle);
 
-					//DBI table size as pixel
-					mtk_oddmr_write(comp,
-						(oddmr_data->roi_height +
-						top_overhead_v + bot_overhead_v),
-						MT6991_DISP_ODDMR_REG_DBI_SCL_VSIZE, handle);
+					//DBI table size as block
+					dbi_size_as_block = (oddmr_data->roi_height + top_overhead_v +
+						bot_overhead_v + scale_factor_v -1) / scale_factor_v;
+					if ( (dbi_size_as_block < 0x10) &&
+						(oddmr_data->data->dbi_version == MTK_DBI_V2)) {
+						dbi_size_as_block = 0x10;
+						mtk_oddmr_write(comp, dbi_size_as_block,
+							MT6991_DISP_ODDMR_REG_DBI_VSIZE, handle);
+						mtk_oddmr_write(comp,
+							dbi_size_as_block * scale_factor_v,
+							MT6991_DISP_ODDMR_REG_DBI_SCL_VSIZE, handle);
+						mtk_oddmr_write(comp, dbi_size_as_block,
+							MT6991_DISP_ODDMR_REG_DBI_UDMA_HEIGHT, handle);
+						value = 0;
+						mask = 0;
+						SET_VAL_MASK(value, mask, 1, MT6991_REG_DBI_V_CROP_EN_R);
+						SET_VAL_MASK(value, mask, 0, MT6991_REG_DBI_V_ST_R);
+						SET_VAL_MASK(value, mask, (oddmr_data->roi_height +
+							top_overhead_v + bot_overhead_v),
+							MT6991_REG_DBI_V_LENGTH_R);
+						mtk_oddmr_write(comp, value,
+							MT6991_DISP_ODDMR_REG_DBI_V_CROP_EN_R, handle);
+						value = 0;
+						mask = 0;
+						SET_VAL_MASK(value, mask, 1, MT6991_REG_DBI_V_CROP_EN_G);
+						SET_VAL_MASK(value, mask, 0, MT6991_REG_DBI_V_ST_G);
+						SET_VAL_MASK(value, mask, (oddmr_data->roi_height +
+							top_overhead_v + bot_overhead_v),
+							MT6991_REG_DBI_V_LENGTH_G);
+						mtk_oddmr_write(comp, value,
+							MT6991_DISP_ODDMR_REG_DBI_V_CROP_EN_G, handle);
+						value = 0;
+						mask = 0;
+						SET_VAL_MASK(value, mask, 1, MT6991_REG_DBI_V_CROP_EN_B);
+						SET_VAL_MASK(value, mask, 0, MT6991_REG_DBI_V_ST_B);
+						SET_VAL_MASK(value, mask, (oddmr_data->roi_height +
+							top_overhead_v + bot_overhead_v),
+							MT6991_REG_DBI_V_LENGTH_B);
+						mtk_oddmr_write(comp, value,
+							MT6991_DISP_ODDMR_REG_DBI_V_CROP_EN_B, handle);
+					} else {
+						mtk_oddmr_write(comp, dbi_size_as_block,
+							MT6991_DISP_ODDMR_REG_DBI_VSIZE, handle);
 
-					dbi_size_as_block = (oddmr_data->roi_height + top_overhead_v
-						+ bot_overhead_v + scale_factor_v -1) /
-						scale_factor_v;
-					mtk_oddmr_write(comp, dbi_size_as_block,
-						MT6991_DISP_ODDMR_REG_DBI_UDMA_HEIGHT, handle);
+						//DBI table size as pixel
+						mtk_oddmr_write(comp,
+							(oddmr_data->roi_height +
+							top_overhead_v + bot_overhead_v),
+							MT6991_DISP_ODDMR_REG_DBI_SCL_VSIZE, handle);
+
+						dbi_size_as_block = (oddmr_data->roi_height + top_overhead_v
+							+ bot_overhead_v + scale_factor_v -1) /
+							scale_factor_v;
+						mtk_oddmr_write(comp, dbi_size_as_block,
+							MT6991_DISP_ODDMR_REG_DBI_UDMA_HEIGHT, handle);
+					}
 				}
 
 				//DBI output size
@@ -3267,25 +3418,15 @@ static void mtk_oddmr_dbi_config(struct mtk_ddp_comp *comp, struct cmdq_pkt *han
 					DISP_ODDMR_REG_Y_REMAIN2_INI, handle);
 			}
 
-			if (oddmr_data->data->dbi_version == MTK_DBI_V2 ||
-				oddmr_data->data->dbi_version == MTK_DBI_V3) {
+			if (oddmr_data->data->dbi_version == MTK_DBI_V2) {
 				width = dbi_cfg_data->basic_info.panel_width;
-
 				mtk_oddmr_write(comp, width,
 					MT6991_DISP_ODDMR_REG_ODDMR_FRAME_WIDTH, handle);
-				if (oddmr_data->data->dbi_version == MTK_DBI_V3)
-					mtk_oddmr_write(comp, width,
-						0xc4, handle); // dmr real frame width
-				else
-					mtk_oddmr_write(comp, width,
-						MT6991_DISP_ODDMR_REG_DMR_REAL_FRAME_WIDTH, handle);
+				mtk_oddmr_write(comp, width,
+					MT6991_DISP_ODDMR_REG_DMR_REAL_FRAME_WIDTH, handle);
 				if (oddmr_data->spr_enable == 1 && oddmr_data->spr_relay == 0) {
-					if (oddmr_data->data->dbi_version == MTK_DBI_V3)
-						mtk_oddmr_write(comp, width,
-						0xbc, handle);
-					else
-						mtk_oddmr_write(comp, width,
-							MT6991_DISP_ODDMR_REG_DMR_FRAME_WIDTH, handle);
+					mtk_oddmr_write(comp, width,
+						MT6991_DISP_ODDMR_REG_DMR_FRAME_WIDTH, handle);
 					switch (oddmr_data->spr_format) {
 					case MTK_PANEL_RGBG_BGRG_TYPE:
 					case MTK_PANEL_BGRG_RGBG_TYPE:
@@ -3307,17 +3448,58 @@ static void mtk_oddmr_dbi_config(struct mtk_ddp_comp *comp, struct cmdq_pkt *han
 						break;
 					}
 				} else {
-					if (oddmr_data->data->dbi_version == MTK_DBI_V3)
-						mtk_oddmr_write(comp, width,
-							0xbc, handle);
-					else
-						mtk_oddmr_write(comp, (((width + 1) / 2) * 2),
-							MT6991_DISP_ODDMR_REG_DMR_FRAME_WIDTH, handle);
+					mtk_oddmr_write(comp, (((width + 1) / 2) * 2),
+						MT6991_DISP_ODDMR_REG_DMR_FRAME_WIDTH, handle);
 					mtk_oddmr_write(comp, (((width + 1) / 2) * 2),
 						MT6991_DISP_ODDMR_REG_DBI_SCL_HSIZE, handle);
 					mtk_oddmr_write(comp, (((width + 1) / 2) * 2),
 						MT6991_DISP_ODDMR_REG_ODDMR_OUTP_IN_HSIZE, handle);
 				}
+			}
+			if(oddmr_data->data->dbi_version == MTK_DBI_V3){
+				height = dbi_cfg_data->basic_info.panel_height;
+				scale_factor_v = dbi_cfg_data->basic_info.partial_update_scale_factor_v;
+
+				if(oddmr_data->dbi_data.curr_table_format == DBI_COMP_TABLE_COMPRESSION){
+					dbi_table_size = oddmr_data->dbi_data.curr_used_entry;
+					dbi_udma_width =
+						oddmr_data->dbi_data.curr_used_entry >= (1<<24)?(1<<12):(1<<11);
+					dbi_udma_height = (dbi_table_size + dbi_udma_width -1)/dbi_udma_width;
+
+					mtk_oddmr_write(comp, 0,
+						MT6991_DISP_ODDMR_REG_DBI_UDMA_Y_INI, handle);
+					mtk_oddmr_write(comp, dbi_udma_height,
+						MT6991_DISP_ODDMR_REG_DBI_UDMA_HEIGHT, handle);
+					mtk_oddmr_write(comp, 0,
+						MT6991_DISP_ODDMR_REG_DBI_UDMA_X_INI, handle);
+				} else {
+					mtk_oddmr_write(comp, 0,
+						MT6991_DISP_ODDMR_REG_DBI_UDMA_Y_INI, handle);
+
+					reg_val = (height + scale_factor_v -1) / scale_factor_v;
+					mtk_oddmr_write(comp, reg_val,
+						MT6991_DISP_ODDMR_REG_DBI_VSIZE, handle);
+					//DBI table size as pixel
+					mtk_oddmr_write(comp, height,
+						MT6991_DISP_ODDMR_REG_DBI_SCL_VSIZE, handle);
+					//DBI udma size
+					mtk_oddmr_write(comp, 0,
+						MT6991_DISP_ODDMR_REG_DBI_UDMA_Y_INI, handle);
+					reg_val = (height + scale_factor_v -1) / scale_factor_v;
+					mtk_oddmr_write(comp, reg_val,
+						MT6991_DISP_ODDMR_REG_DBI_UDMA_HEIGHT, handle);
+				}
+
+				mtk_oddmr_write(comp, height,
+					DISP_ODDMR_REG_DMR_FRAME_HEIGHT, handle);
+				mtk_oddmr_write(comp, 0,
+					MT6993_DISP_ODDMR_REG_DMR_Y_INI, handle);
+				mtk_oddmr_write(comp, 0,
+					MT6991_DISP_ODDMR_REG_DBI_V_CROP_EN_R, handle);
+				mtk_oddmr_write(comp, 0,
+					MT6991_DISP_ODDMR_REG_DBI_V_CROP_EN_G, handle);
+				mtk_oddmr_write(comp, 0,
+					MT6991_DISP_ODDMR_REG_DBI_V_CROP_EN_B, handle);
 			}
 		}
 		if (dbi_cfg_data->dbv_node.DBV_num) {
@@ -6198,6 +6380,8 @@ static void mtk_cal_oddmr_valid_partial_roi(struct mtk_ddp_comp *comp,
 	if (comp->mtk_crtc->panel_ext->params->is_support_dbi == true &&
 		oddmr_data->primary_data->dbi_state == ODDMR_INIT_DONE) {
 		scale_factor_v = dbi_cfg_data->basic_info.partial_update_scale_factor_v;
+		if(oddmr_data->data->dbi_version >= MTK_DBI_V3)
+			scale_factor_v = 4;
 		/* align to scale factor v*/
 		if (partial_roi->y % scale_factor_v != 0) {
 			dbi_y_diff =
@@ -9081,7 +9265,7 @@ static void mtk_oddmr_dbi_dbv_table_cfg(struct mtk_ddp_comp *comp,
 
 	if (cfg_info && cfg_info->dbv_change_cfg.reg_offset && cfg_info->dbv_change_cfg.reg_value) {
 		cnt = cfg_info->dbv_change_cfg.reg_num;
-		if(dbv_node < (cfg_info->fps_dbv_node.DBV_num - 1))
+		if(dbv_node < (cfg_info->dbv_node.DBV_num - 1))
 			dbv_node_add1 = dbv_node + 1;
 		else
 			dbv_node_add1 = dbv_node;
@@ -9610,47 +9794,47 @@ unsigned char _reverse(unsigned char n)
 	return (lookup[tmp] << 4) | lookup[tmp1];
 }
 
-int mtk_oddmr_dbi_copy_static_cfg(struct bitstream_buffer *ret_drm_data,
+int mtk_oddmr_dbi_copy_static_cfg(struct mtk_drm_dmr_static_cfg *static_cfg,
 	struct mtk_drm_dbi_cfg_info *dbi_bin_struct)
 {
-	int size = sizeof(uint32_t) * dbi_bin_struct->static_cfg.reg_num;
+	int size = sizeof(uint32_t) * static_cfg->reg_num;
 
 	if (copy_from_user(dbi_bin_struct->static_cfg.reg_value,
-		ret_drm_data->static_cfg.reg_value, size)) {
-		DDPINFO("%s:%d, copy_from_user fail\n", __func__, __LINE__);
+		static_cfg->reg_value, size)) {
+		PC_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
 		return -1;
 	}
 	if (copy_from_user(dbi_bin_struct->static_cfg.reg_offset,
-		ret_drm_data->static_cfg.reg_offset, size)) {
-		DDPINFO("%s:%d, copy_from_user fail\n", __func__, __LINE__);
+		static_cfg->reg_offset, size)) {
+		PC_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
 		return -1;
 	}
 	if (copy_from_user(dbi_bin_struct->static_cfg.reg_mask,
-		ret_drm_data->static_cfg.reg_mask, size)) {
-		DDPINFO("%s:%d, copy_from_user fail\n", __func__, __LINE__);
+		static_cfg->reg_mask, size)) {
+		PC_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
 		return -1;
 	}
 	return 0;
 }
 
-int mtk_oddmr_dbi_copy_chg_cfg(struct bitstream_buffer *ret_drm_data,
+int mtk_oddmr_dbi_copy_chg_cfg(struct mtk_drm_dmr_fps_dbv_change_cfg *change_cfg,
 	struct mtk_drm_dbi_cfg_info *dbi_bin_struct)
 {
-	int size = sizeof(uint32_t) * dbi_bin_struct->fps_dbv_change_cfg.reg_num;
+	int size = sizeof(uint32_t) * change_cfg->reg_num;
 
 	if (copy_from_user(dbi_bin_struct->fps_dbv_change_cfg.reg_value,
-		ret_drm_data->fps_dbv_change_cfg.reg_value, size)) {
-		DDPINFO("%s:%d, copy_from_user fail\n", __func__, __LINE__);
+		change_cfg->reg_value, size)) {
+		PC_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
 		return -1;
 	}
 	if (copy_from_user(dbi_bin_struct->fps_dbv_change_cfg.reg_offset,
-		ret_drm_data->fps_dbv_change_cfg.reg_offset, size)) {
-		DDPINFO("%s:%d, copy_from_user fail\n", __func__, __LINE__);
+		change_cfg->reg_offset, size)) {
+		PC_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
 		return -1;
 	}
 	if (copy_from_user(dbi_bin_struct->fps_dbv_change_cfg.reg_mask,
-		ret_drm_data->fps_dbv_change_cfg.reg_mask, size)) {
-		DDPINFO("%s:%d, copy_from_user fail\n", __func__, __LINE__);
+		change_cfg->reg_mask, size)) {
+		PC_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
 		return -1;
 	}
 
@@ -9659,14 +9843,14 @@ int mtk_oddmr_dbi_copy_chg_cfg(struct bitstream_buffer *ret_drm_data,
 
 	if (dbi_bin_struct->fps_dbv_node.DC_flag) {
 		if (copy_from_user(dbi_bin_struct->fps_dbv_change_cfg.reg_DC_value,
-			ret_drm_data->fps_dbv_change_cfg.reg_DC_value, size)) {
-			DDPINFO("%s:%d, copy_from_user fail\n", __func__, __LINE__);
+			change_cfg->reg_DC_value, size)) {
+			PC_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
 			return -1;
 		}
 	} else {
 		if (copy_from_user(dbi_bin_struct->fps_dbv_change_cfg.reg_value,
-			ret_drm_data->fps_dbv_change_cfg.reg_value, size)) {
-			DDPINFO("%s:%d, copy_from_user fail\n", __func__, __LINE__);
+			change_cfg->reg_value, size)) {
+			PC_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
 			return -1;
 		}
 	}
@@ -9699,6 +9883,311 @@ static unsigned int mtk_oddmr_dbi_block_v(struct mtk_drm_dbi_cfg_info *dbi_bin_s
 	return ret;
 }
 
+
+void kernel_dbi_table_update_V3(struct mtk_ddp_comp *comp, struct mtk_dbi_alg_comp_hw_param *data)
+{
+	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
+	struct mtk_drm_dbi_cfg_info *dbi_bin_struct = &oddmr_data->primary_data->dbi_cfg_info;
+	struct mtk_drm_dbi_cfg_info *dbi_bin_struct_tb1 = &oddmr_data->primary_data->dbi_cfg_info_tb1;
+	static int first_update;
+	unsigned int block_v, block_h;
+	struct mtk_dbi_alg_comp_hw_param *hw_param = data;
+	unsigned int size;
+	void *ptr = NULL;
+	void *ptr_t = NULL;
+	unsigned int panel_height = dbi_bin_struct->basic_info.panel_height;
+
+	size = hw_param->dram_table.used_entry;
+	ptr = vmalloc(size);
+	if (!ptr) {
+		PC_ERR("%s:%d, param buffer alloc fail\n",
+			__func__, __LINE__);
+		return;
+	}
+
+	if (copy_from_user(ptr,
+		hw_param->dram_table._buffer, size)) {
+		PC_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
+		goto exit;
+	}
+	hw_param->dram_table._buffer = ptr;
+
+	if(!first_update) {
+		first_update++;
+		if(hw_param->table_format == DBI_COMP_TABLE_COMPRESSION) {
+			oddmr_data->dbi_data.used_entry[0] = hw_param->dram_table.used_entry;
+			oddmr_data->dbi_data.used_entry[1] = hw_param->dram_table.used_entry;
+			oddmr_data->dbi_data.curr_used_entry = hw_param->dram_table.used_entry;
+			oddmr_data->dbi_data.dbi_table[0]=mtk_oddmr_dbi_load_buffer(
+				&comp->mtk_crtc->base, hw_param->dram_table.used_entry+4096,
+				hw_param->dram_table.used_entry,
+				hw_param->dram_table._buffer, false);
+			oddmr_data->dbi_data.dbi_table[1]=mtk_oddmr_dbi_load_buffer(
+				&comp->mtk_crtc->base, hw_param->dram_table.used_entry+4096,
+				hw_param->dram_table.used_entry,
+				hw_param->dram_table._buffer, false);
+		} else {
+			oddmr_data->dbi_data.dbi_table[0]=mtk_oddmr_load_buffer(
+				&comp->mtk_crtc->base,
+				hw_param->dram_table.used_entry,
+				hw_param->dram_table._buffer, false);
+			oddmr_data->dbi_data.dbi_table[1]=mtk_oddmr_load_buffer(
+				&comp->mtk_crtc->base,
+				hw_param->dram_table.used_entry,
+				hw_param->dram_table._buffer, false);
+		}
+
+		if(mtk_oddmr_dbi_copy_static_cfg(&hw_param->static_cfg, dbi_bin_struct)) {
+			PC_ERR("%s:%d,copy_from_user fail\n", __func__, __LINE__);
+			goto exit;
+		}
+		if(mtk_oddmr_dbi_copy_static_cfg(&hw_param->static_cfg, dbi_bin_struct_tb1)) {
+			PC_ERR("%s:%d,copy_from_user fail\n", __func__, __LINE__);
+			goto exit;
+		}
+		if(mtk_oddmr_dbi_copy_chg_cfg(&hw_param->fps_dbv_change_cfg, dbi_bin_struct)) {
+			PC_ERR("%s:%d,copy_from_user fail\n", __func__, __LINE__);
+			goto exit;
+		}
+		if(mtk_oddmr_dbi_copy_chg_cfg(&hw_param->fps_dbv_change_cfg, dbi_bin_struct_tb1)) {
+			PC_ERR("%s:%d,copy_from_user fail\n", __func__, __LINE__);
+			goto exit;
+		}
+		if(hw_param->table_format == DBI_COMP_TABLE_COMPRESSION) {
+			block_h = 1;
+			block_v = 4;
+
+			size = hw_param->slice_num * sizeof(uint32_t);
+			ptr_t = vmalloc(size);
+			if (!ptr_t) {
+				PC_ERR("%s:%d, param buffer alloc fail\n",
+					__func__, __LINE__);
+				goto exit;
+			}
+
+			if (copy_from_user(ptr_t, hw_param->slice_offset, size)) {
+				PC_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
+				vfree(ptr_t);
+				goto exit;
+			}
+			oddmr_data->dbi_data.slice_offset[0] = ptr_t;
+
+			ptr_t = vmalloc(size);
+			if (!ptr_t) {
+				PC_ERR("%s:%d, param buffer alloc fail\n",
+					__func__, __LINE__);
+				goto exit;
+			}
+			memcpy(ptr_t, oddmr_data->dbi_data.slice_offset[0], size);
+			oddmr_data->dbi_data.slice_offset[1] = ptr_t;
+
+			ptr_t = vmalloc(size);
+			if (!ptr_t) {
+				PC_ERR("%s:%d, param buffer alloc fail\n",
+					__func__, __LINE__);
+				goto exit;
+			}
+			memcpy(ptr_t, oddmr_data->dbi_data.slice_offset[0], size);
+			oddmr_data->dbi_data.curr_slice_offset = ptr_t;
+
+			oddmr_data->dbi_data.curr_slice_num = hw_param->slice_num;
+			oddmr_data->dbi_data.slice_num[0] = hw_param->slice_num;
+			oddmr_data->dbi_data.slice_num[1] = hw_param->slice_num;
+			oddmr_data->dbi_data.table_size =  hw_param->max_line_size * panel_height;
+			oddmr_data->dbi_data.slice_height[0] = hw_param->slice_height;
+			oddmr_data->dbi_data.slice_height[1] = hw_param->slice_height;
+			oddmr_data->dbi_data.curr_slice_height = hw_param->slice_height;
+		} else  {
+			block_h = mtk_oddmr_dbi_block_h(dbi_bin_struct);
+			block_v = mtk_oddmr_dbi_block_v(dbi_bin_struct);
+			oddmr_data->dbi_data.table_size =  hw_param->dram_table.used_entry;
+		}
+		atomic_set(&oddmr_data->dbi_data.cur_table_idx, 0);
+		atomic_set(&oddmr_data->dbi_data.update_table_idx, 0);
+		oddmr_data->dbi_data.dbi_table_size[0] = oddmr_data->dbi_data.table_size;
+		oddmr_data->dbi_data.dbi_table_size[1] = oddmr_data->dbi_data.table_size;
+		oddmr_data->dbi_data.dbi_table_block_h[0] = block_h;
+		oddmr_data->dbi_data.dbi_table_block_h[1] = block_h;
+		oddmr_data->dbi_data.dbi_table_block_v[0] = block_v;
+		oddmr_data->dbi_data.dbi_table_block_v[1] = block_v;
+		oddmr_data->dbi_data.table_format[0] = hw_param->table_format;
+		oddmr_data->dbi_data.table_format[1] = hw_param->table_format;
+		oddmr_data->dbi_data.curr_table_format = hw_param->table_format;
+		oddmr_data->primary_data->dbi_cfg_info.basic_info.partial_update_scale_factor_h = block_h;
+		oddmr_data->primary_data->dbi_cfg_info.basic_info.partial_update_scale_factor_v = block_v;
+		atomic_set(&oddmr_data->dbi_data.update_table_done, 1);
+	} else {
+		mutex_lock(&oddmr_data->primary_data->dbi_data_lock);
+		if(atomic_read(&oddmr_data->dbi_data.cur_table_idx)) {
+			if(mtk_oddmr_dbi_copy_static_cfg(&hw_param->static_cfg, dbi_bin_struct)) {
+				PC_ERR("%s:%d,copy_from_user fail\n", __func__, __LINE__);
+				goto exit;
+			}
+			if(mtk_oddmr_dbi_copy_chg_cfg(&hw_param->fps_dbv_change_cfg, dbi_bin_struct)) {
+				PC_ERR("%s:%d,copy_from_user fail\n", __func__, __LINE__);
+				goto exit;
+			}
+
+			if(hw_param->table_format == DBI_COMP_TABLE_COMPRESSION) {
+				if(hw_param->dram_table.used_entry != oddmr_data->dbi_data.used_entry[0]) {
+					mtk_drm_gem_free_object(&oddmr_data->dbi_data.dbi_table[0]->base);
+					oddmr_data->dbi_data.dbi_table[0]=mtk_oddmr_dbi_load_buffer(
+						&comp->mtk_crtc->base, hw_param->dram_table.used_entry + 4096,
+						hw_param->dram_table.used_entry,
+						hw_param->dram_table._buffer, false);
+				} else
+					memcpy(oddmr_data->dbi_data.dbi_table[0]->kvaddr,
+						hw_param->dram_table._buffer, hw_param->dram_table.used_entry);
+				oddmr_data->dbi_data.used_entry[0] = hw_param->dram_table.used_entry;
+			} else{
+				if (hw_param->dram_table.used_entry != oddmr_data->dbi_data.dbi_table_size[0]) {
+					mtk_drm_gem_free_object(&oddmr_data->dbi_data.dbi_table[0]->base);
+					oddmr_data->dbi_data.dbi_table[0]=mtk_oddmr_load_buffer(
+						&comp->mtk_crtc->base, hw_param->dram_table.used_entry,
+						hw_param->dram_table._buffer, false);
+				} else
+					memcpy(oddmr_data->dbi_data.dbi_table[0]->kvaddr,
+						hw_param->dram_table._buffer, hw_param->dram_table.used_entry);
+			}
+			if(hw_param->table_format == DBI_COMP_TABLE_COMPRESSION){
+				block_h =1;
+				block_v = 4;
+				size = hw_param->slice_num * sizeof(uint32_t);
+				if (hw_param->slice_num != oddmr_data->dbi_data.slice_num[0]) {
+					oddmr_data->dbi_data.slice_num[0] = hw_param->slice_num;
+					vfree(oddmr_data->dbi_data.slice_offset[0]);
+					ptr_t = vmalloc(size);
+					if (!ptr_t) {
+						PC_ERR("%s:%d, param buffer alloc fail\n",
+						__func__, __LINE__);
+						goto exit;
+					}
+					if (copy_from_user(ptr_t, hw_param->slice_offset, size)) {
+						PC_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
+						goto exit;
+					}
+					oddmr_data->dbi_data.slice_offset[0] = ptr_t;
+				} else {
+					if (copy_from_user(oddmr_data->dbi_data.slice_offset[0],
+						hw_param->slice_offset, size)) {
+						PC_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
+						goto exit;
+					}
+				}
+				oddmr_data->dbi_data.slice_num[0] = hw_param->slice_num;
+				oddmr_data->dbi_data.dbi_table_size[0] = hw_param->max_line_size * panel_height;
+				oddmr_data->dbi_data.table_format[0] = hw_param->table_format;
+				oddmr_data->dbi_data.slice_height[0] = hw_param->slice_height;
+				oddmr_data->dbi_data.dbi_table_block_h[0] = block_h;
+				oddmr_data->dbi_data.dbi_table_block_v[0] = block_v;
+				atomic_set(&oddmr_data->dbi_data.update_table_idx, 0);
+			}else {
+				block_h = mtk_oddmr_dbi_block_h(dbi_bin_struct);
+				block_v = mtk_oddmr_dbi_block_v(dbi_bin_struct);
+				if (hw_param->dram_table.used_entry != oddmr_data->dbi_data.dbi_table_size[0]) {
+					mtk_drm_gem_free_object(&oddmr_data->dbi_data.dbi_table[0]->base);
+					oddmr_data->dbi_data.dbi_table[0]=mtk_oddmr_load_buffer(
+						&comp->mtk_crtc->base, hw_param->dram_table.used_entry,
+						hw_param->dram_table._buffer, false);
+					oddmr_data->dbi_data.dbi_table_block_h[0] = block_h;
+					oddmr_data->dbi_data.dbi_table_block_v[0] = block_v;
+					oddmr_data->dbi_data.dbi_table_size[0] = hw_param->dram_table.used_entry;
+				} else
+					memcpy(oddmr_data->dbi_data.dbi_table[0]->kvaddr,
+						hw_param->dram_table._buffer, hw_param->dram_table.used_entry);
+				atomic_set(&oddmr_data->dbi_data.update_table_idx, 0);
+			}
+		} else {
+			if(mtk_oddmr_dbi_copy_static_cfg(&hw_param->static_cfg, dbi_bin_struct_tb1)) {
+				DDPMSG("%s:%d,copy_from_user fail\n", __func__, __LINE__);
+				return;
+			}
+			if(mtk_oddmr_dbi_copy_chg_cfg(&hw_param->fps_dbv_change_cfg, dbi_bin_struct_tb1)) {
+				DDPMSG("%s:%d,copy_from_user fail\n", __func__, __LINE__);
+				return;
+			}
+
+			if(hw_param->table_format == DBI_COMP_TABLE_COMPRESSION) {
+				if(hw_param->dram_table.used_entry != oddmr_data->dbi_data.used_entry[1]) {
+					mtk_drm_gem_free_object(&oddmr_data->dbi_data.dbi_table[1]->base);
+					oddmr_data->dbi_data.dbi_table[1]=mtk_oddmr_dbi_load_buffer(
+						&comp->mtk_crtc->base, hw_param->dram_table.used_entry + 4096,
+						hw_param->dram_table.used_entry,
+						hw_param->dram_table._buffer, false);
+				} else
+					memcpy(oddmr_data->dbi_data.dbi_table[1]->kvaddr,
+						hw_param->dram_table._buffer, hw_param->dram_table.used_entry);
+				oddmr_data->dbi_data.used_entry[1] = hw_param->dram_table.used_entry;
+			} else{
+				if (hw_param->dram_table.used_entry != oddmr_data->dbi_data.dbi_table_size[1]) {
+					mtk_drm_gem_free_object(&oddmr_data->dbi_data.dbi_table[1]->base);
+					oddmr_data->dbi_data.dbi_table[1]=mtk_oddmr_load_buffer(
+						&comp->mtk_crtc->base, hw_param->dram_table.used_entry,
+						hw_param->dram_table._buffer, false);
+				} else
+					memcpy(oddmr_data->dbi_data.dbi_table[1]->kvaddr,
+						hw_param->dram_table._buffer, hw_param->dram_table.used_entry);
+			}
+			if(hw_param->table_format == DBI_COMP_TABLE_COMPRESSION){
+				block_h =1;
+				block_v = 4;
+				size = hw_param->slice_num * sizeof(uint32_t);
+				if (hw_param->slice_num != oddmr_data->dbi_data.slice_num[1]) {
+					oddmr_data->dbi_data.slice_num[1] = hw_param->slice_num;
+					vfree(oddmr_data->dbi_data.slice_offset[1]);
+					ptr_t = vmalloc(size);
+					if (!ptr_t) {
+						PC_ERR("%s:%d, param buffer alloc fail\n",
+						__func__, __LINE__);
+						goto exit;
+					}
+					if (copy_from_user(ptr_t, hw_param->slice_offset, size)) {
+						PC_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
+						goto exit;
+					}
+					oddmr_data->dbi_data.slice_offset[1] = ptr_t;
+				} else {
+					if (copy_from_user(oddmr_data->dbi_data.slice_offset[1],
+						hw_param->slice_offset, size)) {
+						PC_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
+						goto exit;
+					}
+				}
+
+				oddmr_data->dbi_data.slice_num[1] = hw_param->slice_num;
+				oddmr_data->dbi_data.dbi_table_size[1] = hw_param->max_line_size * panel_height;
+				oddmr_data->dbi_data.table_format[1] = hw_param->table_format;
+				oddmr_data->dbi_data.slice_height[1] = hw_param->slice_height;
+				oddmr_data->dbi_data.dbi_table_block_h[1] = block_h;
+				oddmr_data->dbi_data.dbi_table_block_v[1] = block_v;
+
+				atomic_set(&oddmr_data->dbi_data.update_table_idx, 1);
+			} else  {
+				block_h = mtk_oddmr_dbi_block_h(dbi_bin_struct_tb1);
+				block_v = mtk_oddmr_dbi_block_v(dbi_bin_struct_tb1);
+
+				if (hw_param->dram_table.used_entry != oddmr_data->dbi_data.dbi_table_size[1]) {
+					mtk_drm_gem_free_object(&oddmr_data->dbi_data.dbi_table[1]->base);
+					oddmr_data->dbi_data.dbi_table[1]=mtk_oddmr_load_buffer(
+						&comp->mtk_crtc->base, hw_param->dram_table.used_entry,
+						hw_param->dram_table._buffer, false);
+					oddmr_data->dbi_data.dbi_table_block_h[1] = block_h;
+					oddmr_data->dbi_data.dbi_table_block_v[1] = block_v;
+					oddmr_data->dbi_data.dbi_table_size[1] =hw_param->dram_table.used_entry;
+				} else
+					memcpy(oddmr_data->dbi_data.dbi_table[1]->kvaddr,
+						hw_param->dram_table._buffer, hw_param->dram_table.used_entry);
+				atomic_set(&oddmr_data->dbi_data.update_table_idx, 1);
+			}
+		}
+		mutex_unlock(&oddmr_data->primary_data->dbi_data_lock);
+	}
+exit:
+	if (ptr)
+		vfree(ptr);
+}
+
+
 void kernel_dbi_table_update_V2(struct mtk_ddp_comp *comp, struct bitstream_buffer *ret_drm_data)
 {
 	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
@@ -9714,19 +10203,19 @@ void kernel_dbi_table_update_V2(struct mtk_ddp_comp *comp, struct bitstream_buff
 		oddmr_data->dbi_data.dbi_table[1]=mtk_oddmr_load_buffer(
 			&comp->mtk_crtc->base, ret_drm_data->used_entry, ret_drm_data->_buffer, false);
 
-		if(mtk_oddmr_dbi_copy_static_cfg(ret_drm_data, dbi_bin_struct)) {
+		if(mtk_oddmr_dbi_copy_static_cfg(&ret_drm_data->static_cfg, dbi_bin_struct)) {
 			DDPMSG("%s:%d,copy_from_user fail\n", __func__, __LINE__);
 			return;
 		}
-		if(mtk_oddmr_dbi_copy_static_cfg(ret_drm_data, dbi_bin_struct_tb1)) {
+		if(mtk_oddmr_dbi_copy_static_cfg(&ret_drm_data->static_cfg, dbi_bin_struct_tb1)) {
 			DDPMSG("%s:%d,copy_from_user fail\n", __func__, __LINE__);
 			return;
 		}
-		if(mtk_oddmr_dbi_copy_chg_cfg(ret_drm_data, dbi_bin_struct)) {
+		if(mtk_oddmr_dbi_copy_chg_cfg(&ret_drm_data->fps_dbv_change_cfg, dbi_bin_struct)) {
 			DDPMSG("%s:%d,copy_from_user fail\n", __func__, __LINE__);
 			return;
 		}
-		if(mtk_oddmr_dbi_copy_chg_cfg(ret_drm_data, dbi_bin_struct_tb1)) {
+		if(mtk_oddmr_dbi_copy_chg_cfg(&ret_drm_data->fps_dbv_change_cfg, dbi_bin_struct_tb1)) {
 			DDPMSG("%s:%d,copy_from_user fail\n", __func__, __LINE__);
 			return;
 		}
@@ -9749,11 +10238,11 @@ void kernel_dbi_table_update_V2(struct mtk_ddp_comp *comp, struct bitstream_buff
 	} else {
 		mutex_lock(&oddmr_data->primary_data->dbi_data_lock);
 		if(atomic_read(&oddmr_data->dbi_data.cur_table_idx)) {
-			if(mtk_oddmr_dbi_copy_static_cfg(ret_drm_data, dbi_bin_struct)) {
+			if(mtk_oddmr_dbi_copy_static_cfg(&ret_drm_data->static_cfg, dbi_bin_struct)) {
 				DDPMSG("%s:%d,copy_from_user fail\n", __func__, __LINE__);
 				return;
 			}
-			if(mtk_oddmr_dbi_copy_chg_cfg(ret_drm_data, dbi_bin_struct)) {
+			if(mtk_oddmr_dbi_copy_chg_cfg(&ret_drm_data->fps_dbv_change_cfg, dbi_bin_struct)) {
 				DDPMSG("%s:%d,copy_from_user fail\n", __func__, __LINE__);
 				return;
 			}
@@ -9772,11 +10261,11 @@ void kernel_dbi_table_update_V2(struct mtk_ddp_comp *comp, struct bitstream_buff
 					ret_drm_data->_buffer, ret_drm_data->used_entry);
 			atomic_set(&oddmr_data->dbi_data.update_table_idx, 0);
 		} else {
-			if(mtk_oddmr_dbi_copy_static_cfg(ret_drm_data, dbi_bin_struct_tb1)) {
+			if(mtk_oddmr_dbi_copy_static_cfg(&ret_drm_data->static_cfg, dbi_bin_struct_tb1)) {
 				DDPMSG("%s:%d,copy_from_user fail\n", __func__, __LINE__);
 				return;
 			}
-			if(mtk_oddmr_dbi_copy_chg_cfg(ret_drm_data, dbi_bin_struct_tb1)) {
+			if(mtk_oddmr_dbi_copy_chg_cfg(&ret_drm_data->fps_dbv_change_cfg, dbi_bin_struct_tb1)) {
 				DDPMSG("%s:%d,copy_from_user fail\n", __func__, __LINE__);
 				return;
 			}
@@ -9846,19 +10335,19 @@ void kernel_dbi_table_update(struct mtk_ddp_comp *comp, struct bitstream_buffer 
 		oddmr_data->dbi_data.dbi_table[1]=mtk_oddmr_load_buffer(
 				&comp->mtk_crtc->base, dbi_table->used_entry, dbi_table->_buffer, false);
 
-		if(mtk_oddmr_dbi_copy_static_cfg(ret_drm_data, dbi_bin_struct)) {
+		if(mtk_oddmr_dbi_copy_static_cfg(&ret_drm_data->static_cfg, dbi_bin_struct)) {
 			DDPMSG("%s:%d,copy_from_user fail\n", __func__, __LINE__);
 			goto final;
 		}
-		if(mtk_oddmr_dbi_copy_static_cfg(ret_drm_data, dbi_bin_struct_tb1)) {
+		if(mtk_oddmr_dbi_copy_static_cfg(&ret_drm_data->static_cfg, dbi_bin_struct_tb1)) {
 			DDPMSG("%s:%d,copy_from_user fail\n", __func__, __LINE__);
 			goto final;
 		}
-		if(mtk_oddmr_dbi_copy_chg_cfg(ret_drm_data, dbi_bin_struct)) {
+		if(mtk_oddmr_dbi_copy_chg_cfg(&ret_drm_data->fps_dbv_change_cfg, dbi_bin_struct)) {
 			DDPMSG("%s:%d,copy_from_user fail\n", __func__, __LINE__);
 			goto final;
 		}
-		if(mtk_oddmr_dbi_copy_chg_cfg(ret_drm_data, dbi_bin_struct_tb1)) {
+		if(mtk_oddmr_dbi_copy_chg_cfg(&ret_drm_data->fps_dbv_change_cfg, dbi_bin_struct_tb1)) {
 			DDPMSG("%s:%d,copy_from_user fail\n", __func__, __LINE__);
 			goto final;
 		}
@@ -9871,22 +10360,22 @@ void kernel_dbi_table_update(struct mtk_ddp_comp *comp, struct bitstream_buffer 
 	} else {
 		mutex_lock(&oddmr_data->primary_data->dbi_data_lock);
 		if(atomic_read(&oddmr_data->dbi_data.cur_table_idx)) {
-			if(mtk_oddmr_dbi_copy_static_cfg(ret_drm_data, dbi_bin_struct)) {
+			if(mtk_oddmr_dbi_copy_static_cfg(&ret_drm_data->static_cfg, dbi_bin_struct)) {
 				DDPMSG("%s:%d,copy_from_user fail\n", __func__, __LINE__);
 				goto final;
 			}
-			if(mtk_oddmr_dbi_copy_chg_cfg(ret_drm_data, dbi_bin_struct)) {
+			if(mtk_oddmr_dbi_copy_chg_cfg(&ret_drm_data->fps_dbv_change_cfg, dbi_bin_struct)) {
 				DDPMSG("%s:%d,copy_from_user fail\n", __func__, __LINE__);
 				goto final;
 			}
 			memcpy(oddmr_data->dbi_data.dbi_table[0]->kvaddr, dbi_table->_buffer, dbi_table->used_entry);
 			atomic_set(&oddmr_data->dbi_data.update_table_idx, 0);
 		} else {
-			if(mtk_oddmr_dbi_copy_static_cfg(ret_drm_data, dbi_bin_struct_tb1)) {
+			if(mtk_oddmr_dbi_copy_static_cfg(&ret_drm_data->static_cfg, dbi_bin_struct_tb1)) {
 				DDPMSG("%s:%d,copy_from_user fail\n", __func__, __LINE__);
 				goto final;
 			}
-			if(mtk_oddmr_dbi_copy_chg_cfg(ret_drm_data, dbi_bin_struct_tb1)) {
+			if(mtk_oddmr_dbi_copy_chg_cfg(&ret_drm_data->fps_dbv_change_cfg, dbi_bin_struct_tb1)) {
 				DDPMSG("%s:%d,copy_from_user fail\n", __func__, __LINE__);
 				goto final;
 			}
@@ -12060,6 +12549,7 @@ static int mtk_oddmr_pq_ioctl_transact(struct mtk_ddp_comp *comp,
 {
 	int ret = -1;
 	struct bitstream_buffer *stream_buffer;
+	struct drm_mtk_dbi_caps *caps;
 	void *ptr;
 	unsigned int *cur_max_time;
 	unsigned int *target_code;
@@ -12135,6 +12625,12 @@ static int mtk_oddmr_pq_ioctl_transact(struct mtk_ddp_comp *comp,
 			ODDMRFLOW_LOG("can not load table, state %d\n", oddmr_data->primary_data->dbi_state);
 			return -EFAULT;
 		}
+		if(oddmr_data->data->dbi_version == MTK_DBI_V3) {
+			kernel_dbi_table_update_V3(comp, (struct mtk_dbi_alg_comp_hw_param *)params);
+			DDPMSG("%s, PQ_DBI_LOAD_TB\n", __func__);
+			break;
+		}
+
 		stream_buffer = params;
 		size = stream_buffer->size;
 		ptr = vmalloc(size);
@@ -12152,7 +12648,7 @@ static int mtk_oddmr_pq_ioctl_transact(struct mtk_ddp_comp *comp,
 		}
 		stream_buffer->_buffer = ptr;
 
-		if (oddmr_data->data->dbi_version == MTK_DBI_V2 || oddmr_data->data->dbi_version == MTK_DBI_V3)
+		if (oddmr_data->data->dbi_version == MTK_DBI_V2)
 			kernel_dbi_table_update_V2(comp, stream_buffer);
 		else
 			kernel_dbi_table_update(comp, stream_buffer);
@@ -12333,6 +12829,13 @@ static int mtk_oddmr_pq_ioctl_transact(struct mtk_ddp_comp *comp,
 	case PQ_ODDMR_OD_LOAD_PARAM:
 		ret = disp_oddmr_act_od_load_param(comp, params);
 		break;
+	case PQ_ODDMR_DBI_GET_CAPS:
+		priv = comp->mtk_crtc->base.dev->dev_private;
+		if((priv->sw_ver == A0_CHIP)&& (priv->data->mmsys_id == MMSYS_MT6993))
+			oddmr_data->primary_data->dbi_caps.compress_support = 0;
+		caps = (struct drm_mtk_dbi_caps *)params;
+		memcpy(caps, &oddmr_data->primary_data->dbi_caps,sizeof(struct drm_mtk_dbi_caps));
+		ret = 0;
 	default:
 		break;
 	}
@@ -12439,6 +12942,11 @@ static int mtk_oddmr_set_partial_update(struct mtk_ddp_comp *comp,
 	struct mtk_drm_dbi_cfg_info *dbi_cfg_data = &oddmr_data->primary_data->dbi_cfg_info;
 	unsigned int scale_factor_v = dbi_cfg_data->basic_info.partial_update_scale_factor_v;
 	uint32_t value = 0, mask = 0;
+	unsigned int pu_y_ini,pu_height,start_slice_idx,start_slice_offset;
+
+	uint32_t dbi_table_size;
+	uint32_t dbi_udma_width;
+	uint32_t dbi_udma_height;
 
 	unsigned int full_height = mtk_crtc_get_height_by_comp(__func__,
 				&comp->mtk_crtc->base, comp, true);
@@ -12569,64 +13077,119 @@ static int mtk_oddmr_set_partial_update(struct mtk_ddp_comp *comp,
 					MT6991_DISP_ODDMR_REG_DMR_Y_INI, handle);
 			}
 			if (dbi_support && oddmr_data->dbi_enable) {
-				mtk_oddmr_write(comp, dbi_udma_y_ini,
-					MT6991_DISP_ODDMR_REG_DBI_UDMA_Y_INI, handle);
-				//DBI table size as block
-				reg_val = (partial_roi.height + top_overhead_v +
-				bot_overhead_v + scale_factor_v -1)/ scale_factor_v;
-				if ((reg_val < 0x10) && (oddmr_data->data->dbi_version == MTK_DBI_V2)) {
-					reg_val = 0x10;
-					mtk_oddmr_write(comp, reg_val,
-						MT6991_DISP_ODDMR_REG_DBI_VSIZE, handle);
-					mtk_oddmr_write(comp,
-						reg_val * scale_factor_v,
-						MT6991_DISP_ODDMR_REG_DBI_SCL_VSIZE, handle);
-					mtk_oddmr_write(comp, reg_val,
+				if(oddmr_data->dbi_data.curr_table_format == DBI_COMP_TABLE_COMPRESSION){
+					pu_y_ini = oddmr_data->dbi_pu_data.dbi_y_ini;
+					pu_height = oddmr_data->roi_height + top_overhead_v + bot_overhead_v;
+					start_slice_idx =
+						mtk_oddmr_dbi_find_start_slice(oddmr_data->dbi_data.curr_slice_num,
+						oddmr_data->dbi_data.curr_slice_height, pu_y_ini);
+
+					dbi_table_size = oddmr_data->dbi_data.curr_used_entry;
+					dbi_udma_width =
+						oddmr_data->dbi_data.curr_used_entry >= (1<<24)?(1<<12):(1<<11);
+					dbi_udma_height = (dbi_table_size + dbi_udma_width -1)/dbi_udma_width;
+					start_slice_offset = oddmr_data->dbi_data.curr_slice_offset[start_slice_idx];
+
+					mtk_oddmr_write(comp, start_slice_offset/dbi_udma_width,
+						MT6991_DISP_ODDMR_REG_DBI_UDMA_Y_INI, handle);
+					dbi_udma_height -= start_slice_offset/dbi_udma_width;
+					mtk_oddmr_write(comp, dbi_udma_height,
 						MT6991_DISP_ODDMR_REG_DBI_UDMA_HEIGHT, handle);
-					value = 0;
-					mask = 0;
+					mtk_oddmr_write(comp, start_slice_offset%dbi_udma_width,
+						MT6991_DISP_ODDMR_REG_DBI_UDMA_X_INI, handle);
+
+					value = 0;mask = 0;
 					SET_VAL_MASK(value, mask, 1, MT6991_REG_DBI_V_CROP_EN_R);
-					SET_VAL_MASK(value, mask, 0, MT6991_REG_DBI_V_ST_R);
-					SET_VAL_MASK(value, mask, (partial_roi.height +
-							top_overhead_v + bot_overhead_v),
+					SET_VAL_MASK(value, mask,
+						pu_y_ini -start_slice_idx*oddmr_data->dbi_data.curr_slice_height,
+						MT6991_REG_DBI_V_ST_R);
+					SET_VAL_MASK(value, mask,
+						pu_height,
 						MT6991_REG_DBI_V_LENGTH_R);
 					mtk_oddmr_write(comp, value,
 						MT6991_DISP_ODDMR_REG_DBI_V_CROP_EN_R, handle);
-					value = 0;
-					mask = 0;
+
+					value = 0;mask = 0;
 					SET_VAL_MASK(value, mask, 1, MT6991_REG_DBI_V_CROP_EN_G);
-					SET_VAL_MASK(value, mask, 0, MT6991_REG_DBI_V_ST_G);
-					SET_VAL_MASK(value, mask, (partial_roi.height +
-						top_overhead_v + bot_overhead_v),
+					SET_VAL_MASK(value, mask,
+						pu_y_ini -start_slice_idx*oddmr_data->dbi_data.curr_slice_height,
+						MT6991_REG_DBI_V_ST_G);
+					SET_VAL_MASK(value, mask,
+						pu_height,
 						MT6991_REG_DBI_V_LENGTH_G);
 					mtk_oddmr_write(comp, value,
 						MT6991_DISP_ODDMR_REG_DBI_V_CROP_EN_G, handle);
-					value = 0;
-					mask = 0;
+
+					value = 0;mask = 0;
 					SET_VAL_MASK(value, mask, 1, MT6991_REG_DBI_V_CROP_EN_B);
-					SET_VAL_MASK(value, mask, 0, MT6991_REG_DBI_V_ST_B);
-					SET_VAL_MASK(value, mask, (partial_roi.height +
-						top_overhead_v + bot_overhead_v),
+					SET_VAL_MASK(value, mask,
+						pu_y_ini -start_slice_idx*oddmr_data->dbi_data.curr_slice_height,
+						MT6991_REG_DBI_V_ST_B);
+					SET_VAL_MASK(value, mask,
+						pu_height,
 						MT6991_REG_DBI_V_LENGTH_B);
 					mtk_oddmr_write(comp, value,
 						MT6991_DISP_ODDMR_REG_DBI_V_CROP_EN_B, handle);
-				} else {
-					mtk_oddmr_write(comp, reg_val,
-						MT6991_DISP_ODDMR_REG_DBI_VSIZE, handle);
-					//DBI table size as pixel
-					mtk_oddmr_write(comp,
-						(partial_roi.height + top_overhead_v + bot_overhead_v),
-						MT6991_DISP_ODDMR_REG_DBI_SCL_VSIZE, handle);
-					reg_val = (partial_roi.height + top_overhead_v + bot_overhead_v
-						+ scale_factor_v -1) / scale_factor_v;
-					mtk_oddmr_write(comp, reg_val,
-						MT6991_DISP_ODDMR_REG_DBI_UDMA_HEIGHT, handle);
-					mtk_oddmr_write(comp, 0,
-						MT6991_DISP_ODDMR_REG_DBI_V_CROP_EN_R, handle);
-					mtk_oddmr_write(comp, 0,
-						MT6991_DISP_ODDMR_REG_DBI_V_CROP_EN_G, handle);
-					mtk_oddmr_write(comp, 0,
-						MT6991_DISP_ODDMR_REG_DBI_V_CROP_EN_B, handle);
+				}else {
+					mtk_oddmr_write(comp, dbi_udma_y_ini,
+						MT6991_DISP_ODDMR_REG_DBI_UDMA_Y_INI, handle);
+					//DBI table size as block
+					reg_val = (partial_roi.height + top_overhead_v +
+					bot_overhead_v + scale_factor_v -1)/ scale_factor_v;
+					if ((reg_val < 0x10) && (oddmr_data->data->dbi_version == MTK_DBI_V2)) {
+						reg_val = 0x10;
+						mtk_oddmr_write(comp, reg_val,
+							MT6991_DISP_ODDMR_REG_DBI_VSIZE, handle);
+						mtk_oddmr_write(comp,
+							reg_val * scale_factor_v,
+							MT6991_DISP_ODDMR_REG_DBI_SCL_VSIZE, handle);
+						mtk_oddmr_write(comp, reg_val,
+							MT6991_DISP_ODDMR_REG_DBI_UDMA_HEIGHT, handle);
+						value = 0;
+						mask = 0;
+						SET_VAL_MASK(value, mask, 1, MT6991_REG_DBI_V_CROP_EN_R);
+						SET_VAL_MASK(value, mask, 0, MT6991_REG_DBI_V_ST_R);
+						SET_VAL_MASK(value, mask, (partial_roi.height +
+								top_overhead_v + bot_overhead_v),
+							MT6991_REG_DBI_V_LENGTH_R);
+						mtk_oddmr_write(comp, value,
+							MT6991_DISP_ODDMR_REG_DBI_V_CROP_EN_R, handle);
+						value = 0;
+						mask = 0;
+						SET_VAL_MASK(value, mask, 1, MT6991_REG_DBI_V_CROP_EN_G);
+						SET_VAL_MASK(value, mask, 0, MT6991_REG_DBI_V_ST_G);
+						SET_VAL_MASK(value, mask, (partial_roi.height +
+							top_overhead_v + bot_overhead_v),
+							MT6991_REG_DBI_V_LENGTH_G);
+						mtk_oddmr_write(comp, value,
+							MT6991_DISP_ODDMR_REG_DBI_V_CROP_EN_G, handle);
+						value = 0;
+						mask = 0;
+						SET_VAL_MASK(value, mask, 1, MT6991_REG_DBI_V_CROP_EN_B);
+						SET_VAL_MASK(value, mask, 0, MT6991_REG_DBI_V_ST_B);
+						SET_VAL_MASK(value, mask, (partial_roi.height +
+							top_overhead_v + bot_overhead_v),
+							MT6991_REG_DBI_V_LENGTH_B);
+						mtk_oddmr_write(comp, value,
+							MT6991_DISP_ODDMR_REG_DBI_V_CROP_EN_B, handle);
+					} else {
+						mtk_oddmr_write(comp, reg_val,
+							MT6991_DISP_ODDMR_REG_DBI_VSIZE, handle);
+						//DBI table size as pixel
+						mtk_oddmr_write(comp,
+							(partial_roi.height + top_overhead_v + bot_overhead_v),
+							MT6991_DISP_ODDMR_REG_DBI_SCL_VSIZE, handle);
+						reg_val = (partial_roi.height + top_overhead_v + bot_overhead_v
+							+ scale_factor_v -1) / scale_factor_v;
+						mtk_oddmr_write(comp, reg_val,
+							MT6991_DISP_ODDMR_REG_DBI_UDMA_HEIGHT, handle);
+						mtk_oddmr_write(comp, 0,
+							MT6991_DISP_ODDMR_REG_DBI_V_CROP_EN_R, handle);
+						mtk_oddmr_write(comp, 0,
+							MT6991_DISP_ODDMR_REG_DBI_V_CROP_EN_G, handle);
+						mtk_oddmr_write(comp, 0,
+							MT6991_DISP_ODDMR_REG_DBI_V_CROP_EN_B, handle);
+					}
 				}
 			}
 			if (dmr_support && oddmr_data->dmr_enable && is_compression_mode) {
@@ -12710,19 +13273,33 @@ static int mtk_oddmr_set_partial_update(struct mtk_ddp_comp *comp,
 					MT6991_DISP_ODDMR_REG_DMR_Y_INI, handle);
 			}
 			if (dbi_support && oddmr_data->dbi_enable) {
-				//DBI table size as block
-				reg_val = (full_height + scale_factor_v -1) / scale_factor_v;
-				mtk_oddmr_write(comp, reg_val,
-					MT6991_DISP_ODDMR_REG_DBI_VSIZE, handle);
-				//DBI table size as pixel
-				mtk_oddmr_write(comp, full_height,
-					MT6991_DISP_ODDMR_REG_DBI_SCL_VSIZE, handle);
-				//DBI udma size
-				mtk_oddmr_write(comp, 0,
-					MT6991_DISP_ODDMR_REG_DBI_UDMA_Y_INI, handle);
-				reg_val = (full_height + scale_factor_v -1) / scale_factor_v;
-				mtk_oddmr_write(comp, reg_val,
-					MT6991_DISP_ODDMR_REG_DBI_UDMA_HEIGHT, handle);
+				if(oddmr_data->dbi_data.curr_table_format == DBI_COMP_TABLE_COMPRESSION){
+
+					mtk_oddmr_write(comp,0,
+						MT6991_DISP_ODDMR_REG_DBI_UDMA_Y_INI, handle);
+					mtk_oddmr_write(comp, 0,
+						MT6991_DISP_ODDMR_REG_DBI_UDMA_X_INI, handle);
+					dbi_table_size = oddmr_data->dbi_data.curr_used_entry;
+					dbi_udma_width =
+						oddmr_data->dbi_data.curr_used_entry >= (1<<24)?(1<<12):(1<<11);
+					dbi_udma_height = (dbi_table_size + dbi_udma_width -1)/dbi_udma_width;
+					mtk_oddmr_write(comp, dbi_udma_height,
+						MT6991_DISP_ODDMR_REG_DBI_UDMA_HEIGHT, handle);
+				}else {
+					//DBI table size as block
+					reg_val = (full_height + scale_factor_v -1) / scale_factor_v;
+					mtk_oddmr_write(comp, reg_val,
+						MT6991_DISP_ODDMR_REG_DBI_VSIZE, handle);
+					//DBI table size as pixel
+					mtk_oddmr_write(comp, full_height,
+						MT6991_DISP_ODDMR_REG_DBI_SCL_VSIZE, handle);
+					//DBI udma size
+					mtk_oddmr_write(comp, 0,
+						MT6991_DISP_ODDMR_REG_DBI_UDMA_Y_INI, handle);
+					reg_val = (full_height + scale_factor_v -1) / scale_factor_v;
+					mtk_oddmr_write(comp, reg_val,
+						MT6991_DISP_ODDMR_REG_DBI_UDMA_HEIGHT, handle);
+				}
 			}
 			if (dmr_support && oddmr_data->dmr_enable && is_compression_mode) {
 				for (i = 0; i < dmr_cfg_data->dmr_pu_info.slice_num; i++)
@@ -13273,6 +13850,7 @@ static int mtk_disp_oddmr_probe(struct platform_device *pdev)
 	atomic_set(&oddmr_data->dbi_data.max_time_set_done, 0);
 	atomic_set(&oddmr_data->dbi_data.gain_ratio, 100);
 	atomic_set(&oddmr_data->dbi_data.remap_enable, 0);
+	oddmr_data->primary_data->dbi_caps.compress_support = oddmr_data->data->dbi_compress_support;
 
 	DDPMSG("%s id %d, ret %d-\n", __func__, comp_id, ret);
 	return ret;
@@ -13308,6 +13886,7 @@ static const struct mtk_disp_oddmr_data mt6985_oddmr_driver_data = {
 	.odr_buffer_size = 264,
 	.odw_buffer_size = 264,
 	.irq_handler = mtk_oddmr_check_framedone,
+	.dbi_compress_support = false,
 };
 
 static const struct mtk_disp_oddmr_data mt6897_oddmr_driver_data = {
@@ -13325,6 +13904,7 @@ static const struct mtk_disp_oddmr_data mt6897_oddmr_driver_data = {
 	.odr_buffer_size = 264,
 	.odw_buffer_size = 264,
 	.irq_handler = NULL,
+	.dbi_compress_support = false,
 };
 
 static const struct mtk_disp_oddmr_data mt6989_oddmr_driver_data = {
@@ -13343,6 +13923,7 @@ static const struct mtk_disp_oddmr_data mt6989_oddmr_driver_data = {
 	.odr_buffer_size = 960,
 	.odw_buffer_size = 960,
 	.irq_handler = NULL,
+	.dbi_compress_support = false,
 };
 
 static const struct mtk_disp_oddmr_data mt6991_oddmr_driver_data = {
@@ -13367,6 +13948,7 @@ static const struct mtk_disp_oddmr_data mt6991_oddmr_driver_data = {
 	.is_dbi_support_stash = true,
 	.is_od_support_stash = false,
 	.min_stash_port_bw = 17,
+	.dbi_compress_support = false,
 };
 
 static const struct mtk_disp_oddmr_data mt6993_oddmr_driver_data = {
@@ -13394,6 +13976,7 @@ static const struct mtk_disp_oddmr_data mt6993_oddmr_driver_data = {
 	.slc_read_alloc = 1,
 	.slc_period = 1,
 	.sodi_config = mt6993_mtk_sodi_config,
+	.dbi_compress_support = true,
 };
 
 static const struct of_device_id mtk_disp_oddmr_driver_dt_match[] = {
