@@ -18058,7 +18058,7 @@ create_new_pkt:
 	/* dump DB when pool size too much */
 	if (pkt_pool->size == 1000) {
 #if IS_ENABLED(CONFIG_ARM64)
-		DDPAEE_FATAL("%s: pkt pool size too much", __func__);
+		DDPAEE_EXCEPTION("%s: pkt pool size too much", __func__);
 #else
 		DDPAEE("%s: pkt pool size too much", __func__);
 #endif

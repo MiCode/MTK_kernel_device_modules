@@ -1240,7 +1240,7 @@ static void disp_chist_get_hist(struct mtk_ddp_comp *comp)
 		PQ_ERR("%s: comp:%d data_zero:0x%x fence_NULL:%d fence_zero:%d channel_en:%d\n",
 			__func__, comp->id, data_zero, fence_NULL, fence_zero, channel_en);
 		if (g_mobile_log)
-			DDPAEE_FATAL("%s, %d: chist err data_zero:%d fence_NULL:%d fence_zero:%d\n",
+			DDPAEE_EXCEPTION("%s, %d: chist err data_zero:%d fence_NULL:%d fence_zero:%d\n",
 				__func__, __LINE__, data_zero, fence_NULL, fence_zero);
 	}
 	last_present_fence = cur_present_fence;

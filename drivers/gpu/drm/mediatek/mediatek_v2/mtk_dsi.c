@@ -2928,7 +2928,7 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 			lane_num = readl(dsi->regs + DSI_TXRX_CTRL(dsi->driver_data));
 			lane_num = REG_FLD_VAL_GET(REG_FLD_MSB_LSB(5, 2), lane_num);
 			if (!lane_num)
-				DDPAEE_FATAL("%s, lane num is error! 0x%x\n", __func__, lane_num);
+				DDPAEE_EXCEPTION("%s, lane num is error! 0x%x\n", __func__, lane_num);
 
 			buf_con = readl(dsi->regs + DSI_BUF_SIZE(dsi->driver_data));
 			buf_con = REG_FLD_VAL_GET(DSI_BUF_REAL_SIZE, buf_con);
@@ -4429,7 +4429,7 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 #endif
 				if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_DSI_UNDERRUN_AEE)) {
 #if IS_ENABLED(CONFIG_ARM64)
-					DDPAEE_FATAL("[IRQ] %s:buffer underrun. TS:0x%llx, NTS:0x%llx\n",
+					DDPAEE_TRACE_TOP("[IRQ] %s:buffer underrun. TS:0x%llx, NTS:0x%llx\n",
 						mtk_dump_comp_str(comp), (u64)arch_timer_read_counter(),
 						(u64)sched_clock());
 #else
@@ -4879,7 +4879,7 @@ static void mtk_dsi_exit_ulps(struct mtk_dsi *dsi, bool async)
 	lane_num = readl(dsi->regs + DSI_TXRX_CTRL(dsi->driver_data));
 	lane_num = REG_FLD_VAL_GET(REG_FLD_MSB_LSB(5, 2), lane_num);
 	if (lane_num)
-		DDPAEE_FATAL("%s, lane num is error! 0x%x\n", __func__, lane_num);
+		DDPAEE_EXCEPTION("%s, lane num is error! 0x%x\n", __func__, lane_num);
 
 	mtk_mipi_tx_pre_oe_config(dsi->phy, 0);
 	mtk_mipi_tx_oe_config(dsi->phy, 0);

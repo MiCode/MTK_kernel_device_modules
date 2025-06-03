@@ -5903,7 +5903,7 @@ test_2c_done:
 		mtk_vdisp_ao_for_debug_config(mtk_crtc, NULL);
 		DDPMSG("%d %s\n", __LINE__, opt);
 	} else if (strncmp(opt, "disp_db_trig", 12) == 0) {
-		DDPAEE_FATAL("Test hrt issue db contain atb trace or not\n");
+		DDPAEE_TRACE_TOP("Test hrt issue db contain atb trace or not\n");
 		DDPMSG("%d %s\n", __LINE__, opt);
 	} else if (strncmp(opt, "dbgtp_stop", 10) == 0) {
 		mtk_hrt_issue_flag_set(true);
