@@ -21,6 +21,7 @@
 #include <linux/sched/clock.h>
 #include <linux/workqueue.h>
 #include <linux/jiffies.h>
+#include <linux/rtmutex.h>
 #include <soc/mediatek/smi.h>
 #include <soc/mediatek/dramc.h>
 #include <soc/mediatek/mmdvfs_public.h>
@@ -221,7 +222,7 @@ struct mtk_mmqos {
 	u32 mmpc_total_current_pmqos_bw;
 	u32 mmpc_total_current_slb_bw;
 	u32 vmmrc_level_hex;
-	struct mutex bw_lock;
+	struct rt_mutex bw_lock;
 	u32 bwl_hrt_r_margin;
 	u32 bwl_hrt_w_margin;
 	u32 bwl_srt_r_margin;
@@ -339,7 +340,7 @@ static void mmqos_update_setting(struct mtk_mmqos *mmqos)
 			comm_node->freq = clk_get_rate(comm_node->clk)/1000000;
 			list_for_each_entry(comm_port,
 						&comm_node->comm_port_list, list) {
-				mutex_lock(&comm_port->bw_lock);
+				rt_mutex_lock(&comm_port->bw_lock);
 				if (comm_port->latest_mix_bw
 					|| comm_port->latest_peak_bw) {
 					mmqos_update_comm_bw(comm_port->larb_dev,
@@ -350,7 +351,7 @@ static void mmqos_update_setting(struct mtk_mmqos *mmqos)
 						mmqos->qos_bound,
 						comm_port->hrt_type == HRT_MAX_BWL);
 				}
-				mutex_unlock(&comm_port->bw_lock);
+				rt_mutex_unlock(&comm_port->bw_lock);
 			}
 		}
 	}
@@ -444,7 +445,7 @@ static void set_total_bw_to_emi(struct common_node *comm_node)
 	u32 comm_id;
 
 	list_for_each_entry(comm_port_node, &comm_node->comm_port_list, list) {
-		mutex_lock(&comm_port_node->bw_lock);
+		rt_mutex_lock(&comm_port_node->bw_lock);
 		if (mmqos_state & DPC_ENABLE
 			&& is_disp_comm_port(comm_port_node->hrt_type)) {
 			if (log_level & 1 << log_debug)
@@ -471,7 +472,7 @@ static void set_total_bw_to_emi(struct common_node *comm_node)
 				peak_bw += normalize_peak_bw;
 			}
 		}
-		mutex_unlock(&comm_port_node->bw_lock);
+		rt_mutex_unlock(&comm_port_node->bw_lock);
 	}
 
 	sum_up_avg_bw = avg_bw;
@@ -901,10 +902,10 @@ static void update_hrt_bw(struct mtk_mmqos *mmqos)
 		list_for_each_entry(comm_port,
 				    &comm_node->comm_port_list, list) {
 			if (comm_port->hrt_type < HRT_TYPE_NUM) {
-				mutex_lock(&comm_port->bw_lock);
+				rt_mutex_lock(&comm_port->bw_lock);
 				hrt_bw[comm_port->hrt_type] +=
 					icc_to_MBps(comm_port->latest_peak_bw);
-				mutex_unlock(&comm_port->bw_lock);
+				rt_mutex_unlock(&comm_port->bw_lock);
 			}
 		}
 	}
@@ -1320,12 +1321,12 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 			}
 		}
 
-		mutex_lock(&comm_port_node->bw_lock);
+		rt_mutex_lock(&comm_port_node->bw_lock);
 #ifdef ENABLE_INTERCONNECT_V2
 		if (comm_port_node->latest_mix_bw == dst->v2_mix_bw
 			&& comm_port_node->latest_peak_bw == dst->peak_bw
 			&& comm_port_node->latest_avg_bw == dst->avg_bw) {
-			mutex_unlock(&comm_port_node->bw_lock);
+			rt_mutex_unlock(&comm_port_node->bw_lock);
 			break;
 		}
 		comm_port_node->latest_mix_bw = dst->v2_mix_bw;
@@ -1378,7 +1379,7 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 			src->avg_bw, src->peak_bw,
 			comm_port_node->latest_avg_bw,
 			comm_port_node->latest_peak_bw);
-		mutex_unlock(&comm_port_node->bw_lock);
+		rt_mutex_unlock(&comm_port_node->bw_lock);
 		break;
 	case MTK_MMQOS_NODE_LARB:
 		larb_port_node = (struct larb_port_node *)src->data;
@@ -2546,7 +2547,7 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 			comm_port_node->hrt_type =
 				mmqos_desc->comm_port_hrt_types[
 				MASK_8((node->id >> 8))][MASK_8(node->id)];
-			mutex_init(&comm_port_node->bw_lock);
+			rt_mutex_init(&comm_port_node->bw_lock);
 			comm_port_node->common = node->links[0]->data;
 			INIT_LIST_HEAD(&comm_port_node->list);
 			list_add_tail(&comm_port_node->list,
@@ -2686,7 +2687,7 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, mmqos);
 	devm_kfree(&pdev->dev, smi_imu);
 
-	mutex_init(&gmmqos->bw_lock);
+	rt_mutex_init(&gmmqos->bw_lock);
 
 	/* create proc file */
 	dir = proc_mkdir("mmqos", NULL);
@@ -3262,7 +3263,7 @@ int mmqos_debug_set_ftrace(const char *val,
 		return 0;
 	}
 
-	mutex_lock(&gmmqos->bw_lock);
+	rt_mutex_lock(&gmmqos->bw_lock);
 	ret = kstrtou32(val, 0, &ena);
 
 	ftrace_ena = ena;
@@ -3282,7 +3283,7 @@ int mmqos_debug_set_ftrace(const char *val,
 			}
 		}
 	}
-	mutex_unlock(&gmmqos->bw_lock);
+	rt_mutex_unlock(&gmmqos->bw_lock);
 	return 0;
 }
 EXPORT_SYMBOL_GPL(mmqos_debug_set_ftrace);

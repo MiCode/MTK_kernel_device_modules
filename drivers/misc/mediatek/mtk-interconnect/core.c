@@ -15,7 +15,7 @@
 #include "mtk-interconnect-provider.h"
 #include <linux/list.h>
 #include <linux/module.h>
-#include <linux/mutex.h>
+#include <linux/rtmutex.h>
 #include <linux/slab.h>
 #include <linux/of.h>
 #include <linux/overflow.h>
@@ -29,7 +29,7 @@
 
 static DEFINE_IDR(icc_idr);
 static LIST_HEAD(icc_providers);
-static DEFINE_MUTEX(icc_lock);
+static struct rt_mutex icc_lock;
 static struct dentry *icc_debugfs_dir;
 static int ftrace_ena;
 
@@ -54,7 +54,7 @@ static int mtk_icc_summary_show(struct seq_file *s, void *data)
 	seq_puts(s, " node                                   avg         peak\n");
 	seq_puts(s, "--------------------------------------------------------\n");
 
-	mutex_lock(&icc_lock);
+	rt_mutex_lock(&icc_lock);
 
 	list_for_each_entry(provider, &icc_providers, provider_list) {
 		struct icc_node *n;
@@ -74,7 +74,7 @@ static int mtk_icc_summary_show(struct seq_file *s, void *data)
 		}
 	}
 
-	mutex_unlock(&icc_lock);
+	rt_mutex_unlock(&icc_lock);
 
 	return 0;
 }
@@ -365,14 +365,14 @@ static struct icc_node *of_icc_get_from_provider(struct of_phandle_args *spec)
 	if (!spec || spec->args_count != 1)
 		return ERR_PTR(-EINVAL);
 
-	mutex_lock(&icc_lock);
+	rt_mutex_lock(&icc_lock);
 	list_for_each_entry(provider, &icc_providers, provider_list) {
 		if (provider->dev->of_node == spec->np)
 			node = provider->xlate(spec, provider->data);
 		if (!IS_ERR(node))
 			break;
 	}
-	mutex_unlock(&icc_lock);
+	rt_mutex_unlock(&icc_lock);
 
 	return node;
 }
@@ -458,9 +458,9 @@ struct icc_path *of_mtk_icc_get(struct device *dev, const char *name)
 		return ERR_CAST(dst_node);
 	}
 
-	mutex_lock(&icc_lock);
+	rt_mutex_lock(&icc_lock);
 	path = path_find(dev, src_node, dst_node);
-	mutex_unlock(&icc_lock);
+	rt_mutex_unlock(&icc_lock);
 	if (IS_ERR(path)) {
 		dev_err(dev, "%s: invalid path=%ld\n", __func__, PTR_ERR(path));
 		return path;
@@ -496,12 +496,12 @@ void mtk_icc_set_tag(struct icc_path *path, u32 tag)
 	if (!path)
 		return;
 
-	mutex_lock(&icc_lock);
+	rt_mutex_lock(&icc_lock);
 
 	for (i = 0; i < path->num_nodes; i++)
 		path->reqs[i].tag = tag;
 
-	mutex_unlock(&icc_lock);
+	rt_mutex_unlock(&icc_lock);
 }
 EXPORT_SYMBOL_GPL(mtk_icc_set_tag);
 
@@ -516,7 +516,7 @@ int mtk_icc_set_bw_not_update(struct icc_path *path, u32 avg_bw, u32 peak_bw)
 		return -EINVAL;
 	}
 
-	mutex_lock(&icc_lock);
+	rt_mutex_lock(&icc_lock);
 	for (i = 0; i < path->num_nodes; i++) {
 		node = path->reqs[i].node;
 
@@ -527,7 +527,7 @@ int mtk_icc_set_bw_not_update(struct icc_path *path, u32 avg_bw, u32 peak_bw)
 		/* aggregate requests for this node */
 		aggregate_requests(node);
 	}
-	mutex_unlock(&icc_lock);
+	rt_mutex_unlock(&icc_lock);
 
 	return 0;
 }
@@ -562,7 +562,7 @@ int mtk_icc_set_bw(struct icc_path *path, u32 avg_bw, u32 peak_bw)
 	}
 
 	MMQOS_ICC_SYSTRACE_BEGIN("%s lock", __func__);
-	mutex_lock(&icc_lock);
+	rt_mutex_lock(&icc_lock);
 	MMQOS_ICC_SYSTRACE_END("%s lock", __func__);
 
 	restore_avg_bw = path->reqs[0].avg_bw;
@@ -610,7 +610,7 @@ int mtk_icc_set_bw(struct icc_path *path, u32 avg_bw, u32 peak_bw)
 	}
 
 	MMQOS_ICC_SYSTRACE_BEGIN("%s unlock", __func__);
-	mutex_unlock(&icc_lock);
+	rt_mutex_unlock(&icc_lock);
 	MMQOS_ICC_SYSTRACE_END("%s unlock", __func__); //unlock
 	trace_mtk_icc_set_bw_end(path, ret);
 	MMQOS_ICC_SYSTRACE_END("%s set bw", __func__); //full icc set
@@ -640,7 +640,7 @@ struct icc_path *mtk_icc_get(struct device *dev, const int src_id, const int dst
 	struct icc_node *src, *dst;
 	struct icc_path *path = ERR_PTR(-EPROBE_DEFER);
 
-	mutex_lock(&icc_lock);
+	rt_mutex_lock(&icc_lock);
 
 	src = node_find(src_id);
 	if (!src)
@@ -662,7 +662,7 @@ struct icc_path *mtk_icc_get(struct device *dev, const int src_id, const int dst
 		path = ERR_PTR(-ENOMEM);
 	}
 out:
-	mutex_unlock(&icc_lock);
+	rt_mutex_unlock(&icc_lock);
 	return path;
 }
 EXPORT_SYMBOL_GPL(mtk_icc_get);
@@ -687,14 +687,14 @@ void mtk_icc_put(struct icc_path *path)
 	if (ret)
 		pr_err("%s: error (%d)\n", __func__, ret);
 
-	mutex_lock(&icc_lock);
+	rt_mutex_lock(&icc_lock);
 	for (i = 0; i < path->num_nodes; i++) {
 		node = path->reqs[i].node;
 		hlist_del(&path->reqs[i].req_node);
 		if (!WARN_ON(!node->provider->users))
 			node->provider->users--;
 	}
-	mutex_unlock(&icc_lock);
+	rt_mutex_unlock(&icc_lock);
 
 	kfree_const(path->name);
 	kfree(path);
@@ -736,11 +736,11 @@ struct icc_node *mtk_icc_node_create(int id)
 {
 	struct icc_node *node;
 
-	mutex_lock(&icc_lock);
+	rt_mutex_lock(&icc_lock);
 
 	node = icc_node_create_nolock(id);
 
-	mutex_unlock(&icc_lock);
+	rt_mutex_unlock(&icc_lock);
 
 	return node;
 }
@@ -754,7 +754,7 @@ void mtk_icc_node_destroy(int id)
 {
 	struct icc_node *node;
 
-	mutex_lock(&icc_lock);
+	rt_mutex_lock(&icc_lock);
 
 	node = node_find(id);
 	if (node) {
@@ -763,7 +763,7 @@ void mtk_icc_node_destroy(int id)
 		WARN_ON(!hlist_empty(&node->direct_req_list));
 	}
 
-	mutex_unlock(&icc_lock);
+	rt_mutex_unlock(&icc_lock);
 
 	kfree(node);
 }
@@ -792,7 +792,7 @@ int mtk_icc_link_create(struct icc_node *node, const int dst_id)
 	if (!node->provider)
 		return -EINVAL;
 
-	mutex_lock(&icc_lock);
+	rt_mutex_lock(&icc_lock);
 
 	dst = node_find(dst_id);
 	if (!dst) {
@@ -827,7 +827,7 @@ int mtk_icc_link_create(struct icc_node *node, const int dst_id)
 	dst->reverse_links[dst->num_reverse_links++] = node;
 
 out:
-	mutex_unlock(&icc_lock);
+	rt_mutex_unlock(&icc_lock);
 
 	return ret;
 }
@@ -852,7 +852,7 @@ int mtk_icc_link_destroy(struct icc_node *src, struct icc_node *dst)
 	if (IS_ERR_OR_NULL(dst))
 		return -EINVAL;
 
-	mutex_lock(&icc_lock);
+	rt_mutex_lock(&icc_lock);
 
 	for (slot = 0; slot < src->num_links; slot++)
 		if (src->links[slot] == dst)
@@ -871,7 +871,7 @@ int mtk_icc_link_destroy(struct icc_node *src, struct icc_node *dst)
 		src->links = new;
 
 out:
-	mutex_unlock(&icc_lock);
+	rt_mutex_unlock(&icc_lock);
 
 	return ret;
 }
@@ -885,20 +885,20 @@ EXPORT_SYMBOL_GPL(mtk_icc_link_destroy);
 void mtk_icc_node_add(struct icc_node *node, struct icc_provider *provider)
 {
 	struct icc_node *n;
-	mutex_lock(&icc_lock);
+	rt_mutex_lock(&icc_lock);
 
 	node->provider = provider;
 
 	list_for_each_entry(n, &provider->nodes, node_list) {
 		if (node == n) {
-			mutex_unlock(&icc_lock);
+			rt_mutex_unlock(&icc_lock);
 			return;
 		}
 	}
 
 	list_add_tail(&node->node_list, &provider->nodes);
 
-	mutex_unlock(&icc_lock);
+	rt_mutex_unlock(&icc_lock);
 }
 EXPORT_SYMBOL_GPL(mtk_icc_node_add);
 
@@ -908,11 +908,11 @@ EXPORT_SYMBOL_GPL(mtk_icc_node_add);
  */
 void mtk_icc_node_del(struct icc_node *node)
 {
-	mutex_lock(&icc_lock);
+	rt_mutex_lock(&icc_lock);
 
 	list_del(&node->node_list);
 
-	mutex_unlock(&icc_lock);
+	rt_mutex_unlock(&icc_lock);
 }
 EXPORT_SYMBOL_GPL(mtk_icc_node_del);
 
@@ -929,12 +929,12 @@ int mtk_icc_provider_add(struct icc_provider *provider)
 	if (WARN_ON(!provider->xlate))
 		return -EINVAL;
 
-	mutex_lock(&icc_lock);
+	rt_mutex_lock(&icc_lock);
 
 	INIT_LIST_HEAD(&provider->nodes);
 	list_add_tail(&provider->provider_list, &icc_providers);
 
-	mutex_unlock(&icc_lock);
+	rt_mutex_unlock(&icc_lock);
 
 	dev_dbg(provider->dev, "interconnect provider added to topology\n");
 
@@ -950,22 +950,22 @@ EXPORT_SYMBOL_GPL(mtk_icc_provider_add);
  */
 int mtk_icc_provider_del(struct icc_provider *provider)
 {
-	mutex_lock(&icc_lock);
+	rt_mutex_lock(&icc_lock);
 	if (provider->users) {
 		pr_warn("interconnect provider still has %d users\n",
 			provider->users);
-		mutex_unlock(&icc_lock);
+		rt_mutex_unlock(&icc_lock);
 		return -EBUSY;
 	}
 
 	if (!list_empty(&provider->nodes)) {
 		pr_warn("interconnect provider still has nodes\n");
-		mutex_unlock(&icc_lock);
+		rt_mutex_unlock(&icc_lock);
 		return -EBUSY;
 	}
 
 	list_del(&provider->provider_list);
-	mutex_unlock(&icc_lock);
+	rt_mutex_unlock(&icc_lock);
 
 	return 0;
 }
@@ -976,6 +976,8 @@ static int __init mtk_icc_init(void)
 	icc_debugfs_dir = debugfs_create_dir("mtk-interconnect", NULL);
 	debugfs_create_file("interconnect_summary", 0444,
 			    icc_debugfs_dir, NULL, &mtk_icc_summary_fops);
+
+	rt_mutex_init(&icc_lock);
 	return 0;
 }
 

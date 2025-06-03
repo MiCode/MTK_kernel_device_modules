@@ -12,6 +12,7 @@
 #include <linux/workqueue.h>
 #include <soc/mediatek/mmqos.h>
 #include <linux/kernel.h>
+#include <linux/rtmutex.h>
 
 #define MMQOS_NO_LINK			(0xffffffff)
 #define MMQOS_MAX_COMM_NUM		(3)
@@ -98,7 +99,7 @@ struct common_port_node {
 	struct mmqos_base_node *base;
 	struct common_node *common;
 	struct device *larb_dev;
-	struct mutex bw_lock;
+	struct rt_mutex bw_lock;
 	u32 latest_mix_bw;
 	u64 latest_peak_bw;
 	u32 latest_avg_bw;
