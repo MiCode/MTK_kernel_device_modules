@@ -3709,18 +3709,7 @@ void mtk_oddmr_dump(struct mtk_ddp_comp *comp)
 	void __iomem *baddr = comp->regs;
 	void __iomem *mbaddr;
 	int i;
-	struct mtk_drm_private *priv = NULL;
-	struct mtk_drm_crtc *mtk_crtc = NULL;
 	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
-
-	if (!(oddmr_data->data->dbi_version == MTK_DBI_V2)) {
-		if (g_oddmr_dump_en == false)
-			return;
-	}
-
-	mtk_crtc = comp->mtk_crtc;
-	if(mtk_crtc->base.dev->dev_private)
-		priv = mtk_crtc->base.dev->dev_private;
 
 	if (oddmr_data->data->dbi_version < MTK_DBI_V2) {
 		DDPDUMP("== %s REGS:%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
@@ -3735,18 +3724,65 @@ void mtk_oddmr_dump(struct mtk_ddp_comp *comp)
 	}
 
 	if(oddmr_data->data->dbi_version >= MTK_DBI_V2) {
-		DDPDUMP("== %s REGS:%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
-		DDPDUMP("-- Start dump oddmr registers --\n");
-		mbaddr = baddr;
-		for (i = 0; i < 0x1000; i += 16) {
-			DDPDUMP("ODDMR+%x: 0x%x 0x%x 0x%x 0x%x\n", i, readl(mbaddr + i),
-				readl(mbaddr + i + 0x4), readl(mbaddr + i + 0x8),
-				readl(mbaddr + i + 0xc));
-		}
-		for (i = 0x10000; i < 0x11000; i += 16) {
-			DDPDUMP("ODDMR+%x: 0x%x 0x%x 0x%x 0x%x\n", i, readl(mbaddr + i),
-				readl(mbaddr + i + 0x4), readl(mbaddr + i + 0x8),
-				readl(mbaddr + i + 0xc));
+		if (g_oddmr_dump_en == true) {
+			/* Full DUMP */
+			DDPDUMP("== %s REGS:%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
+			DDPDUMP("-- Start dump oddmr registers --\n");
+			mbaddr = baddr;
+			for (i = 0; i < 0x1000; i += 16) {
+				DDPDUMP("ODDMR+%x: 0x%x 0x%x 0x%x 0x%x\n", i, readl(mbaddr + i),
+					readl(mbaddr + i + 0x4), readl(mbaddr + i + 0x8),
+					readl(mbaddr + i + 0xc));
+			}
+			for (i = 0x10000; i < 0x11000; i += 16) {
+				DDPDUMP("ODDMR+%x: 0x%x 0x%x 0x%x 0x%x\n", i, readl(mbaddr + i),
+					readl(mbaddr + i + 0x4), readl(mbaddr + i + 0x8),
+					readl(mbaddr + i + 0xc));
+			}
+		} else {
+			/* Partial DUMP */
+			DDPDUMP("== %s REGS:%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
+			DDPDUMP("-- Start dump oddmr registers --\n");
+			mbaddr = baddr;
+			/* 1.TOP */
+			for (i = 0; i < 0xd0; i += 16) {
+				DDPDUMP("ODDMR+%x: 0x%x 0x%x 0x%x 0x%x\n", i, readl(mbaddr + i),
+					readl(mbaddr + i + 0x4), readl(mbaddr + i + 0x8),
+					readl(mbaddr + i + 0xc));
+			}
+			DDPDUMP("ODDMR+%x: 0x%x\n", 0xf4, readl(mbaddr + 0xf4));
+			DDPDUMP("ODDMR+%x: 0x%x\n", 0x100, readl(mbaddr + 0x100));
+			for (i = 0x110; i < 0x200; i += 16) {
+				DDPDUMP("ODDMR+%x: 0x%x 0x%x 0x%x 0x%x\n", i, readl(mbaddr + i),
+					readl(mbaddr + i + 0x4), readl(mbaddr + i + 0x8),
+					readl(mbaddr + i + 0xc));
+			}
+			/* 2.DMR SMI */
+			for (i = 0xd30; i < 0xdd0; i += 16) {
+				DDPDUMP("ODDMR+%x: 0x%x 0x%x 0x%x 0x%x\n", i, readl(mbaddr + i),
+					readl(mbaddr + i + 0x4), readl(mbaddr + i + 0x8),
+					readl(mbaddr + i + 0xc));
+			}
+			/* 3 DBI SMI */
+			for (i = 0xf30; i < 0xfd0; i += 16) {
+				DDPDUMP("ODDMR+%x: 0x%x 0x%x 0x%x 0x%x\n", i, readl(mbaddr + i),
+					readl(mbaddr + i + 0x4), readl(mbaddr + i + 0x8),
+					readl(mbaddr + i + 0xc));
+			}
+			/* 4 DMR Control */
+			for (i = 0x10140; i < 0x1015c; i += 16) {
+				DDPDUMP("ODDMR+%x: 0x%x 0x%x 0x%x 0x%x\n", i, readl(mbaddr + i),
+					readl(mbaddr + i + 0x4), readl(mbaddr + i + 0x8),
+					readl(mbaddr + i + 0xc));
+			}
+			/* 5 DBI Control */
+			for (i = 0x10700; i < 0x10770; i += 16) {
+				DDPDUMP("ODDMR+%x: 0x%x 0x%x 0x%x 0x%x\n", i, readl(mbaddr + i),
+					readl(mbaddr + i + 0x4), readl(mbaddr + i + 0x8),
+					readl(mbaddr + i + 0xc));
+			}
+			DDPDUMP("ODDMR+%x: 0x%x 0x%x\n", 0x10ca4,
+				readl(mbaddr + 0x10ca4), readl(mbaddr + i + 0x10ca8));
 		}
 		return;
 	}
