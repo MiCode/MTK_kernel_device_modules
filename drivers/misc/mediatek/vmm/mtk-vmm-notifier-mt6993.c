@@ -90,6 +90,7 @@
 #define VDE_AGING_MARGIN_MICROVOLT		STEP_TO_MARGIN(2)
 #define VDE_CONST_MARGIN	(VDE_GUARDBAND_MARGIN_MICROVOLT + VDE_AGING_MARGIN_MICROVOLT)
 #define AGING_DEGRADE		STEP_TO_MARGIN(1)
+#define SLTTWO_DEGRADE		STEP_TO_MARGIN(3)
 #define EXTRA_DEGRADE		STEP_TO_MARGIN(5)
 #define VMM_ROUNDUP(x, y)			((((x) + (y - 1)) / y) * y)
 #define DBG_VMM_DUMP_EFUSE_VAL		(520)
@@ -189,6 +190,7 @@ static unsigned int cross_avs20_floor_margin[OPP_LEVEL_TOTAL] = {
 
 bool vmm_debug_dump;
 bool vmm_aging;
+bool vmm_slttwo_deterioration;
 bool vmm_extra_deterioration;
 static void vmm_update_isp_avs_info(bool enable_avs);
 static void vmm_update_isp_avs20_info(bool enable_avs);
@@ -479,6 +481,7 @@ static int vmm_notifier_probe(struct platform_device *pdev)
 	u32 pd_id;
 
 	vmm_aging = false;
+	vmm_slttwo_deterioration = false;
 	vmm_extra_deterioration = false;
 
 	ret = of_property_read_u32(dev->of_node, "pd-id", &pd_id);
@@ -491,13 +494,22 @@ static int vmm_notifier_probe(struct platform_device *pdev)
 	if (vmm_aging)
 		ISP_LOGI("vmm aging load enabled");
 
+	vmm_slttwo_deterioration =
+		of_property_read_bool(dev->of_node, "vmm-slttwo-deterioration");
+	if (vmm_slttwo_deterioration)
+		ISP_LOGI("vmm slt2 deterioration load enabled");
+
 	vmm_extra_deterioration =
 		of_property_read_bool(dev->of_node, "vmm-extra-deterioration");
 	if (vmm_extra_deterioration)
-		ISP_LOGI("vmm extra deterioration load enabled");
+		ISP_LOGI("vmm slt2 avsq deterioration load enabled");
 
 	vmm_regs.vmm_efuse_va = ioremap(0x10165A00, 0x200);
 	vmm_regs.vmm_cvfs_va = ioremap(0x31AC4000, 0x1000);
+	if (!vmm_regs.vmm_efuse_va || !vmm_regs.vmm_cvfs_va) {
+		ISP_LOGE("vmm probe ioremap failed\n");
+		return -ENODEV;
+	}
 
 	ISP_LOGI("register mtk_vmm for hwccf api");
 	register_mtk_clk_external_api_cb(CLK_REQUEST_VMM_CB, &mtk_vmm_ctrl, NULL);
@@ -1083,6 +1095,8 @@ static unsigned int vmm_cal_avs_phase1(unsigned int OPP, unsigned int efuse_bin,
 
 	if (vmm_aging)
 		degrade = AGING_DEGRADE;
+	else if (vmm_slttwo_deterioration)
+		degrade = SLTTWO_DEGRADE;
 	else if (vmm_extra_deterioration)
 		degrade = EXTRA_DEGRADE;
 
@@ -1216,6 +1230,8 @@ static void vmm_compare_cross_floor_phase1(bool enable_avs)
 
 	if (vmm_aging)
 		degrade = 1;
+	else if (vmm_slttwo_deterioration)
+		degrade = 3;
 	else if (vmm_extra_deterioration)
 		degrade = 5;
 
