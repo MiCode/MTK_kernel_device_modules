@@ -24143,12 +24143,6 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 					MTK_DRM_OPT_FRAME_SUBMIT)) {
 				mtk_crtc->crtc_caps.crtc_ability |= ABILITY_FRAME_SUBMIT;
 			}
-
-			if (mtk_drm_helper_get_opt(priv->helper_opt,
-					MTK_DRM_OPT_WAIT_EPT)) {
-				mtk_crtc->crtc_caps.crtc_ability |= ABILITY_WAIT_EPT;
-				mtk_crtc->crtc_caps.atomic_commit_reserved_ns = 3000000;
-			}
 		} else {
 
 #if defined(DISP_STASH_ENABLE)
@@ -24215,6 +24209,11 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 		ret = mtk_drm_crtc_init(
 			drm_dev, mtk_crtc, &mtk_crtc->planes[0].base,
 			&mtk_crtc->planes[mtk_crtc->layer_nr - 1UL].base, pipe);
+	}
+	if (drm_crtc_index(&mtk_crtc->base) == 0 && mtk_drm_helper_get_opt(priv->helper_opt,
+			MTK_DRM_OPT_WAIT_EPT) && mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base)) {
+		mtk_crtc->crtc_caps.crtc_ability |= ABILITY_WAIT_EPT;
+		mtk_crtc->crtc_caps.atomic_commit_reserved_ns = 3000000;
 	}
 	if (ret < 0)
 		return ret;
