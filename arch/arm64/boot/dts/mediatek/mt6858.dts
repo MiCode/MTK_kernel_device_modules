@@ -2565,6 +2565,12 @@
 			token-for-ut = /bits/ 16 <CMDQ_SYNC_TOKEN_PREBUILT_MDP_LOCK>;
 		};
 
+		cmdq_config: cmdq-config@0 {
+			gce-core-num = <2>;
+			sec-cmdq-enable = <1 1>;
+			cmdq-first-err-disable = <0 0>;
+		};
+
 		infra-dpmaif@1022c000 {
 			compatible = "mediatek,infra_dpmaif";
 			reg = <0 0x1022c000 0 0x1000>;
