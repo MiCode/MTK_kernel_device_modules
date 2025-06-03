@@ -14323,7 +14323,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				opp-microvolt = <000000>;
 			};
 			opp-1 {
-				opp-hz = /bits/ 64 <343000000>;
+				opp-hz = /bits/ 64 <312000000>;
 				opp-microvolt = <575000>;
 			};
 			opp-2 {
@@ -14379,7 +14379,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				opp-microvolt = <000000>;
 			};
 			opp-1 {
-				opp-hz = /bits/ 64 <343000000>;
+				opp-hz = /bits/ 64 <312000000>;
 				opp-microvolt = <575000>;
 			};
 			opp-2 {
