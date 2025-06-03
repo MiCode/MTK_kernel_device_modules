@@ -82,7 +82,10 @@ static enum mfg_mt6991_e2_con g_mfg_mt6991_e2_con;
 #if GHPM_TIMESTAMP_MONITOR_EN
 static unsigned long long g_ghpm_ts64[GHPM_TS_MONITOR_NUM];
 #endif
+
+#if GHPM_OFF_ON_RECOVERY_EN
 static int g_gpueb_resume_fail_recovery_times;
+#endif
 
 static struct ghpm_platform_fp platform_ghpm_fp = {
 	.ghpm_ctrl = __ghpm_ctrl,
@@ -179,6 +182,7 @@ static int __trigger_ghpm_on(void)
 	return GHPM_SUCCESS;
 }
 
+#if GHPM_OFF_ON_RECOVERY_EN
 static void __ghpm_off_on_recovery(void)
 {
 	int i = 0;
@@ -230,6 +234,7 @@ static void __ghpm_off_on_recovery(void)
 		}
 	}
 }
+#endif
 
 static int __mfg0_on_if_not_duplicate(void)
 {
@@ -412,6 +417,7 @@ static int __wait_gpueb(enum gpueb_low_power_event event)
 					__dump_ghpm_info();
 					__dump_mfg_pwr_sta();
 					gpueb_dump_status(NULL, NULL, 0);
+#if GHPM_OFF_ON_RECOVERY_EN
 					__ghpm_timestamp_monitor(GHPM_OFF_ON_RECOVERY);
 					__ghpm_off_on_recovery();
 
@@ -420,6 +426,7 @@ static int __wait_gpueb(enum gpueb_low_power_event event)
 
 					/* Reset polling timeout counter */
 					i = 0;
+#endif
 				}
 			}
 			gpueb_timesync_update();
@@ -522,8 +529,12 @@ static void __dump_ghpm_info(void)
 	gpueb_log_e(GHPM_TAG, "MFGSYS_PROTECT_EN_SET_0=0x%x", readl(MFGSYS_PROTECT_EN_SET_0));
 	gpueb_log_e(GHPM_TAG, "MFGSYS_PROTECT_EN_STA_0=0x%x", readl(MFGSYS_PROTECT_EN_STA_0));
 	gpueb_log_e(GHPM_TAG, "MFG_SODI_EMI=0x%x", readl(MFG_SODI_EMI));
-	gpueb_log_e(GHPM_TAG, "g_progress_status=%d, g_power_count=%d, g_gpueb_resume_fail_recovery_times=%d",
-		atomic_read(&g_progress_status), atomic_read(&g_power_count), g_gpueb_resume_fail_recovery_times);
+	gpueb_log_e(GHPM_TAG, "g_progress_status=%d, g_power_count=%d",
+		atomic_read(&g_progress_status), atomic_read(&g_power_count));
+#if GHPM_OFF_ON_RECOVERY_EN
+	gpueb_log_e(GHPM_TAG, "g_gpueb_resume_fail_recovery_times=%d",
+		g_gpueb_resume_fail_recovery_times);
+#endif
 
 
 

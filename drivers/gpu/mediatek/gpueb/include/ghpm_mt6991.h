@@ -12,6 +12,7 @@
 #define GPUEB_WAIT_OFF_FAIL_WRITE_DUMMY    (1)
 #define GHPM_TIMEOUT_ERR_KE                (0)
 #define GPUEB_WAIT_OFF_FAIL_FLAG           (0xBADDEAD)
+#define GHPM_OFF_ON_RECOVERY_EN            (1)
 
 #define GHPM_IPI_TIMEOUT                   (5000)
 #define GPUEB_WAIT_CHECK_TIME_1            (1000)
