@@ -116,7 +116,7 @@ static uint32_t ise_perf_vote_bw;
 static void ise_power_on(void);
 static void ise_power_off(void);
 static void ise_deinit(void);
-static void ise_scmi_init(void);
+static bool ise_scmi_init(void);
 
 static unsigned long ise_req_dram(void)
 {
@@ -407,9 +407,21 @@ void ise_lpm_work_handle(struct work_struct *ws)
 	struct ise_lpm_work_struct *ise_lpm_ws
 		= container_of(ws, struct ise_lpm_work_struct, work);
 	uint32_t ise_lpm_cmd = ise_lpm_ws->flags;
+	uint32_t retry_limit = 5;	// 5ms
 	int ret;
 
-	ise_scmi_init();
+	do {
+		if (ise_scmi_init())
+			break;
+		pr_notice("%s: scmi init fail, retry %d!\n", __func__, retry_limit);
+		udelay(1000);
+	} while (--retry_limit);
+
+	if (!retry_limit) {
+		pr_notice("%s: scmi init fail, skip cmd=%d!\n", __func__, ise_lpm_cmd);
+		return;
+	}
+
 	pr_notice("%s cmd=%d\n", __func__, ise_lpm_cmd);
 	switch (ise_lpm_cmd) {
 	case ISE_LPM_FREERUN:
@@ -434,22 +446,29 @@ void ise_lpm_work_handle(struct work_struct *ws)
 	}
 }
 
-static void ise_scmi_init(void)
+static bool ise_scmi_init(void)
 {
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 	unsigned int ret;
 
 	if (_tinfo)
-		return;
+		return true;
+
 	_tinfo = get_scmi_tinysys_info();
+	if (!_tinfo || !_tinfo->sdev) {
+		pr_notice("%s: get tinfo fail\n", __func__);
+		return false;
+	}
+
 	ret = of_property_read_u32(_tinfo->sdev->dev.of_node, "scmi-ise",
 			&ise_scmi_id);
 	if (ret) {
 		pr_notice("get scmi-ise fail, ret %d\n", ret);
-		return;
+		return false;
 	}
 	pr_info("#@# %s(%d) scmi-ise_id %d\n", __func__, __LINE__, ise_scmi_id);
 #endif
+	return true;
 }
 
 ssize_t ise_lpm_dbg(struct file *file, const char __user *buffer,
@@ -662,6 +681,9 @@ static void __exit ise_lpm_driver_exit(void)
 device_initcall_sync(ise_lpm_driver_init);
 module_exit(ise_lpm_driver_exit);
 
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
+MODULE_SOFTDEP("pre: tinysys-scmi");
+#endif
 MODULE_DESCRIPTION("MEDIATEK Module iSE_lpm driver");
 MODULE_AUTHOR("Mediatek");
 MODULE_LICENSE("GPL");
