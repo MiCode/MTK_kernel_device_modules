@@ -358,6 +358,7 @@ static void ps5170_switch_set_work(struct work_struct *data)
 		i2c_smbus_write_byte_data(ps->i2c, 0x40, 0x80);
 		if (ps->disable)
 			pinctrl_select_state(ps->pinctrl, ps->disable);
+		mdelay(10);
 		/* vote vs to disable  */
 		ps5170_vsvoter_clr(ps);
 		/* clr pin-assign  */
@@ -366,6 +367,7 @@ static void ps5170_switch_set_work(struct work_struct *data)
 	case TYPEC_ORIENTATION_NORMAL:
 		/* vote vs to enable */
 		ps5170_vsvoter_set(ps);
+		mdelay(10);
 		/* switch cc1 side */
 		if (ps->enable) {
 			pinctrl_select_state(ps->pinctrl, ps->enable);
@@ -379,6 +381,7 @@ static void ps5170_switch_set_work(struct work_struct *data)
 	case TYPEC_ORIENTATION_REVERSE:
 		/* vote vs to enable */
 		ps5170_vsvoter_set(ps);
+		mdelay(10);
 		/* switch cc2 side */
 		if (ps->enable) {
 			pinctrl_select_state(ps->pinctrl, ps->enable);
