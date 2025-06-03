@@ -53,7 +53,7 @@ static void mcupm_ts_update(int suspended, u64 tick, u64 ts)
 	mcupm_base_ver = (mcupm_base_ver + 1)%(TIMESYNC_MAX_VER+1);
 
 	/* make header: freeze and version */
-	header = suspended ? TIMESYNC_HEADER_FREEZE : 0;
+	header = suspended ? (u32)TIMESYNC_HEADER_FREEZE : 0;
 
 	header |= ((mcupm_base_ver << TIMESYNC_HEADER_VER_OFS) &
 		TIMESYNC_HEADER_VER_MASK);
