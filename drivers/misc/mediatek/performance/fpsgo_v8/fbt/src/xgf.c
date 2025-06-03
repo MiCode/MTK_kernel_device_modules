@@ -1480,7 +1480,7 @@ int fpsgo_other2xgf_set_critical_tasks(int rpid, unsigned long long bufID,
 	struct xgf_render_if *r_iter = NULL;
 	struct xgf_spid *spid_iter = NULL;
 
-	if (rpid <= 0 || !bufID || !arr || num <= 0)
+	if (rpid <= 0 || !bufID || num < 0)
 		return -EINVAL;
 
 	mutex_lock(&xgf_main_lock);
@@ -1495,7 +1495,7 @@ int fpsgo_other2xgf_set_critical_tasks(int rpid, unsigned long long bufID,
 	use ? set_bit(USER_TYPE, &r_iter->master_type) :
 			clear_bit(USER_TYPE, &r_iter->master_type);
 
-	for (i = 0; i < num; i++) {
+	for (i = 0; i < num && arr; i++) {
 		spid_iter = xgf_get_spid(r_iter->tgid, rpid, arr[i].pid, bufID, &xgf_wspid_list);
 		if (use && !spid_iter)
 			spid_iter = xgf_add_spid(&xgf_wspid_list);
