@@ -6990,11 +6990,12 @@ static void mtk_oddmr_od_table_chg_by_timing(struct mtk_ddp_comp *comp, struct c
 	struct mtk_ddp_comp *comp1;
 	struct mtk_disp_oddmr *oddmr1_data = NULL;
 	uint32_t weight[3] = {0};
-	int table_idx = 0,ret = 0;
+	int ret = 0;
 	uint32_t od_fps_mode = oddmr_data->primary_data->od_fps_mode;
 	int od_update_sram_last = 0;
 	bool check_force_flip = false;
 	static unsigned int old_vrefresh, old_bl_level;
+	int sram_idx, sram_table_idx, table_idx;
 
 	ODDMRAPI_LOG("+\n");
 	if (oddmr_data->data->od_version >= MTK_OD_V2) {
@@ -7070,13 +7071,17 @@ static void mtk_oddmr_od_table_chg_by_timing(struct mtk_ddp_comp *comp, struct c
 		}
 		if (oddmr_data->od_force_off_last &&
 			!oddmr_data->od_force_off && !oddmr_data->od_force_off2) {
+			sram_idx = oddmr_data->od_data.od_sram_read_sel;
+			sram_table_idx = oddmr_data->od_data.od_sram_table_idx[!!sram_idx];
+			table_idx = oddmr_data->od_data.od_dram_sel[sram_table_idx];
 			mtk_oddmr_od_gain_lookup(comp, current_timing->vrefresh,
 					current_timing->bl_level, table_idx, weight);
 			if (oddmr_data->data->od_version >= MTK_OD_V3)
-				ODDMRAPI_LOG("weight restore from force off: R %u, G %u, B %u\n",
-					weight[0], weight[1], weight[2]);
+				DDPMSG("OD weight restore from force off: R %u G %u B %u (sram%d %d table%d)\n",
+					weight[0], weight[1], weight[2], sram_idx, sram_table_idx, table_idx);
 			else
-				ODDMRAPI_LOG("weight restore from force off %u\n", weight[1]);
+				DDPMSG("OD weight restore from force off: %u (sram%d %d table%d)\n",
+					weight[1], sram_idx, sram_table_idx, table_idx);
 			mtk_oddmr_set_od_weight_dual(comp, weight, handle);
 		}
 	}
@@ -7117,34 +7122,40 @@ static void mtk_oddmr_set_od_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 	unsigned int dsi_line_time = 0;
 	unsigned int stash_lead_time = 12;
 	unsigned int stash_lead_cnt = 0;
-	int sel = 0;
+	int sram_idx, sram_table_idx, table_idx;
 
 	if (oddmr_data->primary_data->od_state < ODDMR_INIT_DONE)
 		return;
 	sec_on = comp->mtk_crtc->sec_on;
 	en = enable && !sec_on;
 	od_force_off = (oddmr_data->od_force_off || oddmr_data->od_force_off2);
-	ODDMRLOW_LOG("en %d: enable %d, sec_on %d; force_config %d\n",
+	ODDMRAPI_LOG("en %d: enable %d, sec_on %d; force_config %d\n",
 		en, enable, sec_on, force_config);
-	ODDMRLOW_LOG("force_off %d, force_off2 %d, force_off_last %d\n",
+	ODDMRAPI_LOG("force_off %d, force_off2 %d, force_off_last %d\n",
 		oddmr_data->od_force_off, oddmr_data->od_force_off2, oddmr_data->od_force_off_last);
 	mtk_oddmr_od_srt_cal(comp, en);
 	if (force_config || en != oddmr_data->od_enable_last) {
 		if (en) {
 			if (oddmr_data->data->is_od_support_hw_skip_first_frame) {
-				sel = oddmr_data->od_data.od_sram_read_sel;
+				sram_idx = oddmr_data->od_data.od_sram_read_sel;
+				sram_table_idx = oddmr_data->od_data.od_sram_table_idx[!!sram_idx];
+				table_idx = oddmr_data->od_data.od_dram_sel[sram_table_idx];
 				if (oddmr_data->primary_data->od_fps_mode == 1)
 					mtk_oddmr_od_gain_lookup(comp,
 						oddmr_data->primary_data->od_content_timing.vrefresh,
 						oddmr_data->primary_data->od_content_timing.bl_level,
-						oddmr_data->od_data.od_sram_table_idx[sel],
-						weight);
+						table_idx, weight);
 				else
 					mtk_oddmr_od_gain_lookup(comp,
 						oddmr_data->primary_data->current_timing.vrefresh,
 						oddmr_data->primary_data->current_timing.bl_level,
-						oddmr_data->od_data.od_sram_table_idx[sel],
-						weight);
+						table_idx, weight);
+				if (oddmr_data->data->od_version >= MTK_OD_V3)
+					DDPMSG("OD weight: R %u G %u B %u (sram%d %d table%d)\n",
+						weight[0], weight[1], weight[2], sram_idx, sram_table_idx, table_idx);
+				else
+					DDPMSG("OD weight: %u (sram%d %d table%d)\n",
+						weight[1], sram_idx, sram_table_idx, table_idx);
 			} else if (!od_force_off) {
 				atomic_set(&oddmr_data->primary_data->od_weight_trigger, 1);
 			}
@@ -7233,7 +7244,7 @@ static void mtk_oddmr_set_od_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 		oddmr_data->od_force_off_last = od_force_off;
 	} else if (od_force_off != oddmr_data->od_force_off_last) {
 		if (od_force_off) {
-			ODDMRAPI_LOG("OD weight force 0\n");
+			DDPMSG("OD weight force off\n");
 			mtk_oddmr_set_od_weight(comp, weight, handle);
 		}
 		oddmr_data->od_force_off_last = od_force_off;
@@ -8218,12 +8229,12 @@ static void disp_oddmr_on_start_of_frame(struct mtk_ddp_comp *comp)
 static void disp_oddmr_sof_handle(struct mtk_ddp_comp *comp)
 {
 	uint32_t weight[3] = {0};
-	int sel = 0;
 	bool frame_req_trig;
 	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
 	atomic_t *od_weight_trigger = &oddmr_data->primary_data->od_weight_trigger;
 	uint32_t od_fps_mode = oddmr_data->primary_data->od_fps_mode;
 	int ret = 0;
+	int sram_idx, sram_table_idx, table_idx;
 
 	ODDMRAPI_LOG("+\n");
 	CRTC_MMP_EVENT_START(0, oddmr_sof_thread, 0, 0);
@@ -8234,24 +8245,25 @@ static void disp_oddmr_sof_handle(struct mtk_ddp_comp *comp)
 		if (atomic_read(od_weight_trigger) > 0) {
 			atomic_dec(od_weight_trigger);
 			if (atomic_read(od_weight_trigger) == 0) {
-				sel = oddmr_data->od_data.od_sram_read_sel;
+				sram_idx = oddmr_data->od_data.od_sram_read_sel;
+				sram_table_idx = oddmr_data->od_data.od_sram_table_idx[!!sram_idx];
+				table_idx = oddmr_data->od_data.od_dram_sel[sram_table_idx];
 				if (od_fps_mode == 1)
 					mtk_oddmr_od_gain_lookup(comp,
 						oddmr_data->primary_data->od_content_timing.vrefresh,
 						oddmr_data->primary_data->od_content_timing.bl_level,
-						oddmr_data->od_data.od_sram_table_idx[sel],
-						weight);
+						table_idx, weight);
 				else
 					mtk_oddmr_od_gain_lookup(comp,
 						oddmr_data->primary_data->current_timing.vrefresh,
 						oddmr_data->primary_data->current_timing.bl_level,
-						oddmr_data->od_data.od_sram_table_idx[sel],
-						weight);
+						table_idx, weight);
 				if (oddmr_data->data->od_version >= MTK_OD_V3)
-					DDPMSG("weight restore: R %u, G %u, B %u\n",
-						weight[0], weight[1], weight[2]);
+					DDPMSG("OD weight restore: R %u G %u B %u (sram%d %d table%d)\n",
+						 weight[0], weight[1], weight[2], sram_idx, sram_table_idx, table_idx);
 				else
-					DDPMSG("weight restore %u\n", weight[1]);
+					DDPMSG("OD weight restore: %u (sram%d %d table%d)\n",
+						weight[1], sram_idx, sram_table_idx, table_idx);
 				mtk_crtc_user_cmd(&comp->mtk_crtc->base,
 					comp, ODDMR_CMD_OD_SET_WEIGHT, weight);
 				CRTC_MMP_MARK(0, oddmr_sof_thread, weight[1], 1);
