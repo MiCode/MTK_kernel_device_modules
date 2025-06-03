@@ -20972,6 +20972,7 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 			return -EINVAL;
 		}
 
+		mtk_vidle_user_power_keep_by_gce(DISP_VIDLE_USER_DISP_CMDQ, handle, 0);
 		event = mtk_crtc_wb_addon_get_event(crtc);
 		cmdq_pkt_wfe(handle, event);
 		_mtk_crtc_wb_addon_module_disconnect(crtc, mtk_crtc->ddp_mode, handle);
@@ -20987,6 +20988,7 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 							wb_cb_data->wb_fence_idx);
 		/* dbi idle count */
 		mtk_dbi_idle_count_insert_wb_fence(mtk_crtc, wb_cb_data->wb_fence_idx);
+		mtk_vidle_user_power_release_by_gce(DISP_VIDLE_USER_DISP_CMDQ, handle);
 		if (cmdq_pkt_flush_threaded(handle, mtk_drm_wb_cb, wb_cb_data) < 0)
 			DDPPR_ERR("failed to flush gce_cb threaded\n");
 	} else if (state->prop_val[CRTC_PROP_OUTPUT_ENABLE]
@@ -20994,6 +20996,8 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 		fence_idx = state->prop_val[CRTC_PROP_OUTPUT_FENCE_IDX];
 		session_id = mtk_get_session_id(crtc);
 		mtk_crtc_release_output_buffer_fence_by_idx(crtc, session_id, fence_idx);
+		DDPINFO("%s release output w/ cwb err fence idx %u\n",
+			__func__, fence_idx);
 	}
 
 	return 0;
