@@ -5374,7 +5374,7 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 				break;
 			}
 		}
-		if (*feature_data == MSDK_SCENARIO_ID_CAMERA_CAPTURE_JPEG) {
+		if (*feature_data == MSDK_SCENARIO_ID_CAMERA_PREVIEW) {
 			switch (*(feature_data + 1)) {
 			case HDR_RAW_DCG_COMPOSE_RAW12:
 				*(feature_data + 2) = MSDK_SCENARIO_ID_CUSTOM2;
@@ -5385,7 +5385,7 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 		} else if (*feature_data == MSDK_SCENARIO_ID_CUSTOM2) {
 			switch (*(feature_data + 1)) {
 			case HDR_NONE :
-				*(feature_data + 2) = MSDK_SCENARIO_ID_CAMERA_CAPTURE_JPEG;
+				*(feature_data + 2) = MSDK_SCENARIO_ID_CAMERA_PREVIEW;
 				break;
 			default:
 				break;
