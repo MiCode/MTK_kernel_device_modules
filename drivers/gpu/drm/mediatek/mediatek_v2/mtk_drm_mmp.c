@@ -250,10 +250,6 @@ void init_crtc_mmp_event(void)
 			mmprofile_register_event(crtc_mmp_root, "ESD check");
 		g_CRTC_MMP_Events[i].esd_recovery =
 			mmprofile_register_event(crtc_mmp_root, "ESD recovery");
-		g_CRTC_MMP_Events[i].idle_async = mmprofile_register_event(
-			crtc_mmp_root, "idle_async");
-		g_CRTC_MMP_Events[i].idle_async_cb = mmprofile_register_event(
-			crtc_mmp_root, "idle_async_cb");
 		g_CRTC_MMP_Events[i].frame_cfg =
 			mmprofile_register_event(crtc_mmp_root, "frame cfg");
 		g_CRTC_MMP_Events[i].retrig_cfg =
@@ -424,6 +420,10 @@ void init_crtc_mmp_event(void)
 			crtc_mmp_root, "enter_HS_idle");
 		g_CRTC_MMP_Events[i].leave_idle = mmprofile_register_event(
 			crtc_mmp_root, "leave_HS_idle");
+		g_CRTC_MMP_Events[i].idle_async = mmprofile_register_event(
+			crtc_mmp_root, "idle_async");
+		g_CRTC_MMP_Events[i].idle_async_cb = mmprofile_register_event(
+			crtc_mmp_root, "idle_async_cb");
 		g_CRTC_MMP_Events[i].enter_vidle = mmprofile_register_event(
 			crtc_mmp_root, "enter_V_idle");
 		g_CRTC_MMP_Events[i].leave_vidle = mmprofile_register_event(

@@ -21,6 +21,7 @@
 #endif
 
 #define MTK_MAX_WB_FB_COUNT 5
+#define MTK_HSIDLE_MAX_SW_COUNT 5
 
 struct mtk_idle_private_data {
 	//the target cpu bind to idlemgr
@@ -31,7 +32,7 @@ struct mtk_idle_private_data {
 	int cpu_dma_latency;
 	//vblank off async is supported or not
 	bool hw_async;
-	bool vblank_async;
+	bool sw_async;
 	bool sram_sleep;
 };
 
@@ -68,19 +69,25 @@ struct mtk_drm_idlemgr_perf {
 	atomic_t detail;
 };
 
+typedef int (*sw_async_func)(void *data);
+struct mtk_drm_sw_async_job {
+	unsigned int user_id;
+	sw_async_func func;
+	void *data;
+};
+
 struct mtk_drm_idlemgr {
 	struct task_struct *idlemgr_task;
 	struct task_struct *kick_task;
-	struct task_struct *async_vblank_task;
+	struct task_struct *sw_async_task;
 	struct task_struct *async_handler_task;
 	wait_queue_head_t idlemgr_wq;
 	wait_queue_head_t kick_wq;
-	wait_queue_head_t async_vblank_wq;
+	wait_queue_head_t sw_async_wq;
 	wait_queue_head_t async_handler_wq;
 	wait_queue_head_t async_event_wq;
 	atomic_t idlemgr_task_active;
 	atomic_t kick_task_active;
-	atomic_t async_vblank_active;
 	//async is only enabled when enter/leave idle
 	atomic_t async_enabled;
 	//async event reference count
@@ -89,6 +96,7 @@ struct mtk_drm_idlemgr {
 	spinlock_t async_lock;
 	//maintain cmdq_pkt to be complete and free
 	struct list_head async_cb_list;
+	struct mtk_drm_sw_async_job sw_async_jobs[MTK_HSIDLE_MAX_SW_COUNT];
 	//async_cb_list length
 	atomic_t async_cb_count;
 	atomic_t async_cb_pending;
@@ -102,6 +110,8 @@ struct mtk_drm_idlemgr {
 	struct mtk_drm_idlemgr_context *idlemgr_ctx;
 	struct mtk_drm_idlemgr_perf *perf;
 	unsigned int old_flag;
+	atomic_t sw_async_active;
+	struct mutex sw_async_lock;
 };
 
 struct mtk_drm_async_cb_data {
@@ -126,6 +136,7 @@ struct mtk_iwb_cb_data {
 };
 
 enum mtk_drm_async_user_id {
+	/*hw async user 0x00000000 ~ 0x0000ffff*/
 	USER_TRIG_LOOP = 0xf001,
 	USER_HW_BLOCK,
 	USER_ADDON_CONNECT_MODULE,
@@ -137,6 +148,12 @@ enum mtk_drm_async_user_id {
 	USER_ATF_INSTR,
 	USER_VBLANK_OFF, //0xf00a
 	USER_COMP_RST,
+
+	/*sw async user 0x00010000 ~ 0xffff0000*/
+	USER_SW_ASYNC_USER_MASK = 0x00ff0000,
+	USER_SW_ASYNC_AAL = 0x00010000,
+	USER_SW_ASYNC_TEST0 = 0x00020000,
+	USER_SW_ASYNC_TEST1 = 0x00030000,
 };
 
 enum mtk_drm_cpu_cmd {
@@ -224,5 +241,7 @@ void mtk_drm_idlemgr_wb_leave(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cm
 void mtk_drm_idlemgr_wb_leave_post(struct mtk_drm_crtc *mtk_crtc);
 void mtk_drm_idlemgr_wb_fill_buf(struct drm_crtc *crtc, int value);
 void mtk_drm_idlemgr_wb_test(int value);
+int mtk_drm_sw_async_trigger(struct drm_crtc *crtc,
+		unsigned int user_id, sw_async_func func, void *data);
 
 #endif
