@@ -398,7 +398,7 @@ int mt6858_afe_enable_clock(struct mtk_base_afe *afe)
 {
 	struct mt6858_afe_private *afe_priv = afe->platform_priv;
 	int ret = 0;
-#if !defined(SKIP_SMCC_SB)
+#if !defined(SKIP_SB_SMCC)
 	struct arm_smccc_res res;
 #endif
 
@@ -435,7 +435,7 @@ int mt6858_afe_enable_clock(struct mtk_base_afe *afe)
 
 	ret = mt6858_set_audio_h_parent(afe, CLK_TOP_TCK_26M_MX9);
 
-#if !defined(SKIP_SMCC_SB)
+#if !defined(SKIP_SB_SMCC)
 	/* use arm_smccc_smc to notify SPM */
 	arm_smccc_smc(MTK_SIP_AUDIO_CONTROL,
 		      MTK_AUDIO_SMC_OP_DOMAIN_SIDEBANDS,
@@ -475,9 +475,6 @@ int mt6858_afe_dram_request(struct device *dev)
 {
 	struct mtk_base_afe *afe = dev_get_drvdata(dev);
 	struct mt6858_afe_private *afe_priv = afe->platform_priv;
-#if !defined(SKIP_SMCC_SB)
-	struct arm_smccc_res res;
-#endif
 
 	dev_dbg(dev, "%s(), dram_resource_counter %d\n",
 		__func__, afe_priv->dram_resource_counter);
@@ -486,11 +483,6 @@ int mt6858_afe_dram_request(struct device *dev)
 
 	/* use arm_smccc_smc to notify SPM */
 	if (afe_priv->dram_resource_counter == 0) {
-#if !defined(SKIP_SMCC_SB)
-		arm_smccc_smc(MTK_SIP_AUDIO_CONTROL,
-			      MTK_AUDIO_SMC_OP_DRAM_REQUEST,
-			      0, 0, 0, 0, 0, 0, &res);
-#endif
 		/* set dram request */
 		regmap_update_bits(afe->regmap, AFE_SPM_CONTROL_REQ,
 				   AFE_DDREN_REQ_MASK_SFT,
@@ -508,9 +500,6 @@ int mt6858_afe_dram_release(struct device *dev)
 {
 	struct mtk_base_afe *afe = dev_get_drvdata(dev);
 	struct mt6858_afe_private *afe_priv = afe->platform_priv;
-#if !defined(SKIP_SMCC_SB)
-	struct arm_smccc_res res;
-#endif
 
 	dev_dbg(dev, "%s(), dram_resource_counter %d\n",
 		 __func__, afe_priv->dram_resource_counter);
@@ -520,11 +509,6 @@ int mt6858_afe_dram_release(struct device *dev)
 
 	/* use arm_smccc_smc to notify SPM */
 	if (afe_priv->dram_resource_counter == 0) {
-#if !defined(SKIP_SMCC_SB)
-		arm_smccc_smc(MTK_SIP_AUDIO_CONTROL,
-			      MTK_AUDIO_SMC_OP_DRAM_RELEASE,
-			      0, 0, 0, 0, 0, 0, &res);
-#endif
 		/* reset dram request */
 		regmap_update_bits(afe->regmap, AFE_SPM_CONTROL_REQ,
 				   AFE_DDREN_REQ_MASK_SFT, 0);
@@ -543,26 +527,26 @@ int mt6858_afe_dram_release(struct device *dev)
 
 int mt6858_afe_sram_request(struct mtk_base_afe *afe)
 {
-#if !defined(SKIP_SMCC_SB)
+#if !defined(SKIP_SB_SMCC)
 	struct arm_smccc_res res;
 
 	/* use arm_smccc_smc to notify SPM */
 	arm_smccc_smc(MTK_SIP_AUDIO_CONTROL,
-				MTK_AUDIO_SMC_OP_SRAM_REQUEST,
-				0, 0, 0, 0, 0, 0, &res);
+		      MTK_AUDIO_SMC_OP_SRAM_REQUEST,
+		      0, 0, 0, 0, 0, 0, &res);
 #endif
 	return 0;
 }
 
 void mt6858_afe_sram_release(struct mtk_base_afe *afe)
 {
-#if !defined(SKIP_SMCC_SB)
+#if !defined(SKIP_SB_SMCC)
 	struct arm_smccc_res res;
 
 	/* use arm_smccc_smc to notify SPM */
 	arm_smccc_smc(MTK_SIP_AUDIO_CONTROL,
-				MTK_AUDIO_SMC_OP_SRAM_RELEASE,
-				0, 0, 0, 0, 0, 0, &res);
+		      MTK_AUDIO_SMC_OP_SRAM_RELEASE,
+		      0, 0, 0, 0, 0, 0, &res);
 #endif
 }
 

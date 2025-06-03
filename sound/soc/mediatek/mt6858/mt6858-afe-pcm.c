@@ -9724,7 +9724,7 @@ static int mt6858_afe_pcm_dev_probe(struct platform_device *pdev)
 	struct mt6858_afe_private *afe_priv;
 	struct resource *res;
 	struct device *dev;
-#if !defined(SKIP_SMCC_SB)
+#if !defined(SKIP_SB_SMCC)
 	struct arm_smccc_res smccc_res;
 #endif
 	struct device_node *np;
@@ -9887,7 +9887,7 @@ static int mt6858_afe_pcm_dev_probe(struct platform_device *pdev)
 		dev_info(dev, "enable_irq_wake %d err: %d\n", irq_id, ret);
 #endif
 
-#if !defined(SKIP_SMCC_SB)
+#if !defined(SKIP_SB_SMCC)
 	/* init arm_smccc_smc call */
 	arm_smccc_smc(MTK_SIP_AUDIO_CONTROL, MTK_AUDIO_SMC_OP_INIT,
 		      0, 0, 0, 0, 0, 0, &smccc_res);
