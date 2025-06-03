@@ -1060,9 +1060,13 @@ static void ufs_mtk_lookup_tracepoints(struct tracepoint *tp,
 	}
 }
 
-static void ufs_mtk_uninstall_tracepoints(void)
+static void ufs_mtk_uninstall_tracepoints(struct ufs_hba *hba)
 {
 	int i;
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+
+	if (host->host_id == 1)
+		return;
 
 	FOR_EACH_INTEREST(i) {
 		if (interests[i].init) {
@@ -1076,6 +1080,10 @@ static void ufs_mtk_uninstall_tracepoints(void)
 static int ufs_mtk_install_tracepoints(struct ufs_hba *hba)
 {
 	int i;
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+
+	if (host->host_id == 1)
+		return 0;
 
 	/* Install the tracepoints */
 	for_each_kernel_tracepoint(ufs_mtk_lookup_tracepoints, NULL);
@@ -3334,7 +3342,7 @@ static void ufs_mtk_remove(struct platform_device *pdev)
 
 	ufshcd_remove(hba);
 
-	ufs_mtk_uninstall_tracepoints();
+	ufs_mtk_uninstall_tracepoints(hba);
 }
 
 #ifdef CONFIG_PM_SLEEP
