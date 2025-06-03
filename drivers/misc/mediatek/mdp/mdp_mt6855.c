@@ -107,7 +107,6 @@ static struct icc_path *path_l11_img_mfb_wdma1[MDP_TOTAL_THREAD];
 struct CmdqMdpModuleBaseVA {
 	long MDP_RDMA0;
 	long MDP_HDR0;
-	long MDP_COLOR0;
 	long MDP_AAL0;
 	long MDP_RSZ0;
 	long MDP_RSZ2;
@@ -129,13 +128,10 @@ struct CmdqMdpModuleClock {
 	struct clk *clk_MDP_MUTEX0;
 	struct clk *clk_IMG_DL_ASYNC0;
 	struct clk *clk_IMG_DL_ASYNC1;
-	struct clk *clk_IMG0_IMG_DL_ASYNC0;
-	struct clk *clk_IMG0_IMG_DL_ASYNC1;
 	struct clk *clk_IMG0_IMG_DL_RELAY0_ASYNC0;
 	struct clk *clk_IMG0_IMG_DL_RELAY1_ASYNC1;
 	struct clk *clk_MDP_RDMA0;
 	struct clk *clk_MDP_HDR0;
-	struct clk *clk_MDP_COLOR0;
 	struct clk *clk_MDP_AAL0;
 	struct clk *clk_MDP_RSZ0;
 	struct clk *clk_MDP_RSZ2;
@@ -161,15 +157,12 @@ IMP_ENABLE_MDP_HW_CLOCK(APB, APB);
 IMP_ENABLE_MDP_HW_CLOCK(MDP_MUTEX0, MDP_MUTEX0);
 IMP_ENABLE_MDP_HW_CLOCK(IMG_DL_ASYNC0, IMG_DL_ASYNC0);
 IMP_ENABLE_MDP_HW_CLOCK(IMG_DL_ASYNC1, IMG_DL_ASYNC1);
-IMP_ENABLE_MDP_HW_CLOCK(IMG0_IMG_DL_ASYNC0, IMG0_IMG_DL_ASYNC0);
-IMP_ENABLE_MDP_HW_CLOCK(IMG0_IMG_DL_ASYNC1, IMG0_IMG_DL_ASYNC1);
 IMP_ENABLE_MDP_HW_CLOCK(IMG0_IMG_DL_RELAY0_ASYNC0, IMG0_IMG_DL_RELAY0_ASYNC0);
 IMP_ENABLE_MDP_HW_CLOCK(IMG0_IMG_DL_RELAY1_ASYNC1, IMG0_IMG_DL_RELAY1_ASYNC1);
 IMP_ENABLE_MDP_HW_CLOCK(MDP_RDMA0, MDP_RDMA0);
 IMP_ENABLE_MDP_HW_CLOCK(MDP_RSZ0, MDP_RSZ0);
 IMP_ENABLE_MDP_HW_CLOCK(MDP_RSZ2, MDP_RSZ2);
 IMP_ENABLE_MDP_HW_CLOCK(MDP_HDR0, MDP_HDR0);
-IMP_ENABLE_MDP_HW_CLOCK(MDP_COLOR0, MDP_COLOR0);
 IMP_ENABLE_MDP_HW_CLOCK(MDP_WROT0, MDP_WROT0);
 IMP_ENABLE_MDP_HW_CLOCK(MDP_WROT2, MDP_WROT2);
 IMP_ENABLE_MDP_HW_CLOCK(MDP_TDSHP0, MDP_TDSHP0);
@@ -178,8 +171,6 @@ IMP_MDP_HW_CLOCK_IS_ENABLE(APB, APB);
 IMP_MDP_HW_CLOCK_IS_ENABLE(MDP_MUTEX0, MDP_MUTEX0);
 IMP_MDP_HW_CLOCK_IS_ENABLE(IMG_DL_ASYNC0, IMG_DL_ASYNC0);
 IMP_MDP_HW_CLOCK_IS_ENABLE(IMG_DL_ASYNC1, IMG_DL_ASYNC1);
-IMP_MDP_HW_CLOCK_IS_ENABLE(IMG0_IMG_DL_ASYNC0, IMG0_IMG_DL_ASYNC0);
-IMP_MDP_HW_CLOCK_IS_ENABLE(IMG0_IMG_DL_ASYNC1, IMG0_IMG_DL_ASYNC1);
 IMP_MDP_HW_CLOCK_IS_ENABLE(IMG0_IMG_DL_RELAY0_ASYNC0,
 	IMG0_IMG_DL_RELAY0_ASYNC0);
 IMP_MDP_HW_CLOCK_IS_ENABLE(IMG0_IMG_DL_RELAY1_ASYNC1,
@@ -575,11 +566,9 @@ bool cmdq_mdp_clock_is_on(u32 engine)
 	switch (engine) {
 	case CMDQ_ENG_MDP_CAMIN:
 		return cmdq_mdp_clock_is_enable_IMG_DL_ASYNC0() &&
-			cmdq_mdp_clock_is_enable_IMG0_IMG_DL_ASYNC0() &&
 			cmdq_mdp_clock_is_enable_IMG0_IMG_DL_RELAY0_ASYNC0();
 	case CMDQ_ENG_MDP_CAMIN2:
 		return cmdq_mdp_clock_is_enable_IMG_DL_ASYNC1() &&
-			cmdq_mdp_clock_is_enable_IMG0_IMG_DL_ASYNC1() &&
 			cmdq_mdp_clock_is_enable_IMG0_IMG_DL_RELAY1_ASYNC1();
 	case CMDQ_ENG_MDP_RDMA0:
 		return cmdq_mdp_clock_is_enable_MDP_RDMA0();
@@ -608,12 +597,10 @@ void cmdq_mdp_enable_clock(bool enable, u32 engine)
 	switch (engine) {
 	case CMDQ_ENG_MDP_CAMIN:
 		cmdq_mdp_enable_clock_IMG_DL_ASYNC0(enable);
-		cmdq_mdp_enable_clock_IMG0_IMG_DL_ASYNC0(enable);
 		cmdq_mdp_enable_clock_IMG0_IMG_DL_RELAY0_ASYNC0(enable);
 		break;
 	case CMDQ_ENG_MDP_CAMIN2:
 		cmdq_mdp_enable_clock_IMG_DL_ASYNC1(enable);
-		cmdq_mdp_enable_clock_IMG0_IMG_DL_ASYNC1(enable);
 		cmdq_mdp_enable_clock_IMG0_IMG_DL_RELAY1_ASYNC1(enable);
 		break;
 	case CMDQ_ENG_MDP_RDMA0:
