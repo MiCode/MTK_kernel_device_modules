@@ -1813,9 +1813,9 @@ static int mtk_smmu_detach_dev(struct kvm_hyp_iommu *iommu, struct kvm_hyp_iommu
 	return 0;
 }
 
-bool mtk_smmu_dabt_handler(struct kvm_cpu_context *host_ctxt, u64 esr, u64 addr)
+bool mtk_smmu_dabt_handler(struct user_pt_regs *regs, u64 esr, u64 addr)
 {
-	return mtk_iommu_host_dabt_handler(&host_ctxt->regs, esr, addr);
+	return mtk_iommu_host_dabt_handler(regs, esr, addr);
 }
 
 int mtk_smmu_suspend(struct kvm_hyp_iommu *iommu)
