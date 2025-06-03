@@ -495,10 +495,11 @@ static int mtk_adda_ch34_ul_event(struct snd_soc_dapm_widget *w,
 	int mtkaif_dmic = afe_priv->mtkaif_dmic_ch34;
 	int mtkaif_adda6_only = afe_priv->mtkaif_adda6_only;
 
-	dev_info(afe->dev,
-		 "%s(), name %s, event 0x%x, mtkaif_dmic %d, mtkaif_adda6_only %d\n",
-		 __func__, w->name, event, mtkaif_dmic, mtkaif_adda6_only);
-
+	/*
+	 * dev_info(afe->dev,
+	 * "%s(), name %s, event 0x%x, mtkaif_dmic %d, mtkaif_adda6_only %d\n",
+	 * __func__, w->name, event, mtkaif_dmic, mtkaif_adda6_only);
+	 */
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
 		mt6993_afe_gpio_request(afe, true, MT6993_DAI_ADDA_CH34, 1);
@@ -589,8 +590,11 @@ static int mtk_adda_ul_ap_dmic_event(struct snd_soc_dapm_widget *w,
 	struct snd_soc_component *cmpnt = snd_soc_dapm_to_component(w->dapm);
 	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
 
-	dev_info(afe->dev, "%s(), name %s, event 0x%x\n",
-		 __func__, w->name, event);
+	/*
+	 * dev_info(afe->dev,
+	 * "%s(), name %s, event 0x%x\n",
+	 * __func__, w->name, event);
+	 */
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
@@ -619,12 +623,13 @@ static int mtk_adda_ch34_ul_ap_dmic_event(struct snd_soc_dapm_widget *w,
 {
 	struct snd_soc_component *cmpnt = snd_soc_dapm_to_component(w->dapm);
 	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
-	struct mt6993_afe_private *afe_priv = afe->platform_priv;
-	int mtkaif_adda6_only = afe_priv->mtkaif_adda6_only;
-
-	dev_info(afe->dev,
-		 "%s(), name %s, event 0x%x, mtkaif_adda6_only %d\n",
-		 __func__, w->name, event, mtkaif_adda6_only);
+	/*
+	 * struct mt6993_afe_private *afe_priv = afe->platform_priv;
+	 * int mtkaif_adda6_only = afe_priv->mtkaif_adda6_only;
+	 * dev_info(afe->dev,
+	 * "%s(), name %s, event 0x%x, mtkaif_adda6_only %d\n",
+	 * __func__, w->name, event, mtkaif_adda6_only);
+	 */
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
@@ -650,12 +655,13 @@ static int mtk_adda_ch56_ul_ap_dmic_event(struct snd_soc_dapm_widget *w,
 {
 	struct snd_soc_component *cmpnt = snd_soc_dapm_to_component(w->dapm);
 	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
-	struct mt6993_afe_private *afe_priv = afe->platform_priv;
-	int mtkaif_adda6_only = afe_priv->mtkaif_adda6_only;
-
-	dev_info(afe->dev,
-		 "%s(), name %s, event 0x%x, mtkaif_adda6_only %d\n",
-		 __func__, w->name, event, mtkaif_adda6_only);
+	/*
+	 * struct mt6993_afe_private *afe_priv = afe->platform_priv;
+	 * int mtkaif_adda6_only = afe_priv->mtkaif_adda6_only;
+	 * dev_info(afe->dev,
+	 * "%s(), name %s, event 0x%x, mtkaif_adda6_only %d\n",
+	 * __func__, w->name, event, mtkaif_adda6_only);
+	 */
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:

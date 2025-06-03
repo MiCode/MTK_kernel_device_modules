@@ -335,14 +335,12 @@ int mt6993_afe_gpio_request(struct mtk_base_afe *afe, bool enable,
 			mt6993_afe_gpio_select(afe, MT6993_AFE_GPIO_AP_DMIC_OFF);
 		break;
 	case MT6993_DAI_AP_DMIC_CH34:
-		dev_info(afe->dev, "%s(), DMIC1 enable = %d, need GPIO number\n", __func__, enable);
 		if (enable)
 			mt6993_afe_gpio_select(afe, MT6993_AFE_GPIO_AP_DMIC1_ON);
 		else
 			mt6993_afe_gpio_select(afe, MT6993_AFE_GPIO_AP_DMIC1_OFF);
 		break;
 	case MT6993_DAI_AP_DMIC_CH56:
-		dev_info(afe->dev, "%s(), DMIC2 enable = %d, need GPIO number\n", __func__, enable);
 		if (enable)
 			mt6993_afe_gpio_select(afe, MT6993_AFE_GPIO_AP_DMIC2_ON);
 		else

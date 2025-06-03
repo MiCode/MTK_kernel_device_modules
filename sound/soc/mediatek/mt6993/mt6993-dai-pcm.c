@@ -254,18 +254,6 @@ static const struct snd_kcontrol_new mtk_pcm_1_playback_ch5_mix[] = {
 				    I_SRC_1_OUT_CH2, 1, 0),
 };
 
-static int mtk_pcm_en_event(struct snd_soc_dapm_widget *w,
-			    struct snd_kcontrol *kcontrol,
-			    int event)
-{
-	struct snd_soc_component *cmpnt = snd_soc_dapm_to_component(w->dapm);
-	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
-
-	dev_info(afe->dev, "%s(), name %s, event 0x%x\n",
-		 __func__, w->name, event);
-	return 0;
-}
-
 static const struct snd_soc_dapm_widget mtk_dai_pcm_widgets[] = {
 	/* inter-connections */
 	SND_SOC_DAPM_MIXER("PCM_0_PB_CH1", SND_SOC_NOPM, 0, 0,
@@ -295,13 +283,10 @@ static const struct snd_soc_dapm_widget mtk_dai_pcm_widgets[] = {
 
 	SND_SOC_DAPM_SUPPLY("PCM_0_EN",
 			    AFE_PCM0_INTF_CON0, PCM0_EN_SFT, 0,
-			    mtk_pcm_en_event,
-			    SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
-
+			    NULL, 0),
 	SND_SOC_DAPM_SUPPLY("PCM_1_EN",
 			    AFE_PCM1_INTF_CON0, PCM1_EN_SFT, 0,
-			    mtk_pcm_en_event,
-			    SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
+			    NULL, 0),
 
 	SND_SOC_DAPM_INPUT("MD1_TO_AFE"),
 	SND_SOC_DAPM_INPUT("MD2_TO_AFE"),
