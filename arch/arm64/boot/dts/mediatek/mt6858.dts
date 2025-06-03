@@ -4035,7 +4035,7 @@ dramc: dramc@10230000 {
 
 			mediatek,platform = "mt6858";
 			mediatek,seninf_max_num = "8";
-
+	#if 0
 			power-domains = <&scpsys MT6858_POWER_DOMAIN_CAM_MAIN>,
 					<&scpsys MT6858_POWER_DOMAIN_CSI_RX>;
 			clocks = <&camsys_main_clk CLK_CAM_M_SENINF>,
@@ -4072,6 +4072,7 @@ dramc: dramc@10230000 {
 					"mmdvfs_clk";
 
 			operating-points-v2 = <&opp_table_cam>;
+	#endif
 		};
 		kd_camera_hw1:kd_camera_hw1@1a004000 {
 			compatible = "mediatek,imgsensor";
