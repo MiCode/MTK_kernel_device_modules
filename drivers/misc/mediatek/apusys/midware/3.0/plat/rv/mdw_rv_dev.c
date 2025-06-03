@@ -128,6 +128,7 @@ int mdw_rv_dev_power_onoff(struct mdw_rv_dev *mrdev, enum mdw_power_type power_o
 	int ret = 0, len = 0, cmd_running = 0;
 	enum mdw_power_type power_flag = MDW_APU_POWER_OFF;
 
+	atomic_inc(&mdev->pwr_usage);
 	mutex_lock(&mdev->power_mtx);
 	if (mdev->support_power_fast_on_off == false) {
 		mdw_drv_debug("platform does NOT support fast off/on\n");
@@ -186,6 +187,7 @@ int mdw_rv_dev_power_onoff(struct mdw_rv_dev *mrdev, enum mdw_power_type power_o
 
 out:
 	mutex_unlock(&mdev->power_mtx);
+	atomic_dec(&mdev->pwr_usage);
 	return ret;
 }
 
@@ -208,6 +210,7 @@ static int mdw_rv_dev_send_msg(struct mdw_rv_dev *mrdev, struct mdw_ipi_msg_sync
 	mdw_rv_dev_msg_insert(mrdev, s_msg);
 	mutex_unlock(&mrdev->msg_mtx);
 
+	atomic_inc(&mrdev->mdev->ipi_usage);
 	/* send & retry */
 	for (i = 0; i < cnt; i++) {
 		mdw_trace_begin("apumdw:send_ipi|msg:0x%llu", s_msg->msg.sync_id);
@@ -237,7 +240,8 @@ static int mdw_rv_dev_send_msg(struct mdw_rv_dev *mrdev, struct mdw_ipi_msg_sync
 		power_ret = mdw_rv_dev_power_onoff(mrdev, MDW_APU_POWER_OFF);  // power off
 		if (power_ret && power_ret != -EOPNOTSUPP) {
 			mdw_drv_err("rpmsg_sendto(power off) fail(%d)\n", power_ret);
-			return power_ret;
+			ret = power_ret;
+			goto out;
 		}
 
 		mutex_lock(&mrdev->msg_mtx);
@@ -250,6 +254,7 @@ static int mdw_rv_dev_send_msg(struct mdw_rv_dev *mrdev, struct mdw_ipi_msg_sync
 		mutex_unlock(&mrdev->msg_mtx);
 	}
 out:
+	atomic_dec(&mrdev->mdev->ipi_usage);
 	return ret;
 }
 

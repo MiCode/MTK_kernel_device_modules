@@ -186,6 +186,8 @@ static int mdw_platform_probe(struct platform_device *pdev)
 	mdw_dev = mdev;
 	platform_set_drvdata(pdev, mdev);
 	atomic_set(&mdev->cmd_running, 0);
+	atomic_set(&mdev->pwr_usage, 0);
+	atomic_set(&mdev->ipi_usage, 0);
 
 	ret = mdw_sysfs_init(mdev);
 	if (ret)

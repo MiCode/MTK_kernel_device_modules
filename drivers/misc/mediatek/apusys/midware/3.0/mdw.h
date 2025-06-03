@@ -284,6 +284,9 @@ struct mdw_device {
 	struct mutex dtime_mtx;
 	struct mutex power_mtx;
 	uint32_t power_gain_time_us;
+
+	atomic_t pwr_usage;
+	atomic_t ipi_usage;
 };
 
 struct mdw_fpriv {

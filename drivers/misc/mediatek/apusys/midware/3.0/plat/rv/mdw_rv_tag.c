@@ -55,9 +55,9 @@ void mdw_cmd_trace(struct mdw_cmd *c, uint32_t status)
 
 	trace_mdw_rv_cmd(status,
 		c->pid,
-		param1,
-		0,
-		param4,
+		atomic_read(&c->mpriv->mdev->pwr_usage),
+		atomic_read(&c->mpriv->mdev->cmd_running),
+		atomic_read(&c->mpriv->mdev->ipi_usage),
 		param5,
 		c->softlimit,
 		c->power_dtime,
@@ -222,9 +222,9 @@ static void mdw_rv_tag_enq_printf(struct seq_file *s, struct mdw_rv_tag *t)
 		return;
 
 	seq_printf(s, "%s,", status);
-	seq_printf(s, "pid=%d,inf_id=0x%llx,tgid=%llu,rvid=0x%llx,",
-		t->d.cmd.pid, t->d.cmd.param3, t->d.cmd.param1, t->d.cmd.rvid);
-	seq_printf(s, "num_subcmds=%llu,", t->d.cmd.param4);
+	seq_printf(s, "pid=%d,inf_id=0x%llx,cmd_running=%llu,pwr_usage=%llu,",
+		t->d.cmd.pid, t->d.cmd.param3, t->d.cmd.rvid, t->d.cmd.param1);
+	seq_printf(s, "ipi_usage=%llu,", t->d.cmd.param4);
 	seq_printf(s, "priority=%llu,softlimit=%u,",
 		t->d.cmd.param5, t->d.cmd.softlimit);
 	seq_printf(s, "pwr_dtime=%u,", t->d.cmd.pwr_dtime);
