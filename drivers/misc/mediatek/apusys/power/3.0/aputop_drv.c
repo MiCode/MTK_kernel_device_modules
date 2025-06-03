@@ -519,7 +519,7 @@ int apu_sw_throttle(int *request_id, unsigned long state)
 	aputop.param1 = state; //dla_max
 	aputop.param3 = *request_id; // request_id
 	ret = pwr_data->plat_aputop_func(NULL, aputop.func_id, &aputop);
-	pr_info("%s:  state is %ld , and request_id is %d\n", __func__, state, *request_id);
+	apu_pr_info_ratelimited("%s:  state is %ld ,and request_id is %d\n", __func__, state, *request_id);
 	if (ret < 0)
 		ret = 0;
 out:

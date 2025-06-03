@@ -18,6 +18,16 @@
 		dev_info(dev, fmt, ##__VA_ARGS__);       \
 }
 
+/* allow in 5s burst 30 times message print */
+#define apu_pr_info_ratelimited(fmt, ...)		 \
+{												 \
+	static DEFINE_RATELIMIT_STATE(_rs,			 \
+						HZ * 5,					 \
+						30);					 \
+	if (__ratelimit(&_rs))						 \
+		pr_info(fmt, ##__VA_ARGS__);			 \
+}
+
 enum {
 	APUSYS_PWR_LOG_OFF = 0, // disable
 	APUSYS_PWR_LOG_ERR = 1, // error
