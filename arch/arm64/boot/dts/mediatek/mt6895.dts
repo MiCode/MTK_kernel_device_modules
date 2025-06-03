@@ -12955,7 +12955,7 @@
 		apu2 {
 			polling-delay = <0>; /* milliseconds */
 			polling-delay-passive = <0>; /* milliseconds */
-			thermal-sensors = <&lvts 16>;
+			thermal-sensors = <&lvts 17>;
 
 			trips {
 				apu2_passive: apu2-passive {
@@ -12968,7 +12968,7 @@
 		dram_ch2 {
 			polling-delay = <0>; /* milliseconds */
 			polling-delay-passive = <0>; /* milliseconds */
-			thermal-sensors = <&lvts 17>;
+			thermal-sensors = <&lvts 18>;
 
 			trips {
 				dram_ch2_passive: dram-ch2-passive {
@@ -12981,7 +12981,7 @@
 		dram_ch0 {
 			polling-delay = <0>; /* milliseconds */
 			polling-delay-passive = <0>; /* milliseconds */
-			thermal-sensors = <&lvts 18>;
+			thermal-sensors = <&lvts 19>;
 
 			trips {
 				dram_ch0_passive: dram-ch0-passive {
@@ -12994,7 +12994,7 @@
 		soc_top {
 			polling-delay = <0>; /* milliseconds */
 			polling-delay-passive = <0>; /* milliseconds */
-			thermal-sensors = <&lvts 19>;
+			thermal-sensors = <&lvts 20>;
 
 			trips {
 				soc_top_passive: soc-top-passive {
@@ -13007,7 +13007,7 @@
 		dram_ch3 {
 			polling-delay = <0>; /* milliseconds */
 			polling-delay-passive = <0>; /* milliseconds */
-			thermal-sensors = <&lvts 20>;
+			thermal-sensors = <&lvts 21>;
 
 			trips {
 				dram_ch3_passive: dram-ch3-passive {
@@ -13020,7 +13020,7 @@
 		dram_ch1 {
 			polling-delay = <0>; /* milliseconds */
 			polling-delay-passive = <0>; /* milliseconds */
-			thermal-sensors = <&lvts 21>;
+			thermal-sensors = <&lvts 22>;
 
 			trips {
 				dram_ch1_passive: dram-ch1-passive {
@@ -13033,7 +13033,7 @@
 		soc_mm {
 			polling-delay = <0>; /* milliseconds */
 			polling-delay-passive = <0>; /* milliseconds */
-			thermal-sensors = <&lvts 22>;
+			thermal-sensors = <&lvts 23>;
 
 			trips {
 				soc_mm_passive: soc-mm-passive {
@@ -13046,7 +13046,7 @@
 		md1 {
 			polling-delay = <0>; /* milliseconds */
 			polling-delay-passive = <0>; /* milliseconds */
-			thermal-sensors = <&lvts 23>;
+			thermal-sensors = <&lvts 24>;
 
 			trips {
 				md1_passive: md1-passive {
@@ -13059,7 +13059,7 @@
 		md2{
 			polling-delay = <0>; /* milliseconds */
 			polling-delay-passive = <0>; /* milliseconds */
-			thermal-sensors = <&lvts 24>;
+			thermal-sensors = <&lvts 25>;
 
 			trips {
 				md2_passive: md2-passive {
@@ -13072,7 +13072,7 @@
 		md3 {
 			polling-delay = <0>; /* milliseconds */
 			polling-delay-passive = <0>; /* milliseconds */
-			thermal-sensors = <&lvts 25>;
+			thermal-sensors = <&lvts 26>;
 
 			trips {
 				md3_passive: md3-passive {
