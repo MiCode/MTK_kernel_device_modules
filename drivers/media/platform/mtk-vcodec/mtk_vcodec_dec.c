@@ -2233,14 +2233,22 @@ void mtk_vdec_check_alive_work(struct work_struct *ws)
 		if (!ctx->is_active)
 			mtk_vcodec_send_info_to_vgo(ctx, MTK_VCODEC_VGO_ADD_INST);
 		ctx->is_active = 1;
+
+#ifdef MTK_THERMAL_THROTTLE
+		if (ctx->thermal_hint != ctx->last_thermal_hint)
+			need_update = true;
+		ctx->last_thermal_hint = ctx->thermal_hint;
+#endif
 		mtk_vdec_dvfs_update_dvfs_params(ctx);
 		kfree(caws);
-		mtk_vcodec_dvfs_qos_log(true, "[VDVFS] %s [%d] is active/update_params now", __func__, ctx->id);
+		mtk_vcodec_dvfs_qos_log(true, "[VDVFS] %s [%d] is active/thermal_hint/update_params now",
+			__func__, ctx->id);
 	} else { // timer trigger case
 		list_for_each(item, &dev->vdec_dvfs_inst) {
 			inst = list_entry(item, struct vcodec_inst, list);
 			ctx = inst->ctx;
-			mtk_vcodec_dvfs_qos_log(true, "[VDVFS] ctx:%d, active:%d, decoded_cnt:%d, last_decoded_cnt:%d",
+			mtk_vcodec_dvfs_qos_log(true,
+				"[VDVFS] ctx:%d, active:%d, decoded_cnt:%d, last_decoded_cnt:%d",
 				ctx->id, ctx->is_active, ctx->decoded_frame_cnt,
 				ctx->last_decoded_frame_cnt);
 			if (!mtk_vcodec_is_state(ctx, MTK_STATE_ABORT)) {
@@ -3315,6 +3323,11 @@ static bool mtk_vdec_dvfs_params_change(struct mtk_vcodec_ctx *ctx)
 			need_update = true;
 			ctx->dec_params.dec_param_change &= (~MTK_DEC_PARAM_OPERATING_RATE);
 		}
+
+#ifdef MTK_THERMAL_THROTTLE
+		if (ctx->thermal_hint != ctx->last_thermal_hint)
+			need_update = true;
+#endif
 
 	}
 	return need_update;

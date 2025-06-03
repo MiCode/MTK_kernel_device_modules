@@ -26,6 +26,31 @@
 #include "mtk-interconnect.h"
 #include "vcodec_bw.h"
 
+#ifdef MTK_THERMAL_THROTTLE
+#include "thermal_interface.h"
+#include <linux/notifier.h>
+#endif
+
+#ifdef MTK_THERMAL_THROTTLE
+int mtk_dec_thermal_hint_callback(struct notifier_block *nb, unsigned long event, void *data)
+{
+	struct mtk_vcodec_dev *dev = container_of(nb, struct mtk_vcodec_dev, thermal_notify);
+	struct mtk_vcodec_ctx *ctx = NULL;
+
+	if (!dev->thermal_hint_mode)
+		return NOTIFY_OK;
+
+	list_for_each_entry(ctx, &dev->ctx_list, list) {
+		if (ctx != NULL)
+			ctx->thermal_hint = event;
+	}
+	mtk_vcodec_dvfs_qos_log(true,
+		"[VDEC][VDVFS] thermal_hint enable event %lu", event);
+
+	return NOTIFY_OK;
+}
+#endif
+
 //#define VDEC_PRINT_DTS_INFO
 #if DEC_EMI_BW
 static bool mtk_dec_tput_init(struct mtk_vcodec_dev *dev)
@@ -350,6 +375,21 @@ void mtk_prepare_vdec_dvfs(struct mtk_vcodec_dev *dev)
 		dev->cpu_hint_mode = (1 << MTK_CPU_UNSUPPORT);
 	} else
 		dev->cpu_hint_mode = flag;
+
+#ifdef MTK_THERMAL_THROTTLE
+	dev->thermal_hint_mode = of_property_read_bool(pdev->dev.of_node, "vdec-thermal-hint-mode");
+	if (!dev->thermal_hint_mode) {
+		mtk_vcodec_dvfs_qos_log(true, "[VDEC] no need vdec-thermal-hint-mode");
+	} else {
+		dev->thermal_notify.notifier_call = mtk_dec_thermal_hint_callback;
+		ret = mtk_thermal_hint_notify_register("vdec_cooling", &dev->thermal_notify);
+		if (ret < 0) {
+			mtk_vcodec_dvfs_qos_log(true, "[VDEC] thermal hint notify regist failed");
+			dev->thermal_hint_mode = false;
+			return;
+		}
+	}
+#endif
 
 	ret = dev_pm_opp_of_add_table(&dev->plat_dev->dev);
 	if (ret < 0) {
@@ -775,6 +815,9 @@ void mtk_vdec_dvfs_set_vsi_dvfs_params(struct mtk_vcodec_ctx *ctx)
 	vsi_data->is_active = ctx->is_active;
 	vsi_data->op_rate = ctx->dec_params.operating_rate;
 	vsi_data->op_rate_adaptive = ctx->op_rate_adaptive;
+#ifdef MTK_THERMAL_THROTTLE
+	vsi_data->thermal_hint = ctx->thermal_hint;
+#endif
 }
 
 /* update target freq and opp in ap*/

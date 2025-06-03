@@ -70,6 +70,8 @@ void mtk_dec_init_ctx_pm(struct mtk_vcodec_ctx *ctx)
 	ctx->last_decoded_frame_cnt = 0;
 	ctx->input_buf_cnt = 0;
 	ctx->prev_inbuf_time = 0;
+	ctx->thermal_hint = 0;
+	ctx->last_thermal_hint = 0;
 }
 
 int mtk_vcodec_init_dec_pm(struct mtk_vcodec_dev *mtkdev)

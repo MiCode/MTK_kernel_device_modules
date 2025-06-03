@@ -518,6 +518,7 @@ struct vdec_vsi {
 	__u8 dynamic_low_latency;
 	__u8 in_group;
 	__u8 cpu_hint;
+	__u8 thermal_hint;
 	__s8 crc_path[256];
 	__s8 golden_path[256];
 	__u64 general_buf_dma;
