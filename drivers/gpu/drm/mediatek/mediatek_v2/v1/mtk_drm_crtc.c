@@ -10666,7 +10666,7 @@ static ktime_t mtk_check_preset_fence_timestamp(struct drm_crtc *crtc)
 	ktime_t start_time, wait_time;
 	bool pass = false;
 	unsigned long flags;
-	struct mtk_panel_params *params = mtk_crtc->panel_ext->params;
+	struct mtk_panel_params *params = NULL;
 
 	is_frame_mode = mtk_crtc_is_frame_trigger_mode(crtc);
 	cur_time = mtk_crtc->pf_time;
@@ -10678,6 +10678,8 @@ static ktime_t mtk_check_preset_fence_timestamp(struct drm_crtc *crtc)
 			vrefresh = 60;
 		}
 
+		if (mtk_crtc && mtk_crtc->panel_ext && mtk_crtc->panel_ext->params)
+			params = mtk_crtc->panel_ext->params;
 		if (params && params->real_te_duration != 0)
 			te_freq = 1000000/params->real_te_duration;
 		else
