@@ -212,6 +212,8 @@ static s32
 cmdq_sec_task_submit(struct cmdq_sec *cmdq, struct cmdq_sec_task *task,
 	const u32 iwc_cmd, const u32 thrd_idx, void *data, bool mtee);
 
+static void cmdq_sec_trigger_late_init(void);
+
 /* operator API */
 static inline void
 cmdq_sec_setup_tee_context_base(struct cmdq_sec_context *context)
@@ -2077,6 +2079,9 @@ cmdq_sec_probe_mtee_end:
 #ifdef CMDQ_SECURE_SUPPORT
 	cmdq_sec_helper_set_fp(&sec_helper_fp);
 #endif
+
+	cmdq_sec_trigger_late_init();
+
 	return 0;
 }
 
@@ -2107,8 +2112,38 @@ static s32 cmdq_sec_prealloc_mem(void)
 	static u32 i;
 	s32 err, retry_cnt = 0, total_retry_cnt = 5;
 	const char *mod = "CMDQ";
+	char node_name[] = CMDQ_CONFIG_NODE_NAME;
+	u32 gce_ena_sec[CMDQ_HW_MAX];
+	struct device_node *np;
+	int ret, gce_core_num;
 
-	for (i = 0; i < gce_hw_cnt; i++) {
+	np = of_find_node_by_name(NULL, node_name);
+	if (!np) {
+		cmdq_err("failed to find %s node pre-alloc fail", node_name);
+		return -EINVAL;
+	}
+
+	ret = of_property_read_u32(np, "gce-core-num", &gce_core_num);
+	if (ret) {
+		cmdq_err("failed to read gce-core-num property, pre-alloc fail");
+		return -EINVAL;
+	}
+
+	ret = of_property_read_u32_array(np, "sec-cmdq-enable", gce_ena_sec, gce_core_num);
+	if (ret) {
+		cmdq_err("failed to read sec-cmdq-enable property, pre-alloc fail");
+		return -EINVAL;
+	}
+
+	of_node_put(np);
+
+
+	for (i = 0; i < gce_core_num; i++) {
+		cmdq_msg("%s i:%u alloc:%u", __func__, i, gce_ena_sec[i]);
+		if (!gce_ena_sec[i]) {
+			cmdq_msg("%s hwid:%d skip prealloc mem", __func__, i);
+			continue;
+		}
 		do {
 			context = kzalloc(sizeof(struct cmdq_sec_context), GFP_ATOMIC);
 			if (context)
@@ -2147,8 +2182,8 @@ static s32 cmdq_sec_late_init_wsm(void *data)
 	struct cmdq_sec_context *context = NULL;
 	s32 i = 0, err = 0;
 
+	msleep(10000);
 	do {
-		msleep(10000);
 		if (!g_cmdq[i])
 			continue;
 		cmdq = g_cmdq[i];
@@ -2187,7 +2222,7 @@ static s32 cmdq_sec_late_init_wsm(void *data)
 	return err;
 }
 
-static int __init cmdq_sec_late_init(void)
+static int cmdq_sec_late_init(void)
 {
 	struct task_struct *kthr =
 		kthread_run(cmdq_sec_late_init_wsm, g_cmdq, __func__);
@@ -2197,6 +2232,37 @@ static int __init cmdq_sec_late_init(void)
 	return PTR_ERR(kthr);
 }
 #endif
+
+static void cmdq_sec_trigger_late_init(void)
+{
+	char node_name[] = CMDQ_CONFIG_NODE_NAME;
+	static u32 gce_core_num;
+	struct device_node *np;
+	int ret;
+	static bool is_probe;
+
+	if (!is_probe) {
+		np = of_find_node_by_name(NULL, node_name);
+		if (!np) {
+			cmdq_err("failed to find %s node pre-alloc fail", node_name);
+			return;
+		}
+
+		ret = of_property_read_u32(np, "gce-core-num", &gce_core_num);
+		if (ret) {
+			cmdq_err("failed to read gce-core-num property, pre-alloc fail");
+			return;
+		}
+		of_node_put(np);
+	}
+
+	if (gce_core_num != g_cmdq_cnt)
+		return;
+
+#if defined(CMDQ_GP_SUPPORT) || defined(CMDQ_SECURE_MTEE_SUPPORT)
+	cmdq_sec_late_init();
+#endif
+}
 
 static int __init cmdq_sec_init(void)
 {
@@ -2210,10 +2276,6 @@ static int __init cmdq_sec_init(void)
 	err = platform_driver_register(&cmdq_sec_drv);
 	if (err)
 		cmdq_err("platform_driver_register failed:%d", err);
-
-#if defined(CMDQ_GP_SUPPORT) || defined(CMDQ_SECURE_MTEE_SUPPORT)
-	cmdq_sec_late_init();
-#endif
 
 	return err;
 }
