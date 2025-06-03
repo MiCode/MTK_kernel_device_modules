@@ -201,6 +201,7 @@ struct mtk_dsi {
 	unsigned int set_partial_update;
 	unsigned int roi_y_offset;
 	unsigned int roi_height;
+	struct drm_display_mode max_vrefresh_mode;
 };
 
 enum dsi_porch_type;
