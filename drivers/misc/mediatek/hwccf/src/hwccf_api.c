@@ -339,9 +339,10 @@ static int _v1_mm_hwccf_voter_ctrl(struct regmap *regmap, uint32_t setclr_ofs, u
 			goto ERR;
 		}
 	} else {
-		udelay(100);
+		/* only add delay 100us to mtcmos voter */
+		if (setclr_ofs == MTCMOS0_CLR_OFS || setclr_ofs == MTCMOS1_CLR_OFS)
+			udelay(100);
 	}
-
 
 	// Polling done
 	ret = regmap_read_poll_timeout_atomic(regmap, sta_ofs, val,
