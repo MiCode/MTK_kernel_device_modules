@@ -61,6 +61,7 @@ define_mgk_ddk_ko(
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smap",
         "-I$(DEVICE_MODULES_PATH)/include/soc/mediatek",
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cm_mgr",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/slbc",
     ],
     ko_deps = [
         "//kernel_device_modules-{}/drivers/misc/mediatek/mbraink:mtk_mbraink".format(kernel_version),
@@ -89,6 +90,7 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:mediatek-drm".format(kernel_version),
         "//kernel_device_modules-{}/drivers/interconnect/mediatek:mmqos-common".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/cm_mgr:mtk_cm_mgr_mt6993".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/slbc:mtk_slbc".format(kernel_version),
     ],
     header_deps = [
         "//kernel_device_modules-{}/drivers/misc/mediatek/mbraink:mtk_mbraink_h".format(kernel_version),
@@ -101,6 +103,7 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/misc/mediatek/pbm:pbm_headers".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/performance/fpsgo_v8:fpsgo_v8_public_headers".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/eccci:ccci_header".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/slbc:headers".format(kernel_version),
     ],
 )
 

@@ -8,10 +8,18 @@
 #include <linux/of.h>
 #include <linux/of_address.h>
 #include <linux/io.h>
+#include <mbraink_ioctl_struct_def.h>
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_SCSI_UFS_MEDIATEK)
 #include "ufs-mediatek-mbrain.h"
 #endif
+
+struct mbraink_v6993_slbc_info {
+	unsigned long long start;
+	unsigned long long end;
+	unsigned long long slbc_gpu_wb;
+	unsigned int count;
+};
 
 extern int mbraink_netlink_send_msg(const char *msg);
 

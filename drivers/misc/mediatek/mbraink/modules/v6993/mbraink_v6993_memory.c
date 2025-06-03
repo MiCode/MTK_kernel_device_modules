@@ -15,8 +15,18 @@
 #include <swpm_module_psp.h>
 #include <dvfsrc-mb.h>
 #include <mtk_cm_mgr_mt6993.h>
+#include <slbc_sdk.h>
+#include <linux/kthread.h>
+#include <linux/sched/task.h>
+#include <linux/delay.h>
+#include <linux/vmalloc.h>
 
 struct device *mbraink_v6993_device;
+static struct task_struct *mbraink_slbc_thread;
+static struct mbraink_v6993_slbc_info *slbc_info;
+unsigned int slbc_period_ms = 10000;
+unsigned int slbc_upload_cnt = 1000;
+static DEFINE_MUTEX(mbraink_slbc_lock);
 
 static int mbraink_v6993_memory_getDdrInfo(struct mbraink_memory_ddrInfo *pMemoryDdrInfo)
 {
@@ -285,6 +295,7 @@ End:
 static int mbraink_v6993_memory_getCmProfileInfo
 	(struct mbraink_memory_cmProfileInfo *pCmProfileInfo)
 {
+	int i;
 	struct cm_profile_info cmProfInfo;
 	int ret = 0;
 	int32_t cm_profile_check = 0;
@@ -306,6 +317,9 @@ static int mbraink_v6993_memory_getCmProfileInfo
 	else
 		cm_profile_check = CM_WRAP_EMI_MAX;
 
+	for (i = 0; i < cm_profile_check; i++)
+		pCmProfileInfo->info[i] = cmProfInfo.info[i];
+
 	pCmProfileInfo->totalCmWrapNum = cm_profile_check;
 	pCmProfileInfo->updateCnt = cmProfInfo.update_cnt;
 
@@ -320,6 +334,171 @@ static struct mbraink_memory_ops mbraink_v6993_memory_ops = {
 	.getCmProfileInfo = mbraink_v6993_memory_getCmProfileInfo,
 };
 
+/*This function must be called in mutex*/
+static void mbraink_slbc_data_send(unsigned int cnt)
+{
+	char netlink_buf[NETLINK_EVENT_MESSAGE_SIZE] = {'\0'};
+	int n = 0;
+	int pos = 0;
+	int idx = 0;
+
+	for (idx = 0; idx < cnt; idx++) {
+		if (idx % 16 == 0) {
+			pos = 0;
+			n = snprintf(netlink_buf,
+				NETLINK_EVENT_MESSAGE_SIZE, "%s ",
+				NETLINK_EVENT_SYSSLBC);
+			if (n < 0 || n >= NETLINK_EVENT_MESSAGE_SIZE)
+				break;
+			pos += n;
+		}
+		n = snprintf(netlink_buf + pos, NETLINK_EVENT_MESSAGE_SIZE - pos,
+			"%llu:%llu:%llu:%u ",
+			slbc_info[idx].start,
+			slbc_info[idx].end,
+			slbc_info[idx].slbc_gpu_wb,
+			slbc_info[idx].count);
+		if (n < 0 || n >= NETLINK_EVENT_MESSAGE_SIZE - pos)
+			break;
+		pos += n;
+
+		if (idx % 16 == 15 || (idx == (cnt - 1) && idx % 16 != 0)) {
+			mbraink_netlink_send_msg(netlink_buf);
+			memset(netlink_buf, 0, NETLINK_EVENT_MESSAGE_SIZE);
+		}
+	}
+}
+
+static int mbraink_slbc_thread_func(void *data)
+{
+	long long timestamp = 0;
+	struct timespec64 tv = { 0 };
+	unsigned int val = 0;
+	unsigned long long sum = 0;
+	unsigned int idx = 0;
+	unsigned int count = 0;
+
+	while (!kthread_should_stop()) {
+		slbc_get_gpu_wb(&val);
+
+		mutex_lock(&mbraink_slbc_lock);
+
+		if (slbc_info) {
+			if (count == 0) {
+				ktime_get_real_ts64(&tv);
+				timestamp = (tv.tv_sec*1000)+(tv.tv_nsec/1000000);
+				slbc_info[idx].start = timestamp;
+			}
+
+			if (count < slbc_period_ms) {
+				count++;
+				sum += (unsigned long long)(val);
+			} else {
+				ktime_get_real_ts64(&tv);
+				timestamp = (tv.tv_sec*1000)+(tv.tv_nsec/1000000);
+				slbc_info[idx].end = timestamp;
+				slbc_info[idx].count = count;
+				slbc_info[idx].slbc_gpu_wb = sum;
+				idx++;
+				sum = 0;
+				count = 0;
+			}
+			if (idx == slbc_upload_cnt) {
+				idx = 0;
+				mbraink_slbc_data_send(slbc_upload_cnt);
+				memset(slbc_info, 0,
+					sizeof(struct mbraink_v6993_slbc_info) * slbc_upload_cnt);
+			}
+		}
+		mutex_unlock(&mbraink_slbc_lock);
+		usleep_range(530, 550);
+	}
+	return 0;
+}
+
+static ssize_t mbraink_platform_slbc_info_show(struct device *dev,
+						struct device_attribute *attr,
+						char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "slbc_period_ms = %u, slbc_upload_cnt=%u...\n"
+			, slbc_period_ms, slbc_upload_cnt);
+}
+
+static ssize_t mbraink_platform_slbc_info_store(struct device *dev,
+						struct device_attribute *attr,
+						const char *buf,
+						size_t count)
+{
+	unsigned int command;
+	int retSize = 0;
+	unsigned int upload_cnt = 0;
+
+	retSize = sscanf(buf, "%d %u %u", &command, &slbc_period_ms, &upload_cnt);
+	if (retSize == -1)
+		return 0;
+	if (slbc_period_ms < 400)
+		slbc_period_ms = 400;
+	if (slbc_period_ms > 1000)
+		slbc_period_ms = 1000;
+	if (upload_cnt < 25)
+		upload_cnt = 25;
+	if (upload_cnt > 180)
+		upload_cnt = 180;
+
+	pr_info("%s: Get Command (%d), slbc_period_ms (%u)\n",
+		__func__,
+		command,
+		slbc_period_ms);
+
+	if (command == 1) {
+		mutex_lock(&mbraink_slbc_lock);
+
+		if (!slbc_info) {
+			slbc_upload_cnt = upload_cnt;
+			pr_info("%s: Get size(%d)\n",
+				__func__,
+				slbc_upload_cnt);
+			slbc_info =
+				vmalloc(sizeof(struct mbraink_v6993_slbc_info) * slbc_upload_cnt);
+			if (!slbc_info)
+				pr_err("%s: slbc_info buffer create failed!\n", __func__);
+		} else
+			pr_info("slbc_info buffer has already existed!\n");
+
+		mutex_unlock(&mbraink_slbc_lock);
+
+		if (!mbraink_slbc_thread) {
+			mbraink_slbc_thread =
+				kthread_run(mbraink_slbc_thread_func,
+					NULL,
+					"mbraink_v6993_slbc_thread");
+			if (!mbraink_slbc_thread)
+				pr_info("%s: mbraink_v6993_slbc_thread create fail!\n",
+					__func__);
+		} else
+			pr_info("mbraink_v6993_slbc_thread has already existed!\n");
+	} else {
+		if (mbraink_slbc_thread) {
+			kthread_stop(mbraink_slbc_thread);
+			mbraink_slbc_thread = NULL;
+		} else
+			pr_notice("mbraink_v6993_slbc_thread does not exist!\n");
+
+		mutex_lock(&mbraink_slbc_lock);
+
+		if (slbc_info) {
+			vfree(slbc_info);
+			slbc_info = NULL;
+		} else
+			pr_notice("slbc_info buffer does not exist!\n");
+
+		mutex_unlock(&mbraink_slbc_lock);
+	}
+
+	return count;
+}
+static DEVICE_ATTR_RW(mbraink_platform_slbc_info);
+
 int mbraink_v6993_memory_init(struct device *dev)
 {
 	int ret = 0;
@@ -327,6 +506,9 @@ int mbraink_v6993_memory_init(struct device *dev)
 	struct device_node *phy_node = NULL;
 	struct platform_device *phy_pdev = NULL;
 #endif
+
+	if (dev)
+		ret = device_create_file(dev, &dev_attr_mbraink_platform_slbc_info);
 
 	ret = register_mbraink_memory_ops(&mbraink_v6993_memory_ops);
 
@@ -355,6 +537,8 @@ int mbraink_v6993_memory_deinit(struct device *dev)
 	struct platform_device *phy_pdev = NULL;
 #endif
 
+	if (dev)
+		device_remove_file(dev, &dev_attr_mbraink_platform_slbc_info);
 	ret = unregister_mbraink_memory_ops();
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_SCSI_UFS_MEDIATEK)
