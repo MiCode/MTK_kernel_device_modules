@@ -157,7 +157,7 @@ extern unsigned long soter_sec_world_id[];
 int soter_ffa_shm_register(unsigned long page_link,
 			unsigned int length, unsigned int offset,
 			unsigned long *sec_id);
-
+void soter_ffa_reclaim_buffer(unsigned long handle_id);
 #endif
 
 #endif /*TEE_PRIVATE_H*/

@@ -22,8 +22,12 @@ struct param_get_drv_id {
 };
 
 struct param_reg_dci_buf {
+#ifdef TEEI_FFA_SUPPORT
+	unsigned long shared_ID;
+#else
 	uint64_t phy_addr;
 	uint32_t buf_size;
+#endif
 };
 
 struct param_notify_from_ree {

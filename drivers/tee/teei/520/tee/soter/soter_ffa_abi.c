@@ -183,6 +183,18 @@ int soter_ffa_shm_register(unsigned long page_link, unsigned int length,
 	return 0;
 }
 
+#define FFA_MEMORY_RECLAIM_KEEP_MEMORY 0
+void soter_ffa_reclaim_buffer(unsigned long handle_id)
+{
+	const struct ffa_ops *ffa_ops = soter_priv->ffa.ffa_ops;
+	int retVal = 0;
+
+	retVal = ffa_ops->mem_ops->memory_reclaim(handle_id,
+				FFA_MEMORY_RECLAIM_KEEP_MEMORY);
+	if (retVal != 0)
+		IMSG_ERROR("Failed to reclaim buffer, ID: %lx", handle_id);
+}
+
 #define SOTER_SHM_POOL_SIZE           (PAGE_SIZE * 32)
 
 static struct reserved_mem *teei_find_shm_pool_mblock(void)

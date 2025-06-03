@@ -1,4 +1,4 @@
-# Copyright (c) 2015-2019, MICROTRUST Incorporated
+# Copyright (c) 2015-2025, MICROTRUST Incorporated
 # All Rights Reserved.
 #
 # This program is free software; you can redistribute it and/or
@@ -71,10 +71,10 @@ isee-ffa-y +=          tests/main.o \
 subdir-ccflags-y  += -DTEEI_TEST_DRIVERS
 endif
 
-ifneq ($(filter y m, $(CONFIG_MICROTRUST_UNITTEST_SUPPORT)),)
-isee-ffa-y +=          ut_tester/ut_tester.o
-subdir-ccflags-y  += -DTEEI_UNITTEST_SUPPORT
-endif
+#ifneq ($(filter y m, $(CONFIG_MICROTRUST_UNITTEST_SUPPORT)),)
+#isee-ffa-y +=          ut_tester/ut_tester.o
+#subdir-ccflags-y  += -DTEEI_UNITTEST_SUPPORT
+#endif
 
 #add teei kernel driver without ffa
 obj-m += isee.o
@@ -117,10 +117,10 @@ isee-y +=              tests/main.o \
 subdir-ccflags-y  += -DTEEI_TEST_DRIVERS
 endif
 
-ifneq ($(filter y m, $(CONFIG_MICROTRUST_UNITTEST_SUPPORT)),)
-isee-y +=              ut_tester/ut_tester.o
-subdir-ccflags-y  += -DTEEI_UNITTEST_SUPPORT
-endif
+#ifneq ($(filter y m, $(CONFIG_MICROTRUST_UNITTEST_SUPPORT)),)
+#isee-y +=              ut_tester/ut_tester.o
+#subdir-ccflags-y  += -DTEEI_UNITTEST_SUPPORT
+#endif
 
 else
 
@@ -163,18 +163,9 @@ isee-y +=              tests/main.o \
 subdir-ccflags-y  += -DTEEI_TEST_DRIVERS
 endif
 
-ifneq ($(filter y m, $(CONFIG_MICROTRUST_UNITTEST_SUPPORT)),)
-isee-y +=              ut_tester/ut_tester.o
-subdir-ccflags-y  += -DTEEI_UNITTEST_SUPPORT
-endif
+#ifneq ($(filter y m, $(CONFIG_MICROTRUST_UNITTEST_SUPPORT)),)
+#isee-y +=              ut_tester/ut_tester.o
+#subdir-ccflags-y  += -DTEEI_UNITTEST_SUPPORT
+#endif
 
 endif
-
-$(info "=----------------2---------------------------")
-#obj-$(CONFIG_MICROTRUST_TZ_DRIVER) += tz_driver/
-#obj-$(CONFIG_MICROTRUST_VFS_DRIVER) += tz_vfs/
-#obj-$(CONFIG_MICROTRUST_FP_DRIVER) += teei_fp/
-#obj-$(CONFIG_MICROTRUST_KEYMASTER_DRIVER) += ut_keymaster/
-#obj-y += tz_dcih/
-#obj-$(CONFIG_MICROTRUST_TEST_DRIVERS) += tests/
-#obj-$(CONFIG_MICROTRUST_UNITTEST_SUPPORT) += ut_tester/

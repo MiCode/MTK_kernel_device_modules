@@ -62,10 +62,10 @@ static long tz_test_ioctl(struct file *file, unsigned int cmd,
 		return -EFAULT;
 
 	if (_IOC_DIR(cmd) & _IOC_READ)
-		err = !access_ok(VERIFY_WRITE,
+		err = !access_ok(//VERIFY_WRITE,
 				(void __user *)arg, _IOC_SIZE(cmd));
 	if (_IOC_DIR(cmd) & _IOC_WRITE)
-		err = !access_ok(VERIFY_READ,
+		err = !access_ok(//VERIFY_READ,
 				(void __user *)arg, _IOC_SIZE(cmd));
 	if (err)
 		return -EPERM;
@@ -90,19 +90,18 @@ static long tz_test_ioctl(struct file *file, unsigned int cmd,
 	return err;
 }
 
-static const struct file_operations tz_test_fops = {
-	.owner = THIS_MODULE,
-	.open = tz_test_open,
-	.release = tz_test_release,
-	.unlocked_ioctl = tz_test_ioctl,
+static const struct proc_ops tz_test_fops = {
+	.proc_open = tz_test_open,
+	.proc_release = tz_test_release,
+	.proc_ioctl = tz_test_ioctl,
 #ifdef CONFIG_COMPAT
-	.compat_ioctl = tz_test_ioctl,
+	.proc_compat_ioctl = tz_test_ioctl,
 #endif
-	.write = NULL,
-	.read = NULL,
+	.proc_write = NULL,
+	.proc_read = NULL,
 };
 
-static int __init tz_test_init(void)
+int tz_test_init(void)
 {
 #define TZ_PERMISSION 0666
 
@@ -110,4 +109,3 @@ static int __init tz_test_init(void)
 	proc_create("tz_test0", TZ_PERMISSION, NULL, &tz_test_fops);
 	return 0;
 }
-late_initcall(tz_test_init);

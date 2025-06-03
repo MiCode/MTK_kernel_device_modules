@@ -29,7 +29,16 @@ struct dcih_reg_info {
 	struct completion wait_notify; /* only for slave mode */
 	struct completion wait_result; /* only for slave mode */
 	struct list_head list;
+#ifdef TEEI_FFA_SUPPORT
+	unsigned long shared_ID;
+#endif
 };
+
+#ifdef TEEI_FFA_SUPPORT
+int soter_ffa_shm_register(unsigned long page_link, unsigned int length,
+				unsigned int offset, unsigned long *sec_id);
+void soter_ffa_reclaim_buffer(unsigned long handle_id);
+#endif
 
 void init_dcih_service(void);
 int tz_create_share_buffer(unsigned int driver_id, unsigned int buff_size);

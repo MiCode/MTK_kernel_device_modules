@@ -26,6 +26,10 @@ int soter_ffa_shm_register(unsigned long page_link, unsigned int length,
 	return -EFAULT;
 }
 
+void soter_ffa_reclaim_buffer(unsigned long handle_id)
+{
+}
+
 int teei_ffa_abi_register(void)
 {
 	IMSG_ERROR("[%s][%d] teei ffa is dummy!\n", __func__, __LINE__);

@@ -40,11 +40,18 @@ static int register_share_buffer_to_driver(struct dcih_reg_info *info)
 	struct ut_drv_param driver_param;
 
 	driver_param.cmd_id = UT_DRV_REGISTER_DCI_BUFFER;
+#ifdef TEEI_FFA_SUPPORT
+	driver_param.u.reg_dci_buf.shared_ID = info->shared_ID;
+
+	IMSG_DEBUG("register dci sel2 buffer, shared_ID 0x%lx\n",
+			info->shared_ID);
+#else
 	driver_param.u.reg_dci_buf.phy_addr = info->phy_addr;
 	driver_param.u.reg_dci_buf.buf_size = info->buf_size;
 
 	IMSG_DEBUG("register dci buffer, phy_addr 0x%lx size 0x%x\n",
 			info->phy_addr, info->buf_size);
+#endif
 
 	prepare_params(&op, (void *)&driver_param, sizeof(struct ut_drv_param));
 
@@ -70,8 +77,12 @@ static int noitfy_driver_to_free_share_buffer(struct dcih_reg_info *info)
 	struct ut_drv_param driver_param;
 
 	driver_param.cmd_id = UT_DRV_FREE_DCI_BUFFER;
+#ifdef TEEI_FFA_SUPPORT
+	driver_param.u.reg_dci_buf.shared_ID = info->shared_ID;
+#else
 	driver_param.u.reg_dci_buf.phy_addr = info->phy_addr;
 	driver_param.u.reg_dci_buf.buf_size = info->buf_size;
+#endif
 
 	IMSG_DEBUG("free dci buffer, phy_addr 0x%lx size 0x%x\n",
 			info->phy_addr, info->buf_size);
@@ -97,6 +108,9 @@ int tz_create_share_buffer(unsigned int driver_id, unsigned int buff_size)
 	struct ut_drv_entry *drv_info;
 	unsigned long tmp_addr;
 	int ret;
+#ifdef TEEI_FFA_SUPPORT
+	unsigned long shared_ID = 0;
+#endif
 
 	if (buff_size > MAX_DCIH_BUF_SIZE) {
 		IMSG_ERROR("buffer size too large!\n");
@@ -135,6 +149,17 @@ int tz_create_share_buffer(unsigned int driver_id, unsigned int buff_size)
 		goto fail;
 	}
 
+#ifdef TEEI_FFA_SUPPORT
+	ret = soter_ffa_shm_register((unsigned long)virt_to_page(tmp_addr),
+			ROUND_UP(buff_size, SZ_4K), 0, &shared_ID);
+	if (ret != 0) {
+		IMSG_ERROR("Failed to register share buffer %d!\n",
+				ret);
+		ret = -ENOMEM;
+		goto fail;
+	}
+	info->shared_ID = shared_ID;
+#endif
 	info->drv_info = drv_info;
 	/* will dynamically assign this value by dcih behavior */
 	info->mode = DCIH_MODE_INVALID;
@@ -145,13 +170,22 @@ int tz_create_share_buffer(unsigned int driver_id, unsigned int buff_size)
 	init_completion(&info->wait_result);
 
 	ret = register_share_buffer_to_driver(info);
-	if (ret < 0)
+	if (ret < 0) {
+#ifdef TEEI_FFA_SUPPORT
+		goto fail_1;
+#else
 		goto fail;
+#endif
+	}
 
 	list_add_tail(&info->list, &dcih_register_list);
 
 	return 0;
 
+#ifdef TEEI_FFA_SUPPORT
+fail_1:
+	soter_ffa_reclaim_buffer(shared_ID);
+#endif
 fail:
 	if (tmp_addr)
 		free_pages(tmp_addr, get_order(ROUND_UP(buff_size, SZ_4K)));
@@ -179,6 +213,9 @@ int tz_free_share_buffer(unsigned int driver_id)
 		free_pages(info->virt_addr,
 				get_order(ROUND_UP(info->buf_size, SZ_4K)));
 
+#ifdef TEEI_FFA_SUPPORT
+	soter_ffa_reclaim_buffer(info->shared_ID);
+#endif
 	list_del(&info->list);
 	kfree(info);
 

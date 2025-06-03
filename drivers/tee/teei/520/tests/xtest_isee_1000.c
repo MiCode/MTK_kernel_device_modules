@@ -148,7 +148,7 @@ int xtest_isee_test_1004(void)
 	struct TEEC_Session session;
 	struct TEEC_Operation op;
 	uint32_t ret_orig;
-	uint64_t time_start, time_end, time_freq, time_ms;
+	uint64_t time_start, time_end;
 
 	res = xtest_teec_open_session(&xtest_isee_ctx_1000, &session,
 					&isee_test_ta_uuid, NULL, &ret_orig);
@@ -179,12 +179,6 @@ int xtest_isee_test_1004(void)
 	time_end = (uint64_t)op.params[1].value.b << 32
 					& 0xFFFFFFFF00000000lu;
 	time_end |= op.params[1].value.a;
-	time_freq = (uint64_t)op.params[2].value.b << 32
-					& 0xFFFFFFFF00000000lu;
-	time_freq |= op.params[2].value.a;
-	time_ms = (uint64_t)op.params[3].value.b << 32
-					& 0xFFFFFFFF00000000lu;
-	time_ms |= op.params[3].value.a;
 
 	(void)ADBG_EXPECT_TEEC_RESULT(1, time_start !=
 				TA_CORE_API_PARAM_TYPE_Test_Pattern_ZERO);
