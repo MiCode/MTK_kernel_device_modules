@@ -765,6 +765,7 @@ static void ufs_mtk_init_host_caps(struct ufs_hba *hba)
 {
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 	struct device_node *np = hba->dev->of_node;
+	struct device_node *np_fuzz_tfa = NULL;
 
 	if (of_property_read_bool(np, "mediatek,ufs-boost-crypt"))
 		ufs_mtk_init_boost_crypt(hba);
@@ -787,8 +788,12 @@ static void ufs_mtk_init_host_caps(struct ufs_hba *hba)
 	if (of_property_read_bool(np, "mediatek,ufs-disable-mcq"))
 		host->caps |= UFS_MTK_CAP_DISABLE_MCQ;
 
-	if (of_property_read_bool(np, "mediatek,ufs-rtff-mtcmos"))
-		host->caps |= UFS_MTK_CAP_RTFF_MTCMOS;
+	if (of_property_read_bool(np, "mediatek,ufs-rtff-mtcmos")) {
+		np_fuzz_tfa = of_find_node_by_name(NULL, "atf-logger");
+		if (!np_fuzz_tfa ||
+		    !of_property_read_bool(np_fuzz_tfa, "mediatek,afl-fuzzer-enabled"))
+			host->caps |= UFS_MTK_CAP_RTFF_MTCMOS;
+	}
 
 	if (of_property_read_bool(np, "mediatek,ufs-broken-rtc"))
 		host->caps |= UFS_MTK_CAP_MCQ_BROKEN_RTC;
@@ -1552,6 +1557,7 @@ static int ufs_mtk_cpu_offline_notify(unsigned int cpu, struct hlist_node *node)
 static int ufs_mtk_init(struct ufs_hba *hba)
 {
 	const struct of_device_id *id;
+	struct device_node *np_fuzz_tfa = NULL;
 	struct device *dev = hba->dev;
 	struct ufs_mtk_host *host;
 	struct Scsi_Host *shost = hba->host;
@@ -1610,11 +1616,15 @@ static int ufs_mtk_init(struct ufs_hba *hba)
 	if (host->mphy_reset)
 		ufs_mtk_mphy_ctrl(host->host_id, UFS_MPHY_BACKUP, res);
 
-	/* Enable runtime autosuspend */
-	hba->caps |= UFSHCD_CAP_RPM_AUTOSUSPEND;
+	np_fuzz_tfa = of_find_node_by_name(NULL, "atf-logger");
+	if (!np_fuzz_tfa ||
+	    !of_property_read_bool(np_fuzz_tfa, "mediatek,afl-fuzzer-enabled")) {
+		/* Enable runtime autosuspend */
+		hba->caps |= UFSHCD_CAP_RPM_AUTOSUSPEND;
 
-	/* Enable clock-gating */
-	hba->caps |= UFSHCD_CAP_CLK_GATING;
+		/* Enable clock-gating */
+		hba->caps |= UFSHCD_CAP_CLK_GATING;
+	}
 
 	/* Enable inline encryption */
 	hba->caps |= UFSHCD_CAP_CRYPTO;
