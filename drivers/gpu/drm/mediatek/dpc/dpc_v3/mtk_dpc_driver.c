@@ -83,6 +83,9 @@ module_param(wfe_prete, int, 0644);
 int dt_strategy;
 module_param(dt_strategy, int, 0644);
 
+int toggle_cg_fsm;
+module_param(toggle_cg_fsm, int, 0644);
+
 int mask_busy_irq = 1;
 module_param(mask_busy_irq, int, 0644);
 
@@ -102,15 +105,22 @@ static void __iomem *rgu_reg;
 
 static void __iomem *busy_mask[10];
 
+static void __iomem *hwccf_cg47_set;
+static void __iomem *hwccf_cg47_clr;
+static void __iomem *hwccf_cg47_en;
+static void __iomem *hwccf_cg47_sta;
 static void __iomem *hwccf_xpu0_mtcmos_set;
 static void __iomem *hwccf_xpu0_mtcmos_clr;
 static void __iomem *hwccf_xpu0_local_en;
 static void __iomem *hwccf_xpu6_local_en;
 static void __iomem *hwccf_global_en;
 static void __iomem *hwccf_global_sta;
+static void __iomem *hwccf_total_sta;		/* check all fsm idle, 1 = all idle, 0 = backup idle */
 static void __iomem *hwccf_hw_mtcmos_req;	/* for dpc to hwccf for mtcmos */
 static void __iomem *hwccf_hw_irq_req;		/* for dpc to hwccf for buck (irq voter) */
+static void __iomem *hwccf_mtcmos_pm_ack;	/* for pm check */
 static void __iomem *hwccf_mtcmos_en;		/* SW + HW */
+static void __iomem *hwccf_mtcmos_sta;
 
 static void __iomem *mmpc_dummy_voter;	/* 0x160(RU) 0x164(SET) 0x168(CLR) */
 
@@ -2417,16 +2427,25 @@ static int dpc_res_init_v3(struct mtk_dpc *priv)
 	/* set total HRT bw */
 	// dpc_hrt_bw_set_v3(DPC_SUBSYS_DISP, 363 * priv->total_hrt_unit, true);
 
+	hwccf_mtcmos_pm_ack = ioremap(0x31c12900, 0x4);
 	hwccf_xpu0_mtcmos_set = ioremap(0x31c20700, 0x4);
 	hwccf_xpu0_mtcmos_clr = ioremap(0x31c20704, 0x4);
 	hwccf_xpu0_local_en = ioremap(0x31c20708, 0x4);
 	hwccf_xpu6_local_en = ioremap(0x31c71708, 0x4);
 	hwccf_global_en = ioremap(0x31c13700, 0x4);
-	hwccf_global_sta = ioremap(0x31c1131c, 0x4);
+	hwccf_global_sta = ioremap(0x31c13704, 0x4);
+	hwccf_total_sta = ioremap(0x31c10000, 0x4);
 	hwccf_mtcmos_en = ioremap(0x31c11318, 0x4);
+	hwccf_mtcmos_sta = ioremap(0x31c1131c, 0x4);
 	hwccf_hw_mtcmos_req = ioremap(0x31c14300, 0x4);
 	hwccf_hw_irq_req = ioremap(0x31c14400, 0x4);
+	hwccf_cg47_set = ioremap(0x31c20234, 0x4);
+	hwccf_cg47_clr = ioremap(0x31c20238, 0x4);
+	hwccf_cg47_en = ioremap(0x31c122bc, 0x4);
+	hwccf_cg47_sta = ioremap(0x31c118bc, 0x4);
+
 	mmpc_dummy_voter = ioremap(0x31b50160, 0x4);
+
 
 	// Mask unprocessed mutex
 	busy_mask[0] = ioremap(0x3E320328, 0x4); //(0x1000100)
@@ -2976,17 +2995,32 @@ static void dpc_hwccf_vote(bool on, struct cmdq_pkt *pkt, const enum mtk_vidle_v
 		if (lock)
 			cmdq_pkt_wfe(pkt, g_priv->event_hwccf_vote);
 		if (on) {
-			// cmdq_pkt_poll_sleep(pkt, 0, 0x3141131c, mask);		/* polling status idle */
+			if (toggle_cg_fsm)
+				cmdq_pkt_poll_sleep(pkt, 0, 0x31410000, 0xfffe);	/* polling all fsm idle */
+
 			cmdq_pkt_write(pkt, NULL, xpu_base, mask, U32_MAX);		/* vote xpu6 mtcmos voter */
 			cmdq_pkt_poll_sleep(pkt, mask, xpu_base + 0x8, mask);		/* check xpu6 local enable */
-			cmdq_pkt_poll_sleep(pkt, 0, 0x3141131c, mask);			/* polling status idle */
 			cmdq_pkt_poll_sleep(pkt, mask, 0x31413700, mask);		/* check global enable */
+			cmdq_pkt_poll_sleep(pkt, 0, 0x3141131c, mask);			/* polling status idle */
+
+			if (toggle_cg_fsm) {
+				// if (condition)
+				cmdq_pkt_write(pkt, NULL, 0x31471234, BIT(22), U32_MAX);	/* set cg47 */
+				cmdq_pkt_poll_sleep(pkt, BIT(22), 0x314122bc, BIT(22));		/* check cg47 en */
+				cmdq_pkt_poll_sleep(pkt, 0, 0x314118bc, BIT(22));		/* check cg47 idle */
+				cmdq_pkt_write(pkt, NULL, 0x31471238, BIT(22), U32_MAX);	/* clr cg47 */
+				cmdq_pkt_poll_sleep(pkt, 0, 0x314122bc, BIT(22));		/* check cg47 en */
+				cmdq_pkt_poll_sleep(pkt, 0, 0x314118bc, BIT(22));		/* check cg47 idle */
+			}
+
+			cmdq_pkt_poll_sleep(pkt, mask, 0x31412900, mask);		/* check mtcmos pm ack */
 			cmdq_pkt_write(pkt, NULL, g_priv->dpc_pa + DISP_REG_DPC3_DTx_SW_TRIG(55), 1, U32_MAX);
 		} else {
-			cmdq_pkt_poll_sleep(pkt, 0, 0x3141131c, mask);			/* polling status idle */
-			cmdq_pkt_write(pkt, NULL, xpu_base + 0x4, mask, U32_MAX);	/* vote xpu6 mtcmos voter */
+			if (toggle_cg_fsm)
+				cmdq_pkt_poll_sleep(pkt, 0, 0x31410000, 0xfffe);	/* polling all fsm idle */
+
+			cmdq_pkt_write(pkt, NULL, xpu_base + 0x4, mask, U32_MAX);	/* unvote xpu6 mtcmos voter */
 			cmdq_pkt_poll_sleep(pkt, 0, xpu_base + 0x8, mask);		/* check xpu6 local enable */
-			// cmdq_pkt_poll_sleep(pkt, 0, 0x3141131c, mask);		/* polling status idle */
 			cmdq_pkt_write(pkt, NULL, g_priv->dpc_pa + DISP_REG_DPC3_DTx_SW_TRIG(56), 1, U32_MAX);
 		}
 		if (lock)
@@ -2996,34 +3030,63 @@ static void dpc_hwccf_vote(bool on, struct cmdq_pkt *pkt, const enum mtk_vidle_v
 			spin_lock_irqsave(&g_priv->hwccf_ref_lock, flags);
 
 		if (on) {
-			//ret = readl_poll_timeout_atomic(hwccf_global_sta, value, !(value & mask), 1, 10000);
-			//if (ret < 0)
-			//	goto err1;
+			if (toggle_cg_fsm) {
+				/* polling all fsm idle */
+				ret = readl_poll_timeout_atomic(hwccf_total_sta, value, !(value & 0xfffe), 1, 10000);
+				if (ret < 0)
+					goto err1;
+			}
 
 			writel(mask, hwccf_xpu0_mtcmos_set);			/* vote xpu0 mtcmos voter */
 
 			ret = readl_poll_timeout_atomic(hwccf_xpu0_local_en, value, value & mask, 1, 2000);
 			if (ret < 0)
 				goto err2;
-			ret = readl_poll_timeout_atomic(hwccf_global_sta, value, !(value & mask), 1, 10000);
-			if (ret < 0)
-				goto err3;
 			ret = readl_poll_timeout_atomic(hwccf_global_en, value, value & mask, 1, 10000);
 			if (ret < 0)
-				goto err4;
-		} else {
-			ret = readl_poll_timeout_atomic(hwccf_global_sta, value, !(value & mask), 1, 10000);
+				goto err3;
+			ret = readl_poll_timeout_atomic(hwccf_mtcmos_sta, value, !(value & mask), 1, 10000);
+			if (ret < 0) {
+				if (!toggle_cg_fsm)
+					goto err4;
+
+				if ((readl(hwccf_global_sta) & mask) == 0) {
+					writel(BIT(16), hwccf_cg47_set);
+					ret = readl_poll_timeout_atomic(hwccf_cg47_en, value, value & BIT(16), 1, 200);
+					if (ret < 0)
+						goto err5;
+					ret = readl_poll_timeout_atomic(hwccf_cg47_sta, value, !(value & BIT(16)),
+									1, 10000);
+					if (ret < 0)
+						goto err6;
+
+					writel(BIT(16), hwccf_cg47_clr);
+					ret = readl_poll_timeout_atomic(hwccf_cg47_en, value, !(value & BIT(16)),
+									1, 200);
+					if (ret < 0)
+						goto err7;
+					ret = readl_poll_timeout_atomic(hwccf_cg47_sta, value, !(value & BIT(16)),
+									1, 10000);
+					if (ret < 0)
+						goto err8;
+				}
+			}
+			ret = readl_poll_timeout_atomic(hwccf_mtcmos_pm_ack, value, value & mask, 1, 10000);
 			if (ret < 0)
-				goto err1;
+				goto err9;
+		} else {
+			if (toggle_cg_fsm) {
+				/* polling all fsm idle */
+				ret = readl_poll_timeout_atomic(hwccf_total_sta, value, !(value & 0xfffe), 1, 10000);
+				if (ret < 0)
+					goto err1;
+			}
 
 			writel(mask, hwccf_xpu0_mtcmos_clr);			/* vote xpu0 mtcmos voter */
 
 			ret = readl_poll_timeout_atomic(hwccf_xpu0_local_en, value, !(value & mask), 1, 2000);
 			if (ret < 0)
 				goto err2;
-			//ret = readl_poll_timeout_atomic(hwccf_global_sta, value, !(value & mask), 1, 10000);
-			//if (ret < 0)
-			//	goto err3;
 		}
 
 		if (lock)
@@ -3039,10 +3102,25 @@ err2:
 	DPCERR("pwr(%u) mask(%#x) polling local_en(%#x) timeout, ret(%d)", on, mask, value, ret);
 	goto err_dump;
 err3:
-	DPCERR("pwr(%u) mask(%#x) polling status(%#x) idle timeout 2, ret(%d)", on, mask, value, ret);
+	DPCERR("pwr(%u) mask(%#x) polling global_en(%#x) timeout, ret(%d)", on, mask, value, ret);
 	goto err_dump;
 err4:
-	DPCERR("pwr(%u) mask(%#x) polling global_en(%#x) timeout, ret(%d)", on, mask, value, ret);
+	DPCERR("pwr(%u) mask(%#x) polling status(%#x) idle timeout 2, ret(%d)", on, mask, value, ret);
+	goto err_dump;
+err5:
+	DPCERR("pwr(%u) mask(%#x) polling cg47_en(%#x) timeout, ret(%d)", on, mask, value, ret);
+	goto err_dump;
+err6:
+	DPCERR("pwr(%u) mask(%#x) polling cg47_sta(%#x) idle timeout, ret(%d)", on, mask, value, ret);
+	goto err_dump;
+err7:
+	DPCERR("pwr(%u) mask(%#x) polling cg47_clr(%#x) timeout, ret(%d)", on, mask, value, ret);
+	goto err_dump;
+err8:
+	DPCERR("pwr(%u) mask(%#x) polling cg47_sta(%#x) idle timeout 2, ret(%d)", on, mask, value, ret);
+	goto err_dump;
+err9:
+	DPCERR("pwr(%u) mask(%#x) polling mtcmos pm ack (%#x) timeout, ret(%d)", on, mask, value, ret);
 	goto err_dump;
 err_dump:
 	if (lock)
