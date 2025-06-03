@@ -480,6 +480,12 @@ int uarthub_core_irq_register(struct platform_device *pdev)
 		tv_end_assert.tv_nsec = now.tv_nsec;
 		tv_end_assert.tv_sec += 1;
 
+		ret = enable_irq_wake(irq_num);
+		if (ret) {
+			pr_info("[%s] Enable wakeup_irq[%d] failed rc = %d!", __func__, irq_num, ret);
+			return -1;
+		}
+
 		ret = request_irq(irq_num, uarthub_irq_isr, irq_flag,
 			"UARTHUB_IRQ", NULL);
 
