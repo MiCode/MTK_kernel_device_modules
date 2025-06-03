@@ -250,6 +250,8 @@ extern void set_grp_dvfs_ctrl(int set);
 extern bool get_grp_high_freq(int cluster_id);
 extern void set_grp_high_freq(int cluster_id, bool set);
 
+extern void set_flt_coef_margin_ctrl(int set);
+extern int get_flt_coef_margin_ctrl(void);
 
 extern unsigned long get_turn_point_freq(int gearid);
 DECLARE_PER_CPU(unsigned int, gear_id);

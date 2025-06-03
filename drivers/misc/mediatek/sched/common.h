@@ -417,6 +417,7 @@ extern int set_target_margin_low(int gearid, int margin);
 extern int unset_target_margin(int gearid);
 extern int unset_target_margin_low(int gearid);
 extern int set_turn_point_freq(int gearid, unsigned long freq);
+extern int set_flt_margin(int gearid, int margin);
 
 extern void set_curr_task_uclamp_ctrl(int set);
 extern void unset_curr_task_uclamp_ctrl(void);
@@ -659,6 +660,9 @@ static inline unsigned long uclamp_task_util(struct task_struct *p)
 void set_dsu_idle_enable(bool boost_ctrl);
 void unset_dsu_idle_enable(void);
 bool is_dsu_idle_enable(void);
+
+void set_flt_coef_margin_ctrl(int set);
+int get_flt_coef_margin_ctrl(void);
 
 int mtk_available_idle_cpu(int cpu);
 

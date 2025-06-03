@@ -419,6 +419,7 @@ extern int set_turn_point_freq(int gearid, unsigned long turn_freq);
 extern int set_target_margin_low(int gearid, int margin);
 extern int unset_target_margin(int cpu);
 extern int unset_target_margin_low(int cpu);
+extern int set_flt_margin(int gearid, int margin);
 
 extern int set_util_est_ctrl(bool enable);
 struct share_buck_info {

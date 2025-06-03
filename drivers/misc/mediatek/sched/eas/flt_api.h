@@ -114,6 +114,7 @@ int flt_get_task_by_wp(struct task_struct *p, int wc, int task_wp);
 void register_sugov_hooks(void);
 extern unsigned long (*flt_get_cpu_util_hook)(int cpu);
 extern unsigned long (*flt_sched_get_cpu_group_util_eas_hook)(int cpu, int group_id);
+extern int (*flt_sched_get_flt_coef_util_eas_hook)(int cpu, enum _flt_cpu_type type);
 extern void (*flt_get_fpsgo_boosting)(int fpsgo_flag);
 extern void flt_ctrl_force_set(int set);
 extern bool flt_ctrl_force_get(void);

@@ -458,6 +458,7 @@ void register_sugov_hooks(void)
 	flt_get_cpu_util_hook = flt_get_cpu;
 	flt_sched_get_cpu_group_util_eas_hook = flt_sched_get_cpu_group;
 	flt_get_fpsgo_boosting = flt_ctl;
+	flt_sched_get_flt_coef_util_eas_hook = flt_query_cpu_util;
 }
 #endif
 

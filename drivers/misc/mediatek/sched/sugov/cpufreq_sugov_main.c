@@ -44,6 +44,7 @@
 #define DEFAULT_DSU_IDLE		true
 #define DEFAULT_CURR_TASK_UCLAMP	false
 #define DEFAULT_HOLD_FREQ	false
+#define DEFAULT_FLT_COEF_MARGIN	false
 
 struct sugov_cpu {
 	struct update_util_data	update_util;
@@ -178,6 +179,20 @@ bool is_hold_freq_enable(void)
 }
 EXPORT_SYMBOL(is_hold_freq_enable);
 
+/* flt_coef_ctrl */
+static int flt_coef_margin_ctrl = DEFAULT_FLT_COEF_MARGIN;
+
+void set_flt_coef_margin_ctrl(int set)
+{
+	flt_coef_margin_ctrl = set;
+}
+EXPORT_SYMBOL(set_flt_coef_margin_ctrl);
+
+int get_flt_coef_margin_ctrl(void)
+{
+	return flt_coef_margin_ctrl;
+}
+EXPORT_SYMBOL(get_flt_coef_margin_ctrl);
 
 /************************ Governor internals ***********************/
 

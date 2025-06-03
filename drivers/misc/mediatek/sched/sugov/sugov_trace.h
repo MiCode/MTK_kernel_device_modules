@@ -1196,6 +1196,29 @@ TRACE_EVENT(sugov_ext_mtk_map_util_freq_dpt_v2,
 		__entry->max)
 );
 
+TRACE_EVENT(sugov_ext_flt_util_with_coef_margin,
+	TP_PROTO(int cpu, int pelt_util, int flt_util, unsigned int flt_margin),
+	TP_ARGS(cpu, pelt_util, flt_util, flt_margin),
+	TP_STRUCT__entry(
+		__field(int, cpu)
+		__field(int, pelt_util)
+		__field(int, flt_util)
+		__field(unsigned int, flt_margin)
+	),
+	TP_fast_assign(
+		__entry->cpu = cpu;
+		__entry->pelt_util = pelt_util;
+		__entry->flt_util = flt_util;
+		__entry->flt_margin = flt_margin;
+	),
+	TP_printk(
+		"cpu=%d pelt_util=%d flt_util=%d flt_margin=%d",
+		__entry->cpu,
+		__entry->pelt_util,
+		__entry->flt_util,
+		__entry->flt_margin)
+);
+
 #endif /* _TRACE_SCHEDULER_H */
 
 #undef TRACE_INCLUDE_PATH

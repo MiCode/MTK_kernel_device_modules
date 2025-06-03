@@ -36,6 +36,7 @@
 #if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
 #include <thermal_interface.h>
 #endif // CONFIG_MTK_THERMAL_INTERFACE
+
 DEFINE_PER_CPU(struct sbb_cpu_data *, sbb);
 EXPORT_SYMBOL(sbb);
 static void __iomem *l3ctl_sram_base_addr;
@@ -178,6 +179,14 @@ struct pd_capacity_info {
 	unsigned int *util_freq;
 	unsigned long *caps;
 	struct cpumask cpus;
+};
+
+/* weight mode */
+enum _flt_cpu_type {
+	FLT_CPU_TAR = 0,
+	FLT_CPU_S = 1,
+	FLT_CPU_NS = 2,
+	FLT_CPU_NUM,
 };
 
 static int entry_count;
@@ -2777,13 +2786,13 @@ int init_opp_cap_info(struct proc_dir_entry *dir)
 
 	init_freq_ceiling_floor();
 
-	/*
+
 	ret = init_dpt_io();
 	if (ret)
 		pr_info("init_dpt_io fail, return=%d\n", ret);
 
 	init_dpt_rq();
-	*/
+
 
 	if (legacy_api_support_get()) {
 		for (int i = 0; i < MAX_NR_CPUS; i++) {
@@ -2798,6 +2807,7 @@ int init_opp_cap_info(struct proc_dir_entry *dir)
 		unset_target_margin(i);
 		unset_target_margin_low(i);
 		set_turn_point_freq(i, 0);
+		set_flt_margin(i, 20);
 	}
 
 	if (is_wl_support()) {
@@ -3194,6 +3204,8 @@ EXPORT_SYMBOL_GPL(get_ignore_idle_ctrl);
 #if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 unsigned long (*flt_sched_get_cpu_group_util_eas_hook)(int cpu, int group_id);
 EXPORT_SYMBOL(flt_sched_get_cpu_group_util_eas_hook);
+int (*flt_sched_get_flt_coef_util_eas_hook)(int cpu, enum _flt_cpu_type type);
+EXPORT_SYMBOL(flt_sched_get_flt_coef_util_eas_hook);
 unsigned long (*flt_get_cpu_util_hook)(int cpu);
 EXPORT_SYMBOL(flt_get_cpu_util_hook);
 int (*get_group_hint_hook)(int group);
@@ -3437,15 +3449,72 @@ int mtk_effective_cpu_util_with_margin_from_turn_point(int util, int cpu, struct
 	return util;
 }
 
+unsigned int flt_margin[MAX_NR_CPUS];
+
+int set_flt_margin(int cpu, int margin)
+{
+	struct cpufreq_policy *policy;
+	int i = 0;
+
+	if (cpu < 0 || cpu > MAX_NR_CPUS)
+		return -1;
+
+	if (margin < -2000 || margin > 99)
+		return -1;
+
+	policy = cpufreq_cpu_get(cpu);
+	if (policy) {
+		for_each_cpu(i, policy->related_cpus) {
+			flt_margin[i] = (SCHED_CAPACITY_SCALE * 100 / (100 - margin));
+		}
+		cpufreq_cpu_put(policy);
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(set_flt_margin);
+
+int get_flt_margin(int cpu)
+{
+	return (100 - (SCHED_CAPACITY_SCALE * 100) / flt_margin[cpu]);
+}
+EXPORT_SYMBOL_GPL(get_flt_margin);
+
+int mtk_effective_flt_util_with_margin(int util, int cpu, struct cpumask *sg_cpumask, int source)
+{
+	int flt_util = -1, flt_util_margin = -1;
+
+#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
+	if (flt_sched_get_flt_coef_util_eas_hook) {
+		flt_util = flt_sched_get_flt_coef_util_eas_hook(cpu, 2);
+		if(flt_util >= 0)
+			flt_util_margin = flt_util * flt_margin[cpu] >> SCHED_CAPACITY_SHIFT;
+	}
+#endif
+
+	if (trace_sugov_ext_flt_util_with_coef_margin_enabled())
+		trace_sugov_ext_flt_util_with_coef_margin(cpu, util, flt_util, flt_margin[cpu]);
+
+	return flt_util_margin;
+}
+
 /* modified from kmainline map_uitl_perf() */
 int mtk_effective_cpu_util_with_margin(int util, int cpu, struct cpumask *sg_cpumask, int source)
 {
-	if (turn_point_util[cpu])
-		util = mtk_effective_cpu_util_with_margin_from_turn_point(util, cpu, sg_cpumask, source);
-	else if (am_ctrl || grp_dvfs_ctrl_mode)
-		util = mtk_effective_cpu_util_with_margin_from_adap_grp(util, cpu, sg_cpumask, source);
-	else
-		util = map_util_perf(util);
+	int tmp_util = -1;
+
+	if(unlikely(get_flt_coef_margin_ctrl()))
+		tmp_util = mtk_effective_flt_util_with_margin(util, cpu, sg_cpumask, source);
+
+	if(tmp_util < 0) {
+		if (turn_point_util[cpu])
+			util = mtk_effective_cpu_util_with_margin_from_turn_point(util, cpu, sg_cpumask, source);
+		else if (am_ctrl || grp_dvfs_ctrl_mode)
+			util = mtk_effective_cpu_util_with_margin_from_adap_grp(util, cpu, sg_cpumask, source);
+		else
+			util = map_util_perf(util);
+	} else
+		util = tmp_util;
 
 	return util;
 }
