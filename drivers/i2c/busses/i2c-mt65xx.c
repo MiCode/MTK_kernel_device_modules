@@ -698,6 +698,7 @@ static const struct mtk_i2c_compatible mt6983_compat = {
 	.max_dma_support = 36,
 	.slave_addr_ver = 1,
 	.fifo_size = 16,
+	.trans_32bits_support = 1,
 };
 
 static const struct mtk_i2c_compatible mt6897_compat = {
