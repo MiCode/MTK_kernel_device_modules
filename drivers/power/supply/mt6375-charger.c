@@ -3023,6 +3023,12 @@ static int mt6375_chg_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
+	mutex_init(&ddata->attach_lock);
+	mutex_init(&ddata->pe_lock);
+	mutex_init(&ddata->cv_lock);
+	mutex_init(&ddata->hm_lock);
+	mutex_init(&ddata->pwr_rdy_dwork_lock);
+
 	ret = mt6375_enable_tm(ddata, true);
 	if (ret)
 		dev_info(dev, "%s, Failed to enable tm (ret:%d)\n", __func__, ret);
@@ -3054,11 +3060,6 @@ static int mt6375_chg_probe(struct platform_device *pdev)
 	ddata->dev = dev;
 	init_completion(&ddata->pe_done);
 	init_completion(&ddata->aicc_done);
-	mutex_init(&ddata->attach_lock);
-	mutex_init(&ddata->pe_lock);
-	mutex_init(&ddata->cv_lock);
-	mutex_init(&ddata->hm_lock);
-	mutex_init(&ddata->pwr_rdy_dwork_lock);
 	ddata->pwr_rdy = false;
 	atomic_set(&ddata->eoc_cnt, 0);
 	atomic_set(&ddata->no_6pin_used, 0);
