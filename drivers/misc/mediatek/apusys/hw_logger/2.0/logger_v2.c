@@ -68,7 +68,7 @@ static unsigned int ioread_debug_atf(enum SMC_OP_APU_LOG_DBG dbg_read_op)
 	return res.a1;
 }
 
-static void irq_debug_status_dump(void)
+void logger_v2_irq_debug_status_dump(void)
 {
 	logger_v2_rpc_dump();
 
@@ -200,7 +200,6 @@ static irqreturn_t apu_logtop_irq_handler(int irq, void *private_data)
 		if ((ctrl_flag & APU_LOGTOP_CON_MSK) == 0) {
 			HWLOGR_INFO("no irq pending: ctrl_flag = 0x%x burst_intr_cnt = %d\n",
 				ctrl_flag, burst_intr_cnt);
-			irq_debug_status_dump();
 			burst_intr_cnt++;
 		} else {
 			burst_intr_cnt = 0;
@@ -209,7 +208,6 @@ static irqreturn_t apu_logtop_irq_handler(int irq, void *private_data)
 		if (last_irq_reader_lock != -EBUSY) {
 			HWLOGR_INFO("apu power off / s5 idle burst_intr_cnt = %d\n",
 				burst_intr_cnt);
-			irq_debug_status_dump();
 		}
 		burst_intr_cnt++;
 	} else {
