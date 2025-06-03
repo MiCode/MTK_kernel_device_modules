@@ -305,8 +305,9 @@ check_done:
 		DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
 		DDP_COMMIT_UNLOCK(&private->commit.lock, __func__, __LINE__);
 	}
-	esd_ctx->chk_sta = 0;
 done:
+	esd_ctx->chk_sta = 0;
+	wake_up_interruptible(&esd_ctx->check_task_wq);
 	cmdq_pkt_destroy(cb_data->cmdq_handle);
 	kfree(cb_data);
 }
@@ -319,6 +320,7 @@ int _mtk_esd_check_read(struct drm_crtc *crtc)
 	struct mtk_cmdq_cb_data *cb_data;
 	struct mtk_drm_esd_ctx *esd_ctx;
 	int index = drm_crtc_index(crtc);
+	bool is_cmd_mode;
 
 	DDPINFO("[ESD%u]%s\n", index, __func__);
 
@@ -335,13 +337,21 @@ int _mtk_esd_check_read(struct drm_crtc *crtc)
 	mtk_vidle_user_power_keep(DISP_VIDLE_USER_CRTC);
 
 	esd_ctx = mtk_crtc->esd_ctx;
+	is_cmd_mode = mtk_dsi_is_cmd_mode(output_comp);
 
-	cmdq_handle = cmdq_pkt_create(mtk_crtc->gce_obj.client[CLIENT_CFG]);
+	if (is_cmd_mode)
+		cmdq_handle = cmdq_pkt_create(mtk_crtc->gce_obj.client[CLIENT_CFG]);
+	else
+		cmdq_handle = cmdq_pkt_create(mtk_crtc->gce_obj.client[CLIENT_DSI_CFG]);
 	cmdq_handle->err_cb.cb = esd_cmdq_timeout_cb;
 	cmdq_handle->err_cb.data = crtc;
 	cb_data = kmalloc(sizeof(*cb_data), GFP_KERNEL);
 	cb_data->cmdq_handle = cmdq_handle;
 	cb_data->crtc = crtc;
+	if (is_cmd_mode)
+		mtk_vidle_user_power_keep_by_gce(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle, 0);
+	else
+		mtk_vidle_user_power_keep_by_gce(DISP_VIDLE_USER_DDIC_CMDQ, cmdq_handle, 0);
 
 	CRTC_MMP_MARK(index, esd_check, 2, 1);
 
@@ -369,9 +379,9 @@ int _mtk_esd_check_read(struct drm_crtc *crtc)
 		mtk_vblank_config_rec_end_cal(mtk_crtc, cmdq_handle, ESD_CHECK);
 	} else { /* VDO mode */
 		if (mtk_crtc_with_sub_path(crtc, mtk_crtc->ddp_mode))
-			mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle, DDP_SECOND_PATH, 0);
+			mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle, DDP_SECOND_PATH, 1);
 		else
-			mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle, DDP_FIRST_PATH, 0);
+			mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle, DDP_FIRST_PATH, 1);
 		cmdq_pkt_wfe(cmdq_handle,
 			mtk_crtc->gce_obj.event[EVENT_VDO_CABC_EOF]);
 
@@ -402,7 +412,15 @@ int _mtk_esd_check_read(struct drm_crtc *crtc)
 			mtk_crtc->gce_obj.event[EVENT_VDO_CABC_EOF]);
 	}
 	CRTC_MMP_MARK(index, esd_check, 2, 4);
-	cmdq_pkt_flush_threaded(cmdq_handle, esd_check_done_cb, (void *)cb_data);
+	if (is_cmd_mode)
+		mtk_vidle_user_power_release_by_gce(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle);
+	else
+		mtk_vidle_user_power_release_by_gce(DISP_VIDLE_USER_DDIC_CMDQ, cmdq_handle);
+	if (cmdq_pkt_flush_threaded(cmdq_handle, esd_check_done_cb, (void *)cb_data) < 0) {
+		DDPPR_ERR("failed to flush %s\n", __func__);
+		kfree(cb_data);
+	} else
+		esd_ctx->chk_sta = 0x1;
 	mtk_vidle_user_power_release(DISP_VIDLE_USER_CRTC);
 	CRTC_MMP_MARK(index, esd_check, 2, 5);
 
@@ -804,7 +822,7 @@ static int mtk_drm_esd_check_worker_kthread(void *data)
 
 		ret = wait_event_interruptible(
 			esd_ctx->check_task_wq,
-			atomic_read(&esd_ctx->check_wakeup));
+			(atomic_read(&esd_ctx->check_wakeup) && !esd_ctx->chk_sta));
 		if (ret < 0) {
 			DDPINFO("[ESD]check thread waked up accidently\n");
 			continue;
