@@ -70,6 +70,7 @@
 	#define FLD_ULTRA_LOW_TH REG_FLD_MSB_LSB(23, 12)
 #define DISP_REG_BWM_RDMA0_BUF_HIGH			(0x0A8UL)
 	#define FLD_PREULTRA_HIGH_TH REG_FLD_MSB_LSB(23, 12)
+#define DISP_REG_BWM_FUNC_DCM0				(0x0B8UL)
 #define DISP_REG_BWM_L_BURST_ACC(n)			(0x0E0UL + 0x4 * (n))
 #define DISP_REG_BWM_L_BURST_ACC_WIN_MAX(n)	(0x100UL + 0x4 * (n))
 #define DISP_REG_BWM_BURST_MON_CFG			(0x120UL)
@@ -85,6 +86,9 @@
 #define DISP_REG_BWM_L_BURST_ACC_WIN_MAX(n)	(0x100UL + 0x4 * (n))
 
 #define MT6991_OVL_BWM0_L0_AID_SETTING		(0xBB8UL)
+#define DISP_REG_BWM_DDREN_CONFIG			(0x200UL)
+	#define SW_DDREN_REQ BIT(2)
+	#define DDREN_SW_MODE_EN BIT(3)
 #define DISP_REG_BWM_DDREN_DEBUG			(0x204UL)
 
 #define OVL_CON_CLRFMT_RGB (1UL)
@@ -288,7 +292,6 @@ static void mtk_bwm_enable(struct mtk_ddp_comp *comp,
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_REG_BWM_BURST_MON_CFG, bw_monitor_config, ~0);
-
 }
 
 void mtk_bwm_trigger(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
@@ -297,6 +300,8 @@ void mtk_bwm_trigger(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 
 	reg_val1 = readl(comp->regs + DISP_REG_BWM_INTSTA);
 	reg_val2 = readl(comp->regs + DISP_REG_BWM_DDREN_DEBUG);
+	writel(0xc, comp->regs + DISP_REG_BWM_DDREN_CONFIG);
+
 	writel(0x1, comp->regs + DISP_REG_BWM_TRIG);
 	CRTC_MMP_MARK(0, bwm20, (unsigned long)(0x30000 | reg_val2), (unsigned long)reg_val1);
 	enable_check = 0;
@@ -306,7 +311,7 @@ void mtk_bwm_calc_ratio(struct mtk_ddp_comp *comp)
 {
 	unsigned int avail_layer, i, j = 0;
 	static bool aee_trigger = true;
-	s32 avg_val, peak_val, int_val;
+	s32 avg_val, peak_val, int_val, tmp, ddren;
 	int_val = readl(comp->regs + DISP_REG_BWM_INTSTA);
 	avail_layer = __builtin_popcount(REG_FLD_VAL_GET(FLD_BWM_ROI_TIMING_INTSTA, int_val));
 
@@ -365,18 +370,35 @@ void mtk_bwm_calc_ratio(struct mtk_ddp_comp *comp)
 		enable_check = 1;
 	//add memory barrior to avoid bwm work after atomic commit
 	wmb();
+	ddren = readl(comp->regs + DISP_REG_BWM_DDREN_DEBUG);
+	tmp = readl(comp->regs + DISP_REG_BWM_INTSTA);
+	CRTC_MMP_MARK(0, bwm20, ddren, tmp);
+	writel(0x0, comp->regs + DISP_REG_BWM_DDREN_CONFIG);
 }
 
 int mtk_bwm_idle_check(struct mtk_ddp_comp *comp)
 {
-	s32 reg_val1,reg_val2;
+	s32 tmp, reg_val;
+	unsigned int loop_cnt;
 
-	reg_val1 = readl(comp->regs + DISP_REG_BWM_STA);
-	reg_val2 = readl(comp->regs + DISP_REG_BWM_INTSTA);
-	CRTC_MMP_MARK(0, bwm20, (unsigned long)reg_val1, (unsigned long)reg_val2);
-	if (!(reg_val2 & 0x8) && enable_check == 1)
-		return 0;
-	else
+	reg_val = readl(comp->regs + DISP_REG_BWM_INTSTA);
+	CRTC_MMP_MARK(0, bwm20, 0xeeee, (unsigned long)reg_val);
+	if (!(reg_val & 0x8) && enable_check == 1) {
+		writel(0x1, comp->regs + DISP_REG_BWM_RST);
+		writel(0x0, comp->regs + DISP_REG_BWM_RST);
+		while (loop_cnt < 50) {
+			tmp = readl(comp->regs + DISP_REG_BWM_INTSTA);
+			if (tmp & 0x8)
+				break;
+			loop_cnt++;
+			udelay(1);
+		}
+		CRTC_MMP_MARK(0, bwm20, 0xffff, loop_cnt);
+		if (loop_cnt == 50)
+			return 0;
+		else
+			return 1;
+	} else
 		return 1;
 }
 
