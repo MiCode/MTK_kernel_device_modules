@@ -258,7 +258,8 @@ void mtk_dp_debug(const char *opt)
 			return;
 		}
 		mtk_dp_fakeRX_enable(mode);
-	}
+	} else if (strncmp(opt, "dvo_checksum_en", 15) == 0)
+		mtk_dp_dvo_ChecksumTrigger();
 }
 
 #ifdef MTK_DPINFO

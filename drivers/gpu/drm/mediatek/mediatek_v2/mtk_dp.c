@@ -2596,7 +2596,8 @@ void mdrv_DPTx_UpdateHDCPVersion(struct mtk_dp *mtk_dp, bool connect)
 	int ret;
 
 #ifdef DPTX_HDCP_ENABLE
-	if (connect == true && mtk_dp->info.bAuthStatus == AUTH_PASS) {
+	if (connect == true && mtk_dp->info.bAuthStatus == AUTH_PASS &&
+		mtk_dp->info.fakeRX_mode != 1) {
 		if (mtk_dp->info.hdcp2_info.bEnable)
 			version |= HDCP_VER_2_3;
 		else
@@ -4434,8 +4435,13 @@ void mtk_dp_HPDInterruptSet(int bstatus)
 				g_mtk_dp->state_pre = DPTXSTATE_IDLE;
 				g_mtk_dp->training_state = DPTX_NTSTATE_NORMAL;
 				g_mtk_dp->dp_ready = true;
-				mtk_dp_hotplug_uevent(1);
-				g_mtk_dp->bUeventToHwc = false;
+				if (g_mtk_dp->bUeventToHwc) {
+					mdrv_DPTx_UpdateHDCPVersion(g_mtk_dp, true);
+					mtk_dp_hotplug_uevent(1);
+					g_mtk_dp->bUeventToHwc = false;
+				} else
+					DPTXMSG("Fake RX Skip Uevent(1)\n");
+
 				DPTXMSG("Enter Fake RX mode\n");
 			}
 		} else if (bstatus == HPD_DISCONNECT) {

@@ -204,6 +204,19 @@
 
 #define DVO_STATUS					0xE00
 
+#define DVO_CHECKSUM_EN				0xE10
+#define CHKSUM_READY				BIT(4)
+#define CHKSUM_EN					BIT(0)
+
+#define DVO_CHECKSUM0				0xE14
+#define DVO_CHECKSUM1				0xE18
+#define DVO_CHECKSUM2				0xE1C
+#define DVO_CHECKSUM3				0xE20
+#define DVO_CHECKSUM4				0xE24
+#define DVO_CHECKSUM5				0xE28
+#define DVO_CHECKSUM6				0xE2C
+#define DVO_CHECKSUM7				0xE30
+
 #define dvo_dp_sel_lsb				24
 
 #define DP_BUF_SODI_HIGH				0x0230
@@ -263,6 +276,13 @@ static int irq_underflowsa;
 static int irq_tl;
 static unsigned long long dp_dvo_bw;
 static struct mtk_dp_dvo *g_dp_dvo;
+static unsigned int checksum_array[8] = {0};
+
+module_param_array(checksum_array, hexint, NULL, 0644);
+MODULE_PARM_DESC(checksum_array, "dvo 8 checksum values");
+
+module_param(irq_underflowsa, int, 0644);
+MODULE_PARM_DESC(irq_underflowsa, "dvo irq underflow counter");
 
 static inline struct mtk_dp_dvo *comp_to_dp_dvo(struct mtk_ddp_comp *comp)
 {
@@ -401,16 +421,18 @@ static void mtk_dp_dvo_prepare(struct mtk_ddp_comp *comp)
 
 void mtk_dp_dvo_PatternGenEn(int mode)
 {
-
-	if (mode) {
-		// pattern gen open
+	if (mode == 1) {
 		writel(0x141, g_dp_dvo->regs + DVO_PATTERN_CTRL);
-		DPTXMSG("[DP Debug]dp dvo pg enable\n");
+		DPTXMSG("[DP Debug]dp dvo pg enable(color bar)\n");
 	} else if (mode == 2) {
-		// pattern gen open (force pattern gen)
-		// replace previous module data with pattern generator data
 		writel(0x41, g_dp_dvo->regs + DVO_PATTERN_CTRL);
-		DPTXMSG("[DP Debug]dp dvo forced pg enable\n");
+		DPTXMSG("[DP Debug]dp dvo forced pg enable(color bar)\n");
+	} else if (mode == 3) {
+		writel(0x131, g_dp_dvo->regs + DVO_PATTERN_CTRL);
+		DPTXMSG("[DP Debug]dp dvo pg enable(horizontal gray)\n");
+	} else if (mode == 4) {
+		writel(0x31, g_dp_dvo->regs + DVO_PATTERN_CTRL);
+		DPTXMSG("[DP Debug]dp dvo forced pg enable(horizontal gray)\n");
 	} else {
 		// pattern gen close
 		writel(0x0, g_dp_dvo->regs + DVO_PATTERN_CTRL);
@@ -418,6 +440,41 @@ void mtk_dp_dvo_PatternGenEn(int mode)
 	}
 }
 EXPORT_SYMBOL(mtk_dp_dvo_PatternGenEn);
+
+void mtk_dp_dvo_ChecksumTrigger(void)
+{
+	uint32_t checksum_en;
+	uint32_t ms_of_one_frame;
+	uint32_t vrefresh;
+
+	writel(CHKSUM_EN, g_dp_dvo->regs + DVO_CHECKSUM_EN);
+	vrefresh = drm_mode_vrefresh(&g_dp_dvo->mode);
+	ms_of_one_frame = 1000 / vrefresh;
+	mdelay(ms_of_one_frame * 4);
+
+	checksum_en = readl(g_dp_dvo->regs + DVO_CHECKSUM_EN);
+	if (checksum_en & CHKSUM_READY) {
+		checksum_array[0] = readl(g_dp_dvo->regs + DVO_CHECKSUM0);
+		checksum_array[1] = readl(g_dp_dvo->regs + DVO_CHECKSUM1);
+		checksum_array[2] = readl(g_dp_dvo->regs + DVO_CHECKSUM2);
+		checksum_array[3] = readl(g_dp_dvo->regs + DVO_CHECKSUM3);
+		checksum_array[4] = readl(g_dp_dvo->regs + DVO_CHECKSUM4);
+		checksum_array[5] = readl(g_dp_dvo->regs + DVO_CHECKSUM5);
+		checksum_array[6] = readl(g_dp_dvo->regs + DVO_CHECKSUM6);
+		checksum_array[7] = readl(g_dp_dvo->regs + DVO_CHECKSUM7);
+	} else {
+		checksum_array[0] = 0;
+		checksum_array[1] = 0;
+		checksum_array[2] = 0;
+		checksum_array[3] = 0;
+		checksum_array[4] = 0;
+		checksum_array[5] = 0;
+		checksum_array[6] = 0;
+		checksum_array[7] = 0;
+		DPTXERR("DVO checksum not ready, return 0\n");
+	}
+}
+EXPORT_SYMBOL(mtk_dp_dvo_ChecksumTrigger);
 
 static void mtk_dp_dvo_unprepare(struct mtk_ddp_comp *comp)
 {
