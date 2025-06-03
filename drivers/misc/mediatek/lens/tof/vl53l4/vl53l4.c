@@ -43,6 +43,8 @@ static int32_t vl53l4_init_retry;
 
 static int g_is_tof_support;
 
+static DEFINE_MUTEX(pinctrl_mutex);
+
 /*VL53L4 Workqueue */
 static struct workqueue_struct *vl53l4_init_wq;
 static struct work_struct vl53l4_init_work;
@@ -206,9 +208,11 @@ static int vl53l4_power_off(struct vl53l4_device *vl53l4)
 	if (ret)
 		LOG_INF("regulator_disable vdd failed!\n");
 
+	mutex_lock(&pinctrl_mutex);
 	if (vl53l4->vcamaf_pinctrl && vl53l4->vcamaf_off)
 		ret = pinctrl_select_state(vl53l4->vcamaf_pinctrl,
 					vl53l4->vcamaf_off);
+	mutex_unlock(&pinctrl_mutex);
 
 	return ret;
 }
@@ -225,12 +229,14 @@ static int vl53l4_power_on(struct vl53l4_device *vl53l4)
 	if (ret < 0)
 		LOG_INF("enable regulator vdd fail\n");
 
+	mutex_lock(&pinctrl_mutex);
 	if (vl53l4->vcamaf_pinctrl && vl53l4->vcamaf_on)
 		ret = pinctrl_select_state(vl53l4->vcamaf_pinctrl,
 					vl53l4->vcamaf_on);
 
 	if (ret < 0)
 		LOG_INF("enable pinctrl fail\n");
+	mutex_unlock(&pinctrl_mutex);
 
 	/*
 	 * TODO(b/139784289): Confirm hardware requirements and adjust/remove
