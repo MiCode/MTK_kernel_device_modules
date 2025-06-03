@@ -322,6 +322,7 @@ static void __ccmd_reset_hw(struct pdma_device *pdma_dev,
 	unsigned int poll_timeout = 1000;
 	unsigned long long hrptr_valid;
 	unsigned int buffer_index, buffer_status;
+	unsigned long flags;
 #endif
 	if (!pdma_dev || !ccmd_ctx) {
 		pr_info("[CCMD] %s, Invalid arguments.\n", __func__);
@@ -345,9 +346,11 @@ static void __ccmd_reset_hw(struct pdma_device *pdma_dev,
 	}while(pdma_status == 0 && poll_timeout > 0);
 	/* status 0: ch0 is running */
 
+	spin_lock_irqsave(&pdma_dev->pdma_hwaccess_lock, flags);
 	/* CID_COMMAND */
 	writel((ccmd_ctx->cid << 8) | (0x7 << 10),
 		pdma_dev->pdma_reg_base_kva + CCMD_CID_COMMAND);
+	spin_unlock_irqrestore(&pdma_dev->pdma_hwaccess_lock, flags);
 	/* release GID command of the CID, and reset hrptr&hwptr */
 	/* reset RPC register */
 	writel(0, pdma_dev->pdma_reg_base_ao_kva + (ccmd_ctx->cid << 2));
@@ -1298,6 +1301,7 @@ static int gpu_pdma_probe(struct platform_device *pdev)
 	INIT_LIST_HEAD(&g_pdma_dev->ctx_list_active);
 	INIT_LIST_HEAD(&g_pdma_dev->ctx_list_retired);
 	mutex_init(&g_pdma_dev->pdma_device_lock);
+	spin_lock_init(&g_pdma_dev->pdma_hwaccess_lock);
 
 	ret = dma_set_mask(g_pdma_dev->dev, DMA_BIT_MASK(64ULL));
 	if (ret) {
@@ -1644,7 +1648,9 @@ void kill_all_zombie(void)
 {
 	int cid = 0;
 	unsigned int CID_mask = 0, RG_mask = 0, command = 0;
+	unsigned long flags;
 
+	spin_lock_irqsave(&g_pdma_dev->pdma_hwaccess_lock, flags);
 	for (cid = 0; cid < 4; cid++) {
 		CID_mask = cid << 8;
 		RG_mask = 1 << 10;
@@ -1653,6 +1659,7 @@ void kill_all_zombie(void)
 
 		writel(command, g_pdma_dev->pdma_reg_base_kva + CCMD_CID_COMMAND);
 	}
+	spin_unlock_irqrestore(&g_pdma_dev->pdma_hwaccess_lock, flags);
 }
 #define ALWAYS_KILL_ZOMBIES 0
 void pdma_zombie_entry_clean_up(void)
@@ -1660,8 +1667,6 @@ void pdma_zombie_entry_clean_up(void)
 	static struct timespec64 laseTime;
 	static bool first = true;
 	struct timespec64 ts;
-
-	mutex_lock(&g_pdma_dev->pdma_device_lock);
 
 	if (g_pdma_dev->ccmd_locked_ctx_id != 0) {
 		static unsigned int count;
@@ -1685,8 +1690,6 @@ void pdma_zombie_entry_clean_up(void)
 #if ALWAYS_KILL_ZOMBIES
 	kill_all_zombie();
 #endif /* ALWAYS_KILL_ZOMBIES */
-
-	mutex_unlock(&g_pdma_dev->pdma_device_lock);
 }
 EXPORT_SYMBOL_GPL(pdma_zombie_entry_clean_up);
 

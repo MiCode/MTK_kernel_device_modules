@@ -25,7 +25,8 @@ enum CCMD_CACHE_MODE {
  *                          cid.
  * @ctx_list_retired:       A gloal list of existing ccmd_context instances
  *                          without holding valid cid.
- * @pdma_device_lock:       Protected critical section related to HW lock.
+ * @pdma_device_lock:       Protect pdma device struct.
+ * @pdma_hwaccess_lock      Protect critical section related to HW access.
  * @ccmd_locked_ctx_id:     CCMD context ID which has been used. Bit-wise.
  * @reg_base:               Base address of CCMD register.
  * @reg_region:             Range of CCMD register.
@@ -63,6 +64,7 @@ struct pdma_device {
 	struct list_head ctx_list_active;
 	struct list_head ctx_list_retired;
 	struct mutex pdma_device_lock;
+	spinlock_t pdma_hwaccess_lock;
 	struct list_head extened_pbha_pool;
 	u32 ccmd_locked_ctx_id;
 	u64 reg_base;
