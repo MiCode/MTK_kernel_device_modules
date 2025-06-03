@@ -456,8 +456,6 @@ static int lpm_s2idle_barrier(void)
 
 	cpu_latency_qos_add_request(&lpm_qos_request, s2idle_block_value);
 
-	mtk_s2idle_state_enable(0);
-
 	return 0;
 }
 
