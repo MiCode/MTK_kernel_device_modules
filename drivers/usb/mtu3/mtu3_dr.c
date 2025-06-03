@@ -638,6 +638,7 @@ static ssize_t max_speed_store(struct device *dev,
 {
 	struct ssusb_mtk *ssusb = dev_get_drvdata(dev);
 	struct mtu3 *mtu = ssusb->u3d;
+	struct otg_switch_mtk *otg_sx = &ssusb->otg_switch;
 	int speed;
 
 	if (!strncmp(buf, "super-speed-plus", 16))
@@ -657,6 +658,9 @@ static ssize_t max_speed_store(struct device *dev,
 	mtu->g.max_speed = speed;
 
 	u3_lpm_capable_update(dev);
+
+	if (mtu->g.speed != speed && otg_sx->current_role == USB_ROLE_DEVICE)
+		ssusb_set_mode(otg_sx, otg_sx->current_role, true);
 
 	return count;
 }
