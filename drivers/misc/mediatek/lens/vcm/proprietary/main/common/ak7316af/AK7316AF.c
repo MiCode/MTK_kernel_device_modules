@@ -109,6 +109,9 @@ static int initAF(void)
 {
 	LOG_INF("+\n");
 
+	//wait driver ic ready
+	mdelay(10);
+
 	if (*g_pAF_Opened == 1) {
 
 		/* 00:active mode , 10:Standby mode , x1:Sleep mode */
