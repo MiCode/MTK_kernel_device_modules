@@ -7162,6 +7162,7 @@ static const struct mtk_mmsys_driver_data mt6895_mmsys_driver_data = {
 	.can_compress_rgb565 = true,
 	.bypass_infra_ddr_control = true,
 	.use_infra_mem_res = false,
+	.pf_ts_type = IRQ_CMDQ_CB,
 };
 
 static const struct mtk_mmsys_driver_data mt6886_mmsys_driver_data = {
@@ -7286,6 +7287,7 @@ static const struct mtk_mmsys_driver_data mt6855_mmsys_driver_data = {
 	.can_compress_rgb565 = false,
 	.bypass_infra_ddr_control = true,
 	.use_infra_mem_res = false,
+	.pf_ts_type = IRQ_CMDQ_CB,
 };
 
 static const struct mtk_mmsys_driver_data mt6858_mmsys_driver_data = {
