@@ -3027,13 +3027,6 @@ static void wrot_debug_dump(struct mml_comp *comp)
 	value[37] = readl(base + wrot->reg[VIDO_DITHER]);
 	value[38] = readl(base + wrot->reg[VIDO_AFBC_YUVTRANS]);
 	value[39] = readl(base + wrot->reg[VIDO_BKGD]);
-	value[41] = readl(base + wrot->reg[VIDO_CSC_COEFFICIENT_1]);
-	value[42] = readl(base + wrot->reg[VIDO_CSC_COEFFICIENT_2]);
-	value[43] = readl(base + wrot->reg[VIDO_CSC_COEFFICIENT_3]);
-	value[44] = readl(base + wrot->reg[VIDO_CSC_COEFFICIENT_4]);
-	value[45] = readl(base + wrot->reg[VIDO_CSC_COEFFICIENT_5]);
-	value[46] = readl(base + wrot->reg[VIDO_CSC_COEFFICIENT_6]);
-	value[47] = readl(base + wrot->reg[VIDO_CSC_COEFFICIENT_7]);
 
 	/* debug id from 0x0100 ~ 0x2100, count 33 which is debug array size */
 	for (i = 0; i < ARRAY_SIZE(debug); i++) {
@@ -3078,7 +3071,16 @@ static void wrot_debug_dump(struct mml_comp *comp)
 		value[29], value[30]);
 	mml_err("VIDO_BASE ADDR_HIGH_V %#010x ADDR_V %#010x",
 		value[31], value[32]);
-	if (value[35] & BIT(1)) {
+	if ((value[35] & BIT(1)) &&  wrot->data->ext_mat) {
+		/* Read matrix coefficient */
+		value[41] = readl(base + wrot->reg[VIDO_CSC_COEFFICIENT_1]);
+		value[42] = readl(base + wrot->reg[VIDO_CSC_COEFFICIENT_2]);
+		value[43] = readl(base + wrot->reg[VIDO_CSC_COEFFICIENT_3]);
+		value[44] = readl(base + wrot->reg[VIDO_CSC_COEFFICIENT_4]);
+		value[45] = readl(base + wrot->reg[VIDO_CSC_COEFFICIENT_5]);
+		value[46] = readl(base + wrot->reg[VIDO_CSC_COEFFICIENT_6]);
+		value[47] = readl(base + wrot->reg[VIDO_CSC_COEFFICIENT_7]);
+
 		mml_err("VIDO_CSC_COEFFICIENT_1 %#010x VIDO_CSC_COEFFICIENT_2 %#010x",
 			value[41], value[42]);
 		mml_err("VIDO_CSC_COEFFICIENT_3 %#010x VIDO_CSC_COEFFICIENT_4 %#010x VIDO_CSC_COEFFICIENT_5 %#010x",
