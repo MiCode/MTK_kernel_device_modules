@@ -169,7 +169,7 @@ static const unsigned int vde_mssv_margin[OPP_LEVEL_TOTAL] = {
 };
 
 static unsigned int isp_cvfs_floor_margin[OPP_LEVEL_TOTAL] = {
-	0, 8, 12, 10, 12, 0,  // zone 2
+	0, 12, 13, 10, 13, 0,  // zone 2
 };
 
 static unsigned int vde_cvfs_floor_margin[OPP_LEVEL_TOTAL] = {
@@ -177,7 +177,7 @@ static unsigned int vde_cvfs_floor_margin[OPP_LEVEL_TOTAL] = {
 };
 
 static unsigned int isp_avs20_floor_margin[OPP_LEVEL_TOTAL] = {
-	0, 6, 10, 10, 12, 0  // zone 2
+	0, 10, 11, 10, 13, 0  // zone 2
 };
 
 static unsigned int vde_avs20_floor_margin[OPP_LEVEL_TOTAL] = {
