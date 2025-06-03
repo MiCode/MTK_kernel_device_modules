@@ -12040,6 +12040,10 @@ static int mtk_oddmr_od_read_sw_reg(struct mtk_ddp_comp *comp, void* data,
 		return -EFAULT;
 	}
 	oddmr_data = comp_to_oddmr(comp);
+	if (oddmr_data->od_enable == 0 || comp->mtk_crtc->sec_on) {
+		ODDMRFLOW_LOG("od not enabled\n");
+		return -EFAULT;
+	}
 	tmp_sram_idx = oddmr_data->od_data.od_sram_read_sel;
 	table_idx = oddmr_data->od_data.od_dram_sel[oddmr_data->od_data.od_sram_table_idx[!!tmp_sram_idx]];
 	if (!IS_TABLE_VALID(table_idx, pparam->valid_table)) {
@@ -12070,8 +12074,12 @@ static int mtk_oddmr_od_write_sw_reg(struct mtk_ddp_comp *comp, void* data,
 		ODDMRFLOW_LOG("params is invalid\n");
 		return -EFAULT;
 	}
-	ODDMRFLOW_LOG("reg 0x%x val 0x%x+\n", sw_reg->reg, sw_reg->val);
 	oddmr_data = comp_to_oddmr(comp);
+	if (oddmr_data->od_enable == 0 || comp->mtk_crtc->sec_on) {
+		ODDMRFLOW_LOG("od not enabled\n");
+		return -EFAULT;
+	}
+	ODDMRFLOW_LOG("reg 0x%x val 0x%x+\n", sw_reg->reg, sw_reg->val);
 	tmp_sram_idx = oddmr_data->od_data.od_sram_read_sel;
 	table_idx = oddmr_data->od_data.od_dram_sel[oddmr_data->od_data.od_sram_table_idx[!!tmp_sram_idx]];
 	if (!IS_TABLE_VALID(table_idx, pparam->valid_table)) {
