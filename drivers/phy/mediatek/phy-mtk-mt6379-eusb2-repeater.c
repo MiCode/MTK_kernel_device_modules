@@ -1192,6 +1192,11 @@ static int eusb2_repeater_set_mode(struct phy *phy,
 		case PHY_MODE_DIS_PRE_EMP:
 			regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR2_3, RG_USB20_HS_PE, 0);
 			break;
+		case PHY_MODE_SUSPEND_DEV:
+			fallthrough;
+		case PHY_MODE_SUSPEND_NO_DEV:
+			/* Do nothing, since we will use rptr->submode later */
+			break;
 		default:
 			return -EINVAL;
 		}
