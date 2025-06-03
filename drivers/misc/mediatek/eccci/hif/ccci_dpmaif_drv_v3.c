@@ -952,31 +952,31 @@ static void drv3_hw_reset_v1_1(void)
 
 	/* glitch protect on */
 	dpmaif_write32(g_dpmaif_ctrl->infra_ao_mem_base, 0xC28, (1<<30));
-	CCCI_BOOTUP_LOG(0, TAG, "%s:glitch prot on: 0x%x\n", __func__,
+	CCCI_NORMAL_LOG(0, TAG, "%s:glitch prot on: 0x%x\n", __func__,
 		dpmaif_read32(g_dpmaif_ctrl->infra_ao_mem_base, 0xC20));
 	udelay(500);
 
 	/* PD reset set */
 	dpmaif_write32(g_dpmaif_ctrl->infra_reset_pd_base, 0xF14, (1<<6));
-	CCCI_BOOTUP_LOG(0, TAG, "%s:PD reset set: 0x%x\n", __func__,
+	CCCI_NORMAL_LOG(0, TAG, "%s:PD reset set: 0x%x\n", __func__,
 			dpmaif_read32(g_dpmaif_ctrl->infra_reset_pd_base, 0xF10));
 	udelay(500);
 
 	/* AO reset set */
 	dpmaif_write32(g_dpmaif_ctrl->infra_ao_mem_base, 0xF14, (1<<4));
-	CCCI_BOOTUP_LOG(0, TAG, "%s:AO reset set: 0x%x\n", __func__,
+	CCCI_NORMAL_LOG(0, TAG, "%s:AO reset set: 0x%x\n", __func__,
 			dpmaif_read32(g_dpmaif_ctrl->infra_ao_mem_base, 0xF10));
 	udelay(500);
 
 	/* AO reset clear */
 	dpmaif_write32(g_dpmaif_ctrl->infra_ao_mem_base, 0xF18, (1<<4));
-	CCCI_BOOTUP_LOG(0, TAG, "%s:AO reset clear: 0x%x\n", __func__,
+	CCCI_NORMAL_LOG(0, TAG, "%s:AO reset clear: 0x%x\n", __func__,
 			dpmaif_read32(g_dpmaif_ctrl->infra_ao_mem_base, 0xF10));
 	udelay(500);
 
 	/* PD reset clear */
 	dpmaif_write32(g_dpmaif_ctrl->infra_reset_pd_base, 0xF18, (1<<6));
-	CCCI_BOOTUP_LOG(0, TAG, "%s:PD reset clear: 0x%x\n", __func__,
+	CCCI_NORMAL_LOG(0, TAG, "%s:PD reset clear: 0x%x\n", __func__,
 			dpmaif_read32(g_dpmaif_ctrl->infra_reset_pd_base, 0xF10));
 }
 
@@ -988,7 +988,7 @@ static void drv3_glitch_prot_off(void)
 		return;
 	}
 	dpmaif_write32(g_dpmaif_ctrl->infra_ao_mem_base, 0xC24, (1<<30));
-	CCCI_BOOTUP_LOG(0, TAG, "%s:glitch prot off: 0x%x\n", __func__,
+	CCCI_NORMAL_LOG(0, TAG, "%s:glitch prot off: 0x%x\n", __func__,
 		dpmaif_read32(g_dpmaif_ctrl->infra_ao_mem_base, 0xC20));
 }
 

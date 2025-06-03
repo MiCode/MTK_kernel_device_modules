@@ -675,6 +675,8 @@ static int dpmaif_init_clk(struct device *dev, struct dpmaif_clk_node *clk)
 	return 0;
 }
 
+static unsigned int clk_on_cnt, clk_off_cnt;
+
 static void dpmaif_set_clk(unsigned int on, struct dpmaif_clk_node *clk)
 {
 	int ret;
@@ -701,11 +703,17 @@ static void dpmaif_set_clk(unsigned int on, struct dpmaif_clk_node *clk)
 				CCCI_ERROR_LOG(0, TAG,
 					"[%s] error: prepare %s fail. %d\n",
 					__func__, clk->clk_name, ret);
-
-		} else
+			clk_on_cnt++;
+		} else {
 			clk_disable_unprepare(clk->clk_ref);
-
+			clk_off_cnt++;
+		}
 		clk += 1;
+	}
+	if (g_plat_inf == 6993) {
+		CCCI_NORMAL_LOG(0, TAG, "[%s] clk cnt: %u, %u, 0x%x\n", __func__, clk_on_cnt, clk_off_cnt,
+			dpmaif_read32(g_dpmaif_ctrl->infra_ao_mem_base, 0x0D20));
+		udelay(500);
 	}
 }
 
