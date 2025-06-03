@@ -681,8 +681,14 @@ static void vmm_init_opp_table(struct dvfs_driver_data *data)
 	struct dev_pm_opp *opp;
 	unsigned long freq = 0;
 	int clk_num = 0, i = 0;
+	int ret = 0;
 
-	dev_pm_opp_of_add_table(data->dev);
+	ret = dev_pm_opp_of_add_table(data->dev);
+	if (ret < 0) {
+		ISP_LOGI("add OPP table fail");
+		return;
+	}
+
 	clk_num = dev_pm_opp_get_opp_count(data->dev);
 	while (!IS_ERR(opp = dev_pm_opp_find_freq_ceil(data->dev, &freq))) {
 		opp_table->frequency[i] = freq;
