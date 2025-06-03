@@ -189,6 +189,22 @@ static int mt6858_spk_i2s_in_type_get(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+static int mt6858_ipm_info_get(struct snd_kcontrol *kcontrol,
+			       struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_card *card = &mt6858_mt6369_soc_card;
+	unsigned int version = 0;
+	int ret;
+
+	ret = of_property_read_u32(card->dev->of_node, "mediatek,ipm", &version);
+	if (ret) {
+		dev_info(card->dev, "%s: failed to read IPM version: %d\n", __func__, ret);
+		version = 0;
+	}
+	ucontrol->value.integer.value[0] = version;
+	return 0;
+}
+
 static int mt6858_compress_info_set(struct snd_kcontrol *kcontrol,
 				    const unsigned int __user *data,
 				    unsigned int size)
@@ -302,6 +318,8 @@ static const struct snd_kcontrol_new mt6858_mt6369_controls[] = {
 		     mt6858_spk_i2s_out_type_get, NULL),
 	SOC_ENUM_EXT("MTK_SPK_I2S_IN_TYPE_GET", mt6858_spk_type_enum[1],
 		     mt6858_spk_i2s_in_type_get, NULL),
+	SOC_SINGLE_EXT("MTK_IPM_INFO_GET", SND_SOC_NOPM, 0, 0x1, 0,
+		       mt6858_ipm_info_get, NULL),
 	SND_SOC_BYTES_TLV("MTK_COMPRESS_INFO",
 			  sizeof(struct mt6858_compress_info),
 			  mt6858_compress_info_get, mt6858_compress_info_set),
