@@ -506,13 +506,14 @@ int mt6858_afe_dram_release(struct device *dev)
 
 int mt6858_afe_sram_request(struct mtk_base_afe *afe)
 {
+#if !defined(SKIP_SMCC_SB)
 	struct arm_smccc_res res;
 
 	/* use arm_smccc_smc to notify SPM */
 	arm_smccc_smc(MTK_SIP_AUDIO_CONTROL,
 				MTK_AUDIO_SMC_OP_SRAM_REQUEST,
 				0, 0, 0, 0, 0, 0, &res);
-
+#endif
 	return 0;
 }
 
