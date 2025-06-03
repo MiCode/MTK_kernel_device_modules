@@ -101,6 +101,8 @@ static struct proc_dir_entry *mtkfb_debug_procfs;
 #endif
 static struct drm_device *drm_dev;
 
+bool g_dsi_cmd_v2_r_log;
+EXPORT_SYMBOL(g_dsi_cmd_v2_r_log);
 bool g_dsi_cmd_v2_log;
 EXPORT_SYMBOL(g_dsi_cmd_v2_log);
 bool g_mobile_log;
@@ -3425,6 +3427,13 @@ static void process_dbg_opt(const char *opt)
 			g_dsi_cmd_v2_log = 0;
 
 		DDPMSG("[DISP][CMD] g_dsi_cmd_v2_log=%d\n", g_dsi_cmd_v2_log);
+	} else if (strncmp(opt, "dsi_r_cmd:", 10) == 0) {
+		if (strncmp(opt + 10, "on", 2) == 0)
+			g_dsi_cmd_v2_r_log = 1;
+		else if (strncmp(opt + 10, "off", 3) == 0)
+			g_dsi_cmd_v2_r_log = 0;
+
+		DDPMSG("[DISP][CMD_R] g_dsi_cmd_v2_r_log=%d\n", g_dsi_cmd_v2_r_log);
 	} else if (strncmp(opt, "msync_debug:", 12) == 0) {
 		if (strncmp(opt + 12, "on", 2) == 0)
 			g_msync_debug = 1;

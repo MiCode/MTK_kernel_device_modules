@@ -10995,7 +10995,7 @@ static int mtk_dsi_read_data_by_gce(int crtc_id, struct mtk_dsi *dsi, struct mip
 		return -EINVAL;
 	}
 
-	DDPDSI_CMD("%s, recv_cnt=%d,%d(total size), slot=%d\n", __func__, recv_cnt, recv_cnt1, slot_idx);
+	DDPDSI_R_CMD("%s, recv_cnt=%d,%d(total size), slot=%d\n", __func__, recv_cnt, recv_cnt1, slot_idx);
 
 	for (i = 0; i < ((recv_cnt + 3) / 4); i++) {  //include rx_data and cmdq
 		//struct DSI_RX_DATA_REG read_data_test[100] = {0};
@@ -11010,7 +11010,7 @@ static int mtk_dsi_read_data_by_gce(int crtc_id, struct mtk_dsi *dsi, struct mip
 		read_data[m + 3] = readb(mtk_get_gce_backup_slot_va(mtk_crtc,
 				((DISP_SLOT_READ_DDIC_V2_BASE + (slot_idx + i) * 0x4) + j + 3)));
 
-		DDPDSI_CMD(_R_BY_GCE_FMT, __func__, i,
+		DDPDSI_R_CMD(_R_BY_GCE_FMT, __func__, i,
 			 (DISP_SLOT_READ_DDIC_V2_BASE + (slot_idx + i) * 0x4),
 			 (dsi->driver_data->reg_cmdq0_ofs + (0x1FC - m)),
 			 readl(mtk_get_gce_backup_slot_va(mtk_crtc,
@@ -11023,7 +11023,7 @@ static int mtk_dsi_read_data_by_gce(int crtc_id, struct mtk_dsi *dsi, struct mip
 			readl(dsi->regs + DSI_CMDQ_CON(dsi->driver_data)));
 	}
 	recv_cnt = mtk_dsi_recv_cnt(read_data[0], read_data);
-	DDPDSI_CMD("%s, recv_cnt=%d (only payload)\n", __func__, recv_cnt);
+	DDPDSI_R_CMD("%s, recv_cnt=%d (only payload)\n", __func__, recv_cnt);
 	if (recv_cnt != msg->rx_len) {
 		DDPPR_ERR("%s, read data len is error, %d, %zu\n", __func__, recv_cnt, msg->rx_len);
 		return -EINVAL;
@@ -11066,7 +11066,7 @@ static int mtk_dsi_read_data_by_cpu(int crtc_id, struct mtk_dsi *dsi, struct mip
 				(dsi->driver_data->dsi_cmdq_rd_max_sz_cpu + DSI_LONG_PACKET_HDR_SIZE));
 			return -EINVAL;
 		}
-		DDPDSI_CMD("%s, recv_cnt=%d(0x%x)\n", __func__, recv_cnt,
+		DDPDSI_R_CMD("%s, recv_cnt=%d(0x%x)\n", __func__, recv_cnt,
 				readl(dsi->regs + DSI_RX_TRIG_STA(dsi->driver_data)));
 
 		/* set cmdq page 3 */
@@ -11079,13 +11079,13 @@ static int mtk_dsi_read_data_by_cpu(int crtc_id, struct mtk_dsi *dsi, struct mip
 			/* 0x1FF - ((m + 3) % 0x1FF) val range = 1 ~ 510 , 0 need to special handle */
 			if (j + 3 == 511) {
 				read_data[j] = readb(dsi_cmdq);
-				DDPDSI_CMD("%s, i=%d, j=%d\n", __func__, i, j);
+				DDPDSI_R_CMD("%s, i=%d, j=%d\n", __func__, i, j);
 			} else
 				read_data[j] = readb(dsi_cmdq + 0x1FF - ((m + 3) % 0x1FF));
 			read_data[j + 1] = readb(dsi_cmdq + 0x1FF - ((m + 2) % 0x1FF));
 			read_data[j + 2] = readb(dsi_cmdq + 0x1FF - ((m + 1) % 0x1FF));
 			read_data[j + 3] = readb(dsi_cmdq + 0x1FF - (m % 0x1FF));
-			DDPDSI_CMD(_R_BY_CPU_FMT, __func__, i,
+			DDPDSI_R_CMD(_R_BY_CPU_FMT, __func__, i,
 				((j + 3 == 511) ? (0x1FF - j - 3) : (0x1FF - ((m + 3) % 0x1FF))),
 				((j + 3 == 511) ? readl(dsi_cmdq) : readl(dsi_cmdq + 0x1FF - ((m + 3) % 0x1FF))),
 				j, ((j + 3 == 511) ? (0x1FF - j - 3) : (0x1FF - ((m + 3) % 0x1FF))), read_data[j],
@@ -11100,7 +11100,7 @@ static int mtk_dsi_read_data_by_cpu(int crtc_id, struct mtk_dsi *dsi, struct mip
 				}
 				mtk_dsi_mask(dsi, DSI_CMDQ_CON(dsi->driver_data), CMDQ_PAGE, cmdq_page << 16);
 				check_dsi_page_chg(crtc_id, dsi, 5, cmdq_page);
-				DDPDSI_CMD("%s, cmdq_page switch, i=%d, j=%d, pg=%d\n", __func__, i, j, cmdq_page);
+				DDPDSI_R_CMD("%s, cmdq_page switch, i=%d, j=%d, pg=%d\n", __func__, i, j, cmdq_page);
 			}
 		}
 
@@ -11141,7 +11141,7 @@ static int mtk_dsi_read_data_by_cpu(int crtc_id, struct mtk_dsi *dsi, struct mip
 		if (recv_cnt)
 			memcpy(msg->rx_buf, src_addr, recv_cnt);
 
-		DDPINFO("dsi get %d byte data from the panel address(0x%x)\n", recv_cnt,
+		DDPDSI_R_CMD("dsi get %d byte data from the panel address(0x%x)\n", recv_cnt,
 			*((u8 *)(msg->tx_buf)));
 	}
 	return recv_cnt;
@@ -11173,7 +11173,7 @@ static int copy_to_slot_common(struct mtk_dsi *dsi, struct cmdq_pkt *handle, u32
 				comp->regs_pa + reg_cmdq_ofs + dsi_cmdq_size * 0x4 - i * 0x4,
 				mtk_get_gce_backup_slot_pa(mtk_crtc,
 				DISP_SLOT_READ_DDIC_V2_BASE + (slot_idx + i) * 0x4), CMDQ_THR_SPR_IDX3);
-			DDPDSI_CMD(_R_C_TO_SLOT_FMT, __func__, i,
+			DDPDSI_R_CMD(_R_C_TO_SLOT_FMT, __func__, i,
 				(reg_cmdq_ofs + dsi_cmdq_size * 0x4 - i * 0x4), slot_idx,
 				(int)(DISP_SLOT_READ_DDIC_V2_BASE + (slot_idx + i) * 0x4),
 				(int)DISP_SLOT_READ_DDIC_V2_BASE,
@@ -11537,6 +11537,14 @@ static int mtk_check_cmd_msg(struct mtk_dsi *dsi, struct mtk_dsi_cmd_option *cmd
 
 static int dsi_cmd_flags_check(void *dsi, u32 flags)
 {
+	if ((flags & MTK_MIPI_DSI_CMD_BY_CPU) &&
+		((flags & MTK_MIPI_DSI_GCE_INPUT_HANDLE_READY) ||
+		(flags & MTK_MIPI_DSI_GCE_CREATE_HANDLE) ||
+		(flags & MTK_MIPI_DSI_GCE_BUSY_POLLING))) {
+		DDPPR_ERR("%s, GCE and CPU control conflict error , flag=0x%x\n", __func__, flags);
+		return -EINVAL;
+	}
+
 	if ((flags & MTK_MIPI_DSI_GCE_BLOCKING_FLUSH) && (flags & MTK_MIPI_DSI_GCE_NON_BLOCKING_FLUSH)) {
 		DDPPR_ERR("%s, GCE FLUSH setting error , flag=0x%x\n", __func__, flags);
 		return -EINVAL;
@@ -11625,9 +11633,9 @@ static int mtk_dsi_cmd_transfer(struct mtk_dsi *mtk_dsi, struct cmdq_pkt *handle
 			cmdq_size = mtk_setup_dsi_cmdq(mtk_dsi, handle, total_cmdq_size, &msg);
 			//start_off += (cmdq_size * 4);
 			total_cmdq_size += cmdq_size;
-			DDPDSI_CMD("%s, read cmd i=%d, cmdq_sz=%d(%d)\n", __func__, i, cmdq_size, total_cmdq_size);
+			DDPDSI_R_CMD("%s, read cmd i=%d, cmdq_sz=%d(%d)\n", __func__, i, cmdq_size, total_cmdq_size);
 		}
-		DDPDSI_CMD("%s, read package trigger, total_cmdq_size=%d, rx_len=%zu\n", __func__,
+		DDPDSI_R_CMD("%s, read package trigger, total_cmdq_size=%d, rx_len=%zu\n", __func__,
 			total_cmdq_size, cmd_msg->cmd_msg->rx_len);
 		CRTC_MMP_MARK(index, ddic_cmd_v2_msg, 1, cmd_msg->cmd_msg->rx_len);
 		mtk_dsi_send_cmd_trigger(mtk_dsi, handle, total_cmdq_size);
@@ -11645,7 +11653,7 @@ static int mtk_dsi_cmd_transfer(struct mtk_dsi *mtk_dsi, struct cmdq_pkt *handle
 				usleep_range(100, 200);
 			}
 			CRTC_MMP_MARK(index, ddic_cmd_v2_msg, 2, 1);
-			DDPDSI_CMD("%s wait RXDY done\n", __func__);
+			DDPDSI_R_CMD("%s wait RXDY done\n", __func__);
 			mtk_dsi_mask(mtk_dsi, DSI_INTSTA, LPRX_RD_RDY_INT_FLAG, 0);
 			rd_total_sz = mtk_dsi_read_data_by_cpu(index, mtk_dsi, cmd_msg->cmd_msg);
 			mtk_dsi_mask(mtk_dsi, DSI_RACK(mtk_dsi->driver_data), RACK, RACK);
