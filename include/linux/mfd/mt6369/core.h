@@ -21,7 +21,7 @@ enum mt6369_irq_top_status_shift {
 
 enum mt6369_irq_numbers {
 	MT6369_IRQ_VBUCK1_OC = 0,
-	MT6369_IRQ_VPA_OC = 1,
+	MT6369_IRQ_VPA_OC = 6,
 	MT6369_IRQ_VMDDR_OC = 8,
 	MT6369_IRQ_VMDDQ_OC,
 	MT6369_IRQ_VSIM1_OC,
