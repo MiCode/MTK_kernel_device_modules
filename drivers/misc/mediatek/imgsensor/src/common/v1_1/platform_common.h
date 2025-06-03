@@ -21,7 +21,6 @@
 #define IS_MT6779(id) ((id) == 0x6779)
 #define IS_MT6768(id) ((id) == 0x6768)
 #define IS_MT6739(id) ((id) == 0x6739)
-#define IS_MT6858(id) ((id) == 0x6858)
 
 /* Get platform id from dts node with "compatible_name".
  * The platform id is got from the member, "mediatek,platform".
@@ -68,8 +67,6 @@
 				platform_id = 0x6768;				\
 			else if (strncmp(platform_id_str, "mt6739", 6) == 0)	\
 				platform_id = 0x6739;				\
-			else if (strncmp(platform_id_str, "mt6858", 6) == 0)	\
-				platform_id = 0x6858;				\
 		}								\
 	}									\
 	platform_id;								\
