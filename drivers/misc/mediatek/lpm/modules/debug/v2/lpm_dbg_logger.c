@@ -903,12 +903,17 @@ int lpm_logger_init(void)
 					LPM_LOG_DEFAULT_MS);
 	lpm_timer_start(&lpm_log_timer.tm);
 
-	lpm_logger_workqueue = create_singlethread_workqueue("LPM_LOG_WQ");
-	if (!lpm_logger_workqueue)
-		pr_info("[%s:%d] - lpm_logger_workqueue create failed\n",
-			__func__, __LINE__);
-	else
-		INIT_WORK(&lpm_logger_work.work, lpm_logger_work_func);
+	node = of_find_node_by_name(NULL, "atf-logger");
+	if (!node || !of_property_read_bool(node, "mediatek,afl-fuzzer-enabled")) {
+		lpm_logger_workqueue = create_singlethread_workqueue("LPM_LOG_WQ");
+		if (!lpm_logger_workqueue)
+			pr_info("[%s:%d] - lpm_logger_workqueue create failed\n",
+				__func__, __LINE__);
+		else
+			INIT_WORK(&lpm_logger_work.work, lpm_logger_work_func);
+	} else {
+		pr_notice("%s:afl_fuzzer enable\n", __func__);
+	}
 
 	ret = spm_cond_init();
 	if (ret)
