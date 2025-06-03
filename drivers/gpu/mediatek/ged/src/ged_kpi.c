@@ -489,6 +489,10 @@ static unsigned int uncompleted_queue_cnt;
 u64 FPSGO_ulID = 0;
 u64 Frame_done_ulID = 0;
 
+/* check_has_sf_queue*/
+static unsigned int sf_total_que_uncompleted;
+static unsigned long long lastest_sf_dequeue_ts;
+
 /* ------------------------------------------------------------------- */
 void (*ged_kpi_output_gfx_info2_fp)(long long t_gpu, unsigned int cur_freq
 	, unsigned int cur_max_freq, u64 ulID);
@@ -730,6 +734,16 @@ unsigned int dump_gpu_fps_table(void)
 	GED_LOGI("%u, %u, %u",
 			g_gpu_fps_start_level,g_gpu_fps_end_level, g_gpu_fps_margin);
 	return g_gpu_fps_enable;
+}
+
+unsigned int check_service_uncomplete(void)
+{
+	if (sf_total_que_uncompleted > 0)
+		return sf_total_que_uncompleted;
+	else if ((ged_get_time() - lastest_sf_dequeue_ts) < SF_DEFER_FRAME_NS)
+		return 1;
+
+	return 0;
 }
 
 static inline void update_by_internal_fps(struct GED_KPI_HEAD *psHead, struct GED_KPI *psKPI)
@@ -1495,6 +1509,9 @@ static void ged_kpi_set_fallback_mode(struct GED_KPI_HEAD *psHead)
 	ged_eb_dvfs_task(EB_UPDATE_SMALL_FRAME, isSmallFrame);
 	g_stable_lb = check_stable_LB(is_loading_based);
 	ged_eb_dvfs_task(EB_UPDATE_STABLE_LB, g_stable_lb);
+
+	if (psHead->isSF == 1)
+		lastest_sf_dequeue_ts = ged_get_time();
 }
 
 static int ged_kpi_get_fallback_mode(void)
@@ -2344,7 +2361,7 @@ static GED_ERROR ged_kpi_push_timestamp(
 			atomic_dec_return(&event_3d_fence_cnt);
 			ged_eb_dvfs_task(EB_UPDATE_FB_TARGET_TIME_DONE, div_u64(fb_timeout, 1000));
 			// reset SF edge effect api_boost
-			if (get_sf_edge_hint() == SF_EDGE_EFFECT)
+			if (get_sf_edge_hint() == SF_EDGE_EFFECT && check_service_uncomplete())
 				reset_sf_edge_hint();
 			break;
 		case GED_TIMESTAMP_TYPE_P:
@@ -2417,7 +2434,7 @@ static GED_ERROR ged_kpi_push_timestamp(
 				mtk_gpueb_sysram_rb_write(tmp_sram_rb_write_idx, temp_ts);
 				mtk_gpueb_sysram_write(SYSRAM_GPU_TS_RB_IDX, tmp_sram_rb_write_idx);
 				// reset SF edge effect api_boost
-				if (get_sf_edge_hint() == SF_EDGE_EFFECT)
+				if (get_sf_edge_hint() == SF_EDGE_EFFECT && check_service_uncomplete())
 					ged_eb_dvfs_task(EB_UPDATE_API_BOOST, 0);
 				latest_done_ts = socTimeStamp;
 				latest_done_fid = i32FrameID;
@@ -3226,6 +3243,8 @@ static GED_BOOL ged_kpi_find_riskyBQ_func(unsigned long ulID,
 			else
 				info->uncompleted_bq.useTimeStampD = false;
 		}
+		if (psHead->isSF == 1)
+			info->sf_que_uncompleted += psHead->i32Gpu_uncompleted_queue;
 	}
 	return GED_TRUE;
 }
@@ -3266,6 +3285,8 @@ GED_ERROR ged_kpi_timer_based_pick_riskyBQ(struct ged_risky_bq_info *info)
 		ged_dvfs_set_uncomplete_ts_type(GED_TIMESTAMP_TYPE_D);
 	else
 		ged_dvfs_set_uncomplete_ts_type(GED_TIMESTAMP_TYPE_1);
+
+	sf_total_que_uncompleted = info->sf_que_uncompleted;
 
 	ret = GED_OK;
 

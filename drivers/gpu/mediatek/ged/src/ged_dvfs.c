@@ -422,7 +422,7 @@ static unsigned int ged_dvfs_ultra_high_step_size_query(void)
 		gx_dvfs_loading_mode == LOADING_MAX_ITERMCU &&
 		early_force_fallback_enable)
 		return ULTRA_HIGH_STEP_SIZE ;
-	else if (g_sf_edge_hint == SF_EDGE_EFFECT)
+	else if (g_sf_edge_hint == SF_EDGE_EFFECT && check_service_uncomplete())
 		return (dvfs_step_mode & 0xff) * 2;
 	else
 		return (dvfs_step_mode & 0xff);
@@ -3077,7 +3077,7 @@ static bool ged_dvfs_policy(
 			t_fps_use = info.uncompleted_bq.t_gpu_fps_reason;
 			t_fps = info.uncompleted_bq.t_gpu_fps;
 			ged_update_margin_by_fps(t_gpu_target);
-			if (g_sf_edge_hint == SF_EDGE_EFFECT)
+			if (g_sf_edge_hint == SF_EDGE_EFFECT && check_service_uncomplete())
 				t_gpu_target_hd = div_u64((u64)t_gpu_target
 					* (100 - SF_EDGE_HEADROOM), 100);
 			else if (g_tb_dvfs_margin_mode & DYNAMIC_TB_PERF_MODE_MASK)
@@ -3134,7 +3134,7 @@ static bool ged_dvfs_policy(
 
 				ged_update_margin_by_fps(t_gpu_target);
 				// overwrite t_gpu_target_hd in perf mode
-				if (g_sf_edge_hint == SF_EDGE_EFFECT)
+				if (g_sf_edge_hint == SF_EDGE_EFFECT && check_service_uncomplete())
 					t_gpu_target_hd = div_u64((u64)t_gpu_target
 						* (100 - SF_EDGE_HEADROOM), 100);
 				else if (g_tb_dvfs_margin_mode & DYNAMIC_TB_PERF_MODE_MASK)
@@ -3257,7 +3257,8 @@ static bool ged_dvfs_policy(
 			is_enter_set_cur_freq_back = 1; // debug
 		} else if (g_sf_edge_hint == SF_EDGE_EFFECT &&
 			uncomplete_flag &&
-			ui32GPUFreq > ged_get_oppidx_by_stack_freq(SF_EDGE_FB_FREQ_FLOOR)) {
+			ui32GPUFreq > ged_get_oppidx_by_stack_freq(SF_EDGE_FB_FREQ_FLOOR)
+				&& check_service_uncomplete()) {
 			ui32GPUFreq = ged_get_oppidx_by_stack_freq(SF_EDGE_FB_FREQ_FLOOR);
 			i32NewFreqID = ui32GPUFreq;
 		}

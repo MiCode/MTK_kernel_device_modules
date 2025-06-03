@@ -14,6 +14,7 @@
 #include <linux/cpufreq.h>
 #include <linux/topology.h>
 
+#define SF_DEFER_FRAME_NS 33000000
 GED_ERROR ged_kpi_dequeue_buffer_ts(int pid,
 		u64 ullWdnd,
 		int i32FrameID,
@@ -81,6 +82,7 @@ struct ged_risky_bq_info {
 		unsigned int t_gpu_fps_reason;
 	} completed_bq, uncompleted_bq;
 
+	unsigned int sf_que_uncompleted;
 	unsigned int total_gpu_completed_count;
 	bool smallframe;
 };
@@ -118,6 +120,7 @@ void update_fb_timer_set_count(void);
 void reset_fb_timer_set_count(void);
 void ged_kpi_fastdvfs_update_dcs(void);
 bool ged_kpi_get_stable_lb(void);
+unsigned int check_service_uncomplete(void);
 
 extern spinlock_t gsGpuUtilLock;
 
