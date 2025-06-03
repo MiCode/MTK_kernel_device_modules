@@ -7487,8 +7487,7 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_HRT_DEBUG) &&
 		(priv->mtk_dbgtp_sta.is_cam_hrt_issue || priv->mtk_dbgtp_sta.is_disp_hrt_issue)) {
-		priv->mtk_dbgtp_sta.hrt_time_count--;
-		if (priv->mtk_dbgtp_sta.hrt_time_count <= 0) {
+		if (priv->mtk_dbgtp_sta.hrt_time_count == 0) {
 			DDPMSG("After disp/cam HRT issues delay enable dbgtp\n");
 			/* Enable dbgtp en config */
 			priv->mtk_dbgtp_sta.dbgtp_en = true;
@@ -7507,7 +7506,6 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 			/* Clear flags */
 			priv->mtk_dbgtp_sta.is_cam_hrt_issue = false;
 			priv->mtk_dbgtp_sta.is_disp_hrt_issue = false;
-			priv->mtk_dbgtp_sta.hrt_time_count = 0;
 		}
 	}
 

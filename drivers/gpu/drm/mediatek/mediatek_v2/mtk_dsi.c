@@ -28,6 +28,7 @@
 #include <video/mipi_display.h>
 #include <video/videomode.h>
 #include <linux/vmalloc.h>
+#include <linux/timer.h>
 #ifndef DRM_CMDQ_DISABLE
 #include <linux/soc/mediatek/mtk-cmdq-ext.h>
 #else
@@ -85,6 +86,9 @@ int dbg_urgent_high;
 module_param(dbg_urgent_high, int, 0644);
 int dbg_output_valid;
 module_param(dbg_output_valid, int, 0644);
+
+#define HRT_ISSUE_TIMER_TIMEOUT 100 //unit:s
+static struct timer_list hrt_issue_timer;
 
 #define DSI_START 0x00
 #define SKEWCAL_START BIT(4)
@@ -4268,6 +4272,9 @@ int mtk_hrt_issue_flag_set(bool is_hrt_issue)
 		mtk_dbgtp_switch(mtk_crtc, NULL, 0);
 		priv->mtk_dbgtp_sta.dbgtp_en = false;
 		DDPMSG("%s set hrt issue is %d disable dbgtp\n", __func__, is_hrt_issue);
+		/* start timer */
+		mod_timer(&hrt_issue_timer, jiffies +
+			msecs_to_jiffies(HRT_ISSUE_TIMER_TIMEOUT * 1000));
 		mtk_vidle_user_power_release(DISP_VIDLE_USER_CRTC);
 		DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
 	} else {
@@ -4279,6 +4286,40 @@ int mtk_hrt_issue_flag_set(bool is_hrt_issue)
 	return ret;
 }
 EXPORT_SYMBOL(mtk_hrt_issue_flag_set);
+
+static void hrt_issue_timer_callback(struct timer_list *timer)
+{
+	struct drm_crtc *crtc;
+	int ret = 0;
+	unsigned int *addr = NULL;
+	struct mtk_drm_crtc *mtk_crtc = NULL;
+	struct mtk_drm_private *priv = NULL;
+
+	if (IS_ERR_OR_NULL(drm_dev)) {
+		DDPINFO("%s, invalid drm dev\n", __func__);
+		return;
+	}
+
+	/* this debug cmd only for crtc0 */
+	crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
+				typeof(*crtc), head);
+	if (IS_ERR_OR_NULL(crtc)) {
+		DDPINFO("%s failed to find crtc\n", __func__);
+		return;
+	}
+	mtk_crtc = to_mtk_crtc(crtc);
+	if (IS_ERR_OR_NULL(mtk_crtc)) {
+		DDPINFO("%s failed to find crtc\n", __func__);
+		return;
+	}
+	priv = mtk_crtc->base.dev->dev_private;
+
+	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_HRT_DEBUG) &&
+		(priv->mtk_dbgtp_sta.is_cam_hrt_issue || priv->mtk_dbgtp_sta.is_disp_hrt_issue)) {
+		DDPMSG("hrt issue timer is stop\n");
+		priv->mtk_dbgtp_sta.hrt_time_count = 0;
+	}
+}
 
 irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 {
@@ -4415,6 +4456,9 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 				/* Disable trace top funnel */
 				if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_HRT_DEBUG))
 					mtk_dbgtp_set_trace_top_funnel(false);
+				/* start timer */
+				mod_timer(&hrt_issue_timer, jiffies +
+					msecs_to_jiffies(HRT_ISSUE_TIMER_TIMEOUT * 1000));
 			}
 
 			dump_cur_pos(mtk_crtc);
@@ -16781,6 +16825,7 @@ static int mtk_dsi_probe(struct platform_device *pdev)
 	dsi->hotplug_task = kthread_create(mtk_dsi_hotplug_kthread, dsi, "hotplug");
 	//wake_up_process(dsi->hotplug_task);
 #endif
+	timer_setup(&hrt_issue_timer, hrt_issue_timer_callback, 0);
 
 	DDPINFO("%s-\n", __func__);
 	return ret;
@@ -16801,6 +16846,7 @@ static void mtk_dsi_remove(struct platform_device *pdev)
 	component_del(&pdev->dev, &mtk_dsi_component_ops);
 
 	mtk_ddp_comp_pm_disable(&dsi->ddp_comp);
+	del_timer(&hrt_issue_timer);
 }
 
 struct platform_driver mtk_dsi_driver = {
