@@ -11018,6 +11018,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			dptx,phy-params = <0x110e0c08 0x1012110c 0x00001814
 					0x07040200 0x00060300 0x00000004>;
 			config-version = <2>;
+			//h = 4096 because there are only 2 exdma
+			//v = 2160 because the internal display test environment
+			max-support-h-v = <4096 2160>;
 		};
 
 
