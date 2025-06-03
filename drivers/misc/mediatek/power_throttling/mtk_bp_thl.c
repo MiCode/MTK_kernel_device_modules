@@ -89,12 +89,12 @@ static int md_notify_ubound(unsigned int ubound)
 	pr_info("[%s] soc upper bound=%u\n", __func__, ubound);
 #if IS_ENABLED(CONFIG_MTK_ECCCI_DRIVER)
 	ret = exec_ccci_kern_func(ID_THROTTLING_CFG, (char *)&md_notify_cmd, 4);
+#endif
 	if (ret) {
 		pr_info("%s: error, ret=%d, cmd=0x%x\n", __func__, ret, md_notify_cmd);
 		return -EINVAL;
 	}
 	pr_info("[%s] send cmd to CCCI ret=%d, cmd=0x%x\n", __func__, ret, md_notify_cmd);
-#endif
 	return 0;
 }
 
