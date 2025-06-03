@@ -487,6 +487,23 @@ void fpsgo2mbrain_hint_deleteperfinfo(unsigned long cmd, struct render_frame_inf
 
 }
 
+void game_mode_notify(int is_game_mode)
+{
+	char netlink_buf[NETLINK_EVENT_MESSAGE_SIZE] = {'\0'};
+	int n = 0;
+	int pos = 0;
+
+	n = snprintf(netlink_buf + pos,
+			NETLINK_EVENT_MESSAGE_SIZE - pos,
+			"%s:%d",
+			NETLINK_EVENT_GAME_MODE_NOTIFY,
+			is_game_mode);
+
+	if (n < 0 || n >= NETLINK_EVENT_MESSAGE_SIZE - pos)
+		return;
+	mbraink_netlink_send_msg(netlink_buf);
+}
+
 #if IS_ENABLED(CONFIG_MTK_GPU_SUPPORT)
 int recycle_workerevt_list(void)
 {
@@ -780,6 +797,7 @@ unsigned long long mbraink_v6993_gpu_getQ2QTimeoutInNS(void)
 void mbraink_v6993_gpu_fpsgoSetGameMode(int isGameMode)
 {
 	gisGameMode= isGameMode;
+	game_mode_notify(gisGameMode);
 }
 
 static int mbraink_v6993_gpu_getOppInfo(struct mbraink_gpu_opp_info *gOppInfo)
