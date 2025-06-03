@@ -292,6 +292,11 @@ static int seq_show(struct seq_file *s, void *v)
 				session->buf_base, session->buf_size, session->seq_mode,
 				s->size);
 
+	if (!s->buf) {
+		HWLOGR_ERR("no seq buffer\n");
+		return -ENOMEM;
+	}
+
 	logger_v2_buf_invalidate(LOG_BUFF_NP);
 	start_count = s->count;
 
@@ -513,16 +518,25 @@ static void *seq_start(struct seq_file *s, loff_t *pos, bool block_mode)
 	/* prepare enough seq buffer */
 	if ((session->padding_to_flush + MAX_RV_INFO_SIZE) > (s->size - s->count)) {
 		if (*pos > 0) {
-			HWLOGR_DBG("alloc seq_buf %lu pos %lld\n", s->size, *pos);
+			HWLOGR_INFO("alloc seq_buf %lu pos %lld\n", s->size, *pos);
 			new_seq_buf = kvmalloc(s->size <<= 1, GFP_KERNEL_ACCOUNT);
-			memcpy(new_seq_buf, s->buf, s->count);
-			kvfree(s->buf);
-			s->buf = new_seq_buf;
+			if (new_seq_buf) {
+				memcpy(new_seq_buf, s->buf, s->count);
+				kvfree(s->buf);
+				s->buf = new_seq_buf;
+			} else {
+				HWLOGR_ERR("alloc seq_buf failed s->size: %lu\n", s->size);
+				kfree(session);
+				return NULL;
+			}
 		} else {
 			HWLOGR_DBG("alloc seq_buf %lu pos %lld\n", s->size, *pos);
-			kvfree(s->buf);
-			s->buf = kvmalloc(DEFAULT_SEQ_BUF_SIZE, GFP_KERNEL_ACCOUNT);
-			s->size = DEFAULT_SEQ_BUF_SIZE;
+			new_seq_buf = kvmalloc(DEFAULT_SEQ_BUF_SIZE, GFP_KERNEL_ACCOUNT);
+			if (new_seq_buf) {
+				kvfree(s->buf);
+				s->buf = new_seq_buf;
+				s->size = DEFAULT_SEQ_BUF_SIZE;
+			}
 		}
 	}
 

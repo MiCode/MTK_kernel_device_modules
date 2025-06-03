@@ -9,7 +9,7 @@
 #define CLEAR_LOG_CMD           "clear"
 #define APUSYS_HWLOG_WQ_NAME    "apusys_hwlog_wq"
 #define APUSYS_HWLOGR_DIR       "apusys_logger"
-#define DEFAULT_SEQ_BUF_SIZE    (1024 * 1024 * 16) // 16MB
+#define DEFAULT_SEQ_BUF_SIZE    (1024 * 1024 * 8) // 8MB
 #define MAX_RV_INFO_SIZE        (1024 * 1024) // 1MB
 #define PROC_WRITE_BUFSIZE      (64)
 #define WAIT_LOG_INTERVAL_MIN   (1000)
