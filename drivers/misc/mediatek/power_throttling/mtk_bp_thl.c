@@ -13,8 +13,10 @@
 #include <linux/platform_device.h>
 #include <linux/power_supply.h>
 #include "mtk_bp_thl.h"
-#include "mtk_ccci_common.h"
 #include "mtk_md_power_throttling.h"
+#if IS_ENABLED(CONFIG_MTK_ECCCI_DRIVER)
+#include "mtk_ccci_common.h"
+#endif
 #define BAT_PERCENT_LIMIT 15
 #define BPCB_MAX_NUM 16
 #define MAX_VALUE 0x7FFF
@@ -85,12 +87,14 @@ static int md_notify_ubound(unsigned int ubound)
 	md_notify_cmd = TMC_CTRL_CMD_LOW_POWER_IND  |
 			md_bp_data->soc << 8 | md_bp_data->chg_state << 16;
 	pr_info("[%s] soc upper bound=%u\n", __func__, ubound);
+#if IS_ENABLED(CONFIG_MTK_ECCCI_DRIVER)
 	ret = exec_ccci_kern_func(ID_THROTTLING_CFG, (char *)&md_notify_cmd, 4);
 	if (ret) {
 		pr_info("%s: error, ret=%d, cmd=0x%x\n", __func__, ret, md_notify_cmd);
 		return -EINVAL;
 	}
 	pr_info("[%s] send cmd to CCCI ret=%d, cmd=0x%x\n", __func__, ret, md_notify_cmd);
+#endif
 	return 0;
 }
 
@@ -773,7 +777,9 @@ static int bp_thl_probe(struct platform_device *pdev)
 		return ret;
 	}
 
+#if IS_ENABLED(CONFIG_MTK_ECCCI_DRIVER)
 	ccci_set_power_throttle_cb(md_notify_ubound);
+#endif
 	ret = device_create_file(&(pdev->dev),
 		&dev_attr_bp_thl_ut);
 	ret |= device_create_file(&(pdev->dev),
