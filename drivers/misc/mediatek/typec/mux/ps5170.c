@@ -651,8 +651,12 @@ static int ps5170_resume_noirq(struct device *dev)
 	if (data->pin_assign) {
 		schedule_work(&data->reconfig_dp_work);
 	} else {
-		/* pull high en pin to enter normal mode */
-		pinctrl_select_state(data->pinctrl, data->enable);
+		/* pull high en pin to enter normal mode if connected */
+		if (data->orientation == TYPEC_ORIENTATION_NORMAL ||
+			data->orientation == TYPEC_ORIENTATION_REVERSE)
+			pinctrl_select_state(data->pinctrl, data->enable);
+		else
+			pinctrl_select_state(data->pinctrl, data->disable);
 	}
 	return 0;
 }
