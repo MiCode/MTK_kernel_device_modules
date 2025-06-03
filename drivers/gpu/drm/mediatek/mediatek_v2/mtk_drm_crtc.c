@@ -11528,7 +11528,8 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 	DDP_COMMIT_LOCK(&priv->commit.lock, __func__, cb_data->pres_fence_idx);
 	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
 
-	ovl_status = mtk_drm_crtc_check_ovl_status(crtc, cb_data);
+	if (!mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base))
+		ovl_status = mtk_drm_crtc_check_ovl_status(crtc, cb_data);
 
 	if ((id == 0) && (priv && priv->power_state)) {
 		/* BW monitor: Set valid to 1 */
