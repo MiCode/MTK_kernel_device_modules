@@ -416,13 +416,7 @@ static int lcm_panel_init_v2(void *dsi_drv, struct drm_panel *panel, void *handl
 	static struct mipi_dsi_msg spr_on_setting[ARRAY_SIZE(panel_spr_on_setting)] = { 0 };
 	static struct mipi_dsi_msg spr_off_setting[ARRAY_SIZE(panel_spr_off_setting)] = { 0 };
 
-	static struct mipi_dsi_msg fps_60hz[ARRAY_SIZE(cmd_set_fps_120hz_360te)] = { 0 };
-	static struct mipi_dsi_msg fps_90hz[ARRAY_SIZE(cmd_set_fps_120hz_360te)] = { 0 };
-	static struct mipi_dsi_msg fps_120hz[ARRAY_SIZE(cmd_set_fps_120hz_360te)] = { 0 };
-	static struct mipi_dsi_msg fps_120hz_mte[ARRAY_SIZE(cmd_set_fps_120hz_mte)] = { 0 };
-
 	static struct mipi_dsi_msg fps_144hz[ARRAY_SIZE(cmd_set_fps_144hz)] = { 0 };
-	static struct mipi_dsi_msg fps_144hz_mode[ARRAY_SIZE(cmd_set_fps_144hz_mode)] = { 0 };
 
 	if (!panel) {
 		lcm_info("%s, error, panel is NULL\n", __func__);
@@ -464,30 +458,9 @@ static int lcm_panel_init_v2(void *dsi_drv, struct drm_panel *panel, void *handl
 			spr_off_setting[i].tx_len= panel_spr_off_setting[i].count;
 			spr_off_setting[i].tx_buf = panel_spr_off_setting[i].para_list;
 		}
-
-		for (i = 0; i < ARRAY_SIZE(cmd_set_fps_120hz_360te); i++) {
-			fps_60hz[i].tx_len= cmd_set_fps_120hz_360te[i].count;
-			fps_60hz[i].tx_buf = cmd_set_fps_120hz_360te[i].para_list;
-		}
-		for (i = 0; i < ARRAY_SIZE(cmd_set_fps_120hz_360te); i++) {
-			fps_90hz[i].tx_len= cmd_set_fps_120hz_360te[i].count;
-			fps_90hz[i].tx_buf = cmd_set_fps_120hz_360te[i].para_list;
-		}
-		for (i = 0; i < ARRAY_SIZE(cmd_set_fps_120hz_360te); i++) {
-			fps_120hz[i].tx_len= cmd_set_fps_120hz_360te[i].count;
-			fps_120hz[i].tx_buf = cmd_set_fps_120hz_360te[i].para_list;
-		}
-		for (i = 0; i < ARRAY_SIZE(cmd_set_fps_120hz_mte); i++) {
-			fps_120hz_mte[i].tx_len= cmd_set_fps_120hz_mte[i].count;
-			fps_120hz_mte[i].tx_buf = cmd_set_fps_120hz_mte[i].para_list;
-		}
 		for (i = 0; i < ARRAY_SIZE(cmd_set_fps_144hz); i++) {
 			fps_144hz[i].tx_len= cmd_set_fps_144hz[i].count;
 			fps_144hz[i].tx_buf = cmd_set_fps_144hz[i].para_list;
-		}
-		for (i = 0; i < ARRAY_SIZE(cmd_set_fps_144hz_mode); i++) {
-			fps_144hz_mode[i].tx_len= cmd_set_fps_144hz_mode[i].count;
-			fps_144hz_mode[i].tx_buf = cmd_set_fps_144hz_mode[i].para_list;
 		}
 	}
 
@@ -837,9 +810,7 @@ static int mode_switch(struct drm_panel *panel,
 
 	pr_info("%s cur_mode = %d dst_mode %d vrefresh %d\n", __func__, cur_mode, dst_mode, drm_mode_vrefresh(m));
 
-	if (drm_mode_vrefresh(m) == 120 && mte_support == MTE_SUPPORT)
-		push_table(ctx, cmd_set_fps_144hz_mode, ARRAY_SIZE(cmd_set_fps_144hz_mode), 0);
-	else if (drm_mode_vrefresh(m) == 120)
+	if (drm_mode_vrefresh(m) == 144)
 		push_table(ctx, cmd_set_fps_144hz_mode, ARRAY_SIZE(cmd_set_fps_144hz_mode), 0);
 	else if (drm_mode_vrefresh(m) == 90)
 		push_table(ctx, cmd_set_fps_120hz_360te, ARRAY_SIZE(cmd_set_fps_120hz_360te), 0);
@@ -862,8 +833,6 @@ static int mode_switch_v2(void *dsi_drv, struct drm_panel *panel, void *handle,
 	struct drm_display_mode *m = get_mode_by_id(connector, dst_mode);
 	static struct mipi_dsi_msg fps_60hz[ARRAY_SIZE(cmd_set_fps_120hz_360te)] = { 0 };
 	static struct mipi_dsi_msg fps_90hz[ARRAY_SIZE(cmd_set_fps_120hz_360te)] = { 0 };
-	static struct mipi_dsi_msg fps_120hz[ARRAY_SIZE(cmd_set_fps_120hz_360te)] = { 0 };
-	static struct mipi_dsi_msg fps_120hz_mte[ARRAY_SIZE(cmd_set_fps_120hz_mte)] = { 0 };
 	static struct mipi_dsi_msg fps_144hz_mode[ARRAY_SIZE(cmd_set_fps_144hz_mode)] = { 0 };
 
 	pr_info("%s cur_mode = %d dst_mode %d vrefresh %d\n", __func__, cur_mode, dst_mode, drm_mode_vrefresh(m));
@@ -877,14 +846,6 @@ static int mode_switch_v2(void *dsi_drv, struct drm_panel *panel, void *handle,
 		for (i = 0; i < ARRAY_SIZE(cmd_set_fps_120hz_360te); i++) {
 			fps_90hz[i].tx_len= cmd_set_fps_120hz_360te[i].count;
 			fps_90hz[i].tx_buf = cmd_set_fps_120hz_360te[i].para_list;
-		}
-		for (i = 0; i < ARRAY_SIZE(cmd_set_fps_120hz_360te); i++) {
-			fps_120hz[i].tx_len= cmd_set_fps_120hz_360te[i].count;
-			fps_120hz[i].tx_buf = cmd_set_fps_120hz_360te[i].para_list;
-		}
-		for (i = 0; i < ARRAY_SIZE(cmd_set_fps_120hz_mte); i++) {
-			fps_120hz_mte[i].tx_len= cmd_set_fps_120hz_mte[i].count;
-			fps_120hz_mte[i].tx_buf = cmd_set_fps_120hz_mte[i].para_list;
 		}
 		for (i = 0; i < ARRAY_SIZE(cmd_set_fps_144hz_mode); i++) {
 			fps_144hz_mode[i].tx_len= cmd_set_fps_144hz_mode[i].count;
@@ -918,9 +879,7 @@ static int mode_switch_v2(void *dsi_drv, struct drm_panel *panel, void *handle,
 		.cmd_msg = fps_144hz_mode,
 	};
 
-	if (drm_mode_vrefresh(m) == 120 && mte_support == MTE_SUPPORT)
-		cb(dsi_drv, handle, cmd_opt, &fps_144hz_cmd_mode);
-	else if (drm_mode_vrefresh(m) == 120)
+	if (drm_mode_vrefresh(m) == 144)
 		cb(dsi_drv, handle, cmd_opt, &fps_144hz_cmd_mode);
 	else if (drm_mode_vrefresh(m) == 90)
 		cb(dsi_drv, handle, cmd_opt, &fps_90hz_cmd);
@@ -1203,7 +1162,7 @@ static void rm692h5_lcm_valid_roi(struct mtk_panel_params *ext_param,
 static struct mtk_panel_params ext_params[MODE_NUM] = {
 	//120hz 360TE
 	[FHD_120_360TE] = {
-	.pll_clk = MIPI_DATA_RATE_120HZ / 2,
+	.pll_clk = MIPI_DATA_RATE_144HZ / 2,
 	.cust_esd_check = CUST_ESD_CHECK,
 	.esd_check_enable = ESD_CHECK_ENABLE,
 	.lcm_esd_check_table[0] = {
@@ -1329,14 +1288,14 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 	},
 	.dyn = {
 		.switch_en = 1,
-		.data_rate = MIPI_DATA_RATE_120HZ + 2,
+		.data_rate = MIPI_DATA_RATE_144HZ + 2,
 	},
 	.dyn_fps = {
 		.switch_en = 1, .vact_timing_fps = 120,
 	},
 	.cmd_null_pkt_en = 1,
 	.cmd_null_pkt_len = 185,
-	.data_rate = MIPI_DATA_RATE_120HZ,
+	.data_rate = MIPI_DATA_RATE_144HZ,
 		.skip_vblank = 1,
 		.msync2_enable = 1,
 		.round_corner_en = 1,
@@ -1346,7 +1305,7 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 		.corner_pattern_lt_addr = (void *)top_rc_pattern,
 		.corner_pattern_size_per_line = (void *)top_rc_pattern_size_per_line,
 		.msync_cmd_table = {
-			.te_type = MULTI_TE,
+			.te_type = NORMAL_TE,
 		},
 		.phy_timcon = {
 			.lpx = 8, // HS Entry: DATA TLPX, 65ns
@@ -1356,7 +1315,7 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 	},
 	//90hz
 	[FHD_90_360TE] = {
-	.pll_clk = MIPI_DATA_RATE_120HZ / 2,
+	.pll_clk = MIPI_DATA_RATE_144HZ / 2,
 	.cust_esd_check = CUST_ESD_CHECK,
 	.esd_check_enable = ESD_CHECK_ENABLE,
 	.lcm_esd_check_table[0] = {
@@ -1482,14 +1441,14 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 	},
 	.dyn = {
 		.switch_en = 1,
-		.data_rate = MIPI_DATA_RATE_120HZ + 2,
+		.data_rate = MIPI_DATA_RATE_144HZ + 2,
 	},
 	.dyn_fps = {
 		.switch_en = 1, .vact_timing_fps = 120,
 	},
 	.cmd_null_pkt_en = 1,
 	.cmd_null_pkt_len = 185,
-	.data_rate = MIPI_DATA_RATE_120HZ,
+	.data_rate = MIPI_DATA_RATE_144HZ,
 		.skip_vblank = 4,
 		.msync2_enable = 1,
 		.round_corner_en = 1,
@@ -1509,7 +1468,7 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 	},
 	//72hz
 	[FHD_72_360TE] = {
-		.pll_clk = MIPI_DATA_RATE_120HZ / 2,
+		.pll_clk = MIPI_DATA_RATE_144HZ / 2,
 		.cust_esd_check = CUST_ESD_CHECK,
 		.esd_check_enable = ESD_CHECK_ENABLE,
 		.lcm_esd_check_table[0] = {
@@ -1635,14 +1594,14 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 		},
 		.dyn = {
 			.switch_en = 1,
-			.data_rate = MIPI_DATA_RATE_120HZ + 2,
+			.data_rate = MIPI_DATA_RATE_144HZ + 2,
 		},
 		.dyn_fps = {
 			.switch_en = 1, .vact_timing_fps = 120,
 		},
 		.cmd_null_pkt_en = 1,
 		.cmd_null_pkt_len = 185,
-		.data_rate = MIPI_DATA_RATE_120HZ,
+		.data_rate = MIPI_DATA_RATE_144HZ,
 		.skip_vblank = 5,
 		.msync2_enable = 1,
 		.round_corner_en = 1,
@@ -1662,7 +1621,7 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 	},
 	//60hz
 	[FHD_60_360TE] = {
-	.pll_clk = MIPI_DATA_RATE_120HZ / 2,
+	.pll_clk = MIPI_DATA_RATE_144HZ / 2,
 	.cust_esd_check = CUST_ESD_CHECK,
 	.esd_check_enable = ESD_CHECK_ENABLE,
 	.lcm_esd_check_table[0] = {
@@ -1788,14 +1747,14 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 	},
 	.dyn = {
 		.switch_en = 1,
-		.data_rate = MIPI_DATA_RATE_120HZ + 2,
+		.data_rate = MIPI_DATA_RATE_144HZ + 2,
 	},
 	.dyn_fps = {
 		.switch_en = 1, .vact_timing_fps = 120,
 	},
 	.cmd_null_pkt_en = 1,
 	.cmd_null_pkt_len = 185,
-	.data_rate = MIPI_DATA_RATE_120HZ,
+	.data_rate = MIPI_DATA_RATE_144HZ,
 		.skip_vblank = 6,
 		.msync2_enable = 1,
 		.round_corner_en = 1,
@@ -1816,7 +1775,7 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 #if MAINTAIN_MULTI_DISPLAY_MODE //only maintain MTE and fix360
 	//120hz
 	[FHD_120] = {
-	.pll_clk = MIPI_DATA_RATE_120HZ / 2,
+	.pll_clk = MIPI_DATA_RATE_144HZ / 2,
 	.cust_esd_check = CUST_ESD_CHECK,
 	.esd_check_enable = ESD_CHECK_ENABLE,
 	.lcm_esd_check_table[0] = {
@@ -1942,14 +1901,14 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 	},
 	.dyn = {
 		.switch_en = 1,
-		.data_rate = MIPI_DATA_RATE_120HZ + 2,
+		.data_rate = MIPI_DATA_RATE_144HZ + 2,
 	},
 	.dyn_fps = {
 		.switch_en = 1, .vact_timing_fps = 120,
 	},
 	.cmd_null_pkt_en = 1,
 	.cmd_null_pkt_len = 125,
-	.data_rate = MIPI_DATA_RATE_120HZ,
+	.data_rate = MIPI_DATA_RATE_144HZ,
 		.round_corner_en = 1,
 	.corner_pattern_height = ROUND_CORNER_H_TOP,
 	.corner_pattern_height_bot = ROUND_CORNER_H_BOT,
@@ -1963,7 +1922,7 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 	},
 	//90hz
 	[FHD_90] = {
-	.pll_clk = MIPI_DATA_RATE_120HZ / 2,
+	.pll_clk = MIPI_DATA_RATE_144HZ / 2,
 	.cust_esd_check = CUST_ESD_CHECK,
 	.esd_check_enable = ESD_CHECK_ENABLE,
 	.lcm_esd_check_table[0] = {
@@ -2089,14 +2048,14 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 	},
 	.dyn = {
 		.switch_en = 1,
-		.data_rate = MIPI_DATA_RATE_120HZ + 2,
+		.data_rate = MIPI_DATA_RATE_144HZ + 2,
 	},
 	.dyn_fps = {
 		.switch_en = 1, .vact_timing_fps = 90,
 	},
 	.cmd_null_pkt_en = 1,
 	.cmd_null_pkt_len = 125,
-	.data_rate = MIPI_DATA_RATE_120HZ,
+	.data_rate = MIPI_DATA_RATE_144HZ,
 	.round_corner_en = 1,
 	.corner_pattern_height = ROUND_CORNER_H_TOP,
 	.corner_pattern_height_bot = ROUND_CORNER_H_BOT,
@@ -2110,7 +2069,7 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 	},
 	//60hz
 	[FHD_60] = {
-	.pll_clk = MIPI_DATA_RATE_120HZ / 2,
+	.pll_clk = MIPI_DATA_RATE_144HZ / 2,
 	.cust_esd_check = CUST_ESD_CHECK,
 	.esd_check_enable = ESD_CHECK_ENABLE,
 	.lcm_esd_check_table[0] = {
@@ -2236,14 +2195,14 @@ static struct mtk_panel_params ext_params[MODE_NUM] = {
 	},
 	.dyn = {
 		.switch_en = 1,
-		.data_rate = MIPI_DATA_RATE_120HZ + 2,
+		.data_rate = MIPI_DATA_RATE_144HZ + 2,
 	},
 	.dyn_fps = {
 		.switch_en = 1, .vact_timing_fps = 60,
 	},
 	.cmd_null_pkt_en = 1,
 	.cmd_null_pkt_len = 125,
-	.data_rate = MIPI_DATA_RATE_120HZ,
+	.data_rate = MIPI_DATA_RATE_144HZ,
 	.round_corner_en = 1,
 	.corner_pattern_height = ROUND_CORNER_H_TOP,
 	.corner_pattern_height_bot = ROUND_CORNER_H_BOT,

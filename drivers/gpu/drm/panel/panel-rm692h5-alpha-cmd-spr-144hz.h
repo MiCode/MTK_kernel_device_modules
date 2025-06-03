@@ -18,6 +18,7 @@
 #define FHD_FRAME_HEIGHT     (2800)
 #define VFHD_FRAME_WIDTH     (1080)
 #define VFHD_FRAME_HEIGHT    (2400)
+#define MIPI_DATA_RATE_144HZ            (1490)
 #define MIPI_DATA_RATE_120HZ            (1100)
 #define MIPI_DATA_RATE_90HZ         (830)
 #define MIPI_DATA_RATE_60HZ         (690)
