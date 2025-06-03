@@ -369,8 +369,8 @@ extern void mtk_select_task_rq_rt(void *data, struct task_struct *p, int cpu, in
 				int flags, int *target_cpu);
 extern int mtk_sched_asym_cpucapacity;
 
-extern void mtk_find_lowest_rq(void *data, struct task_struct *p, struct cpumask *lowest_mask,
-				int ret, int *lowest_cpu);
+extern void mtk_find_lowest_rq(void *data, struct task_struct *p, struct task_struct *exec_ctx,
+				struct cpumask *lowest_mask, int ret, int *lowest_cpu);
 
 extern void throttled_rt_tasks_debug(void *unused, int cpu, u64 clock,
 				ktime_t rt_period, u64 rt_runtime, s64 rt_period_timer_expires);

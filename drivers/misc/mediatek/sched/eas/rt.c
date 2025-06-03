@@ -733,8 +733,8 @@ out:
 	irq_log_store();
 }
 
-void mtk_find_lowest_rq(void *data, struct task_struct *p, struct cpumask *lowest_mask,
-			int ret, int *lowest_cpu)
+void mtk_find_lowest_rq(void *data, struct task_struct *p, struct task_struct *exec_ctx,
+			struct cpumask *lowest_mask, int ret, int *lowest_cpu)
 {
 	struct root_domain *rd = cpu_rq(smp_processor_id())->rd;
 	struct perf_domain *pd;
