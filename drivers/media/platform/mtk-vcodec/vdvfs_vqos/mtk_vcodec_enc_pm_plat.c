@@ -36,11 +36,39 @@
 #define STD_VENC_FREQ 250000000
 #endif
 
+#ifdef MTK_THERMAL_THROTTLE
+#include "thermal_interface.h"
+#include <linux/notifier.h>
+#endif
+
 //#define VENC_PRINT_DTS_INFO
 int venc_smi_monitor_mode = 1; // 0: disable, 1: enable, 2: debug mode
 int venc_max_mon_frm = 8;
 module_param(venc_smi_monitor_mode, int, 0644);
 module_param(venc_max_mon_frm, int, 0644);
+
+#ifdef MTK_THERMAL_THROTTLE
+int mtk_enc_thermal_hint_callback(struct notifier_block *nb, unsigned long event, void *data)
+{
+	struct mtk_vcodec_dev *dev = container_of(nb, struct mtk_vcodec_dev, thermal_notify);
+	struct mtk_vcodec_ctx *ctx = NULL;
+
+	if (!dev->thermal_hint_mode)
+		return NOTIFY_OK;
+
+	list_for_each_entry(ctx, &dev->ctx_list, list) {
+		if (ctx != NULL) {
+			ctx->thermal_hint = event;
+			if (ctx->thermal_hint != ctx->last_thermal_hint)
+				ctx->param_change |= MTK_ENCODE_PARAM_THERMAL_THROTTLE;
+		}
+	}
+	mtk_vcodec_dvfs_qos_log(true,
+		"[VENC][VDVFS] thermal_hint enable event %lu", event);
+
+	return NOTIFY_OK;
+}
+#endif
 
 #if ENC_EMI_BW
 static bool mtk_enc_tput_init(struct mtk_vcodec_dev *dev)
@@ -338,6 +366,21 @@ void mtk_prepare_venc_dvfs(struct mtk_vcodec_dev *dev)
 		dev->cpu_hint_mode = (1 << MTK_CPU_UNSUPPORT);
 	} else
 		dev->cpu_hint_mode = flag;
+
+#ifdef MTK_THERMAL_THROTTLE
+	dev->thermal_hint_mode = of_property_read_bool(pdev->dev.of_node, "venc-thermal-hint-mode");
+	if (!dev->thermal_hint_mode) {
+		mtk_vcodec_dvfs_qos_log(true, "[VENC] no need venc-thermal-hint-mode");
+	} else {
+		dev->thermal_notify.notifier_call = mtk_enc_thermal_hint_callback;
+		ret = mtk_thermal_hint_notify_register("venc_cooling", &dev->thermal_notify);
+		if (ret < 0) {
+			mtk_vcodec_dvfs_qos_log(true, "[VENC] thermal hint notify regist failed");
+			dev->thermal_hint_mode = false;
+			return;
+		}
+	}
+#endif
 
 	ret = dev_pm_opp_of_add_table(&dev->plat_dev->dev);
 	if (ret < 0) {

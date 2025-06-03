@@ -197,6 +197,7 @@ enum mtk_encode_param {
 	MTK_ENCODE_PARAM_I_FRM_SZ_CTRL = ((u64)1 << 34),
 	MTK_ENCODE_PARAM_COMPATIBILITY_OPTION = ((u64)1 << 35),
 	MTK_ENCODE_PARAM_TIMING_INFO = ((u64)1 << 36),
+	MTK_ENCODE_PARAM_THERMAL_THROTTLE = ((u64)1 << 37),
 };
 
 /*
@@ -561,6 +562,7 @@ struct venc_enc_param {
 	bool query_encode_param;
 	unsigned int compatibility_option;
 	unsigned int timing_info;
+	unsigned int thermal_throttle;
 };
 
 /*
@@ -858,6 +860,8 @@ struct mtk_vcodec_ctx {
 	unsigned int max_buf_width;
 	unsigned int max_buf_height;
 	int cpu_hint;
+	int thermal_hint;
+	int last_thermal_hint;
 };
 
 /*
@@ -933,6 +937,7 @@ struct mtk_vcodec_dev {
 	struct platform_device *vcu_plat_dev;
 	struct list_head ctx_list;
 	struct notifier_block vcp_notify;
+	struct notifier_block thermal_notify;
 	spinlock_t irqlock;
 	struct mtk_vcodec_ctx dev_ctx; // for query cap & set property
 	struct mtk_vcodec_ctx *curr_dec_ctx[MTK_VDEC_HW_NUM];
@@ -985,6 +990,7 @@ struct mtk_vcodec_dev {
 	unsigned int cpu_hint_ref_cnt;
 	int cpu_hint_mode;
 	unsigned int cgrp_ref_cnt;
+	int thermal_hint_mode;
 
 	struct mtk_vcodec_pm pm;
 	struct notifier_block pm_notifier;

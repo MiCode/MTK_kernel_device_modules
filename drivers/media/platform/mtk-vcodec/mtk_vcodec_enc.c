@@ -3686,6 +3686,14 @@ static int mtk_venc_param_change(struct mtk_vcodec_ctx *ctx)
 		ret |= venc_if_set_param(ctx, VENC_SET_PARAM_TIMING_INFO, &enc_prm);
 	}
 
+#ifdef MTK_THERMAL_THROTTLE
+	if (!ret && mtkbuf->param_change & MTK_ENCODE_PARAM_THERMAL_THROTTLE) {
+		enc_prm.thermal_throttle = ctx->thermal_hint;
+		ret |= venc_if_set_param(ctx, VENC_SET_PARAM_THERMAL_THROTTLE, &enc_prm);
+		ctx->last_thermal_hint = ctx->thermal_hint;
+	}
+#endif
+
 	mtkbuf->param_change = MTK_ENCODE_PARAM_NONE;
 
 	if (ret) {

@@ -2132,6 +2132,12 @@ int vcp_enc_set_param(struct venc_inst *inst,
 		out.data_item = 1;
 		out.data[0] = enc_param->timing_info;
 		break;
+	case VENC_SET_PARAM_THERMAL_THROTTLE:
+#ifdef MTK_THERMAL_THROTTLE
+		out.data_item = 1;
+		out.data[0] = enc_param->thermal_throttle;
+		break;
+#endif
 	default:
 		mtk_vcodec_err(inst, "id %d not supported", id);
 		return -EINVAL;
