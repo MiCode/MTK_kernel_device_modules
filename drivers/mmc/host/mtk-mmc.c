@@ -1456,6 +1456,7 @@ static void msdc_start_data(struct msdc_host *host, struct mmc_request *mrq,
 {
 	bool read;
 	int i = 10;
+	unsigned long flags;
 
 	WARN_ON(host->data);
 	host->data = data;
@@ -1465,7 +1466,9 @@ static void msdc_start_data(struct msdc_host *host, struct mmc_request *mrq,
 	msdc_dma_setup(host, &host->dma, data);
 	sdr_set_field(host->base + MSDC_DMA_CTRL, MSDC_DMA_CTRL_START, 1);
 	while (i--) asm volatile ("nop");
+	spin_lock_irqsave(&host->lock, flags);
 	sdr_set_bits(host->base + MSDC_INTEN, data_ints_mask);
+	spin_unlock_irqrestore(&host->lock, flags);
 	dev_dbg(host->dev, "DMA start\n");
 	dev_dbg(host->dev, "%s: cmd=%d DMA data: %d blocks; read=%d\n",
 			__func__, cmd->opcode, data->blocks, read);
