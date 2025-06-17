@@ -64,6 +64,8 @@ enum CE_V2_JOB_ID {
 	CE_V2_JOB_ID_MAX
 };
 
+#define CE_V2_SW_FLAG_MAX 16
+
 const char *CE_V2_JOB_NAME[CE_V2_JOB_ID_MAX] = {
 	"APUSYS_CE_LOGGER_UT",
 	"APUSYS_CE_PSC",
@@ -93,10 +95,29 @@ const char *CE_V2_JOB_NAME[CE_V2_JOB_ID_MAX] = {
 	"APUSYS_CE_RESERVED_25",
 	"APUSYS_CE_SMMU_RESTORE",
 	"APUSYS_CE_RCX_NOC_BW_ACC",
-	"APUSYS_CE_RESERVED_29",
+	"APUSYS_CE_RESERVED_28",
 	"APUSYS_CE_RESERVED_29",
 	"APUSYS_CE_POWER_BUDGET",
 	"APUSYS_CE_DVFS"
+};
+
+const char *CE_V2_SW_FLAG_DISPATCH_NAME[CE_V2_SW_FLAG_MAX] = {
+	"APUSYS_CE_SW_CUSTOMIZED_0",
+	"APUSYS_CE_SW_CUSTOMIZED_1",
+	"APUSYS_CE_SW_CUSTOMIZED_2",
+	"APUSYS_CE_SW_CUSTOMIZED_3",
+	"APUSYS_CE_SW_CUSTOMIZED_4",
+	"APUSYS_CE_SW_CUSTOMIZED_5",
+	"APUSYS_CE_SW_CUSTOMIZED_6",
+	"APUSYS_CE_SW_CUSTOMIZED_7",
+	"APUSYS_CE_SW_CUSTOMIZED_8",
+	"APUSYS_CE_SW_CUSTOMIZED_9",
+	"APUSYS_CE_SW_CUSTOMIZED_10",
+	"APUSYS_CE_SW_CUSTOMIZED_11",
+	"APUSYS_CE_SW_CUSTOMIZED_12",
+	"APUSYS_CE_SW_CUSTOMIZED_13",
+	"APUSYS_CE_SW_CUSTOMIZED_14",
+	"APUSYS_CE_SW_CUSTOMIZED_15",
 };
 
 const enum CE_V2_JOB_ID CE_V2_HW_TIMER[] = {
@@ -117,6 +138,7 @@ struct apu_coredump_work_struct {
 
 static int burst_intr_cnt;
 static int exception_job_id = -1;
+static int exception_sw_flag_id = -1;  /* sw customized exception */
 static struct apu_ce_v2_ops *g_apu_ce_ops;
 static struct platform_device *g_apu_pdev;
 
@@ -196,10 +218,18 @@ int apu_ce_memmap_v2(struct platform_device *pdev,
 
 }
 
-static const char *get_ce_job_name_by_id(uint32_t job_id)
+static const char *get_ce_job_name_by_id(int32_t job_id)
 {
-	if (job_id < CE_V2_JOB_ID_MAX)
+	if ((job_id < CE_V2_JOB_ID_MAX) && (job_id >= 0))
 		return CE_V2_JOB_NAME[job_id];
+	else
+		return "APUSYS_CE_UNDEFINED";
+}
+
+static const char *get_dispatch_key_by_sw_flag_id(int32_t flag_id)
+{
+	if ((flag_id < CE_V2_SW_FLAG_MAX) && (flag_id >= 0))
+		return CE_V2_SW_FLAG_DISPATCH_NAME[flag_id];
 	else
 		return "APUSYS_CE_UNDEFINED";
 }
@@ -225,24 +255,29 @@ static void apu_ce_coredump_work_func(struct work_struct *p_work)
 
 	dev_info(dev, "%s +\n", __func__);
 
-	if (exception_job_id >= 0) {
+	if ((exception_job_id >= 0) || (exception_sw_flag_id >= 0)) {
 		apusys_rv_smc_call(dev,
 			MTK_APUSYS_KERNEL_OP_APUSYS_CE_SRAM_DUMP, 0, 0, NULL, NULL, NULL);
 
 		apu_regdump();
 
+		const char *crdispatch_key = ((exception_job_id >= 0)?
+			get_ce_job_name_by_id(exception_job_id):
+			get_dispatch_key_by_sw_flag_id(exception_sw_flag_id));
+
 		if ((apu->platdata->flags & F_EXCEPTION_KE) && !apu->disable_ke &&
 			(ktime_get() / 1000000) > BOOT_BYPASS_APU_KE_MS) {
-			panic("APUSYS_CE exception: %s\n", get_ce_job_name_by_id(exception_job_id));
+			panic("APUSYS_CE exception: %s\n", crdispatch_key);
 		} else {
 			dev_info(dev, "%s: bypass KE due to %s%s%s\n", __func__,
 				(apu->platdata->flags & F_EXCEPTION_KE) ? "":"F_EXCEPTION_KE not enabled",
 				!apu->disable_ke ? "":"disabled by cmd",
 				((ktime_get() / 1000000) > BOOT_BYPASS_APU_KE_MS) ? "":"bootup");
 
-			apusys_ce_exception_aee_warn(get_ce_job_name_by_id(exception_job_id));
+			apusys_ce_exception_aee_warn(crdispatch_key);
 		}
 
+		exception_sw_flag_id = -1;
 		exception_job_id = -1;
 	}
 }
@@ -298,6 +333,7 @@ static int get_exception_job_id(struct device *dev, int32_t *job_id, bool *by_pa
 
 	exception_ce_id = -1;
 	exception_timer_id = -1;
+	exception_sw_flag_id = -1;
 
 	if (ce_flag) {
 		if (ce_flag & APU_V2_CE_0_IRQ_MASK)
@@ -338,6 +374,9 @@ static int get_exception_job_id(struct device *dev, int32_t *job_id, bool *by_pa
 			else if (apb_status & APU_V2_CE_APB_ERR_STATUS_CE3_MSK)
 				exception_ce_id = 3;
 		}
+	} else if (user_flag) {
+		exception_sw_flag_id = fls(user_flag) - 1; // get MSB position
+		dev_info(dev, "CE exception by sw customized, flag id: %d\n", exception_sw_flag_id);
 	}
 
 	if (exception_ce_id < 0 && exception_timer_id < 0)
