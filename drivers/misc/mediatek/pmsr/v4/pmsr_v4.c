@@ -36,8 +36,6 @@
 #include "apmcupm_scmi_v2.h"
 #include "pmsr_v4.h"
 
-#define ACC_RESULTS (cfg.acc_results)
-
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
 static struct scmi_tinysys_info_st *tinfo;
 static int scmi_apmcupm_id;
@@ -49,7 +47,6 @@ static struct pmsr_cfg cfg = {
 	.met_cts_mode = 0,
 	.pmsr_speed_mode = DEFAULT_SPEED_MODE,
 	.pmsr_window_len = 0,
-	.clean_records = 0,
 	.pmsr_sample_rate = 0,
 	.err = 0,
 	.test = 0,
@@ -65,7 +62,6 @@ struct hrtimer pmsr_timer;
 static struct workqueue_struct *pmsr_tool_forcereq;
 static struct delayed_work pmsr_tool_forcereq_work;
 static unsigned int pmsr_tool_last_idx;
-static uint64_t *pmsr_tool_last_timestamp;
 static char *pmsr_rt_logbuf = NULL;
 static char pmsr_dbgbuf[PMSR_BUF_WRITESZ_LARGE] = {0};
 static unsigned int pmsr_tool_print_log;
@@ -85,7 +81,6 @@ static void pmsr_cfg_init(void)
 	cfg.met_cts_mode = 0;
 	cfg.pmsr_speed_mode = DEFAULT_SPEED_MODE;
 	cfg.pmsr_window_len = 0;
-	cfg.clean_records = 0;
 	cfg.pmsr_sample_rate = 0;
 	cfg.err = 0;
 	cfg.test = 0;
@@ -94,16 +89,12 @@ static void pmsr_cfg_init(void)
 	cfg.acc_sig_name_len = 0;
 	cfg.output_limit = PMSR_DEFAULT_OUTPUT_LIMIT;
 
-	for (i = 0 ; i < PMSR_MAX_SIG_CH; i++) {
+	for (i = 0 ; i < cfg.sig_limit; i++) {
 		if (!cfg.signal_name[i]) {
 			kfree(cfg.signal_name[i]);
 			cfg.signal_name[i] = NULL;
 		}
-		ACC_RESULTS.results[i] = 0;
 	}
-	ACC_RESULTS.timestamp = 0;
-	ACC_RESULTS.winlen = 0;
-	ACC_RESULTS.acc_num = 0;
 
 	for (i = 0 ; i < cfg.dpmsr_count; i++) {
 		cfg.dpmsr[i].seltype = DEFAULT_SELTYPE;
@@ -113,7 +104,7 @@ static void pmsr_cfg_init(void)
 	}
 
 	/* pmsr_tool_last_idx is the last position read by ap */
-	/* when pmsr tool just starts and read idx below is 4, */
+	/* when pmsr tool just starts and read idx below is 1, */
 	/* it means ap is faster than sspm -> there is no new data in sram */
 	pmsr_tool_last_idx = cfg.pmsr_tool_buffer_max_space - 1;
 }
@@ -170,16 +161,14 @@ static int pmsr_get_info_by_scmi(unsigned int act)
 	switch(act) {
 		case(PMSR_TOOL_ACT_GET_SRAM):
 			cfg.share_buf =
-				(struct pmsr_tool_mon_results *)sspm_sbuf_get(pmsr_tool_rvalue.r1);
+				(struct pmsr_tool_mon_results_addr *)sspm_sbuf_get(pmsr_tool_rvalue.r1);
+			if (cfg.share_buf) {
+				cfg.sig_limit = cfg.share_buf[0].data_num;
+				cfg.signal_name = kcalloc(cfg.sig_limit, sizeof(const char *), GFP_KERNEL);
+			}
 			cfg.pmsr_tool_buffer_max_space = pmsr_tool_rvalue.r2;
 			cfg.pmsr_tool_share_results =
 				(struct pmsr_tool_results *)sspm_sbuf_get(pmsr_tool_rvalue.r3);
-			pmsr_tool_last_timestamp =
-				kcalloc(cfg.pmsr_tool_buffer_max_space, sizeof(uint64_t), GFP_KERNEL);
-			if (!pmsr_tool_last_timestamp) {
-				pr_notice("pmsr tool last time stamp fail\n");
-				return EFAULT;
-			}
 			break;
 		case(PMSR_TOOL_ACT_GET_MBUF_LEN):
 			cfg.mbuf_data_limit = pmsr_tool_rvalue.r1;
@@ -197,6 +186,7 @@ static void pmsr_tool_send_forcereq(struct work_struct *work)
 	unsigned int read_idx;
 	unsigned int oldest_idx;
 	struct pmsr_tool_mon_results *pmsr_tool_val;
+	unsigned int *pmsr_tool_val_data;
 	int ret;
 	unsigned int i;
 	unsigned int log_cnt = 0;
@@ -233,16 +223,12 @@ static void pmsr_tool_send_forcereq(struct work_struct *work)
 	if ((read_idx != pmsr_tool_last_idx) && (cfg.share_buf) &&
 		(read_idx < cfg.pmsr_tool_buffer_max_space)) {
 
-		pmsr_tool_val = &cfg.share_buf[read_idx];
+		/* pmsr_tool_val - timestamp / window length */
+		/* pmsr_tool_val_data - signal count */
+		pmsr_tool_val = (struct pmsr_tool_mon_results *)sspm_sbuf_get(cfg.share_buf[read_idx].mon_res_addr);
+		pmsr_tool_val_data = (unsigned int *)sspm_sbuf_get(cfg.share_buf[read_idx].data_addr);
 
 		pmsr_tool_last_idx = read_idx;
-
-		for (i = 0; i < PMSR_MAX_SIG_CH; i++)
-			ACC_RESULTS.results[i] += pmsr_tool_val->results[i];
-
-		ACC_RESULTS.timestamp = timestamp;
-		ACC_RESULTS.winlen += pmsr_tool_val->winlen;
-		ACC_RESULTS.acc_num++;
 
 		/* run-time print the results */
 		if (!pmsr_rt_logbuf)
@@ -278,7 +264,7 @@ static void pmsr_tool_send_forcereq(struct work_struct *work)
 						log_cnt, timestamp, pmsr_tool_val->winlen);
 			}
 			p += scnprintf(p, cfg.rt_logbuf_size - strlen(pmsr_rt_logbuf),
-						" %u", pmsr_tool_val->results[i]);
+						" %u", pmsr_tool_val_data[i]);
 		}
 		pr_notice("%s\n", pmsr_rt_logbuf);
 	}
@@ -523,12 +509,12 @@ static ssize_t local_ipi_read(struct file *fp, char __user *userbuf,
 	log("customized ts %u\n", !!cfg.met_cts_mode);
 	log("speed_mode %u\n", cfg.pmsr_speed_mode);
 	log("prof_cnt %u\n", cfg.prof_cnt);
-	log("clean_records %u\n", cfg.clean_records);
 	log("window_len %u (0x%x)\n",
 	    cfg.pmsr_window_len, cfg.pmsr_window_len);
 	log("sample_rate %u (0x%x)\n",
 	    cfg.pmsr_sample_rate, cfg.pmsr_sample_rate);
 	log("mbuf_data_limit %u\n", cfg.mbuf_data_limit);
+	log("sig_limit %u\n", cfg.sig_limit);
 	log("output_limit %u\n", cfg.output_limit);
 
 	/* do not change this line */
@@ -579,87 +565,12 @@ static const struct proc_ops local_ipi_fops = {
 	.proc_write = local_ipi_write,
 };
 
-static ssize_t local_sram_read(struct file *fp, char __user *userbuf,
-			      size_t count, loff_t *f_pos)
-{
-	uint64_t timestamp;
-	int i, j, len = 0, read_idx;
-	char *p = pmsr_dbgbuf;
-	struct pmsr_tool_mon_results *pmsr_tool_val;
-
-	p[0] = '\0';
-	for (i = 0; i < cfg.pmsr_tool_buffer_max_space; i++) {
-		read_idx =
-			(cfg.pmsr_tool_share_results->oldest_idx + i)
-				% cfg.pmsr_tool_buffer_max_space;
-
-		if (cfg.share_buf) {
-			pmsr_tool_val = &cfg.share_buf[read_idx];
-			timestamp = (pmsr_tool_val->timestamp_h);
-			timestamp = (timestamp << 32) | (pmsr_tool_val->timestamp_l);
-			if (timestamp != pmsr_tool_last_timestamp[read_idx]) {
-				log("[%llu.%06u](%u): ",
-					timestamp / 1000000,
-					(unsigned int)timestamp % 1000000,
-					pmsr_tool_val->winlen);
-
-				for (j = 0; j < cfg.output_limit - 1; j++)
-					log("%u, ", pmsr_tool_val->results[j]);
-				log("%u\n", pmsr_tool_val->results[cfg.output_limit - 1]);
-
-				/* if clean_records is 0,
-				 * then the log won't be printed next time
-				 */
-				if (cfg.clean_records != 0) {
-					pmsr_tool_last_timestamp[read_idx] = timestamp;
-				}
-			}
-		}
-	}
-
-	len = p - pmsr_dbgbuf;
-	return simple_read_from_buffer(userbuf, count, f_pos, pmsr_dbgbuf, len);
-}
-
-static ssize_t local_sram_write(struct file *fp, const char __user *userbuf,
-			       size_t count, loff_t *f_pos)
-{
-	unsigned int *v = pde_data(file_inode(fp));
-
-	if (!userbuf || !v)
-		return -EINVAL;
-
-	if (count >= PMSR_BUF_WRITESZ)
-		return -EINVAL;
-
-	if (kstrtou32_from_user(userbuf, count, 10, v))
-		return -EFAULT;
-
-	return count;
-}
-static const struct proc_ops local_sram_fops = {
-	.proc_read = local_sram_read,
-	.proc_write = local_sram_write,
-};
-
 static ssize_t local_signal_read(struct file *filp, char __user *userbuf,
 				size_t count, loff_t *f_pos)
 {
-	unsigned int i;
 	int len = 0;
 	char *p = pmsr_dbgbuf;
 
-	p[0] = '\0';
-
-	log("[%llu](%llu): ",
-		ACC_RESULTS.timestamp, ACC_RESULTS.winlen);
-
-	for (i = 0; i < (cfg.output_limit - 1); i++)
-		log("%llu, ", ACC_RESULTS.results[i]);
-
-	/* TODO: why need acc_num? why the last result won't print in line 651 */
-	log("%llu in %u\n",
-		ACC_RESULTS.results[cfg.output_limit - 1], ACC_RESULTS.acc_num);
 	len = p - pmsr_dbgbuf;
 	return simple_read_from_buffer(userbuf, count, f_pos, pmsr_dbgbuf, len);
 }
@@ -669,7 +580,7 @@ static char *pmsr_tool_proc_sig_id = "signal_id";
 static ssize_t local_signal_write(struct file *fp, const char *userbuf,
 			       size_t count, loff_t *f_pos)
 {
-	unsigned int *share_buf_id = (unsigned int *)&(cfg.share_buf->results[0]);
+	unsigned int *share_buf_id;
 	char *kbuf_ptr = &pmsr_dbgbuf[0];
 	char *sig_name = NULL;
 	int len = 0;
@@ -678,6 +589,7 @@ static ssize_t local_signal_write(struct file *fp, const char *userbuf,
 	if (count > PMSR_BUF_WRITESZ_LARGE)
 		pr_notice("[PMSR] Err:signal size > %u\n", PMSR_BUF_WRITESZ_LARGE);
 
+	share_buf_id = (unsigned int *)sspm_sbuf_get(cfg.share_buf[0].data_addr);
 	if ((!userbuf) || (count > PMSR_BUF_WRITESZ_LARGE) || (!share_buf_id))
 		return -EINVAL;
 
@@ -694,8 +606,8 @@ static ssize_t local_signal_write(struct file *fp, const char *userbuf,
 		 * Returns a NULL if insufficient memory was available
 		 */
 		while((sig_name = strsep(&kbuf_ptr, " "))) {
-			if (idx == PMSR_MAX_SIG_CH) {
-				pr_notice("[PMSR] Err:signal name > %u\n", PMSR_MAX_SIG_CH);
+			if (idx == cfg.sig_limit) {
+				pr_notice("[PMSR] Err:signal name > %u\n", cfg.sig_limit);
 				break;
 			}
 			cfg.signal_name[idx++] =
@@ -735,8 +647,6 @@ static int pmsr_procfs_init(void)
 	pmsr_droot = proc_mkdir("pmsr", NULL);
 	if (pmsr_droot) {
 		proc_create("state", 0644, pmsr_droot, &local_ipi_fops);
-		proc_create_data("monitor_results", 0644, pmsr_droot, &local_sram_fops,
-				 (void *) &(cfg.clean_records));
 		proc_create_data("output_limit", 0644, pmsr_droot, &local_ipi_fops,
 				 (void *) &(cfg.output_limit));
 		proc_create_data("speed_mode", 0644, pmsr_droot, &local_ipi_fops,
@@ -874,7 +784,6 @@ static void __exit pmsr_exit(void)
 	pmsr_procfs_exit();
 	kfree(cfg.dpmsr);
 	hrtimer_try_to_cancel(&pmsr_timer);
-	kfree(pmsr_tool_last_timestamp);
 
 	flush_workqueue(pmsr_tool_forcereq);
 	destroy_workqueue(pmsr_tool_forcereq);

@@ -96,14 +96,12 @@ struct pmsr_tool_mon_results {
 	unsigned int timestamp_l;
 	unsigned int timestamp_h;
 	unsigned int winlen;
-	unsigned int results[PMSR_MAX_SIG_CH];
 };
 
-struct pmsr_tool_mon_results_acc {
-	uint64_t results[PMSR_MAX_SIG_CH];
-	uint64_t timestamp;
-	uint64_t winlen;
-	unsigned int acc_num;
+struct pmsr_tool_mon_results_addr {
+	unsigned int data_addr;
+	unsigned int data_num;
+	unsigned int mon_res_addr;
 };
 
 struct pmsr_tool_results {
@@ -112,13 +110,13 @@ struct pmsr_tool_results {
 
 struct pmsr_cfg {
 	struct pmsr_dpmsr_cfg *dpmsr;
-	const char *signal_name[PMSR_MAX_SIG_CH];
+	const char **signal_name;
 	unsigned int pmsr_speed_mode;		/* 0: normal, 1: high speed */
 	unsigned int pmsr_window_len;
-	unsigned int clean_records;
 	unsigned int pmsr_sample_rate;
 	unsigned int dpmsr_count;
 	unsigned int sig_count;
+	unsigned int sig_limit;
 	unsigned int met_cts_mode; /* custimized timestamp mode */
 	unsigned int err;
 	unsigned int test;
@@ -128,10 +126,9 @@ struct pmsr_cfg {
 	unsigned int output_limit;
 	unsigned int rt_logbuf_size;
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCMI)
-	struct pmsr_tool_mon_results *share_buf;
+	struct pmsr_tool_mon_results_addr *share_buf;
 	unsigned int pmsr_tool_buffer_max_space;
 	struct pmsr_tool_results *pmsr_tool_share_results;
-	struct pmsr_tool_mon_results_acc acc_results;
 #endif
 	bool enable;
 	bool enable_hrtimer;
