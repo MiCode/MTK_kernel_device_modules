@@ -8402,7 +8402,7 @@ bool mtk_drm_top_clk_isr_get(struct mtk_ddp_comp *comp)
 			}
 		} else
 			if (atomic_read(&top_isr_ref) == 1) {
-				DRM_MMP_EVENT_START(mutex[1], comp->id, 0x11111111);
+				DRM_MMP_EVENT_START(IRQ, comp->id, 0x11111111);
 				mtk_vidle_user_power_keep(DISP_VIDLE_USER_TOP_CLK_ISR);
 			}
 
@@ -8435,7 +8435,7 @@ void mtk_drm_top_clk_isr_put(struct mtk_ddp_comp *comp)
 		} else
 			if (atomic_read(&top_isr_ref) == 0) {
 				mtk_vidle_user_power_release(DISP_VIDLE_USER_TOP_CLK_ISR);
-				DRM_MMP_EVENT_END(mutex[1], comp->id, 0x22222222);
+				DRM_MMP_EVENT_END(IRQ, comp->id, 0x22222222);
 			}
 
 		spin_unlock_irqrestore(&top_clk_lock, flags);
