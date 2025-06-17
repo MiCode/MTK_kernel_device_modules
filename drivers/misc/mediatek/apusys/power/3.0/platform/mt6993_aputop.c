@@ -950,6 +950,303 @@ static int mt6993_init_user_max_opp(struct platform_device *pdev)
 	return 0;
 }
 
+#define RST_HINT_BIT (7)
+
+/* Enum for all power_on/time and power_on/reset nodes */
+enum npu_pwr_stats_entry_id {
+	TIME_MVPUTOP      = 0x0,
+	TIME_MVPU0        = 0x1,
+	TIME_MVPU1        = 0x2,
+	TIME_MDLA0        = 0x3,
+	TIME_MDLA1        = 0x4,
+	TIME_MDLA2        = 0x5,
+	TIME_MDLA3        = 0x6,
+	TIME_ALL_ENGINES  = 0x7,
+	TIME_ENGINE_MAX   = 0x8,
+	RESET_MVPUTOP     = BIT(RST_HINT_BIT) | 0x0,
+	RESET_MVPU0       = BIT(RST_HINT_BIT) | 0x1,
+	RESET_MVPU1       = BIT(RST_HINT_BIT) | 0x2,
+	RESET_MDLA0       = BIT(RST_HINT_BIT) | 0x3,
+	RESET_MDLA1       = BIT(RST_HINT_BIT) | 0x4,
+	RESET_MDLA2       = BIT(RST_HINT_BIT) | 0x5,
+	RESET_MDLA3       = BIT(RST_HINT_BIT) | 0x6,
+	RESET_ALL_ENGINES = BIT(RST_HINT_BIT) | 0x7,
+	RESET_ENGINE_MAX  = BIT(RST_HINT_BIT) | 0x8,
+};
+
+enum npu_power_on_stats_type {
+	TIME_NPU = 0,
+	RESET_NPU = 1,
+};
+
+enum npu_freq_stats_type {
+	TIME_IN_STATES = 0,
+	RESET_NPUFREQ = 1,
+};
+
+static struct proc_dir_entry *npu_pwr_stats_root;
+static struct proc_dir_entry *npu_dir, *npu_power_on_dir, *npu_npufreq_dir;
+static struct proc_dir_entry *engine_dirs[TIME_ENGINE_MAX];
+static struct proc_dir_entry *engine_power_on_dirs[TIME_ENGINE_MAX];
+
+static const char * const engine_names[] = {
+	"mvputop", "mvpu0", "mvpu1", "mdla0", "mdla1", "mdla2", "mdla3", "all_engines"
+};
+
+/* --- Show functions --- */
+static int npupw_stts_all_seq_show(struct seq_file *m, void *v)
+{
+	seq_puts(m, "npu_pwr_stats/all stub\n");
+	return 0;
+}
+
+static int npupw_stts_npu_on_seq_show(struct seq_file *m, void *v)
+{
+	int type = (int)(uintptr_t)m->private;
+
+	if (type == TIME_NPU)
+		seq_puts(m, "npu/power_on/time stub\n");
+	else if (type == RESET_NPU)
+		seq_puts(m, "npu/power_on/reset stub\n");
+	else
+		seq_puts(m, "npu/power_on/unknown stub\n");
+	return 0;
+}
+
+static int npupw_stts_npufreq_seq_show(struct seq_file *m, void *v)
+{
+	int type = (int)(uintptr_t)m->private;
+
+	if (type == TIME_IN_STATES)
+		seq_puts(m, "npu/npufreq/time_in_states stub\n");
+	else if (type == RESET_NPUFREQ)
+		seq_puts(m, "npu/npufreq/reset stub\n");
+	else
+		seq_puts(m, "npu/npufreq/unknown stub\n");
+
+	return 0;
+}
+
+static int npupw_stts_engine_on_seq_show(struct seq_file *m, void *v)
+{
+	enum npu_pwr_stats_entry_id id = (enum npu_pwr_stats_entry_id)(uintptr_t)m->private;
+	const char *name = engine_names[(id & 0x7)];
+	const char *type = "time";
+
+	if ((id & BIT(RST_HINT_BIT)))
+		type = "reset";
+
+	seq_printf(m, "%s/power_on/%s stub\n", name, type);
+	return 0;
+}
+
+/* --- Open functions --- */
+
+static int npupw_stts_all_sqopen(struct inode *inode, struct file *file)
+{
+	return single_open(file, npupw_stts_all_seq_show, NULL);
+}
+
+static int npupw_stts_npu_on_sqopen(struct inode *inode, struct file *file)
+{
+	return single_open(file, npupw_stts_npu_on_seq_show, inode->i_private);
+}
+
+static int npupw_stts_npufreq_sqopen(struct inode *inode, struct file *file)
+{
+	return single_open(file, npupw_stts_npufreq_seq_show, inode->i_private);
+}
+
+static int npupw_stts_engine_on_sqopen(struct inode *inode, struct file *file)
+{
+	return single_open(file, npupw_stts_engine_on_seq_show, inode->i_private);
+}
+
+/* --- Proc ops --- */
+static const struct proc_ops npupw_stts_all_ops = {
+	.proc_open    = npupw_stts_all_sqopen,
+	.proc_read    = seq_read,
+	.proc_lseek   = seq_lseek,
+	.proc_release = single_release,
+};
+
+static const struct proc_ops npupw_stts_npu_on_ops = {
+	.proc_open    = npupw_stts_npu_on_sqopen,
+	.proc_read    = seq_read,
+	.proc_lseek   = seq_lseek,
+	.proc_release = single_release,
+};
+
+static const struct proc_ops npupw_stts_npufreq_ops = {
+	.proc_open    = npupw_stts_npufreq_sqopen,
+	.proc_read    = seq_read,
+	.proc_lseek   = seq_lseek,
+	.proc_release = single_release,
+};
+
+static const struct proc_ops npupw_stts_engine_ops = {
+	.proc_open    = npupw_stts_engine_on_sqopen,
+	.proc_read    = seq_read,
+	.proc_lseek   = seq_lseek,
+	.proc_release = single_release,
+};
+
+/* --- Main Procfs Init Function --- */
+int mt6993_apu_top_procfs_init(void)
+{
+	int ret = 0;
+
+	npu_pwr_stats_root = proc_mkdir("npu_pwr_stats", NULL);
+	ret = IS_ERR_OR_NULL(npu_pwr_stats_root);
+	if (ret) {
+		pr_info("failed to create npu_pwr_stats dir\n");
+		goto out;
+	}
+
+	if (IS_ERR_OR_NULL(proc_create("all", 0444, npu_pwr_stats_root, &npupw_stts_all_ops))) {
+		pr_info("failed to create npu_pwr_stats/all\n");
+		ret = -ENOMEM;
+		goto out;
+	}
+
+	npu_dir = proc_mkdir("npu", npu_pwr_stats_root);
+	ret = IS_ERR_OR_NULL(npu_dir);
+	if (ret) {
+		pr_info("failed to create npu dir\n");
+		goto out;
+	}
+	npu_power_on_dir = proc_mkdir("power_on", npu_dir);
+	ret = IS_ERR_OR_NULL(npu_power_on_dir);
+	if (ret) {
+		pr_info("failed to create npu/power_on dir\n");
+		goto out;
+	}
+	npu_npufreq_dir = proc_mkdir("npufreq", npu_dir);
+	ret = IS_ERR_OR_NULL(npu_npufreq_dir);
+	if (ret) {
+		pr_info("failed to create npu/npufreq dir\n");
+		goto out;
+	}
+
+	if (IS_ERR_OR_NULL(
+			proc_create_data("time", 0444, npu_power_on_dir,
+				&npupw_stts_npu_on_ops, (void *)TIME_NPU))) {
+		pr_info("failed to create npu/power_on/time\n");
+		ret = -ENOMEM;
+		goto out;
+	}
+	if (IS_ERR_OR_NULL(
+			proc_create_data("reset", 0444, npu_power_on_dir,
+				&npupw_stts_npu_on_ops, (void *)RESET_NPU))) {
+		pr_info("failed to create npu/power_on/reset\n");
+		ret = -ENOMEM;
+		goto out;
+	}
+
+	if (IS_ERR_OR_NULL(
+			proc_create_data("time_in_states", 0444, npu_npufreq_dir,
+				&npupw_stts_npufreq_ops, (void *)TIME_IN_STATES))) {
+		pr_info("failed to create npu/npufreq/time_in_states\n");
+		ret = -ENOMEM;
+		goto out;
+	}
+	if (IS_ERR_OR_NULL(
+			proc_create_data("reset", 0444, npu_npufreq_dir,
+				&npupw_stts_npufreq_ops, (void *)RESET_NPUFREQ))) {
+		pr_info("failed to create npu/npufreq/reset\n");
+		ret = -ENOMEM;
+		goto out;
+	}
+
+	/* Simplified proc node creation for engines */
+	static const int engine_enum_time[TIME_ENGINE_MAX] = {
+		TIME_MVPUTOP, TIME_MVPU0, TIME_MVPU1, TIME_MDLA0,
+		TIME_MDLA1,   TIME_MDLA2, TIME_MDLA3, TIME_ALL_ENGINES
+	};
+	static const int engine_enum_reset[TIME_ENGINE_MAX] = {
+		RESET_MVPUTOP, RESET_MVPU0, RESET_MVPU1, RESET_MDLA0,
+		RESET_MDLA1,   RESET_MDLA2, RESET_MDLA3, RESET_ALL_ENGINES
+	};
+
+	for (int i = 0; i < TIME_ENGINE_MAX; ++i) {
+		engine_dirs[i] = proc_mkdir(engine_names[i], npu_pwr_stats_root);
+		ret = IS_ERR_OR_NULL(engine_dirs[i]);
+		if (ret) {
+			pr_info("failed to create %s dir\n", engine_names[i]);
+			goto out;
+		}
+		engine_power_on_dirs[i] = proc_mkdir("power_on", engine_dirs[i]);
+		ret = IS_ERR_OR_NULL(engine_power_on_dirs[i]);
+		if (ret) {
+			pr_info("failed to create %s/power_on dir\n", engine_names[i]);
+			goto out;
+		}
+		if (IS_ERR_OR_NULL(
+				proc_create_data("time", 0444,
+					engine_power_on_dirs[i], &npupw_stts_engine_ops,
+					(void *)(uintptr_t)engine_enum_time[i]))) {
+			pr_info("failed to create %s/power_on/time\n", engine_names[i]);
+			ret = -ENOMEM;
+			goto out;
+		}
+		if (IS_ERR_OR_NULL(
+				proc_create_data("reset", 0444,
+					engine_power_on_dirs[i], &npupw_stts_engine_ops,
+					(void *)(uintptr_t)engine_enum_reset[i]))) {
+			pr_info("failed to create %s/power_on/reset\n", engine_names[i]);
+			ret = -ENOMEM;
+			goto out;
+		}
+	}
+
+	ret = 0;
+out:
+	return ret;
+}
+
+/* Cleanup all procfs entries created by mt6993_apu_top_procfs_init */
+void mt6993_apu_top_procfs_exit(void)
+{
+	/* Remove all engines procfs entries */
+	for (int i = 0; i < TIME_ENGINE_MAX; ++i) {
+		struct proc_dir_entry *engine_dir = engine_dirs[i];
+		struct proc_dir_entry *engine_power_on_dir = engine_power_on_dirs[i];
+
+		if (!IS_ERR_OR_NULL(engine_dir)) {
+			if (!IS_ERR_OR_NULL(engine_power_on_dir)) {
+				remove_proc_entry("time", engine_power_on_dir);
+				remove_proc_entry("reset", engine_power_on_dir);
+				remove_proc_entry("power_on", engine_dir);
+			}
+			remove_proc_entry(engine_names[i], npu_pwr_stats_root);
+		}
+	}
+
+	/* Remove NPU npufreq */
+	if (!IS_ERR_OR_NULL(npu_npufreq_dir)) {
+		remove_proc_entry("reset", npu_npufreq_dir);
+		remove_proc_entry("time_in_states", npu_npufreq_dir);
+		remove_proc_entry("npufreq", npu_dir);
+	}
+
+	/* Remove NPU power_on */
+	if (!IS_ERR_OR_NULL(npu_power_on_dir)) {
+		remove_proc_entry("reset", npu_power_on_dir);
+		remove_proc_entry("time", npu_power_on_dir);
+		remove_proc_entry("power_on", npu_dir);
+	}
+
+	/* Remove NPU */
+	if (!IS_ERR_OR_NULL(npu_dir))
+		remove_proc_entry("npu", npu_pwr_stats_root);
+
+	/* Remove "all" */
+	remove_proc_entry("all", npu_pwr_stats_root);
+
+	/* Remove root */
+	remove_proc_entry("npu_pwr_stats", NULL);
+}
+
 static int mt6993_apu_top_pb(struct platform_device *pdev)
 {
 	int ret = 0, val = 0;
@@ -1014,6 +1311,8 @@ static int mt6993_apu_top_pb(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
+	ret = mt6993_apu_top_procfs_init();
+
 #if TIMER_RDY
 	timer_setup(&limit_timer, limit_timer_callback, 0);
 #endif
@@ -1046,6 +1345,8 @@ static int mt6993_apu_top_rm(struct platform_device *pdev)
 	remove_proc_entry("apu_cur_mdla_freq", apudvfs_dir);
 	remove_proc_entry("apu_opp_table", apudvfs_dir);
 	remove_proc_entry("apudvfs", NULL);
+
+	mt6993_apu_top_procfs_exit();
 
 #if TIMER_RDY
 	del_timer(&limit_timer);
