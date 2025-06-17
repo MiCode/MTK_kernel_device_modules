@@ -225,6 +225,27 @@ TRACE_EVENT(turbo_vip,
 		__entry->enf_mask)
 );
 
+TRACE_EVENT(vip_loom,
+	TP_PROTO(const char *desc, int val, const char *caller),
+	TP_ARGS(desc, val, caller),
+	TP_STRUCT__entry(
+		__string(desc, desc)
+		__field(int, val)
+		__string(caller, caller)
+	),
+
+	TP_fast_assign(
+		__assign_str(desc);
+		__entry->val = val;
+		__assign_str(caller);
+	),
+
+	TP_printk("desc=%s val=%d caller=%s",
+		__get_str(desc),
+		__entry->val,
+		__get_str(caller))
+);
+
 #endif /*_TRACE_VIP_ENGINE_H */
 
 #undef TRACE_INCLUDE_PATH

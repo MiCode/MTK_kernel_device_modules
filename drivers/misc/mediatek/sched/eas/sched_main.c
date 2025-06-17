@@ -145,13 +145,28 @@ static void mtk_record_wakee(struct task_struct *p)
 }
 
 void (*task_turbo_select_task_rq_fair_hook)(struct task_struct *p, int *target_cpu);
+void (*vip_loom_select_task_rq_fair_hook)(struct task_struct *p, int *target_cpu, int *flag);
 EXPORT_SYMBOL(task_turbo_select_task_rq_fair_hook);
+EXPORT_SYMBOL(vip_loom_select_task_rq_fair_hook);
 static void sched_select_task_rq_fair_hook(void *ignore, struct task_struct *p,
 							int prev_cpu, int sd_flag,
 							int wake_flags, int *target_cpu)
 {
+	int loom_select_reason = -1;
+
 	if (trace_sched_domain_flags_enabled())
 		trace_sched_domain_flags(p, prev_cpu, sd_flag, wake_flags, *target_cpu);
+
+	/* vip loom algo. */
+	if (vip_loom_select_task_rq_fair_hook) {
+		int flag = NONE;
+
+		vip_loom_select_task_rq_fair_hook(p, target_cpu, &flag);
+		if (*target_cpu >= 0)
+			loom_select_reason = LB_LOOM_ALGO;
+		if (flag == ORIGINAL_PATH)
+			loom_select_reason = LB_LOOM_OP;
+	}
 
 	/* task turbo algo. */
 	if (task_turbo_select_task_rq_fair_hook) {
@@ -169,7 +184,7 @@ static void sched_select_task_rq_fair_hook(void *ignore, struct task_struct *p,
 			!cpumask_test_cpu(smp_processor_id(), p->cpus_ptr)) {
 				int sync = (wake_flags & WF_SYNC) && !(current->flags & PF_EXITING);
 
-				mtk_find_energy_efficient_cpu(NULL, p, prev_cpu, sync, target_cpu);
+				mtk_find_energy_efficient_cpu(NULL, p, prev_cpu, sync, target_cpu, loom_select_reason);
 			}
 	}
 

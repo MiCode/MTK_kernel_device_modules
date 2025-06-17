@@ -41,6 +41,16 @@ enum {
 	CLEAR_UCLAMP_LIST		= 2,
 };
 
+/* FLT mode */
+enum _flt_mode {
+	FLT_MODE_0 = 0,
+	FLT_MODE_1 = 1,
+	FLT_MODE_2 = 2,
+	FLT_MODE_3 = 3,
+	FLT_MODE_4 = 4,
+	FLT_MODE_NUM,
+};
+
 struct cpu_time {
 	u64 time;
 };
@@ -87,4 +97,9 @@ extern int *tt_vip_enable_p;
 #endif
 int do_set_server_vip(pid_t pid, int enable);
 void do_enable_binder_vipServer(int enable);
+#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
+extern void flt_set_mode(u32 mode);
+extern u32 flt_get_mode(void);
+#endif
+extern void (*vip_loom_select_task_rq_fair_hook)(struct task_struct *p, int *target_cpu, int *flag);
 #endif /* _VIP_ENGINE_H_ */

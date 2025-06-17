@@ -1286,7 +1286,7 @@ void vip_push_runnable(struct rq *src_rq)
 
 	vts = &((struct mtk_static_vendor_task *)task_to_pushed->android_vendor_data1)->vip_task;
 	vts->faster_compute_eng = true;
-	mtk_find_energy_efficient_cpu(NULL, task_to_pushed, this_cpu, 0, &new_cpu);
+	mtk_find_energy_efficient_cpu(NULL, task_to_pushed, this_cpu, 0, &new_cpu, -1);
 
 	if (new_cpu < 0)
 		goto put_task;

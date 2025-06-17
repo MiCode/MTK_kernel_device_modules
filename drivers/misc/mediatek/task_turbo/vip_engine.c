@@ -81,6 +81,11 @@ static int f_tgid;
 static ktime_t cur_touch_time;
 static ktime_t cur_touch_down_time;
 static u64 enforced_qualified_mask;
+#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
+static atomic_t vip_loom_flt_cfg;
+static int flt_orig_mode = -1;
+#endif
+static atomic_t vip_loom_select_cfg;
 
 /*
  * get_cpu_loading - Calculates the CPU loading for each CPU
@@ -1940,6 +1945,65 @@ static struct platform_driver mtk_platform_vip_engine_driver = {
 	.id_table = platform_vip_engine_id_table,
 };
 
+void vip_loom_select_task_rq_fair(struct task_struct *p, int *target_cpu, int *flag)
+{
+#if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
+	int vip_prio = get_vip_task_prio(p);
+	bool is_vip = prio_is_vip(vip_prio, NOT_VIP);
+
+	if (is_vip)
+		return;
+#endif
+
+	if (atomic_read(&vip_loom_select_cfg))
+		*flag = ORIGINAL_PATH;
+}
+
+int vip_loom_select_cfg_apply(int val, int caller_id)
+{
+	static const char * const caller_id_desc[] = {
+		"DEBUG_NODE", "FPSGO", "UX", "VIDEO"
+	};
+
+	if (val < 0 || caller_id < 0 || caller_id >= MAX_TYPE)
+		return -EINVAL;
+
+	atomic_set(&vip_loom_select_cfg, !!val);
+
+	trace_vip_loom("select_cfg", !!val, caller_id_desc[caller_id]);
+
+	return 0;
+}
+EXPORT_SYMBOL(vip_loom_select_cfg_apply);
+
+#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
+int vip_loom_flt_cfg_apply(int val, int caller_id)
+{
+	static const char * const caller_id_desc[] = {
+		"DEBUG_NODE", "FPSGO", "UX", "VIDEO"
+	};
+
+	if (val < 0 || caller_id < 0 || caller_id >= MAX_TYPE)
+		return -EINVAL;
+
+	atomic_set(&vip_loom_flt_cfg, !!val);
+
+	if (atomic_read(&vip_loom_flt_cfg) && flt_get_mode() != FLT_MODE_0) {
+		if (flt_orig_mode == -1)
+			flt_orig_mode = flt_get_mode();
+		flt_set_mode(FLT_MODE_0);
+	} else if (!atomic_read(&vip_loom_flt_cfg) && flt_get_mode() != flt_orig_mode) {
+		if (flt_orig_mode != -1)
+			flt_set_mode(flt_orig_mode);
+	}
+
+	trace_vip_loom("flt_cfg", !!val, caller_id_desc[caller_id]);
+
+	return 0;
+}
+EXPORT_SYMBOL(vip_loom_flt_cfg_apply);
+#endif
+
 static int __init init_vip_engine(void)
 {
 	int ret, ret_erri_line;
@@ -2000,6 +2064,7 @@ static int __init init_vip_engine(void)
 	vip_engine_set_vip_ctrl_node_sbe = set_vip_ctrl_node;
 	vip_engine_unset_vip_ctrl_node_sbe = unset_vip_ctrl_node;
 	uclamp_wq = create_singlethread_workqueue("uclamp_singlethread_wq");
+	vip_loom_select_task_rq_fair_hook = vip_loom_select_task_rq_fair;
 
 failed:
 	if (ret)

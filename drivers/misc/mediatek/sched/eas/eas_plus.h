@@ -58,6 +58,8 @@ DECLARE_PER_CPU(unsigned long, min_freq);
 #define LB_RT_SAME_FIRST     (0x80002)
 #define LB_RT_FAIL_FIRST     (0x80004)
 #define LB_SHORTCUT_COMPRESS (0x100000)
+#define LB_LOOM_OP (0x1000000)
+#define LB_LOOM_ALGO (0x1000001)
 
 /*
  * energy_env - Utilization landscape for energy estimation.
@@ -150,7 +152,7 @@ extern struct perf_domain *find_pd(struct perf_domain *pd, int cpu);
 extern void hook_sched_balance_find_src_group(void *data, struct sched_group *busiest,
 		struct rq *dst_rq, int *out_balance);
 extern void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p,
-		int prev_cpu, int sync, int *new_cpu);
+		int prev_cpu, int sync, int *new_cpu, int loom_select_reason);
 extern void mtk_cpu_overutilized(void *data, int cpu, int *overutilized);
 extern void mtk_overutilized_temp(void *ignore, struct task_struct *p,
 							int prev_cpu, int sd_flag,
@@ -210,6 +212,11 @@ extern void set_newly_idle_balance_interval_us(unsigned int interval_us);
 extern unsigned int get_newly_idle_balance_interval_us(void);
 extern void set_get_thermal_headroom_interval_tick(unsigned int tick);
 extern unsigned int get_thermal_headroom_interval_tick(void);
+
+enum VIP_LOOM_SELECTOR {
+	NONE,
+	ORIGINAL_PATH,
+};
 
 /* add struct for user to control soft affinity */
 enum {

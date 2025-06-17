@@ -2401,7 +2401,7 @@ DEFINE_PER_CPU(cpumask_var_t, mtk_select_rq_mask);
 static DEFINE_PER_CPU(cpumask_t, energy_cpus);
 
 void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_cpu, int sync,
-					int *new_cpu)
+					int *new_cpu, int loom_select_reason)
 {
 	struct cpumask *cpus = this_cpu_cpumask_var_ptr(mtk_select_rq_mask);
 	unsigned long best_delta = ULONG_MAX;
@@ -2439,6 +2439,11 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 
 	if (!get_eas_hook())
 		return;
+
+	if (loom_select_reason != -1) {
+		select_reason = loom_select_reason;
+		goto done;
+	}
 
 	cpumask_clear(&allowed_cpu_mask);
 
