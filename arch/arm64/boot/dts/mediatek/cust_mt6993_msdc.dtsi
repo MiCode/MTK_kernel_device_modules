@@ -6,7 +6,7 @@
  * MT6993 MSDC DTSI File
  ********************************************/
 #include <dt-bindings/gpio/gpio.h>
-
+#include <dt-bindings/interconnect/mtk,mt6873-emi.h>
 
 &mmc1 {
 	host-index = <1>;
@@ -32,6 +32,10 @@
 	vqmmc-supply = <&mt6661_5_ldc0_3>;
 	no-mmc;
 	no-sdio;
+	mediatek,mmc-qos;
+	interconnects = <&dvfsrc MT6873_MASTER_UFS &dvfsrc MT6873_SLAVE_DDR_EMI>;
+	interconnect-names = "msdc-perf-bw";
+	required-opps = <&dvfsrc_freq_opp7>;
 };
 
 &mmc2 {
