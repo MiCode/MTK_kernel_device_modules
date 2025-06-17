@@ -2409,12 +2409,17 @@ static int mtk_mipi_tx_pll_dphy_config_mt6993(struct mtk_mipi_tx *mipi_tx)
 		return -EINVAL;
 	}
 
-	if (rate < 2500)
+	if (mipi_tx->sw_ver == B0_CHIP) {
 		mtk_mipi_tx_update_bits(mipi_tx, MIPITX_VOLTAGE_SEL_MT6983,
-			FLD_RG_DSI_PRD_REF_SEL, 0x7);
-	else
-		mtk_mipi_tx_update_bits(mipi_tx, MIPITX_VOLTAGE_SEL_MT6983,
-			FLD_RG_DSI_PRD_REF_SEL, 0x7);
+			FLD_RG_DSI_PRD_REF_SEL, 0x1);
+	} else {
+		if (rate < 2500)
+			mtk_mipi_tx_update_bits(mipi_tx, MIPITX_VOLTAGE_SEL_MT6983,
+				FLD_RG_DSI_PRD_REF_SEL, 0x7);
+		else
+			mtk_mipi_tx_update_bits(mipi_tx, MIPITX_VOLTAGE_SEL_MT6983,
+				FLD_RG_DSI_PRD_REF_SEL, 0x7);
+	}
 
 #ifdef IF_ZERO
 	/* No need keep as default */
@@ -2846,6 +2851,10 @@ static int mtk_mipi_tx_pll_cphy_config_mt6993(struct mtk_mipi_tx *mipi_tx)
 		mtk_mipi_tx_update_bits(mipi_tx, MIPITX_VOLTAGE_SEL_MT6983,
 			FLD_RG_DSI_HSTX_LDO_REF_SEL, mipi_volt << 6);
 	}
+
+	if (mipi_tx->sw_ver == B0_CHIP)
+		mtk_mipi_tx_update_bits(mipi_tx, MIPITX_VOLTAGE_SEL_MT6983,
+				FLD_RG_DSI_PRD_REF_SEL, 0x1);
 
 	/* value different from MT6983 */
 	if (rate < 2500)

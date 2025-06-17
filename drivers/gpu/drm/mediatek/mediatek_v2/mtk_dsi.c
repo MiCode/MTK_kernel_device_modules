@@ -3433,7 +3433,7 @@ static void mtk_dsi_calc_vdo_timing(struct mtk_dsi *dsi)
 					__func__, t_hfp, dsi->hfp_minimum_dphy);
 		if (dsi->driver_data->n_verion >= VER_N3 &&
 			horizontal_frontporch_byte < dsi->hfp_minimum_wc_dphy) {
-			DDPINFO(
+			DDPMSG(
 				"%s HFP_WC:%d < DPHY HFP_WC minimum limitation:%d\n",
 					__func__, horizontal_frontporch_byte, dsi->hfp_minimum_wc_dphy);
 			horizontal_frontporch_byte = dsi->hfp_minimum_wc_dphy;
@@ -16013,6 +16013,7 @@ static int mtk_dsi_bind(struct device *dev, struct device *master, void *data)
 	struct drm_device *drm = data;
 	struct mtk_dsi *dsi = dev_get_drvdata(dev);
 	struct mtk_drm_private *priv = NULL;
+	struct mtk_mipi_tx *mipi_tx = phy_get_drvdata(dsi->phy);
 
 	DDPINFO("%s+\n", __func__);
 
@@ -16033,6 +16034,7 @@ static int mtk_dsi_bind(struct device *dev, struct device *master, void *data)
 	}
 
 	priv = drm->dev_private;
+	mipi_tx->sw_ver = priv->sw_ver;
 	if (dsi->ext && dsi->ext->params && dsi->ext->params->dconfig_mipi_chg_en) {
 		ret = mtk_drm_helper_set_opt_by_name(priv->helper_opt,
 			"MTK_DRM_OPT_DYN_MIPI_CHANGE", 1);
