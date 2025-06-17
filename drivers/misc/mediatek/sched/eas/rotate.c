@@ -82,8 +82,11 @@ static void task_rotate_work_func(struct work_struct *work)
 	struct rq *src_rq, *dst_rq;
 
 	irq_log_store();
+	/* Make sure no CPUs can come up or down */
+	cpus_read_lock();
 	ret = migrate_swap(wr->src_task, wr->dst_task,
 			task_cpu(wr->dst_task), task_cpu(wr->src_task));
+	cpus_read_unlock();
 	irq_log_store();
 
 	if (ret == 0) {
