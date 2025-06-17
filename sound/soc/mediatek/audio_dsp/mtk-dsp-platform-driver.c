@@ -1080,6 +1080,7 @@ static void mtk_dsp_ul_handler(struct mtk_base_dsp *dsp,
 	struct mtk_base_dsp_mem *dsp_mem = &dsp->dsp_mem[id];
 	void *ipi_audio_buf;
 	unsigned long flags;
+	unsigned int size = 0;
 	spinlock_t *ringbuf_lock = &dsp->dsp_mem[id].ringbuf_lock;
 
 	if (!dsp->dsp_mem[id].substream) {
@@ -1102,12 +1103,22 @@ static void mtk_dsp_ul_handler(struct mtk_base_dsp *dsp,
 	}
 
 	if (ipi_msg && ipi_msg->param2 == ADSP_UL_READ_RESET) {
+		if (dsp->dsp_mem[id].adsp_buf.aud_buffer.period_count != 0) {
+			// bufLen = period size * period count * frame size, fill one period data byte
+			size = dsp->dsp_mem[id].ring_buf.bufLen / dsp->dsp_mem[id].adsp_buf.aud_buffer.period_count;
+		} else {
+			//set a default value, but it should not enter here, since period count should be greater than 1
+			size = dsp->dsp_mem[id].ring_buf.bufLen / 2;
+		}
+
 		spin_lock_irqsave(ringbuf_lock, flags);
-		RingBuf_Reset(&dsp->dsp_mem[id].ring_buf);
-		/* set buf size full to trigger pcm_read */
-		dsp->dsp_mem[id].ring_buf.datacount = dsp->dsp_mem[id].ring_buf.bufLen;
+		pr_info("%s reset UL write size = %u availsize = %d\n", __func__,
+			size, RingBuf_getFreeSpace(&dsp->dsp_mem[id].ring_buf));
+		if (RingBuf_getFreeSpace(&dsp->dsp_mem[id].ring_buf) >= size) {
+			RingBuf_writeDataValue(&dsp->dsp_mem[id].ring_buf , 0, size);
+			Ringbuf_Check(&dsp->dsp_mem[id].ring_buf);
+		}
 		spin_unlock_irqrestore(ringbuf_lock, flags);
-		pr_info("%s reset UL\n", __func__);
 		snd_pcm_period_elapsed(dsp->dsp_mem[id].substream);
 		goto DSP_IRQ_HANDLER_ERR;
 	}
