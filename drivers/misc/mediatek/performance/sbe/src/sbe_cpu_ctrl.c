@@ -706,7 +706,7 @@ void sbe_set_per_task_cap(struct sbe_render_info *thr)
 
 	/* Apply affinity task boost if conditions are met */
 	if (is_valid_affinity && is_valid_threshold) {
-		if ((set_blc_wt >= 0) && (set_blc_wt < sbe_affinity_task_low_threshold_cap)) {
+		if ((set_blc_wt >= 0) && (thr->ux_blc_cur < sbe_affinity_task_low_threshold_cap)) {
 			set_blc_wt += thr->ux_affinity_task_basic_cap;
 			set_blc_wt = clamp(set_blc_wt, 0, 100);
 		}
