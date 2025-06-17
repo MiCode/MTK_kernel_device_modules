@@ -51,6 +51,9 @@
 #define MTK_WAIT_GHWV_IRQ_DONE_CNT    10000
 #define MTK_WAIT_GHWV_IRQ_DONE_US     1
 
+#define MMUP_CORE_R_GPR11_ADDR (0x31a041ec)
+static void __iomem *__infra2hfrp_base, *__CORE_R_GPR11_reg;
+static phys_addr_t __infra2hfrp_base_phys;
 static bool _inited;
 static struct regmap *regmaps[MAX_HWCCF];
 static int regmap_count = 0;
@@ -287,6 +290,9 @@ static int _v1_mm_hwccf_voter_ctrl(struct regmap *regmap, uint32_t setclr_ofs, u
 	hwccf_read(regmap, setclr_ofs);
 	goto skip;
 #endif
+	// dummy read mmup reg
+	val = readl(__CORE_R_GPR11_reg);
+	HWCCF_DBG("__CORE_R_GPR11_reg = 0x%08x\n", val);
 	// Check repeat vote
 	val = hwccf_read(regmap, en_ofs);
 	if (is_set ? IS_MASK_SET(val, vote_val) : IS_MASK_CLR(val, vote_val)) {
@@ -1368,6 +1374,11 @@ static int hwccf_drv_probe(struct platform_device *pdev)
 
 	/* check current regmap info == required match_data */
 	if (regmap_count == match_data->required_regmaps) {
+
+		__infra2hfrp_base_phys = ((unsigned long)MMUP_CORE_R_GPR11_ADDR) & ~(PAGE_SIZE - 1U);
+		__infra2hfrp_base = ioremap(((unsigned long)MMUP_CORE_R_GPR11_ADDR) & ~(PAGE_SIZE - 1U), PAGE_SIZE);
+		__CORE_R_GPR11_reg =
+			__infra2hfrp_base + ((unsigned long)MMUP_CORE_R_GPR11_ADDR) - __infra2hfrp_base_phys;
 
 		/* set platform ops */
 		hwccf_ops = match_data->ops;
