@@ -13,10 +13,10 @@
 
 #define DEBUG_BITMAP 0
 
-static bool is_pre_alloc_total_size(struct secure_heap_page *sec_heap)
+static bool is_pre_alloc_total_num(struct secure_heap_page *sec_heap)
 {
 	if ((sec_heap->tmem_type == TRUSTED_MEM_REQ_PROT_PAGE) &&
-		(atomic64_read(&sec_heap->total_size) == get_pre_alloc_page_size()))
+		(atomic64_read(&sec_heap->total_num) == get_pre_alloc_page_num()))
 		return true;
 
 	return false;
@@ -484,6 +484,7 @@ TMEM_PRIV int page_alloc_v2(struct secure_heap_page *sec_heap,
 	buffer->ssheap->elems = table->orig_nents;
 	buffer->len = buffer->ssheap->aligned_req_size;
 	atomic64_add(buffer->len, &sec_heap->total_size);
+	atomic64_add(1, &sec_heap->total_num);
 
 	trusted_mem_enable_high_freq();
 	// pmm_assign assign pa to protected pa
@@ -681,13 +682,14 @@ TMEM_PRIV int page_free_v2(struct secure_heap_page *sec_heap,
 			       compound_order(page));
 	}
 
+	atomic64_sub(1, &sec_heap->total_num);
 	if (atomic64_sub_return(buffer->len, &sec_heap->total_size) < 0)
 		pr_warn("%s, total memory overflow, %#llx!!\n", __func__,
 			atomic64_read(&sec_heap->total_size));
 
 	/* Defragment once the total size of sec heap is zero */
 	if (atomic64_read(&sec_heap->total_size) == 0 ||
-		is_pre_alloc_total_size(sec_heap)) {
+		is_pre_alloc_total_num(sec_heap)) {
 		pr_info("%s: page count:%d, merge the cpu and infra-mpu pgtbl\n",
 				__func__, page_count);
 #if (DEBUG_BITMAP == 1)

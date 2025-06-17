@@ -105,6 +105,7 @@ struct secure_heap_region {
 struct secure_heap_page {
 	const char *heap_name;
 	atomic64_t total_size;
+	atomic64_t total_num;
 	struct dma_heap *heap;
 	struct device *heap_dev;
 	struct page *bitmap;

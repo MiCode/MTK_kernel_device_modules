@@ -678,11 +678,11 @@ bool is_hf_bypass_cma_enabled(void)
 	return true;
 }
 
-u64 get_pre_alloc_page_size(void)
+u64 get_pre_alloc_page_num(void)
 {
-	return pre_alloc_prot_page_num * PAGE_SIZE;
+	return pre_alloc_prot_page_num;
 }
-EXPORT_SYMBOL(get_pre_alloc_page_size);
+EXPORT_SYMBOL(get_pre_alloc_page_num);
 
 static void set_pre_alloc_prot_page_num(void)
 {

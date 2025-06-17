@@ -50,6 +50,6 @@ bool is_ffa_enabled(void);
 bool is_page_based_v2_enabled(void);
 bool is_tee_mmap_by_page_enabled(void);
 bool is_hf_bypass_cma_enabled(void);
-u64 get_pre_alloc_page_size(void);
+u64 get_pre_alloc_page_num(void);
 struct device *get_ssmr_dev(void);
 #endif
