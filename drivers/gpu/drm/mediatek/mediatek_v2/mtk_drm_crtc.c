@@ -3475,6 +3475,87 @@ int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level,
 	return ret;
 }
 
+int mtk_drm_set_dbv_mode(struct drm_crtc *crtc, unsigned int dbv_mode)
+{
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_drm_private *priv = NULL;
+	struct mtk_ddp_comp *oddmr_comp;
+
+	if (!crtc || !crtc->dev) {
+		DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
+		return -EINVAL;
+	}
+	priv = crtc->dev->dev_private;
+	if (!priv) {
+		DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
+		return -EINVAL;
+	}
+	if (!mtk_crtc) {
+		DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
+		return -EINVAL;
+	}
+
+	/* set dbv_mode */
+	oddmr_comp = priv->ddp_comp[DDP_COMPONENT_ODDMR0];
+	mtk_ddp_comp_io_cmd(oddmr_comp, NULL, ODDMR_DBV_MODE_CHG, &dbv_mode);
+
+	return 0;
+}
+
+int mtk_drm_set_dmr_binset(struct drm_crtc *crtc, unsigned int binset)
+{
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_drm_private *priv = NULL;
+	struct mtk_ddp_comp *oddmr_comp;
+
+	if (!crtc || !crtc->dev) {
+		DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
+		return -EINVAL;
+	}
+	priv = crtc->dev->dev_private;
+	if (!priv) {
+		DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
+		return -EINVAL;
+	}
+	if (!mtk_crtc) {
+		DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
+		return -EINVAL;
+	}
+
+	/* set dbv_mode */
+	oddmr_comp = priv->ddp_comp[DDP_COMPONENT_ODDMR0];
+	mtk_ddp_comp_io_cmd(oddmr_comp, NULL, ODDMR_BINSET_CHG, &binset);
+
+	return 0;
+}
+
+int mtk_drm_get_dmr_cus_own_data(struct drm_crtc *crtc, void *cus_data)
+{
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_drm_private *priv = NULL;
+	struct mtk_ddp_comp *oddmr_comp;
+
+	if (!crtc || !crtc->dev) {
+		DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
+		return -EINVAL;
+	}
+	priv = crtc->dev->dev_private;
+	if (!priv) {
+		DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
+		return -EINVAL;
+	}
+	if (!mtk_crtc) {
+		DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
+		return -EINVAL;
+	}
+
+	/* get dmr customer data */
+	oddmr_comp = priv->ddp_comp[DDP_COMPONENT_ODDMR0];
+	mtk_ddp_comp_io_cmd(oddmr_comp, NULL, GET_ODDMR_CUS_OWN_DATA, cus_data);
+
+	return 0;
+}
+
 static void mtk_drm_spr_notify(struct drm_crtc *crtc, struct cmdq_pkt *handle,
 	unsigned int spr_status)
 {

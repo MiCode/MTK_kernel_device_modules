@@ -38,6 +38,7 @@
 #define DMR_LINE_BUFFER 19
 #define MAX_PID_LENGTH 256
 #define MAX_DBV_MODE_NUM 5
+#define CUS_MAX_DBV_NUM 50
 
 #define ODDMR_SECTION_WHOLE 0
 #define ODDMR_SECTION_END 0xFEFE
@@ -345,7 +346,7 @@ struct mtk_drm_dmr_cfg_info {
 struct mtk_drm_oddmr_binset_info {
 	unsigned int dbv_interval_num;
 	unsigned int *dbv_interval_node; //1024 1520 2048:{0~1024, 1024~1520, 1520~2048, >2048}
-	unsigned int *dbv_interval_bin_idx; // 0 1 2 -1
+	int *dbv_interval_bin_idx; // 0 1 2 -1
 };
 
 struct mtk_drm_oddmr_binset_cfg_info {
@@ -355,6 +356,18 @@ struct mtk_drm_oddmr_binset_cfg_info {
 	struct mtk_drm_oddmr_binset_info binset_list[MAX_BINSET_NUM];
 	struct mtk_drm_oddmr_panel_ID panel_id;
 	struct mtk_drm_dmr_fps_dbv_node remap_params;
+};
+
+struct mtk_drm_cus_setting_info {
+	unsigned int dbv_mode_num;
+	unsigned int default_dbv_mode;
+	struct mtk_drm_dmr_fps_dbv_node fps_dbv_node[MAX_DBV_MODE_NUM];
+	struct mtk_drm_dmr_fps_dbv_change_cfg fps_dbv_change_cfg[MAX_DBV_MODE_NUM];
+};
+
+struct cus_own_data {
+	unsigned int size;
+	void *data;
 };
 
 struct mtk_dbi_curve_2d {
@@ -676,6 +689,9 @@ struct mtk_disp_oddmr_dmr_data {
 	atomic_t cur_binset_idx;
 	atomic_t cur_bin_idx;
 	atomic_t dmr_timing_state; //bit3:binset_chg; bit2:dbv_chg; bit1:fps_chg; bit0:dbv_mode_chg
+	atomic_t cus_binset_state;
+	atomic_t cus_setting_state;
+	atomic_t cus_own_data_state;
 	unsigned int max_table_size;
 };
 
@@ -737,6 +753,7 @@ struct mtk_disp_oddmr_primary {
 	struct mutex timing_lock;
 	struct mutex dbi_data_lock;
 	struct mutex dmr_data_lock;
+	struct mutex dmr_cus_own_data_lock;
 	enum ODDMR_STATE od_state;
 	enum ODDMR_STATE dmr_state;
 	enum ODDMR_STATE dbi_state;
@@ -744,6 +761,9 @@ struct mtk_disp_oddmr_primary {
 	int od_basic_info_loaded;
 	struct mtk_drm_dmr_cfg_info dmr_multi_bin[MAX_BIN_NUM];
 	struct mtk_drm_oddmr_binset_cfg_info dmr_binset_cfg_info;
+	struct mtk_drm_oddmr_binset_cfg_info dmr_cus_binset_info;
+	struct mtk_drm_cus_setting_info dmr_cus_setting_info;
+	struct cus_own_data dmr_cus_own_data;
 	struct mtk_drm_oddmr_reg_tuning oddmr_reg_tuning_info;
 	struct mtk_drm_dbi_cfg_info dbi_cfg_info;
 	struct mtk_drm_dbi_cfg_info dbi_cfg_info_tb1;

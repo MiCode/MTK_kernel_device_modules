@@ -1439,6 +1439,7 @@ enum mtk_ddp_io_cmd {
 	DSI_GCE_EVENT_CFG,
 	SET_DSI_GOLDEN_SETTING,
 	DISP_SPR_SWITCH,
+	GET_ODDMR_CUS_OWN_DATA,
 };
 
 enum mtk_ddp_comp_apsrc_crtc_id {

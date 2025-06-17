@@ -1852,7 +1852,9 @@ void mtk_crtc_exec_atf_prebuilt_instr(struct mtk_drm_crtc *mtk_crtc,
 			struct cmdq_pkt *handle);
 
 unsigned int mtk_get_cur_spr_type(struct drm_crtc *crtc);
-
+int mtk_drm_set_dbv_mode(struct drm_crtc *crtc, unsigned int dbv_mode);
+int mtk_drm_set_dmr_binset(struct drm_crtc *crtc, unsigned int binset);
+int mtk_drm_get_dmr_cus_own_data(struct drm_crtc *crtc, void *cus_data);
 int mtk_drm_switch_spr(struct drm_crtc *crtc, unsigned int en,
 	unsigned int need_lock, unsigned int need_repaint, struct cmdq_pkt *handle);
 
