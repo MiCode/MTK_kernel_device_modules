@@ -9779,6 +9779,7 @@
 			mediatek,hw-req-ctrl;
 			mediatek,noise-still-tr;
 			mediatek,gen1-txdeemph;
+			mediatek,u2-lpm-quirks = <0x1>;
 			mediatek,syscon-wakeup = <&pericfg_ao_clk 0x200 103>;
 			wakeup-source;
 			usb-role-switch;
