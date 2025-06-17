@@ -3912,6 +3912,12 @@ void mtk_oddmr_dump(struct mtk_ddp_comp *comp)
 	void __iomem *mbaddr;
 	int i;
 	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
+	bool od_support = oddmr_data->primary_data->od_support;
+	bool dmr_support = oddmr_data->primary_data->dmr_support;
+	bool dbi_support = oddmr_data->primary_data->dbi_support;
+
+	if (!(od_support || dmr_support || dbi_support))
+		return;
 
 	if (oddmr_data->data->dbi_version < MTK_DBI_V2) {
 		DDPDUMP("== %s REGS:%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
@@ -3984,7 +3990,7 @@ void mtk_oddmr_dump(struct mtk_ddp_comp *comp)
 					readl(mbaddr + i + 0xc));
 			}
 			DDPDUMP("ODDMR+%x: 0x%x 0x%x\n", 0x10ca4,
-				readl(mbaddr + 0x10ca4), readl(mbaddr + i + 0x10ca8));
+				readl(mbaddr + 0x10ca4), readl(mbaddr + 0x10ca8));
 		}
 		return;
 	}
