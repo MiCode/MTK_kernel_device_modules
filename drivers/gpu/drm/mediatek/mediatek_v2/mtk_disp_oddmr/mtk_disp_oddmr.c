@@ -592,6 +592,9 @@
 
 /* ODDMR in mt6993 */
 //ODDMR TOP
+#define MT6993_DISP_ODDMR_TOP_CTR_4					0x10
+	#define MT6993_REG_DBI_SW_RST					REG_FLD_MSB_LSB(2, 2)
+
 #define DISP_ODDMR_TOP_SHADOW_CTRL					0x14
 	#define BYPASS_SHADOW							REG_FLD_MSB_LSB(0, 0)
 	#define SR2WRK_CG_ON							REG_FLD_MSB_LSB(3, 3)
@@ -8121,6 +8124,17 @@ static void mtk_oddmr_set_dbi_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 	if(oddmr_data->primary_data->dbi_support) {
 		if (oddmr_data->data->dbi_version == MTK_DBI_V3) {
 			if (enable) {
+				value = 0;mask = 0;
+				SET_VAL_MASK(value, mask, 1, MT6993_REG_DBI_SW_RST);
+				mtk_oddmr_write_mask(comp, value,
+					MT6993_DISP_ODDMR_TOP_CTR_4, mask, handle);
+
+				value = 0;mask = 0;
+				SET_VAL_MASK(value, mask, 0, MT6993_REG_DBI_SW_RST);
+				mtk_oddmr_write_mask(comp, value,
+					MT6993_DISP_ODDMR_TOP_CTR_4, mask, handle);
+
+				value = 0;mask = 0;
 				SET_VAL_MASK(value, mask, 1, MT6991_REG_DMR_DBI_EN);
 				SET_VAL_MASK(value, mask, 1, MT6991_REG_DMR_DBI_OUT_CUP_EN);
 				mtk_oddmr_write_mask(comp, value,
