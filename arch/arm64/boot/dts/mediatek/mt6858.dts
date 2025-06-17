@@ -1572,6 +1572,79 @@
 		hwccf-support;
 	};
 
+	smi_pd_dis0: smi-pd-dis0 {
+		compatible = "mediatek,smi-pd";
+		mediatek,suspend-check-dev-supply = <&smi_disp_common &smi_mdp_sub_comm0>;
+		mediatek,suspend-check-port = <0x3 0x2>;
+		power-domains = <&scpsys MT6858_POWER_DOMAIN_DIS0_SHUTDOWN>;
+		init-power-on;
+		suspend-check;
+	};
+
+	smi_pd_ven0: smi-pd-ven0 {
+		compatible = "mediatek,smi-pd";
+		mediatek,suspend-check-dev-supply = <&smi_disp_common>;
+		mediatek,suspend-check-port = <0x10>;
+		power-domains = <&scpsys MT6858_POWER_DOMAIN_VEN0>;
+		suspend-check;
+	};
+
+	smi_pd_vde0: smi-pd-vde0 {
+		compatible = "mediatek,smi-pd";
+		mediatek,suspend-check-dev-supply = <&smi_disp_common>;
+		mediatek,suspend-check-port = <0x20>;
+		power-domains = <&scpsys MT6858_POWER_DOMAIN_VDE0>;
+		suspend-check;
+	};
+
+	smi_pd_ipe: smi-pd-ipe {
+		compatible = "mediatek,smi-pd";
+		mediatek,suspend-check-dev-supply = <&smi_mdp_sub_comm1>;
+		mediatek,suspend-check-port = <0x1>;
+		power-domains = <&scpsys MT6858_POWER_DOMAIN_ISP_IPE>;
+		suspend-check;
+	};
+
+	smi_pd_img1: smi-pd-img1 {
+		compatible = "mediatek,smi-pd";
+		mediatek,suspend-check-dev-supply = <&smi_mdp_sub_comm1>;
+		mediatek,suspend-check-port = <0x2>;
+		power-domains = <&scpsys MT6858_POWER_DOMAIN_ISP_IMG1>;
+		suspend-check;
+	};
+
+	smi_pd_img2: smi-pd-img2 {
+		compatible = "mediatek,smi-pd";
+		mediatek,suspend-check-dev-supply = <&smi_img_sub_comm0>;
+		mediatek,suspend-check-port = <0x2>;
+		power-domains = <&scpsys MT6858_POWER_DOMAIN_ISP_IMG2>;
+		suspend-check;
+	};
+
+	smi_pd_cam_main: smi-pd-cam-main {
+		compatible = "mediatek,smi-pd";
+		mediatek,suspend-check-dev-supply = <&smi_disp_common>;
+		mediatek,suspend-check-port = <0xc0>;
+		power-domains = <&scpsys MT6858_POWER_DOMAIN_CAM_MAIN>;
+		suspend-check;
+	};
+
+	smi_pd_cam_suba: smi-pd-cam-suba {
+		compatible = "mediatek,smi-pd";
+		mediatek,suspend-check-dev-supply = <&smi_cam_sub_comm1>;
+		mediatek,suspend-check-port = <0x2>;
+		power-domains = <&scpsys MT6858_POWER_DOMAIN_CAM_SUBA>;
+		suspend-check;
+	};
+
+	smi_pd_cam_subb: smi-pd-cam-subb {
+		compatible = "mediatek,smi-pd";
+		mediatek,suspend-check-dev-supply = <&smi_cam_sub_comm0>;
+		mediatek,suspend-check-port = <0x2>;
+		power-domains = <&scpsys MT6858_POWER_DOMAIN_CAM_SUBB>;
+		suspend-check;
+	};
+
 	mmqos-wrapper {
 			compatible = "mediatek,mt6858-mmqos-wrapper";
 	};
