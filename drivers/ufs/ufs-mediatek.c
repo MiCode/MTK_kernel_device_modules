@@ -296,6 +296,7 @@ static int ufs_mtk_hce_enable_notify(struct ufs_hba *hba,
 {
 	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
 	unsigned long flags;
+	u32 value;
 
 	if (status == PRE_CHANGE) {
 		if (host->unipro_lpm) {
@@ -346,6 +347,16 @@ static int ufs_mtk_hce_enable_notify(struct ufs_hba *hba,
 			ufshcd_rmwl(hba, MRTT_EN, MRTT_EN, REG_UFS_MMIO_OPT_CTRL_0);
 			/* Enable random performance improvement */
 			ufshcd_rmwl(hba, RDN_PFM_IMPV_DIS, 0, REG_UFS_MMIO_OPT_CTRL_0);
+		}
+
+		/* Enable data coherence */
+		if (host->ip_ver == IP_VER_MT6993)
+			ufshcd_rmwl(hba, 0x1, 0x1, REG_UFS_MMIO_RSV_CTRL);
+	} else if (status == POST_CHANGE) {
+		if (host->ip_ver == IP_VER_MT6993) {
+			value = ufshcd_readl(hba, REG_UFS_MMIO_RSV_CTRL);
+			if ((value & 0x2) == 0)
+				dev_err(hba->dev, "missing ack of hw coh request.\n");
 		}
 	}
 
@@ -2627,6 +2638,12 @@ static void ufs_mtk_dbg_register_dump(struct ufs_hba *hba)
 		ufshcd_dump_regs(hba, REG_UFS_MTK_SQD,
 				REF_UFS_MTK_CQ7_IACR - REG_UFS_MTK_SQD + 4,
 				"UFSHCI (0x2800): ");
+	}
+
+	if (host->ip_ver == IP_VER_MT6993) {
+		/* Dump ufshci register chinfra request 0x2308 */
+		ufshcd_dump_regs(hba, REG_UFS_MMIO_RSV_CTRL, 0x4,
+				"MMIO_RSV_CTRL (0x2308): ");
 	}
 
 	ufs_mtk_dbg_dump(hba, 100);
