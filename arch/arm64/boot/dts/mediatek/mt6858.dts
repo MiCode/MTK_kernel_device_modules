@@ -4198,7 +4198,7 @@ dramc: dramc@10230000 {
 
 			dma-ranges = <0x1 0x0 0x1 0x0 0x1 0x0>;
 			iommus = <&disp_iommu M4U_PORT_L21_VIDEO_UP0>;
-			//mediatek,smi = <&mminfra_smi_3x1_sub_comm>;
+			mediatek,smi = <&smi_mdp_sub_comm0>;
 
 			core-0 = "enable";
 			vcp-hwvoter = "disable";
