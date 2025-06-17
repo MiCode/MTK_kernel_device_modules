@@ -9,7 +9,7 @@
 #define PMIC_MBRAIN_VER_INFO_IDX        0
 #define spmi_glitch_idx_cnt             65
 #define spmi_parity_err_idx_cnt         33
-
+#define spmi_crc_err_idx_cnt            33
 #define PMIC_PRE_OT_CNT_NUM             1
 #define PMIC_PRE_LVSYS_CNT_NUM          1
 #define PMIC_CURR_CLAMPING_CNT_NUM      6
@@ -28,6 +28,7 @@ extern void mtk_spmi_pmic_get_pre_ot_cnt(u16 *buf);
 extern void mtk_spmi_pmic_get_pre_lvsys_cnt(u16 *buf);
 extern void mtk_spmi_pmic_get_current_clamping_cnt(u16 *buf);
 extern void mtk_spmi_pmic_get_debug_rg_info(u32 *buf);
+extern void mtk_spmi_pmic_get_crc_err_cnt(u16 *buf);
 
 /* spmi pmic dump data */
 enum dump_rg {

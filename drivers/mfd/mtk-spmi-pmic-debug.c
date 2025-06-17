@@ -396,6 +396,73 @@ void mtk_spmi_pmic_get_parity_err_cnt(u16 *buf)
 }
 EXPORT_SYMBOL_GPL(mtk_spmi_pmic_get_parity_err_cnt);
 
+void mtk_spmi_pmic_get_crc_err_cnt(u16 *buf)
+{
+	struct regmap *regmap;
+
+	unsigned int i, parity_err_sta = 0, parity_err_cnt = 0, sts_addr, cnt_addr;
+	u16 crc_err_cnt_array[spmi_crc_err_idx_cnt] = {0};
+	struct device *dev;
+	int ret, rev;
+
+	crc_err_cnt_array[0] = 1; //temp hardcode version
+	mutex_lock(&dump_mutex);
+	for (i = 2; i <= 15; i++) {
+		if (mtk_spmi_pmic_debug[i] == NULL)
+			continue;
+		dev = mtk_spmi_pmic_debug[i]->dev;
+		regmap = mtk_spmi_pmic_debug[i]->regmap;
+		sts_addr = mtk_spmi_pmic_debug[i]->spmi_parity_err_sts;
+		cnt_addr = mtk_spmi_pmic_debug[i]->spmi_parity_err_cnt;
+
+		if ((mtk_spmi_pmic_debug[i]->cid == 0x61)
+		     || (mtk_spmi_pmic_debug[i]->cid == 0x67)) {
+			/* dump parity err status */
+			regmap_read(regmap, sts_addr, &parity_err_sta);
+
+			/* dump parity err counter */
+			regmap_read(regmap, cnt_addr, &parity_err_cnt);
+
+			crc_err_cnt_array[2*i+1] = parity_err_sta;
+			crc_err_cnt_array[2*i+2] = parity_err_cnt;
+		} else if (mtk_spmi_pmic_is_mt6688(mtk_spmi_pmic_debug[i], &rev)) {
+			ret = regmap_update_bits(regmap, MT6688_REG_SPMI_DEBUG_SEL,
+						 MT6688_MASK_RG_SPMI_DBGMUX_SEL,
+						 MT6688_PARITY_ERROR_TYPE_4);
+			if (ret) {
+				dev_info(dev, "Failed to select mt6688 dbgmux to parity error type 4\n");
+				continue;
+			}
+			if (rev == MT6688_CHIP_REV_E3) {
+				/* For E3 read parity err status only! */
+				ret = regmap_read(regmap, sts_addr, &parity_err_sta);
+				if (ret)
+					dev_info(dev, "Failed to read mt6688 parity err status\n");
+			}
+			ret = regmap_read(regmap, cnt_addr, &parity_err_cnt);
+			if (ret)
+				dev_info(dev, "Failed to read mt6688 parity err cnt\n");
+
+			crc_err_cnt_array[2*i+1] = parity_err_sta;
+			crc_err_cnt_array[2*i+2] = parity_err_cnt;
+		}
+	}
+
+	if (buf != NULL)
+		memcpy(buf, crc_err_cnt_array, spmi_crc_err_idx_cnt*sizeof(u16));
+	else {
+		for (i = 1; i < spmi_parity_err_idx_cnt; i+=2) {
+			pr_info("%s SLVID(0x%x): parity_err_sta 0x%x, crc_err_cnt 0x%x",
+				__func__, (i-1)/2, crc_err_cnt_array[i], crc_err_cnt_array[i+1]);
+		}
+	}
+	mutex_unlock(&dump_mutex);
+
+	/* hardware issue: clear RG will clear glitch and parity */
+	// mtk_spmi_pmic_clr_parity_err_sts_cnt();
+}
+EXPORT_SYMBOL_GPL(mtk_spmi_pmic_get_crc_err_cnt);
+
 void mtk_spmi_pmic_get_pre_ot_cnt(u16 *buf)
 {
 	struct regmap *regmap;
