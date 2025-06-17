@@ -407,14 +407,19 @@ void mtk_dsi_lpc_sof_ts(long long *sof_ts, struct mtk_drm_crtc *mtk_crtc, struct
 
 	drm_trace_tag_value("lpc_sof_timestamp", *sof_ts);
 }
-void mtk_dsi_lpc_event_te_ts(long long *event_te_ts_diff, struct mtk_drm_crtc *mtk_crtc,
+void mtk_dsi_lpc_event_te_ts(unsigned long *event_te_ts_diff, struct mtk_drm_crtc *mtk_crtc,
 	struct mtk_ddp_comp *comp)
 {
 	/* repot sof time */
 	int index = 0;
 	unsigned long ts0 = 0, ts1 = 0;
-	static long long pre_event_te_ts;
-	long long event_te_ts = 0;
+	static unsigned long pre_event_te_ts;
+	unsigned long event_te_ts = 0;
+
+	if (!comp || !mtk_crtc) {
+		DDPMSG("%s NULL pointer\n", __func__);
+		return;
+	}
 
 	index = mtk_dsi_lpc_unit(mtk_crtc);
 	if (index < 0) {
@@ -425,10 +430,10 @@ void mtk_dsi_lpc_event_te_ts(long long *event_te_ts_diff, struct mtk_drm_crtc *m
 	ts0 = readl(comp->regs + DSI_LPC_EVENT_TE_TIMESTAMP_0(index));
 	ts1 = readl(comp->regs + DSI_LPC_EVENT_TE_TIMESTAMP_1(index));
 	event_te_ts = (ts1 << 32 | ts0) << 7;
-	if (event_te_ts > pre_event_te_ts)
+	if (event_te_ts > pre_event_te_ts) {
 		*event_te_ts_diff = event_te_ts - pre_event_te_ts;
-
-	pre_event_te_ts = event_te_ts;
+		pre_event_te_ts = event_te_ts;
+	}
 }
 void mtk_dsi_lpc_resync_ts(long long *resync_ts, struct mtk_drm_crtc *mtk_crtc,
 	struct mtk_ddp_comp *comp)
@@ -825,17 +830,20 @@ static irqreturn_t mtk_dsi_lpc_irq_handler(int irq, void *dev_id)
 		return IRQ_NONE;
 
 	if (mtk_drm_top_clk_isr_get(comp) == false) {
+		drm_trace_tag_mark("lpc_irq_handler error 1");
 		DDPIRQ("%s, top clk off\n", __func__);
 		return IRQ_NONE;
 	}
 	mtk_crtc = comp->mtk_crtc;
 	if (!mtk_crtc) {
+		drm_trace_tag_mark("lpc_irq_handler error 2");
 		DDPPR_ERR("%s mtk_crtc is NULL\n", __func__);
 		ret = IRQ_NONE;
 		goto out;
 	}
 
 	if (!mtk_crtc->base.dev) {
+		drm_trace_tag_mark("lpc_irq_handler error 3");
 		DDPPR_ERR("%s mtk_crtc->base.dev is NULL\n", __func__);
 		ret = IRQ_NONE;
 		goto out;
@@ -846,16 +854,23 @@ static irqreturn_t mtk_dsi_lpc_irq_handler(int irq, void *dev_id)
 	index = mtk_dsi_lpc_unit(mtk_crtc);
 	status = readl(comp->regs + DSI_LPC_INSTA(index));
 	if (!status) {
+		drm_trace_tag_mark("lpc_irq_handler error 4");
 		ret = IRQ_NONE;
 		goto out;
 	}
 
-	if (!dsi_lpc->dsi_lpc_te_irq_en)
+	if (!dsi_lpc->dsi_lpc_te_irq_en) {
+		drm_trace_tag_mark("lpc_irq_handler error 5");
 		status &= ~EVENT_TE_INT;
+	}
 
 	DDPIRQ("%s irq, val:0x%x\n", mtk_dump_comp_str(comp), status);
 
 	if (status) {
+		unsigned long event_te_ts_diff = 0;
+
+		mtk_dsi_lpc_event_te_ts(&event_te_ts_diff, mtk_crtc, comp);
+		drm_trace_tag_value("lpc_te_ts", event_te_ts_diff);
 		writel(~status, comp->regs + DSI_LPC_INSTA(index));
 
 		if (status & REPORTED_RESYNC_INT) {
@@ -867,7 +882,7 @@ static irqreturn_t mtk_dsi_lpc_irq_handler(int irq, void *dev_id)
 		}
 
 		if (status & EVENT_TE_INT) {
-			DRM_MMP_MARK(dsi_lpc0_te, status, 0);
+			DRM_MMP_MARK(dsi_lpc0_te, status, event_te_ts_diff);
 			drm_trace_tag_mark("lpc_te_irq");
 		}
 
