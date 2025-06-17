@@ -8265,6 +8265,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 			interrupts = <GIC_SPI 608 IRQ_TYPE_LEVEL_HIGH 0>;
 			interrupt-names = "mbox0";
+			mbox-attr = <0x0>;
 
 			gpueb-mem-table =
 				<0 0x4000>,   /* 16KB */
