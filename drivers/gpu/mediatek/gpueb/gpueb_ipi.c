@@ -329,12 +329,6 @@ int gpueb_ipi_init(struct platform_device *pdev)
 			gpueb_log_d(GPUEB_TAG, "mbox%d probe fail, ret = %d", i, ret);
 			continue;
 		}
-
-		ret = enable_irq_wake(gpueb_mboxdev.info_table[i].irq_num);
-		if (ret < 0) {
-			gpueb_log_d(GPUEB_TAG, "mbox%d enable irq fail, ret = %d", i, ret);
-			continue;
-		}
 		gpueb_mbox_setup_pin_table(i);
 	}
 
