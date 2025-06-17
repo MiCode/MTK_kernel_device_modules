@@ -11,6 +11,7 @@
 #include <linux/of_device.h>
 #include <linux/of_irq.h>
 #include <linux/platform_device.h>
+#include <linux/ratelimit.h>
 
 #ifndef DRM_CMDQ_DISABLE
 #include <linux/soc/mediatek/mtk-cmdq-ext.h>
@@ -270,7 +271,7 @@ static irqreturn_t mtk_disp_rdma_irq_handler(int irq, void *dev_id)
 	int i = 0, j = 0;
 	bool find_work = false;
 	static int work_id;
-
+	static DEFINE_RATELIMIT_STATE(isr_ratelimit, 1 * HZ, 4);
 
 	If_FIND_WORK(priv->ddp_comp.irq_debug,
 		priv->ddp_comp.ts_works, work_id, find_work, j)
@@ -406,8 +407,9 @@ static irqreturn_t mtk_disp_rdma_irq_handler(int irq, void *dev_id)
 	}
 
 	if (val & (1 << 3)) {
-		DDPPR_ERR("[IRQ] %s: abnormal! cnt=%d\n",
-			  mtk_dump_comp_str(rdma), priv->abnormal_cnt);
+		if (__ratelimit(&isr_ratelimit))
+			DDPPR_ERR("[IRQ] %s: abnormal! cnt=%d\n",
+				  mtk_dump_comp_str(rdma), priv->abnormal_cnt);
 		priv->abnormal_cnt++;
 	}
 	if (val & (1 << 4)) {
