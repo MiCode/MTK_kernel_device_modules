@@ -256,15 +256,17 @@ TRACE_EVENT(core_ctl_busy_cpus,
 		unsigned int *busy_state,
 		unsigned int *max_nr_state,
 		unsigned int *max_rt_nr_state,
-		unsigned int *max_vip_nr_state),
+		unsigned int *max_vip_nr_state,
+		unsigned int consider_VIP),
 
-	TP_ARGS(busy_state, max_nr_state, max_rt_nr_state, max_vip_nr_state),
+	TP_ARGS(busy_state, max_nr_state, max_rt_nr_state, max_vip_nr_state, consider_VIP),
 
 	TP_STRUCT__entry(
 		__array(unsigned int, busy_state, 8)
 		__array(unsigned int, max_nr_state, 8)
 		__array(unsigned int, max_rt_nr_state, 8)
 		__array(unsigned int, max_vip_nr_state, 8)
+		__field(unsigned int, consider_VIP)
 	),
 
 	TP_fast_assign(
@@ -272,9 +274,10 @@ TRACE_EVENT(core_ctl_busy_cpus,
 		memcpy(__entry->max_nr_state, max_nr_state, sizeof(unsigned int) * 8);
 		memcpy(__entry->max_rt_nr_state, max_rt_nr_state, sizeof(unsigned int) * 8);
 		memcpy(__entry->max_vip_nr_state, max_vip_nr_state, sizeof(unsigned int) * 8);
+		__entry->consider_VIP = consider_VIP;
 	),
 
-	TP_printk("busy=%d|%d|%d|%d|%d|%d|%d|%d max_nr=%d|%d|%d|%d|%d|%d|%d|%d max_rt_nr=%d|%d|%d|%d|%d|%d|%d|%d max_vip_nr=%d|%d|%d|%d|%d|%d|%d|%d",
+	TP_printk("busy=%d|%d|%d|%d|%d|%d|%d|%d max_nr=%d|%d|%d|%d|%d|%d|%d|%d max_rt_nr=%d|%d|%d|%d|%d|%d|%d|%d max_vip_nr=%d|%d|%d|%d|%d|%d|%d|%d con_vip=%d",
 		__entry->busy_state[0], __entry->busy_state[1], __entry->busy_state[2],
 		__entry->busy_state[3], __entry->busy_state[4], __entry->busy_state[5],
 		__entry->busy_state[6], __entry->busy_state[7], __entry->max_nr_state[0],
@@ -285,7 +288,7 @@ TRACE_EVENT(core_ctl_busy_cpus,
 		__entry->max_rt_nr_state[5], __entry->max_rt_nr_state[6], __entry->max_rt_nr_state[7],
 		__entry->max_vip_nr_state[0], __entry->max_vip_nr_state[1], __entry->max_vip_nr_state[2],
 		__entry->max_vip_nr_state[3], __entry->max_vip_nr_state[4], __entry->max_vip_nr_state[5],
-		__entry->max_vip_nr_state[6], __entry->max_vip_nr_state[7])
+		__entry->max_vip_nr_state[6], __entry->max_vip_nr_state[7], __entry->consider_VIP)
 );
 
 TRACE_EVENT(core_ctl_cpu_request,

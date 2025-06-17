@@ -166,6 +166,7 @@ static unsigned int rt_nr_task_thres[MAX_CLUSTERS] = {2, 2, 2};
 static unsigned int active_loading_thres[MAX_CLUSTERS] = {80, 80, 80};
 static unsigned long freq_thres[MAX_CLUSTERS] = {5000000, 5000000, 5000000};
 struct cpumask cpu_force_pause_mask;
+static unsigned int consider_VIP_task;
 
 enum {
 	DEISO_NONE	= 0,
@@ -1155,6 +1156,28 @@ int core_ctl_set_boost(bool boost)
 }
 EXPORT_SYMBOL(core_ctl_set_boost);
 
+/*
+ *  core_ctl_consider_VIP
+ *  @return: 0 if success, else return errno
+ *
+ *  When consider_VIP_task is enabled, busy_cpus algorithm consider VIP task
+ */
+int core_ctl_consider_VIP(unsigned int enable)
+{
+	int ret = 0;
+	unsigned long flags;
+
+	if (enable == 0 || enable == 1) {
+		spin_lock_irqsave(&core_ctl_state_lock, flags);
+		consider_VIP_task = enable;
+		spin_unlock_irqrestore(&core_ctl_state_lock, flags);
+	} else
+		ret = -EINVAL;
+	core_ctl_debug("%s: consider=%d ret=%d ", TAG, consider_VIP_task, ret);
+	return ret;
+}
+EXPORT_SYMBOL(core_ctl_consider_VIP);
+
 #define	MAX_CPU_MASK	((1 << nr_cpu_ids) - 1)
 /*
  *  core_ctl_set_not_preferred - set not_prefer for the specific cpu number
@@ -1779,6 +1802,23 @@ static ssize_t show_thermal_up_thres(const struct cluster_data *state, char *buf
 	return scnprintf(buf, PAGE_SIZE, "%u\n", state->thermal_up_thres);
 }
 
+static ssize_t store_consider_VIP(struct cluster_data *state,
+		const char *buf, size_t count)
+{
+	unsigned int val;
+
+	if (sscanf(buf, "%u\n", &val) != 1)
+		return -EINVAL;
+
+	core_ctl_consider_VIP(val);
+	return count;
+}
+
+static ssize_t show_consider_VIP(const struct cluster_data *state, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%u\n", consider_VIP_task);
+}
+
 static ssize_t show_global_state(const struct cluster_data *state, char *buf)
 {
 	struct cpu_data *c;
@@ -1865,6 +1905,7 @@ core_ctl_attr_rw(cpu_nr_task_thres);
 core_ctl_attr_rw(cpu_rt_nr_task_thres);
 core_ctl_attr_rw(cpu_active_loading_thres);
 core_ctl_attr_rw(freq_min_thres);
+core_ctl_attr_rw(consider_VIP);
 
 static struct attribute *default_attrs[] = {
 	&min_cpus.attr,
@@ -1882,6 +1923,7 @@ static struct attribute *default_attrs[] = {
 	&cpu_rt_nr_task_thres.attr,
 	&cpu_active_loading_thres.attr,
 	&freq_min_thres.attr,
+	&consider_VIP.attr,
 	NULL
 };
 ATTRIBUTE_GROUPS(default);
@@ -1974,7 +2016,11 @@ static void get_busy_cpus(void)
 
 			over_nr_task = max_nr_state[cpu] > cluster->nr_task_thres;
 			over_act_load = cpu_stat->cpu_active_loading[idx] > cluster->active_loading_thres;
-			over_rt_vip_nr_task = max_rt_nr_state[cpu] + max_vip_nr_state[cpu] > cluster->rt_nr_task_thres;
+			if (consider_VIP_task) {
+				over_rt_vip_nr_task = max_rt_nr_state[cpu] + max_vip_nr_state[cpu]
+					> cluster->rt_nr_task_thres;
+			} else
+				over_rt_vip_nr_task = max_rt_nr_state[cpu] > cluster->rt_nr_task_thres;
 
 			if (busy_state[cpu] && over_nr_task) {
 				cluster->deiso_reason |= DEISO_BUSY_NR_TASK;
@@ -1993,7 +2039,7 @@ static void get_busy_cpus(void)
 	}
 	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
 
-	trace_core_ctl_busy_cpus(busy_state, max_nr_state, max_rt_nr_state, max_vip_nr_state);
+	trace_core_ctl_busy_cpus(busy_state, max_nr_state, max_rt_nr_state, max_vip_nr_state, consider_VIP_task);
 }
 
 #define BIG_TASK_AVG_THRESHOLD 25
@@ -3196,6 +3242,7 @@ static int __init core_ctl_init(void)
 
 	/* init force pause mask */
 	cpumask_clear(&cpu_force_pause_mask);
+	consider_VIP_task = 1;
 
 	/* init core_ctl ioctl */
 	pr_info("%s: start to init core_ioctl driver\n", TAG);

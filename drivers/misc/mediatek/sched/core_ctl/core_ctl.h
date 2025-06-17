@@ -78,5 +78,6 @@ extern int core_ctl_set_min_cpus(unsigned int cid, unsigned int min, int request
 extern int core_ctl_get_max_cpus(unsigned int cid);
 extern int core_ctl_set_max_cpus(unsigned int cid, unsigned int max, int requester, unsigned int have_demand);
 extern int pd_freq2opp(int cpu, int opp, int quant, int wl);
+extern int core_ctl_consider_VIP(unsigned int enable);
 
 #endif /* _CORE_CTL_H */
