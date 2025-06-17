@@ -23,7 +23,7 @@ static s32 cmdq_sec_realloc_addr_list(struct cmdq_pkt *pkt, const u32 count)
 	if (count <= sec_data->addrMetadataMaxCount)
 		return 0;
 
-	curr = kcalloc(count, sizeof(*sec_data), GFP_KERNEL);
+	curr = kcalloc(count, sizeof(struct cmdq_sec_addr_meta), GFP_KERNEL);
 	if (!curr)
 		return -ENOMEM;
 	if (count && sec_data->addrMetadatas)
@@ -191,14 +191,14 @@ s32 cmdq_sec_pkt_set_payload(struct cmdq_pkt *pkt, u8 idx,
 		return ret;
 
 	if (idx == CMDQ_IWC_MSG1 &&
-		meta_size >= sizeof(struct iwcCmdqMessageEx_t)) {
+		meta_size > sizeof(struct iwcCmdqMessageEx_t)) {
 		cmdq_err("not enough size payload 1:%u msg size:%zu",
 			meta_size, sizeof(struct iwcCmdqMessageEx_t));
 		return -EINVAL;
 	}
 
 	if (idx == CMDQ_IWC_MSG2 &&
-		meta_size >= sizeof(struct iwcCmdqMessageEx2_t)) {
+		meta_size > sizeof(struct iwcCmdqMessageEx2_t)) {
 		cmdq_err("not enough size payload 2:%u msg size:%zu",
 			meta_size, sizeof(struct iwcCmdqMessageEx2_t));
 		return -EINVAL;
