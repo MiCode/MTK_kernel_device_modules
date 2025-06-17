@@ -378,7 +378,7 @@ struct mml_frame_info_cache {
 	u32 remain;
 	u8 dl_opp;
 	u8 dc_opp;
-	u32 mode_caps;
+	u16 mode_caps;
 };
 
 struct mml_topology_info {

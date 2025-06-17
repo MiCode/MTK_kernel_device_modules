@@ -301,8 +301,11 @@ EXPORT_SYMBOL_GPL(mml_topology_unregister_ip);
 u32 mml_topology_get_mode_caps(void)
 {
 	struct topology_ip_node *tp_node;
-	u32 modes = 0;
 	const char *ip = "not ready";
+	static u32 modes;
+
+	if (modes)
+		goto done;
 
 	mutex_lock(&tp_mutex);
 	tp_node = list_first_entry_or_null(&tp_ips, typeof(*tp_node), entry);
@@ -324,6 +327,7 @@ u32 mml_topology_get_mode_caps(void)
 	mml_log("platform %s modes %#x", ip, modes);
 	mutex_unlock(&tp_mutex);
 
+done:
 	return modes;
 }
 
