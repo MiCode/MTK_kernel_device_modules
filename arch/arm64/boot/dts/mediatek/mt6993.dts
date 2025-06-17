@@ -3399,7 +3399,8 @@
 				<&level_apusys_rv_apu_wdt>,
 				<&level_apusys_rv_mbox0 &level_apusys_rv_mbox1>,
 				<&level_apusys_rv_ce_exp>,
-				<&level_apusys_hw_apu_logtop>;
+				<&level_apusys_hw_apu_logtop>,
+				<&level_dsi_lpc>;
 
 
 		resource-ctrl = <&bus26m &infra &syspll>,
@@ -3491,6 +3492,10 @@
 			};
 			level_apusys_hw_apu_logtop: level-apusys-hw-apu-logtop {
 				target = <&apusys_hw_logger>;
+				value = <0 0 0 0>;
+			};
+			level_dsi_lpc: level-dsi-lpc {
+				target = <&dsi_lpc>;
 				value = <0 0 0 0>;
 			};
 		};
