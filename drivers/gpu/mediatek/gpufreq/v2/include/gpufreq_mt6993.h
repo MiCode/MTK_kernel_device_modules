@@ -9,7 +9,7 @@
 /**************************************************
  * GPUFREQ Config
  **************************************************/
-#define GPUFREQ_KDEBUG_VERSION              (0x20250425)
+#define GPUFREQ_KDEBUG_VERSION              (0x20250604)
 #define GPUFREQ_SLAVE_BUS_RECOVERY_ENABLE   (1)
 
 /**************************************************

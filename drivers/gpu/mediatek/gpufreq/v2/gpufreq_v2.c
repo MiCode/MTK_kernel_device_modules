@@ -287,6 +287,23 @@ unsigned int gpufreq_get_segment_id(void)
 EXPORT_SYMBOL(gpufreq_get_segment_id);
 
 /***********************************************************************************
+ * Function Name      : gpufreq_get_checker_result
+ * Description        : Get checker result
+ ***********************************************************************************/
+unsigned int gpufreq_get_checker_result(void)
+{
+	unsigned int result = 0;
+
+	if (g_shared_status)
+		result = g_shared_status->checker_result;
+	else
+		GPUFREQ_LOGE("null gpufreq shared memory (ENOENT)");
+
+	return result;
+}
+EXPORT_SYMBOL(gpufreq_get_checker_result);
+
+/***********************************************************************************
  * Function Name      : gpufreq_dump_infra_status
  * Inputs             : -
  * Outputs            : -

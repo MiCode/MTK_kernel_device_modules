@@ -754,6 +754,7 @@ unsigned int gpufreq_get_power_state(void);
 unsigned int gpufreq_get_dvfs_state(void);
 unsigned int gpufreq_get_shader_present(void);
 unsigned int gpufreq_get_segment_id(void);
+unsigned int gpufreq_get_checker_result(void);
 void gpufreq_dump_infra_status(void);
 void gpufreq_dump_infra_status_logbuffer(char *log_buf, int *log_len, int log_size);
 unsigned int gpufreq_get_cur_freq(enum gpufreq_target target);
