@@ -118,6 +118,8 @@ mgk_64_kleaf_modules = [
     "//vendor/mediatek/kernel_modules/task_turbo_int:task_turbo_int",
     "//vendor/mediatek/kernel_modules/perf_common_cus:perf_common_cus",
     "//vendor/mediatek/kernel_modules/perf_common_int:perf_common_int",
+    "//vendor/mediatek/kernel_modules/game_cus:game_cus",
+    "//vendor/mediatek/kernel_modules/game_int:game_int",
 ]
 
 mgk_64_kleaf_eng_modules = [
@@ -1262,6 +1264,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/ssc:mtk-ssc".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/ssc/debug/v1:mtk-ssc-dbg-v1".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/ssc/debug/v2:mtk-ssc-dbg-v2".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/performance/game:mtk_game".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/task_turbo:vip_engine".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/performance:frs".format(kernel_version),
 ]
@@ -1537,7 +1540,6 @@ mgk_64_kleaf_platform_modules = {
     "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/pda:pda_drv_mt6879".format(kernel_version): "mt6879",
     "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/pda:pda_drv_mt6895".format(kernel_version): "mt6895",
     "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/pda:pda_drv_mt6878".format(kernel_version): "mt6878",
-    "//kernel_device_modules-{}/drivers/misc/mediatek/performance/game:mtk_game".format(kernel_version): "mt6899 mt6991 mt6993",
     "//kernel_device_modules-{}/drivers/misc/mediatek/apusys/aov:apu_aov".format(kernel_version): "mt6989 mt6991 mt6993",
 
   ## write vendor file by platform here
@@ -1598,9 +1600,6 @@ mgk_64_kleaf_platform_modules = {
     "//vendor/mediatek/kernel_modules/gpu/gpu_mali/mali_avalon/a16w/drivers/base/arm:mali_mgm_mt6858_a16w":"mt6858",
     "//vendor/mediatek/kernel_modules/gpu/gpu_mali/mali_avalon/a16w/drivers/base/arm:mali_prot_alloc_mt6858_a16w":"mt6858",
     "//vendor/mediatek/kernel_modules/gpu/gpu_mali/mali_avalon/a16w/drivers/base/arm:mali_dmabuf_test_mt6858_a16w":"mt6858",
-
-    "//vendor/mediatek/kernel_modules/game_cus:game_cus": "mt6899 mt6991 mt6993",
-    "//vendor/mediatek/kernel_modules/game_int:game_int": "mt6899 mt6991 mt6993",
 
     "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:cmdq-platform-mt6991".format(kernel_version): "mt6991",
     "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:cmdq-platform-mt6993".format(kernel_version): "mt6993",
