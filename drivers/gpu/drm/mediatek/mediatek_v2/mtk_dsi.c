@@ -478,6 +478,8 @@ unsigned int data_phy_cycle;
 
 bool skip_clk_prepare;
 
+static int esd_dbg_idx;
+
 struct mtk_dsi;
 struct mtk_dsi_mgr {
 	struct mtk_dsi *master;
@@ -3872,6 +3874,7 @@ static void mtk_dsi_power_keep_gce(struct mtk_dsi *dsi, struct cmdq_pkt *cmdq_ha
 
 	if (!dsi || !cmdq_handle)
 		return;
+
 	mtk_crtc = dsi->ddp_comp.mtk_crtc;
 	if ((drm_crtc_index(&mtk_crtc->base) != 0) || !mtk_dsi_is_cmd_mode(&dsi->ddp_comp))
 		return;
@@ -7387,6 +7390,7 @@ int mtk_dsi_esd_read(struct mtk_ddp_comp *comp, void *handle, void *ptr)
 				cmd_msg.cmd_msg = &msg;
 
 				cmd_opt.flags = MTK_MIPI_DSI_GCE_INPUT_HANDLE_READY;
+				esd_dbg_idx = i;
 				mtk_mipi_dsi_cmd(dsi, handle, &cmd_opt, &cmd_msg);
 			} else {
 				t0.CONFG = 0x00;
@@ -11587,6 +11591,8 @@ static int mtk_dsi_cmd_transfer(struct mtk_dsi *mtk_dsi, struct cmdq_pkt *handle
 	const char *tx_buf;
 	u8 rd_len[2] = { 0 };
 	char delay_ms;
+	u32 reg_cmdq_ofs = mtk_dsi->driver_data->reg_cmdq0_ofs;
+	u32 dsi_cmdq_size = mtk_dsi->driver_data->dsi_cmdq_size - 1;
 
 	CRTC_MMP_MARK(index, ddic_cmd_v2_msg, cmd_msg->is_rd, (unsigned long)cmd_msg);
 	DDPDSI_CMD("%s ++, cmd_num=%u, transfer_mode:%d, package=%d, rd=%d, slot=%d, scn=%d\n", __func__,
@@ -11594,6 +11600,37 @@ static int mtk_dsi_cmd_transfer(struct mtk_dsi *mtk_dsi, struct cmdq_pkt *handle
 			cmd_msg->is_rd, cmd_msg->rd_to_slot, cmd_msg->read_scn);
 
 	mtk_dsi_power_keep_gce(mtk_dsi, handle, true);
+
+	if (cmd_msg->is_rd && handle && (cmd_msg->read_scn == ESD_CHECK_SCN)) {
+		int i;
+
+		if (esd_dbg_idx == 0) {
+			for (i = 0; i < DBG_DSI_TOTAL_NUM; i++)
+				cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+					mtk_get_gce_backup_slot_pa(mtk_crtc,
+						DISP_SLOT_READ_DSI_DBG_BASE + i * 0x4), 0xff00ff00, ~0);
+		}
+		cmdq_pkt_mem_move(handle, comp->cmdq_base,
+			comp->regs_pa + mtk_dsi->driver_data->reg_cmdq0_ofs,
+			mtk_get_gce_backup_slot_pa(mtk_crtc,
+			DISP_SLOT_READ_DSI_DBG_BASE + (esd_dbg_idx * DBG_DSI_NUM) * 0x4),
+			CMDQ_THR_SPR_IDX3);
+		cmdq_pkt_mem_move(handle, comp->cmdq_base,
+			comp->regs_pa + mtk_dsi->driver_data->reg_cmdq0_ofs + 0x4,
+			mtk_get_gce_backup_slot_pa(mtk_crtc,
+			DISP_SLOT_READ_DSI_DBG_BASE + (esd_dbg_idx * DBG_DSI_NUM + 1) * 0x4),
+			CMDQ_THR_SPR_IDX3);
+
+		if (esd_flush_fail_flag == 1) { //only one time
+			DDPMSG("%s, esd_flush_fail_flag=1\n", __func__);
+			mtk_dsi_cmdq_poll(comp, handle, comp->regs_pa + DSI_INTSTA, 0x1, 0x1);
+			esd_flush_fail_flag = 0;
+		} else if (esd_flush_fail_flag == 2) {// continue
+			DDPMSG("%s, esd_flush_fail_flag=2\n", __func__);
+			mtk_dsi_cmdq_poll(comp, handle, comp->regs_pa + DSI_INTSTA, 0x1, 0x1);
+		}
+	}
+
 	mtk_dsi_poll_for_idle(mtk_dsi, handle);
 	if (mtk_dsi->driver_data->require_phy_reset)
 		mtk_dsi_runtime_phy_reset_gce(mtk_dsi, handle);
@@ -11638,7 +11675,35 @@ static int mtk_dsi_cmd_transfer(struct mtk_dsi *mtk_dsi, struct cmdq_pkt *handle
 		DDPDSI_R_CMD("%s, read package trigger, total_cmdq_size=%d, rx_len=%zu\n", __func__,
 			total_cmdq_size, cmd_msg->cmd_msg->rx_len);
 		CRTC_MMP_MARK(index, ddic_cmd_v2_msg, 1, cmd_msg->cmd_msg->rx_len);
+
+		if (handle && (cmd_msg->read_scn == ESD_CHECK_SCN)) {
+			cmdq_pkt_mem_move(handle, comp->cmdq_base,
+					comp->regs_pa + mtk_dsi->driver_data->reg_cmdq0_ofs,
+					mtk_get_gce_backup_slot_pa(mtk_crtc,
+					DISP_SLOT_READ_DSI_DBG_BASE + (esd_dbg_idx * DBG_DSI_NUM + 2) * 0x4),
+					CMDQ_THR_SPR_IDX3);
+			cmdq_pkt_mem_move(handle, comp->cmdq_base,
+					comp->regs_pa + mtk_dsi->driver_data->reg_cmdq0_ofs + 0x4,
+					mtk_get_gce_backup_slot_pa(mtk_crtc,
+					DISP_SLOT_READ_DSI_DBG_BASE + (esd_dbg_idx * DBG_DSI_NUM + 3) * 0x4),
+					CMDQ_THR_SPR_IDX3);
+		}
+
 		mtk_dsi_send_cmd_trigger(mtk_dsi, handle, total_cmdq_size);
+
+		if (handle && (cmd_msg->read_scn == ESD_CHECK_SCN)) {
+			cmdq_pkt_mem_move(handle, comp->cmdq_base,
+					comp->regs_pa + mtk_dsi->driver_data->reg_cmdq0_ofs,
+					mtk_get_gce_backup_slot_pa(mtk_crtc,
+					DISP_SLOT_READ_DSI_DBG_BASE + (esd_dbg_idx * DBG_DSI_NUM + 4) * 0x4),
+					CMDQ_THR_SPR_IDX3);
+			cmdq_pkt_mem_move(handle, comp->cmdq_base,
+					comp->regs_pa + mtk_dsi->driver_data->reg_cmdq0_ofs + 0x4,
+					mtk_get_gce_backup_slot_pa(mtk_crtc,
+					DISP_SLOT_READ_DSI_DBG_BASE + (esd_dbg_idx * DBG_DSI_NUM + 5) * 0x4),
+					CMDQ_THR_SPR_IDX3);
+		}
+
 		if (!handle) { //CPU read
 			unsigned int loop_cnt = 0;
 			s32 tmp;
