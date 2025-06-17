@@ -158,6 +158,7 @@ enum mml_pq_debug_mode {
 	MML_PQ_BUFFER_CHECK = 1 << 6,
 	MML_PQ_FG_HW_AR_DBG = 1 << 7,
 	MML_PQ_FG_TUNING = 1 << 8,
+	MML_PQ_FORCE_TIMEOUT_DBG = 1 << 9,
 };
 
 enum mml_pq_vcp_engine {

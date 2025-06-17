@@ -1013,14 +1013,15 @@ static s32 aal_config_frame(struct mml_comp *comp, struct mml_task *task,
 	 */
 
 	do {
-		ret = mml_pq_get_comp_config_result(task, AAL_WAIT_TIMEOUT_MS);
-		if (ret) {
+		if ((mml_pq_debug_mode & MML_PQ_FORCE_TIMEOUT_DBG) ||
+			mml_pq_get_comp_config_result(task, AAL_WAIT_TIMEOUT_MS)) {
 			mml_pq_comp_config_clear(task);
 			aal_frm->config_success = false;
 			aal_relay(comp, pkt, base_pa, alpha | 0x1);
-			mml_pq_err("%s: get aal param timeout: %d in %dms",
-				__func__, ret, AAL_WAIT_TIMEOUT_MS);
 			ret = -ETIMEDOUT;
+			mml_pq_err("%s: %s aal param timeout: %d in %dms", __func__,
+				(mml_pq_debug_mode & MML_PQ_FORCE_TIMEOUT_DBG) ? "simulate" : "get",
+				ret, AAL_WAIT_TIMEOUT_MS);
 			goto exit;
 		}
 

@@ -265,15 +265,16 @@ static s32 color_config_frame(struct mml_comp *comp, struct mml_task *task,
 	cmdq_pkt_write(pkt, NULL, base_pa + color->data->reg_table[COLOR_START], 0x1, U32_MAX);
 
 	do {
-		ret = mml_pq_get_comp_config_result(task, COLOR_WAIT_TIMEOUT_MS);
-		if (ret) {
+		if ((mml_pq_debug_mode & MML_PQ_FORCE_TIMEOUT_DBG) ||
+			mml_pq_get_comp_config_result(task, COLOR_WAIT_TIMEOUT_MS)) {
 			mml_pq_comp_config_clear(task);
 			color_frm->config_success = false;
 			cmdq_pkt_write(pkt, NULL,
 				base_pa + color->data->reg_table[COLOR_START], 3, U32_MAX);
-			mml_pq_err("%s: get color param timeout: %d in %dms", __func__,
-				ret, COLOR_WAIT_TIMEOUT_MS);
 			ret = -ETIMEDOUT;
+			mml_pq_err("%s: %s color param timeout: %d in %dms", __func__,
+				(mml_pq_debug_mode & MML_PQ_FORCE_TIMEOUT_DBG) ? "simulate" : "get",
+				ret, COLOR_WAIT_TIMEOUT_MS);
 			goto exit;
 		}
 

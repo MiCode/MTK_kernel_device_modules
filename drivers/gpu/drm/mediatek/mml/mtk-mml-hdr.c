@@ -92,6 +92,21 @@ enum mml_hdr_reg_index {
 	HDR_Y2R_12,
 	HDR_TONE_MAP_TOP,
 	HDR_3x3_COEF_00,
+	HDR_3x3_COEF_01,
+	HDR_3x3_COEF_02,
+	HDR_3x3_COEF_03,
+	HDR_3x3_COEF_04,
+	HDR_3x3_COEF_05,
+	HDR_3x3_COEF_06,
+	HDR_3x3_COEF_07,
+	HDR_3x3_COEF_08,
+	HDR_3x3_COEF_09,
+	HDR_3x3_COEF_10,
+	HDR_3x3_COEF_11,
+	HDR_3x3_COEF_12,
+	HDR_3x3_COEF_13,
+	HDR_3x3_COEF_14,
+	HDR_3x3_COEF_15,
 	HDR_B_CHANNEL_NR,
 	HDR_A_LUMINANCE,
 	HDR_DEBUG,
@@ -105,6 +120,7 @@ enum mml_hdr_reg_index {
 	HDR_LUT_CTRL_2,
 	HDR_LUT_CTRL_3,
 	HDR_LUT_CTRL_4,
+	HDR_LUT_CTRL_5,
 	HDR_LUT_CTRL_6,
 	HDR_HIST_REPORT_0,
 	HDR_HIST_REPORT_1,
@@ -118,7 +134,170 @@ enum mml_hdr_reg_index {
 	HDR_REG_MAX_COUNT
 };
 
-static const u16 hdr_reg_table_mt6983[HDR_REG_MAX_COUNT] = {
+static u32 hdr_default_ootf_table_mt6993[HDR_OOTF_NUM] = {
+	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
+	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
+	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
+	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
+	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
+	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
+	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
+	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
+	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
+	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
+	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
+	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
+	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
+	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
+	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
+	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
+	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
+	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
+	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
+	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
+	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
+	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
+	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
+	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
+	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
+	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
+	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
+	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
+	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
+	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
+	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
+	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
+	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
+	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
+	1024, 1024, 1024
+};
+
+static u32 region_pq_default_ootf_table_mt6993[HDR_OOTF_NUM] = {
+	8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192,
+	8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192,
+	8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192,
+	8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192,
+	8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192,
+	8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192,
+	8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192,
+	8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192,
+	8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192,
+	8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192,
+	8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192,
+	8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192,
+	8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192,
+	8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192,
+	8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192,
+	8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192,
+	8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192,
+	8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192,
+	8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192,
+	8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192,
+	8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192,
+	8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192,
+	8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192,
+	8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192,
+	8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192,
+	8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192,
+	8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192,
+	8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192,
+	8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192,
+	8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192,
+	8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192,
+	8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192,
+	8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192,
+	8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192,
+	8192, 8192, 8192
+};
+
+static u32 hdr_default_eotf_table_mt6993[HDR_OETF_NUM] = {
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+	3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4,
+	4, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 7, 7,
+	8, 8, 8, 9, 9, 10, 10, 10, 11, 11, 12, 12, 13,
+	13, 14, 15, 15, 16, 17, 18, 19, 19, 20, 21, 22, 23,
+	23, 24, 25, 26, 27, 29, 31, 32, 34, 36, 37, 39, 40,
+	42, 44, 45, 47, 48, 50, 52, 55, 58, 61, 65, 68, 71,
+	74, 78, 81, 84, 87, 90, 94, 97, 100, 103, 110, 116, 123,
+	129, 136, 142, 149, 155, 162, 168, 174, 181, 187, 194, 200, 207,
+	220, 233, 245, 258, 271, 284, 297, 310, 323, 336, 349, 362, 375,
+	388, 401, 413, 439, 465, 491, 517, 543, 568, 594, 620, 646, 672,
+	698, 724, 749, 775, 801, 827, 879, 930, 982, 1034, 1085, 1137, 1189,
+	1240, 1292, 1344, 1395, 1447, 1499, 1550, 1602, 1654, 1757, 1860, 1964, 2067,
+	2171, 2274, 2377, 2481, 2584, 2687, 2786, 2884, 2979, 3073, 3165, 3255, 3430,
+	3600, 3764, 3923, 4077, 4228, 4374, 4517, 4656, 4792, 4925, 5055, 5183, 5307,
+	5430, 5550, 5784, 6011, 6230, 6442, 6648, 6849, 7044, 7235, 7420, 7602, 7780,
+	7953, 8124, 8290, 8454, 8615, 8927, 9229, 9521, 9805, 10080, 10348, 10609, 10863,
+	11111, 11353, 11590, 11822, 12049, 12272, 12490, 12705, 13122, 13525, 13915, 14293, 14661,
+	15018, 15366, 15706, 16037, 16361, 16677, 16987, 17290, 17587, 17878, 18165, 18721, 19259,
+	19780, 20285, 20776, 21253, 21718, 22171, 22613, 23045, 23467, 23880, 24285, 24682, 25071,
+	25452, 25827, 26196, 26558, 26914, 27264, 27609, 27949, 28283, 28613, 28938, 29259, 29575,
+	29887, 30195, 30499, 30800, 31097, 31390, 31680, 31967, 32250, 32530, 32808, 33082, 33353,
+	33622, 33888, 34152, 34413, 34671, 34927, 35181, 35681, 36173, 36656, 37131, 37599, 38059,
+	38513, 38959, 39400, 39834, 40261, 40684, 41100, 41511, 41918, 42319, 42715, 43106, 43493,
+	43876, 44254, 44628, 44999, 45365, 45727, 46086, 46441, 46793, 47141, 47486, 47828, 48166,
+	48834, 49491, 50136, 50770, 51395, 52009, 52614, 53210, 53798, 54377, 54948, 55512, 56068,
+	56617, 57159, 57694, 58223, 58746, 59262, 59773, 60278, 60778, 61272, 61760, 62244, 62723,
+	63197, 63667, 64132, 64592, 65048, 456
+};
+
+static u32 region_pq_default_eotf_table_mt6993[HDR_OETF_NUM] = {
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3,
+	3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5,
+	5, 6, 6, 6, 6, 7, 7, 7, 7, 8, 8, 9, 9,
+	10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15, 16,
+	17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
+	30, 31, 32, 34, 36, 38, 40, 42, 44, 46, 48, 50, 52,
+	54, 56, 58, 60, 62, 64, 68, 72, 76, 80, 84, 88, 92,
+	96, 100, 104, 108, 112, 116, 120, 124, 128, 136, 144, 152, 160,
+	168, 176, 184, 192, 200, 208, 216, 224, 232, 240, 248, 256, 272,
+	288, 304, 320, 336, 352, 368, 384, 400, 416, 432, 448, 464, 480,
+	496, 512, 544, 576, 608, 640, 672, 704, 736, 768, 800, 832, 864,
+	896, 928, 960, 992, 1024, 1088, 1152, 1216, 1280, 1344, 1408, 1472, 1536,
+	1600, 1664, 1728, 1792, 1856, 1920, 1984, 2048, 2176, 2304, 2432, 2560, 2688,
+	2816, 2944, 3072, 3200, 3328, 3456, 3584, 3712, 3840, 3968, 4096, 4352, 4608,
+	4864, 5120, 5376, 5632, 5888, 6144, 6400, 6656, 6912, 7168, 7424, 7680, 7936,
+	8192, 8448, 8704, 8960, 9216, 9472, 9728, 9984, 10240, 10496, 10752, 11008, 11264,
+	11520, 11776, 12032, 12288, 12544, 12800, 13056, 13312, 13568, 13824, 14080, 14336, 14592,
+	14848, 15104, 15360, 15616, 15872, 16128, 16384, 16896, 17408, 17920, 18432, 18944, 19456,
+	19968, 20480, 20992, 21504, 22016, 22528, 23040, 23552, 24064, 24576, 25088, 25600, 26112,
+	26624, 27136, 27648, 28160, 28672, 29184, 29696, 30208, 30720, 31232, 31744, 32256, 32768,
+	33792, 34816, 35840, 36864, 37888, 38912, 39936, 40960, 41984, 43008, 44032, 45056, 46080,
+	47104, 48128, 49152, 50176, 51200, 52224, 53248, 54272, 55296, 56320, 57344, 58368, 59392,
+	60416, 61440, 62464, 63488, 64512, 1024
+};
+
+
+static u16 hdr_reg_table_mt6983[HDR_REG_MAX_COUNT] = {
 	[HDR_TOP] = 0x000,
 	[HDR_RELAY] = 0x004,
 	[HDR_INTSTA] = 0x00c,
@@ -130,6 +309,21 @@ static const u16 hdr_reg_table_mt6983[HDR_REG_MAX_COUNT] = {
 	[HDR_HIST_CTRL_1] = 0x024,
 	[HDR_HIST_CTRL_2] = 0x028,
 	[HDR_3x3_COEF_00] = 0x038,
+	[HDR_3x3_COEF_01] = 0x03c,
+	[HDR_3x3_COEF_02] = 0x040,
+	[HDR_3x3_COEF_03] = 0x044,
+	[HDR_3x3_COEF_04] = 0x048,
+	[HDR_3x3_COEF_05] = 0x04c,
+	[HDR_3x3_COEF_06] = 0x050,
+	[HDR_3x3_COEF_07] = 0x054,
+	[HDR_3x3_COEF_08] = 0x058,
+	[HDR_3x3_COEF_09] = 0x05c,
+	[HDR_3x3_COEF_10] = 0x060,
+	[HDR_3x3_COEF_11] = 0x064,
+	[HDR_3x3_COEF_12] = 0x068,
+	[HDR_3x3_COEF_13] = 0x06c,
+	[HDR_3x3_COEF_14] = 0x070,
+	[HDR_3x3_COEF_15] = 0x074,
 	[HDR_B_CHANNEL_NR] = 0x0D8,
 	[HDR_HIST_ADDR] = 0x0dc,
 	[HDR_HIST_DATA] = 0x0e0,
@@ -181,6 +375,7 @@ static const u16 hdr_reg_table_mt6983[HDR_REG_MAX_COUNT] = {
 	[HDR_LUT_CTRL_2] = REG_NOT_SUPPORT,
 	[HDR_LUT_CTRL_3] = REG_NOT_SUPPORT,
 	[HDR_LUT_CTRL_4] = REG_NOT_SUPPORT,
+	[HDR_LUT_CTRL_5] = REG_NOT_SUPPORT,
 	[HDR_LUT_CTRL_6] = REG_NOT_SUPPORT,
 	[HDR_HIST_REPORT_0] = REG_NOT_SUPPORT,
 	[HDR_HIST_REPORT_1] = REG_NOT_SUPPORT,
@@ -205,6 +400,21 @@ static const u16 hdr_reg_table_mt6993[HDR_REG_MAX_COUNT] = {
 	[HDR_HIST_CTRL_1] = 0x024,
 	[HDR_HIST_CTRL_2] = 0x028,
 	[HDR_3x3_COEF_00] = 0x038,
+	[HDR_3x3_COEF_01] = 0x03c,
+	[HDR_3x3_COEF_02] = 0x040,
+	[HDR_3x3_COEF_03] = 0x044,
+	[HDR_3x3_COEF_04] = 0x048,
+	[HDR_3x3_COEF_05] = 0x04c,
+	[HDR_3x3_COEF_06] = 0x050,
+	[HDR_3x3_COEF_07] = 0x054,
+	[HDR_3x3_COEF_08] = 0x058,
+	[HDR_3x3_COEF_09] = 0x05c,
+	[HDR_3x3_COEF_10] = 0x060,
+	[HDR_3x3_COEF_11] = 0x064,
+	[HDR_3x3_COEF_12] = 0x068,
+	[HDR_3x3_COEF_13] = 0x06c,
+	[HDR_3x3_COEF_14] = 0x070,
+	[HDR_3x3_COEF_15] = 0x074,
 	[HDR_B_CHANNEL_NR] = 0x0D8,
 	[HDR_HIST_ADDR] = 0x0dc,
 	[HDR_HIST_DATA] = 0x0e0,
@@ -256,6 +466,7 @@ static const u16 hdr_reg_table_mt6993[HDR_REG_MAX_COUNT] = {
 	[HDR_LUT_CTRL_2] = 0x194,
 	[HDR_LUT_CTRL_3] = 0x198,
 	[HDR_LUT_CTRL_4] = 0x19c,
+	[HDR_LUT_CTRL_5] = 0x1a0,
 	[HDR_LUT_CTRL_6] = 0x1c8,
 	[HDR_HIST_REPORT_0] = 0x1b4,
 	[HDR_HIST_REPORT_1] = 0x1b8,
@@ -280,6 +491,10 @@ struct hdr_data {
 	bool two_curve;	/* mt6993 HW Change two curve array OOTF OETF*/
 	bool hdr_debug;	/* supported in mt6989 and afterwards */
 	u32 histogram_bin;
+	u32 *hdr_default_ootf;
+	u32 *region_pq_default_ootf;
+	u32 *hdr_default_oetf;
+	u32 *region_pq_default_oetf;
 };
 
 static const struct hdr_data mt6983_hdr_data = {
@@ -347,6 +562,10 @@ static const struct hdr_data mt6993_mmlt_hdr_data = {
 	.two_curve = true,
 	.histogram_bin = 128,
 	.hdr_debug = true,
+	.hdr_default_ootf = hdr_default_ootf_table_mt6993,
+	.region_pq_default_ootf = region_pq_default_ootf_table_mt6993,
+	.hdr_default_oetf = hdr_default_eotf_table_mt6993,
+	.region_pq_default_oetf = region_pq_default_eotf_table_mt6993,
 };
 
 static const struct hdr_data mt6993_mmlf_hdr_data = {
@@ -358,6 +577,10 @@ static const struct hdr_data mt6993_mmlf_hdr_data = {
 	.two_curve = true,
 	.histogram_bin = 128,
 	.hdr_debug = true,
+	.hdr_default_ootf = hdr_default_ootf_table_mt6993,
+	.region_pq_default_ootf = region_pq_default_ootf_table_mt6993,
+	.hdr_default_oetf = hdr_default_eotf_table_mt6993,
+	.region_pq_default_oetf = region_pq_default_eotf_table_mt6993,
 };
 
 struct mml_comp_hdr {
@@ -540,11 +763,11 @@ static void hdr_relay(struct mml_comp *comp, struct cmdq_pkt *pkt, const phys_ad
 			if (is_sdr_path) {
 				cmdq_pkt_write(pkt, NULL,
 					base_pa + hdr->data->reg_table[HDR_TOP],
-					0 << 27 | 0 << 19 | 3 << 16  | 0 << 9 | 0 << 8 | 0 << 1 | 1 << 0,
-					0x080b0303);
+					1 << 27 | 1 << 26 | 1 << 19 | 3 << 16  | 0 << 9 | 0 << 8 | 0 << 1 | 1 << 0,
+					0x0C0B0303);
 				cmdq_pkt_write(pkt, NULL,
 					base_pa + hdr->data->reg_table[HDR_OOTF_CTRL_0],
-					3 << 7 | 0 << 2 | 1 << 1 | 0 << 0,
+					3 << 7 | 0 << 2 | 1 << 1 | 1 << 0,
 					0x3FF);
 				cmdq_pkt_write(pkt, NULL,
 					base_pa + hdr->data->reg_table[HDR_OOTF_CTRL_1],
@@ -556,7 +779,7 @@ static void hdr_relay(struct mml_comp *comp, struct cmdq_pkt *pkt, const phys_ad
 					0xFFFF);
 				cmdq_pkt_write(pkt, NULL,
 					base_pa + hdr->data->reg_table[HDR_EOTF_CTRL],
-					0 << 18 | 2 << 16 | 1024 << 0,
+					1 << 18 | 2 << 16 | 1024 << 0,
 					0x7FFFF);
 				cmdq_pkt_write(pkt, NULL,
 					base_pa + hdr->data->reg_table[HDR_TONE_MAP_TOP],
@@ -678,8 +901,9 @@ static void hdr_relay(struct mml_comp *comp, struct cmdq_pkt *pkt, const phys_ad
 						0 << 0,
 						0x1);
 				}
-				mml_pq_err("%s:sdr case timeout, set linear effect and %s input CSC setting",
-					__func__, MML_FMT_IS_YUV(src->format) ? "YUV" : "RGB");
+				mml_pq_err("%s:sdr case timeout, %s CSC setting and linear effect",
+					__func__,
+					MML_FMT_IS_YUV(src->format) ? "YUV input" : "RGB input");
 			} else {
 				/* enable eotf and oetf,and set hdr_abort_en = 0 to make HDR Linear effect*/
 				cmdq_pkt_write(pkt, NULL,
@@ -688,7 +912,7 @@ static void hdr_relay(struct mml_comp *comp, struct cmdq_pkt *pkt, const phys_ad
 					0x080b0003);
 				cmdq_pkt_write(pkt, NULL,
 					base_pa + hdr->data->reg_table[HDR_OOTF_CTRL_0],
-					0 << 0,
+					1 << 0,
 					0x1);
 				/* make HDR Fixed Linear effect with panel nist 400 from ALG*/
 				cmdq_pkt_write(pkt, NULL,
@@ -701,8 +925,68 @@ static void hdr_relay(struct mml_comp *comp, struct cmdq_pkt *pkt, const phys_ad
 					0x1);
 				cmdq_pkt_write(pkt, NULL,
 					base_pa + hdr->data->reg_table[HDR_3x3_COEF_00],
-					1 << 0,
-					0x1);
+					0 << 2 | 1 << 1 | 1 << 0,
+					0xF);
+				cmdq_pkt_write(pkt, NULL,
+					base_pa + hdr->data->reg_table[HDR_3x3_COEF_01],
+					5503,
+					0xFFFF);
+				cmdq_pkt_write(pkt, NULL,
+					base_pa + hdr->data->reg_table[HDR_3x3_COEF_02],
+					64380,
+					0xFFFF);
+				cmdq_pkt_write(pkt, NULL,
+					base_pa + hdr->data->reg_table[HDR_3x3_COEF_03],
+					65285,
+					0xFFFF);
+				cmdq_pkt_write(pkt, NULL,
+					base_pa + hdr->data->reg_table[HDR_3x3_COEF_04],
+					65269,
+					0xFFFF);
+				cmdq_pkt_write(pkt, NULL,
+					base_pa + hdr->data->reg_table[HDR_3x3_COEF_05],
+					4407,
+					0xFFFF);
+				cmdq_pkt_write(pkt, NULL,
+					base_pa + hdr->data->reg_table[HDR_3x3_COEF_06],
+					65492,
+					0xFFFF);
+				cmdq_pkt_write(pkt, NULL,
+					base_pa + hdr->data->reg_table[HDR_3x3_COEF_07],
+					11,
+					0xFFFF);
+				cmdq_pkt_write(pkt, NULL,
+					base_pa + hdr->data->reg_table[HDR_3x3_COEF_08],
+					65456,
+					0xFFFF);
+				cmdq_pkt_write(pkt, NULL,
+					base_pa + hdr->data->reg_table[HDR_3x3_COEF_09],
+					4165,
+					0xFFFF);
+				cmdq_pkt_write(pkt, NULL,
+					base_pa + hdr->data->reg_table[HDR_3x3_COEF_10],
+					0,
+					0xFFFF);
+				cmdq_pkt_write(pkt, NULL,
+					base_pa + hdr->data->reg_table[HDR_3x3_COEF_11],
+					0,
+					0xFFFF);
+				cmdq_pkt_write(pkt, NULL,
+					base_pa + hdr->data->reg_table[HDR_3x3_COEF_12],
+					0,
+					0xFFFF);
+				cmdq_pkt_write(pkt, NULL,
+					base_pa + hdr->data->reg_table[HDR_3x3_COEF_13],
+					65535 << 16 | 0 << 0,
+					0xFFFFFFFF);
+				cmdq_pkt_write(pkt, NULL,
+					base_pa + hdr->data->reg_table[HDR_3x3_COEF_14],
+					65535 << 16 | 0 << 0,
+					0xFFFFFFFF);
+				cmdq_pkt_write(pkt, NULL,
+					base_pa + hdr->data->reg_table[HDR_3x3_COEF_15],
+					65535 << 16 | 0 << 0,
+					0xFFFFFFFF);
 				cmdq_pkt_write(pkt, NULL,
 					base_pa + hdr->data->reg_table[HDR_RELAY],
 					0 << 0,
@@ -711,24 +995,25 @@ static void hdr_relay(struct mml_comp *comp, struct cmdq_pkt *pkt, const phys_ad
 				if (MML_FMT_IS_YUV(src->format)) {
 					cmdq_pkt_write(pkt, NULL,
 						base_pa + hdr->data->reg_table[HDR_R2Y_09],
-						0x23,
-						0x7F);
+						1 << 4 | 0 << 2 | 0 << 1 | 1 << 0,
+						0x1F);
 					cmdq_pkt_write(pkt, NULL,
 						base_pa + hdr->data->reg_table[HDR_Y2R_09],
-						0x43,
-						0xFF);
+						1 << 5 | 0 << 2 | 1 << 1 |1 << 0,
+						0x3F);
 				} else {
 					cmdq_pkt_write(pkt, NULL,
 						base_pa + hdr->data->reg_table[HDR_R2Y_09],
-						0x11,
-						0x7F);
+						1 << 4 | 0 << 2 | 0 << 1 | 1 << 0,
+						0x1F);
 					cmdq_pkt_write(pkt, NULL,
 						base_pa + hdr->data->reg_table[HDR_Y2R_09],
-						0x0,
-						0x1);
+						1 << 5 | 0 << 2 | 1 << 1 | 0 << 0,
+						0x3F);
 				}
-				mml_pq_err("%s:hdr case timeout, set linear effect and %s input CSC setting",
-					__func__, MML_FMT_IS_YUV(src->format) ? "YUV" : "RGB");
+				mml_pq_err("%s:hdr case timeout, %s CSC setting and linear effect",
+					__func__,
+					MML_FMT_IS_YUV(src->format) ? "YUV input" : "RGB input");
 			}
 		} else {
 			if(relay) {
@@ -970,7 +1255,7 @@ static s32 hdr_config_frame(struct mml_comp *comp, struct mml_task *task,
 	u32 update_curve;
 	struct mml_task_reuse *reuse = &task->reuse[ccfg->pipe];
 	struct mml_pipe_cache *cache = &cfg->cache[ccfg->pipe];
-	s32 ret;
+	s32 ret = 0;
 	u32 i;
 	s8 mode = task->config->info.mode;
 	bool is_sdr_path = dest->pq_config.en_region_pq || dest->pq_config.en_cv_based_sdr;
@@ -1000,27 +1285,64 @@ static s32 hdr_config_frame(struct mml_comp *comp, struct mml_task *task,
 	hdr_relay(comp, pkt, base_pa, src, 0x0, 0x0, is_sdr_path);
 
 	do {
-		ret = mml_pq_get_comp_config_result(task, HDR_WAIT_TIMEOUT_MS);
-		if (ret) {
+		if ((mml_pq_debug_mode & MML_PQ_FORCE_TIMEOUT_DBG) ||
+			mml_pq_get_comp_config_result(task, HDR_WAIT_TIMEOUT_MS)) {
 			mml_pq_comp_config_clear(task);
 			hdr_frm->config_success = false;
-			if (!hdr->data->tile_loss)
+			if (!hdr->data->tile_loss) {
 				hdr_relay(comp, pkt, base_pa, src, 0x1, 0x1, is_sdr_path);
-			else
+				if (hdr->data->two_curve && mml_isdc(mode)) {
+					if (is_sdr_path) {
+						hdr_write_two_curve(comp, task, ccfg,
+							hdr->data->region_pq_default_ootf,
+							hdr->data->region_pq_default_oetf, 3);
+					} else {
+						hdr_write_two_curve(comp, task, ccfg,
+							hdr->data->hdr_default_ootf,
+							hdr->data->hdr_default_oetf, 3);
+					}
+					cmdq_pkt_write(pkt, NULL,
+						base_pa + hdr->data->reg_table[HDR_LUT_CTRL_0],
+						0 << 0, 0x1);
+					cmdq_pkt_write(pkt, NULL,
+						base_pa + hdr->data->reg_table[HDR_LUT_CTRL_6],
+						1 << 1, 1 << 1);
+				}
+			} else {
 				hdr_disable_curve(comp, pkt, src, base_pa);
-			mml_pq_err("%s: get hdr param timeout: %d in %dms",
-				 __func__, ret, HDR_WAIT_TIMEOUT_MS);
+			}
 			ret = -ETIMEDOUT;
+			mml_pq_err("%s: %s hdr param timeout: %d in %dms", __func__,
+				(mml_pq_debug_mode & MML_PQ_FORCE_TIMEOUT_DBG) ? "simulate" : "get",
+				ret, HDR_WAIT_TIMEOUT_MS);
 			goto exit;
 		}
 
 		result = get_hdr_comp_config_result(task);
 		if (!result) {
 			hdr_frm->config_success = false;
-			if (!hdr->data->tile_loss)
+			if (!hdr->data->tile_loss) {
 				hdr_relay(comp, pkt, base_pa, src, 0x1, 0x1, is_sdr_path);
-			else
+				if (hdr->data->two_curve && mml_isdc(mode)) {
+					if (is_sdr_path) {
+						hdr_write_two_curve(comp, task, ccfg,
+							hdr->data->region_pq_default_ootf,
+							hdr->data->region_pq_default_oetf, 3);
+					} else {
+						hdr_write_two_curve(comp, task, ccfg,
+							hdr->data->hdr_default_ootf,
+							hdr->data->hdr_default_oetf, 3);
+					}
+					cmdq_pkt_write(pkt, NULL,
+						base_pa + hdr->data->reg_table[HDR_LUT_CTRL_0],
+						0 << 0, 0x1);
+					cmdq_pkt_write(pkt, NULL,
+						base_pa + hdr->data->reg_table[HDR_LUT_CTRL_6],
+						1 << 1, 1 << 1);
+				}
+			} else {
 				hdr_disable_curve(comp, pkt, src, base_pa);
+			}
 			mml_pq_err("%s: not get result from user lib", __func__);
 			ret = -EBUSY;
 			goto exit;
@@ -2028,7 +2350,7 @@ static void hdr_debug_dump(struct mml_comp *comp)
 {
 	struct mml_comp_hdr *hdr = comp_to_hdr(comp);
 	void __iomem *base = comp->base;
-	u32 value[22];
+	u32 value[30];
 	u32 hdr_top, shadow_ctrl;
 
 	mml_err("hdr component %u dump:", comp->id);
@@ -2065,6 +2387,15 @@ static void hdr_debug_dump(struct mml_comp *comp)
 	value[19] = read_reg_value(comp, hdr->data->reg_table[HDR_HIST_ADDR]);
 	value[20] = read_reg_value(comp, hdr->data->reg_table[HDR_HIST_CTRL_2]);
 	value[21] = read_reg_value(comp, hdr->data->reg_table[HDR_DUMMY2]);
+	value[22] = read_reg_value(comp, hdr->data->reg_table[HDR_Y2R_09]);
+	value[23] = read_reg_value(comp, hdr->data->reg_table[HDR_R2Y_09]);
+	value[24] = read_reg_value(comp, hdr->data->reg_table[HDR_OOTF_CTRL_0]);
+	value[25] = read_reg_value(comp, hdr->data->reg_table[HDR_EOTF_CTRL]);
+	value[26] = read_reg_value(comp, hdr->data->reg_table[HDR_TONE_MAP_TOP]);
+	value[27] = read_reg_value(comp, hdr->data->reg_table[HDR_3x3_COEF_00]);
+	value[28] = read_reg_value(comp, hdr->data->reg_table[HDR_LUT_CTRL_0]);
+	value[29] = read_reg_value(comp, hdr->data->reg_table[HDR_LUT_CTRL_5]);
+
 
 	mml_err("HDR_TOP %#010x HDR_RELAY %#010x HDR_INTSTA %#010x HDR_ENGSTA %#010x",
 		value[0], value[1], value[2], value[3]);
@@ -2087,6 +2418,10 @@ static void hdr_debug_dump(struct mml_comp *comp)
 	mml_err("HDR_DUMMY0 %#010x HDR_DUMMY1 %#010x HDR_DUMMY2 %#010x",
 		value[17], value[18], value[21]);
 	mml_err("HDR_HIST_ADDR %#010x HDR_HIST_CTRL_2 %#010x", value[19], value[20]);
+	mml_err("HDR_Y2R_09 %#010x HDR_R2Y_09 %#010x", value[22], value[23]);
+	mml_err("HDR_OOTF_CTRL_0 %#010x HDR_EOTF_CTRL %#010x", value[24], value[25]);
+	mml_err("HDR_TONE_MAP_TOP %#010x HDR_3x3_COEF_00 %#010x", value[26], value[27]);
+	mml_err("HDR_LUT_CTRL_0 %#010x HDR_LUT_CTRL_5 %#010x", value[28], value[29]);
 }
 
 static const struct mml_comp_debug_ops hdr_debug_ops = {

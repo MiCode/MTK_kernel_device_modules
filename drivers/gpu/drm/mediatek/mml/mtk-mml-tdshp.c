@@ -507,7 +507,7 @@ static s32 tdshp_config_frame(struct mml_comp *comp, struct mml_task *task,
 
 	const phys_addr_t base_pa = comp->base_pa;
 	struct mml_pq_comp_config_result *result;
-	s32 ret;
+	s32 ret = 0;
 	s32 i;
 	struct mml_pq_reg *regs = NULL;
 	s8 mode = task->config->info.mode;
@@ -548,8 +548,8 @@ static s32 tdshp_config_frame(struct mml_comp *comp, struct mml_task *task,
 		(1 << 25), 0x2000000);
 
 	do {
-		ret = mml_pq_get_comp_config_result(task, TDSHP_WAIT_TIMEOUT_MS);
-		if (ret) {
+		if ((mml_pq_debug_mode & MML_PQ_FORCE_TIMEOUT_DBG) ||
+			mml_pq_get_comp_config_result(task, TDSHP_WAIT_TIMEOUT_MS)) {
 			mml_pq_comp_config_clear(task);
 			tdshp_frm->config_success = false;
 			if (dest->pq_config.en_region_pq) {
@@ -577,9 +577,10 @@ static s32 tdshp_config_frame(struct mml_comp *comp, struct mml_task *task,
 						base_pa + tdshp->data->reg_table[TDSHP_CFG],
 						(0 << 25), 0x2000000);
 			}
-			mml_pq_err("%s:get ds param timeout: %d in %dms", __func__,
-				ret, TDSHP_WAIT_TIMEOUT_MS);
 			ret = -ETIMEDOUT;
+			mml_pq_err("%s: %s ds param timeout: %d in %dms", __func__,
+				(mml_pq_debug_mode & MML_PQ_FORCE_TIMEOUT_DBG) ? "simulate" : "get",
+				ret, TDSHP_WAIT_TIMEOUT_MS);
 			goto exit;
 		}
 
