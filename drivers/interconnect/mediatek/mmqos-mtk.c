@@ -2155,7 +2155,7 @@ static void vmmrc_full_dump_with_table(struct seq_file *file, const char *table_
 	for (int i = 0; i < MAX_REG_VALUE_NUM; i++) {
 		offset = table_offset + i * 4;
 		value = read_register(offset);
-		mmqos_debug_dump_line(file, "i:%d, %#x: %#5x, %5u %5u %5u\n", i, offset, value,
+		mmqos_debug_dump_line(file, "i:%d, %#x: %#10x, %5u %5u %5u\n", i, offset, value,
 			BW_UNIT_TO_MBS(value & 0x3FF), BW_UNIT_TO_MBS((value >> 10) & 0x3FF),
 			BW_UNIT_TO_MBS((value >> 20) & 0x3FF));
 	}
@@ -2164,8 +2164,19 @@ static void vmmrc_full_dump_with_table(struct seq_file *file, const char *table_
 static void vmmrc_full_dump(struct seq_file *file)
 {
 	mmqos_debug_dump_line(file, "\nVMMRC MMInfra Channel BW Dump:\n");
+
+#if IS_ENABLED(CONFIG_MTK_MMQOS_VCP)
+	//enable vcp
+	if (mmqos_state & VMMRC_VCP_ENABLE)
+		mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMQOS);
+#endif
 	vmmrc_full_dump_with_table(file, "apmcu_on", APMCU_ON_BW_OFFSET(0));
 	vmmrc_full_dump_with_table(file, "apmcu_off", APMCU_OFF_BW_OFFSET(0));
+#if IS_ENABLED(CONFIG_MTK_MMQOS_VCP)
+	//disable vcp
+	if (mmqos_state & VMMRC_VCP_ENABLE)
+		mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMQOS);
+#endif
 }
 
 static void vmmrc_full_dump_line_with_table(char *table_name, u32 table_offset)
@@ -2196,8 +2207,18 @@ static void vmmrc_full_dump_line_with_table(char *table_name, u32 table_offset)
 
 static void vmmrc_full_dump_line(void)
 {
+#if IS_ENABLED(CONFIG_MTK_MMQOS_VCP)
+	//enable vcp
+	if (mmqos_state & VMMRC_VCP_ENABLE)
+		mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMQOS);
+#endif
 	vmmrc_full_dump_line_with_table("apmcu_on ", APMCU_ON_BW_OFFSET(0));
 	vmmrc_full_dump_line_with_table("apmcu_off", APMCU_OFF_BW_OFFSET(0));
+#if IS_ENABLED(CONFIG_MTK_MMQOS_VCP)
+	//disable vcp
+	if (mmqos_state & VMMRC_VCP_ENABLE)
+		mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMQOS);
+#endif
 }
 
 static void mmpc_dvfsrc_full_dump(struct seq_file *file)
