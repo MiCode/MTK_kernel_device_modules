@@ -1165,7 +1165,7 @@ s32 mtk_set_mmmc_rg(u32 hw, u32 id, u32 offset, u32 value, u32 mask)
 		return 0;
 	}
 
-	MM_MONITOR_DBG("pa:0x%lx base:%lx value:%#x read value:%#x before set",
+	MM_MONITOR_INFO("pa:0x%lx base:%lx value:%#x read value:%#x before set",
 		(unsigned long)base_addr_pa + offset,
 		(unsigned long)base + offset, value, readl(base + offset));
 	writel((readl(base + offset) & ~mask) | (value & mask), base + offset);
@@ -1173,7 +1173,7 @@ s32 mtk_set_mmmc_rg(u32 hw, u32 id, u32 offset, u32 value, u32 mask)
 		offset -= 0x50;
 		writel((readl(base + offset) & ~mask) | (value & mask), base + offset);
 	}
-	MM_MONITOR_DBG("pa:0x%lx base:%lx value:%#x read value:%#x after set",
+	MM_MONITOR_INFO("pa:0x%lx base:%lx value:%#x read value:%#x after set",
 		(unsigned long)base_addr_pa + offset,
 		(unsigned long)base + offset, value, readl(base + offset));
 
