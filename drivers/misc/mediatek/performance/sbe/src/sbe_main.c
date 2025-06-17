@@ -1052,18 +1052,20 @@ static int sbe_do_hwui_scrolling_status_policy(int tgid, char *name, unsigned lo
 		else
 			thr->dy_compute_rescue = 1;
 
-		sbe_systrace_c(thr->pid, thr->buffer_id, 0, "[ux]page_type");
-		sbe_systrace_c(thr->pid, thr->buffer_id, 0, "[ux]byPassWebFut");
-		sbe_systrace_c(thr->pid, thr->buffer_id, 0, "[ux]byPass_affinity");
+		sbe_trace("[SBE] pid:%d, bufid:%llu, byPassWebFut:0, page_type:0, byPass_affinity:0",
+					thr->pid, thr->buffer_id);
+
 		if (test_bit(SBE_PAGE_FLUTTER, &mask)
 			|| test_bit(SBE_PAGE_WEBVIEW, &mask)
 			|| test_bit(SBE_DISABLE_DPT, &mask)
 			|| test_bit(SBE_PAGE_MULTI_WINDOW, &mask)) {
 			if (get_sbe_force_bypass_dptv2()) {
-				sbe_systrace_c(thr->pid, thr->buffer_id, 1, "[ux]byPassWebFut");
+				sbe_trace("[SBE] pid:%d, bufid:%llu forceByPassDpt",
+					thr->pid, thr->buffer_id);
 			} else {
 				thr->dpt_policy_enable = 0;
-				sbe_systrace_c(thr->pid, thr->buffer_id, mask, "[ux]page_type");
+				sbe_trace("[SBE] pid:%d, bufid:%llu, page_type:%d",
+					thr->pid, thr->buffer_id, mask);
 			}
 		}
 

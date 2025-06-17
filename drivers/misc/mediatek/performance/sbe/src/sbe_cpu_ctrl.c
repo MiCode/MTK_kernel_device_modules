@@ -227,13 +227,15 @@ void sbe_core_ctl_ignore_vip_task(struct sbe_render_info *thr, int ignore_enable
 			core_ctl_consider_VIP(1);
 			sbe_ignore_vip_task_status = 0;
 		}
-		sbe_systrace_c(thr->pid, thr->buffer_id, ignore_enable, "[ux]ignore_vip_task");
+		sbe_trace("[SBE] pid:%d, bufid:%llu, ignore_vip_task:%d",
+					thr->pid, thr->buffer_id, ignore_enable);
 	} else {
 		if (sbe_ignore_vip_task_status) {
 			core_ctl_consider_VIP(1);
 			sbe_ignore_vip_task_status = 0;
 		}
-		sbe_systrace_c(thr->pid, thr->buffer_id, 0, "[ux]ignore_vip_task");
+		sbe_trace("[SBE] pid:%d, bufid:%llu, ignore_vip_task:%d",
+					thr->pid, thr->buffer_id, 0);
 	}
 }
 
@@ -1408,7 +1410,8 @@ int sbe_calculate_dy_enhance(struct sbe_render_info *thr)
 	}
 
 	sbe_systrace_c(thr->pid, thr->buffer_id, thr->affinity_task_mask, "[ux]affinity_task");
-	sbe_systrace_c(thr->pid, thr->buffer_id, thr->ux_affinity_task_basic_cap, "[ux]affinity_task_min_cap");
+	sbe_trace("[SBE] dy enhance pid: %d, bufid:%llu, af_basic_cap: %d",
+			thr->pid, thr->buffer_id, thr->ux_affinity_task_basic_cap);
 
 	// do not compute new rescue
 	if (scroll_cnt > 0 && scroll_count < scroll_cnt)
@@ -2472,7 +2475,7 @@ int __init sbe_cpu_ctrl_init(void)
 	sbe_runnable_util_est_disable = 1;
 	sbe_extra_sub_en_deque_enable = 1;
 	sbe_notify_fpsgo_vir_boost = 1;
-	sbe_dptv2_enable = 1;
+	sbe_dptv2_enable = 0;
 	sbe_affinity_task_min_cap = SBE_DEFAULT_AFFINITY_TASK_MIN_CAP;
 	sbe_affinity_task_low_threshold_cap = SBE_DEFAULT_AFFINITY_TASK_LOW_THRESHOLD_CAP;
 	sbe_extra_sub_deque_margin_time = SBE_DEFAULT_DEUQUE_MARGIN_TIME_NS;
