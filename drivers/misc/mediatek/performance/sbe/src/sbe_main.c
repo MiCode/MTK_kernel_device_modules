@@ -787,7 +787,7 @@ static int sbe_do_webview_notify_fpsgo_ctrl(int tgid, char *name, int start, cha
 		// todo: remove this get info?
 		sbe_get_tree_lock(__func__);
 		thr = sbe_get_render_info(scroll_policy_info.final_pid_arr[i],
-				scroll_policy_info.final_bufID_arr[i], 0);
+				scroll_policy_info.final_bufID_arr[i], 1);
 		if (thr) {
 			/*
 			 * It's essential to update the status here.
