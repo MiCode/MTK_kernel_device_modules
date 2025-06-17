@@ -195,6 +195,8 @@ enum GCE_COND_REVERSE_COND {
 
 #define GCE_DO(act, name) cmdq_pkt_##act(_cond_pkt, mtk_crtc->gce_obj.event[name])
 
+#define GCE_BACKUP3(addr, slot) cmdq_pkt_mem_move(_cond_pkt, mtk_crtc->gce_obj.base, addr, slot, CMDQ_THR_SPR_IDX3)
+
 #define GCE_SLEEP(us) cmdq_pkt_sleep(_cond_pkt, us, _gpr)
 int mtk_disp_ioctl_debug_log_switch(struct drm_device *dev, void *data,
 	struct drm_file *file_priv);

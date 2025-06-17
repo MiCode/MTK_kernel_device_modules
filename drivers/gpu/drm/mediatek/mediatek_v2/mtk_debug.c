@@ -2541,6 +2541,51 @@ bool mtk_drm_set_cwb_roi(struct mtk_rect rect)
 
 }
 
+void mtk_dump_dbg_slot(void)
+{
+	struct drm_crtc *crtc;
+	struct mtk_drm_crtc *mtk_crtc;
+	unsigned int *slot_va[8] = {0};
+
+	if (IS_ERR_OR_NULL(drm_dev))
+		return;
+
+	crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list, typeof(*crtc), head);
+	if (IS_ERR_OR_NULL(crtc))
+		return;
+
+	mtk_crtc = to_mtk_crtc(crtc);
+
+	slot_va[0] = mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_FRAME_DONE_FENCE(0));
+	slot_va[1] = mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_TRIG_TICK(6));
+	slot_va[2] = mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_TRIG_TICK(7));
+	slot_va[3] = mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_TRIG_TICK(8));
+	slot_va[4] = mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_TRIG_TICK(9));
+	slot_va[5] = mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_TRIG_TICK(10));
+	slot_va[6] = mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_TRIG_TICK(11));
+	slot_va[7] = mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_TRIG_TICK(12));
+
+	if (IS_ERR_OR_NULL(slot_va[0]))
+		return;
+
+	*slot_va[0] = readl(slot_va[0]);
+	*slot_va[1] = readl(slot_va[1]);
+	*slot_va[2] = readl(slot_va[2]);
+	*slot_va[3] = readl(slot_va[3]);
+	*slot_va[4] = readl(slot_va[4]);
+	*slot_va[5] = readl(slot_va[5]);
+	*slot_va[6] = readl(slot_va[6]);
+	*slot_va[7] = readl(slot_va[7]);
+
+	DRM_MMP_MARK(abnormal_irq, *slot_va[0], *slot_va[1]);
+	DRM_MMP_MARK(abnormal_irq, *slot_va[2], *slot_va[3]);
+	DRM_MMP_MARK(abnormal_irq, *slot_va[4], *slot_va[5]);
+	DRM_MMP_MARK(abnormal_irq, *slot_va[6], *slot_va[7]);
+
+	DDPMSG("%s frame_done_idx(%d) (%#x,%#x,%#x,%#x,%#x,%#x,%#x)", __func__,
+		*slot_va[0], *slot_va[1], *slot_va[2], *slot_va[3], *slot_va[4], *slot_va[5], *slot_va[6], *slot_va[7]);
+}
+
 void mtk_wakeup_pf_wq(unsigned int m_id)
 {
 	struct drm_crtc *crtc = NULL;

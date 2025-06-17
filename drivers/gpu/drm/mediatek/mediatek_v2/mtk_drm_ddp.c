@@ -37503,6 +37503,8 @@ static irqreturn_t mtk_disp_mutex_irq_handler(int irq, void *dev_id)
 
 	if (!val) {
 		ret = IRQ_NONE;
+		DRM_MMP_MARK(IRQ, 0xdeadbeef, ddp->side_regs_pa);
+		mtk_dump_dbg_slot();
 		goto out;
 	}
 

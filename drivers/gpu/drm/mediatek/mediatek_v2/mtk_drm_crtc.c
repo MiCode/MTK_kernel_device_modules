@@ -9563,6 +9563,8 @@ static void mtk_crtc_cmdq_timeout_cb(struct cmdq_cb_data data)
 	DDPPR_ERR("%s cmdq timeout, crtc id:%d\n", __func__,
 		drm_crtc_index(crtc));
 
+	mtk_dump_dbg_slot();
+
 	if (!__ratelimit(&timeout_rate))
 		return;
 
@@ -12896,6 +12898,7 @@ void mtk_crtc_start_trig_loop(struct drm_crtc *crtc)
 	struct mtk_ddp_comp *dbi_comp;
 	int i, j;
 	bool panel_connected = mtk_drm_lcm_is_connect(mtk_crtc);
+	bool dbg_reg_to_slot;
 
 	GCE_COND_DECLARE;
 	struct cmdq_operand lop, rop;
@@ -12940,8 +12943,12 @@ void mtk_crtc_start_trig_loop(struct drm_crtc *crtc)
 		//		true);
 	}
 
-	if (priv->data->mmsys_id == MMSYS_MT6993)
+	if (priv->data->mmsys_id == MMSYS_MT6993) {
 		profile_trig = 1;
+
+		if (crtc_id == 0)
+			dbg_reg_to_slot = true;
+	}
 
 	if (!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_PREFETCH_TE) ||
 		(mtk_crtc->msync2.msync_frame_status == 1))
@@ -13006,6 +13013,12 @@ void mtk_crtc_start_trig_loop(struct drm_crtc *crtc)
 
 		/* keep power before access registers and after events waiting */
 		mtk_vidle_user_power_keep_by_gce(DISP_VIDLE_USER_TRIGLOOP_CMDQ, cmdq_handle, 0);
+
+		/* [AFTER KEEP], check mutex cg and dsi cg in disp1a_cg_con */
+		if (dbg_reg_to_slot) {
+			GCE_BACKUP3(0x3e700a64, mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_TRIG_TICK(7)));
+			GCE_BACKUP3(0x3e700a70, mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_TRIG_TICK(8)));
+		}
 
 		mtk_crtc_comp_trigger(mtk_crtc, cmdq_handle, MTK_TRIG_FLAG_PRE_TRIGGER);
 
@@ -13086,6 +13099,12 @@ void mtk_crtc_start_trig_loop(struct drm_crtc *crtc)
 			}
 		}
 
+		/* [AFTER TE], check mutex cg and dsi cg in disp1a_cg_con */
+		if (dbg_reg_to_slot) {
+			GCE_BACKUP3(0x3e700a64, mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_TRIG_TICK(9)));
+			GCE_BACKUP3(0x3e700a70, mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_TRIG_TICK(10)));
+		}
+
 		/* For dbgtp fifo mon WA */
 		if ((priv->data->mmsys_id == MMSYS_MT6993) &&
 			(priv->mtk_dbgtp_sta.fifo_mon_en[0]) && (crtc_id == 0))
@@ -13153,6 +13172,10 @@ skip_prete:
 						   mtk_crtc->gce_obj.base);
 		}
 		GCE_DO(clear_event, EVENT_MML_DISP_DONE_EVENT);
+
+		/* [AFTER SOF], check mutex sta */
+		if (dbg_reg_to_slot)
+			GCE_BACKUP3(0x3e720004, mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_TRIG_TICK(6)));
 
 		/* For dbgtp fifo mon WA */
 		if ((priv->data->mmsys_id == MMSYS_MT6993) &&
@@ -17970,6 +17993,14 @@ struct cmdq_pkt *mtk_crtc_gce_commit_begin(struct drm_crtc *crtc,
 				  mtk_crtc->gce_obj.event[EVENT_DPC_DISP1_PRETE]);
 	mtk_vidle_user_power_keep_by_gce(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle,
 					mtk_get_gpr(mtk_crtc, cmdq_handle));
+
+	/* [AFTER AC KEEP], check mutex cg and dsi cg in disp1a_cg_con */
+	if ((priv->data->mmsys_id == MMSYS_MT6993) && (crtc_id == 0)) {
+		cmdq_pkt_mem_move(cmdq_handle, mtk_crtc->gce_obj.base, 0x3e700a64,
+				  mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_TRIG_TICK(11)), CMDQ_THR_SPR_IDX3);
+		cmdq_pkt_mem_move(cmdq_handle, mtk_crtc->gce_obj.base, 0x3e700a70,
+				  mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_TRIG_TICK(12)), CMDQ_THR_SPR_IDX3);
+	}
 
 	/* mml need to power on InlineRotate and sync with mml */
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MML_PRIMARY) &&
