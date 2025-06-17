@@ -70,9 +70,9 @@ struct mt6720_priv {
 
 static int mt6720_adc_read_channel(struct mt6720_priv *priv, int chan, int *val)
 {
-	u32 regval;
 	int ret = 0, retry_cnt = 1;
 	__be16 be_val = 0;
+	u32 regval;
 
 	mutex_lock(&priv->lock);
 	pm_stay_awake(priv->dev);
@@ -298,17 +298,20 @@ static inline int mt6720_adc_reset(struct mt6720_priv *priv)
 	__be16 be_val = 0;
 	int ret;
 
-	ret = regmap_write_bits(priv->regmap, MT6720_REG_ADC_CONFG1,
-				MT6720_ZCVEN_MASK, MT6720_ZCVEN_MASK);
+	/* Select ZCV channel of report data */
+	ret = regmap_write_bits(priv->regmap, MT6720_REG_ADC_REPORT_CH,
+				MT6720_MASK_ADC_REPORT_CH, MT6720_ADC_ZCV);
 	if (ret)
-		dev_err(priv->dev, "%s, Failed to enable ZCV channel\n", __func__);
+		dev_info(priv->dev, "%s, Failed to select ZCV report channel\n", __func__);
 
+	usleep_range(1000, 1200);
 	ret = regmap_raw_read(priv->regmap, MT6720_REG_ADC_REPORT_H, &be_val, sizeof(be_val));
 	if (ret)
 		dev_err(priv->dev, "%s, Failed to read ZCV val\n", __func__);
 
 	priv->zcv = be16_to_cpu(be_val);
-	dev_info(priv->dev, "%s, zcv = %d mV (boot voltage with plug-in)\n", __func__, priv->zcv);
+	dev_info(priv->dev, "%s, zcv = %d mV (boot voltage with first plug-in when ZCVEN enable)\n",
+		 __func__, priv->zcv);
 
 	/* Disable ZCV */
 	return regmap_update_bits(priv->regmap, MT6720_REG_ADC_CONFG1, MT6720_ZCVEN_MASK, 0);
