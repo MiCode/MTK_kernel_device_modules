@@ -328,65 +328,6 @@ int loom_cal_window_freq(struct loom_loading_ctrl *lc_info)
 	return avg_freq;
 }
 
-int loom_cal_and_set_freq(int tid, int cluster, int window_loading, int lc_ub, int lc_lb, int prev_freq,
-	int limit_min_freq, int limit_max_freq, int bhr_opp_local)
-{
-	int prev_opp = 0, now_opp = 0, now_freq = 0, now_freq_max = 0, now_opp_max = 0;
-
-	if (!prev_freq)
-		return 0;
-
-	prev_opp = fbt_cluster_X2Y(cluster, prev_freq, FREQ, OPP, 1, __func__);
-	now_opp = prev_opp;
-
-	if (window_loading > lc_ub)
-		now_opp = max(prev_opp - 1, 0);
-	else if (window_loading < lc_lb)
-		now_opp = prev_opp + 1;
-
-	now_freq = fbt_cluster_X2Y(cluster, now_opp, OPP, FREQ, 1, __func__);
-
-	game_systrace_c(GAME_DEBUG_MANDATORY, tid, 0, now_freq, "now_freq");
-	game_systrace_c(GAME_DEBUG_MANDATORY, tid, 0, now_opp, "now_opp");
-
-	if (limit_min_freq && now_freq < limit_min_freq) {
-		now_freq = limit_min_freq;
-		now_opp = fbt_cluster_X2Y(cluster, now_freq, FREQ, OPP, 1, __func__);
-		game_systrace_c(GAME_DEBUG_MANDATORY, tid, 0, now_freq, "limit_min_freq");
-		game_systrace_c(GAME_DEBUG_MANDATORY, tid, 0, now_opp, "limit_min_opp");
-	}
-
-	now_opp_max = now_opp - bhr_opp_local;
-	now_opp_max = max(now_opp_max, 0);
-
-	now_freq_max = fbt_cluster_X2Y(cluster, now_opp_max, OPP, FREQ, 1, __func__);
-
-	if (limit_max_freq && now_freq_max > limit_max_freq) {
-		now_freq_max = limit_max_freq;
-		now_opp_max = fbt_cluster_X2Y(cluster, now_freq_max, FREQ, OPP, 1, __func__);
-		if (now_freq > now_freq_max) {
-			now_freq = now_freq_max;
-			now_opp = fbt_cluster_X2Y(cluster, now_freq, FREQ, OPP, 1, __func__);
-			game_systrace_c(GAME_DEBUG_MANDATORY, tid, 0, now_freq, "limit_min_freq");
-			game_systrace_c(GAME_DEBUG_MANDATORY, tid, 0, now_opp, "limit_min_opp");
-		}
-		game_systrace_c(GAME_DEBUG_MANDATORY, tid, 0, now_freq_max, "limit_max_freq");
-		game_systrace_c(GAME_DEBUG_MANDATORY, tid, 0, now_opp_max, "limit_max_opp");
-	}
-
-	game_main_trace("[%s] tid=%d, clus=%d, w_l=%d, lc_lb=%d, lc_ub=%d, prev_f=%d, freq_min=%d, freq_max=%d",
-		__func__, tid, cluster, window_loading, lc_lb, lc_ub,
-		prev_freq, now_freq, now_freq_max);
-
-	_update_userlimit_cpufreq_max(cluster, now_freq_max);
-	game_systrace_c(GAME_DEBUG_MANDATORY, tid, 0, now_freq_max, "loading_ctrl_C%d_freq_max", cluster);
-
-	_update_userlimit_cpufreq_min(cluster, now_freq);
-	game_systrace_c(GAME_DEBUG_MANDATORY, tid, 0, now_freq, "loading_ctrl_C%d_freq_min", cluster);
-
-	return now_freq;
-}
-
 int (*lc_cal_freq_fp)(int *now_freq, int *now_freq_max, int tid,
 		int cluster, int window_loading, int lc_ub, int lc_lb, int prev_freq,
 		int limit_min_freq, int limit_max_freq, int bhr_opp_local);
