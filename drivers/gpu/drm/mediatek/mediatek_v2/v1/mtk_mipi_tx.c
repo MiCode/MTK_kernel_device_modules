@@ -8628,7 +8628,7 @@ static const struct mtk_mipitx_data mt6855_mipitx_data = {
 	.dsi_get_data_rate = _dsi_get_data_rate,
 	.backup_mipitx_impedance = backup_mipitx_impedance,
 	.refill_mipitx_impedance = refill_mipitx_impedance,
-	.mipi_tx_ssc_en = mtk_mipi_tx_ssc_en,
+	.mipi_tx_ssc_en = mtk_mipi_tx_ssc_en_N6,
 };
 
 static const struct mtk_mipitx_data mt6855_mipitx_cphy_data = {
