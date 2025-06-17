@@ -612,6 +612,9 @@ int fbt_cluster_X2Y(int cluster, unsigned long input, int in_type,
 	int cpu, num_opp;
 	unsigned long output = 0;
 
+	if (cluster >= cluster_num || cluster < 0)
+		return 0;
+
 	cpu = cpu_dvfs[cluster].first_cpu;
 	num_opp = cpu_dvfs[cluster].num_opp;
 
