@@ -23909,6 +23909,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		reg = <0x28>;
 		mediatek,tx-eq = <0x0 0x1 0x46>;
 		mediatek,vs-voter = <&mt6661_3 0x1787 0x20 1>;
+		mediatek,udc = <&ssusb>;
+		enable-usb-sync;
 		status = "okay";
 	};
 };
