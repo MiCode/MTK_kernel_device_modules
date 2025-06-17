@@ -1309,6 +1309,9 @@ static void psy_handler(struct work_struct *work)
 		(aging_stage <= lbat_data->aging_max_stage && aging_stage != lbat_data->aging_cur_stage) ||
 		(lvsys_aging_stage <= lbat_data->lvsys_aging_max_stage && lvsys_aging_stage !=
 									lbat_data->lvsys_aging_cur_stage)) {
+		pr_info("[%s]: temp stage = %d, temp_cur_stage = %d, aging_stage = %d, aging_cur_stage = %d, lvsys_aging_stage = %d, lvsys_aging_cur_stage = %d"
+			, __func__, temp_stage, lbat_data->temp_cur_stage, aging_stage
+			, lbat_data->aging_cur_stage, lvsys_aging_stage, lbat_data->lvsys_aging_cur_stage);
 		if (lbat_data->ppb_mode != 1 && !lbat_data->lbat_thd_modify) {
 			thl_lv_idx = lbat_data->temp_cur_stage * pmic_level_num + lbat_data->l_pmic_lv;
 			pre_thl_lv = lbat_data->thl_lv[thl_lv_idx];
@@ -1793,7 +1796,7 @@ static void switch_voltage_table(unsigned int table, enum LOW_BATTERY_USER_TAG u
 {
 	struct lbat_thl_priv *priv = lbat_data;
 	u32 *volt_thd, *lvsys_volt_thd;
-	int volt_size, ret, i;
+	int volt_size, ret, i, vbat_aging_stage, vsys_aging_stage;
 	struct lbat_thd_tbl *thd_info;
 
 	if (user == LBAT_INTR_1){
@@ -1865,6 +1868,9 @@ static void switch_voltage_table(unsigned int table, enum LOW_BATTERY_USER_TAG u
 		kfree(lvsys_volt_thd);
 		dump_lvsys_thd();
 	}
+	vbat_aging_stage = get_aging_stage(INTR_1);
+	vsys_aging_stage = get_aging_stage(LVSYS_INT);
+	update_thresholds(lbat_data->temp_reg_stage, vbat_aging_stage, vsys_aging_stage);
 
 }
 
@@ -1902,6 +1908,7 @@ static ssize_t lvbat_table_store(struct device *dev, struct device_attribute *at
 			if (lbat_table < max_tb_num) {
 				lbat_table_data->selected_table = lbat_table;
 				switch_voltage_table(lbat_table, LBAT_INTR_1);
+				pr_info("LVBAT switch to table %u\n", lbat_table_data->selected_table);
 			} else {
 				pr_info("Invalid lbat table index.\n");
 			}
@@ -1950,6 +1957,7 @@ static ssize_t lvsys_table_store(struct device *dev, struct device_attribute *at
 			if (lvsys_table < max_tb_num) {
 				lvsys_table_data->selected_table = lvsys_table;
 				switch_voltage_table(lvsys_table, LVSYS_INTR);
+				pr_info("LVSYS switch to table %u\n", lvsys_table_data->selected_table);
 			} else {
 				pr_info("Invalid lvsys table index.\n");
 			}
