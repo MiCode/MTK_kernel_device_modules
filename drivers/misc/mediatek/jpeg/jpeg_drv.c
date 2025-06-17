@@ -257,9 +257,10 @@ static int jpeg_drv_hybrid_dec_start(unsigned int data[],
 		return -1;
 	}
 
-	*index_buf_fd = jpg_dmabuf_fd(bufInfo[id].o_dbuf);
 	// get obuf for adding reference count, avoid early release in userspace.
-	bufInfo[id].o_dbuf = jpg_dmabuf_get(*index_buf_fd);
+	jpg_get_dmabuf(bufInfo[id].o_dbuf);
+
+	*index_buf_fd = jpg_dmabuf_fd(bufInfo[id].o_dbuf);
 
 	jpeg_axdomain_set(id);
 
