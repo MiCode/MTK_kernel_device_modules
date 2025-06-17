@@ -12,6 +12,7 @@
 #include <lpm_call_type.h>
 #include <gs/lpm_pwr_gs.h>
 #include <gs/v1/lpm_power_gs.h>
+#define MTK_LPM_GS_PLAT_CLK_DUMP_SUPPORT
 int mt6895_pwr_gs_set(unsigned int type, const struct lpm_data *val)
 {
 	int ret = 0;
@@ -20,7 +21,7 @@ int mt6895_pwr_gs_set(unsigned int type, const struct lpm_data *val)
 		ret = lpm_pwr_gs_compare(LPM_GS_CMP_PMIC, type);
 	if (ret)
 		return ret;
-
+#ifdef MTK_LPM_GS_PLAT_CLK_DUMP_SUPPORT
 	if (val->d.v_u32 & GS_DCM)
 		ret = lpm_pwr_gs_compare_by_type(
 			LPM_GS_CMP_CLK, type, GS_DCM);
@@ -29,7 +30,7 @@ int mt6895_pwr_gs_set(unsigned int type, const struct lpm_data *val)
 	if (val->d.v_u32 & GS_CG)
 		ret = lpm_pwr_gs_compare_by_type(
 			LPM_GS_CMP_CLK, type, GS_CG);
-
+#endif /* MTK_LPM_GS_PLAT_CLK_DUMP_SUPPORT */
 	return ret;
 }
 struct lpm_callee mt6895_pwr_gs_callee = {
@@ -38,7 +39,7 @@ struct lpm_callee mt6895_pwr_gs_callee = {
 		.set = mt6895_pwr_gs_set,
 	},
 };
-
+#ifdef MTK_LPM_GS_PLAT_CLK_DUMP_SUPPORT
 struct lpm_gs_clk mt6895_clk_cg = {
 	.type = GS_CG,
 	.name = "CG",
@@ -94,7 +95,7 @@ struct lpm_gs_clk_info mt6895_clk_infos = {
 	.attach = mt6895_power_gs_clk_user_attach,
 	.dcm = mt6895_clks,
 };
-
+#endif /* MTK_LPM_GS_PLAT_CLK_DUMP_SUPPORT */
 /* PMIC */
 struct lpm_gs_pmic mt6895_pmic6363 = {
 	.type = GS_PMIC,
