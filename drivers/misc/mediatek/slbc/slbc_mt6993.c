@@ -1259,7 +1259,7 @@ int slbc_disable_dcc(bool disable)
 		if (venc_count == 0)
 			slbc_smc_send(MTK_SLBC_KERNEL_OP_CPU_DCC, 1, 1);
 	}
-	pr_info("#@# %s(%d) venc_count %d\n",
+	pr_debug("#@# %s(%d) venc_count %d\n",
 		__func__, __LINE__, venc_count);
 	slbc_sram_write(SLBC_DCC_COUNT, venc_count);
 	mutex_unlock(&slbc_ref_lock);
