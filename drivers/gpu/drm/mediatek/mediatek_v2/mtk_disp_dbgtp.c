@@ -2650,6 +2650,7 @@ static irqreturn_t mtk_disp_dbgtp_irq_handler(int irq, void *dev_id)
 	if (val & (1 << 0)) {
 		DRM_MMP_MARK(dbgtp, val, val1);
 		DDPDBG("[IRQ] %s: 0 trigger start\n", mtk_dump_comp_str(dbgtp));
+		DDP_DBGTP("%s: 0 trigger start\n", mtk_dump_comp_str(dbgtp));
 		mtk_dsi_fifo_mon_trigger_start_set(true);
 		writel(0xf, dbgtp->regs + DISP_DBG_FIFO_MON_INT_CLR);
 		writel(0, dbgtp->regs + DISP_DBG_FIFO_MON_INT_CLR);

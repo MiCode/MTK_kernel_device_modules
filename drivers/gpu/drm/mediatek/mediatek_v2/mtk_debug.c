@@ -120,6 +120,8 @@ bool g_ovl_bwm_debug;
 EXPORT_SYMBOL(g_ovl_bwm_debug);
 bool g_vidle_apsrc_debug;
 EXPORT_SYMBOL(g_vidle_apsrc_debug);
+bool g_dbgtp_log;
+EXPORT_SYMBOL(g_dbgtp_log);
 bool g_profile_log;
 bool g_qos_log;
 bool g_irq_log;
@@ -176,6 +178,7 @@ static DEFINE_SPINLOCK(dprec_dbg_logger_spinlock);
 static DEFINE_SPINLOCK(dprec_dump_logger_spinlock);
 /* redundant spin lock prevent exception condition */
 static DEFINE_SPINLOCK(dprec_status_logger_spinlock);
+static DEFINE_SPINLOCK(dprec_dbgtp_logger_spinlock);
 
 static struct list_head cb_data_list[MAX_CRTC];
 static DEFINE_SPINLOCK(cb_data_clock_lock);
@@ -185,12 +188,14 @@ static char **fence_buffer;
 static char **dbg_buffer;
 static char **dump_buffer;
 static char **status_buffer;
+static char **dbgtp_buffer;
 static struct logger_buffer dprec_logger_buffer[DPREC_LOGGER_PR_NUM] = {
 	{0, 0, 0, ERROR_BUFFER_COUNT, LOGGER_BUFFER_SIZE},
 	{0, 0, 0, FENCE_BUFFER_COUNT, LOGGER_BUFFER_SIZE},
 	{0, 0, 0, DEBUG_BUFFER_COUNT, LOGGER_BUFFER_SIZE},
 	{0, 0, 0, DUMP_BUFFER_COUNT, LOGGER_BUFFER_SIZE},
 	{0, 0, 0, STATUS_BUFFER_COUNT, LOGGER_BUFFER_SIZE},
+	{0, 0, 0, DBGTP_BUFFER_COUNT, LOGGER_BUFFER_SIZE},
 };
 static atomic_t is_buffer_init = ATOMIC_INIT(0);
 static char *debug_buffer;
@@ -406,6 +411,8 @@ static char *_logger_pr_type_spy(enum DPREC_LOGGER_PR_TYPE type)
 		return "dump";
 	case DPREC_LOGGER_STATUS:
 		return "status";
+	case DPREC_LOGGER_DBGTP:
+		return "dbgtp";
 	default:
 		return "unknown";
 	}
@@ -439,6 +446,9 @@ static void init_log_buffer(void)
 		goto err;
 	status_buffer = kzalloc(sizeof(char *) * DUMP_BUFFER_COUNT, GFP_KERNEL);
 	if (!status_buffer)
+		goto err;
+	dbgtp_buffer = kzalloc(sizeof(char *) * DBGTP_BUFFER_COUNT, GFP_KERNEL);
+	if (!dbgtp_buffer)
 		goto err;
 
 	/*2. Allocate log ring buffer.*/
@@ -479,6 +489,12 @@ static void init_log_buffer(void)
 	}
 	dprec_logger_buffer[4].buffer_ptr = status_buffer;
 
+	for (i = 0; i < DBGTP_BUFFER_COUNT; i++) {
+		dbgtp_buffer[i] = (temp_buf + buf_idx * LOGGER_BUFFER_SIZE);
+		buf_idx++;
+	}
+	dprec_logger_buffer[5].buffer_ptr = dbgtp_buffer;
+
 	/* gurantee logger buffer assign done before set is_buffer_init */
 	smp_wmb();
 	atomic_set(&is_buffer_init, 1);
@@ -508,6 +524,8 @@ static inline spinlock_t *dprec_logger_lock(enum DPREC_LOGGER_PR_TYPE type)
 		return &dprec_dump_logger_spinlock;
 	case DPREC_LOGGER_STATUS:
 		return &dprec_status_logger_spinlock;
+	case DPREC_LOGGER_DBGTP:
+		return &dprec_dbgtp_logger_spinlock;
 	default:
 		DDPPR_ERR("invalid logger type\n");
 	}
@@ -1300,6 +1318,9 @@ static int debug_get_info(unsigned char *stringbuf, int buf_len)
 				      buf_len - n);
 
 	n += mtk_dprec_logger_get_buf(DPREC_LOGGER_STATUS, stringbuf + n,
+				      buf_len - n);
+
+	n += mtk_dprec_logger_get_buf(DPREC_LOGGER_DBGTP, stringbuf + n,
 				      buf_len - n);
 
 	stringbuf[n++] = 0;
@@ -6930,6 +6951,8 @@ int mtk_disp_ioctl_debug_log_switch(struct drm_device *dev, void *data,
 		g_fence_log = 1;
 	else if (switch_log == MTK_DRM_IRQ_LOG)
 		g_irq_log = 1;
+	else if (switch_log == MTK_DRM_DBGTP_LOG)
+		g_dbgtp_log = 1;
 	return 0;
 }
 

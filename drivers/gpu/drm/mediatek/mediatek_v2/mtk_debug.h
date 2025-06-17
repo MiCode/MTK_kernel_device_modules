@@ -13,6 +13,7 @@
 #define DEBUG_BUFFER_COUNT 30
 #define DUMP_BUFFER_COUNT 10
 #define STATUS_BUFFER_COUNT 3
+#define DBGTP_BUFFER_COUNT 1
 #define _DRM_P_H_
 #if IS_ENABLED(CONFIG_MT_ENG_BUILD) || !IS_ENABLED(CONFIG_MTK_GMO_RAM_OPTIMIZE)
 #define LOGGER_BUFFER_SIZE (16 * 1024)
@@ -22,7 +23,7 @@
 #define DEBUG_BUFFER_SIZE                                                      \
 	(4096 +                                                                \
 	 (ERROR_BUFFER_COUNT + FENCE_BUFFER_COUNT + DEBUG_BUFFER_COUNT +       \
-	  DUMP_BUFFER_COUNT + STATUS_BUFFER_COUNT) *                           \
+	  DUMP_BUFFER_COUNT + STATUS_BUFFER_COUNT + DBGTP_BUFFER_COUNT) *                           \
 		 LOGGER_BUFFER_SIZE)
 
 #if IS_ENABLED(CONFIG_MTK_MME_SUPPORT)
@@ -46,6 +47,7 @@ enum MTK_DRM_DEBUG_LOG_SWITCH_OPS {
 	MTK_DRM_DETAIL_LOG,
 	MTK_DRM_FENCE_LOG,
 	MTK_DRM_IRQ_LOG,
+	MTK_DRM_DBGTP_LOG,
 };
 
 enum MTK_DSI_CMD_V2_SCN_OPS {

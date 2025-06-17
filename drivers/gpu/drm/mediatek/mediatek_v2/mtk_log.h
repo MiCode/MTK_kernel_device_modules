@@ -50,6 +50,7 @@ enum DPREC_LOGGER_PR_TYPE {
 	DPREC_LOGGER_DEBUG,
 	DPREC_LOGGER_DUMP,
 	DPREC_LOGGER_STATUS,
+	DPREC_LOGGER_DBGTP,
 	DPREC_LOGGER_PR_NUM
 };
 
@@ -142,6 +143,14 @@ int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...);
 		pr_err("[DISP][E]" pr_fmt(fmt), ##arg);              \
 	} while (0)
 
+#define DDP_DBGTP(fmt, arg...)                                                 \
+	do {                                                                   \
+		MME_INFO(MME_MODULE_DISP, MME_BUFFER_INDEX_0, fmt, ##arg);      \
+		if (g_dbgtp_log)                                              \
+			pr_info("[DISP][DBGTP]" pr_fmt(fmt), ##arg);     \
+	} while (0)
+
+
 #define DDPIRQ(fmt, arg...)                                                    \
 	MME_INFO(MME_MODULE_DISP, MME_BUFFER_INDEX_4, fmt, ##arg)
 
@@ -231,6 +240,13 @@ int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...);
 	do {                                                                   \
 		mtk_dprec_logger_pr(DPREC_LOGGER_ERROR, fmt, ##arg);           \
 		pr_err("[DISP][E]" pr_fmt(fmt), ##arg);              \
+	} while (0)
+
+#define DDP_DBGTP(fmt, arg...)                                                 \
+	do {                                                                   \
+		mtk_dprec_logger_pr(DPREC_LOGGER_DBGTP, fmt, ##arg);           \
+		if (g_dbgtp_log)                                              \
+			pr_info("[DISP][DBGTP]" pr_fmt(fmt), ##arg);     \
 	} while (0)
 
 #define DDPIRQ(fmt, arg...)                                                    \
@@ -498,6 +514,7 @@ extern bool g_vidle_apsrc_debug;
 extern bool g_profile_log;
 extern bool g_qos_log;
 extern bool g_y2r_en;
+extern bool g_dbgtp_log;
 extern unsigned long long g_pf_time;
 extern bool g_dump_prop_log;
 extern unsigned int g_pq_test_flag;
