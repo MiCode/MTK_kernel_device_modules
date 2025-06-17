@@ -354,6 +354,7 @@ static int powerRL_total_unit;
 static int powerRL_voltage;
 static int powerRL_ko_is_ready;
 static int powerRL_current_cap;
+static int magt_workaround_passive_mode;
 
 module_param(bhr, int, 0644);
 module_param(isolation_limit_cap, int, 0644);
@@ -1716,7 +1717,7 @@ static void dep_a_except_b(
 
 static void fbt_reset_task_setting(struct fpsgo_loading *fl, int reset_boost)
 {
-	if (!fl || !fl->pid)
+	if (!fl || !fl->pid || magt_workaround_passive_mode)
 		return;
 
 	if (reset_boost)
@@ -2490,19 +2491,6 @@ void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 
 	fbt_get_user_group_setting(thr, user_cpumask);
 
-	tp_multiuser_check = fbt_check_multiple_tp_control(thr->pid);
-	if (tp_multiuser_check != FPSGO_NO_MULTIUSER)
-		fpsgo_main_trace("tp multi-user detected!");
-
-	vip_multiuser_check = fbt_check_multiple_vip_control(thr->pid);
-	if (vip_multiuser_check != FPSGO_NO_MULTIUSER)
-		fpsgo_main_trace("vip multi-user detected!");
-
-	if (vip_follow_gh && tp_multiuser_check == FPSGO_NO_MULTIUSER)
-		turn_on_vip_in_gh();
-	else
-		turn_off_vip_in_gh();
-
 	if (!min_cap) {
 		fbt_clear_min_cap(thr);
 		fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id,
@@ -2586,6 +2574,36 @@ void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 			fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, max_cap_other, "perf_idx_max_other");
 		}
 	}
+
+	if (magt_workaround_passive_mode) {
+		for (i = 0; i < thr->dep_valid_size; i++) {
+			struct fpsgo_loading *fl;
+
+			fl = &(thr->dep_arr[i]);
+			if (strlen(dep_str) == 0)
+				print_ret = snprintf(temp, sizeof(temp), "%d", fl->pid);
+			else
+				print_ret = snprintf(temp, sizeof(temp), ",%d", fl->pid);
+
+			if (print_ret > 0 &&
+					(strlen(dep_str) + strlen(temp) < MAIN_LOG_SIZE))
+				strncat(dep_str, temp, strlen(temp));
+		}
+		goto print_trace_dep;
+	}
+
+	tp_multiuser_check = fbt_check_multiple_tp_control(thr->pid);
+	if (tp_multiuser_check != FPSGO_NO_MULTIUSER)
+		fpsgo_main_trace("tp multi-user detected!");
+
+	vip_multiuser_check = fbt_check_multiple_vip_control(thr->pid);
+	if (vip_multiuser_check != FPSGO_NO_MULTIUSER)
+		fpsgo_main_trace("vip multi-user detected!");
+
+	if (vip_follow_gh && tp_multiuser_check == FPSGO_NO_MULTIUSER)
+		turn_on_vip_in_gh();
+	else
+		turn_off_vip_in_gh();
 
 	for (i = 0; i < thr->dep_valid_size; i++) {
 		struct fpsgo_loading *fl;
@@ -2672,6 +2690,7 @@ print_log:
 	if (powerRL_enable_final && bat_psy && cur_ts)
 		fbt_task_reset_pmu(&thr->pmu_info_tree, cur_ts);
 
+print_trace_dep:
 	fpsgo_main_trace("[%d] dep-list %s", thr->pid, dep_str);
 	fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id,
 		min_cap,	"perf idx");
@@ -7433,6 +7452,48 @@ int fpsgo_get_rl_l2q_enable(void)
 	return enable;
 }
 
+int fbt_get_magt_workaround_passive_mode(void)
+{
+	int val = 0;
+
+	fpsgo_render_tree_lock(__func__);
+	val = magt_workaround_passive_mode;
+	fpsgo_render_tree_unlock(__func__);
+
+	return val;
+}
+EXPORT_SYMBOL(fbt_get_magt_workaround_passive_mode);
+
+int fbt_set_magt_workaround_passive_mode(int value)
+{
+
+	struct render_info *render_iter;
+	struct hlist_node *h;
+	HLIST_HEAD(info_list);
+
+	if (value > 1 || value < 0)
+		return -1;
+
+	fpsgo_render_tree_lock(__func__);
+
+	if (value && !magt_workaround_passive_mode) {
+		fpsgo_get_all_render_info(&info_list);
+		hlist_for_each_entry_safe(render_iter, h, &info_list, render_list_node) {
+			hlist_del(&render_iter->render_list_node);
+
+			fpsgo_thread_lock(&render_iter->thr_mlock);
+			fpsgo_stop_boost_by_render(render_iter);
+			fpsgo_thread_unlock(&render_iter->thr_mlock);
+		}
+	}
+
+	magt_workaround_passive_mode = value;
+
+	fpsgo_render_tree_unlock(__func__);
+
+	return 0;
+}
+EXPORT_SYMBOL(fbt_set_magt_workaround_passive_mode);
 
 void fpsgo_set_expected_l2q_us(int vsync_multiple, unsigned long long user_expected_l2q_us)
 {
@@ -9380,6 +9441,47 @@ out:
 
 static KOBJ_ATTR_RW(rl_l2q_exp_times);
 
+static ssize_t magt_workaround_passive_mode_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	int val = -1;
+
+	val = fbt_get_magt_workaround_passive_mode();
+
+	return scnprintf(buf, PAGE_SIZE, "%d\n", val);
+}
+
+static ssize_t magt_workaround_passive_mode_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+	int val = -1;
+	char *acBuffer = NULL;
+	int arg;
+	int ret = 0;
+
+	acBuffer = kcalloc(FPSGO_SYSFS_MAX_BUFF_SIZE, sizeof(char), GFP_KERNEL);
+	if (!acBuffer)
+		goto out;
+
+	if ((count > 0) && (count < FPSGO_SYSFS_MAX_BUFF_SIZE)) {
+		if (scnprintf(acBuffer, FPSGO_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
+			if (kstrtoint(acBuffer, 0, &arg) == 0) {
+				val = arg;
+				if (val <= 1 && val >= 0)
+					ret = fbt_set_magt_workaround_passive_mode(val);
+			}
+		}
+	}
+
+out:
+	kfree(acBuffer);
+	return ret == 0 ? count : ret;
+}
+
+static KOBJ_ATTR_RW(magt_workaround_passive_mode);
+
 FBT_SYSFS_READ(rescue_second_enhance_f, fbt_mlock, rescue_second_enhance_f);
 FBT_SYSFS_WRITE_VALUE(rescue_second_enhance_f, fbt_mlock, rescue_second_enhance_f, 0, 100);
 static KOBJ_ATTR_RW(rescue_second_enhance_f);
@@ -9705,6 +9807,7 @@ void __exit fbt_cpu_exit(void)
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_powerRL_total_unit);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_powerRL_voltage);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_powerRL_current_cap);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_magt_workaround_passive_mode);
 
 	fpsgo_sysfs_remove_dir(&fbt_kobj);
 	fbt_delete_cpu_loading_info();
@@ -9930,6 +10033,7 @@ int __init fbt_cpu_init(void)
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_powerRL_total_unit);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_powerRL_voltage);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_powerRL_current_cap);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_magt_workaround_passive_mode);
 	}
 
 	bat_psy = power_supply_get_by_name("battery");

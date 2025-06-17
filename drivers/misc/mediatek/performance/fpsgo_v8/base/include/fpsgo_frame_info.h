@@ -279,6 +279,7 @@ int fpsgo_ctrl2base_get_render_frame_info(int max_num, unsigned long mask,
 extern int fpsgo_other2comp_get_render_fw_info(int mode, int max_num, int *num, struct render_fw_info *arr);
 extern void fpsgo_other2comp_flush_acquire_table(void);
 extern int switch_fpsgo_control(int mode, int pid, int set_ctrl, unsigned long long buffer_id);
+extern int fbt_set_magt_workaround_passive_mode(int value);
 extern int set_fpsgo_attr(int mode, int pid, int set, struct fpsgo_boost_attr *request_boost_attr);
 extern int fpsgo_other2comp_set_no_boost_info(int mode, int id, int set);
 extern int register_fpsgo_frame_info_callback(unsigned long mask, fpsgo_frame_info_callback cb);

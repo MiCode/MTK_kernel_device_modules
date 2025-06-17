@@ -446,7 +446,8 @@ int loom_activate(int pid)
 		loom_render_unlock();
 		return -ENOMEM;
 	}
-	switch_fpsgo_control(0, pid, 0, 0);
+	//switch_fpsgo_control(0, pid, 0, 0);
+	fbt_set_magt_workaround_passive_mode(1);
 	ret = loom_register_frame_info_cb(1, &fpsgo_loom_frame_info_cb);
 	loom_select_cfg_apply(1);
 	loom_flt_cfg_apply(1);
@@ -467,7 +468,8 @@ int loom_deactivate(int pid)
 	}
 	loom_reset_operation(iter);
 	loom_delete_render_info(iter);
-	switch_fpsgo_control(0, pid, 1, 0);
+	//switch_fpsgo_control(0, pid, 1, 0);
+	fbt_set_magt_workaround_passive_mode(0);
 	if (!loom_get_render_num()) {
 		ret = loom_register_frame_info_cb(0, &fpsgo_loom_frame_info_cb);
 		loom_select_cfg_apply(0);
