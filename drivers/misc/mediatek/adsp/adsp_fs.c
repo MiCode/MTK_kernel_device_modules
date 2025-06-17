@@ -146,7 +146,7 @@ static inline ssize_t suspend_cmd_store(struct device *dev,
 		_adsp_deregister_feature(pdata->id, fid, 0);
 
 EXIT:
-	vfree(temp);
+	kfree(temp);
 	return count;
 }
 DEVICE_ATTR_RW(suspend_cmd);
