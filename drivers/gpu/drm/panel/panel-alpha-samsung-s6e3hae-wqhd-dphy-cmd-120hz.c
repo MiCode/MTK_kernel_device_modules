@@ -1135,6 +1135,9 @@ static int mode_switch(struct drm_panel *panel,
 	bool isResChange = false;
 	struct drm_display_mode *m_dst = get_mode_by_id(connector, dst_mode);
 	struct drm_display_mode *m_cur = get_mode_by_id(connector, cur_mode);
+	char bl_tb[] = {0x51, 0x07, 0xff};
+	unsigned int level = 0;
+	struct lcm *ctx = panel_to_lcm(panel);
 
 	if (cur_mode == dst_mode)
 		return ret;
@@ -1172,6 +1175,14 @@ static int mode_switch(struct drm_panel *panel,
 		else
 			ret |= 1;
 	}
+
+	if(isResChange) {
+		level = atomic_read(&current_backlight);
+		bl_tb[1] = (level >> 8) & 0x7;
+		bl_tb[2] = level & 0xFF;
+		lcm_dcs_write(ctx, bl_tb, ARRAY_SIZE(bl_tb));
+	}
+
 	return ret;
 }
 
