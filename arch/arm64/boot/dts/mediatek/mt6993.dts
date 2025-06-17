@@ -11808,7 +11808,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x3e410000 0 0x20000>;
 			clocks = <&dispsys_config_clk MM0_DISP_ODDMR0_DISP>;
 			// dmr od dbi
-			mediatek,oddmr-slc = <0 0 0>;
+			mediatek,oddmr-slc = <1 0 1>;
 			mediatek,oddmr-slc-gid = <68 69 70>;
 			mediatek,larb-oddmr-dmrr = <0>;
 			mediatek,larb-oddmr-dbir = <1>;
