@@ -27,42 +27,7 @@
 #endif
 
 #define TX_EQ_COUNT 3
-
-struct ps5170 {
-	struct device *dev;
-	struct i2c_client *i2c;
-	struct typec_switch_dev *sw;
-	struct typec_mux_dev *mux;
-	struct pinctrl *pinctrl;
-	struct pinctrl_state *enable;
-	struct pinctrl_state *disable;
-	struct mutex lock;
-	struct typec_mux_state *dp_state;
-	struct typec_displayport_data dp_data;
-
-	int mode;
-
-	struct work_struct set_usb_work;
-	struct work_struct set_dp_work;
-
-	enum typec_orientation orientation;
-	struct work_struct reconfig_dp_work;
-
-	atomic_t in_sleep;
-
-	/* pmic vs voter */
-	struct regmap *vsv;
-	u32 vsv_reg;
-	u32 vsv_mask;
-	u32 vsv_vers;
-
-	u32 tx_eq[TX_EQ_COUNT];
-	bool tx_eq_tuning;
-
-	uint8_t pin_assign;
-	u8 polarity;
-	bool is_dp;
-};
+#define SUSPEND_RESUME_TIMEOUT (HZ) /* 1s */
 
 #define ps5170_ORIENTATION_NONE                 0x80
 
@@ -91,6 +56,64 @@ enum redriver_power_state {
 	REDRIVER_DISABLE,
 };
 
+/*
+ * 0 init
+ * 1 off mode
+ * 2 USB only mode        NORMAL
+ * 3 USB only mode        FLIP
+ * 4 DP only mode 4-lane  NORMAL
+ * 5 DP only mode 4-lane  FLIP
+ * 6 DP 2 lane + USB mode NORMAL
+ * 7 DP 2 lane + USB mode FLIP
+ */
+
+enum ps5170_mode {
+	PS5170_MODE_INIT = 0,
+	PS5170_MODE_NONE,
+	PS5170_MODE_USB_FRONT,
+	PS5170_MODE_USB_BACK,
+	PS5170_MODE_DP4L_FRONT,
+	PS5170_MODE_DP4L_BACK,
+	PS5170_MODE_DP_FRONT,
+	PS5170_MODE_DP_BACK,
+};
+
+struct ps5170 {
+	struct device *dev;
+	struct i2c_client *i2c;
+	struct typec_switch_dev *sw;
+	struct typec_mux_dev *mux;
+	struct pinctrl *pinctrl;
+	struct pinctrl_state *enable;
+	struct pinctrl_state *disable;
+	struct mutex lock;
+	enum typec_orientation orientation;
+	struct work_struct reconfig_dp_work;
+	struct workqueue_struct *wq;
+
+	atomic_t in_sleep;
+
+	/* pmic vs voter */
+	struct regmap *vsv;
+	u32 vsv_reg;
+	u32 vsv_mask;
+	u32 vsv_vers;
+
+	u32 tx_eq[TX_EQ_COUNT];
+	bool tx_eq_tuning;
+
+	uint8_t pin_assign;
+	u8 polarity;
+	bool is_dp;
+	enum ps5170_mode current_mode;
+};
+
+struct set_mode_work_data {
+	struct ps5170 *ps;
+	struct work_struct set_mode_work;
+	enum ps5170_mode new_mode;
+};
+
 void ps5170_smc_request(struct ps5170 *ps,
 	enum redriver_power_state state)
 {
@@ -112,7 +135,6 @@ void ps5170_smc_request(struct ps5170 *ps,
 
 	arm_smccc_smc(MTK_SIP_KERNEL_USB_CONTROL,
 		op, 0, 0, 0, 0, 0, 0, &res);
-
 }
 
 void ps5170_vsvoter_set(struct ps5170 *ps)
@@ -245,115 +267,116 @@ static int ps5170_init(struct ps5170 *ps)
 
 }
 
-/*
- * 0 USB only mode        NORMAL
- * 1 USB only mode        FLIP
- * 2 DP only mode 4-lane  NORMAL
- * 3 DP only mode 4-lane  FLIP
- * 4 DP 2 lane + USB mode NORMAL
- * 5 DP 2 lane + USB mode FLIP
- * polarity == 0 NORMAL
- */
-
-static int ps5170_set_conf(struct ps5170 *ps, u8 new_conf)
+static bool is_dp_mode(enum ps5170_mode mode)
 {
+	if (mode == PS5170_MODE_DP_FRONT || mode == PS5170_MODE_DP_BACK ||
+		mode == PS5170_MODE_DP4L_FRONT || mode == PS5170_MODE_DP4L_BACK)
+		return true;
+	else
+		return false;
+}
 
-	if (ps->enable) {
-		pinctrl_select_state(ps->pinctrl, ps->enable);
-		mdelay(20);
-	}
-	ps5170_init(ps);
-	mdelay(20);
+static void ps5170_dp_disable(struct ps5170 *ps)
+{
+	dev_info(ps->dev, "%s Disable DP\n", __func__);
+	/* switch off */
+	i2c_smbus_write_byte_data(ps->i2c, 0x40, 0x80);
+	/* Disable AUX channel */
+	i2c_smbus_write_byte_data(ps->i2c, 0xa0, 0x02);
+	/* HPD low */
+	i2c_smbus_write_byte_data(ps->i2c, 0xa1, 0x00);
+	mdelay(10);
+	/* Release PMIC LPM Request */
+	ps5170_smc_request(ps, REDRIVER_DISABLE);
+}
 
-	ps->pin_assign = new_conf;
+static void ps5170_dp_enable(struct ps5170 *ps, enum ps5170_mode mode)
+{
+	dev_info(ps->dev, "%s Enable DP %d\n", __func__, mode);
+	/* Request PMIC LPM resource */
+	ps5170_smc_request(ps, REDRIVER_DP_CONFIG);
 
-	dev_info(ps->dev, "ps->ori = %d\n", ps->orientation);
-
-
-	switch (ps->orientation) {
-	case TYPEC_ORIENTATION_NORMAL:
-		ps->is_dp = true;
-		/* Request PMIC LPM resource */
-		ps5170_smc_request(ps, REDRIVER_DP_CONFIG);
-		mdelay(10);
-		switch (new_conf) {
-		case 2:
-			/* DP Only mode 4-lane */
-			i2c_smbus_write_byte_data(ps->i2c, 0x40, ps5170_ORIENTATION_NORMAL_DP);
-			break;
-		case 4:
-			/*  DP 2 lane + USB mode */
-			i2c_smbus_write_byte_data(ps->i2c, 0x40, ps5170_ORIENTATION_NORMAL_USBDP);
-			break;
-		default:
-			break;
-		}
-		/* Enable AUX channel */
-		i2c_smbus_write_byte_data(ps->i2c, 0xa0, 0x00);
-		/* HPD */
-		i2c_smbus_write_byte_data(ps->i2c, 0xa1, 0x04);
-
+	switch (mode) {
+	case PS5170_MODE_DP4L_FRONT:
+		/* DP Only mode 4-lane */
+		i2c_smbus_write_byte_data(ps->i2c, 0x40, ps5170_ORIENTATION_NORMAL_DP);
 		break;
-	case TYPEC_ORIENTATION_REVERSE:
-		ps->is_dp = true;
-		/* Request PMIC LPM resource */
-		ps5170_smc_request(ps, REDRIVER_DP_CONFIG);
-		mdelay(10);
-		switch (new_conf) {
-		case 2:
-			/* DP Only mode 4-lane */
-			i2c_smbus_write_byte_data(ps->i2c, 0x40, ps5170_ORIENTATION_FLIP_DP);
-			break;
-		case 4:
-			/*  DP 2 lane + USB mode */
-			i2c_smbus_write_byte_data(ps->i2c, 0x40, ps5170_ORIENTATION_FLIP_USBDP);
-			break;
-		default:
-			break;
-		}
-		/* Enable AUX channel */
-		i2c_smbus_write_byte_data(ps->i2c, 0xa0, 0x00);
-		/* HPD */
-		i2c_smbus_write_byte_data(ps->i2c, 0xa1, 0x04);
-
+	case PS5170_MODE_DP4L_BACK:
+		/* DP Only mode 4-lane */
+		i2c_smbus_write_byte_data(ps->i2c, 0x40, ps5170_ORIENTATION_FLIP_DP);
 		break;
-	case TYPEC_ORIENTATION_NONE:
-		/* switch off */
-		i2c_smbus_write_byte_data(ps->i2c, 0x40, 0x80);
-		/* Disable AUX channel */
-		i2c_smbus_write_byte_data(ps->i2c, 0xa0, 0x02);
-		/* HPD low */
-		i2c_smbus_write_byte_data(ps->i2c, 0xa1, 0x00);
-		mdelay(10);
-		/* Release PMIC LPM Request */
-		ps5170_smc_request(ps, REDRIVER_DISABLE);
+	case PS5170_MODE_DP_FRONT:
+		/*  DP 2 lane + USB mode */
+		i2c_smbus_write_byte_data(ps->i2c, 0x40, ps5170_ORIENTATION_NORMAL_USBDP);
+		break;
+	case PS5170_MODE_DP_BACK:
+			/*  DP 2 lane + USB mode */
+		i2c_smbus_write_byte_data(ps->i2c, 0x40, ps5170_ORIENTATION_FLIP_USBDP);
 		break;
 	default:
 		break;
 	}
 
-	return 0;
+	/* Enable AUX channel */
+	i2c_smbus_write_byte_data(ps->i2c, 0xa0, 0x00);
+	/* HPD */
+	i2c_smbus_write_byte_data(ps->i2c, 0xa1, 0x04);
 }
 
-static void ps5170_switch_set_work(struct work_struct *data)
+static void ps5170_set_mode_work(struct work_struct *work)
 {
+	struct set_mode_work_data *work_data =
+		container_of(work, struct set_mode_work_data, set_mode_work);
+	struct ps5170 *ps = work_data->ps;
+	enum ps5170_mode current_mode, new_mode;
+	unsigned long timeout;
 
-	struct ps5170 *ps = container_of(data, struct ps5170, set_usb_work);
+	new_mode = work_data->new_mode;
+	current_mode = ps->current_mode;
 
-	if (atomic_read(&ps->in_sleep)) {
-		dev_info(ps->dev, "%s in sleep\n", __func__);
-		schedule_work(&ps->set_usb_work);
-		return;
+	dev_info(ps->dev, "%s from %d to %d\n", __func__, current_mode, new_mode);
+
+	if (current_mode == new_mode)
+		goto same_mode;
+
+	timeout = jiffies + SUSPEND_RESUME_TIMEOUT;
+
+	while (time_before(jiffies, timeout)) {
+		if (!atomic_read(&ps->in_sleep))
+			break;
+		dev_info(ps->dev, "wait for suspend/resume complete\n");
+		msleep(20);
 	}
 
-	switch (ps->orientation) {
-	case TYPEC_ORIENTATION_NONE:
-		/* Disable DP */
-		if (ps->is_dp == true) {
-			dev_info(ps->dev, "%s Disable DP settings\n", __func__);
-			ps5170_set_conf(ps, 0);
-			ps->is_dp = false;
+	/* power on first when mode switch to on */
+	if (current_mode == PS5170_MODE_NONE && new_mode != PS5170_MODE_NONE) {
+		/* vote vs to enable */
+		ps5170_vsvoter_set(ps);
+		mdelay(10);
+		/* switch on */
+		if (ps->enable) {
+			pinctrl_select_state(ps->pinctrl, ps->enable);
+			mdelay(20);
 		}
+		ps5170_init(ps);
+	}
+
+	/* apply usb mode and dp mode setting */
+	if (new_mode == PS5170_MODE_USB_FRONT)
+		i2c_smbus_write_byte_data(ps->i2c, 0x40,
+			ps5170_ORIENTATION_NORMAL);
+	else if (new_mode == PS5170_MODE_USB_BACK)
+		i2c_smbus_write_byte_data(ps->i2c, 0x40,
+			ps5170_ORIENTATION_FLIP);
+	else if (is_dp_mode(new_mode))
+		ps5170_dp_enable(ps, new_mode);
+
+	/* power off when mode switch to off */
+	if (current_mode != PS5170_MODE_NONE && new_mode == PS5170_MODE_NONE) {
+		/* apply dp off first */
+		if (is_dp_mode(current_mode))
+			ps5170_dp_disable(ps);
+
 		/* switch off */
 		i2c_smbus_write_byte_data(ps->i2c, 0x40, 0x80);
 		if (ps->disable)
@@ -361,41 +384,27 @@ static void ps5170_switch_set_work(struct work_struct *data)
 		mdelay(10);
 		/* vote vs to disable  */
 		ps5170_vsvoter_clr(ps);
-		/* clr pin-assign  */
-		ps->pin_assign = 0;
-		break;
-	case TYPEC_ORIENTATION_NORMAL:
-		/* vote vs to enable */
-		ps5170_vsvoter_set(ps);
-		mdelay(10);
-		/* switch cc1 side */
-		if (ps->enable) {
-			pinctrl_select_state(ps->pinctrl, ps->enable);
-			mdelay(20);
-		}
-		ps5170_init(ps);
-		/* NORMAL Side */
-		i2c_smbus_write_byte_data(ps->i2c, 0x40,
-			ps5170_ORIENTATION_NORMAL);
-		break;
-	case TYPEC_ORIENTATION_REVERSE:
-		/* vote vs to enable */
-		ps5170_vsvoter_set(ps);
-		mdelay(10);
-		/* switch cc2 side */
-		if (ps->enable) {
-			pinctrl_select_state(ps->pinctrl, ps->enable);
-			mdelay(20);
-		}
-		ps5170_init(ps);
-		/* FLIP Side */
-		i2c_smbus_write_byte_data(ps->i2c, 0x40,
-			ps5170_ORIENTATION_FLIP);
-		break;
-	default:
-		break;
 	}
 
+	ps->current_mode = new_mode;
+
+same_mode:
+	kfree(work_data);
+}
+
+static void ps5170_set_mode(struct ps5170 *ps, enum ps5170_mode mode)
+{
+	struct set_mode_work_data *work_data;
+
+	work_data = kzalloc(sizeof(struct set_mode_work_data), GFP_ATOMIC);
+	if (!work_data)
+		return;
+
+	INIT_WORK(&work_data->set_mode_work, ps5170_set_mode_work);
+
+	work_data->ps = ps;
+	work_data->new_mode = mode;
+	queue_work(ps->wq, &work_data->set_mode_work);
 }
 
 static int ps5170_switch_set(struct typec_switch_dev *sw,
@@ -405,16 +414,34 @@ static int ps5170_switch_set(struct typec_switch_dev *sw,
 
 	dev_info(ps->dev, "%s %d\n", __func__, orientation);
 
+	mutex_lock(&ps->lock);
+
+	switch (orientation) {
+	case TYPEC_ORIENTATION_NONE:
+		ps5170_set_mode(ps, PS5170_MODE_NONE);
+		ps->pin_assign = 0;
+		ps->is_dp = false;
+		break;
+	case TYPEC_ORIENTATION_NORMAL:
+		ps5170_set_mode(ps, PS5170_MODE_USB_FRONT);
+		break;
+	case TYPEC_ORIENTATION_REVERSE:
+		ps5170_set_mode(ps, PS5170_MODE_USB_BACK);
+		break;
+	default:
+		break;
+	}
+
 	ps->orientation = orientation;
-	schedule_work(&ps->set_usb_work);
+	mutex_unlock(&ps->lock);
 	return 0;
 }
 
 /*
  * case
- *  4 Pin Assignment C 4-lans
+ * 4 Pin Assignment C 4-lans
  * 16 Pin Assignment E 4-lans
- *  8 Pin Assignment D 2-lans
+ * 8 Pin Assignment D 2-lans
  * 32 Pin Assignment F 2-lans
  */
 
@@ -425,49 +452,29 @@ static void ps5170_reconfig_dp_work(struct work_struct *data)
 	dev_info(ps->dev, "Reconfig DP channel, pin_assign = %d, polarity = %d.\n"
 				, ps->pin_assign, ps->orientation);
 
-	ps5170_set_conf(ps, ps->pin_assign);
+	mutex_lock(&ps->lock);
 
-}
-
-static void ps5170_mux_set_work(struct work_struct *data)
-{
-
-	struct ps5170 *ps = container_of(data, struct ps5170, set_dp_work);
-	struct typec_displayport_data dp_data = ps->dp_data;
-
-	 /*Debug Message
-	  *dev_info(ps->dev, "ps5170_mux_set\n");
-	  *dev_info(ps->dev, "state->mode : %d\n", state->mode);
-	  *dev_info(ps->dev, "ps->mode : %d\n", ps->mode);
-	  *dev_info(ps->dev, "data-> polarity : %d\n", dp_data.ama_dp_state.polarity);
-	  *dev_info(ps->dev, "data-> signal : %d\n", dp_data.ama_dp_state.signal);
-	  *dev_info(ps->dev, "data-> pin_assignment : %d\n", dp_data.ama_dp_state.pin_assignment);
-	  *dev_info(ps->dev, "data-> active : %d\n", dp_data.ama_dp_state.active);
-	  */
-
-	if (atomic_read(&ps->in_sleep)) {
-		dev_info(ps->dev, "%s in sleep\n", __func__);
-		schedule_work(&ps->set_dp_work);
-		return;
+	switch (ps->pin_assign) {
+	case 4:
+	case 16:
+		/* Set mode to none first to reset the state */
+		ps5170_set_mode(ps, PS5170_MODE_NONE);
+		ps5170_set_mode(ps, (ps->orientation == TYPEC_ORIENTATION_NORMAL)
+			? PS5170_MODE_DP_FRONT : PS5170_MODE_DP_BACK);
+		break;
+	case 8:
+	case 32:
+		/* Set mode to none first to reset the state */
+		ps5170_set_mode(ps, PS5170_MODE_NONE);
+		ps5170_set_mode(ps, (ps->orientation == TYPEC_ORIENTATION_NORMAL)
+			? PS5170_MODE_DP4L_FRONT : PS5170_MODE_DP4L_BACK);
+		break;
+	default:
+		dev_info(ps->dev, "%s Pin Assignment not support\n", __func__);
+		break;
 	}
 
-	if (dp_data.conf) {
-
-		switch (dp_data.conf) {
-		case 4:
-		case 16:
-			ps5170_set_conf(ps, 2);
-			break;
-		case 8:
-		case 32:
-			ps5170_set_conf(ps, 4);
-			break;
-		default:
-			dev_info(ps->dev, "%s Pin Assignment not support\n", __func__);
-			break;
-		}
-	}
-
+	mutex_unlock(&ps->lock);
 }
 
 static int ps5170_mux_set(struct typec_mux_dev *mux, struct typec_mux_state *state)
@@ -480,17 +487,37 @@ static int ps5170_mux_set(struct typec_mux_dev *mux, struct typec_mux_state *sta
 		return 0;
 	}
 
-	/*dev_info(ps->dev, "dp_data->config = %d\n", dp_data->conf);
-	 *dev_info(ps->dev, "dp_data->status = %d\n", dp_data->status);
-	 *dev_info(ps->dev, "state->mode = %lu\n", state->mode);
-	 */
+	dev_info(ps->dev, "%s %d\n", __func__, dp_data->conf);
+	/* dev_info(ps->dev, "dp_data->status = %d\n", dp_data->status); */
+	/* dev_info(ps->dev, "state->mode = %lu\n", state->mode); */
+	/* dev_info(ps->dev, "ps->orientation = %d\n", ps->orientation); */
+
+	mutex_lock(&ps->lock);
 
 	if (dp_data->conf != 0) {
-		ps->dp_data.conf = dp_data->conf;
-		ps->dp_data.status = dp_data->status;
-		ps->mode = state->mode;
-		schedule_work(&ps->set_dp_work);
+		switch (dp_data->conf) {
+		case 4:
+		case 16:
+			ps5170_set_mode(ps, (ps->orientation == TYPEC_ORIENTATION_NORMAL)
+				? PS5170_MODE_DP_FRONT : PS5170_MODE_DP_BACK);
+			break;
+		case 8:
+		case 32:
+			ps5170_set_mode(ps, (ps->orientation == TYPEC_ORIENTATION_NORMAL)
+				? PS5170_MODE_DP4L_FRONT : PS5170_MODE_DP4L_BACK);
+			break;
+		default:
+			dev_info(ps->dev, "%s Pin Assignment not support\n", __func__);
+			goto not_support;
+		}
+
+		ps->pin_assign = dp_data->conf;
+		ps->is_dp = true;
 	}
+
+not_support:
+	mutex_unlock(&ps->lock);
+
 	return 0;
 }
 
@@ -595,8 +622,11 @@ static int ps5170_probe(struct i2c_client *client)
 		return ret;
 	}
 
-	INIT_WORK(&ps->set_usb_work, ps5170_switch_set_work);
-	INIT_WORK(&ps->set_dp_work, ps5170_mux_set_work);
+	ps->wq = create_singlethread_workqueue("ps5170_wq");
+	if (!ps->wq)
+		return -ENOMEM;
+
+	mutex_init(&ps->lock);
 	INIT_WORK(&ps->reconfig_dp_work, ps5170_reconfig_dp_work);
 
 	/* switch off after init done */
@@ -635,31 +665,31 @@ static int __maybe_unused ps5170_resume(struct device *dev)
 static int ps5170_suspend_noirq(struct device *dev)
 {
 	struct i2c_client *i2c = to_i2c_client(dev);
-	struct ps5170 *data = i2c_get_clientdata(i2c);
+	struct ps5170 *ps = i2c_get_clientdata(i2c);
 
-	atomic_set(&data->in_sleep, 1);
+	atomic_set(&ps->in_sleep, 1);
 
 	/* pull low en pin to enter deep idle mode */
-	pinctrl_select_state(data->pinctrl, data->disable);
+	pinctrl_select_state(ps->pinctrl, ps->disable);
 	return 0;
 }
 
 static int ps5170_resume_noirq(struct device *dev)
 {
 	struct i2c_client *i2c = to_i2c_client(dev);
-	struct ps5170 *data = i2c_get_clientdata(i2c);
+	struct ps5170 *ps = i2c_get_clientdata(i2c);
 
-	atomic_set(&data->in_sleep, 0);
+	atomic_set(&ps->in_sleep, 0);
 
-	if (data->pin_assign) {
-		schedule_work(&data->reconfig_dp_work);
+	if (ps->pin_assign) {
+		schedule_work(&ps->reconfig_dp_work);
 	} else {
 		/* pull high en pin to enter normal mode if connected */
-		if (data->orientation == TYPEC_ORIENTATION_NORMAL ||
-			data->orientation == TYPEC_ORIENTATION_REVERSE)
-			pinctrl_select_state(data->pinctrl, data->enable);
+		if (ps->orientation == TYPEC_ORIENTATION_NORMAL ||
+			ps->orientation == TYPEC_ORIENTATION_REVERSE)
+			pinctrl_select_state(ps->pinctrl, ps->enable);
 		else
-			pinctrl_select_state(data->pinctrl, data->disable);
+			pinctrl_select_state(ps->pinctrl, ps->disable);
 	}
 	return 0;
 }
