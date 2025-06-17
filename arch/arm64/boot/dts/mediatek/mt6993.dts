@@ -11460,7 +11460,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mminfra-pwr-idx = <MMINFRA_MT6993_PWR_MM2>;
 			mminfra-pwr-type = <MMINFRA_MT6993_TYPE_DISP>;
 			event-vote-hwccf = /bits/ 16 <CMDQ_SYNC_TOKEN_DPC_VOTE_HWCCF>;
-			operating-points-v2 = <&opp_table_disp>;
+			operating-points-v2 = <&opp_table_disp>, <&opp_table_disp_b0>;
 			clocks = <&disp_vdisp_ao_config_clk VDISP_AO_DISP_DPC_DISP>,
 				 <&disp_vdisp_ao_config_clk VDISP_AO_DISP_BUS_DISP>,
 				 <&disp_vdisp_ao_config_clk VDISP_AO_CONFIG_DISP>;
