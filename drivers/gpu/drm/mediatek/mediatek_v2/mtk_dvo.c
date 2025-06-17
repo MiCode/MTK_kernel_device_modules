@@ -341,7 +341,8 @@ static void mtk_dp_dvo_start(struct mtk_ddp_comp *comp,
 	irq_underflowsa = 0;
 	dp_dvo_bw = 0;
 
-	mtk_dp_dvo_mask(dp_dvo, DVO_INTSTA, 0xffffffff, 0);
+	mtk_ddp_write_mask(comp, 0,
+		DVO_INTSTA, ~0, handle);
 	mtk_ddp_write_mask(comp, 1,
 		DVO_RST, SWRST, handle);
 	mtk_ddp_write_mask(comp, 0,
@@ -372,9 +373,9 @@ static void mtk_dp_dvo_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 
 	DPTXFUNC();
 	//mtk_dp_video_trigger(video_mute<<16 | 0);
-	mtk_ddp_write_mask(comp, 0x0, DVO_EN, EN, handle);
-	mtk_dp_dvo_mask(dp_dvo, DVO_INTEN, 0xffffffff, 0);
-	mtk_dp_dvo_mask(dp_dvo, DVO_INTSTA, 0xffffffff, 0);
+	mtk_ddp_write_mask(comp, 0, DVO_EN, EN, handle);
+	mtk_ddp_write_mask(comp, 0, DVO_INTEN, ~0, handle);
+	mtk_ddp_write_mask(comp, 0, DVO_INTSTA, ~0, handle);
 	irq_intsa = 0;
 	irq_underflowsa = 0;
 	dp_dvo_bw = 0;
