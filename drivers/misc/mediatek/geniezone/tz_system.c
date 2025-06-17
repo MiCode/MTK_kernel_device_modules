@@ -241,7 +241,7 @@ int32_t _setSessionHandle(const struct tipc_k_handle h)
 	if (i >= KREE_SESSION_HANDLE_MAX_SIZE) {
 		KREE_ERR(" %s: can not get empty slot for session!\n",
 			 __func__);
-		session = 0;
+		session = -1;
 	}
 
 	return session;

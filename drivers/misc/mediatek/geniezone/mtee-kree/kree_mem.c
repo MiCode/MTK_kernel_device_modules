@@ -486,7 +486,8 @@ static TZ_RESULT kree_register_sharedmem(KREE_SESSION_HANDLE session,
 		if (locktry && locktry != -EINTR) {
 			KREE_ERR("[%s]mutex lock fail(0x%x)\n",
 				 __func__, locktry);
-			return TZ_RESULT_ERROR_GENERIC;
+			ret = TZ_RESULT_ERROR_GENERIC;
+			goto final;
 		}
 	} while (locktry);
 
@@ -499,13 +500,17 @@ static TZ_RESULT kree_register_sharedmem(KREE_SESSION_HANDLE session,
 
 	mutex_unlock(shared_mem_mutex);	/* FIXME: should be removed */
 
-	if (ret != TZ_RESULT_SUCCESS) {
-		*mem_handle = 0;
-		return ret;
+	if (unlikely(ret == TZ_RESULT_SUCCESS && p[3].value.a == 0)) {
+		KREE_ERR("[%s] Got invalid handle after registration\n",
+				__func__);
+		ret = TZ_RESULT_ERROR_BAD_STATE;
 	}
-	*mem_handle = p[3].value.a;
 
-	return TZ_RESULT_SUCCESS;
+final:
+	if (likely(ret == TZ_RESULT_SUCCESS && !IS_ERR_OR_NULL(mem_handle)))
+		*mem_handle = p[3].value.a;
+
+	return ret;
 }
 
 TZ_RESULT KREE_RegisterSharedmem(KREE_SESSION_HANDLE session,
