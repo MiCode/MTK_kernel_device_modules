@@ -9,6 +9,7 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/mutex.h>
+#include <linux/notifier.h>
 #include <linux/of_platform.h>
 #include <linux/pinctrl/consumer.h>
 #include <linux/platform_device.h>
@@ -24,6 +25,10 @@
 
 #if IS_ENABLED(CONFIG_MTK_USB_TYPEC_MUX)
 #include "mux_switch.h"
+#endif
+
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_USB_MTU3)
+#include "mtu3.h"
 #endif
 
 #define TX_EQ_COUNT 3
@@ -106,6 +111,13 @@ struct ps5170 {
 	u8 polarity;
 	bool is_dp;
 	enum ps5170_mode current_mode;
+
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_USB_MTU3)
+	struct ssusb_mtk *ssusb;
+	struct notifier_block ssusb_nb;
+	bool usb_sync_enabled;
+	bool usb_on;
+#endif
 };
 
 struct set_mode_work_data {
@@ -392,7 +404,7 @@ same_mode:
 	kfree(work_data);
 }
 
-static void ps5170_set_mode(struct ps5170 *ps, enum ps5170_mode mode)
+static void ps5170_set_mode(struct ps5170 *ps, enum ps5170_mode mode, bool sync)
 {
 	struct set_mode_work_data *work_data;
 
@@ -405,6 +417,10 @@ static void ps5170_set_mode(struct ps5170 *ps, enum ps5170_mode mode)
 	work_data->ps = ps;
 	work_data->new_mode = mode;
 	queue_work(ps->wq, &work_data->set_mode_work);
+
+	/* wait for the work to complete */
+	if (sync)
+		flush_work(&work_data->set_mode_work);
 }
 
 static int ps5170_switch_set(struct typec_switch_dev *sw,
@@ -418,15 +434,17 @@ static int ps5170_switch_set(struct typec_switch_dev *sw,
 
 	switch (orientation) {
 	case TYPEC_ORIENTATION_NONE:
-		ps5170_set_mode(ps, PS5170_MODE_NONE);
+		ps5170_set_mode(ps, PS5170_MODE_NONE, true);
 		ps->pin_assign = 0;
 		ps->is_dp = false;
 		break;
 	case TYPEC_ORIENTATION_NORMAL:
-		ps5170_set_mode(ps, PS5170_MODE_USB_FRONT);
+		if (ps->usb_on)
+			ps5170_set_mode(ps, PS5170_MODE_USB_FRONT, false);
 		break;
 	case TYPEC_ORIENTATION_REVERSE:
-		ps5170_set_mode(ps, PS5170_MODE_USB_BACK);
+		if (ps->usb_on)
+			ps5170_set_mode(ps, PS5170_MODE_USB_BACK, false);
 		break;
 	default:
 		break;
@@ -458,16 +476,16 @@ static void ps5170_reconfig_dp_work(struct work_struct *data)
 	case 4:
 	case 16:
 		/* Set mode to none first to reset the state */
-		ps5170_set_mode(ps, PS5170_MODE_NONE);
+		ps5170_set_mode(ps, PS5170_MODE_NONE, false);
 		ps5170_set_mode(ps, (ps->orientation == TYPEC_ORIENTATION_NORMAL)
-			? PS5170_MODE_DP_FRONT : PS5170_MODE_DP_BACK);
+			? PS5170_MODE_DP_FRONT : PS5170_MODE_DP_BACK, false);
 		break;
 	case 8:
 	case 32:
 		/* Set mode to none first to reset the state */
-		ps5170_set_mode(ps, PS5170_MODE_NONE);
+		ps5170_set_mode(ps, PS5170_MODE_NONE, false);
 		ps5170_set_mode(ps, (ps->orientation == TYPEC_ORIENTATION_NORMAL)
-			? PS5170_MODE_DP4L_FRONT : PS5170_MODE_DP4L_BACK);
+			? PS5170_MODE_DP4L_FRONT : PS5170_MODE_DP4L_BACK, false);
 		break;
 	default:
 		dev_info(ps->dev, "%s Pin Assignment not support\n", __func__);
@@ -499,12 +517,12 @@ static int ps5170_mux_set(struct typec_mux_dev *mux, struct typec_mux_state *sta
 		case 4:
 		case 16:
 			ps5170_set_mode(ps, (ps->orientation == TYPEC_ORIENTATION_NORMAL)
-				? PS5170_MODE_DP_FRONT : PS5170_MODE_DP_BACK);
+				? PS5170_MODE_DP_FRONT : PS5170_MODE_DP_BACK, false);
 			break;
 		case 8:
 		case 32:
 			ps5170_set_mode(ps, (ps->orientation == TYPEC_ORIENTATION_NORMAL)
-				? PS5170_MODE_DP4L_FRONT : PS5170_MODE_DP4L_BACK);
+				? PS5170_MODE_DP4L_FRONT : PS5170_MODE_DP4L_BACK, false);
 			break;
 		default:
 			dev_info(ps->dev, "%s Pin Assignment not support\n", __func__);
@@ -520,6 +538,74 @@ not_support:
 
 	return 0;
 }
+
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_USB_MTU3)
+static int ssusb_power_notifier(struct notifier_block *nb,	unsigned long event, void *data)
+{
+	struct ps5170 *ps = container_of(nb, struct ps5170, ssusb_nb);
+
+	dev_info(ps->dev, "%s event: %lu, dp: %d\n", __func__, event, ps->is_dp);
+
+	mutex_lock(&ps->lock);
+
+	if (!ps->usb_sync_enabled || ps->is_dp)
+		goto skip;
+
+	switch (event) {
+	case SSUSB_POWER_EVENT_ON:
+		if  (ps->orientation == TYPEC_ORIENTATION_NORMAL)
+			ps5170_set_mode(ps, PS5170_MODE_USB_FRONT, true);
+		else if (ps->orientation == TYPEC_ORIENTATION_REVERSE)
+			ps5170_set_mode(ps, PS5170_MODE_USB_BACK, true);
+		ps->usb_on = true;
+		break;
+	case SSUSB_POWER_EVENT_OFF:
+		if (ps->orientation == TYPEC_ORIENTATION_NORMAL ||
+			ps->orientation == TYPEC_ORIENTATION_REVERSE)
+			ps5170_set_mode(ps, PS5170_MODE_NONE, true);
+		ps->usb_on = false;
+		break;
+	default:
+		break;
+	}
+
+skip:
+	mutex_unlock(&ps->lock);
+	return NOTIFY_OK;
+}
+
+static int ssusb_power_notifier_init(struct ps5170 *ps)
+{
+	int ret = 0;
+
+	/* set usb_on to true as default state */
+	ps->usb_on = true;
+
+	ps->usb_sync_enabled = of_property_read_bool(ps->dev->of_node, "enable-usb-sync");
+	if (!ps->usb_sync_enabled)
+		goto done;
+
+	ps->ssusb = ssusb_get_drvdata(ps->dev);
+	if (!ps->ssusb) {
+		dev_info(ps->dev, "failed to get ssusb drvdata\n");
+		ret = -EINVAL;
+		goto done;
+	}
+
+	ps->ssusb_nb.notifier_call = ssusb_power_notifier;
+	ret = ssusb_power_register_notifier(ps->ssusb, &ps->ssusb_nb);
+	if (ret < 0) {
+		dev_info(ps->dev, "failed to register notifier for ssusb power\n");
+		ps->ssusb_nb.notifier_call = NULL;
+		goto done;
+	}
+	/* set usb_on to false if register notifier succeed */
+	ps->usb_on = false;
+done:
+	dev_info(ps->dev, "usb_sync_enabled: %d, ret: %d\n", ps->usb_sync_enabled, ret);
+	return ret;
+}
+#endif
 
 static int ps5170_pinctrl_init(struct ps5170 *ps)
 {
@@ -622,6 +708,10 @@ static int ps5170_probe(struct i2c_client *client)
 		return ret;
 	}
 
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_USB_MTU3)
+	ssusb_power_notifier_init(ps);
+#endif
+
 	ps->wq = create_singlethread_workqueue("ps5170_wq");
 	if (!ps->wq)
 		return -ENOMEM;
@@ -638,6 +728,11 @@ static int ps5170_probe(struct i2c_client *client)
 static void ps5170_remove(struct i2c_client *client)
 {
 	struct ps5170 *ps = i2c_get_clientdata(client);
+
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_USB_MTU3)
+	if (ps->ssusb && ps->ssusb_nb.notifier_call)
+		ssusb_power_unregister_notifier(ps->ssusb, &ps->ssusb_nb);
+#endif
 
 	mtk_typec_switch_unregister(ps->sw);
 	typec_mux_unregister(ps->mux);
