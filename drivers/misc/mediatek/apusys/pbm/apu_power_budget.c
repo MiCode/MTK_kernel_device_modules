@@ -147,8 +147,6 @@ static int soc_pbm_request(int budget)
 	iowrite32(curr_us, APU_PBM_MONITOR);
 	pr_debug("%s apu_pbm_monitor:%d(mW) curr_us:%u\n",
 			__func__, budget, ioread32(APU_PBM_MONITOR));
-#else
-	pr_debug("%s apu_pbm_monitor:%d(mW)\n", __func__, budget);
 #endif
 	return 0;
 }
