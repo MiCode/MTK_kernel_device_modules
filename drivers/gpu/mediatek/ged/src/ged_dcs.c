@@ -442,7 +442,7 @@ void dcs_enable(int enable)
 	if (enable) {
 		g_dcs_enable = enable;
 		if (dcs_get_gov_enable()) {
-			ged_eb_dvfs_task(EB_DCS_CORE_NUM, 0);
+			ged_eb_dvfs_task(EB_DCS_CORE_NUM, g_max_core_num);
 
 			ged_dvfs_set_gpu_core_mask_fp(g_core_mask_table[0].mask);
 			g_cur_core_num = g_max_core_num;
@@ -623,7 +623,7 @@ void dcs_set_gov_enable(unsigned int enable, unsigned int src)
 		g_cur_core_num = g_max_core_num;
 		trace_GPU_DVFS__Policy__DCS(g_max_core_num, g_cur_core_num, g_fix_core_num, g_lowpwr_mode);
 		trace_GPU_DVFS__Policy__DCS__Detail(g_core_mask_table[0].mask);
-		ged_eb_dvfs_task(EB_DCS_CORE_NUM, 0);
+		ged_eb_dvfs_task(EB_DCS_CORE_NUM, g_max_core_num);
 
 		mutex_unlock(&g_DCS_lock);
 	}
