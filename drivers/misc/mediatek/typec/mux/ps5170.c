@@ -124,6 +124,7 @@ struct set_mode_work_data {
 	struct ps5170 *ps;
 	struct work_struct set_mode_work;
 	enum ps5170_mode new_mode;
+	bool free_work;
 };
 
 void ps5170_smc_request(struct ps5170 *ps,
@@ -341,10 +342,12 @@ static void ps5170_set_mode_work(struct work_struct *work)
 		container_of(work, struct set_mode_work_data, set_mode_work);
 	struct ps5170 *ps = work_data->ps;
 	enum ps5170_mode current_mode, new_mode;
+	bool do_free_work;
 	unsigned long timeout;
 
 	new_mode = work_data->new_mode;
 	current_mode = ps->current_mode;
+	do_free_work = work_data->free_work;
 
 	dev_info(ps->dev, "%s from %d to %d\n", __func__, current_mode, new_mode);
 
@@ -401,7 +404,8 @@ static void ps5170_set_mode_work(struct work_struct *work)
 	ps->current_mode = new_mode;
 
 same_mode:
-	kfree(work_data);
+	if (do_free_work)
+		kfree(work_data);
 }
 
 static void ps5170_set_mode(struct ps5170 *ps, enum ps5170_mode mode, bool sync)
@@ -416,11 +420,14 @@ static void ps5170_set_mode(struct ps5170 *ps, enum ps5170_mode mode, bool sync)
 
 	work_data->ps = ps;
 	work_data->new_mode = mode;
+	work_data->free_work = !sync;
 	queue_work(ps->wq, &work_data->set_mode_work);
 
 	/* wait for the work to complete */
-	if (sync)
+	if (sync) {
 		flush_work(&work_data->set_mode_work);
+		kfree(work_data);
+	}
 }
 
 static int ps5170_switch_set(struct typec_switch_dev *sw,
