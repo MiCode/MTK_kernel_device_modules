@@ -13,6 +13,7 @@
 #include <linux/sched/task.h>
 #include <linux/sched/clock.h>
 
+#include "game.h"
 #include "loom_loading_ctrl.h"
 
 static int loom_task_cfg_length;
@@ -189,20 +190,22 @@ void loom_assign_task_cfg(struct loom_attr_info *info, int mode,
 {
 	if (!info)
 		return;
-	if (mode != LOOM_DEFAULT_VALUE)
+	if (mode >= LOOM_DEFAULT_VALUE && mode <= 2)
 		info->mode = mode;
-	if (match_num != LOOM_DEFAULT_VALUE)
+	if (match_num == LOOM_DEFAULT_VALUE || match_num == 1)
 		info->matching_num = match_num;
-	if (prio != LOOM_DEFAULT_VALUE)
+	if (prio >= LOOM_DEFAULT_VALUE && prio <= 3)
 		info->prio = prio;
-	if (cpu_mask != LOOM_DEFAULT_VALUE)
+	if (cpu_mask == LOOM_DEFAULT_VALUE || (cpu_mask >= 1 && cpu_mask <= 255))
 		info->cpu_mask = cpu_mask;
-	if (set_exclusive != LOOM_DEFAULT_VALUE)
+	if (set_exclusive >= LOOM_DEFAULT_VALUE && set_exclusive <= 1)
 		info->set_exclusive = set_exclusive;
-
-	info->loading_ub = loading_ub;
-	info->loading_lb = loading_lb;
-	info->bhr = bhr;
+	if (loading_ub >= LOOM_DEFAULT_VALUE && loading_ub <= 100)
+		info->loading_ub = loading_ub;
+	if (loading_lb >= LOOM_DEFAULT_VALUE && loading_lb <= 100)
+		info->loading_lb = loading_lb;
+	if (bhr >= LOOM_DEFAULT_VALUE && bhr <= 100)
+		info->bhr = bhr;
 	info->limit_min_freq = limit_min_freq;
 	info->limit_max_freq = limit_max_freq;
 	info->set_rescue = set_rescue;
@@ -222,8 +225,9 @@ struct loom_attr_info *loom_search_add_task_cfg(struct hlist_head *head, int mod
 {
 	struct loom_attr_info *iter = NULL;
 	struct hlist_node *tmp = NULL;
+	int i;
 
-	hlist_for_each_entry_safe(iter, tmp, head, hlist) { // may not use this if we need two unitymain config??
+	hlist_for_each_entry_safe(iter, tmp, head, hlist) {
 		if (mode == MATCH_PID) {
 			if (iter->pid != pid)
 				continue;
@@ -235,7 +239,7 @@ struct loom_attr_info *loom_search_add_task_cfg(struct hlist_head *head, int mod
 				strncmp(iter->thread_name, thread_name, strlen(thread_name)))
 				continue;
 		}
-		//find same name same pid, just use this one
+		//find same thread name or same pid, use this one
 		break;
 	}
 
@@ -251,20 +255,29 @@ struct loom_attr_info *loom_search_add_task_cfg(struct hlist_head *head, int mod
 	hlist_add_head(&iter->hlist, head);
 	if (mode == MATCH_PID) {
 		iter->pid = pid;
+		for (i = 0; i < 15; i++) {
+			iter->proc_name[i] = '@';
+			iter->thread_name[i] = '@';
+		}
+		iter->proc_name[LOOM_MAX_NAME_LENGTH - 1] = '\0';
+		iter->thread_name[LOOM_MAX_NAME_LENGTH - 1] = '\0';
 	}else {
-		if (!strscpy(iter->proc_name, proc_name, 16)) {
+		if (!strscpy(iter->proc_name, proc_name, LOOM_MAX_NAME_LENGTH)) {
 			loom_delete_task_cfg(iter, head);
 			iter = NULL;
 			goto out;
 		}
-		iter->proc_name[15] = '\0';
-		if (!strscpy(iter->thread_name, thread_name, 16)) {
+		iter->proc_name[LOOM_MAX_NAME_LENGTH - 1] = '\0';
+		if (!strscpy(iter->thread_name, thread_name, LOOM_MAX_NAME_LENGTH)) {
 			loom_delete_task_cfg(iter, head);
 			iter = NULL;
 			goto out;
 		}
-		iter->thread_name[15] = '\0';
+		iter->thread_name[LOOM_MAX_NAME_LENGTH - 1] = '\0';
+		iter->pid = LOOM_DEFAULT_VALUE;
 	}
+	if (kstrtoint(iter->proc_name, 10, &iter->tgid))
+		iter->tgid = LOOM_DEFAULT_VALUE;
 	iter->mode = LOOM_DEFAULT_VALUE;
 	iter->matching_num = LOOM_DEFAULT_VALUE;
 	iter->prio = LOOM_DEFAULT_VALUE;
@@ -279,6 +292,9 @@ struct loom_attr_info *loom_search_add_task_cfg(struct hlist_head *head, int mod
 	iter->rescue_time = LOOM_DEFAULT_VALUE;
 	iter->limit_min_freq = LOOM_DEFAULT_VALUE;
 	iter->limit_max_freq = LOOM_DEFAULT_VALUE;
+
+	iter->vip_set = 0;
+	iter->cmask_set = 0;
 out:
 	return iter;
 }

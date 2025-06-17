@@ -26,6 +26,7 @@ struct loom_attr_info {
 	char proc_name[LOOM_MAX_NAME_LENGTH];
 	char thread_name[LOOM_MAX_NAME_LENGTH];
 	int pid;
+	int tgid;
 	int mode;
 	int matching_num;
 	int prio;
@@ -41,6 +42,9 @@ struct loom_attr_info {
 	int rescue_c_freq;
 	int rescue_time;
 	struct hlist_node hlist;
+
+	int vip_set;
+	int cmask_set;
 };
 
 struct loom_render_info {

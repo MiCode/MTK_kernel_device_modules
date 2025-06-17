@@ -9,7 +9,6 @@
 #include "game.h"
 #include "fpsgo_frame_info.h"
 #include "loom_loading_ctrl.h"
-#include "game.h"
 
 #define DEFAULT_LOOM_UPDATE_LIST_PERIOD NSEC_PER_SEC
 
@@ -57,28 +56,46 @@ int loom_task_control(struct loom_attr_info *iter)
 	if (!iter)
 		return -EINVAL;
 
-	if (iter->prio != LOOM_DEFAULT_VALUE) {
+	if (iter->prio > 0) {
 		int throttle_time = iter->prio >= 2 ? 1000 : 12;
 
 		set_task_priority_based_vip_and_throttle(iter->pid,
 			iter->prio, throttle_time);
+		iter->vip_set = 1;
+	} else if (iter->vip_set && iter->prio <= 0) {
+		unset_task_priority_based_vip(iter->pid);
+		iter->vip_set = 0;
 	}
 
-	if (iter->cpu_mask != LOOM_DEFAULT_VALUE)
+	if (iter->cpu_mask != LOOM_DEFAULT_VALUE) {
 		ret = loom_sched_setaffinity(iter->pid, iter->cpu_mask);
+		if (ret >= 0)
+			iter->cmask_set = 1;
+	} else if (iter->cmask_set && iter->cpu_mask == LOOM_DEFAULT_VALUE) {
+		ret = loom_sched_setaffinity(iter->pid, 255);
+		if (ret >= 0)
+			iter->cmask_set = 0;
+	}
 
 	return ret;
 }
 
 void loom_reset_task_setting(struct loom_attr_info *info)
 {
+	int ret = 0;
+
 	if (!info || info->pid <= 0)
 		return;
 
-	if (info->prio != LOOM_DEFAULT_VALUE)
+	if (info->vip_set) {
 		unset_task_priority_based_vip(info->pid);
-	if (info->cpu_mask != LOOM_DEFAULT_VALUE)
-		loom_sched_setaffinity(info->pid, 255);
+		info->vip_set = 0;
+	}
+	if (info->cmask_set) {
+		ret = loom_sched_setaffinity(info->pid, 255);
+		if (ret >= 0)
+			info->cmask_set = 0;
+	}
 }
 
 static void list_a_except_b(struct hlist_head *list_a,
@@ -103,16 +120,27 @@ static void list_a_except_b(struct hlist_head *list_a,
 			ptr_b = ptr_b->next;
 		}
 
+		// new active list has same element with old one, copy the setting record
+		if (ptr_b && info_b->pid == info_a->pid) {
+			info_b->vip_set = info_a->vip_set;
+			info_b->cmask_set = info_a->cmask_set;
+		}
+
 		if (!ptr_b || info_b->pid != info_a->pid) {
 			struct loom_attr_info *remove_iter = NULL;
 
-			remove_iter = loom_search_add_task_cfg(list_remove, 1,
+			remove_iter = loom_search_add_task_cfg(list_remove, MATCH_PID,
 				info_a->proc_name,info_a->thread_name, info_a->pid, 1);
 
 			loom_assign_task_cfg(remove_iter, info_a->mode, info_a->matching_num,
 				info_a->prio, info_a->cpu_mask,info_a->set_exclusive, info_a->loading_ub,
 				info_a->loading_lb, info_a->bhr, info_a->limit_min_freq, info_a->limit_max_freq,
 				info_a->set_rescue, info_a->rescue_f_opp, info_a->rescue_c_freq, info_a->rescue_time);
+			// copy setting record to the remove list
+			if (remove_iter) {
+				remove_iter->vip_set = info_a->vip_set;
+				remove_iter->cmask_set = info_a->cmask_set;
+			}
 		}
 		ptr_a = ptr_a->next;
 	}
@@ -145,11 +173,13 @@ static void loom_find_new_active_list(struct hlist_head *head, int tgid)
 					find_iter = loom_add_task_cfg_pid_sorted(head, gtsk->comm,
 						sib->comm, sib->pid);
 			} else {    /* Name Matcing Mode */
-				if (strncmp(gtsk->comm, iter->proc_name, 16))
+				if (iter->tgid != LOOM_DEFAULT_VALUE && iter->tgid != sib->tgid)
+					continue;
+				else if (iter->tgid == LOOM_DEFAULT_VALUE &&
+						strncmp(gtsk->comm, iter->proc_name, LOOM_MAX_NAME_LENGTH))
 					continue;
 
 				tlen = strlen(iter->thread_name);
-
 				if (strncmp(sib->comm, iter->thread_name, tlen))
 					continue;
 
@@ -176,7 +206,7 @@ static void loom_find_new_active_list(struct hlist_head *head, int tgid)
 					put_task_struct(task_samename);
 				}
 			}
-			// transfer value from loom_task_cfg
+			// transfer cfg value from loom_task_cfg
 			loom_assign_task_cfg(find_iter, iter->mode, iter->matching_num, iter->prio,
 				iter->cpu_mask,iter->set_exclusive, iter->loading_ub, iter->loading_lb,
 				iter->bhr, iter->limit_min_freq, iter->limit_max_freq,
@@ -253,7 +283,6 @@ void loom_reset_operation(struct loom_render_info *info)
 	list_for_each_entry_safe(lc_iter, tmp, &info->lc_active_list, hlist) {
 		loom_delete_loading_ctrl_info(lc_iter);
 	}
-	// ....... to .......
 }
 
 static void cpumask_to_cpu_cluster(int cpu_mask, int *cpuid, int *cpu_cluster)
@@ -406,7 +435,6 @@ static void loom_flt_cfg_apply(int set)
 	}
 }
 
-/* TODO */
 int loom_activate(int pid)
 {
 	struct loom_render_info *iter = NULL;
@@ -426,7 +454,6 @@ int loom_activate(int pid)
 	return ret;
 }
 
-/* TODO */
 int loom_deactivate(int pid)
 {
 	struct loom_render_info *iter = NULL;
@@ -603,8 +630,9 @@ static ssize_t loom_task_cfg_show(struct kobject *kobj,
 	pos += length;
 
 	length = scnprintf(temp + pos, FI_SYSFS_MAX_BUFF_SIZE - pos,
-		"%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+	"%-16s %-8s %-16s %-8s %-8s %-16s %-8s %-10s %-16s %-10s %-10s %-8s %-16s %-16s %-10s %-16s %-16s %-16s\n",
 		"process_name",
+		"tgid",
 		"thread_name",
 		"pid",
 		"mode",
@@ -625,8 +653,9 @@ static ssize_t loom_task_cfg_show(struct kobject *kobj,
 
 	hlist_for_each_entry(iter, loom_get_cfg_list(), hlist) {
 		length = scnprintf(temp + pos, FI_SYSFS_MAX_BUFF_SIZE - pos,
-			"%s\t%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n",
+		"%-16s %-8d %-16s %-8d %-8d %-16d %-8d %-10d %-16d %-10d %-10d %-8d %-16d %-16d %-10d %-16d %-16d %-16d\n",
 			iter->proc_name,
+			iter->tgid,
 			iter->thread_name,
 			iter->pid,
 			iter->mode,
