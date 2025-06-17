@@ -2047,9 +2047,12 @@ void mtk_get_gear_indicies(struct task_struct *p, int *order_index, int *end_ind
 	}
 #endif // CONFIG_MTK_SCHED_FAST_LOAD_TRACKING
 	/* task has customized gear prefer */
-	if (gear_hints_enable && ghts->gear_start >= 0) {
+	if (gear_hints_enable && ghts->gear_start >= 0)
 		*order_index = ghts->gear_start;
-	} else {
+	else if ( !(gear_hints_enable
+				&& ghts->gear_start < 0
+				&& task_is_vip(p, NOT_VIP)
+				&& vip_in_gh)) {
 		for (i = *order_index; i < num_sched_clusters - 1; i++) {
 			if (task_demand_fits(p, cpumask_first(&cpu_array[i][0][0])))
 				break;
