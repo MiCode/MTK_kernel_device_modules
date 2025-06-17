@@ -267,7 +267,7 @@ static int aputop_dbg_set_parameter(int param, int argc, int *args)
 static int _apu_boost_to_opp(int boost)
 {
 	int opp = mt6993_user_max_opp;
-	int max_opp_dla_freq, min_opp_dla_freq, boost_to_freq;
+	int max_opp_vpu_freq, min_opp_vpu_freq, boost_to_freq;
 
 	if (boost >= 100)
 		return mt6993_user_max_opp;
@@ -275,24 +275,24 @@ static int _apu_boost_to_opp(int boost)
 	if (boost < 0)
 		boost = 0;
 
-	max_opp_dla_freq = opp_tbl.opp[mt6993_user_max_opp].pll_freq[PLL_DLA];
+	max_opp_vpu_freq = opp_tbl.opp[mt6993_user_max_opp].pll_freq[PLL_VPU];
 
 	if (opp_tbl2.tbl_size > 0)
-		min_opp_dla_freq = opp_tbl2.opp[opp_tbl2.tbl_size - 1].pll_freq[PLL_DLA];
+		min_opp_vpu_freq = opp_tbl2.opp[opp_tbl2.tbl_size - 1].pll_freq[PLL_VPU];
 	else
-		min_opp_dla_freq = opp_tbl.opp[USER_MIN_OPP_VAL].pll_freq[PLL_DLA];
+		min_opp_vpu_freq = opp_tbl.opp[USER_MIN_OPP_VAL].pll_freq[PLL_VPU];
 
-	boost_to_freq = boost * (max_opp_dla_freq - min_opp_dla_freq) / 100 + min_opp_dla_freq;
+	boost_to_freq = boost * (max_opp_vpu_freq - min_opp_vpu_freq) / 100 + min_opp_vpu_freq;
 
 	for (int i = mt6993_user_max_opp ; i < opp_tbl.tbl_size ; i++){
-		if (boost_to_freq >= opp_tbl.opp[i].pll_freq[PLL_DLA]){
+		if (boost_to_freq >= opp_tbl.opp[i].pll_freq[PLL_VPU]){
 			opp = i;
 			return opp;
 		}
 	}
 
 	for (int i = 0 ; i < opp_tbl2.tbl_size ; i++){
-		if (boost_to_freq >= opp_tbl2.opp[i].pll_freq[PLL_DLA]){
+		if (boost_to_freq >= opp_tbl2.opp[i].pll_freq[PLL_VPU]){
 			opp = i + opp_tbl.tbl_size;
 			break;
 		}
