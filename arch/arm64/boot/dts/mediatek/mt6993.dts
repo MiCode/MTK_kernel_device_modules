@@ -6304,7 +6304,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<0 0x4b170074 0 0x4>,
 				<0 0x4b170000 0 0x4>,
 				<0 0x4b170078 0 0x4>,
-				<0 0x4b800504 0 0x4>;
+				<0 0x4b800504 0 0x4>,
+				<0 0x14011000 0 0x4>,
+				<0 0x14011484 0 0x4>;
 			reg-names =
 				"gpueb_base",
 				"gpueb_gpr_base",
@@ -6317,7 +6319,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"mbox0_clr",
 				"mbox0_send",
 				"mbox0_recv",
-				"mfg0_pwr_con";
+				"mfg0_pwr_con",
+				"gpueb_to_infra_gals_en",
+				"gpueb_to_infra_gals_info";
 
 			interrupts = <GIC_SPI 734 IRQ_TYPE_LEVEL_HIGH 0>;
 			interrupt-names = "mbox0";
