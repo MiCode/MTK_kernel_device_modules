@@ -4629,6 +4629,16 @@ l3_hit,l3_mis,pmu_cyc_cnt";
 				"ssusb_usb2_l2_ip0,ssusb_usb2_l1_ip0,ssusb_usb2_l0_ip0,ssusb_usb3_u3_ip0,",
 				"ssusb_usb3_u2_ip0,ssusb_usb3_u1_ip0,ssusb_usb3_u0_ip0,",
 				"usb_ck_freq";
+			node-137 = "CHINFRA_EVENT_MON",
+				"CHANNEL_A_HIT_COUNT,",
+				"CHANNEL_B_HIT_COUNT,",
+				"CHANNEL_C_HIT_COUNT,",
+				"CHANNEL_D_HIT_COUNT";
+			node-138 = "CHINFRA_BACK_INVALID",
+				"CHANNEL_A_COUNT,",
+				"CHANNEL_B_COUNT,",
+				"CHANNEL_C_COUNT,",
+				"CHANNEL_D_COUNT";
 		};
 
 		gpueb_rts_header:gpueb-rts-header {
