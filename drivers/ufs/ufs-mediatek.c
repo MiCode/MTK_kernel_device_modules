@@ -2821,6 +2821,8 @@ out_mb:
 			ufsm_disable_intr(hba, UFSHCD_ERROR_MASK);
 			/* for fatal error, eh will be queued automatically */
 		}
+
+		ufs_mtk_dbg_register_dump(hba);
 	}
 
 	if (evt == UFS_EVT_DL_ERR) {
