@@ -2018,7 +2018,7 @@ static u32 read_reg_value(struct mml_comp *comp, u16 reg)
 	void __iomem *base = comp->base;
 
 	if (reg == REG_NOT_SUPPORT) {
-		mml_err("%s tdshp reg is not support", __func__);
+		mml_err("%s hdr reg is not support", __func__);
 		return 0xFFFFFFFF;
 	}
 

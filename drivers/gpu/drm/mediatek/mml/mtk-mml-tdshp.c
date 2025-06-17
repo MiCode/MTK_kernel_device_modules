@@ -560,10 +560,12 @@ static s32 tdshp_config_frame(struct mml_comp *comp, struct mml_task *task,
 				cmdq_pkt_write(pkt, NULL,
 					base_pa + tdshp->data->reg_table[TDHSP_C_BOOST_MAIN],
 					1 << 13, 1 << 13);
-				// enable map input, disable map output
-				cmdq_pkt_write(pkt, NULL,
-					base_pa + tdshp->data->reg_table[TDSHP_REGION_PQ_PARAM],
-					0x5C1B0, U32_MAX);
+				if (tdshp->data->reg_table[TDSHP_REGION_PQ_PARAM] != REG_NOT_SUPPORT) {
+					// enable map input, disable map output
+					cmdq_pkt_write(pkt, NULL,
+						base_pa + tdshp->data->reg_table[TDSHP_REGION_PQ_PARAM],
+						0x5C1B0, U32_MAX);
+				}
 			} else {
 				tdshp_relay(comp, pkt, base_pa, alpha | 0x1);
 				if(cfg->rsz_front)
@@ -592,10 +594,12 @@ static s32 tdshp_config_frame(struct mml_comp *comp, struct mml_task *task,
 				cmdq_pkt_write(pkt, NULL,
 					base_pa + tdshp->data->reg_table[TDHSP_C_BOOST_MAIN],
 					1 << 13, 1 << 13);
-				// enable map input, disable map output
-				cmdq_pkt_write(pkt, NULL,
-					base_pa + tdshp->data->reg_table[TDSHP_REGION_PQ_PARAM],
-					0x5C1B0, U32_MAX);
+				if (tdshp->data->reg_table[TDSHP_REGION_PQ_PARAM] != REG_NOT_SUPPORT) {
+					// enable map input, disable map output
+					cmdq_pkt_write(pkt, NULL,
+						base_pa + tdshp->data->reg_table[TDSHP_REGION_PQ_PARAM],
+						0x5C1B0, U32_MAX);
+				}
 			} else {
 				tdshp_relay(comp, pkt, base_pa, alpha | 0x1);
 				if(cfg->rsz_front)

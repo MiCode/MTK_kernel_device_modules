@@ -250,7 +250,8 @@ static s32 color_config_frame(struct mml_comp *comp, struct mml_task *task,
 	s32 i;
 	struct mml_pq_reg *regs = NULL;
 
-	cmdq_pkt_write(pkt, NULL, base_pa + color->data->reg_table[COLOR_MISC], alpha, U32_MAX);
+	if (color->data->reg_table[COLOR_MISC] != REG_NOT_SUPPORT)
+		cmdq_pkt_write(pkt, NULL, base_pa + color->data->reg_table[COLOR_MISC], alpha, U32_MAX);
 
 	if (!dest->pq_config.en_color) {
 		cmdq_pkt_write(pkt, NULL,
@@ -454,9 +455,6 @@ static void color_debug_dump(struct mml_comp *comp)
 	value[10] = read_reg_value(comp, color->data->reg_table[COLOR_FRAME_DONE_DEL]);
 	value[11] = read_reg_value(comp, color->data->reg_table[COLOR_INTERNAL_IP_WIDTH]);
 	value[12] = read_reg_value(comp, color->data->reg_table[COLOR_INTERNAL_IP_HEIGHT]);
-	value[13] = read_reg_value(comp, color->data->reg_table[COLOR_MISC]);
-	value[14] = read_reg_value(comp, color->data->reg_table[COLOR_REGIONAL_ENABLE_LENGHTH]);
-	value[15] = read_reg_value(comp, color->data->reg_table[COLOR_RELAY_MODE_CG_ON]);
 
 	mml_err("COLOR_CFG_MAIN %#010x COLOR_PXL_CNT_MAIN %#010x COLOR_LINE_CNT_MAIN %#010x",
 		value[0], value[1], value[2]);
@@ -468,9 +466,18 @@ static void color_debug_dump(struct mml_comp *comp)
 		value[8], value[9], value[10]);
 	mml_err("COLOR_INTERNAL_IP_WIDTH %#010x COLOR_INTERNAL_IP_HEIGHT %#010x",
 		value[11], value[12]);
-	mml_err("COLOR_MISC %#010x COLOR_REGIONAL_ENABLE_LENGHTH %#010x",
-		value[13], value[14]);
-	mml_err("COLOR_RELAY_MODE_CG_ON %#010x", value[15]);
+	if (color->data->reg_table[COLOR_MISC] != REG_NOT_SUPPORT) {
+		value[13] = read_reg_value(comp, color->data->reg_table[COLOR_MISC]);
+		mml_err("COLOR_MISC %#010x", value[13]);
+	}
+	if (color->data->reg_table[COLOR_REGIONAL_ENABLE_LENGHTH] != REG_NOT_SUPPORT) {
+		value[14] = read_reg_value(comp, color->data->reg_table[COLOR_REGIONAL_ENABLE_LENGHTH]);
+		mml_err("COLOR_REGIONAL_ENABLE_LENGHTH %#010x", value[14]);
+	}
+	if (color->data->reg_table[COLOR_RELAY_MODE_CG_ON] != REG_NOT_SUPPORT) {
+		value[15] = read_reg_value(comp, color->data->reg_table[COLOR_RELAY_MODE_CG_ON]);
+		mml_err("COLOR_RELAY_MODE_CG_ON %#010x", value[15]);
+	}
 }
 
 static const struct mml_comp_debug_ops color_debug_ops = {
