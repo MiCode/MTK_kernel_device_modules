@@ -38,6 +38,11 @@
 #define RESCUE_TYPE_ENABLE_MARGIN         (1 << 11)
 #define RESCUE_TYPE_AI_RESCUE             (1 << 12)
 
+/*define render loading */
+#define RENDER_LOADING_LOW         (1 << 0)
+#define RENDER_LOADING_MEDUIM      (1 << 1)
+#define RENDER_LOADING_HIGH        (1 << 2)
+
 extern void set_task_basic_vip(int pid);
 extern void unset_task_basic_vip(int pid);
 extern void set_task_ls_prefer_cpus(int pid, unsigned int cpumask_val);
@@ -87,6 +92,7 @@ struct ux_scroll_info {
 	int frame_cap_count;
 	int frame_ctime_count;
 	int jank_count;
+	int resuce_count;
 	int enhance;
 	int type;
 

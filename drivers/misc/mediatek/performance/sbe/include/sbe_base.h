@@ -70,12 +70,15 @@ struct sbe_render_info {
 	int frame_count;
 	int frame_cap_count;
 	int dy_compute_rescue;
-	unsigned long long frame_ctime_count;
 	int affinity_task_mask;
 	int affinity_task_mask_cnt;
 	int calculate_dy_enhance_idx;
 	int ux_affinity_task_basic_cap;
 	int critical_basic_cap;
+	int loading_type;
+	int jank_count;
+	int is_webfunctor;
+	unsigned long long frame_ctime_count;
 	unsigned int sbe_rescue;
 	unsigned long long buffer_id;
 	unsigned long long frame_time;

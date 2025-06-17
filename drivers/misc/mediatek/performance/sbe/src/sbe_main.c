@@ -174,6 +174,24 @@ int sbe_validate_time(unsigned long long start, unsigned long long end,
 	return 0;
 }
 
+void sbe_receive_webfunctor(int pid, unsigned long long identifier)
+{
+	struct sbe_render_info *f_render;
+
+	sbe_get_tree_lock(__func__);
+	f_render = sbe_get_render_info(pid, identifier, 0);
+	if (!f_render) {
+		sbe_put_tree_lock(__func__);
+		return;
+	}
+
+	f_render->is_webfunctor = 1;
+	sbe_systrace_c(f_render->pid, f_render->buffer_id,
+				f_render->is_webfunctor, "[ux]webfunctor");
+	// f_render->ux_affinity_task_basic_cap = 20;
+	sbe_put_tree_lock(__func__);
+}
+
 int sbe_validate_dequeue_time_span(unsigned long long t_dequeue_start,
 				unsigned long long t_dequeue_end)
 {
@@ -566,6 +584,10 @@ static void sbe_notifier_wq_cb_hwui_frame_hint(int start,
 {
 
 	switch (start) {
+	case -100:
+		//hint this is webfunctor page
+		sbe_receive_webfunctor(cur_pid, id);
+		break;
 	case -1:
 		sbe_receive_frame_err(cur_pid, frameID, curr_ts, id);
 		break;
@@ -1019,6 +1041,7 @@ static int sbe_do_hwui_scrolling_status_policy(int tgid, char *name, unsigned lo
 		thr->dep_self_ctrl = 1;
 		thr->critical_basic_cap = 0;
 		critical_basic_cap = get_sbe_critical_basic_cap();
+
 		if (start) {
 			if (critical_basic_cap > 0)
 				thr->critical_basic_cap = clamp(critical_basic_cap, 0, 100);
