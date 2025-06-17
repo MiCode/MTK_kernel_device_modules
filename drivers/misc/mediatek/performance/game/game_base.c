@@ -7,10 +7,12 @@
 #include <linux/string.h>
 #include <linux/compiler.h>
 #include <linux/kernel.h>
+#include <linux/sched/clock.h>
 #ifndef CREATE_TRACE_POINTS
 #define CREATE_TRACE_POINTS
 #endif
 #include "game_trace_event.h"
+#include "game.h"
 
 void loom_main_trace(const char *fmt, ...)
 {
@@ -176,3 +178,15 @@ void game_print_trace(const char *fmt, ...)
 	trace_game_main_trace(log);
 }
 EXPORT_SYMBOL(game_print_trace);
+
+unsigned long long game_get_time(void)
+{
+	unsigned long long temp;
+
+	preempt_disable();
+	temp = cpu_clock(smp_processor_id());
+	preempt_enable();
+
+	return temp;
+}
+

@@ -22,12 +22,6 @@ enum LOOM_MATCH_MODE {
 };
 
 // loom control put here?
-struct loom_loading_ctrl {
-	int dummy;
-	//...
-	struct hlist_node hlist;
-};
-
 struct loom_attr_info {
 	char proc_name[LOOM_MAX_NAME_LENGTH];
 	char thread_name[LOOM_MAX_NAME_LENGTH];
@@ -39,9 +33,13 @@ struct loom_attr_info {
 	int set_exclusive;
 	int loading_ub;
 	int loading_lb;
+	int limit_min_freq;
+	int limit_max_freq;
 	int bhr;
 	int set_rescue;
-	int rescue_f;
+	int rescue_f_opp;
+	int rescue_c_freq;
+	int rescue_time;
 	struct hlist_node hlist;
 };
 
@@ -52,6 +50,7 @@ struct loom_render_info {
 	unsigned long long buffer_id;
 	int target_fps;
 	unsigned long long last_update_ts;
+	unsigned long long queue_end_ts;
 	struct hlist_head active_list;
 	struct list_head lc_active_list;
 	// do we need to save queue ts?
@@ -76,10 +75,13 @@ struct loom_attr_info *loom_search_add_task_cfg(struct hlist_head *head, int mod
 	char *proc_name, char *thread_name, int pid, int add);
 void loom_assign_task_cfg(struct loom_attr_info *info, int mode,
 	int match_num, int prio, int cpu_mask, int set_exclusive,
-	int loading_ub, int loading_lb, int bhr,int set_rescue, int rescue_f);
+	int loading_ub, int loading_lb, int bhr,
+	int limit_min_cap, int limit_max_cap,
+	int set_rescue, int rescue_f_opp, int rescue_c_freq, int rescue_time);
 struct loom_render_info *loom_search_add_render_info(int tgid, int add);
 void loom_delete_render_info(struct loom_render_info *iter);
 struct hlist_head *loom_get_cfg_list(void);
 struct hlist_head *loom_get_render_list(void);
 
+int loom_check_loom_jerk_work_addr_invalid(struct work_struct *target_work);
 #endif // _LOOM_BASE_H_

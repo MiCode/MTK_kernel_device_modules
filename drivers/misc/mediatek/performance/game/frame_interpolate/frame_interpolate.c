@@ -14,6 +14,7 @@
 #include <linux/vmalloc.h>
 #include <linux/kmemleak.h>
 #include "fpsgo_frame_info.h"
+#include "game.h"
 #include "game_sysfs.h"
 #include "game_trace_event.h"
 #include "fi_base.h"

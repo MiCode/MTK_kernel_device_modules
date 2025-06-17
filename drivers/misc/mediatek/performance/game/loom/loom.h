@@ -14,7 +14,8 @@ void loom_exit(void);
 int loom_set_task_cfg(char *proc_name, char *thread_name,
 	int pid, int mode, int matching_num, int prio, int cpu_mask,
 	int set_exclusive, int loading_ub, int loading_lb, int bhr,
-	int set_rescue, int rescue_f);
+	int limit_min_freq, int limit_max_freq,
+	int set_rescue, int rescue_f_opp, int rescue_c_freq, int rescue_time);
 int loom_reset_task_cfg(char *proc_name, char *thread_name, int pid);
 
 extern void set_task_priority_based_vip_and_throttle(int pid, int prio, unsigned int throttle_time);

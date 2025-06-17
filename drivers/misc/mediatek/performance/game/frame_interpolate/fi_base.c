@@ -11,6 +11,7 @@
 #include <linux/sched/clock.h>
 #include "fpsgo_frame_info.h"
 #include "game_sysfs.h"
+#include "game.h"
 
 #define FI_MAX_RENDER_INFO_SIZE 20
 
@@ -38,17 +39,6 @@ void game_render_tree_lock(void)
 void game_render_tree_unlock(void)
 {
 	mutex_unlock(&render_tree_lock);
-}
-
-unsigned long long game_get_time(void)
-{
-	unsigned long long temp;
-
-	preempt_disable();
-	temp = cpu_clock(smp_processor_id());
-	preempt_enable();
-
-	return temp;
 }
 
 int game_get_render_tree_total_num(void)

@@ -8,6 +8,8 @@
 #include "game_sysfs.h"
 #include "game.h"
 #include "fpsgo_frame_info.h"
+#include "loom_loading_ctrl.h"
+#include "game.h"
 
 #define DEFAULT_LOOM_UPDATE_LIST_PERIOD NSEC_PER_SEC
 
@@ -109,7 +111,8 @@ static void list_a_except_b(struct hlist_head *list_a,
 
 			loom_assign_task_cfg(remove_iter, info_a->mode, info_a->matching_num,
 				info_a->prio, info_a->cpu_mask,info_a->set_exclusive, info_a->loading_ub,
-				info_a->loading_lb, info_a->bhr, info_a->set_rescue, info_a->rescue_f);
+				info_a->loading_lb, info_a->bhr, info_a->limit_min_freq, info_a->limit_max_freq,
+				info_a->set_rescue, info_a->rescue_f_opp, info_a->rescue_c_freq, info_a->rescue_time);
 		}
 		ptr_a = ptr_a->next;
 	}
@@ -176,7 +179,8 @@ static void loom_find_new_active_list(struct hlist_head *head, int tgid)
 			// transfer value from loom_task_cfg
 			loom_assign_task_cfg(find_iter, iter->mode, iter->matching_num, iter->prio,
 				iter->cpu_mask,iter->set_exclusive, iter->loading_ub, iter->loading_lb,
-				iter->bhr, iter->set_rescue, iter->rescue_f);
+				iter->bhr, iter->limit_min_freq, iter->limit_max_freq,
+				iter->set_rescue, iter->rescue_f_opp, iter->rescue_c_freq, iter->rescue_time);
 		}
 		put_task_struct(sib);
 	}
@@ -195,6 +199,7 @@ static int loom_update_active_list(struct loom_render_info *info)
 	struct hlist_head new_active_list = HLIST_HEAD_INIT;
 	struct hlist_head remove_list = HLIST_HEAD_INIT;
 	struct loom_attr_info *iter;
+	struct loom_loading_ctrl *lc_iter;
 
 	if (!info)
 		return -EINVAL;
@@ -216,6 +221,10 @@ static int loom_update_active_list(struct loom_render_info *info)
 	// for all removed tasks, reset all their loom setting and remove list
 	hlist_for_each_entry(iter, &remove_list, hlist) {
 		loom_reset_task_setting(iter);
+		lc_iter = loom_search_and_add_loading_ctrl_info(&info->lc_active_list, info->pid,
+			info->tgid, 0);
+		if(lc_iter)
+			loom_delete_loading_ctrl_info(lc_iter);
 	}
 	loom_clear_loom_attr(&remove_list);
 
@@ -230,7 +239,8 @@ static int loom_update_active_list(struct loom_render_info *info)
 
 void loom_reset_operation(struct loom_render_info *info)
 {
-	struct loom_attr_info *iter;
+	struct loom_attr_info *iter = NULL;
+	struct loom_loading_ctrl *lc_iter = NULL, *tmp = NULL;
 
 	if (!info)
 		return;
@@ -240,28 +250,82 @@ void loom_reset_operation(struct loom_render_info *info)
 		loom_reset_task_setting(iter);
 	}
 	// loading ctrl reset
+	list_for_each_entry_safe(lc_iter, tmp, &info->lc_active_list, hlist) {
+		loom_delete_loading_ctrl_info(lc_iter);
+	}
 	// ....... to .......
+}
+
+static void cpumask_to_cpu_cluster(int cpu_mask, int *cpuid, int *cpu_cluster)
+{
+	int cpu = 0;
+
+	*cpuid = -1;
+	*cpu_cluster = -1;
+
+	if (cpu_mask & 128) {  // big cluster
+		*cpuid = 7;
+		*cpu_cluster = 2;
+	} else if (cpu_mask & 112) {  // middle cluster
+		*cpu_cluster = 1;
+		for(cpu = 4; cpu < 7; cpu++) {
+			if (cpu_mask & (1 << cpu)) {
+				*cpuid = cpu;
+				break;
+			}
+		}
+	} else if (cpu_mask & 15) {  // little cluster
+		*cpu_cluster = 0;
+		for(cpu = 0; cpu < 4; cpu++) {
+			if (cpu_mask & (1 << cpu)) {
+				*cpuid = cpu;
+				break;
+			}
+		}
+	}
+	game_main_trace("[%s] cpumask=%d, cpuid=%d, cluster=%d", cpu_mask, *cpuid, *cpu_cluster);
 }
 
 static void loom_set_operation(struct loom_render_info *info)
 {
 	struct loom_attr_info *iter;
-	//struct loom_loading_ctrl *lc_iter;
+	struct loom_loading_ctrl *lc_iter;
+	int cpu = -1, cluster = -1;
 
 	loom_update_active_list(info);
 
 	print_hlist("active_list", info->tgid, &info->active_list);
 	hlist_for_each_entry(iter, &info->active_list, hlist) {
 		loom_task_control(iter);
-		if ((iter->set_exclusive) && (iter->loading_ub || iter->loading_lb)) {
-			// .....
-			//......
-			//.....
+		if ((iter->set_exclusive > 0) && (iter->loading_ub > 0 || iter->loading_lb > 0)) {
+			cpumask_to_cpu_cluster(iter->cpu_mask, &cpu, &cluster);
+			lc_iter = loom_search_and_add_loading_ctrl_info(&info->lc_active_list, iter->pid,
+				info->tgid, 1);
+			if(lc_iter) {
+				lc_iter->loading_thr_up_bound = iter->loading_ub;
+				lc_iter->loading_thr_low_bound = iter->loading_lb;
+				lc_iter->cpu = cpu;
+				lc_iter->cluster = cluster;
+				lc_iter->bhr = iter->bhr;
+				lc_iter->limit_min_freq = iter->limit_min_freq;
+				lc_iter->limit_max_freq = iter->limit_max_freq;
+				lc_iter->set_rescue = iter->set_rescue;
+				lc_iter->rescue_f_opp = iter->rescue_f_opp;
+				lc_iter->rescue_c_freq = iter->rescue_c_freq;
+				lc_iter->rescue_time = iter->rescue_time;
+			}
+		} else {
+			lc_iter = loom_search_and_add_loading_ctrl_info(&info->lc_active_list, iter->pid,
+				info->tgid, 0);
+			if(lc_iter)
+				loom_delete_loading_ctrl_info(lc_iter);
 		}
 	}
 
 	// do we need to iterate lc_active_list ??
-	//hlist_for_each_entry(iter, &info->lc_active_list, hlist) {
+	list_for_each_entry(lc_iter, &info->lc_active_list, hlist) {
+		loom_loading_ctrl_operation(lc_iter, info->queue_end_ts, lc_iter->cluster, lc_iter->cpu);
+	}
 }
 
 void fpsgo_loom_frame_info_cb(unsigned long cmd, struct render_frame_info *iter)
@@ -277,6 +341,7 @@ void fpsgo_loom_frame_info_cb(unsigned long cmd, struct render_frame_info *iter)
 	if (!info)
 		goto out;
 
+	info->queue_end_ts = game_get_time();
 	loom_set_operation(info);
 out:
 	loom_render_unlock();
@@ -396,7 +461,8 @@ void loom_enable(int pid, int enable)
 int loom_set_task_cfg(char *proc_name, char *thread_name,
 	int pid, int mode, int matching_num, int prio, int cpu_mask,
 	int set_exclusive, int loading_ub, int loading_lb, int bhr,
-	int set_rescue, int rescue_f)
+	int limit_min_freq, int limit_max_freq,
+	int set_rescue, int rescue_f_opp, int rescue_c_freq, int rescue_time)
 {
 	struct loom_attr_info *task_attr;
 	int ret = -1;
@@ -412,7 +478,8 @@ int loom_set_task_cfg(char *proc_name, char *thread_name,
 		goto out;
 	//assign value
 	loom_assign_task_cfg(task_attr, mode, matching_num, prio, cpu_mask, set_exclusive,
-		loading_ub, loading_lb, bhr, set_rescue, rescue_f);
+		loading_ub, loading_lb, bhr, limit_min_freq, limit_max_freq,
+		set_rescue, rescue_f_opp, rescue_c_freq, rescue_time);
 	ret = 0;
 	print_hlist("loom_task_cfg", -1, loom_get_cfg_list());
 out:
@@ -536,7 +603,7 @@ static ssize_t loom_task_cfg_show(struct kobject *kobj,
 	pos += length;
 
 	length = scnprintf(temp + pos, FI_SYSFS_MAX_BUFF_SIZE - pos,
-		"%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+		"%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
 		"process_name",
 		"thread_name",
 		"pid",
@@ -548,13 +615,17 @@ static ssize_t loom_task_cfg_show(struct kobject *kobj,
 		"loading_ub",
 		"loading_lb",
 		"bhr",
+		"limit_min_freq",
+		"limit_max_freq",
 		"set_rescue",
-		"rescue_f");
+		"rescue_f_opp",
+		"rescue_c_freq",
+		"rescue_time");
 	pos += length;
 
 	hlist_for_each_entry(iter, loom_get_cfg_list(), hlist) {
 		length = scnprintf(temp + pos, FI_SYSFS_MAX_BUFF_SIZE - pos,
-			"%s\t%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n",
+			"%s\t%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n",
 			iter->proc_name,
 			iter->thread_name,
 			iter->pid,
@@ -566,8 +637,12 @@ static ssize_t loom_task_cfg_show(struct kobject *kobj,
 			iter->loading_ub,
 			iter->loading_lb,
 			iter->bhr,
+			iter->limit_min_freq,
+			iter->limit_max_freq,
 			iter->set_rescue,
-			iter->rescue_f);
+			iter->rescue_f_opp,
+			iter->rescue_c_freq,
+			iter->rescue_time);
 		pos += length;
 	}
 	loom_cfg_unlock();
@@ -587,7 +662,8 @@ static ssize_t loom_task_cfg_store(struct kobject *kobj,
 	int prio;
 	int cpu_mask, set_exclusive;
 	int loading_ub, loading_lb;
-	int bhr, set_rescue, rescue_f;
+	int bhr, set_rescue, rescue_f_opp, rescue_c_freq, rescue_time;
+	int limit_min_freq, limit_max_freq;
 
 	acBuffer = loom_calloc(FI_SYSFS_MAX_BUFF_SIZE, sizeof(char));
 	if (!acBuffer)
@@ -597,10 +673,11 @@ static ssize_t loom_task_cfg_store(struct kobject *kobj,
 		scnprintf(acBuffer,FI_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
 		acBuffer[count] = '\0';
 		if (sscanf(acBuffer,
-			"%15s %15s %d %d %d %d %d %d %d %d %d %d %d",
+			"%15s %15s %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d",
 			proc_name, thread_name, &pid, &mode, &matching_num,
 			&prio, &cpu_mask, &set_exclusive, &loading_ub,
-			&loading_lb, &bhr, &set_rescue, &rescue_f) != 13)
+			&loading_lb, &bhr, &limit_min_freq, &limit_max_freq,
+			&set_rescue, &rescue_f_opp, &rescue_c_freq, &rescue_time) != 17)
 			goto out;
 		if (mode == LOOM_DEFAULT_VALUE &&
 			matching_num == LOOM_DEFAULT_VALUE &&
@@ -610,13 +687,18 @@ static ssize_t loom_task_cfg_store(struct kobject *kobj,
 			loading_ub == LOOM_DEFAULT_VALUE &&
 			loading_lb == LOOM_DEFAULT_VALUE &&
 			bhr == LOOM_DEFAULT_VALUE &&
+			limit_min_freq == LOOM_DEFAULT_VALUE &&
+			limit_max_freq == LOOM_DEFAULT_VALUE &&
 			set_rescue == LOOM_DEFAULT_VALUE &&
-			rescue_f == LOOM_DEFAULT_VALUE)
+			rescue_f_opp == LOOM_DEFAULT_VALUE &&
+			rescue_c_freq == LOOM_DEFAULT_VALUE &&
+			rescue_time == LOOM_DEFAULT_VALUE)
 			loom_reset_task_cfg(proc_name, thread_name, pid);
 		else
 			loom_set_task_cfg(proc_name, thread_name, pid, mode,
 				matching_num, prio, cpu_mask, set_exclusive, loading_ub,
-				loading_lb, bhr, set_rescue, rescue_f);
+				loading_lb, bhr, limit_min_freq, limit_max_freq,
+				set_rescue, rescue_f_opp, rescue_c_freq, rescue_time);
 	}
 out:
 	loom_free(acBuffer);
@@ -631,6 +713,7 @@ void loom_exit(void)
 	loom_render_lock();
 	clear_all_loom_render_info();
 	loom_register_frame_info_cb(0, &fpsgo_loom_frame_info_cb);
+	exit_loom_loading_ctrl();
 	loom_render_unlock();
 
 	loom_cfg_lock();
@@ -649,6 +732,7 @@ int loom_init(void)
 		game_sysfs_create_file(loom_kobj, &kobj_attr_loom_enable_by_process);
 		game_sysfs_create_file(loom_kobj, &kobj_attr_loom_task_cfg);
 	}
+	init_loom_loading_ctrl();
 	// Todo: create file node
 	return 0;
 }

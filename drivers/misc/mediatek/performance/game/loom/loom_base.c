@@ -13,6 +13,8 @@
 #include <linux/sched/task.h>
 #include <linux/sched/clock.h>
 
+#include "loom_loading_ctrl.h"
+
 static int loom_task_cfg_length;
 static int loom_render_num;
 static HLIST_HEAD(loom_render_list);
@@ -121,17 +123,14 @@ void loom_clear_loom_attr(struct hlist_head *head)
 /* use for delete loom lc active list */
 static void loom_clear_loading_ctrl_list(struct list_head *head)
 {
-	//struct loom_loading_ctrl *iter;
-	//struct loom_loading_ctrl *tmp;
+	struct loom_loading_ctrl *iter = NULL, *tmp = NULL;
 
 	if (!head)
 		return;
-	/*
-	 *hlist_for_each_entry_safe(iter, tmp, head, list) {
-	 *	hlist_del(&iter->hlist);
-	 *	loom_free(iter);
-	 *}
-	 */
+
+	list_for_each_entry_safe(iter, tmp, head, hlist) {
+		loom_delete_loading_ctrl_info(iter);
+	}
 	INIT_LIST_HEAD(head);
 }
 
@@ -184,7 +183,9 @@ struct loom_attr_info *loom_add_task_cfg_pid_sorted(struct hlist_head *head, cha
 
 void loom_assign_task_cfg(struct loom_attr_info *info, int mode,
 	int match_num, int prio, int cpu_mask, int set_exclusive,
-	int loading_ub, int loading_lb, int bhr,int set_rescue, int rescue_f)
+	int loading_ub, int loading_lb, int bhr,
+	int limit_min_freq, int limit_max_freq,
+	int set_rescue, int rescue_f_opp, int rescue_c_freq, int rescue_time)
 {
 	if (!info)
 		return;
@@ -198,16 +199,16 @@ void loom_assign_task_cfg(struct loom_attr_info *info, int mode,
 		info->cpu_mask = cpu_mask;
 	if (set_exclusive != LOOM_DEFAULT_VALUE)
 		info->set_exclusive = set_exclusive;
-	if (loading_ub != LOOM_DEFAULT_VALUE)
-		info->loading_ub = loading_ub;
-	if (loading_lb != LOOM_DEFAULT_VALUE)
-		info->loading_lb = loading_lb;
-	if (bhr != LOOM_DEFAULT_VALUE)
-		info->bhr = bhr;
-	if (set_rescue != LOOM_DEFAULT_VALUE)
-		info->set_rescue = set_rescue;
-	if (rescue_f != LOOM_DEFAULT_VALUE)
-		info->rescue_f = rescue_f;
+
+	info->loading_ub = loading_ub;
+	info->loading_lb = loading_lb;
+	info->bhr = bhr;
+	info->limit_min_freq = limit_min_freq;
+	info->limit_max_freq = limit_max_freq;
+	info->set_rescue = set_rescue;
+	info->rescue_f_opp = rescue_f_opp;
+	info->rescue_c_freq = rescue_c_freq;
+	info->rescue_time = rescue_time;
 }
 
 
@@ -273,7 +274,11 @@ struct loom_attr_info *loom_search_add_task_cfg(struct hlist_head *head, int mod
 	iter->loading_lb = LOOM_DEFAULT_VALUE;
 	iter->bhr = LOOM_DEFAULT_VALUE;
 	iter->set_rescue = LOOM_DEFAULT_VALUE;
-	iter->rescue_f = LOOM_DEFAULT_VALUE;
+	iter->rescue_f_opp = LOOM_DEFAULT_VALUE;
+	iter->rescue_c_freq = LOOM_DEFAULT_VALUE;
+	iter->rescue_time = LOOM_DEFAULT_VALUE;
+	iter->limit_min_freq = LOOM_DEFAULT_VALUE;
+	iter->limit_max_freq = LOOM_DEFAULT_VALUE;
 out:
 	return iter;
 }
@@ -356,4 +361,55 @@ void loom_cfg_lock(void)
 void loom_cfg_unlock(void)
 {
 	mutex_unlock(&cfg_lock);
+}
+
+static unsigned long long loom_traverse_render_hlist(struct hlist_head *render_list,
+	unsigned long long target_addr)
+{
+	int i, ret = 0;
+	unsigned long long local_addr = 0;
+	struct loom_proc *proc_iter = NULL;
+	struct loom_render_info *render_iter = NULL;
+	struct loom_loading_ctrl *task_lc_iter = NULL;
+	struct hlist_node *h = NULL;
+	struct list_head *lc_active_list = NULL;
+	struct work_struct *work_iter = NULL;
+
+	hlist_for_each_entry_safe(render_iter, h, &loom_render_list, render_hlist) {
+		lc_active_list = &(render_iter->lc_active_list);
+		list_for_each_entry(task_lc_iter, lc_active_list, hlist) {
+			proc_iter = &(task_lc_iter->loom_proc_obj);
+			for (i = 0; i < LOOM_RESCUE_TIMER_NUM; i++) {
+				work_iter = &(proc_iter->jerks[i].work);
+				local_addr = (unsigned long long)work_iter;
+				if (target_addr && local_addr == target_addr) {
+					ret = local_addr;
+					break;
+				} else if (!target_addr)
+					pr_debug("[base] tid:%d work-%d:0x%llx\n",
+						task_lc_iter->tid, i, local_addr);
+			}
+		}
+	}
+
+
+	return ret;
+}
+
+int loom_check_loom_jerk_work_addr_invalid(struct work_struct *target_work)
+{
+	int ret = -EFAULT;
+	unsigned long long local_addr = 0;
+	unsigned long long target_addr = 0;
+
+	target_addr = (unsigned long long)target_work;
+
+	local_addr = loom_traverse_render_hlist(&loom_render_list, target_addr);
+	if (local_addr) {
+		ret = 0;
+		goto out;
+	}
+
+out:
+	return ret;
 }

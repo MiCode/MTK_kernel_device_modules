@@ -13,10 +13,6 @@
 
 #define GAME_BY_PID_DEFAULT_VAL -1
 
-enum GAME_TRACE_TYPE {
-	GAME_DEBUG_MANDATORY = 0,
-};
-
 enum FI_ENABLE_INFO {
 	FI_ENABLE = 0,
 	FI_DETECTION = 1,
@@ -79,7 +75,6 @@ void game_render_tree_lockprove(const char *tag);
 void game_main_systrace(pid_t pid, unsigned long long bufID,
 	int val, const char *fmt, ...);
 void game_main_trace(const char *fmt, ...);
-unsigned long long game_get_time(void);
 struct game_render_info *frame_interp_search_and_add_render_info(int tgid, int add_flag);
 int game_delete_render_info(struct game_render_info *iter_thr);
 int game_get_render_tree_total_num(void);

@@ -606,8 +606,8 @@ static int fbt_is_enable(void)
 	return enable;
 }
 
-int fbt_cluster_X2Y(int cluster, unsigned long input, enum sugov_type in_type,
-	enum sugov_type out_type, int is_to_scale_cap, const char *caller)
+int fbt_cluster_X2Y(int cluster, unsigned long input, int in_type,
+	int out_type, int is_to_scale_cap, const char *caller)
 {
 	int cpu, num_opp;
 	unsigned long output = 0;
@@ -634,6 +634,7 @@ int fbt_cluster_X2Y(int cluster, unsigned long input, enum sugov_type in_type,
 		__func__, caller, cluster, cpu, input, in_type, out_type, output);
 	return (int)output;
 }
+EXPORT_SYMBOL(fbt_cluster_X2Y);
 
 static struct fbt_thread_blc *fbt_list_blc_add(int pid,
 	unsigned long long buffer_id)

@@ -43,5 +43,6 @@ void game_systrace_c(int type, pid_t pid, unsigned long long bufID,
 	int value, const char *name, ...);
 void game_systrace_b(int type, pid_t pid, const char *name, ...);
 void game_systrace_e(int type);
+unsigned long long game_get_time(void);
 
 #endif //_GAME_H_
