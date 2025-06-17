@@ -387,6 +387,10 @@ int loom_cal_and_set_freq(int tid, int cluster, int window_loading, int lc_ub, i
 	return now_freq;
 }
 
+int (*lc_cal_freq_fp)(int *now_freq, int *now_freq_max, int tid,
+		int cluster, int window_loading, int lc_ub, int lc_lb, int prev_freq,
+		int limit_min_freq, int limit_max_freq, int bhr_opp_local);
+EXPORT_SYMBOL(lc_cal_freq_fp);
 
 int loom_loading_ctrl_operation(struct loom_loading_ctrl *lc_info, unsigned long long ts, int cluster, int cpu)
 {
@@ -394,6 +398,7 @@ int loom_loading_ctrl_operation(struct loom_loading_ctrl *lc_info, unsigned long
 	int ret = 0;
 	unsigned long long runtime = 0;
 	int limit_min_freq_final = 1, limit_max_freq_final = 100;
+	int now_freq = 0, now_freq_max = 0;
 
 	if (!lc_info) {
 		game_main_trace("[%s] loom_loading_ctrl: lc_info is NULL\n", __func__);
@@ -429,9 +434,18 @@ int loom_loading_ctrl_operation(struct loom_loading_ctrl *lc_info, unsigned long
 #endif  // IS_ENABLED(CONFIG_MTK_CPUFREQ_SUGOV_EXT)
 		goto out;
 	} else {
-		freq = loom_cal_and_set_freq(lc_info->tid, lc_info->cluster, window_loading,
-		lc_info->loading_thr_up_bound,lc_info->loading_thr_low_bound, avg_freq,
-		limit_min_freq_final, limit_max_freq_final, bhr);
+		if (lc_cal_freq_fp) {
+			freq = lc_cal_freq_fp(&now_freq, &now_freq_max, lc_info->tid, lc_info->cluster,
+				window_loading, lc_info->loading_thr_up_bound, lc_info->loading_thr_low_bound,
+				avg_freq, limit_min_freq_final, limit_max_freq_final, bhr);
+			_update_userlimit_cpufreq_max(lc_info->cluster, now_freq_max);
+			game_systrace_c(GAME_DEBUG_MANDATORY, lc_info->tid, 0, now_freq_max,
+				"loading_ctrl_C%d_freq_max", lc_info->cluster);
+
+			_update_userlimit_cpufreq_min(cluster, now_freq);
+			game_systrace_c(GAME_DEBUG_MANDATORY, lc_info->tid, 0, now_freq,
+				"loading_ctrl_C%d_freq_min", lc_info->cluster);
+		}
 	}
 out:
 	loom_set_loom_ctrl_info_setting(lc_info, cluster, cpu, cap, freq, ts, runtime);
