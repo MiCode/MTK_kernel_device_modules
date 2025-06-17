@@ -1378,6 +1378,11 @@ static unsigned long dmabuf_rbtree_get_stats(struct rb_root *root, pid_t pid,
 		buf_pss = 0;
 		dmabuf = dbg_node->dmabuf;
 
+		/* check for use-after-free case */
+		/* detected in kasan load */
+		if (!dmabuf)
+			continue;
+
 		if (flag & HEAP_DUMP_PSS_BY_PID) {
 			if (!pid && list_empty(&dbg_node->pids_res)) {
 				krn_rss += dmabuf->size;
