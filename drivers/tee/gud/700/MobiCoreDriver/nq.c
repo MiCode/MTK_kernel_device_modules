@@ -869,7 +869,8 @@ static int nq_boot_tee(void)
 #endif
 	unsigned long timeout_jiffies;
 	int ret;
-	u64 tee_sched_buffer, mci_buffer = 0;
+	u64 tee_sched_buffer = 0;
+	u64 mci_buffer = 0;
 	cpumask_t old_affinity;
 
 	/* Call the INIT fastcall to setup shared buffers */
