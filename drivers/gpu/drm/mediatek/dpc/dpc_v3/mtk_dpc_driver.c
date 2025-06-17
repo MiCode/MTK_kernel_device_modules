@@ -3345,16 +3345,22 @@ err_dump:
 
 static void dpc_get_avail_urate_freq(struct device *dev)
 {
-	int i = 0;
+	int i = 0, sw_ver, opp_table_num;
 	struct dev_pm_opp *opp;
 	unsigned long freq;
-	int ret;
 
-	ret = dev_pm_opp_of_add_table(dev);
-	if (ret < 0) {
-		pr_info("fail to init opp table: %d\n", ret);
+	sw_ver = vdisp_get_chipid();
+	if (sw_ver < 0) {
+		DPCERR("Invalid sw_ver");
 		return;
 	}
+	DPCDUMP("sw_ver:%d", sw_ver);
+
+	// B0 chip use opp_table[1] if exist in dts
+	opp_table_num = of_count_phandle_with_args(dev->of_node, "operating-points-v2", NULL);
+	dev_pm_opp_of_add_table_indexed(dev,
+		((sw_ver == 1) && (opp_table_num > 1)) ? 1 : 0);
+
 	step_size = dev_pm_opp_get_opp_count(dev);
 	g_urate_freq_steps = kcalloc(step_size, sizeof(unsigned long), GFP_KERNEL);
 	freq = 0;
