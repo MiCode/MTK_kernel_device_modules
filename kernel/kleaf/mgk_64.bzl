@@ -530,6 +530,7 @@ mgk_64_kleaf_device_modules_srcs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/imgsensor/src:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/cam_cal:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/cam_cal/src:srcs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/retention:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mddp:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/apusys/sapu:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/sched:srcs".format(kernel_version),
