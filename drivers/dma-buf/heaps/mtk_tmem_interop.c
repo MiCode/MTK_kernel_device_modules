@@ -13,6 +13,15 @@
 
 #define DEBUG_BITMAP 0
 
+static bool is_pre_alloc_total_size(struct secure_heap_page *sec_heap)
+{
+	if ((sec_heap->tmem_type == TRUSTED_MEM_REQ_PROT_PAGE) &&
+		(atomic64_read(&sec_heap->total_size) == get_pre_alloc_page_size()))
+		return true;
+
+	return false;
+}
+
 #if (ENABLE_PKVM_PMM == 1)
 static int pkvm_mgmt_get_hcall(uint32_t smc_id)
 {
@@ -677,7 +686,8 @@ TMEM_PRIV int page_free_v2(struct secure_heap_page *sec_heap,
 			atomic64_read(&sec_heap->total_size));
 
 	/* Defragment once the total size of sec heap is zero */
-	if (atomic64_read(&sec_heap->total_size) == 0) {
+	if (atomic64_read(&sec_heap->total_size) == 0 ||
+		is_pre_alloc_total_size(sec_heap)) {
 		pr_info("%s: page count:%d, merge the cpu and infra-mpu pgtbl\n",
 				__func__, page_count);
 #if (DEBUG_BITMAP == 1)

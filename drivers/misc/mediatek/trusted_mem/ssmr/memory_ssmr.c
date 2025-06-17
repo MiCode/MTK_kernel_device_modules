@@ -42,6 +42,7 @@
 #define SVP_ON_MTEE_DT_UNAME "MTEE"
 #define SVP_STATIC_RESERVED_DT_UNAME "mediatek,reserve-memory-svp"
 #define GRANULARITY_SIZE 0x200000
+#define PRE_ALLOC_PROT_PAGE_NUM_DT_UNAME "pre-alloc-prot-page-num"
 
 static struct device *sec_ssmr_dev;
 static struct device *apmd_ssmr_dev;
@@ -49,6 +50,7 @@ static struct device *apscp_ssmr_dev;
 
 static struct SSMR_HEAP_INFO _ssmr_heap_info[__MAX_NR_SSMR_FEATURES];
 
+static int pre_alloc_prot_page_num;
 
 #if IS_ENABLED(CONFIG_MTK_SEC_VIDEO_PATH_SUPPORT) || \
 	IS_ENABLED(CONFIG_TRUSTONIC_TEE_SUPPORT) || \
@@ -676,6 +678,26 @@ bool is_hf_bypass_cma_enabled(void)
 	return true;
 }
 
+u64 get_pre_alloc_page_size(void)
+{
+	return pre_alloc_prot_page_num * PAGE_SIZE;
+}
+EXPORT_SYMBOL(get_pre_alloc_page_size);
+
+static void set_pre_alloc_prot_page_num(void)
+{
+	struct device_node *dt_node;
+
+	pre_alloc_prot_page_num = 0;
+
+	dt_node = of_find_node_by_name(NULL, PAGE_BASED_V2_ENABLED_DT_UNAME);
+	if (!dt_node)
+		return;
+
+	of_property_read_u32(dt_node, PRE_ALLOC_PROT_PAGE_NUM_DT_UNAME,
+		&pre_alloc_prot_page_num);
+}
+
 int sec_ssmr_init(struct platform_device *pdev)
 {
 	int i;
@@ -703,6 +725,8 @@ int sec_ssmr_init(struct platform_device *pdev)
 	}
 
 	get_reserved_memory(&pdev->dev);
+
+	set_pre_alloc_prot_page_num();
 
 	pr_info("sec_ssmr init done\n");
 
@@ -758,3 +782,4 @@ int apscp_ssmr_init(struct platform_device *pdev)
 
 	return 0;
 }
+

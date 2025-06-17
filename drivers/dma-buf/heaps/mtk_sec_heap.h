@@ -28,5 +28,6 @@
 bool is_pkvm_enabled(void);
 int get_hvc_nr_page_protect(void);
 int get_hvc_nr_page_unprotect(void);
+u64 get_pre_alloc_page_size(void);
 
 #endif /* _MTK_SEC_HEAP_H */
