@@ -836,21 +836,49 @@ static ssize_t phy_prop_show(struct device *dev,
 }
 static DEVICE_ATTR_RW(phy_prop);
 
+static int parse_hex_values(const char *buf, u32 *values, int num_values)
+{
+	char *input, *token;
+	int i;
+
+	input = kstrdup(buf, GFP_KERNEL);
+	if (!input)
+		return -ENOMEM;
+
+	// Start parsing the hex values.
+	for (i = 0; i < num_values; i++) {
+		token = strsep(&input, " ");
+		if (!token || kstrtouint(token, 16, &values[i])) {
+			kfree(input);
+			return -EINVAL;
+		}
+	}
+
+	// Check if there are remaining tokens after the expected number of values
+	token = strsep(&input, " ");
+	if (token) {
+		kfree(input);
+		return -EINVAL;
+	}
+
+	kfree(input);
+	return 0;
+}
 
 static ssize_t gen1_txdeemph_store(struct device *dev,
-				 struct device_attribute *attr,
-				 const char *buf, size_t count)
+				struct device_attribute *attr,
+				const char *buf, size_t count)
 {
 	struct ssusb_mtk *ssusb = dev_get_drvdata(dev);
-	u32 txdeemph, cp5_cp7_txdeemph;
+	u32 val[2];
 	int ret;
 
-	ret = sscanf(buf, "%x %x", &txdeemph, &cp5_cp7_txdeemph);
-	if (ret != 2)
-		return -EINVAL;
+	ret = parse_hex_values(buf, val, ARRAY_SIZE(val));
+	if (ret)
+		return ret;
 
-	ssusb->gen1_txdeemph = PIPE_TXDEEMPH(txdeemph);
-	ssusb->cp5_cp7_txdeemph = CP5_CP7_TXDEEMPH(cp5_cp7_txdeemph);
+	ssusb->gen1_txdeemph    = PIPE_TXDEEMPH(val[0]);
+	ssusb->cp5_cp7_txdeemph = CP5_CP7_TXDEEMPH(val[1]);
 	ssusb_set_txdeemph(ssusb);
 
 	return count;
@@ -874,24 +902,23 @@ static ssize_t gen1_txdeemph_show(struct device *dev,
 }
 static DEVICE_ATTR_RW(gen1_txdeemph);
 
-
 static ssize_t gen2_txdeemph_store(struct device *dev,
-				 struct device_attribute *attr,
-				 const char *buf, size_t count)
+				struct device_attribute *attr,
+				const char *buf, size_t count)
 {
 	struct ssusb_mtk *ssusb = dev_get_drvdata(dev);
-	u32 gen2_txdeemph, cp13_txdeemph, cp14_txdeemph, cp15_txdeemph;
+	u32 val[4];
 	int ret;
 
-	ret = sscanf(buf, "%x %x %x %x",
-			&gen2_txdeemph, &cp13_txdeemph, &cp14_txdeemph, &cp15_txdeemph);
-	if (ret != 4)
-		return -EINVAL;
+	ret = parse_hex_values(buf, val, ARRAY_SIZE(val));
+	if (ret)
+		return ret;
 
-	ssusb->gen2_txdeemph = PIPE_TXDEEMPH_GEN2(gen2_txdeemph);
-	ssusb->cp13_txdeemph = CP13_TXDEEMPH(cp13_txdeemph);
-	ssusb->cp14_txdeemph = CP14_TXDEEMPH(cp14_txdeemph);
-	ssusb->cp15_txdeemph = CP15_TXDEEMPH(cp15_txdeemph);
+	ssusb->gen2_txdeemph = PIPE_TXDEEMPH_GEN2(val[0]);
+	ssusb->cp13_txdeemph = CP13_TXDEEMPH(val[1]);
+	ssusb->cp14_txdeemph = CP14_TXDEEMPH(val[2]);
+	ssusb->cp15_txdeemph = CP15_TXDEEMPH(val[3]);
+
 	ssusb_set_txdeemph(ssusb);
 
 	return count;
