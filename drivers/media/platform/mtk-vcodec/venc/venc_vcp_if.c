@@ -1401,11 +1401,9 @@ int vcp_enc_encode(struct venc_inst *inst, unsigned int bs_mode,
 			vsi->dynamicparams_size = 0;
 		}
 
-		mtk_vcodec_debug(inst, " num_planes = %d input (dmabuf:%lx), size %d %llx",
-			frm_buf->num_planes,
-			(unsigned long)frm_buf->fb_addr[0].dmabuf,
-			vsi->meta_size,
-			vsi->meta_addr);
+		mtk_vcodec_debug(inst, "[FB_BUF] input id=%u fb_va=%lx num_planes = %d (dmabuf:%pad), size %d %llx",
+			frm_buf->index, (unsigned long)frm_buf, frm_buf->num_planes, &frm_buf->fb_addr[0].dmabuf,
+			vsi->meta_size, vsi->meta_addr);
 		mtk_vcodec_debug(inst, "vsi qpmap addr %llx size%d",
 			vsi->qpmap_addr, vsi->qpmap_size);
 		mtk_vcodec_debug(inst, "vsi adab addr %llx size%d",
@@ -1434,8 +1432,8 @@ int vcp_enc_encode(struct venc_inst *inst, unsigned int bs_mode,
 			mtk_vcodec_debug(inst, "no general buf dmabuf");
 		}
 
-		mtk_vcodec_debug(inst, " output (dma:%lx)",
-			(unsigned long)bs_buf->dmabuf);
+		mtk_vcodec_debug(inst, "[BS_BUF] output id=%u bs_va %lx (dma:%pad)",
+			bs_buf->index, (unsigned long)bs_buf, &bs_buf->dmabuf);
 	}
 
 	if (inst->ctx->use_slbc && atomic_read(&mtk_venc_slb_cb.release_slbc)) {
@@ -1789,7 +1787,7 @@ static void venc_get_free_buffers(struct venc_inst *inst,
 			list->count = list->write_idx + VENC_MAX_FB_NUM - list->read_idx;
 	}
 	if (list->count == 0) {
-		mtk_vcodec_debug(inst, "[FB] there is no free buffers");
+		mtk_vcodec_debug(inst, "there is no free buffers");
 		pResult->bs_va = 0;
 		pResult->frm_va = 0;
 		pResult->is_key_frm = false;
@@ -1804,7 +1802,7 @@ static void venc_get_free_buffers(struct venc_inst *inst,
 	pResult->is_last_slc = list->is_last_slice[list->read_idx];
 	pResult->flags = list->flags[list->read_idx];
 
-	mtk_vcodec_debug(inst, "bsva %lx frva %lx bssize %d iskey %d is_last_slc=%d flags 0x%x",
+	mtk_vcodec_debug(inst, "[FB_BUF][BS_BUF] bsva %lx frva %lx bssize %d iskey %d is_last_slc=%d flags 0x%x",
 		pResult->bs_va,
 		pResult->frm_va,
 		pResult->bs_size,

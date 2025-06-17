@@ -439,8 +439,8 @@ void mtk_vcodec_set_curr_ctx(struct mtk_vcodec_dev *dev,
 	unsigned long flags;
 
 	if (dev == NULL || hw_id >= MTK_VDEC_HW_NUM) {
-		mtk_v4l2_err("Invalid arguments, dev=0x%lx, ctx=0x%lx, hw_id=%d",
-			(unsigned long)dev, (unsigned long)ctx, hw_id);
+		mtk_v4l2_err("Invalid arguments, dev=0x%p, ctx=0x%p, hw_id=%d",
+			dev, ctx, hw_id);
 		return;
 	}
 
@@ -457,7 +457,7 @@ struct mtk_vcodec_ctx *mtk_vcodec_get_curr_ctx(struct mtk_vcodec_dev *dev,
 	struct mtk_vcodec_ctx *ctx;
 
 	if (!dev || hw_id >= MTK_VDEC_HW_NUM) {
-		mtk_v4l2_err("Invalid arguments, dev=0x%lx, hw_id=%d", (unsigned long)dev, hw_id);
+		mtk_v4l2_err("Invalid arguments, dev=0x%p, hw_id=%d", dev, hw_id);
 		return NULL;
 	}
 
@@ -542,10 +542,9 @@ void mtk_vcodec_dump_ctx_list(struct mtk_vcodec_dev *dev, unsigned int debug_lev
 		if (ctx == NULL)
 			mtk_v4l2_err("ctx null in ctx list");
 		else
-			mtk_v4l2_debug(debug_level, "[%d] %s ctx 0x%08lx, drv_handle 0x%08lx %p, state %d",
+			mtk_v4l2_debug(debug_level, "[%d] %s ctx 0x%lx %p, drv_handle 0x%08lx %p, state %d",
 				ctx->id, (ctx->type == MTK_INST_DECODER) ? "dec" : "enc",
-				(unsigned long)ctx,
-				ctx->drv_handle, (void *)ctx->drv_handle,
+				(unsigned long)ctx, ctx, ctx->drv_handle, (void *)ctx->drv_handle,
 				mtk_vcodec_get_state(ctx));
 	}
 }
@@ -680,7 +679,7 @@ void mtk_vcodec_init_slice_info(struct mtk_vcodec_ctx *ctx, struct mtk_video_dec
 	struct dma_fence *fence;
 
 	if (ctx == NULL || dst_buf_info == NULL) {
-		mtk_v4l2_err("Invalid arguments, ctx=0x%lx, dst_buf_info=0x%lx", (unsigned long)ctx, (unsigned long)dst_buf_info);
+		mtk_v4l2_err("Invalid arguments, ctx=0x%p, dst_buf_info=0x%p", ctx, dst_buf_info);
 		return;
 	}
 	dst_vb2_v4l2 = &dst_buf_info->vb;
@@ -749,12 +748,11 @@ struct vdec_fb *mtk_vcodec_get_fb(struct mtk_vcodec_ctx *ctx)
 		mtk_vcodec_init_slice_info(ctx, dst_buf_info);
 		ctx->fb_list[pfb->index + 1] = (uintptr_t)pfb;
 
-		mtk_v4l2_debug(1, "[%d] id=%d pfb=0x%p %llx VA=%p dma_addr[0]=%lx dma_addr[1]=%lx Size=%zx fd:%x, dma_general_buf = %p, dma_general_addr = 0x%lx, general_buf_fd = %d, num_rdy_bufs=%d",
-			ctx->id, dst_vb->index, pfb, (unsigned long long)pfb, pfb->fb_base[0].va,
-			(unsigned long)pfb->fb_base[0].dma_addr,
-			(unsigned long)pfb->fb_base[1].dma_addr,
+		mtk_v4l2_debug(1, "[%d][FB_BUF] id=%d pfb=0x%lx VA=%p dma_addr[0]=%pad dma_addr[1]=%pad Size=%zx fd:%x, dma_general_buf = %p, dma_general_addr = %pad, general_buf_fd = %d, num_rdy_bufs=%d",
+			ctx->id, dst_vb->index, (unsigned long)pfb, pfb->fb_base[0].va,
+			&pfb->fb_base[0].dma_addr, &pfb->fb_base[1].dma_addr,
 			pfb->fb_base[0].size, dst_vb->planes[0].m.fd,
-			pfb->dma_general_buf, (unsigned long)pfb->dma_general_addr, pfb->general_buf_fd,
+			pfb->dma_general_buf, &pfb->dma_general_addr, pfb->general_buf_fd,
 			v4l2_m2m_num_dst_bufs_ready(ctx->m2m_ctx));
 	} else {
 		mtk_v4l2_debug(8, "[%d] No free framebuffer in v4l2!!\n", ctx->id);
@@ -814,21 +812,21 @@ int v4l2_m2m_buf_queue_check(struct v4l2_m2m_ctx *m2m_ctx,
 	struct mtk_vcodec_ctx *ctx = get_ctx_from_m2m(m2m_ctx);
 
 	if (vb2_v4l2 == NULL) {
-		mtk_v4l2_err("Invalid arguments, m2m_ctx=0x%lx, vb2_v4l2=0x%lx",
-			(unsigned long)m2m_ctx, (unsigned long)vb2_v4l2);
+		mtk_v4l2_err("Invalid arguments, m2m_ctx=0x%p, vb2_v4l2=0x%p",
+			m2m_ctx, vb2_v4l2);
 		return -1;
 	}
 	b = container_of(vb2_v4l2, struct v4l2_m2m_buffer, vb);
-	mtk_v4l2_debug(8, "[Debug] b %p b->list.next %p prev %p %p %p\n",
-		b, b->list.next, b->list.prev,
-		LIST_POISON1, LIST_POISON2);
+	mtk_v4l2_debug(8, "[Debug] b %lx b->list.next %lx prev %lx %lx %lx\n",
+		(unsigned long)b, (unsigned long)b->list.next, (unsigned long)b->list.prev,
+		(unsigned long)LIST_POISON1, (unsigned long)LIST_POISON2);
 
 	if (WARN_ON(IS_ERR_OR_NULL(m2m_ctx) ||
 		(b->list.next != LIST_POISON1 && b->list.next) ||
 		(b->list.prev != LIST_POISON2 && b->list.prev))) {
-		v4l2_aee_print("b %p next %p prev %p already in rdyq %p %p\n",
-			b, b->list.next, b->list.prev,
-			LIST_POISON1, LIST_POISON2);
+		v4l2_aee_print("b %lx next %lx prev %lx already in rdyq %lx %lx\n",
+			(unsigned long)b, (unsigned long)b->list.next, (unsigned long)b->list.prev,
+			(unsigned long)LIST_POISON1, (unsigned long)LIST_POISON2);
 		return -1;
 	}
 	vcodec_trace_begin("%s(ts=%lld)", __func__, vb2_v4l2->vb2_buf.timestamp);
@@ -933,7 +931,7 @@ void v4l_fill_mtk_fmtdesc(struct v4l2_fmtdesc *fmt)
 	const char *descr = NULL;
 
 	if (fmt == NULL) {
-		mtk_v4l2_err("Invalid arguments, fmt=0x%lx", (unsigned long)fmt);
+		mtk_v4l2_err("Invalid arguments, fmt=0x%p", fmt);
 		return;
 	}
 
@@ -1037,8 +1035,8 @@ long mtk_vcodec_dma_attach_map(struct device *dev, struct dma_buf *dmabuf,
 		*addr_ptr = 0;
 
 	if (dev == NULL || IS_ERR_OR_NULL(dmabuf) || direction >= DMA_NONE) {
-		mtk_v4l2_err("%s %d: invalid dev %lx, dmabuf %ld, direction %d",
-			debug_str, debug_line, (unsigned long)dev, PTR_ERR(dmabuf), direction);
+		mtk_v4l2_err("%s %d: invalid dev %p, dmabuf %ld, direction %d",
+			debug_str, debug_line, dev, PTR_ERR(dmabuf), direction);
 		return -EINVAL;
 	}
 
@@ -1107,8 +1105,8 @@ int mtk_vcodec_alloc_mem(struct vcodec_mem_obj *mem, struct device *dev,
 	long ret = 0;
 
 	if (mem == NULL || dev == NULL || attach == NULL || sgt == NULL) {
-		mtk_v4l2_err("Invalid arguments, mem=0x%lx, dev=0x%lx, attach=0x%lx, sgt=0x%lx",
-			(unsigned long)mem, (unsigned long)dev, (unsigned long)attach, (unsigned long)sgt);
+		mtk_v4l2_err("Invalid arguments, mem=0x%p, dev=0x%p, attach=0x%p, sgt=0x%p",
+			mem, dev, attach, sgt);
 		return -EINVAL;
 	}
 	alloc_len = mem->len;
@@ -1174,15 +1172,15 @@ int mtk_vcodec_alloc_mem(struct vcodec_mem_obj *mem, struct device *dev,
 
 	ret = mtk_vcodec_dma_attach_map(dev, dbuf, attach, sgt, &dma_addr, DMA_BIDIRECTIONAL, __func__, __LINE__);
 	if (ret || dma_addr == 0) {
-		mtk_v4l2_err("alloc failed, va 0x%llx pa 0x%llx iova 0x%llx len %d type %u",
-			(__u64)dbuf, (__u64)dma_addr, (__u64)dma_addr, mem->len, mem->type);
+		mtk_v4l2_err("alloc failed, va 0x%p 0x%llx pa %pad iova %pad len %d type %u",
+			dbuf, (__u64)dbuf, &dma_addr, &dma_addr, mem->len, mem->type);
 		goto alloc_mem_err_attach_map_fail;
 	}
 	mem->va = (__u64)dbuf;
 	mem->pa = (__u64)dma_addr;
 	mem->iova = mem->pa;
-	mtk_v4l2_debug(8, "va 0x%llx pa 0x%llx iova 0x%llx len %d type %u",
-		mem->va, mem->pa, mem->iova, mem->len, mem->type);
+	mtk_v4l2_debug(8, "va 0x%p 0x%llx pa 0x%llx iova 0x%llx len %d type %u",
+		dbuf, mem->va, mem->pa, mem->iova, mem->len, mem->type);
 
 	return 0;
 
@@ -1199,8 +1197,8 @@ int mtk_vcodec_free_mem(struct vcodec_mem_obj *mem, struct device *dev,
 	struct dma_buf_attachment *attach, struct sg_table *sgt)
 {
 	if (mem == NULL || IS_ERR_OR_NULL((void *)mem->va)) {
-		mtk_v4l2_err("Invalid arguments, mem=0x%lx, dev=0x%lx, attach=0x%lx, sgt=0x%lx",
-			(unsigned long)mem, (unsigned long)dev, (unsigned long)attach, (unsigned long)sgt);
+		mtk_v4l2_err("Invalid arguments, mem=0x%p, dev=0x%p, attach=0x%p, sgt=0x%p",
+			mem, dev, attach, sgt);
 		return -EINVAL;
 	}
 
@@ -1264,7 +1262,7 @@ int mtk_vcodec_vp_mode_buf_prepare(struct mtk_vcodec_dev *dev, int bitdepth)
 	int idx = (bitdepth == 8) ? 0 : 1;
 
 	if (dev == NULL || (bitdepth != 8 && bitdepth != 10)) {
-		mtk_v4l2_err("Invalid argument dev 0x%lx, bitdepth %d", (unsigned long)dev, bitdepth);
+		mtk_v4l2_err("Invalid argument dev 0x%p, bitdepth %d", dev, bitdepth);
 		return -1;
 	}
 	io_dev = dev->smmu_dev;
@@ -1616,8 +1614,7 @@ void mtk_vcodec_get_log(struct mtk_vcodec_ctx *ctx, struct mtk_vcodec_dev *dev,
 	int len = 0;
 
 	if (!dev || !val) {
-		mtk_v4l2_err("Invalid arguments, dev=0x%lx, val=0x%lx",
-			(unsigned long)dev, (unsigned long)val);
+		mtk_v4l2_err("Invalid arguments, dev=0x%p, val=0x%p", dev, val);
 		return;
 	}
 
@@ -1695,7 +1692,7 @@ void mtk_vcodec_vgo_send(int type, void *data)
 	switch (type) {
 	case VGO_SEND_UPDATE_FN:
 		vcodec_to_vgo = data;
-		mtk_v4l2_debug(0, "VGO_SEND_UPDATE_FN 0x%lx (type %d)", (unsigned long)data, type);
+		mtk_v4l2_debug(0, "VGO_SEND_UPDATE_FN 0x%p (type %d)", data, type);
 		break;
 	case VGO_SEND_OPRATE: {
 		struct vgo_data *vgo_info = (struct vgo_data *)data;

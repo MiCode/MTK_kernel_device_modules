@@ -63,8 +63,8 @@ static void put_fb_to_free(struct vdec_inst *inst, struct vdec_fb *fb)
 		if (list->count >= DEC_MAX_FB_NUM)
 			mtk_vcodec_err(inst, "[FB] put fb free_list full");
 		else {
-			mtk_vcodec_debug(inst,"[FB] put fb into free_list @(%p, %llx)",
-				fb->fb_base[0].va, (u64)fb->fb_base[1].dma_addr);
+			mtk_vcodec_debug(inst,"[FB] put fb into free_list @(%lx, %pad)",
+				(unsigned long)fb, &fb->fb_base[1].dma_addr);
 
 			list->fb_list[list->write_idx].vdec_fb_va = (u64)(uintptr_t)fb;
 			list->write_idx = (list->write_idx == DEC_MAX_FB_NUM - 1U) ? 0U : list->write_idx + 1U;
@@ -1381,8 +1381,8 @@ static int vdec_vcp_init(struct mtk_vcodec_ctx *ctx, unsigned long *h_vdec)
 	mutex_init(inst->vcu.ctx_ipi_lock);
 	INIT_LIST_HEAD(&inst->vcu.bufs);
 
-	mtk_vcodec_debug(inst, "vdec_inst=%p svp_mode=%d",
-		&inst->vcu, ctx->dec_params.svp_mode);
+	mtk_vcodec_debug(inst, "inst=%lx vdec_inst=%lx svp_mode=%d",
+		(unsigned long)inst, (unsigned long)&inst->vcu, ctx->dec_params.svp_mode);
 	*h_vdec = (unsigned long)inst;
 	vdec_vcp_set_vcu(&inst->vcu);
 
@@ -1523,8 +1523,8 @@ static int vdec_vcp_decode(unsigned long h_vdec, struct mtk_vcodec_mem *bs,
 			return vdec_vcp_reset(inst, VDEC_DRAIN_EOS); // drain & return EOS frame (2)
 	}
 
-	mtk_vcodec_debug(inst, "+ [%d] BS id=%d dma=0x%llx dmabuf=%p format=%s",
-		inst->num_nalu, bs->index, (uint64_t)bs->dma_addr, bs->dmabuf, FOURCC_STR(bs_fourcc));
+	mtk_vcodec_debug(inst, "+ [BS_BUF][%d] BS id=%d dma=%pad dmabuf=%p format=%s",
+		inst->num_nalu, bs->index, &bs->dma_addr, bs->dmabuf, FOURCC_STR(bs_fourcc));
 
 	inst->vsi->dec.vdec_bs_va = (u64)(uintptr_t)bs;
 	inst->vsi->dec.bs_dma = (uint64_t)bs->dma_addr;
@@ -1554,7 +1554,7 @@ static int vdec_vcp_decode(unsigned long h_vdec, struct mtk_vcodec_mem *bs,
 			inst->vsi->general_buf_size = 0;
 			SNPRINTF(debug_str, sizeof(debug_str), "no general buf dmabuf");
 		}
-		mtk_vcodec_debug(inst, "+ FB id=%d y_dma=%llx c_dma=%llx va=%p num_planes %d format=%s, %s",
+		mtk_vcodec_debug(inst, "+ [FB_BUF] FB id=%d y_dma=%llx c_dma=%llx va=%p num_planes %d format=%s, %s",
 			fb->index, inst->vsi->dec.fb_dma[0], inst->vsi->dec.fb_dma[1],
 			fb, num_planes, FOURCC_STR(fm_fourcc), debug_str);
 
@@ -1692,13 +1692,13 @@ static int set_frame_buffer(struct vdec_inst *inst, void *fb)
 			if (pfb->dma_general_buf != 0) {
 				ipi_fb.dma_general_addr = pfb->dma_general_addr;
 				ipi_fb.general_size = pfb->dma_general_buf->size;
-				mtk_vcodec_debug(inst, "FB id=%d dma_addr (%llx,%llx) dma_general_buf %p size %lu dma %pad",
+				mtk_vcodec_debug(inst, "[FB_BUF] FB id=%d dma_addr (%llx,%llx) dma_general_buf %p size %lu dma %pad",
 					pfb->index, ipi_fb.y_fb_dma, ipi_fb.c_fb_dma,
 					pfb->dma_general_buf, pfb->dma_general_buf->size,
 					&pfb->dma_general_addr);
 			} else {
 				ipi_fb.dma_general_addr = -1;
-				mtk_vcodec_debug(inst, "FB id=%d dma_addr (%llx,%llx) dma_general_buf %p no general buf dmabuf",
+				mtk_vcodec_debug(inst, "[FB_BUF] FB id=%d dma_addr (%llx,%llx) dma_general_buf %p no general buf dmabuf",
 					pfb->index, ipi_fb.y_fb_dma, ipi_fb.c_fb_dma,
 					pfb->dma_general_buf);
 			}
@@ -1719,10 +1719,9 @@ static int set_frame_buffer(struct vdec_inst *inst, void *fb)
 	} while (pfb != NULL);
 
 	if (fb != NULL && dst_not_get) {
-		mtk_vcodec_debug(inst, "warning: dst_buf_info->frame_buffer id=%d %p %llx not get",
+		mtk_vcodec_debug(inst, "warning: dst_buf_info->frame_buffer id=%d %lx not get",
 			dst_buf_info->frame_buffer.index,
-			&dst_buf_info->frame_buffer,
-			(u64)&dst_buf_info->frame_buffer);
+			(unsigned long)&dst_buf_info->frame_buffer);
 	}
 	if (err < 0)
 		mtk_vcodec_err(inst, "- id=%X ret=%d", AP_IPIMSG_DEC_FRAME_BUFFER, err);
@@ -1998,7 +1997,7 @@ get_bs:
 	}
 
 	*out_bs = bs;
-	mtk_vcodec_debug(inst, "[BS] get free bs %lx", vdec_bs_va);
+	mtk_vcodec_debug(inst, "[BS_BUF] get free bs id=%d %lx", bs->index, vdec_bs_va);
 
 	list->read_idx = (list->read_idx == DEC_MAX_BS_NUM - 1) ? 0 : list->read_idx + 1;
 	list->count--;
@@ -2054,7 +2053,7 @@ get_fb:
 	}
 
 	*out_fb = fb;
-	mtk_vcodec_debug(inst, "[FB] get %s fb (read_idx %d write_idx %d count %d) st=0x%x id=%d type 0x%x ts=%llu %lx gbuf fd %d dma %p",
+	mtk_vcodec_debug(inst, "[FB_BUF] get %s fb (read_idx %d write_idx %d count %d) st=0x%x id=%d type 0x%x ts=%llu %lx gbuf fd %d dma %p",
 		disp_list ? "disp" : "free", list->read_idx, list->write_idx, list->count,
 		fb->status, fb->index, fb->frame_type, fb->timestamp, vdec_fb_va,
 		fb->general_buf_fd, fb->dma_general_buf);

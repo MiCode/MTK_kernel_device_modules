@@ -384,8 +384,8 @@ static void enc_timeout_dump(struct mtk_vcodec_ctx *ctx, struct venc_frm_buf *pf
 	if (pfrm->fb_addr[0].va == NULL)
 		return;
 
-	mtk_v4l2_debug(0,"venc timeout dump frm_buf %d VA=%p PA=%llx Size=%zx =>",
-		pfrm->index, pfrm->fb_addr[0].va, (u64)pfrm->fb_addr[0].dma_addr, pfrm->fb_addr[0].size);
+	mtk_v4l2_debug(0,"[%d][FB_BUF] venc timeout dump frm_buf id=%d VA=%p PA=%pad Size=%zu =>",
+		ctx->id, pfrm->index, pfrm->fb_addr[0].va, &pfrm->fb_addr[0].dma_addr, pfrm->fb_addr[0].size);
 
 	pbuf = (char *)pfrm->fb_addr[0].va;
 	dump_size = pfrm->fb_addr[0].size < 1024 ? pfrm->fb_addr[0].size: 1024;
@@ -504,15 +504,16 @@ void mtk_enc_put_buf(struct mtk_vcodec_ctx *ctx)
 				mtk_v4l2_debug(1, "cur slice is not last slice");
 			v4l2_m2m_buf_done(dst_vb2_v4l2, VB2_BUF_STATE_DONE);
 
-			mtk_v4l2_debug(1, "venc_if_encode bs size=%d is_last_slc=%d",
-				rResult.bs_size, rResult.is_last_slc);
+			mtk_v4l2_debug(1, "[FB_BUF][BS_BUF] venc_if_encode bs id=%u size=%u ts=%llu, fb id=%u, is_last_slc=%d",
+				pbs->index, rResult.bs_size, dst_vb2_v4l2->vb2_buf.timestamp,
+				pfrm->index, rResult.is_last_slc);
 		} else if (src_vb2_v4l2 == NULL && dst_vb2_v4l2 != NULL) {
 			dst_vb = &dst_vb2_v4l2->vb2_buf;
 			vb2_set_plane_payload(dst_vb, 0, rResult.bs_size);
 			v4l2_m2m_buf_done(dst_vb2_v4l2,
 					VB2_BUF_STATE_DONE);
-			mtk_v4l2_debug(0, "[Warning] bs size=%d, frm NULL!!",
-				rResult.bs_size);
+			mtk_v4l2_debug(0, "[Warning][BS_BUF] bs id=%u size=%u, frm NULL!!",
+				pbs->index, rResult.bs_size);
 		} else {
 			if (src_vb2_v4l2 == NULL)
 				mtk_v4l2_debug(1, "NULL enc src buffer\n");
@@ -2093,9 +2094,8 @@ static int vidioc_venc_qbuf(struct file *file, void *priv,
 		return -EINVAL;
 	}
 	if (IS_ERR_OR_NULL(buf->m.planes) || buf->length == 0) {
-		mtk_v4l2_err("[%d] buffer index %d planes address %p 0x%llx or length %d invalid",
-			ctx->id, buf->index, buf->m.planes,
-			(unsigned long long)buf->m.planes, buf->length);
+		mtk_v4l2_err("[%d] buffer index %d planes address %p %ld or length %d invalid",
+			ctx->id, buf->index, buf->m.planes, PTR_ERR(buf->m.planes), buf->length);
 		return -EINVAL;
 	}
 	vb = vb2_get_buffer(vq, buf->index);
@@ -2142,21 +2142,21 @@ static int vidioc_venc_qbuf(struct file *file, void *priv,
 		}
 		if (buf->m.planes[0].bytesused == 0) {
 			mtkbuf->lastframe = EOS;
-			mtk_v4l2_debug(1, "[%d] index=%d Eos FB(%d,%d) vb=%p pts=%llu",
+			mtk_v4l2_debug(1, "[%d][FB_BUF] id=%d Eos FB(%d,%d) vb=%p flags=0x%x pts=%llu",
 				ctx->id, buf->index,
 				buf->bytesused,
-				buf->length, vb, vb->timestamp);
+				buf->length, vb, buf->flags, vb->timestamp);
 		} else if (buf->flags & V4L2_BUF_FLAG_LAST) {
 			mtkbuf->lastframe = EOS_WITH_DATA;
-			mtk_v4l2_debug(1, "[%d] id=%d EarlyEos FB(%d,%d) vb=%p pts=%llu",
+			mtk_v4l2_debug(1, "[%d][FB_BUF] id=%d EarlyEos FB(%d,%d) vb=%p flags=0x%x pts=%llu",
 				ctx->id, buf->index, buf->m.planes[0].bytesused,
-				buf->length, vb, vb->timestamp);
+				buf->length, vb, buf->flags, vb->timestamp);
 		} else {
 			mtkbuf->lastframe = NON_EOS;
-			mtk_v4l2_debug(1, "[%d] id=%d getdata FB(%d,%d) vb=%p pts=%llu ",
+			mtk_v4l2_debug(1, "[%d][FB_BUF] id=%d getdata FB(%d,%d) vb=%p flags=0x%x pts=%llu ",
 				ctx->id, buf->index,
 				buf->m.planes[0].bytesused,
-				buf->length, mtkbuf, vb->timestamp);
+				buf->length, vb, buf->flags, vb->timestamp);
 		}
 	} else {
 		if (buf->reserved == 0xFFFFFFFF || buf->reserved == 0)
@@ -2164,9 +2164,9 @@ static int vidioc_venc_qbuf(struct file *file, void *priv,
 		else
 			mtkbuf->general_user_fd = (int)buf->reserved;
 
-		mtk_v4l2_debug(1, "[%d] id=%d BS (%d) vb=%p, general_buf_fd=%d, mtkbuf->general_user_fd = %d",
+		mtk_v4l2_debug(1, "[%d][BS_BUF] id=%d BS (%d) vb=%p flags=0x%x, general_buf_fd=%d, mtkbuf->general_user_fd = %d",
 				ctx->id, buf->index,
-				buf->length, mtkbuf,
+				buf->length, vb, buf->flags,
 				buf->reserved, mtkbuf->general_user_fd);
 	}
 
@@ -2262,8 +2262,8 @@ static int vidioc_venc_qbuf(struct file *file, void *priv,
 			return -EINVAL;
 		}
 		mtkbuf->frm_buf.metabuffer_dma = dmabuf;
-		mtk_v4l2_debug(2, "V4L2_BUF_FLAG_HAS_META  buf->reserved:%d dma_buf=%p, DMA=%lx",
-			buf->reserved, dmabuf, (unsigned long)mtkbuf->frm_buf.metabuffer_addr);
+		mtk_v4l2_debug(2, "V4L2_BUF_FLAG_HAS_META  buf->reserved:%d dma_buf=%p, DMA=%pad",
+			buf->reserved, dmabuf, &mtkbuf->frm_buf.metabuffer_addr);
 
 		for (; index < MTK_MAX_METADATA_NUM; index++) {
 			memset(&meta_desc, 0, sizeof(meta_desc));
@@ -2364,9 +2364,9 @@ static int vidioc_venc_qbuf(struct file *file, void *priv,
 					mtkbuf->frm_buf.dyparams_dma = mtkbuf->frm_buf.metabuffer_dma;
 					mtkbuf->frm_buf.dyparams_dma_addr = mtkbuf->frm_buf.metabuffer_addr;
 					mtkbuf->frm_buf.dyparams_offset = meta_desc.value;
-					mtk_v4l2_debug(2,"meta data:dyparams_dma:%p dyparams_dma_addr  iova 0x%lx",
+					mtk_v4l2_debug(2,"meta data:dyparams_dma:%p dyparams_dma_addr  iova %pad",
 						mtkbuf->frm_buf.dyparams_dma,
-						(unsigned long)mtkbuf->frm_buf.dyparams_dma_addr);
+						&mtkbuf->frm_buf.dyparams_dma_addr);
 				}
 			}
 		}
@@ -2622,8 +2622,8 @@ static struct dma_gen_buf *create_general_buffer_info(struct mtk_vcodec_ctx *ctx
 			gen_buf_info->dma_general_addr = dma_general_addr;
 			gen_buf_info->buf_att = buf_att;
 			gen_buf_info->sgt = sgt;
-			mtk_v4l2_debug(4, "save general buf va %p dmabuf %p addr:%llx at %d",
-				va, dmabuf, (u64)dma_general_addr, i);
+			mtk_v4l2_debug(4, "save general buf va %p dmabuf %p addr:%pad at %d",
+				va, dmabuf, &dma_general_addr, i);
 			break;
 		}
 	}
@@ -2645,8 +2645,8 @@ static struct dma_gen_buf *get_general_buffer_info(struct mtk_vcodec_ctx *ctx,
 	for (i = 0; i < MAX_GEN_BUF_CNT; i++) {
 		if (ctx->dma_buf_list[i].dmabuf == dmabuf) {
 			gen_buf_info = &ctx->dma_buf_list[i];
-			mtk_v4l2_debug(4, "get general buf va %p dmabuf %p addr:%llx at %d",
-				gen_buf_info->va, dmabuf, (u64)gen_buf_info->dma_general_addr, i);
+			mtk_v4l2_debug(4, "get general buf va %p dmabuf %p addr:%pad at %d",
+				gen_buf_info->va, dmabuf, &gen_buf_info->dma_general_addr, i);
 			return gen_buf_info;
 		}
 	}
@@ -2660,8 +2660,8 @@ static void release_general_buffer_info(struct dma_gen_buf *gen_buf_info)
 		return;
 	}
 
-	mtk_v4l2_debug(8, "dma_buf_put general_buf %p, dmabuf:%p, dma_addr:%llx",
-		gen_buf_info->va, gen_buf_info->dmabuf, (u64)gen_buf_info->dma_general_addr);
+	mtk_v4l2_debug(8, "dma_buf_put general_buf %p, dmabuf:%p, dma_addr:%pad",
+		gen_buf_info->va, gen_buf_info->dmabuf, &gen_buf_info->dma_general_addr);
 
 	mtk_vcodec_dma_unmap_detach(
 		gen_buf_info->dmabuf, &gen_buf_info->buf_att, &gen_buf_info->sgt, DMA_BIDIRECTIONAL);
@@ -2769,10 +2769,10 @@ static int vb2ops_venc_buf_prepare(struct vb2_buffer *vb)
 			src_mem.dma_addr = vb2_dma_contig_plane_dma_addr(vb, i);
 			src_mem.size = (size_t)(vb2_get_plane_payload(vb, i) - vb->planes[i].data_offset);
 
-			mtk_v4l2_debug(4, "[%d] Cache sync TD for %lx sz=%d dev %p ",
+			mtk_v4l2_debug(4, "[%d] Cache sync TD for %pad sz=%zu dev %p ",
 				ctx->id,
-				(unsigned long)src_mem.dma_addr,
-				(unsigned int)src_mem.size,
+				&src_mem.dma_addr,
+				src_mem.size,
 				vb->vb2_queue->dev);
 		}
 	}
@@ -2784,14 +2784,18 @@ static int vb2ops_venc_buf_prepare(struct vb2_buffer *vb)
 static void vb2ops_venc_buf_finish(struct vb2_buffer *vb)
 {
 	struct mtk_vcodec_ctx *ctx = vb2_get_drv_priv(vb->vb2_queue);
-	struct mtk_video_enc_buf *mtkbuf;
-	struct vb2_v4l2_buffer *vb2_v4l2;
+	struct vb2_v4l2_buffer *vb2_v4l2 = to_vb2_v4l2_buffer(vb);
+	struct mtk_video_enc_buf *mtkbuf = to_video_enc_buf(vb2_v4l2);
+	dma_addr_t dma_addr = vb2_dma_contig_plane_dma_addr(vb, 0);
+	bool is_cap = V4L2_TYPE_IS_CAPTURE(vb->type);
 
 	vcodec_trace_begin("%s(%s)", __func__,
 		V4L2_TYPE_IS_CAPTURE(vb->type) ? "out" : "in");
-
-	vb2_v4l2 = to_vb2_v4l2_buffer(vb);
-	mtkbuf = to_video_enc_buf(vb2_v4l2);
+	mtk_v4l2_debug(4, "[%d][%s_BUF] (%d) id=%d %s, vb=%p ts=%lld bytesused=%lu size=%lu, handle=0x%lx, dmabuf %p, dma_addr %pad, fd %d",
+		ctx->id, is_cap ? "BS" : "FB", vb->vb2_queue->type, vb->index, is_cap ? "BS" : "FB",
+		vb, vb->timestamp, vb2_get_plane_payload(vb, 0), vb2_plane_size(vb, 0),
+		is_cap ? (unsigned long)&mtkbuf->bs_buf : (unsigned long)&mtkbuf->frm_buf,
+		vb->planes[0].dbuf, &dma_addr, vb->planes[0].m.fd);
 
 	if (mtkbuf->bs_buf.dma_general_buf != 0) {
 		release_general_buffer_info_by_dmabuf(ctx, mtkbuf->bs_buf.dma_general_buf);
@@ -2819,18 +2823,17 @@ static void vb2ops_venc_buf_finish(struct vb2_buffer *vb)
 			mtk_dma_sync_sg_range(dc_buf->dma_sgt, vb->vb2_queue->dev,
 				(unsigned int)ROUND_N(dst_mem.size, 64), DMA_FROM_DEVICE);
 
-			mtk_v4l2_debug(4, "[%d] Cache sync FD for %lx sz=%d dev %p",
+			mtk_v4l2_debug(4, "[%d] Cache sync FD for %pad sz=%zu dev %p",
 				ctx->id,
-				(unsigned long)dst_mem.dma_addr,
-				(unsigned int)dst_mem.size,
+				&dst_mem.dma_addr,
+				dst_mem.size,
 				vb->vb2_queue->dev);
 		}
 	}
 
 	if (mtkbuf->frm_buf.metabuffer_dma == NULL && !IS_ERR_OR_NULL(mtkbuf->frm_buf.meta_dma)) {
-		mtk_v4l2_debug(4, "dma_buf_put dma_buf=%p, DMA=%lx",
-			mtkbuf->frm_buf.meta_dma,
-			(unsigned long)mtkbuf->frm_buf.meta_addr);
+		mtk_v4l2_debug(4, "dma_buf_put dma_buf=%p, DMA=%pad",
+			mtkbuf->frm_buf.meta_dma, &mtkbuf->frm_buf.meta_addr);
 		mtk_vcodec_dma_unmap_detach(
 			mtkbuf->frm_buf.meta_dma, &mtkbuf->frm_buf.buf_att, &mtkbuf->frm_buf.sgt, DMA_TO_DEVICE);
 		dma_buf_put(mtkbuf->frm_buf.meta_dma);
@@ -2838,17 +2841,15 @@ static void vb2ops_venc_buf_finish(struct vb2_buffer *vb)
 	}
 
 	if (!IS_ERR_OR_NULL(mtkbuf->frm_buf.metabuffer_dma)) {
-		mtk_v4l2_debug(2, "dma_buf_put dma_buf=%p, DMA=%lx",
-			mtkbuf->frm_buf.metabuffer_dma,
-			(unsigned long)mtkbuf->frm_buf.metabuffer_addr);
+		mtk_v4l2_debug(2, "dma_buf_put dma_buf=%p, DMA=%pad",
+			mtkbuf->frm_buf.metabuffer_dma, &mtkbuf->frm_buf.metabuffer_addr);
 		dma_buf_put(mtkbuf->frm_buf.metabuffer_dma);
 		mtkbuf->frm_buf.metabuffer_dma = NULL;
 	}
 
 	if (!IS_ERR_OR_NULL(mtkbuf->frm_buf.qpmap_dma)) {
-		mtk_v4l2_debug(2, "dma_buf_put qpmap_dma=%p, DMA=%lx",
-			mtkbuf->frm_buf.qpmap_dma,
-			(unsigned long)mtkbuf->frm_buf.qpmap_dma_addr);
+		mtk_v4l2_debug(2, "dma_buf_put qpmap_dma=%p, DMA=%pad",
+			mtkbuf->frm_buf.qpmap_dma, &mtkbuf->frm_buf.qpmap_dma_addr);
 		mtk_vcodec_dma_unmap_detach(mtkbuf->frm_buf.qpmap_dma,
 			&mtkbuf->frm_buf.qpmap_dma_att, &mtkbuf->frm_buf.qpmap_sgt, DMA_TO_DEVICE);
 		dma_buf_put(mtkbuf->frm_buf.qpmap_dma);
@@ -2856,9 +2857,8 @@ static void vb2ops_venc_buf_finish(struct vb2_buffer *vb)
 	}
 
 	if (!IS_ERR_OR_NULL(mtkbuf->frm_buf.adab_dma)) {
-		mtk_v4l2_debug(2, "dma_buf_put adab_dma=%p, DMA=%lx",
-			mtkbuf->frm_buf.adab_dma,
-			(unsigned long)mtkbuf->frm_buf.adab_dma_addr);
+		mtk_v4l2_debug(2, "dma_buf_put adab_dma=%p, DMA=%pad",
+			mtkbuf->frm_buf.adab_dma, &mtkbuf->frm_buf.adab_dma_addr);
 
 		dma_buf_put(mtkbuf->frm_buf.adab_dma);
 		mtkbuf->frm_buf.adab_dma = NULL;
@@ -2873,9 +2873,16 @@ static void vb2ops_venc_buf_queue(struct vb2_buffer *vb)
 	struct mtk_vcodec_ctx *ctx = vb2_get_drv_priv(vb->vb2_queue);
 	struct vb2_v4l2_buffer *vb2_v4l2 = to_vb2_v4l2_buffer(vb);
 	struct mtk_video_enc_buf *mtk_buf = to_video_enc_buf(vb2_v4l2);
+	dma_addr_t dma_addr = vb2_dma_contig_plane_dma_addr(vb, 0);
+	bool is_cap = V4L2_TYPE_IS_CAPTURE(vb->type);
 
 	vcodec_trace_begin("%s(%s)", __func__,
 		V4L2_TYPE_IS_CAPTURE(vb->type) ? "out" : "in");
+	mtk_v4l2_debug(4, "[%d][%s_BUF] (%d) id=%d %s, vb=%p ts=%lld bytesused=%lu size=%lu, handle=0x%lx, dmabuf %p, dma_addr %pad, fd %d",
+		ctx->id, is_cap ? "BS" : "FB", vb->vb2_queue->type, vb->index, is_cap ? "BS" : "FB",
+		vb, vb->timestamp, vb2_get_plane_payload(vb, 0), vb2_plane_size(vb, 0),
+		is_cap ? (unsigned long)&mtk_buf->bs_buf : (unsigned long)&mtk_buf->frm_buf,
+		vb->planes[0].dbuf, &dma_addr, vb->planes[0].m.fd);
 
 	if(mtk_venc_dvfs_monitor_op_rate(ctx, vb->vb2_queue->type))
 		ctx->param_change |= MTK_ENCODE_PARAM_OPERATION_RATE;
@@ -3019,11 +3026,11 @@ static int vb2ops_venc_start_streaming(struct vb2_queue *q, unsigned int count)
 			ctx->use_slbc_extra = 1;
 			ctx->slbc_addr_extra = (unsigned int)(unsigned long)ctx->sram_data_extra.paddr;
 		} else {
-			pr_info("slbc_request_extra fail\n");
+			mtk_v4l2_err("slbc_request_extra fail\n");
 			ctx->use_slbc_extra = 0;
 		}
 		if (ctx->slbc_addr_extra % 256 != 0 || ctx->slbc_addr_extra == 0) {
-			pr_info("slbc_addr_extra error 0x%x\n", ctx->slbc_addr_extra);
+			mtk_v4l2_err("slbc_addr_extra error 0x%x\n", ctx->slbc_addr_extra);
 			ctx->use_slbc_extra = 0;
 		}
 
@@ -3031,15 +3038,15 @@ static int vb2ops_venc_start_streaming(struct vb2_queue *q, unsigned int count)
 			// use extra slbc address as slbc start address
 			ctx->slbc_addr = ctx->slbc_addr_extra;
 		} else {
-			mtk_v4l2_debug(0, "request extra slbc fail and release all slbc, %p\n", &ctx->sram_data);
+			mtk_v4l2_err("request extra slbc fail and release all slbc, %p\n", &ctx->sram_data);
 			slbc_release(&ctx->sram_data);
 			ctx->use_slbc = 0;
 			ctx->slbc_addr = 0;
-			mtk_v4l2_debug(0, "request extra slbc fail and release all slbc ref %d\n", ctx->sram_data.ref);
+			mtk_v4l2_err("request extra slbc fail and release all slbc ref %d\n", ctx->sram_data.ref);
 			if (ctx->sram_data.ref <= 0)
 				atomic_set(&mtk_venc_slb_cb.release_slbc, 0);
 		}
-		pr_info("slbc_request_extra %d, 0x%x, 0x%lx, ref %d, slb_ex_res_thresh %d\n",
+		mtk_v4l2_debug(0, "slbc_request_extra %d, 0x%x, 0x%lx, ref %d, slb_ex_res_thresh %d\n",
 		ctx->use_slbc_extra, ctx->slbc_addr_extra, (unsigned long)ctx->sram_data_extra.paddr,
 		ctx->sram_data_extra.ref, slb_ex_res_thresh);
 	}
@@ -3054,15 +3061,15 @@ static int vb2ops_venc_start_streaming(struct vb2_queue *q, unsigned int count)
 	ret = venc_if_set_param(ctx, VENC_SET_PARAM_ENC, &param);
 
 	mtk_v4l2_debug(0,
-	"fmt 0x%x, P/L %d/%d, w/h %d/%d, buf %d/%d, fps/bps %d/%d(%d), gop %d, ip# %d opr %d async %d grid size %d/%d b#%d, slbc %d maxqp %d minqp %d",
-	param.input_yuv_fmt, param.profile,
-	param.level, param.width, param.height,
-	param.buf_width, param.buf_height,
-	param.frm_rate, param.bitrate, param.bitratemode,
-	param.gop_size, param.intra_period,
-	param.operationrate, ctx->async_mode,
-	(param.heif_grid_size>>16), param.heif_grid_size&0xffff,
-	param.num_b_frame, param.slbc_ready, param.max_qp, param.min_qp);
+		"fmt 0x%x, P/L %d/%d, w/h %d/%d, buf %d/%d, fps/bps %d/%d(%d), gop %d, ip# %d opr %d async %d grid size %d/%d b#%d, slbc %d maxqp %d minqp %d",
+		param.input_yuv_fmt, param.profile,
+		param.level, param.width, param.height,
+		param.buf_width, param.buf_height,
+		param.frm_rate, param.bitrate, param.bitratemode,
+		param.gop_size, param.intra_period,
+		param.operationrate, ctx->async_mode,
+		(param.heif_grid_size>>16), param.heif_grid_size&0xffff,
+		param.num_b_frame, param.slbc_ready, param.max_qp, param.min_qp);
 
 	ctx->enc_params.slbc_encode_performance = isENCODE_PERFORMANCE_USAGE(param.width,
 		param.height, param.frm_rate, param.operationrate);
@@ -3118,7 +3125,7 @@ static int vb2ops_venc_start_streaming(struct vb2_queue *q, unsigned int count)
 		if (ret != 0)
 			mtk_vcodec_dvfs_qos_err("[VDVFS][%d] stream on ipi fail, ret %d", ctx->id, ret);
 		mtk_venc_dvfs_sync_vsi_data(ctx);
-		mtk_vcodec_dvfs_qos_log(true, "[VDVFS][%d(%d)] start DVFS(UP):freq:%d, bw_factor:%d",
+		mtk_vcodec_dvfs_qos_log(true, "[VDVFS][%d](%d) start DVFS(UP):freq:%d, bw_factor:%d",
 			ctx->id, mtk_vcodec_get_state(ctx),
 			ctx->dev->venc_dvfs_params.target_freq,
 			ctx->dev->venc_dvfs_params.target_bw_factor);
@@ -3257,7 +3264,7 @@ static void vb2ops_venc_stop_streaming(struct vb2_queue *q)
 			if (ret != 0)
 				mtk_vcodec_dvfs_qos_err("[VDVFS][%d] stream off ipi fail, ret %d", ctx->id, ret);
 			mtk_venc_dvfs_sync_vsi_data(ctx);
-			mtk_vcodec_dvfs_qos_log(true, "[VDVFS][%d(%d)] stop DVFS(UP):freq:%d, bw_factor%d",
+			mtk_vcodec_dvfs_qos_log(true, "[VDVFS][%d](%d) stop DVFS(UP):freq:%d, bw_factor%d",
 				ctx->id, mtk_vcodec_get_state(ctx),
 				ctx->dev->venc_dvfs_params.target_freq,
 				ctx->dev->venc_dvfs_params.target_bw_factor);
@@ -3346,8 +3353,8 @@ static int mtk_venc_encode_header(void *priv)
 	bs_buf->index = dst_vb->index;
 	ctx->bs_list[bs_buf->index + 1] = (uintptr_t)bs_buf;
 
-	mtk_v4l2_debug(1, "[%d] buf id=%d va=0x%p dma_addr=0x%llx size=%zu",
-		ctx->id, dst_vb->index, bs_buf->va, (u64)bs_buf->dma_addr, bs_buf->size);
+	mtk_v4l2_debug(1, "[%d][BS_BUF] buf id=%d va=0x%p dma_addr=%pad size=%zu",
+		ctx->id, dst_vb->index, bs_buf->va, &bs_buf->dma_addr, bs_buf->size);
 
 	ret = venc_if_encode(ctx,
 			     VENC_START_OPT_ENCODE_SEQUENCE_HEADER,
@@ -3900,33 +3907,20 @@ static void mtk_venc_worker(struct mtk_vcodec_ctx *ctx)
 			(size_t)(vb2_get_plane_payload(src_vb, i) - src_vb->planes[i].data_offset);
 		pfrm_buf->fb_addr[i].dmabuf = src_vb->planes[i].dbuf;
 		pfrm_buf->fb_addr[i].data_offset = src_vb->planes[i].data_offset;
-
-		mtk_v4l2_debug(2, "fb_addr[%d].va %p, offset %d, dma_addr %p, size %d\n",
-			i, pfrm_buf->fb_addr[i].va,
-			src_vb->planes[i].data_offset,
-			(void *)pfrm_buf->fb_addr[i].dma_addr,
-			(int)pfrm_buf->fb_addr[i].size);
 	}
 	pfrm_buf->num_planes = src_vb->num_planes;
 	pfrm_buf->timestamp = src_vb2_v4l2->vb2_buf.timestamp;
 	pfrm_buf->index = src_vb->index;
 	ctx->fb_list[pfrm_buf->index + 1] = (uintptr_t)pfrm_buf;
 
-	mtk_v4l2_debug(2,
-			"Framebuf %d VA=%p PA=%llx Size=0x%zx Offset=%d;VA=%p PA=0x%llx Size=0x%zx Offset=%d;VA=%p PA=0x%llx Size=%zu Offset=%d",
-			pfrm_buf->index,
-			pfrm_buf->fb_addr[0].va,
-			(u64)pfrm_buf->fb_addr[0].dma_addr,
-			pfrm_buf->fb_addr[0].size,
-			src_vb->planes[0].data_offset,
-			pfrm_buf->fb_addr[1].va,
-			(u64)pfrm_buf->fb_addr[1].dma_addr,
-			pfrm_buf->fb_addr[1].size,
-			src_vb->planes[1].data_offset,
-			pfrm_buf->fb_addr[2].va,
-			(u64)pfrm_buf->fb_addr[2].dma_addr,
-			pfrm_buf->fb_addr[2].size,
-			src_vb->planes[2].data_offset);
+	mtk_v4l2_debug(2, "[%d][FB_BUF] Framebuf id=%d VA=%p PA=%pad Size=%zu Offset=%d;VA=%p PA=%pad Size=%zu Offset=%d;VA=%p PA=%pad Size=%zu Offset=%d",
+		ctx->id, pfrm_buf->index,
+		pfrm_buf->fb_addr[0].va, &pfrm_buf->fb_addr[0].dma_addr,
+		pfrm_buf->fb_addr[0].size, src_vb->planes[0].data_offset,
+		pfrm_buf->fb_addr[1].va, &pfrm_buf->fb_addr[1].dma_addr,
+		pfrm_buf->fb_addr[1].size, src_vb->planes[1].data_offset,
+		pfrm_buf->fb_addr[2].va, &pfrm_buf->fb_addr[2].dma_addr,
+		pfrm_buf->fb_addr[2].size, src_vb->planes[2].data_offset);
 
 	ret = venc_if_encode(ctx, VENC_START_OPT_ENCODE_FRAME,
 				 pfrm_buf, pbs_buf, &enc_result);
