@@ -274,7 +274,7 @@ struct fmeter_clk fclks_arr[] = {
 	PLL_MON("APLL2_TST_CK", SUBSYS, 0, 0, 196608, APLL2_DB, 1),
 	PLL_MON("CCIPLL_TST_CK", SUBSYS, 0, 0, 0, CCIPLL_DB, 0),
 	PLL_MON("PTPPLL_TST_CK", SUBSYS, 0, 0, 0, PTPPLL_DB, 0),
-	PLL_MON("CLKSQR",CLKSQ, 0, 0, 26000, CLKSQR_DB, 1),
+	//PLL_MON("CLKSQR",CLKSQ, 0, 0, 26000, CLKSQR_DB, 1),
 	{},
 };
 
@@ -304,9 +304,6 @@ void __iomem *fqmtr_remap(enum DOMAIN_BASE domain, uint32_t ofs) {
 			break;
 		case CKMTR_VLP_DB:
 			remap_addr = (fm_base[FM_CKSYS_VLP_CKMTR]  + ofs);
-			break;
-		case CLKSQR_DB:
-			remap_addr = (fm_base[FM_CLKSQR] + ofs);
 			break;
 		case MAINPLL_DB:
 			remap_addr = (fm_base[FM_MAINPLL_CTRL] + ofs);
@@ -399,8 +396,11 @@ uint32_t fqmtr_cal(enum DOMAIN_BASE domain, uint32_t cali_mode, uint32_t fqmtr_d
 	/* TINFO = "Step 2: Wait for FQMTR to finish" */
 	while (cm_read(domain, CLKMON_REG_CON6_OFS(eo)) & 0x1) {
 		fqmtr_cnt++;
-		if (fqmtr_cnt > FQMTR_TIMEOUT_CNT) {
-			fq_pr_err("Get DOMAIN_BASE %d FAIL\n", domain);
+		udelay(1);
+		if (fqmtr_cnt > FQMTR_UDELAY_CNT) {
+			cm_write(ckmtr_con3, domain, CLKMON_REG_CON3_OFS(eo));
+			fq_pr_err("Timeout waiting for FQMTR to finish. [domain=%d, eo=%d, reg_val=0x%x]\n",
+				domain, eo, cm_read(domain, CLKMON_REG_CON6_OFS(eo)));
 			return 0;
 		}
 	}
@@ -410,6 +410,15 @@ uint32_t fqmtr_cal(enum DOMAIN_BASE domain, uint32_t cali_mode, uint32_t fqmtr_d
 
 	/* TINFO = "Step 4: Set specific bits in CLKMON_REG_CON0" */
 	cm_write(cm_read(domain, CLKMON_REG_CON0_OFS(eo)) | (0x1 << 15) | (0x1 << 12) | (cali_mode << 8), domain, CLKMON_REG_CON0_OFS(eo));
+	/* TINFO = "Step 4.1: Set HW fmeter trigger timeout delay" */
+	if (cali_mode == 0x1)
+		/* TINFO = " HW timeout of FQMTR_UDELAY_CNT (2000U * 38_26M_1T) = 311.296 us " */
+		cm_write(((cm_read(domain, CLKMON_REG_CON0_OFS(eo)) & 0xffff) | (0x2000U << 16)),
+			domain, CLKMON_REG_CON0_OFS(eo));
+	else
+		/* TINFO = " HW timeout (410U * 38_26M_1T) = 39.25 us " */
+		cm_write(((cm_read(domain, CLKMON_REG_CON0_OFS(eo)) & 0xffff) | (0x410U << 16)),
+			domain, CLKMON_REG_CON0_OFS(eo));
 
 	/* TINFO = "Step 5: Clear load_cnt in CLKMON_REG_CON1" */
 	cm_write(cm_read(domain, CLKMON_REG_CON1_OFS(eo)) & ~(0x3FFU << 16), domain, CLKMON_REG_CON1_OFS(eo));
@@ -427,7 +436,18 @@ uint32_t fqmtr_cal(enum DOMAIN_BASE domain, uint32_t cali_mode, uint32_t fqmtr_d
 	cm_write(cm_read(domain, CLKMON_REG_CON0_OFS(eo)) | (0x1U << 4), domain, CLKMON_REG_CON0_OFS(eo));
 
 	/* TINFO = "Step 10: Wait for FQMTR to finish" */
-	while (cm_read(domain, + CLKMON_REG_CON6_OFS(eo)) & 0x1U);
+	fqmtr_cnt = 0;
+	while (cm_read(domain, CLKMON_REG_CON6_OFS(eo)) & 0x1U) {
+		fqmtr_cnt++;
+		/* TINFO = "Consider 32k frame need 8T* 33" */
+		udelay(1);
+		if (fqmtr_cnt > FQMTR_UDELAY_CNT) {
+			fq_pr_err("Timeout waiting for FQMTR to finish. [domain=%d, eo=%d, reg_val=0x%x]\n",
+				domain, eo, cm_read(domain, CLKMON_REG_CON6_OFS(eo)));
+			/* TINFO = "Do the following seqs is needed" */
+			break;
+		}
+	}
 
 	/* TINFO = "Step 11: Clear trigger" */
 	cm_write(cm_read(domain, CLKMON_REG_CON0_OFS(eo)) & ~(0x1U << 4), domain, CLKMON_REG_CON0_OFS(eo));
@@ -597,7 +617,7 @@ uint32_t _cksys_top_abist32k_fqmtr(uint32_t ID) {
 	cm_write(cm_read(CKSYS_DB, clk_misc_cfg_0_ofs) | (0x1 << 24), CKSYS_DB, clk_misc_cfg_0_ofs);
 
 	/* TINFO = "Step 5: Call FQMTR function" */
-	meter_clk_freq = fqmtr_cal(CKMTR_TOP_DB, 0x1, 0x0, 0xF, 0x0, 0x0, 0x0);
+	meter_clk_freq = fqmtr_cal(CKMTR_TOP_DB, 0x1, 0x0, UNIT_FOR_32K_1T_33US, 0x0, 0x0, 0x0);
 
 	/* TINFO = "Step 6: fq_pr_err the meter frequency" */
 	//fq_pr_err("meter frequency = %d KHz\n", meter_clk_freq);
@@ -908,85 +928,6 @@ uint32_t pll_fqmtr(enum FQMTR_ARR_ID arr_id) {
 	}
 }
 
-uint32_t clksq_fqmtr(void) {
-	uint32_t ckmtr_con0, ckmtr_con1, ckmtr_con2, ckmtr_con3;
-	uint32_t cal_cnt, load_cnt, fqmtr_div;
-	uint32_t freq;
-	uint32_t fqmtr_cnt = 0;
-
-	/* TINFO = "Step 1-4: Backup registers" */
-	ckmtr_con0 = cm_read(CLKSQR_DB, CLKMON_REG_CON0_OFS(clkmon_con_ofs));
-	ckmtr_con1 = cm_read(CLKSQR_DB, CLKMON_REG_CON1_OFS(clkmon_con_ofs));
-	ckmtr_con2 = cm_read(CLKSQR_DB, CLKMON_REG_CON2_OFS(clkmon_con_ofs));
-	ckmtr_con3 = cm_read(CLKSQR_DB, CLKMON_REG_CON3_OFS(clkmon_con_ofs));
-
-	/* TINFO = "Step 5: Set HW MODE to 0" */
-	cm_write(cm_read(CLKSQR_DB, CLKMON_REG_CON3_OFS(clkmon_con_ofs)) & ~0x1U, CLKSQR_DB, CLKMON_REG_CON3_OFS(clkmon_con_ofs));
-
-	/* TINFO = "Step 6: Wait for FQMTR to finish" */
-	while (cm_read(CLKSQR_DB, CLKMON_REG_CON6_OFS(clkmon_con_ofs)) & 0x1) {
-		fqmtr_cnt++;
-		if (fqmtr_cnt > FQMTR_TIMEOUT_CNT) {
-			fq_pr_err("Get CLKSQR_DB FAIL\n");
-			return 0;
-		}
-	}
-
-	/* TINFO = "Step 7: Clear specific bits in CLKMON_REG_CON0" */
-	cm_write(cm_read(CLKSQR_DB, CLKMON_REG_CON0_OFS(clkmon_con_ofs)) & ~(0x1U << 15) & ~(0x1U << 8) & ~(0x1U << 4), CLKSQR_DB, CLKMON_REG_CON0_OFS(clkmon_con_ofs));
-
-	/* TINFO = "Step 8: Set specific bits in CLKMON_REG_CON0" */
-	cm_write(cm_read(CLKSQR_DB, CLKMON_REG_CON0_OFS(clkmon_con_ofs)) | (0x1 << 15) | (0x1 << 12) | (0x0 << 8), CLKSQR_DB, CLKMON_REG_CON0_OFS(clkmon_con_ofs));
-
-	/* TINFO = "Step 9: Clear load_cnt in CLKMON_REG_CON1" */
-	cm_write(cm_read(CLKSQR_DB, CLKMON_REG_CON1_OFS(clkmon_con_ofs)) & ~(0x3FFU << 16), CLKSQR_DB, CLKMON_REG_CON1_OFS(clkmon_con_ofs));
-
-	/* TINFO = "Step 10: Set load_cnt in CLKMON_REG_CON1" */
-	cm_write(cm_read(CLKSQR_DB, CLKMON_REG_CON1_OFS(clkmon_con_ofs)) | (0x3U << 16), CLKSQR_DB, CLKMON_REG_CON1_OFS(clkmon_con_ofs));
-
-	/* TINFO = "Step 11: Clear specific bits in CLKMON_REG_CON2" */
-	cm_write(cm_read(CLKSQR_DB, CLKMON_REG_CON2_OFS(clkmon_con_ofs)) & ~(0xFFU << 24) & ~(0x1U << 4) & ~(0x1U << 3) & ~(0x1U << 2) & ~(0x3U << 0), CLKSQR_DB, CLKMON_REG_CON2_OFS(clkmon_con_ofs));
-
-	/* TINFO = "Step 12: Set specific bits in CLKMON_REG_CON2" */
-	cm_write(cm_read(CLKSQR_DB, CLKMON_REG_CON2_OFS(clkmon_con_ofs)) | (0x0 << 24) | (0x0 << 2) | (0x0 << 0), CLKSQR_DB, CLKMON_REG_CON2_OFS(clkmon_con_ofs));
-
-	/* TINFO = "Step 13: Trigger meter" */
-	cm_write(cm_read(CLKSQR_DB, CLKMON_REG_CON0_OFS(clkmon_con_ofs)) | (0x1 << 4), CLKSQR_DB, CLKMON_REG_CON0_OFS(clkmon_con_ofs));
-
-	/* TINFO = "Step 14: Wait for FQMTR to start" */
-	while (!(cm_read(CLKSQR_DB, CLKMON_REG_CON6_OFS(clkmon_con_ofs)) & 0x1));
-
-	/* TINFO = "Step 15: Wait for FQMTR to finish" */
-	while (cm_read(CLKSQR_DB, CLKMON_REG_CON6_OFS(clkmon_con_ofs)) & 0x1);
-
-	/* TINFO = "Step 16: Clear trigger" */
-	cm_write(cm_read(CLKSQR_DB, CLKMON_REG_CON0_OFS(clkmon_con_ofs)) & ~(0x1U << 4), CLKSQR_DB, CLKMON_REG_CON0_OFS(clkmon_con_ofs));
-
-	/* TINFO = "Step 17: Read cali mode" */
-	//cali_mode = (cm_read(CLKSQR_DB, CLKMON_REG_CON0_OFS(clkmon_con_ofs)) & (0x1 << 8)) >> 8;
-	//fq_pr_err("PLL domain %d, cali_mode = %x\n", domain, cali_mode);
-
-	/* TINFO = "Step 18: Read cal_cnt" */
-	cal_cnt = cm_read(CLKSQR_DB, CLKMON_REG_CON1_OFS(clkmon_con_ofs)) & 0xFFFFU;
-
-	/* TINFO = "Step 19: Read load_cnt" */
-	load_cnt = (cm_read(CLKSQR_DB, CLKMON_REG_CON1_OFS(clkmon_con_ofs)) & (0x3FFU << 16)) >> 16;
-
-	/* TINFO = "Step 20: Read fqmtr_div" */
-	fqmtr_div = (cm_read(CLKSQR_DB, CLKMON_REG_CON2_OFS(clkmon_con_ofs)) & (0xFFU << 24)) >> 24;
-
-	/* TINFO = "Step 21: Calculate frequency" */
-	freq = 32 * cal_cnt * (fqmtr_div + 1) / (load_cnt + 1);
-
-	/* TINFO = "Step 22-25: Restore registers" */
-	cm_write(ckmtr_con0, CLKSQR_DB, CLKMON_REG_CON0_OFS(clkmon_con_ofs));
-	cm_write(ckmtr_con1, CLKSQR_DB, CLKMON_REG_CON1_OFS(clkmon_con_ofs));
-	cm_write(ckmtr_con2, CLKSQR_DB, CLKMON_REG_CON2_OFS(clkmon_con_ofs));
-	cm_write(ckmtr_con3, CLKSQR_DB, CLKMON_REG_CON3_OFS(clkmon_con_ofs));
-
-	return freq;
-}
-
 static unsigned int mt6993_get_fmeter_freq(unsigned int arr_id,
 		enum FMETER_TYPE type)
 {
@@ -1020,9 +961,6 @@ static unsigned int mt6993_get_fmeter_freq(unsigned int arr_id,
 			/* input should be array index to get fenc info*/
 			cur_freq = cksys_vlp_fqmtr(i);
 			break;
-		case (CLKSQ):
-			cur_freq = clksq_fqmtr();
-			break;
 		case (SUBSYS):
 			cur_freq = pll_fqmtr(i);
 			break;
@@ -1032,6 +970,7 @@ static unsigned int mt6993_get_fmeter_freq(unsigned int arr_id,
 		default:
 			cur_freq = 0;
 			fq_pr_err("unknow type\n");
+			fmeter_unlock(flags);
 			return FT_NULL;
 	}
 	fmeter_unlock(flags);

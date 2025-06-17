@@ -210,7 +210,6 @@ enum FQMTR_ARR_ID {
     APLL2_TST_CK,
     CCIPLL_TST_CK,
     PTPPLL_TST_CK,
-    CLKSQR,
     MAX_FQMTR_ARR_ID,
 };
 
@@ -302,6 +301,10 @@ enum FQMTR_ARR_ID {
 // Timeout count
 #define FQMTR_TIMEOUT_CNT 1000
 
+#define UNIT_FOR_32K_1T_33US 0x7
+#define UNIT_MARGIN 56
+#define FQMTR_UDELAY_CNT (((UNIT_FOR_32K_1T_33US + 1)*33) + UNIT_MARGIN)
+
 #define clk_dbg_cfg_ofs (0x340)
 #define clk_misc_cfg_0_ofs   (0x380)
 #define cksys2_clk_dbg_cfg_ofs (0x340)
@@ -340,8 +343,6 @@ uint32_t fqmtr_cal(enum DOMAIN_BASE domain, uint32_t cali_mode, uint32_t fqmtr_d
                 uint32_t load_cnt, uint32_t fqmtr_clkmux_sel, uint32_t refck_clmux_sel, uint32_t extra_ofs);
 
 uint32_t pll_fqmtr(enum FQMTR_ARR_ID);
-
-uint32_t clksq_fqmtr(void);
 
 extern int post_init_fmeter_check(void);
 
