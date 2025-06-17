@@ -811,7 +811,7 @@ static void xgf_render_update_wspid_list(int tgid, int rpid, unsigned long long 
 
 static int is_exceed_max_xgf_render_if_num(void)
 {
-	int num = 0;
+	int num = 0, ret = 0;
 	struct xgf_render_if *iter = NULL;
 	struct hlist_node *h = NULL;
 
@@ -819,7 +819,12 @@ static int is_exceed_max_xgf_render_if_num(void)
 		num++;
 	}
 
-	return (num >= FPSGO_MAX_RENDER_INFO_SIZE);
+	if (num >= FPSGO_MAX_RENDER_INFO_SIZE) {
+		xgf_trace("[%s] num=%d", __func__, num);
+		ret = 1;
+	}
+
+	return ret;
 }
 
 static struct xgf_render_if *xgf_get_render_if(int pid, unsigned long long bufID,
@@ -1372,8 +1377,12 @@ void fpsgo_other2xgf_calculate_dep(int pid, unsigned long long bufID,
 		def_start_ts > def_end_ts ||
 		t_dequeue_end < t_dequeue_start ||
 		t_enqueue_end < t_enqueue_start ||
-		t_dequeue_end > t_enqueue_start)
+		t_dequeue_end > t_enqueue_start) {
+		xgf_trace("[xgf][%d][%llu] def_s=%llu,def_e=%llu,deq_s=%llu,deq_e=%llu,enq_s=%llu,enq_e=%llu",
+			pid, bufID, def_start_ts, def_end_ts, t_dequeue_start, t_dequeue_end,
+			t_enqueue_start, t_enqueue_end);
 		return;
+	}
 
 	mutex_lock(&xgf_main_lock);
 	if (!xgf_is_enable())

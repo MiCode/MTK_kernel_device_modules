@@ -5973,6 +5973,8 @@ static int fbt_get_cl_loading_from_buffer(int pid, unsigned long long buffer_id,
 		if (lastest_obv_cl[i] == NULL || lastest_is_cl_isolated[i] == NULL) {
 			ret = 1;
 			spin_unlock_irqrestore(&loading_slock, spinlock_flag_loading);
+			spin_unlock_irqrestore(&freq_slock, spinlock_flag_freq);
+			FPSGO_LOGE("[%s] ERROR OOM!", __func__);
 			goto out;
 		}
 		cpu_obv[i] = lastest_obv_cl[i][cid];
