@@ -67,6 +67,7 @@ struct hwccf_ops *hwccf_ops;
 
 /*usage*/
 //#define regmap_read_poll_timeout_atomic(map, addr, val, cond, sleep_us, timeout_us)
+static int _v1_mm_hwccf_mtcmos_fsm_err_handle_2(struct regmap *regmap);
 
 /* clock voter support */
 static int _v0_hwccf_voter_ctrl(struct regmap *regmap, uint32_t setclr_ofs, uint32_t vote_val,
@@ -311,7 +312,7 @@ static int _v1_mm_hwccf_voter_ctrl(struct regmap *regmap, uint32_t setclr_ofs, u
 	}
 
 	// Pre-Polling fsm idle for vote
-	if (is_set) {
+	if (is_set || ((sta_ofs == MTCMOS0_STA_OFS) || (sta_ofs == MTCMOS1_STA_OFS))) {
 		/* status[15:0] = 0x1(cg/mux/mtcmos voter idle), status[15:0] = 0x0(irq voter on-going) */
 		ret = regmap_read_poll_timeout_atomic(regmap, CCF_STATUS, val, (val & 0xffff) <= 0x1,
 			MTK_WAIT_GHWV_DONE_US, MTK_WAIT_GHWV_DONE_CNT);
@@ -463,6 +464,14 @@ static int _v1_hwccf_voter_ctrl_wrapper(enum HWCCF_TYPE hwccf_type, uint32_t res
 
 	if (ret)
 		goto ERR;
+
+	if ((hwccf_type == MM_HWCCF) &&
+		((resource_id == HW_CCF_MTCMOS_GRP_0) || (resource_id == HW_CCF_MTCMOS_GRP_1))) {
+		ret = _v1_mm_hwccf_mtcmos_fsm_err_handle_2(map);
+		if (ret)
+			goto ERR;
+	}
+
 	return ret;
 
 ERR:
@@ -585,6 +594,14 @@ int v1_raw_hwccf_voter_ctrl(struct cb_params *params)
 
 	if (ret)
 		goto ERR;
+
+	if ((params->regmap == regmaps[MM_HWCCF]) &&
+		((params->done_ofs == MTCMOS0_DONE_OFS) || (params->done_ofs == MTCMOS1_DONE_OFS))) {
+		ret = _v1_mm_hwccf_mtcmos_fsm_err_handle_2(params->regmap);
+		if (ret)
+			goto ERR;
+	}
+
 	return ret;
 #ifdef CLK_RES_IS_CG
 	//readx_poll_timeout_us(CG);
@@ -1337,6 +1354,80 @@ ERR:
 	HWCCF_ERR("resource_id=%u, cg_map_mtcmos_id=%u, mtcmos_id_msk=%x, mtcmos_id=%u, mtcmos_id_shift=%u\n",
 		resource_id, cg_map_mtcmos_id, mtcmos_id_msk, mtcmos_id, mtcmos_id_shift);
 	return ret;
+}
+
+static int _v1_mm_hwccf_mtcmos_fsm_err_handle_2(struct regmap *regmap)
+{
+	int ret = 0;
+	uint32_t val = 0;
+	uint32_t n = 0;
+	uint32_t mtcmos_sta_0 = 0, mtcmos_sta_1 = 0;
+	uint32_t all_mtcmos_sta_0 = 0, all_mtcmos_sta_1 = 0;
+
+	/* For mtcmos re-trgger, bit 16 ~ 31 are used */
+	n = HWV_XPU_0 + 16;
+
+	mtcmos_sta_0 = hwccf_read(regmap, CCF_MTCMOS_STA_0);
+	mtcmos_sta_1 = hwccf_read(regmap, CCF_MTCMOS_STA_1);
+	all_mtcmos_sta_0 = hwccf_read(regmap, CCF_ALL_MTCMOS_STA_0);
+	all_mtcmos_sta_1 = hwccf_read(regmap, CCF_ALL_MTCMOS_STA_1);
+
+	if (((mtcmos_sta_0 != 0) && (all_mtcmos_sta_0 == 0)) ||
+		((mtcmos_sta_1 != 0) && (all_mtcmos_sta_1 == 0))) {
+		/* step3 */
+		hwccf_write(regmap, CG_SET_OFS(47), BIT(n));
+		/* step4 */
+		ret = regmap_read_poll_timeout_atomic(regmap, CG_GLB_EN_OFS(47), val,
+			IS_MASK_SET(val, BIT(n)),
+			MTK_WAIT_GHWV_VOTE_US, MTK_WAIT_GHWV_VOTE_CNT);
+		if (ret) {
+			HWCCF_ERR("%s set cg voter 47(%x = %x) timeout\n",
+					__func__, CG_GLB_EN_OFS(47), val);
+			ret = -HWV_FSM_RETRIGGER_TIMEOUT;
+			goto ERR;
+		}
+		/* step5 */
+		ret = regmap_read_poll_timeout_atomic(regmap, CG_STA_OFS(47), val,
+			IS_MASK_CLR(val, BIT(n)),
+			MTK_WAIT_GHWV_DONE_US, MTK_WAIT_GHWV_DONE_CNT);
+		if (ret) {
+			HWCCF_ERR("%s polling set cg voter 47 sta(%x = %x) timeout\n",
+					__func__, CG_STA_OFS(47), val);
+			ret = -HWV_FSM_RETRIGGER_TIMEOUT;
+			goto ERR;
+		}
+		/* step6 */
+		hwccf_write(regmap, CG_CLR_OFS(47), BIT(n));
+		/* step7 */
+		ret = regmap_read_poll_timeout_atomic(regmap, CG_GLB_EN_OFS(47), val,
+			IS_MASK_CLR(val, BIT(n)),
+			MTK_WAIT_GHWV_VOTE_US, MTK_WAIT_GHWV_VOTE_CNT);
+		if (ret) {
+			HWCCF_ERR("%s clr cg voter 47(%x = %x) timeout\n",
+					__func__, CG_GLB_EN_OFS(47), val);
+			ret = -HWV_FSM_RETRIGGER_TIMEOUT;
+			goto ERR;
+		}
+		/* step8 */
+		ret = regmap_read_poll_timeout_atomic(regmap, CG_STA_OFS(47), val,
+			IS_MASK_CLR(val, BIT(n)),
+			MTK_WAIT_GHWV_DONE_US, MTK_WAIT_GHWV_DONE_CNT);
+		if (ret) {
+			HWCCF_ERR("%s polling clr cg voter 47 sta(%x = %x) timeout\n",
+					__func__, CG_STA_OFS(47), val);
+			ret = -HWV_FSM_RETRIGGER_TIMEOUT;
+			goto ERR;
+		}
+	}
+
+	return ret;
+
+ERR:
+	HWCCF_ERR("Dump variables:\n");
+	HWCCF_ERR("mtcmos_sta_0=%x, mtcmos_sta_1=%x, all_mtcmos_sta_0=%x, all_mtcmos_sta_1=%u, n=%u\n",
+		mtcmos_sta_0, mtcmos_sta_1, all_mtcmos_sta_0, all_mtcmos_sta_1, n);
+	return ret;
+
 }
 
 static int hwccf_drv_probe(struct platform_device *pdev)
