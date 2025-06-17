@@ -1163,7 +1163,7 @@ static int offload_init_thread(struct task_struct *kth)
 {
 	kth = kthread_create(offload_vp_function, NULL, "offload_work_thread");
 
-	if (kth != NULL) {
+	if (!IS_ERR(kth)) {
 		wake_up_process(kth);
 		pr_info("offload_work_thread is running\n");
 	} else {
