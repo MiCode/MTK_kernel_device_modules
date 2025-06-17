@@ -1038,7 +1038,6 @@ static void mbraink_trace_mm_vmscan_kswapd_wake(void *data,
 	timestamp = (tv.tv_sec*1000)+(tv.tv_nsec/1000000);
 
 	if (!spin_trylock_irqsave(&oom_trace_lock, flags)) {
-		pr_info("%s: skip record trace [%llu]\n", __func__, timestamp);
 		return;
 	}
 
@@ -1076,7 +1075,6 @@ static void mbraink_trace_mm_compaction_try_to_compact_pages(void *data,
 	timestamp = (tv.tv_sec*1000)+(tv.tv_nsec/1000000);
 
 	if (!spin_trylock_irqsave(&oom_trace_lock, flags)) {
-		pr_info("%s: skip record trace [%llu]\n", __func__, timestamp);
 		return;
 	}
 
@@ -1115,7 +1113,6 @@ static void mbraink_trace_mm_compaction_kcompactd_wake(void *data,
 	timestamp = (tv.tv_sec*1000)+(tv.tv_nsec/1000000);
 
 	if (!spin_trylock_irqsave(&oom_trace_lock, flags)) {
-		pr_info("%s: skip record trace [%llu]\n", __func__, timestamp);
 		return;
 	}
 
@@ -1153,7 +1150,6 @@ static void mbraink_trace_mark_victim(void *data,
 	timestamp = (tv.tv_sec*1000)+(tv.tv_nsec/1000000);
 
 	if (!spin_trylock_irqsave(&oom_trace_lock, flags)) {
-		pr_info("%s: skip record trace [%llu]\n", __func__, timestamp);
 		return;
 	}
 
@@ -1192,7 +1188,6 @@ static void mbraink_trace_android_vh_vmscan_kswapd_done(void *data,
 	timestamp = (tv.tv_sec*1000)+(tv.tv_nsec/1000000);
 
 	if (!spin_trylock_irqsave(&oom_trace_lock, flags)) {
-		pr_info("%s: skip record trace [%llu]\n", __func__, timestamp);
 		return;
 	}
 
@@ -1230,7 +1225,6 @@ static void mbraink_trace_android_vh_mm_direct_reclaim_enter(void *data,
 	timestamp = (tv.tv_sec*1000)+(tv.tv_nsec/1000000);
 
 	if (!spin_trylock_irqsave(&oom_trace_lock, flags)) {
-		pr_info("%s: skip record trace [%llu]\n", __func__, timestamp);
 		return;
 	}
 
@@ -1267,7 +1261,6 @@ static void mbraink_trace_android_vh_mm_direct_reclaim_exit(void *data,
 	timestamp = (tv.tv_sec*1000)+(tv.tv_nsec/1000000);
 
 	if (!spin_trylock_irqsave(&oom_trace_lock, flags)) {
-		pr_info("%s: skip record trace [%llu]\n", __func__, timestamp);
 		return;
 	}
 
@@ -1306,7 +1299,6 @@ static void mbraink_trace_android_vh_mm_may_oom_exit(void *data,
 	timestamp = (tv.tv_sec*1000)+(tv.tv_nsec/1000000);
 
 	if (!spin_trylock_irqsave(&oom_trace_lock, flags)) {
-		pr_info("%s: skip record trace [%llu]\n", __func__, timestamp);
 		return;
 	}
 
@@ -1349,7 +1341,6 @@ static void mbraink_trace_android_vh_compaction_exit(void *data,
 	timestamp = (tv.tv_sec*1000)+(tv.tv_nsec/1000000);
 
 	if (!spin_trylock_irqsave(&oom_trace_lock, flags)) {
-		pr_info("%s: skip record trace [%llu]\n", __func__, timestamp);
 		return;
 	}
 
@@ -1386,7 +1377,6 @@ static void mbraink_trace_android_vh_compaction_try_to_compact_exit(void *data,
 	timestamp = (tv.tv_sec*1000)+(tv.tv_nsec/1000000);
 
 	if (!spin_trylock_irqsave(&oom_trace_lock, flags)) {
-		pr_info("%s: skip record trace [%llu]\n", __func__, timestamp);
 		return;
 	}
 
@@ -1719,7 +1709,6 @@ void mbraink_get_oom_trace_info(unsigned short current_idx,
 			}
 		}
 	}
-	pr_info("%s: current_idx = %u, count = %u\n",
-		__func__, tracing_oom_buffer->tracing_idx, tracing_oom_buffer->tracing_count);
+
 	spin_unlock_irqrestore(&oom_trace_lock, flags);
 }
