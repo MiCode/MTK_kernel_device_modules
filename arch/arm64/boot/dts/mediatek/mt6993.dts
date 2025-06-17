@@ -12244,10 +12244,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<5 0xa000 0x0>, /* vow bargein */
 				<7 0x1a000 0x0>, /* ultrasound*/
 				<8 0x10000 0x0>, /* sensor supper*/
-				<9 0x1000 0x0>, /* sensor list */
-				<10 0x2000 0x0>, /* sensor debug */
-				<11 0x100 0x0>, /* sensor custom writer */
-				<12 0x100 0x0>, /* sensor custom reader */
+				<9 0x2000 0x0>, /* sensor share buffer tx */
+				<10 0x2000 0x0>, /* sensor share buffer rx */
+				<11 0x100 0x0>, /* sensor custom cmd tx */
+				<12 0x100 0x0>, /* sensor custom cmd rx */
 				<13 0x780000 0x0>, /* aov */
 				<15 0x0 0x0>, /* aod, real size is {aod-scp-mem-tbl} */
 				<17 0x8000 0x0>, /* scp chre from */
