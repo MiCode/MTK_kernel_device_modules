@@ -94,6 +94,7 @@ static struct device *offload_dev;
 #define use_wake_lock
 static unsigned long ringbuf_writebk;
 static unsigned long long ringbufbridge_writebk;
+static unsigned long long ringbufbridge_prev_write;
 
 #ifdef use_wake_lock
 static DEFINE_SPINLOCK(offload_lock);
@@ -309,7 +310,8 @@ static int mtk_compr_offload_drain(struct snd_compr_stream *stream)
 	dsp_dram = &dsp->dsp_mem[ID].msg_atod_share_buf;
 	if (afe_offload_block.state != OFFLOAD_STATE_DRAIN) {
 		if ((afe_offload_block.state != OFFLOAD_STATE_RUNNING) &&
-			(afe_offload_block.transferred < 8 * USE_PERIODS_MAX)) {
+			(afe_offload_block.transferred < 8 * USE_PERIODS_MAX) &&
+			(ringbufbridge_prev_write != buf_bridge->pWrite)) {
 			/* send audio_hw_buffer to SCP side, get writeIndx*/
 			ipi_audio_buf = (void *)dsp_dram->va_addr;
 			memcpy((void *)ipi_audio_buf,
@@ -327,7 +329,7 @@ static int mtk_compr_offload_drain(struct snd_compr_stream *stream)
 			pr_debug("%s(),MSG_DECODER_START, Update the final data, TRANSFERRED %lld\n",
 					__func__, afe_offload_block.transferred);
 		}
-
+		ringbufbridge_prev_write = buf_bridge->pWrite;
 		silence_length = 0;
 		RingBuf_update_writeptr(ringbuf, silence_length);
 		RingBuf_Bridge_update_writeptr(buf_bridge, silence_length);
@@ -796,7 +798,7 @@ static int offloadservice_copydatatoram(void __user *buf, size_t count)
 
 	dump_rbuf_s(__func__, &dsp->dsp_mem[ID].ring_buf);
 #endif
-
+	ringbufbridge_prev_write = buf_bridge->pWrite;
 	if (availsize >= copy_size) {
 		RingBuf_copyFromUserLinear(ringbuf, buf, copy_size);
 		spin_lock_irqsave(ringbuf_lock, flags);
