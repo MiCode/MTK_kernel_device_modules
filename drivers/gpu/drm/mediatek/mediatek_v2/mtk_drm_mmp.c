@@ -288,6 +288,13 @@ void init_crtc_mmp_event(void)
 			crtc_mmp_root, "kick_trigger");
 		g_CRTC_MMP_Events[i].atomic_commit = mmprofile_register_event(
 			crtc_mmp_root, "atomic_commit");
+		g_CRTC_MMP_Events[i].mml_dbg = mmprofile_register_event(
+			crtc_mmp_root, "mml_dbg");
+		g_CRTC_MMP_Events[i].mml_job_status = mmprofile_register_event(
+			g_CRTC_MMP_Events[i].mml_dbg, "mml_job_status");
+		g_CRTC_MMP_Events[i].dli_relay = mmprofile_register_event(
+			g_CRTC_MMP_Events[i].mml_dbg, "dli_relay");
+
 		g_CRTC_MMP_Events[i].bwm20 = mmprofile_register_event(
 			crtc_mmp_root, "bwm20");
 		g_CRTC_MMP_Events[i].pu_ddic_cmd = mmprofile_register_event(
@@ -344,8 +351,6 @@ void init_crtc_mmp_event(void)
 			mmprofile_register_event(crtc_mmp_root, "discrete");
 		g_CRTC_MMP_Events[i].discrete_fill =
 			mmprofile_register_event(crtc_mmp_root, "discrete_fill");
-		g_CRTC_MMP_Events[i].mml_job_status =
-			mmprofile_register_event(crtc_mmp_root, "mml_job_status");
 
 		/*Msync 2.0 mmp start*/
 		g_CRTC_MMP_Events[i].ovl_status_err =
@@ -381,8 +386,6 @@ void init_crtc_mmp_event(void)
 			crtc_mmp_root, "gamma_sof");
 		g_CRTC_MMP_Events[i].gamma_backlight = mmprofile_register_event(
 			crtc_mmp_root, "gamma_backlight");
-		g_CRTC_MMP_Events[i].mml_dbg = mmprofile_register_event(
-			crtc_mmp_root, "mml_dbg");
 		g_CRTC_MMP_Events[i].aal_ess20_elvss = mmprofile_register_event(
 			crtc_mmp_root, "aal_ess20_elvss");
 		g_CRTC_MMP_Events[i].aal_ess20_gamma = mmprofile_register_event(

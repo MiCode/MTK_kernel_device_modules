@@ -6367,7 +6367,8 @@ static void _mtk_crtc_lye_addon_module_connect(
 				addon_config.config_type.tgt_comp, addon_config.config_type.tgt_layer);
 			mtk_ddp_comp_layer_off(priv->ddp_comp[addon_config.config_type.tgt_comp],
 				addon_config.config_type.tgt_layer, 0,cmdq_handle);
-			lye_state->mml_dl_lye = 0;
+			if (!mtk_drm_use_retrigger(crtc->dev->dev_private))
+				lye_state->mml_dl_lye = 0;
 			return;
 		}
 		mml_addon_module_connect(crtc, ddp_mode, addon_module[0], addon_module[1],
@@ -11603,8 +11604,11 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 		atomic_set(&(mtk_crtc->wait_mml_last_job_is_flushed), 1);
 		wake_up_interruptible(&(mtk_crtc->signal_mml_last_job_is_flushed_wq));
 	}
-	CRTC_MMP_MARK(id, mml_job_status, mtk_crtc->is_mml,
-		atomic_read(&mtk_crtc->wait_mml_last_job_is_flushed));
+	if (id == 0) {
+		/* only mark mml job in crtc0 */
+		CRTC_MMP_MARK(0, mml_job_status, mtk_crtc->mml_status_flag,
+			atomic_read(&mtk_crtc->wait_mml_last_job_is_flushed));
+	}
 
 	DDP_COMMIT_LOCK(&priv->commit.lock, __func__, cb_data->pres_fence_idx);
 	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);

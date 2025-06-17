@@ -1354,16 +1354,22 @@ struct mtk_drm_crtc {
 	struct mutex mml_lock;	/* protect priv->mml_ctx */
 	atomic_t wait_mml_last_job_is_flushed;
 	wait_queue_head_t signal_mml_last_job_is_flushed_wq;
-	bool is_mml;
-	bool is_mml_dl;
-	bool is_mml_submit;
-	bool is_mml_submit_success;
-	bool skip_check_trigger;
-	bool is_mml_dc;
+	union {
+		u16 mml_status_flag;
+		struct {
+			bool is_mml;
+			bool is_mml_dl;
+			bool is_mml_submit;
+			bool is_mml_submit_success;
+			bool skip_check_trigger;
+			bool is_mml_dc;
+			bool is_force_mml_scen;
+			bool mml_cmd_ir;
+			bool mml_prefer_dc;
+		};
+	};
+
 	unsigned int mml_debug;
-	bool is_force_mml_scen;
-	bool mml_cmd_ir;
-	bool mml_prefer_dc;
 	enum MML_LINK_STATE mml_link_state;
 	enum SLBC_STATE slbc_state;
 

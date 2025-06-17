@@ -15,6 +15,7 @@
 #include "mtk_dump.h"
 #include "mtk_rect.h"
 #include "mtk_drm_drv.h"
+#include "mtk_drm_mmp.h"
 
 #define DISP_REG_RELAY_WIDTH	REG_FLD_MSB_LSB(13, 0)
 #define DISP_REG_RELAY_HEIGHT	REG_FLD_MSB_LSB(29, 16)
@@ -164,6 +165,8 @@ static void mtk_dli_async_addon_config_mt6993(struct mtk_ddp_comp *comp,
 
 	cmdq_pkt_write(handle, NULL, comp->regs_pa + dli_in_relay_size,
 		1 << 30 | height << 16 | width, U32_MAX);
+
+	CRTC_MMP_MARK(0, dli_relay, comp->id, height << 16 | width);
 }
 
 static void mtk_dli_async_size_config(struct mtk_ddp_comp *comp, struct mtk_ddp_config *cfg,

@@ -1564,7 +1564,7 @@ static enum mml_mode _mtk_atomic_mml_plane(struct drm_device *dev,
 
 		atomic_set(&(mtk_crtc->wait_mml_last_job_is_flushed), 0);
 
-		CRTC_MMP_MARK(0, mml_job_status, mtk_crtc->is_mml,
+		CRTC_MMP_MARK(0, mml_job_status, mtk_crtc->mml_status_flag,
 			atomic_read(&mtk_crtc->wait_mml_last_job_is_flushed));
 
 		CRTC_MMP_MARK(0, mml_dbg, crtc_state->prop_val[CRTC_PROP_LYE_IDX],
@@ -1715,7 +1715,7 @@ static enum mml_mode _mtk_atomic_mml_plane(struct drm_device *dev,
 
 	atomic_set(&(mtk_crtc->wait_mml_last_job_is_flushed), 0);
 
-	CRTC_MMP_MARK(0, mml_job_status, mtk_crtc->is_mml,
+	CRTC_MMP_MARK(0, mml_job_status, mtk_crtc->mml_status_flag,
 		atomic_read(&mtk_crtc->wait_mml_last_job_is_flushed));
 
 	CRTC_MMP_MARK(0, mml_dbg, crtc_state->prop_val[CRTC_PROP_LYE_IDX], MMP_MML_SUBMIT);
@@ -2395,7 +2395,7 @@ static int mtk_atomic_commit(struct drm_device *drm,
 			return 0;
 		}
 
-		CRTC_MMP_MARK((int)drm_crtc_index(crtc), mml_job_status, mtk_crtc->is_mml,
+		CRTC_MMP_MARK(0, mml_job_status, mtk_crtc->mml_status_flag,
 			atomic_read(&mtk_crtc->wait_mml_last_job_is_flushed));
 
 		if (mtk_crtc->is_mml) {

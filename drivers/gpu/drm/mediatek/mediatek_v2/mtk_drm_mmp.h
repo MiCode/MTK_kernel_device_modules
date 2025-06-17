@@ -140,6 +140,9 @@ struct CRTC_MMP_Events {
 	mmp_event check_trigger;
 	mmp_event kick_trigger;
 	mmp_event atomic_commit;
+	mmp_event mml_dbg;
+	mmp_event mml_job_status;
+	mmp_event dli_relay;
 	mmp_event bwm20;
 	mmp_event pu_ddic_cmd;
 	mmp_event pu_final_roi;
@@ -155,7 +158,6 @@ struct CRTC_MMP_Events {
 	mmp_event cwb_dump;
 	mmp_event discrete;
 	mmp_event discrete_fill;
-	mmp_event mml_job_status;
 	/*Msync 2.0 mmp start*/
 	mmp_event ovl_status_err;
 	mmp_event vfp_period;
@@ -175,7 +177,6 @@ struct CRTC_MMP_Events {
 	mmp_event gamma_ioctl;
 	mmp_event gamma_sof;
 	mmp_event gamma_backlight;
-	mmp_event mml_dbg;
 	mmp_event aal_ess20_elvss;
 	mmp_event aal_ess20_gamma;
 	mmp_event aal_ess20_curve;
