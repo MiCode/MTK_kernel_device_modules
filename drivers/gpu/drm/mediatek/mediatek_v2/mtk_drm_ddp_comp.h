@@ -1443,6 +1443,7 @@ enum mtk_ddp_io_cmd {
 	SET_DSI_GOLDEN_SETTING,
 	DISP_SPR_SWITCH,
 	GET_ODDMR_CUS_OWN_DATA,
+	REQ_CHECK_CMD_MODE,
 };
 
 enum mtk_ddp_comp_apsrc_crtc_id {

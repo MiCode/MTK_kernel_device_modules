@@ -24217,6 +24217,12 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 		/* define each pipe's CRTC ability's default value */
 		/* use it when CRTC not define ability in DTS */
 		if (pipe == 0) {
+			bool cmd_mode = FALSE;
+
+			output_comp = mtk_ddp_comp_request_output(mtk_crtc);
+			if (output_comp)
+				mtk_ddp_comp_io_cmd(output_comp, NULL, REQ_CHECK_CMD_MODE,
+				&cmd_mode);
 			if(mtk_addon_scenario_support(&mtk_crtc->base, WDMA_WRITE_BACK_OVL))
 				mtk_crtc->crtc_caps.wb_caps[MTK_DRM_BEFORE_PQ].support = 1;
 			if(mtk_addon_scenario_support(&mtk_crtc->base, WDMA_WRITE_BACK))
@@ -24260,6 +24266,11 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 			if (mtk_drm_helper_get_opt(priv->helper_opt,
 					MTK_DRM_OPT_FRAME_SUBMIT)) {
 				mtk_crtc->crtc_caps.crtc_ability |= ABILITY_FRAME_SUBMIT;
+			}
+			if (mtk_drm_helper_get_opt(priv->helper_opt,
+				MTK_DRM_OPT_WAIT_EPT) && cmd_mode == TRUE) {
+				mtk_crtc->crtc_caps.crtc_ability |= ABILITY_WAIT_EPT;
+				mtk_crtc->crtc_caps.atomic_commit_reserved_ns = 3000000;
 			}
 		} else {
 
@@ -24327,11 +24338,6 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 		ret = mtk_drm_crtc_init(
 			drm_dev, mtk_crtc, &mtk_crtc->planes[0].base,
 			&mtk_crtc->planes[mtk_crtc->layer_nr - 1UL].base, pipe);
-	}
-	if (drm_crtc_index(&mtk_crtc->base) == 0 && mtk_drm_helper_get_opt(priv->helper_opt,
-			MTK_DRM_OPT_WAIT_EPT) && mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base)) {
-		mtk_crtc->crtc_caps.crtc_ability |= ABILITY_WAIT_EPT;
-		mtk_crtc->crtc_caps.atomic_commit_reserved_ns = 3000000;
 	}
 	if (ret < 0)
 		return ret;

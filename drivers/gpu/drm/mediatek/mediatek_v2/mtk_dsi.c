@@ -14300,6 +14300,10 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 
 		*ext = mtk_dsi_get_panel_ext(comp);
 		break;
+	case REQ_CHECK_CMD_MODE:
+		enable = (bool *)params;
+		*enable = mtk_dsi_is_cmd_mode(&dsi->ddp_comp);
+		break;
 	case DSI_START_VDO_MODE:
 		mtk_dsi_start_vdo_mode(comp, handle);
 		break;
