@@ -156,14 +156,14 @@ enum vdec_fb_status {
 
 /**
  * enum flags  - decoder different operation types
- * @NO_CAHCE_FLUSH	: no need to proceed cache flush
- * @NO_CAHCE_INVALIDATE	: no need to proceed cache invalidate
+ * @NO_CACHE_CLEAN	: no need to proceed cache clean
+ * @NO_CACHE_INVALIDATE	: no need to proceed cache invalidate
  * @CROP_CHANGED	: frame buffer crop changed
  * @REF_FREED	: frame buffer is reference freed
  */
 enum mtk_vcodec_flags {
-	NO_CAHCE_CLEAN = 1,
-	NO_CAHCE_INVALIDATE = 1 << 1,
+	NO_CACHE_CLEAN = 1,
+	NO_CACHE_INVALIDATE = 1 << 1,
 	CROP_CHANGED = 1 << 2,
 	REF_FREED = 1 << 3,
 	COLOR_ASPECT_CHANGED = 1 << 4

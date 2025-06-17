@@ -2173,14 +2173,16 @@ static int vidioc_venc_qbuf(struct file *file, void *priv,
 	if (buf->flags & V4L2_BUF_FLAG_NO_CACHE_CLEAN) {
 		mtk_v4l2_debug(4, "[%d] No need for Cache clean, buf->index:%d. mtkbuf:%p",
 		   ctx->id, buf->index, mtkbuf);
-		mtkbuf->flags |= NO_CAHCE_CLEAN;
-	}
+		mtkbuf->flags |= NO_CACHE_CLEAN;
+	} else
+		mtkbuf->flags &= ~NO_CACHE_CLEAN;
 
 	if (buf->flags & V4L2_BUF_FLAG_NO_CACHE_INVALIDATE) {
 		mtk_v4l2_debug(4, "[%d] No need for Cache invalidate, buf->index:%d. mtkbuf:%p",
 		   ctx->id, buf->index, mtkbuf);
-		mtkbuf->flags |= NO_CAHCE_INVALIDATE;
-	}
+		mtkbuf->flags |= NO_CACHE_INVALIDATE;
+	} else
+		mtkbuf->flags &= ~NO_CACHE_INVALIDATE;
 
 	mtkbuf->frm_buf.has_qpmap = 0;
 	mtkbuf->frm_buf.has_qprects = 0;
@@ -2753,7 +2755,7 @@ static int vb2ops_venc_buf_prepare(struct vb2_buffer *vb)
 				&mtkbuf->bs_buf.dma_general_addr);
 		}
 
-		if (!(mtkbuf->flags & NO_CAHCE_CLEAN)) {
+		if (!(mtkbuf->flags & NO_CACHE_CLEAN)) {
 			struct mtk_vcodec_mem src_mem;
 			struct vb2_dc_buf *dc_buf = vb->planes[i].mem_priv;
 
@@ -2806,7 +2808,7 @@ static void vb2ops_venc_buf_finish(struct vb2_buffer *vb)
 			vb->index, vb->timestamp);
 
 	if (vb->vb2_queue->memory == VB2_MEMORY_DMABUF &&
-		!(mtkbuf->flags & NO_CAHCE_INVALIDATE)) {
+		!(mtkbuf->flags & NO_CACHE_INVALIDATE)) {
 		if (vb->vb2_queue->type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE) {
 			struct mtk_vcodec_mem dst_mem;
 			struct vb2_dc_buf *dc_buf = vb->planes[0].mem_priv;
