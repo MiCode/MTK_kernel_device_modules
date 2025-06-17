@@ -6408,6 +6408,8 @@ static int mtk_oddmr_sum_hrt(struct mtk_ddp_comp *comp, enum CHANNEL_TYPE type, 
 
 				oddmr1_data->od_enable = oddmr1_data->od_enable_req && !oddmr_data->pq_od_bypass;
 			}
+			if (atomic_read(&oddmr_data->primary_data->od_deinit) == 1)
+				wake_up_interruptible(&oddmr_data->primary_data->od_deinit_wq);
 		}
 	}
 
@@ -6658,6 +6660,7 @@ static void disp_oddmr_primary_data_init(struct mtk_ddp_comp *comp)
 	init_waitqueue_head(&primary_data->sof_irq_wq);
 	init_waitqueue_head(&primary_data->hrt_wq);
 	init_waitqueue_head(&primary_data->od_sram_wq);
+	init_waitqueue_head(&primary_data->od_deinit_wq);
 	init_waitqueue_head(&primary_data->frame_dirty_wq);
 	init_waitqueue_head(&primary_data->dmr_switch_wq);
 	mutex_init(&primary_data->clock_lock);
@@ -6675,6 +6678,7 @@ static void disp_oddmr_primary_data_init(struct mtk_ddp_comp *comp)
 	atomic_set(&primary_data->dmr_hrt_done, 0);
 	atomic_set(&primary_data->dbi_hrt_done, 0);
 	atomic_set(&primary_data->od_hrt_done, 0);
+	atomic_set(&primary_data->od_deinit, 0);
 
 	crtc_idx = drm_crtc_index(&comp->mtk_crtc->base);
 	out_comp = mtk_ddp_comp_request_output(comp->mtk_crtc);
@@ -9326,7 +9330,12 @@ static int mtk_oddmr_od_enable(struct mtk_ddp_comp *comp, int en)
 	DDPMSG("%s:%d+\n",__func__,enable);
 
 	if (oddmr_data->primary_data->od_state < ODDMR_INIT_DONE) {
-		ODDMRFLOW_LOG("od can not enable, state %d\n", oddmr_data->primary_data->od_state);
+		ODDMRFLOW_LOG("od can not enable/disable, state %d\n", oddmr_data->primary_data->od_state);
+		return -EFAULT;
+	}
+
+	if (atomic_read(&oddmr_data->primary_data->od_deinit) == 1) {
+		ODDMRFLOW_LOG("od can not enable/disable when deinit\n");
 		return -EFAULT;
 	}
 
@@ -9375,6 +9384,233 @@ static int mtk_oddmr_od_user_gain(struct mtk_ddp_comp *comp, void *data)
 	return 0;
 }
 
+
+static int mtk_oddmr_od_deinit(struct mtk_ddp_comp *comp, void *data)
+{
+	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
+	struct mtk_oddmr_od_param *od_param = &oddmr_data->primary_data->od_param;
+	int ret = 0, idx;
+	bool od_support = oddmr_data->primary_data->od_support;
+	uint32_t value = 0, mask = 0;
+	uint32_t cnts = od_param->od_basic_info.basic_param.table_cnt;
+	struct mtk_oddmr_pq_param *basic_pq = &od_param->od_basic_info.basic_pq;
+	struct mtk_ddp_comp *comp1 = NULL;
+	struct mtk_disp_oddmr *oddmr1_data = NULL;
+
+	DDPMSG("%s+\n",__func__);
+	if (!od_support) {
+		ODDMRFLOW_LOG("od is not support\n");
+		goto fail;
+	}
+	if (oddmr_data->primary_data->od_state != ODDMR_INIT_DONE) {
+		ODDMRFLOW_LOG("cannot deinit, state %d\n", oddmr_data->primary_data->od_state);
+		goto fail;
+	}
+	if (comp->mtk_crtc->is_dual_pipe) {
+		comp1 = oddmr_data->companion;
+		oddmr1_data = comp_to_oddmr(comp1);
+	}
+
+	if (oddmr_data->od_enable_req > 0) {//dual will change at the same time
+		ODDMRFLOW_LOG("cannot deinit, enable_req %d\n", oddmr_data->od_enable_req);
+		goto fail;
+	}
+	atomic_set(&oddmr_data->primary_data->od_deinit, 1); //od_enable_req cannot change
+
+	/* 1.1. wait od_enable = 0 after od_enable_req = 0 (dual will change at the same time) */
+	if (oddmr_data->od_enable > 0) {
+		if (atomic_read(&oddmr_data->primary_data->od_hrt_done) != 1) {
+			ODDMRFLOW_LOG("cannot deinit, enable_req %d enable %d\n",
+					oddmr_data->od_enable_req, oddmr_data->od_enable);
+			goto fail;
+		} else {
+			ret = wait_event_interruptible_timeout(oddmr_data->primary_data->od_deinit_wq,
+					atomic_read(&oddmr_data->primary_data->od_hrt_done) == 0,
+					msecs_to_jiffies(1000));
+			if (ret <= 0 || oddmr_data->od_enable > 0) {
+				ODDMRFLOW_LOG("ret %d, cannot deinit, enable_req %d enable %d\n",
+					ret, oddmr_data->od_enable_req, oddmr_data->od_enable);
+				goto fail;
+			}
+		}
+	}
+	/* 1.2. wait FRAME_DIRTY (mtk_oddmr_set_od_enable already done) */
+	if (oddmr_data->od_enable_last > 0) {
+		atomic_set(&oddmr_data->primary_data->frame_dirty, 0);
+		ret = wait_event_interruptible_timeout(oddmr_data->primary_data->frame_dirty_wq,
+			atomic_read(&oddmr_data->primary_data->frame_dirty) == 1,
+			msecs_to_jiffies(1000));
+		if (ret <= 0 || oddmr_data->od_enable_last > 0) {
+			ODDMRFLOW_LOG("ret %d, cannot deinit, enable_req %d enable %d enable_last %d\n",
+				ret, oddmr_data->od_enable_req, oddmr_data->od_enable, oddmr_data->od_enable_last);
+			goto fail;
+		}
+	}
+	/* 1.3. wait to next sof for od disable HW config done */
+	ret = mtk_oddmr_od_trigger_frame(comp);
+	if (ret <= 0)
+		goto fail;
+	ODDMRFLOW_LOG("done trigger_frame, ret %d\n", ret);
+
+	/* 1.4. final check */
+	if (oddmr_data->od_enable_req > 0 || oddmr_data->od_enable > 0 ||
+			oddmr_data->od_enable_last > 0) {
+		PC_ERR("%s failed, enable_req %d enable %d enable_last %d\n", __func__,
+			oddmr_data->od_enable_req, oddmr_data->od_enable, oddmr_data->od_enable_last);
+		goto fail;
+	}
+
+	/* 2. flush workque */
+	flush_workqueue(oddmr_data->primary_data->oddmr_wq);
+	ODDMRFLOW_LOG("done flush_workqueue\n");
+
+	oddmr_data->primary_data->od_state = ODDMR_LOAD_DONE; //cannot init or enable/disable
+	/* 3. destroy sram pkgs */
+	for (idx = 0; idx < cnts; idx++) {
+		cmdq_pkt_destroy(oddmr_data->od_data.od_sram_pkgs[idx][0]);
+		cmdq_pkt_destroy(oddmr_data->od_data.od_sram_pkgs[idx][1]);
+	}
+	if (comp->mtk_crtc->is_dual_pipe) {
+		for (idx = 0; idx < cnts; idx++) {
+			cmdq_pkt_destroy(oddmr1_data->od_data.od_sram_pkgs[idx][0]);
+			cmdq_pkt_destroy(oddmr1_data->od_data.od_sram_pkgs[idx][1]);
+		}
+	}
+	ODDMRFLOW_LOG("done destroy sram pkgs\n");
+
+	/* 4. free frame buffer */
+	mtk_oddmr_od_free_buffer(comp);
+	if (comp->mtk_crtc->is_dual_pipe)
+		mtk_oddmr_od_free_buffer(comp1);
+	ODDMRFLOW_LOG("done free frame buffer\n");
+
+	/* 5. reset variables */
+	atomic_set(&oddmr_data->primary_data->od_weight_trigger, 0);
+	// atomic_set(&oddmr_data->primary_data->frame_dirty, 0);
+	atomic_set(&oddmr_data->primary_data->sof_irq_available, 0);
+	// atomic_set(&oddmr_data->primary_data->sof_irq_for_od_sram, 0);
+	atomic_set(&oddmr_data->primary_data->od_hrt_done, 0);
+	memset(&oddmr_data->primary_data->od_content_timing, 0,
+		sizeof(oddmr_data->primary_data->od_content_timing));
+	oddmr_data->primary_data->frame_dirty_last = 0;
+	oddmr_data->primary_data->od_fps_mode = 0;
+	oddmr_data->primary_data->od_wait_time = 0;
+	oddmr_data->primary_data->od_min_fps = 0;
+	oddmr_data->primary_data->od_max_fps = 0;
+	oddmr_data->primary_data->sof_time = ktime_set(0, 0);
+	oddmr_data->primary_data->sof_time_last = ktime_set(0, 0);
+
+	memset(&oddmr_data->od_data, 0, sizeof(oddmr_data->od_data));
+	oddmr_data->od_data.od_sram_read_sel = -1;
+	oddmr_data->od_data.od_sram_table_idx[0] = -1;
+	oddmr_data->od_data.od_sram_table_idx[1] = -1;
+
+	oddmr_data->od_enable_req = 0;
+	oddmr_data->od_enable = 0;
+	oddmr_data->od_enable_last = 0;
+	oddmr_data->od_update_sram = 0;
+	oddmr_data->od_force_off = 0;
+	oddmr_data->od_force_off2 = 0;
+	oddmr_data->od_force_off_last = 0;
+	oddmr_data->qos_srt_odr = 0;
+	oddmr_data->last_qos_srt_odr = 0;
+	oddmr_data->qos_srt_odw = 0;
+	oddmr_data->last_qos_srt_odw = 0;
+	oddmr_data->last_hrt_odrw = 0;
+	oddmr_data->last_hrt_odrw_stash = 0;
+
+	if (comp->mtk_crtc->is_dual_pipe) {
+		memset(&oddmr1_data->od_data, 0, sizeof(oddmr1_data->od_data));
+		oddmr1_data->od_data.od_sram_read_sel = -1;
+		oddmr1_data->od_data.od_sram_table_idx[0] = -1;
+		oddmr1_data->od_data.od_sram_table_idx[1] = -1;
+
+		oddmr1_data->od_enable_req = 0;
+		oddmr1_data->od_enable = 0;
+		oddmr1_data->od_enable_last = 0;
+		oddmr1_data->od_update_sram = 0;
+		oddmr1_data->od_force_off = 0;
+		oddmr1_data->od_force_off2 = 0;
+		oddmr1_data->od_force_off_last = 0;
+		oddmr1_data->qos_srt_odr = 0;
+		oddmr1_data->last_qos_srt_odr = 0;
+		oddmr1_data->qos_srt_odw = 0;
+		oddmr1_data->last_qos_srt_odw = 0;
+		oddmr1_data->last_hrt_odrw = 0;
+		oddmr1_data->last_hrt_odrw_stash = 0;
+	}
+	ODDMRFLOW_LOG("done reset variables\n");
+
+	/* 6. free od_param buffers*/
+	if (od_param->od_basic_info.basic_pq.param != NULL) {
+#ifndef APP_DEBUG
+		kfree(od_param->od_basic_info.basic_pq.param);
+#else
+		free(od_param->od_basic_info.basic_pq.param);
+#endif
+		od_param->od_basic_info.basic_pq.param = NULL;
+		ODDMRFLOW_LOG("done free od_basic_info.basic_pq.param\n");
+	}
+	for (idx = 0; idx < cnts; idx++) {
+		if (od_param->od_tables[idx] != NULL &&
+			od_param->od_tables[idx]->pq_od.param != NULL) {
+#ifndef APP_DEBUG
+			kfree(od_param->od_tables[idx]->pq_od.param);
+#else
+			free(od_param->od_tables[idx]->pq_od.param);
+#endif
+			od_param->od_tables[idx]->pq_od.param = NULL;
+			ODDMRFLOW_LOG("done free od_tables[%d]->pq_od.param\n", idx);
+		}
+	}
+	for (idx = 0; idx < cnts; idx++) {
+		if (od_param->od_tables[idx] != NULL &&
+			od_param->od_tables[idx]->raw_table.value != NULL) {
+#ifndef APP_DEBUG
+			kfree(od_param->od_tables[idx]->raw_table.value);
+#else
+			free(od_param->od_tables[idx]->raw_table.value);
+#endif
+			od_param->od_tables[idx]->raw_table.value = NULL;
+			ODDMRFLOW_LOG("done free od_tables[%d]->raw_table.value\n", idx);
+		}
+	}
+	for (idx = 0; idx < cnts; idx++) {
+		if (od_param->od_tables[idx] != NULL &&
+			od_param->od_tables[idx]->gain_table_raw != NULL) {
+#ifndef APP_DEBUG
+			kfree(od_param->od_tables[idx]->gain_table_raw);
+#else
+			free(od_param->od_tables[idx]->gain_table_raw);
+#endif
+			od_param->od_tables[idx]->gain_table_raw = NULL;
+			ODDMRFLOW_LOG("done free od_tables[%d]->gain_table_raw\n", idx);
+		}
+	}
+	for (idx = 0; idx < cnts; idx++) {
+		if (od_param->od_tables[idx] != NULL) {
+#ifndef APP_DEBUG
+			kfree(od_param->od_tables[idx]);
+#else
+			free(od_param->od_tables[idx]);
+#endif
+			od_param->od_tables[idx] = NULL;
+			ODDMRFLOW_LOG("done free od_tables[%d]\n", idx);
+		}
+	}
+
+	/* 7. reset od_param*/
+	memset(&oddmr_data->primary_data->od_param, 0, sizeof(oddmr_data->primary_data->od_param));
+	oddmr_data->primary_data->od_state = ODDMR_INVALID;
+	oddmr_data->primary_data->od_basic_info_loaded = 0; //can do mtk_oddmr_load_param again
+
+	atomic_set(&oddmr_data->primary_data->od_deinit, 0);
+	return 0;
+
+fail:
+	atomic_set(&oddmr_data->primary_data->od_deinit, 0);
+	return -EFAULT;
+}
 
 static void mtk_oddmr_dmr_common_init(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg)
 {
@@ -13720,6 +13956,9 @@ static int mtk_oddmr_pq_ioctl_transact(struct mtk_ddp_comp *comp,
 		break;
 	case PQ_ODDMR_OD_DISABLE:
 		ret = mtk_oddmr_od_enable(comp, 0);
+		break;
+	case PQ_ODDMR_OD_DEINIT:
+		ret = mtk_oddmr_od_deinit(comp, params);
 		break;
 	case PQ_ODDMR_OD_READ_SW_REG:
 	{

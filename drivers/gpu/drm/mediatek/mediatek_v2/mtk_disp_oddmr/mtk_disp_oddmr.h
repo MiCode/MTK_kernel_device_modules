@@ -747,6 +747,7 @@ struct mtk_disp_oddmr_primary {
 	struct wait_queue_head sof_irq_wq;
 	struct wait_queue_head hrt_wq;
 	struct wait_queue_head od_sram_wq;
+	struct wait_queue_head od_deinit_wq;
 	struct wait_queue_head frame_dirty_wq;
 	struct wait_queue_head dmr_switch_wq;
 	struct mutex clock_lock;
@@ -778,6 +779,7 @@ struct mtk_disp_oddmr_primary {
 	uint32_t od_max_fps;
 	ktime_t sof_time;
 	ktime_t sof_time_last;
+	atomic_t od_deinit;
 	int slc_frame_cnt[ODDMR_SLC_NUM];
 	struct drm_mtk_dbi_caps dbi_caps;
 	bool dmr_first_en;
