@@ -33,10 +33,11 @@
 #define DMR_FPS_TABLE_MAX 4
 #define DBI_GET_RAW_TYPE_FRAME_NUM (10)
 
-#define MAX_BIN_NUM 7
+#define MAX_BIN_NUM 8
 #define MAX_BINSET_NUM 32
 #define DMR_LINE_BUFFER 19
 #define MAX_PID_LENGTH 256
+#define MAX_DBV_MODE_NUM 5
 
 #define ODDMR_SECTION_WHOLE 0
 #define ODDMR_SECTION_END 0xFEFE
@@ -123,6 +124,18 @@ enum DISP_ODDMR_SLC_IDX {
 	OD_SLC,
 	DBI_SLC,
 	ODDMR_SLC_NUM,
+};
+
+enum MTK_DBV_MODE {
+	DBV_PWM_MODE,
+	DBV_DC_MODE,
+};
+
+enum DMR_TIMING_STATE {
+	DBV_MODE_CHG = 0x1,
+	FPS_CHG = 0x2,
+	DBV_CHG = 0x4,
+	BINSET_CHG = 0x8,
 };
 
 /***************** file parsing ******************/
@@ -662,7 +675,7 @@ struct mtk_disp_oddmr_dmr_data {
 	atomic_t dmr_bin_num;
 	atomic_t cur_binset_idx;
 	atomic_t cur_bin_idx;
-	atomic_t bin_idx_chg;
+	atomic_t dmr_timing_state; //bit3:binset_chg; bit2:dbv_chg; bit1:fps_chg; bit0:dbv_mode_chg
 	unsigned int max_table_size;
 };
 
@@ -719,6 +732,7 @@ struct mtk_disp_oddmr_primary {
 	struct wait_queue_head hrt_wq;
 	struct wait_queue_head od_sram_wq;
 	struct wait_queue_head frame_dirty_wq;
+	struct wait_queue_head dmr_switch_wq;
 	struct mutex clock_lock;
 	struct mutex timing_lock;
 	struct mutex dbi_data_lock;
@@ -746,6 +760,7 @@ struct mtk_disp_oddmr_primary {
 	ktime_t sof_time_last;
 	int slc_frame_cnt[ODDMR_SLC_NUM];
 	struct drm_mtk_dbi_caps dbi_caps;
+	bool dmr_first_en;
 };
 
 /**

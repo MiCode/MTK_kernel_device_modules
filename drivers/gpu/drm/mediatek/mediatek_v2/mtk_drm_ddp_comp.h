@@ -1385,7 +1385,8 @@ enum mtk_ddp_io_cmd {
 	DSI_READ_PANELID,
 	DISP_BL_CHG,
 	ODDMR_TIMING_CHG,
-	ODDMR_PWM_CHG,
+	ODDMR_DBV_MODE_CHG,
+	ODDMR_BINSET_CHG,
 	ODDMR_TRIG_CTL,
 	COMP_ODDMR_CFG,
 	OVL_GET_SELFLOOP_SUPPORT,
@@ -1498,8 +1499,12 @@ struct mtk_oddmr_timing {
 	unsigned int bl_level;
 	unsigned int mode_chg_index;
 	unsigned int vrefresh;
+	unsigned int dbv_mode;
+	unsigned int binset_idx;
 	unsigned int old_bl_level;
 	unsigned int old_vrefresh;
+	unsigned int old_dbv_mode;
+	unsigned int old_binset_idx;
 	u16 hdisplay;
 	u16 vdisplay;
 };
