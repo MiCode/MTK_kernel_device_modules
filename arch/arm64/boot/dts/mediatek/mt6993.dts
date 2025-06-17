@@ -16909,14 +16909,12 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<0 0x4c200000 0 0x100000>,
 				<0 0x19091000 0 0x10>,
 				<0 0x19080000 0 0x10000>,
-				<0 0x4d800000 0 0x80000>,
 				<0 0x19052000 0 0x1000>;
 
 			reg-names = "apu_rv_wrap",
 				"apu_mbox",
 				"apu_wdt",
 				"md32_cache_dump",
-				"md32_tcm",
 				"apu_rpc";
 
 			mtk,iommu-group = <&apu_iommu_group_2>;
@@ -16932,6 +16930,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"mbox1_irq",
 				"ce_exp_irq";
 
+			up-tcm-sz = <0x80000>;
 			up-code-buf-sz = <0x100000>;
 			ramdump-sz = <0xf4000>;
 			regdump-sz = <0x1000>;
