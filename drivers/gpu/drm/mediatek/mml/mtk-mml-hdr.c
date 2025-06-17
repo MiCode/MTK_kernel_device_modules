@@ -1107,7 +1107,6 @@ static s32 hdr_config_frame(struct mml_comp *comp, struct mml_task *task,
 				base_pa + hdr->data->reg_table[HDR_GAIN_TABLE_0], 1 << 11, 1 << 11);
 		}
 	}
-	cmdq_pkt_write(pkt, NULL, base_pa + hdr->data->reg_table[HDR_TOP], 0x1, 0x1);
 
 	mml_pq_msg("%s is_hdr_need_readback[%d] reuses count %u %u",
 		__func__, result->is_hdr_need_readback,
