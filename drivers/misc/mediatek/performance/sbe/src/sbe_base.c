@@ -358,6 +358,7 @@ struct sbe_render_info *sbe_get_render_info(int pid,
 	tmp->dpt_policy_force_disable = 0;
 	tmp->affinity_task_mask_cnt = 0;
 	tmp->calculate_dy_enhance_idx = 0;
+	tmp->core_ctl_ignore_vip_task = 0;
 	memset(tmp->aff_dep_arr, 0, sizeof(int) * MAX_TASK_NUM);
 
 	INIT_LIST_HEAD(&(tmp->scroll_list));

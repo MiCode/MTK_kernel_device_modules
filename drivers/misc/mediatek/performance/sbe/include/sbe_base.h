@@ -78,6 +78,7 @@ struct sbe_render_info {
 	int loading_type;
 	int jank_count;
 	int is_webfunctor;
+	int core_ctl_ignore_vip_task;
 	unsigned long long frame_ctime_count;
 	unsigned int sbe_rescue;
 	unsigned long long buffer_id;

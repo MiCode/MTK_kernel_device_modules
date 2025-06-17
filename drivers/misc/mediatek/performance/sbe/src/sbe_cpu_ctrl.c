@@ -90,6 +90,8 @@ static int sbe_dptv2_status;
 static int sbe_force_bypass_dptv2;
 static int sbe_affinity_task_min_cap;
 static int sbe_affinity_task_low_threshold_cap;
+static int sbe_ignore_vip_task_enable;
+static int sbe_ignore_vip_task_status;
 /*For AI jank detection*/
 static int ai_rescuing_frame_id;
 static int registered;
@@ -157,6 +159,7 @@ module_param(sbe_dptv2_enable, int, 0644);
 module_param(sbe_force_bypass_dptv2, int, 0644);
 module_param(sbe_affinity_task_min_cap, int, 0644);
 module_param(sbe_affinity_task_low_threshold_cap, int, 0644);
+module_param(sbe_ignore_vip_task_enable, int, 0644);
 
 static void update_hwui_frame_info(struct sbe_render_info *info,
 		struct hwui_frame_info *frame, unsigned long long id,
@@ -212,6 +215,26 @@ int get_ux_general_policy(void)
 int sbe_get_perf(void)
 {
 	return global_ux_blc;
+}
+
+void sbe_core_ctl_ignore_vip_task(struct sbe_render_info *thr, int ignore_enable)
+{
+	if (sbe_ignore_vip_task_enable) {
+		if (ignore_enable) {
+			core_ctl_consider_VIP(0);
+			sbe_ignore_vip_task_status = 1;
+		} else {
+			core_ctl_consider_VIP(1);
+			sbe_ignore_vip_task_status = 0;
+		}
+		sbe_systrace_c(thr->pid, thr->buffer_id, ignore_enable, "[ux]ignore_vip_task");
+	} else {
+		if (sbe_ignore_vip_task_status) {
+			core_ctl_consider_VIP(1);
+			sbe_ignore_vip_task_status = 0;
+		}
+		sbe_systrace_c(thr->pid, thr->buffer_id, 0, "[ux]ignore_vip_task");
+	}
 }
 
 void sbe_set_dptv2_policy(struct sbe_render_info *thr, int start)
@@ -1305,7 +1328,7 @@ int sbe_calculate_dy_enhance(struct sbe_render_info *thr)
 					h_score += 3;
 				else if (rescue_rate >= 7)
 					h_score += 2;
-				else if (rescue_rate >= 4)
+				else if (rescue_rate >= 3)
 					h_score++;
 			}
 
@@ -1370,29 +1393,21 @@ int sbe_calculate_dy_enhance(struct sbe_render_info *thr)
 		thr->loading_type = RENDER_LOADING_MEDUIM;
 
 	thr->affinity_task_mask = 0;
-	if (set_deplist_affinity && (thr->loading_type == RENDER_LOADING_HIGH
-			|| thr->loading_type == RENDER_LOADING_MEDUIM))
-		thr->affinity_task_mask = SBE_PREFER_M;
+	thr->ux_affinity_task_basic_cap = 0;
+	thr->core_ctl_ignore_vip_task = 0;
+	thr->dpt_policy_enable = 0;
+
+	if (thr->loading_type == RENDER_LOADING_LOW) {
+		thr->core_ctl_ignore_vip_task = 1;
+		thr->dpt_policy_enable = 1;
+	} else if (thr->loading_type == RENDER_LOADING_HIGH) {
+		if (set_deplist_affinity) {
+			thr->affinity_task_mask = SBE_PREFER_M;
+			thr->ux_affinity_task_basic_cap = clamp(sbe_affinity_task_min_cap, 0, 100);
+		}
+	}
 
 	sbe_systrace_c(thr->pid, thr->buffer_id, thr->affinity_task_mask, "[ux]affinity_task");
-
-	if (thr->calculate_dy_enhance_idx < 6) {
-		thr->calculate_dy_enhance_idx += 1;
-		if (thr->affinity_task_mask > 0)
-			thr->affinity_task_mask_cnt += 1;
-	}
-
-	if (thr->calculate_dy_enhance_idx == 6 && thr->affinity_task_mask_cnt > 2) {
-		thr->dpt_policy_force_disable = 1;
-		sbe_set_dptv2_policy(thr, 0);
-		sbe_systrace_c(thr->pid, thr->buffer_id, thr->affinity_task_mask_cnt, "[ux]dpt_affinity_cnt");
-		sbe_systrace_c(thr->pid, thr->buffer_id, 1, "[ux]dpt_affinity");
-	}
-
-	if (thr->affinity_task_mask)
-		thr->ux_affinity_task_basic_cap = clamp(sbe_affinity_task_min_cap, 0, 100);
-	else
-		thr->ux_affinity_task_basic_cap = 0;
 	sbe_systrace_c(thr->pid, thr->buffer_id, thr->ux_affinity_task_basic_cap, "[ux]affinity_task_min_cap");
 
 	// do not compute new rescue
@@ -2463,6 +2478,8 @@ int __init sbe_cpu_ctrl_init(void)
 	sbe_extra_sub_deque_margin_time = SBE_DEFAULT_DEUQUE_MARGIN_TIME_NS;
 	sbe_force_bypass_dptv2 = 0;
 	sbe_dptv2_status = 0;
+	sbe_ignore_vip_task_enable = 1;
+	sbe_ignore_vip_task_status = 0;
 
 	ai_rescuing_frame_id = -1;
 	registered = 0;
