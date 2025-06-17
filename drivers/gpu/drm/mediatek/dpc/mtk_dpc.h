@@ -245,7 +245,8 @@ struct dpc_funcs {
 	void (*dpc_mtcmos_vote)(const u32 subsys, const u8 thread, const bool en);
 	void (*dpc_analysis)(void);
 	void (*dpc_debug_cmd)(const char *opt);
-	void (*dpc_mtcmos_on_off)(bool on, struct cmdq_pkt *pkt, const enum mtk_vidle_voter_user user, bool lock);
+	void (*dpc_mtcmos_on_off)(bool on, struct cmdq_pkt *pkt, const enum mtk_vidle_voter_user user, bool lock,
+				  const u16 gpr);
 	int (*dpc_mminfra_on_off)(bool en, const enum mtk_vidle_voter_user user);
 	int (*dpc_buck_status)(int op);
 	void (*dpc_pre_cg_ctrl)(bool en, bool lock);

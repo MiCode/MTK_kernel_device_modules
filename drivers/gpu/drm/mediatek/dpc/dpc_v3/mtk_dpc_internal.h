@@ -559,7 +559,8 @@ static bool dpc_is_power_on_v2(void);
 static bool mminfra_is_power_on_v2(void);
 static u8 bw_to_level_v3(const u32 total_bw);
 static void dpc_analysis_v2(void);
-static void dpc_hwccf_vote(bool on, struct cmdq_pkt *pkt, const enum mtk_vidle_voter_user user, bool lock);
+static void dpc_hwccf_vote(bool on, struct cmdq_pkt *pkt, const enum mtk_vidle_voter_user user, bool lock,
+			   const u16 gpr);
 static void process_dbg_opt(const char *opt);
 static int dpc_vidle_power_keep_v3(const enum mtk_vidle_voter_user _user);
 static void dpc_vidle_power_release_v3(const enum mtk_vidle_voter_user _user);

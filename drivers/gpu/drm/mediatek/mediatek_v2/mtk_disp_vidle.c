@@ -89,10 +89,9 @@ void mtk_vidle_flag_init(void *_crtc)
 
 	mtk_crtc = to_mtk_crtc(crtc);
 	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
-	priv = crtc->dev->dev_private;
+	priv = vidle_data.drm_priv;
 	if (priv == NULL || output_comp == NULL)
 		return;
-	vidle_data.drm_priv = priv;
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_TOP_EN))
 		mtk_disp_vidle_flag.vidle_en |= DISP_VIDLE_TOP_EN;
@@ -126,10 +125,12 @@ void mtk_vidle_clear_wfe_event(enum mtk_vidle_voter_user user, struct cmdq_pkt *
 
 void mtk_vidle_user_power_keep_by_gce(enum mtk_vidle_voter_user user, struct cmdq_pkt *pkt, u16 gpr)
 {
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(vidle_data.drm_priv->crtc[0]);
+
 	if (disp_dpc_driver.dpc_vidle_power_keep_by_gce == NULL)
 		return;
 
-	disp_dpc_driver.dpc_vidle_power_keep_by_gce(pkt, user, gpr, NULL);
+	disp_dpc_driver.dpc_vidle_power_keep_by_gce(pkt, user, mtk_get_gpr(mtk_crtc, pkt), NULL);
 }
 
 void mtk_vidle_user_power_release_by_gce(enum mtk_vidle_voter_user user, struct cmdq_pkt *pkt)
@@ -838,8 +839,12 @@ void mtk_vidle_debug_cmd_adapter(const char *opt)
 		disp_dpc_driver.dpc_debug_cmd(opt);
 }
 
-void mtk_vidle_wait_init(void)
+void mtk_vidle_wait_init(void *_drm_priv)
 {
+	if (_drm_priv == NULL)
+		return;
+	vidle_data.drm_priv = (struct mtk_drm_private *)_drm_priv;
+
 	DDPFUNC("wait_for_completion +");
 	wait_for_completion(&dpc_registered);
 	DDPFUNC("wait_for_completion -");

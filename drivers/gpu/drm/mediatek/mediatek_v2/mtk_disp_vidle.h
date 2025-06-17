@@ -113,6 +113,6 @@ void mtk_vidle_pre_cg_ctrl(bool en);
 void mtk_vidle_user_power_clean_up_by_gce(struct cmdq_pkt *pkt);
 
 void mtk_vdisp_register(const struct mtk_vdisp_funcs *fp, enum mtk_vdisp_version version);
-void mtk_vidle_wait_init(void);
+void mtk_vidle_wait_init(void *_drm_priv);
 
 #endif
