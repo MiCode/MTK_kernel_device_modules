@@ -18,6 +18,10 @@
 #include <linux/cdev.h>
 #include <linux/kfifo.h>
 #include <linux/workqueue.h>
+#include <linux/platform_device.h>
+#include <linux/of.h>
+#include <linux/of_device.h>
+#include <linux/slab.h>
 
 #include "videogo_driver.h"
 #include "videogo_public.h"
@@ -68,9 +72,9 @@ static struct cdev videogo_cdev;
 
 // RUNNABLE_BOOST/MARGIN_CONTROL
 static int set_runnable_boost_disable;
-static int set_margin_control;
+static int set_margin_ctrl;
 static int set_uclamp_min_ta;
-static int set_util_est_boost;
+static int set_util_est_boost_disable;
 static int set_rt_non_idle_preempt;
 static int set_cpu_pf_ctrl;
 static int set_slc_wce_ctrl;
@@ -81,6 +85,86 @@ static int target_fps_count[MAX_CODEC_TYPE] = {0};
 static int alive_count[MAX_CODEC_TYPE] = {0};
 static int isTranscoding;
 //static struct task_struct *kvideogo_active;
+
+static inline void videogo_read_and_set_bool(struct device_node *np, const char *prop_name, bool *var)
+{
+	u32 val;
+
+	if (of_property_read_u32(np, prop_name, &val) == 0)
+		*var = (val == 1);
+	else
+		mtk_vgo_info("Failed to read property %s\n", prop_name);
+}
+
+static inline void videogo_read_and_set_u32(struct device_node *np, const char *prop_name,
+	u32 *var, bool *flag, int size)
+{
+	int ret;
+
+	if (size > 1) {
+		ret = of_property_read_u32_array(np, prop_name, var, size);
+		if (ret < 0 || (!var[0] && !var[1] && !var[2])) {
+			*flag = false;
+			mtk_vgo_info("Failed to read property %s\n", prop_name);
+		} else
+			*flag = true;
+	} else {
+		ret = of_property_read_u32(np, prop_name, var);
+		if (ret < 0) {
+			*flag = false;
+			mtk_vgo_info("Failed to read property %s\n", prop_name);
+		} else
+			*flag = true;
+	}
+}
+
+static int videogo_probe(struct platform_device *pdev)
+{
+	struct device_node *np = pdev->dev.of_node;
+
+	if (!np) {
+		mtk_vgo_err("Device node is NULL\n");
+		return -ENODEV;
+	}
+
+	/* Create Instance*/
+	videogo_read_and_set_bool(np, "cgroup-colocate", &mtk_vgo_cgroup_colocate);
+	videogo_read_and_set_bool(np, "runnable-boost-enable", &mtk_vgo_runnable_boost_enable);
+
+	/* VP Low Power */
+	videogo_read_and_set_bool(np, "cpu-pf-ctrl", &mtk_vgo_cpu_pf_ctrl);
+	videogo_read_and_set_bool(np, "rt-non-idle-preempt", &mtk_vgo_rt_non_idle_preempt);
+	videogo_read_and_set_bool(np, "runnable-boost-disable", &mtk_vgo_runnable_boost_disable);
+	videogo_read_and_set_bool(np, "slc-wce-ctrl", &mtk_vgo_slc_wce_ctrl);
+	videogo_read_and_set_bool(np, "util-est-boost-disable", &mtk_vgo_util_est_boost_disable);
+	videogo_read_and_set_u32(np, "margin-control", mtk_vgo_margin_ctrl_val, &mtk_vgo_margin_ctrl, 3);
+
+	/* Transcoding */
+	videogo_read_and_set_bool(np, "ct-to-vip", &mtk_vgo_ct_to_vip);
+	videogo_read_and_set_u32(np, "gpu-freq-min-opp", &mtk_vgo_gpu_freq_min_opp, &mtk_vgo_gpu_freq_min, 1);
+	videogo_read_and_set_u32(np, "uclamp-min-ta-val", &mtk_vgo_uclamp_min_ta_val, &mtk_vgo_uclamp_min_ta, 1);
+
+	return 0;
+}
+
+static void videogo_remove(struct platform_device *pdev)
+{
+}
+
+static const struct of_device_id videogo_of_match[] = {
+	{ .compatible = "mediatek,videogo", },
+	{}
+};
+MODULE_DEVICE_TABLE(of, videogo_of_match);
+
+static struct platform_driver videogo_driver = {
+	.probe = videogo_probe,
+	.remove = videogo_remove,
+	.driver = {
+		.name = "videogo",
+		.of_match_table = videogo_of_match,
+	},
+};
 
 static void send_service_info(const char *log_msg, int service_type,
 								int data0, int data1, int data2)
@@ -444,15 +528,17 @@ static int videogo_controller_fn(void *arg)
 								VGO_RUNNABLE_BOOST_DISABLE, 1, 0, 0);
 				set_runnable_boost_disable = 1;
 			}
-			if (!set_margin_control && mtk_vgo_margin_control) {
-				send_service_info("acq margin_control",
-								VGO_MARGIN_CONTROL_0, 1000000, 20, 0);
-				set_margin_control = 1;
+			if (!set_margin_ctrl && mtk_vgo_margin_ctrl) {
+				send_service_info("acq margin_ctrl",
+								VGO_MARGIN_CONTROL_0,
+								mtk_vgo_margin_ctrl_val[0], mtk_vgo_margin_ctrl_val[1],
+								mtk_vgo_margin_ctrl_val[2]);
+				set_margin_ctrl = 1;
 			}
-			if (!set_util_est_boost && mtk_vgo_util_est_boost) {
+			if (!set_util_est_boost_disable && mtk_vgo_util_est_boost_disable) {
 				send_service_info("acq util_est_boost",
 								VGO_UTIL_EST_BOOST, 0, 0, 0);
-				set_util_est_boost = 1;
+				set_util_est_boost_disable = 1;
 			}
 			if (!set_rt_non_idle_preempt && mtk_vgo_rt_non_idle_preempt) {
 				send_service_info("acq rt_non_idle_preempt",
@@ -472,9 +558,9 @@ static int videogo_controller_fn(void *arg)
 				mtk_vgo_debug("acq slc_wce_ctrl");
 				set_slc_wce_ctrl = 1;
 			}
-			mtk_vgo_info("[VP] runnable_disable:%d margin_ctrl:%d util_boost:%d rt_non_idle:%d pf_ctrl:%d slc_wce_ctrl:%d",
-				set_runnable_boost_disable, set_margin_control,
-				set_util_est_boost, set_rt_non_idle_preempt,
+			mtk_vgo_info("[VP] runnable_disable:%d margin_ctrl:%d util_boost_disable:%d rt_non_idle:%d pf_ctrl:%d slc_wce_ctrl:%d",
+				set_runnable_boost_disable, set_margin_ctrl,
+				set_util_est_boost_disable, set_rt_non_idle_preempt,
 				set_cpu_pf_ctrl, set_slc_wce_ctrl);
 		} else {
 			if (set_runnable_boost_disable) {
@@ -482,15 +568,15 @@ static int videogo_controller_fn(void *arg)
 								VGO_RUNNABLE_BOOST_DISABLE, -1, 0, 0);
 				set_runnable_boost_disable = 0;
 			}
-			if (set_margin_control) {
-				send_service_info("rel margin_control",
+			if (set_margin_ctrl) {
+				send_service_info("rel margin_ctrl",
 								VGO_MARGIN_CONTROL_0, -1, 0, 0);
-				set_margin_control = 0;
+				set_margin_ctrl = 0;
 			}
-			if (set_util_est_boost) {
-				send_service_info("rel util_est_boost",
+			if (set_util_est_boost_disable) {
+				send_service_info("rel util_est_boost_disable",
 								VGO_UTIL_EST_BOOST, -1, 0, 0);
-				set_util_est_boost = 0;
+				set_util_est_boost_disable = 0;
 			}
 			if (set_rt_non_idle_preempt) {
 				send_service_info("rel rt_non_idle_preempt",
@@ -545,10 +631,9 @@ static int videogo_controller_fn(void *arg)
 			}
 		}
 
-		mtk_vgo_debug("runnable_disable:%d margin_ctrl:%d "
-			"util_boost:%d rt_non_idle:%d uclamp_min:%d gpu_min:%d ta_vip:%d",
-			set_runnable_boost_disable, set_margin_control,
-			set_util_est_boost, set_rt_non_idle_preempt,
+		mtk_vgo_debug("runnable_disable:%d margin_ctrl:%d util_boost_disable:%d rt_non_idle:%d uclamp_min:%d gpu_min:%d ta_vip:%d",
+			set_runnable_boost_disable, set_margin_ctrl,
+			set_util_est_boost_disable, set_rt_non_idle_preempt,
 			set_uclamp_min_ta, set_gpu_freq_min, set_ct_to_vip);
 	}
 	return 0;
@@ -626,6 +711,10 @@ static int __init videogo_init(void)
 
 	mtk_vgo_info("videogo: _init");
 
+	ret = platform_driver_register(&videogo_driver);
+	if (ret)
+		mtk_vgo_err("Filed to register videogo driver: %d", ret);
+
 	ret = register_chrdev(0, DEVICE_NAME, &fops);
 	if (ret < 0) {
 		mtk_vgo_err("Failed to register character device:%s", DEVICE_NAME);
@@ -681,7 +770,6 @@ static int __init videogo_init(void)
 
 	return 0;
 }
-module_init(videogo_init);
 
 /*
  * driver exit point
@@ -727,7 +815,11 @@ static void videogo_exit(void)
 	class_destroy(videogo_class);
 	cdev_del(&videogo_cdev);
 	unregister_chrdev(major_num, DEVICE_NAME);
+
+	platform_driver_unregister(&videogo_driver);
 }
+
+module_init(videogo_init);
 module_exit(videogo_exit);
 
 MODULE_DESCRIPTION("MEDIATEK Module VIDEOGO driver");
