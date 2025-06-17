@@ -16768,7 +16768,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			tbufdump-sz = <0x400>;
 			up-coredump-buf-sz = <0x1d0000>;
 			ce-coredump-buf-sz = <0x010000>;
-			regdump-buf-sz = <0x18000>;
+			regdump-buf-sz = <0x20000>;
 			mdla-coredump-buf-sz = <0x0>;
 			mvpu-coredump-buf-sz = <0x0>;
 			mvpu-sec-coredump-buf-sz = <0x0>;
