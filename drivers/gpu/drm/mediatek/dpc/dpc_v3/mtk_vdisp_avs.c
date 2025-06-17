@@ -5,6 +5,7 @@
 
 #include <linux/clk.h>
 #include <linux/delay.h>
+#include <linux/sched.h>
 #include <linux/device.h>
 #include <linux/io.h>
 #include <linux/ktime.h>
@@ -43,6 +44,7 @@ static struct vdisp_mmup_sram g_vdisp_mmup_sram;
 static struct notifier_block g_vdisp_vcp_nb;
 static uint32_t *g_vdisp_efuse_val;
 static unsigned long g_vdisp_max_freq = 728000000;
+static uint32_t *g_vdisp_cal;
 
 static void mtk_vdisp_set_mmup_sram_ofst(uint32_t ofst)
 {
@@ -375,31 +377,35 @@ int mtk_vdisp_up_analysis(void)
 	char msg[512] = {0};
 	int i = 0, ret = 0, idx_temp = 0, retry_time = 0, written = 0;
 	uint32_t hist[VDISP_BUCK_HIST_REC_CNT*VDISP_BUCK_HIST_OBJ_CNT+1] = {0};
-	uint32_t *vdisp_cal = NULL;
+
+	// do nothing if not allow sleeping
+	if(in_interrupt() || irqs_disabled() || !preemptible())
+		return 0;
 
 	if (!g_vdisp_up_data || !g_vdisp_up_data->buck_hist_support) {
 		VDISPDBG("buck hist not support");
 		return -1;
 	}
 
-	vdisp_cal = kcalloc(vdisp_opp_num, sizeof(uint32_t), GFP_KERNEL);
-	if (!vdisp_cal)
+	if (!g_vdisp_cal) {
+		VDISPDBG("g_vdisp_cal not init");
 		return -1;
+	}
 
 	ret = mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_RST);
 	if (ret) {
 		VDISPDBG("request mmdvfs rst fail");
-		goto end;
+		return ret;
 	}
 	if (!vcp_is_alive) {
 		VDISPDBG("vcp is not alive, do nothing");
 		mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMDVFS_RST);
-		goto end;
+		return ret;
 	}
 
 	/* copy mmup info to kernel local variable */
 	for (i = 0; i < vdisp_opp_num; i++)
-		vdisp_cal[i] = VDISP_CAL(i);
+		g_vdisp_cal[i] = VDISP_CAL(i);
 	do {
 		if (retry_time >= 3) {
 			VDISPERR("buck hist read fail, retry_time(%d)", retry_time);
@@ -416,7 +422,7 @@ int mtk_vdisp_up_analysis(void)
 	if (idx_temp >= VDISP_BUCK_HIST_REC_CNT) {
 		VDISPERR("errornous idx(%d)", idx_temp);
 		ret = -1;
-		goto end;
+		return ret;
 	}
 
 	/* print mmup info */
@@ -432,7 +438,7 @@ int mtk_vdisp_up_analysis(void)
 	written = scnprintf(msg, 512, "vdisp_cal:");
 	for (i = 0; i < vdisp_opp_num; i++)
 		written += scnprintf(msg + written, 512 - written,
-			"[%d](%d) ", i, vdisp_cal[i]);
+			"[%d](%d) ", i, g_vdisp_cal[i]);
 	mtk_dprec_logger_pr(DPREC_LOGGER_DUMP, "%s\n", msg);
 
 	mtk_dprec_logger_pr(DPREC_LOGGER_DUMP,
@@ -450,8 +456,6 @@ int mtk_vdisp_up_analysis(void)
 		i = (i + 1) % VDISP_BUCK_HIST_REC_CNT;
 	} while (i != idx_temp);
 
-end:
-	kfree(vdisp_cal);
 	return ret;
 }
 
@@ -742,6 +746,8 @@ int mtk_vdisp_avs_probe(struct platform_device *pdev)
 	ret = dev_pm_opp_get_opp_count(dev);
 	if (ret > 0) {
 		vdisp_opp_num = ret;
+		if (!g_vdisp_cal)
+			g_vdisp_cal = kcalloc(vdisp_opp_num, sizeof(uint32_t), GFP_KERNEL);
 		VDISPDBG("get vdisp_opp_num(%d)", vdisp_opp_num);
 	}
 

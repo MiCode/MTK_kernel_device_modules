@@ -2504,8 +2504,8 @@ void mtk_drm_crtc_analysis(struct drm_crtc *crtc)
 			}
 		}
 
-//		if (vdisp_func.analysis)
-//			vdisp_func.analysis();
+		if (vdisp_func.analysis)
+			vdisp_func.analysis();
 
 		break;
 	case MMSYS_MT6897:
@@ -9498,6 +9498,8 @@ static int _mtk_crtc_cmdq_smi_info_dump(void *data)
 		mtk_smi_dbg_hang_detect("disp_underrun");
 		mmqos_hrt_dump();
 		mmdvfs_debug_status_dump(NULL);
+		if (vdisp_func.analysis)
+			vdisp_func.analysis();
 		atomic_set(&mtk_crtc->smi_info_dump_event, 0);
 
 		if (kthread_should_stop())
