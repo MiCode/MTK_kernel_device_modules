@@ -9447,6 +9447,7 @@
 			event-ir-mml-stop = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_MML_STOP>;
 			event-ir-eof =
 				/bits/ 16 <CMDQ_EVENT_MMSYS_DISP_RDMA0_TARGET_LINE_ENG_EVENT>;
+			racing-enable;
 			event-racing-pipe0 = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_PIPE0>;
 			event-racing-pipe1 = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_PIPE1>;
 			event-racing-pipe1-next = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_PIPE1_NEXT>;
@@ -9544,7 +9545,7 @@
 			clock-names = "hdr0";
 			comp-ids = <MML_HDR0>;
 			comp-names = "hdr0";
-			event_vcp_readback_done = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_VCP_READBACK>;
+			event-vcp-readback-done = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_VCP_READBACK>;
 		};
 
 		mml_hdr1: mml-hdr1@1f806000 {
@@ -9554,7 +9555,7 @@
 			clock-names = "hdr1";
 			comp-ids = <MML_HDR1>;
 			comp-names = "hdr1";
-			event_vcp_readback_done = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_VCP_READBACK>;
+			event-vcp-readback-done = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_VCP_READBACK>;
 		};
 
 		mml_aal0: mml-aal0@1f807000 {
@@ -9567,7 +9568,7 @@
 			gpr_poll = /bits/ 8 <GCE_GPR_R08>;
 			sram-curve-base = /bits/ 32 <4608>;
 			sram-his-base = /bits/ 32 <1536>;
-			event_vcp_readback_done = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_VCP_READBACK>;
+			event-vcp-readback-done = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_VCP_READBACK>;
 		};
 
 		mml_aal1: mml-aal1@1f808000 {
@@ -9580,7 +9581,7 @@
 			gpr_poll = /bits/ 8 <GCE_GPR_R09>;
 			sram-curve-base = /bits/ 32 <4608>;
 			sram-his-base = /bits/ 32 <1536>;
-			event_vcp_readback_done = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_VCP_READBACK>;
+			event-vcp-readback-done = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_VCP_READBACK>;
 		};
 
 		mml_rsz0: mml-rsz0@1f809000 {
