@@ -793,7 +793,6 @@ MODULE_DEVICE_TABLE(of, msdc_of_ids);
 
 static const u32 msdc_ints_err = MSDC_INT_RSPCRCERR | MSDC_INT_CMDTMO |
 									MSDC_INT_DATCRCERR | MSDC_INT_DATTMO;
-static bool ra_fixed;
 static int  rw_times;
 
 static void sdr_set_bits(void __iomem *reg, u32 bs)
@@ -1963,14 +1962,14 @@ static bool modify_ra_in_bottom(struct mmc_request *mrq)
 		return false;
 
 	pre_ra_pages = req->q->disk->bdi->ra_pages;
+	if (pre_ra_pages == RA_FOR_PERF)
+		return true;
 	pr_info("[ra_in_fix] before fix ra = %lu\n", pre_ra_pages);
 	req->q->disk->bdi->ra_pages = RA_FOR_PERF;
 	pr_info("[ra_in_fix] after fix ra = %lu  request_queue = %p  disk = %p bdi = %p\n",
 				req->q->disk->bdi->ra_pages, req->q, req->q->disk, req->q->disk->bdi);
 
-	if (pre_ra_pages == RA_FOR_PERF)
-		return true;
-	return false;
+	return true;
 }
 
 static bool mmc_op_read(u32 opcode)
@@ -2028,14 +2027,13 @@ static void msdc_ops_request(struct mmc_host *mmc, struct mmc_request *mrq)
 		mmc_mtk_biolog_check(mmc, 1);
 	}
 #endif
-	if (ra_fixed == false) {
-		if ((mmc_op_write(mrq->cmd->opcode) || mmc_op_read(mrq->cmd->opcode))
+
+	if ((mmc_op_write(mrq->cmd->opcode) || mmc_op_read(mrq->cmd->opcode))
 		&& mmc_card_sd(mmc->card) && (rw_times < EARLY_RW)) {
-			rw_times++;
-			pr_info("[ra_count_r] %d cmd = %d\n", rw_times, mrq->cmd->opcode);
-			if (modify_ra_in_bottom(mrq))
-				ra_fixed = true;
-		}
+		rw_times++;
+		pr_info("[ra_count_r] %d cmd = %d\n", rw_times, mrq->cmd->opcode);
+		if (!modify_ra_in_bottom(mrq))
+			pr_info("[ra_count_r] modify ra fail\n");
 	}
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MMC_MTK_SW_CQHCI)
@@ -3538,7 +3536,6 @@ end:
 		mmc->trigger_card_event != false) {
 		if (host->card_inserted == 0 && host->id == MSDC_SD) {
 			rw_times = 0;
-			ra_fixed = false;
 		}
 		pr_info(
 			"%s:card status:%s block bad card<%d> trigger card event<%d>",
