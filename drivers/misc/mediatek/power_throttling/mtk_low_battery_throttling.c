@@ -524,63 +524,6 @@ static int lbat_thd_to_lv(unsigned int thd, unsigned int temp_stage, enum LOW_BA
 	return level;
 }
 
-static int get_temp_stage(void)
-{
-	struct power_supply *psy;
-	union power_supply_propval val;
-	int ret, temp, temp_stage = 0, temp_thd;
-	static int last_temp = MAX_INT;
-	bool loop;
-
-	if (!lbat_data)
-		return temp_stage;
-
-	if (!lbat_data->psy)
-		return temp_stage;
-
-	psy = lbat_data->psy;
-
-	if (strcmp(psy->desc->name, "battery") != 0)
-		return temp_stage;
-
-	ret = power_supply_get_property(psy, POWER_SUPPLY_PROP_TEMP, &val);
-	if (ret)
-		return temp_stage;
-
-	temp = val.intval / 10;
-#ifdef LBAT2_ENABLE
-	temp = val.intval; // because of battery bug, remove me if battery driver fix
-#endif
-	lbat_data->lbat_mbrain_info.bat_temp = temp;
-	temp_stage = lbat_data->temp_cur_stage;
-
-	do {
-		loop = false;
-		if (temp < last_temp) {
-			if (temp_stage < lbat_data->temp_max_stage) {
-				temp_thd = lbat_data->temp_thd[temp_stage];
-				if (temp < temp_thd) {
-					temp_stage++;
-					loop = true;
-				}
-			}
-		} else if (temp > last_temp) {
-			if (temp_stage > 0) {
-				temp_thd = lbat_data->temp_thd[temp_stage-1];
-				if (temp >= temp_thd) {
-					temp_stage--;
-					loop = true;
-				}
-			}
-		}
-	} while (loop);
-
-	last_temp = temp;
-
-	return temp_stage;
-
-}
-
 static int get_aging_stage(enum LOW_BATTERY_INTR_TAG user)
 {
 	int cycle = 0, i, max_stage;
@@ -907,7 +850,7 @@ static ssize_t low_battery_modify_threshold_store(struct device *dev,
 	unsigned int volt_l[LBAT_PMIC_MAX_LEVEL], volt_h[LBAT_PMIC_MAX_LEVEL];
 	int intr_no;
 	struct lbat_thd_tbl *thd_info;
-	int temp_stage, aging_stage, lvsys_aging_stage;
+	int aging_stage, lvsys_aging_stage;
 	u32 thd_volts_tbl[12];
 
 	if (!lbat_data) {
@@ -979,18 +922,18 @@ static ssize_t low_battery_modify_threshold_store(struct device *dev,
 		memcpy(lbat_table_data->tables[lbat_table_data->selected_table].high,
 			thd_volts_tbl, sizeof(thd_volts_tbl));
 	}
-	temp_stage = get_temp_stage();
+
 	aging_stage = get_aging_stage(INTR_1);
 	lvsys_aging_stage = get_aging_stage(LVSYS_INT);
-	thd_info = &lbat_data->lbat_thd[intr_no-1][temp_stage];
+	thd_info = &lbat_data->lbat_thd[intr_no-1][lbat_data->temp_reg_stage];
 
-	dev_notice(dev, "temp_stage: %d, aging_stage: %d\n", temp_stage, aging_stage);
+	dev_notice(dev, "temp_stage: %d, aging_stage: %d\n", lbat_data->temp_reg_stage, aging_stage);
 
-	if ((temp_stage <= lbat_data->temp_max_stage) ||
+	if ((lbat_data->temp_reg_stage <= lbat_data->temp_max_stage) ||
 	(aging_stage <= lbat_data->aging_max_stage) ||
 	(lvsys_aging_stage <= lbat_data->lvsys_aging_max_stage)) {
 		if (!lbat_data->lbat_thd_modify)
-			update_thresholds(temp_stage, aging_stage, lvsys_aging_stage);
+			update_thresholds(lbat_data->temp_reg_stage, aging_stage, lvsys_aging_stage);
 	}
 
 	lbat_data->lbat_thd_modify = 0;
@@ -1036,7 +979,7 @@ static ssize_t lvsys_modify_threshold_store(struct device *dev,
 	int volt_t_size = 0, j = 0, i = 0, len = 0;
 	u32 volt_l[LBAT_PMIC_MAX_LEVEL * TEMP_MAX_STAGE_NUM], volt_h[LBAT_PMIC_MAX_LEVEL * TEMP_MAX_STAGE_NUM];
 	unsigned int table_idx;
-	int temp_stage, aging_stage, lvsys_aging_stage;
+	int aging_stage, lvsys_aging_stage;
 	struct lbat_thd_tbl *thd_info;
 
 	if (switch_pt == false){
@@ -1096,18 +1039,18 @@ static ssize_t lvsys_modify_threshold_store(struct device *dev,
 		memcpy(lvsys_table_data->tables[table_idx].high, volt_h, lbat_data->lvsys_volt_size *
 			(lbat_data->temp_max_stage + 1) * sizeof(u32));
 	}
-	temp_stage = get_temp_stage();
+
 	aging_stage = get_aging_stage(INTR_1);
 	lvsys_aging_stage = get_aging_stage(LVSYS_INT);
-	thd_info = &lbat_data->lbat_thd[LVSYS_INT][temp_stage];
+	thd_info = &lbat_data->lbat_thd[LVSYS_INT][lbat_data->temp_reg_stage];
 
-	dev_notice(dev, "temp_stage: %d, aging_stage: %d\n", temp_stage, aging_stage);
+	dev_notice(dev, "temp_stage: %d, aging_stage: %d\n", lbat_data->temp_reg_stage, aging_stage);
 
-	if ((temp_stage <= lbat_data->temp_max_stage) ||
+	if ((lbat_data->temp_reg_stage <= lbat_data->temp_max_stage) ||
 	(aging_stage <= lbat_data->aging_max_stage) ||
 	(lvsys_aging_stage <= lbat_data->lvsys_aging_max_stage)) {
 		if (table_idx == lvsys_table_data->selected_table)
-			update_thresholds(temp_stage, aging_stage, lvsys_aging_stage);
+			update_thresholds(lbat_data->temp_reg_stage, aging_stage, lvsys_aging_stage);
 	}
 
 	return size;
@@ -1851,7 +1794,6 @@ static void switch_voltage_table(unsigned int table, enum LOW_BATTERY_USER_TAG u
 	struct lbat_thl_priv *priv = lbat_data;
 	u32 *volt_thd, *lvsys_volt_thd;
 	int volt_size, ret, i;
-	int temp_stage = get_temp_stage();
 	struct lbat_thd_tbl *thd_info;
 
 	if (user == LBAT_INTR_1){
@@ -1873,14 +1815,12 @@ static void switch_voltage_table(unsigned int table, enum LOW_BATTERY_USER_TAG u
 
 #ifdef LBAT2_ENABLE
 		ret = fill_thd_info(NULL, priv, volt_thd, INTR_2, LBAT_INTR_2);
-		thd_info = &lbat_data->lbat_thd[INTR_2][temp_stage];
-		lbat_data->temp_reg_stage = temp_stage;
+		thd_info = &lbat_data->lbat_thd[INTR_2][lbat_data->temp_reg_stage];
 		lbat_user_modify_thd_ext_locked(lbat_data->lbat_pt[INTR_2],
 				thd_info->ag_thd_volts, thd_info->thd_volts_size);
 #else
 		ret = fill_thd_info(NULL, priv, volt_thd, INTR_1, LBAT_INTR_1);
-		thd_info = &lbat_data->lbat_thd[INTR_1][temp_stage];
-		lbat_data->temp_reg_stage = temp_stage;
+		thd_info = &lbat_data->lbat_thd[INTR_1][lbat_data->temp_reg_stage];
 		lbat_user_modify_thd_ext_locked(lbat_data->lbat_pt[INTR_1],
 				thd_info->ag_thd_volts, thd_info->thd_volts_size);
 #endif
@@ -1915,9 +1855,9 @@ static void switch_voltage_table(unsigned int table, enum LOW_BATTERY_USER_TAG u
 			return;
 		mutex_lock(&exe_thr_lock);
 		for (i = 0; i < lbat_data->lvsys_volt_size; i++) {
-			lvsys_volt_thd[i * 2] = lvsys_table_data->tables[table].high[temp_stage *
+			lvsys_volt_thd[i * 2] = lvsys_table_data->tables[table].high[lbat_data->temp_reg_stage *
 											lbat_data->lvsys_volt_size + i];
-			lvsys_volt_thd[i * 2 + 1] = lvsys_table_data->tables[table].low[temp_stage *
+			lvsys_volt_thd[i * 2 + 1] = lvsys_table_data->tables[table].low[lbat_data->temp_reg_stage *
 											lbat_data->lvsys_volt_size + i];
 		}
 		mutex_unlock(&exe_thr_lock);
