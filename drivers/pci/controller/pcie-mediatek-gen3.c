@@ -435,6 +435,7 @@ struct mtk_pcie_port {
 	bool soft_off;
 	bool dump_cfg;
 	bool full_debug_dump;
+	bool skip_cfg_dump;
 	bool aer_detect;
 	bool skip_suspend;
 	bool rpm;
@@ -453,6 +454,7 @@ struct mtk_pcie_port {
 	bool rc_hw_mode_en;
 	u32 saved_l1ss_ctl1;
 	u32 saved_l1ss_ctl2;
+	u8 ext_pos;
 	DECLARE_BITMAP(msi_irq_in_use, PCIE_MSI_IRQS_NUM);
 };
 
@@ -502,7 +504,7 @@ static int mtk_pcie_config_read(struct pci_bus *bus, unsigned int devfn,
 		return 0;
 
 	if (port->dump_cfg && bus->number) {
-		dev_info(port->dev, "Dump config access, bus:%#x,devfn:%#x, where:%#x, size:%#x\n",
+		dev_info(port->dev, "Dump config access, bus:%#x, devfn:%#x, where:%#x, size:%#x\n",
 			 bus->number, devfn, where, size);
 		dump_stack();
 	}
@@ -525,16 +527,20 @@ static int mtk_pcie_config_read(struct pci_bus *bus, unsigned int devfn,
 		writel_relaxed(PCIE_RC_CFG, port->base + PCIE_CFGNUM_REG);
 		reg = readl_relaxed(port->base + PCIE_AER_CO_STATUS);
 		if (reg & (AER_CO_RE | PCI_ERR_COR_REP_ROLL)) {
+			port->skip_cfg_dump = true;
 			mtk_pcie_dump_link_info(port->port_num);
 			mtk_pcie_disable_data_trans(port->port_num);
 			dev_info(port->dev, "PCIe Correctable Error:%#x detected!\n", reg);
+			port->skip_cfg_dump = false;
 		}
 
 		reg = readl_relaxed(port->base + PCIE_AER_UNC_STATUS);
 		if ((reg & PCI_ERR_UNC_COMP_TIME) && port->aer_detect) {
+			port->skip_cfg_dump = true;
 			mtk_pcie_dump_link_info(port->port_num);
 			mtk_pcie_disable_data_trans(port->port_num);
 			dev_info(port->dev, "PCIe CPLTO detected!\n");
+			port->skip_cfg_dump = false;
 		}
 	}
 
@@ -550,7 +556,7 @@ static int mtk_pcie_config_write(struct pci_bus *bus, unsigned int devfn,
 		return 0;
 
 	if (port->dump_cfg && bus->number) {
-		dev_info(port->dev, "Dump config access, bus:%#x,devfn:%#x, where:%#x, size:%#x, val:%#x\n",
+		dev_info(port->dev, "Dump config access, bus:%#x, devfn:%#x, where:%#x, size:%#x, val:%#x\n",
 			 bus->number, devfn, where, size, val);
 		dump_stack();
 	}
@@ -559,6 +565,13 @@ static int mtk_pcie_config_write(struct pci_bus *bus, unsigned int devfn,
 
 	if (size <= 2)
 		val <<= (where & 0x3) * 8;
+
+	if ((port->port_num == 0) && (bus->number == 0) && (where == 0x88)) {
+		dev_info(port->dev, "PCIe config write devctl, bus:%#x, devfn:%#x, where:%#x, size:%#x, val:%#x\n",
+			 bus->number, devfn, where, size, val);
+		if ((val & PCI_EXP_DEVCTL_PAYLOAD) != 0x40)
+			dump_stack();
+	}
 
 	return pci_generic_config_write32(bus, devfn, where, 4, val);
 }
@@ -1908,6 +1921,9 @@ static int mtk_pcie_probe(struct platform_device *pdev)
 	if (!port->pcidev)
 		port->pcidev = pci_get_slot(host->bus, 0);
 
+	if (port->pcidev)
+		port->ext_pos = pci_find_capability(port->pcidev, PCI_CAP_ID_EXP);
+
 	if (port->rpm)
 		mtk_pcie_enable_host_bridge_rpm(port);
 	else if (port->pcidev->bridge_d3)
@@ -2084,7 +2100,10 @@ static void mtk_pcie_mac_dbg_read_bus(struct mtk_pcie_port *port, u32 bus)
 /* Dump PCIe MAC signal*/
 static void mtk_pcie_monitor_mac(struct mtk_pcie_port *port)
 {
-	u32 val;
+	u32 val = 0;
+	u32 command = 0xffffffff;
+	u32 devctl = 0xffffffff;
+	u32 devctl2 = 0xffffffff;
 
 	/* Dump the debug table probe when AER event occurs */
 	val = readl_relaxed(port->base + PCIE_INT_STATUS_REG);
@@ -2126,7 +2145,14 @@ static void mtk_pcie_monitor_mac(struct mtk_pcie_port *port)
 		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0xb0, 0x4e, 0x0d, 0x40));
 	}
 
-	pr_info("Port%d, ltssm reg:%#x, link sta:%#x, power sta:%#x, LP ctrl:%#x, DIS LP STS0:%#x, DIS LP STS1:%#x, IP basic sta:%#x, int sta:%#x, msi set0 sta: %#x, msi set1 sta: %#x, axi err add:%#x, axi err info:%#x, spm res ack=%#x, adt pending sta:=%#x, err addr_l=%#x, err addr_h=%#x, err info=%#x, IF_CTRL=%#x, tx_credit0=%#x, tx_credit1=%#x, phy err=%#x, tag_id=%#x\n",
+	/* Add config space dump */
+	if (port->ext_pos && port->pcidev && !port->skip_cfg_dump) {
+		pci_read_config_dword(port->pcidev, PCI_COMMAND, &command);
+		pci_read_config_dword(port->pcidev, port->ext_pos + PCI_EXP_DEVCTL, &devctl);
+		pci_read_config_dword(port->pcidev, port->ext_pos + PCI_EXP_DEVCTL2, &devctl2);
+	}
+
+	pr_info("Port%d, ltssm reg:%#x, link sta:%#x, power sta:%#x, LP ctrl:%#x, DIS LP STS0:%#x, DIS LP STS1:%#x, IP basic sta:%#x, int sta:%#x, msi set0 sta: %#x, msi set1 sta: %#x, axi err add:%#x, axi err info:%#x, spm res ack=%#x, adt pending sta:=%#x, err addr_l=%#x, err addr_h=%#x, err info=%#x, IF_CTRL=%#x, tx_credit0=%#x, tx_credit1=%#x, phy err=%#x, tag_id=%#x, command=%#x, devctl=%#x, devctl2=%#x\n",
 		port->port_num,
 		readl_relaxed(port->base + PCIE_LTSSM_STATUS_REG),
 		readl_relaxed(port->base + PCIE_LINK_STATUS_REG),
@@ -2152,7 +2178,8 @@ static void mtk_pcie_monitor_mac(struct mtk_pcie_port *port)
 		readl_relaxed(port->base + PCIE_TX_CREDIT_0_REG),
 		readl_relaxed(port->base + PCIE_TX_CREDIT_1_REG),
 		readl_relaxed(port->base + PHY_ERR_DEBUG_LANE0),
-		readl_relaxed(port->base + PCIE_ULTRA_SETTING_REG));
+		readl_relaxed(port->base + PCIE_ULTRA_SETTING_REG),
+		command, devctl, devctl2);
 
 	/* Clear LTSSM record info after dump */
 	writel_relaxed(PCIE_LTSSM_STATE_CLEAR, port->base + PCIE_LTSSM_STATUS_REG);
