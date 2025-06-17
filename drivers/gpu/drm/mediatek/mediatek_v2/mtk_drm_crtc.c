@@ -2499,8 +2499,8 @@ void mtk_drm_crtc_analysis(struct drm_crtc *crtc)
 			}
 		}
 
-		if (vdisp_func.analysis)
-			vdisp_func.analysis();
+//		if (vdisp_func.analysis)
+//			vdisp_func.analysis();
 
 		break;
 	case MMSYS_MT6897:
