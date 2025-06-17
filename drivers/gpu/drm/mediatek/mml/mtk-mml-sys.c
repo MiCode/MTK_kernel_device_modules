@@ -1644,14 +1644,30 @@ static s32 mml_sys_comp_clk_enable(struct mml_comp *comp)
 static s32 mml_sys_comp_clk_disable(struct mml_comp *comp,
 				    bool dpc)
 {
-	int ret;
+	struct mml_sys *sys = comp_to_sys(comp);
+	u32 i;
 
+	comp->clk_cnt--;
+	if (comp->clk_cnt > 0)
+		return 0;
+	if (comp->clk_cnt < 0) {
+		mml_err("%s comp %u %s cnt %d",
+			__func__, comp->id, comp->name, comp->clk_cnt);
+		return -EINVAL;
+	}
 
-	/* original clk enable */
-	ret = mml_comp_clk_disable(comp, dpc);
-	if (ret < 0)
-		return ret;
-	mml_mmp(clk_disable, MMPROFILE_FLAG_PULSE, comp->id, 0);
+	if (sys->data->irq) {
+		/* clear sys irq en to make sure mml hw does not burst after clock off */
+		writel(0, comp->base + SYS_MDP_IRQ);
+	}
+
+	mml_mmp(clk_disable, MMPROFILE_FLAG_START, comp->id, 0);
+	for (i = 0; i < ARRAY_SIZE(comp->clks); i++) {
+		if (IS_ERR_OR_NULL(comp->clks[i]))
+			break;
+		clk_disable_unprepare(comp->clks[i]);
+	}
+	mml_mmp(clk_disable, MMPROFILE_FLAG_END, comp->id, 0);
 
 	return 0;
 }

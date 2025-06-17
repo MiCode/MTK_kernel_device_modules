@@ -5,6 +5,7 @@
  */
 
 #include <linux/component.h>
+#include <linux/clk.h>
 #include <linux/module.h>
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
@@ -445,6 +446,37 @@ static const struct mml_comp_config_ops mutex_config_ops_mt6993_mmld = {
 	.isr_prepare = mutex_isr_prepare,
 };
 
+static s32 mutex_clk_disable(struct mml_comp *comp, bool dpc)
+{
+	struct mml_mutex *mutex = comp_to_mutex(comp);
+	u32 i;
+
+	comp->clk_cnt--;
+	if (comp->clk_cnt > 0)
+		return 0;
+	if (comp->clk_cnt < 0) {
+		mml_err("%s comp %u %s cnt %d",
+			__func__, comp->id, comp->name, comp->clk_cnt);
+		return -EINVAL;
+	}
+
+	if (mml_irq && mutex->irq) {
+		/* always clear irq status and irq en */
+		writel(0, comp->base + MUTEX_INTEN);
+		writel(0, comp->base + MUTEX_INSTA);
+	}
+
+	mml_mmp(clk_disable, MMPROFILE_FLAG_START, comp->id, (mml_irq && mutex->irq));
+	for (i = 0; i < ARRAY_SIZE(comp->clks); i++) {
+		if (IS_ERR_OR_NULL(comp->clks[i]))
+			break;
+		clk_disable_unprepare(comp->clks[i]);
+	}
+	mml_mmp(clk_disable, MMPROFILE_FLAG_END, comp->id, 0);
+
+	return 0;
+}
+
 static void mutex_taskdone(struct mml_comp *comp, struct mml_task *task,
 	struct mml_comp_config *ccfg)
 {
@@ -491,7 +523,7 @@ static void mutex_taskdone(struct mml_comp *comp, struct mml_task *task,
 
 static const struct mml_comp_hw_ops mutex_hw_ops = {
 	.clk_enable = mml_comp_clk_enable,
-	.clk_disable = mml_comp_clk_disable,
+	.clk_disable = mutex_clk_disable,
 	.task_done = mutex_taskdone,
 };
 

@@ -5,6 +5,7 @@
  */
 
 #include <linux/component.h>
+#include <linux/clk.h>
 #include <linux/dma-mapping.h>
 #include <linux/ioport.h>
 #include <linux/module.h>
@@ -2311,6 +2312,37 @@ static void rrot_init_frame_done_event(struct mml_comp *comp, u32 event)
 		rrot->event_eof = event;
 }
 
+static s32 rrot_clk_disable(struct mml_comp *comp, bool dpc)
+{
+	struct mml_comp_rrot *rrot = comp_to_rrot(comp);
+	u32 i;
+
+	comp->clk_cnt--;
+	if (comp->clk_cnt > 0)
+		return 0;
+	if (comp->clk_cnt < 0) {
+		mml_err("%s comp %u %s cnt %d",
+			__func__, comp->id, comp->name, comp->clk_cnt);
+		return -EINVAL;
+	}
+
+	if (mml_irq && rrot->irq) {
+		/* always clear irq status and irq en */
+		writel(0, comp->base + RROT_INTERRUPT_ENABLE);
+		writel(0, comp->base + RROT_INTERRUPT_STATUS);
+	}
+
+	mml_mmp(clk_disable, MMPROFILE_FLAG_START, comp->id, (mml_irq && rrot->irq));
+	for (i = 0; i < ARRAY_SIZE(comp->clks); i++) {
+		if (IS_ERR_OR_NULL(comp->clks[i]))
+			break;
+		clk_disable_unprepare(comp->clks[i]);
+	}
+	mml_mmp(clk_disable, MMPROFILE_FLAG_END, comp->id, 0);
+
+	return 0;
+}
+
 static u32 rrot_datasize_get(struct mml_task *task, struct mml_comp_config *ccfg)
 {
 	struct rrot_frame_data *rrot_frm = rrot_frm_data(ccfg);
@@ -2560,7 +2592,7 @@ out:
 static const struct mml_comp_hw_ops rrot_hw_ops = {
 	.init_frame_done_event = &rrot_init_frame_done_event,
 	.clk_enable = &mml_comp_clk_enable,
-	.clk_disable = &mml_comp_clk_disable,
+	.clk_disable = &rrot_clk_disable,
 	.qos_datasize_get = &rrot_datasize_get,
 	.qos_stash_bw_get = &rrot_qos_stash_bw_get,
 	.qos_format_get = &rrot_format_get,
