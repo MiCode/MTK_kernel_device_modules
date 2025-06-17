@@ -270,6 +270,7 @@ enum ostdl_latency {
 	OSTDL_1,
 	OSTDL_2,
 	OSTDL_3,
+	OSTDL_0_75,
 };
 
 u32 r_hrt_ostdl = OSTDL_1_5;
@@ -1412,19 +1413,22 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 					value = SHIFT_ROUND(
 						icc_to_MBps(src->v2_mix_bw),
 						larb_port_node->bw_ratio - 1);
+				if (!larb_port_node->is_write && r_srt_ostdl == OSTDL_0_75)
+					value = SHIFT_ROUND(
+						icc_to_MBps(src->v2_mix_bw) * 3,
+						larb_port_node->bw_ratio + 2);
 			}
 		} else {
 			src->v2_max_ostd = false;
 		}
 		if (value > mmqos->max_ratio) {
-			if (value > mmqos->max_ratio)
-				dev_notice(larb_node->larb_dev,
-					"larb=%d port=%d avg_bw:%d peak_bw:%d mix_bw:%d ostd=%#x\n",
-					MTK_M4U_TO_LARB(src->id), MTK_M4U_TO_PORT(src->id),
-					(int)icc_to_MBps(larb_port_node->base->icc_node->avg_bw),
-					(int)icc_to_MBps(larb_port_node->base->icc_node->peak_bw),
-					(int)icc_to_MBps(src->v2_mix_bw),
-					value);
+			dev_notice(larb_node->larb_dev,
+				"larb=%d port=%d avg_bw:%d peak_bw:%d mix_bw:%d ostd=%#x\n",
+				MTK_M4U_TO_LARB(src->id), MTK_M4U_TO_PORT(src->id),
+				(int)icc_to_MBps(larb_port_node->base->icc_node->avg_bw),
+				(int)icc_to_MBps(larb_port_node->base->icc_node->peak_bw),
+				(int)icc_to_MBps(src->v2_mix_bw),
+				value);
 			value = mmqos->max_ratio;
 		}
 		if (src->v2_max_ostd && is_max_bw_to_max_ostdl_policy(src)) {
