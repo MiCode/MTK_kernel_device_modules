@@ -149,17 +149,10 @@ static uint32_t apwdt_en;
 static bool is_s2idle_status;
 
 #if IS_ENABLED(CONFIG_ARM64)
-static DEFINE_SPINLOCK(kp_lock);
-struct slp_history wk_sl[MAX_CPUNR];
 struct clock_event_device *bc_mtk_clkevt;
 
-static int hrtimer_start_range_ns_pre(struct kprobe *p, struct pt_regs *regs);
 static int clockevents_exchange_device_pre(struct kprobe *p, struct pt_regs *regs);
 
-static struct kprobe kp_hrtimer_start_range_ns = {
-	.symbol_name =  "hrtimer_start_range_ns",
-	.pre_handler = hrtimer_start_range_ns_pre,
-};
 
 static struct kprobe kp_clockevents_exchange_device = {
 	.symbol_name =  "clockevents_exchange_device",
@@ -948,38 +941,6 @@ static void kwdt_dump_func(void)
 			pr_info("%s on CPU %d\n", t->comm, cpu);
 			sched_show_task(t);
 
-			if (unkick_mask & (1 << cpu)) {
-				struct slp_history *slp = &wk_sl[cpu];
-
-				/*
-				 * enable/disable kprobe cannot be added in
-				 * here because preemption is disabled and
-				 * the two functions might be sleep
-				 */
-
-				if (IS_ERR_OR_NULL(slp) ||
-					IS_ERR_OR_NULL(slp->timer)) {
-					pr_info("slp is null %d %lld %llx %llx\n",
-						slp->cpu, slp->sc,
-						(unsigned long long)slp,
-						(unsigned long long)slp->timer);
-				} else {
-					struct hrtimer *wdt_timer = slp->timer;
-
-					if (IS_ERR_OR_NULL(wdt_timer) ||
-						IS_ERR_OR_NULL(wdt_timer->base) ||
-						IS_ERR_OR_NULL(wdt_timer->base->cpu_base))
-						pr_info("wdt sleeper is invalid\n");
-					else
-						pr_info("%d %lld timer on cpu %d softexpires %lld\n",
-						slp->cpu, slp->sc,
-						IS_ERR_OR_NULL(wdt_timer) ? 100 :
-						 wdt_timer->base->cpu_base->cpu,
-						IS_ERR_OR_NULL(wdt_timer) ? 100 :
-						 wdt_timer->_softexpires);
-				}
-
-			}
 			break;
 		}
 	}
@@ -1641,49 +1602,6 @@ static const struct of_device_id systimer_of_match[] = {
 };
 
 #if IS_ENABLED(CONFIG_ARM64)
-static int hrtimer_start_range_ns_pre(struct kprobe *p, struct pt_regs *regs)
-{
-	if (!strncmp(current->comm, "wdtk-", 5)) {
-		struct slp_history *slp;
-		unsigned long flags;
-
-		spin_lock_irqsave(&kp_lock, flags);
-
-		if (!strncmp(current->comm, "wdtk-0", 6))
-			slp = &wk_sl[0];
-		else if (!strncmp(current->comm, "wdtk-1", 6))
-			slp = &wk_sl[1];
-		else if (!strncmp(current->comm, "wdtk-2", 6))
-			slp = &wk_sl[2];
-		else if (!strncmp(current->comm, "wdtk-3", 6))
-			slp = &wk_sl[3];
-		else if (!strncmp(current->comm, "wdtk-4", 6))
-			slp = &wk_sl[4];
-		else if (!strncmp(current->comm, "wdtk-5", 6))
-			slp = &wk_sl[5];
-		else if (!strncmp(current->comm, "wdtk-6", 6))
-			slp = &wk_sl[6];
-		else if (!strncmp(current->comm, "wdtk-7", 6))
-			slp = &wk_sl[7];
-		else {
-			spin_unlock_irqrestore(&kp_lock, flags);
-			return 0;
-		}
-
-		if (IS_ERR_OR_NULL(slp)) {
-			spin_unlock_irqrestore(&kp_lock, flags);
-			return 0;
-		}
-
-		slp->cpu = smp_processor_id();
-		slp->sc = sched_clock();
-		slp->timer = (struct hrtimer *)regs->regs[0];
-
-		spin_unlock_irqrestore(&kp_lock, flags);
-	}
-
-	return 0;
-}
 
 static int clockevents_exchange_device_pre(struct kprobe *p, struct pt_regs *regs)
 {
@@ -1980,12 +1898,6 @@ static int __init hangdet_init(void)
 	timer_setup(&aee_dump_timer, aee_dump_timer_func, 0);
 
 #if IS_ENABLED(CONFIG_ARM64)
-	res = register_kprobe(&kp_hrtimer_start_range_ns);
-	if (res < 0)
-		pr_info("kp_hrtimer_start_range_ns kprobe failed %d\n", res);
-	else
-		pr_info("Planted kprobe at %llx for hrtimer_start_range_ns\n",
-			(unsigned long long) kp_hrtimer_start_range_ns.addr);
 
 	res = register_kprobe(&kp_clockevents_exchange_device);
 	if (res < 0)
@@ -2066,7 +1978,6 @@ static void __exit hangdet_exit(void)
 	int i = 0;
 
 #if IS_ENABLED(CONFIG_ARM64)
-	unregister_kprobe(&kp_hrtimer_start_range_ns);
 	unregister_kprobe(&kp_clockevents_exchange_device);
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG) && IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 	irq_mon_aee_callback_unregister(arch_timer_irq);
