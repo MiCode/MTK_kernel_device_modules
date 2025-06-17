@@ -871,13 +871,11 @@ int exit_frame_interpolation(void)
 void frame_interpolate_exit(void)
 {
 	exit_frame_interpolation();
-	game_sysfs_exit();
 }
 
 int frame_interpolate_init(void)
 {
 	init_fi_base();
-	game_sysfs_init();
 	init_frame_interpolation();
 
 	return 0;

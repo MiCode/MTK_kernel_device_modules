@@ -19,8 +19,10 @@
 #include <sched/sched.h>
 #include <uapi/linux/sched/types.h>
 #include "game.h"
+#include "game_sysfs.h"
 #include "engine_cooler/game_ec.h"
 #include "frame_interpolate/frame_interpolate.h"
+#include "loom/loom.h"
 #include "common.h"
 #include "eas/eas_plus.h"
 #include "kernel_core_ctrl.h"
@@ -252,6 +254,8 @@ static void __exit game_exit(void)
 	if (kGame_task)
 		kthread_stop(kGame_task);
 	set_cpus_allowed_ptr_by_kernel_fp = NULL;
+	loom_exit();
+	game_sysfs_exit();
 }
 
 static int __init game_init(void)
@@ -270,7 +274,9 @@ static int __init game_init(void)
 		goto end;
 	}
 	wake_up_process(kGame_task);
+	game_sysfs_init();
 	frame_interpolate_init();
+	loom_init();
 end:
 	return ret;
 }
