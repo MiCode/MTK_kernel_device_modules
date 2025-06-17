@@ -1245,13 +1245,43 @@ static void cmdq_task_insert_into_thread(dma_addr_t curr_pa,
 	}
 }
 
+static void cmdq_thread_err_debug(struct mbox_chan *chan)
+{
+	struct cmdq *cmdq = container_of(((struct mbox_chan *)chan)->mbox, typeof(*cmdq), mbox);
+	struct cmdq_thread *thread = ((struct mbox_chan *)chan)->con_priv;
+
+	u32 irq_flag;
+	u8 i;
+
+	for (i = 0; i < ARRAY_SIZE(cmdq->thread); i++){
+		if (cmdq->thread[i].chan == chan)
+			continue;
+		cmdq_thread_disable(cmdq, &cmdq->thread[i]);
+	}
+
+	irq_flag = readl(thread->base + CMDQ_THR_IRQ_STATUS);
+	writel(~irq_flag, thread->base + CMDQ_THR_IRQ_STATUS);
+	writel(CMDQ_THR_ENABLED, thread->base + CMDQ_THR_ENABLE_TASK);
+	for (i = 0; i < 5; i ++)
+		cmdq_chan_dump_dbg(chan);
+}
+
 static void cmdq_task_callback(struct cmdq_pkt *pkt, s32 err)
 {
 	struct cmdq_cb_data cmdq_cb_data;
+	struct cmdq_client *client = pkt->cl;
 
 	if (pkt->cb.cb) {
 		cmdq_cb_data.err = err;
 		cmdq_cb_data.data = pkt->cb.data;
+		if (err == -EINVAL) {
+#if !IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
+			if (error_irq_bug_on)
+				cmdq_thread_err_debug(client->chan);
+#else
+			cmdq_thread_err_debug(client->chan);
+#endif
+		}
 		pkt->cb.cb(cmdq_cb_data);
 	}
 }
