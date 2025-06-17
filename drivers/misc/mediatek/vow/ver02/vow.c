@@ -2911,9 +2911,34 @@ static ssize_t VowDrv_SetEnableHW(struct device *kobj,
 	VowDrv_ChangeStatus();
 	return n;
 }
+
+static ssize_t VowDrv_GetEnableHW(struct device *kobj,
+				 struct device_attribute *attr,
+				 char *buf)
+{
+	int stat;
+	char cstr[35];
+	int size = sizeof(cstr);
+	int type = 0;
+	int ret;
+
+	stat = (VowDrv_GetHWStatus() == VOW_PWR_ON) ? 1 : 0;
+	type = ((vowserv.provider_type & 0x0F) >= VOW_PROVIDER_MAX) ?
+		VOW_PROVIDER_MAX : (vowserv.provider_type & 0x0F);
+
+	ret = snprintf(buf, size, "VOW HW %s,prov %c\n",
+		       (stat == 0x1) ? "ON" : "OFF",
+		       '0' + type);
+
+	if (ret < 0 || ret >= size)
+		return -EINVAL; // Return error if snprintf fails or buffer is too small
+
+	return ret;
+}
+
 DEVICE_ATTR(vow_SetEnableHW,
-	    0200, /*S_IWUSR*/
-	    NULL,
+	    0644, /*S_IWUSR | S_IRUGO*/
+	    VowDrv_GetEnableHW,
 	    VowDrv_SetEnableHW);
 
 static ssize_t VowDrv_GetMCPSflag(struct device *kobj,
