@@ -481,9 +481,9 @@ void __gpufreq_dump_shared_status(char *log_buf, int *log_len, int log_size)
 			GPUFREQ_LOGE("abnormal cur_oppidx_stack: %d", cur_oppidx_stack);
 
 		GPUFREQ_LOGB(log_buf, log_len, log_size,
-			"DBGVer: 0x%08x, KDBGVer: 0x%08x, PTPVer: 0x%04x, DVFSMode: %s",
+			"DBGVer: 0x%08x, KDBGVer: 0x%08x, PTPVer: 0x%04x, Flavor: %s, DVFSMode: %s",
 			g_shared_status->dbg_version, g_shared_status->kdbg_version,
-			g_shared_status->ptp_version,
+			g_shared_status->ptp_version, g_shared_status->flavor,
 			(ptp3_status.dvfs_mode == HW_DUAL_LOOP_DVFS ? "HW_LOOP" :
 			(ptp3_status.dvfs_mode == SW_DUAL_LOOP_DVFS ? "SW_LOOP" : "LEGACY")));
 		GPUFREQ_LOGB(log_buf, log_len, log_size,
