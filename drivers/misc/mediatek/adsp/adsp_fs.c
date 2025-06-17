@@ -420,6 +420,7 @@ const struct file_operations adsp_trace_ops = {
 /* ---------------------------- mbrain fs ----------------------------------- */
 #define ADSP_MBRAIN_SIZE   (1024) /* 1024 bytes: from MBrain requested size, Must align firmware */
 static audio_adsp_mbrain_notify_callback adsp_mbrain_notify_cbk;
+static uint8_t *adsp_mbrain_vbuf;
 
 void set_adsp_mbrain_cbk(audio_adsp_mbrain_notify_callback mbrain_cbk)
 {
@@ -432,9 +433,11 @@ static void adsp_mbrain_notify_dump(int id, void *buf, unsigned int len)
 	u32 *data = (u32 *)buf;
 	unsigned int cid, size, flag, count;
 	int ret;
-	uint8_t *vbuf;
 
 	if (!buf)
+		return;
+
+	if (!adsp_mbrain_vbuf)
 		return;
 
 	cid = data[0];
@@ -454,22 +457,18 @@ static void adsp_mbrain_notify_dump(int id, void *buf, unsigned int len)
 	/* MBRAIN_UPDATE, MBRAIN_FLUSH with event data */
 	if (flag || kfifo_len(&pdata->mbrainfifo)) {
 		/* Get data from kfifo and trigger MBrain notify callback  */
-		vbuf = vmalloc(ADSP_MBRAIN_SIZE);
-		if (!vbuf)
-			return;
-
-		ret = kfifo_out(&pdata->mbrainfifo, vbuf, size);
+		ret = kfifo_out(&pdata->mbrainfifo, adsp_mbrain_vbuf, size);
 		if (ret <= 0) {
-			vfree(vbuf);
+			memset(adsp_mbrain_vbuf, 0, size);
 			return;
 		}
 
 		if (adsp_mbrain_notify_cbk) {
 			count = ret / sizeof(struct adsp_mbrain_t);
-			adsp_mbrain_notify_cbk(vbuf, count);
+			adsp_mbrain_notify_cbk(adsp_mbrain_vbuf, count);
 		}
 
-		vfree(vbuf);
+		memset(adsp_mbrain_vbuf, 0, size);
 	}
 
 	pr_debug("%s(), return size:+%d, len:%d, avail:%d", __func__, size,
@@ -500,6 +499,10 @@ int adsp_mbrain_enable(struct adsp_priv *pdata)
 		size = adsp_get_reserve_mem_size(memid);
 
 		if (!buffer || !addr || size < ADSP_MBRAIN_SIZE)
+			return -ENOMEM;
+
+		adsp_mbrain_vbuf = vmalloc(ADSP_MBRAIN_SIZE);
+		if (!adsp_mbrain_vbuf)
 			return -ENOMEM;
 
 		kfifo_init(&pdata->mbrainfifo, buffer, size);
