@@ -310,7 +310,6 @@
 /* CAMERA EEPROM end */
 
 /* CAMERA TZ config */
-#if 0  /* temp disable thermal node */
 &thermal_zones {
 	camera_main: camera-main {
 		polling-delay = <1000>; /* milliseconds */
@@ -328,7 +327,6 @@
 		thermal-sensors = <&camera_main_two_mtk>;
 	};
 };
-#endif
 
 
 /* CAMERA TZ config end */
