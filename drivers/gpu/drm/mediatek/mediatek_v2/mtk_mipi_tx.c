@@ -2517,32 +2517,6 @@ static void mtk_mipi_tx_pll_dphy_deconfig_mt6985(struct mtk_mipi_tx *mipi_tx)
 	DDPINFO("%s-\n", __func__);
 }
 
-static void mtk_mipi_tx_pll_dphy_deconfig_mt6993(struct mtk_mipi_tx *mipi_tx)
-{
-	DDPINFO("%s+\n", __func__);
-
-	mtk_mipi_tx_clear_bits(mipi_tx, MIPITX_PLL_CON1, mipi_tx->driver_data->dsi_pll_en);
-
-	/* TODO: should clear bit8 to set SW_ANA_CK_EN here */
-	mtk_mipi_tx_clear_bits(mipi_tx, MIPITX_SW_CTRL_CON4_MT6983, 1);
-
-	mtk_mipi_tx_set_bits(mipi_tx, MIPITX_PLL_PWR, AD_DSI_PLL_SDM_ISO_EN);
-	mtk_mipi_tx_clear_bits(mipi_tx, MIPITX_PLL_PWR, AD_DSI_PLL_SDM_PWR_ON);
-
-#ifdef IF_ZERO
-	mtk_mipi_tx_set_bits(mipi_tx, mipi_tx->driver_data->d0_sw_ctl_en, DSI_D0_SW_CTL_EN);
-	mtk_mipi_tx_set_bits(mipi_tx, mipi_tx->driver_data->d1_sw_ctl_en, DSI_D1_SW_CTL_EN);
-	mtk_mipi_tx_set_bits(mipi_tx, mipi_tx->driver_data->d2_sw_ctl_en, DSI_D2_SW_CTL_EN);
-	mtk_mipi_tx_set_bits(mipi_tx, mipi_tx->driver_data->d3_sw_ctl_en, DSI_D3_SW_CTL_EN);
-	mtk_mipi_tx_set_bits(mipi_tx, mipi_tx->driver_data->ck_sw_ctl_en, DSI_CK_SW_CTL_EN);
-#endif
-
-	writel(0x3FFF0180, mipi_tx->regs + MIPITX_LANE_CON_MT6983);
-	writel(0x3FFF0100, mipi_tx->regs + MIPITX_LANE_CON_MT6983);
-
-	DDPINFO("%s-\n", __func__);
-}
-
 static int mtk_mipi_tx_pll_cphy_config_mt6985(struct mtk_mipi_tx *mipi_tx)
 {
 	unsigned int txdiv, txdiv0, txdiv1, tmp;
@@ -2923,21 +2897,6 @@ static int mtk_mipi_tx_pll_cphy_config_mt6993(struct mtk_mipi_tx *mipi_tx)
 }
 
 static void mtk_mipi_tx_pll_cphy_deconfig_mt6985(struct mtk_mipi_tx *mipi_tx)
-{
-	DDPINFO("%s+\n", __func__);
-
-	mtk_mipi_tx_clear_bits(mipi_tx, MIPITX_PLL_CON1, mipi_tx->driver_data->dsi_pll_en);
-
-	mtk_mipi_tx_set_bits(mipi_tx, MIPITX_PLL_PWR, AD_DSI_PLL_SDM_ISO_EN);
-	mtk_mipi_tx_clear_bits(mipi_tx, MIPITX_PLL_PWR, AD_DSI_PLL_SDM_PWR_ON);
-
-	writel(0x3FFF0080, mipi_tx->regs + MIPITX_LANE_CON_MT6983);
-	writel(0x3FFF0000, mipi_tx->regs + MIPITX_LANE_CON_MT6983);
-
-	DDPINFO("%s-\n", __func__);
-}
-
-static void mtk_mipi_tx_pll_cphy_deconfig_mt6993(struct mtk_mipi_tx *mipi_tx)
 {
 	DDPINFO("%s+\n", __func__);
 
@@ -3793,39 +3752,6 @@ static void mtk_mipi_tx_pll_unprepare_mt6991(struct clk_hw *hw)
 		mtk_mipi_tx_pll_cphy_deconfig_mt6985(mipi_tx);
 	else
 		mtk_mipi_tx_pll_dphy_deconfig_mt6985(mipi_tx);
-
-#endif
-}
-
-static int mtk_mipi_tx_pll_prepare_mt6993(struct clk_hw *hw)
-{
-#ifndef CONFIG_FPGA_EARLY_PORTING
-	struct mtk_mipi_tx *mipi_tx = mtk_mipi_tx_from_clk_hw(hw);
-
-	/* if mipitx is on, skip it... */
-	if (mtk_is_mipi_tx_enable(hw)) {
-		DDPINFO("%s: mipitx already on\n", __func__);
-		return 0;
-	}
-
-	if (mipi_tx->driver_data->phy)
-		mtk_mipi_tx_pll_cphy_config_mt6993(mipi_tx);
-	else
-		mtk_mipi_tx_pll_dphy_config_mt6993(mipi_tx);
-
-#endif
-	return 0;
-}
-
-static void mtk_mipi_tx_pll_unprepare_mt6993(struct clk_hw *hw)
-{
-#ifndef CONFIG_FPGA_EARLY_PORTING
-	struct mtk_mipi_tx *mipi_tx = mtk_mipi_tx_from_clk_hw(hw);
-
-	if (mipi_tx->driver_data->phy)
-		mtk_mipi_tx_pll_cphy_deconfig_mt6993(mipi_tx);
-	else
-		mtk_mipi_tx_pll_dphy_deconfig_mt6993(mipi_tx);
 
 #endif
 }
@@ -8333,8 +8259,8 @@ static const struct mtk_mipitx_data mt6993_mipitx_cphy_data = {
 	.ck1_sw_lptx_dn = MIPITX_CK1_SW_LPTX_DN_MT6989,
 	.ck1c_sw_lptx_pre_oe = MIPITX_CK1C_SW_LPTX_PRE_OE_MT6989,
 	.ck1c_sw_lptx_oe = MIPITX_CK1C_SW_LPTX_OE_MT6989,
-	.pll_prepare = mtk_mipi_tx_pll_prepare_mt6993,
-	.pll_unprepare = mtk_mipi_tx_pll_unprepare_mt6993,
+	.pll_prepare = mtk_mipi_tx_pll_prepare_mt6991,
+	.pll_unprepare = mtk_mipi_tx_pll_unprepare_mt6991,
 	.dsi_get_pcw = _dsi_get_pcw_mt6989,
 	.dsi_get_data_rate = _dsi_get_data_rate_mt6983,
 	.backup_mipitx_impedance = backup_mipitx_impedance_mt6897,
