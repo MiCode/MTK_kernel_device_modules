@@ -13158,8 +13158,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			compatible = "mediatek,mt6993-dvfsrc";
 			reg = <0 0x1c100000 0 0x1000>,
 				<0 0x1c004000 0 0x1000>,
-				<0 0x1c021000 0 0x1000>;
-			reg-names = "dvfsrc", "spm", "vsmr";
+				<0 0x1c021000 0 0x1000>,
+				<0 0x1c017000 0 0x1000>;
+			reg-names = "dvfsrc", "spm", "vsmr", "hvs";
 			#interconnect-cells = <1>;
 
 			dvfsrc_vcore: dvfsrc-vcore {
