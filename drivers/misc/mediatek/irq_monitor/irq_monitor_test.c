@@ -3,6 +3,8 @@
  * Copyright (C) 2020 MediaTek Inc.
  */
 
+#include <linux/cpuhplock.h>
+#include <linux/cpumask.h>
 #include <linux/delay.h>
 #include <linux/interrupt.h>
 #include <linux/irq_work.h>
@@ -92,14 +94,43 @@ static void irq_mon_irq_work2(struct irq_work *work)
 	__irq_mon_irq_work(work);
 }
 
+/* kprobe test for irq_work_single time */
+static void irq_mon_irq_work3(struct irq_work *work)
+{
+	__irq_mon_irq_work(work);
+}
+
 static DEFINE_IRQ_WORK(irq_mon_irqwork, irq_mon_irq_work);
 static DEFINE_IRQ_WORK(irq_mon_irqwork2, irq_mon_irq_work2);
+static DEFINE_IRQ_WORK(irq_mon_irqwork3, irq_mon_irq_work3);
+
+void irq_mon_test_irq_work_single(struct irq_work *work)
+{
+	int current_cpu, cpu;
+
+	guard(cpus_read_lock)();
+	guard(preempt)();
+
+	current_cpu = smp_processor_id();
+
+	if (num_online_cpus() <= 1)
+		return;
+
+	for_each_online_cpu(cpu) {
+		if (cpu != current_cpu) {
+			irq_work_queue_on(work, cpu);
+			return;
+		}
+	}
+}
 
 void irq_mon_test_irq_work(void)
 {
 	irq_work_queue(&irq_mon_irqwork);
 	irq_work_sync(&irq_mon_irqwork);
 	irq_work_queue(&irq_mon_irqwork2);
+	irq_work_sync(&irq_mon_irqwork2);
+	irq_mon_test_irq_work_single(&irq_mon_irqwork3);
 }
 
 /* IRQ disable monitor test */

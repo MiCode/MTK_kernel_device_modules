@@ -660,12 +660,26 @@ static void probe_hrtimer_expire_exit(void *data, struct hrtimer *hrtimer)
 		}
 	}
 }
+
+static void probe_csd_function_entry(void *data,
+				     smp_call_func_t func, call_single_data_t *csd)
+{
+	irq_log_entry_store((void *)func);
+}
+
+static void probe_csd_function_exit(void *data,
+				    smp_call_func_t func, call_single_data_t *csd)
+{
+	irq_log_exit_store((void *)func);
+}
+
 /* start of kprobes */
 
 /* Skip duration tracers */
 
 struct irq_mon_kret {
 	u64 ts;
+	void (*func)(struct irq_work *work);
 };
 
 /*
@@ -725,6 +739,42 @@ static int ret_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 	return 0;
 }
 
+static int irq_work_single_entry_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
+{
+	struct irq_mon_kret *data = (struct irq_mon_kret *)ri->data;
+
+	data->func = NULL;
+
+	if (regs) {
+		struct irq_work *work = (struct irq_work *)regs->regs[0];
+
+		if (work && work->func) {
+			data->func = work->func;
+			irq_log_entry_store((void *)work->func);
+		}
+	}
+
+	return 0;
+}
+
+static int irq_work_single_ret_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
+{
+	struct irq_mon_kret *data = (struct irq_mon_kret *)ri->data;
+
+	if (data->func)
+		irq_log_exit_store(data->func);
+
+	return 0;
+}
+
+static struct kretprobe irq_work_single_krp = {
+	.kp.symbol_name = "irq_work_single",
+	.handler = irq_work_single_ret_handler,
+	.entry_handler = irq_work_single_entry_handler,
+	.data_size = sizeof(struct irq_mon_kret),
+	.maxactive = 20,
+};
+
 int irq_mon_kprobes_init(void)
 {
 	int i, ret = 0;
@@ -743,6 +793,14 @@ int irq_mon_kprobes_init(void)
 			return ret;
 		}
 	}
+
+	ret = register_kretprobe(&irq_work_single_krp);
+	if (ret) {
+		pr_info("register_kprobe %s failed, returned %d\n",
+			irq_work_single_krp.kp.symbol_name, ret);
+		return ret;
+	}
+
 	return ret;
 }
 
@@ -752,6 +810,8 @@ void irq_mon_kprobes_exit(void)
 
 	for (i = 0; i < ARRAY_SIZE(kp); i++)
 		unregister_kretprobe(&kp[i]);
+
+	unregister_kretprobe(&irq_work_single_krp);
 }
 /* end of kprobes */
 
@@ -833,6 +893,17 @@ struct irq_mon_tracepoint irq_mon_tracepoint_table[] = {
 	{
 		.name = "irq_handler_exit",
 		.func = probe_irq_handler_exit,
+		.tracer = &irq_handler_tracer,
+	},
+	/* irq_handler_tracer csd.h */
+	{
+		.name = "csd_function_entry",
+		.func = probe_csd_function_entry,
+		.tracer = &irq_handler_tracer,
+	},
+	{
+		.name = "csd_function_exit",
+		.func = probe_csd_function_exit,
 		.tracer = &irq_handler_tracer,
 	},
 	/* softirq_tracer irq.h */
