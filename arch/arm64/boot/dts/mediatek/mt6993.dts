@@ -13691,6 +13691,24 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mm-smmu-acp-codec-supply = <&mm_smmu_acp_codec>;
 		};
 
+		videogo {
+			compatible =  "mediatek,videogo";
+			/* Create Instance*/
+			cgroup-colocate = <1>;          /* 0:disable, 1:enable */
+			runnable-boost-enable = <1>;    /* 0:disable, 1:enable */
+			/* VP Low Power */
+			cpu-pf-ctrl = <1>;              /* 0:disable, 1:enable */
+			margin-control = <1000000 20 0>;/* <0 0 0>:disable     */
+			rt-non-idle-preempt = <1>;      /* 0:disable, 1:enable */
+			runnable-boost-disable = <1>;   /* 0:disable, 1:enable */
+			slc-wce-ctrl = <1>;             /* 0:disable, 1:enable */
+			util-est-boost-disable = <0>;   /* 0:disable, 1:enable */
+			/* Transcoding */
+			ct-to-vip = <1>;                /* 0:disable, 1:enable */
+			gpu-freq-min-opp = <7>;         /* remove:disable      */
+			uclamp-min-ta-val = <100>;      /* 0:disable, others:enable */
+		};
+
 		bus-parity@c000900 {
 			compatible = "mediatek,bus-parity";
 			reg = <0 0x05020184 0 0x20>,   /* MST_INFRA */
