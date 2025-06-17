@@ -418,6 +418,7 @@ static void loom_select_cfg_apply(int set)
 
 static void loom_flt_cfg_apply(int set)
 {
+#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 	int ret = 0;
 
 	if (set && !loom_flt_is_set) {
@@ -433,6 +434,9 @@ static void loom_flt_cfg_apply(int set)
 			loom_main_trace("[loom][%s] loom flt cfg, set=%d", __func__, 0);
 		}
 	}
+#else
+	loom_flt_is_set = 0;
+#endif  // IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 }
 
 int loom_activate(int pid)
