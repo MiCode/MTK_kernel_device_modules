@@ -6,7 +6,7 @@
  * MT6993 MSDC DTSI File
  ********************************************/
 #include <dt-bindings/gpio/gpio.h>
-#include <dt-bindings/interconnect/mtk,mt6873-emi.h>
+#include <dt-bindings/interconnect/mtk,emi.h>
 
 &mmc1 {
 	host-index = <1>;
