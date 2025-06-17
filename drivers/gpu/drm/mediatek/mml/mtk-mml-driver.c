@@ -153,6 +153,7 @@ struct mml_dev {
 	struct cmdq_base *cmdq_base;
 	struct cmdq_client *cmdq_clts[MML_MAX_CMDQ_CLTS];
 	u8 cmdq_clt_cnt;
+	struct kthread_worker *kt_config;
 
 	u32 sw_ver;
 	atomic_t drm_cnt;
@@ -665,6 +666,11 @@ struct mml_m2m_ctx *mml_dev_create_m2m_ctx(struct mml_dev *mml,
 exit:
 	mutex_unlock(&mml->ctx_mutex);
 	return ctx;
+}
+
+struct kthread_worker *mml_dev_get_config_worker(struct mml_dev *mml)
+{
+	return mml->kt_config;
 }
 
 struct mml_v4l2_dev *mml_get_v4l2_dev(struct mml_dev *mml)
@@ -2560,6 +2566,18 @@ static int mml_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	platform_set_drvdata(pdev, mml);
 
+	mml->kt_config = kthread_create_worker(0, "mml_work0");
+	if (IS_ERR(mml->kt_config)) {
+		ret = PTR_ERR(mml->kt_config);
+		mml_log("%s create thread fail %d", __func__, ret);
+		goto err_sys_add;
+	} else {
+		struct sched_param kt_param = { .sched_priority = MAX_RT_PRIO - 1 };
+
+		ret = sched_setscheduler(mml->kt_config->task, SCHED_FIFO, &kt_param);
+		mml_log("%s thread work0 ret %d", __func__, ret);
+	}
+
 	mml->pdev = pdev;
 	mutex_init(&mml->sys_state_mutex);
 	mutex_init(&mml->ctx_mutex);
@@ -2734,6 +2752,11 @@ static void mml_remove(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct mml_dev *mml = platform_get_drvdata(pdev);
+
+	if (mml->kt_config) {
+		kthread_destroy_worker(mml->kt_config);
+		mml->kt_config = NULL;
+	}
 
 #ifdef MML_DEBUG_PROC
 	proc_remove(mml->dbg_procfs);
