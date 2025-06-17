@@ -1023,6 +1023,7 @@
 
 	page_based_v2: page-based-v2-enabled {
 		compatible = "mediatek,page-based-v2-enabled";
+		pre-alloc-prot-page-num = <0x40>;
 	};
 
 	sel2: hafnium-bypass-cma-enabled {
