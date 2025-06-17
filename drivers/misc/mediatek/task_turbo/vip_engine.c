@@ -663,6 +663,7 @@ static void sched_attr_work_func(struct work_struct *work)
 			uclamp_eff_value(sched_work->task, UCLAMP_MAX) == sched_work->attr.sched_util_max) {
 		trace_binder_uclamp_set(sched_work->task->pid,
 			sched_work->attr.sched_util_max, sched_work->attr.sched_util_min, 1);
+		kfree(sched_work);
 		return;
 	}
 	ret = sched_setattr_nocheck(sched_work->task, &sched_work->attr);
