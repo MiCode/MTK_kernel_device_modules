@@ -25,26 +25,28 @@
 #include <spmi-mtk.h>
 #define MAX_SPMI_SLVID slvid_cnt
 #define MAX_SPMI_NACK_CNT spmi_nack_idx_cnt
-#define MAX_SPMI_PARITY_ERR_CNT spmi_parity_err_idx_cnt
-#define MAX_SPMI_PRE_OT_CNT PMIC_PRE_OT_BUF_SIZE
-#define MAX_SPMI_PRE_LVSYS_CNT PMIC_PRE_LVSYS_BUF_SIZE
-#define MAX_SPMI_CURR_CLAMPING_CNT PMIC_CURR_CLAMPING_BUF_SIZE
-#define MAX_SPMI_RG_CNT SPMI_PMIC_DEBUG_RG_BUF_SIZE
 #else
 #define MAX_SPMI_SLVID 32
 #define MAX_SPMI_NACK_CNT 64
-#define MAX_SPMI_PARITY_ERR_CNT 64
-#define MAX_SPMI_PRE_OT_CNT 32
-#define MAX_SPMI_PRE_LVSYS_CNT 32
-#define MAX_SPMI_CURR_CLAMPING_CNT 128
-#define MAX_SPMI_RG_CNT 192
 #endif
 
 #if IS_ENABLED(CONFIG_MFD_MTK_SPMI_PMIC)
 #include <mtk-spmi-pmic-debug.h>
 #define MAX_SPMI_GLITCH_ID spmi_glitch_idx_cnt
+#define MAX_SPMI_PARITY_ERR_CNT spmi_parity_err_idx_cnt
+#define MAX_SPMI_PRE_OT_CNT PMIC_PRE_OT_BUF_SIZE
+#define MAX_SPMI_PRE_LVSYS_CNT PMIC_PRE_LVSYS_BUF_SIZE
+#define MAX_SPMI_CURR_CLAMPING_CNT PMIC_CURR_CLAMPING_BUF_SIZE
+#define MAX_SPMI_RG_CNT SPMI_PMIC_DEBUG_RG_BUF_SIZE
+#define MAZ_SPMI_CRC_ERR_CNT spmi_crc_err_idx_cnt
 #else
 #define MAX_SPMI_GLITCH_ID 96
+#define MAX_SPMI_PARITY_ERR_CNT 64
+#define MAX_SPMI_PRE_OT_CNT 32
+#define MAX_SPMI_PRE_LVSYS_CNT 32
+#define MAX_SPMI_CURR_CLAMPING_CNT 128
+#define MAX_SPMI_RG_CNT 192
+#define MAZ_SPMI_CRC_ERR_CNT 64
 #endif
 
 #if IS_ENABLED(CONFIG_MTK_SWPM_MODULE)
@@ -715,6 +717,7 @@ static int mbraink_v6993_power_get_spmi_info(
 	int ret = 0;
 	int num = 0;
 	unsigned int rg[MAX_SPMI_RG_CNT] = {0};
+	u16 crcBuf[MAZ_SPMI_CRC_ERR_CNT] = {0};
 
 	if (mbraink_spmi_data == NULL) {
 		pr_info("mbraink_spmi_data is null\n");
@@ -762,6 +765,13 @@ static int mbraink_v6993_power_get_spmi_info(
 		MAX_SPMI_RG_CNT : MAX_SPMI_RG_SZ;
 	memcpy(mbraink_spmi_data->spmi_rg, rg, sizeof(unsigned int)*num);
 	mbraink_spmi_data->spmi_rg_count = num;
+
+	//get CRC info
+	mtk_spmi_pmic_get_crc_err_cnt(crcBuf);
+	num = (MAX_SPMI_CRC_ERR_SZ > MAZ_SPMI_CRC_ERR_CNT) ?
+		MAZ_SPMI_CRC_ERR_CNT : MAX_SPMI_CRC_ERR_SZ;
+	memcpy(mbraink_spmi_data->spmi_crc_err, crcBuf, sizeof(u16)*num);
+	mbraink_spmi_data->spmi_crc_err_count = num;
 
 	return ret;
 }

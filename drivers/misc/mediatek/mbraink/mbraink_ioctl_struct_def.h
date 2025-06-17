@@ -55,6 +55,7 @@
 #define MAX_CM_WRAP_NUM				8
 #define MAX_DDR_TRACE_OOM_NUM		8
 #define MAX_VSMR_SZ				288
+#define MAX_SPMI_CRC_ERR_SZ			64
 
 #define NETLINK_EVENT_Q2QTIMEOUT		"NLEvent_Q2QTimeout"
 #define NETLINK_EVENT_UDMFETCH			"M&"
@@ -395,6 +396,8 @@ struct mbraink_spmi_struct_data {
 	u16 spmi_curr_clamping[MAX_SPMI_CURR_CLAMPING_SZ];
 	unsigned int spmi_rg_count;
 	unsigned int spmi_rg[MAX_SPMI_RG_SZ];
+	u16 spmi_crc_err_count;
+	u16 spmi_crc_err[MAX_SPMI_CRC_ERR_SZ];
 };
 
 struct mbraink_uvlo_err_data {
