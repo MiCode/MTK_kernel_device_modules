@@ -768,6 +768,28 @@ err:
 }
 EXPORT_SYMBOL_GPL(ssusb_offload_unregister);
 
+void ssusb_power_event_notify(struct ssusb_mtk *ssusb, enum ssusb_power_event event)
+{
+	blocking_notifier_call_chain(&ssusb->power_nh, event,  NULL);
+}
+
+int ssusb_power_register_notifier(struct ssusb_mtk *ssusb, struct notifier_block *nb)
+{
+	if (!ssusb->power_nh_init) {
+		BLOCKING_INIT_NOTIFIER_HEAD(&ssusb->power_nh);
+		ssusb->power_nh_init = true;
+	}
+
+	return blocking_notifier_chain_register(&ssusb->power_nh, nb);
+}
+EXPORT_SYMBOL_GPL(ssusb_power_register_notifier);
+
+int ssusb_power_unregister_notifier(struct ssusb_mtk *ssusb, struct notifier_block *nb)
+{
+	return blocking_notifier_chain_unregister(&ssusb->power_nh, nb);
+}
+EXPORT_SYMBOL_GPL(ssusb_power_unregister_notifier);
+
 void ssusb_toggle_vbus(struct ssusb_mtk *ssusb)
 {
 	u32 misc;

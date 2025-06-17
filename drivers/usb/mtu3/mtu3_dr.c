@@ -126,6 +126,7 @@ static void switch_port_to_on(struct ssusb_mtk *ssusb, enum phy_mode mode)
 	ssusb_phy_set_mode(ssusb, mode);
 	ssusb_ip_sw_reset(ssusb);
 	ssusb_phy_apply_prop(ssusb, mode);
+	ssusb_power_event_notify(ssusb, SSUSB_POWER_EVENT_ON);
 }
 
 static void switch_port_to_off(struct ssusb_mtk *ssusb)
@@ -133,6 +134,7 @@ static void switch_port_to_off(struct ssusb_mtk *ssusb)
 	dev_info(ssusb->dev, "port off\n");
 
 	synchronize_irq(ssusb->u3d->irq);
+	ssusb_power_event_notify(ssusb, SSUSB_POWER_EVENT_OFF);
 	ssusb_ip_sleep(ssusb);
 	ssusb_phy_set_mode(ssusb, PHY_MODE_INVALID);
 	ssusb_phy_power_off(ssusb);

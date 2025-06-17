@@ -16,6 +16,7 @@
 #include <linux/extcon.h>
 #include <linux/interrupt.h>
 #include <linux/list.h>
+#include <linux/notifier.h>
 #include <linux/of.h>
 #include <linux/phy/phy.h>
 #include <linux/regulator/consumer.h>
@@ -214,6 +215,11 @@ enum ssusb_phy_prop_state {
 
 /* sync from phy-mtk-io.h */
 #define PHY_MODE_PROPERTY_MAX 15
+
+enum ssusb_power_event {
+	SSUSB_POWER_EVENT_OFF = 0,
+	SSUSB_POWER_EVENT_ON,
+};
 
 enum mtk_phy_submode {
 	PHY_MODE_BC11_SW_SET = 1,
@@ -444,6 +450,9 @@ struct ssusb_mtk {
 	int ls_slp_bypass;
 	/* chip version*/
 	u32 sw_ver;
+	/* power notifier */
+	struct blocking_notifier_head power_nh;
+	bool power_nh_init;
 };
 
 /**
@@ -716,5 +725,9 @@ void ssusb_phy_apply_prop(struct ssusb_mtk *ssusb, enum phy_mode mode);
 void ssusb_phy_clear_prop(struct ssusb_mtk *ssusb);
 
 void ssusb_offload_streaming(struct ssusb_offload *offload, bool start);
+
+void ssusb_power_event_notify(struct ssusb_mtk *ssusb, enum ssusb_power_event event);
+int ssusb_power_register_notifier(struct ssusb_mtk *ssusb, struct notifier_block *nb);
+int ssusb_power_unregister_notifier(struct ssusb_mtk *ssusb, struct notifier_block *nb);
 
 #endif
