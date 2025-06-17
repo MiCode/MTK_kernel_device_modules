@@ -5398,6 +5398,17 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 				(UINT16) *(feature_data + 2));
 		break;
 	}
+	case SENSOR_FEATURE_SET_HDR_SHUTTER_FRAME_TIME:
+	{
+		pr_info("SENSOR_FEATURE_SET_HDR_SHUTTER_FRAME_TIME\n");
+		if (imgsensor.current_scenario_id == MSDK_SCENARIO_ID_CUSTOM1 ||
+			imgsensor.current_scenario_id == MSDK_SCENARIO_ID_CUSTOM2) {
+			set_shutter_frame_length((UINT16) (*feature_data),
+						(UINT16) (*(feature_data + 3)),
+						1);
+		}
+		break;
+	}
 	case SENSOR_FEATURE_GET_RAW_BIT_BY_SCENARIO:
 	{
 		switch (*feature_data) {
