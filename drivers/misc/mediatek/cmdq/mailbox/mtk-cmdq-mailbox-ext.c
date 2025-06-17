@@ -3508,7 +3508,7 @@ static int cmdq_probe(struct platform_device *pdev)
 		skip_poll_sleep = true;
 
 	if (of_property_read_bool(dev->of_node, "gce-in-vcp"))
-		gce_in_vcp = true;
+		cmdq_set_gce_in_vcp(true);
 
 	if (of_property_read_bool(dev->of_node, "cpr-not-support-cookie"))
 		cpr_not_support_cookie = true;

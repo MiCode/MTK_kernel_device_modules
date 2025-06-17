@@ -755,6 +755,8 @@ void cmdq_pkt_set_err_cb(struct cmdq_pkt *pkt,
 
 char *cmdq_dump_buffer_size_seq(char *buf_start, char *buf_end);
 
+void cmdq_set_gce_in_vcp(bool set);
+
 int cmdq_helper_init(void);
 
 void cmdq_hw_trace_check_inst(struct cmdq_pkt *pkt);

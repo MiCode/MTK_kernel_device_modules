@@ -4848,14 +4848,22 @@ static int cmdq_record_buffer_usage(void *data)
 	return 0;
 }
 
+void cmdq_set_gce_in_vcp(bool set)
+{
+	gce_in_vcp = set;
+
+	cmdq_msg("%s set gce_in_vcp as %d", __func__, gce_in_vcp);
+	if (gce_in_vcp)
+		vcp.mminfra_base = ioremap(MMINFRA_BASE, 0x1000);
+}
+EXPORT_SYMBOL(cmdq_set_gce_in_vcp);
+
 int cmdq_helper_init(void)
 {
 	struct task_struct *kthr;
 
 	cmdq_msg("%s enter", __func__);
 	mutex_init(&vcp.vcp_mutex);
-	if (gce_in_vcp)
-		vcp.mminfra_base = ioremap(MMINFRA_BASE, 0x1000);
 
 	timer_setup(&vcp.vcp_timer, cmdq_vcp_off, 0);
 	INIT_WORK(&vcp.vcp_work, cmdq_vcp_off_work);
