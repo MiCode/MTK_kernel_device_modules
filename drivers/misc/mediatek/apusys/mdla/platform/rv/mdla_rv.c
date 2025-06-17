@@ -589,6 +589,8 @@ static int mdla_plat_v6_dbgfs_usage(struct seq_file *s, void *data)
 	seq_puts(s, "\t1: start to profile\n");
 
 	seq_puts(s, "\n------------- Show information in uP log -------------\n");
+	seq_printf(s, "echo [0|1] > /d/mdla/%s\n", mdla_plat_get_ipi_str(MDLA_IPI_DUMP_CMDBUF_EN));
+	seq_puts(s, "\tprint command buffer each time a prepare request is received\n");
 	seq_printf(s, "echo [item] > /d/mdla/%s\n", mdla_plat_get_ipi_str(MDLA_IPI_INFO));
 	seq_puts(s, "and then cat /proc/apusys_logger/seq_log\n");
 	seq_printf(s, "\t%2d: show register value\n", MDLA_IPI_INFO_REG);
@@ -605,7 +607,6 @@ static int mdla_plat_v6_dbgfs_usage(struct seq_file *s, void *data)
 	seq_puts(s, "\tPreempt once                                     = 0x0002\n");
 	seq_puts(s, "\tForce FW always cold boot                        = 0x0008\n");
 	seq_puts(s, "\tDump cmdbuf in seq log while CMD hang            = 0x0010\n");
-	seq_puts(s, "\tDump cmdbuf in /d/mdla/mdla_memory               = 0x0020\n");
 	seq_puts(s, "\tAlways dump mdla registers before power off      = 0x0040\n");
 	seq_puts(s, "\tDoesn't initialize DCM/PI/.. configurations      = 0x0100\n");
 	seq_puts(s, "\tDisable engine DCM                               = 0x0200\n");
