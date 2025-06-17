@@ -352,7 +352,7 @@ int mtk_disp_mtee_cmdq_secure_start(int value, struct cmdq_pkt *cmdq_handle,
 
 	if (crtc_id == 0) {
 		/*TODO need to adapt new chip with sec_disp_port = 0*/
-		if (priv && priv->data->mmsys_id == MMSYS_MT6768)
+		if (priv && priv->data && priv->data->mmsys_id == MMSYS_MT6768)
 			sec_disp_port = 1LL << CMDQ_SEC_DISP_OVL0;
 		else
 			sec_disp_port = 0;
@@ -364,7 +364,7 @@ int mtk_disp_mtee_cmdq_secure_start(int value, struct cmdq_pkt *cmdq_handle,
 	} else {
 		sec_disp_port = (crtc_id == 1) ? 0 :
 			mtk_crtc_secure_port_lookup(comp);
-		if (priv && priv->data->mmsys_id == MMSYS_MT6768)
+		if (priv && priv->data && priv->data->mmsys_id == MMSYS_MT6768)
 			sec_disp_port |= (crtc_id == 1) ? 0 : (1LL << CMDQ_SEC_DISP_2L_OVL0);
 
 		sec_disp_dapc = (crtc_id == 1) ? 0 :
