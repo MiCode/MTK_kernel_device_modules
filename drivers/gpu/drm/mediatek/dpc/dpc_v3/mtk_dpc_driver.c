@@ -113,6 +113,9 @@ static void __iomem *hwccf_cg47_set;
 static void __iomem *hwccf_cg47_clr;
 static void __iomem *hwccf_cg47_en;
 static void __iomem *hwccf_cg47_sta;
+static void __iomem *hwccf_dummy_set;		/* for cg link/unlink */
+static void __iomem *hwccf_dummy_clr;		/* for cg link/unlink */
+static void __iomem *hwccf_dummy_en;		/* for cg link/unlink */
 static void __iomem *hwccf_xpu0_mtcmos_set;
 static void __iomem *hwccf_xpu0_mtcmos_clr;
 static void __iomem *hwccf_xpu0_local_en;
@@ -1533,8 +1536,9 @@ static void mt6991_set_mtcmos(const u32 subsys, const enum mtk_dpc_mtcmos_mode m
 static void mt6993_set_mtcmos(const u32 subsys, const enum mtk_dpc_mtcmos_mode mode)
 {
 #if IS_ENABLED(CONFIG_MTK_HWCCF)
+	int ret;
 	bool en = has_cap(DPC_CAP_MTCMOS) ? (mode == DPC_MTCMOS_AUTO ? true : false) : false;
-	u32 value = 0;
+	u32 value = 0, temp;
 	u32 mask = 0;
 	u16 i = 0;
 	unsigned long flags;
@@ -1556,7 +1560,7 @@ static void mt6993_set_mtcmos(const u32 subsys, const enum mtk_dpc_mtcmos_mode m
 	 */
 
 	value = en ? 0x33 : 0x552;
-	mask = (subsys == DPC3_SUBSYS_DISP) ? 0x3f80000 : g_priv->mtcmos_cfg[subsys].link_bit;
+	mask = (subsys == DPC3_SUBSYS_DISP) ? 0x3f80000 : BIT(g_priv->mtcmos_cfg[subsys].link_bit);
 
 	spin_lock_irqsave(&g_priv->mtcmos_cfg_lock, flags);
 
@@ -1564,24 +1568,29 @@ static void mt6993_set_mtcmos(const u32 subsys, const enum mtk_dpc_mtcmos_mode m
 		if (subsys == DPC3_SUBSYS_DISP) {
 			for (i = 0; i < 7; i++)
 				writel(value, dpc_base + g_priv->mtcmos_cfg[i].cfg);
-
-			hwccf_multi_voter_ctrl(MM_HWCCF, HW_CCF_CG_GRP_51, HWCCF_VOTE, mask);
-
-		} else if (subsys < g_priv->subsys_cnt) {
+		} else if (subsys < g_priv->subsys_cnt)
 			writel(value, dpc_base + g_priv->mtcmos_cfg[subsys].cfg);
-			hwccf_voter_ctrl(MM_HWCCF, HW_CCF_CG_GRP_51, HWCCF_VOTE, mask);
 
-		}
+		writel(mask, hwccf_dummy_set);
+		ret = readl_poll_timeout_atomic(hwccf_dummy_en, temp, temp & mask, 1, 2000);
+		if (ret < 0)
+			DPCERR("polling unlink timeout %d", __LINE__);
 	} else {
+		writel(mask, hwccf_dummy_clr);
+		ret = readl_poll_timeout_atomic(hwccf_dummy_en, temp, !(temp & mask), 1, 2000);
+		if (ret < 0)
+			DPCERR("polling relink timeout %d", __LINE__);
+
 		if (subsys == DPC3_SUBSYS_DISP) {
-			hwccf_multi_voter_ctrl(MM_HWCCF, HW_CCF_CG_GRP_51, HWCCF_UNVOTE, mask);
 			for (i = 0; i < 7; i++)
 				writel(value, dpc_base + g_priv->mtcmos_cfg[i].cfg);
-		} else if (subsys < g_priv->subsys_cnt) {
-			hwccf_voter_ctrl(MM_HWCCF, HW_CCF_CG_GRP_51, HWCCF_UNVOTE, mask);
+		} else if (subsys < g_priv->subsys_cnt)
 			writel(value, dpc_base + g_priv->mtcmos_cfg[subsys].cfg);
-		}
 	}
+
+	/* toggle hwccf cg fsm */
+	hwccf_voter_ctrl(MM_HWCCF, HW_CCF_CG_GRP_10, HWCCF_VOTE, BIT(30));
+	hwccf_voter_ctrl(MM_HWCCF, HW_CCF_CG_GRP_10, HWCCF_UNVOTE, BIT(30));
 
 	if (subsys == DPC3_SUBSYS_DISP)
 		g_priv->mtcmos_cfg[DPC3_SUBSYS_DIS1A].mode = (enum mtk_dpc_mtcmos_mode)en;
@@ -1795,7 +1804,7 @@ static void dpc_config_v3(const u32 subsys, bool en)
 {
 	int ret;
 	u32 value = 0;
-	u32 hwvote_bk = 0, swhw_bk = 0;
+	u32 hwvote_bk = 0;
 	static bool is_mminfra_ctrl_by_dpc;
 
 	dpc_vidle_power_keep_v3(DISP_VIDLE_USER_DISP_DPC_CFG);
@@ -1834,8 +1843,6 @@ static void dpc_config_v3(const u32 subsys, bool en)
 		/* forced vote req on, for apsrc and emireq */
 		writel(1, dpc_base + DISP_REG_DPC3_DTx_SW_TRIG(5));
 		writel(1, dpc_base + DISP_REG_DPC3_DTx_SW_TRIG(33));
-
-		/* polling dpc req idle */
 		ret = readl_poll_timeout_atomic(hwccf_hw_mtcmos_req, value, !(value & 0xffc0), 1, 2000);
 		if (ret < 0)
 			DPCERR("polling dpc req idle timeout %d", __LINE__);
@@ -1863,21 +1870,9 @@ static void dpc_config_v3(const u32 subsys, bool en)
 		dpc2_dt_en(7, true, true);
 		dpc2_dt_en(33, true, true);
 		dpc2_dt_en(35, true, true);
-
-		/* polling dpc req idle */
 		ret = readl_poll_timeout_atomic(hwccf_hw_mtcmos_req, value, !(value & 0xffc0), 1, 2000);
 		if (ret < 0)
 			DPCERR("polling dpc req idle timeout %d", __LINE__);
-
-		/* re-link, master_en = 0 */
-		g_priv->set_mtcmos(DPC3_SUBSYS_DISP, (enum mtk_dpc_mtcmos_mode)en);
-		g_priv->set_mtcmos(DPC3_SUBSYS_MML0, (enum mtk_dpc_mtcmos_mode)en);
-		g_priv->set_mtcmos(DPC3_SUBSYS_MML1, (enum mtk_dpc_mtcmos_mode)en);
-		g_priv->set_mtcmos(DPC3_SUBSYS_MML2, (enum mtk_dpc_mtcmos_mode)en);
-
-		if (excep_by_xpu & BIT(0))
-			if (atomic_read(&hwccf_ref))
-				dpc_hwccf_vote(VOTE_CLR, NULL, 0x77, true, 0);
 
 		/* forced vote req off, by SW_CTRL = 1, val = 1 */
 		writel(0, dpc_base + DISP_DPC_INTSTA_HWVOTE_STATE);
@@ -1894,6 +1889,12 @@ static void dpc_config_v3(const u32 subsys, bool en)
 		ret = readl_poll_timeout_atomic(hwccf_hw_mtcmos_req, value, !(value & 0xffc0), 1, 2000);
 		if (ret < 0)
 			DPCERR("polling dpc req idle timeout %d", __LINE__);
+
+		/* re-link, master_en = 0 */
+		g_priv->set_mtcmos(DPC3_SUBSYS_DISP, (enum mtk_dpc_mtcmos_mode)en);
+		g_priv->set_mtcmos(DPC3_SUBSYS_MML0, (enum mtk_dpc_mtcmos_mode)en);
+		g_priv->set_mtcmos(DPC3_SUBSYS_MML1, (enum mtk_dpc_mtcmos_mode)en);
+		g_priv->set_mtcmos(DPC3_SUBSYS_MML2, (enum mtk_dpc_mtcmos_mode)en);
 
 		/* check hw vote high */
 		hwvote_bk = readl(dpc_base + DISP_DPC_INTSTA_HWVOTE_STATE);
@@ -1914,17 +1915,9 @@ static void dpc_config_v3(const u32 subsys, bool en)
 		if (ret < 0)
 			DPCERR("polling dpc req idle timeout %d", __LINE__);
 
-		/* check both sw and hw vote low */
-		swhw_bk = readl(hwccf_mtcmos_en);
-
-		if (excep_by_xpu & BIT(0))
-			if (atomic_read(&hwccf_ref))
-				dpc_hwccf_vote(VOTE_SET, NULL, 0x77, true, 0);
-
-		mtk_dprec_logger_pr(DPREC_LOGGER_FENCE, "dpc_cfg HWVOTE(%#x->%#x) SWHW(%#x->%#x) 0(%#x) 6(%#x)\n",
+		mtk_dprec_logger_pr(DPREC_LOGGER_FENCE, "dpc_cfg HWVOTE(%#x->%#x) SWHW(%#x) 0(%#x) 6(%#x)\n",
 			hwvote_bk,
 			readl(dpc_base + DISP_DPC_INTSTA_HWVOTE_STATE),
-			swhw_bk,
 			readl(hwccf_mtcmos_en),
 			readl(hwccf_xpu0_local_en),
 			readl(hwccf_xpu6_local_en));
@@ -2434,6 +2427,9 @@ static int dpc_res_init_v3(struct mtk_dpc *priv)
 	// dpc_hrt_bw_set_v3(DPC_SUBSYS_DISP, 363 * priv->total_hrt_unit, true);
 
 	hwccf_mtcmos_pm_ack = ioremap(0x31c12900, 0x4);
+	hwccf_dummy_set = ioremap(0x31c03fb0, 0x4);
+	hwccf_dummy_clr = ioremap(0x31c03fb4, 0x4);
+	hwccf_dummy_en = ioremap(0x31c03fb8, 0x4);
 	hwccf_xpu0_mtcmos_set = ioremap(0x31c20700, 0x4);
 	hwccf_xpu0_mtcmos_clr = ioremap(0x31c20704, 0x4);
 	hwccf_xpu0_local_en = ioremap(0x31c20708, 0x4);
