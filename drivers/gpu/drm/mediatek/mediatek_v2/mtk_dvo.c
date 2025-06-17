@@ -368,9 +368,13 @@ static void mtk_dp_dvo_start(struct mtk_ddp_comp *comp,
 
 static void mtk_dp_dvo_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
+	struct mtk_dp_dvo *dp_dvo = comp_to_dp_dvo(comp);
+
 	DPTXFUNC();
 	//mtk_dp_video_trigger(video_mute<<16 | 0);
 	mtk_ddp_write_mask(comp, 0x0, DVO_EN, EN, handle);
+	mtk_dp_dvo_mask(dp_dvo, DVO_INTEN, 0xffffffff, 0);
+	mtk_dp_dvo_mask(dp_dvo, DVO_INTSTA, 0xffffffff, 0);
 	irq_intsa = 0;
 	irq_underflowsa = 0;
 	dp_dvo_bw = 0;
