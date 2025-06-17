@@ -787,8 +787,8 @@ static int ps5170_resume_noirq(struct device *dev)
 		schedule_work(&ps->reconfig_dp_work);
 	} else {
 		/* pull high en pin to enter normal mode if connected */
-		if (ps->orientation == TYPEC_ORIENTATION_NORMAL ||
-			ps->orientation == TYPEC_ORIENTATION_REVERSE)
+		if (ps->usb_on && (ps->orientation == TYPEC_ORIENTATION_NORMAL ||
+			ps->orientation == TYPEC_ORIENTATION_REVERSE))
 			pinctrl_select_state(ps->pinctrl, ps->enable);
 		else
 			pinctrl_select_state(ps->pinctrl, ps->disable);
