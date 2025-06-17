@@ -1592,9 +1592,15 @@ static void mtk_dbi_hw_count_trigger(struct mtk_ddp_comp *comp,
 	}
 
 	// single trigger
-	value = 0; mask = 0;
-	SET_VAL_MASK(value, mask, 1, SAMPLING_PQ_SINGLE_TRIGGER);
-	mtk_dbi_count_write_mask(comp, value, REG_DBI_SAMPLING_PQ_SINGLE_TRIGGER_SW_EN, mask, handle);
+	if(dbi_count->data->use_slot_trigger)
+		cmdq_pkt_write(handle, comp->mtk_crtc->gce_obj.base,
+			mtk_get_gce_backup_slot_pa(comp->mtk_crtc,
+			DISP_SLOT_DBI_COUNT_SW_TRIGGER), 1, ~0);
+	else {
+		value = 0; mask = 0;
+		SET_VAL_MASK(value, mask, 1, SAMPLING_PQ_SINGLE_TRIGGER);
+		mtk_dbi_count_write_mask(comp, value, REG_DBI_SAMPLING_PQ_SINGLE_TRIGGER_SW_EN, mask, handle);
+	}
 
 	//slice and time diff
 	mtk_dbi_set_slice(comp, handle, slice_num, slice_id);
@@ -1902,6 +1908,71 @@ static int mtk_dbi_count_get_mode_by_fmt(struct mtk_dbi_count_helper *helper, en
 	PC_ERR("%s:%d, fail %d\n", __func__, __LINE__, data_fmt);
 	return -1;
 }
+
+void mtk_dbi_count_slot_trigger(struct mtk_ddp_comp *comp,
+	struct cmdq_pkt *handle)
+{
+	uint32_t value = 0, mask = 0;
+
+	GCE_COND_DECLARE;
+	struct cmdq_operand lop, rop;
+	const u16 var1 = CMDQ_THR_SPR_IDX2;
+	const u16 var2 = 0;
+
+	GCE_COND_ASSIGN(handle, CMDQ_THR_SPR_IDX1, CMDQ_GPR_R07);
+	/* get dbi status */
+	lop.reg = true;
+	lop.idx = var1;
+	rop.reg = false;
+	rop.value = 1;
+
+	cmdq_pkt_read(handle, NULL,
+		mtk_get_gce_backup_slot_pa(comp->mtk_crtc, DISP_SLOT_DBI_COUNT_SW_TRIGGER), var1);
+	cmdq_pkt_logic_command(handle, CMDQ_LOGIC_AND, var1, &lop, &rop);
+	lop.reg = true;
+	lop.idx = var1;
+	rop.reg = false;
+	rop.idx = var2;
+	rop.value = 1;
+	GCE_IF(lop, R_CMDQ_EQUAL, rop);
+	/* condition true: DBI enabled, enable dbi ddren */
+		cmdq_pkt_write(handle, comp->mtk_crtc->gce_obj.base,
+				mtk_get_gce_backup_slot_pa(comp->mtk_crtc,
+				DISP_SLOT_DBI_COUNT_SW_TRIGGER), 0, ~0);
+
+	value = 0; mask = 0;
+	SET_VAL_MASK(value, mask, 1, SAMPLING_PQ_SINGLE_TRIGGER);
+	mtk_dbi_count_write_mask(comp, value, REG_DBI_SAMPLING_PQ_SINGLE_TRIGGER_SW_EN, mask, handle);
+
+	GCE_FI;
+}
+
+
+static void mtk_dbi_count_config_trigger(struct mtk_ddp_comp *comp,
+				   struct cmdq_pkt *handle,
+				   enum mtk_ddp_comp_trigger_flag flag)
+{
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+
+	if (!mtk_crtc) {
+		PC_ERR("%s dbi_count comp not configure CRTC yet\n", __func__);
+		return;
+	}
+	if (!mtk_crtc->base.dev)
+		return;
+
+	switch (flag) {
+	case MTK_TRIG_FLAG_PRE_TRIGGER:
+	{
+		mtk_dbi_count_slot_trigger(comp, handle);
+	}
+		break;
+
+	default:
+		break;
+	}
+}
+
 
 int mtk_dbi_count_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		enum mtk_ddp_io_cmd cmd, void *params)
@@ -2718,6 +2789,7 @@ static const struct mtk_ddp_comp_funcs mtk_disp_dbi_count_funcs = {
 	.io_cmd = mtk_dbi_count_io_cmd,
 	.pq_ioctl_transact = mtk_dbi_count_pq_ioctl_transact,
 	.first_cfg = mtk_dbi_count_first_cfg,
+	.config_trigger = mtk_dbi_count_config_trigger,
 };
 
 
@@ -2913,6 +2985,7 @@ static const struct mtk_disp_dbi_count_data mt6993_dbi_count_driver_data = {
 	.irq_handler = mtk_dbi_count_irq_handler,
 	.stash_lead_time = 20,
 	.min_stash_port_bw = 49,
+	.use_slot_trigger = true,
 };
 
 static const struct of_device_id mtk_disp_dbi_count_driver_dt_match[] = {
