@@ -3024,7 +3024,7 @@ static void spm_resource_req_usb(unsigned int user, unsigned int req_mask)
 {
 	if (spm_resource_req_fptr) {
 		spm_resource_req_fptr(user, req_mask);
-		DBG(0, "spm_resource_req() function is ready!!!\n");
+		DBG(1, "spm_resource_req() function is ready!!!\n");
 	} else
 		DBG(0, "spm_resource_req() function not ready!!!\n");
 }
