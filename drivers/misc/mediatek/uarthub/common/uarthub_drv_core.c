@@ -341,14 +341,16 @@ static int uarthub_fb_notifier_callback(struct notifier_block *nb, unsigned long
 			uarthub_core_debug_info_with_tag_worker("UNBLANK_CB");
 #endif
 #if UARTHUB_INFO_LOG
-		uarthub_core_debug_clk_info_worker("HUB_DBG_UNBLANK_CB");
+		if (uarthub_core_is_assert_state() == 0)
+			uarthub_core_debug_clk_info_worker("HUB_DBG_UNBLANK_CB");
 #endif
 		} else if (data == MTK_DISP_BLANK_POWERDOWN) {
 #if UARTHUB_DEBUG_LOG
 			uarthub_core_debug_info_with_tag_worker("POWERDOWN_CB");
 #endif
 #if UARTHUB_INFO_LOG
-			uarthub_core_debug_clk_info_worker("HUB_DBG_PWRDWN_CB");
+			if (uarthub_core_is_assert_state() == 0)
+				uarthub_core_debug_clk_info_worker("HUB_DBG_PWRDWN_CB");
 #endif
 			pr_info("[%s] %s uarthub enter early POWERDOWN %s\n",
 				__func__, prefix, postfix);
