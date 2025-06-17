@@ -40,10 +40,11 @@
 #define RESCUE_MAX_MONITOR_DROP_ARR_SIZE 10
 #define UX_TARGET_DEFAULT_FPS 60
 #define GAS_ENABLE_FPS 70
+#define SBE_FRAME_CAP_THREASHOLD_P 90
 #define SBE_FRAME_CAP_THREASHOLD 30
 #define SBE_FRAME_CAP_THREASHOLD_L 18
 #define SBE_BUFFER_FILTER_DROP_THREASHOLD 2
-#define SBE_BUFFER_FILTER_THREASHOLD 2
+#define SBE_BUFFER_FILTER_THREASHOLD 4
 #define SBE_RESCUE_MORE_THREASHOLD 5
 #define SBE_RESUCE_MODE_END 0
 #define SBE_RESUCE_MODE_START 1
@@ -88,6 +89,10 @@ static int sbe_extra_sub_deque_margin_time;
 static int sbe_dptv2_enable;
 static int sbe_dptv2_status;
 static int sbe_force_bypass_dptv2;
+static int sbe_loading_threashold_l;
+static int sbe_loading_threashold_m;
+static int sbe_loading_threashold_h;
+static int sbe_affinity_task;
 static int sbe_affinity_task_min_cap;
 static int sbe_affinity_task_low_threshold_cap;
 static int sbe_ignore_vip_task_enable;
@@ -157,6 +162,10 @@ module_param(sbe_extra_sub_deque_margin_time, int, 0644);
 module_param(sbe_notify_fpsgo_vir_boost, int, 0644);
 module_param(sbe_dptv2_enable, int, 0644);
 module_param(sbe_force_bypass_dptv2, int, 0644);
+module_param(sbe_loading_threashold_l, int, 0644);
+module_param(sbe_loading_threashold_m, int, 0644);
+module_param(sbe_loading_threashold_h, int, 0644);
+module_param(sbe_affinity_task, int, 0644);
 module_param(sbe_affinity_task_min_cap, int, 0644);
 module_param(sbe_affinity_task_low_threshold_cap, int, 0644);
 module_param(sbe_ignore_vip_task_enable, int, 0644);
@@ -769,6 +778,17 @@ void sbe_do_frame_start(struct sbe_render_info *thr, unsigned long long frameid,
 
 	sbe_set_per_task_cap(thr);
 
+	if (thr->peak_frame_count >= 15 && thr->loading_type != RENDER_LOADING_PEAK) {
+		thr->peak_frame_count = 0;
+		thr->affinity_task_mask = SBE_PREFER_NONE;
+		thr->loading_type = RENDER_LOADING_PEAK;
+		sbe_set_dep_affinity(thr, SBE_PREFER_NONE);
+		core_ctl_set_min_cpus(1/*Cluster 1*/, 3/*3 core*/,
+				3/*UX Scenario*/, 1/*consider UX Scenario*/);
+		core_ctl_set_min_cpus(2/*Cluster 1*/, 1/*1 core*/,
+				3/*UX Scenario*/, 1/*consider UX Scenario*/);
+	}
+
 	sbe_notify_ai_frame_hint(1, -1, thr, frameid);
 
 	if (sbe_dy_rescue_enable && !list_empty(&thr->scroll_list)) {
@@ -842,14 +862,24 @@ void sbe_do_frame_end(struct sbe_render_info *thr, unsigned long long frameid,
 
 	if (sbe_dy_rescue_enable) {
 		thr->frame_count++;
-		thr->frame_cap_count += thr->ux_blc_next;
+		thr->frame_cap_count += thr->ux_blc_cur;
 		thr->frame_ctime_count += nsec_to_100usec(runtime);
+
+		//last is peak, but this frame is finish as well
+		if (thr->peak_frame_count > 0
+				&& thr->frame_time < thr->target_time)
+			thr->peak_frame_count = 0;
+
+		if (thr->ux_blc_cur >= sbe_loading_threashold_h
+				&& thr->frame_time > thr->target_time)
+			thr->peak_frame_count++;
+
 		if (thr->frame_time > thr->target_time)
 			thr->jank_count++;
 	}
 
 	if ((thr->pid != global_ux_max_pid && thr->ux_blc_next > global_ux_blc) ||
-		thr->pid == global_ux_max_pid)
+			thr->pid == global_ux_max_pid)
 		fbt_ux_set_perf(thr->pid, thr->ux_blc_next);
 
 	sbe_systrace_c(thr->pid, thr->buffer_id, thr->ux_blc_next, "[ux]ux_blc_next");
@@ -1274,6 +1304,7 @@ int sbe_calculate_dy_enhance(struct sbe_render_info *thr)
 	int all_rescue_cap_count = 0;
 	unsigned long long all_rescue_frame_time_count = 0;
 	int all_rescue_frame_count = 0;
+	int target_fps = 0;
 	unsigned long long target_time = 0LLU;
 	int last_enhance = 0;
 	int new_enhance = 0;
@@ -1282,6 +1313,7 @@ int sbe_calculate_dy_enhance(struct sbe_render_info *thr)
 	unsigned long long rescue_target_time = 0LLU;
 	int h_score = 0;
 	int l_score = 0;
+	int p_score = 0;
 	int max_avg_cap = 0;
 	int loading_scroll_limit = scroll_cnt > 0 ? scroll_cnt >> 1 : 1;
 
@@ -1289,6 +1321,7 @@ int sbe_calculate_dy_enhance(struct sbe_render_info *thr)
 		return result;
 
 	target_time = thr->target_time;
+	target_fps = thr->target_fps;
 
 	if (target_time <= 0)
 		return result;
@@ -1312,7 +1345,7 @@ int sbe_calculate_dy_enhance(struct sbe_render_info *thr)
 			continue;
 
 		//caclulate rescue info
-		if (scroll_info->resuce_count > 0) {
+		if (scroll_info->rescue_count > 0) {
 			int rescue_rate = 0;
 
 			all_rescue_cap_count += scroll_info->rescue_cap_count;
@@ -1326,7 +1359,9 @@ int sbe_calculate_dy_enhance(struct sbe_render_info *thr)
 
 				rescue_rate = (int)div64_u64(rescue_f * percent,
 						scroll_info->frame_count);
-				if (rescue_rate >= 10)
+				if (rescue_rate >= 80 && scroll_info->frame_count > target_fps)
+					p_score += 5;
+				else if (rescue_rate >= 10)
 					h_score += 3;
 				else if (rescue_rate >= 7)
 					h_score += 2;
@@ -1352,42 +1387,48 @@ int sbe_calculate_dy_enhance(struct sbe_render_info *thr)
 			int avg_cap = (int)div64_u64(scroll_info->frame_cap_count,
 						scroll_info->frame_count);
 			unsigned long long target_time_100U = nsec_to_100usec(target_time);
-			unsigned long long target_time_100U_65_p = div64_u64(target_time_100U * 95ULL, 100);
+			unsigned long long target_time_100U_95_p = div64_u64(target_time_100U * 95ULL, 100);
 
 			sbe_trace("SBE_UX caclulate frame info avg_cap %d avg_tcpu_time %llu",
 					avg_cap, avg_tcpu_time);
 
 			if (avg_tcpu_time > target_time_100U)
 				h_score++;
-			else if (avg_tcpu_time < target_time_100U_65_p)
+			else if (avg_tcpu_time < target_time_100U_95_p)
 				l_score++;
 
-			if (avg_cap >= SBE_FRAME_CAP_THREASHOLD)
+			if (avg_cap >= sbe_loading_threashold_m)
 				h_score += 4;
 
 			if (avg_cap > max_avg_cap)
 				max_avg_cap = avg_cap;
+
+			if (avg_cap >= sbe_loading_threashold_h
+					&& avg_tcpu_time > target_time_100U)
+				p_score += 5;
 		}
 	}
 
 	last_enhance = thr->sbe_dy_enhance_f > 0 ? thr->sbe_dy_enhance_f : sbe_enhance_f;
 
 	//check rescue enhance
-	if (all_rescue_frame_count > 20 || max_avg_cap >= SBE_FRAME_CAP_THREASHOLD) {
+	if (all_rescue_frame_count > 20 || max_avg_cap >= sbe_loading_threashold_m) {
 		if (last_enhance >= 60)
 			h_score += 2;
-		else if (last_enhance > SBE_FRAME_CAP_THREASHOLD)
+		else if (last_enhance > sbe_loading_threashold_m)
 			h_score++;
 	}
 
-	if (max_avg_cap > 0 && max_avg_cap <= SBE_FRAME_CAP_THREASHOLD_L)
+	if (max_avg_cap > 0 && max_avg_cap < sbe_loading_threashold_l)
 		l_score++;
 
 	if (thr->is_webfunctor)
 		h_score += 5;
 
 	//update render loading type
-	if (h_score >= 5)
+	if (p_score >= 5)
+		thr->loading_type = RENDER_LOADING_PEAK;
+	else if (h_score >= 5)
 		thr->loading_type = RENDER_LOADING_HIGH;
 	else if (l_score > scroll_cnt) // every time scroll, avg c time less than 80%
 		thr->loading_type = RENDER_LOADING_LOW;
@@ -1403,15 +1444,16 @@ int sbe_calculate_dy_enhance(struct sbe_render_info *thr)
 		thr->core_ctl_ignore_vip_task = 1;
 		thr->dpt_policy_enable = 1;
 	} else if (thr->loading_type == RENDER_LOADING_HIGH) {
-		if (set_deplist_affinity) {
-			thr->affinity_task_mask = SBE_PREFER_M;
+		if (set_deplist_affinity && sbe_affinity_task > 0) {
+			thr->affinity_task_mask = sbe_affinity_task;
 			thr->ux_affinity_task_basic_cap = clamp(sbe_affinity_task_min_cap, 0, 100);
 		}
-	}
+	} else if (thr->loading_type == RENDER_LOADING_PEAK)
+		thr->affinity_task_mask = SBE_PREFER_NONE;
 
 	sbe_systrace_c(thr->pid, thr->buffer_id, thr->affinity_task_mask, "[ux]affinity_task");
-	sbe_trace("[SBE] dy enhance pid: %d, bufid:%llu, af_basic_cap: %d",
-			thr->pid, thr->buffer_id, thr->ux_affinity_task_basic_cap);
+	sbe_trace("[SBE] dy enhance pid: %d, bufid:%llu, af_basic_cap: %d, l_type: %d",
+			thr->pid, thr->buffer_id, thr->ux_affinity_task_basic_cap, thr->loading_type);
 
 	// do not compute new rescue
 	if (scroll_cnt > 0 && scroll_count < scroll_cnt)
@@ -1444,7 +1486,7 @@ int sbe_calculate_dy_enhance(struct sbe_render_info *thr)
 
 		list_for_each_entry (scroll_info, &thr->scroll_list, queue_list) {
 			if (IS_ERR_OR_NULL(&scroll_info->frame_list)
-					|| scroll_info->resuce_count <= 0) {
+					|| scroll_info->rescue_count <= 0) {
 				continue;
 			}
 			drop = 0;
@@ -1523,8 +1565,19 @@ void sbe_ux_scrolling_start(int type, unsigned long long start_ts, struct sbe_re
 
 	// enable cluster 1
 	if (thr->affinity_task_mask) {
-		core_ctl_set_min_cpus(1/*Cluster 1*/, 3/*3 core*/,
-				3/*UX Scenario*/, 1/*consider UX Scenario*/);
+		if (thr->affinity_task_mask == SBE_PREFER_M
+				|| thr->affinity_task_mask == SBE_PREFER_LM) {
+			core_ctl_set_min_cpus(1/*Cluster 1*/, 3/*3 core*/,
+					3/*UX Scenario*/, 1/*consider UX Scenario*/);
+		} else if (thr->affinity_task_mask == SBE_PREFER_BIG) {
+			core_ctl_set_min_cpus(2/*Cluster 1*/, 1/*1 core*/,
+					3/*UX Scenario*/, 1/*consider UX Scenario*/);
+		} else if (thr->affinity_task_mask == SBE_PREFER_NONE) {
+			core_ctl_set_min_cpus(1/*Cluster 1*/, 3/*3 core*/,
+					3/*UX Scenario*/, 1/*consider UX Scenario*/);
+			core_ctl_set_min_cpus(2/*Cluster 1*/, 1/*1 core*/,
+					3/*UX Scenario*/, 1/*consider UX Scenario*/);
+		}
 		//CLEAR BEFORE SET
 		sbe_set_dep_affinity(thr, SBE_PREFER_NONE);
 
@@ -1552,7 +1605,15 @@ void sbe_ux_scrolling_end(struct sbe_render_info *thr)
 		sbe_set_dep_affinity(thr, SBE_PREFER_NONE);
 		sbe_set_affinity_on_scrolling(thr->tgid, SBE_PREFER_NONE);
 		sbe_set_affinity_on_scrolling(thr->pid, SBE_PREFER_NONE);
-		core_ctl_set_min_cpus(1, 0, 3, 0);
+		if (thr->affinity_task_mask == SBE_PREFER_M
+				|| thr->affinity_task_mask == SBE_PREFER_LM) {
+			core_ctl_set_min_cpus(1, 0, 3, 0);
+		} else if (thr->affinity_task_mask == SBE_PREFER_BIG) {
+			core_ctl_set_min_cpus(2, 0, 3, 0);
+		} else if (thr->affinity_task_mask == SBE_PREFER_NONE) {
+			core_ctl_set_min_cpus(1, 0, 3, 0);
+			core_ctl_set_min_cpus(2, 0, 3, 0);
+		}
 	}
 
 	//reset rescue affnity if needed
@@ -2165,7 +2226,7 @@ void count_scroll_rescue_info(struct sbe_render_info *thr, struct hwui_frame_inf
 			else
 				scroll_info->score[max_monitor_drop_frame] += 1;
 		}
-		scroll_info->resuce_count++;
+		scroll_info->rescue_count++;
 		sbe_trace("%d SBE_UX: frameid %lld cap:%d dur_ts %lld drop %d",
 					thr->pid, hwui_info->frameID,
 					hwui_info->perf_idx, hwui_info->dur_ts, drop);
@@ -2476,6 +2537,10 @@ int __init sbe_cpu_ctrl_init(void)
 	sbe_extra_sub_en_deque_enable = 1;
 	sbe_notify_fpsgo_vir_boost = 0;
 	sbe_dptv2_enable = 0;
+	sbe_loading_threashold_l = SBE_FRAME_CAP_THREASHOLD_L;
+	sbe_loading_threashold_m = SBE_FRAME_CAP_THREASHOLD;
+	sbe_loading_threashold_h = SBE_FRAME_CAP_THREASHOLD_P;
+	sbe_affinity_task = SBE_PREFER_M;
 	sbe_affinity_task_min_cap = SBE_DEFAULT_AFFINITY_TASK_MIN_CAP;
 	sbe_affinity_task_low_threshold_cap = SBE_DEFAULT_AFFINITY_TASK_LOW_THRESHOLD_CAP;
 	sbe_extra_sub_deque_margin_time = SBE_DEFAULT_DEUQUE_MARGIN_TIME_NS;

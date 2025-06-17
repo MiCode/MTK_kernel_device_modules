@@ -76,6 +76,7 @@ struct sbe_render_info {
 	int ux_affinity_task_basic_cap;
 	int critical_basic_cap;
 	int loading_type;
+	int peak_frame_count;
 	int jank_count;
 	int is_webfunctor;
 	int core_ctl_ignore_vip_task;

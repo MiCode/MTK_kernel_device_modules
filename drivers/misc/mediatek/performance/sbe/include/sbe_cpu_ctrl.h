@@ -42,6 +42,7 @@
 #define RENDER_LOADING_LOW         (1 << 0)
 #define RENDER_LOADING_MEDUIM      (1 << 1)
 #define RENDER_LOADING_HIGH        (1 << 2)
+#define RENDER_LOADING_PEAK        (1 << 3)
 
 extern void set_task_basic_vip(int pid);
 extern void unset_task_basic_vip(int pid);
@@ -93,7 +94,7 @@ struct ux_scroll_info {
 	int frame_cap_count;
 	int frame_ctime_count;
 	int jank_count;
-	int resuce_count;
+	int rescue_count;
 	int enhance;
 	int type;
 
