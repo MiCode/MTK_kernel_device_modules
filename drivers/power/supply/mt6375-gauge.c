@@ -2678,34 +2678,36 @@ static int reset_set(struct mtk_gauge *gauge, struct mtk_gauge_sysfs_field_info 
 static int ptim_resist_get(struct mtk_gauge *gauge, struct mtk_gauge_sysfs_field_info *attr,
 			   int *val)
 {
-	int ret;
+	int ret, tmp = 0;
 
 	if (IS_ERR(gauge->chan_ptim_r)) {
 		bm_err(gauge->gm, "[%s]chan error\n", __func__);
 		return -EOPNOTSUPP;
 	}
 
-	ret = iio_read_channel_processed(gauge->chan_ptim_r, val);
+	ret = iio_read_channel_processed(gauge->chan_ptim_r, &tmp);
 	if (ret < 0)
 		bm_err(gauge->gm, "[%s]read fail,ret=%d\n", __func__, ret);
 
+	*val = tmp;
 	return ret;
 }
 
 static int ptim_battery_voltage_get(struct mtk_gauge *gauge,
 				    struct mtk_gauge_sysfs_field_info *attr, int *val)
 {
-	int ret;
+	int ret, tmp = 0;
 
 	if (IS_ERR(gauge->chan_ptim_bat_voltage)) {
 		bm_err(gauge->gm, "[%s]chan error\n", __func__);
 		return -EOPNOTSUPP;
 	}
 
-	ret = iio_read_channel_processed(gauge->chan_ptim_bat_voltage, val);
+	ret = iio_read_channel_processed(gauge->chan_ptim_bat_voltage, &tmp);
 	if (ret < 0)
 		bm_err(gauge->gm, "[%s]read fail,ret=%d\n", __func__, ret);
 
+	*val = tmp;
 	return ret;
 }
 
@@ -3094,34 +3096,38 @@ static int regmap_type_get(struct mtk_gauge *gauge,
 static int bif_voltage_get(struct mtk_gauge *gauge, struct mtk_gauge_sysfs_field_info *attr,
 			   int *val)
 {
-	int ret;
+	int ret, tmp = 0;
 
 	if (IS_ERR(gauge->chan_bif)) {
 		bm_err(gauge->gm, "[%s]chan error\n", __func__);
 		return -EOPNOTSUPP;
 	}
 
-	ret = iio_read_channel_processed(gauge->chan_bif, val);
+	ret = iio_read_channel_processed(gauge->chan_bif, &tmp);
 	if (ret < 0)
 		bm_err(gauge->gm, "[%s]read fail,ret=%d\n", __func__, ret);
 
+	*val = tmp;
 	return ret;
 }
 
 static int battery_temperature_adc_get(struct mtk_gauge *gauge,
 				       struct mtk_gauge_sysfs_field_info *attr, int *val)
 {
-	int ret;
+	int ret, tmp = 0;
 
 	if (IS_ERR(gauge->chan_bat_temp)) {
 		bm_err(gauge->gm, "[%s]chan error\n", __func__);
 		return -EOPNOTSUPP;
 	}
 
-	ret = iio_read_channel_processed(gauge->chan_bat_temp, val);
+	ret = iio_read_channel_processed(gauge->chan_bat_temp, &tmp);
 	if (ret < 0)
 		bm_err(gauge->gm, "[%s]read fail,ret=%d\n", __func__, ret);
 
+	*val = tmp;
+	bm_err(gauge->gm, "%s, mt6375 baton(bat_temp) val:%d, ret=%d\n",
+		 __func__, tmp, ret);
 	return ret;
 }
 
@@ -3149,7 +3155,7 @@ out:
 static int bat_vol_get(struct mtk_gauge *gauge, struct mtk_gauge_sysfs_field_info *attr, int *val)
 {
 	struct mt6375_priv *priv = container_of(gauge, struct mt6375_priv, gauge);
-	int i, ret, vbat_mon = 0;
+	int i, ret, vbat_mon = 0, tmp = 0;
 	u32 data = 0;
 	static long long t1;
 	static int print_period = 3;
@@ -3163,13 +3169,13 @@ static int bat_vol_get(struct mtk_gauge *gauge, struct mtk_gauge_sysfs_field_inf
 		return -EOPNOTSUPP;
 	}
 
-	ret = iio_read_channel_processed(gauge->chan_bat_voltage, val);
+	ret = iio_read_channel_processed(gauge->chan_bat_voltage, &tmp);
 	if (ret < 0) {
 		bm_err(gauge->gm, "[%s]read fail,ret=%d\n", __func__, ret);
 		return ret;
 	}
 
-	if (*val < 1000) {
+	if (tmp < 1000) {
 		if (t1 == 0) {
 			t1 = local_clock();
 		} else if ((local_clock() - t1) / NSEC_PER_SEC > print_period) {
@@ -3183,6 +3189,8 @@ static int bat_vol_get(struct mtk_gauge *gauge, struct mtk_gauge_sysfs_field_inf
 			}
 		}
 	}
+
+	*val = tmp;
 	return ret;
 }
 

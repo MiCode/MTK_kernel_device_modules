@@ -3477,7 +3477,7 @@ static int ptim_resist_get(struct mtk_gauge *gauge, struct mtk_gauge_sysfs_field
 			   int *val)
 {
 	struct mt6379_priv *priv = container_of(gauge, struct mt6379_priv, gauge);
-	int ret;
+	int ret, tmp = 0;
 
 	if (IS_ERR(gauge->chan_ptim_r)) {
 		bm_err(gauge->gm, "%s, %s auxadc chan: imix_r(ptim_r) error\n",
@@ -3485,12 +3485,15 @@ static int ptim_resist_get(struct mtk_gauge *gauge, struct mtk_gauge_sysfs_field
 		return -EOPNOTSUPP;
 	}
 
-	ret = iio_read_channel_processed(gauge->chan_ptim_r, val);
+	ret = iio_read_channel_processed(gauge->chan_ptim_r, &tmp);
 	if (ret)
 		bm_err(gauge->gm, "%s, Failed to read %s auxadc imix_r(ptim_r), ret=%d\n",
 		       __func__, priv->desc->gauge_name, ret);
 
-	bm_err(gauge->gm, "%s, %s imix_r(ptim_r) val:%d, ret=%d\n", __func__, priv->desc->gauge_name, *val, ret);
+	*val = tmp;
+
+	bm_err(gauge->gm, "%s, %s imix_r(ptim_r) val:%d, ret=%d\n",
+	       __func__, priv->desc->gauge_name, tmp, ret);
 	return ret;
 }
 
@@ -3498,7 +3501,7 @@ static int ptim_battery_voltage_get(struct mtk_gauge *gauge,
 				    struct mtk_gauge_sysfs_field_info *attr, int *val)
 {
 	struct mt6379_priv *priv = container_of(gauge, struct mt6379_priv, gauge);
-	int ret;
+	int ret, tmp = 0;
 
 	if (IS_ERR(gauge->chan_ptim_bat_voltage)) {
 		bm_err(gauge->gm, "%s, %s auxadc chan: imp(ptim_bat_volt) error\n",
@@ -3506,14 +3509,16 @@ static int ptim_battery_voltage_get(struct mtk_gauge *gauge,
 		return -EOPNOTSUPP;
 	}
 
-	ret = iio_read_channel_processed(gauge->chan_ptim_bat_voltage, val);
+	ret = iio_read_channel_processed(gauge->chan_ptim_bat_voltage, &tmp);
 
 	if (ret)
 		bm_err(gauge->gm, "%s, Failed to read %s auxadc imp(ptim_bat_volt), ret=%d\n",
 		       __func__, priv->desc->gauge_name, ret);
 
+	*val = tmp;
+
 	bm_err(gauge->gm, "%s, %s imp(ptim_bat_volt) val:%d, ret=%d\n",
-	       __func__, priv->desc->gauge_name, *val, ret);
+	       __func__, priv->desc->gauge_name, tmp, ret);
 	return ret;
 }
 
@@ -3744,25 +3749,26 @@ static int mt6379_get_vbat_mon_rpt(struct mt6379_priv *priv, int *vbat)
 {
 	union power_supply_propval val;
 	struct power_supply *psy;
-	int ret;
+	int ret, tmp = 0;
 
 	psy = power_supply_get_by_phandle(priv->dev->of_node, "charger");
 	if (psy) {
 		ret = power_supply_get_property(psy, POWER_SUPPLY_PROP_CALIBRATE, &val);
 		if (ret >= 0)
-			*vbat = val.intval;
+			tmp = val.intval;
 
 		power_supply_put(psy);
 	} else {
-		ret = iio_read_channel_processed(priv->adcs[CHAN_ADC_VBATMON], vbat);
+		ret = iio_read_channel_processed(priv->adcs[CHAN_ADC_VBATMON], &tmp);
 		if (ret) {
-			*vbat = 0;
+			tmp = 0;
 			dev_info(priv->dev, "Failed to get chg_adc VBAT_MON data\n");
 		}
 
-		*vbat /= 1000;
+		tmp /= 1000;
 	}
 
+	*vbat = tmp;
 	return ret;
 }
 
@@ -3803,8 +3809,7 @@ static int __maybe_unused battery_voltage_cali(struct mtk_gauge *gauge,
 			return ret;
 		}
 
-		ret = iio_read_channel_processed(gauge->chan_bat_voltage,
-						 &auxadc_vbat);
+		ret = iio_read_channel_processed(gauge->chan_bat_voltage, &auxadc_vbat);
 		if (ret < 0) {
 			bm_err(gauge->gm, "%s, Failed to get %s auxadc_vbat(%d)\n",
 			       __func__, priv->desc->gauge_name, ret);
@@ -3934,7 +3939,7 @@ static int bif_voltage_get(struct mtk_gauge *gauge, struct mtk_gauge_sysfs_field
 			   int *val)
 {
 	struct mt6379_priv *priv = container_of(gauge, struct mt6379_priv, gauge);
-	int ret;
+	int ret, tmp = 0;
 
 	if (IS_ERR(gauge->chan_bif)) {
 		bm_err(gauge->gm, "%s, %s auxadc chan: vref(bif) error\n",
@@ -3942,13 +3947,14 @@ static int bif_voltage_get(struct mtk_gauge *gauge, struct mtk_gauge_sysfs_field
 		return -EOPNOTSUPP;
 	}
 
-	ret = iio_read_channel_processed(gauge->chan_bif, val);
+	ret = iio_read_channel_processed(gauge->chan_bif, &tmp);
 	if (ret < 0)
 		bm_err(gauge->gm, "%s, Failed to read %s auxadc vref(bif), ret=%d\n",
 		       __func__, priv->desc->gauge_name, ret);
 
+	*val = tmp;
 	bm_debug(gauge->gm, "%s, %s vref(bif) val:%d, ret=%d\n",
-		 __func__, priv->desc->gauge_name, *val, ret);
+		 __func__, priv->desc->gauge_name, tmp, ret);
 	return ret;
 }
 
@@ -3956,7 +3962,7 @@ static int battery_temperature_adc_get(struct mtk_gauge *gauge,
 				       struct mtk_gauge_sysfs_field_info *attr, int *val)
 {
 	struct mt6379_priv *priv = container_of(gauge, struct mt6379_priv, gauge);
-	int ret;
+	int ret, tmp = 0;
 
 	if (IS_ERR(gauge->chan_bat_temp)) {
 		bm_err(gauge->gm, "%s, %s auxadc chan: baton(bat_temp) error\n",
@@ -3964,13 +3970,14 @@ static int battery_temperature_adc_get(struct mtk_gauge *gauge,
 		return -EOPNOTSUPP;
 	}
 
-	ret = iio_read_channel_processed(gauge->chan_bat_temp, val);
+	ret = iio_read_channel_processed(gauge->chan_bat_temp, &tmp);
 	if (ret < 0)
-		bm_err(gauge->gm, "%s, %s auxadc chan: baton(bat_temp) error\n",
-		       __func__, priv->desc->gauge_name);
+		bm_err(gauge->gm, "%s, Failed to read %s auxadc baton(bat_temp), ret=%d\n",
+		       __func__, priv->desc->gauge_name, ret);
 
-	bm_debug(gauge->gm, "%s, %s baton(bat_temp) val:%d, ret=%d\n",
-		 __func__, priv->desc->gauge_name, *val, ret);
+	*val = tmp;
+	dev_info(priv->dev, "%s, %s baton(bat_temp) val:%d, ret=%d\n",
+		 __func__, priv->desc->gauge_name, tmp, ret);
 	return ret;
 }
 
@@ -4000,7 +4007,7 @@ static int bat_vol_get(struct mtk_gauge *gauge, struct mtk_gauge_sysfs_field_inf
 {
 	struct mt6379_priv *priv = container_of(gauge, struct mt6379_priv, gauge);
 	const unsigned int bat_idx = priv->desc->bat_idx;
-	int i = 0, ret = 0, vbat_mon = 0;
+	int i = 0, ret = 0, vbat_mon = 0, tmp = 0;
 	u32 data = 0;
 	long long *t1 = &(priv->fg_info.bat_vol_get_t1);
 	static int dump_reg[] = { 0x736, 0x737, 0x738, 0x81C, 0x81D, 0x838, 0x839,
@@ -4015,14 +4022,14 @@ static int bat_vol_get(struct mtk_gauge *gauge, struct mtk_gauge_sysfs_field_inf
 		return -EOPNOTSUPP;
 	}
 
-	ret = iio_read_channel_processed(gauge->chan_bat_voltage, val);
+	ret = iio_read_channel_processed(gauge->chan_bat_voltage, &tmp);
 	if (ret < 0) {
 		bm_err(gauge->gm, "%s, Failed to read %s auxadc batsns(bat_volt), ret=%d\n",
 		       __func__, priv->desc->gauge_name, ret);
 		return ret;
 	}
 
-	if (*val < 1000) {
+	if (tmp < 1000) {
 		if (*t1 == 0) {
 			*t1 = local_clock();
 		} else if ((local_clock() - *t1) / NSEC_PER_SEC > BAT_VOL_GET_PRINT_PERIOD) {
@@ -4041,8 +4048,9 @@ static int bat_vol_get(struct mtk_gauge *gauge, struct mtk_gauge_sysfs_field_inf
 		}
 	}
 
+	*val = tmp;
 	bm_debug(gauge->gm, "%s, %s batsns(bat_volt) val:%d, ret=%d\n",
-		 __func__, priv->desc->gauge_name, *val, ret);
+		 __func__, priv->desc->gauge_name, tmp, ret);
 	return ret;
 }
 
