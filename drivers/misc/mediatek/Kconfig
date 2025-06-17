@@ -264,6 +264,14 @@ config MTK_RTNL_LOCK_DEBUG
 	  out to help locate the problem.
 	  If unsure, say N.
 
+config MTK_NET_SK_PATCH_PRE_CHECKIN
+	bool "pre-checkin kernel patch of freeing sock issue before LTS"
+	help
+	  This is used for pre-checkin kernel patches.
+	  If you say Y here then the kernel patch will be involved before
+	  included by LTS.
+	  If unsure, say N.
+
 config MTK_VM_DEBUG
 	bool "MTK_VM"
 	def_bool n

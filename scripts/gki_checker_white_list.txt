@@ -1,5 +1,7 @@
 c CONFIG_MODULE_SIG_PROTECT
 f net/core/rtnetlink.c
+f net/ipv4/tcp_offload.c
+f net/ipv6/tcpv6_offload.c
 s __kvm_nvhe_ffa_rx_release
 s __kvm_nvhe_has_version_negotiated
 s __kvm_nvhe_hyp_ffa_version
