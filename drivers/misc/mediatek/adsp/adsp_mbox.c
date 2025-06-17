@@ -399,6 +399,29 @@ struct mtk_mbox_pin_recv *get_adsp_mbox_pin_recv(int index)
 }
 EXPORT_SYMBOL(get_adsp_mbox_pin_recv);
 
+int adsp_mbox_check_and_clear_recv_irq(struct mtk_mbox_pin_recv *pin_recv, bool need_ipi_cb)
+{
+	int result = MBOX_DONE;
+	struct mtk_mbox_device *mbdev = &adsp_mboxdev;
+
+	if (!pin_recv) {
+		pr_info("%s(), pin_recv is NULL", __func__);
+		return MBOX_PARA_ERR;
+	}
+
+	/* check the mbox irq, if triggered, read the message */
+	result = mtk_mbox_polling(mbdev, pin_recv->mbox, pin_recv->pin_buf, pin_recv);
+	if (result == MBOX_DONE) {
+		pr_info("%s(), pending mbox %d irq was resolved", __func__, pin_recv->mbox);
+		if (need_ipi_cb && mbdev->ipi_cb) {
+			mbdev->ipi_cb(pin_recv, mbdev->ipi_priv);
+			pin_recv->recv_record.notify_count++;
+		}
+	}
+
+	return result;
+}
+
 enum adsp_ipi_status adsp_ipi_registration(
 	enum adsp_ipi_id id,
 	void (*ipi_handler)(int id, void *data, unsigned int len),

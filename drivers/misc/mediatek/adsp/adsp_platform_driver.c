@@ -129,11 +129,14 @@ int adsp_core0_suspend(void)
 			goto ERROR;
 		}
 
+		if (get_adsp_state(pdata) != ADSP_SUSPENDING)
+			pr_info("%s(), suspend IPI was not sent", __func__);
+
 		/* wait core suspend ack timeout 2s */
 		ret = wait_for_completion_timeout(&pdata->done, 2 * HZ);
 		if (!ret) {
-			ret = -ETIMEDOUT;
-			goto ERROR;
+			adsp_mbox_check_and_clear_recv_irq(pdata->recv_mbox, false);
+			retry = 2;
 		}
 
 		while (!is_adsp_core_suspend(pdata) && --retry)
@@ -235,11 +238,14 @@ int adsp_core1_suspend(void)
 			goto ERROR;
 		}
 
+		if (get_adsp_state(pdata) != ADSP_SUSPENDING)
+			pr_info("%s(), suspend IPI was not sent", __func__);
+
 		/* wait core suspend ack timeout 2s */
 		ret = wait_for_completion_timeout(&pdata->done, 2 * HZ);
 		if (!ret) {
-			ret = -ETIMEDOUT;
-			goto ERROR;
+			adsp_mbox_check_and_clear_recv_irq(pdata->recv_mbox, false);
+			retry = 2;
 		}
 
 		while (!is_adsp_core_suspend(pdata) && --retry)

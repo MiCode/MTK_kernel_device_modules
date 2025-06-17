@@ -38,4 +38,5 @@ int adsp_mbox_send(struct mtk_mbox_pin_send *pin_send, void *msg,
 int adsp_mbox_probe(struct platform_device *pdev);
 struct mtk_mbox_pin_send *get_adsp_mbox_pin_send(int index);
 struct mtk_mbox_pin_recv *get_adsp_mbox_pin_recv(int index);
+int adsp_mbox_check_and_clear_recv_irq(struct mtk_mbox_pin_recv *pin_recv, bool need_ipi_cb);
 #endif  /* __ADSP_MBOX_H__ */
