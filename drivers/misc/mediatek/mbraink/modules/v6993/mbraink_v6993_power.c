@@ -1193,122 +1193,66 @@ static int mbraink_v6993_power_get_dvfsrc_info(
 	return ret;
 }
 
+static int mbraink_v6993_power_get_smap_info
+	(struct mbraink_power_smap_info *smap_info)
+{
+	int ret = 0;
+	struct smap_mbrain smap_mbrain_data;
+
+	if (smap_info == NULL)
+		return -1;
+
+	memset(&smap_mbrain_data, 0x00, sizeof(struct smap_mbrain));
+	ret = get_smap_mbrain_data(&smap_mbrain_data);
+	if (ret < 0) {
+		pr_info("failed to get smap info");
+		return ret;
+	}
+
+	smap_info->version = 3;
+	smap_info->chipid = smap_mbrain_data.chipid;
+	smap_info->cnt = smap_mbrain_data.cnt;
+	smap_info->type = smap_mbrain_data.type;
+	smap_info->enable = smap_mbrain_data.enable;
+	smap_info->dect_cnt = smap_mbrain_data.dect_cnt;
+	smap_info->temp_cnt = smap_mbrain_data.temp_cnt;
+	smap_info->sys_time = smap_mbrain_data.sys_time;
+	smap_info->dect_result = smap_mbrain_data.dect_result;
+	smap_info->dyn_base = smap_mbrain_data.dyn_base;
+	smap_info->cg_subsys_dyn = smap_mbrain_data.cg_subsys_dyn;
+	smap_info->cg_ratio = smap_mbrain_data.cg_ratio;
+	smap_info->dram0_smap_snapshot = smap_mbrain_data.dram0_smap_snapshot;
+	smap_info->dram1_smap_snapshot = smap_mbrain_data.dram1_smap_snapshot;
+	smap_info->dram2_smap_snapshot = smap_mbrain_data.dram2_smap_snapshot;
+	smap_info->dram3_smap_snapshot = smap_mbrain_data.dram3_smap_snapshot;
+	smap_info->chinf0_smap_snapshot = smap_mbrain_data.chinf0_smap_snapshot;
+	smap_info->chinf1_smap_snapshot = smap_mbrain_data.chinf1_smap_snapshot;
+	smap_info->venc0_smap_snapshot = smap_mbrain_data.venc0_smap_snapshot;
+	smap_info->venc1_smap_snapshot = smap_mbrain_data.venc1_smap_snapshot;
+	smap_info->venc2_smap_snapshot = smap_mbrain_data.venc2_smap_snapshot;
+	smap_info->emi_snapshot = smap_mbrain_data.emi_snapshot;
+	smap_info->emi_s_snapshot = smap_mbrain_data.emi_s_snapshot;
+	smap_info->zram_snapshot = smap_mbrain_data.zram_snapshot;
+	smap_info->apu_snapshot = smap_mbrain_data.apu_snapshot;
+	smap_info->real_time_start = smap_mbrain_data.real_time_start;
+	smap_info->real_time_end = smap_mbrain_data.real_time_end;
+	smap_info->dump_cnt = smap_mbrain_data.dump_cnt;
+	smap_info->mitigation_cnt = smap_mbrain_data.mitigation_cnt;
+	smap_info->mitigation_rate = smap_mbrain_data.mitigation_rate;
+
+	return ret;
+}
+
 void smap2mbrain_notify(struct smap_mbrain *smap_mbrain_data)
 {
 	char netlink_buf[NETLINK_EVENT_MESSAGE_SIZE] = {'\0'};
 	int n = 0;
 	int pos = 0;
 
-	unsigned int version = 3;
-	unsigned int cnt;
-	unsigned int type;
-	unsigned int enable;
-	unsigned int dect_cnt;
-	unsigned int temp_cnt;
-	unsigned int sys_time;
-	unsigned int dect_result;
-	unsigned int dyn_base;
-	unsigned int cg_subsys_dyn;
-	unsigned int cg_ratio;
-	unsigned int dram0_smap_snapshot;
-	unsigned int dram1_smap_snapshot;
-	unsigned int dram2_smap_snapshot;
-	unsigned int dram3_smap_snapshot;
-	unsigned int chinf0_smap_snapshot;
-	unsigned int chinf1_smap_snapshot;
-	unsigned int venc0_smap_snapshot;
-	unsigned int venc1_smap_snapshot;
-	unsigned int venc2_smap_snapshot;
-	unsigned int emi_snapshot;
-	unsigned int emi_s_snapshot;
-	unsigned int zram_snapshot;
-	unsigned int apu_snapshot;
-	unsigned long long real_time_start;
-	unsigned long long real_time_end;
-	unsigned int dump_cnt;
-	unsigned int mitigation_cnt;
-	unsigned int mitigation_rate;
-
-	cnt = smap_mbrain_data->cnt;
-	type = smap_mbrain_data->type;
-	enable = smap_mbrain_data->enable;
-	dect_cnt = smap_mbrain_data->dect_cnt;
-	temp_cnt = smap_mbrain_data->temp_cnt;
-	sys_time = smap_mbrain_data->sys_time;
-	dect_result = smap_mbrain_data->dect_result;
-	dyn_base = smap_mbrain_data->dyn_base;
-	cg_subsys_dyn = smap_mbrain_data->cg_subsys_dyn;
-	cg_ratio = smap_mbrain_data->cg_ratio;
-	dram0_smap_snapshot = smap_mbrain_data->dram0_smap_snapshot;
-	dram1_smap_snapshot = smap_mbrain_data->dram1_smap_snapshot;
-	dram2_smap_snapshot = smap_mbrain_data->dram2_smap_snapshot;
-	dram3_smap_snapshot = smap_mbrain_data->dram3_smap_snapshot;
-	chinf0_smap_snapshot = smap_mbrain_data->chinf0_smap_snapshot;
-	chinf1_smap_snapshot = smap_mbrain_data->chinf1_smap_snapshot;
-	venc0_smap_snapshot = smap_mbrain_data->venc0_smap_snapshot;
-	venc1_smap_snapshot = smap_mbrain_data->venc1_smap_snapshot;
-	venc2_smap_snapshot = smap_mbrain_data->venc2_smap_snapshot;
-	emi_snapshot = smap_mbrain_data->emi_snapshot;
-	emi_s_snapshot = smap_mbrain_data->emi_s_snapshot;
-	zram_snapshot = smap_mbrain_data->zram_snapshot;
-	apu_snapshot = smap_mbrain_data->apu_snapshot;
-	real_time_start = smap_mbrain_data->real_time_start;
-	real_time_end = smap_mbrain_data->real_time_end;
-	dump_cnt = smap_mbrain_data->dump_cnt;
-	mitigation_cnt = smap_mbrain_data->mitigation_cnt;
-	mitigation_rate = smap_mbrain_data->mitigation_rate;
-
 	n = snprintf(netlink_buf + pos,
 		NETLINK_EVENT_MESSAGE_SIZE - pos,
-		"%s:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d",
-		NETLINK_EVENT_SMAP_NOTIFY,
-		version,
-		cnt,
-		type,
-		enable,
-		dect_cnt,
-		temp_cnt,
-		sys_time,
-		dect_result,
-		dyn_base,
-		cg_subsys_dyn,
-		cg_ratio,
-		dram0_smap_snapshot,
-		dram1_smap_snapshot,
-		dram2_smap_snapshot,
-		dram3_smap_snapshot,
-		chinf0_smap_snapshot,
-		chinf1_smap_snapshot);
-
-	if (n < 0 || n >= NETLINK_EVENT_MESSAGE_SIZE - pos)
-		return;
-
-	pos += n;
-
-	n = snprintf(netlink_buf + pos,
-		NETLINK_EVENT_MESSAGE_SIZE - pos,
-		":%d:%d:%d:%d:%d:%d:%d:%lld:%lld",
-		venc0_smap_snapshot,
-		venc1_smap_snapshot,
-		venc2_smap_snapshot,
-		emi_snapshot,
-		emi_s_snapshot,
-		zram_snapshot,
-		apu_snapshot,
-		real_time_start,
-		real_time_end);
-
-	if (n < 0 || n >= NETLINK_EVENT_MESSAGE_SIZE - pos)
-		return;
-
-	pos += n;
-
-	n = snprintf(netlink_buf + pos,
-		NETLINK_EVENT_MESSAGE_SIZE - pos,
-		":%d:%d:%d",
-		dump_cnt,
-		mitigation_cnt,
-		mitigation_rate);
+		"%s",
+		NETLINK_EVENT_SMAP_NOTIFY);
 
 	if (n < 0 || n >= NETLINK_EVENT_MESSAGE_SIZE - pos)
 		return;
@@ -1316,7 +1260,6 @@ void smap2mbrain_notify(struct smap_mbrain *smap_mbrain_data)
 	pr_info("%s(%d) [%s]\n", __func__, __LINE__, netlink_buf);
 
 	mbraink_netlink_send_msg(netlink_buf);
-
 }
 
 int mbraink_v6993_power_ccci_event_cb(enum CCCI_MBRAIN_EVENT_TYPE event_type,
@@ -1451,6 +1394,7 @@ static struct mbraink_power_ops mbraink_v6993_power_ops = {
 	.deviceSuspend = mbraink_v6993_power_device_suspend,
 	.deviceResume = mbraink_v6993_power_device_resume,
 	.getPowerThrottleHwOcInfo = mbraink_v6993_power_get_power_throttle_hw_oc_info,
+	.getPowerSmapInfo = mbraink_v6993_power_get_smap_info,
 };
 
 int mbraink_v6993_power_init(struct device *dev)

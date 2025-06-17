@@ -14,6 +14,7 @@ struct mbraink_memory_ops {
 	int (*get_ufs_info)(struct mbraink_ufs_info *ufs_info);
 	int (*getEmiInfo)(struct mbraink_memory_emiInfo *pMemoryEmiInfo);
 	int (*getCmProfileInfo)(struct mbraink_memory_cmProfileInfo *pCmProfileInfo);
+	int (*getVsmrInfo)(struct mbraink_memory_vsmrInfo *pMemoryVsmr);
 };
 int register_mbraink_memory_ops(struct mbraink_memory_ops *ops);
 int unregister_mbraink_memory_ops(void);
@@ -61,6 +62,7 @@ struct mbraink_power_ops {
 	int (*deviceSuspend)(struct device *dev);
 	int (*deviceResume)(struct device *dev);
 	int (*getPowerThrottleHwOcInfo)(struct mbraink_power_throttle_hw_oc_data *pt_hw_oc_data);
+	int (*getPowerSmapInfo)(struct mbraink_power_smap_info *mbraink_smap_info);
 };
 int register_mbraink_power_ops(struct mbraink_power_ops *ops);
 int unregister_mbraink_power_ops(void);

@@ -1539,7 +1539,6 @@ static long handlePowerThrottleHwOcInfo(unsigned long arg, void *mbraink_data)
 	struct mbraink_power_throttle_hw_oc_data *power_throttle_oc_data =
 		(struct mbraink_power_throttle_hw_oc_data *)(mbraink_data);
 
-	pr_notice("mbraink %s\n", __func__);
 	memset(power_throttle_oc_data,
 		0,
 		sizeof(struct mbraink_power_throttle_hw_oc_data));
@@ -1550,6 +1549,51 @@ static long handlePowerThrottleHwOcInfo(unsigned long arg, void *mbraink_data)
 				power_throttle_oc_data,
 				sizeof(struct mbraink_power_throttle_hw_oc_data))) {
 			pr_notice("Copy power throttle oc info to UserSpace error!\n");
+			ret = -EPERM;
+		}
+	}
+
+	return ret;
+}
+
+static long handleMemoryVsmrInfo(unsigned long arg, void *mbraink_data)
+{
+	long ret = 0;
+	struct mbraink_memory_vsmrInfo *pMemoryVsmrInfo =
+		(struct mbraink_memory_vsmrInfo *)(mbraink_data);
+
+	memset(pMemoryVsmrInfo,
+			0,
+			sizeof(struct mbraink_memory_vsmrInfo));
+	ret = mbraink_memory_getVsmrInfo(pMemoryVsmrInfo);
+	if (ret == 0) {
+		if (copy_to_user((struct mbraink_memory_vsmrInfo *)arg,
+				pMemoryVsmrInfo,
+				sizeof(struct mbraink_memory_vsmrInfo))) {
+			pr_notice("Copy memory vsmr Info to UserSpace error!\n");
+			ret = -EPERM;
+		}
+	}
+
+	return ret;
+}
+
+static long handlePowerSmapInfo(unsigned long arg, void *mbraink_data)
+{
+	long ret = 0;
+	struct mbraink_power_smap_info *power_smap_info =
+		(struct mbraink_power_smap_info *)(mbraink_data);
+
+	memset(power_smap_info,
+		0,
+		sizeof(struct mbraink_power_smap_info));
+
+	ret = mbraink_power_get_power_smap_info(power_smap_info);
+	if (ret == 0) {
+		if (copy_to_user((struct mbraink_power_smap_info *)arg,
+				power_smap_info,
+				sizeof(struct mbraink_power_smap_info))) {
+			pr_notice("Copy power smap info to UserSpace error!\n");
 			ret = -EPERM;
 		}
 	}
@@ -2133,6 +2177,24 @@ static long mbraink_ioctl(struct file *filp,
 		if (!mbraink_data)
 			goto End;
 		ret = handlePowerThrottleHwOcInfo(arg, mbraink_data);
+		kfree(mbraink_data);
+		break;
+	}
+	case RO_MEMORY_VSMR_INFO:
+	{
+		mbraink_data = kmalloc(sizeof(struct mbraink_memory_vsmrInfo), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handleMemoryVsmrInfo(arg, mbraink_data);
+		kfree(mbraink_data);
+		break;
+	}
+	case RO_POWER_SMAP_INFO:
+	{
+		mbraink_data = kmalloc(sizeof(struct mbraink_power_smap_info), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handlePowerSmapInfo(arg, mbraink_data);
 		kfree(mbraink_data);
 		break;
 	}

@@ -15,11 +15,14 @@
 #include <swpm_module_psp.h>
 #include <dvfsrc-mb.h>
 #include <mtk_cm_mgr_mt6993.h>
+
 #include <slbc_sdk.h>
 #include <linux/kthread.h>
 #include <linux/sched/task.h>
 #include <linux/delay.h>
 #include <linux/vmalloc.h>
+
+#include <dvfsrc-vsmr.h>
 
 struct device *mbraink_v6993_device;
 static struct task_struct *mbraink_slbc_thread;
@@ -326,12 +329,49 @@ static int mbraink_v6993_memory_getCmProfileInfo
 	return ret;
 }
 
+static int mbraink_v6993_memory_getVsmrInfo(struct mbraink_memory_vsmrInfo  *pMemoryVsmr)
+{
+	int ret = 0;
+	int i = 0;
+	struct mtk_vsmr_header vsmrHeader;
+
+	if (pMemoryVsmr == NULL) {
+		ret = -1;
+		goto End;
+	}
+
+	if (MAX_VSMR_SZ != MAX_VSMR_DATA_SIZE) {
+		pr_notice("vsmr data sz mis-match");
+		ret = -1;
+		goto End;
+	}
+
+	memset(&vsmrHeader, 0, sizeof(struct mtk_vsmr_header));
+	vsmr_get_data(&vsmrHeader);
+	pMemoryVsmr->mid = vsmrHeader.module_id;
+	pMemoryVsmr->ver = vsmrHeader.version;
+	pMemoryVsmr->pos = vsmrHeader.data_offset;
+	pMemoryVsmr->size = vsmrHeader.data_length;
+	pMemoryVsmr->timer = vsmrHeader.timer;
+	pMemoryVsmr->vsmr_support = vsmrHeader.vsmr_support;
+	pMemoryVsmr->total_size = MAX_VSMR_DATA_SIZE;
+	pMemoryVsmr->level_size = 16;
+	pMemoryVsmr->vt_size = MAX_VSMR_DATA_SIZE/16;
+
+	for (i = 0; i < MAX_VSMR_SZ; i++)
+		pMemoryVsmr->raw[i] = vsmrHeader.last_data[i];
+
+End:
+	return ret;
+}
+
 static struct mbraink_memory_ops mbraink_v6993_memory_ops = {
 	.getDdrInfo = mbraink_v6993_memory_getDdrInfo,
 	.getMdvInfo = mbraink_v6993_memory_getMdvInfo,
 	.get_ufs_info = mbraink_v6993_get_ufs_info,
 	.getEmiInfo = mbraink_v6993_memory_getEmiInfo,
 	.getCmProfileInfo = mbraink_v6993_memory_getCmProfileInfo,
+	.getVsmrInfo = mbraink_v6993_memory_getVsmrInfo,
 };
 
 /*This function must be called in mutex*/

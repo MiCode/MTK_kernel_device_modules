@@ -54,6 +54,7 @@
 #define MAX_MMQOS_BW_VALUE_NUMS				24
 #define MAX_CM_WRAP_NUM				8
 #define MAX_DDR_TRACE_OOM_NUM		8
+#define MAX_VSMR_SZ				288
 
 #define NETLINK_EVENT_Q2QTIMEOUT		"NLEvent_Q2QTimeout"
 #define NETLINK_EVENT_UDMFETCH			"M&"
@@ -868,6 +869,55 @@ struct mbraink_power_throttle_hw_oc_data {
 	unsigned int version;
 	unsigned int oc_count;
 	unsigned int oc_duration_us;
+};
+
+struct mbraink_memory_vsmrInfo {
+	uint8_t mid;
+	uint8_t ver;
+	uint16_t pos;
+	uint32_t size;
+	uint32_t raw[MAX_VSMR_SZ];
+	uint32_t timer;
+	bool vsmr_support;
+	uint32_t level_size;
+	uint32_t total_size;
+	uint32_t vt_size;
+};
+
+struct mbraink_power_smap_info {
+	int version;
+	int chipid;
+	unsigned int cnt;
+	unsigned int type;
+	unsigned int enable;
+	unsigned int mode;
+	unsigned int temp_mask;
+	unsigned int dump_cnt;
+	unsigned int mitigation_cnt;
+	unsigned int total_mitigation_cnt;
+	unsigned int dect_cnt;
+	unsigned int temp_cnt;
+	unsigned int mitigation_rate;
+	unsigned int sys_time;
+	unsigned int dect_result;
+	unsigned int dyn_base;
+	unsigned int cg_subsys_dyn;
+	unsigned int cg_ratio;
+	unsigned int dram0_smap_snapshot;
+	unsigned int dram1_smap_snapshot;
+	unsigned int dram2_smap_snapshot;
+	unsigned int dram3_smap_snapshot;
+	unsigned int chinf0_smap_snapshot;
+	unsigned int chinf1_smap_snapshot;
+	unsigned int venc0_smap_snapshot;
+	unsigned int venc1_smap_snapshot;
+	unsigned int venc2_smap_snapshot;
+	unsigned int emi_snapshot;
+	unsigned int emi_s_snapshot;
+	unsigned int zram_snapshot;
+	unsigned int apu_snapshot;
+	unsigned long long real_time_start;
+	unsigned long long real_time_end;
 };
 
 #endif

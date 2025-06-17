@@ -36,6 +36,7 @@ int mbraink_power_init(void)
 	_mbraink_power_ops.deviceSuspend = NULL;
 	_mbraink_power_ops.deviceResume = NULL;
 	_mbraink_power_ops.getPowerThrottleHwOcInfo = NULL;
+	_mbraink_power_ops.getPowerSmapInfo = NULL;
 	return 0;
 }
 
@@ -66,6 +67,7 @@ int mbraink_power_deinit(void)
 	_mbraink_power_ops.deviceSuspend = NULL;
 	_mbraink_power_ops.deviceResume = NULL;
 	_mbraink_power_ops.getPowerThrottleHwOcInfo = NULL;
+	_mbraink_power_ops.getPowerSmapInfo = NULL;
 	return 0;
 }
 
@@ -101,6 +103,7 @@ int register_mbraink_power_ops(struct mbraink_power_ops *ops)
 	_mbraink_power_ops.deviceSuspend = ops->deviceSuspend;
 	_mbraink_power_ops.deviceResume = ops->deviceResume;
 	_mbraink_power_ops.getPowerThrottleHwOcInfo = ops->getPowerThrottleHwOcInfo;
+	_mbraink_power_ops.getPowerSmapInfo = ops->getPowerSmapInfo;
 	return 0;
 }
 EXPORT_SYMBOL(register_mbraink_power_ops);
@@ -134,6 +137,7 @@ int unregister_mbraink_power_ops(void)
 	_mbraink_power_ops.deviceSuspend = NULL;
 	_mbraink_power_ops.deviceResume = NULL;
 	_mbraink_power_ops.getPowerThrottleHwOcInfo = NULL;
+	_mbraink_power_ops.getPowerSmapInfo = NULL;
 	return 0;
 }
 EXPORT_SYMBOL(unregister_mbraink_power_ops);
@@ -522,6 +526,24 @@ int mbraink_power_get_power_throttle_hw_oc_info(
 		ret = _mbraink_power_ops.getPowerThrottleHwOcInfo(pt_hw_oc_data);
 	else
 		pr_info("%s: Do not support ioctl get pt hw oc info query.\n", __func__);
+
+	return ret;
+}
+
+int mbraink_power_get_power_smap_info(
+	struct mbraink_power_smap_info *mbraink_smap_data)
+{
+	int ret = 0;
+
+	if (mbraink_smap_data == NULL) {
+		pr_info("%s: power smap info is null.\n", __func__);
+		return -1;
+	}
+
+	if (_mbraink_power_ops.getPowerSmapInfo)
+		ret = _mbraink_power_ops.getPowerSmapInfo(mbraink_smap_data);
+	else
+		pr_info("%s: Do not support ioctl get smap info query.\n", __func__);
 
 	return ret;
 }

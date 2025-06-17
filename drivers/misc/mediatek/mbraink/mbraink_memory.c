@@ -18,6 +18,7 @@ int mbraink_memory_init(void)
 	_mbraink_memory_ops.get_ufs_info = NULL;
 	_mbraink_memory_ops.getEmiInfo = NULL;
 	_mbraink_memory_ops.getCmProfileInfo = NULL;
+	_mbraink_memory_ops.getVsmrInfo = NULL;
 	return 0;
 }
 
@@ -28,6 +29,7 @@ int mbraink_memory_deinit(void)
 	_mbraink_memory_ops.get_ufs_info = NULL;
 	_mbraink_memory_ops.getEmiInfo = NULL;
 	_mbraink_memory_ops.getCmProfileInfo = NULL;
+	_mbraink_memory_ops.getVsmrInfo = NULL;
 	return 0;
 }
 
@@ -43,6 +45,7 @@ int register_mbraink_memory_ops(struct mbraink_memory_ops *ops)
 	_mbraink_memory_ops.get_ufs_info = ops->get_ufs_info;
 	_mbraink_memory_ops.getEmiInfo = ops->getEmiInfo;
 	_mbraink_memory_ops.getCmProfileInfo = ops->getCmProfileInfo;
+	_mbraink_memory_ops.getVsmrInfo = ops->getVsmrInfo;
 
 	return 0;
 }
@@ -57,6 +60,7 @@ int unregister_mbraink_memory_ops(void)
 	_mbraink_memory_ops.get_ufs_info = NULL;
 	_mbraink_memory_ops.getEmiInfo = NULL;
 	_mbraink_memory_ops.getCmProfileInfo = NULL;
+	_mbraink_memory_ops.getVsmrInfo = NULL;
 
 	return 0;
 }
@@ -143,6 +147,25 @@ int mbraink_memory_getCmProfileInfo(struct mbraink_memory_cmProfileInfo *pCmProf
 	else {
 		pr_info("%s: Do not support ioctl getCmProfileInfo query.\n", __func__);
 		pCmProfileInfo->totalCmWrapNum = 0;
+	}
+
+	return ret;
+}
+
+int mbraink_memory_getVsmrInfo(struct mbraink_memory_vsmrInfo *pVsmrInfo)
+{
+	int ret = 0;
+
+	if (pVsmrInfo == NULL) {
+		pr_info("%s: Vsmr Info is null.\n", __func__);
+		return -1;
+	}
+
+	if (_mbraink_memory_ops.getVsmrInfo)
+		ret = _mbraink_memory_ops.getVsmrInfo(pVsmrInfo);
+	else {
+		pr_info("%s: Do not support ioctl getVsmrInfo query.\n", __func__);
+		pVsmrInfo->vsmr_support = 0;
 	}
 
 	return ret;
