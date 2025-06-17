@@ -720,8 +720,8 @@ ssize_t port_rpc_ecid_show(char *buf)
 		tmp = ecid_info_node.rpc_vpa_public_info[i].vpa_type_name;
 		p = strchr(tmp, '_');
 		if (p != NULL) {
-			strscpy(ecid_name, tmp, p - tmp < sizeof(ecid_name) - 1 ? p - tmp : sizeof(ecid_name) - 1);
-			scnprintf(ecid_name, sizeof(ecid_name), "%sP_%d_ECID", ecid_name, i+1);
+			memcpy(ecid_name, tmp, (p - tmp) < sizeof(ecid_name) ? p - tmp : sizeof(ecid_name) - 1);
+			scnprintf(ecid_name, sizeof(ecid_name), "%s_%d_ECID", ecid_name, i+1);
 		} else
 			strscpy(ecid_name, tmp, sizeof(ecid_name) - 1);
 
