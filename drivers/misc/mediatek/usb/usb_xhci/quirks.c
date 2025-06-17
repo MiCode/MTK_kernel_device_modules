@@ -379,6 +379,35 @@ static void xhci_mtk_usb_set_interface_quirk(struct urb *urb)
 	}
 }
 
+static void xhci_mtk_usb_set_persist_quirk(struct urb *urb)
+{
+	struct device *dev = &urb->dev->dev;
+	struct usb_ctrlrequest *ctrl = NULL;
+	struct usb_host_config *config = NULL;
+	struct usb_interface_descriptor *intf_desc = NULL;
+	int config_num, i;
+
+	ctrl = (struct usb_ctrlrequest *)urb->setup_packet;
+	if (ctrl->bRequest != USB_REQ_SET_CONFIGURATION)
+		return;
+
+	config = urb->dev->config;
+	if (!config)
+		return;
+
+	config_num = urb->dev->descriptor.bNumConfigurations;
+
+	for (i = 0; i < config_num; i++, config++) {
+		if (config && config->desc.bNumInterfaces > 0) {
+			intf_desc = &config->intf_cache[0]->altsetting->desc;
+			if(urb->dev->speed >= USB_SPEED_SUPER && intf_desc->bInterfaceClass == USB_CLASS_MASS_STORAGE) {
+				urb->dev->persist_enabled = 0;
+				dev_info(dev, "%s set persist_enable to 0\n", __func__);
+			}
+		}
+	}
+}
+
 static void xhci_mtk_usb_set_sample_rate_quirk(struct urb *urb)
 {
 	struct usb_device *udev = urb->dev;
@@ -580,6 +609,8 @@ static void xhci_trace_ep_urb_enqueue(void *data, struct urb *urb)
 			/* apply set interface face delay */
 			xhci_mtk_usb_set_interface_quirk(urb);
 		}
+
+		xhci_mtk_usb_set_persist_quirk(urb);
 	} else if (ep_type == USB_ENDPOINT_XFER_ISOC) {
 		if (xhci_mtk_is_usb_audio(urb)) {
 			/* add URB_ISO_ASAP flag */
