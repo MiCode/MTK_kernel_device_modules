@@ -596,12 +596,17 @@ int mtk_dbgtp_dump(void)
 		return 0;
 	}
 
-	DDPDUMP("== %s REGS:0x%pa ==\n", mtk_dump_comp_str(dbgtp_comp), &dbgtp_comp->regs_pa);
-	mtk_serial_dump_reg(baddr, 0x0, 4);
-	mtk_serial_dump_reg(baddr, 0x10, 4);
-	mtk_serial_dump_reg(baddr, 0x20, 4);
-	mtk_serial_dump_reg(baddr, 0x30, 4);
-	mtk_serial_dump_reg(baddr, 0x40, 3);
+	DDPINFO("== %s REGS:0x%pa ==\n", mtk_dump_comp_str(dbgtp_comp), &dbgtp_comp->regs_pa);
+	DDPINFO("dbgtp: 0x%x : 0x%x 0x%x 0x%x 0x%x\n", 0x0, readl(baddr + 0x0),
+		readl(baddr + 0x4), readl(baddr + 0x8), readl(baddr + 0xC));
+	DDPINFO("dbgtp: 0x%x : 0x%x 0x%x 0x%x 0x%x\n", 0x10, readl(baddr + 0x10),
+		readl(baddr + 0x14), readl(baddr + 0x18), readl(baddr + 0x1C));
+	DDPINFO("dbgtp: 0x%x : 0x%x 0x%x 0x%x 0x%x\n", 0x20, readl(baddr + 0x20),
+		readl(baddr + 0x24), readl(baddr + 0x28), readl(baddr + 0x2C));
+	DDPINFO("dbgtp: 0x%x : 0x%x 0x%x 0x%x 0x%x\n", 0x30, readl(baddr + 0x30),
+		readl(baddr + 0x34), readl(baddr + 0x38), readl(baddr + 0x3C));
+	DDPINFO("dbgtp: 0x%x : 0x%x 0x%x 0x%x 0x%x\n", 0x40, readl(baddr + 0x40),
+		readl(baddr + 0x44), readl(baddr + 0x48), readl(baddr + 0x4C));
 
 	return 0;
 }

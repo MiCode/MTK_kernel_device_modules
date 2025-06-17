@@ -4444,6 +4444,8 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 			if ((priv->data->mmsys_id == MMSYS_MT6993) &&
 				(priv->mtk_dbgtp_sta.fifo_mon_en[0]) && (index == 0)) {
 				mtk_set_mmmc_rg(2, 3, 0x14, 0x1, 0xffff);
+				/* dump dbgtp regs */
+				mtk_dbgtp_dump();
 				/* Disable dbgtp */
 				mtk_dbgtp_switch(mtk_crtc, NULL, 0);
 				priv->mtk_dbgtp_sta.dbgtp_en = false;
