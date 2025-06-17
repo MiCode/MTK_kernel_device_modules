@@ -3473,7 +3473,23 @@ static int mtk_pcie_suspend_l12_6993(struct mtk_pcie_port *port)
 
 static int mtk_pcie_resume_l12_6993(struct mtk_pcie_port *port)
 {
+	int val;
+
 	mtk_pcie_switch_to_lpclk(port, false);
+
+	val = readl_relaxed(port->base + PCIE_RST_CTRL_REG);
+	val &= PCIE_PE_RSTB;
+	if (val) {
+		/* Don't let PCIe AXI0 port reply slave error */
+		val = readl_relaxed(port->base + PCIE_AXI_IF_CTRL);
+		val |= PCIE_AXI0_SLV_RESP_MASK;
+		writel_relaxed(val, port->base + PCIE_AXI_IF_CTRL);
+		dev_info(port->dev, "Re-init PCIE_AXI_IF_CTRL = %#x\n",
+			 readl_relaxed(port->base + PCIE_AXI_IF_CTRL));
+		port->full_debug_dump = true;
+		mtk_pcie_dump_link_info(port->port_num);
+		port->full_debug_dump = false;
+	}
 
 	return 0;
 }
