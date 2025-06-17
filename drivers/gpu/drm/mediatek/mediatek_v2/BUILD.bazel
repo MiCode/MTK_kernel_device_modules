@@ -136,10 +136,10 @@ define_mgk_ddk_ko(
                 "DISP_VIDLE_ENABLE=1"
             ],
             "//conditions:default" : [
-                "DRM_PARTIAL_UPDATE=1",
-                "DRM_RETRIGGER_ENABLE=1",
             ]
     }) + [
+        "DRM_PARTIAL_UPDATE=1",
+        "DRM_RETRIGGER_ENABLE=1",
         "DISP_MDP_COLOR_ON=1",
         "DISP_STASH_ENABLE=1",
     ] + select({
