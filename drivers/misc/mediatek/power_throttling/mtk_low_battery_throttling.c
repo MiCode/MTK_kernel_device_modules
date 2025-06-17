@@ -215,6 +215,9 @@ static void __used dump_thd_volts_ext(unsigned int *thd_volts, unsigned int size
 	char str[128] = "";
 	size_t len = sizeof(str) - 1;
 
+	r = snprintf(str, len, "mtk_low_battery_throttling: ");
+	if (r >= len)
+		return;
 	for (i = 0; i < size; i++) {
 		r += snprintf(str + r, len - r, "%s%d mV", i ? ", " : "", thd_volts[i]);
 		if (r >= len)
