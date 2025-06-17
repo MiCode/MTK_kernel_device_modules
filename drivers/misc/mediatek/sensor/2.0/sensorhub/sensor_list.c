@@ -116,7 +116,8 @@ static int sensor_list_seq_get_list(struct sensor_info *list,
 	return i;
 }
 
-int sensor_list_get_list(struct sensor_info *list, unsigned int num)
+static int __sensor_list_get_list_v1(struct sensor_info *list,
+		unsigned int num)
 {
 	int retry = 0, ret = 0;
 	const int max_retry = 3;
@@ -128,6 +129,48 @@ int sensor_list_get_list(struct sensor_info *list, unsigned int num)
 	mutex_unlock(&bus_user_lock);
 
 	return ret;
+}
+
+static int __sensor_list_get_list_v2(struct sensor_info *list,
+		unsigned int num)
+{
+	int ret = 0;
+	const uint32_t len = 4096;
+	uint8_t *buffer = kzalloc(len, GFP_KERNEL);
+	unsigned int i = 0;
+	struct share_mem_info *info, *start, *end;
+
+	if (!buffer)
+		return -ENOMEM;
+
+	ret = share_buffer_comm_with(common_sbc, SENSOR_TYPE_INVALID,
+		SHARE_BUFFER_LIST_CMD, 0, NULL, 0, buffer, len);
+	if (ret < 0)
+		return ret;
+
+	start = (struct share_mem_info *)buffer;
+	end = (struct share_mem_info *)(buffer + ret);
+	for (i = 0, info = start; i < num && info < end; info++) {
+		if (info->sensor_type >= SENSOR_TYPE_SENSOR_MAX ||
+				!info->sensor_type || !info->gain) {
+			pr_err("read wrong sensor info\n");
+			continue;
+		}
+		list[i].sensor_type = info->sensor_type;
+		list[i].gain = info->gain;
+		strscpy(list[i].name, info->name, sizeof(list[i].name));
+		strscpy(list[i].vendor, info->vendor, sizeof(list[i].vendor));
+		i++;
+	}
+	return i;
+}
+
+int sensor_list_get_list(struct sensor_info *list, unsigned int num)
+{
+	if (share_buffer_enabled())
+		return __sensor_list_get_list_v2(list, num);
+	else
+		return __sensor_list_get_list_v1(list, num);
 }
 
 static int sensor_list_share_mem_cfg(struct share_mem_config *cfg,

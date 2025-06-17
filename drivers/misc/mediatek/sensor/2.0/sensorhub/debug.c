@@ -23,6 +23,12 @@ static DEFINE_SPINLOCK(rx_notify_lock);
 static struct sensor_comm_notify rx_notify;
 static struct share_mem debug_shm_reader;
 
+struct debug_msg {
+	uint8_t sequence;
+	uint8_t sensor_type;
+	uint32_t length;
+} __packed __aligned(4);
+
 static void debug_notify_handler(struct sensor_comm_notify *n,
 		void *private_data)
 {
@@ -32,13 +38,14 @@ static void debug_notify_handler(struct sensor_comm_notify *n,
 	complete(&debug_done);
 }
 
-static int debug_seq_get_debug(uint8_t sensor_type, uint8_t *buffer,
+static int __debug_seq_get_debug_v1(uint8_t sensor_type, uint8_t *buffer,
 		unsigned int len)
 {
 	int ret = 0;
 	int timeout = 0;
 	unsigned long flags = 0;
 	struct sensor_comm_ctrl *ctrl = NULL;
+	struct debug_msg *msg = NULL;
 	struct share_mem_debug *shm_debug = NULL;
 	uint32_t write_position = 0;
 	uint32_t ctrl_size = 0;
@@ -61,13 +68,16 @@ static int debug_seq_get_debug(uint8_t sensor_type, uint8_t *buffer,
 	 */
 	reinit_completion(&debug_done);
 
-	ctrl_size = ipi_comm_size(sizeof(*ctrl) + sizeof(ctrl->data[0]));
+	ctrl_size = ipi_comm_size(sizeof(*ctrl) + sizeof(*msg));
 	ctrl = kzalloc(ctrl_size, GFP_KERNEL);
 	ctrl->sensor_type = sensor_type;
 	ctrl->command = SENS_COMM_CTRL_DEBUG_CMD;
-	ctrl->length = sizeof(ctrl->data[0]);
+	ctrl->length = sizeof(*msg);
+	msg = (struct debug_msg *)ctrl->data;
 	/* safe sequence given by atomic, round from 0 to 255 */
-	ctrl->data[0] = (uint8_t)atomic_inc_return(&debug_sequence);
+	msg->sequence = (uint8_t)atomic_inc_return(&debug_sequence);
+	msg->sensor_type = sensor_type;
+	msg->length = len;
 
 	ret = sensor_comm_ctrl_send(ctrl, ctrl_size);
 	if (ret < 0) {
@@ -121,18 +131,32 @@ out1:
 }
 
 /* SENSOR_TYPE_INVALID for get sensor_manager debug information */
-int debug_get_debug(uint8_t sensor_type, uint8_t *buffer, unsigned int len)
+static int __debug_get_debug_v1(uint8_t sensor_type, void *buffer, uint32_t len)
 {
 	int retry = 0, ret = 0;
 	const int max_retry = 3;
 
 	mutex_lock(&bus_user_lock);
 	do {
-		ret = debug_seq_get_debug(sensor_type, buffer, len);
+		ret = __debug_seq_get_debug_v1(sensor_type, buffer, len);
 	} while (retry++ < max_retry && ret < 0);
 	mutex_unlock(&bus_user_lock);
 
 	return ret;
+}
+
+static int __debug_get_debug_v2(uint8_t sensor_type, void *buffer, uint32_t len)
+{
+	return share_buffer_comm_with(common_sbc, sensor_type,
+			SHARE_BUFFER_DEBUG_CMD, 0, NULL, 0, buffer, len);
+}
+
+int debug_get_debug(uint8_t sensor_type, void *buffer, uint32_t len)
+{
+	if (share_buffer_enabled())
+		return __debug_get_debug_v2(sensor_type, buffer, len);
+	else
+		return __debug_get_debug_v1(sensor_type, buffer, len);
 }
 
 static int debug_share_mem_cfg(struct share_mem_config *cfg,

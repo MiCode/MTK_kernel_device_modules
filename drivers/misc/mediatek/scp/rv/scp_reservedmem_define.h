@@ -71,14 +71,14 @@ static struct scp_reserve_mblock scp_reserve_mblock[] = {
 		.size = 0x0,
 	},
 	{
-		.num = SENS_LIST_MEM_ID,
+		.num = SENS_SHARE_BUFFER_W_MEM_ID,
 		.alignment = 0,
 		.start_phys = 0x0,
 		.start_virt = 0x0,
 		.size = 0x0,
 	},
 	{
-		.num = SENS_DEBUG_MEM_ID,
+		.num = SENS_SHARE_BUFFER_R_MEM_ID,
 		.alignment = 0,
 		.start_phys = 0x0,
 		.start_virt = 0x0,

@@ -109,4 +109,82 @@ void share_mem_config_handler_register(uint8_t payload_type,
 	void *private_data);
 void share_mem_config_handler_unregister(uint8_t payload_type);
 
+#define SHARE_BUFFER_CHN_BITS   (4)
+#define SHARE_BUFFER_CMD_BITS   (4)
+
+enum share_buffer_mem_chn {
+	SHARE_BUFFER_COMMON_CHN,
+	SHARE_BUFFER_CUST_CMD_CHN,
+	MAX_SHARE_BUFFER_CHN,
+};
+static_assert(MAX_SHARE_BUFFER_CHN < (1 << SHARE_BUFFER_CHN_BITS));
+
+enum share_buffer_common_command {
+	SHARE_BUFFER_LIST_CMD,
+	SHARE_BUFFER_DEBUG_CMD,
+	SHARE_BUFFER_CUSTOM_DATA_CMD,
+	MAX_SHARE_BUFFER_COMMON_CMD,
+};
+static_assert(MAX_SHARE_BUFFER_COMMON_CMD < (1 << SHARE_BUFFER_CMD_BITS));
+
+extern struct share_buffer_comm *common_sbc;
+
+struct share_buffer {
+	uint32_t total_size;
+	uint32_t buffer_size;
+	uint32_t *head_magic;
+	void *buffer;
+	uint32_t *tail_magic;
+	bool inited;
+};
+
+struct share_buffer_header {
+	uint8_t sequence;
+	uint8_t sensor_type;
+	uint8_t channel : SHARE_BUFFER_CHN_BITS, command : SHARE_BUFFER_CMD_BITS;
+	uint8_t sub_command;
+	uint32_t tx_len;
+	uint32_t rx_len;
+} __packed __aligned(4);
+
+struct share_buffer_mem {
+	uint32_t crc;
+	struct share_buffer_header header;
+	uint32_t length;
+	uint8_t data[] __aligned(4);
+} __packed __aligned(4);
+
+struct share_buffer_comm {
+	struct mutex lock;
+	struct completion done;
+	uint8_t channel;
+	uint8_t max_cmd;
+	phys_addr_t tx_addr;
+	uint32_t tx_size;
+	phys_addr_t rx_addr;
+	uint32_t rx_size;
+	struct share_buffer sb_tx;
+	struct share_buffer sb_rx;
+};
+
+static inline bool share_buffer_enabled(void)
+{
+	return (get_scp_dram_region_manage() == 1) ? true : false;
+}
+
+void share_buffer_init(struct share_buffer *sb, phys_addr_t addr, uint32_t size);
+int share_buffer_write(struct share_buffer *sb,
+		uint32_t offset, void *data, uint32_t length);
+int share_buffer_read(struct share_buffer *sb,
+		uint32_t offset, void *data, uint32_t length);
+
+int share_buffer_comm_with(struct share_buffer_comm *sbc,
+		int sensor_type, uint8_t command, uint8_t sub_command,
+		void *tx_buf, uint32_t tx_len,
+		void *rx_buf, uint32_t rx_len);
+struct share_buffer_comm *share_buffer_comm_get(uint8_t channel);
+int share_buffer_comm_init(struct share_buffer_comm *sbc);
+int share_buffer_comm_plat_init(void);
+void share_buffer_comm_plat_exit(void);
+
 #endif

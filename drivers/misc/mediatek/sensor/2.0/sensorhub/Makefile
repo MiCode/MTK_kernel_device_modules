@@ -4,6 +4,7 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/scp/include
 
 obj-$(CONFIG_MTK_SENSORHUB) += sensorhub.o
 sensorhub-objs += tiny_crc8.o
+sensorhub-objs += tiny_crc32.o
 sensorhub-objs += ready.o
 sensorhub-objs += ipi_comm.o
 sensorhub-objs += sensor_comm.o

@@ -9,7 +9,7 @@
 
 #include "tiny_crc8.h"
 
-#define TINY_CRC8
+//#define TINY_CRC8
 
 #ifndef TINY_CRC8
 /*
@@ -53,13 +53,13 @@ static const uint8_t tiny_crc8_table[] = {
 	0xb6, 0xe8, 0x0a, 0x54, 0xd7, 0x89, 0x6b, 0x35
 };
 
-uint8_t tiny_crc8(uint8_t *ptr, uint8_t len)
+uint8_t tiny_crc8(const void *data, size_t len)
 {
 	uint8_t crc = 0;
+	const uint8_t *ptr = (const uint8_t *)data;
 
 	while (len-- > 0)
 		crc = tiny_crc8_table[*ptr++ ^ crc];
-
 	return crc;
 }
 #else
@@ -76,9 +76,10 @@ static const uint8_t tiny_crc8_table[] = {
 	0x8c, 0x11, 0xaf, 0x32, 0xca, 0x57, 0xe9, 0x74
 };
 
-uint8_t tiny_crc8(uint8_t *ptr, uint8_t len)
+uint8_t tiny_crc8(const void *data, size_t len)
 {
 	uint8_t crc = 0;
+	const uint8_t *ptr = (const uint8_t *)data;
 
 	while (len-- > 0) {
 		crc = *ptr++ ^ crc;

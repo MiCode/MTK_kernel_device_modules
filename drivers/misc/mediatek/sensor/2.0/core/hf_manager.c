@@ -1134,7 +1134,7 @@ err_out:
 }
 
 static int hf_manager_debug(struct hf_client *client, uint8_t sensor_type,
-		uint8_t *debug_buffer, unsigned int debug_len)
+		void *debug_buffer, uint32_t debug_len)
 {
 	struct hf_manager *manager = NULL;
 	struct hf_device *device = NULL;
@@ -1151,7 +1151,37 @@ static int hf_manager_debug(struct hf_client *client, uint8_t sensor_type,
 		ret = -EINVAL;
 		goto err_out;
 	}
-	ret = device->debug(device, sensor_type, debug_buffer, debug_len);
+	if (device->debug)
+		ret = device->debug(device, sensor_type,
+			debug_buffer, debug_len);
+err_out:
+	mutex_unlock(&client->core->manager_lock);
+	return ret;
+}
+
+static int hf_manager_custom_data(struct hf_client *client,
+		uint8_t sensor_type, uint8_t command,
+		void *tx_buf, uint32_t tx_len,
+		void *rx_buf, uint32_t rx_len)
+{
+	struct hf_manager *manager = NULL;
+	struct hf_device *device = NULL;
+	int ret = 0;
+
+	mutex_lock(&client->core->manager_lock);
+	manager = hf_manager_find_manager(client->core, sensor_type);
+	if (!manager) {
+		ret = -EINVAL;
+		goto err_out;
+	}
+	device = manager->hf_dev;
+	if (!device || !device->dev_name) {
+		ret = -EINVAL;
+		goto err_out;
+	}
+	if (device->custom_data)
+		ret = device->custom_data(device, sensor_type, command,
+			tx_buf, tx_len, rx_buf, rx_len);
 err_out:
 	mutex_unlock(&client->core->manager_lock);
 	return ret;
@@ -1379,7 +1409,7 @@ int hf_client_custom_cmd(struct hf_client *client,
 EXPORT_SYMBOL_GPL(hf_client_custom_cmd);
 
 int hf_client_debug(struct hf_client *client, uint8_t sensor_type,
-		uint8_t *debug_buffer, unsigned int debug_len)
+		void *debug_buffer, uint32_t debug_len)
 {
 	if (unlikely(sensor_type >= SENSOR_TYPE_SENSOR_MAX))
 		return -EINVAL;
@@ -1390,6 +1420,20 @@ int hf_client_debug(struct hf_client *client, uint8_t sensor_type,
 	return hf_manager_debug(client, sensor_type, debug_buffer, debug_len);
 }
 EXPORT_SYMBOL_GPL(hf_client_debug);
+
+int hf_client_custom_data(struct hf_client *client,
+		uint8_t sensor_type, uint8_t command,
+		void *tx_buf, uint32_t tx_len,
+		void *rx_buf, uint32_t rx_len)
+{
+	if (unlikely(sensor_type >= SENSOR_TYPE_SENSOR_MAX))
+		return -EINVAL;
+	if (!test_bit(sensor_type, sensor_list_bitmap))
+		return -EINVAL;
+	return hf_manager_custom_data(client, sensor_type, command,
+		tx_buf, tx_len, rx_buf, rx_len);
+}
+EXPORT_SYMBOL_GPL(hf_client_custom_data);
 
 static int hf_manager_open(struct inode *inode, struct file *filp)
 {
@@ -1595,7 +1639,7 @@ static long hf_manager_ioctl_request_info(struct file *filp,
 	return 0;
 }
 
-static long hf_manager_ioctl_request_cust(struct file *filp,
+static long hf_manager_ioctl_request_cust_cmd(struct file *filp,
 			unsigned int cmd, unsigned long arg)
 {
 	struct hf_client *client = filp->private_data;
@@ -1657,9 +1701,9 @@ static long hf_manager_ioctl_request_debug(struct file *filp,
 	unsigned int size = _IOC_SIZE(cmd);
 	struct debug_packet packet;
 	void __user *ubuf = (void __user *)arg;
-	uint8_t *read_buffer = NULL;
+	void *rx_buf = NULL;
 
-	if (size != sizeof(struct debug_packet))
+	if (size != sizeof(packet))
 		return -EINVAL;
 	if (copy_from_user(&packet, ubuf, sizeof(packet)))
 		return -EFAULT;
@@ -1667,28 +1711,88 @@ static long hf_manager_ioctl_request_debug(struct file *filp,
 		return -EINVAL;
 	if (!test_bit(packet.sensor_type, sensor_list_bitmap))
 		return -EINVAL;
-	if (!packet.read_buffer || !packet.read_size)
+	if (!packet.rx_buf || !packet.rx_len)
 		return -EINVAL;
 
-	read_buffer = kzalloc(packet.read_size, GFP_KERNEL);
-	if (!read_buffer)
+	rx_buf = kzalloc(packet.rx_len, GFP_KERNEL);
+	if (!rx_buf)
 		return -ENOMEM;
 	ret = hf_manager_debug(client, packet.sensor_type,
-			read_buffer, packet.read_size);
+			rx_buf, packet.rx_len);
 	if (ret < 0)
 		goto err_out;
-	if (copy_to_user(packet.read_buffer, read_buffer, ret)) {
+	if (copy_to_user(packet.rx_buf, rx_buf, ret)) {
 		ret = -EFAULT;
 		goto err_out;
 	}
-	packet.read_size = ret;
+	packet.rx_len = ret;
 	if (copy_to_user(ubuf, &packet, sizeof(packet))) {
 		ret = -EFAULT;
 		goto err_out;
 	}
 
 err_out:
-	kfree(read_buffer);
+	kfree(rx_buf);
+	return ret;
+}
+
+static long hf_manager_ioctl_request_cust_data(struct file *filp,
+			unsigned int cmd, unsigned long arg)
+{
+	int ret = 0;
+	struct hf_client *client = filp->private_data;
+	unsigned int size = _IOC_SIZE(cmd);
+	struct inout_packet packet;
+	void __user *ubuf = (void __user *)arg;
+	void *tx_buf = NULL, *rx_buf = NULL;
+	uint8_t tx_len = 0, rx_len = 0;
+
+	if (size != sizeof(packet))
+		return -EINVAL;
+	if (copy_from_user(&packet, ubuf, sizeof(packet)))
+		return -EFAULT;
+	if (unlikely(packet.sensor_type >= SENSOR_TYPE_SENSOR_MAX))
+		return -EINVAL;
+	if (!test_bit(packet.sensor_type, sensor_list_bitmap))
+		return -EINVAL;
+
+	if (packet.tx_buf && packet.tx_len) {
+		tx_buf = kzalloc(packet.tx_len, GFP_KERNEL);
+		if (!tx_buf)
+			return -ENOMEM;
+		if (copy_from_user(tx_buf,
+				packet.tx_buf, packet.tx_len)) {
+			ret = -EFAULT;
+			goto err_out;
+		}
+		tx_len = packet.tx_len;
+	}
+	if (packet.rx_buf && packet.rx_len) {
+		rx_buf = kzalloc(packet.rx_len, GFP_KERNEL);
+		if (!rx_buf)
+			return -ENOMEM;
+		rx_len = packet.rx_len;
+	}
+	ret = hf_manager_custom_data(client,
+			packet.sensor_type, packet.command,
+			tx_buf, tx_len, rx_buf, rx_len);
+	if (ret < 0)
+		goto err_out;
+	if (packet.rx_buf && rx_buf && ret) {
+		if (copy_to_user(packet.rx_buf, rx_buf, ret)) {
+			ret = -EFAULT;
+			goto err_out;
+		}
+	}
+	packet.rx_len = ret;
+	if (copy_to_user(ubuf, &packet, sizeof(packet))) {
+		ret = -EFAULT;
+		goto err_out;
+	}
+
+err_out:
+	kfree(tx_buf);
+	kfree(rx_buf);
 	return ret;
 }
 
@@ -1708,12 +1812,14 @@ static long hf_manager_ioctl(struct file *filp,
 		return hf_manager_ioctl_request_test(filp, cmd, arg);
 	case HF_MANAGER_REQUEST_SENSOR_INFO:
 		return hf_manager_ioctl_request_info(filp, cmd, arg);
-	case HF_MANAGER_REQUEST_CUST_DATA:
-		return hf_manager_ioctl_request_cust(filp, cmd, arg);
+	case HF_MANAGER_REQUEST_CUST_CMD:
+		return hf_manager_ioctl_request_cust_cmd(filp, cmd, arg);
 	case HF_MANAGER_REQUEST_READY_STATUS:
 		return hf_manager_ioctl_request_ready(filp, cmd, arg);
 	case HF_MANAGER_REQUEST_DEBUG_INFO:
 		return hf_manager_ioctl_request_debug(filp, cmd, arg);
+	case HF_MANAGER_REQUEST_CUST_DATA:
+		return hf_manager_ioctl_request_cust_data(filp, cmd, arg);
 	default:
 		pr_err("Unknown command %u\n", cmd);
 		return -EINVAL;

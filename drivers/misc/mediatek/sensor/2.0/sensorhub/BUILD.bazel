@@ -12,6 +12,7 @@ define_mgk_ddk_ko(
     name = "sensorhub",
     srcs = [
         "tiny_crc8.c",
+        "tiny_crc32.c",
         "ready.c",
         "ipi_comm.c",
         "sensor_comm.c",

@@ -13,8 +13,15 @@
 #include "sensor_comm.h"
 #include "custom_cmd.h"
 #include "share_memory.h"
+#include "tiny_crc32.h"
 #include "sap_custom_cmd.h"
 #include "sap.h"
+
+enum share_buffer_cust_cmd_command {
+	SHARE_BUFFER_CUST_CMD_DEFAULT_CMD,
+	MAX_SHARE_BUFFER_CUST_CMD_CMD,
+};
+static_assert(MAX_SHARE_BUFFER_CUST_CMD_CMD < (1 << SHARE_BUFFER_CMD_BITS));
 
 static DEFINE_MUTEX(bus_user_lock);
 static DECLARE_COMPLETION(cust_cmd_done);
@@ -25,7 +32,7 @@ static DEFINE_SPINLOCK(rx_fast_notify_lock);
 static struct sensor_comm_notify rx_fast_notify;
 static struct share_mem cust_cmd_shm_rx;
 static struct share_mem cust_cmd_shm_tx;
-
+static struct share_buffer_comm custom_cmd_sbc;
 
 static void custom_cmd_notify_handler(struct sensor_comm_notify *n,
 		void *private_data)
@@ -45,7 +52,8 @@ static void custom_cmd_fast_notify_handler(struct sensor_comm_notify *n,
 	complete(&cust_cmd_fast_done);
 }
 
-static int custom_cmd_slow_seq(int sensor_type, struct share_mem_cmd *shm_cmd)
+static int __custom_cmd_slow_seq_v1(int sensor_type,
+		struct share_mem_cmd *shm_cmd)
 {
 	int ret = 0;
 	int timeout = 0;
@@ -104,7 +112,8 @@ static int custom_cmd_slow_seq(int sensor_type, struct share_mem_cmd *shm_cmd)
 	return 0;
 }
 
-static int custom_cmd_slow_comm(int sensor_type, struct custom_cmd *cust_cmd)
+static int __custom_cmd_slow_comm_v1(int sensor_type,
+		struct custom_cmd *cust_cmd)
 {
 	int retry = 0, ret = 0;
 	const int max_retry = 3;
@@ -126,7 +135,7 @@ static int custom_cmd_slow_comm(int sensor_type, struct custom_cmd *cust_cmd)
 
 	mutex_lock(&bus_user_lock);
 	do {
-		ret = custom_cmd_slow_seq(sensor_type, &shm_cmd);
+		ret = __custom_cmd_slow_seq_v1(sensor_type, &shm_cmd);
 	} while (retry++ < max_retry && ret < 0);
 	mutex_unlock(&bus_user_lock);
 
@@ -146,6 +155,32 @@ static int custom_cmd_slow_comm(int sensor_type, struct custom_cmd *cust_cmd)
 	memcpy(cust_cmd->data, shm_cmd.data, cust_cmd->rx_len);
 
 	return 0;
+}
+
+static int __custom_cmd_slow_comm_v2(int sensor_type,
+		struct custom_cmd *cust_cmd)
+{
+	int ret = 0;
+
+	ret = share_buffer_comm_with(&custom_cmd_sbc, sensor_type,
+		SHARE_BUFFER_CUST_CMD_DEFAULT_CMD, 0,
+		cust_cmd, offsetof(typeof(*cust_cmd), data) + cust_cmd->tx_len,
+		cust_cmd, offsetof(typeof(*cust_cmd), data) + cust_cmd->rx_len);
+	if (ret < 0) {
+		pr_err("%u %u comm fail %d\n",
+			sensor_type, cust_cmd->command, ret);
+		return ret;
+	}
+
+	return 0;
+}
+
+static int custom_cmd_slow_comm(int sensor_type, struct custom_cmd *cust_cmd)
+{
+	if (share_buffer_enabled())
+		return __custom_cmd_slow_comm_v2(sensor_type, cust_cmd);
+
+	return __custom_cmd_slow_comm_v1(sensor_type, cust_cmd);
 }
 
 static int custom_cmd_fast_seq(int sensor_type, struct custom_cmd *cust_cmd)
@@ -267,6 +302,8 @@ static int custom_cmd_r_shm_cfg(struct share_mem_config *cfg,
 int custom_cmd_init(void)
 {
 	unsigned long flags = 0;
+	phys_addr_t tx_addr, rx_addr;
+	uint32_t tx_size, rx_size;
 
 	spin_lock_irqsave(&rx_notify_lock, flags);
 	memset(&rx_notify, 0, sizeof(rx_notify));
@@ -275,6 +312,18 @@ int custom_cmd_init(void)
 	spin_lock_irqsave(&rx_fast_notify_lock, flags);
 	memset(&rx_fast_notify, 0, sizeof(rx_fast_notify));
 	spin_unlock_irqrestore(&rx_fast_notify_lock, flags);
+
+	tx_addr = scp_get_reserve_mem_virt(SENS_CUSTOM_W_MEM_ID);
+	tx_size = scp_get_reserve_mem_size(SENS_CUSTOM_W_MEM_ID);
+	rx_addr = scp_get_reserve_mem_virt(SENS_CUSTOM_R_MEM_ID);
+	rx_size = scp_get_reserve_mem_size(SENS_CUSTOM_R_MEM_ID);
+	custom_cmd_sbc.channel = SHARE_BUFFER_CUST_CMD_CHN;
+	custom_cmd_sbc.max_cmd = MAX_SHARE_BUFFER_CUST_CMD_CMD;
+	custom_cmd_sbc.tx_addr = tx_addr;
+	custom_cmd_sbc.tx_size = tx_size;
+	custom_cmd_sbc.rx_addr = rx_addr;
+	custom_cmd_sbc.rx_size = rx_size;
+	share_buffer_comm_init(&custom_cmd_sbc);
 
 	sensor_comm_notify_handler_register(SENS_COMM_NOTIFY_CUSTOM_CMD,
 		custom_cmd_notify_handler, NULL);
@@ -285,7 +334,6 @@ int custom_cmd_init(void)
 	share_mem_config_handler_register(SHARE_MEM_CUSTOM_R_PAYLOAD_TYPE,
 		custom_cmd_r_shm_cfg, NULL);
 	return sap_custom_cmd_init();
-	return 0;
 }
 
 void custom_cmd_exit(void)

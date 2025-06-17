@@ -71,9 +71,13 @@ struct hf_device {
 	int (*selftest)(struct hf_device *hfdev, int sensor_type);
 	int (*rawdata)(struct hf_device *hfdev, int sensor_type, int en);
 	int (*debug)(struct hf_device *hfdev, int sensor_type,
-		uint8_t *buffer, unsigned int len);
+		void *buffer, uint32_t len);
 	int (*custom_cmd)(struct hf_device *hfdev, int sensor_type,
 		struct custom_cmd *cust_cmd);
+	int (*custom_data)(struct hf_device *hfdev,
+		int sensor_type, uint8_t command,
+		void *tx_buf, uint32_t tx_len,
+		void *rx_buf, uint32_t rx_len);
 
 	unsigned char device_poll;
 	unsigned char device_bus;
@@ -174,6 +178,10 @@ int hf_client_poll_sensor_timeout(struct hf_client *client,
 int hf_client_custom_cmd(struct hf_client *client,
 		uint8_t sensor_type, struct custom_cmd *cust_cmd);
 int hf_client_debug(struct hf_client *client, uint8_t sensor_type,
-		uint8_t *debug_buffer, unsigned int debug_len);
+		void *debug_buffer, uint32_t debug_len);
+int hf_client_custom_data(struct hf_client *client,
+		uint8_t sensor_type, uint8_t command,
+		void *tx_buf, uint32_t tx_len,
+		void *rx_buf, uint32_t rx_len);
 
 #endif

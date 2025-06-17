@@ -74,6 +74,9 @@ DECLARE_COMPLETION(transceiver_done);
 DEFINE_KFIFO(transceiver_fifo, uint32_t, 32);
 DEFINE_KFIFO(transceiver_super_fifo, uint32_t, 32);
 
+static struct share_buffer_comm transceiver_sbc;
+struct share_buffer_comm *common_sbc = &transceiver_sbc;
+
 static void transceiver_notify_func(struct sensor_comm_notify *n,
 		void *private_data)
 {
@@ -666,7 +669,7 @@ static int transceiver_rawdata(struct hf_device *hf_dev,
 }
 
 static int transceiver_debug(struct hf_device *hfdev, int sensor_type,
-		uint8_t *buffer, unsigned int len)
+		void *buffer, uint32_t len)
 {
 	return debug_get_debug(sensor_type, buffer, len);
 }
@@ -675,6 +678,16 @@ static int transceiver_custom_cmd(struct hf_device *hfdev, int sensor_type,
 		struct custom_cmd *cust_cmd)
 {
 	return custom_cmd_comm_with(sensor_type, cust_cmd);
+}
+
+static int transceiver_custom_data(struct hf_device *hfdev,
+		int sensor_type, uint8_t command,
+		void *tx_buf, uint32_t tx_len,
+		void *rx_buf, uint32_t rx_len)
+{
+	return share_buffer_comm_with(&transceiver_sbc, sensor_type,
+		SHARE_BUFFER_CUSTOM_DATA_CMD, command,
+		tx_buf, tx_len, rx_buf, rx_len);
 }
 
 static void transceiver_restore_sensor(struct transceiver_device *dev)
@@ -849,6 +862,8 @@ static int __init transceiver_init(void)
 	int ret = 0;
 	struct transceiver_device *dev = &transceiver_dev;
 	struct sched_param param = { .sched_priority = MAX_RT_PRIO / 2 };
+	phys_addr_t tx_addr, rx_addr;
+	uint32_t tx_size, rx_size;
 
 	mutex_init(&dev->enable_lock);
 	mutex_init(&dev->flush_lock);
@@ -878,6 +893,7 @@ static int __init transceiver_init(void)
 	dev->hf_dev.rawdata = transceiver_rawdata;
 	dev->hf_dev.debug = transceiver_debug;
 	dev->hf_dev.custom_cmd = transceiver_custom_cmd;
+	dev->hf_dev.custom_data = transceiver_custom_data;
 	dev->hf_dev.private_data = dev;
 	ret = hf_device_register(&dev->hf_dev);
 	if (ret < 0) {
@@ -909,6 +925,25 @@ static int __init transceiver_init(void)
 		goto out_debug;
 	}
 
+	ret = share_buffer_comm_plat_init();
+	if (ret < 0 && ret != -EOPNOTSUPP) {
+		pr_err("share buffer comm plat init fail %d\n", ret);
+		goto out_cust_cmd;
+	}
+
+	tx_addr = scp_get_reserve_mem_virt(SENS_SHARE_BUFFER_W_MEM_ID);
+	tx_size = scp_get_reserve_mem_size(SENS_SHARE_BUFFER_W_MEM_ID);
+	rx_addr = scp_get_reserve_mem_virt(SENS_SHARE_BUFFER_R_MEM_ID);
+	rx_size = scp_get_reserve_mem_size(SENS_SHARE_BUFFER_R_MEM_ID);
+	transceiver_sbc.channel = SHARE_BUFFER_COMMON_CHN;
+	transceiver_sbc.max_cmd = MAX_SHARE_BUFFER_COMMON_CMD;
+	transceiver_sbc.tx_addr = tx_addr;
+	transceiver_sbc.tx_size = tx_size;
+	transceiver_sbc.rx_addr = rx_addr;
+	transceiver_sbc.rx_size = rx_size;
+	share_buffer_comm_init(&transceiver_sbc);
+	common_sbc = &transceiver_sbc;
+
 	dev->filter.max_diff = 10000000000LL;
 	dev->filter.min_diff = 10000000LL;
 	dev->filter.bufsize = 16;
@@ -916,7 +951,7 @@ static int __init transceiver_init(void)
 	ret = timesync_filter_init(&dev->filter);
 	if (ret < 0) {
 		pr_err("timesync filter init fail %d\n", ret);
-		goto out_cust_cmd;
+		goto out_share_buffer_comm;
 	}
 
 	ret = timesync_init();
@@ -984,6 +1019,8 @@ out_timesync:
 	timesync_exit();
 out_timesync_filter:
 	timesync_filter_exit(&dev->filter);
+out_share_buffer_comm:
+	share_buffer_comm_plat_exit();
 out_cust_cmd:
 	custom_cmd_exit();
 out_debug:
@@ -1013,6 +1050,7 @@ static void __exit transceiver_exit(void)
 	unregister_pm_notifier(&transceiver_pm_notifier);
 	timesync_exit();
 	custom_cmd_exit();
+	share_buffer_comm_plat_exit();
 	debug_exit();
 	sensor_list_exit();
 	sensor_ready_notifier_chain_unregister(&transceiver_ready_notifier);

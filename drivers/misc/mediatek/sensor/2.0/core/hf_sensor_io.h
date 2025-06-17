@@ -98,10 +98,20 @@ struct cust_packet {
 struct debug_packet {
 	uint8_t sensor_type;
 	uint8_t padding[3];
-	uint8_t *write_buffer;
-	uint32_t write_size;
-	uint8_t *read_buffer;
-	uint32_t read_size;
+	void *tx_buf;
+	uint32_t tx_len;
+	void *rx_buf;
+	uint32_t rx_len;
+} __packed __aligned(4);
+
+struct inout_packet {
+	uint8_t sensor_type;
+	uint8_t command;
+	uint8_t padding[2];
+	void *tx_buf;
+	uint32_t tx_len;
+	void *rx_buf;
+	uint32_t rx_len;
 } __packed __aligned(4);
 
 #define HF_MANAGER_REQUEST_REGISTER_STATUS  _IOWR('a', 1, struct common_packet)
@@ -110,8 +120,9 @@ struct debug_packet {
 #define HF_MANAGER_REQUEST_TEMP_DATA        _IOW('a', 4, struct common_packet)
 #define HF_MANAGER_REQUEST_TEST_DATA        _IOW('a', 5, struct common_packet)
 #define HF_MANAGER_REQUEST_SENSOR_INFO      _IOWR('a', 6, struct info_packet)
-#define HF_MANAGER_REQUEST_CUST_DATA        _IOWR('a', 7, struct cust_packet)
+#define HF_MANAGER_REQUEST_CUST_CMD         _IOWR('a', 7, struct cust_packet)
 #define HF_MANAGER_REQUEST_READY_STATUS     _IOWR('a', 8, struct common_packet)
 #define HF_MANAGER_REQUEST_DEBUG_INFO       _IOWR('a', 9, struct debug_packet)
+#define HF_MANAGER_REQUEST_CUST_DATA        _IOWR('a', 10, struct inout_packet)
 
 #endif
