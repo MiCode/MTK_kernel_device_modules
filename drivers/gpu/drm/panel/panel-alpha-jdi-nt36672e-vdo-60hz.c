@@ -917,6 +917,68 @@ static int jdi_setbacklight_cmdq(void *dsi, dcs_write_gce cb, void *handle,
 	return 0;
 }
 
+struct drm_display_mode *get_mode_by_id(struct drm_connector *connector,
+	unsigned int mode)
+{
+	struct drm_display_mode *m;
+	unsigned int i = 0;
+
+	list_for_each_entry(m, &connector->modes, head) {
+		if (i == mode)
+			return m;
+		i++;
+	}
+	return NULL;
+}
+
+static int mtk_panel_ext_param_set(struct drm_panel *panel,
+			struct drm_connector *connector, unsigned int mode)
+{
+	struct mtk_panel_ext *ext = find_panel_ext(panel);
+	int ret = 0;
+	struct drm_display_mode *m = get_mode_by_id(connector, mode);
+
+	if (!m) {
+		pr_info("[E]%s:%d invalid display_mode\n", __func__, __LINE__);
+		return ret;
+	}
+
+	pr_info("%s the drm_mode_vrefresh = %d", __func__, drm_mode_vrefresh(m));
+
+	if (drm_mode_vrefresh(m) == 60) {
+		ext_params.skip_vblank = 0;
+		ext->params = &ext_params;
+	} else {
+		pr_info("[E]%s, dst_fps %d\n", __func__, drm_mode_vrefresh(m));
+		ret = -EINVAL;
+	}
+
+	return ret;
+}
+
+static int mtk_panel_ext_param_get(struct drm_panel *panel,
+	struct drm_connector *connector,
+	struct mtk_panel_params **ext_param,
+	unsigned int mode)
+{
+	int ret = 0;
+	struct drm_display_mode *m = get_mode_by_id(connector, mode);
+
+	if (!m) {
+		pr_info("[E]%s:%d invalid display_mode\n", __func__, __LINE__);
+		return ret;
+	}
+
+	pr_info("%s the drm_mode_vrefresh = %d", __func__, drm_mode_vrefresh(m));
+
+	if (drm_mode_vrefresh(m) == 60)
+		*ext_param = &ext_params;
+	else
+		ret = 1;
+
+	return ret;
+}
+
 static int panel_ext_reset(struct drm_panel *panel, int on)
 {
 	struct jdi *ctx = panel_to_jdi(panel);
@@ -931,6 +993,8 @@ static int panel_ext_reset(struct drm_panel *panel, int on)
 
 static struct mtk_panel_funcs ext_funcs = {
 	.reset = panel_ext_reset,
+	.ext_param_set = mtk_panel_ext_param_set,
+	.ext_param_get = mtk_panel_ext_param_get,
 	.set_backlight_cmdq = jdi_setbacklight_cmdq,
 	.ata_check = panel_ata_check,
 };

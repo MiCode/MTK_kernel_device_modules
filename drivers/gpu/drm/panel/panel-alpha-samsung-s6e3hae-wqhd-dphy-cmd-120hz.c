@@ -1006,6 +1006,40 @@ static int mtk_panel_ext_param_set(struct drm_panel *panel,
 	return ret;
 }
 
+static int mtk_panel_ext_param_get(struct drm_panel *panel,
+	struct drm_connector *connector,
+	struct mtk_panel_params **ext_param,
+	unsigned int mode)
+{
+	int ret = 0;
+	struct drm_display_mode *m = get_mode_by_id(connector, mode);
+
+	if (!m) {
+		pr_info("[E]%s:%d invalid display_mode\n", __func__, __LINE__);
+		return ret;
+	}
+
+	pr_info("%s the drm_mode_vrefresh = %d, m->hdisplay = %d\n",
+		__func__, drm_mode_vrefresh(m), m->hdisplay);
+
+#if (SUPPORT_RES_SWITCH)
+	if (drm_mode_vrefresh(m) == MODE0_FPS && m->hdisplay == HACT_WQHD)
+		*ext_param = &ext_params;
+	else if (drm_mode_vrefresh(m) == MODE1_FPS && m->hdisplay == HACT_WQHD)
+		*ext_param = &ext_params_120hz;
+	else if (drm_mode_vrefresh(m) == MODE2_FPS && m->hdisplay == HACT_FHDP)
+		*ext_param = &ext_params_fhdp;
+	else if (drm_mode_vrefresh(m) == MODE3_FPS && m->hdisplay == HACT_FHDP)
+		*ext_param = &ext_params_120hz_fhdp;
+	else
+		ret = 1;
+#else
+	*ext_param = &ext_params_fhdp;
+#endif
+
+	return ret;
+}
+
 static int panel_ext_reset(struct drm_panel *panel, int on)
 {
 	struct lcm *ctx = panel_to_lcm(panel);
@@ -1168,6 +1202,7 @@ static int panel_ata_check(struct drm_panel *panel)
 static struct mtk_panel_funcs ext_funcs = {
 	.reset = panel_ext_reset,
 	.ext_param_set = mtk_panel_ext_param_set,
+	.ext_param_get = mtk_panel_ext_param_get,
 	.set_backlight_cmdq = lcm_setbacklight_cmdq,
 	.mode_switch = mode_switch,
 	.ata_check = panel_ata_check,

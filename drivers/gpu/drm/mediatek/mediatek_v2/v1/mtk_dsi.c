@@ -11209,16 +11209,14 @@ unsigned int mtk_dsi_get_line_time(struct mtk_drm_crtc *mtk_crtc,
 		return 0;
 	}
 
-	if (mode_idx > -1) {
-		if (dsi->ext && dsi->ext->funcs && dsi->ext->funcs->ext_param_get) {
-			ret = dsi->ext->funcs->ext_param_get(dsi->panel, &dsi->conn,
-					&panel_params, mode_idx);
-			if (ret || !panel_params) {
-				panel_params = dsi->ext->params;
-				DDPMSG("%s, error:not support this mode:%d\n", __func__, mode_idx);
-			} else
-				data_rate = mtk_dsi_get_data_rate_by_panel_params(dsi, panel_params);
-		}
+	if (mode_idx > -1 && dsi->ext && dsi->ext->funcs && dsi->ext->funcs->ext_param_get) {
+		ret = dsi->ext->funcs->ext_param_get(dsi->panel, &dsi->conn,
+				&panel_params, mode_idx);
+		if (ret || !panel_params) {
+			panel_params = dsi->ext->params;
+			DDPMSG("%s, error:not support this mode:%d\n", __func__, mode_idx);
+		} else
+			data_rate = mtk_dsi_get_data_rate_by_panel_params(dsi, panel_params);
 	} else {
 		data_rate = mtk_dsi_default_rate(dsi);
 		panel_params = dsi->ext->params;
