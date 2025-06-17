@@ -639,6 +639,7 @@ static int dlpt_probe(struct platform_device *pdev)
 {
 	struct mt6397_chip *chip;
 	int ret;
+	u32 dlpt_thread_enable;
 
 	dlpt.regmap = dev_get_regmap(pdev->dev.parent, NULL);
 	if (!dlpt.regmap) {
@@ -655,7 +656,19 @@ static int dlpt_probe(struct platform_device *pdev)
 	ret = dlpt_adc_chan_init(pdev);
 	if (ret)
 		return ret;
-	dlpt_notify_init();
+
+	ret = of_property_read_u32(pdev->dev.of_node,
+		"dlpt-thread-enable", &dlpt_thread_enable);
+	if (ret) {
+		dlpt_thread_enable = 0;
+		dev_notice(&pdev->dev,
+		"[%s] get dlpt-thread-enable failed ret=%d, disable dlpt thread\n",
+			__func__, ret);
+	}
+	if (dlpt_thread_enable)
+		dlpt_notify_init();
+
+	dev_notice(&pdev->dev, "[%s] dlpt-thread-enable:%d\n", __func__, dlpt_thread_enable);
 
 	return 0;
 }
