@@ -15,7 +15,7 @@
 #define MTK_MAX_ENC_CODECS_SUPPORT       (64)
 #define VENC_MAX_FB_NUM              VIDEO_MAX_FRAME
 #define VENC_MAX_BS_NUM              VIDEO_MAX_FRAME
-#define VENC_CONFIG_LENGTH               (512)
+#define VENC_CONFIG_LENGTH               (2048)
 
 /**
  * enum venc_ipi_msg_id - message id between AP and VCU
