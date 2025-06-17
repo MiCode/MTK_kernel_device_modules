@@ -298,7 +298,7 @@ static const struct hdr_data mt6895_hdr_data = {
 	.reg_table = hdr_reg_table_mt6983,
 	.tile_loss = 8,
 	.rb_mode = RB_EOF_MODE,
-	.vcp_readback = true,
+	.vcp_readback = false,
 };
 
 static const struct hdr_data mt6985_hdr_data = {
