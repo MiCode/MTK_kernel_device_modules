@@ -2800,6 +2800,10 @@ static int dpc_vidle_power_keep_v3(const enum mtk_vidle_voter_user _user)
 		return ret;
 	}
 
+	/* No need this user for xpu exception */
+	if ((excep_by_xpu & BIT(0)) && (user == DISP_VIDLE_USER_FOR_FRAME))
+		return ret;
+
 	tracing_mark_write(trace_buf_keep[0][0]);
 	mutex_lock(&g_priv->excp_lock);
 
@@ -2892,6 +2896,10 @@ static void dpc_vidle_power_release_v3(const enum mtk_vidle_voter_user _user)
 		dpc_mmp(user_15, user_cnt == 0 ? MMPROFILE_FLAG_END : MMPROFILE_FLAG_PULSE, 1, user_cnt);
 		return;
 	}
+
+	/* No need this user for xpu exception */
+	if ((excep_by_xpu & BIT(0)) && (user == DISP_VIDLE_USER_FOR_FRAME))
+		return;
 
 	tracing_mark_write(trace_buf_release[0][0]);
 	mutex_lock(&g_priv->excp_lock);
