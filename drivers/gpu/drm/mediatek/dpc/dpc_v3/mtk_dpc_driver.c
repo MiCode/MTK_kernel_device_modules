@@ -83,7 +83,7 @@ module_param(wfe_prete, int, 0644);
 int dt_strategy;
 module_param(dt_strategy, int, 0644);
 
-int toggle_cg_fsm;
+int toggle_cg_fsm = 1;
 module_param(toggle_cg_fsm, int, 0644);
 
 int mask_busy_irq = 1;
@@ -2661,7 +2661,6 @@ static void dpc_ap_vote_mmpc(bool add, const enum mtk_vidle_voter_user user)
 	// u32 mask = 0x1ff80000;
 
 	if (add) {
-
 		if (g_priv->mtcmos_cfg[DPC3_SUBSYS_DIS1A].mode == DPC_MTCMOS_AUTO) {
 			dpc2_dt_en(3, true, true);
 			dpc2_dt_en(7, true, true);
@@ -2696,16 +2695,17 @@ static void dpc_ap_vote_mmpc(bool add, const enum mtk_vidle_voter_user user)
 			DPCERR("polling mtcmos ack timeout %d value(%#x)", __LINE__, value);
 
 			/* polling all fsm idle */
-			ret = readl_poll_timeout_atomic(hwccf_total_sta, value, value & 0xffff, 1, 10000);
+			ret = readl_poll_timeout_atomic(hwccf_total_sta, value, !(value & 0xfffe), 1, 10000);
 			if (ret < 0)
-				goto err1;
+				DPCERR("polling all fsm idle timeout %d", __LINE__);
 
-			writel(BIT(31), hwccf_xpu0_mtcmos_set + 0x8);		/* vote dummy mtcmos voter */
-			writel(BIT(31), hwccf_xpu0_mtcmos_clr + 0x8);		/* unvote dummy mtcmos voter */
+			writel(BIT(16), hwccf_cg47_set);
+			ret = readl_poll_timeout_atomic(hwccf_cg47_en, value, value & BIT(16), 1, 200);
+			ret = readl_poll_timeout_atomic(hwccf_cg47_sta, value, !(value & BIT(16)), 1, 10000);
 
-			ret = readl_poll_timeout_atomic(hwccf_mtcmos_pm_ack, value, value & 0xffc0, 1, 2000);
-			if (ret < 0)
-				goto err2;
+			writel(BIT(16), hwccf_cg47_clr);
+			ret = readl_poll_timeout_atomic(hwccf_cg47_en, value, !(value & BIT(16)), 1, 200);
+			ret = readl_poll_timeout_atomic(hwccf_cg47_sta, value, !(value & BIT(16)), 1, 10000);
 		}
 	} else {
 		mtk_disp_vlp_vote_v2(add, user);
@@ -2728,11 +2728,6 @@ static void dpc_ap_vote_mmpc(bool add, const enum mtk_vidle_voter_user user)
 	}
 
 	return;
-err2:
-	DPCERR("hwccf_mtcmos_pm_ack timeout");
-err1:
-	DPCERR("hwccf_total_sta timeout");
-	clkchk_external_dump();
 }
 
 static void dpc_ap_ref_cnt(bool add, const enum mtk_vidle_voter_user user)
@@ -2961,36 +2956,117 @@ static void dpc_vidle_power_release_v3(const enum mtk_vidle_voter_user _user)
 static void dpc_gce_ref_cnt(struct cmdq_pkt *pkt, bool add, const enum mtk_vidle_voter_user user,
 			    const u16 gpr, struct cmdq_reuse *reuse)
 {
-	// set clr version
+	u32 xpu_base = 0x31471700;	/* XPU6 */
+	u32 mask = 0x1ff80000;
 	GCE_COND_DECLARE;
 	struct cmdq_operand lop, rop;
 	const u16 dummy_voter = CMDQ_THR_SPR_IDX2;
+	const u16 mtcmos_sta = CMDQ_THR_SPR_IDX1;
+	const u16 global_sta = CMDQ_THR_SPR_IDX2;
+	struct cmdq_poll_reuse poll_reuse = {0};
 
-	GCE_COND_ASSIGN(pkt, CMDQ_THR_SPR_IDX1, 0);
+	GCE_COND_ASSIGN(pkt, CMDQ_THR_SPR_IDX3, 0);
 	lop.reg = true;
 	lop.idx = dummy_voter;
 	rop.reg = false;
 	rop.value = 0;
 
-	cmdq_pkt_read(pkt, NULL, 0x31350160, dummy_voter);
+/*SPR2*/cmdq_pkt_read(pkt, NULL, 0x31350160, dummy_voter);
 
 	if (add) {
 		// if (dummy_voter == 0) vote hwccf
-		GCE_IF(lop, R_CMDQ_EQUAL, rop);
+/*SPR3*/	GCE_IF(lop, R_CMDQ_EQUAL, rop);
 		cmdq_pkt_write(pkt, NULL, g_priv->dpc_pa + DISP_REG_DPC_MML_INFRA_PLL_OFF_CFG, 0x1a1a1a, U32_MAX);
-		dpc_hwccf_vote(VOTE_SET, pkt, user, false, gpr);
+
+		if (!toggle_cg_fsm) {
+			dpc_hwccf_vote(VOTE_SET, pkt, user, false, gpr);
+			goto vote_out;
+		}
+
+		cmdq_pkt_poll_sleep(pkt, 0, 0x31410000, 0xfffe);	/* polling all fsm idle */
+		cmdq_pkt_write(pkt, NULL, xpu_base, mask, U32_MAX);	/* vote xpu6 mtcmos voter */
+		cmdq_pkt_poll_sleep(pkt, mask, xpu_base + 0x8, mask);	/* check xpu6 local enable */
+		cmdq_pkt_poll_sleep(pkt, mask, 0x31413700, mask);	/* check global enable */
+
+		/* polling status idle, timeout = 12us * 833 = ~10ms */
+		if (reuse) {
+			cmdq_pkt_poll_timeout_reuse(pkt, 0, SUBSYS_NO_SUPPORT, 0x3141131c, mask, 833, gpr, &poll_reuse);
+			memcpy(reuse, &poll_reuse, sizeof(poll_reuse));
+		} else
+/*SPR1,2*/		cmdq_pkt_poll_timeout(pkt, 0, SUBSYS_NO_SUPPORT, 0x3141131c, mask, 833, gpr);
+
+		/* 1. mtcmos_sta = ((read(0x3141131c) & mask) != 0) ? 1 : 0 */
+		lop.reg = true;
+		lop.idx = mtcmos_sta;
+		rop.reg = false;
+		/* 1.1 mtcmos_sta = read(0x3141131c) */
+/*SPR1*/	cmdq_pkt_read_addr(pkt, 0x3141131c, mtcmos_sta);
+		/* 1.2 mtcmos_sta = (mtcmos_sta >> 16) & (mask >> 16), rop.value type is u16 */
+		rop.value = 16;
+		cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_RIGHT_SHIFT, mtcmos_sta, &lop, &rop);
+		rop.value = (u16)(mask >> 16);
+		cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_AND, mtcmos_sta, &lop, &rop);
+		/* 1.3 mtcmos_sta = (mtcmos_sta != 0) ? 1 : 0 */
+		rop.value = 0;
+		cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_NOT, mtcmos_sta, &lop, NULL);
+		rop.value = 1;
+		cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_AND, mtcmos_sta, &lop, &rop);
+
+		/* 2. global_sta = ((read(0x31413704) & mask) == 0) ? 1 : 0 */
+		lop.reg = true;
+		lop.idx = global_sta;
+		rop.reg = false;
+		/* 2.1 global_sta = read(0x31413704) & mask */
+/*SPR2*/	cmdq_pkt_read_addr(pkt, 0x31413704, global_sta);
+		/* 2.2 global_sta = (global_sta >> 16) & (mask >> 16), rop.value type is u16 */
+		rop.value = 16;
+		cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_RIGHT_SHIFT, mtcmos_sta, &lop, &rop);
+		rop.value = (u16)(mask >> 16);
+		cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_AND, mtcmos_sta, &lop, &rop);
+		/* 2.2 global_sta = (global_sta == 0) ? 1 : 0 */
+		cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_NOT, global_sta, &lop, NULL);
+		rop.value = 1;
+		cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_AND, global_sta, &lop, &rop);
+
+		/* 3. mtcmos_sta = (mtcmos_sta && global_sta) */
+		lop.reg = true;
+		lop.idx = mtcmos_sta;
+		rop.reg = true;
+		rop.idx = global_sta;
+/*SPR1*/	cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_AND, mtcmos_sta, &lop, &rop);
+
 		if (reuse)
-			GCE_FI_REUSE(&reuse[0]);
+			GCE_FI_REUSE(&reuse[3]);
 		else
 			GCE_FI;
 
+		/* 4. if (mtcmos_sta == 1) then toggle cg47*/
+		lop.reg = true;
+		lop.idx = mtcmos_sta;
+		rop.reg = false;
+		rop.value = 1;
+/*SPR3*/	GCE_IF(lop, R_CMDQ_EQUAL, rop);
+			cmdq_pkt_write(pkt, NULL, 0x31471234, BIT(22), U32_MAX);/* set cg47 */
+			cmdq_pkt_poll_sleep(pkt, BIT(22), 0x314122bc, BIT(22));	/* check en is set */
+			cmdq_pkt_poll_sleep(pkt, 0, 0x314118bc, BIT(22));	/* check sta idle */
+			cmdq_pkt_write(pkt, NULL, 0x31471238, BIT(22), U32_MAX);/* clr cg47 */
+			cmdq_pkt_poll_sleep(pkt, 0, 0x314122bc, BIT(22));	/* check en is clr */
+			cmdq_pkt_poll_sleep(pkt, 0, 0x314118bc, BIT(22));	/* check sta idle */
+
+vote_out:
+		if (reuse)
+			GCE_FI_REUSE(&reuse[4]);
+		else
+			GCE_FI;
+
+		cmdq_pkt_write(pkt, NULL, g_priv->dpc_pa + DISP_REG_DPC3_DTx_SW_TRIG(55), 1, U32_MAX);
 		cmdq_pkt_write(pkt, NULL, 0x31350164, BIT(user), ~0);
 	} else {
 		// if (dummy_voter == 0) then hint underflow happened
 		GCE_IF(lop, R_CMDQ_EQUAL, rop);
 		cmdq_pkt_write(pkt, NULL, g_priv->dpc_pa + DISP_REG_DPC3_DTx_SW_TRIG(30), 1, U32_MAX);
 		if (reuse)
-			GCE_FI_REUSE(&reuse[1]);
+			GCE_FI_REUSE(&reuse[5]);
 		else
 			GCE_FI;
 
@@ -3000,9 +3076,10 @@ static void dpc_gce_ref_cnt(struct cmdq_pkt *pkt, bool add, const enum mtk_vidle
 		cmdq_pkt_read(pkt, NULL, 0x31350160, dummy_voter);
 		GCE_IF(lop, R_CMDQ_EQUAL, rop);
 		dpc_hwccf_vote(VOTE_CLR, pkt, user, false, gpr);
+		cmdq_pkt_write(pkt, NULL, g_priv->dpc_pa + DISP_REG_DPC3_DTx_SW_TRIG(56), 1, U32_MAX);
 		cmdq_pkt_write(pkt, NULL, g_priv->dpc_pa + DISP_REG_DPC_MML_INFRA_PLL_OFF_CFG, 0x000a00, U32_MAX);
 		if (reuse)
-			GCE_FI_REUSE(&reuse[2]);
+			GCE_FI_REUSE(&reuse[6]);
 		else
 			GCE_FI;
 	}
@@ -3143,33 +3220,19 @@ static void dpc_hwccf_vote(bool on, struct cmdq_pkt *pkt, const enum mtk_vidle_v
 		if (lock)
 			cmdq_pkt_wfe(pkt, g_priv->event_hwccf_vote);
 		if (on) {
-			if (toggle_cg_fsm)
-				cmdq_pkt_poll_sleep(pkt, 0, 0x31410000, 0xfffe);	/* polling all fsm idle */
-
-			cmdq_pkt_write(pkt, NULL, xpu_base, mask, U32_MAX);		/* vote xpu6 mtcmos voter */
-			cmdq_pkt_poll_sleep(pkt, mask, xpu_base + 0x8, mask);		/* check xpu6 local enable */
-			cmdq_pkt_poll_sleep(pkt, mask, 0x31413700, mask);		/* check global enable */
-			cmdq_pkt_poll_sleep(pkt, 0, 0x3141131c, mask);			/* polling status idle */
-
-			if (toggle_cg_fsm) {
-				// if (condition)
-				cmdq_pkt_write(pkt, NULL, 0x31471234, BIT(22), U32_MAX);	/* set cg47 */
-				cmdq_pkt_poll_sleep(pkt, BIT(22), 0x314122bc, BIT(22));		/* check cg47 en */
-				cmdq_pkt_poll_sleep(pkt, 0, 0x314118bc, BIT(22));		/* check cg47 idle */
-				cmdq_pkt_write(pkt, NULL, 0x31471238, BIT(22), U32_MAX);	/* clr cg47 */
-				cmdq_pkt_poll_sleep(pkt, 0, 0x314122bc, BIT(22));		/* check cg47 en */
-				cmdq_pkt_poll_sleep(pkt, 0, 0x314118bc, BIT(22));		/* check cg47 idle */
+			if (!toggle_cg_fsm) {
+				cmdq_pkt_write(pkt, NULL, xpu_base, mask, U32_MAX);		/* vote mtcmos voter */
+				cmdq_pkt_poll_sleep(pkt, mask, xpu_base + 0x8, mask);		/* check local en */
+				cmdq_pkt_poll_sleep(pkt, mask, 0x31413700, mask);		/* check global en */
+				cmdq_pkt_poll_sleep(pkt, 0, 0x3141131c, mask);			/* check status idle */
+				cmdq_pkt_poll_sleep(pkt, mask, 0x31412900, mask);		/* check pm ack */
 			}
-
-			cmdq_pkt_poll_sleep(pkt, mask, 0x31412900, mask);		/* check mtcmos pm ack */
-			cmdq_pkt_write(pkt, NULL, g_priv->dpc_pa + DISP_REG_DPC3_DTx_SW_TRIG(55), 1, U32_MAX);
 		} else {
 			if (toggle_cg_fsm)
 				cmdq_pkt_poll_sleep(pkt, 0, 0x31410000, 0xfffe);	/* polling all fsm idle */
 
 			cmdq_pkt_write(pkt, NULL, xpu_base + 0x4, mask, U32_MAX);	/* unvote xpu6 mtcmos voter */
 			cmdq_pkt_poll_sleep(pkt, 0, xpu_base + 0x8, mask);		/* check xpu6 local enable */
-			cmdq_pkt_write(pkt, NULL, g_priv->dpc_pa + DISP_REG_DPC3_DTx_SW_TRIG(56), 1, U32_MAX);
 		}
 		if (lock)
 			cmdq_pkt_set_event(pkt, g_priv->event_hwccf_vote);

@@ -827,7 +827,7 @@ struct mml_task {
 
 	/* make command cache labels for reuse command */
 	struct mml_task_reuse reuse[MML_PIPE_CNT];
-	struct cmdq_reuse reuse_dpc[4];
+	struct cmdq_reuse reuse_dpc[7];
 
 	/* config and done on thread */
 	struct kthread_work work_config[MML_PIPE_CNT];
