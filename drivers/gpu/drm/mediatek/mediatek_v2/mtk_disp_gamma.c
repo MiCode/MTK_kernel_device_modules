@@ -1226,6 +1226,15 @@ int disp_gamma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		primary_data->relay_state |= (0x1 << PQ_FEATURE_DEFAULT);
 	}
 		break;
+	case GET_PQ_CAPS:
+	{
+		struct DISP_PQ_CAPS *pq_caps = (struct DISP_PQ_CAPS *)params;
+		struct DISP_PQ_HW_CAPS *comp_caps = &pq_caps->caps[MTK_DISP_PQ_GAMMA];
+
+		comp_caps->valid = 1;
+		comp_caps->prop1 = primary_data->data_mode == HW_8BIT ? GAMMA_10BIT : GAMMA_12BIT;
+	}
+		break;
 	default:
 		break;
 	}

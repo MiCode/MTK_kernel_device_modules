@@ -1016,10 +1016,11 @@ static void disp_ccorr_bypass(struct mtk_ddp_comp *comp, int bypass,
 static int disp_ccorr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 							enum mtk_ddp_io_cmd cmd, void *params)
 {
+	struct mtk_disp_ccorr *data = comp_to_ccorr(comp);
+
 	switch (cmd) {
 	case PQ_FILL_COMP_PIPE_INFO:
 	{
-		struct mtk_disp_ccorr *data = comp_to_ccorr(comp);
 		bool *is_right_pipe = &data->is_right_pipe;
 		int ret, *path_order = &data->path_order;
 		struct mtk_ddp_comp **companion = &data->companion;
@@ -1046,12 +1047,23 @@ static int disp_ccorr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	{
 		if (comp->id == DDP_COMPONENT_CCORR0) {
 			struct mtk_modeswitch_param *modeswitch_param = (struct mtk_modeswitch_param *)params;
-			struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
 
-			ccorr_data->primary_data->fps = modeswitch_param->fps;
+			data->primary_data->fps = modeswitch_param->fps;
 			DDPINFO("%s: compId: %d mode switched fps:%d\n",
 				__func__, comp->id, modeswitch_param->fps);
 		}
+	}
+		break;
+	case GET_PQ_CAPS:
+	{
+		struct DISP_PQ_CAPS *pq_caps = (struct DISP_PQ_CAPS *)params;
+		struct DISP_PQ_HW_CAPS *comp_caps;
+
+		if (data->is_linear == 1)
+			comp_caps = &pq_caps->caps[MTK_DISP_PQ_CCORR_LINEAR];
+		else
+			comp_caps = &pq_caps->caps[MTK_DISP_PQ_CCORR_NONLINEAR];
+		comp_caps->valid = 1;
 	}
 		break;
 	default:

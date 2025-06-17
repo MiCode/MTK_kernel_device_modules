@@ -32,6 +32,7 @@
 #include "mtk_disp_color.h"
 #include "mtk_disp_dither.h"
 #include "mtk_disp_gamma.h"
+#include "mtk_disp_chist.h"
 #include "mtk_disp_vidle.h"
 #include "mtk_disp_dbi_count.h"
 
@@ -56,18 +57,26 @@ struct pq_module_match {
 	enum mtk_ddp_comp_type type;
 };
 
-static struct pq_module_match pq_module_matches[MTK_DISP_PQ_TYPE_MAX] = {
-	{MTK_DISP_PQ_COLOR, MTK_DISP_COLOR}, // 0
-	{MTK_DISP_PQ_DITHER, MTK_DISP_DITHER},
-	{MTK_DISP_PQ_CCORR, MTK_DISP_CCORR},
-	{MTK_DISP_PQ_AAL, MTK_DISP_AAL},
-	{MTK_DISP_PQ_GAMMA, MTK_DISP_GAMMA},
-
-	{MTK_DISP_PQ_CHIST, MTK_DISP_CHIST}, // 5
-	{MTK_DISP_PQ_C3D, MTK_DISP_C3D},
-	{MTK_DISP_PQ_TDSHP, MTK_DISP_TDSHP},
-	{MTK_DISP_PQ_INVALID, MTK_DISP_ODDMR},
-	{MTK_DISP_PQ_ODDMR, MTK_DISP_ODDMR},
+static struct pq_module_match pq_module_matches[MTK_DISP_PQ_NUM] = {
+	[MTK_DISP_PQ_COLOR] =           {MTK_DISP_PQ_COLOR, MTK_DISP_COLOR},
+	[MTK_DISP_PQ_DITHER] =          {MTK_DISP_PQ_DITHER, MTK_DISP_DITHER},
+	[MTK_DISP_PQ_CCORR] =           {MTK_DISP_PQ_CCORR, MTK_DISP_CCORR},
+	[MTK_DISP_PQ_AAL] =             {MTK_DISP_PQ_AAL, MTK_DISP_AAL},
+	[MTK_DISP_PQ_GAMMA] =           {MTK_DISP_PQ_GAMMA, MTK_DISP_GAMMA},
+	[MTK_DISP_PQ_CHIST] =           {MTK_DISP_PQ_CHIST, MTK_DISP_CHIST},
+	[MTK_DISP_PQ_C3D] =             {MTK_DISP_PQ_C3D, MTK_DISP_C3D},
+	[MTK_DISP_PQ_TDSHP] =           {MTK_DISP_PQ_TDSHP, MTK_DISP_TDSHP},
+	[MTK_DISP_PQ_DMDP_AAL] =        {MTK_DISP_PQ_DMDP_AAL, MTK_DMDP_AAL},
+	[MTK_DISP_PQ_ODDMR] =           {MTK_DISP_PQ_ODDMR, MTK_DISP_ODDMR},
+	[MTK_DISP_VIRTUAL_TYPE] =       {MTK_DISP_VIRTUAL_TYPE, MTK_DDP_COMP_TYPE_MAX},
+	[MTK_DISP_PQ_DBI_COUNT] =       {MTK_DISP_PQ_DBI_COUNT, MTK_DDP_COMP_TYPE_MAX},
+	[MTK_DISP_PQ_CCORR_LINEAR] =    {MTK_DISP_PQ_CCORR_LINEAR, MTK_DISP_CCORR},
+	[MTK_DISP_PQ_CCORR_NONLINEAR] = {MTK_DISP_PQ_CCORR_NONLINEAR, MTK_DISP_CCORR},
+	[MTK_DISP_PQ_C3D9] =            {MTK_DISP_PQ_C3D9, MTK_DISP_C3D},
+	[MTK_DISP_PQ_C3D17] =           {MTK_DISP_PQ_C3D17, MTK_DISP_C3D},
+	[MTK_DISP_PQ_CHIST_AFTER_PQ] =  {MTK_DISP_PQ_CHIST_AFTER_PQ, MTK_DISP_CHIST},
+	[MTK_DISP_PQ_CHIST_BEFORE_PQ] = {MTK_DISP_PQ_CHIST_BEFORE_PQ, MTK_DISP_CHIST},
+	[MTK_DISP_PQ_CHIST_AFTER_PC] =	{MTK_DISP_PQ_CHIST_AFTER_PC, MTK_DISP_CHIST},
 };
 
 static const char *const mtk_tuning_mdp_comps_name[TUNING_COMPS_MAX_COUNT] = {
@@ -252,6 +261,119 @@ int disp_pq_proxy_virtual_sw_write(struct drm_crtc *crtc, void *data)
 	if (reg_id == SWREG_TDSHP_TUNING_MODE)
 		pq_data->tdshp_flag = value;
 	return 0;
+}
+
+bool disp_pq_is_comp_for_pq_type(enum mtk_pq_module_type pq_type, struct mtk_ddp_comp *comp)
+{
+	enum mtk_ddp_comp_type type = pq_module_matches[pq_type].type;
+	bool ret = true;
+
+	if (type != mtk_ddp_comp_get_type(comp->id))
+		return false;
+	switch (type) {
+	case MTK_DISP_CCORR:
+	{
+		struct mtk_disp_ccorr *data = comp_to_ccorr(comp);
+
+		if (pq_type == MTK_DISP_PQ_CCORR_LINEAR && data->is_linear)
+			ret = true;
+		else if (pq_type == MTK_DISP_PQ_CCORR_NONLINEAR && !data->is_linear)
+			ret = true;
+		else if (pq_type == MTK_DISP_PQ_CCORR)
+			ret = true;
+		else
+			ret = false;
+	}
+		break;
+	case MTK_DISP_CHIST:
+	{
+		struct mtk_disp_chist *data = comp_to_chist(comp);
+
+		if (pq_type == MTK_DISP_PQ_CHIST_AFTER_PQ && !data->path_order)
+			ret = true;
+		else if (pq_type == MTK_DISP_PQ_CHIST_BEFORE_PQ && data->path_order == 1)
+			ret = true;
+		else if (pq_type == MTK_DISP_PQ_CHIST)
+			ret = true;
+		else
+			ret = false;
+	}
+		break;
+	case MTK_DISP_C3D:
+	{
+		struct mtk_disp_c3d *data = comp_to_c3d(comp);
+
+		if (pq_type == MTK_DISP_PQ_C3D9 && data->bin_num == 9)
+			ret = true;
+		else if (pq_type == MTK_DISP_PQ_C3D17 && data->bin_num == 17)
+			ret = true;
+		else if (pq_type == MTK_DISP_PQ_C3D)
+			ret = true;
+		else
+			ret = false;
+	}
+		break;
+	default:
+		break;
+	}
+
+	DDPDBG("%s: %s pq_type %d ret %d\n", __func__, mtk_dump_comp_str(comp), pq_type, ret);
+	return ret;
+}
+
+static int disp_pq_get_comp_pq_type(struct mtk_ddp_comp *comp)
+{
+	enum mtk_ddp_comp_type type = mtk_ddp_comp_get_type(comp->id);
+	int pq_type = -1;
+	int i;
+
+	switch (type) {
+	case MTK_DISP_CCORR:
+	{
+		struct mtk_disp_ccorr *data = comp_to_ccorr(comp);
+
+		if (data->is_linear)
+			pq_type = MTK_DISP_PQ_CCORR_LINEAR;
+		else
+			pq_type = MTK_DISP_PQ_CCORR_NONLINEAR;
+	}
+		break;
+	case MTK_DISP_CHIST:
+	{
+		struct mtk_disp_chist *data = comp_to_chist(comp);
+
+		if (!data->path_order)
+			pq_type = MTK_DISP_PQ_CHIST_AFTER_PQ;
+		else if (data->path_order == 1)
+			pq_type = MTK_DISP_PQ_CHIST_BEFORE_PQ;
+	}
+		break;
+	case MTK_DISP_C3D:
+	{
+		struct mtk_disp_c3d *data = comp_to_c3d(comp);
+
+		if (data->bin_num == 9)
+			pq_type = MTK_DISP_PQ_C3D9;
+		else if (data->bin_num == 17)
+			pq_type = MTK_DISP_PQ_C3D17;
+	}
+		break;
+	default:
+		break;
+	}
+
+	if (pq_type > 0)
+		goto __return;
+
+	for (i = 0; i < MTK_DISP_PQ_NUM; i++) {
+		if (type == pq_module_matches[i].type) {
+			pq_type = pq_module_matches[i].pq_type;
+			break;
+		}
+	}
+__return:
+	DDPDBG("%s: %s pq_type %d\n", __func__, mtk_dump_comp_str(comp), pq_type);
+	return pq_type;
 }
 
 static int disp_pq_get_table_index(struct drm_crtc *crtc, unsigned int pa)
@@ -469,7 +591,7 @@ static int mtk_drm_ioctl_get_pixel_type_by_fence(struct drm_crtc *crtc, void *da
 }
 
 int disp_pq_proxy_virtual_type_impl(struct drm_crtc *crtc, struct drm_device *dev,
-		unsigned int cmd, char *kdata, struct drm_file *file_priv)
+		unsigned int cmd, char *kdata, unsigned int size, struct drm_file *file_priv)
 {
 	struct mtk_ddp_comp *comp;
 	int ret = -1;
@@ -512,6 +634,12 @@ int disp_pq_proxy_virtual_type_impl(struct drm_crtc *crtc, struct drm_device *de
 		break;
 	case PQ_VIRTUAL_GET_PIXEL_TYPE_BY_FENCE:
 		ret = mtk_drm_ioctl_get_pixel_type_by_fence(crtc, kdata);
+		break;
+	case PQ_VIRTUAL_SET_HW_RELAY:
+		ret = disp_pq_proxy_virtual_set_hw_relay(crtc, kdata, size);
+		break;
+	case PQ_VIRTUAL_GET_PQ_CAPS:
+		ret = disp_pq_proxy_virtual_get_pq_caps(crtc, cmd, kdata, size);
 		break;
 	default:
 		DDPPR_ERR("%s, unknown cmd:%d\n", __func__, cmd);
@@ -570,7 +698,7 @@ int mtk_drm_ioctl_pq_proxy(struct drm_device *dev, void *data, struct drm_file *
 		goto err;
 
 	if (pq_type == MTK_DISP_VIRTUAL_TYPE) {
-		ret = disp_pq_proxy_virtual_type_impl(crtc, dev, cmd, kdata, file_priv);
+		ret = disp_pq_proxy_virtual_type_impl(crtc, dev, cmd, kdata, params->size, file_priv);
 	} else if(pq_type == MTK_DISP_PQ_DBI_COUNT) {
 		if(cmd == PQ_DBI_COUNT_IDLE_TIMER_INIT)
 			ret = mtk_dbi_count_create_timer(crtc, kdata, true, true);
@@ -591,7 +719,7 @@ int mtk_drm_ioctl_pq_proxy(struct drm_device *dev, void *data, struct drm_file *
 
 	} else {
 		for_each_comp_in_cur_crtc_path(comp, to_mtk_crtc(crtc), i, j) {
-			if (pq_module_matches[pq_type].type == mtk_ddp_comp_get_type(comp->id)) {
+			if (disp_pq_is_comp_for_pq_type(pq_type, comp)) {
 				ret = mtk_ddp_comp_pq_ioctl_transact(comp, cmd, kdata,
 									params->size);
 				if (ret < 0)
@@ -747,7 +875,7 @@ int disp_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_han
 		else
 			DDPDBG("%s, pq_type:%d, cmd:%d\n", __func__, pq_type, cmd);
 		for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
-			if (pq_module_matches[pq_type].type == mtk_ddp_comp_get_type(comp->id)) {
+			if (disp_pq_is_comp_for_pq_type(pq_type, comp)) {
 				char stack_kdata[128];
 				char *kdata = NULL;
 
@@ -1046,6 +1174,19 @@ static bool disp_pq_is_relay_engines(struct mtk_ddp_comp *comp, uint32_t engine)
 	return ret;
 }
 
+static bool disp_pq_is_relay_pq_type(struct mtk_ddp_comp *comp, uint32_t pq_types)
+{
+	bool ret = false;
+	int pq_type;
+
+	pq_type = disp_pq_get_comp_pq_type(comp);
+	if (pq_type >= 0)
+		ret = pq_types & (1 << pq_type);
+	DDPDBG("%s: %s pq_type %d:0x%x ret %d\n", __func__, mtk_dump_comp_str(comp), pq_type, pq_types, ret);
+
+	return ret;
+}
+
 static void disp_pq_relay_cmdq_cb(struct cmdq_cb_data data)
 {
 	struct mtk_cmdq_cb_data *cb_data = data.data;
@@ -1104,13 +1245,6 @@ int disp_pq_proxy_virtual_relay_engines(struct drm_crtc *crtc, void *data)
 			mtk_ddp_comp_bypass(comp, relay, caller, cmdq_handle);
 	}
 
-	if (mtk_crtc->is_dual_pipe) {
-		for_each_comp_in_dual_pipe(comp, mtk_crtc, i, j) {
-			if (comp && comp->funcs && comp->funcs->bypass
-				&& disp_pq_is_relay_engines(comp, relay_engines))
-				mtk_ddp_comp_bypass(comp, relay, caller, cmdq_handle);
-		}
-	}
 	mtk_vidle_user_power_release_by_gce(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle);
 
 	cb_data = kmalloc(sizeof(*cb_data), GFP_KERNEL);
@@ -1162,5 +1296,119 @@ int disp_pq_proxy_virtual_relay_engines(struct drm_crtc *crtc, void *data)
 		wait_config_done = false;
 	}
 
+	return 0;
+}
+
+int disp_pq_proxy_virtual_set_hw_relay(struct drm_crtc *crtc, void *data, int size)
+{
+	int relay = 0;
+	bool wait_config_done = false;
+	uint32_t pq_types = 0x0;
+	uint32_t caller;
+
+	struct DISP_PQ_RELAY *relayCtlSet = data;
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct pq_common_data *pq_data = mtk_crtc->pq_data;
+	struct mtk_cmdq_cb_data *cb_data = NULL;
+	struct cmdq_pkt *cmdq_handle = NULL;
+	struct mtk_ddp_comp *comp = NULL;
+	int index = drm_crtc_index(crtc);
+	int ret = 0;
+	int i, j;
+
+	relay = !!relayCtlSet->relay;
+	wait_config_done = relayCtlSet->wait_hw_config_done;
+	pq_types = relayCtlSet->pq_types;
+	caller = (uint32_t)relayCtlSet->caller;
+
+	DDPMSG("%s: crtc_index: %d, relay: %d, wait: %d, pq_types: 0x%x\n",
+		__func__, index, relay, wait_config_done, pq_types);
+
+	cmdq_handle = cmdq_pkt_create(mtk_crtc->gce_obj.client[CLIENT_CFG]);
+	if (!cmdq_handle) {
+		DDPPR_ERR("%s:%d NULL cmdq handle\n", __func__, __LINE__);
+		return -EFAULT;
+	}
+	mtk_vidle_user_power_keep_by_gce(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle,
+			mtk_get_gpr(mtk_crtc, cmdq_handle));
+	if (mtk_crtc_with_sub_path(crtc, mtk_crtc->ddp_mode))
+		mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle, DDP_SECOND_PATH, 0);
+	else
+		mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle, DDP_FIRST_PATH, 0);
+
+	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
+		if (comp && comp->funcs && comp->funcs->bypass
+			&& disp_pq_is_relay_pq_type(comp, pq_types))
+			mtk_ddp_comp_bypass(comp, relay, caller, cmdq_handle);
+	}
+
+	mtk_vidle_user_power_release_by_gce(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle);
+
+	cb_data = kmalloc(sizeof(*cb_data), GFP_KERNEL);
+	if (!cb_data) {
+		DDPPR_ERR("cb data creation failed\n");
+		cmdq_pkt_destroy(cmdq_handle);
+		return -1;
+	}
+
+	cb_data->crtc = crtc;
+	cb_data->cmdq_handle = cmdq_handle;
+
+	DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
+
+	if (!(mtk_crtc->enabled)) {
+		DDPINFO("%s:%d, slepted\n", __func__, __LINE__);
+		cmdq_pkt_destroy(cmdq_handle);
+		kfree(cb_data);
+		DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
+		return 1;
+	}
+	mtk_drm_idlemgr_kick(__func__, crtc, 0);
+	mtk_vidle_user_power_keep(DISP_VIDLE_USER_CRTC);
+	if (cmdq_pkt_flush_threaded(cmdq_handle, disp_pq_relay_cmdq_cb, cb_data) < 0) {
+		DDPPR_ERR("failed to flush %s\n", __func__);
+		kfree(cb_data);
+	} else
+		mtk_crtc_check_trigger(mtk_crtc, true, false);
+	mtk_vidle_user_power_release(DISP_VIDLE_USER_CRTC);
+	DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
+
+	while (wait_config_done) {
+		if (atomic_read(&pq_data->pq_hw_relay_cfg_done) == 0) {
+			DDPDBG("%s: wait_event_interruptible ++\n", __func__);
+			ret = wait_event_interruptible_timeout(pq_data->pq_hw_relay_cb_wq,
+				(atomic_cmpxchg(&pq_data->pq_hw_relay_cfg_done, 1, 0) == 1),
+				msecs_to_jiffies(1000));
+			if (ret == -ERESTARTSYS) {
+				DDPMSG("%s: interrupted unexpected by signal\n", __func__);
+				continue;
+			}
+
+			if (ret == 0)
+				DDPDBG("%s: wait_event_interruptible by timeout --\n", __func__);
+		} else
+			DDPDBG("%s(%d)\n", __func__, atomic_read(&pq_data->pq_hw_relay_cfg_done));
+
+		atomic_set(&pq_data->pq_hw_relay_cfg_done, 0);
+		wait_config_done = false;
+	}
+
+	return 0;
+}
+
+int disp_pq_proxy_virtual_get_pq_caps(struct drm_crtc *crtc,
+	unsigned int cmd, void *data, unsigned int size)
+{
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct DISP_PQ_CAPS *pq_caps = data;
+	struct mtk_ddp_comp *comp = NULL;
+	int i, j, ret, cap_num, pq_type;
+
+	cap_num = size / sizeof(struct DISP_PQ_HW_CAPS);
+	for_each_comp_in_cur_crtc_path(comp, to_mtk_crtc(crtc), i, j) {
+		pq_type = disp_pq_get_comp_pq_type(comp);
+		if (pq_type >= 0 && pq_type < cap_num)
+			mtk_ddp_comp_io_cmd(comp, NULL, GET_PQ_CAPS, pq_caps);
+	}
 	return 0;
 }

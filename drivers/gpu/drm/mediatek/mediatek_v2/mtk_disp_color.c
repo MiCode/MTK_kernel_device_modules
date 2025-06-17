@@ -1126,10 +1126,11 @@ static void disp_color_init_primary_data(struct mtk_ddp_comp *comp)
 static int disp_color_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 							enum mtk_ddp_io_cmd cmd, void *params)
 {
+	struct mtk_disp_color *data = comp_to_color(comp);
+
 	switch (cmd) {
 	case PQ_FILL_COMP_PIPE_INFO:
 	{
-		struct mtk_disp_color *data = comp_to_color(comp);
 		bool *is_right_pipe = &data->is_right_pipe;
 		int ret, *path_order = &data->path_order;
 		struct mtk_ddp_comp **companion = &data->companion;
@@ -1147,6 +1148,14 @@ static int disp_color_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		disp_color_init_primary_data(comp);
 		if (comp->mtk_crtc->is_dual_pipe && data->companion)
 			disp_color_init_primary_data(data->companion);
+	}
+		break;
+	case GET_PQ_CAPS:
+	{
+		struct DISP_PQ_CAPS *pq_caps = (struct DISP_PQ_CAPS *)params;
+		struct DISP_PQ_HW_CAPS *comp_caps = &pq_caps->caps[MTK_DISP_PQ_COLOR];
+
+		comp_caps->valid = 1;
 	}
 		break;
 	default:

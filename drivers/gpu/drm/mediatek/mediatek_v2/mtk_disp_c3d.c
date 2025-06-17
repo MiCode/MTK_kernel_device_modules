@@ -1367,6 +1367,19 @@ static int disp_c3d_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		primary_data->relay_state |= (0x1 << PQ_FEATURE_DEFAULT);
 	}
 		break;
+	case GET_PQ_CAPS:
+	{
+		struct DISP_PQ_CAPS *pq_caps = (struct DISP_PQ_CAPS *)params;
+		struct DISP_PQ_HW_CAPS *comp_caps;
+
+		if (data->bin_num == 9)
+			comp_caps = &pq_caps->caps[MTK_DISP_PQ_C3D9];
+		else
+			comp_caps = &pq_caps->caps[MTK_DISP_PQ_C3D17];
+		comp_caps->valid = 1;
+		comp_caps->prop1 = data->lut_bit;
+	}
+		break;
 	default:
 		break;
 	}

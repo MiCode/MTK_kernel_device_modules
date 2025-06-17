@@ -6,7 +6,7 @@
 #ifndef _MTK_DISP_PQ_HELPER_H_
 #define _MTK_DISP_PQ_HELPER_H_
 
-#include <uapi/drm/mediatek_drm.h>
+#include "mtk_disp_pq_device.h"
 #include "mtk_disp_vidle.h"
 
 enum mtk_pq_persist_property {

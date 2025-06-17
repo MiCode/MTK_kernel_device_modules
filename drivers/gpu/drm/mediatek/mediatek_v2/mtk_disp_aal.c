@@ -3090,6 +3090,14 @@ int disp_aal_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		disp_aal_set_interrupt(comp, 0, handle);
 	}
 		break;
+	case GET_PQ_CAPS:
+	{
+		struct DISP_PQ_CAPS *pq_caps = (struct DISP_PQ_CAPS *)params;
+		struct DISP_PQ_HW_CAPS *comp_caps = &pq_caps->caps[MTK_DISP_PQ_AAL];
+
+		comp_caps->valid = 1;
+	}
+		break;
 	default:
 		break;
 	}

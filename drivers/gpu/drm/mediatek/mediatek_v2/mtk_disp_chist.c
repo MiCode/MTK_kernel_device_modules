@@ -940,10 +940,11 @@ static int disp_chist_cfg_set_config(struct mtk_ddp_comp *comp,
 int disp_chist_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	      enum mtk_ddp_io_cmd cmd, void *params)
 {
+	struct mtk_disp_chist *data = comp_to_chist(comp);
+
 	switch (cmd) {
 	case PQ_FILL_COMP_PIPE_INFO:
 	{
-		struct mtk_disp_chist *data = comp_to_chist(comp);
 		bool *is_right_pipe = &data->is_right_pipe;
 		int ret, *path_order = &data->path_order;
 		struct mtk_ddp_comp **companion = &data->companion;
@@ -961,6 +962,20 @@ int disp_chist_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		disp_chist_init_primary_data(comp);
 		if (comp->mtk_crtc->is_dual_pipe && data->companion)
 			disp_chist_init_primary_data(data->companion);
+	}
+		break;
+	case GET_PQ_CAPS:
+	{
+		int *path_order = &data->path_order;
+		struct DISP_PQ_CAPS *pq_caps = (struct DISP_PQ_CAPS *)params;
+		struct DISP_PQ_HW_CAPS *comp_caps;
+
+		if (data->path_order == 0)
+			comp_caps = &pq_caps->caps[MTK_DISP_PQ_CHIST_AFTER_PQ];
+		else
+			comp_caps = &pq_caps->caps[MTK_DISP_PQ_CHIST_BEFORE_PQ];
+		comp_caps->valid = 1;
+		comp_caps->prop1 = data->path_order;
 	}
 		break;
 	default:
