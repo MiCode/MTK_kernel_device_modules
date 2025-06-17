@@ -437,7 +437,7 @@ static void mtk_ovl_blender_config_begin(struct mtk_ddp_comp *comp, struct cmdq_
 {
 	struct mtk_disp_ovl_blender *bld = comp_to_ovl_blender(comp);
 
-	DDPINFO("%s,%s\n", __func__, mtk_dump_comp_str_id(comp->id));
+	DDPDBG("%s,%s\n", __func__, mtk_dump_comp_str_id(comp->id));
 
 #ifdef IF_ZERO
 	u32 value = 0;	//0x10
