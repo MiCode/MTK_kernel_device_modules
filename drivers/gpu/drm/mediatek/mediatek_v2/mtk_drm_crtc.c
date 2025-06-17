@@ -21477,7 +21477,8 @@ static int mtk_crtc_partial_compute_ovl_roi(struct drm_crtc *crtc,
 		plane_state->prop_val[PLANE_PROP_DIRTY_ROI_H]);
 
 		/* skip if plane is not enable */
-		if (!plane->state->visible) {
+		if (!plane->state->visible || !plane->state->fb) {
+			DDPDBG("layer %d is not enable\n", i);
 			disable_layer++;
 			continue;
 		}
