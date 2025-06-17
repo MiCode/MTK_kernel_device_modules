@@ -59,6 +59,7 @@ struct dvfsrc_config {
 	u32 ip_version;
 	const int *regs;
 	const int *spm_regs;
+	const int *hvs_regs;
 	char *(*dump_reg)(struct mtk_dvfsrc *dvfsrc, char *p, u32 size);
 	char *(*dump_record)(struct mtk_dvfsrc *dvfsrc, char *p, u32 size);
 	char *(*dump_spm_info)(struct mtk_dvfsrc *dvfsrc, char *p, u32 size);
@@ -68,6 +69,7 @@ struct dvfsrc_config {
 	char *(*dump_md_floor_table)(struct mtk_dvfsrc *dvfsrc, char *p, u32 size);
 	char *(*dump_vcore_avs_zone)(struct mtk_dvfsrc *dvfsrc, char *p, u32 size);
 	char *(*dump_therm_info)(struct mtk_dvfsrc *dvfsrc, char *p, u32 size);
+	char *(*dump_hvs_info)(struct mtk_dvfsrc *dvfsrc, char *p, u32 size);
 	int (*query_request)(struct mtk_dvfsrc *dvfsrc, u32 id);
 	u64 (*query_dvfs_time)(struct mtk_dvfsrc *dvfsrc);
 	u32 (*query_opp_count)(struct mtk_dvfsrc *dvfsrc);
@@ -103,6 +105,7 @@ struct mtk_dvfsrc {
 /* debug */
 	void __iomem *regs;
 	void __iomem *spm_regs;
+	void __iomem *hvs_regs;
 	struct icc_path *bw_path;
 	struct icc_path *perf_path;
 	struct icc_path *hrt_path;

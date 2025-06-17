@@ -1681,6 +1681,14 @@ static int mtk_dvfsrc_helper_probe(struct platform_device *pdev)
 			dvfsrc->spm_regs = NULL;
 	}
 
+	res = platform_get_resource_byname(parent_dev,
+			IORESOURCE_MEM, "hvs");
+	if (res) {
+		dvfsrc->hvs_regs = devm_ioremap(&pdev->dev, res->start, resource_size(res));
+		if (IS_ERR(dvfsrc->hvs_regs))
+			dvfsrc->hvs_regs = NULL;
+	}
+
 	ret = mtk_dvfsrc_opp_setting(dvfsrc);
 	if (ret) {
 		dev_info(dev, "dvfsrc opp setting fail\n");

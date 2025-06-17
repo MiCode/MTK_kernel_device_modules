@@ -296,6 +296,14 @@ static const int mt6897_spm_regs[] = {
 	[SPM_TIMER_LATCH] = 0x514,
 };
 
+enum dvfsrc_hvs_regs {
+	AVS_PHASE1_VMIN_OFFSET_1_universe_Part1,
+};
+
+static const int mt6993_hvs_regs[] = {
+	[AVS_PHASE1_VMIN_OFFSET_1_universe_Part1] = 0x0,
+};
+
 static u32 dvfsrc_read(struct mtk_dvfsrc *dvfs, u32 reg, u32 offset)
 {
 	return readl(dvfs->regs + dvfs->dvd->config->regs[reg] + offset);
@@ -314,6 +322,11 @@ static u32 spm_read(struct mtk_dvfsrc *dvfs, u32 reg)
 static u32 spm_read_offset(struct mtk_dvfsrc *dvfs, u32 reg, u32 offset)
 {
 	return readl(dvfs->spm_regs + dvfs->dvd->config->spm_regs[reg] + offset);
+}
+
+static u32 hvs_read_offset(struct mtk_dvfsrc *dvfs, u32 reg, u32 offset)
+{
+	return readl(dvfs->hvs_regs + dvfs->dvd->config->hvs_regs[reg] + offset);
 }
 
 static u32 dvfsrc_get_scp_req(struct mtk_dvfsrc *dvfsrc)
@@ -980,6 +993,25 @@ static char *dvfsrc_dump_mt6983_spm_cmd(struct mtk_dvfsrc *dvfsrc,
 	return p;
 }
 
+static char *dvfsrc_dump_mt6993_hvs_info(struct mtk_dvfsrc *dvfsrc,
+	char *p, u32 size)
+{
+	char *buff_end = p + size;
+
+	if (!dvfsrc->hvs_regs)
+		return p;
+
+	p += snprintf(p, buff_end - p,
+			"%-24s: 0x%08x, 0x%08x, 0x%08x, 0x%08x\n",
+			"HVS_INFO0~3",
+			hvs_read_offset(dvfsrc, AVS_PHASE1_VMIN_OFFSET_1_universe_Part1, 0),
+			hvs_read_offset(dvfsrc, AVS_PHASE1_VMIN_OFFSET_1_universe_Part1, 4),
+			hvs_read_offset(dvfsrc, AVS_PHASE1_VMIN_OFFSET_1_universe_Part1, 8),
+			hvs_read_offset(dvfsrc, AVS_PHASE1_VMIN_OFFSET_1_universe_Part1, 12));
+
+	return p;
+}
+
 static char *dvfsrc_dump_vcore_avs_zone(struct mtk_dvfsrc *dvfsrc,
 	char *p, u32 size)
 {
@@ -1409,6 +1441,7 @@ const struct dvfsrc_config mt6993_dvfsrc_config = {
 	.ip_version = 4, /*mt6989 series*/
 	.regs = mt6993_regs,
 	.spm_regs = mt6897_spm_regs,
+	.hvs_regs = mt6993_hvs_regs,
 	.dump_record = dvfsrc_dump_record,
 	.dump_reg = dvfsrc_dump_reg_mt6993,
 	.dump_spm_info = dvfsrc_dump_mt6873_spm_info,
@@ -1424,4 +1457,5 @@ const struct dvfsrc_config mt6993_dvfsrc_config = {
 	.set_vcore_avs = dvfsrc_set_vcore_avs,
 	.dump_vcore_avs_zone = dvfsrc_dump_vcore_avs_zone,
 	.dump_therm_info = dvfsrc_dump_therm_idx_mt6993,
+	.dump_hvs_info = dvfsrc_dump_mt6993_hvs_info,
 };

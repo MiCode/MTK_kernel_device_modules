@@ -139,6 +139,9 @@ static ssize_t dvfsrc_dump_show(struct device *dev,
 	if (config->dump_spm_info && dvfsrc->spm_regs)
 		p = config->dump_spm_info(dvfsrc, p, dump_size - (p - buf));
 
+	if (config->dump_hvs_info && dvfsrc->hvs_regs)
+		p = config->dump_hvs_info(dvfsrc, p, dump_size - (p - buf));
+
 	return p - buf;
 }
 static DEVICE_ATTR_RO(dvfsrc_dump);
