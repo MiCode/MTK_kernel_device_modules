@@ -485,14 +485,14 @@ static void ps5170_reconfig_dp_work(struct work_struct *data)
 		/* Set mode to none first to reset the state */
 		ps5170_set_mode(ps, PS5170_MODE_NONE, false);
 		ps5170_set_mode(ps, (ps->orientation == TYPEC_ORIENTATION_NORMAL)
-			? PS5170_MODE_DP_FRONT : PS5170_MODE_DP_BACK, false);
+			? PS5170_MODE_DP4L_FRONT : PS5170_MODE_DP4L_BACK, false);
 		break;
 	case 8:
 	case 32:
 		/* Set mode to none first to reset the state */
 		ps5170_set_mode(ps, PS5170_MODE_NONE, false);
 		ps5170_set_mode(ps, (ps->orientation == TYPEC_ORIENTATION_NORMAL)
-			? PS5170_MODE_DP4L_FRONT : PS5170_MODE_DP4L_BACK, false);
+			? PS5170_MODE_DP_FRONT : PS5170_MODE_DP_BACK, false);
 		break;
 	default:
 		dev_info(ps->dev, "%s Pin Assignment not support\n", __func__);
@@ -524,12 +524,12 @@ static int ps5170_mux_set(struct typec_mux_dev *mux, struct typec_mux_state *sta
 		case 4:
 		case 16:
 			ps5170_set_mode(ps, (ps->orientation == TYPEC_ORIENTATION_NORMAL)
-				? PS5170_MODE_DP_FRONT : PS5170_MODE_DP_BACK, false);
+				? PS5170_MODE_DP4L_FRONT : PS5170_MODE_DP4L_BACK, false);
 			break;
 		case 8:
 		case 32:
 			ps5170_set_mode(ps, (ps->orientation == TYPEC_ORIENTATION_NORMAL)
-				? PS5170_MODE_DP4L_FRONT : PS5170_MODE_DP4L_BACK, false);
+				? PS5170_MODE_DP_FRONT : PS5170_MODE_DP_BACK, false);
 			break;
 		default:
 			dev_info(ps->dev, "%s Pin Assignment not support\n", __func__);
