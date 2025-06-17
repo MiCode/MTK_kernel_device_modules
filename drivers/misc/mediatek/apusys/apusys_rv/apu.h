@@ -352,11 +352,12 @@ extern int apu_get_power_dev(struct mtk_apu *apu);
 extern int apu_deepidle_init(struct mtk_apu *apu);
 extern void apu_deepidle_exit(struct mtk_apu *apu);
 
+/* allow in 5s burst 30 times message print */
 #define apu_info_ratelimited(dev, fmt, ...)  \
 {                                                \
 	static DEFINE_RATELIMIT_STATE(_rs,           \
 						HZ * 5,                  \
-						50);                     \
+						30);                     \
 	if (__ratelimit(&_rs))                       \
 		dev_info(dev, fmt, ##__VA_ARGS__);       \
 }
