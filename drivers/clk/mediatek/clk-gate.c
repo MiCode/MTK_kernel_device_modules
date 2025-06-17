@@ -200,6 +200,10 @@ static int __hwv_cg_dma_back(struct clk_hw *hw, bool inv)
 	u32 val = 0, val2 = 0, val3 = 0;
 	int i = 0;
 
+	regmap_read(cg->regmap, cg->sta_ofs, &val);
+	if ((!inv) && (val == 0))
+		pr_cg_err("%s sta == 0 may be caused by hang-free return and hwvoter fail\n", clk_hw_get_name(hw));
+
 	while (1) {
 		regmap_read(cg->regmap, cg->sta_ofs, &val);
 		if ((inv && (val & BIT(cg->bit)) != 0) ||
