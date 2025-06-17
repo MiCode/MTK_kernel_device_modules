@@ -5251,7 +5251,9 @@ static int fbt_boost_policy(
 		fpsgo_systrace_c_fbt(pid, buffer_id, boost_info->quota_mod, "quota_mod");
 	}
 
-	if (gcc_enable_active == 1) {
+	if (gcc_enable_active == 1
+		&& (fbt_get_default_gcc_hwui_hint_config()
+		|| thread_info->hwui != RENDER_INFO_HWUI_TYPE)) {
 		int gcc_boost;
 
 		gcc_boost = fbt_eva_gcc(

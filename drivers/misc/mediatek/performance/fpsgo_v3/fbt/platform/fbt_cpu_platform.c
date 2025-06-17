@@ -29,6 +29,7 @@ static int plat_dram_boost_enable;
 static int plat_ux_scroll_general_policy;
 static int plat_smart_launch_enable;
 static int plat_cpu_limit;
+static int gcc_hwui_hint_config;
 
 static int generate_cpu_mask(void);
 static int generate_sbe_rescue_enable(void);
@@ -64,6 +65,13 @@ static int platform_fpsgo_probe(struct platform_device *pdev)
 			 "cpu-limit", &retval);
 	if (!ret)
 		plat_cpu_limit = retval;
+
+	ret = of_property_read_u32(node,
+			 "gcc-hwui-hint-config", &retval);
+	if (!ret)
+		gcc_hwui_hint_config = retval;
+	else
+		gcc_hwui_hint_config = 1;
 
 	generate_cpu_mask();
 	generate_sbe_rescue_enable();
@@ -443,6 +451,11 @@ int fbt_get_default_sbe_rescue_enable(void)
 int fbt_get_default_dram_boost_enable(void)
 {
 	return plat_dram_boost_enable;
+}
+
+int fbt_get_default_gcc_hwui_hint_config(void)
+{
+	return gcc_hwui_hint_config;
 }
 
 int fbt_get_default_powerRL_enable(void)
