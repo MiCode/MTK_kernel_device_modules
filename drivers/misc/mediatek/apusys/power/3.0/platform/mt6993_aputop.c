@@ -941,7 +941,7 @@ static int mt6993_init_user_max_opp(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
-	mt6993_user_max_opp = chip_id->sw_ver == CHIP_VER_E1 ? 3 : 0;
+	mt6993_user_max_opp = chip_id->sw_ver == CHIP_VER_E1 ? 3 : 1;
 	dev_info(&pdev->dev, "%s current sw version:%s, minimum_opp:%d\n", __func__,
 		chip_id->sw_ver == CHIP_VER_E1 ? "E1" : "E2", USER_MIN_OPP_VAL - mt6993_user_max_opp);
 
