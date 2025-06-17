@@ -5492,6 +5492,15 @@ dramc: dramc@10230000 {
 			reset-exception-mask = <0x0>;
 		};
 
+		gpu_qos: gpu-qos {
+			compatible = "mediatek,gpu_qos";
+			qos-sysram-support = <1>;
+			reg = <0 0x112000 0 0x20>;
+			qos-mode = <0>;
+			qos-value = <0>;
+			qos-opp-high = <0>;
+		};
+
 		gpufreq: gpufreq@13000000 {
 			compatible = "mediatek,gpufreq";
 			reg =
