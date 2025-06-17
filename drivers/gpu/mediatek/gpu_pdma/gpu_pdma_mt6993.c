@@ -121,6 +121,27 @@ static struct pdma_device *get_PDMA_Device(void)
 	return g_pdma_dev;
 }
 
+static int __ccmd_cache_sync(struct pdma_device *pdma_dev, size_t size, void *va)
+{
+	dma_addr_t dma_addr;
+
+	if (!pdma_dev) {
+		pr_info("[CCMD] %s invalid pdma device.\n", __func__);
+		return -EINVAL;
+	}
+
+	dma_addr = dma_map_single(pdma_dev->dev, va, size, DMA_BIDIRECTIONAL);
+	if (dma_mapping_error(pdma_dev->dev, dma_addr)) {
+		pr_info("[CCMD] %s fail to map dma.", __func__);
+		return -ENOMEM;
+	}
+	dma_sync_single_for_device(pdma_dev->dev, dma_addr,
+		size, DMA_TO_DEVICE);
+	dma_unmap_page(pdma_dev->dev, dma_addr,
+		size, DMA_BIDIRECTIONAL);
+	return 0;
+}
+
 static int ccmd_power_control(int power)
 {
 	int ret = 0;
@@ -172,28 +193,17 @@ static int ccmd_power_control(int power)
 static void init_ccmd_reg_dummy_page(struct pdma_device *pdma_dev, u32 page_order)
 {
 	unsigned int *dummy_page;
-	dma_addr_t dma_addr;
-	int cid_num;
 
 	dummy_page = (unsigned int *)(pdma_dev->dummy_reg_page_virt);
 
-	// Read pointer gets 0xDEADBEEF for dummy page.
+	/* RPTR moved to shmem*/
 	if (dummy_page) {
-		for (cid_num = 0; cid_num < pdma_dev->max_ctx_cnt; cid_num++)
-			dummy_page[cid_num + (pdma_dev->ao_hrptr_offset >> 2)] = 0xDEADBEEF;
+		dummy_page[0] = 0xDEADBEEF;
 	}
 
 	/* Cache Sync for dummy page */
-	dma_addr = dma_map_single(pdma_dev->dev, (void *)dummy_page,
-		(PAGE_SIZE << page_order), DMA_BIDIRECTIONAL);
-	if (dma_mapping_error(pdma_dev->dev, dma_addr)) {
-		pr_info("%s fail to performance cache sync via dma\n", __func__);
-		return;
-	}
-	dma_sync_single_for_device(pdma_dev->dev, dma_addr,
-		(PAGE_SIZE << page_order), DMA_TO_DEVICE);
-	dma_unmap_page(pdma_dev->dev, dma_addr,
-		(PAGE_SIZE << page_order), DMA_BIDIRECTIONAL);
+	if (__ccmd_cache_sync(pdma_dev, PAGE_SIZE, dummy_page))
+		pr_info("[CCMD] %s Fail to flush dummy page\n", __func__);
 }
 
 static void init_pbha_pool(struct device_node *node, struct pdma_device *pdma_dev)
@@ -343,17 +353,26 @@ static void __ccmd_reset_hw(struct pdma_device *pdma_dev,
 		pdma_status =
 			readl((pdma_dev->pdma_reg_base_kva + CCMD_STATUS_CH0));
 		poll_timeout--;
+		if (poll_timeout == 0)
+			pr_info("[CCMD] %s Polling AutoDMA ch0 Fail", __func__);
 	}while(pdma_status == 0 && poll_timeout > 0);
 	/* status 0: ch0 is running */
+
+
+	/* set CIDX_RING_BUFFER_PA_0[0]=0 as invalid RING_BUFF */
+	writel((ccmd_ctx->ringbuf_paddr & 0xFFFFFFFE),
+		pdma_dev->pdma_reg_base_kva + CIDX_RING_BUFFER_PA_0_L(ccmd_ctx->cid));
 
 	spin_lock_irqsave(&pdma_dev->pdma_hwaccess_lock, flags);
 	/* CID_COMMAND */
 	writel((ccmd_ctx->cid << 8) | (0x7 << 10),
 		pdma_dev->pdma_reg_base_kva + CCMD_CID_COMMAND);
 	spin_unlock_irqrestore(&pdma_dev->pdma_hwaccess_lock, flags);
-	/* release GID command of the CID, and reset hrptr&hwptr */
-	/* reset RPC register */
-	writel(0, pdma_dev->pdma_reg_base_ao_kva + (ccmd_ctx->cid << 2));
+	/* reset RPC registers */
+	writel(0, pdma_dev->pdma_reg_base_ao_kva +
+		pdma_dev->share_mem_offset_l + (ccmd_ctx->cid << 2));
+	writel(0, pdma_dev->pdma_reg_base_ao_kva +
+		pdma_dev->share_mem_offset_h + (ccmd_ctx->cid << 2));
 
 	/* Clear CCMD Buffer of CID */
 	hrptr_valid =
@@ -412,8 +431,11 @@ static int init_ccmd_hw(struct pdma_device *pdma_dev,
 		return 1;
 
 #if CCMD_V2_SUPPORT
-	/* CCMD mode */
-	writel(0x433B8000, pdma_dev->pdma_reg_base_kva);
+	if (pdma_dev->is_ccmd_inited == 0) {
+		/* CCMD mode */
+		writel(0x433B8000, pdma_dev->pdma_reg_base_kva);
+		pdma_dev->is_ccmd_inited = 1;
+	}
 #endif
 
 	for (page_num = 0; page_num < (1 << pdma_dev->page_order); page_num++) {
@@ -501,7 +523,7 @@ static int ccmd_context_init(
 {
 	struct pdma_device *pdma_dev;
 	gfp_t gfp = (GFP_HIGHUSER | __GFP_ZERO);
-	dma_addr_t dma_addr;
+	int ret;
 
 	if (!ccmd_ctx || cid == CCMD_UNSUPPORTED_CID || mode >= UNSUPPORTED_MODE) {
 		pr_info("NULL pointer or invalid CID (%u)(%u)", cid, mode);
@@ -521,25 +543,50 @@ static int ccmd_context_init(
 		pr_info("%s __get_free_pages failed\n", __func__);
 		return -ENOMEM;
 	}
+	ccmd_ctx->ringbuf_paddr = virt_to_phys((void *)ccmd_ctx->ringbuf_vaddr);
 
 	/* Cache Sync for zero out ringbuf with __GFP_ZERO */
-	dma_addr = dma_map_single(pdma_dev->dev, (void *)ccmd_ctx->ringbuf_vaddr,
-		(PAGE_SIZE << pdma_dev->page_order), DMA_BIDIRECTIONAL);
-	if (dma_mapping_error(pdma_dev->dev, dma_addr)) {
-		pr_info("%s fail to performance cache sync via dma\n", __func__);
+	ret = __ccmd_cache_sync(pdma_dev,
+		(PAGE_SIZE << pdma_dev->page_order), (void *)ccmd_ctx->ringbuf_vaddr);
+	if (ret) {
+		pr_info("%s fail to sync ring buffer.\n", __func__);
 		free_pages(ccmd_ctx->ringbuf_vaddr, pdma_dev->page_order);
 		ccmd_ctx->ringbuf_vaddr = 0;
 		return -ENOMEM;
 	}
-	dma_sync_single_for_device(pdma_dev->dev, dma_addr,
-		(PAGE_SIZE << pdma_dev->page_order), DMA_TO_DEVICE);
-	dma_unmap_page(pdma_dev->dev, dma_addr,
-		(PAGE_SIZE << pdma_dev->page_order), DMA_BIDIRECTIONAL);
 
-	ccmd_ctx->ringbuf_paddr = virt_to_phys((void *)ccmd_ctx->ringbuf_vaddr);
+	ccmd_ctx->shmem_rwptr.size = PAGE_SIZE;
+	ccmd_ctx->shmem_rwptr.va = __get_free_page(gfp);
+	if (!ccmd_ctx->shmem_rwptr.va) {
+		pr_info("%s alloc share memory failed\n", __func__);
+		return -ENOMEM;
+	}
+	ccmd_ctx->shmem_rwptr.pa = virt_to_phys((void *)ccmd_ctx->shmem_rwptr.va);
 
-	pr_info("[CCMD] %s cid %u is created. kctx %u, ringbuf_paddr: 0x%llx\n",
-		__func__, cid, kctx_id, ccmd_ctx->ringbuf_paddr);
+	/* Cache Sync for zero out ringbuf with __GFP_ZERO */
+	ret = __ccmd_cache_sync(pdma_dev,
+		ccmd_ctx->shmem_rwptr.size, (void *)ccmd_ctx->shmem_rwptr.va);
+	if (ret) {
+		pr_info("%s fail to sync share memory.\n", __func__);
+		free_page(ccmd_ctx->shmem_rwptr.va);
+		ccmd_ctx->shmem_rwptr.va = 0;
+		return -ENOMEM;
+	}
+
+	/* Update RPC registers */
+	writel((ccmd_ctx->shmem_rwptr.pa) & 0xFFFFFFFF,
+		pdma_dev->pdma_reg_base_ao_kva +
+		pdma_dev->share_mem_offset_l +
+		(cid * 0x4));
+
+	writel(((ccmd_ctx->shmem_rwptr.pa) >> 32) & 0xFFFFFFFF,
+		pdma_dev->pdma_reg_base_ao_kva +
+		pdma_dev->share_mem_offset_h +
+		(cid * 0x4));
+
+	pr_info("[CCMD] %s cid %u created. kctx %u, ringbuf: 0x%llx, shmem: 0x%llx\n",
+		__func__, cid, kctx_id, ccmd_ctx->ringbuf_paddr,
+		ccmd_ctx->shmem_rwptr.pa);
 
 	ccmd_ctx->kctx_id = kctx_id;
 	ccmd_ctx->cid = cid;
@@ -551,11 +598,10 @@ static int ccmd_context_init(
 #endif
 	/* get VMAs at mmap */
 	ccmd_ctx->reg_vma = NULL;
-	ccmd_ctx->ao_reg_vma = NULL;
 	/* user gets available cid, so init ccmd_context */
 	if (list_empty(&pdma_dev->ctx_list_active) &&
 		pdma_dev->enable_priority_mode == 0) {
-		if (!slbc_enable_gpu_dynamic_cache(1)) {
+		if (slbc_enable_gpu_dynamic_cache(1)) {
 			pr_info("[CCMD] %s fail to enable GPU dynamic cache mode\n",
 				__func__);
 		} else
@@ -577,13 +623,16 @@ static void ccmd_context_destroy(struct ccmd_context *ccmd_ctx)
 
 		free_pages(ccmd_ctx->ringbuf_vaddr, pdma_dev->page_order);
 
+		if (ccmd_ctx->shmem_rwptr.va)
+			free_page(ccmd_ctx->shmem_rwptr.va);
+
 		ccmd_ctx->cid = CCMD_UNSUPPORTED_CID;
 		ccmd_ctx->ringbuf_vaddr = 0;
 		ccmd_ctx->ringbuf_paddr = 0;
 		list_del(&ccmd_ctx->entry);
 		if (list_empty(&pdma_dev->ctx_list_active) &&
 			pdma_dev->enable_priority_mode == 1) {
-			if (!slbc_enable_gpu_dynamic_cache(0)) {
+			if (slbc_enable_gpu_dynamic_cache(0)) {
 				pr_info("[CCMD] %s fail to disable GPU dynamic cache mode\n",
 				__func__);
 			} else
@@ -621,20 +670,24 @@ static u32 requestCCMDCid(struct pdma_device *pdma_dev, unsigned int mode)
 		retired_ctx = list_first_entry(&pdma_dev->ctx_list_active,
 			struct ccmd_context, entry);
 
-		/* unmap VMAs */
+		/* unmap VMAs for CCMD register */
 
 		if (retired_ctx->reg_vma)
 			zap_vma_ptes(retired_ctx->reg_vma,
 				retired_ctx->reg_vma->vm_start,
 				pdma_dev->reg_region);
 
-		if (retired_ctx->ao_reg_vma)
-			zap_vma_ptes(retired_ctx->ao_reg_vma,
-				(retired_ctx->ao_reg_vma->vm_start),
+		if (retired_ctx->shmem_vma)
+			zap_vma_ptes(retired_ctx->shmem_vma,
+				retired_ctx->shmem_vma->vm_start,
 				PAGE_SIZE);
 
 		/* reset HW by CID */
 		reset_ccmd_hw(pdma_dev, retired_ctx);
+
+		/* shared memory no longer accessible */
+		free_page(retired_ctx->shmem_rwptr.va);
+		retired_ctx->shmem_rwptr.va = 0;
 
 		pr_debug("[CCMD] %s retire cid %u, kctx: %u, ccmd_ctx: %p\n",
 			__func__, retired_ctx->cid, retired_ctx->kctx_id, retired_ctx);
@@ -715,12 +768,6 @@ static vm_fault_t gpu_pdma_vma_fault(struct vm_fault *vmf)
 	mutex_lock(&pdma_dev->pdma_device_lock);
 	if (!ccmd_ctx->reg_vma) {
 		pr_info("[CCMD] %s register base is not valid\n", __func__);
-		mutex_unlock(&pdma_dev->pdma_device_lock);
-		return VM_FAULT_SIGBUS;
-	}
-
-	if (!ccmd_ctx->ao_reg_vma) {
-		pr_info("[CCMD] %s AO register base is not valid\n", __func__);
 		mutex_unlock(&pdma_dev->pdma_device_lock);
 		return VM_FAULT_SIGBUS;
 	}
@@ -854,6 +901,10 @@ static int gpu_pdma_mmap(struct file *const filp,
 	if (phy_addr == ringbuf_pa && phy_addr != 0 &&
 		length == RING_BUFFER_PAGE_SIZE(pdma_dev->page_order)) {
 		vma->vm_page_prot = pgprot_writecombine(vma->vm_page_prot);
+	} else if (phy_addr == ccmd_ctx->shmem_rwptr.pa &&
+		phy_addr != 0 && length == ccmd_ctx->shmem_rwptr.size) {
+		vma->vm_page_prot =  pgprot_writecombine(vma->vm_page_prot);
+		ccmd_ctx->shmem_vma = vma;
 	} else if (phy_addr == ccmd_ctx->cid_reg_base && phy_addr != 0 &&
 		length == pdma_dev->reg_region) {
 		vm_flags_set(vma, (VM_DONTCOPY | VM_DONTDUMP | VM_DONTEXPAND | VM_IO | VM_PFNMAP));
@@ -863,11 +914,6 @@ static int gpu_pdma_mmap(struct file *const filp,
 		(length == PAGE_SIZE)) {
 		/* Expect only one page needed from hw semaphore base */
 		vma->vm_page_prot =  pgprot_noncached(vma->vm_page_prot);
-	} else if (phy_addr == (pdma_dev->ao_reg_base & ~(PAGE_SIZE - 1)) &&
-		phy_addr != 0 && length == PAGE_SIZE) {
-		vm_flags_set(vma, (VM_DONTCOPY | VM_DONTDUMP | VM_DONTEXPAND | VM_IO | VM_PFNMAP));
-		vma->vm_page_prot =  pgprot_noncached(vma->vm_page_prot);
-		ccmd_ctx->ao_reg_vma = vma;
 	} else {
 		pr_info("Invalid argument! addr: 0x%lx, length: %ld\n", phy_addr, length);
 		mutex_unlock(&pdma_dev->pdma_device_lock);
@@ -945,9 +991,10 @@ static long gpu_pdma_unlocked_ioctl(struct file *filp, unsigned int cmd,
 			hw_lock.out.hw_sem_base = pdma_dev->hw_sem_base;
 			hw_lock.out.hw_sem_offset = pdma_dev->hw_sem_offset;
 			/* PA of ccmd ao register */
-			hw_lock.out.ao_region_base = pdma_dev->ao_reg_base;
-			hw_lock.out.ao_hrptr_offset = pdma_dev->ao_hrptr_offset +
-				(ccmd_ctx->cid * 4);
+			hw_lock.out.shared_mem_base = ccmd_ctx->shmem_rwptr.pa;
+			/* TODO change ao_hrptr to dram addr */
+			hw_lock.out.dram_hrptr_offset = 0x0;
+			hw_lock.out.dram_hwptr_offset = 0x4;
 			hw_lock.out.sw_ver = pdma_dev->sw_version;
 			hw_lock.out.cid = ccmd_ctx->cid;
 #ifdef CCMD_DEBUG_MODE
@@ -1233,6 +1280,7 @@ static ssize_t gpu_pdma_show(struct device *dev,
 	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
 		"remaining PBHA: %u/%u\n",
 		(available_pbha_cnt - used_pbha_cnt), available_pbha_cnt);
+
 	mutex_unlock(&pdma_dev->pdma_device_lock);
 
 	return pos;
@@ -1302,6 +1350,7 @@ static int gpu_pdma_probe(struct platform_device *pdev)
 	INIT_LIST_HEAD(&g_pdma_dev->ctx_list_retired);
 	mutex_init(&g_pdma_dev->pdma_device_lock);
 	spin_lock_init(&g_pdma_dev->pdma_hwaccess_lock);
+	g_pdma_dev->is_ccmd_inited = 0;
 
 	ret = dma_set_mask(g_pdma_dev->dev, DMA_BIT_MASK(64ULL));
 	if (ret) {
@@ -1357,21 +1406,27 @@ static int gpu_pdma_probe(struct platform_device *pdev)
 		g_pdma_dev->pdma_buffer_status_base_kva);
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 3);
-
 	if (res == NULL) {
 		pr_info("PDMA platform_get_resource 3 fail\n");
 		return -ENODEV;
 	}
 	g_pdma_dev->ao_reg_base = res->start & ~(PAGE_SIZE - 1);
-	g_pdma_dev->ao_hrptr_offset = res->start & (PAGE_SIZE - 1);
+	g_pdma_dev->share_mem_offset_h = res->start & (PAGE_SIZE - 1);
 	g_pdma_dev->pdma_reg_base_ao_kva =
-		devm_ioremap_resource(&pdev->dev, res);
+		ioremap(g_pdma_dev->ao_reg_base, PAGE_SIZE);
 	if (IS_ERR(g_pdma_dev->pdma_reg_base_ao_kva))
 		return PTR_ERR(g_pdma_dev->pdma_reg_base_ao_kva);
 
-	pr_info("@%s: PDMA RPC HRPTR base: 0x%llx, size: 0x%llx, kva: 0x%p\n",
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 4);
+	if (res == NULL) {
+		pr_info("PDMA platform_get_resource 4 fail\n");
+		return -ENODEV;
+	}
+	g_pdma_dev->share_mem_offset_l = res->start & (PAGE_SIZE - 1);
+	pr_info("@%s: RPC base: 0x%llx, offset: 0x%llx/0x%llx, kva: 0x%p\n",
 		__func__, g_pdma_dev->ao_reg_base,
-		g_pdma_dev->ao_hrptr_offset,
+		g_pdma_dev->share_mem_offset_l,
+		g_pdma_dev->share_mem_offset_h,
 		g_pdma_dev->pdma_reg_base_ao_kva);
 
 	if (of_property_read_u8(node, "concurrent-contexts",
@@ -1411,9 +1466,9 @@ static int gpu_pdma_probe(struct platform_device *pdev)
 	}
 
 	/* sram */
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 4);
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 5);
 	if (res == NULL) {
-		pr_info("PDMA platform_get_resource 4 fail\n");
+		pr_info("PDMA platform_get_resource 5 fail\n");
 		return -ENODEV;
 	}
 	g_pdma_dev->pdma_sram_base = res->start;

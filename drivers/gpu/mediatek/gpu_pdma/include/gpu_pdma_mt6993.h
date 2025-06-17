@@ -15,6 +15,12 @@ enum CCMD_CACHE_MODE {
 	UNSUPPORTED_MODE
 };
 
+struct pdma_buf_info {
+	u32 size;
+	u64 va;
+	u64 pa;
+};
+
 /**
  * struct pdma_device       Object representing an instance of PDMA device,
  *                          allocated from the probe method of pdma driver.
@@ -36,7 +42,8 @@ enum CCMD_CACHE_MODE {
  * @buffer_status_base:     Base address of CCMD buffer status.
  * @buffer_status_region:   Range of CCMD buffer status.
  * @ao_reg_base:            Base address of CCMD AO register.
- * @ao_hrptr_offset:        Offset to cid0  hrptr.
+ * @share_mem_offset_l:     RPC offset to store lower part of share memory.
+ * @share_mem_offset_h:     RPC offset to store upper part of share memory.
  * @hw_sem_base:            PA of hw semaphore base.
  * @pdma_sram_base:         PA of PDMA SRAM base
  * @pdma_reg_base_kva:      Kernel virtual address of CCMD base address.
@@ -57,6 +64,7 @@ enum CCMD_CACHE_MODE {
  * @sw_version:             To identify specific SW version.
  * @extended_pbha_bits:     Number of bits used for extended PBHA ID
  * @enable_priority_mode:   1 if set mode to SLC and 0 otherwise.
+ * @is_ccmd_inited:         1 after first ccmd lock hw.
  */
 
 struct pdma_device {
@@ -75,7 +83,8 @@ struct pdma_device {
 	u64 buffer_status_base;
 	u64 buffer_status_region;
 	u64 ao_reg_base;
-	u64 ao_hrptr_offset;
+	u64 share_mem_offset_l;
+	u64 share_mem_offset_h;
 	u64 pdma_sram_base;
 	void __iomem *pdma_reg_base_kva;
 	void __iomem *pdma_hw_sem_base_kva;
@@ -93,6 +102,7 @@ struct pdma_device {
 	u8 sw_version;
 	u8 extended_pbha_bits;
 	u8 enable_priority_mode;
+	u8 is_ccmd_inited;
 };
 
 
@@ -110,7 +120,7 @@ struct pdma_device {
  * @cid_reg_base:           Context view of CCMD register base
  * @mode:                   Use smart cache API or others. Refer to CCMD_CACHE_MODE.
  * @reg_vma:                vma struct for register base.
- * @reg_vma:                vma struct for ao register base.
+ * @shmem_vma:              vma struct for shared memory.
  */
 
 struct ccmd_context {
@@ -123,8 +133,9 @@ struct ccmd_context {
 	u64 ringbuf_vaddr;
 	u64 cid_reg_base;
 	u32 mode;
+	struct pdma_buf_info shmem_rwptr;
 	struct vm_area_struct *reg_vma;
-	struct vm_area_struct *ao_reg_vma;
+	struct vm_area_struct *shmem_vma;
 };
 
 /**
@@ -155,8 +166,9 @@ struct extended_pbha {
  * @out.sw_ver:             Software version for specific HW configuration
  * @out.cid:                CCMD Context ID. Supported cid is from 0 to 3.
  * @out.debug_mode:         For debugging propose only.
- * @out.ao_region_base      PA of CCMD AO Reg base.
- * @out.ao_hrptr_offset     Offset of cidx hrptr.
+ * @out.shared_mem_base     PA of shared memory.
+ * @out.dram_hrptr_offset   Offset of hrptr from shared memory.
+ * @out.dram_hwptr_offset   Offset of hwptr from shared memory.
  */
 
 struct pdma_hw_lock {
@@ -176,8 +188,9 @@ struct pdma_hw_lock {
 		unsigned int sw_ver;
 		unsigned int cid;
 		bool debug_mode;
-		unsigned long ao_region_base;
-		unsigned long ao_hrptr_offset;
+		unsigned long shared_mem_base;
+		unsigned long dram_hrptr_offset;
+		unsigned long dram_hwptr_offset;
 	} out;
 };
 
