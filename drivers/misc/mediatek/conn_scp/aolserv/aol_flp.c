@@ -349,7 +349,7 @@ int aol_flp_bind_to_conap(void)
 	}
 
 
-	if (is_scp_ready() == 0)
+	if (is_scp_ready() == 1)
 		pr_info("[%s] scp ready", __func__);
 	else
 		pr_info("[%s] scp not ready", __func__);

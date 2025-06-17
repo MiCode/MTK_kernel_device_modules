@@ -202,7 +202,7 @@ int aol_geofence_bind_to_conap(void)
 		pr_notice("[%s] register conap fail [%d]", __func__, ret);
 
 
-	if (is_scp_ready() == 0)
+	if (is_scp_ready() == 1)
 		pr_info("[%s] scp ready", __func__);
 	else
 		pr_info("[%s] scp not ready", __func__);
