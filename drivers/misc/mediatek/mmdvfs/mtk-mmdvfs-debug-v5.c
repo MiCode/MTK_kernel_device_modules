@@ -300,36 +300,38 @@ static int mmdvfs_debug_dump_volt_freq(struct seq_file *file)
 static u32 *clk_snapshot;
 static int mmdvfs_debug_v5_record_snapshot(void)
 {
-	int ret;
+	int ret = 0;
+	bool mmup_cb_ready;
+
+	mtk_mmdvfs_enable_vcp(true, user ? user[0].id : 0);
+	mmdvfs_mmup_cb_mutex_lock();
+	mmup_cb_ready = mmdvfs_mmup_cb_ready_get();
+
+	if (!mmup_cb_ready || !unlikely(SRAM_BASE)) {
+		MMDVFS_ERR("mmup_cb_ready:%d SRAM_BASE:%#lx", mmup_cb_ready, (unsigned long)(void *)SRAM_BASE);
+		goto record_snapshot_end;
+	}
 
 	if (clk_snapshot) {
 		MMDVFS_DBG("clk snapshot already set");
-		return 0;
+		goto record_snapshot_end;
 	}
 
 	clk_snapshot = kmalloc((MAX_REC_CLK_SIZE + SRAM_CLK_CNT) * sizeof(*clk_snapshot) , GFP_KERNEL);
 	if (!clk_snapshot) {
 		MMDVFS_ERR("failed to allocate memory");
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto record_snapshot_end;
 	}
-	mtk_mmdvfs_enable_vcp(true, user ? user[0].id : 0);
-	mmdvfs_mmup_cb_mutex_lock();
-	ret = mmdvfs_mmup_cb_ready_get();
-	if (!ret || !unlikely(SRAM_BASE)) {
-		mmdvfs_mmup_cb_mutex_unlock();
-		mtk_mmdvfs_enable_vcp(false, user ? user[0].id : 0);
-		kfree(clk_snapshot);
-		clk_snapshot = NULL;
-		MMDVFS_ERR("mmup_cb_ready:%d SRAM_BASE:%#lx", ret, (unsigned long)(void *)SRAM_BASE);
-		return 0;
-	}
+
 	// clk: vcore, vmm, vdisp, cam, hop
 	memcpy_fromio(clk_snapshot, SRAM_CLK_IDX(0), SRAM_CLK_CNT * sizeof(*clk_snapshot));
 	memcpy_fromio(clk_snapshot + SRAM_CLK_CNT, SRAM_CLK_SEC(0, 0), MAX_REC_CLK_SIZE * sizeof(*clk_snapshot));
 
+record_snapshot_end:
 	mmdvfs_mmup_cb_mutex_unlock();
 	mtk_mmdvfs_enable_vcp(false, user ? user[0].id : 0);
-	return 0;
+	return ret;
 }
 
 static int mmdvfs_debug_v5_status_dump(struct seq_file *file)
