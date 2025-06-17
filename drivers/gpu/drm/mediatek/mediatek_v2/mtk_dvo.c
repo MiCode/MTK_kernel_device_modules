@@ -250,6 +250,8 @@ struct mtk_dp_dvo {
 	struct mtk_drm_private *priv;
 	int enable;
 	int res;
+	int config_time;
+	int config_line;
 };
 
 
@@ -271,9 +273,7 @@ struct mtk_dp_dvo_driver_data {
 };
 
 static int irq_intsa;
-static int irq_vdesa;
 static int irq_underflowsa;
-static int irq_tl;
 static unsigned long long dp_dvo_bw;
 static struct mtk_dp_dvo *g_dp_dvo;
 static unsigned int checksum_array[8] = {0};
@@ -338,9 +338,7 @@ static void mtk_dp_dvo_start(struct mtk_ddp_comp *comp,
 	DPTXFUNC();
 
 	irq_intsa = 0;
-	irq_vdesa = 0;
 	irq_underflowsa = 0;
-	irq_tl = 0;
 	dp_dvo_bw = 0;
 
 	mtk_dp_dvo_mask(dp_dvo, DVO_INTSTA, 0xffffffff, 0);
@@ -374,9 +372,7 @@ static void mtk_dp_dvo_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 	//mtk_dp_video_trigger(video_mute<<16 | 0);
 	mtk_ddp_write_mask(comp, 0x0, DVO_EN, EN, handle);
 	irq_intsa = 0;
-	irq_vdesa = 0;
 	irq_underflowsa = 0;
-	irq_tl = 0;
 	dp_dvo_bw = 0;
 }
 
@@ -713,6 +709,8 @@ static void mtk_dp_dvo_config(struct mtk_ddp_comp *comp,
 	config_time = vblank_time - prefetch_time;
 	val = line_time > 0 ? (config_time + line_time - 100) / line_time : vfp;
 
+	dp_dvo->config_time = config_time/100;
+	dp_dvo->config_line = val;
 	DPTXMSG("line time: %dus, vblank time: %dus, prefetch time: %dus, config time: %dus\n",
 		line_time/100, vblank_time/100, prefetch_time/100, config_time/100);
 	DPTXMSG("vblank line: %d, mutex_vfp= %d line, prefetch= %d line\n",
@@ -873,6 +871,18 @@ static int mtk_dpdvo_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			(unsigned long long *)params;
 
 		*base_bw = mtk_dpdvo_get_frame_hrt_bw_base_by_mode(mtk_crtc, dp_dvo);
+	}
+		break;
+	case DVO_GET_MUTEX_VSYNC_CONFIG_TIME:
+	{
+		int *config_time = (int *)params;
+		*config_time = dp_dvo->config_time;
+	}
+		break;
+	case DVO_GET_MUTEX_VSYNC_CONFIG_LINE:
+	{
+		int *config_line = (int *)params;
+		*config_line = dp_dvo->config_line;
 	}
 		break;
 	default:
@@ -1111,6 +1121,7 @@ static irqreturn_t mtk_dp_dvo_irq_status(int irq, void *dev_id)
 	struct mtk_ddp_comp *comp = NULL;
 	int dpdvo_opt = 0;
 	irqreturn_t ret = IRQ_NONE;
+	int irq_mmp_data = 0;
 
 	mtk_crtc = dp_dvo->ddp_comp.mtk_crtc;
 	priv = mtk_crtc->base.dev->dev_private;
@@ -1132,8 +1143,6 @@ static irqreturn_t mtk_dp_dvo_irq_status(int irq, void *dev_id)
 	if (!status)
 		goto out;
 
-	DRM_MMP_MARK(dp_intf0, status, 0);
-
 	status &= 0xfffff;
 	if (status) {
 		mtk_dp_dvo_mask(dp_dvo, DVO_INTSTA, status, 0);
@@ -1146,16 +1155,17 @@ static irqreturn_t mtk_dp_dvo_irq_status(int irq, void *dev_id)
 			dp_dvo->res = 0;
 			if (irq_intsa == 3)
 				mtk_dp_video_trigger(video_unmute << 16 | dp_dvo->res);
+			irq_mmp_data += 1;
 		}
-
-		if (status & INT_VDE_END_STA)
-			irq_vdesa++;
 
 		if (status & INT_UNDERFLOW_STA) {
 			DPTXMSG("%s dpdvo_underflow!\n", __func__);
 			irq_underflowsa++;
+			irq_mmp_data += 2;
 		}
 	}
+
+	DRM_MMP_MARK(dp_intf0, status, irq_mmp_data);
 
 	if (dpdvo_opt && (status & INT_UNDERFLOW_STA) && (irq_underflowsa == 1)) {
 #if IS_ENABLED(CONFIG_ARM64)

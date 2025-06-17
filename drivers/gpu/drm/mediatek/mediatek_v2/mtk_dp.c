@@ -52,6 +52,18 @@
 #include "ca/tlcDpHdcp.h"
 #endif
 
+#define DP_HPD_LOCK(lock, name, line)                                       \
+	do {                                                                   \
+		DPTXDBG("DP_HPD_LOCK:%s[%d] +\n", name, line);		   \
+		mutex_lock(lock);		   \
+	} while (0)
+
+#define DP_HPD_UNLOCK(lock, name, line)                                     \
+	do {                                                                   \
+		mutex_unlock(lock);		   \
+		DPTXDBG("DP_HPD_ULOCK:%s[%d] -\n", name, line);		   \
+	} while (0)
+
 #define DPTX_IRQ_SUPPORT (0)
 
 static struct mtk_dp *g_mtk_dp;
@@ -4538,6 +4550,8 @@ EXPORT_SYMBOL_GPL(mtk_dp_set_pin_assign);
 
 void mtk_dp_SWInterruptSet(int bstatus)
 {
+	DPTXFUNC();
+
 	if (g_mtk_dp == NULL) {
 		DPTXERR("%s: dp not initial\n", __func__);
 		return;
@@ -4548,7 +4562,7 @@ void mtk_dp_SWInterruptSet(int bstatus)
 		return;
 	}
 
-	mutex_lock(&dp_lock);
+	DP_HPD_LOCK(&dp_lock, __func__, __LINE__);
 
 	if (bstatus != HPD_INT_EVNET)
 		g_mtk_dp->usb_last_state = bstatus;
@@ -4563,13 +4577,13 @@ void mtk_dp_SWInterruptSet(int bstatus)
 		mdrv_DPTx_UpdateHDCPVersion(g_mtk_dp, false);
 		mtk_dp_hotplug_uevent(0);
 		g_mtk_dp->disp_status = DPTX_DISP_NONE;
-		mutex_unlock(&dp_lock);
+		DP_HPD_UNLOCK(&dp_lock, __func__, __LINE__);
 		return;
 	}
 
 	mtk_dp_HPDInterruptSet(bstatus);
 
-	mutex_unlock(&dp_lock);
+	DP_HPD_UNLOCK(&dp_lock, __func__, __LINE__);
 }
 EXPORT_SYMBOL_GPL(mtk_dp_SWInterruptSet);
 
@@ -4582,16 +4596,16 @@ void mtk_dp_poweroff(void)
 
 	DPTXFUNC();
 
-	mutex_lock(&dp_lock);
+	DP_HPD_LOCK(&dp_lock, __func__, __LINE__);
 	if (!g_mtk_dp->bPowerOn) {
 		DPTXMSG("DPTX has been powered off\n");
-		mutex_unlock(&dp_lock);
+		DP_HPD_UNLOCK(&dp_lock, __func__, __LINE__);
 		return;
 	}
 
 	g_mtk_dp->disp_status = DPTX_DISP_SUSPEND;
 	mtk_dp_HPDInterruptSet(HPD_DISCONNECT);
-	mutex_unlock(&dp_lock);
+	DP_HPD_UNLOCK(&dp_lock, __func__, __LINE__);
 }
 
 void mtk_dp_poweron(void)
@@ -4603,16 +4617,16 @@ void mtk_dp_poweron(void)
 
 	DPTXFUNC();
 
-	mutex_lock(&dp_lock);
+	DP_HPD_LOCK(&dp_lock, __func__, __LINE__);
 	g_mtk_dp->disp_status = DPTX_DISP_RESUME;
 	if (g_mtk_dp->bPowerOn) {
 		DPTXMSG("DPTX has been powered on\n");
-		mutex_unlock(&dp_lock);
+		DP_HPD_UNLOCK(&dp_lock, __func__, __LINE__);
 		return;
 	}
 
 	mtk_dp_HPDInterruptSet(HPD_CONNECT);
-	mutex_unlock(&dp_lock);
+	DP_HPD_UNLOCK(&dp_lock, __func__, __LINE__);
 }
 
 bool mtk_dp_ready(void)
@@ -4870,17 +4884,17 @@ static void mtk_drm_dp_remove(struct platform_device *pdev)
 #ifdef CONFIG_PM_SLEEP
 static int mtk_dp_suspend(struct device *dev)
 {
+	DPTXFUNC();
 	struct mtk_dp *mtk_dp = dev_get_drvdata(dev);
 
-	mutex_lock(&dp_lock);
+	DP_HPD_LOCK(&dp_lock, __func__, __LINE__);
 	if (mtk_dp->bPowerOn) {
 		mtk_dp->disp_status = DPTX_DISP_SUSPEND;
 		mtk_dp_HPDInterruptSet(HPD_DISCONNECT);
 		mdelay(5);
 	}
-	mutex_unlock(&dp_lock);
+	DP_HPD_UNLOCK(&dp_lock, __func__, __LINE__);
 
-	DPTXFUNC();
 	return 0;
 }
 

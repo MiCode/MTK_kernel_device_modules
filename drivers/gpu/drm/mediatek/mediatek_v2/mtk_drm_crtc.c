@@ -26887,6 +26887,8 @@ unsigned int mtk_drm_external_display_get_debug_state(
 	struct drm_crtc *crtc = priv->crtc[1];
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct drm_display_mode *adjust_mode;
+	struct mtk_ddp_comp *comp;
+	int config_time, config_line;
 
 	if (!mtk_crtc || !mtk_crtc->avail_modes)
 		return 0;
@@ -26904,6 +26906,22 @@ unsigned int mtk_drm_external_display_get_debug_state(
 			 "Resolution = %ux%u, FPS = %d\n",
 			  adjust_mode->hdisplay, adjust_mode->vdisplay,
 			  drm_mode_vrefresh(adjust_mode));
+
+	comp = mtk_ddp_comp_request_output(mtk_crtc);
+	if (unlikely(!comp)) {
+		len += scnprintf(stringbuf + len, buf_len - len,
+		"================================================\n\n");
+		return len;
+	}
+
+	mtk_ddp_comp_io_cmd(comp, NULL, DVO_GET_MUTEX_VSYNC_CONFIG_TIME,
+				    &config_time);
+	mtk_ddp_comp_io_cmd(comp, NULL, DVO_GET_MUTEX_VSYNC_CONFIG_LINE,
+				    &config_line);
+	if (config_time && config_line)
+		len += scnprintf(stringbuf + len, buf_len - len,
+				"config_time = %d us = %d line\n",
+				config_time, config_line);
 
 	len += scnprintf(stringbuf + len, buf_len - len,
 		"================================================\n\n");
