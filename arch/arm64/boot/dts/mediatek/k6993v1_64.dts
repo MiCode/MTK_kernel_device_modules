@@ -548,6 +548,19 @@
 	vidle-mask = <0x13>;
 };
 
+
+&mt6661_6_buck1 {
+	regulator-always-on;
+};
+
+&mt6661_6_buck5 {
+	regulator-always-on;
+};
+
+&mt6661_6_ln60_7 {
+	regulator-always-on;
+};
+
 #include "k6993v1_64/cust.dtsi"
 #include "mediatek/cust_mt6993_camera_v4l2.dtsi"
 #include "mediatek/cust_k6993_connfem.dtsi"
