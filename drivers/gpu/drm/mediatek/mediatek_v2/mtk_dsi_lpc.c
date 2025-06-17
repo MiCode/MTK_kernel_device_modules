@@ -267,6 +267,9 @@ void mtk_dsi_lpc_te_irq_en(struct mtk_drm_crtc *mtk_crtc,
 	else
 		lpc_inten &= ~EVENT_TE_INT_EN;
 
+	/* for ddic error */
+	lpc_inten |= MIPI_ERROR_FLAG_INT_EN;
+
 	writel(0, comp->regs + DSI_LPC_INTEN(index));
 	writel(lpc_inten, comp->regs + DSI_LPC_INTEN(index));
 
@@ -498,6 +501,9 @@ int mtk_dsi_lpc_interrupt_enable(struct mtk_drm_crtc *mtk_crtc,
 
 	if (lpc->dsi_lpc_te_irq_en)
 		inten |= EVENT_TE_INT_EN;
+
+	/* for ddic error */
+	inten |= MIPI_ERROR_FLAG_INT_EN;
 
 	writel(lpc_te_con0_val, comp->regs + DSI_LPC_TE_CON0(index));
 	writel(0, comp->regs + DSI_LPC_INTEN(index));
@@ -863,6 +869,12 @@ static irqreturn_t mtk_dsi_lpc_irq_handler(int irq, void *dev_id)
 		if (status & EVENT_TE_INT) {
 			DRM_MMP_MARK(dsi_lpc0_te, status, 0);
 			drm_trace_tag_mark("lpc_te_irq");
+		}
+
+		if (status & MIPI_ERROR_FLAG_INT) {
+			DDPPR_ERR("DSI LPC DDIC ERROR\n");
+			DRM_MMP_MARK(dsi_lpc0, status, 0xFFFF);
+			drm_trace_tag_mark("lpc_ddic_error_irq");
 		}
 	}
 
