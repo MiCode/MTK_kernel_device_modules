@@ -13,6 +13,7 @@
  * Include
  * ===============================================
  */
+#include <linux/delay.h>
 #include <linux/platform_device.h>
 #include <linux/io.h>
 #include <linux/proc_fs.h>
@@ -39,16 +40,38 @@ static void __iomem *g_gpueb_intc_base;
 static void __iomem *g_gpueb_dma_base;
 static void __iomem *g_gpueb_mbox_ipi;
 static void __iomem *g_gpueb_mbox_sw_int;
+static void __iomem *g_gpueb_to_infra_gals_en;
+static void __iomem *g_gpueb_to_infra_gals_info;
 
 /**
  * ===============================================
  * Function Definition
  * ===============================================
  */
+
+unsigned int get_gpueb_infra_rx_info(void)
+{
+	if (g_gpueb_to_infra_gals_en) {
+		writel(readl(g_gpueb_to_infra_gals_en) | (0x1U << 3), g_gpueb_to_infra_gals_en);
+		writel(readl(g_gpueb_to_infra_gals_en) | (0x1U << 2), g_gpueb_to_infra_gals_en);
+		udelay(20);
+	}
+
+	if (g_gpueb_to_infra_gals_info)
+		return readl(g_gpueb_to_infra_gals_info);
+
+	return 0;
+}
+
 void gpueb_dump_status(char *log_buf, int *log_len, int log_size)
 {
 	gpueb_pr_logbuf(GPUEB_TAG, log_buf, log_len, log_size,
 		"== [GPUEB STATUS] ==");
+
+	if (g_gpueb_to_infra_gals_info) {
+		gpueb_pr_logbuf(GPUEB_TAG, log_buf, log_len, log_size,
+			"GPUEB_TO_INFRA_GALS_RX: 0x%08x", get_gpueb_infra_rx_info());
+	}
 
 	if (g_gpueb_cfgreg_base) {
 		gpueb_pr_logbuf(GPUEB_TAG, log_buf, log_len, log_size,
@@ -152,6 +175,11 @@ EXPORT_SYMBOL(gpueb_trigger_wdt);
 static int gpueb_status_proc_show(struct seq_file *m, void *v)
 {
 	seq_puts(m, "[GPUEB-DEBUG] Current Status of GPUEB\n");
+
+	if (g_gpueb_to_infra_gals_info) {
+		seq_printf(m, "@%s: GPUEB_TO_INFRA_GALS_RX: 0x%08x\n", __func__,
+			get_gpueb_infra_rx_info());
+	}
 
 	if (g_gpueb_cfgreg_base) {
 		seq_printf(m, "@%s: MFG_GPUEB_AXI_BIST_CON_DEBUG: 0x%08x\n", __func__,
@@ -446,4 +474,25 @@ void gpueb_debug_init(struct platform_device *pdev)
 		gpueb_log_e(GPUEB_TAG, "fail to ioremap MBOX0_RECV: 0x%llx", (u64) res->start);
 		return;
 	}
+
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "gpueb_to_infra_gals_en");
+	if (unlikely(!res)) {
+		gpueb_log_i(GPUEB_TAG, "skip to get resource gpueb_to_infra_gals_en");
+	} else {
+		g_gpueb_to_infra_gals_en = devm_ioremap(gpueb_dev, res->start, resource_size(res));
+		if (unlikely(!g_gpueb_to_infra_gals_en))
+			gpueb_log_e(GPUEB_TAG, "fail to ioremap gpueb_to_infra_gals_en: 0x%llx", (u64) res->start);
+
+	}
+
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "gpueb_to_infra_gals_info");
+	if (unlikely(!res)) {
+		gpueb_log_i(GPUEB_TAG, "skip to get resource gpueb_to_infra_gals_info");
+	} else {
+		g_gpueb_to_infra_gals_info = devm_ioremap(gpueb_dev, res->start, resource_size(res));
+		if (unlikely(!g_gpueb_to_infra_gals_info))
+			gpueb_log_e(GPUEB_TAG, "fail to ioremap gpueb_to_infra_gals_info: 0x%llx", (u64) res->start);
+
+	}
+
 }
