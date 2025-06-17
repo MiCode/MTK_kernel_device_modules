@@ -21514,12 +21514,13 @@ static void mtk_crtc_validate_roi(struct drm_crtc *crtc,
 	if (partial_roi->height < dsc_min_height)
 		partial_roi->height = dsc_min_height;
 
-	if (partial_roi->height % slice_height != 0) {
+	if (partial_roi->height % slice_height != 0)
 		partial_roi->height =
 			((partial_roi->height / slice_height) + 1) * slice_height;
 
-		if (partial_roi->height > full_roi.height)
-			partial_roi->height = full_roi.height;
+	if (partial_roi->y + partial_roi->height > full_roi.height) {
+		partial_roi->y = 0;
+		partial_roi->height = full_roi.height;
 	}
 
 	partial_roi->x = 0;
