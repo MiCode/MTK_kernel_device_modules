@@ -471,6 +471,8 @@ static struct timer_list hrt_issue_timer;
 
 #define DSI_LONG_PACKET_HDR_SIZE 6
 
+#define NOT_TRIGGER_AEE 101
+
 struct phy;
 unsigned int line_back_to_LP = 1;
 
@@ -4505,14 +4507,16 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 				//printing status of mmqos and mmdvfs and smi info
 				atomic_set(&mtk_crtc->smi_info_dump_event, 1);
 				wake_up_interruptible(&mtk_crtc->smi_info_dump_wq);
-			}
 
-			if (aee_cooldown &&
-				mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MBRAIN)) {
+				if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MBRAIN)) {
+					if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_DSI_UNDERRUN_AEE))
+						mtk_crtc->mbrain_notify_threshold = 0;
+					else
+						mtk_crtc->mbrain_notify_threshold = NOT_TRIGGER_AEE;
+					atomic_set(&mtk_crtc->mbrain_notify_event, 1);
+					wake_up_interruptible(&mtk_crtc->mbrain_notify_wq);
+				}
 				mtk_crtc->last_aee_trigger_ts = aee_now_ts;
-				mtk_crtc->mbrain_notify_threshold = 0;
-				atomic_set(&mtk_crtc->mbrain_notify_event, 1);
-				wake_up_interruptible(&mtk_crtc->mbrain_notify_wq);
 			}
 
 			/* could dump SMI register while dsi not attached to CRTC */

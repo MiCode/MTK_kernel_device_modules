@@ -3272,7 +3272,7 @@ void mtk_disp2mbrain_notify(int threshold)
 //	if (priv && mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MBRAIN))
 //		return -1;
 
-	DDPMSG("%s+\n", __func__);
+	DDPMSG("%s+ threshold=%d\n", __func__, threshold);
 	mutex_lock(&mbrain_lock);
 	if (hrt_notify_cb)
 		hrt_notify_cb(threshold);
