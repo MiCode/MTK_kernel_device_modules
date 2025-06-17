@@ -4193,7 +4193,7 @@ dramc: dramc@10230000 {
 			#address-cells = <2>;
 			#size-cells = <2>;
 			compatible = "mediatek,vcp";
-			vcp-support = <0>;
+			vcp-support = <1>;
 			status = "okay";
 			reg = <0 0x1ea00000 0 0x40000>, /* tcm */
 				<0 0x1ec24000 0 0x1000>, /* cfg */
@@ -4288,7 +4288,7 @@ dramc: dramc@10230000 {
 			fmeter-ck = <7>;	/* clk table fmeter f_fmmup_ck */
 			fmeter-type = <3>;	/* fmeter type */
 			mbox-count = <5>;
-			vcp-ee-enable = <0>;
+			vcp-excep-mode = <2>;
 			bus-debug-num-ports = <13>;
 			/* id, mbox, send_size*/
 			send-table =
@@ -4361,7 +4361,7 @@ dramc: dramc@10230000 {
 			#address-cells = <2>;
 			#size-cells = <2>;
 			compatible =  "mediatek,vcp-io-vdec";
-			vcp-support = <0>;
+			vcp-support = <2>;
 			reg = <0 0x1ec24000 0 0x1000>;
 			dma-ranges = <0x1 0x0 0x1 0x0 0x1 0x0>;
 			iommus = <&disp_iommu M4U_PORT_L21_VIDEO_UP0>;
@@ -4371,7 +4371,7 @@ dramc: dramc@10230000 {
 			#address-cells = <2>;
 			#size-cells = <2>;
 			compatible =  "mediatek,vcp-io-venc";
-			vcp-support = <0>;
+			vcp-support = <3>;
 			reg = <0 0x1ec30000 0 0x1000>;
 			dma-ranges = <0x1 0x0 0x1 0x0 0x1 0x0>;
 			iommus = <&disp_iommu M4U_PORT_L21_VIDEO_UP0>;
@@ -4381,7 +4381,7 @@ dramc: dramc@10230000 {
 			#address-cells = <2>;
 			#size-cells = <2>;
 			compatible = "mediatek,vcp-io-work";
-			vcp-support = <0>;
+			vcp-support = <4>;
 			reg = <0 0x1ec32000 0 0x1000>;
 			dma-ranges = <0x1 0x0 0x1 0x0 0x1 0x0>;
 			iommus = <&disp_iommu M4U_PORT_L21_VIDEO_UP0>;
@@ -4391,7 +4391,7 @@ dramc: dramc@10230000 {
 			#address-cells = <2>;
 			#size-cells = <2>;
 			compatible =  "mediatek,vcp-io-sec";
-			vcp-support = <0>;
+			vcp-support = <7>;
 			reg = <0 0x1ec37000 0 0x1000>;
 			dma-ranges = <0x1 0x0 0x1 0x0 0x1 0x0>;
 			iommus = <&disp_iommu M4U_PORT_L21_VIDEO_UP0>;
