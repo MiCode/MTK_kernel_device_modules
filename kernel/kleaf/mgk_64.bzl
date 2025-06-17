@@ -1533,6 +1533,7 @@ mgk_64_kleaf_platform_modules = {
     "//kernel_device_modules-{}/drivers/soc/mediatek/devapc:device-apc-mt6991".format(kernel_version): "mt6991",
     "//kernel_device_modules-{}/drivers/soc/mediatek/devapc:device-apc-mt6993".format(kernel_version): "mt6993",
     "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/pda:pda_drv_mt6855".format(kernel_version): "mt6855",
+    "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/pda:pda_drv_mt6858".format(kernel_version): "mt6858",
     "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/pda:pda_drv_mt6879".format(kernel_version): "mt6879",
     "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/pda:pda_drv_mt6895".format(kernel_version): "mt6895",
     "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/pda:pda_drv_mt6878".format(kernel_version): "mt6878",

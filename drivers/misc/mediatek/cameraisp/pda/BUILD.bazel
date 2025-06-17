@@ -43,6 +43,21 @@ define_mgk_ddk_ko(
 )
 
 define_mgk_ddk_ko(
+    name = "pda_drv_mt6858",
+    srcs = glob([
+          "isp_6s/camera_pda.c",
+          "isp_6s/camera_pda.h",
+          "isp_6s/pda_mt6858.c",
+    ]),
+    ko_deps = ["//kernel_device_modules-{}/drivers/misc/mediatek/mtk-interconnect:mtk-icc-core".format(kernel_version),],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtk-interconnect",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/",
+    ],
+)
+
+define_mgk_ddk_ko(
     name = "pda_drv_mt6879",
     srcs = glob([
           "isp_71/camera_pda.h",
