@@ -88,6 +88,7 @@ s32 smi_larb_monitor_start(u32 larb_id, u32 port_id[MAX_MON_REQ], enum smi_mon_t
 s32 smi_larb_monitor_stop(u32 larb_id, u32 *bw);
 int mtk_smi_dbg_register_pwr_ctrl_cb(struct smi_user_pwr_ctrl *cb);
 int mtk_smi_dbg_unregister_pwr_ctrl_cb(struct smi_user_pwr_ctrl *cb);
+void mtk_smi_dbg_dump_single(const bool is_larb, const u32 id, char *caller);
 #else
 
 static inline int mtk_smi_set_disp_ops(const struct smi_disp_ops *ops)
@@ -161,6 +162,9 @@ static inline int mtk_smi_dbg_unregister_pwr_ctrl_cb(struct smi_user_pwr_ctrl *c
 {
 	return 0;
 }
+
+static inline void mtk_smi_dbg_dump_single(const bool is_larb, const u32 id, char *caller) { }
+
 #endif /* CONFIG_DEVICE_MODULES_MTK_SMI */
 
 #endif /* __MTK_SMI_DEBUG_H */

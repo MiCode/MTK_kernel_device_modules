@@ -742,6 +742,17 @@ static int mtk_smi_mminfra_put(void)
 	return ret;
 }
 
+void mtk_smi_dbg_dump_single(const bool is_larb, const u32 id, char *caller)
+{
+	struct mtk_smi_dbg	*smi = gsmi;
+	struct mtk_smi_dbg_node	node = is_larb ? smi->larb[id] : smi->comm[id];
+
+	dev_notice(node.dev, "%s: check caller:%s, %s%d\n",
+				__func__, caller, is_larb ? "larb" : "comm", id);
+	mtk_smi_dbg_print(smi, is_larb, false, id, true);
+}
+EXPORT_SYMBOL_GPL(mtk_smi_dbg_dump_single);
+
 static void mtk_smi_dbg_print_debugfs(struct seq_file *seq, u8 bus_type, const u32 id)
 {
 	struct mtk_smi_dbg	*smi = gsmi;
