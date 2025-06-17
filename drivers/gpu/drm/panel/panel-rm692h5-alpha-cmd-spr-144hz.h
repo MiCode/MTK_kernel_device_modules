@@ -11,7 +11,6 @@
 #define _RM692H5_FHDPLUS_CMD_SPR_ALPHA_144HZ_H_
 
 #define LCM_DSI_CMD_MODE      1
-#define MAINTAIN_MULTI_DISPLAY_MODE      0
 
 #define MAX_BRIGHTNESS       (3615)
 #define FHD_FRAME_WIDTH      (1260)
@@ -497,25 +496,9 @@ static unsigned char top_rc_pattern[] = {
 };
 
 enum MODE_ID {
-	FHD_120_360TE = 0,
-	FHD_90_360TE,
-	FHD_72_360TE,
-	FHD_60_360TE,
-#if MAINTAIN_MULTI_DISPLAY_MODE //only maintain MTE and fix360
-	FHD_120,
-	FHD_90,
-	FHD_60,
-#endif
+	FHD_144_144TE = 0,
 #ifdef CONFIG_MTK_RES_SWITCH_ON_AP
-	VFHD_120_360TE,
-	VFHD_90_360TE,
-	VFHD_72_360TE,
-	VFHD_60_360TE,
-#if MAINTAIN_MULTI_DISPLAY_MODE //only maintain MTE and fix360
-	VFHD_120,
-	VFHD_90,
-	VFHD_60,
-#endif
+	VFHD_144_144TE,
 #endif
 	MODE_NUM,
 };
