@@ -2474,7 +2474,7 @@ int __init sbe_cpu_ctrl_init(void)
 	gas_threshold_for_high_TLP = 5;
 	sbe_runnable_util_est_disable = 1;
 	sbe_extra_sub_en_deque_enable = 1;
-	sbe_notify_fpsgo_vir_boost = 1;
+	sbe_notify_fpsgo_vir_boost = 0;
 	sbe_dptv2_enable = 0;
 	sbe_affinity_task_min_cap = SBE_DEFAULT_AFFINITY_TASK_MIN_CAP;
 	sbe_affinity_task_low_threshold_cap = SBE_DEFAULT_AFFINITY_TASK_LOW_THRESHOLD_CAP;

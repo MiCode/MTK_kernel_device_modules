@@ -307,6 +307,49 @@ struct sbe_render_info *sbe_get_render_info_by_thread_name(int tgid, char *threa
 	return temp_info;
 }
 
+int sbe_get_render_tid_by_render_pid(int tgid, int pid,
+	int *out_tid_arr, unsigned long long *out_bufID_arr,
+	int *out_tid_num, int out_tid_max_num)
+{
+	int i;
+	int index = 0;
+	struct render_fw_info *tmp_arr = NULL;
+	struct task_struct *tsk;
+
+	if (tgid <= 0 || pid <= 0 ||
+		!out_tid_arr || !out_bufID_arr ||
+		!out_tid_num || out_tid_max_num <= 0)
+		return -EINVAL;
+
+	tmp_arr = kcalloc(out_tid_max_num, sizeof(struct render_fw_info), GFP_KERNEL);
+	if (!tmp_arr)
+		return -ENOMEM;
+
+	fpsgo_other2comp_get_render_fw_info(0, out_tid_max_num, out_tid_num, tmp_arr);
+	for (i = 0; i < *out_tid_num; i++) {
+		if (tmp_arr[i].producer_tgid != tgid)
+			continue;
+
+		rcu_read_lock();
+		tsk = find_task_by_vpid(tmp_arr[i].producer_pid);
+		if (tsk) {
+			get_task_struct(tsk);
+			if (tmp_arr[i].producer_pid == pid && index < out_tid_max_num) {
+				out_tid_arr[index] = tmp_arr[i].producer_pid;
+				out_bufID_arr[index] = tmp_arr[i].buffer_id;
+				index++;
+			}
+			put_task_struct(tsk);
+		}
+		rcu_read_unlock();
+	}
+	*out_tid_num = index;
+
+	kfree(tmp_arr);
+
+	return 0;
+}
+
 struct sbe_render_info *sbe_get_render_info(int pid,
 	unsigned long long buffer_id, int force)
 {
@@ -405,6 +448,24 @@ void sbe_delete_render_info(struct sbe_render_info *iter)
 	vfree(iter);
 }
 
+int sbe_forece_reset_fpsgo_critical_tasks(void)
+{
+	struct sbe_render_info *iter;
+	struct rb_node *rbn;
+
+	rbn = rb_first(&sbe_render_info_tree);
+	while (rbn) {
+		iter = rb_entry(rbn, struct sbe_render_info, entry);
+		if (iter->fpsgo_critical_flag) {
+			fpsgo_other2xgf_set_critical_tasks(iter->pid, iter->buffer_id, NULL, 0, 0);
+			iter->fpsgo_critical_flag = 0;
+		}
+		rbn = rb_next(rbn);
+	}
+
+	return 0;
+}
+
 int sbe_check_render_info_status(void)
 {
 	int count = 0;
@@ -415,6 +476,7 @@ int sbe_check_render_info_status(void)
 	rbn = rb_first(&sbe_render_info_tree);
 	while (rbn) {
 		iter = rb_entry(rbn, struct sbe_render_info, entry);
+
 		if (((cur_ts - iter->latest_use_ts > 60*10*NSEC_PER_SEC)
 			&& (!iter->scroll_status)) ||
 			!sbe_get_tgid(iter->pid)) {

@@ -79,6 +79,7 @@ struct sbe_render_info {
 	int jank_count;
 	int is_webfunctor;
 	int core_ctl_ignore_vip_task;
+	int fpsgo_critical_flag;
 	unsigned long long frame_ctime_count;
 	unsigned int sbe_rescue;
 	unsigned long long buffer_id;
@@ -136,5 +137,9 @@ int sbe_split_task_tid(char *dep_name, int dep_num, int *out_tid_arr, const char
 int sbe_base_init(void);
 void sbe_base_exit(void);
 void sbe_get_proc_name(int tgid, char *name);
+int sbe_forece_reset_fpsgo_critical_tasks(void);
+int sbe_get_render_tid_by_render_pid(int tgid, int pid,
+	int *out_tid_arr, unsigned long long *out_bufID_arr,
+	int *out_tid_num, int out_tid_max_num);
 
 #endif

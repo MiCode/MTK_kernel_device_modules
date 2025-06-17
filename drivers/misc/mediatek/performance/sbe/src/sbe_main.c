@@ -78,6 +78,7 @@ static void sbe_do_recycle(struct work_struct *work)
 	non_empty += !!sbe_check_info_status();
 	non_empty += !!sbe_check_render_info_status();
 	non_empty += !!sbe_check_spid_loading_status();
+	sbe_forece_reset_fpsgo_critical_tasks();
 	sbe_put_tree_lock(__func__);
 
 	mutex_lock(&sbe_recycle_lock);
@@ -460,6 +461,15 @@ void sbe_set_critical_task(int cur_pid, unsigned long long id,
 	int local_specific_tid_num = 0;
 	int *local_specific_tid_arr = NULL;
 	struct task_info *local_specific_action_arr = NULL;
+	int out_tid_arr[FPSGO_MAX_RENDER_INFO_SIZE];
+	unsigned long long out_bufID_arr[FPSGO_MAX_RENDER_INFO_SIZE];
+	int out_tid_num = 0;
+	struct sbe_render_info *thr = NULL;
+
+	sbe_get_render_tid_by_render_pid(sbe_get_tgid(cur_pid), cur_pid, out_tid_arr,
+		out_bufID_arr, &out_tid_num, FPSGO_MAX_RENDER_INFO_SIZE);
+	if (out_tid_num <= 0)
+		return;
 
 	if (dep_mode && dep_num > 0) {
 		local_specific_tid_arr = kcalloc(dep_num, sizeof(int), GFP_KERNEL);
@@ -500,11 +510,19 @@ void sbe_set_critical_task(int cur_pid, unsigned long long id,
 					local_specific_action_arr[i].pid = local_specific_tid_arr[i];
 					local_specific_action_arr[i].action = local_action;
 				}
+
 				//clear dep set before
-				fpsgo_other2xgf_set_critical_tasks(cur_pid, id, NULL, 0, -1);
+				fpsgo_other2xgf_set_critical_tasks(cur_pid, id, NULL, 0, 0);
 				//set new dep task
-				fpsgo_other2xgf_set_critical_tasks(cur_pid, id,
-					local_specific_action_arr, local_specific_tid_num, 1);
+				if (local_specific_tid_num > 0) {
+					fpsgo_other2xgf_set_critical_tasks(cur_pid, id,
+						local_specific_action_arr, local_specific_tid_num, 1);
+					sbe_get_tree_lock(__func__);
+					thr = sbe_get_render_info(cur_pid, id, 1);
+					if (thr)
+						thr->fpsgo_critical_flag = 1;
+					sbe_put_tree_lock(__func__);
+				}
 			}
 		}
 
@@ -512,7 +530,12 @@ void sbe_set_critical_task(int cur_pid, unsigned long long id,
 		kfree(local_specific_tid_arr);
 	} else if (dep_mode == 5 && dep_num == 0) {
 		//CLEAR dep set before
-		fpsgo_other2xgf_set_critical_tasks(cur_pid, id, NULL, 0, -1);
+		fpsgo_other2xgf_set_critical_tasks(cur_pid, id, NULL, 0, 0);
+		sbe_get_tree_lock(__func__);
+		thr = sbe_get_render_info(cur_pid, id, 0);
+		if (thr)
+			thr->fpsgo_critical_flag = 0;
+		sbe_put_tree_lock(__func__);
 	}
 }
 
@@ -597,7 +620,7 @@ static void sbe_notifier_wq_cb_hwui_frame_hint(int start,
 		break;
 	case 1:
 		sbe_receive_frame_end(cur_pid, frameID, curr_ts, id);
-		sbe_set_critical_task(sbe_get_tgid(cur_pid), id, dep_mode, dep_name, dep_num);
+		sbe_set_critical_task(cur_pid, id, dep_mode, dep_name, dep_num);
 		break;
 	case 2:
 		sbe_receive_doframe_end(cur_pid, frameID, curr_ts, id, frame_flags);
@@ -691,6 +714,7 @@ void sbe_enforce_update_sbe_info_by_thread_name(int tgid, char *thread_name,
 		sbe_systrace_c(sbe_thr->pid, sbe_thr->buffer_id, 0, "[ux]sbe_set_ctrl");
 		sbe_systrace_c(sbe_thr->pid, sbe_thr->buffer_id, 0, "[ux]perf_idx");
 		sbe_systrace_c(sbe_thr->pid, sbe_thr->buffer_id, 100, "[ux]perf_idx_max");
+		sbe_forece_reset_fpsgo_critical_tasks();
 	}
 }
 
@@ -784,19 +808,18 @@ static int sbe_do_webview_notify_fpsgo_ctrl(int tgid, char *name, int start, cha
 	}
 
 	for (i = 0; i < final_pid_arr_idx; i++) {
-		// todo: remove this get info?
 		sbe_get_tree_lock(__func__);
 		thr = sbe_get_render_info(scroll_policy_info.final_pid_arr[i],
-				scroll_policy_info.final_bufID_arr[i], 1);
+			scroll_policy_info.final_bufID_arr[i], 1);
 		if (thr) {
-			/*
-			 * It's essential to update the status here.
-			 * This ensures timely reclamation of buffer information.
-			 */
 			thr->latest_use_ts = ts;
 			thr->scroll_status = start;
 		}
 		sbe_put_tree_lock(__func__);
+		sbe_systrace_c(scroll_policy_info.final_pid_arr[i], scroll_policy_info.final_bufID_arr[i],
+				start, "[ux]sbe_set_ctrl");
+		sbe_trace("[SBE]: switch fpsgo control: pid=%d, frameID=%llu, start=%d",
+				scroll_policy_info.final_pid_arr[i], scroll_policy_info.final_bufID_arr[i], start);
 
 		update_fpsgo_hint_param(start, tgid);
 		/*
@@ -809,10 +832,6 @@ static int sbe_do_webview_notify_fpsgo_ctrl(int tgid, char *name, int start, cha
 		 */
 		switch_fpsgo_control(1, scroll_policy_info.final_pid_arr[i], start,
 							scroll_policy_info.final_bufID_arr[i]);
-		sbe_systrace_c(scroll_policy_info.final_pid_arr[i], scroll_policy_info.final_bufID_arr[i],
-						start, "[ux]sbe_set_ctrl");
-		sbe_trace("[SBE]: switch fpsgo control: pid=%d, frameID=%llu, start=%d",
-				scroll_policy_info.final_pid_arr[i], scroll_policy_info.final_bufID_arr[i], start);
 
 		if (start) {
 			memset(&xgf_attr_iter, 0, sizeof(struct xgf_policy_cmd));
@@ -856,17 +875,45 @@ static int sbe_do_webview_notify_fpsgo_ctrl(int tgid, char *name, int start, cha
 				specific_name, num, scroll_policy_info.local_specific_tid_arr, __func__);
 		for (i = 0; i < local_specific_tid_num; i++) {
 			scroll_policy_info.local_specific_action_arr[i].pid =
-					scroll_policy_info.local_specific_tid_arr[i];
+				scroll_policy_info.local_specific_tid_arr[i];
 			scroll_policy_info.local_specific_action_arr[i].action = 0;  // XGF_ADD_DEP
 		}
+		/*
+		 * TODO: This might be redundant?
+		 * Manually adding render thread to dep list.
+		 * Consider removing this in the future.
+		 * Evaluate the impact of removal and optimize
+		 * only if it doesn't cause any issues.
+		 */
 		for (i = 0; i < final_pid_arr_idx; i++) {
-			fpsgo_other2xgf_set_critical_tasks(scroll_policy_info.final_pid_arr[i],
-				scroll_policy_info.final_bufID_arr[i], scroll_policy_info.local_specific_action_arr,
-				local_specific_tid_num, start);
-			sbe_trace("[SBE]: webview Set dep: pid %d, bufID %llu, start %d, local_specific_tid_num %d",
-			scroll_policy_info.final_pid_arr[i], scroll_policy_info.final_bufID_arr[i],
-				start, local_specific_tid_num);
+			if (start && local_specific_tid_num > 0) {
+				fpsgo_other2xgf_set_critical_tasks(scroll_policy_info.final_pid_arr[i],
+					scroll_policy_info.final_bufID_arr[i],
+					scroll_policy_info.local_specific_action_arr,
+					local_specific_tid_num, 1);
+				sbe_trace("[SBE]: %s pid %d, bufID %llu, start %d, local_s_tid_num %d",
+					__func__,
+					scroll_policy_info.final_pid_arr[i],
+					scroll_policy_info.final_bufID_arr[i],
+					start, local_specific_tid_num);
+
+				sbe_get_tree_lock(__func__);
+				thr = sbe_get_render_info(scroll_policy_info.final_pid_arr[i],
+					scroll_policy_info.final_bufID_arr[i], 1);
+				if (thr) {
+					thr->latest_use_ts = ts;
+					thr->scroll_status = start;
+					thr->fpsgo_critical_flag = 1;
+				}
+				sbe_put_tree_lock(__func__);
+			}
 		}
+	}
+
+	if (!start) {
+		sbe_get_tree_lock(__func__);
+		sbe_forece_reset_fpsgo_critical_tasks();
+		sbe_put_tree_lock(__func__);
 	}
 
 	return ret;
@@ -1179,7 +1226,6 @@ static int sbe_do_hwui_scrolling_status_policy(int tgid, char *name, unsigned lo
 		sbe_put_tree_lock(__func__);
 	}
 
-
 	if (final_pid_arr_idx > 0) {
 		local_specific_tid_num = sbe_split_task_name(tgid,
 				specific_name, num, scroll_policy_info.local_specific_tid_arr, __func__);
@@ -1196,13 +1242,34 @@ static int sbe_do_hwui_scrolling_status_policy(int tgid, char *name, unsigned lo
 		 * only if it doesn't cause any issues.
 		 */
 		for (i = 0; i < final_pid_arr_idx; i++) {
-			fpsgo_other2xgf_set_critical_tasks(scroll_policy_info.final_pid_arr[i],
-				scroll_policy_info.final_bufID_arr[i], scroll_policy_info.local_specific_action_arr,
-				local_specific_tid_num, start);
-			sbe_trace("[SBE]: hwui Set dep: pid %d, bufID %llu, start %d, local_specific_tid_num %d",
-				scroll_policy_info.final_pid_arr[i], scroll_policy_info.final_bufID_arr[i],
-				start, local_specific_tid_num);
+			if (start && local_specific_tid_num > 0) {
+				fpsgo_other2xgf_set_critical_tasks(scroll_policy_info.final_pid_arr[i],
+					scroll_policy_info.final_bufID_arr[i],
+					scroll_policy_info.local_specific_action_arr,
+					local_specific_tid_num, 1);
+				sbe_trace("[SBE]: %s: pid %d, bufID %llu, start %d, local_s_tid_num %d",
+					__func__,
+					scroll_policy_info.final_pid_arr[i],
+					scroll_policy_info.final_bufID_arr[i],
+					start, local_specific_tid_num);
+
+				sbe_get_tree_lock(__func__);
+				thr = sbe_get_render_info(scroll_policy_info.final_pid_arr[i],
+					scroll_policy_info.final_bufID_arr[i], 1);
+				if (thr) {
+					thr->latest_use_ts = ts;
+					thr->scroll_status = start;
+					thr->fpsgo_critical_flag = 1;
+				}
+				sbe_put_tree_lock(__func__);
+			}
 		}
+	}
+
+	if (!start) {
+		sbe_get_tree_lock(__func__);
+		sbe_forece_reset_fpsgo_critical_tasks();
+		sbe_put_tree_lock(__func__);
 	}
 
 	return ret;
