@@ -12,7 +12,6 @@
 		clocks =
 			<&cksys_reg_clk CLK_TOP_DISP0_SEL>,
 			<&cksys_reg_clk CLK_TOP_MMINFRA_SEL>,
-			<&cksys_reg_clk CLK_TOP_MMUP_SEL>,
 			<&cksys_reg_clk CLK_TOP_UART_SEL>,
 			<&cksys_reg_clk CLK_TOP_SPI0_SEL>,
 			<&cksys_reg_clk CLK_TOP_SPI1_SEL>,
@@ -413,12 +412,6 @@
 		compatible = "mediatek,scpsys-bring-up";
 		reg = <0x27>;
 		power-domains = <&scpsys MT6858_POWER_DOMAIN_MM_INFRA_SHUTDOWN>;
-	};
-
-	bring-up-pd-mm-proc-dormant@28 {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x28>;
-		power-domains = <&scpsys MT6858_POWER_DOMAIN_MM_PROC_DORMANT>;
 	};
 
 	bring-up-pd-csi-rx@29 {
