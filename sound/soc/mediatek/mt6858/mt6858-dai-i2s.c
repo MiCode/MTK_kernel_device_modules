@@ -2579,7 +2579,7 @@ static int mtk_dai_i2s_config(struct mtk_base_afe *afe,
 			      int i2s_id)
 {
 	struct mt6858_afe_private *afe_priv = afe->platform_priv;
-	struct mtk_afe_i2s_priv *i2s_priv = afe_priv->dai_priv[i2s_id];
+	struct mtk_afe_i2s_priv *i2s_priv;
 	int id = i2s_id - MT6858_DAI_I2S_IN1;
 	struct mtk_base_etdm_data etdm_data;
 	unsigned int rate = params_rate(params);
@@ -2603,12 +2603,12 @@ static int mtk_dai_i2s_config(struct mtk_base_afe *afe,
 	}
 	etdm_data = mtk_etdm_data[id];
 
-	if (i2s_priv)
-		i2s_priv->rate = rate;
-	else {
+	i2s_priv = afe_priv->dai_priv[i2s_id];
+	if (!i2s_priv) {
 		AUDIO_AEE("i2s_priv == NULL");
 		return -EINVAL;
 	}
+	i2s_priv->rate = rate;
 
 	if (is_etdm_in_pad_top(id) && !is_etdm_in_lpbk(afe, id))
 		pad_top = 0x3;
