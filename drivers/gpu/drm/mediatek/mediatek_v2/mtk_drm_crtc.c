@@ -21697,9 +21697,9 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 		partial_enable = MTK_PARTIAL_UPDATE_BIBO;
 	}
 
+	memset(&tile_overhead_v, 0, sizeof(tile_overhead_v));
 	if (partial_enable == MTK_PARTIAL_UPDATE_SISO &&
 		!_is_equal_full_lcm(crtc, &partial_roi)) {
-		memset(&tile_overhead_v, 0, sizeof(tile_overhead_v));
 		/* calculate total overhead vertical */
 		for_each_comp_in_crtc_path_reverse(comp, mtk_crtc, i, j) {
 			mtk_ddp_comp_config_overhead_v(comp, &tile_overhead_v);
@@ -21708,16 +21708,15 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 				tile_overhead_v.top_overhead_v,
 				tile_overhead_v.bot_overhead_v);
 		}
-
-		/*store total overhead vertical data*/
-		mtk_crtc_store_total_overhead_v(mtk_crtc, tile_overhead_v);
 	}
+
+	/*store total overhead vertical data*/
+	mtk_crtc_store_total_overhead_v(mtk_crtc, tile_overhead_v);
 
 	/*  adjust partial roi if total overhead_v exceed the bounds */
 	if (partial_enable == MTK_PARTIAL_UPDATE_SISO &&
 		partial_roi.y < mtk_crtc->tile_overhead_v.top_overhead_v) {
 		mtk_crtc->tile_overhead_v.top_overhead_v = 0;
-		mtk_crtc->tile_overhead_v.top_overhead_v_scaling = 0;
 		if (partial_roi.y != 0) {
 			_assign_full_lcm_roi(crtc, &partial_roi, true);
 			partial_enable = MTK_PARTIAL_UPDATE_BIBO;
@@ -21727,7 +21726,6 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 		partial_roi.y + partial_roi.height >=
 		full_roi.height - mtk_crtc->tile_overhead_v.bot_overhead_v) {
 		mtk_crtc->tile_overhead_v.bot_overhead_v = 0;
-		mtk_crtc->tile_overhead_v.bot_overhead_v_scaling = 0;
 		if (partial_roi.y + partial_roi.height != full_roi.height) {
 			_assign_full_lcm_roi(crtc, &partial_roi, true);
 			partial_enable = MTK_PARTIAL_UPDATE_BIBO;
