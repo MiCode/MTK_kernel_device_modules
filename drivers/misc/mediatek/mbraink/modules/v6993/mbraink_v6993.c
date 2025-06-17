@@ -101,7 +101,7 @@ static int mbraink_v6993_probe(struct platform_device *pdev)
 	if (ret)
 		pr_notice("[MBK_v6993] mbraink v6993 touch init failed.\n");
 
-	ret = mbraink_v6993_hrt_init();
+	ret = mbraink_v6993_hrt_init(mbraink_v6993_device);
 	if (ret)
 		pr_notice("[MBK_v6993] mbraink v6993 hrt init failed.\n");
 	return ret;
@@ -123,7 +123,7 @@ static void mbraink_v6993_remove(struct platform_device *pdev)
 	mbraink_v6993_camera_deinit();
 	mbraink_v6993_pmu_deinit();
 	mbraink_v6993_touch_deinit();
-	mbraink_v6993_hrt_deinit();
+	mbraink_v6993_hrt_deinit(mbraink_v6993_device);
 }
 
 static const struct of_device_id mtk_mbraink_v6993_of_ids[] = {
