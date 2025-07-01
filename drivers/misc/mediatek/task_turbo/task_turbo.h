@@ -36,6 +36,13 @@ enum rwsem_waiter_type {
 	RWSEM_WAITING_FOR_READ
 };
 
+enum vipe_ctrl_mode {
+	VIPE_MODE_OFF = 0,
+	VIPE_MODE_ON,
+	VIPE_MODE_SPECIAL,
+	VIPE_MODE_MAX,
+};
+
 struct rwsem_waiter {
 	struct list_head list;
 	struct task_struct *task;

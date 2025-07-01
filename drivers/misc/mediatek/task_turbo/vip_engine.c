@@ -55,10 +55,12 @@ static void init_turbo_attr(struct task_struct *p);
 static int avg_cpu_loading;
 static int cpu_loading_thres = 95;
 static int vip_util_thres = 80;
-static int tt_vip_enable;
 #if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 static int binder_vip_inheritance_enable = 1;
 static int binder_nonvip_inheritance_enable;
+static int tt_vip_enable = VIPE_MODE_SPECIAL;
+#else
+static int tt_vip_enable = VIPE_MODE_OFF;
 #endif
 static int binder_uclamp_inheritance_enable;
 static int binder_uclamp_inheritance_enable_authority = 1;
@@ -172,7 +174,7 @@ static int update_win_pid_status(const char *buf, const struct kernel_param *kp)
 	if (pid < 0 || pid > PID_MAX_DEFAULT)
 		return -EINVAL;
 
-	if (tt_vip_enable) {
+	if (tt_vip_enable == VIPE_MODE_ON) {
 		mutex_lock(&wi_lock);
 		if (status == 1 && wi_add_tgid_hook)
 			retval = wi_add_tgid_hook(pid);
@@ -212,12 +214,12 @@ static int enable_tt_vip(const char *buf, const struct kernel_param *kp)
 	if (retval)
 		return -EINVAL;
 
-	if (val < 0)
+	if (val < VIPE_MODE_OFF || val >= VIPE_MODE_MAX)
 		return -EINVAL;
 
-	tt_vip_enable = !!val;
+	tt_vip_enable = val;
 
-	if (!tt_vip_enable && disable_tt_vip_hook)
+	if ((tt_vip_enable == VIPE_MODE_OFF || tt_vip_enable == VIPE_MODE_SPECIAL) && disable_tt_vip_hook)
 		disable_tt_vip_hook(enforced_qualified_mask);
 
 	return retval;
@@ -285,7 +287,7 @@ static int set_tgd(const char *buf, const struct kernel_param *kp)
 	if (set_tgd_param < 0 || set_tgd_param > PID_MAX_DEFAULT)
 		return -EINVAL;
 
-	if (set_tgd_hook && tt_vip_enable) {
+	if (set_tgd_hook && tt_vip_enable == VIPE_MODE_ON) {
 		set_tgd_hook(set_tgd_param);
 		trace_turbo_vip(INVALID_LOADING, INVALID_LOADING, "DEBUG set: tgd_hook:",
 						set_tgd_param, "-1", INVALID_VAL, enforced_qualified_mask);
@@ -353,7 +355,7 @@ static int set_td(const char *buf, const struct kernel_param *kp)
 	if (set_td_param < 0 || set_td_param > PID_MAX_DEFAULT)
 		return -EINVAL;
 
-	if (set_td_hook && tt_vip_enable) {
+	if (set_td_hook && tt_vip_enable == VIPE_MODE_ON){
 		set_td_hook(set_td_param);
 		trace_turbo_vip(INVALID_LOADING, INVALID_LOADING, "DEBUG set: td_hook:",
 						set_td_param, "-1", INVALID_VAL, enforced_qualified_mask);
@@ -476,7 +478,7 @@ static int set_tdtgd(const char *buf, const struct kernel_param *kp)
 	if (set_tdtgd_param < 0 || set_tdtgd_param > PID_MAX_DEFAULT)
 		return -EINVAL;
 
-	if (set_tdtgd_hook && tt_vip_enable) {
+	if (set_tdtgd_hook && tt_vip_enable == VIPE_MODE_ON){
 		rcu_read_lock();
 		p = find_task_by_vpid(set_tdtgd_param);
 		if (p)
@@ -620,7 +622,7 @@ int enforce_ct_to_vip(int val, int caller_id)
 
 	tmp_mask = enforced_qualified_mask;
 	mutex_unlock(&enforced_qualified_lock);
-	if (tmp_mask && val && tt_vip_enable)
+	if (tmp_mask && val && tt_vip_enable == VIPE_MODE_ON)
 		queue_work(system_highpri_wq, &tt_vip_worker);
 
 	trace_turbo_vip(INVALID_LOADING, INVALID_LOADING, "enforce:",
@@ -1452,7 +1454,7 @@ static void tt_input_event(struct input_handle *handle, unsigned int type,
 	ktime_t diff = 0;
 
 	cur_touch_time = ktime_get();
-	if (tt_vip_enable && type == EV_KEY && code == BTN_TOUCH && value == TOUCH_DOWN) {
+	if (tt_vip_enable == VIPE_MODE_ON && type == EV_KEY && code == BTN_TOUCH && value == TOUCH_DOWN) {
 		diff = cur_touch_time - cur_touch_down_time;
 		cur_touch_down_time = cur_touch_time;
 		if (diff >= TOUCH_SUSTAIN_MS) {
@@ -1702,10 +1704,10 @@ static void probe_android_vh_binder_set_priority(void *ignore, struct binder_tra
 							struct task_struct *task)
 {
 #if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
-	if (binder_vip_inheritance_enable && tt_vip_enable && binder_start_vip_inherit_hook)
+	if (binder_vip_inheritance_enable && tt_vip_enable == VIPE_MODE_ON && binder_start_vip_inherit_hook)
 		binder_start_vip_inherit(t->from ? t->from->task : NULL, task);
 #endif
-	if (binder_vipServer_enable && tt_vip_enable)
+	if (binder_vipServer_enable && tt_vip_enable == VIPE_MODE_ON)
 		binder_start_set_vipServer(t->from ? t->from->task : NULL, task);
 	if (binder_uclamp_inheritance_enable && binder_uclamp_inheritance_enable_authority)
 		binder_start_uclamp_inherit(t->from ? t->from->task : NULL, task);
@@ -1808,7 +1810,7 @@ static void tt_tick(void *data, struct rq *rq)
 {
 	u64 wallclock;
 
-	if (tt_vip_enable) {
+	if (tt_vip_enable == VIPE_MODE_ON) {
 		wallclock = ktime_get_ns();
 		if (!tt_vip_do_check(wallclock))
 			return;
@@ -1849,7 +1851,7 @@ EXPORT_SYMBOL(set_task_priority);
 
 void set_vip_ctrl_node(int pid, int vip_prio, unsigned int throttle_time)
 {
-	if (!tt_vip_enable)
+	if (tt_vip_enable == VIPE_MODE_OFF)
 		return;
 
 	switch (vip_prio) {

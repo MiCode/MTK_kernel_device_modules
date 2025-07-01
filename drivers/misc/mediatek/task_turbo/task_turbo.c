@@ -788,7 +788,7 @@ static inline void set_scheduler_tuning(struct task_struct *task)
 	/* trigger renice for turbo task */
 	set_user_nice(task, 0xbeef);
 #if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
-	if ((tt_vip_enable_p && *tt_vip_enable_p) || !tt_vip_enable_p) {
+	if (!tt_vip_enable_p || *tt_vip_enable_p != VIPE_MODE_OFF) {
 		set_task_vvip_and_throttle(task_pid_nr(task), 60);
 		trace_turbo_vvip_set(task_pid_nr(task));
 	}

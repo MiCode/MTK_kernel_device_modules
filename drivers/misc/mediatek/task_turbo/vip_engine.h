@@ -51,6 +51,13 @@ enum _flt_mode {
 	FLT_MODE_NUM,
 };
 
+enum vipe_ctrl_mode {
+	VIPE_MODE_OFF = 0,
+	VIPE_MODE_ON,
+	VIPE_MODE_SPECIAL,
+	VIPE_MODE_MAX,
+};
+
 struct cpu_time {
 	u64 time;
 };
