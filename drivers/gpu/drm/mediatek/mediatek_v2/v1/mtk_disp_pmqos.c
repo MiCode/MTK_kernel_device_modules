@@ -1593,7 +1593,7 @@ void mtk_disp_mmqos_bw_repaint(struct mtk_drm_private *priv)
 	if (priv->data->respective_ostdl)
 		return;
 
-	if (priv->data->mmsys_id == MMSYS_MT6895 && priv->seg_id == 3)
+	if (priv->data->mmsys_id == MMSYS_MT6895 && (priv->seg_id == 3 || priv->seg_id == 2))
 		return;
 
 	for (c = 0 ; c < MAX_CRTC ; ++c) {
