@@ -2117,9 +2117,6 @@ static int mtk_dsi_poweron(struct mtk_dsi *dsi)
 					mtk_mipi_tx_cphy_lane_config_mt6991(
 						(dsi->regs + dsi->driver_data->reg_phy_base),
 						dsi->phy, dsi->ext, !dsi->is_slave, mtk_crtc);
-				} else if (priv->data->mmsys_id == MMSYS_MT6858) {
-					mtk_mipi_tx_cphy_lane_config_mt6858(dsi->phy, dsi->ext,
-								     !dsi->is_slave, mtk_crtc);
 				} else {
 					mtk_mipi_tx_cphy_lane_config(dsi->phy, dsi->ext,
 								     !dsi->is_slave);
@@ -2142,9 +2139,6 @@ static int mtk_dsi_poweron(struct mtk_dsi *dsi)
 					mtk_mipi_tx_dphy_lane_config_mt6991(
 						(dsi->regs + dsi->driver_data->reg_phy_base),
 						dsi->phy, dsi->ext, !dsi->is_slave, mtk_crtc);
-				}  else if (priv->data->mmsys_id == MMSYS_MT6858) {
-					mtk_mipi_tx_dphy_lane_config_mt6858(dsi->phy, dsi->ext,
-								     !dsi->is_slave, mtk_crtc);
 				} else {
 					mtk_mipi_tx_dphy_lane_config(dsi->phy, dsi->ext,
 								     !dsi->is_slave);
