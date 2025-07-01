@@ -7754,7 +7754,7 @@ dramc: dramc@10230000 {
 			core-0 = "enable";
 			scp-hwvoter = "disable";
 			scp-sram-size = <0x00120000>;
-			scp-dram-size = <0x00800000>; /* scp dram image size */
+			scp-dram-size = <0x00c00000>; /* scp dram image size */
 			scp-cache-dump-buf-size = <0x000c4000>;
 			scp-reg-dump-buf-size = <0x00003c00>;
 			scp-tbuf-dump-buf-size = <0x00000400>;
