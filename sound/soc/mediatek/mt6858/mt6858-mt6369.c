@@ -596,20 +596,19 @@ static void mt6858_mt6369_vow_shutdown(struct snd_pcm_substream *substream)
 	struct snd_soc_component *component =
 			snd_soc_rtdcom_lookup(rtd, AFE_PCM_NAME);
 	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(component);
-	int i, ret;
+	int i;
 
 	dev_info(afe->dev, "%s(), end\n", __func__);
 	mt6858_afe_gpio_request(afe, false, MT6858_DAI_VOW, 0);
 
 	/* restore to fool ASoC */
 	for_each_rtd_components(rtd, i, component) {
-		ret = pm_runtime_resume_and_get(component->dev);
-		if (ret < 0) {
-			dev_err(component->dev,
-				"%s: failed to resume comp-%d: %d\n",
-				__func__, i, ret);
-			return;
-		}
+		/* WARNING: do not change this pm_runtime API.
+		 * VOW will decrease the usage counter during shutdown, error
+		 * handling is not required here. Otherwise, AFE might suspened
+		 * with VOW while there are still active streams.
+		 */
+		pm_runtime_get_sync(component->dev);
 	}
 }
 
