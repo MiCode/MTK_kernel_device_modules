@@ -3420,7 +3420,7 @@ static int ufs_mtk_probe(struct platform_device *pdev)
 
 			hba = platform_get_drvdata(peer_pdev);
 			if (!hba || (hba->luns_avail != 1)) {
-				dev_info(hba->dev, "UFS0 LUNs not all ready");
+				dev_info(dev, "UFS0 LUNs not all ready");
 				err = -EPROBE_DEFER;
 				goto out;
 			}
