@@ -357,16 +357,23 @@ CLK_PERAO_P_AUDIO2_AUDIO_ERR:
 static void apll_enable(struct mtk_base_afe *afe, u32 apll, bool enable)
 {
 	struct mt6858_afe_private *afe_priv = afe->platform_priv;
-	u32 en, clr;
+	u32 en, clr, con1, sdm, tuner;
+	u32 val = enable ? GENMASK(31, 0) : 0;
 
 	switch (apll) {
 	case MT6858_APLL1:
 		en = APLL1_EN;
 		clr = APLL1_CLR;
+		con1 = APLL1_CON1;
+		sdm = APLL1_SDM_PCW_CHG;
+		tuner = APLL1_TUNER_EN;
 		break;
 	case MT6858_APLL2:
 		en = APLL2_EN;
 		clr = APLL2_CLR;
+		con1 = APLL2_CON1;
+		sdm = APLL2_SDM_PCW_CHG;
+		tuner = APLL2_TUNER_EN;
 		break;
 	default:
 		pr_info("%s: invalid apll id: %d\n", __func__, apll);
@@ -375,7 +382,10 @@ static void apll_enable(struct mtk_base_afe *afe, u32 apll, bool enable)
 	if (enable)
 		regmap_update_bits(afe_priv->apmixed, PLLEN_ALL_SET, en, en);
 	else
-		regmap_update_bits(afe_priv->apmixed, PLLEN_ALL_SET, clr, clr);
+		regmap_update_bits(afe_priv->apmixed, PLLEN_ALL_CLR, clr, clr);
+
+	regmap_update_bits(afe_priv->apmixed, con1, sdm, val);
+	regmap_update_bits(afe_priv->apmixed, AP_PLL_CON3, tuner, val);
 }
 
 int mt6858_afe_apll_init(struct mtk_base_afe *afe)
