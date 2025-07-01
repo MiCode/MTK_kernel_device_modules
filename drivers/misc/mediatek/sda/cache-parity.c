@@ -34,6 +34,12 @@
 #define ECC_IRQ_TRIGGER_THRESHOLD	(1)
 #define MAX_COMPLEX_IRQ_NUM		(4)
 
+/*
+ * false: BUG for internal load only
+ * true: BUG for internal and customer load
+ */
+#define ECC_CRASH_FORCE			(false)
+
 struct parity_record_t {
 	unsigned int check_offset;
 	unsigned int check_mask;
@@ -439,7 +445,7 @@ static irqreturn_t cache_parity_isr_v3(int irq, void *dev_id)
 			}
 		}
 #endif
-		if (!cache_parity_trigger_bug(false, irq, misc0, status))
+		if (!cache_parity_trigger_bug(ECC_CRASH_FORCE, irq, misc0, status))
 			schedule_work(&cache_parity.work);
 	}
 
@@ -512,7 +518,8 @@ static irqreturn_t cache_parity_isr_v2(int irq, void *dev_id)
 				cpu, irq, "expected cpu",
 				cache_parity.record[idx].v2.cpu);
 
-		schedule_work(&cache_parity.work);
+		if (!cache_parity_trigger_bug(ECC_CRASH_FORCE, irq, misc0, status))
+			schedule_work(&cache_parity.work);
 	}
 
 	ECC_LOG("Cache ECC error, %s %d, %s: 0x%016llx, %s: 0x%016llx\n",
