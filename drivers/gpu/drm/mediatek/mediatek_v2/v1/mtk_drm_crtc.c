@@ -9172,8 +9172,10 @@ static void mtk_crtc_dc_config_color_matrix(struct drm_crtc *crtc,
 			}
 		}
 
-		if (set < 0 || set == 2)
-			DDPPR_ERR("Cannot not find ccorr with linear %d\n", linear);
+		if (set < 0)
+			DDPPR_ERR("%s: cfg aosp ccorr failed\n", __func__);
+		if (set == 2)
+			DDPINFO("Cannot not find ccorr with linear %d\n", linear);
 	}
 }
 #endif
@@ -18889,11 +18891,11 @@ static void mtk_crtc_dl_config_color_matrix(struct drm_crtc *crtc,
 	if (!set)
 		mtk_crtc_backup_color_matrix_data(crtc, ccorr_config,
 						cmdq_handle);
-	else
-#else
-	if (set < 0 || set == 2)
 #endif
-		DDPPR_ERR("Cannot not find ccorr with linear %d\n", linear);
+	if (set < 0)
+		DDPPR_ERR("%s: cfg aosp ccorr failed\n", __func__);
+	if (set == 2)
+		DDPINFO("Cannot not find ccorr with linear %d\n", linear);
 }
 
 static void mtk_drm_discrete_cb(struct cmdq_cb_data data)
