@@ -209,7 +209,7 @@ static int _tipc_k_connect_retry(struct tipc_k_handle *h, const char *port_name)
 int32_t _setSessionHandle(const struct tipc_k_handle h)
 {
 	static uint32_t handle_idx;
-	int32_t __maybe_unused session = 0;
+	int32_t __maybe_unused session = -1;
 	size_t i = 0UL;
 
 	mutex_lock(&fd_mutex);
@@ -1016,6 +1016,109 @@ static void kree_perf_boost(int enable)
 	mutex_unlock(&perf_boost_lock);
 }
 
+static TZ_RESULT KREE_TeeServiceCallPlus_Internal(
+		const KREE_SESSION_HANDLE handle, const uint32_t command,
+		const uint32_t paramTypes, union MTEEC_PARAM param[4],
+		const int32_t cpumask)
+{
+	TZ_RESULT __maybe_unused ret = TZ_RESULT_ERROR_BAD_PARAMETERS;
+	struct gz_syscall_cmd_param *cparam = NULL;
+	int32_t Fd = handle;
+	struct tipc_k_handle *session_handle = NULL;
+	struct tipc_dn_chan *chan_p = NULL;
+
+	session_handle = _FdToHandle(handle);
+	if (IS_ERR_OR_NULL((const void *)session_handle)) {
+		ret = TZ_RESULT_ERROR_INVALID_HANDLE;
+		goto tee_service_call_plus_internal_out;
+	}
+
+	chan_p = _HandleToChanInfo(session_handle);
+	if (!chan_p) {
+		KREE_ERR("%s: get tipc dn channel failed\n", __func__);
+		ret = TZ_RESULT_ERROR_BAD_PARAMETERS;
+		goto tee_service_call_plus_internal_out;
+	}
+
+	/* pass cpumask to channel */
+	chan_p->cpumask = cpumask;
+
+	cparam = kzalloc(sizeof(struct gz_syscall_cmd_param), GFP_KERNEL);
+	if (!cparam) {
+		KREE_ERR("%s: alloc cparam failed\n", __func__);
+		ret = TZ_RESULT_ERROR_OUT_OF_MEMORY;
+		goto tee_service_call_plus_internal_out;
+	}
+
+	cparam->command = command;
+	cparam->paramTypes = paramTypes;
+	memcpy(cparam->param, param, sizeof(union MTEEC_PARAM) * 4);
+
+	KREE_DEBUG(" ===> KREE Tee Service Call cmd = %d / %d\n", command,
+		   cparam->command);
+
+	if (cpumask == -1)
+		mutex_lock(&servicecall_lock);
+	kree_perf_boost(1);
+	ret = _GzServiceCall_body(Fd, command, cparam, param);
+	kree_perf_boost(0);
+	if (cpumask == -1)
+		mutex_unlock(&servicecall_lock);
+	if (unlikely(ret != TZ_RESULT_SUCCESS))
+		goto tee_service_call_plus_internal_out;
+
+	memcpy(param, cparam->param, sizeof(union MTEEC_PARAM) * 4);
+
+	ret = TZ_RESULT_SUCCESS;
+
+tee_service_call_plus_internal_out:
+	kfree(cparam);
+
+	return ret;
+}
+
+static TZ_RESULT KREE_TeeServiceCall_Internal(const KREE_SESSION_HANDLE handle,
+		const uint32_t command, const uint32_t paramTypes,
+		union MTEEC_PARAM param[4])
+{
+	return KREE_TeeServiceCallPlus_Internal(handle, command, paramTypes,
+			param, -1);
+}
+
+TZ_RESULT KREE_TeeServiceCallPlus(KREE_SESSION_HANDLE handle, uint32_t command,
+		uint32_t paramTypes, union MTEEC_PARAM param[4],
+		int32_t cpumask)
+{
+	TZ_RESULT ret = TZ_RESULT_ERROR_GENERIC;
+	struct tipc_k_handle *session_handle = NULL;
+
+	session_handle = _FdToHandle(handle);
+	if (IS_ERR_OR_NULL((const void *)session_handle)) {
+		ret = TZ_RESULT_ERROR_INVALID_HANDLE;
+		goto tee_service_call_plus_out;
+	}
+
+	mutex_lock(&session_handle->sess_lock);
+	ret = KREE_TeeServiceCallPlus_Internal(handle, command, paramTypes,
+			param, -1);
+	mutex_unlock(&session_handle->sess_lock);
+	if (unlikely(ret != TZ_RESULT_SUCCESS))
+		goto tee_service_call_plus_out;
+
+	ret = TZ_RESULT_SUCCESS;
+
+tee_service_call_plus_out:
+	return ret;
+}
+EXPORT_SYMBOL(KREE_TeeServiceCallPlus);
+
+TZ_RESULT KREE_TeeServiceCall(KREE_SESSION_HANDLE handle, uint32_t command,
+			      uint32_t paramTypes, union MTEEC_PARAM param[4])
+{
+	return KREE_TeeServiceCallPlus(handle, command, paramTypes, param, -1);
+}
+EXPORT_SYMBOL(KREE_TeeServiceCall);
+
 TZ_RESULT KREE_CreateSession(const char *ta_uuid, KREE_SESSION_HANDLE *pHandle)
 {
 	TZ_RESULT __maybe_unused ret = TZ_RESULT_ERROR_BAD_PARAMETERS;
@@ -1070,7 +1173,7 @@ TZ_RESULT KREE_CreateSession(const char *ta_uuid, KREE_SESSION_HANDLE *pHandle)
 
 	p[0].mem.buffer = (void *)ta_uuid;
 	p[0].mem.size = (uint32_t)(strnlen(ta_uuid, MAX_UUID_LEN) + 1);
-	ret = KREE_TeeServiceCall(
+	ret = KREE_TeeServiceCall_Internal(
 		_sys_service_Fd[tee_id], TZCMD_SYS_SESSION_CREATE,
 		TZ_ParamTypes2(TZPT_MEM_INPUT, TZPT_VALUE_OUTPUT), p);
 	if (ret != TZ_RESULT_SUCCESS) {
@@ -1133,7 +1236,7 @@ TZ_RESULT KREE_CloseSession(KREE_SESSION_HANDLE handle)
 
 	/* close session */
 	p[0].value.a = session;
-	ret = KREE_TeeServiceCall(_sys_service_Fd[tee_id],
+	ret = KREE_TeeServiceCall_Internal(_sys_service_Fd[tee_id],
 				  TZCMD_SYS_SESSION_CLOSE,
 				  TZ_ParamTypes1(TZPT_VALUE_INPUT), p);
 	if (ret != TZ_RESULT_SUCCESS) {
@@ -1157,81 +1260,6 @@ close_session_out:
 	return ret;
 }
 EXPORT_SYMBOL(KREE_CloseSession);
-
-TZ_RESULT KREE_TeeServiceCallPlus(KREE_SESSION_HANDLE handle, uint32_t command,
-		uint32_t paramTypes, union MTEEC_PARAM param[4],
-		int32_t cpumask)
-{
-	TZ_RESULT __maybe_unused ret = TZ_RESULT_ERROR_BAD_PARAMETERS;
-	struct gz_syscall_cmd_param *cparam = NULL;
-	int32_t Fd = handle;
-	struct tipc_k_handle *session_handle = NULL;
-	struct tipc_dn_chan *chan_p = NULL;
-	bool is_locked = false;
-
-	session_handle = _FdToHandle(handle);
-	if (IS_ERR_OR_NULL((const void *)session_handle)) {
-		ret = TZ_RESULT_ERROR_INVALID_HANDLE;
-		goto tee_service_call_plus_out;
-	}
-	is_locked = mutex_is_locked(&session_handle->sess_lock);
-	if (!is_locked)
-		mutex_lock(&session_handle->sess_lock);
-
-	chan_p = _HandleToChanInfo(session_handle);
-	if (!chan_p) {
-		KREE_ERR("%s: get tipc dn channel failed\n", __func__);
-		ret = TZ_RESULT_ERROR_BAD_PARAMETERS;
-		goto tee_service_call_plus_out;
-	}
-
-	/* pass cpumask to channel */
-	chan_p->cpumask = cpumask;
-
-	cparam = kzalloc(sizeof(struct gz_syscall_cmd_param), GFP_KERNEL);
-	if (!cparam) {
-		KREE_ERR("%s: alloc cparam failed\n", __func__);
-		ret = TZ_RESULT_ERROR_OUT_OF_MEMORY;
-		goto tee_service_call_plus_out;
-	}
-
-	cparam->command = command;
-	cparam->paramTypes = paramTypes;
-	memcpy(cparam->param, param, sizeof(union MTEEC_PARAM) * 4);
-
-	KREE_DEBUG(" ===> KREE Tee Service Call cmd = %d / %d\n", command,
-		   cparam->command);
-
-	if (cpumask == -1)
-		mutex_lock(&servicecall_lock);
-	kree_perf_boost(1);
-	ret = _GzServiceCall_body(Fd, command, cparam, param);
-	kree_perf_boost(0);
-	if (cpumask == -1)
-		mutex_unlock(&servicecall_lock);
-	if (unlikely(ret != TZ_RESULT_SUCCESS))
-		goto tee_service_call_plus_out;
-
-	memcpy(param, cparam->param, sizeof(union MTEEC_PARAM) * 4);
-
-	ret = TZ_RESULT_SUCCESS;
-
-tee_service_call_plus_out:
-	if (!IS_ERR_OR_NULL((const void *)session_handle) && !is_locked)
-		mutex_unlock(&session_handle->sess_lock);
-
-	kfree(cparam);
-
-	return ret;
-}
-EXPORT_SYMBOL(KREE_TeeServiceCallPlus);
-
-TZ_RESULT KREE_TeeServiceCall(KREE_SESSION_HANDLE handle, uint32_t command,
-			      uint32_t paramTypes, union MTEEC_PARAM param[4])
-{
-	return KREE_TeeServiceCallPlus(handle, command, paramTypes, param, -1);
-}
-EXPORT_SYMBOL(KREE_TeeServiceCall);
 
 #if debugFg
 #include "tz_cross/tz_error_strings.h"
