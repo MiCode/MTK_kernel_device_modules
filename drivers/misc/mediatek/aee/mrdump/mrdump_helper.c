@@ -119,20 +119,15 @@ static void mrdump_ka_work_func(struct work_struct *work)
 	kinfo = &(dbg_kinfo->info);
 	if (dbg_kinfo->magic_number == DEBUG_KINFO_MAGIC) {
 		_mrdump_kns = kinfo->num_syms;
-		/*
-		 * debug_kinfo should update, after that, revert this WA
-		 * _mrdump_krb = kinfo->_relative_pa + kimage_voffset;
-		 * mrdump_ko = (void *)(kinfo->_offsets_pa + kimage_voffset);
-		 */
+		_mrdump_krb = kinfo->_relative_pa + kimage_voffset;
+		mrdump_ko = (void *)(kinfo->_offsets_pa + kimage_voffset);
 		mrdump_kn = (void *)(kinfo->_names_pa + kimage_voffset);
 		mrdump_ktt = (void *)(kinfo->_token_table_pa + kimage_voffset);
 		mrdump_kti = (void *)(kinfo->_token_index_pa + kimage_voffset);
-		mrdump_ko = (void *)mrdump_kti + 256 * sizeof(u16);
 		mrdump_km = (void *)(kinfo->_markers_pa + kimage_voffset);
 		p_stext = __phys_to_kimg(kinfo->_stext_pa);
 		p_etext = __phys_to_kimg(kinfo->_etext_pa);
 		p_text = __phys_to_kimg(kinfo->_text_pa);
-		_mrdump_krb = p_stext - SEGMENT_ALIGN;
 		p_init_begin = __phys_to_kimg(kinfo->_sinittext_pa);
 		aee_base_addrs_init();
 		mrdump_cblock_late_init();
@@ -157,7 +152,20 @@ static unsigned int mrdump_checking_names(unsigned int off,
 	data = mrdump_kn + off;
 	len = *data;
 	data++;
-	off += len + 1;
+	off++;
+
+	/* If MSB is 1, it is a "big" symbol, so needs an additional byte. */
+	if ((len & 0x80) != 0) {
+		len = (len & 0x7F) | (*data << 7);
+		data++;
+		off++;
+	}
+
+	/*
+	 * Update the offset to return the offset for the next symbol on
+	 * the compressed stream.
+	 */
+	off += len;
 
 	while (len) {
 		tptr = mrdump_ktt + *(mrdump_kti + *data);
