@@ -728,6 +728,8 @@ static ssize_t swpm_dbg_en_write(char *FromUser, size_t sz, void *priv)
 					, 0444, &swpm_sp_spm_sig_fops, NULL, NULL);
 			mtk_swpm_sysfs_entry_func_node_add("dram_bw"
 					, 0444, &dram_bw_fops, NULL, NULL);
+			mtk_swpm_sysfs_entry_func_node_add("enable"
+					, 0644, &enable_fops, NULL, NULL);
 #endif
 			ret = sz;
 		}
@@ -743,8 +745,6 @@ static const struct mtk_swpm_sysfs_op swpm_dbg_en_fops = {
 
 static void swpm_v6858_dbg_fs_init(void)
 {
-	mtk_swpm_sysfs_entry_func_node_add("enable"
-			, 0644, &enable_fops, NULL, NULL);
 	mtk_swpm_sysfs_entry_func_node_add("swpm_pmsr_en"
 			, 0644, &swpm_pmsr_en_fops, NULL, NULL);
 	mtk_swpm_sysfs_entry_func_node_add("swpm_pmsr_dbg_en"
