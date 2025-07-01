@@ -26,6 +26,7 @@
 #define FEATURE_SCP_OC		(BIT(2))
 #define FEATURE_6989_SCP_OC		(BIT(3))
 #define FEATURE_CHANGE_REBOOT_TEMP_IN_TFA  (BIT(4))
+#define FEATURE_THERMAL_REBOOT_KERNEL_BYPASS   (BIT(5))
 #define SCP_OC_DUMP_LOG         (0)
 #define ENABLE_FEATURE(feature)		(lvts_data->feature_bitmap |= feature)
 #define DISABLE_FEATURE(feature)	(lvts_data->feature_bitmap &= (~feature))

@@ -1607,6 +1607,7 @@ static irqreturn_t irq_handler(int irq, void *dev_id)
 				lvts_debug_to_sysram(lvts_data, reboot_tc);
 		}
 	}
+
 	for (i = 0; i < lvts_data->num_domain; i++) {
 		base = lvts_data->domain[i].base;
 		lvts_data->irq_bitmap[i] = readl(THERMINTST + base);
@@ -1624,6 +1625,12 @@ static irqreturn_t irq_handler(int irq, void *dev_id)
 		return -ENOMEM;
 
 	thermintst_str[thermintst_str_offset] = '\0';
+
+	if (IS_ENABLE(FEATURE_THERMAL_REBOOT_KERNEL_BYPASS)){
+		dev_info(dev, "irq=%d reboot_tc=%d\n", irq, reboot_tc);
+		dev_info(dev, "%s", thermintst_str);
+		return IRQ_HANDLED;
+	}
 
 	for (i = 0; i < lvts_data->num_tc; i++) {
 		if ((lvts_data->irq_bitmap[tc[i].domain_index] & tc[i].irq_bit) == 0 &&
@@ -6763,7 +6770,7 @@ static struct lvts_data mt6858_lvts_data = {
 		.lvts_raw_to_temp = lvts_raw_to_temp_v1,
 		.check_cal_data = check_cal_data_v1,
 	},
-	.feature_bitmap = 0,
+	.feature_bitmap = FEATURE_THERMAL_REBOOT_KERNEL_BYPASS,
 	.num_efuse_addr = 22,
 	.num_efuse_block = 3,
 	.cal_data = {
