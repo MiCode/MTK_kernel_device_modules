@@ -5527,6 +5527,7 @@ dramc: dramc@10230000 {
 			ged-supply = <&ged>;
 			exception-mask = <0x5>;
 			reset-exception-mask = <0x0>;
+			firmware-idle-hysteresis-time-us = <5000>;
 		};
 
 		gpu_qos: gpu-qos {
