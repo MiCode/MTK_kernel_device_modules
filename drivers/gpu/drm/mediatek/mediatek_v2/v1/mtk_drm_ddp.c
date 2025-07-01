@@ -36480,7 +36480,6 @@ unsigned int mtk_ddp_ovlsys_path(struct mtk_drm_private *priv, unsigned int **ov
 	switch (priv->data->mmsys_id) {
 	case MMSYS_MT6985:
 	case MMSYS_MT6897:
-	case MMSYS_MT6858:
 #define OVLSYS_PATH_MT6985 4
 		if (_ovlsys_path) {
 			*ovl_list = _ovlsys_path;
@@ -36501,6 +36500,26 @@ unsigned int mtk_ddp_ovlsys_path(struct mtk_drm_private *priv, unsigned int **ov
 		*ovl_list = _ovlsys_path;
 
 		return OVLSYS_PATH_MT6985;
+	case MMSYS_MT6858:
+#define OVLSYS_PATH_MT6858 3
+		if (_ovlsys_path) {
+			*ovl_list = _ovlsys_path;
+			return OVLSYS_PATH_MT6858;
+		}
+		/* MT6858 has 3 OVLSYS PATH */
+
+		_ovlsys_path = vmalloc(OVLSYS_PATH_MT6858 * sizeof(unsigned int));
+		if (!_ovlsys_path) {
+			DDPPR_ERR("%s errors with NULL _ovl_list\n", __func__);
+			return -ENOMEM;
+		}
+
+		_ovlsys_path[0] = DDP_COMPONENT_OVL0_2L;
+		_ovlsys_path[1] = DDP_COMPONENT_OVL1_2L;
+		_ovlsys_path[2] = DDP_COMPONENT_OVL2_2L;
+		*ovl_list = _ovlsys_path;
+
+		return OVLSYS_PATH_MT6858;
 	case MMSYS_MT6989:
 #define OVLSYS_PATH_MT6989 8
 		if (_ovlsys_path) {
