@@ -507,6 +507,7 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 	bool plane_visible = plane->state->visible;
 	struct total_tile_overhead_v to_v_info;
 	bool use_frame_submit;
+	dma_addr_t use_lk_addr = NULL;
 
 	if (!crtc)
 		return;
@@ -582,6 +583,13 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 			plane_visible = 0;
 	}
 
+	if (unlikely(mtk_crtc->lk_dma_addr)) {
+		if (mtk_plane_state->prop_val[PLANE_PROP_MODE] == MTK_PLANE_REPLACE_LAYER)
+			use_lk_addr = mtk_crtc->lk_dma_addr;
+		else if (mtk_plane_state->prop_val[PLANE_PROP_MODE] == MTK_PLANE_REPLACE_LAYER_2)
+			use_lk_addr = mtk_crtc->lk_dma_addr + 0x100000;
+	}
+
 	// MML setting display single pipe in here, we set dual pipe
 	// in mtk_drm_layer_dispatch_to_dual_pipe()
 	if (mtk_plane_state->pending.mml_mode == MML_MODE_RACING) {
@@ -639,10 +647,9 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 		mtk_plane_state->pending.pitch = fb->pitches[0];
 		mtk_plane_state->pending.format = fb->format->format;
 		mtk_plane_state->pending.modifier = fb->modifier;
-		if (mtk_plane_state->prop_val[PLANE_PROP_MODE] == MTK_PLANE_REPLACE_LAYER)
-			mtk_plane_state->pending.addr = mtk_crtc->lk_dma_addr;
-		else if (mtk_plane_state->prop_val[PLANE_PROP_MODE] == MTK_PLANE_REPLACE_LAYER_2)
-			mtk_plane_state->pending.addr = mtk_crtc->lk_dma_addr + 0x100000;
+
+		if (unlikely(use_lk_addr))
+			mtk_plane_state->pending.addr = use_lk_addr;
 		else
 			mtk_plane_state->pending.addr = mtk_fb_get_dma(fb);
 		mtk_plane_state->pending.size = mtk_fb_get_size(fb);

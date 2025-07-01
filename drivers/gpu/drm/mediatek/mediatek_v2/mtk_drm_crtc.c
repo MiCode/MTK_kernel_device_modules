@@ -8633,11 +8633,14 @@ static void mtk_crtc_frame_buffer_release(struct drm_crtc *crtc,
 		if (already_free == true || IS_ERR_OR_NULL(crtc))
 			return;
 
+		/* TODO: change helper */
+		/*
 		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_HRT_DEBUG)) {
 			DDPMSG("keep LK buffer to gen layer test\n");
 			already_free = true;
 			return;
 		}
+		*/
 
 		if (index == 0 && hrt_valid == true && mtk_crtc->is_plane0_updated == true) {
 			/*free fb buf after the 1st valid input buffer is unused*/
