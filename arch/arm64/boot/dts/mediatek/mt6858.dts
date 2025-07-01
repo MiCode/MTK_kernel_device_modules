@@ -2309,6 +2309,35 @@
 			};
 		};
 
+		gpu_dvfs_mode: gpu-loading-mode {
+			compatible = "mediatek,gpu_loading_mode";
+			dvfs-loading-mode = <0>;
+			dvfs-workload-mode = <0>;
+		};
+
+		gpu_dvfs_prefence: gpu-prefence {
+			compatible = "mediatek,gpu_prefence";
+			dvfs-prefence-enable = <1>;
+		};
+
+		gpu_fdvfs: gpu-fdvfs@112000 {
+			compatible = "mediatek,gpu_fdvfs";
+			reg = <0 0x112000 0 0x400>;
+			fdvfs-policy-support = <0>;
+			gpu-freq-notify-support = <1>;
+		};
+
+		dfd_soc: dfd-soc {
+			compatible = "mediatek,dfd_soc";
+			enabled = <1>;
+			dfd-timeout = <0x1000>;
+			dfd-timeout-debug = <0x1000>;
+			buf-length = <0x800000>;
+			buf-length-debug = <0x1000000>;
+			buf-addr-align = <0x400000>;
+			buf-addr-max = <0xffffffff>;
+		};
+
 		dvfsrc: dvfsrc@1c00f000 {
 			compatible = "mediatek,mt6858-dvfsrc";
 			reg = <0 0x1c00f000 0 0x1000>,
@@ -5525,6 +5554,7 @@ dramc: dramc@10230000 {
 			operating-points-v2 = <&gpu_mali_opp>;
 			#cooling-cells = <2>;
 			ged-supply = <&ged>;
+			gpu-frame-base-optimize = <1>;
 			exception-mask = <0x5>;
 			reset-exception-mask = <0x0>;
 			firmware-idle-hysteresis-time-us = <5000>;
