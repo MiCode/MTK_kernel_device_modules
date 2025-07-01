@@ -1474,6 +1474,8 @@
 				(ASSERT_SET | DEASSERT_SET | STATUS_NONE) /* 2: unipro */
 				0x150 21 0x154 21 0 0
 				(ASSERT_SET | DEASSERT_SET | STATUS_NONE) /* 3: ufs-crypto */
+				0x120 7 0x124 7 0 0
+				(ASSERT_SET | DEASSERT_SET | STATUS_NONE) /* 4: msdc0 */
 				>;
 		};
 	};
