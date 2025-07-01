@@ -5316,19 +5316,9 @@ static irqreturn_t mtk_disp_ovl_exdma_irq_handler(int irq, void *dev_id)
 	if (val & (1 << 1))
 		DDPIRQ("[IRQ] %s: frame done!\n", mtk_dump_comp_str(ovl));
 
-	if ((ovl->id == DDP_COMPONENT_OVL0_2L) && (val & (1 << 15))) {
+	if ((ovl->id == DDP_COMPONENT_OVL0_2L) && (val & (1 << 15)))
 		DDPIRQ("[IRQ] %s: OVL target line\n", mtk_dump_comp_str(ovl));
-		if (mtk_crtc && mtk_crtc->esd_ctx) {
-			if (drv_priv && (drv_priv->data->mmsys_id == MMSYS_MT6985 ||
-				drv_priv->data->mmsys_id == MMSYS_MT6897)) {
-				unsigned int index = drm_crtc_index(&mtk_crtc->base);
 
-				CRTC_MMP_MARK((int)index, target_time, ovl->id, 0xffff0001);
-				atomic_set(&mtk_crtc->esd_ctx->target_time, 1);
-				wake_up_interruptible(&mtk_crtc->esd_ctx->check_task_wq);
-			}
-		}
-	}
 	if (val & (1 << 2)) {
 		unsigned long long aee_now_ts = sched_clock();
 
