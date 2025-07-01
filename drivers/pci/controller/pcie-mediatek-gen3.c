@@ -567,10 +567,11 @@ static int mtk_pcie_config_write(struct pci_bus *bus, unsigned int devfn,
 		val <<= (where & 0x3) * 8;
 
 	if ((port->port_num == 0) && (bus->number == 0) && (where == 0x88)) {
-		dev_info(port->dev, "PCIe config write devctl, bus:%#x, devfn:%#x, where:%#x, size:%#x, val:%#x\n",
-			 bus->number, devfn, where, size, val);
-		if ((val & PCI_EXP_DEVCTL_PAYLOAD) != 0x40)
+		if ((val & PCI_EXP_DEVCTL_PAYLOAD) != 0x40) {
+			dev_info(port->dev, "PCIe config write devctl, bus:%#x, devfn:%#x, where:%#x, size:%#x, val:%#x\n",
+				 bus->number, devfn, where, size, val);
 			dump_stack();
+		}
 	}
 
 	return pci_generic_config_write32(bus, devfn, where, 4, val);
