@@ -14,6 +14,7 @@
 #include <linux/mtk_vcu_controls.h>
 #include "mtk_vcodec_fence.h"
 #include "mtk_vcodec_dec_pm.h"
+#include "mtk_vcodec_dec_pm_plat.h"
 #include "mtk_vcodec_dec.h"
 #include "mtk_vcodec_drv.h"
 #include "mtk_vcodec_intr.h"
@@ -285,10 +286,12 @@ int vcu_dec_ipi_handler(void *data, unsigned int len, void *priv)
 			break;
 		case VCU_IPIMSG_DEC_LOCK_LAT:
 			vdec_decode_prepare(vcu->ctx, MTK_VDEC_LAT);
+			vdec_dvfs_qos_ctrl(vcu->ctx, true, 0, MTK_VDEC_LAT);
 			atomic_set(&dev->dec_hw_active[MTK_VDEC_LAT], 1);
 			ret = 1;
 			break;
 		case VCU_IPIMSG_DEC_UNLOCK_LAT:
+			vdec_dvfs_qos_ctrl(vcu->ctx, false, 0, MTK_VDEC_LAT);
 			atomic_set(&dev->dec_hw_active[MTK_VDEC_LAT], 0);
 			vdec_decode_unprepare(vcu->ctx, MTK_VDEC_LAT);
 			ret = 1;
@@ -300,6 +303,7 @@ int vcu_dec_ipi_handler(void *data, unsigned int len, void *priv)
 			} else {
 				vdec_decode_prepare(vcu->ctx, MTK_VDEC_CORE);
 				atomic_set(&dev->dec_hw_active[MTK_VDEC_CORE], 1);
+				vdec_dvfs_qos_ctrl(vcu->ctx, true, 0, MTK_VDEC_CORE);
 			}
 			ret = 1;
 			break;
@@ -308,6 +312,7 @@ int vcu_dec_ipi_handler(void *data, unsigned int len, void *priv)
 				dev->dec_ao_pw_cnt--;
 				mtk_vcodec_dec_clock_off(&vcu->ctx->dev->pm, MTK_VDEC_CORE);
 			} else {
+				vdec_dvfs_qos_ctrl(vcu->ctx, false, 0, MTK_VDEC_CORE);
 				atomic_set(&dev->dec_hw_active[MTK_VDEC_CORE], 0);
 				vdec_decode_unprepare(vcu->ctx, MTK_VDEC_CORE);
 			}

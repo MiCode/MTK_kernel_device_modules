@@ -270,10 +270,6 @@ void vdec_decode_prepare(void *ctx_prepare,
 	if (ret == 0 && !mtk_vcodec_is_vcp(MTK_INST_DECODER) && ctx->dev->dec_irq[hw_id] > 0)
 		enable_irq(ctx->dev->dec_irq[hw_id]);
 
-	mtk_vdec_dvfs_check_boost(ctx);
-	mtk_vdec_dvfs_begin_frame(ctx, hw_id);
-	mtk_vdec_pmqos_begin_frame(ctx);
-
 	if (hw_id == MTK_VDEC_CORE)
 		vcodec_trace_count("VDEC_HW_CORE", 1);
 	else
@@ -296,10 +292,6 @@ void vdec_decode_unprepare(void *ctx_unprepare,
 		mutex_unlock(&ctx->hw_status);
 		return;
 	}
-
-	if (ctx->dev->vdec_reg) // per frame mmdvfs in AP
-		mtk_vdec_dvfs_end_frame(ctx, hw_id);
-	mtk_vdec_pmqos_end_frame(ctx);
 
 	if (hw_id == MTK_VDEC_CORE)
 		vcodec_trace_count("VDEC_HW_CORE", 0);

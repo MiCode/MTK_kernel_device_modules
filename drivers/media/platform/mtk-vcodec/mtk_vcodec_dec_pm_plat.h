@@ -25,16 +25,16 @@ void mtk_vdec_force_update_freq(struct mtk_vcodec_dev *dev);
 
 void mtk_vdec_dvfs_begin_inst(struct mtk_vcodec_ctx *ctx);
 void mtk_vdec_dvfs_end_inst(struct mtk_vcodec_ctx *ctx);
-void mtk_vdec_pmqos_begin_inst(struct mtk_vcodec_ctx *ctx);
-void mtk_vdec_pmqos_end_inst(struct mtk_vcodec_ctx *ctx);
 void mtk_vdec_dvfs_begin_frame(struct mtk_vcodec_ctx *ctx, int hw_id);
 void mtk_vdec_dvfs_end_frame(struct mtk_vcodec_ctx *ctx, int hw_id);
-void mtk_vdec_pmqos_begin_frame(struct mtk_vcodec_ctx *ctx);
-void mtk_vdec_pmqos_end_frame(struct mtk_vcodec_ctx *ctx);
+void mtk_vdec_mmqos_begin_frame(struct mtk_vcodec_ctx *ctx);
+void mtk_vdec_mmqos_end_frame(struct mtk_vcodec_ctx *ctx);
 void mtk_vdec_prepare_vcp_dvfs_data(struct mtk_vcodec_ctx *ctx, unsigned long *in);
 void mtk_vdec_unprepare_vcp_dvfs_data(struct mtk_vcodec_ctx *ctx, unsigned long *in);
 void mtk_vdec_dvfs_sync_vsi_data(struct mtk_vcodec_ctx *ctx);
 void mtk_vdec_dvfs_sync_boost_data(struct mtk_vcodec_ctx *ctx);
 void mtk_vdec_dvfs_update_dvfs_params(struct mtk_vcodec_ctx *ctx);
 bool mtk_vdec_dvfs_monitor_op_rate(struct mtk_vcodec_ctx *ctx, int buf_type);
+void vdec_dvfs_qos_ctrl(struct mtk_vcodec_ctx *ctx, bool prepare,
+	unsigned int need, unsigned int hw_id);
 #endif /* _MTK_VCODEC_DEC_PM_PLAT_H_ */
