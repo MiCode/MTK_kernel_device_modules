@@ -850,7 +850,7 @@ static void mtk_drm_idlemgr_perf_update(struct drm_crtc *crtc,
 				perf->leave_min_cost = cost;
 			perf->leave_total_cost += cost;
 
-			if (perf->count % 500 == 0)
+			if (perf->count % 100 == 0)
 				mtk_drm_idlemgr_perf_dump_func(crtc, false);
 		}
 	}
@@ -2157,18 +2157,6 @@ int mtk_drm_idlemgr_init(struct drm_crtc *crtc, int index)
 
 		mtk_drm_add_cpu_freq(crtc);
 		cpu_latency_qos_add_request(&idlemgr->cpu_qos_req, PM_QOS_DEFAULT_VALUE);
-
-		DDPMSG("%s: crtc:%u start idle perf monitor\n", __func__, index);
-		idlemgr->perf = kzalloc(sizeof(struct mtk_drm_idlemgr_perf), GFP_KERNEL);
-		if (IS_ERR_OR_NULL(idlemgr->perf)) {
-			DDPPR_ERR("%s, failed to allocate perf\n", __func__);
-			idlemgr->perf = NULL;
-		} else {
-			mtk_drm_idlemgr_perf_reset(crtc);
-			perf_aee_timeout = 1000; //1s timeout
-			DDPMSG("%s: crtc:%u start idle perf monitor done, timeout:%ums\n",
-				__func__, index, perf_aee_timeout);
-		}
 	}
 
 	return 0;
@@ -2438,8 +2426,7 @@ static void mtk_drm_idlemgr_disable_crtc(struct drm_crtc *crtc)
 			if (cpu_online_cnt > 4)
 				DDPAEE("[IDLE] Home Screen Idle perf drop,timeout:%lluus\n",
 					(unsigned long long)(perf_aee_timeout * 1000U));
-
-			//perf_aee_timeout = 0;
+			perf_aee_timeout = 0;
 		}
 	}
 
@@ -2803,8 +2790,7 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 			if (cpu_online_cnt > 4)
 				DDPAEE("[IDLE] Home Screen Idle perf drop,timeout:%lluus\n",
 					(unsigned long long)(perf_aee_timeout * 1000U));
-
-			//perf_aee_timeout = 0;
+			perf_aee_timeout = 0;
 		}
 	}
 
