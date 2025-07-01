@@ -28,6 +28,7 @@
 #define SPARE_DBG_REG17         0x44 // mbox12_dummy17
 #define SPARE_DBG_REG18         0x48 // mbox12_dummy18
 #define SPARE_DBG_REG19         0x4C // mbox12_dummy19
+#define SPARE_DBG_REG20         0x50 // mbox12_dummy20
 
 /*
  * The following are used for data exchange through spare register(s)
@@ -52,6 +53,19 @@
  * ARE empty entries usage
  */
 #define APU_ARE_ETRY_DEPUTY_ADDR        SPARE_DBG_REG19
+#define APU_PWR_INDXER_SYNC_REG         SPARE_DBG_REG20
+
+/*
+ * NPU Power Index statistics in ARE sram
+ */
+#define ARE_NDM_ENALBE_HINT             (0x0090)
+#define ARE_PWR_IDX_NPU_ON_R_W_PTR      (0x0098)
+#define ARE_PWR_IDX_NPU_ON_BUF_INFO     (ARE_PWR_IDX_NPU_ON_R_W_PTR  + 0x4)
+#define ARE_PWR_IDX_OPP_ST_R_W_PTR      (ARE_PWR_IDX_NPU_ON_BUF_INFO + 0x4)
+#define ARE_PWR_IDX_OPP_ST_BUF_INFO     (ARE_PWR_IDX_OPP_ST_R_W_PTR  + 0x4)
+#define ARE_PWR_IDX_ENG_ON_R_W_PTR      (ARE_PWR_IDX_OPP_ST_BUF_INFO + 0x4)
+#define ARE_PWR_IDX_ENG_ON_BUF_INFO     (ARE_PWR_IDX_ENG_ON_R_W_PTR  + 0x4)
+#define APUPW_FO_HINT_PWR_IDX_BIT       (16)
 
 /*
  * Apu cooler usage
@@ -154,7 +168,7 @@ ssize_t mt6993_apu_top_dbg_write(
 		struct file *flip, const char __user *buffer,
 		size_t count, loff_t *f_pos);
 #endif
-int mt6993_init_remote_data_sync(void __iomem *reg_base);
+int mt6993_init_remote_data_sync(void __iomem *reg_base, void __iomem *are_base);
 int mt6993_drv_cfg_remote_sync(struct aputop_func_param *aputop);
 int mt6993_apu_top_rpmsg_cb(int cmd, void *data, int len, void *priv, u32 src);
 /* new function for freq upper and lower limit */

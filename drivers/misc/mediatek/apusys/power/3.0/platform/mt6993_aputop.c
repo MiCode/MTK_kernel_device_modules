@@ -1377,7 +1377,7 @@ static int mt6993_apu_top_pb(struct platform_device *pdev)
 
 	mt6993_activate_apu_cooling_device(pdev);
 
-	mt6993_init_remote_data_sync(apupw.regs[apu_md32_mbox]);
+	mt6993_init_remote_data_sync(apupw.regs[apu_md32_mbox], apupw.regs[apu_are]);
 	// init lock
 	mutex_init(&lock);
 	// init apudvfs proc
