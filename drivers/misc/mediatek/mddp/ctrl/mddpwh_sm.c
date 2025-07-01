@@ -655,6 +655,14 @@ static int32_t mddpw_drv_get_md_rx_reorder_buf(
 	return 0;
 }
 
+
+struct wsvc_stat_lls_report_v1_t {
+	uint32_t version; // will be 0 if not initialize yet, will be >= 1
+	uint32_t reserved[3];
+	uint32_t wmm_ac_stat_rx_mpdu[BSS_NUM_4][AC_NUM];
+	struct rate_stat_rx_mpdu_t rate_stat_rx_mpdu[STA_NUM];
+};
+
 static int32_t mddpw_drv_get_lls_stat(struct wsvc_stat_lls_report_t *stat)
 {
 	struct wsvc_stat_lls_report_t *lls = NULL;
@@ -684,6 +692,13 @@ static int32_t mddpw_drv_get_lls_stat(struct wsvc_stat_lls_report_t *stat)
 	}
 	/* OK */
 	memcpy(stat, lls, smem_size);
+	if(stat->version == 1) {
+		MDDP_S_LOG(MDDP_LL_WARN, "%s: transfer v1 to v2!\n",__func__);
+		for(uint32_t i=0; i<STA_NUM; i++){
+			stat->rate_stat_rx_mpdu[i] =
+				((struct wsvc_stat_lls_report_v1_t *)lls)->rate_stat_rx_mpdu[i];
+		}
+	}
 	return 0;
 }
 
