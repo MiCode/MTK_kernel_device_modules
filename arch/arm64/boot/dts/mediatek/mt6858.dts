@@ -94,7 +94,8 @@
 			    firmware_class.path=/vendor/firmware \
 			    cgroup.memory=nosocket,nokmem \
 			    disable_dma32=on \
-			    transparent_hugepage=never";
+			    transparent_hugepage=never \
+			    kvm-arm.protected_modules=pkvm_mgmt,pkvm_tmem,pkvm_mkp";
 	};
 
 	cpus {
