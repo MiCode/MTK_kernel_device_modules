@@ -92,7 +92,6 @@
 			    android_arch_task_struct_size=512 \
 			    vmalloc=400M swiotlb=noforce cma=64M \
 			    firmware_class.path=/vendor/firmware \
-			    maxcpus=5 \
 			    cgroup.memory=nosocket,nokmem \
 			    disable_dma32=on \
 			    transparent_hugepage=never";
