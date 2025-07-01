@@ -518,13 +518,11 @@ void set_venc_opp(struct mtk_vcodec_dev *dev, u32 freq)
 		dev_pm_opp_put(opp);
 
 		if (dev->venc_mmdvfs_clk) {
-			mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_VENC);
 			ret = clk_set_rate(dev->venc_mmdvfs_clk, freq_64);
 			if (ret) {
 				mtk_v4l2_err("[VENC] Failed to set mmdvfs rate %lu\n",
 						freq_64);
 			}
-			mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_VENC);
 			mtk_vcodec_dvfs_qos_log(false, "[VENC] freq %u, find_freq %lu", freq, freq_64);
 		} else if (dev->venc_reg) {
 			ret = regulator_set_voltage(dev->venc_reg, volt, INT_MAX);

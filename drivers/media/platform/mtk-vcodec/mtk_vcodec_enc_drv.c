@@ -18,6 +18,7 @@
 #include <linux/delay.h>
 #include <linux/suspend.h>
 #include <linux/semaphore.h>
+#include <soc/mediatek/mmdvfs_v3.h>
 
 #include "mtk_vcodec_drv.h"
 #include "mtk_vcodec_enc.h"
@@ -104,6 +105,11 @@ static int fops_vcodec_open(struct file *file)
 			vcodec_trace_end();
 			return -EPERM;
 		}
+#if ENC_DVFS
+		vcodec_trace_begin("mtk_mmdvfs_enable_vcp");
+		mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_VENC);
+		vcodec_trace_end();
+#endif
 	}
 #endif
 
@@ -266,6 +272,9 @@ static int fops_vcodec_release(struct file *file)
 			vcodec_trace_end();
 			return -EPERM;
 		}
+#if ENC_DVFS
+		mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_VENC);
+#endif
 	}
 #endif
 	vcodec_trace_end();
