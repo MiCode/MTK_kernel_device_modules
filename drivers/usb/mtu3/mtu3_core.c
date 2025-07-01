@@ -237,6 +237,8 @@ static inline void mtu3_hs_softconn_set(struct mtu3 *mtu, bool enable)
 	} else {
 		mtu3_clrbits(mtu->mac_base, U3D_POWER_MANAGEMENT,
 			SOFT_CONN | SUSPENDM_ENABLE);
+		/* Delay for eUSB2 port reset signal */
+		mdelay(4);
 	}
 	dev_dbg(mtu->dev, "SOFTCONN = %d\n", !!enable);
 }
