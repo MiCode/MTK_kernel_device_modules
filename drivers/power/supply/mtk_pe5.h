@@ -286,6 +286,7 @@ extern int pe50_hal_enable_charging(struct chg_alg_device *alg,
 				    enum chg_idx chgidx, bool en);
 extern int pe50_hal_enable_chip(struct chg_alg_device *alg, enum chg_idx chgidx,
 				bool en);
+extern int pe50_hal_need_hz_ctrl(struct chg_alg_device *alg, enum chg_idx chgidx);
 extern int pe50_hal_enable_hz(struct chg_alg_device *alg, enum chg_idx chgidx,
 			      bool en);
 extern int pe50_hal_set_vbusovp(struct chg_alg_device *alg, enum chg_idx chgidx,

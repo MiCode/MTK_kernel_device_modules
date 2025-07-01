@@ -80,7 +80,7 @@ static const struct pe50_algo_desc algo_desc_defval = {
 	.vbat_cv = 4350,
 	.start_soc_min = 5,
 	.start_soc_max = 80,
-	.stop_soc_max = 99,
+	.stop_soc_max = 90,
 	.vbat_max_gap = 30,
 	.idvchg_term = 500,
 	.idvchg_step = 50,
@@ -926,21 +926,26 @@ static int pe50_set_dvchg_charging(struct pe50_algo_info *info, bool en)
 
 	PE50_INFO("en = %d\n", en);
 
-	if (en) {
-		ret = pe50_hal_enable_hz(info->alg, CHG1, true);
-		if (ret < 0) {
-			PE50_ERR("set swchg hz fail(%d)\n", ret);
-			return ret;
+	if (pe50_hal_need_hz_ctrl(info->alg, DVCHG1)) {
+		if (en) {
+			ret = pe50_hal_enable_hz(info->alg, CHG1, true);
+			if (ret < 0) {
+				PE50_ERR("set swchg hz fail(%d)\n", ret);
+				return ret;
+			}
 		}
 	}
 	ret = pe50_enable_dvchg_charging(info, PE50_DVCHG_MASTER, en);
 	if (ret < 0)
 		return ret;
-	if (!en) {
-		ret = pe50_hal_enable_hz(info->alg, CHG1, false);
-		if (ret < 0) {
-			PE50_ERR("disable swchg hz fail(%d)\n", ret);
-			return ret;
+
+	if (pe50_hal_need_hz_ctrl(info->alg, DVCHG1)) {
+		if (!en) {
+			ret = pe50_hal_enable_hz(info->alg, CHG1, false);
+			if (ret < 0) {
+				PE50_ERR("disable swchg hz fail(%d)\n", ret);
+					return ret;
+			}
 		}
 	}
 	return 0;
@@ -1087,6 +1092,7 @@ static int pe50_send_notification(struct pe50_algo_info *info,
 static int pe50_stop(struct pe50_algo_info *info, struct pe50_stop_info *sinfo)
 {
 	int ret = 0;
+	unsigned int tmp_cnt = 0;
 	struct pe50_algo_data *data = info->data;
 	struct chg_alg_notify notify = {
 		.evt = EVT_ALGO_STOP,
@@ -1109,16 +1115,20 @@ static int pe50_stop(struct pe50_algo_info *info, struct pe50_stop_info *sinfo)
 	atomic_set(&data->stop_algo, 0);
 	alarm_cancel(&data->timer);
 
-	ret = pe50_enable_dvchg_charging(info, PE50_DVCHG_SLAVE, false);
-	if (ret < 0) {
-		PE50_ERR("disable slave dvchg fail(%d)\n", ret);
-		return ret;
+	if (data->is_dvchg_en[PE50_DVCHG_SLAVE]) {
+		ret = pe50_enable_dvchg_charging(info, PE50_DVCHG_SLAVE, false);
+		if (ret < 0) {
+			PE50_ERR("disable slave dvchg fail(%d)\n", ret);
+			return ret;
+		}
 	}
 	ret = pe50_set_dvchg_charging(info, false);
-	if (ret < 0) {
+	while (ret < 0 && tmp_cnt < 3) {
 		PE50_ERR("disable dvchg fail\n");
-		return ret;
+		ret = pe50_set_dvchg_charging(info, false);
+		tmp_cnt++;
 	}
+
 	mutex_lock(&data->notify_lock);
 	do_reset = !(data->notify & PE50_RESET_NOTIFY);
 	mutex_unlock(&data->notify_lock);
@@ -2956,7 +2966,7 @@ static bool pe50_check_ibatocp(struct pe50_algo_info *info,
 		return false;
 	}
 	PE50_INFO("ibat(%dmA), ibatocp(%dmA)\n", ibat, ibatocp);
-	if (ibat > ibatocp) {
+	if (ibat > 0 && ibat > ibatocp) {
 		PE50_ERR("ibat(%dmA) > ibatocp(%dmA)\n", ibat, ibatocp);
 		return false;
 	}
@@ -3735,15 +3745,16 @@ static int pe50_is_algo_ready(struct chg_alg_device *alg)
 		}
 	}
 
+	if (!pe50_is_ta_rdy(info)) {
+		ret = pe50_hal_is_adapter_ready(alg);
+		goto out;
+	}
+
 	if (!pe50_algo_safety_check(info)) {
 		ret = ALG_NOT_READY;
 		goto out;
 	}
 
-	if (!pe50_is_ta_rdy(info)) {
-		ret = pe50_hal_is_adapter_ready(alg);
-		goto out;
-	}
 	ret = ALG_READY;
 out:
 	mutex_unlock(&data->lock);
@@ -3955,7 +3966,7 @@ static inline void pe50_parse_dt_u32(struct device_node *np, void *desc,
 			continue;
 		ret = of_property_read_u32(np, props[i].name, desc + props[i].offset);
 		if (ret < 0)
-			return;
+			continue;
 	}
 }
 
@@ -4094,7 +4105,7 @@ static int pe50_parse_dt(struct pe50_algo_info *info)
 	}
 
 	desc->allow_not_check_ta_status =
-		of_property_read_bool(np, "allow_not_check_ta_status");
+		of_property_read_bool(np, "allow-not-check-ta-status");
 	pe50_parse_dt_u32(np, (void *)desc, pe50_dtprops_u32,
 			  ARRAY_SIZE(pe50_dtprops_u32));
 	pe50_parse_dt_u32_arr(np, (void *)desc, pe50_dtprops_u32_array,

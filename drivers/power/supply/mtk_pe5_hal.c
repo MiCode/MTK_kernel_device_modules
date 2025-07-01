@@ -312,6 +312,16 @@ int pe50_hal_enable_charging(struct chg_alg_device *alg, enum chg_idx chgidx,
 	return charger_dev_enable(hal->chgdevs[chgtyp], en);
 }
 
+int pe50_hal_need_hz_ctrl(struct chg_alg_device *alg, enum chg_idx chgidx)
+{
+	int chgtyp = to_chgtyp(chgidx);
+	struct pe50_hal *hal = chg_alg_dev_get_drv_hal_data(alg);
+
+	if (chgtyp < 0)
+		return chgtyp;
+	return charger_dev_need_hz_ctrl(hal->chgdevs[chgtyp]);
+}
+
 int pe50_hal_enable_hz(struct chg_alg_device *alg, enum chg_idx chgidx, bool en)
 {
 	int chgtyp = to_chgtyp(chgidx);
@@ -498,18 +508,34 @@ int pe50_hal_get_soc(struct chg_alg_device *alg, u32 *soc)
 {
 	int ret = -EOPNOTSUPP;
 	union power_supply_propval val = {0,};
-	struct pe50_hal *hal = chg_alg_dev_get_drv_hal_data(alg);
+	struct pe50_hal *hal;
+	struct power_supply *bat_manager_psy = NULL;
 
-	if (IS_ERR_OR_NULL(hal->bat_psy))
-		goto out;
+	if (alg == NULL)
+		return -EINVAL;
 
-	ret = power_supply_get_property(hal->bat_psy,
-					POWER_SUPPLY_PROP_CAPACITY, &val);
-	if (ret < 0) {
-		PE50_ERR("get soc fail(%d)\n", ret);
-		goto out;
+	hal = chg_alg_dev_get_drv_hal_data(alg);
+	bat_manager_psy = hal->bat_manager_psy;
+
+	if (IS_ERR_OR_NULL(bat_manager_psy)) {
+		pr_notice("%s retry to get pe5->bat_manager_psy\n", __func__);
+		bat_manager_psy = power_supply_get_by_name("battery");
+		hal->bat_manager_psy = bat_manager_psy;
 	}
-	ret = *soc = val.intval;
+
+	if (IS_ERR_OR_NULL(bat_manager_psy)) {
+		pr_notice("%s Couldn't get bat_psy\n", __func__);
+		ret = -EINVAL;
+		*soc = 50;
+	} else {
+		ret = power_supply_get_property(bat_manager_psy,
+					POWER_SUPPLY_PROP_CAPACITY, &val);
+		if (ret < 0) {
+			PE50_ERR("get soc fail(%d)\n", ret);
+			goto out;
+		}
+		*soc = val.intval;
+	}
 out:
 	PE50_DBG("%d\n", ret);
 	return ret;

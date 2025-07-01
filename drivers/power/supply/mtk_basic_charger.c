@@ -318,49 +318,52 @@ static bool select_charging_current_limit(struct mtk_charger *info,
 		info->setting.input_current_limit1 = -1;
 
 	/* only in pdtest mode */
-	if (pdata->usb_input_current_limit != -1) {
-		if (pdata->usb_input_current_limit < 100000 &&
-		adapter_dev_get_property(info->adapter_dev[PD],
-		PD_SRC_PDO_SUPPORT_USB_SUSPEND)) {
-			info->en_power_path = false;
-		} else if (pdata->usb_input_current_limit >= 100000 &&
-			pdata->pd_input_current_limit >= 100000)
-			info->en_power_path = true;
-		if (pdata->usb_input_current_limit <=
-			pdata->input_current_limit) {
-			pdata->input_current_limit =
-				pdata->usb_input_current_limit;
-			info->setting.input_current_limit1 =
-				pdata->input_current_limit;
-		}
-	} else {
-		info->setting.input_current_limit1 =
-		info->setting.input_current_limit1 == -1?
-		-1:info->setting.input_current_limit1;
-		info->en_power_path =
-		pdata->pd_input_current_limit >= 100000;
-	}
-	// for pdtest: first run
-	if (pdata->pd_input_current_limit != -1) {
-		if (pdata->pd_input_current_limit <=
-			pdata->input_current_limit) {
-			pdata->input_current_limit =
-					pdata->pd_input_current_limit;
-			info->setting.input_current_limit1 =
+	if (info->en_cts_mode) {
+		if (pdata->usb_input_current_limit != -1) {
+			if (pdata->usb_input_current_limit < 100000 &&
+			adapter_dev_get_property(info->adapter_dev[PD],
+			PD_SRC_PDO_SUPPORT_USB_SUSPEND)) {
+				info->en_power_path = false;
+			} else if (pdata->usb_input_current_limit >= 100000 &&
+				pdata->pd_input_current_limit >= 100000)
+				info->en_power_path = true;
+			if ((pdata->usb_input_current_limit <=
+				pdata->input_current_limit) &&
+				(info->chr_type != POWER_SUPPLY_TYPE_USB_CDP)) {
+				pdata->input_current_limit =
+					pdata->usb_input_current_limit;
+				info->setting.input_current_limit1 =
 					pdata->input_current_limit;
+			}
+		} else {
+			info->setting.input_current_limit1 =
+			info->setting.input_current_limit1 == -1?
+			-1:info->setting.input_current_limit1;
 			info->en_power_path =
-					pdata->pd_input_current_limit >= 100000;
+			pdata->pd_input_current_limit >= 100000;
 		}
-	} else {
-		info->setting.input_current_limit1 =
-		info->setting.input_current_limit1 == -1?
-		-1:info->setting.input_current_limit1;
-	}
+		// for pdtest: first run
+		if (pdata->pd_input_current_limit != -1) {
+			if (pdata->pd_input_current_limit <=
+				pdata->input_current_limit) {
+				pdata->input_current_limit =
+					pdata->pd_input_current_limit;
+				info->setting.input_current_limit1 =
+					pdata->input_current_limit;
+				info->en_power_path =
+					pdata->pd_input_current_limit >= 100000;
+			}
+		} else {
+			info->setting.input_current_limit1 =
+			info->setting.input_current_limit1 == -1?
+			-1:info->setting.input_current_limit1;
+		}
 
-	if (info->en_cts_mode)
-		chr_err("pdtest: %d, pd: %d, usb: %d, ret: %d\n",
-		info->en_cts_mode, pdata->pd_input_current_limit,
-		pdata->usb_input_current_limit, pdata->input_current_limit);
+		if (info->en_cts_mode)
+			chr_err("pdtest: %d, pd: %d, usb: %d, ret: %d\n",
+			info->en_cts_mode, pdata->pd_input_current_limit,
+			pdata->usb_input_current_limit, pdata->input_current_limit);
+	}
 
 	if (pdata2->thermal_charging_current_limit != -1) {
 		if (pdata2->thermal_charging_current_limit <=
