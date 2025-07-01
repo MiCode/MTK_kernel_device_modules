@@ -742,7 +742,7 @@ static void hid_unlock(struct hid_ep_info *hid, const char *tag)
 
 static int xhci_realloc_hid_ring(struct hid_ep_info *hid, enum uo_provider_type id)
 {
-	return xhci_mtk_realloc_transfer_ring(hid->slot_id, hid->ep_id, id, false);
+	return xhci_mtk_realloc_transfer_ring(hid->slot_id, hid->ep_id, id, true);
 }
 
 static struct xhci_ring *xhci_get_hid_tr_ring(struct hid_ep_info *hid)
