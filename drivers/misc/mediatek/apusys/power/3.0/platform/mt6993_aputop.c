@@ -993,50 +993,144 @@ static const char * const engine_names[] = {
 	"mvputop", "mvpu0", "mvpu1", "mdla0", "mdla1", "mdla2", "mdla3", "all_engines"
 };
 
+static struct npupw_stts npupw_stts_data;
+
 /* --- Show functions --- */
 static int npupw_stts_all_seq_show(struct seq_file *m, void *v)
 {
-	seq_puts(m, "npu_pwr_stats/all stub\n");
+	int ret = 0;
+
+	ret = mt6993_request_npu_pwr_stats(NPU_STTS_ALL, REQUEST_ONLY, &npupw_stts_data);
+
+	if (ret) {
+		seq_puts(m, "request failed!\n");
+		ret = -EINVAL;
+		goto out;
+	}
+
+	seq_puts(m, "<-- NPU on -->\n");
+	seq_printf(m, "%lld us\n", npupw_stts_data.npu_on_time_us);
+
+	seq_puts(m, "<-- OPP time in stats -->\n");
+	for (int i_opp = 0; i_opp < OPP_TABLE_SIZE; ++i_opp)
+		seq_printf(m, "opp%-2d %lld us\n", i_opp, npupw_stts_data.time_in_states_us[i_opp]);
+
+	seq_puts(m, "<-- Engine on -->\n");
+	for (int e_id = 0; e_id < TIME_ALL_ENGINES; ++e_id)
+		seq_printf(m, "%-7s %lld us\n", engine_names[e_id], npupw_stts_data.engine_on_time_us[e_id]);
+
+out:
 	return 0;
 }
 
 static int npupw_stts_npu_on_seq_show(struct seq_file *m, void *v)
 {
-	int type = (int)(uintptr_t)m->private;
+	int ret = 0;
+	uint32_t type = (uint32_t)(uintptr_t)m->private;
 
-	if (type == TIME_NPU)
-		seq_puts(m, "npu/power_on/time stub\n");
-	else if (type == RESET_NPU)
-		seq_puts(m, "npu/power_on/reset stub\n");
-	else
-		seq_puts(m, "npu/power_on/unknown stub\n");
-	return 0;
+	npupw_stts_data.npu_on_time_us = 0;
+
+	if (type == TIME_NPU) {
+		ret = mt6993_request_npu_pwr_stats(NPU_STTS_NPU_ON, REQUEST_ONLY, &npupw_stts_data);
+		if (ret != 0) {
+			seq_puts(m, "request failed!\n");
+			ret = -EINVAL;
+			goto out;
+		}
+	} else if (type == RESET_NPU) {
+		ret = mt6993_request_npu_pwr_stats(NPU_STTS_NPU_ON, RESET_ONLY, &npupw_stts_data);
+		if (ret != 0) {
+			seq_puts(m, "reset failed!\n");
+			ret = -EINVAL;
+		}
+		goto out;
+	} else {
+		pr_info("unknown argument!\n");
+		ret = -EINVAL;
+		goto out;
+	}
+
+	seq_printf(m, "%lld us\n", npupw_stts_data.npu_on_time_us);
+
+out:
+	return ret;
 }
 
 static int npupw_stts_npufreq_seq_show(struct seq_file *m, void *v)
 {
-	int type = (int)(uintptr_t)m->private;
+	int ret = 0;
+	uint32_t type = (uint32_t)(uintptr_t)m->private;
 
-	if (type == TIME_IN_STATES)
-		seq_puts(m, "npu/npufreq/time_in_states stub\n");
-	else if (type == RESET_NPUFREQ)
-		seq_puts(m, "npu/npufreq/reset stub\n");
-	else
-		seq_puts(m, "npu/npufreq/unknown stub\n");
+	memset(npupw_stts_data.time_in_states_us, 0, sizeof(npupw_stts_data.time_in_states_us));
 
+	if (type == TIME_IN_STATES) {
+		ret = mt6993_request_npu_pwr_stats(NPU_STTS_NPUFREQ, REQUEST_ONLY, &npupw_stts_data);
+		if (ret != 0) {
+			seq_puts(m, "request failed!\n");
+			ret = -EINVAL;
+			goto out;
+		}
+	} else if (type == RESET_NPUFREQ) {
+		ret = mt6993_request_npu_pwr_stats(NPU_STTS_NPUFREQ, RESET_ONLY, &npupw_stts_data);
+		if (ret != 0) {
+			seq_puts(m, "reset failed!\n");
+			ret = -EINVAL;
+		}
+		goto out;
+	} else {
+		pr_info("unknown argument!\n");
+		ret = -EINVAL;
+		goto out;
+	}
+
+	for (int i_opp = 0; i_opp < OPP_TABLE_SIZE; ++i_opp)
+		seq_printf(m, "opp%-2d %lld us\n", i_opp, npupw_stts_data.time_in_states_us[i_opp]);
+
+out:
 	return 0;
 }
 
 static int npupw_stts_engine_on_seq_show(struct seq_file *m, void *v)
 {
+	int ret = 0;
 	enum npu_pwr_stats_entry_id id = (enum npu_pwr_stats_entry_id)(uintptr_t)m->private;
-	const char *name = engine_names[(id & 0x7)];
+	enum NPU_ENGINE eng_id = (id & 0x7);
+	enum NPUPW_STTS_REQ_MODE req_mode = REQUEST_ONLY;
 	const char *type = "time";
 
-	if ((id & BIT(RST_HINT_BIT)))
+	if ((id & BIT(RST_HINT_BIT))) {
 		type = "reset";
+		req_mode = RESET_ONLY;
+	}
 
-	seq_printf(m, "%s/power_on/%s stub\n", name, type);
+	memset(npupw_stts_data.engine_on_time_us, 0, sizeof(npupw_stts_data.engine_on_time_us));
+
+	if (req_mode == REQUEST_ONLY) {
+		ret = mt6993_request_npu_pwr_stats(NPU_STTS_ENGINE_ON, req_mode, &npupw_stts_data);
+		if (ret != 0) {
+			seq_puts(m, "request failed!\n");
+			ret = -EINVAL;
+			goto out;
+		}
+	} else if (req_mode == RESET_ONLY) {
+		ret = mt6993_request_npu_pwr_stats(NPU_STTS_ENGINE_ON, req_mode, &npupw_stts_data);
+		if (ret != 0) {
+			seq_puts(m, "reset failed!\n");
+			ret = -EINVAL;
+		}
+		goto out;
+	} else {
+		pr_info("unknown argument!\n");
+		ret = -EINVAL;
+	}
+
+	if (id == TIME_ALL_ENGINES) {
+		for (int e_id = 0; e_id < TIME_ALL_ENGINES; ++e_id)
+			seq_printf(m, "%-7s %lld us\n", engine_names[e_id], npupw_stts_data.engine_on_time_us[e_id]);
+	} else
+		seq_printf(m, "%-7s %lld us\n", engine_names[eng_id], npupw_stts_data.engine_on_time_us[eng_id]);
+
+out:
 	return 0;
 }
 
@@ -1173,12 +1267,14 @@ int mt6993_apu_top_procfs_init(void)
 		ret = IS_ERR_OR_NULL(engine_dirs[i]);
 		if (ret) {
 			pr_info("failed to create %s dir\n", engine_names[i]);
+			ret = -ENOMEM;
 			goto out;
 		}
 		engine_power_on_dirs[i] = proc_mkdir("power_on", engine_dirs[i]);
 		ret = IS_ERR_OR_NULL(engine_power_on_dirs[i]);
 		if (ret) {
 			pr_info("failed to create %s/power_on dir\n", engine_names[i]);
+			ret = -ENOMEM;
 			goto out;
 		}
 		if (IS_ERR_OR_NULL(

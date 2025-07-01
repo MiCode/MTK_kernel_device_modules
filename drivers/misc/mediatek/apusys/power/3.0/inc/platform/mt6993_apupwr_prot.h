@@ -161,4 +161,39 @@ int mt6993_apu_top_rpmsg_cb(int cmd, void *data, int len, void *priv, u32 src);
 int mt6993_set_freq_limit(int upper_limit, int lower_limit,
 		int *request_id, int calltype);
 void mt6993_request_opp_table(void);
+
+/* structure for npupw_stts */
+enum NPUPW_STTS_REQ_TYPE {
+	NPU_STTS_NPU_ON    = 0x1,
+	NPU_STTS_NPUFREQ   = 0x2,
+	NPU_STTS_ENGINE_ON = 0x4,
+	NPU_STTS_ALL       = 0x7,
+};
+
+enum NPUPW_STTS_REQ_MODE {
+	REQUEST_ONLY      = 0x1,
+	RESET_ONLY        = 0x2,
+	REQUEST_AND_RESET = 0x3,
+};
+
+enum NPU_ENGINE {
+	MVPUTOP = 0,
+	MVPU_C0 = 1,
+	MVPU_C1 = 2,
+	MDLA_0 = 3,
+	MDLA_1 = 4,
+	MDLA_2 = 5,
+	MDLA_3 = 6,
+	NPU_ENGINES_MAX,
+};
+struct npupw_stts {
+	uint64_t npu_on_time_us;
+	uint64_t time_in_states_us[OPP_TABLE_SIZE];
+	uint64_t engine_on_time_us[NPU_ENGINES_MAX];
+};
+
+int mt6993_request_npu_pwr_stats(
+	enum NPUPW_STTS_REQ_TYPE req_type, enum NPUPW_STTS_REQ_MODE mode,
+	struct npupw_stts *p_npupw_stts);
+
 #endif // MT6993_APUPWR_PROT_H__

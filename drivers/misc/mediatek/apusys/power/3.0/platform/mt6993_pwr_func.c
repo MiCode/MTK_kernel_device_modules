@@ -660,3 +660,10 @@ int mt6993_init_remote_data_sync(void __iomem *reg_base)
 
 	return 0;
 }
+
+int mt6993_request_npu_pwr_stats(
+	enum NPUPW_STTS_REQ_TYPE req_type, enum NPUPW_STTS_REQ_MODE mode,
+	struct npupw_stts *p_npupw_stts)
+{
+	return 0;
+}
