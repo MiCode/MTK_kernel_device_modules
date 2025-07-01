@@ -55,6 +55,7 @@ bool perf_tracker_info_exist;
 bool is_percore;
 bool is_percore_need_to_check;
 bool perf_timer_enable;
+bool is_xmu_supported;
 unsigned int is_qos_ltr_buffer_support;
 u32 CHECK_PER_CORE = 0x1124;
 u32 IS_PER_CORE	= 0xABCD0001;
@@ -193,7 +194,7 @@ static void perf_common(void *data, struct rq *rq)
 {
 	u64 wallclock;
 
-	if (trace_perf_index_xmu_enabled())
+	if (trace_perf_index_xmu_enabled() && is_xmu_supported)
 		update_xmu_info();
 
 	wallclock = ktime_get_ns();
@@ -372,6 +373,10 @@ static int __init init_perf_common(void)
 
 #if IS_ENABLED(CONFIG_MTK_PERF_TRACKER)
 	init_perf_freq_tracker();
+#endif
+
+#if IS_ENABLED(CONFIG_ARM64)
+	is_xmu_supported = ((read_sysreg_s(SYS_ID_AA64PFR0_EL1)>>44) & 0xf);
 #endif
 
 	is_qos_ltr_buffer_support = qos_ltr_buffer_support();
