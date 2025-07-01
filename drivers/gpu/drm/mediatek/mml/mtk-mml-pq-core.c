@@ -454,7 +454,6 @@ void mml_pq_comp_config_clear(struct mml_task *task)
 	struct mml_pq_sub_task *sub_task = NULL, *tmp = NULL;
 	u64 job_id = task->pq_task->comp_config.job_id;
 	struct mml_pq_task *pq_task = task->pq_task;
-	bool need_put = false;
 
 	mml_pq_log("%s task_job_id[%d] job_id[%llx] dual[%d]",
 		__func__, task->job.jobid, job_id, task->config->dual);
@@ -468,7 +467,7 @@ void mml_pq_comp_config_clear(struct mml_task *task)
 				list_del(&sub_task->mbox_list);
 				atomic_dec_if_positive(&chan->msg_cnt);
 				atomic_dec_if_positive(&sub_task->queued);
-				need_put = true;
+				mml_pq_put_pq_task(pq_task);
 				break;
 			}
 		}
@@ -483,14 +482,12 @@ void mml_pq_comp_config_clear(struct mml_task *task)
 			if (sub_task->job_id == job_id) {
 				list_del(&sub_task->mbox_list);
 				atomic_dec_if_positive(&sub_task->queued);
-				need_put = true;
+				mml_pq_put_pq_task(pq_task);
 				break;
 			}
 		}
 		mutex_unlock(&chan->job_lock);
 	}
-	if (need_put)
-		mml_pq_put_pq_task(pq_task);
 }
 
 static void remove_sub_task(struct mml_pq_chan *chan, struct mml_pq_sub_task *sub_task)
