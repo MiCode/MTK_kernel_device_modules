@@ -5308,6 +5308,21 @@ dramc: dramc@10230000 {
 				"M4U_PORT_VDEC_VIDEO_UP_SEC";
 
 			/* dvfs params */
+			dvfs-qos-ver = <2>;
+			vdec-set-bw-in-min-freq = <1>;
+			vdec-mmdvfs-in-vcp = <1>;
+			vdec-mmdvfs-in-adaptive = <1>;
+			throughput-min = <218000000>;
+			throughput-normal-max = <546000000>;
+			mmqos-supply = <&mmqos>;
+			interconnects =
+				<&mmqos SLAVE_LARB(4) &mmqos SLAVE_COMMON(0)>,
+				<&mmqos SLAVE_LARB(5) &mmqos SLAVE_COMMON(0)>;
+			interconnect-names = "path_vdec_r", "path_vdec_w";
+			interconnect-num = <2>;
+			bandwidth-table = // avg occupy
+				<4 0 1300>,
+				<4 1 350>; /* larb_id, rw, base_bw*/
 		};
 
 		venc@17000000 {
