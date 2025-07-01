@@ -5141,7 +5141,7 @@ dramc: dramc@10230000 {
 			//clocks = <&dispsys_config_clk CLK_MM_DISP_DSC_WRAP0_DISP>;
 		};
 
-		dsi0: disp-dsi0@1401a000 {
+		dsi0: dsi0@1401a000 {
 			compatible = "mediatek,disp_dsi0",
 					"mediatek,mt6858-dsi";
 			reg = <0 0x1401a000 0 0x1000>;
