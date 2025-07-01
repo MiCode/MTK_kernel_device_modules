@@ -343,6 +343,10 @@ static int disp_gamma_cfg_set_12bit_gammalut(struct mtk_ddp_comp *comp,
 		DDPPR_ERR("%s, invalid data or crtc!\n", __func__);
 		return ret;
 	}
+	if (gamma->data->single_sram && atomic_read(&primary_data->gamma_sram_hw_init)) {
+		DDPINFO("%s, [Warning] single sram mode has inited!\n", __func__);
+		return 0;
+	}
 	// 1. kick idle
 	DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
 
@@ -478,6 +482,10 @@ static int disp_gamma_cfg_set_gammalut(struct mtk_ddp_comp *comp,
 	struct mtk_ddp_comp *companion = gamma_data->companion;
 
 	gamma_data->primary_data->gamma_lut_cur = *((struct DISP_GAMMA_LUT_T *)data);
+	if (gamma_data->data->single_sram && atomic_read(&gamma_data->primary_data->gamma_sram_hw_init)) {
+		DDPINFO("%s, [Warning] single sram mode has inited!\n", __func__);
+		return 0;
+	}
 
 	mutex_lock(&gamma_data->primary_data->data_lock);
 	if (disp_gamma_set_lut(comp, handle, 0, config) < 0) {
@@ -1267,6 +1275,7 @@ struct mtk_disp_gamma_data mt6993_driver_data = {
 
 struct mtk_disp_gamma_data mt6858_driver_data = {
 	.support_gamma_gain = true,
+	.single_sram = true,
 };
 
 static const struct of_device_id mtk_disp_gamma_driver_dt_match[] = {

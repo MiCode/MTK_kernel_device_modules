@@ -23,6 +23,7 @@ struct mtk_disp_gamma_sb_param {
 struct mtk_disp_gamma_data {
 	bool support_gamma_gain;
 	unsigned int gamma_gain_range;
+	bool single_sram;
 };
 
 struct mtk_disp_gamma_tile_overhead {
