@@ -894,6 +894,10 @@
 			reg = <0x78 0x4>;
 		};
 
+		u2_phy_data: u2-phy-data@1b4 {
+			reg = <0x1b4 0x4>;
+		};
+
 		lvts_e_data1: data1@1d0 {
 			reg = <0x1d0 0x10>;
 		};
@@ -6869,10 +6873,16 @@ dramc: dramc@10230000 {
 				reg = <0 0x11e10000 0 0x400>;
 				clocks = <&clk26m>;
 				clock-names = "ref";
-				/* usb2jtag = <&infracfg_ao_clk 1>; */
-				mediatek,eye-vrt = <0x2>;
-				usb2uart;
 				#phy-cells = <1>;
+				mediatek,eye-vrt = <0x2>;
+				mediatek,rx-sqth = <0x4>;
+				mediatek,rev4 = <0x1>;
+				mediatek,rev6 = <0x2>;
+				usb2uart;
+				nvmem-cells = <&u2_phy_data>;
+				nvmem-cell-names = "intr_cal";
+				nvmem-cell-masks = <0xf0>;
+				mediatek,uart-usb-sel = <&gpio 0x100 0xf 1>;
 				mediatek,u2-sw-efuse;
 			};
 		};
