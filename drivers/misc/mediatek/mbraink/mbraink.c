@@ -1623,6 +1623,27 @@ static long handleChipIdInfo(unsigned long arg, void *mbraink_data)
 
 	return ret;
 }
+static long handleMemoryCmVoteInfo(unsigned long arg, void *mbraink_data)
+{
+	long ret = 0;
+	struct mbraink_memory_cmVoteInfo *pMemoryCmVoteInfo =
+		(struct mbraink_memory_cmVoteInfo *)(mbraink_data);
+
+	memset(pMemoryCmVoteInfo,
+			0,
+			sizeof(struct mbraink_memory_cmVoteInfo));
+	ret = mbraink_memory_getCmVoteInfo(pMemoryCmVoteInfo);
+	if (ret == 0) {
+		if (copy_to_user((struct mbraink_memory_cmVoteInfo *)arg,
+				pMemoryCmVoteInfo,
+				sizeof(struct mbraink_memory_cmVoteInfo))) {
+			pr_notice("Copy memory CM Vote Info to UserSpace error!\n");
+			ret = -EPERM;
+		}
+	}
+
+	return ret;
+}
 
 static long mbraink_ioctl(struct file *filp,
 							unsigned int cmd,
@@ -2227,6 +2248,15 @@ static long mbraink_ioctl(struct file *filp,
 		if (!mbraink_data)
 			goto End;
 		ret = handleChipIdInfo(arg, mbraink_data);
+		kfree(mbraink_data);
+		break;
+	}
+	case RO_MEMORY_CM_VOTE_INFO:
+	{
+		mbraink_data = kmalloc(sizeof(struct mbraink_memory_cmVoteInfo), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handleMemoryCmVoteInfo(arg, mbraink_data);
 		kfree(mbraink_data);
 		break;
 	}

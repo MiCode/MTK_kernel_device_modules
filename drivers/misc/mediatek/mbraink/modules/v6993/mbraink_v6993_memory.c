@@ -365,6 +365,37 @@ End:
 	return ret;
 }
 
+static int mbraink_v6993_memory_getCmVoteInfo(struct mbraink_memory_cmVoteInfo *pCmVoteInfo)
+{
+	int i, j = 0;
+	struct cm_vote_info cmVoteInfo;
+	int ret = 0;
+
+	memset(&cmVoteInfo, 0x00, sizeof(struct cm_vote_info));
+	if (pCmVoteInfo == NULL) {
+		pr_info("(%s)cm vote is null\n", __func__);
+		return -1;
+	}
+
+	if (CPU_NUM > MAX_CM_CPU_NUM || CM_SPLIT > MAX_CM_SPLIT) {
+		pr_info("(%s) check cm vote struct fail\n", __func__);
+		return -1;
+	}
+
+	ret = cm_profile_get_vote(&cmVoteInfo);
+	if (ret != 0) {
+		pr_info("(%s) get cm vote fail\n", __func__);
+		return ret;
+	}
+
+	for (i = 0; i < CPU_NUM; i++) {
+		for (j = 0; j < CM_SPLIT; j++)
+			pCmVoteInfo->info[i][j] = cmVoteInfo.info[i][j];
+	}
+
+	return ret;
+}
+
 static struct mbraink_memory_ops mbraink_v6993_memory_ops = {
 	.getDdrInfo = mbraink_v6993_memory_getDdrInfo,
 	.getMdvInfo = mbraink_v6993_memory_getMdvInfo,
@@ -372,6 +403,7 @@ static struct mbraink_memory_ops mbraink_v6993_memory_ops = {
 	.getEmiInfo = mbraink_v6993_memory_getEmiInfo,
 	.getCmProfileInfo = mbraink_v6993_memory_getCmProfileInfo,
 	.getVsmrInfo = mbraink_v6993_memory_getVsmrInfo,
+	.getCmVoteInfo = mbraink_v6993_memory_getCmVoteInfo,
 };
 
 /*This function must be called in mutex*/

@@ -20,6 +20,7 @@ int mbraink_get_ufs_info(struct mbraink_ufs_info *ufs_info);
 int mbraink_memory_getEmiInfo(struct mbraink_memory_emiInfo *pMemoryEmiInfo);
 int mbraink_memory_getCmProfileInfo(struct mbraink_memory_cmProfileInfo *pCmProfileInfo);
 int mbraink_memory_getVsmrInfo(struct mbraink_memory_vsmrInfo *pVsmrInfo);
+int mbraink_memory_getCmVoteInfo(struct mbraink_memory_cmVoteInfo *pCmVoteInfo);
 
 #endif /*end of MBRAINK_MEMORY_H*/
 

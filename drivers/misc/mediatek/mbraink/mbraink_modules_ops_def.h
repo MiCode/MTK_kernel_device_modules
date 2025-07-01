@@ -15,6 +15,7 @@ struct mbraink_memory_ops {
 	int (*getEmiInfo)(struct mbraink_memory_emiInfo *pMemoryEmiInfo);
 	int (*getCmProfileInfo)(struct mbraink_memory_cmProfileInfo *pCmProfileInfo);
 	int (*getVsmrInfo)(struct mbraink_memory_vsmrInfo *pMemoryVsmr);
+	int (*getCmVoteInfo)(struct mbraink_memory_cmVoteInfo *pCmVoteInfo);
 };
 int register_mbraink_memory_ops(struct mbraink_memory_ops *ops);
 int unregister_mbraink_memory_ops(void);

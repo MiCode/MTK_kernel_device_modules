@@ -19,6 +19,7 @@ int mbraink_memory_init(void)
 	_mbraink_memory_ops.getEmiInfo = NULL;
 	_mbraink_memory_ops.getCmProfileInfo = NULL;
 	_mbraink_memory_ops.getVsmrInfo = NULL;
+	_mbraink_memory_ops.getCmVoteInfo = NULL;
 	return 0;
 }
 
@@ -30,6 +31,7 @@ int mbraink_memory_deinit(void)
 	_mbraink_memory_ops.getEmiInfo = NULL;
 	_mbraink_memory_ops.getCmProfileInfo = NULL;
 	_mbraink_memory_ops.getVsmrInfo = NULL;
+	_mbraink_memory_ops.getCmVoteInfo = NULL;
 	return 0;
 }
 
@@ -46,6 +48,7 @@ int register_mbraink_memory_ops(struct mbraink_memory_ops *ops)
 	_mbraink_memory_ops.getEmiInfo = ops->getEmiInfo;
 	_mbraink_memory_ops.getCmProfileInfo = ops->getCmProfileInfo;
 	_mbraink_memory_ops.getVsmrInfo = ops->getVsmrInfo;
+	_mbraink_memory_ops.getCmVoteInfo = ops->getCmVoteInfo;
 
 	return 0;
 }
@@ -171,3 +174,19 @@ int mbraink_memory_getVsmrInfo(struct mbraink_memory_vsmrInfo *pVsmrInfo)
 	return ret;
 }
 
+int mbraink_memory_getCmVoteInfo(struct mbraink_memory_cmVoteInfo *pCmVoteInfo)
+{
+	int ret = 0;
+
+	if (pCmVoteInfo == NULL) {
+		pr_info("%s: Cm Vote Info is null.\n", __func__);
+		return -1;
+	}
+
+	if (_mbraink_memory_ops.getCmVoteInfo)
+		ret = _mbraink_memory_ops.getCmVoteInfo(pCmVoteInfo);
+	else
+		pr_info("%s: Do not support ioctl getCmVoteInfo query.\n", __func__);
+
+	return ret;
+}
