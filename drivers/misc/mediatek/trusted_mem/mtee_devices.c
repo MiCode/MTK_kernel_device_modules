@@ -13,20 +13,24 @@
 #include <linux/kernel.h>
 #include <linux/kthread.h>
 #include <linux/module.h>
+#include <linux/of.h>
 #include <linux/proc_fs.h>
+#include <linux/sizes.h>
+#include <linux/slab.h>
 #include <linux/string.h>
+#include <linux/sprintf.h>
+#include <linux/string_helpers.h>
+#include <linux/types.h>
 #include <linux/uaccess.h>
 #include <linux/unistd.h>
-#include <linux/types.h>
-#include <linux/slab.h>
-#include <linux/sizes.h>
 #include <memory_ssmr.h>
 
 #include "private/mld_helper.h"
+#include "private/tmem_dev_desc.h"
+#include "private/tmem_device.h"
 #include "private/tmem_error.h"
 #include "private/tmem_priv.h"
 #include "private/tmem_utils.h"
-#include "private/tmem_dev_desc.h"
 /* clang-format off */
 #include "mtee_impl/mtee_ops.h"
 /* clang-format on */
@@ -222,6 +226,44 @@ static struct tmem_device_description mtee_mchunks[] = {
 
 #define MTEE_MCHUNKS_DEVICE_COUNT ARRAY_SIZE(mtee_mchunks)
 
+#if IS_ENABLED(CONFIG_ARM_FFA_TRANSPORT)
+#define MTEE_MCHUNKS_DEFAULT_HANDLE_TYPE MTEE_MCHUNKS_HANDLE_FFA
+#else
+#define MTEE_MCHUNKS_DEFAULT_HANDLE_TYPE MTEE_MCHUNKS_HANDLE_GZ32
+#endif /* IS_ENABLED(CONFIG_ARM_FFA_TRANSPORT) */
+
+enum MTEE_MCHUNKS_HANDLE_TYPE get_mtee_mchunks_handle_type_from_tmem_type(
+		const enum TRUSTED_MEM_TYPE tmem_type)
+{
+	enum MTEE_MCHUNKS_HANDLE_TYPE ret = MTEE_MCHUNKS_HANDLE_INVALID_TYPE;
+
+	if (unlikely(tmem_type < TRUSTED_MEM_START ||
+			tmem_type >= TRUSTED_MEM_MAX)) {
+		ret = MTEE_MCHUNKS_HANDLE_INVALID_TYPE;
+		goto final;
+	}
+
+	ret = MTEE_MCHUNKS_DEFAULT_HANDLE_TYPE;
+
+	for (size_t i = 0UL; i < MTEE_MCHUNKS_DEVICE_COUNT; ++i) {
+		const struct tmem_device_description *mchunk =
+			&mtee_mchunks[i];
+
+		if (unlikely(mchunk->kern_tmem_type == tmem_type &&
+				mchunk->mtee_chunks_handle_type >
+					MTEE_MCHUNKS_HANDLE_DEFAULT &&
+				mchunk->mtee_chunks_handle_type <
+					MTEE_MCHUNKS_HANDLE_MAX_TYPE)) {
+			ret = mchunk->mtee_chunks_handle_type;
+
+			break;
+		}
+	}
+
+final:
+	return ret;
+}
+
 static struct trusted_mem_device *
 create_mtee_mchunk_device(enum TRUSTED_MEM_TYPE mem_type,
 			  struct trusted_mem_configs *cfg,
@@ -267,24 +309,70 @@ create_mtee_mchunk_device(enum TRUSTED_MEM_TYPE mem_type,
 	return t_device;
 }
 
-int mtee_mchunks_init(void)
+int mtee_mchunks_init(struct platform_device __maybe_unused *pdev)
 {
-	struct trusted_mem_device *t_device;
-	int idx;
+	struct device_node *mchunks_node = NULL;
+	const char *mchunks_compatible = "mediatek,tmem-mtee-mchunks";
+	struct trusted_mem_device *t_device = NULL;
 
 	pr_info("%s:%d (%d)\n", __func__, __LINE__,
-		(int)MTEE_MCHUNKS_DEVICE_COUNT);
+			(int)MTEE_MCHUNKS_DEVICE_COUNT);
 
-	for (idx = 0; idx < MTEE_MCHUNKS_DEVICE_COUNT; idx++) {
-		t_device = create_mtee_mchunk_device(
-			mtee_mchunks[idx].kern_tmem_type,
-			mtee_mchunks[idx].mem_cfg, &mtee_mchunks[idx],
-			mtee_mchunks[idx].ssmr_feature_id,
-			mtee_mchunks[idx].dev_name);
+	/* locate mchunks OF node */
+	if (!IS_ERR_OR_NULL((const void *)pdev) &&
+			!IS_ERR_OR_NULL((const void *)pdev->dev.of_node))
+		mchunks_node = of_find_compatible_node(pdev->dev.of_node,
+				NULL, mchunks_compatible);
+
+	for (size_t i = 0UL; i < MTEE_MCHUNKS_DEVICE_COUNT; ++i) {
+		struct tmem_device_description *mchunk = &mtee_mchunks[i];
+		char *mchunk_handle_type_prop = NULL;
+		u32 mchunk_handle_type_val = 0U;
+
+		/* get handle type from OF node */
+		if (IS_ERR_OR_NULL((const void *)mchunks_node))
+			goto mchunk_get_handle_type_submit;
+		if (IS_ERR_OR_NULL((const void *)mchunk->dev_name))
+			goto mchunk_get_handle_type_submit;
+
+		mchunk_handle_type_prop = kasprintf(GFP_KERNEL,
+				"%s-handle-type", mchunk->dev_name);
+		if (IS_ERR_OR_NULL((const void *)mchunk_handle_type_prop))
+			goto mchunk_get_handle_type_submit;
+
+		(void)string_lower(mchunk_handle_type_prop,
+				strreplace(mchunk_handle_type_prop,
+					'_', '-'));
+		(void)of_property_read_u32(mchunks_node,
+				mchunk_handle_type_prop,
+				&mchunk_handle_type_val);
+
+mchunk_get_handle_type_submit:
+		mchunk_handle_type_val = (mchunk_handle_type_val >
+					MTEE_MCHUNKS_HANDLE_DEFAULT &&
+				mchunk_handle_type_val <
+					MTEE_MCHUNKS_HANDLE_MAX_TYPE) ?
+			mchunk_handle_type_val :
+				MTEE_MCHUNKS_DEFAULT_HANDLE_TYPE;
+		mchunk->mtee_chunks_handle_type =
+				(mchunk->mtee_chunks_handle_type >
+					MTEE_MCHUNKS_HANDLE_DEFAULT &&
+				mchunk->mtee_chunks_handle_type <
+					MTEE_MCHUNKS_HANDLE_MAX_TYPE) ?
+			mchunk->mtee_chunks_handle_type :
+				mchunk_handle_type_val;
+
+		if (!IS_ERR_OR_NULL((const void *)mchunk_handle_type_prop))
+			kfree(mchunk_handle_type_prop);
+
+		/* create mchunk device */
+		t_device = create_mtee_mchunk_device(mchunk->kern_tmem_type,
+				mchunk->mem_cfg, mchunk,
+				mchunk->ssmr_feature_id, mchunk->dev_name);
 		if (INVALID(t_device)) {
 			pr_info("don't create MTEE tmem device: %d:%s\n",
-			       mtee_mchunks[idx].kern_tmem_type,
-			       mtee_mchunks[idx].dev_name);
+					mchunk->kern_tmem_type,
+					mchunk->dev_name);
 		}
 	}
 
@@ -292,6 +380,6 @@ int mtee_mchunks_init(void)
 	return TMEM_OK;
 }
 
-void mtee_mchunks_exit(void)
+void mtee_mchunks_exit(struct platform_device __maybe_unused *pdev)
 {
 }

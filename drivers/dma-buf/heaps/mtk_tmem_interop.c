@@ -788,21 +788,14 @@ TMEM_PRIV int region_alloc(struct secure_heap_region *sec_heap,
 		       __LINE__);
 		goto free_buffer;
 	}
-#if IS_ENABLED(CONFIG_ARM_FFA_TRANSPORT)
-	if (trusted_mem_is_ffa_enabled()) {
-		ret = trusted_mem_ffa_query_pa(&sec_handle, &phy_addr);
-	} else {
-		ret = trusted_mem_api_query_pa(sec_heap->tmem_type, 0, buffer->len,
-				       &refcount, &sec_handle,
-				       (u8 *)dma_heap_get_name(buffer->heap), 0,
-				       0, &phy_addr);
-	}
-#else
+
+	/* ARM FF-A equivalent:
+	 * ret = trusted_mem_ffa_query_pa(&sec_handle, &phy_addr);
+	 */
 	ret = trusted_mem_api_query_pa(sec_heap->tmem_type, 0, buffer->len,
 				       &refcount, &sec_handle,
 				       (u8 *)dma_heap_get_name(buffer->heap), 0,
 				       0, &phy_addr);
-#endif /* IS_ENABLED(CONFIG_ARM_FFA_TRANSPORT) */
 	if (ret) {
 		/* free buffer */
 		pr_err("%s#%d Error. query pa failed.\n", __func__, __LINE__);

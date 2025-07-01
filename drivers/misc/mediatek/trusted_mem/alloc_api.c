@@ -15,6 +15,7 @@
 #include "ssmr/memory_ssmr.h"
 #include "private/tmem_entry.h"
 #include "private/tmem_error.h"
+#include "private/tmem_priv.h"
 #include "private/tmem_utils.h"
 #include "public/trusted_mem_api.h"
 #include "public/mtee_regions.h"
@@ -185,7 +186,9 @@ int trusted_mem_api_query_pa(enum TRUSTED_MEM_REQ_TYPE mem_type, u32 alignment,
 			u8 *owner, u32 id, u32 clean, uint64_t *phy_addr)
 {
 #if IS_ENABLED(CONFIG_ARM_FFA_TRANSPORT)
-	if (is_ffa_enabled())
+	if (is_ffa_enabled() && get_mtee_mchunks_handle_type_from_tmem_type(
+				get_mem_type(mem_type)) ==
+			MTEE_MCHUNKS_HANDLE_FFA)
 		return tmem_query_ffa_handle_to_pa(*handle, phy_addr);
 	else
 		return tmem_query_gz_handle_to_pa(get_mem_type(mem_type), alignment,

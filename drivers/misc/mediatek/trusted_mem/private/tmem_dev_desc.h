@@ -16,6 +16,7 @@ struct tmem_device_description {
 	enum TRUSTED_MEM_TYPE kern_tmem_type;
 	enum TEE_SMEM_TYPE tee_smem_type;
 	enum MTEE_MCHUNKS_ID mtee_chunks_id;
+	enum MTEE_MCHUNKS_HANDLE_TYPE mtee_chunks_handle_type;
 	u32 ssmr_feature_id;
 	union {
 		struct mtee_peer_ops_data mtee;

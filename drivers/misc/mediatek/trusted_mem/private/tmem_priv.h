@@ -7,6 +7,8 @@
 #define TMEM_PRIV_H
 
 #include "private/tmem_device.h"
+#include "public/mtee_regions.h"
+#include <linux/platform_device.h>
 
 struct trusted_mem_device *
 create_trusted_mem_device(enum TRUSTED_MEM_TYPE register_type,
@@ -55,8 +57,10 @@ int tmem_ut_cases_init(void);
 void tmem_ut_cases_exit(void);
 #endif
 #ifdef MTEE_DEVICES_SUPPORT
-int mtee_mchunks_init(void);
-void mtee_mchunks_exit(void);
+enum MTEE_MCHUNKS_HANDLE_TYPE get_mtee_mchunks_handle_type_from_tmem_type(
+		const enum TRUSTED_MEM_TYPE tmem_type);
+int mtee_mchunks_init(struct platform_device *pdev);
+void mtee_mchunks_exit(struct platform_device *pdev);
 #endif
 #ifdef TEE_DEVICES_SUPPORT
 int tee_smem_devs_init(void);

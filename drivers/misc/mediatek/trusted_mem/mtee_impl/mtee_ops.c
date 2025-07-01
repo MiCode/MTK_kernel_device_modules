@@ -396,7 +396,9 @@ static int mtee_alloc(u32 alignment, u32 size, u32 *refcount, u64 *sec_handle,
 	}
 
 	/* GZ & FF-A */
-	if (is_ffa_enabled()) {
+	if (is_ffa_enabled() && !IS_ERR_OR_NULL(mtee_dev_desc) &&
+			mtee_dev_desc->mtee_chunks_handle_type ==
+			MTEE_MCHUNKS_HANDLE_FFA) {
 		ret = tmem_ffa_region_alloc(mtee_dev_desc->mtee_chunks_id,
 				size, alignment, sec_handle);
 		if (ret != 0) {
@@ -453,7 +455,9 @@ static int mtee_free(u64 sec_handle, u8 *owner, u32 id, void *peer_data,
 	}
 
 	/* GZ & FF-A */
-	if (is_ffa_enabled()) {
+	if (is_ffa_enabled() && !IS_ERR_OR_NULL(mtee_dev_desc) &&
+			mtee_dev_desc->mtee_chunks_handle_type ==
+			MTEE_MCHUNKS_HANDLE_FFA) {
 		ret = tmem_ffa_region_free(mtee_dev_desc->mtee_chunks_id, sec_handle);
 		if (ret != 0) {
 			pr_info("[%d] tmem_ffa_region_free failed:%d\n",
@@ -531,7 +535,9 @@ static int mtee_mem_reg_add(u64 pa, u32 size, void *peer_data, void *dev_desc)
 		}
 	}
 
-	if (is_ffa_enabled()) {
+	if (is_ffa_enabled() && !IS_ERR_OR_NULL(mtee_dev_desc) &&
+			mtee_dev_desc->mtee_chunks_handle_type ==
+			MTEE_MCHUNKS_HANDLE_FFA) {
 		ret = tmem_carveout_create(mtee_dev_desc->mtee_chunks_id, pa, size);
 		if (ret != 0) {
 			pr_info("[%d] tmem_carveout_create failed:%d\n",
@@ -591,7 +597,9 @@ static int mtee_mem_reg_remove(void *peer_data, void *dev_desc)
 		}
 	}
 
-	if (is_ffa_enabled()) {
+	if (is_ffa_enabled() && !IS_ERR_OR_NULL(mtee_dev_desc) &&
+			mtee_dev_desc->mtee_chunks_handle_type ==
+			MTEE_MCHUNKS_HANDLE_FFA) {
 		ret = tmem_carveout_destroy(mtee_dev_desc->mtee_chunks_id);
 		if (ret != 0) {
 			pr_info("[%d] tmem_carveout_destroy failed:%d\n",

@@ -313,7 +313,7 @@ static int trusted_mem_init(struct platform_device *pdev)
 #endif
 
 #ifdef MTEE_DEVICES_SUPPORT
-	mtee_mchunks_init();
+	mtee_mchunks_init(pdev);
 #endif
 
 #if IS_ENABLED(CONFIG_TEST_MTK_TRUSTED_MEMORY)
@@ -349,7 +349,7 @@ static void trusted_mem_exit(struct platform_device *pdev)
 #endif
 
 #ifdef MTEE_DEVICES_SUPPORT
-	mtee_mchunks_exit();
+	mtee_mchunks_exit(pdev);
 #endif
 
 #ifdef TEE_DEVICES_SUPPORT
