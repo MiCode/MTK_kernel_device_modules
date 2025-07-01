@@ -224,12 +224,270 @@ static inline struct mtk_disp_tdshp *comp_to_tdshp(struct mtk_ddp_comp *comp)
 	return container_of(comp, struct mtk_disp_tdshp, ddp_comp);
 }
 
+static int disp_tdshp_write_tdshp_reg_legacy(struct mtk_ddp_comp *comp,
+	struct cmdq_pkt *handle, int lock)
+{
+	struct mtk_disp_tdshp *tdshp_data = comp_to_tdshp(comp);
+	struct mtk_disp_tdshp_primary *primary_data = tdshp_data->primary_data;
+	int ret = 0;
+
+
+	if (lock)
+		mutex_lock(&primary_data->data_lock);
+
+	cmdq_pkt_write(handle, comp->cmdq_base,
+		comp->regs_pa + DISP_TDSHP_CFG, 0x2, 0x2);
+
+
+	struct DISP_TDSHP_REG_LEGACY *disp_tdshp_regs = primary_data->tdshp_regs;
+
+	if (disp_tdshp_regs == NULL) {
+		DDPINFO("%s: comp %d not initialized\n", __func__, comp->id);
+		ret = -EFAULT;
+		goto thshp_write_reg_unlock;
+	}
+
+	DDPINFO("tdshp_en: %x, tdshp_limit: %x, tdshp_ylev_256: %x, tdshp_gain_high:%d, tdshp_gain_mid:%d\n",
+			disp_tdshp_regs->tdshp_en, disp_tdshp_regs->tdshp_limit,
+			disp_tdshp_regs->tdshp_ylev_256, disp_tdshp_regs->tdshp_gain_high,
+			disp_tdshp_regs->tdshp_gain_mid);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_TDSHP_00,
+		(disp_tdshp_regs->tdshp_softcoring_gain << 0 |
+				disp_tdshp_regs->tdshp_gain_high << 8 |
+				disp_tdshp_regs->tdshp_gain_mid << 16 |
+				disp_tdshp_regs->tdshp_ink_sel << 24 |
+				disp_tdshp_regs->tdshp_bypass_high << 29 |
+				disp_tdshp_regs->tdshp_bypass_mid << 30 |
+				disp_tdshp_regs->tdshp_en << 31), ~0);
+
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_TDSHP_01,
+		(disp_tdshp_regs->tdshp_limit_ratio << 0 |
+				disp_tdshp_regs->tdshp_gain << 4 |
+				disp_tdshp_regs->tdshp_coring_zero << 16 |
+				disp_tdshp_regs->tdshp_coring_thr << 24), ~0);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_TDSHP_02,
+		(disp_tdshp_regs->tdshp_coring_value << 8 |
+				disp_tdshp_regs->tdshp_bound << 16 |
+				disp_tdshp_regs->tdshp_limit << 24), ~0);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_TDSHP_03,
+		(disp_tdshp_regs->tdshp_sat_proc << 0 |
+				disp_tdshp_regs->tdshp_ac_lpf_coe << 8 |
+				disp_tdshp_regs->tdshp_clip_thr << 16 |
+				disp_tdshp_regs->tdshp_clip_ratio << 24 |
+				disp_tdshp_regs->tdshp_clip_en << 31), ~0);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_TDSHP_05,
+		(disp_tdshp_regs->tdshp_ylev_p048 << 0 |
+		disp_tdshp_regs->tdshp_ylev_p032 << 8 |
+		disp_tdshp_regs->tdshp_ylev_p016 << 16 |
+		disp_tdshp_regs->tdshp_ylev_p000 << 24), ~0);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_TDSHP_06,
+		(disp_tdshp_regs->tdshp_ylev_p112 << 0 |
+		disp_tdshp_regs->tdshp_ylev_p096 << 8 |
+		disp_tdshp_regs->tdshp_ylev_p080 << 16 |
+		disp_tdshp_regs->tdshp_ylev_p064 << 24), ~0);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_TDSHP_07,
+		(disp_tdshp_regs->tdshp_ylev_p176 << 0 |
+		disp_tdshp_regs->tdshp_ylev_p160 << 8 |
+		disp_tdshp_regs->tdshp_ylev_p144 << 16 |
+		disp_tdshp_regs->tdshp_ylev_p128 << 24), ~0);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_TDSHP_08,
+		(disp_tdshp_regs->tdshp_ylev_p240 << 0 |
+		disp_tdshp_regs->tdshp_ylev_p224 << 8 |
+		disp_tdshp_regs->tdshp_ylev_p208 << 16 |
+		disp_tdshp_regs->tdshp_ylev_p192 << 24), ~0);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_TDSHP_09,
+		(disp_tdshp_regs->tdshp_ylev_en << 14 |
+		disp_tdshp_regs->tdshp_ylev_alpha << 16 |
+		disp_tdshp_regs->tdshp_ylev_256 << 24), ~0);
+
+	// PBC1
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_PBC_00,
+		(disp_tdshp_regs->pbc1_radius_r << 0 |
+		disp_tdshp_regs->pbc1_theta_r << 6 |
+		disp_tdshp_regs->pbc1_rslope_1 << 12 |
+		disp_tdshp_regs->pbc1_gain << 22 |
+		disp_tdshp_regs->pbc1_lpf_en << 30 |
+		disp_tdshp_regs->pbc1_en << 31), ~0);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_PBC_01,
+		(disp_tdshp_regs->pbc1_lpf_gain << 0 |
+		disp_tdshp_regs->pbc1_tslope << 6 |
+		disp_tdshp_regs->pbc1_radius_c << 16 |
+		disp_tdshp_regs->pbc1_theta_c << 24), ~0);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_PBC_02,
+		(disp_tdshp_regs->pbc1_edge_slope << 0 |
+		disp_tdshp_regs->pbc1_edge_thr << 8 |
+		disp_tdshp_regs->pbc1_edge_en << 14 |
+		disp_tdshp_regs->pbc1_conf_gain << 16 |
+		disp_tdshp_regs->pbc1_rslope << 22), ~0);
+	// PBC2
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_PBC_03,
+		(disp_tdshp_regs->pbc2_radius_r << 0 |
+		disp_tdshp_regs->pbc2_theta_r << 6 |
+		disp_tdshp_regs->pbc2_rslope_1 << 12 |
+		disp_tdshp_regs->pbc2_gain << 22 |
+		disp_tdshp_regs->pbc2_lpf_en << 30 |
+		disp_tdshp_regs->pbc2_en << 31), ~0);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_PBC_04,
+		(disp_tdshp_regs->pbc2_lpf_gain << 0 |
+		disp_tdshp_regs->pbc2_tslope << 6 |
+		disp_tdshp_regs->pbc2_radius_c << 16 |
+		disp_tdshp_regs->pbc2_theta_c << 24), ~0);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_PBC_05,
+		(disp_tdshp_regs->pbc2_edge_slope << 0 |
+		disp_tdshp_regs->pbc2_edge_thr << 8 |
+		disp_tdshp_regs->pbc2_edge_en << 14 |
+		disp_tdshp_regs->pbc2_conf_gain << 16 |
+		disp_tdshp_regs->pbc2_rslope << 22), ~0);
+	// PBC3
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_PBC_06,
+		(disp_tdshp_regs->pbc3_radius_r << 0 |
+		disp_tdshp_regs->pbc3_theta_r << 6 |
+		disp_tdshp_regs->pbc3_rslope_1 << 12 |
+		disp_tdshp_regs->pbc3_gain << 22 |
+		disp_tdshp_regs->pbc3_lpf_en << 30 |
+		disp_tdshp_regs->pbc3_en << 31), ~0);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_PBC_07,
+		(disp_tdshp_regs->pbc3_lpf_gain << 0 |
+		disp_tdshp_regs->pbc3_tslope << 6 |
+		disp_tdshp_regs->pbc3_radius_c << 16 |
+		disp_tdshp_regs->pbc3_theta_c << 24), ~0);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_PBC_08,
+		(disp_tdshp_regs->pbc3_edge_slope << 0 |
+		disp_tdshp_regs->pbc3_edge_thr << 8 |
+		disp_tdshp_regs->pbc3_edge_en << 14 |
+		disp_tdshp_regs->pbc3_conf_gain << 16 |
+		disp_tdshp_regs->pbc3_rslope << 22), ~0);
+
+//#ifdef TDSHP_2_0
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_TDSHP_10,
+		(disp_tdshp_regs->tdshp_mid_softlimit_ratio << 0 |
+		disp_tdshp_regs->tdshp_mid_coring_zero << 16 |
+		disp_tdshp_regs->tdshp_mid_coring_thr << 24), 0xFFFFFFFF);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_TDSHP_11,
+		(disp_tdshp_regs->tdshp_mid_softcoring_gain << 0 |
+		disp_tdshp_regs->tdshp_mid_coring_value << 8 |
+		disp_tdshp_regs->tdshp_mid_bound << 16 |
+		disp_tdshp_regs->tdshp_mid_limit << 24), 0xFFFFFFFF);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_TDSHP_12,
+		(disp_tdshp_regs->tdshp_high_softlimit_ratio << 0 |
+		disp_tdshp_regs->tdshp_high_coring_zero << 16 |
+		disp_tdshp_regs->tdshp_high_coring_thr << 24), 0xFFFFFFFF);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_TDSHP_13,
+		(disp_tdshp_regs->tdshp_high_softcoring_gain << 0 |
+		disp_tdshp_regs->tdshp_high_coring_value << 8 |
+		disp_tdshp_regs->tdshp_high_bound << 16 |
+		disp_tdshp_regs->tdshp_high_limit << 24), 0xFFFFFFFF);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_EDF_GAIN_00,
+		(disp_tdshp_regs->edf_clip_ratio_inc << 0 |
+		disp_tdshp_regs->edf_edge_gain << 8 |
+		disp_tdshp_regs->edf_detail_gain << 16 |
+		disp_tdshp_regs->edf_flat_gain << 24 |
+		disp_tdshp_regs->edf_gain_en << 31), 0xFFFFFFFF);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_EDF_GAIN_01,
+		(disp_tdshp_regs->edf_edge_th << 0 |
+		disp_tdshp_regs->edf_detail_fall_th << 9 |
+		disp_tdshp_regs->edf_detail_rise_th << 18 |
+		disp_tdshp_regs->edf_flat_th << 25), 0xFFFFFFFF);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_EDF_GAIN_02,
+		(disp_tdshp_regs->edf_edge_slope << 0 |
+		disp_tdshp_regs->edf_detail_fall_slope << 8 |
+		disp_tdshp_regs->edf_detail_rise_slope << 16 |
+		disp_tdshp_regs->edf_flat_slope << 24), 0xFFFFFFFF);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_EDF_GAIN_03,
+		(disp_tdshp_regs->edf_edge_mono_slope << 0 |
+		disp_tdshp_regs->edf_edge_mono_th << 8 |
+		disp_tdshp_regs->edf_edge_mag_slope << 16 |
+		disp_tdshp_regs->edf_edge_mag_th << 24), 0xFFFFFFFF);
+
+	// DISP TDSHP no DISP_EDF_GAIN_04
+	//cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_EDF_GAIN_04,
+	//	(disp_tdshp_regs->edf_edge_trend_flat_mag << 8 |
+	//	disp_tdshp_regs->edf_edge_trend_slope << 16 |
+	//	disp_tdshp_regs->edf_edge_trend_th << 24), 0xFFFFFFFF);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_EDF_GAIN_05,
+		(disp_tdshp_regs->edf_bld_wgt_mag << 0 |
+		disp_tdshp_regs->edf_bld_wgt_mono << 8), 0xFFFFFFFF);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_C_BOOST_MAIN,
+		(disp_tdshp_regs->tdshp_cboost_gain << 0 |
+		disp_tdshp_regs->tdshp_cboost_en << 13 |
+		disp_tdshp_regs->tdshp_cboost_lmt_l << 16 |
+		disp_tdshp_regs->tdshp_cboost_lmt_u << 24), 0xFFFFFFFF);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_C_BOOST_MAIN_2,
+		(disp_tdshp_regs->tdshp_cboost_yoffset << 0 |
+		disp_tdshp_regs->tdshp_cboost_yoffset_sel << 16 |
+		disp_tdshp_regs->tdshp_cboost_yconst << 24), 0xFFFFFFFF);
+
+//#endif // TDSHP_2_0
+
+//#ifdef TDSHP_3_0
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_POST_YLEV_00,
+		(disp_tdshp_regs->tdshp_post_ylev_p048 << 0 |
+		disp_tdshp_regs->tdshp_post_ylev_p032 << 8 |
+		disp_tdshp_regs->tdshp_post_ylev_p016 << 16 |
+		disp_tdshp_regs->tdshp_post_ylev_p000 << 24), 0xFFFFFFFF);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_POST_YLEV_01,
+		(disp_tdshp_regs->tdshp_post_ylev_p112 << 0 |
+		disp_tdshp_regs->tdshp_post_ylev_p096 << 8 |
+		disp_tdshp_regs->tdshp_post_ylev_p080 << 16 |
+		disp_tdshp_regs->tdshp_post_ylev_p064 << 24), 0xFFFFFFFF);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_POST_YLEV_02,
+		(disp_tdshp_regs->tdshp_post_ylev_p176 << 0 |
+		disp_tdshp_regs->tdshp_post_ylev_p160 << 8 |
+		disp_tdshp_regs->tdshp_post_ylev_p144 << 16 |
+		disp_tdshp_regs->tdshp_post_ylev_p128 << 24), 0xFFFFFFFF);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_POST_YLEV_03,
+		(disp_tdshp_regs->tdshp_post_ylev_p240 << 0 |
+		disp_tdshp_regs->tdshp_post_ylev_p224 << 8 |
+		disp_tdshp_regs->tdshp_post_ylev_p208 << 16 |
+		disp_tdshp_regs->tdshp_post_ylev_p192 << 24), 0xFFFFFFFF);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_POST_YLEV_04,
+		(disp_tdshp_regs->tdshp_post_ylev_en << 14 |
+		disp_tdshp_regs->tdshp_post_ylev_alpha << 16 |
+		disp_tdshp_regs->tdshp_post_ylev_256 << 24), 0xFFFFFFFF);
+//#endif // TDSHP_3_0
+
+thshp_write_reg_unlock:
+	if (lock)
+		mutex_unlock(&primary_data->data_lock);
+
+	return ret;
+}
+
+
 static int disp_tdshp_write_tdshp_reg(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, int lock)
 {
 	struct mtk_disp_tdshp *tdshp_data = comp_to_tdshp(comp);
 	struct mtk_disp_tdshp_primary *primary_data = tdshp_data->primary_data;
-	struct DISP_TDSHP_REG *disp_tdshp_regs;
 	int ret = 0;
 
 	if (lock)
@@ -238,8 +496,8 @@ static int disp_tdshp_write_tdshp_reg(struct mtk_ddp_comp *comp,
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + DISP_TDSHP_CFG, 0x2, 0x2);
 
-	/* to avoid different show of dual pipe, pipe1 use pipe0's config data */
-	disp_tdshp_regs = primary_data->tdshp_regs;
+	struct DISP_TDSHP_REG *disp_tdshp_regs = primary_data->tdshp_regs;
+
 	if (disp_tdshp_regs == NULL) {
 		DDPINFO("%s: comp %d not initialized\n", __func__, comp->id);
 		ret = -EFAULT;
@@ -482,17 +740,26 @@ thshp_write_reg_unlock:
 }
 
 static int disp_tdshp_update_param(struct mtk_ddp_comp *comp,
-	struct cmdq_pkt *handle, struct DISP_TDSHP_REG *user_tdshp_regs)
+	struct cmdq_pkt *handle, void *user_tdshp_regs)
 {
 	struct mtk_disp_tdshp *tdshp_data = comp_to_tdshp(comp);
 	struct mtk_disp_tdshp_primary *primary_data = tdshp_data->primary_data;
 	int ret = 0;
-	struct DISP_TDSHP_REG *tdshp_regs;
+	int length = 0;
+	void *tdshp_regs;
+	struct TDSHP_CLARITY_REG *config = user_tdshp_regs;
+
+	DDPINFO("%s:%d", __func__, tdshp_data->data->ver);
+	if ((tdshp_data->data->ver == TDSHP_VERSION_0) ||
+		(tdshp_data->data->ver == TDSHP_VERSION_1))
+		length = sizeof(struct DISP_TDSHP_REG_LEGACY);
+	else
+		length = sizeof(struct DISP_TDSHP_REG);
 
 	pr_notice("%s\n", __func__);
 
-	if (primary_data->tdshp_regs == NULL) {
-		tdshp_regs = kmalloc(sizeof(struct DISP_TDSHP_REG), GFP_KERNEL);
+	if ((primary_data->tdshp_regs == NULL) && length) {
+		tdshp_regs = kmalloc(length, GFP_KERNEL);
 		if (tdshp_regs == NULL) {
 			DDPPR_ERR("%s: no memory\n", __func__);
 			return -EFAULT;
@@ -505,11 +772,13 @@ static int disp_tdshp_update_param(struct mtk_ddp_comp *comp,
 		ret = -EFAULT;
 	} else {
 		mutex_lock(&primary_data->data_lock);
-		memcpy(primary_data->tdshp_regs, user_tdshp_regs,
-			sizeof(struct DISP_TDSHP_REG));
-
+		memcpy(primary_data->tdshp_regs, &(config->disp_tdshp_regs), length);
 		pr_notice("%s: Set module(%d) lut\n", __func__, comp->id);
-		ret = disp_tdshp_write_tdshp_reg(comp, handle, 0);
+		if ((tdshp_data->data->ver == TDSHP_VERSION_0) ||
+			(tdshp_data->data->ver == TDSHP_VERSION_1))
+			ret = disp_tdshp_write_tdshp_reg_legacy(comp, handle, 0);
+		else
+			ret = disp_tdshp_write_tdshp_reg(comp, handle, 0);
 		mutex_unlock(&primary_data->data_lock);
 	}
 
@@ -539,18 +808,17 @@ static int disp_tdshp_cfg_set_reg(struct mtk_ddp_comp *comp,
 {
 
 	int ret = 0;
-	struct DISP_TDSHP_REG *config = data;
 	struct mtk_disp_tdshp *tdshp = comp_to_tdshp(comp);
 	struct mtk_disp_tdshp_primary *primary_data = tdshp->primary_data;
 
-	if (disp_tdshp_update_param(comp, handle, config) < 0) {
+	if (disp_tdshp_update_param(comp, handle, data) < 0) {
 		DDPPR_ERR("%s: failed\n", __func__);
 		return -EFAULT;
 	}
 	if (comp->mtk_crtc->is_dual_pipe) {
 		struct mtk_ddp_comp *comp_tdshp1 = tdshp->companion;
 
-		if (disp_tdshp_update_param(comp_tdshp1, handle, config) < 0) {
+		if (disp_tdshp_update_param(comp_tdshp1, handle, data) < 0) {
 			DDPPR_ERR("%s: comp_tdshp1 failed\n", __func__);
 			return -EFAULT;
 		}
@@ -738,8 +1006,13 @@ static void disp_tdshp_config(struct mtk_ddp_comp *comp,
 			comp->regs_pa + DISP_TDSHP_CFG, 0x0 << 12, 0x1 << 12);
 	}
 
-	if (primary_data->tdshp_reg_valid)
-		disp_tdshp_write_tdshp_reg(comp, handle, 0);
+	if (primary_data->tdshp_reg_valid) {
+		if ((tdshp_data->data->ver == TDSHP_VERSION_0) ||
+			(tdshp_data->data->ver == TDSHP_VERSION_1))
+			disp_tdshp_write_tdshp_reg_legacy(comp, handle, 0);
+		else
+			disp_tdshp_write_tdshp_reg(comp, handle, 0);
+	}
 
 	if (primary_data->relay_state != 0)
 		cmdq_pkt_write(handle, comp->cmdq_base,
@@ -1173,56 +1446,67 @@ static void disp_tdshp_remove(struct platform_device *pdev)
 static const struct mtk_disp_tdshp_data mt6983_tdshp_driver_data = {
 	.support_shadow = false,
 	.need_bypass_shadow = true,
+	.ver = TDSHP_VERSION_0,// need confirm with algo
 };
 
 static const struct mtk_disp_tdshp_data mt6855_tdshp_driver_data = {
 	.support_shadow = false,
 	.need_bypass_shadow = true,
+	.ver = TDSHP_VERSION_0,
 };
 
 static const struct mtk_disp_tdshp_data mt6895_tdshp_driver_data = {
 	.support_shadow = false,
 	.need_bypass_shadow = true,
+	.ver = TDSHP_VERSION_0,// need confirm with algo
 };
 
 static const struct mtk_disp_tdshp_data mt6879_tdshp_driver_data = {
 	.support_shadow = false,
 	.need_bypass_shadow = true,
+	.ver = TDSHP_VERSION_0,// need confirm with algo
 };
 
 static const struct mtk_disp_tdshp_data mt6985_tdshp_driver_data = {
 	.support_shadow = false,
 	.need_bypass_shadow = true,
+	.ver = TDSHP_VERSION_0,// need confirm with algo
 };
 
 static const struct mtk_disp_tdshp_data mt6897_tdshp_driver_data = {
 	.support_shadow = false,
 	.need_bypass_shadow = true,
+	.ver = TDSHP_VERSION_0,// need confirm with algo
 };
 
 static const struct mtk_disp_tdshp_data mt6989_tdshp_driver_data = {
 	.support_shadow = false,
 	.need_bypass_shadow = true,
+	.ver = TDSHP_VERSION_0,// need confirm with algo
 };
 
 static const struct mtk_disp_tdshp_data mt6878_tdshp_driver_data = {
 	.support_shadow = false,
 	.need_bypass_shadow = true,
+	.ver = TDSHP_VERSION_0,// need confirm with algo
 };
 
 static const struct mtk_disp_tdshp_data mt6991_tdshp_driver_data = {
 	.support_shadow = false,
 	.need_bypass_shadow = true,
+	.ver = TDSHP_VERSION_0,// need confirm with algo
 };
 
 static const struct mtk_disp_tdshp_data mt6993_tdshp_driver_data = {
 	.support_shadow = false,
 	.need_bypass_shadow = true,
+	.ver = TDSHP_VERSION_0,// need confirm with algo
 };
 
 static const struct mtk_disp_tdshp_data mt6858_tdshp_driver_data = {
 	.support_shadow = false,
 	.need_bypass_shadow = true,
+	.ver = TDSHP_VERSION_4,
 };
 
 static const struct of_device_id mtk_disp_tdshp_driver_dt_match[] = {

@@ -142,6 +142,7 @@ static void disp_c3d_get_property(struct mtk_ddp_comp *comp, struct device_node 
 	struct mtk_disp_c3d *c3d_data = comp_to_c3d(comp);
 	int ret;
 	int bin_num = c3d_data->data->def_bin_num;
+	int lut_bit = 10;
 
 	DDPMSG("%s, def_bin_num:%d\n", __func__, bin_num);
 
@@ -149,6 +150,9 @@ static void disp_c3d_get_property(struct mtk_ddp_comp *comp, struct device_node 
 	if (ret)
 		DDPPR_ERR("%s, read dts failed use driver data :%d\n", __func__,  bin_num);
 
+	ret = of_property_read_u32(node, "lut-bit", &lut_bit);
+	if (ret)
+		DDPPR_ERR("%s, read dts failed, use default bit: %d\n", __func__, lut_bit);
 	if ((bin_num != 17) && (bin_num != 9))
 		DDPPR_ERR("%s, read dts bin_num wrong :%d\n", __func__, bin_num);
 
@@ -156,7 +160,9 @@ static void disp_c3d_get_property(struct mtk_ddp_comp *comp, struct device_node 
 	c3d_data->sram_start_addr = c3d_data->data->def_sram_start_addr;
 	c3d_data->sram_end_addr = c3d_data->sram_start_addr + (bin_num * bin_num * bin_num - 1) * 4;
 	c3d_data->c3dlut_size = bin_num * bin_num * bin_num * 3;
-	DDPMSG("%s, binnum:%d, datasize:%d\n", __func__, bin_num, c3d_data->c3dlut_size);
+	c3d_data->lut_bit = lut_bit;
+	DDPMSG("%s, binnum:%d, datasize:%d, lut_bit:%d\n", __func__,
+		bin_num, c3d_data->c3dlut_size, c3d_data->lut_bit);
 
 }
 
@@ -874,9 +880,12 @@ void disp_c3d_first_cfg(struct mtk_ddp_comp *comp,
 	ret = mtk_ddp_comp_locate_in_cur_crtc_path(comp->mtk_crtc, comp->id,
 					&_is_right_pipe, &_path_order);
 	if (!ret && c3d_data->bin_num)
-		pq_data->c3d_per_crtc |= c3d_data->bin_num << (_path_order * 16);
+		pq_data->c3d_data_per_crtc.bin_num |= c3d_data->bin_num << (_path_order * 16);
+	if (!ret && c3d_data->lut_bit)
+		pq_data->c3d_data_per_crtc.lut_bit |= c3d_data->lut_bit << (_path_order * 16);
 
-	DDPMSG("%s, c3d_per_crtc %d\n", __func__, c3d_data->bin_num);
+	DDPMSG("%s, c3d_data_per_crtc: bin_num: %d, lut_bit: %d\n",
+		__func__, c3d_data->bin_num, c3d_data->lut_bit);
 }
 
 static int disp_c3d_act_get_bin_num(struct mtk_ddp_comp *comp, void *data)
@@ -887,13 +896,25 @@ static int disp_c3d_act_get_bin_num(struct mtk_ddp_comp *comp, void *data)
 	int *c3d_bin_num = (int *)data;
 	struct pq_common_data *pq_data = mtk_crtc->pq_data;
 
-	*c3d_bin_num = pq_data->c3d_per_crtc;
-	DDPMSG("%s, bin_num_info: def:%d, dts:%d, caps:%d\n",
-		__func__, c3d_data->data->def_bin_num, c3d_data->bin_num, pq_data->c3d_per_crtc);
+	*c3d_bin_num = pq_data->c3d_data_per_crtc.bin_num;
+	DDPMSG("%s, bin_num_info: def:%d, dts:%d, caps:%d\n", __func__,
+		c3d_data->data->def_bin_num, c3d_data->bin_num, pq_data->c3d_data_per_crtc.bin_num);
 
 	return ret;
 }
 
+static int disp_c3d_act_get_lut_bit(struct mtk_ddp_comp *comp, void *data)
+{
+	int ret = 0;
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	int *c3d_lut_bit = (int *)data;
+	struct pq_common_data *pq_data = mtk_crtc->pq_data;
+
+	*c3d_lut_bit = pq_data->c3d_data_per_crtc.lut_bit;
+	DDPMSG("%s, accuracy_bit: 0x%x\n", __func__, *c3d_lut_bit);
+
+	return ret;
+}
 int disp_c3d_cfg_set_lut(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, void *data, unsigned int data_size)
 {
@@ -1001,6 +1022,9 @@ static int disp_c3d_ioctl_transact(struct mtk_ddp_comp *comp,
 	switch (cmd) {
 	case PQ_C3D_GET_BIN_NUM:
 		ret = disp_c3d_act_get_bin_num(comp, data);
+		break;
+	case PQ_C3D_GET_LUT_BIT:
+		ret = disp_c3d_act_get_lut_bit(comp, data);
 		break;
 	default:
 		break;
@@ -1400,7 +1424,7 @@ unsigned int disp_c3d_bypass_info(struct mtk_drm_crtc *mtk_crtc, int num)
 		return 1;
 	}
 	c3d_data_0 = comp_to_c3d(comp);
-	c3d_bin_num = mtk_crtc->pq_data->c3d_per_crtc;
+	c3d_bin_num = mtk_crtc->pq_data->c3d_data_per_crtc.bin_num;
 
 	if ((c3d_bin_num & 0xFF) == num )
 		return c3d_data_0->primary_data->relay_state != 0 ? 1 : 0;

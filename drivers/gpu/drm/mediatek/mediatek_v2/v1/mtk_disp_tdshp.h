@@ -209,11 +209,18 @@ struct DISP_TDSHP_REG_LEGACY {
 	__u32 tdshp_post_ylev_256;           //[MSB:LSB] = [31:24]
 };
 
-#define DISP_TDSHP_REG                  DISP_TDSHP_REG_LEGACY
+enum TdshpVer {
+	TDSHP_VERSION_0 = 0,
+	TDSHP_VERSION_1,
+	TDSHP_VERSION_2,
+	TDSHP_VERSION_3,
+	TDSHP_VERSION_4,
+};
 
 struct mtk_disp_tdshp_data {
 	bool support_shadow;
 	bool need_bypass_shadow;
+	int ver;
 };
 
 struct mtk_disp_tdshp_tile_overhead {
@@ -232,7 +239,7 @@ struct mtk_disp_tdshp_primary {
 	bool get_size_available;
 	struct DISP_TDSHP_DISPLAY_SIZE tdshp_size;
 	struct mutex data_lock;
-	struct DISP_TDSHP_REG *tdshp_regs;
+	void *tdshp_regs;
 	int tdshp_reg_valid;
 	int *aal_clarity_support;
 	unsigned int relay_state;

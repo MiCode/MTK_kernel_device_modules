@@ -107,6 +107,7 @@ struct mtk_disp_c3d {
 	int sram_start_addr;
 	int sram_end_addr;
 	int c3dlut_size;
+	int lut_bit;
 };
 
 inline struct mtk_disp_c3d *comp_to_c3d(struct mtk_ddp_comp *comp);
