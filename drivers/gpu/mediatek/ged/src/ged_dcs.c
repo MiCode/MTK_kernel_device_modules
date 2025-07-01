@@ -436,6 +436,11 @@ void dcs_enable(int enable)
 	if (g_core_mask_table == NULL)
 		return;
 
+	if (ged_dvfs_set_gpu_core_mask_fp == NULL) {
+		GED_LOGE("ged_dvfs_set_gpu_core_mask_fp is null");
+		return;
+	}
+
 	mutex_lock(&g_DCS_lock);
 
 	g_setting_dirty = true;
