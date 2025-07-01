@@ -26,6 +26,7 @@
 #include <linux/atomic.h>
 #include <linux/sched.h>
 #include <linux/mm.h>
+#include <linux/err.h>
 #include <linux/vmalloc.h>
 #include <linux/seq_file.h>
 #include <linux/dma-heap.h>
@@ -94,6 +95,8 @@
 #include <linux/atomic.h>
 //static atomic_t m4u_gz_init = ATOMIC_INIT(0);
 
+//QOS
+#include "mtk-interconnect.h"
 
 #if CHECK_SERVICE_IF_0
 /* Another Performance Measure Usage */
@@ -280,6 +283,14 @@ struct ISR_TABLE {
 	unsigned int int_number;
 	char device_name[16];
 };
+
+#define FDVT_PORT_NUM 4
+#define FDVT_PORT0_BW (213*1000000)
+#define FDVT_PORT1_BW (72*1000000)
+#define FDVT_PORT2_BW (154*1000000)
+#define FDVT_PORT3_BW (26*1000000)
+
+static struct icc_path *FDVT_PORT[FDVT_PORT_NUM] = {0, 0, 0 ,0};
 
 #if !IS_ENABLED(CONFIG_OF)
 const struct ISR_TABLE FDVT_IRQ_CB_TBL[FDVT_IRQ_TYPE_AMOUNT] = {
@@ -2781,6 +2792,25 @@ static void fdvt_enable_clock(bool En)
 			enable_clock(MT_CG_IMAGE_FD, "CAMERA");
 			enable_clock(MT_CG_IMAGE_LARB2_SMI, "CAMERA");
 #endif /* #if !IS_ENABLED(CONFIG_MTK_LEGACY) && IS_ENABLED(CONFIG_COMMON_CLK) */
+			if(!IS_ERR(FDVT_PORT[0]))
+				mtk_icc_set_bw(FDVT_PORT[0], Bps_to_icc(FDVT_PORT0_BW), 0);
+			else
+				log_err("FDVT_PORT[0] = %lld", (int64_t)PTR_ERR(FDVT_PORT[0]));
+
+			if(!IS_ERR(FDVT_PORT[1]))
+				mtk_icc_set_bw(FDVT_PORT[1], Bps_to_icc(FDVT_PORT1_BW), 0);
+			else
+				log_err("FDVT_PORT[1] = %lld", (int64_t)PTR_ERR(FDVT_PORT[1]));
+
+			if(!IS_ERR(FDVT_PORT[2]))
+				mtk_icc_set_bw(FDVT_PORT[2], Bps_to_icc(FDVT_PORT2_BW), 0);
+			else
+				log_err("FDVT_PORT[2] = %lld", (int64_t)PTR_ERR(FDVT_PORT[2]));
+
+			if(!IS_ERR(FDVT_PORT[3]))
+				mtk_icc_set_bw(FDVT_PORT[3], Bps_to_icc(FDVT_PORT3_BW), 0);
+			else
+				log_err("FDVT_PORT[3] = %lld", (int64_t)PTR_ERR(FDVT_PORT[3]));
 			break;
 		default:
 			break;
@@ -2803,6 +2833,25 @@ static void fdvt_enable_clock(bool En)
 		clock_enable_count--;
 		switch (clock_enable_count) {
 		case 0:
+			if(!IS_ERR(FDVT_PORT[0]))
+				mtk_icc_set_bw(FDVT_PORT[0], Bps_to_icc(0), 0);
+			else
+				log_err("FDVT_PORT[0] = %lld", (int64_t)PTR_ERR(FDVT_PORT[0]));
+
+			if(!IS_ERR(FDVT_PORT[1]))
+				mtk_icc_set_bw(FDVT_PORT[1], Bps_to_icc(0), 0);
+			else
+				log_err("FDVT_PORT[1] = %lld", (int64_t)PTR_ERR(FDVT_PORT[1]));
+
+			if(!IS_ERR(FDVT_PORT[2]))
+				mtk_icc_set_bw(FDVT_PORT[2], Bps_to_icc(0), 0);
+			else
+				log_err("FDVT_PORT[2] = %lld", (int64_t)PTR_ERR(FDVT_PORT[2]));
+
+			if(!IS_ERR(FDVT_PORT[3]))
+				mtk_icc_set_bw(FDVT_PORT[3], Bps_to_icc(0), 0);
+			else
+				log_err("FDVT_PORT[3] = %lld", (int64_t)PTR_ERR(FDVT_PORT[3]));
 #if !IS_ENABLED(CONFIG_MTK_LEGACY) && IS_ENABLED(CONFIG_COMMON_CLK) /*CCF*/
 #ifndef EP_NO_CLKMGR
 			fdvt_disable_unprepare_ccf_clock();
@@ -4636,6 +4685,34 @@ static signed int FDVT_probe(struct platform_device *pDev)
 		}
 
 		pm_runtime_enable(fdvt_devs->dev);
+
+		FDVT_PORT[0] = of_mtk_icc_get(fdvt_devs->dev, "fdvt_qos_rda");
+
+		if (IS_ERR(FDVT_PORT[0]))
+			log_err("FDVT_PORT[0], ret = %lld", (int64_t)PTR_ERR(FDVT_PORT[0]));
+		else
+			log_inf("[Get Succeed] FDVT_PORT[0]");
+
+		FDVT_PORT[1] = of_mtk_icc_get(fdvt_devs->dev, "fdvt_qos_rdb");
+
+		if (IS_ERR(FDVT_PORT[1]))
+			log_err("FDVT_PORT[1], ret = %lld", (int64_t)PTR_ERR(FDVT_PORT[1]));
+		else
+			log_inf("[Get Succeed] FDVT_PORT[1]");
+
+		FDVT_PORT[2] = of_mtk_icc_get(fdvt_devs->dev, "fdvt_qos_wra");
+
+		if (IS_ERR(FDVT_PORT[2]))
+			log_err("FDVT_PORT[2], ret = %lld", (int64_t)PTR_ERR(FDVT_PORT[2]));
+		else
+			log_inf("[Get Succeed] FDVT_PORT[2]");
+
+		FDVT_PORT[3] = of_mtk_icc_get(fdvt_devs->dev, "fdvt_qos_wrb");
+
+		if (IS_ERR(FDVT_PORT[3]))
+			log_err("FDVT_PORT[3], ret = %lld", (int64_t)PTR_ERR(FDVT_PORT[3]));
+		else
+			log_inf("[Get Succeed] FDVT_PORT[3]");
 
 		/* Init spinlocks */
 		spin_lock_init(&fdvt_info.spinlock_fdvt_ref);
