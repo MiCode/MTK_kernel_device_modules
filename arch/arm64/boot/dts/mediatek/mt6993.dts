@@ -18865,7 +18865,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			#thermal-sensor-cells = <1>;
 		};
 
-		low-battery-throttling {
+		low_battery_throttling: low-battery-throttling {
 			compatible = "mediatek,low_battery_throttling";
 			lvsys-thd-enable = <1>;
 			vbat-thd-enable = <0>;
