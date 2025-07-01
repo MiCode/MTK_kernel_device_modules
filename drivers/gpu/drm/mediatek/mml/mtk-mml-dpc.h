@@ -11,6 +11,7 @@
 #include <linux/types.h>
 
 #include "mtk_dpc.h"
+#include "mtk-mml.h"
 
 extern int mml_dl_dpc;
 
@@ -36,8 +37,8 @@ int mml_dpc_power_keep(u32 sysid);
 void mml_dpc_power_release(u32 sysid);
 void mml_dpc_isr_keep(void);
 void mml_dpc_isr_release(void);
-int mml_dpc_power_keep_gce(u32 sysid, struct cmdq_pkt *pkt, u16 gpr, struct cmdq_reuse *reuse);
-void mml_dpc_power_release_gce(u32 sysid, struct cmdq_pkt *pkt, struct cmdq_reuse *reuse);
+int mml_dpc_power_keep_gce(enum mml_mode mode, struct cmdq_pkt *pkt, u16 gpr, struct cmdq_reuse *reuse);
+void mml_dpc_power_release_gce(enum mml_mode mode, struct cmdq_pkt *pkt, struct cmdq_reuse *reuse);
 void mml_dpc_hrt_bw_set(u32 larb_idx, const u32 bw_in_mb, bool force_keep);
 void mml_dpc_srt_bw_set(u32 larb_idx, const u32 bw_in_mb, bool force_keep);
 void mml_dpc_dvfs_set(const u8 level, bool force);

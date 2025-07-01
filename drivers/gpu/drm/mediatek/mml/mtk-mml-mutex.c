@@ -398,9 +398,10 @@ static s32 mutex_trigger_mt6993d(struct mml_comp *comp, struct mml_task *task,
 
 			if (cfg->dpc && (mml_dl_dpc & MML_DPC_MUTEX_VOTE)) {
 #ifndef MML_FPGA
-				mml_dpc_power_release_gce(comp->sysid, pkt, NULL);
+				mml_dpc_power_release_gce(cfg->info.mode, pkt,
+					task->reuse_dpc);
 				cmdq_pkt_wfe(pkt, mml_ir_get_disp_ready_event(cfg->mml));
-				mml_dpc_power_keep_gce(comp->sysid, pkt,
+				mml_dpc_power_keep_gce(cfg->info.mode, pkt,
 					mutex->data->gpr[ccfg->pipe], task->reuse_dpc);
 
 #endif

@@ -421,12 +421,11 @@ static s32 sys_init(struct mml_comp *comp, struct mml_task *task,
 			ultra_mask |= BIT(comp->larb_port) | BIT(comp->larb_port_stash);
 	}
 
-	if (cfg->dpc) {
-		if (mml_dl_dpc & MML_DPC_PKT_VOTE &&
-			cfg->info.mode != MML_MODE_DDP_ADDON &&
-			comp->sysid == path->mmlsys->sysid)
-			mml_dpc_power_keep_gce(comp->sysid, pkt, sys->data->gpr[ccfg->pipe],
-				task->reuse_dpc);
+	if ((mml_dl_dpc & MML_DPC_PKT_VOTE) &&
+		cfg->info.mode != MML_MODE_DDP_ADDON &&
+		comp->sysid == path->mmlsys->sysid) {
+		mml_dpc_power_keep_gce(cfg->info.mode, pkt,
+			sys->data->gpr[ccfg->pipe], task->reuse_dpc);
 	}
 
 	if (cfg->dbgtp)
@@ -1172,11 +1171,11 @@ static s32 sys_done(struct mml_comp *comp, struct mml_task *task,
 
 	cmdq_pkt_write(pkt, NULL, comp->base_pa + SYS_MISC_REG, 0, GENMASK(21, 12));
 
-	if (task->config->dpc && (mml_dl_dpc & MML_DPC_PKT_VOTE) &&
+	if ((mml_dl_dpc & MML_DPC_PKT_VOTE) &&
 	    cfg->info.mode != MML_MODE_DDP_ADDON &&
 	    comp->sysid == path->mmlsys->sysid) {
 #ifndef MML_FPGA
-		mml_dpc_power_release_gce(comp->sysid, pkt, task->reuse_dpc);
+		mml_dpc_power_release_gce(cfg->info.mode, pkt, task->reuse_dpc);
 #endif
 	}
 

@@ -664,8 +664,7 @@ static s32 command_reuse(struct mml_task *task, u32 pipe)
 	cmdq_pkt_reuse_buf_va(task->pkts[pipe], task->reuse[pipe].labels,
 		task->reuse[pipe].label_idx);
 
-	if (cfg->dpc)
-		cmdq_pkt_reuse_buf_va(pkt, task->reuse_dpc, ARRAY_SIZE(task->reuse_dpc));
+	cmdq_pkt_reuse_buf_va(pkt, task->reuse_dpc, ARRAY_SIZE(task->reuse_dpc));
 
 	/* make sure this pkt not jump to others */
 	cmdq_pkt_refinalize(task->pkts[pipe]);
