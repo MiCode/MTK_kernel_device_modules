@@ -4763,6 +4763,7 @@ static int mtk_dp_parse_efuse(struct mtk_dp *mtk_dp, struct platform_device *pde
 
 		if (IS_ERR(buf))
 			return PTR_ERR(buf);
+		kfree(buf);
 	}
 	return 0;
 }
