@@ -525,11 +525,18 @@ static void write_to_logstore(char *str, size_t str_len)
 	new_str_len = scnprintf(textbuff, sizeof(textbuff), "%10llu.%06llu :%5d-%-16s: %s\n",
 				time_ms_high, time_ms_low, current->pid, current->comm, str);
 
+	if (expdb_logstore->log_offset > BOOT_BUFF_SIZE)
+		expdb_logstore->log_offset = 0;
+
 	reserver_memory = BOOT_BUFF_SIZE - expdb_logstore->log_offset;
 	if(new_str_len > reserver_memory) {
-		memcpy_toio(expdb_logstore->bootbuff + expdb_logstore->log_offset, textbuff, reserver_memory);
-		memcpy_toio(expdb_logstore->bootbuff, textbuff + reserver_memory, new_str_len - reserver_memory);
-		expdb_logstore->log_offset = new_str_len - reserver_memory;
+		if (reserver_memory < sizeof(textbuff)) {
+			memcpy_toio(expdb_logstore->bootbuff + expdb_logstore->log_offset,
+				textbuff, reserver_memory);
+			memcpy_toio(expdb_logstore->bootbuff, textbuff + reserver_memory,
+				new_str_len - reserver_memory);
+			expdb_logstore->log_offset = new_str_len - reserver_memory;
+		}
 	} else {
 		memcpy_toio(expdb_logstore->bootbuff + expdb_logstore->log_offset, textbuff, new_str_len);
 		expdb_logstore->log_offset += new_str_len;
@@ -584,8 +591,8 @@ static int write_expdb_thread_fn(void *data)
 
 	while (!kthread_should_stop()) {
 		if (wait_event_interruptible_timeout(wait_queue,
-			expdb_logstore->log_offset != expdb_logstore->store_offset, 2 * HZ)
-			== -ERESTARTSYS)
+		(expdb_logstore->log_offset != expdb_logstore->store_offset &&
+		expdb_logstore->bdev != NULL), 2 * HZ) == -ERESTARTSYS)
 			break;
 		bootlog_to_partition();
 	}
@@ -656,7 +663,7 @@ u32 set_pmic_boot_phase(u32 boot_phase)
 
 	if (!map) {
 		if (get_pmic_interface() == false)
-			return -1;
+			return PMIC_ERROR;
 	}
 	boot_phase = boot_phase & BOOT_PHASE_MASK;
 	ret = regmap_read(map, pmic_addr, &reg_val);
@@ -677,7 +684,7 @@ u32 get_pmic_boot_phase(void)
 
 	if (!map) {
 		if (get_pmic_interface() == false)
-			return -1;
+			return PMIC_ERROR;
 	}
 
 	ret = regmap_read(map, pmic_addr, &reg_val);
@@ -688,7 +695,7 @@ u32 get_pmic_boot_phase(void)
 		return reg_val;
 	}
 
-	return -1;
+	return PMIC_ERROR;
 }
 EXPORT_SYMBOL_GPL(get_pmic_boot_phase);
 

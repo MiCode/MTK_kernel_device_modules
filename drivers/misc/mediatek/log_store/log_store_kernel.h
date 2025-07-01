@@ -24,6 +24,7 @@
 #define KEDUMP_DISABLE (0)
 
 #define MAX_DRAM_COUNT	2
+#define PMIC_ERROR 0xFFFFFFFFU	/*  return value of the error of pmic*/
 
 #define CONFIG_LONG_POWERKEY_LOG_STORE
 
