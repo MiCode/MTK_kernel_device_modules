@@ -5989,6 +5989,24 @@ dramc: dramc@10230000 {
 			iommus-supply = <&disp_iommu>;
 		};
 
+		videogo {
+			compatible =  "mediatek,videogo";
+			/* Create Instance*/
+			cgroup-colocate = <1>;          /* 0:disable, 1:enable */
+			runnable-boost-enable = <1>;    /* 0:disable, 1:enable */
+			/* VP Low Power */
+			cpu-pf-ctrl = <0>;              /* 0:disable, 1:enable */
+			margin-control = <1000000 20 0>;/* <0 0 0>:disable     */
+			rt-non-idle-preempt = <0>;      /* 0:disable, 1:enable */
+			runnable-boost-disable = <1>;   /* 0:disable, 1:enable */
+			slc-wce-ctrl = <0>;             /* 0:disable, 1:enable */
+			util-est-boost-disable = <0>;   /* 0:disable, 1:enable */
+			/* Transcoding */
+			ct-to-vip = <0>;                /* 0:disable, 1:enable */
+			gpu-freq-min-opp = <7>;         /* remove:disable      */
+			uclamp-min-ta-val = <80>;      /* 0:disable, others:enable */
+		};
+
 		mbist@17060000 {
 			compatible = "mediatek,mbist";
 			reg = <0 0x17060000 0 0x10000>;
