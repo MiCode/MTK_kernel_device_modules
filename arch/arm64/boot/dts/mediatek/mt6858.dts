@@ -683,7 +683,7 @@
 	};
 
 	bus-parity@c538800 {
-		compatible = "mediatek,bus-parity-disabled";
+		compatible = "mediatek,bus-parity";
 		reg = <0 0x0c538800 0 0x20>,	/* M0, MST_CCIM0 */
 			<0 0x0c538820 0 0x20>,	/* M1, MST_CCIM1 */
 			<0 0x0c538840 0 0x20>,	/* M2, MST_INTAXI */
@@ -717,8 +717,8 @@
 		mcu-data-len = <4 4 2 4 2 2 4>;
 	};
 
-	dbg-error-flag-disabled {
-		compatible = "mediatek,dbg-error-flag-disabled";
+	dbg-error-flag {
+		compatible = "mediatek,dbg-error-flag";
 		mediatek,error-flag = <&soc_dbg_error_flag>;
 	};
 
@@ -1132,8 +1132,8 @@
 		cm-perf-mode-thd = <5>;
 	};
 
-	cache-parity-disabled {
-		compatible = "mediatek,mt6873-cache-parity-disabled";
+	cache-parity {
+		compatible = "mediatek,mt6873-cache-parity";
 		ecc-irq-support = <1>;
 		arm-dsu-ecc-hwirq = <32>;
 		interrupts = <GIC_SPI 1 IRQ_TYPE_LEVEL_HIGH 0>,
@@ -1145,64 +1145,6 @@
 			<GIC_SPI 7 IRQ_TYPE_LEVEL_HIGH 0>,
 			<GIC_SPI 8 IRQ_TYPE_LEVEL_HIGH 0>,
 			<GIC_SPI 0 IRQ_TYPE_LEVEL_HIGH 0>;
-	};
-
-	lastbus: lastbus {
-		compatible = "mediatek,lastbus";
-		enabled = <0>;
-		sw-version = <1>;
-		timeout-ms = <200>;
-		timeout-type = <0>;
-		timeout-warning = <0>;
-		monitors {
-			monitor1 {
-				monitor-name = "debug_ctrl_ao_INFRA_AO";
-				base = <0x10023000>;
-				num-ports = <48>;
-				bus-status-offset = <0x20>;
-				bus-status-num = <7>;
-				bus-freq-mhz = <78>;
-			};
-			monitor2 {
-				monitor-name = "debug_ctrl_ao_INFRA_AO1";
-				base = <0x1002b000>;
-				num-ports = <12>;
-				bus-status-offset = <0x8>;
-				bus-status-num = <2>;
-				bus-freq-mhz = <78>;
-			};
-			monitor3 {
-				monitor-name = "debug_ctrl_ao_EMI_AO";
-				base = <0x10042000>;
-				num-ports = <14>;
-				bus-status-offset = <0x10>;
-				bus-status-num = <4>;
-				bus-freq-mhz = <688>;
-			};
-			monitor4 {
-				monitor-name = "debug_ctrl_ao_PERI_PAR_AO";
-				base = <0x11033000>;
-				num-ports = <24>;
-				bus-status-offset = <0x10>;
-				bus-status-num = <4>;
-				bus-freq-mhz = <156>;
-			};
-			monitor5 {
-				monitor-name = "debug_ctrl_ao_VLP_AO";
-				base = <0x1c01d000>;
-				num-ports = <12>;
-				bus-status-offset = <0xc>;
-				bus-status-num = <2>;
-				bus-freq-mhz = <156>;
-			};
-			monitor6 {
-				monitor-name = "debug_ctrl_ao_MMUP_AO";
-				base = <0x1ec51000>;
-				num-ports = <13>;
-				bus-freq-mhz = <728>;
-				isr-dump = <0>;
-			};
-		};
 	};
 
 	drm_wv: drm-wv {
@@ -2300,11 +2242,69 @@
 			gpueb-diagnosis-mode = <0>;
 		};
 
-		drm: drm-disabled@1000d000 {
-			compatible = "mediatek,dbgtop-drm-disabled";
+		drm: drm@1000d000 {
+			compatible = "mediatek,dbgtop-drm";
 			reg = <0 0x1000d000 0 0x1000>;
 			ver = <2>;
 			sec-write = <1>;
+		};
+
+		lastbus: lastbus {
+			compatible = "mediatek,lastbus";
+			enabled = <1>;
+			sw-version = <1>;
+			timeout-ms = <200>;
+			timeout-type = <0>;
+			timeout-warning = <0>;
+			monitors {
+				monitor1 {
+					monitor-name = "debug_ctrl_ao_INFRA_AO";
+					base = <0x10023000>;
+					num-ports = <48>;
+					bus-status-offset = <0x20>;
+					bus-status-num = <7>;
+					bus-freq-mhz = <78>;
+				};
+				monitor2 {
+					monitor-name = "debug_ctrl_ao_INFRA_AO1";
+					base = <0x1002b000>;
+					num-ports = <12>;
+					bus-status-offset = <0x8>;
+					bus-status-num = <2>;
+					bus-freq-mhz = <78>;
+				};
+				monitor3 {
+					monitor-name = "debug_ctrl_ao_EMI_AO";
+					base = <0x10042000>;
+					num-ports = <14>;
+					bus-status-offset = <0x10>;
+					bus-status-num = <4>;
+					bus-freq-mhz = <688>;
+				};
+				monitor4 {
+					monitor-name = "debug_ctrl_ao_PERI_PAR_AO";
+					base = <0x11033000>;
+					num-ports = <24>;
+					bus-status-offset = <0x10>;
+					bus-status-num = <4>;
+					bus-freq-mhz = <156>;
+				};
+				monitor5 {
+					monitor-name = "debug_ctrl_ao_VLP_AO";
+					base = <0x1c01d000>;
+					num-ports = <12>;
+					bus-status-offset = <0xc>;
+					bus-status-num = <2>;
+					bus-freq-mhz = <156>;
+				};
+				monitor6 {
+					monitor-name = "debug_ctrl_ao_MMUP_AO";
+					base = <0x1ec51000>;
+					num-ports = <13>;
+					bus-freq-mhz = <728>;
+					isr-dump = <0>;
+				};
+			};
 		};
 
 		soc_dbg_error_flag: soc-dbg-error-flag@d01a000 {
@@ -2332,7 +2332,7 @@
 		};
 
 		tracker: tracker@10208000 {
-			compatible = "mediatek,tracker-disabled";
+			compatible = "mediatek,tracker";
 			reg = <0 0x10208000 0 0x1000>;
 			timer-sep = <0>;
 			no-w-valid-chk = <1>;
@@ -8150,6 +8150,7 @@ dramc: dramc@10230000 {
 #include "mediatek/trusty.dtsi"
 #include "mediatek/cust_mt6858_msdc.dtsi"
 #include "mediatek/mt6858-clkitg.dtsi"
+#include "mediatek/mt6858-coresight.dtsi"
 #include "mediatek/cust_mt6858_connfem.dtsi"
 #include "mediatek/mt6858-disable-unused.dtsi"
 

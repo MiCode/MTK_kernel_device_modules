@@ -1,0 +1,165 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Copyright (c) 2025 MediaTek Inc.
+ */
+
+/ {
+	soc {
+		funnel1: funnel@d041000 {
+			compatible = "arm,coresight-dynamic-funnel", "arm,primecell";
+			reg = <0 0x0d041000 0 0x1000>;
+
+			status = "ok";
+
+			clocks = <&clk26m>;
+			clock-names = "apb_pclk";
+
+			in-ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				port@0 {
+					reg = <0>;
+					funnel1_in0: endpoint {
+						remote-endpoint = <&btts_out>;
+					};
+				};
+
+				port@1 {
+					reg = <1>;
+					funnel1_in1: endpoint {
+						remote-endpoint = <&btm0_out>;
+					};
+				};
+
+				port@2 {
+					reg = <2>;
+					funnel1_in2: endpoint {
+						remote-endpoint = <&btm1_out>;
+					};
+				};
+
+				port@5 {
+					reg = <5>;
+					funnel1_in5: endpoint {
+						remote-endpoint = <&gpu_etm_out>;
+					};
+				};
+			};
+
+			out-ports {
+				port {
+					funnel1_out: endpoint {
+						remote-endpoint = <&etf_in>;
+					};
+				};
+			};
+		};
+
+		etf: etf@d044000 {
+			compatible = "arm,coresight-tmc", "arm,primecell";
+			reg = <0 0x0d044000 0 0x1000>;
+
+			clocks = <&clk26m>;
+			clock-names = "apb_pclk";
+
+			status = "ok";
+
+			in-ports {
+				port {
+					etf_in: endpoint {
+						remote-endpoint = <&funnel1_out>;
+					};
+				};
+			};
+
+			out-ports {
+				port {
+					etf_out: endpoint {
+						remote-endpoint = <&etr_in>;
+					};
+				};
+			};
+		};
+
+		etr: etr@d043000 {
+			compatible = "arm,coresight-tmc", "arm,primecell";
+			reg = <0 0x0d043000 0 0x1000>;
+
+			clocks = <&clk26m>;
+			clock-names = "apb_pclk";
+
+			status = "ok";
+
+			in-ports {
+				port {
+					etr_in: endpoint {
+						remote-endpoint = <&etf_out>;
+					};
+				};
+			};
+		};
+
+		btts: btts {
+			compatible = "arm,coresight-dummy-source";
+
+			status = "ok";
+
+			out-ports {
+				port {
+					btts_out: endpoint {
+						remote-endpoint = <&funnel1_in0>;
+					};
+				};
+			};
+		};
+
+		btm0: btm0 {
+			compatible = "arm,coresight-dummy-source";
+
+			status = "ok";
+
+			out-ports {
+				port {
+					btm0_out: endpoint {
+						remote-endpoint = <&funnel1_in1>;
+					};
+				};
+			};
+		};
+
+		btm1: btm1 {
+			compatible = "arm,coresight-dummy-source";
+
+			status = "ok";
+
+			out-ports {
+				port {
+					btm1_out: endpoint {
+						remote-endpoint = <&funnel1_in2>;
+					};
+				};
+			};
+		};
+
+		gpu_etm: gpu-etm {
+			compatible = "arm,coresight-dummy-source";
+
+			status = "ok";
+
+			out-ports {
+				port {
+					gpu_etm_out: endpoint {
+						remote-endpoint = <&funnel1_in5>;
+					};
+				};
+			};
+		};
+
+		trbe {
+			compatible = "arm,trace-buffer-extension";
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_PPI 4 IRQ_TYPE_LEVEL_HIGH 0>;
+		};
+	};
+};
