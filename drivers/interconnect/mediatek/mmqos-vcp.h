@@ -15,12 +15,14 @@
 #if IS_ENABLED(CONFIG_MTK_MMQOS_VCP)
 int mmqos_vcp_init_thread(void *data);
 bool mmqos_is_init_done(void);
+bool mmqos_vcp_ready_done(void);
 int mmqos_vcp_ipi_send(const u8 func, const u8 idx, u32 *data);
 int mtk_mmqos_enable_vcp(const bool enable);
 #else
 static inline int mmqos_vcp_init_thread(void *data)
 {	return -EINVAL; }
 static inline bool mmqos_is_init_done(void) { return false; }
+static inline bool mmqos_vcp_ready_done(void) { return false; }
 static inline int mmqos_vcp_ipi_send(const u8 func, const u8 idx, u32 *data)
 {	return -EINVAL; }
 static inline int mtk_mmqos_enable_vcp(const bool enable)

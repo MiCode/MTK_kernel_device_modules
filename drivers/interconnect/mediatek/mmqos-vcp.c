@@ -42,6 +42,12 @@ bool mmqos_is_init_done(void)
 }
 EXPORT_SYMBOL_GPL(mmqos_is_init_done);
 
+bool mmqos_vcp_ready_done(void)
+{
+	return (mmqos_state != MMQOS_DISABLE) ? mmqos_vcp_cb_ready : false;
+}
+EXPORT_SYMBOL_GPL(mmqos_vcp_ready_done);
+
 int mmqos_vcp_ipi_send(const u8 func, const u8 idx, u32 *data)
 {
 	struct mmqos_ipi_data slot = {
@@ -162,7 +168,7 @@ int mtk_mmqos_enable_vcp(const bool enable)
 	if (enable) {
 		if (!vcp_power) {
 			ret = vcp_register_feature_ex(MMQOS_FEATURE_ID);
-			if (ret)
+			if (ret < 0)
 				goto enable_vcp_end;
 		}
 		vcp_power += 1;
@@ -173,14 +179,14 @@ int mtk_mmqos_enable_vcp(const bool enable)
 		}
 		if (vcp_power == 1) {
 			ret = vcp_deregister_feature_ex(MMQOS_FEATURE_ID);
-			if (ret)
+			if (ret < 0)
 				goto enable_vcp_end;
 		}
 		vcp_power -= 1;
 	}
 
 enable_vcp_end:
-	if (ret)
+	if (ret < 0)
 		MMQOS_ERR("ret:%d enable:%d vcp_power:%d",
 			ret, enable, vcp_power);
 	if (log_level & log_vcp_pwr)
@@ -214,7 +220,7 @@ int mmqos_vcp_init_thread(void *data)
 	struct iommu_domain *domain;
 	int retry = 0;
 
-	while (mtk_mmqos_enable_vcp(true)) {
+	while (mtk_mmqos_enable_vcp(true) < 0) {
 		if (++retry > 100) {
 			MMQOS_ERR("vcp is not power on yet");
 			return -ETIMEDOUT;
