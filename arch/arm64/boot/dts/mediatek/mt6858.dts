@@ -7103,6 +7103,7 @@ dramc: dramc@10230000 {
 				interrupts = <GIC_SPI 395 IRQ_TYPE_LEVEL_HIGH 0>;
 				clocks = <&clk26m>;
 				clock-names = "sys_ck";
+				mediatek,usb-offload = <&usb_offload>;
 				status = "okay";
 			};
 		};
@@ -8657,6 +8658,17 @@ dramc: dramc@10230000 {
 				remote-endpoint = <&mtu3_drd_switch>;
 			};
 		};
+	};
+
+	usb_offload: usb-offload {
+		compatible = "mediatek,usb-offload";
+		xhci-host = <&usb_host>;
+		mediatek,main-sram = "afe-sram";
+		mediatek,reserved-sram-size = <0x4000>;
+		mediatek,ready-for-xhci;
+		mediatek,explicit-feedback;
+		mediatek,hub-offload;
+		mediatek,idle-lowpwr;
 	};
 
 	usb_meta: usb-meta {
