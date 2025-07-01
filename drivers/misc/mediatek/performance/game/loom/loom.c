@@ -152,12 +152,12 @@ static void loom_find_new_active_list(struct hlist_head *head, int tgid)
 	struct loom_attr_info *iter, *find_iter;
 	int tlen = 0;
 
+	loom_cfg_lock();
 	rcu_read_lock();
 	gtsk = find_task_by_vpid(tgid);
 	if (!gtsk)
 		goto done;
 
-	loom_cfg_lock();
 	get_task_struct(gtsk);
 	for_each_thread(gtsk, sib) {
 		get_task_struct(sib);
@@ -215,10 +215,10 @@ static void loom_find_new_active_list(struct hlist_head *head, int tgid)
 		put_task_struct(sib);
 	}
 	put_task_struct(gtsk);
-	loom_cfg_unlock();
 
 done:
 	rcu_read_unlock();
+	loom_cfg_unlock();
 }
 
 static int loom_update_active_list(struct loom_render_info *info)
@@ -312,7 +312,7 @@ static void cpumask_to_cpu_cluster(int cpu_mask, int *cpuid, int *cpu_cluster)
 			}
 		}
 	}
-	game_main_trace("[%s] cpumask=%d, cpuid=%d, cluster=%d", cpu_mask, *cpuid, *cpu_cluster);
+	game_main_trace("[%s] cpumask=%d, cpuid=%d, cluster=%d", __func__, cpu_mask, *cpuid, *cpu_cluster);
 }
 
 static void loom_set_operation(struct loom_render_info *info)
