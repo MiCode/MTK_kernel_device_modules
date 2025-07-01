@@ -1487,6 +1487,11 @@ int mmdvfs_set_vcp_test(const char *val, const struct kernel_param *kp)
 	int ret;
 	int *last = NULL;
 
+	if (mmdvfs_get_version() != MMDVFS_VER_V35) {
+		MMDVFS_ERR("mmdvfs_get_version:%d not support %s", mmdvfs_get_version(), __func__);
+		return -EINVAL;
+	}
+
 	ret = sscanf(val, "%hhu %hhu %d", &func, &idx, &opp);
 	vcp = func & (1U << 7);
 	func &= ~(1U << 7);
