@@ -5563,7 +5563,7 @@ dramc: dramc@10230000 {
 			mediatek,smi = <&smi_mdp_sub_comm0>;
 
 			core-0 = "enable";
-			vcp-hwvoter = "disable";
+			vcp-hwvoter = "enable";
 			vcp-sram-size = <0x00040000>;
 			vcp-dram-size = <0x00800000>;
 			core-nums = <1>;	/* core number */
