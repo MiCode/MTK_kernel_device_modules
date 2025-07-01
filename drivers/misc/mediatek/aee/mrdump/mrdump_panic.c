@@ -91,22 +91,6 @@ int aee_nested_printf(const char *fmt, ...)
 	return total_len;
 }
 
-static void check_last_ko(void)
-{
-	struct list_head *p_modules = aee_get_modules();
-	struct module *mod;
-
-	if (!p_modules)
-		return;
-
-	list_for_each_entry_rcu(mod, p_modules, list) {
-		if (mod->state == MODULE_STATE_UNFORMED)
-			break;
-		load_ko_addr_list(mod);
-		break;
-	}
-}
-
 static void mrdump_cblock_update(enum AEE_REBOOT_MODE reboot_mode,
 				 struct pt_regs *regs, const char *msg, ...)
 {
@@ -266,7 +250,6 @@ int mrdump_common_die(int reboot_reason, const char *msg,
 	case AEE_FIQ_STEP_COMMON_DIE_EMISC:
 		aee_rr_rec_fiq_step(AEE_FIQ_STEP_COMMON_DIE_EMISC);
 		mrdump_mini_add_extra_misc();
-		check_last_ko();
 		fallthrough;
 	case AEE_FIQ_STEP_COMMON_DIE_CS:
 		aee_rr_rec_fiq_step(AEE_FIQ_STEP_COMMON_DIE_CS);
