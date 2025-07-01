@@ -251,6 +251,7 @@
 #define HYP_PMM_REG_HYPMMU_SHARE_REGION		(0XBB00FFA5)
 #define HYP_PMM_IOVA_TO_PHYS			(0XBB00FFA6)
 #define HYP_PMM_HYPMMU_TYPE2_INV		(0XBB00FFA7)
+#define MTK_V7S_PAGE_SHIFT			(12UL)
 
 struct mtk_iommu_domain {
 	int				tab_id;
@@ -1677,8 +1678,8 @@ static void register_share_region(const struct mtk_iommu_plat_data *plat_data)
 	for (i = 0; i < plat_data->iova_region_nr; i++) {
 		region = &plat_data->iova_region[i];
 		if (region->type == PROTECTED) {
-			base_page_no = region->iova_base >> PAGE_SHIFT;
-			size_in_pages = region->size >> PAGE_SHIFT;
+			base_page_no = region->iova_base >> MTK_V7S_PAGE_SHIFT;
+			size_in_pages = region->size >> MTK_V7S_PAGE_SHIFT;
 			pr_info("%s: tab_id:%d, reg base=0x%x size=0x%x\n", __func__,
 				plat_data->tab_id, base_page_no, size_in_pages);
 			mtee_hypmmu_reg_share_region(base_page_no, size_in_pages,
