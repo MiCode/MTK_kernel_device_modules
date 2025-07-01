@@ -97,6 +97,7 @@ static int sbe_affinity_task_min_cap;
 static int sbe_affinity_task_low_threshold_cap;
 static int sbe_ignore_vip_task_enable;
 static int sbe_ignore_vip_task_status;
+static int sbe_without_dptv2_enable;
 /*For AI jank detection*/
 static int ai_rescuing_frame_id;
 static int registered;
@@ -169,6 +170,7 @@ module_param(sbe_affinity_task, int, 0644);
 module_param(sbe_affinity_task_min_cap, int, 0644);
 module_param(sbe_affinity_task_low_threshold_cap, int, 0644);
 module_param(sbe_ignore_vip_task_enable, int, 0644);
+module_param(sbe_without_dptv2_enable, int, 0644);
 
 static void update_hwui_frame_info(struct sbe_render_info *info,
 		struct hwui_frame_info *frame, unsigned long long id,
@@ -185,6 +187,11 @@ static int nsec_to_100usec(unsigned long long nsec)
 	husec = div64_u64(nsec, (unsigned long long)NSEC_PER_HUSEC);
 
 	return (int)husec;
+}
+
+int get_sbe_sbe_without_dptv2_enable(void)
+{
+	return sbe_without_dptv2_enable;
 }
 
 int get_sbe_force_bypass_dptv2(void)
@@ -2548,6 +2555,7 @@ int __init sbe_cpu_ctrl_init(void)
 	sbe_dptv2_status = 0;
 	sbe_ignore_vip_task_enable = 1;
 	sbe_ignore_vip_task_status = 0;
+	sbe_without_dptv2_enable = 1;
 
 	ai_rescuing_frame_id = -1;
 	registered = 0;

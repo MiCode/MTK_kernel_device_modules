@@ -42,6 +42,8 @@ static DECLARE_WAIT_QUEUE_HEAD(notifier_wq_queue);
 
 struct task_info g_dep_arr[FPSGO_MAX_TASK_NUM];
 
+static int sbe_without_dptv2_status;
+
 //ConsistencyEngine pointer interface for Taskturbo implement
 //We are using sbe when ConsistencyEngine API called.
 void (*task_turbo_do_set_binder_uclamp_param)(pid_t pid,
@@ -766,6 +768,20 @@ static int sbe_do_hwui_scrolling_policy(int tgid, int start, char *specific_name
 			|| test_bit(SBE_PAGE_WEBVIEW, &mask))) {
 		//force clear vip when scrolling end
 		update_fpsgo_hint_param(start, tgid);
+	}
+
+	if (get_sbe_sbe_without_dptv2_enable()) {
+		sbe_get_tree_lock(__func__);
+		sbe_do_dptv2_task_util_policy(tgid, start);
+		sbe_put_tree_lock(__func__);
+		sbe_without_dptv2_status = 1;
+	} else {
+		if (sbe_without_dptv2_status) {
+			sbe_get_tree_lock(__func__);
+			sbe_force_reset_dptv2_task_util_policy();
+			sbe_put_tree_lock(__func__);
+			sbe_without_dptv2_status = 0;
+		}
 	}
 
 	return ret;

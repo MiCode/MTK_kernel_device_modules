@@ -81,6 +81,7 @@ struct sbe_render_info {
 	int is_webfunctor;
 	int core_ctl_ignore_vip_task;
 	int fpsgo_critical_flag;
+	int dptv2_bypass_task_flag;
 	unsigned long long frame_ctime_count;
 	unsigned int sbe_rescue;
 	unsigned long long buffer_id;
@@ -142,5 +143,7 @@ int sbe_forece_reset_fpsgo_critical_tasks(void);
 int sbe_get_render_tid_by_render_pid(int tgid, int pid,
 	int *out_tid_arr, unsigned long long *out_bufID_arr,
 	int *out_tid_num, int out_tid_max_num);
+int sbe_do_dptv2_task_util_policy(int tgid, int start);
+int sbe_force_reset_dptv2_task_util_policy(void);
 
 #endif

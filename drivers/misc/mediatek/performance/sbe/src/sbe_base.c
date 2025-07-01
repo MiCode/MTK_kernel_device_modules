@@ -16,6 +16,7 @@
 #include "sbe_base.h"
 #include "sbe_cpu_ctrl.h"
 #include "sbe_sysfs.h"
+#include "sugov/cpufreq.h"
 
 #ifndef CREATE_TRACE_POINTS
 #define CREATE_TRACE_POINTS
@@ -277,6 +278,81 @@ int sbe_check_info_status(void)
 	return count;
 }
 
+void sbe_setWithoutDPTCtl(int pid)
+{
+	if (pid > 0) {
+		setWithoutDPTCtl(pid);
+		sbe_trace("%s: pid = %d\n", __func__, pid);
+	}
+}
+
+void sbe_unsetWithoutDPTCtl(int pid)
+{
+	if (pid > 0) {
+		unsetWithoutDPTCtl(pid);
+		sbe_trace("%s: pid = %d\n", __func__, pid);
+	}
+}
+
+void sbe_do_per_render_dptv2_policy(struct sbe_render_info *iter, int tgid, int start)
+{
+	if (!iter)
+		return;
+
+	if (start) {
+		if (iter->tgid == tgid && iter->dpt_policy_enable) {
+			sbe_setWithoutDPTCtl(tgid);
+			iter->dptv2_bypass_task_flag = 1;
+		}
+	} else {
+		if (iter->dptv2_bypass_task_flag == 1) {
+			sbe_unsetWithoutDPTCtl(tgid);
+			iter->dptv2_bypass_task_flag = 0;
+		}
+	}
+}
+
+int sbe_do_dptv2_task_util_policy(int tgid, int start)
+{
+	struct sbe_render_info *iter;
+	struct rb_node *rbn;
+
+	rbn = rb_first(&sbe_render_info_tree);
+	while (rbn) {
+		iter = rb_entry(rbn, struct sbe_render_info, entry);
+		sbe_do_per_render_dptv2_policy(iter, tgid, start);
+		rbn = rb_next(rbn);
+	}
+
+	return 0;
+}
+
+void sbe_force_reset_per_render_dptv2_policy(struct sbe_render_info *iter)
+{
+	if (!iter)
+		return;
+
+	if (iter->dptv2_bypass_task_flag == 1) {
+		sbe_unsetWithoutDPTCtl(iter->tgid);
+		iter->dptv2_bypass_task_flag = 0;
+	}
+}
+
+int sbe_force_reset_dptv2_task_util_policy(void)
+{
+	struct sbe_render_info *iter;
+	struct rb_node *rbn;
+
+	rbn = rb_first(&sbe_render_info_tree);
+	while (rbn) {
+		iter = rb_entry(rbn, struct sbe_render_info, entry);
+		sbe_force_reset_per_render_dptv2_policy(iter);
+		rbn = rb_next(rbn);
+	}
+
+	return 0;
+}
+
 struct sbe_render_info *sbe_get_render_info_by_thread_name(int tgid, char *thread_name)
 {
 	struct sbe_render_info *iter, *temp_info = NULL;
@@ -433,6 +509,10 @@ void sbe_delete_render_info(struct sbe_render_info *iter)
 		}
 		sbe_set_deplist_policy(iter, 0);
 	}
+
+	if (iter->dptv2_bypass_task_flag)
+		sbe_unsetWithoutDPTCtl(iter->tgid);
+
 
 	switch_fpsgo_control(1, iter->pid, 0, iter->buffer_id);
 	fpsgo_other2fstb_set_target(1, iter->pid, 0, 0, 0, 0, iter->buffer_id);
