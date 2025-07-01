@@ -261,7 +261,7 @@
 			};
 			mcusysoff_b: mcusysoff-b {
 				compatible = "arm,idle-state";
-				arm,psci-suspend-param = <0x01010001>;
+				arm,psci-suspend-param = <0x02010007>;
 				local-timer-stop;
 				entry-latency-us = <648>;
 				exit-latency-us = <1172>;
