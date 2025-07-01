@@ -808,7 +808,7 @@ static irqreturn_t mtk_rtc_irq_handler_thread(int irq, void *data)
 		}
 
 		/* power on */
-		if (now_time >= time - 1 && now_time <= time + 4) {
+		if (now_time >= time - 1 && now_time <= time + 10) {
 			memset(&p_alm, 0, sizeof(struct rtc_wkalrm));
 			if (bootmode == KERNEL_POWER_OFF_CHARGING_BOOT ||
 				bootmode == LOW_POWER_OFF_CHARGING_BOOT) {
@@ -873,15 +873,10 @@ static int __mtk_rtc_read_time(struct mt6685_rtc *rtc,
 			       struct rtc_time *tm, int *sec)
 {
 	int ret;
-	unsigned int reload = 0;
 	u16 data[RTC_OFFSET_COUNT] = { 0 };
 
 	power_on_mclk(rtc);
-
-	rtc_read(rtc, rtc->addr_base + RTC_BBPU, &reload);
-	reload = reload | RTC_BBPU_KEY | RTC_BBPU_RELOAD;
-	rtc_write(rtc, rtc->addr_base + RTC_BBPU, reload);
-	mtk_rtc_write_trigger(rtc);
+	udelay(60);
 	power_down_mclk(rtc);
 
 	mutex_lock(&rtc->lock);
@@ -1028,7 +1023,7 @@ static bool mtk_rtc_check_set_time(struct mt6685_rtc *rtc, struct rtc_time *tm,
 		ret = rtc_bulk_read(rtc, rtc->addr_base + rtc_time_reg,
 				       latest, RTC_OFFSET_COUNT * 2);
 		if (ret < 0)
-			return ret;
+			return false;
 
 		for (i = 0; i < RTC_OFFSET_COUNT; i++) {
 			if (i == RTC_OFFSET_DOW)
@@ -1041,11 +1036,11 @@ static bool mtk_rtc_check_set_time(struct mt6685_rtc *rtc, struct rtc_time *tm,
 			if (j == retry_time) {
 				ret = rtc_read(rtc, rtc->data->hwid, &hwid);
 				if (ret < 0)
-					return ret;
+					return false;
 
 				ret = rtc_read(rtc, RG_RTC_MCLK_PDN, &mclk);
 				if (ret < 0)
-					return ret;
+					return false;
 				mclk = mclk >> RG_RTC_MCLK_PDN_STA_SHIFT & RG_RTC_MCLK_PDN_STA_MASK;
 
 				if (rtc->data->chip_version == MT6685_SERIES ||
@@ -1054,7 +1049,7 @@ static bool mtk_rtc_check_set_time(struct mt6685_rtc *rtc, struct rtc_time *tm,
 						rtc->addr_base + RTC_SPAR_MACRO, &prot_key);
 
 					if (ret < 0)
-						return ret;
+						return false;
 
 					prot_key =
 						prot_key >> SPAR_PROT_STAT_SHIFT
@@ -1300,6 +1295,18 @@ static int mtk_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alm)
 	if ((alm->enabled == 3) || (alm->enabled == 4))
 		rtc_update_irq(rtc->rtc_dev, 1, RTC_IRQF | RTC_AF);
 exit:
+	dev_notice(rtc->rtc_dev->dev.parent,
+		"set al time raw after start = %04d/%02d/%02d %02d:%02d:%02d (%d)\n",
+		  tm->tm_year, tm->tm_mon, tm->tm_mday,
+		  tm->tm_hour, tm->tm_min, tm->tm_sec, alm->enabled);
+
+	tm->tm_year += RTC_MIN_YEAR_OFFSET;
+	tm->tm_mon--;
+
+	dev_notice(rtc->rtc_dev->dev.parent,
+		"set al time raw after end = %04d/%02d/%02d %02d:%02d:%02d (%d)\n",
+		  tm->tm_year, tm->tm_mon, tm->tm_mday,
+		  tm->tm_hour, tm->tm_min, tm->tm_sec, alm->enabled);
 	mutex_unlock(&rtc->lock);
 	mutex_unlock(&rtc_shutdown_lock);
 	power_down_mclk(rtc);
@@ -1308,18 +1315,23 @@ exit:
 
 int rtc_alarm_set_power_on(struct device *dev, struct rtc_wkalrm *alm)
 {
+	struct mt6685_rtc *rtc = dev_get_drvdata(dev);
 	int err = 0;
 	struct rtc_time tm;
 	time64_t now, scheduled;
 
 	err = rtc_valid_tm(&alm->time);
-	if (err != 0)
+	if (err != 0) {
+		dev_err(rtc->rtc_dev->dev.parent,"%s: rtc_valid_tm failed\n", __func__);
 		return err;
+	}
 	scheduled = rtc_tm_to_time64(&alm->time);
 
 	err = mtk_rtc_read_time(dev, &tm);
-	if (err != 0)
+	if (err != 0) {
+		dev_err(rtc->rtc_dev->dev.parent,"%s: mtk_rtc_read_time failed\n", __func__);
 		return err;
+	}
 	now = rtc_tm_to_time64(&tm);
 
 	if (scheduled <= now)
