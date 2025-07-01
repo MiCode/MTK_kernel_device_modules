@@ -632,7 +632,7 @@ static int dpc_wait_pwr_ack_v3(const u32 subsys)
 	 * [10] dptx [11] peri
 	 */
 	ret = readl_poll_timeout_atomic(dpc_base + DISP_DPC_MTCMOS_STATUS,
-					value, value & mask, 1, 3000);
+					value, (value & mask) == mask, 1, 3000);
 	if (ret < 0) {
 		DPCERR("subsys(%u) status(%#x) voter(%#x) intf(%#x,%#x,%#x,%#x,%#x,%#x,%#x,%#x,%#x,%#x)",
 			subsys, readl(dpc_base + DISP_DPC_MTCMOS_STATUS), readl(g_priv->voter_set_va),
@@ -1578,7 +1578,7 @@ static void mt6993_set_mtcmos(const u32 subsys, const enum mtk_dpc_mtcmos_mode m
 			writel(value, dpc_base + g_priv->mtcmos_cfg[subsys].cfg);
 
 		writel(mask, hwccf_dummy_set);
-		ret = readl_poll_timeout_atomic(hwccf_dummy_en, temp, temp & mask, 1, 2000);
+		ret = readl_poll_timeout_atomic(hwccf_dummy_en, temp, (temp & mask) == mask, 1, 2000);
 		if (ret < 0)
 			DPCERR("polling unlink timeout %d", __LINE__);
 	} else {
@@ -3259,10 +3259,10 @@ static void dpc_hwccf_vote(bool on, struct cmdq_pkt *pkt, const enum mtk_vidle_v
 
 			writel(mask, hwccf_xpu0_mtcmos_set);			/* vote xpu0 mtcmos voter */
 
-			ret = readl_poll_timeout_atomic(hwccf_xpu0_local_en, value, value & mask, 1, 2000);
+			ret = readl_poll_timeout_atomic(hwccf_xpu0_local_en, value, (value & mask) == mask, 1, 2000);
 			if (ret < 0)
 				goto err2;
-			ret = readl_poll_timeout_atomic(hwccf_global_en, value, value & mask, 1, 10000);
+			ret = readl_poll_timeout_atomic(hwccf_global_en, value, (value & mask) == mask, 1, 10000);
 			if (ret < 0)
 				goto err3;
 			ret = readl_poll_timeout_atomic(hwccf_mtcmos_sta, value, !(value & mask), 1, 10000);
@@ -3291,7 +3291,7 @@ static void dpc_hwccf_vote(bool on, struct cmdq_pkt *pkt, const enum mtk_vidle_v
 						goto err8;
 				}
 			}
-			ret = readl_poll_timeout_atomic(hwccf_mtcmos_pm_ack, value, value & mask, 1, 10000);
+			ret = readl_poll_timeout_atomic(hwccf_mtcmos_pm_ack, value, (value & mask) == mask, 1, 10000);
 			if (ret < 0)
 				goto err9;
 		} else {
