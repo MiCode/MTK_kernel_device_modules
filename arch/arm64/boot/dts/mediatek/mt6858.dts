@@ -77,7 +77,7 @@
 	clkbuf_ctrl: clkbuf-ctrl {
 			pmic-supply = <&mt6685_clkbuf>;
 
-			//compatible = "mediatek,mt6858-clkbuf";
+			compatible = "mediatek,mt6858-clkbuf";
 			pmic = <&mt6685_clkbuf>;
 			srclken-rc = <&srclken_rc>;
 			pmif = <&spmi>;
