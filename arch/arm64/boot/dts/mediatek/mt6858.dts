@@ -3453,6 +3453,15 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					bus-freq-mhz = <728>;
 					isr-dump = <0>;
 				};
+				monitor7 {
+					monitor-name = "debug_ctrl_ao_MM_AO";
+					base = <0x1e825000>;
+					num-ports = <22>;
+					bus-status-offset = <0x10>;
+					bus-status-num = <3>;
+					bus-freq-mhz = <624>;
+					isr-dump = <0>;
+				};
 			};
 		};
 
