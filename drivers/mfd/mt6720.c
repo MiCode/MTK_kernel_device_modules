@@ -105,6 +105,8 @@ static int mt6720_regmap_write(void *context, const void *data, size_t count)
 static const struct regmap_bus mt6720_regmap_bus = {
 	.read = mt6720_regmap_read,
 	.write = mt6720_regmap_write,
+	.max_raw_read = 16,
+	.max_raw_write = 15,
 };
 
 static const struct regmap_config mt6720_regmap_config = {
