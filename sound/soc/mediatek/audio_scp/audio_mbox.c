@@ -220,6 +220,12 @@ static int scp_audio_mbox_dev_probe(struct platform_device *pdev)
 		goto EXIT;
 	}
 
+	ret = scp_audio_debug_cmds_init();
+	if (ret) {
+		pr_info("%s, init scp audio dbg fail\n", __func__);
+		goto EXIT;
+	}
+
 #if IS_ENABLED(CONFIG_DEBUG_FS)
 	struct dentry *file = NULL;
 

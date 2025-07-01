@@ -3,6 +3,9 @@
  * Copyright (c) 2025 MediaTek Inc.
  */
 
+
+#include <linux/poll.h>
+#include <linux/delay.h>
 #include <linux/io.h>
 #include <linux/module.h>
 #include <linux/miscdevice.h>
@@ -22,6 +25,8 @@
 	_IOR(AUDIO_DSP_IOC_MAGIC, 1, unsigned int)
 #define AUDIO_DSP_IOCTL_ADSP_HRT_BW \
 	_IOR(AUDIO_DSP_IOC_MAGIC, 3, unsigned int)
+
+static unsigned int dbg_inited;
 
 union ioctl_param {
 	struct {
@@ -100,6 +105,90 @@ struct miscdevice scp_audio_fs_mdev = {
 	.fops = &adspscp_file_ops,
 };
 
+static void scp_audio_dbg_init_handler(int id, void *data, unsigned int len)
+{
+	pr_info("[SCP AUDIO] %s()\n", __func__);
+	dbg_inited = 1;
+}
+
+static int scp_audio_debug_cmds_init_message(void)
+{
+	int ret = 0;
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
+	unsigned int retry_count = 10;
+	uint64_t mem_info[2] = {0};
+
+	/*just init once*/
+	if (dbg_inited)
+		return 0;
+
+	/* setup scp audio debug cmds */
+	mem_info[0] = adsp_get_reserve_mem_phys(ADSP_A_DEBUG_DUMP_MEM_ID);
+	mem_info[1] = adsp_get_reserve_mem_size(ADSP_A_DEBUG_DUMP_MEM_ID);
+	if (!mem_info[0] || mem_info[1] == 0) {
+		pr_err("%s, get reserved memory failed, addr 0x%llx size 0x%llx\n",
+		       __func__, mem_info[0], mem_info[1]);
+		ret = -ENOMEM;
+		return ret;
+	}
+
+	do {
+		ret = scp_send_message(SCP_AUDIO_IPI_DBG_INIT,
+			mem_info, sizeof(mem_info), 0, 0);
+		if (ret != ADSP_IPI_DONE)
+			usleep_range(1000, 1500);
+	} while ((retry_count > 0) && (ret != ADSP_IPI_DONE));
+
+	if (ret != ADSP_IPI_DONE)
+		pr_err("[SCP AUDIO] dbg inif failed %s() ret %d\n", __func__, ret);
+	else
+		pr_info("mem_info[0] = 0x%llx, mem_info[1] = 0x%llx, ret = %d\n", mem_info[0], mem_info[1], ret);
+#endif
+	return ret;
+}
+
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
+/* SCP reboot */
+static int audio_dbg_ctrl_event_receive_scp(
+	struct notifier_block *this,
+	unsigned long event,
+	void *ptr)
+{
+	switch (event) {
+	case SCP_EVENT_STOP:
+		dbg_inited = 0;
+		break;
+	case SCP_EVENT_READY:
+		scp_audio_debug_cmds_init_message();
+		break;
+	default:
+		pr_info("event %lu err", event);
+	}
+	pr_info("%s() event %lu", __func__, event);
+	return 0;
+}
+
+static struct notifier_block audio_dbg_ctrl_notifier_scp = {
+	.notifier_call = audio_dbg_ctrl_event_receive_scp,
+};
+#endif
+
+int scp_audio_debug_cmds_init(void)
+{
+	int ret = 0;
+	/* register dbg IPI */
+	scp_audio_ipi_registration(SCP_AUDIO_IPI_DBG_INIT,
+				   scp_audio_dbg_init_handler,
+				   "dbg init");
+
+	scp_A_register_notify(&audio_dbg_ctrl_notifier_scp);
+
+	if (is_scp_ready(SCP_A_ID))
+		ret = scp_audio_debug_cmds_init_message();
+
+	pr_info("%s, done ret:%d", __func__, ret);
+	return ret;
+}
 
 /*==============================================================================
  *                     debugfs
