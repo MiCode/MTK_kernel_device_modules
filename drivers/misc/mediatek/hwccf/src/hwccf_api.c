@@ -51,6 +51,12 @@
 #define MTK_WAIT_GHWV_IRQ_DONE_CNT    10000
 #define MTK_WAIT_GHWV_IRQ_DONE_US     1
 
+/* VMM voting bits (10~22) */
+#define VMM_VOTE_VAL			(0x3C00)
+/* VMM mtcmos chk bits */
+#define VMM_MTCMOS0_ACK_MASK		(0x10004)
+#define VMM_MTCMOS1_ACK_MASK		(0x2)
+
 #define MMUP_CORE_R_GPR11_ADDR (0x31a041ec)
 static void __iomem *__infra2hfrp_base, *__CORE_R_GPR11_reg;
 static phys_addr_t __infra2hfrp_base_phys;
@@ -769,9 +775,11 @@ static int _v1_hwccf_irq_voter_nowait(struct regmap *regmap, uint32_t setclr_ofs
 						uint32_t done_ofs, uint32_t done_ack_msk, uint32_t sta_ofs)
 {
 	bool is_set = IS_SET_FROM_VOTER_ADDR(setclr_ofs);
+	bool con1, con2;
 	uint32_t en_ofs = setclr_ofs + (is_set ? 0x8 : 0x4);
 	int ret = 0;
 	uint32_t val;
+	int i;
 
 	// Check args
 	if (!setclr_ofs || !vote_val || !done_ofs || !done_ack_msk) {
@@ -791,6 +799,36 @@ static int _v1_hwccf_irq_voter_nowait(struct regmap *regmap, uint32_t setclr_ofs
 		HWCCF_ERR("%x = %x, %x = %x, %d\n", setclr_ofs, vote_val, en_ofs, val, is_set);
 		goto skip;
 	}
+
+	// Polling mtcmos ack == 0 when last backup unvote for VMM (MM_HWCCF only)
+	if (regmap != regmaps[AP_HWCCF]) {
+		if (!is_set && ((vote_val & VMM_VOTE_VAL) != 0x0)) {
+			i = 0;
+			do {
+				/* condition1: check current vote_val is the last unvote */
+				con1 = ((hwccf_read(regmap, XPU_B0_GLB_EN) & VMM_VOTE_VAL) & ~vote_val) == 0;
+				/* condition2: check isp_vcore, cam_vcore, vde_vcore mtcmos_ack == 0 */
+				con2 = (hwccf_read(regmap, CCF_MTCMOS_PM_ACK_0) & VMM_MTCMOS0_ACK_MASK) == 0;
+				con2 = con2 && ((hwccf_read(regmap, CCF_MTCMOS_PM_ACK_1) & VMM_MTCMOS1_ACK_MASK) == 0);
+
+				if (!con1 || con2)
+					break;
+
+				if (i > MTK_WAIT_GHWV_IRQ_DONE_CNT) {
+					HWCCF_ERR("VMM polling unvote timeout: %d %d\n", con1, con2);
+					HWCCF_ERR("all_en=%x, mtcmos0_ack=%x, mtcmos1_ack=%x\n",
+						hwccf_read(regmap, CCF_BACKUP1_EN),
+						hwccf_read(regmap, CCF_MTCMOS_PM_ACK_0),
+						hwccf_read(regmap, CCF_MTCMOS_PM_ACK_1));
+					goto ERR;
+				}
+
+				udelay(MTK_WAIT_GHWV_IRQ_DONE_US);
+				i++;
+			} while (1);
+		}
+	}
+
 
 	// Pre-Polling sta
 	ret = regmap_read_poll_timeout_atomic(regmap, sta_ofs, val,
