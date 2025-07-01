@@ -8243,6 +8243,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<0 0x4b09fd00 0 0x80>,
 				<0 0x4b140100 0 0x200>,
 				<0 0x4b120000 0 0x100>,
+				<0 0x4b130000 0 0x200>,
 				<0 0x4b09fd80 0 0x280>,
 				<0 0x4b170008 0 0x4>,  /* arbitrary addr to avoid error msg */
 				<0 0x4b170004 0 0x4>,
@@ -8255,6 +8256,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"gpueb_gpr_base",
 				"gpueb_cfgreg_base",
 				"gpueb_intc_base",
+				"gpueb_dma_base",
 				"mbox0_base",
 				"mbox0_init", /* dummy input for mtk_mbox_probe */
 				"mbox0_set",
