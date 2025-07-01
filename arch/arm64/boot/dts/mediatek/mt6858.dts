@@ -2943,12 +2943,13 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					&smi_larb11 &smi_larb13 &smi_larb14
 					&smi_larb16 &smi_larb17 &smi_larb20>;
 		mediatek,commons-supply = <&smi_disp_common>;
-		mmqos-state = <0x0>;
+		mmqos-state = <0x177ed>;
 		mmqos-log-level = <0>;
 		interconnects = <&dvfsrc MT6873_MASTER_MMSYS &dvfsrc MT6873_SLAVE_DDR_EMI>,
 				<&dvfsrc MT6873_MASTER_HRT_MMSYS
 				&dvfsrc MT6873_SLAVE_HRT_DDR_EMI>;
 		interconnect-names = "icc-bw", "icc-hrt-bw";
+		vcp-supply = <&vcp>;
 		vmmrc-base = <0x1ec00000>;
 		vmmrc-mask = <0x2e814>;
 		vmmrc-mask-bit = <8>;
