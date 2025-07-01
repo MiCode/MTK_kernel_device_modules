@@ -5672,6 +5672,12 @@ dramc: dramc@10230000 {
 				"mbox3",
 				"mbox4";
 
+			mbox-attr = <0x0>, /* mbox0 */
+				<0x0>, /* mbox1 */
+				<0x0>, /* mbox2 */
+				<0x0>, /* mbox3 */
+				<0x0>; /* mbox4 */
+
 			dma-ranges = <0x1 0x0 0x1 0x0 0x1 0x0>;
 			iommus = <&disp_iommu M4U_PORT_L21_VIDEO_UP0>;
 			vcp-iommu-vdec-supply = <&vcp_io2>;
