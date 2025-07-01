@@ -251,6 +251,7 @@ struct dpc_funcs {
 	int (*dpc_buck_status)(int op);
 	void (*dpc_pre_cg_ctrl)(bool en, bool lock);
 	void (*dpc_power_clean_up_by_gce)(struct cmdq_pkt *pkt);
+	void (*dpc_apsrc_enable)(bool en, const enum mtk_vidle_voter_user user);
 
 	/* V1 ONLY */
 	void (*dpc_dc_force_enable)(const bool en);

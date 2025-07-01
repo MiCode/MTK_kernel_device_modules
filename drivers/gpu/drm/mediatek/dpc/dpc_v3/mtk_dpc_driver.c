@@ -132,6 +132,7 @@ static void __iomem *hwccf_mtcmos_sta;
 static void __iomem *mmpc_dummy_voter;	/* 0x160(RU) 0x164(SET) 0x168(CLR) */
 
 static atomic_t g_mminfra_cnt = ATOMIC_INIT(0);
+static atomic_t g_apsrc_cnt = ATOMIC_INIT(0);
 static atomic_t buck_ref = ATOMIC_INIT(0);
 static atomic_t hwccf_ref = ATOMIC_INIT(0);
 static atomic_t pre_cg_ref = ATOMIC_INIT(0);
@@ -1633,6 +1634,28 @@ static void dpc_dsi_pll_set_v2(const u32 value)
 	}
 }
 
+static void dpc_apsrc_enable(bool en, const enum mtk_vidle_voter_user user)
+{
+	s32 cnt;
+
+	cnt = en ? atomic_inc_return(&g_apsrc_cnt) : atomic_dec_return(&g_apsrc_cnt);
+	if (cnt < 0) {
+		DPCERR("skipped, user(%u) apsrc cnt < 0", user);
+		atomic_set_release(&g_apsrc_cnt, 0);
+		return;
+	}
+
+	if (en && cnt == 1) {
+		writel(0x0D0D0D0D, dpc_base + DISP_REG_DPC_MML_DDRSRC_EMIREQ_CFG);
+		dpc_mmp(apsrc, MMPROFILE_FLAG_START, user, 0x11111111);
+	} else if (!en && cnt == 0) {
+		writel(0x05050505, dpc_base + DISP_REG_DPC_MML_DDRSRC_EMIREQ_CFG);
+		dpc_mmp(apsrc, MMPROFILE_FLAG_END, user, 0x22222222);
+	} else {
+		dpc_mmp(apsrc, MMPROFILE_FLAG_PULSE, user, cnt);
+	}
+}
+
 static void dpc_disp_group_enable(bool en)
 {
 	u32 value = 0;
@@ -1677,10 +1700,6 @@ static void dpc_mml_group_enable(bool en)
 		return;
 	}
 
-	/* DDR_SRC and EMI_REQ DT is follow MML1 */
-	value = (en && has_cap(DPC_CAP_APSRC)) ? 0x01010101 : 0x0D0D0D0D;
-	writel(value, dpc_base + DISP_REG_DPC_MML_DDRSRC_EMIREQ_CFG);
-
 	/* lower vdisp level */
 	value = (en && has_cap(DPC_CAP_VDISP)) ? 0 : 1;
 	writel(value, dpc_base + DISP_REG_DPC_MML_VDISP_DVFS_CFG);
@@ -1703,8 +1722,10 @@ void dpc_group_enable_v2(const u16 group, bool en)
 {
 	if (group == DPC_SUBSYS_DISP)
 		dpc_disp_group_enable(en);
-	else
+	else {
+		dpc_apsrc_enable(!(en && has_cap(DPC_CAP_APSRC)), DISP_VIDLE_USER_MML);
 		dpc_mml_group_enable(en);
+	}
 }
 
 void dpc_group_enable_v3(const u16 group, bool en)
@@ -2863,6 +2884,9 @@ static int dpc_vidle_power_keep_v3(const enum mtk_vidle_voter_user _user)
 	}
 	tracing_mark_write(trace_buf_keep[0][1]);
 
+	if (user == DISP_VIDLE_USER_NST_LOCK)
+		dpc_apsrc_enable(true, user);
+
 	return ret;
 }
 
@@ -2928,6 +2952,9 @@ static void dpc_vidle_power_release_v3(const enum mtk_vidle_voter_user _user)
 	default:
 		break;
 	}
+
+	if (user == DISP_VIDLE_USER_NST_LOCK)
+		dpc_apsrc_enable(false, user);
 
 	if (excep_by_xpu & BIT(0)) {
 		tracing_mark_write(trace_buf_release[1][0]);
@@ -4256,6 +4283,7 @@ static int mtk_dpc_probe_v3(struct platform_device *pdev)
 		funcs_v3.dpc_mtcmos_on_off = dpc_hwccf_vote;
 		funcs_v3.dpc_pre_cg_ctrl = dpc_pre_cg_ctrl;
 		funcs_v3.dpc_power_clean_up_by_gce = dpc_power_clean_up_by_gce;
+		funcs_v3.dpc_apsrc_enable = dpc_apsrc_enable;
 	}
 
 	mtk_vidle_register(&funcs_v3, DPC_VER3);

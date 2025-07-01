@@ -27,6 +27,7 @@ struct dpc_mmp_events_t {
 	mmp_event idle_off;
 	mmp_event prete;
 	mmp_event mminfra;
+	mmp_event apsrc;
 	mmp_event vlp_vote;
 	mmp_event hwccf_vote;
 	mmp_event hwccf_gce_vote;

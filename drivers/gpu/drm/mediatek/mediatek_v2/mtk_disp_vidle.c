@@ -286,6 +286,16 @@ void mtk_vidle_user_power_release_v3(enum mtk_vidle_voter_user _user)
 	disp_dpc_driver.dpc_vidle_power_release(user);
 }
 
+void mtk_vidle_user_apsrc_enable(bool en, enum mtk_vidle_voter_user _user)
+{
+	enum mtk_vidle_voter_user user = _user & DISP_VIDLE_USER_MASK;
+
+	if (disp_dpc_driver.dpc_apsrc_enable == NULL || vidle_data.drm_priv == NULL)
+		return;
+
+	disp_dpc_driver.dpc_apsrc_enable(en, user);
+}
+
 int mtk_vidle_user_power_keep(enum mtk_vidle_voter_user user)
 {
 	if (vidle_data.dpc_version == DPC_VER1)

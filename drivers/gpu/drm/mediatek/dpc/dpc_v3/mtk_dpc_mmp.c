@@ -28,6 +28,7 @@ void dpc_mmp_init(void)
 	dpc_mmp_events.config = mmprofile_register_event(folder, "config");
 	dpc_mmp_events.prete = mmprofile_register_event(folder, "prete");
 	dpc_mmp_events.mminfra = mmprofile_register_event(folder, "mminfra");
+	dpc_mmp_events.apsrc = mmprofile_register_event(folder, "apsrc");
 	dpc_mmp_events.vlp_vote = mmprofile_register_event(folder, "vlp_vote");
 	dpc_mmp_events.hwccf_vote = mmprofile_register_event(folder, "hwccf_vote");
 	dpc_mmp_events.hwccf_gce_vote = mmprofile_register_event(folder, "hwccf_gce_vote");
