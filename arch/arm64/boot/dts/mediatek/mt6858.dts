@@ -5624,8 +5624,36 @@ dramc: dramc@10230000 {
 		};
 
 		jpgenc@17030000 {
-			compatible = "mediatek,jpgenc";
-			reg = <0 0x17030000 0 0x10000>;
+			compatible = "mediatek,mtk-jpgenc";
+			mediatek,platform = "platform:mt6858";
+			reg = <0 0x17030000 0 0x10000>,
+				<0 0x17000000 0 0x10000>;
+			interrupts = <GIC_SPI 495 IRQ_TYPE_LEVEL_HIGH 0>;
+			clocks = <&venc_gcon_clk CLK_VEN1_CKE2_JPGENC_JPEGENC>,
+				 <&mmdvfs_clk CLK_MMDVFS_JPEGENC>;
+			clock-names = "jpgenc", "mmdvfs_clk";
+			power-domains = <&scpsys  MT6858_POWER_DOMAIN_VEN0>;
+			mediatek,larb = <&smi_larb7>;
+			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
+			mmqos-supply = <&mmqos>;
+			iommus = <&disp_iommu  M4U_L7_P5_JPGENC_Y_RDMA>,
+				 <&disp_iommu M4U_L7_P6_JPGENC_C_RDMA	>,
+				 <&disp_iommu M4U_L7_P7_JPGENC_Q_TABLE>,
+				 <&disp_iommu M4U_L7_P9_JPGENC_BSDMA>;
+			interconnects = <&mmqos MASTER_LARB_PORT(M4U_L7_P5_JPGENC_Y_RDMA)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L7_P6_JPGENC_C_RDMA)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L7_P7_JPGENC_Q_TABLE)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L7_P9_JPGENC_BSDMA)
+					&mmqos SLAVE_COMMON(0)>;
+			interconnect-names = "path_jpegenc_y_rdma",
+				"path_jpegenc_c_rmda",
+				"path_jpegenc_q_table",
+				"path_jpegenc_bsdma";
+			operating-points-v2 = <&opp_table_venc>;
+			config-larbaddr;
 		};
 
 		keypad: kp@1c00e000 {
