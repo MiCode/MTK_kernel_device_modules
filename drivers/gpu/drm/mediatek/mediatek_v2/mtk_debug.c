@@ -125,6 +125,19 @@ EXPORT_SYMBOL(g_dbgtp_log);
 bool g_profile_log;
 bool g_qos_log;
 bool g_irq_log;
+bool g_dsi_chksum_start;
+EXPORT_SYMBOL(g_dsi_chksum_start);
+bool g_dsi_chksum_stop;
+EXPORT_SYMBOL(g_dsi_chksum_stop);
+bool g_dsc_chksum_start;
+EXPORT_SYMBOL(g_dsc_chksum_start);
+bool g_dsc_chksum_stop;
+EXPORT_SYMBOL(g_dsc_chksum_stop);
+bool g_dsc_mute_enable;
+EXPORT_SYMBOL(g_dsc_mute_enable);
+bool g_dsc_mute_disable;
+EXPORT_SYMBOL(g_dsc_mute_disable);
+
 
 unsigned int mipi_volt;
 unsigned int disp_met_en;
@@ -6031,6 +6044,78 @@ test_2c_done:
 
 		DDPMSG("lpc_te_en:%d", value);
 		mtk_dsi_lpc_set_te_en(mtk_crtc, value);
+	} else if (strncmp(opt, "dsi_chksum_start", 16) == 0) {
+		struct drm_crtc *crtc;
+
+		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
+					typeof(*crtc), head);
+
+		if (IS_ERR_OR_NULL(crtc)) {
+			DDPMSG("find crtc fail\n");
+			return;
+		}
+		g_dsi_chksum_start = true;
+		g_dsi_chksum_stop = false;
+	} else if (strncmp(opt, "dsi_chksum_stop", 15) == 0) {
+		struct drm_crtc *crtc;
+
+		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
+					typeof(*crtc), head);
+
+		if (IS_ERR_OR_NULL(crtc)) {
+			DDPMSG("find crtc fail\n");
+			return;
+		}
+		g_dsi_chksum_start = false;
+		g_dsi_chksum_stop = true;
+	} else if (strncmp(opt, "dsc_chksum_start", 16) == 0) {
+		struct drm_crtc *crtc;
+
+		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
+					typeof(*crtc), head);
+
+		if (IS_ERR_OR_NULL(crtc)) {
+			DDPMSG("find crtc fail\n");
+			return;
+		}
+		g_dsc_chksum_start = true;
+		g_dsc_chksum_stop = false;
+	} else if (strncmp(opt, "dsc_chksum_stop", 15) == 0) {
+		struct drm_crtc *crtc;
+
+		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
+					typeof(*crtc), head);
+
+		if (IS_ERR_OR_NULL(crtc)) {
+			DDPMSG("find crtc fail\n");
+			return;
+		}
+		g_dsc_chksum_start = false;
+		g_dsc_chksum_stop = true;
+	} else if (strncmp(opt, "dsc_mute_enable", 15) == 0) {
+		struct drm_crtc *crtc;
+
+		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
+					typeof(*crtc), head);
+
+		if (IS_ERR_OR_NULL(crtc)) {
+			DDPMSG("find crtc fail\n");
+			return;
+		}
+		g_dsc_mute_enable = true;
+		g_dsc_mute_disable = false;
+	} else if (strncmp(opt, "dsc_mute_disable", 16) == 0) {
+		struct drm_crtc *crtc;
+
+		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
+					typeof(*crtc), head);
+
+		if (IS_ERR_OR_NULL(crtc)) {
+			DDPMSG("find crtc fail\n");
+			return;
+		}
+		g_dsc_mute_enable = false;
+		g_dsc_mute_disable = true;
 	}
 }
 

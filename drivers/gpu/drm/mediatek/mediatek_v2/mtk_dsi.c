@@ -329,8 +329,11 @@ static struct timer_list hrt_issue_timer;
 #define FLD_CLK_HS_EXIT REG_FLD_MSB_LSB(23, 16)
 #define DSI_CPHY_CON0(data)	(data->reg_phy_base ? 0x1e0 : 0x120)
 
+#define DSI_DBG_CON1		0x224
 #define DSI_SELF_PAT_CON0	0x230
 #define DSI_SELF_PAT_CON1	0x234
+#define DSI_CKSUM_OUT		0x250
+
 
 #define VM_CMD_EN BIT(0)
 #define TS_VFP_EN BIT(5)
@@ -8101,6 +8104,74 @@ static void mtk_dsi_config_trigger(struct mtk_ddp_comp *comp,
 			mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base))
 			cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DSI_CMD_TYPE1_HS(dsi->driver_data), 0,
 					CMD_HS_HFP_BLANKING_HS_EN);
+		break;
+	case MTK_TRIG_FLAG_CKSM_START:
+		if (mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base)) {
+			dma_addr_t dsi_chksum_slot = 0x0;
+
+			dsi_chksum_slot = mtk_get_gce_backup_slot_pa(mtk_crtc,
+							DISP_SLOT_DSI_CHKSUM);
+			cmdq_pkt_read(handle, mtk_crtc->gce_obj.base,
+				comp->regs_pa + DSI_CKSUM_OUT, CMDQ_THR_SPR_IDX1);
+			cmdq_pkt_write_indriect(handle, mtk_crtc->gce_obj.base,
+				dsi_chksum_slot, CMDQ_THR_SPR_IDX1, ~0);
+			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+				comp->regs_pa + DSI_DBG_CON1, 0x100, 0x100);
+			mtk_dsi_poll_for_idle(dsi, handle);
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DSI_CON_CTRL(dsi->driver_data), DSI_RESET, DSI_RESET);
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DSI_CON_CTRL(dsi->driver_data), 0, DSI_RESET);
+			DDPMSG("%s trigger reset start\n", __func__);
+		} else {
+			dma_addr_t dsi_chksum_slot = 0x0;
+			struct mtk_ddp_comp *comp1 = NULL;
+
+			comp1 = priv->ddp_comp[DDP_COMPONENT_DSC0];
+
+			cmdq_pkt_wfe(handle,
+				mtk_crtc->gce_obj.event[EVENT_CMD_EOF]);
+			cmdq_pkt_wfe(handle,
+				mtk_crtc->gce_obj.event[EVENT_VDO_CABC_EOF]);
+			mtk_dsi_stop_vdo_mode(dsi, handle);
+			mtk_dsi_poll_for_idle(dsi, handle);
+			dsi_chksum_slot = mtk_get_gce_backup_slot_pa(mtk_crtc,
+				DISP_SLOT_DSI_CHKSUM);
+			cmdq_pkt_read(handle, mtk_crtc->gce_obj.base,
+				comp->regs_pa + 0x250, CMDQ_THR_SPR_IDX1);
+			cmdq_pkt_write_indriect(handle, mtk_crtc->gce_obj.base,
+				dsi_chksum_slot, CMDQ_THR_SPR_IDX1, ~0);
+			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+				comp->regs_pa + 0x224, 0x100, 0x100);
+			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+				comp1->regs_pa + 0x78, 0x400000ff, ~0);
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DSI_CON_CTRL(dsi->driver_data), DSI_RESET, DSI_RESET);
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DSI_CON_CTRL(dsi->driver_data), 0, DSI_RESET);
+			mtk_dsi_start_vdo_mode(comp, handle);
+			mtk_disp_mutex_trigger(comp->mtk_crtc->mutex[0], handle);
+			mtk_dsi_trigger(comp, handle);
+			cmdq_pkt_set_event(handle,
+				mtk_crtc->gce_obj.event[EVENT_VDO_CABC_EOF]);
+			DDPMSG("%s vdo pre trigger reset\n", __func__);
+		}
+		break;
+	case MTK_TRIG_FLAG_CKSM_STOP:
+		if (mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base)) {
+			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+				comp->regs_pa + DSI_DBG_CON1, 0x0, ~0);
+			DDPMSG("%s trigger reset stop\n", __func__);
+		} else {
+			struct mtk_ddp_comp *comp1 = NULL;
+
+			comp1 = priv->ddp_comp[DDP_COMPONENT_DSC0];
+			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+				comp1->regs_pa + 0x78, 0x0, ~0);
+			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+				comp->regs_pa + DSI_DBG_CON1, 0x0, ~0);
+			DDPMSG("%s vdo trigger reset stop\n", __func__);
+		}
 		break;
 	default:
 		break;

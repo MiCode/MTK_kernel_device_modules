@@ -11381,6 +11381,66 @@ void mtk_crtc_enable_iommu_runtime(struct mtk_drm_crtc *mtk_crtc,
 	}
 }
 
+static unsigned int dsi_chksum_result;
+module_param(dsi_chksum_result, uint, 0644);
+static u32 debug_dsi_chksum;
+module_param(debug_dsi_chksum, uint, 0644);
+static unsigned int dsc_chksum0_result;
+module_param(dsc_chksum0_result, uint, 0644);
+static u32 debug_dsc_chksum0;
+module_param(debug_dsc_chksum0, uint, 0644);
+static unsigned int dsc_chksum1_result;
+module_param(dsc_chksum1_result, uint, 0644);
+static u32 debug_dsc_chksum1;
+module_param(debug_dsc_chksum1, uint, 0644);
+
+#define DISP_CKSM_INST_MAX (2)
+/* one cksm instance of a module */
+struct disp_instance_cksm_info {
+	const char *name; // name of this instance
+	unsigned int first_cksm; // record first cksm when cksm enabled
+	unsigned int disp_slot_num; // slot num to store cksm
+	/* module params */
+	unsigned int *cmp_result; // during cksm enabled, 1: cksm keep the same, 0: cksm changed
+	u32 *curr_cksm; // latest cksm value
+};
+/*
+ * cksm info of a module
+ * can contain DISP_CKSM_INST_MAX instances
+ */
+struct disp_module_cksm_info {
+	bool en; // if cksm check enabled
+	const char *name; // name of the module
+	const enum mtk_ddp_comp_id comp_id; // comp_id of the module
+	unsigned int loop_cnt; // loop counter for debug
+	struct disp_instance_cksm_info instances[DISP_CKSM_INST_MAX]; // cksm instances
+};
+
+static struct disp_module_cksm_info dsi_cksm_info = {
+	.comp_id = DDP_COMPONENT_DSI0,
+	.name = "dsi",
+	.instances = {
+		{.name = "cksm_out",
+		 .cmp_result = &dsi_chksum_result,
+		 .curr_cksm = &debug_dsi_chksum,
+		 .disp_slot_num = DISP_SLOT_DSI_CHKSUM,}
+	},
+};
+static struct disp_module_cksm_info dsc_cksm_info = {
+	.comp_id = DDP_COMPONENT_DSC0,
+	.name = "dsc",
+	.instances = {
+		{.name = "mon0",
+		 .cmp_result = &dsc_chksum0_result,
+		 .curr_cksm = &debug_dsc_chksum0,
+		 .disp_slot_num = DISP_SLOT_DSC_CHKSUM0,},
+		{.name = "mon1",
+		 .cmp_result = &dsc_chksum1_result,
+		 .curr_cksm = &debug_dsc_chksum1,
+		 .disp_slot_num = DISP_SLOT_DSC_CHKSUM1,}
+	},
+};
+
 #ifndef DRM_CMDQ_DISABLE
 static ktime_t mtk_check_preset_fence_timestamp(struct drm_crtc *crtc)
 {
@@ -11477,6 +11537,38 @@ static void mtk_disp_signal_fence_worker_signal(struct drm_crtc *crtc, struct cm
 	wake_up_interruptible(&mtk_crtc->signal_fence_task_wq);
 }
 
+static void mtk_disp_cksm_update(struct mtk_drm_crtc *mtk_crtc, struct disp_module_cksm_info *info)
+{
+	unsigned int i = 0;
+	struct disp_instance_cksm_info *inst = NULL;
+
+	if (!info || !info->en)
+		return;
+
+	/* traverse over cksm instances */
+	for (i = 0; i < DISP_CKSM_INST_MAX; i++) {
+		inst = &info->instances[i];
+		if(!inst->curr_cksm || !inst->cmp_result)
+			break;
+
+		*inst->curr_cksm = *(unsigned int *)(mtk_get_gce_backup_slot_va(mtk_crtc,
+			inst->disp_slot_num));
+		if (info->loop_cnt == 1) {
+			inst->first_cksm = *inst->curr_cksm;
+			*inst->cmp_result = true;
+		} else if ((info->loop_cnt > 1) && (inst->first_cksm != *inst->curr_cksm)) {
+			*inst->cmp_result = false;
+		}
+
+		DDPMSG("%s %s %s first: 0x%x, curr: 0x%x, result: %d, loop: %u\n",
+			__func__, info->name, inst->name, *inst->curr_cksm, inst->first_cksm,
+			*inst->cmp_result, info->loop_cnt);
+	}
+
+	info->loop_cnt++;
+	info->en = false;
+}
+
 static void ddp_cmdq_cb(struct cmdq_cb_data data)
 {
 	struct mtk_cmdq_cb_data *cb_data = data.data;
@@ -11515,7 +11607,6 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 	unsigned int _dsi_state_dbg7_2 = 0;
 	unsigned int *addr;
 
-
 	if (unlikely(!mtk_crtc)) {
 		DDPPR_ERR("%s:%d invalid pointer mtk_crtc\n",
 			__func__, __LINE__);
@@ -11529,6 +11620,12 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 			__func__, __LINE__);
 		return;
 	}
+
+	if (g_dsi_chksum_start && !g_dsi_chksum_stop)
+		mtk_disp_cksm_update(mtk_crtc, &dsi_cksm_info);
+
+	if (g_dsc_chksum_start && !g_dsc_chksum_stop)
+		mtk_disp_cksm_update(mtk_crtc, &dsc_cksm_info);
 
 	id = drm_crtc_index(crtc);
 
@@ -17957,6 +18054,47 @@ static void mtk_crtc_partial_update_wait_cabc(struct drm_crtc *crtc,
 	GCE_FI;
 }
 
+void mtk_disp_cksm_start(struct cmdq_pkt *cmdq_handle,
+	struct mtk_drm_private *priv, struct disp_module_cksm_info *info)
+{
+	struct mtk_ddp_comp *comp = NULL;
+
+	if (!info || !priv)
+		return;
+
+	comp = priv->ddp_comp[info->comp_id];
+	mtk_ddp_comp_config_trigger(comp, cmdq_handle, MTK_TRIG_FLAG_CKSM_START);
+
+	info->en = true;
+	DDPMSG("%s chksum done\n", info->name);
+}
+
+void mtk_disp_cksm_stop(struct cmdq_pkt *cmdq_handle,
+	struct mtk_drm_private *priv, struct disp_module_cksm_info *info)
+{
+	unsigned int i;
+	struct disp_instance_cksm_info *inst = NULL;
+	struct mtk_ddp_comp *comp = NULL;
+
+	if (!info || !priv)
+		return;
+
+	info->en = false;
+
+	for (i = 0; i < DISP_CKSM_INST_MAX; i++) {
+		inst = &info->instances[i];
+		if(!inst->curr_cksm || !inst->cmp_result)
+			break;
+		DDPMSG("%s %s stop, check %s\n",
+			info->name, inst->name, !!inst->cmp_result ? "pass" : "fail");
+	}
+
+	comp = priv->ddp_comp[info->comp_id];
+	mtk_ddp_comp_config_trigger(comp, cmdq_handle, MTK_TRIG_FLAG_CKSM_STOP);
+
+	info->loop_cnt = 0;
+}
+
 struct cmdq_pkt *mtk_crtc_gce_commit_begin(struct drm_crtc *crtc,
 						struct drm_crtc_state *old_crtc_state,
 						struct mtk_crtc_state *crtc_state,
@@ -18026,6 +18164,41 @@ struct cmdq_pkt *mtk_crtc_gce_commit_begin(struct drm_crtc *crtc,
 	} else {
 		mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle, DDP_FIRST_PATH, 0);
 		mtk_crtc_partial_update_wait_cabc(crtc, cmdq_handle);
+	}
+
+	if (mtk_crtc_is_frame_trigger_mode(crtc)) {
+		if (g_dsi_chksum_start == true)
+			mtk_disp_cksm_start(cmdq_handle, priv, &dsi_cksm_info);
+		if (g_dsi_chksum_stop == true) {
+			g_dsi_chksum_start = false;
+			g_dsi_chksum_stop = false;
+			mtk_disp_cksm_stop(cmdq_handle, priv, &dsi_cksm_info);
+		}
+	}
+
+	if (g_dsc_chksum_start == true)
+		mtk_disp_cksm_start(cmdq_handle, priv, &dsc_cksm_info);
+	if (g_dsc_chksum_stop == true) {
+		g_dsc_chksum_start = false;
+		g_dsc_chksum_stop = false;
+		mtk_disp_cksm_stop(cmdq_handle, priv, &dsc_cksm_info);
+	}
+
+	if (g_dsc_mute_enable == true) {
+		struct mtk_ddp_comp *dsc_comp = NULL;
+
+		dsc_comp = priv->ddp_comp[DDP_COMPONENT_DSC0];
+		mtk_ddp_comp_config_trigger(dsc_comp, cmdq_handle, MTK_TRIG_FLAG_PATGEN_EN);
+
+		DDPMSG("dsc mute enable\n");
+	}
+	if (g_dsc_mute_disable == true) {
+		struct mtk_ddp_comp *dsc_comp = NULL;
+
+		dsc_comp = priv->ddp_comp[DDP_COMPONENT_DSC0];
+		mtk_ddp_comp_config_trigger(dsc_comp, cmdq_handle, MTK_TRIG_FLAG_PATGEN_DIS);
+
+		DDPMSG("dsc mute disable\n");
 	}
 
 	/* Record Vblank start timestamp */
@@ -21005,6 +21178,15 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 			(atomic_read(&mtk_crtc->singal_for_mode_switch) == 0));
 		if (ret)
 			DDPMSG("Wait event result ret %d\n", ret);
+	}
+	if (!mtk_crtc_is_frame_trigger_mode(crtc)) {
+		if (g_dsi_chksum_start == true)
+			mtk_disp_cksm_start(cmdq_handle, priv, &dsi_cksm_info);
+		if (g_dsi_chksum_stop == true) {
+			g_dsi_chksum_start = false;
+			g_dsi_chksum_stop = false;
+			mtk_disp_cksm_stop(cmdq_handle, priv, &dsi_cksm_info);
+		}
 	}
 
 	mtk_vidle_user_power_release_by_gce(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle);

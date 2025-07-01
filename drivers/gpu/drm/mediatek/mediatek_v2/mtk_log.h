@@ -518,4 +518,10 @@ extern bool g_dbgtp_log;
 extern unsigned long long g_pf_time;
 extern bool g_dump_prop_log;
 extern unsigned int g_pq_test_flag;
+extern bool g_dsi_chksum_start;
+extern bool g_dsi_chksum_stop;
+extern bool g_dsc_chksum_start;
+extern bool g_dsc_chksum_stop;
+extern bool g_dsc_mute_enable;
+extern bool g_dsc_mute_disable;
 #endif
