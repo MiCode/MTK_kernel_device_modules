@@ -242,6 +242,13 @@ struct pd_check_swcg mdpsys_config_swcgs[] = {
 	SWCG("mdp_fimg_img_dl_async1"),
 	SWCG(NULL),
 };
+/* mminfra_config */
+struct pd_check_swcg mminfra_config_swcgs[] = {
+	SWCG("mminfra_gce_d"),
+	SWCG("mminfra_gce_m"),
+	SWCG("mminfra_gce_26m"),
+	SWCG(NULL),
+};
 
 struct subsys_cgs_check {
 	unsigned int pd_id;		/* power domain id */
@@ -266,6 +273,7 @@ struct subsys_cgs_check mtk_subsys_check[] = {
 	{MT6858_CHK_PD_CAM_SUBB, MT6858_CHK_PD_CAM_MAIN, camsys_rawb_swcgs, cam_rb},
 	{MT6858_CHK_PD_ISP_IPE, MT6858_CHK_PD_MM_INFRA, ipesys_swcgs, ipe},
 	{MT6858_CHK_PD_DIS0, MT6858_CHK_PD_MM_INFRA, mdpsys_config_swcgs, mdp},
+	{MT6858_CHK_PD_MM_INFRA, PD_NULL, mminfra_config_swcgs, mminfra_config},
 };
 
 static struct pd_check_swcg *get_subsys_cg(unsigned int id)
@@ -348,6 +356,13 @@ static void debug_dump(unsigned int id, unsigned int pwr_sta)
 		return;
 
 	fclks = mt_get_fmeter_clks();
+	for (; fclks != NULL && fclks->type != FT_NULL; fclks++) {
+		if (fclks->type != VLPCK && fclks->type != SUBSYS)
+			pr_notice("[%s] %d khz\n", fclks->name,
+				mt_get_fmeter_freq(fclks->id, fclks->type));
+	}
+
+	dump_power_event();
 
 	set_subsys_reg_dump_mt6858(debug_dump_id);
 
@@ -369,14 +384,6 @@ static void debug_dump(unsigned int id, unsigned int pwr_sta)
 			print_subsys_reg_mt6858(mtk_subsys_check[i].chk_id);
 	}
 
-	dump_power_event();
-
-	for (; fclks != NULL && fclks->type != FT_NULL; fclks++) {
-		if (fclks->type != VLPCK && fclks->type != SUBSYS)
-			pr_notice("[%s] %d khz\n", fclks->name,
-				mt_get_fmeter_freq(fclks->id, fclks->type));
-	}
-
 	mdelay(5000);
 	BUG_ON(1);
 }
@@ -386,18 +393,16 @@ static void external_dump(void)
 	const struct fmeter_clk *fclks;
 
 	fclks = mt_get_fmeter_clks();
-
-	set_subsys_reg_dump_mt6858(debug_dump_id);
-
-	get_subsys_reg_dump_mt6858();
-
-	dump_power_event();
-
 	for (; fclks != NULL && fclks->type != FT_NULL; fclks++) {
 		if (fclks->type != VLPCK && fclks->type != SUBSYS)
 			pr_notice("[%s] %d khz\n", fclks->name,
 				mt_get_fmeter_freq(fclks->id, fclks->type));
 	}
+
+	dump_power_event();
+
+	set_subsys_reg_dump_mt6858(debug_dump_id);
+	get_subsys_reg_dump_mt6858();
 }
 
 static struct pd_sta pd_pwr_sta[] = {

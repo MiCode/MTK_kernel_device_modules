@@ -65,6 +65,7 @@ const char * const *get_mt6858_all_clk_names(void)
 		"top_ufs_sel",
 		"top_aud_1_sel",
 		"top_aud_2_sel",
+		"top_dpmaif_main_sel",
 		"top_venc_sel",
 		"top_vdec_sel",
 		"top_pwm_sel",
@@ -142,7 +143,6 @@ const char * const *get_mt6858_all_clk_names(void)
 		"perao_p_spi5_b",
 		"perao_p_spi6_b",
 		"perao_p_spi7_b",
-		"perao_p_i2c",
 		"perao_p_dma_b",
 		"perao_p_msdc1",
 		"perao_p_msdc1_h",
@@ -205,7 +205,6 @@ const char * const *get_mt6858_all_clk_names(void)
 		"ufsao_unipro_tx_sym",
 		"ufsao_unipro_sys",
 		"ufsao_unipro_sap_cfg",
-		"ufsao_ufs_ao_26m",
 
 		/* ufscfg_pdn */
 		"ufspdn_ufshci_ufs",
@@ -303,7 +302,6 @@ const char * const *get_mt6858_all_clk_names(void)
 		"vlp_camtg1_sel",
 		"vlp_camtg2_sel",
 		"vlp_camtg3_sel",
-		"vlp_kp_irq_gen_sel",
 		"vlp_ssr_pka_sel",
 		"vlp_ssr_dma_sel",
 		"vlp_ssr_kdf_sel",

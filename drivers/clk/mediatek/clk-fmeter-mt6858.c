@@ -492,20 +492,6 @@ static unsigned int mt6858_get_fmeter_freq(unsigned int id,
 	return FT_NULL;
 }
 
-// implement fmeter id for ulposc1/2
-
-static int mt6858_get_fmeter_id(enum FMETER_ID fid)
-{
-	if (fid == FID_DISP_PWM)
-		return FM_DISP_PWM_CK;
-	else if (fid == FID_ULPOSC1)
-		return FM_ULPOSC2_MON_V_VCORE_CK;
-	else if (fid == FID_ULPOSC2)
-		return FM_ULPOSC_MON_V_VCORE_CK;
-
-	return FID_NULL;
-}
-
 static void __iomem *get_base_from_comp(const char *comp)
 {
 	struct device_node *node;
@@ -535,7 +521,6 @@ static void __iomem *get_base_from_comp(const char *comp)
 static struct fmeter_ops fm_ops = {
 	.get_fmeter_clks = mt6858_get_fmeter_clks,
 	.get_fmeter_freq = mt6858_get_fmeter_freq,
-	.get_fmeter_id = mt6858_get_fmeter_id,
 };
 
 static int clk_fmeter_mt6858_probe(struct platform_device *pdev)

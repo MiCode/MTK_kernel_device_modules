@@ -49,15 +49,6 @@
 #define HWV_CG_EN(id)			(0x1900 + (id * 0x4))
 #define HWV_CG_XPU_DONE(xpu)		(0x1B00 + (xpu * 0x8))
 #define HWV_CG_DONE(id)			(0x1C00 + (id * 0x4))
-#define HWV_TIMELINE_PTR		(0x1AA0)
-#define HWV_TIMELINE_HIS(idx)		(0x1AA4 + (idx / 4))
-#define HWV_CG_ADDR_HIS(idx)		(0x18C8 + (idx * 4))
-#define HWV_CG_ADDR_14_HIS(idx)		(0x19C8 + ((idx - 14) * 4))
-#define HWV_CG_DATA_HIS(idx)		(0x1AC8 + (idx * 4))
-#define HWV_CG_DATA_14_HIS(idx)		(0x1BC8 + ((idx - 14) * 4))
-#define HWV_IRQ_XPU_HIS_PTR		(0x1B50)
-#define HWV_IRQ_ADDR_HIS(idx)		(0x1B54 + (idx * 4))
-#define HWV_IRQ_DATA_HIS(idx)		(0x1B8C + (idx * 4))
 
 #define EVT_LEN				40
 #define CLK_ID_SHIFT			8
@@ -67,24 +58,6 @@ static DEFINE_SPINLOCK(clk_trace_lock);
 static unsigned int clk_event[EVT_LEN];
 static unsigned int evt_cnt, suspend_cnt;
 static bool clkchk_bug_on_flag = true;
-
-/* xpu*/
-enum {
-	APMCU = 0,
-	MD,
-	SSPM,
-	MMUP,
-	SCP,
-	XPU_NUM,
-};
-
-static u32 xpu_id[XPU_NUM] = {
-	[APMCU] = 0,
-	[MD] = 2,
-	[SSPM] = 4,
-	[MMUP] = 7,
-	[SCP] = 9,
-};
 
 /* trace all subsys cgs */
 enum {
@@ -251,34 +224,32 @@ enum {
 	CLK_PERAO_P_SPI5_B_CG = 160,
 	CLK_PERAO_P_SPI6_B_CG = 161,
 	CLK_PERAO_P_SPI7_B_CG = 162,
-	CLK_PERAO_P_I2C_CG = 163,
-	CLK_PERAO_P_DMA_B_CG = 164,
-	CLK_PERAO_P_MSDC1_CG = 165,
-	CLK_PERAO_P_MSDC1_H_CG = 166,
-	CLK_PERAO_P_MSDC1_MST_F_CG = 167,
-	CLK_PERAO_P_MSDC1_SLV_H_CG = 168,
-	CLK_PERAO_P_AUDIO0_CG = 169,
-	CLK_PERAO_P_AUDIO1_CG = 170,
-	CLK_PERAO_P_AUDIO2_CG = 171,
-	CLK_UFSAO_UNIPRO_TX_SYM_CG = 172,
-	CLK_UFSAO_UNIPRO_SYS_CG = 173,
-	CLK_UFSAO_UNIPRO_SAP_CFG_CG = 174,
-	CLK_UFSAO_UFS_AO_FREE_26M_CG = 175,
-	CLK_UFSPDN_UFSHCI_UFS_CG = 176,
-	CLK_UFSPDN_UFSHCI_AES_CG = 177,
-	CLK_UFSPDN_UFSHCI_UFS_AHB_CG = 178,
-	CLK_UFSPDN_UFS_26M_CG = 179,
-	CLK_VDE2_VDEC_CKEN_CG = 180,
-	CLK_VDE2_VDEC_ACTIVE_CG = 181,
-	CLK_VDE2_VDEC_CKEN_ENG_CG = 182,
-	CLK_VDE2_LAT_CKEN_CG = 183,
-	CLK_VDE2_LAT_ACTIVE_CG = 184,
-	CLK_VDE2_LAT_CKEN_ENG_CG = 185,
-	CLK_VEN1_CKE0_LARB_CG = 186,
-	CLK_VEN1_CKE1_VENC_CG = 187,
-	CLK_VEN1_CKE2_JPGENC_CG = 188,
-	CLK_VEN1_CKE5_GALS_CG = 189,
-	TRACE_CLK_NUM = 190,
+	CLK_PERAO_P_DMA_B_CG = 163,
+	CLK_PERAO_P_MSDC1_CG = 164,
+	CLK_PERAO_P_MSDC1_H_CG = 165,
+	CLK_PERAO_P_MSDC1_MST_F_CG = 166,
+	CLK_PERAO_P_MSDC1_SLV_H_CG = 167,
+	CLK_PERAO_P_AUDIO0_CG = 168,
+	CLK_PERAO_P_AUDIO1_CG = 169,
+	CLK_PERAO_P_AUDIO2_CG = 170,
+	CLK_UFSAO_UNIPRO_TX_SYM_CG = 171,
+	CLK_UFSAO_UNIPRO_SYS_CG = 172,
+	CLK_UFSAO_UNIPRO_SAP_CFG_CG = 173,
+	CLK_UFSPDN_UFSHCI_UFS_CG = 174,
+	CLK_UFSPDN_UFSHCI_AES_CG = 175,
+	CLK_UFSPDN_UFSHCI_UFS_AHB_CG = 176,
+	CLK_UFSPDN_UFS_26M_CG = 177,
+	CLK_VDE2_VDEC_CKEN_CG = 178,
+	CLK_VDE2_VDEC_ACTIVE_CG = 179,
+	CLK_VDE2_VDEC_CKEN_ENG_CG = 180,
+	CLK_VDE2_LAT_CKEN_CG = 181,
+	CLK_VDE2_LAT_ACTIVE_CG = 182,
+	CLK_VDE2_LAT_CKEN_ENG_CG = 183,
+	CLK_VEN1_CKE0_LARB_CG = 184,
+	CLK_VEN1_CKE1_VENC_CG = 185,
+	CLK_VEN1_CKE2_JPGENC_CG = 186,
+	CLK_VEN1_CKE5_GALS_CG = 187,
+	TRACE_CLK_NUM = 188,
 };
 
 const char *trace_subsys_cgs[] = {
@@ -445,7 +416,6 @@ const char *trace_subsys_cgs[] = {
 	[CLK_PERAO_P_SPI5_B_CG] = "perao_p_spi5_b",
 	[CLK_PERAO_P_SPI6_B_CG] = "perao_p_spi6_b",
 	[CLK_PERAO_P_SPI7_B_CG] = "perao_p_spi7_b",
-	[CLK_PERAO_P_I2C_CG] = "perao_p_i2c",
 	[CLK_PERAO_P_DMA_B_CG] = "perao_p_dma_b",
 	[CLK_PERAO_P_MSDC1_CG] = "perao_p_msdc1",
 	[CLK_PERAO_P_MSDC1_H_CG] = "perao_p_msdc1_h",
@@ -457,7 +427,6 @@ const char *trace_subsys_cgs[] = {
 	[CLK_UFSAO_UNIPRO_TX_SYM_CG] = "ufsao_unipro_tx_sym",
 	[CLK_UFSAO_UNIPRO_SYS_CG] = "ufsao_unipro_sys",
 	[CLK_UFSAO_UNIPRO_SAP_CFG_CG] = "ufsao_unipro_sap_cfg",
-	[CLK_UFSAO_UFS_AO_FREE_26M_CG] = "ufsao_ufs_ao_26m",
 	[CLK_UFSPDN_UFSHCI_UFS_CG] = "ufspdn_ufshci_ufs",
 	[CLK_UFSPDN_UFSHCI_AES_CG] = "ufspdn_ufshci_aes",
 	[CLK_UFSPDN_UFSHCI_UFS_AHB_CG] = "ufspdn_ufshci_ufs_ahb",
@@ -537,11 +506,11 @@ static struct regbase rb[] = {
 	[ssr_top] = REGBASE_V(0x10400000, ssr_top, PD_NULL, CLK_NULL),
 	[perao] = REGBASE_V(0x11032000, perao, PD_NULL, CLK_NULL),
 	[afe] = REGBASE_V(0x11050000, afe, MT6858_CHK_PD_AUDIO, CLK_NULL),
-	[impc] = REGBASE_V(0x11280000, impc, PD_NULL, "i2c_sel"),
+	[impc] = REGBASE_V(0x11280000, impc, PD_NULL, "top_i2c_sel"),
 	[ufsao] = REGBASE_V(0x112b8000, ufsao, PD_NULL, CLK_NULL),
 	[ufspdn] = REGBASE_V(0x112bb000, ufspdn, PD_NULL, CLK_NULL),
-	[impes] = REGBASE_V(0x11c00000, impes, PD_NULL, "i2c_sel"),
-	[imps] = REGBASE_V(0x11d00000, imps, PD_NULL, "i2c_sel"),
+	[impes] = REGBASE_V(0x11c00000, impes, PD_NULL, "top_i2c_sel"),
+	[imps] = REGBASE_V(0x11d00000, imps, PD_NULL, "top_i2c_sel"),
 	[mm] = REGBASE_V(0x14000000, mm, MT6858_CHK_PD_DIS0, CLK_NULL),
 	[imgsys1] = REGBASE_V(0x15020000, imgsys1, MT6858_CHK_PD_ISP_IMG1, CLK_NULL),
 	[img_sub0_bus] = REGBASE_V(0x1502F000, img_sub0_bus, MT6858_CHK_PD_ISP_IMG1, CLK_NULL),
@@ -747,6 +716,33 @@ static struct regname rn[] = {
 	REGNAME(hwv, 0x1470, HW_CCF_MTCMOS_CLR_STATUS),
 	REGNAME(hwv, 0x14ac, HW_CCF_MTCMOS_FLOW_FLAG_CLR),
 	REGNAME(hwv, 0x14a8, HW_CCF_MTCMOS_FLOW_FLAG_SET),
+	REGNAME(hwv, 0x1800, HW_CCF_CG0_STATUS),
+	REGNAME(hwv, 0x1804, HW_CCF_CG1_STATUS),
+	REGNAME(hwv, 0x1808, HW_CCF_CG2_STATUS),
+	REGNAME(hwv, 0x180c, HW_CCF_CG3_STATUS),
+	REGNAME(hwv, 0x1810, HW_CCF_CG4_STATUS),
+	REGNAME(hwv, 0x1814, HW_CCF_CG5_STATUS),
+	REGNAME(hwv, 0x1818, HW_CCF_CG6_STATUS),
+	REGNAME(hwv, 0x181c, HW_CCF_CG7_STATUS),
+	REGNAME(hwv, 0x1820, HW_CCF_CG8_STATUS),
+	REGNAME(hwv, 0x1900, HW_CCF_CG0_ENABLE),
+	REGNAME(hwv, 0x1904, HW_CCF_CG1_ENABLE),
+	REGNAME(hwv, 0x1908, HW_CCF_CG2_ENABLE),
+	REGNAME(hwv, 0x190c, HW_CCF_CG3_ENABLE),
+	REGNAME(hwv, 0x1910, HW_CCF_CG4_ENABLE),
+	REGNAME(hwv, 0x1914, HW_CCF_CG5_ENABLE),
+	REGNAME(hwv, 0x1918, HW_CCF_CG6_ENABLE),
+	REGNAME(hwv, 0x191c, HW_CCF_CG7_ENABLE),
+	REGNAME(hwv, 0x1920, HW_CCF_CG8_ENABLE),
+	REGNAME(hwv, 0x1c00, HW_CCF_CG0_DONE),
+	REGNAME(hwv, 0x1c04, HW_CCF_CG1_DONE),
+	REGNAME(hwv, 0x1c08, HW_CCF_CG2_DONE),
+	REGNAME(hwv, 0x1c0c, HW_CCF_CG3_DONE),
+	REGNAME(hwv, 0x1c10, HW_CCF_CG4_DONE),
+	REGNAME(hwv, 0x1c14, HW_CCF_CG5_DONE),
+	REGNAME(hwv, 0x1c18, HW_CCF_CG6_DONE),
+	REGNAME(hwv, 0x1c1c, HW_CCF_CG7_DONE),
+	REGNAME(hwv, 0x1c20, HW_CCF_CG8_DONE),
 	/* HWV history */
 	REGNAME(hwv, 0x1aa0, HWV_INPUT_TIMELINE_POINTER),
 	REGNAME(hwv, 0x1aa4, HWV_INPUT_TIMELINE_HISTORY_4_0),
@@ -1029,6 +1025,7 @@ static struct mtk_vf vf_table[] = {
 	MTK_VF_TABLE("top_ufs_sel", 208000, 208000, 208000, 208000),
 	MTK_VF_TABLE("top_aud_1_sel", 180634, 180634, 180634, 180634),
 	MTK_VF_TABLE("top_aud_2_sel", 196608, 196608, 196608, 196608),
+	MTK_VF_TABLE("top_dpmaif_main_sel", 436800, 416000, 364000, 273000),
 	MTK_VF_TABLE("top_venc_sel", 624000, 458333, 364000, 249600),
 	MTK_VF_TABLE("top_vdec_sel", 546000, 416000, 312000, 218400),
 	MTK_VF_TABLE("top_pwm_sel", 78000, 78000, 78000, 78000),
@@ -1222,17 +1219,17 @@ void clkchk_debug_dump_mt6858(enum chk_sys_id id[],
 	const struct fmeter_clk *fclks;
 
 	fclks = mt_get_fmeter_clks();
-	set_subsys_reg_dump_mt6858(id);
-	get_subsys_reg_dump_mt6858();
-
-	dump_clk_event();
-	pdchk_dump_trace_evt();
-
 	for (; fclks != NULL && fclks->type != FT_NULL; fclks++) {
 		if (fclks->type != VLPCK && fclks->type != SUBSYS)
 			pr_notice("[%s] %d khz\n", fclks->name,
 				mt_get_fmeter_freq(fclks->id, fclks->type));
 	}
+
+	dump_clk_event();
+	pdchk_dump_trace_evt();
+
+	set_subsys_reg_dump_mt6858(id);
+	get_subsys_reg_dump_mt6858();
 
 	/* flag set false when trigger by adb cmd to avoid system abnormal */
 	if (clkchk_bug_on_flag) {
@@ -1252,6 +1249,7 @@ EXPORT_SYMBOL_GPL(clkchk_debug_dump_mt6858);
 /* debug dump register */
 static enum chk_sys_id debug_dump_id[] = {
 	spm,
+	infra_infracfg_ao_reg,
 	vlpcfg_reg_bus,
 	top,
 	apmixed,
@@ -1381,6 +1379,7 @@ static const char * const notice_mux_names[] = {
 	"top_ufs_sel",
 	"top_aud_1_sel",
 	"top_aud_2_sel",
+	"top_dpmaif_main_sel",
 	"top_venc_sel",
 	"top_vdec_sel",
 	"top_pwm_sel",
@@ -1401,7 +1400,6 @@ static const char * const notice_mux_names[] = {
 	"vlp_camtg1_sel",
 	"vlp_camtg2_sel",
 	"vlp_camtg3_sel",
-	"vlp_kp_irq_gen_sel",
 	NULL
 };
 
@@ -1442,41 +1440,6 @@ static bool is_suspend_retry_stop(bool reset_cnt)
 	return true;
 }
 
-static enum chk_sys_id history_dump_id[] = {
-	top,
-	apmixed,
-	hwv,
-	chk_sys_num,
-};
-
-static void dump_hwv_history(struct regmap *regmap, u32 id)
-{
-	u32 set[XPU_NUM] = {0}, sta = 0, en = 0, done = 0;
-	int i;
-
-	set_subsys_reg_dump_mt6858(history_dump_id);
-
-	if (regmap != NULL) {
-		for (i = 0; i < XPU_NUM; i++)
-			regmap_read(regmap, HWV_CG_SET(xpu_id[i], id), &set[i]);
-
-		regmap_read(regmap, HWV_CG_STA(id), &sta);
-		regmap_read(regmap, HWV_CG_EN(id), &en);
-		regmap_read(regmap, HWV_CG_DONE(id), &done);
-
-
-		for (i = 0; i < XPU_NUM; i++)
-			pr_notice("set: (%x)%x", HWV_CG_SET(xpu_id[i], id), set[i]);
-		pr_notice("[%d] (%x)%x, (%x)%x, (%x)%x\n",
-				id,
-				HWV_CG_STA(id), sta,
-				HWV_CG_EN(id), en,
-				HWV_CG_DONE(id), done);
-	}
-
-	get_subsys_reg_dump_mt6858();
-}
-
 static void dump_bus_reg(struct regmap *regmap, u32 ofs)
 {
 	clkchk_debug_dump_mt6858(debug_dump_id, "hwv_cg_timeout", false, true);
@@ -1494,22 +1457,12 @@ static void external_dump(void)
 
 static void check_hwv_irq_sta(void)
 {
-	u32 irq_sta;
-
-	irq_sta = get_mt6858_reg_value(hwv, HWV_IRQ_STATUS);
-
-	if ((irq_sta & HWV_INT_CG_TRIGGER) == HWV_INT_CG_TRIGGER) {
-		dump_hwv_history(NULL, 0);
-		dump_bus_reg(NULL, 0);
-	}
-	if ((irq_sta & HWV_INT_PLL_TRIGGER) == HWV_INT_PLL_TRIGGER)
-		dump_pll_reg(true);
+	clkchk_debug_dump_mt6858(debug_dump_id, "hwv_irq", false, false);
 }
 
 static void cg_timeout_handle(struct regmap *regmap, u32 id, u32 shift)
 {
-	if (!IS_ERR_OR_NULL(regmap))
-		dump_bus_reg(regmap, 0);
+	dump_bus_reg(NULL, 0);
 }
 
 static void verify_debug_flow(void)
@@ -1549,7 +1502,6 @@ static struct clkchk_ops clkchk_mt6858_ops = {
 	.devapc_dump = devapc_dump,
 #endif
 	.trace_clk_event = trace_clk_event,
-	.dump_hwv_history = dump_hwv_history,
 	.dump_bus_reg = dump_bus_reg,
 	.dump_pll_reg = dump_pll_reg,
 	.external_dump = external_dump,
@@ -1569,7 +1521,6 @@ static int clk_chk_mt6858_probe(struct platform_device *pdev)
 	suspend_cnt = 0;
 
 	init_regbase();
-	// TODO: Add HWV regmap
 
 	set_clkchk_notify();
 

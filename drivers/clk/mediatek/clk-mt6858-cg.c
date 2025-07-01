@@ -1227,10 +1227,22 @@ static const struct mtk_gate_regs mminfra_config0_cg_regs = {
 	.sta_ofs = 0x100,
 };
 
+static const struct mtk_gate_regs mminfra_config0_hwv_regs = {
+	.set_ofs = 0x0000,
+	.clr_ofs = 0x0004,
+	.sta_ofs = 0x1C00,
+};
+
 static const struct mtk_gate_regs mminfra_config1_cg_regs = {
 	.set_ofs = 0x114,
 	.clr_ofs = 0x118,
 	.sta_ofs = 0x110,
+};
+
+static const struct mtk_gate_regs mminfra_config1_hwv_regs = {
+	.set_ofs = 0x0008,
+	.clr_ofs = 0x000C,
+	.sta_ofs = 0x1C04,
 };
 
 #define GATE_MMINFRA_CONFIG0(_id, _name, _parent, _shift) {	\
@@ -1248,6 +1260,19 @@ static const struct mtk_gate_regs mminfra_config1_cg_regs = {
 		.parent_name = _parent,			\
 	}
 
+#define GATE_HWV_MMINFRA_CONFIG0(_id, _name, _parent, _shift) {	\
+		.id = _id,						\
+		.name = _name,						\
+		.parent_name = _parent,					\
+		.hwv_comp = "hw-voter-regmap",				\
+		.regs = &mminfra_config0_cg_regs,			\
+		.hwv_regs = &mminfra_config0_hwv_regs,		\
+		.shift = _shift,					\
+		.ops = &mtk_clk_gate_ops_hwv,				\
+		.dma_ops = &mtk_clk_gate_ops_setclr,			\
+		.flags = CLK_USE_HW_VOTER,					\
+	}
+
 #define GATE_MMINFRA_CONFIG1(_id, _name, _parent, _shift) {	\
 		.id = _id,				\
 		.name = _name,				\
@@ -1263,18 +1288,31 @@ static const struct mtk_gate_regs mminfra_config1_cg_regs = {
 	.parent_name = _parent,		\
 	}
 
+#define GATE_HWV_MMINFRA_CONFIG1(_id, _name, _parent, _shift) {	\
+		.id = _id,						\
+		.name = _name,						\
+		.parent_name = _parent,					\
+		.hwv_comp = "hw-voter-regmap",				\
+		.regs = &mminfra_config1_cg_regs,			\
+		.hwv_regs = &mminfra_config1_hwv_regs,		\
+		.shift = _shift,					\
+		.ops = &mtk_clk_gate_ops_hwv,				\
+		.dma_ops = &mtk_clk_gate_ops_setclr,			\
+		.flags = CLK_USE_HW_VOTER,					\
+	}
+
 static const struct mtk_gate mminfra_config_clks[] = {
 	/* MMINFRA_CONFIG0 */
-	GATE_MMINFRA_CONFIG0(CLK_MMINFRA_GCE_D, "mminfra_gce_d",
+	GATE_HWV_MMINFRA_CONFIG0(CLK_MMINFRA_GCE_D, "mminfra_gce_d",
 			"top_mminfra_ck"/* parent */, 0),
 	GATE_MMINFRA_CONFIG0_V(CLK_MMINFRA_GCE_D_GCE, "mminfra_gce_d_gce",
 			"mminfra_gce_d"/* parent */),
-	GATE_MMINFRA_CONFIG0(CLK_MMINFRA_GCE_M, "mminfra_gce_m",
+	GATE_HWV_MMINFRA_CONFIG0(CLK_MMINFRA_GCE_M, "mminfra_gce_m",
 			"top_mminfra_ck"/* parent */, 1),
 	GATE_MMINFRA_CONFIG0_V(CLK_MMINFRA_GCE_M_GCE, "mminfra_gce_m_gce",
 			"mminfra_gce_m"/* parent */),
 	/* MMINFRA_CONFIG1 */
-	GATE_MMINFRA_CONFIG1(CLK_MMINFRA_GCE_26M, "mminfra_gce_26m",
+	GATE_HWV_MMINFRA_CONFIG1(CLK_MMINFRA_GCE_26M, "mminfra_gce_26m",
 			"top_mminfra_ck"/* parent */, 17),
 	GATE_MMINFRA_CONFIG1_V(CLK_MMINFRA_GCE_26M_GCE, "mminfra_gce_26m_gce",
 			"mminfra_gce_26m"/* parent */),
@@ -1289,6 +1327,12 @@ static const struct mtk_gate_regs perao0_cg_regs = {
 	.set_ofs = 0x24,
 	.clr_ofs = 0x28,
 	.sta_ofs = 0x10,
+};
+
+static const struct mtk_gate_regs perao0_hwv_regs = {
+	.set_ofs = 0x0010,
+	.clr_ofs = 0x0014,
+	.sta_ofs = 0x1C08,
 };
 
 static const struct mtk_gate_regs perao1_cg_regs = {
@@ -1316,6 +1360,19 @@ static const struct mtk_gate_regs perao2_cg_regs = {
 		.id = _id,				\
 		.name = _name,				\
 		.parent_name = _parent,			\
+	}
+
+#define GATE_HWV_PERAO0(_id, _name, _parent, _shift) {	\
+		.id = _id,						\
+		.name = _name,						\
+		.parent_name = _parent,					\
+		.hwv_comp = "hw-voter-regmap",				\
+		.regs = &perao0_cg_regs,			\
+		.hwv_regs = &perao0_hwv_regs,		\
+		.shift = _shift,					\
+		.ops = &mtk_clk_gate_ops_hwv,				\
+		.dma_ops = &mtk_clk_gate_ops_setclr,			\
+		.flags = CLK_USE_HW_VOTER,					\
 	}
 
 #define GATE_PERAO1(_id, _name, _parent, _shift) {	\
@@ -1398,42 +1455,38 @@ static const struct mtk_gate perao_clks[] = {
 			"top_disp_pwm_ck"/* parent */, 11),
 	GATE_PERAO0_V(CLK_PERAO_P_DISP_PWM1_DISP_PWM_1, "perao_p_disp_pwm1_disp_pwm_1",
 			"perao_p_disp_pwm1"/* parent */),
-	GATE_PERAO0(CLK_PERAO_P_SPI0_B, "perao_p_spi0_b",
+	GATE_HWV_PERAO0(CLK_PERAO_P_SPI0_B, "perao_p_spi0_b",
 			"top_spi0_ck"/* parent */, 12),
 	GATE_PERAO0_V(CLK_PERAO_P_SPI0_B_SPI, "perao_p_spi0_b_spi",
 			"perao_p_spi0_b"/* parent */),
-	GATE_PERAO0(CLK_PERAO_P_SPI1_B, "perao_p_spi1_b",
+	GATE_HWV_PERAO0(CLK_PERAO_P_SPI1_B, "perao_p_spi1_b",
 			"top_spi1_ck"/* parent */, 13),
 	GATE_PERAO0_V(CLK_PERAO_P_SPI1_B_SPI, "perao_p_spi1_b_spi",
 			"perao_p_spi1_b"/* parent */),
-	GATE_PERAO0(CLK_PERAO_P_SPI2_B, "perao_p_spi2_b",
+	GATE_HWV_PERAO0(CLK_PERAO_P_SPI2_B, "perao_p_spi2_b",
 			"top_spi2_ck"/* parent */, 14),
 	GATE_PERAO0_V(CLK_PERAO_P_SPI2_B_SPI, "perao_p_spi2_b_spi",
 			"perao_p_spi2_b"/* parent */),
-	GATE_PERAO0(CLK_PERAO_P_SPI3_B, "perao_p_spi3_b",
+	GATE_HWV_PERAO0(CLK_PERAO_P_SPI3_B, "perao_p_spi3_b",
 			"top_spi3_ck"/* parent */, 15),
 	GATE_PERAO0_V(CLK_PERAO_P_SPI3_B_SPI, "perao_p_spi3_b_spi",
 			"perao_p_spi3_b"/* parent */),
-	GATE_PERAO0(CLK_PERAO_P_SPI4_B, "perao_p_spi4_b",
+	GATE_HWV_PERAO0(CLK_PERAO_P_SPI4_B, "perao_p_spi4_b",
 			"top_spi4_ck"/* parent */, 16),
 	GATE_PERAO0_V(CLK_PERAO_P_SPI4_B_SPI, "perao_p_spi4_b_spi",
 			"perao_p_spi4_b"/* parent */),
-	GATE_PERAO0(CLK_PERAO_P_SPI5_B, "perao_p_spi5_b",
+	GATE_HWV_PERAO0(CLK_PERAO_P_SPI5_B, "perao_p_spi5_b",
 			"top_spi5_ck"/* parent */, 17),
 	GATE_PERAO0_V(CLK_PERAO_P_SPI5_B_SPI, "perao_p_spi5_b_spi",
 			"perao_p_spi5_b"/* parent */),
-	GATE_PERAO0(CLK_PERAO_P_SPI6_B, "perao_p_spi6_b",
+	GATE_HWV_PERAO0(CLK_PERAO_P_SPI6_B, "perao_p_spi6_b",
 			"top_spi6_ck"/* parent */, 18),
 	GATE_PERAO0_V(CLK_PERAO_P_SPI6_B_SPI, "perao_p_spi6_b_spi",
 			"perao_p_spi6_b"/* parent */),
-	GATE_PERAO0(CLK_PERAO_P_SPI7_B, "perao_p_spi7_b",
+	GATE_HWV_PERAO0(CLK_PERAO_P_SPI7_B, "perao_p_spi7_b",
 			"top_spi7_ck"/* parent */, 19),
 	GATE_PERAO0_V(CLK_PERAO_P_SPI7_B_SPI, "perao_p_spi7_b_spi",
 			"perao_p_spi7_b"/* parent */),
-	GATE_PERAO0(CLK_PERAO_P_I2C, "perao_p_i2c",
-			"top_axi_p_ck"/* parent */, 28),
-	GATE_PERAO0_V(CLK_PERAO_P_I2C_I2C, "perao_p_i2c_i2c",
-			"perao_p_i2c"/* parent */),
 	GATE_PERAO0(CLK_PERAO_P_DMA_B, "perao_p_dma_b",
 			"top_axi_p_ck"/* parent */, 29),
 	GATE_PERAO0_V(CLK_PERAO_P_DMA_B_UART, "perao_p_dma_b_uart",
@@ -1511,10 +1564,6 @@ static const struct mtk_gate ufsao_clks[] = {
 			"top_f26m_ck"/* parent */, 8),
 	GATE_UFSAO_V(CLK_UFSAO_UNIPRO_SAP_CFG_UFS, "ufsao_unipro_sap_cfg_ufs",
 			"ufsao_unipro_sap_cfg"/* parent */),
-	GATE_UFSAO(CLK_UFSAO_UFS_AO_FREE_26M, "ufsao_ufs_ao_26m",
-			"top_f26m_ck"/* parent */, 24),
-	GATE_UFSAO_V(CLK_UFSAO_UFS_AO_FREE_26M_UFS, "ufsao_ufs_ao_26m_ufs",
-			"ufsao_ufs_ao_26m"/* parent */),
 };
 
 static const struct mtk_clk_desc ufsao_mcd = {
