@@ -39,7 +39,6 @@
 			<&cksys_reg_clk CLK_TOP_IPE_SEL>,
 			<&cksys_reg_clk CLK_TOP_CAM_SEL>,
 			<&cksys_reg_clk CLK_TOP_CAMTM_SEL>,
-			<&cksys_reg_clk CLK_TOP_UNIPLL_SES_SEL>,
 			<&cksys_reg_clk CLK_TOP_USB_FRMCNT_SEL>,
 			<&apmixedsys_clk CLK_APMIXED_UNIVPLL>,
 			<&apmixedsys_clk CLK_APMIXED_MSDCPLL>,
