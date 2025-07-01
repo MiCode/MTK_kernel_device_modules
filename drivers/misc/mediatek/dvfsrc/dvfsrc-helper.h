@@ -91,6 +91,7 @@ struct dvfsrc_debug_data {
 	bool qos_mm_mode_en;
 	bool therm_info_en;
 	bool mmdvfs_notify;
+	bool apudvfs_notify;
 };
 
 struct mtk_dvfsrc {

@@ -127,7 +127,7 @@ void vsmr_mt6993_get_last_data(struct mtk_vsmr_header *header)
 	/* release VSMR reset */
 	vsmr_update_bits(vsmr_drv, VSMR_SW_RESET, 0x0, 0x1, 1);
 
-	vsmr_dump_header_data(header);
+	//vsmr_dump_header_data(header);
 }
 
 void vsmr_get_data(struct mtk_vsmr_header *header)

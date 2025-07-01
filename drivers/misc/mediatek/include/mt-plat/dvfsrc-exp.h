@@ -34,12 +34,15 @@ static inline u32 dvfsrc_get_required_opp_peak_bw_legacy(struct device_node *np,
 extern int mtk_dvfsrc_query_opp_info(u32 id);
 extern int mtk_dvfsrc_vcore_uv_table(u32 opp);
 extern void mtk_dvfsrc_thernal_notify(u32 state);
+extern void register_apudvfs_debug_force_vcore_notify(int (*handler)(u32 vcore_opp));
 #else
 static inline int mtk_dvfsrc_query_opp_info(u32 id)
 { return 0; }
 static inline int mtk_dvfsrc_vcore_uv_table(u32 opp)
 { return 0; }
 static inline mtk_dvfsrc_thernal_notify(u32 state)
+{}
+static inline register_apudvfs_debug_force_vcore_notify(int (*handler)(u32 vcore_opp))
 {}
 #endif /* CONFIG_MTK_DVFSRC_HELPER */
 
