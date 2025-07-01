@@ -5966,8 +5966,8 @@ void mtk_vdec_unlock(struct mtk_vcodec_ctx *ctx, u32 hw_id)
 	if (hw_id >= MTK_VDEC_HW_NUM)
 		return;
 
-	mtk_v4l2_debug(4, "ctx %p [%d] hw_id %d sem_cnt %d",
-		ctx, ctx->id, hw_id, ctx->dev->dec_sem[hw_id].count);
+	mtk_v4l2_debug(4, "ctx %p [%d] hw_id %d sem_cnt %u",
+		ctx, ctx->id, hw_id, mtk_vcodec_sem_getvalue(&ctx->dev->dec_sem[hw_id]));
 
 	ctx->hw_locked[hw_id] = 0;
 	up(&ctx->dev->dec_sem[hw_id]);
@@ -5980,8 +5980,8 @@ int mtk_vdec_lock(struct mtk_vcodec_ctx *ctx, u32 hw_id)
 	if (hw_id >= MTK_VDEC_HW_NUM)
 		return -1;
 
-	mtk_v4l2_debug(4, "ctx %p [%d] hw_id %d sem_cnt %d",
-		ctx, ctx->id, hw_id, ctx->dev->dec_sem[hw_id].count);
+	mtk_v4l2_debug(4, "ctx %p [%d] hw_id %d sem_cnt %u",
+		ctx, ctx->id, hw_id, mtk_vcodec_sem_getvalue(&ctx->dev->dec_sem[hw_id]));
 
 	if (mtk_vcodec_is_vcp(MTK_INST_DECODER)) {
 		down(&ctx->dev->dec_sem[hw_id]);

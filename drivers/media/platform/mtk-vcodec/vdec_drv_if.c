@@ -281,14 +281,16 @@ void vdec_decode_unprepare(void *ctx_unprepare,
 	unsigned int hw_id)
 {
 	struct mtk_vcodec_ctx *ctx = (struct mtk_vcodec_ctx *)ctx_unprepare;
+	unsigned int sem_count;
 
 	if (ctx == NULL || hw_id >= MTK_VDEC_HW_NUM || ctx->dev->power_in_vcp)
 		return;
 
 	mutex_lock(&ctx->hw_status);
-	if (ctx->dev->dec_sem[hw_id].count != 0) {
-		mtk_v4l2_debug(0, "HW not prepared, dec_sem[%d].count = %d",
-			hw_id, ctx->dev->dec_sem[hw_id].count);
+	sem_count = mtk_vcodec_sem_getvalue(&ctx->dev->dec_sem[hw_id]);
+	if (sem_count != 0) {
+		mtk_v4l2_debug(0, "HW not prepared, dec_sem[%d].count = %u",
+			hw_id, sem_count);
 		mutex_unlock(&ctx->hw_status);
 		return;
 	}

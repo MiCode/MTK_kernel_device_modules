@@ -411,6 +411,7 @@ enum mtk_put_buffer_type {
 void mtk_vcodec_set_dev(struct mtk_vcodec_dev *dev, enum mtk_instance_type type);
 int mtk_vcodec_get_chipid(struct mtk_chipid *chip_id);
 bool mtk_vcodec_is_vcp(int type);
+unsigned int mtk_vcodec_sem_getvalue(struct semaphore *sem);
 bool mtk_vcodec_is_state(struct mtk_vcodec_ctx *ctx, int state);
 bool mtk_vcodec_state_in_range(struct mtk_vcodec_ctx *ctx, int state_a, int state_b);
 int mtk_vcodec_get_state(struct mtk_vcodec_ctx *ctx);

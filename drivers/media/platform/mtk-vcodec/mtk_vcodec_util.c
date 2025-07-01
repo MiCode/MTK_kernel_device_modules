@@ -243,6 +243,19 @@ bool mtk_vcodec_is_vcp(int type)
 }
 EXPORT_SYMBOL_GPL(mtk_vcodec_is_vcp);
 
+unsigned int mtk_vcodec_sem_getvalue(struct semaphore *sem)
+{
+	unsigned long flags;
+	unsigned int cnt;
+
+	raw_spin_lock_irqsave(&sem->lock, flags);
+	cnt = sem->count;
+	raw_spin_unlock_irqrestore(&sem->lock, flags);
+
+	return cnt;
+}
+EXPORT_SYMBOL_GPL(mtk_vcodec_sem_getvalue);
+
 /* for check if ctx state is in specific state range, params means:
  * state_a & state_b != MTK_STATE_NULL: check if state_a <= ctx state = state_b,
  * state_a == MTK_STATE_NULL: check if ctx state <= state_b,
