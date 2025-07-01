@@ -2208,6 +2208,11 @@
 				scmi-aiste = <14>;
 			};
 		};
+
+		android: android {
+			compatible = "android,firmware";
+			hardware = "mt6993";
+		};
 	};
 
 	mcupm: mcupm {
