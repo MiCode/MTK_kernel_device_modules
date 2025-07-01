@@ -16046,6 +16046,7 @@ static const struct mtk_dsi_driver_data mt6858_dsi_driver_data = {
 	.urgent_hi_fifo_us = 15,
 	.max_vfp = 0x7ffe,
 	.mmclk_by_datarate = mtk_dsi_set_mmclk_by_datarate_V2,
+	.bubble_rate = 125,
 	.dsi_cmdq_size = 128,
 	.dsi_cmdq_page = 4,
 	.dsi_cmdq_rd_max_sz_cpu = 512,
