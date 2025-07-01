@@ -1243,6 +1243,15 @@
 		interrupts = <GIC_SPI 499 IRQ_TYPE_LEVEL_HIGH 0>;
 	};
 
+	swpm: swpm {
+		compatible = "mediatek,mtk-swpm";
+		pmu-support = <0>;
+		pmu-boundary-num = <0>;
+		pmu-dsu-support = <0>;
+		pmu-dsu-type = <11>;
+		pmu-ai-support = <0>;
+	};
+
 	mtk_lpm: mtk-lpm {
 		compatible = "mediatek,mtk-lpm";
 		#address-cells = <2>;
