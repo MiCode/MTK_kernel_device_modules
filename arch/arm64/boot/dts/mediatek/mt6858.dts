@@ -7155,6 +7155,7 @@ dramc: dramc@10230000 {
 		compatible = "mediatek,battery manager";
 		gauge1 = <&mtk_gauge>;
 		charger = <&mt6720_chg>;
+		bootmode = <&chosen>;
 	};
 	// PMIC TODO:
 #if 0
