@@ -40,6 +40,7 @@
 #include <linux/pm_opp.h>
 #include <linux/regulator/consumer.h>
 #include "mtk-interconnect.h"
+#include <soc/mediatek/mmdvfs_v3.h>
 #endif
 
 #define USE_SW_TOKEN
@@ -86,6 +87,8 @@ struct MFB_CLK_STRUCT {
 	struct clk *CG_MFB_IMG_4;
 };
 struct MFB_CLK_STRUCT mfb_clk;
+static struct clk *img_mmdvfs_clk;
+
 #endif	/* !defined(CONFIG_MTK_LEGACY) && defined(CONFIG_COMMON_CLK)  */
 #endif
 
@@ -138,6 +141,7 @@ struct MFB_CLK_STRUCT mfb_clk;
 #define MFB_DBG_TASKLET             (0x00000020)
 
 
+
 /* ///////////////////////////////////////////////////////////////// */
 
 /******************************************************************************
@@ -153,6 +157,16 @@ struct MFB_CLK_STRUCT mfb_clk;
 			MSF_INT_ST)
 
 #define CMDQ_REG_MASK 0xffffffff
+
+
+static unsigned int g_platform_id;
+
+#define MFB_USE_POLLING
+#define IMGSYS_POLL_TIME_INFINI 0xFFFF
+#define MSSCMDQ_INT_STA (0x15812508)
+#define MSFCMDQ_INT_STA (0x158107c8)
+
+#define mt6858_mmdvfs
 
 static irqreturn_t ISP_Irq_MSS(signed int Irq, void *DeviceId);
 static irqreturn_t ISP_Irq_MSF(signed int Irq, void *DeviceId);
@@ -266,7 +280,7 @@ static u64 *speeds;
 
 static spinlock_t SpinLockMfbPmqos;
 static unsigned int qos_scen[4];
-static unsigned int qos_total, qos_report;
+static unsigned long qos_total, qos_report;
 
 #define MFB_PORT_NUM 8
 static struct icc_path *path_mfb[MFB_PORT_NUM];
@@ -732,70 +746,147 @@ void MFBQOS_Update(bool start, unsigned int scen, unsigned long bw)
 	int volt, ret, i;
 	unsigned long freq;
 	struct dev_pm_opp *opp;
+	unsigned int qos_port_temp = 0;
 
-	LOG_DBG("start: %d, MFB scen: %d, bw: %lu", start, scen, bw);
-	if (start) { /* start MFB, configure MMDVFS to highest CLK */
-		LOG_DBG("MFB total: %ld", qos_total);
-		spin_lock(&(SpinLockMfbPmqos));
-		if (bw != 0)
-			qos_scen[scen] = bw;
-		qos_total = qos_total + bw;
-		if (qos_total > 600000000) {
-			spin_unlock(&(SpinLockMfbPmqos));
-			freq = speeds[0];
-			opp = dev_pm_opp_find_freq_ceil(
-					MFB_devs[0].dev, &freq);
-			volt = dev_pm_opp_get_voltage(opp);
-			dev_pm_opp_put(opp);
-		} else if (qos_total > 300000000) {
-			spin_unlock(&(SpinLockMfbPmqos));
-			freq = speeds[1];
-			opp = dev_pm_opp_find_freq_ceil(
-					MFB_devs[0].dev, &freq);
-			volt = dev_pm_opp_get_voltage(opp);
-			dev_pm_opp_put(opp);
-		} else if (qos_total > 100000000) {
-			spin_unlock(&(SpinLockMfbPmqos));
-			freq = speeds[2];
-			opp = dev_pm_opp_find_freq_ceil(
-					MFB_devs[0].dev, &freq);
-			volt = dev_pm_opp_get_voltage(opp);
-			dev_pm_opp_put(opp);
-		} else {
-			spin_unlock(&(SpinLockMfbPmqos));
-			volt = 0;
+	LOG_INF("start: %d, MFB scen: %d, bw: %lu", start, scen, bw);
+
+	if (g_platform_id == 0x6858) {
+		if (start) { /* start MFB, configure MMDVFS to highest CLK */
+			LOG_INF("MFB total: %lu", qos_total);
+			spin_lock(&(SpinLockMfbPmqos));
+			if (bw != 0)
+				qos_scen[scen] = bw;
+			qos_total = qos_total + bw;
+			if (qos_total > 600000000) {
+				spin_unlock(&(SpinLockMfbPmqos));
+				freq = speeds[3];
+				opp = dev_pm_opp_find_freq_ceil(
+						MFB_devs[0].dev, &freq);
+				volt = dev_pm_opp_get_voltage(opp);
+				dev_pm_opp_put(opp);
+			} else if (qos_total > 300000000) {
+				spin_unlock(&(SpinLockMfbPmqos));
+				freq = speeds[2];
+				opp = dev_pm_opp_find_freq_ceil(
+						MFB_devs[0].dev, &freq);
+				volt = dev_pm_opp_get_voltage(opp);
+				dev_pm_opp_put(opp);
+			} else if (qos_total > 100000000) {
+				spin_unlock(&(SpinLockMfbPmqos));
+				freq = speeds[1];
+				opp = dev_pm_opp_find_freq_ceil(
+						MFB_devs[0].dev, &freq);
+				volt = dev_pm_opp_get_voltage(opp);
+				dev_pm_opp_put(opp);
+			} else {
+				freq = speeds[0];
+				spin_unlock(&(SpinLockMfbPmqos));
+				volt = 0;
+			}
+		} else { /* finish MFB, config MMDVFS to lowest CLK */
+			LOG_DBG("MFB total: %ld", qos_total);
+			spin_lock(&(SpinLockMfbPmqos));
+			qos_total = qos_total - qos_scen[scen];
+			if (qos_total > 600000000) {
+				spin_unlock(&(SpinLockMfbPmqos));
+				freq = speeds[3];
+				opp = dev_pm_opp_find_freq_ceil(
+						MFB_devs[0].dev, &freq);
+				volt = dev_pm_opp_get_voltage(opp);
+				dev_pm_opp_put(opp);
+			} else if (qos_total > 300000000) {
+				spin_unlock(&(SpinLockMfbPmqos));
+				freq = speeds[2];
+				opp = dev_pm_opp_find_freq_ceil(
+						MFB_devs[0].dev, &freq);
+				volt = dev_pm_opp_get_voltage(opp);
+				dev_pm_opp_put(opp);
+			} else if (qos_total > 100000000) {
+				spin_unlock(&(SpinLockMfbPmqos));
+				freq = speeds[1];
+				opp = dev_pm_opp_find_freq_ceil(
+						MFB_devs[0].dev, &freq);
+				volt = dev_pm_opp_get_voltage(opp);
+				dev_pm_opp_put(opp);
+			} else {
+				freq = speeds[0];
+				spin_unlock(&(SpinLockMfbPmqos));
+				volt = 0;
+			}
 		}
-	} else { /* finish MFB, config MMDVFS to lowest CLK */
-		LOG_DBG("MFB total: %ld", qos_total);
-		spin_lock(&(SpinLockMfbPmqos));
-		qos_total = qos_total - qos_scen[scen];
-		if (qos_total > 600000000) {
-			spin_unlock(&(SpinLockMfbPmqos));
-			freq = speeds[0];
-			opp = dev_pm_opp_find_freq_ceil(
-					MFB_devs[0].dev, &freq);
-			volt = dev_pm_opp_get_voltage(opp);
-			dev_pm_opp_put(opp);
-		} else if (qos_total > 300000000) {
-			spin_unlock(&(SpinLockMfbPmqos));
-			freq = speeds[1];
-			opp = dev_pm_opp_find_freq_ceil(
-					MFB_devs[0].dev, &freq);
-			volt = dev_pm_opp_get_voltage(opp);
-			dev_pm_opp_put(opp);
-		} else if (qos_total > 100000000) {
-			spin_unlock(&(SpinLockMfbPmqos));
-			freq = speeds[2];
-			opp = dev_pm_opp_find_freq_ceil(
-					MFB_devs[0].dev, &freq);
-			volt = dev_pm_opp_get_voltage(opp);
-			dev_pm_opp_put(opp);
-		} else {
-			spin_unlock(&(SpinLockMfbPmqos));
-			volt = 0;
+	} else {
+		if (start) { /* start MFB, configure MMDVFS to highest CLK */
+			LOG_INF("MFB total: %lu", qos_total);
+			spin_lock(&(SpinLockMfbPmqos));
+			if (bw != 0)
+				qos_scen[scen] = bw;
+			qos_total = qos_total + bw;
+			if (qos_total > 600000000) {
+				spin_unlock(&(SpinLockMfbPmqos));
+				freq = speeds[0];
+				opp = dev_pm_opp_find_freq_ceil(
+						MFB_devs[0].dev, &freq);
+				volt = dev_pm_opp_get_voltage(opp);
+				dev_pm_opp_put(opp);
+			} else if (qos_total > 300000000) {
+				spin_unlock(&(SpinLockMfbPmqos));
+				freq = speeds[1];
+				opp = dev_pm_opp_find_freq_ceil(
+						MFB_devs[0].dev, &freq);
+				volt = dev_pm_opp_get_voltage(opp);
+				dev_pm_opp_put(opp);
+			} else if (qos_total > 100000000) {
+				spin_unlock(&(SpinLockMfbPmqos));
+				freq = speeds[2];
+				opp = dev_pm_opp_find_freq_ceil(
+						MFB_devs[0].dev, &freq);
+				volt = dev_pm_opp_get_voltage(opp);
+				dev_pm_opp_put(opp);
+			} else {
+				freq = speeds[3];
+				spin_unlock(&(SpinLockMfbPmqos));
+				volt = 0;
+			}
+		} else { /* finish MFB, config MMDVFS to lowest CLK */
+			LOG_DBG("MFB total: %ld", qos_total);
+			spin_lock(&(SpinLockMfbPmqos));
+			qos_total = qos_total - qos_scen[scen];
+			if (qos_total > 600000000) {
+				spin_unlock(&(SpinLockMfbPmqos));
+				freq = speeds[0];
+				opp = dev_pm_opp_find_freq_ceil(
+						MFB_devs[0].dev, &freq);
+				volt = dev_pm_opp_get_voltage(opp);
+				dev_pm_opp_put(opp);
+			} else if (qos_total > 300000000) {
+				spin_unlock(&(SpinLockMfbPmqos));
+				freq = speeds[1];
+				opp = dev_pm_opp_find_freq_ceil(
+						MFB_devs[0].dev, &freq);
+				volt = dev_pm_opp_get_voltage(opp);
+				dev_pm_opp_put(opp);
+			} else if (qos_total > 100000000) {
+				spin_unlock(&(SpinLockMfbPmqos));
+				freq = speeds[2];
+				opp = dev_pm_opp_find_freq_ceil(
+						MFB_devs[0].dev, &freq);
+				volt = dev_pm_opp_get_voltage(opp);
+				dev_pm_opp_put(opp);
+			} else {
+				freq = speeds[3];
+				spin_unlock(&(SpinLockMfbPmqos));
+				volt = 0;
+			}
 		}
 	}
-	ret = regulator_set_voltage(regu, volt, INT_MAX);
+
+	if (g_platform_id == 0x6858) {
+		LOG_INF("freq = %lu", freq);
+		ret = clk_set_rate(img_mmdvfs_clk, freq);
+	} else {
+		ret = regulator_set_voltage(regu, volt, INT_MAX);
+	}
+
 	if (ret)
 		LOG_ERR("PMQOS error ret = %d", ret);
 
@@ -806,8 +897,39 @@ void MFBQOS_Update(bool start, unsigned int scen, unsigned long bw)
 		qos_report = qos_total;
 	spin_unlock(&SpinLockMfbPmqos);
 
-	for (i = 0; i < MFB_PORT_NUM; i++)
-		mtk_icc_set_bw(path_mfb[i], Bps_to_icc(qos_report), 0);
+	LOG_INF("qos_report: %lu\n", qos_report);
+	for (i = 0; i < MFB_PORT_NUM; i++) {
+		switch (i) {
+		case 0:
+			qos_port_temp = qos_report * 15 / 100;
+			break;
+		case 1:
+			qos_port_temp = qos_report * 13 / 100;
+			break;
+		case 2:
+			qos_port_temp = qos_report * 14 / 100;
+			break;
+		case 3:
+			qos_port_temp = qos_report * 1 / 100;
+			break;
+		case 4:
+			qos_port_temp = qos_report * 11 / 100;
+			break;
+		case 5:
+			qos_port_temp = qos_report * 4 / 100;
+			break;
+		case 6:
+			qos_port_temp = qos_report * 29 / 100;
+			break;
+		case 7:
+			qos_port_temp = qos_report * 16 / 100;
+			break;
+		}
+		qos_port_temp = qos_report; // temp to test
+		LOG_DBG("port num: %d, qos_port_temp: %d\n", i, qos_port_temp);
+		mtk_icc_set_bw(path_mfb[i], Bps_to_icc(qos_port_temp), 0);
+	}
+
 }
 #endif
 
@@ -930,7 +1052,15 @@ static void mss_pkt_tcmds(struct cmdq_pkt *handle,
 		cmdq_pkt_write(handle, NULL, (dma_addr_t)MFB_MSS_START_HW,
 				0x1, CMDQ_REG_MASK);
 		/* wfe */
+	if (g_platform_id == 0x6858) {
+		LOG_DBG("MFB_USE_POLLING");
+		cmdq_pkt_poll_timeout(handle, 0x1, SUBSYS_NO_SUPPORT,
+						MSSCMDQ_INT_STA, 0x1, IMGSYS_POLL_TIME_INFINI,
+						CMDQ_GPR_R08);
+	} else {
 		cmdq_pkt_wfe(handle, mss_done_event_id);
+	}
+
 		cmdq_pkt_write(handle, NULL, (dma_addr_t)MFB_MSS_INT_STA_HW,
 				0x1, CMDQ_REG_MASK);
 		LOG_DBG("MSS_CMDQ_ENABLE%d = 0x%x", t,
@@ -1046,7 +1176,14 @@ signed int CmdqMSSHW(struct frame *frame)
 #ifndef BYPASS_REG
 	cmdq_pkt_write(handle, NULL, (dma_addr_t)MFB_MSS_START_HW,
 			0x1, CMDQ_REG_MASK);
-	cmdq_pkt_wfe(handle, mss_done_event_id);
+	if (g_platform_id == 0x6858) {
+		LOG_DBG("MFB_USE_POLLING");
+		cmdq_pkt_poll_timeout(handle, 0x1, SUBSYS_NO_SUPPORT,
+						MSSCMDQ_INT_STA, 0x1, IMGSYS_POLL_TIME_INFINI,
+						CMDQ_GPR_R08);
+	} else {
+		cmdq_pkt_wfe(handle, mss_done_event_id);
+	}
 	/* non-blocking API, Please  use cmdqRecFlushAsync() */
 #endif
 #endif
@@ -1056,10 +1193,10 @@ signed int CmdqMSSHW(struct frame *frame)
 #ifdef MFB_PMQOS
 	MFBQOS_Update(1, 0, pMssConfig->qos);
 #endif
+	LOG_INF("MSS fter pkt flush");
 	cmdq_pkt_flush_threaded(handle, mss_norm_sirq, (void *)handle);
 #endif
 
-	LOG_INF("after pkt flush");
 	return 0;
 }
 
@@ -1244,7 +1381,14 @@ static void msf_pkt_tcmds(struct cmdq_pkt *handle,
 		cmdq_pkt_write(handle, NULL, (dma_addr_t)MFB_MSF_START_HW,
 				0x1, CMDQ_REG_MASK);
 		/* wfe */
+	if (g_platform_id == 0x6858) {
+		LOG_DBG("MFB_USE_POLLING");
+		cmdq_pkt_poll_timeout(handle, 0x1, SUBSYS_NO_SUPPORT,
+						MSFCMDQ_INT_STA, 0x1, IMGSYS_POLL_TIME_INFINI,
+						CMDQ_GPR_R09);
+	} else {
 		cmdq_pkt_wfe(handle, msf_done_event_id);
+	}
 		cmdq_pkt_write(handle, NULL, (dma_addr_t)MFB_MSF_INT_STA_HW,
 				0x1, CMDQ_REG_MASK);
 		LOG_DBG("MSF_CMDQ_ENABLE%d = 0x%x", t,
@@ -1355,7 +1499,14 @@ signed int CmdqMSFHW(struct frame *frame)
 #ifndef BYPASS_REG
 	cmdq_pkt_write(handle, NULL, (dma_addr_t)MFB_MSF_START_HW,
 			0x1, CMDQ_REG_MASK);
-	cmdq_pkt_wfe(handle, msf_done_event_id);
+	if (g_platform_id == 0x6858) {
+		LOG_DBG("MFB_USE_POLLING");
+		cmdq_pkt_poll_timeout(handle, 0x1, SUBSYS_NO_SUPPORT,
+						MSFCMDQ_INT_STA, 0x1, IMGSYS_POLL_TIME_INFINI,
+						CMDQ_GPR_R09);
+	} else {
+		cmdq_pkt_wfe(handle, msf_done_event_id);
+	}
 
 	/* non-blocking API, Please  use cmdqRecFlushAsync() */
 #endif
@@ -1366,6 +1517,7 @@ signed int CmdqMSFHW(struct frame *frame)
 #ifdef MFB_PMQOS
 	MFBQOS_Update(1, 2, pMsfConfig->qos);
 #endif
+	LOG_INF("MSF after pkt flush");
 	cmdq_pkt_flush_threaded(handle, msf_norm_sirq, (void *)handle);
 #endif
 	return 0;
@@ -1667,6 +1819,11 @@ static inline void MFB_Prepare_Enable_ccf_clock(void)
 	pm_runtime_get_sync(MFB_devs[0].dev);
 	LOG_INF("MFB_Prepare_Enable_ccf_clock!!");
 
+	if (g_platform_id == 0x6858) {
+		LOG_INF("vcp enable!");
+		mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_IMG);
+	}
+
 	/*	ret = mtk_smi_larb_get(MFB_devs[0].larb);
 	 *	if (MFB_devs[0].larb_b != NULL)
 	 *		ret = mtk_smi_larb_get(MFB_devs[0].larb_b);
@@ -1732,6 +1889,11 @@ static inline void MFB_Disable_Unprepare_ccf_clock(void)
 		mtk_smi_larb_put(MFB_devs[0].larb_b);
 	mtk_smi_larb_put(MFB_devs[0].larb);
 */
+	if (g_platform_id == 0x6858) {
+		LOG_INF("vcp disable!");
+		mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_IMG);
+	}
+
 	pm_runtime_put_sync(MFB_devs[0].dev);
 }
 #endif
@@ -4191,6 +4353,9 @@ MFB_add_device_link(pDev);
 				"MFB_CG_IMG_3");
 		mfb_clk.CG_MFB_IMG_4 = devm_clk_get(&pDev->dev,
 				"MFB_CG_IMG_4");
+		img_mmdvfs_clk = devm_clk_get(&pDev->dev,
+				"CLK_MMDVFS_IMG");
+
 
 		if (IS_ERR(mfb_clk.CG_MFB_IMG_0))
 			LOG_ERR("cannot get CG_MFB_IMG_0 clock\n");
@@ -4205,6 +4370,10 @@ MFB_add_device_link(pDev);
 		if (IS_ERR(mfb_clk.CG_MFB_IMG_4)) {
 			mfb_clk.CG_MFB_IMG_4 = NULL;
 			LOG_ERR("cannot get CG_MFB_IMG_4 clock\n");
+		}
+		if (IS_ERR(img_mmdvfs_clk)) {
+			img_mmdvfs_clk = NULL;
+			LOG_ERR("cannot get img_mmdvfs_clk clock\n");
 		}
 #endif
 #endif	/* !defined(CONFIG_MTK_LEGACY) && defined(CONFIG_COMMON_CLK)  */
@@ -4612,12 +4781,15 @@ static signed int __init MFB_Init(void)
 	void *tmp;
 	int i;
 
-	LOG_DBG("- E.");
+	LOG_INF("- E.");
 	Ret = platform_driver_register(&MFBDriver);
 	if (Ret < 0) {
 		LOG_ERR("platform_driver_register fail");
 		return Ret;
 	}
+
+	g_platform_id = GET_PLATFORM_ID("mediatek,msf");
+	LOG_INF("g_platform_id = 0x%x\n", g_platform_id);
 
 #if CHECK_SERVICE_IF_0
 	struct device_node *node = NULL;
@@ -4694,7 +4866,7 @@ static signed int __init MFB_Init(void)
 		return Ret;
 	}
 #endif
-	LOG_DBG("- X. Ret: %d.", Ret);
+	LOG_INF("- X. Ret: %d.", Ret);
 	return Ret;
 }
 

@@ -483,3 +483,57 @@ struct MFB_MapTable {
 
 #endif
 
+
+#define GET_PLATFORM_ID(compatible_name) ({					\
+	struct device_node *dev_node = NULL;					\
+	const char *platform_id_str;						\
+	unsigned int platform_id = 0x0;						\
+										\
+	dev_node = of_find_compatible_node(NULL, NULL, compatible_name);	\
+	if (!dev_node) {							\
+		LOG_ERR("Found no %s\n", compatible_name);			\
+	} else {								\
+		if (of_property_read_string(dev_node, "mediatek,platform",	\
+			&platform_id_str) < 0) {				\
+			LOG_ERR("no mediatek,platform name\n");		\
+		} else {							\
+			if (strncmp(platform_id_str, "mt6893", 6) == 0)		\
+				platform_id = 0x6893;				\
+			else if (strncmp(platform_id_str, "mt6885", 6) == 0)	\
+				platform_id = 0x6885;				\
+			else if (strncmp(platform_id_str, "mt6877", 6) == 0)	\
+				platform_id = 0x6877;				\
+			else if (strncmp(platform_id_str, "mt6873", 6) == 0)	\
+				platform_id = 0x6873;				\
+			else if (strncmp(platform_id_str, "mt6855", 6) == 0)	\
+				platform_id = 0x6855;				\
+			else if (strncmp(platform_id_str, "mt6853", 6) == 0)	\
+				platform_id = 0x6853;				\
+			else if (strncmp(platform_id_str, "mt6835", 6) == 0)	\
+				platform_id = 0x6835;				\
+			else if (strncmp(platform_id_str, "mt6833", 6) == 0)	\
+				platform_id = 0x6833;				\
+			else if (strncmp(platform_id_str, "mt6781", 6) == 0)	\
+				platform_id = 0x6781;				\
+			else if (strncmp(platform_id_str, "mt6789", 6) == 0)	\
+				platform_id = 0x6789;				\
+			else if (strncmp(platform_id_str, "mt6858", 6) == 0)	\
+				platform_id = 0x6858;				\
+			else if (strncmp(platform_id_str, "mt6779", 6) == 0)	\
+				platform_id = 0x6779;				\
+			else if (strncmp(platform_id_str, "mt6785", 6) == 0)	\
+				platform_id = 0x6785;				\
+			else if (strncmp(platform_id_str, "mt6768", 6) == 0)	\
+				platform_id = 0x6768;				\
+			else if (strncmp(platform_id_str, "mt6765", 6) == 0)	\
+				platform_id = 0x6765;				\
+			else if (strncmp(platform_id_str, "mt6761", 6) == 0)	\
+				platform_id = 0x6761;				\
+			else if (strncmp(platform_id_str, "mt6739", 6) == 0)	\
+				platform_id = 0x6739;				\
+			else if (strncmp(platform_id_str, "mt6580", 6) == 0)	\
+				platform_id = 0x6580;				\
+		}								\
+	}									\
+	platform_id;								\
+})
