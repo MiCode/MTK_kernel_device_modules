@@ -6936,12 +6936,13 @@ dramc: dramc@10230000 {
 				<0 0x11e90000 0 0x1000>;
 			interrupts = <GIC_SPI 406 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&cksys_reg_clk CLK_TOP_MSDC30_1_SEL>,
+					<&cksys_reg_clk CLK_TOP_MSDC30_1_HCLK_SEL>,
 					<&cksys_reg_clk CLK_TOP_MSDC_MACRO_1P_SEL>,
 					<&pericfg_ao_clk CLK_PERAO_P_MSDC1_MSDC>,
 					<&pericfg_ao_clk CLK_PERAO_P_MSDC1_H_MSDC>,
 					<&pericfg_ao_clk CLK_PERAO_P_MSDC1_MST_F_MSDC>,
 					<&pericfg_ao_clk CLK_PERAO_P_MSDC1_SLV_H_MSDC>;
-			clock-names = "source", "macro", "axi_cg", "hclk", "source_cg", "bus_clk";
+			clock-names = "source", "hclk", "macro", "source_cg", "ahb_cg", "axi_cg", "bus_clk";
 			status = "disabled";
 		};
 
