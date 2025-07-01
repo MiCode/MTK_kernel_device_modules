@@ -1365,7 +1365,7 @@
 			};
 			syspll: syspll {
 				id = <0x00000002>;
-				value = <1>;
+				value = <0>;
 			};
 			dram_s0: dram-s0 {
 				id = <0x00000003>;
