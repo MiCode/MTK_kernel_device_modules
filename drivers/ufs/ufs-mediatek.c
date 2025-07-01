@@ -2830,6 +2830,9 @@ static void ufs_mtk_fixup_dev_quirks(struct ufs_hba *hba)
 	if (STR_PRFX_EQUAL("H9HQ15AFAMBDAR", dev_info->model))
 		host->caps |= UFS_MTK_CAP_BROKEN_VCC | UFS_MTK_CAP_ALLOW_VCCQX_LPM;
 
+	if (STR_PRFX_EQUAL("MT256GAXAT4U31", dev_info->model))
+		host->caps |= UFS_MTK_CAP_BROKEN_VCC;
+
 	if (ufs_mtk_is_broken_vcc(hba) && hba->vreg_info.vcc &&
 	    (hba->dev_quirks & UFS_DEVICE_QUIRK_DELAY_AFTER_LPM)) {
 		hba->vreg_info.vcc->always_on = true;
