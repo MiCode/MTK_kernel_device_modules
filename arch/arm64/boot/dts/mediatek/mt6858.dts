@@ -8100,9 +8100,7 @@ dramc: dramc@10230000 {
 			<35 3  2>,	/* IPI_OUT_C_SCP_HWVOTER_DEBUG */
 			<45 3  1>,	/* IPI_OUT_SCP_PM_NOTIFY_0 */
 			<47 3  2>,	/* IPI_PIN_HOST_SCP_CHRE */
-			<48 3  2>,	/* IPI_PIN_SCP_HOST_CHRE */
-			//<39 4  4>,	/* IPI_OUT_AOV_SCP */
-			<43 4  4>;	/* IPI_OUT_NPU_SCP */
+			<48 3  2>;	/* IPI_PIN_SCP_HOST_CHRE */
 
 			#recv-cells-mode = <1>;
 			/* mode 0 or no defined #recv-cells-mode => 4 elements : id, mbox,
@@ -8132,9 +8130,7 @@ dramc: dramc@10230000 {
 			<27 3  2 0 0 0 0>,	/* IPI_IN_AUDIO_ULTRA_SND_ACK_0 */
 			<35 3  4 1 0 0 0>,	/* IPI_OUT_C_SCP_HWVOTER_DEBUG */
 			<47 3  2 1 0 0 0>,	/* IPI_PIN_HOST_SCP_CHRE ack slot */
-			<48 3  2 0 0 0 1>,	/* IPI_PIN_SCP_HOST_CHRE msg slot */
-			<40 4  4 0 0 0 0>,	/* IPI_IN_SCP_AOV */
-			<44 4  4 0 0 0 0>;	/* IPI_IN_SCP_NPU */
+			<48 3  2 0 0 0 1>;	/* IPI_PIN_SCP_HOST_CHRE msg slot */
 
 			//legacy_table = <11>, /* out_id_0 IPI_OUT_SCP_MPOOL_0 */
 			//		<24>, /* out_id_1 IPI_OUT_SCP_MPOOL_1 */
@@ -8160,11 +8156,11 @@ dramc: dramc@10230000 {
 					<13 200 0>;	/* ultrasound */
 
 			scp-dram-region = "enable";	/* enable scp dram region manage */
-			scp-protect = "disable";	/* enable scp protections */
+			scp-protect = "enable";	/* enable scp protections */
 			secure-dump = "enable";		/* enable dump via secure world*/
-			scp-pm-notify = "disable";
+			scp-pm-notify = "enable";
 			scp-thermal-wq = "disable";
-			scp-low-pwr-dbg = "disable";
+			scp-low-pwr-dbg = "enable";
 			scp-cfgreg-ap-en = "enable";
 			scp-read-infra-irq-status = "disable";
 			scp-scpsys-regmap = "enable";
