@@ -4138,7 +4138,11 @@ static const struct mtk_addon_module_data mt6855_addon_wdma0_data[] = {
 };
 
 static const struct mtk_addon_module_data mt6858_addon_wdma1_data[] = {
-	{DISP_WDMA1_v4, ADDON_AFTER, DDP_COMPONENT_SPLIT_OUT_CB2},
+	{DISP_WDMA1_v4, ADDON_AFTER, DDP_COMPONENT_PQ0_IN_CB0},
+};
+
+static const struct mtk_addon_module_data mt6858_addon_wdma1_pq_data[] = {
+	{DISP_WDMA1_v4_pq, ADDON_AFTER, DDP_COMPONENT_SPLIT_OUT_CB2},
 };
 
 static const struct mtk_addon_module_data mt6858_addon_rsz_data[] = {
@@ -4884,9 +4888,19 @@ static const struct mtk_addon_scenario_data mt6858_addon_main[ADDON_SCN_NR] = {
 		.module_num = 0,
 		.hrt_type = HRT_TB_TYPE_GENERAL1,
 	},
-	[WDMA_WRITE_BACK] = {
+	[WDMA_WRITE_BACK_OVL] = {
 		.module_num = ARRAY_SIZE(mt6858_addon_wdma1_data),
 		.module_data = mt6858_addon_wdma1_data,
+		.hrt_type = HRT_TB_TYPE_GENERAL1,
+		},
+	[WDMA_WRITE_BACK_MID] = {
+		.module_num = ARRAY_SIZE(mt6858_addon_wdma1_data),
+		.module_data = mt6858_addon_wdma1_data,
+		.hrt_type = HRT_TB_TYPE_GENERAL1,
+		},
+	[WDMA_WRITE_BACK] = {
+		.module_num = ARRAY_SIZE(mt6858_addon_wdma1_pq_data),
+		.module_data = mt6858_addon_wdma1_pq_data,
 		.hrt_type = HRT_TB_TYPE_GENERAL1,
 	},
 	[TRIPLE_DISP] = {

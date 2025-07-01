@@ -32539,6 +32539,13 @@ static int mtk_ddp_mout_en_MT6858(const struct mtk_mmsys_reg_data *data,
 			// mtk_dump_comp_str_id(cur), mtk_dump_comp_str_id(next));
 	}
 
+	DDPINFO("%s cur=%s->next=%s addr:0x%x value:0x%x\n",
+		__func__,
+		mtk_dump_comp_str_id(cur),
+		mtk_dump_comp_str_id(next),
+		*addr,
+		value);
+
 	return value;
 }
 
