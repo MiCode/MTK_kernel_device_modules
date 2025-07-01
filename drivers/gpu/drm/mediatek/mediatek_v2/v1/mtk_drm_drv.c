@@ -7305,6 +7305,7 @@ static const struct mtk_mmsys_driver_data mt6858_mmsys_driver_data = {
 	.bypass_infra_ddr_control = true,
 	.need_emi_eff = true,
 	.pf_ts_type = IRQ_CMDQ_CB,
+	.respective_ostdl = true,
 };
 
 #ifdef MTK_DRM_FENCE_SUPPORT
