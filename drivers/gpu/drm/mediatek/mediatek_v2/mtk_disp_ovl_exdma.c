@@ -3139,8 +3139,39 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 	}
 
 	if (comp && comp->bind_comp && comp->bind_comp->funcs
-		&& comp->bind_comp->funcs->layer_config && !comp->bind_comp->blank_mode)
+		&& comp->bind_comp->funcs->layer_config && !comp->bind_comp->blank_mode) {
+
+		if (mtk_crtc->bg_bld_id > 0) {
+			int bld_id = comp->bind_comp->id - mtk_crtc->first_blender->id;
+
+			if (bld_id >= 0 && (mtk_crtc->bg_bld_id & (1 << bld_id))) {
+				cmdq_pkt_write(handle, comp->cmdq_base,
+					comp->regs_pa + regs[OVL_EXDMA_RDMA0_CTRL], 0,
+					REG_FLD_MASK(reg_fld[FLD_L0_EN]) |
+					REG_FLD_MASK(reg_fld[FLD_L0_FBDC_EN]));
+
+				cmdq_pkt_write(handle, comp->cmdq_base,
+					comp->regs_pa + OVL_EXDMA_ELX_EN(exdma, 0), 0x0,
+					REG_FLD_MASK(reg_fld[FLD_L0_EN]) |
+					REG_FLD_MASK(reg_fld[FLD_L0_FBDC_EN]));
+
+				cmdq_pkt_write(handle, comp->cmdq_base,
+					comp->regs_pa + OVL_EXDMA_ELX_EN(exdma, 1), 0x0,
+					REG_FLD_MASK(reg_fld[FLD_L0_EN]) |
+					REG_FLD_MASK(reg_fld[FLD_L0_FBDC_EN]));
+
+				cmdq_pkt_write(handle, comp->cmdq_base,
+					comp->regs_pa + OVL_EXDMA_ELX_EN(exdma, 2), 0x0,
+					REG_FLD_MASK(reg_fld[FLD_L0_EN]) |
+					REG_FLD_MASK(reg_fld[FLD_L0_FBDC_EN]));
+			}
+
+			DDPINFO("%s bld_id[%s] bind_comp[%s] bg_bld_id[%d] bg_code[%08x]\n",
+				__func__, bld_id, mtk_dump_comp_str(comp->bind_comp),
+				mtk_crtc->bg_bld_id, mtk_crtc->bg_code);
+		}
 		comp->bind_comp->funcs->layer_config(comp->bind_comp, idx, state, handle);
+	}
 }
 
 bool compr_ovl_exdma_l_config_AFBC_V1_2(struct mtk_ddp_comp *comp,

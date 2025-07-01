@@ -1183,6 +1183,36 @@ static void mtk_ovl_blender_layer_config(struct mtk_ddp_comp *comp, unsigned int
 			}
 		} else
 			mtk_ovl_blender_layer_on(comp, lye_idx, ext_lye_idx, handle);
+
+		if (mtk_crtc->bg_bld_id > 0) {
+			int bld_id = comp->id - mtk_crtc->first_blender->id;
+
+			if (bld_id >= 0 && (mtk_crtc->bg_bld_id & (1 << bld_id))) {
+				cmdq_pkt_write(handle, comp->cmdq_base,
+					comp->regs_pa + regs[OVL_BLD_L0_EN], 0x100,
+					REG_FLD_MASK(reg_fld[FLD_BLD_L0_LAYER_SRC]));
+
+				cmdq_pkt_write(handle, comp->cmdq_base,
+				   comp->regs_pa + OVL_BLD_ELX_EN(bld, 0),
+				   0x100, ~0);
+
+				cmdq_pkt_write(handle, comp->cmdq_base,
+				   comp->regs_pa + OVL_BLD_ELX_EN(bld, 1),
+				    0x100, ~0);
+
+				cmdq_pkt_write(handle, comp->cmdq_base,
+				   comp->regs_pa + OVL_BLD_ELX_EN(bld, 2),
+				    0x100, ~0);
+
+				cmdq_pkt_write(handle, comp->cmdq_base,
+					comp->regs_pa + regs[OVL_BLD_L0_CLR], mtk_crtc->bg_code,
+					~0);
+			}
+
+			DDPINFO("%s bld_id[%s] bind_comp[%s] bg_bld_id[%d] bg_code[%08x]\n", __func__,
+					bld_id, mtk_dump_comp_str(comp),
+					mtk_crtc->bg_bld_id, mtk_crtc->bg_code);
+		}
 	}
 }
 

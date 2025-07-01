@@ -1470,6 +1470,9 @@ struct mtk_drm_crtc {
 	 * mode (clear when AOD_CPU display a new frame).
 	 */
 	int scp_show_count;
+
+	int bg_bld_id;
+	unsigned int bg_code;
 };
 
 /* one exdma may have both compr and uncompr layers(because ext layer).

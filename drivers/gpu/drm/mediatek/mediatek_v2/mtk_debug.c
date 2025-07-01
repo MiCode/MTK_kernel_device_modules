@@ -3501,6 +3501,60 @@ static void process_dbg_opt(const char *opt)
 
 		if (helper_opt == MTK_DRM_OPT_MML_PQ)
 			mtk_crtc->is_force_mml_scen = !!value;
+	} else if (strncmp(opt, "bld_set:", 8) == 0) {
+		/*echo bld_set:user_crtc_id,bld_id,color_code*/
+		/*We need to input echo bld_set:user_crtc_id,-1 to disable*/
+
+		int ret = 0;
+		int user_crtc_id = -1;
+		int bld_id = -1;
+		unsigned int color_code = 0;
+		int crtc_idx = -1;
+		struct mtk_drm_crtc *temp_mtk_crtc = NULL;
+
+		ret = sscanf(opt + 8, "%d,%d,0x%x\n",
+			&user_crtc_id, &bld_id,
+			&color_code);
+
+		if (ret <= 0) {
+			DDPMSG("%d error to parse bld_set cmd %s\n", __LINE__, opt);
+			return;
+		}
+
+		DDPMSG("%s bld_set: sysid[%d] bld_id[%d] color[%08x]\n", __func__,
+			user_crtc_id, bld_id, color_code);
+
+
+		drm_for_each_crtc(crtc, drm_dev) {
+			if (IS_ERR_OR_NULL(crtc)) {
+				DDPPR_ERR("[pq_dump] find crtc fail\n");
+				continue;
+			}
+
+			crtc_idx = drm_crtc_index(crtc);
+
+			if (user_crtc_id == crtc_idx) {
+				temp_mtk_crtc = to_mtk_crtc(crtc);
+				break;
+			} else if (user_crtc_id < 0) {
+				temp_mtk_crtc = to_mtk_crtc(crtc);
+				temp_mtk_crtc->bg_bld_id = -1;
+			}
+		}
+
+		if (!temp_mtk_crtc) {
+			DDPMSG("%d bld_set cmd crtc is null\n", __LINE__);
+			return;
+		}
+
+		if (bld_id < 0) {
+			temp_mtk_crtc->bg_bld_id = -1;
+			return;
+		}
+
+		temp_mtk_crtc->bg_bld_id = bld_id;
+		temp_mtk_crtc->bg_code = color_code;
+
 	} else if (strncmp(opt, "mobile:", 7) == 0) {
 		if (strncmp(opt + 7, "on", 2) == 0)
 			g_mobile_log = 1;
