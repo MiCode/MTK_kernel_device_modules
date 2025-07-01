@@ -64,6 +64,7 @@ struct regulator *isp_mmdvfs_reg;
 u64 *mdp_pmqos_freq;
 u64 *isp_pmqos_freq;
 struct clk *mdp_mmdvfs_clk;
+struct clk *isp_mmdvfs_clk;
 int *mdp_volts;
 int *isp_volts;
 int mdp_pmqos_opp_num;
@@ -107,6 +108,8 @@ do {									\
 	if (denominator == 0)						\
 		denominator = 1;					\
 	bandwidth = (u32)(div_u64(numerator, denominator));		\
+	if (numerator % denominator != 0)				\
+		bandwidth++;						\
 } while (0)
 
 struct mdp_task {
@@ -2293,12 +2296,17 @@ static void cmdq_mdp_init_pmqos(struct platform_device *pdev)
 	if (IS_ERR_OR_NULL(mdp_mmdvfs_reg)) {
 		mdp_mmdvfs_clk = devm_clk_get(&pdev->dev, "mmdvfs_clk");
 		if (IS_ERR_OR_NULL(mdp_mmdvfs_clk))
-			CMDQ_LOG("%s get mmdvfs clk failed\n", __func__);
+			CMDQ_LOG("%s get mmdvfs clk failed (mdp_mmdvfs_clk)\n", __func__);
 	}
 
-	if (cmdq_mdp_get_func()->mdpIsCaminSupport())
+	if (cmdq_mdp_get_func()->mdpIsCaminSupport()) {
 		isp_mmdvfs_reg = devm_regulator_get(&pdev->dev, "isp-dvfsrc-vcore");
-
+		if (IS_ERR_OR_NULL(isp_mmdvfs_reg)) {
+			isp_mmdvfs_clk = devm_clk_get(&pdev->dev, "mmdvfs_clk_img");
+			if (IS_ERR_OR_NULL(isp_mmdvfs_clk))
+				CMDQ_LOG("%s get mmdvfs clk failed (isp_mmdvfs_clk)\n", __func__);
+		}
+	}
 }
 
 static int cmdq_mdp_init_larb(struct platform_device *pdev)
@@ -2748,14 +2756,12 @@ static void mdp_request_voltage(unsigned long frequency, bool is_mdp)
 			if (IS_ERR_OR_NULL(mdp_mmdvfs_clk))
 				CMDQ_ERR("%s wrong mdp_mmdvfs_clk\n", __func__);
 			else {
-				if (mmdvfs_get_version())
-					mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MDP);
+				mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MDP);
 				ret = clk_set_rate(mdp_mmdvfs_clk, frequency * 1000000);
 				if (ret)
 					CMDQ_ERR("%s clk_set_rate(mdp) fail ret:%d\n",
 						__func__, ret);
-				if (mmdvfs_get_version())
-					mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MDP);
+				mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MDP);
 			}
 		} else {
 			ret = regulator_set_voltage(mdp_mmdvfs_reg, low_volt, INT_MAX);
@@ -2766,10 +2772,24 @@ static void mdp_request_voltage(unsigned long frequency, bool is_mdp)
 		}
 	} else {
 		if (cmdq_mdp_get_func()->mdpIsCaminSupport()) {
-			ret = regulator_set_voltage(isp_mmdvfs_reg, low_volt, INT_MAX);
-			if (ret)
-				CMDQ_ERR("%s regulator_set_voltage(isp) fail ret:%d\n",
-					__func__, ret);
+			if (IS_ERR_OR_NULL(isp_mmdvfs_reg)) {
+				if (IS_ERR_OR_NULL(isp_mmdvfs_clk))
+					CMDQ_ERR("%s wrong isp_mmdvfs_clk\n", __func__);
+				else {
+					mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MDP);
+					ret = clk_set_rate(isp_mmdvfs_clk, frequency * 1000000);
+					if (ret)
+						CMDQ_ERR("%s clk_set_rate(isp) fail ret:%d\n",
+							__func__, ret);
+					mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MDP);
+				}
+			} else {
+				ret = regulator_set_voltage(isp_mmdvfs_reg, low_volt, INT_MAX);
+
+				if (ret)
+					CMDQ_ERR("%s regulator_set_voltage(isp) fail ret:%d\n",
+						__func__, ret);
+			}
 		}
 	}
 }
