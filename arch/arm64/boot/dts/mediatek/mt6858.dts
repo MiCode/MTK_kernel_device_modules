@@ -4718,7 +4718,7 @@ dramc: dramc@10230000 {
 				"disp_token_stream_eof0",
 				"disp_dsi0_eof",
 				"disp_token_esd_eof0",
-				"disp_wdma0_eof0",
+				"disp_wdma1_eof0",
 				"disp_token_stream_block0",
 				"disp_token_cabc_eof0",
 				"disp_wdma0_eof2",
