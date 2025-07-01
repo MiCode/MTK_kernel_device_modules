@@ -489,6 +489,15 @@
 	ssmr {
 		compatible = "mediatek,trusted_mem";
 		memory-region = <&ssmr_cma_mem>;
+
+		mtee {
+			compatible = "mediatek,tmem-mtee";
+
+			mchunks {
+				compatible = "mediatek,tmem-mtee-mchunks";
+				mtee-prot-handle-type = <1>;
+			};
+		};
 	};
 
 	ffa: memory-ffa-enabled {
