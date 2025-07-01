@@ -5070,19 +5070,24 @@ static void mtk_output_en_doze_switch(struct mtk_dsi *dsi)
 		return;
 
 	/* Change LCM Doze mode */
-	if ((mtk_dsi_cmd_version() == DSI_CMD_V2) && (panel_funcs->doze_enable_start_v2
-			|| panel_funcs->doze_disable_v2)) {
-		struct mtk_dsi_cmd_option cmd_opt = { 0 };
+	if (mtk_dsi_cmd_version() == DSI_CMD_V2) {
+		if (doze_enabled && panel_funcs->doze_enable_start_v2) {
+			struct mtk_dsi_cmd_option cmd_opt = { 0 };
 
-		cmd_opt.flags = MTK_MIPI_DSI_GCE_CREATE_HANDLE |
-						MTK_MIPI_DSI_GCE_USE_CFG_THREAD |
-						MTK_MIPI_DSI_GCE_BLOCKING_FLUSH;
-		if (doze_enabled)
+			cmd_opt.flags = MTK_MIPI_DSI_GCE_CREATE_HANDLE |
+							MTK_MIPI_DSI_GCE_USE_CFG_THREAD |
+							MTK_MIPI_DSI_GCE_BLOCKING_FLUSH;
 			panel_funcs->doze_enable_start_v2(dsi->panel, dsi,
-					mtk_mipi_dsi_cmd, NULL, &cmd_opt);
-		else if (!doze_enabled)
+						mtk_mipi_dsi_cmd, NULL, &cmd_opt);
+		} else if (!doze_enabled && panel_funcs->doze_disable_v2) {
+			struct mtk_dsi_cmd_option cmd_opt = { 0 };
+
+			cmd_opt.flags = MTK_MIPI_DSI_GCE_CREATE_HANDLE |
+							MTK_MIPI_DSI_GCE_USE_CFG_THREAD |
+							MTK_MIPI_DSI_GCE_BLOCKING_FLUSH;
 			panel_funcs->doze_disable_v2(dsi->panel, dsi,
 					mtk_mipi_dsi_cmd, NULL, &cmd_opt);
+		}
 	} else {
 		if (doze_enabled && panel_funcs->doze_enable_start)
 			panel_funcs->doze_enable_start(dsi->panel, dsi,
