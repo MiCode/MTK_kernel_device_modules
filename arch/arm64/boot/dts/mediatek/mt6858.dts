@@ -5001,7 +5001,8 @@ dramc: dramc@10230000 {
 			reg = <0 0x1400a000 0 0x1000>;
 			interrupts = <GIC_SPI 311 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&dispsys_config_clk CLK_MM_DISP_C3D0_DISP>;
-			bin-num = <17>;
+			bin-num = <9>;
+			lut-bit = <10>;
 		};
 
 		disp_color0: disp-color0@1400b000 {
