@@ -151,6 +151,7 @@ static ssize_t store_pwr_ctrl(int id, const char *buf, size_t count, void *priv)
 	int pwr_ctrl_cnt = 0;
 	char *token;
 	char *str = NULL;
+	char *parse_str;
 	const char *delim = " ";
 
 	if ( (!buf) || (!priv) )
@@ -163,9 +164,10 @@ static ssize_t store_pwr_ctrl(int id, const char *buf, size_t count, void *priv)
 	pwr_ctrl_str = ((struct spm_node *)priv)->pwr_ctrl_str;
 	pwr_ctrl_cnt = ((struct spm_node *)priv)->pwr_ctrl_cnt;
 
-	strscpy(str, buf, count);
+	parse_str = str;
+	strscpy(parse_str, buf, count);
 
-	token = strsep(&str, delim);
+	token = strsep(&parse_str, delim);
 	if (!token) {
 		ret = -EINVAL;
 		goto out;
@@ -173,7 +175,7 @@ static ssize_t store_pwr_ctrl(int id, const char *buf, size_t count, void *priv)
 
 	strscpy(cmd, token, sizeof(cmd));
 
-	token = strsep(&str, delim);
+	token = strsep(&parse_str, delim);
 	if (!token) {
 		ret = -EINVAL;
 		goto out;
