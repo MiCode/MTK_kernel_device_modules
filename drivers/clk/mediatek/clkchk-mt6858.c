@@ -556,6 +556,8 @@ static struct regname rn[] = {
 	REGNAME(top, 0x0100, CLK_CFG_15),
 	REGNAME(top, 0x0320, CLK_AUDDIV_0),
 	REGNAME(top, 0x0328, CLK_AUDDIV_2),
+	REGNAME(top, 0x0534, CLK_FENC_STATUS_MON_0),
+	REGNAME(top, 0x0538, CLK_FENC_STATUS_MON_1),
 	/* INFRA_INFRACFG_AO_REG register */
 	REGNAME(infra_infracfg_ao_reg, 0x94, MODULE_CG_1),
 	REGNAME(infra_infracfg_ao_reg, 0xAC, MODULE_CG_2),
@@ -580,10 +582,61 @@ static struct regname rn[] = {
 	REGNAME(infra_infracfg_ao_reg, 0x0C10, MMSYS_PROTECT_EN_STA_0),
 	REGNAME(infra_infracfg_ao_reg, 0x0C1C, MMSYS_PROTECT_RDY_STA_0),
 	/* APMIXEDSYS register */
+	REGNAME(apmixed, 0x000C, AP_PLL_CON3),
 	REGNAME(apmixed, 0x0040, APLL1_TUNER_CON0),
-	REGNAME(apmixed, 0x000C, AP_PLL_CON3),
 	REGNAME(apmixed, 0x0044, APLL2_TUNER_CON0),
-	REGNAME(apmixed, 0x000C, AP_PLL_CON3),
+	REGNAME(apmixed, 0x0208, ARMPLL_LL_CON0),
+	REGNAME(apmixed, 0x020c, ARMPLL_LL_CON1),
+	REGNAME(apmixed, 0x0214, ARMPLL_LL_CON3),
+	REGNAME(apmixed, 0x0210, ARMPLL_LL_CON2),
+	REGNAME(apmixed, 0x0218, ARMPLL_BL_CON0),
+	REGNAME(apmixed, 0x021c, ARMPLL_BL_CON1),
+	REGNAME(apmixed, 0x0224, ARMPLL_BL_CON3),
+	REGNAME(apmixed, 0x0220, ARMPLL_BL_CON2),
+	REGNAME(apmixed, 0x0238, CCIPLL_CON0),
+	REGNAME(apmixed, 0x023c, CCIPLL_CON1),
+	REGNAME(apmixed, 0x0240, CCIPLL_CON2),
+	REGNAME(apmixed, 0x0244, CCIPLL_CON3),
+	REGNAME(apmixed, 0x0248, TVDPLL_CON0),
+	REGNAME(apmixed, 0x024c, TVDPLL_CON1),
+	REGNAME(apmixed, 0x0250, TVDPLL_CON2),
+	REGNAME(apmixed, 0x0254, TVDPLL_CON3),
+	REGNAME(apmixed, 0x0308, UNIVPLL_CON0),
+	REGNAME(apmixed, 0x030c, UNIVPLL_CON1),
+	REGNAME(apmixed, 0x0310, UNIVPLL_CON2),
+	REGNAME(apmixed, 0x0314, UNIVPLL_CON3),
+	REGNAME(apmixed, 0x0328, APLL1_CON0),
+	REGNAME(apmixed, 0x032c, APLL1_CON1),
+	REGNAME(apmixed, 0x0330, APLL1_CON2),
+	REGNAME(apmixed, 0x0334, APLL1_CON3),
+	REGNAME(apmixed, 0x0338, APLL1_CON4),
+	REGNAME(apmixed, 0x033c, APLL2_CON0),
+	REGNAME(apmixed, 0x0340, APLL2_CON1),
+	REGNAME(apmixed, 0x0344, APLL2_CON2),
+	REGNAME(apmixed, 0x0348, APLL2_CON3),
+	REGNAME(apmixed, 0x034c, APLL2_CON4),
+	REGNAME(apmixed, 0x0350, MAINPLL_CON0),
+	REGNAME(apmixed, 0x0354, MAINPLL_CON1),
+	REGNAME(apmixed, 0x0358, MAINPLL_CON2),
+	REGNAME(apmixed, 0x035c, MAINPLL_CON3),
+	REGNAME(apmixed, 0x0360, MSDCPLL_CON0),
+	REGNAME(apmixed, 0x0364, MSDCPLL_CON1),
+	REGNAME(apmixed, 0x0368, MSDCPLL_CON2),
+	REGNAME(apmixed, 0x036c, MSDCPLL_CON3),
+	REGNAME(apmixed, 0x0380, ADSPPLL_CON0),
+	REGNAME(apmixed, 0x0384, ADSPPLL_CON1),
+	REGNAME(apmixed, 0x0388, ADSPPLL_CON2),
+	REGNAME(apmixed, 0x038C, ADSPPLL_CON3),
+	REGNAME(apmixed, 0x03A0, MMPLL_CON0),
+	REGNAME(apmixed, 0x03A4, MMPLL_CON1),
+	REGNAME(apmixed, 0x03A8, MMPLL_CON2),
+	REGNAME(apmixed, 0x03AC, MMPLL_CON3),
+	REGNAME(apmixed, 0x03B0, EMIPLL_CON0),
+	REGNAME(apmixed, 0x03B4, EMIPLL_CON1),
+	REGNAME(apmixed, 0x03B8, EMIPLL_CON2),
+	REGNAME(apmixed, 0x03BC, EMIPLL_CON3),
+	REGNAME(apmixed, 0x040C, FENC_STATUS_CON0),
+	REGNAME(apmixed, 0x0428, FENC_ENABLE_CON0),
 	/* NEMICFG_AO_MEM_REG_BUS register */
 	REGNAME(nemicfg_ao_mem_reg_bus, 0x80, GLITCH_PROTECT_EN),
 	REGNAME(nemicfg_ao_mem_reg_bus, 0x8c, GLITCH_PROTECT_RDY),
@@ -672,6 +725,7 @@ static struct regname rn[] = {
 	REGNAME(vlp_top, 0x0038, VLP_CLK_CFG_4),
 	REGNAME(vlp_top, 0x0044, VLP_CLK_CFG_5),
 	REGNAME(vlp_top, 0x0050, VLP_CLK_CFG_6),
+	REGNAME(vlp_top, 0x0328, VLP_OCIC_FENC_STATUS_MON_0),
 	/* CAMSYS_MAIN register */
 	REGNAME(cam_m, 0x0, CAMSYS_CG),
 	/* CAMSYS_RAWA register */
@@ -1314,6 +1368,7 @@ static const char * const off_pll_names[] = {
 static const char * const notice_pll_names[] = {
 	"apll1",
 	"apll2",
+	"adsppll",
 	NULL
 };
 
@@ -1347,11 +1402,6 @@ static bool is_pll_chk_bug_on(void)
 }
 
 static const char * const off_mux_names[] = {
-	NULL
-};
-
-
-static const char * const notice_mux_names[] = {
 	"top_disp0_sel",
 	"top_mminfra_sel",
 	"top_mmup_sel",
@@ -1373,17 +1423,12 @@ static const char * const notice_mux_names[] = {
 	"top_seninf_sel",
 	"top_seninf1_sel",
 	"top_seninf2_sel",
-	"top_aud_engen1_sel",
-	"top_aud_engen2_sel",
 	"top_aes_ufsfde_sel",
 	"top_ufs_sel",
-	"top_aud_1_sel",
-	"top_aud_2_sel",
 	"top_dpmaif_main_sel",
 	"top_venc_sel",
 	"top_vdec_sel",
 	"top_pwm_sel",
-	"top_audio_h_sel",
 	"top_dsi_occ_sel",
 	"top_img1_sel",
 	"top_ipe_sel",
@@ -1391,15 +1436,22 @@ static const char * const notice_mux_names[] = {
 	"top_camtm_sel",
 	"top_unipll_ses_sel",
 	"top_usb_frmcnt_sel",
-	"top_apll_i2sin1_m_sel",
-	"top_apll_i2sin2_m_sel",
-	"vlp_scp_sel",
 	"vlp_pwrap_sel",
 	"vlp_pwm_vlp_sel",
 	"vlp_camtg0_sel",
 	"vlp_camtg1_sel",
 	"vlp_camtg2_sel",
 	"vlp_camtg3_sel",
+	NULL
+};
+
+
+static const char * const notice_mux_names[] = {
+	"top_aud_1_sel",
+	"top_aud_2_sel",
+	"top_aud_engen1_sel",
+	"top_aud_engen2_sel",
+	"top_audio_h_sel",
 	NULL
 };
 
