@@ -208,9 +208,13 @@ void update_pcm_cpu_qos(struct snd_pcm_substream *substream, const int task_id)
 	usecs = (750000 / dynamic_rate) * dynamic_irq;
 	usecs += ((750000 % dynamic_rate) * dynamic_irq) / dynamic_rate;
 
-	if (usecs >= 0)
-		cpu_latency_qos_update_request(&substream->latency_pm_qos_req,
-					       usecs);
+	if (cpu_latency_qos_request_active(&substream->latency_pm_qos_req)) {
+		if (usecs >= 0)
+			cpu_latency_qos_update_request(&substream->latency_pm_qos_req,
+						       usecs);
+	} else {
+		pr_info("%s latency_pm_qos_req is non-active", __func__);
+	}
 }
 EXPORT_SYMBOL(update_pcm_cpu_qos);
 
