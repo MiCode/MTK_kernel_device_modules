@@ -28,7 +28,6 @@
 			<&apmixedsys_clk CLK_APMIXED_UNIVPLL>,
 			<&apmixedsys_clk CLK_APMIXED_MMPLL>,
 			<&apmixedsys_clk CLK_APMIXED_TVDPLL>,
-			<&vlp_cksys_top_clk CLK_VLP_TOP_SCP_SEL>,
 			<&vlp_cksys_top_clk CLK_VLP_TOP_CAMTG0_SEL>,
 			<&vlp_cksys_top_clk CLK_VLP_TOP_CAMTG1_SEL>,
 			<&vlp_cksys_top_clk CLK_VLP_TOP_CAMTG2_SEL>,
