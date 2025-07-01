@@ -2234,8 +2234,7 @@ static int __used read_power_budget_dts(struct platform_device *pdev)
 				}
 			}
 		if (pb.version == 3) {
-			pb.hpt_lv_t[0] = 0;
-			for (i = 1; i <= pb.hpt_max_lv; i++) {
+			for (i = 0; i <= pb.hpt_max_lv; i++) {
 				ret = snprintf(str, STR_SIZE, "%s%d", "soc-hpt-volt-lv", i);
 				if (ret < 0) {
 					pr_info("%s:%d: snprintf error %d\n", __func__, __LINE__, ret);
@@ -2243,8 +2242,8 @@ static int __used read_power_budget_dts(struct platform_device *pdev)
 				}
 				if (read_dts_val(np, str, &pb.hpt_lv_t[i], 1))
 					pb.hpt_lv_t[i] = 0;
-				}
 			}
+		}
 	} else {
 		for (i = 0; i <= pb.temp_max_stage; i++) {
 			ret = snprintf(str, STR_SIZE, "battery%d-path-rdc-t%d", fg_data.bat_type,
@@ -3270,7 +3269,7 @@ static void hpt_bp_cb(enum BATTERY_PERCENT_LEVEL_TAG level)
 	int ret;
 
 	if (pb.version == 3) {
-		if (level != pb.hpt_cur_lv && level < BATTERY_PERCENT_LEVEL_NUM) {
+		if (level != pb.hpt_cur_lv && level <= pb.hpt_max_lv) {
 			hpt_volt_lv = pb.hpt_lv_t[level];
 			ret = lbat_set_preuv_lvl(hpt_volt_lv);
 
