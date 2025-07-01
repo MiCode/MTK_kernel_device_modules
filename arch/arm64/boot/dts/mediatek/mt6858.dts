@@ -8259,7 +8259,7 @@ dramc: dramc@10230000 {
 		ircmp-rbat = <40>;
 		ircmp-vclamp = <0>;
 		vta-cap-min = <6800>;
-		vta-cap-max = <11000>;
+		vta-cap-max = <9800>;
 		ita-cap-min = <1000>;
 		support-ta = "ufcs_adapter", "pca_ta_pps", "pd_adapter";
 		allow-not-check-ta-status;
