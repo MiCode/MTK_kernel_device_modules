@@ -1246,7 +1246,7 @@ static int __maybe_unused rt5512_i2c_runtime_suspend(struct device *dev)
 	int ret = 0;
 
 	cpu_latency_qos_update_request(&chip->rt5512_qos_request, 150);
-	dev_info(dev, "enter low power mode\n");
+	dev_dbg(dev, "enter low power mode\n");
 	ret = regmap_write_bits(chip->regmap, RT5512_REG_SYSTEM_CTRL,
 				0xffff, 0x0001);
 	cpu_latency_qos_update_request(&chip->rt5512_qos_request,
@@ -1263,7 +1263,7 @@ static int __maybe_unused rt5512_i2c_runtime_resume(struct device *dev)
 
 	/* update qos to prevent deep idle during transfer */
 	cpu_latency_qos_update_request(&chip->rt5512_qos_request, 150);
-	dev_info(dev, "exit low power mode\n");
+	dev_dbg(dev, "exit low power mode\n");
 	ret = regmap_write_bits(chip->regmap,
 		RT5512_REG_SYSTEM_CTRL, 0xffff, 0x0000);
 	cpu_latency_qos_update_request(&chip->rt5512_qos_request,
