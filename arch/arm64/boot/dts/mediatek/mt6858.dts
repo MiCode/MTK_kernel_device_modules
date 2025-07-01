@@ -8425,6 +8425,9 @@ dramc: dramc@10230000 {
 		temp-t3-threshold = <45>;
 		temp-t1-threshold = <0>;
 
+		/* charge bootl voltage from 3.45 to 3.2 */
+		boot-battery-voltage = <3200>;
+
 		/* enable check vsys voltage */
 		enable-check-vsys;
 	};
