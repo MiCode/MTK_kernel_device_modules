@@ -1,11 +1,14 @@
 load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
 load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
 load("@mgk_info//:kernel_version.bzl", "kernel_version",)
+load("@mgk_info//:dict.bzl", "DEFCONFIG_OVERLAYS",)
+
 package(
     default_visibility = [
         "//visibility:public",
     ],
 )
+
 filegroup(
     name = "ddk_kconfigs",
     srcs = glob([
@@ -105,7 +108,9 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv_v2:vcp_status_v2_headers".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/mminfra:mtk_mminfra_util_headers".format(kernel_version),
         "//kernel_device_modules-{}/drivers/iommu:iommu_public_headers".format(kernel_version),
-    ],
+    ] +
+    (["//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv:vcp_feature_headers".format(kernel_version),]
+     if "entry_level.config" not in DEFCONFIG_OVERLAYS else []),
     local_defines = ["CMDQ_SECURE_MTEE_SUPPORT", "CMDQ_SECURE_SUPPORT", "CMDQ_SECURE_CPR_SUPPORT", "CMDQ_DCACHE_INVAL", "CONFIG_CMDQ_MMPROFILE_SUPPORT"],
 )
 
