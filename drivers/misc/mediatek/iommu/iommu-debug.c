@@ -2126,6 +2126,7 @@ static int m4u_debug_set(void *data, u64 input)
 	u32 index = FIELD_GET(GENMASK_ULL(4, 0), input);
 	u64 val = FIELD_GET(GENMASK_ULL(28, 5), input);
 	u64 tag = FIELD_GET(GENMASK_ULL(31, 29), input);
+	u32 type = FIELD_GET(GENMASK_ULL(33, 32), input);
 	void *file = NULL;
 	int ret = 0;
 	u32 i = 0;
@@ -2186,6 +2187,18 @@ static int m4u_debug_set(void *data, u64 input)
 			iommu_globals.iova_warn_aee,
 			iommu_globals.iova_stack_trace,
 			iommu_globals.iova_alloc_rbtree);
+		break;
+	case 10:
+		if (smmu_v3_enable) {
+			if (val) {
+				ret = mtk_smmu_power_get(type);
+				pr_info("%s smmu_%d, get power_status:%d\n", __func__, type, ret);
+			} else {
+				ret = mtk_smmu_power_put(type);
+				pr_info("%s smmu_%d, put power_status:%d\n", __func__, type, ret);
+			}
+			return ret;
+		}
 		break;
 	default:
 		pr_info("%s not support index=%u\n", __func__, index);
