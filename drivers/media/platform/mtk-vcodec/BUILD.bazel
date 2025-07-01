@@ -24,11 +24,48 @@ filegroup(
     ]),
 )
 
+define_mgk_ddk_ko(
+    name = "mtk-vcodec-sys-api",
+    srcs = [],
+    conditional_srcs = {
+        "CONFIG_DEVICE_MODULES_VIDEO_MEDIATEK_VCODEC": {
+            True: glob([
+                "mtk_vcodec_sys_api.c",
+            ]),
+        },
+    },
+    hdrs = [
+        "mtk_vcodec_sys_api.h",
+    ] + [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/sched:cpufreq_sugov_ext_headers".format(kernel_version),
+    ],
+    includes = [
+        ".",
+    ],
+    header_deps = [
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/media/platform/mtk-vcodec:mtk-vcodec-common".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/sched:scheduler".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/sched:cpufreq_sugov_ext".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/task_turbo:vip_engine".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/memory/mediatek:emi-slb".format(kernel_version),
+    ],
+    copts = [
+        "-Werror",
+        "-I$(srctree)/kernel/",
+        "-I$(DEVICE_MODULES_PATH)/include/linux/soc/mediatek",
+        "-I$(DEVICE_MODULES_PATH)/include/soc/mediatek",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat",
+    ],
+)
+
 # to export headers for other modules to use
 ddk_headers(
     name = "headers",
     hdrs = [
         "mtk_vcodec_util.h",
+        "mtk_vcodec_util_api.h",
         "mtk-v4l2-controls.h",
         "vcodec_ipi_msg.h",
     ],
@@ -42,6 +79,7 @@ define_mgk_ddk_ko(
         "CONFIG_DEVICE_MODULES_VIDEO_MEDIATEK_VCODEC": {
             True: glob([
                 "mtk_vcodec_util.c",
+                "mtk_vcodec_util_api.c",
                 "mtk_vcodec_intr.c",
                 "mtk_vcodec_fence.c",
                 "*.h",
@@ -50,11 +88,13 @@ define_mgk_ddk_ko(
     },
     hdrs = [
         "mtk_vcodec_util.h",
+        "mtk_vcodec_util_api.h",
         "mtk-v4l2-controls.h",
         "vcodec_ipi_msg.h",
     ] + [
         "//kernel_device_modules-{}/drivers/misc/mediatek/slbc:headers".format(kernel_version),
         "//kernel_device_modules-{}/drivers/media/platform/mtk-vcu:headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/sched:cpufreq_sugov_ext_headers".format(kernel_version),
     ],
     includes = [
         ".",
@@ -64,11 +104,12 @@ define_mgk_ddk_ko(
     ],
     ko_deps = [
         "//kernel_device_modules-{}/drivers/dma-buf/heaps:system_heap".format(kernel_version),
-        "//kernel_device_modules-{}/drivers/misc/mediatek/sched:scheduler".format(kernel_version),
     ],
     copts = [
         "-Werror",
         "-I$(srctree)/kernel/",
+        "-I$(DEVICE_MODULES_PATH)/include/linux/soc/mediatek",
+        "-I$(DEVICE_MODULES_PATH)/include/soc/mediatek",
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat",
     ],
 )
@@ -95,6 +136,8 @@ define_mgk_ddk_ko(
     copts = [
         "-Werror",
         "-I$(srctree)/kernel/",
+        "-I$(DEVICE_MODULES_PATH)/include/linux/soc/mediatek",
+        "-I$(DEVICE_MODULES_PATH)/include/soc/mediatek",
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat",
     ],
 )
@@ -135,7 +178,6 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/media/platform/mtk-vcu:headers".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/iommu:iommu_misc_headers".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/mtk-interconnect:mtk_interconnect".format(kernel_version),
-        "//kernel_device_modules-{}/drivers/misc/mediatek/sched:cpufreq_sugov_ext_headers".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv_v2:vcp_status_v2_headers".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/include:vcp_public_headers".format(kernel_version),
         "//kernel_device_modules-{}/drivers/thermal/mediatek:thermal_headers".format(kernel_version),
@@ -151,7 +193,6 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/misc/mediatek/irq_monitor:irq_monitor".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/mmdvfs:mtk-mmdvfs-debug".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/mtk-interconnect:mtk-icc-core".format(kernel_version),
-        "//kernel_device_modules-{}/drivers/misc/mediatek/sched:cpufreq_sugov_ext".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/slbc:mtk_slbc".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/smi:mtk-smi-dbg".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv_v2:vcp_status_v2".format(kernel_version),
@@ -204,7 +245,6 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/media/platform/mtk-vcu:headers".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/iommu:iommu_misc_headers".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/mtk-interconnect:mtk_interconnect".format(kernel_version),
-        "//kernel_device_modules-{}/drivers/misc/mediatek/sched:cpufreq_sugov_ext_headers".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/slbc:headers".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv_v2:vcp_status_v2_headers".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/include:vcp_public_headers".format(kernel_version),
@@ -215,19 +255,16 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/dma-buf/heaps:system_heap".format(kernel_version),
         "//kernel_device_modules-{}/drivers/media/platform/mtk-vcodec:mtk-vcodec-common".format(kernel_version),
         "//kernel_device_modules-{}/drivers/memory/mediatek:emi".format(kernel_version),
-        "//kernel_device_modules-{}/drivers/memory/mediatek:emi-slb".format(kernel_version),
         "//kernel_device_modules-{}/drivers/memory:mtk-smi".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/cpufreq_lite:cpudvfs".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/iommu:iommu_debug".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/iommu:iommu_gz".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/irq_monitor:irq_monitor".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/mtk-interconnect:mtk-icc-core".format(kernel_version),
-        "//kernel_device_modules-{}/drivers/misc/mediatek/sched:cpufreq_sugov_ext".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/slbc:mtk_slbc".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/smi:mtk-smi-dbg".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv_v2:vcp_status_v2".format(kernel_version),
         "//kernel_device_modules-{}/drivers/soc/mediatek:mtk_tinysys_ipi".format(kernel_version),
-        "//kernel_device_modules-{}/drivers/misc/mediatek/task_turbo:vip_engine".format(kernel_version),
         "//kernel_device_modules-{}/drivers/thermal/mediatek:thermal_interface".format(kernel_version),
     ] + ([
         "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-mmdvfs-v3".format(kernel_version),

@@ -20,6 +20,7 @@
 
 #include <linux/mtk_vcu_controls.h>
 #include "vcodec_ipi_msg.h"
+#include "mtk_vcodec_util_api.h"
 #if IS_ENABLED(CONFIG_VIDEO_MEDIATEK_VCU)
 #include "mtk_vcu.h"
 #endif
@@ -30,17 +31,8 @@
 #if IS_ENABLED(CONFIG_MTK_VCODEC_DEBUG) // only support eng & userdebug
 #define MTK_VCODEC_DEBUG_SUPPORT
 #endif
-#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
-#define MTK_SCHED_SUPPORT
-#endif
-#if IS_ENABLED(CONFIG_MTK_VIP_ENGINE)
-#define MTK_VIP_SUPPORT
-#endif
 #if IS_ENABLED(CONFIG_MTK_SLBC)
 #define MTK_SLBC_SUPPORT
-#endif
-#if IS_ENABLED(CONFIG_MTK_EMI) && !IS_ENABLED(CONFIG_MTK_EMI_LEGACY)
-#define MTK_EMI_VIOLATION_SUPPORT
 #endif
 #if IS_ENABLED(CONFIG_MTK_VIDEOGO)
 #define MTK_VIDEO_GO_SUPPORT
@@ -481,15 +473,6 @@ void mtk_vcodec_send_info_to_vgo(struct mtk_vcodec_ctx *ctx, enum mtk_vcodec_sen
 
 void mtk_vcodec_set_cpu_hint(struct mtk_vcodec_dev *dev, bool enable,
 	enum mtk_instance_type type, int ctx_id, int caller_pid, const char *debug_str);
-
-#ifdef MTK_SCHED_SUPPORT
-extern void set_top_grp_aware(int val, int force_ctrl);
-extern void set_grp_awr_min_opp_margin(int gear_id, int group_id, int val);
-extern void set_grp_awr_thr(int gear_id, int group_id, int opp);
-#endif
-#ifdef MTK_VIP_SUPPORT
-extern int set_task_priority(struct task_struct *task, int prio);
-#endif
 
 static inline u64 bitmap_to_u64(unsigned long *bitmap, unsigned int nbits)
 {

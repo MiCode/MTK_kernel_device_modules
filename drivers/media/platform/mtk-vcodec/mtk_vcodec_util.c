@@ -24,9 +24,6 @@
 #include "mtk_vcodec_enc.h"
 #include "vdec_drv_if.h"
 #include "venc_drv_if.h"
-#ifdef MTK_SCHED_SUPPORT
-#include "eas/group.h"
-#endif
 #ifdef MTK_VIDEO_GO_SUPPORT
 #include "videogo_public.h"
 #endif
@@ -633,13 +630,11 @@ void mtk_vcodec_set_cpu_hint(struct mtk_vcodec_dev *dev, bool enable,
 	if (enable) {
 		if (dev->cpu_hint_mode & (1 << MTK_GRP_AWARE_MODE)) { // cpu grp awr mode
 			if (dev->cpu_hint_ref_cnt == 0) {
-#ifdef MTK_SCHED_SUPPORT
-				set_top_grp_aware(1, 0);
-				set_grp_awr_min_opp_margin(0, 0, 2560);
-				set_grp_awr_thr(0, 0, 1680000);
-				set_grp_awr_min_opp_margin(1, 0, 2560);
-				set_grp_awr_thr(1, 0, 2240000);
-#endif
+				mtk_vcodec_set_top_grp_aware(1, 0);
+				mtk_vcodec_set_grp_awr_min_opp_margin(0, 0, 2560);
+				mtk_vcodec_set_grp_awr_thr(0, 0, 1680000);
+				mtk_vcodec_set_grp_awr_min_opp_margin(1, 0, 2560);
+				mtk_vcodec_set_grp_awr_thr(1, 0, 2240000);
 			}
 		}
 		if (dev->cpu_hint_mode & (1 << MTK_UCLAMP_MODE)) // uclamp mode
@@ -652,11 +647,8 @@ void mtk_vcodec_set_cpu_hint(struct mtk_vcodec_dev *dev, bool enable,
 	} else {
 		dev->cpu_hint_ref_cnt--;
 		if (dev->cpu_hint_mode & (1 << MTK_GRP_AWARE_MODE)) {
-			if (dev->cpu_hint_ref_cnt == 0) {
-#ifdef MTK_SCHED_SUPPORT
-				set_top_grp_aware(0, 0);
-#endif
-			}
+			if (dev->cpu_hint_ref_cnt == 0)
+				mtk_vcodec_set_top_grp_aware(0, 0);
 		}
 		if (dev->cpu_hint_mode & (1 << MTK_UCLAMP_MODE))
 			mtk_vcodec_set_uclamp(enable, ctx_id, cpu_caller_pid);

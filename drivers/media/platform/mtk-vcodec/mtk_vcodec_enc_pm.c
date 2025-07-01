@@ -31,10 +31,6 @@
 #include "iommu_debug.h"
 #endif
 
-#ifdef MTK_EMI_VIOLATION_SUPPORT
-#include "emi.h"
-#endif
-
 /*
  * SLB activate callback, cb calls when high priority user to release SLB,
  * venc request SLB depand on whether slb is required.
@@ -892,7 +888,6 @@ static int mtk_venc_translation_fault_callback(
 }
 #endif
 
-#ifdef MTK_EMI_VIOLATION_SUPPORT
 static int mtk_venc_violation_fault_callback(void *data)
 {
 	struct mtk_vcodec_dev *dev = (struct mtk_vcodec_dev *)data;
@@ -905,7 +900,6 @@ static int mtk_venc_violation_fault_callback(void *data)
 
 	return 0;
 }
-#endif
 
 void mtk_venc_translation_fault_callback_setting(
 	struct mtk_vcodec_dev *dev)
@@ -925,7 +919,8 @@ void mtk_venc_translation_fault_callback_setting(
 void mtk_venc_violation_fault_callback_setting(
 	struct mtk_vcodec_dev *dev)
 {
-#ifdef MTK_EMI_VIOLATION_SUPPORT
-	mtk_slb_violation_register_callback(mtk_venc_violation_fault_callback, (void *)dev);
-#endif
+	if (dev->emi_vio_cb_done)
+		return;
+	mtk_vcodec_slb_violation_register_callback(mtk_venc_violation_fault_callback, (void *)dev);
+	dev->emi_vio_cb_done = true;
 }

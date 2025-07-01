@@ -5,6 +5,11 @@
 #ifndef _EAS_GROUP_H
 #define _EAS_GROUP_H
 
+#include <linux/types.h>
+#include <linux/list.h>
+#include <linux/sched.h>
+#include <linux/spinlock.h>
+
 #define DEFAULT_SCHED_RAVG_WINDOW 4000000
 #define GROUP_RAVG_HIST_SIZE_MAX (5)
 #define FLT_GROUP_START_IDX 6

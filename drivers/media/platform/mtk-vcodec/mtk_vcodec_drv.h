@@ -942,6 +942,7 @@ struct mtk_vcodec_dev {
 
 	bool power_in_vcp;
 	bool power_in_kernel;
+	bool emi_vio_cb_done;
 	bool dec_is_power_on[MTK_VDEC_HW_NUM];
 	bool enc_is_power_on[MTK_VENC_HW_NUM];
 	spinlock_t power_check_lock[MTK_VCODEC_HW_NUM];

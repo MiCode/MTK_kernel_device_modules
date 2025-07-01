@@ -24,16 +24,9 @@
 #endif
 #include "pf_ctrl.h"
 #include "slbc_sdk.h"
-#ifdef MTK_SCHED_SUPPORT
-#include <sched/sched.h>
-#include "common.h"
-#include "util/cpu_util.h"
-
-int get_target_margin_low(int cpu);
 
 int codec_margin_change;
 int codec_runnable_boost_disable;
-#endif
 
 struct vcodec_inst *get_inst(struct mtk_vcodec_ctx *ctx)
 {
@@ -556,7 +549,6 @@ static bool mtk_vcodec_has_active_inst(struct mtk_vcodec_dev *dev, int codec_typ
 }
 
 
-#ifdef MTK_SCHED_SUPPORT
 static bool mtk_vcodec_has_single_inst(struct mtk_vcodec_dev *dev, int codec_type, unsigned int op_rate)
 {
 	struct list_head *item = 0;
@@ -588,7 +580,6 @@ static bool mtk_vcodec_has_single_inst(struct mtk_vcodec_dev *dev, int codec_typ
 
 	return false;
 }
-#endif
 
 u32 mtk_vcodec_get_bw_factor(struct mtk_vcodec_dev *dev, int codec_type)
 {
@@ -867,47 +858,43 @@ void mtk_vcodec_slc_wce_ctrl(struct mtk_vcodec_ctx *ctx, int off)
 
 void mtk_vcodec_cpu_margin_ctrl(struct mtk_vcodec_ctx *ctx)
 {
-#ifdef MTK_SCHED_SUPPORT
-	int margin = get_target_margin_low(0);
+	int margin = mtk_vcodec_get_target_margin_low(0);
 
 	if (mtk_vcodec_has_single_inst(ctx->dev, MTK_INST_DECODER, 30) &&
 		!mtk_vcodec_has_active_inst(ctx->dev, MTK_INST_ENCODER)) {
-		set_turn_point_freq(0, 1000);
-		set_target_margin(0, 20);
-		set_target_margin_low(0, 0);
+		mtk_vcodec_set_turn_point_freq(0, 1000);
+		mtk_vcodec_set_target_margin(0, 20);
+		mtk_vcodec_set_target_margin_low(0, 0);
 		codec_margin_change++;
 	} else {
 		if (codec_margin_change > 0) {
-			set_turn_point_freq(0, 0);
-			unset_target_margin(0);
-			unset_target_margin_low(0);
+			mtk_vcodec_set_turn_point_freq(0, 0);
+			mtk_vcodec_unset_target_margin(0);
+			mtk_vcodec_unset_target_margin_low(0);
 			codec_margin_change--;
 		}
 	}
 
 	mtk_vcodec_dvfs_qos_log(false, "[VDVFS] cpu margin change %d to %d, count: %d\n",
-		margin, get_target_margin_low(0), codec_margin_change);
-#endif
+		margin, mtk_vcodec_get_target_margin_low(0), codec_margin_change);
 }
 
 void mtk_vcodec_cpu_runnable_boost_ctrl(struct mtk_vcodec_ctx *ctx)
 {
-#ifdef MTK_SCHED_SUPPORT
-	int boost = is_runnable_boost_enable();
+	int boost = mtk_vcodec_is_runnable_boost_enable();
 
 	if (mtk_vcodec_has_single_inst(ctx->dev, MTK_INST_DECODER, 30) &&
 		!mtk_vcodec_has_active_inst(ctx->dev, MTK_INST_ENCODER) &&
-		is_runnable_boost_enable()) {
-		set_runnable_boost_enable(0);
+		mtk_vcodec_is_runnable_boost_enable()) {
+		mtk_vcodec_set_runnable_boost_enable(0);
 		codec_runnable_boost_disable++;
 	} else {
 		if (codec_runnable_boost_disable > 0) {
-			unset_runnable_boost_enable();
+			mtk_vcodec_unset_runnable_boost_enable();
 			codec_runnable_boost_disable--;
 		}
 	}
 
 	mtk_vcodec_dvfs_qos_log(false, "[VDVFS] cpu runnable boost change %d to %d, count: %d\n",
-		boost, is_runnable_boost_enable(), codec_runnable_boost_disable);
-#endif
+		boost, mtk_vcodec_is_runnable_boost_enable(), codec_runnable_boost_disable);
 }
