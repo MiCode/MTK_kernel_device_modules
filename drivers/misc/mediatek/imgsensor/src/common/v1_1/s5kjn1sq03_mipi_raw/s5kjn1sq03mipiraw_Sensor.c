@@ -43,7 +43,8 @@
 /*********************Modify Following Strings for Debug******************/
 #define PFX "s5kjn1sq03mipiraw_Sensor"
 #define LOG_1 LOG_INF("S5KJN1SQ03,MIPI 4LANE\n")
-#define LOG_INF(format, args...) pr_debug(PFX "[%s] " format, __func__, ##args)
+#define LOG_INF(format, args...) pr_info(PFX "[%s] " format, __func__, ##args)
+#define LOG_DEBUG(format, args...) pr_debug(PFX "[%s] " format, __func__, ##args)
 /**********************   Modify end    **********************************/
 
 static DEFINE_SPINLOCK(imgsensor_drv_lock);
@@ -52,7 +53,7 @@ static DEFINE_SPINLOCK(imgsensor_drv_lock);
 
 static struct imgsensor_info_struct imgsensor_info = {
 	.sensor_id = S5KJN1SQ03_SENSOR_ID,
-	.checksum_value = 0x1163d60f,
+	.checksum_value = 0xffffffff,
 	.pre = {
 		.pclk = 560000000,
 		.linelength = 4584,
@@ -2858,8 +2859,16 @@ static kal_uint32 set_test_pattern_mode(kal_bool enable)
 {
 	LOG_INF("enable: %d\n", enable);
 
-	if (enable)
-		write_cmos_sensor(0x0600, 0x02);
+	if (enable) {
+		if (enable == 1) {
+			write_cmos_sensor(0x0600, 0x1);
+			write_cmos_sensor(0x0602, 0x0);
+			write_cmos_sensor(0x0604, 0x0);
+			write_cmos_sensor(0x0606, 0x0);
+			write_cmos_sensor(0x0608, 0x0);
+		} else
+			write_cmos_sensor(0x0600, 0x02);
+	}
 	else
 		write_cmos_sensor(0x0600, 0x00);
 	spin_lock(&imgsensor_drv_lock);
@@ -2910,7 +2919,7 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 	MSDK_SENSOR_REG_INFO_STRUCT *sensor_reg_data =
 		(MSDK_SENSOR_REG_INFO_STRUCT *) feature_para;
 
-	LOG_INF("E, feature_id = %d\n", feature_id);
+	LOG_DEBUG("E, feature_id = %d\n", feature_id);
 	switch (feature_id) {
 	case SENSOR_FEATURE_GET_GAIN_RANGE_BY_SCENARIO:
 		*(feature_data + 1) = imgsensor_info.min_gain;
@@ -3284,7 +3293,7 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 		break;
 	}
 
-	LOG_INF("X");
+	LOG_DEBUG("X");
 	return ERROR_NONE;
 } /* feature_control() */
 

@@ -24,7 +24,8 @@
  ****************************************************************************/
 #define PFX "IMX06C_camera_sensor"
 #define pr_fmt(fmt) PFX "[%s] " fmt, __func__
-
+#define LOG_INF(format, args...) pr_info(PFX "[%s] " format, __func__, ##args)
+#define LOG_DEBUG(format, args...) pr_debug(PFX "[%s] " format, __func__, ##args)
 
 #include <linux/videodev2.h>
 #include <linux/i2c.h>
@@ -419,7 +420,7 @@ static void imx06c_get_pdaf_reg_setting(MUINT32 regNum, kal_uint16 *regDa)
 	for (i = 0; i < regNum; i++) {
 		idx = 2 * i;
 		regDa[idx + 1] = read_cmos_sensor_8(regDa[idx]);
-		pr_debug("%x %x", regDa[idx], regDa[idx+1]);
+		LOG_INF("%x %x", regDa[idx], regDa[idx+1]);
 	}
 }
 static void imx06c_set_pdaf_reg_setting(MUINT32 regNum, kal_uint16 *regDa)
@@ -429,7 +430,7 @@ static void imx06c_set_pdaf_reg_setting(MUINT32 regNum, kal_uint16 *regDa)
 	for (i = 0; i < regNum; i++) {
 		idx = 2 * i;
 		write_cmos_sensor_8(regDa[idx], regDa[idx + 1]);
-		pr_debug("%x %x", regDa[idx], regDa[idx+1]);
+		LOG_INF("%x %x", regDa[idx], regDa[idx+1]);
 	}
 }
 
@@ -462,7 +463,7 @@ static void read_sensor_Cali(void)
 		(otp_data[1] == 0x00) &&
 		(otp_data[2] == 0x0b) &&
 		(otp_data[3] == 0x01)) {
-		pr_info("OTP type: Internal Only");
+		LOG_INF("OTP type: Internal Only");
 		otp_flag = OTP_QSC_INTERNAL;
 
 		for (idx = 0; idx < 2304; idx++) {
@@ -485,7 +486,7 @@ static void read_sensor_Cali(void)
 
 	} else if ((otp_data[5] == 0x56) && (otp_data[6] == 0x00)) {
 		/*Internal Module Type*/
-		pr_info("OTP type: Custom Only");
+		LOG_INF("OTP type: Custom Only");
 		otp_flag = OTP_QSC_CUSTOM;
 
 		for (idx = 0; idx < 2304; idx++) {
@@ -497,7 +498,7 @@ static void read_sensor_Cali(void)
 		}
 
 	} else {
-		pr_info("OTP type: No Data, 0x0008 = %d, 0x0009 = %d",
+		LOG_INF("OTP type: No Data, 0x0008 = %d, 0x0009 = %d",
 		read_cmos_eeprom_8(0x0008), read_cmos_eeprom_8(0x0009));
 	}
 
@@ -506,7 +507,7 @@ static void read_sensor_Cali(void)
 
 static void set_dummy(void)
 {
-	pr_debug("dummyline = %d, dummypixels = %d\n",
+	LOG_INF("dummyline = %d, dummypixels = %d\n",
 		imgsensor.dummy_line, imgsensor.dummy_pixel);
 	/* return;*/ /* for test */
 
@@ -527,7 +528,7 @@ static void set_mirror_flip(kal_uint8 image_mirror)
 {
 	kal_uint8 itemp;
 
-	pr_debug("image_mirror = %d\n", image_mirror);
+	LOG_INF("image_mirror = %d\n", image_mirror);
 	itemp = read_cmos_sensor_8(0x0101);
 	itemp &= ~0x03;
 
@@ -555,7 +556,7 @@ static void set_max_framerate(UINT16 framerate, kal_bool min_framelength_en)
 	/*kal_int16 dummy_line;*/
 	kal_uint32 frame_length = imgsensor.frame_length;
 
-	pr_debug(
+	LOG_INF(
 		"framerate = %d, min framelength should enable %d\n", framerate,
 		min_framelength_en);
 
@@ -619,12 +620,12 @@ static void write_shutter(kal_uint32 shutter)
 
 	if (!imx06c_is_seamless)
 		if (read_cmos_sensor_8(0x0350) != 0x01) {
-			pr_debug("single cam scenario enable auto-extend");
+			LOG_INF("single cam scenario enable auto-extend");
 			write_cmos_sensor_8(0x0350, 0x01);
 		}
 
 	if (longexposure_times > 0) {
-		pr_debug("enter long exposure mode, time is %d",
+		LOG_INF("enter long exposure mode, time is %d",
 			longexposure_times);
 		long_exposure_status = 1;
 		// imgsensor.frame_length = shutter + 32;
@@ -643,7 +644,7 @@ static void write_shutter(kal_uint32 shutter)
 			imx06c_i2c_data[imx06c_size_to_write++] = 0;
 		}
 
-		pr_debug("exit long exposure mode");
+		LOG_INF("exit long exposure mode");
 	}
 	/* Update Shutter */
 	if (!imx06c_is_seamless) {
@@ -657,7 +658,7 @@ static void write_shutter(kal_uint32 shutter)
 		imx06c_i2c_data[imx06c_size_to_write++] = shutter & 0xFF;
 	}
 
-	pr_debug("shutter =%d, framelength =%d\n",
+	LOG_INF("shutter =%d, framelength =%d\n",
 		shutter, imgsensor.frame_length);
 
 }	/*	write_shutter  */
@@ -773,7 +774,7 @@ static void set_shutter_frame_length(kal_uint16 shutter,
 	write_cmos_sensor_8(0x0202, (shutter >> 8) & 0xFF);
 	write_cmos_sensor_8(0x0203, shutter  & 0xFF);
 	write_cmos_sensor_8(0x0104, 0x00);
-	pr_debug(
+	LOG_INF(
 		"Exit! shutter =%d, framelength =%d/%d, dummy_line=%d, auto_extend=%d\n",
 		shutter, imgsensor.frame_length, frame_length,
 		dummy_line, read_cmos_sensor_8(0x0350));
@@ -809,7 +810,7 @@ static kal_uint16 set_gain(kal_uint16 gain)
 	kal_uint16 reg_gain, max_gain = 128 * BASEGAIN;
 
 	if (gain < BASEGAIN || gain > max_gain) {
-		pr_debug("Error max gain setting: %d\n", max_gain);
+		LOG_INF("Error max gain setting: %d\n", max_gain);
 
 		if (gain < BASEGAIN)
 			gain = BASEGAIN;
@@ -821,7 +822,7 @@ static kal_uint16 set_gain(kal_uint16 gain)
 	spin_lock(&imgsensor_drv_lock);
 	imgsensor.gain = reg_gain;
 	spin_unlock(&imgsensor_drv_lock);
-	pr_debug("gain = %d, reg_gain = 0x%x, max_gain:0x%x\n ",
+	LOG_INF("gain = %d, reg_gain = 0x%x, max_gain:0x%x\n ",
 		gain, reg_gain, max_gain);
 
 	if (!imx06c_is_seamless) {
@@ -848,16 +849,16 @@ static kal_uint32 imx06c_awb_gain(struct SET_SENSOR_AWB_GAIN *pSetSensorAWB)
 	 * rgain_32 = (pSetSensorAWB->ABS_GAIN_R + 1) >> 1;
 	 * bgain_32 = (pSetSensorAWB->ABS_GAIN_B + 1) >> 1;
 	 * gbgain_32 = (pSetSensorAWB->ABS_GAIN_GB + 1) >> 1;
-	 * pr_debug("[%s] ABS_GAIN_GR:%d, grgain_32:%d\n",
+	 * LOG_INF("[%s] ABS_GAIN_GR:%d, grgain_32:%d\n",
 	 *	__func__,
 	 *	pSetSensorAWB->ABS_GAIN_GR, grgain_32);
-	 * pr_debug("[%s] ABS_GAIN_R:%d, rgain_32:%d\n",
+	 * LOG_INF("[%s] ABS_GAIN_R:%d, rgain_32:%d\n",
 	 *	__func__,
 	 *	pSetSensorAWB->ABS_GAIN_R, rgain_32);
-	 * pr_debug("[%s] ABS_GAIN_B:%d, bgain_32:%d\n",
+	 * LOG_INF("[%s] ABS_GAIN_B:%d, bgain_32:%d\n",
 	 *	__func__,
 	 *	pSetSensorAWB->ABS_GAIN_B, bgain_32);
-	 * pr_debug("[%s] ABS_GAIN_GB:%d, gbgain_32:%d\n",
+	 * LOG_INF("[%s] ABS_GAIN_GB:%d, gbgain_32:%d\n",
 	 *	__func__,
 	 *	pSetSensorAWB->ABS_GAIN_GB, gbgain_32);
 	 *
@@ -918,13 +919,13 @@ static void imx06c_set_lsc_reg_setting(
 	int startAddr[4] = {0x9D88, 0x9CB0, 0x9BD8, 0x9B00};
 	/*0:B,1:Gb,2:Gr,3:R*/
 
-	pr_debug("E! index:%d, regNum:%d\n", index, regNum);
+	LOG_INF("E! index:%d, regNum:%d\n", index, regNum);
 
 	write_cmos_sensor_8(0x0B00, 0x01); /*lsc enable*/
 	write_cmos_sensor_8(0x9014, 0x01);
 	write_cmos_sensor_8(0x4439, 0x01);
 	mdelay(1);
-	pr_debug("Addr 0xB870, 0x380D Value:0x%x %x\n",
+	LOG_INF("Addr 0xB870, 0x380D Value:0x%x %x\n",
 		read_cmos_sensor_8(0xB870), read_cmos_sensor_8(0x380D));
 	/*define Knot point, 2'b01:u3.7*/
 	write_cmos_sensor_8(0x9750, 0x01);
@@ -949,14 +950,14 @@ static void check_stream_is_on(void)
 
 		framecnt = read_cmos_sensor_8(0x0005);
 		if (framecnt != 0xFF) {
-			pr_debug("IMX06C stream is on, %d\n", framecnt);
+			LOG_INF("IMX06C stream is on, %d\n", framecnt);
 			// try_time--;
 			// if(try_time == 0) {
 			//     break;
 			// }
 			// mdelay(50);
 		} else {
-			pr_debug("IMX06C stream is not on %d\n", framecnt);
+			LOG_INF("IMX06C stream is not on %d\n", framecnt);
 		}
 		mdelay(1);
 	}
@@ -980,11 +981,11 @@ static void check_stream_is_on(void)
  *************************************************************************/
 static kal_uint32 streaming_control(kal_bool enable)
 {
-	pr_debug("streaming_enable(0=Sw Standby,1=streaming): %d\n",
+	LOG_INF("streaming_enable(0=Sw Standby,1=streaming): %d\n",
 		enable);
 	if (enable) {
 		if (read_cmos_sensor_8(0x0350) != 0x01) {
-			pr_info("single cam scenario enable auto-extend");
+			LOG_INF("single cam scenario enable auto-extend");
 			write_cmos_sensor_8(0x0350, 0x01);
 		}
 		write_cmos_sensor_8(0x3020, 0x00);/*Mode transition mode change*/
@@ -4065,7 +4066,7 @@ static kal_uint16 imx06c_custom4_setting[] = {
 
 static void sensor_init(void)
 {
-	pr_debug("[%s] E!\n", __func__);
+	LOG_INF("[%s] E!\n", __func__);
 
 	imx06c_table_write_cmos_sensor(imx06c_init_setting,
 	    sizeof(imx06c_init_setting)/sizeof(kal_uint16));
@@ -4073,17 +4074,17 @@ static void sensor_init(void)
 	write_cmos_sensor_8(0x0138, 0x01);
 	set_mirror_flip(imgsensor.mirror);
 
-	pr_debug("[%s] X!\n", __func__);
+	LOG_INF("[%s] X!\n", __func__);
 }  /* sensor_init */
 
 static void preview_setting(void)
 {
-	pr_debug("[%s] E!\n", __func__);
+	LOG_INF("[%s] E!\n", __func__);
 
 	imx06c_table_write_cmos_sensor(imx06c_preview_setting,
 		sizeof(imx06c_preview_setting)/sizeof(kal_uint16));
 
-	pr_debug("[%s] X!\n", __func__);
+	LOG_INF("[%s] X!\n", __func__);
 }  /* preview_setting */
 
 
@@ -4093,15 +4094,15 @@ static void capture_setting(kal_uint16 currefps)
 	int _length = 0;
 
 	_length = sizeof(imx06c_capture_setting)/sizeof(kal_uint16);
-	pr_debug("[%s] E! 30 fps, currefps:%d\n", __func__, currefps);
+	LOG_INF("[%s] E! 30 fps, currefps:%d\n", __func__, currefps);
 	/*************MIPI output setting************/
 	if (!imx06c_is_seamless)
 		imx06c_table_write_cmos_sensor(imx06c_capture_setting, _length);
 	else {
-		pr_debug("%s imx06c_is_seamless %d, imx06c_size_to_write %d\n",
+		LOG_INF("%s imx06c_is_seamless %d, imx06c_size_to_write %d\n",
 			__func__, imx06c_is_seamless, imx06c_size_to_write);
 		if (imx06c_size_to_write + _length > _I2C_BUF_SIZE) {
-			pr_debug("_too much i2c data for fast siwtch %d\n",
+			LOG_INF("_too much i2c data for fast siwtch %d\n",
 				imx06c_size_to_write + _length);
 			return;
 		}
@@ -4111,77 +4112,78 @@ static void capture_setting(kal_uint16 currefps)
 		imx06c_size_to_write += _length;
 	}
 
-	pr_debug("[%s] X! 30 fps\n", __func__);
+	LOG_INF("[%s] X! 30 fps\n", __func__);
 }
 
 static void normal_video_setting(kal_uint16 currefps)
 {
-	pr_debug("[%s] E! currefps: %d\n", __func__, currefps);
+	LOG_INF("[%s] E! currefps: %d\n", __func__, currefps);
 
 	imx06c_table_write_cmos_sensor(imx06c_normal_video_setting,
 		sizeof(imx06c_normal_video_setting)/sizeof(kal_uint16));
 
-	pr_debug("[%s] X!\n", __func__);
+	LOG_INF("[%s] X!\n", __func__);
 }
 
 static void hs_video_setting(void)
 {
-	pr_debug("[%s] E! currefps 120\n", __func__);
+
+	LOG_INF("[%s] E! currefps 60\n", __func__);
 
 	imx06c_table_write_cmos_sensor(imx06c_hs_video_setting,
 		sizeof(imx06c_hs_video_setting)/sizeof(kal_uint16));
 
-	pr_debug("[%s] X!\n", __func__);
+	LOG_INF("[%s] X!\n", __func__);
 }
 
 static void slim_video_setting(void)
 {
-	pr_debug("[%s] E! 4096*23046@30fps\n", __func__);
+	LOG_INF("[%s] E! 4096*23046@30fps\n", __func__);
 
 	imx06c_table_write_cmos_sensor(imx06c_slim_video_setting,
 		sizeof(imx06c_slim_video_setting)/sizeof(kal_uint16));
 
-	pr_debug("[%s] X!\n", __func__);
+	LOG_INF("[%s] X!\n", __func__);
 }
 
 static void custom1_setting(void)
 {
-	pr_debug("[%s] E! DCG-4096*2304@30fps\n", __func__);
+	LOG_INF("[%s] E! DCG-4096*2304@30fps\n", __func__);
 
 	imx06c_table_write_cmos_sensor(imx06c_custom1_setting,
 		sizeof(imx06c_custom1_setting)/sizeof(kal_uint16));
 
-	pr_debug("[%s] X!\n", __func__);
+	LOG_INF("[%s] X!\n", __func__);
 }
 
 static void custom2_setting(void)
 {
-	pr_debug("[%s] E! DCG-4096*3072@30fps\n", __func__);
+	LOG_INF("[%s] E! DCG-4096*3072@30fps\n", __func__);
 
 	imx06c_table_write_cmos_sensor(imx06c_custom2_setting,
 		sizeof(imx06c_custom2_setting)/sizeof(kal_uint16));
 
-	pr_debug("[%s] X!\n", __func__);
+	LOG_INF("[%s] X!\n", __func__);
 }
 
 static void custom3_setting(void)
 {
-	pr_debug("[%s] E! ISZ-4096*3072@30fps\n", __func__);
+	LOG_INF("[%s] E! ISZ-4096*3072@30fps\n", __func__);
 
 	imx06c_table_write_cmos_sensor(imx06c_custom3_setting,
 		sizeof(imx06c_custom3_setting)/sizeof(kal_uint16));
 
-	pr_debug("[%s] X!\n", __func__);
+	LOG_INF("[%s] X!\n", __func__);
 }
 
 static void custom4_setting(void)
 {
-	pr_debug("[%s] E! ISZ+DCG-4096*3072@24fps\n", __func__);
+	LOG_INF("[%s] E! ISZ+DCG-4096*3072@24fps\n", __func__);
 
 	imx06c_table_write_cmos_sensor(imx06c_custom4_setting,
 		sizeof(imx06c_custom4_setting)/sizeof(kal_uint16));
 
-	pr_debug("[%s] X!\n", __func__);
+	LOG_INF("[%s] X!\n", __func__);
 }
 
 /*************************************************************************
@@ -4208,7 +4210,7 @@ static kal_uint32 get_imgsensor_id(UINT32 *sensor_id)
 	/*sensor have two i2c address 0x34 & 0x20,
 	 *we should detect the module used i2c address
 	 */
-	pr_debug("[%s] E!\n", __func__);
+	LOG_INF("[%s] E!\n", __func__);
 	while (imgsensor_info.i2c_addr_table[i] != 0xff) {
 		spin_lock(&imgsensor_drv_lock);
 		imgsensor.i2c_write_id = imgsensor_info.i2c_addr_table[i];
@@ -4216,7 +4218,7 @@ static kal_uint32 get_imgsensor_id(UINT32 *sensor_id)
 		do {
 			*sensor_id = ((read_cmos_sensor_8(0x0016) << 8)
 					| read_cmos_sensor_8(0x0017));
-			pr_debug(
+			LOG_INF(
 				"read_0x0016=0x%X, 0x0017=0x%X,sensor id(Rev/Exp):0x%X / 0x%X\n",
 				read_cmos_sensor_8(0x0016),
 				read_cmos_sensor_8(0x0017),
@@ -4225,12 +4227,12 @@ static kal_uint32 get_imgsensor_id(UINT32 *sensor_id)
 			// *sensor_id = 0x06C;
 			// *sensor_id = imgsensor_info.sensor_id;
 			if (*sensor_id == imgsensor_info.sensor_id) {
-				pr_info("[%s] i2c write id: 0x%X, sensor id: 0x%X\n",
+				LOG_INF("[%s] i2c write id: 0x%X, sensor id: 0x%X\n",
 					__func__, imgsensor.i2c_write_id, *sensor_id);
 				read_sensor_Cali();
 				return ERROR_NONE;
 			}
-			pr_debug("Read sensor id fail, id: 0x%x\n",
+			LOG_INF("Read sensor id fail, id: 0x%x\n",
 				imgsensor.i2c_write_id);
 			retry--;
 		} while (retry > 0);
@@ -4245,7 +4247,7 @@ static kal_uint32 get_imgsensor_id(UINT32 *sensor_id)
 		return ERROR_SENSOR_CONNECT_FAIL;
 	}
 
-	pr_debug("[%s] X!\n", __func__);
+	LOG_INF("[%s] X!\n", __func__);
 	return ERROR_NONE;
 }
 
@@ -4275,7 +4277,7 @@ static kal_uint32 open(void)
 	/*sensor have two i2c address 0x6c 0x6d & 0x21 0x20,
 	 *we should detect the module used i2c address
 	 */
-	pr_debug("[%s] E!\n", __func__);
+	LOG_INF("[%s] E!\n", __func__);
 	while (imgsensor_info.i2c_addr_table[i] != 0xff) {
 		spin_lock(&imgsensor_drv_lock);
 		imgsensor.i2c_write_id = imgsensor_info.i2c_addr_table[i];
@@ -4284,11 +4286,11 @@ static kal_uint32 open(void)
 			sensor_id = ((read_cmos_sensor_8(0x0016) << 8)
 					| read_cmos_sensor_8(0x0017));
 			if (sensor_id == imgsensor_info.sensor_id) {
-				pr_debug("i2c write id: 0x%x, sensor id: 0x%x\n",
+				LOG_INF("i2c write id: 0x%x, sensor id: 0x%x\n",
 					imgsensor.i2c_write_id, sensor_id);
 				break;
 			}
-			pr_debug("Read sensor id fail, id: 0x%x\n",
+			LOG_INF("Read sensor id fail, id: 0x%x\n",
 				imgsensor.i2c_write_id);
 			retry--;
 		} while (retry > 0);
@@ -4319,7 +4321,7 @@ static kal_uint32 open(void)
 	imgsensor.test_pattern = 0;
 	imgsensor.current_fps = imgsensor_info.pre.max_framerate;
 	spin_unlock(&imgsensor_drv_lock);
-	pr_debug("[%s] X!\n", __func__);
+	LOG_INF("[%s] X!\n", __func__);
 
 	return ERROR_NONE;
 } /* open */
@@ -4342,11 +4344,11 @@ static kal_uint32 open(void)
  *************************************************************************/
 static kal_uint32 close(void)
 {
-	pr_debug("[%s] E\n", __func__);
+	LOG_INF("[%s] E\n", __func__);
 	/* No Need to implement this function */
 	streaming_control(KAL_FALSE);
 	qsc_flag = 0;
-	pr_debug("[%s] X!\n", __func__);
+	LOG_INF("[%s] X!\n", __func__);
 	return ERROR_NONE;
 } /* close */
 
@@ -4371,7 +4373,7 @@ static kal_uint32 close(void)
 static kal_uint32 preview(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 			  MSDK_SENSOR_CONFIG_STRUCT *sensor_config_data)
 {
-	pr_debug("[%s] E\n", __func__);
+	LOG_INF("[%s] E\n", __func__);
 
 	spin_lock(&imgsensor_drv_lock);
 	imgsensor.sensor_mode = IMGSENSOR_MODE_PREVIEW;
@@ -4384,7 +4386,7 @@ static kal_uint32 preview(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 
 	preview_setting();
 
-	pr_debug("[%s] X!\n", __func__);
+	LOG_INF("[%s] X!\n", __func__);
 	return ERROR_NONE;
 } /* preview */
 
@@ -4407,12 +4409,12 @@ static kal_uint32 preview(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 static kal_uint32 capture(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 			  MSDK_SENSOR_CONFIG_STRUCT *sensor_config_data)
 {
-	pr_debug("[%s] E!\n", __func__);
+	LOG_INF("[%s] E!\n", __func__);
 	spin_lock(&imgsensor_drv_lock);
 	imgsensor.sensor_mode = IMGSENSOR_MODE_CAPTURE;
 
 	if (imgsensor.current_fps != imgsensor_info.cap.max_framerate)
-		pr_debug(
+		LOG_INF(
 			"Warning: current_fps %d fps is not support, so use cap's setting: %d fps!\n",
 			imgsensor.current_fps,
 			imgsensor_info.cap.max_framerate / 10);
@@ -4424,13 +4426,13 @@ static kal_uint32 capture(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	spin_unlock(&imgsensor_drv_lock);
 	capture_setting(imgsensor.current_fps);
 	set_mirror_flip(imgsensor.mirror);
-	pr_debug("[%s] X!\n", __func__);
+	LOG_INF("[%s] X!\n", __func__);
 	return ERROR_NONE;
 }	/* capture() */
 static kal_uint32 normal_video(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 				MSDK_SENSOR_CONFIG_STRUCT *sensor_config_data)
 {
-	pr_debug("[%s] E!\n", __func__);
+	LOG_INF("[%s] E!\n", __func__);
 
 	spin_lock(&imgsensor_drv_lock);
 	imgsensor.sensor_mode = IMGSENSOR_MODE_VIDEO;
@@ -4442,14 +4444,14 @@ static kal_uint32 normal_video(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	spin_unlock(&imgsensor_drv_lock);
 	normal_video_setting(imgsensor.current_fps);
 	set_mirror_flip(imgsensor.mirror);
-	pr_debug("[%s] X!\n", __func__);
+	LOG_INF("[%s] X!\n", __func__);
 	return ERROR_NONE;
 }	/*	normal_video   */
 
 static kal_uint32 hs_video(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 				MSDK_SENSOR_CONFIG_STRUCT *sensor_config_data)
 {
-	pr_debug("[%s] E!\n", __func__);
+	LOG_INF("[%s] E!\n", __func__);
 
 	spin_lock(&imgsensor_drv_lock);
 	imgsensor.sensor_mode = IMGSENSOR_MODE_HIGH_SPEED_VIDEO;
@@ -4466,14 +4468,14 @@ static kal_uint32 hs_video(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	hs_video_setting();
 	set_mirror_flip(imgsensor.mirror);
 
-	pr_debug("[%s] X!\n", __func__);
+	LOG_INF("[%s] X!\n", __func__);
 	return ERROR_NONE;
 }	/*	hs_video   */
 
 static kal_uint32 slim_video(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 				MSDK_SENSOR_CONFIG_STRUCT *sensor_config_data)
 {
-	pr_debug("[%s] E! 720P@240FPS\n", __func__);
+	LOG_INF("[%s] E! 720P@240FPS\n", __func__);
 
 	spin_lock(&imgsensor_drv_lock);
 	imgsensor.sensor_mode = IMGSENSOR_MODE_SLIM_VIDEO;
@@ -4489,14 +4491,14 @@ static kal_uint32 slim_video(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	spin_unlock(&imgsensor_drv_lock);
 	slim_video_setting();
 	set_mirror_flip(imgsensor.mirror);
-	pr_debug("[%s] X!\n", __func__);
+	LOG_INF("[%s] X!\n", __func__);
 	return ERROR_NONE;
 }	/* slim_video */
 
 static kal_uint32 Custom1(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 				MSDK_SENSOR_CONFIG_STRUCT *sensor_config_data)
 {
-	pr_debug("[%s] E!DCG sensor merge@30FPS\n", __func__);
+	LOG_INF("[%s] E!DCG sensor merge@30FPS\n", __func__);
 
 	spin_lock(&imgsensor_drv_lock);
 	imgsensor.sensor_mode = IMGSENSOR_MODE_CUSTOM1;
@@ -4512,14 +4514,14 @@ static kal_uint32 Custom1(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	spin_unlock(&imgsensor_drv_lock);
 	custom1_setting();
 	set_mirror_flip(imgsensor.mirror);
-	pr_debug("[%s] X!\n", __func__);
+	LOG_INF("[%s] X!\n", __func__);
 	return ERROR_NONE;
 }	/* custom1 */
 
 static kal_uint32 Custom2(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 				MSDK_SENSOR_CONFIG_STRUCT *sensor_config_data)
 {
-	pr_debug("[%s] E!DCG sensor merge 4096*3072@30FPS\n", __func__);
+	LOG_INF("[%s] E!DCG sensor merge 4096*3072@30FPS\n", __func__);
 
 	spin_lock(&imgsensor_drv_lock);
 	imgsensor.sensor_mode = IMGSENSOR_MODE_CUSTOM2;
@@ -4535,14 +4537,14 @@ static kal_uint32 Custom2(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	spin_unlock(&imgsensor_drv_lock);
 	custom2_setting();
 	set_mirror_flip(imgsensor.mirror);
-	pr_debug("[%s] X!\n", __func__);
+	LOG_INF("[%s] X!\n", __func__);
 	return ERROR_NONE;
 }	/* custom2 */
 
 static kal_uint32 Custom3(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 				MSDK_SENSOR_CONFIG_STRUCT *sensor_config_data)
 {
-	pr_debug("[%s] E! ISZ 4096*3072@30FPS\n", __func__);
+	LOG_INF("[%s] E! ISZ 4096*3072@30FPS\n", __func__);
 
 	spin_lock(&imgsensor_drv_lock);
 	imgsensor.sensor_mode = IMGSENSOR_MODE_CUSTOM3;
@@ -4558,14 +4560,14 @@ static kal_uint32 Custom3(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	spin_unlock(&imgsensor_drv_lock);
 	custom3_setting();
 	set_mirror_flip(imgsensor.mirror);
-	pr_debug("[%s] X!\n", __func__);
+	LOG_INF("[%s] X!\n", __func__);
 	return ERROR_NONE;
 }	/* custom2 */
 
 static kal_uint32 Custom4(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 				MSDK_SENSOR_CONFIG_STRUCT *sensor_config_data)
 {
-	pr_debug("[%s] E! ISZ + DCG sensor merge 4096*3072@24FPS\n", __func__);
+	LOG_INF("[%s] E! ISZ + DCG sensor merge 4096*3072@24FPS\n", __func__);
 
 	spin_lock(&imgsensor_drv_lock);
 	imgsensor.sensor_mode = IMGSENSOR_MODE_CUSTOM4;
@@ -4581,14 +4583,14 @@ static kal_uint32 Custom4(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	spin_unlock(&imgsensor_drv_lock);
 	custom4_setting();
 	set_mirror_flip(imgsensor.mirror);
-	pr_debug("[%s] X!\n", __func__);
+	LOG_INF("[%s] X!\n", __func__);
 	return ERROR_NONE;
 }	/* custom2 */
 
 static kal_uint32
 get_resolution(MSDK_SENSOR_RESOLUTION_INFO_STRUCT *sensor_resolution)
 {
-	pr_debug("[%s] E!\n", __func__);
+	LOG_INF("[%s] E!\n", __func__);
 	sensor_resolution->SensorFullWidth =
 		imgsensor_info.cap.grabwindow_width;
 	sensor_resolution->SensorFullHeight =
@@ -4692,7 +4694,7 @@ get_resolution(MSDK_SENSOR_RESOLUTION_INFO_STRUCT *sensor_resolution)
 	sensor_resolution->SensorCustom15Height =
 		imgsensor_info.pre.grabwindow_height;
 
-	pr_debug("[%s] X!\n", __func__);
+	LOG_INF("[%s] X!\n", __func__);
 	return ERROR_NONE;
 } /* get_resolution */
 
@@ -4700,7 +4702,7 @@ static kal_uint32 get_info(enum MSDK_SCENARIO_ID_ENUM scenario_id,
 			   MSDK_SENSOR_INFO_STRUCT *sensor_info,
 			   MSDK_SENSOR_CONFIG_STRUCT *sensor_config_data)
 {
-	pr_debug("[%s] E! scenario_id = %d\n", __func__, scenario_id);
+	LOG_INF("[%s] E! scenario_id = %d\n", __func__, scenario_id);
 
 	sensor_info->SensorClockPolarity = SENSOR_CLOCK_POLARITY_LOW;
 	sensor_info->SensorClockFallingPolarity = SENSOR_CLOCK_POLARITY_LOW;
@@ -4853,7 +4855,7 @@ static kal_uint32 get_info(enum MSDK_SCENARIO_ID_ENUM scenario_id,
 		break;
 	}
 
-	pr_debug("[%s] X!\n", __func__);
+	LOG_INF("[%s] X!\n", __func__);
 	return ERROR_NONE;
 }	/*	get_info  */
 
@@ -4861,7 +4863,7 @@ static kal_uint32 control(enum MSDK_SCENARIO_ID_ENUM scenario_id,
 			MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 			MSDK_SENSOR_CONFIG_STRUCT *sensor_config_data)
 {
-	pr_debug("[%s] E! scenario_id = %d\n", __func__, scenario_id);
+	LOG_INF("[%s] E! scenario_id = %d\n", __func__, scenario_id);
 
 	spin_lock(&imgsensor_drv_lock);
 	imgsensor.current_scenario_id = scenario_id;
@@ -4896,12 +4898,12 @@ static kal_uint32 control(enum MSDK_SCENARIO_ID_ENUM scenario_id,
 		Custom4(image_window, sensor_config_data);
 		break;
 	default:
-		pr_debug("Error ScenarioId setting");
+		LOG_INF("Error ScenarioId setting");
 		preview(image_window, sensor_config_data);
 		return ERROR_INVALID_SCENARIO_ID;
 	}
 
-	pr_debug("[%s] X!\n", __func__);
+	LOG_INF("[%s] X!\n", __func__);
 	return ERROR_NONE;
 }	/* control() */
 
@@ -4915,7 +4917,7 @@ static kal_uint32 seamless_switch(enum MSDK_SCENARIO_ID_ENUM scenario_id,
 	memset(imx06c_i2c_data, 0x0, sizeof(imx06c_i2c_data));
 	imx06c_size_to_write = 0;
 
-	pr_debug("[%s] E! %d, %d, %d, %d, %d sizeof(imx06c_i2c_data) %lu\n",
+	LOG_INF("[%s] E! %d, %d, %d, %d, %d sizeof(imx06c_i2c_data) %lu\n",
 		__func__, scenario_id, shutter, gain,
 		shutter_2ndframe, gain_2ndframe,
 		sizeof(imx06c_i2c_data));
@@ -4938,7 +4940,7 @@ static kal_uint32 seamless_switch(enum MSDK_SCENARIO_ID_ENUM scenario_id,
 	imx06c_i2c_data[imx06c_size_to_write++] = 0x0104;
 	imx06c_i2c_data[imx06c_size_to_write++] = 0;
 
-	pr_debug("%s imx06c_is_seamless %d, imx06c_size_to_write %d\n",
+	LOG_INF("%s imx06c_is_seamless %d, imx06c_size_to_write %d\n",
 				__func__, imx06c_is_seamless, imx06c_size_to_write);
 
 	imx06c_table_write_cmos_sensor(
@@ -4946,13 +4948,13 @@ static kal_uint32 seamless_switch(enum MSDK_SCENARIO_ID_ENUM scenario_id,
 		imx06c_size_to_write);
 
 	imx06c_is_seamless = false;
-	pr_debug("exit\n");
+	LOG_INF("exit\n");
 	return ERROR_NONE;
 }
 
 static kal_uint32 set_video_mode(UINT16 framerate)
 {
-	pr_debug("framerate = %d\n ", framerate);
+	LOG_INF("framerate = %d\n ", framerate);
 	/* SetVideoMode Function should fix framerate */
 	if (framerate == 0)
 		/* Dynamic frame rate */
@@ -4974,7 +4976,7 @@ static kal_uint32 set_auto_flicker_mode(kal_bool enable, UINT16 framerate)
 	spin_lock(&imgsensor_drv_lock);
 	if (enable) /*enable auto flicker*/ {
 		imgsensor.autoflicker_en = KAL_TRUE;
-		pr_debug("enable! fps = %d", framerate);
+		LOG_INF("enable! fps = %d", framerate);
 	} else {
 		 /*Cancel Auto flick*/
 		imgsensor.autoflicker_en = KAL_FALSE;
@@ -4989,7 +4991,7 @@ static kal_uint32 set_max_framerate_by_scenario(
 {
 	kal_uint32 frame_length;
 
-	pr_debug("scenario_id = %d, framerate = %d\n", scenario_id, framerate);
+	LOG_INF("scenario_id = %d, framerate = %d\n", scenario_id, framerate);
 	switch (scenario_id) {
 	case MSDK_SCENARIO_ID_VIDEO_PREVIEW:
 		if (framerate == 0)
@@ -5012,7 +5014,7 @@ static kal_uint32 set_max_framerate_by_scenario(
 		break;
 	case MSDK_SCENARIO_ID_CAMERA_CAPTURE_JPEG:
 	if (imgsensor.current_fps != imgsensor_info.cap.max_framerate)
-		pr_debug(
+		LOG_INF(
 			"Warning: current_fps %d fps is not support, so use cap's setting: %d fps!\n"
 			, framerate, imgsensor_info.cap.max_framerate/10);
 		frame_length = imgsensor_info.cap.pclk / framerate * 10
@@ -5139,7 +5141,7 @@ static kal_uint32 set_max_framerate_by_scenario(
 		spin_unlock(&imgsensor_drv_lock);
 		if (imgsensor.frame_length > imgsensor.shutter)
 			set_dummy();
-		pr_debug("error scenario_id = %d, we use preview scenario\n",
+		LOG_INF("error scenario_id = %d, we use preview scenario\n",
 			scenario_id);
 		break;
 	}
@@ -5150,7 +5152,7 @@ static kal_uint32 set_max_framerate_by_scenario(
 static kal_uint32 get_default_framerate_by_scenario(
 		enum MSDK_SCENARIO_ID_ENUM scenario_id, MUINT32 *framerate)
 {
-	pr_debug("scenario_id = %d\n", scenario_id);
+	LOG_INF("scenario_id = %d\n", scenario_id);
 
 	switch (scenario_id) {
 	case MSDK_SCENARIO_ID_CAMERA_PREVIEW:
@@ -5192,12 +5194,12 @@ static kal_uint32 set_test_pattern_mode(kal_uint32 modes,
 {
 	kal_uint16 Color_R, Color_Gr, Color_Gb, Color_B;
 
-	pr_debug("set_test_pattern enum: %d\n", modes);
+	LOG_INF("set_test_pattern enum: %d\n", modes);
 
 	if (modes) {
 		write_cmos_sensor_8(0x0601, modes);
 		if (modes == 1 && (pdata != NULL)) { //Solid Color
-			pr_debug("R=0x%x,Gr=0x%x,B=0x%x,Gb=0x%x",
+			LOG_INF("R=0x%x,Gr=0x%x,B=0x%x,Gb=0x%x",
 				pdata->COLOR_R, pdata->COLOR_Gr, pdata->COLOR_B, pdata->COLOR_Gb);
 			Color_R = (pdata->COLOR_R >> 22) & 0x3FF; //10bits depth color
 			Color_Gr = (pdata->COLOR_Gr >> 22) & 0x3FF;
@@ -5264,7 +5266,7 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 
 	MSDK_SENSOR_REG_INFO_STRUCT *sensor_reg_data
 		= (MSDK_SENSOR_REG_INFO_STRUCT *) feature_para;
-	pr_debug("[%s]E, feature_id = %d\n", __func__, feature_id);
+	LOG_DEBUG("[%s]E, feature_id = %d\n", __func__, feature_id);
 	switch (feature_id) {
 	case SENSOR_FEATURE_GET_AWB_REQ_BY_SCENARIO:
 		*(MUINT32 *)(uintptr_t)(*(feature_data + 1)) = 0;
@@ -5444,7 +5446,7 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 			(MUINT32 *)(uintptr_t)(*(feature_data+1)));
 		break;
 	case SENSOR_FEATURE_GET_PDAF_DATA:
-		pr_debug("SENSOR_FEATURE_GET_PDAF_DATA\n");
+		LOG_INF("SENSOR_FEATURE_GET_PDAF_DATA\n");
 		break;
 	case SENSOR_FEATURE_SET_TEST_PATTERN:
 		set_test_pattern_mode((UINT32)*feature_data,
@@ -5456,13 +5458,13 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 		*feature_para_len = 4;
 		break;
 	case SENSOR_FEATURE_SET_FRAMERATE:
-		pr_debug("current fps :%d\n", (UINT32)*feature_data_32);
+		LOG_INF("current fps :%d\n", (UINT32)*feature_data_32);
 		spin_lock(&imgsensor_drv_lock);
 		imgsensor.current_fps = *feature_data_32;
 		spin_unlock(&imgsensor_drv_lock);
 		break;
 	case SENSOR_FEATURE_SET_HDR:
-		pr_debug("ihdr enable :%d\n", (BOOL)*feature_data_32);
+		LOG_INF("ihdr enable :%d\n", (BOOL)*feature_data_32);
 		spin_lock(&imgsensor_drv_lock);
 		imgsensor.ihdr_mode = *feature_data_32;
 		spin_unlock(&imgsensor_drv_lock);
@@ -5520,7 +5522,7 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 		}
 		break;
 	case SENSOR_FEATURE_GET_PDAF_INFO:
-		pr_debug("SENSOR_FEATURE_GET_PDAF_INFO scenarioId:%d\n",
+		LOG_INF("SENSOR_FEATURE_GET_PDAF_INFO scenarioId:%d\n",
 			(UINT16) *feature_data);
 		PDAFinfo =
 		(struct SET_PD_BLOCK_INFO_T *)(uintptr_t)(*(feature_data+1));
@@ -5566,7 +5568,7 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 		}
 		break;
 	case SENSOR_FEATURE_GET_SENSOR_PDAF_CAPACITY:
-		pr_debug(
+		LOG_INF(
 		"SENSOR_FEATURE_GET_SENSOR_PDAF_CAPACITY scenarioId:%d\n",
 		(UINT16) *feature_data);
 		/*PDAF capacity enable or not, 2p8 only full size support PDAF*/
@@ -5584,23 +5586,23 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 		}
 		break;
 	case SENSOR_FEATURE_GET_PDAF_REG_SETTING:
-		pr_debug("SENSOR_FEATURE_GET_PDAF_REG_SETTING %d\n",
+		LOG_INF("SENSOR_FEATURE_GET_PDAF_REG_SETTING %d\n",
 			(*feature_para_len));
 		imx06c_get_pdaf_reg_setting((*feature_para_len) / sizeof(UINT32)
 					   , feature_data_16);
 		break;
 	case SENSOR_FEATURE_SET_PDAF_REG_SETTING:
-		pr_debug("SENSOR_FEATURE_SET_PDAF_REG_SETTING %d",
+		LOG_INF("SENSOR_FEATURE_SET_PDAF_REG_SETTING %d",
 			(*feature_para_len));
 		imx06c_set_pdaf_reg_setting((*feature_para_len) / sizeof(UINT32)
 					   , feature_data_16);
 		break;
 	case SENSOR_FEATURE_SET_PDAF:
-		pr_debug("PDAF mode :%d\n", *feature_data_16);
+		LOG_INF("PDAF mode :%d\n", *feature_data_16);
 		imgsensor.pdaf_mode = *feature_data_16;
 		break;
 	case SENSOR_FEATURE_SET_IHDR_SHUTTER_GAIN:
-		pr_debug("SENSOR_SET_SENSOR_IHDR LE=%d, SE=%d, Gain=%d\n",
+		LOG_INF("SENSOR_SET_SENSOR_IHDR LE=%d, SE=%d, Gain=%d\n",
 			(UINT16)*feature_data,
 			(UINT16)*(feature_data+1),
 			(UINT16)*(feature_data+2));
@@ -5620,11 +5622,11 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 		*(feature_data + 2) = imgsensor_info.margin;
 		break;
 	case SENSOR_FEATURE_SET_STREAMING_SUSPEND:
-		pr_debug("SENSOR_FEATURE_SET_STREAMING_SUSPEND\n");
+		LOG_INF("SENSOR_FEATURE_SET_STREAMING_SUSPEND\n");
 		streaming_control(KAL_FALSE);
 		break;
 	case SENSOR_FEATURE_SET_STREAMING_RESUME:
-		pr_debug("SENSOR_FEATURE_SET_STREAMING_RESUME, shutter:%llu\n",
+		LOG_INF("SENSOR_FEATURE_SET_STREAMING_RESUME, shutter:%llu\n",
 			*feature_data);
 		if (*feature_data != 0)
 			set_shutter(*feature_data);
@@ -5644,7 +5646,7 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 			*feature_return_para_32 = 1; /*BINNING_AVERAGED*/
 			break;
 		}
-		pr_debug("SENSOR_FEATURE_GET_BINNING_TYPE AE_binning_type:%d,\n",
+		LOG_INF("SENSOR_FEATURE_GET_BINNING_TYPE AE_binning_type:%d,\n",
 			*feature_return_para_32);
 		*feature_para_len = 4;
 		break;
@@ -5692,7 +5694,7 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 		break;
 	}
 	case SENSOR_FEATURE_GET_VC_INFO:
-		pr_debug("SENSOR_FEATURE_GET_VC_INFO %d\n",
+		LOG_INF("SENSOR_FEATURE_GET_VC_INFO %d\n",
 			(UINT16)*feature_data);
 
 		pvcinfo =
@@ -5735,7 +5737,7 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 				sizeof(struct SENSOR_VC_INFO_STRUCT));
 			break;
 		default:
-			pr_info("error: get wrong vc_INFO id = %d",
+			LOG_INF("error: get wrong vc_INFO id = %d",
 			*feature_data_32);
 			break;
 		}
@@ -5768,11 +5770,11 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 			pAeCtrls =
 			(MUINT32 *)((uintptr_t)(*(feature_data + 1)));
 		} else {
-			pr_debug(
+			LOG_INF(
 			"warning! no ae_ctrl input");
 		}
 		if (feature_data == NULL) {
-			pr_info("error! input scenario is null!");
+			LOG_INF("error! input scenario is null!");
 			return ERROR_INVALID_SCENARIO_ID;
 		}
 		if (pAeCtrls != NULL) {
@@ -5791,7 +5793,7 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 			pScenarios =
 			(MUINT32 *)((uintptr_t)(*(feature_data + 1)));
 		} else {
-			pr_info("input pScenarios vector is NULL!\n");
+			LOG_INF("input pScenarios vector is NULL!\n");
 			return ERROR_INVALID_SCENARIO_ID;
 		}
 		switch (*feature_data) {
@@ -5807,7 +5809,7 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 			*pScenarios = 0xff;
 			break;
 		}
-		pr_debug("SENSOR_FEATURE_GET_SEAMLESS_SCENARIOS %llu %d\n",
+		LOG_INF("SENSOR_FEATURE_GET_SEAMLESS_SCENARIOS %llu %d\n",
 		*feature_data, *pScenarios);
 		break;
 	}
@@ -5827,7 +5829,7 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 	}
 	case SENSOR_FEATURE_SET_HDR_SHUTTER://for 2EXP
 	{
-		pr_info("SENSOR_FEATURE_SET_HDR_SHUTTER LE=%d, SE=%d\n",
+		LOG_INF("SENSOR_FEATURE_SET_HDR_SHUTTER LE=%d, SE=%d\n",
 				(UINT16) *feature_data, (UINT16) *(feature_data + 1));
 		// implement write shutter for NE/SE
 		if (imgsensor.current_scenario_id == MSDK_SCENARIO_ID_CUSTOM1 ||
@@ -5838,7 +5840,7 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 	}
 	case SENSOR_FEATURE_SET_DUAL_GAIN://for 2EXP
 	{
-		pr_info("SENSOR_FEATURE_SET_DUAL_GAIN LE=%d, SE=%d\n",
+		LOG_INF("SENSOR_FEATURE_SET_DUAL_GAIN LE=%d, SE=%d\n",
 				(UINT16) *feature_data, (UINT16) *(feature_data + 1));
 		// implement write gain for NE/SE
 		if (imgsensor.current_scenario_id == MSDK_SCENARIO_ID_CUSTOM1 ||
@@ -5883,7 +5885,7 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 				break;
 			}
 		}
-		pr_info("[%s][SENSOR_FEATURE_GET_STAGGER_TARGET_SCENARIO] %d %d<->%d\n",
+		LOG_INF("[%s][SENSOR_FEATURE_GET_STAGGER_TARGET_SCENARIO] %d %d<->%d\n",
 				__func__,
 				(UINT16) (*feature_data),
 				(UINT16) *(feature_data + 1),
@@ -5892,7 +5894,7 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 	}
 	case SENSOR_FEATURE_SET_HDR_SHUTTER_FRAME_TIME:
 	{
-		pr_info("SENSOR_FEATURE_SET_HDR_SHUTTER_FRAME_TIME\n");
+		LOG_INF("SENSOR_FEATURE_SET_HDR_SHUTTER_FRAME_TIME\n");
 		if (imgsensor.current_scenario_id == MSDK_SCENARIO_ID_CUSTOM1 ||
 			imgsensor.current_scenario_id == MSDK_SCENARIO_ID_CUSTOM2 ||
 			imgsensor.current_scenario_id == MSDK_SCENARIO_ID_CUSTOM4) {
@@ -5922,7 +5924,7 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 				= 10;
 			break;
 		}
-		pr_info("[%s][SENSOR_FEATURE_GET_RAW_BIT_BY_SCENARIO] get mode(%llu) raw bit(%d)\n",
+		LOG_INF("[%s][SENSOR_FEATURE_GET_RAW_BIT_BY_SCENARIO] get mode(%llu) raw bit(%d)\n",
 			__func__, *feature_data, *(MUINT32 *)(uintptr_t)(*(feature_data + 1)));
 		break;
 	}
@@ -5946,7 +5948,7 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 				= 1023;
 			break;
 		}
-		pr_info("[%s][SENSOR_FEATURE_GET_SATURATION_LEVEL_BY_SCENARIO] mode(%llu) s_max(%d)\n",
+		LOG_INF("[%s][SENSOR_FEATURE_GET_SATURATION_LEVEL_BY_SCENARIO] mode(%llu) s_max(%d)\n",
 			__func__, *feature_data, *(MUINT32 *)(uintptr_t)(*(feature_data + 1)));
 		break;
 	}
@@ -5970,7 +5972,7 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 				= 1000;
 			break;
 		}
-		pr_info("[%s][SENSOR_FEATURE_GET_GAIN_RATIO_BY_SCENARIO] mode(%llu) ratio(%d)\n",
+		LOG_INF("[%s][SENSOR_FEATURE_GET_GAIN_RATIO_BY_SCENARIO] mode(%llu) ratio(%d)\n",
 			__func__, *feature_data, *(MUINT32 *)(uintptr_t)(*(feature_data + 1)));
 		break;
 	}
@@ -5991,7 +5993,7 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 				= IMGSENSOR_DCG_RATIO_MODE;
 			break;
 		}
-		pr_info("[%s][SENSOR_FEATURE_GET_DCG_GAIN_MODE_BY_SCENARIO] mode(%llu) gain_mode(%d)\n",
+		LOG_INF("[%s][SENSOR_FEATURE_GET_DCG_GAIN_MODE_BY_SCENARIO] mode(%llu) gain_mode(%d)\n",
 			__func__, *feature_data, *(MUINT32 *)(uintptr_t)(*(feature_data + 1)));
 		break;
 	}
@@ -6005,7 +6007,7 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 static void set_platform_info(unsigned int platform_id)
 {
 	g_platform_id = platform_id;
-	pr_info("%s id:%x\n", __func__, g_platform_id);
+	LOG_INF("%s id:%x\n", __func__, g_platform_id);
 }
 
 static struct SENSOR_FUNCTION_STRUCT sensor_func = {
@@ -6022,7 +6024,7 @@ UINT32 IMX06C_MIPI_RAW_SensorInit(struct SENSOR_FUNCTION_STRUCT **pfFunc)
 {
 	/* To Do : Check Sensor status here */
 	sensor_func.arch = IMGSENSOR_ARCH_V2;
-	pr_info("IMX06C Load Function\n");
+	LOG_INF("IMX06C Load Function\n");
 	if (pfFunc != NULL)
 		*pfFunc = &sensor_func;
 	if (imgsensor.psensor_func == NULL)
