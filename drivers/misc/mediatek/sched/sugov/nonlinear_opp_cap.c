@@ -3483,6 +3483,10 @@ EXPORT_SYMBOL_GPL(get_flt_margin);
 int mtk_effective_flt_util_with_margin(int util, int cpu, struct cpumask *sg_cpumask, int source)
 {
 	int flt_util = -1, flt_util_margin = -1;
+	struct rq *rq;
+	struct task_struct *curr_task = NULL;
+	struct dpt_task_struct *dts = NULL;
+	int done = -1;
 
 #if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 	if (flt_sched_get_flt_coef_util_eas_hook) {
@@ -3492,8 +3496,21 @@ int mtk_effective_flt_util_with_margin(int util, int cpu, struct cpumask *sg_cpu
 	}
 #endif
 
+	rq = cpu_rq(cpu);
+	rcu_read_lock();
+	curr_task = rcu_dereference(rq->curr);
+	if (curr_task) {
+		dts = &((struct mtk_task *) android_task_vendor_data(curr_task))->dpt_task;
+
+		if(unlikely(dts->without_DPT_ctrl == 1)) {
+			done = 1;
+			flt_util_margin = -1;
+		}
+	}
+	rcu_read_unlock();
+
 	if (trace_sugov_ext_flt_util_with_coef_margin_enabled())
-		trace_sugov_ext_flt_util_with_coef_margin(cpu, util, flt_util, flt_margin[cpu]);
+		trace_sugov_ext_flt_util_with_coef_margin(cpu, util, flt_util, flt_margin[cpu], done);
 
 	return flt_util_margin;
 }

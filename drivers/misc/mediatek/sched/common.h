@@ -86,6 +86,7 @@ struct dpt_task_struct {
 	perf_scaling_factor_arr perf_scaling_factor;
 	perf_scaling_factor_arr inv_perf_scaling_factor;
 	int power_scaling_factor;
+	int without_DPT_ctrl;
 };
 
 typedef struct dpt_rq_struct {
@@ -669,6 +670,9 @@ bool is_dsu_idle_enable(void);
 
 void set_flt_coef_margin_ctrl(int set);
 int get_flt_coef_margin_ctrl(void);
+
+void setWithoutDPTCtl(int pid);
+void unsetWithoutDPTCtl(int pid);
 
 int mtk_available_idle_cpu(int cpu);
 

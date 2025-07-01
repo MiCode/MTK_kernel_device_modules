@@ -194,6 +194,41 @@ int get_flt_coef_margin_ctrl(void)
 }
 EXPORT_SYMBOL(get_flt_coef_margin_ctrl);
 
+void setWithoutDPTCtl(int pid)
+{
+	struct task_struct *p;
+	struct dpt_task_struct *dts;
+
+	rcu_read_lock();
+	p = find_task_by_vpid(pid);
+	if (p) {
+		get_task_struct(p);
+		dts = &((struct mtk_task *) android_task_vendor_data(p))->dpt_task;
+		dts->without_DPT_ctrl = 1;
+		put_task_struct(p);
+	}
+	rcu_read_unlock();
+}
+EXPORT_SYMBOL(setWithoutDPTCtl);
+
+void unsetWithoutDPTCtl(int pid)
+{
+	struct task_struct *p;
+	struct dpt_task_struct *dts;
+
+	rcu_read_lock();
+	p = find_task_by_vpid(pid);
+	if (p) {
+		get_task_struct(p);
+		dts = &((struct mtk_task *) android_task_vendor_data(p))->dpt_task;
+		dts->without_DPT_ctrl = 0;
+		put_task_struct(p);
+	}
+	rcu_read_unlock();
+}
+EXPORT_SYMBOL(unsetWithoutDPTCtl);
+
+
 /************************ Governor internals ***********************/
 
 static bool sugov_should_update_freq(struct sugov_policy *sg_policy, u64 time)
