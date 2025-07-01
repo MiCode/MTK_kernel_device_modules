@@ -207,7 +207,7 @@ static struct imgsensor_info_struct imgsensor_info = {
 	.custom2_delay_frame = 2,	/* enter custom2 delay frame num */
 	.custom3_delay_frame = 2,	/* enter custom2 delay frame num */
 	.custom4_delay_frame = 2,	/* enter custom2 delay frame num */
-	.frame_time_delay_frame = 3,
+	.frame_time_delay_frame = 2,
 
 	.isp_driving_current = ISP_DRIVING_4MA,
 	.sensor_interface_type = SENSOR_INTERFACE_TYPE_MIPI,
@@ -5798,7 +5798,8 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 				break;
 			}
 		}
-		if (*feature_data == MSDK_SCENARIO_ID_CAMERA_PREVIEW) {
+		if (*feature_data == MSDK_SCENARIO_ID_CAMERA_PREVIEW ||
+			*feature_data == MSDK_SCENARIO_ID_CAMERA_CAPTURE_JPEG) {
 			switch (*(feature_data + 1)) {
 			case HDR_RAW_DCG_COMPOSE_RAW12:
 				*(feature_data + 2) = MSDK_SCENARIO_ID_CUSTOM2;

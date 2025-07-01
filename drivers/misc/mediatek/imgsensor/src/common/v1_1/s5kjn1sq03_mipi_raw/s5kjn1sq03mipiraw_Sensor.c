@@ -3346,7 +3346,7 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 		break;
 	}
 
-	LOG_DEBUG("X");
+	LOG_DEBUG("X\n");
 	return ERROR_NONE;
 } /* feature_control() */
 
