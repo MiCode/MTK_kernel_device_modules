@@ -447,7 +447,21 @@ static bool vmm_check_efuse_valid(void)
 	ISP_LOGI("EFUSE_ISP_VMIN_REG: %d", EFUSE_ISP_VMIN_REG);
 	ISP_LOGI("EFUSE_VDE_VMIN_REG: %d", EFUSE_VDE_VMIN_REG);
 	if (EFUSE_ISP_VMIN_REG < 4 || EFUSE_VDE_VMIN_REG < 4) {
-		ISP_LOGI("vmin efuse check fail! disable avs flow!");
+		ISP_LOGI("vmin efuse check fail. Disable AVS flow!");
+		return false;
+	}
+
+	ISP_LOGI("EFUSE_SFT_FLAG: %x", ISP_SFT_SIGNOFF_FLAG);
+	if (ISP_SFT_SIGNOFF_FLAG != 0) {
+		ISP_LOGI("AVS SFT flag. Disable AVS flow!");
+		return false;
+	}
+
+	ISP_LOGI("EFUSE_ISP_IMG_IPS_VAL: %d", EFUSE_IMG_IPS_VAL);
+	ISP_LOGI("EFUSE_ISP_IMG_IPS_VAL: %d", EFUSE_CAM_IPS_VAL);
+	if ((EFUSE_IMG_IPS_VAL < IPS_LOWER_THRESHOLD || EFUSE_IMG_IPS_VAL > IPS_UPPER_THRESHOLD) ||
+		(EFUSE_CAM_IPS_VAL < IPS_LOWER_THRESHOLD || EFUSE_CAM_IPS_VAL > IPS_UPPER_THRESHOLD)) {
+		ISP_LOGI("IPS efuse check fail. Disable AVS flow!");
 		return false;
 	}
 
@@ -1305,6 +1319,7 @@ static int vmm_compare_ceiling(unsigned int OPP, unsigned int vol, unsigned int 
 
 static int vmm_cvfs_reg_show(struct seq_file *m, void *v)
 {
+	unsigned int recover_degrade = 0;
 	vmm_regs.vmm_efuse_va = ioremap(0x10165A00, 0x200);
 	vmm_regs.vmm_cvfs_va = ioremap(0x31AC4000, 0x1000);
 
@@ -1313,23 +1328,39 @@ static int vmm_cvfs_reg_show(struct seq_file *m, void *v)
 		goto out;
 	}
 
+	if (vmm_aging)
+		recover_degrade = 1;
+	else if (vmm_slttwo_deterioration)
+		recover_degrade = 3;
+	else if (vmm_extra_deterioration)
+		recover_degrade = 5;
+
+	seq_printf(m, "EFUSE_ISP_VMIN_REG: %x\n", EFUSE_ISP_VMIN_REG);
+	seq_printf(m, "EFUSE_ISP_VB_VERSION: %x\n", EFUSE_ISP_VB_VERSION);
+	seq_printf(m, "EFUSE_VDE_VMIN_REG: %x\n", EFUSE_VDE_VMIN_REG);
+	seq_printf(m, "EFUSE_CAM_DMIN_OP5760: %x\n", EFUSE_CAM_DMIN_OP5760);
+	seq_printf(m, "EFUSE_IMG_DMIN_OP5760: %x\n", EFUSE_IMG_DMIN_OP5760);
+	seq_printf(m, "EFUSE_IPE_DMIN_OP5760: %x\n", EFUSE_IPE_DMIN_OP5760);
+	seq_printf(m, "EFUSE_ISP_CAM_SFT: %x\n", EFUSE_ISP_CAM_SFT);
+	seq_printf(m, "EFUSE_ISP_IPS_REG: %x\n", EFUSE_ISP_IPS_REG);
+
 	seq_printf(m, "VB_SEARCH_VMM_ISP_0p575: %dmV\n",
-		(readl(AVS_PHASE1_VMIN_2_REG) & 0xff)*(VMM_ONE_STEP_MARGIN/1000));
+		((readl(AVS_PHASE1_VMIN_2_REG) & 0xff)+recover_degrade)*(VMM_ONE_STEP_MARGIN/1000));
 	seq_printf(m, "VB_SEARCH_VMM_ISP_0p60: %dmV\n",
-		((readl(AVS_PHASE1_VMIN_2_REG) >> 8) & 0xff)*(VMM_ONE_STEP_MARGIN/1000));
+		(((readl(AVS_PHASE1_VMIN_2_REG) >> 8) & 0xff)+recover_degrade)*(VMM_ONE_STEP_MARGIN/1000));
 	seq_printf(m, "VB_SEARCH_VMM_ISP_0p65: %dmV\n",
-		((readl(AVS_PHASE1_VMIN_2_REG) >> 16) & 0xff)*(VMM_ONE_STEP_MARGIN/1000));
+		(((readl(AVS_PHASE1_VMIN_2_REG) >> 16) & 0xff)+recover_degrade)*(VMM_ONE_STEP_MARGIN/1000));
 	seq_printf(m, "VB_SEARCH_VMM_ISP_0p70: %dmV\n",
-		((readl(AVS_PHASE1_VMIN_2_REG) >> 24) & 0xff)*(VMM_ONE_STEP_MARGIN/1000));
+		(((readl(AVS_PHASE1_VMIN_2_REG) >> 24) & 0xff)+recover_degrade)*(VMM_ONE_STEP_MARGIN/1000));
 
 	seq_printf(m, "VB_SEARCH_VDEC_0P575V: %dmV\n",
-		(readl(AVS_PHASE1_VMIN_3_REG) & 0xff)*(VMM_ONE_STEP_MARGIN/1000));
+		((readl(AVS_PHASE1_VMIN_3_REG) & 0xff)+recover_degrade)*(VMM_ONE_STEP_MARGIN/1000));
 	seq_printf(m, "VB_SEARCH_VDEC_0P60V: %dmV\n",
-		((readl(AVS_PHASE1_VMIN_3_REG) >> 8) & 0xff)*(VMM_ONE_STEP_MARGIN/1000));
+		(((readl(AVS_PHASE1_VMIN_3_REG) >> 8) & 0xff)+recover_degrade)*(VMM_ONE_STEP_MARGIN/1000));
 	seq_printf(m, "VB_SEARCH_VDEC_0P65V: %dmV\n",
-		((readl(AVS_PHASE1_VMIN_3_REG) >> 16) & 0xff)*(VMM_ONE_STEP_MARGIN/1000));
+		(((readl(AVS_PHASE1_VMIN_3_REG) >> 16) & 0xff)+recover_degrade)*(VMM_ONE_STEP_MARGIN/1000));
 	seq_printf(m, "VB_SEARCH_VDEC_0P70V: %dmV\n",
-		((readl(AVS_PHASE1_VMIN_3_REG) >> 24) & 0xff)*(VMM_ONE_STEP_MARGIN/1000));
+		(((readl(AVS_PHASE1_VMIN_3_REG) >> 24) & 0xff)+recover_degrade)*(VMM_ONE_STEP_MARGIN/1000));
 
 	seq_printf(m, "AVS_PHASE1_OPP0~3: 0x%x\n", readl(AVS_PHASE1_VMIN_1_REG));
 	seq_printf(m, "AVS_PARTIAL_OPP0~3: 0x%x\n", readl(AVS_PHASE1_VMIN_1_partial_REG));

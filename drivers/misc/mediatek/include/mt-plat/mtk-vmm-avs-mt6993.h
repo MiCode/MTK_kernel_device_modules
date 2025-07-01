@@ -25,7 +25,14 @@
 #define EFUSE_IMG_DMIN_OP5760		   readl(vmm_regs.vmm_efuse_va + 0x120)
 #define EFUSE_IPE_DMIN_OP6570		   readl(vmm_regs.vmm_efuse_va + 0x124)
 #define EFUSE_IPE_DMIN_OP5760		   readl(vmm_regs.vmm_efuse_va + 0x128)
-#define EFUSE_ISP_CAM_SFT				readl(vmm_regs.vmm_efuse_va + 0x118)
+#define EFUSE_ISP_CAM_SFT			readl(vmm_regs.vmm_efuse_va + 0x118)
+#define EFUSE_ISP_IPS_REG			readl(vmm_regs.vmm_efuse_va + 0x114)
+
+/* ISP IPS define */
+#define EFUSE_CAM_IPS_VAL			((EFUSE_ISP_IPS_REG) & 0xFF)
+#define EFUSE_IMG_IPS_VAL			(((EFUSE_ISP_IPS_REG) >> 8) & 0xFF)
+#define IPS_LOWER_THRESHOLD				(106)
+#define IPS_UPPER_THRESHOLD				(114)
 
 /* ISP Efuse define */
 #define ISP_575_VBIN_OFFSET 15
@@ -38,6 +45,8 @@
 #define ISP_700_VBIN_VAL (((EFUSE_ISP_VMIN_REG) >> ISP_700_VBIN_OFFSET) & 0x1f)
 
 /* ISP CAM Efuse sft define */
+#define ISP_SFT_SIGNOFF_FLAG_OFFSET 25
+#define ISP_SFT_SIGNOFF_FLAG ((EFUSE_ISP_CAM_SFT >> ISP_SFT_SIGNOFF_FLAG_OFFSET) & 0xF)
 #define ISP_SFT_VERSION_OFFSET 20
 #define EFUSE_ISP_SFT_VERSION ((EFUSE_ISP_CAM_SFT >> ISP_SFT_VERSION_OFFSET) & 0x1F)
 #define ISP_CAM_575_SFT_OFFSET 15
