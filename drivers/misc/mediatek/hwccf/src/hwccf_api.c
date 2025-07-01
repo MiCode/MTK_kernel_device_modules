@@ -1373,7 +1373,7 @@ int _v1_mm_hwccf_mtcmos_fsm_err_handle(struct cb_params *params)
 		}
 		/* step8 */
 		ret = regmap_read_poll_timeout_atomic(params->regmap, mtcmos_pm_ack_ofs, val,
-			IS_MASK_CLR(val, BIT(m)),
+			IS_MASK_SET(val, BIT(m)),
 			MTK_WAIT_GHWV_VOTE_US, MTK_WAIT_GHWV_VOTE_CNT);
 		if (ret) {
 			HWCCF_ERR("%s polling pm_ack(%x = %x) timeout\n",
