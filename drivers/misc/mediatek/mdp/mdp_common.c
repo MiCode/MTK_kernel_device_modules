@@ -1630,7 +1630,7 @@ void cmdq_mdp_init_secure_id(void *meta_array, u32 count, bool mtee)
 	u32 i;
 	struct dma_buf *buf = NULL;
 	int sec_id = 0;
-	uint32_t sec_handle = 0;
+	uint64_t sec_handle = 0;
 	struct cmdqSecAddrMetadataStruct *secMetadatas =
 			(struct cmdqSecAddrMetadataStruct *)meta_array;
 
@@ -1659,8 +1659,8 @@ void cmdq_mdp_init_secure_id(void *meta_array, u32 count, bool mtee)
 		}
 #endif
 		secMetadatas[i].sec_id = sec_id;
-		secMetadatas[i].baseHandle = (uint64_t)sec_handle;
-		CMDQ_MSG("%s,port:%d,baseHandle:%#llx,sec_id:%d,sec_handle:%#x",
+		secMetadatas[i].baseHandle = sec_handle;
+		CMDQ_MSG("%s,port:%d,baseHandle:%#llx,sec_id:%d,sec_handle:%#llx",
 				__func__, secMetadatas[i].port,
 				secMetadatas[i].baseHandle,
 				secMetadatas[i].sec_id,
