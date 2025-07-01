@@ -46,6 +46,20 @@
 #include <mt-plat/mrdump.h>
 #endif
 #endif
+#if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
+#include <mt-plat/aee.h>
+#endif
+
+#if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
+#define DB_OPT_MMQOS	(DB_OPT_DEFAULT | \
+	DB_OPT_FTRACE | DB_OPT_DUMP_DISPLAY)
+
+#define MMQOS_AEE(message) \
+	(aee_kernel_exception_api(__FILE__, \
+				  __LINE__, \
+				  DB_OPT_MMQOS, message, \
+				  "MMQoS assert"))
+#endif
 
 #define CREATE_TRACE_POINTS
 #include "mmqos_events.h"
@@ -658,7 +672,7 @@ u32 read_register(u32 offset)
 	return 0;
 }
 
-static void start_write_bw(void)
+static int start_write_bw(void)
 {
 	u32 orig = 0;
 
@@ -668,8 +682,17 @@ static void start_write_bw(void)
 	readl_relaxed(gmmqos->mminfra_base + MMINFRA_DUMMY);
 #if IS_ENABLED(CONFIG_MTK_MMQOS_VCP)
 	//enable vcp
-	if (mmqos_state & VMMRC_VCP_ENABLE)
-		mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMQOS);
+	if (mmqos_state & VMMRC_VCP_ENABLE) {
+		int ret = 0;
+
+		ret = mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMQOS);
+		if (ret <= 0) {
+			MMQOS_ERR("vcp enable fail, ret:%d", ret);
+			MMQOS_AEE("vcp enable fail");
+
+			return -EINVAL;
+		}
+	}
 #endif
 	if ((mmqos_state & MMPC_ENABLE) || (mmqos_state & MMPC_V2_ENABLE))
 		write_register(APMCU_MASK_OFFSET, 0);
@@ -677,6 +700,8 @@ static void start_write_bw(void)
 		orig = read_register(APMCU_MASK_OFFSET);
 		write_register(APMCU_MASK_OFFSET, orig | BIT(gmmqos->apmcu_mask_bit));
 	}
+
+	return 0;
 }
 
 static void stop_write_bw(void)
@@ -691,8 +716,13 @@ static void stop_write_bw(void)
 	}
 #if IS_ENABLED(CONFIG_MTK_MMQOS_VCP)
 	//disable vcp
-	if (mmqos_state & VMMRC_VCP_ENABLE)
-		mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMQOS);
+	if (mmqos_state & VMMRC_VCP_ENABLE) {
+		int ret;
+
+		ret = mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMQOS);
+		if (ret <= 0)
+			MMQOS_ERR("mmdvfs disable vcp error, ret:%d", ret);
+	}
 #endif
 }
 
@@ -747,9 +777,11 @@ void set_channel_bw_reg_value(bool is_on)
 
 static void set_channel_bw_to_hw(void)
 {
-	int i;
+	int i, result = 0;
 
-	start_write_bw();
+	result = start_write_bw();
+	if (result < 0)
+		return;
 
 	if (mmqos_state & MMPC_V2_ENABLE) {
 		for (i = 0 ; i < MAX_BW_VALUE_NUM; i++)
@@ -2171,15 +2203,29 @@ static void vmmrc_full_dump(struct seq_file *file)
 
 #if IS_ENABLED(CONFIG_MTK_MMQOS_VCP)
 	//enable vcp
-	if (mmqos_state & VMMRC_VCP_ENABLE)
-		mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMQOS);
+	if (mmqos_state & VMMRC_VCP_ENABLE) {
+		int ret;
+
+		ret = mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMQOS);
+		if (ret <= 0 || !mmqos_vcp_ready_done()) {
+			MMQOS_ERR("vcp not ready, ret:%d", ret);
+			mmqos_debug_dump_line(file, "vcp not ready, ret:%d\n", ret);
+
+			return;
+		}
+	}
 #endif
 	vmmrc_full_dump_with_table(file, "apmcu_on", APMCU_ON_BW_OFFSET(0));
 	vmmrc_full_dump_with_table(file, "apmcu_off", APMCU_OFF_BW_OFFSET(0));
 #if IS_ENABLED(CONFIG_MTK_MMQOS_VCP)
 	//disable vcp
-	if (mmqos_state & VMMRC_VCP_ENABLE)
-		mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMQOS);
+	if (mmqos_state & VMMRC_VCP_ENABLE) {
+		int ret;
+
+		ret = mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMQOS);
+		if (ret <= 0)
+			MMQOS_ERR("mmdvfs disable vcp error, ret:%d", ret);
+	}
 #endif
 }
 
@@ -2213,15 +2259,27 @@ static void vmmrc_full_dump_line(void)
 {
 #if IS_ENABLED(CONFIG_MTK_MMQOS_VCP)
 	//enable vcp
-	if (mmqos_state & VMMRC_VCP_ENABLE)
-		mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMQOS);
+	if (mmqos_state & VMMRC_VCP_ENABLE) {
+		int ret;
+
+		ret = mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMQOS);
+		if (ret <= 0 || !mmqos_vcp_ready_done()) {
+			MMQOS_ERR("vcp not ready, ret:%d", ret);
+			return;
+		}
+	}
 #endif
 	vmmrc_full_dump_line_with_table("apmcu_on ", APMCU_ON_BW_OFFSET(0));
 	vmmrc_full_dump_line_with_table("apmcu_off", APMCU_OFF_BW_OFFSET(0));
 #if IS_ENABLED(CONFIG_MTK_MMQOS_VCP)
 	//disable vcp
-	if (mmqos_state & VMMRC_VCP_ENABLE)
-		mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMQOS);
+	if (mmqos_state & VMMRC_VCP_ENABLE) {
+		int ret;
+
+		ret = mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMQOS);
+		if (ret <= 0)
+			MMQOS_ERR("mmdvfs disable vcp error, ret:%d", ret);
+	}
 #endif
 }
 

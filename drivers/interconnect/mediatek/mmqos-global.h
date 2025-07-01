@@ -9,7 +9,7 @@
 #define MMQOS_DBG(fmt, args...) \
 	pr_notice("[mmqos]%s:%d: "fmt"\n", __func__, __LINE__, ##args)
 #define MMQOS_ERR(fmt, args...) \
-	pr_notice("error: %s:%d: "fmt"\n", __func__, __LINE__, ##args)
+	pr_notice("[mmqos][err] %s:%d: "fmt"\n", __func__, __LINE__, ##args)
 
 #define FAIL(name) MMQOS_ERR("%s, fail!!", name)
 #define FAIL_DETAIL(a, b, name) MMQOS_ERR("%d != %d, %s, fail!!", a, b, name)
