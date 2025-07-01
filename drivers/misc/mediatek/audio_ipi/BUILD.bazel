@@ -53,9 +53,11 @@ define_mgk_ddk_ko(
         "include/*.h",
     ]),
     copts = [
-        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/audio_scp",
+        "-I$(DEVICE_MODULES_PATH)/sound/soc/mediatek/audio_scp",
     ],
     ko_deps = [
 		"//kernel_device_modules-{}/drivers/misc/mediatek/adsp:adsp".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/scp/rv:scp".format(kernel_version),
+		"//kernel_device_modules-{}/sound/soc/mediatek/audio_scp:mtk-scp-audiocommon".format(kernel_version),
 	],
 )
