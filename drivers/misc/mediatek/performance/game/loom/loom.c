@@ -47,6 +47,7 @@ static void print_hlist(const char *tag, int tgid, struct hlist_head *head)
 		cnt++;
 	}
 	loom_main_trace("[loom][%s][%d] hlist size=%d, hlist:%s", tag, tgid, cnt, hlist_str);
+	loom_free(hlist_str);
 }
 
 int loom_task_control(struct loom_attr_info *iter)

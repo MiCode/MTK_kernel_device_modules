@@ -55,6 +55,8 @@ static int g_limit_min_freq;
 static int g_limit_max_freq;
 static int g_expected_fps;
 
+static LIST_HEAD(loading_ctrl_linger_list);
+
 struct freq_qos_request *freq_max_request;
 struct freq_qos_request *freq_min_request;
 
@@ -195,12 +197,51 @@ struct loom_loading_ctrl *loom_search_and_add_loading_ctrl_info(struct list_head
 	iter->prev_runtime = 0;
 	iter->limit_min_freq = 0;
 	iter->limit_max_freq = 0;
+	iter->loom_proc_obj.active_jerk_id = 0;
+	iter->loom_proc_obj.jerking_num = 0;
 	for (i = 0; i < LOOM_RESCUE_TIMER_NUM; i++)
 		loom_init_jerk(&(iter->loom_proc_obj.jerks[i]), i);
 
 	list_add_tail(&iter->hlist, lc_active_list);
 
 	return iter;
+}
+
+void loom_delete_loading_ctrl_linger(struct work_struct *target_work)
+{
+	struct loom_loading_ctrl *iter = NULL, *tmp = NULL;
+	struct loom_proc *proc_iter = NULL;
+	struct work_struct *work_iter = NULL;
+	int i = 0, found = 0;
+	unsigned long long target_addr = 0, local_addr = 0;
+
+	if (!target_work)
+		return;
+
+	target_addr = (unsigned long long)target_work;
+
+	list_for_each_entry_safe(iter, tmp, &loading_ctrl_linger_list, hlist) {
+		proc_iter = &(iter->loom_proc_obj);
+		for (i = 0; i < LOOM_RESCUE_TIMER_NUM; i++) {
+			work_iter = &(proc_iter->jerks[i].work);
+			local_addr = (unsigned long long)work_iter;
+			if (local_addr == target_addr) {
+				if (proc_iter->jerking_num > 0) {
+					proc_iter->jerking_num--;
+					found = 1;
+					break;
+				}
+			}
+		}
+		if (found)
+			break;
+	}
+
+	if (found && proc_iter->jerking_num == 0) {
+		game_main_trace("[loom] pid=%d, delete=%llx", iter->tid, target_addr);
+		list_del(&iter->hlist);
+		kvfree(iter);
+	}
 }
 
 void loom_delete_loading_ctrl_info(struct loom_loading_ctrl *lc_info)
@@ -220,6 +261,12 @@ void loom_delete_loading_ctrl_info(struct loom_loading_ctrl *lc_info)
 	_update_userlimit_cpufreq_min(lc_info->cluster, 0);
 
 	list_del(&lc_info->hlist);
+
+	if (lc_info->loom_proc_obj.jerking_num > 0) {
+		game_main_trace("[loom] pid=%d, jerk_num=%d", lc_info->tid, lc_info->loom_proc_obj.jerking_num);
+		list_add_tail(&lc_info->hlist, &loading_ctrl_linger_list);
+		return;
+	}
 	kvfree(lc_info);
 }
 
@@ -415,6 +462,8 @@ int init_loom_loading_ctrl(void)
 	g_limit_min_freq = 0;
 	g_limit_max_freq = 0;
 	g_expected_fps = 0;
+
+	INIT_LIST_HEAD(&loading_ctrl_linger_list);
 
 	for_each_possible_cpu(cpu) {
 		policy = cpufreq_cpu_get(cpu);

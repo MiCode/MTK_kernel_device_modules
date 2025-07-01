@@ -100,12 +100,16 @@ static void loom_do_jerk(struct work_struct *work)
 
 	ret = loom_check_loom_jerk_work_addr_invalid(work);
 	if (ret) {
+		loom_delete_loading_ctrl_linger(work);
 		loom_render_unlock();
+		game_main_trace("ERROR %d\n", __LINE__);
 		return;
 	}
 
 	jerk = container_of(work, struct loom_jerk, work);
+
 	if (jerk->id < 0 || jerk->id > LOOM_RESCUE_TIMER_NUM - 1) {
+		loom_delete_loading_ctrl_linger(work);
 		loom_render_unlock();
 		game_main_trace("ERROR %d\n", __LINE__);
 		return;
@@ -114,6 +118,7 @@ static void loom_do_jerk(struct work_struct *work)
 	proc = container_of(jerk, struct loom_proc, jerks[jerk->id]);
 	if (proc->active_jerk_id < 0 ||
 		proc->active_jerk_id > LOOM_RESCUE_TIMER_NUM - 1) {
+		loom_delete_loading_ctrl_linger(work);
 		loom_render_unlock();
 		game_main_trace("ERROR %d\n", __LINE__);
 		return;
@@ -129,6 +134,7 @@ static void loom_do_jerk(struct work_struct *work)
 
 EXIT:
 	jerk->jerking = 0;
+	proc->jerking_num--;
 
 	loom_render_unlock();
 }
@@ -182,6 +188,7 @@ int loom_lc_set_jerk(struct loom_loading_ctrl *iter, unsigned long long ts, unsi
 	timer = &(iter->loom_proc_obj.jerks[active_jerk_id].timer);
 	if (timer) {
 		if (iter->loom_proc_obj.jerks[active_jerk_id].jerking == 0) {
+			iter->loom_proc_obj.jerking_num++;
 			iter->loom_proc_obj.jerks[active_jerk_id].jerking = 1;
 			iter->loom_proc_obj.jerks[active_jerk_id].frame_qu_ts = ts;
 			hrtimer_start(timer, ns_to_ktime(t2wnt), HRTIMER_MODE_REL);
