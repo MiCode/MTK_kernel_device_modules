@@ -2095,6 +2095,11 @@ static bool mdp_get_poll_sleep_support(void)
 	return true;
 }
 
+static bool mdp_get_two_curve_support(void)
+{
+	return true;
+}
+
 void cmdq_mdp_platform_function_setting(void)
 {
 	struct cmdqMDPFuncStruct *pFunc = cmdq_mdp_get_func();
@@ -2155,5 +2160,6 @@ void cmdq_mdp_platform_function_setting(void)
 	pFunc->mdpSvpSupportMetaData = mdp_svp_support_meta_data;
 	pFunc->mdpGetInputEngineFlagGpr = mdp_get_input_engine_flag_gpr;
 	pFunc->mdpGetPollSleepSupport = mdp_get_poll_sleep_support;
+	pFunc->mdpGetTwoCruveSupport = mdp_get_two_curve_support;
 }
 MODULE_LICENSE("GPL");

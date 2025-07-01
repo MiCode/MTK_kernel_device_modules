@@ -3711,8 +3711,17 @@ static void mdp_readback_aal_virtual(struct cmdqRecStruct *handle,
 }
 
 #define MDP_HDR_LBOX_DET_4 0x104
+#define HDR_HIST_READ_0 0x0dc
+#define HDR_EOTF_CTRL 0x0ec
+#define HDR_TOP 0x0
+#define HDR_HIST_CTRL_2 0x028
+#define HDR_HIST_REPORT_0 0x1b4
+#define HDR_HIST_REPORT_1 0x1b8
+#define HDR_HIST_REPORT_2 0x1bc
+#define HDR_HIST_REPORT_3 0x1c0
 #define HDR_TONE_MAP_S14 0x0D0
 #define HDR_GAIN_TABLE_2 0x0F0
+#define HDR_HIST_128_CNT 128
 #define MDP_HDR_HIST_CNT 57
 
 static void mdp_readback_hdr_virtual(struct cmdqRecStruct *handle,
@@ -3747,8 +3756,16 @@ static void mdp_readback_hdr_virtual(struct cmdqRecStruct *handle,
 		idx_out64 = CMDQ_GPR_CNT_ID + CMDQ_GPR_P7;
 	}
 
+	if (cmdq_mdp_get_two_curve_support())
+		cmdq_pkt_write(pkt, NULL,
+			base + HDR_HIST_READ_0, (0 << 5) | (1 << 3) | (1 << 2) |
+				(0 << 1), 0xFEE);
+
 	rb->start = pa;
-	rb->count = 58;
+	if (cmdq_mdp_get_two_curve_support())
+		rb->count = 136;
+	else
+		rb->count = 58;
 	rb->engine = engine;
 	rb->param = param;
 	handle->readback_cnt++;
@@ -3786,7 +3803,10 @@ static void mdp_readback_hdr_virtual(struct cmdqRecStruct *handle,
 	lop.reg = true;
 	lop.idx = idx_counter;
 	rop.reg = false;
-	rop.value =  MDP_HDR_HIST_CNT - 1;
+	if (cmdq_mdp_get_two_curve_support())
+		rop.value =  HDR_HIST_128_CNT - 1;
+	else
+		rop.value =  MDP_HDR_HIST_CNT - 1;
 	cmdq_pkt_assign_command(pkt, CMDQ_THR_SPR_IDX0, 0);
 	condi_offset = pkt->cmd_buf_size - CMDQ_INST_SIZE;
 	cmdq_pkt_cond_jump_abs(pkt, CMDQ_THR_SPR_IDX0, &lop, &rop,
@@ -3822,9 +3842,47 @@ static void mdp_readback_hdr_virtual(struct cmdqRecStruct *handle,
 
 	*condi_inst = (u32)CMDQ_REG_SHIFT_ADDR(cmdq_pkt_get_curr_buf_pa(pkt));
 
-	pa = pa + MDP_HDR_HIST_CNT * 4;
+	if (cmdq_mdp_get_two_curve_support())
+		pa = pa + HDR_HIST_128_CNT * 4;
+	else
+		pa = pa + MDP_HDR_HIST_CNT * 4;
 	cmdq_pkt_mem_move(pkt, NULL, base + MDP_HDR_LBOX_DET_4, pa,
 		CMDQ_THR_SPR_IDX3);
+
+	if (cmdq_mdp_get_two_curve_support()) {
+		pa = pa + 4;
+		cmdq_pkt_mem_move(pkt, NULL, base + HDR_EOTF_CTRL, pa,
+		CMDQ_THR_SPR_IDX3);
+
+		pa = pa + 4;
+		cmdq_pkt_mem_move(pkt, NULL, base + HDR_TOP, pa,
+		CMDQ_THR_SPR_IDX3);
+
+		pa = pa + 4;
+		cmdq_pkt_mem_move(pkt, NULL, base + HDR_HIST_CTRL_2, pa,
+		CMDQ_THR_SPR_IDX3);
+
+		pa = pa + 4;
+		cmdq_pkt_mem_move(pkt, NULL, base + HDR_HIST_REPORT_0, pa,
+		CMDQ_THR_SPR_IDX3);
+
+		pa = pa + 4;
+		cmdq_pkt_mem_move(pkt, NULL, base + HDR_HIST_REPORT_1, pa,
+		CMDQ_THR_SPR_IDX3);
+
+		pa = pa + 4;
+		cmdq_pkt_mem_move(pkt, NULL, base + HDR_HIST_REPORT_2, pa,
+		CMDQ_THR_SPR_IDX3);
+
+		pa = pa + 4;
+		cmdq_pkt_mem_move(pkt, NULL, base + HDR_HIST_REPORT_3, pa,
+		CMDQ_THR_SPR_IDX3);
+
+	}
+
+	if (cmdq_mdp_get_two_curve_support())
+		cmdq_pkt_write(pkt, NULL,
+			base + HDR_HIST_READ_0, 0 << 2, 1 << 2);
 
 #if defined(CMDQ_SECURE_PATH_SUPPORT)
 	if (handle->secData.is_secure)
@@ -3886,6 +3944,11 @@ static u16 mdp_get_input_engine_flag_gpr_virtual(u64 engine_flag)
 }
 
 static bool mdp_get_poll_sleep_support_virtual(void)
+{
+	return false;
+}
+
+static bool mdp_get_two_curve_support_virtual(void)
 {
 	return false;
 }
@@ -3979,6 +4042,7 @@ void cmdq_mdp_virtual_function_setting(void)
 	pFunc->mdpIsEngineSupportReadback = mdp_is_eng_support_readback_virtual;
 	pFunc->mdpGetInputEngineFlagGpr = mdp_get_input_engine_flag_gpr_virtual;
 	pFunc->mdpGetPollSleepSupport = mdp_get_poll_sleep_support_virtual;
+	pFunc->mdpGetTwoCruveSupport = mdp_get_two_curve_support_virtual;
 }
 
 struct cmdqMDPFuncStruct *cmdq_mdp_get_func(void)
@@ -4973,6 +5037,11 @@ u32 cmdq_mdp_get_input_engine_gpr(u64 engine_flag)
 bool cmdq_mdp_poll_sleep_support(void)
 {
 	return cmdq_mdp_get_func()->mdpGetPollSleepSupport();
+}
+
+bool cmdq_mdp_get_two_curve_support(void)
+{
+	return cmdq_mdp_get_func()->mdpGetTwoCruveSupport();
 }
 
 #ifdef MDP_COMMON_ENG_SUPPORT

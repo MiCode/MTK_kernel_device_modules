@@ -254,6 +254,7 @@ struct cmdqMDPFuncStruct {
 	CmdqMdpSetResourceCallback cmdqMdpSetResourceCallback;
 	u16 (*mdpGetInputEngineFlagGpr)(u64 engine_flag);
 	bool (*mdpGetPollSleepSupport)(void);
+	bool (*mdpGetTwoCruveSupport)(void);
 };
 
 struct mdp_pmqos_record {
@@ -394,6 +395,7 @@ void cmdq_mdp_vcp_pq_readback(struct cmdqRecStruct *handle, u16 engine,
 u32 cmdq_mdp_get_poll_gpr(u16 engine, u32 reg_addr);
 u32 cmdq_mdp_get_input_engine_gpr(u64 engine_flag);
 bool cmdq_mdp_poll_sleep_support(void);
+bool cmdq_mdp_get_two_curve_support(void);
 u16 mdp_get_rb_event_lock(void);
 u16 mdp_get_rb_event_unlock(void);
 bool cmdq_mdp_eng_readback_support(u16);
