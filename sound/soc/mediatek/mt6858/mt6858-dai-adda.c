@@ -382,7 +382,7 @@ static int mtk_adda_ul_src_dmic(struct mtk_base_afe *afe, int id)
 	/* gain_mode = 0x10: Add 0.5 gain at CIC output */
 	regmap_update_bits(afe->regmap, reg_con1,
 			   GAIN_MODE_MASK_SFT,
-			   0x10 << GAIN_MODE_SFT);
+			   0x2 << GAIN_MODE_SFT);
 	return 0;
 }
 
