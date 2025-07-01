@@ -14897,7 +14897,11 @@ static int mtk_disp_oddmr_probe(struct platform_device *pdev)
 		dev_err(dev, "%s failed to initialize component: %d\n", __func__, ret);
 		goto error_primary;
 	}
+#if defined(DISP_PQ_ODDMR_SLC_ENABLE)
 	count = of_property_count_u32_elems(dev->of_node, "mediatek,oddmr-slc");
+#else
+	count = 0;
+#endif
 	if (count <= 0)
 		memset(oddmr_data->use_slc, 0, sizeof(oddmr_data->use_slc));
 	else
