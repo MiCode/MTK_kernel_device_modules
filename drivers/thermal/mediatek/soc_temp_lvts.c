@@ -6539,6 +6539,244 @@ static struct lvts_data mt6886_lvts_data = {
 	.clock_gate_no_need = true,
 	.reset_no_need = true,
 };
+/*==================================================
+ * LVTS MT6858
+ *==================================================
+ */
+#define MT6858_NUM_LVTS (ARRAY_SIZE(mt6858_tc_settings))
+
+enum mt6858_lvts_domain {
+	MT6858_AP_DOMAIN,
+	MT6858_MCU_DOMAIN,
+	MT6858_GPU_DOMAIN,
+	MT6858_NUM_DOMAIN
+};
+
+enum mt6858_lvts_sensor_enum {
+	MT6858_TS1_0,
+	MT6858_TS1_1,
+	MT6858_TS1_2,
+	MT6858_TS1_3,
+	MT6858_TS2_0,
+	MT6858_TS2_1,
+	MT6858_TS2_2,
+	MT6858_TS2_3,
+	MT6858_TS3_0,
+	MT6858_TS3_1,
+	MT6858_TS3_2,
+	MT6858_TS3_3,
+	MT6858_TS4_0,
+	MT6858_TS4_1,
+	MT6858_TS5_0,
+	MT6858_TS5_1,
+	MT6858_TS5_2,
+	MT6858_TS6_0,
+	MT6858_TS6_1,
+	MT6858_TS8_0,
+	MT6858_NUM_TS
+};
+
+enum mt6858_lvts_controller_enum {
+	MT6858_LVTS_MCU_CTRL0,
+	MT6858_LVTS_MCU_CTRL1,
+	MT6858_LVTS_MCU_CTRL2,
+	MT6858_LVTS_MCU_CTRL3,
+	MT6858_LVTS_AP_CTRL0,
+	MT6858_LVTS_AP_CTRL1,
+	MT6858_LVTS_GPU_CTRL0,
+	MT6858_LVTS_CTRL_NUM
+};
+
+static struct tc_settings mt6858_tc_settings[] = {
+	[MT6858_LVTS_MCU_CTRL0] = {
+		.domain_index = MT6858_MCU_DOMAIN,
+		.addr_offset = 0x0,
+		.num_sensor = 4,
+		.sensor_map = {MT6858_TS1_0, MT6858_TS1_1, MT6858_TS1_2, MT6858_TS1_3},
+		.sensor_on_off = {SEN_ON, SEN_ON, SEN_ON, SEN_ON},
+		.tc_speed = SET_TC_SPEED_IN_US(10, 2460, 10, 10),
+		.hw_filter = LVTS_FILTER_1,
+		.dominator_sensing_point = ALL_SENSING_POINTS,
+		.hw_reboot_trip_point = 115000,
+		.irq_bit = BIT(1),
+		.coeff = {
+			.a = {-250460},
+		},
+	},
+	[MT6858_LVTS_MCU_CTRL1] = {
+		.domain_index = MT6858_MCU_DOMAIN,
+		.addr_offset = 0x100,
+		.num_sensor = 4,
+		.sensor_map = {MT6858_TS2_0, MT6858_TS2_1, MT6858_TS2_2, MT6858_TS2_3},
+		.sensor_on_off = {SEN_ON, SEN_ON, SEN_ON, SEN_ON},
+		.tc_speed = SET_TC_SPEED_IN_US(10, 2460, 10, 10),
+		.hw_filter = LVTS_FILTER_1,
+		.dominator_sensing_point = ALL_SENSING_POINTS,
+		.hw_reboot_trip_point = 115000,
+		.irq_bit = BIT(2),
+		.coeff = {
+			.a = {-250460},
+		},
+	},
+	[MT6858_LVTS_MCU_CTRL2] = {
+		.domain_index = MT6858_MCU_DOMAIN,
+		.addr_offset = 0x200,
+		.num_sensor = 4,
+		.sensor_map = {MT6858_TS3_0, MT6858_TS3_1, MT6858_TS3_2, MT6858_TS3_3},
+		.sensor_on_off = {SEN_ON, SEN_ON, SEN_ON, SEN_ON},
+		.tc_speed = SET_TC_SPEED_IN_US(10, 4490, 10, 10),
+		.hw_filter = LVTS_FILTER_1,
+		.dominator_sensing_point = ALL_SENSING_POINTS,
+		.hw_reboot_trip_point = 115000,
+		.irq_bit = BIT(3),
+		.coeff = {
+			.a = {-250460},
+		},
+	},
+	[MT6858_LVTS_MCU_CTRL3] = {
+		.domain_index = MT6858_MCU_DOMAIN,
+		.addr_offset = 0x300,
+		.num_sensor = 2,
+		.sensor_map = {MT6858_TS4_0, MT6858_TS4_1},
+		.sensor_on_off = {SEN_ON, SEN_ON},
+		.tc_speed = SET_TC_SPEED_IN_US(10, 4490, 10, 10),
+		.hw_filter = LVTS_FILTER_1,
+		.dominator_sensing_point = ALL_SENSING_POINTS,
+		.hw_reboot_trip_point = 115000,
+		.irq_bit = BIT(4),
+		.coeff = {
+			.a = {-250460},
+		},
+	},
+	[MT6858_LVTS_AP_CTRL0] = {
+		.domain_index = MT6858_AP_DOMAIN,
+		.addr_offset = 0x0,
+		.num_sensor = 3,
+		.sensor_map = {MT6858_TS5_0, MT6858_TS5_1, MT6858_TS5_2},
+		.sensor_on_off = {SEN_ON, SEN_ON, SEN_ON},
+		.tc_speed = SET_TC_SPEED_IN_US(10, 327670, 10, 10),
+		.hw_filter = LVTS_FILTER_1,
+		.dominator_sensing_point = ALL_SENSING_POINTS,
+		.hw_reboot_trip_point = 115000,
+		.irq_bit = BIT(1),
+		.coeff = {
+			.a = {-250460},
+		},
+	},
+	[MT6858_LVTS_AP_CTRL1] = {
+		.domain_index = MT6858_AP_DOMAIN,
+		.addr_offset = 0x100,
+		.num_sensor = 2,
+		.sensor_map = {MT6858_TS6_0, MT6858_TS6_1},
+		.sensor_on_off = {SEN_ON, SEN_ON},
+		.tc_speed = SET_TC_SPEED_IN_US(10, 327670, 10, 10),
+		.hw_filter = LVTS_FILTER_1,
+		.dominator_sensing_point = ALL_SENSING_POINTS,
+		.hw_reboot_trip_point = 115000,
+		.irq_bit = BIT(2),
+		.coeff = {
+			.a = {-250460},
+		},
+	},
+	[MT6858_LVTS_GPU_CTRL0] = {
+		.domain_index = MT6858_GPU_DOMAIN,
+		.addr_offset = 0x0,
+		.num_sensor = 1,
+		.sensor_map = {MT6858_TS8_0},
+		.sensor_on_off = {SEN_ON},
+		.tc_speed = SET_TC_SPEED_IN_US(10, 1380, 10, 10),
+		.hw_filter = LVTS_FILTER_1,
+		.dominator_sensing_point = ALL_SENSING_POINTS,
+		.hw_reboot_trip_point = 115000,
+		.irq_bit = BIT(1),
+		.coeff = {
+			.a = {-250460},
+		},
+	},
+};
+
+static void mt6858_efuse_to_cal_data(struct lvts_data *lvts_data)
+{
+	struct sensor_cal_data *cal_data = &lvts_data->cal_data;
+	struct tc_settings *tc = lvts_data->tc;
+	int i = 0;
+
+
+	cal_data->golden_temp = GET_CAL_DATA_BITMASK(0, 7, 0);
+
+	if (!(cal_data->golden_temp)) {
+		pr_info("efsue but golden_temp zero, set to default(%d)\n",
+			cal_data->default_golden_temp);
+		cal_data->golden_temp =  cal_data->default_golden_temp;
+	}
+	for (i = 0; i < lvts_data->num_tc; i++)
+		tc[i].coeff.golden_temp = cal_data->golden_temp;
+
+	cal_data->count_r[MT6858_TS1_0] =  GET_CAL_DATA_BITMASK(1, 31, 16);
+	cal_data->count_r[MT6858_TS1_1] =  GET_CAL_DATA_BITMASK(1, 15, 0);
+	cal_data->count_r[MT6858_TS1_2] =  GET_CAL_DATA_BITMASK(2, 31, 16);
+	cal_data->count_r[MT6858_TS1_3] =  GET_CAL_DATA_BITMASK(2, 15, 0);
+
+	cal_data->count_r[MT6858_TS2_0] =  GET_CAL_DATA_BITMASK(4, 31, 16);
+	cal_data->count_r[MT6858_TS2_1] =  GET_CAL_DATA_BITMASK(4, 15, 0);
+	cal_data->count_r[MT6858_TS2_2] =  GET_CAL_DATA_BITMASK(5, 31, 16);
+	cal_data->count_r[MT6858_TS2_3] =  GET_CAL_DATA_BITMASK(5, 15, 0);
+
+	cal_data->count_r[MT6858_TS3_0] =  GET_CAL_DATA_BITMASK(7, 31, 16);
+	cal_data->count_r[MT6858_TS3_1] =  GET_CAL_DATA_BITMASK(7, 15, 0);
+	cal_data->count_r[MT6858_TS3_2] =  GET_CAL_DATA_BITMASK(8, 31, 16);
+	cal_data->count_r[MT6858_TS3_3] =  GET_CAL_DATA_BITMASK(8, 15, 0);
+
+	cal_data->count_r[MT6858_TS4_0] =  GET_CAL_DATA_BITMASK(10, 31, 16);
+	cal_data->count_r[MT6858_TS4_1] =  GET_CAL_DATA_BITMASK(10, 15, 0);
+
+	cal_data->count_r[MT6858_TS5_0] =  GET_CAL_DATA_BITMASK(12, 31, 16);
+	cal_data->count_r[MT6858_TS5_1] =  GET_CAL_DATA_BITMASK(12, 15, 0);
+	cal_data->count_r[MT6858_TS5_2] =  GET_CAL_DATA_BITMASK(13, 31, 16);
+
+	cal_data->count_r[MT6858_TS6_0]  =  GET_CAL_DATA_BITMASK(15, 31, 16);
+	cal_data->count_r[MT6858_TS6_1]  =  GET_CAL_DATA_BITMASK(15, 15, 0);
+
+	cal_data->count_r[MT6858_TS8_0]  =  GET_CAL_DATA_BITMASK(17, 31, 16);
+
+	cal_data->count_rc[MT6858_LVTS_MCU_CTRL0] =  GET_CAL_DATA_BITMASK(0, 31, 8);
+	cal_data->count_rc[MT6858_LVTS_MCU_CTRL1] =  GET_CAL_DATA_BITMASK(3, 31, 8);
+	cal_data->count_rc[MT6858_LVTS_MCU_CTRL2] =  GET_CAL_DATA_BITMASK(6, 31, 8);
+	cal_data->count_rc[MT6858_LVTS_MCU_CTRL3] =  GET_CAL_DATA_BITMASK(9, 31, 8);
+
+	cal_data->count_rc[MT6858_LVTS_AP_CTRL0] =  GET_CAL_DATA_BITMASK(11, 31, 8);
+	cal_data->count_rc[MT6858_LVTS_AP_CTRL1] =  GET_CAL_DATA_BITMASK(14, 31, 8);
+
+	cal_data->count_rc[MT6858_LVTS_GPU_CTRL0] =  GET_CAL_DATA_BITMASK(16, 31, 8);
+
+}
+
+static struct lvts_data mt6858_lvts_data = {
+	.num_domain = MT6858_NUM_DOMAIN,
+	.num_tc = MT6858_LVTS_CTRL_NUM,
+	.tc = mt6858_tc_settings,
+	.num_sensor = MT6858_NUM_TS,
+	.ops = {
+		.device_identification = device_identification_v2,
+		.efuse_to_cal_data = mt6858_efuse_to_cal_data,
+		.lvts_temp_to_raw = lvts_temp_to_raw_v1,
+		.lvts_raw_to_temp = lvts_raw_to_temp_v1,
+		.check_cal_data = check_cal_data_v1,
+	},
+	.feature_bitmap = 0,
+	.num_efuse_addr = 22,
+	.num_efuse_block = 3,
+	.cal_data = {
+		.default_golden_temp = 60,
+		.default_count_r = 35000,
+		.default_count_rc = 2600,
+	},
+	.init_done = false,
+	.enable_dump_log = 0,
+	.clock_gate_no_need = true,
+	.reset_no_need = true,
+	.dump_wo_pause = true,
+};
 
 /*==================================================
  * LVTS MT6991
@@ -7443,6 +7681,10 @@ static const struct of_device_id lvts_of_match[] = {
 	{
 		.compatible = "mediatek,mt6993-lvts",
 		.data = (void *)&mt6993_lvts_data,
+	},
+	{
+		.compatible = "mediatek,mt6858-lvts",
+		.data = (void *)&mt6858_lvts_data,
 	},
 	{
 	},
