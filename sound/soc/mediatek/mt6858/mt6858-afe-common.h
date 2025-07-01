@@ -51,7 +51,7 @@
 /* #define SKIP_SB_GPIO */
 #define SKIP_SB_OFFLOAD
 #define SKIP_SB_PBM
-#define SKIP_SB_SMCC
+/* #define SKIP_SB_SMCC */
 /* #define SKIP_SB_ULTRA */
 #define SKIP_SB_USB_OFFLOAD
 #define SKIP_SB_VOW
