@@ -293,12 +293,16 @@ static inline ssize_t dvfsrc_qos_mode_store(struct device *dev,
 	if (kstrtouint(buf, 0, &mode) != 0)
 		return -EINVAL;
 
-	arm_smccc_smc(MTK_SIP_VCOREFS_CONTROL, MTK_SIP_VCOREFS_QOS_MODE,
-		mode, 0, 0, 0, 0, 0,
-		&ares);
+	if (!dvfsrc->afl_fuzzer_en) {
+		arm_smccc_smc(MTK_SIP_VCOREFS_CONTROL, MTK_SIP_VCOREFS_QOS_MODE,
+			mode, 0, 0, 0, 0, 0,
+			&ares);
 
-	if (!ares.a0)
-		dvfsrc->qos_mode = mode;
+		if (!ares.a0)
+			dvfsrc->qos_mode = mode;
+	} else {
+		pr_notice("%s:afl_fuzzer enable\n", __func__);
+	}
 
 	return count;
 }
@@ -322,12 +326,17 @@ static inline ssize_t dvfsrc_qosmm_mode_store(struct device *dev,
 	if (kstrtou32(buf, 16, &mode))
 		return -EINVAL;
 
-	arm_smccc_smc(MTK_SIP_VCOREFS_CONTROL, MTK_SIP_VCOREFS_QOS_MODE,
-		mode, 0, 0, 0, 0, 0,
-		&ares);
+	if (!dvfsrc->afl_fuzzer_en) {
+		arm_smccc_smc(MTK_SIP_VCOREFS_CONTROL, MTK_SIP_VCOREFS_QOS_MODE,
+			mode, 0, 0, 0, 0, 0,
+			&ares);
 
-	if (!ares.a0)
-		dvfsrc->qos_mm_mode = mode;
+		if (!ares.a0)
+			dvfsrc->qos_mm_mode = mode;
+
+	} else {
+		pr_notice("%s:afl_fuzzer enable\n", __func__);
+	}
 
 	return count;
 }
@@ -548,4 +557,3 @@ void dvfsrc_unregister_sysfs(struct device *dev)
 	sysfs_remove_link(&dev->parent->kobj, "helio-dvfsrc");
 	sysfs_remove_group(&dev->kobj, &dvfsrc_sysfs_attr_group);
 }
-

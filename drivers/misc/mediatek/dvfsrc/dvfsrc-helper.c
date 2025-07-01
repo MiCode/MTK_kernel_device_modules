@@ -1647,6 +1647,7 @@ static int mtk_dvfsrc_helper_probe(struct platform_device *pdev)
 	struct resource *res;
 	struct mtk_dvfsrc *dvfsrc;
 	struct device_node *np = pdev->dev.of_node;
+	struct device_node *node;
 	int ret;
 
 	match = of_match_node(dvfsrc_helper_of_match, dev->parent->of_node);
@@ -1694,6 +1695,16 @@ static int mtk_dvfsrc_helper_probe(struct platform_device *pdev)
 		dev_info(dev, "dvfsrc opp setting fail\n");
 		return ret;
 	}
+
+	node = of_find_node_by_name(NULL, "atf-logger");
+	if (node) {
+		dvfsrc->afl_fuzzer_en =
+			of_property_read_bool(node, "mediatek,afl-fuzzer-enabled");
+	} else {
+		dvfsrc->afl_fuzzer_en = false;
+	}
+
+	dev_info(dvfsrc->dev, "afl_fuzzer_en:%d\n", dvfsrc->afl_fuzzer_en);
 
 #if IS_ENABLED(CONFIG_MTK_DVFSRC_MET_MT6768) || IS_ENABLED(CONFIG_MTK_DVFSRC_MET_MT6765)
 	if (dvfsrc->dvd->qos)

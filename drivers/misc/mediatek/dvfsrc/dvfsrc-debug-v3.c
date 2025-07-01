@@ -1111,9 +1111,13 @@ static char *dvfsrc_dump_mt6873_vmode_info(struct mtk_dvfsrc *dvfsrc,
 	int max_info = 3;
 	int i;
 
-	for (i = 0; i < max_info; i++)
-		p += snprintf(p, buff_end - p, "VBINFO_%d: %08x\n",
-			i, dvfsrc_dvfs_get_vcore_info_data(i));
+	if (!dvfsrc->afl_fuzzer_en) {
+		for (i = 0; i < max_info; i++)
+			p += snprintf(p, buff_end - p, "VBINFO_%d: %08x\n",
+				i, dvfsrc_dvfs_get_vcore_info_data(i));
+	} else {
+		pr_notice("%s: afl_fuzzer enable\n", __func__);
+	}
 
 	p += snprintf(p, buff_end - p, "%s: 0x%08x\n",
 			"V_MODE",

@@ -115,6 +115,7 @@ struct mtk_dvfsrc {
 	spinlock_t force_lock;
 #endif
 	bool disable_wait_level;
+	bool afl_fuzzer_en;
 	u32 num_opp;
 	u32  ddr_user_level;
 	u32  emi_user_level;
@@ -1271,9 +1272,13 @@ static void mt6989_set_force_opp_level(struct mtk_dvfsrc *dvfsrc, u32 level)
 		goto out;
 	}
 	dvfsrc->opp_forced = true;
-	if (dvfsrc->dvd->mem_res_req_en)
-		arm_smccc_smc(MTK_SIP_VCOREFS_CONTROL, MTK_SIP_MEM_RS_REQ,
-			0, 0, 0, 0, 0, 0, &ares);
+	if (!dvfsrc->afl_fuzzer_en) {
+		if (dvfsrc->dvd->mem_res_req_en)
+			arm_smccc_smc(MTK_SIP_VCOREFS_CONTROL, MTK_SIP_MEM_RS_REQ,
+				0, 0, 0, 0, 0, 0, &ares);
+	} else {
+		dev_info(dvfsrc->dev, "%s: afl_fuzzer enable\n", __func__);
+	}
 
 	dvfsrc_rmw(dvfsrc, DVFSRC_HALT_CONTROL, 1, 0x1, 1);
 	udelay(STARTUP_TIME);
@@ -1288,9 +1293,13 @@ static void mt6989_set_force_opp_level(struct mtk_dvfsrc *dvfsrc, u32 level)
 			dvfsrc->regs + dvfsrc->dvd->regs[DVFSRC_LEVEL],
 			val, (val & 0x7f) == level, STARTUP_TIME, POLL_TIMEOUT);
 
-	if (dvfsrc->dvd->mem_res_req_en)
-		arm_smccc_smc(MTK_SIP_VCOREFS_CONTROL, MTK_SIP_MEM_RS_REL,
-			0, 0, 0, 0, 0, 0, &ares);
+	if (!dvfsrc->afl_fuzzer_en) {
+		if (dvfsrc->dvd->mem_res_req_en)
+			arm_smccc_smc(MTK_SIP_VCOREFS_CONTROL, MTK_SIP_MEM_RS_REL,
+				0, 0, 0, 0, 0, 0, &ares);
+	} else {
+		dev_info(dvfsrc->dev, "%s: afl_fuzzer enable\n", __func__);
+	}
 out:
 	spin_unlock_irqrestore(&dvfsrc->force_lock, flags);
 	if (ret < 0) {
@@ -1533,9 +1542,14 @@ void mtk_dvfsrc_send_request(const struct device *dev, u32 cmd, u64 data)
 	/* DVFSRC need to wait at least 2T(~196ns) to handle request
 	 * after recieving command
 	 */
-	if (dvfsrc->dvd->mem_res_req_en && (cmd == MTK_DVFSRC_CMD_VCORE_REQUEST))
-		arm_smccc_smc(MTK_SIP_VCOREFS_CONTROL, MTK_SIP_MEM_RS_REQ,
-		0, 0, 0, 0, 0, 0, &ares);
+
+	if (!dvfsrc->afl_fuzzer_en) {
+		if (dvfsrc->dvd->mem_res_req_en && (cmd == MTK_DVFSRC_CMD_VCORE_REQUEST))
+			arm_smccc_smc(MTK_SIP_VCOREFS_CONTROL, MTK_SIP_MEM_RS_REQ,
+				0, 0, 0, 0, 0, 0, &ares);
+	} else {
+		dev_info(dvfsrc->dev, "%s: afl_fuzzer enable\n", __func__);
+	}
 
 	udelay(STARTUP_TIME);
 	dvfsrc_wait_for_idle(dvfsrc);
@@ -1562,9 +1576,13 @@ void mtk_dvfsrc_send_request(const struct device *dev, u32 cmd, u64 data)
 		break;
 	}
 
-	if (dvfsrc->dvd->mem_res_req_en && (cmd == MTK_DVFSRC_CMD_VCORE_REQUEST))
-		arm_smccc_smc(MTK_SIP_VCOREFS_CONTROL, MTK_SIP_MEM_RS_REL,
-		0, 0, 0, 0, 0, 0, &ares);
+	if (!dvfsrc->afl_fuzzer_en) {
+		if (dvfsrc->dvd->mem_res_req_en && (cmd == MTK_DVFSRC_CMD_VCORE_REQUEST))
+			arm_smccc_smc(MTK_SIP_VCOREFS_CONTROL, MTK_SIP_MEM_RS_REL,
+				0, 0, 0, 0, 0, 0, &ares);
+	} else {
+		dev_info(dvfsrc->dev, "%s: afl_fuzzer enable\n", __func__);
+	}
 out:
 #ifdef DVFSRC_FORCE_OPP_SUPPORT
 	if (dvfsrc->opp_forced)
@@ -1640,6 +1658,7 @@ static int mtk_dvfsrc_probe(struct platform_device *pdev)
 	struct arm_smccc_res ares;
 	struct resource *res;
 	struct mtk_dvfsrc *dvfsrc;
+	struct device_node *node;
 	int ret;
 #ifdef DVFSRC_PROPERTY_ENABLE
 	u32 is_bringup = 0;
@@ -1749,6 +1768,16 @@ static int mtk_dvfsrc_probe(struct platform_device *pdev)
 		ret = PTR_ERR(dvfsrc->dvfsrc_start);
 		goto unregister_devfreq;
 	}
+
+	node = of_find_node_by_name(NULL, "atf-logger");
+	if (node) {
+		dvfsrc->afl_fuzzer_en =
+			of_property_read_bool(node, "mediatek,afl-fuzzer-enabled");
+	} else {
+		dvfsrc->afl_fuzzer_en = false;
+	}
+
+	dev_info(dvfsrc->dev, "afl_fuzzer_en:%d\n", dvfsrc->afl_fuzzer_en);
 
 	ret = devm_of_platform_populate(dvfsrc->dev);
 	if (ret < 0)

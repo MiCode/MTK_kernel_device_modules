@@ -132,6 +132,7 @@ struct mtk_dvfsrc {
 	bool ceil_ddr_support;
 	bool vchk_enable;
 	bool force_ddr_en;
+	bool afl_fuzzer_en;
 	u32 force_ddr_idx;
 	struct workqueue_struct *dvfsrc_wq;
 	struct delayed_work thm_defer_work;
@@ -159,4 +160,3 @@ extern const struct dvfsrc_config mt6993_dvfsrc_config;
 
 extern const struct dvfsrc_qos_config mt6761_qos_config;
 #endif
-
