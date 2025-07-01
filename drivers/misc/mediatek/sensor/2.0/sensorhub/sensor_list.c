@@ -146,7 +146,7 @@ static int __sensor_list_get_list_v2(struct sensor_info *list,
 	ret = share_buffer_comm_with(common_sbc, SENSOR_TYPE_INVALID,
 		SHARE_BUFFER_LIST_CMD, 0, NULL, 0, buffer, len);
 	if (ret < 0)
-		return ret;
+		goto out;
 
 	start = (struct share_mem_info *)buffer;
 	end = (struct share_mem_info *)(buffer + ret);
@@ -162,7 +162,11 @@ static int __sensor_list_get_list_v2(struct sensor_info *list,
 		strscpy(list[i].vendor, info->vendor, sizeof(list[i].vendor));
 		i++;
 	}
-	return i;
+	ret = i;
+
+out:
+	kfree(buffer);
+	return ret;
 }
 
 int sensor_list_get_list(struct sensor_info *list, unsigned int num)
