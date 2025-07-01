@@ -2382,7 +2382,6 @@ static int mtk_mipi_tx_pll_dphy_config_mt6993(struct mtk_mipi_tx *mipi_tx)
 {
 	unsigned int txdiv, txdiv0, tmp;
 	u32 rate;
-	unsigned int fbksel;
 
 	DDPINFO("%s+\n", __func__);
 
@@ -2431,14 +2430,7 @@ static int mtk_mipi_tx_pll_dphy_config_mt6993(struct mtk_mipi_tx *mipi_tx)
 			FLD_RG_DSI_V2I_REF_SEL, 0x0);
 #endif
 
-	mtk_mipi_tx_clear_bits(mipi_tx, MIPITX_PLL_CON4, RG_DSI_PLL_ICHP);
-	mtk_mipi_tx_set_bits(mipi_tx, MIPITX_PLL_CON1, RG_DSI_PLL_LVROD_EN);
-
-	mtk_mipi_tx_update_bits(mipi_tx, MIPITX_PLL_CON1,
-							RG_DSI_PLL_RST_DLY, 0x1 << 23);
-	mtk_mipi_tx_update_bits(mipi_tx, MIPITX_PLL_CON1,
-							RG_RG_DSI_PLL_LVR_REFSEL, 0x1 << 25);
-
+	/* BIT8 RG_DSI_PAD_TILE_SEL is for FT test, no need to config */
 	/* BG_LPF_EN / BG_CORE_EN */
 	writel(0x3FFF0180, mipi_tx->regs + MIPITX_LANE_CON_MT6983);
 	usleep_range(500, 600);
@@ -2465,19 +2457,11 @@ static int mtk_mipi_tx_pll_dphy_config_mt6993(struct mtk_mipi_tx *mipi_tx)
 	mtk_mipi_tx_update_bits(mipi_tx, MIPITX_PLL_PWR,
 				FLD_AD_DSI_PLL_SDM_ISO_EN, 0);
 
-	/* FBSEL always 0*/
-	fbksel = 1;
-	mtk_mipi_tx_update_bits(mipi_tx, MIPITX_PLL_CON1,
-			FLD_RG_DSI_PLL_FBSEL_MT6983, (fbksel - 1) << 13);
-
 	tmp = mipi_tx->driver_data->dsi_get_pcw(rate, txdiv);
 	writel(tmp, mipi_tx->regs + MIPITX_PLL_CON0);
 
 	mtk_mipi_tx_update_bits(mipi_tx, MIPITX_PLL_CON1,
 				  FLD_RG_DSI_PLL_POSDIV, txdiv0 << 8);
-	/* PLL_DIV3_EN always 0*/
-	mtk_mipi_tx_update_bits(mipi_tx, MIPITX_PLL_CON1,
-				  FLD_RG_DSI_PLL_DIV3_EN, 0 << 28);
 	mtk_mipi_tx_set_bits(mipi_tx, MIPITX_PLL_CON1,
 				   mipi_tx->driver_data->dsi_pll_en);
 
@@ -2518,9 +2502,6 @@ static void mtk_mipi_tx_pll_dphy_deconfig_mt6993(struct mtk_mipi_tx *mipi_tx)
 	DDPINFO("%s+\n", __func__);
 
 	mtk_mipi_tx_clear_bits(mipi_tx, MIPITX_PLL_CON1, mipi_tx->driver_data->dsi_pll_en);
-
-	/* TODO: should clear bit8 to set SW_ANA_CK_EN here */
-	mtk_mipi_tx_clear_bits(mipi_tx, MIPITX_SW_CTRL_CON4_MT6983, 1);
 
 	mtk_mipi_tx_set_bits(mipi_tx, MIPITX_PLL_PWR, AD_DSI_PLL_SDM_ISO_EN);
 	mtk_mipi_tx_clear_bits(mipi_tx, MIPITX_PLL_PWR, AD_DSI_PLL_SDM_PWR_ON);
@@ -2830,7 +2811,6 @@ static int mtk_mipi_tx_pll_cphy_config_mt6993(struct mtk_mipi_tx *mipi_tx)
 {
 	unsigned int txdiv, txdiv0, tmp;
 	u32 rate;
-	unsigned int fbksel;
 
 	DDPINFO("%s+\n", __func__);
 
@@ -2882,10 +2862,9 @@ static int mtk_mipi_tx_pll_cphy_config_mt6993(struct mtk_mipi_tx *mipi_tx)
 
 	/* step 0 */
 	/* BG_LPF_EN / BG_CORE_EN */
-	writel(0x00FF06E0, mipi_tx->regs + MIPITX_PLL_CON4);
 	/* BG_LPF_EN=0 BG_CORE_EN=1 */
 	writel(0x3FFF0088, mipi_tx->regs + MIPITX_LANE_CON_MT6983);
-	//usleep_range(1, 1); /* 1us */
+	usleep_range(1, 2); /* 1us */
 	/* BG_LPF_EN=1 */
 	writel(0x3FFF00C8, mipi_tx->regs + MIPITX_LANE_CON_MT6983);
 
@@ -2896,19 +2875,11 @@ static int mtk_mipi_tx_pll_cphy_config_mt6993(struct mtk_mipi_tx *mipi_tx)
 	mtk_mipi_tx_update_bits(mipi_tx, MIPITX_PLL_PWR,
 				FLD_AD_DSI_PLL_SDM_ISO_EN, 0);
 
-	/* FBSEL always 0*/
-	fbksel = 1;
-	mtk_mipi_tx_update_bits(mipi_tx, MIPITX_PLL_CON1,
-			FLD_RG_DSI_PLL_FBSEL_MT6983, (fbksel - 1) << 13);
-
 	tmp = mipi_tx->driver_data->dsi_get_pcw(rate, txdiv);
 	writel(tmp, mipi_tx->regs + MIPITX_PLL_CON0);
 
 	mtk_mipi_tx_update_bits(mipi_tx, MIPITX_PLL_CON1,
 				  FLD_RG_DSI_PLL_POSDIV, txdiv0 << 8);
-	/* PLL_DIV3_EN always 0*/
-	mtk_mipi_tx_update_bits(mipi_tx, MIPITX_PLL_CON1,
-				  FLD_RG_DSI_PLL_DIV3_EN, 0 << 28);
 	mtk_mipi_tx_set_bits(mipi_tx, MIPITX_PLL_CON1,
 				   mipi_tx->driver_data->dsi_pll_en);
 
