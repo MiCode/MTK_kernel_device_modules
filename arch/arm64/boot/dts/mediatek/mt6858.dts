@@ -5247,79 +5247,89 @@ dramc: dramc@10230000 {
 			reg = <0 0x15820000 0 0x1000>;
 		};
 
-		vdec-gcon@16000000 {
-			compatible = "mediatek,vdec_gcon";
-			reg = <0 0x16000000 0 0xd000>;
+		vdec@16000000 {
+			compatible = "mediatek,vcodec-dec";
+			mediatek,platform = "platform:mt6858";
+			mediatek,ipm = <1>;
+			vp-mode-buf-size-multi = <16384>; // 1024 * 16
+#if 0
+			/* for power */
+			//mediatek,larbs = <&smi_larb4>;
+			power-domains = <&scpsys MT6858_POWER_DOMAIN_VDE0>;
+			clocks =
+				<&vdec_gcon_base_clk CLK_VDE2_VDEC_CKEN>;
+			clock-names =
+				"CORE_MT_CG_VDEC0";
+#endif
+			/* for memory */
+			iommus = <&disp_iommu M4U_L4_P0_HW_VDEC_MC_EXT>,
+				<&disp_iommu M4U_L4_P1_HW_VDEC_PP_EXT>,
+				<&disp_iommu M4U_L4_P2_HW_VDEC_PRED_RD_EXT>,
+				<&disp_iommu M4U_L4_P3_HW_VDEC_PRED_WR_EXT>,
+				<&disp_iommu M4U_L4_P4_HW_VDEC_PPWRAP_EXT>,
+				<&disp_iommu M4U_L4_P5_HW_VDEC_TILE_EXT>,
+				<&disp_iommu M4U_L4_P6_HW_VDEC_VLD_EXT>,
+				<&disp_iommu M4U_L4_P7_HW_VDEC_VLD2_EXT>,
+				<&disp_iommu M4U_L4_P8_HW_VDEC_AVC_MV_EXT>,
+				<&disp_iommu M4U_L4_P9_HW_VDEC_RG_CTRL_DMA_EXT>;
+
+			/* for translation fault callback */
+			m4u-ports =
+				<M4U_L4_P0_HW_VDEC_MC_EXT>,
+				<M4U_L4_P1_HW_VDEC_PP_EXT>,
+				<M4U_L4_P2_HW_VDEC_PRED_RD_EXT>,
+				<M4U_L4_P3_HW_VDEC_PRED_WR_EXT>,
+				<M4U_L4_P4_HW_VDEC_PPWRAP_EXT>,
+				<M4U_L4_P5_HW_VDEC_TILE_EXT>,
+				<M4U_L4_P6_HW_VDEC_VLD_EXT>,
+				<M4U_L4_P7_HW_VDEC_VLD2_EXT>,
+				<M4U_L4_P8_HW_VDEC_AVC_MV_EXT>,
+				<M4U_L4_P9_HW_VDEC_RG_CTRL_DMA_EXT>,
+				<M4U_PORT_L21_VIDEO_UP0>,
+				<M4U_PORT_L21_VIDEO_UP0>;
+			m4u-port-names =
+				"M4U_PORT_VDEC_MC",
+				"M4U_PORT_VDEC_PP",
+				"M4U_PORT_VDEC_PRED_RD",
+				"M4U_PORT_VDEC_PRED_WR",
+				"M4U_PORT_VDEC_PPWRAP",
+				"M4U_PORT_VDEC_TILE",
+				"M4U_PORT_VDEC_VLD",
+				"M4U_PORT_VDEC_VLD2",
+				"M4U_PORT_VDEC_AVC_MV",
+				"M4U_PORT_VDEC_RG_CTRL_DMA",
+				"M4U_PORT_VDEC_VIDEO_UP_NOR",
+				"M4U_PORT_VDEC_VIDEO_UP_SEC";
+
+			/* dvfs params */
 		};
 
-		vdec@1600d000 {
-			compatible = "mediatek,vdec";
-			reg = <0 0x1600d000 0 0x1000>;
-		};
-
-		vdec@1600f000 {
-			compatible = "mediatek,vdec";
-			reg = <0 0x1600f000 0 0x800>;
-		};
-
-		vdec@1600f800 {
-			compatible = "mediatek,vdec";
-			reg = <0 0x1600f800 0 0x400>;
-		};
-
-		vdec-gcon@16010000 {
-			compatible = "mediatek,vdec_gcon";
-			reg = <0 0x16010000 0 0x8000>;
-		};
-
-		vdec@16018000 {
-			compatible = "mediatek,vdec";
-			reg = <0 0x16018000 0 0x8000>;
-		};
-
-		vdec@16020000 {
-			compatible = "mediatek,vdec";
-			reg = <0 0x16020000 0 0xd000>;
-		};
-
-		vdec@1602d000 {
-			compatible = "mediatek,vdec";
-			reg = <0 0x1602d000 0 0x1000>;
-		};
-
-		vdec@1602e000 {
-			compatible = "mediatek,vdec";
-			reg = <0 0x1602e000 0 0x1000>;
-		};
-
-		vdec@1602f000 {
-			compatible = "mediatek,vdec";
-			reg = <0 0x1602f000 0 0x800>;
-		};
-
-		vdec@1602f800 {
-			compatible = "mediatek,vdec";
-			reg = <0 0x1602f800 0 0x400>;
-		};
-
-		vdec@1602fc00 {
-			compatible = "mediatek,vdec";
-			reg = <0 0x1602fc00 0 0x400>;
-		};
-
-		vdec@16080000 {
-			compatible = "mediatek,vdec";
-			reg = <0 0x16080000 0 0x10000>;
-		};
-
-		venc-gcon@17000000 {
-			compatible = "mediatek,venc_gcon";
-			reg = <0 0x17000000 0 0x10000>;
-		};
-
-		venc@17020000 {
-			compatible = "mediatek,venc";
-			reg = <0 0x17020000 0 0x10000>;
+		venc@17000000 {
+			compatible = "mediatek,vcodec-enc";
+			mediatek,platform = "platform:mt6858";
+			mediatek,ipm = <2>;
+			venc-core-count = <1>;
+			reg = <0 0x17020000 0 0x2000>;
+			reg-names =
+				"VENC_SYS";
+			iommus = <&disp_iommu M4U_L7_P0_RC>,
+				<&disp_iommu M4U_L7_P1_REC>,
+				<&disp_iommu M4U_L7_P2_BSDMA>,
+				<&disp_iommu M4U_L7_P3_SV_COMV>,
+				<&disp_iommu M4U_L7_P4_RD_COMV>,
+				<&disp_iommu M4U_L7_P8_SUB_W_LUMA>,
+				<&disp_iommu M4U_L7_P10_CUR_LUMA>,
+				<&disp_iommu M4U_L7_P11_CUR_CHROMA>,
+				<&disp_iommu M4U_L7_P12_REF_LUMA>,
+				<&disp_iommu M4U_L7_P13_REF_CHROMA>,
+				<&disp_iommu M4U_L7_P14_SUB_R_LUMA>;
+#if 0
+			//mediatek,larbs = <&smi_larb7>;
+			power-domains = <&scpsys MT6858_POWER_DOMAIN_VEN0>;
+			clocks = <&venc_gcon_clk CLK_VEN1_CKE1_VENC>;
+			clock-names = "MT_CG_VENC0";
+#endif
+			/* dvfs params */
 		};
 
 		jpgenc@17030000 {
