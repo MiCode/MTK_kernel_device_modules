@@ -1386,13 +1386,19 @@ static void dpc_ch_bw_set_v2(const u32 subsys, const u8 idx, const u32 bw_in_mb)
 	u32 value = 0;
 	u32 ch_bw = bw_in_mb;
 
-	if (unlikely(mminfra_floor && bw_in_mb && (bw_in_mb < mminfra_floor * 16)))
-		ch_bw = mminfra_floor * 16;
+	if (bw_in_mb > 0) {
+		/* debug only: report bw for mminfra frequency lower bound */
+		if (unlikely(mminfra_floor && (bw_in_mb < mminfra_floor * 16)))
+			ch_bw = mminfra_floor * 16;
+
+		ch_bw = ch_bw * 100 / g_priv->ch_bw_urate / 16;
+		ch_bw = ch_bw > 0 ? ch_bw : 1;
+	}
 
 	if (idx < 24) {
 	/* use display voter for both display and mml, since mml voter is reserved for others */
 		value = readl(dpc_base + g_priv->ch_bw_cfg[idx].offset) & ~(0x3ff << g_priv->ch_bw_cfg[idx].shift);
-		value |= (ch_bw * 100 / g_priv->ch_bw_urate / 16) << g_priv->ch_bw_cfg[idx].shift;
+		value |= ch_bw << g_priv->ch_bw_cfg[idx].shift;
 
 		if (unlikely(debug_dvfs))
 			DPCFUNC("subsys(%u) idx(%u) bw(%u)MB", subsys, idx, ch_bw);
