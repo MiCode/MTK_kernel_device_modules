@@ -599,6 +599,9 @@ static int mtk_drm_esd_check(struct drm_crtc *crtc)
 	struct mtk_drm_esd_ctx *esd_ctx = mtk_crtc->esd_ctx;
 	int index = drm_crtc_index(crtc);
 	int ret = 0;
+	unsigned int esd_mode = 0;
+	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
+	struct device *dev = priv->drm->dev;
 
 	CRTC_MMP_EVENT_START(index, esd_check, 0, 0);
 
@@ -614,11 +617,13 @@ static int mtk_drm_esd_check(struct drm_crtc *crtc)
 		ret = -EINVAL;
 		goto done;
 	}
+	/* by proj ctrl esd mode */
+	of_property_read_u32(dev->of_node, "esd-mode", &esd_mode);
 
 	/* Check panel EINT */
 	mtk_drm_trace_begin("esd_check:%d-%d", panel_ext->params->cust_esd_check, esd_ctx->chk_mode);
-	if (panel_ext->params->cust_esd_check == 0 &&
-	    esd_ctx->chk_mode == READ_EINT) {
+	if ((panel_ext->params->cust_esd_check == 0 &&
+	    esd_ctx->chk_mode == READ_EINT) || esd_mode == 1) {
 		CRTC_MMP_MARK(index, esd_check, 1, 0);
 		ret = _mtk_esd_check_eint(crtc);
 	} else { /* READ LCM CMD  */
