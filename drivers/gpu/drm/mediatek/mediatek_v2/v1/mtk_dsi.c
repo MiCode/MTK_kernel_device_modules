@@ -66,6 +66,23 @@
 //#include "mtk_reg_disp_bdg.h"
 /* ************end bridge ic ************* */
 //#define DSI_SELF_PATTERN
+
+int dbg_always_ultra;
+module_param(dbg_always_ultra, int, 0644);
+int dbg_always_urgent;
+module_param(dbg_always_urgent, int, 0644);
+
+int dbg_ultra_low;
+module_param(dbg_ultra_low, int, 0644);
+int dbg_ultra_high;
+module_param(dbg_ultra_high, int, 0644);
+int dbg_urgent_low;
+module_param(dbg_urgent_low, int, 0644);
+int dbg_urgent_high;
+module_param(dbg_urgent_high, int, 0644);
+int dbg_output_valid;
+module_param(dbg_output_valid, int, 0644);
+
 #define DSI_START 0x00
 #define SKEWCAL_START BIT(4)
 #define SLEEPOUT_START BIT(2)
@@ -2626,6 +2643,7 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 	u32 fill_rate;
 	u32 sodi_hi, sodi_lo;
 	u32 sram_unit, buffer_unit;
+	u32 ultra_hi_fifo_us, ultra_lo_fifo_us;
 	u32 urgent_lo_fifo_us, urgent_hi_fifo_us, output_valid_us;
 	struct mtk_panel_ext *ext = mtk_dsi_get_panel_ext(&dsi->ddp_comp);
 	struct mtk_drm_crtc *mtk_crtc =	dsi->is_slave ?
@@ -2673,12 +2691,20 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 
 	buffer_unit = dsi->driver_data->buffer_unit;
 	sram_unit = dsi->driver_data->sram_unit;
+	ultra_lo_fifo_us = dbg_ultra_low;
+	ultra_hi_fifo_us = dbg_ultra_high;
 	urgent_lo_fifo_us = dsi->driver_data->urgent_lo_fifo_us ?
 				dsi->driver_data->urgent_lo_fifo_us : 11;
+	urgent_lo_fifo_us = dbg_urgent_low ?
+				dbg_urgent_low : urgent_lo_fifo_us;
 	urgent_hi_fifo_us = dsi->driver_data->urgent_hi_fifo_us ?
 				dsi->driver_data->urgent_hi_fifo_us : 12;
+	urgent_hi_fifo_us = dbg_urgent_high ?
+				dbg_urgent_high : urgent_hi_fifo_us;
 	output_valid_us = dsi->driver_data->output_valid_fifo_us ?
 				dsi->driver_data->output_valid_fifo_us : 25;
+	output_valid_us = dbg_output_valid ?
+				dbg_output_valid : output_valid_us;
 
 	mtk_dsi_mask(dsi, DSI_BUF_CON0(dsi->driver_data), BUF_BUF_EN, BUF_BUF_EN);
 
@@ -2769,9 +2795,10 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 			ps_wc = width * dsi_buf_bpp;
 	}
 
-	if (priv->data->mmsys_id == MMSYS_MT6993) {
+	if (priv->data->mmsys_id == MMSYS_MT6993 ||
+		priv->data->mmsys_id == MMSYS_MT6858) {
 		u32 image_time, line_time, consume_rate;
-		u32 ultra_high_fifo_us, ultra_low_fifo_us;
+
 		unsigned int compress_rate = mtk_dsi_get_dsc_compress_rate(dsi);
 
 		if (mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base))
@@ -2794,16 +2821,29 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 
 		fill_rate = mmsys_clk * 96 * dli_relay_1tnp * dsi_buf_bpp * 1000 / compress_rate / buffer_unit;
 
-		ultra_low_fifo_us = DIV_ROUND_UP(buf_con * 1000 * 7, consume_rate * 10);
-		ultra_low_fifo_us = (ultra_low_fifo_us >= 35) ? ultra_low_fifo_us : 35;
-		ultra_high_fifo_us = ultra_low_fifo_us + 1;
+		if (priv->data->mmsys_id == MMSYS_MT6993) {
+			ultra_lo_fifo_us = DIV_ROUND_UP(buf_con * 1000 * 8, consume_rate * 10);
+			ultra_lo_fifo_us = (ultra_lo_fifo_us >= 35) ? ultra_lo_fifo_us : 35;
+			ultra_hi_fifo_us = ultra_lo_fifo_us + 1;
+			urgent_lo_fifo_us = DIV_ROUND_UP(buf_con * 1000 * 6, consume_rate * 10);
+			urgent_hi_fifo_us = DIV_ROUND_UP(buf_con * 1000 * 8, consume_rate * 10);
+		} else {
+			ultra_lo_fifo_us = DIV_ROUND_UP(buf_con * 1000 * 8, consume_rate * 10);
+			ultra_hi_fifo_us = DIV_ROUND_UP(buf_con * 1000 * 9, consume_rate * 10);
+			urgent_lo_fifo_us = DIV_ROUND_UP(buf_con * 1000 * 7, consume_rate * 10);
+			urgent_hi_fifo_us = DIV_ROUND_UP(buf_con * 1000 * 8, consume_rate * 10);
+		}
+		ultra_lo_fifo_us = dbg_ultra_low ? dbg_ultra_low : ultra_lo_fifo_us;
+		ultra_hi_fifo_us = dbg_ultra_high? dbg_ultra_high : ultra_hi_fifo_us;
+		urgent_lo_fifo_us = dbg_urgent_low ? dbg_urgent_low : urgent_lo_fifo_us;
+		urgent_hi_fifo_us = dbg_urgent_high ? dbg_urgent_high : urgent_hi_fifo_us;
 
 		sodi_hi = buf_con + 1;
 		sodi_lo = buf_con;
 		preultra_hi = buf_con + 1;
 		preultra_lo = buf_con;
-		ultra_hi = DIV_ROUND_UP(ultra_high_fifo_us * consume_rate, 1000);
-		ultra_lo = DIV_ROUND_UP(ultra_low_fifo_us * consume_rate, 1000);
+		ultra_hi = DIV_ROUND_UP(ultra_hi_fifo_us * consume_rate, 1000);
+		ultra_lo = DIV_ROUND_UP(ultra_lo_fifo_us * consume_rate, 1000);
 		urgent_hi = DIV_ROUND_UP(urgent_hi_fifo_us * consume_rate, 1000);
 		urgent_lo = DIV_ROUND_UP(urgent_lo_fifo_us * consume_rate, 1000);
 
@@ -2812,8 +2852,18 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 		urgent_hi = urgent_hi < (u32)buf_con ? urgent_hi : (u32)buf_con;
 		urgent_lo = urgent_lo < (u32)buf_con ? urgent_lo : (u32)buf_con;
 
+		if (dbg_always_ultra) {
+			ultra_hi = buf_con + 1;
+			ultra_lo = buf_con;
+		}
+		if (dbg_always_urgent) {
+			urgent_hi = buf_con + 1;
+			urgent_lo = buf_con;
+		}
+
 		if (mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base)) {
-			output_valid_us = ultra_low_fifo_us + 10;
+			output_valid_us = ultra_lo_fifo_us + 5;
+			output_valid_us = dbg_output_valid ? dbg_output_valid : output_valid_us;
 			output_valid = DIV_ROUND_UP(output_valid_us * consume_rate, 1000);
 			output_valid = output_valid < (u32)buf_con ? output_valid : (u32)buf_con;
 		}
