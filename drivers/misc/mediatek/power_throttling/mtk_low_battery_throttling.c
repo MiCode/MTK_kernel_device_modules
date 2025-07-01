@@ -1210,11 +1210,6 @@ int pt_psy_event(struct notifier_block *nb, unsigned long event, void *v)
 	soc = val.intval;
 	lbat_data->lbat_mbrain_info.soc = soc;
 
-	if (soc < exec_thl_enable_pct)
-		lbat_data->exec_thl_enable = true;
-	else
-		lbat_data->exec_thl_enable = false;
-
 	if (lbat_data->pt_shutdown_en) {
 		if (soc <= 1 && soc >= 0 && !timer_pending(&lbat_data->notify_timer)) {
 			mod_timer(&lbat_data->notify_timer, jiffies);
@@ -1265,7 +1260,7 @@ static void psy_handler(struct work_struct *work)
 {
 	struct power_supply *psy;
 	union power_supply_propval val;
-	int ret, temp, temp_stage, temp_thd, aging_stage = 0, lvsys_aging_stage = 0;
+	int ret, temp, temp_stage, temp_thd, aging_stage = 0, lvsys_aging_stage = 0, soc;
 	static int last_temp = MAX_INT;
 	bool loop;
 	unsigned int pre_thl_lv, cur_thl_lv, thl_lv_idx;
@@ -1289,6 +1284,16 @@ static void psy_handler(struct work_struct *work)
 #ifdef LBAT2_ENABLE
 	temp = val.intval; // because of battery bug, remove me if battery driver fix
 #endif
+
+	ret = power_supply_get_property(psy, POWER_SUPPLY_PROP_CAPACITY, &val);
+	if (ret)
+		return;
+	soc = val.intval;
+	if (soc < exec_thl_enable_pct)
+		lbat_data->exec_thl_enable = true;
+	else
+		lbat_data->exec_thl_enable = false;
+
 	lbat_data->lbat_mbrain_info.bat_temp = temp;
 	temp_stage = lbat_data->temp_cur_stage;
 
