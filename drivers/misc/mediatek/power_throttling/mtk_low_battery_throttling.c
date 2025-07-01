@@ -60,6 +60,7 @@ struct tag_bootmode {
 struct lbat_thl_priv {
 	struct tag_bootmode *tag;
 	bool notify_flag;
+	bool exec_thl_enable;
 	struct wait_queue_head notify_waiter;
 	struct timer_list notify_timer;
 	struct task_struct *notify_thread;
@@ -136,6 +137,7 @@ static int lvsys_thd_enable;
 static int vbat_thd_enable;
 unsigned int pmic_level_num;
 bool lvsys_lv1_trigger;
+unsigned int exec_thl_enable_pct;
 
 static unsigned int __used KTF_check_vbat(void)
 {
@@ -277,6 +279,9 @@ void exec_throttle(unsigned int thl_level, enum LOW_BATTERY_USER_TAG user, unsig
 		pr_info("[%s] Failed to create lbat_data\n", __func__);
 		return;
 	}
+
+	if (!lbat_data->exec_thl_enable && thl_level > lbat_data->cur_thl_lv)
+		return;
 
 	if (user == HPT && thl_level != lbat_data->cur_thl_lv) {
 		for (i = 0; i <= LOW_BATTERY_PRIO_GPU; i++) {
@@ -1205,6 +1210,11 @@ int pt_psy_event(struct notifier_block *nb, unsigned long event, void *v)
 	soc = val.intval;
 	lbat_data->lbat_mbrain_info.soc = soc;
 
+	if (soc < exec_thl_enable_pct)
+		lbat_data->exec_thl_enable = true;
+	else
+		lbat_data->exec_thl_enable = false;
+
 	if (lbat_data->pt_shutdown_en) {
 		if (soc <= 1 && soc >= 0 && !timer_pending(&lbat_data->notify_timer)) {
 			mod_timer(&lbat_data->notify_timer, jiffies);
@@ -2122,6 +2132,12 @@ static int low_battery_throttling_probe(struct platform_device *pdev)
 	} else {
 		dev_notice(&pdev->dev, "[%s] set lvsys as last level\n", __func__);
 		lvsys_lv1_trigger = false;
+	}
+
+	ret = of_property_read_u32(np, "lbat-thl-enable-pct", &exec_thl_enable_pct);
+	if (ret) {
+		dev_notice(&pdev->dev, "[%s] Always enable exec_throttle\n", __func__);
+		exec_thl_enable_pct = MAX_INT;
 	}
 
 	ret = device_create_file(&(pdev->dev),
