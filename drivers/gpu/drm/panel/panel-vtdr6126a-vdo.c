@@ -1604,7 +1604,7 @@ static int lcm_setbacklight_cmdq_v2(void *dsi, mtk_dsi_ddic_cmd cb,
 
 		struct mtk_dsi_cmd_msg frame_speed_v2_msg = {
 			.cmd_num = ARRAY_SIZE(dim_frame_speed_v2),
-			.transfer_mode = PACKET_LP_MODE,
+			.transfer_mode = PACKET_HS_MODE,
 			.cmd_msg = frame_speed_v2_tmp,
 		};
 		cb(dsi, handle, cmd_opt, &frame_speed_v2_msg);
@@ -1628,7 +1628,7 @@ static int lcm_setbacklight_cmdq_v2(void *dsi, mtk_dsi_ddic_cmd cb,
 
 		struct mtk_dsi_cmd_msg frame_speed_v2_msg = {
 			.cmd_num = ARRAY_SIZE(dim_frame_speed_v2),
-			.transfer_mode = PACKET_LP_MODE,
+			.transfer_mode = PACKET_HS_MODE,
 			.cmd_msg = frame_speed_v2_tmp,
 		};
 		cb(dsi, handle, cmd_opt, &frame_speed_v2_msg);
@@ -1647,7 +1647,7 @@ static int lcm_setbacklight_cmdq_v2(void *dsi, mtk_dsi_ddic_cmd cb,
 
 		struct mtk_dsi_cmd_msg bl_dim_msg = {
 			.cmd_num = 1,
-			.transfer_mode = PACKET_NULL,
+			.transfer_mode = PACKET_HS_MODE,
 			.cmd_msg = &bl_dim_cmd,
 		};
 		cb(dsi, handle, cmd_opt, &bl_dim_msg);
@@ -1669,7 +1669,7 @@ static int lcm_setbacklight_cmdq_v2(void *dsi, mtk_dsi_ddic_cmd cb,
 
 		struct mtk_dsi_cmd_msg bl_dim_msg = {
 			.cmd_num = 1,
-			.transfer_mode = PACKET_NULL,
+			.transfer_mode = PACKET_HS_MODE,
 			.cmd_msg = &bl_dim_cmd,
 		};
 
@@ -1684,7 +1684,7 @@ static int lcm_setbacklight_cmdq_v2(void *dsi, mtk_dsi_ddic_cmd cb,
 	bl_tb0_cmd.tx_len = 3;
 	struct mtk_dsi_cmd_msg bl_tb0_msg = {
 		.cmd_num = 1,
-		.transfer_mode = PACKET_NULL,
+		.transfer_mode = PACKET_HS_MODE,
 		.cmd_msg = &bl_tb0_cmd,
 	};
 

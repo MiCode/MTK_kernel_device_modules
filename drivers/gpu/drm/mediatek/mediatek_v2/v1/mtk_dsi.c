@@ -10463,7 +10463,8 @@ static enum MTK_GCE_THREAD mtk_gce_thr_check(struct mtk_drm_crtc *mtk_crtc,
 	int ret = 0;
 	bool panel_mode = mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base); /* 0:vdo, 1:cmd */
 
-	if (!mtk_crtc->gce_obj.client[CLIENT_DSI_CFG] || panel_mode) /* cmd mode */
+	 /* cmd mode */
+	if (!mtk_crtc->gce_obj.client[CLIENT_DSI_CFG] || panel_mode || cmd_msg->is_rd)
 		goto end;
 
 	/* vdo mode */
@@ -11120,8 +11121,6 @@ static void mtk_dsi_vm_cmd_transfer(struct mtk_dsi *dsi, struct cmdq_pkt *handle
 {
 	int i;
 	struct mipi_dsi_msg msg = { 0 };
-	const char *delay_buf;
-	char delay_ms;
 
 	for (i = 0; i < cmd_msg->cmd_num; i++) {
 		msg.tx_buf = cmd_msg->cmd_msg[i].tx_buf;
@@ -11129,15 +11128,8 @@ static void mtk_dsi_vm_cmd_transfer(struct mtk_dsi *dsi, struct cmdq_pkt *handle
 
 		switch (msg.tx_len) {
 		case 0:
-			delay_buf = (const char *)msg.tx_buf;
-			delay_ms = delay_buf[0];
-			DDPMSG("%s, delay %d ms, i = %d\n", __func__, delay_ms, i);
-			if (!handle)
-				usleep_range(delay_ms * 1000, delay_ms * 1000 + 100);
-			else
-				cmdq_pkt_sleep(handle, CMDQ_US_TO_TICK(delay_ms * 1000), CMDQ_GPR_R06);
-
-			continue;
+			DDPPR_ERR("%s fail, vm cmd not support delay(len=0), i=%d\n", __func__, i);
+			return;
 
 		case 1:
 			msg.type = MIPI_DSI_DCS_SHORT_WRITE;
@@ -11190,7 +11182,7 @@ static int mtk_dsi_cmd_transfer(struct mtk_dsi *mtk_dsi, struct cmdq_pkt *handle
 	char delay_ms;
 	int ret = 0;
 	/* 0:cmd mode, 1/2/3:vdo mode */
-	int dsi_mode = readl(mtk_dsi->regs + DSI_MODE_CTRL(mtk_dsi->driver_data));
+	int dsi_mode = DISP_REG_GET_FIELD(MODE_FLD_REG_MODE_CON, mtk_dsi->regs + DSI_MODE_CTRL(mtk_dsi->driver_data));
 	bool need_start_vdo_mode = false;
 	u32 reg_cmdq_ofs = mtk_dsi->driver_data->reg_cmdq0_ofs;
 	u32 dsi_cmdq_size = mtk_dsi->driver_data->dsi_cmdq_size - 1;
@@ -11483,7 +11475,7 @@ static int _mtk_mipi_dsi_cmd(struct mtk_drm_crtc *mtk_crtc, struct mtk_dsi *dsi,
 	struct cmdq_client *gce_client;
 	enum MTK_GCE_THREAD gce_thr;
 
-	DDPDSI_CMD("%s ++ flags:0x%x, dsi:0x%x\n", __func__, flags);
+	DDPDSI_CMD("%s ++ flags:0x%x, panel_mode:0x%x\n", __func__, flags, panel_mode);
 
 	if (flags & MTK_MIPI_DSI_CMD_BY_CPU) {
 		CRTC_MMP_MARK(index, ddic_cmd_v2_tag, 3, (unsigned long)cmd_msg);
