@@ -587,7 +587,7 @@ static s32 translate_meta(struct op_meta *meta,
 				handle->engineFlag);
 			cmdq_handle_flush_cmd_buf(handle, cmd_buf);
 			status = cmdq_pkt_poll_timeout(handle->pkt, meta->value, SUBSYS_NO_SUPPORT,
-				reg_addr, meta->mask, CMDQ_US_TO_TICK(100), handle->use_gpr);
+				reg_addr, meta->mask, ~0, handle->use_gpr);
 		} else {
 			u32 gpr;
 
