@@ -9971,7 +9971,7 @@ dramc: dramc@10230000 {
 		mt6720_auxadc: auxadc {
 			compatible = "mediatek,pmic-auxadc",
 				     "mediatek,mt6720-auxadc";
-			interrupts = <MT6720_EVT_GM_BM1>;
+			interrupts = <MT6720_EVT_GM_HK1>;
 			interrupt-controller;
 			#interrupt-cells = <1>;
 			#address-cells = <1>;
