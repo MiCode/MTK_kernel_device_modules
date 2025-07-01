@@ -998,7 +998,8 @@
 				<&ipesys_clk CLK_IPE_LARB20>;
 		clock-names = "aie",
 					"FDVT_CLK_IPE_LARB20";
-		mboxes = <&gce_m 1 0 CMDQ_THR_PRIO_1>;
+		mboxes = <&gce_m 1 0 CMDQ_THR_PRIO_1>,
+				 <&gce_m_sec 11 0 CMDQ_THR_PRIO_1>;
 		iommus = <&disp_iommu M4U_L20_P0_IPESYS_SMI_FDVT_RDA_0>,
 				 <&disp_iommu M4U_L20_P1_IPESYS_SMI_FDVT_RDB_0>,
 				 <&disp_iommu M4U_L20_P2_IPESYS_SMI_FDVT_WRA_0>,
@@ -1020,6 +1021,7 @@
 					"fdvt_qos_wra",
 					"fdvt_qos_wrb";
 		mmqos-supply = <&mmqos>;
+		cmdq-supply = <&gce_m_sec>;
 	};
 
 	ipe_sub0_bus: syscon@1b00e000 {
