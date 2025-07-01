@@ -940,6 +940,12 @@ CONFIG_REG:
 			comp->regs_pa+DSI_PHY_TIMECON3(dsi->driver_data), value, ~0);
 	else
 		writel(value, dsi->regs + DSI_PHY_TIMECON3(dsi->driver_data));
+
+	if (handle)
+		cmdq_pkt_write((struct cmdq_pkt *)handle, comp->cmdq_base,
+			comp->regs_pa + DSI_PHY_LCPAT(dsi->driver_data), 0x55, ~0);
+	else
+		writel(0x55, dsi->regs + DSI_PHY_LCPAT(dsi->driver_data));
 }
 
 static void mtk_dsi_dphy_timconfig_v1(struct mtk_dsi *dsi, void *handle)
@@ -1199,6 +1205,18 @@ CONFIG_REG:
 			comp->regs_pa+DSI_PHY_TIMECON3(dsi->driver_data), value, ~0);
 	else
 		writel(value, dsi->regs + DSI_PHY_TIMECON3(dsi->driver_data));
+
+#ifdef CONFIG_FPGA_EARLY_PORTING
+	value = 0x55;
+#else
+	// if process <= N28, value should be 0x55
+	value = 0xAA;
+#endif
+	if (handle)
+		cmdq_pkt_write((struct cmdq_pkt *)handle, comp->cmdq_base,
+			comp->regs_pa + DSI_PHY_LCPAT(dsi->driver_data), value, ~0);
+	else
+		writel(value, dsi->regs + DSI_PHY_LCPAT(dsi->driver_data));
 }
 
 
@@ -2247,22 +2265,6 @@ static void mtk_dsi_clk_hs_mode(struct mtk_dsi *dsi, bool enter)
 	if (!priv || !priv->data) {
 		DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
 		return;
-	}
-
-	//MIPI_TX_MT6983
-	if (priv->data->mmsys_id == MMSYS_MT6983 ||
-		priv->data->mmsys_id == MMSYS_MT6985 ||
-		priv->data->mmsys_id == MMSYS_MT6989 ||
-		priv->data->mmsys_id == MMSYS_MT6991 ||
-		priv->data->mmsys_id == MMSYS_MT6993 ||
-		priv->data->mmsys_id == MMSYS_MT6897 ||
-		priv->data->mmsys_id == MMSYS_MT6895 ||
-		priv->data->mmsys_id == MMSYS_MT6886 ||
-		priv->data->mmsys_id == MMSYS_MT6858) {
-		if (dsi->ext && dsi->ext->params && dsi->ext->params->is_cphy)
-			writel(0xAA, dsi->regs + DSI_PHY_LCPAT(dsi->driver_data));
-		else
-			writel(0x55, dsi->regs + DSI_PHY_LCPAT(dsi->driver_data));
 	}
 
 	if (enter && !mtk_dsi_clk_hs_state(dsi))
@@ -4891,7 +4893,7 @@ static int DSI_MIPI_deskew(struct mtk_dsi *dsi)
 	int ret = 0;
 
 	phy_syncon = readl(dsi->regs + DSI_PHY_SYNCON(dsi->driver_data));
-	writel(0x00aa00ff, dsi->regs + DSI_PHY_SYNCON(dsi->driver_data));
+	writel(0x00aaffff, dsi->regs + DSI_PHY_SYNCON(dsi->driver_data));
 
 	SET_VAL_MASK(value, mask, 6, FLD_SKEWCAL_PRD);
 	mtk_dsi_mask(dsi, DSI_TIME_CON0(dsi->driver_data), mask, value);
