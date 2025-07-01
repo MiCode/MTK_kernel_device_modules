@@ -1564,6 +1564,9 @@
 		power-domains = <&scpsys MT6858_POWER_DOMAIN_DIS0_SHUTDOWN>;
 		clocks = <&dispsys_config_clk CLK_MM_SMI_COMMON_SMI>;
 		clock-names = "apb";
+		is-default-ostdl;
+		is-real-time-perm;
+		larb-port-real-time-type = <0 0 0 0 0 0 1>;
 	};
 
 	smi_larb1: smi-larb1@1401f000 {
@@ -1576,6 +1579,9 @@
 		power-domains = <&scpsys MT6858_POWER_DOMAIN_DIS0_SHUTDOWN>;
 		clocks = <&dispsys_config_clk CLK_MM_SMI_COMMON_SMI>;
 		clock-names = "apb";
+		is-default-ostdl;
+		is-real-time-perm;
+		larb-port-real-time-type = <0 0 0 0 0 1>;
 	};
 
 	smi_larb2: smi-larb2@1f002000 {
@@ -1587,6 +1593,9 @@
 		power-domains = <&scpsys MT6858_POWER_DOMAIN_DIS0_SHUTDOWN>;
 		clocks = <&mdpsys_config_clk CLK_MDP_SMI0_SMI>;
 		clock-names = "apb";
+		is-default-ostdl;
+		is-real-time-perm;
+		larb-port-real-time-type = <1 1 1 1 1>;
 	};
 
 	smi_img_sub_comm0: smi-img-sub-comm0@1502f000 {
@@ -1621,6 +1630,9 @@
 		power-domains = <&scpsys MT6858_POWER_DOMAIN_ISP_IMG1>;
 		clocks = <&imgsys1_clk CLK_IMGSYS1_LARB9_SMI>;
 		clock-names = "apb";
+		is-default-ostdl;
+		is-real-time-perm;
+		larb-port-real-time-type = <1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1>;
 	};
 
 	smi_larb11: smi-larb11@1582e000 {
@@ -1632,6 +1644,9 @@
 		power-domains = <&scpsys MT6858_POWER_DOMAIN_ISP_IMG2>;
 		clocks = <&imgsys2_clk CLK_IMGSYS2_LARB9_SMI>;
 		clock-names = "apb";
+		is-default-ostdl;
+		is-real-time-perm;
+		larb-port-real-time-type = <1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1>;
 	};
 
 	smi_larb20: smi-larb20@1b00f000 {
@@ -1643,6 +1658,9 @@
 		power-domains = <&scpsys MT6858_POWER_DOMAIN_ISP_IPE>;
 		clocks = <&ipesys_clk CLK_IPE_LARB20_SMI>;
 		clock-names = "apb";
+		is-default-ostdl;
+		is-real-time-perm;
+		larb-port-real-time-type = <1 1 1 1 1 1>;
 	};
 
 	smi_cam_sub_comm0: smi-cam-sub-comm0@1a00d000 {
@@ -1676,6 +1694,9 @@
 		power-domains = <&scpsys MT6858_POWER_DOMAIN_CAM_MAIN>;
 		clocks = <&camsys_main_clk CLK_CAM_M_LARB13_SMI>;
 		clock-names = "apb";
+		is-default-ostdl;
+		is-real-time-perm;
+		larb-port-real-time-type = <0 0 0 0 0 0 0 0 0 0 0 0 0 0 0>;
 	};
 
 	smi_larb14: smi-larb14@1a002000 {
@@ -1687,6 +1708,9 @@
 		power-domains = <&scpsys MT6858_POWER_DOMAIN_CAM_MAIN>;
 		clocks = <&camsys_main_clk CLK_CAM_M_LARB14_SMI>;
 		clock-names = "apb";
+		is-default-ostdl;
+		is-real-time-perm;
+		larb-port-real-time-type = <0 0 0 0 0 0 0 0 0 0>;
 	};
 
 	smi_larb16: smi-larb16@1a00f000 {
@@ -1698,6 +1722,9 @@
 		power-domains = <&scpsys MT6858_POWER_DOMAIN_CAM_SUBA>;
 		clocks = <&camsys_rawa_clk CLK_CAM_RA_LARBX_SMI>;
 		clock-names = "apb";
+		is-default-ostdl;
+		is-real-time-perm;
+		larb-port-real-time-type = <0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0>;
 	};
 
 	smi_larb17: smi-larb17@1a010000 {
@@ -1709,6 +1736,9 @@
 		power-domains = <&scpsys MT6858_POWER_DOMAIN_CAM_SUBB>;
 		clocks = <&camsys_rawb_clk CLK_CAM_RB_LARBX_SMI>;
 		clock-names = "apb";
+		is-default-ostdl;
+		is-real-time-perm;
+		larb-port-real-time-type = <0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0>;
 	};
 
 	smi_larb7: smi-larb7@17010000 {
@@ -1720,6 +1750,9 @@
 		power-domains = <&scpsys MT6858_POWER_DOMAIN_VEN0>;
 		clocks = <&venc_gcon_clk CLK_VEN1_CKE0_LARB_SMI>;
 		clock-names = "apb";
+		is-default-ostdl;
+		is-real-time-perm;
+		larb-port-real-time-type = <1 1 1 1 1 1 1 1 1 1 1 1 1 1 1>;
 	};
 
 	smi_larb4: smi-larb4@1602e000 {
@@ -1729,6 +1762,9 @@
 		mediatek,smi-supply = <&smi_disp_common 0>;
 		mediatek,larb-id = <4>;
 		power-domains = <&scpsys MT6858_POWER_DOMAIN_VDE0>;
+		is-default-ostdl;
+		is-real-time-perm;
+		larb-port-real-time-type = <1 1 1 1 1 1 1 1 1 1>;
 	};
 
 	smi_dbg: smi-dbg {
