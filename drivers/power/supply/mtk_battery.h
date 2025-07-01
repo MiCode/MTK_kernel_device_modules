@@ -756,6 +756,21 @@ struct fuel_gauge_custom_data {
 	/* overheat shutdown */
 	int overheat_temp;
 	int enable_overheat_shutdown;
+
+	/* for dynamic vc diff*/
+	int dynamic_vc_diff_sel;
+	int difference_fgc_fgv_th1_c;
+	int difference_fgc_fgv_th2_c;
+	int difference_fgc_fgv_th3_c;
+	int difference_agc_fgv_th1;
+	int difference_agc_fgv_th2;
+	int difference_agc_fgv_th3;
+	int difference_agc_fgv_th1_c;
+	int difference_agc_fgv_th2_c;
+	int difference_agc_fgv_th3_c;
+	int dynamic_vc_temp_diff;
+	int dynamic_vc_cycle_diff;
+	int dynamic_vc_force_rl;
 };
 
 struct fgd_cmd_param_t_custom {
@@ -1599,7 +1614,7 @@ extern void mtk_irq_thread_init(struct mtk_battery *gm);
 
 #define DIFF_SOC_SETTING				50	/* 0.01% */
 #define DIFF_BAT_TEMP_SETTING			1
-#define DIFF_BAT_TEMP_SETTING_C			10
+#define DIFF_BAT_TEMP_SETTING_C			1
 #define DISCHARGE_TRACKING_TIME			10
 #define CHARGE_TRACKING_TIME			60
 #define DIFFERENCE_FULLOCV_VTH			1000/* 0.1mV */
@@ -1678,9 +1693,22 @@ extern void mtk_irq_thread_init(struct mtk_battery *gm);
 #define EXT_HWOCV_SWOCV_LT_TEMP		5
 
 /* fgc & fgv threshold */
-#define DIFFERENCE_FGC_FGV_TH1		300
+#define DYNAMIC_VC_DIFF_SEL		2
+#define DIFFERENCE_FGC_FGV_TH1		500
 #define DIFFERENCE_FGC_FGV_TH2		500
-#define DIFFERENCE_FGC_FGV_TH3		300
+#define DIFFERENCE_FGC_FGV_TH3		500
+#define DIFFERENCE_FGC_FGV_TH1_C	500
+#define DIFFERENCE_FGC_FGV_TH2_C	500
+#define DIFFERENCE_FGC_FGV_TH3_C	500
+#define DIFFERENCE_AGC_FGV_TH1		1000
+#define DIFFERENCE_AGC_FGV_TH2		1000
+#define DIFFERENCE_AGC_FGV_TH3		1000
+#define DIFFERENCE_AGC_FGV_TH1_C	1000
+#define DIFFERENCE_AGC_FGV_TH2_C	1000
+#define DIFFERENCE_AGC_FGV_TH3_C	1000
+#define DYNAMIC_VC_TEMP_DIFF		5
+#define DYNAMIC_VC_CYCLE_DIFF		100
+#define DYNAMIC_VC_FORCE_RL		0
 #define DIFFERENCE_FGC_FGV_TH_SOC1	7000
 #define DIFFERENCE_FGC_FGV_TH_SOC2	3000
 #define NAFG_TIME_SETTING			10

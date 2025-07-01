@@ -1031,6 +1031,21 @@ void fg_custom_init_from_header(struct mtk_battery *gm)
 	fg_cust_data->nafg_ratio_tmp_thr = NAFG_RATIO_TMP_THR;
 	fg_cust_data->nafg_resistance = NAFG_RESISTANCE;
 
+	/* dynamic vc diff */
+	fg_cust_data->dynamic_vc_diff_sel = DYNAMIC_VC_DIFF_SEL;
+	fg_cust_data->difference_fgc_fgv_th1_c = DIFFERENCE_FGC_FGV_TH1_C;
+	fg_cust_data->difference_fgc_fgv_th2_c = DIFFERENCE_FGC_FGV_TH2_C;
+	fg_cust_data->difference_fgc_fgv_th3_c = DIFFERENCE_FGC_FGV_TH3_C;
+	fg_cust_data->difference_agc_fgv_th1 = DIFFERENCE_AGC_FGV_TH1;
+	fg_cust_data->difference_agc_fgv_th2 = DIFFERENCE_AGC_FGV_TH2;
+	fg_cust_data->difference_agc_fgv_th3 = DIFFERENCE_AGC_FGV_TH3;
+	fg_cust_data->difference_agc_fgv_th1_c = DIFFERENCE_AGC_FGV_TH1_C;
+	fg_cust_data->difference_agc_fgv_th2_c = DIFFERENCE_AGC_FGV_TH2_C;
+	fg_cust_data->difference_agc_fgv_th3_c = DIFFERENCE_AGC_FGV_TH3_C;
+	fg_cust_data->dynamic_vc_temp_diff = DYNAMIC_VC_TEMP_DIFF;
+	fg_cust_data->dynamic_vc_cycle_diff = DYNAMIC_VC_CYCLE_DIFF;
+	fg_cust_data->dynamic_vc_force_rl = DYNAMIC_VC_FORCE_RL;
+
 	/* ADC resistor  */
 	fg_cust_data->r_charger_1 = R_CHARGER_1;
 	fg_cust_data->r_charger_2 = R_CHARGER_2;
@@ -1907,6 +1922,34 @@ void fg_custom_init_from_dts(struct platform_device *dev,
 		&(fg_cust_data->nafg_ratio_tmp_thr), 1);
 	fg_read_dts_val(gm, np, "NAFG_RESISTANCE", &(fg_cust_data->nafg_resistance),
 		1);
+
+	/* dynamic vc diff */
+	fg_read_dts_val(gm, np, "DYNAMIC_VC_DIFF_SEL",
+		&(fg_cust_data->dynamic_vc_diff_sel), 1);
+	fg_read_dts_val(gm, np, "DIFFERENCE_FGC_FGV_TH1_C",
+		&(fg_cust_data->difference_fgc_fgv_th1_c), 1);
+	fg_read_dts_val(gm, np, "DIFFERENCE_FGC_FGV_TH2_C",
+		&(fg_cust_data->difference_fgc_fgv_th2_c), 1);
+	fg_read_dts_val(gm, np, "DIFFERENCE_FGC_FGV_TH3_C",
+		&(fg_cust_data->difference_fgc_fgv_th3_c), 1);
+	fg_read_dts_val(gm, np, "DIFFERENCE_AGC_FGV_TH1",
+		&(fg_cust_data->difference_agc_fgv_th1), 1);
+	fg_read_dts_val(gm, np, "DIFFERENCE_AGC_FGV_TH2",
+		&(fg_cust_data->difference_agc_fgv_th2), 1);
+	fg_read_dts_val(gm, np, "DIFFERENCE_AGC_FGV_TH3",
+		&(fg_cust_data->difference_agc_fgv_th3), 1);
+	fg_read_dts_val(gm, np, "DIFFERENCE_AGC_FGV_TH1_C",
+		&(fg_cust_data->difference_agc_fgv_th1_c), 1);
+	fg_read_dts_val(gm, np, "DIFFERENCE_AGC_FGV_TH2_C",
+		&(fg_cust_data->difference_agc_fgv_th2_c), 1);
+	fg_read_dts_val(gm, np, "DIFFERENCE_AGC_FGV_TH3_C",
+		&(fg_cust_data->difference_agc_fgv_th3_c), 1);
+	fg_read_dts_val(gm, np, "DYNAMIC_VC_TEMP_DIFF",
+		&(fg_cust_data->dynamic_vc_temp_diff), 1);
+	fg_read_dts_val(gm, np, "DYNAMIC_VC_CYCLE_DIFF",
+		&(fg_cust_data->dynamic_vc_cycle_diff), 1);
+	fg_read_dts_val(gm, np, "DYNAMIC_VC_FORCE_RL",
+		&(fg_cust_data->dynamic_vc_force_rl), 1);
 
 	/* shutdown jumping*/
 	fg_read_dts_val(gm, np, "LOW_TRACKING_JUMP",
