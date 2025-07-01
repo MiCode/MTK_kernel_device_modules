@@ -11288,7 +11288,7 @@ void mtk_crtc_clear_wait_event(struct drm_crtc *crtc)
 
 		} else
 			cmdq_pkt_set_event(cmdq_handle,
-					   mtk_crtc->gce_obj.event[EVENT_VDO_CABC_EOF]);
+					   mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
 
 		priv = mtk_crtc->base.dev->dev_private;
 		if (mtk_drm_helper_get_opt(priv->helper_opt,
@@ -12336,9 +12336,9 @@ skip_prete:
 				GCE_DO(set_event, EVENT_SYNC_TOKEN_VFP_PERIOD);
 			} else {
 				GCE_DO(wait_no_clear, EVENT_CMD_EOF);
-				GCE_DO(wfe, EVENT_VDO_CABC_EOF);
+				GCE_DO(wfe, EVENT_CABC_EOF);
 				GCE_DO(clear_event, EVENT_CMD_EOF);
-				GCE_DO(set_event, EVENT_VDO_CABC_EOF);
+				GCE_DO(set_event, EVENT_CABC_EOF);
 			}
 
 		} else if (crtc_id == 1) {
