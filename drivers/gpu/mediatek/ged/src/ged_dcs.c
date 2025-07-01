@@ -61,6 +61,14 @@ struct gpufreq_core_mask_info *g_avail_mask_table;
 int (*ged_dvfs_set_gpu_core_mask_fp)(u64 core_mask) = NULL;
 EXPORT_SYMBOL(ged_dvfs_set_gpu_core_mask_fp);
 
+void ged_dvfs_set_gpu_core_mask(u64 core_mask)
+{
+	if (ged_dvfs_set_gpu_core_mask_fp != NULL)
+		ged_dvfs_set_gpu_core_mask_fp(core_mask);
+	else
+		GED_LOGE("ged_dvfs_set_gpu_core_mask_fp is null");
+}
+
 static void _dcs_init_core_mask_table(void)
 {
 	int i = 0;
@@ -266,9 +274,9 @@ int dcs_set_core_mask(unsigned int core_mask, unsigned int core_num, int commit_
 	}
 
 	if (g_fix_core_num > 0 && commit_type != GED_DVFS_LOWPWR_COMMIT)
-		ged_dvfs_set_gpu_core_mask_fp(g_fix_core_mask);
+		ged_dvfs_set_gpu_core_mask(g_fix_core_mask);
 	else
-		ged_dvfs_set_gpu_core_mask_fp(core_mask);
+		ged_dvfs_set_gpu_core_mask(core_mask);
 
 	g_setting_dirty = g_dcs_stress;
 	g_cur_core_num = core_num;
@@ -295,10 +303,7 @@ int dcs_set_fix_core_mask(gov_mask_config_t config, unsigned int core_mask)
 
 	mutex_lock(&g_DCS_lock);
 
-	if (ged_dvfs_set_gpu_core_mask_fp != NULL)
-		ged_dvfs_set_gpu_core_mask_fp(core_mask);
-	else
-		ret = GED_ERROR_FAIL;
+	ged_dvfs_set_gpu_core_mask(core_mask);
 
 	g_setting_dirty = true;
 
@@ -413,9 +418,9 @@ int dcs_restore_max_core_mask(void)
 	}
 
 	if (g_fix_core_num > 0)
-		ged_dvfs_set_gpu_core_mask_fp(g_fix_core_mask);
+		ged_dvfs_set_gpu_core_mask(g_fix_core_mask);
 	else
-		ged_dvfs_set_gpu_core_mask_fp(g_core_mask_table[0].mask);
+		ged_dvfs_set_gpu_core_mask(g_core_mask_table[0].mask);
 
 	g_cur_core_num = g_max_core_num;
 	trace_GPU_DVFS__Policy__DCS(g_max_core_num, g_cur_core_num, g_fix_core_num, g_lowpwr_mode);
@@ -436,11 +441,6 @@ void dcs_enable(int enable)
 	if (g_core_mask_table == NULL)
 		return;
 
-	if (ged_dvfs_set_gpu_core_mask_fp == NULL) {
-		GED_LOGE("ged_dvfs_set_gpu_core_mask_fp is null");
-		return;
-	}
-
 	mutex_lock(&g_DCS_lock);
 
 	g_setting_dirty = true;
@@ -449,16 +449,16 @@ void dcs_enable(int enable)
 		if (dcs_get_gov_enable()) {
 			ged_eb_dvfs_task(EB_DCS_CORE_NUM, g_max_core_num);
 
-			ged_dvfs_set_gpu_core_mask_fp(g_core_mask_table[0].mask);
+			ged_dvfs_set_gpu_core_mask(g_core_mask_table[0].mask);
 			g_cur_core_num = g_max_core_num;
 			trace_GPU_DVFS__Policy__DCS(g_max_core_num, g_cur_core_num, g_fix_core_num, g_lowpwr_mode);
 			trace_GPU_DVFS__Policy__DCS__Detail(g_core_mask_table[0].mask);
 		}
 	} else {
 		if (g_fix_core_num > 0)
-			ged_dvfs_set_gpu_core_mask_fp(g_fix_core_mask);
+			ged_dvfs_set_gpu_core_mask(g_fix_core_mask);
 		else
-			ged_dvfs_set_gpu_core_mask_fp(g_core_mask_table[0].mask);
+			ged_dvfs_set_gpu_core_mask(g_core_mask_table[0].mask);
 		g_cur_core_num = g_max_core_num;
 		g_dcs_enable = 0;
 		trace_GPU_DVFS__Policy__DCS(g_max_core_num, g_cur_core_num, g_fix_core_num, g_lowpwr_mode);
@@ -624,7 +624,7 @@ void dcs_set_gov_enable(unsigned int enable, unsigned int src)
 
 		mutex_lock(&g_DCS_lock);
 
-		ged_dvfs_set_gpu_core_mask_fp(g_core_mask_table[0].mask);
+		ged_dvfs_set_gpu_core_mask(g_core_mask_table[0].mask);
 		g_cur_core_num = g_max_core_num;
 		trace_GPU_DVFS__Policy__DCS(g_max_core_num, g_cur_core_num, g_fix_core_num, g_lowpwr_mode);
 		trace_GPU_DVFS__Policy__DCS__Detail(g_core_mask_table[0].mask);
@@ -699,7 +699,7 @@ void dcs_set_lowpwr(int enable)
 			if (ged_check_ceil_in_min_working_opp()) {
 				int max_avail_idx = g_avail_mask_num - 1;
 				if (max_avail_idx >= 0) {
-					ged_dvfs_set_gpu_core_mask_fp(g_avail_mask_table[max_avail_idx].mask);
+					ged_dvfs_set_gpu_core_mask(g_avail_mask_table[max_avail_idx].mask);
 					g_cur_core_num = g_avail_mask_table[max_avail_idx].num;
 					trace_GPU_DVFS__Policy__DCS(g_max_core_num, g_cur_core_num,
 												g_fix_core_num, g_lowpwr_mode);
