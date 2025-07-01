@@ -28,6 +28,7 @@ define_mgk_ddk_ko(
     ko_deps = ["//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:mtk-cmdq-drv-ext".format(kernel_version),
      "//kernel_device_modules-{}/drivers/misc/mediatek/mtk-interconnect:mtk-icc-core".format(kernel_version),
      "//kernel_device_modules-{}/drivers/misc/mediatek/mdp:cmdq_helper_inf".format(kernel_version),
+     "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:cmdq-sec-drv".format(kernel_version),
     ],
 )
 
