@@ -22,6 +22,7 @@
 #define MAX_RT_PRIO 100
 #define MAX_NORMAL_PRIO 140
 #define MIN_CPUS 4
+#define LOOM_NO_AFFINITY -1
 
 DECLARE_PER_CPU(unsigned long, max_freq_scale);
 DECLARE_PER_CPU(unsigned long, min_freq_scale);
@@ -82,6 +83,11 @@ struct sched_attr_work {
 	struct task_struct *task;
 	struct sched_attr attr;
 	int toSet;
+};
+
+struct affinity_data_node {
+	pid_t pid;
+	int aff_cpu;
 };
 
 void set_vip_ctrl_node(int pid, int vip_prio, unsigned int throttle_time);

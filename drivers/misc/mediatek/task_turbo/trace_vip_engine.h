@@ -246,6 +246,29 @@ TRACE_EVENT(vip_loom,
 		__get_str(caller))
 );
 
+TRACE_EVENT(loom_bind_to_specify_cpu,
+
+	TP_PROTO(unsigned int loom_affinity_enable, int *pid, int *aff_cpu),
+	TP_ARGS(loom_affinity_enable, pid, aff_cpu),
+
+	TP_STRUCT__entry(
+		__field(unsigned int, loom_affinity_enable)
+		__array(int, pid, 4)
+		__array(int, aff_cpu, 4)
+	),
+
+	TP_fast_assign(
+		__entry->loom_affinity_enable = loom_affinity_enable;
+		memcpy(__entry->pid, pid, sizeof(int)*4);
+		memcpy(__entry->aff_cpu, aff_cpu, sizeof(int)*4);
+	),
+
+	TP_printk("enable = %u, pid = %d|%d|%d|%d, aff_cpu = %d|%d|%d|%d",
+		__entry->loom_affinity_enable, __entry->pid[0], __entry->pid[1],
+		__entry->pid[2], __entry->pid[3], __entry->aff_cpu[0], __entry->aff_cpu[1],
+		__entry->aff_cpu[2], __entry->aff_cpu[3])
+);
+
 #endif /*_TRACE_VIP_ENGINE_H */
 
 #undef TRACE_INCLUDE_PATH
