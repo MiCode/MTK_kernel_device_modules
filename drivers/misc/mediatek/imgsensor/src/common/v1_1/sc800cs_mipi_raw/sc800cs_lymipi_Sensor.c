@@ -1074,14 +1074,22 @@ static void slim_video_setting(void)
 	write_cmos_sensor(0x302d,0x00);
 }
 
-static kal_uint32 set_test_pattern_mode(kal_bool enable)
+static kal_uint32 set_test_pattern_mode(kal_uint32 enable)
 {
 	LOG_INF("enable: %d\n", enable);
-
-	if (enable)
+	if ((enable == 1) || (enable == 5)) {//black
+		write_cmos_sensor(0x4501, 0xcc);
+		write_cmos_sensor(0x3902, 0x85);
+		write_cmos_sensor(0x3908, 0x00);
+		write_cmos_sensor(0x3909, 0xff);
+		write_cmos_sensor(0x390a, 0xff);
+		write_cmos_sensor(0x391d, 0x18);
+	} else if (enable == 2) {//colorbar
 		write_cmos_sensor(0x4501, 0xbc);
-	else
+	} else {
 		write_cmos_sensor(0x4501, 0xb4);
+	}
+
 	spin_lock(&imgsensor_drv_lock);
 	imgsensor.test_pattern = enable;
 	spin_unlock(&imgsensor_drv_lock);
@@ -1795,7 +1803,7 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 		}
 		break;
 	case SENSOR_FEATURE_SET_TEST_PATTERN:
-		set_test_pattern_mode((BOOL)*feature_data);
+		set_test_pattern_mode((UINT32)*feature_data);
 		break;
 	case SENSOR_FEATURE_GET_TEST_PATTERN_CHECKSUM_VALUE:
 		*feature_return_para_32 = imgsensor_info.checksum_value;

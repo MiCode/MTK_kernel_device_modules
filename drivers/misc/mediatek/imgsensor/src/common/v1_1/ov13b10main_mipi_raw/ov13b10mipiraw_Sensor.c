@@ -2168,9 +2168,12 @@ static kal_uint32 get_default_framerate_by_scenario(
 	return ERROR_NONE;
 }
 
-static kal_uint32 set_test_pattern_mode(kal_bool enable)
+static kal_uint32 set_test_pattern_mode(kal_uint32 enable)
 {
-	if (enable) {
+	if ((enable == 1) || (enable == 5)) {//black
+		write_cmos_sensor(0x5000, 0x81);
+		write_cmos_sensor(0x5080, 0x81);
+	} else if (enable == 2) {//colorbar
 		write_cmos_sensor(0x5000, 0x81);
 		write_cmos_sensor(0x5080, 0x80);
 	} else {
@@ -2390,7 +2393,7 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 	case SENSOR_FEATURE_GET_PDAF_DATA:
 		break;
 	case SENSOR_FEATURE_SET_TEST_PATTERN:
-		set_test_pattern_mode((BOOL)*feature_data);
+		set_test_pattern_mode((UINT32)*feature_data);
 		break;
 	case SENSOR_FEATURE_GET_TEST_PATTERN_CHECKSUM_VALUE:
 		*feature_return_para_32 = imgsensor_info.checksum_value;
