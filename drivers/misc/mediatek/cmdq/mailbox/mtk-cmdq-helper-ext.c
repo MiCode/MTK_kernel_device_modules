@@ -1491,12 +1491,11 @@ struct cmdq_pkt *cmdq_pkt_create(struct cmdq_client *client)
 	end[end_cnt++] = sched_clock();
 #endif
 #if IS_ENABLED(CONFIG_MTK_CMDQ_MBOX_EXT)
-	if (client)
-		cmdq_pkt_perf_begin(pkt);
-
 	if (!cmdq_util_is_prebuilt_client(client) &&
-		!cmdq_util_is_secure_client(client))
+		!cmdq_util_is_secure_client(client)) {
+		cmdq_pkt_perf_begin(pkt);
 		cmdq_pkt_hw_trace(pkt, 0);
+	}
 #endif
 	pkt->task_alive = true;
 	pkt->create_instr_cnt = pkt->cmd_buf_size / CMDQ_INST_SIZE;
@@ -3069,15 +3068,13 @@ void cmdq_pkt_perf_begin(struct cmdq_pkt *pkt)
 	unsigned long long gce_mminfra;
 	struct cmdq_client *cl = pkt->cl;
 
-	if (!cmdq_util_helper->is_feature_en(CMDQ_LOG_FEAT_PERF))
+	if (!cl || !cmdq_util_helper->is_feature_en(CMDQ_LOG_FEAT_PERF))
 		return;
 
 	if (!pkt->buf_size)
 		if (cmdq_pkt_add_cmd_buffer(pkt) < 0)
 			return;
 
-	if (!cl)
-		return;
 
 	gce_mminfra = cmdq_get_hw_flags(cl->chan, GCE_MMINFRA);
 	pa = cmdq_pkt_get_pa_by_offset(pkt, 0) + CMDQ_DBG_PERFBEGIN;
@@ -3450,8 +3447,10 @@ s32 cmdq_pkt_finalize(struct cmdq_pkt *pkt)
 		return 0;
 
 #if IS_ENABLED(CONFIG_MTK_CMDQ_MBOX_EXT)
-	cmdq_pkt_perf_end(pkt);
-
+	if (!cmdq_util_is_prebuilt_client(cl) &&
+		!cmdq_util_is_secure_client(cl)) {
+		cmdq_pkt_perf_end(pkt);
+	}
 #ifdef CMDQ_SECURE_SUPPORT
 	if (pkt->sec_data) {
 		err = cmdq_sec_helper->sec_insert_backup_cookie_fp(pkt);
