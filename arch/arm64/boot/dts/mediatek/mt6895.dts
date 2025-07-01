@@ -1768,6 +1768,23 @@
 			iommus = <&apu_iommu0 M4U_LARB34_APU_CODE>;
 		};
 
+		videogo {
+			compatible =  "mediatek,videogo";
+			/* Create Instance*/
+			cgroup-colocate = <0>;          /* 0:disable, 1:enable */
+			runnable-boost-enable = <0>;    /* 0:disable, 1:enable */
+			/* VP Low Power */
+			cpu-pf-ctrl = <0>;              /* 0:disable, 1:enable */
+			margin-control = <0 0 0>;/* <0 0 0>:disable     */
+			rt-non-idle-preempt = <0>;      /* 0:disable, 1:enable */
+			runnable-boost-disable = <0>;   /* 0:disable, 1:enable */
+			slc-wce-ctrl = <0>;             /* 0:disable, 1:enable */
+			util-est-boost-disable = <0>;   /* 0:disable, 1:enable */
+			/* Transcoding */
+			ct-to-vip = <0>;                /* 0:disable, 1:enable */
+			uclamp-min-ta-val = <0>;      /* 0:disable, others:enable */
+		};
+
 		bus_parity {
 			compatible = "mediatek,bus-parity";
 			reg = <0 0x0c538800 0 0x20>,	/* M0, MST_CCIM0 */
