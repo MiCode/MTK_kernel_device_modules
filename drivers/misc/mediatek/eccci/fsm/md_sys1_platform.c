@@ -1074,6 +1074,7 @@ static void ccci_md_PMRC_req_mask(struct ccci_modem *md, unsigned int mask)
 			udelay(10);
 		}
 		step--;
+		udelay(100);
 
 		/* set 0x1C00D02C [4:3] = 2b'01 */
 		ccci_write32(reg, 0x2C, ccci_read32(reg, 0x2C) & (~0x18) | 0x08);
@@ -1085,6 +1086,7 @@ static void ccci_md_PMRC_req_mask(struct ccci_modem *md, unsigned int mask)
 			udelay(10);
 		}
 		step--;
+		udelay(100);
 
 		/* set 0x1C00D028 [4:3] = 2b'01 */
 		ccci_write32(reg, 0x28, ccci_read32(reg, 0x28) & (~0x18) | 0x08);
@@ -1096,6 +1098,7 @@ static void ccci_md_PMRC_req_mask(struct ccci_modem *md, unsigned int mask)
 			udelay(10);
 		}
 		step--;
+		udelay(100);
 
 		/* set 0x1C00D024 [4:3] = 2b'01 */
 		ccci_write32(reg, 0x24, ccci_read32(reg, 0x24) & (~0x18) | 0x08);
@@ -1107,6 +1110,8 @@ static void ccci_md_PMRC_req_mask(struct ccci_modem *md, unsigned int mask)
 			udelay(10);
 		}
 		step--;
+		udelay(100);
+
 mask_dump:
 		/* ret = 0 means success, ret = 1~4 means MD_PMRC1~4 timeout */
 		CCCI_BOOTUP_LOG(0, TAG,
