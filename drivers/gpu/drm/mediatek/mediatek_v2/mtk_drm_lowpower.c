@@ -2236,6 +2236,7 @@ static void mtk_drm_idlemgr_disable_crtc(struct drm_crtc *crtc)
 	struct mtk_drm_idlemgr_context *idlemgr_ctx = idlemgr->idlemgr_ctx;
 	unsigned long long start, end;
 	char *perf_string = NULL;
+	unsigned int cpu_online_start = 0, cpu_online_end = 0;
 
 	DDPINFO("%s, crtc%d+\n", __func__, crtc_id);
 
@@ -2246,6 +2247,7 @@ static void mtk_drm_idlemgr_disable_crtc(struct drm_crtc *crtc)
 	}
 
 	if (idlemgr->perf != NULL) {
+		cpu_online_start = num_online_cpus();
 		start = sched_clock();
 		perf_detail = atomic_read(&idlemgr->perf->detail);
 		if (perf_detail) {
@@ -2406,7 +2408,10 @@ static void mtk_drm_idlemgr_disable_crtc(struct drm_crtc *crtc)
 		unsigned long long cost;
 
 		end = sched_clock();
+		cpu_online_end = num_online_cpus();
 		cost = div_u64((end - start), 1000);
+		CRTC_MMP_MARK((int)drm_crtc_index(crtc), enter_idle, cost,
+				cpu_online_start | (cpu_online_end << 16));
 		mtk_drm_idlemgr_perf_update(crtc, true, cost);
 
 		// dump detail performance data when exceed 10ms
@@ -2421,6 +2426,20 @@ static void mtk_drm_idlemgr_disable_crtc(struct drm_crtc *crtc)
 					idlemgr_ctx->priv.sram_sleep,
 					cost, perf_string);
 			kfree(perf_string);
+		}
+
+		if (perf_aee_timeout > 0 && cost > (unsigned long long)perf_aee_timeout * 1000) {
+			unsigned int cpu_online_cnt = cpu_online_start < cpu_online_end ?
+						cpu_online_start : cpu_online_end;
+
+			DDPMSG("[IDLE] enter HSidle perf drop:%lluus,cpu_cnt:[%u,%u],timeout:%lluus\n",
+				cost, cpu_online_start, cpu_online_end,
+				(unsigned long long)(perf_aee_timeout * 1000U));
+			if (cpu_online_cnt > 4)
+				DDPAEE("[IDLE] Home Screen Idle perf drop,timeout:%lluus\n",
+					(unsigned long long)(perf_aee_timeout * 1000U));
+
+			//perf_aee_timeout = 0;
 		}
 	}
 
@@ -2448,6 +2467,7 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 	struct mtk_drm_idlemgr_context *idlemgr_ctx = idlemgr->idlemgr_ctx;
 	unsigned long long start, end;
 	char *perf_string = NULL;
+	unsigned int cpu_online_start = 0, cpu_online_end = 0;
 
 	DDPINFO("crtc%d do %s+\n", crtc_id, __func__);
 
@@ -2466,6 +2486,7 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 	}
 
 	if (idlemgr->perf != NULL) {
+		cpu_online_start = num_online_cpus();
 		start = sched_clock();
 		perf_detail = atomic_read(&idlemgr->perf->detail);
 		if (perf_detail) {
@@ -2751,9 +2772,10 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 		unsigned long long cost;
 
 		end = sched_clock();
+		cpu_online_end = num_online_cpus();
 		cost = div_u64((end - start), 1000);
-		CRTC_MMP_MARK((int)drm_crtc_index(crtc),
-				leave_idle, cost, perf_aee_timeout * 1000);
+		CRTC_MMP_MARK((int)drm_crtc_index(crtc), leave_idle, cost,
+				cpu_online_start | (cpu_online_end << 16));
 
 		mtk_drm_idlemgr_perf_update(crtc, false, cost);
 
@@ -2772,8 +2794,16 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 		}
 
 		if (perf_aee_timeout > 0 && cost > (unsigned long long)perf_aee_timeout * 1000) {
-			DDPAEE("[IDLE] perf drop:%lluus, timeout:%lluus\n",
-				cost, (unsigned long long)(perf_aee_timeout * 1000U));
+			unsigned int cpu_online_cnt = cpu_online_start < cpu_online_end ?
+						cpu_online_start : cpu_online_end;
+
+			DDPMSG("[IDLE] leave HSidle perf drop:%lluus,cpu_cnt:[%u,%u],timeout:%lluus\n",
+				cost, cpu_online_start, cpu_online_end,
+				(unsigned long long)(perf_aee_timeout * 1000U));
+			if (cpu_online_cnt > 4)
+				DDPAEE("[IDLE] Home Screen Idle perf drop,timeout:%lluus\n",
+					(unsigned long long)(perf_aee_timeout * 1000U));
+
 			//perf_aee_timeout = 0;
 		}
 	}
