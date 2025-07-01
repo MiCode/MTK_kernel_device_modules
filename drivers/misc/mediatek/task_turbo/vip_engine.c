@@ -14,6 +14,7 @@
 #include <linux/cpumask.h>
 #include <kernel/sched/sched.h>
 #include <drivers/android/binder_internal.h>
+#include <linux/of.h>
 
 #include <trace/hooks/sched.h>
 #include <trace/hooks/binder.h>
@@ -38,6 +39,8 @@ LIST_HEAD(vipServer_data_head);
 #define VIP_PRIO_OFFSET		5
 #define UCLAMP_MAX_VALUE	1024
 #define UCLAMP_MIN_VALUE	0
+#define HWCODE_IDX		20
+#define SEGMENT_IDX		30
 
 #define MAX_LOOM_BUF_SIZE 4
 
@@ -96,6 +99,68 @@ static int flt_orig_mode = -1;
 static atomic_t vip_loom_select_cfg;
 static struct affinity_data_node loom_rec_buffer[MAX_LOOM_BUF_SIZE];
 static atomic_t loom_cpu_dedicated_enable;
+static const char * const caller_id_desc[] = {
+	"DEBUG_NODE", "FPSGO", "UX", "VIDEO"
+};
+
+struct devinfo_tag {
+	u32 data_size;
+	u32 data[300];
+};
+
+struct loom_support_rule {
+	u32 hwcode;
+	u32 segment_mask;   /* 0x00 = don't care */
+};
+
+static const struct devinfo_tag *get_devinfo(void)
+{
+	static const struct devinfo_tag *tags;
+	static bool initialized;
+
+	if (likely(initialized))
+		return tags;
+
+	if (!initialized) {
+		struct device_node *np;
+
+		np = of_find_node_by_path("/chosen");
+		if (np) {
+			tags = (struct devinfo_tag *) of_get_property(np, "atag,devinfo", NULL);
+			of_node_put(np);
+		}
+		initialized = true;
+	}
+
+	return tags;
+}
+
+static bool is_device_support_loom(void)
+{
+	static const struct loom_support_rule rules[] = {
+		{ 0x1471, 0x00 },
+		{ 0x6899, 0x08 },
+	};
+
+	const struct devinfo_tag *tags;
+	size_t i;
+
+	tags = get_devinfo();
+	if (!tags) {
+		pr_info("%s: devinfo property missing\n", __func__);
+		return false;
+	}
+
+	for (i = 0; i < ARRAY_SIZE(rules); i++) {
+		if (tags->data[HWCODE_IDX] != rules[i].hwcode)
+			continue;
+
+		if (!rules[i].segment_mask ||
+		    (tags->data[SEGMENT_IDX] & rules[i].segment_mask))
+			return true;
+	}
+	return false;
+}
 
 /*
  * get_cpu_loading - Calculates the CPU loading for each CPU
@@ -614,9 +679,6 @@ MODULE_PARM_DESC(enable_binder_nonvip_inheritance, "Enable or disable binder non
 int enforce_ct_to_vip(int val, int caller_id)
 {
 	u64 tmp_mask;
-	static const char * const caller_id_desc[] = {
-		"DEBUG_NODE", "FPSGO", "UX", "VIDEO"
-	};
 
 	if (caller_id < 0 || caller_id >= MAX_TYPE)
 		return -EINVAL;
@@ -1971,9 +2033,8 @@ void vip_loom_select_task_rq_fair(struct task_struct *p, int *target_cpu, int *f
 
 int vip_loom_select_cfg_apply(int val, int caller_id)
 {
-	static const char * const caller_id_desc[] = {
-		"DEBUG_NODE", "FPSGO", "UX", "VIDEO"
-	};
+	if (!is_device_support_loom())
+		return -EINVAL;
 
 	if (val < 0 || caller_id < 0 || caller_id >= MAX_TYPE)
 		return -EINVAL;
@@ -1989,9 +2050,8 @@ EXPORT_SYMBOL(vip_loom_select_cfg_apply);
 #if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 int vip_loom_flt_cfg_apply(int val, int caller_id)
 {
-	static const char * const caller_id_desc[] = {
-		"DEBUG_NODE", "FPSGO", "UX", "VIDEO"
-	};
+	if (!is_device_support_loom())
+		return -EINVAL;
 
 	if (val < 0 || caller_id < 0 || caller_id >= MAX_TYPE)
 		return -EINVAL;
