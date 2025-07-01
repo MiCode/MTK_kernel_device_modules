@@ -1349,11 +1349,11 @@
 			};
 			dram_s0: dram-s0 {
 				id = <0x00000003>;
-				value = <1>;
+				value = <0>;
 			};
 			dram_s1: dram-s1 {
 				id = <0x00000004>;
-				value = <1>;
+				value = <0>;
 			};
 			spm_vcore: spm-vcore {
 				id = <0x00000005>;
@@ -1361,7 +1361,7 @@
 			};
 			spm_emi: spm-emi {
 				id = <0x00000006>;
-				value = <1>;
+				value = <0>;
 			};
 			spm_pmic: spm-pmic {
 				id = <0x00000007>;
