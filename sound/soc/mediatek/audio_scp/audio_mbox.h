@@ -28,6 +28,8 @@ bool is_audio_mbox_init_done(void);
 
 extern struct device_attribute dev_attr_audio_ipi_test;
 extern int audio_mbox_pin_cb(unsigned int id, void *prdata, void *buf, unsigned int len);
+extern int adsp_qos_probe(struct platform_device *pdev);
+extern void adsp_set_scene_bw(struct platform_device *pdev);
 
 extern int adsp_mem_device_probe(struct platform_device *pdev);
 

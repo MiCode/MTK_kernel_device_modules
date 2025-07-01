@@ -20,12 +20,18 @@
 #define AUDIO_DSP_IOC_MAGIC 'a'
 #define AUDIO_DSP_IOCTL_ADSP_QUERY_STATUS \
 	_IOR(AUDIO_DSP_IOC_MAGIC, 1, unsigned int)
+#define AUDIO_DSP_IOCTL_ADSP_HRT_BW \
+	_IOR(AUDIO_DSP_IOC_MAGIC, 3, unsigned int)
 
 union ioctl_param {
 	struct {
 		int16_t flag;
 		uint16_t cid;
 	} cmd1;
+	struct {
+		uint16_t set;
+		uint16_t scene;
+	} cmd2;
 };
 
 /* file operations */
@@ -48,6 +54,15 @@ static long adspscp_driver_ioctl(
 			ret = -EFAULT;
 			break;
 		}
+		break;
+	}
+	case AUDIO_DSP_IOCTL_ADSP_HRT_BW: {
+		if (copy_from_user(&t, (void *)arg, sizeof(t))) {
+			ret = -EFAULT;
+			break;
+		}
+
+		ret = adsp_icc_bw_req(t.cmd2.scene, t.cmd2.set);
 		break;
 	}
 	default:

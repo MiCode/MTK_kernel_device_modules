@@ -231,6 +231,12 @@ static int scp_audio_mbox_dev_probe(struct platform_device *pdev)
 	}
 #endif
 
+	/* adsp bus probe */
+	ret = adsp_qos_probe(pdev);
+	if (ret) {
+		pr_warn("%s(), qos probe fail, %d\n", __func__, ret);
+		goto EXIT;
+	}
 #else
 	ret = 0;
 #endif /* CONFIG_MTK_TINYSYS_SCP_SUPPORT */
@@ -246,6 +252,43 @@ static const struct of_device_id scp_audio_mbox_dt_match[] = {
 };
 MODULE_DEVICE_TABLE(of, scp_audio_mbox_dt_match);
 
+static const struct of_device_id scp_qos_scene_of_ids[] = {
+	{ .compatible = "mediatek,mt6878-audio-dsp-hrt-bw"},
+	{},
+};
+
+static int scp_qos_scene_probe(struct platform_device *pdev)
+{
+	struct device *dev = &pdev->dev;
+	const struct of_device_id *match;
+
+	match = of_match_node(scp_qos_scene_of_ids, dev->of_node);
+	if (match)
+		adsp_set_scene_bw(pdev);
+	else
+		pr_info("%s() no qos scene supported\n", __func__);
+
+	pr_info("%s, done", __func__);
+	return 0;
+}
+
+static void scp_qos_scene_remove(struct platform_device *pdev)
+{
+	pr_info("%s, remove", __func__);
+}
+
+static struct platform_driver scp_qos_scene_driver = {
+	.probe = scp_qos_scene_probe,
+	.remove = scp_qos_scene_remove,
+	.driver = {
+		.name = "audio-dsp-hrt-bw",
+		.owner = THIS_MODULE,
+#if IS_ENABLED(CONFIG_OF)
+		.of_match_table = scp_qos_scene_of_ids,
+#endif
+	},
+};
+
 static struct platform_driver scp_audio_mbox_driver = {
 	.driver = {
 		   .name = "scp-audio-mbox",
@@ -255,7 +298,24 @@ static struct platform_driver scp_audio_mbox_driver = {
 	.probe = scp_audio_mbox_dev_probe,
 };
 
-module_platform_driver(scp_audio_mbox_driver);
+static struct platform_driver * const drivers[] = {
+	&scp_audio_mbox_driver,
+	&scp_qos_scene_driver,
+};
+
+static int __init scp_audio_mbox_init(void)
+{
+	int ret = platform_register_drivers(drivers, ARRAY_SIZE(drivers));
+	return ret;
+}
+
+static void __exit scp_audio_mbox_exit(void)
+{
+	platform_unregister_drivers(drivers, ARRAY_SIZE(drivers));
+}
+
+module_init(scp_audio_mbox_init);
+module_exit(scp_audio_mbox_exit);
 
 MODULE_DESCRIPTION("Mediatek common driver for scp audio mbox");
 MODULE_AUTHOR("Chien-wei Hsu <chien-Wei.Hsu@mediatek.com>");

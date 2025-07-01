@@ -254,6 +254,7 @@ extern int release_adsp_semaphore(unsigned int flags);
 /* adsp emi bandwidth */
 extern void set_adsp_icc_bw(uint32_t bw_mbps);
 extern void clear_adsp_icc_bw(void);
+extern int adsp_icc_bw_req(uint16_t scene, uint16_t set);
 
 /* notify event when adsp crash/recovery */
 extern void adsp_register_notify(struct notifier_block *nb);
