@@ -287,6 +287,8 @@ unsigned int ged_dvfs_write_sysram_protm_enter(void);
 unsigned int ged_dvfs_write_sysram_protm_exit(void);
 int ged_write_sysram_pwr_hint(int pwr_hint);
 int ged_dvfs_update_step_size(int low_step, int med_step, int high_step);
+int ged_dvfs_update_platform_step_size(int low_step, int med_step, int high_step ,
+	int ultra_low_step, int ultra_med_step, int ultra_high_step);
 void ged_dvfs_record_soc_timer(u64 soc_timer);
 void ged_notify_fix_opp_from_gpufreq(int gpu_opp, int stack_opp);
 void ged_notify_fix_freq_volt_from_gpufreq(

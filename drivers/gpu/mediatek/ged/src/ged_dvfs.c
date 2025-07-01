@@ -1261,6 +1261,26 @@ int ged_dvfs_update_step_size(int low_step, int med_step, int high_step)
 }
 EXPORT_SYMBOL(ged_dvfs_update_step_size);
 
+int ged_dvfs_update_platform_step_size(int low_step, int med_step, int high_step ,
+	int ultra_low_step, int ultra_med_step, int ultra_high_step)
+{
+	// check step size is not zero
+	if (low_step && med_step && high_step &&
+		ultra_low_step && ultra_med_step && ultra_high_step) {
+		g_step_size_by_platform[GED_STEP_FREQ_LOW] = low_step;
+		g_step_size_by_platform[GED_STEP_FREQ_MID] = med_step;
+		g_step_size_by_platform[GED_STEP_FREQ_HIGH] = high_step;
+
+		g_ultra_step_size_by_platform[GED_STEP_FREQ_LOW] = ultra_low_step;
+		g_ultra_step_size_by_platform[GED_STEP_FREQ_MID] = ultra_med_step;
+		g_ultra_step_size_by_platform[GED_STEP_FREQ_HIGH] = ultra_high_step;
+		return GED_OK;
+	}
+	return -1;
+}
+EXPORT_SYMBOL(ged_dvfs_update_platform_step_size);
+
+
 bool ged_dvfs_gpu_freq_commit(unsigned long ui32NewFreqID,
 	unsigned long ui32NewFreq, GED_DVFS_COMMIT_TYPE eCommitType)
 {
