@@ -227,6 +227,13 @@ int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...);
 			pr_info("[DISP]" pr_fmt(fmt), ##arg);     \
 	} while (0)
 
+#define DDPMMCLK(fmt, arg...)                                                  \
+	do {                                                                   \
+		mtk_dprec_logger_pr(DPREC_LOGGER_FENCE, fmt, ##arg);           \
+		if (g_mmclk_log || g_mobile_log)                                               \
+			pr_info("[DISP]" pr_fmt(fmt), ##arg);     \
+	} while (0)
+
 #define DDPPR_ERR(fmt, arg...)                                                 \
 	do {                                                                   \
 		mtk_dprec_logger_pr(DPREC_LOGGER_ERROR, fmt, ##arg);           \
@@ -415,6 +422,7 @@ extern bool g_dsi_cmd_v2_r_log;
 extern bool g_mobile_log;
 extern bool g_msync_debug;
 extern bool g_fence_log;
+extern bool g_mmclk_log;
 extern bool g_irq_log;
 extern bool g_detail_log;
 extern bool g_gpuc_direct_push;

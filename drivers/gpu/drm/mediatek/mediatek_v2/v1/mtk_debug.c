@@ -104,6 +104,7 @@ EXPORT_SYMBOL(g_dsi_cmd_v2_log);
 bool g_mobile_log;
 EXPORT_SYMBOL(g_mobile_log);
 bool g_fence_log;
+bool g_mmclk_log;
 bool g_detail_log;
 EXPORT_SYMBOL(g_detail_log);
 bool g_msync_debug;
@@ -3082,6 +3083,11 @@ static void process_dbg_opt(const char *opt)
 			g_fence_log = 1;
 		else if (strncmp(opt + 6, "off", 3) == 0)
 			g_fence_log = 0;
+	} else if (strncmp(opt, "mmclk:", 6) == 0) {
+		if (strncmp(opt + 6, "on", 2) == 0)
+			g_mmclk_log = 1;
+		else if (strncmp(opt + 6, "off", 3) == 0)
+			g_mmclk_log = 0;
 	} else if (strncmp(opt, "irq:", 4) == 0) {
 		if (strncmp(opt + 4, "on", 2) == 0)
 			g_irq_log = 1;

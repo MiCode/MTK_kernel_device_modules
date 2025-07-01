@@ -14940,6 +14940,7 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc, bool need_report_bw)
 	DDP_PROFILE("[PROFILE] %s+\n", __func__);
 	CRTC_MMP_MARK(crtc_id, enable, 1, 0);
 
+	mtk_drm_mmdvfs_enable_vcp(crtc, true);
 #ifndef DRM_CMDQ_DISABLE
 	/* power on cmdq client */
 	client = mtk_crtc->gce_obj.client[CLIENT_CFG];
@@ -16189,6 +16190,9 @@ void mtk_drm_crtc_first_enable(struct drm_crtc *crtc)
 		return;
 	}
 	DDPINFO("crtc%d do %s\n", crtc_id, __func__);
+
+	mtk_drm_mmdvfs_enable_vcp(crtc, true);
+
 #ifndef DRM_CMDQ_DISABLE
 	cmdq_mbox_enable(mtk_crtc->gce_obj.client[CLIENT_CFG]->chan);
 #endif
@@ -16413,6 +16417,8 @@ void mtk_drm_crtc_disable(struct drm_crtc *crtc, bool need_wait)
 		mml_drm_put_context(priv->mml_ctx);
 		priv->mml_ctx = NULL;
 	}
+
+	mtk_drm_mmdvfs_enable_vcp(crtc, false);
 
 	/* for dbi idle count timer */
 	mtk_dbi_count_timer_disable(crtc);

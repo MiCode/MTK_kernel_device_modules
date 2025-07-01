@@ -1725,13 +1725,27 @@ static void mtk_drm_mmdvfs_get_avail_freq(struct device *dev)
 	DDPINFO("%s lp_freq = %d\n", __func__, lp_freq);
 }
 
-void mtk_drm_mmdvfs_init(struct device *dev)
+void mtk_drm_mmdvfs_init(struct device *dev, bool mmdvfs_switch)
 {
 	struct device_node *node = dev->of_node;
 	int ret = 0;
 
 	dev_pm_opp_of_add_table(dev);
 	mtk_drm_mmdvfs_get_avail_freq(dev);
+
+	/* support DPC and regulator mode switch*/
+	if (mmdvfs_switch) {
+		ret = of_property_read_u8(node, "vdisp-dvfs-opp", &vdisp_opp);
+		if (ret)
+			DDPPR_ERR("%s MMDVFS init of DPC mode failed, ret:%d\n", __func__, ret);
+		DDPMSG("%s, MMDVFS init of DPC mode done, vdisp:%u\n", __func__, vdisp_opp);
+
+		mm_freq_request = devm_regulator_get_optional(dev, "mmdvfs-dvfsrc-vcore");
+		if (IS_ERR_OR_NULL(mm_freq_request))
+			DDPPR_ERR("%s, get mmdvfs-dvfsrc-vcore failed\n", __func__);
+		DDPMSG("%s, MMDVFS init of regulator mode done\n", __func__);
+		return;
+	}
 
 	/* support DPC and VDISP */
 	ret = of_property_read_u8(node, "vdisp-dvfs-opp", &vdisp_opp);
@@ -1747,7 +1761,7 @@ void mtk_drm_mmdvfs_init(struct device *dev)
 	}
 
 	/* MMDVFS V2 */
-	DDPINFO("%s, try to use MMDVFS V2\n", __func__);
+	DDPMSG("%s, try to use MMDVFS V2, vdisp_opp:%u, ret:%d\n", __func__, vdisp_opp, ret);
 	mm_freq_request = devm_regulator_get_optional(dev, "mmdvfs-dvfsrc-vcore");
 	if (IS_ERR_OR_NULL(mm_freq_request))
 		DDPPR_ERR("%s, get mmdvfs-dvfsrc-vcore failed\n", __func__);
@@ -1756,6 +1770,35 @@ void mtk_drm_mmdvfs_init(struct device *dev)
 unsigned int mtk_drm_get_mmclk_step_size(void)
 {
 	return step_size;
+}
+
+void mtk_drm_mmdvfs_mode_switch(struct drm_crtc *crtc, bool dpc_mode)
+{
+	unsigned long min_freq = g_freq_steps[0];
+	struct dev_pm_opp *opp;
+	int volt, ret, idx;
+
+	if (IS_ERR_OR_NULL(crtc)) {
+		DDPPR_ERR("%s invalid crtc\n", __func__);
+		return;
+	}
+
+	idx = drm_crtc_index(crtc);
+	if (dpc_mode) {
+		DDPMMCLK("%s, crtc:%d update mmclk by DPC,level:%u\n",
+			__func__, idx, vdisp_opp);
+		mtk_vidle_dvfs_set(vdisp_opp);
+
+		opp = dev_pm_opp_find_freq_ceil(crtc->dev->dev, &min_freq);
+		volt = dev_pm_opp_get_voltage(opp);
+		dev_pm_opp_put(opp);
+		DDPMMCLK("%s,crtc:%d clear mmclk by regulator:volt=%d,freq:%lu\n",
+			__func__, idx, volt, min_freq);
+		ret = regulator_set_voltage(mm_freq_request, volt, INT_MAX);
+		if (ret)
+			DDPPR_ERR("%s:regulator_set_voltage:%d fail, ret:%d\n",
+				__func__, volt, ret);
+	}
 }
 
 void mtk_drm_set_mmclk(struct drm_crtc *crtc, int level, bool lp_mode,
@@ -1769,6 +1812,8 @@ void mtk_drm_set_mmclk(struct drm_crtc *crtc, int level, bool lp_mode,
 	int cnt = 0;
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_ddp_comp *output_comp;
+	int cur_vcp_state = 0;
+	struct mtk_drm_private *priv = NULL;
 
 	idx = drm_crtc_index(crtc);
 
@@ -1813,21 +1858,53 @@ void mtk_drm_set_mmclk(struct drm_crtc *crtc, int level, bool lp_mode,
 
 	if (final_level >= 0)
 		freq = g_freq_steps[final_level];
-	else {
+	else
 		freq = g_freq_steps[0];
-		final_level = 0;
-	}
 
 	DDPINFO("%s[%d] final_level(freq=%d, %lu) final_lp_mode:%d\n",
 		__func__, __LINE__, final_level, freq, final_lp_mode);
 
-	if ((vdisp_opp != U8_MAX) && (mm_freq_request == NULL)) {
+	if (vdisp_opp != U8_MAX) {
 		if (final_level >= 0)
 			vdisp_opp = final_level;
-		mtk_vidle_dvfs_set(vdisp_opp);
+		else
+			vdisp_opp = 0;
+
+		/*MMDVFS of DPC mode only*/
+		priv = crtc->dev->dev_private;
+		if (mm_freq_request == NULL || !priv ||
+			!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMDVFS_MODE_SWITCH)) {
+			mtk_vidle_dvfs_set(vdisp_opp);
+			return;
+		}
+
+		/*MMDVFS of mode switch*/
+		cur_vcp_state = mtk_drm_get_vcp_state();
+		if (cur_vcp_state) {
+			DDPMMCLK("%s, update mmclk by DPC,level:%u,freq:%lu\n",
+				__func__, vdisp_opp, freq);
+			mtk_vidle_dvfs_set(vdisp_opp);
+		} else {
+			unsigned long max_freq = g_freq_steps[0];
+
+			if (final_level >= 0) //screen on
+				max_freq = g_freq_steps[step_size - 1];
+
+			opp = dev_pm_opp_find_freq_ceil(crtc->dev->dev, &max_freq);
+			volt = dev_pm_opp_get_voltage(opp);
+			dev_pm_opp_put(opp);
+			DDPMMCLK("%s, update mmclk by regulator,crtc=%d,volt=%d,freq:%lu\n",
+				__func__, idx, volt, max_freq);
+			ret = regulator_set_voltage(mm_freq_request, volt, INT_MAX);
+			if (ret)
+				DDPPR_ERR("%s:regulator_set_voltage:%d fail, ret:%d\n",
+					__func__, volt, ret);
+		}
+		mtk_drm_put_vcp_state();
 		return;
 	}
 
+	/* MMDVFS V2 */
 	if (mm_freq_request) {
 		if (vdisp_opp == U8_MAX) /* not support for vdisp platform */
 			mmdvfs_set_lp_mode(final_lp_mode);
@@ -1835,6 +1912,7 @@ void mtk_drm_set_mmclk(struct drm_crtc *crtc, int level, bool lp_mode,
 		opp = dev_pm_opp_find_freq_ceil(crtc->dev->dev, &freq);
 		volt = dev_pm_opp_get_voltage(opp);
 		dev_pm_opp_put(opp);
+		DDPINFO("%s, crtc=%d, volt=%d\n", __func__, idx, volt);
 		ret = regulator_set_voltage(mm_freq_request, volt, INT_MAX);
 		if (ret)
 			DDPPR_ERR("%s:regulator_set_voltage fail\n", __func__);

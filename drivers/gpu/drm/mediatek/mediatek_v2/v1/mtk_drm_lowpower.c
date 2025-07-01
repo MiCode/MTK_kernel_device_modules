@@ -2138,6 +2138,10 @@ static void mtk_drm_idlemgr_disable_crtc(struct drm_crtc *crtc)
 	cmdq_mbox_disable(mtk_crtc->gce_obj.client[CLIENT_CFG]->chan);
 
 	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
+				"dis_vcp", 18, perf_string, false);
+	mtk_drm_mmdvfs_enable_vcp(crtc, false);
+
+	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
 				"STOP", -1, perf_string, false);
 
 	/* 11. idle manager performance monitor */
@@ -2225,6 +2229,10 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 				MTK_DRM_OPT_IDLEMGR_ASYNC))
 		atomic_set(&idlemgr->async_enabled,
 			idlemgr_ctx->priv.hw_async ? 1 : 0);
+
+	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
+				"enable_vcp", 0, perf_string, true);
+	mtk_drm_mmdvfs_enable_vcp(crtc, true);
 
 	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
 				"enable_cmdq", 1, perf_string, true);
