@@ -377,6 +377,7 @@ static void *seq_next(struct seq_file *s, void *v, loff_t *pos)
 		break;
 	}
 
+	kfree(session);
 	HWLOGR_DBG("s->size %ld", s->size);
 	HWLOGR_DBG("s->from %ld", s->from);
 	HWLOGR_DBG("s->count %ld", s->count);
