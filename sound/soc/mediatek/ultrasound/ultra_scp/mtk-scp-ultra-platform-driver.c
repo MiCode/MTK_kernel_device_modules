@@ -45,7 +45,6 @@ static struct wakeup_source *ultra_suspend_lock;
 static bool pcm_dump_switch;
 static bool pcm_dump_on;
 static bool afe_hw_free; // if afe hw free and call stop by notify, set yes to avoid stop again
-static bool scp_reseted; //indicator SCP reset happened,only ultrasound on will be handle.
 static bool toggle_clr_irq; // config in dts to indicator platform use toggle clean irq
 static const char *const mtk_scp_ultra_dump_str[] = {
 	"Off",
@@ -68,6 +67,8 @@ static struct ultra_gain_config gain_config = {
 	.mic_gain = 0,
 	.receiver_gain = 0
 };
+
+static int mtk_scp_ultra_set_scp_state(int state);
 
 /* clear pending IRQ */
 static int mtk_ultra_clr_irq(struct mtk_base_afe *afe,
@@ -108,16 +109,22 @@ static int usnd_scp_recover_event(struct notifier_block *this,
 	int irq_id_ul = memiful->irq_usage;
 	struct mtk_base_afe_irq *irqs_ul = &afe->irqs[irq_id_ul];
 	const struct mtk_base_irq_data *irq_data_ul = irqs_ul->irq_data;
+	int ret;
 
 	switch (event) {
 	case SCP_EVENT_READY: {
 		pr_info("%s(), SCP_EVENT_READY\n", __func__);
 		ultra_SetScpRecoverStatus(false);
+		if (scp_ultra->usnd_state == SCP_ULTRA_STATE_ON ||
+		    scp_ultra->usnd_state == SCP_ULTRA_STATE_START ||
+		    scp_ultra->usnd_state == SCP_ULTRA_STATE_STOP) {
+			mtk_scp_ultra_set_scp_state(SCP_ULTRA_STATE_ON);
+		}
+		ret = kobject_uevent(&scp_ultra->dev->kobj, KOBJ_ONLINE);
 		break;
 	}
 	case SCP_EVENT_STOP:
 		ultra_SetScpRecoverStatus(true);
-		scp_reseted = true;
 		pr_info("%s(), SCP_EVENT_STOP\n", __func__);
 		if (scp_ultra->usnd_state == SCP_ULTRA_STATE_START) {
 			pm_runtime_get_sync(afe->dev);
@@ -141,9 +148,14 @@ static int usnd_scp_recover_event(struct notifier_block *this,
 
 			ultra_irq_set_target_hw_sema(false);
 			pm_runtime_put(afe->dev);
+			scp_ultra->usnd_state = SCP_ULTRA_STATE_STOP;
 		}
+		ret = kobject_uevent(&scp_ultra->dev->kobj, KOBJ_OFFLINE);
 		break;
 	}
+	if (ret)
+		pr_info("%s, uevnet(%lu) fail, ret %d", __func__, event, ret);
+
 	return NOTIFY_DONE;
 }
 
@@ -472,15 +484,13 @@ static int mtk_scp_ultra_engine_state_get(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
-static int mtk_scp_ultra_engine_state_set(struct snd_kcontrol *kcontrol,
-					  struct snd_ctl_elem_value *ucontrol)
+static int mtk_scp_ultra_set_scp_state(int state)
 {
 	struct mtk_base_scp_ultra *scp_ultra = get_scp_ultra_base();
 	struct mtk_base_afe *afe = get_afe_base();
 	struct mtk_base_scp_ultra_mem *ultra_mem = &scp_ultra->ultra_mem;
 	int scp_ultra_memif_dl_id = scp_ultra->scp_ultra_dl_memif_id;
 	int scp_ultra_memif_ul_id = scp_ultra->scp_ultra_ul_memif_id;
-	int val = ucontrol->value.integer.value[0];
 	int payload[7];
 	int old_usnd_state = scp_ultra->usnd_state;
 	bool ret_val = false;
@@ -488,31 +498,28 @@ static int mtk_scp_ultra_engine_state_set(struct snd_kcontrol *kcontrol,
 	const struct mtk_base_memif_data *memif_data =
 		afe->memif[scp_ultra_memif_dl_id].data;
 
-	if (val < SCP_ULTRA_STATE_IDLE || val > SCP_ULTRA_STATE_RECOVERY) {
-		pr_info("%s() unexpected state: %d, ignore\n", __func__, val);
+	if (state < SCP_ULTRA_STATE_ON || state > SCP_ULTRA_STATE_RECOVERY) {
+		pr_info("%s() unexpected state change(%d->%d), ignore\n",
+			__func__, scp_ultra->usnd_state, state);
 		return -1;
 	}
-	scp_ultra->usnd_state = val;
+	if (ultra_GetScpRecoverStatus() == true) {
+		pr_info("%s(), scp stopped, skip req(%d)\n", __func__, state);
+		return -1;
+	}
+
+	scp_ultra->usnd_state = state;
 	ultra_mem->ultra_dl_memif_id = scp_ultra_memif_dl_id;
 	ultra_mem->ultra_ul_memif_id = scp_ultra_memif_ul_id;
 	pr_info("%s() new state=%d, memdl=%d, memul=%d\n",
 		__func__, scp_ultra->usnd_state,
 		scp_ultra_memif_dl_id,
 		scp_ultra_memif_ul_id);
-	// SCP reset happened, only ultra on will be handle
-	if (scp_reseted == true && scp_ultra->usnd_state != SCP_ULTRA_STATE_ON) {
-		pr_info("%s(), unexcepted state since SCP reseted\n", __func__);
-		return -1;
-	}
 	switch (scp_ultra->usnd_state) {
 	case SCP_ULTRA_STATE_ON:
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
 		scp_register_feature(ULTRA_FEATURE_ID);
 #endif
-		if (scp_reseted == true) {
-			scp_reseted = false;
-			pr_info("%s(), SCP_ULTRA_STATE_ON, set scp_reseted false\n", __func__);
-		}
 		aud_wake_lock(ultra_suspend_lock);
 		afe->memif[scp_ultra_memif_dl_id].scp_ultra_enable = true;
 		afe->memif[scp_ultra_memif_ul_id].scp_ultra_enable = true;
@@ -532,7 +539,7 @@ static int mtk_scp_ultra_engine_state_set(struct snd_kcontrol *kcontrol,
 					     param_config.format_out);
 		if (ret_val == 0) {
 			pr_info("%s() set state on failed\n", __func__);
-			scp_ultra->usnd_state = SCP_ULTRA_STATE_IDLE;
+			scp_ultra->usnd_state = SCP_ULTRA_STATE_OFF;
 			afe->memif[scp_ultra_memif_dl_id].scp_ultra_enable =
 				false;
 			afe->memif[scp_ultra_memif_ul_id].scp_ultra_enable =
@@ -628,6 +635,13 @@ static int mtk_scp_ultra_engine_state_set(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+static int mtk_scp_ultra_engine_state_set(struct snd_kcontrol *kcontrol,
+					  struct snd_ctl_elem_value *ucontrol)
+{
+	int val = ucontrol->value.integer.value[0];
+
+	return mtk_scp_ultra_set_scp_state(val);
+}
 
 static const struct snd_kcontrol_new ultra_platform_kcontrols[] = {
 	SOC_ENUM_EXT("mtk_scp_ultra_pcm_dump",
@@ -708,8 +722,9 @@ static int mtk_scp_ultra_pcm_start(struct snd_soc_component *component,
 	struct mtk_base_afe_irq *irqs_ul = &afe->irqs[irq_id_ul];
 	const struct mtk_base_irq_data *irq_data_ul = irqs_ul->irq_data;
 	int counter;
-	if (scp_reseted == true) {
-		pr_info("ultra scp reseted, do not start before ultra on\n");
+
+	if (ultra_GetScpRecoverStatus() == true) {
+		pr_info("%s(), scp stopped, skip\n", __func__);
 		return 0;
 	}
 	ultra_irq_set_target_hw_sema(true);
@@ -869,7 +884,7 @@ static int mtk_scp_ultra_pcm_new(struct snd_soc_component *component)
 #endif
 	ultra_suspend_lock = aud_wake_lock_init(NULL, "ultra wakelock");
 	pcm_dump_switch = false;
-	scp_ultra->usnd_state = SCP_ULTRA_STATE_IDLE;
+	scp_ultra->usnd_state = SCP_ULTRA_STATE_OFF;
 	register_ultra_afe_hw_free_notifier(&ultra_afe_hw_free_notifier);
 	if (of_property_read_bool(scp_ultra->dev->of_node, "ultra-afe-with-adsp")) {
 		afe->memif[scp_ultra->scp_ultra_dl_memif_id].use_dram_only = 1;
