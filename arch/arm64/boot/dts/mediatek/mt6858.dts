@@ -5252,15 +5252,15 @@ dramc: dramc@10230000 {
 			mediatek,platform = "platform:mt6858";
 			mediatek,ipm = <1>;
 			vp-mode-buf-size-multi = <16384>; // 1024 * 16
-#if 0
+
 			/* for power */
-			//mediatek,larbs = <&smi_larb4>;
+			mediatek,larbs = <&smi_larb4>;
 			power-domains = <&scpsys MT6858_POWER_DOMAIN_VDE0>;
 			clocks =
 				<&vdec_gcon_base_clk CLK_VDE2_VDEC_CKEN>;
 			clock-names =
 				"CORE_MT_CG_VDEC0";
-#endif
+
 			/* for memory */
 			iommus = <&disp_iommu M4U_L4_P0_HW_VDEC_MC_EXT>,
 				<&disp_iommu M4U_L4_P1_HW_VDEC_PP_EXT>,
@@ -5323,12 +5323,12 @@ dramc: dramc@10230000 {
 				<&disp_iommu M4U_L7_P12_REF_LUMA>,
 				<&disp_iommu M4U_L7_P13_REF_CHROMA>,
 				<&disp_iommu M4U_L7_P14_SUB_R_LUMA>;
-#if 0
-			//mediatek,larbs = <&smi_larb7>;
+
+			mediatek,larbs = <&smi_larb7>;
 			power-domains = <&scpsys MT6858_POWER_DOMAIN_VEN0>;
 			clocks = <&venc_gcon_clk CLK_VEN1_CKE1_VENC>;
 			clock-names = "MT_CG_VENC0";
-#endif
+
 			/* dvfs params */
 		};
 
