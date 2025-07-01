@@ -26,6 +26,14 @@ ddk_headers(
     includes = ["."],
 )
 
+ddk_headers(
+    name = "vcp_feature_headers",
+  hdrs = [
+        "vcp_reg.h",
+    ],
+    includes = ["."],
+)
+
 define_mgk_ddk_ko(
     name = "vcp_status",
     srcs = [],
