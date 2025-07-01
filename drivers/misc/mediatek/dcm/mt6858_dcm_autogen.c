@@ -572,9 +572,9 @@ void dcm_infracfg_ao_aximem_bus_dcm(int on)
 	}
 }
 
-#define INFRA_AO_BCRM_INFRA_BUS_DCM_REG0_MASK ((0x1f0083U << 2))
-#define INFRA_AO_BCRM_INFRA_BUS_DCM_REG0_ON ((0x83U << 2))
-#define INFRA_AO_BCRM_INFRA_BUS_DCM_REG0_OFF ((0x3U << 2))
+#define INFRA_AO_BCRM_INFRA_BUS_DCM_REG0_MASK ((0x41U << 3))
+#define INFRA_AO_BCRM_INFRA_BUS_DCM_REG0_ON ((0x41U << 3))
+#define INFRA_AO_BCRM_INFRA_BUS_DCM_REG0_OFF ((0x1U << 3))
 
 bool dcm_infra_ao_bcrm_infra_bus_dcm_is_on(void)
 {
@@ -602,11 +602,11 @@ void dcm_infra_ao_bcrm_infra_bus_dcm(int on)
 	}
 }
 
-#define INFRA_AO_BCRM_INFRA_BUS_FMEM_SUB_DCM_REG0_MASK ((0x3U << 5))
-#define INFRA_AO_BCRM_INFRA_BUS_FMEM_SUB_DCM_REG1_MASK ((0x7c01U << 5))
-#define INFRA_AO_BCRM_INFRA_BUS_FMEM_SUB_DCM_REG0_ON ((0x3U << 5))
+#define INFRA_AO_BCRM_INFRA_BUS_FMEM_SUB_DCM_REG0_MASK ((0x1U << 6))
+#define INFRA_AO_BCRM_INFRA_BUS_FMEM_SUB_DCM_REG1_MASK ((0x1U << 5))
+#define INFRA_AO_BCRM_INFRA_BUS_FMEM_SUB_DCM_REG0_ON ((0x1U << 6))
 #define INFRA_AO_BCRM_INFRA_BUS_FMEM_SUB_DCM_REG1_ON ((0x1U << 5))
-#define INFRA_AO_BCRM_INFRA_BUS_FMEM_SUB_DCM_REG0_OFF ((0x3U << 5))
+#define INFRA_AO_BCRM_INFRA_BUS_FMEM_SUB_DCM_REG0_OFF ((0x1U << 6))
 #define INFRA_AO_BCRM_INFRA_BUS_FMEM_SUB_DCM_REG1_OFF ((0x0U << 0))
 
 bool dcm_infra_ao_bcrm_infra_bus_fmem_sub_dcm_is_on(void)
