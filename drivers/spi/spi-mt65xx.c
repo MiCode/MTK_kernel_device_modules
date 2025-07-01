@@ -241,7 +241,7 @@ static const struct mtk_spi_compatible mt6858_compat = {
 	.enhance_packet_len = true,
 	.slice_en = false,
 	.dummy_cycle = true,
-	.infra_req = false,
+	.infra_req = true,
 	.hw_reset = true,
 };
 
