@@ -907,7 +907,7 @@
 				cpu_little1_crit: cpu-little1-cri {
 					temperature = <113500>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "passive";
 				};
 			};
 		};
@@ -920,7 +920,7 @@
 				cpu_little2_crit: cpu-little2-cri {
 					temperature = <113500>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "passive";
 				};
 			};
 		};
@@ -933,7 +933,7 @@
 				cpu_little3_crit: cpu-little3-cri {
 					temperature = <113500>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "passive";
 				};
 			};
 		};
@@ -946,7 +946,7 @@
 				cpu_little4_crit: cpu-little4-cri {
 					temperature = <113500>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "passive";
 				};
 			};
 		};
@@ -959,7 +959,7 @@
 				cpu_big1_crit: cpu-big1-cri {
 					temperature = <113500>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "passive";
 				};
 			};
 		};
@@ -972,7 +972,7 @@
 				cpu_big2_crit: cpu-big2-cri {
 					temperature = <113500>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "passive";
 				};
 			};
 		};
@@ -985,7 +985,7 @@
 				cpu_big3_crit: cpu-big3-cri {
 					temperature = <113500>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "passive";
 				};
 			};
 		};
@@ -998,7 +998,7 @@
 				cpu_big4_crit: cpu-big4-cri {
 					temperature = <113500>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "passive";
 				};
 			};
 		};
@@ -1043,7 +1043,7 @@
 				soc1_crit: soc1-cri {
 					temperature = <113500>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "passive";
 				};
 			};
 		};
@@ -1056,7 +1056,7 @@
 				soc2_crit: soc2-cri {
 					temperature = <113500>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "passive";
 				};
 			};
 		};
@@ -1069,7 +1069,7 @@
 				md_crit: md-cri {
 					temperature = <113500>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "passive";
 				};
 			};
 		};
@@ -1082,7 +1082,7 @@
 				ap_ntc_crit: ap-ntc-cri {
 					temperature = <113500>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "passive";
 				};
 			};
 		};
@@ -1095,7 +1095,7 @@
 				ltepa_ntc_crit: ltepa-ntc-cri {
 					temperature = <113500>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "passive";
 				};
 			};
 		};
@@ -1108,7 +1108,7 @@
 				pmic6366_pmu_crit: pmic6366-pmu-cri {
 					temperature = <113500>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "passive";
 				};
 			};
 		};
@@ -1121,7 +1121,7 @@
 				pmic6366_bk1_crit: pmic6366-bk1-cri {
 					temperature = <113500>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "passive";
 				};
 			};
 		};
@@ -1134,7 +1134,7 @@
 				pmic6366_bk2_crit: pmic6366-bk2-cri {
 					temperature = <113500>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "passive";
 				};
 			};
 		};
@@ -1147,7 +1147,7 @@
 				pmic6366_bk3_crit: pmic6366-bk3-cri {
 					temperature = <113500>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "passive";
 				};
 			};
 		};
@@ -1160,7 +1160,7 @@
 				consys_crit: consys-cri {
 					temperature = <113500>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "passive";
 				};
 			};
 		};

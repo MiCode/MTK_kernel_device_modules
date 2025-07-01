@@ -1412,7 +1412,7 @@
 				cpu_big1_crit: cpu-big1-crit {
 					temperature = <119000>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "passive";
 				};
 			};
 		};
@@ -1424,7 +1424,7 @@
 				cpu_big2_crit: cpu-big2-crit {
 					temperature = <119000>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "passive";
 				};
 			};
 		};
@@ -1436,7 +1436,7 @@
 				cpu_big3_crit: cpu-big3-crit {
 					temperature = <119000>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "passive";
 				};
 			};
 		};
@@ -1448,7 +1448,7 @@
 				cpu_big4_crit: cpu-big4-crit {
 					temperature = <119000>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "passive";
 				};
 			};
 		};
@@ -1460,7 +1460,7 @@
 				cpu_little1_crit: cpu-little1-crit {
 					temperature = <119000>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "passive";
 				};
 			};
 		};
@@ -1472,7 +1472,7 @@
 				cpu_little2_crit: cpu-little2-crit {
 					temperature = <119000>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "passive";
 				};
 			};
 		};
@@ -1484,7 +1484,7 @@
 				cpu_little3_crit: cpu-little3-crit {
 					temperature = <119000>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "passive";
 				};
 			};
 		};
@@ -1496,7 +1496,7 @@
 				cpu_little4_crit: cpu-little4-crit {
 					temperature = <119000>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "passive";
 				};
 			};
 		};
@@ -1508,7 +1508,7 @@
 				cpu_little5_crit: cpu-little5-crit{
 					temperature = <119000>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "passive";
 				};
 			};
 		};
@@ -1520,7 +1520,7 @@
 				cpu_little6_crit: cpu-little6-crit {
 					temperature = <119000>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "passive";
 				};
 			};
 		};
@@ -1532,7 +1532,7 @@
 				cpu_little7_crit: cpu-little7-crit {
 					temperature = <119000>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "passive";
 				};
 			};
 		};
@@ -1544,7 +1544,7 @@
 				cpu_little8_crit: cpu-little8-crit {
 					temperature = <119000>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "passive";
 				};
 			};
 		};
@@ -1556,7 +1556,7 @@
 				gpu1_crit: gpu1-crit {
 					temperature = <119000>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "passive";
 				};
 			};
 		};
@@ -1568,7 +1568,7 @@
 				gpu2_crit: gpu2-crit {
 					temperature = <119000>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "passive";
 				};
 			};
 		};
@@ -1580,7 +1580,7 @@
 				soc1_crit: soc1-crit {
 					temperature = <119000>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "passive";
 				};
 			};
 		};
@@ -1592,7 +1592,7 @@
 				soc2_crit: soc2-crit {
 					temperature = <119000>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "passive";
 				};
 			};
 		};
@@ -1604,7 +1604,7 @@
 				soc3_crit: soc3-crit {
 					temperature = <119000>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "passive";
 				};
 			};
 		};
@@ -1616,7 +1616,7 @@
 				soc4_crit: soc4-crit {
 					temperature = <119000>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "passive";
 				};
 			};
 		};
@@ -1628,7 +1628,7 @@
 				md1_crit: md1-crit {
 					temperature = <119000>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "passive";
 				};
 			};
 		};
@@ -1640,7 +1640,7 @@
 				md2_crit: md2-crit {
 					temperature = <119000>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "passive";
 				};
 			};
 		};
@@ -1652,7 +1652,7 @@
 				md3_crit: md3-crit {
 					temperature = <119000>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "passive";
 				};
 			};
 		};
@@ -1664,7 +1664,7 @@
 				ap_ntc_crit: ap-ntc-crit {
 					temperature = <119000>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "passive";
 				};
 			};
 		};
@@ -1676,7 +1676,7 @@
 				ltepa_ntc_crit: ltepa-ntc-crit {
 					temperature = <119000>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "passive";
 				};
 			};
 		};
@@ -1688,7 +1688,7 @@
 				nrpa_ntc_crit: nrpa-ntc-crit {
 					temperature = <119000>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "passive";
 				};
 			};
 		};
@@ -1700,7 +1700,7 @@
 				pmic6363_vio18_crit: pmic6363-vio18-crit {
 					temperature = <119000>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "passive";
 				};
 			};
 		};
@@ -1712,7 +1712,7 @@
 				pmic6363_vs1_vs3_crit: pmic6363-vs1-vs3-crit {
 					temperature = <119000>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "passive";
 				};
 			};
 		};
@@ -1724,7 +1724,7 @@
 				pmic6363_bk3_bk7_crit: pmic6363-bk3-bk7-crit {
 					temperature = <119000>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "passive";
 				};
 			};
 		};
@@ -1736,7 +1736,7 @@
 				pmic6363_vs2_crit: pmic6363-vs2-crit {
 					temperature = <119000>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "passive";
 				};
 			};
 		};
@@ -1748,7 +1748,7 @@
 				pmic6369_vpa_crit: pmic6369-vpa-crit {
 					temperature = <119000>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "passive";
 				};
 			};
 		};
@@ -1760,7 +1760,7 @@
 				pmic6369_vbk1_crit: pmic6369-vbk1-crit {
 					temperature = <119000>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "passive";
 				};
 			};
 		};
@@ -1772,7 +1772,7 @@
 				pmic6369_vcn33_1_crit: pmic6369-vcn33-1-crit {
 					temperature = <119000>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "passive";
 				};
 			};
 		};
@@ -1784,7 +1784,7 @@
 				pmic6369_vefuse_crit: pmic6369-vefuse-crit {
 					temperature = <119000>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "passive";
 				};
 			};
 		};
@@ -1796,7 +1796,7 @@
 				consys_crit: consys-crit {
 					temperature = <119000>;
 					hysteresis = <2000>;
-					type = "critical";
+					type = "passive";
 				};
 			};
 		};
