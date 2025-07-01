@@ -6902,7 +6902,9 @@ dramc: dramc@10230000 {
 				<0 0x11203e00  0 0x0100>;
 			reg-names = "mac", "ippc";
 			vusb33-supply = <&mt6369_vusb>;
-			interrupts = <GIC_SPI 394 IRQ_TYPE_LEVEL_HIGH 0>;
+			interrupts-extended = <&gic GIC_SPI 394 IRQ_TYPE_LEVEL_HIGH 0>,
+						<&pio 199 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "device", "wakeup";
 			phy-cells = <1>;
 			phys = <&u2port0 PHY_TYPE_USB2>;
 			clocks = <&cksys_reg_clk CLK_TOP_USB_TOP_SEL>,
@@ -6917,7 +6919,9 @@ dramc: dramc@10230000 {
 			maximum-speed = "high-speed";
 			mediatek,force-vbus;
 			mediatek,clk-mgr;
-			mediatek,hwrscs-vers = <2>;
+			mediatek,hwrscs-vers = <3>;
+			mediatek,syscon-wakeup = <&pericfg_ao_clk 0xb30 108>;
+			wakeup-source;
 			mediatek,axi-domain = <0xe>;
 			mediatek,noise-still-tr;
 			usb-role-switch;
