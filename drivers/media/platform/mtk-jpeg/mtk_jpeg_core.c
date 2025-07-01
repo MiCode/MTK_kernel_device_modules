@@ -1573,6 +1573,8 @@ static void mtk_jpeg_enc_device_run(void *priv)
 			goto enc_end;
 	}
 #if MTK_JPEG_DVFS_BW_SUPPORT
+	if (jpeg->qos_enablevcp)
+		mtk_mmdvfs_enable_vcp(true, jpeg->mmdvfs_vcp_idx);
 	mtk_jpeg_update_bw_request(ctx);
 	mtk_jpeg_dvfs_begin(ctx);
 #endif
@@ -1955,6 +1957,8 @@ static int mtk_jpeg_release(struct file *file)
 	#if MTK_JPEG_DVFS_BW_SUPPORT
 		mtk_jpeg_dvfs_end(ctx);
 		mtk_jpeg_end_bw_request(ctx);
+		if (jpeg->qos_enablevcp)
+			mtk_mmdvfs_enable_vcp(false, jpeg->mmdvfs_vcp_idx);
 	#endif
 		if (jpeg->is_ccf_one_step)
 			mtk_jpeg_clk_off(jpeg);
@@ -2195,6 +2199,9 @@ static int mtk_jpeg_probe(struct platform_device *pdev)
 
 	jpeg->config_larbaddr = of_property_read_bool(pdev->dev.of_node, "config-larbaddr");
 	dev_info(&pdev->dev, "config-larbaddr: 0x%x", jpeg->config_larbaddr);
+
+	jpeg->qos_enablevcp = of_property_read_bool(pdev->dev.of_node, "qos-enablevcp");
+	dev_info(&pdev->dev, "qos-enablevcp: 0x%x", jpeg->qos_enablevcp);
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	jpeg->reg_base = devm_ioremap_resource(&pdev->dev, res);

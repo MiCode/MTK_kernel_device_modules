@@ -181,6 +181,7 @@ struct mtk_jpeg_dev {
 	u32 yuv422_bw;
 	u32 yuv420_bw;
 	bool config_larbaddr;
+	bool qos_enablevcp;
 };
 
 /**
