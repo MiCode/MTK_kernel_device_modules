@@ -236,12 +236,20 @@ void init_crtc_mmp_event(void)
 			crtc_mmp_root, "channel_bw");
 		g_CRTC_MMP_Events[i].atomic_delay = mmprofile_register_event(
 			crtc_mmp_root, "atomic_delay");
+		g_CRTC_MMP_Events[i].atomic_commit = mmprofile_register_event(
+			crtc_mmp_root, "atomic_commit");
 		g_CRTC_MMP_Events[i].atomic_begin = mmprofile_register_event(
 			crtc_mmp_root, "atomic_begin");
 		g_CRTC_MMP_Events[i].atomic_flush = mmprofile_register_event(
 			crtc_mmp_root, "atomic_flush");
+		g_CRTC_MMP_Events[i].frame_cfg = mmprofile_register_event(
+			crtc_mmp_root, "frame_cfg");
+		g_CRTC_MMP_Events[i].retrig = mmprofile_register_event(
+			crtc_mmp_root, "retrig");
 		g_CRTC_MMP_Events[i].retrig_flush = mmprofile_register_event(
 			crtc_mmp_root, "retrig_flush");
+		g_CRTC_MMP_Events[i].retrig_cfg = mmprofile_register_event(
+			crtc_mmp_root, "retrig_cfg");
 		g_CRTC_MMP_Events[i].enable_vblank = mmprofile_register_event(
 			crtc_mmp_root, "enable_vblank");
 		g_CRTC_MMP_Events[i].disable_vblank = mmprofile_register_event(
@@ -250,10 +258,6 @@ void init_crtc_mmp_event(void)
 			mmprofile_register_event(crtc_mmp_root, "ESD check");
 		g_CRTC_MMP_Events[i].esd_recovery =
 			mmprofile_register_event(crtc_mmp_root, "ESD recovery");
-		g_CRTC_MMP_Events[i].frame_cfg =
-			mmprofile_register_event(crtc_mmp_root, "frame cfg");
-		g_CRTC_MMP_Events[i].retrig_cfg =
-			mmprofile_register_event(crtc_mmp_root, "retrig_cfg");
 		g_CRTC_MMP_Events[i].suspend = mmprofile_register_event(
 			crtc_mmp_root, "suspend");
 		g_CRTC_MMP_Events[i].resume = mmprofile_register_event(
@@ -286,8 +290,6 @@ void init_crtc_mmp_event(void)
 			crtc_mmp_root, "check_trigger");
 		g_CRTC_MMP_Events[i].kick_trigger = mmprofile_register_event(
 			crtc_mmp_root, "kick_trigger");
-		g_CRTC_MMP_Events[i].atomic_commit = mmprofile_register_event(
-			crtc_mmp_root, "atomic_commit");
 		g_CRTC_MMP_Events[i].mml_dbg = mmprofile_register_event(
 			crtc_mmp_root, "mml_dbg");
 		g_CRTC_MMP_Events[i].mml_job_status = mmprofile_register_event(

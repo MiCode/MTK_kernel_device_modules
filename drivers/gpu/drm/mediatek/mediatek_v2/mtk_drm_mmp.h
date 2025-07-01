@@ -110,9 +110,13 @@ struct CRTC_MMP_Events {
 	mmp_event ovl_bw_monitor;
 	mmp_event channel_bw;
 	mmp_event atomic_delay;
+	mmp_event atomic_commit;
 	mmp_event atomic_begin;
 	mmp_event atomic_flush;
+	mmp_event frame_cfg;
+	mmp_event retrig;
 	mmp_event retrig_flush;
+	mmp_event retrig_cfg;
 	mmp_event enable_vblank;
 	mmp_event disable_vblank;
 	mmp_event esd_check;
@@ -122,8 +126,6 @@ struct CRTC_MMP_Events {
 	mmp_event idle_sw_async;
 	mmp_event idle_async;
 	mmp_event idle_async_cb;
-	mmp_event frame_cfg;
-	mmp_event retrig_cfg;
 	mmp_event suspend;
 	mmp_event resume;
 	mmp_event dsi_suspend;
@@ -140,7 +142,6 @@ struct CRTC_MMP_Events {
 	mmp_event user_cmd;
 	mmp_event check_trigger;
 	mmp_event kick_trigger;
-	mmp_event atomic_commit;
 	mmp_event mml_dbg;
 	mmp_event mml_job_status;
 	mmp_event dli_relay;

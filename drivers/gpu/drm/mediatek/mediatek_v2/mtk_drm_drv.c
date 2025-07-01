@@ -11236,6 +11236,8 @@ int mtk_drm_ioctl_retrig(struct drm_device *dev, void *data,
 		return 0;
 	}
 
+	CRTC_MMP_EVENT_START((int)drm_crtc_index(crtc), retrig, 0, 0);
+
 	// get target TE time
 	current_t = ktime_get_ns() / 1000;
 	step_dur = 1000000 / drm_mode_vrefresh(&crtc->state->adjusted_mode);
@@ -11372,6 +11374,7 @@ int mtk_drm_ioctl_retrig(struct drm_device *dev, void *data,
 	mtk_drm_trace_end();
 
 retrig_end:
+	CRTC_MMP_EVENT_END((int)drm_crtc_index(crtc), retrig, 0, 0);
 	DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
 	DDP_COMMIT_UNLOCK(&private->commit.lock, __func__, retrig->present_fence_idx);
 	DDP_PROFILE("[PROFILE] %s-\n", __func__);
