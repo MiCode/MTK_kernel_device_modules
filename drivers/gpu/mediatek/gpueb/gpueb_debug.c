@@ -444,13 +444,13 @@ void gpueb_debug_init(struct platform_device *pdev)
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "gpueb_dma_base");
 	if (unlikely(!res)) {
-		gpueb_log_e(GPUEB_TAG, "fail to get resource GPUEB_DMA_BASE");
-		return;
-	}
-	g_gpueb_dma_base = devm_ioremap(gpueb_dev, res->start, resource_size(res));
-	if (unlikely(!g_gpueb_dma_base)) {
-		gpueb_log_e(GPUEB_TAG, "fail to ioremap dma base: 0x%llx", (u64) res->start);
-		return;
+		gpueb_log_i(GPUEB_TAG, "skip to get resource GPUEB_DMA_BASE");
+	} else {
+		g_gpueb_dma_base = devm_ioremap(gpueb_dev, res->start, resource_size(res));
+		if (unlikely(!g_gpueb_dma_base)) {
+			gpueb_log_e(GPUEB_TAG, "fail to ioremap gpueb_dma_base: 0x%llx", (u64) res->start);
+			return;
+		}
 	}
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "mbox0_send");
@@ -480,9 +480,10 @@ void gpueb_debug_init(struct platform_device *pdev)
 		gpueb_log_i(GPUEB_TAG, "skip to get resource gpueb_to_infra_gals_en");
 	} else {
 		g_gpueb_to_infra_gals_en = devm_ioremap(gpueb_dev, res->start, resource_size(res));
-		if (unlikely(!g_gpueb_to_infra_gals_en))
+		if (unlikely(!g_gpueb_to_infra_gals_en)) {
 			gpueb_log_e(GPUEB_TAG, "fail to ioremap gpueb_to_infra_gals_en: 0x%llx", (u64) res->start);
-
+			return;
+		}
 	}
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "gpueb_to_infra_gals_info");
@@ -490,9 +491,10 @@ void gpueb_debug_init(struct platform_device *pdev)
 		gpueb_log_i(GPUEB_TAG, "skip to get resource gpueb_to_infra_gals_info");
 	} else {
 		g_gpueb_to_infra_gals_info = devm_ioremap(gpueb_dev, res->start, resource_size(res));
-		if (unlikely(!g_gpueb_to_infra_gals_info))
+		if (unlikely(!g_gpueb_to_infra_gals_info)) {
 			gpueb_log_e(GPUEB_TAG, "fail to ioremap gpueb_to_infra_gals_info: 0x%llx", (u64) res->start);
-
+			return;
+		}
 	}
 
 }
