@@ -1189,6 +1189,20 @@
 		};
 	};
 
+	drm_wv: drm-wv {
+		compatible = "mediatek,drm_wv";
+	};
+
+	mtee_svp: mtee-svp {
+		compatible = "mediatek,svp";
+	};
+
+	teeperf {
+		compatible = "mediatek,teeperf";
+		svp-cpu-hint-mode = <1>;
+		svp-cpu-uclamp-min = <409>;
+	};
+
 	/* Trustonic Mobicore SW IRQ number 144 = 32 + 112 */
 	mobicore: mobicore {
 		compatible = "trustonic,mobicore";
