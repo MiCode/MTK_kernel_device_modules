@@ -998,7 +998,7 @@ EXPORT_SYMBOL_GPL(dmabuf_to_secure_handle);
 
 #if (!(IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)))
 
-int dmabuf_to_sec_id(const struct dma_buf *dmabuf, u32 *sec_hdl)
+int dmabuf_to_sec_id(const struct dma_buf *dmabuf, u64 *sec_hdl)
 {
 	struct mtk_sec_heap_buffer *buffer = NULL;
 	struct secure_heap_region *sec_heap = NULL;
@@ -1023,7 +1023,7 @@ int dmabuf_to_sec_id(const struct dma_buf *dmabuf, u32 *sec_hdl)
 }
 EXPORT_SYMBOL_GPL(dmabuf_to_sec_id);
 
-int dmabuf_to_tmem_type(const struct dma_buf *dmabuf, u32 *sec_hdl)
+int dmabuf_to_tmem_type(const struct dma_buf *dmabuf, u64 *sec_hdl)
 {
 	struct mtk_sec_heap_buffer *buffer = NULL;
 	struct secure_heap_region *sec_heap = NULL;

@@ -43,7 +43,7 @@ long mtk_dma_buf_set_name(struct dma_buf *dmabuf, const char *buf);
  * @sec_hdl: for get secure handle
  * returns >0 means valid iomm_sec_id, -1 means error
  */
-int dmabuf_to_sec_id(const struct dma_buf *dmabuf, u32 *sec_hdl);
+int dmabuf_to_sec_id(const struct dma_buf *dmabuf, u64 *sec_hdl);
 
 /*
  * dmabuf_to_tmem_type() - Get trusted memory type corresponding to dma-buf
@@ -51,7 +51,7 @@ int dmabuf_to_sec_id(const struct dma_buf *dmabuf, u32 *sec_hdl);
  * @sec_hdl: for get secure handle
  * returns >0 means valid the trusted memory type, -1 means error
  */
-int dmabuf_to_tmem_type(const struct dma_buf *dmabuf, u32 *sec_hdl);
+int dmabuf_to_tmem_type(const struct dma_buf *dmabuf, u64 *sec_hdl);
 #endif
 
 void dma_heap_pool_prefill(unsigned long size, const char *heap_name);
