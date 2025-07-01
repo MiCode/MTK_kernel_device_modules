@@ -67,6 +67,8 @@ void loom_render_lock(void);
 void loom_render_unlock(void);
 void loom_cfg_lock(void);
 void loom_cfg_unlock(void);
+void loom_mode_lock(void);
+void loom_mode_unlock(void);
 int loom_get_render_num(void);
 int loom_get_cfg_length(void);
 unsigned long long loom_get_time(void);

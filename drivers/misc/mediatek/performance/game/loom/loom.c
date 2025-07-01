@@ -443,19 +443,22 @@ int loom_activate(int pid)
 {
 	struct loom_render_info *iter = NULL;
 	int ret = 0;
-
+	loom_mode_lock();
 	loom_render_lock();
+
 	iter = loom_search_add_render_info(pid, 1);
+	loom_render_unlock();
 	if (!iter) {
-		loom_render_unlock();
+		loom_mode_unlock();
 		return -ENOMEM;
 	}
+
 	//switch_fpsgo_control(0, pid, 0, 0);
 	fbt_set_magt_workaround_passive_mode(1);
 	ret = loom_register_frame_info_cb(1, &fpsgo_loom_frame_info_cb);
 	loom_select_cfg_apply(1);
 	loom_flt_cfg_apply(1);
-	loom_render_unlock();
+	loom_mode_unlock();
 	return ret;
 }
 
@@ -464,14 +467,18 @@ int loom_deactivate(int pid)
 	struct loom_render_info *iter = NULL;
 	int ret = 0;
 
+	loom_mode_lock();
 	loom_render_lock();
 	iter= loom_search_add_render_info(pid, 0);
 	if (!iter) {
 		loom_render_unlock();
+		loom_mode_unlock();
 		return -EINVAL;
 	}
 	loom_reset_operation(iter);
 	loom_delete_render_info(iter);
+	loom_render_unlock();
+
 	//switch_fpsgo_control(0, pid, 1, 0);
 	fbt_set_magt_workaround_passive_mode(0);
 	if (!loom_get_render_num()) {
@@ -479,7 +486,7 @@ int loom_deactivate(int pid)
 		loom_select_cfg_apply(0);
 		loom_flt_cfg_apply(0);
 	}
-	loom_render_unlock();
+	loom_mode_unlock();
 	return ret;
 }
 

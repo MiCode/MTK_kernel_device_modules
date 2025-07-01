@@ -22,6 +22,7 @@ static HLIST_HEAD(loom_render_list);
 static HLIST_HEAD(loom_task_cfg);
 static DEFINE_MUTEX(render_lock);
 static DEFINE_MUTEX(cfg_lock);
+static DEFINE_MUTEX(mode_lock);
 //static DEFINE_MUTEX(loom_cb_lock);  need or not??
 
 void *loom_alloc(int size)
@@ -377,6 +378,16 @@ void loom_cfg_lock(void)
 void loom_cfg_unlock(void)
 {
 	mutex_unlock(&cfg_lock);
+}
+
+void loom_mode_lock(void)
+{
+	mutex_lock(&mode_lock);
+}
+
+void loom_mode_unlock(void)
+{
+	mutex_unlock(&mode_lock);
 }
 
 static unsigned long long loom_traverse_render_hlist(struct hlist_head *render_list,
