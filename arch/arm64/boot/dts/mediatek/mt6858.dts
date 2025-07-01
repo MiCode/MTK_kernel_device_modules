@@ -5349,12 +5349,12 @@ dramc: dramc@10230000 {
 			interconnect-names = "DDP_COMPONENT_WDMA1_qos",
 					"DDP_COMPONENT_WDMA1_hrt_qos";
 
-			fifo-size-1plane = <966>;
+			fifo-size-1plane = <817>;
 			fifo-size-uv-1plane = <29>;
-			fifo-size-2plane = <640>;
-			fifo-size-uv-2plane = <320>;
-			fifo-size-3plane = <637>;
-			fifo-size-uv-3plane = <160>;
+			fifo-size-2plane = <540>;
+			fifo-size-uv-2plane = <270>;
+			fifo-size-3plane = <270>;
+			fifo-size-uv-3plane = <133>;
 		};
 
 		i2c@1401d000 {
