@@ -10151,6 +10151,10 @@ dramc: dramc@10230000 {
 	mt-soc-offload-common {
 		compatible = "mediatek,mt-soc-offload-common";
 	};
+
+	pkvm: pkvm {
+		status = "disabled";
+	};
 };
 
 
