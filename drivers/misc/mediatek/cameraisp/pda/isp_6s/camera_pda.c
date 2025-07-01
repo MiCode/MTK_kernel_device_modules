@@ -218,6 +218,14 @@ static void pda_reset(unsigned int PDA_Index)
 {
 	unsigned long end = 0;
 
+	spin_lock(&g_PDA_SpinLock);
+	if (g_u4EnableClockCount == 0) {
+		LOG_INF("Cannot process without enable pda clock\n");
+		spin_unlock(&g_PDA_SpinLock);
+		return;
+	}
+	spin_unlock(&g_PDA_SpinLock);
+
 	end = jiffies + msecs_to_jiffies(100);
 
 	// reset HW status
@@ -262,6 +270,14 @@ static void pda_nontransaction_reset(unsigned int PDA_Index)
 {
 	unsigned int MRAW_reset_value = 0;
 	unsigned int Reset_Bitmask = 0;
+
+	spin_lock(&g_PDA_SpinLock);
+	if (g_u4EnableClockCount == 0) {
+		LOG_INF("Cannot process without enable pda clock\n");
+		spin_unlock(&g_PDA_SpinLock);
+		return;
+	}
+	spin_unlock(&g_PDA_SpinLock);
 
 	// equivalent to hardware reset
 	PDA_WR32(PDA_devs[PDA_Index].m_pda_base + PDA_PDA_TOP_CTL_REG,
@@ -1294,9 +1310,11 @@ static irqreturn_t pda_irqhandle(signed int Irq, void *DeviceId)
 {
 	unsigned int nPdaStatus = 0;
 
-	// read pda status
-	nPdaStatus = PDA_RD32(PDA_devs[0].m_pda_base + PDA_PDA_ERR_STAT_REG) &
-		PDA_STATUS_REG;
+	if (g_u4EnableClockCount > 0) {
+		// read pda status
+		nPdaStatus = PDA_RD32(PDA_devs[0].m_pda_base + PDA_PDA_ERR_STAT_REG) &
+			PDA_STATUS_REG;
+	}
 
 #ifdef FOR_DEBUG
 	LOG_INF("PDA0 PDA_PDA_ERR_STAT_REG = 0x%x", nPdaStatus);
@@ -1332,9 +1350,11 @@ static irqreturn_t pda2_irqhandle(signed int Irq, void *DeviceId)
 {
 	unsigned int nPdaStatus = 0;
 
-	// read pda status
-	nPdaStatus = PDA_RD32(PDA_devs[1].m_pda_base + PDA_PDA_ERR_STAT_REG) &
-		PDA_STATUS_REG;
+	if (g_u4EnableClockCount > 0) {
+		// read pda status
+		nPdaStatus = PDA_RD32(PDA_devs[1].m_pda_base + PDA_PDA_ERR_STAT_REG) &
+			PDA_STATUS_REG;
+	}
 
 #ifdef FOR_DEBUG
 	LOG_INF("PDA1 PDA_PDA_ERR_STAT_REG = 0x%x", nPdaStatus);
@@ -1601,10 +1621,6 @@ static long PDA_Ioctl(struct file *a_pstFile,
 	}
 
 	switch (a_u4Command) {
-	case PDA_RESET:
-		for (i = 0; i < g_PDA_quantity; i++)
-			pda_reset(i);
-		break;
 	case PDA_GET_VERSION:
 
 		if (copy_from_user(&Init_Data,
