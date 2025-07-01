@@ -976,7 +976,7 @@ void clkchk_hwv_irq_init(struct platform_device *pdev)
 		pr_notice("[clkchk] get hwv irq is not support\n");
 	} else {
 		ret = request_irq(hwv_irq, clkchk_hwv_irq_handler,
-			IRQF_TRIGGER_NONE, "HWV IRQ", NULL);
+			IRQF_SHARED | IRQF_TRIGGER_NONE, "HWV IRQ", &pdev->dev);
 		if (ret < 0) {
 			pr_notice("[clkchk]hwv require irq fail %d %d\n",
 				hwv_irq, ret);
@@ -993,7 +993,7 @@ void clkchk_hwv_irq_init(struct platform_device *pdev)
 		pr_notice("[clkchk] get hfrp hwv irq is not support\n");
 	} else {
 		ret = request_irq(hfrp_hwv_irq, clkchk_hwv_irq_handler,
-			IRQF_TRIGGER_NONE, "HFRP HWV IRQ", NULL);
+			IRQF_SHARED | IRQF_TRIGGER_NONE, "HFRP HWV IRQ", &pdev->dev);
 		if (ret < 0) {
 			pr_notice("[clkchk]hfrp hwv require irq fail %d %d\n",
 				hfrp_hwv_irq, ret);
