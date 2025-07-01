@@ -229,6 +229,33 @@ static struct SENSOR_VC_INFO2_STRUCT SENSOR_VC_INFO2[] = {
 	},
 };
 
+#define pd_i4Crop { \
+	/* pre cap normal_video hs_video slim_video */\
+	{0, 6}, {0, 6}, {0, 261}, {120, 456}, {0, 0},\
+	/* cust1 cust2 cust3 cust4 cust5 */\
+	{0, 0}, {204, 156}, {204, 258}, {204, 258}, {0, 0},\
+}
+
+static struct SET_PD_BLOCK_INFO_T imgsensor_pd_info = {
+	.i4OffsetX = 8,
+	.i4OffsetY = 2,
+	.i4PitchX = 8,
+	.i4PitchY = 8,
+	.i4PairNum = 4,
+	.i4SubBlkW = 8,
+	.i4SubBlkH = 2,
+	.i4PosL = {
+		{9, 2}, {11, 5}, {15, 6}, {13, 9}
+	},
+	.i4PosR = {
+		{8, 2}, {10, 5}, {14, 6}, {12, 9}
+	},
+	.i4BlockNumX = 508,
+	.i4BlockNumY = 382,
+	.i4Crop = pd_i4Crop,
+
+	.iMirrorFlip = 0,
+};
 
 static kal_uint16 table_write_cmos_sensor(
 	kal_uint16 *para, kal_uint32 len)
@@ -2498,7 +2525,7 @@ static kal_uint32 get_info(enum MSDK_SCENARIO_ID_ENUM scenario_id,
 	sensor_info->IHDR_Support = imgsensor_info.ihdr_support;
 	sensor_info->IHDR_LE_FirstLine = imgsensor_info.ihdr_le_firstline;
 	sensor_info->SensorModeNum = imgsensor_info.sensor_mode_num;
-	sensor_info->PDAF_Support = 0;
+	sensor_info->PDAF_Support = 2;
 	sensor_info->SensorMIPILaneNumber = imgsensor_info.mipi_lane_num;
 	sensor_info->SensorClockFreq = imgsensor_info.mclk;
 	sensor_info->SensorClockDividCount = 3; /* not use */
@@ -2908,6 +2935,7 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 	UINT32 *feature_data_32 = (UINT32 *) feature_para;
 	unsigned long long *feature_data = (unsigned long long *)feature_para;
 
+	struct SET_PD_BLOCK_INFO_T *PDAFinfo;
 	struct SENSOR_WINSIZE_INFO_STRUCT *wininfo;
 	//struct SENSOR_VC_INFO_STRUCT *pvcinfo;
 	struct SENSOR_VC_INFO2_STRUCT *pvcinfo2;
@@ -2999,6 +3027,38 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 			(enum MSDK_SCENARIO_ID_ENUM) *feature_data,
 			(MUINT32 *) (uintptr_t) (*(feature_data + 1)));
 		break;
+	case SENSOR_FEATURE_GET_PDAF_INFO:
+		pr_debug("SENSOR_FEATURE_GET_PDAF_INFO scenarioId:%d\n",
+			(UINT16) *feature_data);
+		PDAFinfo =
+		(struct SET_PD_BLOCK_INFO_T *)(uintptr_t)(*(feature_data+1));
+		if (*feature_data == MSDK_SCENARIO_ID_VIDEO_PREVIEW) {
+			imgsensor_pd_info.i4BlockNumY = 284;
+			memcpy((void *)PDAFinfo, (void *)&imgsensor_pd_info,
+				sizeof(struct SET_PD_BLOCK_INFO_T));
+		} else {
+			imgsensor_pd_info.i4BlockNumY = 382;
+			memcpy((void *)PDAFinfo, (void *)&imgsensor_pd_info,
+				sizeof(struct SET_PD_BLOCK_INFO_T));
+		}
+		break;
+	case SENSOR_FEATURE_GET_SENSOR_PDAF_CAPACITY:
+		pr_debug(
+		"SENSOR_FEATURE_GET_SENSOR_PDAF_CAPACITY scenarioId:%d\n",
+		(UINT16) *feature_data);
+		/*PDAF capacity enable or not*/
+		switch (*feature_data) {
+		case MSDK_SCENARIO_ID_CAMERA_PREVIEW:
+		case MSDK_SCENARIO_ID_CAMERA_CAPTURE_JPEG:
+		case MSDK_SCENARIO_ID_VIDEO_PREVIEW:
+			*(MUINT32 *)(uintptr_t)(*(feature_data+1)) = 1;
+			break;
+		case MSDK_SCENARIO_ID_SLIM_VIDEO:
+		default:
+			*(MUINT32 *)(uintptr_t)(*(feature_data+1)) = 0;
+			break;
+		}
+		break;
 	case SENSOR_FEATURE_GET_PDAF_DATA:
 		pr_debug("SENSOR_FEATURE_GET_PDAF_DATA\n");
 		break;
@@ -3056,10 +3116,6 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 				sizeof(struct SENSOR_WINSIZE_INFO_STRUCT));
 			break;
 		}
-		break;
-	case SENSOR_FEATURE_GET_PDAF_INFO:
-		pr_debug("SENSOR_FEATURE_GET_PDAF_INFO scenarioId: %d\n",
-			(UINT16) *feature_data);
 		break;
 	case SENSOR_FEATURE_GET_MIPI_PIXEL_RATE:
 	{
