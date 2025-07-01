@@ -129,7 +129,7 @@ define_mgk_ddk_ko(
             ],
             "//conditions:default" : []
     }) + [
-        "DDISP_MDP_COLOR_ON=1",
+        "DISP_MDP_COLOR_ON=1",
     ] ,
     copts = [
         "-I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mediatek_v2/v1",
