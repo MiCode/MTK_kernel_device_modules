@@ -573,7 +573,7 @@ static s32 translate_meta(struct op_meta *meta,
 		if (!reg_addr)
 			return -EINVAL;
 
-		if (cmdq_mdp_poll_sleep_support()) {
+		if (cmdq_mdp_poll_sleep_support() && !handle->secData.is_secure) {
 			if (!handle->use_gpr) {
 				handle->use_gpr = cmdq_mdp_get_input_engine_gpr(handle->engineFlag);
 				if (!handle->use_gpr)
