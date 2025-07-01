@@ -5412,7 +5412,12 @@ dramc: dramc@10230000 {
 
 		wpe-a@15811000 {
 			compatible = "mediatek,wpe_a";
+			mediatek,larb = <&smi_larb11>;
 			reg = <0 0x15811000 0 0x1000>;
+			dma-ranges = <0x0 0x0 0x0 0x0 0x1 0x0>;
+			iommus = <&disp_iommu M4U_L11_P15_IMGSYS2_SMI_WPE_RDMA1>,
+				<&disp_iommu M4U_L11_P16_IMGSYS2_SMI_WPE_RDMA0>,
+				<&disp_iommu M4U_L11_P17_IMGSYS2_SMI_WPE_WDMA>;
 			power-domains = <&scpsys MT6858_POWER_DOMAIN_ISP_IMG2>;
 			clocks =
 				<&imgsys2_clk CLK_IMGSYS2_LARB9>,
