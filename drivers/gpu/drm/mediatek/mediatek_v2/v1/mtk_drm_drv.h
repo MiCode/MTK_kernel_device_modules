@@ -123,6 +123,8 @@ struct mtk_mmsys_driver_data {
 	bool doze_ctrl_pmic;
 	bool can_compress_rgb565;
 	bool need_emi_eff;
+	bool not_support_csc;
+	bool wcg_2nd_3st_support;
 	void (*disable_merge_irq)(struct drm_device *drm);
 	void (*gce_event_config)(struct drm_device *drm);
 	void (*vdisp_ao_irq_config)(struct drm_device *drm);

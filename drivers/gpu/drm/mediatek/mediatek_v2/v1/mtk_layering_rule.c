@@ -243,11 +243,55 @@ static bool is_ovl_wcg(enum mtk_drm_dataspace ds)
 	return ret;
 }
 
-static bool is_ovl_standard(struct drm_device *dev, enum mtk_drm_dataspace ds)
+static bool is_ovl_standard(struct drm_device *dev, enum mtk_drm_dataspace ds,
+			int color_mode, unsigned int disp_idx, struct drm_mtk_layer_config *c)
 {
 	struct mtk_drm_private *priv = dev->dev_private;
 	enum mtk_drm_dataspace std = ds & MTK_DRM_DATASPACE_STANDARD_MASK;
-	bool ret = false;
+	bool ret = false; /* GPU handle */
+
+	if (priv->data->not_support_csc) {
+		struct mtk_panel_params *panel_params = NULL;
+		struct drm_crtc *crtc = NULL;
+
+		if (disp_idx >= HRT_DISP_TYPE_NUM) {
+			DDPPR_ERR("%s failed, idx is overflow, %u\n", __func__, disp_idx);
+			return false;
+		}
+		crtc = priv->crtc[disp_idx];
+		if (!crtc) {
+			DDPPR_ERR("%s failed, crtc is NULL\n", __func__);
+			return false;
+		}
+		panel_params = mtk_drm_get_lcm_ext_params(crtc);
+		if (!panel_params) {
+			DDPPR_ERR("%s failed, panel_params is NULL\n", __func__);
+			return false;
+		}
+		if (panel_params->lcm_color_mode == MTK_DRM_COLOR_MODE_DISPLAY_P3) {
+			if (color_mode == HAL_COLOR_MODE_DISPLAY_P3 ||
+				color_mode == HAL_COLOR_MODE_DCI_P3) {
+				if (is_ovl_wcg(ds))
+					ret = true; /* OVL handle */
+			} else if (color_mode == HAL_COLOR_MODE_SRGB) {
+				if (!is_ovl_wcg(ds) && (std != MTK_DRM_DATASPACE_STANDARD_BT2020) &&
+					(std != MTK_DRM_DATASPACE_STANDARD_BT2020_CONSTANT_LUMINANCE))
+					ret = true; /* OVL handle */
+			} else {  /* other CM is OVL handle */
+				ret = true;
+			}
+		} else if (panel_params->lcm_color_mode == MTK_DRM_COLOR_MODE_NATIVE) {
+			if (!is_ovl_wcg(ds) && (std != MTK_DRM_DATASPACE_STANDARD_BT2020) &&
+				(std != MTK_DRM_DATASPACE_STANDARD_BT2020_CONSTANT_LUMINANCE))
+				ret = true; /* OVL handle */
+		} else {
+			DDPPR_ERR("%s, panel color mode is %d, not expect?\n",
+					  __func__, panel_params->lcm_color_mode);
+			ret = false;
+		}
+
+		return ret;
+	}
 
 	if (!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_WCG) &&
 	    is_ovl_wcg(ds))
@@ -270,23 +314,39 @@ static void filter_by_wcg(struct drm_device *dev,
 {
 	unsigned int j;
 	struct drm_mtk_layer_config *c;
-	unsigned int disp_idx = 0;
+	unsigned int disp_idx = disp_info->disp_idx;
+	unsigned int idx = disp_info->disp_idx;
 	unsigned int condition;
+	struct mtk_drm_private *priv = dev->dev_private;
+
+	/* As is not support 2nd/3th display WCG, ex:mt6897 && mt6989 */
+	if (!priv->data->wcg_2nd_3st_support && (disp_idx == 2 || disp_idx == 1))
+		return;
 
 	if (get_layering_opt(LYE_OPT_SPHRT))
-		disp_idx = disp_info->disp_idx;
+		idx = 0;
 
-	for (; disp_idx < HRT_DISP_TYPE_NUM ; disp_idx++) {
-		for (j = 0; j < disp_info->layer_num[disp_idx]; j++) {
-			c = &disp_info->input_config[disp_idx][j];
+	for (; idx < HRT_DISP_TYPE_NUM ; idx++) {
+		for (j = 0; j < disp_info->layer_num[idx]; j++) {
+			c = &disp_info->input_config[idx][j];
+
+			c->wcg_force_gpu = 0;
 			/* TODO: check disp WCG cap */
 			condition = (disp_idx == 0) || !is_ovl_wcg(c->dataspace);
+			if (priv->data->not_support_csc && priv->data->mmsys_id == MMSYS_MT6858)
+				condition = (disp_idx == 0) || (disp_idx == 3);
+
 			if (condition &&
-			    (is_ovl_standard(dev, c->dataspace) ||
-			     mtk_has_layer_cap(c, MTK_MDP_HDR_LAYER)))
+				(is_ovl_standard(dev, c->dataspace, disp_info->color_mode[idx], disp_idx, c) ||
+				 mtk_has_layer_cap(c, MTK_MDP_HDR_LAYER)))
 				continue;
 
-			mtk_rollback_layer_to_GPU(disp_info, disp_idx, j);
+			if (priv->data->not_support_csc) {
+				c->wcg_force_gpu = 1;
+				DDPINFO("%s, to GPU disp:%u, j=%d, ds:%d, cap:0x%x\n",
+						__func__, idx, j, c->dataspace, c->layer_caps);
+			}
+			mtk_rollback_layer_to_GPU(disp_info, idx, j);
 		}
 		if (get_layering_opt(LYE_OPT_SPHRT))
 			break;

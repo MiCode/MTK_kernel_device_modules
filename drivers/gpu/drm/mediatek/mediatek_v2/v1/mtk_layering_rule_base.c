@@ -501,7 +501,7 @@ static void dump_disp_info(struct drm_mtk_layering_info *disp_info,
 	"HRT hrt_num:0x%x/disp_idx:%x/disp_list:%x/mod:%d/dal:%d/addon_scn:(%d, %d, %d)/bd_tb:%d/i:%d\n"
 #define _L_FMT \
 	"L%d->%d/(%d,%d,%d,%d)/(%d,%d,%d,%d)/f0x%x/ds%d/e%d/cap0x%x" \
-	"/compr%d/secure%d/frame:%u/AID:%llu\n"
+	"/compr%d/secure%d/frame:%u/force_gpu:%u/AID:%llu\n"
 
 	layer_info = kzalloc(sizeof(struct drm_mtk_layer_config),
 			GFP_KERNEL);
@@ -576,6 +576,7 @@ static void dump_disp_info(struct drm_mtk_layering_info *disp_info,
 				       layer_info->compress,
 				       layer_info->secure,
 				       disp_info->frame_idx[i],
+				       layer_info->wcg_force_gpu,
 				       layer_info->buffer_alloc_id);
 			}
 		}
@@ -598,11 +599,13 @@ static void dump_disp_info(struct drm_mtk_layering_info *disp_info,
 				continue;
 			}
 
-			DDPINFO("HRT D%d/M%d/LN%d/hrt:0x%x/G(%d,%d)/id%u\n", i,
+			DDPINFO("HRT D%d/M%d/LN%d/hrt:0x%x/G(%d,%d)/CM%d/id%u\n", i,
 				disp_info->disp_mode[i],
 				disp_info->layer_num[i], disp_info->hrt_num,
 				disp_info->gles_head[i],
-				disp_info->gles_tail[i], disp_info->hrt_idx);
+				disp_info->gles_tail[i],
+				disp_info->color_mode[i],
+				disp_info->hrt_idx);
 
 			for (j = 0; j < disp_info->layer_num[i]; j++) {
 				if (access_ok(&disp_info->input_config[i][j],
@@ -641,6 +644,7 @@ static void dump_disp_info(struct drm_mtk_layering_info *disp_info,
 					layer_info->compress,
 					layer_info->secure,
 					disp_info->frame_idx[i],
+					layer_info->wcg_force_gpu,
 					layer_info->buffer_alloc_id);
 
 			}
@@ -3246,7 +3250,8 @@ static void clear_layer(struct drm_mtk_layering_info *disp_info,
 		for (i = disp_info->layer_num[di] - 1; i >= g_head; i--) {
 			c = &disp_info->input_config[di][i];
 			if (mtk_has_layer_cap(c, MTK_LAYERING_OVL_ONLY) &&
-			    mtk_has_layer_cap(c, MTK_CLIENT_CLEAR_LAYER)) {
+			    mtk_has_layer_cap(c, MTK_CLIENT_CLEAR_LAYER) &&
+			    (!c->wcg_force_gpu)) {
 				top = i;
 				break;
 			}
@@ -4572,7 +4577,7 @@ static void check_is_mml_layer(const int disp_idx,
 
 	for (i = 0; i < disp_info->layer_num[disp_idx]; i++) {
 		c = &disp_info->input_config[disp_idx][i];
-		if (MTK_MML_OVL_LAYER & c->layer_caps) {
+		if ((MTK_MML_OVL_LAYER & c->layer_caps) && (!c->wcg_force_gpu)) {
 			if (mml_multi_layer) {
 				multi_mml_info[mml_cnt] = (disp_info->mml_cfg[disp_idx][i]);
 				if (!output_comp) {
@@ -4669,7 +4674,8 @@ static void check_is_mml_layer(const int disp_idx,
 	for (i = 0; i < disp_info->layer_num[disp_idx]; i++) {
 		if (disp_idx >= 0 && disp_idx < LYE_CRTC)
 			c = &disp_info->input_config[disp_idx][i];
-		if (!(MTK_MML_OVL_LAYER & c->layer_caps) || disp_idx < 0 || disp_idx > LYE_CRTC)
+		if (!(MTK_MML_OVL_LAYER & c->layer_caps) ||
+			disp_idx < 0 || disp_idx > LYE_CRTC || c->wcg_force_gpu)
 			continue;
 
 		mml_info = &disp_info->mml_cfg[disp_idx][i];
