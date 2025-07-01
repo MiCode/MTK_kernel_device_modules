@@ -2986,7 +2986,10 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 		mtk_dsi_mask(dsi, DSI_DEBUG_SEL(dsi->driver_data), MM_RST_SEL, MM_RST_SEL);
 
 	/* enable ultra signal between SOF to VACT */
-	mtk_dsi_mask(dsi, DSI_RESERVED(dsi->driver_data), DSI_VDE_BLOCK_ULTRA, 0);
+	if (priv->data->mmsys_id == MMSYS_MT6985 ||
+		priv->data->mmsys_id == MMSYS_MT6897 ||
+		priv->data->mmsys_id == MMSYS_MT6835)
+		mtk_dsi_mask(dsi, DSI_RESERVED(dsi->driver_data), DSI_VDE_BLOCK_ULTRA, 0);
 	/* 1TNP */
 	fill_rate = mmsys_clk * dli_relay_1tnp * dsi_buf_bpp / buffer_unit;
 
