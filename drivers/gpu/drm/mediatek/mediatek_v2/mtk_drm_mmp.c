@@ -423,6 +423,8 @@ void init_crtc_mmp_event(void)
 			crtc_mmp_root, "enter_HS_idle");
 		g_CRTC_MMP_Events[i].leave_idle = mmprofile_register_event(
 			crtc_mmp_root, "leave_HS_idle");
+		g_CRTC_MMP_Events[i].idle_sw_async = mmprofile_register_event(
+			crtc_mmp_root, "idle_sw_async");
 		g_CRTC_MMP_Events[i].idle_async = mmprofile_register_event(
 			crtc_mmp_root, "idle_async");
 		g_CRTC_MMP_Events[i].idle_async_cb = mmprofile_register_event(

@@ -3698,6 +3698,16 @@ static void process_dbg_opt(const char *opt)
 		mtk_drm_set_idle_check_interval(crtc, idle_check_interval);
 		DDPMSG("change idle interval to %llu ms\n",
 		       idle_check_interval);
+	} else if (strncmp(opt, "pm_async:", 9) == 0) {
+		int ret, value;
+
+		ret = sscanf(opt + 9, "%d\n", &value);
+		if (ret <= 0) {
+			DDPMSG("%d error to parse cmd %s\n", __LINE__, opt);
+			return;
+		}
+
+		mtk_drm_pm_ctrl_async_debug(value);
 	} else if (strncmp(opt, "idle_perf:", 10) == 0) {
 		/* on     -- enable idle performance monitor
 		 * off    -- disable idle performance monitor

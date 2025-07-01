@@ -83,7 +83,8 @@ struct mtk_drm_idlemgr {
 	struct task_struct *async_handler_task;
 	wait_queue_head_t idlemgr_wq;
 	wait_queue_head_t kick_wq;
-	wait_queue_head_t sw_async_wq;
+	wait_queue_head_t sw_async_handler_wq;
+	wait_queue_head_t sw_async_event_wq;
 	wait_queue_head_t async_handler_wq;
 	wait_queue_head_t async_event_wq;
 	atomic_t idlemgr_task_active;
@@ -92,6 +93,7 @@ struct mtk_drm_idlemgr {
 	atomic_t async_enabled;
 	//async event reference count
 	atomic_t async_ref;
+	atomic_t sw_async_ref;
 	//lock protection of async_cb_list management
 	spinlock_t async_lock;
 	//maintain cmdq_pkt to be complete and free
@@ -111,7 +113,7 @@ struct mtk_drm_idlemgr {
 	struct mtk_drm_idlemgr_perf *perf;
 	unsigned int old_flag;
 	atomic_t sw_async_active;
-	struct mutex sw_async_lock;
+	spinlock_t sw_async_lock;
 };
 
 struct mtk_drm_async_cb_data {
@@ -151,9 +153,9 @@ enum mtk_drm_async_user_id {
 
 	/*sw async user 0x00010000 ~ 0xffff0000*/
 	USER_SW_ASYNC_USER_MASK = 0x00ff0000,
-	USER_SW_ASYNC_AAL = 0x00010000,
-	USER_SW_ASYNC_TEST0 = 0x00020000,
-	USER_SW_ASYNC_TEST1 = 0x00030000,
+	USER_SW_ASYNC_POWER = 0x00010000,
+	USER_SW_ASYNC_VIDLE = 0x00020000,
+	USER_SW_ASYNC_AAL = 0x00030000,
 };
 
 enum mtk_drm_cpu_cmd {
@@ -243,5 +245,4 @@ void mtk_drm_idlemgr_wb_fill_buf(struct drm_crtc *crtc, int value);
 void mtk_drm_idlemgr_wb_test(int value);
 int mtk_drm_sw_async_trigger(struct drm_crtc *crtc,
 		unsigned int user_id, sw_async_func func, void *data);
-
 #endif

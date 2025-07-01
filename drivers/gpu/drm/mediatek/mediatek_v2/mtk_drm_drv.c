@@ -134,6 +134,7 @@ u32 *disp_perfs;
 static atomic_t top_isr_ref; /* irq power status protection */
 static atomic_t top_clk_ref; /* top clk status protection*/
 static spinlock_t top_clk_lock; /* power status protection*/
+static atomic_t debug_power_async = ATOMIC_INIT(3);
 
 struct device *g_dpc_dev; /* mminfra power control */
 
@@ -7577,6 +7578,7 @@ static const struct mtk_mmsys_driver_data mt6993_mmsys_driver_data = {
 	.get_channel_idx = mtk_disp_get_channel_idx,
 	.pwr_clk_map = pwr_clk_map,
 	.pwr_on_order = mt6993_pwr_on_order,
+	.pwr_on_async_id = 8,
 	.pwr_off_order = mt6993_pwr_off_order,
 	.pwr_length = ARRAY_SIZE(mt6993_pwr_on_order),
 	//.update_channel_hrt = mtk_disp_update_channel_hrt_MT6993,
@@ -7903,7 +7905,50 @@ int mtk_drm_esd_recovery_check_ioctl(struct drm_device *dev, void *data,
 	return 0;
 }
 
-int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action action)
+static int mtk_drm_subsys_poweron_thread_block(void *data)
+{
+	unsigned int i, count = 0;
+	struct mtk_drm_private *priv = (struct mtk_drm_private *)data;
+
+	if (IS_ERR_OR_NULL(priv))
+		return -1;
+
+	if (priv->data->pwr_on_async_id > 0 &&
+		priv->data->pwr_on_async_id < priv->data->pwr_length)
+		count = priv->data->pwr_on_async_id;
+	else
+		count = priv->data->pwr_length;
+
+	mtk_drm_trace_begin("mtcmos:0~%u block", count - 1);
+	for (i = 0; i < count; i++)
+		clk_prepare_enable(priv->pwr_clks[priv->data->pwr_on_order[i]]);
+	mtk_drm_trace_end();
+	return 0;
+}
+
+static int mtk_drm_subsys_poweron_thread_async(void *data)
+{
+	unsigned int i, start;
+	struct mtk_drm_private *priv = (struct mtk_drm_private *)data;
+
+	if (IS_ERR_OR_NULL(priv))
+		return -1;
+
+	if (priv->data->pwr_on_async_id > 0 &&
+		priv->data->pwr_on_async_id < priv->data->pwr_length)
+		start = priv->data->pwr_on_async_id;
+	else
+		return 0;
+
+	mtk_drm_trace_begin("mtcmos:%u~%u async",
+		start, priv->data->pwr_length - 1);
+	for (i = start; i < priv->data->pwr_length; i++)
+		clk_prepare_enable(priv->pwr_clks[priv->data->pwr_on_order[i]]);
+	mtk_drm_trace_end();
+	return 0;
+}
+
+int mtk_drm_pm_ctrl_func(struct drm_crtc *crtc, struct mtk_drm_private *priv, enum disp_pm_action action)
 {
 	int ret = 0, i;
 
@@ -7992,9 +8037,26 @@ int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action action)
 #endif
 		if (priv->pwr_node) {
 			mtk_vidle_mminfra_on_off(true);
+			mtk_drm_trace_begin("pre_cg");
 			mtk_vidle_pre_cg_ctrl(true);
-			for (i = 0; i < priv->data->pwr_length; i++)
-				clk_prepare_enable(priv->pwr_clks[priv->data->pwr_on_order[i]]);
+			mtk_drm_trace_end();
+			if (!IS_ERR_OR_NULL(crtc) && (atomic_read(&debug_power_async) & 0x1) &&
+				priv->data->pwr_on_async_id > 0 &&
+				mtk_drm_idlemgr_get_async_status(crtc)) {
+				mtk_drm_subsys_poweron_thread_block((void *)priv);
+
+				ret = mtk_drm_sw_async_trigger(crtc, USER_SW_ASYNC_POWER,
+							mtk_drm_subsys_poweron_thread_async, (void *)priv);
+				if (ret < 0) {
+					DDPMSG("%s: sw_async_trigger failed, ret: %d\n", __func__, ret);
+					mtk_drm_subsys_poweron_thread_async((void *)priv);
+				}
+			} else {
+				mtk_drm_trace_begin("mtcmos:0~%d block", priv->data->pwr_length - 1);
+				for (i = 0; i < priv->data->pwr_length; i++)
+					clk_prepare_enable(priv->pwr_clks[priv->data->pwr_on_order[i]]);
+				mtk_drm_trace_end();
+			}
 		} else {
 			if (priv->dsi_phy0_dev) {
 				ret = pm_runtime_resume_and_get(priv->dsi_phy0_dev);
@@ -8145,6 +8207,18 @@ err_dpc_dev:
 	return -1;
 }
 
+int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action action)
+{
+	return mtk_drm_pm_ctrl_func(NULL, priv, action);
+}
+
+void mtk_drm_pm_ctrl_async_debug(unsigned int data)
+{
+	DDPMSG("%s, update power async:0x%x->0x%x\n",
+		atomic_read(&debug_power_async), data);
+	atomic_set(&debug_power_async, data);
+}
+
 static void mtk_drm_get_pwr_clk(struct mtk_drm_private *priv)
 {
 	struct device *dev = priv->mmsys_dev;
@@ -8244,6 +8318,25 @@ static void mtk_drm_get_top_clk(struct mtk_drm_private *priv)
 	}
 }
 
+static int mtk_drm_power_on_vidle_func(void *data)
+{
+	struct mtk_drm_private *priv = (struct mtk_drm_private *)data;
+
+	if (IS_ERR_OR_NULL(priv))
+		return -1;
+
+	mtk_drm_trace_begin("vidle_en");
+	mtk_vidle_enable(true, priv);
+	mtk_drm_trace_end();
+	mtk_vidle_hint_update(VIDLE_HINT_MTCMOS_ON);
+
+	mtk_drm_trace_begin("vidle_cfg");
+	mtk_vidle_config_ff(false);
+	mtk_drm_trace_end();
+
+	return 0;
+}
+
 void mtk_drm_top_clk_prepare_enable(struct drm_crtc *crtc)
 {
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
@@ -8256,8 +8349,11 @@ void mtk_drm_top_clk_prepare_enable(struct drm_crtc *crtc)
 		return;
 
 	//set_swpm_disp_active(true);
-	mtk_drm_pm_ctrl(priv, DISP_PM_GET);
+	mtk_drm_trace_begin("mtcmos_on");
+	mtk_drm_pm_ctrl_func(crtc, priv, DISP_PM_GET);
+	mtk_drm_trace_end();
 
+	mtk_drm_trace_begin("clk_on");
 	for (i = 0; i < priv->top_clk_num; i++) {
 		if (IS_ERR(priv->top_clk[i])) {
 			DDPPR_ERR("%s invalid %d clk\n", __func__, i);
@@ -8267,6 +8363,7 @@ void mtk_drm_top_clk_prepare_enable(struct drm_crtc *crtc)
 		if (ret)
 			DDPPR_ERR("top clk prepare enable failed:%d\n", i);
 	}
+	mtk_drm_trace_end();
 
 	spin_lock_irqsave(&top_clk_lock, flags);
 	atomic_inc(&top_clk_ref);
@@ -8276,16 +8373,27 @@ void mtk_drm_top_clk_prepare_enable(struct drm_crtc *crtc)
 	}
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_FULL_SCENARIO)) {
-		if (atomic_read(&top_clk_ref) == 1) {
-			mtk_vidle_enable(true, priv);
-			mtk_vidle_hint_update(VIDLE_HINT_MTCMOS_ON);
+		if ((atomic_read(&debug_power_async) & 0x2) &&
+			atomic_read(&top_clk_ref) == 1 &&
+			mtk_drm_idlemgr_get_async_status(crtc)) {
+			ret = mtk_drm_sw_async_trigger(crtc, USER_SW_ASYNC_VIDLE,
+						mtk_drm_power_on_vidle_func, (void *)priv);
+			if (ret < 0) {
+				DDPMSG("%s: sw_async_trigger failed, ret: %d\n", __func__, ret);
+				mtk_drm_power_on_vidle_func((void *)priv);
+			}
 		} else {
-			/* disable ff for multi crtc */
-			mtk_vidle_hint_update(VIDLE_HINT_MULTI_CRTC_ON);
-			DDPINFO("%s crtc%d vidle_hint(%#x)\n", __func__, drm_crtc_index(crtc),
-				mtk_vidle_hint_update(VIDLE_HINT_GET));
+			if (atomic_read(&top_clk_ref) == 1) {
+				mtk_vidle_enable(true, priv);
+				mtk_vidle_hint_update(VIDLE_HINT_MTCMOS_ON);
+			} else {
+				/* disable ff for multi crtc */
+				mtk_vidle_hint_update(VIDLE_HINT_MULTI_CRTC_ON);
+				DDPINFO("%s crtc%d vidle_hint(%#x)\n", __func__, drm_crtc_index(crtc),
+					mtk_vidle_hint_update(VIDLE_HINT_GET));
+			}
+			mtk_vidle_config_ff(false);
 		}
-		mtk_vidle_config_ff(false);
 	} else {
 		struct mtk_drm_crtc *mtk_crtc0 = to_mtk_crtc(priv->crtc[0]);
 
@@ -8302,7 +8410,6 @@ void mtk_drm_top_clk_prepare_enable(struct drm_crtc *crtc)
 			atomic_read(&top_isr_ref));
 	if (priv->data->sodi_config)
 		priv->data->sodi_config(crtc->dev, DDP_COMPONENT_ID_MAX, NULL, &en);
-
 
 	if (priv->data->wla_config)
 		priv->data->wla_config(crtc->dev, NULL);

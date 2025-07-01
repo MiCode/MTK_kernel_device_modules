@@ -148,6 +148,7 @@ struct mtk_mmsys_driver_data {
 	struct pwr_clk_map *pwr_clk_map;
 	const enum pwr_clk_id *pwr_on_order;
 	const enum pwr_clk_id *pwr_off_order;
+	unsigned int pwr_on_async_id;
 	int pwr_length;
 	int (*get_dispsys_reg) (struct platform_device *pdev,
 			struct mtk_drm_private *private, unsigned int dispsys_num);
@@ -702,4 +703,5 @@ void mtk_request_retrig(struct drm_device *dev,
 		uint32_t crtc_id);
 int mtk_drm_ioctl_retrig(struct drm_device *dev, void *data,
 		struct drm_file *file_priv);
+void mtk_drm_pm_ctrl_async_debug(unsigned int data);
 #endif /* MTK_DRM_DRV_H */
