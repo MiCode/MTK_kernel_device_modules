@@ -154,6 +154,7 @@ static unsigned int partial_y_offset;
 static unsigned int partial_height;
 
 int dsi_cmd_v2_dbg[DSI_CMD_V2_SCN_NUM] = {1, 1, 1, 1, 1, 1};
+int esd_flush_fail_flag;
 
 struct logger_buffer {
 	char **buffer_ptr;
@@ -5180,6 +5181,15 @@ static void process_dbg_opt(const char *opt)
 			__LINE__, dsi_cmd_v2_dbg[BACKLIGHT_DBG], dsi_cmd_v2_dbg[SPR_DBG],
 			dsi_cmd_v2_dbg[PANEL_INIT_DBG], dsi_cmd_v2_dbg[MODE_SWITCH_DBG],
 			dsi_cmd_v2_dbg[ESD_CHECK_DBG], dsi_cmd_v2_dbg[PU_DBG], ret);
+	} else if (strncmp(opt, "set_esd_fail:", 13) == 0) {
+		int ret = 0;
+
+		ret = sscanf(opt, "set_esd_fail:%d\n", &esd_flush_fail_flag);
+		if (ret <= 0) {
+			DDPPR_ERR("set_esd_fail fail, ret=%d\n", ret);
+			return;
+		}
+		DDPMSG("set_esd_fail flag=%d\n", esd_flush_fail_flag);
 	} else if (strncmp(opt, "new_read_ddic:", 14) == 0) {
 		int flags = 0, idx = 0, slot = 0, rx_len = 0, addr = 0, mode = 0;
 		char *rx_buf;

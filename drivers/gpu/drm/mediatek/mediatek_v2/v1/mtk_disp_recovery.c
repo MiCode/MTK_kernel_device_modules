@@ -40,6 +40,11 @@
 #define ESD_CHECK_PERIOD 2000 /* ms */
 #define esd_timer_to_mtk_crtc(x) container_of(x, struct mtk_drm_crtc, esd_timer)
 static int recovery_cnt;
+#define AS_UINT32(x) (*(u32 *)((void *)x))
+
+#define _ESD_CHECK_MSG_FMT \
+		"%s, DSI i=%d, 0x%x/cmdq0=0x%x,0x%x/cmdq1=0x%x; "	\
+		"0x%x/cmdq0=0x%x,0x%x/cmdq1=0x%x;0x%x/cmdq0=0x%x,0x%x/cmdq1=0x%x\n"
 
 int debug_force_esd;
 module_param(debug_force_esd, int, 0644);
@@ -151,15 +156,40 @@ static void esd_cmdq_timeout_cb(struct cmdq_cb_data data)
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_drm_esd_ctx *esd_ctx = mtk_crtc->esd_ctx;
 	struct mtk_ddp_comp *output_comp = NULL;
+	int i = 0;
+	u32 dsi_data[6] = { 0 };
 
 	if (!crtc) {
 		DDPMSG("%s find crtc fail\n", __func__);
 		return;
 	}
-
-	DDPMSG("[error]%s cmdq timeout out\n", __func__);
-	DDPMSG("read flush fail\n");
 	esd_ctx->chk_sta = 0xff;
+	DDPPR_ERR("[error]%s cmdq timeout out\n", __func__);
+	DDPPR_ERR("read flush fail\n");
+
+	for (i = 0; i < 3; i++) {
+		dsi_data[0] = AS_UINT32(mtk_get_gce_backup_slot_va(mtk_crtc,
+			DISP_SLOT_READ_DSI_DBG_BASE + (i * DBG_DSI_NUM) * 0x4));
+		dsi_data[1] = AS_UINT32(mtk_get_gce_backup_slot_va(mtk_crtc,
+			DISP_SLOT_READ_DSI_DBG_BASE + (i * DBG_DSI_NUM + 1) * 0x4));
+		dsi_data[2] = AS_UINT32(mtk_get_gce_backup_slot_va(mtk_crtc,
+			DISP_SLOT_READ_DSI_DBG_BASE + (i * DBG_DSI_NUM + 2) * 0x4));
+		dsi_data[3] = AS_UINT32(mtk_get_gce_backup_slot_va(mtk_crtc,
+			DISP_SLOT_READ_DSI_DBG_BASE + (i * DBG_DSI_NUM + 3) * 0x4));
+		dsi_data[4] = AS_UINT32(mtk_get_gce_backup_slot_va(mtk_crtc,
+			DISP_SLOT_READ_DSI_DBG_BASE + (i * DBG_DSI_NUM + 4) * 0x4));
+		dsi_data[5] = AS_UINT32(mtk_get_gce_backup_slot_va(mtk_crtc,
+			DISP_SLOT_READ_DSI_DBG_BASE + (i * DBG_DSI_NUM + 5) * 0x4));
+
+		DDPMSG(_ESD_CHECK_MSG_FMT, __func__, i,
+			(int)(DISP_SLOT_READ_DSI_DBG_BASE + (i * DBG_DSI_NUM) * 0x4), dsi_data[0],
+			(int)(DISP_SLOT_READ_DSI_DBG_BASE + (i * DBG_DSI_NUM + 1) * 0x4), dsi_data[1],
+			(int)(DISP_SLOT_READ_DSI_DBG_BASE + (i * DBG_DSI_NUM + 2) * 0x4), dsi_data[2],
+			(int)(DISP_SLOT_READ_DSI_DBG_BASE + (i * DBG_DSI_NUM + 3) * 0x4), dsi_data[3],
+			(int)(DISP_SLOT_READ_DSI_DBG_BASE + (i * DBG_DSI_NUM + 4) * 0x4), dsi_data[4],
+			(int)(DISP_SLOT_READ_DSI_DBG_BASE + (i * DBG_DSI_NUM + 5) * 0x4), dsi_data[5]);
+	}
+
 	if (is_bdg_supported()) {
 		if (mtk_crtc) {
 			output_comp = mtk_ddp_comp_request_output(mtk_crtc);
@@ -188,6 +218,8 @@ static void esd_check_done_cb(struct cmdq_cb_data data)
 	struct mtk_drm_esd_ctx *esd_ctx = NULL;
 	struct cmdq_pkt *cmdq_handle2;
 	struct mtk_panel_ext *panel_ext = NULL;
+	u32 dsi_data[6] = { 0 };
+	int i = 0;
 
 	CRTC_MMP_MARK(index, esd_check, 2, 6);
 	if (!crtc) {
@@ -254,6 +286,28 @@ static void esd_check_done_cb(struct cmdq_cb_data data)
 					 (void *)mtk_crtc);
 	mtk_vidle_user_power_release(DISP_VIDLE_USER_CRTC);
 	CRTC_MMP_MARK(index, esd_check, 2, ret);
+
+	for (i = 0; i < 3; i++) {
+		dsi_data[0] = AS_UINT32(mtk_get_gce_backup_slot_va(mtk_crtc,
+			DISP_SLOT_READ_DSI_DBG_BASE + (i * DBG_DSI_NUM) * 0x4));
+		dsi_data[1] = AS_UINT32(mtk_get_gce_backup_slot_va(mtk_crtc,
+			DISP_SLOT_READ_DSI_DBG_BASE + (i * DBG_DSI_NUM + 1) * 0x4));
+		dsi_data[2] = AS_UINT32(mtk_get_gce_backup_slot_va(mtk_crtc,
+			DISP_SLOT_READ_DSI_DBG_BASE + (i * DBG_DSI_NUM + 2) * 0x4));
+		dsi_data[3] = AS_UINT32(mtk_get_gce_backup_slot_va(mtk_crtc,
+			DISP_SLOT_READ_DSI_DBG_BASE + (i * DBG_DSI_NUM + 3) * 0x4));
+		dsi_data[4] = AS_UINT32(mtk_get_gce_backup_slot_va(mtk_crtc,
+			DISP_SLOT_READ_DSI_DBG_BASE + (i * DBG_DSI_NUM + 4) * 0x4));
+		dsi_data[5] = AS_UINT32(mtk_get_gce_backup_slot_va(mtk_crtc,
+			DISP_SLOT_READ_DSI_DBG_BASE + (i * DBG_DSI_NUM + 5) * 0x4));
+		DDPMSG(_ESD_CHECK_MSG_FMT,	__func__, i,
+		(int)(DISP_SLOT_READ_DSI_DBG_BASE + (i * DBG_DSI_NUM) * 0x4), dsi_data[0],
+		(int)(DISP_SLOT_READ_DSI_DBG_BASE + (i * DBG_DSI_NUM + 1) * 0x4), dsi_data[1],
+		(int)(DISP_SLOT_READ_DSI_DBG_BASE + (i * DBG_DSI_NUM + 2) * 0x4), dsi_data[2],
+		(int)(DISP_SLOT_READ_DSI_DBG_BASE + (i * DBG_DSI_NUM + 3) * 0x4), dsi_data[3],
+		(int)(DISP_SLOT_READ_DSI_DBG_BASE + (i * DBG_DSI_NUM + 4) * 0x4), dsi_data[4],
+		(int)(DISP_SLOT_READ_DSI_DBG_BASE + (i * DBG_DSI_NUM + 5) * 0x4), dsi_data[5]);
+	}
 
 	if (ret || debug_force_esd || esd_ctx->chk_sta == 0xff) {
 		recovery_cnt++;

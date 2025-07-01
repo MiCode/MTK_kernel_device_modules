@@ -212,6 +212,7 @@ struct mtk_dsi {
 
 enum dsi_porch_type;
 extern int dsi_cmd_v2_dbg[DSI_CMD_V2_SCN_NUM];
+extern int esd_flush_fail_flag;
 
 s32 mtk_dsi_poll_for_idle(struct mtk_dsi *dsi, struct cmdq_pkt *handle);
 irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id);
