@@ -43,30 +43,31 @@ static int kcompressd(void *para)
 {
 	struct task_struct *tsk = current;
 	struct kcompressd_para *p = (struct kcompressd_para *)para;
-	unsigned long pflags;
+	//unsigned long pflags;
 
 	tsk->flags |= PF_MEMALLOC | PF_KSWAPD;
 	set_freezable();
 
 	while (!kthread_should_stop()) {
-		atomic_set(p->running, 0);
-		wait_event_interruptible(*p->kcompressd_wait, !kfifo_is_empty(p->write_fifo));
-		atomic_set(p->running, 1);
-
-		psi_memstall_enter(&pflags);
 		while (!kfifo_is_empty(p->write_fifo)) {
 			struct write_work entry;
 
+			// psi_memstall_enter(&pflags);
 			if (sizeof(struct write_work) == kfifo_out(p->write_fifo,
 						&entry, sizeof(struct write_work))) {
 				entry.cb(entry.mem, entry.bio);
 				bio_put(entry.bio);
 			}
+			// psi_memstall_leave(&pflags);
 		}
-		psi_memstall_leave(&pflags);
+
+		usleep_range(1000, 2000);
+		if (kfifo_is_empty(p->write_fifo))
+			break;
 	}
 
 	tsk->flags &= ~(PF_MEMALLOC | PF_KSWAPD);
+	atomic_set(p->running, 0);
 	return 0;
 }
 
@@ -116,7 +117,6 @@ static int kcompress_update(void)
 	}
 
 	for (i = 0; i < nr_kcompressd; i++) {
-		init_waitqueue_head(&kcompress[i].kcompressd_wait);
 		kcompressd_para[i].kcompressd_wait = &kcompress[i].kcompressd_wait;
 		kcompressd_para[i].write_fifo = &kcompress[i].write_fifo;
 		kcompressd_para[i].running = &kcompress[i].running;
@@ -235,15 +235,26 @@ int schedule_bio_write(void *mem, struct bio *bio, compress_callback cb)
 			(sizeof(struct write_work) == kfifo_in(&kcompress[i].write_fifo,
 					 &entry, sizeof(struct write_work)));
 
-		if (submit_success) {
-			if (!atomic_read(&kcompress[i].running))
-				wake_up_interruptible(&kcompress[i].kcompressd_wait);
-			return 0;
-		}
+		if (submit_success)
+			break;
 	}
 
-	bio_put(bio);
-	return -EBUSY;
+	if (submit_success) {
+		if (!atomic_read(&kcompress[i].running)) {
+			atomic_set(&kcompress[i].running , 1);
+			kcompress[i].kcompressd = kthread_run(kcompressd, &kcompressd_para[i], "kcompressd:%d", i);
+			if (IS_ERR(kcompress[i].kcompressd)) {
+				atomic_set(&kcompress[i].running , 0);
+				pr_info("Failed to start kcompressd:%d in %s\n", i, __func__);
+				return -ENOMEM;
+			}
+		}
+	} else {
+		bio_put(bio);
+		return -EBUSY;
+	}
+
+	return 0;
 }
 EXPORT_SYMBOL(schedule_bio_write);
 
@@ -259,15 +270,6 @@ static int __init kcompressd_init(void)
 	if (ret) {
 		pr_info("Init kcompressd failed!\n");
 		return ret;
-	}
-
-	for (i = 0; i < nr_kcompressd; i++) {
-		kcompress[i].kcompressd = kthread_run(kcompressd, &kcompressd_para[i], "kcompressd:%d", i);
-		if (IS_ERR(kcompress[i].kcompressd)) {
-			pr_info("Failed to start kcompressd:%d in %s, errno=%ld\n", i, __func__,
-					PTR_ERR(kcompress[i].kcompressd));
-			return -ENOMEM;
-		}
 	}
 
 	atomic_set(&enable_kcompressd, true);
