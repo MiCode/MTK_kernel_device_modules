@@ -190,46 +190,141 @@ int mt6858_dai_set_priv(struct mtk_base_afe *afe, int id,
 /* DC compensation */
 int mt6858_enable_dc_compensation(bool enable)
 {
+	int ret;
+
 	if (!local_afe)
 		return -EPERM;
 
+	if (pm_runtime_status_suspended(local_afe->dev))
+		dev_info(local_afe->dev, "%s(), status suspended\n", __func__);
+
+
+	ret = pm_runtime_resume_and_get(local_afe->dev);
+	if (ret < 0) {
+		dev_err(local_afe->dev, "%s: failed to resume: %d\n",
+			__func__, ret);
+		return ret;
+	}
+
+	regmap_update_bits(local_afe->regmap,
+			   AFE_ADDA_DL_SDM_DCCOMP_CON,
+			   AFE_DL_AUD_DC_COMP_EN_MASK_SFT,
+			   (enable ? 1 : 0) << AFE_DL_AUD_DC_COMP_EN_SFT);
+	pm_runtime_put(local_afe->dev);
 	return 0;
 }
 EXPORT_SYMBOL(mt6858_enable_dc_compensation);
 
 int mt6858_set_lch_dc_compensation(int value)
 {
+	int ret;
+
 	if (!local_afe)
 		return -EPERM;
 
+	if (pm_runtime_status_suspended(local_afe->dev))
+		dev_info(local_afe->dev, "%s(), status suspended\n", __func__);
+
+	ret = pm_runtime_resume_and_get(local_afe->dev);
+	if (ret < 0) {
+		dev_err(local_afe->dev, "%s: failed to resume: %d\n",
+			__func__, ret);
+		return ret;
+	}
+
+	/* reset toggle bit
+	 * toggle bit only trigger from 0->1
+	 * need to reset to 0 before setting dccomp value
+	 */
+	regmap_update_bits(local_afe->regmap,
+			   AFE_ADDA_DL_SDM_DCCOMP_CON,
+			   AFE_DL_DCCOMP_SYNC_TOGGLE_MASK_SFT,
+			   0x0 << AFE_DL_DCCOMP_SYNC_TOGGLE_SFT);
+	regmap_write(local_afe->regmap,
+		     AFE_ADDA_DL_DC_COMP_CFG0,
+		     value);
+	/* toggle sdm */
+	regmap_update_bits(local_afe->regmap,
+			   AFE_ADDA_DL_SDM_DCCOMP_CON,
+			   AFE_DL_DCCOMP_SYNC_TOGGLE_MASK_SFT,
+			   0x1 << AFE_DL_DCCOMP_SYNC_TOGGLE_SFT);
+
+	pm_runtime_put(local_afe->dev);
 	return 0;
 }
 EXPORT_SYMBOL(mt6858_set_lch_dc_compensation);
 
 int mt6858_set_rch_dc_compensation(int value)
 {
+	int ret;
+
 	if (!local_afe)
 		return -EPERM;
 
+	if (pm_runtime_status_suspended(local_afe->dev))
+		dev_info(local_afe->dev, "%s(), status suspended\n", __func__);
+
+	ret = pm_runtime_resume_and_get(local_afe->dev);
+	if (ret < 0) {
+		dev_err(local_afe->dev, "%s: failed to resume: %d\n",
+			__func__, ret);
+		return ret;
+	}
+
+	/* reset toggle bit
+	 * toggle bit only trigger from 0->1
+	 * need to reset to 0 before setting dccomp value
+	 */
+	regmap_update_bits(local_afe->regmap,
+			   AFE_ADDA_DL_SDM_DCCOMP_CON,
+			   AFE_DL_DCCOMP_SYNC_TOGGLE_MASK_SFT,
+			   0x0 << AFE_DL_DCCOMP_SYNC_TOGGLE_SFT);
+	regmap_write(local_afe->regmap,
+		     AFE_ADDA_DL_DC_COMP_CFG1,
+		     value);
+	/* toggle sdm */
+	regmap_update_bits(local_afe->regmap,
+			   AFE_ADDA_DL_SDM_DCCOMP_CON,
+			   AFE_DL_DCCOMP_SYNC_TOGGLE_MASK_SFT,
+			   0x1 << AFE_DL_DCCOMP_SYNC_TOGGLE_SFT);
+
+	pm_runtime_put(local_afe->dev);
 	return 0;
 }
 EXPORT_SYMBOL(mt6858_set_rch_dc_compensation);
 
 int mt6858_adda_dl_gain_control(bool mute)
 {
+	int ret;
 	unsigned int dl_gain_ctl;
 
 	if (!local_afe)
 		return -EPERM;
+
+	if (pm_runtime_status_suspended(local_afe->dev))
+		dev_info(local_afe->dev, "%s(), status suspended\n", __func__);
+
+	ret = pm_runtime_resume_and_get(local_afe->dev);
+	if (ret < 0) {
+		dev_err(local_afe->dev, "%s: failed to resume: %d\n",
+			__func__, ret);
+		return ret;
+	}
 
 	if (mute)
 		dl_gain_ctl = MTK_AFE_ADDA_DL_GAIN_MUTE;
 	else
 		dl_gain_ctl = 0xf74ff74f;
 
+	regmap_update_bits(local_afe->regmap,
+			   AFE_ADDA_DL_SRC_CON1,
+			   AFE_DL_GAIN2_CTL_PRE_MASK_SFT,
+			   dl_gain_ctl << AFE_DL_GAIN2_CTL_PRE_SFT);
+
 	dev_info(local_afe->dev, "%s(), adda_dl_gain %x\n",
 		 __func__, dl_gain_ctl);
 
+	pm_runtime_put(local_afe->dev);
 	return 0;
 }
 EXPORT_SYMBOL(mt6858_adda_dl_gain_control);
