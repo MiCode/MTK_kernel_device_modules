@@ -52,6 +52,8 @@ enum dsi_cmd_verion {
 #define MTK_MIPI_DSI_GCE_USE_DSI_CMD_EVENT		BIT(22)
 #define MTK_MIPI_DSI_GCE_BUSY_POLLING			BIT(23)
 
+#define MTK_DSI_FROCE_CMD_MODE_TRANSFER			BIT(31)
+
 /* vdo mode flag */
 #define MTK_DSI_FORCE_STOP_VDO_MODE				BIT(0)
 #define MTK_DSI_SKIP_STOP_VDO_MODE				BIT(1)
