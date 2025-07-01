@@ -22,6 +22,8 @@
 			spmi-parity-err-clr = <0x4d0>;
 			spmi-parity-err-sts = <0x4d1>;
 			spmi-parity-err-cnt = <0x4d2>;
+			spmi-crc-err-sts = <MT6667_PMIC_RGS_CRC_ERR_ADDR>;
+			spmi-crc-err-cnt = <MT6667_PMIC_RGS_CRC_ERR_CNT_ADDR>;
 			pmic-pre-ot-cnt-enable = <1>;
 			pmic-pre-ot-cnt = <MT6667_PMIC_RG_PRE_OT_COUNT_ADDR>;
 			pmic-pre-ot-cnt-clr = <MT6667_PMIC_RG_PRE_OT_COUNT_CLR_ADDR
@@ -111,6 +113,8 @@
 			spmi-parity-err-clr = <0x4d0>;
 			spmi-parity-err-sts = <0x4d1>;
 			spmi-parity-err-cnt = <0x4d2>;
+			spmi-crc-err-sts = <MT6667_PMIC_RGS_CRC_ERR_ADDR>;
+			spmi-crc-err-cnt = <MT6667_PMIC_RGS_CRC_ERR_CNT_ADDR>;
 			pmic-pre-ot-cnt-enable = <1>;
 			pmic-pre-ot-cnt = <MT6667_PMIC_RG_PRE_OT_COUNT_ADDR>;
 			pmic-pre-ot-cnt-clr = <MT6667_PMIC_RG_PRE_OT_COUNT_CLR_ADDR
@@ -191,6 +195,8 @@
 			spmi-parity-err-clr = <0x4d0>;
 			spmi-parity-err-sts = <0x4d1>;
 			spmi-parity-err-cnt = <0x4d2>;
+			spmi-crc-err-sts = <MT6667_PMIC_RGS_CRC_ERR_ADDR>;
+			spmi-crc-err-cnt = <MT6667_PMIC_RGS_CRC_ERR_CNT_ADDR>;
 			pmic-pre-ot-cnt-enable = <1>;
 			pmic-pre-ot-cnt = <MT6667_PMIC_RG_PRE_OT_COUNT_ADDR>;
 			pmic-pre-ot-cnt-clr = <MT6667_PMIC_RG_PRE_OT_COUNT_CLR_ADDR
@@ -271,6 +277,8 @@
 			spmi-parity-err-clr = <0x4d0>;
 			spmi-parity-err-sts = <0x4d1>;
 			spmi-parity-err-cnt = <0x4d2>;
+			spmi-crc-err-sts = <MT6667_PMIC_RGS_CRC_ERR_ADDR>;
+			spmi-crc-err-cnt = <MT6667_PMIC_RGS_CRC_ERR_CNT_ADDR>;
 			pmic-pre-ot-cnt-enable = <1>;
 			pmic-pre-ot-cnt = <MT6667_PMIC_RG_PRE_OT_COUNT_ADDR>;
 			pmic-pre-ot-cnt-clr = <MT6667_PMIC_RG_PRE_OT_COUNT_CLR_ADDR
