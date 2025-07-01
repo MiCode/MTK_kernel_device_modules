@@ -1814,14 +1814,20 @@ void mtk_drm_mmdvfs_mode_switch(struct drm_crtc *crtc, bool dpc_mode)
 
 	idx = drm_crtc_index(crtc);
 	if (dpc_mode) {
-		DDPMMCLK("%s, crtc:%d update mmclk by DPC,level:%u\n",
-			__func__, idx, vdisp_opp);
-		mtk_vidle_dvfs_set(vdisp_opp);
+		DDPMSG("%s, crtc:%d update mmclk by DPC,level:%u\n",
+			__func__, idx, vdisp_opp == U8_MAX ? step_size - 1 : vdisp_opp);
+		if (vdisp_opp == U8_MAX)
+			mtk_vidle_dvfs_set(step_size - 1);
+		else
+			mtk_vidle_dvfs_set(vdisp_opp);
+
+		DDPMSG("%s, crtc:%d disable ap ccf\n", __func__, idx);
+		mmdvfs_ap_ccf_enable(false);
 
 		opp = dev_pm_opp_find_freq_ceil(crtc->dev->dev, &min_freq);
 		volt = dev_pm_opp_get_voltage(opp);
 		dev_pm_opp_put(opp);
-		DDPMMCLK("%s,crtc:%d clear mmclk by regulator:volt=%d,freq:%lu\n",
+		DDPMSG("%s,crtc:%d clear mmclk by regulator:volt=%d,freq:%lu\n",
 			__func__, idx, volt, min_freq);
 		ret = regulator_set_voltage(mm_freq_request, volt, INT_MAX);
 		if (ret)

@@ -9611,10 +9611,11 @@ static void mtk_drm_enable_ap_ccf(bool en, struct drm_crtc *crtc, bool mode_swit
 		priv = ap_crtc->dev->dev_private;
 		if (priv && mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_MMDVFS_MODE_SWITCH)) {
-			mmdvfs_ap_ccf_enable(false);
-			atomic_set(&g_ap_ccf_state, 0);
 			if (mode_switch)
 				mtk_drm_mmdvfs_mode_switch(ap_crtc, true);
+			else
+				mmdvfs_ap_ccf_enable(false);
+			atomic_set(&g_ap_ccf_state, 0);
 			ap_crtc = NULL;
 		}
 	}
@@ -9650,6 +9651,7 @@ static int mtk_drm_vcp_notifier(struct notifier_block *vcp_nb, unsigned long vcp
 #endif
 		break;
 	case VCP_EVENT_READY:
+		/* mode switch and notify mmdvfs pull down dvfs level when vcp ready */
 		mutex_lock(&vcp_lock);
 		mtk_drm_enable_ap_ccf(false, NULL, true);
 		atomic_set(&g_vcp_alive, 1);
@@ -9701,8 +9703,14 @@ void mtk_drm_mmdvfs_enable_vcp(struct drm_crtc *crtc, bool en)
 
 	if (en) {
 		vcp_state = mtk_drm_get_vcp_state();
-		if (vcp_state == 0)
+		if (vcp_state == 0) {
+			/* notify mmdvfs force up dvfs level when vcp off*/
 			mtk_drm_enable_ap_ccf(true, crtc, false);
+		} else {
+			/* notify mmdvfs pull down dvfs level if vcp has been ready*/
+			mtk_drm_enable_ap_ccf(true, crtc, false);
+			mtk_drm_enable_ap_ccf(false, crtc, true);
+		}
 		mtk_drm_put_vcp_state();
 		mtk_vidle_mmdvfs_ctrl(en);
 	} else
