@@ -186,5 +186,5 @@ static inline void apu_clearl(const unsigned int val,
 #define apupw_aee_warn(module, reason)
 #endif
 int apu_sw_throttle(int *request_id, unsigned long state);
-
+int mtk_apudvfs_debug_force_vcore_notify(const u32 val);
 #endif

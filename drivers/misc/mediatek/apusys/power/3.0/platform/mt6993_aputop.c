@@ -57,7 +57,7 @@ static struct mutex lock;
 static int sys_request_id = 5; // for sysfs input
 static int limit_debug_request_id = 4; // for Limit_HAL cmd input
 static int first_dump;
-
+static int sw_throttle_sync_mode;
 struct client_work {
 	int lower_limit;
 	int upper_limit;
@@ -533,6 +533,7 @@ int mt6993_set_freq_limit(int upper_limit, int lower_limit, int *request_id, int
 	bool found = false;
 	int ret;
 	int type = calltype;
+	uint32_t currnet_opp = 0;
 
 	// mapping user opp to real opp
 	if (type == SW_THROTTLE_SYSFS) { // sysfs node
@@ -606,6 +607,25 @@ int mt6993_set_freq_limit(int upper_limit, int lower_limit, int *request_id, int
 		pr_info("%s: input from apu_sw_throttle, detected bounds changed, sending to apu\n", __func__);
 #endif
 		mt6993_aputop_opp_limit(global_upper_limit, global_lower_limit, 1);
+		if (sw_throttle_sync_mode == 1) { // if sync mode is on, polling opp level
+			unsigned long timeout = jiffies + msecs_to_jiffies(1000); // 1 second timeout
+
+			do {
+				currnet_opp = apu_readl(
+					(apupw.regs[apu_md32_mbox] + ENGINE_ONOFF_OPP_SYNC_REG));
+				currnet_opp = (currnet_opp >> 16) & 0xF;
+				if (currnet_opp != 0)
+					break;
+				if (time_after(jiffies, timeout)) {
+					pr_info("%s: timeout waiting for OPP sync\n", __func__);
+					ret = -ETIMEDOUT;
+					break;
+				}
+				udelay(50);
+			} while (1);
+			pr_info("%s, currnet_opp = %08x", __func__, currnet_opp);
+			sw_throttle_sync_mode = 0; // clr sync mode after done.
+		}
 	} else if (ret == 0 && type == SW_THROTTLE_SYSFS) {
 #if LOCAL_DBG
 		pr_info("%s: input from sysfs, detected bounds changed, sending to apu\n", __func__);
@@ -862,9 +882,6 @@ static int mt6993_engine_freq_proc_show(struct seq_file *m, void *v)
 		mt6993_request_opp_table();
 		first_dump = 1;
 	}
-
-	if (opp > 2)
-		opp = opp - 1;// since opp 2 is only for thermal throttle usage
 
 	if (((mbox_status >> 0) & 0x1) != 0x1)
 		mdla_ret += 1;
@@ -1480,7 +1497,7 @@ static int mt6993_apu_top_func(struct platform_device *pdev,
 	int dla_max, dla_min;
 	int request_id = -1;
 
-	pr_info("%s func_id : %d\n", __func__, aputop->func_id);
+	apu_pr_info_ratelimited("%s func_id : %d\n", __func__, aputop->func_id);
 
 	switch (aputop->func_id) {
 #if APMCU_REQ_RPC_SLEEP
@@ -1526,11 +1543,12 @@ static int mt6993_apu_top_func(struct platform_device *pdev,
 		dla_max = aputop->param1;
 		dla_min = USER_MIN_OPP_VAL;
 		request_id = aputop->param3;
+		sw_throttle_sync_mode = aputop->param4;
 		mt6993_set_freq_limit(dla_max, dla_min, &request_id, SW_THROTTLE_PT_THERMAL);
 		aputop->param3 = request_id;
 		break;
 	default:
-		pr_info("%s invalid func_id : %d\n", __func__, aputop->func_id);
+		apu_pr_info_ratelimited("%s invalid func_id : %d\n", __func__, aputop->func_id);
 		return -EINVAL;
 	}
 

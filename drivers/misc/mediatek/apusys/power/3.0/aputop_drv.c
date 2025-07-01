@@ -23,6 +23,7 @@
 #include "aputop_cdev.h"
 #include <apu_top_entry.h>
 #include <mtk_apu_power_throttling.h>
+#include <mt-plat/dvfsrc-exp.h>
 
 const struct apupwr_plat_data *pwr_data;
 
@@ -31,6 +32,7 @@ static struct apupwr_dbg aputop_dbg;
 static struct apupwr_func_priv *aputop_func_priv;
 static int aputop_func_sel;
 static int aputop_init_done = -1;
+static int Vcore_force_cmd_id = 6;
 static DEFINE_MUTEX(aputop_func_mtx);
 #if IS_ENABLED(CONFIG_PM_SLEEP)
 struct wakeup_source *ws;
@@ -208,6 +210,8 @@ static int apu_top_probe(struct platform_device *pdev)
 	flag = pwr_data->plat_aputop_pb(pdev);
 	aputop_init_done = flag;
 	register_pt_callbacks();
+
+	register_apudvfs_debug_force_vcore_notify(mtk_apudvfs_debug_force_vcore_notify);
 
 	return flag;
 }
@@ -518,10 +522,21 @@ int apu_sw_throttle(int *request_id, unsigned long state)
 	aputop.func_id = APUTOP_FUNC_APU_THROTTLE;
 	aputop.param1 = state; //dla_max
 	aputop.param3 = *request_id; // request_id
+	if (*request_id == 6)
+		aputop.param4 = 1; // force sync mode
+
 	ret = pwr_data->plat_aputop_func(NULL, aputop.func_id, &aputop);
 	apu_pr_info_ratelimited("%s:  state is %ld ,and request_id is %d\n", __func__, state, *request_id);
 	if (ret < 0)
 		ret = 0;
 out:
 	return ret;
+}
+
+int mtk_apudvfs_debug_force_vcore_notify(const u32 val)
+{
+	if (val == 0x0)
+		return apu_sw_throttle(&Vcore_force_cmd_id, 1);
+	else
+		return 0;
 }
