@@ -2305,6 +2305,9 @@ static inline int ext_eint_setup(struct platform_device *pdev)
 	//enable top level irq
 	pmic_write(MT6681_TOP_INT_CON0, 0x80);
 
+	/* Enable AP EINT to wake up system from suspend */
+	enable_irq_wake(accdet->gpioirq);
+
 	dev_info(&pdev->dev, "%s ret:%d\n", __func__, ret);
 	if (ret)
 		return ret;
