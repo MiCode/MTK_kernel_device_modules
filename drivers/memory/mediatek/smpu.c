@@ -106,13 +106,13 @@ char *smpu_clear_md_violation(void)
 		smpu = global_nsmpu;
 		mpu_base = smpu->mpu_base;
 		dump_reg = smpu->dump_md_reg;
-		smpu = (readl(mpu_base + dump_reg[0].offset) >
-			0x2) || (readl(mpu_base + dump_reg[9].offset) > 0x2) ?
+		smpu = ((readl(mpu_base + dump_reg[0].offset) > 0x2))
+		     ||((readl(mpu_base + dump_reg[9].offset) > 0x2))
+			 || !global_ssmpu ?
 			       global_nsmpu :
 			       global_ssmpu;
 		mpu_base = smpu->mpu_base;
 		dump_reg = smpu->dump_md_reg;
-
 		/*
 		 * Adding md register for violation info
 		 */
