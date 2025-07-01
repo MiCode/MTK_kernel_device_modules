@@ -51,6 +51,7 @@ enum met_src_index {
 	PMQOS_BW7,
 	PMQOS_BW8,
 	PMQOS_BW9,
+	PMQOS_DPC,
 	HRT_MD_BW,
 	HRT_DISP_BW,
 	HRT_ISP_BW,
@@ -96,6 +97,7 @@ static char *met_src_name[SRC_MAX] = {
 	"PMQOS_BW7",
 	"PMQOS_BW8",
 	"PMQOS_BW9",
+	"PMQOS_DPC",
 	"HRT_MD_BW",
 	"HRT_DISP_BW",
 	"HRT_ISP_BW",
@@ -305,6 +307,13 @@ static void vcorefs_get_src_misc_info(struct mtk_dvfsrc_met *dvfs)
 	met_vcorefs_src[HRT_ISP_BW] = dvfsrc_met_read(dvfs, DVFSRC_ISP_HRT);
 	met_vcorefs_src[HRT_MD_BW] = mtk_dvfsrc_query_debug_info(DVFSRC_MD_HRT_BW);
 	if (dvfs->dvd->version == 0x6878) {
+		met_vcorefs_src[HRT_DISP_BW] =
+			dvfsrc_met_read(dvfs, DVFSRC_DEBUG_STA_1) & 0x3FF;
+	}
+
+	if (dvfs->dvd->version == 0x6858) {
+		met_vcorefs_src[PMQOS_DPC] =
+			(dvfsrc_met_read(dvfs, DVFSRC_DEBUG_STA_1) >> 11) & 0x3FF;
 		met_vcorefs_src[HRT_DISP_BW] =
 			dvfsrc_met_read(dvfs, DVFSRC_DEBUG_STA_1) & 0x3FF;
 	}
