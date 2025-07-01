@@ -5741,6 +5741,7 @@ dramc: dramc@10230000 {
 			vdec-set-bw-in-min-freq = <1>;
 			vdec-mmdvfs-in-vcp = <1>;
 			vdec-mmdvfs-in-adaptive = <1>;
+			vdec-thermal-hint-mode; /* vdec thermal throttle enable */
 			throughput-min = <218000000>;
 			throughput-normal-max = <546000000>;
 			mmqos-supply = <&mmqos>;
@@ -5787,6 +5788,7 @@ dramc: dramc@10230000 {
 			dvfs-qos-ver = <1>;
 			venc-mmdvfs-in-vcp = <1>;
 			venc-mmdvfs-in-adaptive = <1>;
+			venc-thermal-hint-mode; /* venc thermal throttle enable */
 			mmqos-supply = <&mmqos>;
 			need-smi-monitor = <1>;	  /* enable smi bw monitor in kernel */
 			smi-monitor-in-vcp = <1>; /* specify the monitor location, 1 for vcp, 0 for kernel */
