@@ -614,9 +614,7 @@ void mtk_vdec_dvfs_check_boost(struct mtk_vcodec_ctx *ctx)
 
 	if (cur_in_timestamp - dev->vdec_dvfs_params.last_boost_time >=
 		VDEC_INIT_BOOST_INTERVAL && dev->vdec_dvfs_params.init_boost) {
-		mutex_lock(&dev->dec_dvfs_mutex);
 		dev->vdec_dvfs_params.init_boost = 0;
-		mutex_unlock(&dev->dec_dvfs_mutex);
 	}
 #endif
 }
