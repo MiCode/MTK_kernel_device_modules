@@ -273,6 +273,7 @@ void vdec_decode_prepare(void *ctx_prepare,
 	mutex_lock(&ctx->dev->dec_dvfs_mutex);
 	mtk_vdec_dvfs_begin_frame(ctx, hw_id);
 	mtk_vdec_pmqos_begin_frame(ctx);
+	mtk_vdec_dvfs_check_boost(ctx);
 	mutex_unlock(&ctx->dev->dec_dvfs_mutex);
 
 	if (hw_id == MTK_VDEC_CORE)

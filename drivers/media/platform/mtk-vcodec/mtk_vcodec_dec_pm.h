@@ -28,5 +28,7 @@ void mtk_vdec_translation_fault_callback_setting(struct mtk_vcodec_dev *dev);
 int mtk_vdec_m4u_port_name_to_index(const char *name);
 
 extern void mtk_vdec_do_gettimeofday(struct timespec64 *tv);
+void mtk_vdec_dvfs_check_boost(struct mtk_vcodec_ctx *ctx);
+void mtk_vdec_init_boost(struct mtk_vcodec_ctx *ctx);
 
 #endif /* _MTK_VCODEC_DEC_PM_H_ */
