@@ -851,6 +851,17 @@
 
 	};
 
+	efuse: efuse@11ea0000 {
+		compatible = "mediatek,devinfo";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		efuse_segment: segment@78 {
+			reg = <0x78 0x4>;
+		};
+	};
+
+
 	imp_iic_wrap_es_clk: syscon@11c03000 {
 		compatible = "mediatek,mt6858-imp_iic_wrap_es", "syscon";
 		reg = <0 0x11c03000 0 0x1000>;
