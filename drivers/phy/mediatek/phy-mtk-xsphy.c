@@ -92,6 +92,7 @@
 #define P2A6_RG_U2_PHY_REV6_VAL(x)	((0x3 & (x)) << 30)
 #define P2A6_RG_U2_PHY_REV6_MASK	(0x3)
 #define P2A6_RG_U2_PHY_REV6_OFET	(30)
+#define P2A6_RG_U2_PHY_REV4		BIT(28)
 #define P2A6_RG_U2_PHY_REV1		BIT(25)
 #define P2A6_RG_BC11_SW_EN	BIT(23)
 #define P2A6_RG_OTG_VBUSCMP_EN	BIT(20)
@@ -432,6 +433,7 @@ struct xsphy_instance {
 	int rx_sqd;
 	int host_rx_sqd;
 	int rev6;
+	int rev4;
 	int hsrx_vref_sel;
 	int fs_cr;
 	/* u2 eye diagram for host */
@@ -2465,14 +2467,15 @@ static void phy_parse_property(struct mtk_xsphy *xsphy,
 		if (device_property_read_u32(dev, "mediatek,host-rx-sqth",
 					 &inst->host_rx_sqth) || inst->host_rx_sqth < 0)
 			inst->host_rx_sqth = -EINVAL;
-
 		if (device_property_read_u32(dev, "mediatek,rx-sqd",
 					 &inst->rx_sqd) || inst->rx_sqd < 0)
 			inst->rx_sqd = -EINVAL;
 		if (device_property_read_u32(dev, "mediatek,host-rx-sqd",
 					 &inst->host_rx_sqd) || inst->host_rx_sqd < 0)
 			inst->host_rx_sqd = -EINVAL;
-
+		if (device_property_read_u32(dev, "mediatek,rev4",
+					 &inst->rev4) || inst->rev4 < 0)
+			inst->rev4 = -EINVAL;
 		if (device_property_read_u32(dev, "mediatek,rev6",
 					 &inst->rev6) || inst->rev6 < 0)
 			inst->rev6 = -EINVAL;
@@ -2626,6 +2629,9 @@ static void u2_phy_props_set(struct mtk_xsphy *xsphy,
 	if (inst->rx_sqd != -EINVAL)
 		mtk_phy_update_field(pbase + XSP_USBPHYACR5, P2A6_RG_USB20_SQD,
 				    inst->rx_sqd);
+	if (inst->rev4 != -EINVAL)
+		mtk_phy_update_field(pbase + XSP_USBPHYACR6, P2A6_RG_U2_PHY_REV4,
+				     inst->rev4);
 
 	if (inst->rev6 != -EINVAL)
 		mtk_phy_update_field(pbase + XSP_USBPHYACR6, P2A6_RG_U2_PHY_REV6,
