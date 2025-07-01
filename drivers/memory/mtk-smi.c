@@ -108,6 +108,7 @@
 #define SMI_L1LEN			0x100
 #define SMI_L1ARB0			0x104
 #define SMI_L1ARB(id)			(SMI_L1ARB0 + ((id) << 2))
+#define SMI_L1TH_ARB0(id)		(0x124 + ((id) << 2))
 #define SMI_M4U_TH			0x234
 #define SMI_FIFO_TH1			0x238
 #define SMI_FIFO_TH2			0x23c
@@ -166,6 +167,7 @@ struct mtk_smi_common_plat {
 	bool		has_p2_ostdl;
 	struct mtk_smi_reg_pair *misc;
 	int (*resource_ctrl[MTK_COMMON_NR_MAX])(struct device *dev, bool is_enable);
+	u32		*ostdl_bits;
 };
 
 struct mtk_smi_larb_gen {
@@ -423,7 +425,7 @@ bool is_other_ostd_existed(const u32 value, bool is_write)
 	return existed;
 }
 
-void mtk_smi_common_ostdl_set(struct device *dev, const u32 port, bool is_write, const u32 val)
+void mtk_smi_common_ostdl_set_v1(struct device *dev, const u32 port, bool is_write, const u32 val)
 {
 	struct mtk_smi_larb *larb = dev_get_drvdata(dev);
 	struct mtk_smi *common = dev_get_drvdata(larb->smi_common);
@@ -455,6 +457,63 @@ void mtk_smi_common_ostdl_set(struct device *dev, const u32 port, bool is_write,
 	if (log_level & 1 << log_config_bit)
 		pr_info("[SMI]%s orig_val:%#x write_val:%#x\n",
 			__func__, orig_val, write_val);
+
+}
+
+void mtk_smi_common_ostdl_set_v2(struct device *dev, const u32 port, bool is_write, const u32 val)
+{
+	struct mtk_smi_larb *larb = dev_get_drvdata(dev);
+	struct mtk_smi *common = dev_get_drvdata(larb->smi_common);
+	u32 value = 0, mask, ostdl_bits, r_shift_bits, w_shift_bits, orig_val, w_ostdl, r_ostdl;
+
+	ostdl_bits = common->plat->ostdl_bits[common->commid];
+	mask = ostdl_bits ? GENMASK(ostdl_bits, 0) : MASK_7;
+	r_shift_bits = ostdl_bits ? 0 : RD_LIMIT_LSB;
+	w_shift_bits = ostdl_bits ? (ostdl_bits + 1) : WR_LIMIT_LSB;
+
+	orig_val =
+		readl_relaxed(common->base + (ostdl_bits ? SMI_L1TH_ARB0(port) : SMI_L1ARB(port)));
+	if (is_write) {
+		r_ostdl = (orig_val >> r_shift_bits) & mask;
+		w_ostdl = val;
+	} else {
+		r_ostdl = val;
+		w_ostdl = (orig_val >> w_shift_bits) & mask;
+	}
+	r_ostdl = (r_ostdl == 0) ? 0x1 : (r_ostdl & mask);
+	w_ostdl = (w_ostdl == 0) ? 0x1 : (w_ostdl & mask);
+
+	value = orig_val;
+	value &= ~((mask << r_shift_bits) | (mask << w_shift_bits));
+	value |= (r_ostdl << r_shift_bits);
+	value |= (w_ostdl << w_shift_bits);
+	if (ostdl_bits) {
+		// enable ostdl
+		writel(readl_relaxed(common->base + SMI_L1ARB(port)) | BIT(OSTDL_EN),
+								common->base + SMI_L1ARB(port));
+		// set ostdl
+		writel(value, common->base + SMI_L1TH_ARB0(port));
+	} else {
+		// enable & set ostdl
+		value |= BIT(OSTDL_EN);
+		writel(value, common->base + SMI_L1ARB(port));
+	}
+	if (log_level & 1 << log_config_bit)
+		pr_info("%s:larb%d, comm%d, port%d, is_write:%d, r_ostdl=%#x, w_ostdl=%#x, %#x=%#x, %#x=%#x\n",
+			__func__, larb->larbid, common->commid, port, is_write, r_ostdl, w_ostdl,
+			SMI_L1ARB(port), readl_relaxed(common->base + SMI_L1ARB(port)),
+			SMI_L1TH_ARB0(port), readl_relaxed(common->base + SMI_L1TH_ARB0(port)));
+}
+
+void mtk_smi_common_ostdl_set(struct device *dev, const u32 port, bool is_write, const u32 val)
+{
+	struct mtk_smi_larb *larb = dev_get_drvdata(dev);
+	struct mtk_smi *common = dev_get_drvdata(larb->smi_common);
+
+	if (common->plat->ostdl_bits)
+		mtk_smi_common_ostdl_set_v2(dev, port, is_write, val);
+	else
+		mtk_smi_common_ostdl_set_v1(dev, port, is_write, val);
 
 }
 EXPORT_SYMBOL_GPL(mtk_smi_common_ostdl_set);
@@ -2831,6 +2890,35 @@ mtk_smi_larb_mt6858_bwl[MTK_LARB_NR_MAX][SMI_LARB_PORT_NR_MAX] = {
 	{0x7, 0x7, 0x3, 0x3, 0x1, 0x1,}, /* LARB20 */
 };
 
+static u8
+mtk_smi_larb_mt6858_default_bwl[MTK_LARB_NR_MAX][SMI_LARB_PORT_NR_MAX] = {
+	{0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1,}, /* LARB0 */
+	{0x1, 0x1, 0x1, 0x1, 0x1, 0x1,}, /* LARB1 */
+	{0x1, 0x1, 0x1, 0x1, 0x1,}, /* LARB2 */
+	{}, /* LARB3 */
+	{0x19, 0x5, 0x1, 0x1, 0x1, 0x1, 0x2, 0x2, 0x5, 0x1,}, /* LARB4 */
+	{}, /* LARB5 */
+	{}, /* LARB6 */
+	{0x20, 0x2, 0x1, 0x1, 0x1, 0x4, 0x2, 0x1, 0x1, 0x2, 0x2, 0x1, 0xa, 0xb, 0x3,}, /* LARB7 */
+	{}, /* LARB8 */
+	{0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1,
+	 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1,}, /* LARB9 */
+	{}, /* LARB10 */
+	{0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1,
+	 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1,}, /* LARB11 */
+	{}, /* LARB12 */
+	{0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1,}, /* LARB13 */
+	{0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1,}, /* LARB14 */
+	{}, /* LARB15 */
+	{0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1,
+	 0x1,}, /* LARB16 */
+	{0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1, 0x1,
+	 0x1,}, /* LARB17 */
+	{}, /* LARB18 */
+	{0x1, 0x1, 0x1, 0x1,}, /* LARB19 */
+	{0x1, 0x1, 0x1, 0x1, 0x1, 0x1,}, /* LARB20 */
+};
+
 static struct mtk_smi_reg_pair
 mtk_smi_larb_mt6858_misc[MTK_LARB_NR_MAX][SMI_LARB_MISC_NR] = {
 	{{SMI_LARB_CMD_THRT_CON, 0x370356}, {SMI_LARB_SW_FLAG, 0x1},},	/*LARB0*/
@@ -3762,7 +3850,7 @@ static const struct mtk_smi_larb_gen mtk_smi_larb_mt6858 = {
 	.has_grouping               = true,
 	.has_bw_thrt                = true,
 	.bwl                        = (u8 *)mtk_smi_larb_mt6858_bwl,
-	// .default_bwl                = (u8 *)mtk_smi_larb_mt6858_default_bwl,
+	.default_bwl                = (u8 *)mtk_smi_larb_mt6858_default_bwl,
 	.misc = (struct mtk_smi_reg_pair *)mtk_smi_larb_mt6858_misc,
 	.cmd_group                  = (u8 *)mtk_smi_larb_mt6858_cmd_group,
 	.bw_thrt_en                 = (u8 *)mtk_smi_larb_mt6858_bw_thrt_en,
@@ -4126,32 +4214,41 @@ static int mtk_smi_larb_probe(struct platform_device *pdev)
 
 
 	/* find smi common dev for mmqos */
-	larb->smi_common = larb->smi_common_dev[0];
-	for (;;) {
-		smi_node = smi_dev->of_node;
-		ret = of_parse_phandle_with_fixed_args(smi_node,
-					"mediatek,smi-supply", 1, 0, &args);
-		if (ret)
-			break;
-		smi_node = args.np;
-		if (smi_node) {
-			smi_pdev = of_find_device_by_node(smi_node);
-			of_node_put(smi_node);
-			if (smi_pdev) {
-				if (of_property_read_bool(smi_pdev->dev.of_node, "smi-common")) {
-					larb->smi_common = &smi_pdev->dev;
-					break;
-					/* find smi-common dev successfully */
-				} else
-					smi_dev = &smi_pdev->dev;
+	smi_node = of_parse_phandle(dev->of_node, "mediatek,smi-ssc-ostdl", 0);
+	if (smi_node) {
+		smi_pdev = of_find_device_by_node(smi_node);
+		of_node_put(smi_node);
+		larb->smi_common = &smi_pdev->dev;
+		dev_notice(dev, "found smi common %s dev for mmqos\n", dev_name(larb->smi_common));
+	} else {
+		larb->smi_common = larb->smi_common_dev[0];
+		for (;;) {
+			smi_node = smi_dev->of_node;
+			ret = of_parse_phandle_with_fixed_args(smi_node,
+						"mediatek,smi-supply", 1, 0, &args);
+			if (ret)
+				break;
+			smi_node = args.np;
+			if (smi_node) {
+				smi_pdev = of_find_device_by_node(smi_node);
+				of_node_put(smi_node);
+				if (smi_pdev) {
+					if (of_property_read_bool(smi_pdev->dev.of_node,
+										"smi-common")) {
+						larb->smi_common = &smi_pdev->dev;
+						break;
+						/* find smi-common dev successfully */
+					} else
+						smi_dev = &smi_pdev->dev;
+				} else {
+					dev_notice(dev, "Failed to get smi-comm dev for mmqos\n");
+					return -EINVAL;
+				}
 			} else {
-				dev_notice(dev, "Failed to get smi-comm dev for mmqos\n");
-				return -EINVAL;
+				/* skip mmqos fix */
+				dev_notice(dev, "Can not find smi-comm for mmqos\n");
+				break;
 			}
-		} else {
-			/* skip mmqos fix */
-			dev_notice(dev, "Can not find smi-comm for mmqos\n");
-			break;
 		}
 	}
 
@@ -4846,6 +4943,10 @@ static u32 mtk_smi_common_mt6993_bwl[MTK_COMMON_NR_MAX][SMI_COMMON_LARB_NR_MAX] 
 
 static u32 mtk_smi_common_mt6858_bwl[MTK_COMMON_NR_MAX][SMI_COMMON_LARB_NR_MAX] = { };
 
+static u32 mtk_smi_common_mt6858_ostdl_bits[MTK_COMMON_NR_MAX] = {
+	0, 0, 0, 5, 5, 0, 0, 0, 0, 5, 5, 5, 5, 5, 5,
+};
+
 static struct mtk_smi_reg_pair
 mtk_smi_common_mt6873_misc[SMI_COMMON_MISC_NR] = {
 	{SMI_L1LEN, 0xb},
@@ -5446,7 +5547,8 @@ static struct mtk_smi_reg_pair
 mtk_smi_common_mt6858_misc[MTK_COMMON_NR_MAX][SMI_COMMON_MISC_NR] = {
 	{{SMI_L1LEN, 0xb}, {SMI_BUS_SEL, 0x4444}, {SMI_M4U_TH, 0x6100610},
 	 {SMI_FIFO_TH1, 0x506090a}, {SMI_FIFO_TH2, 0x506090a}, {SMI_DCM, 0x4f1},
-	 {SMI_DUMMY, 0x1}, }, /* COMM0 */
+	 {SMI_DUMMY, 0x1}, {SMI_L1ARB(3), 0x8000}, {SMI_L1ARB(4), 0x101c000},
+	 {SMI_L1ARB(5), 0x101c000},}, /* COMM0 */
 	{}, /* COMM1 */
 	{}, /* COMM2 */
 	{{SMI_L1LEN, 0xa}, {SMI_PREULTRA_MASK1, 0x7106}, {SMI_DUMMY, 0x1},}, /* COMM3 */
@@ -5455,7 +5557,8 @@ mtk_smi_common_mt6858_misc[MTK_COMMON_NR_MAX][SMI_COMMON_MISC_NR] = {
 	{}, /* COMM6 */
 	{}, /* COMM7 */
 	{}, /* COMM8 */
-	{{SMI_L1LEN, 0xa}, {SMI_PREULTRA_MASK1, 0x4106}, {SMI_DUMMY, 0x1},}, /* COMM9 */
+	{{SMI_L1LEN, 0xa}, {SMI_PREULTRA_MASK1, 0x4106}, {SMI_L1ARB(1), 0x8000},
+	 {SMI_DUMMY, 0x1},}, /* COMM9 */
 	{{SMI_L1LEN, 0xa}, {SMI_PREULTRA_MASK1, 0x4106}, {SMI_DUMMY, 0x1},}, /* COMM10 */
 	{{SMI_L1LEN, 0xa}, {SMI_PREULTRA_MASK1, 0x5145}, {SMI_DUMMY, 0x1},}, /* COMM11 */
 	{{SMI_L1LEN, 0xa}, {SMI_PREULTRA_MASK1, 0x5145}, {SMI_DUMMY, 0x1},}, /* COMM12 */
@@ -5655,6 +5758,7 @@ static const struct mtk_smi_common_plat mtk_smi_common_mt6858 = {
 	.bwl      = (u32 *)mtk_smi_common_mt6858_bwl,
 	.has_p2_ostdl  = true,
 	.misc     = (struct mtk_smi_reg_pair *)mtk_smi_common_mt6858_misc,
+	.ostdl_bits = (u32 *)mtk_smi_common_mt6858_ostdl_bits,
 };
 
 static const struct mtk_smi_common_plat mtk_smi_common_mt8183 = {
