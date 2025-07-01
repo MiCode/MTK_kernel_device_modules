@@ -108,7 +108,6 @@ static int fops_vcodec_open(struct file *file)
 #endif
 
 	mutex_lock(&dev->dev_mutex);
-	mtk_venc_violation_fault_callback_setting(dev);
 	/*
 	 * Use simple counter to uniquely identify this context. Only
 	 * used for logging.

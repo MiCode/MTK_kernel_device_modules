@@ -96,20 +96,22 @@ void mtk_venc_init_ctx_pm(struct mtk_vcodec_ctx *ctx)
 	slbc_ops.deactivate = mtk_slb_user_deactivate_request;
 
 	if (slbc_register_activate_ops(&slbc_ops) != 0) {
-		pr_info("register cb slbc_register_activate_ops fail\n");
+		mtk_v4l2_err("register cb slbc_register_activate_ops fail");
 	}
 	if (slbc_request(&ctx->sram_data) >= 0) {
 		ctx->use_slbc = 1;
 		ctx->slbc_addr = (unsigned int)(unsigned long)ctx->sram_data.paddr;
 	} else {
-		pr_info("slbc_request fail\n");
+		mtk_v4l2_err("slbc_request fail");
 		ctx->use_slbc = 0;
 	}
 	if (ctx->slbc_addr % 256 != 0 || ctx->slbc_addr == 0) {
-		pr_info("slbc_addr error 0x%x\n", ctx->slbc_addr);
+		mtk_v4l2_err("slbc_addr error 0x%x", ctx->slbc_addr);
 		ctx->use_slbc = 0;
 	}
 #endif
+	if (ctx->use_slbc)
+		mtk_venc_violation_fault_callback_setting(ctx->dev);
 	if (ctx->use_slbc == 1 && ctx->sram_data.ref == 1) {
 		atomic_set(&mtk_venc_slb_cb.release_slbc, 0);
 		atomic_set(&mtk_venc_slb_cb.request_slbc, 0);
@@ -117,10 +119,8 @@ void mtk_venc_init_ctx_pm(struct mtk_vcodec_ctx *ctx)
 		atomic_set(&mtk_venc_slb_cb.later_cnt, 0);
 	}
 
-	pr_info("slbc_request %d, 0x%x, 0x%lx, ref %d\n",
-	ctx->use_slbc, ctx->slbc_addr, (unsigned long)ctx->sram_data.paddr, ctx->sram_data.ref);
-
-	mtk_v4l2_debug(0, "slb_cb %d/%d cnt %d/%d",
+	mtk_v4l2_debug(0, "slbc_request %d, 0x%x, 0x%lx, ref %d, slb_cb %d/%d cnt %d/%d",
+		ctx->use_slbc, ctx->slbc_addr, (unsigned long)ctx->sram_data.paddr, ctx->sram_data.ref,
 		atomic_read(&mtk_venc_slb_cb.release_slbc),
 		atomic_read(&mtk_venc_slb_cb.request_slbc),
 		atomic_read(&mtk_venc_slb_cb.perf_used_cnt),
