@@ -137,10 +137,10 @@ platforms_need_secure = [
     "mt6789",
     "mt6855",
     "mt6893",
+    "mt6858",
 ]
 
 platforms = [
-    "mt6858",
     "mt6886",
     "mt6895",
     "mt6897",
