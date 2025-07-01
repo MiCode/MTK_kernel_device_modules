@@ -23,6 +23,11 @@ define_mgk_ddk_library(
     name = "hyp",
     srcs = [":hyp_srcs"],
     pkvm_el2 = True,
+    includes = [".", "include"],
     # Depends on the hyp_pmm exported APIs
     header_deps = ["//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_mgmt/hyp:export_headers".format(kernel_version)],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/include/linux/soc/mediatek",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+    ],
 )

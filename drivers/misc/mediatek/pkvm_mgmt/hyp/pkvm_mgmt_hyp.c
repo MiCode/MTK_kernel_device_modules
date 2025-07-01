@@ -5,13 +5,12 @@
 
 #include <asm/alternative-macros.h>
 #include <asm/kvm_pkvm_module.h>
-#include <nvhe/spinlock.h>
 #include <linux/arm-smccc.h>
 
 #include <pkvm_mgmt/pkvm_mgmt.h>
+#include <pkvm_mgmt/spinlock.h>
 #include "include/pkvm_ctrl.h"
 #include "include/hyp_pmm.h"
-#include "../../../../arch/arm64/kvm/hyp/include/nvhe/ffa.h"
 
 /*
  * Here saves all el2 smc call ids for blocking any invalid el1 smc
