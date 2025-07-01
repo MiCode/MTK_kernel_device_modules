@@ -8173,6 +8173,12 @@ static void mtk_dsi_config_trigger(struct mtk_ddp_comp *comp,
 			DDPMSG("%s vdo trigger reset stop\n", __func__);
 		}
 		break;
+	case MTK_TRIG_FLAG_PATGEN_EN:
+		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DSI_SELF_PAT_CON0, 0xc11, ~0);
+		break;
+	case MTK_TRIG_FLAG_PATGEN_DIS:
+		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DSI_SELF_PAT_CON0, 0xc00, ~0);
+		break;
 	default:
 		break;
 	}

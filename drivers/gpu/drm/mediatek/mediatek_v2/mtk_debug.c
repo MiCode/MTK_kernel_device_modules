@@ -129,6 +129,10 @@ bool g_dsi_chksum_start;
 EXPORT_SYMBOL(g_dsi_chksum_start);
 bool g_dsi_chksum_stop;
 EXPORT_SYMBOL(g_dsi_chksum_stop);
+bool g_dsi_self_pat_en;
+EXPORT_SYMBOL(g_dsi_self_pat_en);
+bool g_dsi_self_pat_dis;
+EXPORT_SYMBOL(g_dsi_self_pat_dis);
 bool g_dsc_chksum_start;
 EXPORT_SYMBOL(g_dsc_chksum_start);
 bool g_dsc_chksum_stop;
@@ -6116,6 +6120,12 @@ test_2c_done:
 		}
 		g_dsc_mute_enable = false;
 		g_dsc_mute_disable = true;
+	} else if (strncmp(opt, "dsi_self_pat_en", 15) == 0) {
+		g_dsi_self_pat_en = true;
+		g_dsi_self_pat_dis = false;
+	} else if (strncmp(opt, "dsi_self_pat_dis", 16) == 0) {
+		g_dsi_self_pat_en = false;
+		g_dsi_self_pat_dis = true;
 	}
 }
 

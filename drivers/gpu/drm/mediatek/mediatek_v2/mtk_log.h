@@ -524,4 +524,6 @@ extern bool g_dsc_chksum_start;
 extern bool g_dsc_chksum_stop;
 extern bool g_dsc_mute_enable;
 extern bool g_dsc_mute_disable;
+extern bool g_dsi_self_pat_en;
+extern bool g_dsi_self_pat_dis;
 #endif

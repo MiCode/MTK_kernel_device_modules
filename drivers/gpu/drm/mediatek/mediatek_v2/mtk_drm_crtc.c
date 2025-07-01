@@ -18201,6 +18201,19 @@ struct cmdq_pkt *mtk_crtc_gce_commit_begin(struct drm_crtc *crtc,
 		DDPMSG("dsc mute disable\n");
 	}
 
+	if (g_dsi_self_pat_en == true) {
+		struct mtk_ddp_comp *dsi_comp = NULL;
+
+		dsi_comp = priv->ddp_comp[DDP_COMPONENT_DSI0];
+		mtk_ddp_comp_config_trigger(dsi_comp, cmdq_handle, MTK_TRIG_FLAG_PATGEN_EN);
+	}
+	if (g_dsi_self_pat_dis == true) {
+		struct mtk_ddp_comp *dsi_comp = NULL;
+
+		dsi_comp = priv->ddp_comp[DDP_COMPONENT_DSI0];
+		mtk_ddp_comp_config_trigger(dsi_comp, cmdq_handle, MTK_TRIG_FLAG_PATGEN_DIS);
+	}
+
 	/* Record Vblank start timestamp */
 	mtk_vblank_config_rec_start(mtk_crtc, cmdq_handle, FRAME_CONFIG);
 
