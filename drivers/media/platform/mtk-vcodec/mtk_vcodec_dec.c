@@ -1000,20 +1000,15 @@ static void mtk_vdec_set_frame_handler(struct work_struct *ws)
 	struct mtk_video_dec_buf *buf;
 	struct vb2_v4l2_buffer *dst_vb2_v4l2;
 
-	mutex_lock(&ctx->vdec_set_frame_lock);
-
 	if (ctx->input_driven != INPUT_DRIVEN_PUT_FRM || ctx->is_flushing == true ||
 	    !mtk_vcodec_state_in_range(ctx, MTK_STATE_HEADER, MTK_STATE_STOP))
-		goto set_frame_handle_done;
+		return;
 
 	dst_vb2_v4l2 = v4l2_m2m_next_dst_buf(ctx->m2m_ctx);
 	if (dst_vb2_v4l2 != NULL) {
 		buf = to_video_dec_buf(dst_vb2_v4l2);
 		mtk_vdec_set_frame(ctx, buf); // loop set all frame
 	}
-set_frame_handle_done:
-	ctx->vdec_set_frame_waiting = false;
-	mutex_unlock(&ctx->vdec_set_frame_lock);
 }
 
 static void mtk_vdec_init_set_frame_wq(struct mtk_vcodec_dev *dev)
@@ -1034,31 +1029,18 @@ static void mtk_vdec_deinit_set_frame_wq(struct mtk_vcodec_dev *dev)
 
 static void mtk_vdec_init_set_frame_work(struct mtk_vcodec_ctx *ctx)
 {
-	mutex_init(&ctx->vdec_set_frame_lock);
 	INIT_WORK(&ctx->vdec_set_frame_work, mtk_vdec_set_frame_handler);
 }
 
 static void mtk_vdec_flush_set_frame_work(struct mtk_vcodec_ctx *ctx)
 {
-	bool need_wait;
-
-	mutex_lock(&ctx->vdec_set_frame_lock);
-	need_wait = ctx->vdec_set_frame_waiting;
-	mutex_unlock(&ctx->vdec_set_frame_lock);
-	if (need_wait)
-		flush_work(&ctx->vdec_set_frame_work);
+	flush_work(&ctx->vdec_set_frame_work);
 }
 
 static void mtk_vdec_trigger_set_frame(struct mtk_vcodec_ctx *ctx)
 {
-	if (ctx->input_driven == INPUT_DRIVEN_PUT_FRM && ctx->is_flushing == false) {
-		mutex_lock(&ctx->vdec_set_frame_lock);
-		if (!ctx->vdec_set_frame_waiting) {
-			ctx->vdec_set_frame_waiting = true;
-			queue_work(ctx->dev->vdec_set_frame_wq, &ctx->vdec_set_frame_work);
-		}
-		mutex_unlock(&ctx->vdec_set_frame_lock);
-	}
+	if (ctx->input_driven == INPUT_DRIVEN_PUT_FRM && ctx->is_flushing == false)
+		queue_work(ctx->dev->vdec_set_frame_wq, &ctx->vdec_set_frame_work);
 }
 
 /*

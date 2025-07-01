@@ -792,8 +792,6 @@ struct mtk_vcodec_ctx {
 	u64 lpw_ts_diff;
 
 	struct work_struct vdec_set_frame_work;
-	bool vdec_set_frame_waiting;
-	struct mutex vdec_set_frame_lock;
 
 	/* for user lock HW case release check */
 	struct mutex hw_status;
