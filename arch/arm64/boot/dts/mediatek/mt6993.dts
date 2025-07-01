@@ -22616,6 +22616,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		lv-deb-sel = <0>;
 		hv-deb-sel = <3>;
 		vio18-switch-reg = <0x53 0x58>;
+		io-channels = <&mt6661_6_auxadc AUXADC_VSYSSNS>;
+		io-channel-names = "pmic_vsys";
 	};
 };
 
