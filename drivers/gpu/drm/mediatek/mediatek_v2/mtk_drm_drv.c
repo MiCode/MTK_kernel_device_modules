@@ -2276,84 +2276,6 @@ static void mtk_atomic_check_res_switch(struct mtk_drm_private *private,
 	}
 }
 
-static void mtk_atomic_delay(struct mtk_drm_private *private,
-	struct drm_crtc_state *new_crtc_state)
-{
-	/* First atomic_delay before commit LOCK: to second last little te*/
-	struct mtk_crtc_state *mtk_state = to_mtk_crtc_state(new_crtc_state);
-	struct drm_crtc *crtc = NULL;
-	struct mtk_panel_params *params;
-	int crtc_index;
-	unsigned int delay_us = 0;
-	unsigned long long current_time = ktime_get();
-	unsigned long long ept_time = mtk_state->prop_val[CRTC_PROP_EPT];
-	unsigned int te_step_time = 0;
-	unsigned long long x_time = 0;
-	struct mtk_drm_crtc *mtk_crtc;
-	uint64_t atomic_commit_reserved_ns = 0;
-
-	if (!private|| !private->drm) {
-		DDPPR_ERR("%s:%d invalid fetching\n", __func__, __LINE__);
-		return;
-	}
-
-	//only find first crtc
-	crtc = list_first_entry(&(private->drm)->mode_config.crtc_list,
-		typeof(*crtc), head);
-
-	if (IS_ERR_OR_NULL(crtc)) {
-		DDPPR_ERR("find crtc fail\n");
-		return;
-	}
-
-	mtk_crtc = to_mtk_crtc(crtc);
-	params = mtk_drm_get_lcm_ext_params(crtc);
-	crtc_index = drm_crtc_index(crtc);
-	atomic_commit_reserved_ns = mtk_crtc->crtc_caps.atomic_commit_reserved_ns;
-	if (!params) {
-		DDPPR_ERR("%s:%d invalid fetching\n", __func__, __LINE__);
-		return;
-	}
-
-	te_step_time = params->real_te_duration;
-	DDPDBG("%s:%d te_step_time:%u\n", __func__, __LINE__, te_step_time);
-
-	if ((ept_time == 0) || (te_step_time == 0) ||
-		(atomic_commit_reserved_ns == 0) ||
-		(ept_time/1000 <= current_time/1000) ||
-		(mtk_state->prop_val[CRTC_PROP_USER_SCEN] == 1))
-		return;
-
-	x_time = ept_time/1000 - current_time/1000;
-	//real_te_duration = 8.3ms > 3ms, then wait to the last TE
-	if ((te_step_time > atomic_commit_reserved_ns/1000) &&
-		(x_time > te_step_time))
-		delay_us = x_time - te_step_time;
-	// Sleep without LOCK: sleep to (EPT - 3ms)
-	// Ideally, atomic commit can be finished within 2ms
-	else if ((atomic_commit_reserved_ns/1000 >= te_step_time) &&
-		(x_time > atomic_commit_reserved_ns/1000))
-		delay_us = x_time - atomic_commit_reserved_ns/1000;
-	else
-		delay_us = 0;
-	if (delay_us == 0)
-		return;
-
-	if (delay_us < 1000000) {
-		mtk_drm_trace_begin("atomic_delay_first_sleep:%u", delay_us);
-		CRTC_MMP_EVENT_START(crtc_index, atomic_delay, delay_us, 0);
-
-		usleep_range(delay_us, delay_us + 1);
-
-		CRTC_MMP_EVENT_END(crtc_index, atomic_delay, delay_us, 0);
-		mtk_drm_trace_end();
-		DDPINFO("%s:%d CPU delay: atomic_delay st sleep %u us\n",
-			__func__, __LINE__, delay_us);
-	} else
-		DDPINFO("%s:%d delay_us too much %u us\n",
-			__func__, __LINE__, delay_us);
-}
-
 static int mtk_atomic_commit(struct drm_device *drm,
 			     struct drm_atomic_state *state, bool async)
 {
@@ -2412,9 +2334,6 @@ static int mtk_atomic_commit(struct drm_device *drm,
 		}
 		break;
 	}
-
-	if (mtk_drm_helper_get_opt(private->helper_opt, MTK_DRM_OPT_WAIT_EPT))
-		mtk_atomic_delay(private, new_crtc_state);
 
 	DDP_COMMIT_LOCK(&private->commit.lock, __func__, pf);
 	DRM_MMP_EVENT_START(mutex_lock, 0, 0);
