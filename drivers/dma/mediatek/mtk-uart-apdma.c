@@ -101,6 +101,7 @@
 #define VFF_POLL_TIMEOUT	4000
 #define IBUF_POLL_INTERVAL	10
 #define IBUF_POLL_TIMEOUT	100
+#define DMA_TX_POLLING_CNT	200
 
 /* dma debug info*/
 enum uart_dma_debug_info {
@@ -124,6 +125,12 @@ enum uart_dma_debug_info {
 enum apdma_flush_flag {
 	DMA_NEED_TERMINATE,
 	DMA_ONLY_FLUSH_BUFFER,
+};
+
+/*apdma tx status*/
+enum apdma_tx_status {
+	DMA_TX_DONE,
+	DMA_TX_RUNIMG,
 };
 
 /* dma debug buf size*/
@@ -209,6 +216,7 @@ struct mtk_chan {
 	unsigned int dma_debug_buf[LOG_BUG_SIZE];
 	int rx_chan_retry;
 	atomic_t apdma_status;
+	atomic_t txdma_state;
 };
 
 static unsigned long long num;
@@ -732,11 +740,14 @@ EXPORT_SYMBOL(mtk_uart_apdma_polling_rx_finish);
 
 int mtk_uart_apdma_polling_tx_finish(void)
 {
-	int ret = 0, result = 0;
+	int ret = 0, result = 0, dma_state = 0;
 	unsigned int tx_data_cnt = 0, vff_valid_size = 0;
 	unsigned int poll_cnt = MAX_POLL_CNT_TX;
+	unsigned int poll_thread_cnt = DMA_TX_POLLING_CNT;
 	bool is_irq_pending = true;
 	bool is_irq_active = true;
+	unsigned long long polling_start_time = 0;
+	unsigned long long polling_end_time = 0;
 
 	// Check apdma VFF valid size
 	vff_valid_size = mtk_uart_apdma_read(hub_dma_tx_chan, VFF_VALID_SIZE);
@@ -771,6 +782,23 @@ int mtk_uart_apdma_polling_tx_finish(void)
 
 	if (is_irq_pending || is_irq_active) {
 		pr_info("%s: irq_pending: %d, irq_active: %d\n", __func__, is_irq_pending, is_irq_active);
+		result = -1;
+	}
+
+	polling_start_time = sched_clock();
+	while (poll_thread_cnt) {
+		dma_state = atomic_read(&hub_dma_tx_chan->txdma_state);
+		if (dma_state == DMA_TX_RUNIMG) {
+			usleep_range(1000, 1500);
+			poll_thread_cnt--;
+		} else
+			break;
+	}
+	polling_end_time = sched_clock();
+	if (poll_thread_cnt == 0) {
+		pr_info("%s: Error: dma_state[%d], polling_time[%lld]!!\n",
+			 __func__, dma_state,
+			 polling_end_time - polling_start_time);
 		result = -1;
 	}
 
@@ -1127,6 +1155,10 @@ static irqreturn_t vchan_complete_thread_irq(int irq, void *dev_id)
 		dmaengine_desc_callback_invoke(&cb, &vd->tx_result);
 		vchan_vdesc_fini(vd);
 	}
+#if IS_ENABLED(CONFIG_MTK_UARTHUB)
+	if (c->dir == DMA_DEV_TO_MEM && c->is_hub_port)
+		atomic_set(&hub_dma_tx_chan->txdma_state, DMA_TX_DONE);
+#endif
 	c->rec_info[idx].complete_time = sched_clock();
 
 	if ((c->dir == DMA_DEV_TO_MEM) && (c->rec_info[idx].trans_len >= UART_RX_DUMP_MAXLEN)) {
@@ -1178,6 +1210,10 @@ static int mtk_uart_apdma_tx_handler(struct mtk_chan *c)
 	list_del(&d->vd.node);
 	vchan_cookie_complete_thread_irq(&d->vd);
 	c->rec_info[idx].trans_duration_time = sched_clock() - c->rec_info[idx].trans_time;
+#if IS_ENABLED(CONFIG_MTK_UARTHUB)
+	if (c->dir == DMA_DEV_TO_MEM && c->is_hub_port)
+		atomic_set(&hub_dma_tx_chan->txdma_state, DMA_TX_RUNIMG);
+#endif
 	return 0;
 }
 
@@ -1833,6 +1869,7 @@ static int mtk_uart_apdma_probe(struct platform_device *pdev)
 		c->cur_rec_idx = 0;
 		c->rx_chan_retry = 0;
 		atomic_set(&c->rxdma_state, 0);
+		atomic_set(&c->txdma_state, 0);
 		atomic_set(&c->apdma_status, 0);
 	#if IS_ENABLED(CONFIG_MTK_UARTHUB)
 		c->is_hub_port = mtkd->support_hub & (1 << i);
