@@ -1820,8 +1820,8 @@ static inline void MFB_Prepare_Enable_ccf_clock(void)
 	LOG_INF("MFB_Prepare_Enable_ccf_clock!!");
 
 	if (g_platform_id == 0x6858) {
-		LOG_INF("vcp enable!");
-		mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_IMG);
+		ret = mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_IMG);
+		LOG_INF("vcp enable! ret = %d", ret);
 	}
 
 	/*	ret = mtk_smi_larb_get(MFB_devs[0].larb);
@@ -1871,6 +1871,7 @@ static inline void MFB_Disable_Unprepare_ccf_clock(void)
 	/* must keep this clk close order:
 	 * MFB clk -> CG_SCP_SYS_ISP -> CG_MM_SMI_COMMON -> CG_SCP_SYS_DIS
 	 */
+	int ret;
 
 	// cmdq disable
 	cmdq_mbox_disable(msf_clt->chan);
@@ -1890,8 +1891,8 @@ static inline void MFB_Disable_Unprepare_ccf_clock(void)
 	mtk_smi_larb_put(MFB_devs[0].larb);
 */
 	if (g_platform_id == 0x6858) {
-		LOG_INF("vcp disable!");
-		mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_IMG);
+		ret = mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_IMG);
+		LOG_INF("vcp disable! ret = %d", ret);
 	}
 
 	pm_runtime_put_sync(MFB_devs[0].dev);

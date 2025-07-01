@@ -1,5 +1,6 @@
 load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
 load("@mgk_info//:kernel_version.bzl", "kernel_version")
+load("@mgk_info//:dict.bzl", "DEFCONFIG_OVERLAYS",)
 
 package(
     default_visibility = [
@@ -13,6 +14,15 @@ define_mgk_ddk_ko(
         "camera_mfb.c",
         "engine_request.c",
     ] + glob(["**/*.h"]),
+
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:mtk-cmdq-drv-ext".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mtk-interconnect:mtk-icc-core".format(kernel_version),
+    ] +
+		(["//kernel_device_modules-{}/drivers/soc/mediatek/mmdvfs:mtk-mmdvfs-v5".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/soc/mediatek:mtk-mmdvfs-v3".format(kernel_version),]
+		if "entry_level.config" not in DEFCONFIG_OVERLAYS else []),
+
     copts = [
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/m4u/$(MTK_PLATFORM)/",
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmp/",
@@ -27,11 +37,6 @@ define_mgk_ddk_ko(
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtk-interconnect/",
     ],
 
-     ko_deps = ["//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:mtk-cmdq-drv-ext".format(kernel_version),
-     "//kernel_device_modules-{}/drivers/misc/mediatek/mtk-interconnect:mtk-icc-core".format(kernel_version),
-     "//kernel_device_modules-{}/drivers/soc/mediatek/mmdvfs:mtk-mmdvfs-v5".format(kernel_version),
-     "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-mmdvfs-v3".format(kernel_version),
-    ],
 )
 
 filegroup(
