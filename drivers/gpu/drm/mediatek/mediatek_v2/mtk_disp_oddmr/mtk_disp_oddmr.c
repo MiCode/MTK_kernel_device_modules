@@ -703,6 +703,12 @@
 #define REG_DBI_IR_DROP_STST_FORCE_UPDATE (0x10c9c)
 #define REG_DBI_IR_DROP_EN (0x10ca4)
 
+#define MASK_GAIN(mask) \
+	({uint64_t _mask = (mask); \
+	((_mask^(_mask-1))+1)>>1;})
+
+#define SHIFT_BY_MASK(value , mask) \
+	((typeof(value))(value*MASK_GAIN(mask)))
 
 static bool debug_flow_log;
 #define ODDMRFLOW_LOG(fmt, arg...) do { \
@@ -9890,17 +9896,17 @@ static void mtk_oddmr_dbi_gain_cfg(struct mtk_ddp_comp *comp,
 		base_idx_dbv_fps_add1 = dbv_node_add1 * (cfg_info->fps_dbv_node.FPS_num) * cnt + fps_node_add1 * cnt;
 
 		for(i = 0; i < cnt; i++) {
-			value_interpolate_by_dbv = mtk_oddmr_linear_interpolation(cur_dbv,
+			value_interpolate_by_dbv = mtk_oddmr_linear_interpolation_round(cur_dbv,
 				cfg_info->fps_dbv_node.DBV_node[dbv_node],
 				cfg_info->fps_dbv_change_cfg.reg_value[base_idx + i],
 				cfg_info->fps_dbv_node.DBV_node[dbv_node_add1],
 				cfg_info->fps_dbv_change_cfg.reg_value[base_idx_dbv_add1 + i]);
-			value_interpolate_by_dbv1 = mtk_oddmr_linear_interpolation(cur_dbv,
+			value_interpolate_by_dbv1 = mtk_oddmr_linear_interpolation_round(cur_dbv,
 				cfg_info->fps_dbv_node.DBV_node[dbv_node],
 				cfg_info->fps_dbv_change_cfg.reg_value[base_idx_fps_add1 + i],
 				cfg_info->fps_dbv_node.DBV_node[dbv_node_add1],
 				cfg_info->fps_dbv_change_cfg.reg_value[base_idx_dbv_fps_add1 + i]);
-			value_interpolate_by_fps = mtk_oddmr_linear_interpolation(cur_fps,
+			value_interpolate_by_fps = mtk_oddmr_linear_interpolation_round(cur_fps,
 				cfg_info->fps_dbv_node.FPS_node[fps_node],
 				value_interpolate_by_dbv,
 				cfg_info->fps_dbv_node.FPS_node[fps_node_add1],
@@ -9910,15 +9916,49 @@ static void mtk_oddmr_dbi_gain_cfg(struct mtk_ddp_comp *comp,
 			value_interpolate_by_fps *= gain_ratio;
 			value_interpolate_by_fps /= 100;
 
-			mtk_oddmr_write_mask(comp,
-				value_interpolate_by_fps,
+			if(oddmr_data->data->dbi_version >= MTK_DBI_V3)
+				mtk_oddmr_write_mask(comp,
+				SHIFT_BY_MASK(value_interpolate_by_fps,cfg_info->fps_dbv_change_cfg.reg_mask[i]),
 				cfg_info->fps_dbv_change_cfg.reg_offset[i],
 				cfg_info->fps_dbv_change_cfg.reg_mask[i], pkg);
+			else
+				mtk_oddmr_write_mask(comp,
+					value_interpolate_by_fps,
+					cfg_info->fps_dbv_change_cfg.reg_offset[i],
+					cfg_info->fps_dbv_change_cfg.reg_mask[i], pkg);
 		}
 	} else
 		ODDMRFLOW_LOG("dbi gain config data error\n");
 }
 
+void mtk_oddmt_print_dbi_table_log(struct mtk_ddp_comp *comp,
+	int *value, struct mtk_drm_dbi_cfg_info *cfg_info,
+	int i, int j,unsigned int value_interpolate_by_dbv)
+{
+	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
+
+	if(oddmr_data->data->dbi_version >= MTK_DBI_V3) {
+		if(i/21 == 0)
+			ODDMRAPI_LOG("R gray %d : %d\n", value[j],
+				SHIFT_BY_MASK(value_interpolate_by_dbv,cfg_info->dbv_change_cfg.reg_mask[i])/4);
+		if(i/21 == 1)
+			ODDMRAPI_LOG("G gray %d : %d\n", value[j],
+				SHIFT_BY_MASK(value_interpolate_by_dbv,cfg_info->dbv_change_cfg.reg_mask[i])/4);
+		if(i/21 == 2)
+			ODDMRAPI_LOG("B gray %d : %d\n", value[j],
+				SHIFT_BY_MASK(value_interpolate_by_dbv,cfg_info->dbv_change_cfg.reg_mask[i])/4);
+	} else {
+		if(i/21 == 0)
+			ODDMRAPI_LOG("R gray %d : %d\n", value[j],
+				value_interpolate_by_dbv/4);
+		if(i/21 == 1)
+			ODDMRAPI_LOG("G gray %d : %d\n", value[j],
+				value_interpolate_by_dbv/4);
+		if(i/21 == 2)
+			ODDMRAPI_LOG("B gray %d : %d\n", value[j],
+				value_interpolate_by_dbv/4);
+	}
+}
 
 static void mtk_oddmr_dbi_dbv_table_cfg(struct mtk_ddp_comp *comp,
 		struct cmdq_pkt *pkg, unsigned int dbv_node,
@@ -9960,7 +10000,7 @@ static void mtk_oddmr_dbi_dbv_table_cfg(struct mtk_ddp_comp *comp,
 		ODDMRAPI_LOG("curdbv : %d\n", cur_dbv);
 		for(i = 0; i < cnt; i++) {
 
-			value_interpolate_by_dbv = mtk_oddmr_linear_interpolation(cur_dbv,
+			value_interpolate_by_dbv = mtk_oddmr_linear_interpolation_round(cur_dbv,
 				cfg_info->dbv_node.DBV_node[dbv_node],
 				cfg_info->dbv_change_cfg.reg_value[base_idx + i],
 				cfg_info->dbv_node.DBV_node[dbv_node_add1],
@@ -9974,21 +10014,20 @@ static void mtk_oddmr_dbi_dbv_table_cfg(struct mtk_ddp_comp *comp,
 					ODDMRAPI_LOG("dbv_node+1 : %d, value:%d\n",
 						cfg_info->dbv_node.DBV_node[dbv_node_add1],
 						cfg_info->dbv_change_cfg.reg_value[base_idx_dbv_add1 + i]/4);
-					if(i/21 == 0)
-						ODDMRAPI_LOG("R gray %d : %d\n", value[j],
-							value_interpolate_by_dbv/4);
-					if(i/21 == 1)
-						ODDMRAPI_LOG("G gray %d : %d\n", value[j],
-							value_interpolate_by_dbv/4);
-					if(i/21 == 2)
-						ODDMRAPI_LOG("B gray %d : %d\n", value[j],
-							value_interpolate_by_dbv/4);
+					mtk_oddmt_print_dbi_table_log(comp, value,
+						cfg_info, i, j, value_interpolate_by_dbv);
 				}
 			}
-			mtk_oddmr_write_mask(comp,
-				value_interpolate_by_dbv,
-				cfg_info->dbv_change_cfg.reg_offset[i],
-				cfg_info->dbv_change_cfg.reg_mask[i], pkg);
+			if(oddmr_data->data->dbi_version >= MTK_DBI_V3)
+				mtk_oddmr_write_mask(comp,
+					SHIFT_BY_MASK(value_interpolate_by_dbv,cfg_info->dbv_change_cfg.reg_mask[i]),
+					cfg_info->dbv_change_cfg.reg_offset[i],
+					cfg_info->dbv_change_cfg.reg_mask[i], pkg);
+			else
+				mtk_oddmr_write_mask(comp,
+					value_interpolate_by_dbv,
+					cfg_info->dbv_change_cfg.reg_offset[i],
+					cfg_info->dbv_change_cfg.reg_mask[i], pkg);
 		}
 	} else
 		ODDMRFLOW_LOG("dbi dbv table config data error\n");

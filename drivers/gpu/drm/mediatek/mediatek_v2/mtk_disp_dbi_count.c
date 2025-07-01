@@ -974,6 +974,11 @@ struct dbi_count_block_info mtk_dbi_count_get_block_info(uint32_t block_h, uint3
 		ret.block_v = 2;
 		ret.channel = 3;
 		return ret;
+	} else if((block_h == 4) && (block_v == 4)){
+		ret.block_h = 4;
+		ret.block_v = 4;
+		ret.channel = 3;
+		return ret;
 	}
 	return ret;
 }
@@ -1281,31 +1286,62 @@ static void mtk_dbi_set_reg_by_mode(struct mtk_ddp_comp *comp,
 	}
 }
 
-int mtk_dbi_curve_interpolate(struct mtk_dbi_curve_2d *curve, uint32_t x)
+static  int mtk_dbi_intp_int32_round(int x, int x1, int y1, int x2, int y2)
 {
-	uint32_t x_l;
-	uint32_t x_r;
-	uint32_t y_l;
-	uint32_t y_r;
+	int start_x, end_x, start_y, end_y;
+	long long numerator;
+
+	if (x1 == x2)
+		return y1;
+
+	if (x1 < x2) {
+		start_x = x1;
+		end_x = x2;
+		start_y = y1;
+		end_y = y2;
+	} else {
+		start_x = x2;
+		end_x = x1;
+		start_y = y2;
+		end_y = y1;
+	}
+
+	if(x<= start_x)
+		return start_y;
+	if(x >= end_x)
+		return end_y;
+
+	const int dx = end_x -start_x;
+	const int dy = end_y -start_y;
+	const int offset = x - start_x;
+
+	numerator = ((long long)offset) * dy;
+	return start_y + (int)((numerator + dx/2)/dx);
+}
+
+int mtk_dbi_curve_interpolate_signed(struct mtk_dbi_curve_2d *curve, int x)
+{
+	int x_l;
+	int x_r;
+	int y_l;
+	int y_r;
 
 	if(curve->num <=0)
 		return 0;
 
-	if(x<=curve->ux[0])
-		return curve->uy[0];
+	if(x<=curve->x[0])
+		return curve->y[0];
 
-	if (x>=curve->ux[curve->num-1])
-		return curve->uy[curve->num-1];
+	if (x>=curve->x[curve->num-1])
+		return curve->y[curve->num-1];
 
 	for (int r=1; r<curve->num; r++) {
-		if (x==curve->ux[r])
-			return curve->uy[r];
-		else if (x < curve->ux[r]) {
-			x_l = curve->ux[r-1];
-			x_r = curve->ux[r];
-			y_l = curve->uy[r-1];
-			y_r = curve->uy[r];
-			return ((x-x_l)*y_r + (x_r-x)*y_l)/(x_r - x_l);
+		if (x <= curve->x[r]) {
+			x_l = curve->x[r-1];
+			x_r = curve->x[r];
+			y_l = curve->y[r-1];
+			y_r = curve->y[r];
+			return mtk_dbi_intp_int32_round(x, x_l, y_l, x_r, y_r);
 		}
 	}
 	return 0;
@@ -1333,16 +1369,17 @@ void mtk_dbi_debug(struct drm_crtc *crtc, const char *opt)
 void mtk_dbi_show_gain_status(uint32_t dbv, uint32_t fps, int temp,
 	uint32_t *dbv_gain, uint32_t *fps_gain, uint32_t *temp_gain, uint32_t *irdrop_gain)
 {
-	uint32_t b, rsh;
+	uint32_t b, rsh, dbv_rsh;
 
-	b = 4;
+	b = 8;
 	rsh = 10-b;
+	dbv_rsh = 14-b;
 
 	DBI_COUNT_MSG("dbv:%u, dbv_gain:R = %u / G = %u / B = %u (format=fix point .%d)\n",
-		dbv, dbv_gain[DBI_CH_R] >> rsh, dbv_gain[DBI_CH_G] >> rsh, dbv_gain[DBI_CH_B] >> rsh, b);
+		dbv, dbv_gain[DBI_CH_R] >> dbv_rsh, dbv_gain[DBI_CH_G] >> dbv_rsh, dbv_gain[DBI_CH_B] >> dbv_rsh, b);
 	DBI_COUNT_MSG("fps:%u, fps_gain:R = %u / G = %u / B = %u (format=fix point .%d)\n",
 		fps, fps_gain[DBI_CH_R] >> rsh, fps_gain[DBI_CH_G] >> rsh, fps_gain[DBI_CH_B] >> rsh, b);
-	DBI_COUNT_MSG("temp:%u, temp_gain:R = %u / G = %u / B = %u (format=fix point .%d)\n",
+	DBI_COUNT_MSG("temp:%d, temp_gain:R = %u / G = %u / B = %u (format=fix point .%d)\n",
 		temp, temp_gain[DBI_CH_R] >> rsh, temp_gain[DBI_CH_G] >> rsh, temp_gain[DBI_CH_B] >> rsh, b);
 	DBI_COUNT_MSG("irdrop_gain:R = %u / G = %u / B = %u (format=fix point .%d)\n",
 		irdrop_gain[DBI_CH_R] >> rsh, irdrop_gain[DBI_CH_G] >> rsh, irdrop_gain[DBI_CH_B] >> rsh, b);
@@ -1378,13 +1415,13 @@ void mtk_dbi_get_irdrop_gain(struct mtk_dbi_count_hw_param *count_param, uint32_
 		weight_sum += weight;
 
 		ratio = code_square_sum[ch] == 0 ? 0:(avg_code*code_sum[ch]/code_square_sum[ch])>>2;
-		ratio_gain = mtk_dbi_curve_interpolate(&count_param->irdrop_ratio_gain_curve[ch],ratio);
-		dbv_gain = mtk_dbi_curve_interpolate(&count_param->irdrop_dbv_gain_curve[ch],dbv);
+		ratio_gain = mtk_dbi_curve_interpolate_signed(&count_param->irdrop_ratio_gain_curve[ch],ratio);
+		dbv_gain = mtk_dbi_curve_interpolate_signed(&count_param->irdrop_dbv_gain_curve[ch],dbv);
 		irdrop_gain_tmp[ch] = (dbv_gain * ratio_gain) >> 10;
 	}
 
 	total_code = weight_code_sum / weight_sum;
-	total_code_gain = mtk_dbi_curve_interpolate(&count_param->irdrop_total_gain_curve,total_code);
+	total_code_gain = mtk_dbi_curve_interpolate_signed(&count_param->irdrop_total_gain_curve,total_code);
 
 	for(int ch= 0;ch<DBI_CHANNEL_NUM;ch++) {
 		ret_irdrop_gain[ch] = (total_code_gain * irdrop_gain_tmp[ch]) >> 10;
@@ -1400,7 +1437,8 @@ static void mtk_dbi_update_count_gain(struct mtk_ddp_comp *comp,
 	int mode_id = atomic_read(&dbi_count->current_count_mode);
 	struct mtk_dbi_count_hw_param *count_param = &dbi_count->count_cfg.count_cfg.hw_count_param[mode_id];
 	struct mtk_dbi_count_helper *count_helper = &dbi_count->count_cfg.count_helper;
-	uint32_t dbv_gain, fps_gain, temp_gain, gain_norm, total_gain, irdrop_gain;
+	uint32_t dbv_gain, fps_gain, temp_gain, gain_norm, irdrop_gain;
+	uint64_t total_gain;
 	uint32_t gains[DBI_CHANNEL_NUM] = { 0 };
 	uint32_t max_gain = 0;
 	uint32_t sh = 0;
@@ -1481,15 +1519,17 @@ static void mtk_dbi_update_count_gain(struct mtk_ddp_comp *comp,
 	}
 
 	for (int ch = 0; ch < DBI_CHANNEL_NUM; ch++) {
-		dbv_gain = mtk_dbi_curve_interpolate(&count_param->dbv_gain_curve[ch],dbv);
-		fps_gain = mtk_dbi_curve_interpolate(&count_param->fps_gain_curve[ch],fps);
-		temp_gain = mtk_dbi_curve_interpolate(&count_param->temp_gain_curve[ch],temp);
+		dbv_gain = mtk_dbi_curve_interpolate_signed(&count_param->dbv_gain_curve[ch],dbv);
+		fps_gain = mtk_dbi_curve_interpolate_signed(&count_param->fps_gain_curve[ch],fps);
+		temp_gain = mtk_dbi_curve_interpolate_signed(&count_param->temp_gain_curve[ch],temp);
 		irdrop_gain = irdrop_gains[ch];
 		gain_norm = count_param->gain_norm[ch];
-		total_gain = (((uint64_t)dbv_gain) * fps_gain * temp_gain)>>18;
-		total_gain = ((uint64_t)total_gain * irdrop_gain * gain_norm) >> 20;
-		gains[ch] = total_gain;
-		max_gain = MAX(max_gain, total_gain>>12);
+		total_gain = (((uint64_t)dbv_gain) * gain_norm * temp_gain)>>18;
+		total_gain = (total_gain * irdrop_gain * fps_gain) >> 20;
+
+		gains[ch] = MIN(total_gain, 0xffffffff);
+		max_gain = MAX(max_gain, total_gain>>16);
+
 		dbv_gains[ch] = dbv_gain;
 		fps_gains[ch] = fps_gain;
 		temp_gains[ch] = temp_gain;
@@ -1498,6 +1538,7 @@ static void mtk_dbi_update_count_gain(struct mtk_ddp_comp *comp,
 	if(dbi_count->show_gain)
 		mtk_dbi_show_gain_status(dbv, fps, real_temp,
 			dbv_gains, fps_gains, temp_gains, irdrop_gains);
+
 	if(max_gain >= (1<<7))
 		sh = 0;
 	else if(max_gain >= (1<<6))
@@ -1506,26 +1547,32 @@ static void mtk_dbi_update_count_gain(struct mtk_ddp_comp *comp,
 		sh = 2;
 	else if(max_gain >= (1<<4))
 		sh = 3;
-	else
+	else if(max_gain >= (1<<3))
 		sh = 4;
+	else if(max_gain >= (1<<2))
+		sh = 5;
+	else if(max_gain >= (1<<1))
+		sh = 6;
+	else
+		sh = 7;
 
 	for (int ch = 0; ch < DBI_CHANNEL_NUM; ch++) {
 		if (ch == DBI_CH_R) {
 			value = 0;
 			mask = 0;
-			SET_VAL_MASK(value, mask, MIN(gains[ch]>>(4-sh), 0xffff), COUNTING_GAIN_R);
+			SET_VAL_MASK(value, mask, MIN(gains[ch]>>(8-sh), 0xffff), COUNTING_GAIN_R);
 			mtk_dbi_count_write_mask(comp, value, REG_DBI_COUNTING_GAIN_R, mask, handle);
 		}
 		if (ch == DBI_CH_G) {
 			value = 0;
 			mask = 0;
-			SET_VAL_MASK(value, mask, MIN(gains[ch]>>(4-sh), 0xffff), COUNTING_GAIN_G);
+			SET_VAL_MASK(value, mask, MIN(gains[ch]>>(8-sh), 0xffff), COUNTING_GAIN_G);
 			mtk_dbi_count_write_mask(comp, value, REG_DBI_COUNTING_GAIN_G, mask, handle);
 		}
 		if (ch == DBI_CH_B) {
 			value = 0;
 			mask = 0;
-			SET_VAL_MASK(value, mask, MIN(gains[ch]>>(4-sh), 0xffff), COUNTING_GAIN_B);
+			SET_VAL_MASK(value, mask, MIN(gains[ch]>>(8-sh), 0xffff), COUNTING_GAIN_B);
 			mtk_dbi_count_write_mask(comp, value, REG_DBI_COUNTING_GAIN_B, mask, handle);
 		}
 	}
