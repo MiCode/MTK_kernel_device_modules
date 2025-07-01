@@ -53,6 +53,9 @@ struct hf_core {
 	spinlock_t client_lock;
 	struct list_head client_list;
 
+	spinlock_t state_monitor_lock;
+	struct list_head state_monitor_list;
+
 	struct mutex device_lock;
 	struct list_head device_list;
 
@@ -90,6 +93,7 @@ struct hf_device {
 	struct hf_manager *manager;
 	struct list_head list;
 	bool ready;
+	uint8_t state;
 
 	void *private_data;
 };
@@ -104,6 +108,17 @@ struct hf_client_fifo {
 	int64_t client_active;
 	int64_t last_time_stamp[SENSOR_TYPE_SENSOR_MAX];
 	struct hf_manager_event *buffer;
+	wait_queue_head_t wait;
+	bool stop_wait;
+};
+
+struct hf_client_state_monitor {
+	struct list_head list;
+	spinlock_t lock;
+	struct state_monitor *curr_monitor;
+	struct state_monitor *next_monitor;
+	uint32_t monitor_size;
+	bool stop_wait;
 	wait_queue_head_t wait;
 };
 
@@ -124,6 +139,8 @@ struct hf_manager {
 		struct hf_manager_event *event);
 	void (*complete)(struct hf_manager *manager);
 	void (*interrupt)(struct hf_manager *manager, int64_t timestamp);
+
+	int (*state_report)(struct hf_manager *manager, uint8_t state);
 };
 
 struct hf_client {
@@ -138,6 +155,8 @@ struct hf_client {
 	pid_t leader_pid;              /* process pid */
 	pid_t pid;                     /* control thread pid */
 	pid_t ppid;                    /* poll thread pid */
+
+	struct hf_client_state_monitor *hf_state_monitor;
 };
 
 #define set_interrupt_timestamp(m, t) (atomic64_set(&m->timestamp, t))
@@ -175,6 +194,7 @@ int hf_client_poll_sensor_timeout(struct hf_client *client,
 #define hf_client_poll_sensor(client, data, count)		\
 	hf_client_poll_sensor_timeout(client, data, count,	\
 		MAX_SCHEDULE_TIMEOUT)
+int hf_client_stop_poll(struct hf_client *client);
 int hf_client_custom_cmd(struct hf_client *client,
 		uint8_t sensor_type, struct custom_cmd *cust_cmd);
 int hf_client_debug(struct hf_client *client, uint8_t sensor_type,

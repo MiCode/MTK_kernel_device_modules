@@ -30,12 +30,7 @@ static int test_app_kthread(void *arg)
 
 	while (!kthread_should_stop()) {
 		memset(data, 0, sizeof(data));
-		/*
-		 * must use timeout api to wakeup kthread and do exit
-		 * otherwise kthread_stop will be blocked forever
-		 */
-		size = hf_client_poll_sensor_timeout(client, data,
-			ARRAY_SIZE(data), msecs_to_jiffies(500));
+		size = hf_client_poll_sensor(client, data, ARRAY_SIZE(data));
 		if (size < 0)
 			continue;
 		for (i = 0; i < size; ++i) {
@@ -115,6 +110,7 @@ static ssize_t control_store(struct kobject *kobj,
 			cmd.sensor_type = sensor_type;
 			cmd.action = val1;
 			hf_client_control_sensor(test_app.client, &cmd);
+			hf_client_stop_poll(test_app.client);
 		}
 		if (test_app.task) {
 			kthread_stop(test_app.task);

@@ -790,8 +790,13 @@ static void transceiver_sensor_bootup(struct transceiver_device *dev)
 static int transceiver_ready_notifier_call(struct notifier_block *this,
 		unsigned long event, void *ptr)
 {
+	struct transceiver_device *dev = &transceiver_dev;
+
 	if (event)
-		transceiver_sensor_bootup(&transceiver_dev);
+		transceiver_sensor_bootup(dev);
+
+	if (!atomic_read(&dev->first_bootup) && dev->hf_dev.manager)
+		dev->hf_dev.manager->state_report(dev->hf_dev.manager, event);
 
 	return NOTIFY_DONE;
 }
@@ -1056,9 +1061,9 @@ static void __exit transceiver_exit(void)
 	sensor_ready_notifier_chain_unregister(&transceiver_ready_notifier);
 	host_ready_exit();
 	sensor_comm_exit();
+	transceiver_destroy_manager(dev);
 	hf_device_unregister(&dev->hf_dev);
 	wakeup_source_unregister(dev->wakeup_src);
-	transceiver_destroy_manager(dev);
 }
 
 module_init(transceiver_init);

@@ -125,4 +125,23 @@ struct inout_packet {
 #define HF_MANAGER_REQUEST_DEBUG_INFO       _IOWR('a', 9, struct debug_packet)
 #define HF_MANAGER_REQUEST_CUST_DATA        _IOWR('a', 10, struct inout_packet)
 
+#define HF_MANAGER_STOP_POLL_THREAD         _IO('b', 1)
+
+struct state_monitor {
+	uint8_t sensor_type;
+	uint8_t state;
+} __packed __aligned(4);
+
+struct state_monitor_packet {
+	void *tx_buf;
+	uint32_t tx_len;
+	void *rx_buf;
+	uint32_t rx_len;
+} __packed __aligned(4);
+
+#define HF_MANAGER_CREATE_STATE_MONITOR     _IOW('c', 1, struct state_monitor_packet)
+#define HF_MANAGER_DESTROY_STATE_MONITOR    _IO('c', 2)
+#define HF_MANAGER_LOOP_STATE_MONITOR       _IOWR('c', 3, struct state_monitor_packet)
+#define HF_MANAGER_STOP_STATE_MONITOR       _IO('c', 4)
+
 #endif
