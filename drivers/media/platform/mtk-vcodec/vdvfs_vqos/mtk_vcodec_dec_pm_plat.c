@@ -572,8 +572,25 @@ void mtk_vdec_dvfs_sync_vsi_data(struct mtk_vcodec_ctx *ctx)
 	}
 
 	dev->vdec_dvfs_params.target_freq = inst->vsi->target_freq;
+	dev->vdec_dvfs_params.init_boost = inst->vsi->init_boost;
 	ctx->dec_params.operating_rate = inst->vsi->op_rate;
 	mtk_vcodec_cpu_adaptive_ctrl(ctx, inst->vsi->cpu_hint);
+}
+
+void mtk_vdec_dvfs_sync_boost_data(struct mtk_vcodec_ctx *ctx)
+{
+	struct mtk_vcodec_dev *dev = ctx->dev;
+	struct vdec_inst *inst = (struct vdec_inst *) ctx->drv_handle;
+
+	if (mtk_vcodec_is_state(ctx, MTK_STATE_ABORT) || inst == (void *) 0)
+		return;
+
+	if (IS_ERR_OR_NULL(inst) || IS_ERR_OR_NULL(inst->vsi)) {
+		mtk_v4l2_err("[VDVFS][%d] inst/vsi is err or null", ctx->id);
+		return;
+	}
+
+	dev->vdec_dvfs_params.init_boost = inst->vsi->init_boost;
 }
 
 void mtk_vdec_dvfs_begin_inst(struct mtk_vcodec_ctx *ctx)
@@ -604,17 +621,23 @@ void mtk_vdec_dvfs_check_boost(struct mtk_vcodec_ctx *ctx)
 	unsigned int cur_in_timestamp;
 	struct mtk_vcodec_dev *dev = 0;
 
-	dev = ctx->dev;
-	if (!dev->vdec_dvfs_params.mmdvfs_in_adaptive || !dev->vdec_dvfs_params.init_boost)
+	if (ctx != NULL)
+		dev = ctx->dev;
+	if (dev == NULL || !dev->vdec_dvfs_params.mmdvfs_in_adaptive)
 		return;
 
-	cur_in_timestamp = jiffies_to_msecs(jiffies);
-	mtk_vcodec_dvfs_qos_log(false, "[VDVFS] cur_time:%u, last_boost_time:%u",
-		cur_in_timestamp, dev->vdec_dvfs_params.last_boost_time);
+	if (dev->vdec_dvfs_params.mmdvfs_in_vcp) {
+		// sync the init_boost until the boosting is off
+		mtk_vdec_dvfs_sync_boost_data(ctx);
+	} else {
+		cur_in_timestamp = jiffies_to_msecs(jiffies);
+		mtk_vcodec_dvfs_qos_log(false, "[VDVFS] cur_time:%u, last_boost_time:%u",
+			cur_in_timestamp, dev->vdec_dvfs_params.last_boost_time);
 
-	if (cur_in_timestamp - dev->vdec_dvfs_params.last_boost_time >=
-		VDEC_INIT_BOOST_INTERVAL && dev->vdec_dvfs_params.init_boost) {
-		dev->vdec_dvfs_params.init_boost = 0;
+		if (cur_in_timestamp - dev->vdec_dvfs_params.last_boost_time >=
+			VDEC_INIT_BOOST_INTERVAL && dev->vdec_dvfs_params.init_boost) {
+			dev->vdec_dvfs_params.init_boost = 0;
+		}
 	}
 #endif
 }

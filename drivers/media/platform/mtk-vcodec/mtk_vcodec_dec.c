@@ -2193,6 +2193,11 @@ void mtk_vdec_check_alive_work(struct work_struct *ws)
 
 	caws = container_of(ws, struct vdec_check_alive_work_struct, work);
 	dev = caws->dev;
+	if (dev == NULL) {
+		kfree(caws);
+		mtk_vcodec_dvfs_qos_err("[VDVFS] caws->dev is null");
+		return;
+	}
 
 	mmdvfs_in_vcp = dev->vdec_dvfs_params.mmdvfs_in_vcp;
 
@@ -2256,7 +2261,6 @@ void mtk_vdec_check_alive_work(struct work_struct *ws)
 						ctx->is_active = 1;
 						mtk_vcodec_send_info_to_vgo(ctx, MTK_VCODEC_VGO_ADD_INST);
 						mtk_vdec_dvfs_update_dvfs_params(ctx);
-						mtk_vdec_init_boost(ctx);
 						mtk_vcodec_dvfs_qos_log(false, "[VDVFS] ctx %d active", ctx->id);
 					}
 					ctx->last_decoded_frame_cnt = ctx->decoded_frame_cnt;
@@ -4367,8 +4371,8 @@ static void mtk_vdec_init_work(struct mtk_vcodec_ctx *ctx)
 
 void mtk_vdec_init_boost(struct mtk_vcodec_ctx *ctx)
 {
-	ctx->dev->vdec_dvfs_params.last_boost_time = jiffies_to_msecs(jiffies);
 	ctx->dev->vdec_dvfs_params.init_boost = 1;
+	ctx->dev->vdec_dvfs_params.last_boost_time = jiffies_to_msecs(jiffies);
 }
 
 static void mtk_vdec_start_work(struct mtk_vcodec_ctx *ctx)
@@ -4391,9 +4395,9 @@ static void mtk_vdec_start_work(struct mtk_vcodec_ctx *ctx)
 			ctx->id, mtk_vcodec_get_state(ctx),
 			ctx->dev->vdec_dvfs_params.target_freq,
 			ctx->dec_params.operating_rate);
-		mtk_vdec_init_boost(ctx);
 	} else {
 		mtk_vcodec_dvfs_qos_log(true, "[%d][VDVFS][VDEC] start ctrl DVFS in AP", ctx->id);
+		mtk_vdec_init_boost(ctx);
 		mtk_vdec_dvfs_begin_inst(ctx);
 	}
 	mtk_vdec_pmqos_begin_inst(ctx);
