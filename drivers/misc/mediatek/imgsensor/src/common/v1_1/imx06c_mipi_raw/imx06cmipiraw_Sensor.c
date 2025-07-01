@@ -59,7 +59,6 @@ static unsigned int g_platform_id;
 #define I2C_BUFFER_LEN 255 /* trans# max is 255, each 3 bytes */
 
 static kal_uint8 qsc_flag;
-static kal_uint8 otp_flag;
 
 #if USE_BURST_MODE
 static kal_uint16 imx06c_table_write_cmos_sensor(
@@ -347,8 +346,7 @@ static struct SET_PD_BLOCK_INFO_T imgsensor_pd_info_binning = {
 		    {0, 0}, {80, 420}, {0, 0}, {0, 0}, {0, 0} },
 };
 
-static kal_uint16 imx06c_QSC_setting[2304 * 2];
-static kal_uint16 imx06c_LRC_setting[384 * 2];
+static kal_uint16 imx06c_QSC_setting[3072 * 2];
 
 /* TODO: measure the delay */
 static struct SEAMLESS_SYS_DELAY seamless_sys_delays[] = {
@@ -445,65 +443,23 @@ static kal_uint16 read_cmos_eeprom_8(kal_uint16 addr)
 
 static void read_sensor_Cali(void)
 {
-	kal_uint16 idx = 0, addr_qsc = 0xfaf, sensor_lrc = 0x7F00;
-	kal_uint16 eeprom_lrc_0 = 0x1620, eeprom_lrc_1 = 0x16E0;
-	kal_uint16 sensor_lrc_0 = 0x7510, sensor_lrc_1 = 0x7600;
-	kal_uint8 otp_data[9] = {0};
-	int i = 0;
+	kal_uint16 idx = 0, addr_qsc = 0x2451, sensor_lrc = 0xC000;
 
-	/*read otp data to distinguish module*/
-	otp_flag = OTP_QSC_NONE;
-
-	for (i = 0; i < 7; i++)
-		otp_data[i] = read_cmos_eeprom_8(0x0001 + i);
-
-
-	/*Internal Module Type*/
-	if ((otp_data[0] == 0xff) &&
-		(otp_data[1] == 0x00) &&
-		(otp_data[2] == 0x0b) &&
-		(otp_data[3] == 0x01)) {
-		LOG_INF("OTP type: Internal Only");
-		otp_flag = OTP_QSC_INTERNAL;
-
-		for (idx = 0; idx < 2304; idx++) {
-			addr_qsc = 0xfaf + idx;
-			sensor_lrc = 0x7F00 + idx;
-			imx06c_QSC_setting[2 * idx] = sensor_lrc;
-			imx06c_QSC_setting[2 * idx + 1] =
-				read_cmos_eeprom_8(addr_qsc);
-		}
-
-		for (idx = 0; idx < 192; idx++) {
-			imx06c_LRC_setting[2 * idx] = sensor_lrc_0 + idx;
-				imx06c_LRC_setting[2 * idx + 1] =
-			read_cmos_eeprom_8(eeprom_lrc_0 + idx);
-			imx06c_LRC_setting[2 * idx + 192 * 2] =
-				sensor_lrc_1 + idx;
-			imx06c_LRC_setting[2 * idx + 1 + 192 * 2] =
-			read_cmos_eeprom_8(eeprom_lrc_1 + idx);
-		}
-
-	} else if ((otp_data[5] == 0x56) && (otp_data[6] == 0x00)) {
-		/*Internal Module Type*/
-		LOG_INF("OTP type: Custom Only");
-		otp_flag = OTP_QSC_CUSTOM;
-
-		for (idx = 0; idx < 2304; idx++) {
-			addr_qsc = 0xc90 + idx;
-			sensor_lrc = 0x7F00 + idx;
-			imx06c_QSC_setting[2 * idx] = sensor_lrc;
-			imx06c_QSC_setting[2 * idx + 1] =
-				read_cmos_eeprom_8(addr_qsc);
-		}
-
-	} else {
-		LOG_INF("OTP type: No Data, 0x0008 = %d, 0x0009 = %d",
-		read_cmos_eeprom_8(0x0008), read_cmos_eeprom_8(0x0009));
+	LOG_INF("get qsc data, size:3072\n");
+	for (idx = 0; idx < 3072; idx++) {
+		addr_qsc = 0x2451 + idx;
+		sensor_lrc = 0xC000 + idx;
+		imx06c_QSC_setting[2 * idx] = sensor_lrc;
+		imx06c_QSC_setting[2 * idx + 1] =
+			read_cmos_eeprom_8(addr_qsc);
 	}
-
 }
 
+static void write_sensor_QSC(void)
+{
+		imx06c_table_write_cmos_sensor(imx06c_QSC_setting,
+		sizeof(imx06c_QSC_setting) / sizeof(kal_uint16));
+}
 
 static void set_dummy(void)
 {
@@ -4075,7 +4031,7 @@ static void sensor_init(void)
 	write_cmos_sensor_8(0x0138, 0x01);
 	set_mirror_flip(imgsensor.mirror);
 
-	LOG_INF("[%s] X!\n", __func__);
+	LOG_DEBUG("X!\n");
 }  /* sensor_init */
 
 static void preview_setting(void)
@@ -4085,7 +4041,7 @@ static void preview_setting(void)
 	imx06c_table_write_cmos_sensor(imx06c_preview_setting,
 		sizeof(imx06c_preview_setting)/sizeof(kal_uint16));
 
-	LOG_INF("[%s] X!\n", __func__);
+	LOG_DEBUG("X!\n");
 }  /* preview_setting */
 
 
@@ -4123,7 +4079,7 @@ static void normal_video_setting(kal_uint16 currefps)
 	imx06c_table_write_cmos_sensor(imx06c_normal_video_setting,
 		sizeof(imx06c_normal_video_setting)/sizeof(kal_uint16));
 
-	LOG_INF("[%s] X!\n", __func__);
+	LOG_DEBUG("X!\n");
 }
 
 static void hs_video_setting(void)
@@ -4133,7 +4089,7 @@ static void hs_video_setting(void)
 	imx06c_table_write_cmos_sensor(imx06c_hs_video_setting,
 		sizeof(imx06c_hs_video_setting)/sizeof(kal_uint16));
 
-	LOG_INF("[%s] X!\n", __func__);
+	LOG_DEBUG("X!\n");
 }
 
 static void slim_video_setting(void)
@@ -4143,7 +4099,7 @@ static void slim_video_setting(void)
 	imx06c_table_write_cmos_sensor(imx06c_slim_video_setting,
 		sizeof(imx06c_slim_video_setting)/sizeof(kal_uint16));
 
-	LOG_INF("[%s] X!\n", __func__);
+	LOG_DEBUG("X!\n");
 }
 
 static void custom1_setting(void)
@@ -4153,7 +4109,7 @@ static void custom1_setting(void)
 	imx06c_table_write_cmos_sensor(imx06c_custom1_setting,
 		sizeof(imx06c_custom1_setting)/sizeof(kal_uint16));
 
-	LOG_INF("[%s] X!\n", __func__);
+	LOG_DEBUG("X!\n");
 }
 
 
@@ -4164,7 +4120,7 @@ static void custom2_setting(void)
 	imx06c_table_write_cmos_sensor(imx06c_custom2_setting,
 		sizeof(imx06c_custom2_setting)/sizeof(kal_uint16));
 
-	LOG_INF("[%s] X!\n", __func__);
+	LOG_DEBUG("X!\n");
 }
 
 static void custom3_setting(void)
@@ -4174,7 +4130,7 @@ static void custom3_setting(void)
 	imx06c_table_write_cmos_sensor(imx06c_custom3_setting,
 		sizeof(imx06c_custom3_setting)/sizeof(kal_uint16));
 
-	LOG_INF("[%s] X!\n", __func__);
+	LOG_DEBUG("X!\n");
 }
 
 
@@ -4185,7 +4141,7 @@ static void custom4_setting(void)
 	imx06c_table_write_cmos_sensor(imx06c_custom4_setting,
 		sizeof(imx06c_custom4_setting)/sizeof(kal_uint16));
 
-	LOG_INF("[%s] X!\n", __func__);
+	LOG_DEBUG("X!\n");
 }
 
 
@@ -4250,7 +4206,7 @@ static kal_uint32 get_imgsensor_id(UINT32 *sensor_id)
 		return ERROR_SENSOR_CONNECT_FAIL;
 	}
 
-	LOG_INF("[%s] X!\n", __func__);
+	LOG_DEBUG("X!\n");
 	return ERROR_NONE;
 }
 
@@ -4324,7 +4280,7 @@ static kal_uint32 open(void)
 	imgsensor.test_pattern = 0;
 	imgsensor.current_fps = imgsensor_info.pre.max_framerate;
 	spin_unlock(&imgsensor_drv_lock);
-	LOG_INF("[%s] X!\n", __func__);
+	LOG_INF("X!\n");
 
 	return ERROR_NONE;
 } /* open */
@@ -4351,7 +4307,7 @@ static kal_uint32 close(void)
 	/* No Need to implement this function */
 	streaming_control(KAL_FALSE);
 	qsc_flag = 0;
-	LOG_INF("[%s] X!\n", __func__);
+	LOG_DEBUG("X!\n");
 	return ERROR_NONE;
 } /* close */
 
@@ -4388,8 +4344,9 @@ static kal_uint32 preview(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	spin_unlock(&imgsensor_drv_lock);
 
 	preview_setting();
+	write_sensor_QSC();
 
-	LOG_INF("[%s] X!\n", __func__);
+	LOG_DEBUG("X!\n");
 	return ERROR_NONE;
 } /* preview */
 
@@ -4428,8 +4385,9 @@ static kal_uint32 capture(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	imgsensor.autoflicker_en = KAL_FALSE;
 	spin_unlock(&imgsensor_drv_lock);
 	capture_setting(imgsensor.current_fps);
+	write_sensor_QSC();
 	set_mirror_flip(imgsensor.mirror);
-	LOG_INF("[%s] X!\n", __func__);
+	LOG_DEBUG("X!\n");
 	return ERROR_NONE;
 }	/* capture() */
 static kal_uint32 normal_video(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
@@ -4446,8 +4404,9 @@ static kal_uint32 normal_video(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	imgsensor.autoflicker_en = KAL_FALSE;
 	spin_unlock(&imgsensor_drv_lock);
 	normal_video_setting(imgsensor.current_fps);
+	write_sensor_QSC();
 	set_mirror_flip(imgsensor.mirror);
-	LOG_INF("[%s] X!\n", __func__);
+	LOG_DEBUG("X!\n");
 	return ERROR_NONE;
 }	/*	normal_video   */
 
@@ -4471,7 +4430,7 @@ static kal_uint32 hs_video(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	hs_video_setting();
 	set_mirror_flip(imgsensor.mirror);
 
-	LOG_INF("[%s] X!\n", __func__);
+	LOG_DEBUG("X!\n");
 	return ERROR_NONE;
 }	/*	hs_video   */
 
@@ -4493,8 +4452,9 @@ static kal_uint32 slim_video(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	imgsensor.autoflicker_en = KAL_FALSE;
 	spin_unlock(&imgsensor_drv_lock);
 	slim_video_setting();
+	write_sensor_QSC();
 	set_mirror_flip(imgsensor.mirror);
-	LOG_INF("[%s] X!\n", __func__);
+	LOG_DEBUG("X!\n");
 	return ERROR_NONE;
 }	/* slim_video */
 
@@ -4516,8 +4476,9 @@ static kal_uint32 Custom1(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	imgsensor.autoflicker_en = KAL_FALSE;
 	spin_unlock(&imgsensor_drv_lock);
 	custom1_setting();
+	write_sensor_QSC();
 	set_mirror_flip(imgsensor.mirror);
-	LOG_INF("[%s] X!\n", __func__);
+	LOG_DEBUG("X!\n");
 	return ERROR_NONE;
 }	/* custom1 */
 
@@ -4540,8 +4501,9 @@ static kal_uint32 Custom2(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	imgsensor.autoflicker_en = KAL_FALSE;
 	spin_unlock(&imgsensor_drv_lock);
 	custom2_setting();
+	write_sensor_QSC();
 	set_mirror_flip(imgsensor.mirror);
-	LOG_INF("[%s] X!\n", __func__);
+	LOG_DEBUG("X!\n");
 	return ERROR_NONE;
 }	/* custom2 */
 
@@ -4564,8 +4526,9 @@ static kal_uint32 Custom3(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	imgsensor.autoflicker_en = KAL_FALSE;
 	spin_unlock(&imgsensor_drv_lock);
 	custom3_setting();
+	write_sensor_QSC();
 	set_mirror_flip(imgsensor.mirror);
-	LOG_INF("[%s] X!\n", __func__);
+	LOG_DEBUG("X!\n");
 	return ERROR_NONE;
 }	/* custom2 */
 
@@ -4587,8 +4550,9 @@ static kal_uint32 Custom4(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	imgsensor.autoflicker_en = KAL_FALSE;
 	spin_unlock(&imgsensor_drv_lock);
 	custom4_setting();
+	write_sensor_QSC();
 	set_mirror_flip(imgsensor.mirror);
-	LOG_INF("[%s] X!\n", __func__);
+	LOG_DEBUG("X!\n");
 	return ERROR_NONE;
 }	/* custom2 */
 
@@ -4700,7 +4664,7 @@ get_resolution(MSDK_SENSOR_RESOLUTION_INFO_STRUCT *sensor_resolution)
 	sensor_resolution->SensorCustom15Height =
 		imgsensor_info.pre.grabwindow_height;
 
-	LOG_INF("[%s] X!\n", __func__);
+	LOG_DEBUG("X!\n");
 	return ERROR_NONE;
 } /* get_resolution */
 
@@ -4861,7 +4825,7 @@ static kal_uint32 get_info(enum MSDK_SCENARIO_ID_ENUM scenario_id,
 		break;
 	}
 
-	LOG_INF("[%s] X!\n", __func__);
+	LOG_DEBUG("X!\n");
 	return ERROR_NONE;
 }	/*	get_info  */
 
@@ -4909,7 +4873,7 @@ static kal_uint32 control(enum MSDK_SCENARIO_ID_ENUM scenario_id,
 		return ERROR_INVALID_SCENARIO_ID;
 	}
 
-	LOG_INF("[%s] X!\n", __func__);
+	LOG_DEBUG("X!\n");
 	return ERROR_NONE;
 }	/* control() */
 
@@ -5272,7 +5236,7 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 
 	MSDK_SENSOR_REG_INFO_STRUCT *sensor_reg_data
 		= (MSDK_SENSOR_REG_INFO_STRUCT *) feature_para;
-	LOG_DEBUG("[%s]E, feature_id = %d\n", __func__, feature_id);
+	LOG_DEBUG("E, feature_id = %d\n", feature_id);
 	switch (feature_id) {
 	case SENSOR_FEATURE_GET_AWB_REQ_BY_SCENARIO:
 		*(MUINT32 *)(uintptr_t)(*(feature_data + 1)) = 0;

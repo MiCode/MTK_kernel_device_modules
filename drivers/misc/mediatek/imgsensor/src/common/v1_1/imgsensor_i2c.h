@@ -94,7 +94,7 @@ struct mt_i2c {
 #define IMGSENSOR_I2C_CMD_LENGTH_MAX     255
 
 #define IMGSENSOR_I2C_BUFF_MODE_DEV      IMGSENSOR_I2C_DEV_2
-
+#define IMGSENSOR_I2C_1000K
 #ifdef IMGSENSOR_I2C_1000K
 #define IMGSENSOR_I2C_SPEED              1000
 #else
