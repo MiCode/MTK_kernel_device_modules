@@ -5508,6 +5508,7 @@ dramc: dramc@10230000 {
 
 			mediatek,ufs-mphy-debug;
 			mediatek,ufs-disable-mcq;
+			mediatek,ufs-rtff-mtcmos;
 
 			bootmode = <&chosen>;
 		};
