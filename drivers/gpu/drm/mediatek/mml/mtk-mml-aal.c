@@ -306,7 +306,7 @@ static const struct aal_data mt6895_aal0_data = {
 	.cpr = {CMDQ_CPR_MML_PQ0_ADDR, CMDQ_CPR_MML_PQ1_ADDR},
 	.reg_table = aal_reg_table_mt6983,
 	.crop = true,
-	.vcp_readback = false,
+	.vcp_readback = true,
 	.rb_mode = RB_EOF_MODE,
 	.curve_ready_bit = 16,
 };
@@ -319,7 +319,7 @@ static const struct aal_data mt6895_aal1_data = {
 	.cpr = {CMDQ_CPR_MML_PQ0_ADDR, CMDQ_CPR_MML_PQ1_ADDR},
 	.reg_table = aal_reg_table_mt6983,
 	.crop = true,
-	.vcp_readback = false,
+	.vcp_readback = true,
 	.rb_mode = RB_EOF_MODE,
 	.curve_ready_bit = 16,
 };
