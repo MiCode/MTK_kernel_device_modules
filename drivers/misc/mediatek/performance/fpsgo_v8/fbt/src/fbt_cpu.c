@@ -634,8 +634,8 @@ int fbt_cluster_X2Y(int cluster, unsigned long input, int in_type,
 		output = output * 100 >> 10;
 		output = clamp(output, 1, 100);
 	}
-	xgf_trace("[%s][%s] clus=%d,cpu=%d,input=%lu,intype=%d,outtype=%d, output=%lu",
-		__func__, caller, cluster, cpu, input, in_type, out_type, output);
+	// xgf_trace("[%s][%s] clus=%d,cpu=%d,input=%lu,intype=%d,outtype=%d, output=%lu",
+	// __func__, caller, cluster, cpu, input, in_type, out_type, output);
 	return (int)output;
 }
 EXPORT_SYMBOL(fbt_cluster_X2Y);
@@ -3792,12 +3792,12 @@ static int fbt_filter_frame(long loading, unsigned int target_fps,
 
 out:
 	kfree(sorted_loading);
-	xgf_trace("[%s] enable=%d, window_size=%d, kmin=%d", __func__, filter_frame_enable,
-		window_size, filter_kmin);
-	xgf_trace("[%s] ret=%d, target_fps=%d, total_count=%d, filter_index=%d",
-		__func__, ret, filter_loading[cur_iter].target_fps, *filter_frames_count, cur_iter);
-	xgf_trace("[%s] loading=%ld, filtered_loading=%ld", __func__,
-		filter_loading[cur_iter].loading, (*filtered_loading));
+	// xgf_trace("[%s] enable=%d, window_size=%d, kmin=%d", __func__, filter_frame_enable,
+	// window_size, filter_kmin);
+	// xgf_trace("[%s] ret=%d, target_fps=%d, total_count=%d, filter_index=%d",
+	// __func__, ret, filter_loading[cur_iter].target_fps, *filter_frames_count, cur_iter);
+	// xgf_trace("[%s] loading=%ld, filtered_loading=%ld", __func__,
+	// filter_loading[cur_iter].loading, (*filtered_loading));
 
 	return ret;
 }
@@ -5903,8 +5903,8 @@ static int fbt_get_loading_from_buffer(int pid, unsigned long long buffer_id,
 		if (prev_ts && next_ts) {
 			loading_result = fbt_est_loading(next_ts, prev_ts, cpu_obv[i]);
 			(*loading) += loading_result;
-			xgf_trace("[%s]i=%d, prevts=%llu,nextts=%llu,obv=%u,loading=%llu,acc=%llu",
-			__func__, i, prev_ts, next_ts, cpu_obv[i], loading_result, (*loading));
+			// xgf_trace("[%s]i=%d, prevts=%llu,nextts=%llu,obv=%u,loading=%llu,acc=%llu",
+			// __func__, i, prev_ts, next_ts, cpu_obv[i], loading_result, (*loading));
 		}
 
 		if (cpu_freq_ts_prev[i] > cpu_freq_ts_prev[(i + 1) % LOADING_CNT] ||
@@ -6043,9 +6043,9 @@ static int fbt_get_cl_loading_from_buffer(int pid, unsigned long long buffer_id,
 		if (prev_ts && next_ts) {
 			loading_result = fbt_est_loading(next_ts, prev_ts, cpu_obv[i]);
 			(*loading_cl) += loading_result;
-			xgf_trace("[%s]i=%d, prevts=%llu,nextts=%llu,obv=%u,loading=%llu,acc=%llu",
-				__func__, i, prev_ts, next_ts, cpu_obv[i], loading_result,
-				(*loading_cl));
+			// xgf_trace("[%s]i=%d, prevts=%llu,nextts=%llu,obv=%u,loading=%llu,acc=%llu",
+			// __func__, i, prev_ts, next_ts, cpu_obv[i], loading_result,
+			// (*loading_cl));
 		}
 		if (cpu_obv[i] <= 0 || cpu_obv[i] > 100)
 			ret = 1;
@@ -6102,7 +6102,7 @@ static unsigned long long fbt_adjust_loading_exp(struct render_info *thr,
 	ret = fbt_get_loading_from_buffer(thr->pid, thr->buffer_id, start_ts_100us,
 			&loading, end_ts_100us, prev_cb_ts, lastest_ts, lastest_obv, &last_obv, &last_cb_ts);
 	fpsgo_systrace_c_fbt_debug(thr->pid, thr->buffer_id, loading, "q2q_loading");
-	xgf_trace("[FBT][%s] fbt_get_loading_from_buffer ret=%d", __func__, ret);
+	// xgf_trace("[FBT][%s] fbt_get_loading_from_buffer ret=%d", __func__, ret);
 
 	if (!adjust_loading || cluster_num == 1) {
 		adjust = FPSGO_ADJ_NONE;
