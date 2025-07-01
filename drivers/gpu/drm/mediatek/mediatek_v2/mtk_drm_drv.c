@@ -4485,20 +4485,25 @@ static const struct mtk_addon_module_data mt6993_addon_wdma1_data[] = {
 };
 
 static const struct mtk_addon_module_data mt6993_addon_wdma1_pq_data[] = {
+	/* mt6993 CWB MTK_DRM_MID -> WDMA_WRITE_BACK_MID */
+	{DISP_WDMA1_v3, ADDON_AFTER, DDP_COMPONENT_DLI_ASYNC21},
+};
+
+static const struct mtk_addon_module_data mt6993_addon_wdma1_pc_data[] = {
 	/* mt6993 CWB MTK_DRM_AFTER_PQ -> WDMA_WRITE_BACK */
 #ifdef DRM_BYPASS_PQ_MT6993
-	{DISP_WDMA1_v3_PQ, ADDON_AFTER, DDP_COMPONENT_DLI_ASYNC20},
+	{DISP_WDMA1_v3, ADDON_AFTER, DDP_COMPONENT_DLI_ASYNC20},
 #else
-	{DISP_WDMA1_v3_PQ, ADDON_AFTER, DDP_COMPONENT_POSTALIGN0},
+	{DISP_WDMA1_v3, ADDON_AFTER, DDP_COMPONENT_POSTALIGN0},
 #endif
 };
 
 static const struct mtk_addon_module_data mt6993_addon_wdma1_dbi_data[] = {
 	/* mt6993 CWB MTK_DRM_DBI -> WDMA_WRITE_BACK_DBI */
 #ifdef DRM_BYPASS_PQ_MT6993
-	{DISP_WDMA1_v3_DBI, ADDON_AFTER, DDP_COMPONENT_DLI_ASYNC20},
+	{DISP_WDMA1_v3, ADDON_AFTER, DDP_COMPONENT_DLI_ASYNC20},
 #else
-	{DISP_WDMA1_v3_DBI, ADDON_AFTER, DDP_COMPONENT_DBI_COUNT0},
+	{DISP_WDMA1_v3, ADDON_AFTER, DDP_COMPONENT_DBI_COUNT0},
 #endif
 };
 
@@ -5078,8 +5083,8 @@ static const struct mtk_addon_scenario_data mt6993_addon_main[ADDON_SCN_NR] = {
 		.hrt_type = HRT_TB_TYPE_GENERAL1,
 	},
 	[WDMA_WRITE_BACK] = {
-		.module_num = ARRAY_SIZE(mt6993_addon_wdma1_pq_data),
-		.module_data = mt6993_addon_wdma1_pq_data,
+		.module_num = ARRAY_SIZE(mt6993_addon_wdma1_pc_data),
+		.module_data = mt6993_addon_wdma1_pc_data,
 		.hrt_type = HRT_TB_TYPE_GENERAL1,
 	},
 

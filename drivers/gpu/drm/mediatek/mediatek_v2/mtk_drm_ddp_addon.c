@@ -414,14 +414,6 @@ static const struct mtk_addon_path_data addon_module_path[ADDON_MODULE_NUM] = {
 				.path = disp_wdma1_path_v3,
 				.path_len = ARRAY_SIZE(disp_wdma1_path_v3),
 			},
-		[DISP_WDMA1_v3_PQ] = {
-				.path = disp_wdma1_path_v3,
-				.path_len = ARRAY_SIZE(disp_wdma1_path_v3),
-			},
-		[DISP_WDMA1_v3_DBI] = {
-				.path = disp_wdma1_path_v3,
-				.path_len = ARRAY_SIZE(disp_wdma1_path_v3),
-			},
 		[DISP_WDMA1_DL] = {
 				.path = disp_wdma1_dl_path,
 				.path_len = ARRAY_SIZE(disp_wdma1_dl_path),

@@ -149,8 +149,8 @@ static void mtk_dli_async_addon_config_mt6993(struct mtk_ddp_comp *comp,
 	dli_in_relay_size = dli->data->regs[OVL_DL_IN_RELAY0_SIZE];
 
 	if (addon_config->config_type.module != DISP_MML_DL_EXDMA_v2) {
-		DDPINFO("%s module:%d dli:%#x p:%u w:%u h:%u fail\n",
-			__func__, addon_config->config_type.module,
+		DDPINFO("%s addon:%d comp:%s dli:%#x p:%u w:%u h:%u skip\n",
+			__func__, addon_config->config_type.module, mtk_dump_comp_str(comp),
 			dli_in_relay_size, pipe, width, height);
 		return;
 	}
@@ -159,8 +159,8 @@ static void mtk_dli_async_addon_config_mt6993(struct mtk_ddp_comp *comp,
 	width = addon_config->addon_mml_config.mml_dst_roi[pipe].width;
 	height = addon_config->addon_mml_config.mml_dst_roi[pipe].height;
 
-	DDPINFO("%s module:%d dli:%#x p:%u w:%u h:%u\n",
-		__func__, addon_config->config_type.module,
+	DDPINFO("%s addon:%d comp:%s dli:%#x p:%u w:%u h:%u\n",
+		__func__, addon_config->config_type.module, mtk_dump_comp_str(comp),
 		dli_in_relay_size, pipe, width, height);
 
 	cmdq_pkt_write(handle, NULL, comp->regs_pa + dli_in_relay_size,
