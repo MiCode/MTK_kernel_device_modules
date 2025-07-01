@@ -1373,8 +1373,8 @@
 				<&dram_s0 &dram_s1 &spm_emi>,
 				<&spm_pmic &spm_vcore>;
 		constraints = <&rc_vcore &rc_bus26m>;
-		lpm-gov-enable = <0>;
-		cpu-gov-info = <&cpul &cpum &cpub>;
+		lpm-gov-enable = <1>;
+		cpu-gov-info = <&cpul &cpub>;
 		cg-shift = <0>; // cg blocking index
 		pll-shift = <0>; // pll blocking index
 
@@ -1486,10 +1486,6 @@
 			cpul: cpul {
 				last-idle-state = "system-vcore";
 				hidden-state = "wfi", "cpuoff-l";
-			};
-			cpum: cpum {
-				last-idle-state = "system-vcore";
-				hidden-state = "wfi", "cpuoff-m";
 			};
 			cpub: cpub {
 				last-idle-state = "system-vcore";
