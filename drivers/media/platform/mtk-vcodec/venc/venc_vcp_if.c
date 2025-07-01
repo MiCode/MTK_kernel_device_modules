@@ -1853,6 +1853,22 @@ static void venc_get_hw_time(struct venc_inst *inst, unsigned int *avg_hw_time)
 	}
 }
 
+static void venc_get_hw_time_for_smi_monitor(struct venc_inst *inst, unsigned int *avg_hw_time)
+{
+	int i;
+
+	for (i = 0; i < MTK_VENC_HW_NUM; i++) {
+		if (inst->vsi->hw_proc_cnt_for_smi_monitor[i] > 0)
+			avg_hw_time[i] = inst->vsi->hw_proc_time_for_smi_monitor[i] /
+									inst->vsi->hw_proc_cnt_for_smi_monitor[i];
+		else
+			avg_hw_time[i] = 0;
+
+		inst->vsi->hw_proc_cnt_for_smi_monitor[i] = 0;
+		inst->vsi->hw_proc_time_for_smi_monitor[i] = 0;
+	}
+}
+
 
 static int venc_vcp_get_param(unsigned long handle,
 						  enum venc_get_param_type type,
@@ -1908,6 +1924,11 @@ static int venc_vcp_get_param(unsigned long handle,
 		if (inst->vsi == NULL)
 			return -EINVAL;
 		venc_get_hw_time(inst, out);
+		break;
+	case GET_PARAM_VENC_HW_TIME_FOR_SMI_MONITOR:
+		if (inst->vsi == NULL)
+			return -EINVAL;
+		venc_get_hw_time_for_smi_monitor(inst, out);
 		break;
 	default:
 		mtk_vcodec_err(inst, "invalid get parameter type=%d", type);

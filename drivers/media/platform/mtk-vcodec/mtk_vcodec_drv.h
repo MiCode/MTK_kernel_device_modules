@@ -815,6 +815,7 @@ struct mtk_vcodec_ctx {
 	unsigned int vgo_op_rate;
 	unsigned int last_vgo_op_rate;
 	unsigned int hw_proc_time[MTK_VDEC_HW_NUM];
+	unsigned int hw_proc_time_smi_monitor[MTK_VDEC_HW_NUM];
 	unsigned int input_buf_cnt;
 	unsigned int prev_inbuf_time;
 	struct mutex buf_lock;

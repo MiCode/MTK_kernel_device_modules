@@ -63,6 +63,7 @@ struct vcodec_dev_qos {
 	struct device *dev;
 	u64 data_total[SMI_COMMON_NUM][MTK_VCODEC_QOS_TYPE];
 	bool need_smi_monitor; // need smi monitor in kernel
+	bool smi_monitor_in_vcp;	// whether the smi monitor is in vcp
 	bool apply_monitor_config;
 	u32 max_mon_frm_cnt;
 	u32 monitor_ring_frame_cnt;

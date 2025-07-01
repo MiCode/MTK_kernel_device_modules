@@ -75,7 +75,6 @@ static bool mtk_enc_tput_init(struct mtk_vcodec_dev *dev)
 {
 	const int tp_item_num = 6;
 	const int cfg_item_num = 4;
-	const int bw_item_num = 3;
 	int i, ret, cnt = 0;
 	struct platform_device *pdev;
 	u32 nmin, nmax;
@@ -134,6 +133,8 @@ static bool mtk_enc_tput_init(struct mtk_vcodec_dev *dev)
 				i * tp_item_num, &dev->venc_tput[i].codec_fmt);
 		if (ret) {
 			mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get codec_fmt");
+			vfree(dev->venc_tput);
+			dev->venc_tput = NULL;
 			return false;
 		}
 
@@ -141,6 +142,8 @@ static bool mtk_enc_tput_init(struct mtk_vcodec_dev *dev)
 				i * tp_item_num + 1, (u32 *)&dev->venc_tput[i].config);
 		if (ret) {
 			mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get config");
+			vfree(dev->venc_tput);
+			dev->venc_tput = NULL;
 			return false;
 		}
 		dev->venc_tput[i].config -= offset;
@@ -149,6 +152,8 @@ static bool mtk_enc_tput_init(struct mtk_vcodec_dev *dev)
 				i * tp_item_num + 2, &dev->venc_tput[i].cy_per_mb_1);
 		if (ret) {
 			mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get cycle per mb 1");
+			vfree(dev->venc_tput);
+			dev->venc_tput = NULL;
 			return false;
 		}
 
@@ -156,6 +161,8 @@ static bool mtk_enc_tput_init(struct mtk_vcodec_dev *dev)
 				i * tp_item_num + 3, &dev->venc_tput[i].cy_per_mb_2);
 		if (ret) {
 			mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get cycle per mb 2");
+			vfree(dev->venc_tput);
+			dev->venc_tput = NULL;
 			return false;
 		}
 		dev->venc_tput[i].codec_type = 1;
@@ -165,6 +172,8 @@ static bool mtk_enc_tput_init(struct mtk_vcodec_dev *dev)
 		mtk_vcodec_dvfs_qos_log(true, "[VENC][tput] get base_freq: %d", dev->venc_tput[i].base_freq);
 		if (ret) {
 			mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get base_freq");
+			vfree(dev->venc_tput);
+			dev->venc_tput = NULL;
 			return false;
 		}
 
@@ -173,6 +182,8 @@ static bool mtk_enc_tput_init(struct mtk_vcodec_dev *dev)
 		mtk_vcodec_dvfs_qos_log(true, "[VENC][tput] get bw_factor: %d", dev->venc_tput[i].bw_factor);
 		if (ret) {
 			mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get bw_factor");
+			vfree(dev->venc_tput);
+			dev->venc_tput = NULL;
 			return false;
 		}
 	}
@@ -205,6 +216,8 @@ static bool mtk_enc_tput_init(struct mtk_vcodec_dev *dev)
 				i * cfg_item_num, &dev->venc_cfg[i].codec_fmt);
 		if (ret) {
 			mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get cfg codec_fmt");
+			vfree(dev->venc_cfg);
+			dev->venc_cfg = NULL;
 			return false;
 		}
 
@@ -212,6 +225,8 @@ static bool mtk_enc_tput_init(struct mtk_vcodec_dev *dev)
 				i * cfg_item_num + 1, (u32 *)&dev->venc_cfg[i].mb_thresh);
 		if (ret) {
 			mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get mb_thresh");
+			vfree(dev->venc_cfg);
+			dev->venc_cfg = NULL;
 			return false;
 		}
 
@@ -219,6 +234,8 @@ static bool mtk_enc_tput_init(struct mtk_vcodec_dev *dev)
 				i * cfg_item_num + 2, &dev->venc_cfg[i].config_1);
 		if (ret) {
 			mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get config 1");
+			vfree(dev->venc_cfg);
+			dev->venc_cfg = NULL;
 			return false;
 		}
 		dev->venc_cfg[i].config_1 -= offset;
@@ -227,61 +244,13 @@ static bool mtk_enc_tput_init(struct mtk_vcodec_dev *dev)
 				i * cfg_item_num + 3, &dev->venc_cfg[i].config_2);
 		if (ret) {
 			mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get config 2");
+			vfree(dev->venc_cfg);
+			dev->venc_cfg = NULL;
 			return false;
 		}
 		dev->venc_cfg[i].config_2 -= offset;
 		dev->venc_cfg[i].codec_type = 1;
 	}
-
-	/* bw */
-	cnt = of_property_count_u32_elems(pdev->dev.of_node, "bandwidth-table");
-	if (cnt < 0) {
-		mtk_vcodec_dvfs_qos_log(true, "[VENC] invalid venc_larb_cnt value");
-		return false;
-	}
-	dev->venc_larb_cnt = cnt / bw_item_num;
-
-	if (dev->venc_larb_cnt > MTK_VENC_LARB_NUM) {
-		mtk_vcodec_dvfs_qos_log(true, "[VENC] venc larb over limit %d > %d",
-				dev->venc_larb_cnt, MTK_VENC_LARB_NUM);
-		dev->venc_larb_cnt = MTK_VENC_LARB_NUM;
-	}
-
-	if (!dev->venc_larb_cnt) {
-		mtk_vcodec_dvfs_qos_log(true, "[VENC] bandwidth table not exist");
-		return false;
-	}
-
-	dev->venc_larb_bw = vzalloc(sizeof(struct vcodec_larb_bw) * dev->venc_larb_cnt);
-	if (!dev->venc_larb_bw) {
-		/* mtk_vcodec_dvfs_qos_log(true, "[VENC] vzalloc venc_larb_bw table failed"); */
-		return false;
-	}
-
-	for (i = 0; i < dev->venc_larb_cnt; i++) {
-		ret = of_property_read_u32_index(pdev->dev.of_node, "bandwidth-table",
-				i * bw_item_num, (u32 *)&dev->venc_larb_bw[i].larb_id);
-		if (ret) {
-			mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get bw port type");
-			return false;
-		}
-
-		ret = of_property_read_u32_index(pdev->dev.of_node, "bandwidth-table",
-				i * bw_item_num + 1, &dev->venc_larb_bw[i].larb_type);
-		if (ret) {
-			mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get base bw");
-			return false;
-		}
-
-		ret = of_property_read_u32_index(pdev->dev.of_node, "bandwidth-table",
-				i * bw_item_num + 2, &dev->venc_larb_bw[i].larb_base_bw);
-		if (ret) {
-			mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get base bw");
-			return false;
-		}
-	}
-
-	mtk_venc_pmqos_monitor_init(dev);
 
 #ifdef VENC_PRINT_DTS_INFO
 	mtk_vcodec_dvfs_qos_log(true, "[VENC] tput_cnt %d, cfg_cnt %d, larb_cnt %d\n",
@@ -301,13 +270,6 @@ static bool mtk_enc_tput_init(struct mtk_vcodec_dev *dev)
 			dev->venc_cfg[i].mb_thresh,
 			dev->venc_cfg[i].config_1,
 			dev->venc_cfg[i].config_2);
-	}
-
-	for (i = 0; i < dev->venc_larb_cnt; i++) {
-		mtk_vcodec_dvfs_qos_log(true, "[VENC] larb %u type %d, bw %u",
-			dev->venc_larb_bw[i].larb_id
-			dev->venc_larb_bw[i].larb_type,
-			dev->venc_larb_bw[i].larb_base_bw);
 	}
 #endif
 	return true;
@@ -435,8 +397,66 @@ void mtk_prepare_venc_emi_bw(struct mtk_vcodec_dev *dev)
 	struct platform_device *pdev = 0;
 	u32 larb_num = 0;
 	const char *path_strs[MTK_VENC_LARB_NUM];
+	const int bw_item_num = 3;
 
 	pdev = dev->plat_dev;
+
+	/* Bandiwdth table */
+	ret = of_property_count_u32_elems(pdev->dev.of_node, "bandwidth-table");
+	if (ret < 0) {
+		mtk_vcodec_dvfs_qos_log(true, "[VENC] invalid venc_larb_cnt value");
+		return;
+	}
+	dev->venc_larb_cnt = ret / bw_item_num;
+
+	if (dev->venc_larb_cnt > MTK_VENC_LARB_NUM) {
+		mtk_vcodec_dvfs_qos_log(true, "[VENC] venc larb over limit %d > %d",
+				dev->venc_larb_cnt, MTK_VENC_LARB_NUM);
+		dev->venc_larb_cnt = MTK_VENC_LARB_NUM;
+	}
+
+	if (dev->venc_larb_cnt) {
+		dev->venc_larb_bw = vzalloc(sizeof(struct vcodec_larb_bw) * dev->venc_larb_cnt);
+		if (!dev->venc_larb_bw) {
+			/* mtk_vcodec_dvfs_qos_log(true, "[VENC] vzalloc venc_larb_bw table failed"); */
+			return;
+		}
+
+		for (i = 0; i < dev->venc_larb_cnt; i++) {
+			ret = of_property_read_u32_index(pdev->dev.of_node, "bandwidth-table",
+					i *bw_item_num, (u32 *)&dev->venc_larb_bw[i].larb_id);
+			if (ret) {
+				mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get bw port type");
+				vfree(dev->venc_larb_bw);
+				dev->venc_larb_bw = NULL;
+				return;
+			}
+
+			ret = of_property_read_u32_index(pdev->dev.of_node, "bandwidth-table",
+					i *bw_item_num + 1, &dev->venc_larb_bw[i].larb_type);
+			if (ret) {
+				mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get base bw");
+				vfree(dev->venc_larb_bw);
+				dev->venc_larb_bw = NULL;
+				return;
+			}
+
+			ret = of_property_read_u32_index(pdev->dev.of_node, "bandwidth-table",
+					i *bw_item_num + 2, &dev->venc_larb_bw[i].larb_base_bw);
+			if (ret) {
+				mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get base bw");
+				vfree(dev->venc_larb_bw);
+				dev->venc_larb_bw = NULL;
+				return;
+			}
+		}
+	} else {
+		mtk_vcodec_dvfs_qos_log(true, "[VENC] bandwidth table not exist");
+	}
+
+	mtk_venc_pmqos_monitor_init(dev);
+
+	/* QoS */
 	for (i = 0; i < MTK_VENC_LARB_NUM; i++)
 		dev->venc_qos_req[i] = 0;
 
@@ -466,6 +486,15 @@ void mtk_prepare_venc_emi_bw(struct mtk_vcodec_dev *dev)
 		dev->venc_qos_req[i] = of_mtk_icc_get(&pdev->dev, path_strs[i]);
 		mtk_vcodec_dvfs_qos_log(true, "[VENC] %d %p %s", i, dev->venc_qos_req[i], path_strs[i]);
 	}
+
+#ifdef VENC_PRINT_DTS_INFO
+	for (i = 0; i < dev->venc_larb_cnt; i++) {
+		mtk_vcodec_dvfs_qos_log(true, "[VENC] larb %u type %d, bw %u",
+			dev->venc_larb_bw[i].larb_id
+			dev->venc_larb_bw[i].larb_type,
+			dev->venc_larb_bw[i].larb_base_bw);
+	}
+#endif
 #endif
 }
 
@@ -746,6 +775,7 @@ void mtk_venc_pmqos_monitor_init(struct mtk_vcodec_dev *dev)
 	struct vcodec_dev_qos *qos = &dev->venc_qos;
 	struct platform_device *pdev;
 	int need_smi_monitor = 0;
+	int smi_monitor_in_vcp = 0;
 	int commlarb_id = 0;
 	int i, j, ret, smi_common_num = 0;
 
@@ -759,11 +789,20 @@ void mtk_venc_pmqos_monitor_init(struct mtk_vcodec_dev *dev)
 
 	mtk_vcodec_dvfs_qos_log(true, "[VQOS] init pmqos monitor, %d", need_smi_monitor);
 
+	ret = of_property_read_s32(pdev->dev.of_node, "smi-monitor-in-vcp", &smi_monitor_in_vcp);
+	if (ret) {
+		mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot found smi monitor in vcp flag, default 0");
+		return;
+	}
+
+	mtk_vcodec_dvfs_qos_log(true, "[VQOS] init pmqos monitor location (in vcp), %d", smi_monitor_in_vcp);
+
 	memset((void *)qos, 0, sizeof(struct vcodec_dev_qos));
 	qos->dev = dev->v4l2_dev.dev;
 	qos->monitor_ring_frame_cnt = 0;
 	qos->apply_monitor_config = false;
 	qos->need_smi_monitor = need_smi_monitor;
+	qos->smi_monitor_in_vcp = smi_monitor_in_vcp;
 
 	if (dev->venc_dvfs_params.version == 2)
 		smi_common_num = 2;
@@ -857,6 +896,7 @@ void mtk_venc_pmqos_frame_req(struct mtk_vcodec_ctx *ctx)
 	u32 common_bw[MTK_SMI_MAX_MON_REQ] = {0};
 	u32 cur_fps = dev->venc_dvfs_params.oprate_sum;
 	u32 i, smi_common_num = 0;
+	int ret;
 
 	if (dev->venc_dvfs_params.version == 2)
 		smi_common_num = 2;
@@ -868,20 +908,46 @@ void mtk_venc_pmqos_frame_req(struct mtk_vcodec_ctx *ctx)
 		if (!qos->apply_monitor_config)
 			return;
 
-		common_bw[0] = (u32)((((qos->data_total[SMI_COMMON_ID_0][SMI_MON_READ] * cur_fps
-			/ qos->max_mon_frm_cnt) >> 2) * 5) >> 20);
+		if (qos->smi_monitor_in_vcp) {
 
-		if (smi_common_num == 1) {
-			common_bw[1] = (u32)((((qos->data_total[SMI_COMMON_ID_0][SMI_MON_WRITE] * cur_fps
+			ret = venc_if_get_param(ctx, GET_PARAM_VENC_HW_TIME_FOR_SMI_MONITOR,
+				ctx->hw_proc_time_smi_monitor);
+			if (ret)
+				mtk_v4l2_err("[%d] GET_PARAM_VENC_HW_TIME_FOR_SMI_MONITOR fail ret %d", ctx->id, ret);
+			mtk_vcodec_dvfs_qos_log(false, "[VQOS] ctx->hw_proc_time_smi_monitor[0] = %d, [1] = %d",
+				ctx->hw_proc_time_smi_monitor[0], ctx->hw_proc_time_smi_monitor[1]);
+
+			common_bw[0] = (u32)(qos->data_total[SMI_COMMON_ID_0][SMI_MON_READ]
+				/ qos->max_mon_frm_cnt / ctx->hw_proc_time_smi_monitor[0]);
+
+			if (smi_common_num == 1) {
+				common_bw[1] = (u32)(qos->data_total[SMI_COMMON_ID_0][SMI_MON_WRITE]
+					/ qos->max_mon_frm_cnt / ctx->hw_proc_time_smi_monitor[0]);
+			} else if (smi_common_num == 2) {
+				common_bw[1] = (u32)(qos->data_total[SMI_COMMON_ID_1][SMI_MON_READ]
+					/ qos->max_mon_frm_cnt / ctx->hw_proc_time_smi_monitor[1]);
+				common_bw[2] = (u32)(qos->data_total[SMI_COMMON_ID_0][SMI_MON_WRITE]
+					/ qos->max_mon_frm_cnt / ctx->hw_proc_time_smi_monitor[0]);
+				common_bw[3] = (u32)(qos->data_total[SMI_COMMON_ID_1][SMI_MON_WRITE]
+					/ qos->max_mon_frm_cnt/ ctx->hw_proc_time_smi_monitor[1]);
+			}
+		} else {
+			common_bw[0] = (u32)((((qos->data_total[SMI_COMMON_ID_0][SMI_MON_READ] * cur_fps
 				/ qos->max_mon_frm_cnt) >> 2) * 5) >> 20);
-		} else if (smi_common_num == 2) {
-			common_bw[1] = (u32)((((qos->data_total[SMI_COMMON_ID_1][SMI_MON_READ] * cur_fps
-				/ qos->max_mon_frm_cnt) >> 2) * 5) >> 20);
-			common_bw[2] = (u32)((((qos->data_total[SMI_COMMON_ID_0][SMI_MON_WRITE] * cur_fps
-				/ qos->max_mon_frm_cnt) >> 2) * 5) >> 20);
-			common_bw[3] = (u32)((((qos->data_total[SMI_COMMON_ID_1][SMI_MON_WRITE] * cur_fps
-				/ qos->max_mon_frm_cnt) >> 2) * 5) >> 20);
+
+			if (smi_common_num == 1) {
+				common_bw[1] = (u32)((((qos->data_total[SMI_COMMON_ID_0][SMI_MON_WRITE] * cur_fps
+					/ qos->max_mon_frm_cnt) >> 2) * 5) >> 20);
+			} else if (smi_common_num == 2) {
+				common_bw[1] = (u32)((((qos->data_total[SMI_COMMON_ID_1][SMI_MON_READ] * cur_fps
+					/ qos->max_mon_frm_cnt) >> 2) * 5) >> 20);
+				common_bw[2] = (u32)((((qos->data_total[SMI_COMMON_ID_0][SMI_MON_WRITE] * cur_fps
+					/ qos->max_mon_frm_cnt) >> 2) * 5) >> 20);
+				common_bw[3] = (u32)((((qos->data_total[SMI_COMMON_ID_1][SMI_MON_WRITE] * cur_fps
+					/ qos->max_mon_frm_cnt) >> 2) * 5) >> 20);
+			}
 		}
+
 		qos->monitor_ring_frame_cnt = 0;
 		qos->apply_monitor_config = false;
 		memset(qos->data_total, 0,

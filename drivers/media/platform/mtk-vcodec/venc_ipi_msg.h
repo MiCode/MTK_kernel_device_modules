@@ -75,6 +75,8 @@ enum venc_ipi_msg_id {
  * GET_PARAM_VENC_CAP_SUPPORTED_FORMATS: get codec supported format capability
  * GET_PARAM_VENC_CAP_FRAME_SIZES:
  *         get codec supported frame size & alignment info
+ * GET_PARAM_VENC_HW_TIME: get hw time
+ * GET_PARAM_VENC_HW_TIME_FOR_SMI_MONITOR: get hw time for smi monitor in kernel
  */
 enum venc_get_param_type {
 	GET_PARAM_VENC_CAP_SUPPORTED_FORMATS,
@@ -86,6 +88,7 @@ enum venc_get_param_type {
 	GET_PARAM_RESOLUTION_CHANGE,
 	GET_PARAM_VENC_PWR_CTRL,
 	GET_PARAM_VENC_HW_TIME,
+	GET_PARAM_VENC_HW_TIME_FOR_SMI_MONITOR,
 	GET_PARAM_VENC_VCU_VPUD_LOG
 };
 
@@ -673,6 +676,8 @@ struct venc_vsi {
 	__u32 general_buf_size;
 	__u32 hw_proc_cnt[MTK_VENC_HW_NUM];
 	__u32 hw_proc_time[MTK_VENC_HW_NUM];
+	__u32 hw_proc_cnt_for_smi_monitor[MTK_VENC_HW_NUM];
+	__u32 hw_proc_time_for_smi_monitor[MTK_VENC_HW_NUM];
 };
 
 struct venc_common_vsi {
