@@ -183,6 +183,10 @@ static const struct of_device_id charger_cooling_of_match[] = {
 		.compatible = "mediatek,mt6379-charger-cooler",
 		.data = (void *)&mt6375_pdata,
 	},
+	{
+		.compatible = "mediatek,mt6720-charger-cooler",
+		.data = (void *)&mt6375_pdata,
+	},
 	{},
 };
 MODULE_DEVICE_TABLE(of, charger_cooling_of_match);
