@@ -954,6 +954,9 @@ static int mode_switch_v2(void *dsi_drv, struct drm_panel *panel, void *handle,
 	static struct mipi_dsi_msg fps_mte_60hz[ARRAY_SIZE(cmd_set_fps_mte_minfps_to_60)] = { 0 };
 	static struct mipi_dsi_msg fps_mte_90hz[ARRAY_SIZE(cmd_set_fps_mte_minfps_to_90)] = { 0 };
 
+	if (stage == BEFORE_DSI_POWERDOWN)
+		return ret;
+
 	pr_info("%s cur_mode = %d dst_mode %d vrefresh %d\n", __func__, cur_mode, dst_mode, drm_mode_vrefresh(m));
 
 	if (!flag) {
@@ -981,7 +984,7 @@ static int mode_switch_v2(void *dsi_drv, struct drm_panel *panel, void *handle,
 	}
 	struct mtk_dsi_cmd_msg fps_60hz_cmd = {
 		.is_rd = 0, /* 0:write 1:read */
-		.is_package = 0,
+		.is_package = 1,
 		.rd_to_slot = 0,
 		.cmd_num = ARRAY_SIZE(cmd_set_fps_360te),
 		.transfer_mode = PACKET_LP_MODE,
@@ -990,7 +993,7 @@ static int mode_switch_v2(void *dsi_drv, struct drm_panel *panel, void *handle,
 
 	struct mtk_dsi_cmd_msg fps_90hz_cmd = {
 		.is_rd = 0, /* 0:write 1:read */
-		.is_package = 0,
+		.is_package = 1,
 		.rd_to_slot = 0,
 		.cmd_num = ARRAY_SIZE(cmd_set_fps_360te),
 		.transfer_mode = PACKET_LP_MODE,
@@ -999,7 +1002,7 @@ static int mode_switch_v2(void *dsi_drv, struct drm_panel *panel, void *handle,
 
 	struct mtk_dsi_cmd_msg fps_120hz_cmd = {
 		.is_rd = 0, /* 0:write 1:read */
-		.is_package = 0,
+		.is_package = 1,
 		.rd_to_slot = 0,
 		.cmd_num = ARRAY_SIZE(cmd_set_fps_360te),
 		.transfer_mode = PACKET_LP_MODE,
@@ -1008,7 +1011,7 @@ static int mode_switch_v2(void *dsi_drv, struct drm_panel *panel, void *handle,
 
 	struct mtk_dsi_cmd_msg fps_mte_cmd_60hz = {
 		.is_rd = 0, /* 0:write 1:read */
-		.is_package = 0,
+		.is_package = 1,
 		.rd_to_slot = 0,
 		.cmd_num = ARRAY_SIZE(cmd_set_fps_mte_minfps_to_60),
 		.transfer_mode = PACKET_LP_MODE,
@@ -1017,7 +1020,7 @@ static int mode_switch_v2(void *dsi_drv, struct drm_panel *panel, void *handle,
 
 	struct mtk_dsi_cmd_msg fps_mte_cmd_90hz = {
 		.is_rd = 0, /* 0:write 1:read */
-		.is_package = 0,
+		.is_package = 1,
 		.rd_to_slot = 0,
 		.cmd_num = ARRAY_SIZE(cmd_set_fps_mte_minfps_to_90),
 		.transfer_mode = PACKET_LP_MODE,
