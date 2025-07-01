@@ -327,6 +327,8 @@ module_param(dbg_output_valid, int, 0644);
 
 #define VM_CMD_EN BIT(0)
 #define TIME_SEL  BIT(2)
+#define TS_VSA_EN BIT(3)
+#define TS_VBP_EN BIT(4)
 #define TS_VFP_EN BIT(5)
 
 #define DSI_STATE_DBG6(data)	(data->dsi_state_dbg6 ? data->dsi_state_dbg6 : 0x160)
@@ -473,6 +475,13 @@ enum DSI_MODE_CON {
 	MODE_CON_SYNC_EVENT_VDO,
 	MODE_CON_BURST_VDO,
 };
+
+enum MTK_GCE_THREAD {
+	MTK_CFG_THREAD,
+	MTK_DSI_THREAD,
+	MTK_THREAD_NUM
+};
+
 static struct mtk_drm_property mtk_connector_property[CONNECTOR_PROP_MAX] = {
 	{DRM_MODE_PROP_IMMUTABLE, "CAPS_BLOB_ID", 0, ULONG_MAX, 0},
 	{DRM_MODE_PROP_ATOMIC, "CSC_BL", 0, ULONG_MAX, 0},
@@ -8204,7 +8213,8 @@ static void build_vm_cmdq(struct mtk_dsi *dsi,
 }
 
 static void mtk_dsi_vm_cmdq(struct mtk_dsi *dsi,
-	const struct mipi_dsi_msg *msg, struct cmdq_pkt *handle)
+	const struct mipi_dsi_msg *msg, struct cmdq_pkt *handle,
+	enum mtk_dsi_vm_porch vm_porch)
 {
 	const char *tx_buf = msg->tx_buf;
 	u8 config, type = msg->type;
@@ -8224,7 +8234,14 @@ static void mtk_dsi_vm_cmdq(struct mtk_dsi *dsi,
 		reg_val = (tx_buf[0] << 16) | (type << 8) | config;
 	}
 
-	reg_val |= (VM_CMD_EN + TS_VFP_EN + TIME_SEL);
+	if (vm_porch == VM_VFP_EN)
+		reg_val |= (VM_CMD_EN + TS_VFP_EN + TIME_SEL);
+	else if (vm_porch == VM_VSA_EN)
+		reg_val |= (VM_CMD_EN + TS_VSA_EN + TIME_SEL);
+	else if (vm_porch == VM_VBP_EN)
+		reg_val |= (VM_CMD_EN + TS_VBP_EN + TIME_SEL);
+	else
+		reg_val |= (VM_CMD_EN + TS_VFP_EN + TIME_SEL);
 
 	DDPDSI_CMD("%s, reg_con:0x%x\n", __func__, reg_val);
 	if (handle == NULL)
@@ -8630,7 +8647,7 @@ void mipi_dsi_dcs_write_gce(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 		cmdq_pkt_wfe(handle,
 			mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
 		/* set BL cmd */
-		mtk_dsi_vm_cmdq(dsi, &msg, handle);
+		mtk_dsi_vm_cmdq(dsi, &msg, handle, VM_VFP_EN);
 
 		/* clear VM_CMD_DONE */
 		cmdq_pkt_write(handle, dsi->ddp_comp.cmdq_base,
@@ -8759,7 +8776,7 @@ void mipi_dsi_dcs_write_gce2(struct mtk_dsi *dsi, struct cmdq_pkt *dummy,
 		cmdq_pkt_wfe(handle,
 			mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
 		/* build VM cmd */
-		mtk_dsi_vm_cmdq(dsi, &msg, handle);
+		mtk_dsi_vm_cmdq(dsi, &msg, handle, VM_VFP_EN);
 
 		/* clear VM_CMD_DONE */
 		cmdq_pkt_write(handle, dsi->ddp_comp.cmdq_base,
@@ -8993,7 +9010,7 @@ int mtk_mipi_dsi_write_gce_block(struct mtk_dsi *dsi,
 				mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
 
 			/* build VM cmd */
-			mtk_dsi_vm_cmdq(dsi, &msg, handle);
+			mtk_dsi_vm_cmdq(dsi, &msg, handle, VM_VFP_EN);
 
 			/* clear VM_CMD_DONE */
 			cmdq_pkt_write(handle, dsi->ddp_comp.cmdq_base,
@@ -9173,7 +9190,7 @@ int mtk_mipi_dsi_write_gce(struct mtk_dsi *dsi,
 				mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
 
 			/* build VM cmd */
-			mtk_dsi_vm_cmdq(dsi, &msg, handle);
+			mtk_dsi_vm_cmdq(dsi, &msg, handle, VM_VFP_EN);
 
 			/* clear VM_CMD_DONE */
 			cmdq_pkt_write(handle, dsi->ddp_comp.cmdq_base,
@@ -9325,7 +9342,7 @@ int mtk_dsi_ddic_handler_write_by_gce(struct mtk_dsi *dsi,
 		cmdq_pkt_wfe(handle,
 			mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
 		/* build VM cmd */
-		mtk_dsi_vm_cmdq(dsi, msg, handle);
+		mtk_dsi_vm_cmdq(dsi, msg, handle, VM_VFP_EN);
 
 		/* clear VM_CMD_DONE */
 		cmdq_pkt_write(handle, dsi->ddp_comp.cmdq_base,
@@ -10287,7 +10304,7 @@ static ssize_t mtk_dsi_host_send_vm_cmd(struct mtk_dsi *dsi,
 	unsigned int loop_cnt = 0;
 	s32 tmp;
 
-	mtk_dsi_vm_cmdq(dsi, msg, NULL);
+	mtk_dsi_vm_cmdq(dsi, msg, NULL, VM_VFP_EN);
 
 	/* clear status */
 	mtk_dsi_mask(dsi, DSI_INTSTA, VM_CMD_DONE_INT_EN, 0);
@@ -10422,6 +10439,37 @@ static ssize_t _mtk_dsi_host_transfer(struct mtk_dsi *dsi,
 			*((u8 *)(msg->tx_buf)));
 	}
 	return recv_cnt;
+}
+
+/* true: have lp mode cmd; false: all cmd is hs mode */
+static bool mtk_dsi_use_lp_mode_by_cmd(const struct mtk_dsi_cmd_msg *cmd_msg)
+{
+	int i, ret = 0;
+
+	for (i = 0; i < cmd_msg->cmd_num; i++) {
+		if (cmd_msg->cmd_msg[i].flags & MIPI_DSI_MSG_USE_LPM)
+			return true;
+	}
+
+	return false;
+}
+
+static enum MTK_GCE_THREAD mtk_gce_thr_check(struct mtk_drm_crtc *mtk_crtc,
+			const struct mtk_dsi_cmd_msg *cmd_msg)
+{
+	int ret = 0;
+	bool panel_mode = mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base); /* 0:vdo, 1:cmd */
+
+	if (!mtk_crtc->gce_obj.client[CLIENT_DSI_CFG] || panel_mode) /* cmd mode */
+		goto end;
+
+	/* vdo mode */
+	if ((cmd_msg->transfer_mode == PACKET_HS_MODE) ||
+		((cmd_msg->transfer_mode == PACKET_NULL) && !mtk_dsi_use_lp_mode_by_cmd(cmd_msg)))
+		return MTK_DSI_THREAD;
+
+end:
+	return MTK_CFG_THREAD;
 }
 
 static void check_dsi_page_chg(int crtc_id, struct mtk_dsi *dsi, unsigned int mmp_idx, unsigned int pg_idx)
@@ -11069,6 +11117,8 @@ static void mtk_dsi_vm_cmd_transfer(struct mtk_dsi *dsi, struct cmdq_pkt *handle
 {
 	int i;
 	struct mipi_dsi_msg msg = { 0 };
+	const char *delay_buf;
+	char delay_ms;
 
 	for (i = 0; i < cmd_msg->cmd_num; i++) {
 		msg.tx_buf = cmd_msg->cmd_msg[i].tx_buf;
@@ -11076,7 +11126,15 @@ static void mtk_dsi_vm_cmd_transfer(struct mtk_dsi *dsi, struct cmdq_pkt *handle
 
 		switch (msg.tx_len) {
 		case 0:
-			return;
+			delay_buf = (const char *)msg.tx_buf;
+			delay_ms = delay_buf[0];
+			DDPMSG("%s, delay %d ms, i = %d\n", __func__, delay_ms, i);
+			if (!handle)
+				usleep_range(delay_ms * 1000, delay_ms * 1000 + 100);
+			else
+				cmdq_pkt_sleep(handle, CMDQ_US_TO_TICK(delay_ms * 1000), CMDQ_GPR_R06);
+
+			continue;
 
 		case 1:
 			msg.type = MIPI_DSI_DCS_SHORT_WRITE;
@@ -11092,7 +11150,7 @@ static void mtk_dsi_vm_cmd_transfer(struct mtk_dsi *dsi, struct cmdq_pkt *handle
 		}
 
 		/* build VM cmd */
-		mtk_dsi_vm_cmdq(dsi, &msg, handle);
+		mtk_dsi_vm_cmdq(dsi, &msg, handle, cmd_msg->vm_porch);
 
 		/* clear VM_CMD_DONE */
 		cmdq_pkt_write(handle, dsi->ddp_comp.cmdq_base,
@@ -11147,6 +11205,7 @@ static int mtk_dsi_cmd_transfer(struct mtk_dsi *mtk_dsi, struct cmdq_pkt *handle
 			goto cmd_mode_transfer;
 		} else if ((cmd_msg->vdo_mode_flag == MTK_DSI_FORCE_STOP_VDO_MODE) ||
 			(cmd_msg->transfer_mode == PACKET_LP_MODE) ||
+			((cmd_msg->transfer_mode == PACKET_NULL) && mtk_dsi_use_lp_mode_by_cmd(cmd_msg)) ||
 			(cmd_msg->cmd_num > 1 && cmd_msg->is_package) ||
 			(cmd_msg->is_rd)) {
 			DDPDSI_CMD("%s, stop vdo mode transfer\n", __func__);
@@ -11349,21 +11408,6 @@ cmd_mode_transfer:
 	return 0;
 }
 
-/* 1: cfg thread; 0: dsi thread */
-static int mtk_gce_thread_check(struct mtk_drm_crtc *mtk_crtc, const struct mtk_dsi_cmd_msg *cmd_msg)
-{
-	int ret = 0;
-	bool panel_mode = mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base); /* 0:vdo, 1:cmd */
-
-	if (panel_mode)
-		ret = 1;
-	else {
-		if (cmd_msg->transfer_mode == PACKET_LP_MODE)
-			ret = 0;
-	}
-
-	return ret;
-}
 static int _mtk_mipi_dsi_cmd(struct mtk_drm_crtc *mtk_crtc, struct mtk_dsi *dsi, void *pkt,
 		u32 flags, const struct mtk_dsi_cmd_msg *cmd_msg)
 {
@@ -11375,7 +11419,7 @@ static int _mtk_mipi_dsi_cmd(struct mtk_drm_crtc *mtk_crtc, struct mtk_dsi *dsi,
 	int index = drm_crtc_index(&mtk_crtc->base);
 	bool panel_mode = mtk_dsi_is_cmd_mode(&dsi->ddp_comp); /* 0:vdo, 1:cmd */
 	struct cmdq_client *gce_client;
-	int gce_thr = 0;
+	enum MTK_GCE_THREAD gce_thr;
 
 	DDPDSI_CMD("%s ++ flags:0x%x, dsi:0x%x\n", __func__, flags);
 
@@ -11384,13 +11428,15 @@ static int _mtk_mipi_dsi_cmd(struct mtk_drm_crtc *mtk_crtc, struct mtk_dsi *dsi,
 		DDPDSI_CMD("%s, by CPU\n", __func__);
 		goto transfer_cmd;
 	} else if (flags & MTK_MIPI_DSI_CMD_EXTERNAL) {
-		gce_thr = mtk_gce_thread_check(mtk_crtc, cmd_msg);
-		gce_client = (!gce_thr && mtk_crtc->gce_obj.client[CLIENT_DSI_CFG]) ?
-			mtk_crtc->gce_obj.client[CLIENT_DSI_CFG] : mtk_crtc->gce_obj.client[CLIENT_CFG];
+		gce_thr = mtk_gce_thr_check(mtk_crtc, cmd_msg);
+		gce_client = (gce_thr == MTK_CFG_THREAD) ? mtk_crtc->gce_obj.client[CLIENT_CFG] :
+			mtk_crtc->gce_obj.client[CLIENT_DSI_CFG];
 		mtk_crtc_pkt_create(&handle, &mtk_crtc->base, gce_client);
 
 		CRTC_MMP_MARK(index, ddic_cmd_v2_tag, 4, (unsigned long)cmd_msg);
-		DDPDSI_CMD("%s, create handle by CMD_EXTERNAL, gce_thr=%d\n", __func__, gce_thr);
+		DDPDSI_CMD("%s, create handle by CMD_EXTERNAL, gce_thr=%d(0x%llx), (0x%llx, 0x%llx)\n",
+			__func__, gce_thr, (u64)gce_client, (u64)mtk_crtc->gce_obj.client[CLIENT_CFG],
+			(u64)mtk_crtc->gce_obj.client[CLIENT_DSI_CFG]);
 	} else if (flags & MTK_MIPI_DSI_GCE_INPUT_HANDLE_READY) {
 		if (!pkt) {
 			DDPPR_ERR("%s, %d, pkt is NULL, flags=0x%x\n", __func__, __LINE__);

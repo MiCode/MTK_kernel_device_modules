@@ -74,6 +74,14 @@ enum read_ddic_scn {
 	READ_SCN_NUM,
 };
 
+/* default = VM_VFP_EN */
+enum mtk_dsi_vm_porch {
+	VM_VFP_EN,
+	VM_VSA_EN,
+	VM_VBP_EN,
+	VM_PORCH_NULL
+};
+
 struct mtk_dsi_cmd_msg {
 	bool is_rd; /* 0:write 1:read */
 	bool is_package;
@@ -81,6 +89,7 @@ struct mtk_dsi_cmd_msg {
 	u32 vdo_mode_flag;
 	u32 slot_idx;
 	u32 cmd_num;
+	enum mtk_dsi_vm_porch vm_porch;
 	enum read_ddic_scn read_scn;
 	enum packet_transfer_mode transfer_mode;
 	struct mipi_dsi_msg *cmd_msg;
