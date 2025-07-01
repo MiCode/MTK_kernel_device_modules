@@ -31,7 +31,10 @@ define_mgk_ddk_ko(
 	           "//kernel_device_modules-{}/drivers/misc/mediatek/sda:irq-dbg".format(kernel_version),
 			   "//kernel_device_modules-{}/drivers/dma-buf/heaps:system_heap".format(kernel_version),
 			   "//kernel_device_modules-{}/drivers/dma-buf/heaps:mtk_sec_heap".format(kernel_version),
-			   "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:cmdq-sec-drv".format(kernel_version),],
+			   "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:cmdq-sec-drv".format(kernel_version),] +
+		(["//kernel_device_modules-{}/drivers/soc/mediatek/mmdvfs:mtk-mmdvfs-v5".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/soc/mediatek:mtk-mmdvfs-v3".format(kernel_version),]
+		if "entry_level.config" not in DEFCONFIG_OVERLAYS else []),
 )
 
 filegroup(

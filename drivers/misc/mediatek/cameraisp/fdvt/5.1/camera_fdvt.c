@@ -39,6 +39,7 @@
 #include "mtk_heap.h"
 #include <linux/suspend.h>
 #include <linux/rtc.h>
+#include <soc/mediatek/mmdvfs_v3.h>
 
 /*#include <linux/xlog.h>		 For xlog_printk(). */
 /*  */
@@ -2747,9 +2748,8 @@ static void fdvt_enable_clock(bool En)
 #ifdef EP_NO_CLKMGR
 	unsigned int set_reg;
 #endif
-#if IS_ENABLED(CONFIG_MTK_IOMMU_V2)
 	int ret = 0;
-#endif
+
 
 	if (En) { /* Enable clock. */
 		/* log_dbg("Dpe clock enbled. clock_enable_count: %d.",
@@ -2780,9 +2780,12 @@ static void fdvt_enable_clock(bool En)
 			enable_clock(MT_CG_IMAGE_FD, "CAMERA");
 			enable_clock(MT_CG_IMAGE_LARB2_SMI, "CAMERA");
 #endif /* #if !IS_ENABLED(CONFIG_MTK_LEGACY) && IS_ENABLED(CONFIG_COMMON_CLK) */
-			if(!IS_ERR(FDVT_PORT[0]))
+
+			if(!IS_ERR(FDVT_PORT[0])) {
+				ret = mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_FDVT);
+				log_inf("FDVT enable vcp, ret = %d", ret);
 				mtk_icc_set_bw(FDVT_PORT[0], Bps_to_icc(FDVT_PORT0_BW), 0);
-			else
+			} else
 				log_err("FDVT_PORT[0] = %lld", (int64_t)PTR_ERR(FDVT_PORT[0]));
 
 			if(!IS_ERR(FDVT_PORT[1]))
@@ -2836,9 +2839,11 @@ static void fdvt_enable_clock(bool En)
 			else
 				log_err("FDVT_PORT[2] = %lld", (int64_t)PTR_ERR(FDVT_PORT[2]));
 
-			if(!IS_ERR(FDVT_PORT[3]))
+			if(!IS_ERR(FDVT_PORT[3])) {
 				mtk_icc_set_bw(FDVT_PORT[3], Bps_to_icc(0), 0);
-			else
+				ret = mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_FDVT);
+				log_inf("FDVT disable vcp, ret = %d", ret);
+			} else
 				log_err("FDVT_PORT[3] = %lld", (int64_t)PTR_ERR(FDVT_PORT[3]));
 #if !IS_ENABLED(CONFIG_MTK_LEGACY) && IS_ENABLED(CONFIG_COMMON_CLK) /*CCF*/
 #ifndef EP_NO_CLKMGR
