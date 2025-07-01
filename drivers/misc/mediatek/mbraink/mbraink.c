@@ -36,6 +36,7 @@
 #include "mbraink_wifi.h"
 #include "mbraink_usb.h"
 #include "mbraink_touch.h"
+#include "mbraink_systeminfo.h"
 
 #if IS_ENABLED(CONFIG_MTK_LOW_POWER_MODULE)
 
@@ -1601,6 +1602,28 @@ static long handlePowerSmapInfo(unsigned long arg, void *mbraink_data)
 	return ret;
 }
 
+static long handleChipIdInfo(unsigned long arg, void *mbraink_data)
+{
+	long ret = 0;
+	struct mbraink_chipid_info *chipid_info =
+		(struct mbraink_chipid_info *)(mbraink_data);
+
+	memset(chipid_info, 0, sizeof(struct mbraink_chipid_info));
+
+	ret = mbraink_get_chipid_info(chipid_info);
+
+	if (ret == 0) {
+		if (copy_to_user((struct mbraink_chipid_info *)arg,
+				chipid_info,
+				sizeof(struct mbraink_chipid_info))) {
+			pr_notice("Copy chipid info to UserSpace error!\n");
+			ret = -EPERM;
+		}
+	}
+
+	return ret;
+}
+
 static long mbraink_ioctl(struct file *filp,
 							unsigned int cmd,
 							unsigned long arg)
@@ -2195,6 +2218,15 @@ static long mbraink_ioctl(struct file *filp,
 		if (!mbraink_data)
 			goto End;
 		ret = handlePowerSmapInfo(arg, mbraink_data);
+		kfree(mbraink_data);
+		break;
+	}
+	case RO_CHIPID_INFO:
+	{
+		mbraink_data = kmalloc(sizeof(struct mbraink_chipid_info), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handleChipIdInfo(arg, mbraink_data);
 		kfree(mbraink_data);
 		break;
 	}
@@ -2817,6 +2849,9 @@ static int mbraink_init(void)
 	if (ret)
 		pr_notice("mbraink touch init failed.\n");
 
+	ret = mbraink_systeminfo_init();
+	if (ret)
+		pr_notice("mbraink systeminfo init failed.\n");
 #if IS_ENABLED(CONFIG_MTK_MBRAINK_MT8678)
 	ret = mbraink_auto_init();
 	if (ret)
@@ -2878,6 +2913,7 @@ static void mbraink_exit(void)
 	mbraink_usb_deinit();
 	mbraink_pmu_deinit();
 	mbraink_touch_deinit();
+	mbraink_systeminfo_deinit();
 #if IS_ENABLED(CONFIG_MTK_MBRAINK_MT8678)
 	mbraink_auto_deinit();
 #endif

@@ -46,6 +46,7 @@ define_mgk_ddk_ko(
                   "mbraink_wifi.c",
                   "mbraink_usb.c",
                   "mbraink_touch.c",
+                  "mbraink_systeminfo.c",
             ],
         },
     },

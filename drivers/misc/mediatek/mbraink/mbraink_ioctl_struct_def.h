@@ -924,4 +924,7 @@ struct mbraink_power_smap_info {
 	unsigned long long real_time_end;
 };
 
+struct mbraink_chipid_info {
+	int sw_ver;
+};
 #endif
