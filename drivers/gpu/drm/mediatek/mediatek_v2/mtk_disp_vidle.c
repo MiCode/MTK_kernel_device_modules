@@ -35,6 +35,7 @@ struct mtk_vdisp_funcs vdisp_func;
 static atomic_t g_vidle_pq_ref = ATOMIC_INIT(0);
 static DEFINE_MUTEX(g_vidle_pq_ref_lock);
 static DECLARE_COMPLETION(dpc_registered);
+static DEFINE_SPINLOCK(vidle_hint_lock);
 
 struct mtk_disp_vidle {
 	u8 level;
@@ -873,6 +874,11 @@ void mtk_vidle_dsi_pll_set(const u32 value)
 
 u32 mtk_vidle_hint_update(enum mtk_vidle_hint_type type)
 {
+	unsigned long flags = 0;
+	u32 ret;
+
+	spin_lock_irqsave(&vidle_hint_lock, flags);
+
 	switch (type) {
 	case VIDLE_HINT_MTCMOS_INIT:
 		vidle_data.hint.mtcmos_debounce = -1;
@@ -913,16 +919,23 @@ u32 mtk_vidle_hint_update(enum mtk_vidle_hint_type type)
 		break;
 	}
 
-	return (vidle_data.hint.crtc_fuse << 24) |
-	       (vidle_data.hint.doze_debounce << 16) |
-	       (vidle_data.hint.mode_switch_debounce << 8) |
-		vidle_data.hint.mtcmos_debounce;
+	ret = (vidle_data.hint.crtc_fuse << 24) |
+		  (vidle_data.hint.doze_debounce << 16) |
+		  (vidle_data.hint.mode_switch_debounce << 8) |
+		  vidle_data.hint.mtcmos_debounce;
+
+	spin_unlock_irqrestore(&vidle_hint_lock, flags);
+
+	return ret;
 }
 EXPORT_SYMBOL(mtk_vidle_hint_update);
 
 int mtk_vidle_hint_decision(const char *caller)
 {
+	unsigned long flags = 0;
 	bool decision;
+
+	spin_lock_irqsave(&vidle_hint_lock, flags);
 
 	vidle_data.hint.mode_switch_debounce -= (vidle_data.hint.mode_switch_debounce > 0);
 	vidle_data.hint.mtcmos_debounce -= (vidle_data.hint.mtcmos_debounce > 0);
@@ -938,6 +951,7 @@ int mtk_vidle_hint_decision(const char *caller)
 		     vidle_data.hint.smi_dump_debounce);
 
 	mtk_vidle_config_ff(decision);
+	spin_unlock_irqrestore(&vidle_hint_lock, flags);
 
 	return decision;
 }
