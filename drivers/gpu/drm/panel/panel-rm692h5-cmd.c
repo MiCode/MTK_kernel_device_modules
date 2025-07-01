@@ -628,6 +628,9 @@ static int mode_switch(struct drm_panel *panel,
 	struct lcm *ctx = panel_to_lcm(panel);
 	struct drm_display_mode *m = get_mode_by_id(connector, dst_mode);
 
+	if (stage == BEFORE_DSI_POWERDOWN)
+		return ret;
+
 	pr_info("%s cur_mode = %d dst_mode %d vrefresh %d\n", __func__, cur_mode, dst_mode, drm_mode_vrefresh(m));
 
 	if (mte_support == MTE_SUPPORT && drm_mode_vrefresh(m) != 90)
@@ -694,7 +697,7 @@ static int mode_switch_v2(void *dsi_drv, struct drm_panel *panel, void *handle,
 		.is_package = 1,
 		.rd_to_slot = 0,
 		.cmd_num = ARRAY_SIZE(cmd_set_fps_360te),
-		.transfer_mode = PACKET_LP_MODE,
+		.transfer_mode = PACKET_HS_MODE,
 		.cmd_msg = fps_60hz,
 	};
 
@@ -703,7 +706,7 @@ static int mode_switch_v2(void *dsi_drv, struct drm_panel *panel, void *handle,
 		.is_package = 1,
 		.rd_to_slot = 0,
 		.cmd_num = ARRAY_SIZE(cmd_set_fps_360te),
-		.transfer_mode = PACKET_LP_MODE,
+		.transfer_mode = PACKET_HS_MODE,
 		.cmd_msg = fps_90hz,
 	};
 
@@ -712,7 +715,7 @@ static int mode_switch_v2(void *dsi_drv, struct drm_panel *panel, void *handle,
 		.is_package = 1,
 		.rd_to_slot = 0,
 		.cmd_num = ARRAY_SIZE(cmd_set_fps_360te),
-		.transfer_mode = PACKET_LP_MODE,
+		.transfer_mode = PACKET_HS_MODE,
 		.cmd_msg = fps_120hz,
 	};
 
@@ -721,7 +724,7 @@ static int mode_switch_v2(void *dsi_drv, struct drm_panel *panel, void *handle,
 		.is_package = 1,
 		.rd_to_slot = 0,
 		.cmd_num = ARRAY_SIZE(cmd_set_fps_mte_minfps_to_60),
-		.transfer_mode = PACKET_LP_MODE,
+		.transfer_mode = PACKET_HS_MODE,
 		.cmd_msg = fps_mte_60hz,
 	};
 
@@ -730,7 +733,7 @@ static int mode_switch_v2(void *dsi_drv, struct drm_panel *panel, void *handle,
 		.is_package = 1,
 		.rd_to_slot = 0,
 		.cmd_num = ARRAY_SIZE(cmd_set_fps_mte_minfps_to_90),
-		.transfer_mode = PACKET_LP_MODE,
+		.transfer_mode = PACKET_HS_MODE,
 		.cmd_msg = fps_mte_90hz,
 	};
 
