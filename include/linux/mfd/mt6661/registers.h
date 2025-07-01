@@ -629,6 +629,10 @@
 #define MT6661_RG_BUCK6_VOTER3_VOSEL_MASK                                 (0xff)
 #define MT6661_RG_BUCK6_VOTER3_VOSEL_SHIFT                                (0)
 
+/* CRC error RG */
+#define MT6661_RGS_CRC_ERR_ADDR                                           (0x4c8)
+#define MT6661_RGS_CRC_ERR_CNT_ADDR                                       (0x4c9)
+
 /* PRE-OT RG */
 #define MT6661_RG_PRE_OT_COUNT_ADDR                                       (0xb52)
 #define MT6661_RG_PRE_OT_COUNT_MASK                                       (0xff)

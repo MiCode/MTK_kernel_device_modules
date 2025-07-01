@@ -95,6 +95,8 @@ struct mtk_spmi_pmic_debug_data {
 	unsigned int spmi_parity_err_clr;
 	unsigned int spmi_parity_err_sts;
 	unsigned int spmi_parity_err_cnt;
+	unsigned int spmi_crc_err_sts;
+	unsigned int spmi_crc_err_cnt;
 	struct pmic_pre_ot_info pre_ot_info;
 	struct pmic_pre_lvsys_info pre_lvsys_info;
 	struct pmic_curr_clamping_info curr_clamping_info;
@@ -400,10 +402,9 @@ void mtk_spmi_pmic_get_crc_err_cnt(u16 *buf)
 {
 	struct regmap *regmap;
 
-	unsigned int i, parity_err_sta = 0, parity_err_cnt = 0, sts_addr, cnt_addr;
+	unsigned int i, crc_err_sta = 0, crc_err_cnt = 0, sts_addr, cnt_addr, val = 0;
 	u16 crc_err_cnt_array[spmi_crc_err_idx_cnt] = {0};
 	struct device *dev;
-	int ret, rev;
 
 	crc_err_cnt_array[0] = 1; //temp hardcode version
 	mutex_lock(&dump_mutex);
@@ -412,47 +413,28 @@ void mtk_spmi_pmic_get_crc_err_cnt(u16 *buf)
 			continue;
 		dev = mtk_spmi_pmic_debug[i]->dev;
 		regmap = mtk_spmi_pmic_debug[i]->regmap;
-		sts_addr = mtk_spmi_pmic_debug[i]->spmi_parity_err_sts;
-		cnt_addr = mtk_spmi_pmic_debug[i]->spmi_parity_err_cnt;
-
 		if ((mtk_spmi_pmic_debug[i]->cid == 0x61)
 		     || (mtk_spmi_pmic_debug[i]->cid == 0x67)) {
-			/* dump parity err status */
-			regmap_read(regmap, sts_addr, &parity_err_sta);
+			regmap_read(regmap, mtk_spmi_pmic_debug[i]->cid_addr_l, &val);
+			if (val >= PMIC_HWCID_E2) {
+				sts_addr = mtk_spmi_pmic_debug[i]->spmi_crc_err_sts;
+				cnt_addr = mtk_spmi_pmic_debug[i]->spmi_crc_err_cnt;
+				/* dump crc err status */
+				regmap_read(regmap, sts_addr, &crc_err_sta);
+				/* dump crc err counter */
+				regmap_read(regmap, cnt_addr, &crc_err_cnt);
 
-			/* dump parity err counter */
-			regmap_read(regmap, cnt_addr, &parity_err_cnt);
-
-			crc_err_cnt_array[2*i+1] = parity_err_sta;
-			crc_err_cnt_array[2*i+2] = parity_err_cnt;
-		} else if (mtk_spmi_pmic_is_mt6688(mtk_spmi_pmic_debug[i], &rev)) {
-			ret = regmap_update_bits(regmap, MT6688_REG_SPMI_DEBUG_SEL,
-						 MT6688_MASK_RG_SPMI_DBGMUX_SEL,
-						 MT6688_PARITY_ERROR_TYPE_4);
-			if (ret) {
-				dev_info(dev, "Failed to select mt6688 dbgmux to parity error type 4\n");
-				continue;
+				crc_err_cnt_array[2*i+1] = crc_err_sta;
+				crc_err_cnt_array[2*i+2] = crc_err_cnt;
 			}
-			if (rev == MT6688_CHIP_REV_E3) {
-				/* For E3 read parity err status only! */
-				ret = regmap_read(regmap, sts_addr, &parity_err_sta);
-				if (ret)
-					dev_info(dev, "Failed to read mt6688 parity err status\n");
-			}
-			ret = regmap_read(regmap, cnt_addr, &parity_err_cnt);
-			if (ret)
-				dev_info(dev, "Failed to read mt6688 parity err cnt\n");
-
-			crc_err_cnt_array[2*i+1] = parity_err_sta;
-			crc_err_cnt_array[2*i+2] = parity_err_cnt;
 		}
 	}
 
 	if (buf != NULL)
 		memcpy(buf, crc_err_cnt_array, spmi_crc_err_idx_cnt*sizeof(u16));
 	else {
-		for (i = 1; i < spmi_parity_err_idx_cnt; i+=2) {
-			pr_info("%s SLVID(0x%x): parity_err_sta 0x%x, crc_err_cnt 0x%x",
+		for (i = 1; i < spmi_crc_err_idx_cnt; i+=2) {
+			pr_info("%s SLVID(0x%x): crc_err_sta 0x%x, crc_err_cnt 0x%x",
 				__func__, (i-1)/2, crc_err_cnt_array[i], crc_err_cnt_array[i+1]);
 		}
 	}
@@ -788,6 +770,15 @@ static int mtk_spmi_debug_parse_dt(struct device *dev, struct mtk_spmi_pmic_debu
 	if (err)
 		dev_info(dev, "%s slvid 0x%x no spmi-parity-err-cnt found\n", __func__, data->usid);
 
+	/* SPMI crc error */
+	err = of_property_read_u32(node, "spmi-crc-err-sts", &data->spmi_crc_err_sts);
+	if (err)
+		dev_info(dev, "%s slvid 0x%x no spmi-crc-err-sts found\n", __func__, data->usid);
+
+	err = of_property_read_u32(node, "spmi-crc-err-cnt", &data->spmi_crc_err_cnt);
+	if (err)
+		dev_info(dev, "%s slvid 0x%x no spmi-crc-err-cnt found\n", __func__, data->usid);
+
 	/* PMIC PRE-OT */
 	err = of_property_read_u32(node, "pmic-pre-ot-cnt-enable", &data->pre_ot_info.enable);
 	if (err)
@@ -1002,6 +993,7 @@ static int mtk_spmi_pmic_debug_probe(struct platform_device *pdev)
 		dev_info(&pdev->dev, "dbg_buf[%d]: %x\n", i, dbg_buf[i]);
 	pr_info("dump spmi pmic dbg rg info...\n");
 	mtk_spmi_pmic_get_debug_rg_info(NULL);
+	mtk_spmi_pmic_get_crc_err_cnt(NULL);
 #endif
 
 	return ret;

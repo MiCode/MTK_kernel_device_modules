@@ -31,6 +31,10 @@
 #define MT6667_RG_VSYS_UVLO_VTHL_MASK                                   (0xF)
 #define MT6667_RG_VSYS_UVLO_VTHL_SHIFT                                  (4)
 
+/* CRC error RG */
+#define MT6667_PMIC_RGS_CRC_ERR_ADDR                                    (0x4c8)
+#define MT6667_PMIC_RGS_CRC_ERR_CNT_ADDR                                (0x4c9)
+
 /* PRE-OT RG */
 #define MT6667_PMIC_RG_PRE_OT_COUNT_ADDR                                (0xb10)
 #define MT6667_PMIC_RG_PRE_OT_COUNT_MASK                                (0xff)
