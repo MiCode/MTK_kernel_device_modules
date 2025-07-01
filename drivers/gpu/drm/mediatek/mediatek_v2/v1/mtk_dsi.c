@@ -2607,7 +2607,8 @@ static int mtk_dsi_calculate_rw_times(struct mtk_dsi *dsi,
 	if (!IS_ERR_OR_NULL(priv) && !IS_ERR_OR_NULL(priv->data)
 		&& (priv->data->mmsys_id == MMSYS_MT6989 ||
 			priv->data->mmsys_id == MMSYS_MT6991 ||
-			priv->data->mmsys_id == MMSYS_MT6993))
+			priv->data->mmsys_id == MMSYS_MT6993 ||
+			priv->data->mmsys_id == MMSYS_MT6858))
 		in_width = DSI_IPM_1_8_0_0_IN_WIDTH;
 	else
 		in_width = DSI_IPM_1_6_0_1_IN_WIDTH;
