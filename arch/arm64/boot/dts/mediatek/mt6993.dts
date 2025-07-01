@@ -11538,7 +11538,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<0 0x1df21000 0 0x1000>, /* clk*/
 				<0 0x1df30000 0 0x1000>, /* cfg core0 */
 				<0 0x1df40000 0 0x1000>, /* cfg core1 */
-				<0 0x1df80000 0 0x1000>, /* bus tracker */
+				<0 0x1df90000 0 0x1000>, /* bus tracker */
 				<0 0x1df60000 0 0x1000>, /* l1c, need to check! */
 				<0 0x1df2a000 0 0x4>, /* cfg_sec */
 				<0 0x1dfa0000 0 0x100>, /* mbox0 base */
@@ -11730,6 +11730,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			scp-read-infra-irq-status = "enable";
 			scp-scpsys-regmap = "enable";
 			scp-bus-tracker-ver = <0x2>;
+			scp-tracker-timeout-bugon = "enable";
 			scp-mbrain = "enable";
 			scp-recovery-wfi-detect = "enable";
 			scp-ipi-timeout-bugon = "enable";
