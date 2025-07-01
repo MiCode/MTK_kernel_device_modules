@@ -231,6 +231,8 @@ static void free_lt_user(struct LT_USER_DATA *node)
 	hlist_del(&node->user_list_node);
 	kfree(node->prev_idle_time);
 	kfree(node->prev_wall_time);
+	kfree(node->per_cpu_idle_time);
+	kfree(node->per_cpu_wall_time);
 	kfree(node);
 }
 
