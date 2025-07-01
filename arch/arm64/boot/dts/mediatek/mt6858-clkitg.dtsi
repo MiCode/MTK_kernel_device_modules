@@ -12,7 +12,6 @@
 		clocks =
 			<&cksys_reg_clk CLK_TOP_DISP0_SEL>,
 			<&cksys_reg_clk CLK_TOP_MMINFRA_SEL>,
-			<&cksys_reg_clk CLK_TOP_UART_SEL>,
 			<&cksys_reg_clk CLK_TOP_DISP_PWM_SEL>,
 			<&cksys_reg_clk CLK_TOP_SENINF_SEL>,
 			<&cksys_reg_clk CLK_TOP_SENINF1_SEL>,
@@ -147,17 +146,6 @@
 		clocks =
 			<&imgsys2_clk CLK_IMGSYS2_LARB9_CAM_MSF>,
 			<&imgsys2_clk CLK_IMGSYS2_MFB_CAM_MSF>;
-	};
-
-	bring-up-uart@a {
-		compatible = "mediatek,clk-bring-up";
-		reg = <0xa>;
-		clocks =
-			<&pericfg_ao_clk CLK_PERAO_P_UART0_UART>,
-			<&pericfg_ao_clk CLK_PERAO_P_UART1_UART>,
-			<&pericfg_ao_clk CLK_PERAO_P_UART2_UART>,
-			<&pericfg_ao_clk CLK_PERAO_P_UART3_UART>,
-			<&pericfg_ao_clk CLK_PERAO_P_DMA_B_UART>;
 	};
 
 	bring-up-cam-mss@c {
