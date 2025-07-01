@@ -3672,9 +3672,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg-names = "dvfsrc", "spm";
 			#interconnect-cells = <1>;
 
-			dvfsrc-bringup = <1>;
-			dvfsrc-flag = <0x3>;
-
 			dvfsrc_vcore: dvfsrc-vcore {
 				regulator-name = "dvfsrc-vcore";
 				regulator-min-microvolt = <550000>;
@@ -3695,7 +3692,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				opp-peak-KBps = <6600000>;
 			};
 			dvfsrc_freq_opp1: opp1 {
-				opp-peak-KBps = <9800000>;
+				opp-peak-KBps = <9900000>;
 			};
 			dvfsrc_freq_opp0: opp0 {
 				opp-peak-KBps = <13400000>;
