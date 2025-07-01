@@ -782,7 +782,9 @@ int force_get_tbat_internal(struct mtk_battery *gm)
 
 		if ((tmp_time.tv_sec <= 20) &&
 			(abs(gm->pre_bat_temperature_val2 -
-			bat_temperature_val) >= 50)) {
+			bat_temperature_val) >= 80) &&
+			(abs(gm->pre_fg_current_temp -
+			fg_current_temp) <= 1000)) {
 			gauge_get_property_control(gm, GAUGE_PROP_BATTERY_CURRENT, &orig_fg_current1, 0);
 			gauge_get_property(gm, GAUGE_PROP_BATTERY_TEMPERATURE_ADC,
 				&orig_bat_temperature_volt);
