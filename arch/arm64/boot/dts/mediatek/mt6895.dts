@@ -5487,9 +5487,8 @@
 			power-domains = <&scpsys MT6895_POWER_DOMAIN_UFS0_SHUTDOWN>;
 
 			vcc-supply = <&mt6363_vemc>;
-			/* Disable vcc/vccq2 to give control to spm to handle lpm state */
-			/* vccq-supply = <&mt6363_vufs12>; */
-			/* vccq2-supply = <&mt6363_vufs18>; */
+			vccq-supply = <&mt6363_vufs12>;
+			vccq2-supply = <&mt6363_vufs18>;
 
 			resets = <&ufsaocfg_rst 0>, <&ufspdncfg_rst 0>,
 			   <&ufspdncfg_rst 1>;
