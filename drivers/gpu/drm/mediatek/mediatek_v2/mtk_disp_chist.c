@@ -1081,18 +1081,16 @@ static void disp_chist_get_hist(struct mtk_ddp_comp *comp)
 	struct mtk_drm_private *priv = NULL;
 	int max_bins = 0, pm_ret = 0;
 	unsigned int i = 0;
-	unsigned int *p_present_fence = NULL;
 	unsigned int cur_present_fence = 0;
 	static unsigned int last_present_fence;
 	struct mtk_disp_chist *data = comp_to_chist(comp);
 	struct mtk_disp_chist_primary *prim_data = data->primary_data;
 	unsigned int data_zero = 0;
 	unsigned int data_invalid = 0;
-	unsigned int fence_NULL = 0;
-	unsigned int fence_zero = 0;
 	unsigned int channel_en = 0;
 	unsigned int cfg_ch_en = 0;
 	bool detail_debug_log = false;
+	unsigned int crtc_idx = 0;
 
 #if IS_ENABLED(CONFIG_MTK_DISP_DEBUG)
 	detail_debug_log = true;
@@ -1103,6 +1101,8 @@ static void disp_chist_get_hist(struct mtk_ddp_comp *comp)
 
 	crtc = &mtk_crtc->base;
 	priv = crtc->dev->dev_private;
+	crtc_idx = drm_crtc_index(crtc);
+	cur_present_fence = atomic_read(&priv->crtc_rel_present[crtc_idx]);
 
 	if (prim_data->pre_frame_width == 0)
 		prim_data->pre_frame_width = prim_data->frame_width;
@@ -1208,55 +1208,28 @@ static void disp_chist_get_hist(struct mtk_ddp_comp *comp)
 	if (channel_en == 0)
 		return;
 
-	bool is_frame_mode = mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base);
-
-	if (is_frame_mode)
-		p_present_fence = (unsigned int *)(mtk_get_gce_backup_slot_va(mtk_crtc,
-				DISP_SLOT_FRAME_DONE_FENCE(0)));
-	else
-		p_present_fence = (unsigned int *)(mtk_get_gce_backup_slot_va(mtk_crtc,
-				DISP_SLOT_PRESENT_FENCE(0)));
-	if (p_present_fence != NULL) {
-		cur_present_fence = *p_present_fence;
-	} else {
-		fence_NULL = 1;
-	}
-
-	if (cur_present_fence != 0) {
-		if (is_frame_mode)// cmd mode, FRAME_DONE_FENCE of Frame N
-			prim_data->present_fence = cur_present_fence;
-		else {
-			// 2nd trigger of Frame N, the hist info is already for Content N
-			if (last_present_fence == cur_present_fence)
-				prim_data->present_fence = cur_present_fence;
-			else // 1st trigger of Frame N, the hist info is for Content N-1
-				prim_data->present_fence = cur_present_fence - 1;
-		}
-	} else {
-		fence_zero = 1;
-		DDPMSG("%s: present_fence err ! comp:%d fence_NULL:%d fence_zero:%d\n",
-			__func__, comp->id, fence_NULL, fence_zero);
-	}
-
+	prim_data->present_fence = cur_present_fence;
 	if (detail_debug_log) {
 		DDPINFO("%s: comp:%d(%s) hist_fence:%d cur_pf:%d last_pf:%d cmd_mode:%d\n",
-					__func__, comp->id, mtk_dump_comp_str(comp), prim_data->present_fence,
-					cur_present_fence, last_present_fence, is_frame_mode);
+			__func__, comp->id, mtk_dump_comp_str(comp), prim_data->present_fence,
+			cur_present_fence, last_present_fence,
+			mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base));
 		mtk_drm_trace_begin("hist_fence:%d cur_pf:%d last_pf:%d",
 			prim_data->present_fence, cur_present_fence, last_present_fence);
 		DRM_MMP_MARK(chist0, (comp->id << 16) | 3, prim_data->present_fence);
 		mtk_drm_trace_end();
 	}
 
-	if (data_zero || fence_NULL) {
+	if (data_zero) {
 		// need db
 		DDPMSG("%s: comp:%d hist_fence:%d cur_pf:%d last_pf:%d\n",
-			__func__, comp->id, prim_data->present_fence, cur_present_fence, last_present_fence);
-		PQ_ERR("%s: comp:%d data_zero:0x%x fence_NULL:%d fence_zero:%d channel_en:%d\n",
-			__func__, comp->id, data_zero, fence_NULL, fence_zero, channel_en);
+			__func__, comp->id, prim_data->present_fence, cur_present_fence,
+			last_present_fence);
+		PQ_ERR("%s: comp:%d data_zero:0x%x channel_en:%d\n",
+			__func__, comp->id, data_zero, channel_en);
 		if (g_mobile_log)
-			DDPAEE_EXCEPTION("%s, %d: chist err data_zero:%d fence_NULL:%d fence_zero:%d\n",
-				__func__, __LINE__, data_zero, fence_NULL, fence_zero);
+			DDPAEE_EXCEPTION("%s, %d: chist err data_zero:%d\n",
+				__func__, __LINE__, data_zero);
 	}
 	last_present_fence = cur_present_fence;
 }

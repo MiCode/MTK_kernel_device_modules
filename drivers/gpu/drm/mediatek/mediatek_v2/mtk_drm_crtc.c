@@ -13318,14 +13318,6 @@ skip_prete:
 				output_comp->regs_pa + 0x0C, slot_addr, CMDQ_THR_SPR_IDX3);
 		}
 
-		/* update frame done fence slot */
-		dma_addr_t pf_addr = mtk_get_gce_backup_slot_pa(mtk_crtc,
-				DISP_SLOT_PRESENT_FENCE(crtc_id));
-		dma_addr_t fd_addr = mtk_get_gce_backup_slot_pa(mtk_crtc,
-				DISP_SLOT_FRAME_DONE_FENCE(crtc_id));
-		cmdq_pkt_mem_move(cmdq_handle, mtk_crtc->gce_obj.base,
-				pf_addr, fd_addr, CMDQ_THR_SPR_IDX3);
-
 		GCE_DO(wfe, EVENT_CMD_EOF);
 
 		/* For dbgtp fifo mon WA */
@@ -13390,6 +13382,14 @@ skip_prete:
 				mtk_oddmr_dbi_count_clk_off(dbi_comp, cmdq_handle);
 			}
 		}
+
+		/* update frame done fence slot */
+		dma_addr_t pf_addr = mtk_get_gce_backup_slot_pa(mtk_crtc,
+				DISP_SLOT_PRESENT_FENCE(crtc_id));
+		dma_addr_t fd_addr = mtk_get_gce_backup_slot_pa(mtk_crtc,
+				DISP_SLOT_FRAME_DONE_FENCE(crtc_id));
+		cmdq_pkt_mem_move(cmdq_handle, mtk_crtc->gce_obj.base,
+				pf_addr, fd_addr, CMDQ_THR_SPR_IDX3);
 
 		mtk_crtc_comp_trigger(mtk_crtc, cmdq_handle, MTK_TRIG_FLAG_EOF);
 
