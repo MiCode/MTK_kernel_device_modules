@@ -4912,6 +4912,10 @@ dramc: dramc@10230000 {
 				<0>; /*MTK_DRM_OPT_TILE_OVERHEAD*/
 		};
 
+		disp-sec {
+			compatible = "mediatek,disp-sec-aidctl";
+		};
+
 		disp_mutex0: disp-mutex0@14001000 {
 			compatible = "mediatek,disp_mutex0",
 					"mediatek,mt6858-disp-mutex";
