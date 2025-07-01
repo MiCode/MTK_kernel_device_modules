@@ -5183,7 +5183,7 @@ dramc: dramc@10230000 {
 			interrupts = <GIC_SPI 313 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&dispsys_config_clk CLK_MM_DISP_CCORR0_DISP>;
 			ccorr-bit = <13>;
-			ccorr-num-per-pipe = <2>;
+			ccorr-num-per-pipe = <1>;
 			ccorr-linear-per-pipe = <0x01>;
 			ccorr-linear = <1>;
 			doze-bypass = <0x1>;
