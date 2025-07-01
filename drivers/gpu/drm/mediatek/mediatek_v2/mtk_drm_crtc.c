@@ -5690,6 +5690,47 @@ static void mtk_crtc_update_ovl_bwm2_phy(struct drm_crtc *crtc,
 			i, plane_state->prop_val[PLANE_PROP_COMPRESS]);
 }
 
+static void mtk_crtc_update_ovl_usage_no_hwc(struct drm_crtc *crtc,
+					struct mtk_crtc_state *crtc_state)
+{
+	struct mtk_drm_private *mtk_drm = crtc->dev->dev_private;
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_ddp_comp *comp;
+	unsigned int comp_id, phy_id = 0;
+	int layers_i, i;
+	int written = 0;
+	char dbg_msg[512] = {0};
+
+	//no_hwc_layers & no_hwc_overlap for customer modify in dts
+	if(mtk_drm->no_hwc_layers) {
+		for (layers_i = 0; layers_i < mtk_drm->no_hwc_layers; layers_i++)
+			mtk_crtc->usage_ovl_fmt[layers_i] = 4;
+		return;
+	}
+
+	//get plane0 default use exdma
+	comp_id = mtk_crtc_get_plane_comp_id(crtc, crtc_state, 0);
+	if (mtk_ddp_comp_get_type(comp_id) != MTK_OVL_EXDMA) {
+		DDPINFO("can not get plane0 exdma use default phy_id:0\n");
+		mtk_crtc->usage_ovl_fmt[0] = 4;
+		return;
+	}
+
+	comp = mtk_ddp_comp_find_by_id(crtc, comp_id);
+	mtk_ddp_comp_io_cmd(comp, NULL, OVL_COMP_TO_PHY_ID, &phy_id);
+	DDPINFO("get plane0 exdma comp:%s, phy_id:%u\n",
+			mtk_dump_comp_str_id(comp_id), phy_id);
+	mtk_crtc->usage_ovl_fmt[phy_id] = 4;
+
+	if (mtk_disp_get_logger_enable()) {
+		written = scnprintf(dbg_msg, 512, "%s usage_ovl_fmt   = ", __func__);
+		for (i = 0; i < MAX_LAYER_NR; i++)
+			written += scnprintf(dbg_msg + written, 512 - written, "[%d]",
+				     mtk_crtc->usage_ovl_fmt[i]);
+		DDPINFO("%s\n", dbg_msg);
+	}
+}
+
 static void mtk_crtc_update_ovl_hrt_usage(struct drm_crtc *crtc)
 {
 	struct drm_plane *plane = NULL;
@@ -9061,13 +9102,7 @@ static void mtk_crtc_update_ddp_state(struct drm_crtc *crtc,
 #else
 	if ((index == 0 || mtk_crtc->path_data->is_discrete_path) && hrt_valid == false) {
 #endif
-		int layers_i;
-		//no_hwc_layers & no_hwc_overlap for customer modify in dts
-		if(mtk_drm->no_hwc_layers) {
-			for (layers_i = 0; layers_i < mtk_drm->no_hwc_layers; layers_i++)
-				mtk_crtc->usage_ovl_fmt[layers_i] = 4;
-		} else
-			mtk_crtc->usage_ovl_fmt[0] = 4;
+		mtk_crtc_update_ovl_usage_no_hwc(crtc, crtc_state);
 
 		if (mtk_drm->no_hwc_overlap)
 			pan_disp_frame_weight = pan_disp_frame_weight * mtk_drm->no_hwc_overlap;
