@@ -1365,6 +1365,7 @@ mgk_64_kleaf_platform_modules = {
     "//kernel_device_modules-{}/drivers/misc/mediatek/swpm/modules/debug/v6993/subsys:mtk-swpm-mml-dbg-v6993".format(kernel_version): "mt6993",
     "//kernel_device_modules-{}/drivers/misc/mediatek/swpm/modules/debug:mtk-swpm-dbg-v6993".format(kernel_version): "mt6993",
     "//kernel_device_modules-{}/drivers/misc/mediatek/swpm/modules/debug:mtk-swpm-dbg-v6991".format(kernel_version): "mt6991",
+    "//kernel_device_modules-{}/drivers/misc/mediatek/swpm/modules/debug:mtk-swpm-dbg-v6858".format(kernel_version): "mt6858",
     "//kernel_device_modules-{}/drivers/misc/mediatek/swpm/modules/debug/v6991/subsys:mtk-swpm-isp-dbg-v6991".format(kernel_version): "mt6991",
     "//kernel_device_modules-{}/drivers/misc/mediatek/swpm/modules/debug/v6993/subsys:mtk-swpm-isp-dbg-v6993".format(kernel_version): "mt6993",
     "//kernel_device_modules-{}/drivers/misc/mediatek/mtk_zram:mtk_hwz".format(kernel_version): "mt6993 mt6858",
