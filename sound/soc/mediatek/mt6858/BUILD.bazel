@@ -52,7 +52,7 @@ define_mgk_ddk_ko(
         #"//kernel_device_modules-{}/drivers/misc/mediatek/pbm:mtk_peak_power_budget".format(kernel_version),
         "//kernel_device_modules-{}/sound/soc/mediatek/audio_dsp:snd-soc-audiodsp-common".format(kernel_version),
         "//kernel_device_modules-{}/sound/soc/mediatek/common:snd-soc-mtk-common".format(kernel_version),
-        #"//kernel_device_modules-{}/sound/soc/mediatek/ultrasound/ultra_scp:snd-soc-mtk-scp-ultra".format(kernel_version),
+        "//kernel_device_modules-{}/sound/soc/mediatek/ultrasound/ultra_scp:snd-soc-mtk-scp-ultra".format(kernel_version),
         "//kernel_device_modules-{}/sound/soc/codecs:snd-soc-mt6369".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/sched:scheduler".format(kernel_version),
     ],
