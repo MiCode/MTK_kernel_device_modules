@@ -38,6 +38,8 @@
 
 #define PQ_PATH_11
 
+extern unsigned int dsi_delay;
+
 struct device;
 struct device_node;
 struct drm_crtc;

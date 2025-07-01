@@ -15178,6 +15178,10 @@ static int mtk_dsi_probe(struct platform_device *pdev)
 	dsi->is_slave = of_property_read_bool(dev->of_node,
 					      "mediatek,dual-dsi-slave");
 
+	if (dsi_delay == 1){
+		dev_err(dev, "DSI delay enabled\n");
+		return -EPROBE_DEFER;
+	}
 	ret = mipi_dsi_host_register(&dsi->host);
 	if (ret < 0) {
 		dev_err(dev, "failed to register DSI host: %d\n", ret);

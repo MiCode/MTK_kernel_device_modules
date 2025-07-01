@@ -1849,6 +1849,8 @@ static int mtk_disp_dsc_probe(struct platform_device *pdev)
 		mtk_ddp_comp_pm_disable(&priv->ddp_comp);
 	}
 
+	dsi_delay = 0;
+
 	DDPMSG("%s-\n", __func__);
 	return ret;
 }

@@ -137,6 +137,9 @@ static spinlock_t top_clk_lock; /* power status protection*/
 
 struct device *g_dpc_dev; /* mminfra power control */
 
+unsigned int dsi_delay;
+EXPORT_SYMBOL(dsi_delay);
+
 unsigned long long mutex_time_start;
 unsigned long long mutex_time_end;
 long long mutex_time_period;
@@ -12082,6 +12085,13 @@ static int mtk_drm_probe(struct platform_device *pdev)
 		ret = dma_set_mask_and_coherent(dev, DMA_BIT_MASK(34));
 		if (ret)
 			DDPPR_ERR("Failed to set_coherent_mask: %d\n", ret);
+	}
+
+	ret = of_property_read_u32(dev->of_node,
+				"dsi-delay", &dsi_delay);
+	if (ret){
+		dev_err(dev,"no dsi delay required %d\n",ret);
+		dsi_delay = 0;
 	}
 
 	ret = of_property_read_u32(dev->of_node,
