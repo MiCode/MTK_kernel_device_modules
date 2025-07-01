@@ -242,7 +242,8 @@ static void init_pbha_pool(struct device_node *node, struct pdma_device *pdma_de
 			pbha_entry = list_entry(entry, struct extended_pbha, entry);
 			if ((pbha_entry->id & 0xF) == g_reserved_pbha_id[resv_idx]) {
 				list_del(&pbha_entry->entry);
-				pr_info("remove %u from extened_pbha_pool\n", pbha_entry->id);
+				pr_debug("remove %u from extened_pbha_pool\n", pbha_entry->id);
+				kfree(pbha_entry);
 			}
 		}
 	}
