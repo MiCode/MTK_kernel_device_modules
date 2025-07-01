@@ -2999,7 +2999,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		vmmrc-on-table = <0x2e788>;
 		vmmrc-off-table = <0x2e7a8>;
 		mminfra-base = <0x1e800000>;
-		mediatek,mmqos-met-not-freerun;
 		w-hrt-ostdl = <1>;
 		r-srt-ostdl = <4>;
 	};
