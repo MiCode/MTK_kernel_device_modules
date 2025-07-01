@@ -98,6 +98,13 @@
 			IS_MT6789(id) ||	\
 			IS_MT6858(id))
 
+/* =============================================================================
+ * Must add the platform id in the following macro, if the platform supports
+ * MMDVFS VCP control.
+ */
+#define IS_MMDVFS_VCP_CTL(id)	(			\
+			IS_MT6858(id))
+
 
 /* =============================================================================
  * Must add the platform id in the following macro, if the platform supports

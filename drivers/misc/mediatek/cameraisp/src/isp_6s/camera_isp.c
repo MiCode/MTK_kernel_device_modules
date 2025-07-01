@@ -36,6 +36,7 @@
 #include <linux/suspend.h>
 
 #include <soc/mediatek/smi.h>
+#include <soc/mediatek/mmdvfs_v3.h>
 
 /* MET: define to enable MET */
 /* GKI: not support MET yet */
@@ -6123,6 +6124,9 @@ EXIT:
 			kfree(IspInfo.BufInfo.Read.pData);
 			IspInfo.BufInfo.Read.pData = NULL;
 		}
+	} else {
+		if (IS_MMDVFS_VCP_CTL(g_platform_id))
+			mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_CAM);
 	}
 
 	spin_lock(&(IspInfo.SpinLockIspRef));
@@ -6289,6 +6293,8 @@ static int ISP_release(struct inode *pInode, struct file *pFile)
 
 
 EXIT:
+	if (IS_MMDVFS_VCP_CTL(g_platform_id))
+		mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_CAM);
 
 	spin_lock(&(IspInfo.SpinLockIspRef));
 	LOG_INF("- X. UserCount: %d.", IspInfo.UserCount);

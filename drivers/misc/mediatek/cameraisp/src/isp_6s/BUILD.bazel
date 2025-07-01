@@ -1,5 +1,8 @@
 load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
 load("@mgk_info//:kernel_version.bzl", "kernel_version")
+load("@mgk_info//:dict.bzl",
+     "DEFCONFIG_OVERLAYS",
+)
 
 package(
     default_visibility = [
@@ -51,10 +54,14 @@ define_mgk_ddk_ko(
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi/",
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cameraisp/src/common/",
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cameraisp/src/isp_6s/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmdvfs/",
     ],
     ko_deps = ["//kernel_device_modules-{}/drivers/misc/mediatek/cam_timesync:archcounter_timesync".format(kernel_version),
                "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/src/isp_6s:cam_qos".format(kernel_version),
-               "//kernel_device_modules-{}/drivers/misc/mediatek/smi:mtk-smi-dbg".format(kernel_version),],
+               "//kernel_device_modules-{}/drivers/misc/mediatek/smi:mtk-smi-dbg".format(kernel_version),
+    ] +
+    (["//kernel_device_modules-{}/drivers/soc/mediatek:mtk-mmdvfs-v3".format(kernel_version),]
+    if "entry_level.config" not in DEFCONFIG_OVERLAYS else []),
 )
 
 filegroup(
