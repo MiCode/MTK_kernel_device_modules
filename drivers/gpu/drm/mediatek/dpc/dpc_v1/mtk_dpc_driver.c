@@ -4723,7 +4723,7 @@ static int mtk_dpc_probe_v1(struct platform_device *pdev)
 
 	mtk_vidle_register(&funcs_v1, DPC_VER1);
 	mml_dpc_register(&funcs_v1, DPC_VER1);
-	mdp_dpc_register(&funcs_v1, DPC_VER1);
+	//mdp_dpc_register(&funcs_v1, DPC_VER1);
 
 #if IS_ENABLED(CONFIG_MTK_MMDVFS_VCP)
 	if (priv->mmdvfs_settings_count > 0) {
