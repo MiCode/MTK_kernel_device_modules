@@ -52,4 +52,8 @@ int dual_lbat_user_set_debounce(struct lbat_user *user,
 unsigned int dual_lbat_read_raw(void);
 unsigned int dual_lbat_read_volt(void);
 
+int lbat_set_preuv_lvl(u8 lvl);
+int lbat_set_preuv_en(u8 en);
+int lbat_get_preuv_lvl(u8 *lvl);
+
 #endif	/* __MTK_LBAT_SERVICE_H__ */
