@@ -1617,8 +1617,8 @@ mgk_64_kleaf_platform_modules = {
     "//vendor/mediatek/kernel_modules/mtkcam/mtk-aie:mtk-aie":"mt6895",
     "//vendor/mediatek/kernel_modules/mtkcam/mtk-aie:mtk-aie-71":"mt6895",
 
-    "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/dip/isp_6s:camera_dip_isp6s".format(kernel_version): "mt6789 mt6855",
-    "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/mfb/isp_6s:camera_mfb_isp6s".format(kernel_version): "mt6855",
+    "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/dip/isp_6s:camera_dip_isp6s".format(kernel_version): "mt6789 mt6855 mt6858",
+    "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/mfb/isp_6s:camera_mfb_isp6s".format(kernel_version): "mt6855 mt6858",
     "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/wpe/isp_6s:camera_wpe_isp6s".format(kernel_version): "mt6855",
     "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/fdvt/5.1:camera_fdvt_isp51".format(kernel_version): "mt6789 mt6855 mt6858",
     "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/rsc:camera_rsc_isp6s".format(kernel_version): "mt6789 mt6855 mt6858",
