@@ -1684,7 +1684,8 @@ static void hdr_readback_cmdq(struct mml_comp *comp, struct mml_task *task,
 	mml_assign(comp->id, pkt, idx_out + 1, (u32)DO_SHIFT_RIGHT(pa, 32),
 		reuse, cache, &hdr_frm->labels[HDR_POLLGPR_1]);
 
-	cmdq_pkt_wfe(pkt, hdr->event_eof);
+	if (hdr->event_eof)
+		cmdq_pkt_wfe(pkt, hdr->event_eof);
 
 	/* counter init to 0 */
 	cmdq_pkt_assign_command(pkt, idx_counter, 0);
@@ -2772,7 +2773,8 @@ static void hdr_hist_work(struct work_struct *work_item)
 		goto hdr_hist_cmd_done;
 	}
 
-	cmdq_pkt_wfe(pkt, hdr->event_eof);
+	if (hdr->event_eof)
+		cmdq_pkt_wfe(pkt, hdr->event_eof);
 
 	pa = hdr->hdr_hist[pipe]->pa;
 

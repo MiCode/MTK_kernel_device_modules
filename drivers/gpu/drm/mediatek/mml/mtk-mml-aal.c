@@ -2483,7 +2483,8 @@ static void clarity_hist_work(struct work_struct *work_item)
 		goto aal_hist_cmd_done;
 	}
 
-	cmdq_pkt_wfe(pkt, aal->event_eof);
+	if (aal->event_eof)
+		cmdq_pkt_wfe(pkt, aal->event_eof);
 
 	pa = aal->clarity_hist[pipe]->pa;
 
