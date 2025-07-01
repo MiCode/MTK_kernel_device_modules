@@ -46,7 +46,6 @@
  * as feature owners should not modify the previous part.
  */
 /* #define SKIP_ACCDET */
-#define SKIP_SB_BTCVSD
 /* #define SKIP_SB_CLK */
 #define SKIP_SB_DSP
 /* #define SKIP_SB_GPIO */
