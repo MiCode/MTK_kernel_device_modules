@@ -9450,6 +9450,11 @@ dramc: dramc@10230000 {
 		compatible = "mediatek,tfa_debug";
 	};
 
+	pmsr: pmsr {
+		compatible = "mediatek,mtk-pmsr";
+		dpmsr-count = <2>;
+	};
+
 	connfem: connfem {
 		compatible = "mediatek,connfem";
 	};
