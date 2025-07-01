@@ -4326,6 +4326,27 @@ static void hrt_issue_timer_callback(struct timer_list *timer)
 	}
 }
 
+static bool mtk_dsi_need_trig_aee(struct mtk_dsi *dsi, bool cooldown, bool cmd_mode)
+{
+	enum UDR_AEE_MODE aee_mode;
+
+	if (!cooldown)
+		return false;
+
+	if (dsi_underrun_called)
+		return false;
+
+	aee_mode = dsi->driver_data->underrun_aee_mode;
+	if (aee_mode == UDR_ALL_MODE)
+		return true;
+	if ((aee_mode == UDR_ONLY_CMD_MODE) && cmd_mode)
+		return true;
+	if ((aee_mode == UDR_ONLY_VDO_MODE) && !cmd_mode)
+		return true;
+
+	return false;
+}
+
 irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 {
 	struct mtk_dsi *dsi = dev_id;
@@ -4431,8 +4452,9 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 			bool aee_cooldown = mtk_crtc->last_aee_trigger_ts == 0 ||
 					    (aee_now_ts - mtk_crtc->last_aee_trigger_ts > TIGGER_INTERVAL_S(10));
 			int underrun_int_en = 0;
+			bool is_cmd_mode = mtk_dsi_is_cmd_mode(comp);
 
-			if (mtk_dsi_is_cmd_mode(comp)) {
+			if (is_cmd_mode) {
 				underrun_happened = 1;
 				// enable fdone inten and clr inten when fdone if not enable
 				if (!(inten & FRAME_DONE_INT_FLAG)) {
@@ -4472,7 +4494,7 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 			if (dsi->encoder.crtc)
 				mtk_drm_crtc_dump_vr_rg(dsi->encoder.crtc);
 
-			if (aee_cooldown && !dsi_underrun_called) {
+			if (mtk_dsi_need_trig_aee(dsi, aee_cooldown, is_cmd_mode)) {
 				dsi_underrun_called = 1;
 #if IS_ENABLED(CONFIG_MTK_DRAMC)
 				DDPMSG("DDR: %u Mbps\n", mtk_dramc_get_data_rate());
@@ -16421,6 +16443,7 @@ static const struct mtk_dsi_driver_data mt6993_dsi_driver_data = {
 	.dsi_rx_data_rd_max_sz = 10,
 	.dsi_cmd_v2_en = true,
 	.support_rd_cmdq = 1,
+	.underrun_aee_mode = UDR_ONLY_CMD_MODE,
 };
 
 static const struct mtk_dsi_driver_data mt6897_dsi_driver_data = {

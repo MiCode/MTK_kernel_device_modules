@@ -45,6 +45,12 @@ enum PREURGENT_MODE {
 	PREURGENT_SUPPORT_ALL,
 };
 
+enum UDR_AEE_MODE {
+	UDR_ALL_MODE = 0,
+	UDR_ONLY_VDO_MODE = 1,
+	UDR_ONLY_CMD_MODE = 2,
+};
+
 struct mtk_dsi_driver_data {
 	const u32 reg_cmdq0_ofs;
 	const u32 reg_cmdq1_ofs;
@@ -114,6 +120,7 @@ struct mtk_dsi_driver_data {
 	const u32 dsi_cmdq_rd_max_sz_gce;
 	const u32 dsi_rx_data_rd_max_sz;
 	bool support_pu_con;
+	enum UDR_AEE_MODE underrun_aee_mode;
 };
 
 struct mtk_dsi {
