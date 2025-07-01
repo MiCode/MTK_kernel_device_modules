@@ -15987,7 +15987,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		flashlight_core: flashlight-core {
 			compatible = "mediatek,flashlight_core";
 			low-battery-level = <5>;
-			battery-percent-level = <1>;
+			battery-percent-level = <2>;
 			battery-oc-level = <5>;
 		};
 
@@ -17584,6 +17584,11 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			bat2-aging-threshold = <500 1000>;
 			bat2-aging-multiples = <0 0>;
 
+			soc-max-level = <3>;
+			soc-hpt-volt-lv1 = <4>;
+			soc-hpt-volt-lv2 = <0>;
+			soc-hpt-volt-lv3 = <0>;
+
 			bat-ocv-table-num = <0>;
 
 			bat0-ocv-table-t0-temperature = <25>;
@@ -18907,12 +18912,12 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				5000 4900 4800>;
 			lvsys-thd-volt-l-size = <2>;
 			lvsys-thd-volt-h-size = <2>;
-			lvsys-thd-volt-l = <3100 2700
-					3100 2700
+			lvsys-thd-volt-l = <3900 3200
+					3900 3200
 					3900 3300
 					3900 3300>;
-			lvsys-thd-volt-h = <3200 3000
-					3200 3000
+			lvsys-thd-volt-h = <4000 3700
+					4000 3700
 					4000 3800
 					4000 3800>;
 			lvsys-thd-volt-tb1-l = <3400 3100
@@ -18958,6 +18963,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 							<0 1 2>;
 			bootmode = <&chosen>;
 			gauge = <&mtk_gauge>;
+			lbat-thl-enable-pct = <40>;
 		};
 
 		cpu_power_throttling: cpu-power-throttling {
@@ -18978,11 +18984,13 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			oc-limit-freq-lv1 = < 2147483647  2147483647 2147483647>;
 			oc-limit-freq-lv2 = < 2147483647  2147483647 2147483647>;
 
-			soc-max-level = <2>;
+			soc-max-level = <3>;
 			soc-core-active-lv1 = < 1 1 1 1 1 1 1 1 >;
 			soc-core-active-lv2 = < 1 1 1 1 1 1 1 1 >;
+			soc-core-active-lv3 = < 1 1 1 1 1 1 1 1 >;
 			soc-limit-freq-lv1 = < 2147483647  2147483647 2147483647>;
-			soc-limit-freq-lv2 = < 1800000 2800000 2600000>;
+			soc-limit-freq-lv2 = < 2147483647  2147483647 2147483647>;
+			soc-limit-freq-lv3 = < 1800000 2800000 2600000>;
 
 			mpmm-enable = <1>;
 			mpmm-gear = <0>;
@@ -19007,9 +19015,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			oc-limit-freq-lv1 = <2147483647>;
 			oc-limit-freq-lv2 = <2147483647>;
 
-			soc-max-level = <2>;
+			soc-max-level = <3>;
 			soc-limit-freq-lv1 = <2147483647>;
-			soc-limit-freq-lv2 = <702000>;
+			soc-limit-freq-lv2 = <2147483647>;
+			soc-limit-freq-lv3 = <702000>;
 		};
 
 		apu_power_throttling: apu-power-throttling {
@@ -19022,9 +19031,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			oc-limit-opp-lv1 = <0>;
 			oc-limit-opp-lv2 = <0>;
 
-			soc-max-level = <2>;
+			soc-max-level = <3>;
 			soc-limit-opp-lv1 = <0>;
 			soc-limit-opp-lv2 = <0>;
+			soc-limit-opp-lv3 = <0>;
 		};
 
 		md_power_throttling: md-power-throttling {
@@ -19039,23 +19049,24 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			oc-reduce-tx-lv1 = <0>;
 			oc-reduce-tx-lv2 = <0>;
 
-			soc-max-level = <2>;
+			soc-max-level = <3>;
 			soc-reduce-tx-lv1 = <0>;
 			soc-reduce-tx-lv2 = <0>;
+			soc-reduce-tx-lv3 = <0>;
 
 			lbat-dedicate-temperature = <25 10 0>;
 		};
 
 		bp_thl: bp-thl {
 			compatible = "mediatek,mtk-bp-thl";
-			max-throttle-level = <2>;
-			soc-throttle-level = <0 1 2>, //temperature stage 0
-							<0 1 2>, //temperature stage 1
-							<0 1 2>, //temperature stage 2
-							<0 1 2>; //temperature stage 3
+			max-throttle-level = <3>;
+			soc-throttle-level = <0 1 2 3>, //temperature stage 0
+							<0 1 2 3>, //temperature stage 1
+							<0 1 2 3>, //temperature stage 2
+							<0 1 2 3>; //temperature stage 3
 
-			soc-max-stage = <2>;
-			soc-limit-threshold = <15 3>;
+			soc-max-stage = <3>;
+			soc-limit-threshold = <40 15 3>;
 
 			temperature-max-stage = <3>;
 			temperature-stage-threshold = <25 10 0>;
