@@ -4243,7 +4243,7 @@ static void mtk_bwm_update_comp_compr_bw(struct mtk_drm_crtc *mtk_crtc,
 		compr_ratio = 0;
 		alloc_id = comp->layer_srt[idx].alloc_id;
 		srt_bw = comp->layer_srt[idx].srt_bw;
-		if (!alloc_id || !srt_bw)
+		if (!srt_bw)
 			continue;
 
 		/* BWM1.0 already apply in layer_config, this function only apply BWM2.0 */
