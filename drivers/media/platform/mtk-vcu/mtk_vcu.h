@@ -87,19 +87,19 @@ enum vcu_codec_ipi_type {
 	VCU_CODEC_MAX
 };
 
+enum venc_lock {
+	VENC_LOCK_NORMAL,
+	VENC_LOCK_SEC,
+	VENC_LOCK_MAX
+};
+
 struct vcu_v4l2_callback_func {
 	void (*enc_prepare)(void *ctx_prepare,
 		unsigned int core_id, unsigned long *flags);
 	void (*enc_unprepare)(void *ctx_unprepare,
 		unsigned int core_id, unsigned long *flags);
-	void (*enc_pmqos_gce_begin)(void *ctx_begin,
-		unsigned int core_id, int job_cnt);
-	void (*enc_pmqos_gce_end)(void *ctx_end,
-		unsigned int core_id, int job_cnt);
 	void (*gce_timeout_dump)(void *ctx);
 	void (*vdec_realease_lock)(void *ctx);
-	int (*enc_lock)(void *ctx_lock, int core_id, bool sec);
-	void (*enc_unlock)(void *ctx_unlock, int core_id);
 };
 
 struct vcu_v4l2_func {
@@ -128,8 +128,6 @@ struct vcu_v4l2_func {
 			 unsigned int len, void *priv);
 	int (*vcu_set_log)(const char *val);
 	int (*vcu_get_log)(char *val, unsigned int val_len);
-	void (*vcu_get_gce_lock)(struct platform_device *pdev, unsigned long codec_type);
-	void (*vcu_put_gce_lock)(struct platform_device *pdev, unsigned long codec_type);
 };
 extern struct vcu_v4l2_func vcu_func;
 
@@ -239,19 +237,11 @@ int vcu_set_codec_ctx(struct platform_device *pdev,
 		 struct vb2_buffer *dst_vb, unsigned long type);
 int vcu_clear_codec_ctx(struct platform_device *pdev,
 		 void *codec_ctx, unsigned long type);
-void vcu_get_gce_lock(struct platform_device *pdev, unsigned long codec_type);
-void vcu_put_gce_lock(struct platform_device *pdev, unsigned long codec_type);
 
 extern void venc_encode_prepare(void *ctx_prepare,
 		unsigned int core_id, unsigned long *flags);
 extern void venc_encode_unprepare(void *ctx_prepare,
 		unsigned int core_id, unsigned long *flags);
-extern int venc_lock(void *ctx_lock, int core_id, bool sec);
-extern void venc_unlock(void *ctx_unlock, int core_id);
-extern void venc_encode_pmqos_gce_begin(void *ctx_begin,
-		unsigned int core_id, int job_cnt);
-extern void venc_encode_pmqos_gce_end(void *ctx_end,
-		unsigned int core_id, int job_cnt);
 extern void vdec_check_release_lock(void *ctx_check);
 extern void mtk_vcodec_gce_timeout_dump(void *ctx);
 int vcu_set_log(const char *val);

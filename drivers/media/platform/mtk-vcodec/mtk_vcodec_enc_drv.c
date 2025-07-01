@@ -289,17 +289,18 @@ static const struct v4l2_file_operations mtk_vcodec_fops = {
  **/
 static int mtk_vcodec_enc_suspend(struct device *pDev)
 {
-	int val, i;
+	int i;
 	struct mtk_vcodec_dev *dev = dev_get_drvdata(pDev);
 
+	mutex_lock(&dev->pw_mutex);
 	for (i = 0; i < MTK_VENC_HW_NUM; i++) {
-		val = down_trylock(&dev->enc_sem[i]);
-	if (val == 1) {
-		mtk_v4l2_debug(0, "fail due to videocodec activity");
-		return -EBUSY;
+		if (dev->pw_cnt[i] > 0) {
+			mutex_unlock(&dev->pw_mutex);
+			mtk_v4l2_debug(0, "fail due to videocodec activity");
+			return -EBUSY;
+		}
 	}
-		up(&dev->enc_sem[i]);
-	}
+	mutex_unlock(&dev->pw_mutex);
 
 	mtk_v4l2_debug(1, "done");
 	return 0;
@@ -315,7 +316,6 @@ static int mtk_vcodec_enc_suspend_notifier(struct notifier_block *nb,
 					unsigned long action, void *data)
 {
 	int wait_cnt = 0;
-	int val = 0;
 	int i;
 	struct mtk_vcodec_dev *dev =
 		container_of(nb, struct mtk_vcodec_dev, pm_notifier);
@@ -326,10 +326,10 @@ static int mtk_vcodec_enc_suspend_notifier(struct notifier_block *nb,
 #if !IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 		dev->is_codec_suspending = 1;
 #endif
+		mutex_lock(&dev->pw_mutex);
 		for (i = 0; i < MTK_VENC_HW_NUM; i++) {
-			val = down_trylock(&dev->enc_sem[i]);
-			while (val == 1) {
-				usleep_range(10000, 20000);
+			while (dev->pw_cnt[i] > 0) {
+				mutex_unlock(&dev->pw_mutex);
 				wait_cnt++;
 				/* Current task is still not finished, don't
 				 * care, will check again in real suspend
@@ -338,10 +338,11 @@ static int mtk_vcodec_enc_suspend_notifier(struct notifier_block *nb,
 					mtk_v4l2_err("waiting fail");
 					return NOTIFY_DONE;
 				}
-				val = down_trylock(&dev->enc_sem[i]);
+				usleep_range(10000, 20000);
+				mutex_lock(&dev->pw_mutex);
 			}
-			up(&dev->enc_sem[i]);
 		}
+		mutex_unlock(&dev->pw_mutex);
 		return NOTIFY_OK;
 	case PM_POST_SUSPEND:
 #if !IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
@@ -430,7 +431,6 @@ static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 	// init list head, mutex, spin_lock, atomic, etc.
 	INIT_LIST_HEAD(&dev->ctx_list);
 	for (i = 0; i < MTK_VENC_HW_NUM; i++) {
-		sema_init(&dev->enc_sem[i], 1);
 		spin_lock_init(&dev->power_check_lock[i]);
 		dev->enc_is_power_on[i] = false;
 		atomic_set(&dev->clk_ref_cnt[i], 0);
@@ -438,6 +438,7 @@ static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 	}
 	atomic_set(&dev->larb_ref_cnt, 0);
 	atomic_set(&dev->smi_dump_ref_cnt, 0);
+	mutex_init(&dev->pw_mutex);
 	mutex_init(&dev->ctx_mutex);
 	mutex_init(&dev->dev_mutex);
 	mutex_init(&dev->ipi_mutex);

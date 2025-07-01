@@ -281,12 +281,6 @@ enum vdec_low_power_state {
 	VDEC_LPW_RESET,
 };
 
-enum venc_lock {
-	VENC_LOCK_NONE,
-	VENC_LOCK_NORMAL,
-	VENC_LOCK_SEC
-};
-
 enum vdec_power_type {
 	VDEC_POWER_NORMAL = 0,
 	VDEC_POWER_RELEASE,
@@ -805,7 +799,6 @@ struct mtk_vcodec_ctx {
 	struct mutex hw_status;
 	enum vdec_power_type power_type[MTK_VDEC_HW_NUM];
 	int hw_locked[MTK_VDEC_HW_NUM];
-	int core_locked[MTK_VENC_HW_NUM];
 	int async_mode;
 	int oal_vcodec;
 
@@ -956,7 +949,9 @@ struct mtk_vcodec_dev {
 	atomic_t larb_ref_cnt;
 	atomic_t smi_dump_ref_cnt;
 	atomic_t smi_ctrl_get_ref_cnt[MTK_VCODEC_HW_NUM]; // for get_if_in_use
+	unsigned int pw_cnt[MTK_VCODEC_HW_NUM];
 	unsigned int dec_ao_pw_cnt;
+	struct mutex pw_mutex;
 
 	int id_counter;
 
@@ -979,7 +974,6 @@ struct mtk_vcodec_dev {
 	int enc_lt_irq;
 
 	struct semaphore dec_sem[MTK_VDEC_HW_NUM];
-	struct semaphore enc_sem[MTK_VENC_HW_NUM];
 	atomic_t dec_hw_active[MTK_VDEC_HW_NUM];
 
 	struct mutex dec_dvfs_mutex;
@@ -1084,7 +1078,6 @@ struct mtk_vcodec_dev {
 
 	struct device *smmu_dev;
 	unsigned int iommu_domain_swtich;
-	enum venc_lock enc_hw_locked[MTK_VENC_HW_NUM];
 	unsigned int svp_mtee;
 	unsigned int unique_domain;
 };

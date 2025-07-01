@@ -244,11 +244,7 @@ static int venc_init(struct mtk_vcodec_ctx *ctx, unsigned long *handle)
 	memset(&cb, 0, sizeof(struct vcu_v4l2_callback_func));
 	cb.enc_prepare = venc_encode_prepare;
 	cb.enc_unprepare = venc_encode_unprepare;
-	cb.enc_pmqos_gce_begin = venc_encode_pmqos_gce_begin;
-	cb.enc_pmqos_gce_end = venc_encode_pmqos_gce_end;
 	cb.gce_timeout_dump = mtk_vcodec_gce_timeout_dump;
-	cb.enc_lock = venc_lock;
-	cb.enc_unlock = venc_unlock;
 	VCU_FPTR(vcu_set_v4l2_callback)(inst->vcu_inst.dev, &cb);
 
 	mtk_vcodec_debug_leave(inst);
