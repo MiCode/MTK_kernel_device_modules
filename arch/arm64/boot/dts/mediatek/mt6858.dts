@@ -963,6 +963,21 @@
 				 <&disp_iommu M4U_L20_P3_IPESYS_SMI_FDVT_WRB_0>;
 		fdvt_frame_done = <CMDQ_EVENT_IPE_FDVT_DONE>;
 		mediatek,larb = <&smi_larb20>;
+		interconnects =
+				<&mmqos MASTER_LARB_PORT(M4U_L20_P0_IPESYS_SMI_FDVT_RDA_0)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L20_P1_IPESYS_SMI_FDVT_RDB_0)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L20_P2_IPESYS_SMI_FDVT_WRA_0)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L20_P3_IPESYS_SMI_FDVT_WRB_0)
+					&mmqos SLAVE_COMMON(0)>;
+			interconnect-names =
+					"fdvt_qos_rda",
+					"fdvt_qos_rdb",
+					"fdvt_qos_wra",
+					"fdvt_qos_wrb";
+		mmqos-supply = <&mmqos>;
 	};
 
 	ipe_sub0_bus: syscon@1b00e000 {
