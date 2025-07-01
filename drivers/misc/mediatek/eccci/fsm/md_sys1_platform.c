@@ -2609,6 +2609,13 @@ static int md_cd_get_modem_hw_info(struct platform_device *dev_ptr,
 		return -1;
 	}
 	ret = of_property_read_u32(dev_ptr->dev.of_node,
+		"mediatek,md-generation", &md_cd_plat_val_ptr.md_gen);
+	if (ret < 0) {
+		CCCI_ERROR_LOG(0, TAG, "%s:get DTS:md_gen fail\n",
+			__func__);
+		return -1;
+	}
+	ret = of_property_read_u32(dev_ptr->dev.of_node,
 		"mediatek,offset-epon-md1", &hw_info->md_epon_offset);
 	if (ret < 0) {
 		CCCI_ERROR_LOG(0, TAG, "%s:get DTS:mediatek,offset-epon-md1 fail\n",
@@ -2629,7 +2636,7 @@ static int md_cd_get_modem_hw_info(struct platform_device *dev_ptr,
 			hw_info->md_l2sram_size = retval;
 	}
 	hw_info->sequencer_base = of_iomap(dev_ptr->dev.of_node, 1);
-	if (hw_info->sequencer_base == NULL) {
+	if (hw_info->sequencer_base == NULL && md_cd_plat_val_ptr.md_gen == 6298) {
 		hw_info->sequencer_base = ioremap_wc(0x1C803000, 0x1000);
 		CCCI_ERROR_LOG(0, TAG, "%s:get DTS:sequencer_base fail\n",
 			__func__);
@@ -2645,13 +2652,6 @@ static int md_cd_get_modem_hw_info(struct platform_device *dev_ptr,
 	 * sensitivity has set at "irq_of_parse_and_map"
 	 */
 	hw_info->md_wdt_irq_flags = IRQF_TRIGGER_NONE;
-	ret = of_property_read_u32(dev_ptr->dev.of_node,
-		"mediatek,md-generation", &md_cd_plat_val_ptr.md_gen);
-	if (ret < 0) {
-		CCCI_ERROR_LOG(0, TAG, "%s:get DTS:md_gen fail\n",
-			__func__);
-		return -1;
-	}
 
 	/* "mediatek,md-sub-version" = 0 or can't find this properity
 	 * defaults to the MD major generation, such as Gen98;
