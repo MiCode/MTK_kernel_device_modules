@@ -104,7 +104,6 @@ struct mtk_dsi_driver_data {
 	//vdo ltpo
 	const u32 dsi_ltpo_vdo_con;
 	const u32 dsi_ltpo_vdo_sq0;
-	bool support_512byte_rx;
 	bool support_bl_at_te;
 	bool dsi_cmd_v2_en;
 	const u32 dsi_rx_trig_sta;
@@ -113,6 +112,10 @@ struct mtk_dsi_driver_data {
 	const u32 dsi_cmdq_size;
 	const u32 dsi_cmdq_page;
 	bool dsi_irq_ts_debug;
+	const u32 dsi_cmdq_rd_max_sz_cpu;
+	const u32 dsi_cmdq_rd_max_sz_gce;
+	const u32 dsi_rx_data_rd_max_sz;
+	bool support_pu_con;
 };
 
 struct mtk_dsi {
@@ -202,6 +205,9 @@ struct mtk_dsi {
 	unsigned int roi_y_offset;
 	unsigned int roi_height;
 	struct drm_display_mode max_vrefresh_mode;
+	spinlock_t cmdq_pg_lock;
+	unsigned int last_cmdq_pg;
+	unsigned int cur_cmdq_pg;
 };
 
 enum dsi_porch_type;
@@ -230,6 +236,7 @@ int mtk_drm_dummy_cmd_on_ioctl(struct drm_device *dev, void *data,
 		struct drm_file *file_priv);
 unsigned long long mtk_get_cur_backlight(struct drm_crtc *crtc);
 int mtk_mipi_dsi_cmd(void *dsi, void *handle, struct mtk_dsi_cmd_option *cmd_opt, const struct mtk_dsi_cmd_msg *cmd_msg);
+enum dsi_cmd_verion mtk_dsi_cmd_version(void);
 
 unsigned int mtk_dsi_get_line_time_vdo(struct mtk_drm_crtc *mtk_crtc,
 	struct mtk_dsi *dsi, unsigned int ps_wc);

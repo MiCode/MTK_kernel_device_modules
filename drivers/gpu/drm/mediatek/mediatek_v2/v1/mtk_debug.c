@@ -59,6 +59,7 @@
 #if IS_ENABLED(CONFIG_MTK_MME_SUPPORT)
 #include "mmevent_function.h"
 #endif
+#include <linux/random.h>
 
 #define DISP_REG_CONFIG_MMSYS_CG_SET(idx) (0x104 + 0x10 * (idx))
 #define DISP_REG_CONFIG_MMSYS_CG_CLR(idx) (0x108 + 0x10 * (idx))
@@ -96,6 +97,10 @@ static struct proc_dir_entry *mtkfb_debug_procfs;
 #endif
 static struct drm_device *drm_dev;
 
+bool g_dsi_cmd_v2_r_log;
+EXPORT_SYMBOL(g_dsi_cmd_v2_r_log);
+bool g_dsi_cmd_v2_log;
+EXPORT_SYMBOL(g_dsi_cmd_v2_log);
 bool g_mobile_log;
 EXPORT_SYMBOL(g_mobile_log);
 bool g_fence_log;
@@ -2961,12 +2966,27 @@ void mtk_drm_crtc_diagnose(void)
 
 static void process_dbg_opt(const char *opt)
 {
+	struct mtk_drm_private *priv = NULL;
+	struct drm_crtc *crtc = NULL;
+	struct mtk_drm_crtc *mtk_crtc = NULL;
+	struct mtk_ddp_comp *output_comp = NULL;
+
 	DDPINFO("display_debug cmd %s\n", opt);
 
 	if (IS_ERR_OR_NULL(drm_dev)) {
 		DDPPR_ERR("%s, invalid drm dev\n", __func__);
 		return;
 	}
+
+	priv = drm_dev->dev_private;
+	crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list, typeof(*crtc), head);
+	if (IS_ERR_OR_NULL(crtc)) {
+		DDPPR_ERR("%s: find crtc fail\n", __func__);
+		return;
+	}
+
+	mtk_crtc = to_mtk_crtc(crtc);
+	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 
 	if (strncmp(opt, "helper", 6) == 0) {
 		/*ex: echo helper:DISP_OPT_BYPASS_OVL,0 > /d/mtkfb */
@@ -3021,6 +3041,20 @@ static void process_dbg_opt(const char *opt)
 			g_mobile_log = 1;
 		else if (strncmp(opt + 7, "off", 3) == 0)
 			g_mobile_log = 0;
+	} else if (strncmp(opt, "dsi_cmd:", 8) == 0) {
+		if (strncmp(opt + 8, "on", 2) == 0)
+			g_dsi_cmd_v2_log = 1;
+		else if (strncmp(opt + 8, "off", 3) == 0)
+			g_dsi_cmd_v2_log = 0;
+
+		DDPMSG("[DISP][CMD] g_dsi_cmd_v2_log=%d\n", g_dsi_cmd_v2_log);
+	} else if (strncmp(opt, "dsi_r_cmd:", 10) == 0) {
+		if (strncmp(opt + 10, "on", 2) == 0)
+			g_dsi_cmd_v2_r_log = 1;
+		else if (strncmp(opt + 10, "off", 3) == 0)
+			g_dsi_cmd_v2_r_log = 0;
+
+		DDPMSG("[DISP][CMD_R] g_dsi_cmd_v2_r_log=%d\n", g_dsi_cmd_v2_r_log);
 	} else if (strncmp(opt, "msync_debug:", 12) == 0) {
 		if (strncmp(opt + 12, "on", 2) == 0)
 			g_msync_debug = 1;
@@ -5125,122 +5159,6 @@ static void process_dbg_opt(const char *opt)
 
 		ret = mtk_drm_get_conn_obj_id_from_idx(value, 0);
 		DDPINFO("disp_idx %u, conn_obj_id %d\n", value, ret);
-	} else if (strncmp(opt, "new_send_ddic_test_v1:", 22) == 0) {
-		int flags = 0, rd = 0, slot = 0, package = 0, transmit_mode = 0;
-		int i, ret;
-		struct mipi_dsi_msg msg[3];
-		struct mtk_dsi_cmd_option cmd_opt;
-
-		struct test_struct {
-			u32 tx_len;
-			u8 tx_buf[10];
-		};
-
-		ret = sscanf(opt, "new_send_ddic_test_v1:%x,%d,%d,%d,%d\n", &flags, &rd, &slot, &package, &transmit_mode);
-		if (ret <= 0) {
-			DDPPR_ERR("new_send_ddic_test_v1 fail, ret=%d\n", ret);
-			return;
-		}
-		DDPMSG("%d, flags=0x%x, rd=%d, slot=%d, package=%d, transmit_mode=%d, ret=%d\n", __LINE__,
-			flags, rd, slot, package, transmit_mode, ret);
-
-		struct test_struct test_cmd_w[3] = {
-			{
-				.tx_len = 2,
-				.tx_buf = {0x03, 0x00},
-			},
-			{
-				.tx_len = 6,
-				.tx_buf = {0xF0, 0x55, 0xAA, 0x52, 0x08, 0x07},
-			},
-			{
-				.tx_len = 2,
-				.tx_buf = {0xB0, 0x84},
-			}
-		};
-
-		for (i = 0; i < 3; i++) {
-			msg[i].tx_buf = test_cmd_w[i].tx_buf;
-			msg[i].tx_len = test_cmd_w[i].tx_len;
-		}
-
-		struct mtk_dsi_cmd_msg test_cmd = {
-			.transfer_mode = transmit_mode,
-			.is_package = package,
-			.is_rd = rd,
-			.rd_to_slot = slot,
-			.cmd_num = 3,
-			.cmd_msg = msg,
-		};
-		cmd_opt.flags = flags;
-		cmd_opt.crtc_id = 0;
-
-		DDPMSG("new_send_ddic_test_v1\n");
-		mtk_mipi_dsi_cmd(NULL, NULL, &cmd_opt, &test_cmd);
-	}  else if (strncmp(opt, "new_send_ddic_test_v3:", 22) == 0) { //hc0
-		int flags = 0, rd = 0, slot = 0, package = 0, transmit_mode = 0, cmd_num = 0;
-		int tx_len[5];
-		u8 *tx_buf[5];
-		int i, j, ret;
-		struct mtk_dsi_cmd_msg *test_cmd;
-		struct mtk_dsi_cmd_option cmd_opt;
-
-		ret = sscanf(opt, "new_send_ddic_test_v3:%x,%d,%d,%d,%d,%d,%d,%d,%d,%d\n", &flags, &rd, &slot, &package, &cmd_num, &transmit_mode,
-			&tx_len[0], &tx_len[1], &tx_len[2], &tx_len[3], &tx_len[4]);
-		if (ret <= 0) {
-			DDPPR_ERR("new_send_ddic_test_v3 fail, ret=%d\n", ret);
-			return;
-		}
-		DDPMSG("%d, flags=0x%x, rd=%d, slot=%d, cmd_num=%d, package=%d, mode=%d, (%d,%d,%d,%d,%d), ret=%d\n",
-			__LINE__, flags, rd, slot, cmd_num, package, transmit_mode,
-			tx_len[0], tx_len[1], tx_len[2], tx_len[3], tx_len[4], ret);
-
-		cmd_opt.flags = flags;
-		cmd_opt.crtc_id = 0;
-
-		test_cmd = vmalloc(sizeof(struct mtk_dsi_cmd_msg));
-		if (!test_cmd) {
-			DDPMSG("alloc mtk_dsi_cmd_msg fail\n");
-			return;
-		}
-		memset(test_cmd, 0, sizeof(struct mtk_dsi_cmd_msg));
-
-		test_cmd->cmd_msg = vmalloc(cmd_num *sizeof(struct mipi_dsi_msg));
-		if (!test_cmd->cmd_msg) {
-			DDPMSG("alloc mipi_dsi_msg fail\n");
-			return;
-		}
-
-		test_cmd->cmd_num = cmd_num;
-		test_cmd->is_package = package;
-		test_cmd->is_rd = rd;
-		test_cmd->rd_to_slot = slot;
-		test_cmd->transfer_mode = transmit_mode;
-
-		for (i = 0; i < cmd_num; i++) {
-			tx_buf[i] = vmalloc(tx_len[i] *sizeof(u8));
-			memset(tx_buf[i], 0, tx_len[i] *sizeof(u8));
-			for (j = 0; j < tx_len[i]; j++) {
-				if (j < 10)
-					tx_buf[i][j] = 0x15;
-				else if ((j > (tx_len[i] - 10)) && (j < tx_len[i]))
-					tx_buf[i][j] = 0xa1;
-				else
-					tx_buf[i][j] = 0x00;
-			}
-			test_cmd->cmd_msg[i].tx_buf = tx_buf[i];
-			test_cmd->cmd_msg[i].tx_len = tx_len[i];
-		}
-
-		DDPMSG("new_send_ddic_test_v3 ++\n");
-		mtk_mipi_dsi_cmd(NULL, NULL, &cmd_opt, test_cmd);
-		DDPMSG("new_send_ddic_test_v3 --\n");
-
-		for (i = 0; i < cmd_num; i++)
-			vfree(tx_buf[i]);
-
-		vfree(test_cmd->cmd_msg);
-		vfree(test_cmd);
 	} else if (strncmp(opt, "set_new_dsi:", 12) == 0) {
 		int ret = 0;
 
@@ -5257,21 +5175,21 @@ static void process_dbg_opt(const char *opt)
 			dsi_cmd_v2_dbg[PANEL_INIT_DBG], dsi_cmd_v2_dbg[MODE_SWITCH_DBG],
 			dsi_cmd_v2_dbg[ESD_CHECK_DBG], dsi_cmd_v2_dbg[PU_DBG], ret);
 	} else if (strncmp(opt, "new_read_ddic:", 14) == 0) {
-		int flags = 0, idx = 0, slot = 0, rx_len = 0, addr = 0;
+		int flags = 0, idx = 0, slot = 0, rx_len = 0, addr = 0, mode = 0;
 		char *rx_buf;
 		int i, ret;
 		struct mtk_dsi_cmd_option cmd_opt = { 0 };
 		struct mtk_dsi_cmd_msg test_cmd = { 0 };
 		struct mipi_dsi_msg msg = { 0 };
 
-		ret = sscanf(opt, "new_read_ddic:%x,%d,%d,%d,%d\n", &flags, &slot,
-			&idx, &rx_len, &addr);
+		ret = sscanf(opt, "new_read_ddic:%x,%d,%d,%d,%x,%d\n", &flags, &slot,
+			&idx, &rx_len, &addr, &mode);
 		if (ret <= 0) {
 			DDPPR_ERR("new_read_ddic fail, ret=%d\n", ret);
 			return;
 		}
-		DDPMSG("new_read_ddic %d,flags=0x%x,slot=%d,idx=%d,len=%d,addr=0x%x,ret=%d\n",
-			__LINE__, flags, slot, idx, rx_len, addr, ret);
+		DDPMSG("new_read_ddic %d,flags=0x%x,slot=%d,idx=%d,len=%d,addr=0x%x,mode=%d, ret=%d\n",
+			__LINE__, flags, slot, idx, rx_len, addr, mode, ret);
 		msg.rx_buf= vmalloc(rx_len * sizeof(u8));
 		if (!msg.rx_buf) {
 			DDPMSG("alloc rx_buf fail\n");
@@ -5285,7 +5203,7 @@ static void process_dbg_opt(const char *opt)
 		test_cmd.rd_to_slot = slot;
 		test_cmd.slot_idx = idx;
 		test_cmd.read_scn = READ_COMMON_SCN;
-		test_cmd.transfer_mode = PACKET_LP_MODE;
+		test_cmd.transfer_mode = mode;
 		test_cmd.cmd_msg = &msg;
 
 		cmd_opt.flags = flags;
@@ -5293,12 +5211,450 @@ static void process_dbg_opt(const char *opt)
 
 		DDPMSG("new_read_ddic ++\n");
 		ret = mtk_mipi_dsi_cmd(NULL, NULL, &cmd_opt, &test_cmd);
+		if (ret < 0) {
+			DDPMSG("new_read_ddic test fail, ret=%d\n", ret);
+			goto read_test_done;
+		}
 
 		rx_buf = (char *)test_cmd.cmd_msg->rx_buf;
 		for (i = 0; i < rx_len; i++)
-			DDPMSG("new_read_ddic, rx_data[%d]:0x%x, ret=%d\n", rx_buf[i], ret);
+			DDPMSG("new_read_ddic, addr=0x%x, rx_data[%d] = 0x%x\n", addr, i, rx_buf[i]);
 
+		DDPMSG("new_read_ddic pass, ret=%d\n", ret);
+read_test_done:
 		vfree(msg.rx_buf);
+	} else if (strncmp(opt, "new_write_ddic:", 15) == 0) {
+		int flags = 0, tx_len = 0, mode = 0, local_cmd = 0, package = 0;
+		char tx_buf[5];
+		int ret, i;
+		struct mtk_dsi_cmd_option cmd_opt = { 0 };
+		struct mtk_dsi_cmd_msg test_cmd = { 0 };
+		struct mipi_dsi_msg msg = { 0 };
+
+		ret = sscanf(opt, "new_write_ddic:%x,%d,%d,%x,%x,%x,%x,%x,%d,%d\n",
+			&flags, &mode, &tx_len, &tx_buf[0], &tx_buf[1], &tx_buf[2], &tx_buf[3],
+			&tx_buf[4], &local_cmd, &package);
+		if (ret <= 0) {
+			DDPPR_ERR("new_write_ddic fail, ret=%d\n", ret);
+			return;
+		}
+		DDPMSG("new_write_ddic %d, flags=0x%x,len=%d,tx_buf={0x%x,0x%x,0x%x,0x%x,0x%x}, {%d,%d},ret=%d\n",
+			__LINE__, flags, tx_len, tx_buf[0], tx_buf[1], tx_buf[2], tx_buf[3], tx_buf[4],
+			local_cmd, package, ret);
+
+		static struct mtk_panel_para_table cmd_msg[] = {
+			{0x02, {0x51, 0xff}},
+			{0x02, {0x51, 0xaa}},
+			{0x0, {80}},
+			{0x02, {0x51, 0x90}},
+			{0x02, {0x51, 0x27}},
+			{0x0, {100}},
+		};
+		static struct mipi_dsi_msg local_cmd_msg[ARRAY_SIZE(cmd_msg)] = { 0 };
+
+		for (i = 0; i < ARRAY_SIZE(cmd_msg); i++) {
+			local_cmd_msg[i].tx_len = cmd_msg[i].count;
+			local_cmd_msg[i].tx_buf = cmd_msg[i].para_list;
+		}
+		if (local_cmd) {
+			test_cmd.is_package = package;
+			test_cmd.transfer_mode = mode;
+			test_cmd.cmd_num = ARRAY_SIZE(cmd_msg);
+			test_cmd.cmd_msg = local_cmd_msg;
+		} else {
+			msg.tx_len = tx_len;
+			msg.tx_buf = tx_buf;
+			test_cmd.cmd_num = 1;
+			test_cmd.transfer_mode = mode;
+			test_cmd.cmd_msg= &msg;
+		}
+
+		cmd_opt.flags = flags;
+		cmd_opt.crtc_id = 0;
+
+		DDPMSG("new_write_ddic ++\n");
+		ret = mtk_mipi_dsi_cmd(NULL, NULL, &cmd_opt, &test_cmd);
+		DDPMSG("new_write_ddic --\n");
+	} else if (strncmp(opt, "new_write_ddic_package:", 23) == 0) {
+		int flags = 0, tx_len = 0, lp = 0, cmd_num = 0, package = 0;
+		char addr = 0;
+		char **tx_buf = NULL;
+		int i, j, ret;
+		struct mtk_dsi_cmd_option cmd_opt = { 0 };
+		struct mtk_dsi_cmd_msg test_cmd = { 0 };
+		struct mipi_dsi_msg *msg;
+
+		ret = sscanf(opt, "new_write_ddic_package:%x,%d,%d,%d,%d,%x\n",
+			&flags, &package, &lp, &cmd_num, &tx_len, &addr);
+		if (ret <= 0) {
+			DDPPR_ERR("new_write_ddic_package fail, ret=%d\n", ret);
+			return;
+		}
+		DDPMSG("new_write_ddic_package %d, f=0x%x,lp=%d,p=%d,num=%d,len=%d,addr=0x%x\n",
+			__LINE__, flags, lp, package, cmd_num, tx_len, addr);
+
+		tx_buf = vmalloc(cmd_num * sizeof(char *));
+		if (!tx_buf) {
+			DDPMSG("new_write_ddic_package alloc tx_buf[] fail\n");
+			return;
+		}
+
+		for (i = 0; i < cmd_num; i++) {
+			tx_buf[i] = vmalloc(tx_len * sizeof(char));
+			if (!tx_buf[i]) {
+				DDPMSG("new_write_ddic_package alloc tx_buf[][] fail\n");
+				vfree(tx_buf);
+				return;
+			}
+			memset(tx_buf[i], 0, tx_len);
+			for (j = 0; j < tx_len; j++) {
+				if (j == 0)
+					tx_buf[i][0] = addr;
+				else {
+					tx_buf[i][j] = get_random_u8();
+					DDPMSG("hc3 tx_buf[%d][%d] = 0x%x\n", i, (j - 1), tx_buf[i][j]);
+				}
+			}
+		}
+		msg = vmalloc(cmd_num * sizeof(struct mipi_dsi_msg));
+		if (!msg) {
+			DDPMSG("new_write_ddic_package mipi_dsi_msg fail\n");
+			goto test_done;
+		}
+		for (i = 0; i < cmd_num; i++) {
+			msg[i].tx_len = tx_len;
+			msg[i].tx_buf = tx_buf[i];
+		}
+		test_cmd.is_package = package;
+		test_cmd.cmd_num = cmd_num;
+		test_cmd.transfer_mode = lp;
+		test_cmd.cmd_msg= msg;
+
+		cmd_opt.flags = flags;
+		cmd_opt.crtc_id = 0;
+
+		DDPMSG("new_write_ddic_package ++\n");
+		ret = mtk_mipi_dsi_cmd(NULL, NULL, &cmd_opt, &test_cmd);
+		if (ret < 0) {
+			DDPMSG("new_write_ddic_package fail, ret=%d\n", ret);
+			goto test_done;
+		}
+		DDPMSG("new_write_ddic_package pass, ret=%d\n", ret);
+
+test_done:
+		for (j = 0; j < cmd_num; j++)
+			vfree(tx_buf[j]);
+		vfree(tx_buf);
+	} else if (strncmp(opt, "new_ddic_2c_test:", 17) == 0) {
+		int flags = 0, tx_len = 0, lp = 0, cmd_num = 0, package = 0;
+		int r_flags = 0, rx_len = 0, rx_delay_ms = 0;
+		int rx_len_block_gce = 256, rx_len_block_cpu = 512, block_size = 0;
+		char addr = 0, r_start_addr_2e = 0x2e, r_cont_addr_3e = 0x3e;
+		int log_en = 0, read_cnt = 0, r_block_num = 0;
+		char **tx_buf = NULL, *rx_buf = NULL;
+		int i, j, ret;
+		struct mtk_dsi_cmd_option cmd_opt = { 0 };
+		struct mtk_dsi_cmd_msg test_cmd = { 0 };
+		struct mtk_dsi_cmd_msg rx_test_cmd = { 0 };
+		struct mipi_dsi_msg *msg;
+		struct mipi_dsi_msg rx_msg = { 0 };
+		int need_lock = 0;
+		bool test_pass = true;
+		struct cmdq_pkt *cmdq_handle;
+		struct mtk_drm_private *private;
+
+		ret = sscanf(opt, "new_ddic_2c_test:%x,%d,%d,%d,%d,%x,%x,%d,%d,%d,%d,%d\n",
+			&flags, &package, &lp, &cmd_num, &tx_len, &addr,
+			&r_flags, &rx_delay_ms, &log_en, &rx_len_block_gce, &rx_len_block_cpu,
+			&need_lock);
+		if (ret <= 0) {
+			DDPPR_ERR("new_ddic_2c_test fail, ret=%d\n", ret);
+			return;
+		}
+		DDPMSG("new_ddic_2c_test w, f=0x%x,lp=%d,p=%d,num=%d,len=%d,addr=0x%x\n",
+			flags, lp, package, cmd_num, tx_len, addr);
+		DDPMSG("new_ddic_2c_test r, f=0x%x, delay=%d, log_en=%d, gce=%d, cpu=%d, lock=%d\n",
+			r_flags, rx_delay_ms, log_en, rx_len_block_gce, rx_len_block_cpu,
+			need_lock);
+
+		tx_buf = vmalloc(cmd_num * sizeof(char *));
+		if (!tx_buf) {
+			DDPPR_ERR("new_ddic_2c_test alloc tx_buf[] fail\n");
+			return;
+		}
+
+		for (i = 0; i < cmd_num; i++) {
+			tx_buf[i] = vmalloc(tx_len * sizeof(char));
+			if (!tx_buf[i]) {
+				DDPPR_ERR("new_ddic_2c_test alloc tx_buf[][] fail\n");
+				vfree(tx_buf);
+				return;
+			}
+			memset(tx_buf[i], 0, tx_len);
+			for (j = 0; j < tx_len; j++) {
+				if ((i == 0) && (j == 0))
+					tx_buf[i][0] = addr;
+				else if ((i > 0) && (j == 0))
+					tx_buf[i][0] = 0x3c;
+				else {
+					tx_buf[i][j] = get_random_u8();
+					if (log_en)
+						DDPMSG("new_ddic_2c_test write data tx_buf[%d][%d] = 0x%x\n",
+							i, (j - 1), tx_buf[i][j]);
+				}
+			}
+		}
+		msg = vmalloc(cmd_num * sizeof(struct mipi_dsi_msg));
+		if (!msg) {
+			DDPPR_ERR("new_ddic_2c_test mipi_dsi_msg fail\n");
+			goto test_2c_done;
+		}
+		for (i = 0; i < cmd_num; i++) {
+			msg[i].tx_len = tx_len;
+			msg[i].tx_buf = tx_buf[i];
+			if (!lp && ((i % 2) == 0)) {
+				msg[i].flags |= MIPI_DSI_MSG_USE_LPM;
+				DDPMSG("hc1 set lpm, i=%d, flag=0x%x\n", i, msg[i].flags);
+			}
+		}
+		test_cmd.is_package = package;
+		test_cmd.cmd_num = cmd_num;
+		test_cmd.transfer_mode = lp;
+		test_cmd.cmd_msg= msg;
+
+		cmd_opt.flags = flags;
+		cmd_opt.crtc_id = 0;
+
+		if (!need_lock)
+			goto external_test;
+
+		if (IS_ERR_OR_NULL(drm_dev)) {
+			DDPPR_ERR("find drm dev fail\n");
+			return;
+		}
+
+		/* This cmd only for crtc0 */
+		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
+				typeof(*crtc), head);
+		if (IS_ERR_OR_NULL(crtc)) {
+			DDPPR_ERR("find crtc fail\n");
+			return;
+		}
+
+		private = crtc->dev->dev_private;
+		mtk_crtc = to_mtk_crtc(crtc);
+
+		DDP_COMMIT_LOCK(&priv->commit.lock, __func__, __LINE__);
+		DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
+		DDPMSG("new_ddic_2c_test write hold lock\n");
+
+		mtk_crtc_pkt_create(&cmdq_handle, crtc, mtk_crtc->gce_obj.client[CLIENT_CFG]);
+		mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle, DDP_FIRST_PATH, 0);
+
+		cmdq_pkt_clear_event(cmdq_handle, mtk_crtc->gce_obj.event[EVENT_STREAM_BLOCK]);
+		cmdq_pkt_wfe(cmdq_handle, mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
+		cmdq_pkt_flush(cmdq_handle);
+		cmdq_pkt_destroy(cmdq_handle);
+
+external_test:
+		DDPMSG("new_ddic_2c_test write ++\n");
+		ret = mtk_mipi_dsi_cmd(NULL, NULL, &cmd_opt, &test_cmd);
+		if (ret < 0) {
+			DDPPR_ERR("new_ddic_2c_test write fail, ret=%d\n", ret);
+			goto test_2c_done;
+		}
+		DDPMSG("new_ddic_2c_test write pass, ret=%d\n", ret);
+
+		/* delay */
+		if (rx_delay_ms)
+			mdelay(rx_delay_ms);
+
+		/* start read */
+		rx_len = cmd_num * (tx_len - 1);
+		rx_buf = vmalloc(rx_len * sizeof(u8));
+		if (!rx_buf) {
+			DDPPR_ERR("alloc rx_buf fail\n");
+			goto test_2c_done;
+		}
+		memset(rx_buf, 0, rx_len);
+		block_size = (r_flags & MTK_MIPI_DSI_CMD_BY_CPU) ? rx_len_block_cpu : rx_len_block_gce;
+		rx_msg.rx_buf = vmalloc(block_size * sizeof(u8));
+		if (!rx_msg.rx_buf) {
+			DDPPR_ERR("alloc rx_msg.rx_buf fail\n");
+			vfree(rx_buf);
+			goto test_2c_done;
+		}
+		memset(rx_msg.rx_buf, 0, block_size);
+		r_block_num = rx_len / block_size;
+		DDPMSG("new_ddic_2c_test start read: rx_len=%d, block_sz=%d block_num=%d\n",
+			rx_len, block_size, r_block_num);
+
+		for (read_cnt = 0; read_cnt < r_block_num; read_cnt++) {
+			rx_msg.rx_len = block_size;
+			rx_msg.tx_buf = read_cnt == 0 ? &r_start_addr_2e : &r_cont_addr_3e;
+			rx_test_cmd.is_rd = 1;
+			rx_test_cmd.read_scn = READ_COMMON_SCN;
+			rx_test_cmd.transfer_mode = PACKET_LP_MODE;
+			rx_test_cmd.cmd_msg = &rx_msg;
+
+			cmd_opt.flags = r_flags;
+			cmd_opt.crtc_id = 0;
+			if (log_en)
+				DDPMSG("new_ddic_2c_test read part1 %d ++\n", read_cnt);
+
+			ret = mtk_mipi_dsi_cmd(NULL, NULL, &cmd_opt, &rx_test_cmd);
+			if (ret < 0) {
+				DDPPR_ERR("new_ddic_2c_test read fail %d, ret=%d\n", read_cnt, ret);
+				vfree(rx_buf);
+				vfree(rx_msg.rx_buf);
+				goto test_2c_done;
+			}
+			if (log_en)
+				DDPMSG("new_ddic_2c_test read part1 %d pass, ret=%d\n", read_cnt, ret);
+
+			memcpy(rx_buf + (read_cnt * block_size), rx_msg.rx_buf, block_size);
+			memset(rx_msg.rx_buf, 0, block_size);
+		}
+
+		if (rx_len % block_size) {
+			int rd_size = rx_len % block_size;
+
+			rx_msg.rx_len = rd_size;
+			rx_msg.tx_buf = &r_cont_addr_3e;
+			rx_test_cmd.is_rd = 1;
+			rx_test_cmd.read_scn = READ_COMMON_SCN;
+			rx_test_cmd.transfer_mode = PACKET_LP_MODE;
+			rx_test_cmd.cmd_msg = &rx_msg;
+
+			cmd_opt.flags = r_flags;
+			cmd_opt.crtc_id = 0;
+			if (log_en)
+				DDPMSG("new_ddic_2c_test read part2 read_size=%d ++\n", rd_size);
+
+			ret = mtk_mipi_dsi_cmd(NULL, NULL, &cmd_opt, &rx_test_cmd);
+			if (ret < 0) {
+				DDPPR_ERR("new_ddic_2c_test read fail part2, ret=%d\n", ret);
+				vfree(rx_buf);
+				vfree(rx_msg.rx_buf);
+				goto test_2c_done;
+			}
+
+			if (log_en)
+				DDPMSG("new_ddic_2c_test read part2 pass, ret=%d\n", ret);
+			memcpy(rx_buf + (r_block_num * block_size), rx_msg.rx_buf, rd_size);
+		}
+
+		if (need_lock) {
+			mtk_crtc_pkt_create(&cmdq_handle, crtc, mtk_crtc->gce_obj.client[CLIENT_CFG]);
+			cmdq_pkt_set_event(cmdq_handle, mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
+			cmdq_pkt_set_event(cmdq_handle, mtk_crtc->gce_obj.event[EVENT_STREAM_BLOCK]);
+			cmdq_pkt_flush(cmdq_handle);
+			cmdq_pkt_destroy(cmdq_handle);
+
+			DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+			DDP_COMMIT_UNLOCK(&priv->commit.lock, __func__, __LINE__);
+
+			DDPMSG("new_ddic_2c_test write release lock\n");
+		}
+		if (log_en) {
+			for (i = 0; i < rx_len; i++)
+				DDPMSG("new_ddic_2c_test read dump, addr=0x%x, rx_data[%d] = 0x%x\n",
+					addr, i, rx_buf[i]);
+		}
+
+		/* W & R compare */
+		for (i = 0; i < cmd_num; i++) {
+			int idx = i * (tx_len - 1);
+
+			for (j = 1; j < tx_len; j++) {
+				if (log_en)
+					DDPMSG("compare: tx_buf[%d][%d]=0x%x, rx_buf[%d]=0x%x\n",
+						i, j, tx_buf[i][j], idx + (j - 1), rx_buf[idx + (j - 1)]);
+				else if ((i == 0 && j == 1) ||
+					(i == 0 && j == (tx_len - 1)) ||
+					(i == (cmd_num - 1) && j == 1) ||
+					(i == (cmd_num - 1) && j == (tx_len - 1))){
+					DDPMSG("compare: tx_buf[%d][%d]=0x%x, rx_buf[%d]=0x%x\n",
+						i, j, tx_buf[i][j], idx + (j - 1), rx_buf[idx + (j - 1)]);
+				}
+				if (tx_buf[i][j] != rx_buf[idx + (j - 1)]) {
+					test_pass = false;
+					DDPPR_ERR("new_ddic_2c_test W/R fail, tx_buf[%d][%d]=0x%x, rx_buf[%d]=0x%x\n",
+						i, j, tx_buf[i][j], idx + (j - 1), rx_buf[idx + (j - 1)]);
+				}
+			}
+		}
+		if (test_pass)
+			DDPMSG("new_ddic_2c_test read pass\n");
+		else
+			DDPMSG("new_ddic_2c_test read fail\n");
+		vfree(rx_buf);
+test_2c_done:
+		for (j = 0; j < cmd_num; j++)
+			vfree(tx_buf[j]);
+		vfree(tx_buf);
+	} else if (strncmp(opt, "2c_init:", 8) == 0) {
+		#define REGFLAG_MDELAY 0x0
+		int i;
+		int ret = 0;
+		struct mtk_dsi_cmd_option cmd_opt = { 0 };
+		static struct mtk_panel_para_table frame_3c_code[] = {
+			{0x02,{0xFE, 0x00}},
+			{0x01,{0x28}},
+			{REGFLAG_MDELAY,{100}},
+			{0x01,{0x32}},
+
+			{0x02,{0xFE, 0xE3}},
+			{0x02,{0x6C, 0x5A}},
+			{0x02,{0x6D, 0xA5}},
+			{0x02,{0xFE, 0xA1}},
+			{0x02,{0xCF, 0x22}},
+			{0x02,{0xFE, 0xD4}},
+			{0x02,{0x87, 0x01}},
+			{0x02,{0x5F, 0x05}},
+			{0x02,{0xFE, 0xFD}},
+			{0x02,{0x86, 0x01}},
+			{0x02,{0xFE, 0xFD}},
+			{0x02,{0x9C, 0x61}},
+			{0x02,{0x78, 0x01}},
+			{0x02,{0xFE, 0x42}},
+			{0x02,{0x51, 0x04}},
+			{0x02,{0x52, 0x63}},
+			{0x02,{0x53, 0x40}},
+			{0x02,{0xFE, 0x40}},
+			{0x02,{0xA3, 0x06}},
+			{0x02,{0xFE, 0xD1}},
+			{0x02,{0xC6, 0x08}},
+			{0x02,{0xFE, 0xD1}},
+			{0x02,{0xC6, 0x00}},
+			{0x02,{0xFE, 0xD1}},
+			{0x02,{0xCE, 0x17}},
+		};
+
+		static struct mipi_dsi_msg cmd_msg[ARRAY_SIZE(frame_3c_code)] = { 0 };
+
+		for (i = 0; i < ARRAY_SIZE(frame_3c_code); i++) {
+			cmd_msg[i].tx_len= frame_3c_code[i].count;
+			cmd_msg[i].tx_buf = frame_3c_code[i].para_list;
+		};
+
+		struct mtk_dsi_cmd_msg init_code= {
+			.is_package = 0,
+			.cmd_num = ARRAY_SIZE(frame_3c_code),
+			.transfer_mode = PACKET_LP_MODE,
+			.cmd_msg = cmd_msg,
+		};
+
+		cmd_opt.flags = MTK_MIPI_DSI_CRTC_ID | MTK_MIPI_DSI_CMD_KICK_IDLE |
+			MTK_MIPI_DSI_CMD_NEED_LOCK | MTK_MIPI_DSI_CMD_BY_CPU;
+		cmd_opt.crtc_id = 0;
+
+		DDPMSG("hc3 3c_init ++\n");
+		ret = mtk_mipi_dsi_cmd(NULL, NULL, &cmd_opt, &init_code);
+		if (ret)
+			DDPMSG("hc3 3c_init fail\n");
+
+		DDPMSG("hc3 3c_init pass\n");
 	}
 }
 

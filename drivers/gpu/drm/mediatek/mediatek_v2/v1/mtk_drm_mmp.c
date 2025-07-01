@@ -252,6 +252,14 @@ void init_crtc_mmp_event(void)
 			crtc_mmp_root, "backlight_grp");
 		g_CRTC_MMP_Events[i].ddic_send_cmd = mmprofile_register_event(
 			crtc_mmp_root, "ddic_send_cmd");
+		g_CRTC_MMP_Events[i].ddic_cmd_v2_interval = mmprofile_register_event(
+			crtc_mmp_root, "ddic_cmd_v2_interval");
+		g_CRTC_MMP_Events[i].ddic_cmd_v2_tag = mmprofile_register_event(
+			crtc_mmp_root, "ddic_cmd_v2_tag");
+		g_CRTC_MMP_Events[i].ddic_cmd_v2_msg = mmprofile_register_event(
+			crtc_mmp_root, "ddic_cmd_v2_msg");
+		g_CRTC_MMP_Events[i].ddic_cmd_v2_pg_chg = mmprofile_register_event(
+			crtc_mmp_root, "ddic_cmd_v2_pg_chg");
 		g_CRTC_MMP_Events[i].ddic_read_cmd = mmprofile_register_event(
 			crtc_mmp_root, "ddic_read_cmd");
 		g_CRTC_MMP_Events[i].path_switch = mmprofile_register_event(
