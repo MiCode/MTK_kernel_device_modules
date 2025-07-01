@@ -2412,13 +2412,9 @@ static int mtk_mipi_tx_pll_dphy_config_mt6993(struct mtk_mipi_tx *mipi_tx)
 
 	if (mipi_tx->sw_ver == B0_CHIP) {
 		mtk_mipi_tx_update_bits(mipi_tx, MIPITX_VOLTAGE_SEL_MT6983,
-			FLD_RG_DSI_PRD_REF_SEL, 0x1);
+			FLD_RG_DSI_PRD_REF_SEL, 0x0);
 	} else {
-		if (rate < 2500)
-			mtk_mipi_tx_update_bits(mipi_tx, MIPITX_VOLTAGE_SEL_MT6983,
-				FLD_RG_DSI_PRD_REF_SEL, 0x7);
-		else
-			mtk_mipi_tx_update_bits(mipi_tx, MIPITX_VOLTAGE_SEL_MT6983,
+		mtk_mipi_tx_update_bits(mipi_tx, MIPITX_VOLTAGE_SEL_MT6983,
 				FLD_RG_DSI_PRD_REF_SEL, 0x7);
 	}
 
