@@ -927,6 +927,11 @@ static void mtk_ovl_exdma_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handl
 	struct mtk_disp_ovl_exdma *exdma = comp_to_ovl_exdma(comp);
 	const u16 *regs = exdma->data->regs;
 	const u32 *reg_fld = exdma->data->reg_fld;
+	unsigned int i;
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	struct drm_crtc *crtc = &mtk_crtc->base;
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
+	unsigned long crtc_idx = (unsigned long)drm_crtc_index(crtc);
 
 	DDPDBG("%s+ %s\n", __func__, mtk_dump_comp_str(comp));
 
@@ -938,6 +943,11 @@ static void mtk_ovl_exdma_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handl
 
 	mtk_ovl_exdma_all_layer_off(comp, handle, 0);
 
+	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BWM20) &&
+			(crtc_idx == 0)) {
+		for (i = 0; i < 4; i++)
+			memset(&comp->layer_srt[i], 0, sizeof(struct mtk_exdma_srt_bw));
+	}
 	comp->qos_bw = 0;
 	comp->qos_bw_other = 0;
 	comp->fbdc_bw = 0;
@@ -3035,8 +3045,8 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 		temp_peak_bw = temp_peak_bw * vrefresh;
 		do_div(temp_peak_bw, 1000);
 
-		DDPDBG("comp %d lye %u bw %llu peak %llu vtotal:%d vact:%d\n",
-			comp->id, lye_idx, temp_bw, temp_peak_bw, vtotal, vact);
+		DDPDBG_BWM("comp %d alloc_id:%u lye %u bw %llu peak %llu vtotal:%d vact:%d\n",
+			comp->id, alloc_id, lye_idx, temp_bw, temp_peak_bw, vtotal, vact);
 
 		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BW_MONITOR) &&
 			(crtc_idx == 0) && (pending->prop_val[PLANE_PROP_COMPRESS]) &&
@@ -3108,7 +3118,7 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 			if (temp_bw <= 0)
 				temp_bw = 1;
 
-			DDPINFO("BWM:frame idx:%u alloc id:%lu key:%llu lye_idx:%u bw:%llu(%llu)\n",
+			DDPDBG_BWM("BWM:frame idx:%u alloc_id:%lu key:%llu lye_idx:%u bw:%llu(%llu)\n",
 					frame_idx, alloc_id, key, idx, temp_bw, temp_bw_old);
 		}
 
@@ -3118,7 +3128,13 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 			temp_bw = 0;
 			temp_peak_bw = 0;
 		}
-		comp->qos_bw = temp_bw;
+		comp->layer_srt[lye_idx + ext_lye_idx].srt_bw = temp_bw;
+		comp->layer_srt[lye_idx + ext_lye_idx].alloc_id = alloc_id;
+		DDPINFO("%s idx:%u,%u bw:%u alloc_id:%u\n",
+			mtk_dump_comp_str(comp), lye_idx, ext_lye_idx, temp_bw, alloc_id);
+
+		/* consider ext layer, need use += not = */
+		comp->qos_bw += temp_bw;
 		comp->hrt_bw = temp_peak_bw;
 	}
 
@@ -4207,6 +4223,45 @@ static int mtk_ovl_calc_layer_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int
 	return total;
 }
 
+static void mtk_bwm_update_comp_compr_bw(struct mtk_drm_crtc *mtk_crtc,
+		struct mtk_ddp_comp *comp)
+{
+	struct mtk_drm_private *priv = NULL;
+	unsigned int crtc_idx, idx, i, compr_ratio, alloc_id, srt_bw, tmp_bw = 0;
+
+	if (IS_ERR_OR_NULL(mtk_crtc))
+		return;
+
+	crtc_idx = drm_crtc_index(&mtk_crtc->base);
+	priv = mtk_crtc->base.dev->dev_private;
+
+	if (IS_ERR_OR_NULL(priv) ||
+		!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BWM20) || (crtc_idx != 0))
+		return;
+
+	for(idx = 0; idx < 4; idx++) {
+		compr_ratio = 0;
+		alloc_id = comp->layer_srt[idx].alloc_id;
+		srt_bw = comp->layer_srt[idx].srt_bw;
+		if (!alloc_id || !srt_bw)
+			continue;
+
+		/* BWM1.0 already apply in layer_config, this function only apply BWM2.0 */
+		for (i = 0; i < MAX_LAYER_RATIO_NUMBER; i++) {
+			if (alloc_id == all_layer_compress_ratio_table[i].key_value &&
+				all_layer_compress_ratio_table[i].active)
+				compr_ratio = all_layer_compress_ratio_table[i].average_ratio;
+		}
+		if (!compr_ratio || compr_ratio > 1000)
+			compr_ratio = 1000;
+
+		tmp_bw += srt_bw * compr_ratio / 1000;
+		DDPINFO("%s %s idx:%u ratio:%u tmp_bw:%u alloc_id:%u\n", __func__,
+			mtk_dump_comp_str_id(comp->id), idx, compr_ratio, tmp_bw, alloc_id);
+	}
+	comp->qos_bw = tmp_bw;
+}
+
 static void mtk_ovl_backup_info_cmp(struct mtk_ddp_comp *comp, bool *compare)
 {
 	struct mtk_disp_ovl_exdma *exdma = comp_to_ovl_exdma(comp);
@@ -4730,6 +4785,7 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 		}
 
 		if (!force_update && !update_pending) {
+			mtk_bwm_update_comp_compr_bw(mtk_crtc, comp);
 			mtk_crtc->total_srt += comp->qos_bw;
 			if (channel_id < 4)
 				priv->srt_channel_bw_sum[crtc_idx][channel_id] += comp->qos_bw;
@@ -4742,13 +4798,8 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 		__mtk_disp_set_module_srt(comp->qos_req, comp->id, comp->qos_bw, 0,
 					    DISP_BW_NORMAL_MODE, priv->data->real_srt_ostdl);
 		comp->last_qos_bw = comp->qos_bw;
-		if (!force_update && update_pending) {
-			mtk_crtc->total_srt += comp->qos_bw;
-			if (channel_id < 4)
-				priv->srt_channel_bw_sum[crtc_idx][channel_id] += comp->qos_bw;
-		}
 
-		DDPINFO("update ovl qos bw to %u, %u peak %u %u\n",
+		DDPINFO("update ovl qos bw to %u %u, peak %u %u\n",
 			comp->qos_bw, comp->qos_bw_other, comp->hrt_bw, comp->hrt_bw_other);
 		break;
 	}

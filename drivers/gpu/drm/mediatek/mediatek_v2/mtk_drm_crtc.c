@@ -11266,12 +11266,6 @@ void mtk_bwm_get_compress_ratio(struct drm_crtc *crtc,
 	} else
 		DDPINFO("bwm can't get lye_blob for update hrt\n");
 
-	for (i = 0; i < MAX_LAYER_RATIO_NUMBER; i++) {
-		if (all_layer_compress_ratio_table[i].dirty)
-			memset(&all_layer_compress_ratio_table[i], 0,
-				sizeof(struct layer_compress_ratio_item));
-	}
-
 	return;
 }
 
@@ -19183,7 +19177,7 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 		drm_atomic_get_old_crtc_state(atomic_state, crtc);
 	int index = drm_crtc_index(crtc);
 	struct mtk_ddp_comp *comp;
-	int i, j;
+	int i, j, idx;
 	unsigned int crtc_idx = drm_crtc_index(crtc);
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	/*Msync 2.0*/
@@ -19552,6 +19546,11 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 		goto end;
 
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
+		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BWM20) &&
+			(index == 0) && (mtk_ddp_comp_get_type(comp->id) == MTK_OVL_EXDMA)) {
+			for (idx = 0; idx < 4; idx++)
+				memset(&comp->layer_srt[idx], 0, sizeof(struct mtk_exdma_srt_bw));
+		}
 		comp->qos_bw = 0;
 		comp->qos_bw_other = 0;
 		comp->fbdc_bw = 0;
@@ -19562,6 +19561,11 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 		goto end;
 
 	for_each_comp_in_dual_pipe(comp, mtk_crtc, i, j) {
+		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BWM20) &&
+			(index == 0) && (mtk_ddp_comp_get_type(comp->id) == MTK_OVL_EXDMA)) {
+			for (idx = 0; idx < 4; idx++)
+				memset(&comp->layer_srt[idx], 0, sizeof(struct mtk_exdma_srt_bw));
+		}
 		comp->qos_bw = 0;
 		comp->qos_bw_other = 0;
 		comp->fbdc_bw = 0;
@@ -21002,9 +21006,6 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 		if (ret)
 			DDPMSG("Wait event result ret %d\n", ret);
 	}
-	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BWM20) &&
-		(crtc_index == 0))
-		mtk_bwm_get_compress_ratio(crtc, priv, cmdq_handle);
 
 	mtk_vidle_user_power_release_by_gce(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle);
 
@@ -22361,6 +22362,9 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 		mtk_drm_crtc_disable_fake_layer(crtc, old_crtc_state);
 		mtk_crtc->fake_layer.first_dis = false;
 	}
+	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BWM20) &&
+		(index == 0))
+		mtk_bwm_get_compress_ratio(crtc, priv, cmdq_handle);
 
 	if (!only_output) {
 		unsigned int cmp_id = DDP_COMPONENT_ID_MAX;

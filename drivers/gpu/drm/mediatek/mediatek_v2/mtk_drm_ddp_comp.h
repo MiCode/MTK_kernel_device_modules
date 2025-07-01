@@ -1527,6 +1527,11 @@ struct mtk_ddp_fb_info {
 	struct mtk_drm_gem_obj *fb_gem;
 };
 
+struct mtk_exdma_srt_bw {
+	unsigned int alloc_id;
+	unsigned int srt_bw;
+};
+
 struct mtk_ddp_comp_funcs {
 	void (*config)(struct mtk_ddp_comp *comp, struct mtk_ddp_config *cfg,
 		       struct cmdq_pkt *handle);
@@ -1633,6 +1638,7 @@ struct mtk_ddp_comp {
 	u32 last_hdr_bw;
 	u32 last_stash_bw;
 	u32 last_hdr_stash_bw;
+	struct mtk_exdma_srt_bw layer_srt[4];
 	u32 layer_idx_bit;
 	bool in_scaling_path;
 	struct mtk_ddp_comp *bind_comp;
