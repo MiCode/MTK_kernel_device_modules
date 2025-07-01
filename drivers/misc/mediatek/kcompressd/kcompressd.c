@@ -43,7 +43,7 @@ static int kcompressd(void *para)
 {
 	struct task_struct *tsk = current;
 	struct kcompressd_para *p = (struct kcompressd_para *)para;
-	//unsigned long pflags;
+	unsigned long pflags;
 
 	tsk->flags |= PF_MEMALLOC | PF_KSWAPD;
 	set_freezable();
@@ -52,17 +52,18 @@ static int kcompressd(void *para)
 		atomic_set(p->running, 0);
 		wait_event_interruptible(*p->kcompressd_wait, !kfifo_is_empty(p->write_fifo));
 		atomic_set(p->running, 1);
+
+		psi_memstall_enter(&pflags);
 		while (!kfifo_is_empty(p->write_fifo)) {
 			struct write_work entry;
 
-			// psi_memstall_enter(&pflags);
 			if (sizeof(struct write_work) == kfifo_out(p->write_fifo,
 						&entry, sizeof(struct write_work))) {
 				entry.cb(entry.mem, entry.bio);
 				bio_put(entry.bio);
 			}
-			// psi_memstall_leave(&pflags);
 		}
+		psi_memstall_leave(&pflags);
 	}
 
 	tsk->flags &= ~(PF_MEMALLOC | PF_KSWAPD);
