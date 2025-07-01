@@ -2086,12 +2086,10 @@ static const struct mtk_mux vlp_top_muxes[] = {
 		VLP_CLK_CFG_UPDATE/* upd ofs */, TOP_MUX_SSR_RNG_SHIFT/* upd shift */),
 #else
 	/* VLP_CLK_CFG_0 */
-	MUX_GATE_FENC_CLR_SET_UPD_NCHK(CLK_VLP_TOP_SCP_SEL/* dts */, "vlp_scp_sel",
+	MUX_CLR_SET_UPD_FENC_NCHK(CLK_VLP_TOP_SCP_SEL/* dts */, "vlp_scp_sel",
 		vlp_scp_parents/* parent */, VLP_CLK_CFG_0, VLP_CLK_CFG_0_SET,
 		VLP_CLK_CFG_0_CLR/* set parent */, 0/* lsb */, 4/* width */,
-		7/* pdn */, VLP_CLK_CFG_UPDATE/* upd ofs */,
-		TOP_MUX_SCP_SHIFT/* upd shift */, VLP_OCIC_FENC_STATUS_MON_0/* fenc ofs */,
-		31/* fenc shift */),
+		VLP_CLK_CFG_UPDATE/* upd ofs */, TOP_MUX_SCP_SHIFT/* upd shift */),
 	MUX_CLR_SET_UPD_FENC_NCHK(CLK_VLP_TOP_PWRAP_ULPOSC_SEL/* dts */, "vlp_pwrap_ulposc_sel",
 		vlp_pwrap_ulposc_parents/* parent */, VLP_CLK_CFG_0, VLP_CLK_CFG_0_SET,
 		VLP_CLK_CFG_0_CLR/* set parent */, 8/* lsb */, 3/* width */,
