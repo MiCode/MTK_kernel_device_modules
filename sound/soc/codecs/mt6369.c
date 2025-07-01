@@ -577,7 +577,18 @@ static int mt6369_put_volsw(struct snd_kcontrol *kcontrol,
 		(struct soc_mixer_control *)kcontrol->private_value;
 	unsigned int reg = 0;
 	int index = ucontrol->value.integer.value[0];
-	int ret;
+	int indexr = ucontrol->value.integer.value[1];
+	int ret = 0;
+
+	/* prevent hp_disable between L/R hp volume setting */
+	if (index == 0x1f) {
+		dev_info(priv->dev, "%s(), name %s, set index = %x, index fail, align R channel index = %x\n",
+		 __func__, kcontrol->id.name, index, indexr);
+
+		ucontrol->value.integer.value[0] = ucontrol->value.integer.value[1];
+		index = ucontrol->value.integer.value[0];
+	}
+
 
 	ret = mt6369_snd_soc_put_volsw(kcontrol, ucontrol);
 	if (ret < 0)
@@ -2856,7 +2867,7 @@ static int mt_ul_src_dmic_event(struct snd_soc_dapm_widget *w,
 				     0x80);
 
 		regmap_update_bits(priv->regmap, MT6369_AFE_UL_SRC_CON1,
-				   0xf7, 0x0);
+				   0xf4, 0x0);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
 		regmap_write(priv->regmap,
@@ -3047,8 +3058,8 @@ static int mt_pga_l_event(struct snd_soc_dapm_widget *w,
 		return -EINVAL;
 	}
 
-	/* if vow is enabled, always set volume as 4(24dB) */
-	mic_gain_l = priv->vow_enable ? 4 :
+	/* if vow is enabled, always set volume as 3(18dB) */
+	mic_gain_l = priv->vow_enable ? 3 :
 		     priv->ana_gain[AUDIO_ANALOG_VOLUME_MICAMP1];
 	dev_dbg(priv->dev, "%s(), event = 0x%x, mic_type %d, mic_gain_l %d, mux_pga %d\n",
 		__func__, event, mic_type, mic_gain_l, mux_pga);
@@ -4831,7 +4842,7 @@ static unsigned int update_trim_code(const bool is_negative,
 static void calculate_lr_finetrim_code(struct mt6369_priv *priv)
 {
 	struct hp_trim_data *hp_trim = &priv->hp_trim_3_pole;
-	unsigned int reg_value;
+	unsigned int reg_value = 0;
 
 	int finetrim_l[TRIM_STEP_NUM - 2] = {0, 0};
 	int finetrim_r[TRIM_STEP_NUM - 2] = {0, 0};
@@ -4910,7 +4921,7 @@ static void calculate_lr_trim_code(struct mt6369_priv *priv)
 
 	unsigned int hpl_trim_code, hpr_trim_code;
 	bool hpl_negative, hpr_negative;
-	unsigned int reg_value;
+	unsigned int reg_value = 0;
 
 	dev_info(priv->dev, "%s(), Start DCtrim Calibrating\n", __func__);
 
@@ -5050,7 +5061,7 @@ static void get_hp_trim_offset(struct mt6369_priv *priv, bool force)
 #if !IS_ENABLED(CONFIG_FPGA_EARLY_PORTING)
 	struct dc_trim_data *dc_trim = &priv->dc_trim;
 	struct hp_trim_data *hp_trim_3_pole = &priv->hp_trim_3_pole;
-	unsigned int reg_value;
+	unsigned int reg_value = 0;
 
 	if (dc_trim->calibrated && !force)
 		return;
@@ -5203,7 +5214,7 @@ static int detect_impedance(struct mt6369_priv *priv)
 	int dc_sum = 0, detect_sum = 0;
 	int pick_impedance = 0, impedance = 0, phase_flag = 0;
 	int cur_dc = 0;
-	unsigned int value;
+	unsigned int value = 0;
 
 	/* params by chip */
 	int auxcable_impedance = 5000;
@@ -5455,6 +5466,8 @@ static void *get_vow_coeff_by_name(struct mt6369_priv *priv,
 		return &(priv->reg_afe_vow_vad_cfg4);
 	else if (strcmp(name, "Audio VOWCFG5 Data") == 0)
 		return &(priv->reg_afe_vow_vad_cfg5);
+	else if (strcmp(name, "Audio_Vow_SINGLE_MIC_Select") == 0)
+		return &(priv->vow_single_mic_select);
 	else if (strcmp(name, "Audio_VOW_Periodic") == 0)
 		return &(priv->reg_afe_vow_periodic);
 	else if (strcmp(name, "Audio_VOW_Periodic_Param") == 0)
@@ -5548,6 +5561,9 @@ static const struct snd_kcontrol_new mt6369_snd_vow_controls[] = {
 		       SND_SOC_NOPM, 0, 0x80000, 0,
 		       audio_vow_cfg_get, audio_vow_cfg_set),
 	SOC_SINGLE_EXT("Audio VOWCFG5 Data",
+		       SND_SOC_NOPM, 0, 0x80000, 0,
+		       audio_vow_cfg_get, audio_vow_cfg_set),
+	SOC_SINGLE_EXT("Audio_Vow_SINGLE_MIC_Select",
 		       SND_SOC_NOPM, 0, 0x80000, 0,
 		       audio_vow_cfg_get, audio_vow_cfg_set),
 	SOC_SINGLE_EXT("Audio_VOW_Periodic",
