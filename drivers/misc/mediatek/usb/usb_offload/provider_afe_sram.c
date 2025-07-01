@@ -83,9 +83,7 @@ static int afe_init(struct uo_provider *itself)
 {
 	int ret = 0;
 
-	// workaround for switching to ddk
-	/*afe_intf = mtk_audio_usb_offload_register_ops(itself->dev);*/
-	afe_intf = NULL;
+	afe_intf = mtk_audio_usb_offload_register_ops(itself->dev);
 	if (!afe_intf) {
 		USB_OFFLOAD_ERR("[%s] not support audio interface\n", afe_get_name());
 		ret = -EOPNOTSUPP;

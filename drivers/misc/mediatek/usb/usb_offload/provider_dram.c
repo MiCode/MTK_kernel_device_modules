@@ -80,11 +80,9 @@ static int dram_init_rsv(struct uo_provider *itself, unsigned int size, int min_
 	case ADSP_TYPE_HIFI3:
 		ret = from_adsp(itself->dev, rsv_region);
 		break;
-#if 0
     case ADSP_TYPE_RV55:
-		ret = from_scp(itself, rsv_region);
+		ret = from_adsp(itself->dev, rsv_region);
 		break;
-#endif
     default:
 		ret = -ENOMEM;
 		USB_OFFLOAD_ERR("(%s) fail to query reserved dram, dsp_type:%d\n",
