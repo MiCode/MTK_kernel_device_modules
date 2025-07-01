@@ -2860,14 +2860,11 @@ static kal_uint32 set_test_pattern_mode(kal_bool enable)
 	LOG_INF("enable: %d\n", enable);
 
 	if (enable) {
-		if (enable == 1) {
-			write_cmos_sensor(0x0600, 0x1);
-			write_cmos_sensor(0x0602, 0x0);
-			write_cmos_sensor(0x0604, 0x0);
-			write_cmos_sensor(0x0606, 0x0);
-			write_cmos_sensor(0x0608, 0x0);
-		} else
-			write_cmos_sensor(0x0600, 0x02);
+		write_cmos_sensor(0x0600, 0x1);
+		write_cmos_sensor(0x0602, 0x0);
+		write_cmos_sensor(0x0604, 0x0);
+		write_cmos_sensor(0x0606, 0x0);
+		write_cmos_sensor(0x0608, 0x0);
 	}
 	else
 		write_cmos_sensor(0x0600, 0x00);
