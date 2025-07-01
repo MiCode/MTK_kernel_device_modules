@@ -858,27 +858,30 @@ static int mtk_venc_translation_fault_callback(
 		mtk_v4l2_err("0x13c: 0x%x, 0x484: 0x%x, 0x568: 0x%x",
 			readl(reg_base + 0x13c), readl(reg_base + 0x484), readl(reg_base + 0x568));
 
-		//soc base address as VENC_SYS
-		if (hw_id == MTK_VENC_CORE_0) {
-			mtk_v4l2_err("0x4064: 0x%x, 0x406c : 0x%x, 0x4074: 0x%x, 0x52c0: 0x%x",
-				readl(reg_base + 0x4064), readl(reg_base + 0x406c),
-				readl(reg_base + 0x4074), readl(reg_base + 0x52c0));
-		} else { // core 1 or core 2
-			reg_base = dev->enc_reg_base[VENC_SYS];
-			spin_lock_irqsave(&dev->power_check_lock[MTK_VENC_CORE_0], flags);
-			if (dev->enc_is_power_on[MTK_VENC_CORE_0] == false) {
-				mtk_v4l2_err("hw %d power is off !!", MTK_VENC_CORE_0);
-				spin_unlock_irqrestore(&dev->power_check_lock[MTK_VENC_CORE_0],
-					flags);
-				spin_unlock_irqrestore(&dev->power_check_lock[hw_id], flags);
-				return -1;
-			}
-			if (reg_base != NULL) {
+		//soc base address
+		if (dev->hw_max_count > 1) {
+			//soc base address as VENC_SYS
+			if (hw_id == MTK_VENC_CORE_0) {
 				mtk_v4l2_err("0x4064: 0x%x, 0x406c : 0x%x, 0x4074: 0x%x, 0x52c0: 0x%x",
 					readl(reg_base + 0x4064), readl(reg_base + 0x406c),
 					readl(reg_base + 0x4074), readl(reg_base + 0x52c0));
+			} else { // core 1 or core 2
+				reg_base = dev->enc_reg_base[VENC_SYS];
+				spin_lock_irqsave(&dev->power_check_lock[MTK_VENC_CORE_0], flags);
+				if (dev->enc_is_power_on[MTK_VENC_CORE_0] == false) {
+					mtk_v4l2_err("hw %d power is off !!", MTK_VENC_CORE_0);
+					spin_unlock_irqrestore(&dev->power_check_lock[MTK_VENC_CORE_0],
+						flags);
+					spin_unlock_irqrestore(&dev->power_check_lock[hw_id], flags);
+					return -1;
+				}
+				if (reg_base != NULL) {
+					mtk_v4l2_err("0x4064: 0x%x, 0x406c : 0x%x, 0x4074: 0x%x, 0x52c0: 0x%x",
+						readl(reg_base + 0x4064), readl(reg_base + 0x406c),
+						readl(reg_base + 0x4074), readl(reg_base + 0x52c0));
+				}
+				spin_unlock_irqrestore(&dev->power_check_lock[MTK_VENC_CORE_0], flags);
 			}
-			spin_unlock_irqrestore(&dev->power_check_lock[MTK_VENC_CORE_0], flags);
 		}
 	}
 
