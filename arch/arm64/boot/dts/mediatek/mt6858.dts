@@ -5778,6 +5778,23 @@ dramc: dramc@10230000 {
 			clocks = <&venc_gcon_clk CLK_VEN1_CKE1_VENC>;
 			clock-names = "MT_CG_VENC0";
 
+			/* for translation fault callback */
+			port-arg-num = <3>;
+			port-def = <0 M4U_L7_P0_RC 0>,
+				<0 M4U_L7_P1_REC 0>,
+				<0 M4U_L7_P2_BSDMA 0>,
+				<0 M4U_L7_P3_SV_COMV 0>,
+				<0 M4U_L7_P4_RD_COMV 0>,
+				<0 M4U_L7_P5_JPGENC_Y_RDMA 0>,
+				<0 M4U_L7_P6_JPGENC_C_RDMA 0>,
+				<0 M4U_L7_P7_JPGENC_Q_TABLE 0>,
+				<0 M4U_L7_P8_SUB_W_LUMA 0>,
+				<0 M4U_L7_P9_JPGENC_BSDMA 0>,
+				<0 M4U_L7_P10_CUR_LUMA 0>,
+				<0 M4U_L7_P11_CUR_CHROMA 0>,
+				<0 M4U_L7_P12_REF_LUMA 0>,
+				<0 M4U_L7_P13_REF_CHROMA 0>,
+				<0 M4U_L7_P14_SUB_R_LUMA 0>;
 			/* dvfs params */
 			dvfs-qos-ver = <1>;
 			venc-mmdvfs-in-vcp = <1>;
