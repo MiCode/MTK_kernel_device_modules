@@ -120,6 +120,17 @@
 
 
 /* =============================================================================
+ * Must add the platform id in the following macro, if the platform need to
+ * apply new MMQoS policy.
+ * Always pre-ultra
+ * Ultra 10% trigger, 5% release
+ * Urgent 20% trigger, 10% release
+ */
+#define IS_NEW_MMQOS_POLICY(id)	(			\
+				IS_MT6858(id))
+
+
+/* =============================================================================
  * Must add the platform id in the following macro, if the platform has to
  * control the clock, "CAMSYS_LARB14_CGPDN".
  */
