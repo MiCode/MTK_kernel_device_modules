@@ -14,6 +14,7 @@
 #include <mt-plat/aee.h>
 #include "../../common/mtk-base-afe.h"
 
+#define ULTRA_PCM_DUMP 1
 
 #ifdef scp_ultra_debug
 #undef scp_ultra_debug

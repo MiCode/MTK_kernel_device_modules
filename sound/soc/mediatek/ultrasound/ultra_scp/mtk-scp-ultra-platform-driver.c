@@ -41,7 +41,6 @@
 #define ultra_WAITCHECK_INTERVAL_MS (2)
 #define ultra_ipi_send(msg_id, polling_mode, payload_len, payload, need_ack) \
 	ultra_ipi_send_msg(msg_id, polling_mode, payload_len, payload, need_ack, 0)
-static bool ultra_ipi_wait;
 static struct wakeup_source *ultra_suspend_lock;
 static bool pcm_dump_switch;
 static bool pcm_dump_on;
@@ -277,6 +276,7 @@ bool ultra_ipi_rceive_ack(unsigned int msg_id,
 	case AUDIO_TASK_USND_MSG_ID_START:
 	case AUDIO_TASK_USND_MSG_ID_STOP:
 	case AUDIO_TASK_USND_MSG_ID_PCMDUMP_OK:
+	case AUDIO_TASK_USND_MSG_ID_PCMDUMP_ON:
 		result = true;
 		break;
 	default:
@@ -314,7 +314,6 @@ static int mtk_scp_ultra_dump_set(struct snd_kcontrol *kcontrol,
 	//struct mtk_base_scp_ultra_mem *ultra_mem = &scp_ultra->ultra_mem;
 	struct mtk_base_afe *afe = get_afe_base();
 
-	int timeout = 0;
 	int payload[3];
 
 	dev_dbg(scp_ultra->dev, "%s(), value = %ld, dump_flag = %d\n",
@@ -335,24 +334,17 @@ static int mtk_scp_ultra_dump_set(struct snd_kcontrol *kcontrol,
 					 true,
 					 3,
 					 &payload[0],
-					 ULTRA_IPI_BYPASS_ACK);
-		ultra_ipi_wait = true;
+					 ULTRA_IPI_NEED_ACK);
 	} else if (ultra_dump->dump_flag == true &&
 		   ucontrol->value.integer.value[0] == 0) {
 		ultra_dump->dump_flag = false;
 		pcm_dump_switch = false;
 
-		while (ultra_ipi_wait) {
-			msleep(ultra_WAITCHECK_INTERVAL_MS);
-			if (timeout++ >= ultra_IPIMSG_TIMEOUT)
-				ultra_ipi_wait = false;
-		}
-
 		ultra_ipi_send(AUDIO_TASK_USND_MSG_ID_PCMDUMP_OFF,
 					 true,
 					 0,
 					 NULL,
-					 ULTRA_IPI_BYPASS_ACK);
+					 ULTRA_IPI_NEED_ACK);
 		/* scp ultra dump buffer use dram */
 		if (afe->release_dram_resource)
 			afe->release_dram_resource(afe->dev);
@@ -692,7 +684,7 @@ static int mtk_scp_ultra_pcm_open(struct snd_soc_component *component,
 		if (afe->request_dram_resource)
 			afe->request_dram_resource(afe->dev);
 #ifdef ULTRA_PCM_DUMP
-		ultra_start_engine_thread();
+		ultra_start_dump();
 #endif
 		pcm_dump_on = true;
 	}
@@ -800,7 +792,7 @@ static int mtk_scp_ultra_pcm_close(struct snd_soc_component *component,
 		if (afe->release_dram_resource)
 			afe->release_dram_resource(afe->dev);
 #ifdef ULTRA_PCM_DUMP
-		ultra_stop_engine_thread();
+		ultra_stop_dump();
 #endif
 		pcm_dump_on = false;
 	}
@@ -870,7 +862,7 @@ static int mtk_scp_ultra_pcm_new(struct snd_soc_component *component)
 	}
 	ultra_ipi_register(ultra_ipi_rx_internal, ultra_ipi_rceive_ack);
 #ifdef ULTRA_PCM_DUMP
-	audio_ipi_client_ultra_init();
+	ultra_dump_init();
 #endif
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
 	scp_A_register_notify(&usnd_scp_recover_notifier);
