@@ -187,6 +187,19 @@ int mtk_dprec_mmp_dump_ovl_layer(struct mtk_plane_state *plane_state);
 #define DISP_REG_OVL_LC_SRC_SIZE (0x288UL)
 #define DISP_REG_OVL_LC_OFFSET (0x28cUL)
 #define DISP_REG_OVL_LC_SRC_SEL (0x290UL)
+
+/* pqout_ufodin_loop */
+#define FLD_OVL_CONST_LAYER_SEL		REG_FLD_MSB_LSB(2, 0)
+#define FLD_OVL_LC_SA_SEL			REG_FLD_MSB_LSB(17, 16)
+#define FLD_OVL_LC_SRGB_SEL			REG_FLD_MSB_LSB(19, 18)
+#define FLD_OVL_LC_DA_SEL			REG_FLD_MSB_LSB(21, 20)
+#define FLD_OVL_LC_DRGB_SEL			REG_FLD_MSB_LSB(23, 22)
+#define FLD_OVL_LC_SA_SEL_EXT		REG_FLD_MSB_LSB(24, 24)
+#define FLD_OVL_LC_SRGB_SEL_EXT		REG_FLD_MSB_LSB(25, 25)
+#define FLD_OVL_LC_DA_SEL_EXT		REG_FLD_MSB_LSB(26, 26)
+#define FLD_OVL_LC_DRGB_SEL_EXT		REG_FLD_MSB_LSB(27, 27)
+#define FLD_OVL_SURFL_EN			REG_FLD_MSB_LSB(31, 31)
+
 #define DISP_REG_OVL_BANK_CON (0x29cUL)
 #define DISP_REG_OVL_DEBUG_MON_SEL (0x1D4UL)
 #define DISP_REG_OVL_RDMA_GREQ_NUM (0x1F8UL)
@@ -2969,6 +2982,38 @@ static void mtk_ovl_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 		}
 	}
 
+	if (ovl->data->pqout_ufodin_loop &&
+		(state->comp_state.layer_caps & MTK_DISP_RSZ_LAYER)) {
+		value = 0;
+		mask = 0;
+		SET_VAL_MASK(value, mask, (lye_idx + 1), FLD_OVL_CONST_LAYER_SEL);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_REG_OVL_LC_SRC_SEL, value, mask);
+		value = 0;
+		mask = 0;
+		SET_VAL_MASK(value, mask, alpha, L_CON_FLD_APHA);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DISP_REG_OVL_LC_CON, value, mask);
+
+		value = 0;
+		mask = 0;
+		SET_VAL_MASK(value, mask, 1, FLD_OVL_SURFL_EN);
+		SET_VAL_MASK(value, mask, 0, FLD_OVL_LC_SA_SEL);
+		if (pixel_blend_mode == DRM_MODE_BLEND_COVERAGE)
+			SET_VAL_MASK(value, mask, 2, FLD_OVL_LC_SRGB_SEL);
+		else
+			SET_VAL_MASK(value, mask, 0, FLD_OVL_LC_SRGB_SEL);
+		if (pixel_blend_mode == DRM_MODE_BLEND_PIXEL_NONE)
+			SET_VAL_MASK(value, mask, 1, FLD_OVL_LC_DRGB_SEL);
+		else
+			SET_VAL_MASK(value, mask, 3, FLD_OVL_LC_DRGB_SEL);
+		SET_VAL_MASK(value, mask, 1, FLD_OVL_LC_SA_SEL_EXT);
+		SET_VAL_MASK(value, mask, 1, FLD_OVL_LC_SRGB_SEL_EXT);
+		SET_VAL_MASK(value, mask, 1, FLD_OVL_LC_DRGB_SEL_EXT);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_REG_OVL_LC_SRC_SEL, value, mask);
+	}
+
 #define _LAYER_CONFIG_FMT \
 	"%s %s idx:%d lye_idx:%d ext_idx:%d en:%d fmt:0x%x " \
 	"addr:0x%lx compr:%d con:0x%x offset:0x%x lye_cap:%x mml:%d\n"
@@ -4134,6 +4179,7 @@ static int _ovl_UFOd_in(struct mtk_ddp_comp *comp, int connect,
 			struct cmdq_pkt *handle)
 {
 	unsigned int value = 0, mask = 0;
+	struct mtk_disp_ovl *ovl = comp_to_ovl(comp);
 
 	if (!connect) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
@@ -4144,7 +4190,10 @@ static int _ovl_UFOd_in(struct mtk_ddp_comp *comp, int connect,
 	}
 
 	SET_VAL_MASK(value, mask, 2, L_CON_FLD_LSRC);
-	SET_VAL_MASK(value, mask, 0, L_CON_FLD_AEN);
+	if (ovl->data->pqout_ufodin_loop)
+		SET_VAL_MASK(value, mask, 1, L_CON_FLD_AEN);
+	else
+		SET_VAL_MASK(value, mask, 0, L_CON_FLD_AEN);
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		       comp->regs_pa + DISP_REG_OVL_LC_CON, value, mask);
@@ -4162,6 +4211,7 @@ mtk_ovl_addon_rsz_config(struct mtk_ddp_comp *comp, enum mtk_ddp_comp_id prev,
 			 struct mtk_rect rsz_dst_roi, struct cmdq_pkt *handle)
 {
 	struct mtk_drm_private *priv = NULL;
+	struct mtk_disp_ovl *ovl = comp_to_ovl(comp);
 
 	if (!comp || !comp->mtk_crtc || !comp->mtk_crtc->base.dev) {
 		DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
@@ -4225,7 +4275,7 @@ mtk_ovl_addon_rsz_config(struct mtk_ddp_comp *comp, enum mtk_ddp_comp_id prev,
 			comp->regs_pa + DISP_REG_OVL_DATAPATH_CON, 0,
 			DISP_OVL_BGCLR_IN_SEL);
 	}
-	if (prev == -1) {
+	if (prev == -1 && !ovl->data->pqout_ufodin_loop) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + DISP_REG_OVL_ROI_SIZE,
 				rsz_src_roi.height << 16 | rsz_src_roi.width,
@@ -4258,13 +4308,19 @@ static void mtk_ovl_addon_config(struct mtk_ddp_comp *comp,
 				 union mtk_addon_config *addon_config,
 				 struct cmdq_pkt *handle)
 {
-	if ((addon_config->config_type.module == DISP_RSZ ||
+	struct mtk_disp_ovl *ovl = comp_to_ovl(comp);
+
+
+	if (((addon_config->config_type.module == DISP_RSZ ||
 		addon_config->config_type.module == DISP_RSZ_v2 ||
 		addon_config->config_type.module == DISP_RSZ_v3 ||
 		addon_config->config_type.module == DISP_RSZ_v4 ||
 		addon_config->config_type.module == DISP_RSZ_v5 ||
 		addon_config->config_type.module == DISP_RSZ_v6) &&
-		addon_config->config_type.type == ADDON_BETWEEN) {
+		addon_config->config_type.type == ADDON_BETWEEN) ||
+		(ovl->data->pqout_ufodin_loop &&
+		addon_config->config_type.module == DISP_RSZ_v7 &&
+		addon_config->config_type.type == ADDON_EMBED)) {
 		struct mtk_addon_rsz_config *config =
 			&addon_config->addon_rsz_config;
 
@@ -4293,7 +4349,8 @@ static void mtk_ovl_config_begin(struct mtk_ddp_comp *comp, struct cmdq_pkt *han
 	struct mtk_disp_ovl *ovl = comp_to_ovl(comp);
 	u32 value = 0, mask = 0;
 
-	if (!ovl->data->support_pq_selfloop)
+	if (!ovl->data->support_pq_selfloop &&
+		!ovl->data->pqout_ufodin_loop)
 		return;
 
 	if (!comp->mtk_crtc)
@@ -4314,6 +4371,29 @@ static void mtk_ovl_config_begin(struct mtk_ddp_comp *comp, struct cmdq_pkt *han
 			value, mask);
 	cmdq_pkt_write(handle, comp->cmdq_base,	comp->regs_pa + DISP_REG_OVL_PQ_LOOP_CON,
 			0, DISP_OVL_PQ_OUT_SIZE_SEL);
+
+	if (ovl->data->pqout_ufodin_loop) {
+		value = 0;
+		mask = 0;
+		SET_VAL_MASK(value, mask, 0, FLD_OVL_SURFL_EN);
+		SET_VAL_MASK(value, mask, 0, FLD_OVL_LC_SA_SEL);
+		SET_VAL_MASK(value, mask, 0, FLD_OVL_LC_SRGB_SEL);
+		SET_VAL_MASK(value, mask, 0, FLD_OVL_LC_DRGB_SEL);
+		SET_VAL_MASK(value, mask, 0, FLD_OVL_LC_SA_SEL_EXT);
+		SET_VAL_MASK(value, mask, 0, FLD_OVL_LC_SRGB_SEL_EXT);
+		SET_VAL_MASK(value, mask, 0, FLD_OVL_LC_DRGB_SEL_EXT);
+		SET_VAL_MASK(value, mask, 4, FLD_OVL_CONST_LAYER_SEL);
+		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_REG_OVL_LC_SRC_SEL,
+				value, mask);
+		value = 0;
+		mask = 0;
+		SET_VAL_MASK(value, mask, 0xFF, L_CON_FLD_APHA);
+		SET_VAL_MASK(value, mask, 0, L_CON_FLD_AEN);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DISP_REG_OVL_LC_CON, value, mask);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			       comp->regs_pa + DISP_REG_OVL_SRC_CON, 0, BIT(4));
+	}
 }
 
 static void mtk_ovl_connect(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
@@ -5223,6 +5303,7 @@ other:
 	case OVL_SET_PQ_OUT: {
 		struct mtk_addon_config_type *c = (struct mtk_addon_config_type *)params;
 		u32 value = 0, mask = 0;
+		struct mtk_disp_ovl *ovl = comp_to_ovl(comp);
 
 		if (c->module == OVL_RSZ)
 			SET_VAL_MASK(value, mask, 1, DISP_OVL_PQ_OUT_OPT);
@@ -5234,7 +5315,9 @@ other:
 		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_REG_OVL_DATAPATH_CON,
 			       value, mask);
 
-		cmdq_pkt_write(handle, comp->cmdq_base,	comp->regs_pa + DISP_REG_OVL_PQ_LOOP_CON,
+		if (ovl->data->support_pq_selfloop)
+			cmdq_pkt_write(handle, comp->cmdq_base,
+			       comp->regs_pa + DISP_REG_OVL_PQ_LOOP_CON,
 			       DISP_OVL_PQ_OUT_SIZE_SEL, DISP_OVL_PQ_OUT_SIZE_SEL);
 		break;
 	}
@@ -5511,6 +5594,7 @@ int mtk_ovl_dump(struct mtk_ddp_comp *comp)
 		mtk_serial_dump_reg(baddr, 0x250, 4);
 		/* LC_CON */
 		mtk_serial_dump_reg(baddr, 0x280, 4);
+		mtk_serial_dump_reg(baddr, 0x290, 4);
 
 		mtk_serial_dump_reg(baddr, 0x2a0, 2);
 
@@ -6774,6 +6858,9 @@ static const struct mtk_disp_ovl_data mt6858_ovl_driver_data = {
 	.mmsys_mapping = &mtk_ovl_mmsys_mapping_MT6858,
 	.source_bpc = 10,
 	.ovl_phy_mapping = &mtk_ovl_phy_mapping_MT6858,
+	/* mt6858 not support pq self loop */
+	/* but can set pq out and input back to ufod in to constant lye */
+	.pqout_ufodin_loop = true,
 };
 
 static const struct mtk_disp_ovl_data mt8173_ovl_driver_data = {
