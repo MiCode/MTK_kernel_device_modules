@@ -8507,10 +8507,12 @@ dramc: dramc@10230000 {
 
 		oc-max-level = <2>;
 		oc-limit-freq-lv1 = < 2147483647  2147483647 2147483647>;
-		oc-limit-freq-lv2 = < 900000  900000 900000>;
+		oc-limit-freq-lv2 = < 2147483647  2147483647 2147483647>;
 
-		soc-max-level = <1>;
+		soc-max-level = <3>;
 		soc-limit-freq-lv1 = < 2147483647  2147483647 2147483647>;
+		soc-limit-freq-lv2 = < 2147483647  2147483647 2147483647>;
+		soc-limit-freq-lv3 = < 2147483647  2147483647 2147483647>;
 	};
 
 	gpu_power_throttling: gpu-power-throttling {
@@ -8531,10 +8533,13 @@ dramc: dramc@10230000 {
 		lbat-limit-freq-tb2-lv3 = <702000>;
 
 		oc-max-level = <2>;
-		oc-limit-freq = <1200000 700000>;
+		oc-limit-freq-lv1 = <2147483647>;
+		oc-limit-freq-lv2 = <2147483647>;
 
-		soc-max-level = <1>;
-		soc-limit-freq = <2147483647>;
+		soc-max-level = <3>;
+		soc-limit-freq-lv1 = <2147483647>;
+		soc-limit-freq-lv2 = <2147483647>;
+		soc-limit-freq-lv3 = <2147483647>;
 	};
 
 	md_power_throttling: md-power-throttling {
@@ -8547,7 +8552,7 @@ dramc: dramc@10230000 {
 
 		oc-max-level = <2>;
 		oc-reduce-tx-lv1 = <0>;
-		oc-reduce-tx-lv2 = <6>;
+		oc-reduce-tx-lv2 = <0>;
 
 		soc-max-level = <0>;
 	};
