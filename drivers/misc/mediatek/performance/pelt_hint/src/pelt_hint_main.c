@@ -27,7 +27,8 @@
 #endif
 #include "pelt_hint_trace_event.h"
 
-#define UTIL_EST_MARGIN (SCHED_CAPACITY_SCALE / 100)
+#define MAX_GAI_CPU_BOOST_RATIO 20
+#define MIN_GAI_CPU_BOOST_RATIO 1
 
 static int gai_cpu_boost_enable;
 static int gai_cpu_boost_ratio = UTIL_EST_WEIGHT_SHIFT;
@@ -54,100 +55,15 @@ void pelt_hint_main_trace(const char *fmt, ...)
 	trace_pelt_hint_trace(log);
 }
 
-/* clone from common kernel fair.c */
-static inline unsigned long task_util(struct task_struct *p)
+static void pelt_hint_set_task_uest_weight_shift(struct task_struct *p, bool set)
 {
-	return READ_ONCE(p->se.avg.util_avg);
-}
-
-/* clone from common kernel fair.c */
-static inline unsigned long task_runnable(struct task_struct *p)
-{
-	return READ_ONCE(p->se.avg.runnable_avg);
-}
-
-///* clone from common kernel fair.c */
-//static inline unsigned long _task_util_est(struct task_struct *p)
-//{
-//	return READ_ONCE(p->se.avg.util_est) & ~UTIL_AVG_UNCHANGED;
-//}
-
-///* clone from common kernel fair.c */
-//static inline unsigned long task_util_est(struct task_struct *p)
-//{
-//	return max(task_util(p), _task_util_est(p));
-//}
-
-void mtk_hook_util_est_update(void *data, struct cfs_rq *cfs_rq,
-	struct task_struct *p, bool task_sleep, int *ret)
-{
-	unsigned int ewma, dequeued, last_ewma_diff;
-	unsigned int final_ratio;
-	struct pelt_hint_oem_task_data *pelt_hint_tsk = NULL;
-
-	if (!gai_cpu_boost_enable)
-		return;
-
-	pelt_hint_tsk = (struct pelt_hint_oem_task_data *) p->android_oem_data1;
-	pelt_hint_main_trace("[PELT_HINT] pid:%d gai_task_flag:%d gai_cpu_boost_enable:%d",
-		p->pid, pelt_hint_tsk->gai_task_flag, gai_cpu_boost_enable);
-	if (gai_cpu_boost_enable == 2 && !pelt_hint_tsk->gai_task_flag) {
-		if (p->tgid == detect_fork_tgid) {
-			pelt_hint_tsk->gai_task_flag = 1;
-			pelt_hint_main_trace("[PELT_HINT] pid:%d is new task, gai_task_flag:%d",
-				p->pid, pelt_hint_tsk->gai_task_flag);
-		} else
-			return;
-	}
-
-	if (!sched_feat(UTIL_EST))
-		return;
-
-	if (!task_sleep)
-		return;
-
-	ewma = READ_ONCE(p->se.avg.util_est);
-
-	if (ewma & UTIL_AVG_UNCHANGED) {
-		pelt_hint_main_trace("[PELT_HINT] UTIL_AVG_UNCHANGED mask not reset pid:%d ewma:%u", p->pid, ewma);
-		return;
-	}
-
-	dequeued = task_util(p);
-	pelt_hint_main_trace("[PELT_HINT] pid:%d util:%u util_est:%u runnable_avg:%lu cpu:%d(%d)",
-		p->pid, dequeued, ewma, task_runnable(p),
-		cpu_of(rq_of(cfs_rq)), arch_scale_cpu_capacity(cpu_of(rq_of(cfs_rq))));
-
-	if (ewma <= dequeued) {
-		ewma = dequeued;
-		goto done;
-	}
-
-	last_ewma_diff = ewma - dequeued;
-	if (last_ewma_diff < UTIL_EST_MARGIN)
-		goto done;
-
-	if (dequeued > arch_scale_cpu_capacity(cpu_of(rq_of(cfs_rq))))
-		return;
-
-	if ((dequeued + UTIL_EST_MARGIN) < task_runnable(p))
-		goto done;
-
-	if (gai_cpu_boost_ratio > 0)
-		final_ratio = gai_cpu_boost_ratio;
-	else
-		final_ratio = UTIL_EST_WEIGHT_SHIFT;
-
-	ewma <<= final_ratio;
-	ewma  -= last_ewma_diff;
-	ewma >>= final_ratio;
-	ewma++;
-	pelt_hint_main_trace("[PELT_HINT] pid:%d final_ratio:%u util_est:%u", p->pid, final_ratio, ewma);
-done:
-	ewma |= UTIL_AVG_UNCHANGED;
-	WRITE_ONCE(p->se.avg.util_est, ewma);
-
-	*ret = 1;
+	if (set) {
+		if (gai_cpu_boost_ratio != UTIL_EST_WEIGHT_SHIFT &&
+			gai_cpu_boost_ratio >= MIN_GAI_CPU_BOOST_RATIO &&
+			gai_cpu_boost_ratio <= MAX_GAI_CPU_BOOST_RATIO)
+			__set_task_uest_weight_shift(p, 1, gai_cpu_boost_ratio);
+	} else
+		__set_task_uest_weight_shift(p, 0, UTIL_EST_WEIGHT_SHIFT);
 }
 
 static struct gai_thread_info *pelt_hint_get_gai_thread_info(int pid)
@@ -166,10 +82,9 @@ static struct gai_thread_info *pelt_hint_get_gai_thread_info(int pid)
 static int pelt_hint_add_gai_thread_info(int pid, struct task_struct *tsk)
 {
 	struct gai_thread_info *iter = NULL;
-	struct pelt_hint_oem_task_data *pelt_hint_tsk = NULL;
 	struct task_struct *tmp_tsk = NULL;
 
-	iter = kzalloc(sizeof(struct gai_thread_info), GFP_KERNEL);
+	iter = kzalloc(sizeof(struct gai_thread_info), (GFP_KERNEL | GFP_ATOMIC));
 	if (!iter) {
 		/*pr_debug("[pelt_hint] %s memory alloc fail\n", __func__);*/
 		return -ENOMEM;
@@ -181,16 +96,14 @@ static int pelt_hint_add_gai_thread_info(int pid, struct task_struct *tsk)
 
 	pr_debug("[pelt_hint] %s add 1\n", __func__);
 	if (tsk) {
-		pelt_hint_tsk = (struct pelt_hint_oem_task_data *) tsk->android_oem_data1;
-		pelt_hint_tsk->gai_task_flag = 1;
+		pelt_hint_set_task_uest_weight_shift(tsk, 1);
 		pr_debug("[pelt_hint] %s add 2\n", __func__);
 	} else {
 		rcu_read_lock();
 		tmp_tsk = find_task_by_vpid(pid);
 		if (tmp_tsk) {
 			get_task_struct(tmp_tsk);
-			pelt_hint_tsk = (struct pelt_hint_oem_task_data *) tmp_tsk->android_oem_data1;
-			pelt_hint_tsk->gai_task_flag = 1;
+			pelt_hint_set_task_uest_weight_shift(tmp_tsk, 1);
 			put_task_struct(tmp_tsk);
 			pr_debug("[pelt_hint] %s add 2\n", __func__);
 		}
@@ -204,28 +117,25 @@ static int pelt_hint_add_gai_thread_info(int pid, struct task_struct *tsk)
 static int pelt_hint_delete_gai_thread_info(int pid, struct task_struct *tsk)
 {
 	struct gai_thread_info *iter = NULL;
-	struct pelt_hint_oem_task_data *pelt_hint_tsk = NULL;
 	struct task_struct *tmp_tsk = NULL;
 
 	iter = pelt_hint_get_gai_thread_info(pid);
-	if (!iter)
-		return -EINVAL;
-	hlist_del(&iter->hlist);
-	kfree(iter);
+	if (iter) {
+		hlist_del(&iter->hlist);
+		kfree(iter);
+	}
 	pr_debug("[pelt_hint] %s del pid:%d\n", __func__, pid);
 
 	pr_debug("[pelt_hint] %s del 1\n", __func__);
 	if (tsk) {
-		pelt_hint_tsk = (struct pelt_hint_oem_task_data *) tsk->android_oem_data1;
-		pelt_hint_tsk->gai_task_flag = 0;
+		pelt_hint_set_task_uest_weight_shift(tsk, 0);
 		pr_debug("[pelt_hint] %s del 2\n", __func__);
 	} else {
 		rcu_read_lock();
 		tmp_tsk = find_task_by_vpid(pid);
 		if (tmp_tsk) {
 			get_task_struct(tmp_tsk);
-			pelt_hint_tsk = (struct pelt_hint_oem_task_data *) tmp_tsk->android_oem_data1;
-			pelt_hint_tsk->gai_task_flag = 0;
+			pelt_hint_set_task_uest_weight_shift(tmp_tsk, 0);
 			put_task_struct(tmp_tsk);
 			pr_debug("[pelt_hint] %s del 2\n", __func__);
 		}
@@ -252,12 +162,22 @@ static void pelt_hint_check_gai_thread_info(void)
 	}
 }
 
+static void pelt_hint_sched_wakeup_new_tracer(void *data, struct task_struct *p)
+{
+	if (!gai_cpu_boost_enable)
+		return;
+
+	if (gai_cpu_boost_enable == 2 && p->tgid == detect_fork_tgid)
+		pelt_hint_set_task_uest_weight_shift(p, 1);
+
+	pelt_hint_main_trace("wakeup_new pid=%d ...", p->pid);
+}
+
 static void pelt_hint_sched_process_fork_tracer(void *ignore,
 	struct task_struct *parent, struct task_struct *pelt_hintld)
 {
 	// do something
-	pelt_hint_main_trace("%s in %d fork %d cpu:%d ...",
-		__func__, parent->pid, pelt_hintld->pid, smp_processor_id());
+	pelt_hint_main_trace("%d fork %d", parent->pid, pelt_hintld->pid);
 }
 
 struct tracepoints_table {
@@ -269,6 +189,7 @@ struct tracepoints_table {
 
 static struct tracepoints_table pelt_hint_tracepoints[] = {
 	{.name = "sched_process_fork", .func = pelt_hint_sched_process_fork_tracer},
+	{.name = "sched_wakeup_new", .func = pelt_hint_sched_wakeup_new_tracer},
 };
 
 #define FOR_EACH_INTEREST(i) \
@@ -316,6 +237,13 @@ static void pelt_hint_register_trace_event(void)
 		return;
 	}
 	pelt_hint_tracepoints[0].registered = true;
+
+	ret = tracepoint_probe_register(pelt_hint_tracepoints[1].tp, pelt_hint_tracepoints[1].func, NULL);
+	if (ret) {
+		pr_debug("[PELT_HINT] Couldn't activate tracepoint probe of sched_wakeup_new\n");
+		return;
+	}
+	pelt_hint_tracepoints[1].registered = true;
 }
 
 CHI_SYSFS_READ(gai_cpu_boost_enable, 1, gai_cpu_boost_enable);
@@ -323,7 +251,7 @@ CHI_SYSFS_WRITE_VALUE(gai_cpu_boost_enable, gai_cpu_boost_enable, 0, 2);
 static KOBJ_ATTR_RW(gai_cpu_boost_enable);
 
 CHI_SYSFS_READ(gai_cpu_boost_ratio, 1, gai_cpu_boost_ratio);
-CHI_SYSFS_WRITE_VALUE(gai_cpu_boost_ratio, gai_cpu_boost_ratio, 0, 30);
+CHI_SYSFS_WRITE_VALUE(gai_cpu_boost_ratio, gai_cpu_boost_ratio, MIN_GAI_CPU_BOOST_RATIO, MAX_GAI_CPU_BOOST_RATIO);
 static KOBJ_ATTR_RW(gai_cpu_boost_ratio);
 
 static ssize_t set_gai_thread_show(struct kobject *kobj,
@@ -417,7 +345,6 @@ static ssize_t set_gai_thread_store(struct kobject *kobj,
 	char *acBuffer = NULL;
 	int arg = 0;
 	int mode = -1;
-	//int local_pid = 0;
 
 	acBuffer = kcalloc(PELT_HINT_SYSFS_MAX_BUFF_SIZE, sizeof(char), GFP_KERNEL);
 	if (!acBuffer)
@@ -447,7 +374,7 @@ int magt2pelt_notify_pelt_hint_boost(int enable, int pid_mode, int pid, int rati
 	} else {
 		gai_cpu_boost_enable = 0;
 		gai_cpu_boost_ratio = UTIL_EST_WEIGHT_SHIFT;
-		set_gai_thread(pid_mode, -1);
+		set_gai_thread(pid_mode, -pid);
 	}
 
 	return 0;
@@ -464,8 +391,6 @@ static void __exit pelt_hint_test_main_exit(void)
 
 static int __init pelt_hint_test_main_init(void)
 {
-	int ret = 0;
-
 	pelt_hint_sysfs_init();
 	if (!pelt_hint_sysfs_create_dir(NULL, "common", &pelt_hint_kobj)) {
 		pelt_hint_sysfs_create_file(pelt_hint_kobj, &kobj_attr_gai_cpu_boost_enable);
@@ -475,10 +400,6 @@ static int __init pelt_hint_test_main_init(void)
 
 	pelt_hint_register_trace_event();
 	magt2pelt_notify_pelt_hint_boost_fp = magt2pelt_notify_pelt_hint_boost;
-
-	ret = register_trace_android_rvh_util_est_update(mtk_hook_util_est_update, NULL);
-	if (ret)
-		pr_debug("[PELT_HINT] register_trace_android_rvh_util_est_update fail ret:%d\n", ret);
 
 	return 0;
 }

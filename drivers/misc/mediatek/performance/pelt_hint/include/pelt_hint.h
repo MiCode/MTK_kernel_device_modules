@@ -7,6 +7,7 @@
 #define PELT_HINT_H
 
 extern int (*magt2pelt_notify_pelt_hint_boost_fp) (int enable, int pid_mode, int pid, int ratio);
+extern int __set_task_uest_weight_shift(struct task_struct *p, bool set, int val);
 
 #endif
 
