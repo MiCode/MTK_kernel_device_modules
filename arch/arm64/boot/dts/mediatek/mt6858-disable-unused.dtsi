@@ -345,7 +345,6 @@
 		compatible = "mediatek,clk-disable-unused";
 		reg = <0x77>;
 		clocks =
-			<&vlp_cksys_top_clk CLK_VLP_TOP_SCP_SEL>,
 			<&vlp_cksys_top_clk CLK_VLP_TOP_PWM_VLP_SEL>,
 			<&vlp_cksys_top_clk CLK_VLP_TOP_CAMTG0_SEL>,
 			<&vlp_cksys_top_clk CLK_VLP_TOP_CAMTG1_SEL>,
