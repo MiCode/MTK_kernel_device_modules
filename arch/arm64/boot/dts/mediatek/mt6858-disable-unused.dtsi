@@ -218,8 +218,7 @@
 		clocks =
 			<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_TX_SYM_UFS>,
 			<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_SYS_UFS>,
-			<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_SAP_CFG_UFS>,
-			<&ufscfg_ao_clk CLK_UFSAO_UFS_AO_FREE_26M_UFS>;
+			<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_SAP_CFG_UFS>;
 	};
 
 	disable-unused-clk-imp-iic-wrap-c@72 {
@@ -304,7 +303,6 @@
 			<&pericfg_ao_clk CLK_PERAO_P_SPI5_B_SPI>,
 			<&pericfg_ao_clk CLK_PERAO_P_SPI6_B_SPI>,
 			<&pericfg_ao_clk CLK_PERAO_P_SPI7_B_SPI>,
-			<&pericfg_ao_clk CLK_PERAO_P_I2C_I2C>,
 			<&pericfg_ao_clk CLK_PERAO_P_DMA_B_UART>,
 			<&pericfg_ao_clk CLK_PERAO_P_DMA_B_I2C>,
 			<&pericfg_ao_clk CLK_PERAO_P_MSDC1_MSDC>,
@@ -352,8 +350,7 @@
 			<&vlp_cksys_top_clk CLK_VLP_TOP_CAMTG0_SEL>,
 			<&vlp_cksys_top_clk CLK_VLP_TOP_CAMTG1_SEL>,
 			<&vlp_cksys_top_clk CLK_VLP_TOP_CAMTG2_SEL>,
-			<&vlp_cksys_top_clk CLK_VLP_TOP_CAMTG3_SEL>,
-			<&vlp_cksys_top_clk CLK_VLP_TOP_KP_IRQ_GEN_SEL>;
+			<&vlp_cksys_top_clk CLK_VLP_TOP_CAMTG3_SEL>;
 	};
 
 	disable-unused-clk-topckgen@78 {
@@ -391,6 +388,7 @@
 			<&cksys_reg_clk CLK_TOP_UFS_SEL>,
 			<&cksys_reg_clk CLK_TOP_AUD_1_SEL>,
 			<&cksys_reg_clk CLK_TOP_AUD_2_SEL>,
+			<&cksys_reg_clk CLK_TOP_DPMAIF_MAIN_SEL>,
 			<&cksys_reg_clk CLK_TOP_VENC_SEL>,
 			<&cksys_reg_clk CLK_TOP_VDEC_SEL>,
 			<&cksys_reg_clk CLK_TOP_PWM_SEL>,

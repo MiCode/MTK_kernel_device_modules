@@ -31,6 +31,7 @@
 			<&cksys_reg_clk CLK_TOP_SENINF_SEL>,
 			<&cksys_reg_clk CLK_TOP_SENINF1_SEL>,
 			<&cksys_reg_clk CLK_TOP_SENINF2_SEL>,
+			<&cksys_reg_clk CLK_TOP_DPMAIF_MAIN_SEL>,
 			<&cksys_reg_clk CLK_TOP_VENC_SEL>,
 			<&cksys_reg_clk CLK_TOP_VDEC_SEL>,
 			<&cksys_reg_clk CLK_TOP_DSI_OCC_SEL>,
@@ -48,8 +49,7 @@
 			<&vlp_cksys_top_clk CLK_VLP_TOP_CAMTG0_SEL>,
 			<&vlp_cksys_top_clk CLK_VLP_TOP_CAMTG1_SEL>,
 			<&vlp_cksys_top_clk CLK_VLP_TOP_CAMTG2_SEL>,
-			<&vlp_cksys_top_clk CLK_VLP_TOP_CAMTG3_SEL>,
-			<&vlp_cksys_top_clk CLK_VLP_TOP_KP_IRQ_GEN_SEL>;
+			<&vlp_cksys_top_clk CLK_VLP_TOP_CAMTG3_SEL>;
 	};
 
 	bring-up-disp@1 {
@@ -302,14 +302,6 @@
 			<&camsys_main_clk CLK_CAM_M_PDA_PDA>;
 	};
 
-	bring-up-ufs@16 {
-		compatible = "mediatek,clk-bring-up";
-		reg = <0x16>;
-		clocks =
-			  /* UFS_AO_FREE_26M must AO */
-			<&ufscfg_ao_clk CLK_UFSAO_UFS_AO_FREE_26M_UFS>;
-	};
-
 	bring-up-disp-pwm-0@17 {
 		compatible = "mediatek,clk-bring-up";
 		reg = <0x17>;
@@ -328,7 +320,6 @@
 		compatible = "mediatek,clk-bring-up";
 		reg = <0x19>;
 		clocks =
-			<&pericfg_ao_clk CLK_PERAO_P_I2C_I2C>,
 			<&pericfg_ao_clk CLK_PERAO_P_DMA_B_I2C>,
 			<&imp_iic_wrap_c_clk CLK_IMPC_I2C1_I2C>,
 			<&imp_iic_wrap_c_clk CLK_IMPC_I2C3_I2C>,

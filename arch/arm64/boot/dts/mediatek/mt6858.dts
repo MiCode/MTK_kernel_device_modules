@@ -726,14 +726,14 @@
 
 	clkchk {
 		compatible = "mediatek,mt6858-clkchk";
-		// interrupts = <GIC_SPI 235 IRQ_TYPE_LEVEL_HIGH 0>;
-		// interrupt-names = "hwv_irq";
+		interrupts = <GIC_SPI 235 IRQ_TYPE_LEVEL_HIGH 0>;
+		interrupt-names = "hwv_irq";
 	};
 
 	pdchk {
 		compatible = "mediatek,mt6858-pdchk";
-		// interrupts = <GIC_SPI 235 IRQ_TYPE_LEVEL_HIGH 0>;
-		// interrupt-names = "hwv_irq";
+		interrupts = <GIC_SPI 235 IRQ_TYPE_LEVEL_HIGH 0>;
+		interrupt-names = "hwv_irq";
 	};
 
 	clocks {
@@ -760,9 +760,15 @@
 		};
 	};
 
+	hwv: syscon@10320000 {
+		compatible = "mediatek,mt6858-hwv", "syscon";
+		reg = <0 0x10320000 0 0x2000>;
+	};
+
 	cksys_reg_clk: syscon@10000000 {
 		compatible = "mediatek,mt6858-cksys_reg", "syscon";
 		reg = <0 0x10000000 0 0x1000>;
+		hw-voter-regmap = <&hwv>;
 		#clock-cells = <1>;
 	};
 
@@ -786,6 +792,7 @@
 	pericfg_ao_clk: syscon@11032000 {
 		compatible = "mediatek,mt6858-pericfg_ao", "syscon";
 		reg = <0 0x11032000 0 0x1000>;
+		hw-voter-regmap = <&hwv>;
 		#clock-cells = <1>;
 	};
 
@@ -970,6 +977,7 @@
 		cam-sub0-bus = <&cam_sub0_bus>;
 		ipe-sub0-bus = <&ipe_sub0_bus>;
 		vlpcfg-reg-bus = <&vlpcfg_reg_bus>;
+		hw-voter-regmap = <&hwv>;
 	};
 
 	vlpcfg_reg_bus: syscon@1c00c000 {
@@ -1043,6 +1051,7 @@
 	mminfra_config_clk: syscon@1e800000 {
 		compatible = "mediatek,mt6858-mminfra_config", "syscon";
 		reg = <0 0x1e800000 0 0x1000>;
+		hw-voter-regmap = <&hwv>;
 		#clock-cells = <1>;
 	};
 
