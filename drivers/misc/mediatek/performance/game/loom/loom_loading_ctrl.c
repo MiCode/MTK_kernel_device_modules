@@ -185,7 +185,9 @@ struct loom_loading_ctrl *loom_search_and_add_loading_ctrl_info(struct list_head
 
 	INIT_LIST_HEAD(&iter->loading_list);
 	iter->tid = tid;
+	iter->rpid = 0;
 	iter->tgid = tgid;
+	iter->buffer_id = 0;
 	iter->loading_window_count = 0;
 	iter->loading_thr_up_bound = loading_thr_up_bound;
 	iter->loading_thr_low_bound = loading_thr_low_bound;

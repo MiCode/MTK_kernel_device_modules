@@ -43,6 +43,8 @@ struct loom_loading_info {
 struct loom_loading_ctrl {
 	int tid;
 	int tgid;
+	int rpid;
+	unsigned long long buffer_id;
 	int loading_window_count;
 	int loading_thr_up_bound;
 	int loading_thr_low_bound;

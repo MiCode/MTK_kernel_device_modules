@@ -332,6 +332,8 @@ static void loom_set_operation(struct loom_render_info *info)
 			lc_iter = loom_search_and_add_loading_ctrl_info(&info->lc_active_list, iter->pid,
 				info->tgid, 1);
 			if(lc_iter) {
+				lc_iter->rpid = info->pid;
+				lc_iter->buffer_id = info->buffer_id;
 				lc_iter->loading_thr_up_bound = iter->loading_ub;
 				lc_iter->loading_thr_low_bound = iter->loading_lb;
 				lc_iter->cpu = cpu;
@@ -372,6 +374,8 @@ void fpsgo_loom_frame_info_cb(unsigned long cmd, struct render_frame_info *iter)
 		goto out;
 
 	info->queue_end_ts = game_get_time();
+	info->pid = iter->pid;
+	info->buffer_id = iter->buffer_id;
 	loom_set_operation(info);
 out:
 	loom_render_unlock();

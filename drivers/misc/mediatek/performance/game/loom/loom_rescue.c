@@ -48,6 +48,27 @@
 
 static struct workqueue_struct *wq_jerk;
 
+
+static int loom_get_exp_fps(struct loom_loading_ctrl *lc_info)
+{
+	int ret = 0, exp_fps = 0;
+	struct render_fps_info fpsgo_fps_info;
+
+	if (!lc_info)
+		return 0;
+
+	fpsgo_fps_info.raw_target_fps = 0;
+	ret = fpsgo_other2fstb_get_fps_info(lc_info->rpid, lc_info->buffer_id,
+		&fpsgo_fps_info);
+
+	if (!ret)
+		exp_fps = fpsgo_fps_info.raw_target_fps;
+
+	game_main_trace("[%s] pid=%d, buf_id=%lu, exp_fps=%d", __func__, lc_info->rpid,
+		lc_info->buffer_id, exp_fps);
+	return exp_fps;
+}
+
 static void loom_do_jerk_locked(struct loom_loading_ctrl *iter, struct loom_jerk *jerk, int jerk_id)
 {
 	int rescue_f_opp = 0, rescue_c_freq = 0;
@@ -161,18 +182,24 @@ void loom_init_jerk(struct loom_jerk *jerk, int id)
 	INIT_WORK(&jerk->work, loom_do_jerk);
 }
 
-int loom_lc_set_jerk(struct loom_loading_ctrl *iter, unsigned long long ts, unsigned long long expected_fps)
+int loom_lc_set_jerk(struct loom_loading_ctrl *iter, unsigned long long ts, unsigned long long user_expected_fps)
 {
 	int set_rescue = 0, active_jerk_id = 0;
 	struct hrtimer *timer = NULL;
 	unsigned long long exp_time_ns = 1ULL, t2wnt = 1ULL;
+	unsigned long long expected_fps = 0;
 
 	if (!iter)
 		return -1;
 
 	set_rescue = iter->set_rescue;
 
-	if (set_rescue <= 0  || expected_fps <= 0)
+	if (user_expected_fps <= 0)
+		expected_fps = loom_get_exp_fps(iter);
+	else
+		expected_fps = user_expected_fps;
+
+	if (set_rescue <= 0 || expected_fps <= 0)
 		return -1;
 
 	active_jerk_id = (iter->loom_proc_obj.active_jerk_id + 1) % LOOM_RESCUE_TIMER_NUM;
@@ -196,8 +223,8 @@ int loom_lc_set_jerk(struct loom_loading_ctrl *iter, unsigned long long ts, unsi
 	} else
 		game_main_trace("ERROR timer\n");
 
-	game_main_trace("[%s] tid=%d, jerking=%d", __func__, iter->tid,
-		iter->loom_proc_obj.jerks[active_jerk_id].jerking);
+	game_main_trace("[%s] tid=%d,t2wnt=%llu,id=%d,jerking=%d", __func__, iter->tid,
+		t2wnt, active_jerk_id, iter->loom_proc_obj.jerks[active_jerk_id].jerking);
 	return 0;
 }
 
