@@ -24,7 +24,6 @@ KLEAF_ARGS=("${DEBUG_ARGS} ${SANDBOX_ARGS} --experimental_writable_outputs --all
 
 set -x
 (
-  tools/bazel run //${KERNEL_VERSION}:kernel_aarch64_abi_update_protected_exports
   tools/bazel ${KLEAF_OUT} run ${KLEAF_ARGS} \
 	--//build/bazel_mgk_rules:kernel_version=${KERNEL_VERSION_NUM} \
 	//${DEVICE_MODULES_DIR}:${PROJECT}.user_${build_scope}_abi_update_symbol_list
