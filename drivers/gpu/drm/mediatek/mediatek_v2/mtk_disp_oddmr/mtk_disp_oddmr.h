@@ -692,6 +692,7 @@ struct mtk_disp_oddmr_dmr_data {
 	atomic_t cus_binset_state;
 	atomic_t cus_setting_state;
 	atomic_t cus_own_data_state;
+	atomic_t reg_tuning_chg;
 	unsigned int max_table_size;
 };
 
