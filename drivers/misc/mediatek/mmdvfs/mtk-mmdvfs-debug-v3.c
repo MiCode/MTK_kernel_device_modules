@@ -73,6 +73,7 @@ struct mmdvfs_debug {
 
 	/* MMDVFS_DBG_VER3 */
 	u32 use_v3_pwr;
+	bool user_freerun;
 
 	/* regulator and fmeter */
 	struct regulator *reg_vcore;
@@ -703,7 +704,7 @@ static int mmdvfs_v3_debug_thread(void *data)
 	if (g_mmdvfs->use_v3_pwr & (1 << PWR_MMDVFS_VMM))
 		mtk_mmdvfs_v3_set_vote_step(PWR_MMDVFS_VMM, g_mmdvfs->force_step0, false);
 
-	if (g_mmdvfs->use_v3_pwr & (1 << PWR_MMDVFS_VCORE))
+	if (g_mmdvfs->user_freerun && (g_mmdvfs->use_v3_pwr & (1 << PWR_MMDVFS_VCORE)))
 		mtk_mmdvfs_v3_set_vote_step(PWR_MMDVFS_VCORE, -1, false);
 
 	if (g_mmdvfs->use_v3_pwr & (1 << PWR_MMDVFS_VMM))
@@ -1295,6 +1296,8 @@ static int mmdvfs_debug_probe(struct platform_device *pdev)
 
 	ret = mmdvfs_debug_parse_fmeter();
 	ret = mmdvfs_debug_parse_clk();
+
+	g_mmdvfs->user_freerun = of_property_read_bool(g_mmdvfs->dev->of_node, "mmdvfs-user-freerun");
 
 	ret = of_property_read_u32(g_mmdvfs->dev->of_node, "use-v3-pwr", &g_mmdvfs->use_v3_pwr);
 #if IS_ENABLED(CONFIG_MTK_MMDVFS_VCP)

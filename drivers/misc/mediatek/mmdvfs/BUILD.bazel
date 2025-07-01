@@ -99,3 +99,19 @@ define_mgk_ddk_ko(
     hdrs = ["mmdvfs_events.h"],
     includes = ["."],
 )
+
+define_mgk_ddk_ko(
+    name = "mtk-mmdvfs-v3-start",
+    srcs = [],
+    conditional_srcs = {
+        "CONFIG_MTK_TINYSYS_VCP_SUPPORT": {
+            True: ["mtk-mmdvfs-v3-start.c"],
+        },
+    },
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mmdvfs:mtk-mmdvfs-debug-v3".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-mmdvfs-v3".format(kernel_version),
+    ],
+    hdrs = glob(["**/*.h"]),
+    includes = ["."],
+)

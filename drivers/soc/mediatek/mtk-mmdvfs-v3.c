@@ -218,8 +218,10 @@ int mtk_mmdvfs_enable_vcp(const bool enable, const u8 idx)
 	if (enable) {
 		if (!vcp_power) {
 			ret = vcp_register_feature_ex(MMDVFS_HFRP_FEATURE_ID);
-			if (ret)
+			if (ret < 0)
 				goto enable_vcp_end;
+			MMDVFS_DBG("ret:%d enable:%d vcp_power:%d idx:%hhu usage:%d",
+				ret, enable, vcp_power, idx, vcp_pwr_usage[idx]);
 		}
 		vcp_power += 1;
 		vcp_pwr_usage[idx] += 1;
@@ -232,19 +234,21 @@ int mtk_mmdvfs_enable_vcp(const bool enable, const u8 idx)
 			mutex_lock(&mmdvfs_vcp_ipi_mutex);
 			mutex_unlock(&mmdvfs_vcp_ipi_mutex);
 			ret = vcp_deregister_feature_ex(MMDVFS_HFRP_FEATURE_ID);
-			if (ret)
+			if (ret < 0)
 				goto enable_vcp_end;
+			MMDVFS_DBG("ret:%d enable:%d vcp_power:%d idx:%hhu usage:%d",
+				ret, enable, vcp_power, idx, vcp_pwr_usage[idx]);
 		}
 		vcp_pwr_usage[idx] -= 1;
 		vcp_power -= 1;
 	}
 
 enable_vcp_end:
-	if (ret || (log_level & (1 << log_pwr)))
+	if (ret < 0 || (log_level & (1 << log_pwr)))
 		MMDVFS_ERR("ret:%d enable:%d vcp_power:%d idx:%hhu usage:%d",
 			ret, enable, vcp_power, idx, vcp_pwr_usage[idx]);
 	mutex_unlock(&mmdvfs_vcp_pwr_mutex);
-	return ret;
+	return ret < 0 ? ret : 0;  //ret >= 0 : enable vcp success
 }
 EXPORT_SYMBOL_GPL(mtk_mmdvfs_enable_vcp);
 
@@ -1810,13 +1814,16 @@ EXPORT_SYMBOL_GPL(mmdvfs_vcp_cb_ready_get);
 static int mmdvfs_mmup_notifier_callback(struct notifier_block *nb, unsigned long action, void *data)
 {
 	static bool sram_init;
+	int ret = 0;
 
 	switch (action) {
 	case VCP_EVENT_READY:
 		cb_timestamp[2] = sched_clock();
 		mmdvfs_rst_clk_done = false;
 		mmdvfs_release_step_done = false;
-		mmdvfs_vcp_ipi_send(FUNC_MMDVFS_INIT, MAX_OPP, MAX_OPP, NULL);
+		ret = mmdvfs_vcp_ipi_send(FUNC_MMDVFS_INIT, MAX_OPP, MAX_OPP, NULL);
+		if (ret)
+			break;
 		if (dpc_fp)
 			dpc_fp(true, mmdvfs_vcp_stop);
 		mmdvfs_vcp_stop = false;
