@@ -1229,6 +1229,32 @@
 		svp-cpu-uclamp-min = <409>;
 	};
 
+	dfd_mcu: dfd-mcu {
+		compatible = "mediatek,dfd_mcu";
+		enabled = <1>;
+		hw-version = <35>;
+		sw-version = <1>;
+		dfd-timeout = <0x2710>;
+		buf-addr-align = <0x1000000>;
+		buf-addr-max = <0xffffffff>;
+		buf-length = <0x180000>;
+		nr-max-core = <8>;
+		nr-big-core = <4>;
+		nr-rs-entry-little = <8>;
+		nr-rs-entry-big = <0>;
+		nr-header-row = <0>;
+		chip-id-offset = <0x18>;
+		check-pattern-offset = <0x0>;
+		dfd-disable-efuse = <25 12>;
+		efuse-sec-ctrl = <27 0 6>;
+		dfd_cache: dfd-cache {
+			enabled = <1>;
+			dfd-timeout = <0x1d4c0>; /* 60 sec for full cache dump */
+			buf-length = <0x800000>; /* 8M for full cache dump */
+			tap-en = <0x43ff>;
+		};
+	};
+
 	/* Trustonic Mobicore SW IRQ number 144 = 32 + 112 */
 	mobicore: mobicore {
 		compatible = "trustonic,mobicore";
