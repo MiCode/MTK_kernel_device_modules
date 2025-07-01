@@ -27,7 +27,7 @@
 	/* vboot voltage for gauge 0%*/
 	poweron-system-iboot = <(150)>;
 	/* power on system iboot */
-	shutdown-gauge0-voltage = <(30000)>;
+	shutdown-gauge0-voltage = <(28000)>;
 	/* shutdown gauge 0% voltage */
 	temperature-t0 = <(50)>;
 	/* Battery temperature T0 */
@@ -71,12 +71,12 @@
 	/* enable ratio */
 	enable-r-ratio = <(1)>;
 	enable-charging-ratio = <(1)>;
-	/*3.0V shutdown*/
-	vbat2-det-voltage1 = <(30500)>;
+	/*2.8V shutdown*/
+	vbat2-det-voltage1 = <(29000)>;
 	vbat2-det-voltage2 = <(28000)>;
-	vbat2-det-voltage3 = <(31000)>;
-	bat-voltage-low-bound = <(3000)>;
-	low-tmp-bat-voltage-low-bound = <(3100)>;
-#include "mt6858_battery_table.dtsi"
-#include "mt6858_battery_prop_dim2_ext.dtsi"
+	vbat2-det-voltage3 = <(30000)>;
+	bat-voltage-low-bound = <(2800)>;
+	low-tmp-bat-voltage-low-bound = <(2800)>;
+#include "mt6858_28sd_battery_table.dtsi"
+#include "mt6858_28sd_battery_prop_dim2_ext.dtsi"
 };
