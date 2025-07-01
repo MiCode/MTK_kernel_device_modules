@@ -43,6 +43,8 @@
 
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
 #include "scp.h"
+static int scp_standby_flag;
+static struct wait_queue_head scp_waitq;
 #endif
 
 static DEFINE_MUTEX(adsp_wakelock_lock);
@@ -1223,6 +1225,15 @@ void mtk_dsp_handler(struct mtk_base_dsp *dsp,
 	}
 }
 
+int wait_scp_ready(void)
+{
+	/* should not call this in atomic or interrupt level */
+	if (!wait_event_timeout(scp_waitq, scp_standby_flag == 0 && is_scp_ready(SCP_A_ID),
+				msecs_to_jiffies(1000)))
+		return -EBUSY;
+	return 0;
+}
+
 static int mtk_dsp_pcm_open(struct snd_soc_component *component,
 		struct snd_pcm_substream *substream)
 {
@@ -1253,7 +1264,10 @@ RETRY:
 			       0, 0, NULL);
 	if (ret < 0) {
 		if (!retry_flag) {
-			wait_dsp_ready();
+			if(get_adsp_type() == ADSP_TYPE_IN_SCP)
+				wait_scp_ready();
+			else
+				wait_dsp_ready();
 			retry_flag = true;
 			goto RETRY;
 		} else {
@@ -1939,11 +1953,14 @@ static int scp_audio_event_receive(struct notifier_block *this, unsigned long ev
 
 	switch (event) {
 	case SCP_EVENT_STOP:
+		scp_standby_flag = 1;
 		pr_info("%s SCP_EVENT_STOP[%lu]\n", __func__, event);
 		break;
 	case SCP_EVENT_READY: {
 		mtk_reinit_adsp();
 		audio_send_reset_event();
+		scp_standby_flag = 0;
+		wake_up(&scp_waitq);
 		pr_info("%s SCP_EVENT_READY[%lu]\n", __func__, event);
 		break;
 	}
@@ -2039,6 +2056,7 @@ static int mtk_dsp_probe(struct snd_soc_component *component)
 
 	if (get_adsp_type() == ADSP_TYPE_IN_SCP) {
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
+		init_waitqueue_head(&scp_waitq);
 		scp_A_register_notify(&scp_audio_notifier);
 		scp_A_register_notify(&scp_audio_uevent_notifier);
 #endif
