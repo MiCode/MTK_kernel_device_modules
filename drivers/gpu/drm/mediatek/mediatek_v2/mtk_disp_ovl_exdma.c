@@ -744,6 +744,7 @@ static void mtk_ovl_update_hrt_usage(struct mtk_drm_crtc *mtk_crtc,
 	unsigned int fmt = 0;
 	unsigned int phy_id = 0;
 	int ovl_fmt, ovl_compr;
+	enum EXDMA_COMPR_TYPE type = COMPR_TYPE_IS_UNCOMPR;
 
 	//Don't use Pending.format here. At this time, Pending is still the previous old information.
 	if (IS_ERR_OR_NULL(fb) || IS_ERR_OR_NULL(fb->format))
@@ -755,11 +756,12 @@ static void mtk_ovl_update_hrt_usage(struct mtk_drm_crtc *mtk_crtc,
 
 	phy_id = ovl->data->ovl_phy_mapping(comp);
 	ovl_fmt = mtk_get_format_bpp(fmt);
-	ovl_compr = plane_state->prop_val[PLANE_PROP_COMPRESS];
 	if (ovl_fmt > mtk_crtc->usage_ovl_fmt[phy_id])
 		mtk_crtc->usage_ovl_fmt[phy_id] = ovl_fmt;
-	if (ovl_compr > mtk_crtc->usage_ovl_compr[phy_id])
-		mtk_crtc->usage_ovl_compr[phy_id] = ovl_compr;
+	ovl_compr = plane_state->prop_val[PLANE_PROP_COMPRESS];
+	if (ovl_compr)
+		type = COMPR_TYPE_IS_COMPR;
+	mtk_crtc->usage_ovl_compr[phy_id] |= BIT(type);
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_EXT_LAYER))
 		return;
@@ -4091,6 +4093,24 @@ static int mtk_ovl_replace_bootup_mva(struct mtk_ddp_comp *comp,
 	return 0;
 }
 
+static unsigned int mtk_ovl_exdma_is_compr_type(enum EXDMA_COMPR_TYPE type,
+	unsigned int usage_ovl_compr)
+{
+	if (usage_ovl_compr == 0)
+		return 0;
+
+	if (type == COMPR_TYPE_ALL_COMPR) /* 2'b10 */
+		return usage_ovl_compr == BIT(COMPR_TYPE_IS_COMPR);
+	else if (type == COMPR_TYPE_HAS_COMPR) /* 2'b10 or 2'b11 */
+		return (usage_ovl_compr & BIT(COMPR_TYPE_IS_COMPR)) ? 1 : 0;
+	else if (type == COMPR_TYPE_ALL_UNCOMPR) /* 2'b01 */
+		return usage_ovl_compr == BIT(COMPR_TYPE_IS_UNCOMPR);
+	else if (type == COMPR_TYPE_HAS_UNCOMPR) /* 2'b01 or 2'b11 */
+		return (usage_ovl_compr & BIT(COMPR_TYPE_IS_UNCOMPR)) ? 1 : 0;
+
+	return 0;
+}
+
 static int mtk_ovl_calc_layer_hrt_bw(struct mtk_drm_crtc *mtk_crtc, unsigned int phy_id,
 		struct mtk_disp_ovl_exdma *exdma, unsigned int uncompr_bw, bool usage_ovl_compr,
 		unsigned int *body_bw, unsigned int *hdr_bw,
@@ -4365,6 +4385,8 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 
 		usage_ovl_fmt = mtk_crtc->usage_ovl_fmt[phy_id];
 		usage_ovl_compr = mtk_crtc->usage_ovl_compr[phy_id];
+		/* if exdma's any layer has compr, need consider hdr and hdr stash port bw */
+		usage_ovl_compr = mtk_ovl_exdma_is_compr_type(COMPR_TYPE_HAS_COMPR, usage_ovl_compr);
 
 		bw_val = (bw_val * usage_ovl_fmt) >> 2;
 
@@ -4448,6 +4470,8 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 
 		usage_ovl_fmt = mtk_crtc->usage_ovl_fmt[phy_id];
 		usage_ovl_compr = mtk_crtc->usage_ovl_compr[phy_id];
+		/* if exdma's any layer has compr, need consider hdr and hdr stash port bw */
+		usage_ovl_compr = mtk_ovl_exdma_is_compr_type(COMPR_TYPE_HAS_COMPR, usage_ovl_compr);
 
 		bw_val = (bw_val * usage_ovl_fmt) >> 2;
 
@@ -4643,6 +4667,8 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 
 		usage_ovl_fmt = mtk_crtc->usage_ovl_fmt[phy_id];
 		usage_ovl_compr = mtk_crtc->usage_ovl_compr[phy_id];
+		/* only when exdmaX's all layer is compr can consider compr_ratio */
+		usage_ovl_compr = mtk_ovl_exdma_is_compr_type(COMPR_TYPE_ALL_COMPR, usage_ovl_compr);
 
 		if (usage_ovl_fmt == 0)
 			break;

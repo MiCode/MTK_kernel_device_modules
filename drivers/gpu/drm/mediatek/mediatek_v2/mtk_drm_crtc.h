@@ -1467,6 +1467,19 @@ struct mtk_drm_crtc {
 	int scp_show_count;
 };
 
+/* one exdma may have both compr and uncompr layers(because ext layer).
+ * Use this enum to describe.
+ */
+enum EXDMA_COMPR_TYPE {
+	COMPR_TYPE_IS_UNCOMPR,
+	COMPR_TYPE_IS_COMPR,
+	COMPR_TYPE_ALL_UNCOMPR,
+	COMPR_TYPE_ALL_COMPR,
+	COMPR_TYPE_HAS_UNCOMPR,
+	COMPR_TYPE_HAS_COMPR,
+	COMPR_TYPE_MAX,
+};
+
 enum BL_GAMMA_GAIN {
 	GAMMA_GAIN_0,
 	GAMMA_GAIN_1,

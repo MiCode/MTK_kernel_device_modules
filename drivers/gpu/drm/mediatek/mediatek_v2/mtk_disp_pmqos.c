@@ -688,7 +688,8 @@ static unsigned int mtk_disp_cal_usage_bw(struct mtk_drm_crtc *mtk_crtc,
 		return bw;
 
 	bw = bw_base * mtk_crtc->usage_ovl_fmt[idx] / 4;
-	if (mtk_crtc->usage_ovl_compr[idx])
+	/* only when exdmaX's all layer is compr can consider compr_ratio */
+	if (mtk_crtc->usage_ovl_compr[idx] == BIT(COMPR_TYPE_IS_COMPR))
 		bw = bw * compr_ratio / 100;
 
 	return bw;
