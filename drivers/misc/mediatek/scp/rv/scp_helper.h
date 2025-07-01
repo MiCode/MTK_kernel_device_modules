@@ -115,6 +115,12 @@ enum SCP_DUMP_TYPE {
 	DO_DUMP = 1,
 };
 
+/* bus tracker version */
+enum SCP_BUS_TRACKER_VER {
+	BUS_TRACKER_LEGACY = 1,
+	BUS_TRACKER_V2,
+};
+
 struct scp_bus_tracker_status {
 	u32 dbg_con;
 	u32 dbg_r[32];
@@ -152,6 +158,8 @@ struct scp_regs {
 	unsigned int ipi_timeout_bugon;
 	unsigned int task_monitor_dbg;
 	struct scp_bus_tracker_status tracker_status;
+	unsigned int tracker_version;
+	unsigned int traker_timeout_bugon;
 };
 
 /* scp work struct definition*/

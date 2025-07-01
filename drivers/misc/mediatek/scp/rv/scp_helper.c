@@ -2904,6 +2904,7 @@ static int scp_device_probe(struct platform_device *pdev)
 	const char *scp_recovery_wfi_detect = NULL;
 	const char *scp_ipi_timeout_bugon = NULL;
 	const char *scp_task_monitor_dbg = NULL;
+	const char *scp_dts_str = NULL;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	scpreg.sram = devm_ioremap_resource(dev, res);
@@ -3153,6 +3154,8 @@ static int scp_device_probe(struct platform_device *pdev)
 		scp_awake_timeout = 100000;
 	}
 
+	pr_notice("[SCP] scp_awake_timeout = %d\n", scp_awake_timeout);
+
 	/* scp task monitor debug */
 	scpreg.task_monitor_dbg = 0;
 	if (!of_property_read_string(pdev->dev.of_node,
@@ -3163,7 +3166,22 @@ static int scp_device_probe(struct platform_device *pdev)
 		}
 	}
 
-	pr_notice("[SCP] scp_awake_timeout = %d\n", scp_awake_timeout);
+	/* get bus tracker verion */
+	ret = of_property_read_u32(pdev->dev.of_node,
+					"scp-bus-tracker-ver",
+					&scpreg.tracker_version);
+	if(ret)
+		scpreg.tracker_version = 1;
+
+	pr_notice("scp bus tracker version:0x%x\n",scpreg.tracker_version);
+
+	if (!of_property_read_string(pdev->dev.of_node,
+				"scp-tracker-timeout-bugon", &scp_dts_str)){
+		if (!strncmp(scp_dts_str, "enable", strlen("enable"))) {
+			pr_notice("[SCP] scp_tracker_timeout_bugon enabled\n");
+			scpreg.traker_timeout_bugon = 1;
+		}
+	}
 
 	scpreg.irq0 = platform_get_irq_byname(pdev, "ipc0");
 	if (scpreg.irq0 < 0)
