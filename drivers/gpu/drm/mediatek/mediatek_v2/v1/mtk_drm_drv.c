@@ -10424,7 +10424,8 @@ static int mtk_drm_mml_ctrl_caps(struct mtk_drm_mml_caps_info *mml_caps, struct 
 		priv->data->mmsys_id == MMSYS_MT6833 ||
 		priv->data->mmsys_id == MMSYS_MT6789 ||
 		priv->data->mmsys_id == MMSYS_MT6855 ||
-		priv->data->mmsys_id == MMSYS_MT6877) {
+		priv->data->mmsys_id == MMSYS_MT6877 ||
+		priv->data->mmsys_id == MMSYS_MT6858) {
 		mml_caps->mode_caps = MTK_MML_DISP_MDP_LAYER;
 		return 0;
 	}

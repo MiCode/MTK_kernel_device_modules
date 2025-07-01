@@ -2886,7 +2886,8 @@ static int mtk_lye_get_comp_id(int disp_idx, int disp_list, struct drm_device *d
 			return DDP_COMPONENT_OVL0;
 		if (priv->data->mmsys_id == MMSYS_MT6985 ||
 			priv->data->mmsys_id == MMSYS_MT6897 ||
-			priv->data->mmsys_id == MMSYS_MT6989) {
+			priv->data->mmsys_id == MMSYS_MT6989 ||
+			priv->data->mmsys_id == MMSYS_MT6858) {
 			if (HRT_GET_FIRST_SET_BIT(ovl_mapping_tb -
 				HRT_GET_FIRST_SET_BIT(ovl_mapping_tb)) >=
 				layer_map_idx) {
@@ -3466,7 +3467,8 @@ static int _dispatch_lye_blob_idx(struct drm_mtk_layering_info *disp_info,
 
 		if ((priv->data->mmsys_id == MMSYS_MT6789 ||
 			priv->data->mmsys_id == MMSYS_MT6895 ||
-			priv->data->mmsys_id == MMSYS_MT6855) &&
+			priv->data->mmsys_id == MMSYS_MT6855 ||
+			priv->data->mmsys_id == MMSYS_MT6858) &&
 			mtk_has_layer_cap(layer_info, MTK_DISP_RSZ_LAYER) &&
 			comp_state.comp_id != DDP_COMPONENT_OVL0_2L &&
 			comp_state.comp_id != DDP_COMPONENT_OVL1_2L) {
@@ -4339,7 +4341,8 @@ static int RPO_rule(struct drm_crtc *crtc,
 		if (mtk_has_layer_cap(c, MTK_MDP_RSZ_LAYER) &&
 			(private->data->mmsys_id != MMSYS_MT6897)
 			&& (private->data->mmsys_id != MMSYS_MT6991)
-			&& (private->data->mmsys_id != MMSYS_MT6993))
+			&& (private->data->mmsys_id != MMSYS_MT6993)
+			&& (private->data->mmsys_id != MMSYS_MT6858))
 			continue;
 
 		if (scale_cnt >= l_rule_info->rpo_scale_num)
@@ -5087,7 +5090,8 @@ static int layering_rule_start(struct drm_mtk_layering_info *disp_info_user,
 		priv->data->mmsys_id == MMSYS_MT6877 ||
 		priv->data->mmsys_id == MMSYS_MT6895 ||
 		priv->data->mmsys_id == MMSYS_MT6855 ||
-		priv->data->mmsys_id == MMSYS_MT6885))
+		priv->data->mmsys_id == MMSYS_MT6885 ||
+		priv->data->mmsys_id == MMSYS_MT6858))
 		l_rule_ops->scenario_decision(dev, scn_decision_flag, scale_num);
 
 	/* Layer Grouping */
@@ -5216,7 +5220,8 @@ static int layering_rule_start(struct drm_mtk_layering_info *disp_info_user,
 		priv->data->mmsys_id == MMSYS_MT6877 ||
 		priv->data->mmsys_id == MMSYS_MT6895 ||
 		priv->data->mmsys_id == MMSYS_MT6855 ||
-		priv->data->mmsys_id == MMSYS_MT6885)) {
+		priv->data->mmsys_id == MMSYS_MT6885 ||
+		priv->data->mmsys_id == MMSYS_MT6858)) {
 		scale_num = get_scale_cnt(&layering_info);
 		l_rule_ops->scenario_decision(dev, scn_decision_flag, scale_num);
 	}
