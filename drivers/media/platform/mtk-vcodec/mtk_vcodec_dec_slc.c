@@ -27,6 +27,7 @@ void mtk_vdec_init_slc(struct slc_param *param, int uid)
 
 void mtk_vdec_slc_gid_request(struct mtk_vcodec_ctx *ctx, struct slc_param *param)
 {
+#ifdef MTK_SLBC_SUPPORT
 	mutex_lock(&param->param_mutex);
 	param->used_cnt++;
 	mtk_vdec_slc_fill_data(ctx, param); // update roi info (TBD)
@@ -70,10 +71,12 @@ void mtk_vdec_slc_gid_request(struct mtk_vcodec_ctx *ctx, struct slc_param *para
 		}
 	}
 	mutex_unlock(&param->param_mutex);
+#endif
 }
 
 void mtk_vdec_slc_get_gid_from_dma(struct mtk_vcodec_ctx *ctx, struct dma_buf *dbuf)
 {
+#ifdef MTK_SLBC_SUPPORT
 	struct slc_param *param = &ctx->dev->dec_slc_frame;
 
 	if (!dbuf)
@@ -103,11 +106,13 @@ void mtk_vdec_slc_get_gid_from_dma(struct mtk_vcodec_ctx *ctx, struct dma_buf *d
 		}
 	}
 	mutex_unlock(&param->param_mutex);
+#endif
 }
 
 void mtk_vdec_slc_read_invalidate(struct mtk_vcodec_ctx *ctx,
 	struct slc_param *param, int enable)
 {
+#ifdef MTK_SLBC_SUPPORT
 	mutex_lock(&param->param_mutex);
 	if (param->is_requested) {
 		slbc_read_invalidate(param->uid, param->gid, enable);
@@ -118,10 +123,12 @@ void mtk_vdec_slc_read_invalidate(struct mtk_vcodec_ctx *ctx,
 			ctx->id, param->uid, param->gid);
 	}
 	mutex_unlock(&param->param_mutex);
+#endif
 }
 
 void mtk_vdec_slc_gid_release(struct mtk_vcodec_ctx *ctx, struct slc_param *param)
 {
+#ifdef MTK_SLBC_SUPPORT
 	mutex_lock(&param->param_mutex);
 	param->used_cnt--;
 
@@ -147,6 +154,7 @@ void mtk_vdec_slc_gid_release(struct mtk_vcodec_ctx *ctx, struct slc_param *para
 			ctx->id, param->uid, param->gid, param->used_cnt);
 	}
 	mutex_unlock(&param->param_mutex);
+#endif
 }
 
 void mtk_vdec_slc_fill_data(struct mtk_vcodec_ctx *ctx, struct slc_param *param)
@@ -180,7 +188,9 @@ void mtk_vdec_slc_fill_data(struct mtk_vcodec_ctx *ctx, struct slc_param *param)
 
 void mtk_vdec_slc_update_roi(struct mtk_vcodec_ctx *ctx, struct slc_param *param)
 {
+#ifdef MTK_SLBC_SUPPORT
 	mtk_vdec_slc_fill_data(ctx, param);
 	slbc_roi_update(param->uid, param->gid, &param->data);
+#endif
 }
 

@@ -3009,6 +3009,7 @@ static int vb2ops_venc_start_streaming(struct vb2_queue *q, unsigned int count)
 	(isENCODE_REQUEST_SLB_EXTRA(q_data_src->visible_width, q_data_src->visible_height, slb_ex_res_thresh) &&
 	(ctx->dev->enc_slb_extra > 0));
 
+#ifdef MTK_SLBC_SUPPORT
 	if ((ctx->use_slbc == 1) && (ctx->slbc_cpu_used_performance == 1)) {
 		mtk_v4l2_debug(0, "slbc_cpu_used_perf_release, %p\n", &ctx->sram_data);
 		slbc_release(&ctx->sram_data);
@@ -3051,6 +3052,7 @@ static int vb2ops_venc_start_streaming(struct vb2_queue *q, unsigned int count)
 		ctx->use_slbc_extra, ctx->slbc_addr_extra, (unsigned long)ctx->sram_data_extra.paddr,
 		ctx->sram_data_extra.ref, slb_ex_res_thresh);
 	}
+#endif
 
 	if (mtk_venc_overspec_check(ctx)) {
 		mtk_venc_error_handle(ctx);

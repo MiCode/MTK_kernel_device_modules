@@ -31,7 +31,7 @@
 #include "iommu_debug.h"
 #endif
 
-#if IS_ENABLED(CONFIG_MTK_EMI) && !IS_ENABLED(CONFIG_MTK_EMI_LEGACY)
+#ifdef MTK_EMI_VIOLATION_SUPPORT
 #include "emi.h"
 #endif
 
@@ -88,6 +88,7 @@ int mtk_slb_user_deactivate_request(struct slbc_data *d)
 
 void mtk_venc_init_ctx_pm(struct mtk_vcodec_ctx *ctx)
 {
+#ifdef MTK_SLBC_SUPPORT
 	struct slbc_ops slbc_ops = {0};
 
 	ctx->sram_data.uid = UID_MM_VENC;
@@ -112,7 +113,7 @@ void mtk_venc_init_ctx_pm(struct mtk_vcodec_ctx *ctx)
 		pr_info("slbc_addr error 0x%x\n", ctx->slbc_addr);
 		ctx->use_slbc = 0;
 	}
-
+#endif
 	if (ctx->use_slbc == 1 && ctx->sram_data.ref == 1) {
 		atomic_set(&mtk_venc_slb_cb.release_slbc, 0);
 		atomic_set(&mtk_venc_slb_cb.request_slbc, 0);
@@ -211,6 +212,7 @@ void mtk_vcodec_release_enc_pm(struct mtk_vcodec_dev *mtkdev)
 
 void mtk_venc_deinit_ctx_pm(struct mtk_vcodec_ctx *ctx)
 {
+#ifdef MTK_SLBC_SUPPORT
 	if (ctx->use_slbc == 1) {
 		pr_debug("slbc_release, %p\n", &ctx->sram_data);
 		slbc_release(&ctx->sram_data);
@@ -234,7 +236,7 @@ void mtk_venc_deinit_ctx_pm(struct mtk_vcodec_ctx *ctx)
 		slbc_release(&ctx->sram_data_extra);
 		pr_info("slbc_release_extra ref %d\n", ctx->sram_data_extra.ref);
 	}
-
+#endif
 	mtk_v4l2_debug(0, "slb_cb %d/%d perf %d cnt %d/%d/%d slb_cpu_used_perf %d",
 		atomic_read(&mtk_venc_slb_cb.release_slbc),
 		atomic_read(&mtk_venc_slb_cb.request_slbc),
@@ -246,6 +248,7 @@ void mtk_venc_deinit_ctx_pm(struct mtk_vcodec_ctx *ctx)
 
 }
 
+#ifndef FPGA_PWRCLK_API_DISABLE
 static void mtk_vcodec_enc_larb_on(struct mtk_vcodec_pm *pm)
 {
 	struct mtk_vcodec_dev *dev = container_of(pm, struct mtk_vcodec_dev, pm);
@@ -280,6 +283,7 @@ static void mtk_vcodec_enc_larb_off(struct mtk_vcodec_pm *pm)
 	}
 	atomic_dec(&dev->larb_ref_cnt);
 }
+#endif
 
 void mtk_vcodec_enc_clock_on(struct mtk_vcodec_ctx *ctx, int core_id, bool power_only)
 {
@@ -888,7 +892,7 @@ static int mtk_venc_translation_fault_callback(
 }
 #endif
 
-#if IS_ENABLED(CONFIG_MTK_EMI) && !IS_ENABLED(CONFIG_MTK_EMI_LEGACY)
+#ifdef MTK_EMI_VIOLATION_SUPPORT
 static int mtk_venc_violation_fault_callback(void *data)
 {
 	struct mtk_vcodec_dev *dev = (struct mtk_vcodec_dev *)data;
@@ -921,7 +925,7 @@ void mtk_venc_translation_fault_callback_setting(
 void mtk_venc_violation_fault_callback_setting(
 	struct mtk_vcodec_dev *dev)
 {
-#if IS_ENABLED(CONFIG_MTK_EMI) && !IS_ENABLED(CONFIG_MTK_EMI_LEGACY)
+#ifdef MTK_EMI_VIOLATION_SUPPORT
 	mtk_slb_violation_register_callback(mtk_venc_violation_fault_callback, (void *)dev);
 #endif
 }

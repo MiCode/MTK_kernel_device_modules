@@ -214,6 +214,7 @@ void mtk_vcodec_release_dec_pm(struct mtk_vcodec_dev *dev)
 #endif
 }
 
+#ifndef FPGA_PWRCLK_API_DISABLE
 static void mtk_vcodec_dec_larb_on(struct mtk_vcodec_pm *pm)
 {
 	int ret, larb_index;
@@ -267,6 +268,7 @@ static void mtk_vcodec_dec_larb_off(struct mtk_vcodec_pm *pm)
 			pm_runtime_put_sync(pm->larbvdecs[larb_index]);
 	}
 }
+#endif
 
 #ifndef FPGA_PWRCLK_API_DISABLE
 #ifdef VDEC_DEBUG_DUMP

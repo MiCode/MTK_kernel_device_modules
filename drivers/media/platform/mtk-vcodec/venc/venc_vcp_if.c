@@ -869,6 +869,7 @@ extern struct VENC_SLB_CB_T mtk_venc_slb_cb;
 
 static int venc_vcp_suspend_release_slbc(struct mtk_vcodec_dev *dev)
 {
+#ifdef MTK_SLBC_SUPPORT
 	struct mtk_vcodec_ctx *ctx;
 	struct venc_inst *inst;
 	int curr_daemon_pid = vcp_cmd_ex(VENC_FEATURE_ID, VCP_GET_GEN, "venc_srv");
@@ -885,11 +886,13 @@ static int venc_vcp_suspend_release_slbc(struct mtk_vcodec_dev *dev)
 			}
 		}
 	}
+#endif
 	return 0;
 }
 
 static int venc_vcp_resume_request_slbc(struct mtk_vcodec_dev *dev)
 {
+#ifdef MTK_SLBC_SUPPORT
 	struct mtk_vcodec_ctx *ctx;
 	struct venc_ap_ipi_msg_set_param out_slb;
 	int curr_daemon_pid = vcp_cmd_ex(VENC_FEATURE_ID, VCP_GET_GEN, "venc_srv");
@@ -1002,6 +1005,7 @@ static int venc_vcp_resume_request_slbc(struct mtk_vcodec_dev *dev)
 			}
 		}
 	}
+#endif
 	return 0;
 }
 
@@ -1324,9 +1328,11 @@ int vcp_enc_encode(struct venc_inst *inst, unsigned int bs_mode,
 {
 
 	struct venc_ap_ipi_msg_enc out;
+#ifdef MTK_SLBC_SUPPORT
 	struct venc_ap_ipi_msg_set_param out_slb;
+#endif
 	struct venc_vsi *vsi = (struct venc_vsi *)inst->vcu_inst.vsi;
-	unsigned int i, ret, ret_slb;
+	unsigned int i, ret;
 
 	mtk_vcodec_debug(inst, "bs_mode %d ->", bs_mode);
 
@@ -1436,6 +1442,7 @@ int vcp_enc_encode(struct venc_inst *inst, unsigned int bs_mode,
 			bs_buf->index, (unsigned long)bs_buf, &bs_buf->dmabuf);
 	}
 
+#ifdef MTK_SLBC_SUPPORT
 	if (inst->ctx->use_slbc && atomic_read(&mtk_venc_slb_cb.release_slbc)) {
 		memset(&out_slb, 0, sizeof(out_slb));
 		out_slb.msg_id = AP_IPIMSG_ENC_SET_PARAM;
@@ -1445,10 +1452,10 @@ int vcp_enc_encode(struct venc_inst *inst, unsigned int bs_mode,
 		out_slb.data_item = 2;
 		out_slb.data[0] = 1; //release_slb 1
 		out_slb.data[1] = 0x0; //slbc_addr
-		ret_slb = venc_vcp_ipi_send(inst, &out_slb, sizeof(out_slb), false, true, false);
+		ret = venc_vcp_ipi_send(inst, &out_slb, sizeof(out_slb), false, true, false);
 
-		if (ret_slb)
-			mtk_vcodec_err(inst, "set VENC_SET_PARAM_RELEASE_SLB fail %d", ret_slb);
+		if (ret)
+			mtk_vcodec_err(inst, "set VENC_SET_PARAM_RELEASE_SLB fail %d", ret);
 		else {
 			mtk_v4l2_debug(0, "slbc_release, %p\n", &inst->ctx->sram_data);
 			slbc_release(&inst->ctx->sram_data);
@@ -1502,12 +1509,10 @@ int vcp_enc_encode(struct venc_inst *inst, unsigned int bs_mode,
 			out_slb.data_item = 2;
 			out_slb.data[0] = 0; //release_slb 0
 			out_slb.data[1] = inst->ctx->slbc_addr;
-			ret_slb = venc_vcp_ipi_send(inst, &out_slb, sizeof(out_slb),
+			ret = venc_vcp_ipi_send(inst, &out_slb, sizeof(out_slb),
 				false, true, false);
-			if (ret_slb) {
-				mtk_vcodec_err(inst, "set VENC_SET_PARAM_RELEASE_SLB fail %d",
-					ret_slb);
-			}
+			if (ret)
+				mtk_vcodec_err(inst, "set VENC_SET_PARAM_RELEASE_SLB fail %d", ret);
 		}
 
 		mtk_v4l2_debug(0, "slbc_request %d, 0x%x, 0x%lx\n",
@@ -1521,6 +1526,7 @@ int vcp_enc_encode(struct venc_inst *inst, unsigned int bs_mode,
 			atomic_read(&mtk_venc_slb_cb.later_cnt),
 			inst->ctx->later_cnt_once);
 	}
+#endif
 	vcodec_trace_begin("%s(ipi)", __func__);
 	ret = venc_vcp_ipi_send(inst, &out, sizeof(out), false, true, false);
 	vcodec_trace_end();
