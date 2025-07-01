@@ -686,7 +686,7 @@ static int start_write_bw(void)
 		int ret = 0;
 
 		ret = mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMQOS);
-		if (ret <= 0) {
+		if (ret <  0) {
 			MMQOS_ERR("vcp enable fail, ret:%d", ret);
 			MMQOS_AEE("vcp enable fail");
 
@@ -720,7 +720,7 @@ static void stop_write_bw(void)
 		int ret;
 
 		ret = mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMQOS);
-		if (ret <= 0)
+		if (ret < 0)
 			MMQOS_ERR("mmdvfs disable vcp error, ret:%d", ret);
 	}
 #endif
@@ -2207,7 +2207,7 @@ static void vmmrc_full_dump(struct seq_file *file)
 		int ret;
 
 		ret = mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMQOS);
-		if (ret <= 0 || !mmqos_vcp_ready_done()) {
+		if (ret < 0 || !mmqos_vcp_ready_done()) {
 			MMQOS_ERR("vcp not ready, ret:%d", ret);
 			mmqos_debug_dump_line(file, "vcp not ready, ret:%d\n", ret);
 
@@ -2223,7 +2223,7 @@ static void vmmrc_full_dump(struct seq_file *file)
 		int ret;
 
 		ret = mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMQOS);
-		if (ret <= 0)
+		if (ret < 0)
 			MMQOS_ERR("mmdvfs disable vcp error, ret:%d", ret);
 	}
 #endif
@@ -2263,7 +2263,7 @@ static void vmmrc_full_dump_line(void)
 		int ret;
 
 		ret = mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMQOS);
-		if (ret <= 0 || !mmqos_vcp_ready_done()) {
+		if (ret < 0 || !mmqos_vcp_ready_done()) {
 			MMQOS_ERR("vcp not ready, ret:%d", ret);
 			return;
 		}
@@ -2277,7 +2277,7 @@ static void vmmrc_full_dump_line(void)
 		int ret;
 
 		ret = mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMQOS);
-		if (ret <= 0)
+		if (ret < 0)
 			MMQOS_ERR("mmdvfs disable vcp error, ret:%d", ret);
 	}
 #endif
