@@ -5092,41 +5092,37 @@ static void mtk_output_en_doze_switch(struct mtk_dsi *dsi)
 		return;
 
 	/* Change LCM Doze mode */
-	if (mtk_dsi_cmd_version() == DSI_CMD_V2) {
-		if (doze_enabled && panel_funcs->doze_enable_start_v2) {
-			struct mtk_dsi_cmd_option cmd_opt = { 0 };
+	if ((mtk_dsi_cmd_version() == DSI_CMD_V2) && doze_enabled && panel_funcs->doze_enable_start_v2) {
+		struct mtk_dsi_cmd_option cmd_opt = { 0 };
 
-			cmd_opt.flags = MTK_MIPI_DSI_GCE_CREATE_HANDLE |
-							MTK_MIPI_DSI_GCE_USE_CFG_THREAD |
-							MTK_MIPI_DSI_GCE_BLOCKING_FLUSH;
-			panel_funcs->doze_enable_start_v2(dsi->panel, dsi,
-						mtk_mipi_dsi_cmd, NULL, &cmd_opt);
-		} else if (!doze_enabled && panel_funcs->doze_disable_v2) {
-			struct mtk_dsi_cmd_option cmd_opt = { 0 };
-
-			cmd_opt.flags = MTK_MIPI_DSI_GCE_CREATE_HANDLE |
-							MTK_MIPI_DSI_GCE_USE_CFG_THREAD |
-							MTK_MIPI_DSI_GCE_BLOCKING_FLUSH;
-			panel_funcs->doze_disable_v2(dsi->panel, dsi,
+		cmd_opt.flags = MTK_MIPI_DSI_GCE_CREATE_HANDLE |
+						MTK_MIPI_DSI_GCE_USE_CFG_THREAD |
+						MTK_MIPI_DSI_GCE_BLOCKING_FLUSH;
+		panel_funcs->doze_enable_start_v2(dsi->panel, dsi,
 					mtk_mipi_dsi_cmd, NULL, &cmd_opt);
-		}
-	} else {
-		if (doze_enabled && panel_funcs->doze_enable_start)
-			panel_funcs->doze_enable_start(dsi->panel, dsi,
-				mipi_dsi_dcs_write_gce2, NULL);
-		else if (!doze_enabled && panel_funcs->doze_disable) {
-			panel_funcs->doze_disable(dsi->panel, dsi,
-				mipi_dsi_dcs_write_gce2, NULL);
+	} else if ((mtk_dsi_cmd_version() == DSI_CMD_V2) && (!doze_enabled) && panel_funcs->doze_disable_v2) {
+		struct mtk_dsi_cmd_option cmd_opt = { 0 };
 
-			if (dsi->cur_panel_param_changed) {
-				/*
-				 * if changed skip_vblank and real_te_duration by ddic command,
-				 * please update cur_skip_vblank and cur_te_duration in panel driver.
-				 * eg. ext->params->cur_skip_vblank = new_skip_vblank;
-				 *	  ext->params->cur_te_duration = new_te_duration;
-				 */
-				mtk_update_panel_param(mtk_crtc, dsi);
-			}
+		cmd_opt.flags = MTK_MIPI_DSI_GCE_CREATE_HANDLE |
+						MTK_MIPI_DSI_GCE_USE_CFG_THREAD |
+						MTK_MIPI_DSI_GCE_BLOCKING_FLUSH;
+		panel_funcs->doze_disable_v2(dsi->panel, dsi,
+				mtk_mipi_dsi_cmd, NULL, &cmd_opt);
+	} else if (doze_enabled && panel_funcs->doze_enable_start) {
+		panel_funcs->doze_enable_start(dsi->panel, dsi,
+			mipi_dsi_dcs_write_gce2, NULL);
+	} else if (!doze_enabled && panel_funcs->doze_disable) {
+		panel_funcs->doze_disable(dsi->panel, dsi,
+			mipi_dsi_dcs_write_gce2, NULL);
+
+		if (dsi->cur_panel_param_changed) {
+			/*
+			 * if changed skip_vblank and real_te_duration by ddic command,
+			 * please update cur_skip_vblank and cur_te_duration in panel driver.
+			 * eg. ext->params->cur_skip_vblank = new_skip_vblank;
+			 *	  ext->params->cur_te_duration = new_te_duration;
+			 */
+			mtk_update_panel_param(mtk_crtc, dsi);
 		}
 	}
 
