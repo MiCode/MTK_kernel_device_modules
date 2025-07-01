@@ -1080,6 +1080,11 @@ static int mt6720_div2_reset_vbusovp_alarm(struct charger_device *chgdev)
 	return 0;
 }
 
+static int mt6720_div2_need_hz_ctrl(struct charger_device *chgdev)
+{
+	return 0;
+}
+
 static const struct charger_ops mt6720_div2_chg_ops = {
 	.enable = mt6720_div2_enable_chg,
 	.is_enabled = mt6720_div2_is_chg_enabled,
@@ -1095,6 +1100,7 @@ static const struct charger_ops mt6720_div2_chg_ops = {
 	.reset_vbusovp_alarm = mt6720_div2_reset_vbusovp_alarm,
 	.is_vbuslowerr = mt6720_div2_is_vbuslowerr,
 	.get_adc_accuracy = mt6720_div2_get_adc_accuracy,
+	.need_hz_ctrl = mt6720_div2_need_hz_ctrl,
 };
 
 static void mt6720_div2_destroy(void *data)
