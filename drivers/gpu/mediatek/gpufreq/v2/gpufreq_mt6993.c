@@ -516,11 +516,12 @@ void __gpufreq_dump_shared_status(char *log_buf, int *log_len, int log_size)
 			(g_shared_status->vcore_level & DDR_LEVEL_MASK) >> DDR_LEVEL_SHIFT,
 			(g_shared_status->vcore_level & EMI_LEVEL_MASK) >> EMI_LEVEL_SHIFT);
 		GPUFREQ_LOGB(log_buf, log_len, log_size,
-			"InFreq: %d/%d, OutFreq: %d/%d, CC:%d/%d, FC:%d/%d",
+			"InFreq: %d/%d, OutFreq: %d/%d, CC:%d/%d, FC:%d/%d (%d/%d)",
 			g_shared_status->ptp3_info.infreq0, g_shared_status->ptp3_info.infreq1,
 			g_shared_status->ptp3_info.outfreq0, g_shared_status->ptp3_info.outfreq1,
 			g_shared_status->ptp3_info.hw_cc, g_shared_status->ptp3_info.sw_cc,
-			g_shared_status->ptp3_info.hw_fc, g_shared_status->ptp3_info.sw_fc);
+			g_shared_status->ptp3_info.hw_fc, g_shared_status->ptp3_info.sw_fc,
+			ptp3_status.ptp3_debug_mode, ptp3_status.ptp3_debug_trim);
 	}
 }
 

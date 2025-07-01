@@ -195,14 +195,16 @@ enum gpufreq_config_value {
 	DATA_LEVEL_0            = 14,
 	DATA_LEVEL_1            = 15,
 	DATA_LEVEL_2            = 16,
-	DREQ_NON_AUTO_PWR_SEL_0 = 17,
-	DREQ_NON_AUTO_PWR_SEL_1 = 18,
-	DREQ_AUTO_PWR_SEL_0     = 19,
-	DREQ_AUTO_PWR_SEL_1     = 20,
-	PMIC_AUTO_MODE          = 21,
-	PMIC_PWM_MODE           = 22,
-	PMIC_CURRENT_CLAMPING   = 23,
-	PMIC_OC_SHUTDOWN        = 24,
+	DATA_LEVEL_RECOVERY     = 17,
+	DATA_LEVEL_TRIMMING     = 18,
+	DREQ_NON_AUTO_PWR_SEL_0 = 19,
+	DREQ_NON_AUTO_PWR_SEL_1 = 20,
+	DREQ_AUTO_PWR_SEL_0     = 21,
+	DREQ_AUTO_PWR_SEL_1     = 22,
+	PMIC_AUTO_MODE          = 23,
+	PMIC_PWM_MODE           = 24,
+	PMIC_CURRENT_CLAMPING   = 25,
+	PMIC_OC_SHUTDOWN        = 26,
 };
 
 enum gpufreq_chip_type {
@@ -434,6 +436,8 @@ struct gpufreq_ptp3_shared_status {
 	enum gpufreq_thermal_prot_mode thermal_prot_mode;
 	unsigned int ptp3_mode;
 	unsigned int ptp3_debug_mode;
+	int ptp3_debug_trim;
+	int ptp3_adjust_trim;
 	unsigned int hbvc_support;
 	unsigned int hbvc_preoc_support;
 	unsigned int hbvc_preoc_mode;

@@ -230,13 +230,13 @@ static int gpufreq_status_proc_show(struct seq_file *m, void *v)
 		ptp3_status.brisket_cpmeter_mode ? "On" : "Off",
 		ptp3_status.gpm3_5_mode ? "On" : "Off");
 	seq_printf(m,
-		"%-16s InFreq: %d/%d, OutFreq: %d/%d, CC: %d/%d, FC: %d/%d, Mode: %s\n",
+		"%-16s InFreq: %d/%d, OutFreq: %d/%d, CC: %d/%d, FC: %d/%d, Mode: %s (%d)\n",
 		"[PTP3 Config]",
 		g_shared_status->ptp3_info.infreq0, g_shared_status->ptp3_info.infreq1,
 		g_shared_status->ptp3_info.outfreq0, g_shared_status->ptp3_info.outfreq1,
 		g_shared_status->ptp3_info.hw_cc, g_shared_status->ptp3_info.sw_cc,
 		g_shared_status->ptp3_info.hw_fc, g_shared_status->ptp3_info.sw_fc,
-		ptp3_status.brisket_safe_margin ? "Safe" : "Normal");
+		ptp3_status.brisket_safe_margin ? "Safe" : "Normal", ptp3_status.ptp3_debug_trim);
 	seq_printf(m,
 		"%-16s Internal_P/V/I: %d/%d/%d, External_P/I: %d/%d, Final_P: %d (0x%x), Ratio: %d/1000\n",
 		"[PRBC Status]",
