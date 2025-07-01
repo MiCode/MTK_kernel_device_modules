@@ -21,17 +21,6 @@ extern void set_grp_awr_min_opp_margin(int gear_id, int group_id, int val);
 extern void set_grp_awr_thr(int gear_id, int group_id, int opp);
 #endif
 
-/* cpufreq_sugov_ext.ko (use by vcodec_dvfs.c) */
-extern int get_target_margin_low(int cpu);
-extern int set_turn_point_freq(int cpu, unsigned long freq);
-extern int set_target_margin(int cpu, int margin);
-extern int set_target_margin_low(int cpu, int margin);
-extern int unset_target_margin(int cpu);
-extern int unset_target_margin_low(int cpu);
-extern bool is_runnable_boost_enable(void);
-extern void set_runnable_boost_enable(int ctrl);
-extern void unset_runnable_boost_enable(void);
-
 /* vip_engine.ko*/
 #if IS_ENABLED(CONFIG_MTK_VIP_ENGINE)
 extern int set_task_priority(struct task_struct *task, int prio);

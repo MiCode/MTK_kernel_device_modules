@@ -3,6 +3,8 @@
  * Copyright (C) 2025 MediaTek Inc.
  */
 
+#include <linux/module.h>
+
 #include "mtk_vcodec_sys_api.h"
 
 /* emi-slb.ko */
@@ -18,16 +20,6 @@ static struct mtk_vcodec_sys_apis funcs = {
 	.__set_grp_awr_min_opp_margin	= set_grp_awr_min_opp_margin,
 	.__set_grp_awr_thr		= set_grp_awr_thr,
 #endif
-	/* cpufreq_sugov_ext.ko (use by vcodec_dvfs.c) */
-	.__get_target_margin_low	= get_target_margin_low,
-	.__set_turn_point_freq		= set_turn_point_freq,
-	.__set_target_margin		= set_target_margin,
-	.__set_target_margin_low	= set_target_margin_low,
-	.__unset_target_margin		= unset_target_margin,
-	.__unset_target_margin_low	= unset_target_margin_low,
-	.__is_runnable_boost_enable	= is_runnable_boost_enable,
-	.__set_runnable_boost_enable	= set_runnable_boost_enable,
-	.__unset_runnable_boost_enable	= unset_runnable_boost_enable,
 #if IS_ENABLED(CONFIG_MTK_VIP_ENGINE)
 	/* vip_engine.ko*/
 	.__set_task_priority		= set_task_priority,

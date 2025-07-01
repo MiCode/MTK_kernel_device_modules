@@ -36,8 +36,6 @@ define_mgk_ddk_ko(
     },
     hdrs = [
         "mtk_vcodec_sys_api.h",
-    ] + [
-        "//kernel_device_modules-{}/drivers/misc/mediatek/sched:cpufreq_sugov_ext_headers".format(kernel_version),
     ],
     includes = [
         ".",
@@ -47,7 +45,6 @@ define_mgk_ddk_ko(
     ko_deps = [
         "//kernel_device_modules-{}/drivers/media/platform/mtk-vcodec:mtk-vcodec-common".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/sched:scheduler".format(kernel_version),
-        "//kernel_device_modules-{}/drivers/misc/mediatek/sched:cpufreq_sugov_ext".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/task_turbo:vip_engine".format(kernel_version),
         "//kernel_device_modules-{}/drivers/memory/mediatek:emi-slb".format(kernel_version),
     ],
@@ -92,9 +89,11 @@ define_mgk_ddk_ko(
         "mtk-v4l2-controls.h",
         "vcodec_ipi_msg.h",
     ] + [
-        "//kernel_device_modules-{}/drivers/misc/mediatek/slbc:headers".format(kernel_version),
         "//kernel_device_modules-{}/drivers/media/platform/mtk-vcu:headers".format(kernel_version),
+        # for "eas/group.h"
         "//kernel_device_modules-{}/drivers/misc/mediatek/sched:cpufreq_sugov_ext_headers".format(kernel_version),
+        # for mtk_vcodec_drv.h include "slbc_ops.h"
+        "//kernel_device_modules-{}/drivers/misc/mediatek/slbc:headers".format(kernel_version),
     ],
     includes = [
         ".",
@@ -187,7 +186,6 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/dma-buf/heaps:system_heap".format(kernel_version),
         "//kernel_device_modules-{}/drivers/media/platform/mtk-vcodec:mtk-vcodec-common".format(kernel_version),
         "//kernel_device_modules-{}/drivers/memory/mediatek:emi".format(kernel_version),
-        "//kernel_device_modules-{}/drivers/misc/mediatek/cpufreq_lite:cpudvfs".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/iommu:iommu_debug".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/iommu:iommu_gz".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/irq_monitor:irq_monitor".format(kernel_version),
@@ -256,7 +254,6 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/media/platform/mtk-vcodec:mtk-vcodec-common".format(kernel_version),
         "//kernel_device_modules-{}/drivers/memory/mediatek:emi".format(kernel_version),
         "//kernel_device_modules-{}/drivers/memory:mtk-smi".format(kernel_version),
-        "//kernel_device_modules-{}/drivers/misc/mediatek/cpufreq_lite:cpudvfs".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/iommu:iommu_debug".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/iommu:iommu_gz".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/irq_monitor:irq_monitor".format(kernel_version),

@@ -22,8 +22,6 @@
 #ifdef MS_TO_NS
 #undef MS_TO_NS
 #endif
-#include "pf_ctrl.h"
-#include "slbc_sdk.h"
 
 int codec_margin_change;
 int codec_runnable_boost_disable;
@@ -549,38 +547,6 @@ static bool mtk_vcodec_has_active_inst(struct mtk_vcodec_dev *dev, int codec_typ
 }
 
 
-static bool mtk_vcodec_has_single_inst(struct mtk_vcodec_dev *dev, int codec_type, unsigned int op_rate)
-{
-	struct list_head *item = 0;
-	struct vcodec_inst *inst;
-	struct list_head *dvfs_inst = 0;
-	int count = 0;
-
-	if (codec_type == MTK_INST_DECODER)
-		dvfs_inst = &dev->vdec_dvfs_inst;
-	else if(codec_type == MTK_INST_ENCODER)
-		dvfs_inst = &dev->venc_dvfs_inst;
-
-	if ((dvfs_inst) && (!list_empty(dvfs_inst))) {
-		list_for_each(item, dvfs_inst) {
-			if(IS_ERR_OR_NULL(item)) {
-				mtk_vcodec_dvfs_qos_log(true, "[VDVFS][%s] find null in item in list!\n",
-					(codec_type == MTK_INST_DECODER) ? "VDEC" : "VENC");
-				INIT_LIST_HEAD(&dev->vdec_dvfs_inst);
-				break;
-			}
-			count++;
-			inst = list_entry(item, struct vcodec_inst, list);
-
-		}
-	}
-
-	if(count == 1 && inst != NULL && inst->op_rate <= op_rate)
-		return true;
-
-	return false;
-}
-
 u32 mtk_vcodec_get_bw_factor(struct mtk_vcodec_dev *dev, int codec_type)
 {
 	int i;
@@ -835,66 +801,4 @@ void mtk_vcodec_cpu_adaptive_ctrl(struct mtk_vcodec_ctx *ctx, int enable)
 			mtk_vcodec_set_cpu_hint(dev, enable, ctx->type, ctx->id, ctx->cpu_caller_pid, __func__);
 		}
 	}
-}
-
-void mtk_vcodec_cpu_pf_ctrl(struct mtk_vcodec_ctx *ctx, int enable)
-{
-	if (!mtk_vcodec_has_active_inst(ctx->dev, MTK_INST_DECODER)) {
-		mtk_set_pf_ctrl_enable((bool)enable, PF_CTRL_USER_VP);
-		int ret = mtk_get_pf_ctrl_enable();
-
-		mtk_vcodec_dvfs_qos_log(false, "[VDVFS] pf dynamic control %s:%d\n",
-			ret ? "enable" : "disable", ret);
-	}
-}
-
-void mtk_vcodec_slc_wce_ctrl(struct mtk_vcodec_ctx *ctx, int off)
-{
-	if (!mtk_vcodec_has_active_inst(ctx->dev, MTK_INST_DECODER)) {
-		slbc_disable_dcc((bool)off); // 1: disable WCE, 0: enable (default)
-		mtk_vcodec_dvfs_qos_log(false, "[VDVFS] slc wce %s\n", off ? "disable" : "enable");
-	}
-}
-
-void mtk_vcodec_cpu_margin_ctrl(struct mtk_vcodec_ctx *ctx)
-{
-	int margin = mtk_vcodec_get_target_margin_low(0);
-
-	if (mtk_vcodec_has_single_inst(ctx->dev, MTK_INST_DECODER, 30) &&
-		!mtk_vcodec_has_active_inst(ctx->dev, MTK_INST_ENCODER)) {
-		mtk_vcodec_set_turn_point_freq(0, 1000);
-		mtk_vcodec_set_target_margin(0, 20);
-		mtk_vcodec_set_target_margin_low(0, 0);
-		codec_margin_change++;
-	} else {
-		if (codec_margin_change > 0) {
-			mtk_vcodec_set_turn_point_freq(0, 0);
-			mtk_vcodec_unset_target_margin(0);
-			mtk_vcodec_unset_target_margin_low(0);
-			codec_margin_change--;
-		}
-	}
-
-	mtk_vcodec_dvfs_qos_log(false, "[VDVFS] cpu margin change %d to %d, count: %d\n",
-		margin, mtk_vcodec_get_target_margin_low(0), codec_margin_change);
-}
-
-void mtk_vcodec_cpu_runnable_boost_ctrl(struct mtk_vcodec_ctx *ctx)
-{
-	int boost = mtk_vcodec_is_runnable_boost_enable();
-
-	if (mtk_vcodec_has_single_inst(ctx->dev, MTK_INST_DECODER, 30) &&
-		!mtk_vcodec_has_active_inst(ctx->dev, MTK_INST_ENCODER) &&
-		mtk_vcodec_is_runnable_boost_enable()) {
-		mtk_vcodec_set_runnable_boost_enable(0);
-		codec_runnable_boost_disable++;
-	} else {
-		if (codec_runnable_boost_disable > 0) {
-			mtk_vcodec_unset_runnable_boost_enable();
-			codec_runnable_boost_disable--;
-		}
-	}
-
-	mtk_vcodec_dvfs_qos_log(false, "[VDVFS] cpu runnable boost change %d to %d, count: %d\n",
-		boost, mtk_vcodec_is_runnable_boost_enable(), codec_runnable_boost_disable);
 }

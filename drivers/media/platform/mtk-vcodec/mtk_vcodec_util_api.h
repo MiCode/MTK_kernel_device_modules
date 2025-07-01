@@ -11,10 +11,6 @@
 /* include for enum, struct, define */
 /* scheduler.ko */
 #include "eas/group.h"
-/* cpufreq_sugov_ext.ko (use by vcodec_dvfs.c) */
-#include "sched/sched.h"
-#include "common.h"
-#include "util/cpu_util.h"
 /* vip_engine header*/
 #include <linux/sched.h>
 /* emi-slb header */
@@ -30,16 +26,6 @@ struct mtk_vcodec_sys_apis {
 	void (*__set_top_grp_aware)(int val, int force_ctrl);
 	void (*__set_grp_awr_min_opp_margin)(int gear_id, int group_id, int val);
 	void (*__set_grp_awr_thr)(int gear_id, int group_id, int opp);
-	/* cpufreq_sugov_ext.ko (use by vcodec_dvfs.c) */
-	int  (*__get_target_margin_low)(int cpu);
-	int  (*__set_turn_point_freq)(int cpu, unsigned long freq);
-	int  (*__set_target_margin)(int cpu, int margin);
-	int  (*__set_target_margin_low)(int cpu, int margin);
-	int  (*__unset_target_margin)(int cpu);
-	int  (*__unset_target_margin_low)(int cpu);
-	bool (*__is_runnable_boost_enable)(void);
-	void (*__set_runnable_boost_enable)(int ctrl);
-	void (*__unset_runnable_boost_enable)(void);
 	/* vip_engine.ko*/
 	int  (*__set_task_priority)(struct task_struct *task, int prio);
 	/* emi-slb.ko */
@@ -54,17 +40,6 @@ void mtk_vcodec_set_sys_api_funcs(struct mtk_vcodec_sys_apis *fp);
 void mtk_vcodec_set_top_grp_aware(int val, int force_ctrl);
 void mtk_vcodec_set_grp_awr_min_opp_margin(int gear_id, int group_id, int val);
 void mtk_vcodec_set_grp_awr_thr(int gear_id, int group_id, int opp);
-
-/* cpufreq_sugov_ext.ko (use by vcodec_dvfs.c) */
-int mtk_vcodec_get_target_margin_low(int cpu);
-int mtk_vcodec_set_turn_point_freq(int cpu, unsigned long freq);
-int mtk_vcodec_set_target_margin(int cpu, int margin);
-int mtk_vcodec_set_target_margin_low(int cpu, int margin);
-int mtk_vcodec_unset_target_margin(int cpu);
-int mtk_vcodec_unset_target_margin_low(int cpu);
-bool mtk_vcodec_is_runnable_boost_enable(void);
-void mtk_vcodec_set_runnable_boost_enable(int ctrl);
-void mtk_vcodec_unset_runnable_boost_enable(void);
 
 /* vip_engine.ko*/
 int  mtk_vcodec_set_task_priority(struct task_struct *task, int prio);
