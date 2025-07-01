@@ -95,6 +95,7 @@
 #define VMM_ROUNDUP(x, y)			((((x) + (y - 1)) / y) * y)
 #define DBG_VMM_DUMP_EFUSE_VAL		(520)
 #define TEMPDIFF		(3)
+#define CVFS_TARGET		(2)
 
 enum temp_zone_idx {
 	TEMP_ZONE_1 = 0,
@@ -168,14 +169,6 @@ static const unsigned int vde_mssv_margin[OPP_LEVEL_TOTAL] = {
 	0,
 };
 
-static unsigned int isp_cvfs_floor_margin[OPP_LEVEL_TOTAL] = {
-	0, 12, 13, 10, 13, 0,  // zone 2
-};
-
-static unsigned int vde_cvfs_floor_margin[OPP_LEVEL_TOTAL] = {
-	0, 12, 14, 12, 16, 0,	// zone 2
-};
-
 static unsigned int isp_avs20_floor_margin[OPP_LEVEL_TOTAL] = {
 	0, 10, 11, 10, 13, 0  // zone 2
 };
@@ -188,6 +181,10 @@ static unsigned int cross_avs20_floor_margin[OPP_LEVEL_TOTAL] = {
 	0, 0, 0, 0, 0, 0
 };
 
+static unsigned int isp_sft_margin[OPP_LEVEL_TOTAL] = {
+	0, 0, 0, 0, 0, 0
+};
+
 bool vmm_debug_dump;
 bool vmm_aging;
 bool vmm_slttwo_deterioration;
@@ -197,9 +194,9 @@ static void vmm_update_isp_avs20_info(bool enable_avs);
 static void vmm_update_vde_avs20_info(bool enable_avs);
 static void vmm_update_isp_vde_avs20_info(bool enable_avs);
 static void vmm_update_aging_degrade_info(bool enable_avs);
+static void vmm_update_sft_table(bool enable_avs);
 
 static unsigned int vmm_cal_avs_phase1(unsigned int OPP, unsigned int efuse_bin, enum AVS_SUBSYS mode);
-static unsigned int vmm_cal_cvfs_floor_phase1(unsigned int OPP, enum AVS_SUBSYS mode);
 static unsigned int vmm_cal_cross_avs_phase1(unsigned int OPP);
 static unsigned int vmm_cal_cross_avs20_phase1(unsigned int OPP);
 static void vmm_compare_cross_floor_phase1(bool enable_avs);
@@ -452,6 +449,7 @@ static void vmm_update_cvfs_table(void)
 
 	/* check efuse valid */
 	enable_avs = vmm_check_efuse_valid();
+	vmm_update_sft_table(enable_avs);
 	vmm_compare_cross_floor_phase1(enable_avs);
 	vmm_update_isp_avs_info(enable_avs);
 	vmm_update_isp_avs20_info(enable_avs);
@@ -650,13 +648,21 @@ static void vmm_update_isp_avs_info(bool enable_avs)
 
 	/* lower bound vmin */
 	AVS_PHASE1_VMIN_1_partial_VAL.Bits.AVS_PHASE1_OPP0_partial = enable_avs ?
-		vmm_cal_cvfs_floor_phase1(OPP_LEVEL_1, VMM_AVS_ISP) : SIGNED_OFF_575V_NORM;
+		(AVS_PHASE1_VMIN_1_VAL.Bits.AVS_PHASE1_OPP0 > CVFS_TARGET ?
+		AVS_PHASE1_VMIN_1_VAL.Bits.AVS_PHASE1_OPP0 - CVFS_TARGET :
+		AVS_PHASE1_VMIN_1_VAL.Bits.AVS_PHASE1_OPP0) : SIGNED_OFF_575V_NORM;
 	AVS_PHASE1_VMIN_1_partial_VAL.Bits.AVS_PHASE1_OPP1_partial = enable_avs ?
-		vmm_cal_cvfs_floor_phase1(OPP_LEVEL_2, VMM_AVS_ISP) : SIGNED_OFF_600V_NORM;
+		(AVS_PHASE1_VMIN_1_VAL.Bits.AVS_PHASE1_OPP1 > CVFS_TARGET ?
+		AVS_PHASE1_VMIN_1_VAL.Bits.AVS_PHASE1_OPP1 - CVFS_TARGET :
+		AVS_PHASE1_VMIN_1_VAL.Bits.AVS_PHASE1_OPP1) : SIGNED_OFF_600V_NORM;
 	AVS_PHASE1_VMIN_1_partial_VAL.Bits.AVS_PHASE1_OPP2_partial = enable_avs ?
-		vmm_cal_cvfs_floor_phase1(OPP_LEVEL_3, VMM_AVS_ISP) : SIGNED_OFF_650V_NORM;
+		(AVS_PHASE1_VMIN_1_VAL.Bits.AVS_PHASE1_OPP2 > CVFS_TARGET ?
+		AVS_PHASE1_VMIN_1_VAL.Bits.AVS_PHASE1_OPP2 - CVFS_TARGET :
+		AVS_PHASE1_VMIN_1_VAL.Bits.AVS_PHASE1_OPP2) : SIGNED_OFF_650V_NORM;
 	AVS_PHASE1_VMIN_1_partial_VAL.Bits.AVS_PHASE1_OPP3_partial = enable_avs ?
-		vmm_cal_cvfs_floor_phase1(OPP_LEVEL_4, VMM_AVS_ISP) : SIGNED_OFF_700V_NORM;
+		(AVS_PHASE1_VMIN_1_VAL.Bits.AVS_PHASE1_OPP3 > CVFS_TARGET ?
+		AVS_PHASE1_VMIN_1_VAL.Bits.AVS_PHASE1_OPP3 - CVFS_TARGET :
+		AVS_PHASE1_VMIN_1_VAL.Bits.AVS_PHASE1_OPP3) : SIGNED_OFF_700V_NORM;
 	VMM_WRITE_REG_BY_NAME(AVS_PHASE1_VMIN_1_partial);
 
 	/* lower bound temp */
@@ -1104,7 +1110,8 @@ static unsigned int vmm_cal_avs_phase1(unsigned int OPP, unsigned int efuse_bin,
 
 	switch (mode) {
 	case VMM_AVS_ISP:
-		result_vol = result_vol + ISP_CONST_MARGIN + isp_mssv_margin[OPP];
+		result_vol = result_vol + ISP_CONST_MARGIN +
+			isp_mssv_margin[OPP] + isp_sft_margin[OPP];
 		result_vol = result_vol < (vmm_sign-STEP_TO_MARGIN(isp_avs20_floor_margin[OPP])) ?
 				(vmm_sign-STEP_TO_MARGIN(isp_avs20_floor_margin[OPP])) : result_vol;
 		break;
@@ -1122,41 +1129,6 @@ static unsigned int vmm_cal_avs_phase1(unsigned int OPP, unsigned int efuse_bin,
 	result_vol = VMM_ROUNDUP(result_vol, VMM_ONE_STEP_MARGIN);
 
 	return (result_vol/VMM_ONE_STEP_MARGIN);
-}
-
-static unsigned int vmm_cal_cvfs_floor_phase1(unsigned int OPP, enum AVS_SUBSYS mode)
-{
-	unsigned int result_vol = 0;
-
-	switch (OPP) {
-	case OPP_LEVEL_1:
-		result_vol = SIGNED_OFF_575V_NORM;
-		break;
-	case OPP_LEVEL_2:
-		result_vol = SIGNED_OFF_600V_NORM;
-		break;
-	case OPP_LEVEL_3:
-		result_vol = SIGNED_OFF_650V_NORM;
-		break;
-	case OPP_LEVEL_4:
-		result_vol = SIGNED_OFF_700V_NORM;
-		break;
-	default:
-		return 0;
-	}
-
-	switch (mode) {
-	case VMM_AVS_ISP:
-		result_vol = result_vol - isp_cvfs_floor_margin[OPP];
-		break;
-	case VMM_AVS_VDE:
-		result_vol = result_vol - vde_cvfs_floor_margin[OPP];
-		break;
-	default:
-		return 0;
-	}
-
-	return result_vol;
 }
 
 static unsigned int vmm_cal_cross_avs_phase1(unsigned int OPP)
@@ -1240,10 +1212,21 @@ static void vmm_compare_cross_floor_phase1(bool enable_avs)
 
 		vde_avs20_floor_margin[i] = vde_avs20_floor_margin[i] + degrade;
 
-		isp_cvfs_floor_margin[i] = isp_cvfs_floor_margin[i] + degrade;
-
 		cross_avs20_floor_margin[i] = isp_avs20_floor_margin[i] > vde_avs20_floor_margin[i] ?
 			 vde_avs20_floor_margin[i] : isp_avs20_floor_margin[i];
+	}
+}
+
+static void vmm_update_sft_table(bool enable_avs)
+{
+	if (enable_avs == false)
+		return;
+
+	if (EFUSE_ISP_SFT_VERSION >= 1) {
+		isp_sft_margin[OPP_LEVEL_1] = STEP_TO_MARGIN(ISP_CAM_575_SFT_MARGIN);
+		isp_sft_margin[OPP_LEVEL_2] = STEP_TO_MARGIN(ISP_CAM_600_SFT_MARGIN);
+		isp_sft_margin[OPP_LEVEL_3] = STEP_TO_MARGIN(ISP_CAM_650_SFT_MARGIN);
+		isp_sft_margin[OPP_LEVEL_4] = STEP_TO_MARGIN(ISP_CAM_700_SFT_MARGIN);
 	}
 }
 

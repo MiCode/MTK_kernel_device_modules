@@ -25,6 +25,7 @@
 #define EFUSE_IMG_DMIN_OP5760		   readl(vmm_regs.vmm_efuse_va + 0x120)
 #define EFUSE_IPE_DMIN_OP6570		   readl(vmm_regs.vmm_efuse_va + 0x124)
 #define EFUSE_IPE_DMIN_OP5760		   readl(vmm_regs.vmm_efuse_va + 0x128)
+#define EFUSE_ISP_CAM_SFT				readl(vmm_regs.vmm_efuse_va + 0x118)
 
 /* ISP Efuse define */
 #define ISP_575_VBIN_OFFSET 15
@@ -35,6 +36,18 @@
 #define ISP_650_VBIN_VAL (((EFUSE_ISP_VMIN_REG) >> ISP_650_VBIN_OFFSET) & 0x1f)
 #define ISP_700_VBIN_OFFSET 0
 #define ISP_700_VBIN_VAL (((EFUSE_ISP_VMIN_REG) >> ISP_700_VBIN_OFFSET) & 0x1f)
+
+/* ISP CAM Efuse sft define */
+#define ISP_SFT_VERSION_OFFSET 20
+#define EFUSE_ISP_SFT_VERSION ((EFUSE_ISP_CAM_SFT >> ISP_SFT_VERSION_OFFSET) & 0x1F)
+#define ISP_CAM_575_SFT_OFFSET 15
+#define ISP_CAM_575_SFT_MARGIN ((EFUSE_ISP_CAM_SFT >> ISP_CAM_575_SFT_OFFSET) & 0x1f)
+#define ISP_CAM_600_SFT_OFFSET 10
+#define ISP_CAM_600_SFT_MARGIN ((EFUSE_ISP_CAM_SFT >> ISP_CAM_600_SFT_OFFSET) & 0x1f)
+#define ISP_CAM_650_SFT_OFFSET 5
+#define ISP_CAM_650_SFT_MARGIN ((EFUSE_ISP_CAM_SFT >> ISP_CAM_650_SFT_OFFSET) & 0x1f)
+#define ISP_CAM_700_SFT_OFFSET 0
+#define ISP_CAM_700_SFT_MARGIN ((EFUSE_ISP_CAM_SFT >> ISP_CAM_700_SFT_OFFSET) & 0x1f)
 
 /* VDE Efuse define */
 #define VDE_575_VBIN_OFFSET 0
