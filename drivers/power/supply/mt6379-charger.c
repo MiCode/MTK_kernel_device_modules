@@ -2219,6 +2219,21 @@ static ssize_t bypass_mode_store(struct device *dev, struct device_attribute *at
 				return ret;
 			}
 
+			if (cdata->id == CHARGER_ID_MT6720) {
+				ret = mt6379_enable_tm(cdata, true);
+				if (ret)
+					dev_info(cdata->dev, "%s, enter tm failed\n", __func__);
+				ret = regmap_update_bits(cdata->rmap, MT6720_REG_CHG_BYPASS_MODE_RECORD,
+							 MT6720_CHG_BYPASS_MODE_RECORD_MASK,
+							 MT6720_CHG_BYPASS_MODE_RECORD_MASK);
+				if (ret)
+					dev_info(cdata->dev, "%s, update chg byapss mode record failed\n",
+						 __func__);
+				ret = mt6379_enable_tm(cdata, false);
+				if (ret)
+					dev_info(cdata->dev, "%s, exist tm failed\n", __func__);
+			}
+
 			/* enter reset pas code */
 			ret = regmap_bulk_write(cdata->rmap, MT6379_REG_RST_PAS_CODE1, rst_code, 2);
 			if (ret) {
