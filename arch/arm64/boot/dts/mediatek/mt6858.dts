@@ -2988,8 +2988,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		};
 
 		fhctl: fhctl@1000ce00 {
-			//mcupm-supply = <&mcupm>;
-			//compatible = "mediatek,mt6858-fhctl";
+			mcupm-supply = <&mcupm>;
+			compatible = "mediatek,mt6858-fhctl";
 			reg = <0 0x1000ce00 0 0x100>, //AP FHCTL base
 				<0 0x1000c000 0 0xe00>, //APMIX base
 
@@ -3023,7 +3023,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 			map1 {
 				domain = "top1"; //PLL_GP2
-				method = "fhctl-ap";
+				method = "fhctl-mcupm";
 				armpll-ll {
 					fh-id = <6>;
 				};
