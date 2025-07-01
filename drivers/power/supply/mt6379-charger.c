@@ -523,6 +523,16 @@ static const u32 mt6379_otg_cc_ma[] = {
 	500000, 800000, 1100000, 1400000, 1700000, 2000000, 2300000,
 };
 
+static int mt6720_set_voltage_sel(struct regulator_dev *rdev, unsigned int sel)
+{
+	const struct regulator_desc *desc = rdev->desc;
+	struct regmap *rmap = rdev_get_regmap(rdev);
+
+	sel <<= ffs(desc->vsel_mask) - 1;
+
+	return regmap_update_bits(rmap, desc->vsel_reg, desc->vsel_mask, sel);
+}
+
 static int mt6379_set_voltage_sel(struct regulator_dev *rdev, unsigned int sel)
 {
 	const struct regulator_desc *desc = rdev->desc;
@@ -530,8 +540,22 @@ static int mt6379_set_voltage_sel(struct regulator_dev *rdev, unsigned int sel)
 
 	sel <<= ffs(desc->vsel_mask) - 1;
 	sel = cpu_to_be16(sel);
-
 	return regmap_bulk_write(rmap, desc->vsel_reg, &sel, 2);
+}
+
+static int mt6720_get_voltage_sel(struct regulator_dev *rdev)
+{
+	const struct regulator_desc *desc = rdev->desc;
+	struct regmap *rmap = rdev_get_regmap(rdev);
+	unsigned int val = 0;
+	int ret = 0;
+
+	ret = regmap_read(rmap, desc->vsel_reg, &val);
+	if (ret)
+		return ret;
+	val &= desc->vsel_mask;
+	val >>= ffs(desc->vsel_mask) - 1;
+	return val;
 }
 
 static int mt6379_get_voltage_sel(struct regulator_dev *rdev)
@@ -544,7 +568,6 @@ static int mt6379_get_voltage_sel(struct regulator_dev *rdev)
 	ret = regmap_bulk_read(rmap, desc->vsel_reg, &val, 2);
 	if (ret)
 		return ret;
-
 	val = be16_to_cpu(val);
 	val &= desc->vsel_mask;
 	val >>= ffs(desc->vsel_mask) - 1;
@@ -617,23 +640,55 @@ recover:
 	return killer;
 }
 
-static int mt6379_otg_regulator_enable(struct regulator_dev *rdev)
+static int mt6720_otg_regulator_enable(struct regulator_dev *rdev)
 {
 	struct mt6379_charger_data *cdata = rdev->reg_data;
 	int ret = 0;
-	u16 addr = 0;
-	u8 msk = 0;
+	u16 addr = MT6720_REG_CHG_AD;
+	u8 msk = BIT(4);
 
 	if (mt6379_charger_is_usb_killer(cdata))
 		return -EIO;
 
-	if (cdata->id != CHARGER_ID_MT6379) {
-		addr = MT6720_REG_CHG_AD;
-		msk = BIT(4);
-	} else {
-		addr = MT6379_REG_CHG_HD_PP7;
-		msk = BIT(5);
+	/* disable PP_CV_FLOW_IDLE */
+	ret = mt6379_enable_tm(cdata, true);
+	if (ret) {
+		dev_info(cdata->dev, "%s, Failed to enable tm(ret:%d)\n", __func__, ret);
+		return ret;
 	}
+
+	ret = regmap_update_bits(cdata->rmap, addr, msk, 0);
+	if (ret)
+		goto out;
+
+	ret = regulator_enable_regmap(rdev);
+	if (ret)
+		goto out;
+
+	ret = regmap_update_bits(cdata->rmap, MT6720_REG_CHG_HD_DIG4,
+				 MT6720_DIS_OTG_HICCUP_MASK, MT6720_DIS_OTG_HICCUP_MASK);
+	if (ret)
+		goto out;
+
+	mdelay(80);
+
+	ret = regmap_update_bits(cdata->rmap, MT6720_REG_CHG_HD_DIG4,
+				 MT6720_DIS_OTG_HICCUP_MASK, 0);
+	if (ret)
+		dev_info(cdata->dev, "%s, Failed to disable DIS_OTG_HICCUP\n", __func__);
+out:
+	return mt6379_enable_tm(cdata, false);
+}
+
+static int mt6379_otg_regulator_enable(struct regulator_dev *rdev)
+{
+	struct mt6379_charger_data *cdata = rdev->reg_data;
+	int ret = 0;
+	u16 addr = MT6379_REG_CHG_HD_PP7;
+	u8 msk = BIT(5);
+
+	if (mt6379_charger_is_usb_killer(cdata))
+		return -EIO;
 
 	/* disable PP_CV_FLOW_IDLE */
 	ret = mt6379_enable_tm(cdata, true);
@@ -731,10 +786,21 @@ static const struct regulator_ops mt6379_otg_regulator_ops = {
 	.get_current_limit = regulator_get_current_limit_regmap,
 };
 
+static const struct regulator_ops mt6720_otg_regulator_ops = {
+	.list_voltage = regulator_list_voltage_linear,
+	.enable = mt6720_otg_regulator_enable,
+	.disable = mt6379_otg_regulator_disable,
+	.is_enabled = regulator_is_enabled_regmap,
+	.set_voltage_sel = mt6720_set_voltage_sel,
+	.get_voltage_sel = mt6720_get_voltage_sel,
+	.set_current_limit = mt6379_otg_set_current_limit,
+	.get_current_limit = regulator_get_current_limit_regmap,
+};
+
 static const struct regulator_desc mt6720_charger_otg_rdesc = {
 	.of_match = "usb-otg-vbus-regulator",
 	.name = "mt6720-usb-otg-vbus",
-	.ops = &mt6379_otg_regulator_ops,
+	.ops = &mt6720_otg_regulator_ops,
 	.owner = THIS_MODULE,
 	.type = REGULATOR_VOLTAGE,
 	.min_uV = 4850000,
@@ -962,6 +1028,12 @@ static int mt6379_get_charger_status(struct mt6379_charger_data *cdata, int *psy
 		return ret;
 	}
 
+	if (cdata->id == CHARGER_ID_MT6720) {
+		ret = regmap_write(cdata->rmap, MT6379_REG_CHG_STAT, 0x00);
+		if (ret)
+			dev_info(cdata->dev, "%s, write CHG_STAT = 0 failed\n", __func__);
+	}
+
 	ret = mt6379_charger_field_get(cdata, F_IC_STAT, &stat);
 	if (ret) {
 		dev_info(cdata->dev, "%s, Failed to get IC_STAT(ret:%d)\n", __func__, ret);
@@ -1071,6 +1143,7 @@ static inline int __maybe_unused mt6379_get_bat2_vbat_monitor(struct mt6379_char
 static const struct linear_range mt6720_ibus_aicr_range;
 static const struct linear_range mt6720_vbus_mivr_range;
 
+static int mt6379_fsw_control(struct mt6379_charger_data *cdata);
 static int mt6379_charger_get_property(struct power_supply *psy, enum power_supply_property psp,
 				       union power_supply_propval *val)
 {
@@ -1190,12 +1263,14 @@ static int mt6379_charger_set_property(struct power_supply *psy, enum power_supp
 		if (ret)
 			dev_info(cdata->dev, "%s, set F_IBUS_AICR failed\n", __func__);
 
-		if (value != aicr && (value < 500000 || aicr < 500000)) {
+		if (cdata->enable_fsw && (value != aicr)) {
 			dev_info(cdata->dev, "%s, new aicr = %d, old aicr = %d\n",
 				 __func__, aicr, value);
 			cdata->fsw_check_nr = 0;
+			ret = mt6379_fsw_control(cdata);
+			if (ret)
+				dev_info(cdata->dev, "%s, fsw control failed\n", __func__);
 		}
-
 		return ret;
 	case POWER_SUPPLY_PROP_INPUT_VOLTAGE_LIMIT:
 		if (cdata->bypass_mode_entered)
@@ -2124,11 +2199,12 @@ static ssize_t bypass_mode_store(struct device *dev, struct device_attribute *at
 			return ret;
 		}
 
-		ret = mt6379_charger_field_set(cdata, F_IBUS_AICR, 3000000);
+		ret = mt6379_charger_field_set(cdata, F_IBUS_AICR, 100000);
 		if (ret) {
-			dev_info(cdata->dev, "%s, Failed to set AICR to 3000mA\n", __func__);
+			dev_info(cdata->dev, "%s, Failed to set AICR to 100mA\n", __func__);
 			return ret;
 		}
+		mdelay(100);
 
 		ret = mt6379_charger_field_set(cdata, F_CHG_BYPASS, 1);
 		if (ret) {

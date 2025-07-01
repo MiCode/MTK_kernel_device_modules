@@ -485,12 +485,27 @@ static int mt6379_enable_buck(struct charger_device *chgdev, bool en)
 			return ret;
 		}
 
+		/* For IBUS sense item accuracy */
 		ret = regmap_update_bits(cdata->rmap, MT6720_REG_CHG_UUG_DUMMY0,
 					 BIT(3), en ? 0 : BIT(3));
 		if (ret) {
 			dev_info(cdata->dev, "%s, Failed to set %x\n", __func__,
 				 MT6720_REG_CHG_UUG_DUMMY0);
 		}
+
+		ret = regmap_update_bits(cdata->rmap, MT6720_REG_CHG_LGON,
+					 BIT(5), en ? 0 : BIT(5));
+		if (ret) {
+			dev_info(cdata->dev, "%s, Failed to set %x\n", __func__,
+				 MT6720_REG_CHG_LGON);
+		}
+
+		/* hidden ibus ucp */
+		ret = regmap_update_bits(cdata->rmap, MT6720_REG_DIV2_SYSCTRL5,
+					 MT6720_HIDDEN_IBUS_UCP_MASK, en ?
+					 2 << MT6720_HIDDEN_IBUS_UCP_SHIFT : 0);
+		if (ret)
+			dev_info(cdata->dev, "%s, Failed to set hidden ibus ucp\n", __func__);
 
 		ret = mt6379_enable_tm(cdata, false);
 		if (ret) {
