@@ -138,6 +138,17 @@ static void init_pq_chan(struct mml_pq_chan *chan)
 	chan->job_idx = 1;
 }
 
+static bool is_in_list(struct list_head *entry, struct list_head *head)
+{
+	struct list_head *pos;
+
+	list_for_each(pos, head) {
+		if (pos == entry)
+			return true;
+	}
+	return false;
+}
+
 static void queue_msg(struct mml_pq_chan *chan,
 			struct mml_pq_sub_task *sub_task)
 {
@@ -146,9 +157,11 @@ static void queue_msg(struct mml_pq_chan *chan,
 		__func__, sub_task, (unsigned long)&sub_task->mbox_list, chan, &chan->msg_list);
 
 	mutex_lock(&chan->msg_lock);
-	list_add_tail(&sub_task->mbox_list, &chan->msg_list);
-	atomic_inc(&chan->msg_cnt);
-	sub_task->job_id = chan->job_idx++;
+	if(!is_in_list(&sub_task->mbox_list, &chan->msg_list)) {
+		list_add_tail(&sub_task->mbox_list, &chan->msg_list);
+		atomic_inc(&chan->msg_cnt);
+		sub_task->job_id = chan->job_idx++;
+	}
 	mutex_unlock(&chan->msg_lock);
 
 	mml_pq_msg("%s wake up channel message queue", __func__);
