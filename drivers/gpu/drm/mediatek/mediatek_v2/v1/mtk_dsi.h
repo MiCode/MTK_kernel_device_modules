@@ -117,6 +117,7 @@ struct mtk_dsi_driver_data {
 	const u32 dsi_cmdq_rd_max_sz_gce;
 	const u32 dsi_rx_data_rd_max_sz;
 	bool support_pu_con;
+	bool support_frame_tb_v5;
 };
 
 struct mtk_dsi {
