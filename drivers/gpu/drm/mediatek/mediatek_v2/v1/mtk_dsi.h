@@ -73,6 +73,7 @@ struct mtk_dsi_driver_data {
 	bool keep_hs_eotp; /* keep HS eotp */
 	bool support_rd_cmdq;
 	enum PREURGENT_MODE support_pre_urgent;
+	bool non_block_urgent_wa;
 	bool disable_te_timeout_by_set_cnt;
 	bool vm_rgb_time_interval; /* RGB or HBP interval */
 	u32 max_vfp;
