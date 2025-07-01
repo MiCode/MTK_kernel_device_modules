@@ -84,13 +84,12 @@ static void sbe_do_recycle(struct work_struct *work)
 	sbe_put_tree_lock(__func__);
 
 	mutex_lock(&sbe_recycle_lock);
-	if (non_empty) {
-		sbe_recycle_idle_cnt++;
-		if (sbe_recycle_idle_cnt >= MAX_SBE_RECYCLE_IDLE_CNT) {
-			sbe_recycle_active = 0;
-			goto out;
-		}
+	sbe_recycle_idle_cnt++;
+	if (sbe_recycle_idle_cnt >= MAX_SBE_RECYCLE_IDLE_CNT) {
+		sbe_recycle_active = 0;
+		goto out;
 	}
+	sbe_trace("[SBE] %s: non_empty: %d", __func__, non_empty);
 	hrtimer_start(&sbe_recycle_hrt, ktime_set(0, NSEC_PER_SEC), HRTIMER_MODE_REL);
 
 out:
