@@ -6837,6 +6837,7 @@ dramc: dramc@10230000 {
 			mediatek,force-vbus;
 			mediatek,clk-mgr;
 			mediatek,hwrscs-vers = <2>;
+			mediatek,axi-domain = <0xe>;
 			mediatek,noise-still-tr;
 			usb-role-switch;
 			cdp-block;
