@@ -2402,6 +2402,10 @@
 						<&dvfsrc_freq_opp5>;
 			};
 
+			dvfsrc-debugfs {
+				compatible = "mediatek,mt6858-dvfsrc-debugfs";
+			};
+
 			dvfsrc-met {
 				compatible = "mediatek,dvfsrc-met";
 				rc-vcore-supply = <&dvfsrc_vcore>;
