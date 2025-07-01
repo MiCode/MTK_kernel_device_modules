@@ -961,8 +961,7 @@ static void mtk_wdma_calc_golden_setting(struct golden_setting_context *gsc,
 		gs[GS_WDMA_PRE_ULTRA_LOW_Y] = (fifo_size > tmp) ? (fifo_size - tmp) : 1;
 
 		tmp = DIV_ROUND_UP(consume_rate * Bpp * preultra_high_us, FP);
-		gs[GS_WDMA_PRE_ULTRA_HIGH_Y] =
-			(fifo_size > tmp) ? (fifo_size - tmp) : 1;
+		gs[GS_WDMA_PRE_ULTRA_HIGH_Y] = (fifo_size > tmp) ? (fifo_size - tmp) : 1;
 
 		tmp = DIV_ROUND_UP(consume_rate * Bpp * preultra_low_us, FP * 1024);
 		gs[GS_WDMA_PRE_ULTRA_LOW_U] = (fifo_size_uv > tmp) ? (fifo_size_uv - tmp) : 1;
@@ -1079,59 +1078,43 @@ static void mtk_wdma_calc_golden_setting(struct golden_setting_context *gsc,
 	gs[GS_WDMA_ULTRA_HIGH_V] = (fifo > tmp) ? (fifo - tmp) : 1;
 
 	/* WDMA_BUF_CON11 */
-	tmp = DO_DIV_ROUND_UP(consume_rate * Bpp * (preultra_low_us + dvfs_offset),
-			   FP);
-	gs[GS_WDMA_PRE_ULTRA_LOW_Y_DVFS] =
-		(fifo_size > tmp) ? (fifo_size - tmp) : 1;
-	tmp = DO_DIV_ROUND_UP(consume_rate * Bpp * (ultra_low_us + dvfs_offset),
-			   FP);
-	gs[GS_WDMA_ULTRA_LOW_Y_DVFS] =
-		(fifo_size > tmp) ? (fifo_size - tmp) : 1;
+	tmp = DO_DIV_ROUND_UP(consume_rate * Bpp * (preultra_low_us + dvfs_offset), FP);
+	gs[GS_WDMA_PRE_ULTRA_LOW_Y_DVFS] = (fifo_size > tmp) ? (fifo_size - tmp) : 1;
+	tmp = DO_DIV_ROUND_UP(consume_rate * Bpp * (ultra_low_us + dvfs_offset), FP);
+	gs[GS_WDMA_ULTRA_LOW_Y_DVFS] = (fifo_size > tmp) ? (fifo_size - tmp) : 1;
 
 	/* WDMA_BUF_CON12 */
-	tmp = DO_DIV_ROUND_UP(
-		consume_rate * Bpp * (preultra_high_us + dvfs_offset), FP);
-	gs[GS_WDMA_PRE_ULTRA_HIGH_Y_DVFS] =
-		(fifo_size > tmp) ? (fifo_size - tmp) : 1;
-	tmp = DO_DIV_ROUND_UP(consume_rate * Bpp * (ultra_high_us + dvfs_offset),
-			   FP);
-	gs[GS_WDMA_ULTRA_HIGH_Y_DVFS] =
-		(fifo_size > tmp) ? (fifo_size - tmp) : 1;
+	tmp = DO_DIV_ROUND_UP(consume_rate * Bpp * (preultra_high_us + dvfs_offset), FP);
+	gs[GS_WDMA_PRE_ULTRA_HIGH_Y_DVFS] = (fifo_size > tmp) ? (fifo_size - tmp) : 1;
+	tmp = DO_DIV_ROUND_UP(consume_rate * Bpp * (ultra_high_us + dvfs_offset), FP);
+	gs[GS_WDMA_ULTRA_HIGH_Y_DVFS] = (fifo_size > tmp) ? (fifo_size - tmp) : 1;
 
 	/* WDMA_BUF_CON13 */
-	tmp = DO_DIV_ROUND_UP(consume_rate * (preultra_low_us + dvfs_offset),
-			   FP * factor1);
+	tmp = DO_DIV_ROUND_UP(consume_rate * (preultra_low_us + dvfs_offset), FP * factor1);
 	gs[GS_WDMA_PRE_ULTRA_LOW_U_DVFS] = (fifo > tmp) ? (fifo - tmp) : 1;
 
-	tmp = DO_DIV_ROUND_UP(consume_rate * (ultra_low_us + dvfs_offset),
-			   FP * factor1);
+	tmp = DO_DIV_ROUND_UP(consume_rate * (ultra_low_us + dvfs_offset), FP * factor1);
 	gs[GS_WDMA_ULTRA_LOW_U_DVFS] = (fifo > tmp) ? (fifo - tmp) : 1;
 
 	/* WDMA_BUF_CON14 */
-	tmp = DO_DIV_ROUND_UP(consume_rate * (preultra_high_us + dvfs_offset),
-			   FP * factor1);
+	tmp = DO_DIV_ROUND_UP(consume_rate * (preultra_high_us + dvfs_offset), FP * factor1);
 	gs[GS_WDMA_PRE_ULTRA_HIGH_U_DVFS] = (fifo > tmp) ? (fifo - tmp) : 1;
 
-	tmp = DO_DIV_ROUND_UP(consume_rate * (ultra_high_us + dvfs_offset),
-			   FP * factor1);
+	tmp = DO_DIV_ROUND_UP(consume_rate * (ultra_high_us + dvfs_offset), FP * factor1);
 	gs[GS_WDMA_ULTRA_HIGH_U_DVFS] = (fifo > tmp) ? (fifo - tmp) : 1;
 
 	/* WDMA_BUF_CON15 */
-	tmp = DO_DIV_ROUND_UP(consume_rate * (preultra_low_us + dvfs_offset),
-			   FP * factor2);
+	tmp = DO_DIV_ROUND_UP(consume_rate * (preultra_low_us + dvfs_offset), FP * factor2);
 	gs[GS_WDMA_PRE_ULTRA_LOW_V_DVFS] = (fifo > tmp) ? (fifo - tmp) : 1;
 
-	tmp = DO_DIV_ROUND_UP(consume_rate * (ultra_low_us + dvfs_offset),
-			   FP * factor2);
+	tmp = DO_DIV_ROUND_UP(consume_rate * (ultra_low_us + dvfs_offset), FP * factor2);
 	gs[GS_WDMA_ULTRA_LOW_V_DVFS] = (fifo > tmp) ? (fifo - tmp) : 1;
 
 	/* WDMA_BUF_CON16 */
-	tmp = DO_DIV_ROUND_UP(consume_rate * (preultra_high_us + dvfs_offset),
-			   FP * factor2);
+	tmp = DO_DIV_ROUND_UP(consume_rate * (preultra_high_us + dvfs_offset), FP * factor2);
 	gs[GS_WDMA_PRE_ULTRA_HIGH_V_DVFS] = (fifo > tmp) ? (fifo - tmp) : 1;
 
-	tmp = DO_DIV_ROUND_UP(consume_rate * (ultra_high_us + dvfs_offset),
-			   FP * factor2);
+	tmp = DO_DIV_ROUND_UP(consume_rate * (ultra_high_us + dvfs_offset), FP * factor2);
 	gs[GS_WDMA_ULTRA_HIGH_V_DVFS] = (fifo > tmp) ? (fifo - tmp) : 1;
 
 	/* WDMA_BUF_CON17 */
@@ -1826,23 +1809,6 @@ static void mtk_wdma_addon_config(struct mtk_ddp_comp *comp,
 		mtk_ufbc_wdma_config(comp, addon_config, handle);
 		goto golden_setting;
 	}
-
-	// WDMA bandwidth setting
-	if (priv->data->mmsys_id == MMSYS_MT6991) {
-		bpp = mtk_get_format_bpp(comp->fb->format->format);
-		hact = mtk_crtc->base.state->adjusted_mode.hdisplay;
-		vtotal = mtk_crtc->base.state->adjusted_mode.vtotal;
-		vact = mtk_crtc->base.state->adjusted_mode.vdisplay;
-		vrefresh = drm_mode_vrefresh(&mtk_crtc->base.state->adjusted_mode);
-		bw_base = div_u64((unsigned long long)vact * hact * vrefresh * bpp, 1000);
-		bw_base = div_u64(bw_base, 1000) * 2;
-
-		mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_HRT_BW, &bw_base);
-		comp->hrt_bw = bw_base;
-	}
-
-	DDPINFO("%s WDMA config iommu, CRTC%d\n", __func__, crtc_idx);
-	mtk_ddp_comp_iommu_enable(comp, handle);
 
 	write_dst_addr(comp, handle, 0, addr);
 
