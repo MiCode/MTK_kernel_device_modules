@@ -12,13 +12,15 @@
 #include <linux/soc/mediatek/mtk-mbox.h>
 #include "scp_audio_fs.h"
 #include "audio_mbox.h"
+#include "scp_audio_logger.h"
+#include "adsp_helper.h"
 
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
 #include "scp_ipi_pin.h"
 #endif
 
 static u32 audio_mbox_pin_buf[AUDIO_MBOX_RECV_SLOT_SIZE];
-static bool init_done;
+static bool mbox_init_done;
 
 struct mtk_mbox_info audio_mbox_table[AUDIO_TOTAL_MBOX] = {
 	{ .opt = MBOX_OPT_QUEUE_DIR, .is64d = true},
@@ -53,24 +55,27 @@ struct mtk_mbox_device audio_mboxdev = {
 	.count = AUDIO_TOTAL_MBOX,
 	.recv_count = AUDIO_TOTAL_RECV_PIN,
 	.send_count = AUDIO_TOTAL_SEND_PIN,
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
 	.post_cb = (mbox_rx_cb_t)scp_clr_spm_reg,
+#endif
 };
 
 
 bool is_audio_mbox_init_done(void)
 {
-	return init_done;
+	return mbox_init_done;
 }
 EXPORT_SYMBOL_GPL(is_audio_mbox_init_done);
 
 int audio_mbox_send(void *msg, unsigned int wait)
 {
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
 	int ret;
 	struct mtk_mbox_device *mbdev = &audio_mboxdev;
 	struct mtk_mbox_pin_send *pin_send = &audio_mbox_pin_send[0];
 	ktime_t ts;
 
-	if (!init_done) {
+	if (!mbox_init_done) {
 		pr_info_ratelimited("%s, not implemented", __func__);
 		return -1;
 	}
@@ -111,23 +116,27 @@ int audio_mbox_send(void *msg, unsigned int wait)
 	}
 EXIT:
 	if (ret && ret != MBOX_PIN_BUSY)
-		pr_info("%s() fail,mbox %d, mbox error = %d\n", __func__, pin_send->mbox, ret);
+		pr_err("%s() fail, mbox pin %d error = %d\n", __func__, pin_send->mbox, ret);
 
 	/* TODO : maybe move to audio_ipi_queue */
 	scp_awake_unlock((void *)SCP_A_ID);
 
 	mutex_unlock(&pin_send->mutex_send);
 	return ret;
+#else
+	return 0;
+#endif
 }
 
 static bool audio_mbox_table_init(struct mtk_mbox_device *mbdev, struct platform_device *pdev)
 {
+	int ret = 0;
 	struct mtk_mbox_pin_send *pin_send = NULL;
 	struct mtk_mbox_pin_recv *pin_recv = NULL;
 
 	/* Get mbox count */
-	of_property_read_u32(pdev->dev.of_node, "mbox-num", &mbdev->count);
-	if (mbdev->count <= 0 || mbdev->count > AUDIO_TOTAL_MBOX) {
+	ret = of_property_read_u32(pdev->dev.of_node, "mbox-num", &mbdev->count);
+	if (ret < 0 || mbdev->count <= 0 || mbdev->count > AUDIO_TOTAL_MBOX) {
 		pr_warn("[audio_mbox] mbox-num %d invalid\n", mbdev->count);
 		return false;
 	}
@@ -162,6 +171,7 @@ static int scp_audio_mbox_dev_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
 	for (idx = 0; idx < mbdev->count; idx++) {
 		ret = mtk_mbox_probe(pdev, mbdev, idx);
 		if (ret) {
@@ -179,21 +189,52 @@ static int scp_audio_mbox_dev_probe(struct platform_device *pdev)
 	for (idx = 0; idx < mbdev->send_count; idx++)
 		mutex_init(&audio_mbox_pin_send[idx].mutex_send);
 
-
 	/* register misc driver for ioctl and debug */
 	ret = misc_register(&scp_audio_fs_mdev);
-	if (ret)
+	if (ret) {
 		pr_info("%s, cannot register misc device\n", __func__);
+		goto EXIT;
+	}
 
 	ret = device_create_file(scp_audio_fs_mdev.this_device, &dev_attr_audio_ipi_test);
-	if (ret)
+	if (ret) {
 		pr_info("%s, cannot create dev_attr_audio_ipi_test\n", __func__);
+		goto EXIT;
+	}
+
+	mbox_init_done = true;
+
+	/* audio reserved memory */
+	pr_notice("%s() adsp_reserve_memory_ioremap\n", __func__);
+	ret = adsp_mem_device_probe(pdev);
+	if (ret) {
+		pr_notice("%s(), memory probe fail, %d\n", __func__, ret);
+		goto EXIT;
+	}
+
+	/* scp audio logger */
+	pr_notice("%s() scp_audio_logger\n", __func__);
+	ret = scp_audio_logger_init(pdev);
+	if (ret) {
+		pr_info("%s, init scp audio logger fail\n", __func__);
+		goto EXIT;
+	}
 
 #if IS_ENABLED(CONFIG_DEBUG_FS)
-	debugfs_create_file("audiodsp0", S_IFREG | 0644, NULL, NULL, &scp_audio_debug_ops);
+	struct dentry *file = NULL;
+
+	file = debugfs_create_file("audiodsp0", S_IFREG | 0644, NULL, NULL, &scp_audio_debug_ops);
+	if (!file) {
+		pr_info("%s, create debug ops fail!\n", __func__);
+		ret = -1;
+		goto EXIT;
+	}
 #endif
 
-	init_done = true;
+#else
+	ret = 0;
+#endif /* CONFIG_MTK_TINYSYS_SCP_SUPPORT */
+
 EXIT:
 	pr_info("%s, done ret:%d", __func__, ret);
 	return ret;

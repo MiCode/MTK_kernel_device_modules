@@ -43,7 +43,6 @@ static long adspscp_driver_ioctl(
 		}
 
 		t.cmd1.flag = is_scp_ready(SCP_A_ID);
-		pr_info("%s(), AUDIO_DSP_IOCTL_ADSP_QUERY_STATUS: %d\n", __func__, t.cmd1.flag);
 
 		if (copy_to_user((void __user *)arg, &t, sizeof(t))) {
 			ret = -EFAULT;
@@ -114,8 +113,9 @@ static ssize_t scp_audio_debug_write(struct file *filp, const char __user *buffe
 
 	if (copy_from_user(buf, buffer, min(count, sizeof(buf) - 1)))
 		return -EFAULT;
+	buf[sizeof(buf) - 1] = '\0';
 
-	ret = scp_send_message(SCP_AUDIO_DBG_CMDS,
+	ret = scp_send_message(SCP_AUDIO_IPI_DBG_CMDS,
 			       buf, strnlen(buf, sizeof(buf) - 1) + 1, 0, 0);
 	pr_info("%s() send cmd: %s, ret: %d\n", __func__, buf, ret);
 

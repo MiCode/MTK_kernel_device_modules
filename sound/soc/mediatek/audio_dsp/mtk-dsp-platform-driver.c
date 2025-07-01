@@ -41,6 +41,10 @@
 #define trace_mtk_dsp_stop(id)
 #endif
 
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
+#include "scp.h"
+#endif
+
 static DEFINE_MUTEX(adsp_wakelock_lock);
 #define IPIMSG_SHARE_MEM (1024)
 #if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
@@ -51,6 +55,9 @@ static DEFINE_MUTEX(adsp_wakelock_lock);
 static int adsp_wakelock_count;
 static struct wakeup_source *adsp_audio_wakelock;
 static int ktv_status;
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
+static struct mtk_base_dsp *dsp_priv;
+#endif
 #if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_HFP_CLIENT_SUPPORT)
 static int hfp_client_rx_status;
 static int hfp_client_tx_status;
@@ -295,6 +302,7 @@ static int ktv_status_get(struct snd_kcontrol *kcontrol,
 	pr_debug("%s() ktv_status = %d\n", __func__, ktv_status);
 	return 0;
 }
+
 
 #if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_HFP_CLIENT_SUPPORT)
 static int hfp_client_rx_status_set(struct snd_kcontrol *kcontrol,
@@ -1923,12 +1931,75 @@ static struct notifier_block adsp_audio_notifier = {
 
 #endif
 
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
+static int scp_audio_event_receive(struct notifier_block *this, unsigned long event,
+				   void *ptr)
+{
+	int ret = 0;
+
+	switch (event) {
+	case SCP_EVENT_STOP:
+		pr_info("%s SCP_EVENT_STOP[%lu]\n", __func__, event);
+		break;
+	case SCP_EVENT_READY: {
+		mtk_reinit_adsp();
+		audio_send_reset_event();
+		pr_info("%s SCP_EVENT_READY[%lu]\n", __func__, event);
+		break;
+	}
+	default:
+		pr_info("%s event[%lu]\n", __func__, event);
+	}
+	return ret;
+}
+
+
+static struct notifier_block scp_audio_notifier = {
+	.notifier_call = scp_audio_event_receive,
+};
+
+
+static int scp_audio_user_event_notify(struct notifier_block *nb,
+				       unsigned long event, void *ptr)
+{
+	struct device *dev = dsp_priv->dev;
+	int ret = 0;
+
+	if (!dev)
+		return NOTIFY_DONE;
+
+	switch (event) {
+	case SCP_EVENT_STOP:
+		pr_info("%s(), SCP_EVENT_STOP\n", __func__);
+		ret = kobject_uevent(&dev->kobj, KOBJ_OFFLINE);
+		break;
+	case SCP_EVENT_READY:
+		pr_info("%s(), SCP_EVENT_READY\n", __func__);
+		ret = kobject_uevent(&dev->kobj, KOBJ_ONLINE);
+		break;
+	default:
+		pr_info("%s, ignore event %lu", __func__, event);
+		break;
+	}
+
+	if (ret)
+		pr_info("%s, uevnet(%lu) fail, ret %d", __func__, event, ret);
+
+	return NOTIFY_OK;
+}
+
+struct notifier_block scp_audio_uevent_notifier = {
+	.notifier_call = scp_audio_user_event_notify,
+};
+#endif
+
 static int mtk_dsp_probe(struct snd_soc_component *component)
 {
 	int ret = 0, id = 0, dspscene = 0;
 	struct mtk_base_dsp *dsp = snd_soc_component_get_drvdata(component);
 
 	pr_info("%s dsp = %p\n", __func__, dsp);
+	dsp_priv = dsp;
 	adsp_audio_wakelock = aud_wake_lock_init(NULL, "adsp_audio_wakelock");
 
 	if (adsp_audio_wakelock == NULL)
@@ -1964,6 +2035,13 @@ static int mtk_dsp_probe(struct snd_soc_component *component)
 	for (id = 0; id < get_adsp_core_total(); id++) {
 		if (adsp_irq_registration(id, ADSP_IRQ_AUDIO_ID, audio_irq_handler, dsp) < 0)
 			pr_info("ADSP_IRQ_AUDIO not supported\n");
+	}
+
+	if (get_adsp_type() == ADSP_TYPE_IN_SCP) {
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
+		scp_A_register_notify(&scp_audio_notifier);
+		scp_A_register_notify(&scp_audio_uevent_notifier);
+#endif
 	}
 
 	ret = mtk_init_adsp_latency(dsp);
