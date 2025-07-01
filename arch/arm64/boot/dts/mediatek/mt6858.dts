@@ -5264,6 +5264,24 @@ dramc: dramc@10230000 {
 			reg = <0 0x1502f000 0 0x1000>;
 		};
 
+		rsc@1b003000 {
+			compatible = "mediatek,rsc";
+			mediatek,larb = <&smi_larb20>;
+			reg = <0 0x1b003000 0 0x1000>;
+			dma-ranges = <0x0 0x0 0x0 0x0 0x1 0x0>;
+			power-domains = <&scpsys MT6858_POWER_DOMAIN_ISP_IPE>;
+			iommus = <&disp_iommu M4U_L20_P4_IPESYS_SMI_RSC_RDMA>,
+					 <&disp_iommu M4U_L20_P5_IPESYS_SMI_RSC_WDMA>;
+			interrupts = <GIC_SPI 582 IRQ_TYPE_LEVEL_HIGH 0>;
+			mboxes = <&gce_m 2 0 CMDQ_THR_PRIO_1>;
+			gce-event-names = "rsc_eof";
+			gce-events = <&gce_m CMDQ_EVENT_IPE_RSC_DONE>;
+			clocks = <&ipesys_clk CLK_IPE_RSC_CAM_RSC>,
+					 <&ipesys_clk CLK_IPE_LARB20_CAM_RSC>;
+			clock-names = "RSC_CLK_IPE_RSC",
+						  "RSC_CLK_IPE_LARB20";
+		};
+
 		mfb@15810000 {
 			compatible = "mediatek,mfb";
 			reg = <0 0x15810000 0 0x1000>;
@@ -5279,24 +5297,6 @@ dramc: dramc@10230000 {
 			clock-names =
 				"WPE_CLK_IMG_LARB9",
 				"WPE_CLK_IMG_WPE_A";
-		};
-
-		rsc@1b003000 {
-			compatible = "mediatek,rsc";
-			// mediatek,larb = <&smi_larb20>;
-			reg = <0 0x1b003000 0 0x1000>;
-			dma-ranges = <0x0 0x0 0x0 0x0 0x1 0x0>;
-			power-domains = <&scpsys MT6858_POWER_DOMAIN_ISP_IPE>;
-			iommus = <&disp_iommu M4U_L20_P4_IPESYS_SMI_RSC_RDMA>,
-					 <&disp_iommu M4U_L20_P5_IPESYS_SMI_RSC_WDMA>;
-			interrupts = <GIC_SPI 182 IRQ_TYPE_LEVEL_HIGH 0>;
-			// mboxes = <&gce_m 2 0 CMDQ_THR_PRIO_1>;
-			// gce-event-names = "rsc_eof";
-			// gce-events = <&gce_m CMDQ_EVENT_IPE_RSC_DONE>;
-			clocks = <&ipesys_clk CLK_IPE_RSC_CAM_RSC>,
-					 <&ipesys_clk CLK_IPE_LARB20_CAM_RSC>;
-			clock-names = "RSC_CLK_IPE_RSC",
-						  "RSC_CLK_IPE_LARB20";
 		};
 
 		imgsys2-config@15820000 {
