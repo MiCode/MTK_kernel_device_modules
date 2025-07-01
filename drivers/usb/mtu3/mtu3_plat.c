@@ -263,6 +263,19 @@ void ssusb_set_power_state(struct ssusb_mtk *ssusb,
 
 }
 
+void ssusb_remap_axi_domain(struct ssusb_mtk *ssusb)
+{
+	u32 tmp;
+
+	if (ssusb->axi_domain > 0) {
+		tmp = mtu3_readl(ssusb->mac_base, U3D_QDIDR);
+		tmp |= (INT_DOMAIN_ID_EN | INTR_SECURE_EN |	AXI_AP_SECURE_INTR |
+			DOMAIN_ID_AP(ssusb->axi_domain));
+		mtu3_writel(ssusb->mac_base, U3D_QDIDR, tmp);
+		dev_info(ssusb->dev, "%s remap to domain:0x%x\n", __func__, ssusb->axi_domain);
+	}
+}
+
 void ssusb_set_ux_exit_lfps(struct ssusb_mtk *ssusb)
 {
 	u32 tmp;
@@ -1485,6 +1498,8 @@ get_phy:
 			of_property_read_bool(node, "mediatek,ls-sleep-quirk");
 	ssusb->ldm_resp_delay =
 			of_property_read_bool(node, "mediatek,ldm-resp-delay");
+
+	of_property_read_u32(node, "mediatek,axi-domain", &ssusb->axi_domain);
 
 	otg_sx->vbus = devm_regulator_get(dev, "vbus");
 	if (IS_ERR(otg_sx->vbus)) {

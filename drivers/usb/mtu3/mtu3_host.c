@@ -315,6 +315,9 @@ int ssusb_host_enable(struct ssusb_mtk *ssusb)
 	/* update noise still transfer */
 	ssusb_set_noise_still_tr(ssusb);
 
+	/* update remapping of axi domain*/
+	ssusb_remap_axi_domain(ssusb);
+
 	ssusb_set_ldm_resp_delay(ssusb);
 
 	if (ssusb->eusb2_cm_l1) {

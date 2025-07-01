@@ -571,6 +571,9 @@ static void mtu3_regs_init(struct mtu3 *mtu)
 
 	/* update polling scdlfps time */
 	ssusb_set_polling_scdlfps_time(mtu->ssusb);
+
+	/* remap axi domain */
+	ssusb_remap_axi_domain(mtu->ssusb);
 }
 
 void mtu3_check_params(struct mtu3 *mtu)

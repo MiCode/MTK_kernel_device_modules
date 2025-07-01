@@ -442,6 +442,8 @@ struct ssusb_mtk {
 	u32 ux_exit_lfps_gen2;
 	u32 polling_scdlfps_time;
 	u32 utmi_width;
+	/* axi domain remap */
+	u32 axi_domain;
 	bool smc_req;
 	bool host_dev;
 	bool is_suspended;
@@ -671,6 +673,7 @@ void ssusb_pds_disable(struct ssusb_mtk *ssusb);
 void ssusb_ip_sw_reset(struct ssusb_mtk *ssusb);
 void ssusb_set_power_state(struct ssusb_mtk *ssusb, enum mtu3_power_state);
 int ssusb_wait_power_state(struct ssusb_mtk *ssusb, enum mtu3_power_state);
+void ssusb_remap_axi_domain(struct ssusb_mtk *ssusb);
 void ssusb_set_ux_exit_lfps(struct ssusb_mtk *ssusb);
 void ssusb_set_polling_scdlfps_time(struct ssusb_mtk *ssusb);
 void ssusb_set_txdeemph(struct ssusb_mtk *ssusb);

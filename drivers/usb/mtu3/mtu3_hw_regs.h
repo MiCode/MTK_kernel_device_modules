@@ -98,6 +98,8 @@
 #define U3D_RQERRIESR1		(SSUSB_DEV_BASE + 0x07D8)
 #define U3D_RQERRIECR1		(SSUSB_DEV_BASE + 0x07DC)
 
+#define U3D_QDIDR			(SSUSB_DEV_BASE + 0x0A08)
+
 #define U3D_CAP_EP0FFSZ		(SSUSB_DEV_BASE + 0x0C04)
 #define U3D_CAP_EPNTXFFSZ	(SSUSB_DEV_BASE + 0x0C08)
 #define U3D_CAP_EPNRXFFSZ	(SSUSB_DEV_BASE + 0x0C0C)
@@ -274,6 +276,12 @@
 #define VBUS_ON			BIT(1)
 #define VBUS_FRC_EN		BIT(0)
 
+/* U3D_QDIDR */
+#define INT_DOMAIN_ID_EN	BIT(0)
+#define DOMAIN_ID_AP_MSK	GENMASK(4, 1)
+#define DOMAIN_ID_AP(x)		(((x) & 0xf) << 1)
+#define INTR_SECURE_EN		BIT(16)
+#define AXI_AP_SECURE_INTR	BIT(17)
 
 /*---------------- SSUSB_EPCTL_CSR REGISTER DEFINITION ----------------*/
 
