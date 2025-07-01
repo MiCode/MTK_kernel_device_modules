@@ -682,8 +682,61 @@ static int clkdbg_set_rate(struct seq_file *s, void *v)
 
 	return r;
 }
-
-
+/*
+ * clkdbg_test_task - Create clock testing tasks
+ *
+ * Command Format:
+ *     test_task <test_type> <repeat_count> <clk_names...>
+ *
+ * Test Types:
+ * 1. on_off test:
+ *     test_task on_off <repeat_count> <clk1> [clk2] ...
+ *     - Tests enable/disable operations on specified clocks
+ *     - Can test multiple clocks
+ *     - list of cg clks can be shown by following cmd:
+ *       echo dump_clks > /proc/clkdbg; cat /proc/clkdbg | cut -d ':' -f 2
+ *     - list of genpd clks can be shown by following cmd:
+ *       echo dump_genpd > /proc/clkdbg
+ *       cat /proc/clkdbg | grep '(' | cut -d '(' -f 2 | cut -d ' ' -f 1
+ *
+ * 2. set_parent test:
+ *     test_task set_parent <repeat_count> <target_clk> <parent_clk1> [parent_clk2] ...
+ *     - Tests parent switching for target_clk between specified parent clocks
+ *     - First clock argument is the target clock to change parents
+ *     - Subsequent clock arguments are potential parent clocks to test
+ *     - list of target_clk and parent_clk can be shown by following cmd:
+ *       echo dump_muxes > /proc/clkdbg; cat /proc/clkdbg
+ *       for example:
+ *       [vlp_cksys_top: vlp_ssr_dma_sel      :  ON,  -1,   0,   26000000,    top_tck_26m_mx9_ck]
+ *                      ( 0: top_tck_26m_mx9_ck   :  enabled,   26000000)
+ *                      ( 1: top_mainpll_d4_d4    : disabled,  136500000)
+ *                      ( 2: top_mainpll_d4_d2    :  enabled,  273000000)
+ *                      ( 3: top_mainpll_d7       : disabled,  312000000)
+ *                      ( 4: top_mainpll_d6       : disabled,  364000000)
+ *                      ( 5: top_mainpll_d5       : disabled,  436800000)
+ *       => vlp_ssr_dma_sel is target_clk
+ *       => top_tck_26m_mx9_ck and top_mainpll_* are parent_clk
+ *
+ * Parameters:
+ *     test_type    : "on_off" or "set_parent"
+ *     repeat_count : Number of test repetitions
+ *                    - Use -1 or 0 for infinite repetition
+ *                    - Use positive number for finite repetition
+ *     clk_names    : Clock names depending on test type
+ *                    - Maximum TEST_CLK_NUM clocks allowed
+ *                    - Must be valid clock names in system
+ *                    - Generic power domain (genpd) devices only support on_off testing
+ *
+ * Examples:
+ *     # Test infinite on/off for single clock
+ *     test_task on_off -1 cam_m_larb14
+ *
+ *     # Test on/off 100 times for multiple clocks
+ *     test_task on_off 100 cam_m_larb14  ven1_jpgenc_jpegenc
+ *
+ *     # Test switching vlp_ssr_dma_sel between two parent clocks 50 times
+ *     test_task set_parent 50 vlp_ssr_dma_sel top_tck_26m_mx9_ck top_mainpll_d7
+ */
 static int clkdbg_test_task(struct seq_file *s, void *v)
 {
 	char cmd[sizeof(last_cmd)];
@@ -691,15 +744,19 @@ static int clkdbg_test_task(struct seq_file *s, void *v)
 	char *ign, *tmp_clk_name;
 	struct test_task_clk *ttc = kmalloc(sizeof(struct test_task_clk), GFP_KERNEL);
 	struct clk *tmp_clk;
-	int skip;
+	struct device *tmp_dev;
+	char *repeat_time_str, *test_type_str;
+	int repeat_time;
+	int skip, ret;
 
 	if (ttc == NULL) {
 		seq_puts(s, "malloc fail\n");
-		return 0;
+		goto END;
 	}
+
 	if (clkdbg_ops == NULL || clkdbg_ops->start_task == NULL) {
 		seq_puts(s, "Task not support\n");
-		return 0;
+		goto END;
 	}
 
 	ttc->test_clk_num = 0;
@@ -709,6 +766,39 @@ static int clkdbg_test_task(struct seq_file *s, void *v)
 	cmd[sizeof(cmd) - 1UL] = '\0';
 
 	ign = strsep(&c, " ");
+
+	test_type_str = strsep(&c, " ");
+
+	if (test_type_str == NULL) {
+		seq_puts(s, "invalid test type\n");
+		goto END;
+	}
+
+	if (strcmp(test_type_str, "on_off") == 0)
+		ttc->type = CLK_TEST_TASK_ON_OFF;
+	else if (strcmp(test_type_str, "set_parent") == 0)
+		ttc->type = CLK_TEST_TASK_SET_PARENT;
+	else {
+		seq_puts(s, "invalid test type\n");
+		goto END;
+	}
+
+	ttc->repeat_time = -1;
+	repeat_time_str = strsep(&c, " ");
+	if (repeat_time_str == NULL) {
+		seq_puts(s, "please enter valid repeat time and clk names\n");
+		goto END;
+	}
+
+	ret = kstrtoint(repeat_time_str, 0, &repeat_time);
+	if (ret != 0) {
+		seq_puts(s, "please enter valid repeat time\n");
+		goto END;
+	} else {
+		if (repeat_time <= 0)
+			repeat_time = -1;
+		ttc->repeat_time = repeat_time;
+	}
 
 	/* validate input clk name */
 	tmp_clk_name = strsep(&c, " ");
@@ -720,10 +810,29 @@ static int clkdbg_test_task(struct seq_file *s, void *v)
 
 	while(tmp_clk_name != NULL) {
 		tmp_clk = __clk_dbg_lookup(tmp_clk_name);
+		tmp_dev = clkdbg_dev_from_name(tmp_clk_name);
 		if (tmp_clk) {
-			ttc->test_clk[ttc->test_clk_num] = tmp_clk;
+			ttc->test_clk[ttc->test_clk_num].test_clk_p.test_clk = tmp_clk;
+			ttc->test_clk[ttc->test_clk_num].test_clk_type = TEST_TYPE_CLK;
 			ttc->test_clk_num++;
 			seq_printf(s, "valid clk %s\n", tmp_clk_name);
+
+			if (ttc->test_clk_num >= TEST_CLK_NUM) {
+				seq_puts(s, "too many test clk, skip this cmd\n");
+				skip = 1;
+				break;
+			}
+		} else if (tmp_dev) {
+			if (ttc->type == CLK_TEST_TASK_SET_PARENT) {
+				seq_puts(s, "genpd device does not support set_parent\n");
+				skip = 1;
+				break;
+			}
+			ttc->test_clk[ttc->test_clk_num].test_clk_p.test_genpd_dev = tmp_dev;
+			ttc->test_clk[ttc->test_clk_num].test_clk_type = TEST_TYPE_GENPD;
+			ttc->test_clk_num++;
+			seq_printf(s, "valid dev %s\n", tmp_clk_name);
+
 			if (ttc->test_clk_num >= TEST_CLK_NUM) {
 				seq_puts(s, "too many test clk, skip this cmd\n");
 				skip = 1;
@@ -740,7 +849,13 @@ static int clkdbg_test_task(struct seq_file *s, void *v)
 	if (skip == 1)
 		goto END;
 
-	seq_printf(s, "test_clk_num = %d\n", ttc->test_clk_num);
+	if (ttc->repeat_time == -1)
+		seq_printf(s, "test_clk_num = %d repeat forever\n",
+			ttc->test_clk_num);
+	else
+		seq_printf(s, "test_clk_num = %d repeat %d times\n",
+			ttc->test_clk_num, ttc->repeat_time);
+
 	if (!clkdbg_ops->start_task(ttc))
 		seq_puts(s, "Task Createted\n");
 	else
@@ -1734,10 +1849,17 @@ static ssize_t clkdbg_write(
 	size_t len = 0;
 	char *nl;
 
-	len = (count < (sizeof(last_cmd) - 1UL)) ?
-				count : (sizeof(last_cmd) - 1UL);
+	len = (count <= (sizeof(last_cmd) - 1UL)) ?
+				count : (sizeof(last_cmd));
+
+	if (len == (sizeof(last_cmd))) {
+		pr_notice("clkdbg input string too long, skip this cmd\n");
+		memset(last_cmd, '\0', sizeof(last_cmd));
+		return -EINVAL;
+	}
+
 	if (copy_from_user(last_cmd, buffer, len) != 0UL)
-		return 0;
+		return -EFAULT;
 
 	last_cmd[len] = '\0';
 

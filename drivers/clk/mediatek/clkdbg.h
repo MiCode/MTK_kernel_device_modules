@@ -18,10 +18,39 @@ struct cmd_fn {
 	int (*fn)(struct seq_file *s, void *v);
 };
 
-#define TEST_CLK_NUM (100)
+#define TEST_CLK_NUM (20)
+
+enum {
+	CLK_TEST_TASK_ON_OFF = 0,
+	CLK_TEST_TASK_SET_PARENT,
+	CLK_TEST_TASK_NONE,
+};
+
+#define TEST_CLK_TO_CLK(t_clk) (t_clk.test_clk_p.test_clk)
+#define TEST_CLK_TO_GENPD(t_clk) (t_clk.test_clk_p.test_genpd_dev)
+
+union _test_clk_p {
+	struct clk *test_clk;
+	struct device *test_genpd_dev;
+};
+
+enum {
+	TEST_TYPE_NONE = 0,
+	TEST_TYPE_CLK = 1,
+	TEST_TYPE_GENPD = 2,
+};
+
+struct test_clk {
+	int test_clk_type;
+	union _test_clk_p test_clk_p;
+};
+
+
 struct test_task_clk {
-	struct clk *test_clk[TEST_CLK_NUM];
+	int type;
+	struct test_clk test_clk[TEST_CLK_NUM];
 	int test_clk_num;
+	int repeat_time;
 };
 
 struct clkdbg_ops {

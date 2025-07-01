@@ -1259,60 +1259,100 @@ const char * const *get_mt6993_all_clk_names(void)
 /*
  * clkdbg test tasks
  */
-static struct task_struct *clkdbg_test_thread[THREAD_NUM];
-
-static void stop_clkdbg_test_task(void)
-{
-    int i;
-
-    for (i = 0; i < clkdbg_thread_cnt; i++) {
-        if (clkdbg_test_thread[clkdbg_thread_cnt]) {
-            kthread_stop(clkdbg_test_thread[clkdbg_thread_cnt]);
-            clkdbg_test_thread[clkdbg_thread_cnt] = NULL;
-        }
-    }
-}
-
 static int clkdbg_thread_fn(void *data)
 {
-	struct clk *clks[TEST_CLK_NUM] = {NULL};
+	struct test_clk t_clks[TEST_CLK_NUM] = {0};
 	struct test_task_clk *test_clk = (struct test_task_clk *)data;
+	struct clk *tmp_clk, *tmp_clk_p;
+
 	int i;
 	int ret = 0, test_clk_num;
 	unsigned int thread_cnt = 0;
+	int test_type;
 
 	if (test_clk == NULL || test_clk->test_clk_num == 0) {
-		pr_info("clkdbg_thread receive NULL data\n");
+		pr_notice("clkdbg_thread receive NULL data\n");
 		goto ERR;
 	}
+
+	test_type = test_clk->type;
 
 	test_clk_num = test_clk->test_clk_num < TEST_CLK_NUM ?
 		test_clk->test_clk_num : TEST_CLK_NUM;
 
 	for (i = 0; i < test_clk_num; i++)
-		clks[i] = test_clk->test_clk[i];
+		t_clks[i] = test_clk->test_clk[i];
 
 	while (!kthread_should_stop()) {
 		if ((thread_cnt % 10000) == 0)
-			pr_info("clkdbg_thread is running...(%d)\n", thread_cnt);
+			pr_notice("%s is running...(%d)\n", current->comm, thread_cnt);
 
-		for (i = 0; i < test_clk_num; i++) {
-			ret = clk_prepare_enable(clks[i]);
-			if (ret < 0) {
-				pr_notice("%s fail to power on(%d)\n",
-					clk_hw_get_name(__clk_get_hw(clks[i])), ret);
-				goto ERR;
+		switch (test_type) {
+		case CLK_TEST_TASK_ON_OFF:
+			/* Power on phase */
+			for (i = 0; i < test_clk_num; i++) {
+				switch (t_clks[i].test_clk_type) {
+				case TEST_TYPE_CLK:
+					tmp_clk = TEST_CLK_TO_CLK(t_clks[i]);
+					ret = clk_prepare_enable(tmp_clk);
+					if (ret < 0) {
+						pr_notice("%s fail to power on(%d)\n",
+							clk_hw_get_name(__clk_get_hw(tmp_clk)),
+							ret);
+						goto ERR;
+					}
+					break;
+
+				}
 			}
-		}
-		for (i = test_clk_num - 1; i >= 0; i--)
-			clk_disable_unprepare(clks[i]);
+			/* Power off phase */
+			for (i = test_clk_num - 1; i >= 0; i--) {
+				switch (t_clks[i].test_clk_type) {
+				case TEST_TYPE_CLK:
+					tmp_clk = TEST_CLK_TO_CLK(t_clks[i]);
+					clk_disable_unprepare(tmp_clk);
+					break;
 
+				}
+			}
+			break;
+		case CLK_TEST_TASK_SET_PARENT:
+			tmp_clk = TEST_CLK_TO_CLK(t_clks[0]);
+			tmp_clk_p = clk_get_parent(tmp_clk);
+			for (i = 1; i < test_clk_num; i++) {
+				ret = clk_set_parent(tmp_clk,
+						     TEST_CLK_TO_CLK(t_clks[i]));
+				if (ret) {
+					pr_notice("%s: %s, %s fail to set parent(%d)\n",
+						current->comm,
+						clk_hw_get_name(__clk_get_hw(tmp_clk)),
+						clk_hw_get_name(
+							__clk_get_hw(TEST_CLK_TO_CLK(t_clks[i]))),
+						ret);
+					/* reset to original parent */
+					clk_set_parent(tmp_clk, tmp_clk_p);
+					goto ERR;
+				}
+			}
+			/* reset to original parent */
+			clk_set_parent(tmp_clk, tmp_clk_p);
+			break;
+		default:
+			pr_notice("unknown test type\n");
+			goto ERR;
+		}
 		thread_cnt++;
+
+		if (test_clk->repeat_time != -1 &&
+		    (unsigned int)test_clk->repeat_time == thread_cnt)
+			break;
+
 		// add ~20ms delay to avoid mmup receiving too many irq
-		usleep_range(20000, 20100);
+		if (test_type == CLK_TEST_TASK_ON_OFF)
+			usleep_range(20000, 20100);
 	}
 ERR:
-	stop_clkdbg_test_task();
+	pr_notice("%s stopped after (%d) run\n", current->comm, thread_cnt);
 	kfree(data);
 	return 0;
 }
@@ -1320,15 +1360,8 @@ ERR:
 static int start_clkdbg_test_task(void *data)
 {
 	char thread_name[THREAD_LEN];
+	struct task_struct *clkdbg_test_thread;
 	int ret = 0;
-
-	if (clkdbg_thread_cnt >= THREAD_NUM || clkdbg_thread_cnt < 0)
-		return 0;
-
-	if (clkdbg_test_thread[clkdbg_thread_cnt]) {
-		pr_info("%s clkdbg_thread is already running\n", __func__);
-		return -EBUSY;
-	}
 
 	ret = snprintf(thread_name, THREAD_LEN, "clkdbg_thread%d", clkdbg_thread_cnt);
 
@@ -1337,10 +1370,10 @@ static int start_clkdbg_test_task(void *data)
 		return ret;
 	}
 
-	clkdbg_test_thread[clkdbg_thread_cnt] = kthread_run(clkdbg_thread_fn, data, "%s", thread_name);
-	if (IS_ERR(clkdbg_test_thread[clkdbg_thread_cnt])) {
+	clkdbg_test_thread = kthread_run(clkdbg_thread_fn, data, "%s", thread_name);
+	if (IS_ERR(clkdbg_test_thread)) {
 		pr_info("%s Failed to start clkdbg_thread(%d)\n", __func__, clkdbg_thread_cnt);
-		return PTR_ERR(clkdbg_test_thread[clkdbg_thread_cnt]);
+		return PTR_ERR(clkdbg_test_thread);
 	}
 	clkdbg_thread_cnt++;
 
@@ -1403,7 +1436,6 @@ static int __init clkdbg_mt6993_init(void)
 static void __exit clkdbg_mt6993_exit(void)
 {
     unset_clkdbg_ops();
-    stop_clkdbg_test_task();
 	platform_driver_unregister(&clk_dbg_mt6993_drv);
 }
 
