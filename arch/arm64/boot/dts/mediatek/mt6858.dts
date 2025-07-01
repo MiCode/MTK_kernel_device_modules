@@ -9640,6 +9640,10 @@ dramc: dramc@10230000 {
 #include "mediatek/cust_mt6858_connfem.dtsi"
 #include "mediatek/mt6858-disable-unused.dtsi"
 
+&hypervisor {
+	status = "okay";
+};
+
 &spmi {
 // PMIC TODO:
 #if 0
