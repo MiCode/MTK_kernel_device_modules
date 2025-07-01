@@ -1204,15 +1204,13 @@ TZ_RESULT KREE_TeeServiceCallPlus(KREE_SESSION_HANDLE handle, uint32_t command,
 
 	if (cpumask == -1)
 		mutex_lock(&servicecall_lock);
-
 	kree_perf_boost(1);
-
 	ret = _GzServiceCall_body(Fd, command, cparam, param);
-
 	kree_perf_boost(0);
-
 	if (cpumask == -1)
 		mutex_unlock(&servicecall_lock);
+	if (unlikely(ret != TZ_RESULT_SUCCESS))
+		goto tee_service_call_plus_out;
 
 	memcpy(param, cparam->param, sizeof(union MTEEC_PARAM) * 4);
 
