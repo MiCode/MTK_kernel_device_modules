@@ -401,9 +401,6 @@
 	nfc:nfc {
 	};
 
-	mrdump_ext_rst: mrdump-ext-rst {
-	};
-
 	subpmic_pmu_eint: subpmic-pmu-eint {
 
 	};
@@ -3803,6 +3800,12 @@ dramc: dramc@10230000 {
 		dsi_te: dsi-te {
 			compatible = "mediatek, dsi_te-eint";
 			status = "disabled";
+		};
+
+		mrdump_ext_rst:mrdump_ext_rst {
+			compatible = "mediatek, mrdump_ext_rst-eint";
+			mode = "IRQ";
+			status = "okay";
 		};
 
 		mipi_tx_config0: mipi-tx-config0@11e50000 {
