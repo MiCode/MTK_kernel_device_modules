@@ -8727,6 +8727,13 @@ dramc: dramc@10230000 {
 	}
 #endif
 
+	speech_usip_mem: speech-usip-mem {
+		compatible = "mediatek,speech-usip-mem";
+		adsp-phone-call-enh-enable = <0x5>;
+		adsp-phone-call-hwif = <0x0>;
+		adsp-ble-phone-call-enable = <0x1>;
+	};
+
 	lvts: lvts@10315000 {
 		compatible = "mediatek,mt6858-lvts";
 		#thermal-sensor-cells = <1>;
