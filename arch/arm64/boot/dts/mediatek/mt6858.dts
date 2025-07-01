@@ -10892,6 +10892,10 @@ dramc: dramc@10230000 {
 	status = "okay";
 };
 
+&mt6369codec {
+	mediatek,bypass-vant18 = <1>;
+};
+
 #include "mediatek/bat_setting/mt6858_battery_prop.dtsi"
 
 /delete-node/ &mt6363_vbuck1_sshub;
