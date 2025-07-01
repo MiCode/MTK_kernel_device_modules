@@ -2328,11 +2328,11 @@ static int jdi_enable(struct drm_panel *panel)
 }
 
 static const struct drm_display_mode default_mode = {
-	.clock = 277066,
+	.clock = 290458,
 	.hdisplay = 1080,
-	.hsync_start = 1080 + 714,//HFP
-	.hsync_end = 1080 + 714 + 12,//HSA
-	.htotal = 1080 + 714 + 12 + 56,//HBP
+	.hsync_start = 1080 + 850,//HFP
+	.hsync_end = 1080 + 850 + 12,//HSA
+	.htotal = 1080 + 850 + 12 + 10,//HBP
 	.vdisplay = 2400,
 	.vsync_start = 2400 + 60,//VFP
 	.vsync_end = 2400 + 60 + 10,//VSA
@@ -2340,11 +2340,11 @@ static const struct drm_display_mode default_mode = {
 };
 
 static const struct drm_display_mode performance_mode_90hz = {
-	.clock = 325202,
+	.clock = 343728,
 	.hdisplay = 1080,
-	.hsync_start = 1080 + 309,//HFP
-	.hsync_end = 1080 + 309 + 12,//HSA
-	.htotal = 1080 + 309 + 12 + 56,//HBP
+	.hsync_start = 1080 + 438,//HFP
+	.hsync_end = 1080 + 438 + 12,//HSA
+	.htotal = 1080 + 438 + 12 + 10,//HBP
 	.vdisplay = 2400,
 	.vsync_start = 2400 + 60,//VFP
 	.vsync_end = 2400 + 60 + 10,//VSA
@@ -2352,11 +2352,11 @@ static const struct drm_display_mode performance_mode_90hz = {
 };
 
 static const struct drm_display_mode performance_mode_120hz = {
-	.clock = 372000,
+	.clock = 397594,
 	.hdisplay = 1080,
-	.hsync_start = 1080 + 102,//HFP
-	.hsync_end = 1080 + 102 + 12,//HSA
-	.htotal = 1080 + 102 + 12 + 56,//HBP
+	.hsync_start = 1080 + 234,//HFP
+	.hsync_end = 1080 + 234 + 12,//HSA
+	.htotal = 1080 + 234 + 12 + 10,//HBP
 	.vdisplay = 2400,
 	.vsync_start = 2400 + 60,//VFP
 	.vsync_end = 2400 + 60 + 10,//VSA
@@ -2366,7 +2366,7 @@ static const struct drm_display_mode performance_mode_120hz = {
 #if defined(CONFIG_MTK_PANEL_EXT)
 static struct mtk_panel_params ext_params = {
 	.pll_clk = 551,
-	.vfp_low_power = 880,
+	.vfp_low_power = 892,
 	.cust_esd_check = 1,
 	.esd_check_enable = 1,
 	.lcm_esd_check_table[0] = {
@@ -2446,7 +2446,7 @@ static struct mtk_panel_params ext_params = {
 
 static struct mtk_panel_params ext_params_90hz = {
 	.pll_clk = 551,
-	.vfp_low_power = 1300,
+	.vfp_low_power = 1306,
 	.cust_esd_check = 1,
 	.esd_check_enable = 1,
 	.lcm_esd_check_table[0] = {
@@ -2526,7 +2526,7 @@ static struct mtk_panel_params ext_params_90hz = {
 
 static struct mtk_panel_params ext_params_120hz = {
 	.pll_clk = 551,
-	.vfp_low_power = 2540,
+	.vfp_low_power = 2548,
 	.cust_esd_check = 1,
 	.esd_check_enable = 1,
 	.lcm_esd_check_table[0] = {
@@ -3035,7 +3035,7 @@ static int jdi_probe(struct mipi_dsi_device *dsi)
 	unsigned int value;
 	int ret;
 
-	pr_info("%s+ jdi,nt36672e,vdo,120hz\n", __func__);
+	pr_info("%s+ jdi,nt36672e,vdo,120hz,hfp,v5\n", __func__);
 
 	dsi_node = of_get_parent(dev->of_node);
 	if (dsi_node) {
@@ -3124,7 +3124,7 @@ static int jdi_probe(struct mipi_dsi_device *dsi)
 
 #endif
 
-	pr_info("%s- jdi,nt36672e,vdo,120hz,hfp\n", __func__);
+	pr_info("%s- jdi,nt36672e,vdo,120hz,hfp,v5\n", __func__);
 
 	return ret;
 }
@@ -3139,15 +3139,18 @@ static void jdi_remove(struct mipi_dsi_device *dsi)
 	mipi_dsi_detach(dsi);
 	drm_panel_remove(&ctx->panel);
 #if defined(CONFIG_MTK_PANEL_EXT)
-	mtk_panel_detach(ext_ctx);
-	mtk_panel_remove(ext_ctx);
+	if (ext_ctx != NULL) {
+		mtk_panel_detach(ext_ctx);
+		mtk_panel_remove(ext_ctx);
+	} else
+		pr_info("[LCM] %s ext_ctx is null\n", __func__);
 #endif
 
 }
 
 static const struct of_device_id jdi_of_match[] = {
 	{
-	    .compatible = "jdi,nt36672e,vdo,120hz,hfp",
+	    .compatible = "jdi,nt36672e,vdo,120hz,hfp,v5",
 	},
 	{}
 };
@@ -3158,7 +3161,7 @@ static struct mipi_dsi_driver jdi_driver = {
 	.probe = jdi_probe,
 	.remove = jdi_remove,
 	.driver = {
-		.name = "panel-jdi-nt36672e-vdo-120hz-hfp",
+		.name = "panel-jdi-nt36672e-vdo-120hz-hfp-v5",
 		.owner = THIS_MODULE,
 		.of_match_table = jdi_of_match,
 	},
