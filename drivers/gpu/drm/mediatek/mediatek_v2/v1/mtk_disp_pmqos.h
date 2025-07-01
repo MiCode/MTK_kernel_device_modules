@@ -59,6 +59,7 @@ struct mtk_larb_port_bw {
 struct mtk_drm_qos_ctx {
 	unsigned int last_hrt_req;
 	unsigned int last_mmclk_req_idx;
+	unsigned int mmclk_need_up_now;
 	unsigned int last_larb_hrt_req;
 	unsigned int last_channel_req[BW_CHANNEL_NR];
 	unsigned int last_channel_write_req[BW_CHANNEL_NR];

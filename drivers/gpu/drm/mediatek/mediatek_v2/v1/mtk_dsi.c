@@ -12049,6 +12049,9 @@ void mtk_dsi_set_mmclk_by_datarate_V2(struct mtk_dsi *dsi,
 	struct mtk_panel_dsc_params *dsc_params = &ext->params->dsc_params;
 	bool adjust_pixclk = ((mtk_crtc->is_dual_pipe && dsc_params->enable) ||
 		(mtk_crtc->dli_relay_1tnp));
+	unsigned int last_pixclk = 0;
+	unsigned int mmclk_need_up_now = 0;
+	unsigned int skip_set_mmclk = 0;
 
 	to_info = mtk_crtc_get_total_overhead(mtk_crtc);
 	if (to_info.is_support)
@@ -12360,9 +12363,22 @@ void mtk_dsi_set_mmclk_by_datarate_V2(struct mtk_dsi *dsi,
 			pixclk /= 1000;
 		}
 
-		DDPMSG("%s, %d, data_rate=%d, mmclk=%u pixclk_min=%d, dual=%u\n", __func__,
-				__LINE__, data_rate, pixclk, pixclk_min, mtk_crtc->is_dual_pipe);
-		mtk_drm_set_mmclk_by_pixclk(&mtk_crtc->base, pixclk, __func__);
+		last_pixclk = mtk_drm_get_mmclk(&mtk_crtc->base, __func__) / 1000000;
+
+		DDPMSG("%s, %d, data_rate=%d, last_pixclk=%u, mmclk=%u pixclk_min=%d, dual=%u\n", __func__,
+				__LINE__, data_rate, last_pixclk, pixclk, pixclk_min, mtk_crtc->is_dual_pipe);
+
+		mmclk_need_up_now =
+			(mtk_crtc->qos_ctx) ? mtk_crtc->qos_ctx->mmclk_need_up_now : 0;
+		if (!mtk_dsi_is_cmd_mode(&dsi->ddp_comp) && mmclk_need_up_now){
+			mtk_crtc->qos_ctx->mmclk_need_up_now = 0;
+			if (last_pixclk > pixclk)
+				skip_set_mmclk = 1;
+		}
+		if(!skip_set_mmclk)
+			mtk_drm_set_mmclk_by_pixclk(&mtk_crtc->base, pixclk, __func__);
+		else
+			DDPINFO("%s skip mmclk change\n", __func__);
 	}
 }
 
