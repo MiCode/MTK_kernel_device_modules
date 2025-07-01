@@ -2822,40 +2822,40 @@ static inline void WPE_Prepare_Enable_ccf_clock(void)
 	if (wpe_clk.CG_IMGSYS_LARB9 != NULL) {
 		ret = clk_prepare_enable(wpe_clk.CG_IMGSYS_LARB9);
 		if (ret)
-			LOG_INF("cannot prepare and enable IMG_LARB9 clock\n");
-		LOG_INF("get CG_IMGSYS_LARB9 OK");
+			LOG_ERR("cannot prepare and enable IMG_LARB9 clock\n");
+		LOG_DBG("get CG_IMGSYS_LARB9 OK");
 	}
 
 	if (wpe_clk.CG_IMGSYS_WPE_A != NULL) {
 		ret = clk_prepare_enable(wpe_clk.CG_IMGSYS_WPE_A);
 		if (ret)
-			LOG_INF("cannot prepare CG_IMGSYS_WPE_A clock\n");
-		LOG_INF("get CG_IMGSYS_WPE_A OK");
+			LOG_ERR("cannot prepare CG_IMGSYS_WPE_A clock\n");
+		LOG_DBG("get CG_IMGSYS_WPE_A OK");
 	}
 
 	if (wpe_clk.CG_IMGSYS1 != NULL) {
 		ret = clk_prepare_enable(wpe_clk.CG_IMGSYS1);
 		if (ret) {
-			LOG_INF("cannot prepare and enable IMGSYS1 clock\n");
+			LOG_DBG("cannot prepare and enable IMGSYS1 clock\n");
 		}
-		LOG_INF("get wpe_clk.CG_IMGSYS1 OK");
+		LOG_DBG("get wpe_clk.CG_IMGSYS1 OK");
 	}
 
 	if (wpe_clk.CG_IMGSYS_LARB11 != NULL) {
 		ret = clk_prepare_enable(wpe_clk.CG_IMGSYS_LARB11);
 		if (ret)
-			LOG_INF("cannot prepare and enable IMG_LARB11 clock\n");
-		LOG_INF("get CG_IMGSYS_LARB11 OK");
+			LOG_DBG("cannot prepare and enable IMG_LARB11 clock\n");
+		LOG_DBG("get CG_IMGSYS_LARB11 OK");
 	}
 
 	if (wpe_clk.CG_IMGSYS_WPE_B != NULL) {
 		ret = clk_prepare_enable(wpe_clk.CG_IMGSYS_WPE_B);
 		if (ret)
-			LOG_INF("cannot prepare and enable CG_IMGSYS_WPE_B clock\n");
-		LOG_INF("get CG_IMGSYS_WPE_B OK");
+			LOG_DBG("cannot prepare and enable CG_IMGSYS_WPE_B clock\n");
+		LOG_DBG("get CG_IMGSYS_WPE_B OK");
 	}
 
-	LOG_INF("CG_DUAL_WPE_ON = %d\n",CG_DUAL_WPE_ON);
+	LOG_DBG("CG_DUAL_WPE_ON = %d\n",CG_DUAL_WPE_ON);
 }
 
 static inline void WPE_Disable_Unprepare_ccf_clock(void)
@@ -2886,7 +2886,7 @@ static inline void WPE_Disable_Unprepare_ccf_clock(void)
 
 	pm_runtime_put_sync(WPE_devs->dev);
 
-	LOG_INF("CG_DUAL_WPE_ON = %d\n",CG_DUAL_WPE_ON);
+	LOG_DBG("CG_DUAL_WPE_ON = %d\n",CG_DUAL_WPE_ON);
 }
 #endif
 
