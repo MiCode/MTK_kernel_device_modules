@@ -13,14 +13,6 @@
 			<&cksys_reg_clk CLK_TOP_DISP0_SEL>,
 			<&cksys_reg_clk CLK_TOP_MMINFRA_SEL>,
 			<&cksys_reg_clk CLK_TOP_UART_SEL>,
-			<&cksys_reg_clk CLK_TOP_SPI0_SEL>,
-			<&cksys_reg_clk CLK_TOP_SPI1_SEL>,
-			<&cksys_reg_clk CLK_TOP_SPI2_SEL>,
-			<&cksys_reg_clk CLK_TOP_SPI3_SEL>,
-			<&cksys_reg_clk CLK_TOP_SPI4_SEL>,
-			<&cksys_reg_clk CLK_TOP_SPI5_SEL>,
-			<&cksys_reg_clk CLK_TOP_SPI6_SEL>,
-			<&cksys_reg_clk CLK_TOP_SPI7_SEL>,
 			<&cksys_reg_clk CLK_TOP_MSDC_MACRO_1P_SEL>,
 			<&cksys_reg_clk CLK_TOP_MSDC30_1_SEL>,
 			<&cksys_reg_clk CLK_TOP_MSDC30_1_HCLK_SEL>,
@@ -185,20 +177,6 @@
 			<&pericfg_ao_clk CLK_PERAO_P_UART2_UART>,
 			<&pericfg_ao_clk CLK_PERAO_P_UART3_UART>,
 			<&pericfg_ao_clk CLK_PERAO_P_DMA_B_UART>;
-	};
-
-	bring-up-spi@b {
-		compatible = "mediatek,clk-bring-up";
-		reg = <0xb>;
-		clocks =
-			<&pericfg_ao_clk CLK_PERAO_P_SPI0_B_SPI>,
-			<&pericfg_ao_clk CLK_PERAO_P_SPI1_B_SPI>,
-			<&pericfg_ao_clk CLK_PERAO_P_SPI2_B_SPI>,
-			<&pericfg_ao_clk CLK_PERAO_P_SPI3_B_SPI>,
-			<&pericfg_ao_clk CLK_PERAO_P_SPI4_B_SPI>,
-			<&pericfg_ao_clk CLK_PERAO_P_SPI5_B_SPI>,
-			<&pericfg_ao_clk CLK_PERAO_P_SPI6_B_SPI>,
-			<&pericfg_ao_clk CLK_PERAO_P_SPI7_B_SPI>;
 	};
 
 	bring-up-cam-mss@c {
