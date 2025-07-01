@@ -37,6 +37,16 @@ config MTK_NEBULA_VM_SUPPORT
 	  Say Y if you would like to enable this feature.
 	  If unsure, say N.
 
+config MTK_GZVM_DEBUG
+	bool "Enable debug functionality for GZ hypervisor AVF"
+	help
+	  This config enables additional debug functions for the GZ
+	  hypervisor AVF (Android Virtualization Framework) within
+	  the Geniezone Virtual Machine (GZVM) framework. When enabled,
+	  developers will have access to extra logging and
+	  debugging tools that assist in diagnosing and testing
+	  features related to hypervisor and AVF
+
 endmenu
 
 # GZ Trusty
