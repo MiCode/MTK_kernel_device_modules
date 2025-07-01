@@ -5399,7 +5399,7 @@ dramc: dramc@10230000 {
 	#if 0
 			power-domains = <&scpsys MT6858_POWER_DOMAIN_CAM_MAIN>,
 					<&scpsys MT6858_POWER_DOMAIN_CSI_RX>;
-			clocks = <&camsys_main_clk CLK_CAM_M_SENINF>,
+			clocks = <&camsys_main_clk CLK_CAM_M_SENINF_CAM>,
 					<&cksys_reg_clk CLK_TOP_SENINF_SEL>,
 					<&cksys_reg_clk CLK_TOP_SENINF1_SEL>,
 					<&cksys_reg_clk CLK_TOP_SENINF2_SEL>,
@@ -5449,9 +5449,9 @@ dramc: dramc@10230000 {
 			reg-names = "seninf_top",
 				    "seninf_n3d_a",
 				    "seninf_n3d_b";
-			clocks = <&camsys_main_clk CLK_CAM_M_SENINF>,
-				 <&camsys_main_clk CLK_CAM_M_CAM>,
-				 <&camsys_main_clk CLK_CAM_M_CAMTG>,
+			clocks = <&camsys_main_clk CLK_CAM_M_SENINF_CAM>,
+				 <&camsys_main_clk CLK_CAM_M_CAM_CAM>,
+				 <&camsys_main_clk CLK_CAM_M_CAMTG_CAM>,
 				 <&cksys_reg_clk CLK_TOP_CAMTM_SEL>;
 			clock-names = "CAMSYS_SENINF_CGPDN",
 				      "CAMSYS_CAM_CGPDN",
@@ -7023,21 +7023,21 @@ dramc: dramc@10230000 {
 			mediatek,larb = <&smi_larb13>;
 			mediatek,platform = "mt6858";
 			/* Camera CCF */
-			clocks = <&camsys_main_clk CLK_CAM_M_CAM>,
-				 <&camsys_main_clk CLK_CAM_M_CAMTG>,
-				 <&camsys_main_clk CLK_CAM_M_CAMSV1>,
-				 <&camsys_main_clk CLK_CAM_M_CAMSV2>,
-				 <&camsys_main_clk CLK_CAM_M_CAMSV3>,
-				 <&camsys_main_clk CLK_CAM_M_LARB13>,
-				 <&camsys_main_clk CLK_CAM_M_LARB14>,
-				 <&camsys_main_clk CLK_CAM_M_SENINF>,
-				 <&camsys_main_clk CLK_CAM_M_CAM2MM_GALS>,
-				 <&camsys_rawa_clk CLK_CAM_RA_LARBX>,
-				 <&camsys_rawa_clk CLK_CAM_RA_CAM>,
-				 <&camsys_rawa_clk CLK_CAM_RA_CAMTG>,
-				 <&camsys_rawb_clk CLK_CAM_RB_LARBX>,
-				 <&camsys_rawb_clk CLK_CAM_RB_CAM>,
-				 <&camsys_rawb_clk CLK_CAM_RB_CAMTG>,
+			clocks = <&camsys_main_clk CLK_CAM_M_CAM_CAM>,
+				 <&camsys_main_clk CLK_CAM_M_CAMTG_CAM>,
+				 <&camsys_main_clk CLK_CAM_M_CAMSV1_CAM>,
+				 <&camsys_main_clk CLK_CAM_M_CAMSV2_CAM>,
+				 <&camsys_main_clk CLK_CAM_M_CAMSV3_CAM>,
+				 <&camsys_main_clk CLK_CAM_M_LARB13_CAM>,
+				 <&camsys_main_clk CLK_CAM_M_LARB14_CAM>,
+				 <&camsys_main_clk CLK_CAM_M_SENINF_CAM>,
+				 <&camsys_main_clk CLK_CAM_M_CAM2MM_GALS_CAM>,
+				 <&camsys_rawa_clk CLK_CAM_RA_LARBX_CAM>,
+				 <&camsys_rawa_clk CLK_CAM_RA_CAM_CAM>,
+				 <&camsys_rawa_clk CLK_CAM_RA_CAMTG_CAM>,
+				 <&camsys_rawb_clk CLK_CAM_RB_LARBX_CAM>,
+				 <&camsys_rawb_clk CLK_CAM_RB_CAM_CAM>,
+				 <&camsys_rawb_clk CLK_CAM_RB_CAMTG_CAM>,
 				 <&cksys_reg_clk CLK_TOP_CAMTM_SEL>,
 				 <&mmdvfs_clk CLK_MMDVFS_CAM>;
 			clock-names = "CAMSYS_CAM_CGPDN",
