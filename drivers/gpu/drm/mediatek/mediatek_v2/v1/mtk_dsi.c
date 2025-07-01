@@ -3053,7 +3053,10 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 		mtk_dsi_mask(dsi, DSI_DEBUG_SEL(dsi->driver_data), MM_RST_SEL, MM_RST_SEL);
 
 	/* enable ultra signal between SOF to VACT */
-	mtk_dsi_mask(dsi, DSI_RESERVED(dsi->driver_data), DSI_VDE_BLOCK_ULTRA, 0);
+	if (priv->data->mmsys_id == MMSYS_MT6985 ||
+		priv->data->mmsys_id == MMSYS_MT6897 ||
+		priv->data->mmsys_id == MMSYS_MT6835)
+		mtk_dsi_mask(dsi, DSI_RESERVED(dsi->driver_data), DSI_VDE_BLOCK_ULTRA, 0);
 	/* 1TNP */
 	fill_rate = mmsys_clk * dli_relay_1tnp * dsi_buf_bpp / buffer_unit;
 
@@ -3306,14 +3309,13 @@ static void mtk_dsi_calc_vdo_timing(struct mtk_dsi *dsi)
 	u32 horizontal_sync_active_byte;
 	u32 horizontal_backporch_byte;
 	u32 horizontal_frontporch_byte;
-	u32 dsi_tmp_buf_bpp;
+	u32 dsi_tmp_buf_bpp = mtk_get_dsi_buf_bpp(dsi);
 	u32 t_vfp, t_vbp, t_vsa;
 	u32 t_hfp, t_hbp, t_hsa;
 	u32 hfp_minimum;
 	struct mtk_panel_ext *ext = NULL;
 	struct videomode *vm = NULL;
 	struct dynamic_mipi_params *dyn = NULL;
-	struct mtk_panel_spr_params *spr_params = NULL;
 	u32 bllp_wc = 0;
 
 	if (!dsi) {
@@ -3324,10 +3326,8 @@ static void mtk_dsi_calc_vdo_timing(struct mtk_dsi *dsi)
 	ext = dsi->ext;
 	vm = &dsi->vm;
 
-	if (ext && ext->params) {
+	if (ext && ext->params)
 		dyn = &ext->params->dyn;
-		spr_params = &ext->params->spr_params;
-	}
 	t_vfp = (dsi->mipi_hopping_sta) ?
 			((dyn && !!dyn->vfp) ?
 			 dyn->vfp : vm->vfront_porch) :
@@ -3358,33 +3358,9 @@ static void mtk_dsi_calc_vdo_timing(struct mtk_dsi *dsi)
 			 dyn->hsa : vm->hsync_len) :
 			vm->hsync_len;
 
-	if (dsi->format == MIPI_DSI_FMT_RGB565)
-		dsi_tmp_buf_bpp = 2;
-	else
-		dsi_tmp_buf_bpp = 3;
-
 	dsi->ext = find_panel_ext(dsi->panel);
 	if (!dsi->ext)
 		return;
-	if (spr_params && spr_params->enable == 1 && spr_params->relay == 0
-		&& disp_spr_bypass == 0) {
-		switch (ext->params->spr_output_mode) {
-		case MTK_PANEL_PACKED_SPR_8_BITS:
-			dsi_tmp_buf_bpp = 2;
-			break;
-		case MTK_PANEL_lOOSELY_SPR_8_BITS:
-			dsi_tmp_buf_bpp = 3;
-			break;
-		case MTK_PANEL_lOOSELY_SPR_10_BITS:
-			dsi_tmp_buf_bpp = 3;
-			break;
-		case MTK_PANEL_PACKED_SPR_12_BITS:
-			dsi_tmp_buf_bpp = 3;
-			break;
-		default:
-			break;
-		}
-	}
 
 	if (dsi->ext->params->is_cphy) {
 		if (dsi->mode_flags & MIPI_DSI_MODE_VIDEO_SYNC_PULSE) {
