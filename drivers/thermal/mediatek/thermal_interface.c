@@ -26,7 +26,6 @@
 #include <linux/debugfs.h>
 #include <linux/thermal.h>
 #include <linux/interconnect.h>
-#include <soc/mediatek/dramc.h>
 #include <linux/suspend.h>
 #include <linux/io.h>
 #if IS_ENABLED(CONFIG_MTK_GPUFREQ_V2)
@@ -1889,7 +1888,7 @@ int get_dram_data_rate(char *buf, size_t size)
 	int len = 0;
 #if IS_ENABLED(CONFIG_MTK_DRAMC)
 	len = snprintf(buf, size, "%d\n",
-		mtk_dramc_get_data_rate());
+		mtk_dvfsrc_query_opp_info(MTK_DVFSRC_CURR_DRAM_KHZ) / 1000);
 	if (len < 0 || len >= sizeof(buf))
 		pr_info("%s: snprintf return negative and buf %s\n", __func__, buf);
 #endif
