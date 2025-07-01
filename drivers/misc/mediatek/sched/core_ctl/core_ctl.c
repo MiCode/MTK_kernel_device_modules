@@ -122,7 +122,7 @@ struct cluster_data {
 	struct kobject kobj;
 	s64 offline_throttle_ms;
 	s64 next_offline_time;
-	struct request_data demand_list[MAX_DEMAND_REQUESTER];
+	struct request_data demand_list[CORE_CTL_SET_CORE_MAX_DEMAND_REQUESTER];
 	struct cluster_ppm_data ppm_data;
 	unsigned int cap_turn_point;
 	unsigned long freq_thres;
@@ -670,7 +670,7 @@ static void set_min_cpus(struct cluster_data *cluster, unsigned int val, int req
 			return;
 	}
 
-	if (requester < 0 || requester >= MAX_DEMAND_REQUESTER)
+	if (requester < 0 || requester >= CORE_CTL_SET_CORE_MAX_DEMAND_REQUESTER)
 		return;
 
 	spin_lock_irqsave(&core_ctl_state_lock, flags);
@@ -680,7 +680,7 @@ static void set_min_cpus(struct cluster_data *cluster, unsigned int val, int req
 	cluster->demand_list[requester].min_cpus = val;
 
 	/* Find biggest demand of min_cpus */
-	for (i=0; i<MAX_DEMAND_REQUESTER; i++) {
+	for (i=0; i<CORE_CTL_SET_CORE_MAX_DEMAND_REQUESTER; i++) {
 		if (cluster->demand_list[i].have_demand && (cluster->demand_list[i].min_cpus >= max_min)) {
 			selected = i;
 			max_min = cluster->demand_list[i].min_cpus;
@@ -711,7 +711,7 @@ static void set_max_cpus(struct cluster_data *cluster, unsigned int val, int req
 			return;
 	}
 
-	if (requester < 0 || requester >= MAX_DEMAND_REQUESTER)
+	if (requester < 0 || requester >= CORE_CTL_SET_CORE_MAX_DEMAND_REQUESTER)
 		return;
 
 	spin_lock_irqsave(&core_ctl_state_lock, flags);
@@ -720,7 +720,7 @@ static void set_max_cpus(struct cluster_data *cluster, unsigned int val, int req
 	cluster->demand_list[requester].max_cpus = val;
 
 	/* Find smallest demand of max_cpus */
-	for (i=0; i<MAX_DEMAND_REQUESTER; i++) {
+	for (i=0; i<CORE_CTL_SET_CORE_MAX_DEMAND_REQUESTER; i++) {
 		if (cluster->demand_list[i].have_demand && (cluster->demand_list[i].max_cpus <= min_max)) {
 			selected = i;
 			min_max = cluster->demand_list[i].max_cpus;
@@ -972,16 +972,16 @@ int core_ctl_cpu_request_trace(void)
 	int cid, req_id, cpu;
 	unsigned long flags;
 	int min_cpus[MAX_CLUSTERS], max_cpus[MAX_CLUSTERS];
-	unsigned int min_cpus_req[MAX_CLUSTERS][MAX_DEMAND_REQUESTER];
-	unsigned int max_cpus_req[MAX_CLUSTERS][MAX_DEMAND_REQUESTER];
-	unsigned int have_demand[MAX_CLUSTERS][MAX_DEMAND_REQUESTER];
+	unsigned int min_cpus_req[MAX_CLUSTERS][CORE_CTL_SET_CORE_MAX_DEMAND_REQUESTER];
+	unsigned int max_cpus_req[MAX_CLUSTERS][CORE_CTL_SET_CORE_MAX_DEMAND_REQUESTER];
+	unsigned int have_demand[MAX_CLUSTERS][CORE_CTL_SET_CORE_MAX_DEMAND_REQUESTER];
 	unsigned int force_pause_req[MAX_NR_CPUS];
 
 	spin_lock_irqsave(&core_ctl_state_lock, flags);
 	for (cid=1; cid<MAX_CLUSTERS; cid++) {
 		cluster = &cluster_state[cid];
 
-		for (req_id=0; req_id < MAX_DEMAND_REQUESTER; req_id++) {
+		for (req_id=0; req_id < CORE_CTL_SET_CORE_MAX_DEMAND_REQUESTER; req_id++) {
 			have_demand[cid][req_id] = cluster->demand_list[req_id].have_demand;
 			min_cpus_req[cid][req_id] = cluster->demand_list[req_id].min_cpus;
 			max_cpus_req[cid][req_id] = cluster->demand_list[req_id].max_cpus;
@@ -1023,7 +1023,7 @@ int core_ctl_set_min_cpus(unsigned int cid, unsigned int min, int requester, uns
 
 	if (cid >= num_clusters)
 		return -EINVAL;
-	if (requester < 0 || requester >= MAX_DEMAND_REQUESTER)
+	if (requester < 0 || requester >= CORE_CTL_SET_CORE_MAX_DEMAND_REQUESTER)
 		return -EINVAL;
 
 	cluster = &cluster_state[cid];
@@ -1049,7 +1049,7 @@ int core_ctl_set_max_cpus(unsigned int cid, unsigned int max, int requester, uns
 
 	if (cid >= num_clusters)
 		return -EINVAL;
-	if (requester < 0 || requester >= MAX_DEMAND_REQUESTER)
+	if (requester < 0 || requester >= CORE_CTL_SET_CORE_MAX_DEMAND_REQUESTER)
 		return -EINVAL;
 
 	cluster = &cluster_state[cid];
@@ -1084,8 +1084,8 @@ int core_ctl_set_limit_cpus(unsigned int cid,
 	max = min(max, cluster->num_cpus);
 	min = min(min, max);
 	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
-	set_max_cpus(cluster, max, POWERHAL, 1);
-	set_min_cpus(cluster, min, POWERHAL, 1);
+	set_max_cpus(cluster, max, CORE_CTL_SET_CORE_POWERHAL, 1);
+	set_min_cpus(cluster, min, CORE_CTL_SET_CORE_POWERHAL, 1);
 	core_ctl_debug("%s: Try to adjust cluster %u limit cpus. min_cpus: %u, max_cpus: %u",
 			TAG, cid, min, max);
 	return 0;
@@ -1537,7 +1537,7 @@ static ssize_t store_min_cpus(struct cluster_data *state,
 	if (sscanf(buf, "%u%u\n", &val, &have_demand) != 2)
 		return -EINVAL;
 
-	set_min_cpus(state, val, SYSNODE, have_demand);
+	set_min_cpus(state, val, CORE_CTL_SET_CORE_SYSNODE, have_demand);
 	return count;
 }
 
@@ -1554,7 +1554,7 @@ static ssize_t store_max_cpus(struct cluster_data *state,
 	if (sscanf(buf, "%u%u\n", &val, &have_demand) != 2)
 		return -EINVAL;
 
-	set_max_cpus(state, val, SYSNODE, have_demand);
+	set_max_cpus(state, val, CORE_CTL_SET_CORE_SYSNODE, have_demand);
 	return count;
 }
 
@@ -2820,7 +2820,7 @@ static int cluster_init(const struct cpumask *mask)
 		ktime_to_ms(ktime_get()) + cluster->offline_throttle_ms;
 	cluster->active_cpus = get_active_cpu_count(cluster);
 
-	for (i=0; i<MAX_DEMAND_REQUESTER; i++) {
+	for (i=0; i<CORE_CTL_SET_CORE_MAX_DEMAND_REQUESTER; i++) {
 		cluster->demand_list[i].have_demand = 0;
 		cluster->demand_list[i].max_cpus = cluster->num_cpus;
 		cluster->demand_list[i].min_cpus = cluster->num_cpus;
