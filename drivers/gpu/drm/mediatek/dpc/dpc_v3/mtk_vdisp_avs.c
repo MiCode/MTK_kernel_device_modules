@@ -725,10 +725,8 @@ int mtk_vdisp_avs_probe(struct platform_device *pdev)
 		VDISPDBG("fail to get efuse");
 
 	/* signal to uP start supporting AVS */
-#if defined(DISP_AVS_SUPPORT)
 	if(vdisp_avs_ipi_send_slot_enable_vcp(FUNC_IPI_MGK_SUPPORT_AVS, 1))
 		VDISPDBG("fail to enable MGK support AVS");
-#endif
 
 	/* OPP related operation */
 	// A0/B0 chip discrimination
