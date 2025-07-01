@@ -6271,7 +6271,7 @@ dramc: dramc@10230000 {
 			< 750000	750000	0xff		0xfff		200  0	0x0>,
 			< 750000	750000	0xff		0xfff		400  0	0x0>,
 			< 750000	750000	0xff		0xfff		800  0	0x0>,
-			< 750000	750000	0xff		0xfff		1000 0	0x0>;
+			< 825000	750000	0xff		0xfff		1000 0	0x0>;
 
 			do-ulposc-cali;
 			fmeter-clksys = <&cksys_reg_clk>; // bringup disable
