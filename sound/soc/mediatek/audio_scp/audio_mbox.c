@@ -253,7 +253,7 @@ static const struct of_device_id scp_audio_mbox_dt_match[] = {
 MODULE_DEVICE_TABLE(of, scp_audio_mbox_dt_match);
 
 static const struct of_device_id scp_qos_scene_of_ids[] = {
-	{ .compatible = "mediatek,mt6878-audio-dsp-hrt-bw"},
+	{ .compatible = "mediatek,mt6858-audio-dsp-hrt-bw"},
 	{},
 };
 
@@ -281,7 +281,7 @@ static struct platform_driver scp_qos_scene_driver = {
 	.probe = scp_qos_scene_probe,
 	.remove = scp_qos_scene_remove,
 	.driver = {
-		.name = "audio-dsp-hrt-bw",
+		.name = "audio-dsp-in-scp-hrt-bw",
 		.owner = THIS_MODULE,
 #if IS_ENABLED(CONFIG_OF)
 		.of_match_table = scp_qos_scene_of_ids,
