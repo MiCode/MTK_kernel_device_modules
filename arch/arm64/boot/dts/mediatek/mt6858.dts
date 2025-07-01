@@ -6192,11 +6192,12 @@ dramc: dramc@10230000 {
 			compatible = "mediatek,mdp";
 			reg = <0 0x1f000000 0 0x1000>;
 			thread-count = <24>;
-			mboxes = <&gce 10 0 CMDQ_THR_PRIO_1>,
+			mboxes = <&gce_sec 10 0 CMDQ_THR_PRIO_1>,
 				<&gce 16 0 CMDQ_THR_PRIO_1>,
 				<&gce 17 0 CMDQ_THR_PRIO_1>,
 				<&gce 18 0 CMDQ_THR_PRIO_1>,
 				<&gce 19 0 CMDQ_THR_PRIO_1>;
+			cmdq-supply = <&gce_sec>;
 			mmsys-config = <&mdpsys_config>;
 			mm-mutex   = <&mdp_mutex0>;
 			mdp-rdma0  = <&mdp_rdma0>;
