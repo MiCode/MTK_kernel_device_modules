@@ -6098,37 +6098,36 @@ dramc: dramc@10230000 {
 		scp_dvfs: scp-dvfs {
 			compatible = "mediatek,scp-dvfs";
 			/* scp_dvfs driver enable(0)/disable(1) */
-			scp-dvfs-disable = <1>; // bringup disable
+			scp-dvfs-disable = <0>; // bringup disable
 			/* dvfs function enable/disable */
-			scp-dvfs-flag = "disable";
+			scp-dvfs-flag = "enable";
 
-			// clocks = <&vlp_cksys_clk CLK_VLP_TOP_SCP_SEL>,
-			// <&topckgen_clk CLK_TOP_TCK_26M_MX9>, /* 26M */
-			// <&topckgen_clk CLK_TOP_ADSPPLL>,     /* 800M */
-			// <&topckgen_clk CLK_TOP_UNIVPLL_D4>,  /* 624M */
-			// <&topckgen_clk CLK_TOP_UNIVPLL_D3>,  /* 832M */
-			// <&topckgen_clk CLK_TOP_MAINPLL_D3>,  /* 728M */
-			// <&topckgen_clk CLK_TOP_UNIVPLL_D6>,  /* 426M */
-			// <&topckgen_clk CLK_TOP_APLL1>,       /* 180M */
-			// <&topckgen_clk CLK_TOP_MAINPLL_D4>,  /* 546M */
-			// <&topckgen_clk CLK_TOP_MAINPLL_D7>,  /* 312M */
-			// <&topckgen_clk CLK_TOP_OSC_D10>;     /* 26M */
+			clocks = <&vlp_cksys_top_clk CLK_VLP_TOP_SCP_SEL>,
+			<&cksys_reg_clk CLK_TOP_TCK_26M_MX9>, /* 26M */
+			<&cksys_reg_clk CLK_TOP_ADSPPLL>,     /* 800M */
+			<&cksys_reg_clk CLK_TOP_UNIVPLL_D4>,  /* 624M */
+			<&cksys_reg_clk CLK_TOP_UNIVPLL_D3>,  /* 832M */
+			<&cksys_reg_clk CLK_TOP_MAINPLL_D3>,  /* 728M */
+			<&cksys_reg_clk CLK_TOP_UNIVPLL_D6>,  /* 426M */
+			<&cksys_reg_clk CLK_TOP_APLL1>,       /* 180M */
+			<&cksys_reg_clk CLK_TOP_MAINPLL_D4>,  /* 546M */
+			<&cksys_reg_clk CLK_TOP_MAINPLL_D7>,  /* 312M */
+			<&cksys_reg_clk CLK_TOP_OSC_D10>;     /* 26M */
 
-			// clock-names = "clk_mux",
-			// "clk_pll_0",
-			// "clk_pll_1",
-			// "clk_pll_2",
-			// "clk_pll_3",
-			// "clk_pll_4",
-			// "clk_pll_5",
-			// "clk_pll_6",
-			// "clk_pll_7",
-			// "clk_pll_8",
-			// "clk_pll_9",
+			clock-names = "clk_mux",
+			"clk_pll_0",
+			"clk_pll_1",
+			"clk_pll_2",
+			"clk_pll_3",
+			"clk_pll_4",
+			"clk_pll_5",
+			"clk_pll_6",
+			"clk_pll_7",
+			"clk_pll_8",
+			"clk_pll_9";
 
 			scp-core-online-mask = <0x3>;
 			vlp-support;
-			vlpck-support;
 
 			dvfs-opp =
 			/* vscp		vsram	dvfsrc_opp	spm_vcore	freq mux resource */
@@ -6138,8 +6137,8 @@ dramc: dramc@10230000 {
 			< 750000	750000	0xff		0xfff		1000 0	0x0>;
 
 			do-ulposc-cali;
-			//fmeter-clksys = <&vlp_cksys_clk>; // bringup disable
-			//ulposc-clksys = <&vlp_cksys_clk>; // bringup disable
+			fmeter-clksys = <&cksys_reg_clk>; // bringup disable
+			ulposc-clksys = <&vlp_cksys_top_clk>; // bringup disable
 			scp-clk-ctrl = <&scp_clk_ctrl>;
 			scp-clk-ctrl-vlp = <&scp_clk_ctrl_vlp>;
 			scp-clk-hw-ver = "v1";
@@ -6150,14 +6149,13 @@ dramc: dramc@10230000 {
 			ulposc-cali-config =
 				/* con0		con1		con2 */
 				<0x02eaa440	0x00002900	0x00000041>;
-			clk-dbg-ver = "v4";
-			//ccf-fmeter-support; // bringup disable
+			ccf-fmeter-support; // bringup disable
 			fmeter-args-u2-cali =
 			/* fm_id	fm_type */
-			< 36		0>; /* ad_ulposc2_mon_v_vcore_ck */
+			< 36		1>; /* ad_ulposc2_mon_v_vcore_ck */
 			fmeter-args-u2-result =
 			/* fm_id	fm_type */
-			< 36		0>; /* ad_ulposc2_mon_v_vcore_ck */
+			< 36		1>; /* ad_ulposc2_mon_v_vcore_ck */
 		};
 		mdpsys_config: mdpsys-config@1f000000 {
 			compatible = "mediatek,mdpsys_config";
