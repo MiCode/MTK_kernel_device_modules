@@ -686,7 +686,7 @@ static void dmabuf_map_iova(enum DMABUF_HEAP heap, int buf_id, int attach_id)
 	struct dma_buf_attachment *attach;
 	struct sg_table *table;
 #ifdef SECURE_HANDLE_TEST
-	u32 sec_handle;
+	u64 sec_handle;
 #endif
 	pr_info("%s start, heap:%s(%d), dev:%s\n", __func__,
 		heap_obj[heap].name, heap, dev_name(dev));
@@ -704,7 +704,7 @@ static void dmabuf_map_iova(enum DMABUF_HEAP heap, int buf_id, int attach_id)
 	if (!sec_handle)
 		pr_info("%s get secure handle failed, heap:%s\n", __func__, heap_obj[heap].name);
 	else
-		pr_info("%s get secure handle(%u) success, heap:%s\n", __func__,
+		pr_info("%s get secure handle(%llu) success, heap:%s\n", __func__,
 			sec_handle, heap_obj[heap].name);
 #endif
 	ret = check_attach_id(info_obj, attach_id);
