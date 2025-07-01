@@ -76,7 +76,9 @@ static struct mutex vcp_excep_mutex;
 int vcp_excep_mode;
 unsigned int vcp_reset_counts = 0xFFFFFFFF;
 
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_DEBUG_SUPPORT)
 static atomic_t coredumping = ATOMIC_INIT(0);
+#endif
 static DECLARE_COMPLETION(vcp_coredump_comp);
 #ifdef VCP_DEBUG_REMOVED
 static uint32_t get_MDUMP_size(enum MDUMP_t type)
@@ -84,6 +86,8 @@ static uint32_t get_MDUMP_size(enum MDUMP_t type)
 	return vcp_dump.prefix[type] - vcp_dump.prefix[type - 1];
 }
 #endif
+
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_DEBUG_SUPPORT)
 static uint32_t get_MDUMP_size_accumulate(enum MDUMP_t type)
 {
 	return vcp_dump.prefix[type];
@@ -93,6 +97,7 @@ static uint8_t *get_MDUMP_addr(enum MDUMP_t type)
 {
 	return (uint8_t *)(vcp_dump.ramdump + vcp_dump.prefix[type - 1]);
 }
+#endif // CONFIG_MTK_TINYSYS_VCP_DEBUG_SUPPORT
 
 uint32_t vcp_dump_size_probe(struct platform_device *pdev)
 {
@@ -703,6 +708,7 @@ void vcp_do_tbufdump_RV55(uint32_t *out, uint32_t *out_end)
 	}
 }
 
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_DEBUG_SUPPORT)
 static inline unsigned long vcp_do_dump(void)
 {
 	struct arm_smccc_res res;
@@ -901,6 +907,7 @@ end:
 	pr_notice("[VCP] %s ends, @%p, size = %x\n", __func__,
 		vcp_dump.ramdump, vcp_dump.ramdump_length);
 }
+#endif // CONFIG_MTK_TINYSYS_VCP_DEBUG_SUPPORT
 
 /*
  * generate an exception according to exception type
@@ -910,7 +917,9 @@ end:
  */
 void vcp_aed(enum VCP_RESET_TYPE type, enum vcp_core_id id)
 {
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_DEBUG_SUPPORT)
 	char *vcp_aed_title = NULL;
+#endif
 
 	if (vcp_excep_mode == VCP_NO_EXCEP) {
 		pr_debug("[VCP]ee disable value=%d\n", vcp_excep_mode);
@@ -920,6 +929,7 @@ void vcp_aed(enum VCP_RESET_TYPE type, enum vcp_core_id id)
 		BUG_ON(1);
 	}
 
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_DEBUG_SUPPORT)
 	mutex_lock(&vcp_excep_mutex);
 
 	/* get vcp title and exception type*/
@@ -964,10 +974,10 @@ void vcp_aed(enum VCP_RESET_TYPE type, enum vcp_core_id id)
 	pr_debug("[VCP] vcp exception dump is done\n");
 
 	mutex_unlock(&vcp_excep_mutex);
+#endif // CONFIG_MTK_TINYSYS_VCP_DEBUG_SUPPORT
 }
 
-
-
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_DEBUG_SUPPORT)
 static ssize_t vcp_A_dump_show(struct file *filep,
 		struct kobject *kobj, struct bin_attribute *attr,
 		char *buf, loff_t offset, size_t size)
@@ -1020,8 +1030,7 @@ struct bin_attribute bin_attr_vcp_dump = {
 	.size = 0,
 	.read = vcp_A_dump_show,
 };
-
-
+#endif // CONFIG_MTK_TINYSYS_VCP_DEBUG_SUPPORT
 
 /*
  * init a work struct

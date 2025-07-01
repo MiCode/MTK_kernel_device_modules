@@ -2022,14 +2022,12 @@ static int create_files(void)
 					, &dev_attr_vcp_A_status);
 	if (unlikely(ret != 0))
 		return ret;
-#endif  // CONFIG_MTK_TINYSYS_VCP_DEBUG_SUPPORT
 
 	ret = device_create_bin_file(vcp_device.this_device
 					, &bin_attr_vcp_dump);
 	if (unlikely(ret != 0))
 		return ret;
 
-#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_DEBUG_SUPPORT)
 	ret = device_create_file(vcp_device.this_device
 					, &dev_attr_vcp_A_reg_status);
 	if (unlikely(ret != 0))

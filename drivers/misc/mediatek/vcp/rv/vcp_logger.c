@@ -113,7 +113,6 @@ static char *vcp_A_last_log;
 static wait_queue_head_t vcp_A_logwait;
 
 static DEFINE_MUTEX(vcp_logger_mutex);
-static char *vcp_last_logger;
 /*global value*/
 unsigned int r_pos_debug;
 unsigned int log_ctl_debug;
@@ -123,6 +122,7 @@ static struct mutex vcp_logger_mutex;
 struct vcp_logger_ctrl_msg msg_vcp_logger_ctrl;
 
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_DEBUG_SUPPORT)
+static char *vcp_last_logger;
 /* vsi buffer */
 static unsigned int vsi_r_pos;
 #endif
@@ -152,6 +152,7 @@ int vcp_logger_wakeup_handler(unsigned int id, void *prdata, void *data,
 	return 0;
 }
 
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_DEBUG_SUPPORT)
 #if VCP_LOGGER_ENABLE
 /*
  * get log from vcp to last_log_buf
@@ -245,7 +246,6 @@ exit:
 }
 #endif
 
-#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_DEBUG_SUPPORT)
 ssize_t vcp_A_log_read(char __user *data, size_t len)
 {
 	unsigned int w_pos, r_pos, datalen;
@@ -987,7 +987,6 @@ const struct file_operations vcp_A_log_file_ops = {
 	.open = vcp_A_log_if_open,
 	.poll = vcp_A_log_if_poll,
 };
-#endif  // CONFIG_MTK_TINYSYS_VCP_DEBUG_SUPPORT
 
 /*
  * move vcp last log from sram to dram
@@ -1277,6 +1276,7 @@ char *vcp_pickup_log_for_aee(void)
 
 	return last_log;
 }
+#endif  // CONFIG_MTK_TINYSYS_VCP_DEBUG_SUPPORT
 
 /*
  * set vcp_A_logger_inited
