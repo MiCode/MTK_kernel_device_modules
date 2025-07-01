@@ -3375,6 +3375,10 @@ static int ufs_mtk_probe(struct platform_device *pdev)
 	struct device_link *link;
 	struct ufs_hba *hba;
 	struct ufs_mtk_host *host;
+	struct device_node *peer_np;
+	struct platform_device *peer_pdev;
+	u32 peer_id = 0;
+	u32 id = 0;
 
 	reset_node = of_find_compatible_node(NULL, NULL,
 					     "ti,syscon-reset");
@@ -3397,6 +3401,31 @@ static int ufs_mtk_probe(struct platform_device *pdev)
 	if (link->status == DL_STATE_DORMANT) {
 		err = -EPROBE_DEFER;
 		goto out;
+	}
+
+	err = of_property_read_u32(dev->of_node, "id", &id);
+	if (err || id == 0) /* no property id or id is 0 */
+		goto skip_reset;
+
+	/* let ufs1 wait until all LUNs of ufs0 have been added */
+	for_each_compatible_node(peer_np, NULL, "mediatek,mt8183-ufshci") {
+		if (of_property_read_u32(peer_np, "id", &peer_id))
+			continue;
+		if (peer_id == 0) {
+			peer_pdev = of_find_device_by_node(peer_np);
+			if (!peer_pdev) {
+				dev_info(dev, "find UFS0 dev fail\n");
+				goto skip_reset;
+			}
+
+			hba = platform_get_drvdata(peer_pdev);
+			if (!hba || (hba->luns_avail != 1)) {
+				dev_info(hba->dev, "UFS0 LUNs not all ready");
+				err = -EPROBE_DEFER;
+				goto out;
+			}
+			break;
+		}
 	}
 
 skip_reset:
