@@ -10,8 +10,8 @@
 
 //peng add
 #define MAX_BRIGHTNESS (3615)
-#define FHD_FRAME_WIDTH (1260)
-#define FHD_FRAME_HEIGHT (2800)
+//#define FHD_FRAME_WIDTH (1260)
+//#define FHD_FRAME_HEIGHT (2800)
 #define VFHD_FRAME_WIDTH     (1080)
 #define VFHD_FRAME_HEIGHT    (2400)
 #define MIPI_DATA_RATE_120HZ (1532)

@@ -44,6 +44,9 @@
 #define HSA                         4
 #define HBP                         16
 
+#define FHD_FRAME_WIDTH             1080
+#define FHD_FRAME_HEIGHT            2400
+
 /*Parameter setting for 144Hz Start*/
 #define MODE_0_FPS                  144
 #define MODE_0_VFP                  76
@@ -156,6 +159,9 @@ static unsigned int g_dim_state; //record dim state
 static unsigned int g_need_dim_enable; //if or not need dim function
 static unsigned int g_aod_setbacklight; //record aod_setbacklight state
 
+static enum RES_SWITCH_TYPE res_switch_type = RES_SWITCH_NO_USE;
+static int current_fps = 120;
+
 #define lcm_dcs_write_seq(ctx, seq...)                                     \
 	({                                                                     \
 		const u8 d[] = {seq};                                          \
@@ -226,6 +232,10 @@ struct LCM_setting_table {
 	unsigned int cmd;
 	unsigned char count;
 	unsigned char para_list[120];
+};
+
+static struct LCM_setting_table cmd_table_set_fps[] = {
+	{0x6C,1,{0x01}},
 };
 
 static struct LCM_setting_table lcm_initialization_setting[] = {
@@ -622,6 +632,49 @@ static const struct drm_display_mode switch_mode_60hz = {
 	.vsync_end = FRAME_HEIGHT + MODE_3_VFP + VSA,
 	.vtotal = FRAME_HEIGHT + MODE_3_VFP + VSA + VBP,
 };
+
+static const struct drm_display_mode switch_mode_fhd_120hz = {
+	.clock =
+		(int)((FHD_FRAME_WIDTH + MODE_1_HFP + HSA + HBP) *
+		(FHD_FRAME_HEIGHT + MODE_1_VFP + VSA + VBP) * MODE_1_FPS / 1000),
+	.hdisplay = FHD_FRAME_WIDTH,
+	.hsync_start = FHD_FRAME_WIDTH + MODE_1_HFP,
+	.hsync_end = FHD_FRAME_WIDTH + MODE_1_HFP + HSA,
+	.htotal = FHD_FRAME_WIDTH + MODE_1_HFP + HSA + HBP,
+	.vdisplay = FHD_FRAME_HEIGHT,
+	.vsync_start = FHD_FRAME_HEIGHT + MODE_1_VFP,
+	.vsync_end = FHD_FRAME_HEIGHT + MODE_1_VFP + VSA,
+	.vtotal = FHD_FRAME_HEIGHT + MODE_1_VFP + VSA + VBP,
+};
+
+static const struct drm_display_mode switch_mode_fhd_90hz = {
+	.clock =
+		(int)((FHD_FRAME_WIDTH + MODE_2_HFP + HSA + HBP) *
+		(FHD_FRAME_HEIGHT + MODE_2_VFP + VSA + VBP) * MODE_2_FPS / 1000),
+	.hdisplay = FHD_FRAME_WIDTH,
+	.hsync_start = FHD_FRAME_WIDTH + MODE_2_HFP,
+	.hsync_end = FHD_FRAME_WIDTH + MODE_2_HFP + HSA,
+	.htotal = FHD_FRAME_WIDTH + MODE_2_HFP + HSA + HBP,
+	.vdisplay = FHD_FRAME_HEIGHT,
+	.vsync_start = FHD_FRAME_HEIGHT + MODE_2_VFP,
+	.vsync_end = FHD_FRAME_HEIGHT + MODE_2_VFP + VSA,
+	.vtotal = FHD_FRAME_HEIGHT + MODE_2_VFP + VSA + VBP,
+};
+
+static const struct drm_display_mode switch_mode_fhd_60hz = {
+	.clock =
+		(int)((FHD_FRAME_WIDTH + MODE_3_HFP + HSA + HBP) *
+		(FHD_FRAME_HEIGHT + MODE_3_VFP + VSA + VBP) * MODE_3_FPS / 1000),
+	.hdisplay = FHD_FRAME_WIDTH,
+	.hsync_start = FHD_FRAME_WIDTH + MODE_3_HFP,
+	.hsync_end = FHD_FRAME_WIDTH + MODE_3_HFP + HSA,
+	.htotal = FHD_FRAME_WIDTH + MODE_3_HFP + HSA + HBP,
+	.vdisplay = FHD_FRAME_HEIGHT,
+	.vsync_start = FHD_FRAME_HEIGHT + MODE_3_VFP,
+	.vsync_end = FHD_FRAME_HEIGHT + MODE_3_VFP + VSA,
+	.vtotal = FHD_FRAME_HEIGHT + MODE_3_VFP + VSA + VBP,
+};
+
 
 #if defined(CONFIG_MTK_PANEL_EXT)
 static struct mtk_panel_params ext_params_144hz = {
@@ -1026,6 +1079,31 @@ static int mtk_panel_ext_param_set(struct drm_panel *panel,
 	return ret;
 }
 
+static int mtk_panel_ext_param_get(struct drm_panel *panel,
+	struct drm_connector *connector,
+	struct mtk_panel_params **ext_param,
+	unsigned int mode)
+{
+	int ret = 0;
+	struct drm_display_mode *m = get_mode_by_id(connector, mode);
+
+	if (drm_mode_vrefresh(m) == MODE_0_FPS)
+		*ext_param = &ext_params_144hz;
+	else if (drm_mode_vrefresh(m) == MODE_1_FPS)
+		*ext_param = &ext_params_120hz;
+	else if (drm_mode_vrefresh(m) == MODE_2_FPS)
+		*ext_param = &ext_params_90hz;
+	else if (drm_mode_vrefresh(m) == MODE_3_FPS)
+		*ext_param = &ext_params_60hz;
+	else
+		ret = 1;
+
+	if (!ret)
+		current_fps = drm_mode_vrefresh(m);
+
+	return ret;
+}
+
 static int panel_ext_reset(struct drm_panel *panel, int on)
 {
 	struct lcm *ctx = panel_to_lcm(panel);
@@ -1302,12 +1380,51 @@ static bool panel_hbm_set_wait_state(struct drm_panel *panel, bool wait)
 	return old;
 }
 
+enum RES_SWITCH_TYPE mtk_get_res_switch_type(void)
+{
+	pr_info("res_switch_type: %d\n", res_switch_type);
+	return res_switch_type;
+}
+
+static int mode_switch(struct drm_panel *panel,
+		struct drm_connector *connector, unsigned int cur_mode,
+		unsigned int dst_mode, enum MTK_PANEL_MODE_SWITCH_STAGE stage)
+{
+	int ret = 0;
+	struct drm_display_mode *m = get_mode_by_id(connector, dst_mode);
+	struct lcm *ctx = panel_to_lcm(panel);
+
+	if (stage == BEFORE_DSI_POWERDOWN) {
+		ret = 1;
+		return ret;
+	}
+
+	pr_info("%s cur_mode = %d dst_mode %d\n", __func__, cur_mode, dst_mode);
+
+	if (drm_mode_vrefresh(m) == MODE_1_FPS)
+		cmd_table_set_fps[0].para_list[0] = 0x01; //120Hz
+	else if (drm_mode_vrefresh(m) == MODE_2_FPS)
+		cmd_table_set_fps[0].para_list[0] = 0x02; //90Hz
+	else if (drm_mode_vrefresh(m) == MODE_3_FPS)
+		cmd_table_set_fps[0].para_list[0] = 0x03; //60Hz
+	else
+		ret = 1;
+
+	push_table(ctx, cmd_table_set_fps,
+		sizeof(cmd_table_set_fps) / sizeof(struct LCM_setting_table));
+
+	return ret;
+}
+
 static struct mtk_panel_funcs ext_funcs = {
 	.set_backlight_cmdq = lcm_setbacklight_cmdq,
 	.ext_param_set = mtk_panel_ext_param_set,
 	.ata_check = panel_ata_check,
-	//.mode_switch = mode_switch,
+	.mode_switch = mode_switch,
 	.reset = panel_ext_reset,
+	.get_res_switch_type = mtk_get_res_switch_type,
+	.ext_param_set = mtk_panel_ext_param_set,
+	.ext_param_get = mtk_panel_ext_param_get,
 	//.lcm_power_set = panel_ext_lcm_power_set,
 	/* add for ramless HBM */
 	.hbm_set_cmdq = panel_hbm_set_cmdq,
@@ -1358,6 +1475,9 @@ static int lcm_get_modes(struct drm_panel *panel,
 	struct drm_display_mode *mode_90hz;
 	struct drm_display_mode *mode_120hz;
 //	struct drm_display_mode *mode_144hz;
+	struct drm_display_mode *mode_fhd_60hz;
+	struct drm_display_mode *mode_fhd_90hz;
+	struct drm_display_mode *mode_fhd_120hz;
 
 	pr_info("[LCM] %s begin\n", __func__);
 	mode_120hz = drm_mode_duplicate(connector->dev, &switch_mode_120hz);
@@ -1396,11 +1516,50 @@ static int lcm_get_modes(struct drm_panel *panel,
 	mode_60hz->type = DRM_MODE_TYPE_DRIVER;
 	drm_mode_probed_add(connector, mode_60hz);
 
+	if (res_switch_type == RES_SWITCH_ON_AP) {
+		mode_fhd_120hz = drm_mode_duplicate(connector->dev, &switch_mode_fhd_120hz);
+		if (!mode_fhd_120hz) {
+			dev_dbg(connector->dev->dev, "failed to add mode %ux%ux@%u\n",
+				switch_mode_fhd_120hz.hdisplay,
+				switch_mode_fhd_120hz.vdisplay,
+				drm_mode_vrefresh(&switch_mode_fhd_120hz));
+			return -ENOMEM;
+		}
+		drm_mode_set_name(mode_fhd_120hz);
+		mode_fhd_120hz->type = DRM_MODE_TYPE_DRIVER;
+		drm_mode_probed_add(connector, mode_fhd_120hz);
+
+		mode_fhd_90hz = drm_mode_duplicate(connector->dev, &switch_mode_fhd_90hz);
+		if (!mode_fhd_90hz) {
+			dev_dbg(connector->dev->dev, "failed to add mode %ux%ux@%u\n",
+				switch_mode_fhd_90hz.hdisplay,
+				switch_mode_fhd_90hz.vdisplay,
+				drm_mode_vrefresh(&switch_mode_fhd_90hz));
+			return -ENOMEM;
+		}
+		drm_mode_set_name(mode_fhd_90hz);
+		mode_fhd_90hz->type = DRM_MODE_TYPE_DRIVER;
+		drm_mode_probed_add(connector, mode_fhd_90hz);
+
+		mode_fhd_60hz = drm_mode_duplicate(connector->dev, &switch_mode_fhd_60hz);
+		if (!mode_fhd_60hz) {
+			dev_dbg(connector->dev->dev, "failed to add mode %ux%ux@%u\n",
+				switch_mode_fhd_60hz.hdisplay,
+				switch_mode_fhd_60hz.vdisplay,
+				drm_mode_vrefresh(&switch_mode_fhd_60hz));
+			return -ENOMEM;
+		}
+		drm_mode_set_name(mode_fhd_60hz);
+		mode_fhd_60hz->type = DRM_MODE_TYPE_DRIVER;
+		drm_mode_probed_add(connector, mode_fhd_60hz);
+	}
+
 	connector->display_info.width_mm = 70;
 	connector->display_info.height_mm = 158;
 	pr_info("[LCM] %s end\n", __func__);
 	return 4;
 }
+
 static const struct drm_panel_funcs lcm_drm_funcs = {
 	.disable = lcm_disable,
 	.unprepare = lcm_unprepare,
@@ -1420,6 +1579,7 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
 	unsigned int doze_backlight[] = {0, 0, 0, 0};
 	#endif
 	unsigned int value;
+	unsigned int res_switch;
 
 	pr_info("[LCM] %s begin\n", __func__);
 
@@ -1461,6 +1621,12 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
 	dsi->mode_flags = MIPI_DSI_MODE_VIDEO | MIPI_DSI_MODE_VIDEO_SYNC_PULSE |
 			MIPI_DSI_MODE_NO_EOT_PACKET;
 			//| MIPI_DSI_MODE_LPM | MIPI_DSI_CLOCK_NON_CONTINUOUS;  //continue clk, Keep HS
+
+	ret = of_property_read_u32(dev->of_node, "res-switch", &res_switch);
+	if (ret < 0)
+		res_switch = 0;
+	else
+		res_switch_type = (enum RES_SWITCH_TYPE)res_switch;
 
 	ret = of_property_read_u32(dev->of_node, "gate-ic", &value);
 	if (ret < 0)
