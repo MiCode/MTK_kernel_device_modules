@@ -5344,13 +5344,29 @@ dramc: dramc@10230000 {
 				<&disp_iommu M4U_L7_P12_REF_LUMA>,
 				<&disp_iommu M4U_L7_P13_REF_CHROMA>,
 				<&disp_iommu M4U_L7_P14_SUB_R_LUMA>;
-
+			interconnects =
+				<&mmqos SLAVE_LARB(7) &mmqos SLAVE_COMMON(0)>,
+				<&mmqos SLAVE_LARB(8) &mmqos SLAVE_COMMON(0)>;
+			interconnect-names = "path_venc_smi_mon_r", "path_venc_smi_mon_w";
+			interconnect-num = <2>;
 			mediatek,larbs = <&smi_larb7>;
 			power-domains = <&scpsys MT6858_POWER_DOMAIN_VEN0>;
 			clocks = <&venc_gcon_clk CLK_VEN1_CKE1_VENC>;
 			clock-names = "MT_CG_VENC0";
 
 			/* dvfs params */
+			dvfs-qos-ver = <1>;
+			venc-mmdvfs-in-vcp = <1>;
+			venc-mmdvfs-in-adaptive = <1>;
+			mmqos-supply = <&mmqos>;
+			need-smi-monitor = <1>;	  /* enable smi bw monitor in kernel */
+			smi-monitor-in-vcp = <1>; /* specify the monitor location, 1 for vcp, 0 for kernel */
+			commlarb-id = <6 6 6 6>;		/* Monitor port of <comm0 comm1> */
+			common-id = <0>;		/* <DISP_COMM MDP_COMM> */
+			monitor-id = <3>;		/* Monitor id of <comm_0 comm_1> */
+			bandwidth-table = // avg occupy
+				<7 0 229>,
+				<7 1 86>; /* larb_id, rw, base_bw*/
 		};
 
 		jpgenc@17030000 {
