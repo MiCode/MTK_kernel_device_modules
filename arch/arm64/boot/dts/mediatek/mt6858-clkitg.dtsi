@@ -19,7 +19,6 @@
 			<&cksys_reg_clk CLK_TOP_DISP_PWM_SEL>,
 			<&cksys_reg_clk CLK_TOP_USB_TOP_SEL>,
 			<&cksys_reg_clk CLK_TOP_USB_XHCI_SEL>,
-			<&cksys_reg_clk CLK_TOP_I2C_SEL>,
 			<&cksys_reg_clk CLK_TOP_SENINF_SEL>,
 			<&cksys_reg_clk CLK_TOP_SENINF1_SEL>,
 			<&cksys_reg_clk CLK_TOP_SENINF2_SEL>,
@@ -277,26 +276,6 @@
 		reg = <0x18>;
 		clocks =
 			<&pericfg_ao_clk CLK_PERAO_P_DISP_PWM1_DISP_PWM_1>;
-	};
-
-	bring-up-i2c@19 {
-		compatible = "mediatek,clk-bring-up";
-		reg = <0x19>;
-		clocks =
-			<&pericfg_ao_clk CLK_PERAO_P_DMA_B_I2C>,
-			<&imp_iic_wrap_c_clk CLK_IMPC_I2C1_I2C>,
-			<&imp_iic_wrap_c_clk CLK_IMPC_I2C3_I2C>,
-			<&imp_iic_wrap_c_clk CLK_IMPC_I2C5_I2C>,
-			<&imp_iic_wrap_c_clk CLK_IMPC_I2C6_I2C>,
-			<&imp_iic_wrap_c_clk CLK_IMPC_I2C10_I2C>,
-			<&imp_iic_wrap_c_clk CLK_IMPC_I2C12_I2C>,
-			<&imp_iic_wrap_es_clk CLK_IMPES_I2C4_I2C>,
-			<&imp_iic_wrap_es_clk CLK_IMPES_I2C7_I2C>,
-			<&imp_iic_wrap_es_clk CLK_IMPES_I2C8_I2C>,
-			<&imp_iic_wrap_s_clk CLK_IMPS_I2C0_I2C>,
-			<&imp_iic_wrap_s_clk CLK_IMPS_I2C2_I2C>,
-			<&imp_iic_wrap_s_clk CLK_IMPS_I2C9_I2C>,
-			<&imp_iic_wrap_s_clk CLK_IMPS_I2C11_I2C>;
 	};
 
 	bring-up-gce@1a {
