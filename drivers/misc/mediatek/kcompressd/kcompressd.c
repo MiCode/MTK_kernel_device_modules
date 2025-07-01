@@ -246,7 +246,6 @@ int schedule_bio_write(void *mem, struct bio *bio, compress_callback cb)
 			if (IS_ERR(kcompress[i].kcompressd)) {
 				atomic_set(&kcompress[i].running , 0);
 				pr_info("Failed to start kcompressd:%d in %s\n", i, __func__);
-				cleanup_kfifos(i);
 				return -ENOMEM;
 			}
 		}
