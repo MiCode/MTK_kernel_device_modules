@@ -197,6 +197,8 @@ struct tcpc_ops {
 
 	void (*set_command)(struct tcpc_device *tcpc, u8 cmd);
 
+	int (*enable_io_boost)(struct tcpc_device *tcpc, bool en);
+
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
 	int (*set_msg_header)(struct tcpc_device *tcpc,
 			uint8_t power_role, uint8_t data_role);

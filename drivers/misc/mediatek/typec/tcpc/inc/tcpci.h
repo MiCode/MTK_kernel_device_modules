@@ -135,6 +135,7 @@ int tcpci_sink_vbus(struct tcpc_device *tcpc, uint8_t type, int mv, int ma);
 int tcpci_disable_vbus_control(struct tcpc_device *tcpc);
 int tcpci_notify_attachwait_state(struct tcpc_device *tcpc, bool as_sink);
 int tcpci_enable_discharge(struct tcpc_device *tcpc, bool en, int mv);
+int tcpci_enable_io_boost(struct tcpc_device *tcpc, bool en);
 int tcpci_notify_ps_change(struct tcpc_device *tcpc, int vbus_level);
 int tcpci_notify_cc_hi(struct tcpc_device *tcpc, int cc_hi);
 int tcpci_notify_alert_ratelimited(struct tcpc_device *tcpc, bool limited);

@@ -8,7 +8,9 @@
 #include <linux/interrupt.h>
 #include <linux/of.h>
 #include <linux/of_irq.h>
+#include <linux/of_platform.h>
 #include <linux/regmap.h>
+#include <linux/pm_runtime.h>
 #include <linux/iio/consumer.h>
 #include <linux/sched/clock.h>
 #include <linux/suspend.h>
@@ -761,6 +763,32 @@ static int __mt6379_get_cc_hi(struct mt6379_tcpc_data *ddata)
 		return ret;
 	return ((data ^ MT6379_MSK_HIDET_CC) & MT6379_MSK_HIDET_CC)
 		>> MT6379_SFT_HIDET_CC1;
+}
+
+static int mt6379_enable_io_boost(struct tcpc_device *tcpc, bool en)
+{
+	struct mt6379_tcpc_data *ddata = tcpc_get_dev_data(tcpc);
+	struct device *typec_dev = tcpc->dev.parent;
+	struct device_node *typec_np = typec_dev->of_node, *np;
+	struct platform_device *bus_pdev;
+
+	if (!ddata->use_i2c)
+		return 0;
+
+	MT6379_INFO("en:%d\n", en);
+	np = of_get_parent(of_get_parent(typec_np));
+	if (!np) {
+		MT6379_INFO("failed to get bus of_node\n");
+		return -ENODEV;
+	}
+	bus_pdev = of_find_device_by_node(np);
+	if (!bus_pdev) {
+		MT6379_INFO("failed to get bus pdev\n");
+		return -ENODEV;
+	}
+	MT6379_INFO("bus_pdev name:%s\n", bus_pdev->name);
+	pm_runtime_set_autosuspend_delay(&bus_pdev->dev, en ? 200 : 0);
+	return 0;
 }
 
 static void mt6379_vbus_to_cc_dwork_handler(struct work_struct *work)
@@ -2265,6 +2293,7 @@ static struct tcpc_ops mt6379_tcpc_ops = {
 #if CONFIG_TYPEC_CAP_FORCE_DISCHARGE
 	.set_force_discharge = mt6379_set_force_discharge,
 #endif	/* CONFIG_TYPEC_CAP_FORCE_DISCHARGE */
+	.enable_io_boost = mt6379_enable_io_boost,
 };
 
 static irqreturn_t mt6379_pd_evt_handler(int irq, void *data)

@@ -491,6 +491,7 @@ int tcpci_report_power_control(struct tcpc_device *tcpc, bool en)
 	else
 		tcpci_report_power_control_off(tcpc);
 
+	tcpci_enable_io_boost(tcpc, en); //easier to handle attach/detach state
 	return 0;
 }
 #endif	/* CONFIG_TCPC_CLASS */

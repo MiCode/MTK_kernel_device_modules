@@ -876,6 +876,14 @@ int tcpci_enable_discharge(struct tcpc_device *tcpc, bool en, int mv)
 	return ret;
 }
 
+int tcpci_enable_io_boost(struct tcpc_device *tcpc, bool en)
+{
+	if (tcpc->ops->enable_io_boost)
+		return tcpc->ops->enable_io_boost(tcpc, en);
+	return -EOPNOTSUPP;
+}
+EXPORT_SYMBOL(tcpci_enable_io_boost);
+
 int tcpci_notify_ps_change(struct tcpc_device *tcpc, int vbus_level)
 {
 	struct tcp_notify tcp_noti;
