@@ -17,7 +17,6 @@
 			<&cksys_reg_clk CLK_TOP_SENINF_SEL>,
 			<&cksys_reg_clk CLK_TOP_SENINF1_SEL>,
 			<&cksys_reg_clk CLK_TOP_SENINF2_SEL>,
-			<&cksys_reg_clk CLK_TOP_DPMAIF_MAIN_SEL>,
 			<&cksys_reg_clk CLK_TOP_VENC_SEL>,
 			<&cksys_reg_clk CLK_TOP_VDEC_SEL>,
 			<&cksys_reg_clk CLK_TOP_DSI_OCC_SEL>,
@@ -213,15 +212,6 @@
 			<&vdec_gcon_base_clk CLK_VDE2_VDEC_CKEN_VDEC>,
 			<&vdec_gcon_base_clk CLK_VDE2_VDEC_ACTIVE_VDEC>,
 			<&vdec_gcon_base_clk CLK_VDE2_VDEC_CKEN_ENG_VDEC>;
-	};
-
-	bring-up-dpmaif@10 {
-		compatible = "mediatek,clk-bring-up";
-		reg = <0x10>;
-		clocks =
-			<&infra_infracfg_ao_reg_clk CLK_INFRACFG_AO_REG_CLDMA_BCLK_DPMAIF>,
-			<&infra_infracfg_ao_reg_clk CLK_INFRACFG_AO_REG_DPMAIF_MAIN_DPMAIF>,
-			<&infra_infracfg_ao_reg_clk CLK_INFRACFG_AO_REG_RG_MMW_DPMAIF26M_DPMAIF>;
 	};
 
 	bring-up-cam-fd@11 {
