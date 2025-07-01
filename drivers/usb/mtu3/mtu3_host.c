@@ -20,6 +20,9 @@
 #include "mtu3.h"
 #include "mtu3_dr.h"
 
+/* mt6858 */
+#define SSUSB0_CDEN BIT(0)
+
 /* mt8678 port2/3 */
 #define PERI_WK_CTRL4	0x10
 #define WCP2_IS_EN	BIT(0) /* port2/3 en bit */
@@ -72,6 +75,7 @@ enum ssusb_uwk_vers {
 	SSUSB_UWK_V1_5,		/* specific revision 1.05 */
 	SSUSB_UWK_V1_6,		/* specific revision 1.06 */
 	SSUSB_UWK_V1_7,		/* specific revision 1.07 */
+	SSUSB_UWK_V1_8,
 };
 
 #define USB3_PORT_SC		(0x420)
@@ -141,6 +145,11 @@ static void ssusb_wakeup_ip_sleep_set(struct ssusb_mtk *ssusb, bool enable)
 	case SSUSB_UWK_V2:
 		reg = ssusb->uwk_reg_base + PERI_SSUSB_SPM_CTRL;
 		msk = SSC_IP_SLEEP_EN | SSC_SPM_INT_EN;
+		val = enable ? msk : 0;
+		break;
+	case SSUSB_UWK_V1_8:
+		reg = ssusb->uwk_reg_base + PERI_WK_CTRL2;
+		msk = SSUSB0_CDEN;
 		val = enable ? msk : 0;
 		break;
 	default:
@@ -639,4 +648,3 @@ void ssusb_host_exit_v2(struct ssusb_mtk *ssusb)
 	ssusb_host_register(ssusb, false);
 	ssusb_host_cleanup(ssusb);
 }
-
