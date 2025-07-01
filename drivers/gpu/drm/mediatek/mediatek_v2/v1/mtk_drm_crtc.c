@@ -14940,16 +14940,17 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc, bool need_report_bw)
 	DDP_PROFILE("[PROFILE] %s+\n", __func__);
 	CRTC_MMP_MARK(crtc_id, enable, 1, 0);
 
-	mtk_drm_mmdvfs_enable_vcp(crtc, true);
 #ifndef DRM_CMDQ_DISABLE
 	/* power on cmdq client */
 	client = mtk_crtc->gce_obj.client[CLIENT_CFG];
 	cmdq_mbox_enable(client->chan);
 #endif
 
-	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL)
+	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
 		/* 1. power on mtcmos & init apsrc*/
 		mtk_drm_top_clk_prepare_enable(crtc);
+		mtk_drm_mmdvfs_enable_vcp(crtc, true);
+	}
 
 	/* vdisp get aging sensor value */
 	if (vdisp_func.query_aging_val && (crtc_id == 0))
@@ -16191,8 +16192,6 @@ void mtk_drm_crtc_first_enable(struct drm_crtc *crtc)
 	}
 	DDPINFO("crtc%d do %s\n", crtc_id, __func__);
 
-	mtk_drm_mmdvfs_enable_vcp(crtc, true);
-
 #ifndef DRM_CMDQ_DISABLE
 	cmdq_mbox_enable(mtk_crtc->gce_obj.client[CLIENT_CFG]->chan);
 #endif
@@ -16205,6 +16204,12 @@ void mtk_drm_crtc_first_enable(struct drm_crtc *crtc)
 
 	/* for ap res switch */
 	mtk_crtc_divide_default_path_by_rsz(mtk_crtc);
+
+	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
+		/* power on mtcmos & init apsrc*/
+		mtk_drm_top_clk_prepare_enable(crtc);
+		mtk_drm_mmdvfs_enable_vcp(crtc, true);
+	}
 
 	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 	if (output_comp)
@@ -16230,8 +16235,7 @@ void mtk_drm_crtc_first_enable(struct drm_crtc *crtc)
 	mtk_crtc_first_enable_ddp_config(mtk_crtc);
 
 	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
-		/* 4. power on mtcmos & init apsrc*/
-		mtk_drm_top_clk_prepare_enable(crtc);
+		/* 4. init apsrc*/
 		mtk_crtc_v_idle_apsrc_control(crtc, NULL, true, false,
 			MTK_APSRC_CRTC_DEFAULT, false);
 
@@ -16381,6 +16385,8 @@ void mtk_drm_crtc_disable(struct drm_crtc *crtc, bool need_wait)
 		/*APSRC control, turn off*/
 		mtk_crtc_v_idle_apsrc_control(crtc, NULL, false, false, crtc_id, false);
 
+		mtk_drm_mmdvfs_enable_vcp(crtc, false);
+
 		/* 10. power off MTCMOS*/
 		/* TODO: need to check how to unprepare MTCMOS */
 		DDPFENCE("%s:%d power_state = false\n", __func__, __LINE__);
@@ -16417,8 +16423,6 @@ void mtk_drm_crtc_disable(struct drm_crtc *crtc, bool need_wait)
 		mml_drm_put_context(priv->mml_ctx);
 		priv->mml_ctx = NULL;
 	}
-
-	mtk_drm_mmdvfs_enable_vcp(crtc, false);
 
 	/* for dbi idle count timer */
 	mtk_dbi_count_timer_disable(crtc);

@@ -1066,9 +1066,11 @@ static void mtk_drm_idlemgr_enter_idle_nolock(struct drm_crtc *crtc)
 	idle_interval = mtk_drm_get_idle_check_interval(crtc);
 	CRTC_MMP_EVENT_START(index, enter_idle, mode, idle_interval);
 
-	if (mode)
+	if (mode) {
+		mtk_vidle_hint_update(VIDLE_HINT_HSIDLE_ENTER);
+		mtk_vidle_config_ff(false);
 		mtk_drm_cmd_mode_enter_idle(crtc);
-	else
+	} else
 		mtk_drm_vdo_mode_enter_idle(crtc);
 
 	CRTC_MMP_EVENT_END(index, enter_idle, mode, idle_interval);
@@ -1091,9 +1093,10 @@ static void mtk_drm_idlemgr_leave_idle_nolock(struct drm_crtc *crtc)
 	drm_trace_tag_start("Kick idle");
 
 
-	if (mode)
+	if (mode) {
 		mtk_drm_cmd_mode_leave_idle(crtc);
-	else
+		mtk_vidle_hint_update(VIDLE_HINT_HSIDLE_LEAVE);
+	} else
 		mtk_drm_vdo_mode_leave_idle(crtc);
 
 	CRTC_MMP_EVENT_END(index, leave_idle, mode, 0);
@@ -1413,7 +1416,6 @@ void mtk_drm_idlemgr_kick(const char *source, struct drm_crtc *crtc,
 			atomic_set(&mtk_crtc->esd_ctx->target_time, 0);
 
 		mtk_drm_idlemgr_leave_idle_nolock(crtc);
-		mtk_vidle_hint_update(VIDLE_HINT_HSIDLE_LEAVE);
 
 		idlemgr_ctx->is_idle = 0;
 		/* wake up idlemgr process to monitor next idle state */
@@ -1792,8 +1794,6 @@ static int mtk_drm_idlemgr_monitor_thread(void *data)
 			/* enter idle state */
 			if (!vblank || atomic_read(&vblank->refcount) == 0) {
 				DDPINFO("[LP] enter idle\n");
-				mtk_vidle_hint_update(VIDLE_HINT_HSIDLE_ENTER);
-				mtk_vidle_config_ff(false);
 				mtk_drm_idlemgr_enter_idle_nolock(crtc);
 				idlemgr_ctx->is_idle = 1;
 				idlemgr_ctx->enter_idle_ts = local_clock();
@@ -2114,6 +2114,10 @@ static void mtk_drm_idlemgr_disable_crtc(struct drm_crtc *crtc)
 
 	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
 		mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
+					"dis_vcp", 18, perf_string, false);
+		mtk_drm_mmdvfs_enable_vcp(crtc, false);
+
+		mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
 					"power_off", 14, perf_string, false);
 		/* 8. power off MTCMOS */
 		DDPFENCE("%s:%d power_state = false\n", __func__, __LINE__);
@@ -2136,10 +2140,6 @@ static void mtk_drm_idlemgr_disable_crtc(struct drm_crtc *crtc)
 				"dis_cmdq", 17, perf_string, false);
 	/* 10. CMDQ power off */
 	cmdq_mbox_disable(mtk_crtc->gce_obj.client[CLIENT_CFG]->chan);
-
-	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
-				"dis_vcp", 18, perf_string, false);
-	mtk_drm_mmdvfs_enable_vcp(crtc, false);
 
 	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
 				"STOP", -1, perf_string, false);
@@ -2231,10 +2231,6 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 			idlemgr_ctx->priv.hw_async ? 1 : 0);
 
 	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
-				"enable_vcp", 0, perf_string, true);
-	mtk_drm_mmdvfs_enable_vcp(crtc, true);
-
-	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
 				"enable_cmdq", 1, perf_string, true);
 	/* 0. CMDQ power on */
 	cmdq_mbox_enable(mtk_crtc->gce_obj.client[CLIENT_CFG]->chan);
@@ -2244,6 +2240,10 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 					"power_on", 2, perf_string, true);
 		/* 1. power on mtcmos & init apsrc*/
 		mtk_drm_top_clk_prepare_enable(crtc);
+
+		mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
+					"enable_vcp", 0, perf_string, true);
+		mtk_drm_mmdvfs_enable_vcp(crtc, true);
 
 		mtk_crtc_default_path_rst(crtc);
 

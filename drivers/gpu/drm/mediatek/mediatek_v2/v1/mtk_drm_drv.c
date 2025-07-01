@@ -7849,6 +7849,8 @@ void mtk_drm_top_clk_prepare_enable(struct drm_crtc *crtc)
 			DDPINFO("%s crtc%d vidle_hint(%#x)\n", __func__, drm_crtc_index(crtc),
 				mtk_vidle_hint_update(VIDLE_HINT_GET));
 		}
+		CRTC_MMP_MARK(0, leave_vidle,
+			0xc10c0001, atomic_read(&top_clk_ref));
 		mtk_vidle_config_ff(false);
 	} else {
 		struct mtk_drm_crtc *mtk_crtc0 = to_mtk_crtc(priv->crtc[0]);
@@ -7857,6 +7859,10 @@ void mtk_drm_top_clk_prepare_enable(struct drm_crtc *crtc)
 			if (mtk_crtc0 &&
 				mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_DECOUPLE_MODE))
 				mtk_crtc0->is_mml_dc = false;
+			CRTC_MMP_MARK(0, leave_vidle,
+				0xc10c0002, atomic_read(&top_clk_ref));
+			mtk_vidle_config_ff(false);
+			mtk_vidle_enable(false, priv);
 		}
 	}
 
@@ -7895,6 +7901,8 @@ void mtk_drm_top_clk_disable_unprepare(struct drm_crtc *crtc)
 		priv->power_state = false;
 
 		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_FULL_SCENARIO)) {
+			CRTC_MMP_MARK(0, leave_vidle,
+				(0xc10c0ff | 0x10000000), atomic_read(&top_clk_ref));
 			mtk_vidle_config_ff(false);
 			mtk_vidle_enable(false, priv);
 		} else {
@@ -9608,7 +9616,9 @@ static void mtk_drm_enable_ap_ccf(bool en, struct drm_crtc *crtc, bool mode_swit
 			ap_crtc = NULL;
 		}
 	}
-	DDPMMCLK("%s: en:%d, ap_ccf:%d\n", __func__, en, atomic_read(&g_ap_ccf_state));
+
+	DDPMSG("%s: en:%d, ap_ccf:%d, mode_switch:%u\n",
+		__func__, en, atomic_read(&g_ap_ccf_state), mode_switch);
 }
 
 static int mtk_drm_vcp_notifier(struct notifier_block *vcp_nb, unsigned long vcp_event, void *unused)
@@ -9619,14 +9629,14 @@ static int mtk_drm_vcp_notifier(struct notifier_block *vcp_nb, unsigned long vcp
 	case VCP_EVENT_SUSPEND:
 		mtk_drm_enable_ap_ccf(false, NULL, false);
 		atomic_set(&g_vcp_alive, 0);
-		DDPMMCLK("%s VCP suspend,alive:%d, ap_ccf:%d\n",
+		DDPMSG("%s VCP suspend,alive:%d, ap_ccf:%d\n",
 			__func__, atomic_read(&g_vcp_alive), atomic_read(&g_ap_ccf_state));
 		break;
 	case VCP_EVENT_STOP:
 		mutex_lock(&vcp_lock);
 		mtk_drm_enable_ap_ccf(false, NULL, false);
 		atomic_set(&g_vcp_alive, 0);
-		DDPMMCLK("%s VCP stop,alive:%d, ap_ccf:%d\n",
+		DDPMSG("%s VCP stop,alive:%d, ap_ccf:%d\n",
 			__func__, atomic_read(&g_vcp_alive), atomic_read(&g_ap_ccf_state));
 		mutex_unlock(&vcp_lock);
 		break;
@@ -9641,7 +9651,7 @@ static int mtk_drm_vcp_notifier(struct notifier_block *vcp_nb, unsigned long vcp
 		mutex_lock(&vcp_lock);
 		mtk_drm_enable_ap_ccf(false, NULL, true);
 		atomic_set(&g_vcp_alive, 1);
-		DDPMMCLK("%s VCP ready,alive:%d, ap_ccf:%d\n",
+		DDPMSG("%s VCP ready,alive:%d, ap_ccf:%d\n",
 			__func__, atomic_read(&g_vcp_alive), atomic_read(&g_ap_ccf_state));
 		mutex_unlock(&vcp_lock);
 		break;
@@ -9677,9 +9687,11 @@ void mtk_drm_mmdvfs_enable_vcp(struct drm_crtc *crtc, bool en)
 		return;
 
 	crtc_id = drm_crtc_index(crtc);
+	if (!en)
+		mtk_vidle_mmdvfs_ctrl(en);
 	ret = mtk_mmdvfs_enable_vcp(en, VCP_PWR_USR_DISP);
 	if (priv->kernel_pm.vcp_nb.notifier_call == NULL &&
-		en && !ret) {
+		en && ret >= 0) {
 		DDPMSG("%s, crtc:%u register vcp nb\n", __func__, crtc_id);
 		priv->kernel_pm.vcp_nb.notifier_call = mtk_drm_vcp_notifier;
 		vcp_A_register_notify_ex(VDISP_FEATURE_ID, &priv->kernel_pm.vcp_nb);
@@ -9690,12 +9702,13 @@ void mtk_drm_mmdvfs_enable_vcp(struct drm_crtc *crtc, bool en)
 		if (vcp_state == 0)
 			mtk_drm_enable_ap_ccf(true, crtc, false);
 		mtk_drm_put_vcp_state();
+		mtk_vidle_mmdvfs_ctrl(en);
 	} else
 		mtk_drm_enable_ap_ccf(false, crtc, false);
 
 	DDPMMCLK("%s, crtc:%d %s vcp %s, alive:%d, ap_ccf:%d, ret:%d\n",
 		__func__, crtc_id, en ? "ENABLE" : "DISABLE",
-		ret ? "FAILED" : "DONE",
+		ret < 0 ? "FAILED" : "DONE",
 		atomic_read(&g_vcp_alive), atomic_read(&g_ap_ccf_state), ret);
 }
 #else

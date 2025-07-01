@@ -609,6 +609,14 @@ void mtk_vidle_force_enable_mml(bool en)
 		return mtk_vidle_force_enable_mml_v1(en);
 }
 
+void mtk_vidle_mmdvfs_ctrl(bool en)
+{
+	if (!disp_dpc_driver.dpc_mmdvfs_ctrl)
+		return;
+
+	disp_dpc_driver.dpc_mmdvfs_ctrl(DPC_SUBSYS_DISP, en);
+}
+
 static void mtk_vidle_enable_v1(bool en, void *_drm_priv)
 {
 	if (!disp_dpc_driver.dpc_enable)

@@ -261,6 +261,7 @@ struct dpc_funcs {
 	void (*dpc_dvfs_bw_set)(const u32 subsys, const u32 bw_in_mb);
 	void (*dpc_dvfs_both_set)(const u32 subsys, const u8 level, bool force,
 		const u32 bw_in_mb);
+	void (*dpc_mmdvfs_ctrl)(const u32 subsys, bool en);
 };
 
 #endif

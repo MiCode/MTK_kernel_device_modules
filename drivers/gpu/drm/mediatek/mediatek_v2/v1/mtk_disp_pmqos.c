@@ -1881,7 +1881,7 @@ void mtk_drm_set_mmclk(struct drm_crtc *crtc, int level, bool lp_mode,
 		/*MMDVFS of mode switch*/
 		cur_vcp_state = mtk_drm_get_vcp_state();
 		if (cur_vcp_state) {
-			DDPMMCLK("%s, update mmclk by DPC,level:%u,freq:%lu\n",
+			DDPMSG("%s, update mmclk by DPC,level:%u,freq:%lu\n",
 				__func__, vdisp_opp, freq);
 			mtk_vidle_dvfs_set(vdisp_opp);
 		} else {
@@ -1893,7 +1893,7 @@ void mtk_drm_set_mmclk(struct drm_crtc *crtc, int level, bool lp_mode,
 			opp = dev_pm_opp_find_freq_ceil(crtc->dev->dev, &max_freq);
 			volt = dev_pm_opp_get_voltage(opp);
 			dev_pm_opp_put(opp);
-			DDPMMCLK("%s, update mmclk by regulator,crtc=%d,volt=%d,freq:%lu\n",
+			DDPMSG("%s, update mmclk by regulator,crtc=%d,volt=%d,freq:%lu\n",
 				__func__, idx, volt, max_freq);
 			ret = regulator_set_voltage(mm_freq_request, volt, INT_MAX);
 			if (ret)

@@ -110,6 +110,9 @@ static unsigned int g_vdisp_level_disp;
 static unsigned int g_vdisp_level_mml;
 static DEFINE_MUTEX(dvfs_lock);
 static unsigned int g_vlp_backtrace;
+#if IS_ENABLED(CONFIG_MTK_MMDVFS_VCP)
+static atomic_t g_mmdvfs_available = ATOMIC_INIT(0);
+#endif
 
 static const char *mtk_dpc_vidle_cap_name[DPC_VIDLE_CAP_COUNT] = {
 	"MTCMOS_OFF",
@@ -543,7 +546,7 @@ static struct mtk_dpc mt6858_dpc_driver_data = {
 	.get_sys_status = mt6858_get_sys_status,
 	.mmdvfs_power_sync = false,
 	.mmdvfs_settings_addr = mt6878_mmdvfs_settings_addr,
-	.mmdvfs_settings_count = 0, //pending by mmdvfs ready
+	.mmdvfs_settings_count = 2, //pending by mmdvfs ready
 	.mtcmos_mask = 0x3f,
 };
 
@@ -1857,10 +1860,16 @@ static void dpc_irq_enable(const u32 subsys, bool en, bool manual)
 		mask = 0x0;
 		if (MTK_DPC_OF_DISP_SUBSYS(subsys)) {
 			writel(mask, dpc_base + DISP_REG_DPC_DISP_INTEN);
-			writel(mask, dpc_base + DISP_REG_DPC_DISP_INTSTA);
+			writel(0, dpc_base + DISP_REG_DPC_MERGE_DISP_INT_CFG);
+			writel(0, dpc_base + DISP_REG_DPC_DISP_UP_INTEN);
+			writel(0, dpc_base + DISP_REG_DPC_DISP_INTSTA);
+			writel(0, dpc_base + DISP_REG_DPC_MERGE_DISP_INTSTA);
 		} else if (MTK_DPC_OF_MML_SUBSYS(subsys)) {
 			writel(mask, dpc_base + DISP_REG_DPC_MML_INTEN);
-			writel(mask, dpc_base + DISP_REG_DPC_MML_INTSTA);
+			writel(0, dpc_base + DISP_REG_DPC_MERGE_MML_INT_CFG);
+			writel(0, dpc_base + DISP_REG_DPC_MML_UP_INTEN);
+			writel(0, dpc_base + DISP_REG_DPC_MML_INTSTA);
+			writel(0, dpc_base + DISP_REG_DPC_MERGE_MML_INTSTA);
 		}
 	}
 }
@@ -2296,9 +2305,8 @@ static void dpc_enable_v1(const u8 en)
 	}
 
 	/* enable hfrp before trigger vidle if necessary */
-	if (g_priv->mmdvfs_power_sync && en &&
-		atomic_read(&g_priv->dpc_en_cnt) == 0) {
-		if (mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_DISP) < 0) {
+	if (en && atomic_read(&g_priv->dpc_en_cnt) == 0) {
+		if (dpc_enable_vcp(true, DPC_SUBSYS_DISP) < 0) {
 			DPCERR("failed to enable vcp, en:%d", en);
 			goto out;
 		}
@@ -2414,10 +2422,8 @@ inavail:
 	spin_unlock_irqrestore(&dpc_lock, flags);
 
 	/* disable hfrp after vidle off if necessary */
-	if (g_priv->mmdvfs_power_sync && !en &&
-		atomic_read(&g_priv->dpc_en_cnt) == 0) {
-		mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_DISP);
-	}
+	if (!en && atomic_read(&g_priv->dpc_en_cnt) == 0)
+		dpc_enable_vcp(false, DPC_SUBSYS_DISP);
 
 out:
 	dpc_pm_ctrl(false, __func__);
@@ -2532,28 +2538,38 @@ static void mtk_dpc_mmdvfs_settings_backup(void)
 			continue;
 		mtk_dpc_mmdvfs_settings_value[i] = readl(dpc_base +
 			g_priv->mmdvfs_settings_addr[i]);
-		DPCDUMP("i:%d, addr:0x%x, value:0x%x, dirty:%u", i, g_priv->mmdvfs_settings_addr[i],
-			mtk_dpc_mmdvfs_settings_value[i], mtk_dpc_mmdvfs_settings_dirty);
 	}
 }
 
 static void mtk_dpc_mmdvfs_settings_restore(void)
 {
-	unsigned int i = 0;
+	unsigned int i = 0, value, addr;
 
 	if (g_priv->mmdvfs_settings_count == 0 ||
 		g_priv->mmdvfs_settings_addr == NULL)
 		return;
 
 	for (i = 0; i < g_priv->mmdvfs_settings_count; i++) {
-		writel(mtk_dpc_mmdvfs_settings_value[i] + 1,
-			dpc_base + g_priv->mmdvfs_settings_addr[i]);
+		value = mtk_dpc_mmdvfs_settings_value[i];
+		addr = g_priv->mmdvfs_settings_addr[i];
+
+		writel(value + 1, dpc_base + addr);
 		udelay(100);
-		writel(mtk_dpc_mmdvfs_settings_value[i],
-			dpc_base + g_priv->mmdvfs_settings_addr[i]);
-		DPCDUMP("i:%u, reg:0x%x,value:0x%x",i,
-			g_priv->mmdvfs_settings_addr[i],
-			mtk_dpc_mmdvfs_settings_value[i]);
+		writel(value, dpc_base + addr);
+
+		DPCFUNC("i:%u, reg:0x%x,value:0x%x,dirty:%u",i,
+			addr, value, (unsigned int)(mtk_dpc_mmdvfs_settings_dirty & BIT(i)));
+		if (i == 0) {
+			if (MEM_BASE)
+				writel(4 - value, MEM_USR_OPP(VCP_PWR_USR_DISP, false));
+			dpc_mmp(vdisp_disp, MMPROFILE_FLAG_PULSE, (value << 16) | addr,
+				readl(dpc_base + addr));
+		} else if (i == 1) {
+			if (MEM_BASE)
+				writel(4 - value, MEM_USR_OPP(VCP_PWR_USR_MML, false));
+			dpc_mmp(vdisp_mml, MMPROFILE_FLAG_PULSE, (value << 16) | addr,
+				readl(dpc_base + addr));
+		}
 	}
 
 	mtk_dpc_mmdvfs_settings_dirty = 0;
@@ -2576,48 +2592,74 @@ static void mtk_dpc_mmdvfs_settings_update(unsigned int addr, unsigned int value
 		}
 	}
 	dpc_mmp(mmdvfs_dead, MMPROFILE_FLAG_PULSE, addr, value);
-	DPCFUNC("i%d, addr:0x%x, value:0x%x, dirty:%u", i, addr,
+	DPCFUNC("i%d, addr:0x%x, value:0x%x, dirty:0x%x", i, addr,
 		mtk_dpc_mmdvfs_settings_value[i], mtk_dpc_mmdvfs_settings_dirty);
 }
 
 #if IS_ENABLED(CONFIG_MTK_MMDVFS_VCP)
+static void dpc_mmdvfs_ctrl(const u32 subsys, bool en)
+{
+	unsigned long flags = 0;
+
+	spin_lock_irqsave(&dpc_lock, flags);
+	if (en)
+		atomic_inc(&g_mmdvfs_available);
+	else if (atomic_read(&g_mmdvfs_available) > 0)
+		atomic_dec(&g_mmdvfs_available);
+
+	DPCFUNC("subsys:%u en:%d avail:%d", subsys, en,
+		atomic_read(&g_mmdvfs_available));
+	spin_unlock_irqrestore(&dpc_lock, flags);
+}
+
 static int mtk_dpc_mmdvfs_notifier(const bool enable, const bool wdt)
 {
 	static bool dead;
 	unsigned long flags = 0;
 	int ret = 0;
 
-	if (wdt || (enable && !g_priv->skip_force_power))
-		DPCFUNC("enable:%d, wdt:%d, count:%u, skip_power:%d",
-			enable, wdt, g_priv->mmdvfs_settings_count, g_priv->skip_force_power);
-
-	if (!enable && !dead) {
-		dpc_mmp(mmdvfs_dead, MMPROFILE_FLAG_START, enable, wdt);
-		dead = true;
-		return 0;
+	spin_lock_irqsave(&dpc_lock, flags);
+	if (!enable) {
+		DPCFUNC("mmdvfs %s!!, enable:%d,wdt:%d,skip_power:%d,avail:%d",
+			atomic_read(&g_mmdvfs_available) ? "DEAD" : "STOP", enable, wdt,
+			g_priv->skip_force_power, atomic_read(&g_mmdvfs_available));
+		if (!dead && atomic_read(&g_mmdvfs_available)) {
+			dpc_mmp(mmdvfs_dead, MMPROFILE_FLAG_START, enable, wdt);
+			dead = true;
+		} else
+			dpc_mmp(mmdvfs_dead, MMPROFILE_FLAG_PULSE, enable,
+				atomic_read(&g_mmdvfs_available));
+		goto out;
 	}
 
-	if (enable && !g_priv->skip_force_power &&
+	if (dead && atomic_read(&g_mmdvfs_available) &&
+		enable && !g_priv->skip_force_power &&
 		g_priv->mmdvfs_settings_count > 0 &&
 		g_priv->mmdvfs_settings_addr) {
 		if (dpc_pm_ctrl(true, __func__)) {
 			ret = -1;
-			goto out;
+			goto skip_restore;
 		}
-		spin_lock_irqsave(&dpc_lock, flags);
 		mtk_dpc_mmdvfs_settings_backup();
 		mtk_dpc_mmdvfs_settings_restore();
-		spin_unlock_irqrestore(&dpc_lock, flags);
 		dpc_pm_ctrl(false, __func__);
 	}
 
-out:
-	if (enable && dead) {
-		dpc_mmp(mmdvfs_dead, MMPROFILE_FLAG_END, enable, wdt);
-		dead = false;
-	} else
-		dpc_mmp(mmdvfs_dead, MMPROFILE_FLAG_PULSE, enable, wdt);
+skip_restore:
+	if (enable) {
+		DPCFUNC("mmdvfs %s!!, enable:%d,wdt:%d,skip_power:%d,avail:%d,ret:%d",
+			dead ? "RESTART" : "START", enable, wdt,
+			g_priv->skip_force_power, atomic_read(&g_mmdvfs_available), ret);
+		if (dead) {
+			dpc_mmp(mmdvfs_dead, MMPROFILE_FLAG_END, enable, wdt);
+			dead = false;
+		} else
+			dpc_mmp(mmdvfs_dead, MMPROFILE_FLAG_PULSE, enable,
+				atomic_read(&g_mmdvfs_available));
+	}
 
+out:
+	spin_unlock_irqrestore(&dpc_lock, flags);
 	return ret;
 }
 #endif
@@ -2781,8 +2823,7 @@ u8 dpc_dvfs_bw_to_level(const u32 bw_in_mb)
 static void dpc_dvfs_set_v1(const u32 subsys, const u8 level, bool force)
 {
 	u32 addr = 0, avail = 0;
-	u32 mmdvfs_user = U32_MAX;
-	u8 max_level, last_level;
+	u8 max_level, last_level = 0;
 	unsigned long flags = 0;
 	bool mmdvfs_state = true;
 
@@ -2793,11 +2834,7 @@ static void dpc_dvfs_set_v1(const u32 subsys, const u8 level, bool force)
 		return;
 	}
 
-	if (MTK_DPC_OF_DISP_SUBSYS(subsys)) {
-		mmdvfs_user = VCP_PWR_USR_DISP;
-	} else if (MTK_DPC_OF_MML_SUBSYS(subsys)) {
-		mmdvfs_user = VCP_PWR_USR_MML;
-	} else {
+	if (MTK_DPC_OF_INVALID_SUBSYS(subsys)) {
 		DPCERR("invalid user:%d", subsys);
 		WARN_ON(1);
 		return;
@@ -2854,7 +2891,7 @@ static void dpc_dvfs_set_v1(const u32 subsys, const u8 level, bool force)
 			g_priv->channel_bw[2].disp_bw, g_priv->channel_bw[2].mml_bw,
 			g_priv->channel_bw[3].disp_bw, g_priv->channel_bw[3].mml_bw, force);
 
-	if (mtk_mmdvfs_enable_vcp(true, mmdvfs_user) < 0)
+	if (dpc_enable_vcp(true, subsys) < 0)
 		mmdvfs_state = false;
 
 	spin_lock_irqsave(&dpc_lock, flags);
@@ -2872,7 +2909,7 @@ static void dpc_dvfs_set_v1(const u32 subsys, const u8 level, bool force)
 
 	spin_unlock_irqrestore(&dpc_lock, flags);
 	if (mmdvfs_state)
-		mtk_mmdvfs_enable_vcp(false, mmdvfs_user);
+		dpc_enable_vcp(false, subsys);
 
 out:
 	mutex_unlock(&dvfs_lock);
@@ -2967,15 +3004,10 @@ static void dpc_dvfs_bw_set_v1(const u32 subsys, const u32 bw_in_mb)
 {
 	u8 max_bw_level, last_bw_level;
 	u32 total_bw = 0;
-	u32 mmdvfs_user = U32_MAX;
 	unsigned long flags = 0;
 	bool mmdvfs_state = true;
 
-	if (MTK_DPC_OF_DISP_SUBSYS(subsys)) {
-		mmdvfs_user = VCP_PWR_USR_DISP;
-	} else if (MTK_DPC_OF_MML_SUBSYS(subsys)) {
-		mmdvfs_user = VCP_PWR_USR_MML;
-	} else {
+	if (MTK_DPC_OF_INVALID_SUBSYS(subsys)) {
 		DPCERR("invalid user:%d", subsys);
 		WARN_ON(1);
 		return;
@@ -3014,7 +3046,7 @@ static void dpc_dvfs_bw_set_v1(const u32 subsys, const u32 bw_in_mb)
 			g_priv->dvfs_bw.bw_level, g_priv->dvfs_bw.disp_bw,
 			g_priv->dvfs_bw.mml_bw);
 
-	if (mtk_mmdvfs_enable_vcp(true, mmdvfs_user) < 0)
+	if (dpc_enable_vcp(true, subsys) < 0)
 		mmdvfs_state = false;
 
 	spin_lock_irqsave(&dpc_lock, flags);
@@ -3027,7 +3059,7 @@ static void dpc_dvfs_bw_set_v1(const u32 subsys, const u32 bw_in_mb)
 
 	spin_unlock_irqrestore(&dpc_lock, flags);
 	if (mmdvfs_state)
-		mtk_mmdvfs_enable_vcp(false, mmdvfs_user);
+		dpc_enable_vcp(false, subsys);
 
 out:
 	mutex_unlock(&dvfs_lock);
@@ -3038,9 +3070,8 @@ static void dpc_dvfs_both_set_v1(const u32 subsys, const u8 level, bool force,
 	const u32 bw_in_mb)
 {
 	u32 addr = 0, avail = 0, total_bw = 0;
-	u32 mmdvfs_user = U32_MAX;
 	u8 max_level = 0, max_level_subsys = 0, max_level_bw = 0;
-	u8 last_bw_level, last_level;
+	u8 last_bw_level, last_level = 0;
 	unsigned long flags = 0;
 	bool mmdvfs_state = true;
 
@@ -3050,11 +3081,7 @@ static void dpc_dvfs_both_set_v1(const u32 subsys, const u8 level, bool force,
 		return;
 	}
 
-	if (MTK_DPC_OF_DISP_SUBSYS(subsys))
-		mmdvfs_user = VCP_PWR_USR_DISP;
-	else if (MTK_DPC_OF_MML_SUBSYS(subsys))
-		mmdvfs_user = VCP_PWR_USR_MML;
-	else {
+	if (MTK_DPC_OF_INVALID_SUBSYS(subsys)) {
 		DPCERR("invalid user:%d", subsys);
 		WARN_ON(1);
 		return;
@@ -3115,7 +3142,7 @@ static void dpc_dvfs_both_set_v1(const u32 subsys, const u8 level, bool force,
 			g_priv->dvfs_bw.bw_level, g_priv->dvfs_bw.disp_bw,
 			g_priv->dvfs_bw.mml_bw, force);
 
-	if (mtk_mmdvfs_enable_vcp(true, mmdvfs_user) < 0)
+	if (dpc_enable_vcp(true, subsys) < 0)
 		mmdvfs_state = false;
 
 	spin_lock_irqsave(&dpc_lock, flags);
@@ -3139,7 +3166,7 @@ static void dpc_dvfs_both_set_v1(const u32 subsys, const u8 level, bool force,
 
 	spin_unlock_irqrestore(&dpc_lock, flags);
 	if (mmdvfs_state)
-		mtk_mmdvfs_enable_vcp(false, mmdvfs_user);
+		dpc_enable_vcp(false, subsys);
 
 out:
 	mutex_unlock(&dvfs_lock);
@@ -3486,10 +3513,8 @@ static void dpc_config_v1(const u32 subsys, bool en)
 			mtk_dpc_idle_ratio_debug(DPC_VIDLE_RATIO_STOP);
 			mtk_dpc_idle_ratio_debug(DPC_VIDLE_RATIO_DUMP);
 		}
-		if (dbg_irq) {
-			dpc_irq_enable(DPC_SUBSYS_DISP, false, false);
-			dpc_irq_enable(DPC_SUBSYS_MML, false, false);
-		}
+		dpc_irq_enable(DPC_SUBSYS_DISP, false, false);
+		dpc_irq_enable(DPC_SUBSYS_MML, false, false);
 		mtk_disp_enable_gce_vote(false);
 
 		atomic_set(&g_disp_mode, DPC_VIDLE_INACTIVE_MODE);
@@ -3629,11 +3654,11 @@ static void dpc_mtcmos_vote_v1(const u32 subsys, const u8 thread, const bool en)
 irqreturn_t mtk_dpc_disp_irq_handler(int irq, void *dev_id)
 {
 	struct mtk_dpc *priv = dev_id;
-	u32 status;
+	u32 status, merge_status;
 	irqreturn_t ret = IRQ_NONE;
 
 	if (IS_ERR_OR_NULL(priv))
-		return ret;
+		return IRQ_HANDLED;
 
 	if (dpc_pm_ctrl(true, __func__)) {
 		dpc_mmp(mminfra_off, MMPROFILE_FLAG_PULSE, U32_MAX, 0);
@@ -3641,14 +3666,20 @@ irqreturn_t mtk_dpc_disp_irq_handler(int irq, void *dev_id)
 	}
 
 	status = readl(dpc_base + DISP_REG_DPC_DISP_INTSTA);
+	merge_status = readl(dpc_base + DISP_REG_DPC_MERGE_DISP_INTSTA);
+	if (dbg_irq)
+		dpc_mmp(disp_irq, MMPROFILE_FLAG_PULSE, status, merge_status);
+
+	if (merge_status) {
+		writel(~merge_status, dpc_base + DISP_REG_DPC_MERGE_DISP_INTSTA);
+		ret = IRQ_HANDLED;
+	}
+
 	if (!status)
 		goto out;
-
 	writel(~status, dpc_base + DISP_REG_DPC_DISP_INTSTA);
 
 	if (likely(dbg_mmp)) {
-		dpc_mmp(disp_irq, MMPROFILE_FLAG_PULSE, 0, status);
-
 		if (status & DISP_DPC_INT_DT6) {
 			dpc_mmp(prete, MMPROFILE_FLAG_PULSE, 0, DISP_DPC_INT_DT6);
 			mtk_update_dpc_state(DPC_VIDLE_BW_MASK | DPC_VIDLE_VDISP_MASK, false);
@@ -3761,12 +3792,12 @@ out:
 irqreturn_t mtk_dpc_mml_irq_handler(int irq, void *dev_id)
 {
 	struct mtk_dpc *priv = dev_id;
-	u32 status;
+	u32 status, merge_status;
 	irqreturn_t ret = IRQ_NONE;
 	unsigned int val = 0;
 
 	if (IS_ERR_OR_NULL(priv))
-		return ret;
+		return IRQ_HANDLED;
 
 	if (dpc_pm_ctrl(true, __func__)) {
 		dpc_mmp(mminfra_off, MMPROFILE_FLAG_PULSE, U32_MAX, 0);
@@ -3774,14 +3805,21 @@ irqreturn_t mtk_dpc_mml_irq_handler(int irq, void *dev_id)
 	}
 
 	status = readl(dpc_base + DISP_REG_DPC_MML_INTSTA);
+	merge_status = readl(dpc_base + DISP_REG_DPC_MERGE_MML_INTSTA);
+	if (dbg_irq)
+		dpc_mmp(mml_irq, MMPROFILE_FLAG_PULSE, status, merge_status);
+
+	if (merge_status) {
+		writel(~merge_status, dpc_base + DISP_REG_DPC_MERGE_MML_INTSTA);
+		ret = IRQ_HANDLED;
+	}
+
 	if (!status)
 		goto out;
 
 	writel(~status, dpc_base + DISP_REG_DPC_MML_INTSTA);
 
 	if (likely(dbg_mmp)) {
-		dpc_mmp(mml_irq, MMPROFILE_FLAG_PULSE, 0, status);
-
 		if (status & MML_DPC_INT_MML1_SOF)
 			dpc_mmp(mml_sof, MMPROFILE_FLAG_PULSE, 0, MML_DPC_INT_MML1_RDONE);
 		if (status & MML_DPC_INT_MML1_RDONE)
@@ -4549,6 +4587,7 @@ static const struct dpc_funcs funcs_v1 = {
 	.dpc_analysis = dpc_analysis_v1,
 	.dpc_dsi_pll_set = dpc_dsi_pll_set_v1,
 	.dpc_init_panel_type = dpc_init_panel_type_v1,
+	.dpc_mmdvfs_ctrl = dpc_mmdvfs_ctrl,
 };
 
 static int mtk_dpc_state_monitor_thread(void *data)
@@ -4568,7 +4607,7 @@ static int mtk_dpc_state_monitor_thread(void *data)
 			mtk_update_dpc_state(DPC_VIDLE_MMINFRA_MASK |
 				DPC_VIDLE_APSRC_MASK | DPC_VIDLE_BW_MASK, off);
 		} else {
-			if (mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_DISP) < 0) {
+			if (dpc_enable_vcp(true, DPC_SUBSYS_DISP) < 0) {
 				mtk_update_dpc_state(DPC_VIDLE_MMINFRA_MASK |
 					DPC_VIDLE_APSRC_MASK | DPC_VIDLE_BW_MASK, off);
 				dpc_mmp(mmdvfs_dead, MMPROFILE_FLAG_PULSE, off, 0xffffffff);
@@ -4576,7 +4615,7 @@ static int mtk_dpc_state_monitor_thread(void *data)
 				mtk_update_dpc_state(DPC_VIDLE_MMINFRA_MASK |
 					DPC_VIDLE_APSRC_MASK | DPC_VIDLE_BW_MASK |
 					DPC_VIDLE_VDISP_MASK, off);
-				mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_DISP);
+				dpc_enable_vcp(false, DPC_SUBSYS_DISP);
 			}
 		}
 	}
