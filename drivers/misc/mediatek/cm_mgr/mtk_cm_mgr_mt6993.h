@@ -13,6 +13,9 @@
 #include <soc/mediatek/dramc.h>
 #endif /* CONFIG_MTK_DRAMC */
 
+#define CPU_NUM (8)
+#define CM_SPLIT (5)
+
 enum {
 	CM_MGR_LP5 = 0,
 	CM_MGR_LP5X = 1,
@@ -52,5 +55,10 @@ struct cm_profile_info {
 	unsigned long update_cnt;
 };
 
+struct cm_vote_info {
+	uint32_t info[CPU_NUM][CM_SPLIT];
+};
+
 extern int cm_profile_get_bw(struct cm_profile_info *info_ptr);
+extern int cm_profile_get_vote(struct cm_vote_info *info_ptr);
 #endif /* __MTK_CM_MGR_PLATFORM_H__ */

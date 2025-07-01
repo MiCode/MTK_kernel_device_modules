@@ -62,6 +62,7 @@ u32 *cm_mgr_perfs;
 
 void __iomem *csram_base;
 static void __iomem *qos_sram_base;
+static void __iomem *sdk_sram_base;
 u32 cm_vendor_id, cm_mem_info, cm_num_opp, nr_vc0, nr_vc1, nr_bound;
 u32 *cm_mem_support, *cm_mem_dynamic, *cm_mem_capacity, *cm_mem_bound;
 /* only for debug use*/
@@ -317,7 +318,7 @@ static int cm_get_base_addr(void)
 ERROR:
 	return ret;
 }
-
+/*CM SDK*/
 unsigned int csram_read(unsigned int offs)
 {
 	if (IS_ERR_OR_NULL((void *)csram_base))
@@ -332,6 +333,76 @@ void csram_write(unsigned int offs, unsigned int val)
 	__raw_writel(val, csram_base + (offs));
 }
 
+static int cm_get_sdk_base(void)
+{
+	int ret = 0;
+	struct device_node *dn = NULL;
+	struct platform_device *pdev = NULL;
+	struct resource *csram_res = NULL;
+
+	dn = of_find_node_by_name(NULL, "slbc");
+
+	if (!dn) {
+		ret = -ENOMEM;
+		pr_info("find slbc node failed\n");
+		goto ERROR;
+	}
+
+	pdev = of_find_device_by_node(dn);
+	of_node_put(dn);
+	if (!pdev) {
+		ret = -ENODEV;
+		pr_info("slbc is not ready\n");
+		goto ERROR;
+	}
+
+	csram_res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!csram_res) {
+		ret = -ENODEV;
+		pr_info("slbc resource is not found\n");
+		goto ERROR;
+	}
+
+	sdk_sram_base = ioremap(csram_res->start, resource_size(csram_res));
+	if (IS_ERR_OR_NULL((void *)sdk_sram_base)) {
+		ret = -ENOMEM;
+		pr_info("find csram base failed\n");
+		goto ERROR;
+	}
+
+ERROR:
+	return ret;
+}
+
+static unsigned int cm_sdkram_read(unsigned int offs)
+{
+	if (IS_ERR_OR_NULL((void *)sdk_sram_base)) {
+		cm_get_sdk_base();
+		return 0;
+	}
+	return __raw_readl(sdk_sram_base + 0x15C + (offs));
+}
+
+int cm_profile_get_vote(struct cm_vote_info *info_ptr)
+{
+	int ret = 0;
+	uint32_t val, idx = 0;
+	short i, j;
+
+	if (!info_ptr) {
+		ret = -1;
+	} else {
+		for (i = 0; i < 8; i++) {
+			for (j = 0; j < 5; j++) {
+				val = cm_sdkram_read(idx);
+				info_ptr->info[i][j] = val;
+				idx += 0x4;
+			}
+		}
+	}
+	return ret;
+}
+EXPORT_SYMBOL(cm_profile_get_vote);
 static int cm_get_qos_base(void)
 {
 	int ret = 0;
@@ -640,6 +711,13 @@ static int platform_cm_mgr_probe(struct platform_device *pdev)
 	if (ret) {
 		pr_info("%s(%d): fail to get qos csram base. ret %d\n", __func__,
 			__LINE__, ret);
+		goto ERROR;
+	}
+
+	ret = cm_get_sdk_base();
+	if (ret) {
+		pr_info("%s(%d): fail to get sdk csram base. ret %d\n", __func__,
+		__LINE__, ret);
 		goto ERROR;
 	}
 
