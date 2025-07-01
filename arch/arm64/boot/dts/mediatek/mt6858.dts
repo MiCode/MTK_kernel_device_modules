@@ -4583,6 +4583,7 @@ dramc: dramc@10230000 {
 			compatible = "mediatek,mt6858-disp";
 			reg = <0 0x14000000 0 0x1000>;
 			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
+			iommus = <&disp_iommu M4U_L0_P1_OVL0_RDMA0>;
 			dispsys-num = <1>;
 #if 0
 			#clock-cells = <1>;
@@ -4752,7 +4753,7 @@ dramc: dramc@10230000 {
 
 			helper-value = <1>, /*MTK_DRM_OPT_STAGE*/
 				<1>, /*MTK_DRM_OPT_USE_CMDQ*/
-				<0>, /*MTK_DRM_OPT_USE_M4U*/
+				<1>, /*MTK_DRM_OPT_USE_M4U*/
 				<0>, /*MTK_DRM_OPT_MMQOS_SUPPORT*/
 				<0>, /*MTK_DRM_OPT_MMDVFS_SUPPORT*/
 				<0>, /*MTK_DRM_OPT_SODI_SUPPORT*/
@@ -4843,7 +4844,11 @@ dramc: dramc@10230000 {
 			reg = <0 0x14002000 0 0x1000>;
 			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
 			interrupts = <GIC_SPI 302 IRQ_TYPE_LEVEL_HIGH 0>;
-			//clocks = <&dispsys_config_clk CLK_MM_DISP_OVL0_2L_DISP>;
+			mediatek,larb = <&smi_larb0>;
+			mediatek,smi-id = <0>;
+			iommus = <&disp_iommu M4U_L0_P1_OVL0_RDMA0>,
+				<&disp_iommu M4U_L0_P0_OVL0_RDMA_HDR>;
+			clocks = <&dispsys_config_clk CLK_MM_DISP_OVL0_2L_DISP>;
 		};
 
 		disp_ovl1_2l: disp-ovl1-2l@14003000 {
@@ -4852,7 +4857,11 @@ dramc: dramc@10230000 {
 			reg = <0 0x14003000 0 0x1000>;
 			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
 			interrupts = <GIC_SPI 304 IRQ_TYPE_LEVEL_HIGH 0>;
-			//clocks = <&dispsys_config_clk CLK_MM_DISP_OVL1_2L_DISP>;
+			mediatek,larb = <&smi_larb1>;
+			mediatek,smi-id = <1>;
+			iommus = <&disp_iommu M4U_L1_P2_OVL1_RDMA0>,
+				<&disp_iommu M4U_L1_P1_OVL1_RDMA_HDR>;
+			clocks = <&dispsys_config_clk CLK_MM_DISP_OVL1_2L_DISP>;
 		};
 
 		disp_ovl2_2l: disp-ovl2-2l@14004000 {
@@ -4861,7 +4870,11 @@ dramc: dramc@10230000 {
 			reg = <0 0x14004000 0 0x1000>;
 			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
 			interrupts = <GIC_SPI 305 IRQ_TYPE_LEVEL_HIGH 0>;
-			//clocks = <&dispsys_config_clk CLK_MM_DISP_OVL2_2L_DISP>;
+			mediatek,larb = <&smi_larb0>;
+			mediatek,smi-id = <0>;
+			iommus = <&disp_iommu M4U_L0_P4_OVL2_RDMA0>,
+				<&disp_iommu M4U_L0_P3_OVL2_RDMA_HDR>;
+			clocks = <&dispsys_config_clk CLK_MM_DISP_OVL2_2L_DISP>;
 		};
 
 		reserved@14005000 {
@@ -5079,6 +5092,9 @@ dramc: dramc@10230000 {
 					"mediatek,mt6858-disp-wdma";
 			reg = <0 0x1401c000 0 0x1000>;
 			interrupts = <GIC_SPI 330 IRQ_TYPE_LEVEL_HIGH 0>;
+			mediatek,larb = <&smi_larb1>;
+			mediatek,smi-id = <1>;
+			iommus = <&disp_iommu M4U_L1_P4_DISP_WDMA1>;
 			clocks = <&dispsys_config_clk CLK_MM_DISP_WDMA1_DISP>;
 			fifo-size-1plane = <966>;
 			fifo-size-uv-1plane = <29>;
