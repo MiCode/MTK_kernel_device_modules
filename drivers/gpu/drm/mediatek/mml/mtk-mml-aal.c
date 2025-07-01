@@ -458,6 +458,8 @@ struct mml_comp_aal {
 	u32 dre_blk_width;
 	u32 dre_blk_height;
 	u32 cut_pos_x;
+
+	u16 event_vcp_readback_done; /* specific to mt6895 */
 };
 
 enum aal_label_index {
@@ -1508,8 +1510,6 @@ static void aal_readback_vcp(struct mml_comp *comp, struct mml_task *task,
 	struct mml_task_reuse *reuse = &task->reuse[ccfg->pipe];
 	u8 pipe = ccfg->pipe;
 	struct aal_frame_data *aal_frm = aal_frm_data(ccfg);
-
-
 	u32 gpr = aal->data->gpr[ccfg->pipe];
 	u32 engine = CMDQ_VCP_ENG_MML_AAL0 + pipe;
 
@@ -1533,10 +1533,12 @@ static void aal_readback_vcp(struct mml_comp *comp, struct mml_task *task,
 
 	cmdq_vcp_enable(true);
 
+	cmdq_pkt_acquire_event(pkt, aal->event_vcp_readback_done);
 	cmdq_pkt_readback(pkt, engine, task->pq_task->aal_hist[pipe]->va_offset,
 		 AAL_HIST_NUM+AAL_DUAL_INFO_NUM, gpr,
 		&reuse->labels[reuse->label_idx],
 		&aal_frm->polling_reuse);
+	cmdq_pkt_clear_event(pkt, aal->event_vcp_readback_done);
 
 	mml_add_reuse_label(comp->id, reuse, &aal_frm->labels[AAL_POLLGPR_0],
 		task->pq_task->aal_hist[pipe]->va_offset);
@@ -2581,6 +2583,14 @@ static int probe(struct platform_device *pdev)
 
 	if (of_property_read_u8(dev->of_node, "hist-read-mode", &priv->force_rb_mode))
 		priv->force_rb_mode = -1;
+
+	if (priv->data->vcp_readback) {
+		if (of_property_read_u16(dev->of_node, "event-vcp-readback-done",
+				&priv->event_vcp_readback_done)) {
+			dev_err(dev, "read event-vcp-readback-done fail\n");
+			return -ENOENT;
+		}
+	}
 
 	/* assign ops */
 	priv->comp.tile_ops = &aal_tile_ops;

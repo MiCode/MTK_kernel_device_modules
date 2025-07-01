@@ -613,6 +613,7 @@ struct mml_comp_hdr {
 	struct work_struct hdr_curve_task;
 	struct workqueue_struct *hdr_hist_wq;
 	struct work_struct hdr_hist_task;
+	u16 event_vcp_readback_done; /* specific to mt6895 */
 };
 
 enum hdr_label_index {
@@ -1627,10 +1628,12 @@ static void hdr_readback_vcp(struct mml_comp *comp, struct mml_task *task,
 
 	cmdq_vcp_enable(true);
 
+	cmdq_pkt_acquire_event(pkt, hdr->event_vcp_readback_done);
 	cmdq_pkt_readback(pkt, engine, task->pq_task->hdr_hist[pipe]->va_offset,
 		HDR_HIST_NUM, gpr,
 		&reuse->labels[reuse->label_idx],
 		&hdr_frm->polling_reuse);
+	cmdq_pkt_clear_event(pkt, hdr->event_vcp_readback_done);
 
 	mml_add_reuse_label(comp->id, reuse, &hdr_frm->labels[HDR_POLLGPR_0],
 		task->pq_task->hdr_hist[pipe]->va_offset);
@@ -2919,6 +2922,14 @@ static int probe(struct platform_device *pdev)
 	if (of_property_read_u16(dev->of_node, "event-mutex-hint",
 				 &priv->mutex_hint))
 		dev_err(dev, "read event mutex_hint fail\n");
+
+	if (priv->data->vcp_readback) {
+		if (of_property_read_u16(dev->of_node, "event-vcp-readback-done",
+				&priv->event_vcp_readback_done)) {
+			dev_err(dev, "read event-vcp-readback-done fail\n");
+			return -ENOENT;
+		}
+	}
 
 	mml_pq_set_hdr_histogram_bin(priv->data->histogram_bin);
 
