@@ -387,7 +387,7 @@ int mtk_disp_mtee_cmdq_secure_start(int value, struct cmdq_pkt *cmdq_handle,
 static int mtk_disp_mtee_gem_fd_to_sec_hdl(int fd, struct mtk_drm_gem_obj *mtk_gem_obj)
 {
 	int sec_id = -1;
-	u32 sec_handle = 0;
+	u64 sec_handle = 0;
 	struct dma_buf *dma_buf = NULL;
 
 	dma_buf = dma_buf_get(fd);
@@ -402,7 +402,7 @@ static int mtk_disp_mtee_gem_fd_to_sec_hdl(int fd, struct mtk_drm_gem_obj *mtk_g
 		sec_id = dmabuf_to_tmem_type(dma_buf, &sec_handle);
 #endif
 	if (sec_id >= 0)
-		DDPINFO("%s:sec_hnd=0x%x,sec_id=%d\n", __func__, sec_handle, sec_id);
+		DDPINFO("%s:sec_hnd=0x%llx,sec_id=%d\n", __func__, sec_handle, sec_id);
 	else {
 		DDPMSG("%s failed %d\n", __func__, fd);
 		dma_buf_put(dma_buf);
