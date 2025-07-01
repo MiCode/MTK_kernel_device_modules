@@ -53,6 +53,8 @@ extern int unset_tgid_vip(int tgid);
 extern void turn_on_tgid_vip(void);
 extern void turn_off_tgid_vip(void);
 
+extern unsigned int core_ctl_get_policy(void);
+
 void sbe_do_frame_start(struct sbe_render_info *thr, unsigned long long frameid, unsigned long long ts);
 void sbe_do_frame_end(struct sbe_render_info *thr, unsigned long long frameid,
 		unsigned long long start_ts, unsigned long long end_ts);

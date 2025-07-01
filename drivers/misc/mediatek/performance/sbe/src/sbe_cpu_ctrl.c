@@ -97,6 +97,7 @@ static int sbe_affinity_task_min_cap;
 static int sbe_affinity_task_low_threshold_cap;
 static int sbe_ignore_vip_task_enable;
 static int sbe_ignore_vip_task_status;
+static int sbe_core_ctl_enable;
 static int sbe_without_dptv2_enable;
 /*For AI jank detection*/
 static int ai_rescuing_frame_id;
@@ -170,6 +171,7 @@ module_param(sbe_affinity_task, int, 0644);
 module_param(sbe_affinity_task_min_cap, int, 0644);
 module_param(sbe_affinity_task_low_threshold_cap, int, 0644);
 module_param(sbe_ignore_vip_task_enable, int, 0644);
+module_param(sbe_core_ctl_enable, int, 0644);
 module_param(sbe_without_dptv2_enable, int, 0644);
 
 static void update_hwui_frame_info(struct sbe_render_info *info,
@@ -233,9 +235,22 @@ int sbe_get_perf(void)
 	return global_ux_blc;
 }
 
+int sbe_core_ctl_set_min_cpus(unsigned int cid, unsigned int min, int requester, unsigned int have_demand)
+{
+	if (!core_ctl_get_policy() || !sbe_core_ctl_enable) {
+		sbe_trace("[SBE]: %s policy: %d, ctl_enable: %d\n",
+			__func__, core_ctl_get_policy(), sbe_core_ctl_enable);
+		return -1;
+	}
+
+	return core_ctl_set_min_cpus(cid, min, requester, have_demand);
+}
+
 void sbe_core_ctl_ignore_vip_task(struct sbe_render_info *thr, int ignore_enable)
 {
-	if (sbe_ignore_vip_task_enable) {
+	if (sbe_ignore_vip_task_enable
+		&& sbe_core_ctl_enable
+		&& core_ctl_get_policy()) {
 		if (ignore_enable) {
 			core_ctl_consider_VIP(0);
 			sbe_ignore_vip_task_status = 1;
@@ -253,6 +268,8 @@ void sbe_core_ctl_ignore_vip_task(struct sbe_render_info *thr, int ignore_enable
 		sbe_trace("[SBE] pid:%d, bufid:%llu, ignore_vip_task:%d",
 					thr->pid, thr->buffer_id, 0);
 	}
+	sbe_trace("[SBE]: %s policy: %d, ctl_enable: %d\n",
+		__func__, core_ctl_get_policy(), sbe_core_ctl_enable);
 }
 
 void sbe_set_dptv2_policy(struct sbe_render_info *thr, int start)
@@ -368,6 +385,12 @@ static int sbe_set_affinity(int pid, const struct cpumask *in_mask)
 {
 	struct task_struct *p;
 	int retval;
+
+	if (!core_ctl_get_policy() || !sbe_core_ctl_enable) {
+		sbe_trace("[SBE]: %s policy: %d, ctl_enable: %d\n",
+			__func__, core_ctl_get_policy(), sbe_core_ctl_enable);
+		return -ENODEV;
+	}
 
 	rcu_read_lock();
 
@@ -579,8 +602,12 @@ static void sbe_set_dep_affinity(struct sbe_render_info *thr, int r_cpu_mask)
 	struct cpumask new_mask;
 	int cpu;
 
-	if(!set_deplist_affinity || !thr)
+	if(!set_deplist_affinity || !thr ||
+		!core_ctl_get_policy() || !sbe_core_ctl_enable) {
+		sbe_trace("[SBE]: %s policy: %d, ctl_enable: %d\n",
+			__func__, core_ctl_get_policy(), sbe_core_ctl_enable);
 		return;
+	}
 
 	cpumask_clear(&new_mask);
 	for_each_possible_cpu (cpu) {
@@ -790,9 +817,9 @@ void sbe_do_frame_start(struct sbe_render_info *thr, unsigned long long frameid,
 		thr->affinity_task_mask = SBE_PREFER_NONE;
 		thr->loading_type = RENDER_LOADING_PEAK;
 		sbe_set_dep_affinity(thr, SBE_PREFER_NONE);
-		core_ctl_set_min_cpus(1/*Cluster 1*/, 3/*3 core*/,
+		sbe_core_ctl_set_min_cpus(1/*Cluster 1*/, 3/*3 core*/,
 				3/*UX Scenario*/, 1/*consider UX Scenario*/);
-		core_ctl_set_min_cpus(2/*Cluster 1*/, 1/*1 core*/,
+		sbe_core_ctl_set_min_cpus(2/*Cluster 1*/, 1/*1 core*/,
 				3/*UX Scenario*/, 1/*consider UX Scenario*/);
 	}
 
@@ -1574,15 +1601,15 @@ void sbe_ux_scrolling_start(int type, unsigned long long start_ts, struct sbe_re
 	if (thr->affinity_task_mask) {
 		if (thr->affinity_task_mask == SBE_PREFER_M
 				|| thr->affinity_task_mask == SBE_PREFER_LM) {
-			core_ctl_set_min_cpus(1/*Cluster 1*/, 3/*3 core*/,
+			sbe_core_ctl_set_min_cpus(1/*Cluster 1*/, 3/*3 core*/,
 					3/*UX Scenario*/, 1/*consider UX Scenario*/);
 		} else if (thr->affinity_task_mask == SBE_PREFER_BIG) {
-			core_ctl_set_min_cpus(2/*Cluster 1*/, 1/*1 core*/,
+			sbe_core_ctl_set_min_cpus(2/*Cluster 1*/, 1/*1 core*/,
 					3/*UX Scenario*/, 1/*consider UX Scenario*/);
 		} else if (thr->affinity_task_mask == SBE_PREFER_NONE) {
-			core_ctl_set_min_cpus(1/*Cluster 1*/, 3/*3 core*/,
+			sbe_core_ctl_set_min_cpus(1/*Cluster 1*/, 3/*3 core*/,
 					3/*UX Scenario*/, 1/*consider UX Scenario*/);
-			core_ctl_set_min_cpus(2/*Cluster 1*/, 1/*1 core*/,
+			sbe_core_ctl_set_min_cpus(2/*Cluster 1*/, 1/*1 core*/,
 					3/*UX Scenario*/, 1/*consider UX Scenario*/);
 		}
 		//CLEAR BEFORE SET
@@ -1614,12 +1641,12 @@ void sbe_ux_scrolling_end(struct sbe_render_info *thr)
 		sbe_set_affinity_on_scrolling(thr->pid, SBE_PREFER_NONE);
 		if (thr->affinity_task_mask == SBE_PREFER_M
 				|| thr->affinity_task_mask == SBE_PREFER_LM) {
-			core_ctl_set_min_cpus(1, 0, 3, 0);
+			sbe_core_ctl_set_min_cpus(1, 0, 3, 0);
 		} else if (thr->affinity_task_mask == SBE_PREFER_BIG) {
-			core_ctl_set_min_cpus(2, 0, 3, 0);
+			sbe_core_ctl_set_min_cpus(2, 0, 3, 0);
 		} else if (thr->affinity_task_mask == SBE_PREFER_NONE) {
-			core_ctl_set_min_cpus(1, 0, 3, 0);
-			core_ctl_set_min_cpus(2, 0, 3, 0);
+			sbe_core_ctl_set_min_cpus(1, 0, 3, 0);
+			sbe_core_ctl_set_min_cpus(2, 0, 3, 0);
 		}
 	}
 
@@ -2555,6 +2582,7 @@ int __init sbe_cpu_ctrl_init(void)
 	sbe_dptv2_status = 0;
 	sbe_ignore_vip_task_enable = 1;
 	sbe_ignore_vip_task_status = 0;
+	sbe_core_ctl_enable = 1;
 	sbe_without_dptv2_enable = 1;
 
 	ai_rescuing_frame_id = -1;
