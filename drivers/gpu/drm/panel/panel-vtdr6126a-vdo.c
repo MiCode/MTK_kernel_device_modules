@@ -428,7 +428,7 @@ static void push_table_cb(void *dsi, dcs_write_gce cb,
 	}
 }
 
-static void lcm_panel_init(struct lcm *ctx)
+static void panel_init(struct lcm *ctx)
 {
 	pr_info("[LCM] %s begin\n", __func__);
 	ctx->reset_gpio = devm_gpiod_get(ctx->dev, "reset", GPIOD_OUT_HIGH);
@@ -493,8 +493,8 @@ static int lcm_unprepare(struct drm_panel *panel)
 		return 0;
 	pr_info("[LCM] %s begin\n", __func__);
 	g_aod_enable=0;
-	push_table(ctx, lcm_suspend_setting,
-		sizeof(lcm_suspend_setting) / sizeof(struct LCM_setting_table));
+	//push_table(ctx, lcm_suspend_setting,
+		//sizeof(lcm_suspend_setting) / sizeof(struct LCM_setting_table));
 
 	if (ctx->gate_ic == 0) {
 		ctx->bias_neg =
@@ -551,11 +551,11 @@ static int lcm_prepare(struct drm_panel *panel)
 	}
 #endif
 
-	lcm_panel_init(ctx);
+	//panel_init(ctx);
 	ret = ctx->error;
 	if (ret < 0)
 		lcm_unprepare(panel);
-	ctx->prepared = true;
+	//ctx->prepared = true;
 #ifdef PANEL_SUPPORT_READBACK
 	lcm_panel_get_data(ctx);
 #endif
@@ -1416,6 +1416,176 @@ static int mode_switch(struct drm_panel *panel,
 	return ret;
 }
 
+static int lcm_panel_init_v2(void *dsi_drv, struct drm_panel *panel, void *handle, mtk_dsi_ddic_cmd cb,
+			struct mtk_dsi_cmd_option *cmd_opt)
+{
+	int ret = 0;
+	struct lcm *ctx = panel_to_lcm(panel);
+	static struct mipi_dsi_msg init_cmd[ARRAY_SIZE(lcm_initialization_setting)] = { 0 };
+	static int flag;
+	int i;
+
+	pr_info("%s ++, fps = %d\n", __func__, g_lcm_fresh_mode);
+
+	if (ctx->prepared) {
+		pr_info("%s skip\n", __func__);
+		return 0;
+	}
+
+	ctx->reset_gpio = devm_gpiod_get(ctx->dev, "reset", GPIOD_OUT_HIGH);
+	gpiod_set_value(ctx->reset_gpio, 1);
+	mdelay(2);
+	gpiod_set_value(ctx->reset_gpio, 0);
+	mdelay(2);
+	gpiod_set_value(ctx->reset_gpio, 1);
+	devm_gpiod_put(ctx->dev, ctx->reset_gpio);
+	msleep(20);
+
+	if (!flag) {
+		flag = 1;
+		for (i = 0; i < ARRAY_SIZE(lcm_initialization_setting); i++) {
+			init_cmd[i].tx_len= lcm_initialization_setting[i].count;
+			init_cmd[i].tx_buf = lcm_initialization_setting[i].para_list;
+		}
+	}
+
+	switch (g_lcm_fresh_mode) {
+	case MODE_0_FPS:
+		lcm_initialization_setting[0].para_list[0] = 0x00; //144Hz
+		break;
+	case MODE_1_FPS:
+		lcm_initialization_setting[0].para_list[0] = 0x01; //120Hz
+		break;
+	case MODE_2_FPS:
+		lcm_initialization_setting[0].para_list[0] = 0x02; //90Hz
+		break;
+	case MODE_3_FPS:
+		lcm_initialization_setting[0].para_list[0] = 0x03; //60Hz
+		break;
+	}
+
+	struct mtk_dsi_cmd_msg panel_init_cmd_msg = {
+		.is_rd = 0, /* 0:write 1:read */
+		.is_package = 0,
+		.rd_to_slot = 0,
+		.cmd_num = ARRAY_SIZE(lcm_initialization_setting),
+		.transfer_mode = PACKET_LP_MODE,
+		.cmd_msg = init_cmd,
+	};
+
+	ret = cb(dsi_drv, handle, cmd_opt, &panel_init_cmd_msg);
+	if (ret < 0) {
+		pr_err("%s error\n", __func__);
+		goto end;
+	};
+
+	//add esd recovery 20250117 start
+	if (mapped_level) {
+		pr_info("[LCM] %s esd recovery, need set curr_bl=%d\n", __func__, mapped_level);
+		lcm_dcs_write(ctx, bl_tb0, ARRAY_SIZE(bl_tb0));
+	}
+	//add esd recovery 20250117 end
+
+	ctx->error=0;
+	g_dim_state = 0;
+	g_need_dim_enable = 0;
+	ctx->prepared = true;
+
+	pr_info("%s --\n", __func__);
+
+end:
+	return ret;
+}
+
+static int lcm_panel_init(struct drm_panel *panel)
+{
+	int ret = 0;
+	struct lcm *ctx = panel_to_lcm(panel);
+
+	pr_info("%s ++\n", __func__);
+
+	if (ctx->prepared) {
+		pr_info("%s skip\n", __func__);
+		return 0;
+	}
+
+	panel_init(ctx);
+	ret = ctx->error;
+	if (ret < 0) {
+		pr_err("%s error\n", __func__);
+		lcm_unprepare(panel);
+		return -1;
+	}
+
+	ctx->prepared = true;
+	pr_info("%s --\n", __func__);
+
+	return 0;
+}
+
+static int lcm_panel_deinit(struct drm_panel *panel)
+{
+	struct lcm *ctx = panel_to_lcm(panel);
+
+	pr_info("%s ++\n", __func__);
+
+	if (!ctx->prepared) {
+		pr_info("%s skip\n", __func__);
+		return 0;
+	}
+
+	push_table(ctx, lcm_suspend_setting,
+			sizeof(lcm_suspend_setting) / sizeof(struct LCM_setting_table));
+
+	pr_info("%s --\n", __func__);
+	return 0;
+}
+
+static int lcm_panel_deinit_v2(void *dsi_drv, struct drm_panel *panel, void *handle, mtk_dsi_ddic_cmd cb,
+			struct mtk_dsi_cmd_option *cmd_opt)
+{
+	int i;
+	int ret = 0;
+	static int flag;
+	struct lcm *ctx = panel_to_lcm(panel);
+	static struct mipi_dsi_msg deinit_code[ARRAY_SIZE(lcm_suspend_setting)] = { 0 };
+
+	pr_info("%s ++\n", __func__);
+
+	if (!ctx->prepared) {
+		pr_info("%s skip\n", __func__);
+		return 0;
+	}
+
+	if (!flag) {
+		flag = 1;
+		for (i = 0; i < ARRAY_SIZE(lcm_suspend_setting); i++) {
+			deinit_code[i].tx_len= lcm_suspend_setting[i].count;
+			deinit_code[i].tx_buf = lcm_suspend_setting[i].para_list;
+		}
+	}
+
+	struct mtk_dsi_cmd_msg deinit_cmd = {
+		.is_rd = 0, /* 0:write 1:read */
+		.is_package = 0,
+		.rd_to_slot = 0,
+		.cmd_num = ARRAY_SIZE(lcm_suspend_setting),
+		.transfer_mode = PACKET_LP_MODE,
+		.cmd_msg = deinit_code,
+	};
+
+	ret = cb(dsi_drv, handle, cmd_opt, &deinit_cmd);
+	if (ret < 0) {
+		pr_info("%s error\n", __func__);
+		goto end;
+	}
+
+	pr_info("%s --\n", __func__);
+
+end:
+	return ret;
+}
+
 static struct mtk_panel_funcs ext_funcs = {
 	.set_backlight_cmdq = lcm_setbacklight_cmdq,
 	.ext_param_set = mtk_panel_ext_param_set,
@@ -1438,6 +1608,11 @@ static struct mtk_panel_funcs ext_funcs = {
 #if IS_ENABLED(CONFIG_TRANSSION_DOZE_BRIGHTNESS_SUPPORT)
 	.set_aod_light_mode = panel_set_aod_light_mode,
 #endif
+
+	.panel_init = lcm_panel_init,
+	.panel_deinit = lcm_panel_deinit,
+	.panel_init_v2 = lcm_panel_init_v2,
+	.panel_deinit_v2 = lcm_panel_deinit_v2,
 };
 #endif
 

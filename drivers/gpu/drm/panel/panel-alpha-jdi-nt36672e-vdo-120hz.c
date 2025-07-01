@@ -315,6 +315,499 @@ static void jdi_dcs_write(struct jdi *ctx, const void *data, size_t len)
 	}
 }
 
+struct LCD_setting_table {
+	unsigned char count;
+	unsigned char para_list[200];
+};
+
+static struct LCD_setting_table lcm_deinit_setting_vfp[] = {
+	{ 0x01, {MIPI_DCS_SET_DISPLAY_OFF} },
+	{ 0x00, {50} },
+	{ 0x01, {MIPI_DCS_ENTER_SLEEP_MODE} },
+	{ 0x00, {150} },
+};
+
+static struct LCD_setting_table lcm_init_setting[] = {
+	{ 0x02, {0XFF, 0X10} },
+	//REGR 0XFE,0X10
+	{ 0x02, {0XFB, 0X01} },
+	{ 0x02, {0XB0, 0X00} },
+	//DSC ON && set PPS
+	{ 0x02, {0XC0, 0X03} },//JDI VESA
+	{ 0x11, {0XC1, 0X89, 0X28, 0X00, 0X08, 0X00, 0XAA,
+				0X02, 0X0E, 0X00, 0X2B, 0X00, 0X07, 0X0D, 0XB7, 0X0C, 0XB7} },
+	{ 0x03, {0XC2, 0X1B, 0XA0} },
+	{ 0x02, {0XE9, 0X01} },
+	{ 0x02, {0XFF, 0X20} },
+	//REGR 0XFE,0X20
+	{ 0x02, {0XFB, 0X01} },
+	{ 0x02, {0X01, 0X66} },
+	{ 0x02, {0X06, 0X40} },
+	{ 0x02, {0X07, 0X38} },
+	{ 0x02, {0X18, 0X66} },
+	{ 0x02, {0X1B, 0X01} },
+	{ 0x02, {0X2F, 0X83} },
+	{ 0x02, {0X69, 0X91} },
+	{ 0x02, {0X95, 0XD1} },
+	{ 0x02, {0X96, 0XD1} },
+	{ 0x02, {0XF2, 0X65} },
+	{ 0x02, {0XF3, 0X64} },
+	{ 0x02, {0XF4, 0X65} },
+	{ 0x02, {0XF5, 0X64} },
+	{ 0x02, {0XF6, 0X65} },
+	{ 0x02, {0XF7, 0X64} },
+	{ 0x02, {0XF8, 0X65} },
+	{ 0x02, {0XF9, 0X64} },
+
+	{ 0x02, {0x89, 0x15} },//VCOM
+	{ 0x02, {0x8A, 0x15} },//VCOM
+	{ 0x02, {0x8D, 0x15} },//VCOM
+	{ 0x02, {0x8E, 0x15} },//VCOM
+	{ 0x02, {0x8F, 0x15} },//VCOM
+	{ 0x02, {0x91, 0x15} },//VCOM
+
+	{ 0x02, {0XFF, 0X23} },
+	{ 0x02, {0XFB, 0X01} },
+	{ 0x02, {0X00, 0X80} },
+	{ 0x02, {0x04, 0x05} },
+	{ 0x02, {0x05, 0x2d} },
+	{ 0x02, {0x06, 0x01} },
+	{ 0x02, {0x07, 0x00} },
+	{ 0x02, {0x08, 0x01} },
+	{ 0x02, {0x09, 0x00} },
+	{ 0x02, {0x11, 0x01} },
+	{ 0x02, {0x12, 0x95} },
+	{ 0x02, {0x15, 0x68} },
+	{ 0x02, {0x16, 0x0B} },
+	{ 0x02, {0xA0, 0x00} },
+	{ 0x02, {0x30, 0xFF} },
+	{ 0x02, {0x31, 0xF0} },
+	{ 0x02, {0x32, 0xEB} },
+	{ 0x02, {0x33, 0xE5} },
+	{ 0x02, {0x34, 0xDD} },
+	{ 0x02, {0x35, 0xDA} },
+	{ 0x02, {0x36, 0xD5} },
+	{ 0x02, {0x37, 0xD0} },
+	{ 0x02, {0x38, 0xCE} },
+	{ 0x02, {0x39, 0xCD} },
+	{ 0x02, {0x3A, 0xCD} },
+	{ 0x02, {0x3B, 0xCD} },
+	{ 0x02, {0x3D, 0xCB} },
+	{ 0x02, {0x3F, 0xCB} },
+	{ 0x02, {0x40, 0xC6} },
+	{ 0x02, {0x41, 0xBF} },
+	{ 0x02, {0x45, 0xFF} },
+	{ 0x02, {0x46, 0xF0} },
+	{ 0x02, {0x47, 0xE8} },
+	{ 0x02, {0x48, 0xCE} },
+	{ 0x02, {0x49, 0xBC} },
+	{ 0x02, {0x4A, 0xB8} },
+	{ 0x02, {0x4B, 0xB5} },
+	{ 0x02, {0x4C, 0xB0} },
+	{ 0x02, {0x4D, 0xA8} },
+	{ 0x02, {0x4E, 0xA0} },
+	{ 0x02, {0x4F, 0x9B} },
+	{ 0x02, {0x50, 0x98} },
+	{ 0x02, {0x51, 0x98} },
+	{ 0x02, {0x52, 0x88} },
+	{ 0x02, {0x53, 0x80} },
+	{ 0x02, {0x54, 0x7F} },
+	{ 0x02, {0x58, 0xFF} },
+	{ 0x02, {0x59, 0xF6} },
+	{ 0x02, {0x5A, 0xED} },
+	{ 0x02, {0x5B, 0xE6} },
+	{ 0x02, {0x5C, 0xDF} },
+	{ 0x02, {0x5D, 0xD8} },
+	{ 0x02, {0x5E, 0xD3} },
+	{ 0x02, {0x5F, 0xCE} },
+	{ 0x02, {0x60, 0xC9} },
+	{ 0x02, {0x61, 0xC4} },
+	{ 0x02, {0x62, 0xC1} },
+	{ 0x02, {0x63, 0xBE} },
+	{ 0x02, {0x64, 0xBB} },
+	{ 0x02, {0x65, 0xB8} },
+	{ 0x02, {0x66, 0xB6} },
+	{ 0x02, {0x67, 0xB5} },
+	{ 0x02, {0XFF, 0X24} },
+	//REGR 0XFE,0X24
+	{ 0x02, {0XFB, 0X01} },
+	{ 0x02, {0X01, 0X0F} },
+	{ 0x02, {0X03, 0X0C} },
+	{ 0x02, {0X05, 0X1D} },
+	{ 0x02, {0X08, 0X2F} },
+	{ 0x02, {0X09, 0X2E} },
+	{ 0x02, {0X0A, 0X2D} },
+	{ 0x02, {0X0B, 0X2C} },
+	{ 0x02, {0X11, 0X17} },
+	{ 0x02, {0X12, 0X13} },
+	{ 0x02, {0X13, 0X15} },
+	{ 0x02, {0X15, 0X14} },
+	{ 0x02, {0X16, 0X16} },
+	{ 0x02, {0X17, 0X18} },
+	{ 0x02, {0X1B, 0X01} },
+	{ 0x02, {0X1D, 0X1D} },
+	{ 0x02, {0X20, 0X2F} },
+	{ 0x02, {0X21, 0X2E} },
+	{ 0x02, {0X22, 0X2D} },
+	{ 0x02, {0X23, 0X2C} },
+	{ 0x02, {0X29, 0X17} },
+	{ 0x02, {0X2A, 0X13} },
+	{ 0x02, {0X2B, 0X15} },
+	{ 0x02, {0X2F, 0X14} },
+	{ 0x02, {0X30, 0X16} },
+	{ 0x02, {0X31, 0X18} },
+	{ 0x02, {0X32, 0X04} },
+	{ 0x02, {0X34, 0X10} },
+	{ 0x02, {0X35, 0X1F} },
+	{ 0x02, {0X36, 0X1F} },
+	{ 0x02, {0X37, 0X20} },
+	{ 0x02, {0X4D, 0X19} },
+	{ 0x02, {0X4E, 0X45} },
+	{ 0x02, {0X4F, 0X45} },
+	{ 0x02, {0X53, 0X45} },
+	{ 0x02, {0X71, 0X30} },
+	{ 0x02, {0X79, 0X11} },
+	{ 0x02, {0X7A, 0X82} },
+	{ 0x02, {0X7B, 0X94} },
+	{ 0x02, {0X7D, 0X04} },
+	{ 0x02, {0X80, 0X04} },
+	{ 0x02, {0X81, 0X04} },
+	{ 0x02, {0X82, 0X13} },
+	{ 0x02, {0X84, 0X31} },
+	{ 0x02, {0X85, 0X00} },
+	{ 0x02, {0X86, 0X00} },
+	{ 0x02, {0X87, 0X00} },
+	{ 0x02, {0X90, 0X13} },
+	{ 0x02, {0X92, 0X31} },
+	{ 0x02, {0X93, 0X00} },
+	{ 0x02, {0X94, 0X00} },
+	{ 0x02, {0X95, 0X00} },
+	{ 0x02, {0X9C, 0XF4} },
+	{ 0x02, {0X9D, 0X01} },
+	{ 0x02, {0XA0, 0X14} },
+	{ 0x02, {0XA2, 0X14} },
+	{ 0x02, {0XA3, 0X02} },
+	{ 0x02, {0XA4, 0X04} },
+	{ 0x02, {0XA5, 0X04} },
+	{ 0x02, {0XC6, 0XC0} },
+	{ 0x02, {0XC9, 0X00} },
+	{ 0x02, {0XD9, 0X80} },
+	{ 0x02, {0XE9, 0X02} },
+
+	{ 0x02, {0XFF, 0X25} },
+	//REGR 0XFE,0X25
+	{ 0x02, {0XFB, 0X01} },
+	{ 0x02, {0X18, 0X22} },
+	{ 0x02, {0X19, 0XE4} },
+	{ 0x02, {0X21, 0X40} },
+	{ 0x02, {0X66, 0XD8} },
+	{ 0x02, {0X68, 0X50} },
+	{ 0x02, {0X69, 0X10} },
+	{ 0x02, {0X6B, 0X00} },
+	{ 0x02, {0X6D, 0X0D} },
+	{ 0x02, {0X6E, 0X48} },
+	{ 0x02, {0X72, 0X41} },
+	{ 0x02, {0X73, 0X4A} },
+	{ 0x02, {0X74, 0XD0} },
+	{ 0x02, {0X77, 0X62} },
+	{ 0x02, {0X79, 0X7F} },
+	{ 0x02, {0X7D, 0X40} },
+	{ 0x02, {0X7E, 0X1D} },
+	{ 0x02, {0X7F, 0X00} },
+	{ 0x02, {0X80, 0X04} },
+	{ 0x02, {0X84, 0X0D} },
+	{ 0x02, {0XCF, 0X80} },
+	{ 0x02, {0XD6, 0X80} },
+	{ 0x02, {0XD7, 0X80} },
+	{ 0x02, {0XEF, 0X20} },
+	{ 0x02, {0XF0, 0X84} },
+
+	{ 0x02, {0XFF, 0X26} },
+	//REGR 0XFE,0X26
+	{ 0x02, {0XFB, 0X01} },
+	{ 0x02, {0X15, 0X04} },
+	{ 0x02, {0X81, 0X16} },
+	{ 0x02, {0X83, 0X02} },
+	{ 0x02, {0X84, 0X03} },
+	{ 0x02, {0X85, 0X01} },
+	{ 0x02, {0X86, 0X03} },
+	{ 0x02, {0X87, 0X01} },
+	{ 0x02, {0X88, 0X00} },
+	{ 0x02, {0X8A, 0X1A} },
+	{ 0x02, {0X8B, 0X11} },
+	{ 0x02, {0X8C, 0X24} },
+	{ 0x02, {0X8E, 0X42} },
+	{ 0x02, {0X8F, 0X11} },
+	{ 0x02, {0X90, 0X11} },
+	{ 0x02, {0X91, 0X11} },
+	{ 0x02, {0X9A, 0X81} },
+	{ 0x02, {0X9B, 0X03} },
+	{ 0x02, {0X9C, 0X00} },
+	{ 0x02, {0X9D, 0X00} },
+	{ 0x02, {0X9E, 0X00} },
+
+	{ 0x02, {0XFF, 0X27} },
+	//REGR 0XFE,0X27
+	{ 0x02, {0XFB, 0X01} },
+	{ 0x02, {0X01, 0X60} },
+	{ 0x02, {0X20, 0X81} },
+	{ 0x02, {0X21, 0XE7} },
+	{ 0x02, {0X25, 0X82} },
+	{ 0x02, {0X26, 0X1F} },
+	{ 0x02, {0X6E, 0X00} },
+	{ 0x02, {0X6F, 0X00} },
+	{ 0x02, {0X70, 0X00} },
+	{ 0x02, {0X71, 0X00} },
+	{ 0x02, {0X72, 0X00} },
+	{ 0x02, {0X75, 0X00} },
+	{ 0x02, {0X76, 0X00} },
+	{ 0x02, {0X77, 0X00} },
+	{ 0x02, {0X7D, 0X09} },
+	{ 0x02, {0X7E, 0X5F} },
+	{ 0x02, {0X80, 0X23} },
+	{ 0x02, {0X82, 0X09} },
+	{ 0x02, {0X83, 0X5F} },
+	{ 0x02, {0X88, 0X01} },
+	{ 0x02, {0X89, 0X10} },
+	{ 0x02, {0XA5, 0X10} },
+	{ 0x02, {0XA6, 0X23} },
+	{ 0x02, {0XA7, 0X01} },
+	{ 0x02, {0XB6, 0X40} },
+	{ 0x02, {0XE3, 0X02} },
+	{ 0x02, {0XE4, 0XDA} },
+	{ 0x02, {0XE5, 0X01} },
+	{ 0x02, {0XE6, 0X6D} },
+	{ 0x02, {0XE9, 0X03} },
+	{ 0x02, {0XEA, 0X2F} },
+	{ 0x02, {0XEB, 0X01} },
+	{ 0x02, {0XEC, 0X98} },
+
+	{ 0x02, {0XFF, 0X2A} },
+	//REGR 0XFE,0X2A
+	{ 0x02, {0XFB, 0X01} },
+	{ 0x02, {0X00, 0X91} },
+	{ 0x02, {0X03, 0X20} },
+	{ 0x02, {0X07, 0X52} },
+	{ 0x02, {0X0A, 0X70} },
+	{ 0x02, {0X0D, 0X40} },
+	{ 0x02, {0X0E, 0X02} },
+	{ 0x02, {0X11, 0XF0} },
+	{ 0x02, {0X15, 0X0E} },
+	{ 0x02, {0X16, 0XB6} },
+	{ 0x02, {0X19, 0X0E} },
+	{ 0x02, {0X1A, 0X8A} },
+	{ 0x02, {0X1B, 0X14} },
+	{ 0x02, {0X1D, 0X36} },
+	{ 0x02, {0X1E, 0X4F} },
+	{ 0x02, {0X1F, 0X4F} },
+	{ 0x02, {0X20, 0X4F} },
+	{ 0x02, {0X28, 0XEC} },
+	{ 0x02, {0X29, 0X0C} },
+	{ 0x02, {0X2A, 0X05} },
+	{ 0x02, {0X2D, 0X06} },
+	{ 0x02, {0X2F, 0X02} },
+	{ 0x02, {0X30, 0X4A} },
+	{ 0x02, {0X33, 0X0E} },
+	{ 0x02, {0X34, 0XEE} },
+	{ 0x02, {0X35, 0X30} },
+	{ 0x02, {0X36, 0X06} },
+	{ 0x02, {0X37, 0XE9} },
+	{ 0x02, {0X38, 0X34} },
+	{ 0x02, {0X39, 0X02} },
+	{ 0x02, {0X3A, 0X4A} },
+	{ 0x02, {0X46, 0X40} },
+	{ 0x02, {0X47, 0X02} },
+	{ 0x02, {0X4A, 0XF0} },
+	{ 0x02, {0X4E, 0X0E} },
+	{ 0x02, {0X4F, 0X9B} },
+	{ 0x02, {0X52, 0X0E} },
+	{ 0x02, {0X53, 0X6F} },
+	{ 0x02, {0X54, 0X14} },
+	{ 0x02, {0X56, 0X36} },
+	{ 0x02, {0X57, 0X7E} },
+	{ 0x02, {0X58, 0X7E} },
+	{ 0x02, {0X59, 0X7E} },
+	{ 0x02, {0X60, 0X80} },
+	{ 0x02, {0X61, 0XC7} },
+	{ 0x02, {0X62, 0X03} },
+	{ 0x02, {0X63, 0XF3} },
+	{ 0x02, {0X64, 0X03} },
+	{ 0x02, {0X65, 0X05} },
+	{ 0x02, {0X66, 0X01} },
+	{ 0x02, {0X67, 0X04} },
+	{ 0x02, {0X68, 0X8A} },
+	{ 0x02, {0X6A, 0X0F} },
+	{ 0x02, {0X6B, 0XC9} },
+	{ 0x02, {0X6C, 0X20} },
+	{ 0x02, {0X6D, 0XE3} },
+	{ 0x02, {0X6E, 0XC6} },
+	{ 0x02, {0X6F, 0X22} },
+	{ 0x02, {0X70, 0XE1} },
+	{ 0x02, {0X71, 0X04} },
+	{ 0x02, {0X7A, 0X07} },
+	{ 0x02, {0X7B, 0X40} },
+	{ 0x02, {0X7D, 0X01} },
+	{ 0x02, {0X7F, 0X2C} },
+	{ 0x02, {0X83, 0X0F} },
+	{ 0x02, {0X84, 0X12} },
+	{ 0x02, {0X87, 0X0E} },
+	{ 0x02, {0X88, 0XE6} },
+	{ 0x02, {0X89, 0X14} },
+	{ 0x02, {0X8B, 0X36} },
+	{ 0x02, {0X8C, 0X3A} },
+	{ 0x02, {0X8D, 0X3C} },
+	{ 0x02, {0X8E, 0X3A} },
+	{ 0x02, {0X95, 0X80} },
+	{ 0x02, {0X96, 0XFD} },
+	{ 0x02, {0X97, 0X14} },
+	{ 0x02, {0X98, 0X32} },
+	{ 0x02, {0X99, 0X01} },
+	{ 0x02, {0X9A, 0X08} },
+	{ 0x02, {0X9B, 0X02} },
+	{ 0x02, {0X9C, 0X4C} },
+	{ 0x02, {0X9D, 0XB1} },
+	{ 0x02, {0X9F, 0X75} },
+	{ 0x02, {0XA0, 0XFF} },
+	{ 0x02, {0XA2, 0X42} },
+	{ 0x02, {0XA3, 0X6F} },
+	{ 0x02, {0XA4, 0XF9} },
+	{ 0x02, {0XA5, 0X47} },
+	{ 0x02, {0XA6, 0X6A} },
+	{ 0x02, {0XA7, 0X4C} },
+
+	{ 0x02, {0XFF, 0X2C} },
+	//REGR 0XFE,0X2C
+	{ 0x02, {0XFB, 0X01} },
+	{ 0x02, {0X00, 0X02} },
+	{ 0x02, {0X01, 0X02} },
+	{ 0x02, {0X02, 0X02} },
+	{ 0x02, {0X03, 0X16} },
+	{ 0x02, {0X04, 0X16} },
+	{ 0x02, {0X05, 0X16} },
+	{ 0x02, {0X0D, 0X1F} },
+	{ 0x02, {0X0E, 0X1F} },
+	{ 0x02, {0X16, 0X1B} },
+	{ 0x02, {0X17, 0X4B} },
+	{ 0x02, {0X18, 0X4B} },
+	{ 0x02, {0X19, 0X4B} },
+	{ 0x02, {0X2A, 0X03} },
+	{ 0x02, {0X4D, 0X16} },
+	{ 0x02, {0X4E, 0X03} },
+	{ 0x02, {0X4F, 0X2E} },
+	{ 0x02, {0X53, 0X02} },
+	{ 0x02, {0X54, 0X02} },
+	{ 0x02, {0X55, 0X02} },
+	{ 0x02, {0X56, 0X0E} },
+	{ 0x02, {0X58, 0X0E} },
+	{ 0x02, {0X59, 0X0E} },
+	{ 0x02, {0X61, 0X1F} },
+	{ 0x02, {0X62, 0X1F} },
+	{ 0x02, {0X6A, 0X14} },
+	{ 0x02, {0X6B, 0X34} },
+	{ 0x02, {0X6C, 0X34} },
+	{ 0x02, {0X6D, 0X34} },
+	{ 0x02, {0X7E, 0X03} },
+	{ 0x02, {0X9D, 0X0F} },
+	{ 0x02, {0X9E, 0X03} },
+	{ 0x02, {0X9F, 0X00} },
+
+	{ 0x02, {0XFF, 0X20} },
+	{ 0x02, {0XFB, 0X01} },
+	{ 0x11, {0XB0, 0x00, 0x00, 0x00, 0x1F, 0x00, 0x49, 0x00, 0x6B, 0x00,
+		0x85, 0x00, 0x9C, 0x00, 0xB1, 0x00, 0xC4} },
+	{ 0x11, {0XB1, 0x00, 0xD1, 0x01, 0x07, 0x01, 0x30, 0x01, 0x6E, 0x01,
+		0x9E, 0x01, 0xE5, 0x02, 0x1E, 0x02, 0x1F} },
+	{ 0x11, {0XB2, 0x02, 0x56, 0x02, 0x96, 0x02, 0xBF, 0x02, 0xF4, 0x03,
+		0x16, 0x03, 0x41, 0x03, 0x51, 0x03, 0x5F} },
+	{ 0xF, {0XB3, 0x03, 0x6E, 0x03, 0x82, 0x03, 0x98, 0x03, 0xAC, 0x03,
+		0xCC, 0x03, 0xD8, 0x00, 0x00} },
+	{ 0x11, {0XB4, 0x00, 0x00, 0x00, 0x1E, 0x00, 0x49, 0x00, 0x69, 0x00,
+		0x84, 0x00, 0x9B, 0x00, 0xAF, 0x00, 0xC1} },
+	{ 0x11, {0XB5, 0x00, 0xD2, 0x01, 0x07, 0x01, 0x30, 0x01, 0x6E, 0x01,
+		0x9D, 0x01, 0xE5, 0x02, 0x1F, 0x02, 0x20} },
+	{ 0x11, {0XB6, 0x02, 0x57, 0x02, 0x96, 0x02, 0xBF, 0x02, 0xF3, 0x03,
+		0x16, 0x03, 0x3F, 0x03, 0x4F, 0x03, 0x5D} },
+	{ 0xF, {0XB7, 0x03, 0x6D, 0x03, 0x81, 0x03, 0x98, 0x03, 0xAC, 0x03,
+		0xCC, 0x03, 0xD8, 0x00, 0x00} },
+	{ 0x11, {0XB8, 0x00, 0x00, 0x00, 0x20, 0x00, 0x48, 0x00, 0x6A, 0x00,
+		0x86, 0x00, 0x9F, 0x00, 0xB5, 0x00, 0xC6} },
+	{ 0x11, {0XB9, 0x00, 0xD8, 0x01, 0x0D, 0x01, 0x36, 0x01, 0x73, 0x01,
+		0xA1, 0x01, 0xE8, 0x02, 0x21, 0x02, 0x22} },
+	{ 0x11, {0XBA, 0x02, 0x58, 0x02, 0x98, 0x02, 0xC1, 0x02, 0xF7, 0x03,
+		0x1B, 0x03, 0x41, 0x03, 0x54, 0x03, 0x66} },
+	{ 0xF, {0XBB, 0x03, 0x6E, 0x03, 0x82, 0x03, 0x98, 0x03, 0xAC, 0x03,
+		0xD0, 0x03, 0xD8, 0x00, 0x00} },
+
+	{ 0x02, {0XFF, 0X21} },
+	{ 0x02, {0XFB, 0X01} },
+	{ 0x11, {0XB0, 0x00, 0x00, 0x00, 0x1F, 0x00, 0x49, 0x00, 0x6B, 0x00,
+		0x85, 0x00, 0x9C, 0x00, 0xB1, 0x00, 0xC4} },
+	{ 0x11, {0XB1, 0x00, 0xD1, 0x01, 0x07, 0x01, 0x30, 0x01, 0x6E, 0x01,
+		0x9E, 0x01, 0xE5, 0x02, 0x1E, 0x02, 0x1F} },
+	{ 0x11, {0XB2, 0x02, 0x56, 0x02, 0x96, 0x02, 0xBF, 0x02, 0xF4, 0x03,
+		0x16, 0x03, 0x41, 0x03, 0x51, 0x03, 0x5F} },
+	{ 0xF, {0XB3, 0x03, 0x6E, 0x03, 0x82, 0x03, 0x98, 0x03, 0xAC, 0x03,
+		0xCC, 0x03, 0xD8, 0x00, 0x00} },
+	{ 0x11, {0XB4, 0x00, 0x00, 0x00, 0x1E, 0x00, 0x49, 0x00, 0x69, 0x00,
+		0x84, 0x00, 0x9B, 0x00, 0xAF, 0x00, 0xC1} },
+	{ 0x11, {0XB5, 0x00, 0xD2, 0x01, 0x07, 0x01, 0x30, 0x01, 0x6E, 0x01,
+		0x9D, 0x01, 0xE5, 0x02, 0x1F, 0x02, 0x20} },
+	{ 0x11, {0XB6, 0x02, 0x57, 0x02, 0x96, 0x02, 0xBF, 0x02, 0xF3, 0x03,
+		0x16, 0x03, 0x3F, 0x03, 0x4F, 0x03, 0x5D} },
+	{ 0xF, {0XB7, 0x03, 0x6D, 0x03, 0x81, 0x03, 0x98, 0x03, 0xAC, 0x03,
+		0xCC, 0x03, 0xD8, 0x00, 0x00} },
+	{ 0x11, {0XB8, 0x00, 0x00, 0x00, 0x20, 0x00, 0x48, 0x00, 0x6A, 0x00,
+		0x86, 0x00, 0x9F, 0x00, 0xB5, 0x00, 0xC6} },
+	{ 0x11, {0XB9, 0x00, 0xD8, 0x01, 0x0D, 0x01, 0x36, 0x01, 0x73, 0x01,
+		0xA1, 0x01, 0xE8, 0x02, 0x21, 0x02, 0x22} },
+	{ 0x11, {0XBA, 0x02, 0x58, 0x02, 0x98, 0x02, 0xC1, 0x02, 0xF7, 0x03,
+		0x1B, 0x03, 0x41, 0x03, 0x54, 0x03, 0x66} },
+	{ 0xF, {0XBB, 0x03, 0x6E, 0x03, 0x82, 0x03, 0x98, 0x03, 0xAC, 0x03,
+		0xD0, 0x03, 0xD8, 0x00, 0x00} },
+	{ 0x02, {0XFF, 0X2B} },
+	{ 0x02, {0XFB, 0X01} },
+	{ 0x02, {0XB7, 0X06} },
+	{ 0x02, {0XB8, 0X03} },
+	{ 0x02, {0XC0, 0X03} },
+
+	{ 0x02, {0XFF, 0XE0} },
+	//REGR 0XFE,0XE0
+	{ 0x02, {0XFB, 0X01} },
+	{ 0x02, {0X35, 0X82} },
+
+	{ 0x02, {0XFF, 0XF0} },
+	//REGR 0XFE,0XF0
+	{ 0x02, {0XFB, 0X01} },
+	{ 0x02, {0X5A, 0X00} },
+	{ 0x02, {0X1C, 0X01} },
+	{ 0x02, {0X33, 0X01} },
+
+	{ 0x02, {0XFF, 0XD0} },
+	//REGR 0XFE,0XD0
+	{ 0x02, {0XFB, 0X01} },
+	{ 0x02, {0X53, 0X22} },
+	{ 0x02, {0X54, 0X02} },
+
+	{ 0x02, {0XFF, 0XC0} },
+	//CCMON
+	{ 0x02, {0XFB, 0X01} },
+	{ 0x02, {0X9C, 0X11} },
+	{ 0x02, {0X9D, 0X11} },
+	//CCMOFF
+	//CCMRUN
+	{ 0x02, {0XFF, 0X10} },
+	{ 0x02, {0XFB, 0X01} },
+	{ 0x02, {0X35, 0X01} },//TE Enable
+	{ 0x02, {0X51, 0XFF} },//Write_Display_Brightness
+	{ 0x02, {0X53, 0X0C} },//Write_CTRL_Display
+	{ 0x02, {0X55, 0X00} },//Write CABC
+
+	{ 0x01, {0x11} },
+	{ 0x01, {0x29} },
+
+	//jdi_dcs_write_seq(ctx, bl_tb0[0], bl_tb0[1]} }, no_need? hc1
+};
+
 static void jdi_panel_init(struct jdi *ctx)
 {
 	ctx->reset_gpio = devm_gpiod_get(ctx->dev, "reset", GPIOD_OUT_HIGH);
@@ -832,11 +1325,6 @@ static int jdi_unprepare(struct drm_panel *panel)
 	if (!ctx->prepared)
 		return 0;
 
-	jdi_dcs_write_seq_static(ctx, MIPI_DCS_SET_DISPLAY_OFF);
-	msleep(50);
-	jdi_dcs_write_seq_static(ctx, MIPI_DCS_ENTER_SLEEP_MODE);
-	msleep(150);
-
 	ctx->reset_gpio = devm_gpiod_get(ctx->dev, "reset", GPIOD_OUT_HIGH);
 	gpiod_set_value(ctx->reset_gpio, 0);
 	devm_gpiod_put(ctx->dev, ctx->reset_gpio);
@@ -906,13 +1394,15 @@ static int jdi_prepare(struct drm_panel *panel)
 	_lcm_i2c_write_bytes(0x0, 0xf);
 	_lcm_i2c_write_bytes(0x1, 0xf);
 #endif
-	jdi_panel_init(ctx);
+
+	//jdi_panel_init(ctx);
 
 	ret = ctx->error;
 	if (ret < 0)
 		jdi_unprepare(panel);
 
-	ctx->prepared = true;
+	//ctx->prepared = true;
+
 #ifdef PANEL_SUPPORT_READBACK
 	jdi_panel_get_data(ctx);
 #endif
@@ -1515,6 +2005,155 @@ static int mtk_set_value(int value)
 	return 0;
 }
 
+static int lcm_panel_init_v2(void *dsi_drv, struct drm_panel *panel, void *handle, mtk_dsi_ddic_cmd cb,
+			struct mtk_dsi_cmd_option *cmd_opt)
+{
+	int ret = 0;
+	struct jdi *ctx = panel_to_jdi(panel);
+	static struct mipi_dsi_msg init_cmd[ARRAY_SIZE(lcm_init_setting)] = { 0 };
+	static int flag;
+	int i;
+
+	pr_info("%s ++, fps = %d\n", __func__, current_fps);
+
+	if (!panel) {
+		pr_err("%s, error, panel is NULL\n", __func__);
+		return -1;
+	}
+
+	if (ctx->prepared) {
+		pr_info("%s skip\n", __func__);
+		return 0;
+	}
+
+	if (!flag) {
+		flag = 1;
+		for (i = 0; i < ARRAY_SIZE(lcm_init_setting); i++) {
+			init_cmd[i].tx_len= lcm_init_setting[i].count;
+			init_cmd[i].tx_buf = lcm_init_setting[i].para_list;
+		}
+	}
+	struct mtk_dsi_cmd_msg fhd_cmd = {
+		.is_rd = 0, /* 0:write 1:read */
+		.is_package = 0,
+		.rd_to_slot = 0,
+		.cmd_num = ARRAY_SIZE(lcm_init_setting),
+		.transfer_mode = PACKET_LP_MODE,
+		.cmd_msg = init_cmd,
+	};
+
+	ctx->reset_gpio = devm_gpiod_get(ctx->dev, "reset", GPIOD_OUT_HIGH);
+	usleep_range(10 * 1000, 15 * 1000);
+	gpiod_set_value(ctx->reset_gpio, 0);
+	usleep_range(10 * 1000, 15 * 1000);
+	gpiod_set_value(ctx->reset_gpio, 1);
+	usleep_range(10 * 1000, 15 * 1000);
+	devm_gpiod_put(ctx->dev, ctx->reset_gpio);
+
+	ret = cb(dsi_drv, handle, cmd_opt, &fhd_cmd);
+	if (ret < 0) {
+		pr_info("%s error\n", __func__);
+		goto end;
+	}
+
+	ctx->prepared = true;
+	pr_info("%s --\n", __func__);
+
+end:
+	return ret;
+}
+
+static int lcm_panel_init(struct drm_panel *panel)
+{
+	int ret;
+	struct jdi *ctx = panel_to_jdi(panel);
+
+	pr_info("%s ++\n", __func__);
+
+	if (ctx->prepared) {
+		pr_info("%s skip\n", __func__);
+		return 0;
+	}
+
+	jdi_panel_init(ctx);
+	ret = ctx->error;
+	if (ret < 0) {
+		pr_err("%s error\n", __func__);
+		jdi_unprepare(panel);
+		return -1;
+	}
+
+	ctx->prepared = true;
+	pr_info("%s --\n", __func__);
+
+	return 0;
+}
+
+static int lcm_panel_deinit(struct drm_panel *panel)
+{
+	struct jdi *ctx = panel_to_jdi(panel);
+
+	pr_info("%s ++\n", __func__);
+
+	if (!ctx->prepared) {
+		pr_info("%s skip\n", __func__);
+		return 0;
+	}
+
+	jdi_dcs_write_seq_static(ctx, MIPI_DCS_SET_DISPLAY_OFF);
+	msleep(50);
+	jdi_dcs_write_seq_static(ctx, MIPI_DCS_ENTER_SLEEP_MODE);
+	msleep(150);
+
+	pr_info("%s --\n", __func__);
+
+	return 0;
+}
+
+static int lcm_panel_deinit_v2(void *dsi_drv, struct drm_panel *panel, void *handle, mtk_dsi_ddic_cmd cb,
+			struct mtk_dsi_cmd_option *cmd_opt)
+{
+	int i, ret = 0;
+	static int flag;
+	struct jdi *ctx = panel_to_jdi(panel);
+	static struct mipi_dsi_msg deinit_code[ARRAY_SIZE(lcm_deinit_setting_vfp)] = { 0 };
+
+	pr_info("%s ++, fps = %d\n", __func__, current_fps);
+
+	if (!ctx->prepared) {
+		pr_info("%s skip\n", __func__);
+		return 0;
+	}
+
+	if (!flag) {
+		flag = 1;
+		for (i = 0; i < ARRAY_SIZE(lcm_deinit_setting_vfp); i++) {
+			deinit_code[i].tx_len= lcm_deinit_setting_vfp[i].count;
+			deinit_code[i].tx_buf = lcm_deinit_setting_vfp[i].para_list;
+		}
+	}
+
+	struct mtk_dsi_cmd_msg deinit_cmd = {
+		.is_rd = 0, /* 0:write 1:read */
+		.is_package = 0,
+		.rd_to_slot = 0,
+		.cmd_num = ARRAY_SIZE(lcm_deinit_setting_vfp),
+		.transfer_mode = PACKET_LP_MODE,
+		.cmd_msg = deinit_code,
+	};
+
+	ret = cb(dsi_drv, handle, cmd_opt, &deinit_cmd);
+	if (ret < 0) {
+		pr_info("%s error\n", __func__);
+		goto end;
+	}
+
+	pr_info("%s --\n", __func__);
+
+end:
+	return ret;
+}
+
 static struct mtk_panel_funcs ext_funcs = {
 	.reset = panel_ext_reset,
 	.set_backlight_cmdq = jdi_setbacklight_cmdq,
@@ -1525,6 +2164,11 @@ static struct mtk_panel_funcs ext_funcs = {
 	.set_value = mtk_set_value,
 	.get_res_switch_type = mtk_get_res_switch_type,
 	.scaling_mode_mapping = mtk_scaling_mode_mapping,
+
+	.panel_init = lcm_panel_init,
+	.panel_deinit = lcm_panel_deinit,
+	.panel_init_v2 = lcm_panel_init_v2,
+	.panel_deinit_v2 = lcm_panel_deinit_v2,
 };
 
 #endif
