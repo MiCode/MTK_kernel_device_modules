@@ -850,7 +850,7 @@ static void mtk_drm_idlemgr_perf_update(struct drm_crtc *crtc,
 				perf->leave_min_cost = cost;
 			perf->leave_total_cost += cost;
 
-			if (perf->count % 50 == 0)
+			if (perf->count % 500 == 0)
 				mtk_drm_idlemgr_perf_dump_func(crtc, false);
 		}
 	}
@@ -2094,6 +2094,18 @@ int mtk_drm_idlemgr_init(struct drm_crtc *crtc, int index)
 
 		mtk_drm_add_cpu_freq(crtc);
 		cpu_latency_qos_add_request(&idlemgr->cpu_qos_req, PM_QOS_DEFAULT_VALUE);
+
+		DDPMSG("%s: crtc:%u start idle perf monitor\n", __func__, index);
+		idlemgr->perf = kzalloc(sizeof(struct mtk_drm_idlemgr_perf), GFP_KERNEL);
+		if (IS_ERR_OR_NULL(idlemgr->perf)) {
+			DDPPR_ERR("%s, failed to allocate perf\n", __func__);
+			idlemgr->perf = NULL;
+		} else {
+			mtk_drm_idlemgr_perf_reset(crtc);
+			perf_aee_timeout = 1000; //1s timeout
+			DDPMSG("%s: crtc:%u start idle perf monitor done, timeout:%ums\n",
+				__func__, index, perf_aee_timeout);
+		}
 	}
 
 	return 0;
@@ -2300,6 +2312,9 @@ static void mtk_drm_idlemgr_disable_crtc(struct drm_crtc *crtc)
 	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
 				"vblank_off", 13, perf_string, false);
 	drm_crtc_vblank_off(crtc);
+
+	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
+				"vblank_irq", 0xd1, perf_string, false);
 	mtk_crtc_vblank_irq(&mtk_crtc->base);
 
 	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
@@ -2311,7 +2326,7 @@ static void mtk_drm_idlemgr_disable_crtc(struct drm_crtc *crtc)
 	}
 
 	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
-				"vsync_switch", -1, perf_string, false);
+				"vsync_switch", 15, perf_string, false);
 	/* 9. disable fake vsync if need */
 	mtk_drm_fake_vsync_switch(crtc, false);
 
@@ -2420,6 +2435,8 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 		/* 1. power on mtcmos & init apsrc*/
 		mtk_drm_top_clk_prepare_enable(crtc);
 
+		mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
+					"default_rst", 0x21, perf_string, true);
 		mtk_crtc_default_path_rst(crtc);
 
 		mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
@@ -2428,18 +2445,29 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 			MTK_APSRC_CRTC_DEFAULT, false);
 	}
 
+	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
+				"gce_cfg", 0x31, perf_string, true);
 	mtk_crtc_gce_event_config(crtc);
+
+	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
+				"vdisp_cfg", 0x32, perf_string, true);
 	mtk_crtc_vdisp_ao_config(crtc);
+
+	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
+				"lpc_cfg", 0x33, perf_string, true);
 	comp = mtk_ddp_comp_request_output_lpc(mtk_crtc);
 	mtk_ddp_comp_io_cmd(comp, NULL, DSI_LPC_INIT_CONFIG, NULL);
 
-	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
-				"update_mmclk", 4, perf_string, true);
 	/* 2. Request MMClock before enabling connector*/
 	mtk_crtc_attach_ddp_comp(crtc, mtk_crtc->ddp_mode, true);
 	if (output_comp) {
+		mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
+					"update_mmclk", 4, perf_string, true);
 		mtk_ddp_comp_io_cmd(output_comp, NULL, SET_MMCLK_BY_DATARATE,
 				&en);
+
+		mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
+					"gce_cfg2", 0x41, perf_string, true);
 		/* For dbgtp fifo mon WA */
 		mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_GCE_EVENT_CFG, NULL);
 	}
@@ -2473,30 +2501,44 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
 				"async_wait1", 8, perf_string, true);
 	mtk_drm_idle_async_wait(crtc, 50, "prepare_async");
+
+	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
+				"dsi_gold", 0x81, perf_string, true);
 	mtk_drm_idlemgr_set_dsi_golden(crtc);
 
 	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
-				"atf_instr", 9, perf_string, true);
+				"slot_init", 9, perf_string, true);
 	mtk_gce_backup_slot_init(mtk_crtc);
 
 #ifndef DRM_CMDQ_DISABLE
-	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_USE_M4U))
+	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_USE_M4U)) {
+		mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
+					"atf_instr", 0x91, perf_string, true);
 		mtk_crtc_prepare_instr(crtc);
+	}
 #endif
 
-	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
-				"start_trig_loop", 10, perf_string, true);
 	/* 6. start trigger loop first to keep gce alive */
 	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 	if (!IS_ERR_OR_NULL(output_comp) &&
 		mtk_ddp_comp_get_type(output_comp->id) == MTK_DSI) {
+		mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
+					"start_sodi", 10, perf_string, true);
 		if (mtk_crtc_with_sodi_loop(crtc) &&
 			(!mtk_crtc_is_frame_trigger_mode(crtc)))
 			mtk_crtc_start_sodi_loop(crtc);
 
+		mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
+					"start_trig_loop", 0xa1, perf_string, true);
 		mtk_crtc_start_trig_loop(crtc);
+
+		mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
+					"hw_block", 0xa2, perf_string, true);
 		mtk_crtc_hw_block_ready(crtc);
 	}
+
+	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
+				"start_bwm", 0xa3, perf_string, true);
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BW_MONITOR) &&
 		(priv->data->mmsys_id == MMSYS_MT6991 ||
 		priv->data->mmsys_id == MMSYS_MT6993) && crtc_id == 0)
@@ -2512,14 +2554,19 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 	mtk_crtc_connect_default_path(mtk_crtc);
 
 	if (priv->data->ovl_exdma_rule) {
+		mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
+					"exdma_rst", 0xc1, perf_string, true);
 
 		mtk_drm_crtc_exdma_path_setting_reset_without_cmdq(mtk_crtc);
 		mtk_crtc->reset_path = true;
 	}
 
 #ifdef SHARE_WROT_SRAM
-	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_SHARE_SRAM))
+	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_SHARE_SRAM)) {
+		mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
+				"share_sram", 0xc2, perf_string, true);
 		mtk_drm_enter_share_sram(crtc, false);
+	}
 #endif
 
 	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
@@ -2537,6 +2584,8 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 			mtk_crtc_connect_addon_module(crtc, false);
 		else if (crtc_state->lye_state.mml_ir_lye) {
 			mtk_crtc_addon_connector_connect(crtc, NULL);
+			mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
+					"en_bwm", 0xe1, perf_string, true);
 			if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BWM20))
 				mtk_crtc_bwm_enable(crtc, NULL);
 		}
@@ -2556,6 +2605,8 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 		mtk_disp_set_hrt_bw(mtk_crtc,
 			mtk_crtc->qos_ctx->last_hrt_req);
 
+	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
+				"update_ch_hrt", 0xf1, perf_string, true);
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MAX_CHANNEL_HRT)) {
 		mtk_disp_set_all_channel_hrt_bw(mtk_crtc, mtk_crtc->qos_ctx->last_channel_req,
 			ARRAY_SIZE(mtk_crtc->qos_ctx->last_channel_req), __func__);
@@ -2568,6 +2619,8 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 				mtk_crtc->qos_ctx->last_channel_req[i], i);
 	}
 
+	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
+				"update_ch_srt", 0xf2, perf_string, true);
 	if (priv->data->update_channel_hrt_write &&
 		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMQOS_SUPPORT)) {
 		for (i = 0; i < BW_CHANNEL_NR; i++)
@@ -2580,6 +2633,8 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 	/* 11. restore OVL setting */
 	mtk_crtc_restore_plane_setting(mtk_crtc);
 
+	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
+				"update_ostd", 0x101, perf_string, true);
 	if (priv->data->respective_ostdl) {
 		bw_base = mtk_drm_primary_frame_bw(crtc);
 		mtk_disp_set_module_hrt(mtk_crtc, bw_base, NULL, PMQOS_SET_HRT_BW);
@@ -2648,7 +2703,7 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 		if (perf_aee_timeout > 0 && cost > (unsigned long long)perf_aee_timeout * 1000) {
 			DDPAEE("[IDLE] perf drop:%lluus, timeout:%lluus\n",
 				cost, (unsigned long long)(perf_aee_timeout * 1000U));
-			perf_aee_timeout = 0;
+			//perf_aee_timeout = 0;
 		}
 	}
 
