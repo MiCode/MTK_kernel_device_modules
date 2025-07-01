@@ -5831,6 +5831,7 @@ dramc: dramc@10230000 {
 				"path_jpegenc_bsdma";
 			operating-points-v2 = <&opp_table_venc>;
 			config-larbaddr;
+			qos-enablevcp;
 		};
 
 		keypad: kp@1c00e000 {
