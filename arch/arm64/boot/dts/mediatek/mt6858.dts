@@ -7032,15 +7032,21 @@ dramc: dramc@10230000 {
 			reg = <0 0x1cce0000 0 0x100>, /* Re-use scp hw mbox4 */
 				<0 0x1cce0100 0 0x4>,
 				<0 0x1cce010c 0 0x4>,
-			<0 0x1ccf0000 0 0x100>, /* Re-use scp hw mbox5 */
+				<0 0x1ccf0000 0 0x100>, /* Re-use scp hw mbox5 */
 				<0 0x1ccf0100 0 0x4>,
-				<0 0x1ccf010c 0 0x4>;
+				<0 0x1ccf010c 0 0x4>,
+				<0 0x00000000 0 0x0>; /* IFRBUS_AO HRT CFG */
 
 			reg-names = "mbox0_base", "mbox0_set", "mbox0_clr",
-				"mbox1_base", "mbox1_set", "mbox1_clr";
+				"mbox1_base", "mbox1_set", "mbox1_clr",
+				"cfg_hrt";
 			interrupts = <GIC_SPI 522 IRQ_TYPE_LEVEL_HIGH 0>,
 				<GIC_SPI 535 IRQ_TYPE_LEVEL_HIGH 0>;
 			interrupt-names = "mbox0", "mbox1";
+			hrt-ctrl-bits = <0x00000000>;
+			interconnects = <&dvfsrc MT6873_MASTER_HRT_ADSP
+					&dvfsrc MT6873_SLAVE_HRT_DDR_EMI>;
+			interconnect-names = "icc-hrt-bw";
 			mbox-attr = <0x0>, /* mbox0 */
 				<0x0>; /* mbox1 */
 			adsp-rsv-logger-a = <0x180000>;
@@ -9930,6 +9936,12 @@ dramc: dramc@10230000 {
 		/* mediatek,headset-codec = <&accdet>; */
 		mediatek,platform = <&afe>;
 		mediatek,ipm = <1>; /* 0: old version; 1: IPM2.0 */
+	};
+
+	/* scene: $enable $bandwidth */
+	audio_dsp_hrt_bw: audio-dsp-hrt-bw {
+		compatible = "mediatek,mt6858-audio-dsp-hrt-bw";
+		adsp-qos-scene-phone-call = <0x1 500>;
 	};
 
 	/* feature : $enable $dl_mem $ul_mem $ref_mem $size */
