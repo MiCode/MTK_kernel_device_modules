@@ -95,7 +95,9 @@ static void mtu3_vbus_draw_work(struct work_struct *data)
 	int ret;
 
 	if (mtu->is_active) {
-		if (mtu->vbus_draw < USB_SELF_POWER_VBUS_MAX_DRAW)
+		if (!mtu->gadget_suspend && mtu->g.state == USB_STATE_CONFIGURED)
+			val.intval = UNLIMIT_CURRENT_MASK; /* unlimited */
+		else if (mtu->vbus_draw < USB_SELF_POWER_VBUS_MAX_DRAW)
 			val.intval = 0; /* 0 mA*/
 		else if (mtu->vbus_draw == USB_SELF_POWER_VBUS_MAX_DRAW)
 			val.intval = 100; /* 100 mA*/

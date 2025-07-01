@@ -580,6 +580,7 @@ struct mtu3 {
 	const char *typec_name;
 	const char *typec_port_name;
 	struct typec_port *typec_port;
+	bool gadget_suspend;
 };
 
 /* struct ssusb_offload */
