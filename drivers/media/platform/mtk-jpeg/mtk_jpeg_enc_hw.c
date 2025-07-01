@@ -111,6 +111,8 @@ void mtk_jpeg_set_enc_src(struct mtk_jpeg_ctx *ctx,  void __iomem *base,
 {
 	int i;
 	dma_addr_t dma_addr;
+	u32 value = 0;
+	struct mtk_jpeg_dev *jpeg = ctx->jpeg;
 
 	for (i = 0; i < src_buf->num_planes; i++) {
 		dma_addr = vb2_dma_contig_plane_dma_addr(src_buf, i) +
@@ -121,12 +123,26 @@ void mtk_jpeg_set_enc_src(struct mtk_jpeg_ctx *ctx,  void __iomem *base,
 	#ifdef CONFIG_ARCH_DMA_ADDR_T_64BIT
 			writel(dma_addr >> 32, base + JPEG_ENC_SRC_LUMA_ADDR_EXT);
 	#endif
+			if (jpeg->config_larbaddr && jpeg->gcon_base != NULL) {
+				value = readl(jpeg->gcon_base + VENC_LARBX_CFG2);
+				value &= 0xFFFFFFF8;
+				value |= (dma_addr >> 32);
+				writel(value, jpeg->gcon_base + VENC_LARBX_CFG2);
+			}
 		} else {
 			pr_info("%s %d dma_addr %pad", __func__, __LINE__, &dma_addr);
 			writel(dma_addr, base + JPEG_ENC_SRC_CHROMA_ADDR);
 	#ifdef CONFIG_ARCH_DMA_ADDR_T_64BIT
 			writel(dma_addr >> 32, base + JPEG_ENC_SRC_CHROMA_ADDR_EXT);
 	#endif
+			if (jpeg->config_larbaddr && jpeg->gcon_base != NULL) {
+				value = readl(jpeg->gcon_base + VENC_LARBX_CFG2);
+				pr_info("%s %d read value %x", __func__, __LINE__, value);
+				value &= 0xFFFFFFC7;
+				value |= ((dma_addr >> 32) << 3);
+				pr_info("%s %d write value %x", __func__, __LINE__, value);
+				writel(value, jpeg->gcon_base + VENC_LARBX_CFG2);
+			}
 		}
 	}
 }
@@ -138,8 +154,12 @@ void mtk_jpeg_set_enc_dst(struct mtk_jpeg_ctx *ctx, void __iomem *base,
 	size_t size;
 	u32 dma_addr_offset;
 	u32 dma_addr_offsetmask;
+	u32 value = 0;
+	struct mtk_jpeg_dev *jpeg = ctx->jpeg;
 
 	dma_addr = vb2_dma_contig_plane_dma_addr(dst_buf, 0);
+	pr_info("%s %d dma_addr %pad", __func__, __LINE__, &dma_addr);
+
 	dma_addr += ctx->dst_offset;
 	dma_addr_offset = 0;
 	dma_addr_offsetmask = dma_addr & JPEG_ENC_DST_ADDR_OFFSET_MASK;
@@ -151,6 +171,13 @@ void mtk_jpeg_set_enc_dst(struct mtk_jpeg_ctx *ctx, void __iomem *base,
 	#ifdef CONFIG_ARCH_DMA_ADDR_T_64BIT
 	writel(dma_addr >> 32, base + JPEG_ENC_DEST_ADDR0_EXT);
 	#endif
+	if (jpeg->config_larbaddr && jpeg->gcon_base != NULL) {
+		value = readl(jpeg->gcon_base + VENC_LARBX_CFG2);
+		value &= 0xFFFFF1FF;
+		value |= ((dma_addr >> 32) << 9);
+		writel(value, jpeg->gcon_base + VENC_LARBX_CFG2);
+	}
+
 	writel((dma_addr + size) & ~0xf, base + JPEG_ENC_STALL_ADDR0);
 	#ifdef CONFIG_ARCH_DMA_ADDR_T_64BIT
 	writel(((dma_addr + size)>>32), base + JPEG_ENC_STALL_ADDR0_EXT);

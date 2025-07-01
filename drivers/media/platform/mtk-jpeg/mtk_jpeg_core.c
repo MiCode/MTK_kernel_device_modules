@@ -2193,6 +2193,9 @@ static int mtk_jpeg_probe(struct platform_device *pdev)
 	jpeg->is_mmqos_level = of_property_read_bool(pdev->dev.of_node, "mmqos-level");
 	dev_info(&pdev->dev, "mmqos_level: 0x%x", jpeg->is_mmqos_level);
 
+	jpeg->config_larbaddr = of_property_read_bool(pdev->dev.of_node, "config-larbaddr");
+	dev_info(&pdev->dev, "config-larbaddr: 0x%x", jpeg->config_larbaddr);
+
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	jpeg->reg_base = devm_ioremap_resource(&pdev->dev, res);
 	if (IS_ERR(jpeg->reg_base)) {

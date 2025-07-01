@@ -86,6 +86,7 @@
 
 
 #define VENC_GCON_RESOURCE_FLAT_SET 0x10
+#define VENC_LARBX_CFG2             0x110
 #define VENC_MMQOS                  0x318
 #define VENC_MMQOS_ULTRA            0x39C
 

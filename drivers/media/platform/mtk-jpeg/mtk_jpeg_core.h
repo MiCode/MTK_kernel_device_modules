@@ -180,6 +180,7 @@ struct mtk_jpeg_dev {
 	u32 mmdvfs_vcp_idx;
 	u32 yuv422_bw;
 	u32 yuv420_bw;
+	bool config_larbaddr;
 };
 
 /**
