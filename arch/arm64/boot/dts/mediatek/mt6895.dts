@@ -9546,6 +9546,7 @@
 			comp-ids = <MML_HDR0>;
 			comp-names = "hdr0";
 			event-vcp-readback-done = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_VCP_READBACK>;
+			event-frame-done = /bits/ 16 <CMDQ_EVENT_MDPSYS1_MDP_HDR0_FRAME_DONE>;
 		};
 
 		mml_hdr1: mml-hdr1@1f806000 {
@@ -9556,6 +9557,7 @@
 			comp-ids = <MML_HDR1>;
 			comp-names = "hdr1";
 			event-vcp-readback-done = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_VCP_READBACK>;
+			event-frame-done = /bits/ 16 <CMDQ_EVENT_MDPSYS1_MDP_HDR1_FRAME_DONE>;
 		};
 
 		mml_aal0: mml-aal0@1f807000 {
@@ -9569,6 +9571,7 @@
 			sram-curve-base = /bits/ 32 <4608>;
 			sram-his-base = /bits/ 32 <1536>;
 			event-vcp-readback-done = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_VCP_READBACK>;
+			event-frame-done = /bits/ 16 <CMDQ_EVENT_MDPSYS1_MDP_AAL0_FRAME_DONE>;
 		};
 
 		mml_aal1: mml-aal1@1f808000 {
@@ -9582,6 +9585,7 @@
 			sram-curve-base = /bits/ 32 <4608>;
 			sram-his-base = /bits/ 32 <1536>;
 			event-vcp-readback-done = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_VCP_READBACK>;
+			event-frame-done = /bits/ 16 <CMDQ_EVENT_MDPSYS1_MDP_AAL1_FRAME_DONE>;
 		};
 
 		mml_rsz0: mml-rsz0@1f809000 {
