@@ -650,8 +650,8 @@ TRACE_EVENT(sched_task_util,
 
 TRACE_EVENT(sched_task_uest,
 	TP_PROTO(int pid, unsigned int dequeued, unsigned int ewma, unsigned int util_est,
-		unsigned long runnable_avg, bool runnable_aware),
-	TP_ARGS(pid, dequeued, ewma, util_est, runnable_avg, runnable_aware),
+		unsigned long runnable_avg, bool runnable_aware, unsigned int weight_shift),
+	TP_ARGS(pid, dequeued, ewma, util_est, runnable_avg, runnable_aware, weight_shift),
 	TP_STRUCT__entry(
 		__field(int, pid)
 		__field(unsigned int, dequeued)
@@ -659,6 +659,7 @@ TRACE_EVENT(sched_task_uest,
 		__field(unsigned int, util_est)
 		__field(unsigned long, runnable_avg)
 		__field(bool, runnable_aware)
+		__field(unsigned int, weight_shift)
 	),
 	TP_fast_assign(
 		__entry->pid = pid;
@@ -667,15 +668,17 @@ TRACE_EVENT(sched_task_uest,
 		__entry->util_est = util_est;
 		__entry->runnable_avg = runnable_avg;
 		__entry->runnable_aware = runnable_aware;
+		__entry->weight_shift = weight_shift;
 	),
 	TP_printk(
-		"pid=%d dequeued=%u ewma=%u util_est=%u runnable_avg=%lu, runnable_aware=%d",
+		"pid=%d dequeued=%u ewma=%u util_est=%u runnable_avg=%lu, runnable_aware=%d weight_shift=%u",
 		__entry->pid,
 		__entry->dequeued,
 		__entry->ewma,
 		__entry->util_est,
 		__entry->runnable_avg,
-		__entry->runnable_aware)
+		__entry->runnable_aware,
+		__entry->weight_shift)
 );
 
 TRACE_EVENT(sched_task_uclamp,

@@ -11,6 +11,7 @@
 #include "vip.h"
 #include "sched_trace.h"
 #include "eas_plus.h"
+#include "util/tsk_util.h"
 
 unsigned int ls_vip_threshold                   =  DEFAULT_VIP_PRIO_THRESHOLD;
 bool vip_enable;
@@ -1241,6 +1242,7 @@ void vip_new_tasks(void *unused, struct task_struct *new)
 	init_vip_task_struct(new);
 	init_task_gear_hints(new);
 	/* init_dpt_v2_task_struct(new); */
+	init_uest_task_struct(new);
 }
 
 void __init_vip_group(struct cgroup_subsys_state *css)
@@ -1428,6 +1430,7 @@ void vip_init(void)
 		init_vip_task_struct(p);
 		init_task_gear_hints(p);
 		init_dpt_v2_task_struct(p);
+		init_uest_task_struct(p);
 	}
 	read_unlock(&tasklist_lock);
 

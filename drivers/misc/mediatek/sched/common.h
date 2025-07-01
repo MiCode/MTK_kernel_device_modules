@@ -238,6 +238,11 @@ struct cpuqos_task_struct {
 	int rank;
 };
 
+struct uest_task_struct {
+	bool set;
+	unsigned int weight_shift;
+};
+
 /* for dynamic task vendor data*/
 struct mtk_task {
 	struct soft_affinity_task sa_task;
@@ -252,6 +257,7 @@ struct mtk_task {
 	struct cpuqos_task_struct cpuqos_task;
 	struct cpumask kernel_allowed_mask;
 	struct dpt_task_struct dpt_task;
+	struct uest_task_struct uest_task;
 };
 
 /* for static task vendor data*/
