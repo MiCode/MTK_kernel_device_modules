@@ -8684,13 +8684,13 @@ dramc: dramc@10230000 {
 		charger = <&mt6720_chg>;
 		bootmode = <&chosen>;
 	};
+
+	pmic-oc-debug {
+		compatible = "mediatek,mt6858-oc-debug";
+		status = "okay";
+	};
 	// PMIC TODO:
 #if 0
-	pmic-oc-debug {
-		compatible = "mediatek,mt6878-oc-debug";
-		status = "disabled";
-	};
-
 	pmic_ecid: pmic-ecid {
 		compatible = "mediatek,mt6363-efuse",
 		status = "disabled";
@@ -10193,8 +10193,6 @@ dramc: dramc@10230000 {
 };
 
 &spmi {
-// PMIC TODO:
-#if 0
 	pmic: pmic@4 {
 		mt6363_dynamic_loading_throttling: mtk-dynamic-loading-throttling {
 			compatible = "mediatek,mt6363-dynamic_loading_throttling";
@@ -10203,19 +10201,16 @@ dramc: dramc@10230000 {
 			/* 2000~2900mV, one gear per 100mV */
 			uvlo-level = <2400>;
 			vbb-uvlo-level = <2500>;
-			bob-check-flag = <1>;
-			io-channels = <&mt6375_auxadc MT6375_AUXADC_IMP>,
-				<&mt6375_auxadc MT6375_AUXADC_IMIX_R>,
-				<&mt6375_auxadc MT6375_AUXADC_BATSNS>;
+			bob-check-flag = <0>;
+			io-channels = <&mt6720_auxadc MT6379_AUXADC_IMP>,
+				      <&mt6720_auxadc MT6379_AUXADC_IMIX_R>,
+				      <&mt6720_auxadc MT6379_AUXADC_BATSNS>;
 			io-channel-names = "pmic_ptim",
-					"pmic_imix_r",
-					"pmic_batadc";
+					   "pmic_imix_r",
+					   "pmic_batadc";
 			bootmode = <&chosen>;
-			// turn on after bring-up
-			status = "disabled";
 		};
 	};
-#endif
 
 	mt6319_6: mt6319@6 {
 		compatible = "mediatek,mt6319";
@@ -10819,8 +10814,6 @@ dramc: dramc@10230000 {
 /delete-node/ &mt6369_vmch_eint_low;
 /delete-node/ &mt6369_vdigrf;
 
-// PMIC TODO:
-#if 0
 &main_pmic {
 	pmic-lvsys-notify {
 		compatible = "mediatek,mt6363-lvsys-notify";
@@ -10829,8 +10822,5 @@ dramc: dramc@10230000 {
 		lv-deb-sel = <0>;
 		hv-deb-sel = <2>;
 		vio18-switch-reg = <0x53 0x58>;
-		// turn on after bring-up
-		status = "disabled";
 	};
 };
-#endif
