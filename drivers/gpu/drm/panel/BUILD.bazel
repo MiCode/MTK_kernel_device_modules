@@ -99,6 +99,7 @@ PANELS = [
     "panel-samsung-s68fc01-vdo-aod",
     "panel-hx-nt37701-dphy-cmd",
     "panel-hx-nt37701-dphy-cmd-120hz",
+    "panel-vtdr6126a-vdo",
 ]
 
 [define_mgk_ddk_ko(

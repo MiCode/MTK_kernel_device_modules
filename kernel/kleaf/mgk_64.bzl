@@ -834,6 +834,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:panel-nt37801-cmd-ltpo".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:panel-nt37801-cmd-spr".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:panel-truly-td4330-cmd".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/gpu/drm/panel:panel-vtdr6126a-vdo".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:panel-samsung-s68fc01-vdo-aod".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:panel-hx-nt37701-dphy-cmd".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:panel-hx-nt37701-dphy-cmd-120hz".format(kernel_version),
