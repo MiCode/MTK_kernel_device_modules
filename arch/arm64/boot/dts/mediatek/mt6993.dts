@@ -17279,7 +17279,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			bat2-aging-multiples = <0 0>;
 
 			soc-max-level = <3>;
-			soc-hpt-volt-lv1 = <4>;
+			soc-hpt-volt-lv0 = <4>;
+			soc-hpt-volt-lv1 = <0>;
 			soc-hpt-volt-lv2 = <0>;
 			soc-hpt-volt-lv3 = <0>;
 
