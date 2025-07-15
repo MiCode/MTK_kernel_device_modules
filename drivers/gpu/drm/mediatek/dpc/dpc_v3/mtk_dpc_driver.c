@@ -1617,6 +1617,12 @@ static void mt6993_set_mtcmos(const u32 subsys, const enum mtk_dpc_mtcmos_mode m
 #endif
 }
 
+static void dpc_dsi_pll_set_v3(const u32 value)
+{
+	/* select dpc te source from lpc */
+	writel(0x1F, dpc_base + DISP_REG_DPC_DISP_EXT_INPUT_EN);
+}
+
 static void dpc_dsi_pll_set_v2(const u32 value)
 {
 	if (g_priv == NULL) {
@@ -3755,29 +3761,15 @@ static struct smi_user_pwr_ctrl dpc_smi_pwr_funcs_v3 = {
 };
 
 static struct dpc_funcs funcs_v3 = {
-	// .dpc_enable = dpc_enable_v3,
-	// .dpc_config = dpc_config_v3,
-	// .dpc_group_enable = dpc_group_enable_v3,
-	// .dpc_mtcmos_auto = dpc_mtcmos_auto_v3,
-	// .dpc_duration_update = dpc_duration_update_v3,
-	// .dpc_mtcmos_vote = dpc_mtcmos_vote_v3,
-	.dpc_dsi_pll_set = dpc_dsi_pll_set_v2,
 	.dpc_clear_wfe_event = dpc_clear_wfe_event_v2,
-	// .dpc_vidle_power_keep = dpc_vidle_power_keep_v3,
-	// .dpc_vidle_power_release = dpc_vidle_power_release_v3,
-	// .dpc_vidle_power_keep_by_gce = dpc_vidle_power_keep_by_gce_v3,
-	// .dpc_vidle_power_release_by_gce = dpc_vidle_power_release_by_gce_v3,
-	// .dpc_hrt_bw_set = dpc_hrt_bw_set_v3,
-	// .dpc_srt_bw_set = dpc_srt_bw_set_v3,
 	.dpc_dvfs_set = dpc_dvfs_set_v2,
 	.dpc_dvfs_trigger = dpc_dvfs_trigger,
 	.dpc_channel_bw_set_by_idx = dpc_channel_bw_set_by_idx_v2,
-	// .dpc_analysis = dpc_analysis_v2,
 	.dpc_debug_cmd = process_dbg_opt,
 	.dpc_mminfra_on_off = dpc_mminfra_on_off,
-	// .dpc_mtcmos_on_off = dpc_hwccf_vote,
 	.dpc_monitor_config = dpc_monitor_config,
 	.dpc_buck_status = dpc_buck_status,
+	/* others will be assigned during probe */
 };
 
 static void process_dbg_opt(const char *opt)
@@ -4086,6 +4078,7 @@ static struct mtk_dpc mt6991_dpc_driver_data = {
 	.power_release_by_gce = dpc_vidle_power_release_by_gce_v2,
 	.config = dpc_config_v2,
 	.analysis = dpc_analysis_v2,
+	.dsi_pll_set = dpc_dsi_pll_set_v2,
 };
 
 static struct mtk_dpc mt6993_dpc_driver_data = {
@@ -4121,6 +4114,7 @@ static struct mtk_dpc mt6993_dpc_driver_data = {
 	.power_release_by_gce = dpc_vidle_power_release_by_gce_v3,
 	.config = dpc_config_v3,
 	.analysis = dpc_analysis_v3,
+	.dsi_pll_set = dpc_dsi_pll_set_v3,
 };
 
 static const struct of_device_id mtk_dpc_driver_v3_dt_match[] = {
@@ -4274,6 +4268,7 @@ static int mtk_dpc_probe_v3(struct platform_device *pdev)
 	funcs_v3.dpc_mtcmos_auto = priv->set_mtcmos;
 	funcs_v3.dpc_config = priv->config;
 	funcs_v3.dpc_analysis = priv->analysis;
+	funcs_v3.dpc_dsi_pll_set = priv->dsi_pll_set;
 
 	if (priv->mmsys_id == MMSYS_MT6993) {
 		if (!has_cap(DPC_CAP_MTCMOS)) {
@@ -4283,7 +4278,6 @@ static int mtk_dpc_probe_v3(struct platform_device *pdev)
 			funcs_v3.dpc_vidle_power_release_by_gce = NULL;
 		}
 		funcs_v3.dpc_mtcmos_vote = NULL;
-		funcs_v3.dpc_dsi_pll_set = NULL;
 		funcs_v3.dpc_check_pll = NULL;
 		funcs_v3.dpc_mtcmos_on_off = dpc_hwccf_vote;
 		funcs_v3.dpc_pre_cg_ctrl = dpc_pre_cg_ctrl;

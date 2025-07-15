@@ -158,12 +158,16 @@
 #define DSI_LPC_EXT_TE_SEL REG_FLD_MSB_LSB(1, 0)
 #define DSI_LPC_MIPI_ERROR_FLAG_SEL REG_FLD_MSB_LSB(3, 2)
 
+int lpc_te_enabled = 1;
+module_param(lpc_te_enabled, int, 0644);
+
 enum LPC_MMP_IDX {
 	HW_VSYNC_ON_CONFIG,
 	IRQ_DISABLE = 0xFF,
 };
 struct mtk_dsi_lpc_data {
 	const unsigned int te_limit;
+	const bool dpc_te_by_lpc;
 };
 struct mtk_dsi_lpc {
 	struct mtk_ddp_comp ddp_comp;
@@ -177,6 +181,7 @@ struct mtk_dsi_lpc {
 };
 static const struct mtk_dsi_lpc_data lpc_data_mt6993 = {
 	.te_limit = 8333,
+	.dpc_te_by_lpc = true,
 };
 void mtk_dsi_lpc_for_debug_config(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cmdq_handle)
 {
@@ -262,7 +267,7 @@ void mtk_dsi_lpc_te_irq_en(struct mtk_drm_crtc *mtk_crtc,
 		return;
 
 	lpc_inten = readl(comp->regs + DSI_LPC_INTEN(index));
-	if (en)
+	if (en && lpc_te_enabled)
 		lpc_inten |= EVENT_TE_INT_EN;
 	else
 		lpc_inten &= ~EVENT_TE_INT_EN;
@@ -362,14 +367,7 @@ static void mtk_dsi_lpc_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 	drm_trace_tag_mark("lpc_stop");
 	DRM_MMP_MARK(dsi_lpc, IRQ_DISABLE, 0xFFFF);
 }
-static void mtk_dsi_lpc_prepare(struct mtk_ddp_comp *comp)
-{
-	mtk_ddp_comp_clk_prepare(comp);
-}
-static void mtk_dsi_lpc_unprepare(struct mtk_ddp_comp *comp)
-{
-	mtk_ddp_comp_clk_unprepare(comp);
-}
+
 void set_pl_kernel_offset(struct mtk_ddp_comp *comp)
 {
 	struct mtk_dsi_lpc *lpc = comp_to_dsi_lpc(comp);
@@ -504,7 +502,7 @@ int mtk_dsi_lpc_interrupt_enable(struct mtk_drm_crtc *mtk_crtc,
 		lpc_te_con0_val &= ~DSI_LPC_HW_VSYNC_ON;
 	}
 
-	if (lpc->dsi_lpc_te_irq_en)
+	if (lpc->dsi_lpc_te_irq_en && lpc_te_enabled)
 		inten |= EVENT_TE_INT_EN;
 
 	/* for ddic error */
@@ -692,6 +690,9 @@ void mtk_dsi_lpc_init_config(struct drm_crtc *crtc, struct mtk_ddp_comp *comp)
 	mtk_dsi_set_lpc_en(lpc_en, comp);
 	mtk_dsi_lpc_unit_en(lpc_en, index, comp);
 
+	if (lpc->data->dpc_te_by_lpc)
+		mtk_vidle_dsi_pll_set(0);
+
 	drm_trace_tag_end("lpc_init_config");
 }
 static int mtk_dsi_lpc_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
@@ -783,8 +784,6 @@ static int mtk_dsi_lpc_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle
 static const struct mtk_ddp_comp_funcs mtk_dsi_lpc_funcs = {
 	//.start = mtk_dsi_lpc_start,
 	.stop = mtk_dsi_lpc_stop,
-	.prepare = mtk_dsi_lpc_prepare,
-	.unprepare = mtk_dsi_lpc_unprepare,
 	//.config = mtk_dsi_lpc_config,,
 	.io_cmd = mtk_dsi_lpc_io_cmd,
 };

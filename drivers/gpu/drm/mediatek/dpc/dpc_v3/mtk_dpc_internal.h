@@ -651,6 +651,7 @@ struct mtk_dpc {
 	void (*power_release_by_gce)(struct cmdq_pkt *pkt, const u32 user, void *reuse);
 	int (*config)(const u32 subsys, bool en);
 	void (*analysis)(void);
+	void (*dsi_pll_set)(const u32 value);
 };
 
 #endif
