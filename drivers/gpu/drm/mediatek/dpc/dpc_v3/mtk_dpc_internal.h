@@ -125,6 +125,41 @@ enum GCE_COND_REVERSE_COND {
 	(reuse)->val = _cond_pkt->cmd_buf_size; \
 } while (0)
 
+/* THIS MACRO ONLY FOR HIGH 16 BITS
+ * if ((read_value >> 16) & (mask >> 16)) != 0
+ * then block will be executed
+ */
+#define GCE_IF_UPPER_NOT_ZERO(pkt, addr, mask, spr, lop, rop) do {            \
+	cmdq_pkt_read_addr(pkt, addr, spr);                                   \
+	rop.reg = false;                                                      \
+	rop.value = 16;                                                       \
+	cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_RIGHT_SHIFT, spr, &lop, &rop); \
+	rop.value = (u16)(mask >> 16);                                        \
+	cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_AND, spr, &lop, &rop);         \
+	rop.value = 0;                                                        \
+	_inst_condi_jump = _cond_pkt->cmd_buf_size;                           \
+	cmdq_pkt_assign_command(_cond_pkt, _reg_jump, 0);                     \
+	cmdq_pkt_cond_jump_abs(_cond_pkt, _reg_jump, &lop, &rop, CMDQ_EQUAL); \
+	_inst_jump_end = _inst_condi_jump;                                    \
+} while (0)
+
+/* THIS MACRO ONLY FOR HIGH 16 BITS
+ * if ((read_value >> 16) & (mask >> 16)) != (mask >> 16)
+ * then block will be executed
+ */
+#define GCE_IF_UPPER_NOT_EQUAL(pkt, addr, mask, spr, lop, rop) do {           \
+	cmdq_pkt_read_addr(pkt, addr, spr);                                   \
+	rop.reg = false;                                                      \
+	rop.value = 16;                                                       \
+	cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_RIGHT_SHIFT, spr, &lop, &rop); \
+	rop.value = (u16)(mask >> 16);                                        \
+	cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_AND, spr, &lop, &rop);         \
+	_inst_condi_jump = _cond_pkt->cmd_buf_size;                           \
+	cmdq_pkt_assign_command(_cond_pkt, _reg_jump, 0);                     \
+	cmdq_pkt_cond_jump_abs(_cond_pkt, _reg_jump, &lop, &rop, CMDQ_EQUAL); \
+	_inst_jump_end = _inst_condi_jump;                                    \
+} while (0)
+
 #define VLP_DISP_SW_VOTE_CON 0x410
 #define VLP_DISP_SW_VOTE_SET 0x414
 #define VLP_DISP_SW_VOTE_CLR 0x418
@@ -541,6 +576,7 @@ struct mtk_dpc_mtcmos_cfg {
 	void __iomem *chk_va;
 	enum mtk_dpc_mtcmos_mode mode;
 	u8 link_bit;
+	u8 dpc_req_bit;
 };
 
 struct mtk_dpc_channel_bw_cfg {

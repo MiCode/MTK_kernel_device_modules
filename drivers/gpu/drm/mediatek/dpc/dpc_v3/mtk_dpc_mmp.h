@@ -33,6 +33,10 @@ struct dpc_mmp_events_t {
 	mmp_event hwccf_gce_vote;
 	mmp_event mml_rrot_done;
 	mmp_event mml_sof;
+	mmp_event mtcmos_disp1_on;
+	mmp_event mtcmos_disp1_off;
+	mmp_event mtcmos_mml2_on;
+	mmp_event mtcmos_mml2_off;
 	mmp_event mtcmos_ovl0;
 	mmp_event mtcmos_disp1;
 	mmp_event mtcmos_mml1;
@@ -50,6 +54,10 @@ struct dpc_mmp_events_t {
 	mmp_event user_17;
 	mmp_event user_26;
 	mmp_event user_31;
+	mmp_event user_19;
+	mmp_event user_18;
+	mmp_event user_12;
+	mmp_event hide;
 };
 
 
