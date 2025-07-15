@@ -20382,7 +20382,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		mediatek,main-sram = "usb-sram";
 		mediatek,reserved-sram-size = <0x4000>;
 		mediatek,ready-for-xhci;
-		mediatek,explicit-feedback;
 		mediatek,hub-offload;
 		mediatek,idle-lowpwr;
 	};
