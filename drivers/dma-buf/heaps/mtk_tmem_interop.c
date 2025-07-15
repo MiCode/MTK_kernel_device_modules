@@ -494,7 +494,6 @@ TMEM_PRIV int page_alloc_v2(struct secure_heap_page *sec_heap,
 	if (smc_ret != 0) {
 		pr_err("%s:pmm_assign_buffer_v2 smc_ret=%d\n", __func__,
 		       smc_ret);
-		kfree(buffer->ssheap);
 		goto free_pmm_page;
 	}
 	return 0;
@@ -506,6 +505,7 @@ free_pmm_page:
 		if (max_order < NR_PAGE_ORDERS)
 			__free_pages(pmm_page, max_order);
 	}
+	kfree(buffer->ssheap);
 free_sg_table:
 	sg_free_table(table);
 free_pages:
