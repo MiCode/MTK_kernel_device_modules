@@ -1588,7 +1588,6 @@ void mtk_drm_crtc_mini_dump(struct drm_crtc *crtc)
 			if (priv->data->mmsys_id == MMSYS_MT6993) {
 				DDPDUMP("== DISP DBGTP DUMP REGS +++ ==\n");
 				mtk_dbgtp_dump();
-				mtk_dbgtp_all_setting_dump(priv);
 				DDPDUMP("== DISP DBGTP DUMP REGS --- ==\n");
 			}
 
