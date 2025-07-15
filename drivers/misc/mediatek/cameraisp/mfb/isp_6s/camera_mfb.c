@@ -926,7 +926,10 @@ void MFBQOS_Update(bool start, unsigned int scen, unsigned long bw)
 			qos_port_temp = qos_report * 16 / 100;
 			break;
 		}
-		qos_port_temp = qos_report; // temp to test
+		if (qos_report == 800000000) {
+			qos_port_temp = qos_report; // temp to test
+			LOG_INF("qos for MFB capture !");
+		}
 		LOG_DBG("port num: %d, qos_port_temp: %d\n", i, qos_port_temp);
 		mtk_icc_set_bw(path_mfb[i], Bps_to_icc(qos_port_temp), 0);
 	}
