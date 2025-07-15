@@ -64,7 +64,7 @@ static void _opp_limiter(int vpu_max, int vpu_min, int dla_max, int dla_min,
 	dla_max = over_range_check(dla_max);
 	dla_min = over_range_check(dla_min);
 #if LOCAL_DBG
-	pr_info("%s type:%d, %d/%d/%d/%d\n", __func__, type,
+	apu_pr_info_ratelimited("%s type:%d, %d/%d/%d/%d\n", __func__, type,
 			vpu_max, vpu_min, dla_max, dla_min);
 #endif
 
@@ -84,7 +84,7 @@ static void _opp_limiter(int vpu_max, int vpu_min, int dla_max, int dla_min,
 		reg_offset = opp_limit_tbl[i].opp_lmt_reg;
 		apu_writel(reg_data, spare_reg_base + reg_offset);
 #if LOCAL_DBG
-		pr_info("%s cluster%d write:0x%08x, readback:0x%08x\n",
+		apu_pr_info_ratelimited("%s cluster%d write:0x%08x, readback:0x%08x\n",
 				__func__, i, reg_data,
 				apu_readl(spare_reg_base + reg_offset));
 #endif

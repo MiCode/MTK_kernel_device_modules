@@ -617,13 +617,13 @@ int mt6993_set_freq_limit(int upper_limit, int lower_limit, int *request_id, int
 				if (currnet_opp != 0)
 					break;
 				if (time_after(jiffies, timeout)) {
-					pr_info("%s: timeout waiting for OPP sync\n", __func__);
+					apu_pr_info_ratelimited("%s: timeout waiting for OPP sync\n", __func__);
 					ret = -ETIMEDOUT;
 					break;
 				}
 				udelay(50);
 			} while (1);
-			pr_info("%s, currnet_opp = %08x", __func__, currnet_opp);
+			apu_pr_info_ratelimited("%s, currnet_opp = %08x", __func__, currnet_opp);
 			sw_throttle_sync_mode = 0; // clr sync mode after done.
 		}
 	} else if (ret == 0 && type == SW_THROTTLE_SYSFS) {

@@ -538,5 +538,5 @@ int mtk_apudvfs_debug_force_vcore_notify(const u32 val)
 	if (val == 0x0)
 		return apu_sw_throttle(&Vcore_force_cmd_id, 1);
 	else
-		return 0;
+		return apu_sw_throttle(&Vcore_force_cmd_id, 0);
 }
