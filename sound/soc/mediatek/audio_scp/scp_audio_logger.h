@@ -17,7 +17,9 @@ struct log_ctrl_s {
 
 struct buffer_info_s {
 	unsigned int r_pos;
+	unsigned char resv1[124]; /* dummy bytes for 128-byte align */
 	unsigned int w_pos;
+	unsigned char resv2[124]; /* dummy bytes for 128-byte align */
 };
 
 extern struct device_attribute dev_attr_log_enable;

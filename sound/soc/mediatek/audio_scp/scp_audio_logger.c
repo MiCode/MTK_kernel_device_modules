@@ -27,6 +27,7 @@
 
 #define ROUNDUP(a, b)		(((a) + ((b)-1)) & ~((b)-1))
 #define PLT_LOG_ENABLE		0x504C5402 /*magic*/
+static unsigned int magic_warn_flag = 1;
 
 static unsigned int logger_inited;
 static struct mutex logger_lock;
@@ -34,6 +35,38 @@ static struct log_ctrl_s *logger_ctrl;
 static struct buffer_info_s *buf_info;
 
 static unsigned int logger_enable;
+static unsigned int logger_buffer_size; // store size info in global rather than shared DRAM
+
+static unsigned int w_pos_debug;
+static unsigned int r_pos_debug;
+
+static void dump_dram_ctrl_mem(void)
+{
+	unsigned int i, size;
+	unsigned int *addr;
+	uintptr_t address;
+
+	if (!logger_ctrl) {
+		pr_err("%s(), logger_ctrl is NULL!\n", __func__);
+		return;
+	}
+
+	pr_info(" ===== log_ctrl_s =====\n");
+	addr = (unsigned int *)logger_ctrl;
+	address = (uintptr_t)addr;
+	size = sizeof(struct log_ctrl_s) / sizeof(unsigned int);
+	for (i = 0; i < size; i += 4)
+		pr_info("0x%08x: 0x%08x 0x%08x 0x%08x 0x%08x\n",
+			((unsigned int)address)+i, addr[i], addr[i+1], addr[i+2], addr[i+3]);
+
+	pr_info(" ===== buffer_info_s =====\n");
+	addr = (unsigned int *)buf_info;
+	address = (uintptr_t)addr;
+	size = sizeof(struct buffer_info_s) / sizeof(unsigned int);
+	for (i = 0; i < size; i += 4)
+		pr_info("0x%08x: 0x%08x 0x%08x 0x%08x 0x%08x\n",
+			((unsigned int)address)+i, addr[i], addr[i+1], addr[i+2], addr[i+3]);
+}
 
 static ssize_t scp_audio_logger_read(struct file *file, char __user *data,
 				     size_t len, loff_t *ppos)
@@ -48,23 +81,39 @@ static ssize_t scp_audio_logger_read(struct file *file, char __user *data,
 
 	mutex_lock(&logger_lock);
 
-	r_pos = buf_info->r_pos;
-	w_pos = buf_info->w_pos;
+	if (logger_ctrl->base != PLT_LOG_ENABLE) {
+		pr_info_ratelimited("%s, logger magic 0x%x error\n", __func__, logger_ctrl->base);
+		dump_dram_ctrl_mem();
+		WARN_ON(magic_warn_flag);
+		magic_warn_flag = 0; // warn once
+		goto EXIT;
+	}
+
+	memcpy_fromio(&r_pos, &buf_info->r_pos, sizeof(r_pos));
+	memcpy_fromio(&w_pos, &buf_info->w_pos, sizeof(w_pos));
 
 	if (r_pos == w_pos)
 		goto EXIT;
 	else if (r_pos > w_pos)
-		datalen = logger_ctrl->buff_size - r_pos;
+		datalen = logger_buffer_size - r_pos;
 	else
 		datalen = w_pos - r_pos;
 
 	if (datalen > len)
 		datalen = len;
 
-	if (r_pos >= logger_ctrl->buff_size) {
-		pr_err("[SCP AUDIO] %s() r_pos 0x%x >= buff_size 0x%x\n",
-		       __func__, r_pos, logger_ctrl->buff_size);
+	r_pos_debug = r_pos;
+	w_pos_debug = w_pos;
+	if ((r_pos >= logger_buffer_size) || (w_pos >= logger_buffer_size)) {
+		pr_err("[SCP AUDIO] %s() r_pos 0x%x or w_pos 0x%x >= buff_size 0x%x\n",
+		       __func__, r_pos, w_pos, logger_buffer_size);
 		datalen = 0;
+
+		// reset r_pos and w_pos
+		r_pos = 0;
+		w_pos = 0;
+		memcpy_toio(&buf_info->r_pos, &r_pos, sizeof(r_pos));
+		memcpy_toio(&buf_info->w_pos, &w_pos, sizeof(w_pos));
 		goto EXIT;
 	}
 
@@ -73,10 +122,10 @@ static ssize_t scp_audio_logger_read(struct file *file, char __user *data,
 		pr_err("[SCP AUDIO] copy to user buf failed!\n");
 
 	r_pos += datalen;
-	if (r_pos >= logger_ctrl->buff_size)
-		r_pos -= logger_ctrl->buff_size;
+	if (r_pos >= logger_buffer_size)
+		r_pos -= logger_buffer_size;
+	memcpy_toio(&buf_info->r_pos, &r_pos, sizeof(r_pos));
 
-	buf_info->r_pos = r_pos;
 EXIT:
 	LOGGER_D("[SCP AUDIO] %s() r_pos 0x%x w_pos 0x%x datalen 0x%x\n",
 		 __func__, r_pos, w_pos, datalen);
@@ -148,14 +197,16 @@ int scp_audio_logger_init_message(void)
 
 	do {
 		retry_count--;
-		ret = scp_send_message_with_wakelock(SCP_AUDIO_IPI_LOGGER_INIT,
-								&val, sizeof(val), 20, 0);
+		ret = scp_push_message(SCP_AUDIO_IPI_LOGGER_INIT,
+				       &val, sizeof(val), 20, 0);
 		if (ret != ADSP_IPI_DONE)
 			usleep_range(1000, 1500);
 	} while ((retry_count > 0) && (ret != ADSP_IPI_DONE));
 
 	if (ret != ADSP_IPI_DONE)
 		pr_err("[SCP AUDIO] %s() ret %d\n", __func__, ret);
+	else
+		pr_info("[SCP AUDIO] %s() success\n", __func__);
 
 	return ret;
 }
@@ -187,20 +238,21 @@ int scp_audio_logger_init(struct platform_device *pdev)
 	logger_ctrl->enable = 0;
 	logger_ctrl->size = sizeof(*logger_ctrl);
 
-	last_ofs += logger_ctrl->size;
+	last_ofs += ALIGN(logger_ctrl->size, 128);
 	logger_ctrl->info_ofs = last_ofs;
 
 	last_ofs += sizeof(*buf_info);
-	last_ofs = ROUNDUP(last_ofs, 4);
+	last_ofs = ALIGN(last_ofs, 128);
 	logger_ctrl->buff_ofs = last_ofs;
 	logger_ctrl->buff_size = size - last_ofs;
+	logger_buffer_size = logger_ctrl->buff_size;
 
 	buf_info = (struct buffer_info_s *)
 		(((unsigned char *) logger_ctrl) + logger_ctrl->info_ofs);
 	buf_info->r_pos = 0;
 	buf_info->w_pos = 0;
 
-	last_ofs += logger_ctrl->buff_size;
+	last_ofs += logger_buffer_size;
 	if (last_ofs > size) {
 		pr_err("%s fail! last_ofs:0x%x, size:0x%llx\n", __func__, last_ofs, size);
 		ret = -EINVAL;
@@ -248,8 +300,8 @@ static inline ssize_t log_enable_show(struct device *dev,
 	unsigned int status;
 
 	status = logger_inited && logger_enable;
-	n = snprintf(buf, 128, "[SCP AUDIO] mobile log is %s\n",
-		     (status == 0x1) ? "enabled" : "disabled");
+	n = snprintf(buf, 128, "[SCP AUDIO] mobile log is %s, logger_inited %d logger_enable %d\n",
+		     (status == 0x1) ? "enabled" : "disabled", logger_inited, logger_enable);
 	if (n > 128)
 		n = 128;
 	return n;
@@ -272,8 +324,8 @@ static inline ssize_t log_enable_store(struct device *dev,
 	mutex_lock(&logger_lock);
 	do {
 		retry_count--;
-		ret = scp_send_message_with_wakelock(SCP_AUDIO_IPI_LOGGER_ENABLE,
-								&enable, sizeof(enable), 20, 0);
+		ret = scp_push_message(SCP_AUDIO_IPI_LOGGER_ENABLE,
+				       &enable, sizeof(enable), 20, 0);
 		if (ret != ADSP_IPI_DONE)
 			usleep_range(1000, 1500);
 	} while ((retry_count > 0) && (ret != ADSP_IPI_DONE));
@@ -281,12 +333,12 @@ static inline ssize_t log_enable_store(struct device *dev,
 	if (ret == ADSP_IPI_DONE) {
 		logger_enable = enable;
 		logger_ctrl->enable = enable;
+		pr_info("%s, [SCP AUDIO] enable = %d\n", __func__, enable);
 	} else
-		pr_err("%s scp_send_message_with_wakelock failed, ret = %d\n", __func__, ret);
+		pr_err("%s scp_push_message failed, ret = %d\n", __func__, ret);
 
 	mutex_unlock(&logger_lock);
 
-	LOGGER_D("%s, [SCP AUDIO] enable = %d\n", __func__, enable);
 	return count;
 }
 DEVICE_ATTR_RW(log_enable);

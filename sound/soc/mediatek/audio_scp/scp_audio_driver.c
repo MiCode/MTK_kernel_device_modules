@@ -64,7 +64,8 @@ static int scp_audio_ctrl_event_receive(
 		pr_info("%s(), SCP_EVENT_READY\n", __func__);
 		set_audio_clock_status(false);
 		wake_up(&scp_audio.waitq);
-		scp_audio_logger_init_message();
+		if (is_audio_mbox_init_done())
+			scp_audio_logger_init_message();
 		if (is_adsp_feature_in_active()) {
 			pr_info("%s(), sync lock status with SCP\n", __func__);
 			_scp_audio_clock_control(true, false);
