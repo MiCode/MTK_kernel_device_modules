@@ -4007,15 +4007,20 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		spmi: spmi@1c024000 {
 				compatible = "mediatek,mt6858-spmi";
 				reg = <0 0x1c024000 0 0x0008ff>,
-				      <0 0x1c021000 0 0x000100>;
-				reg-names = "pmif", "spmimst";
+				      <0 0x1c021000 0 0x000100>,
+				      <0 0x1c026000 0 0x0008ff>,
+				      <0 0x1c020000 0 0x0001ff>;
+				reg-names = "pmif", "spmimst","pmif-p","spmimst-p";
 				interrupts-extended = <&pio 213 IRQ_TYPE_LEVEL_HIGH>,
 						<&gic GIC_SPI 496 IRQ_TYPE_LEVEL_HIGH 0>,
-						<&gic GIC_SPI 514 IRQ_TYPE_LEVEL_HIGH 0>;
-				interrupt-names = "rcs_irq", "pmif_irq","spmi_nack_irq";
+						<&gic GIC_SPI 497 IRQ_TYPE_LEVEL_HIGH 0>,
+						<&gic GIC_SPI 514 IRQ_TYPE_LEVEL_HIGH 0>,
+						<&gic GIC_SPI 515 IRQ_TYPE_LEVEL_HIGH 0>;
+				interrupt-names = "rcs_irq", "pmif_irq","pmif_p_irq","spmi_nack_irq","spmi_p_nack_irq";
 				interrupt-controller;
 				#interrupt-cells = <1>;
-				irq-event-en = <0x0 0x0 0x0 0x0 0x0>;
+				irq-event-en = <0x0 0x0 0x2 0x0 0x0>;
+				irq-event-en-p = <0x0 0x8000000 0x0 0x0 0x0>;
 				spmi-dev-mask = <0x0>;
 				#address-cells = <2>;
 				#size-cells = <0>;
