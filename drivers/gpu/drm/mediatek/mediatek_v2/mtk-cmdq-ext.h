@@ -330,6 +330,8 @@ void cmdq_set_outpin_event(struct cmdq_client *cl, bool ena);
 
 u32 cmdq_pkt_copy(struct cmdq_pkt *dst, struct cmdq_pkt *src);
 
+s32 cmdq_pkt_reset(struct cmdq_pkt *pkt);
+
 u32 cmdq_pkt_store_value(struct cmdq_pkt *pkt, u16 indirect_dst_reg_idx,
 	u16 dst_addr_low, u32 value, u32 mask);
 

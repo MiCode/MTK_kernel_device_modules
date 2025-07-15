@@ -306,6 +306,8 @@ static struct sort_list mtk_bwm_sort_list;
 #define DISP_REG_OVL_LX_BURST_ACC_WIN_MAX(n) (0x960UL + 0x4 * (n))
 #define DISP_REG_OVL_ELX_BURST_ACC_WIN_MAX(n) (0x970UL + 0x4 * (n))
 
+#define DISP_DMA_POOL_MAX_CNT 24
+
 static void mtk_crtc_spr_switch_cfg(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cmdq_handle);
 static void mtk_crtc_tui_ovl_bw(struct drm_crtc *crtc);
 
@@ -18295,16 +18297,6 @@ struct mtk_cmdq_pkt_info *mtk_crtc_request_cmdq_pkt(struct mtk_drm_crtc *mtk_crt
 	if (!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_PKT_POOL))
 		goto create_new_pkt;
 
-	/* Prepare a reset_pkt to clear pkt before reuse this pkt */
-	if (pkt_pool->reset_pkt == NULL) {
-		mtk_crtc_pkt_create(&pkt_pool->reset_pkt, crtc, client);
-		if (pkt_pool->reset_pkt == NULL) {
-			DDPPR_ERR("%s: reset_pkt pkt creation failed\n", __func__);
-			mutex_unlock(&pkt_pool->lock);
-			return NULL;
-		}
-	}
-
 	/* Record each pkt reused times */
 	if (!list_empty(&pkt_pool->list)) {
 		list_for_each_entry(pkt_info, &pkt_pool->list, list) {
@@ -18321,8 +18313,7 @@ struct mtk_cmdq_pkt_info *mtk_crtc_request_cmdq_pkt(struct mtk_drm_crtc *mtk_crt
 				pkt_info->pf_idx = pf_idx;
 				mtk_drm_trace_begin("req_pkt_info_id %u pf_idx %u",
 					pkt_info->id, pkt_info->pf_idx);
-				/* clear pkt and cb_data */
-				cmdq_pkt_copy(pkt_info->cmdq_handle, pkt_pool->reset_pkt);
+				/* clear cb_data */
 				memset(pkt_info->cb_data, 0, sizeof(*pkt_info->cb_data));
 				pkt_info->cb_data->pkt_info = pkt_info;
 				list_del(&pkt_info->list);
@@ -18444,6 +18435,9 @@ void mtk_crtc_release_cmdq_pkt(struct mtk_cmdq_pkt_info *pkt_info)
 		DDPPR_ERR("%s: pkt_pool is NULL\n", __func__);
 		return;
 	}
+
+	/* reset to release buffers */
+	cmdq_pkt_reset(pkt_info->cmdq_handle);
 
 	mutex_lock(&pkt_pool->lock);
 
@@ -23362,10 +23356,10 @@ static void mtk_crtc_init_gce_obj(struct drm_device *drm_dev,
 		mtk_crtc->gce_obj.pkt_pool[i]->mtk_crtc = mtk_crtc;
 		mtk_crtc->gce_obj.pkt_pool[i]->size = 0;
 		mtk_crtc->gce_obj.pkt_pool[i]->list_len = 0;
-		mtk_crtc->gce_obj.pkt_pool[i]->reset_pkt = NULL;
 
 		mtk_crtc->gce_obj.client[i] =
 			cmdq_mbox_create(dev, index);
+		cmdq_mbox_pool_set_limit(mtk_crtc->gce_obj.client[i], DISP_DMA_POOL_MAX_CNT);
 
 #if IS_ENABLED(CONFIG_VHOST_CMDQ)
 		g_cmdq_client[cmdq_client_num] = mtk_crtc->gce_obj.client[i];

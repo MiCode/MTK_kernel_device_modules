@@ -2564,7 +2564,7 @@ void mml_core_destroy_task(struct mml_task *task)
 	}
 	for (i = 0; i < ARRAY_SIZE(task->pkts); i++) {
 		if (task->pkts[i])
-			cmdq_pkt_destroy(task->pkts[i]);
+			cmdq_pkt_destroy_no_wq(task->pkts[i]);
 	}
 	mml_pq_task_release(task);
 	kfree(task->isr_nodes);

@@ -2384,6 +2384,32 @@ s32 cmdq_pkt_copy(struct cmdq_pkt *dst, struct cmdq_pkt *src)
 }
 EXPORT_SYMBOL(cmdq_pkt_copy);
 
+s32 cmdq_pkt_reset(struct cmdq_pkt *pkt)
+{
+	struct cmdq_client *client = pkt->cl;
+
+	cmdq_pkt_free_buf(pkt);
+	INIT_LIST_HEAD(&pkt->buf);
+	init_completion(&pkt->cmplt);
+	pkt->avail_buf_size = 0;
+	pkt->cmd_buf_size = 0;
+	pkt->buf_size = 0;
+	pkt->buf_cnt = 0;
+	pkt->task_alloc = false;
+
+#if IS_ENABLED(CONFIG_MTK_CMDQ_MBOX_EXT)
+	if (!cmdq_util_is_prebuilt_client(client) &&
+		!cmdq_util_is_secure_client(client)) {
+		cmdq_pkt_perf_begin(pkt);
+		cmdq_pkt_hw_trace(pkt, 0);
+	}
+#endif
+	pkt->task_alive = true;
+	pkt->create_instr_cnt = pkt->cmd_buf_size / CMDQ_INST_SIZE;
+
+	return 0;
+}
+EXPORT_SYMBOL(cmdq_pkt_reset);
 
 s32 cmdq_pkt_store_value(struct cmdq_pkt *pkt, u16 indirect_dst_reg_idx,
 	u16 dst_addr_low, u32 value, u32 mask)
@@ -3561,6 +3587,9 @@ EXPORT_SYMBOL(cmdq_pkt_finalize_loop);
 static struct cmdq_flush_item *cmdq_prepare_flush_tiem(struct cmdq_pkt *pkt)
 {
 	struct cmdq_flush_item *item;
+
+	if (pkt->flush_item)
+		return pkt->flush_item;
 
 	kfree(pkt->flush_item);
 	pkt->flush_item = NULL;

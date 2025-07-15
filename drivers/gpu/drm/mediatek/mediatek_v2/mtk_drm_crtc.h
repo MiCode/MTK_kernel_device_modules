@@ -842,7 +842,6 @@ struct mtk_cmdq_pkt_pool {
 	/* list_len change when request/release pkt from pool */
 	unsigned int list_len;
 	struct list_head list;
-	struct cmdq_pkt *reset_pkt;
 };
 
 struct mtk_cmdq_pkt_info {

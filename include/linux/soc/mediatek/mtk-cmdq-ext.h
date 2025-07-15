@@ -556,6 +556,8 @@ void cmdq_reuse_refresh(struct cmdq_pkt *pkt, struct cmdq_reuse *reuse, u32 cnt)
 
 s32 cmdq_pkt_copy(struct cmdq_pkt *dst, struct cmdq_pkt *src);
 
+s32 cmdq_pkt_reset(struct cmdq_pkt *pkt);
+
 s32 cmdq_pkt_store_value(struct cmdq_pkt *pkt, u16 indirect_dst_reg_idx,
 	u16 dst_addr_low, u32 value, u32 mask);
 
