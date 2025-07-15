@@ -48,7 +48,7 @@ static char bl_tb0[] = { 0x51, 0xff };
 #define BYPASSI2C
 
 #define FHD_FRAME_WIDTH    (1080)
-#define FHD_HFP            (166)
+#define FHD_HFP            (162)
 #define FHD_HSA            (12)
 #define FHD_HBP            (80)
 #define FHD_HTOTAL         (FHD_FRAME_WIDTH + FHD_HFP + FHD_HSA + FHD_HBP)
@@ -78,7 +78,7 @@ static char bl_tb0[] = { 0x51, 0xff };
 				(FHD_CLK_60_X10 / 10 + 1) : (FHD_CLK_60_X10 / 10))
 
 #define HD_FRAME_WIDTH    (720)
-#define HD_HFP            (166)
+#define HD_HFP            (162)
 #define HD_HSA            (12)
 #define HD_HBP            (80)
 #define HD_HTOTAL         (HD_FRAME_WIDTH + HD_HFP + HD_HSA + HD_HBP)
@@ -1433,9 +1433,9 @@ static int jdi_enable(struct drm_panel *panel)
 static const struct drm_display_mode default_mode = {
 	.clock = FHD_CLK_60,
 	.hdisplay = 1080,
-	.hsync_start = 1080 + 166,//HFP
-	.hsync_end = 1080 + 166 + 12,//HSA
-	.htotal = 1080 + 166 + 12 + 80,//HBP
+	.hsync_start = 1080 + 162,//HFP
+	.hsync_end = 1080 + 162 + 12,//HSA
+	.htotal = 1080 + 162 + 12 + 80,//HBP
 	.vdisplay = 2400,
 	.vsync_start = 2400 + FHD_VFP_60,//VFP
 	.vsync_end = 2400 + FHD_VFP_60 + 10,//VSA
@@ -1445,9 +1445,9 @@ static const struct drm_display_mode default_mode = {
 static const struct drm_display_mode performance_mode_90hz = {
 	.clock = FHD_CLK_90,
 	.hdisplay = 1080,
-	.hsync_start = 1080 + 166,//HFP
-	.hsync_end = 1080 + 166 + 12,//HSA
-	.htotal = 1080 + 166 + 12 + 80,//HBP
+	.hsync_start = 1080 + 162,//HFP
+	.hsync_end = 1080 + 162 + 12,//HSA
+	.htotal = 1080 + 162 + 12 + 80,//HBP
 	.vdisplay = 2400,
 	.vsync_start = 2400 + FHD_VFP_90,//VFP
 	.vsync_end = 2400 + FHD_VFP_90 + 10,//VSA
@@ -1457,9 +1457,9 @@ static const struct drm_display_mode performance_mode_90hz = {
 static const struct drm_display_mode performance_mode_120hz = {
 	.clock = FHD_CLK_120,
 	.hdisplay = 1080,
-	.hsync_start = 1080 + 166,//HFP
-	.hsync_end = 1080 + 166 + 12,//HSA
-	.htotal = 1080 + 166 + 12 + 80,//HBP
+	.hsync_start = 1080 + 162,//HFP
+	.hsync_end = 1080 + 162 + 12,//HSA
+	.htotal = 1080 + 162 + 12 + 80,//HBP
 	.vdisplay = 2400,
 	.vsync_start = 2400 + FHD_VFP_120,//VFP
 	.vsync_end = 2400 + FHD_VFP_120 + 10,//VSA
