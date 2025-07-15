@@ -453,6 +453,7 @@ struct dynamic_mipi_params {
 	unsigned int switch_en;
 	unsigned int pll_clk;
 	unsigned int data_rate;
+	unsigned int data_rate_khz;
 
 	unsigned int vsa;
 	unsigned int vbp;
@@ -476,6 +477,7 @@ struct dynamic_fps_params {
 	unsigned int switch_en;
 	unsigned int vact_timing_fps;
 	unsigned int data_rate;
+	unsigned int data_rate_khz;
 	struct dfps_switch_cmd dfps_cmd_table[MAX_DYN_CMD_NUM];
 };
 
@@ -577,6 +579,7 @@ enum DISPLAY_MODE {
 };
 
 struct mtk_panel_params {
+	unsigned int prefetch_time;
 	unsigned int pll_clk;
 	unsigned int data_rate;
 	//either pll_clk or data_rate must be set, event if data_rate_khz is set
