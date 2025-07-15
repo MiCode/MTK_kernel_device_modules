@@ -5240,7 +5240,7 @@
 			};
 			opp-4 {
 				opp-hz = /bits/ 64 <650000000>;
-				opp-microvolt = <750000>;
+				opp-microvolt = <725000>;
 			};
 		};
 
@@ -8275,7 +8275,7 @@
 						"path_vdec_ufo_enc", "path_vdec_ufo_enc_c",
 						"path_vdec_mc_c", "path_larb5";
 			interconnect-num = <22>;
-			vdec-mmdvfs-in-adaptive = <1>;
+			vdec-set-bw-in-min-freq = <1>;
 			dvfs-qos-ver = <2>;
 			throughput-op-rate-thresh = <120>;
 			throughput-min = <218000000>;
