@@ -8,7 +8,7 @@ config MTK_MKP
 
 config MTK_MKP_TEST
 	bool "MKP Test Functions"
-	depends on MTK_MKP
+	depends on MTK_MKP && !(KASAN_GENERIC || KASAN_SW_TAGS || GCOV_KERNEL)
 	default n
 	help
 	  Provide MKP test functions to verify whether the
