@@ -99,7 +99,7 @@ static int flt_orig_mode = -1;
 static atomic_t vip_loom_select_cfg;
 static struct affinity_data_node loom_rec_buffer[MAX_LOOM_BUF_SIZE];
 static atomic_t loom_cpu_dedicated_enable;
-static const char * const caller_id_desc[] = {
+static const char * const caller_id_desc[MAX_TYPE] = {
 	"DEBUG_NODE", "FPSGO", "UX", "VIDEO"
 };
 int (*loom_set_cpus_allowed_ptr_by_kernel_fp)(struct task_struct *p, const struct cpumask *new_mask);
@@ -2277,6 +2277,9 @@ int loom_ctask_cpu_dedicated(int pid, int aff_cpu)
 {
 	int ret = 0;
 
+	if (!is_device_support_loom())
+		return -EINVAL;
+
 	if (!atomic_read(&loom_cpu_dedicated_enable))
 		return -EINVAL;
 
@@ -2301,6 +2304,9 @@ int loom_force_pause(int cpu, bool is_pause)
 	int i, ret = 0;
 	unsigned long flags;
 	int tmp_pid, tmp_aff_cpu;
+
+	if (!is_device_support_loom())
+		return -EINVAL;
 
 	if (!atomic_read(&loom_cpu_dedicated_enable))
 		return -EINVAL;
