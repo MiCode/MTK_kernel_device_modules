@@ -19,21 +19,73 @@
 #include <linux/of_platform.h>
 #include <linux/of_graph.h>
 #include <linux/platform_device.h>
+#define AP_RESOLUTION_SWITCH
 #define CONFIG_MTK_PANEL_EXT
 #if defined(CONFIG_MTK_PANEL_EXT)
 #include "../mediatek/mediatek_v2/mtk_panel_ext.h"
-#include "../mediatek/mediatek_v2/mtk_log.h"
 #include "../mediatek/mediatek_v2/mtk_drm_graphics_base.h"
 #endif
 
 #include "../../../misc/mediatek/gate_ic/gate_i2c.h"
 
-#define RT4831A_SUPPORT 1
-#if RT4831A_SUPPORT
-#include "rt4831a.h"
+static char bl_tb0[] = {0x51, 0xf, 0xff};
+
+#ifdef AP_RESOLUTION_SWITCH
+#define FHD_FRAME_WIDTH    (2240)
+#define FHD_HFP            (25)
+#define FHD_HFP_120        (80)
+#define FHD_HFP_60         (80)
+#define FHD_HFP_30         (80)
+#define FHD_HSA            (10)
+#define FHD_HBP            (24)
+#define FHD_HBP_120        (80)
+#define FHD_HBP_60         (80)
+#define FHD_HBP_30         (80)
+#define FHD_HTOTAL             (FHD_FRAME_WIDTH + FHD_HFP + FHD_HSA + FHD_HBP)
+#define FHD_HTOTAL_120         (FHD_FRAME_WIDTH + FHD_HFP_120 + FHD_HSA + FHD_HBP_120)
+#define FHD_HTOTAL_60          (FHD_FRAME_WIDTH + FHD_HFP_60 + FHD_HSA + FHD_HBP_60)
+#define FHD_HTOTAL_30          (FHD_FRAME_WIDTH + FHD_HFP_30 + FHD_HSA + FHD_HBP_30)
+#define FHD_FRAME_HEIGHT   (1400)
+#define FHD_VFP            (26)
+#define FHD_VFP_60          (2076)
+#define FHD_VFP_30          (6176)
+#define FHD_VSA            (2)
+#define FHD_VBP            (182)
+#define FHD_VTOTAL             (FHD_FRAME_HEIGHT + FHD_VFP + FHD_VSA + FHD_VBP)
+#define FHD_VTOTAL_120         (FHD_FRAME_HEIGHT + FHD_VFP + FHD_VSA + FHD_VBP)
+#define FHD_VTOTAL_60          (FHD_FRAME_HEIGHT + FHD_VFP_60 + FHD_VSA + FHD_VBP)
+#define FHD_VTOTAL_30          (FHD_FRAME_HEIGHT + FHD_VFP_30 + FHD_VSA + FHD_VBP)
+#define FHD_FRAME_TOTAL        (FHD_HTOTAL * FHD_VTOTAL)
+#define FHD_FRAME_TOTAL_120    (FHD_HTOTAL_120 * FHD_VTOTAL_120)
+#define FHD_FRAME_TOTAL_60     (FHD_HTOTAL_60 * FHD_VTOTAL_60)
+#define FHD_FRAME_TOTAL_30     (FHD_HTOTAL_60 * FHD_VTOTAL_60)
+#define FHD_PLL_CLOCK      (491)
+#define FHD_VREFRESH_DEF   (144)
+#define FHD_VREFRESH_120   (120)
+#define FHD_VREFRESH_90    (90)
+#define FHD_VREFRESH_60    (60)
+#define FHD_VREFRESH_30    (30)
+#define FHD_CLK_DEF_X10    ((FHD_FRAME_TOTAL * FHD_VREFRESH_DEF) / 100)
+#define FHD_CLK_120_X10     ((FHD_FRAME_TOTAL_120 * FHD_VREFRESH_120) / 100)
+#define FHD_CLK_90_X10     ((FHD_FRAME_TOTAL * FHD_VREFRESH_90) / 100)
+#define FHD_CLK_60_X10     ((FHD_FRAME_TOTAL_60 * FHD_VREFRESH_60) / 100)
+#define FHD_CLK_30_X10     ((FHD_FRAME_TOTAL_30 * FHD_VREFRESH_30) / 100)
+#define FHD_CLK_DEF		(((FHD_CLK_DEF_X10 % 10) != 0) ?             \
+			(FHD_CLK_DEF_X10 / 10 + 1) : (FHD_CLK_DEF_X10 / 10))
+#define FHD_CLK_120		(((FHD_CLK_120_X10 % 10) != 0) ?              \
+			(FHD_CLK_120_X10 / 10 + 1) : (FHD_CLK_120_X10 / 10))
+#define FHD_CLK_90		(((FHD_CLK_90_X10 % 10) != 0) ?              \
+			(FHD_CLK_90_X10 / 10 + 1) : (FHD_CLK_90_X10 / 10))
+#define FHD_CLK_60		(((FHD_CLK_60_X10 % 10) != 0) ?              \
+			(FHD_CLK_60_X10 / 10 + 1) : (FHD_CLK_60_X10 / 10))
+#define FHD_CLK_30		(((FHD_CLK_30_X10 % 10) != 0) ?              \
+			(FHD_CLK_30_X10 / 10 + 1) : (FHD_CLK_30_X10 / 10))
+static enum RES_SWITCH_TYPE res_switch_type = RES_SWITCH_ON_AP;
 #endif
 
-static char bl_tb0[] = {0x51, 0xf, 0xff};
+static int current_fps = 144;
+#define SUPPORT_90Hz 0
+#define PREFETCH_TIME 150
 
 struct panel_desc {
 	const struct drm_display_mode *modes;
@@ -60,12 +112,14 @@ struct boe {
 	struct drm_panel panel;
 	struct backlight_device *backlight;
 	struct gpio_desc *reset_gpio;
-	//struct gpio_desc *hwen;
+	struct gpio_desc *bias_pos;
+	struct gpio_desc *bias_neg;
 	struct regulator *reg;
 	bool prepared;
 	bool enabled;
 	int error;
 	unsigned int gate_ic;
+	bool display_dual_swap;
 };
 
 #define boe_dcs_write_seq(ctx, seq...)                                     \
@@ -155,14 +209,12 @@ static void boe_panel_init(struct boe *ctx)
 {
 	pr_info("%s +\n", __func__);
 
-	ctx->reset_gpio = devm_gpiod_get(ctx->dev, "reset", GPIOD_OUT_HIGH);
 	gpiod_set_value(ctx->reset_gpio, 1);
 	usleep_range(10 * 1000, 15 * 1000);
 	gpiod_set_value(ctx->reset_gpio, 0);
 	usleep_range(10 * 1000, 15 * 1000);
 	gpiod_set_value(ctx->reset_gpio, 1);
 	usleep_range(10 * 1000, 15 * 1000);
-	devm_gpiod_put(ctx->dev, ctx->reset_gpio);
 
 	boe_dcs_write_seq_static(ctx, 0xFF, 0x20);
 	boe_dcs_write_seq_static(ctx, 0xFB, 0x01);
@@ -690,6 +742,45 @@ static void boe_panel_init(struct boe *ctx)
 	boe_dcs_write_seq_static(ctx, 0xB2, 0x80);
 	boe_dcs_write_seq_static(ctx, 0xB3, 0x00);
 
+#ifdef AP_RESOLUTION_SWITCH
+	pr_info("%s current_fps:%d\n", __func__, current_fps);
+	switch (current_fps) {
+	case 144:
+		boe_dcs_write_seq_static(ctx, 0xFF, 0x10);
+		boe_dcs_write_seq_static(ctx, 0xFB, 0x01);
+		boe_dcs_write_seq_static(ctx, 0xB2, 0x80);
+		boe_dcs_write_seq_static(ctx, 0xB3, 0x00);
+		break;
+	case 120:
+		boe_dcs_write_seq_static(ctx, 0xFF, 0x10);
+		boe_dcs_write_seq_static(ctx, 0xFB, 0x01);
+		boe_dcs_write_seq_static(ctx, 0xB2, 0x91);
+		boe_dcs_write_seq_static(ctx, 0xB3, 0x40);
+		break;
+	case 90:
+		boe_dcs_write_seq_static(ctx, 0xFF, 0x10);
+		boe_dcs_write_seq_static(ctx, 0xFB, 0x01);
+		boe_dcs_write_seq_static(ctx, 0xB2, 0x80);
+		boe_dcs_write_seq_static(ctx, 0xB3, 0x00);
+		break;
+	case 60:
+		boe_dcs_write_seq_static(ctx, 0xFF, 0x10);
+		boe_dcs_write_seq_static(ctx, 0xFB, 0x01);
+		boe_dcs_write_seq_static(ctx, 0xB2, 0x91);
+		boe_dcs_write_seq_static(ctx, 0xB3, 0x40);
+		break;
+	case 30:
+		boe_dcs_write_seq_static(ctx, 0xFF, 0x10);
+		boe_dcs_write_seq_static(ctx, 0xFB, 0x01);
+		boe_dcs_write_seq_static(ctx, 0xB2, 0x91);
+		boe_dcs_write_seq_static(ctx, 0xB3, 0x40);
+		break;
+
+	default:
+		pr_info("%s current_fps mismatch:%d\n", __func__, current_fps);
+		break;
+	}
+#endif
 	msleep(20);
 	boe_dcs_write_seq_static(ctx, 0x11);
 	msleep(120);
@@ -712,15 +803,6 @@ static int boe_disable(struct drm_panel *panel)
 		backlight_update_status(ctx->backlight);
 	}
 
-#if IS_ENABLED(CONFIG_RT4831A_I2C)
-	if (ctx->gate_ic == 4831)
-		_gate_ic_backlight_set(0x0);
-#endif
-
-#if RT4831A_SUPPORT
-	lcd_bl_set_led_brightness(0x0);
-#endif
-
 	ctx->enabled = false;
 
 	pr_info("%s---\n", __func__);
@@ -742,26 +824,21 @@ static int boe_unprepare(struct drm_panel *panel)
 	boe_dcs_write_seq_static(ctx, MIPI_DCS_ENTER_SLEEP_MODE);
 	msleep(20);
 
-	ctx->reset_gpio = devm_gpiod_get(ctx->dev, "reset", GPIOD_OUT_HIGH);
 	gpiod_set_value(ctx->reset_gpio, 0);
 	usleep_range(5 * 1000, 5 * 1000);
-	devm_gpiod_put(ctx->dev, ctx->reset_gpio);
 
-	/*
-	 * lcd_set_bias(0);
-	 * ctx->hwen = devm_gpiod_get(ctx->dev, "pm-enable", GPIOD_OUT_HIGH);
-	 * gpiod_set_value(ctx->hwen, 0);
-	 * devm_gpiod_put(ctx->dev, ctx->hwen);
-	 */
+	if (ctx->gate_ic == 0) {
+		gpiod_set_value(ctx->bias_neg, 0);
+		usleep_range(2000, 2001);
+		gpiod_set_value(ctx->bias_pos, 0);
+	}
 #if IS_ENABLED(CONFIG_RT4831A_I2C)
-	if (ctx->gate_ic == 4831) {
-		pr_info("%s, line=%d\n", __func__, __LINE__);
-		/*this is rt4831a*/
+	else if (ctx->gate_ic == 4831) {
+		pr_info("%s, Using gate-ic 4831\n", __func__);
 		_gate_ic_i2c_panel_bias_enable(0);
 		_gate_ic_Power_off();
 	}
 #endif
-
 	ctx->error = 0;
 	ctx->prepared = false;
 
@@ -778,27 +855,20 @@ static int boe_prepare(struct drm_panel *panel)
 
 	if (ctx->prepared)
 		return 0;
-	pr_info("%s, line=%d\n", __func__, __LINE__);
 
+	if (ctx->gate_ic == 0) {
+		gpiod_set_value(ctx->bias_pos, 1);
+		usleep_range(2000, 2001);
+		gpiod_set_value(ctx->bias_neg, 1);
+	}
 #if IS_ENABLED(CONFIG_RT4831A_I2C)
-	if (ctx->gate_ic == 4831) {
-		pr_info("%s, line=%d\n", __func__, __LINE__);
+	else if (ctx->gate_ic == 4831) {
+		pr_info("%s, Using gate-ic 4831\n", __func__);
 		_gate_ic_Power_on();
 		/*rt4831a co-work with leds_i2c*/
 		_gate_ic_i2c_panel_bias_enable(1);
-		pr_info("%s, line=%d\n", __func__, __LINE__);
 	}
 #endif
-
-	/*
-	 * ctx->hwen = devm_gpiod_get(ctx->dev, "pm-enable", GPIOD_OUT_HIGH);
-	 * gpiod_set_value(ctx->hwen, 1);
-	 * devm_gpiod_put(ctx->dev, ctx->hwen);
-	 * usleep_range(5 * 1000, 6 * 1000);
-	 * lcd_set_bias(1);
-	 * usleep_range(5 * 1000, 6 * 1000);
-	 */
-
 	boe_panel_init(ctx);
 	ret = ctx->error;
 	if (ret < 0) {
@@ -829,25 +899,12 @@ static int boe_enable(struct drm_panel *panel)
 
 	if (ctx->enabled)
 		return 0;
-	pr_info("%s, line=%d\n", __func__, __LINE__);
 
 	if (ctx->backlight) {
 		ctx->backlight->props.power = FB_BLANK_UNBLANK;
 		backlight_update_status(ctx->backlight);
 	}
-	pr_info("%s, line=%d\n", __func__, __LINE__);
 
-#if IS_ENABLED(CONFIG_RT4831A_I2C)
-	if (ctx->gate_ic == 4831) {
-		pr_info("%s, line=%d\n", __func__, __LINE__);
-		_gate_ic_backlight_set(0xFFF);
-	}
-#endif
-
-#if RT4831A_SUPPORT
-	lcd_bl_set_led_brightness(0xFF7);
-	pr_info("%s, line=%d\n", __func__, __LINE__);
-#endif
 	ctx->enabled = true;
 
 	pr_info("%s---\n", __func__);
@@ -856,27 +913,146 @@ static int boe_enable(struct drm_panel *panel)
 }
 
 static const struct drm_display_mode default_mode = {
-	.clock = 890914,
+	.clock = 886486,
 	.hdisplay = 2944,
-	.hsync_start = 2944 + 32,
-	.hsync_end = 2944 + 32 + 10,
-	.htotal = 2944 + 32 + 10 + 32,
+	.hsync_start = 2944 + 25,
+	.hsync_end = 2944 + 25 + 10,
+	.htotal = 2944 + 25 + 10 + 24,
 	.vdisplay = 1840,
 	.vsync_start = 1840 + 26,
 	.vsync_end = 1840 + 26 + 2,
 	.vtotal = 1840 + 26 + 2 + 182,
 };
 
+#if SUPPORT_90Hz
+static const struct drm_display_mode performance_mode_90hz = {
+	.clock = 886486,
+	.hdisplay = 2944,
+	.hsync_start = 2944 + 25,
+	.hsync_end = 2944 + 25 + 10,
+	.htotal = 2944 + 25 + 10 + 24,
+	.vdisplay = 1840,
+	.vsync_start = 1840 + 1256,
+	.vsync_end = 1840 + 1256 + 2,
+	.vtotal = 1840 + 1256 + 2 + 182,
+};
+#endif
+
+static const struct drm_display_mode performance_mode_120hz = {
+	.clock = 766044,
+	.hdisplay = 2944,
+	.hsync_start = 2944 + 80,
+	.hsync_end = 2944 + 80 + 10,
+	.htotal = 2944 + 80 + 10 + 80,
+	.vdisplay = 1840,
+	.vsync_start = 1840 + 26,
+	.vsync_end = 1840 + 26 + 2,
+	.vtotal = 1840 + 26 + 2 + 182,
+};
+
+static const struct drm_display_mode performance_mode_60hz = {
+	.clock = 766044,
+	.hdisplay = 2944,
+	.hsync_start = 2944 + 80,
+	.hsync_end = 2944 + 80 + 10,
+	.htotal = 2944 + 80 + 10 + 80,
+	.vdisplay = 1840,
+	.vsync_start = 1840 + 2076,
+	.vsync_end = 1840 + 2076 + 2,
+	.vtotal = 1840 + 2076 + 2 + 182,
+};
+
+static const struct drm_display_mode performance_mode_30hz = {
+	.clock = 766044,
+	.hdisplay = 2944,
+	.hsync_start = 2944 + 80,
+	.hsync_end = 2944 + 80 + 10,
+	.htotal = 2944 + 80 + 10 + 80,
+	.vdisplay = 1840,
+	.vsync_start = 1840 + 6176,
+	.vsync_end = 1840 + 6176 + 2,
+	.vtotal = 1840 + 6176 + 2 + 182,
+};
+
+#ifdef AP_RESOLUTION_SWITCH
+static const struct drm_display_mode fhd_default_mode = {
+	.clock = FHD_CLK_DEF,
+	.hdisplay = FHD_FRAME_WIDTH,
+	.hsync_start = FHD_FRAME_WIDTH + FHD_HFP,
+	.hsync_end = FHD_FRAME_WIDTH + FHD_HFP + FHD_HSA,
+	.htotal = FHD_FRAME_WIDTH + FHD_HFP + FHD_HSA + FHD_HBP,
+	.vdisplay = FHD_FRAME_HEIGHT,
+	.vsync_start = FHD_FRAME_HEIGHT + FHD_VFP,
+	.vsync_end = FHD_FRAME_HEIGHT + FHD_VFP + FHD_VSA,
+	.vtotal = FHD_FRAME_HEIGHT + FHD_VFP + FHD_VSA + FHD_VBP,
+};
+
+#if SUPPORT_90Hz
+static const struct drm_display_mode fhd_mode_90 = {
+	.clock = FHD_CLK_90,
+	.hdisplay = FHD_FRAME_WIDTH,
+	.hsync_start = FHD_FRAME_WIDTH + FHD_HFP,
+	.hsync_end = FHD_FRAME_WIDTH + FHD_HFP + FHD_HSA,
+	.htotal = FHD_FRAME_WIDTH + FHD_HFP + FHD_HSA + FHD_HBP,
+	.vdisplay = FHD_FRAME_HEIGHT,
+	.vsync_start = FHD_FRAME_HEIGHT + FHD_VFP,
+	.vsync_end = FHD_FRAME_HEIGHT + FHD_VFP + FHD_VSA,
+	.vtotal = FHD_FRAME_HEIGHT + FHD_VFP + FHD_VSA + FHD_VBP,
+};
+#endif
+
+static const struct drm_display_mode fhd_mode_120 = {
+	.clock = FHD_CLK_120,
+	.hdisplay = FHD_FRAME_WIDTH,
+	.hsync_start = FHD_FRAME_WIDTH + FHD_HFP_120,
+	.hsync_end = FHD_FRAME_WIDTH + FHD_HFP_120 + FHD_HSA,
+	.htotal = FHD_FRAME_WIDTH + FHD_HFP_120 + FHD_HSA + FHD_HBP_120,
+	.vdisplay = FHD_FRAME_HEIGHT,
+	.vsync_start = FHD_FRAME_HEIGHT + FHD_VFP,
+	.vsync_end = FHD_FRAME_HEIGHT + FHD_VFP + FHD_VSA,
+	.vtotal = FHD_FRAME_HEIGHT + FHD_VFP + FHD_VSA + FHD_VBP,
+};
+
+static const struct drm_display_mode fhd_mode_60 = {
+	.clock = FHD_CLK_60,
+	.hdisplay = FHD_FRAME_WIDTH,
+	.hsync_start = FHD_FRAME_WIDTH + FHD_HFP_60,
+	.hsync_end = FHD_FRAME_WIDTH + FHD_HFP_60 + FHD_HSA,
+	.htotal = FHD_FRAME_WIDTH + FHD_HFP_60 + FHD_HSA + FHD_HBP_60,
+	.vdisplay = FHD_FRAME_HEIGHT,
+	.vsync_start = FHD_FRAME_HEIGHT + FHD_VFP_60,
+	.vsync_end = FHD_FRAME_HEIGHT + FHD_VFP_60 + FHD_VSA,
+	.vtotal = FHD_FRAME_HEIGHT + FHD_VFP_60 + FHD_VSA + FHD_VBP,
+};
+
+static const struct drm_display_mode fhd_mode_30 = {
+	.clock = FHD_CLK_30,
+	.hdisplay = FHD_FRAME_WIDTH,
+	.hsync_start = FHD_FRAME_WIDTH + FHD_HFP_30,
+	.hsync_end = FHD_FRAME_WIDTH + FHD_HFP_30 + FHD_HSA,
+	.htotal = FHD_FRAME_WIDTH + FHD_HFP_30 + FHD_HSA + FHD_HBP_30,
+	.vdisplay = FHD_FRAME_HEIGHT,
+	.vsync_start = FHD_FRAME_HEIGHT + FHD_VFP_30,
+	.vsync_end = FHD_FRAME_HEIGHT + FHD_VFP_30 + FHD_VSA,
+	.vtotal = FHD_FRAME_HEIGHT + FHD_VFP_30 + FHD_VSA + FHD_VBP,
+};
+
+#endif
+
 #if defined(CONFIG_MTK_PANEL_EXT)
 static struct mtk_panel_params ext_params = {
-	.pll_clk = 501,
+	.pll_clk = 491,
+	.data_rate = 982,
+	.data_rate_khz = 976137,
 	.physical_width_um = 273615,
 	.physical_height_um = 171009,
-	.cust_esd_check = 0,
-	.esd_check_enable = 0,
 	.output_mode = MTK_PANEL_DUAL_PORT,
 	.lcm_cmd_if = MTK_PANEL_DUAL_PORT,
+	.dual_swap = false,
+	.prefetch_time = PREFETCH_TIME,
 	.vdo_keep_hs_perline = 1,
+	.cust_esd_check = 0,
+	.esd_check_enable = 0,
 	.lcm_esd_check_table[0] = {
 		.cmd = 0x53,
 		.count = 1,
@@ -926,41 +1102,529 @@ static struct mtk_panel_params ext_params = {
 			.range_bpg_ofs = range_bpg_ofs,
 		},
 	},
-	.dual_swap = true,
+	.dyn_fps = {
+		.switch_en = 1,
+		.vact_timing_fps = 144,
+		.dfps_cmd_table[0] = {0, 2, {0xFF, 0x10} },
+		.dfps_cmd_table[1] = {0, 2, {0xFB, 0x01} },
+		.dfps_cmd_table[2] = {0, 2, {0xB2, 0x80} },
+		.dfps_cmd_table[3] = {0, 2, {0xB3, 0x00} },
+	},
+	.dyn = {
+		.switch_en = 1,
+		.vfp = 26,
+		.hfp = 25,
+		.hbp = 24,
+	},
+};
+
+#if SUPPORT_90Hz
+static struct mtk_panel_params ext_params_90hz = {
+	.pll_clk = 491,
+	.data_rate = 982,
+	.data_rate_khz = 976137,
+	.physical_width_um = 273615,
+	.physical_height_um = 171009,
+	.output_mode = MTK_PANEL_DUAL_PORT,
+	.lcm_cmd_if = MTK_PANEL_DUAL_PORT,
+	.dual_swap = false,
+	.prefetch_time = PREFETCH_TIME,
+	.vdo_keep_hs_perline = 1,
+	.cust_esd_check = 0,
+	.esd_check_enable = 0,
+	.lcm_esd_check_table[0] = {
+		.cmd = 0x53,
+		.count = 1,
+		.para_list[0] = 0x00,
+	},
+	.dsc_params = {
+		.enable = 1,
+		.dual_dsc_enable = 1,
+		.ver = 0x11, /* [7:4] major [3:0] minor */
+		.slice_mode = 1,
+		.rgb_swap = 0,
+		.dsc_cfg = 34,
+		.rct_on = 1,
+		.bit_per_channel = 8,
+		.dsc_line_buf_depth = 9,
+		.bp_enable = 1,
+		.bit_per_pixel = 128,
+		.pic_height = 1840, /* need to check */
+		.pic_width = 1472,  /* need to check */
+		.slice_height = 20,
+		.slice_width = 736,
+		.chunk_size = 736,
+		.xmit_delay = 512,
+		.dec_delay = 656,
+		.scale_value = 32,
+		.increment_interval = 537,
+		.decrement_interval = 10,
+		.line_bpg_offset = 13,
+		.nfl_bpg_offset = 1402,
+		.slice_bpg_offset = 940,
+		.initial_offset = 6144,
+		.final_offset = 4304,
+		.flatness_minqp = 3,
+		.flatness_maxqp = 12,
+		.rc_model_size = 8192,
+		.rc_edge_factor = 6,
+		.rc_quant_incr_limit0 = 11,
+		.rc_quant_incr_limit1 = 11,
+		.rc_tgt_offset_hi = 3,
+		.rc_tgt_offset_lo = 3,
+
+		.ext_pps_cfg = {
+			.enable = 1,
+			.rc_buf_thresh = rc_buf_thresh,
+			.range_min_qp = range_min_qp,
+			.range_max_qp = range_max_qp,
+			.range_bpg_ofs = range_bpg_ofs,
+		},
+	},
+	.dyn_fps = {
+		.switch_en = 1,
+		.vact_timing_fps = 144,
+		.dfps_cmd_table[0] = {0, 2, {0xFF, 0x10} },
+		.dfps_cmd_table[1] = {0, 2, {0xFB, 0x01} },
+		.dfps_cmd_table[2] = {0, 2, {0xB2, 0x80} },
+		.dfps_cmd_table[3] = {0, 2, {0xB3, 0x00} },
+	},
+	.dyn = {
+		.switch_en = 1,
+		.vfp = 1256,
+		.hfp = 25,
+		.hbp = 24,
+	},
+};
+#endif
+
+static struct mtk_panel_params ext_params_120hz = {
+	.pll_clk = 491,
+	.data_rate = 982,
+	.data_rate_khz = 976137,
+	.vfp_low_power = 2076, //60Hz
+	.physical_width_um = 273615,
+	.physical_height_um = 171009,
+	.output_mode = MTK_PANEL_DUAL_PORT,
+	.lcm_cmd_if = MTK_PANEL_DUAL_PORT,
+	.dual_swap = false,
+	.prefetch_time = PREFETCH_TIME,
+	.vdo_keep_hs_perline = 1,
+	.cust_esd_check = 0,
+	.esd_check_enable = 0,
+	.lcm_esd_check_table[0] = {
+		.cmd = 0x53,
+		.count = 1,
+		.para_list[0] = 0x00,
+	},
+	.dsc_params = {
+		.enable = 1,
+		.dual_dsc_enable = 1,
+		.ver = 0x11, /* [7:4] major [3:0] minor */
+		.slice_mode = 1,
+		.rgb_swap = 0,
+		.dsc_cfg = 34,
+		.rct_on = 1,
+		.bit_per_channel = 8,
+		.dsc_line_buf_depth = 9,
+		.bp_enable = 1,
+		.bit_per_pixel = 128,
+		.pic_height = 1840, /* need to check */
+		.pic_width = 1472,  /* need to check */
+		.slice_height = 20,
+		.slice_width = 736,
+		.chunk_size = 736,
+		.xmit_delay = 512,
+		.dec_delay = 656,
+		.scale_value = 32,
+		.increment_interval = 537,
+		.decrement_interval = 10,
+		.line_bpg_offset = 13,
+		.nfl_bpg_offset = 1402,
+		.slice_bpg_offset = 940,
+		.initial_offset = 6144,
+		.final_offset = 4304,
+		.flatness_minqp = 3,
+		.flatness_maxqp = 12,
+		.rc_model_size = 8192,
+		.rc_edge_factor = 6,
+		.rc_quant_incr_limit0 = 11,
+		.rc_quant_incr_limit1 = 11,
+		.rc_tgt_offset_hi = 3,
+		.rc_tgt_offset_lo = 3,
+
+		.ext_pps_cfg = {
+			.enable = 1,
+			.rc_buf_thresh = rc_buf_thresh,
+			.range_min_qp = range_min_qp,
+			.range_max_qp = range_max_qp,
+			.range_bpg_ofs = range_bpg_ofs,
+		},
+	},
+	.dyn_fps = {
+		.switch_en = 1,
+		.vact_timing_fps = 120,
+		.dfps_cmd_table[0] = {0, 2, {0xFF, 0x10} },
+		.dfps_cmd_table[1] = {0, 2, {0xFB, 0x01} },
+		.dfps_cmd_table[2] = {0, 2, {0xB2, 0x91} },
+		.dfps_cmd_table[3] = {0, 2, {0xB3, 0x40} },
+	},
+	.dyn = {
+		.switch_en = 1,
+		.vfp = 26,
+		.hfp = 80,
+		.hbp = 80,
+	},
+};
+
+static struct mtk_panel_params ext_params_60hz = {
+	.pll_clk = 491,
+	.data_rate = 982,
+	.data_rate_khz = 976137,
+	.physical_width_um = 273615,
+	.physical_height_um = 171009,
+	.output_mode = MTK_PANEL_DUAL_PORT,
+	.lcm_cmd_if = MTK_PANEL_DUAL_PORT,
+	.dual_swap = false,
+	.prefetch_time = PREFETCH_TIME,
+	.vdo_keep_hs_perline = 1,
+	.cust_esd_check = 0,
+	.esd_check_enable = 0,
+	.lcm_esd_check_table[0] = {
+		.cmd = 0x53,
+		.count = 1,
+		.para_list[0] = 0x00,
+	},
+	.dsc_params = {
+		.enable = 1,
+		.dual_dsc_enable = 1,
+		.ver = 0x11, /* [7:4] major [3:0] minor */
+		.slice_mode = 1,
+		.rgb_swap = 0,
+		.dsc_cfg = 34,
+		.rct_on = 1,
+		.bit_per_channel = 8,
+		.dsc_line_buf_depth = 9,
+		.bp_enable = 1,
+		.bit_per_pixel = 128,
+		.pic_height = 1840, /* need to check */
+		.pic_width = 1472,  /* need to check */
+		.slice_height = 20,
+		.slice_width = 736,
+		.chunk_size = 736,
+		.xmit_delay = 512,
+		.dec_delay = 656,
+		.scale_value = 32,
+		.increment_interval = 537,
+		.decrement_interval = 10,
+		.line_bpg_offset = 13,
+		.nfl_bpg_offset = 1402,
+		.slice_bpg_offset = 940,
+		.initial_offset = 6144,
+		.final_offset = 4304,
+		.flatness_minqp = 3,
+		.flatness_maxqp = 12,
+		.rc_model_size = 8192,
+		.rc_edge_factor = 6,
+		.rc_quant_incr_limit0 = 11,
+		.rc_quant_incr_limit1 = 11,
+		.rc_tgt_offset_hi = 3,
+		.rc_tgt_offset_lo = 3,
+		.ext_pps_cfg = {
+			.enable = 1,
+			.rc_buf_thresh = rc_buf_thresh,
+			.range_min_qp = range_min_qp,
+			.range_max_qp = range_max_qp,
+			.range_bpg_ofs = range_bpg_ofs,
+		},
+	},
+	.dyn_fps = {
+		.switch_en = 1,
+		.vact_timing_fps = 120,
+		.dfps_cmd_table[0] = {0, 2, {0xFF, 0x10} },
+		.dfps_cmd_table[1] = {0, 2, {0xFB, 0x01} },
+		.dfps_cmd_table[2] = {0, 2, {0xB2, 0x91} },
+		.dfps_cmd_table[3] = {0, 2, {0xB3, 0x40} },
+	},
+	.dyn = {
+		.switch_en = 1,
+		.vfp = 2076,
+		.hfp = 80,
+		.hbp = 80,
+	},
+};
+
+static struct mtk_panel_params ext_params_30hz = {
+	.pll_clk = 491,
+	.data_rate = 982,
+	.data_rate_khz = 976137,
+	.physical_width_um = 273615,
+	.physical_height_um = 171009,
+	.output_mode = MTK_PANEL_DUAL_PORT,
+	.lcm_cmd_if = MTK_PANEL_DUAL_PORT,
+	.dual_swap = false,
+	.prefetch_time = PREFETCH_TIME,
+	.vdo_keep_hs_perline = 1,
+	.cust_esd_check = 0,
+	.esd_check_enable = 0,
+	.lcm_esd_check_table[0] = {
+		.cmd = 0x53,
+		.count = 1,
+		.para_list[0] = 0x00,
+	},
+	.dsc_params = {
+		.enable = 1,
+		.dual_dsc_enable = 1,
+		.ver = 0x11, /* [7:4] major [3:0] minor */
+		.slice_mode = 1,
+		.rgb_swap = 0,
+		.dsc_cfg = 34,
+		.rct_on = 1,
+		.bit_per_channel = 8,
+		.dsc_line_buf_depth = 9,
+		.bp_enable = 1,
+		.bit_per_pixel = 128,
+		.pic_height = 1840, /* need to check */
+		.pic_width = 1472,  /* need to check */
+		.slice_height = 20,
+		.slice_width = 736,
+		.chunk_size = 736,
+		.xmit_delay = 512,
+		.dec_delay = 656,
+		.scale_value = 32,
+		.increment_interval = 537,
+		.decrement_interval = 10,
+		.line_bpg_offset = 13,
+		.nfl_bpg_offset = 1402,
+		.slice_bpg_offset = 940,
+		.initial_offset = 6144,
+		.final_offset = 4304,
+		.flatness_minqp = 3,
+		.flatness_maxqp = 12,
+		.rc_model_size = 8192,
+		.rc_edge_factor = 6,
+		.rc_quant_incr_limit0 = 11,
+		.rc_quant_incr_limit1 = 11,
+		.rc_tgt_offset_hi = 3,
+		.rc_tgt_offset_lo = 3,
+
+		.ext_pps_cfg = {
+			.enable = 1,
+			.rc_buf_thresh = rc_buf_thresh,
+			.range_min_qp = range_min_qp,
+			.range_max_qp = range_max_qp,
+			.range_bpg_ofs = range_bpg_ofs,
+		},
+	},
+	.dyn_fps = {
+		.switch_en = 1,
+		.vact_timing_fps = 120,
+		.dfps_cmd_table[0] = {0, 2, {0xFF, 0x10} },
+		.dfps_cmd_table[1] = {0, 2, {0xFB, 0x01} },
+		.dfps_cmd_table[2] = {0, 2, {0xB2, 0x91} },
+		.dfps_cmd_table[3] = {0, 2, {0xB3, 0x40} },
+	},
+	.dyn = {
+		.switch_en = 1,
+		.vfp = 6176,
+		.hfp = 80,
+		.hbp = 80,
+	},
 };
 
 static int panel_ext_reset(struct drm_panel *panel, int on)
 {
 	struct boe *ctx = panel_to_boe(panel);
 
-	ctx->reset_gpio = devm_gpiod_get(ctx->dev, "reset", GPIOD_OUT_HIGH);
 	gpiod_set_value(ctx->reset_gpio, on);
-	devm_gpiod_put(ctx->dev, ctx->reset_gpio);
 
 	return 0;
 }
 
-static int boe_setbacklight_cmdq(void *dsi, dcs_write_gce cb, void *handle,
-				   unsigned int level)
+static int boe_setbacklight_cmdq(void *dsi, dcs_write_gce cb,
+	void *handle, unsigned int level)
 {
-	if (level > 255)
-		level = 255;
+	char bl_tb[] = {0x51, 0x07, 0xff};
 
-	level = level * 4095 / 255;
-	bl_tb0[1] = ((level >> 8) & 0xf);
-	bl_tb0[2] = (level & 0xff);
+	if (level) {
+		bl_tb0[1] = (level >> 8) & 0xFF;
+		bl_tb0[2] = level & 0xFF;
+	}
+	bl_tb[1] = (level >> 8) & 0xFF;
+	bl_tb[2] = level & 0xFF;
 
 	if (!cb)
 		return -1;
-
-	cb(dsi, handle, bl_tb0, ARRAY_SIZE(bl_tb0));
-
+	pr_info("%s %d %d %d\n", __func__, level, bl_tb[1], bl_tb[2]);
+	cb(dsi, handle, bl_tb, ARRAY_SIZE(bl_tb));
 	return 0;
+}
+
+#ifdef AP_RESOLUTION_SWITCH
+struct drm_display_mode *get_mode_by_id(struct drm_connector *connector,
+	unsigned int mode)
+{
+	struct drm_display_mode *m;
+	unsigned int i = 0;
+
+	list_for_each_entry(m, &connector->modes, head) {
+		if (i == mode)
+			return m;
+		i++;
+	}
+	return NULL;
+}
+#endif
+
+struct drm_display_mode *get_mode_by_id_hfp(struct drm_connector *connector,
+	unsigned int mode)
+{
+	struct drm_display_mode *m;
+	unsigned int i = 0;
+
+	list_for_each_entry(m, &connector->modes, head) {
+		if (i == mode)
+			return m;
+		i++;
+	}
+	return NULL;
+}
+static int mtk_panel_ext_param_set(struct drm_panel *panel,
+			struct drm_connector *connector, unsigned int mode)
+{
+	struct mtk_panel_ext *ext = find_panel_ext(panel);
+	int ret = 0;
+	struct drm_display_mode *m = get_mode_by_id_hfp(connector, mode);
+
+	if (drm_mode_vrefresh(m) == 144) {
+		ext->params = &ext_params;
+		current_fps = 144;
+	}
+#if SUPPORT_90Hz
+	else if (drm_mode_vrefresh(m) == 90) {
+		ext->params = &ext_params_90hz;
+		current_fps = 90;
+	}
+#endif
+	else if (drm_mode_vrefresh(m) == 120) {
+		ext->params = &ext_params_120hz;
+		current_fps = 120;
+	} else if (drm_mode_vrefresh(m) == 60) {
+		ext->params = &ext_params_60hz;
+		current_fps = 60;
+	} else if (drm_mode_vrefresh(m) == 30) {
+		ext->params = &ext_params_30hz;
+		current_fps = 30;
+	} else
+		ret = 1;
+	if (!ret)
+		current_fps = drm_mode_vrefresh(m);
+
+	return ret;
+}
+
+#ifdef AP_RESOLUTION_SWITCH
+static int mtk_panel_ext_param_get(struct drm_panel *panel,
+	struct drm_connector *connector,
+	struct mtk_panel_params **ext_param,
+	unsigned int mode)
+{
+	int ret = 0;
+	struct drm_display_mode *m = get_mode_by_id(connector, mode);
+
+	if (m == NULL) {
+		dev_info(connector->dev->dev, "Failed to get mode by id: %u\n", mode);
+		return -EINVAL;
+	}
+	if (drm_mode_vrefresh(m) == 144)
+		*ext_param = &ext_params;
+	else if (drm_mode_vrefresh(m) == 120)
+		*ext_param = &ext_params_120hz;
+#if SUPPORT_90Hz
+	else if (drm_mode_vrefresh(m) == 90)
+		*ext_param = &ext_params_90hz;
+#endif
+	else if (drm_mode_vrefresh(m) == 60)
+		*ext_param = &ext_params_60hz;
+	else if (drm_mode_vrefresh(m) == 30)
+		*ext_param = &ext_params_30hz;
+	else
+		ret = 1;
+	if (!ret)
+		current_fps = drm_mode_vrefresh(m);
+
+	return ret;
+}
+
+enum RES_SWITCH_TYPE mtk_get_res_switch_type(void)
+{
+	pr_info("res_switch_type: %d\n", res_switch_type);
+	return res_switch_type;
+}
+#endif
+
+static void mode_switch_to_144(struct drm_panel *panel)
+{
+	struct boe *ctx = panel_to_boe(panel);
+
+	boe_dcs_write_seq_static(ctx, 0xFF, 0x10);
+	boe_dcs_write_seq_static(ctx, 0xFB, 0x01);
+	boe_dcs_write_seq_static(ctx, 0xB2, 0x80);//144hz
+	boe_dcs_write_seq_static(ctx, 0xB3, 0x00);
+}
+
+static void mode_switch_to_120(struct drm_panel *panel)
+{
+	struct boe *ctx = panel_to_boe(panel);
+
+	boe_dcs_write_seq_static(ctx, 0xFF, 0x10);
+	boe_dcs_write_seq_static(ctx, 0xFB, 0x01);
+	boe_dcs_write_seq_static(ctx, 0xB2, 0x91);//120hz
+	boe_dcs_write_seq_static(ctx, 0xB3, 0x40);
+}
+
+static int mode_switch(struct drm_panel *panel,
+		struct drm_connector *connector, unsigned int cur_mode,
+		unsigned int dst_mode, enum MTK_PANEL_MODE_SWITCH_STAGE stage)
+{
+	int ret = 0;
+	struct drm_display_mode *m = get_mode_by_id_hfp(connector, dst_mode);
+
+	if (!m) {
+		pr_info("ERROR!! drm_display_mode m is null\n");
+		return -ENOMEM;
+	}
+
+	pr_info("%s cur_mode = %d dst_mode %d\n", __func__, cur_mode, dst_mode);
+
+	if (drm_mode_vrefresh(m) == 144)
+		mode_switch_to_144(panel);
+#if SUPPORT_90Hz
+	else if (drm_mode_vrefresh(m) == 90)
+		mode_switch_to_144(panel);
+#endif
+	else if (drm_mode_vrefresh(m) == 120)
+		mode_switch_to_120(panel);
+	else if (drm_mode_vrefresh(m) == 60)
+		mode_switch_to_120(panel);
+	else if (drm_mode_vrefresh(m) == 30)
+		mode_switch_to_120(panel);
+	else
+		ret = 1;
+
+	return ret;
 }
 
 static struct mtk_panel_funcs ext_funcs = {
 	.reset = panel_ext_reset,
 	.set_backlight_cmdq = boe_setbacklight_cmdq,
+	.ext_param_set = mtk_panel_ext_param_set,
+#ifdef AP_RESOLUTION_SWITCH
+	.ext_param_get = mtk_panel_ext_param_get,
+	.get_res_switch_type = mtk_get_res_switch_type,
+#endif
+	.mode_switch = mode_switch,
+
 };
 #endif
 
@@ -968,6 +1632,22 @@ static int boe_get_modes(struct drm_panel *panel,
 					struct drm_connector *connector)
 {
 	struct drm_display_mode *mode;
+#if SUPPORT_90Hz
+	struct drm_display_mode *mode2;
+#endif
+	struct drm_display_mode *mode3;
+	struct drm_display_mode *mode4;
+	struct drm_display_mode *mode5;
+
+#ifdef AP_RESOLUTION_SWITCH
+	struct drm_display_mode *fhd_mode;
+	struct drm_display_mode *fhd_mode1;
+#if SUPPORT_90Hz
+	struct drm_display_mode *fhd_mode2;
+#endif
+	struct drm_display_mode *fhd_mode3;
+	struct drm_display_mode *fhd_mode4;
+#endif
 
 	pr_info("%s+++\n", __func__);
 
@@ -978,14 +1658,122 @@ static int boe_get_modes(struct drm_panel *panel,
 			drm_mode_vrefresh(&default_mode));
 		return -ENOMEM;
 	}
-
 	drm_mode_set_name(mode);
 	mode->type = DRM_MODE_TYPE_DRIVER | DRM_MODE_TYPE_PREFERRED;
 	drm_mode_probed_add(connector, mode);
+
+#if SUPPORT_90Hz
+	mode2 = drm_mode_duplicate(connector->dev, &performance_mode_90hz);
+	if (!mode2) {
+		dev_info(connector->dev->dev, "failed to add mode %ux%ux@%u\n",
+			 performance_mode_90hz.hdisplay, performance_mode_90hz.vdisplay,
+			 drm_mode_vrefresh(&performance_mode_90hz));
+		return -ENOMEM;
+	}
+	drm_mode_set_name(mode2);
+	mode2->type = DRM_MODE_TYPE_DRIVER;
+	drm_mode_probed_add(connector, mode2);
+#endif
+
+	mode3 = drm_mode_duplicate(connector->dev, &performance_mode_120hz);
+	if (!mode3) {
+		dev_info(connector->dev->dev, "failed to add mode %ux%ux@%u\n",
+			 performance_mode_120hz.hdisplay, performance_mode_120hz.vdisplay,
+			 drm_mode_vrefresh(&performance_mode_120hz));
+		return -ENOMEM;
+	}
+	drm_mode_set_name(mode3);
+	mode3->type = DRM_MODE_TYPE_DRIVER;
+	drm_mode_probed_add(connector, mode3);
+
+	mode4 = drm_mode_duplicate(connector->dev, &performance_mode_60hz);
+	if (!mode4) {
+		dev_info(connector->dev->dev, "failed to add mode %ux%ux@%u\n",
+			 performance_mode_60hz.hdisplay, performance_mode_60hz.vdisplay,
+			 drm_mode_vrefresh(&performance_mode_60hz));
+		return -ENOMEM;
+	}
+	drm_mode_set_name(mode4);
+	mode4->type = DRM_MODE_TYPE_DRIVER;
+	drm_mode_probed_add(connector, mode4);
+
+	mode5 = drm_mode_duplicate(connector->dev, &performance_mode_30hz);
+	if (!mode5) {
+		dev_info(connector->dev->dev, "failed to add mode %ux%ux@%u\n",
+			 performance_mode_30hz.hdisplay, performance_mode_30hz.vdisplay,
+			 drm_mode_vrefresh(&performance_mode_30hz));
+		return -ENOMEM;
+	}
+	drm_mode_set_name(mode5);
+	mode5->type = DRM_MODE_TYPE_DRIVER;
+	drm_mode_probed_add(connector, mode5);
+
+#ifdef AP_RESOLUTION_SWITCH
+	pr_info("%s+++\n", __func__);
+	fhd_mode = drm_mode_duplicate(connector->dev, &fhd_default_mode);
+	if (!fhd_mode) {
+		dev_info(connector->dev->dev, "failed to add mode %ux%ux@%u\n",
+			fhd_default_mode.hdisplay, fhd_default_mode.vdisplay,
+			drm_mode_vrefresh(&fhd_default_mode));
+		return -ENOMEM;
+	}
+
+	drm_mode_set_name(fhd_mode);
+	fhd_mode->type = DRM_MODE_TYPE_DRIVER;
+	drm_mode_probed_add(connector, fhd_mode);
+
+	fhd_mode1 = drm_mode_duplicate(connector->dev, &fhd_mode_120);
+	if (!fhd_mode1) {
+		dev_info(connector->dev->dev, "failed to add mode %ux%ux@%u\n",
+			fhd_mode_120.hdisplay, fhd_mode_120.vdisplay,
+			drm_mode_vrefresh(&fhd_mode_120));
+		return -ENOMEM;
+	}
+
+	drm_mode_set_name(fhd_mode1);
+	fhd_mode1->type = DRM_MODE_TYPE_DRIVER;
+	drm_mode_probed_add(connector, fhd_mode1);
+
+#if SUPPORT_90Hz
+	fhd_mode2 = drm_mode_duplicate(connector->dev, &fhd_mode_90);
+	if (!fhd_mode2) {
+		dev_info(connector->dev->dev, "failed to add mode %ux%ux@%u\n",
+			fhd_mode_90.hdisplay, fhd_mode_90.vdisplay,
+			drm_mode_vrefresh(&fhd_mode_90));
+		return -ENOMEM;
+	}
+	drm_mode_set_name(fhd_mode2);
+	fhd_mode2->type = DRM_MODE_TYPE_DRIVER;
+	drm_mode_probed_add(connector, fhd_mode2);
+#endif
+
+	fhd_mode3 = drm_mode_duplicate(connector->dev, &fhd_mode_60);
+	if (!fhd_mode3) {
+		dev_info(connector->dev->dev, "failed to add mode %ux%ux@%u\n",
+			fhd_mode_60.hdisplay, fhd_mode_60.vdisplay,
+			drm_mode_vrefresh(&fhd_mode_60));
+		return -ENOMEM;
+	}
+
+	drm_mode_set_name(fhd_mode3);
+	fhd_mode3->type = DRM_MODE_TYPE_DRIVER;
+	drm_mode_probed_add(connector, fhd_mode3);
+
+	fhd_mode4 = drm_mode_duplicate(connector->dev, &fhd_mode_30);
+	if (!fhd_mode4) {
+		dev_info(connector->dev->dev, "failed to add mode %ux%ux@%u\n",
+			fhd_mode_30.hdisplay, fhd_mode_30.vdisplay,
+			drm_mode_vrefresh(&fhd_mode_30));
+		return -ENOMEM;
+	}
+
+	drm_mode_set_name(fhd_mode4);
+	fhd_mode4->type = DRM_MODE_TYPE_DRIVER;
+	drm_mode_probed_add(connector, fhd_mode4);
+#endif
+	pr_info("%s---\n", __func__);
 	connector->display_info.width_mm = 273;
 	connector->display_info.height_mm = 171;
-
-	pr_info("%s---\n", __func__);
 
 	return 1;
 }
@@ -1000,13 +1788,34 @@ static const struct drm_panel_funcs boe_drm_funcs = {
 
 static int boe_probe(struct mipi_dsi_device *dsi)
 {
+	struct device_node *dsi_node, *remote_node = NULL, *endpoint = NULL;
 	struct device *dev = &dsi->dev;
 	struct device_node *backlight;
+#ifdef AP_RESOLUTION_SWITCH
+	unsigned int res_switch;
+#endif
 	struct boe *ctx;
 	unsigned int value;
 	int ret;
 
 	pr_info("%s+++\n", __func__);
+
+	dsi_node = of_get_parent(dev->of_node);
+	if (dsi_node) {
+		endpoint = of_graph_get_next_endpoint(dsi_node, NULL);
+		if (endpoint) {
+			remote_node = of_graph_get_remote_port_parent(endpoint);
+			if (!remote_node) {
+				pr_info("No panel connected,skip probe lcm\n");
+				return -ENODEV;
+			}
+			pr_info("device node name:%s\n", remote_node->name);
+		}
+	}
+	if (remote_node != dev->of_node) {
+		pr_info("%s+ skip probe due to not current lcm\n", __func__);
+		return -ENODEV;
+	}
 
 	ctx = devm_kzalloc(dev, sizeof(struct boe), GFP_KERNEL);
 	if (!ctx)
@@ -1018,6 +1827,18 @@ static int boe_probe(struct mipi_dsi_device *dsi)
 	dsi->format = MIPI_DSI_FMT_RGB888;
 	dsi->mode_flags = MIPI_DSI_MODE_VIDEO | MIPI_DSI_MODE_VIDEO_SYNC_PULSE;
 
+#ifdef AP_RESOLUTION_SWITCH
+	pr_info("%s+++ %d\n", __func__, __LINE__);
+	pr_info(" %d get dts res-switch\n", __LINE__);
+	ret = of_property_read_u32(dev->of_node, "res-switch", &res_switch);
+	if (ret < 0){
+		res_switch = 0;
+		pr_info(" %d no use res-switch %d\n", __LINE__, res_switch);
+	}else{
+		res_switch_type = (enum RES_SWITCH_TYPE)res_switch;
+		pr_info(" %d AP res-switch %d\n", __LINE__, res_switch_type);
+	}
+#endif
 	backlight = of_parse_phandle(dev->of_node, "backlight", 0);
 	if (backlight) {
 		ctx->backlight = of_find_backlight_by_node(backlight);
@@ -1026,13 +1847,42 @@ static int boe_probe(struct mipi_dsi_device *dsi)
 			return -EPROBE_DEFER;
 	}
 
+	ctx->display_dual_swap = of_property_read_bool(dev->of_node,
+					      "display-dual-swap");
+	pr_notice("ctx->display_dual_swap=%d\n", ctx->display_dual_swap);
+	if (ctx->display_dual_swap) {
+		ext_params.dual_swap = true;
+#if SUPPORT_90Hz
+		ext_params_90hz.dual_swap = true;
+#endif
+		ext_params_120hz.dual_swap = true;
+		ext_params_60hz.dual_swap = true;
+		ext_params_30hz.dual_swap = true;
+	}
+
 	ret = of_property_read_u32(dev->of_node, "gate-ic", &value);
 	if (ret < 0) {
 		pr_info("%s, Failed to find gate-ic\n", __func__);
 		value = 0;
 	} else {
-		pr_info("%s, line=%d, value=%d\n", __func__, __LINE__, value);
+		pr_info("%s, Find gate-ic, value=%d\n", __func__, value);
 		ctx->gate_ic = value;
+	}
+
+	if (ctx->gate_ic == 0) {
+		ctx->bias_pos = devm_gpiod_get_index(dev, "bias", 0, GPIOD_OUT_HIGH);
+		if (IS_ERR(ctx->bias_pos)) {
+			dev_info(dev, "cannot get bias-gpios 0 %ld\n",
+				 PTR_ERR(ctx->bias_pos));
+			return PTR_ERR(ctx->bias_pos);
+		}
+
+		ctx->bias_neg = devm_gpiod_get_index(dev, "bias", 1, GPIOD_OUT_HIGH);
+		if (IS_ERR(ctx->bias_neg)) {
+			dev_info(dev, "cannot get bias-gpios 1 %ld\n",
+				 PTR_ERR(ctx->bias_neg));
+			return PTR_ERR(ctx->bias_neg);
+		}
 	}
 
 	ctx->reset_gpio = devm_gpiod_get(dev, "reset", GPIOD_OUT_HIGH);
@@ -1041,7 +1891,6 @@ static int boe_probe(struct mipi_dsi_device *dsi)
 			PTR_ERR(ctx->reset_gpio));
 		return PTR_ERR(ctx->reset_gpio);
 	}
-	devm_gpiod_put(dev, ctx->reset_gpio);
 
 	/*
 	 * ctx->hwen = devm_gpiod_get(dev, "pm-enable", GPIOD_OUT_HIGH);
