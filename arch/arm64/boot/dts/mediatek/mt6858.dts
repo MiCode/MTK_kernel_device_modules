@@ -1194,6 +1194,7 @@
 				<&dvfsrc_freq_opp3>,
 				<&dvfsrc_freq_opp4>,
 				<&dvfsrc_freq_opp5>;
+		cm-mgr-node-register = <0>;
 		cm-mgr-enable = <0>;
 		cm-mgr-arch = "v1p";
 
