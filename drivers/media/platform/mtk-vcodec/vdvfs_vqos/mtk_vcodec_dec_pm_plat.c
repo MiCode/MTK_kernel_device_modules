@@ -12,6 +12,7 @@
 #include <linux/vmalloc.h>
 #include <linux/pm_opp.h>
 #include <linux/regulator/consumer.h>
+#include <linux/string.h>
 
 #include "mtk_vcodec_dec_pm.h"
 #include "mtk_vcodec_dec_pm_plat.h"
@@ -31,6 +32,9 @@
 #include "thermal_interface.h"
 #include <linux/notifier.h>
 #endif
+
+// vdec dvfs/qos params preparation checklist
+unsigned char vdec_dvfs_params_checklist[VDEC_DVFS_CHECKLIST_NUM] = {255};
 
 #ifdef MTK_THERMAL_THROTTLE
 int mtk_dec_thermal_hint_callback(struct notifier_block *nb, unsigned long event, void *data)
@@ -71,22 +75,26 @@ static bool mtk_dec_tput_init(struct mtk_vcodec_dev *dev)
 
 	ret = of_property_read_s32(pdev->dev.of_node, "throughput-op-rate-thresh", &nmax);
 	if (ret)
-		mtk_vcodec_dvfs_qos_log(true, "[VDEC] Cannot get op rate thresh, default 0");
-
+		vdec_dvfs_params_checklist[VDEC_DVFS_CHECKLIST_THROUGHPUT_OP_RATE_THRESH] = 0;
+	else
+		vdec_dvfs_params_checklist[VDEC_DVFS_CHECKLIST_THROUGHPUT_OP_RATE_THRESH] = 1;
 	dev->vdec_dvfs_params.per_frame_adjust_op_rate = nmax;
 	dev->vdec_dvfs_params.per_frame_adjust = 1;
 
 	ret = of_property_read_u32(pdev->dev.of_node, "throughput-min", &nmin);
 	if (ret) {
 		nmin = STD_VDEC_FREQ;
-		mtk_vcodec_dvfs_qos_log(true, "[VDEC] Cannot get min, default %u", nmin);
-	}
+		vdec_dvfs_params_checklist[VDEC_DVFS_CHECKLIST_THROUGHPUT_MIN] = 0;
+	} else
+		vdec_dvfs_params_checklist[VDEC_DVFS_CHECKLIST_THROUGHPUT_MIN] = 1;
+
 
 	ret = of_property_read_u32(pdev->dev.of_node, "throughput-normal-max", &nmax);
 	if (ret) {
 		nmax = STD_VDEC_FREQ;
-		mtk_vcodec_dvfs_qos_log(true, "[VDEC] Cannot get normal max, default %u", nmax);
-	}
+		vdec_dvfs_params_checklist[VDEC_DVFS_CHECKLIST_THROUGHPUT_NORMAL_MAX] = 0;
+	} else
+		vdec_dvfs_params_checklist[VDEC_DVFS_CHECKLIST_THROUGHPUT_NORMAL_MAX] = 1;
 
 	dev->vdec_dvfs_params.codec_type = MTK_INST_DECODER;
 	dev->vdec_dvfs_params.min_freq = nmin;
@@ -101,6 +109,8 @@ static bool mtk_dec_tput_init(struct mtk_vcodec_dev *dev)
 	for (i = 0; i < MTK_VDEC_HW_NUM; i++)
 		dev->vdec_dvfs_params.lock_cnt[i] = 0;
 
+	if (dev->vdec_dvfs_params.mmdvfs_in_vcp)
+		return false;
 
 	/* max operating rate by codec / resolution */
 	cnt = of_property_count_u32_elems(pdev->dev.of_node, "max-op-rate-table");
@@ -112,8 +122,9 @@ static bool mtk_dec_tput_init(struct mtk_vcodec_dev *dev)
 	ret = of_property_read_u32(pdev->dev.of_node, "max-op-rate-item-num", &op_item_num);
 	if (ret) {
 		op_item_num = 9;
-		mtk_vcodec_dvfs_qos_log(true, "[VDEC] invalid max-op-rate-item-num, use default value %d", op_item_num);
-	}
+		vdec_dvfs_params_checklist[VDEC_DVFS_CHECKLIST_MAX_OP_RATE_ITEM_NUM] = 0;
+	} else
+		vdec_dvfs_params_checklist[VDEC_DVFS_CHECKLIST_MAX_OP_RATE_ITEM_NUM] = 1;
 
 	dev->vdec_op_rate_cnt = cnt / op_item_num;
 
@@ -127,7 +138,7 @@ static bool mtk_dec_tput_init(struct mtk_vcodec_dev *dev)
 				sizeof(struct vcodec_op_rate), dev->vdec_op_rate_cnt,
 				dev->vdec_dflt_op_rate);
 	} else {
-		mtk_vcodec_dvfs_qos_log(true, "[VDEC] max-op-rate-table not exist or config wrong %d",
+		mtk_vcodec_dvfs_qos_err("[VDEC] max-op-rate-table not exist or config wrong %d",
 			dev->vdec_op_rate_cnt);
 		dev->vdec_op_rate_cnt = 0;
 		dev->vdec_dflt_op_rate = NULL;
@@ -138,7 +149,7 @@ static bool mtk_dec_tput_init(struct mtk_vcodec_dev *dev)
 			ret = of_property_read_u32_index(pdev->dev.of_node, "max-op-rate-table",
 					i * op_item_num, &dev->vdec_dflt_op_rate[i].codec_fmt);
 			if (ret) {
-				mtk_vcodec_dvfs_qos_log(true, "[VDEC] Cannot get default op rate codec_fmt");
+				mtk_vcodec_dvfs_qos_err("[VDEC] Cannot get default op rate codec_fmt");
 				vfree(dev->vdec_dflt_op_rate);
 				dev->vdec_dflt_op_rate = NULL;
 				return false;
@@ -149,7 +160,7 @@ static bool mtk_dec_tput_init(struct mtk_vcodec_dev *dev)
 						i * op_item_num + 1 + j * 2,
 						(u32 *)&dev->vdec_dflt_op_rate[i].pixel_per_frame[j]);
 				if (ret) {
-					mtk_vcodec_dvfs_qos_log(true, "[VDEC] Cannot get pixel per frame %d %d",
+					mtk_vcodec_dvfs_qos_err("[VDEC] Cannot get pixel per frame %d %d",
 							i, j);
 					vfree(dev->vdec_dflt_op_rate);
 					dev->vdec_dflt_op_rate = NULL;
@@ -160,7 +171,7 @@ static bool mtk_dec_tput_init(struct mtk_vcodec_dev *dev)
 						i * op_item_num + 2 + j * 2,
 						(u32 *)&dev->vdec_dflt_op_rate[i].max_op_rate[j]);
 				if (ret) {
-					mtk_vcodec_dvfs_qos_log(true, "[VDEC] Cannot get max_op_rate %d %d",
+					mtk_vcodec_dvfs_qos_err("[VDEC] Cannot get max_op_rate %d %d",
 							i, j);
 					vfree(dev->vdec_dflt_op_rate);
 					dev->vdec_dflt_op_rate = NULL;
@@ -170,7 +181,7 @@ static bool mtk_dec_tput_init(struct mtk_vcodec_dev *dev)
 			dev->vdec_dflt_op_rate[i].codec_type = 0;
 		}
 	} else {
-		mtk_vcodec_dvfs_qos_log(true, "[VDEC] vzalloc vdec_dflt_op_rate table failed");
+		mtk_vcodec_dvfs_qos_err("[VDEC] vzalloc vdec_dflt_op_rate table failed");
 		return false;
 	}
 
@@ -190,7 +201,7 @@ static bool mtk_dec_tput_init(struct mtk_vcodec_dev *dev)
 		mtk_vcodec_dvfs_qos_log(false, "[VDEC] vzalloc %zu x %d res %p",
 			sizeof(struct vcodec_perf), dev->vdec_tput_cnt, dev->vdec_tput);
 	} else {
-		mtk_vcodec_dvfs_qos_log(true, "[VDEC] throughtput table not exist");
+		mtk_vcodec_dvfs_qos_err("[VDEC] throughtput table not exist");
 		return false;
 	}
 
@@ -199,7 +210,7 @@ static bool mtk_dec_tput_init(struct mtk_vcodec_dev *dev)
 			ret = of_property_read_u32_index(pdev->dev.of_node, "throughput-table",
 					i * tp_item_num, &dev->vdec_tput[i].codec_fmt);
 			if (ret) {
-				mtk_vcodec_dvfs_qos_log(true, "[VDEC] Cannot get codec_fmt");
+				mtk_vcodec_dvfs_qos_err( "[VDEC] Cannot get codec_fmt");
 				vfree(dev->vdec_tput);
 				dev->vdec_tput = NULL;
 				return false;
@@ -208,7 +219,7 @@ static bool mtk_dec_tput_init(struct mtk_vcodec_dev *dev)
 			ret = of_property_read_u32_index(pdev->dev.of_node, "throughput-table",
 					i * tp_item_num + 1, (u32 *)&dev->vdec_tput[i].config);
 			if (ret) {
-				mtk_vcodec_dvfs_qos_log(true, "[VDEC] Cannot get config");
+				mtk_vcodec_dvfs_qos_err("[VDEC] Cannot get config");
 				vfree(dev->vdec_tput);
 				dev->vdec_tput = NULL;
 				return false;
@@ -218,7 +229,7 @@ static bool mtk_dec_tput_init(struct mtk_vcodec_dev *dev)
 			ret = of_property_read_u32_index(pdev->dev.of_node, "throughput-table",
 					i * tp_item_num + 2, &dev->vdec_tput[i].cy_per_mb_1);
 			if (ret) {
-				mtk_vcodec_dvfs_qos_log(true, "[VDEC] Cannot get cycle per mb 1");
+				mtk_vcodec_dvfs_qos_err("[VDEC] Cannot get cycle per mb 1");
 				vfree(dev->vdec_tput);
 				dev->vdec_tput = NULL;
 				return false;
@@ -227,7 +238,7 @@ static bool mtk_dec_tput_init(struct mtk_vcodec_dev *dev)
 			ret = of_property_read_u32_index(pdev->dev.of_node, "throughput-table",
 					i * tp_item_num + 3, &dev->vdec_tput[i].cy_per_mb_2);
 			if (ret) {
-				mtk_vcodec_dvfs_qos_log(true, "[VDEC] Cannot get cycle per mb 2");
+				mtk_vcodec_dvfs_qos_err("[VDEC] Cannot get cycle per mb 2");
 				vfree(dev->vdec_tput);
 				dev->vdec_tput = NULL;
 				return false;
@@ -235,7 +246,7 @@ static bool mtk_dec_tput_init(struct mtk_vcodec_dev *dev)
 			dev->vdec_tput[i].codec_type = 0;
 		}
 	} else {
-		mtk_vcodec_dvfs_qos_log(true, "[VDEC] vzalloc vdec_tput table failed");
+		mtk_vcodec_dvfs_qos_err("[VDEC] vzalloc vdec_tput table failed");
 		return false;
 	}
 
@@ -287,6 +298,26 @@ static void mtk_dec_tput_deinit(struct mtk_vcodec_dev *dev)
 }
 #endif
 
+void mtk_print_dec_dvfs_checklist(void)
+{
+
+	char buffer[VDEC_DVFS_CHECKLIST_NUM * 4 + 1] = {0};
+	int i = 0, ret = 0, offset = 0;
+
+	// Show vdec dvfs qos params checklist, such as
+	// vdec checklist   0   1   1   1   0   0   1   0   1   1 ...
+	for (i = 0; i < VDEC_DVFS_CHECKLIST_NUM; i++) {
+		ret = snprintf(buffer + offset, sizeof(buffer) - offset, " %3d",
+			vdec_dvfs_params_checklist[i]);
+		if (ret < 0 || ret >= (int)sizeof(buffer) - offset) {
+			mtk_vcodec_dvfs_qos_err("snprintf index %d (len %zu), pbuf index %u, ret %d",
+				offset, sizeof(buffer), i, ret);
+			break;
+		}
+		offset += ret;
+	}
+	mtk_vcodec_dvfs_qos_log(true, "%s", buffer);
+}
 
 void mtk_prepare_vdec_dvfs(struct mtk_vcodec_dev *dev)
 {
@@ -300,40 +331,38 @@ void mtk_prepare_vdec_dvfs(struct mtk_vcodec_dev *dev)
 	pdev = dev->plat_dev;
 	INIT_LIST_HEAD(&dev->vdec_dvfs_inst);
 
+	// init for vdec dvfs/qos params preparation checklist
+	for (i = 0; i < VDEC_DVFS_CHECKLIST_NUM; i++)
+		vdec_dvfs_params_checklist[i] = 255;
+
 	ret = of_property_read_u32(pdev->dev.of_node, "dvfs-qos-ver", &dvfs_qos_ver);
-	if (ret)
-		mtk_vcodec_dvfs_qos_log(true, "[VDEC] Faile get dvfs-qos-ver, default %d", dvfs_qos_ver);
 	dev->vdec_dvfs_params.version = dvfs_qos_ver;
+	vdec_dvfs_params_checklist[VDEC_DVFS_CHECKLIST_DVFS_QOS_VERSION] = dvfs_qos_ver;
 
 	ret = of_property_read_s32(pdev->dev.of_node, "vdec-mmdvfs-in-vcp", &vdec_req);
-	if (ret)
-		mtk_vcodec_dvfs_qos_log(true, "[VDEC] Faile get vdec-mmdvfs-in-vcp, default %d", vdec_req);
 	dev->vdec_dvfs_params.mmdvfs_in_vcp = vdec_req;
+	vdec_dvfs_params_checklist[VDEC_DVFS_CHECKLIST_MMDVFS_IN_VCP] = vdec_req;
 
 	vdec_req = 0;
 	ret = of_property_read_s32(pdev->dev.of_node, "vdec-mmdvfs-in-adaptive", &vdec_req);
-	if (ret)
-		mtk_vcodec_dvfs_qos_log(true, "[VDEC] no need vdec-mmdvfs-in-adaptive");
 	dev->vdec_dvfs_params.mmdvfs_in_adaptive = vdec_req;
+	vdec_dvfs_params_checklist[VDEC_DVFS_CHECKLIST_MMDVFS_IN_ADAPTIVE] = vdec_req;
 
 	vdec_req = 0;
 	ret = of_property_read_s32(pdev->dev.of_node, "vdec-set-bw-in-min-freq", &vdec_req);
-	if (ret)
-		mtk_vcodec_dvfs_qos_log(true, "[VDEC] no need vdec-set-bw-in-min-freq, default %d", vdec_req);
 	dev->vdec_dvfs_params.set_bw_in_min_freq = vdec_req;
+	vdec_dvfs_params_checklist[VDEC_DVFS_CHECKLIST_SET_BW_IN_MIN_FREQ] = vdec_req;
 
 	ret = of_property_read_s32(pdev->dev.of_node, "vdec-cpu-hint-mode", &flag);
 	if (ret) {
-		mtk_vcodec_dvfs_qos_log(true, "[VDEC] no need vdec-cpu-hint-mode");
 		dev->cpu_hint_mode = (1 << MTK_CPU_UNSUPPORT);
 	} else
 		dev->cpu_hint_mode = flag;
+	vdec_dvfs_params_checklist[VDEC_DVFS_CHECKLIST_CPU_HINT_MODE] = dev->cpu_hint_mode;
 
 #ifdef MTK_THERMAL_THROTTLE
 	dev->thermal_hint_mode = of_property_read_bool(pdev->dev.of_node, "vdec-thermal-hint-mode");
-	if (!dev->thermal_hint_mode) {
-		mtk_vcodec_dvfs_qos_log(true, "[VDEC] no need vdec-thermal-hint-mode");
-	} else {
+	if (dev->thermal_hint_mode) {
 		dev->thermal_notify.notifier_call = mtk_dec_thermal_hint_callback;
 		ret = mtk_thermal_hint_notify_register("vdec_cooling", &dev->thermal_notify);
 		if (ret < 0) {
@@ -342,6 +371,7 @@ void mtk_prepare_vdec_dvfs(struct mtk_vcodec_dev *dev)
 			return;
 		}
 	}
+	vdec_dvfs_params_checklist[VDEC_DVFS_CHECKLIST_THERMAL_HINT_MODE] = dev->thermal_hint_mode;
 #endif
 
 	ret = dev_pm_opp_of_add_table(&dev->plat_dev->dev);
@@ -354,20 +384,24 @@ void mtk_prepare_vdec_dvfs(struct mtk_vcodec_dev *dev)
 	dev->vdec_reg = devm_regulator_get_optional(&dev->plat_dev->dev,
 						"mmdvfs-dvfsrc-vcore");
 	if (IS_ERR_OR_NULL(dev->vdec_reg)) {
-		mtk_vcodec_dvfs_qos_err("[VDEC] Failed to get regulator");
+		mtk_vcodec_dvfs_qos_log(true, "[VDEC] Failed to get regulator");
+		vdec_dvfs_params_checklist[VDEC_DVFS_CHECKLIST_REGULATOR_MODE] = 0;
 		dev->vdec_reg = 0;
 		dev->vdec_mmdvfs_clk = devm_clk_get(&dev->plat_dev->dev, "mmdvfs_clk");
 		if (IS_ERR_OR_NULL(dev->vdec_mmdvfs_clk)) {
 			mtk_vcodec_dvfs_qos_err("[VDEC] Failed to get mmdvfs_clk");
 			dev->vdec_mmdvfs_clk = 0;
-		} else
-			mtk_vcodec_dvfs_qos_log(true, "[VDEC] get vdec_mmdvfs_clk successfully");
-	} else {
-		mtk_vcodec_dvfs_qos_log(true, "[VDEC] get regulator successfully");
-	}
+			vdec_dvfs_params_checklist[VDEC_DVFS_CHECKLIST_MMDVFS_CLK_MODE] = 0;
+		} else {
+			// get mmdvfs_clk successfully
+			vdec_dvfs_params_checklist[VDEC_DVFS_CHECKLIST_MMDVFS_CLK_MODE] = 1;
+		}
+	} else
+		vdec_dvfs_params_checklist[VDEC_DVFS_CHECKLIST_REGULATOR_MODE] = 1;	// get regulator successfully
 
 	dev->vdec_freq_cnt = dev_pm_opp_get_opp_count(&dev->plat_dev->dev);
 	freq = 0;
+	i = 0;
 	while (!IS_ERR(opp =
 		dev_pm_opp_find_freq_ceil(&dev->plat_dev->dev, &freq))) {
 		dev->vdec_freqs[i] = freq;
@@ -379,6 +413,8 @@ void mtk_prepare_vdec_dvfs(struct mtk_vcodec_dev *dev)
 	ret = mtk_dec_tput_init(dev);
 	if (!ret)
 		mtk_dec_tput_deinit(dev);
+
+	mtk_print_dec_dvfs_checklist();
 
 #endif
 }
@@ -407,14 +443,16 @@ void mtk_prepare_vdec_emi_bw(struct mtk_vcodec_dev *dev)
 	ret = of_property_read_u32(pdev->dev.of_node, "throughput-min", &nmin);
 	if (ret) {
 		nmin = STD_VDEC_FREQ;
-		mtk_vcodec_dvfs_qos_log(true, "[VDEC] Cannot get min, default %u", nmin);
-	}
+		vdec_dvfs_params_checklist[VDEC_DVFS_CHECKLIST_THROUGHPUT_MIN] = 0;
+	} else
+		vdec_dvfs_params_checklist[VDEC_DVFS_CHECKLIST_THROUGHPUT_MIN] = 1;
 
 	ret = of_property_read_u32(pdev->dev.of_node, "throughput-normal-max", &nmax);
 	if (ret) {
 		nmax = STD_VDEC_FREQ;
-		mtk_vcodec_dvfs_qos_log(true, "[VDEC] Cannot get normal max, default %u", nmax);
-	}
+		vdec_dvfs_params_checklist[VDEC_DVFS_CHECKLIST_THROUGHPUT_NORMAL_MAX] = 0;
+	} else
+		vdec_dvfs_params_checklist[VDEC_DVFS_CHECKLIST_THROUGHPUT_NORMAL_MAX] = 1;
 
 	dev->vdec_dvfs_params.min_freq = nmin;
 	dev->vdec_dvfs_params.normal_max_freq = nmax;
@@ -433,7 +471,7 @@ void mtk_prepare_vdec_emi_bw(struct mtk_vcodec_dev *dev)
 	}
 
 	if (!dev->vdec_larb_cnt) {
-		mtk_vcodec_dvfs_qos_log(true, "[VDEC] bandwidth table not exist");
+		mtk_vcodec_dvfs_qos_err("[VDEC] bandwidth table not exist");
 		return;
 	}
 
@@ -443,7 +481,7 @@ void mtk_prepare_vdec_emi_bw(struct mtk_vcodec_dev *dev)
 			ret = of_property_read_u32_index(pdev->dev.of_node, "bandwidth-table",
 				i *bw_item_num, &dev->vdec_larb_bw[i].larb_id);
 			if (ret) {
-				mtk_vcodec_dvfs_qos_log(true, "[VDEC] Cannot get base bw");
+				mtk_vcodec_dvfs_qos_err("[VDEC] Cannot get base bw");
 				vfree(dev->vdec_larb_bw);
 				dev->vdec_larb_bw = NULL;
 				return;
@@ -452,7 +490,7 @@ void mtk_prepare_vdec_emi_bw(struct mtk_vcodec_dev *dev)
 			ret = of_property_read_u32_index(pdev->dev.of_node, "bandwidth-table",
 				i *bw_item_num + 1, (u32 *)&dev->vdec_larb_bw[i].larb_type);
 			if (ret) {
-				mtk_vcodec_dvfs_qos_log(true, "[VDEC] Cannot get bw larb type");
+				mtk_vcodec_dvfs_qos_err("[VDEC] Cannot get bw larb type");
 				vfree(dev->vdec_larb_bw);
 				dev->vdec_larb_bw = NULL;
 				return;
@@ -461,7 +499,7 @@ void mtk_prepare_vdec_emi_bw(struct mtk_vcodec_dev *dev)
 			ret = of_property_read_u32_index(pdev->dev.of_node, "bandwidth-table",
 				i *bw_item_num + 2, &dev->vdec_larb_bw[i].larb_base_bw);
 			if (ret) {
-				mtk_vcodec_dvfs_qos_log(true, "[VDEC] Cannot get base bw");
+				mtk_vcodec_dvfs_qos_err("[VDEC] Cannot get base bw");
 				vfree(dev->vdec_larb_bw);
 				dev->vdec_larb_bw = NULL;
 				return;
@@ -475,13 +513,11 @@ void mtk_prepare_vdec_emi_bw(struct mtk_vcodec_dev *dev)
 	ret = of_property_read_u32(pdev->dev.of_node, "os-allow-bw",
 			&dev->vdec_dvfs_params.os_bw[1]);
 	if (ret)
-		mtk_vcodec_dvfs_qos_log(true, "[VDEC] Not allow overspec");
+		vdec_dvfs_params_checklist[VDEC_DVFS_CHECKLIST_OS_ALLOW_BW] = 0;
 	else {
 		ret = of_property_read_u32(pdev->dev.of_node, "vdec-max-w",
 			&dev->vdec_dvfs_params.os_bw[0]);
-
-		mtk_vcodec_dvfs_qos_log(true, "[VDEC] vdec-max-w: %d, os-allow-bw: %d",
-			ret ? 0 : dev->vdec_dvfs_params.os_bw[0], dev->vdec_dvfs_params.os_bw[1]);
+		vdec_dvfs_params_checklist[VDEC_DVFS_CHECKLIST_OS_ALLOW_BW] = 1;
 	}
 
 	/* QoS */
@@ -523,6 +559,7 @@ void mtk_prepare_vdec_emi_bw(struct mtk_vcodec_dev *dev)
 			dev->vdec_larb_bw[i].larb_base_bw);
 	}
 #endif
+	mtk_print_dec_dvfs_checklist();
 #endif
 }
 

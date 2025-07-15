@@ -12,6 +12,35 @@
 #define ENC_DVFS	1
 #define ENC_EMI_BW	1
 
+/*
+ * enum venc_dvfs_checklist_item - The checkitem for venc dvfs preparing
+ * @VENC_DVFS_CHECKLIST_DVFS_QOS_VERSION:    dvfs-qos-ver
+ * @VENC_DVFS_CHECKLIST_MMDVFS_IN_VCP:       venc-mmdvfs-in-vcp
+ * @VENC_DVFS_CHECKLIST_MMDVFS_IN_ADAPTIVE:  venc-mmdvfs-in-adaptive
+ * @VENC_DVFS_CHECKLIST_CPU_HINT_MODE:       venc-cpu-hint-mode
+ * @VENC_DVFS_CHECKLIST_THERMAL_HINT_MODE:   venc-thermal-hint-mode
+ * @VENC_DVFS_CHECKLIST_REGULATOR_MODE:      regulator mode  (0 for failure, 1 for success)
+ * @VENC_DVFS_CHECKLIST_MMDVFS_CLK_MODE:     mmdvfs_clk mode (0 for failure, 1 for success)
+ * @VENC_DVFS_CHECKLIST_THROUGHPUT_OP_RATE_THRESH: throughput-op-rate-thresh (0 for not set, 1 for dts value)
+ * @VENC_DVFS_CHECKLIST_THROUGHPUT_MIN:      throughput-min (0 for not set, 1 for dts value)
+ * @VENC_DVFS_CHECKLIST_THROUGHPUT_NORMAL_MAX:    throughput-normal-max (0 for not set, 1 for dts value)
+ * @VENC_DVFS_CHECKLIST_THROUGHPUT_CONFIG_OFFSET: throughput-config-offset (0 for not set, 1 for dts value)
+ */
+enum venc_dvfs_checklist_item {
+	VENC_DVFS_CHECKLIST_DVFS_QOS_VERSION = 0,
+	VENC_DVFS_CHECKLIST_MMDVFS_IN_VCP = 1,
+	VENC_DVFS_CHECKLIST_MMDVFS_IN_ADAPTIVE = 2,
+	VENC_DVFS_CHECKLIST_CPU_HINT_MODE = 3,
+	VENC_DVFS_CHECKLIST_THERMAL_HINT_MODE = 4,
+	VENC_DVFS_CHECKLIST_REGULATOR_MODE = 5,
+	VENC_DVFS_CHECKLIST_MMDVFS_CLK_MODE = 6,
+	VENC_DVFS_CHECKLIST_THROUGHPUT_OP_RATE_THRESH = 7,
+	VENC_DVFS_CHECKLIST_THROUGHPUT_MIN = 8,
+	VENC_DVFS_CHECKLIST_THROUGHPUT_NORMAL_MAX = 9,
+	VENC_DVFS_CHECKLIST_THROUGHPUT_CONFIG_OFFSET = 10,
+	VENC_DVFS_CHECKLIST_NUM = 11,
+};
+
 void mtk_prepare_venc_dvfs(struct mtk_vcodec_dev *dev);
 void mtk_unprepare_venc_dvfs(struct mtk_vcodec_dev *dev);
 void mtk_prepare_venc_emi_bw(struct mtk_vcodec_dev *dev);

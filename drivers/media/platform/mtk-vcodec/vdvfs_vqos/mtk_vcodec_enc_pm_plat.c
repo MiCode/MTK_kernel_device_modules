@@ -9,6 +9,7 @@
 #include <linux/pm_runtime.h>
 #include <linux/delay.h>
 #include <linux/vmalloc.h>
+#include <linux/string.h>
 #include <soc/mediatek/mmdvfs_v3.h>
 #include <soc/mediatek/smi.h>
 
@@ -40,6 +41,9 @@
 #include "thermal_interface.h"
 #include <linux/notifier.h>
 #endif
+
+// venc dvfs/qos params preparation checklist
+unsigned char venc_dvfs_params_checklist[VENC_DVFS_CHECKLIST_NUM] = {255};
 
 //#define VENC_PRINT_DTS_INFO
 int venc_smi_monitor_mode = 1; // 0: disable, 1: enable, 2: debug mode
@@ -83,33 +87,40 @@ static bool mtk_enc_tput_init(struct mtk_vcodec_dev *dev)
 	const int cfg_item_num = 4;
 	int i, ret, cnt = 0;
 	struct platform_device *pdev;
-	u32 nmin, nmax;
-	s32 offset;
+	u32 nmin = 0, nmax = 0;
+	s32 offset = 0;
 
 	pdev = dev->plat_dev;
 
 	ret = of_property_read_s32(pdev->dev.of_node, "throughput-op-rate-thresh", &nmax);
 	if (ret)
-		mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get op rate thresh, default 0");
-
+		venc_dvfs_params_checklist[VENC_DVFS_CHECKLIST_THROUGHPUT_OP_RATE_THRESH] = 0;
+	else
+		venc_dvfs_params_checklist[VENC_DVFS_CHECKLIST_THROUGHPUT_OP_RATE_THRESH] = 1;
 	dev->venc_dvfs_params.per_frame_adjust_op_rate = nmax;
 	dev->venc_dvfs_params.per_frame_adjust = 1;
 
 	ret = of_property_read_u32(pdev->dev.of_node, "throughput-min", &nmin);
 	if (ret) {
 		nmin = STD_VENC_FREQ;
-		mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get min, default %u", nmin);
-	}
+		venc_dvfs_params_checklist[VENC_DVFS_CHECKLIST_THROUGHPUT_MIN] = 0;
+	} else
+		venc_dvfs_params_checklist[VENC_DVFS_CHECKLIST_THROUGHPUT_MIN] = 1;
 
 	ret = of_property_read_u32(pdev->dev.of_node, "throughput-normal-max", &nmax);
 	if (ret) {
 		nmax = STD_VENC_FREQ;
-		mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get normal max, default %u", nmax);
-	}
+		venc_dvfs_params_checklist[VENC_DVFS_CHECKLIST_THROUGHPUT_NORMAL_MAX] = 0;
+	} else
+		venc_dvfs_params_checklist[VENC_DVFS_CHECKLIST_THROUGHPUT_NORMAL_MAX] = 1;
+
 	dev->venc_dvfs_params.codec_type = MTK_INST_ENCODER;
 	dev->venc_dvfs_params.min_freq = nmin;
 	dev->venc_dvfs_params.normal_max_freq = nmax;
 	dev->venc_dvfs_params.allow_oc = 0;
+
+	if (dev->venc_dvfs_params.mmdvfs_in_vcp)
+		return false;
 
 	/* throughput */
 	cnt = of_property_count_u32_elems(pdev->dev.of_node, "throughput-table");
@@ -120,25 +131,27 @@ static bool mtk_enc_tput_init(struct mtk_vcodec_dev *dev)
 	dev->venc_tput_cnt = cnt / tp_item_num;
 
 	if (!dev->venc_tput_cnt) {
-		mtk_vcodec_dvfs_qos_log(true, "[VENC] throughput table not exist");
+		mtk_vcodec_dvfs_qos_err("[VENC] throughput table not exist");
 		return false;
 	}
 
 	dev->venc_tput = vzalloc(sizeof(struct vcodec_perf) * dev->venc_tput_cnt);
 	if (!dev->venc_tput) {
-		/* mtk_vcodec_dvfs_qos_log(true, "[VENC] vzalloc venc_tput table failed"); */
+		mtk_vcodec_dvfs_qos_err("[VENC] vzalloc venc_tput table failed");
 		return false;
 	}
 
 	ret = of_property_read_s32(pdev->dev.of_node, "throughput-config-offset", &offset);
 	if (ret)
-		mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get config-offset, default 0");
+		venc_dvfs_params_checklist[VENC_DVFS_CHECKLIST_THROUGHPUT_CONFIG_OFFSET] = 0;
+	else
+		venc_dvfs_params_checklist[VENC_DVFS_CHECKLIST_THROUGHPUT_CONFIG_OFFSET] = 1;
 
 	for (i = 0; i < dev->venc_tput_cnt; i++) {
 		ret = of_property_read_u32_index(pdev->dev.of_node, "throughput-table",
 				i * tp_item_num, &dev->venc_tput[i].codec_fmt);
 		if (ret) {
-			mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get codec_fmt");
+			mtk_vcodec_dvfs_qos_err("[VENC] Cannot get codec_fmt");
 			vfree(dev->venc_tput);
 			dev->venc_tput = NULL;
 			return false;
@@ -147,7 +160,7 @@ static bool mtk_enc_tput_init(struct mtk_vcodec_dev *dev)
 		ret = of_property_read_u32_index(pdev->dev.of_node, "throughput-table",
 				i * tp_item_num + 1, (u32 *)&dev->venc_tput[i].config);
 		if (ret) {
-			mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get config");
+			mtk_vcodec_dvfs_qos_err("[VENC] Cannot get config");
 			vfree(dev->venc_tput);
 			dev->venc_tput = NULL;
 			return false;
@@ -157,7 +170,7 @@ static bool mtk_enc_tput_init(struct mtk_vcodec_dev *dev)
 		ret = of_property_read_u32_index(pdev->dev.of_node, "throughput-table",
 				i * tp_item_num + 2, &dev->venc_tput[i].cy_per_mb_1);
 		if (ret) {
-			mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get cycle per mb 1");
+			mtk_vcodec_dvfs_qos_err("[VENC] Cannot get cycle per mb 1");
 			vfree(dev->venc_tput);
 			dev->venc_tput = NULL;
 			return false;
@@ -166,7 +179,7 @@ static bool mtk_enc_tput_init(struct mtk_vcodec_dev *dev)
 		ret = of_property_read_u32_index(pdev->dev.of_node, "throughput-table",
 				i * tp_item_num + 3, &dev->venc_tput[i].cy_per_mb_2);
 		if (ret) {
-			mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get cycle per mb 2");
+			mtk_vcodec_dvfs_qos_err("[VENC] Cannot get cycle per mb 2");
 			vfree(dev->venc_tput);
 			dev->venc_tput = NULL;
 			return false;
@@ -175,9 +188,9 @@ static bool mtk_enc_tput_init(struct mtk_vcodec_dev *dev)
 
 		ret = of_property_read_u32_index(pdev->dev.of_node, "throughput-table",
 				i * tp_item_num + 4, &dev->venc_tput[i].base_freq);
-		mtk_vcodec_dvfs_qos_log(true, "[VENC][tput] get base_freq: %d", dev->venc_tput[i].base_freq);
+		mtk_vcodec_dvfs_qos_log(false, "[VENC][tput] get base_freq: %d", dev->venc_tput[i].base_freq);
 		if (ret) {
-			mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get base_freq");
+			mtk_vcodec_dvfs_qos_err("[VENC] Cannot get base_freq");
 			vfree(dev->venc_tput);
 			dev->venc_tput = NULL;
 			return false;
@@ -185,9 +198,9 @@ static bool mtk_enc_tput_init(struct mtk_vcodec_dev *dev)
 
 		ret = of_property_read_u32_index(pdev->dev.of_node, "throughput-table",
 				i * tp_item_num + 5, &dev->venc_tput[i].bw_factor);
-		mtk_vcodec_dvfs_qos_log(true, "[VENC][tput] get bw_factor: %d", dev->venc_tput[i].bw_factor);
+		mtk_vcodec_dvfs_qos_log(false, "[VENC][tput] get bw_factor: %d", dev->venc_tput[i].bw_factor);
 		if (ret) {
-			mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get bw_factor");
+			mtk_vcodec_dvfs_qos_err("[VENC] Cannot get bw_factor");
 			vfree(dev->venc_tput);
 			dev->venc_tput = NULL;
 			return false;
@@ -203,25 +216,21 @@ static bool mtk_enc_tput_init(struct mtk_vcodec_dev *dev)
 	dev->venc_cfg_cnt = cnt / cfg_item_num;
 
 	if (!dev->venc_cfg_cnt) {
-		mtk_vcodec_dvfs_qos_log(true, "[VENC] config table not exist");
+		mtk_vcodec_dvfs_qos_err("[VENC] config table not exist");
 		return false;
 	}
 
 	dev->venc_cfg = vzalloc(sizeof(struct vcodec_config) * dev->venc_cfg_cnt);
 	if (!dev->venc_cfg) {
-		/* mtk_vcodec_dvfs_qos_log(true, "[VENC] vzalloc venc_cfg table failed"); */
+		mtk_vcodec_dvfs_qos_err("[VENC] vzalloc venc_cfg table failed");
 		return false;
 	}
-
-	ret = of_property_read_s32(pdev->dev.of_node, "throughput-config-offset", &offset);
-	if (ret)
-		mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get config-offset, default 0");
 
 	for (i = 0; i < dev->venc_cfg_cnt; i++) {
 		ret = of_property_read_u32_index(pdev->dev.of_node, "config-table",
 				i * cfg_item_num, &dev->venc_cfg[i].codec_fmt);
 		if (ret) {
-			mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get cfg codec_fmt");
+			mtk_vcodec_dvfs_qos_err("[VENC] Cannot get cfg codec_fmt");
 			vfree(dev->venc_cfg);
 			dev->venc_cfg = NULL;
 			return false;
@@ -230,7 +239,7 @@ static bool mtk_enc_tput_init(struct mtk_vcodec_dev *dev)
 		ret = of_property_read_u32_index(pdev->dev.of_node, "config-table",
 				i * cfg_item_num + 1, (u32 *)&dev->venc_cfg[i].mb_thresh);
 		if (ret) {
-			mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get mb_thresh");
+			mtk_vcodec_dvfs_qos_err("[VENC] Cannot get mb_thresh");
 			vfree(dev->venc_cfg);
 			dev->venc_cfg = NULL;
 			return false;
@@ -239,7 +248,7 @@ static bool mtk_enc_tput_init(struct mtk_vcodec_dev *dev)
 		ret = of_property_read_u32_index(pdev->dev.of_node, "config-table",
 				i * cfg_item_num + 2, &dev->venc_cfg[i].config_1);
 		if (ret) {
-			mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get config 1");
+			mtk_vcodec_dvfs_qos_err("[VENC] Cannot get config 1");
 			vfree(dev->venc_cfg);
 			dev->venc_cfg = NULL;
 			return false;
@@ -249,7 +258,7 @@ static bool mtk_enc_tput_init(struct mtk_vcodec_dev *dev)
 		ret = of_property_read_u32_index(pdev->dev.of_node, "config-table",
 				i * cfg_item_num + 3, &dev->venc_cfg[i].config_2);
 		if (ret) {
-			mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get config 2");
+			mtk_vcodec_dvfs_qos_err("[VENC] Cannot get config 2");
 			vfree(dev->venc_cfg);
 			dev->venc_cfg = NULL;
 			return false;
@@ -301,6 +310,26 @@ static void mtk_enc_tput_deinit(struct mtk_vcodec_dev *dev)
 }
 #endif
 
+void mtk_print_enc_dvfs_checklist(void)
+{
+	char buffer[VENC_DVFS_CHECKLIST_NUM * 4 + 1] = {0};
+	int i = 0, ret = 0, offset = 0;
+
+	// Show venc dvfs qos params checklist, such as
+	// venc checklist   0   1   1   1   0   0   1   0   1   1 ...
+	for (i = 0; i < VENC_DVFS_CHECKLIST_NUM; i++) {
+		ret = snprintf(buffer + offset, sizeof(buffer) - offset, " %3d",
+			venc_dvfs_params_checklist[i]);
+		if (ret < 0 || ret >= (int)sizeof(buffer) - offset) {
+			mtk_vcodec_dvfs_qos_err("snprintf index %d (len %zu), pbuf index %u, ret %d",
+				offset, sizeof(buffer), i, ret);
+			break;
+		}
+		offset += ret;
+	}
+	mtk_vcodec_dvfs_qos_log(true, "%s", buffer);
+}
+
 void mtk_prepare_venc_dvfs(struct mtk_vcodec_dev *dev)
 {
 #if ENC_DVFS
@@ -313,33 +342,33 @@ void mtk_prepare_venc_dvfs(struct mtk_vcodec_dev *dev)
 	pdev = dev->plat_dev;
 	INIT_LIST_HEAD(&dev->venc_dvfs_inst);
 
+	// init for venc dvfs/qos params preparation checklist
+	for (i = 0; i < VENC_DVFS_CHECKLIST_NUM; i++)
+		venc_dvfs_params_checklist[i] = 255;
+
 	ret = of_property_read_u32(pdev->dev.of_node, "dvfs-qos-ver", &dvfs_qos_ver);
-	if (ret)
-		mtk_vcodec_dvfs_qos_log(true, "[VENC] Failed to get dvfs-qos-ver, default %d", dvfs_qos_ver);
 	dev->venc_dvfs_params.version = dvfs_qos_ver;
+	venc_dvfs_params_checklist[VENC_DVFS_CHECKLIST_DVFS_QOS_VERSION] = dvfs_qos_ver;
 
 	ret = of_property_read_s32(pdev->dev.of_node, "venc-mmdvfs-in-vcp", &venc_req);
-	if (ret)
-		mtk_vcodec_dvfs_qos_log(true, "[VENC] Faile get venc-mmdvfs-in-vcp, default %d", venc_req);
 	dev->venc_dvfs_params.mmdvfs_in_vcp = venc_req;
+	venc_dvfs_params_checklist[VENC_DVFS_CHECKLIST_MMDVFS_IN_VCP] = venc_req;
 
+	venc_req = 0;
 	ret = of_property_read_s32(pdev->dev.of_node, "venc-mmdvfs-in-adaptive", &venc_req);
-	if (ret)
-		mtk_vcodec_dvfs_qos_log(true, "[VENC] no need venc-mmdvfs-in-adaptive");
 	dev->venc_dvfs_params.mmdvfs_in_adaptive = venc_req;
+	venc_dvfs_params_checklist[VENC_DVFS_CHECKLIST_MMDVFS_IN_ADAPTIVE] = venc_req;
 
 	ret = of_property_read_s32(pdev->dev.of_node, "venc-cpu-hint-mode", &flag);
-	if (ret) {
-		mtk_vcodec_dvfs_qos_log(true, "[VENC] no need venc-cpu-hint-mode");
+	if (ret)
 		dev->cpu_hint_mode = (1 << MTK_CPU_UNSUPPORT);
-	} else
+	else
 		dev->cpu_hint_mode = flag;
+	venc_dvfs_params_checklist[VENC_DVFS_CHECKLIST_CPU_HINT_MODE] = dev->cpu_hint_mode;
 
 #ifdef MTK_THERMAL_THROTTLE
 	dev->thermal_hint_mode = of_property_read_bool(pdev->dev.of_node, "venc-thermal-hint-mode");
-	if (!dev->thermal_hint_mode) {
-		mtk_vcodec_dvfs_qos_log(true, "[VENC] no need venc-thermal-hint-mode");
-	} else {
+	if (dev->thermal_hint_mode) {
 		dev->thermal_notify.notifier_call = mtk_enc_thermal_hint_callback;
 		ret = mtk_thermal_hint_notify_register("venc_cooling", &dev->thermal_notify);
 		if (ret < 0) {
@@ -348,6 +377,7 @@ void mtk_prepare_venc_dvfs(struct mtk_vcodec_dev *dev)
 			return;
 		}
 	}
+	venc_dvfs_params_checklist[VENC_DVFS_CHECKLIST_THERMAL_HINT_MODE] = dev->thermal_hint_mode;
 #endif
 
 	ret = dev_pm_opp_of_add_table(&dev->plat_dev->dev);
@@ -361,19 +391,23 @@ void mtk_prepare_venc_dvfs(struct mtk_vcodec_dev *dev)
 						"mmdvfs-dvfsrc-vcore");
 	if (IS_ERR_OR_NULL(dev->venc_reg)) {
 		mtk_vcodec_dvfs_qos_log(true, "[VENC] Failed to get regulator");
+		venc_dvfs_params_checklist[VENC_DVFS_CHECKLIST_REGULATOR_MODE] = 0;
 		dev->venc_reg = 0;
 		dev->venc_mmdvfs_clk = devm_clk_get(&dev->plat_dev->dev, "mmdvfs_clk");
 		if (IS_ERR_OR_NULL(dev->venc_mmdvfs_clk)) {
-			mtk_vcodec_dvfs_qos_log(true, "[VENC] Failed to mmdvfs_clk");
+			mtk_vcodec_dvfs_qos_err("[VENC] Failed to mmdvfs_clk");
+			venc_dvfs_params_checklist[VENC_DVFS_CHECKLIST_MMDVFS_CLK_MODE] = 0;
 			dev->venc_mmdvfs_clk = 0;
-		} else
-			mtk_vcodec_dvfs_qos_log(true, "[VENC] get venc_mmdvfs_clk successfully");
-	} else {
-		mtk_vcodec_dvfs_qos_log(true, "[VENC] get regulator successfully");
-	}
+		} else {
+			// get venc_mmdvfs_clk successfully
+			venc_dvfs_params_checklist[VENC_DVFS_CHECKLIST_MMDVFS_CLK_MODE] = 1;
+		}
+	} else
+		venc_dvfs_params_checklist[VENC_DVFS_CHECKLIST_REGULATOR_MODE] = 1;	// get regulator successfully
 
 	dev->venc_freq_cnt = dev_pm_opp_get_opp_count(&dev->plat_dev->dev);
 	freq = 0;
+	i = 0;
 	while (!IS_ERR(opp =
 		dev_pm_opp_find_freq_ceil(&dev->plat_dev->dev, &freq))) {
 		dev->venc_freqs[i] = freq;
@@ -385,6 +419,8 @@ void mtk_prepare_venc_dvfs(struct mtk_vcodec_dev *dev)
 	ret = mtk_enc_tput_init(dev);
 	if (!ret)
 		mtk_enc_tput_deinit(dev);
+
+	mtk_print_enc_dvfs_checklist();
 
 #endif
 }
@@ -424,7 +460,7 @@ void mtk_prepare_venc_emi_bw(struct mtk_vcodec_dev *dev)
 	if (dev->venc_larb_cnt) {
 		dev->venc_larb_bw = vzalloc(sizeof(struct vcodec_larb_bw) * dev->venc_larb_cnt);
 		if (!dev->venc_larb_bw) {
-			/* mtk_vcodec_dvfs_qos_log(true, "[VENC] vzalloc venc_larb_bw table failed"); */
+			mtk_vcodec_dvfs_qos_err("[VENC] vzalloc venc_larb_bw table failed");
 			return;
 		}
 
@@ -432,7 +468,7 @@ void mtk_prepare_venc_emi_bw(struct mtk_vcodec_dev *dev)
 			ret = of_property_read_u32_index(pdev->dev.of_node, "bandwidth-table",
 					i *bw_item_num, (u32 *)&dev->venc_larb_bw[i].larb_id);
 			if (ret) {
-				mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get bw port type");
+				mtk_vcodec_dvfs_qos_err("[VENC] Cannot get bw port type");
 				vfree(dev->venc_larb_bw);
 				dev->venc_larb_bw = NULL;
 				return;
@@ -441,7 +477,7 @@ void mtk_prepare_venc_emi_bw(struct mtk_vcodec_dev *dev)
 			ret = of_property_read_u32_index(pdev->dev.of_node, "bandwidth-table",
 					i *bw_item_num + 1, &dev->venc_larb_bw[i].larb_type);
 			if (ret) {
-				mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get base bw");
+				mtk_vcodec_dvfs_qos_err("[VENC] Cannot get base bw");
 				vfree(dev->venc_larb_bw);
 				dev->venc_larb_bw = NULL;
 				return;
@@ -450,14 +486,14 @@ void mtk_prepare_venc_emi_bw(struct mtk_vcodec_dev *dev)
 			ret = of_property_read_u32_index(pdev->dev.of_node, "bandwidth-table",
 					i *bw_item_num + 2, &dev->venc_larb_bw[i].larb_base_bw);
 			if (ret) {
-				mtk_vcodec_dvfs_qos_log(true, "[VENC] Cannot get base bw");
+				mtk_vcodec_dvfs_qos_err("[VENC] Cannot get base bw");
 				vfree(dev->venc_larb_bw);
 				dev->venc_larb_bw = NULL;
 				return;
 			}
 		}
 	} else {
-		mtk_vcodec_dvfs_qos_log(true, "[VENC] bandwidth table not exist");
+		mtk_vcodec_dvfs_qos_err("[VENC] bandwidth table not exist");
 	}
 
 	mtk_venc_pmqos_monitor_init(dev);
@@ -490,7 +526,7 @@ void mtk_prepare_venc_emi_bw(struct mtk_vcodec_dev *dev)
 
 	for (i = 0; i < larb_num; i++) {
 		dev->venc_qos_req[i] = of_mtk_icc_get(&pdev->dev, path_strs[i]);
-		mtk_vcodec_dvfs_qos_log(true, "[VENC] %d %p %s", i, dev->venc_qos_req[i], path_strs[i]);
+		mtk_vcodec_dvfs_qos_log(false, "[VENC] %d %p %s", i, dev->venc_qos_req[i], path_strs[i]);
 	}
 
 #ifdef VENC_PRINT_DTS_INFO
@@ -501,6 +537,7 @@ void mtk_prepare_venc_emi_bw(struct mtk_vcodec_dev *dev)
 			dev->venc_larb_bw[i].larb_base_bw);
 	}
 #endif
+	mtk_print_enc_dvfs_checklist();
 #endif
 }
 
