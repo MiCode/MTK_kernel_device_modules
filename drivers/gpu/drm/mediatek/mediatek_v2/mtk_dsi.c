@@ -1521,12 +1521,12 @@ CONFIG_REG:
 		| REG_FLD_VAL(FLD_TA_GET, ta_get)
 		| REG_FLD_VAL(FLD_DA_HS_EXIT, da_hs_exit);
 
+	if (handle)
+		cmdq_pkt_write((struct cmdq_pkt *)handle, comp->cmdq_base,
+			comp->regs_pa + DSI_PHY_TIMECON1(dsi->driver_data), value, ~0);
+	else
+		writel(value, dsi->regs + DSI_PHY_TIMECON1(dsi->driver_data));
 	if (dsi->driver_data->n_verion < VER_N3) {
-		if (handle)
-			cmdq_pkt_write((struct cmdq_pkt *)handle, comp->cmdq_base,
-				comp->regs_pa + DSI_PHY_TIMECON1(dsi->driver_data), value, ~0);
-		else
-			writel(value, dsi->regs + DSI_PHY_TIMECON1(dsi->driver_data));
 		if (handle)
 			cmdq_pkt_write((struct cmdq_pkt *)handle, comp->cmdq_base,
 				comp->regs_pa + DSI_CPHY_CON0(dsi->driver_data), 0x012c0003, ~0);
@@ -3639,68 +3639,67 @@ static void mtk_dsi_calc_vdo_timing(struct mtk_dsi *dsi)
 
 	if (dsi->ext->params->is_cphy) {
 		if (dsi->mode_flags & MIPI_DSI_MODE_VIDEO_SYNC_PULSE) {
-			if (t_hsa * dsi_tmp_buf_bpp < 10 * dsi->lanes + 26 + 5)
-				horizontal_sync_active_byte = 4;
-			else
-				horizontal_sync_active_byte = ALIGN_TO(
-					t_hsa * dsi_tmp_buf_bpp -
-					10 * dsi->lanes - 26, 2);
-			if ((dsi->driver_data->n_verion >= VER_N3 ||
-				dsi->driver_data->support_frame_tb_v5) &&
-				t_hsa * dsi_tmp_buf_bpp > 10 * dsi->lanes + 26 + 1)
-				horizontal_sync_active_byte = t_hsa * dsi_tmp_buf_bpp -
+			if (dsi->driver_data->n_verion >= VER_N3 ||
+				dsi->driver_data->support_frame_tb_v5) {
+				if (t_hsa * dsi_tmp_buf_bpp > 10 * dsi->lanes + 26)
+					horizontal_sync_active_byte = t_hsa * dsi_tmp_buf_bpp -
 								10 * dsi->lanes - 26;
-			else if ((dsi->driver_data->n_verion >= VER_N3 ||
-				dsi->driver_data->support_frame_tb_v5) &&
-				t_hsa * dsi_tmp_buf_bpp <= 10 * dsi->lanes + 26 + 1)
-				horizontal_sync_active_byte = 1;
+				else
+					horizontal_sync_active_byte = 1;
+			} else {
+				if (t_hsa * dsi_tmp_buf_bpp < 10 * dsi->lanes + 26 + 5)
+					horizontal_sync_active_byte = 4;
+				else
+					horizontal_sync_active_byte =
+						t_hsa * dsi_tmp_buf_bpp -
+						10 * dsi->lanes - 26;
+			}
 		} else {
 			horizontal_sync_active_byte = 0;
 			t_hbp = t_hsa + t_hbp;
 		}
 
-		if (t_hbp * dsi_tmp_buf_bpp < 12 * dsi->lanes + 26 + 5)
-			horizontal_backporch_byte = 4;
-		else
-			horizontal_backporch_byte = ALIGN_TO(
-				t_hbp * dsi_tmp_buf_bpp -
-				12 * dsi->lanes - 26, 2);
-		if ((dsi->driver_data->n_verion >= VER_N3 ||
-			dsi->driver_data->support_frame_tb_v5) &&
-			t_hbp * dsi_tmp_buf_bpp > 12 * dsi->lanes + 26 + 1)
-			horizontal_backporch_byte = t_hbp * dsi_tmp_buf_bpp -
+		if (dsi->driver_data->n_verion >= VER_N3 ||
+			dsi->driver_data->support_frame_tb_v5) {
+			if (t_hbp * dsi_tmp_buf_bpp > 12 * dsi->lanes + 26)
+				horizontal_backporch_byte = t_hbp * dsi_tmp_buf_bpp -
 							12 * dsi->lanes - 26;
-		else if ((dsi->driver_data->n_verion >= VER_N3 ||
-			dsi->driver_data->support_frame_tb_v5)
-			&& t_hbp * dsi_tmp_buf_bpp <= 12 * dsi->lanes + 26 + 1)
-			horizontal_backporch_byte = 1;
+			else
+				horizontal_backporch_byte = 1;
+		} else {
+			if (t_hbp * dsi_tmp_buf_bpp < 12 * dsi->lanes + 26 + 5)
+				horizontal_backporch_byte = 4;
+			else
+				horizontal_backporch_byte =
+					t_hbp * dsi_tmp_buf_bpp -
+					12 * dsi->lanes - 26;
+		}
 
 		if (t_hfp * dsi_tmp_buf_bpp > 10 * dsi->lanes + 28)
 			horizontal_frontporch_byte = t_hfp * dsi_tmp_buf_bpp -
 				10 * dsi->lanes - 28;
 		else
 			horizontal_frontporch_byte = 1;
-		if (dsi->ext && !dsi->ext->params->vdo_keep_hs_perline)
+		if (dsi->driver_data->n_verion >= VER_N3 ||
+			dsi->driver_data->support_frame_tb_v5) {
+			if (dsi->ext && !dsi->ext->params->vdo_keep_hs_perline)
+				if (horizontal_frontporch_byte > 2 * dsi->data_phy_cycle * dsi->lanes)
+					horizontal_frontporch_byte -= 2 * dsi->data_phy_cycle * dsi->lanes;
+				else
+					horizontal_frontporch_byte = 1;
+			if (dsi->mode_flags & MIPI_DSI_MODE_VIDEO_BURST)
+				if (horizontal_frontporch_byte > 6 * dsi->lanes + bllp_wc + 14)
+					horizontal_frontporch_byte -= 6 * dsi->lanes + bllp_wc + 14;
+				else
+					horizontal_frontporch_byte = 1;
+		} else {
 			if (horizontal_frontporch_byte > 2 * dsi->data_phy_cycle * dsi->lanes)
 				horizontal_frontporch_byte -= 2 * dsi->data_phy_cycle * dsi->lanes;
 			else
 				horizontal_frontporch_byte = 1;
-		if ((dsi->driver_data->n_verion >= VER_N3 ||
-			dsi->driver_data->support_frame_tb_v5) &&
-			dsi->mode_flags & MIPI_DSI_MODE_VIDEO_BURST) {
-			if (horizontal_frontporch_byte > 6 * dsi->lanes + bllp_wc + 14)
-				horizontal_frontporch_byte -= 6 * dsi->lanes + bllp_wc + 14;
-			else
-				horizontal_frontporch_byte = 1;
+			if (horizontal_frontporch_byte < 8)
+				horizontal_frontporch_byte = 8;
 		}
-		if ((dsi->driver_data->n_verion <= VER_N4 &&
-			!dsi->driver_data->support_frame_tb_v5) &&
-			horizontal_frontporch_byte < 8)
-			horizontal_frontporch_byte = 8;
-		else if ((dsi->driver_data->n_verion >= VER_N3 ||
-			dsi->driver_data->support_frame_tb_v5)
-			&& horizontal_frontporch_byte < 1)
-			horizontal_frontporch_byte = 1;
 
 		/* Check CPHY HFP minimum limitation */
 		if (dsi->ext && !dsi->ext->params->vdo_keep_hs_perline) {
@@ -3773,32 +3772,72 @@ static void mtk_dsi_calc_vdo_timing(struct mtk_dsi *dsi)
                 }
 	} else {
 		if (dsi->mode_flags & MIPI_DSI_MODE_VIDEO_SYNC_PULSE) {
-			horizontal_sync_active_byte = t_hsa * dsi_tmp_buf_bpp - 10;
+			if (dsi->driver_data->n_verion >= VER_N3 ||
+				dsi->driver_data->support_frame_tb_v5) {
+				if (t_hsa * dsi_tmp_buf_bpp > 10)
+					horizontal_sync_active_byte = t_hsa * dsi_tmp_buf_bpp - 10;
+				else
+					horizontal_sync_active_byte = 1;
 
-			horizontal_backporch_byte = t_hbp * dsi_tmp_buf_bpp - 10;
+				if (t_hbp * dsi_tmp_buf_bpp > 10)
+					horizontal_backporch_byte = t_hbp * dsi_tmp_buf_bpp - 10;
+				else
+					horizontal_backporch_byte = 1;
+			} else {
+				if (t_hsa * dsi_tmp_buf_bpp > 10 + 4)
+					horizontal_sync_active_byte =
+						ALIGN_TO((t_hsa * dsi_tmp_buf_bpp - 10), 4);
+				else
+					horizontal_sync_active_byte = 4;
+
+				if (t_hbp * dsi_tmp_buf_bpp > 10 + 4)
+					horizontal_backporch_byte =
+						ALIGN_TO((t_hbp * dsi_tmp_buf_bpp - 10), 4);
+				else
+					horizontal_backporch_byte = 4;
+			}
 		} else {
-			horizontal_sync_active_byte = t_hsa * dsi_tmp_buf_bpp - 4;
+			horizontal_sync_active_byte = 0;
 
-			horizontal_backporch_byte = (t_hbp + t_hsa) * dsi_tmp_buf_bpp - 10;
+			if (dsi->driver_data->n_verion >= VER_N3 ||
+				dsi->driver_data->support_frame_tb_v5) {
+				if ((t_hbp + t_hsa) * dsi_tmp_buf_bpp > 10)
+					horizontal_backporch_byte = (t_hbp + t_hsa) * dsi_tmp_buf_bpp - 10;
+				else
+					horizontal_backporch_byte = 1;
+			} else {
+				if ((t_hbp + t_hsa) * dsi_tmp_buf_bpp > 10 + 4)
+					horizontal_backporch_byte =
+						ALIGN_TO(((t_hbp + t_hsa) * dsi_tmp_buf_bpp -
+						 10), 4);
+				else
+					horizontal_backporch_byte = 4;
+			}
 		}
 
-		horizontal_frontporch_byte = t_hfp * dsi_tmp_buf_bpp - 12;
-		if (dsi->ext && !dsi->ext->params->vdo_keep_hs_perline &&
-			(dsi->driver_data->n_verion >= VER_N3 ||
-			dsi->driver_data->support_frame_tb_v5)) {
-			if (t_hfp * dsi_tmp_buf_bpp - 12 > dsi->data_phy_cycle * dsi->lanes)
-				horizontal_frontporch_byte = t_hfp * dsi_tmp_buf_bpp - 12 - dsi->data_phy_cycle * dsi->lanes;
+		if (dsi->driver_data->n_verion >= VER_N3 ||
+			dsi->driver_data->support_frame_tb_v5) {
+			if (t_hfp * dsi_tmp_buf_bpp > 12)
+				horizontal_frontporch_byte = t_hfp * dsi_tmp_buf_bpp - 12;
 			else
 				horizontal_frontporch_byte = 1;
-		}
-
-		if ((dsi->driver_data->n_verion >= VER_N3 ||
-			dsi->driver_data->support_frame_tb_v5) &&
-			dsi->mode_flags & MIPI_DSI_MODE_VIDEO_BURST) {
-			if (horizontal_frontporch_byte > bllp_wc + 6)
-				horizontal_frontporch_byte -= bllp_wc + 6;
+			if (dsi->ext && !dsi->ext->params->vdo_keep_hs_perline)
+				if (t_hfp * dsi_tmp_buf_bpp > 12 + dsi->data_phy_cycle * dsi->lanes)
+					horizontal_frontporch_byte = t_hfp * dsi_tmp_buf_bpp
+							- 12 - dsi->data_phy_cycle * dsi->lanes;
+				else
+					horizontal_frontporch_byte = 1;
+			if (dsi->mode_flags & MIPI_DSI_MODE_VIDEO_BURST)
+				if (horizontal_frontporch_byte > bllp_wc + 6)
+					horizontal_frontporch_byte -= bllp_wc + 6;
+				else
+					horizontal_frontporch_byte = 1;
+		} else {
+			if (t_hfp * dsi_tmp_buf_bpp > 12 + 4)
+				horizontal_frontporch_byte =
+					ALIGN_TO((t_hfp * dsi_tmp_buf_bpp - 12), 4);
 			else
-				horizontal_frontporch_byte = 1;
+				horizontal_frontporch_byte = 4;
 		}
 
 		/* Check DPHY HFP minimum limitation */
