@@ -10142,6 +10142,7 @@ dramc: dramc@10230000 {
 			<0 0x1803e000 0 0x34>;  /* 25. 0x1803_e000 bgf2ap_conn_infra_on_ccif4 */
 
 		power-domains = <&scpsys MT6858_POWER_DOMAIN_CONN>;
+		interrupts = <GIC_SPI 607 IRQ_TYPE_LEVEL_HIGH 0>;
 		emi-addr = <0>;
 		emi-size = <0x0c00000>;
 		ro-bt-emi-size = <0x2e0000>;
