@@ -301,8 +301,11 @@ static s32 cmdq_mdp_enable_common_clock(bool enable, u64 engine_flag)
 	int ret;
 
 	if (!(engine_flag & cmdq_mdp_get_func()->mdpGetEngLarb())) {
-		if (engine_flag & cmdq_mdp_get_func()->mdpGetIspFlag())
+		if (engine_flag & cmdq_mdp_get_func()->mdpGetIspFlag()) {
+			if (!IS_ERR_OR_NULL(isp_mmdvfs_clk))
+				mtk_mmdvfs_enable_vcp(enable, VCP_PWR_USR_MDP);
 			return 0;
+		}
 		CMDQ_ERR("%s engine_flag not include MDP_ENG_LARB\n", __func__);
 		return TASK_STATE_ERROR;
 	}
@@ -316,6 +319,8 @@ static s32 cmdq_mdp_enable_common_clock(bool enable, u64 engine_flag)
 	}
 
 	if (enable) {
+		if (!IS_ERR_OR_NULL(mdp_mmdvfs_clk))
+			mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MDP);
 		if (mdpdev) {
 			ret = pm_runtime_resume_and_get(mdpdev);
 			if (ret) {
@@ -347,6 +352,8 @@ static s32 cmdq_mdp_enable_common_clock(bool enable, u64 engine_flag)
 				return TASK_STATE_ERROR;
 			}
 		}
+		if (!IS_ERR_OR_NULL(mdp_mmdvfs_clk))
+			mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MDP);
 	}
 
 	if (cmdq_mdp_get_func()->mdpVcpPQReadbackSupport()) {
@@ -2756,12 +2763,10 @@ static void mdp_request_voltage(unsigned long frequency, bool is_mdp)
 			if (IS_ERR_OR_NULL(mdp_mmdvfs_clk))
 				CMDQ_ERR("%s wrong mdp_mmdvfs_clk\n", __func__);
 			else {
-				mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MDP);
 				ret = clk_set_rate(mdp_mmdvfs_clk, frequency * 1000000);
 				if (ret)
 					CMDQ_ERR("%s clk_set_rate(mdp) fail ret:%d\n",
 						__func__, ret);
-				mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MDP);
 			}
 		} else {
 			ret = regulator_set_voltage(mdp_mmdvfs_reg, low_volt, INT_MAX);
@@ -2772,16 +2777,14 @@ static void mdp_request_voltage(unsigned long frequency, bool is_mdp)
 		}
 	} else {
 		if (cmdq_mdp_get_func()->mdpIsCaminSupport()) {
-			if (IS_ERR_OR_NULL(isp_mmdvfs_reg)) {
+			if (!IS_ERR_OR_NULL(isp_mmdvfs_reg)) {
 				if (IS_ERR_OR_NULL(isp_mmdvfs_clk))
 					CMDQ_ERR("%s wrong isp_mmdvfs_clk\n", __func__);
 				else {
-					mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MDP);
 					ret = clk_set_rate(isp_mmdvfs_clk, frequency * 1000000);
 					if (ret)
 						CMDQ_ERR("%s clk_set_rate(isp) fail ret:%d\n",
 							__func__, ret);
-					mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MDP);
 				}
 			} else {
 				ret = regulator_set_voltage(isp_mmdvfs_reg, low_volt, INT_MAX);
