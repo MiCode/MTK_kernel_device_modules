@@ -188,7 +188,9 @@
 		mdp-rsz2 = &ovl0_rsz0;
 		bwm0 = &disp_bwm0;
 		dsc0 = &disp_dsc_wrap0;
+		dsc1 = &disp_dsc_wrap1;
 		dsi0 = &dsi0;
+		dsi1 = &dsi1;
 		mutex0 = &disp1_mutex0;
 		wdma1 = &disp_wdma1;
 		ovl0-dli-async0 = &ovl_dli_async0;
@@ -6493,6 +6495,11 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			status = "disabled";
 		};
 
+		dsi1_te: dsi1-te {
+			compatible = "mediatek, dsi1_te-eint";
+			status = "disabled";
+		};
+
 		smi_sram_sub_comm3: smi-sram-sub-comm3@30023000 {
 			compatible = "mediatek,mt6993-smi-common",
 				"mediatek,smi-common", "syscon";
@@ -10759,6 +10766,21 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			pwr-handle = <&disp_pwr_dev>;
 		};
 
+		dsi1: dsi@3e740000 {
+			compatible = "mediatek,disp1_dsi1",
+					"mediatek,mt6993-dsi";
+			reg = <0 0x3e740000 0 0x1000>;
+			interrupts = <GIC_SPI 456 IRQ_TYPE_LEVEL_HIGH 0>;
+			clocks = <&dispsys1_config_clk MM1_DISP_DSI1_DISP>,
+				 <&dispsys1_config_clk MM1_MOD2>,
+				 <&mipi_tx_config1>;
+			clock-names = "engine", "digital", "hs";
+			phys = <&mipi_tx_config1>;
+			phy-names = "dphy";
+			pwr-handle = <&disp_pwr_dev>;
+			status = "disabled";
+		};
+
 		dsi_lpc: dsi-lpc@3ee90000 {
 			compatible = "mediatek,dsi_lpc",
 					"mediatek,mt6993-dsi-lpc";
@@ -10798,6 +10820,17 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			clock-output-names = "mipi_tx0_pll";
 		};
 
+		mipi_tx_config1: mipi-tx-config@130b0000 {
+			compatible = "mediatek,mipi_tx_config1",
+						"mediatek,mt6993-mipi-tx";
+			reg = <0 0x130b0000 0 0x1000>;
+			clocks = <&clk26m>;
+			#clock-cells = <0>;
+			#phy-cells = <0>;
+			clock-output-names = "mipi_tx1_pll";
+			status = "disabled";
+		};
+
 		vdisp_ao: vdisp-ao@3ee00000 {
 			compatible = "mediatek,mt6993-vdisp-ao";
 			reg = <0 0x3ee00000 0 0x1000>;
@@ -10808,6 +10841,14 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			"mediatek,mt6993-disp-dsc";
 			reg = <0 0x3e7f0000 0 0x1000>;
 			clocks = <&dispsys1_config_clk MM1_DISP_DSC_WRAP0_DISP>;
+		};
+
+		disp_dsc_wrap1: disp1-dsc-wrap1@3e800000 {
+			compatible = "mediatek,disp1_dsc_wrap1",
+			"mediatek,mt6993-disp-dsc";
+			reg = <0 0x3e800000 0 0x1000>;
+			clocks = <&dispsys1_config_clk MM1_DISP_DSC_WRAP1_DISP>;
+			status = "disabled";
 		};
 
 		ovl0_rsz0: ovl-rsz0@32a70000 {
