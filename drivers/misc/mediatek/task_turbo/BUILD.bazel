@@ -28,13 +28,18 @@ filegroup(
 define_mgk_ddk_ko(
     name = "task_turbo",
     srcs = [
-        "task_turbo.c",
+        "task_turbo_common.c",
+        "task_turbo_ext.c",
         "task_turbo.h",
         "trace_task_turbo.h",
     ],
     includes = ["."],
     copts = [
         "-I$(srctree)",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sda/",
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/sda:headers".format(kernel_version),
     ],
     ko_deps = [
         "//kernel_device_modules-{}/drivers/misc/mediatek/sched:cpufreq_sugov_ext".format(kernel_version),

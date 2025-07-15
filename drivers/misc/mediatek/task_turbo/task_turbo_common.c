@@ -31,6 +31,7 @@
 #include <trace/hooks/sys.h>
 
 #include <task_turbo.h>
+#include "../sda/sda.h"
 #if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 #include <eas/vip.h>
 #endif
@@ -240,7 +241,7 @@ static void probe_android_rvh_set_user_nice(void *ignore, struct task_struct *p,
 	if (p_turbo && !task_restore_nice(*nice)) {
 		*nice = rlimit_to_nice(task_rlimit(p, RLIMIT_NICE));
 		if (unlikely(*nice > MAX_NICE)) {
-			pr_warn("%s: pid=%d RLIMIT_NICE=%ld is not set\n",
+			pr_info("%s: pid=%d RLIMIT_NICE=%ld is not set\n",
 				TAG, p->pid, *nice);
 			*nice = turbo_data->nice_backup;
 		}
@@ -1072,7 +1073,7 @@ static int set_turbo_task_param(const char *buf,
 	return retval;
 }
 
-static struct kernel_param_ops turbo_pid_param_ops = {
+static const struct kernel_param_ops turbo_pid_param_ops = {
 	.set = set_turbo_task_param,
 	.get = param_get_int,
 };
@@ -1113,7 +1114,7 @@ static int unset_turbo_task_param(const char *buf,
 	return retval;
 }
 
-static struct kernel_param_ops unset_turbo_pid_param_ops = {
+static const struct kernel_param_ops unset_turbo_pid_param_ops = {
 	.set = unset_turbo_task_param,
 	.get = param_get_int,
 };
@@ -1533,6 +1534,7 @@ static int __init init_task_turbo(void)
 
 	init_hmp_domains();
 	init_top_app_css();
+	init_mem_rename_opt();
 	task_turbo_select_task_rq_fair_hook = task_turbo_select_task_rq_fair;
 
 failed:
