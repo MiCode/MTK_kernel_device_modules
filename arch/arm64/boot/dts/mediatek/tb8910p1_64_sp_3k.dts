@@ -125,34 +125,33 @@
 	status = "okay";
 };
 
+&disp_dsc_wrap1 {
+	status = "okay";
+};
+
 &dsi0 {
 	status = "okay";
 	#address-cells = <1>;
 	#size-cells = <0>;
-	switch-spr = <1>;
-	spr-ip-type = <0>;
-	switch-mipi-clk-chg = <0>;
-	mte-support = <1>;
 	panel1@0 {
-		compatible = "nt37801,cmd,spr";
+		compatible = "boe,ts127qfmll1dkp0";
 		reg = <0>;
 		pm-enable-gpios = <&pio 105 0>;
 		reset-gpios = <&pio 89 0>;
-		res-switch = <2>;
 		gate-ic = <4831>;
 		pinctrl-names = "default";
 		port {
-			panel_in1: endpoint {
-				remote-endpoint = <&dsi_out1>;
+			panel_in: endpoint {
+				remote-endpoint = <&dsi_out>;
 			};
 		};
 	};
+
 	panel2@1 {
-		compatible = "mt6991,rm692h5,alpha,cmd,spr";
+		compatible = "tianma,tl1270100";
 		reg = <1>;
-		vddr-gpios = <&pio 105 0>;
+		pm-enable-gpios = <&pio 105 0>;
 		reset-gpios = <&pio 89 0>;
-		res-switch = <2>;
 		gate-ic = <4831>;
 		pinctrl-names = "default";
 		port {
@@ -161,31 +160,37 @@
 			};
 		};
 	};
-	panel3@2 {
-		compatible = "mt6991,rm692h5,alpha,cmd,spr,mipichg";
-		reg = <2>;
-		vddr-gpios = <&pio 105 0>;
-		reset-gpios = <&pio 89 0>;
-		res-switch = <2>;
-		gate-ic = <4831>;
-		pinctrl-names = "default";
-		port {
-			panel_in3: endpoint {
-				remote-endpoint = <&dsi_out3>;
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		port@0 {
+			reg = <0>;
+			dsi_out: endpoint {
+				remote-endpoint = <&panel_in>;
+			};
+			dsi_out2: endpoint2 {
+				remote-endpoint = <&panel_in2>;
+			};
+		};
+		port@1 {
+			reg = <1>;
+			master_out: endpoint {
+				remote-endpoint = <&slave_in>;
 			};
 		};
 	};
+};
+
+&dsi1 {
+	mediatek,dual-dsi-slave;
+	status = "okay";
 	ports {
-		port {
-			dsi_out1: endpoint@0 {
-				remote-endpoint = <&panel_in1>;
-			};
-			/* dsi_out2 but dsi_out1 fixes warning. It only allows pairing endpoints.*/
-			dsi_out2: endpoint@1 {
-				remote-endpoint = <&panel_in2>;
-			};
-			dsi_out3: endpoint@2 {
-				remote-endpoint = <&panel_in3>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		port@1 {
+			reg = <1>;
+			slave_in: endpoint {
+				remote-endpoint = <&master_out>;
 			};
 		};
 	};
@@ -294,6 +299,10 @@
 			output-low;
 		};
 	};
+};
+
+&mipi_tx_config1 {
+	status = "okay";
 };
 
 &mt6379_typec {
