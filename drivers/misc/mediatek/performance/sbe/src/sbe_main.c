@@ -787,7 +787,7 @@ static int sbe_do_hwui_scrolling_policy(int tgid, int start, char *specific_name
 }
 
 static int sbe_do_webview_notify_fpsgo_ctrl(int tgid, char *name, int start, char *specific_name,
-					int num, unsigned long long ts)
+					int num, unsigned long long ts, unsigned long mask)
 {
 	int ret = SBE_SUCCESS;
 	int final_pid_arr_idx = 0;
@@ -877,7 +877,8 @@ static int sbe_do_webview_notify_fpsgo_ctrl(int tgid, char *name, int start, cha
 			 * Failure to do so will result in the thread's performance index
 			 *remaining at its last value, preventing it from resetting.
 			 */
-			fpsgo_other2comp_control_pause(scroll_policy_info.final_pid_arr[i],
+			if (!test_bit(SBE_HWUI, &mask))
+				fpsgo_other2comp_control_pause(scroll_policy_info.final_pid_arr[i],
 					scroll_policy_info.final_bufID_arr[i]);
 		}
 
@@ -1326,7 +1327,7 @@ static int sbe_set_scroll_policy(int tgid, char *name, unsigned long mask,
 	}
 
 	if (IS_BIT_SET(mask, SBE_CPU_CONTROL)) {
-		ret = sbe_do_webview_notify_fpsgo_ctrl(tgid, name, start, specific_name, num, ts);
+		ret = sbe_do_webview_notify_fpsgo_ctrl(tgid, name, start, specific_name, num, ts, mask);
 		sbe_trace("[SBE] %s webview notify fpsgo ctrl start: %d, ret = %d", __func__, start, ret);
 	}
 
