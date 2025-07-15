@@ -12351,10 +12351,7 @@ skip_prete:
 				/*for dynamic Msync on/off,set vfp period token*/
 				GCE_DO(set_event, EVENT_SYNC_TOKEN_VFP_PERIOD);
 			} else {
-				GCE_DO(wait_no_clear, EVENT_CMD_EOF);
-				GCE_DO(wfe, EVENT_CABC_EOF);
-				GCE_DO(clear_event, EVENT_CMD_EOF);
-				GCE_DO(set_event, EVENT_CABC_EOF);
+				GCE_DO(wfe, EVENT_CMD_EOF);
 			}
 
 		} else if (crtc_id == 1) {
