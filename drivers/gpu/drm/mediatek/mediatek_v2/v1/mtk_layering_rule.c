@@ -25,6 +25,7 @@
 #include "mtk_rect.h"
 #include "mtk_drm_drv.h"
 #include "mtk_drm_graphics_base.h"
+#include "mtk_drm_mmp.h"
 
 #include <soc/mediatek/mmqos.h>
 
@@ -892,13 +893,21 @@ static int layering_get_valid_hrt(struct drm_crtc *crtc,
 	dvfs_bw *= 10000;
 	tmp = 0;
 
+	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
 	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 	DDPDBG("%s: %u mode_idx:%d\n", __func__, disp_idx, mode_idx);
 	mtk_crtc->mode_idx = mode_idx;
-	tmp = mode_idx;
-	if (output_comp)
-		mtk_ddp_comp_io_cmd(output_comp, NULL,
-			GET_FRAME_HRT_BW_BY_MODE, &tmp);
+	if (priv->data->mmsys_id == MMSYS_MT6895 && !mtk_crtc->res_switch) {
+		if (output_comp)
+			mtk_ddp_comp_io_cmd(output_comp, NULL,
+				GET_FRAME_HRT_BW_BY_DATARATE, &tmp);
+	} else {
+		tmp = mode_idx;
+		if (output_comp)
+			mtk_ddp_comp_io_cmd(output_comp, NULL,
+				GET_FRAME_HRT_BW_BY_MODE, &tmp);
+	}
+	DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 
 	if (!tmp) {
 		/* for avail_bw == 0 case, which imply this display is not HRT,

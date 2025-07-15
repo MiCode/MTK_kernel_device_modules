@@ -13357,6 +13357,22 @@ unsigned long long mtk_dsi_get_frame_hrt_bw_base_by_datarate(
 		bw_base = DO_COMMON_DIV(bw_base * vtotal, vact);
 		bw_base = DO_COMMON_DIV(bw_base, 1000);
 
+		if (dsi->driver_data->dsi_buffer) {
+			u32 line_time = 0, image_time = 1, ps_wc;
+
+			ps_wc =  mtk_dsi_get_ps_wc(mtk_crtc, dsi);
+
+			if (ext->params->is_cphy)
+				image_time = DIV_ROUND_UP(DIV_ROUND_UP(ps_wc, 2), dsi->lanes);
+			else
+				image_time = DIV_ROUND_UP(ps_wc, dsi->lanes);
+
+			line_time = mtk_dsi_get_line_time(mtk_crtc, dsi, ps_wc, -1);
+
+			bw_base = bw_base * image_time / line_time;
+			DDPINFO("%s, image_time=%d, line_time=%d\n",
+			__func__, image_time, line_time);
+		}
 		DDPINFO("%s crtc%d, vdo mode bw_base:%llu, vrefresh:%d\n",
 				__func__, crtc_idx, bw_base, vrefresh);
 	} else {
