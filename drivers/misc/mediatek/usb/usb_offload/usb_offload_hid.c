@@ -257,6 +257,11 @@ static int hid_dsp_irq(struct hid_ep_info *hid, struct usb_offload_urb_complete 
 		urb_complete->urb_start_addr, urb_complete->actual_length,
 		urb_complete->status, urb_complete->more_complete);
 
+	if (urb_complete->status < 0) {
+		hid_info("no need to handle URB in this case\n");
+		goto error;
+	}
+
 	/* create a new payload */
 	payload = new_payload(urb_complete->actual_length);
 	if (payload) {
@@ -281,7 +286,6 @@ static int hid_dsp_irq(struct hid_ep_info *hid, struct usb_offload_urb_complete 
 	}
 
 	hid_lock(hid, __func__);
-
 	hid_dump_ep(hid, "<DSP IRQ Start>");
 	if (test_bit(HID_ON_RESET, &hid->sync_flag)) {
 		hid_info("driver's on resetting (might be EP_STOP event), clear payload:%p\n", payload);
