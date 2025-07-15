@@ -2620,9 +2620,10 @@ static int mtk_dpc_mmdvfs_notifier(const bool enable, const bool wdt)
 
 	spin_lock_irqsave(&dpc_lock, flags);
 	if (!enable) {
-		DPCFUNC("mmdvfs %s!!, enable:%d,wdt:%d,skip_power:%d,avail:%d",
-			atomic_read(&g_mmdvfs_available) ? "DEAD" : "STOP", enable, wdt,
-			g_priv->skip_force_power, atomic_read(&g_mmdvfs_available));
+		if (atomic_read(&g_mmdvfs_available))
+			DPCFUNC("mmdvfs %s!!, enable:%d,wdt:%d,skip_power:%d,avail:%d",
+				atomic_read(&g_mmdvfs_available) ? "DEAD" : "STOP", enable, wdt,
+				g_priv->skip_force_power, atomic_read(&g_mmdvfs_available));
 		if (!dead && atomic_read(&g_mmdvfs_available)) {
 			dpc_mmp(mmdvfs_dead, MMPROFILE_FLAG_START, enable, wdt);
 			dead = true;
@@ -2647,10 +2648,10 @@ static int mtk_dpc_mmdvfs_notifier(const bool enable, const bool wdt)
 
 skip_restore:
 	if (enable) {
-		DPCFUNC("mmdvfs %s!!, enable:%d,wdt:%d,skip_power:%d,avail:%d,ret:%d",
-			dead ? "RESTART" : "START", enable, wdt,
-			g_priv->skip_force_power, atomic_read(&g_mmdvfs_available), ret);
 		if (dead) {
+			DPCFUNC("mmdvfs %s!!, enable:%d,wdt:%d,skip_power:%d,avail:%d,ret:%d",
+				dead ? "RESTART" : "START", enable, wdt,
+				g_priv->skip_force_power, atomic_read(&g_mmdvfs_available), ret);
 			dpc_mmp(mmdvfs_dead, MMPROFILE_FLAG_END, enable, wdt);
 			dead = false;
 		} else

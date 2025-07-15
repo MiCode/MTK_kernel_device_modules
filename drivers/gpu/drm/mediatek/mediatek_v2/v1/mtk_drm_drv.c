@@ -105,8 +105,6 @@
 
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 #include "vcp_status.h"
-#include <soc/mediatek/mmdvfs_v3.h>
-#include <linux/soc/mediatek/mtk_mmdvfs.h>
 #endif
 
 #include "mtk-mminfra-debug.h"
@@ -132,10 +130,6 @@ void disp_dbg_init(struct drm_device *dev);
 #ifdef CONFIG_MTK_FB_MMDVFS_SUPPORT
 u32 *disp_perfs;
 #endif
-
-static atomic_t g_vcp_alive = ATOMIC_INIT(0);
-static atomic_t g_ap_ccf_state = ATOMIC_INIT(0);
-static struct mutex vcp_lock;
 
 static atomic_t top_isr_ref; /* irq power status protection */
 static atomic_t top_clk_ref; /* top clk status protection*/
@@ -9567,6 +9561,26 @@ static int mtk_drm_pm_notifier(struct notifier_block *notifier, unsigned long pm
 	}
 	return NOTIFY_DONE;
 }
+
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
+static int mtk_drm_vcp_notifier(struct notifier_block *vcp_nb, unsigned long vcp_event, void *unused)
+{
+	struct mtk_drm_kernel_pm *kernel_pm = container_of(vcp_nb, typeof(*kernel_pm), vcp_nb);
+
+	switch (vcp_event) {
+	case VCP_EVENT_READY:
+	case VCP_EVENT_STOP:
+	case VCP_EVENT_SUSPEND:
+		break;
+	case VCP_EVENT_RESUME:
+		atomic_set(&kernel_pm->status, KERNEL_PM_RESUME);
+		wake_up_interruptible(&kernel_pm->wq);
+		DDPMSG("%s VCP_EVENT_RESUME status(%d)\n", __func__, atomic_read(&kernel_pm->status));
+		break;
+	}
+	return NOTIFY_DONE;
+}
+#endif
 #else
 static int mtk_drm_pm_notifier(struct notifier_block *notifier, unsigned long pm_event, void *unused)
 {
@@ -9584,158 +9598,6 @@ static int mtk_drm_pm_notifier(struct notifier_block *notifier, unsigned long pm
 		return NOTIFY_OK;
 	}
 	return NOTIFY_DONE;
-}
-#endif
-
-#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
-static void mtk_drm_enable_ap_ccf(bool en, struct drm_crtc *crtc, bool mode_switch)
-{
-	static struct drm_crtc *ap_crtc;
-	struct mtk_drm_private *priv = NULL;
-
-	if (en) {
-		if (atomic_read(&g_ap_ccf_state) || IS_ERR_OR_NULL(crtc))
-			return;
-
-		priv = crtc->dev->dev_private;
-		if (priv && mtk_drm_helper_get_opt(priv->helper_opt,
-				MTK_DRM_OPT_MMDVFS_MODE_SWITCH)) {
-			mmdvfs_ap_ccf_enable(true);
-			atomic_set(&g_ap_ccf_state, 1);
-			ap_crtc = crtc;
-		}
-	} else {
-		if (!atomic_read(&g_ap_ccf_state) || IS_ERR_OR_NULL(ap_crtc))
-			return;
-
-		priv = ap_crtc->dev->dev_private;
-		if (priv && mtk_drm_helper_get_opt(priv->helper_opt,
-				MTK_DRM_OPT_MMDVFS_MODE_SWITCH)) {
-			if (mode_switch)
-				mtk_drm_mmdvfs_mode_switch(ap_crtc, true);
-			else
-				mmdvfs_ap_ccf_enable(false);
-			atomic_set(&g_ap_ccf_state, 0);
-			ap_crtc = NULL;
-		}
-	}
-
-	DDPMSG("%s: en:%d, ap_ccf:%d, mode_switch:%u\n",
-		__func__, en, atomic_read(&g_ap_ccf_state), mode_switch);
-}
-
-static int mtk_drm_vcp_notifier(struct notifier_block *vcp_nb, unsigned long vcp_event, void *unused)
-{
-	struct mtk_drm_kernel_pm *kernel_pm = container_of(vcp_nb, typeof(*kernel_pm), vcp_nb);
-
-	switch (vcp_event) {
-	case VCP_EVENT_SUSPEND:
-		mtk_drm_enable_ap_ccf(false, NULL, false);
-		atomic_set(&g_vcp_alive, 0);
-		DDPMSG("%s VCP suspend,alive:%d, ap_ccf:%d\n",
-			__func__, atomic_read(&g_vcp_alive), atomic_read(&g_ap_ccf_state));
-		break;
-	case VCP_EVENT_STOP:
-		mutex_lock(&vcp_lock);
-		mtk_drm_enable_ap_ccf(false, NULL, false);
-		atomic_set(&g_vcp_alive, 0);
-		DDPMSG("%s VCP stop,alive:%d, ap_ccf:%d\n",
-			__func__, atomic_read(&g_vcp_alive), atomic_read(&g_ap_ccf_state));
-		mutex_unlock(&vcp_lock);
-		break;
-	case VCP_EVENT_RESUME:
-#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
-		atomic_set(&kernel_pm->status, KERNEL_PM_RESUME);
-		wake_up_interruptible(&kernel_pm->wq);
-		DDPMSG("%s VCP_EVENT_RESUME status(%d)\n", __func__, atomic_read(&kernel_pm->status));
-#endif
-		break;
-	case VCP_EVENT_READY:
-		/* mode switch and notify mmdvfs pull down dvfs level when vcp ready */
-		mutex_lock(&vcp_lock);
-		mtk_drm_enable_ap_ccf(false, NULL, true);
-		atomic_set(&g_vcp_alive, 1);
-		DDPMSG("%s VCP ready,alive:%d, ap_ccf:%d\n",
-			__func__, atomic_read(&g_vcp_alive), atomic_read(&g_ap_ccf_state));
-		mutex_unlock(&vcp_lock);
-		break;
-	default:
-		break;
-	}
-	return NOTIFY_DONE;
-}
-
-int mtk_drm_get_vcp_state(void)
-{
-	mutex_lock(&vcp_lock);
-	return atomic_read(&g_vcp_alive);
-}
-
-void mtk_drm_put_vcp_state(void)
-{
-	mutex_unlock(&vcp_lock);
-}
-
-void mtk_drm_mmdvfs_enable_vcp(struct drm_crtc *crtc, bool en)
-{
-	int vcp_state = 0, ret = 0;
-	struct mtk_drm_private *priv = NULL;
-	unsigned int crtc_id = 0;
-
-	if (IS_ERR_OR_NULL(crtc))
-		return;
-
-	priv = crtc->dev->dev_private;
-	if (!mtk_drm_helper_get_opt(priv->helper_opt,
-			MTK_DRM_OPT_MMDVFS_MODE_SWITCH))
-		return;
-
-	crtc_id = drm_crtc_index(crtc);
-	if (!en)
-		mtk_vidle_mmdvfs_ctrl(en);
-	ret = mtk_mmdvfs_enable_vcp(en, VCP_PWR_USR_DISP);
-	if (priv->kernel_pm.vcp_nb.notifier_call == NULL &&
-		en && ret >= 0) {
-		DDPMSG("%s, crtc:%u register vcp nb\n", __func__, crtc_id);
-		priv->kernel_pm.vcp_nb.notifier_call = mtk_drm_vcp_notifier;
-		vcp_A_register_notify_ex(VDISP_FEATURE_ID, &priv->kernel_pm.vcp_nb);
-	}
-
-	if (en) {
-		vcp_state = mtk_drm_get_vcp_state();
-		if (vcp_state == 0) {
-			/* notify mmdvfs force up dvfs level when vcp off*/
-			mtk_drm_enable_ap_ccf(true, crtc, false);
-		} else {
-			/* notify mmdvfs pull down dvfs level if vcp has been ready*/
-			mtk_drm_enable_ap_ccf(true, crtc, false);
-			mtk_drm_enable_ap_ccf(false, crtc, true);
-		}
-		mtk_drm_put_vcp_state();
-		mtk_vidle_mmdvfs_ctrl(en);
-	} else
-		mtk_drm_enable_ap_ccf(false, crtc, false);
-
-	DDPMMCLK("%s, crtc:%d %s vcp %s, alive:%d, ap_ccf:%d, ret:%d\n",
-		__func__, crtc_id, en ? "ENABLE" : "DISABLE",
-		ret < 0 ? "FAILED" : "DONE",
-		atomic_read(&g_vcp_alive), atomic_read(&g_ap_ccf_state), ret);
-}
-#else
-
-int mtk_drm_get_vcp_state(void)
-{
-	return 1;
-}
-
-void mtk_drm_put_vcp_state(void)
-{
-	//do nothing
-}
-
-void mtk_drm_mmdvfs_enable_vcp(struct drm_crtc *crtc, bool en)
-{
-	//do nothing
 }
 #endif
 
@@ -9992,7 +9854,6 @@ static int mtk_drm_kms_init(struct drm_device *drm)
 	spin_lock_init(&private->unreference.lock);
 	mutex_init(&private->commit.lock);
 	mutex_init(&private->lyeblob_list_mutex);
-	mutex_init(&vcp_lock);
 
 	init_waitqueue_head(&private->repaint_data.wq);
 	INIT_LIST_HEAD(&private->repaint_data.job_queue);
@@ -12435,15 +12296,10 @@ SKIP_OVLSYS_CONFIG:
 	if (ret)
 		DDPMSG("register_pm_notifier failed %d", ret);
 
-	if (mtk_drm_helper_get_opt(private->helper_opt,
-			MTK_DRM_OPT_MMDVFS_MODE_SWITCH)) {
-		private->kernel_pm.vcp_nb.notifier_call = NULL;
-	} else {
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT) && !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
-		private->kernel_pm.vcp_nb.notifier_call = mtk_drm_vcp_notifier;
-		vcp_A_register_notify_ex(VDISP_FEATURE_ID, &private->kernel_pm.vcp_nb);
+	private->kernel_pm.vcp_nb.notifier_call = mtk_drm_vcp_notifier;
+	vcp_A_register_notify_ex(VDISP_FEATURE_ID, &private->kernel_pm.vcp_nb);
 #endif
-	}
 
 	private->dsi_phy0_dev = mtk_drm_get_pd_device(dev, "dsi_phy0");
 	private->dsi_phy1_dev = mtk_drm_get_pd_device(dev, "dsi_phy1");
