@@ -664,7 +664,6 @@
 		gcc-enable = <1>;
 		fbt-cpu-mask = <255 128 15 127 240 112>;
 		sbe-resceue-enable = <1>;
-		gcc-hwui-hint-config = <0>;
 	};
 
 	mcupm: mcupm@c540000 {
