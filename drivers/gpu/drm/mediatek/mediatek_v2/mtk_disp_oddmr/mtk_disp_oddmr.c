@@ -5219,6 +5219,11 @@ static void mtk_oddmr_od_smi(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg)
 		return;
 	ODDMRAPI_LOG("+\n");
 	if (oddmr_data->data->od_version >= MTK_OD_V3) {
+		value = 0; mask = 0;
+		SET_VAL_MASK(value, mask, 1, MT6991_REG_PRTCL_PROT_OFF);
+		mtk_oddmr_write_mask(comp, value, MT6991_DISP_ODDMR_UDMA_R_CTRL70, mask, pkg);
+		mtk_oddmr_write_mask(comp, value, MT6991_DISP_ODDMR_UDMA_W_CTR_47, mask, pkg);
+
 		/* odr*/
 		value = 0; mask = 0;
 		SET_VAL_MASK(value, mask, 2, REG_ODR_RE_ULTRA_MODE);
