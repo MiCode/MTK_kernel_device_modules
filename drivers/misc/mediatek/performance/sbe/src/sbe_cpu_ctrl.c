@@ -1349,11 +1349,13 @@ int sbe_calculate_dy_enhance(struct sbe_render_info *thr)
 	int result = -1;
 	int scroll_count = 0;
 	unsigned long long rescue_target_time = 0LLU;
-	int h_score = 0;
-	int l_score = 0;
-	int p_score = 0;
+	int h_score = 0, l_score = 0, p_score = 0;
 	int max_avg_cap = 0;
 	int loading_scroll_limit = scroll_cnt > 0 ? scroll_cnt >> 1 : 1;
+	int loading_score = scroll_cnt > 0 ? scroll_cnt - 1 : 5;
+	int loading_score_4 = loading_score > 4 ? loading_score - 1 : 4;
+	int loading_score_3 = loading_score_4 > 3 ? loading_score_4 - 1 : 3;
+	int loading_score_2 = loading_score_3 > 2 ? loading_score_3 - 1 : 2;
 
 	if (!sbe_dy_rescue_enable || !thr || IS_ERR_OR_NULL(&thr->scroll_list))
 		return result;
@@ -1378,6 +1380,9 @@ int sbe_calculate_dy_enhance(struct sbe_render_info *thr)
 		return result;
 	}
 
+	if (scroll_count < scroll_cnt) // scroll info not enough
+		loading_score = scroll_count;
+
 	list_for_each_entry (scroll_info, &thr->scroll_list, queue_list) {
 		if (IS_ERR_OR_NULL(&scroll_info->frame_list))
 			continue;
@@ -1398,19 +1403,19 @@ int sbe_calculate_dy_enhance(struct sbe_render_info *thr)
 				rescue_rate = (int)div64_u64(rescue_f * percent,
 						scroll_info->frame_count);
 				if (rescue_rate >= 80 && scroll_info->frame_count > target_fps)
-					p_score += 5;
+					p_score += loading_score;
 				else if (rescue_rate >= 10)
-					h_score += 3;
+					h_score += loading_score_3;
 				else if (rescue_rate >= 7)
-					h_score += 2;
+					h_score += loading_score_2;
 				else if (rescue_rate >= 3)
 					h_score++;
 			}
 
 			if (scroll_info->rescue_frame_count >= 20)
-				h_score += 3;
+				h_score += loading_score_3;
 			else if (scroll_info->rescue_frame_count >= 10)
-				h_score += 2;
+				h_score += loading_score_2;
 			else if (scroll_info->rescue_frame_count > 6)
 				h_score++;
 
@@ -1436,14 +1441,14 @@ int sbe_calculate_dy_enhance(struct sbe_render_info *thr)
 				l_score++;
 
 			if (avg_cap >= sbe_loading_threashold_m)
-				h_score += 4;
+				h_score += loading_score_4;
 
 			if (avg_cap > max_avg_cap)
 				max_avg_cap = avg_cap;
 
 			if (avg_cap >= sbe_loading_threashold_h
 					&& avg_tcpu_time > target_time_100U)
-				p_score += 5;
+				p_score += loading_score;
 		}
 	}
 
@@ -1453,7 +1458,7 @@ int sbe_calculate_dy_enhance(struct sbe_render_info *thr)
 	//check rescue enhance
 	if (all_rescue_frame_count > 20 || max_avg_cap >= sbe_loading_threashold_m) {
 		if (last_enhance >= 60)
-			h_score += 2;
+			h_score += loading_score_2;
 		else if (last_enhance > sbe_loading_threashold_m)
 			h_score++;
 	}
@@ -1462,12 +1467,12 @@ int sbe_calculate_dy_enhance(struct sbe_render_info *thr)
 		l_score++;
 
 	if (thr->is_webfunctor || thr->user_request_affinity_mask)
-		h_score += 5;
+		h_score += loading_score;
 
 	//update render loading type
-	if (p_score >= 5)
+	if (p_score >= loading_score)
 		thr->loading_type = RENDER_LOADING_PEAK;
-	else if (h_score >= 5)
+	else if (h_score >= loading_score)
 		thr->loading_type = RENDER_LOADING_HIGH;
 	else if (l_score > scroll_cnt) // every time scroll, avg c time less than 80%
 		thr->loading_type = RENDER_LOADING_LOW;
