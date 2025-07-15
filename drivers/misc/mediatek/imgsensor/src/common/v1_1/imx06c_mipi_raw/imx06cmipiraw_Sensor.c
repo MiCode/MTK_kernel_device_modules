@@ -543,11 +543,8 @@ static void write_shutter(kal_uint32 shutter)
 	int longexposure_times = 0;
 	static int long_exposure_status;
 
-
 	spin_lock(&imgsensor_drv_lock);
-	// if (shutter > imgsensor.min_frame_length - imgsensor_info.margin)
-		// imgsensor.frame_length = shutter + imgsensor_info.margin;
-	// else
+	LOG_INF("E: shutter = %d\n", shutter);
 	imgsensor.frame_length = imgsensor.min_frame_length;
 	if (imgsensor.frame_length > imgsensor_info.max_frame_length)
 		imgsensor.frame_length = imgsensor_info.max_frame_length;
@@ -571,7 +568,7 @@ static void write_shutter(kal_uint32 shutter)
 		shutter = shutter / 2;
 		longexposure_times += 1;
 	}
-
+	LOG_INF("long exposure times %d\n", longexposure_times);
 	if (!imx06c_is_seamless)
 		if (read_cmos_sensor_8(0x0350) != 0x01) {
 			LOG_INF("single cam scenario enable auto-extend");
@@ -584,20 +581,19 @@ static void write_shutter(kal_uint32 shutter)
 		long_exposure_status = 1;
 		// imgsensor.frame_length = shutter + 32;
 		if (!imx06c_is_seamless)
-			write_cmos_sensor_8(0x3100, longexposure_times & 0x07);
+			write_cmos_sensor_8(0x3160, longexposure_times & 0x07);
 		else {
-			imx06c_i2c_data[imx06c_size_to_write++] = 0x3100;
+			imx06c_i2c_data[imx06c_size_to_write++] = 0x3160;
 			imx06c_i2c_data[imx06c_size_to_write++] = longexposure_times & 0x07;
 		}
 	} else if (long_exposure_status == 1) {
 		long_exposure_status = 0;
 		if (!imx06c_is_seamless)
-			write_cmos_sensor_8(0x3100, 0x00);
+			write_cmos_sensor_8(0x3160, 0x00);
 		else {
-			imx06c_i2c_data[imx06c_size_to_write++] = 0x3100;
+			imx06c_i2c_data[imx06c_size_to_write++] = 0x3160;
 			imx06c_i2c_data[imx06c_size_to_write++] = 0;
 		}
-
 		LOG_INF("exit long exposure mode");
 	}
 	/* Update Shutter */
