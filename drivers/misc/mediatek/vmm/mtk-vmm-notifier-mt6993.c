@@ -23,6 +23,7 @@
 #include "clk-mtk.h"
 #include <linux/proc_fs.h>
 #include <linux/seq_file.h>
+#include <linux/kernel.h>
 
 #define IS_HVS_OPP(lvl)		(((lvl) >= OPP_LEVEL_1) && ((lvl) <= OPP_LEVEL_4))
 #if IS_ENABLED(CONFIG_MTK_HWCCF)
@@ -196,10 +197,44 @@ static int cross_avs20_diff[OPP_LEVEL_TOTAL] = {
 	0, 0, 0, 0, 0, 0
 };
 
+static const unsigned int isp_avs20_mcl50[OPP_LEVEL_TOTAL] = {
+	575000,
+	510000,
+	530000,
+	585000,
+	620000,
+	950000,
+};
+
+static const unsigned int vde_avs20_mcl50[OPP_LEVEL_TOTAL] = {
+	575000,
+	550000,
+	560000,
+	625000,
+	650000,
+	950000,
+};
+
+static const unsigned int cross_avs20_mcl50[OPP_LEVEL_TOTAL] = {
+	isp_avs20_mcl50[OPP_LEVEL_0] > vde_avs20_mcl50[OPP_LEVEL_0] ?
+		isp_avs20_mcl50[OPP_LEVEL_0] : vde_avs20_mcl50[OPP_LEVEL_0],
+	isp_avs20_mcl50[OPP_LEVEL_1] > vde_avs20_mcl50[OPP_LEVEL_1] ?
+		isp_avs20_mcl50[OPP_LEVEL_1] : vde_avs20_mcl50[OPP_LEVEL_1],
+	isp_avs20_mcl50[OPP_LEVEL_2] > vde_avs20_mcl50[OPP_LEVEL_2] ?
+		isp_avs20_mcl50[OPP_LEVEL_2] : vde_avs20_mcl50[OPP_LEVEL_2],
+	isp_avs20_mcl50[OPP_LEVEL_3] > vde_avs20_mcl50[OPP_LEVEL_3] ?
+		isp_avs20_mcl50[OPP_LEVEL_3] : vde_avs20_mcl50[OPP_LEVEL_3],
+	isp_avs20_mcl50[OPP_LEVEL_4] > vde_avs20_mcl50[OPP_LEVEL_4] ?
+		isp_avs20_mcl50[OPP_LEVEL_4] : vde_avs20_mcl50[OPP_LEVEL_4],
+	isp_avs20_mcl50[OPP_LEVEL_5] > vde_avs20_mcl50[OPP_LEVEL_5] ?
+		isp_avs20_mcl50[OPP_LEVEL_5] : vde_avs20_mcl50[OPP_LEVEL_5],
+};
+
 bool vmm_debug_dump;
 bool vmm_aging;
 bool vmm_slttwo_deterioration;
 bool vmm_extra_deterioration;
+bool vmm_customer_mcl50;
 static void vmm_update_isp_avs_info(bool enable_avs);
 static void vmm_update_isp_avs20_info(bool enable_avs);
 static void vmm_update_vde_avs20_info(bool enable_avs);
@@ -482,6 +517,43 @@ static void vmm_update_cvfs_table(void)
 	vmm_update_vde_avs20_info(enable_avs);
 	vmm_update_isp_vde_avs20_info(enable_avs);
 	vmm_update_aging_degrade_info(enable_avs);
+	if (vmm_customer_mcl50) {
+		writel_relaxed((MARGIN_TO_STEP(isp_avs20_mcl50[OPP_LEVEL_4]) << 24) |
+			(MARGIN_TO_STEP(isp_avs20_mcl50[OPP_LEVEL_3]) << 16) |
+			(MARGIN_TO_STEP(isp_avs20_mcl50[OPP_LEVEL_2]) << 8) |
+			MARGIN_TO_STEP(isp_avs20_mcl50[OPP_LEVEL_1]), VMM_CVFS_BASE + 0x0);
+		writel_relaxed((MARGIN_TO_STEP(isp_avs20_mcl50[OPP_LEVEL_4]) << 24) |
+			(MARGIN_TO_STEP(isp_avs20_mcl50[OPP_LEVEL_3]) << 16) |
+			(MARGIN_TO_STEP(isp_avs20_mcl50[OPP_LEVEL_2]) << 8) |
+			MARGIN_TO_STEP(isp_avs20_mcl50[OPP_LEVEL_1]), VMM_CVFS_BASE + 0x100);
+
+		writel_relaxed((MARGIN_TO_STEP(isp_avs20_mcl50[OPP_LEVEL_4]) << 24) |
+			(MARGIN_TO_STEP(isp_avs20_mcl50[OPP_LEVEL_3]) << 16) |
+			(MARGIN_TO_STEP(isp_avs20_mcl50[OPP_LEVEL_2]) << 8) |
+			MARGIN_TO_STEP(isp_avs20_mcl50[OPP_LEVEL_1]), VMM_CVFS_BASE + 0x4);
+		writel_relaxed((MARGIN_TO_STEP(isp_avs20_mcl50[OPP_LEVEL_4]) << 24) |
+			(MARGIN_TO_STEP(isp_avs20_mcl50[OPP_LEVEL_3]) << 16) |
+			(MARGIN_TO_STEP(isp_avs20_mcl50[OPP_LEVEL_2]) << 8) |
+			MARGIN_TO_STEP(isp_avs20_mcl50[OPP_LEVEL_1]), VMM_CVFS_BASE + 0x104);
+
+		writel_relaxed((MARGIN_TO_STEP(vde_avs20_mcl50[OPP_LEVEL_4]) << 24) |
+			(MARGIN_TO_STEP(vde_avs20_mcl50[OPP_LEVEL_3]) << 16) |
+			(MARGIN_TO_STEP(vde_avs20_mcl50[OPP_LEVEL_2]) << 8) |
+			MARGIN_TO_STEP(vde_avs20_mcl50[OPP_LEVEL_1]), VMM_CVFS_BASE + 0x8);
+		writel_relaxed((MARGIN_TO_STEP(vde_avs20_mcl50[OPP_LEVEL_4]) << 24) |
+			(MARGIN_TO_STEP(vde_avs20_mcl50[OPP_LEVEL_3]) << 16) |
+			(MARGIN_TO_STEP(vde_avs20_mcl50[OPP_LEVEL_2]) << 8) |
+			MARGIN_TO_STEP(vde_avs20_mcl50[OPP_LEVEL_1]), VMM_CVFS_BASE + 0x108);
+
+		writel_relaxed((MARGIN_TO_STEP(cross_avs20_mcl50[OPP_LEVEL_4]) << 24) |
+			(MARGIN_TO_STEP(cross_avs20_mcl50[OPP_LEVEL_3]) << 16) |
+			(MARGIN_TO_STEP(cross_avs20_mcl50[OPP_LEVEL_2]) << 8) |
+			MARGIN_TO_STEP(cross_avs20_mcl50[OPP_LEVEL_1]), VMM_CVFS_BASE + 0xC);
+		writel_relaxed((MARGIN_TO_STEP(cross_avs20_mcl50[OPP_LEVEL_4]) << 24) |
+			(MARGIN_TO_STEP(cross_avs20_mcl50[OPP_LEVEL_3]) << 16) |
+			(MARGIN_TO_STEP(cross_avs20_mcl50[OPP_LEVEL_2]) << 8) |
+			MARGIN_TO_STEP(cross_avs20_mcl50[OPP_LEVEL_1]), VMM_CVFS_BASE + 0x10C);
+	}
 }
 
 int mtk_vmm_ctrl(struct cb_params *cb_para)
@@ -502,11 +574,13 @@ static int vmm_notifier_probe(struct platform_device *pdev)
 {
 	int ret;
 	struct device *dev = &pdev->dev;
+	struct device_node *np = of_find_node_by_path("/chosen");
 	u32 pd_id;
 
 	vmm_aging = false;
 	vmm_slttwo_deterioration = false;
 	vmm_extra_deterioration = false;
+	vmm_customer_mcl50 = false;
 
 	ret = of_property_read_u32(dev->of_node, "pd-id", &pd_id);
 	if (ret) {
@@ -528,11 +602,24 @@ static int vmm_notifier_probe(struct platform_device *pdev)
 	if (vmm_extra_deterioration)
 		ISP_LOGI("vmm slt2 avsq deterioration load enabled");
 
+	if (!np)
+		np = of_find_node_by_path("/chosen@0");
+	if (!np)
+		ISP_LOGI("vmm cannot find chosen node");
+
+	if (np && of_property_read_bool(np, "mtk-force-mcl50"))
+		vmm_customer_mcl50 = true;
+
 	vmm_regs.vmm_efuse_va = ioremap(0x10165A00, 0x200);
 	vmm_regs.vmm_cvfs_va = ioremap(0x31AC4000, 0x1000);
 	if (!vmm_regs.vmm_efuse_va || !vmm_regs.vmm_cvfs_va) {
 		ISP_LOGE("vmm probe ioremap failed\n");
 		return -ENODEV;
+	}
+
+	if (vmm_customer_mcl50) {
+		ISP_LOGI("vmm customer mcl50 load enabled");
+		writel_relaxed(0x1, VMM_CVFS_BASE + 0x494);  // write customized reg
 	}
 
 	ISP_LOGI("register mtk_vmm for hwccf api");
