@@ -3059,6 +3059,7 @@ static void mtk_ovl_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 		output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 
 		if (mtk_crtc->panel_ext && mtk_crtc->panel_ext->params &&
+			mtk_crtc->panel_ext->params->dyn_fps.switch_en == 1 &&
 			mtk_crtc->panel_ext->params->dyn_fps.vact_timing_fps != 0)
 			vrefresh =
 				mtk_crtc->panel_ext->params->dyn_fps.vact_timing_fps;
