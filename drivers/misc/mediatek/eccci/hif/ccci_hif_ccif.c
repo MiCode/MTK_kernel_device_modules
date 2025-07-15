@@ -1498,7 +1498,8 @@ static void ccif_set_clk_off(unsigned char hif_id)
 			md_ccif_base = ccif_ctrl->md_ccif5_base;
 		}
 		if ((ccif_id == 4 || ccif_id == 5) && md_ccif_base) {
-			if ((ccif_ctrl->plat_val.md_gen >= 6298) ||
+			if ((ccif_ctrl->plat_val.ap_plat_info == 6855) ||
+				(ccif_ctrl->plat_val.md_gen >= 6298) ||
 				(ccif_ctrl->ccif_hw_reset_ver == 1)) {
 				/* write 1 clear register */
 				regmap_write(ccif_ctrl->plat_val.infra_ao_base,
