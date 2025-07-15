@@ -2139,11 +2139,6 @@ void scp_sys_reset_ws(struct work_struct *ws)
 	unsigned long spin_flags;
 
 	pr_notice("[SCP] %s(): remain %d times\n", __func__, scp_reset_counts);
-	/*notify scp functions stop*/
-	pr_notice("[SCP] %s(): scp_extern_notify\n", __func__);
-	scp_extern_notify(SCP_EVENT_STOP);
-	if (scp_reset_type == RESET_TYPE_WDT)
-		scp_show_last_regs();
 	/*
 	 *   scp_ready:
 	 *   SCP_PLATFORM_STOP  = 0,
@@ -2151,6 +2146,12 @@ void scp_sys_reset_ws(struct work_struct *ws)
 	 */
 	scp_ready[SCP_A_ID] = 0;
 	scp_dvfs_cali_ready = 0;
+
+	/*notify scp functions stop*/
+	pr_notice("[SCP] %s(): scp_extern_notify\n", __func__);
+	scp_extern_notify(SCP_EVENT_STOP);
+	if (scp_reset_type == RESET_TYPE_WDT)
+		scp_show_last_regs();
 
 	/* wake lock AP*/
 	__pm_stay_awake(scp_reset_lock);
