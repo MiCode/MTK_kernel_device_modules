@@ -5,17 +5,19 @@
 
 load("@mgk_info//:kernel_version.bzl", "kernel_version")
 load("//build/bazel_mgk_rules:mgk_ddk_library.bzl", "define_mgk_ddk_library")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
 
 package(
-	default_visibility = [
-		"//visibility:public",
-	],
+    default_visibility = [
+        "//visibility:public",
+    ],
 )
 
 filegroup(
     name = "hyp_srcs",
     srcs = glob(
-        ["*.c", "*.h", "include/*.h"]
+        #["*.c", "*.h", "include/*.h"]
+        ["**/*.c", "**/*.h"]
     ),
 )
 
@@ -23,6 +25,15 @@ define_mgk_ddk_library(
     name = "hyp",
     srcs = [":hyp_srcs"],
     pkvm_el2 = True,
+    includes = ["."],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pkvm_hypmmu/include/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pkvm_mgmt/hyp/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+    ],
     # Depends on the hyp_pmm exported APIs
-    header_deps = ["//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_mgmt/hyp:export_headers".format(kernel_version)],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_mgmt/hyp:export_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_hypmmu:export_hdrs".format(kernel_version),
+    ],
 )

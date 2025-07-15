@@ -5,8 +5,9 @@
 
 #include <asm/kvm_pkvm_module.h>
 #include <linux/arm-smccc.h>
-#include "hyp_tmem_mpu.h"
 
+#include <include/export.h>
+#include "hyp_tmem_mpu.h"
 #include "hyp_pmm.h"
 
 #ifdef memset
@@ -103,6 +104,22 @@ uint64_t platform_mpu_clr(uint32_t mpu_zone, uint64_t addr, uint64_t size,
 	return platform_mpu_op(mpu_zone, addr, size, false, tmem_ops);
 }
 
+static u8 get_attr(enum MPU_REQ_ORIGIN_ZONE_ID zone_id)
+{
+	u8 attr = 0;
+
+	if (zone_id == MPU_REQ_ORIGIN_EL2_ZONE_PROT)
+		attr = 10;
+	if (zone_id == MPU_REQ_ORIGIN_EL2_ZONE_SVP)
+		attr = 9;
+	if (zone_id == MPU_REQ_ORIGIN_EL2_ZONE_WFD)
+		attr = 11;
+	if (zone_id == MPU_REQ_ORIGIN_EL2_ZONE_TUI)
+		attr = 0;
+
+	return attr;
+}
+
 static int PKVM_MPU_ShareMemProtRequest(enum MPU_REQ_ORIGIN_ZONE_ID zone_id,
 					uint64_t addr, uint64_t size, bool is_enable,
 					const char *dbg_tag, const struct pkvm_module_ops *tmem_ops)
@@ -111,31 +128,25 @@ static int PKVM_MPU_ShareMemProtRequest(enum MPU_REQ_ORIGIN_ZONE_ID zone_id,
 	struct mpu_record *rec = &pkvm_mpu_rec[zone_id];
 
 	if (is_enable) {
-		/*
-		 * EL1S2 unmap
-		 */
-		tmem_ops->host_stage2_mod_prot(addr >> ONE_PAGE_OFFSET, 0,
-			       size / ONE_PAGE_SIZE, false);
+		/* PMM: secure range */
+		hyp_pmm_secure_range(addr, size, get_attr(zone_id));
 
-		tmem_ops->puts("pkvm_tmem: platform_mpu_set\n");
+		tmem_ops->puts("pkvm_tmem: platform_mpu_set");
 		rc = platform_mpu_set(zone_id, addr, size, tmem_ops);
 		if (rc) {
 			tmem_ops->puts("failed to Enable MPU protection\n");
 			return TZ_RESULT_ERROR_GENERIC;
 		}
 	} else {
-		tmem_ops->puts("pkvm_tmem: platform_mpu_clr\n");
+		tmem_ops->puts("pkvm_tmem: platform_mpu_clr");
 		rc = platform_mpu_clr(zone_id, rec->addr, rec->size, tmem_ops);
 		if (rc) {
 			tmem_ops->puts("failed to Disable MPU protection\n");
 			return TZ_RESULT_ERROR_GENERIC;
 		}
 
-		/*
-		 * EL1S2 map
-		 */
-		tmem_ops->host_stage2_mod_prot(rec->addr >> ONE_PAGE_OFFSET, 7,
-			       rec->size / ONE_PAGE_SIZE, false);
+		/* PMM: unsecure range */
+		hyp_pmm_unsecure_range(rec->addr, rec->size, 0);
 	}
 
 	if (is_enable) {

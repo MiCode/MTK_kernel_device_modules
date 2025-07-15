@@ -45,6 +45,8 @@ static void mtk_iommu_cmapool_remove(struct platform_device *pdev);
 #endif /* _MTK_IOMMU_CMAPOOL_C */
 
 extern struct platform_driver mtk_iommu_cmapool_driver;
+extern u64 cma_pool_base;
+extern u64 cma_pool_size;
 
 #endif /* defined(MTK_IOMMU_CMAPOOL) && (MTK_IOMMU_CMAPOOL) */
 

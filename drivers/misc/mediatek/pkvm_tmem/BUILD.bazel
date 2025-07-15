@@ -27,8 +27,10 @@ define_mgk_ddk_ko(
     copts = [
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
     ],
-    # Depends on the ddk_library that builds the hypervisor code.
     ko_deps = [
+        # Depends on the exported hyp_pmm APIs
+        "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_mgmt:pkvm_mgmt".format(kernel_version),
+        # Depends on the ddk_library that builds the hypervisor code.
         "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_tmem/hyp:hyp".format(kernel_version),
     ],
 )

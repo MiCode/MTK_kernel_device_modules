@@ -11,6 +11,9 @@
 #define _MTK_IOMMU_CMAPOOL_C
 #include "mtk_iommu-cmapool.h"
 
+u64 cma_pool_base;
+u64 cma_pool_size;
+
 static int mtk_iommu_cmapool_probe(struct platform_device *pdev)
 {
 	int ret = 0;
@@ -95,6 +98,9 @@ static int mtk_iommu_cmapool_probe(struct platform_device *pdev)
 			break;
 		}
 		(void)kmemleak_ignore_phys((*cmapool_rmem)->base);
+
+		cma_pool_base = (u64)(*cmapool_rmem)->base;
+		cma_pool_size = (u64)(*cmapool_rmem)->size;
 
 		ret = 0;
 	} while (false);

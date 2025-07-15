@@ -43,12 +43,28 @@ static int pmm_unsecure(u64 paddr, u32 size, u8 pmm_attr)
 
 static int pmm_secure_range(u64 paddr, u32 size, u8 pmm_attr)
 {
-	return 0;
+	int ret;
+	enum kvm_pgtable_prot prot = 0;
+
+	ret = pkvm_ops->host_stage2_mod_prot(paddr >> PAGE_SHIFT, prot,
+		size >> PAGE_SHIFT, false);
+	if (ret)
+		pkvm_ops->puts("cpu: secure_range failed");
+
+	return ret;
 }
 
 static int pmm_unsecure_range(u64 paddr, u32 size, u8 pmm_attr)
 {
-	return 0;
+	int ret;
+	enum kvm_pgtable_prot prot = PKVM_HOST_MEM_PROT;
+
+	ret = pkvm_ops->host_stage2_mod_prot(paddr >> PAGE_SHIFT, prot,
+		size >> PAGE_SHIFT, false);
+	if (ret)
+		pkvm_ops->puts("cpu: unsecure_range failed");
+
+	return ret;
 }
 
 static int pmm_secure_v2(u64 paddr, u8 order, u8 pmm_attr)
@@ -120,7 +136,7 @@ static int pmm_sync(void)
 
 static int pmm_defragment(void)
 {
-	pkvm_ops->puts("cpu: degragment");
+	pkvm_ops->puts("cpu: defragment");
 	return 0;
 }
 

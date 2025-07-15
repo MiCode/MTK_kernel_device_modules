@@ -16,10 +16,9 @@
 #define pr_fmt(fmt) "[PKVM_MGMT]: " fmt
 #define PKVM_MGMT_VER	(1)
 
-int kvm_nvhe_sym(pkvm_mgmt_hyp_init)(const struct pkvm_module_ops *ops);
-
-int kvm_nvhe_sym(hyp_pmm_hal_register)(void *hal);
 EXPORT_SYMBOL(kvm_nvhe_sym(hyp_pmm_hal_register));
+EXPORT_SYMBOL(kvm_nvhe_sym(hyp_pmm_secure_range));
+EXPORT_SYMBOL(kvm_nvhe_sym(hyp_pmm_unsecure_range));
 
 static unsigned long mod_token;
 static int hyp_pmm_assign_buffer_v2_hcall;

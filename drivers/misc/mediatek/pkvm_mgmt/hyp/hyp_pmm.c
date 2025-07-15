@@ -275,6 +275,44 @@ void hyp_pmm_defragment(struct user_pt_regs *regs)
 	regs->regs[1] = 0;
 }
 
+static void secure_range(u64 pa, u64 size, u8 attr, bool lock)
+{
+	struct pmm_hal *hal;
+	int i;
+
+	for_each_pmm_hal(hal, i) {
+		pkvm_ops->puts(hal->name);
+#if (DEBUG_HYP_PMM == 1)
+		if (lock)
+			pkvm_ops->puts("secure range pa size attr lock");
+		else
+			pkvm_ops->puts("unsecure range pa size attr lock");
+
+		pkvm_ops->putx64(pa);
+		pkvm_ops->putx64(size);
+		pkvm_ops->putx64((u64)attr);
+		pkvm_ops->putx64((u64)lock);
+#endif
+		if (lock) {
+			if (hal->secure_range)
+				hal->secure_range(pa, size, attr);
+		} else {
+			if (hal->unsecure_range)
+				hal->unsecure_range(pa, size, attr);
+		}
+	}
+}
+
+void hyp_pmm_secure_range(u64 pa, u64 size, u8 attr)
+{
+	secure_range(pa, size, attr, true);
+}
+
+void hyp_pmm_unsecure_range(u64 pa, u64 size, u8 attr)
+{
+	secure_range(pa, size, attr, false);
+}
+
 static int hal_register(void *hal)
 {
 	int i;
