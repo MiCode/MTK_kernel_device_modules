@@ -1725,7 +1725,7 @@ static void tp_pre_query_mode(struct mml_dev *mml, struct mml_frame_info *info,
 
 check_dc_tput:
 	if (mml_isdc(mode)) {
-		if (info->pry_mode == MML_PERFORMANCE_PRY || mml_perf_pry) {
+		if (!info->dest[0].pq_config.en && (info->pry_mode == MML_PERFORMANCE_PRY || mml_perf_pry)) {
 			*reason = mml_query_performance_prioritize;
 			return;
 		}
@@ -1765,7 +1765,7 @@ static enum mml_mode tp_query_mode(struct mml_dev *mml, struct mml_frame_info *i
 	enum mml_mode mode = info->mode;
 
 	if (mml_isdc(mode)) {
-		if (info->pry_mode == MML_PERFORMANCE_PRY || mml_perf_pry) {
+		if (!info->dest[0].pq_config.en && (info->pry_mode == MML_PERFORMANCE_PRY || mml_perf_pry)) {
 			*reason = mml_query_performance_prioritize;
 			mode = MML_MODE_NOT_SUPPORT;
 		}
