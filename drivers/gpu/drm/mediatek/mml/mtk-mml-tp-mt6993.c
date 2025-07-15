@@ -1672,6 +1672,11 @@ static void tp_pre_query_mode(struct mml_dev *mml, struct mml_frame_info *info,
 	struct mml_topology_cache *tp = mml_topology_get_cache(mml);
 	enum mml_mode mode;
 
+	if (unlikely(!info_cache)) {
+		mml_err("%s info_cache is NULL", __func__);
+		return;
+	}
+
 	if (unlikely(mml_path_mode)) {
 		mml_log("%s force use path mode %d", __func__, mml_path_mode);
 		if (mml_path_mode < sizeof(info_cache->mode_caps) * 8)
@@ -1738,7 +1743,7 @@ check_dc_tput:
 		/* dl mode support, compare opp with dc */
 		if (!(info->pry_mode == MML_PERFORMANCE_PRY || mml_perf_pry) &&
 			tp_check_tput_dc(info, tp, panel_width, panel_height, info_cache) &&
-			info_cache && info_cache->dl_opp > info_cache->dc_opp) {
+			info_cache->dl_opp > info_cache->dc_opp) {
 			*reason = mml_query_lowpower;
 			info_cache->mode_caps &= ~(BIT(MML_MODE_DIRECT_LINK) |
 						   BIT(MML_MODE_RACING));
