@@ -2997,7 +2997,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					&smi_larb11 &smi_larb13 &smi_larb14
 					&smi_larb16 &smi_larb17 &smi_larb20>;
 		mediatek,commons-supply = <&smi_disp_common>;
-		mmqos-state = <0x177ed>;
+		mmqos-state = <0x4177ed>;
 		mmqos-log-level = <0>;
 		interconnects = <&dvfsrc MT6873_MASTER_MMSYS &dvfsrc MT6873_SLAVE_DDR_EMI>,
 				<&dvfsrc MT6873_MASTER_HRT_MMSYS
