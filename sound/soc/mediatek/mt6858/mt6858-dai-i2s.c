@@ -1171,15 +1171,20 @@ static int get_i2s_id_by_name(struct mtk_base_afe *afe,
 }
 
 static struct mtk_afe_i2s_priv *get_i2s_priv_by_name(struct mtk_base_afe *afe,
-		const char *name)
+						     const char *name)
 {
 	struct mt6858_afe_private *afe_priv = afe->platform_priv;
-	int dai_id = get_i2s_id_by_name(afe, name);
+	struct mtk_afe_i2s_priv *i2s_priv = NULL;
+	int id = get_i2s_id_by_name(afe, name);
 
-	if (dai_id < 0)
-		return NULL;
+	if (id >= 0)
+		i2s_priv = afe_priv->dai_priv[id];
 
-	return afe_priv->dai_priv[dai_id];
+	if (!i2s_priv) {
+		dev_info(afe->dev, "%s: invalid: %s(%d)\n", __func__, name, id);
+		AUDIO_AEE("i2s_priv == NULL");
+	}
+	return i2s_priv;
 }
 
 /*
@@ -1236,11 +1241,8 @@ static int mt6858_i2s_hd_get(struct snd_kcontrol *kcontrol,
 	struct mtk_afe_i2s_priv *i2s_priv;
 
 	i2s_priv = get_i2s_priv_by_name(afe, kcontrol->id.name);
-
-	if (!i2s_priv) {
-		AUDIO_AEE("i2s_priv == NULL");
+	if (!i2s_priv)
 		return -EINVAL;
-	}
 
 	ucontrol->value.integer.value[0] = i2s_priv->low_jitter_en;
 
@@ -1266,11 +1268,8 @@ static int mt6858_i2s_hd_set(struct snd_kcontrol *kcontrol,
 			__func__, kcontrol->id.name, hd_en);
 	}
 	i2s_priv = get_i2s_priv_by_name(afe, kcontrol->id.name);
-
-	if (!i2s_priv) {
-		AUDIO_AEE("i2s_priv == NULL");
+	if (!i2s_priv)
 		return -EINVAL;
-	}
 
 	i2s_priv->low_jitter_en = hd_en;
 
@@ -1290,8 +1289,9 @@ static const struct snd_kcontrol_new mtk_dai_i2s_controls[] = {
 		     mt6858_i2s_hd_get, mt6858_i2s_hd_set),
 	SOC_ENUM_EXT(MTK_AFE_I2SOUT4_KCONTROL_NAME, mt6858_i2s_enum[0],
 		     mt6858_i2s_hd_get, mt6858_i2s_hd_set),
-	SOC_ENUM_EXT(MTK_AFE_FMI2S_MASTER_KCONTROL_NAME, mt6858_i2s_enum[0],
-		     mt6858_i2s_hd_get, mt6858_i2s_hd_set),
+	/* SOC_ENUM_EXT(MTK_AFE_FMI2S_MASTER_KCONTROL_NAME, mt6858_i2s_enum[0],
+	 *	     mt6858_i2s_hd_get, mt6858_i2s_hd_set),
+	 */
 	SOC_SINGLE_EXT("i2s_low_power_mask", SND_SOC_NOPM, 0, 0xffff, 0,
 		       mtk_i2s_low_power_mask_get,
 		       mtk_i2s_low_power_mask_set),
@@ -1593,11 +1593,9 @@ static int mtk_i2s_en_event(struct snd_soc_dapm_widget *w,
 	int id;
 
 	i2s_priv = get_i2s_priv_by_name(afe, w->name);
-
-	if (!i2s_priv) {
-		AUDIO_AEE("i2s_priv == NULL");
+	if (!i2s_priv)
 		return -EINVAL;
-	}
+
 	id = i2s_priv->id - MT6858_DAI_I2S_IN1;
 	if (id < 0 || id >= DAI_I2S_NUM) {
 		dev_warn(afe->dev, "%s(), i2s id is invalid", __func__);
@@ -1719,11 +1717,8 @@ static int mtk_mclk_en_event(struct snd_soc_dapm_widget *w,
 		 __func__, w->name, event);
 
 	i2s_priv = get_i2s_priv_by_name(afe, w->name);
-
-	if (!i2s_priv) {
-		AUDIO_AEE("i2s_priv == NULL");
+	if (!i2s_priv)
 		return -EINVAL;
-	}
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
@@ -1925,11 +1920,8 @@ static int mtk_afe_i2s_share_connect(struct snd_soc_dapm_widget *source,
 	int ret = 0;
 
 	i2s_priv = get_i2s_priv_by_name(afe, sink->name);
-
-	if (!i2s_priv) {
-		AUDIO_AEE("i2s_priv == NULL");
+	if (!i2s_priv)
 		return 0;
-	}
 
 	if (i2s_priv->share_i2s_id < 0)
 		return 0;
@@ -1950,11 +1942,8 @@ static int mtk_afe_i2s_hd_connect(struct snd_soc_dapm_widget *source,
 
 
 	i2s_priv = get_i2s_priv_by_name(afe, sink->name);
-
-	if (!i2s_priv) {
-		AUDIO_AEE("i2s_priv == NULL");
+	if (!i2s_priv)
 		return 0;
-	}
 
 	i2s_num = get_i2s_id_by_name(afe, source->name);
 	if (get_i2s_id_by_name(afe, sink->name) == i2s_num)
@@ -1983,11 +1972,8 @@ static int mtk_afe_i2s_apll_connect(struct snd_soc_dapm_widget *source,
 	int i2s_need_apll;
 
 	i2s_priv = get_i2s_priv_by_name(afe, w->name);
-
-	if (!i2s_priv) {
-		AUDIO_AEE("i2s_priv == NULL");
+	if (!i2s_priv)
 		return 0;
-	}
 
 	/* which apll */
 	cur_apll = mt6858_get_apll_by_name(afe, source->name);
@@ -2007,11 +1993,8 @@ static int mtk_afe_i2s_mclk_connect(struct snd_soc_dapm_widget *source,
 	struct mtk_afe_i2s_priv *i2s_priv;
 
 	i2s_priv = get_i2s_priv_by_name(afe, sink->name);
-
-	if (!i2s_priv) {
-		AUDIO_AEE("i2s_priv == NULL");
+	if (!i2s_priv)
 		return 0;
-	}
 
 	if (get_i2s_id_by_name(afe, sink->name) ==
 	    get_i2s_id_by_name(afe, source->name))
@@ -2037,11 +2020,8 @@ static int mtk_afe_mclk_apll_connect(struct snd_soc_dapm_widget *source,
 	int cur_apll;
 
 	i2s_priv = get_i2s_priv_by_name(afe, w->name);
-
-	if (!i2s_priv) {
-		AUDIO_AEE("i2s_priv == NULL");
+	if (!i2s_priv)
 		return 0;
-	}
 
 	/* which apll */
 	cur_apll = mt6858_get_apll_by_name(afe, source->name);
