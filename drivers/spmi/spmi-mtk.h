@@ -163,6 +163,11 @@ struct spmi_nack_monitor_pair {
 	unsigned int addr;
 };
 
+struct spmi_rcs_mask_pair {
+	unsigned int slvid;
+	unsigned int sta;
+};
+
 struct spmi_acc_vio_info {
 	unsigned int chan;
 	unsigned int slvid;

@@ -11,6 +11,7 @@
 #include <linux/of_address.h>
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
+#include <linux/ratelimit.h>
 #include <linux/sched/clock.h>
 #include <linux/sched/mm.h>
 #include <linux/spmi.h>
@@ -57,6 +58,11 @@
 
 #define MAX_MONITOR_LIST_SIZE	64
 #define MONITOR_PAIR_ITEM_NUM	2
+#define RCS_DEBUG	0
+#if !RCS_DEBUG
+#define MAX_RCS_MASK_SIZE	128
+#define RCS_MASK_PAIR_ITEM_NUM	2
+#endif
 
 #define PMIF_CH_MD_DVFS_HW	1
 #define PMIF_CH_MD_HW	0
@@ -443,6 +449,12 @@ static struct spmi_dev spmidev[16];
 static struct spmi_nack_monitor_pair nack_monitor_list[MAX_MONITOR_LIST_SIZE];
 static int nack_monitor_list_size;
 static struct pmif_irq_timer irq_timer[3];
+#if !RCS_DEBUG
+static struct spmi_rcs_mask_pair rcs_mask_list[MAX_RCS_MASK_SIZE];
+static int rcs_mask_list_size;
+static struct ratelimit_state ratelimit_log =
+	RATELIMIT_STATE_INIT("ratelimit_log", 5 * HZ, 2);
+#endif
 void __iomem *ext_pmif_base[3];
 EXPORT_SYMBOL(ext_pmif_base);
 
@@ -556,6 +568,78 @@ static bool in_spmi_nack_monitor_list(u32 spmi_nack)
 	pr_notice("%s Not in SPMI NACK monitor list\n", __func__);
 	return false;
 }
+
+#if !RCS_DEBUG
+static void spmi_rcs_mask_list_parse(struct platform_device *pdev)
+{
+	int i = 0, ret = 0;
+	int rcs_mask_list_arr_size = 0;
+
+	rcs_mask_list_arr_size = of_property_count_u32_elems(pdev->dev.of_node, "rcs-mask-list");
+	if (rcs_mask_list_arr_size < 0) {
+		dev_notice(&pdev->dev,
+			"Failed to get rcs-mask-list, ret = %d\n", rcs_mask_list_arr_size);
+		return;
+	}
+
+	/* RCS mask list are not in pair */
+	if (rcs_mask_list_arr_size % RCS_MASK_PAIR_ITEM_NUM != 0) {
+		dev_notice(&pdev->dev,
+			"SPMI RCS mask list slvid, sta are not in pair, array size = %d\n",
+			rcs_mask_list_arr_size);
+	}
+
+	rcs_mask_list_size = rcs_mask_list_arr_size / RCS_MASK_PAIR_ITEM_NUM;
+	dev_notice(&pdev->dev,
+			"rcs_mask_list_arr_size = %d, rcs_mask_list_size = %d\n",
+			rcs_mask_list_arr_size,
+			rcs_mask_list_size);
+
+	/* Monitor list size too large */
+	if (rcs_mask_list_size > MAX_RCS_MASK_SIZE) {
+		dev_notice(&pdev->dev,
+			"SPMI RCS mask list size is too large = %d, max size is %d\n",
+			rcs_mask_list_size, MAX_RCS_MASK_SIZE);
+		dev_notice(&pdev->dev,
+			"RCS mask over number %d in rcs-mask-list will be ignored\n",
+			MAX_RCS_MASK_SIZE - 1);
+		rcs_mask_list_size = MAX_RCS_MASK_SIZE;
+	}
+
+	for (i = 0; i < rcs_mask_list_size; i++) {
+		ret = of_property_read_u32_index(pdev->dev.of_node,
+				"rcs-mask-list",
+				i * RCS_MASK_PAIR_ITEM_NUM,
+				&rcs_mask_list[i].slvid);
+		if (ret) {
+			dev_notice(&pdev->dev,
+				"spmi-rcs-mask-list slvid read fail\n");
+		}
+
+		ret = of_property_read_u32_index(pdev->dev.of_node,
+				"rcs-mask-list",
+				i * RCS_MASK_PAIR_ITEM_NUM + 1,
+				&rcs_mask_list[i].sta);
+		if (ret) {
+			dev_notice(&pdev->dev,
+				"spmi-rcs-mask-list sta read fail\n");
+		}
+	}
+}
+
+static bool in_spmi_rcs_mask_list(int slvid, unsigned int rcs_sta)
+{
+	unsigned int i = 0;
+
+	for (i = 0; i < rcs_mask_list_size; i++) {
+		if ((slvid == rcs_mask_list[i].slvid) &&
+			(rcs_sta == rcs_mask_list[i].sta))
+			return true;
+	}
+	pr_notice("%s Not in SPMI RCS mask list\n", __func__);
+	return false;
+}
+#endif
 
 static int mt6316_revision_check(struct pmif *arb, unsigned int slvid)
 {
@@ -2207,8 +2291,13 @@ static irqreturn_t rcs_irq_handler(int irq, void *data)
 			mtk_spmi_writel(arb->spmimst_base[0], arb, (0xFF << ((i % 4) * 8)),
 					SPMI_SLV_3_0_EINT + (i / 4));
 			if (arb->rcs_enable_hwirq[i] && slv_irq_sta_0) {
-				dev_info(&arb->spmic->dev,
-					"spmi-0 hwirq=%d, sta=0x%x\n", i, slv_irq_sta_0);
+#if !RCS_DEBUG
+				if ((!in_spmi_rcs_mask_list(i, slv_irq_sta_0)) ||
+					((in_spmi_rcs_mask_list(i, slv_irq_sta_0)) &&
+					 (__ratelimit(&ratelimit_log))))
+#endif
+					dev_info(&arb->spmic->dev,
+						"spmi-0 hwirq=%d, sta=0x%x\n", i, slv_irq_sta_0);
 				handle_nested_irq(irq_find_mapping(arb->domain, i));
 			}
 		} else if (slv_irq_sta_1) {
@@ -2216,8 +2305,13 @@ static irqreturn_t rcs_irq_handler(int irq, void *data)
 				mtk_spmi_writel(arb->spmimst_base[1], arb, (0xFF << ((i % 4) * 8)),
 					SPMI_SLV_3_0_EINT + (i / 4));
 				if (arb->rcs_enable_hwirq[i] && slv_irq_sta_1) {
-					dev_info(&arb->spmic->dev,
-						"spmi-1 hwirq=%d, sta=0x%x\n", i, slv_irq_sta_1);
+#if !RCS_DEBUG
+					if ((!in_spmi_rcs_mask_list(i, slv_irq_sta_1)) ||
+						((in_spmi_rcs_mask_list(i, slv_irq_sta_1)) &&
+						 (__ratelimit(&ratelimit_log))))
+#endif
+						dev_info(&arb->spmic->dev,
+							"spmi-1 hwirq=%d, sta=0x%x\n", i, slv_irq_sta_1);
 					handle_nested_irq(irq_find_mapping(arb->domain, i));
 				}
 			}
@@ -2226,8 +2320,13 @@ static irqreturn_t rcs_irq_handler(int irq, void *data)
 				mtk_spmi_writel(arb->spmimst_base[2], arb, (0xFF << ((i % 4) * 8)),
 					SPMI_SLV_3_0_EINT + (i / 4));
 				if (arb->rcs_enable_hwirq[i] && slv_irq_sta_2) {
-					dev_info(&arb->spmic->dev,
-						"spmi-2 hwirq=%d, sta=0x%x\n", i, slv_irq_sta_2);
+#if !RCS_DEBUG
+					if ((!in_spmi_rcs_mask_list(i, slv_irq_sta_2)) ||
+						((in_spmi_rcs_mask_list(i, slv_irq_sta_2)) &&
+						 (__ratelimit(&ratelimit_log))))
+#endif
+						dev_info(&arb->spmic->dev,
+							"spmi-2 hwirq=%d, sta=0x%x\n", i, slv_irq_sta_2);
 					handle_nested_irq(irq_find_mapping(arb->domain, i));
 				}
 			}
@@ -2501,6 +2600,9 @@ static int mtk_spmi_probe(struct platform_device *pdev)
 	spmi_pmif_create_attr(&mtk_spmi_driver.driver);
 
 	spmi_nack_monitor_list_parse(pdev);
+#if !RCS_DEBUG
+	spmi_rcs_mask_list_parse(pdev);
+#endif
 
 	arb->irq = platform_get_irq_byname(pdev, "pmif_irq");
 	if (arb->irq < 0)
