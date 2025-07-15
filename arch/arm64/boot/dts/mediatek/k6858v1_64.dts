@@ -40,6 +40,7 @@
 	status = "okay";
 	#address-cells = <1>;
 	#size-cells = <0>;
+	switch-fps = <120>;
 
 	panel1@0 {
 		compatible = "vtdr6126a,vdo";
@@ -69,6 +70,20 @@
 			};
 		};
 	};
+	panel3@1 {
+	    compatible = "jdi,nt36672e,vdo,60hz";
+		reg = <2>;
+		res-switch = <2>;
+		pm-enable-gpios = <&pio 130 0>;
+		reset-gpios = <&pio 97 0>;
+		gate-ic = <4831>;
+		pinctrl-names = "default";
+		port {
+			panel_in3: endpoint {
+				remote-endpoint = <&dsi_out3>;
+			};
+		};
+	};
 
 	ports {
 		port {
@@ -77,6 +92,9 @@
 			};
 			dsi_out2: endpoint@1 {
 				remote-endpoint = <&panel_in2>;
+			};
+			dsi_out3: endpoint@2 {
+				remote-endpoint = <&panel_in3>;
 			};
 		};
 	};
