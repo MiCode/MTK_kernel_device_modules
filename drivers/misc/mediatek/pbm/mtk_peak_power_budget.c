@@ -1236,7 +1236,7 @@ static void __used ppb3_print_dbg_log(struct timer_list *timer)
 			offset = offset + ret;
 
 
-		pr_info("%s\n", str);
+		pr_info_ratelimited("%s\n", str);
 
 		mod_timer(&ppb_dbg_timer, jiffies + PPB3_LOG_DURATION);
 
