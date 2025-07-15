@@ -2176,8 +2176,7 @@ void mtk_vdec_check_alive_work(struct work_struct *ws)
 	caws = container_of(ws, struct vdec_check_alive_work_struct, work);
 	dev = caws->dev;
 	if (dev == NULL) {
-		if (caws->ctx != NULL)
-			kfree(caws);
+		kfree(caws);
 		mtk_vcodec_dvfs_qos_err("[VDVFS] caws->dev is null");
 		return;
 	}
@@ -2266,9 +2265,9 @@ void mtk_vdec_check_alive_work(struct work_struct *ws)
 				ctx->dev->vdec_dvfs_params.target_freq,
 				ctx->dec_params.operating_rate);
 		} else {
-			// In AP, only recalculate freq, apply dvfs & qos when the next frame prepare
 			mtk_vdec_force_update_freq(dev);
 		}
+		mtk_vdec_pmqos_begin_inst(ctx);
 	}
 
 	mutex_unlock(&dev->dec_dvfs_mutex);
@@ -4310,8 +4309,9 @@ static void vb2ops_vdec_stop_streaming(struct vb2_queue *q)
 			ctx->dec_params.operating_rate);
 	} else {
 		mtk_vcodec_dvfs_qos_log(true, "[%d][VDVFS][VDEC] stop ctrl DVFS in AP", ctx->id);
-		mtk_vdec_dvfs_end_inst(ctx); // calculated frequency only
+		mtk_vdec_dvfs_end_inst(ctx);
 	}
+	mtk_vdec_pmqos_end_inst(ctx);
 	mutex_unlock(&ctx->dev->dec_dvfs_mutex);
 	vcodec_trace_end();
 
@@ -4353,8 +4353,8 @@ static void mtk_vdec_init_work(struct mtk_vcodec_ctx *ctx)
 
 void mtk_vdec_init_boost(struct mtk_vcodec_ctx *ctx)
 {
-	ctx->dev->vdec_dvfs_params.last_boost_time = jiffies_to_msecs(jiffies);
 	ctx->dev->vdec_dvfs_params.init_boost = 1;
+	ctx->dev->vdec_dvfs_params.last_boost_time = jiffies_to_msecs(jiffies);
 }
 
 static void mtk_vdec_start_work(struct mtk_vcodec_ctx *ctx)
@@ -4382,7 +4382,7 @@ static void mtk_vdec_start_work(struct mtk_vcodec_ctx *ctx)
 		mtk_vdec_init_boost(ctx);
 		mtk_vdec_dvfs_begin_inst(ctx);
 	}
-
+	mtk_vdec_pmqos_begin_inst(ctx);
 	mutex_unlock(&ctx->dev->dec_dvfs_mutex);
 	vcodec_trace_end();
 
