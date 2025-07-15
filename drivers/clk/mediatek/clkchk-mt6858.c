@@ -984,6 +984,7 @@ static struct pwr_data pvd_pwr_data[] = {
 	{"ufscfg_pdn", ufspdn, spm, 0x0E10},
 	{"vdecsys", vde2, spm, 0x0E34},
 	{"vencsys", ven1, spm, 0x0E3C},
+	{"mminfra_config", mminfra_config, spm, 0x0E74},
 };
 
 static int get_pvd_pwr_data_idx(const char *pvdname)
