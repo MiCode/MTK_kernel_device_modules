@@ -28,6 +28,7 @@
 #include "jpeg_drv_reg.h"
 #include "mtk-interconnect.h"
 #include "mtk-smmu-v3.h"
+#include "vcp_status.h"
 
 #define JPEG_DEVNAME "mtk_jpeg"
 
@@ -606,12 +607,15 @@ static int jpeg_drv_hybrid_dec_lock(int *hwid)
 {
 	int retValue = 0;
 	int id = 0;
+	int is_vcp_suspend = is_vcp_suspending_ex();
 
 	mutex_lock(&jpeg_hybrid_dec_lock);
-	if (gJpegqDev.is_suspending || gJpegqDev.is_shutdowning) {
-		JPEG_LOG(0, "jpeg dec is suspending or shutdowning, %d, %d",
+
+	if (gJpegqDev.is_suspending || gJpegqDev.is_shutdowning || is_vcp_suspend) {
+		JPEG_LOG(0, "jpeg dec is suspending or shutdowning, %d, %d, %d",
 			    gJpegqDev.is_suspending,
-			    gJpegqDev.is_shutdowning);
+			    gJpegqDev.is_shutdowning,
+				is_vcp_suspend);
 		*hwid = -1;
 		mutex_unlock(&jpeg_hybrid_dec_lock);
 		return -EBUSY;
@@ -679,49 +683,43 @@ static void jpeg_drv_hybrid_dec_unlock(unsigned int hwid)
 	mutex_unlock(&jpeg_hybrid_dec_lock);
 }
 
-static int jpeg_drv_hybrid_dec_suspend_prepare_notifier(
+static int jpeg_drv_hybrid_dec_suspend_notifier(
 					struct notifier_block *nb,
 					unsigned long action, void *data)
 {
 	int i;
 	int wait_cnt = 0;
 
-	if (action != PM_SUSPEND_PREPARE)
-		return NOTIFY_DONE;
-
 	JPEG_LOG(0, "action:%ld", action);
-	mutex_lock(&jpeg_hybrid_dec_lock);
-	gJpegqDev.is_suspending = 1;
-	for (i = 0 ; i < HW_CORE_NUMBER; i++) {
-		JPEG_LOG(1, "jpeg dec sn wait core %d", i);
-		while (dec_hwlocked[i] && dec_hw_enable[i]) {
-			if (wait_cnt > 5) {
-				JPEG_LOG(0, "jpeg dec sn unlock core %d", i);
-				_jpeg_drv_hybrid_dec_unlock(i);
-				break;
+	switch (action) {
+	case PM_SUSPEND_PREPARE:
+		mutex_lock(&jpeg_hybrid_dec_lock);
+		gJpegqDev.is_suspending = 1;
+		for (i = 0 ; i < HW_CORE_NUMBER; i++) {
+			JPEG_LOG(1, "jpeg dec sn wait core %d", i);
+			while (dec_hwlocked[i] && dec_hw_enable[i]) {
+				if (wait_cnt > 5) {
+					JPEG_LOG(0, "jpeg dec sn unlock core %d", i);
+					_jpeg_drv_hybrid_dec_unlock(i);
+					break;
+				}
+				mutex_unlock(&jpeg_hybrid_dec_lock);
+				JPEG_LOG(1, "jpeg dec sn core %d locked. wait...", i);
+				usleep_range(10000, 20000);
+				wait_cnt++;
+				mutex_lock(&jpeg_hybrid_dec_lock);
 			}
-			mutex_unlock(&jpeg_hybrid_dec_lock);
-			JPEG_LOG(1, "jpeg dec sn core %d locked. wait...", i);
-			usleep_range(10000, 20000);
-			wait_cnt++;
-			mutex_lock(&jpeg_hybrid_dec_lock);
 		}
-	}
-	mutex_unlock(&jpeg_hybrid_dec_lock);
+		mutex_unlock(&jpeg_hybrid_dec_lock);
 
-	return NOTIFY_OK;
-}
-
-static int jpeg_drv_hybrid_dec_post_suspend_notifier(
-					struct notifier_block *nb,
-					unsigned long action, void *data)
-{
-	if (action != PM_POST_SUSPEND)
+		return NOTIFY_OK;
+	case PM_POST_SUSPEND:
+		gJpegqDev.is_suspending = 0;
+		return NOTIFY_OK;
+	default:
 		return NOTIFY_DONE;
-
-	JPEG_LOG(0, "action:%ld", action);
-	gJpegqDev.is_suspending = 0;
-	return NOTIFY_OK;
+	}
+	return NOTIFY_DONE;
 }
 
 static int jpeg_drv_hybrid_dec_suspend(void)
@@ -1400,16 +1398,11 @@ static int jpeg_probe(struct platform_device *pdev)
 		pm_runtime_enable(&pdev->dev);
 
 	if (atomic_read(&nodeCount) == 1) {
-		gJpegqDev.pm_suspend_prepare_notifier.notifier_call =
-			jpeg_drv_hybrid_dec_suspend_prepare_notifier;
+		gJpegqDev.pm_notifier.notifier_call =
+			jpeg_drv_hybrid_dec_suspend_notifier;
 		/* PM_SUSPEND_PREPARE priority should be higher than vcp */
-		gJpegqDev.pm_suspend_prepare_notifier.priority = 1;
-		register_pm_notifier(&gJpegqDev.pm_suspend_prepare_notifier);
-		gJpegqDev.pm_post_suspend_notifier.notifier_call =
-			jpeg_drv_hybrid_dec_post_suspend_notifier;
-		/* PM_POST_SUSPEND priority should be lower than vcp */
-		gJpegqDev.pm_post_suspend_notifier.priority = -1;
-		register_pm_notifier(&gJpegqDev.pm_post_suspend_notifier);
+		gJpegqDev.pm_notifier.priority = 1;
+		register_pm_notifier(&gJpegqDev.pm_notifier);
 		gJpegqDev.is_suspending = 0;
 		gJpegqDev.is_shutdowning = 0;
 		memset(_jpeg_hybrid_dec_int_status, 0, HW_CORE_NUMBER);

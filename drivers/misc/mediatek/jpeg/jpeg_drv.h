@@ -70,8 +70,7 @@ struct JpegDeviceStruct {
 	struct clk *jpeg_dvfs;
 	uint32_t dvfs_opp_level;
 	uint32_t mmdvfs_vcp_idx;
-	struct notifier_block pm_suspend_prepare_notifier;
-	struct notifier_block pm_post_suspend_notifier;
+	struct notifier_block pm_notifier;
 	bool is_suspending;
 	bool is_shutdowning;
 	struct icc_path *jpeg_path_wdma[HW_CORE_NUMBER];
