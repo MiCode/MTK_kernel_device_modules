@@ -6798,8 +6798,8 @@ static void mtk_output_dsi_enable(struct mtk_dsi *dsi,
 			/* We use doze_get_mode_flags to determine if
 			 * there has CV switch in Doze mode.
 			 */
-			if (ext && ext->funcs && ext->funcs->doze_post_disp_on_v2
-				&& ext->funcs->doze_get_mode_flags) {
+			if ((mtk_dsi_cmd_version() == DSI_CMD_V2) && ext && ext->funcs &&
+				ext->funcs->doze_post_disp_on_v2 && ext->funcs->doze_get_mode_flags) {
 				struct mtk_dsi_cmd_option cmd_opt = { 0 };
 
 				cmd_opt.flags = MTK_MIPI_DSI_GCE_CREATE_HANDLE |
