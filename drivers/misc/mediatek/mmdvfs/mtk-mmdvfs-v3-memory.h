@@ -101,7 +101,9 @@ static inline bool mmdvfs_is_init_done(void) { return false; }
 #define MEM_MUX_CB_END_USEC	(MEM_BASE + 0x594)
 
 #define MEM_CEIL_LEVEL(x)		(MEM_BASE + 0x598 + 0x4 * (x)) // POWER_NUM(3)
-/* next start: 0x5A4 */
+
+#define MEM_HFLV_ASSERT                (MEM_BASE + 0x5A4)
+/* next start: 0x5A8 */
 
 #define SRAM_MUX_CB_CNT		(10)
 #define MEM_SRAM_MUX_CB_TIME_OFS	(MEM_BASE + 0x7D4)

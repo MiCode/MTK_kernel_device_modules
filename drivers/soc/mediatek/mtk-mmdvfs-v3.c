@@ -6,6 +6,7 @@
 #include <linux/clk.h>
 #include <linux/kthread.h>
 #include <linux/module.h>
+#include <linux/bug.h>
 #include <linux/of_platform.h>
 #include <linux/platform_device.h>
 #include <linux/sched/clock.h>
@@ -1945,6 +1946,9 @@ static int mmdvfs_mmup_notifier_callback(struct notifier_block *nb, unsigned lon
 			mmdvfs_v3_restore_step();
 		break;
 	case VCP_EVENT_STOP:
+		if (readl(MEM_HFLV_ASSERT))
+			BUG_ON(1);
+
 		if (dpc_fp[0])
 			mmdvfs_rc_enable_cb_all(false, true);
 		mmdvfs_vcp_stop = true;
