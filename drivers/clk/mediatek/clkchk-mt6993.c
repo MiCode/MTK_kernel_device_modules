@@ -3500,6 +3500,7 @@ static struct regname rn[] = {
 	REGNAME(cksys_vlp, 0x030c, VLP_CLK_EN_APLL2_MON_0),
 	REGNAME(cksys_vlp, 0x330, VLP_CLK_CKSTA_REG_0),
 	REGNAME(cksys_vlp, 0x334, VLP_CLK_CKSTA_REG_1),
+	REGNAME(cksys_vlp, 0x410, VLP_CLK_LO_CG_CFG),
 	REGNAME(cksys_top, 0x260, CKSYS_HWCCF_CK_EN_0),
 	REGNAME(cksys_top, 0x264, CKSYS_HWCCF_CK_EN_1),
 	REGNAME(cksys_top, 0x268, CKSYS_HWCCF_CK_EN_2),
