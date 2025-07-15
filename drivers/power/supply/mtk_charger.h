@@ -99,6 +99,8 @@ struct charger_data;
 #define USB_CURRENT_MASK 0x80000000
 #define UNLIMIT_CURRENT_MASK 0x10000000
 
+#define BAT_VOLT_LOW_THR 3450
+
 enum bat_temp_state_enum {
 	BAT_TEMP_LOW = 0,
 	BAT_TEMP_NORMAL,
@@ -280,6 +282,7 @@ struct charger_custom_data {
 	int bc_stop_charging_voltage;
 	int bc_recharge_voltage;
 	enum bc_mode_type bc_mode;
+	int bat_volt_low_thr;
 };
 
 struct charger_data {

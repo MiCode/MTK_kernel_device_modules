@@ -697,6 +697,16 @@ static void mtk_charger_parse_dt(struct mtk_charger *info,
 		info->cs_hw_disable = true;
 		info->curr_select_name = "NULL";
 	}
+
+	if (of_property_read_u32(np, "bat_volt_low_thr", &val) >= 0)
+		info->data.bat_volt_low_thr = val;
+	else if (of_property_read_u32(np, "bat-volt-low-thr", &val) >= 0)
+		info->data.bat_volt_low_thr = val;
+	else {
+		chr_err("use default BAT_VOLT_LOW_THR:%d\n",
+			BAT_VOLT_LOW_THR);
+		info->data.bat_volt_low_thr = BAT_VOLT_LOW_THR;
+	}
 }
 
 static void mtk_charger_start_timer(struct mtk_charger *info)
@@ -4008,6 +4018,46 @@ int notify_adapter_event(struct notifier_block *notifier,
 	return NOTIFY_DONE;
 }
 
+static bool mtk_charger_check_bat_low(struct mtk_charger *info)
+{
+	int ret = 0, vbat_min = 0, vbat_max = 0;
+	struct charger_device *chg_dev = NULL;
+	bool bat_is_low = false;
+
+	chg_dev = get_charger_by_name("primary_chg");
+	if (chg_dev)
+		chr_debug("%s, Found primary charger\n", __func__);
+	else {
+		chr_err("%s, *** Error : can't find primary charger ***\n", __func__);
+
+		bat_is_low = false;
+		return bat_is_low;
+	}
+
+	ret = charger_dev_get_adc(chg_dev, ADC_CHANNEL_VBAT, &vbat_min, &vbat_max);
+	if (ret < 0) {
+		chr_err("%s failed to get vbat from chgIC\n", __func__);
+
+		bat_is_low = true;
+		return bat_is_low;
+	}
+
+	if (vbat_min != 0)
+		vbat_min = vbat_min / 1000;
+	if (vbat_max != 0)
+		vbat_max = vbat_max / 1000;
+
+	if (vbat_min <= info->data.bat_volt_low_thr)
+		bat_is_low = true;
+	else
+		bat_is_low = false;
+
+	chr_err("%s vbat: %d, %d thr:%d bat_is_low: %d", __func__, vbat_min, vbat_max,
+		info->data.bat_volt_low_thr, bat_is_low);
+
+	return bat_is_low;
+}
+
 int chg_alg_event(struct notifier_block *notifier,
 			unsigned long event, void *data)
 {
@@ -4240,7 +4290,7 @@ static int mtk_charger_probe(struct platform_device *pdev)
 
 	/* 8 = KERNEL_POWER_OFF_CHARGING_BOOT */
 	/* 9 = LOW_POWER_OFF_CHARGING_BOOT */
-	if (info != NULL && info->bootmode != 8 && info->bootmode != 9)
+	if (info != NULL && info->bootmode != 8 && info->bootmode != 9 && !mtk_charger_check_bat_low(info))
 		mtk_charger_force_disable_power_path(info, CHG1_SETTING, true);
 
 	kthread_run(charger_routine_thread, info, "charger_thread");
