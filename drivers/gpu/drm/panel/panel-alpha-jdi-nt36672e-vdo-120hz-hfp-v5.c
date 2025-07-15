@@ -3034,6 +3034,7 @@ static int jdi_probe(struct mipi_dsi_device *dsi)
 	struct device_node *backlight;
 	unsigned int value;
 	int ret;
+	struct mtk_panel_params *cur_ext_param = NULL;
 
 	pr_info("%s+ jdi,nt36672e,vdo,120hz,hfp,v5\n", __func__);
 
@@ -3118,7 +3119,15 @@ static int jdi_probe(struct mipi_dsi_device *dsi)
 
 #if defined(CONFIG_MTK_PANEL_EXT)
 	mtk_panel_tch_handle_reg(&ctx->panel);
-	ret = mtk_panel_ext_create(dev, &ext_params, &ext_funcs, &ctx->panel);
+
+	if (current_fps == 120)
+		cur_ext_param = &ext_params_120hz;
+	else if (current_fps == 90)
+		cur_ext_param = &ext_params_90hz;
+	else
+		cur_ext_param = &ext_params;
+
+	ret = mtk_panel_ext_create(dev, cur_ext_param, &ext_funcs, &ctx->panel);
 	if (ret < 0)
 		return ret;
 
