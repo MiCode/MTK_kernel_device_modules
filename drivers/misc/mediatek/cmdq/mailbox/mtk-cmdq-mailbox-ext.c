@@ -3485,7 +3485,7 @@ static int cmdq_probe(struct platform_device *pdev)
 		error_irq_bug_on,
 		cmdq_proc_debug_off,
 		cmdq_print_debug);
-	if (gce_hw_cnt == 0 && cmdq_print_debug) {
+	if (gce_hw_cnt == 0) {
 		cmdq_proc_create();
 		if (cmdq_print_debug)
 			cmdq_util_reserved_memory_lookup(dev);
