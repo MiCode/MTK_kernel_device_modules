@@ -143,7 +143,8 @@ static int scp_audio_logger_init_message(void)
 
 	do {
 		retry_count--;
-		ret = scp_send_message(SCP_AUDIO_IPI_LOGGER_INIT, &val, sizeof(val), 20, 0);
+		ret = scp_send_message_with_wakelock(SCP_AUDIO_IPI_LOGGER_INIT,
+								&val, sizeof(val), 20, 0);
 		if (ret != ADSP_IPI_DONE)
 			usleep_range(1000, 1500);
 	} while ((retry_count > 0) && (ret != ADSP_IPI_DONE));
@@ -293,7 +294,8 @@ static inline ssize_t log_enable_store(struct device *dev,
 	mutex_lock(&logger_lock);
 	do {
 		retry_count--;
-		ret = scp_send_message(SCP_AUDIO_IPI_LOGGER_ENABLE, &enable, sizeof(enable), 20, 0);
+		ret = scp_send_message_with_wakelock(SCP_AUDIO_IPI_LOGGER_ENABLE,
+								&enable, sizeof(enable), 20, 0);
 		if (ret != ADSP_IPI_DONE)
 			usleep_range(1000, 1500);
 	} while ((retry_count > 0) && (ret != ADSP_IPI_DONE));
@@ -302,7 +304,7 @@ static inline ssize_t log_enable_store(struct device *dev,
 		logger_enable = enable;
 		logger_ctrl->enable = enable;
 	} else
-		pr_err("%s scp_send_message failed, ret = %d\n", __func__, ret);
+		pr_err("%s scp_send_message_with_wakelock failed, ret = %d\n", __func__, ret);
 
 	mutex_unlock(&logger_lock);
 

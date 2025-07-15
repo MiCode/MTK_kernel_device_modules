@@ -85,13 +85,6 @@ int audio_mbox_send(void *msg, unsigned int wait)
 		return MBOX_PIN_BUSY;
 	}
 
-	/* TODO : maybe move to audio_ipi_queue */
-	if (scp_awake_lock((void *)SCP_A_ID)) {
-		/* leave without doing scp_awake_unlock, since the function trigger warning */
-		mutex_unlock(&pin_send->mutex_send);
-		return MBOX_PIN_BUSY;
-	}
-
 	if (mtk_mbox_check_send_irq(mbdev, pin_send->mbox, pin_send->pin_index)) {
 		ret = MBOX_PIN_BUSY;
 		goto EXIT;
@@ -117,9 +110,6 @@ int audio_mbox_send(void *msg, unsigned int wait)
 EXIT:
 	if (ret && ret != MBOX_PIN_BUSY)
 		pr_err("%s() fail, mbox pin %d error = %d\n", __func__, pin_send->mbox, ret);
-
-	/* TODO : maybe move to audio_ipi_queue */
-	scp_awake_unlock((void *)SCP_A_ID);
 
 	mutex_unlock(&pin_send->mutex_send);
 	return ret;

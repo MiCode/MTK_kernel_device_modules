@@ -25,6 +25,8 @@ typedef int (*recv_queue_handler_t)(unsigned int cid, unsigned int ipi_id, void 
 
 int scp_send_message(unsigned int id, void *buf, unsigned int len, unsigned int wait,
 		     unsigned int cid);
+int scp_send_message_with_wakelock(unsigned int id, void *buf, unsigned int len, unsigned int wait,
+		     unsigned int cid);
 bool is_scp_audio_ready(void);
 bool is_audio_mbox_init_done(void);
 

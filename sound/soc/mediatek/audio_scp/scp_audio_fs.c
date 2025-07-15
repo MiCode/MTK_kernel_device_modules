@@ -133,7 +133,7 @@ static int scp_audio_debug_cmds_init_message(void)
 	}
 
 	do {
-		ret = scp_send_message(SCP_AUDIO_IPI_DBG_INIT,
+		ret = scp_send_message_with_wakelock(SCP_AUDIO_IPI_DBG_INIT,
 			mem_info, sizeof(mem_info), 0, 0);
 		if (ret != ADSP_IPI_DONE)
 			usleep_range(1000, 1500);
@@ -219,7 +219,7 @@ static ssize_t scp_audio_debug_write(struct file *filp, const char __user *buffe
 		return -EFAULT;
 	buf[sizeof(buf) - 1] = '\0';
 
-	ret = scp_send_message(SCP_AUDIO_IPI_DBG_CMDS,
+	ret = scp_send_message_with_wakelock(SCP_AUDIO_IPI_DBG_CMDS,
 			       buf, strnlen(buf, sizeof(buf) - 1) + 1, 0, 0);
 	pr_info("%s() send cmd: %s, ret: %d\n", __func__, buf, ret);
 

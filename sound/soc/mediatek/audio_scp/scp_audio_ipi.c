@@ -39,6 +39,25 @@ int scp_send_message(unsigned int id, void *buf, unsigned int len,
 }
 EXPORT_SYMBOL_GPL(scp_send_message);
 
+int scp_send_message_with_wakelock(unsigned int id, void *buf, unsigned int len,
+		     unsigned int wait, unsigned int cid)
+{
+	int ret;
+
+	/* leave without doing scp_awake_unlock, since the function trigger warning */
+	if (scp_awake_lock((void *)SCP_A_ID)) {
+		pr_info("%s, scp awake lock fail", __func__);
+		return MBOX_PIN_BUSY;
+	}
+
+	ret = scp_send_message(id, buf, len, wait, cid);
+
+	scp_awake_unlock((void *)SCP_A_ID);
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(scp_send_message_with_wakelock);
+
 bool is_scp_audio_ready(void)
 {
 	return is_audio_mbox_init_done() && is_scp_ready(SCP_A_ID);

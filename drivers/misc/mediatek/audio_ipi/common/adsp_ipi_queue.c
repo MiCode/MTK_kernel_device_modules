@@ -1204,8 +1204,10 @@ static int dsp_send_msg_to_dsp(
 	bool retry_flag = false;
 	char dump_str[64] = {0};
 
-	uint32_t try_cnt = 0;
-	const uint32_t k_max_try_cnt = 1000 * 20; /* 1 sec for write ipc */
+	uint32_t try_send_cnt = 0;
+	uint32_t try_wake_cnt = 0;
+	const uint32_t k_max_try_send_cnt = 1000 * 20; /* 1 sec for write ipc */
+	const uint32_t k_max_try_wake_cnt = 100;
 	const uint32_t k_sleep_min_us = 50;
 	const uint32_t k_sleep_max_us = (k_sleep_min_us + 10);
 
@@ -1225,10 +1227,34 @@ static int dsp_send_msg_to_dsp(
 	audio_ipi_id = audio_get_audio_ipi_id_by_dsp(dsp_id);
 	p_ipi_msg = (struct ipi_msg_t *)p_dsp_msg->buf;
 
+	if (is_audio_use_scp(dsp_id)) {
+		for (try_wake_cnt = 0; try_wake_cnt < k_max_try_wake_cnt; try_wake_cnt++) {
+			ret = scp_awake_lock((void *)SCP_A_ID);
+
+			if (ret == 0)
+				break;
+
+			/* leave without doing scp_awake_unlock, since the adsp is not ready */
+			if (is_audio_dsp_ready(dsp_id) == false) {
+				n = snprintf(dump_str, sizeof(dump_str),
+						"scp awake lock fail, dsp_id %u dead!!", dsp_id);
+				if (n < 0 || n >= sizeof(dump_str))
+					pr_info("error to get string dump_str");
+				DUMP_IPC_MSG(dump_str, p_dsp_msg);
+				return 0;
+			}
+			usleep_range(k_sleep_min_us, k_sleep_max_us);
+		}
+	}
+
+	/* leave without doing scp_awake_unlock, since the scp awake trigger warning */
+	if (ret != 0)
+		goto EXIT;
+
 	/* IPC */
-	for (try_cnt = 0; try_cnt < k_max_try_cnt; try_cnt++) {
+	for (try_send_cnt = 0; try_send_cnt < k_max_try_send_cnt; try_send_cnt++) {
 		if (p_ipi_msg->data_type == AUDIO_IPI_DMA && !is_ipi_dma_inited(dsp_id)) {
-			if (try_cnt == 0) /* only dump log once */
+			if (try_send_cnt == 0) /* only dump log once */
 				DUMP_IPC_MSG("IPI DMA is not initialized, retry", p_dsp_msg);
 			ret = -EAGAIN;
 			usleep_range(k_sleep_min_us, k_sleep_max_us);
@@ -1256,7 +1282,7 @@ static int dsp_send_msg_to_dsp(
 			break;
 		}
 		if (start_flag[dsp_id] == false) {
-			if (try_cnt == 0) /* only dump log once */
+			if (try_send_cnt == 0) /* only dump log once */
 				DUMP_IPC_MSG("booting..., retry", p_dsp_msg);
 			retry_flag = true;
 			ret = -ENODEV;
@@ -1266,7 +1292,7 @@ static int dsp_send_msg_to_dsp(
 		if (is_audio_dsp_ready(dsp_id) == false) {
 			n = snprintf(dump_str, sizeof(dump_str),
 				     "dsp_id %u dead!!", dsp_id);
-			if (n < 0 || n > sizeof(dump_str))
+			if (n < 0 || n >= sizeof(dump_str))
 				pr_info("error to get string dump_str");
 			DUMP_IPC_MSG(dump_str, p_dsp_msg);
 			ret = 0;
@@ -1275,14 +1301,14 @@ static int dsp_send_msg_to_dsp(
 		if (ret == -ECOMM) { /* send fail */
 			n = snprintf(dump_str, sizeof(dump_str),
 				     "dsp_id %u error!!", dsp_id);
-			if (n < 0 || n > sizeof(dump_str))
+			if (n < 0 || n >= sizeof(dump_str))
 				pr_info("error to get string dump_str");
 			DUMP_IPC_MSG(dump_str, p_dsp_msg);
 			ret = -1;
 			break;
 		}
 		if (ret == -EBUSY) { /* busy */
-			if (try_cnt == 0) /* only dump log once */
+			if (try_send_cnt == 0) /* only dump log once */
 				DUMP_IPC_MSG("IPC busy, retry", p_dsp_msg);
 			retry_flag = true;
 			ret = -ETIMEDOUT;
@@ -1292,19 +1318,26 @@ static int dsp_send_msg_to_dsp(
 		pr_notice("ret: %d not handle!!", ret);
 	}
 
-	if (retry_flag == true || try_cnt >= k_max_try_cnt) {
+	if (is_audio_use_scp(dsp_id))
+		scp_awake_unlock((void *)SCP_A_ID);
+
+EXIT:
+	if (retry_flag == true || try_send_cnt >= k_max_try_send_cnt ||
+		 try_wake_cnt >= k_max_try_wake_cnt) {
 		if (ret == 0) {
 			n = snprintf(dump_str, sizeof(dump_str),
-				     "dsp_id %u retry %u pass", dsp_id, try_cnt);
-			if (n < 0 || n > sizeof(dump_str))
-				pr_info("error to get string dump_str");
+				     "dsp_id %u retry %u pass", dsp_id, try_send_cnt);
+		} else if (try_send_cnt >= k_max_try_send_cnt) {
+			n = snprintf(dump_str, sizeof(dump_str),
+				     "dsp_id %u send retry %u err ret %d",
+				     dsp_id, try_send_cnt, ret);
 		} else {
 			n = snprintf(dump_str, sizeof(dump_str),
-				     "dsp_id %u retry %u err ret %d",
-				     dsp_id, try_cnt, ret);
-			if (n < 0 || n > sizeof(dump_str))
-				pr_info("error to get string dump_str");
+				     "dsp_id %u scp awake retry %u err ret %d",
+				     dsp_id, try_wake_cnt, ret);
 		}
+		if (n < 0 || n >= sizeof(dump_str))
+			pr_info("error to get string dump_str");
 		DUMP_IPC_MSG(dump_str, p_dsp_msg);
 	}
 
