@@ -2352,6 +2352,7 @@ static const struct dvfsrc_soc_data mt6858_data = {
 #ifdef DVFSRC_FORCE_OPP_SUPPORT
 	.set_force_opp_level = mt6985_set_force_opp_level,
 #endif
+	.dis_ddr_check = true,
 };
 
 static const struct dvfsrc_opp_desc dvfsrc_opp_mt6991_desc[] = {
