@@ -13346,19 +13346,10 @@ skip_prete:
 			}
 		}
 
-		/* back up dsi status */
-		if (crtc_id == 0) {
-			slot_addr = mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_DSI_DEBUG_STATUS);
-			cmdq_pkt_mem_move(cmdq_handle, mtk_crtc->gce_obj.base,
-				output_comp->regs_pa + 0x0C, slot_addr, CMDQ_THR_SPR_IDX3);
-		}
-
-		GCE_DO(wfe, EVENT_CMD_EOF);
-
 		/* For dbgtp fifo mon WA */
 		if ((priv->data->mmsys_id == MMSYS_MT6993) &&
 			(priv->mtk_dbgtp_sta.fifo_mon_en[0]) && (crtc_id == 0)) {
-			/*GCE_DO(wfe, EVENT_TAIL_TARGET_LINE);*/
+			GCE_DO(wfe, EVENT_TAIL_TARGET_LINE);
 			mtk_dbgtp_fifo_mon_config(mtk_crtc, cmdq_handle);
 			if (!priv->mtk_dbgtp_sta.is_validation_mode &&
 				priv->mtk_dbgtp_sta.dbgtp_en)
@@ -13405,6 +13396,15 @@ skip_prete:
 			cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base, slot_src_addr, 0, ~0);
 			GCE_FI;
 		}
+
+		/* back up dsi status */
+		if (crtc_id == 0) {
+			slot_addr = mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_DSI_DEBUG_STATUS);
+			cmdq_pkt_mem_move(cmdq_handle, mtk_crtc->gce_obj.base,
+				output_comp->regs_pa + 0x0C, slot_addr, CMDQ_THR_SPR_IDX3);
+		}
+
+		GCE_DO(wfe, EVENT_CMD_EOF);
 
 		if (profile_trig && (crtc_id == 0))
 			mtk_crtc_backup_tpr_to_slot(mtk_crtc, cmdq_handle, DISP_SLOT_TRIG_TICK(4));
