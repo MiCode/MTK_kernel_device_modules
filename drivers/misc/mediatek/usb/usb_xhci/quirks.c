@@ -43,16 +43,51 @@ module_param(uac_in_max_rate, uint, 0644);
 unsigned int uac_out_max_rate;
 module_param(uac_out_max_rate, uint, 0644);
 
-struct usb_audio_quirk_flags_table {
-	u32 id;
-	u32 flags;
+unsigned int disable_mtk_quirk;
+module_param(disable_mtk_quirk, uint, 0644);
+
+struct mtk_usb_audio_quirk {
+	struct usb_device_id dev_option;
+	u32 uac_flags;
+	u32 mtk_flags;
 };
 
 static struct snd_usb_audio *usb_chip[SNDRV_CARDS];
 
-#define DEVICE_FLG(vid, pid, _flags) \
-	{ .id = USB_ID(vid, pid), .flags = (_flags) }
-#define VENDOR_FLG(vid, _flags) DEVICE_FLG(vid, 0, _flags)
+#define QUIRK_PARAM(quirk_flags) \
+	.uac_flags = quirk_flags\
+
+#define MTK_QUICK_PARAM(quirk_flags) \
+	.mtk_flags = quirk_flags\
+
+#define DEV_OPTION(vid, pid) \
+	.dev_option = { \
+			.match_flags = USB_DEVICE_ID_MATCH_VENDOR | \
+				USB_DEVICE_ID_MATCH_PRODUCT, \
+			.idVendor = vid, \
+			.idProduct = pid, \
+	}
+
+#define VEN_OPTION(vid) \
+	.dev_option =  { \
+			.match_flags = USB_DEVICE_ID_MATCH_VENDOR, \
+			.idVendor = vid, \
+	}
+
+#define UAC_OPTION(vid, pid, protocol) \
+	.dev_option = { \
+			.match_flags = USB_DEVICE_ID_MATCH_VENDOR | \
+				USB_DEVICE_ID_MATCH_PRODUCT | \
+				USB_DEVICE_ID_MATCH_INT_CLASS | \
+				USB_DEVICE_ID_MATCH_INT_PROTOCOL, \
+			.idVendor = vid, \
+			.idProduct = pid, \
+			.bInterfaceClass = USB_CLASS_AUDIO, \
+			.bInterfaceProtocol = protocol, \
+	}
+
+/* mtk specific quirk flags */
+#define QUIRK_FLAG_DISABLE_SET_INTF_DELAY (1U << 0)
 
 static DEFINE_SPINLOCK(lock_mbrain_update_db);
 
@@ -65,24 +100,23 @@ static const struct usb_device_id mtk_usb_quirk_list[] = {
 };
 
 /* quirk list in /sound/usb */
-static const struct usb_audio_quirk_flags_table mtk_snd_quirk_flags_table[] = {
-		/* Device matches */
-		DEVICE_FLG(0x2d99, 0xa026, /* EDIFIER H180 Plus */
-		   QUIRK_FLAG_CTL_MSG_DELAY),
-		DEVICE_FLG(0x12d1, 0x3a07,	/* AM33/CM33 HeadSet */
-		   QUIRK_FLAG_CTL_MSG_DELAY),
-		DEVICE_FLG(0x04e8, 0xa051,      /* SS USBC Headset (AKG) */
-		   QUIRK_FLAG_CTL_MSG_DELAY),
-		DEVICE_FLG(0x04e8, 0xa057,
-		   QUIRK_FLAG_CTL_MSG_DELAY),
-		DEVICE_FLG(0x22d9, 0x9101,	/* MH147 */
-		   QUIRK_FLAG_CTL_MSG_DELAY_5M),
-		/* Vendor matches */
-		VENDOR_FLG(0x2fc6,		/* Comtrue Devices */
-		   QUIRK_FLAG_CTL_MSG_DELAY),
-		{} /* terminator */
+static const struct mtk_usb_audio_quirk mtk_usb_audio_quirk_list[] = {
+	/* EDIFIER H180 Plus */
+	{DEV_OPTION(0x2d99, 0xa026), QUIRK_PARAM(QUIRK_FLAG_CTL_MSG_DELAY)},
+	/* SS USBC Headset (AKG) */
+	{DEV_OPTION(0x04e8, 0xa051), QUIRK_PARAM(QUIRK_FLAG_CTL_MSG_DELAY)},
+	{DEV_OPTION(0x04e8, 0xa057), QUIRK_PARAM(QUIRK_FLAG_CTL_MSG_DELAY)},
+	/* MH147 */
+	{DEV_OPTION(0x22d9, 0x9101), QUIRK_PARAM(QUIRK_FLAG_CTL_MSG_DELAY_5M)},
+	/* Comtrue Devices */
+	{VEN_OPTION(0x2fc6), QUIRK_PARAM(QUIRK_FLAG_CTL_MSG_DELAY)},
+	/* H.W */
+	{UAC_OPTION(0x12d1, 0x3a07, UAC_VERSION_1), QUIRK_PARAM(QUIRK_FLAG_CTL_MSG_DELAY)},
+	{UAC_OPTION(0x12d1, 0x3a07, UAC_VERSION_2), MTK_QUICK_PARAM(QUIRK_FLAG_DISABLE_SET_INTF_DELAY)},
+	{UAC_OPTION(0x2ab2, 0x0705, UAC_VERSION_1), QUIRK_PARAM(QUIRK_FLAG_CTL_MSG_DELAY)},
+	{UAC_OPTION(0x2ab2, 0x0705, UAC_VERSION_2), MTK_QUICK_PARAM(QUIRK_FLAG_DISABLE_SET_INTF_DELAY)},
+	{} /* terminator */
 };
-
 
 static xhci_enum_mbrain_callback xhci_enum_mbrain_cb;
 DEFINE_HASHTABLE(mbrain_hash_table, 3);
@@ -127,6 +161,9 @@ static u32 usb_detect_static_quirks(struct usb_device *udev,
 {
 	u32 quirks = 0;
 
+	if (disable_mtk_quirk)
+		return quirks;
+
 	for (; id->match_flags; id++) {
 		if (!usb_match_device(udev, id))
 			continue;
@@ -139,6 +176,18 @@ static u32 usb_detect_static_quirks(struct usb_device *udev,
 	}
 
 	return quirks;
+}
+
+const struct mtk_usb_audio_quirk *find_dev_option(struct usb_interface *intf)
+{
+	const struct mtk_usb_audio_quirk *p;
+
+	for (p = mtk_usb_audio_quirk_list; p->dev_option.match_flags; p++) {
+		if (usb_match_one_id(intf, &p->dev_option))
+			return p;
+	}
+
+	return NULL;
 }
 
 static void xhci_mtk_usb_update_sample_rate(struct audioformat *fp,
@@ -263,21 +312,28 @@ static void xhci_mtk_usb_format_quirk(struct snd_usb_audio *chip)
 
 void xhci_mtk_init_snd_quirk(struct snd_usb_audio *chip)
 {
-	const struct usb_audio_quirk_flags_table *p;
+	const struct mtk_usb_audio_quirk *p;
+	struct usb_interface *iface;
+	struct usb_device *udev = chip->dev;
 
 	if (chip->index >= 0 && chip->index <SNDRV_CARDS)
 		usb_chip[chip->index] = chip;
 
-	for (p = mtk_snd_quirk_flags_table; p->id; p++) {
-		if (chip->usb_id == p->id ||
-			(!USB_ID_PRODUCT(p->id) &&
-			 USB_ID_VENDOR(chip->usb_id) == USB_ID_VENDOR(p->id))) {
-			dev_info(&chip->dev->dev,
-					  "Set audio quirk_flags 0x%x for device %04x:%04x\n",
-					  p->flags, USB_ID_VENDOR(chip->usb_id),
-					  USB_ID_PRODUCT(chip->usb_id));
-			chip->quirk_flags |= p->flags;
-			break;
+	if (disable_mtk_quirk) {
+		dev_info(&udev->dev, "disable quirk table\n");
+		return;
+	}
+
+	/* find control interface and match option */
+	iface = usb_ifnum_to_if(udev, (&(chip->ctrl_intf)->desc)->bInterfaceNumber);
+	if (iface) {
+		p = find_dev_option(iface);
+		if (p) {
+			dev_info(&udev->dev,
+				"Set audio uac_flags 0x%x and mtk_flags 0x%x for device %04x:%04x\n",
+				p->uac_flags, p->mtk_flags, USB_ID_VENDOR(chip->usb_id),
+				USB_ID_PRODUCT(chip->usb_id));
+			chip->quirk_flags |= p->uac_flags;
 		}
 	}
 
@@ -356,7 +412,11 @@ static void xhci_mtk_usb_set_interface_quirk(struct urb *urb)
 	struct usb_ctrlrequest *ctrl = NULL;
 	struct usb_interface *iface = NULL;
 	struct usb_host_interface *alt = NULL;
+	const struct mtk_usb_audio_quirk *p;
 	unsigned int delay = uac_set_interface_delay_ms;
+
+	if (disable_mtk_quirk)
+		return;
 
 	ctrl = (struct usb_ctrlrequest *)urb->setup_packet;
 	if (ctrl->bRequest != USB_REQ_SET_INTERFACE || ctrl->wValue == 0)
@@ -373,6 +433,11 @@ static void xhci_mtk_usb_set_interface_quirk(struct urb *urb)
 	if (alt->desc.bInterfaceClass != USB_CLASS_AUDIO)
 		return;
 
+	/* dont' need to delay if set QUIRK_FLAG_DISABLE_SET_INTF_DELAY */
+	p = find_dev_option(iface);
+	if (p && p->mtk_flags & QUIRK_FLAG_DISABLE_SET_INTF_DELAY)
+		return;
+
 	if (delay) {
 		dev_dbg(dev, "delay %d ms for UAC device\n", delay);
 		mdelay(delay);
@@ -386,6 +451,9 @@ static void xhci_mtk_usb_set_persist_quirk(struct urb *urb)
 	struct usb_host_config *config = NULL;
 	struct usb_interface_descriptor *intf_desc = NULL;
 	int config_num, i;
+
+	if (disable_mtk_quirk)
+		return;
 
 	ctrl = (struct usb_ctrlrequest *)urb->setup_packet;
 	if (ctrl->bRequest != USB_REQ_SET_CONFIGURATION)
@@ -414,6 +482,9 @@ static void xhci_mtk_usb_set_sample_rate_quirk(struct urb *urb)
 	struct device *dev = &udev->dev;
 	struct usb_ctrlrequest *ctrl = NULL;
 	unsigned int delay = uac_set_sample_rate_delay_ms;
+
+	if (disable_mtk_quirk)
+		return;
 
 	ctrl = (struct usb_ctrlrequest *)urb->setup_packet;
 	if (ctrl->bRequest != UAC_SET_CUR || ctrl->wValue == 0)
