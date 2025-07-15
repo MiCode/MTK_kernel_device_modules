@@ -2689,7 +2689,7 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 		dim_color = 0xff000000;
 	}
 
-	DDPMSG("Aaron %s idx[%d] comp[%s] matrix_idx[%u]", __func__,
+	DDPINFO("%s idx[%d] comp[%s] matrix_idx[%u]", __func__,
 		idx, mtk_dump_comp_str(comp), pending->prop_val[PLANE_PROP_OVL_Y2R_MATRIX_IDX]);
 
 	/* handle buffer de-compression */
