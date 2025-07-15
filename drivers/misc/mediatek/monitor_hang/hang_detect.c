@@ -50,6 +50,10 @@
 #include <mt-plat/mboot_params.h>
 #endif
 
+#if IS_ENABLED(CONFIG_SECURITY_SELINUX)
+#include <linux/cred.h>
+#endif
+
 #include <mt-plat/mrdump.h>
 #include "aed/aed.h"
 #include "hang_detect.h"
@@ -85,6 +89,20 @@ static int hang_detect_counter = 0x7fffffff;
 static int dump_bt_done;
 static bool reboot_flag;
 static struct name_list *white_list;
+
+#if IS_ENABLED(CONFIG_SECURITY_SELINUX)
+static u32 kick_sid;
+static u32 aee_sid;
+struct task_security_struct {
+	u32 osid; /* SID prior to last execve */
+	u32 sid; /* current SID */
+	u32 exec_sid; /* exec SID */
+	u32 create_sid; /* fscreate SID */
+	u32 keycreate_sid; /* keycreate SID */
+	u32 sockcreate_sid; /* fscreate SID */
+} __randomize_layout;
+#endif
+
 #if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
 static struct pt_regs saved_regs;
 #endif
@@ -345,6 +363,58 @@ out:
 	return res;
 }
 
+#if IS_ENABLED(CONFIG_SECURITY_SELINUX)
+int get_current_sid(u32 *sid_out)
+{
+	const struct cred *cred;
+	u32 sid;
+
+	if (!current->mm) {
+		pr_info("hang_detect: current task [%d] is not a native task\n",
+				current->pid);
+	return -EPERM;
+	}
+
+	cred = get_current_cred();
+	if (!cred) {
+		pr_info("hang_detect: failed to get current credentials\n");
+		return -EFAULT;
+	}
+
+	if (!cred->security) {
+		pr_info("hang_detect: no security info for current task [%d]\n",
+				current->pid);
+		put_cred(cred);
+		return -EFAULT;
+	}
+
+	sid = ((const struct task_security_struct *)cred->security)->sid;
+	*sid_out = sid;
+
+	put_cred(cred);
+	return 0;
+}
+
+int check_sid(void)
+{
+	u32 temp_sid = 0;
+
+	if (!(aee_sid || kick_sid)) {
+		pr_info("hang_detect: No security info for current task\n");
+		return -1;
+	}
+
+	if (get_current_sid(&temp_sid) != 0) {
+		pr_info("hangd_detect: Failed to get current SID\n");
+		return -1;
+	}
+
+	if ((aee_sid == temp_sid) || (kick_sid == temp_sid))
+		return 0;
+	return -1;
+}
+#endif
+
 static int compare_cmdline(void)
 {
 	int len = 0;
@@ -355,10 +425,13 @@ static int compare_cmdline(void)
 		return -1;
 
 	if (strncmp(buf, "system_server", strlen("system_server")) &&
-		strncmp(buf, "/system_ext", strlen("/system_ext")) &&
-		strncmp(buf,  "/vendor", strlen("/vendor")) &&
-		strncmp(buf, "/system", strlen("/system")) &&
-		strncmp(buf, "/apex", strlen("/apex"))
+		strncmp(buf, "/system_ext/bin/kpoc_charger",
+				strlen("/system_ext/bin/kpoc_charger")) &&
+		strncmp(buf, "/system/system_ext/bin/kpoc_charger",
+				strlen("/system/system_ext/bin/kpoc_charger")) &&
+		strncmp(buf, "/system_ext/bin/aee_aed", strlen("/system_ext/bin/aee_aed")) &&
+		strncmp(buf, "/system/system_ext/bin/aee_aed",
+				strlen("/system/system_ext/bin/aee_aed"))
 #if IS_ENABLED(CONFIG_MTK_HANG_YOCTO)
 		&& strncmp(buf, "/usr/bin/SystemWatchdog",
 				strlen("/usr/bin/SystemWatchdog"))
@@ -367,6 +440,30 @@ static int compare_cmdline(void)
 		pr_info("%s:open failed!\n", __func__);
 		return -1;
 	}
+#if IS_ENABLED(CONFIG_SECURITY_SELINUX)
+	int ret;
+
+	if (!strncmp(buf, "system_server", strlen("system_server")) ||
+		!strncmp(buf, "/system_ext/bin/kpoc_charger",
+				strlen("/system_ext/bin/kpoc_charger")) ||
+		!strncmp(buf, "/system/system_ext/bin/kpoc_charger",
+				strlen("/system/system_ext/bin/kpoc_charger"))) {
+		if (kick_sid == 0) {
+			ret = get_current_sid(&kick_sid);
+			if (ret)
+				pr_info(" get kick sid fail!\n");
+		}
+	} else if (!strncmp(buf,  "/system_ext/bin/aee_aed",
+				strlen("/system_ext/bin/aee_aed")) ||
+		!strncmp(buf, "/system/system_ext/bin/aee_aed",
+				strlen("/system/system_ext/bin/aee_aed"))) {
+		if (aee_sid == 0) {
+			ret = get_current_sid(&aee_sid);
+			if (ret)
+				pr_info(" get aee sid fail!\n");
+		}
+	}
+#endif
 
 	return 0;
 }
@@ -686,12 +783,32 @@ static long monitor_hang_ioctl(struct file *file, unsigned int cmd,
 	void __user *argp = (void __user *)arg;
 	char name[TASK_COMM_LEN] = {0};
 
+	if (cmd == HANG_AEEIOCTL_INIT) {
+		ret = compare_cmdline();
+		if (ret) {
+			pr_info(" invalid process ioctl RT_Monitor!");
+			return -EFAULT;
+		}
+#if IS_ENABLED(CONFIG_SECURITY_SELINUX)
+		if (aee_sid != 0)
+			pr_info("hang_detect: aee_sid init success %d\n", aee_sid);
+#endif
+		pr_info("hang_detect HANG_AEE_INIT ( %d)\n", (int)arg);
+		return ret;
+	}
+
 	if (cmd == HANG_KICK) {
 		ret = compare_cmdline();
 		if (ret) {
 			pr_info(" invalid process kick RT_Monitor!");
 			return -EFAULT;
 		}
+#if IS_ENABLED(CONFIG_SECURITY_SELINUX)
+		if(check_sid()){
+			pr_info("invalid process sid kick RT_Monitor!\n");
+			return -EFAULT;
+		}
+#endif
 		pr_info("hang_detect HANG_KICK ( %d)\n", (int)arg);
 		monitor_hang_kick((int)arg);
 

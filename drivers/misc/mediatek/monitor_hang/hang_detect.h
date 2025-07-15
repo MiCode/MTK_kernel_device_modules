@@ -26,6 +26,7 @@ struct name_list {
 
 /*monitor hang ioctl*/
 #define HANG_KICK _IOR('p', 0x0A, int)
+#define HANG_AEEIOCTL_INIT _IOW('p', 0x0B, int)
 #define HANG_SET_SF_STATE _IOR('p', 0x0C, long long)
 #define HANG_GET_SF_STATE _IOW('p', 0x0D, long long)
 #define HANG_SET_FLAG _IOW('p', 0x11, int)
