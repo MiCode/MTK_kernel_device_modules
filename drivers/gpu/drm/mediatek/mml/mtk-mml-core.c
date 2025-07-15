@@ -1129,7 +1129,8 @@ static void mml_core_qos_update_dpc(struct mml_frame_config *cfg, bool trigger)
 					task->dpc_hrt_write_bw[larb_idx]);
 			}
 
-			bw_en = true;
+			if (mml_iscouple(task->config->info.mode))
+				bw_en = true;
 		}
 
 		for (larb_idx = 0; larb_idx < MML_MAX_LARB; larb_idx++) {
