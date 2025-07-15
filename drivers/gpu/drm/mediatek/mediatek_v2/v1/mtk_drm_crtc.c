@@ -394,6 +394,7 @@ unsigned int mtk_drm_crtc_check_ovl_status(struct drm_crtc *crtc, struct mtk_cmd
 		ovl_status = *(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
 				DISP_SLOT_OVL_STATUS(id));
 		if (ovl_status & 1) {
+			unsigned long long aee_now_ts = sched_clock();
 			CRTC_MMP_MARK(id, ovl_status_err, ovl_status, 0);
 			DDPPR_ERR("%s CRTC%d ovl status error:0x%x\n", __func__, id, ovl_status);
 			mtk_dprec_snapshot();
@@ -407,6 +408,13 @@ unsigned int mtk_drm_crtc_check_ovl_status(struct drm_crtc *crtc, struct mtk_cmd
 				mtk_drm_crtc_mini_analysis(crtc);
 				mtk_drm_crtc_mini_dump(crtc);
 				//cmdq_dump_pkt(cb_data->cmdq_handle, 0, true);
+			} else if (priv->data->mmsys_id == MMSYS_MT6895){
+				if (mtk_crtc && (mtk_crtc->last_aee_trigger_ts == 0 ||
+					(aee_now_ts - mtk_crtc->last_aee_trigger_ts > TIGGER_INTERVAL_S(50)))){
+					mtk_drm_crtc_mini_analysis(crtc);
+					mtk_drm_crtc_mini_dump(crtc);
+					cmdq_dump_pkt(cb_data->cmdq_handle, 0, true);
+				}
 			} else {
 				cmdq_util_hw_trace_dump(0, 0);
 				mtk_drm_crtc_analysis(crtc);
