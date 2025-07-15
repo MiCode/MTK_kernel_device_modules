@@ -22,6 +22,8 @@
 #define SBE_DEFAULT_AFFINITY_TASK_MIN_CAP 7
 #define SBE_DEFAULT_AFFINITY_TASK_LOW_THRESHOLD_CAP 30
 
+#define SBE_TASK_RUNNING (1 << 1)
+
 #define IS_BIT_SET(mask, bit) (test_bit((bit), &(mask)))
 
 enum SBE_ERROR_STATUS {

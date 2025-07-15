@@ -1164,7 +1164,7 @@ static int sbe_do_hwui_scrolling_status_policy(int tgid, char *name, unsigned lo
 
 					if (add_new_scrolling && !last->end_ts) {
 						last->end_ts = ts; // last scroll endtime is current ts
-						sbe_ux_scrolling_end(thr);
+						sbe_ux_scrolling_end(ts, thr);
 					} else if (!add_new_scrolling) {
 						last->type = SBE_FLING;
 					}
@@ -1206,12 +1206,17 @@ static int sbe_do_hwui_scrolling_status_policy(int tgid, char *name, unsigned lo
 		} else {
 			//update scroll_info when scroll end
 			if (get_ux_list_length(&thr->scroll_list) > 0) {
+				type = test_bit(SBE_MOVEING, &mask) ? SBE_MOVEING :
+						(test_bit(SBE_FLING, &mask) ? SBE_FLING : 0);
 				last = list_first_entry(&thr->scroll_list, struct ux_scroll_info, queue_list);
 				if (last) {
 					last->end_ts = ts;
 					if (last->end_ts > last->start_ts)
 						last->dur_ts = last->end_ts - last->start_ts;
-					sbe_ux_scrolling_end(thr);
+
+					if (last->type != type && type > 0)
+						last->type = type;
+					sbe_ux_scrolling_end(ts, thr);
 				}
 			}
 
@@ -1477,9 +1482,21 @@ int sbe_notify_webview_policy(int pid, char *name, unsigned long mask,
 	}
 
 	if (test_bit(SBE_RUNNING_QUERY, &mask)) {
+		//low 16bit for running status
+		//high 16bit for render loading
+		int loading;
+		int ret = 0;
 		kfree(vpPush);
 		sbe_query_is_running = sbe_query_spid_loading();
-		return sbe_query_is_running ? 10001 : 0;
+		if (sbe_query_is_running)
+			ret |= SBE_TASK_RUNNING;
+
+		loading = sbe_get_render_loading();
+		// Shift loading to high 16 bits and combine with running status
+		if (loading)
+			ret |= (loading << 16);
+
+		return ret;
 	}
 
 	cur_ts = sbe_get_time();

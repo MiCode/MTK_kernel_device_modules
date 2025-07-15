@@ -150,7 +150,7 @@ void clear_ux_info(struct sbe_render_info *thr);
 void enqueue_ux_scroll_info(int type, unsigned long long start_ts, struct sbe_render_info *thr);
 struct ux_scroll_info *search_ux_scroll_info(unsigned long long ts, struct sbe_render_info *thr);
 int sbe_calculate_dy_enhance(struct sbe_render_info *thr);
-void sbe_ux_scrolling_end(struct sbe_render_info *thr);
+void sbe_ux_scrolling_end(unsigned long long ts, struct sbe_render_info *thr);
 void sbe_ux_scrolling_start(int type, unsigned long long start_ts, struct sbe_render_info *thr);
 void update_fpsgo_hint_param(int scrolling, int tgid);
 
@@ -177,11 +177,13 @@ void sbe_do_rescue_legacy(struct sbe_render_info *thr, int start, int enhance,
 
 int sbe_get_perf(void);
 int sbe_get_rescue_enhance(void);
+int sbe_get_render_loading(void);
 int get_sbe_disable_runnable_util_est_status(void);
 int get_sbe_extra_sub_en_deque_enable(void);
 unsigned long long get_sbe_extra_sub_deque_margin_time(void);
 void fbt_ux_set_perf(int cur_pid, int cur_blc);
 void sbe_set_global_sbe_dy_enhance(int cur_pid, int cur_dy_enhance);
+void sbe_set_global_render_loading(int cur_pid, int cur_loading);
 void sbe_register_jank_cb(unsigned long mask);
 void sbe_notify_ux_jank_detection(bool enable, int tgid, int pid, unsigned long mask,
 					struct sbe_render_info *sbe_thr, unsigned long long buf_id);

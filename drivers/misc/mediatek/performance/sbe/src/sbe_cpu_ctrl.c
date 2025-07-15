@@ -80,6 +80,8 @@ static int gas_threshold_for_low_TLP;
 static int gas_threshold_for_high_TLP;
 static int global_sbe_dy_enhance;
 static int global_sbe_dy_enhance_max_pid;
+static int global_sbe_render_loading;
+static int global_sbe_render_loading_pid;
 static int sbe_critical_basic_cap;
 static int sbe_ai_ctrl_enabled;
 static int sbe_uclamp_margin;
@@ -251,6 +253,12 @@ int sbe_get_rescue_enhance(void)
 	return global_sbe_dy_enhance;
 }
 
+int sbe_get_render_loading(void)
+{
+	return global_sbe_render_loading;
+}
+
+
 void sbe_core_ctl_ignore_vip_task(struct sbe_render_info *thr, int ignore_enable)
 {
 	if (sbe_ignore_vip_task_enable
@@ -325,6 +333,12 @@ void sbe_set_global_sbe_dy_enhance(int cur_pid, int cur_dy_enhance)
 {
 	global_sbe_dy_enhance = cur_dy_enhance;
 	global_sbe_dy_enhance_max_pid = cur_pid;
+}
+
+void sbe_set_global_render_loading(int cur_pid, int cur_loading)
+{
+	global_sbe_render_loading = cur_loading;
+	global_sbe_render_loading_pid = cur_pid;
 }
 
 /**
@@ -1425,15 +1439,26 @@ int sbe_calculate_dy_enhance(struct sbe_render_info *thr)
 
 		//caclulate frame info
 		if (scroll_info->frame_count > 0) {
+			int jank_rate = 0;
 			unsigned long long avg_tcpu_time = div64_u64(scroll_info->frame_ctime_count,
 						scroll_info->frame_count);
 			int avg_cap = (int)div64_u64(scroll_info->frame_cap_count,
 						scroll_info->frame_count);
 			unsigned long long target_time_100U = nsec_to_100usec(target_time);
 			unsigned long long target_time_100U_95_p = div64_u64(target_time_100U * 95ULL, 100);
+			unsigned long long scroll_dur_100U = nsec_to_100usec(scroll_info->dur_ts);
 
-			sbe_trace("SBE_UX caclulate frame info avg_cap %d avg_tcpu_time %llu",
-					avg_cap, avg_tcpu_time);
+			if (target_time_100U > 0 && scroll_dur_100U > 0) {
+				int target_frame_in_dur = div64_u64(scroll_dur_100U, target_time_100U);
+
+				jank_rate = div64_u64(scroll_info->jank_count * 100ULL, target_frame_in_dur);
+			}
+
+
+			sbe_trace("SBE_UX caclulate frame info avg_cap %d avg_tcpu_time %llu frame %d",
+					avg_cap, avg_tcpu_time, scroll_info->frame_count);
+			sbe_trace("SBE_UX jank:%d rate %d dur_ts %llu\n",
+					scroll_info->jank_count, jank_rate, scroll_dur_100U);
 
 			if (avg_tcpu_time > target_time_100U)
 				h_score++;
@@ -1448,6 +1473,11 @@ int sbe_calculate_dy_enhance(struct sbe_render_info *thr)
 
 			if (avg_cap >= sbe_loading_threashold_h
 					&& avg_tcpu_time > target_time_100U)
+				p_score += loading_score;
+
+			//drop 15 frame in 1 seconds, and refresh rate 120hz
+			//scroll duration > 800ms
+			if (jank_rate > 20 && scroll_dur_100U > 8000)
 				p_score += loading_score;
 		}
 	}
@@ -1496,8 +1526,9 @@ int sbe_calculate_dy_enhance(struct sbe_render_info *thr)
 		thr->affinity_task_mask = SBE_PREFER_NONE;
 
 	sbe_systrace_c(thr->pid, thr->buffer_id, thr->affinity_task_mask, "[ux]affinity_task");
-	sbe_trace("[SBE] dy enhance pid: %d, bufid:%llu, af_basic_cap: %d, l_type: %d",
-			thr->pid, thr->buffer_id, thr->ux_affinity_task_basic_cap, thr->loading_type);
+	sbe_trace("[SBE]  pid: %d, bufid:%llu, af_cap: %d, t: %d", thr->pid, thr->buffer_id,
+			thr->ux_affinity_task_basic_cap, thr->loading_type);
+
 
 	// do not compute new rescue
 	if (scroll_cnt > 0 && scroll_count < scroll_cnt)
@@ -1637,7 +1668,7 @@ void sbe_ux_scrolling_start(int type, unsigned long long start_ts, struct sbe_re
 
 }
 
-void sbe_ux_scrolling_end(struct sbe_render_info *thr)
+void sbe_ux_scrolling_end(unsigned long long ts, struct sbe_render_info *thr)
 {
 	struct ux_scroll_info *scroll_info;
 
@@ -1678,6 +1709,8 @@ void sbe_ux_scrolling_end(struct sbe_render_info *thr)
 	}
 
 	thr->sbe_dy_enhance_f = sbe_calculate_dy_enhance(thr);
+
+	//store global info
 	if (thr->sbe_dy_enhance_f > 0
 			&& ((thr->pid != global_sbe_dy_enhance_max_pid
 			&& thr->sbe_dy_enhance_f > global_sbe_dy_enhance)
@@ -1685,6 +1718,12 @@ void sbe_ux_scrolling_end(struct sbe_render_info *thr)
 		sbe_set_global_sbe_dy_enhance(thr->pid, thr->sbe_dy_enhance_f);
 	sbe_systrace_c(thr->pid, thr->buffer_id, thr->sbe_dy_enhance_f, "[ux]sbe_dy_enhance_f");
 	sbe_systrace_c(thr->pid, thr->buffer_id, 0, "[ux]sbe_dy_enhance_f");
+
+	if (thr->loading_type > 0
+			&& ((thr->pid != global_sbe_render_loading_pid
+			&& thr->loading_type > global_sbe_render_loading)
+			|| thr->pid == global_sbe_render_loading_pid))
+		sbe_set_global_render_loading(thr->pid, thr->loading_type);
 }
 
 static void release_scroll(struct ux_scroll_info *info)
@@ -1719,6 +1758,8 @@ void clear_ux_info(struct sbe_render_info *thr)
 	//when activity resume, will call this function
 	global_sbe_dy_enhance = 0;
 	global_sbe_dy_enhance_max_pid = 0;
+	global_sbe_render_loading = 0;
+	global_sbe_render_loading_pid = 0;
 	thr->buffer_count_filter = 0;
 	thr->rescue_more_count = 0;
 	release_all_ux_info(thr);
