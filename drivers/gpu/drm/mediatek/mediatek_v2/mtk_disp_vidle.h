@@ -37,7 +37,7 @@ extern unsigned int default_emi_eff;
 #define VIDLE_MTCMOS_DEBOUNCE 6	/* 6 for resync */
 #define VIDLE_MODE_SWITCH_DEBOUNCE 4
 #define VIDLE_DOZE_DEBOUNCE 3
-#define VIDLE_ERR_DUMP_DEBOUNCE 6
+#define VIDLE_ERR_DUMP_DEBOUNCE U8_MAX	/* disable vidle 255 frames */
 
 enum mtk_vidle_hint_type {
 	VIDLE_HINT_GET,

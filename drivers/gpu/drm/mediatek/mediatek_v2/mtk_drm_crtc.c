@@ -9571,6 +9571,13 @@ static int mtk_crtc_mbrain_notify(void *data)
 	return 0;
 }
 
+void mtk_crtc_pre_dump_cb(void *data)
+{
+	// cmdq_util_prebuilt_dump_cpr(0, 0x8020, 49);
+	mtk_vidle_hint_update(VIDLE_HINT_SMI_DUMP);
+	mtk_vidle_config_ff(false);
+}
+
 static void mtk_crtc_cmdq_timeout_cb(struct cmdq_cb_data data)
 {
 	struct drm_crtc *crtc = data.data;
@@ -9606,10 +9613,13 @@ static void mtk_crtc_cmdq_timeout_cb(struct cmdq_cb_data data)
 	DDPPR_ERR("%s cmdq timeout, crtc id:%d\n", __func__,
 		drm_crtc_index(crtc));
 
-	mtk_dump_dbg_slot();
-
 	if (!__ratelimit(&timeout_rate))
 		return;
+
+	if (mtk_vidle_is_ff_enabled()) {
+		mtk_crtc_pre_dump_cb(NULL);
+		mtk_dump_dbg_slot();
+	}
 
 	mtk_drm_crtc_analysis(crtc);
 	mtk_drm_crtc_dump(crtc);
@@ -9667,6 +9677,7 @@ void mtk_crtc_pkt_create(struct cmdq_pkt **cmdq_handle, struct drm_crtc *crtc,
 	(*cmdq_handle)->err_cb.cb = mtk_crtc_cmdq_timeout_cb;
 	(*cmdq_handle)->aee_cb = mtk_crtc_cmdq_timeout_aee_cb;
 	(*cmdq_handle)->err_cb.data = crtc;
+	//(*cmdq_handle)->disp_pre_dump_cb = mtk_crtc_pre_dump_cb;
 }
 
 static void sub_cmdq_cb(struct cmdq_cb_data data)
