@@ -1173,9 +1173,16 @@ TZ_RESULT KREE_CreateSession(const char *ta_uuid, KREE_SESSION_HANDLE *pHandle)
 
 	p[0].mem.buffer = (void *)ta_uuid;
 	p[0].mem.size = (uint32_t)(strnlen(ta_uuid, MAX_UUID_LEN) + 1);
-	ret = KREE_TeeServiceCall_Internal(
-		_sys_service_Fd[tee_id], TZCMD_SYS_SESSION_CREATE,
-		TZ_ParamTypes2(TZPT_MEM_INPUT, TZPT_VALUE_OUTPUT), p);
+	if (unlikely(chan_fd == _sys_service_Fd[tee_id]))
+		ret = KREE_TeeServiceCall_Internal(_sys_service_Fd[tee_id],
+				TZCMD_SYS_SESSION_CREATE,
+				TZ_ParamTypes2(TZPT_MEM_INPUT,
+					TZPT_VALUE_OUTPUT), p);
+	else
+		ret = KREE_TeeServiceCall(_sys_service_Fd[tee_id],
+				TZCMD_SYS_SESSION_CREATE,
+				TZ_ParamTypes2(TZPT_MEM_INPUT,
+					TZPT_VALUE_OUTPUT), p);
 	if (ret != TZ_RESULT_SUCCESS) {
 		KREE_ERR("%s: create session fail\n", __func__);
 		goto create_session_out;
@@ -1236,9 +1243,14 @@ TZ_RESULT KREE_CloseSession(KREE_SESSION_HANDLE handle)
 
 	/* close session */
 	p[0].value.a = session;
-	ret = KREE_TeeServiceCall_Internal(_sys_service_Fd[tee_id],
-				  TZCMD_SYS_SESSION_CLOSE,
-				  TZ_ParamTypes1(TZPT_VALUE_INPUT), p);
+	if (unlikely(Fd == _sys_service_Fd[tee_id]))
+		ret = KREE_TeeServiceCall_Internal(_sys_service_Fd[tee_id],
+				TZCMD_SYS_SESSION_CLOSE,
+				TZ_ParamTypes1(TZPT_VALUE_INPUT), p);
+	else
+		ret = KREE_TeeServiceCall(_sys_service_Fd[tee_id],
+				TZCMD_SYS_SESSION_CLOSE,
+				TZ_ParamTypes1(TZPT_VALUE_INPUT), p);
 	if (ret != TZ_RESULT_SUCCESS) {
 		KREE_ERR("%s: close session fail\n", __func__);
 		goto close_session_out;
