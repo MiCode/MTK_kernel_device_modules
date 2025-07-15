@@ -114,7 +114,7 @@ int mtk_mmdvfs_fmeter_register_notifier(struct notifier_block *nb);
 
 void mmdvfs_set_lp_mode(bool lp_mode);
 void mmdvfs_call_ccu_set_fp(call_ccu fp);
-void mmdvfs_rc_enable_set_fp(rc_enable fp);
+int mmdvfs_rc_enable_set_fp(rc_enable fp);
 
 int mmdvfs_set_lp_mode_by_vcp(const bool enable);
 
@@ -145,7 +145,7 @@ void mmdvfs_set_lp_mode(bool lp_mode);
 static inline void mmdvfs_set_lp_mode(bool lp_mode) { return; }
 #endif
 static inline void mmdvfs_call_ccu_set_fp(call_ccu fp) {return; }
-static inline void mmdvfs_rc_enable_set_fp(rc_enable fp) { return; }
+static inline int mmdvfs_rc_enable_set_fp(rc_enable fp) { return 0; }
 
 static inline int mmdvfs_set_lp_mode_by_vcp(const bool enable) { return 0; }
 static inline int mmdvfs_force_step_by_vcp(const u8 pwr_idx, const s8 opp) { return 0; }

@@ -375,6 +375,13 @@ struct mmdvfs_dbg_data {
 
 struct mmdvfs_dbg_data *dbg_data;
 
+static ap_ccf ap_ccf_fp;
+void mmdvfs_ap_ccf_enable_notifier_set_fp(ap_ccf fp)
+{
+	ap_ccf_fp = fp;
+}
+EXPORT_SYMBOL_GPL(mmdvfs_ap_ccf_enable_notifier_set_fp);
+
 int mmdvfs_ap_ccf_enable(bool enable)
 {
 	struct mmdvfs_drv_data *drv_data;
@@ -401,6 +408,9 @@ int mmdvfs_ap_ccf_enable(bool enable)
 		pr_notice("is_ccf_enable:%d ccf_enable_boot:%d",
 			drv_data->is_ccf_enable, drv_data->ccf_enable_boot);
 	}
+
+	if (ap_ccf_fp)
+		ap_ccf_fp(enable);
 
 	return 0;
 }

@@ -15,6 +15,8 @@
 
 #define MMDVFS_RST_CLK_NUM	(3)
 
+#define MMDVFS_DPC_NOTIFIER_NUM	(2)
+
 #define MMDVFS_DBG(fmt, args...) \
 	pr_notice("[mmdvfs][dbg]%s: "fmt"\n", __func__, ##args)
 #define MMDVFS_ERR(fmt, args...) \

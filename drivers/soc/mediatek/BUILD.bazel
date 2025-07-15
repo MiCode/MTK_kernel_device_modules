@@ -217,6 +217,7 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/misc/mediatek/smi:mtk-smi-dbg".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv:vcp_status".format(kernel_version),
         "//kernel_device_modules-{}/drivers/soc/mediatek:mtk_tinysys_ipi".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-mmdvfs".format(kernel_version),
     ],
     header_deps = [
         "//kernel_device_modules-{}/drivers/iommu/arm/arm-smmu-v3:smmu_public_headers".format(kernel_version),

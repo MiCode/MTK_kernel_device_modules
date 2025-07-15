@@ -19,6 +19,7 @@
 #include <linux/rpmsg/mtk_rpmsg.h>
 #include <linux/iommu.h>
 #include <linux/workqueue.h>
+#include <linux/soc/mediatek/mtk_mmdvfs.h>
 
 #include "clk-fmeter.h"
 #include "clk-mtk.h"
@@ -102,6 +103,10 @@ static void __iomem *vcore_check_rg;
 static u32 vcore_check_offset;
 static u8 vcore_level_count;
 static u8 *vcore_level;
+
+static bool ccf_ena_support, ccf_ena_called, is_ccf_enable;
+static DEFINE_MUTEX(ccf_enable_mutex);
+static int mmdvfs_disp_clk_id;
 
 enum {
 	log_pwr,
@@ -422,6 +427,8 @@ static int mmdvfs_vcp_ipi_send_ex(const u8 func, const u8 idx, const u8 opp, u32
 			(func == FUNC_MMDVFS_INIT || func == FUNC_MMDVFSRC_INIT))
 			break;
 		if (mmdvfs_rst_clk_done && func == FUNC_CLKMUX_ENABLE)
+			break;
+		if (ccf_ena_support && func == FUNC_VOTE_OPP && idx == USER_DISP_AP)
 			break;
 		if (func == FUNC_VMM_GENPD_NOTIFY || func == FUNC_VMM_CEIL_ENABLE ||
 			func == FUNC_MMDVFS_LP_MODE || (func == FUNC_CLKMUX_ENABLE && !opp))
@@ -1037,7 +1044,8 @@ static struct clk *mmdvfs_user_clk[MMDVFS_USER_NUM];
 
 static DEFINE_SPINLOCK(mmdvfs_mux_lock);
 
-static rc_enable dpc_fp;
+static rc_enable dpc_fp[MMDVFS_DPC_NOTIFIER_NUM];
+static int dpc_fp_count;
 static bool mmdvfs_lp_mode;
 static bool mmdvfs_vcp_stop;
 static bool mmdvfs_swrgo;
@@ -1056,9 +1064,26 @@ int mmdvfs_set_lp_mode_by_vcp(const bool enable)
 }
 EXPORT_SYMBOL_GPL(mmdvfs_set_lp_mode_by_vcp);
 
-void mmdvfs_rc_enable_set_fp(rc_enable fp)
+static void mmdvfs_rc_enable_cb_all(const bool enable, const bool wdt)
 {
-	dpc_fp = fp;
+	int i;
+
+	for (i = 0; i < dpc_fp_count; i++)
+		if (dpc_fp[i])
+			dpc_fp[i](enable, wdt);
+}
+
+int mmdvfs_rc_enable_set_fp(rc_enable fp)
+{
+	if (dpc_fp_count >= MMDVFS_DPC_NOTIFIER_NUM) {
+		MMDVFS_ERR("invalid register num, dpc_fp_count:%d", dpc_fp_count);
+		return -EINVAL;
+	}
+
+	dpc_fp[dpc_fp_count] = fp;
+	dpc_fp[dpc_fp_count++](mmdvfs_vcp_cb_ready, mmdvfs_vcp_stop);
+
+	return 0;
 }
 EXPORT_SYMBOL_GPL(mmdvfs_rc_enable_set_fp);
 
@@ -1190,7 +1215,7 @@ int mtk_mmdvfs_v3_set_force_step(const u16 pwr_idx, const s16 opp, const bool cm
 }
 EXPORT_SYMBOL_GPL(mtk_mmdvfs_v3_set_force_step);
 
-static int mmdvfs_set_force_step(const char *val, const struct kernel_param *kp)
+static int mmdvfs_v3_set_force_step(const char *val, const struct kernel_param *kp)
 {
 	u16 idx = 0;
 	s16 opp = 0;
@@ -1210,7 +1235,7 @@ static int mmdvfs_set_force_step(const char *val, const struct kernel_param *kp)
 }
 
 static const struct kernel_param_ops mmdvfs_force_step_ops = {
-	.set = mmdvfs_set_force_step,
+	.set = mmdvfs_v3_set_force_step,
 };
 module_param_cb(force_step, &mmdvfs_force_step_ops, NULL, 0644);
 MODULE_PARM_DESC(force_step, "force mmdvfs to specified step");
@@ -1453,7 +1478,7 @@ int mtk_mmdvfs_v3_set_vote_step(const u16 pwr_idx, const s16 opp, const bool cmd
 }
 EXPORT_SYMBOL_GPL(mtk_mmdvfs_v3_set_vote_step);
 
-static int mmdvfs_set_vote_step(const char *val, const struct kernel_param *kp)
+static int mmdvfs_v3_set_vote_step(const char *val, const struct kernel_param *kp)
 {
 	int ret;
 	u16 idx = 0;
@@ -1473,7 +1498,7 @@ static int mmdvfs_set_vote_step(const char *val, const struct kernel_param *kp)
 }
 
 static const struct kernel_param_ops mmdvfs_vote_step_ops = {
-	.set = mmdvfs_set_vote_step,
+	.set = mmdvfs_v3_set_vote_step,
 };
 module_param_cb(vote_step, &mmdvfs_vote_step_ops, NULL, 0644);
 MODULE_PARM_DESC(vote_step, "vote mmdvfs to specified step");
@@ -1730,6 +1755,12 @@ static void mmdvfs_v3_release_step(bool enable_vcp)
 		}
 	}
 
+	mutex_lock(&ccf_enable_mutex);
+	if(ccf_ena_support)
+		ret = mmdvfs_vcp_ipi_send(FUNC_VOTE_OPP, USER_DISP_AP,
+			mtk_mmdvfs_clks[mmdvfs_disp_clk_id].freq_num - 1, NULL);
+	mutex_unlock(&ccf_enable_mutex);
+
 	if (enable_vcp)
 		mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMDVFS_VOTE);
 
@@ -1816,6 +1847,24 @@ inline bool mmdvfs_vcp_cb_ready_get(void)
 }
 EXPORT_SYMBOL_GPL(mmdvfs_vcp_cb_ready_get);
 
+static void mmdvfs_ap_ccf_enable_notifier(const bool enable)
+{
+	if (!ccf_ena_support) {
+		MMDVFS_ERR("ap ccf not supported, ccf_ena_support:%d", ccf_ena_support);
+		return;
+	}
+
+	mutex_lock(&ccf_enable_mutex);
+	if(!ccf_ena_called)
+		ccf_ena_called = true;
+	is_ccf_enable = enable;
+
+	if(!is_ccf_enable && mmdvfs_vcp_cb_ready) //this func is called in vcp enable duration
+		mmdvfs_vcp_ipi_send(FUNC_VOTE_OPP, USER_DISP_AP,
+			mtk_mmdvfs_clks[mmdvfs_disp_clk_id].freq_num - 1, NULL);
+	mutex_unlock(&ccf_enable_mutex);
+}
+
 static int mmdvfs_mmup_notifier_callback(struct notifier_block *nb, unsigned long action, void *data)
 {
 	static bool sram_init;
@@ -1826,11 +1875,17 @@ static int mmdvfs_mmup_notifier_callback(struct notifier_block *nb, unsigned lon
 		cb_timestamp[2] = sched_clock();
 		mmdvfs_rst_clk_done = false;
 		mmdvfs_release_step_done = false;
-		ret = mmdvfs_vcp_ipi_send(FUNC_MMDVFS_INIT, MAX_OPP, MAX_OPP, NULL);
+
+		mutex_lock(&ccf_enable_mutex);
+		if (ccf_ena_support && (!ccf_ena_called || is_ccf_enable))
+			ret = mmdvfs_vcp_ipi_send(FUNC_MMDVFS_INIT, USER_DISP_AP, MAX_OPP, NULL);
+		else
+			ret = mmdvfs_vcp_ipi_send(FUNC_MMDVFS_INIT, MAX_OPP, MAX_OPP, NULL);
+		mutex_unlock(&ccf_enable_mutex);
 		if (ret)
 			break;
-		if (dpc_fp)
-			dpc_fp(true, mmdvfs_vcp_stop);
+		if (dpc_fp[0])
+			mmdvfs_rc_enable_cb_all(true, mmdvfs_vcp_stop);
 		mmdvfs_vcp_stop = false;
 		mmdvfs_vcp_ipi_send(FUNC_MMDVFSRC_INIT, MAX_OPP, MAX_OPP, NULL);
 		if (mmdvfs_mmup_sram && unlikely(!sram_init)) {
@@ -1857,6 +1912,11 @@ static int mmdvfs_mmup_notifier_callback(struct notifier_block *nb, unsigned lon
 		mutex_lock(&mmdvfs_vcp_cb_mutex);
 		mmdvfs_vcp_cb_ready = true;
 		mutex_unlock(&mmdvfs_vcp_cb_mutex);
+		mutex_lock(&ccf_enable_mutex);
+		if(ccf_ena_support && ccf_ena_called && !is_ccf_enable)
+			ret = mmdvfs_vcp_ipi_send(FUNC_VOTE_OPP, USER_DISP_AP,
+				mtk_mmdvfs_clks[mmdvfs_disp_clk_id].freq_num - 1, NULL);
+		mutex_unlock(&ccf_enable_mutex);
 		if (hqa_enable)
 			mtk_mmdvfs_enable_vmm(true);
 		break;
@@ -1865,8 +1925,8 @@ static int mmdvfs_mmup_notifier_callback(struct notifier_block *nb, unsigned lon
 			mmdvfs_v3_restore_step();
 		break;
 	case VCP_EVENT_STOP:
-		if (dpc_fp)
-			dpc_fp(false, true);
+		if (dpc_fp[0])
+			mmdvfs_rc_enable_cb_all(false, true);
 		mmdvfs_vcp_stop = true;
 		mutex_lock(&mmdvfs_vcp_cb_mutex);
 		mmdvfs_vcp_cb_ready = false;
@@ -1875,8 +1935,8 @@ static int mmdvfs_mmup_notifier_callback(struct notifier_block *nb, unsigned lon
 	case VCP_EVENT_SUSPEND:
 		mmdvfs_release_step_done = true;
 		mmdvfs_v3_release_step(false);
-		if (dpc_fp)
-			dpc_fp(false, false);
+		if (dpc_fp[0])
+			mmdvfs_rc_enable_cb_all(false, false);
 		if (mmdvfs_swrgo) {
 			bool dump = false;
 			int i;
@@ -2045,6 +2105,9 @@ static int mmdvfs_vcp_init_thread(void *data)
 	force_on_notifier.notifier_call = mmdvfs_force_on_callback;
 	mtk_smi_dbg_register_force_on_notifier(&force_on_notifier);
 
+	if (mmdvfs_get_version() != MMDVFS_VER_V35)
+		return 0;
+
 	if (force_vol != 0xff)
 		mmdvfs_force_voltage_by_vcp(force_vol >> 4 & 0xf, force_vol & 0xf);
 
@@ -2171,6 +2234,9 @@ static int mmdvfs_v3_probe(struct platform_device *pdev)
 	const char *prop_name;
 	int i, ret;
 
+	if (of_property_read_bool(node, "mmdvfs-ap-ccf-support"))
+		ccf_ena_support = true;
+
 	ret = of_property_count_strings(node, MMDVFS_CLK_NAMES);
 	if (ret <= 0) {
 		MMDVFS_ERR("%s invalid:%d", MMDVFS_CLK_NAMES, ret);
@@ -2252,6 +2318,11 @@ static int mmdvfs_v3_probe(struct platform_device *pdev)
 				i, mtk_mmdvfs_clks[idx].name, PTR_ERR_OR_ZERO(clk));
 		else
 			clk_data->clks[i] = clk;
+
+		if (ccf_ena_support && mtk_mmdvfs_clks[i].user_id == USER_DISP_AP) {
+			mmdvfs_disp_clk_id = i;
+			MMDVFS_DBG("mmdvfs_disp_clk_id:%d", mmdvfs_disp_clk_id);
+		}
 	}
 
 	ret = of_clk_add_provider(node, of_clk_src_onecell_get, clk_data);
@@ -2326,6 +2397,8 @@ static int mmdvfs_v3_probe(struct platform_device *pdev)
 	kthr_ccu = kthread_run(mmdvfs_ccu_init_thread, node, "mmdvfs-ccu");
 	if (IS_ERR(kthr_ccu))
 		MMDVFS_ERR("create kthread mmdvfs_ccu_init_thread failed");
+
+	mmdvfs_ap_ccf_enable_notifier_set_fp(mmdvfs_ap_ccf_enable_notifier);
 
 	return ret;
 }
