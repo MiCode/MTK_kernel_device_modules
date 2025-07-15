@@ -3036,7 +3036,7 @@ static int jdi_probe(struct mipi_dsi_device *dsi)
 	int ret;
 	struct mtk_panel_params *cur_ext_param = NULL;
 
-	pr_info("%s+ jdi,nt36672e,vdo,120hz,hfp,v5\n", __func__);
+	pr_info("%s+ jdi,nt36672e,vdo,120hz,hfp,frameratev5\n", __func__);
 
 	dsi_node = of_get_parent(dev->of_node);
 	if (dsi_node) {
@@ -3133,7 +3133,7 @@ static int jdi_probe(struct mipi_dsi_device *dsi)
 
 #endif
 
-	pr_info("%s- jdi,nt36672e,vdo,120hz,hfp,v5\n", __func__);
+	pr_info("%s- jdi,nt36672e,vdo,120hz,hfp,frameratev5\n", __func__);
 
 	return ret;
 }
@@ -3159,7 +3159,7 @@ static void jdi_remove(struct mipi_dsi_device *dsi)
 
 static const struct of_device_id jdi_of_match[] = {
 	{
-	    .compatible = "jdi,nt36672e,vdo,120hz,hfp,v5",
+	    .compatible = "jdi,nt36672e,vdo,120hz,hfp,frameratev5",
 	},
 	{}
 };
@@ -3170,7 +3170,7 @@ static struct mipi_dsi_driver jdi_driver = {
 	.probe = jdi_probe,
 	.remove = jdi_remove,
 	.driver = {
-		.name = "panel-jdi-nt36672e-vdo-120hz-hfp-v5",
+		.name = "panel-jdi-nt36672e-vdo-120hz-hfp-frameratev5",
 		.owner = THIS_MODULE,
 		.of_match_table = jdi_of_match,
 	},
@@ -3179,5 +3179,5 @@ static struct mipi_dsi_driver jdi_driver = {
 module_mipi_dsi_driver(jdi_driver);
 
 MODULE_AUTHOR("kai shi <kai.shi@mediatek.com>");
-MODULE_DESCRIPTION("JDI NT36672E VDO 120HZ HFP TBV5 AMOLED Panel Driver");
+MODULE_DESCRIPTION("JDI NT36672E VDO 120HZ HFP FRAMERATEV5 AMOLED Panel Driver");
 MODULE_LICENSE("GPL");

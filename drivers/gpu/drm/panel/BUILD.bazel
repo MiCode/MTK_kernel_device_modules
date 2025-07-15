@@ -75,7 +75,7 @@ PANELS = [
     "panel-truly-td4330-vdo",
     "panel-nt36672c-fhdp-dsi-vdo-dsc-txd-boe",
     "panel-alpha-jdi-nt36672e-vdo-120hz-frameratev5",
-    "panel-alpha-jdi-nt36672e-vdo-120hz-hfp-v5",
+    "panel-alpha-jdi-nt36672e-vdo-120hz-hfp-frameratev5",
     "panel-samsung-op-cmd",
     "panel-samsung-op-cmd-msync2",
     "panel-alpha-samsung-s6e3hae-wqhd-dphy-cmd-120hz",
