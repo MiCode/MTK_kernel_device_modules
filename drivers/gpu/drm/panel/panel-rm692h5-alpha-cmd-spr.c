@@ -1253,8 +1253,10 @@ static int lcm_update_roi_cmdq_v2(void *dsi_drv,
 	if (!cb)
 		return -1;
 
+#if defined(PU_PANEL_DEBUGGER)
 	lcm_info("%s, (x,y,w,h): (%d,%d,%d,%d), %d\n", __func__, x, y, w, h,
 		(int)ARRAY_SIZE(roi_grp_setting));
+#endif
 
 	for (i = 0; i < ARRAY_SIZE(roi_grp_setting); i++) {
 		update_cmd_roi[i].tx_buf = roi_grp_setting[i].para_list;
