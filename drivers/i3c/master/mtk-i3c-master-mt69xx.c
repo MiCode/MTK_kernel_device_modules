@@ -18,6 +18,7 @@
 #include <linux/of.h>
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
+#include <linux/pm_runtime.h>
 #include <linux/spinlock.h>
 #include <linux/timekeeping.h>
 
@@ -139,6 +140,7 @@
 #define I3C_WAIT_DMA_TIMEOUT (8000000)
 #define I3C_POLLING_TIMEOUT (50000000)
 #define I3C_ENTDAA_TIMEOUT  (2000000)
+#define I3C_AUTO_SUSPEND_DELAY_VAL (10) /* 10ms */
 
 #ifdef I3C_ADDR_SLOT_STATUS_BITS
 #define MTK_I3C_ADDR_SLOT_STATUS_BITS (I3C_ADDR_SLOT_STATUS_BITS)
@@ -394,6 +396,7 @@ struct mtk_i3c_master {
 	struct completion msg_complete;
 	spinlock_t entdaa_lock;
 	int timeout; /* in jiffies */
+	int i3c_auto_suspend_delay;
 	u8 entdaa_last_addr;
 	u32 entdaa_count;
 	u8 entdaa_addr[MTK_I3C_MAX_DEVS];
@@ -506,18 +509,34 @@ static inline int mtk_i3c_check_suspended(struct mtk_i3c_master *i3c)
 	return 0;
 }
 
-static inline void mtk_i3c_mark_suspended(struct mtk_i3c_master *i3c)
+static inline int mtk_i3c_mark_suspended(struct mtk_i3c_master *i3c)
 {
+	int ret = 0;
+
 	mtk_i3c_lock_bus(i3c);
 	i3c->suspended = true;
+	ret = pm_runtime_force_suspend(i3c->dev);
+	if (ret)
+		dev_info(i3c->dev, "[%s] pm_runtime_force_suspend fail.ret=%d.\n",
+			__func__, ret);
 	mtk_i3c_unlock_bus(i3c);
+
+	return ret;
 }
 
-static inline void mtk_i3c_mark_resumed(struct mtk_i3c_master *i3c)
+static inline int mtk_i3c_mark_resumed(struct mtk_i3c_master *i3c)
 {
+	int ret = 0;
+
 	mtk_i3c_lock_bus(i3c);
+	ret = pm_runtime_force_resume(i3c->dev);
+	if (ret)
+		dev_info(i3c->dev, "[%s] pm_runtime_force_resume fail.ret=%d.\n",
+			__func__, ret);
 	i3c->suspended = false;
 	mtk_i3c_unlock_bus(i3c);
+
+	return ret;
 }
 
 static int mtk_i3c_master_get_free_pos(struct mtk_i3c_master *i3c)
@@ -2049,9 +2068,12 @@ static int mtk_i3c_do_transfer(struct mtk_i3c_master *i3c, struct mtk_i3c_xfer *
 		xfer->dma_en = true;
 	}
 
-	ret = mtk_i3c_clock_enable(i3c);
-	if (ret) {
-		dev_info(i3c->dev, "[%s] i3c clock enable failed!\n", __func__);
+	ret = pm_runtime_get_sync(i3c->dev);
+	if (ret < 0) {
+		pm_runtime_put_noidle(i3c->dev);
+		dev_info(i3c->dev, "[%s] i3c pm_runtime_get_sync fail. ret=%d.%d.\n",
+			__func__, ret, i3c->suspended);
+		dump_stack();
 		return ret;
 	}
 	mtk_i3c_writel(i3c, 0, OFFSET_INTR_MASK);
@@ -2266,7 +2288,12 @@ dma_unmap:
 	}
 
 err_exit:
-	mtk_i3c_clock_disable(i3c);
+	if (i3c->base.init_done) {
+		pm_runtime_mark_last_busy(i3c->dev);
+		pm_runtime_put_autosuspend(i3c->dev);
+	} else
+		pm_runtime_put_sync(i3c->dev);
+
 	return ret;
 }
 
@@ -2996,6 +3023,10 @@ static int mtk_i3c_parse_dt(struct device_node *np, struct mtk_i3c_master *i3c)
 	if (ret < 0)
 		i3c->ch_offset_dma = 0;
 
+	ret = of_property_read_s32(np, "i3c-autosuspend-delay", &i3c->i3c_auto_suspend_delay);
+	if (ret < 0)
+		i3c->i3c_auto_suspend_delay = I3C_AUTO_SUSPEND_DELAY_VAL;
+
 	of_property_read_u32(np, "scl-gpio-id", &i3c->scl_gpio_id);
 	of_property_read_u32(np, "sda-gpio-id", &i3c->sda_gpio_id);
 
@@ -3003,9 +3034,9 @@ static int mtk_i3c_parse_dt(struct device_node *np, struct mtk_i3c_master *i3c)
 	i3c->fifo_use_pulling = of_property_read_bool(np, "mediatek,fifo-use-pulling");
 	i3c->no_hdr_exit = of_property_read_bool(np, "mediatek,no-hdr-exit");
 	i3c->entdaa_use_irq = of_property_read_bool(np, "mediatek,entdaa-use-irq");
-	dev_info(i3c->dev, "[%s] without7e=%d,fifo_pull=%d,no_hdr_exit=%d,entdaa_irq=%d\n",
+	dev_info(i3c->dev, "[%s] wo7e=%d,fifo_pull=%d,no_hdr_exit=%d,daa_irq=%d,delay=%d\n",
 		__func__, i3c->priv_xfer_wo7e, i3c->fifo_use_pulling, i3c->no_hdr_exit,
-		i3c->entdaa_use_irq);
+		i3c->entdaa_use_irq, i3c->i3c_auto_suspend_delay);
 
 	return 0;
 }
@@ -3097,10 +3128,14 @@ static int mtk_i3c_master_probe(struct platform_device *pdev)
 	i3c->free_pos = GENMASK(MTK_I3C_MAX_DEVS - 1, 0);
 
 	platform_set_drvdata(pdev, i3c);
+	pm_runtime_set_autosuspend_delay(&pdev->dev, i3c->i3c_auto_suspend_delay);
+	pm_runtime_use_autosuspend(&pdev->dev);
+	pm_runtime_enable(&pdev->dev);
 
 	ret = i3c_master_register(&i3c->base, &pdev->dev,
 		    &mtk_i3c_master_ops, false);
 	if (ret) {
+		pm_runtime_disable(&pdev->dev);
 		dev_info(&pdev->dev, "i3c_master_register failed!\n");
 		return ret;
 	}
@@ -3117,11 +3152,12 @@ static void mtk_i3c_master_remove(struct platform_device *pdev)
 {
 	struct mtk_i3c_master *i3c = platform_get_drvdata(pdev);
 
+	pm_runtime_disable(&pdev->dev);
 	list_del(&i3c->s_controller_info.list);
 	i3c_master_unregister(&i3c->base);
 }
 
-static int mtk_i3c_suspend_noirq(struct device *dev)
+static int mtk_i3c_runtime_suspend(struct device *dev)
 {
 	struct mtk_i3c_master *i3c = dev_get_drvdata(dev);
 
@@ -3129,10 +3165,39 @@ static int mtk_i3c_suspend_noirq(struct device *dev)
 		dev_info(dev, "[%s] i3c is NULL\n", __func__);
 		return -EINVAL;
 	}
-	i2c_mark_adapter_suspended(&i3c->base.i2c);
-	mtk_i3c_mark_suspended(i3c);
-
+	mtk_i3c_clock_disable(i3c);
 	return 0;
+}
+
+static int mtk_i3c_runtime_resume(struct device *dev)
+{
+	struct mtk_i3c_master *i3c = dev_get_drvdata(dev);
+	int ret = 0;
+
+	if (!i3c) {
+		dev_info(dev, "[%s] i3c is NULL\n", __func__);
+		return -EINVAL;
+	}
+	ret = mtk_i3c_clock_enable(i3c);
+	if (ret)
+		dev_info(dev, "[%s] i3c clock enable failed!\n", __func__);
+
+	return ret;
+}
+
+static int mtk_i3c_suspend_noirq(struct device *dev)
+{
+	struct mtk_i3c_master *i3c = dev_get_drvdata(dev);
+	int ret = 0;
+
+	if (!i3c) {
+		dev_info(dev, "[%s] i3c is NULL\n", __func__);
+		return -EINVAL;
+	}
+	i2c_mark_adapter_suspended(&i3c->base.i2c);
+	ret = mtk_i3c_mark_suspended(i3c);
+
+	return ret;
 }
 
 static int mtk_i3c_resume_noirq(struct device *dev)
@@ -3152,12 +3217,14 @@ static int mtk_i3c_resume_noirq(struct device *dev)
 	mtk_i3c_init_hw(i3c);
 	mtk_i3c_clock_disable(i3c);
 	i2c_mark_adapter_resumed(&i3c->base.i2c);
-	mtk_i3c_mark_resumed(i3c);
+	ret = mtk_i3c_mark_resumed(i3c);
 
-	return 0;
+	return ret;
 }
 
 static const struct dev_pm_ops mtk_i3c_pm = {
+	RUNTIME_PM_OPS(mtk_i3c_runtime_suspend,
+			mtk_i3c_runtime_resume, NULL)
 	NOIRQ_SYSTEM_SLEEP_PM_OPS(mtk_i3c_suspend_noirq,
 			mtk_i3c_resume_noirq)
 };
