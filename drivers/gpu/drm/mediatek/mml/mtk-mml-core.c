@@ -401,6 +401,7 @@ struct mml_topology_cache *mml_topology_create(struct mml_dev *mml,
 			devm_kfree(&pdev->dev, tp);
 			tp = err == -EAGAIN ? NULL : ERR_PTR(err);
 		}
+		mml_comp_init_larb_idx(mml, tp);
 	}
 	return tp;
 }

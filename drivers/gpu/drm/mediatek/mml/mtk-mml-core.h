@@ -464,6 +464,12 @@ struct mml_topology_path {
 		};
 	};
 
+	/* bits to enable/disable ultra for this path */
+	struct {
+		phys_addr_t larb_base;
+		u32 ultra_mask;
+	} larbs[MML_MAX_LARB];
+
 	/* engine flag for this path */
 	u64 engine_flags;
 

@@ -921,7 +921,7 @@ s32 mml_comp_init_larb(struct mml_comp *comp, struct device *dev)
 
 	/* parse larb node and port from dts */
 	if (of_property_read_u8(dev->of_node, "larb-idx", &comp->larb_idx))
-		comp->larb_idx = comp->sysid;
+		comp->larb_idx = U8_MAX;
 	/* assigned second larb index for dpc means this comp switch between srt/hrt */
 	if (!of_property_read_u8(dev->of_node, "larb-idx-dpc", &comp->larb_idx_dpc))
 		comp->bw_hybrid = true;
@@ -997,6 +997,73 @@ s32 mml_comp_init_larb(struct mml_comp *comp, struct device *dev)
 #endif
 
 	return 0;
+}
+
+static void mml_comp_init_path_ultra(struct mml_topology_path *path)
+{
+	u32 i, idx;
+	struct mml_comp *comp;
+
+	for (i = 0; i < path->node_cnt; i++) {
+		comp = path->nodes[i].comp;
+		if (!comp->larb_base || !comp->icc_path ||
+			comp == path->mmlsys || comp == path->mutex ||
+			comp == path->mmlsys2 || comp == path->mutex2)
+			continue;
+
+		idx = comp->larb_idx;
+
+#if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
+		if (idx >= ARRAY_SIZE(path->larbs)) {
+			mml_err("%s path %u comp %u larb idx %u out of range",
+				__func__, path->path_id, comp->id, comp->larb_idx);
+			return;
+		}
+#endif
+
+		path->larbs[idx].ultra_mask |= BIT(comp->larb_port);
+		/* note: in current hw arch, stash port never put port 0,
+		 * so here check larb port stash in tricky way.
+		 */
+		if (comp->larb_port_stash)
+			path->larbs[idx].ultra_mask |= BIT(comp->larb_port_stash);
+#if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
+		if (path->larbs[idx].larb_base && path->larbs[idx].larb_base != comp->larb_base)
+			mml_err("larb conflict %#010x <> %#010x",
+				(u32)path->larbs[idx].larb_base, (u32)comp->larb_base);
+#endif
+		path->larbs[idx].larb_base = comp->larb_base;
+	}
+
+#if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
+	for (i = 0; i < ARRAY_SIZE(path->larbs); i++)
+		if (path->larbs[i].larb_base)
+			mml_msg("%s path %u larb idx %u base %#010x ultra %#010x",
+				__func__, path->path_id, i,
+				(u32)path->larbs[i].larb_base, path->larbs[i].ultra_mask);
+#endif
+}
+
+void mml_comp_init_larb_idx(struct mml_dev *mml, struct mml_topology_cache *cache)
+{
+	u32 i;
+
+	for (i = 1; i < ARRAY_SIZE(mml->comps); i++) {
+		struct mml_comp *comp;
+
+		if (!mml->comps[i])
+			break;
+		comp = mml->comps[i];
+		if (comp->larb_idx == U8_MAX)
+			comp->larb_idx = comp->sysid;
+	}
+
+	for (i = 0; i < ARRAY_SIZE(cache->paths); i++) {
+		if (!cache->paths[i].clt)
+			break;
+
+		mml_comp_init_path_ultra(&cache->paths[i]);
+	}
 }
 
 s32 mml_comp_pw_enable(struct mml_comp *comp, const s8 mode, bool pw_by_mminfra)
