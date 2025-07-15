@@ -45,19 +45,23 @@ DEFINE_MUTEX(chmem_mutex);
 /******/
 
 #if API_sharedMem
-static void add_shm_list_node(struct KREE_SHM_RUNLENGTH_LIST **tail,
+static TZ_RESULT add_shm_list_node(struct KREE_SHM_RUNLENGTH_LIST **tail,
 	uint64_t start, uint32_t size)
 {
-	struct KREE_SHM_RUNLENGTH_LIST *mylist;
+	TZ_RESULT ret = TZ_RESULT_ERROR_GENERIC;
+	struct KREE_SHM_RUNLENGTH_LIST *mylist = NULL;
 
-	if (!tail)
-		return;
+	if (!tail) {
+		ret = TZ_RESULT_ERROR_BAD_PARAMETERS;
+		goto end;
+	}
 
 	/* add a record */
 	mylist = kmalloc(sizeof(*mylist), GFP_KERNEL);
 	if (!mylist) {
 		KREE_ERR("[%s] kmalloc failed!\n", __func__);
-		return;
+		ret = TZ_RESULT_ERROR_OUT_OF_MEMORY;
+		goto end;
 	}
 	mylist->entry.low = (uint32_t) (start & (0x00000000ffffffff));
 	mylist->entry.high = (uint32_t) (start >> 32);
@@ -65,11 +69,17 @@ static void add_shm_list_node(struct KREE_SHM_RUNLENGTH_LIST **tail,
 	mylist->next = NULL;
 	(*tail)->next = mylist;
 	(*tail) = mylist;
+
+	ret = TZ_RESULT_SUCCESS;
+
+end:
+	return ret;
 }
 
 static struct KREE_SHM_RUNLENGTH_ENTRY *shmem_param_run_length_encoding(
 	int numOfPA, int *runLeng_arySize, int64_t *ary)
 {
+	TZ_RESULT tz_ret = TZ_RESULT_ERROR_GENERIC;
 	int arySize = numOfPA + 1;
 	int i = 0;
 	int64_t start;
@@ -106,7 +116,9 @@ static struct KREE_SHM_RUNLENGTH_ENTRY *shmem_param_run_length_encoding(
 			if ((next - now) == (1 * PAGE_SIZE)) {
 				size++;
 			} else {
-				add_shm_list_node(&tail, start, size);
+				tz_ret = add_shm_list_node(&tail, start, size);
+				if (unlikely(tz_ret != TZ_RESULT_SUCCESS))
+					break;
 				size = 1;	/* reset */
 				xx++;
 			}
@@ -116,21 +128,47 @@ static struct KREE_SHM_RUNLENGTH_ENTRY *shmem_param_run_length_encoding(
 			if ((ary[i] - start + (1 * PAGE_SIZE))
 				== (size * PAGE_SIZE)) {
 
-				add_shm_list_node(&tail, start, size);
+				tz_ret = add_shm_list_node(&tail, start, size);
+				if (unlikely(tz_ret != TZ_RESULT_SUCCESS))
+					break;
 				size = 1;	/* reset */
 				xx++;
 			}
 		}
 	}
 
+	if (unlikely(tz_ret != TZ_RESULT_SUCCESS)) {
+		KREE_ERR("[%s] runLengAry creation failed, tz_ret = %d\n",
+				__func__, tz_ret);
+		if (head->next) {
+			curr = head->next;
+			while (curr) {
+				tail = curr;
+				curr = curr->next;
+				kfree(tail);
+			}
+		}
+		kfree(head);
+		return runLengAry; // runLengAry == NULL
+	}
+
 	*runLeng_arySize = xx;
-	KREE_DEBUG("[%s]runLeng_arySize = %d\n", __func__, *runLeng_arySize);
+	KREE_DEBUG("[%s]runLeng_arySize = %d, tz_ret = %d\n",
+			__func__, *runLeng_arySize, tz_ret);
 
 	runLengAry = kmalloc((*runLeng_arySize + 1)
 			* sizeof(struct KREE_SHM_RUNLENGTH_ENTRY),
 			GFP_KERNEL);
 	if (!runLengAry) {
 		KREE_ERR("[%s] kmalloc failed!\n", __func__);
+		if (head->next) {
+			curr = head->next;
+			while (curr) {
+				tail = curr;
+				curr = curr->next;
+				kfree(tail);
+			}
+		}
 		kfree(head);
 		return runLengAry;
 	}
