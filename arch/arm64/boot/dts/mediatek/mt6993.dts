@@ -533,6 +533,7 @@
 		#size-cells = <0>;
 		hwinf-err-irq-idx = <0x21 0x30>;
 		swinf-err-irq-idx = <0x71 0x76>;
+		rcs-mask-list = <0x4 0x4>;
 	};
 
 	spmi_pmif_mpu: spmi-pmif-mpu@1c01a900 {
