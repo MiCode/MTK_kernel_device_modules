@@ -1940,6 +1940,19 @@ static void mtk_drm_idlemgr_enable_connector(struct drm_crtc *crtc)
 		mtk_ddp_comp_io_cmd(output_comp, NULL, CONNECTOR_ENABLE, &async);
 }
 
+static void mtk_drm_idlemgr_set_dsi_golden(struct drm_crtc *crtc)
+{
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_ddp_comp *output_comp;
+
+	if (mtk_drm_idlemgr_get_async_status(crtc) == false)
+		return;
+
+	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
+	if (output_comp)
+		mtk_ddp_comp_io_cmd(output_comp, NULL, SET_DSI_GOLDEN_SETTING, NULL);
+}
+
 static void mtk_drm_idlemgr_disable_crtc(struct drm_crtc *crtc)
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
@@ -2292,6 +2305,7 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
 				"async_wait1", 8, perf_string, true);
 	mtk_drm_idle_async_wait(crtc, 50, "prepare_async");
+	mtk_drm_idlemgr_set_dsi_golden(crtc);
 
 	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
 				"atf_instr", 9, perf_string, true);

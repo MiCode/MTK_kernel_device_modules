@@ -3010,8 +3010,17 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 				DDPMSG("%s, %d, unknown id:%d\n", __func__, __LINE__, comp->id);
 			break;
 		case MMSYS_MT6993:
+			unsigned int lane_num = 0;
+
+			/* check lane_num */
+			lane_num = readl(dsi->regs + DSI_TXRX_CTRL(dsi->driver_data));
+			lane_num = REG_FLD_VAL_GET(REG_FLD_MSB_LSB(5, 2), lane_num);
+			if (!lane_num)
+				DDPAEE_FATAL("%s, lane num is error! 0x%x\n", __func__, lane_num);
+
 			buf_con = readl(dsi->regs + DSI_BUF_SIZE(dsi->driver_data));
 			buf_con = REG_FLD_VAL_GET(DSI_BUF_REAL_SIZE, buf_con);
+			buf_con += 1;
 			break;
 		default:
 			break;
@@ -4045,7 +4054,38 @@ static void mtk_dsi_ulps_enter_end(struct mtk_dsi *dsi, struct mtk_drm_private *
 
 }
 
-static void mtk_dsi_ulps_exit_end(struct mtk_dsi *dsi)
+static int mtk_set_dsi_golden_setting(struct mtk_dsi *dsi)
+{
+	/* read REG buf_con should be done after exit ulps */
+	if (dsi->driver_data->dsi_buffer) {
+		mtk_dsi_tx_buf_rw(dsi);
+	} else {
+		struct mtk_drm_crtc *mtk_crtc = dsi->ddp_comp.mtk_crtc;
+
+		if (mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base)) {
+			// cmd mode
+			struct mtk_panel_ext *ext = mtk_dsi_get_panel_ext(&dsi->ddp_comp);
+
+			if (!ext) {
+				DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
+				return -1;
+			}
+
+			if (ext->params->lp_perline_en) {
+			// LP mode per line  => enables DSI wait data every line in command mode
+				mtk_dsi_mask(dsi, DSI_CON_CTRL(dsi->driver_data), DSI_CM_MODE_WAIT_DATA_EVERY_LINE_EN,
+							DSI_CM_MODE_WAIT_DATA_EVERY_LINE_EN);
+			} else {
+				mtk_dsi_mask(dsi, DSI_CON_CTRL(dsi->driver_data), DSI_CM_MODE_WAIT_DATA_EVERY_LINE_EN,
+							0);
+			}
+		}
+	}
+
+	return 0;
+}
+
+static void mtk_dsi_ulps_exit_end(struct mtk_dsi *dsi, bool async)
 {
 	if (!dsi || !dsi->driver_data) {
 		DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
@@ -4059,6 +4099,9 @@ static void mtk_dsi_ulps_exit_end(struct mtk_dsi *dsi)
 
 	/* do DSI reset after exit ULPS*/
 	mtk_dsi_reset_engine(dsi);
+
+	if (async == false)
+		mtk_set_dsi_golden_setting(dsi);
 }
 
 static unsigned int dsi_underrun_called;
@@ -4457,7 +4500,7 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 			if (atomic_read(&dsi->ulps_async) == 0) {
 				wakeup_dsi_wq(&dsi->exit_ulps_done);
 			} else {
-				mtk_dsi_ulps_exit_end(dsi);
+				mtk_dsi_ulps_exit_end(dsi, true);
 				if (mtk_dsi_is_cmd_mode(comp))
 					mtk_dsi_mask(dsi, DSI_TXRX_CTRL(dsi->driver_data), (EXT_TE_EN | HSTX_CKLP_EN),
 								(EXT_TE_EN | HSTX_CKLP_EN));
@@ -4913,7 +4956,7 @@ static void mtk_dsi_exit_ulps(struct mtk_dsi *dsi, bool async)
 				DDPAEE("%s fail\n", __func__);
 			}
 		}
-		mtk_dsi_ulps_exit_end(dsi);
+		mtk_dsi_ulps_exit_end(dsi, async);
 	}
 }
 
@@ -5117,21 +5160,6 @@ static int mtk_preconfig_dsi_enable(struct mtk_dsi *dsi)
 	mtk_dsi_phy_timconfig(dsi, NULL);
 
 	mtk_dsi_rxtx_control(dsi, false);
-	if (dsi->driver_data->dsi_buffer) {
-		mtk_dsi_tx_buf_rw(dsi);
-	} else {
-		if (mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base)) {
-			// cmd mode
-			if (ext->params->lp_perline_en) {
-			// LP mode per line  => enables DSI wait data every line in command mode
-				mtk_dsi_mask(dsi, DSI_CON_CTRL(dsi->driver_data), DSI_CM_MODE_WAIT_DATA_EVERY_LINE_EN,
-							DSI_CM_MODE_WAIT_DATA_EVERY_LINE_EN);
-			} else {
-				mtk_dsi_mask(dsi, DSI_CON_CTRL(dsi->driver_data), DSI_CM_MODE_WAIT_DATA_EVERY_LINE_EN,
-							0);
-			}
-		}
-	}
 	mtk_dsi_cmd_type1_hs(dsi);
 	mtk_dsi_ps_control_vact(dsi);
 	if (!mtk_dsi_is_cmd_mode(&dsi->ddp_comp)) {
@@ -8122,26 +8150,6 @@ static int mtk_dsi_leave_idle(struct mtk_dsi *dsi, int skip_ulps, bool async)
 	mtk_dsi_phy_timconfig(dsi, NULL);
 
 	mtk_dsi_rxtx_control(dsi, enable);
-	if (dsi->driver_data->dsi_buffer) {
-		mtk_dsi_tx_buf_rw(dsi);
-	} else {
-		if (mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base)) {
-			ext = mtk_dsi_get_panel_ext(&dsi->ddp_comp);
-			if (!ext) {
-				DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
-				return -1;
-			}
-			// cmd mode
-			if (ext->params->lp_perline_en) {
-			// LP mode per line  => enables DSI wait data every line in command mode
-				mtk_dsi_mask(dsi, DSI_CON_CTRL(dsi->driver_data), DSI_CM_MODE_WAIT_DATA_EVERY_LINE_EN,
-							DSI_CM_MODE_WAIT_DATA_EVERY_LINE_EN);
-			} else {
-				mtk_dsi_mask(dsi, DSI_CON_CTRL(dsi->driver_data), DSI_CM_MODE_WAIT_DATA_EVERY_LINE_EN,
-							0);
-			}
-		}
-	}
 	mtk_dsi_cmd_type1_hs(dsi);
 	mtk_dsi_ps_control_vact(dsi);
 	mtk_dsi_cmdq_size_sel(dsi);
@@ -8150,6 +8158,11 @@ static int mtk_dsi_leave_idle(struct mtk_dsi *dsi, int skip_ulps, bool async)
 	if (skip_ulps) {
 		mtk_mipi_tx_pre_oe_config(dsi->phy, 0);
 		mtk_mipi_tx_sw_control_en(dsi->phy, 0);
+		ret = mtk_set_dsi_golden_setting(dsi);
+		if (ret < 0) {
+			DDPPR_ERR("failed to power on dsi\n");
+			return -ret;
+		}
 	} else {
 		//mtk_drm_trace_begin("ulps exit %d", async);
 		mtk_dsi_exit_ulps(dsi, async);
@@ -15671,6 +15684,11 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 
 		partial_roi = (struct mtk_rect *)params;
 		mtk_cal_dsi_valid_partial_roi(comp, partial_roi);
+	}
+		break;
+	case SET_DSI_GOLDEN_SETTING:
+	{
+		mtk_set_dsi_golden_setting(dsi);
 	}
 		break;
 	default:
