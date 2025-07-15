@@ -225,7 +225,7 @@ static u64 v7s_pgd_index(u64 iova)
 static void flush_pgd(u32 *pgd, u64 iova_start, u64 iova_end)
 {
 	u32 start_idx = v7s_pgd_index(iova_start);
-	u32 end_idx = v7s_pgd_index(iova_end);
+	u32 end_idx = v7s_pgd_index(iova_end - 1);
 	u32 count = end_idx - start_idx + 1;
 	void *ptr;
 
