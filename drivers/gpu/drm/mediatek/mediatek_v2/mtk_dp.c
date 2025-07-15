@@ -607,6 +607,9 @@ void mdrv_DPTx_InitVariable(struct mtk_dp *mtk_dp)
 	// for customer requirement(set max link rate)
 	//mtk_dp->training_info.ubSysMaxLinkRate = DP_LINKRATE_HBR;
 
+	if (mtk_dp->training_info.ubSysMaxLinkRate)
+		DPTXMSG("adb or dts force linkrate = %x\n", mtk_dp->training_info.ubSysMaxLinkRate);
+
 	if (!mtk_dp->training_info.set_max_linkrate && !mtk_dp->training_info.ubSysMaxLinkRate)
 		mdrv_DPTx_CheckMaxLinkRate(mtk_dp);
 }
@@ -3668,6 +3671,7 @@ static int mtk_dp_dt_parse_pdata(struct mtk_dp *mtk_dp,
 	int count = 0;
 	const char *pd_name;
 	int config_version = 0;
+	const char *linkrate_str;
 
 	// get power num
 	while (true) {
@@ -3751,6 +3755,23 @@ static int mtk_dp_dt_parse_pdata(struct mtk_dp *mtk_dp,
 		mtk_dp->project_support_max_h_v[1] = 2160;
 		DPTXMSG("get project_support_max_h_v fail, use default val, ret %d\n", ret);
 	}
+
+	if (!of_property_read_string(pdev->dev.of_node, "dp-max-linkrate", &linkrate_str)) {
+		if (!strcmp(linkrate_str, "RBR"))
+			mtk_dp->training_info.ubSysMaxLinkRate = DP_LINKRATE_RBR;
+		else if (!strcmp(linkrate_str, "HBR"))
+			mtk_dp->training_info.ubSysMaxLinkRate = DP_LINKRATE_HBR;
+		else if (!strcmp(linkrate_str, "HBR2"))
+			mtk_dp->training_info.ubSysMaxLinkRate = DP_LINKRATE_HBR2;
+		else if (!strcmp(linkrate_str, "HBR3"))
+			mtk_dp->training_info.ubSysMaxLinkRate = DP_LINKRATE_HBR3;
+		else {
+			mtk_dp->training_info.ubSysMaxLinkRate = DP_LINKRATE_HBR3;
+			DPTXERR("Unknown dp-max-linkrate: %s, use HBR3\n", linkrate_str);
+		}
+	} else
+		DPTXMSG("dts dp-max-linkrate not found, use default\n");
+
 	return 0;
 }
 
@@ -4063,6 +4084,12 @@ static enum drm_mode_status mtk_dp_conn_mode_valid(struct drm_connector *conn,
 	if (vblank_time - 13300 < 20000) { // prefetch=13300
 		DPTXDBG("Returning MODE_VBLANK_NARROW: VBlank time too narrow");
 		return MODE_VBLANK_NARROW;
+	}
+
+	// TODO: Report MM CLK requirements and remove this code.
+	if (mode->hdisplay * vtotal * vrefresh / 2 > 273000000) {
+		DPTXDBG("Higher than max support MM CLK");
+		return MODE_NOMODE;
 	}
 
 	DPTXDBG("Returning MODE_OK: All checks passed");
