@@ -160,6 +160,9 @@ struct mtk_codec_capability {
 	__u32	max_b;
 	__u32	max_temporal_layer;
 	__u32   support_adab;
+	__u32   adab_max_fps;
+	__u32   adab_max_throughput;
+	__u32   adab_max_width;
 };
 
 struct mtk_tf_info {

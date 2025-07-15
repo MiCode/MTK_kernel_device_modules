@@ -508,6 +508,14 @@ struct v4l2_venc_resolution_change {
 	__u32 resolutionchange;
 };
 
+// for V4L2_CID_MTK_VIDEO_ENC_GET_ADAB_CAPABILITY
+struct v4l2_venc_adab_capability {
+	__u32 support_adab;
+	__u32 adab_max_fps;
+	__u32 adab_max_throughput;
+	__u32 adab_max_width;
+};
+
 // for V4L2_CID_MTK_VIDEO_ENC_MULTI_REF
 struct v4l2_venc_multi_ref {
 	__u32	multi_ref_en;
