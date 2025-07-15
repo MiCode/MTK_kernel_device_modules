@@ -8086,6 +8086,7 @@ dramc: dramc@10230000 {
 
 		mmdvfs {
 			compatible = "mediatek,mmdvfs";
+			mediatek,mmdvfs-clk = <&mmdvfs_clk>;
 			dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 			operating-points-v2 = <&opp_table_disp>;
 			mediatek,support-mux = "disp0", "mminfra";
