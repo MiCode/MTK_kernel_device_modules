@@ -4973,7 +4973,7 @@ dramc: dramc@10230000 {
 				<0>, /*MTK_DRM_OPT_LAYER_REC*/
 				<1>, /*MTK_DRM_OPT_CLEAR_LAYER*/
 				<0>, /*MTK_DRM_OPT_VDS_PATH_SWITCH*/
-				<1>, /*MTK_DRM_OPT_LFR*/
+				<0>, /*MTK_DRM_OPT_LFR*/
 				<0>, /*MTK_DRM_OPT_SF_PF*/
 				<0>, /*MTK_DRM_OPT_PQ_34_COLOR_MATRIX*/
 				<1>, /*MTK_DRM_OPT_DYN_MIPI_CHANGE*/
