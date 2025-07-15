@@ -50,21 +50,27 @@ module_param(venc_max_mon_frm, int, 0644);
 #ifdef MTK_THERMAL_THROTTLE
 int mtk_enc_thermal_hint_callback(struct notifier_block *nb, unsigned long event, void *data)
 {
-	struct mtk_vcodec_dev *dev = container_of(nb, struct mtk_vcodec_dev, thermal_notify);
+	struct mtk_vcodec_dev *dev = NULL;
 	struct mtk_vcodec_ctx *ctx = NULL;
+
+	if (!nb)
+		return NOTIFY_BAD;
+	dev = container_of(nb, struct mtk_vcodec_dev, thermal_notify);
 
 	if (!dev->thermal_hint_mode)
 		return NOTIFY_OK;
 
+	mutex_lock(&dev->ctx_mutex);
+	mtk_vcodec_dvfs_qos_log(true,
+		"[VENC][VDVFS] thermal_hint enable event %lu", event);
 	list_for_each_entry(ctx, &dev->ctx_list, list) {
-		if (ctx != NULL) {
+		if (ctx != NULL && ctx != &dev->dev_ctx) {
 			ctx->thermal_hint = event;
 			if (ctx->thermal_hint != ctx->last_thermal_hint)
 				ctx->param_change |= MTK_ENCODE_PARAM_THERMAL_THROTTLE;
 		}
 	}
-	mtk_vcodec_dvfs_qos_log(true,
-		"[VENC][VDVFS] thermal_hint enable event %lu", event);
+	mutex_unlock(&dev->ctx_mutex);
 
 	return NOTIFY_OK;
 }
