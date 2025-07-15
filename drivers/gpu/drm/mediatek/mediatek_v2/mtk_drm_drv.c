@@ -1537,6 +1537,9 @@ static enum mml_mode _mtk_atomic_mml_plane(struct drm_device *dev,
 			goto err_submit;
 		}
 
+		if (mtk_crtc->mml_disabled)
+			return MML_MODE_UNKNOWN;
+
 		mtk_drm_idlemgr_kick(__func__, crtc, false); /* power on dsi */
 
 		/* fill back mml submit roi to crtc_state roi */
@@ -1552,6 +1555,9 @@ static enum mml_mode _mtk_atomic_mml_plane(struct drm_device *dev,
 			memcpy(&crtc_state->mml_dst_roi_dual[1], &mtk_crtc->mml_cfg->dl_out[1],
 			    sizeof(struct mml_rect));
 		mtk_crtc->mml_cfg->disp_id = mtk_crtc->cur_present_fence_idx;
+
+		CRTC_MMP_MARK(0, mml_dbg, crtc_state->prop_val[CRTC_PROP_LYE_IDX],
+			MMP_MML_RESUBMIT);
 
 		ret = mml_drm_submit(mml_ctx, mtk_crtc->mml_cfg, &(mtk_crtc->mml_cb));
 		mml_drm_put_context(mml_ctx);	/* ref cnt dec */
@@ -1713,6 +1719,9 @@ static enum mml_mode _mtk_atomic_mml_plane(struct drm_device *dev,
 	}
 	mtk_crtc->is_mml_submit = true;
 	mtk_crtc->is_mml_submit_success = true;
+	mtk_crtc->mml_disabled = false;
+	CRTC_MMP_MARK(0, mml_dbg, crtc_state->prop_val[CRTC_PROP_LYE_IDX],
+		MMP_MML_PLANE_ENABLED);
 
 	atomic_set(&(mtk_crtc->wait_mml_last_job_is_flushed), 0);
 
@@ -1803,6 +1812,24 @@ static void mtk_atomic_mml(struct drm_device *dev,
 				mtk_plane_state->mml_cfg = mtk_crtc->mml_cfg_pq;
 			}
 		}
+	}
+
+	if (!mtk_crtc->is_mml_submit) {
+		for_each_old_plane_in_state(state, plane, old_plane_state, i) {
+			plane_state = plane->state;
+			mtk_plane_state = to_mtk_plane_state(plane_state);
+			if (plane_state && !plane_state->crtc &&
+				mtk_plane_state->prop_val[PLANE_PROP_IS_MML]) {
+				mtk_crtc->mml_disabled = true;
+				break;
+			}
+		}
+	}
+	if (mtk_crtc->mml_disabled) {
+		mtk_crtc->is_mml_submit = false;
+		mtk_crtc_state->lye_state.mml_dl_lye = 0;
+		CRTC_MMP_MARK(0, mml_dbg, mtk_crtc_state->prop_val[CRTC_PROP_LYE_IDX],
+			MMP_MML_PLANE_DISABLED);
 	}
 
 	/* return this function when CRTC's no plane to update and exist lye_state with mml lye config */

@@ -1366,6 +1366,7 @@ struct mtk_drm_crtc {
 			bool is_mml_dl;
 			bool is_mml_submit;
 			bool is_mml_submit_success;
+			bool mml_disabled;
 			bool skip_check_trigger;
 			bool is_mml_dc;
 			bool is_force_mml_scen;

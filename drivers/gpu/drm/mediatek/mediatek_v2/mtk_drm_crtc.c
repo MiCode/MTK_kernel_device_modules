@@ -5593,7 +5593,8 @@ static void _mtk_crtc_lye_addon_module_disconnect(
 		mtk_addon_get_comp(crtc, lye_state->mml_ir_lye, &addon_config.config_type.tgt_comp, NULL);
 		mml_addon_module_disconnect(crtc, ddp_mode, addon_module[0], addon_module[1],
 					    &addon_config, cmdq_handle);
-		CRTC_MMP_MARK(0, mml_dbg, lye_state->mml_ir_lye, 0x8000000 | MMP_ADDON_DISCONNECT);
+		CRTC_MMP_MARK(0, mml_dbg, lye_state->mml_ir_lye,
+			MMP_MML_IR_LYE | MMP_ADDON_DISCONNECT);
 	}
 
 	if (lye_state->mml_dl_lye) {
@@ -5608,7 +5609,8 @@ static void _mtk_crtc_lye_addon_module_disconnect(
 		mtk_addon_get_comp(crtc, lye_state->mml_dl_lye, &addon_config.config_type.tgt_comp, NULL);
 		mml_addon_module_disconnect(crtc, ddp_mode, addon_module[0], addon_module[1],
 					    &addon_config, cmdq_handle);
-		CRTC_MMP_MARK(0, mml_dbg, lye_state->mml_dl_lye, 0x4000000 | MMP_ADDON_DISCONNECT);
+		CRTC_MMP_MARK(0, mml_dbg, lye_state->mml_dl_lye,
+			MMP_MML_DL_LYE | MMP_ADDON_DISCONNECT);
 	}
 }
 
@@ -6393,7 +6395,8 @@ static void _mtk_crtc_lye_addon_module_connect(
 		mtk_addon_get_comp(crtc, lye_state->mml_ir_lye, &addon_config.config_type.tgt_comp, NULL);
 		mml_addon_module_connect(crtc, ddp_mode, addon_module[0], addon_module[1],
 					 &addon_config, cmdq_handle);
-		CRTC_MMP_MARK(0, mml_dbg, lye_state->mml_ir_lye, 0x8000000 | MMP_ADDON_CONNECT);
+		CRTC_MMP_MARK(0, mml_dbg, lye_state->mml_ir_lye,
+			MMP_MML_IR_LYE | MMP_ADDON_CONNECT);
 	}
 
 	if (lye_state->mml_dl_lye) {
@@ -6418,7 +6421,8 @@ static void _mtk_crtc_lye_addon_module_connect(
 		}
 		mml_addon_module_connect(crtc, ddp_mode, addon_module[0], addon_module[1],
 					 &addon_config, cmdq_handle);
-		CRTC_MMP_MARK(0, mml_dbg, lye_state->mml_dl_lye, 0x4000000 | MMP_ADDON_CONNECT);
+		CRTC_MMP_MARK(0, mml_dbg, lye_state->mml_dl_lye,
+			MMP_MML_DL_LYE | MMP_ADDON_CONNECT);
 	}
 	DDPINFO("%s -\n", __func__);
 }
