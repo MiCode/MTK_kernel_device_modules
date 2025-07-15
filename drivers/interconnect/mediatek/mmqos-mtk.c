@@ -526,9 +526,9 @@ static u32 get_max_channel_bw_in_common(u32 comm_id)
 	u32 max_bw = 0, i;
 
 	for (i = 0; i < MMQOS_COMM_CHANNEL_NUM; i++) {
-		max_bw = max_t(u32, max_bw, chn_hrt_r_bw[comm_id][i] * 10 / 7);
+		max_bw = max_t(u32, max_bw, chn_hrt_r_bw[comm_id][i]);
 		max_bw = max_t(u32, max_bw, chn_srt_r_bw[comm_id][i]);
-		max_bw = max_t(u32, max_bw, chn_hrt_w_bw[comm_id][i] * 10 / 7);
+		max_bw = max_t(u32, max_bw, chn_hrt_w_bw[comm_id][i]);
 		max_bw = max_t(u32, max_bw, chn_srt_w_bw[comm_id][i]);
 	}
 
