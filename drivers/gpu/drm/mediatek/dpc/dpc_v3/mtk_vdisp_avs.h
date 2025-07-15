@@ -103,6 +103,7 @@ struct mtk_vdisp_aging_data {
 struct mtk_vdisp_avs_data {
 	const struct mtk_vdisp_aging_data *aging;
 	const struct mtk_vdisp_efuse_data *efuse;
+	const uint32_t mcl50_step;
 };
 
 struct mtk_vdisp_up_data {
@@ -189,6 +190,7 @@ static const struct mtk_vdisp_avs_data mt6991_vdisp_avs_driver_data = {
 static const struct mtk_vdisp_avs_data default_vdisp_avs_driver_data = {
 	.aging = &default_vdisp_aging_driver_data,
 	.efuse = &mtk_vdisp_efuse_default_data,
+	.mcl50_step = 13,
 };
 
 static const struct mtk_vdisp_up_data mt6991_vdisp_up_driver_data = {

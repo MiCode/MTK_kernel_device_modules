@@ -678,6 +678,7 @@ int mtk_vdisp_efuse_probe(struct platform_device *pdev)
 int mtk_vdisp_avs_probe(struct platform_device *pdev)
 {
 	int ret, sw_ver, opp_tbl_num;
+	struct device_node *node = of_find_node_by_path("/chosen");
 	unsigned long freq = 0;
 	struct dev_pm_opp *opp;
 	struct device *dev = &pdev->dev;
@@ -725,8 +726,20 @@ int mtk_vdisp_avs_probe(struct platform_device *pdev)
 		VDISPDBG("fail to get efuse");
 
 	/* signal to uP start supporting AVS */
-	if(vdisp_avs_ipi_send_slot_enable_vcp(FUNC_IPI_MGK_SUPPORT_AVS, 1))
-		VDISPDBG("fail to enable MGK support AVS");
+	if (!node)
+		node = of_find_node_by_path("/chosen@0");
+	if (!node)
+		VDISPDBG("chosen node not found in device tree");
+
+	if (node && of_property_read_bool(node, "mtk-force-mcl50")
+		&& g_vdisp_up_data && g_vdisp_up_data->avs) {
+		if (vdisp_avs_ipi_send_slot_enable_vcp(FUNC_IPI_AVS_STEP,
+			(0 << 16) | g_vdisp_up_data->avs->mcl50_step))
+			VDISPDBG("fail to set mcl50 setting");
+	} else {
+		if (vdisp_avs_ipi_send_slot_enable_vcp(FUNC_IPI_MGK_SUPPORT_AVS, 1))
+			VDISPDBG("fail to enable MGK support AVS");
+	}
 
 	/* OPP related operation */
 	// A0/B0 chip discrimination
