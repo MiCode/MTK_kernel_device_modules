@@ -105,7 +105,6 @@ static u8 vcore_level_count;
 static u8 *vcore_level;
 
 static bool ccf_ena_support, ccf_ena_called, is_ccf_enable;
-static DEFINE_MUTEX(ccf_enable_mutex);
 static int mmdvfs_disp_clk_id;
 
 enum {
@@ -1755,11 +1754,16 @@ static void mmdvfs_v3_release_step(bool enable_vcp)
 		}
 	}
 
-	mutex_lock(&ccf_enable_mutex);
-	if(ccf_ena_support)
+
+	if(ccf_ena_support) {
+		mmdvfs_set_ccf_enable_mutex(true);
+		MMDVFS_DBG("mmdvfs_vcp_cb_ready:%d is_ccf_enable:%d ccf_ena_called:%d",
+			mmdvfs_vcp_cb_ready, is_ccf_enable, ccf_ena_called);
+
 		ret = mmdvfs_vcp_ipi_send(FUNC_VOTE_OPP, USER_DISP_AP,
 			mtk_mmdvfs_clks[mmdvfs_disp_clk_id].freq_num - 1, NULL);
-	mutex_unlock(&ccf_enable_mutex);
+		mmdvfs_set_ccf_enable_mutex(false);
+	}
 
 	if (enable_vcp)
 		mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMDVFS_VOTE);
@@ -1854,7 +1858,6 @@ static void mmdvfs_ap_ccf_enable_notifier(const bool enable)
 		return;
 	}
 
-	mutex_lock(&ccf_enable_mutex);
 	if(!ccf_ena_called)
 		ccf_ena_called = true;
 	is_ccf_enable = enable;
@@ -1862,7 +1865,6 @@ static void mmdvfs_ap_ccf_enable_notifier(const bool enable)
 	if(!is_ccf_enable && mmdvfs_vcp_cb_ready) //this func is called in vcp enable duration
 		mmdvfs_vcp_ipi_send(FUNC_VOTE_OPP, USER_DISP_AP,
 			mtk_mmdvfs_clks[mmdvfs_disp_clk_id].freq_num - 1, NULL);
-	mutex_unlock(&ccf_enable_mutex);
 }
 
 static int mmdvfs_mmup_notifier_callback(struct notifier_block *nb, unsigned long action, void *data)
@@ -1876,12 +1878,18 @@ static int mmdvfs_mmup_notifier_callback(struct notifier_block *nb, unsigned lon
 		mmdvfs_rst_clk_done = false;
 		mmdvfs_release_step_done = false;
 
-		mutex_lock(&ccf_enable_mutex);
-		if (ccf_ena_support && (!ccf_ena_called || is_ccf_enable))
-			ret = mmdvfs_vcp_ipi_send(FUNC_MMDVFS_INIT, USER_DISP_AP, MAX_OPP, NULL);
-		else
+		if (ccf_ena_support) {
+			mmdvfs_set_ccf_enable_mutex(true);
+			MMDVFS_DBG("mmdvfs_vcp_cb_ready:%d is_ccf_enable:%d ccf_ena_called:%d",
+				mmdvfs_vcp_cb_ready, is_ccf_enable, ccf_ena_called);
+
+			ret = mmdvfs_vcp_ipi_send(FUNC_MMDVFS_INIT, (!ccf_ena_called || is_ccf_enable) ?
+				USER_DISP_AP : MAX_OPP, MAX_OPP, NULL);
+
+			mmdvfs_set_vcp_cb_ready(true);
+			mmdvfs_set_ccf_enable_mutex(false);
+		} else
 			ret = mmdvfs_vcp_ipi_send(FUNC_MMDVFS_INIT, MAX_OPP, MAX_OPP, NULL);
-		mutex_unlock(&ccf_enable_mutex);
 		if (ret)
 			break;
 		if (dpc_fp[0])
@@ -1909,14 +1917,26 @@ static int mmdvfs_mmup_notifier_callback(struct notifier_block *nb, unsigned lon
 				readl(MEM_SRAM_MUX_CB_VAL_OFS),
 				(unsigned long)(void *)mmdvfs_mux_cb_val_sram_va);
 		}
-		mutex_lock(&mmdvfs_vcp_cb_mutex);
-		mmdvfs_vcp_cb_ready = true;
-		mutex_unlock(&mmdvfs_vcp_cb_mutex);
-		mutex_lock(&ccf_enable_mutex);
-		if(ccf_ena_support && ccf_ena_called && !is_ccf_enable)
-			ret = mmdvfs_vcp_ipi_send(FUNC_VOTE_OPP, USER_DISP_AP,
-				mtk_mmdvfs_clks[mmdvfs_disp_clk_id].freq_num - 1, NULL);
-		mutex_unlock(&ccf_enable_mutex);
+		if (!ccf_ena_support) {
+			mutex_lock(&mmdvfs_vcp_cb_mutex);
+			mmdvfs_vcp_cb_ready = true;
+			mutex_unlock(&mmdvfs_vcp_cb_mutex);
+		} else {
+			// v2::ccf_enable_mutex before v3::vcp_cb_mutex
+			mmdvfs_set_ccf_enable_mutex(true);
+
+			mutex_lock(&mmdvfs_vcp_cb_mutex);
+			mmdvfs_vcp_cb_ready = true;
+			mutex_unlock(&mmdvfs_vcp_cb_mutex);
+
+			MMDVFS_DBG("mmdvfs_vcp_cb_ready:%d is_ccf_enable:%d ccf_ena_called:%d",
+				mmdvfs_vcp_cb_ready, is_ccf_enable, ccf_ena_called);
+
+			if (ccf_ena_called && !is_ccf_enable)
+				ret = mmdvfs_vcp_ipi_send(FUNC_VOTE_OPP, USER_DISP_AP,
+					mtk_mmdvfs_clks[mmdvfs_disp_clk_id].freq_num - 1, NULL);
+			mmdvfs_set_ccf_enable_mutex(false);
+		}
 		if (hqa_enable)
 			mtk_mmdvfs_enable_vmm(true);
 		break;
@@ -1928,9 +1948,21 @@ static int mmdvfs_mmup_notifier_callback(struct notifier_block *nb, unsigned lon
 		if (dpc_fp[0])
 			mmdvfs_rc_enable_cb_all(false, true);
 		mmdvfs_vcp_stop = true;
-		mutex_lock(&mmdvfs_vcp_cb_mutex);
-		mmdvfs_vcp_cb_ready = false;
-		mutex_unlock(&mmdvfs_vcp_cb_mutex);
+		if (!ccf_ena_support) {
+			mutex_lock(&mmdvfs_vcp_cb_mutex);
+			mmdvfs_vcp_cb_ready = false;
+			mutex_unlock(&mmdvfs_vcp_cb_mutex);
+		} else {
+			// v2::ccf_enable_mutex before v3::vcp_cb_mutex
+			mmdvfs_set_ccf_enable_mutex(true);
+
+			mutex_lock(&mmdvfs_vcp_cb_mutex);
+			mmdvfs_vcp_cb_ready = false;
+			mmdvfs_set_vcp_cb_ready(false);
+			mutex_unlock(&mmdvfs_vcp_cb_mutex);
+
+			mmdvfs_set_ccf_enable_mutex(false);
+		}
 		break;
 	case VCP_EVENT_SUSPEND:
 		mmdvfs_release_step_done = true;
@@ -1965,9 +1997,21 @@ static int mmdvfs_mmup_notifier_callback(struct notifier_block *nb, unsigned lon
 		}
 		cb_timestamp[1] = sched_clock();
 		mmdvfs_reset_vcp();
-		mutex_lock(&mmdvfs_vcp_cb_mutex);
-		mmdvfs_vcp_cb_ready = false;
-		mutex_unlock(&mmdvfs_vcp_cb_mutex);
+		if (!ccf_ena_support) {
+			mutex_lock(&mmdvfs_vcp_cb_mutex);
+			mmdvfs_vcp_cb_ready = false;
+			mutex_unlock(&mmdvfs_vcp_cb_mutex);
+		} else {
+			// v2::ccf_enable_mutex before v3::vcp_cb_mutex
+			mmdvfs_set_ccf_enable_mutex(true);
+
+			mutex_lock(&mmdvfs_vcp_cb_mutex);
+			mmdvfs_vcp_cb_ready = false;
+			mmdvfs_set_vcp_cb_ready(false);
+			mutex_unlock(&mmdvfs_vcp_cb_mutex);
+
+			mmdvfs_set_ccf_enable_mutex(false);
+		}
 		break;
 	}
 	return NOTIFY_DONE;

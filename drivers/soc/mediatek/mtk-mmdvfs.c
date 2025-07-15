@@ -68,9 +68,11 @@ struct mmdvfs_drv_data {
 	bool lp_mode;
 	u32 last_opp_level;
 	bool disp_parallel;
+	bool ccf_ena_support;
 	bool is_ccf_enable;
 	bool ccf_enable_boot;
 	struct mutex ccf_enable_mutex;
+	bool mmdvfs_v3_vcp_cb_ready;
 };
 
 static struct regulator *vcore_reg_id;
@@ -237,7 +239,7 @@ static int mmdvfs_dbg_log_cb(struct notifier_block *nb,
 }
 
 static void set_all_clk(struct mmdvfs_drv_data *drv_data,
-			u32 voltage, bool vol_inc)
+			u32 voltage, bool vol_inc, bool ap_ccf_mutex)
 {
 	s32 i;
 	u32 opp_level;
@@ -253,15 +255,30 @@ static void set_all_clk(struct mmdvfs_drv_data *drv_data,
 
 	mutex_lock(&drv_data->lp_mutex);
 	do {
-		mutex_lock(&drv_data->ccf_enable_mutex);
-		if ((opp_level == drv_data->last_opp_level && !drv_data->ccf_enable_boot) || !drv_data->is_ccf_enable) {
-			mutex_unlock(&drv_data->ccf_enable_mutex);
-			break;
-		}
+		if (drv_data->ccf_ena_support) {
+			if (ap_ccf_mutex)
+				mmdvfs_set_ccf_enable_mutex(true);
 
-		if (drv_data->ccf_enable_boot)
-			drv_data->ccf_enable_boot = false;
-		mutex_unlock(&drv_data->ccf_enable_mutex);
+			pr_notice(
+				"%s: vcp_cb_ready:%d is_ccf_enable:%d ccf_enable_boot:%d voltage:%u vol_inc:%d ap_ccf_mutex:%d\n",
+				__func__,
+				drv_data->mmdvfs_v3_vcp_cb_ready, drv_data->is_ccf_enable, drv_data->ccf_enable_boot,
+				voltage, vol_inc, ap_ccf_mutex);
+
+			if ((opp_level == drv_data->last_opp_level &&
+				!drv_data->ccf_enable_boot) || !drv_data->is_ccf_enable) {
+				if (ap_ccf_mutex)
+					mmdvfs_set_ccf_enable_mutex(false);
+				break;
+			}
+
+			if (drv_data->ccf_enable_boot)
+				drv_data->ccf_enable_boot = false;
+
+			if (ap_ccf_mutex)
+				mmdvfs_set_ccf_enable_mutex(false);
+		} else if (opp_level == drv_data->last_opp_level)
+			break;
 
 		switch (drv_data->action) {
 		/* Voltage Increase: Hopping First, Decrease: MUX First*/
@@ -316,7 +333,7 @@ static int regulator_event_notify(struct notifier_block *nb,
 		MMDVFS_SYSTRACE_BEGIN("%s event=PRE_VOLTAGE_CHANGE old=%lu new=%lu\n",
 			__func__, pvc_data->old_uV, pvc_data->min_uV);
 		if (uV < pvc_data->old_uV) {
-			set_all_clk(drv_data, uV, false);
+			set_all_clk(drv_data, uV, false, true);
 			drv_data->request_voltage = uV;
 		} else if (uV > pvc_data->old_uV || unlikely(drv_data->request_voltage == 0)) {
 			drv_data->need_change_voltage = true;
@@ -330,7 +347,7 @@ static int regulator_event_notify(struct notifier_block *nb,
 		MMDVFS_SYSTRACE_BEGIN("%s event=VOLTAGE_CHANGE voltage=%lu\n",
 			__func__, uV);
 		if (drv_data->need_change_voltage) {
-			set_all_clk(drv_data, uV, true);
+			set_all_clk(drv_data, uV, true, true);
 			drv_data->need_change_voltage = false;
 			drv_data->request_voltage = uV;
 		}
@@ -344,7 +361,7 @@ static int regulator_event_notify(struct notifier_block *nb,
 		/* If clk was changed, restore to previous setting */
 		if (uV != drv_data->request_voltage) {
 			set_all_clk(drv_data, uV,
-				    uV > drv_data->request_voltage);
+				    uV > drv_data->request_voltage, true);
 			drv_data->need_change_voltage = false;
 			drv_data->request_voltage = uV;
 		}
@@ -382,6 +399,47 @@ void mmdvfs_ap_ccf_enable_notifier_set_fp(ap_ccf fp)
 }
 EXPORT_SYMBOL_GPL(mmdvfs_ap_ccf_enable_notifier_set_fp);
 
+int mmdvfs_set_ccf_enable_mutex(bool lock)
+{
+	struct mmdvfs_drv_data *drv_data;
+
+	if (!dbg_data)  {
+		pr_notice("%s: dbg_data is not ready!\n", __func__);
+		return -EINVAL;
+	}
+	drv_data = dbg_data->drv_data;
+
+	if (!drv_data->ccf_ena_support)
+		return 0;
+
+	if (lock)
+		mutex_lock(&drv_data->ccf_enable_mutex);
+	else
+		mutex_unlock(&drv_data->ccf_enable_mutex);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(mmdvfs_set_ccf_enable_mutex);
+
+int mmdvfs_set_vcp_cb_ready(bool enable)
+{
+	struct mmdvfs_drv_data *drv_data;
+
+	if (!dbg_data)  {
+		pr_notice("%s: dbg_data is not ready!\n", __func__);
+		return -EINVAL;
+	}
+	drv_data = dbg_data->drv_data;
+
+	if (!drv_data->ccf_ena_support)
+		return 0;
+
+	// caller should lock by mmdvfs_set_ccf_enable_mutex()
+	drv_data->mmdvfs_v3_vcp_cb_ready = enable;
+	return 0;
+}
+EXPORT_SYMBOL_GPL(mmdvfs_set_vcp_cb_ready);
+
 int mmdvfs_ap_ccf_enable(bool enable)
 {
 	struct mmdvfs_drv_data *drv_data;
@@ -392,25 +450,31 @@ int mmdvfs_ap_ccf_enable(bool enable)
 	}
 	drv_data = dbg_data->drv_data;
 
+	if (!drv_data->ccf_ena_support)
+		return 0;
+
+	mmdvfs_set_ccf_enable_mutex(true);
+	if (enable && drv_data->mmdvfs_v3_vcp_cb_ready) {
+		pr_notice("%s: vcp_cb_ready:%d\n", __func__, drv_data->mmdvfs_v3_vcp_cb_ready);
+		mmdvfs_set_ccf_enable_mutex(false);
+		return 0;
+	}
+
+	pr_notice("%s: vcp_cb_ready:%d is_ccf_enable:%d ccf_enable_boot:%d enable:%d\n", __func__,
+		drv_data->mmdvfs_v3_vcp_cb_ready, drv_data->is_ccf_enable, drv_data->ccf_enable_boot, enable);
+
 	if (enable) {
-		mutex_lock(&drv_data->ccf_enable_mutex);
 		drv_data->is_ccf_enable = true;
 		drv_data->ccf_enable_boot = true;
-		mutex_unlock(&drv_data->ccf_enable_mutex);
-		set_all_clk(drv_data, drv_data->request_voltage, true);
-		pr_notice("is_ccf_enable:%d ccf_enable_boot:%d",
-			drv_data->is_ccf_enable, drv_data->ccf_enable_boot);
+		set_all_clk(drv_data, drv_data->request_voltage, true, false);
 	} else {
-		mutex_lock(&drv_data->ccf_enable_mutex);
 		drv_data->is_ccf_enable = false;
 		drv_data->ccf_enable_boot = false;
-		mutex_unlock(&drv_data->ccf_enable_mutex);
-		pr_notice("is_ccf_enable:%d ccf_enable_boot:%d",
-			drv_data->is_ccf_enable, drv_data->ccf_enable_boot);
 	}
 
 	if (ap_ccf_fp)
 		ap_ccf_fp(enable);
+	mmdvfs_set_ccf_enable_mutex(false);
 
 	return 0;
 }
@@ -534,9 +598,9 @@ int mmdvfs_dbg_clk_set(int step, bool is_force)
 					pr_notice("%s: step=%d volt=%d r_volt=%d is_force=%d\n",
 							__func__, step, volt, v_real, is_force);
 				}
-				set_all_clk(drv_data, volt, true);
+				set_all_clk(drv_data, volt, true, true);
 			} else {
-				set_all_clk(drv_data, volt, false);
+				set_all_clk(drv_data, volt, false, true);
 				regulator_set_voltage(
 					dbg_data->reg, volt, INT_MAX);
 				if (!IS_ERR(vcore_reg_id)) {
@@ -689,6 +753,7 @@ static int mmdvfs_probe(struct platform_device *pdev)
 	unsigned long freq;
 	struct dev_pm_opp *opp;
 	struct clk *clk;
+	struct device_node *mmdvfs_clk_node;
 
 #if IS_ENABLED(CONFIG_MMPROFILE)
 	mmprofile_enable(1);
@@ -827,6 +892,14 @@ static int mmdvfs_probe(struct platform_device *pdev)
 	mmdvfs_dbg = kzalloc(sizeof(*mmdvfs_dbg), GFP_KERNEL);
 	if (!mmdvfs_dbg)
 		return -ENOMEM;
+
+	mmdvfs_clk_node = of_parse_phandle(dev->of_node, "mediatek,mmdvfs-clk", 0);
+	if (!mmdvfs_clk_node)
+		pr_notice("%s: find mmdvfs_clk node failed\n", __func__);
+	else
+		if (of_property_read_bool(mmdvfs_clk_node, "mmdvfs-ap-ccf-support"))
+			drv_data->ccf_ena_support = true;
+	pr_notice("%s: ccf_ena_support:%d\n", __func__, drv_data->ccf_ena_support);
 
 	mmdvfs_dbg->nb.notifier_call = mmdvfs_dbg_log_cb;
 	mtk_smi_dbg_register_notifier(&mmdvfs_dbg->nb);
