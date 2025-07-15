@@ -5265,6 +5265,12 @@ static long ISP_ioctl(struct file *pFile, unsigned int Cmd, unsigned long Param)
 					ret = clk_set_rate(cam_mmdvfs_clk, freq);
 					if (ret)
 						LOG_NOTICE("ISP_DFS_UPDATE: E_CLK_UPDATE(%lu) failed!\n", freq);
+					else {
+						unsigned long getClk;
+
+						getClk = clk_get_rate(cam_mmdvfs_clk);
+						LOG_NOTICE("ISP_DFS_UPDATE: get cam_mmdvfs_clk(%lu)\n", getClk);
+					}
 				}
 			} else {
 				ISP_SetPMQOS(E_CLK_UPDATE, ISP_IRQ_TYPE_INT_CAM_A_ST,
