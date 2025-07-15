@@ -1773,15 +1773,15 @@
 			cgroup-colocate = <0>;          /* 0:disable, 1:enable */
 			runnable-boost-enable = <0>;    /* 0:disable, 1:enable */
 			/* VP Low Power */
-			cpu-pf-ctrl = <0>;              /* 0:disable, 1:enable */
-			margin-control = <0 0 0>;/* <0 0 0>:disable     */
+			cpu-pf-ctrl = <1>;              /* 0:disable, 1:enable */
+			margin-control = <1000000 20 0>;/* <0 0 0>:disable     */
 			rt-non-idle-preempt = <0>;      /* 0:disable, 1:enable */
-			runnable-boost-disable = <0>;   /* 0:disable, 1:enable */
+			runnable-boost-disable = <1>;   /* 0:disable, 1:enable */
 			slc-wce-ctrl = <0>;             /* 0:disable, 1:enable */
 			util-est-boost-disable = <0>;   /* 0:disable, 1:enable */
 			/* Transcoding */
 			ct-to-vip = <0>;                /* 0:disable, 1:enable */
-			uclamp-min-ta-val = <0>;      /* 0:disable, others:enable */
+			uclamp-min-ta-val = <100>;      /* 0:disable, others:enable */
 		};
 
 		bus_parity {
@@ -8275,6 +8275,7 @@
 						"path_vdec_ufo_enc", "path_vdec_ufo_enc_c",
 						"path_vdec_mc_c", "path_larb5";
 			interconnect-num = <22>;
+			vdec-mmdvfs-in-adaptive = <1>;
 			dvfs-qos-ver = <2>;
 			throughput-op-rate-thresh = <120>;
 			throughput-min = <218000000>;
