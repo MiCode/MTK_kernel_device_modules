@@ -260,8 +260,7 @@ static int mmdvfs_debug_dump_volt_freq(struct seq_file *file)
 		MMDVFS_DBG("mmdvfs_debug_work fail : cannot dump regulator");
 
 	for (i = 0; i < mux_count; i++)
-		mmdvfs_seq_print(file, "mux:%d [%#x]=%#x",
-			i, mux_base_pa + mux_offset[i], readl(mux_base + mux_offset[i]));
+		mmdvfs_seq_print(file, "mux:%d val:%#x", i, readl(mux_base + mux_offset[i]));
 
 	for (i = 0; i < fmeter_count; i++) {
 		val = mt_get_fmeter_freq(fmeter_id[i], fmeter_type[i]);
@@ -308,7 +307,7 @@ static int mmdvfs_debug_v5_record_snapshot(void)
 	mmup_cb_ready = mmdvfs_mmup_cb_ready_get();
 
 	if (!mmup_cb_ready || !unlikely(SRAM_BASE)) {
-		MMDVFS_ERR("mmup_cb_ready:%d SRAM_BASE:%#lx", mmup_cb_ready, (unsigned long)(void *)SRAM_BASE);
+		MMDVFS_ERR("mmup_cb_ready:%d SRAM_BASE:%d", mmup_cb_ready, SRAM_BASE ? true : false);
 		goto record_snapshot_end;
 	}
 
@@ -361,7 +360,7 @@ static int mmdvfs_debug_v5_status_dump(struct seq_file *file)
 	if (!ret || !unlikely(SRAM_BASE)) {
 		mmdvfs_mmup_cb_mutex_unlock();
 		mtk_mmdvfs_enable_vcp(false, user ? user[0].id : 0);
-		mmdvfs_seq_print(file, "mmup_cb_ready:%d SRAM_BASE:%#lx", ret, (unsigned long)(void *)SRAM_BASE);
+		mmdvfs_seq_print(file, "mmup_cb_ready:%d SRAM_BASE:%d", ret, SRAM_BASE ? true : false);
 		return 0;
 	}
 
@@ -566,7 +565,7 @@ static int mmdvfs_debug_mbrain_pwr_get_data(void *address, uint32_t size)
 	if (!ret || !unlikely(SRAM_BASE)) {
 		mmdvfs_mmup_cb_mutex_unlock();
 		mtk_mmdvfs_enable_vcp(false, user ? user[0].id : 0);
-		MMDVFS_DBG("mmup_cb_ready:%d mmup_sram:%#lx", ret, (unsigned long)(void *)SRAM_BASE);
+		MMDVFS_ERR("mmup_cb_ready:%d SRAM_BASE:%d", ret, SRAM_BASE ? true : false);
 		return 0;
 	}
 
@@ -633,7 +632,7 @@ static int mmdvfs_debug_mbrain_usr_get_data(void *address, uint32_t size)
 	if (!ret || !unlikely(SRAM_BASE)) {
 		mmdvfs_mmup_cb_mutex_unlock();
 		mtk_mmdvfs_enable_vcp(false, user ? user[0].id : 0);
-		MMDVFS_DBG("mmup_cb_ready:%d mmup_sram:%#lx", ret, (unsigned long)(void *)SRAM_BASE);
+		MMDVFS_ERR("mmup_cb_ready:%d SRAM_BASE:%d", ret, SRAM_BASE ? true : false);
 		return 0;
 	}
 
@@ -712,7 +711,7 @@ static int mmdvfs_v5_dbg_ftrace_thread(void *data)
 		if (!ret || !unlikely(SRAM_BASE)) {
 			mmdvfs_mmup_cb_mutex_unlock();
 			mtk_mmdvfs_enable_vcp(false, user ? user[0].id : 0);
-			MMDVFS_DBG("mmup_cb_ready:%d SRAM_BASE:%#lx", ret, (unsigned long)(void *)SRAM_BASE);
+			MMDVFS_ERR("mmup_cb_ready:%d SRAM_BASE:%d", ret, SRAM_BASE ? true : false);
 			continue;
 		}
 
