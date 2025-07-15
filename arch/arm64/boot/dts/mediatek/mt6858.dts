@@ -1795,6 +1795,7 @@
 					  &smi_cam_sub_comm1>;
 		dbg-version = <2>;
 		hwccf-support;
+		clk-dbg-dump;
 	};
 
 	smi_pd_dis0: smi-pd-dis0 {
