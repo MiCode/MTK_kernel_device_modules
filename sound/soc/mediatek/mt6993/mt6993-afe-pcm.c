@@ -1345,12 +1345,14 @@ static int mt6993_adsp_mem_get(struct snd_kcontrol *kcontrol,
 	case AUDIO_TASK_USBDL_ID:
 	case AUDIO_TASK_MDUL_ID:
 	case AUDIO_TASK_CALLDL_ID:
+	case AUDIO_TASK_HFCALL_MUSIC_ID:
 #if (IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP) && IS_ENABLED(CONFIG_MTK_ADSP_AUTO_MULTI_PLAYBACK_SUPPORT))
 	case AUDIO_TASK_SUB_PLAYBACK_ID:
 #endif
 #if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_HFP_CLIENT_SUPPORT)
 	case AUDIO_TASK_HFP_CLIENT_TX_ADSP_ID:
 #endif
+	case AUDIO_TASK_HFCALL_UL_ID:
 		memif_num = get_dsp_task_attr(task_id,
 					      ADSP_TASK_ATTR_MEMDL);
 		break;
@@ -1374,6 +1376,7 @@ static int mt6993_adsp_mem_get(struct snd_kcontrol *kcontrol,
 #if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
 	case AUDIO_TASK_CAPTURE_MCH_ID:
 #endif
+	case AUDIO_TASK_HFCALL_DL_ID:
 		memif_num = get_dsp_task_attr(task_id,
 					      ADSP_TASK_ATTR_MEMUL);
 		break;
@@ -1415,6 +1418,8 @@ static int mt6993_adsp_mem_set(struct snd_kcontrol *kcontrol,
 	case AUDIO_TASK_USBDL_ID:
 	case AUDIO_TASK_MDUL_ID:
 	case AUDIO_TASK_CALLDL_ID:
+	case AUDIO_TASK_HFCALL_UL_ID:
+	case AUDIO_TASK_HFCALL_MUSIC_ID:
 		dl_memif_num = get_dsp_task_attr(task_id,
 						 ADSP_TASK_ATTR_MEMDL);
 		break;
@@ -1427,6 +1432,7 @@ static int mt6993_adsp_mem_set(struct snd_kcontrol *kcontrol,
 #if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
 	case AUDIO_TASK_CAPTURE_MCH_ID:
 #endif
+	case AUDIO_TASK_HFCALL_DL_ID:
 		ul_memif_num = get_dsp_task_attr(task_id,
 						 ADSP_TASK_ATTR_MEMUL);
 		break;
@@ -2056,6 +2062,18 @@ static const struct snd_kcontrol_new mt6993_pcm_kcontrols[] = {
 			   mt6993_adsp_mem_get,
 			   mt6993_adsp_mem_set),
 	SOC_SINGLE_EXT("adsp_btul_sharemem_scenario",
+			   SND_SOC_NOPM, 0, 0x1, 0,
+			   mt6993_adsp_mem_get,
+			   mt6993_adsp_mem_set),
+	SOC_SINGLE_EXT("adsp_hfcall_dl_sharemem_scenario",
+			   SND_SOC_NOPM, 0, 0x1, 0,
+			   mt6993_adsp_mem_get,
+			   mt6993_adsp_mem_set),
+	SOC_SINGLE_EXT("adsp_hfcall_ul_sharemem_scenario",
+			   SND_SOC_NOPM, 0, 0x1, 0,
+			   mt6993_adsp_mem_get,
+			   mt6993_adsp_mem_set),
+	SOC_SINGLE_EXT("adsp_hfincallmusic_sharemem_scenario",
 			   SND_SOC_NOPM, 0, 0x1, 0,
 			   mt6993_adsp_mem_get,
 			   mt6993_adsp_mem_set),

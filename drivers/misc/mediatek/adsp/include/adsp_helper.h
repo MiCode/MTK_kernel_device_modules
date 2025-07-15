@@ -74,6 +74,10 @@ enum adsp_feature_id {
 	SPATIALIZER_FEATURE_ID          = 31,
 	DYNAMIC_FEATURE_ID	        = 32,
 	PCIE_FEATURE_ID                 = 33,
+	HFCALL_DL_FEATURE_ID            = 34,
+	HFCALL_UL_FEATURE_ID            = 35,
+	HFCALL_MUSIC_FEATURE_ID         = 36,
+	UL_PROCESS2_FEATURE_ID          = 37,
 #if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_HFP_CLIENT_SUPPORT)
 	HFP_CLIENT_RX_FEATURE_ID,
 #endif

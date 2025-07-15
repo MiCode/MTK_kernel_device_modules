@@ -1066,8 +1066,24 @@ SND_SOC_DAILINK_DEFS(dspbtul,
 	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_btul_dai")),
 	DAILINK_COMP_ARRAY(COMP_DUMMY()),
 	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
+SND_SOC_DAILINK_DEFS(dsphfcalldl,
+	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_hfcall_dl_dai")),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
+SND_SOC_DAILINK_DEFS(dsphfcallul,
+	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_hfcall_ul_dai")),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
+SND_SOC_DAILINK_DEFS(dsphfcallmusic,
+	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_hfcall_music_dai")),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
 SND_SOC_DAILINK_DEFS(dspulproc,
 	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_ulproc_dai")),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
+SND_SOC_DAILINK_DEFS(dspulproc2,
+	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_ulproc2_dai")),
 	DAILINK_COMP_ARRAY(COMP_DUMMY()),
 	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
 SND_SOC_DAILINK_DEFS(dspechodl,
@@ -2256,6 +2272,26 @@ static struct snd_soc_dai_link mt6993_mt6681_dai_links[] = {
 		.name = "DSP_Capture_Process",
 		.stream_name = "DSP_Capture_Process",
 		SND_SOC_DAILINK_REG(dspulproc),
+	},
+	{
+		.name = "DSP_Capture_Process2",
+		.stream_name = "DSP_Capture_Process2",
+		SND_SOC_DAILINK_REG(dspulproc2),
+	},
+	{
+		.name = "DSP_HFCall_UL",
+		.stream_name = "DSP_HFCall_UL",
+		SND_SOC_DAILINK_REG(dsphfcallul),
+	},
+	{
+		.name = "DSP_HFCall_DL",
+		.stream_name = "DSP_HFCall_DL",
+		SND_SOC_DAILINK_REG(dsphfcalldl),
+	},
+	{
+		.name = "DSP_HFCall_Music",
+		.stream_name = "DSP_HFCall_Music",
+		SND_SOC_DAILINK_REG(dsphfcallmusic),
 	},
 	{
 		.name = "DSP_Playback_Echoref",

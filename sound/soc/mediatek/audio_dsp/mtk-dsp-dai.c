@@ -239,10 +239,54 @@ static struct snd_soc_dai_driver mtk_dai_dsp_driver[] = {
 			},
 	},
 	{
+		.name = "audio_task_hfcall_dl_dai",
+		.id = AUDIO_TASK_HFCALL_DL_ID,
+		.capture = {
+				.stream_name = "DSP_HFCall_DL",
+				.channels_min = 1,
+				.channels_max = 4,
+				.rates = MTK_I2S_RATES,
+				.formats = MTK_I2S_FORMATS,
+			},
+	},
+	{
+		.name = "audio_task_hfcall_ul_dai",
+		.id = AUDIO_TASK_HFCALL_UL_ID,
+		.playback = {
+				.stream_name = "DSP_HFCall_UL",
+				.channels_min = 1,
+				.channels_max = 2,
+				.rates = MTK_I2S_RATES,
+				.formats = MTK_I2S_FORMATS,
+			},
+	},
+	{
+		.name = "audio_task_hfcall_music_dai",
+		.id = AUDIO_TASK_HFCALL_MUSIC_ID,
+		.playback = {
+				.stream_name = "DSP_HFCall_Music",
+				.channels_min = 1,
+				.channels_max = 2,
+				.rates = MTK_I2S_RATES,
+				.formats = MTK_I2S_FORMATS,
+			},
+	},
+	{
 		.name = "audio_task_ulproc_dai",
 		.id = AUDIO_TASK_UL_PROCESS_ID,
 		.capture = {
 				.stream_name = "DSP_Capture_Process",
+				.channels_min = 1,
+				.channels_max = 4,
+				.rates = MTK_I2S_RATES,
+				.formats = MTK_I2S_FORMATS,
+			},
+	},
+	{
+		.name = "audio_task_ulproc2_dai",
+		.id = AUDIO_TASK_UL_PROCESS2_ID,
+		.capture = {
+				.stream_name = "DSP_Capture_Process2",
 				.channels_min = 1,
 				.channels_max = 4,
 				.rates = MTK_I2S_RATES,
