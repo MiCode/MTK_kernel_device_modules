@@ -370,10 +370,34 @@ static void check_cm_mgr_status_mt6858(unsigned int cluster, unsigned int freq,
 static void cm_mgr_thermal_hint(int is_thermal)
 {
 	pr_info("%s(%d): is_thermal %d.\n", __func__, __LINE__, is_thermal);
+
+	if (!cm_mgr_get_enable())
+		return;
+
 	cm_mgr_set_perf_mode_enable(!(is_thermal & 0x01));
 	cm_mgr_to_sspm_command(IPI_CM_MGR_PERF_MODE_ENABLE,
 		cm_mgr_get_perf_mode_enable());
 	cm_mgr_to_sspm_command(IPI_CM_MGR_ENABLE, !(is_thermal & 0x02));
+}
+
+static int cm_mgr_check_node_register(struct platform_device *pdev)
+{
+	int ret = 0;
+	int temp = 0;
+	struct device_node *node = pdev->dev.of_node;
+
+	ret = of_property_read_u32(node, "cm-mgr-node-register", &temp);
+	if (ret) {
+		CM_DBG_PRINT("%s(%d): fail to get cm_mgr_node_register from dts. ret %d\n",
+			__func__, __LINE__, ret);
+		goto ERROR;
+	} else {
+		CM_DBG_PRINT("%s(%d): cm_mgr_node_register %d\n", __func__, __LINE__,
+			temp);
+		return temp;
+	}
+ERROR:
+	return ret;
 }
 
 static int cm_mgr_check_dts_setting_mt6858(struct platform_device *pdev)
@@ -478,6 +502,22 @@ static int platform_cm_mgr_probe(struct platform_device *pdev)
 	int ret = 0;
 
 	spin_lock_init(&cm_mgr_lock);
+
+	/*
+	 *	if cm-mgr-node-register = 0, bypass node register flow
+	 *		-> cmqos default off, and user cannot open cmqos by adb cmd.
+	 *	if cm-mgr-node-register = 1 && cm-mgr-enable = 0
+	 *		-> cmqos default off, but user can open cmqos by adb cmd.
+	 *	if cm-mgr-node-register = 1 && cm-mgr-enable = 0
+	 *		-> cmqos default on.
+	 */
+	ret = cm_mgr_check_node_register(pdev);
+	if (!ret) {
+		pr_info("%s(%d): cm_mgr fail to register cm node. ret %d\n",
+			__func__, __LINE__, ret);
+		goto ERROR;
+	}
+
 	ret = cm_mgr_check_dts_setting_mt6858(pdev);
 	if (ret) {
 		pr_info("%s(%d): fail to get platform data from dts. ret %d\n",
