@@ -24,6 +24,7 @@
 #endif
 #include "mtk_iommu.h"
 #include "clk-mtk.h"
+#include "clkchk.h"
 #include "mmdvfs_v3.h"
 //#include <dt-bindings/memory/mtk-smi-larb-port.h>
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)
@@ -499,6 +500,7 @@ static struct mtk_smi_dbg	*gsmi;
 static bool smi_enter_met;
 static u32 dbg_version;
 static bool skip_bug_on;
+static bool clk_dbg_dump;
 
 #define LINE_MAX_LEN		(800)
 
@@ -1574,6 +1576,9 @@ static int mtk_smi_dbg_probe(struct platform_device *dbg_pdev)
 
 	if (of_property_read_bool(dev->of_node, "skip-bug-On"))
 		skip_bug_on = true;
+
+	if (of_property_read_bool(dev->of_node, "clk-dbg-dump"))
+		clk_dbg_dump = true;
 
 	smi->probe = true;
 	return 0;
@@ -2685,6 +2690,9 @@ static void __mtk_smi_dbg_hang_detect(char *user)
 	/* if bus hang, then BUG_ON */
 	if (is_hang) {
 		pr_notice("[smi] smi may hang\n");
+		if (clk_dbg_dump)
+			clkchk_external_dump();
+
 		/* skip bug_on for legecy chips */
 		if (!skip_bug_on)
 			BUG_ON(1);
