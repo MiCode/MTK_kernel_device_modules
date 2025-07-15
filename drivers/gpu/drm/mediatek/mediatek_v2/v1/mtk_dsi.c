@@ -4925,7 +4925,13 @@ static void mipi_dsi_dcs_write_gce2(struct mtk_dsi *dsi, struct cmdq_pkt *dummy,
 static void mtk_dsi_cmdq_pack_gce(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 					struct mtk_ddic_dsi_cmd *para_table);
 
-static void mtk_output_en_doze_switch(struct mtk_dsi *dsi)
+enum dsi_transfer_mode {
+	TRANSFER_CMD_MODE,
+	TRANSFER_VDO_MODE,
+	TRANSFER_MODE
+};
+
+static void mtk_output_en_doze_switch(struct mtk_dsi *dsi, enum dsi_transfer_mode mode)
 {
 	bool doze_enabled = mtk_dsi_doze_state(dsi);
 	struct mtk_panel_funcs *panel_funcs;
@@ -4952,16 +4958,26 @@ static void mtk_output_en_doze_switch(struct mtk_dsi *dsi)
 		struct mtk_dsi_cmd_option cmd_opt = { 0 };
 
 		cmd_opt.flags = MTK_MIPI_DSI_GCE_CREATE_HANDLE |
-						MTK_MIPI_DSI_GCE_USE_CFG_THREAD |
 						MTK_MIPI_DSI_GCE_BLOCKING_FLUSH;
+
+		if (mode == TRANSFER_CMD_MODE) {
+			cmd_opt.flags |= MTK_MIPI_DSI_GCE_USE_CFG_THREAD |
+							MTK_DSI_FROCE_CMD_MODE_TRANSFER;
+		} else
+			cmd_opt.flags |= MTK_MIPI_DSI_GCE_USE_DSI_THREAD;
 		panel_funcs->doze_enable_start_v2(dsi->panel, dsi,
 					mtk_mipi_dsi_cmd, NULL, &cmd_opt);
 	} else if ((mtk_dsi_cmd_version() == DSI_CMD_V2) && (!doze_enabled) && panel_funcs->doze_disable_v2) {
 		struct mtk_dsi_cmd_option cmd_opt = { 0 };
 
 		cmd_opt.flags = MTK_MIPI_DSI_GCE_CREATE_HANDLE |
-						MTK_MIPI_DSI_GCE_USE_CFG_THREAD |
 						MTK_MIPI_DSI_GCE_BLOCKING_FLUSH;
+
+		if (mode == TRANSFER_CMD_MODE) {
+			cmd_opt.flags |= MTK_MIPI_DSI_GCE_USE_CFG_THREAD |
+							MTK_DSI_FROCE_CMD_MODE_TRANSFER;
+		} else
+			cmd_opt.flags |= MTK_MIPI_DSI_GCE_USE_DSI_THREAD;
 		panel_funcs->doze_disable_v2(dsi->panel, dsi,
 				mtk_mipi_dsi_cmd, NULL, &cmd_opt);
 	} else if (doze_enabled && panel_funcs->doze_enable_start) {
@@ -5034,8 +5050,13 @@ static void mtk_output_en_doze_switch(struct mtk_dsi *dsi)
 		struct mtk_dsi_cmd_option cmd_opt = { 0 };
 
 		cmd_opt.flags = MTK_MIPI_DSI_GCE_CREATE_HANDLE |
-						MTK_MIPI_DSI_GCE_USE_CFG_THREAD |
 						MTK_MIPI_DSI_GCE_BLOCKING_FLUSH;
+
+		if (mode == TRANSFER_CMD_MODE) {
+			cmd_opt.flags |= MTK_MIPI_DSI_GCE_USE_CFG_THREAD |
+							MTK_DSI_FROCE_CMD_MODE_TRANSFER;
+		} else
+			cmd_opt.flags |= MTK_MIPI_DSI_GCE_USE_DSI_THREAD;
 		panel_funcs->doze_enable_v2(dsi->panel, dsi,
 					mtk_mipi_dsi_cmd, NULL, &cmd_opt);
 	} else if (doze_enabled && panel_funcs->doze_enable)
@@ -5046,8 +5067,13 @@ static void mtk_output_en_doze_switch(struct mtk_dsi *dsi)
 		struct mtk_dsi_cmd_option cmd_opt = { 0 };
 
 		cmd_opt.flags = MTK_MIPI_DSI_GCE_CREATE_HANDLE |
-						MTK_MIPI_DSI_GCE_USE_CFG_THREAD |
 						MTK_MIPI_DSI_GCE_BLOCKING_FLUSH;
+
+		if (mode == TRANSFER_CMD_MODE) {
+			cmd_opt.flags |= MTK_MIPI_DSI_GCE_USE_CFG_THREAD |
+							MTK_DSI_FROCE_CMD_MODE_TRANSFER;
+		} else
+			cmd_opt.flags |= MTK_MIPI_DSI_GCE_USE_DSI_THREAD;
 		panel_funcs->doze_area_v2(dsi->panel, dsi,
 			mtk_mipi_dsi_cmd, NULL, &cmd_opt);
 	} else if (doze_enabled && panel_funcs->doze_area)
@@ -5058,8 +5084,13 @@ static void mtk_output_en_doze_switch(struct mtk_dsi *dsi)
 		struct mtk_dsi_cmd_option cmd_opt = { 0 };
 
 		cmd_opt.flags = MTK_MIPI_DSI_GCE_CREATE_HANDLE |
-						MTK_MIPI_DSI_GCE_USE_CFG_THREAD |
 						MTK_MIPI_DSI_GCE_BLOCKING_FLUSH;
+
+		if (mode == TRANSFER_CMD_MODE) {
+			cmd_opt.flags |= MTK_MIPI_DSI_GCE_USE_CFG_THREAD |
+							MTK_DSI_FROCE_CMD_MODE_TRANSFER;
+		} else
+			cmd_opt.flags |= MTK_MIPI_DSI_GCE_USE_DSI_THREAD;
 		panel_funcs->doze_post_disp_on_v2(dsi->panel,
 			dsi, mtk_mipi_dsi_cmd, NULL,  &cmd_opt);
 	} else if (panel_funcs->doze_post_disp_on)
@@ -5952,9 +5983,13 @@ static void mtk_output_dsi_enable(struct mtk_dsi *dsi,
 	mtk_vidle_force_power_ctrl_by_cpu(true);
 
 	if (dsi->output_en) {
+		/* cmd mode: TRANSFER_CMD_MODE, vdo mode: TRANSFER_VDO_MODE*/
+		enum dsi_transfer_mode mode = mtk_dsi_is_cmd_mode(&dsi->ddp_comp) ?
+					TRANSFER_CMD_MODE : TRANSFER_VDO_MODE;
+
 		if (mtk_dsi_doze_status_change(dsi)) {
 			mtk_dsi_pre_cmd(dsi, crtc);
-			mtk_output_en_doze_switch(dsi);
+			mtk_output_en_doze_switch(dsi, mode);
 			mtk_dsi_post_cmd(dsi, crtc);
 		} else
 			DDPINFO("dsi is initialized\n");
@@ -6166,14 +6201,13 @@ static void mtk_output_dsi_enable(struct mtk_dsi *dsi,
 			/* We use doze_get_mode_flags to determine if
 			 * there has CV switch in Doze mode.
 			 */
-			if (ext && ext->funcs && ext->funcs->doze_post_disp_on_v2
-				&& ext->funcs->doze_get_mode_flags) {
+			if ((mtk_dsi_cmd_version() == DSI_CMD_V2) && ext && ext->funcs &&
+				ext->funcs->doze_post_disp_on_v2 && ext->funcs->doze_get_mode_flags) {
 				struct mtk_dsi_cmd_option cmd_opt = { 0 };
 
 				cmd_opt.flags = MTK_MIPI_DSI_GCE_CREATE_HANDLE |
-						MTK_MIPI_DSI_GCE_USE_CFG_THREAD |
-						MTK_MIPI_DSI_GCE_BLOCKING_FLUSH |
-						MTK_DSI_FROCE_CMD_MODE_TRANSFER;
+						MTK_MIPI_DSI_GCE_USE_DSI_THREAD |
+						MTK_MIPI_DSI_GCE_BLOCKING_FLUSH;
 				ext->funcs->doze_post_disp_on_v2(dsi->panel,
 					dsi, mtk_mipi_dsi_cmd, NULL,  &cmd_opt);
 			} else if (ext && ext->funcs
@@ -6381,7 +6415,7 @@ SKIP_WAIT_FRAME_DONE:
 				DRM_ERROR("failed to unprepare the panel\n");
 			CRTC_MMP_MARK(crtc_idx, dsi_suspend, 2, 3);
 		} else if (new_doze_state && !dsi->doze_enabled) {
-			mtk_output_en_doze_switch(dsi);
+			mtk_output_en_doze_switch(dsi, TRANSFER_CMD_MODE);
 		}
 	}
 
@@ -11575,10 +11609,10 @@ static int mtk_dsi_cmd_transfer(struct mtk_dsi *mtk_dsi, struct cmdq_pkt *handle
 			DDPMSG("%s, notice!! panel_mode != dsi mode\n", __func__, panel_mode, dsi_mode);
 
 		/* stop vdo is run by external and use cmd mode directly */
-		if (cmd_msg->vdo_mode_flag == MTK_DSI_SKIP_STOP_VDO_MODE) {
+		if (cmd_msg->vdo_mode_flag & MTK_DSI_SKIP_STOP_VDO_MODE) {
 			DDPDSI_CMD("%s, skip stop vdo mode, use cmd mode\n", __func__);
 			goto cmd_mode_transfer;
-		} else if ((cmd_msg->vdo_mode_flag == MTK_DSI_FORCE_STOP_VDO_MODE) ||
+		} else if ((cmd_msg->vdo_mode_flag & MTK_DSI_FORCE_STOP_VDO_MODE) ||
 			(cmd_msg->transfer_mode == PACKET_LP_MODE) ||
 			((cmd_msg->transfer_mode == PACKET_NULL) && mtk_dsi_use_lp_mode_by_cmd(cmd_msg)) ||
 			(cmd_msg->cmd_num > 1 && cmd_msg->is_package) ||
@@ -11721,6 +11755,13 @@ cmd_mode_transfer:
 
 		return rd_total_sz;
 	}
+
+	// panel and dsi are vdo mode all, but user no "stop/vdo mode"
+	if (!panel_mode && dsi_mode &&
+		!(cmd_msg->vdo_mode_flag == MTK_DSI_SKIP_STOP_VDO_MODE) &&
+		need_start_vdo_mode != true)
+		DDPPR_ERR("%s error, panel and dsi are vdo mode, but use cmd mode send?, flag:0x%x, vdo_flag:0x%x\n",
+				__func__, flags, cmd_msg->vdo_mode_flag);
 
 	CRTC_MMP_MARK(index, ddic_cmd_v2_msg, 3, cmd_msg->cmd_num);
 	for (i = 0; i < cmd_msg->cmd_num; i++) {
