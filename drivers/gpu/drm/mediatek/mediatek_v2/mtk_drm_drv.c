@@ -10214,10 +10214,6 @@ static void mtk_drm_kms_lateinit(struct kthread_work *work)
 	mtk_mminfra_off_gipc();
 	mtk_dump_mminfra_ck(private);
 
-#ifndef DRM_OVL_SELF_PATTERN
-	mtk_drm_assert_init(drm);
-#endif
-
 	if (is_bdg_supported())
 		bdg_first_init();
 }
