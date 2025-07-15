@@ -2218,9 +2218,11 @@ static void u2_phy_instance_set_mode(struct mtk_xsphy *xsphy,
 					phy_set_mode_ext(xsphy->repeater[i],
 						PHY_MODE_USB_DEVICE, PHY_MODE_DPPULLUP_SET);
 			}
-			mtk_phy_set_bits(inst->port_base + XSP_USBPHYACR3,
-					(P2A3_RG_USB20_PUPD_BIST_EN |
-					P2A3_RG_USB20_EN_PU_DP));
+			/* for legacy USB2 to pullup DP */
+			if (xsphy->num_rptr == 0)
+				mtk_phy_set_bits(inst->port_base + XSP_USBPHYACR3,
+						(P2A3_RG_USB20_PUPD_BIST_EN |
+						P2A3_RG_USB20_EN_PU_DP));
 			break;
 		case PHY_MODE_DPPULLUP_CLR:
 			/* eUSB2 rptr to pulldown DP */
@@ -2229,9 +2231,11 @@ static void u2_phy_instance_set_mode(struct mtk_xsphy *xsphy,
 					phy_set_mode_ext(xsphy->repeater[i],
 						PHY_MODE_USB_DEVICE, PHY_MODE_DPPULLUP_CLR);
 			}
-			mtk_phy_clear_bits(inst->port_base + XSP_USBPHYACR3,
-					(P2A3_RG_USB20_PUPD_BIST_EN |
-					P2A3_RG_USB20_EN_PU_DP));
+			/* for legacy USB2 to pullup DP */
+			if (xsphy->num_rptr == 0)
+				mtk_phy_clear_bits(inst->port_base + XSP_USBPHYACR3,
+						(P2A3_RG_USB20_PUPD_BIST_EN |
+						P2A3_RG_USB20_EN_PU_DP));
 			break;
 		case PHY_MODE_DIS_PRE_EMP:
 			for (i = 0; i < xsphy->num_rptr; i++) {
