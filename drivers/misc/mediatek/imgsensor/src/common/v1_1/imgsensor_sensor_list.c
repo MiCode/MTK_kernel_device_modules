@@ -571,9 +571,21 @@ struct IMGSENSOR_SENSOR_LIST
 #if defined(HI1339_MIPI_RAW)
 {HI1339_SENSOR_ID, SENSOR_DRVNAME_HI1339_MIPI_RAW, HI1339_MIPI_RAW_SensorInit},
 #endif
+
 #if defined(S5K4H7FRONT_MIPI_RAW)
 {S5K4H7FRONT_SENSOR_ID, SENSOR_DRVNAME_S5K4H7FRONT_MIPI_RAW, S5K4H7FRONT_MIPI_RAW_SensorInit},
 #endif
+
+/*  ISD sensor driver below this line, don't move the driver define*/
+#if defined(OV13B10MAIN_MIPI_RAW)
+{OV13B10MAIN_SENSOR_ID, SENSOR_DRVNAME_OV13B10MAIN_MIPI_RAW,
+	OV13B10MAIN_MIPI_RAW_SensorInit},
+#endif
+
+#if defined(SC800CS_MIPI_RAW)
+{SC800CS_LY_SENSOR_ID, SENSOR_DRVNAME_SC800CS_MIPI_RAW, SC800CS_MIPI_RAW_SensorInit},
+#endif
+
 
 	/*  ADD sensor driver before this line */
 	{0, {0}, NULL}, /* end of list */
