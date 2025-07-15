@@ -754,6 +754,7 @@ static unsigned int vcp_crash_dump(enum vcp_core_id id)
 		unsigned long polling = 1;
 		int retry = POLLING_RETRY;
 
+		writel(readl(VCP_EE_STAGE) | VCP_EE_START, VCP_EE_STAGE);
 		vcp_do_dump();
 
 		while (polling != 0 && retry > 0) {

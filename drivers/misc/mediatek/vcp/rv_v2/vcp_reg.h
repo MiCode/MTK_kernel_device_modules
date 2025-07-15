@@ -140,10 +140,12 @@
 #define R_CORE1_TBUF1_DATA127_96        (vcpreg.cfg_core1 + 0x00fc)
 
 #define R_CORE0_GENERAL_REG0            (vcpreg.cfg_core0 + 0x0040)
+	#define VCP_EE_STAGE                R_CORE0_GENERAL_REG0
+	#define VCP_EE_START                (1U << 0)
 #define R_CORE0_GENERAL_REG1            (vcpreg.cfg_core0 + 0x0044)
-	#define DRAM_RESV_ADDR_REG_VCP        R_CORE0_GENERAL_REG1
+	#define DRAM_RESV_ADDR_REG_VCP      R_CORE0_GENERAL_REG1
 #define R_CORE0_GENERAL_REG2            (vcpreg.cfg_core0 + 0x0048)
-	#define DRAM_RESV_SIZE_REG_VCP        R_CORE0_GENERAL_REG2
+	#define DRAM_RESV_SIZE_REG_VCP      R_CORE0_GENERAL_REG2
 #define R_CORE0_GENERAL_REG3            (vcpreg.cfg_core0 + 0x004C)
 	#define DRAM_RESV_LOGGER_REG_VCP    R_CORE0_GENERAL_REG3
 #define R_CORE0_GENERAL_REG4            (vcpreg.cfg_core0 + 0x0050)
@@ -156,9 +158,9 @@
 #define R_CORE0_GENERAL_REG7            (vcpreg.cfg_core0 + 0x005C)
 #define R_CORE1_GENERAL_REG0            (vcpreg.cfg_core1 + 0x0040)
 #define R_CORE1_GENERAL_REG1            (vcpreg.cfg_core1 + 0x0044)
-	#define DRAM_RESV_ADDR_REG_MMUP        R_CORE1_GENERAL_REG1
+	#define DRAM_RESV_ADDR_REG_MMUP     R_CORE1_GENERAL_REG1
 #define R_CORE1_GENERAL_REG2            (vcpreg.cfg_core1 + 0x0048)
-	#define DRAM_RESV_SIZE_REG_MMUP        R_CORE1_GENERAL_REG2
+	#define DRAM_RESV_SIZE_REG_MMUP     R_CORE1_GENERAL_REG2
 #define R_CORE1_GENERAL_REG3            (vcpreg.cfg_core1 + 0x004C)
 	#define DRAM_RESV_LOGGER_REG_MMUP   R_CORE1_GENERAL_REG3
 #define R_CORE1_GENERAL_REG4            (vcpreg.cfg_core1 + 0x0050)
