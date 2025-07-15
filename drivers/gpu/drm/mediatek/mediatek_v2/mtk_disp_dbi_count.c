@@ -588,6 +588,7 @@ void mtk_crtc_dbi_count_cfg(struct mtk_drm_crtc *mtk_crtc, struct mtk_crtc_state
 					DISP_DBI_COUNT_IRQ_CLR, value, handle);
 				mtk_dbi_count_write_mask(dbi_count, value,
 					DISP_DBI_COUNT_IRQ_MASK, value, handle);
+				count_data->frame_done_irq_en = 1;
 			}
 
 			disp_pq_set_test_flag(TEST_FLAG_DBI_COUNT);
@@ -1843,6 +1844,8 @@ static void mtk_dbi_count_config(struct mtk_ddp_comp *comp,
 		if(dbi_count->irq_num && dbi_count->data->irq_handler) {
 			value = 0;
 			value |= DBI_COUNT_EOF;
+			if(dbi_count->frame_done_irq_en)
+				value |= DBI_COUNT_FRAME_DONE;
 			mtk_dbi_count_write_mask(comp, value,
 				DISP_DBI_COUNT_IRQ_MASK, value, handle);
 		}
@@ -3044,7 +3047,7 @@ static irqreturn_t mtk_dbi_count_irq_handler(int irq, void *dev_id)
 	}
 
 	if(status & DBI_COUNT_FRAME_DONE) {
-
+		dbi_count->frame_done_irq_en = 0;
 		value = 0;
 		mask = 0;
 		mask |= DBI_COUNT_FRAME_DONE;

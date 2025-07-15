@@ -76,6 +76,7 @@ struct mtk_disp_dbi_count {
 	uint32_t last_hrt;
 	uint32_t irq_num;
 	uint32_t show_gain;
+	uint32_t frame_done_irq_en;
 };
 
 struct dbi_count_block_info {
