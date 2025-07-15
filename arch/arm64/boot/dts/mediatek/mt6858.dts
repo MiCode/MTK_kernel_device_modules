@@ -11088,6 +11088,10 @@ dramc: dramc@10230000 {
 	mediatek,bypass-vant18 = <1>;
 };
 
+&mtk_gauge {
+	evb-fg-off = <1>;
+};
+
 #include "mediatek/bat_setting/mt6858_battery_prop.dtsi"
 
 /delete-node/ &mt6363_vbuck1_sshub;

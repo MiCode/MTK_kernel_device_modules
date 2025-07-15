@@ -21,7 +21,7 @@
 	/* System shutdown current */
 	fg-meter-resistance = <(70)>;
 	/* The resistance of PCB */
-	car-tune-value = <(100)>;
+	car-tune-value = <(99)>;
 	/* Tune value for current measurement */
 	pmic-min-vol = <(25000)>;
 	/* vboot voltage for gauge 0%*/
