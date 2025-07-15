@@ -81,5 +81,6 @@ extern int core_ctl_set_max_cpus(unsigned int cid, unsigned int max, int request
 extern int pd_freq2opp(int cpu, int opp, int quant, int wl);
 extern int core_ctl_consider_VIP(unsigned int enable);
 extern int core_ctl_force_pause_request(unsigned int cpu, bool is_pause, unsigned int request_mask);
+extern unsigned int core_ctl_get_force_pause_mask(void);
 
 #endif /* _CORE_CTL_H */

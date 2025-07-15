@@ -1373,6 +1373,12 @@ int core_ctl_force_pause_cpu(unsigned int cpu, bool is_pause)
 }
 EXPORT_SYMBOL(core_ctl_force_pause_cpu);
 
+unsigned int core_ctl_get_force_pause_mask(void)
+{
+	return cpu_force_pause_mask.bits[0];
+}
+EXPORT_SYMBOL(core_ctl_get_force_pause_mask);
+
 static ssize_t store_thermal_up_thres(struct cluster_data *state,
 		const char *buf, size_t threshold)
 {
