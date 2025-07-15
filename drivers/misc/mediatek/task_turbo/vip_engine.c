@@ -102,6 +102,8 @@ static atomic_t loom_cpu_dedicated_enable;
 static const char * const caller_id_desc[] = {
 	"DEBUG_NODE", "FPSGO", "UX", "VIDEO"
 };
+int (*loom_set_cpus_allowed_ptr_by_kernel_fp)(struct task_struct *p, const struct cpumask *new_mask);
+EXPORT_SYMBOL(loom_set_cpus_allowed_ptr_by_kernel_fp);
 
 struct devinfo_tag {
 	u32 data_size;
@@ -2117,7 +2119,10 @@ static int loom_set_affinity(int pid, int aff_cpu)
 		goto out_put_task;
 	}
 
-	ret = set_cpus_allowed_ptr(p, &aff_mask);
+	if (loom_set_cpus_allowed_ptr_by_kernel_fp)
+		ret = loom_set_cpus_allowed_ptr_by_kernel_fp(p, &aff_mask);
+	else
+		ret = set_cpus_allowed_ptr(p, &aff_mask);
 
 out_put_task:
 	put_task_struct(p);
@@ -2199,6 +2204,7 @@ static int loom_specify_pause(int pid, int aff_cpu)
 {
 	unsigned long flags;
 	int i, ret = 0;
+	bool dup_set = false;
 	int rec_pid[MAX_LOOM_BUF_SIZE], rec_aff_cpu[MAX_LOOM_BUF_SIZE];
 	int tmp_pid, tmp_aff_cpu;
 
@@ -2218,6 +2224,12 @@ static int loom_specify_pause(int pid, int aff_cpu)
 			continue;
 
 		if (tmp_aff_cpu == aff_cpu) {
+			/* set already setting again */
+			if (tmp_pid == pid) {
+				dup_set = true;
+				break;
+			}
+
 			pr_info("%s: CPU#%d is already bound to pid=%d\n",
 				__func__, tmp_aff_cpu, tmp_pid);
 			ret = -EINVAL;
@@ -2225,6 +2237,10 @@ static int loom_specify_pause(int pid, int aff_cpu)
 		}
 	}
 	spin_unlock_irqrestore(&loom_affinity_lock, flags);
+	if (dup_set) {
+		ret = core_ctl_force_pause_request(aff_cpu, true, LOOM_FORCE_PAUSE);
+		goto print_log;
+	}
 	/* CPU already been bound or force paused */
 	if (ret < 0)
 		return ret;
@@ -2244,6 +2260,7 @@ static int loom_specify_pause(int pid, int aff_cpu)
 	if (aff_cpu != LOOM_NO_AFFINITY)
 		ret = loom_update_affinity_buf(pid, aff_cpu);
 
+print_log:
 	for(i=0; i<MAX_LOOM_BUF_SIZE; i++) {
 		spin_lock_irqsave(&loom_affinity_lock, flags);
 		rec_pid[i] = loom_rec_buffer[i].pid;
@@ -2252,7 +2269,7 @@ static int loom_specify_pause(int pid, int aff_cpu)
 	}
 
 	trace_loom_bind_to_specify_cpu(atomic_read(&loom_cpu_dedicated_enable),
-		rec_pid, rec_aff_cpu);
+		rec_pid, rec_aff_cpu, dup_set, ret);
 	return ret;
 }
 
