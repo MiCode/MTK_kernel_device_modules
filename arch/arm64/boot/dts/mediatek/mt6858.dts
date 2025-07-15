@@ -729,6 +729,10 @@
 		emi-size = <0x1400000>;
 		emi-alignment = <0x1000000>;
 		emi-max-addr = <0xc0000000>;
+
+		/* efuse access */
+		nvmem-cells = <&efuse_segment>;
+		nvmem-cell-names = "efuse_segment_cell";
 	};
 
 	bus-parity@c538800 {
