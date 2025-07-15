@@ -15765,6 +15765,12 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			status = "okay";
 		};
 
+		fpsgo: fpsgo {
+			compatible = "mediatek,fpsgo";
+			cpu-limit = <2>;
+			fbt-cpu-mask = <255 128 15 127 240 112>;
+		};
+
 		smmu_hyp_vms: smmu-hyp-vms {
 			compatible = "mtk,smmu-hyp-vms";
 			/* vm-no-map-ranges = <IPA.high IPA.low size.high size.low> */
