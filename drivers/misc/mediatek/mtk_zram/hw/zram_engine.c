@@ -12,6 +12,7 @@
 
 #include <linux/kthread.h>
 #include <linux/sched.h>
+#include <uapi/linux/sched/types.h>
 #include <linux/sched_clock.h>
 #include <linux/swap.h>
 #include <linux/highmem.h>
@@ -1264,11 +1265,17 @@ exit:
 static int comp_post_process(void *data)
 {
 	struct zram_engine_t *hwz = data;
+	struct sched_attr attr = {
+		.sched_policy = SCHED_NORMAL,
+		.sched_nice = -10,
+	};
 	unsigned long pflags;
 	uint32_t processed, total_processed;
 	uint32_t hang_detect, suspect_hang;
 	int cnt;
 	DEFINE_WAIT(wait);
+
+	WARN_ON_ONCE(sched_setattr_nocheck(current, &attr) != 0);
 
 	current->flags |= PF_MEMALLOC;
 
