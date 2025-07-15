@@ -15,6 +15,8 @@
 #include <linux/dma-heap.h>
 #include <linux/vmalloc.h>
 #include <linux/of_platform.h>
+#include <linux/jiffies.h>
+#include <linux/ktime.h>
 
 #include "mtk_drm_crtc.h"
 #include "mtk_drm_ddp_comp.h"
@@ -285,6 +287,8 @@ static int mtk_dbi_count_get_mode_by_fmt(struct mtk_dbi_count_helper *helper, en
 	} while (0)
 
 #define log_en (1)
+
+static struct mtk_dbi_count_irq irq_check = { 0 };
 
 #define DBI_COUNT_INFO(fmt, arg...) do { \
 			if (log_en) \
@@ -2961,6 +2965,8 @@ static int mtk_disp_dbi_count_probe(struct platform_device *pdev)
 	atomic_set(&priv->current_count_mode, 0);
 	atomic_set(&priv->new_count_mode, 0);
 
+	irq_check.irq_need_check = 1;
+
 	DDPMSG("%s-\n", __func__);
 	return ret;
 }
@@ -2980,6 +2986,27 @@ static irqreturn_t mtk_dbi_count_irq_handler(int irq, void *dev_id)
 	uint32_t status_raw, status = 0;
 	struct mtk_ddp_comp *comp;
 	uint32_t value,mask;
+	unsigned long irq_idx_tmp;
+	ktime_t irq_time_diff;
+	ktime_t irq_curr_time = ktime_get();
+
+	if (irq_check.irq_need_check) {
+		irq_check.irq_time[irq_check.irq_idx] = irq_curr_time;
+		irq_check.irq_idx++;
+		if(irq_check.irq_idx >= 10){
+			irq_check.irq_idx = 0;
+			irq_check.irq_full = 1;
+		}
+
+		if (irq_check.irq_full) {
+			irq_idx_tmp = irq_check.irq_idx;
+			irq_time_diff = irq_curr_time - irq_check.irq_time[irq_idx_tmp];
+			if(ktime_to_ms(irq_time_diff) < 11) {
+				irq_check.irq_err = 1;
+				irq_check.irq_need_check = 0;
+			}
+		}
+	}
 
 	if (IS_ERR_OR_NULL(dbi_count))
 		return IRQ_NONE;
@@ -2994,8 +3021,15 @@ static irqreturn_t mtk_dbi_count_irq_handler(int irq, void *dev_id)
 	status = mtk_dbi_count_read(comp, DISP_DBI_COUNT_IRQ_STATUS);
 	mtk_dbi_count_write(comp, status, DISP_DBI_COUNT_IRQ_CLR, NULL);
 	mtk_dbi_count_write(comp, 0, DISP_DBI_COUNT_IRQ_CLR, NULL);
-	DDPIRQ("%s %s irq, val:0x%x,0x%x\n", __func__, mtk_dump_comp_str(comp),
-		status_raw, status);
+	if(irq_check.irq_err) {
+		PC_ERR("%s %s irq, val:0x%x,0x%x\n", __func__, mtk_dump_comp_str(comp),
+			status_raw, status);
+		irq_check.irq_err++;
+		if(irq_check.irq_err > 25)
+			irq_check.irq_err = 0;
+	} else
+		DDPIRQ("%s %s irq, val:0x%x,0x%x\n", __func__, mtk_dump_comp_str(comp),
+			status_raw, status);
 	if(status & DBI_COUNT_INT_DONE) {
 		atomic_set(&dbi_count->buffer_full, 1);
 		CRTC_MMP_MARK(0, dbi_merge, 0, 0);
@@ -3019,6 +3053,9 @@ static irqreturn_t mtk_dbi_count_irq_handler(int irq, void *dev_id)
 
 		queue_work(comp->mtk_crtc->dbi_data.dbi_event.work_queue, &comp->mtk_crtc->dbi_data.dbi_event.task);
 	}
+
+	if((!(status & DBI_COUNT_FRAME_DONE)) && (!(status & DBI_COUNT_INT_DONE)) && (!(status & DBI_COUNT_EOF)))
+		PC_ERR("receive abnormal status %x", status);
 
 	mtk_drm_top_clk_isr_put(comp);
 	return IRQ_HANDLED;

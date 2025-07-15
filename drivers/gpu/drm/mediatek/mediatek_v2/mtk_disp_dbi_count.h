@@ -84,6 +84,14 @@ struct dbi_count_block_info {
 	uint32_t channel;
 };
 
+struct mtk_dbi_count_irq {
+	ktime_t irq_time[10];
+	unsigned long irq_idx;
+	unsigned long irq_full;
+	unsigned long irq_err;
+	unsigned long irq_need_check;
+};
+
 int mtk_dbi_count_wait_disable_finish(struct mtk_ddp_comp *comp, void *data);
 int mtk_drm_crtc_get_count_fence_ioctl(struct drm_device *dev, void *data,
 				struct drm_file *file_priv);
