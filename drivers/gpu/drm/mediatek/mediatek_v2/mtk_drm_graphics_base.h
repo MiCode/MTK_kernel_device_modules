@@ -6,6 +6,16 @@
 #ifndef _MTK_DRM_GRAPHICS_BASE_H_
 #define _MTK_DRM_GRAPHICS_BASE_H_
 
+// The plane property of Y2R_MATRIX_IDX should combine with MTK_DRM_DATASPACE_STANDARD and
+// MTK_DRM_DATASPACE_RANGE. However, we have two specifix value:
+// 0x00000000: Some platforms do not use this flow, so it must be compatible with old solution.
+//             When Y2R_MATRIX_IDX is 0, exdma have to choose the corrent Y2R config by itself.
+// 0xFFFFFFFF: Because fourCC does not have YUVA8888 and YUVA1010102, we use RGBA8888 as YUVA8888
+//             and RGBA1010102 as YUVA1010102. Therefore, display driver can not recognize them.
+//             Then we use this information to know the truth of buffer format.
+#define MTK_DRM_Y2R_MATRIX_LEGACY_MODE 0
+#define MTK_DRM_Y2R_MATRIX_DISABLE     0xFFFFFFFF
+
 enum mtk_drm_dataspace {
 	MTK_DRM_DATASPACE_UNKNOWN = 0,
 	MTK_DRM_DATASPACE_ARBITRARY = 1,

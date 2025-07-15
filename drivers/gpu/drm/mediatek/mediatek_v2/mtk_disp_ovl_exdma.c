@@ -2689,6 +2689,9 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 		dim_color = 0xff000000;
 	}
 
+	DDPMSG("Aaron %s idx[%d] comp[%s] matrix_idx[%u]", __func__,
+		idx, mtk_dump_comp_str(comp), pending->prop_val[PLANE_PROP_OVL_Y2R_MATRIX_IDX]);
+
 	/* handle buffer de-compression */
 	if (exdma->data->compr_info && exdma->data->compr_info->l_config) {
 		if (exdma->data->compr_info->l_config(comp,
@@ -2763,14 +2766,22 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 			pending->prop_val[PLANE_PROP_COMPRESS]);
 	con |= (alpha_con << 8) | alpha;
 
-	if (fmt == DRM_FORMAT_UYVY || fmt == DRM_FORMAT_YUYV ||
-		pending->mml_mode == MML_MODE_DIRECT_LINK) {
-		unsigned int prop = (unsigned int)pending->prop_val[PLANE_PROP_DATASPACE];
 
+	if (pending->prop_val[PLANE_PROP_OVL_Y2R_MATRIX_IDX] == MTK_DRM_Y2R_MATRIX_LEGACY_MODE) {
+		if (fmt == DRM_FORMAT_UYVY || fmt == DRM_FORMAT_YUYV ||
+			pending->mml_mode == MML_MODE_DIRECT_LINK) {
+			unsigned int prop = (unsigned int)pending->prop_val[PLANE_PROP_DATASPACE];
+
+			con |= mtk_ovl_yuv_matrix_convert((enum mtk_drm_dataspace)prop);
+		} else if (fmt == DRM_FORMAT_Y410) {
+			DDPDBG("%s: DRM_FORMAT_Y410, dataspace set as BT601_FULL\n", __func__);
+			con |= mtk_ovl_yuv_matrix_convert(MTK_DRM_DATASPACE_V0_JFIF);
+		}
+	} else if (((unsigned int)pending->prop_val[PLANE_PROP_OVL_Y2R_MATRIX_IDX]) !=
+			MTK_DRM_Y2R_MATRIX_DISABLE) {
+
+		unsigned int prop = (unsigned int)pending->prop_val[PLANE_PROP_OVL_Y2R_MATRIX_IDX];
 		con |= mtk_ovl_yuv_matrix_convert((enum mtk_drm_dataspace)prop);
-	} else if (fmt == DRM_FORMAT_Y410) {
-		DDPDBG("%s: DRM_FORMAT_Y410, dataspace set as BT601_FULL\n", __func__);
-		con |= mtk_ovl_yuv_matrix_convert(MTK_DRM_DATASPACE_V0_JFIF);
 	}
 
 	mtk_addon_get_comp(crtc, mtk_crtc_state->lye_state.rpo_lye, &cmp_id, NULL);

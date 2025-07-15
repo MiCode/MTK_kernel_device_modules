@@ -234,6 +234,9 @@ static bool is_ovl_wcg(enum mtk_drm_dataspace ds)
 	case MTK_DRM_DATASPACE_V0_SCRGB:
 	case MTK_DRM_DATASPACE_V0_SCRGB_LINEAR:
 	case MTK_DRM_DATASPACE_DISPLAY_P3:
+	case MTK_DRM_DATASPACE_BT2020:
+	case MTK_DRM_DATASPACE_BT2020_PQ:
+	case MTK_DRM_DATASPACE_STANDARD_BT2020_CONSTANT_LUMINANCE:
 		ret = true;
 		break;
 	default:
@@ -301,7 +304,7 @@ static bool is_ovl_standard(struct drm_device *dev, enum mtk_drm_dataspace ds,
 	switch (std) {
 	case MTK_DRM_DATASPACE_STANDARD_BT2020:
 	case MTK_DRM_DATASPACE_STANDARD_BT2020_CONSTANT_LUMINANCE:
-		ret = false;
+		ret = true;
 		break;
 	default:
 		ret = true;
