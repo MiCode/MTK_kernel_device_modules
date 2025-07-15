@@ -16,6 +16,7 @@
 #include <linux/tracepoint.h>
 #include <linux/sched/task.h>
 #include <linux/kernel.h>
+#include <linux/kmemleak.h>
 #include <linux/sched/rt.h>
 #include <linux/sched/deadline.h>
 #include <trace/trace.h>
@@ -296,6 +297,8 @@ void *xgf_alloc(int size)
 	else
 		pvBuf = vzalloc(size);
 
+	if (pvBuf)
+		kmemleak_not_leak(pvBuf);
 	return pvBuf;
 }
 EXPORT_SYMBOL(xgf_alloc);
@@ -306,6 +309,8 @@ void *xgf_alloc_array(int num, int size)
 
 	pvBuf = kcalloc(num, size, GFP_KERNEL);
 
+	if (pvBuf)
+		kmemleak_not_leak(pvBuf);
 	return pvBuf;
 }
 EXPORT_SYMBOL(xgf_alloc_array);
