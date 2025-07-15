@@ -1945,6 +1945,24 @@ static struct notifier_block adsp_audio_notifier = {
 
 #endif
 
+void mtk_dsp_reset_afe_sharemem(void)
+{
+	struct mtk_base_afe *afe;
+
+	afe = get_afe_base();
+	if (!afe) {
+		pr_info("%s: null afe pointer\n", __func__);
+		return;
+	}
+
+	for (unsigned int i=0; i < afe->memif_size; i++) {
+		if (afe->memif[i].use_adsp_share_mem) {
+			afe->memif[i].use_adsp_share_mem = 0;
+			pr_info("%s: reset memif%d adsp share mem\n", __func__, i);
+		}
+	}
+}
+
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
 static int scp_audio_event_receive(struct notifier_block *this, unsigned long event,
 				   void *ptr)
@@ -1954,6 +1972,7 @@ static int scp_audio_event_receive(struct notifier_block *this, unsigned long ev
 	switch (event) {
 	case SCP_EVENT_STOP:
 		scp_standby_flag = 1;
+		mtk_dsp_reset_afe_sharemem();
 		pr_info("%s SCP_EVENT_STOP[%lu]\n", __func__, event);
 		break;
 	case SCP_EVENT_READY: {
