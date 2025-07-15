@@ -15837,6 +15837,8 @@ static int mtk_dsi_set_partial_update(struct mtk_ddp_comp *comp,
 						&comp->mtk_crtc->base, comp, true);
 	unsigned int full_height = mtk_crtc_get_height_by_comp(__func__,
 						&comp->mtk_crtc->base, comp, true);
+	unsigned int crop_thrpt_factor = 0;
+	unsigned int width = 0;
 	u32 val = 0, mask = 0;
 	unsigned int ps_wc = 0;
 
@@ -15895,10 +15897,11 @@ static int mtk_dsi_set_partial_update(struct mtk_ddp_comp *comp,
 			DDPDBG("%s, %s PU BISO mode, height:%d, enable:%d\n",
 					__func__, mtk_dump_comp_str(comp), partial_roi.height, enable);
 
+			crop_thrpt_factor = (panel_ext->params->is_cphy) ? 3 : 4;
 			SET_VAL_MASK(val, mask, 1, PU_EN);
 			SET_VAL_MASK(val, mask, 0, PU_SISO);
 			SET_VAL_MASK(val, mask, 1, PU_NUM);
-			SET_VAL_MASK(val, mask, 4, PU_CROP_THRPT_DEC_FACTOR);
+			SET_VAL_MASK(val, mask, crop_thrpt_factor, PU_CROP_THRPT_DEC_FACTOR);
 			cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + DSI_PU_CON0, val, mask);
 
@@ -15908,9 +15911,10 @@ static int mtk_dsi_set_partial_update(struct mtk_ddp_comp *comp,
 			cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + DSI_PU_PS_WC1_2, val, mask);
 
+			width = readl(dsi->regs + DSI_SIZE_CON(dsi->driver_data)) & 0x7fff;
 			val = mask = 0;
 			SET_VAL_MASK(val, mask, 1, PU_X_START);
-			SET_VAL_MASK(val, mask, full_width, PU_X_END);
+			SET_VAL_MASK(val, mask, width, PU_X_END);
 			cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + DSI_PU_XROI1, val, mask);
 
