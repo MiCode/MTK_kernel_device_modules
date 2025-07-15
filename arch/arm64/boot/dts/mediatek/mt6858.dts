@@ -96,7 +96,7 @@
 			    disable_dma32=on \
 			    transparent_hugepage=never \
 			    kvm-arm.protected_prefault=9 \
-			    kvm-arm.protected_modules=pkvm_mgmt,pkvm_tmem,pkvm_mkp";
+			    kvm-arm.protected_modules=pkvm_mgmt,pkvm_hypmmu,pkvm_tmem,pkvm_mkp";
 	};
 
 	cpus {
@@ -10232,6 +10232,12 @@ dramc: dramc@10230000 {
 
 	pkvm: pkvm {
 		status = "disabled";
+
+		hypmmu {
+			use-mtkiommu = <1>;
+			use-gpumpu = <1>;
+			use-inframpu = <1>;
+		};
 	};
 };
 
