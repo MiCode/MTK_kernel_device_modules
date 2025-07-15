@@ -5821,8 +5821,8 @@ dramc: dramc@10230000 {
 			common-id = <0>;		/* <DISP_COMM MDP_COMM> */
 			monitor-id = <3>;		/* Monitor id of <comm_0 comm_1> */
 			bandwidth-table = // avg occupy
-				<7 0 229>,
-				<7 1 86>; /* larb_id, rw, base_bw*/
+				<7 0 566>,
+				<7 1 234>; /* larb_id, rw, base_bw*/
 		};
 
 		jpgenc@17030000 {
