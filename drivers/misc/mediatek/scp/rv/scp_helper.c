@@ -213,8 +213,15 @@ static unsigned int scp_ipi_dump_timout = 100;
 void dump_u1u2_clock(void)
 {
 	if(scp_clk_fmeter_dump_info.en) {
-		pr_notice("[scp] u2 clock %d\n", mt_get_fmeter_freq(scp_clk_fmeter_dump_info.fm_ulposc_ck, VLPCK));
-		pr_notice("[scp] u1 clock %d\n", mt_get_fmeter_freq(scp_clk_fmeter_dump_info.fm_ulposc2_ck, VLPCK));
+		pr_notice("[scp] u1 clock %d\n", mt_get_fmeter_freq(scp_clk_fmeter_dump_info.fm_ulposc_ck,
+			scp_clk_fmeter_dump_info.fm_ulposc_type));
+		pr_notice("[scp] u2 clock %d\n", mt_get_fmeter_freq(scp_clk_fmeter_dump_info.fm_ulposc2_ck,
+			scp_clk_fmeter_dump_info.fm_ulposc2_type));
+		if (scp_clk_fmeter_dump_info.fm_adsp_pll_ck) {
+			pr_notice("[scp] adsp pll clock %d\n",
+					mt_get_fmeter_freq(scp_clk_fmeter_dump_info.fm_adsp_pll_ck,
+						scp_clk_fmeter_dump_info.fm_adsp_pll_type));
+		}
 	}
 }
 
@@ -2774,7 +2781,65 @@ static bool scp_clk_fmeter_dump_init(struct platform_device *pdev)
 			&scp_clk_fmeter_dump_info.fm_ulposc2_ck);
 	if (ret) {
 		scp_clk_fmeter_dump_info.fm_ulposc2_ck = 0;
-		pr_notice("[SCP] dump fm_ulposc_ck2 not defined.\n");
+		pr_notice("[SCP] dump fm_ulposc2_ck not defined.\n");
+	}
+
+	ret = of_property_read_u32(pdev->dev.of_node, "scp-adsp-pll-id",
+			&scp_clk_fmeter_dump_info.fm_adsp_pll_ck);
+	if (ret) {
+		scp_clk_fmeter_dump_info.fm_adsp_pll_ck = 0;
+		pr_notice("[SCP] dump fm_adsp_pll_ck not defined.\n");
+	}
+
+	if (!of_property_read_string(pdev->dev.of_node, "scp-u1-type",
+				&scp_clk_fmeter_dump_flag)) {
+		if (!strncmp(scp_clk_fmeter_dump_flag, "VLPCK", strlen("VLPCK"))) {
+			pr_notice("[SCP] dump fm_ulposc_type VLPCK\n");
+			scp_clk_fmeter_dump_info.fm_ulposc_type = VLPCK;
+		} else if (!strncmp(scp_clk_fmeter_dump_flag, "ABIST", strlen("ABIST"))) {
+			pr_notice("[SCP] dump fm_ulposc_type ABIST\n");
+			scp_clk_fmeter_dump_info.fm_ulposc_type = ABIST;
+		} else {
+			pr_notice("[SCP] set fm_ulposc_type as default VLPCK\n");
+			scp_clk_fmeter_dump_info.fm_ulposc_type = VLPCK;
+		}
+	} else {
+		pr_notice("[SCP] set fm_ulposc_type as default VLPCK\n");
+		scp_clk_fmeter_dump_info.fm_ulposc_type = VLPCK;
+	}
+
+	if (!of_property_read_string(pdev->dev.of_node, "scp-u2-type",
+				&scp_clk_fmeter_dump_flag)) {
+		if (!strncmp(scp_clk_fmeter_dump_flag, "VLPCK", strlen("VLPCK"))) {
+			pr_notice("[SCP] dump fm_ulposc2_type VLPCK\n");
+			scp_clk_fmeter_dump_info.fm_ulposc2_type = VLPCK;
+		} else if (!strncmp(scp_clk_fmeter_dump_flag, "ABIST", strlen("ABIST"))) {
+			pr_notice("[SCP] dump fm_ulposc2_type ABIST\n");
+			scp_clk_fmeter_dump_info.fm_ulposc2_type = ABIST;
+		} else {
+			pr_notice("[SCP] set fm_ulposc2_type as default VLPCK\n");
+			scp_clk_fmeter_dump_info.fm_ulposc2_type = VLPCK;
+		}
+	} else {
+		pr_notice("[SCP] set fm_ulposc2_type as default VLPCK\n");
+		scp_clk_fmeter_dump_info.fm_ulposc2_type = VLPCK;
+	}
+
+	if (!of_property_read_string(pdev->dev.of_node, "scp-adsp-pll-type",
+				&scp_clk_fmeter_dump_flag)) {
+		if (!strncmp(scp_clk_fmeter_dump_flag, "VLPCK", strlen("VLPCK"))) {
+			pr_notice("[SCP] dump fm_adsp_pll_type VLPCK\n");
+			scp_clk_fmeter_dump_info.fm_adsp_pll_type = VLPCK;
+		} else if (!strncmp(scp_clk_fmeter_dump_flag, "ABIST", strlen("ABIST"))) {
+			pr_notice("[SCP] dump fm_adsp_pll_type ABIST\n");
+			scp_clk_fmeter_dump_info.fm_adsp_pll_type = ABIST;
+		} else {
+			pr_notice("[SCP] set fm_adsp_pll_type as default VLPCK\n");
+			scp_clk_fmeter_dump_info.fm_adsp_pll_type = VLPCK;
+		}
+	} else {
+		pr_notice("[SCP] set fm_adsp_pll_type as default VLPCK\n");
+		scp_clk_fmeter_dump_info.fm_adsp_pll_type = VLPCK;
 	}
 
 	return true;

@@ -218,6 +218,10 @@ struct scp_clk_fmeter_dump_info_st {
 	uint32_t en;
 	uint32_t fm_ulposc_ck;
 	uint32_t fm_ulposc2_ck;
+	uint32_t fm_adsp_pll_ck;
+	uint32_t fm_ulposc_type;
+	uint32_t fm_ulposc2_type;
+	uint32_t fm_adsp_pll_type;
 };
 
 struct scp_kasan_info_st {
