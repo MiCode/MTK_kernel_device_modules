@@ -1941,6 +1941,7 @@ void set_vip_ctrl_node(int pid, int vip_prio, unsigned int throttle_time)
 		break;
 	}
 }
+EXPORT_SYMBOL_GPL(set_vip_ctrl_node);
 
 void unset_vip_ctrl_node(int pid, int vip_prio)
 {
@@ -1959,6 +1960,7 @@ void unset_vip_ctrl_node(int pid, int vip_prio)
 		break;
 	}
 }
+EXPORT_SYMBOL_GPL(unset_vip_ctrl_node);
 
 static char set_tdp_param[64] = "";
 static int set_tdp(const char *buf, const struct kernel_param *kp)
