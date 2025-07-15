@@ -3376,13 +3376,13 @@ static int mtk_vdec_set_param(struct mtk_vcodec_ctx *ctx, bool need_ipi)
 		ctx->dec_params.dec_param_change &= (~MTK_DEC_PARAM_WAIT_KEY_FRAME);
 	}
 
-	if (ctx->dec_params.dec_param_change & MTK_DEC_PARAM_DV_MODE) {
-		in[0] = (unsigned long)ctx->dec_params.dv_mode;
-		if (vdec_if_set_param(ctx, SET_PARAM_VDEC_DV_MODE, in) != 0) {
+	if (ctx->dec_params.dec_param_change & MTK_DEC_PARAM_CUSTOM_HDR_MODE) {
+		in[0] = (unsigned long)ctx->dec_params.custom_hdr_mode;
+		if (vdec_if_set_param(ctx, SET_PARAM_VDEC_CUSTOM_HDR_MODE, in) != 0) {
 			mtk_v4l2_err("[%d] Error!! Cannot set param", ctx->id);
 			return -EINVAL;
 		}
-		ctx->dec_params.dec_param_change &= (~MTK_DEC_PARAM_DV_MODE);
+		ctx->dec_params.dec_param_change &= (~MTK_DEC_PARAM_CUSTOM_HDR_MODE);
 	}
 
 	if (ctx->dec_params.dec_param_change & MTK_DEC_PARAM_DECODE_ERROR_HANDLE_MODE) {
@@ -5064,9 +5064,9 @@ static int mtk_vdec_s_ctrl(struct v4l2_ctrl *ctrl)
 		ctx->dec_params.wait_key_frame = (__u8)ctrl->val;
 		ctx->dec_params.dec_param_change |= MTK_DEC_PARAM_WAIT_KEY_FRAME;
 		break;
-	case V4L2_CID_MTK_VIDEO_DV_MODE:
-		ctx->dec_params.dv_mode = (__u8)ctrl->val;
-		ctx->dec_params.dec_param_change |= MTK_DEC_PARAM_DV_MODE;
+	case V4L2_CID_MTK_VIDEO_CUSTOM_HDR_MODE:
+		ctx->dec_params.custom_hdr_mode = (__u8)ctrl->val;
+		ctx->dec_params.dec_param_change |= MTK_DEC_PARAM_CUSTOM_HDR_MODE;
 		break;
 	case V4L2_CID_MTK_VIDEO_DEC_SET_DECODE_ERROR_HANDLE_MODE:
 		ctx->dec_params.decode_error_handle_mode = ctrl->val;
@@ -5430,10 +5430,10 @@ int mtk_vcodec_dec_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	mtk_vcodec_dec_custom_ctrls_check(handler, &cfg, NULL);
 
 	memset(&cfg, 0, sizeof(cfg));
-	cfg.id = V4L2_CID_MTK_VIDEO_DV_MODE;
+	cfg.id = V4L2_CID_MTK_VIDEO_CUSTOM_HDR_MODE;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
 	cfg.flags = V4L2_CTRL_FLAG_WRITE_ONLY;
-	cfg.name = "Video DV Decode Mode";
+	cfg.name = "Video Custom HDR Decode Mode";
 	cfg.min = 0;
 	cfg.max = 255;
 	cfg.step = 1;
