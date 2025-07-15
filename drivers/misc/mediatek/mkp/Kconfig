@@ -8,6 +8,7 @@ config MTK_MKP
 
 config MTK_MKP_TEST
 	bool "MKP Test Functions"
+	depends on MTK_MKP
 	default n
 	help
 	  Provide MKP test functions to verify whether the
