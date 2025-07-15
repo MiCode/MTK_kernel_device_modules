@@ -417,8 +417,7 @@ int tee_set_affinity(cpumask_t *old_affinity)
 		if (cpu < nr_cpu_ids)
 			cpumask_set_cpu(cpu, &mask);
 		else
-			mc_dev_warn("Invalid CPU %u (max=%d)\n",
-				    cpu, nr_cpu_ids);
+			mc_dev_warn("Invalid CPU %u (max=%d)\n", cpu, nr_cpu_ids);
 	}
 	l_ctx.stat_set_affinity++;
 	if (!cpumask_subset(&local_old_affinity, &mask)) {
