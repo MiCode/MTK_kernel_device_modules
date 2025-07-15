@@ -5699,7 +5699,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			interrupt-names = "sysirq", "wdt", "audioirq";
 			mboxes = <&adspsys 0>, /*channel 0*/
 				<&adspsys 1>; /*channel 1*/
-			feature-control-bits = /bits/ 64 <0x00000001a8e78fff>;
+			feature-control-bits = /bits/ 64 <0x00000015a8e78fff>;
 			adsp-mbrain-enable = <1>;
 		};
 
@@ -5716,7 +5716,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			interrupt-names = "sysirq", "wdt", "audioirq";
 			mboxes = <&adspsys 2>, /*channel 2*/
 				<&adspsys 3>; /*channel 3*/
-			feature-control-bits = /bits/ 64 <0x000000005118700f>;
+			feature-control-bits = /bits/ 64 <0x000000285118700f>;
 		};
 
 		uarthub: uarthub@16060000 {
@@ -20339,6 +20339,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		mtk-dsp-mem-afe = <0x1 0x40000>;
 		mtk-dsp-btdl = <0x1 0x9 0xffffffff 0xffffffff 0x30000>;
 		mtk-dsp-btul = <0x1 0xffffffff 0x1b 0x10 0x20000>;
+		mtk-dsp-ulproc2 = <0x1 0xffffffff 0xffffffff 0xffffffff 0x20000>;
+		mtk-dsp-hfcalldl = <0x1 0xffffffff 0x1b 0xffffffff 0x20000>;
+		mtk-dsp-hfcallul = <0x1 0x9 0xffffffff 0xffffffff 0x30000>;
+		mtk-dsp-hfcallmusic = <0x7 0xffffffff 0xffffffff 0xffffffff 0x30000>;
 		adsp-dynamic-buffer = <0x1>;
 	};
 
