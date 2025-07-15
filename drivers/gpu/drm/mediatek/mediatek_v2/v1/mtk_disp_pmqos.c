@@ -19,6 +19,7 @@
 
 #include <dt-bindings/interconnect/mtk,mmqos.h>
 #include <soc/mediatek/mmqos.h>
+#include <mmqos-mtk.h>
 #include <soc/mediatek/mmdvfs_v3.h>
 #include "mtk_disp_oddmr/mtk_disp_oddmr.h"
 
@@ -1761,6 +1762,8 @@ static void mtk_drm_enable_ap_ccf(bool en, struct drm_crtc *crtc, bool mode_swit
 		priv = ap_crtc->dev->dev_private;
 		if (priv && mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_MMDVFS_MODE_SWITCH)) {
+			set_disp_freq_by_regulator(false); //mmqos do mminfra dvfs request
+
 			if (mode_switch)
 				mtk_drm_mmdvfs_mode_switch(ap_crtc, true);
 			else
@@ -2079,6 +2082,8 @@ void mtk_drm_set_mmclk(struct drm_crtc *crtc, int level, bool lp_mode,
 			if (ret)
 				DDPPR_ERR("%s:regulator_set_voltage:%d fail, ret:%d\n",
 					__func__, volt, ret);
+			else
+				set_disp_freq_by_regulator(true); //mmqos skip mminfra dvfs request
 		}
 		mtk_drm_put_vcp_state();
 		return;
