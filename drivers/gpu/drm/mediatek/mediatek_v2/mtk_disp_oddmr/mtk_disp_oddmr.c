@@ -1591,11 +1591,6 @@ static void mtk_oddmr_od_hsk(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg)
 	mtk_oddmr_write(comp, hsk_0, DISP_ODDMR_OD_HSK_0, pkg);
 	mtk_oddmr_write(comp, hsk_1, DISP_ODDMR_OD_HSK_1, pkg);
 	mtk_oddmr_write(comp, hsk_2, DISP_ODDMR_OD_HSK_2, pkg);
-	if (oddmr_data->data->od_version >= MTK_OD_V3) {
-		mtk_oddmr_write(comp, 0xFFF, DISP_ODDMR_OD_HSK_3, pkg);
-		mtk_oddmr_write(comp, 0x3, DISP_ODDMR_OD_HSK_4, pkg);
-		return;
-	}
 	mtk_oddmr_write(comp, 0, DISP_ODDMR_OD_HSK_3, pkg);
 	mtk_oddmr_write(comp, 0x8003, DISP_ODDMR_OD_HSK_4, pkg);
 }
