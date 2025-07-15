@@ -14,5 +14,5 @@ subdir-ccflags-y += -DSingle_Secure_csi_port_front=0
 subdir-ccflags-y += -DMulti_Secure_csi_port_front=0
 subdir-ccflags-y += -DMulti_Secure_csi_port_rear=3
 
-hyp-obj-y := pkvm_isp_hyp.o secio_api.o seninf_auth.o seninf_drv_csi_info.o seninf_sec_drv.o sensor_cfg_sec.o
+hyp-obj-y := pkvm_seninf_hyp.o secio_api.o seninf_auth.o seninf_drv_csi_info.o seninf_sec_drv.o sensor_cfg_sec.o
 include $(srctree)/arch/arm64/kvm/hyp/nvhe/Makefile.module

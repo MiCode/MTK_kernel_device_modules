@@ -5,7 +5,7 @@
 
 #include <linux/types.h>
 
-#include "pkvm_isp_hyp.h"
+#include "pkvm_seninf_hyp.h"
 #include "seninf_auth.h"
 #include "seninf_drv_csi_info.h"
 #include "seninf_ta.h"

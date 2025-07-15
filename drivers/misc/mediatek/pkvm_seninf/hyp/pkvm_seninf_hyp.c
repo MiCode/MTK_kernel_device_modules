@@ -6,7 +6,7 @@
 #include <asm/kvm_pkvm_module.h>
 #include <linux/arm-smccc.h>
 
-#include "pkvm_isp_hyp.h"
+#include "pkvm_seninf_hyp.h"
 #include "seninf_auth.h"
 #include "seninf_sec_drv.h"
 #include "seninf_ta.h"
@@ -19,7 +19,7 @@
 
 #define LOG_MORE 1
 
-const struct pkvm_module_ops *pkvm_isp_ops;
+const struct pkvm_module_ops *pkvm_seninf_ops;
 
 static SENINF_RETURN seninf_checkpipe(uint64_t pa);
 static SENINF_RETURN seninf_free(void);
@@ -143,7 +143,7 @@ static SENINF_RETURN seninf_free(void)
 	return ret;
 }
 
-void isp_hyp_checkpipe(struct user_pt_regs *regs)
+void seninf_hyp_checkpipe(struct user_pt_regs *regs)
 {
 	SENINF_RETURN ret = 0;
 	uint64_t pa;
@@ -162,7 +162,7 @@ void isp_hyp_checkpipe(struct user_pt_regs *regs)
 	CALL_FROM_OPS(puts, PFX "--");
 }
 
-void isp_hyp_free(struct user_pt_regs *regs)
+void seninf_hyp_free(struct user_pt_regs *regs)
 {
 	CALL_FROM_OPS(puts, __func__);
 	CALL_FROM_OPS(puts, PFX "++");
@@ -174,9 +174,9 @@ void isp_hyp_free(struct user_pt_regs *regs)
 	CALL_FROM_OPS(puts, PFX "--");
 }
 
-int isp_hyp_init(const struct pkvm_module_ops *ops)
+int seninf_hyp_init(const struct pkvm_module_ops *ops)
 {
-	pkvm_isp_ops = ops;
+	pkvm_seninf_ops = ops;
 	CALL_FROM_OPS(puts, __func__);
 	CALL_FROM_OPS(puts, PFX "success");
 	return 0;

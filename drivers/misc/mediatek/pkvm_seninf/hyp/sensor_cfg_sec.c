@@ -3,7 +3,7 @@
  * Copyright (c) 2025 MediaTek Inc.
  */
 
-#include "pkvm_isp_hyp.h"
+#include "pkvm_seninf_hyp.h"
 #include "secure_port.h"
 #include "seninf_drv_csi_info.h"
 #include "seninf_tee_reg.h"

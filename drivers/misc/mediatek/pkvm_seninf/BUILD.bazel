@@ -20,16 +20,16 @@ filegroup(
 )
 
 define_mgk_ddk_ko(
-    name = "pkvm_isp",
+    name = "pkvm_seninf",
     srcs = [
-        "pkvm_isp_host.c",
-        "pkvm_isp_host.h",
+        "pkvm_seninf_host.c",
+        "pkvm_seninf_host.h",
     ],
-    out = "pkvm_isp.ko",
+    out = "pkvm_seninf.ko",
     copts = [
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
     ],
     ko_deps = [
-        "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_isp/hyp:hyp".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_seninf/hyp:hyp".format(kernel_version),
     ],
 )
