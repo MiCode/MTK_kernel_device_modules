@@ -5151,7 +5151,7 @@ static int layering_rule_start(struct drm_mtk_layering_info *disp_info_user,
 		layering_info.frame_idx[HRT_PRIMARY]);
 	if ((disp_idx == 0) && get_layering_opt(LYE_OPT_OVL_BW_MONITOR) &&
 		(sum_overlap_w_of_bwm != 0))
-		DDPINFO("overlap_num of BW monitor:%u of frame %u\n", sum_overlap_w_of_bwm,
+		DDPINFO("overlap_num of BW monitor:%d of frame %u\n", sum_overlap_w_of_bwm,
 			layering_info.frame_idx[HRT_PRIMARY]);
 
 	/* If GPU Cache will change gles layer head and tail, So should to re-grouping */
