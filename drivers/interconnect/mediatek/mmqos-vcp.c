@@ -28,6 +28,17 @@ static DEFINE_MUTEX(mmqos_vcp_ipi_mutex);
 static int vcp_mmqos_log;
 static int vcp_smi_log;
 
+struct mmqos_bw_fp *mmqos_vcp_bw_fp;
+
+void mmqos_register_vcp_bw_cb(struct mmqos_bw_fp *mmqos_fp)
+{
+	if (!mmqos_fp)
+		return;
+
+	mmqos_vcp_bw_fp = mmqos_fp;
+}
+EXPORT_SYMBOL_GPL(mmqos_register_vcp_bw_cb);
+
 void *mmqos_get_vcp_base(phys_addr_t *pa)
 {
 	if (pa)
@@ -205,6 +216,9 @@ static int mmqos_vcp_notifier_callback(struct notifier_block *nb, unsigned long 
 			readl(MEM_IPI_SYNC_FUNC), readl(MEM_IPI_SYNC_DATA));
 		mmqos_vcp_ipi_send(FUNC_MMQOS_INIT, 0, NULL);
 		mmqos_vcp_cb_ready = true;
+		if ((mmqos_state & VMMRC_ENABLE) && (mmqos_state & VMMRC_VCP_NO_WARM_BOOT) &&
+			mmqos_vcp_bw_fp && mmqos_vcp_bw_fp->write_last_bw_to_vmmrc)
+			mmqos_vcp_bw_fp->write_last_bw_to_vmmrc();
 		break;
 	case VCP_EVENT_STOP:
 	case VCP_EVENT_SUSPEND:

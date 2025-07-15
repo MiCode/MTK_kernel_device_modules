@@ -238,6 +238,7 @@ struct mtk_mmqos {
 	u32 mmpc_total_current_slb_bw;
 	u32 vmmrc_level_hex;
 	struct rt_mutex bw_lock;
+	struct rt_mutex vmmrc_hw_lock;
 	u32 bwl_hrt_r_margin;
 	u32 bwl_hrt_w_margin;
 	u32 bwl_srt_r_margin;
@@ -278,6 +279,7 @@ u32 on_reg_value[MAX_BW_VALUE_NUM];
 u32 off_reg_value[MAX_BW_VALUE_NUM];
 
 u32 freq_mode = BY_REGULATOR;
+bool disp_freq_by_regulator;
 
 enum ostdl_latency {
 	OSTDL_1_5 = 0,
@@ -566,6 +568,12 @@ static void set_freq_by_regulator(struct common_node *comm_node, unsigned long s
 	}
 }
 
+void set_disp_freq_by_regulator(bool regulator)
+{
+	disp_freq_by_regulator = regulator;
+}
+EXPORT_SYMBOL_GPL(set_disp_freq_by_regulator);
+
 /*
 static void set_freq_by_mmdvfs(struct common_node *comm_node, unsigned long smi_clk)
 {
@@ -672,28 +680,41 @@ u32 read_register(u32 offset)
 	return 0;
 }
 
-static int start_write_bw(void)
+static int start_write_bw(bool skip_vcp)
 {
 	u32 orig = 0;
 
-	// for hfrp timeout debug
-	if (gmmqos->hfrp_base)
-		readl_relaxed(gmmqos->hfrp_base + HFRP_DUMMY);
-	readl_relaxed(gmmqos->mminfra_base + MMINFRA_DUMMY);
-#if IS_ENABLED(CONFIG_MTK_MMQOS_VCP)
-	//enable vcp
-	if (mmqos_state & VMMRC_VCP_ENABLE) {
-		int ret = 0;
+	if (!skip_vcp) {
+		if ((mmqos_state & VMMRC_VCP_ENABLE) &&
+			(mmqos_state & VMMRC_VCP_NO_WARM_BOOT)) {
+			if (!mmqos_vcp_ready_done()) {
+				MMQOS_ERR("vcp not ready yet");
 
-		ret = mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMQOS);
-		if (ret <  0) {
-			MMQOS_ERR("vcp enable fail, ret:%d", ret);
-			MMQOS_AEE("vcp enable fail");
-
-			return -EINVAL;
+				return -EINVAL;
+			}
 		}
-	}
+		// for hfrp timeout debug
+		if (gmmqos->hfrp_base)
+			readl_relaxed(gmmqos->hfrp_base + HFRP_DUMMY);
+		readl_relaxed(gmmqos->mminfra_base + MMINFRA_DUMMY);
+#if IS_ENABLED(CONFIG_MTK_MMQOS_VCP)
+		//enable vcp
+		if (mmqos_state & VMMRC_VCP_ENABLE) {
+			int ret = 0;
+
+			ret = mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMQOS);
+			if (ret <  0) {
+				MMQOS_ERR("vcp enable fail, ret:%d", ret);
+				if (mmqos_state & VMMRC_VCP_NO_WARM_BOOT) {
+					if (!disp_freq_by_regulator)
+						MMQOS_AEE("vcp enable fail");
+				}
+
+				return -EINVAL;
+			}
+		}
 #endif
+	}
 	if ((mmqos_state & MMPC_ENABLE) || (mmqos_state & MMPC_V2_ENABLE))
 		write_register(APMCU_MASK_OFFSET, 0);
 	else {
@@ -704,7 +725,7 @@ static int start_write_bw(void)
 	return 0;
 }
 
-static void stop_write_bw(void)
+static void stop_write_bw(bool skip_vcp)
 {
 	u32 orig = 0;
 
@@ -714,16 +735,18 @@ static void stop_write_bw(void)
 		orig = read_register(APMCU_MASK_OFFSET);
 		write_register(APMCU_MASK_OFFSET, orig & ~BIT(gmmqos->apmcu_mask_bit));
 	}
+	if (!skip_vcp) {
 #if IS_ENABLED(CONFIG_MTK_MMQOS_VCP)
-	//disable vcp
-	if (mmqos_state & VMMRC_VCP_ENABLE) {
-		int ret;
+		//disable vcp
+		if (mmqos_state & VMMRC_VCP_ENABLE) {
+			int ret;
 
-		ret = mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMQOS);
-		if (ret < 0)
-			MMQOS_ERR("mmdvfs disable vcp error, ret:%d", ret);
-	}
+			ret = mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMQOS);
+			if (ret < 0)
+				MMQOS_ERR("mmdvfs disable vcp error, ret:%d", ret);
+		}
 #endif
+	}
 }
 
 void clear_reg_value(bool is_on)
@@ -775,13 +798,17 @@ void set_channel_bw_reg_value(bool is_on)
 	}
 }
 
-static void set_channel_bw_to_hw(void)
+static void set_channel_bw_to_hw(bool skip_vcp)
 {
 	int i, result = 0;
 
-	result = start_write_bw();
-	if (result < 0)
+	rt_mutex_lock(&gmmqos->vmmrc_hw_lock);
+	result = start_write_bw(skip_vcp);
+	if (result < 0) {
+		rt_mutex_unlock(&gmmqos->vmmrc_hw_lock);
+
 		return;
+	}
 
 	if (mmqos_state & MMPC_V2_ENABLE) {
 		for (i = 0 ; i < MAX_BW_VALUE_NUM; i++)
@@ -795,8 +822,18 @@ static void set_channel_bw_to_hw(void)
 		for (i = 0 ; i < MAX_REG_VALUE_NUM; i++)
 			write_register(APMCU_OFF_BW_OFFSET(i), off_reg_value[i]);
 	}
-	stop_write_bw();
+	stop_write_bw(skip_vcp);
+	rt_mutex_unlock(&gmmqos->vmmrc_hw_lock);
 }
+
+void mmqos_write_last_bw_to_vmmrc(void)
+{
+	set_channel_bw_to_hw(true);
+}
+
+struct mmqos_bw_fp mtk_mmqos_bw_fp = {
+	.write_last_bw_to_vmmrc = mmqos_write_last_bw_to_vmmrc,
+};
 
 static void set_freq_by_vmmrc(const u32 comm_id)
 {
@@ -871,7 +908,7 @@ static void set_freq_by_vmmrc(const u32 comm_id)
 		}
 	}
 	if (is_reg_value_changed)
-		set_channel_bw_to_hw();
+		set_channel_bw_to_hw(false);
 	MMQOS_SYSTRACE_END("%s %d", __func__, comm_id);
 }
 
@@ -2831,6 +2868,7 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 	devm_kfree(&pdev->dev, smi_imu);
 
 	rt_mutex_init(&gmmqos->bw_lock);
+	rt_mutex_init(&gmmqos->vmmrc_hw_lock);
 
 	/* create proc file */
 	dir = proc_mkdir("mmqos", NULL);
@@ -2965,6 +3003,8 @@ int mtk_mmqos_v2_probe(struct platform_device *pdev)
 		kthr_vcp = kthread_run(mmqos_vcp_init_thread, NULL, "mmqos-vcp");
 		if (IS_ERR(kthr_vcp))
 			MMQOS_ERR("Failed to start mmqos-vcp thread\n");
+		if (mmqos_state & VMMRC_VCP_NO_WARM_BOOT)
+			mmqos_register_vcp_bw_cb(&mtk_mmqos_bw_fp);
 	} else
 		MMQOS_DBG("VCP not enable");
 

@@ -206,6 +206,7 @@ int get_mmqos_state(void);
 int calculate_hrt_total_bw(int max_freq, int chn_cnt, int io_width, int def_hrt_value);
 void mmqos_hrt_dump(void);
 void mmqos_set_met(bool enable);
+void set_disp_freq_by_regulator(bool regulator);
 int mmqos_debug_set_ftrace(const char *val,
 	const struct kernel_param *kp);
 void mmqos_stop_record(void);

@@ -55,6 +55,7 @@ enum mmqos_state_level {
 	AXI_MON_OSTDBL_ENABLE = BIT(19),
 	MMUP_ENABLE = BIT(20),
 	AXI_MON_LIMITER_SUPPORT = BIT(21),
+	VMMRC_VCP_NO_WARM_BOOT = BIT(22),
 };
 extern u32 mmqos_state;
 
@@ -67,5 +68,10 @@ enum mmqos_log_level {
 	log_debug,		//5
 };
 extern u32 log_level;
+
+typedef void (*mmqos_write_last_bw_to_vmmrc_fp)(void);
+struct mmqos_bw_fp {
+	mmqos_write_last_bw_to_vmmrc_fp write_last_bw_to_vmmrc;
+};
 
 #endif /* MMQOS_GLOBAL_H */
