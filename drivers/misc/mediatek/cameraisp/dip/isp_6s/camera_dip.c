@@ -4424,7 +4424,7 @@ static void DIP_EnableClock(bool En)
 		/*LOG_INF("CCF:prepare_enable clk");*/
 		spin_lock(&(IspInfo.SpinLockClock));
 		G_u4DipEnClkCnt++;
-		LOG_INF("Camera clock enabled. G_u4DipEnClkCnt: %d.", G_u4DipEnClkCnt);
+		// LOG_INF("Camera clock enabled. G_u4DipEnClkCnt: %d.", G_u4DipEnClkCnt);
 		spin_unlock(&(IspInfo.SpinLockClock));
 		if (G_u4DipEnClkCnt == 1) {
 			Prepare_Enable_ccf_clock(); /* !!cannot be used in spinlock!! */
@@ -4456,7 +4456,7 @@ static void DIP_EnableClock(bool En)
 		/*LOG_INF("CCF:disable_unprepare clk\n");*/
 		spin_lock(&(IspInfo.SpinLockClock));
 		G_u4DipEnClkCnt--;
-		LOG_INF("Camera clock disabled. G_u4DipEnClkCnt: %d.", G_u4DipEnClkCnt);
+		// LOG_INF("Camera clock disabled. G_u4DipEnClkCnt: %d.", G_u4DipEnClkCnt);
 		spin_unlock(&(IspInfo.SpinLockClock));
 		if (G_u4DipEnClkCnt == 0)
 			Disable_Unprepare_ccf_clock();
