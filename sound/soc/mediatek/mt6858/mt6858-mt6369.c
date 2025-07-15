@@ -1987,17 +1987,21 @@ static int mt6858_mt6369_dev_probe(struct platform_device *pdev)
 			ret = snd_soc_of_get_dai_link_codecs(
 						&pdev->dev, spk_node, dai_link);
 			if (ret < 0) {
+				dai_link->codecs->name = "snd-soc-dummy";
+				dai_link->codecs->dai_name = "snd-soc-dummy-dai";
 				dev_info(&pdev->dev,
-					"Speaker Codec get_dai_link fail: %d\n", ret);
-				return -EINVAL;
+					"Speaker Codec get_dai_link fail: %d, link to dummy\n", ret);
+				continue;
 			}
 		} else if (!strcmp(dai_link->name, "Speaker Codec Ref")) {
 			ret = snd_soc_of_get_dai_link_codecs(
 						&pdev->dev, spk_node, dai_link);
 			if (ret < 0) {
+				dai_link->codecs->name = "snd-soc-dummy";
+				dai_link->codecs->dai_name = "snd-soc-dummy-dai";
 				dev_info(&pdev->dev,
-					"Speaker Codec Ref get_dai_link fail: %d\n", ret);
-				return -EINVAL;
+					"Speaker Codec Ref get_dai_link fail: %d, link to dummy\n", ret);
+				continue;
 			}
 		}
 	}
