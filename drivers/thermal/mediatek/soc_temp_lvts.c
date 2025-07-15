@@ -1501,6 +1501,10 @@ static void lvts_debug_to_sysram(struct lvts_data *lvts_data, int tc_id)
 {
 	int i, temp;
 	void __iomem *base;
+	unsigned int debug2_offset = LVTS_DEBUG2_OFFSET;
+
+	if (lvts_data->debug_addr_v2)
+		debug2_offset = LVTS_DEBUG2_V2_OFFSET;
 
 	base = GET_BASE_ADDR(tc_id);
 
@@ -1524,19 +1528,19 @@ static void lvts_debug_to_sysram(struct lvts_data *lvts_data, int tc_id)
 	}
 	temp = (g_lvts_controller_debug2_value[1] & 0xFFFF) << 16 |
 				(g_lvts_controller_debug2_value[0] & 0xFFFF);
-	writel( temp, (void __iomem *)(thermal_csram_base + LVTS_DEBUG2_OFFSET));
+	writel( temp, (void __iomem *)(thermal_csram_base + debug2_offset));
 	temp = (g_lvts_controller_debug2_value[3] & 0xFFFF) << 16 |
 				(g_lvts_controller_debug2_value[2] & 0xFFFF);
-	writel( temp, (void __iomem *)(thermal_csram_base + LVTS_DEBUG2_OFFSET + 0x4));
+	writel( temp, (void __iomem *)(thermal_csram_base + debug2_offset + 0x4));
 	writel(g_lvts_controller_debug2_value[4],
-			(void __iomem *)(thermal_csram_base + LVTS_DEBUG2_OFFSET + 0x8));
+			(void __iomem *)(thermal_csram_base + debug2_offset + 0x8));
 	writel(g_lvts_controller_debug2_value[5],
-			(void __iomem *)(thermal_csram_base + LVTS_DEBUG2_OFFSET + 0xC));
+			(void __iomem *)(thermal_csram_base + debug2_offset + 0xC));
 	writel(g_lvts_controller_debug2_value[6],
-			(void __iomem *)(thermal_csram_base + LVTS_DEBUG2_OFFSET + 0x10));
+			(void __iomem *)(thermal_csram_base + debug2_offset + 0x10));
 	writel(g_lvts_controller_debug2_value[7],
-			(void __iomem *)(thermal_csram_base + LVTS_DEBUG2_OFFSET + 0x14));
-	writel(tc_id, (void __iomem *)(thermal_csram_base + LVTS_DEBUG2_OFFSET + 0x18));
+			(void __iomem *)(thermal_csram_base + debug2_offset + 0x14));
+	writel(tc_id, (void __iomem *)(thermal_csram_base + debug2_offset + 0x18));
 
 	/* DEBUG3 for ATP info */
 	for (i = 0; i < NUM_LVTS_DEBUG3_REG; i++) {
@@ -1555,12 +1559,14 @@ static void lvts_debug_to_sysram(struct lvts_data *lvts_data, int tc_id)
 	writel(temp, (void __iomem *)(thermal_csram_base + LVTS_DEBUG3_OFFSET + 0xC));
 
 	/* DEBUG4 for EDATA & C & LVTSPROTTC */
-	for (i = 0; i < NUM_LVTS_DEBUG4_REG; i++) {
-		temp = readl(g_lvts_controller_debug4_addr[i] + base);
-		g_lvts_controller_debug4_value[i] = temp;
+	if (!(lvts_data->debug_addr_v2)) {
+		for (i = 0; i < NUM_LVTS_DEBUG4_REG; i++) {
+			temp = readl(g_lvts_controller_debug4_addr[i] + base);
+			g_lvts_controller_debug4_value[i] = temp;
 
-		writel(g_lvts_controller_debug4_value[i],
+			writel(g_lvts_controller_debug4_value[i],
 			(void __iomem *)(thermal_csram_base + LVTS_DEBUG4_OFFSET + (i << 2)));
+		}
 	}
 }
 
@@ -1582,6 +1588,11 @@ static irqreturn_t irq_handler(int irq, void *dev_id)
 	int thermintst_str_size = sizeof(thermintst_str);
 	int thermintst_str_offset = 0;
 	unsigned int reboot_tc = lvts_data->num_tc;
+	unsigned int lvts_int = 0;
+	unsigned int lvts_sts = 0;
+	char buf[256];
+	int  buf_size = sizeof(buf);
+	int  buf_offset = 0;
 
 	if (IS_ENABLE(FEATURE_6989_SCP_OC)) {
 		for (i = 0; i < lvts_data->num_tc; i++) {
@@ -1627,8 +1638,22 @@ static irqreturn_t irq_handler(int irq, void *dev_id)
 	thermintst_str[thermintst_str_offset] = '\0';
 
 	if (IS_ENABLE(FEATURE_THERMAL_REBOOT_KERNEL_BYPASS)){
+		if (lvts_data->lvts_int_debug) {
+			for (i = 0; i < lvts_data->num_tc; i++) {
+				base = GET_BASE_ADDR(i);
+				lvts_int = readl(LVTSMONINT_0 + base);
+				lvts_sts = readl(LVTSMONINTSTS_0 + base);
+				writel(lvts_int,
+				(void __iomem *)(thermal_csram_base + LVTS_DEBUG_INT_SET + 4*i));
+				writel(lvts_sts,
+				(void __iomem *)(thermal_csram_base + LVTS_DEBUG_INT_STS + 4*i));
+				buf_offset += snprintf(buf + buf_offset, buf_size - buf_offset,
+					"%d : 0x%x, 0x%x\n", i, lvts_int, lvts_sts);
+			}
+		}
 		dev_info(dev, "irq=%d reboot_tc=%d\n", irq, reboot_tc);
 		dev_info(dev, "%s", thermintst_str);
+		dev_info(dev, "%s", buf);
 		return IRQ_HANDLED;
 	}
 
@@ -6783,6 +6808,8 @@ static struct lvts_data mt6858_lvts_data = {
 	.clock_gate_no_need = true,
 	.reset_no_need = true,
 	.dump_wo_pause = true,
+	.debug_addr_v2 = true,
+	.lvts_int_debug = true,
 };
 
 /*==================================================

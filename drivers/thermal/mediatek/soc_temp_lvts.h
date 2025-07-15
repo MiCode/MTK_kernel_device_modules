@@ -253,6 +253,8 @@ struct lvts_data {
 	int  gpu_power_ctrl_id;
 	bool mcu_sensor_id_remap;
 	bool ap_domain_no_irq;
+	bool debug_addr_v2;
+	bool lvts_int_debug;
 };
 
 struct soc_temp_tz {
@@ -484,7 +486,9 @@ struct tag_chipid {
 /*SYSRAM offset*/
 #define LVTS_DEBUG1_OFFSET          (0x0E0)
 #define LVTS_DEBUG2_OFFSET          (0x120)
+#define LVTS_DEBUG2_V2_OFFSET       (0x340)
 #define LVTS_DEBUG3_OFFSET          (0x0EC)
 #define LVTS_DEBUG4_OFFSET          (0x200)
-
+#define LVTS_DEBUG_INT_SET          (0x2E0)
+#define LVTS_DEBUG_INT_STS          (0x380)
 #endif /* __MTK_SOC_TEMP_LVTS_H__ */
