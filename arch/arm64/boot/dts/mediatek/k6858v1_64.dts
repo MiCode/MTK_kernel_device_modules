@@ -44,6 +44,7 @@
 	panel1@0 {
 		compatible = "vtdr6126a,vdo";
 		reg = <0>;
+		res-switch = <2>;
 		pm-enable-gpios = <&pio 130 0>;
 		reset-gpios = <&pio 97 0>;
 		gate-ic = <4831>;
