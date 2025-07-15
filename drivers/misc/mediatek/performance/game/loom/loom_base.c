@@ -340,6 +340,25 @@ out:
 	return iter;
 }
 
+int get_loom_is_enable(int rpid)
+{
+	struct loom_render_info *iter = NULL;
+	struct hlist_node *h = NULL;
+	int found = 0;
+
+	loom_render_lock();
+	hlist_for_each_entry_safe(iter, h, &loom_render_list, render_hlist) {
+		if (iter->pid == rpid) {
+			found = 1;
+			break;
+		}
+	}
+	loom_render_unlock();
+
+	return found;
+}
+EXPORT_SYMBOL(get_loom_is_enable);
+
 struct hlist_head *loom_get_render_list(void)
 {
 	return &loom_render_list;

@@ -88,6 +88,7 @@ struct loom_render_info *loom_search_add_render_info(int tgid, int add);
 void loom_delete_render_info(struct loom_render_info *iter);
 struct hlist_head *loom_get_cfg_list(void);
 struct hlist_head *loom_get_render_list(void);
+int get_loom_is_enable(int rpid);
 
 int loom_check_loom_jerk_work_addr_invalid(struct work_struct *target_work);
 #endif // _LOOM_BASE_H_
