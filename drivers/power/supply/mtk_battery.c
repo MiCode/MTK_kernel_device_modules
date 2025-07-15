@@ -1765,8 +1765,13 @@ void fg_custom_init_from_dts(struct platform_device *dev,
 	fg_read_dts_val(gm, np, "is_evb_board", &(is_evb_board), 1);
 	gm->is_evb_board = is_evb_board;
 
-	bm_err(gm, "%s swocv_v:%d swocv_i:%d shutdown_time:%d is_evb_board:%d\n",
-		__func__, gm->ptim_lk_v, gm->ptim_lk_i, gm->pl_shutdown_time, gm->is_evb_board);
+	gm->evb_fg_off = of_property_read_bool(np, "evb-fg-off");
+	if (gm->is_evb_board && gm->evb_fg_off)
+		gm->fixed_bat_tmp = 25;
+
+	bm_err(gm, "%s swocv_v:%d swocv_i:%d shutdown_time:%d is_evb_board:%d evb_fg_off:%d\n",
+		__func__, gm->ptim_lk_v, gm->ptim_lk_i, gm->pl_shutdown_time, gm->is_evb_board,
+		gm->evb_fg_off);
 
 	fg_cust_data->disable_nafg =
 		of_property_read_bool(np, "DISABLE_NAFG");
@@ -2188,7 +2193,7 @@ void fg_custom_init_from_dts(struct platform_device *dev,
 		np, "DISABLE_MTKBATTERY");
 	gm->disableGM30 |= of_property_read_bool(
 		np, "disable-mtkbattery");
-	gm->disableGM30 |= gm->is_evb_board;
+	gm->disableGM30 |= (gm->is_evb_board && gm->evb_fg_off);
 
 	fg_read_dts_val(gm, np, "MULTI_TEMP_GAUGE0",
 		&(fg_cust_data->multi_temp_gauge0), 1);

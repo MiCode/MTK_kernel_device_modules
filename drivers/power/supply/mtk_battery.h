@@ -1187,6 +1187,7 @@ struct mtk_battery {
 	bool disableGM30;
 	bool ntc_disable_nafg;
 	bool cmd_disable_nafg;
+	bool evb_fg_off;
 
 	/*battery plug in out*/
 	bool disable_plug_int;
