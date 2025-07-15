@@ -3717,6 +3717,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			buf-length-debug = <0x500000>;
 			buf-addr-align = <0x400000>;
 			buf-addr-max = <0xffffffff>;
+			dfd-soc-disable-efuse = <25 14>;
+			efuse-sec-ctrl = <27 0 6>;
 		};
 
 		dvfsrc: dvfsrc@1c00f000 {
