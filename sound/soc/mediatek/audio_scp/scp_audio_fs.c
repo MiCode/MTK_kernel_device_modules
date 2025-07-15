@@ -107,7 +107,6 @@ struct miscdevice scp_audio_fs_mdev = {
 
 static void scp_audio_dbg_init_handler(int id, void *data, unsigned int len)
 {
-	pr_info("[SCP AUDIO] %s()\n", __func__);
 	dbg_inited = 1;
 }
 
