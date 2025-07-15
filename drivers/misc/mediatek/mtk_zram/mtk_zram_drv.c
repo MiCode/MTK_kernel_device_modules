@@ -38,6 +38,7 @@
 #include <linux/cpuhotplug.h>
 #include <linux/part_stat.h>
 #include <linux/kcompressd.h>
+#include <linux/mempool.h>
 #include <linux/tracepoint.h>
 
 #include "hwcomp_bridge.h"
@@ -3357,6 +3358,7 @@ static void comp_mode_set_algorithm(struct zram *zram)
 		comp_algorithm_set(zram, ZRAM_PRIMARY_COMP, default_compressor);
 }
 
+#define MEMPOOL_NEW_SIZE	(16)
 static void comp_mode_set(struct zram *zram, const char *mode)
 {
 	int i, ret = -1;
@@ -3380,8 +3382,22 @@ retry:
 	zram->ops = &mode_ops[i];
 
 	/* Support BLK_FEAT_SYNCHRONOUS when it's swonly */
-	if (!strcmp(mode, "swonly"))
+	if (!strcmp(mode, "swonly")) {
 		zram->disk->queue->limits.features |= BLK_FEAT_SYNCHRONOUS;
+
+		/* Restore mempool size for fs_bio_set */
+		if (mempool_resize(&fs_bio_set.bio_pool, BIO_POOL_SIZE))
+			pr_info("%s: failed to restore mempool size!\n", __func__);
+		else
+			pr_info("%s: Restore mempool size successfully!\n", __func__);
+
+	} else {
+		/* Resize mempool size for fs_bio_set */
+		if (mempool_resize(&fs_bio_set.bio_pool, MEMPOOL_NEW_SIZE))
+			pr_info("%s: failed to resize mempool size!\n", __func__);
+		else
+			pr_info("%s: Resize mempool size successfully!\n", __func__);
+	}
 
 	/* Turn on kcompressd_enabled if necessary */
 	if (!strcmp(mode, "kcompressd:hw") || !strcmp(mode, "kcompressd"))
