@@ -16240,6 +16240,9 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc, bool need_report_bw)
 	DDP_PROFILE("[PROFILE] %s+\n", __func__);
 	CRTC_MMP_MARK(crtc_id, enable, 1, 0);
 
+	/* hold wakelock */
+	mtk_drm_crtc_wk_lock(crtc, 1, __func__, __LINE__);
+
 #ifndef DRM_CMDQ_DISABLE
 	/* power on cmdq client */
 	client = mtk_crtc->gce_obj.client[CLIENT_CFG];
@@ -16770,9 +16773,6 @@ void mtk_drm_crtc_atomic_resume(struct drm_crtc *crtc,
 
 	CRTC_MMP_EVENT_START((int) index, resume,
 			mtk_crtc->enabled, index);
-
-	/* hold wakelock */
-	mtk_drm_crtc_wk_lock(crtc, 1, __func__, __LINE__);
 
 	if (index != 0) {
 		if (vdisp_func.vlp_disp_vote)

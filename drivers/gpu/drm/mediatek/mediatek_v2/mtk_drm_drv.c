@@ -13078,7 +13078,7 @@ SKIP_MMLSYS_CONFIG:
 		of_node_put(infra_node);
 	}
 
-	atomic_set(&private->kernel_pm.wakelock_cnt, -1);
+	atomic_set(&private->kernel_pm.wakelock_cnt, 0);
 	atomic_set(&private->kernel_pm.status, KERNEL_PM_RESUME);
 	init_waitqueue_head(&private->kernel_pm.wq);
 	/* The priority must be higher than VCP to have the opportunity to interrupt its suspend flow */
@@ -13376,7 +13376,8 @@ static void mtk_drm_shutdown(struct platform_device *pdev)
 
 	/* skip all next atomic commit */
 	atomic_set(&private->kernel_pm.status, KERNEL_SHUTDOWN);
-	DDPMSG("%s status(%d)\n", __func__, atomic_read(&private->kernel_pm.status));
+	DDPMSG("%s status(%d) top_clk_ref(%d) wakelock_cnt(%d)\n", __func__, atomic_read(&private->kernel_pm.status),
+		atomic_read(&top_clk_ref), atomic_read(&private->kernel_pm.wakelock_cnt));
 
 	/* skip shutdown flow if already suspended */
 	if (atomic_read(&private->kernel_pm.wakelock_cnt) == 0) {
@@ -13389,6 +13390,12 @@ static void mtk_drm_shutdown(struct platform_device *pdev)
 	drm_atomic_helper_shutdown(drm);
 	mtk_drm_pm_ctrl(private, DISP_PM_PUT);
 	mtk_vidle_user_power_release(DISP_VIDLE_USER_NST_LOCK);
+
+	if (atomic_read(&top_clk_ref) != 0) {
+		DDPMSG("power off display before shutdown, top_clk_ref(%d) wakelock_cnt(%d)\n", __func__,
+			atomic_read(&top_clk_ref), atomic_read(&private->kernel_pm.wakelock_cnt));
+		mtk_drm_top_clk_disable_unprepare(private->crtc[0]);
+	}
 }
 
 static void mtk_drm_remove(struct platform_device *pdev)
