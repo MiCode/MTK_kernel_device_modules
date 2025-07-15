@@ -5018,6 +5018,8 @@ void _mtk_crtc_wb_addon_module_disconnect(
 			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_WDMA1_v4) ||
 			(addon_module->type == ADDON_AFTER &&
+			addon_module->module == DISP_WDMA1_v4_pq) ||
+			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_WDMA1_DL) ||
 			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_WDMA_MID) ||
