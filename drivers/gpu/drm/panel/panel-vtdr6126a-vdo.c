@@ -28,10 +28,6 @@
 
 #include "../../../misc/mediatek/gate_ic/gate_i2c.h"
 
-#ifdef CONFIG_MTK_ROUND_CORNER_SUPPORT
-#include "../mediatek/mediatek_v2/mtk_corner_pattern/mtk_data_hw_roundedpattern.h"
-#endif
-
 #define REGFLAG_DELAY               0xFFFC
 #define REGFLAG_UDELAY              0xFFFB
 #define REGFLAG_END_OF_TABLE        0xFFFD
@@ -1267,13 +1263,6 @@ static struct mtk_panel_params ext_params_144hz = {
 	},
 	.data_rate = MODE_0_DATA_RATE,
 	//.tran_panel_params = &panel_driver_status,
-#ifdef CONFIG_MTK_ROUND_CORNER_SUPPORT
-	.round_corner_en = 1,
-	.corner_pattern_height = ROUND_CORNER_H_TOP,
-	.corner_pattern_height_bot = ROUND_CORNER_H_BOT,
-	.corner_pattern_tp_size = sizeof(top_rc_pattern),
-	.corner_pattern_lt_addr = (void *)top_rc_pattern,
-#endif
 };
 
 static struct mtk_panel_params ext_params_120hz = {
@@ -1340,13 +1329,6 @@ static struct mtk_panel_params ext_params_120hz = {
 	},
 	.data_rate = MODE_1_DATA_RATE,
 	//.tran_panel_params = &panel_driver_status,
-#ifdef CONFIG_MTK_ROUND_CORNER_SUPPORT
-	.round_corner_en = 1,
-	.corner_pattern_height = ROUND_CORNER_H_TOP,
-	.corner_pattern_height_bot = ROUND_CORNER_H_BOT,
-	.corner_pattern_tp_size = sizeof(top_rc_pattern),
-	.corner_pattern_lt_addr = (void *)top_rc_pattern,
-#endif
 };
 
 static struct mtk_panel_params ext_params_90hz = {
@@ -1413,13 +1395,6 @@ static struct mtk_panel_params ext_params_90hz = {
 	},
 	.data_rate = MODE_2_DATA_RATE,
 	//.tran_panel_params = &panel_driver_status,
-#ifdef CONFIG_MTK_ROUND_CORNER_SUPPORT
-	.round_corner_en = 1,
-	.corner_pattern_height = ROUND_CORNER_H_TOP,
-	.corner_pattern_height_bot = ROUND_CORNER_H_BOT,
-	.corner_pattern_tp_size = sizeof(top_rc_pattern),
-	.corner_pattern_lt_addr = (void *)top_rc_pattern,
-#endif
 };
 
 static struct mtk_panel_params ext_params_60hz = {
@@ -1486,13 +1461,6 @@ static struct mtk_panel_params ext_params_60hz = {
 	},
 	.data_rate = MODE_3_DATA_RATE,
 	//.tran_panel_params = &panel_driver_status,
-#ifdef CONFIG_MTK_ROUND_CORNER_SUPPORT
-	.round_corner_en = 1,
-	.corner_pattern_height = ROUND_CORNER_H_TOP,
-	.corner_pattern_height_bot = ROUND_CORNER_H_BOT,
-	.corner_pattern_tp_size = sizeof(top_rc_pattern),
-	.corner_pattern_lt_addr = (void *)top_rc_pattern,
-#endif
 };
 
 //Adjust dim speed 20241212 start
