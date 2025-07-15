@@ -1031,8 +1031,7 @@ static void dpc_enable_v3(const u8 en)
 			       INTEN_DT_TE_THREAD_FLD_INTEN_DISP_DT_TE_SEL_6,	/* dt_done34_0 */
 			       dpc_base + DISP_DPC_INTEN_DT_TE_THREAD);
 		else if (debug_irq & BIT(7))
-			writel(INTEN_DT_TE_THREAD_FLD_INTEN_DISP_DT_TE_SEL_0 |	/* trigger_te0 */
-			       INTEN_DT_TE_THREAD_FLD_INTEN_DISP_DT_TE_SEL_4 |	/* dt_done55 */
+			writel(INTEN_DT_TE_THREAD_FLD_INTEN_DISP_DT_TE_SEL_4 |	/* dt_done55 */
 			       INTEN_DT_TE_THREAD_FLD_INTEN_DISP_DT_TE_SEL_5 |	/* dt_done56 */
 			       INTEN_DT_TE_THREAD_FLD_INTEN_DISP_DT_TE_SEL_7,	/* dt_done30 */
 			       dpc_base + DISP_DPC_INTEN_DT_TE_THREAD);
@@ -1109,9 +1108,12 @@ static void dpc_enable_v3(const u8 en)
 		/* [1] disp_vcore SW_CTRL_VALUE */
 		writel(0x1, dpc_base + DISP_REG_DPC_DUMMY1);
 
-		/* disable inten to avoid burst irq */
-		// writel(0, dpc_base + DISP_REG_DPC_DISP_INTEN);
-		// writel(0, dpc_base + DISP_REG_DPC_MML_INTEN);
+		/* disable inten to avoid abnormal irq */
+		writel(0, dpc_base + DISP_DPC_INTEN_DISP_DT_ERROR);
+		writel(0, dpc_base + DISP_DPC_INTEN_DT_TE_THREAD);
+		writel(0, dpc_base + DISP_DPC_INTSTA_DISP_PM_CFG_ERROR);
+		writel(0, dpc_base + DISP_DPC_INTSTA_DISP_DT_ERROR);
+
 		writel(0, dpc_base + DISP_REG_DPC_EN);
 
 		dpc_mmp(config, MMPROFILE_FLAG_PULSE, U32_MAX, 0);
@@ -2901,8 +2903,8 @@ static void dpc_ap_vote_mmpc(bool add, const enum mtk_vidle_voter_user user)
 	}
 
 /*	1. Disable OFF-DT to prevent 4-phase issue */
-	writel(0x80088, dpc_base + DISP_REG_DPC_DISP_DT_SW_TRIG_EN);
-	writel(0x8, dpc_base + DISP_REG_DPC_MML_DT_SW_TRIG_EN);
+	writel(0x40080088, dpc_base + DISP_REG_DPC_DISP_DT_SW_TRIG_EN);
+	writel(0x1800008, dpc_base + DISP_REG_DPC_MML_DT_SW_TRIG_EN);
 
 /*	1.1. polling local status idle */
 	ret = readl_poll_timeout_atomic(hwccf_mtcmos_sta, value, !(value & 0x1ff80000), 1, 200);
@@ -2978,8 +2980,8 @@ static void dpc_ap_vote_mmpc(bool add, const enum mtk_vidle_voter_user user)
 	}
 
 /*	7. Enable OFF-DT */
-	writel(0, dpc_base + DISP_REG_DPC_DISP_DT_SW_TRIG_EN);
-	writel(0, dpc_base + DISP_REG_DPC_MML_DT_SW_TRIG_EN);
+	writel(BIT(30), dpc_base + DISP_REG_DPC_DISP_DT_SW_TRIG_EN);		/* DT30 need sw_trig */
+	writel(BIT(24) | BIT(23), dpc_base + DISP_REG_DPC_MML_DT_SW_TRIG_EN);	/* DT55 DT56 need sw_trig */
 
 	if ((readl(hwccf_mtcmos_pm_ack) & pm_ack) == pm_ack)
 		trace |= BIT(6);
