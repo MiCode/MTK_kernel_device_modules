@@ -1664,24 +1664,35 @@ static void dpc_dsi_pll_set_v2(const u32 value)
 
 static void dpc_apsrc_enable(bool en, const enum mtk_vidle_voter_user user)
 {
-	s32 cnt;
+	s32 cnt = 0;
 
 	cnt = en ? atomic_inc_return(&g_apsrc_cnt) : atomic_dec_return(&g_apsrc_cnt);
 	if (cnt < 0) {
-		DPCERR("skipped, user(%u) apsrc cnt < 0", user);
+		DPCAEE("skipped, user(%u) apsrc cnt < 0", user);
 		atomic_set_release(&g_apsrc_cnt, 0);
+		return;
+	}
+
+	if (!dpc_buck_status(-1)) {
+		if (cnt == 1)
+			dpc_mmp(apsrc, MMPROFILE_FLAG_START, BIT(28) | user, cnt);
+
+		dpc_mmp(apsrc, MMPROFILE_FLAG_PULSE, (en ? BIT(28) : BIT(29)) | user, 0xdead0033);
+
+		if (cnt == 0)
+			dpc_mmp(apsrc, MMPROFILE_FLAG_END, BIT(29) | user, cnt);
+
 		return;
 	}
 
 	if (en && cnt == 1) {
 		writel(0x0D0D0D0D, dpc_base + DISP_REG_DPC_MML_DDRSRC_EMIREQ_CFG);
-		dpc_mmp(apsrc, MMPROFILE_FLAG_START, user, 0x11111111);
+		dpc_mmp(apsrc, MMPROFILE_FLAG_START, BIT(28) | user, cnt);
 	} else if (!en && cnt == 0) {
 		writel(0x05050505, dpc_base + DISP_REG_DPC_MML_DDRSRC_EMIREQ_CFG);
-		dpc_mmp(apsrc, MMPROFILE_FLAG_END, user, 0x22222222);
-	} else {
-		dpc_mmp(apsrc, MMPROFILE_FLAG_PULSE, user, cnt);
-	}
+		dpc_mmp(apsrc, MMPROFILE_FLAG_END, BIT(29) | user, cnt);
+	} else
+		dpc_mmp(apsrc, MMPROFILE_FLAG_PULSE, (en ? BIT(28) : BIT(29)) | user, cnt);
 }
 
 static void dpc_disp_group_enable(bool en)
@@ -1803,6 +1814,7 @@ void dpc_group_enable_v3(const u16 group, bool en)
 				DPCERR("polling dpc req idle timeout %d", __LINE__);
 
 			dpc_disp_group_enable(en);
+			writel(0x0D0D0D0D, dpc_base + DISP_REG_DPC_MML_DDRSRC_EMIREQ_CFG);
 
 			/* disable off DT */
 			dpc2_dt_en(19, false, false);
@@ -2913,6 +2925,8 @@ static int dpc_vidle_power_keep_v3(const enum mtk_vidle_voter_user _user)
 		}
 	}
 
+	dpc_apsrc_enable(true, user);
+
 	atomic_inc(&excep_ret[user]);
 	mutex_unlock(&g_priv->excp_lock);
 
@@ -2922,9 +2936,6 @@ static int dpc_vidle_power_keep_v3(const enum mtk_vidle_voter_user _user)
 		tracing_mark_write(trace_buf_keep[1][1]);
 	}
 	tracing_mark_write(trace_buf_keep[0][1]);
-
-	if (user == DISP_VIDLE_USER_NST_LOCK)
-		dpc_apsrc_enable(true, user);
 
 	return ret;
 }
@@ -2996,8 +3007,7 @@ static void dpc_vidle_power_release_v3(const enum mtk_vidle_voter_user _user)
 		break;
 	}
 
-	if (user == DISP_VIDLE_USER_NST_LOCK)
-		dpc_apsrc_enable(false, user);
+	dpc_apsrc_enable(false, user);
 
 	if (excep_by_xpu & BIT(0)) {
 		tracing_mark_write(trace_buf_release[1][0]);

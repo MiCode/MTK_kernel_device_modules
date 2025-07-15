@@ -278,7 +278,7 @@ static const struct fg_data mt6993_mmlt_fg_data = {
 	.tile_width = 640,
 	.sram_pp = true,
 	.hw_ar = true,
-	.ddrsrc_addr = 0x3EFF006C,
+	// .ddrsrc_addr = 0x3EFF006C,
 };
 
 struct mml_comp_fg {
