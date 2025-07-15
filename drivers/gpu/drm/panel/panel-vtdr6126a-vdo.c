@@ -1201,7 +1201,7 @@ static const struct drm_display_mode switch_mode_fhd_60hz = {
 #if defined(CONFIG_MTK_PANEL_EXT)
 static struct mtk_panel_params ext_params_144hz = {
 	.cust_esd_check = 1,
-	.esd_check_enable = 0,
+	.esd_check_enable = 1,
 	.ssc_enable = 0,
 	.lcm_esd_check_table[0] = {
 		.cmd = 0x0A, .count = 1, .para_list[0] = 0x9C,
@@ -1267,7 +1267,7 @@ static struct mtk_panel_params ext_params_144hz = {
 
 static struct mtk_panel_params ext_params_120hz = {
 	.cust_esd_check = 1,
-	.esd_check_enable = 0,
+	.esd_check_enable = 1,
 	.ssc_enable = 0,
 	.lcm_esd_check_table[0] = {
 		.cmd = 0x0A, .count = 1, .para_list[0] = 0x9C,
@@ -1333,7 +1333,7 @@ static struct mtk_panel_params ext_params_120hz = {
 
 static struct mtk_panel_params ext_params_90hz = {
 	.cust_esd_check = 1,
-	.esd_check_enable = 0,
+	.esd_check_enable = 1,
 	.ssc_enable = 0,
 	.lcm_esd_check_table[0] = {
 		.cmd = 0x0A, .count = 1, .para_list[0] = 0x9C,
@@ -1399,7 +1399,7 @@ static struct mtk_panel_params ext_params_90hz = {
 
 static struct mtk_panel_params ext_params_60hz = {
 	.cust_esd_check = 1,
-	.esd_check_enable = 0,
+	.esd_check_enable = 1,
 	.ssc_enable = 0,
 	.lcm_esd_check_table[0] = {
 		.cmd = 0x0A, .count = 1, .para_list[0] = 0x9C,
