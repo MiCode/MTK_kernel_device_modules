@@ -371,23 +371,20 @@ static int mt6993_apu_top_off(struct device *dev)
 #if TIMER_RDY
 static struct timer_list limit_timer;
 static int limit_timer_active;
-static int last_upper_limit = -1;
-static int last_lower_limit = -1;
 static int last_upper_request_id = -1;
 static int last_lower_request_id = -1;
 
-static void limit_timer_callback(struct timer_list *t)
+static void mt6993_limit_timer_callback(struct timer_list *t)
 {
-	if (global_upper_limit == last_upper_limit &&
-	    global_lower_limit == last_lower_limit) {
-		pr_info("Frequency limit has been active for more than 100ms:\n"
-			"\t\tupper_limit=%d (from user %d), lower_limit=%d (from user %d)\n",
-			global_upper_limit, last_upper_request_id,
-			global_lower_limit, last_lower_request_id);
-		mod_timer(&limit_timer, jiffies + msecs_to_jiffies(100));
-	} else {
-		limit_timer_active = 0;
-	}
+	apu_pr_info_ratelimited(
+		"%s: upper_limit=%d (user %d), lower_limit=%d (user %d)\n", __func__,
+		global_upper_limit, last_upper_request_id,
+		global_lower_limit, last_lower_request_id);
+
+	/* Re-arm timer for continuous monitoring */
+	if (limit_timer_active)
+		mod_timer(&limit_timer, jiffies + msecs_to_jiffies(5000));
+
 }
 #endif
 
@@ -450,22 +447,20 @@ static int mt6993_update_bounds(void)
 	}
 
 #if TIMER_RDY
-	// Reset the timer
+	/* Update request IDs for logging */
+	last_upper_request_id = cw->request_id;
+	last_lower_request_id = cw->request_id;
+
+	/* Start/restart timer if limits are not at default values */
 	if (limit_timer_active)
 		del_timer(&limit_timer);
 
-	if (new_upper_limit > global_lower_limit) {
-		last_upper_limit = new_upper_limit;
-		last_upper_request_id = cw->request_id;
-	}
+	if (new_upper_limit != mt6993_user_max_opp || new_lower_limit != USER_MIN_OPP_VAL)
+		limit_timer_active = 1;
 
-	if (new_lower_limit < global_upper_limit) {
-		last_lower_limit = new_lower_limit;
-		last_lower_request_id = cw->request_id;
-	}
+	if (limit_timer_active)
+		mod_timer(&limit_timer, jiffies + msecs_to_jiffies(5000));
 
-	limit_timer_active = 1;
-	mod_timer(&limit_timer, jiffies + msecs_to_jiffies(100));
 #endif
 
 	global_upper_limit = new_upper_limit;
@@ -627,9 +622,7 @@ int mt6993_set_freq_limit(int upper_limit, int lower_limit, int *request_id, int
 			sw_throttle_sync_mode = 0; // clr sync mode after done.
 		}
 	} else if (ret == 0 && type == SW_THROTTLE_SYSFS) {
-#if LOCAL_DBG
 		pr_info("%s: input from sysfs, detected bounds changed, sending to apu\n", __func__);
-#endif
 		mt6993_aputop_opp_limit(global_upper_limit, global_lower_limit, 2);
 	} else if (ret == 0 && type == SW_THROTTLE_LIMIT_HAL) {
 #if LOCAL_DBG
@@ -1431,7 +1424,7 @@ static int mt6993_apu_top_pb(struct platform_device *pdev)
 	ret = mt6993_apu_top_procfs_init();
 
 #if TIMER_RDY
-	timer_setup(&limit_timer, limit_timer_callback, 0);
+	timer_setup(&limit_timer, mt6993_limit_timer_callback, 0);
 #endif
 
 	return ret;
@@ -1582,3 +1575,4 @@ const struct apupwr_plat_data mt6993_plat_data = {
 	.bypass_pwr_on = 0,
 	.bypass_pwr_off = 0,
 };
+

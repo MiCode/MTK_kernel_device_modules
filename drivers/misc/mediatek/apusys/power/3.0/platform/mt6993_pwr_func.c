@@ -11,6 +11,8 @@
 #include <linux/sched/clock.h>
 #include "mt6993_apupwr.h"
 #include "mt6993_apupwr_prot.h"
+#include "apusys_secure.h"
+
 #define LOCAL_DBG	(1)
 static void __iomem *spare_reg_base;
 static void __iomem *are_sram_base;
@@ -58,6 +60,7 @@ static void _opp_limiter(int vpu_max, int vpu_min, int dla_max, int dla_min,
 	int i;
 	unsigned int reg_data;
 	unsigned int reg_offset;
+	struct arm_smccc_res res;
 
 	vpu_max = over_range_check(vpu_max);
 	vpu_min = over_range_check(vpu_min);
@@ -83,6 +86,8 @@ static void _opp_limiter(int vpu_max, int vpu_min, int dla_max, int dla_min,
 			((type & 0xff) << 24));		// dedicate 1 byte
 		reg_offset = opp_limit_tbl[i].opp_lmt_reg;
 		apu_writel(reg_data, spare_reg_base + reg_offset);
+		arm_smccc_smc(MTK_SIP_APUSYS_CONTROL, MTK_APUSYS_KERNEL_OP_APUSYS_PWR_WRITE_OPP_LIMIT,
+			reg_data, 0, 0, 0, 0, 0, &res);
 #if LOCAL_DBG
 		apu_pr_info_ratelimited("%s cluster%d write:0x%08x, readback:0x%08x\n",
 				__func__, i, reg_data,
