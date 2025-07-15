@@ -8294,6 +8294,9 @@ void mtk_drm_top_clk_prepare_enable(struct drm_crtc *crtc)
 	if (atomic_read(&top_clk_ref) == 1) {
 		DDPFENCE("%s:%d power_state = true\n", __func__, __LINE__);
 		priv->power_state = true;
+
+		/* Enable IRQs and QOS config. Call only after power_state is set to true. */
+		mtk_crtc_vdisp_ao_config(crtc);
 	}
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_FULL_SCENARIO)) {
@@ -8364,6 +8367,9 @@ void mtk_drm_top_clk_disable_unprepare(struct drm_crtc *crtc)
 			spin_lock_irqsave(&top_clk_lock, flags);
 		}
 		priv->power_state = false;
+
+		/* Disable all IRQs. Call only after power_state is set to false. */
+		mtk_crtc_vdisp_ao_config(crtc);
 
 		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_FULL_SCENARIO)) {
 			mtk_vidle_config_ff(false);

@@ -3948,7 +3948,6 @@ int mtk_drm_aod_setbacklight(struct drm_crtc *crtc, unsigned int level)
 		/* 1. power on mtcmos */
 		mtk_drm_top_clk_prepare_enable(crtc);
 		mtk_crtc_gce_event_config(crtc);
-		mtk_crtc_vdisp_ao_config(crtc);
 
 		comp = mtk_ddp_comp_request_output_lpc(mtk_crtc);
 		mtk_ddp_comp_io_cmd(comp, NULL, DSI_LPC_INIT_CONFIG, NULL);
@@ -16244,7 +16243,6 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc, bool need_report_bw)
 		vdisp_func.query_aging_val();
 
 	mtk_crtc_gce_event_config(crtc);
-	mtk_crtc_vdisp_ao_config(crtc);
 
 	comp = mtk_ddp_comp_request_output_lpc(mtk_crtc);
 	mtk_ddp_comp_io_cmd(comp, NULL, DSI_LPC_INIT_CONFIG, NULL);
@@ -17571,8 +17569,6 @@ void mtk_drm_crtc_first_enable(struct drm_crtc *crtc)
 		if (priv->data->wla_config)
 			priv->data->wla_config(crtc->dev, NULL);
 	}
-
-	mtk_crtc_vdisp_ao_config(crtc);
 
 	comp = mtk_ddp_comp_request_output_lpc(mtk_crtc);
 	mtk_ddp_comp_io_cmd(comp, NULL, DSI_LPC_INIT_CONFIG, NULL);

@@ -373,11 +373,18 @@ void mtk_vdisp_ao_irq_config_MT6991(struct drm_device *drm)
 void mtk_vdisp_ao_irq_config_MT6993(struct drm_device *drm)
 {
 	int i = 0, value = 0, mask = 0;
+	struct mtk_drm_private *drm_priv = drm->dev_private;
 
-	if (!g_priv) {
-		DDPMSG("%s, g_priv is null\n", __func__);
+	if (!g_priv || !drm_priv) {
+		DDPMSG("%s, g_priv or drm_priv is null\n", __func__);
 		return;
 	}
+
+	if (!drm_priv->power_state) {
+		writel(0, vdisp_ao_base + DISP_REG_VDISP_AO_INTEN);
+		return;
+	}
+
 	writel(g_priv->data->ao_int_config, vdisp_ao_base + DISP_REG_VDISP_AO_INTEN);
 
 	for (i = 0; i < g_priv->data->irq_count; i++) {
@@ -439,6 +446,15 @@ void mtk_vdisp_ao_qos_config_MT6993(struct drm_device *drm)
 	int hrt_r_hrt_w_value;
 	int hrt_r_srt_w_value;
 	int value;
+	struct mtk_drm_private *drm_priv = drm->dev_private;
+
+	if (!g_priv || !drm_priv) {
+		DDPMSG("%s, g_priv or drm_priv is null\n", __func__);
+		return;
+	}
+
+	if (!drm_priv->power_state)
+		return;
 
 	DDPINFO("%s:%d\n", __func__, __LINE__);
 

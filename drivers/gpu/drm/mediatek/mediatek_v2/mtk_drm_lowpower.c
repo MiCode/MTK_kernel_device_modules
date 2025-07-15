@@ -2521,11 +2521,7 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 	mtk_crtc_gce_event_config(crtc);
 
 	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
-				"vdisp_cfg", 0x32, perf_string, true);
-	mtk_crtc_vdisp_ao_config(crtc);
-
-	mtk_drm_idlemgr_perf_detail_check(perf_detail, crtc,
-				"lpc_cfg", 0x33, perf_string, true);
+				"lpc_cfg", 0x32, perf_string, true);
 	comp = mtk_ddp_comp_request_output_lpc(mtk_crtc);
 	mtk_ddp_comp_io_cmd(comp, NULL, DSI_LPC_INIT_CONFIG, NULL);
 
