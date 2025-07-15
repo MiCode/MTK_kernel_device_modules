@@ -437,7 +437,6 @@ static void disp_aal_set_interrupt(struct mtk_ddp_comp *comp,
 	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 	struct pq_common_data *pq_data = mtk_crtc->pq_data;
-	int bypass;
 
 	if (!aal_data->primary_data->aal_fo->mtk_aal_support) {
 		AALIRQ_LOG("aal is not support\n");
@@ -447,15 +446,13 @@ static void disp_aal_set_interrupt(struct mtk_ddp_comp *comp,
 	if (aal_data->is_right_pipe)
 		return;
 
-	bypass = aal_data->primary_data->relay_state != 0 ? 1 : 0;
-	if (enable &&
-		(bypass != 1 || pq_data->new_persist_property[DISP_PQ_CCORR_SILKY_BRIGHTNESS])) {
+	if (enable) {
 		/* Enable output frame end interrupt */
 		mtk_ddp_write_relaxed(comp, AAL_IRQ_OF_END, DISP_AAL_INTEN, handle);
 
 		atomic_set(&aal_data->primary_data->eof_irq_en, 1);
 		AALIRQ_LOG("interrupt enabled\n");
-	} else if (!enable) {
+	} else {
 		mtk_ddp_write_relaxed(comp, 0x0, DISP_AAL_INTEN, handle);
 		mtk_ddp_write_relaxed(comp, 0x0, DISP_AAL_INTSTA, handle);
 		atomic_set(&aal_data->primary_data->eof_irq_en, 0);
@@ -1613,8 +1610,10 @@ static irqreturn_t disp_aal_irq_handler(int irq, void *dev_id)
 	struct mtk_drm_crtc *mtk_crtc = NULL;
 	irqreturn_t ret = IRQ_NONE;
 
-	if (IS_ERR_OR_NULL(aal))
+	if (IS_ERR_OR_NULL(aal)) {
+		DDPIRQ("%s, ERR\n", __func__);
 		return IRQ_NONE;
+	}
 
 	comp = &aal->ddp_comp;
 	if (mtk_drm_top_clk_isr_get(comp) == false) {
