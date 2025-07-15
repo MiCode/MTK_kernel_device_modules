@@ -298,6 +298,8 @@ struct mtk_dma_ptr {
 	u8 *dma_wr_buf;
 	dma_addr_t rpaddr;
 	dma_addr_t wpaddr;
+	u8 *dma_realloc_rd_buf;
+	u32 dcache_line_size;
 };
 
 struct mtk_i3c_cal_para {
@@ -1857,6 +1859,7 @@ static int mtk_i3c_start_enable(struct mtk_i3c_master *i3c, struct mtk_i3c_xfer 
 
 	mtk_i3c_set_speed_reg(i3c, xfer);
 	if (xfer->dma_en) {
+		xfer->pdma.dcache_line_size = cache_line_size();
 		if (xfer->op == MTK_I3C_MASTER_WR) {
 			writel(I3C_DMA_INT_FLAG_CLR, i3c->pdmabase + OFFSET_INT_FLAG);
 			writel(I3C_DMA_CON_TX | I3C_DMA_CON_SKIP_CONFIG | I3C_DMA_CON_ASYNC_MODE,
@@ -1884,11 +1887,21 @@ static int mtk_i3c_start_enable(struct mtk_i3c_master *i3c, struct mtk_i3c_xfer 
 				xfer->pdma.dma_rd_buf = kzalloc(xfer->rx_len, GFP_KERNEL);
 			if (!xfer->pdma.dma_rd_buf)
 				return -ENOMEM;
+			if (!IS_ALIGNED((size_t)xfer->pdma.dma_rd_buf, xfer->pdma.dcache_line_size)) {
+				kfree(xfer->pdma.dma_rd_buf);
+				xfer->pdma.dma_realloc_rd_buf =
+					kzalloc(xfer->rx_len + xfer->pdma.dcache_line_size - 1, GFP_KERNEL);
+				if (!xfer->pdma.dma_realloc_rd_buf)
+					return -ENOMEM;
+				xfer->pdma.dma_rd_buf = (u8 *)ALIGN((size_t)xfer->pdma.dma_realloc_rd_buf,
+					xfer->pdma.dcache_line_size);
+			} else
+				xfer->pdma.dma_realloc_rd_buf = xfer->pdma.dma_rd_buf;
 
 			xfer->pdma.rpaddr = dma_map_single(i3c->dev,
 				xfer->pdma.dma_rd_buf, xfer->rx_len, DMA_FROM_DEVICE);
 			if (dma_mapping_error(i3c->dev, xfer->pdma.rpaddr)) {
-				kfree(xfer->pdma.dma_rd_buf);
+				kfree(xfer->pdma.dma_realloc_rd_buf);
 				dev_info(i3c->dev, "[%s] MTK_I3C_RD dma_map_single error\n", __func__);
 				return -ENOMEM;
 			}
@@ -1920,13 +1933,28 @@ static int mtk_i3c_start_enable(struct mtk_i3c_master *i3c, struct mtk_i3c_xfer 
 				dev_info(i3c->dev, "[%s] MTK_I3C_WRRD kzalloc error\n", __func__);
 				return -ENOMEM;
 			}
+			if (!IS_ALIGNED((size_t)xfer->pdma.dma_rd_buf, xfer->pdma.dcache_line_size)) {
+				kfree(xfer->pdma.dma_rd_buf);
+				xfer->pdma.dma_realloc_rd_buf =
+					kzalloc(xfer->rx_len + xfer->pdma.dcache_line_size - 1, GFP_KERNEL);
+				if (!xfer->pdma.dma_realloc_rd_buf) {
+					dma_unmap_single(i3c->dev, xfer->pdma.wpaddr,
+						xfer->tx_len, DMA_TO_DEVICE);
+					kfree(xfer->pdma.dma_wr_buf);
+					dev_info(i3c->dev, "[%s] MTK_I3C_WRRD rekzalloc error\n", __func__);
+					return -ENOMEM;
+				}
+				xfer->pdma.dma_rd_buf = (u8 *)ALIGN((size_t)xfer->pdma.dma_realloc_rd_buf,
+					xfer->pdma.dcache_line_size);
+			} else
+				xfer->pdma.dma_realloc_rd_buf = xfer->pdma.dma_rd_buf;
 			xfer->pdma.rpaddr = dma_map_single(i3c->dev,
 				xfer->pdma.dma_rd_buf, xfer->rx_len, DMA_FROM_DEVICE);
 			if (dma_mapping_error(i3c->dev, xfer->pdma.rpaddr)) {
 				dma_unmap_single(i3c->dev, xfer->pdma.wpaddr,
 					xfer->tx_len, DMA_TO_DEVICE);
 				kfree(xfer->pdma.dma_wr_buf);
-				kfree(xfer->pdma.dma_rd_buf);
+				kfree(xfer->pdma.dma_realloc_rd_buf);
 				dev_info(i3c->dev, "[%s] MTK_I3C_WRRD r_dma_map error\n", __func__);
 				return -ENOMEM;
 			}
@@ -2274,13 +2302,13 @@ dma_unmap:
 			} else if (xfer->op == MTK_I3C_MASTER_RD) {
 				dma_unmap_single(i3c->dev, xfer->pdma.rpaddr, xfer->rx_len, DMA_FROM_DEVICE);
 				memcpy(xfer->rx_buf, xfer->pdma.dma_rd_buf, xfer->rx_len);
-				kfree(xfer->pdma.dma_rd_buf);
+				kfree(xfer->pdma.dma_realloc_rd_buf);
 			} else if (xfer->op == MTK_I3C_MASTER_WRRD) {
 				dma_unmap_single(i3c->dev, xfer->pdma.wpaddr, xfer->tx_len, DMA_TO_DEVICE);
 				kfree(xfer->pdma.dma_wr_buf);
 				dma_unmap_single(i3c->dev, xfer->pdma.rpaddr, xfer->rx_len, DMA_FROM_DEVICE);
 				memcpy(xfer->rx_buf, xfer->pdma.dma_rd_buf, xfer->rx_len);
-				kfree(xfer->pdma.dma_rd_buf);
+				kfree(xfer->pdma.dma_realloc_rd_buf);
 			} else if (xfer->op == MTK_I3C_MASTER_CON_WR) {
 				dma_unmap_single(i3c->dev, xfer->pdma.wpaddr, xfer->tx_len, DMA_TO_DEVICE);
 			}
