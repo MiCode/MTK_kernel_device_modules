@@ -2084,7 +2084,10 @@ static int loom_set_affinity(int pid, int aff_cpu)
 	if (!atomic_read(&loom_cpu_dedicated_enable))
 		return -EINVAL;
 
-	if(pid < 0 || aff_cpu >= MAX_NR_CPUS || aff_cpu < LOOM_NO_AFFINITY)
+	if (pid < 0 || pid >= PID_MAX_DEFAULT)
+		return -EINVAL;
+
+	if (aff_cpu >= MAX_NR_CPUS || aff_cpu < LOOM_NO_AFFINITY)
 		return -EINVAL;
 
 	cpumask_clear(&aff_mask);
@@ -2121,32 +2124,79 @@ out_put_task:
 	return ret;
 }
 
-static int loom_unset_affinity_buf(struct affinity_data_node *aff_buf)
+static int loom_unset_affinity_buf(unsigned int index)
 {
 	int ret = 0;
 	unsigned long flags;
 	int pid, cpu;
 
 	spin_lock_irqsave(&loom_affinity_lock, flags);
-	pid = aff_buf->pid;
-	cpu = aff_buf->aff_cpu;
-	aff_buf->pid = -1;
-	aff_buf->aff_cpu = LOOM_NO_AFFINITY;
+	pid = loom_rec_buffer[index].pid;
+	cpu = loom_rec_buffer[index].aff_cpu;
+	loom_rec_buffer[index].pid = LOOM_NO_TASK;
+	loom_rec_buffer[index].aff_cpu = LOOM_NO_AFFINITY;
 	spin_unlock_irqrestore(&loom_affinity_lock, flags);
 
-	if (cpu != LOOM_NO_AFFINITY)
-		ret = core_ctl_force_pause_request(cpu, 0, LOOM_FORCE_PAUSE);
+	if (cpu != LOOM_NO_AFFINITY) {
+		ret = core_ctl_force_pause_request(cpu, false, LOOM_FORCE_PAUSE);
+		if (ret < 0) {
+			pr_info("%s: Fail to reset buffer[%u] with force resume CPU#%d.",
+				__func__, index, cpu);
+			return ret;
+		}
+	}
 
-	if (pid != -1)
-		loom_set_affinity(pid, LOOM_NO_AFFINITY);
+	if (pid != LOOM_NO_TASK) {
+		ret = loom_set_affinity(pid, LOOM_NO_AFFINITY);
+		if (ret < 0) {
+			pr_info("%s: Fail to reset buffer[%u] with pid=%d affinity.",
+				__func__, index, pid);
+			return ret;
+		}
+	}
+
+	return ret;
+}
+
+static int loom_update_affinity_buf(int pid, int aff_cpu)
+{
+	int ret = 0;
+	unsigned long flags;
+	unsigned int now_update_idx;
+	static unsigned int update_idx;
+
+	spin_lock_irqsave(&loom_affinity_lock, flags);
+	now_update_idx = update_idx;
+	update_idx = (update_idx + 1) % MAX_LOOM_BUF_SIZE;
+	spin_unlock_irqrestore(&loom_affinity_lock, flags);
+
+	/* remove old PID and CPU affinity with buffer */
+	ret = loom_unset_affinity_buf(now_update_idx);
+
+	/* update buffer */
+	spin_lock_irqsave(&loom_affinity_lock, flags);
+	loom_rec_buffer[now_update_idx].pid = pid;
+	loom_rec_buffer[now_update_idx].aff_cpu = aff_cpu;
+	spin_unlock_irqrestore(&loom_affinity_lock, flags);
+
+	ret = core_ctl_force_pause_request(aff_cpu, true, LOOM_FORCE_PAUSE);
+	if (ret < 0) {
+		spin_lock_irqsave(&loom_affinity_lock, flags);
+		loom_rec_buffer[now_update_idx].pid = LOOM_NO_TASK;
+		loom_rec_buffer[now_update_idx].aff_cpu = LOOM_NO_AFFINITY;
+		spin_unlock_irqrestore(&loom_affinity_lock, flags);
+		pr_info("%s: Fail to set pid=%d into record buffer[%u] with CPU#%d, reset it.\n",
+			__func__ , pid, now_update_idx, aff_cpu);
+	} else {
+		pr_info("%s: Success to set pid=%d into record buffer[%u] with CPU#%d\n",
+			__func__ , pid, now_update_idx, aff_cpu);
+	}
 
 	return ret;
 }
 
 static int loom_specify_pause(int pid, int aff_cpu)
 {
-	static unsigned int update_idx;
-	unsigned int now_update_idx;
 	unsigned long flags;
 	int i, ret = 0;
 	int rec_pid[MAX_LOOM_BUF_SIZE], rec_aff_cpu[MAX_LOOM_BUF_SIZE];
@@ -2155,7 +2205,7 @@ static int loom_specify_pause(int pid, int aff_cpu)
 	if ((aff_cpu >= MAX_NR_CPUS) || (aff_cpu < LOOM_NO_AFFINITY) || aff_cpu == 0)
 		return -EINVAL;
 
-	if (pid < 0)
+	if (pid < 0 || pid >= PID_MAX_DEFAULT)
 		return -EINVAL;
 
 	/* check already assigned CPU */
@@ -2164,10 +2214,10 @@ static int loom_specify_pause(int pid, int aff_cpu)
 		tmp_pid = loom_rec_buffer[i].pid;
 		tmp_aff_cpu = loom_rec_buffer[i].aff_cpu;
 
-		if(tmp_aff_cpu == LOOM_NO_AFFINITY)
+		if (tmp_aff_cpu == LOOM_NO_AFFINITY)
 			continue;
 
-		if(tmp_aff_cpu == aff_cpu) {
+		if (tmp_aff_cpu == aff_cpu) {
 			pr_info("%s: CPU#%d is already bound to pid=%d\n",
 				__func__, tmp_aff_cpu, tmp_pid);
 			ret = -EINVAL;
@@ -2175,7 +2225,7 @@ static int loom_specify_pause(int pid, int aff_cpu)
 		}
 	}
 	spin_unlock_irqrestore(&loom_affinity_lock, flags);
-	/* cpu node existed */
+	/* CPU already been bound or force paused */
 	if (ret < 0)
 		return ret;
 
@@ -2186,44 +2236,13 @@ static int loom_specify_pause(int pid, int aff_cpu)
 		tmp_aff_cpu = loom_rec_buffer[i].aff_cpu;
 		spin_unlock_irqrestore(&loom_affinity_lock, flags);
 
-		if(tmp_pid == pid){
-			ret = loom_unset_affinity_buf(&loom_rec_buffer[i]);
-			if(ret < 0){
-				pr_info("%s: Failed to remove buf[%d] with pid=%d cpu=%d, ret=%d",
-						__func__, i, tmp_pid, tmp_aff_cpu, ret);
-			}
-		}
+		if (tmp_pid == pid)
+			ret = loom_unset_affinity_buf(i);
 	}
 
-	/* update buffer with new PID and CPU */
-	if (aff_cpu != LOOM_NO_AFFINITY) {
-		spin_lock_irqsave(&loom_affinity_lock, flags);
-		now_update_idx = update_idx;
-		update_idx = (update_idx + 1)%MAX_LOOM_BUF_SIZE;
-		spin_unlock_irqrestore(&loom_affinity_lock, flags);
-
-		/* remove old PID and CPU affinity from buffer */
-		ret = loom_unset_affinity_buf(&loom_rec_buffer[now_update_idx]);
-
-		/* set new PID and CPU affinity in buffer */
-		spin_lock_irqsave(&loom_affinity_lock, flags);
-		loom_rec_buffer[now_update_idx].pid = pid;
-		loom_rec_buffer[now_update_idx].aff_cpu = aff_cpu;
-		spin_unlock_irqrestore(&loom_affinity_lock, flags);
-
-		ret = core_ctl_force_pause_request(aff_cpu, 1, LOOM_FORCE_PAUSE);
-		if (ret < 0) {
-			spin_lock_irqsave(&loom_affinity_lock, flags);
-			loom_rec_buffer[now_update_idx].pid = -1;
-			loom_rec_buffer[now_update_idx].aff_cpu = LOOM_NO_AFFINITY;
-			spin_unlock_irqrestore(&loom_affinity_lock, flags);
-			pr_info("%s: Fail to seted pid=%d into record buffer with CPU#%d\n",
-				__func__ , pid, aff_cpu);
-		} else {
-			pr_info("%s: Successfully seted pid=%d into record buffer with CPU#%d\n",
-				__func__ , pid, aff_cpu);
-		}
-	}
+	/* Add new node to buffer */
+	if (aff_cpu != LOOM_NO_AFFINITY)
+		ret = loom_update_affinity_buf(pid, aff_cpu);
 
 	for(i=0; i<MAX_LOOM_BUF_SIZE; i++) {
 		spin_lock_irqsave(&loom_affinity_lock, flags);
@@ -2260,6 +2279,59 @@ int loom_ctask_cpu_dedicated(int pid, int aff_cpu)
 }
 EXPORT_SYMBOL(loom_ctask_cpu_dedicated);
 
+int loom_force_pause(int cpu, bool is_pause)
+{
+	int i, ret = 0;
+	unsigned long flags;
+	int tmp_pid, tmp_aff_cpu;
+
+	if (!atomic_read(&loom_cpu_dedicated_enable))
+		return -EINVAL;
+
+	/* Not allow to force pause CPU0 */
+	if ((cpu >= MAX_NR_CPUS) || (cpu <= 0))
+		return -EINVAL;
+
+	/* Unset all already set combination with this CPU */
+	for (i=0; i<MAX_LOOM_BUF_SIZE; i++) {
+		spin_lock_irqsave(&loom_affinity_lock, flags);
+		tmp_pid = loom_rec_buffer[i].pid;
+		tmp_aff_cpu = loom_rec_buffer[i].aff_cpu;
+		spin_unlock_irqrestore(&loom_affinity_lock, flags);
+
+		if (tmp_aff_cpu == cpu)
+			ret = loom_unset_affinity_buf(i);
+	}
+
+	/* Add new node to buffer, without pid */
+	if (is_pause) {
+		ret = loom_update_affinity_buf(LOOM_NO_TASK, cpu);
+		if (ret == 0)
+			pr_info("%s: Loom force pause success with CPU#%d\n", __func__ , cpu);
+	} else
+		pr_info("%s: Loom force resume success with CPU#%d\n", __func__ , cpu);
+
+	return ret;
+}
+EXPORT_SYMBOL(loom_force_pause);
+
+static int get_loom_force_pause(char *buffer, const struct kernel_param *kp)
+{
+	int len = 0;
+	unsigned int force_pause_mask = core_ctl_get_force_pause_mask();
+
+	return scnprintf(buffer + len, PAGE_SIZE - len,
+		"force_pause_mask=%x\n", force_pause_mask);
+}
+
+static const struct kernel_param_ops loom_force_pause_ops = {
+	.set = NULL,
+	.get = get_loom_force_pause,
+};
+
+module_param_cb(loom_force_pause, &loom_force_pause_ops, NULL, 0664);
+MODULE_PARM_DESC(loom_force_pause, "get pause mask status ");
+
 int loom_cpu_dedicated(unsigned int enable)
 {
 	int i;
@@ -2268,15 +2340,15 @@ int loom_cpu_dedicated(unsigned int enable)
 	unsigned int new_val;
 
 	/* disable loom affinity feature */
-	if (enable == 0){
+	if (enable == 0) {
 		for(i=0; i<MAX_LOOM_BUF_SIZE; i++)
-			loom_unset_affinity_buf(&loom_rec_buffer[i]);
+			ret = loom_unset_affinity_buf(i);
 	}
 
 	atomic_set(&loom_cpu_dedicated_enable, enable);
 	new_val = atomic_read(&loom_cpu_dedicated_enable);
 
-	pr_info("%s: loom cpu dedicated enable from %u to %u\n",
+	pr_info("%s: enable from %u to %u\n",
 		 __func__, old_val, new_val);
 
 	return ret;
@@ -2304,9 +2376,6 @@ static int get_loom_ctask_cpu_dedicated(char *buffer, const struct kernel_param 
 	int i, len = 0;
 
 	for (i = 0; i < MAX_LOOM_BUF_SIZE; i++) {
-		if (loom_rec_buffer[i].pid == -1)
-			continue;
-
 		len += scnprintf(buffer + len, PAGE_SIZE - len, "buf[%d]: pid=%d, aff_cpu=%d\n",
 			i, loom_rec_buffer[i].pid, loom_rec_buffer[i].aff_cpu);
 	}
@@ -2331,8 +2400,8 @@ static void loom_affinity_node_init(void)
 
 	spin_lock_irqsave(&loom_affinity_lock, flags);
 	for (i=0;i<MAX_LOOM_BUF_SIZE;i++) {
-		loom_rec_buffer[i].pid = -1;
-		loom_rec_buffer[i].aff_cpu = -1;
+		loom_rec_buffer[i].pid = LOOM_NO_TASK;
+		loom_rec_buffer[i].aff_cpu = LOOM_NO_AFFINITY;
 	}
 	spin_unlock_irqrestore(&loom_affinity_lock, flags);
 }

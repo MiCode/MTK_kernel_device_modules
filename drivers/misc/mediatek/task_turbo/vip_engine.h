@@ -23,6 +23,7 @@
 #define MAX_NORMAL_PRIO 140
 #define MIN_CPUS 4
 #define LOOM_NO_AFFINITY -1
+#define LOOM_NO_TASK -1
 
 DECLARE_PER_CPU(unsigned long, max_freq_scale);
 DECLARE_PER_CPU(unsigned long, min_freq_scale);
