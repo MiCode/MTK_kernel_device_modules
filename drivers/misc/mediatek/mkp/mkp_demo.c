@@ -23,6 +23,9 @@
 #include <linux/libfdt.h> // fdt32_ld
 #include <linux/vmalloc.h>
 #include <linux/mm.h>
+#if IS_ENABLED(CONFIG_MTK_MKP_TEST)
+#include <linux/debugfs.h>
+#endif
 
 #include "selinux/mkp_security.h"
 #include "selinux/mkp_policycap.h"
@@ -105,6 +108,124 @@ bool mkp_hook_trace_enabled(void)
 {
 	return !!mkp_hook_trace_on;
 }
+
+#if IS_ENABLED(CONFIG_MTK_MKP_TEST)
+
+#define TEST(func)			\
+static int func(struct seq_file *m)
+
+#define DEFINE_TEST(testcase)								\
+static int testcase##_show(struct seq_file *m, void *v) { return testcase(m); }		\
+											\
+static int testcase##_open(struct inode *inode, struct file *file)			\
+{ return single_open(file, testcase##_show, NULL); }					\
+											\
+static const struct file_operations testcase##_fops = {					\
+	.open = testcase##_open,							\
+	.read = seq_read,								\
+	.llseek = seq_lseek,								\
+	.release = single_release,							\
+}
+
+#define ADD_TEST(dir, testcase)\
+debugfs_create_file(#testcase, 0444, dir, NULL, &testcase##_fops)
+#define mkp_test_msg(fmt, args...)      seq_printf(m, "[mkp_test] "fmt"\n", ##args)
+#define TOLERATION_CNT	(3)
+
+static noinline void __try_to_attack(void *taddr)
+{
+	*(char *)(taddr) = '0';
+}
+
+static void try_to_attack(struct seq_file *m, unsigned long addr)
+{
+	phys_addr_t phys_addr;
+	struct page *tpage;
+	void *taddr;
+	unsigned long before, after;
+
+	phys_addr = virt_to_phys((void *)addr);
+	tpage = phys_to_page(phys_addr);
+	taddr = vmap(&tpage, 1, VM_MAP, PAGE_KERNEL);
+	if (!taddr) {
+		seq_puts(m, "abort test\n");
+		return;
+	}
+
+	before = *(unsigned long *)taddr;
+	__try_to_attack(taddr);
+	after = *(unsigned long *)taddr;
+	if (after != before)
+		seq_printf(m, "Failed to protect! before: %lx after: %lx\n", before, after);
+	else
+		seq_puts(m, "Protect successfully\n");
+}
+
+TEST(mkp_test_rodata_protection)
+{
+	unsigned long addr_start;
+	static int cnt = 1;
+
+	mkp_test_msg("[SCN]: protect kernel RO data (... %d)\n", cnt);
+	addr_start = (unsigned long)p_etext;
+
+	if(!addr_start)
+		return 0;
+
+	mkp_test_msg("[SCN]: kernel rodata address: %lx\n", addr_start);
+
+	/* Start attack */
+	try_to_attack(m, addr_start);
+
+	/* Dump result */
+	if (cnt <= TOLERATION_CNT)
+		seq_printf(m, "(%d) tolerated\n", cnt++);
+	else
+		seq_puts(m, "KE! should not come here\n");
+
+	return 0;
+}
+
+TEST(mkp_test_kernel_text_protection)
+{
+	unsigned long addr_start;
+	static int cnt = 1;
+
+	mkp_test_msg("[SCN]: protect kernel code (... %d)\n", cnt);
+	addr_start = (unsigned long)p_stext;
+
+	if(!addr_start)
+		return 0;
+
+	mkp_test_msg("[SCN]: kernel code address: %lx\n", addr_start);
+
+	/* Start attack */
+	try_to_attack(m, addr_start);
+
+	/* Dump result */
+	if (cnt <= TOLERATION_CNT)
+		seq_printf(m, "(%d) tolerated\n", cnt++);
+	else
+		seq_puts(m, "KE! should not come here\n");
+
+	return 0;
+}
+
+DEFINE_TEST(mkp_test_rodata_protection);
+DEFINE_TEST(mkp_test_kernel_text_protection);
+
+static struct dentry *dir;
+static void add_tests(void)
+{
+	dir = debugfs_create_dir("mkp_test", NULL);
+	if (dir == NULL)
+		return;
+
+	ADD_TEST(dir, mkp_test_rodata_protection);
+	ADD_TEST(dir, mkp_test_kernel_text_protection);
+}
+
+#endif
 
 static void set_memory_rw(unsigned long addr, int nr_pages)
 {
@@ -318,8 +439,10 @@ static void mkp_protect_kernel_work_fn(struct work_struct *work)
 	}
 
 protect_krn_fail:
+#if !IS_ENABLED(CONFIG_MTK_MKP_TEST)
 	p_stext = NULL;
 	p_etext = NULL;
+#endif
 	p__init_begin = NULL;
 }
 #endif
@@ -1216,5 +1339,8 @@ failed:
 	if (ret)
 		MKP_ERR("register hooks failed, ret %d line %d\n", ret, ret_erri_line);
 
+#if IS_ENABLED(CONFIG_MTK_MKP_TEST)
+	add_tests();
+#endif
 	return 0;
 }
