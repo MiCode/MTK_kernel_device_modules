@@ -7574,9 +7574,6 @@ static void mtk_oddmr_od_content_timing(struct mtk_disp_oddmr *oddmr_data,
 
 	content_timing->vrefresh = content_fps;
 	content_timing->bl_level = current_timing->bl_level;
-	ODDMRAPI_LOG("content_timing: old_vrefresh %d, vrefresh %d, old_bl_level %d, bl_level %d\n",
-			content_timing->old_vrefresh, content_timing->vrefresh,
-			content_timing->old_bl_level, content_timing->bl_level);
 }
 
 /*
@@ -7584,7 +7581,7 @@ static void mtk_oddmr_od_content_timing(struct mtk_disp_oddmr *oddmr_data,
  * od_force_off = true if vrefresh and/or bl not supported (when od_fps_mode=0)
  * od_force_off also changed by mtk_oddmr_od_timing_chg_dual and mtk_oddmr_od_bl_chg
  * od_force_off2 = true if content fps and/or bl not supported (when od_fps_mode=1)
- * old_vrefresh and old_bl_level will only record last supported fps and bl
+ * od_cur_vrefresh and od_cur_bl_level will only record last supported fps and bl
  */
 static void mtk_oddmr_od_table_chg_by_timing(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		struct mtk_oddmr_timing *current_timing)
@@ -7601,12 +7598,15 @@ static void mtk_oddmr_od_table_chg_by_timing(struct mtk_ddp_comp *comp, struct c
 	int sram_idx, sram_table_idx, table_idx;
 
 	ODDMRAPI_LOG("+\n");
+	ODDMRAPI_LOG("before, od_cur_vrefresh %d vrefresh %d od_cur_bl_level %d bl_level %d\n",
+			oddmr_data->od_data.od_cur_vrefresh, current_timing->vrefresh,
+			oddmr_data->od_data.od_cur_bl_level, current_timing->bl_level);
 	if (oddmr_data->data->od_version >= MTK_OD_V2) {
 		od_update_sram_last = oddmr_data->od_update_sram;
 		oddmr_data->od_update_sram = 0;
 	}
-	if (current_timing->old_vrefresh != current_timing->vrefresh ||
-		current_timing->old_bl_level != current_timing->bl_level) {
+	if (oddmr_data->od_data.od_cur_vrefresh != current_timing->vrefresh ||
+		oddmr_data->od_data.od_cur_bl_level != current_timing->bl_level) {
 		check_force_flip = (oddmr_data->data->od_version >= MTK_OD_V2) && (od_fps_mode == 1) &&
 			(od_update_sram_last == 1); //check if need force flip in mtk_oddmr_od_table_lookup.
 		ret = mtk_oddmr_od_table_lookup(oddmr_data, current_timing, &table_idx, check_force_flip);
@@ -7621,8 +7621,8 @@ static void mtk_oddmr_od_table_chg_by_timing(struct mtk_ddp_comp *comp, struct c
 				mtk_oddmr_od_flip(comp, handle);
 				if (comp->mtk_crtc->is_dual_pipe)
 					mtk_oddmr_od_flip(comp1, handle);
-				current_timing->old_vrefresh = current_timing->vrefresh;
-				current_timing->old_bl_level = current_timing->bl_level;
+				oddmr_data->od_data.od_cur_vrefresh = current_timing->vrefresh;
+				oddmr_data->od_data.od_cur_bl_level = current_timing->bl_level;
 			} else if (oddmr_data->data->is_od_table_bl_chg && ret == 2) {
 				if (oddmr_data->data->od_version >= MTK_OD_V2)
 					oddmr_data->od_update_sram = 1;
@@ -7632,15 +7632,15 @@ static void mtk_oddmr_od_table_chg_by_timing(struct mtk_ddp_comp *comp, struct c
 				old_bl_level = current_timing->bl_level;
 			} else if (ret == 0) {
 				//current table is best choice, or sram is updating
-				current_timing->old_vrefresh = current_timing->vrefresh;
-				current_timing->old_bl_level = current_timing->bl_level;
+				oddmr_data->od_data.od_cur_vrefresh = current_timing->vrefresh;
+				oddmr_data->od_data.od_cur_bl_level = current_timing->bl_level;
 			} else if (ret == 3) {
 				// force flip sram
 				mtk_oddmr_od_flip(comp, handle);
 				if (comp->mtk_crtc->is_dual_pipe)
 					mtk_oddmr_od_flip(comp1, handle);
-				current_timing->old_vrefresh = old_vrefresh;
-				current_timing->old_bl_level = old_bl_level;
+				oddmr_data->od_data.od_cur_vrefresh = old_vrefresh;
+				oddmr_data->od_data.od_cur_bl_level = old_bl_level;
 			}
 
 			mtk_oddmr_od_gain_lookup(comp, current_timing->vrefresh,
@@ -7688,9 +7688,9 @@ static void mtk_oddmr_od_table_chg_by_timing(struct mtk_ddp_comp *comp, struct c
 			mtk_oddmr_set_od_weight_dual(comp, weight, handle);
 		}
 	}
-	ODDMRAPI_LOG("old_vrefresh %d, vrefresh %d, old_bl_level %d, bl_level %d\n",
-			current_timing->old_vrefresh, current_timing->vrefresh,
-			current_timing->old_bl_level, current_timing->bl_level);
+	ODDMRAPI_LOG("after, od_cur_vrefresh %d vrefresh %d od_cur_bl_level %d bl_level %d\n",
+			oddmr_data->od_data.od_cur_vrefresh, current_timing->vrefresh,
+			oddmr_data->od_data.od_cur_bl_level, current_timing->bl_level);
 }
 
 /*

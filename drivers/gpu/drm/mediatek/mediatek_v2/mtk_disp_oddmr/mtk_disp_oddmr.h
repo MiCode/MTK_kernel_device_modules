@@ -633,6 +633,8 @@ struct mtk_disp_oddmr_od_data {
 	bool od_sram_check;
 	bool od_sram_reading;
 	uint8_t *buf_read_sram;
+	unsigned int od_cur_bl_level;
+	unsigned int od_cur_vrefresh;
 };
 
 struct mtk_disp_oddmr_dbi_data {
