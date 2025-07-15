@@ -8411,14 +8411,13 @@ dramc: dramc@10230000 {
 				<19 0x200 0x0>,		/* low power debug */
 				<21 0x1800 0x0>;	/* task monitor debug */
 
-#if 0
-			scp-resource-dump = "disable";   /* enable dump scp related resource */
+			scp-resource-dump = "enable";   /* enable dump scp related resource */
 			/* regulator */
 			scp-supply-num = <3>;	/* total number of scp related regulator */
-			vscp0-supply = <&mt6363_vbuck4>;
+			vscp0-supply = <&mt6369_vsram_core>;
 			vscp1-supply = <&mt6363_vsram_apu>;
 			vscp2-supply = <&mt6363_vs3>;
-#endif
+
 			/* dump register */
 			/* cell means register info (address,size), not total reg num */
 			scp-resource-reg-dump-cell = <2>;
@@ -8426,9 +8425,13 @@ dramc: dramc@10230000 {
 				<0x1c001908 0x4>,
 				<0x1c001818 0x4>;
 			/* scp fmeter dump */
-			scp-clk-fmeter-dump = "disable";
-			scp-u1-id = <59>;
-			scp-u2-id = <60>;
+			scp-clk-fmeter-dump = "enable";
+			scp-u1-id = <37>;
+			scp-u2-id = <36>;
+			scp-adsp-pll-id = <22>;
+			scp-u1-type = "ABIST";
+			scp-u2-type = "ABIST";
+			scp-adsp-pll-type = "ABIST";
 
 			scp-infracfg = <&infra_infracfg_ao_reg_clk>;
 
