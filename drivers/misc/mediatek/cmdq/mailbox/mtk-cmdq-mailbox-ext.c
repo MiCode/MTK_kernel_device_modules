@@ -261,9 +261,6 @@ struct cmdq {
 	int			irq[mtk_cmdq_irq_max];
 	struct list_head	irq_removes;
 	spinlock_t		irq_removes_lock;
-	struct wait_queue_head	err_irq_wq;
-	unsigned long		err_irq_idx;
-	spinlock_t		irq_idx_lock;
 	struct workqueue_struct	*buf_dump_wq;
 	struct cmdq_thread	thread[CMDQ_THR_MAX_COUNT];
 	u32			prefetch;
@@ -272,6 +269,8 @@ struct cmdq {
 	bool			suspended;
 	atomic_t		usage;
 	struct workqueue_struct *timeout_wq;
+	struct workqueue_struct *irq_bottom_wq;
+	struct work_struct irq_work;
 	spinlock_t		lock;
 	spinlock_t		event_lock;
 	u32			token_cnt;
@@ -1966,7 +1965,7 @@ static void cmdq_thread_irq_handler(struct cmdq *cmdq,
 static irqreturn_t cmdq_irq_handler(int irq, void *dev)
 {
 	struct cmdq *cmdq = dev;
-	unsigned long irq_status, flags = 0L, irq_idx_flag;
+	unsigned long irq_status, flags = 0L;
 	int bit, i;
 	bool secure_irq = false;
 	u32 gce_thread_nr = cmdq->gce_thread_nr;
@@ -1976,7 +1975,7 @@ static irqreturn_t cmdq_irq_handler(int irq, void *dev)
 	u64 start = sched_clock(), end[4];
 	u32 end_cnt = 0;
 #endif
-
+	irq_log_store();
 	cmdq_trace_begin("%s hwid:%d", __func__, cmdq->hwid);
 
 	cmdq_mtcmos_by_fast(cmdq, true);
@@ -2043,10 +2042,11 @@ static irqreturn_t cmdq_irq_handler(int irq, void *dev)
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
 	end[end_cnt++] = sched_clock();
 #endif
-	spin_lock_irqsave(&cmdq->irq_idx_lock, irq_idx_flag);
-	set_bit(gce_thread_nr, &cmdq->err_irq_idx);
-	spin_unlock_irqrestore(&cmdq->irq_idx_lock, irq_idx_flag);
-	wake_up_interruptible(&cmdq->err_irq_wq);
+	irq_log_store();
+	if (!work_pending(&cmdq->irq_work))
+		queue_work(cmdq->irq_bottom_wq, &cmdq->irq_work);
+	irq_log_store();
+
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
 	end[end_cnt] = sched_clock();
 	if (end[end_cnt] - start >= 5000000 && !cmdq->irq_long_times) { /* 5ms */
@@ -2082,13 +2082,14 @@ static irqreturn_t cmdq_irq_handler(int irq, void *dev)
 		cmdq->irq_long_times += 1;
 #endif
 	cmdq_trace_end();
+	irq_log_store();
 	return secure_irq ? IRQ_NONE : IRQ_HANDLED;
 }
 
 static irqreturn_t cmdq_vm_irq_handler(int irq, void *dev)
 {
 	struct cmdq *cmdq = dev;
-	unsigned long irq_status_vm, flags = 0L, irq_idx_flag;
+	unsigned long irq_status_vm, flags = 0L;
 	int bit, i;
 	bool secure_irq = false;
 	u32 gce_thread_nr = cmdq->gce_thread_nr;
@@ -2162,10 +2163,8 @@ static irqreturn_t cmdq_vm_irq_handler(int irq, void *dev)
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
 	end[end_cnt++] = sched_clock();
 #endif
-	spin_lock_irqsave(&cmdq->irq_idx_lock, irq_idx_flag);
-	set_bit(gce_thread_nr, &cmdq->err_irq_idx);
-	spin_unlock_irqrestore(&cmdq->irq_idx_lock, irq_idx_flag);
-	wake_up_interruptible(&cmdq->err_irq_wq);
+	if (!work_pending(&cmdq->irq_work))
+		queue_work(cmdq->irq_bottom_wq, &cmdq->irq_work);
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
 	end[end_cnt] = sched_clock();
 	if (end[end_cnt] - start >= 5000000 && !cmdq->irq_long_times) { /* 5ms */
@@ -2204,46 +2203,25 @@ static irqreturn_t cmdq_vm_irq_handler(int irq, void *dev)
 	return secure_irq ? IRQ_NONE : IRQ_HANDLED;
 }
 
-static int cmdq_irq_handler_thread(void *data)
+static void cmdq_irq_handler_work(struct work_struct *work_item)
 {
-	struct cmdq *cmdq = data;
-	unsigned long irq, flags, irq_idx_flag;
-	u32 gce_thread_nr = cmdq->gce_thread_nr;
+	struct cmdq *cmdq = container_of(work_item,
+		struct cmdq, irq_work);
+	unsigned long flags;
+	struct cmdq_task *task, *tmp;
 
-	while (!kthread_should_stop()) {
-		/*
-		 * read cmdq->err_irq_idx maybe encounter data race.
-		 * use data_race to bypass
-		 */
-		if (wait_event_interruptible(cmdq->err_irq_wq, data_race(cmdq->err_irq_idx)) < 0)
-			continue;
+	spin_lock_irqsave(&cmdq->irq_removes_lock, flags);
+	list_for_each_entry_safe(task, tmp, &cmdq->irq_removes,
+		list_entry) {
+		list_del(&task->list_entry);
 
-		spin_lock_irqsave(&cmdq->irq_idx_lock, irq_idx_flag);
-
-		irq = cmdq->err_irq_idx;
-
-		if (irq & BIT(gce_thread_nr)) {
-			struct cmdq_task *task, *tmp;
-
-			spin_lock_irqsave(&cmdq->irq_removes_lock, flags);
-			list_for_each_entry_safe(task, tmp, &cmdq->irq_removes,
-				list_entry) {
-				list_del(&task->list_entry);
-
-				spin_unlock_irqrestore(
-					&cmdq->irq_removes_lock, flags);
-				kfree(task);
-				spin_lock_irqsave(
-					&cmdq->irq_removes_lock, flags);
-			}
-			spin_unlock_irqrestore(&cmdq->irq_removes_lock, flags);
-
-			clear_bit(gce_thread_nr, &cmdq->err_irq_idx);
-		}
-		spin_unlock_irqrestore(&cmdq->irq_idx_lock, irq_idx_flag);
+		spin_unlock_irqrestore(
+			&cmdq->irq_removes_lock, flags);
+		kfree(task);
+		spin_lock_irqsave(
+			&cmdq->irq_removes_lock, flags);
 	}
-
-	return 0;
+	spin_unlock_irqrestore(&cmdq->irq_removes_lock, flags);
 }
 
 static bool cmdq_thread_timeout_excceed(struct cmdq_thread *thread)
@@ -3528,9 +3506,6 @@ static int cmdq_probe(struct platform_device *pdev)
 		(unsigned long)cmdq->base,
 		(unsigned long)cmdq->base_pa);
 
-	init_waitqueue_head(&cmdq->err_irq_wq);
-	kthr = kthread_run(cmdq_irq_handler_thread, cmdq, "cmdq_irq_thread");
-
 	if (IS_ERR(kthr))
 		cmdq_err("Unable  to run kthread err %ld", PTR_ERR(kthr));
 
@@ -3667,11 +3642,14 @@ static int cmdq_probe(struct platform_device *pdev)
 	cmdq->timeout_wq = create_singlethread_workqueue(
 		"cmdq_timeout_handler");
 
+	cmdq->irq_bottom_wq = alloc_ordered_workqueue(
+			"%s", WQ_UNBOUND, "cmdq_irq_handler_thread");
+	INIT_WORK(&cmdq->irq_work, cmdq_irq_handler_work);
+
 	platform_set_drvdata(pdev, cmdq);
 
 	spin_lock_init(&cmdq->lock);
 	spin_lock_init(&cmdq->event_lock);
-	spin_lock_init(&cmdq->irq_idx_lock);
 
 	if (of_property_read_bool(dev->of_node, "hw-trace-built-in")) {
 		cmdq->hw_trace_built_in = true;
