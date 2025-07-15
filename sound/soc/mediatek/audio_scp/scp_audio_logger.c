@@ -130,7 +130,12 @@ static void scp_audio_logger_init_handler(int id, void *data, unsigned int len)
 	logger_inited = 1;
 }
 
-static int scp_audio_logger_init_message(void)
+void reset_adsp_logger_status(void)
+{
+	logger_inited = 0;
+}
+
+int scp_audio_logger_init_message(void)
 {
 	int ret;
 	unsigned int val = 0;
@@ -154,31 +159,6 @@ static int scp_audio_logger_init_message(void)
 
 	return ret;
 }
-
-#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
-/* SCP reboot */
-static int audio_logger_ctrl_event_receive_scp(
-	struct notifier_block *this,
-	unsigned long event,
-	void *ptr)
-{
-	switch (event) {
-	case SCP_EVENT_STOP:
-		logger_inited = 0;
-		break;
-	case SCP_EVENT_READY:
-		scp_audio_logger_init_message();
-		break;
-	default:
-		pr_info("event %lu err", event);
-	}
-	return 0;
-}
-
-static struct notifier_block audio_logger_ctrl_notifier_scp = {
-	.notifier_call = audio_logger_ctrl_event_receive_scp,
-};
-#endif
 
 int scp_audio_logger_init(struct platform_device *pdev)
 {
@@ -231,8 +211,6 @@ int scp_audio_logger_init(struct platform_device *pdev)
 	scp_audio_ipi_registration(SCP_AUDIO_IPI_LOGGER_INIT,
 				   scp_audio_logger_init_handler,
 				   "logger init");
-
-	scp_A_register_notify(&audio_logger_ctrl_notifier_scp);
 
 	if (is_scp_ready(SCP_A_ID))
 		scp_audio_logger_init_message();

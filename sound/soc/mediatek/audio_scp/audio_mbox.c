@@ -2,13 +2,8 @@
 /*
  * Copyright (c) 2020 MediaTek Inc.
  */
-
 #include <linux/of.h>
-#include <linux/io.h>
-#include <linux/module.h>
-#include <linux/debugfs.h>
 #include <linux/interrupt.h>
-#include <linux/miscdevice.h>
 #include <linux/soc/mediatek/mtk-mbox.h>
 #include "scp_audio_fs.h"
 #include "audio_mbox.h"
@@ -18,6 +13,8 @@
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
 #include "scp_ipi_pin.h"
 #endif
+
+#include "scp_audio_ipi.h"
 
 static u32 audio_mbox_pin_buf[AUDIO_MBOX_RECV_SLOT_SIZE];
 static bool mbox_init_done;
@@ -59,7 +56,6 @@ struct mtk_mbox_device audio_mboxdev = {
 	.post_cb = (mbox_rx_cb_t)scp_clr_spm_reg,
 #endif
 };
-
 
 bool is_audio_mbox_init_done(void)
 {
@@ -149,10 +145,10 @@ static bool audio_mbox_table_init(struct mtk_mbox_device *mbdev, struct platform
 	return true;
 }
 
-static int scp_audio_mbox_dev_probe(struct platform_device *pdev)
+int audio_mbox_init(struct platform_device *pdev)
 {
 	int ret = -1;
-	int idx;
+	uint32_t idx;
 	struct mtk_mbox_device *mbdev = &audio_mboxdev;
 
 	/* Setup mbox info for different set of mbox channels */
@@ -161,159 +157,23 @@ static int scp_audio_mbox_dev_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
-#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
 	for (idx = 0; idx < mbdev->count; idx++) {
 		ret = mtk_mbox_probe(pdev, mbdev, idx);
 		if (ret) {
 			pr_warn("%s, mtk_mbox_probe mboxdev id %d fail ret(%d)", __func__, idx, ret);
-			goto EXIT;
+			return ret;
 		}
 
 		ret = enable_irq_wake(mbdev->info_table[idx].irq_num);
 		if (ret) {
 			pr_warn("%s, enable_irq_wake id %d fail ret (%d)", __func__, idx, ret);
-			goto EXIT;
+			return ret;
 		}
 	}
 
 	for (idx = 0; idx < mbdev->send_count; idx++)
 		mutex_init(&audio_mbox_pin_send[idx].mutex_send);
 
-	/* register misc driver for ioctl and debug */
-	ret = misc_register(&scp_audio_fs_mdev);
-	if (ret) {
-		pr_info("%s, cannot register misc device\n", __func__);
-		goto EXIT;
-	}
-
-	ret = device_create_file(scp_audio_fs_mdev.this_device, &dev_attr_audio_ipi_test);
-	if (ret) {
-		pr_info("%s, cannot create dev_attr_audio_ipi_test\n", __func__);
-		goto EXIT;
-	}
-
 	mbox_init_done = true;
-
-	/* audio reserved memory */
-	pr_notice("%s() adsp_reserve_memory_ioremap\n", __func__);
-	ret = adsp_mem_device_probe(pdev);
-	if (ret) {
-		pr_notice("%s(), memory probe fail, %d\n", __func__, ret);
-		goto EXIT;
-	}
-
-	/* scp audio logger */
-	pr_notice("%s() scp_audio_logger\n", __func__);
-	ret = scp_audio_logger_init(pdev);
-	if (ret) {
-		pr_info("%s, init scp audio logger fail\n", __func__);
-		goto EXIT;
-	}
-
-	ret = scp_audio_debug_cmds_init();
-	if (ret) {
-		pr_info("%s, init scp audio dbg fail\n", __func__);
-		goto EXIT;
-	}
-
-#if IS_ENABLED(CONFIG_DEBUG_FS)
-	struct dentry *file = NULL;
-
-	file = debugfs_create_file("audiodsp0", S_IFREG | 0644, NULL, NULL, &scp_audio_debug_ops);
-	if (!file) {
-		pr_info("%s, create debug ops fail!\n", __func__);
-		ret = -1;
-		goto EXIT;
-	}
-#endif
-
-	/* adsp bus probe */
-	ret = adsp_qos_probe(pdev);
-	if (ret) {
-		pr_warn("%s(), qos probe fail, %d\n", __func__, ret);
-		goto EXIT;
-	}
-#else
-	ret = 0;
-#endif /* CONFIG_MTK_TINYSYS_SCP_SUPPORT */
-
-EXIT:
-	pr_info("%s, done ret:%d", __func__, ret);
-	return ret;
-}
-
-static const struct of_device_id scp_audio_mbox_dt_match[] = {
-	{ .compatible = "mediatek,scp-audio-mbox", },
-	{},
-};
-MODULE_DEVICE_TABLE(of, scp_audio_mbox_dt_match);
-
-static const struct of_device_id scp_qos_scene_of_ids[] = {
-	{ .compatible = "mediatek,mt6858-audio-dsp-hrt-bw"},
-	{},
-};
-
-static int scp_qos_scene_probe(struct platform_device *pdev)
-{
-	struct device *dev = &pdev->dev;
-	const struct of_device_id *match;
-
-	match = of_match_node(scp_qos_scene_of_ids, dev->of_node);
-	if (match)
-		adsp_set_scene_bw(pdev);
-	else
-		pr_info("%s() no qos scene supported\n", __func__);
-
-	pr_info("%s, done", __func__);
 	return 0;
 }
-
-static void scp_qos_scene_remove(struct platform_device *pdev)
-{
-	pr_info("%s, remove", __func__);
-}
-
-static struct platform_driver scp_qos_scene_driver = {
-	.probe = scp_qos_scene_probe,
-	.remove = scp_qos_scene_remove,
-	.driver = {
-		.name = "audio-dsp-in-scp-hrt-bw",
-		.owner = THIS_MODULE,
-#if IS_ENABLED(CONFIG_OF)
-		.of_match_table = scp_qos_scene_of_ids,
-#endif
-	},
-};
-
-static struct platform_driver scp_audio_mbox_driver = {
-	.driver = {
-		   .name = "scp-audio-mbox",
-		   .owner = THIS_MODULE,
-		   .of_match_table = scp_audio_mbox_dt_match,
-	},
-	.probe = scp_audio_mbox_dev_probe,
-};
-
-static struct platform_driver * const drivers[] = {
-	&scp_audio_mbox_driver,
-	&scp_qos_scene_driver,
-};
-
-static int __init scp_audio_mbox_init(void)
-{
-	int ret = platform_register_drivers(drivers, ARRAY_SIZE(drivers));
-	return ret;
-}
-
-static void __exit scp_audio_mbox_exit(void)
-{
-	platform_unregister_drivers(drivers, ARRAY_SIZE(drivers));
-}
-
-module_init(scp_audio_mbox_init);
-module_exit(scp_audio_mbox_exit);
-
-MODULE_DESCRIPTION("Mediatek common driver for scp audio mbox");
-MODULE_AUTHOR("Chien-wei Hsu <chien-Wei.Hsu@mediatek.com>");
-MODULE_LICENSE("GPL v2");
-

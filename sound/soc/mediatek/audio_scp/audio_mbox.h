@@ -23,14 +23,9 @@
 #define AUDIO_MBOX_SEND_SLOT_OFFSET_1CH  0
 #define AUDIO_MBOX_RECV_SLOT_OFFSET_1CH  32
 
+int audio_mbox_init(struct platform_device *pdev);
 int audio_mbox_send(void *msg, unsigned int wait);
 bool is_audio_mbox_init_done(void);
 
-extern struct device_attribute dev_attr_audio_ipi_test;
 extern int audio_mbox_pin_cb(unsigned int id, void *prdata, void *buf, unsigned int len);
-extern int adsp_qos_probe(struct platform_device *pdev);
-extern void adsp_set_scene_bw(struct platform_device *pdev);
-
-extern int adsp_mem_device_probe(struct platform_device *pdev);
-
 #endif  /* __AUDIO_MBOX_H__ */

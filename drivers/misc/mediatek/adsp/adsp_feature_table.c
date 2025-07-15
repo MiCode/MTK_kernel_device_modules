@@ -136,7 +136,9 @@ ssize_t adsp_dump_feature_state(u32 cid, char *buffer, int size)
 
 bool adsp_feature_is_active(u32 cid)
 {
-	if (cid >= get_adsp_core_total())
+	if (cid >= ADSP_CORE_TOTAL)
+		return false;
+	if (!feature_ctrl[cid].inited)
 		return false;
 
 	return feature_ctrl[cid].total;
@@ -155,7 +157,10 @@ int _adsp_register_feature(u32 cid, u32 fid, u32 opt)
 	struct adsp_feature_control *ctrl;
 	struct adsp_feature_tb *item;
 
-	if (fid >= ADSP_NUM_FEATURE_ID || cid >= get_adsp_core_total())
+	if (fid >= ADSP_NUM_FEATURE_ID || cid >= ADSP_CORE_TOTAL)
+		return -EINVAL;
+
+	if (!feature_ctrl[cid].inited)
 		return -EINVAL;
 
 	ctrl = &feature_ctrl[cid];
@@ -188,7 +193,10 @@ int _adsp_deregister_feature(u32 cid, u32 fid, u32 opt)
 	struct adsp_feature_tb *item;
 	unsigned long delay;
 
-	if (fid >= ADSP_NUM_FEATURE_ID || cid >= get_adsp_core_total())
+	if (fid >= ADSP_NUM_FEATURE_ID || cid >= ADSP_CORE_TOTAL)
+		return -EINVAL;
+
+	if (!feature_ctrl[cid].inited)
 		return -EINVAL;
 
 	ctrl = &feature_ctrl[cid];
@@ -211,7 +219,7 @@ int _adsp_deregister_feature(u32 cid, u32 fid, u32 opt)
 		delay = (opt & DEREGI_FLAG_NODELAY) ?
 			0 : msecs_to_jiffies(ctrl->delay_ms);
 		queue_delayed_work(ctrl->wq, &ctrl->suspend_work, delay);
-		pr_debug("%s, send suspend work cid(%u), fid(%u), delay(%lu)",
+		pr_debug("%s(), send suspend work cid(%u), fid(%u), delay(%lu)",
 			 __func__, cid, fid, delay);
 	}
 
@@ -225,8 +233,11 @@ int _adsp_deregister_feature(u32 cid, u32 fid, u32 opt)
 
 bool is_feature_in_set(u32 cid, u32 fid)
 {
-	if (fid >= ADSP_NUM_FEATURE_ID || cid >= get_adsp_core_total())
+	if (fid >= ADSP_NUM_FEATURE_ID || cid >= ADSP_CORE_TOTAL)
 		return false;
+
+	if (!feature_ctrl[cid].inited)
+		return -EINVAL;
 
 	return (feature_ctrl[cid].feature_set >> fid) & 0x1;
 }
@@ -236,8 +247,7 @@ int get_feature_register(u32 fid)
 	struct adsp_feature_tb *item;
 	int cid = adsp_feature_in_which_core(fid);
 
-	if (fid >= ADSP_NUM_FEATURE_ID ||
-	    cid >= get_adsp_core_total() || cid < 0)
+	if (fid >= ADSP_NUM_FEATURE_ID || cid < 0)
 		return -EINVAL;
 
 	item = &feature_table[fid];
@@ -252,7 +262,10 @@ int adsp_feature_in_which_core(enum adsp_feature_id fid)
 	if (fid >= ADSP_NUM_FEATURE_ID)
 		return -1;
 
-	for (cid = 0; cid < get_adsp_core_total(); cid++) {
+	for (cid = 0; cid < ADSP_CORE_TOTAL; cid++) {
+		if (!feature_ctrl[cid].inited)
+			continue;
+
 		if (is_feature_in_set(cid, fid))
 			return cid;
 	}
@@ -265,13 +278,13 @@ int adsp_register_feature(enum adsp_feature_id fid)
 	int ret = -1, cid;
 	bool flag = false;
 
-	if (get_adsp_type() == ADSP_TYPE_IN_SCP)
-		return 0; //RV55 noneed register feature
-
 	if (fid >= ADSP_NUM_FEATURE_ID)
 		return -EINVAL;
 
-	for (cid = 0; cid < get_adsp_core_total(); cid++) {
+	for (cid = 0; cid < ADSP_CORE_TOTAL; cid++) {
+		if (!feature_ctrl[cid].inited)
+			continue;
+
 		if (!is_feature_in_set(cid, fid))
 			continue;
 
@@ -296,13 +309,13 @@ int adsp_deregister_feature(enum adsp_feature_id fid)
 	int ret = -1, cid;
 	bool flag = false;
 
-	if (get_adsp_type() == ADSP_TYPE_IN_SCP)
-		return 0; //RV55 noneed register feature
-
 	if (fid >= ADSP_NUM_FEATURE_ID)
 		return -EINVAL;
 
-	for (cid = 0; cid < get_adsp_core_total(); cid++) {
+	for (cid = 0; cid < ADSP_CORE_TOTAL; cid++) {
+		if (!feature_ctrl[cid].inited)
+			continue;
+
 		if (!is_feature_in_set(cid, fid))
 			continue;
 
@@ -342,6 +355,7 @@ bool flush_suspend_work(u32 cid)
 
 	return false;
 }
+EXPORT_SYMBOL(flush_suspend_work);
 
 bool cancel_suspend_work(u32 cid)
 {
@@ -362,7 +376,7 @@ int init_adsp_feature_control(u32 cid, u64 feature_set, int delay_ms,
 	struct adsp_feature_control *ctrl;
 	int i = 0;
 
-	if (cid >= get_adsp_core_total() || !wq)
+	if (cid >= ADSP_CORE_TOTAL || !wq)
 		return -EINVAL;
 
 	ctrl = &feature_ctrl[cid];
@@ -377,6 +391,7 @@ int init_adsp_feature_control(u32 cid, u64 feature_set, int delay_ms,
 	ctrl->total = 0;
 	for (i = 0; i < ADSP_NUM_FEATURE_ID; i++)
 		ctrl->total += feature_table[i].counter[cid];
-
+	ctrl->inited = true;
 	return 0;
 }
+EXPORT_SYMBOL(init_adsp_feature_control);

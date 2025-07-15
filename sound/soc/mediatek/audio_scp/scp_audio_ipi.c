@@ -12,12 +12,27 @@
 
 #define SHARE_BUF_SIZE  256
 
+static send_queue_handler_t send_queue_callback;
 static recv_queue_handler_t recv_queue_callback;
 
 struct scp_audio_ipi_desc {
 	scp_audio_ipi_handler_t handler;
 	const char *name;
 } ipi_descs[SCP_AUDIO_NR_IPI];
+
+int scp_push_message(unsigned int id, void *buf, unsigned int len,
+		     unsigned int wait, unsigned int cid)
+{
+	int ret = -1;
+
+	/* send msg to queue */
+	if (send_queue_callback)
+		ret = send_queue_callback(cid, id, buf, len, wait);
+	else
+		return scp_send_message(id, buf, len, wait, cid);
+	return (ret == 0) ? SCP_IPI_DONE: SCP_IPI_ERROR;
+}
+EXPORT_SYMBOL_GPL(scp_push_message);
 
 int scp_send_message(unsigned int id, void *buf, unsigned int len,
 		     unsigned int wait, unsigned int cid)
@@ -91,6 +106,18 @@ int scp_audio_ipi_unregistration(unsigned int id)
 	return SCP_IPI_DONE;
 }
 EXPORT_SYMBOL_GPL(scp_audio_ipi_unregistration);
+
+void hook_scp_ipi_queue_send_msg_handler(send_queue_handler_t queue_handler)
+{
+	send_queue_callback = queue_handler;
+}
+EXPORT_SYMBOL_GPL(hook_scp_ipi_queue_send_msg_handler);
+
+void unhook_scp_ipi_queue_send_msg_handler(void)
+{
+	send_queue_callback = NULL;
+}
+EXPORT_SYMBOL_GPL(unhook_scp_ipi_queue_send_msg_handler);
 
 void hook_scp_ipi_queue_recv_msg_handler(recv_queue_handler_t queue_handler)
 {

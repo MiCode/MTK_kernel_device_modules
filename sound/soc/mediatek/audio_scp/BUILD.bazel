@@ -26,8 +26,9 @@ define_mgk_ddk_ko(
     ],
     srcs = [
         "audio_mbox.c",
-        "scp_audio_ipi.c",
+        "scp_audio_driver.c",
         "scp_audio_fs.c",
+        "scp_audio_ipi.c",
         "scp_audio_logger.c"
     ],
     includes = [
@@ -35,8 +36,9 @@ define_mgk_ddk_ko(
     ],
     hdrs = [
         "audio_mbox.h",
-        "scp_audio_ipi.h",
+        "scp_audio_driver.h",
         "scp_audio_fs.h",
+        "scp_audio_ipi.h",
         "scp_audio_logger.h"
     ],
     ko_deps = [

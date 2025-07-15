@@ -20,9 +20,18 @@ enum scp_audio_ipi_id {
 };
 
 typedef void (*scp_audio_ipi_handler_t)(int id, void *data, unsigned int len);
+
+typedef int (*send_queue_handler_t)(
+		uint32_t core_id, /* enum adsp_core_id */
+		uint32_t ipi_id,  /* enum adsp_ipi_id */
+		void *buf,
+		uint32_t len,
+		uint32_t wait_ms);
 typedef int (*recv_queue_handler_t)(unsigned int cid, unsigned int ipi_id, void *buf,
 				    unsigned int len, scp_audio_ipi_handler_t handler);
 
+int scp_push_message(unsigned int id, void *buf, unsigned int len,
+		     unsigned int wait, unsigned int cid);
 int scp_send_message(unsigned int id, void *buf, unsigned int len, unsigned int wait,
 		     unsigned int cid);
 int scp_send_message_with_wakelock(unsigned int id, void *buf, unsigned int len, unsigned int wait,
@@ -34,6 +43,8 @@ int scp_audio_ipi_registration(unsigned int id, scp_audio_ipi_handler_t ipi_hand
 			       const char *name);
 int scp_audio_ipi_unregistration(unsigned int id);
 
+void hook_scp_ipi_queue_send_msg_handler(send_queue_handler_t queue_handler);
+void unhook_scp_ipi_queue_send_msg_handler(void);
 void hook_scp_ipi_queue_recv_msg_handler(recv_queue_handler_t queue_handler);
 void unhook_scp_ipi_queue_recv_msg_handler(void);
 

@@ -472,7 +472,7 @@ int get_adsp_type(void)
 		}
 	}
 
-	dsp_node = of_find_node_by_name(NULL, "scp-audio-mbox");
+	dsp_node = of_find_node_by_name(NULL, "scp-audio-core");
 	if (dsp_node) {
 		if (of_device_is_available(dsp_node)) {
 			adsp_type = ADSP_TYPE_IN_SCP;

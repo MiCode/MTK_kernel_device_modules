@@ -293,4 +293,9 @@ extern void hook_ipi_queue_recv_msg_hanlder(
 		void (*ipi_handler)(int ipi_id, void *buf, unsigned int len)));
 extern void unhook_ipi_queue_recv_msg_hanlder(void);
 
+extern int init_adsp_feature_control(u32 cid, u64 feature_set, int delay_ms,
+			struct workqueue_struct *wq,
+			int (*_suspend)(void),
+			int (*_resume)(void));
+
 #endif

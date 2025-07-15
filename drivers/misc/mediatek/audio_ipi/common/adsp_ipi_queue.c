@@ -403,7 +403,30 @@ void audio_ipi_queue_dump_worker(struct work_struct *work)
 }
 #endif
 
-int scp_dispatch_ipi_hanlder_to_queue_wrap(
+int scp_send_msg_to_queue_wrap(
+	uint32_t core_id, /* enum adsp_core_id */
+	uint32_t ipi_id,  /* enum adsp_ipi_id */
+	void *buf,
+	uint32_t len,
+	uint32_t wait_ms)
+{
+	int ret = 0;
+	uint32_t dsp_id = scp_cid_to_ipi_dsp_id(core_id);
+	struct dump_ipi_worker_t *worker = NULL;
+
+	if (dsp_id >= NUM_OPENDSP_TYPE)
+		return -1;
+
+	ret = dsp_send_msg_to_queue(dsp_id, ipi_id, buf, len, wait_ms);
+	if (ret == -EOVERFLOW && dump_workqueue) {
+		worker = &g_dsp_msg_queue[dsp_id][DSP_PATH_A2D].dump_worker;
+		queue_work(dump_workqueue, &worker->work);
+	}
+
+	return ret;
+}
+
+int scp_dispatch_ipi_handler_to_queue_wrap(
 	uint32_t core_id, /* enum adsp_core_id */
 	uint32_t ipi_id,
 	void *buf,
@@ -442,9 +465,10 @@ void ipi_queue_init(void)
 	hook_ipi_queue_recv_msg_hanlder(dsp_dispatch_ipi_handler_to_queue_wrap);
 #endif
 
-	if (is_audio_scp_support())
-		hook_scp_ipi_queue_recv_msg_handler(scp_dispatch_ipi_hanlder_to_queue_wrap);
-
+	if (is_audio_scp_support()) {
+		hook_scp_ipi_queue_send_msg_handler(scp_send_msg_to_queue_wrap);
+		hook_scp_ipi_queue_recv_msg_handler(scp_dispatch_ipi_handler_to_queue_wrap);
+	}
 
 	dump_workqueue = create_workqueue("audio_ipi_dump_workqueue");
 	if (!dump_workqueue) {

@@ -22,5 +22,7 @@ struct buffer_info_s {
 
 extern struct device_attribute dev_attr_log_enable;
 int scp_audio_logger_init(struct platform_device *pdev);
+int scp_audio_logger_init_message(void);
+void reset_adsp_logger_status(void);
 
 #endif /* __SCP_AUDIO_LOGGER_H__ */
