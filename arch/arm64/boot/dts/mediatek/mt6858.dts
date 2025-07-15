@@ -4734,6 +4734,8 @@ dramc: dramc@10230000 {
 			operating-points-v2 = <&opp_table_disp>;
 			vdisp-dvfs-opp = /bits/ 8 <3>;
 			mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+			/* SPHRT parameter */
+			pre-define-bw = <0xffffffff>, <0>, <0>, <0>;
 
 			/* define threads, see mt6858-gce.h */
 			mediatek,mailbox-gce = <&gce>;
@@ -4976,7 +4978,7 @@ dramc: dramc@10230000 {
 				<1>, /*MTK_DRM_OPT_OVL_BW_MONITOR*/
 				<0>, /*MTK_DRM_OPT_OVL_BWM20*/
 				<0>, /*MTK_DRM_OPT_GPU_CACHE*/
-				<0>, /*MTK_DRM_OPT_SPHRT*/
+				<1>, /*MTK_DRM_OPT_SPHRT*/
 				<0>, /*MTK_DRM_OPT_SDPA_OVL_SWITCH*/
 				<0>, /*MTK_DRM_OPT_TILE_OVERHEAD*/
 				<0>, /*MTK_DRM_OPT_HRT_BY_LARB*/
