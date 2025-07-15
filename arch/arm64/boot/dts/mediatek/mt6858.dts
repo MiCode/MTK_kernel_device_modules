@@ -6609,8 +6609,8 @@ dramc: dramc@10230000 {
 			clock-names = "mmdvfs_clk", "mmdvfs_clk_img";
 			dre30-hist-sram-start = /bits/ 16 <1536>;
 			pq-rb-thread-id = /bits/ 16 <19>;
-			//pq-rb-event-lock = /bits/ 16 <CMDQ_SYNC_TOKEN_HISTOGRAM_MDP_WAIT>;
-			//pq-rb-event-unlock = /bits/ 16 <CMDQ_SYNC_TOKEN_HISTOGRAM_MDP_SET>;
+			pq-rb-event-lock = /bits/ 16 <CMDQ_SYNC_TOKEN_HISTOGRAM_MDP_WAIT>;
+			pq-rb-event-unlock = /bits/ 16 <CMDQ_SYNC_TOKEN_HISTOGRAM_MDP_SET>;
 		};
 		mdp_mutex0: mdp-mutex0@1f001000 {
 			compatible = "mediatek,mdp_mutex0";
