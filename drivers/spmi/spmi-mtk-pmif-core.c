@@ -420,18 +420,20 @@ enum {
 };
 
 enum {
-	IRQ_PMIF_SWINF_ACC_ERR_0 = 3,
-	IRQ_PMIF_SWINF_ACC_ERR_1 = 4,
-	IRQ_PMIF_SWINF_ACC_ERR_2 = 5,
-	IRQ_PMIF_SWINF_ACC_ERR_3 = 6,
-	IRQ_PMIF_SWINF_ACC_ERR_4 = 7,
+	IRQ_PMIF_HWINF_0_CMD_VIO_2  = 1,
+	IRQ_PMIF_SWINF_ACC_ERR_0    = 3,
+	IRQ_PMIF_SWINF_ACC_ERR_1    = 4,
+	IRQ_PMIF_SWINF_ACC_ERR_2    = 5,
+	IRQ_PMIF_SWINF_ACC_ERR_3    = 6,
+	IRQ_PMIF_SWINF_ACC_ERR_4    = 7,
 	IRQ_PMIF_HWINF_0_CMD_VIO_0  = 7,
-	IRQ_PMIF_SWINF_ACC_ERR_5 = 8,
+	IRQ_PMIF_SWINF_ACC_ERR_5    = 8,
 	IRQ_PMIF_SWINF_ACC_ERR_0_V2 = 23,
 	IRQ_PMIF_SWINF_ACC_ERR_1_V2 = 24,
 	IRQ_PMIF_SWINF_ACC_ERR_2_V2 = 25,
 	IRQ_PMIF_SWINF_ACC_ERR_3_V2 = 26,
 	IRQ_PMIF_SWINF_ACC_ERR_4_V2 = 27,
+	IRQ_PMIF_HWINF_0_CMD_VIO_3  = 27,
 	IRQ_PMIF_SWINF_ACC_ERR_5_V2 = 28,
 	IRQ_HW_MONITOR_V4           = 29,
 	IRQ_WDT_V4                  = 30,
@@ -1416,6 +1418,7 @@ static irqreturn_t pmif_event_1_irq_handler(int irq, void *data)
 			} else {
 				switch (idx) {
 				case IRQ_PMIF_HWINF_0_CMD_VIO_1:
+				case IRQ_PMIF_HWINF_0_CMD_VIO_3:
 					pmif_hwinf_cmd_vio_irq_handler(irq_0, irq_1, irq_2, data, idx);
 				break;
 				case IRQ_PMIF_SPMI_CRC_ERR_V1:
@@ -1475,6 +1478,7 @@ static irqreturn_t pmif_event_2_irq_handler(int irq, void *data)
 			|| ((irq_2 & (0x1 << idx)) != 0)) {
 			switch (idx) {
 			case IRQ_PMIF_HWINF_0_CMD_VIO_0:
+			case IRQ_PMIF_HWINF_0_CMD_VIO_2:
 				pmif_hwinf_cmd_vio_irq_handler(irq_0, irq_1, irq_2, data, idx);
 			break;
 			default:
@@ -2530,7 +2534,7 @@ static int mtk_spmi_probe(struct platform_device *pdev)
 	err = of_property_read_u32_array(pdev->dev.of_node, "hwinf-err-irq-idx-m2",
 		arb->hwintf_err_idx_m2, ARRAY_SIZE(arb->hwintf_err_idx_m2));
 	if (err) {
-		of_property_read_u32_array(pdev->dev.of_node, "swinf-err-irq-idx",
+		of_property_read_u32_array(pdev->dev.of_node, "hwinf-err-irq-idx",
 		arb->hwintf_err_idx_m2, ARRAY_SIZE(arb->hwintf_err_idx_m2));
 		dev_info(&pdev->dev, "[PMIF]: No hwinf-err-irq-idx-m2 found, copy from m\n");
 	}
