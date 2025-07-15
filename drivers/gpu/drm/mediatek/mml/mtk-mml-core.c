@@ -149,6 +149,10 @@ module_param(mml_qos_max_bw, int, 0644);
 int mml_qos_max_stash_bw = 64;
 module_param(mml_qos_max_stash_bw, int, 0644);
 
+/* delay time in us */
+int mml_m2m_clk_time = 500;
+module_param(mml_m2m_clk_time, int, 0644);
+
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 static bool mml_timeout_dump = true;
 static DEFINE_MUTEX(mml_dump_mutex);
@@ -952,14 +956,44 @@ static s32 core_enable(struct mml_task *task, u32 pipe)
 	return 0;
 }
 
-static s32 core_disable(struct mml_task *task, u32 pipe)
+static void core_disable_clock(const struct mml_topology_path *path, bool dpc)
+{
+	struct mml_comp *comp;
+	u32 i;
+
+	for (i = 0; i < path->node_cnt; i++) {
+		if (i == path->mmlsys_idx || i == path->mutex_idx)
+			continue;
+		if (path->mmlsys2 && i == path->mmlsys2_idx)
+			continue;
+		if (path->mutex2 && i == path->mutex2_idx)
+			continue;
+		comp = path->nodes[i].comp;
+		call_hw_op(comp, clk_disable, dpc);
+	}
+
+	if (path->mutex2)
+		call_hw_op(path->mutex2, clk_disable, dpc);
+	if (path->mmlsys2)
+		call_hw_op(path->mmlsys2, clk_disable, dpc);
+	call_hw_op(path->mutex, clk_disable, dpc);
+	call_hw_op(path->mmlsys, clk_disable, dpc);
+}
+
+static void core_disable_power(const struct mml_topology_path *path, enum mml_mode mode)
+{
+	if (path->mmlsys2)
+		call_hw_op(path->mmlsys2, pw_disable, mode, false);
+	call_hw_op(path->mmlsys, pw_disable, mode, false);
+}
+
+static s32 core_disable(struct mml_task *task, u32 pipe, bool skip_clock)
 {
 	struct mml_frame_config *cfg = task->config;
 	const struct mml_topology_path *path = cfg->path[pipe];
-	struct mml_comp *comp;
-	int i;
 
-	mml_trace_ex_begin("%s_%s_%u", __func__, "clk", pipe);
+	if (!skip_clock)
+		mml_trace_ex_begin("%s_%s_%u", __func__, "clk", pipe);
 
 	if (mml_comp_dump) {
 		task->dump_full = true; /* back to full for manually debug */
@@ -971,25 +1005,11 @@ static s32 core_disable(struct mml_task *task, u32 pipe)
 
 	mml_clock_lock(cfg->mml);
 
-	for (i = 0; i < path->node_cnt; i++) {
-		if (i == path->mmlsys_idx || i == path->mutex_idx)
-			continue;
-		if (path->mmlsys2 && i == path->mmlsys2_idx)
-			continue;
-		if (path->mutex2 && i == path->mutex2_idx)
-			continue;
-		comp = path->nodes[i].comp;
-		call_hw_op(comp, clk_disable, cfg->dpc);
+	if (!skip_clock) {
+		core_disable_clock(path, cfg->dpc);
+
+		mml_trace_ex_end();
 	}
-
-	if (path->mutex2)
-		call_hw_op(path->mutex2, clk_disable, cfg->dpc);
-	if (path->mmlsys2)
-		call_hw_op(path->mmlsys2, clk_disable, cfg->dpc);
-	call_hw_op(path->mutex, clk_disable, cfg->dpc);
-	call_hw_op(path->mmlsys, clk_disable, cfg->dpc);
-
-	mml_trace_ex_end();
 
 	mml_trace_ex_begin("%s_%s_%u", __func__, "pw", pipe);
 
@@ -1002,9 +1022,8 @@ static s32 core_disable(struct mml_task *task, u32 pipe)
 		mml_dpc_dc_enable(cfg->mml, path->mmlsys->sysid, false);
 	}
 
-	if (path->mmlsys2)
-		call_hw_op(path->mmlsys2, pw_disable, cfg->info.mode, false);
-	call_hw_op(path->mmlsys, pw_disable, cfg->info.mode, false);
+	if (!skip_clock)
+		core_disable_power(path, cfg->info.mode);
 
 	mml_trace_ex_end();
 
@@ -1808,6 +1827,82 @@ static void mml_core_mminfra_disable(struct mml_dev *mml, u32 pipe, struct mml_c
 	mml_clock_unlock(mml);
 }
 
+struct mml_clock_delay_info {
+	struct timer_list timer;
+	struct kthread_work kt_work_delay_clock;
+	struct kthread_worker *ctx_kt_taskdone;
+	u32 jobid;
+	void *mml;
+	const struct mml_topology_path *path;
+	enum mml_mode mode;
+	bool dpc;
+};
+
+static void mml_core_disable_delay_work(struct kthread_work *work)
+{
+	struct mml_clock_delay_info *delay =
+		container_of(work, struct mml_clock_delay_info, kt_work_delay_clock);
+
+	mml_msg("%s disable job %u", __func__, delay->jobid);
+
+	/* clock off */
+	mml_clock_lock(delay->mml);
+	core_disable_clock(delay->path, delay->dpc);
+	core_disable_power(delay->path, delay->mode);
+	mml_clock_unlock(delay->mml);
+
+	/* stop dpc except flow */
+	mml_dpc_exc_release(delay->mml, delay->path->mmlsys->sysid);
+	mml_core_mminfra_disable(delay->mml, 0, delay->path->mmlsys);
+
+	kfree(delay);
+}
+
+static void mml_core_queue_delay_clock(struct timer_list *t)
+{
+	struct mml_clock_delay_info *delay = from_timer(delay, t, timer);
+
+	del_timer(&delay->timer);
+	kthread_queue_work(delay->ctx_kt_taskdone, &delay->kt_work_delay_clock);
+}
+
+static bool mml_core_check_clock_delay(struct mml_task *task)
+{
+	struct mml_clock_delay_info *delay;
+	struct mml_frame_config *cfg;
+	u64 delay_th_ns, cur;
+
+	if (task->adaptor_type != MML_ADAPTOR_M2M)
+		return false;
+
+	delay_th_ns = (u64)mml_m2m_clk_time * 1000;
+	cur = sched_clock();
+	if (cur - task->flush_time[0] > delay_th_ns)
+		return false;
+	/* change cur to remain time */
+	cur = (delay_th_ns - (cur - task->flush_time[0])) / 1000;
+	if (!cur)
+		return false;
+
+	delay = kzalloc(sizeof(*delay), GFP_KERNEL);
+	if (!delay)
+		return false;
+
+	cfg = task->config;
+	delay->path = cfg->path[0];
+	delay->jobid = task->job.jobid;
+	delay->mml = cfg->mml;
+	delay->mode = cfg->info.mode;
+	delay->dpc = cfg->dpc;
+	delay->ctx_kt_taskdone = cfg->ctx_kt_taskdone;
+	kthread_init_work(&delay->kt_work_delay_clock, mml_core_disable_delay_work);
+
+	timer_setup(&delay->timer, &mml_core_queue_delay_clock, 0);
+	mod_timer(&delay->timer, jiffies + usecs_to_jiffies(cur));
+	mml_msg("%s delay job %u time %llu", __func__, delay->jobid, cur);
+	return true;
+}
+
 static void core_taskdone(struct kthread_work *work)
 {
 	struct mml_task *task = container_of(work, struct mml_task, kt_work_taskdone);
@@ -1815,6 +1910,7 @@ static void core_taskdone(struct kthread_work *work)
 	const struct mml_topology_path *path = cfg->path[0];
 	u32 *perf, hw_time = 0;
 	u32 jobid = task->job.jobid;
+	bool clock_delay;
 
 	if (mml_iscouple(cfg->info.mode) && task->disp_fence_id.inst_offset) {
 		u32 disp_fid = cmdq_pkt_backup_get(task->pkts[0], &task->disp_fence_id);
@@ -1865,10 +1961,11 @@ static void core_taskdone(struct kthread_work *work)
 	if (cfg->dual && task->pkts[1])
 		core_taskdone_comp(task, 1);
 
+	clock_delay = mml_core_check_clock_delay(task);
 	if (task->pipe[0].en.clk)
-		core_disable(task, 0);
+		core_disable(task, 0, clock_delay);
 	if (task->pipe[1].en.clk)
-		core_disable(task, 1);
+		core_disable(task, 1, false);
 
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 	if (task->dump_queued[MMLDUMPT_SRC])
@@ -1888,8 +1985,10 @@ static void core_taskdone(struct kthread_work *work)
 	if (cfg->dpc && cfg->info.mode != MML_MODE_DDP_ADDON)
 		mml_dpc_task_cnt_dec(task);
 
-	mml_dpc_exc_release_task(task, path);
-	mml_core_mminfra_disable(cfg->mml, 0, cfg->path[0]->mmlsys);
+	if (!clock_delay) {
+		mml_dpc_exc_release_task(task, path);
+		mml_core_mminfra_disable(cfg->mml, 0, cfg->path[0]->mmlsys);
+	}
 
 	if (unlikely(cfg->task_ops->frame_err && !task->pkts[0] &&
 		(!cfg->dual || !task->pkts[1])))
