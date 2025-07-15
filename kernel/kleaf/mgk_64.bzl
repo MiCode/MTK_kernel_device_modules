@@ -1159,6 +1159,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/thermal/mediatek:charger_cooling".format(kernel_version),
 	"//kernel_device_modules-{}/drivers/thermal/mediatek:md_cooling_all".format(kernel_version),
     "//kernel_device_modules-{}/drivers/thermal/mediatek:pmic_temp".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/thermal/mediatek:soc_temp_ldro".format(kernel_version),
     "//kernel_device_modules-{}/drivers/thermal/mediatek:soc_temp_lvts".format(kernel_version),
     "//kernel_device_modules-{}/drivers/thermal/mediatek:thermal_interface".format(kernel_version),
     "//kernel_device_modules-{}/drivers/thermal/mediatek:thermal_trace".format(kernel_version),
@@ -1844,6 +1845,7 @@ mgk_64_device_modules = [
     #"drivers/tee/teei/510/isee.ko",
     #"drivers/tee/teei/510/isee-ffa.ko",
     #"drivers/thermal/mediatek/md_cooling_all.ko",
+    #"drivers/thermal/mediatek/soc_temp_ldro.ko",
     #"drivers/thermal/mediatek/soc_temp_lvts.ko",
     #"drivers/thermal/mediatek/thermal_interface.ko",
     #"drivers/thermal/mediatek/thermal_trace.ko",
@@ -2571,6 +2573,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/thermal/mediatek/charger_cooling.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/md_cooling_all.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/pmic_temp.ko")
+        mgk_64_device_modules.remove("drivers/thermal/mediatek/soc_temp_ldro.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/soc_temp_lvts.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/thermal_interface.ko")
         #mgk_64_device_modules.remove("drivers/thermal/mediatek/thermal_jatm.ko")
@@ -2995,6 +2998,7 @@ def get_overlay_modules_list():
         if "drivers/thermal/mediatek/md_cooling_all.ko" in mgk_64_device_modules:
             mgk_64_device_modules.remove("drivers/thermal/mediatek/md_cooling_all.ko")
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/thermal/mediatek:pmic_temp".format(kernel_version))
+        mgk_64_device_modules.remove("drivers/thermal/mediatek/soc_temp_ldro.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/soc_temp_lvts.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/thermal_interface.ko")
         #mgk_64_device_modules.remove("drivers/thermal/mediatek/thermal_jatm.ko")
@@ -3550,6 +3554,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/thermal/mediatek/charger_cooling.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/md_cooling_all.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/pmic_temp.ko")
+        mgk_64_device_modules.remove("drivers/thermal/mediatek/soc_temp_ldro.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/soc_temp_lvts.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/thermal_interface.ko")
         #mgk_64_device_modules.remove("drivers/thermal/mediatek/thermal_jatm.ko")
@@ -3870,6 +3875,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/thermal/mediatek/charger_cooling.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/md_cooling_all.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/pmic_temp.ko")
+        mgk_64_device_modules.remove("drivers/thermal/mediatek/soc_temp_ldro.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/soc_temp_lvts.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/thermal_interface.ko")
         #mgk_64_device_modules.remove("drivers/thermal/mediatek/thermal_jatm.ko")
@@ -4237,6 +4243,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/thermal/mediatek/charger_cooling.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/md_cooling_all.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/pmic_temp.ko")
+        mgk_64_device_modules.remove("drivers/thermal/mediatek/soc_temp_ldro.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/soc_temp_lvts.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/thermal_interface.ko")
         #mgk_64_device_modules.remove("drivers/thermal/mediatek/thermal_jatm.ko")
@@ -4481,6 +4488,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/thermal/mediatek/charger_cooling.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/md_cooling_all.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/pmic_temp.ko")
+        mgk_64_device_modules.remove("drivers/thermal/mediatek/soc_temp_ldro.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/soc_temp_lvts.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/thermal_interface.ko")
         #mgk_64_device_modules.remove("drivers/thermal/mediatek/thermal_jatm.ko")

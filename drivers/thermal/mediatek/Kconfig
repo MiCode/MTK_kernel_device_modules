@@ -20,6 +20,14 @@ config MTK_SOC_THERMAL
 	  configures thermal controllers to collect temperature
 	  via AUXADC interface.
 
+config MTK_SOC_THERMAL_LDRO
+        tristate "LDRO driver for Mediatek SoCs"
+        help
+          Enable this option if you want to get LDRO ISR to
+          check thermal reboot reason. The LDRO (leakage dominant
+          ring oscillator) driver provides functionality to handle
+          thermal related tasks specific to Mediatek SoCs.
+
 config MTK_SOC_THERMAL_LVTS
         tristate "LVTS (Low voltage thermal sensor) driver for Mediatek SoCs"
         depends on HAS_IOMEM

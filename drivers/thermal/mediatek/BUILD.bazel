@@ -138,6 +138,20 @@ define_mgk_ddk_ko(
 )
 
 define_mgk_ddk_ko(
+    name = "soc_temp_ldro",
+    srcs = [
+        "soc_temp_ldro.c",
+    ],
+    hdrs = [
+        "soc_temp_ldro.h",
+        "thermal_interface.h",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/thermal/mediatek:thermal_interface".format(kernel_version)
+    ],
+)
+
+define_mgk_ddk_ko(
     name = "thermal_trace",
     srcs = [
         "thermal_trace.c",
