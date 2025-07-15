@@ -7329,6 +7329,8 @@ int mtk_dsi_esd_read(struct mtk_ddp_comp *comp, void *handle, void *ptr)
 		params = dsi->ext->params;
 	else /* can't find panel ext information, stop esd read */
 		return 0;
+	mtk_dsi_mask(dsi, 0xc4, 1, 0);
+	DDPMSG("before esd check 0xc=0x%x 0xc4=0x%x\n", readl(dsi->regs + 0xc),readl(dsi->regs + 0xc4));
 
 	for (i = 0 ; i < ESD_CHECK_NUM ; i++) {
 
@@ -7396,6 +7398,7 @@ int mtk_dsi_esd_cmp(struct mtk_ddp_comp *comp, void *handle, void *ptr)
 		params = dsi->ext->params;
 	else /* can't find panel ext information, stop esd read */
 		return 0;
+	DDPMSG("after esd check 0xc=0x%x 0xc4=0x%x\n", readl(dsi->regs + 0xc),readl(dsi->regs + 0xc4));
 
 	for (i = 0; i < ESD_CHECK_NUM; i++) {
 		if (dsi->ext->params->lcm_esd_check_table[i].cmd == 0)
