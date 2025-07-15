@@ -537,6 +537,7 @@ int dpc_buck_status(int op)
 		u32 v1 = readl(hwccf_xpu0_local_en) & 0x1ff80000;
 		u32 v2 = readl(hwccf_xpu6_local_en) & 0x1ff80000;
 		u32 v3 = readl(hwccf_global_en) & 0x1ff80000;
+		u32 v4 = atomic_read(&g_user_14);
 
 		atomic_set_release(&buck_ref, 0);
 
@@ -544,6 +545,12 @@ int dpc_buck_status(int op)
 			dump_stack();
 			DPCERR("voter 0:%#x 6:%#x G:%#x", v1, v2, v3);
 		}
+
+		if (v4) {
+			DPCAEE("for frame cnt(%u)", v4);
+			atomic_set_release(&g_user_14, 0);
+		}
+
 	} else if (op == 1) {
 		writel(0, dpc_base + DISP_DPC_INTSTA_INTF_PWR_RDY_STATE);
 		atomic_set_release(&buck_ref, 1);

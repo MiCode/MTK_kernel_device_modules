@@ -6266,7 +6266,7 @@ static void mtk_output_dsi_enable(struct mtk_dsi *dsi,
 	}
 
 	/* usually inside NST_LOCK(atomic commit) or CRTC_LOCK(for esd recover) */
-	mtk_vidle_user_power_keep(DISP_VIDLE_USER_NST_LOCK);
+	mtk_vidle_user_power_keep(DISP_VIDLE_USER_DDIC);
 
 	/* For fifo mon config need to config gce event */
 	if (priv->data->mmsys_id == MMSYS_MT6993)
@@ -6525,13 +6525,13 @@ static void mtk_output_dsi_enable(struct mtk_dsi *dsi,
 	dsi->doze_enabled = new_doze_state;
 
 out:
-	mtk_vidle_user_power_release(DISP_VIDLE_USER_NST_LOCK);
+	mtk_vidle_user_power_release(DISP_VIDLE_USER_DDIC);
 	return;
 
 err_dsi_power_off:
 	mtk_dsi_stop(dsi);
 	mtk_dsi_poweroff(dsi);
-	mtk_vidle_user_power_release(DISP_VIDLE_USER_NST_LOCK);
+	mtk_vidle_user_power_release(DISP_VIDLE_USER_DDIC);
 }
 
 static int mtk_dsi_stop_vdo_mode(struct mtk_dsi *dsi, void *handle);
@@ -6649,7 +6649,7 @@ static void mtk_output_dsi_disable(struct mtk_dsi *dsi, struct cmdq_pkt *cmdq_ha
 	}
 
 	/* usually inside NST_LOCK(atomic commit) or CRTC_LOCK(for esd recover) */
-	mtk_vidle_user_power_keep(DISP_VIDLE_USER_NST_LOCK);
+	mtk_vidle_user_power_keep(DISP_VIDLE_USER_DDIC);
 
 	/* 2. If VDO mode, stop it and set to CMD mode */
 	if (!mtk_dsi_is_cmd_mode(&dsi->ddp_comp)) {
@@ -6742,7 +6742,7 @@ SKIP_WAIT_FRAME_DONE:
 	dsi->doze_enabled = new_doze_state;
 
 	/* usually inside NST_LOCK(atomic commit) or CRTC_LOCK(for esd recover) */
-	mtk_vidle_user_power_release(DISP_VIDLE_USER_NST_LOCK);
+	mtk_vidle_user_power_release(DISP_VIDLE_USER_DDIC);
 
 	DDPINFO("%s-\n", __func__);
 }

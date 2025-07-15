@@ -641,6 +641,7 @@ int mtk_release_union_fence(unsigned int session_id, unsigned int fence_idx, kti
 {
 	int fence_increment = 0;
 	int timeline_id = 0;
+	int i = 0;
 	struct mtk_fence_buf_info *buf;
 	struct mtk_fence_buf_info *n;
 	unsigned int idx = MTK_SESSION_TYPE(session_id) - 1;
@@ -791,7 +792,8 @@ int mtk_release_union_fence(unsigned int session_id, unsigned int fence_idx, kti
 		mtk_sync_timeline_inc(layer_info->timeline, fence_increment, time);
 		drm_trace_tag_value("release_frame_done_fence", fence_idx);
 
-		mtk_vidle_user_power_release(DISP_VIDLE_USER_FOR_FRAME);
+		for (i = 0; i < fence_increment; i++)
+			mtk_vidle_user_power_release(DISP_VIDLE_USER_FOR_FRAME);
 
 		/* print mmp log */
 		CRTC_MMP_MARK(idx, release_frame_done_fence, 0, fence_idx);
