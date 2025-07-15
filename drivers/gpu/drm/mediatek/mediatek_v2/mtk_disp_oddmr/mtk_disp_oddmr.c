@@ -13505,6 +13505,37 @@ static void mtk_oddmr_od_ddren_en(struct mtk_ddp_comp *comp,
 	}
 }
 
+static void mtk_oddmr_od_sw_reset(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
+{
+	GCE_COND_DECLARE;
+	struct cmdq_operand lop, rop;
+	const u16 var1 = CMDQ_THR_SPR_IDX2;
+	const u16 var2 = 0;
+
+	GCE_COND_ASSIGN(handle, CMDQ_THR_SPR_IDX1, CMDQ_GPR_R07);
+	/* get od status */
+	lop.reg = true;
+	lop.idx = var1;
+	rop.reg = false;
+	rop.value = 1;
+	cmdq_pkt_read(handle, NULL,
+		comp->regs_pa + MT6991_DISP_ODDMR_OD_CTRL_EN, var1);
+	cmdq_pkt_logic_command(handle, CMDQ_LOGIC_AND, var1, &lop, &rop);
+
+	lop.reg = true;
+	lop.idx = var1;
+	rop.reg = false;
+	rop.idx = var2;
+	rop.value = 1;
+	GCE_IF(lop, R_CMDQ_EQUAL, rop);
+	/* condition true: OD enabled, sw reset */
+	cmdq_pkt_write(handle, comp->cmdq_base,
+		comp->regs_pa + MT6991_DISP_ODDMR_OD_SW_RESET, 0x200, ~0);
+	cmdq_pkt_write(handle, comp->cmdq_base,
+		comp->regs_pa + MT6991_DISP_ODDMR_OD_SW_RESET, 0, ~0);
+	GCE_FI;
+}
+
 static void mtk_oddmr_config_trigger(struct mtk_ddp_comp *comp,
 				   struct cmdq_pkt *handle,
 				   enum mtk_ddp_comp_trigger_flag flag)
@@ -13551,6 +13582,9 @@ static void mtk_oddmr_config_trigger(struct mtk_ddp_comp *comp,
 
 		if(oddmr_data->data->dbi_version >= MTK_DBI_V3)
 			mtk_oddmr_dbi_read_ir_drop(comp, handle);
+
+		if(od_support && oddmr_data->data->od_version == MTK_OD_V3)
+			mtk_oddmr_od_sw_reset(comp, handle);
 
 		if (priv && (!mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_ODDMR_OD_AEE)))
