@@ -11,6 +11,8 @@ struct scp_audio_priv {
 	bool inited;
 	bool clock_lock;
 
+	spinlock_t lock;
+
 	struct workqueue_struct *workq;
 	struct wait_queue_head waitq;
 };

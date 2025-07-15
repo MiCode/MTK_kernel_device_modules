@@ -24,7 +24,28 @@
 #endif
 
 static struct scp_audio_priv scp_audio;
-static int scp_audio_lock_clk_source(void);
+static int _scp_audio_clock_control(bool lock, bool wait);
+
+static bool get_audio_clock_status(void)
+{
+	unsigned long spin_flags;
+	bool lock;
+
+	spin_lock_irqsave(&scp_audio.lock, spin_flags);
+	lock = scp_audio.clock_lock;
+	spin_unlock_irqrestore(&scp_audio.lock, spin_flags);
+
+	return lock;
+}
+
+static void set_audio_clock_status(bool lock)
+{
+	unsigned long spin_flags;
+
+	spin_lock_irqsave(&scp_audio.lock, spin_flags);
+	scp_audio.clock_lock = lock;
+	spin_unlock_irqrestore(&scp_audio.lock, spin_flags);
+}
 
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
 /* SCP reboot */
@@ -37,17 +58,16 @@ static int scp_audio_ctrl_event_receive(
 	case SCP_EVENT_STOP:
 		pr_info("%s(), SCP_EVENT_STOP\n", __func__);
 		reset_adsp_logger_status();
+		set_audio_clock_status(false);
 		break;
 	case SCP_EVENT_READY:
 		pr_info("%s(), SCP_EVENT_READY\n", __func__);
+		set_audio_clock_status(false);
 		wake_up(&scp_audio.waitq);
 		scp_audio_logger_init_message();
-		/* suspend work directly if no feature registered */
-		flush_suspend_work(SCP_A_ID);
 		if (is_adsp_feature_in_active()) {
 			pr_info("%s(), sync lock status with SCP\n", __func__);
-			scp_audio.clock_lock = false;
-			scp_audio_lock_clk_source();
+			_scp_audio_clock_control(true, false);
 		}
 		break;
 	default:
@@ -61,22 +81,28 @@ static struct notifier_block scp_audio_ctrl_notifier = {
 };
 #endif
 
-static int _scp_audio_clock_control(bool lock)
+static int _scp_audio_clock_control(bool lock, bool wait)
 {
 	int ret = 0;
 	int value;
 	ktime_t start = ktime_get();
 	s64 us = ktime_to_us(start);
+	bool clock_status = get_audio_clock_status();
 
 	if (!scp_audio.inited)
 		return -EINVAL;
 
 	value = lock ? 0x55 : 0x66;
-	if (!scp_audio.clock_lock & lock || scp_audio.clock_lock & !lock) {
+	if (!clock_status & lock || clock_status & !lock) {
 
-		if (!wait_event_timeout(scp_audio.waitq, is_scp_audio_ready(),
+		if (wait && !wait_event_timeout(scp_audio.waitq, is_scp_audio_ready(),
 		    msecs_to_jiffies(2000))) {
 			ret = -ENODEV;
+			goto ERROR;
+		}
+
+		if (!get_audio_clock_status() && !lock) {
+			ret = -EAGAIN;
 			goto ERROR;
 		}
 
@@ -86,7 +112,7 @@ static int _scp_audio_clock_control(bool lock)
 			goto ERROR;
 		}
 		pr_info("%s, notify lock(%d)\n", __func__, lock);
-		scp_audio.clock_lock = lock ? true : false;
+		set_audio_clock_status(lock);
 	}
 	return 0;
 
@@ -98,12 +124,12 @@ ERROR:
 
 static int scp_audio_lock_clk_source(void)
 {
-	return _scp_audio_clock_control(true);
+	return _scp_audio_clock_control(true, true);
 }
 
 static int scp_audio_unlock_clk_source(void)
 {
-	return _scp_audio_clock_control(false);
+	return _scp_audio_clock_control(false, false);
 }
 
 static int scp_audio_drv_probe(struct platform_device *pdev)
@@ -115,6 +141,7 @@ static int scp_audio_drv_probe(struct platform_device *pdev)
 	of_property_read_u64(pdev->dev.of_node, "feature-control-bits", &pdata->feature_set);
 
 	pdata->clock_lock = false;
+	spin_lock_init(&pdata->lock);
 	pdata->workq = alloc_workqueue("scp_audio_wq", WORK_CPU_UNBOUND | WQ_HIGHPRI, 0);
 	init_waitqueue_head(&pdata->waitq);
 	ret = init_adsp_feature_control(SCP_A_ID, pdata->feature_set, 1100,

@@ -29,7 +29,7 @@ int scp_push_message(unsigned int id, void *buf, unsigned int len,
 	if (send_queue_callback)
 		ret = send_queue_callback(cid, id, buf, len, wait);
 	else
-		return scp_send_message(id, buf, len, wait, cid);
+		return scp_send_message_with_wakelock(id, buf, len, wait, cid);
 	return (ret == 0) ? SCP_IPI_DONE: SCP_IPI_ERROR;
 }
 EXPORT_SYMBOL_GPL(scp_push_message);
