@@ -518,7 +518,7 @@ void mt6993_request_opp_table(void)
 	rpmsg_data.cmd = APUTOP_DUMP_OPP_TBL;
 	rpmsg_data.data0 = 1; // pseudo data
 	do {
-		ret = aputop_send_rpmsg(&rpmsg_data, 100);
+		ret = aputop_send_rpmsg(&rpmsg_data, 200);
 		if (mt6993_mdla_pll_freq[USER_MID_OPP_VAL - 1] != 0)
 			break;
 		udelay(1000);
@@ -528,7 +528,7 @@ void mt6993_request_opp_table(void)
 	rpmsg_data.cmd = APUTOP_DUMP_OPP_TBL2;
 	rpmsg_data.data0 = 1; // pseudo data
 	do {
-		ret = aputop_send_rpmsg(&rpmsg_data, 100);
+		ret = aputop_send_rpmsg(&rpmsg_data, 200);
 		if (mt6993_mdla_pll_freq[OPP_TABLE_SIZE - 1] != 0)
 			break;
 		udelay(1000);

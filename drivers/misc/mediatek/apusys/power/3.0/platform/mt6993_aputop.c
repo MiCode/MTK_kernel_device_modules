@@ -827,7 +827,11 @@ static int mt6993_opp_proc_show(struct seq_file *m, void *v)
 {
 	int i;
 
-	mt6993_request_opp_table();
+	if (!first_dump) {
+		mt6993_request_opp_table();
+		first_dump = 1;
+	}
+
 	seq_puts(m, "APU Support Frequency points (Unit is KHZ), (MDLA, MVPU)\n");
 	for (i = 0; i < ARRAY_SIZE(mt6993_mdla_pll_freq); i++) {
 		if (mt6993_mdla_pll_freq[i] == 0)
