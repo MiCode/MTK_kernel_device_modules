@@ -5555,6 +5555,13 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					    "e_data5","e_data6","e_data7","e_data8","e_data9";
 		};
 
+		ldro: ldro {
+			compatible = "mediatek,mt6993-ldro";
+			reg =<0 0x052703e8 0 0x4>,
+				<0 0x053e03c8 0 0x4>;
+			interrupts = <GIC_SPI 130 IRQ_TYPE_LEVEL_HIGH 0>;
+		};
+
 		soc_dbg_error_flag: soc-dbg-error-flag@d01a000 {
 			compatible = "mediatek, soc-dbg-error-flag";
 			reg = <0 0x0d01a000 0 0x1000>;
