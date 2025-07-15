@@ -4897,7 +4897,7 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 		}else if (IS_MT6789(g_platform_id))
 			*(MUINT32 *)(uintptr_t)(*(feature_data + 1))
 				= 1004000;
-		else if (IS_MT6855(g_platform_id))
+		else if (IS_MT6855(g_platform_id) || IS_MT6858(g_platform_id))
 			*(MUINT32 *)(uintptr_t)(*(feature_data + 1))
 				= 800000;
 		else

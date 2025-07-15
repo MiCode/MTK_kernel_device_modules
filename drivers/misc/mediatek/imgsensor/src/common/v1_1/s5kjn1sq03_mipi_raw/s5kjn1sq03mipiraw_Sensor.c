@@ -3228,6 +3228,9 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 			"SENSOR_FEATURE_GET_SENSOR_HDR_CAPACITY scenarioId:%llu, HDR:%llu\n",
 			*feature_data, *(feature_data+1));
 		break;
+	case SENSOR_FEATURE_GET_OFFSET_TO_START_OF_EXPOSURE:
+		*(MUINT32 *)(uintptr_t)(*(feature_data + 1)) = 2389333;
+		break;
 	case SENSOR_FEATURE_GET_VC_INFO2:
 		LOG_INF("SENSOR_FEATURE_GET_VC_INFO2 %d\n",
 		(UINT16)(*feature_data));

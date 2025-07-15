@@ -2036,6 +2036,8 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 			*(MUINT32 *)(uintptr_t)(*(feature_data + 1)) = 1774600;
 		else if (IS_MT6855(g_platform_id))
 			*(MUINT32 *)(uintptr_t)(*(feature_data + 1)) = 1000000;
+		else if (IS_MT6858(g_platform_id))
+			*(MUINT32 *)(uintptr_t)(*(feature_data + 1)) = 1500000;
 		break;
 	case SENSOR_FEATURE_GET_GAIN_RANGE_BY_SCENARIO:
 		*(feature_data + 1) = imgsensor_info.min_gain;
