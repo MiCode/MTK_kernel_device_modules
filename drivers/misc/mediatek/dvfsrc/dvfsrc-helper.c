@@ -713,6 +713,11 @@ static void dvfsrc_force_opp(struct mtk_dvfsrc *dvfsrc, u32 opp)
 			}
 		}
 	}
+
+	if (dvfsrc->dvd->apudvfs_notify && (dvfsrc->force_opp_idx == 0xFF))
+		mtk_apudvfs_debug_force_vcore_notify(
+						dvfsrc->opp_desc->opps[max_opp - opp].vcore_opp);
+
 	dvfsrc->force_opp_idx = opp;
 }
 
