@@ -5546,8 +5546,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			interrupts = <GIC_SPI 596 IRQ_TYPE_LEVEL_HIGH 0>,
 					<GIC_SPI 105 IRQ_TYPE_LEVEL_HIGH 0>,
 					<GIC_SPI 780 IRQ_TYPE_LEVEL_HIGH 0>,
-					<GIC_SPI 739 IRQ_TYPE_LEVEL_HIGH 0>,
-					<GIC_SPI 130 IRQ_TYPE_LEVEL_HIGH 0>;
+					<GIC_SPI 739 IRQ_TYPE_LEVEL_HIGH 0>;
 			nvmem-cells = <&lvts_e_data1 &lvts_e_data2 &lvts_e_data3
 					&lvts_e_data4 &lvts_e_data5 &lvts_e_data6
 					&lvts_e_data7 &lvts_e_data8 &lvts_e_data9>;
