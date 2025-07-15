@@ -279,6 +279,8 @@ extern int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...);
 #define DPC_MMINFRA_OFF_MML_MASK                         BIT(6)
 #define DPC_INFRA_OFF_MML_MASK                           BIT(7)
 
+#define DPC_DT_MML_SKIP_RDONE                            BIT(4)
+
 #define VOTE_SET 1
 #define VOTE_CLR 0
 
@@ -383,6 +385,31 @@ enum dpc_mtcmos_id {
 	DPC_MTCMOS_ID_OVL1, //5
 };
 
+enum mtk_base_id {
+	DPC_BASE,
+	VLP_BASE,
+	SPM_BASE,
+	HW_VOTE_STATE,
+	VDISP_DVFSRC_DEBUG,
+	VDISP_DVFSRC_EN,
+	VCORE_DVFSRC_DEBUG,
+	MMINFRA_HANG_FREE,
+	DPC_SYS_REGS_CNT,
+};
+
+enum mtk_dpc_state {
+	DPC_STATE_NULL,
+	DPC_STATE_ON,
+	DPC_STATE_OFF,
+};
+
+struct mtk_dpc_pm_user {
+	char name[128];
+	int count;
+	int max;
+	bool valid;
+};
+
 struct mtk_dpc_dt_usage {
 	s16 index;
 	enum mtk_dpc_sp_type sp;		/* start point */
@@ -391,8 +418,6 @@ struct mtk_dpc_dt_usage {
 };
 
 struct mtk_dpc_dvfs_bw {
-	u32 mml_bw;
-	u32 disp_bw;
 	u8 bw_level;
 	u8 mml_level;
 	u8 disp_level;
@@ -401,6 +426,46 @@ struct mtk_dpc_dvfs_bw {
 struct mtk_dpc_channel_bw {
 	u32 disp_bw;
 	u32 mml_bw;
+};
+
+struct mtk_dpc {
+	struct platform_device *pdev;
+	struct device *dev;
+	struct device *pd_dev;
+	struct notifier_block pm_nb;
+	struct notifier_block vcp_nb;
+	int disp_irq;
+	int mml_irq;
+	unsigned int vidle_mask;
+	resource_size_t dpc_pa;
+	resource_size_t vlp_pa;
+	void __iomem *sys_va[DPC_SYS_REGS_CNT];
+	struct cmdq_client *cmdq_client;
+	atomic_t dpc_en_cnt;
+	atomic_t vcp_is_alive;
+	bool skip_force_power;
+	spinlock_t skip_force_power_lock;
+	wait_queue_head_t dpc_state_wq;
+	atomic_t dpc_state;
+#if IS_ENABLED(CONFIG_DEBUG_FS)
+	struct dentry *fs;
+#endif
+	struct mtk_dpc_dvfs_bw dvfs_bw;
+	struct mtk_dpc_channel_bw channel_bw[MTK_MAX_CHANNEL_NUM];
+	unsigned int mmsys_id;
+	struct mtk_dpc_dt_usage *disp_cmd_dt_usage;
+	struct mtk_dpc_dt_usage *mml_cmd_dt_usage;
+	struct mtk_dpc_dt_usage *disp_vdo_dt_usage;
+	struct mtk_dpc_dt_usage *mml_vdo_dt_usage;
+	struct timer_list dpc_timer;
+	wait_queue_head_t dpc_mtcmos_wq;
+	atomic_t dpc_mtcmos_timeout;
+	bool mmdvfs_power_sync;
+	unsigned int mmdvfs_settings_count;
+	unsigned int *mmdvfs_settings_addr;
+	unsigned int mtcmos_mask;
+	unsigned int skip_rdone;
+	unsigned int (*get_sys_status)(enum dpc_sys_status_id, unsigned int *status);
 };
 
 static void dpc_dt_enable(u16 dt, bool en);

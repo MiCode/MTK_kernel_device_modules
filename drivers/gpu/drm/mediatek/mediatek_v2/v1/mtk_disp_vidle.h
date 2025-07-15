@@ -102,5 +102,7 @@ int mtk_vidle_hint_decision(const char *caller);
 void mtk_vdisp_register(const struct mtk_vdisp_funcs *fp, enum mtk_vdisp_version version);
 void mtk_vidle_wait_init(void *_drm_priv);
 void mtk_vidle_mmdvfs_ctrl(bool en);
+int mtk_vidle_get_power_if_in_use(void);
+void mtk_vidle_put_power(void);
 
 #endif

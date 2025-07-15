@@ -1788,7 +1788,7 @@ void dpc_group_enable_v3(const u16 group, bool en)
 	}
 }
 
-static void dpc_config_v2(const u32 subsys, bool en)
+static int dpc_config_v2(const u32 subsys, bool en)
 {
 	static bool is_mminfra_ctrl_by_dpc;
 
@@ -1805,7 +1805,7 @@ static void dpc_config_v2(const u32 subsys, bool en)
 			mtk_dprec_logger_pr(DPREC_LOGGER_FENCE, "dpc get mminfra\n");
 
 		if (dpc_pm_ctrl(true))
-			return;
+			return 0;
 		is_mminfra_ctrl_by_dpc = false;
 	}
 
@@ -1832,9 +1832,11 @@ static void dpc_config_v2(const u32 subsys, bool en)
 	/* mtk_disp_vlp_vote(VOTE_CLR, DISP_VIDLE_USER_DISP_DPC_CFG); */
 
 	dpc_mmp(config, MMPROFILE_FLAG_PULSE, subsys, en);
+
+	return 0;
 }
 
-static void dpc_config_v3(const u32 subsys, bool en)
+static int dpc_config_v3(const u32 subsys, bool en)
 {
 	int ret;
 	u32 value = 0;
@@ -1850,7 +1852,7 @@ static void dpc_config_v3(const u32 subsys, bool en)
 			mtk_dprec_logger_pr(DPREC_LOGGER_FENCE, "dpc get mminfra\n");
 
 		if (dpc_mminfra_on_off(true, DISP_VIDLE_USER_NST_LOCK))
-			return;
+			return 0;
 		is_mminfra_ctrl_by_dpc = false;
 	}
 
@@ -1969,6 +1971,8 @@ static void dpc_config_v3(const u32 subsys, bool en)
 	}
 	dpc_vidle_power_release_v3(DISP_VIDLE_USER_DISP_DPC_CFG);
 	dpc_mmp(config, MMPROFILE_FLAG_END, subsys, en);
+
+	return 0;
 }
 
 irqreturn_t mt6991_irq_handler(int irq, void *dev_id)

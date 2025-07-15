@@ -80,12 +80,14 @@ struct mtk_vdisp {
 	struct notifier_block rgu_nb;
 	struct notifier_block pd_nb;
 	enum disp_pd_id pd_id;
+	int pm_ret;
 };
 static struct device *g_dev[DISP_PD_NUM];
 static void __iomem *g_vlp_base;
 
 static bool vcp_warmboot_support;
 static unsigned int mmsys_id;
+static struct dpc_funcs disp_dpc_driver;
 
 static int regulator_event_notifier(struct notifier_block *nb,
 				    unsigned long event, void *data)
@@ -188,6 +190,9 @@ static void mminfra_hwv_pwr_ctrl(struct mtk_vdisp *priv, bool on)
 	u32 value = 0, mask;
 	int ret = 0;
 
+	if (IS_ERR_OR_NULL(priv->vlp_base))
+		return;
+
 	/* [0] MMINFRA_DONE_STA
 	 * [1] VCP_READY_STA
 	 * [2] MMINFRA_DURING_OFF_STA
@@ -233,9 +238,33 @@ static int genpd_event_notifier(struct notifier_block *nb,
 	case GENPD_NOTIFY_PRE_OFF:
 	case GENPD_NOTIFY_PRE_ON:
 		mminfra_hwv_pwr_ctrl(priv, true);
+		/* vote and power on mminfra */
+		if (disp_dpc_driver.dpc_vidle_power_keep)
+			priv->pm_ret = disp_dpc_driver.dpc_vidle_power_keep((enum mtk_vidle_voter_user)priv->pd_id);
+		if (priv->pm_ret)
+			VDISPDBG("pd:%d %s ret:%d", priv->pd_id,
+				event == GENPD_NOTIFY_PRE_ON ? "pre_on" : "pre_off",
+				priv->pm_ret);
 		break;
 	case GENPD_NOTIFY_OFF:
+		/* unvote and power off mminfra, release should be called only if keep successfully */
+		if (disp_dpc_driver.dpc_vidle_power_release && !priv->pm_ret)
+			disp_dpc_driver.dpc_vidle_power_release((enum mtk_vidle_voter_user)priv->pd_id);
+		mminfra_hwv_pwr_ctrl(priv, false);
+		break;
 	case GENPD_NOTIFY_ON:
+		if (priv->pd_id == DISP_PD_DISP1) {
+			if (priv->pm_ret)
+				VDISPDBG("cannot init dpc hw,pd:%d,pm_ret:%d",
+					priv->pd_id, priv->pm_ret);
+			if (disp_dpc_driver.dpc_config && !priv->pm_ret)
+				disp_dpc_driver.dpc_config(DPC_SUBSYS_DIS1, false);
+			if (disp_dpc_driver.dpc_enable && !priv->pm_ret)
+				disp_dpc_driver.dpc_enable(false);
+		}
+		/* unvote and power off mminfra, release should be called only if keep successfully */
+		if (disp_dpc_driver.dpc_vidle_power_release && !priv->pm_ret)
+			disp_dpc_driver.dpc_vidle_power_release((enum mtk_vidle_voter_user)priv->pd_id);
 		mminfra_hwv_pwr_ctrl(priv, false);
 		break;
 	default:
@@ -374,9 +403,15 @@ static int mtk_vdisp_probe(struct platform_device *pdev)
 	return ret;
 }
 
+void mtk_vdisp_dpc_register_v1(const struct dpc_funcs *funcs)
+{
+	disp_dpc_driver = *funcs;
+}
+EXPORT_SYMBOL(mtk_vdisp_dpc_register_v1);
+
 static void mtk_vdisp_remove(struct platform_device *pdev)
 {
-
+	VDISPDBG("done");
 }
 
 static const struct of_device_id mtk_vdisp_driver_v1_dt_match[] = {

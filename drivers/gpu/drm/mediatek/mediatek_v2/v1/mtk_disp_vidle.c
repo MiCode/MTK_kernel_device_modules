@@ -186,9 +186,10 @@ int mtk_vidle_user_power_keep_v1(enum mtk_vidle_voter_user user)
 	if (disp_dpc_driver.dpc_vidle_power_keep == NULL || vidle_data.drm_priv == NULL)
 		return 0;
 
-	if (atomic_read(&vidle_data.drm_priv->kernel_pm.status) == KERNEL_SHUTDOWN ||
-	    atomic_read(&vidle_data.drm_priv->kernel_pm.wakelock_cnt) == 0)
+	if (atomic_read(&vidle_data.drm_priv->kernel_pm.status) == KERNEL_SHUTDOWN)
 		return -1;
+	else if (atomic_read(&vidle_data.drm_priv->kernel_pm.wakelock_cnt) == 0)
+		user |= VOTER_ONLY;
 
 	return disp_dpc_driver.dpc_vidle_power_keep(user);
 }
@@ -199,9 +200,10 @@ void mtk_vidle_user_power_release_v1(enum mtk_vidle_voter_user user)
 		return;
 
 	irq_log_store();
-	if (atomic_read(&vidle_data.drm_priv->kernel_pm.status) == KERNEL_SHUTDOWN ||
-	    atomic_read(&vidle_data.drm_priv->kernel_pm.wakelock_cnt) == 0)
+	if (atomic_read(&vidle_data.drm_priv->kernel_pm.status) == KERNEL_SHUTDOWN)
 		return;
+	else if (atomic_read(&vidle_data.drm_priv->kernel_pm.wakelock_cnt) == 0)
+		user |= VOTER_ONLY;
 
 	irq_log_store();
 	disp_dpc_driver.dpc_vidle_power_release(user);
@@ -619,6 +621,8 @@ void mtk_vidle_mmdvfs_ctrl(bool en)
 
 static void mtk_vidle_enable_v1(bool en, void *_drm_priv)
 {
+	static bool status;
+
 	if (!disp_dpc_driver.dpc_enable)
 		return;
 
@@ -629,7 +633,7 @@ static void mtk_vidle_enable_v1(bool en, void *_drm_priv)
 	if (mtk_disp_vidle_flag.vidle_stop && en)
 		return;
 
-	if (en == mtk_vidle_is_ff_enabled())
+	if (en == status)
 		return;
 
 	disp_dpc_driver.dpc_enable(en);
@@ -640,8 +644,9 @@ static void mtk_vidle_enable_v1(bool en, void *_drm_priv)
 	}
 	/* TODO: enable timestamp */
 
-	DDPINFO("%s, en:%d, stop:0x%x, pause:%d\n", __func__, en,
-		mtk_disp_vidle_flag.vidle_stop, vidle_paused);
+	status = en;
+	DDPINFO("%s, en:%d, stop:0x%x, pause:%d, status:%d\n", __func__, en,
+		mtk_disp_vidle_flag.vidle_stop, vidle_paused, status);
 }
 
 static void mtk_vidle_enable_v2(bool _en, void *_drm_priv)
@@ -740,6 +745,8 @@ u8 mtk_vidle_check_pll(void)
 
 void mtk_vidle_config_ff(bool en)
 {
+	int ret = 0;
+
 	if (!disp_dpc_driver.dpc_config)
 		return;
 
@@ -757,9 +764,10 @@ void mtk_vidle_config_ff(bool en)
 	if (vidle_data.dpc_version == DPC_VER2 && mtk_vidle_is_ff_enabled() == en)
 		return;
 
-	disp_dpc_driver.dpc_config(DPC_SUBSYS_DISP, en);
+	ret = disp_dpc_driver.dpc_config(DPC_SUBSYS_DISP, en);
 
-	atomic_set(&g_ff_enabled, en);
+	if (ret == 0)
+		atomic_set(&g_ff_enabled, en);
 }
 
 void mtk_vidle_dpc_analysis(void)
@@ -906,3 +914,27 @@ void mtk_vdisp_register(const struct mtk_vdisp_funcs *fp, enum mtk_vdisp_version
 	vdisp_func = *fp;
 }
 EXPORT_SYMBOL(mtk_vdisp_register);
+
+int mtk_vidle_get_power_if_in_use(void)
+{
+	int ret = 0;
+
+	if (disp_helper_get_stage() != DISP_HELPER_STAGE_NORMAL)
+		return 1;
+
+	/* all disp subsys power on: return 1 */
+	ret = mtk_drm_pm_ctrl(vidle_data.drm_priv, DISP_PM_CHECK);
+	if (ret == 0)
+		return 1;
+
+	/* any disp subsys power off: return 0 */
+	DDPMSG("%s, any disp mtcmos power off, ret:%d\n", __func__, ret);
+	return 0;
+}
+EXPORT_SYMBOL(mtk_vidle_get_power_if_in_use);
+
+void mtk_vidle_put_power(void)
+{
+	mtk_drm_pm_ctrl(vidle_data.drm_priv, DISP_PM_PUT);
+}
+EXPORT_SYMBOL(mtk_vidle_put_power);
