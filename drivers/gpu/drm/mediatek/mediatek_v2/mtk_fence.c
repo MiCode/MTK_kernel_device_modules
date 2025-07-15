@@ -645,6 +645,7 @@ int mtk_release_union_fence(unsigned int session_id, unsigned int fence_idx, kti
 	struct mtk_fence_buf_info *n;
 	unsigned int idx = MTK_SESSION_TYPE(session_id) - 1;
 	struct mtk_fence_info *layer_info;
+	struct mtk_drm_private *priv = NULL;
 
 	if (fence_type == MTK_UNION_FENCE_CONFIG) {
 		timeline_id = mtk_fence_get_config_timeline_id(session_id);
@@ -744,6 +745,13 @@ int mtk_release_union_fence(unsigned int session_id, unsigned int fence_idx, kti
 		DDPFENCE("RP+/%s%d/T%d/id%d\n", mtk_fence_session_mode_spy(session_id),
 				MTK_SESSION_DEV(session_id), layer_info->layer_id, fence_idx);
 
+		/* WA: update crtc_rel_present when force signal pf when pf delay signal */
+		if (mtk_crtc && mtk_crtc->base.dev->dev_private) {
+			priv = mtk_crtc->base.dev->dev_private;
+			atomic_set(&priv->crtc_rel_present[idx], fence_idx);
+			drm_trace_tag_value("update_rel_present_fence", fence_idx);
+		}
+
 		/* signal fence */
 		mtk_sync_timeline_inc(layer_info->timeline, fence_increment, time);
 		drm_trace_tag_value("release_present_fence", fence_idx);
@@ -794,7 +802,7 @@ int mtk_release_union_fence(unsigned int session_id, unsigned int fence_idx, kti
 		if (mtk_crtc == NULL)
 			return 1;
 		mtk_release_union_fence(session_id, fence_idx, mtk_crtc->sof_time,
-			MTK_UNION_FENCE_PRESENT, NULL);
+			MTK_UNION_FENCE_PRESENT, mtk_crtc);
 	} else {
 		DDPFENCE("%s: fence_type is invalid\n", __func__);
 		return -1;
