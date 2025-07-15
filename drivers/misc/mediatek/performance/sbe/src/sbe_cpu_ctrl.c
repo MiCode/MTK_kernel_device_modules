@@ -246,6 +246,11 @@ int sbe_core_ctl_set_min_cpus(unsigned int cid, unsigned int min, int requester,
 	return core_ctl_set_min_cpus(cid, min, requester, have_demand);
 }
 
+int sbe_get_rescue_enhance(void)
+{
+	return global_sbe_dy_enhance;
+}
+
 void sbe_core_ctl_ignore_vip_task(struct sbe_render_info *thr, int ignore_enable)
 {
 	if (sbe_ignore_vip_task_enable
@@ -984,13 +989,13 @@ int sbe_query_cur_buffer_count(struct sbe_render_info *thr)
 }
 
 void sbe_exec_doframe_end(struct sbe_render_info *thr, unsigned long long frame_id,
-				long long frame_flags)
+				long long frame_flags, unsigned long long cur_ts)
 {
 	int frame_status = (frame_flags & FRAME_MASK) >> 16;
 	int rescue_type = frame_flags & RESCUE_MASK;
 	struct hwui_frame_info *frame;
 	unsigned long long rescue_time = 0;
-	unsigned long long ts = 0;
+	unsigned long long ts = cur_ts;
 
 	if (!thr || !sbe_dy_rescue_enable)
 		return;
@@ -1022,7 +1027,6 @@ void sbe_exec_doframe_end(struct sbe_render_info *thr, unsigned long long frame_
 			return;
 
 		scroll_info->last_frame_ID = frame_id;
-		ts = sbe_get_time();
 
 		//try enable buffer count filter
 		if ((frame->rescue || (rescue_type & RESCUE_TRAVERSAL_OVER_VSYNC) != 0)
@@ -1443,7 +1447,8 @@ int sbe_calculate_dy_enhance(struct sbe_render_info *thr)
 		}
 	}
 
-	last_enhance = thr->sbe_dy_enhance_f > 0 ? thr->sbe_dy_enhance_f : sbe_enhance_f;
+	last_enhance = (thr->sbe_dy_enhance_f > 0 && thr->dy_compute_rescue)
+			? thr->sbe_dy_enhance_f : sbe_enhance_f;
 
 	//check rescue enhance
 	if (all_rescue_frame_count > 20 || max_avg_cap >= sbe_loading_threashold_m) {
@@ -1456,7 +1461,7 @@ int sbe_calculate_dy_enhance(struct sbe_render_info *thr)
 	if (max_avg_cap > 0 && max_avg_cap < sbe_loading_threashold_l)
 		l_score++;
 
-	if (thr->is_webfunctor)
+	if (thr->is_webfunctor || thr->user_request_affinity_mask)
 		h_score += 5;
 
 	//update render loading type
@@ -1903,7 +1908,9 @@ void sbe_do_rescue(struct sbe_render_info *thr, int start, int enhance,
 		thr->sbe_rescuing_frame_id = frame_id;
 
 		//update sbe rescue enhance
-		if (sbe_dy_max_enhance > 0 && ((rescue_type & RESCUE_TYPE_MAX_ENHANCE) != 0))
+		if (sbe_dy_max_enhance > 0 && ((rescue_type & RESCUE_TYPE_TRAVERSAL_HEAVY) != 0))
+			sbe_dy_enhance = sbe_enhance_f;
+		else if (sbe_dy_max_enhance > 0 && ((rescue_type & RESCUE_TYPE_MAX_ENHANCE) != 0))
 			sbe_dy_enhance = sbe_dy_max_enhance;
 		else if (!sbe_dy_rescue_enable)
 			sbe_dy_enhance = sbe_enhance_f;

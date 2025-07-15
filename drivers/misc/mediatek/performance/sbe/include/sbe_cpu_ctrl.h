@@ -37,6 +37,7 @@
 #define RESCUE_TYPE_PRE_ANIMATION         (1 << 10)
 #define RESCUE_TYPE_ENABLE_MARGIN         (1 << 11)
 #define RESCUE_TYPE_AI_RESCUE             (1 << 12)
+#define RESCUE_TYPE_TRAVERSAL_HEAVY       (1 << 13)
 
 /*define render loading */
 #define RENDER_LOADING_LOW         (1 << 0)
@@ -144,7 +145,7 @@ void count_scroll_rescue_info(struct sbe_render_info *thr, struct hwui_frame_inf
 
 int get_ux_list_length(struct list_head *head);
 void sbe_exec_doframe_end(struct sbe_render_info *thr, unsigned long long frame_id,
-			long long frame_flags);
+			long long frame_flags, unsigned long long cur_ts);
 void clear_ux_info(struct sbe_render_info *thr);
 void enqueue_ux_scroll_info(int type, unsigned long long start_ts, struct sbe_render_info *thr);
 struct ux_scroll_info *search_ux_scroll_info(unsigned long long ts, struct sbe_render_info *thr);
@@ -175,6 +176,7 @@ void sbe_do_rescue_legacy(struct sbe_render_info *thr, int start, int enhance,
 		unsigned long long frame_id);
 
 int sbe_get_perf(void);
+int sbe_get_rescue_enhance(void);
 int get_sbe_disable_runnable_util_est_status(void);
 int get_sbe_extra_sub_en_deque_enable(void);
 unsigned long long get_sbe_extra_sub_deque_margin_time(void);

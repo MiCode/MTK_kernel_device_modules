@@ -451,7 +451,7 @@ void sbe_receive_doframe_end(int pid,
 		return;
 	}
 
-	sbe_exec_doframe_end(f_render, frameID, frame_flags);
+	sbe_exec_doframe_end(f_render, frameID, frame_flags, frame_end_time);
 	sbe_put_tree_lock(__func__);
 }
 
@@ -1015,6 +1015,7 @@ static int sbe_do_clear_scrolling_info(int tgid, char *name, unsigned long long 
 		thr->dep_self_ctrl = 0;
 		thr->latest_use_ts = ts;
 		thr->dep_self_ctrl = 1;
+		thr->dy_compute_rescue = 1;
 
 		clear_ux_info(thr);
 		sbe_put_tree_lock(__func__);
@@ -1141,6 +1142,10 @@ static int sbe_do_hwui_scrolling_status_policy(int tgid, char *name, unsigned lo
 			else
 				sbe_set_dptv2_policy(thr, start);
 		}
+
+		thr->user_request_affinity_mask = 0;
+		if (test_bit(SBE_REQUEST_AFFNITY_TASK, &mask))
+			thr->user_request_affinity_mask = 1;
 
 		if (thr->core_ctl_ignore_vip_task)
 			sbe_core_ctl_ignore_vip_task(thr, start);
@@ -1416,6 +1421,7 @@ int sbe_notify_hwui_frame_hint(int start,
 	int dep_mode, char *dep_name, int dep_num, long long frame_flags)
 {
 	int ret;
+	int enhance;
 	unsigned long long cur_ts;
 	struct SBE_NOTIFIER_PUSH_TAG *vpPush;
 
@@ -1448,7 +1454,9 @@ int sbe_notify_hwui_frame_hint(int start,
 	sbe_queue_work(vpPush);
 
 	ret = sbe_get_perf();
+	enhance = sbe_get_rescue_enhance();
 
+	ret = ((ret & 0xFFFF) << 16) | (enhance & 0xFFFF);
 	return ret;
 }
 
