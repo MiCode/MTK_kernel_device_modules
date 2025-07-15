@@ -7355,6 +7355,7 @@ dramc: dramc@10230000 {
 			exception-mask = <0x5>;
 			reset-exception-mask = <0x0>;
 			firmware-idle-hysteresis-time-us = <5000>;
+			default-glb-pwroff-timeout-us = <80>;
 		};
 
 		gpu_qos: gpu-qos {
