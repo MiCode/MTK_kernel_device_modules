@@ -1857,10 +1857,7 @@ static s32 hdr_config_post(struct mml_comp *comp, struct mml_task *task,
 	bool vcp = hdr->data->vcp_readback;
 	s8 mode = task->config->info.mode;
 
-	if (!dest->pq_config.en_hdr)
-		goto exit;
-
-	if (!mml_isdc(mode))
+	if (!dest->pq_config.en_hdr || !mml_isdc(mode))
 		goto comp_config_put;
 
 	if (vcp)
@@ -1870,7 +1867,6 @@ static s32 hdr_config_post(struct mml_comp *comp, struct mml_task *task,
 
 comp_config_put:
 	mml_pq_put_comp_config_result(task);
-exit:
 	return 0;
 
 }
@@ -2050,10 +2046,7 @@ static s32 hdr_config_repost(struct mml_comp *comp, struct mml_task *task,
 	u32 engine = CMDQ_VCP_ENG_MML_HDR0 + pipe;
 	s8 mode = task->config->info.mode;
 
-	if (!dest->pq_config.en_hdr)
-		goto exit;
-
-	if (!mml_isdc(mode))
+	if (!dest->pq_config.en_hdr || !mml_isdc(mode))
 		goto comp_config_put;
 
 	if (vcp) {
@@ -2110,7 +2103,6 @@ static s32 hdr_config_repost(struct mml_comp *comp, struct mml_task *task,
 
 comp_config_put:
 	mml_pq_put_comp_config_result(task);
-exit:
 	return 0;
 }
 
