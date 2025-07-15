@@ -63,7 +63,7 @@ static const struct dvfs_ref s_dl_dvfs_tbl_v1[] = { /* 6:2 */
 
 static const struct dvfs_ref s_dl_dvfs_tbl_v2[] = { /* 4:4 */
 	/*speed, cluster0, cluster1, cluster2, cluster3, dram, isr, push, rps, bat, skb, tx_done*/
-	{4000000000LL, {-1, -1, -1, -1}, -1, 0x02, 0xF0, 0xF0, 0xFF, 0xFF, {-1, -1, -1, -1}},
+	{800000000LL, {-1, -1, -1, -1}, -1, 0x02, 0xF0, 0xF0, 0xFF, 0xFF, {-1, -1, -1, -1}},
 	/* normal */
 	{0LL,          {-1, -1, -1, -1}, -1, 0xFF, 0xFF, -1, 0xFF, 0xFF, {-1, -1, -1, -1}},
 };
