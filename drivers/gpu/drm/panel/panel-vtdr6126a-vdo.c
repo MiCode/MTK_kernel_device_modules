@@ -20,6 +20,7 @@
 #include <linux/platform_device.h>
 #include <linux/gpio/consumer.h>
 #define CONFIG_MTK_PANEL_EXT
+#define CONFIG_MTK_ROUND_CORNER_SUPPORT
 #if defined(CONFIG_MTK_PANEL_EXT)
 #include "../mediatek/mediatek_v2/mtk_panel_ext.h"
 #include "../mediatek/mediatek_v2/mtk_drm_graphics_base.h"
@@ -27,6 +28,10 @@
 #include "panel-vtdr6126a-vdo.h"
 
 #include "../../../misc/mediatek/gate_ic/gate_i2c.h"
+
+#ifdef CONFIG_MTK_ROUND_CORNER_SUPPORT
+#include "../mediatek/mediatek_v2/mtk_corner_pattern/mtk_data_hw_roundedpattern.h"
+#endif
 
 #define REGFLAG_DELAY               0xFFFC
 #define REGFLAG_UDELAY              0xFFFB
@@ -1259,6 +1264,13 @@ static struct mtk_panel_params ext_params_144hz = {
 	},
 	.data_rate = MODE_0_DATA_RATE,
 	//.tran_panel_params = &panel_driver_status,
+#ifdef CONFIG_MTK_ROUND_CORNER_SUPPORT
+	.round_corner_en = 1,
+	.corner_pattern_height = ROUND_CORNER_H_TOP,
+	.corner_pattern_height_bot = ROUND_CORNER_H_BOT,
+	.corner_pattern_tp_size = sizeof(top_rc_pattern),
+	.corner_pattern_lt_addr = (void *)top_rc_pattern,
+#endif
 };
 
 static struct mtk_panel_params ext_params_120hz = {
@@ -1333,6 +1345,13 @@ static struct mtk_panel_params ext_params_120hz = {
 		.hfp = 114,
 		.vfp = 76,
 	},
+#ifdef CONFIG_MTK_ROUND_CORNER_SUPPORT
+	.round_corner_en = 1,
+	.corner_pattern_height = ROUND_CORNER_H_TOP,
+	.corner_pattern_height_bot = ROUND_CORNER_H_BOT,
+	.corner_pattern_tp_size = sizeof(top_rc_pattern),
+	.corner_pattern_lt_addr = (void *)top_rc_pattern,
+#endif
 };
 
 static struct mtk_panel_params ext_params_90hz = {
@@ -1407,6 +1426,13 @@ static struct mtk_panel_params ext_params_90hz = {
 		.hfp = 114,
 		.vfp = 1016,
 	},
+#ifdef CONFIG_MTK_ROUND_CORNER_SUPPORT
+	.round_corner_en = 1,
+	.corner_pattern_height = ROUND_CORNER_H_TOP,
+	.corner_pattern_height_bot = ROUND_CORNER_H_BOT,
+	.corner_pattern_tp_size = sizeof(top_rc_pattern),
+	.corner_pattern_lt_addr = (void *)top_rc_pattern,
+#endif
 };
 
 static struct mtk_panel_params ext_params_60hz = {
@@ -1481,6 +1507,13 @@ static struct mtk_panel_params ext_params_60hz = {
 		.hfp = 114,
 		.vfp = 2892,
 	},
+#ifdef CONFIG_MTK_ROUND_CORNER_SUPPORT
+	.round_corner_en = 1,
+	.corner_pattern_height = ROUND_CORNER_H_TOP,
+	.corner_pattern_height_bot = ROUND_CORNER_H_BOT,
+	.corner_pattern_tp_size = sizeof(top_rc_pattern),
+	.corner_pattern_lt_addr = (void *)top_rc_pattern,
+#endif
 };
 
 //Adjust dim speed 20241212 start
@@ -2673,6 +2706,18 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
 		value = 0;
 	else
 		ctx->gate_ic = value;
+
+	value = 0;
+	ret = of_property_read_u32(dev->of_node, "rc-enable", &value);
+	if (ret < 0)
+		value = 0;
+	else {
+		ext_params_60hz.round_corner_en = value;
+		ext_params_90hz.round_corner_en = value;
+		ext_params_120hz.round_corner_en = value;
+		ext_params_144hz.round_corner_en = value;
+	}
+	pr_info("%s+ round_corner_en %d\n", __func__,ext_params_120hz.round_corner_en);
 
 	backlight = of_parse_phandle(dev->of_node, "backlight", 0);
 	if (backlight) {
