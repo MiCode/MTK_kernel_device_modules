@@ -5742,6 +5742,7 @@ static int mt6858_afe_runtime_suspend(struct device *dev)
 skip_regmap:
 	mt6858_afe_sram_release(afe);
 	mt6858_afe_disable_clock(afe);
+	dev_info_ratelimited(afe->dev, "%s: Is going to suspend.\n", __func__);
 	return 0;
 }
 
