@@ -938,7 +938,10 @@ static void kwdt_dump_func(void)
 		if (!strncmp(t->comm, "wdtk-", 5)) {
 			int cpu = task_thread_info(t)->cpu;
 
-			pr_info("%s on CPU %d\n", t->comm, cpu);
+			pr_info("%s on CPU %d blocked_on %d blocked_on_state %d\n",
+				t->comm, cpu,
+				!!t->blocked_on,
+				t->blocked_on_state);
 			sched_show_task(t);
 
 			break;
@@ -1256,8 +1259,8 @@ static void kwdt_process_kick(int local_bit, int cpu,
 	}
 
 	if (cpu != original_kicker) {
-		cpus_kick_bit &= ~(1 << cpu);
-		cpus_skip_bit |= (1 << cpu);
+		cpus_kick_bit &= ~(1 << original_kicker);
+		cpus_skip_bit |= (1 << original_kicker);
 	}
 
 	spin_unlock_bh(&lock);
