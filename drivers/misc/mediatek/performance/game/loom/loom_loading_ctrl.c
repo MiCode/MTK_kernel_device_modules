@@ -69,21 +69,29 @@ module_param(g_expected_fps, int, 0644);
 
 static int _reset_userlimit_cpufreq_min(int cid)
 {
+	if (!freq_min_request || cid < 0 || cid >= policy_num)
+		return -1;
 	return freq_qos_remove_request(&(freq_min_request[cid]));
 }
 
 static int _reset_userlimit_cpufreq_max(int cid)
 {
+	if (!freq_max_request || cid < 0 || cid >= policy_num)
+		return -1;
 	return freq_qos_remove_request(&(freq_max_request[cid]));
 }
 
 int _update_userlimit_cpufreq_min(int cid, int value)
 {
+	if (!freq_min_request || cid < 0 || cid >= policy_num)
+		return -1;
 	return freq_qos_update_request(&(freq_min_request[cid]), value);
 }
 
 int _update_userlimit_cpufreq_max(int cid, int value)
 {
+	if (!freq_max_request || cid < 0 || cid >= policy_num)
+		return -1;
 	return freq_qos_update_request(&(freq_max_request[cid]), value);
 }
 
@@ -452,7 +460,7 @@ int init_loom_loading_ctrl(void)
 {
 	int ret = 0;
 	int cpu;
-	int num = 0, cpu_num = 0;
+	int num = 0, cpu_num = 0, has_offline_cpu = 0;
 	struct cpufreq_policy *policy;
 
 	loading_thr_up_bound = 100;
@@ -475,14 +483,24 @@ int init_loom_loading_ctrl(void)
 			cpu_num++;
 			cpu = cpumask_last(policy->related_cpus);
 			cpufreq_cpu_put(policy);
+		} else {
+			has_offline_cpu = 1;
+			break;
 		}
 	}
+
+	if (has_offline_cpu)
+		return -1;
+
 	policy_num = cpu_num;
 
 	freq_min_request = kcalloc(policy_num, sizeof(struct freq_qos_request), GFP_KERNEL);
 	freq_max_request = kcalloc(policy_num, sizeof(struct freq_qos_request), GFP_KERNEL);
-	if (freq_min_request == NULL || freq_max_request == NULL)
-		return 0;
+	if (freq_min_request == NULL || freq_max_request == NULL) {
+		kfree(freq_min_request);
+		kfree(freq_max_request);
+		return -1;
+	}
 
 	for_each_possible_cpu(cpu) {
 		if (num >= policy_num)
@@ -494,12 +512,12 @@ int init_loom_loading_ctrl(void)
 			continue;
 
 		ret = freq_qos_add_request(&policy->constraints,
-			&(freq_max_request[num]), FREQ_QOS_MAX, fbt_cluster_X2Y(num, 0, OPP, FREQ, 1, __func__));
+			&(freq_max_request[num]), FREQ_QOS_MAX, FREQ_QOS_MAX_DEFAULT_VALUE);
 		if (ret < 0)
 			pr_info("%s freq_qos_add_request return %d\n", __func__, ret);
 
 		ret = freq_qos_add_request(&policy->constraints,
-			&(freq_min_request[num]), FREQ_QOS_MIN,	0);
+			&(freq_min_request[num]), FREQ_QOS_MIN, FREQ_QOS_MIN_DEFAULT_VALUE);
 		if (ret < 0)
 			pr_info("%s freq_qos_add_request return %d\n", __func__, ret);
 
