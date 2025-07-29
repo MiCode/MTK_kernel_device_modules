@@ -15702,7 +15702,7 @@ void mtk_crtc_stop(struct mtk_drm_crtc *mtk_crtc, bool need_wait)
 			MTK_DRM_OPT_IDLEMGR_ASYNC))
 		async = mtk_drm_idlemgr_get_async_status(crtc);
 
-	/* 0. Waiting CLIENT_DSI_CFG and CLIENT_CHECK_T thread done */
+	/* 0. Waiting CLIENT_DSI_CFG, CLIENT_PQ and CLIENT_CHECK_T thread done */
 	if (mtk_crtc->gce_obj.client[CLIENT_DSI_CFG] != NULL && async == false) {
 		mtk_crtc_pkt_create(&cmdq_handle, &mtk_crtc->base,
 			mtk_crtc->gce_obj.client[CLIENT_DSI_CFG]);
@@ -15726,6 +15726,13 @@ void mtk_crtc_stop(struct mtk_drm_crtc *mtk_crtc, bool need_wait)
 
 		cmdq_pkt_flush(cmdq_handle);
 		cmdq_pkt_destroy(cmdq_handle);
+	}
+	if (mtk_crtc->gce_obj.client[CLIENT_PQ] && !async) {
+		mtk_crtc_pkt_create(&cmdq_handle, &mtk_crtc->base, mtk_crtc->gce_obj.client[CLIENT_PQ]);
+		if (cmdq_handle) {
+			cmdq_pkt_flush(cmdq_handle);
+			cmdq_pkt_destroy(cmdq_handle);
+		}
 	}
 
 	mtk_crtc_pkt_create(&cmdq_handle, &mtk_crtc->base,
@@ -27341,7 +27348,7 @@ void mtk_crtc_stop_for_pm(struct mtk_drm_crtc *mtk_crtc, bool need_wait)
 
 	DDPINFO("%s:%d +\n", __func__, __LINE__);
 
-	/* 0. Waiting CLIENT_DSI_CFG and CLIENT_CHECK_T thread done */
+	/* 0. Waiting CLIENT_DSI_CFG, CLIENT_PQ and CLIENT_CHECK_T thread done */
 	if (mtk_crtc->gce_obj.client[CLIENT_DSI_CFG] != NULL) {
 		mtk_crtc_pkt_create(&cmdq_handle, &mtk_crtc->base,
 			mtk_crtc->gce_obj.client[CLIENT_DSI_CFG]);
@@ -27365,6 +27372,15 @@ void mtk_crtc_stop_for_pm(struct mtk_drm_crtc *mtk_crtc, bool need_wait)
 
 		cmdq_pkt_flush(cmdq_handle);
 		cmdq_pkt_destroy(cmdq_handle);
+	}
+	if (mtk_crtc->gce_obj.client[CLIENT_PQ] != NULL) {
+		mtk_crtc_pkt_create(&cmdq_handle, &mtk_crtc->base,
+			mtk_crtc->gce_obj.client[CLIENT_PQ]);
+
+		if (cmdq_handle) {
+			cmdq_pkt_flush(cmdq_handle);
+			cmdq_pkt_destroy(cmdq_handle);
+		}
 	}
 
 	mtk_crtc_pkt_create(&cmdq_handle, &mtk_crtc->base,
