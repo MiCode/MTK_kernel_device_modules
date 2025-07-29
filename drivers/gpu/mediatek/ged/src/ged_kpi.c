@@ -3139,9 +3139,11 @@ void ged_kpi_set_target_FPS_api(u64 ulID, int target_FPS, int target_FPS_margin)
 #ifdef MTK_GED_KPI
 	trace_tracing_mark_write(5566, "target_fps_api", target_FPS);
 
-	if (ulID == 0)
+	if (ulID == 0) {
 		ged_kpi_push_timestamp(GED_SET_PANEL_REFRESH_RATE, 0, -1, 0,
 			target_FPS, GED_API_FPS_HINT, -1, NULL);
+		ged_eb_dvfs_task(EB_SET_PANEL_REFRESH_RATE, target_FPS);
+	}
 	else
 		ged_kpi_push_timestamp(GED_SET_TARGET_FPS, 0, -1, ulID,
 			(target_FPS | (target_FPS_margin << 8)), GED_API_FPS_HINT, -1, NULL);
@@ -3500,10 +3502,20 @@ GED_ERROR ged_kpi_hint_frame_info(
 	if (out == NULL)
 		return GED_ERROR_FAIL;
 
-	out->eError = GED_OK;
-	out->mainHead_fps_v = main_head->target_fps_v;
-	out->mainHead_fps_gpu = main_head->t_gpu_fps;
-	out->mainHead_BQ_ID = main_head->ullWnd;
+	if (is_fdvfs_enable() & POLICY_MODE_V2) {
+		out->mainHead_fps_v = g_target_fps_default;
+		out->mainHead_fps_gpu = 0;
+		out->mainHead_BQ_ID = 0;
+	} else if (main_head) {
+		out->mainHead_fps_v = main_head->target_fps_v;
+		out->mainHead_fps_gpu = main_head->t_gpu_fps;
+		out->mainHead_BQ_ID = main_head->ullWnd;
+	} else {
+		out->mainHead_fps_v = 0;
+		out->mainHead_fps_gpu = 0;
+		out->mainHead_BQ_ID = 0;
+	}
+
 	return GED_OK;
 #else
 	return GED_OK;
