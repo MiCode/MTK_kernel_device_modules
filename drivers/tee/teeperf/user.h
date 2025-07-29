@@ -22,6 +22,7 @@
 
 extern u32 cpu_type;
 extern u32 cpu_map;
+extern u32 cpu_index;
 
 enum teeperf_cpu_type {
 	CPU_V9_TYPE = 1,

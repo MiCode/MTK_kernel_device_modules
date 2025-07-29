@@ -16,6 +16,7 @@
 
 u32 cpu_type;
 u32 cpu_map;
+u32 cpu_index;
 
 static struct {
 	dev_t device;
@@ -105,6 +106,10 @@ static int teeperf_probe(struct platform_device *pdev)
 		pr_info(PFX "invalid cpu map\n");
 		return -EINVAL;
 	}
+
+	ret = of_property_read_u32(node, "svp-cpu-index", &cpu_index);
+	if (ret || !cpu_index)
+		pr_info(PFX "not set cpu index\n");
 
 	ret = teeperf_device_common_init();
 	if (ret)

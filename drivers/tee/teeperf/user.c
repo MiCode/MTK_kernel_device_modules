@@ -54,7 +54,11 @@ static void teeperf_set_cpu_group_to_high_freq(enum teeperf_cpu_group group,
 	int cpu;
 
 	if (group == CPU_SUPER_GROUP) {
-		freq_level_index = SUPER_CPU_FREQ_LEVEL_INDEX;
+		if (!cpu_index)
+			freq_level_index = SUPER_CPU_FREQ_LEVEL_INDEX;
+		else
+			freq_level_index = cpu_index;
+
 		if (map == CPU_4_3_1_MAP) {
 			teeperf_set_cpu_to_high_freq(7, high_freq, freq_level_index);
 		} else {
@@ -62,7 +66,11 @@ static void teeperf_set_cpu_group_to_high_freq(enum teeperf_cpu_group group,
 				teeperf_set_cpu_to_high_freq(cpu, high_freq, 0);
 		}
 	} else if (group == CPU_BIG_GROUP) {
-		freq_level_index = BIG_CPU_FREQ_LEVEL_INDEX;
+		if (!cpu_index)
+			freq_level_index = BIG_CPU_FREQ_LEVEL_INDEX;
+		else
+			freq_level_index = cpu_index;
+
 		if (map == CPU_4_3_1_MAP) {
 			teeperf_set_cpu_to_high_freq(4, high_freq, freq_level_index);
 			teeperf_set_cpu_to_high_freq(5, high_freq, freq_level_index);
@@ -75,7 +83,11 @@ static void teeperf_set_cpu_group_to_high_freq(enum teeperf_cpu_group group,
 				teeperf_set_cpu_to_high_freq(cpu, high_freq, 0);
 		}
 	} else if (group == CPU_LITTLE_GROUP) {
-		freq_level_index = LITTLE_CPU_FREQ_LEVEL_INDEX;
+		if (!cpu_index)
+			freq_level_index = LITTLE_CPU_FREQ_LEVEL_INDEX;
+		else
+			freq_level_index = cpu_index;
+
 		if (map == CPU_4_3_1_MAP) {
 			teeperf_set_cpu_to_high_freq(0, high_freq, freq_level_index);
 			teeperf_set_cpu_to_high_freq(1, high_freq, freq_level_index);
@@ -100,9 +112,6 @@ static void teeperf_set_cpu_group_to_high_freq(enum teeperf_cpu_group group,
 
 static void teeperf_high_freq(enum teeperf_cpu_type type, u32 high_freq)
 {
-	teeperf_set_cpu_to_high_freq(TEE_CPU, high_freq, BIG_CPU_FREQ_LEVEL_INDEX);
-	teeperf_set_cpu_group_to_high_freq(CPU_LITTLE_GROUP, high_freq);
-
 	if (type == CPU_V9_TYPE)
 		teeperf_set_cpu_group_to_high_freq(CPU_BIG_GROUP, high_freq);
 	else if (type == CPU_V8_TYPE)
