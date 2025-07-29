@@ -18745,6 +18745,14 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 			mpmm-enable = <1>;
 			mpmm-gear = <0>;
+
+			bootup-throttle-level = <0 1 2>, //boot temperature stage 0
+						<2 2 2>, //boot temperature stage 1
+						<2 2 2>; //boot temperature stage 2
+			bootup-temperature-stage-threshold = <0 (-10)>;
+			bootup-voltage-threshold = <3700 3500>;
+			limit-freq-bootmode0-lv1 = <2200000 28000000 3000000>;
+			limit-freq-bootmode0-lv2 = <2200000 2200000 2200000>;
 		};
 
 		gpu_power_throttling: gpu-power-throttling {
