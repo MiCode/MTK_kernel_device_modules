@@ -3930,12 +3930,8 @@ int mtk_drm_aod_setbacklight(struct drm_crtc *crtc, unsigned int level)
 		DDPINFO("%s:%d, crtc is on and not in doze mode\n",
 			__func__, __LINE__);
 		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
-
 		return -EINVAL;
 	}
-
-	CRTC_MMP_EVENT_START(0, backlight, 0x123,
-			level);
 
 	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 	if (unlikely(!output_comp)) {
@@ -3943,7 +3939,17 @@ int mtk_drm_aod_setbacklight(struct drm_crtc *crtc, unsigned int level)
 		return -ENODEV;
 	}
 
+	is_frame_mode = mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base);
+	if (!mtk_crtc->enabled && !is_frame_mode){
+		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+		return -ENODEV;
+	}
+
+	CRTC_MMP_EVENT_START(0, backlight, 0x123,
+			level);
+
 	client = mtk_crtc->gce_obj.client[CLIENT_CFG];
+
 	if (!mtk_crtc->enabled) {
 		mtk_drm_crtc_wk_lock(crtc, 1, __func__, __LINE__);
 		/* 1. power on mtcmos */
@@ -3973,9 +3979,6 @@ int mtk_drm_aod_setbacklight(struct drm_crtc *crtc, unsigned int level)
 			mtk_dump_analysis(comp);
 	}
 
-	/* send LCM CMD */
-	is_frame_mode = mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base);
-
 	if (is_frame_mode || mtk_crtc->gce_obj.client[CLIENT_DSI_CFG] == NULL)
 		cmdq_handle =
 			cmdq_pkt_create(mtk_crtc->gce_obj.client[CLIENT_CFG]);
@@ -3990,19 +3993,19 @@ int mtk_drm_aod_setbacklight(struct drm_crtc *crtc, unsigned int level)
 		return -EINVAL;
 	}
 
-	if (is_frame_mode) {
-		cmdq_pkt_clear_event(cmdq_handle,
-			mtk_crtc->gce_obj.event[EVENT_STREAM_BLOCK]);
-		cmdq_pkt_wfe(cmdq_handle,
-			mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
-	}
-
 	if (mtk_crtc_with_sub_path(crtc, mtk_crtc->ddp_mode))
 		mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle,
 			DDP_SECOND_PATH, 0);
 	else
 		mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle,
 			DDP_FIRST_PATH, 0);
+
+	if (is_frame_mode) {
+		cmdq_pkt_clear_event(cmdq_handle,
+			mtk_crtc->gce_obj.event[EVENT_STREAM_BLOCK]);
+		cmdq_pkt_wfe(cmdq_handle,
+			mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
+	}
 
 	/* Record Vblank start timestamp */
 	mtk_vblank_config_rec_start(mtk_crtc, cmdq_handle, SET_BL);
