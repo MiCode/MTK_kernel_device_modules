@@ -1372,7 +1372,8 @@
 				<&level_spi5>,
 				<&level_spi6>,
 				<&level_spi7>,
-				<&level_dsi0>;
+				<&level_dsi0>,
+				<&level_disp_dpc>;
 
 
 		resource-ctrl = <&bus26m &infra &syspll>,
@@ -1438,6 +1439,10 @@
 			};
 			level_dsi0: level-dsi0 {
 				target = <&dsi0>;
+				value = <0 0 0 0>;
+			};
+			level_disp_dpc: level-disp-dpc{
+				target = <&disp_dpc>;
 				value = <0 0 0 0>;
 			};
 		};
@@ -5405,7 +5410,7 @@ dramc: dramc@10230000 {
 			interrupts =
 				<GIC_SPI 343 IRQ_TYPE_LEVEL_HIGH 0>, /* DPC_DISP_IRQ_BIT */
 				<GIC_SPI 344 IRQ_TYPE_LEVEL_HIGH 0>; /* DPC_MML_IRQ_BIT */
-			vidle-mask = <0>; //<0x43e>;
+			vidle-mask = <0x43e>;
 		};
 
 		reserved@14021000 {
