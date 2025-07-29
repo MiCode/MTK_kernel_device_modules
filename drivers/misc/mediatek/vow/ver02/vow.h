@@ -150,7 +150,7 @@
 #define MAGIC_PROVIDER_NUMBER             (0xABCD)      /* set meaningless default value */
 #define MAGIC_IOCTL_NUMBER                (0xDEADBEEF)  /* set meaningless default value */
 
-#define REC_QUEUE_NUM                     (10)
+#define REC_QUEUE_NUM                     (20)
 #define VOW_GAIN_0DB                      (16)
 
 enum { /* dump_data_t */
