@@ -758,6 +758,7 @@ struct mtk_disp_oddmr_primary {
 	struct mutex dbi_data_lock;
 	struct mutex dmr_data_lock;
 	struct mutex dmr_cus_own_data_lock;
+	struct mutex od_load_param_lock;
 	enum ODDMR_STATE od_state;
 	enum ODDMR_STATE dmr_state;
 	enum ODDMR_STATE dbi_state;

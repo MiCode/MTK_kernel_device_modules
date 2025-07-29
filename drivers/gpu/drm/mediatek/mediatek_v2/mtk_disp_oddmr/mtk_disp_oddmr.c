@@ -6673,6 +6673,7 @@ static void disp_oddmr_primary_data_init(struct mtk_ddp_comp *comp)
 	mutex_init(&primary_data->timing_lock);
 	mutex_init(&primary_data->dbi_data_lock);
 	mutex_init(&primary_data->dmr_data_lock);
+	mutex_init(&primary_data->od_load_param_lock);
 
 	primary_data->dmr_support = comp->mtk_crtc->panel_ext->params->is_support_dmr;
 	primary_data->od_support = comp->mtk_crtc->panel_ext->params->is_support_od;
@@ -13324,7 +13325,9 @@ int disp_oddmr_act_od_load_param(struct mtk_ddp_comp *comp, void *data)
 	 * If any section is loaded, set all to loading,
 	 * set loading done in init to support partial loading.
 	 */
+	mutex_lock(&oddmr_data->primary_data->od_load_param_lock);
 	ret = mtk_oddmr_load_param(oddmr_data, data);
+	mutex_unlock(&oddmr_data->primary_data->od_load_param_lock);
 	return ret;
 }
 
