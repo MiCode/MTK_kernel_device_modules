@@ -46,6 +46,7 @@
 //#include "hif/ccci_hif_ccif.h"
 #include "modem_sys.h"
 #include "ccci_fsm_sys.h"
+#include "mt-plat/mtk_ccci_common.h"
 
 #define TAG "mcd"
 
@@ -78,6 +79,33 @@ bool spm_is_md1_sleep_ccci(void)
 	else
 		return 2; /* not support, no wait */
 }
+
+#ifdef MTK_TC10_FEATURE_MD1_SEC
+#define MTK_SIP_CCCI_CONTROL_ARCH32		0x82000505
+#define MTK_SIP_CCCI_CONTROL_ARCH64		0xC2000505
+
+static int ccci_get_md_sec_smem_size_and_update(void)
+{
+	unsigned int ap_platform;
+	struct arm_smccc_res res;
+
+	ap_platform = ccci_get_ap_plat();
+	if (ap_platform == 6768 || ap_platform == 6877 || ap_platform == 6833
+		|| ap_platform == 6765 || ap_platform == 6853) {
+#ifdef __aarch64__
+		arm_smccc_smc(MTK_SIP_CCCI_CONTROL_ARCH64, UPDATE_MD_SEC_SMEM, 0, 0, 0, 0, 0, 0, &res);
+#else
+		arm_smccc_smc(MTK_SIP_CCCI_CONTROL_ARCH32, UPDATE_MD_SEC_SMEM, 0, 0, 0, 0, 0, 0, &res);
+#endif
+	} else
+		arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, UPDATE_MD_SEC_SMEM, 0, 0, 0, 0, 0, 0, &res);
+
+	CCCI_NORMAL_LOG(0, TAG, "%s:size=0x%lx\n", __func__, res.a0);
+
+	return (int)res.a0;
+
+}
+#endif
 
 void wdt_enable_irq(struct ccci_modem *md)
 {
@@ -198,6 +226,12 @@ static int md_cd_start(struct ccci_modem *md)
 	/* 7. let modem go */
 	if (md->hw_info->plat_ptr->let_md_go)
 		md->hw_info->plat_ptr->let_md_go(md);
+
+#ifdef MTK_TC10_FEATURE_MD1_SEC
+	/* Notify ATF update md sec smem info */
+	ccci_get_md_sec_smem_size_and_update();
+#endif
+
 	wdt_enable_irq(md);
 
 	md->per_md_data.is_in_ee_dump = 0;

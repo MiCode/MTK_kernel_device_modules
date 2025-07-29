@@ -709,4 +709,9 @@ int mtk_ccci_register_md_state_cb(
  */
 // #define MTK_TC10_FEATURE_BIG_DATA
 
+/*
+ * Allocate a block of safe memory to the MD and allow only MD to read.
+ */
+// #define MTK_TC10_FEATURE_MD1_SEC
+
 #endif
