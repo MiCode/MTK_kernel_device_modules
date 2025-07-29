@@ -21,16 +21,16 @@ struct mml_job {
 };
 
 enum mml_hw_caps {
-	MML_HW_ALPHARSZ		= 0x0001,
-	MML_HW_ALPHARSZ_R2R	= 0x0002,
-	MML_HW_MULTI_LAYER	= 0x0004,
-	MML_HW_PQ_HDR		= 0x0008,
-	MML_HW_PQ_MATRIX	= 0x0010,
-	MML_HW_PQ_HDR10		= 0x0020,
-	MML_HW_PQ_HDR10P	= 0x0040,
-	MML_HW_PQ_HLG		= 0x0080,
-	MML_HW_PQ_HDRVIVID	= 0x0100,
-	MML_HW_PQ_FG		= 0x0200,
+	MML_HW_ALPHARSZ		= 0x0001,	/* alpha resize ARGB to AYUV */
+	MML_HW_ALPHARSZ_R2R	= 0x0002,	/* alpha resize ARGB to ARGB */
+	MML_HW_MULTI_LAYER	= 0x0004,	/* multi layer (DL/IR/DC and DC2) */
+	MML_HW_SET_CSC		= 0x0008,	/* colorspace conversion */
+	MML_HW_PQ_HDR		= 0x0010,	/* display HDR */
+	MML_HW_PQ_HDR10		= 0x0020,	/* display HDR10 */
+	MML_HW_PQ_HDR10P	= 0x0040,	/* display HDR10+ */
+	MML_HW_PQ_HLG		= 0x0080,	/* display HLG */
+	MML_HW_PQ_HDRVIVID	= 0x0100,	/* display HDR Vivid */
+	MML_HW_PQ_FG		= 0x0200,	/* video AV1 FG */
 };
 
 enum mml_mode {
