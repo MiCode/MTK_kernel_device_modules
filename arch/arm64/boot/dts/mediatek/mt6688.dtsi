@@ -77,7 +77,7 @@
 		mtk-spmi-pmic-debug {
 			compatible = "mediatek,spmi-pmic-15-debug";
 			spmi-parity-err-clr = <0x207>;
-			// spmi-parity-err-sts = <0x2??>; /* E3 feature */
+			spmi-parity-err-sts = <0x220>; /* E3 feature */
 			spmi-parity-err-cnt = <0x218>;
 			cid-addr = <0x88 0x66 0x88>;
 		};
