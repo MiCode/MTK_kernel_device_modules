@@ -5085,7 +5085,7 @@ void sw_check_bat_plugout(struct mtk_battery *gm)
 
 			wakeup_fg_algo(gm, FG_INTR_BAT_PLUGOUT);
 			battery_update(gm->bm);
-			kernel_power_off();
+			//kernel_power_off();
 		}
 	}
 }
@@ -5308,16 +5308,16 @@ static void bat_plugout_irq_handler(struct mtk_battery *gm)
 	}
 
 	if (is_bat_exist == 0) {
-		wakeup_fg_algo(gm, FG_INTR_BAT_PLUGOUT);
-		fg_int_event(gm, EVT_INT_BAT_PLUGOUT);
-		gm->init_flag = 0;
-		gm->bat_plug_out = 1;
-		battery_update(gm->bm);
 		if (gm->bm->gm_no == 2) {
+			gm->init_flag = 0;
+			gm->bat_plug_out = 1;
 			disable_all_irq(gm);
 			enable_gauge_irq(gm->gauge, BAT_PLUGIN_IRQ);
 		} else
-			kernel_power_off();
+			wakeup_fg_algo(gm, FG_INTR_BAT_PLUGOUT);
+
+		battery_update(gm->bm);
+		fg_int_event(gm, EVT_INT_BAT_PLUGOUT);
 	}
 }
 
