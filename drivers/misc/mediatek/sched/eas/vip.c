@@ -7,6 +7,7 @@
 #include <sched/sched.h>
 #include <trace/hooks/sched.h>
 #include <trace/hooks/cgroup.h>
+#include <mt-plat/mtk_irq_mon.h>
 #include "common.h"
 #include "vip.h"
 #include "sched_trace.h"
@@ -1113,11 +1114,18 @@ void vip_cfs_tick(struct rq *rq)
 	if (unlikely(!vip_enable))
 		return;
 
+	irq_log_store();
+
 	rq_lock(rq, &rf);
+
+	irq_log_store();
 
 	if (vts->vip_list.next && !link_with_others(&vts->vip_list))
 		goto out;
 	account_vip_runtime(rq, rq->curr);
+
+	irq_log_store();
+
 	/*
 	 * If the current is not VIP means, we have to re-schedule to
 	 * see if we can run any other task including VIP tasks.
@@ -1125,8 +1133,12 @@ void vip_cfs_tick(struct rq *rq)
 	if ((vrq->vip_tasks.next != &vts->vip_list) && rq->cfs.h_nr_running > 1)
 		resched_curr(rq);
 
+	irq_log_store();
+
 out:
 	rq_unlock(rq, &rf);
+
+	irq_log_store();
 }
 
 void vip_lb_tick(struct rq *rq)
@@ -1142,7 +1154,11 @@ void vip_scheduler_tick(void *unused, struct rq *rq)
 	if (!fair_task(rq->curr))
 		return;
 
+	irq_log_store();
+
 	vip_lb_tick(rq);
+
+	irq_log_store();
 }
 
 extern void set_next_entity(struct cfs_rq *cfs_rq, struct sched_entity *se);

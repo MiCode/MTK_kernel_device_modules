@@ -396,9 +396,7 @@ void mtk_post_init_entity_util_avg(void *data, struct sched_entity *se)
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
 static void sched_irq_mon_init(void)
 {
-	return;
-	// 8205591: [ALPS08534549] sched: irq too long log | https://gerrit.mediatek.inc/c/quark/kernel-mainline/+/8205591
-	//mtk_register_irq_log_store(__irq_log_store);
+	mtk_register_irq_log_store(__irq_log_store);
 }
 #endif
 

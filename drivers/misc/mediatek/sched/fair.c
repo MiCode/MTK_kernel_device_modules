@@ -3093,10 +3093,14 @@ void mtk_update_rq_clock_pelt(void *unused, struct rq *rq, s64 delta, int *ret)
 	if(!is_dpt_v2_support())
 		return;
 
+	irq_log_store();
+
 	if (unlikely(is_idle_task(rq->curr))) {
 		mtk_update_idle_rq_clock_pelt(rq);
 		return;
 	}
+
+	irq_log_store();
 
 	cpu = cpu_of(rq);
 	dpt_rq = &per_cpu(__dpt_rq, cpu);
@@ -3116,6 +3120,8 @@ void mtk_update_rq_clock_pelt(void *unused, struct rq *rq, s64 delta, int *ret)
 	local_coef2_delta = cap_scale(local_coef2_delta, arch_scale_coef2_s_capacity_dpt_v2(cpu));
 	local_coef2_delta = cap_scale(local_coef2_delta, arch_scale_coef2_ltime_capacity_dpt_v2(cpu));
 	global_coef2_delta = cap_scale(local_coef2_delta, arch_scale_coef2_capacity_dpt_v2(cpu));
+
+	irq_log_store();
 
 	/* Record individual components before aggregating into rq_clock;
 	* The ratios will be used for update util when update_load_avg()*/
@@ -3145,6 +3151,8 @@ void mtk_update_rq_clock_pelt(void *unused, struct rq *rq, s64 delta, int *ret)
 			local_cpu_delta, local_coef1_delta, local_coef2_delta,
 			global_cpu_delta, global_coef1_delta, global_coef2_delta,
 			dpt_rq, *ret);
+
+	irq_log_store();
 }
 
 /* Hook from `trace_android_rvh_update_load_avg_blocked_se`
