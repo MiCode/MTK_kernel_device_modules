@@ -167,9 +167,6 @@ int mtk_spk_update_info(struct snd_soc_card *card,
 	unsigned int i2s_set[2];
 	unsigned int is_ipm2p0;
 
-	if (mtk_spk_type == MTK_SPK_NOT_SMARTPA)
-		goto BYPASS_UPDATE;
-
 	/* get hw IPM version */
 	ret = of_property_read_u32(pdev->dev.of_node, "mediatek,ipm", &is_ipm2p0);
 	if (ret) {
@@ -207,6 +204,9 @@ int mtk_spk_update_info(struct snd_soc_card *card,
 			__func__);
 		return -ENODEV;
 	}
+
+	if (mtk_spk_type == MTK_SPK_NOT_SMARTPA)
+		goto BYPASS_UPDATE;
 
 	/* find dai link of i2s in and i2s out */
 	for_each_card_prelinks(card, i, dai_link) {
