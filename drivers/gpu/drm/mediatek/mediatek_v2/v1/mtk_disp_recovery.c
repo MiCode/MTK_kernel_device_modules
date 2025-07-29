@@ -321,8 +321,7 @@ static void esd_check_done_cb(struct cmdq_cb_data data)
 				mtk_crtc_pkt_create(&cmdq_handle2, crtc,
 					mtk_crtc->gce_obj.client[CLIENT_CFG]);
 
-				cmdq_pkt_set_event(cmdq_handle2,
-					mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
+				mtk_use_cabc_event(cmdq_handle2, mtk_crtc, SET_OPT, __LINE__);
 				cmdq_pkt_flush(cmdq_handle2);
 				cmdq_pkt_destroy(cmdq_handle2);
 			}
@@ -430,10 +429,10 @@ int _mtk_esd_check_read(struct drm_crtc *crtc)
 		else
 			mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle, DDP_FIRST_PATH, 1);
 
-		cmdq_pkt_wfe(cmdq_handle, mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
+		mtk_use_cabc_event(cmdq_handle, mtk_crtc, WAIT_AND_CLEAR_OPT, __LINE__);
 		mtk_ddp_comp_io_cmd(output_comp, cmdq_handle, ESD_CHECK_READ,
 				    (void *)mtk_crtc);
-		cmdq_pkt_set_event(cmdq_handle, mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
+		mtk_use_cabc_event(cmdq_handle, mtk_crtc, SET_OPT, __LINE__);
 	} else {
 		if (mtk_crtc_with_sub_path(crtc, mtk_crtc->ddp_mode))
 			mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle, DDP_SECOND_PATH, 1);

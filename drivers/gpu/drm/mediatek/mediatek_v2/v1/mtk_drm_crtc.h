@@ -769,6 +769,14 @@ enum SET_DIRTY_INDEX {
 	INDEX_MAX,
 };
 
+enum vdo_mode_cabc_event {
+	WAIT_AND_CLEAR_OPT,
+	WAIT_NOT_CLEAT_OPT,
+	CLEAR_OPT,
+	SET_OPT,
+	CABC_OPT_NUM
+};
+
 struct mtk_crtc_path_data {
 	bool is_fake_path;
 	bool is_discrete_path;
@@ -1676,6 +1684,9 @@ void mtk_crtc_set_width_height(
 	int *h,
 	struct drm_crtc *crtc,
 	bool is_scaling_path);
+
+void mtk_use_cabc_event(struct cmdq_pkt *handle, struct mtk_drm_crtc *mtk_crtc,
+		enum vdo_mode_cabc_event event, const int line);
 
 int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 	struct drm_crtc_state *old_crtc_state,

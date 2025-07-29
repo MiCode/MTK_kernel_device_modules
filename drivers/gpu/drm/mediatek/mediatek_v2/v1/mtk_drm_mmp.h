@@ -123,6 +123,7 @@ struct CRTC_MMP_Events {
 	mmp_event ddic_cmd_v2_msg;
 	mmp_event ddic_cmd_v2_pg_chg;
 	mmp_event dsi_mode_change;
+	mmp_event cabc_event;
 	mmp_event ddic_read_cmd;
 	mmp_event path_switch;
 	mmp_event user_cmd;

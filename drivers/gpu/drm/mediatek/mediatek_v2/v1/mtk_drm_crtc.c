@@ -333,6 +333,25 @@ enum addon_scenario mtk_crtc_wb_get_scn(struct mtk_crtc_state *state)
 }
 EXPORT_SYMBOL(mtk_crtc_wb_get_scn);
 
+void mtk_use_cabc_event(struct cmdq_pkt *handle, struct mtk_drm_crtc *mtk_crtc,
+		enum vdo_mode_cabc_event event, const int line)
+{
+	int index = drm_crtc_index(&mtk_crtc->base);
+
+	CRTC_MMP_MARK(index, cabc_event, handle, line);
+
+	if (event == WAIT_AND_CLEAR_OPT)
+		cmdq_pkt_wfe(handle, mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
+	else if (event == WAIT_NOT_CLEAT_OPT)
+		cmdq_pkt_wait_no_clear(handle, mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
+	else if (event == CLEAR_OPT)
+		cmdq_pkt_clear_event(handle, mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
+	else if (event == SET_OPT)
+		cmdq_pkt_set_event(handle, mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
+	else
+		DDPPR_ERR("%s error, event is invalid\n", __func__);
+}
+
 static void mtk_drm_crtc_finish_page_flip(struct mtk_drm_crtc *mtk_crtc)
 {
 	struct drm_crtc *crtc = &mtk_crtc->base;
@@ -11302,8 +11321,7 @@ void mtk_crtc_clear_wait_event(struct drm_crtc *crtc)
 				   mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
 
 		} else
-			cmdq_pkt_set_event(cmdq_handle,
-					   mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
+			mtk_use_cabc_event(cmdq_handle, mtk_crtc, SET_OPT, __LINE__);
 
 		priv = mtk_crtc->base.dev->dev_private;
 		if (mtk_drm_helper_get_opt(priv->helper_opt,
