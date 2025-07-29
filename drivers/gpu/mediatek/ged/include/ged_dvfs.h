@@ -424,4 +424,8 @@ void ged_trace_scheduler_state(unsigned int scheduler_state);
 void ged_trace_ast_cond(int ast_cond);
 void ged_trace_ast(int ast);
 void ged_trace_idle_timer_enabled(bool val);
+int ged_dvfs_get_util_active(void);
+int ged_dvfs_get_util_3d(void);
+int ged_dvfs_get_util_ta(void);
+int ged_dvfs_get_util_comp(void);
 #endif

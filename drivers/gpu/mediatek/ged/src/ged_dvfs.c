@@ -4567,6 +4567,54 @@ int ged_is_fix_dvfs(void)
 	return 0;
 }
 
+int ged_dvfs_get_util_active(void)
+{
+	union combineData tmp_multi = {0};
+
+	if (is_fdvfs_enable() & POLICY_MODE_V2) {
+		tmp_multi = mtk_gpueb_sysram_multi_read(SYSRAM_GPU_LOADING);
+		return tmp_multi.twoVar.var1;
+	}
+	return -1;
+}
+EXPORT_SYMBOL(ged_dvfs_get_util_active);
+
+int ged_dvfs_get_util_3d(void)
+{
+	union combineData tmp_multi = {0};
+
+	if (is_fdvfs_enable() & POLICY_MODE_V2) {
+		tmp_multi = mtk_gpueb_sysram_multi_read(SYSRAM_MCU_ITER_UNION_FRAG_LOADING);
+		return tmp_multi.twoVar.var2;
+	}
+	return -1;
+}
+EXPORT_SYMBOL(ged_dvfs_get_util_3d);
+
+int ged_dvfs_get_util_ta(void)
+{
+	union combineData tmp_multi = {0};
+
+	if (is_fdvfs_enable() & POLICY_MODE_V2) {
+		tmp_multi = mtk_gpueb_sysram_multi_read(SYSRAM_COMP_TILE_LOADING);
+		return tmp_multi.twoVar.var1;
+	}
+	return -1;
+}
+EXPORT_SYMBOL(ged_dvfs_get_util_ta);
+
+int ged_dvfs_get_util_comp(void)
+{
+	union combineData tmp_multi = {0};
+
+	if (is_fdvfs_enable() & POLICY_MODE_V2) {
+		tmp_multi = mtk_gpueb_sysram_multi_read(SYSRAM_COMP_TILE_LOADING);
+		return tmp_multi.twoVar.var2;
+	}
+	return -1;
+}
+EXPORT_SYMBOL(ged_dvfs_get_util_comp);
+
 GED_ERROR ged_dvfs_system_init(void)
 {
 	struct device_node *async_dvfs_node = NULL;
