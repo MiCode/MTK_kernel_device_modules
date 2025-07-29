@@ -1521,13 +1521,14 @@ compress_again:
 				__GFP_KSWAPD_RECLAIM |
 				__GFP_NOWARN |
 				__GFP_HIGHMEM |
-				__GFP_MOVABLE);
+				__GFP_MOVABLE |
+				__GFP_CMA);
 	if (IS_ERR_VALUE(handle)) {
 		zcomp_stream_put(zram->comps[ZRAM_PRIMARY_COMP]);
 		atomic64_inc(&zram->stats.writestall);
 		handle = zs_malloc(zram->mem_pool, comp_len,
 				GFP_NOIO | __GFP_HIGHMEM |
-				__GFP_MOVABLE);
+				__GFP_MOVABLE | __GFP_CMA);
 		if (IS_ERR_VALUE(handle))
 			return PTR_ERR((void *)handle);
 
@@ -1748,7 +1749,8 @@ static int zram_recompress(struct zram *zram, u32 index, struct page *page,
 			       __GFP_KSWAPD_RECLAIM |
 			       __GFP_NOWARN |
 			       __GFP_HIGHMEM |
-			       __GFP_MOVABLE);
+			       __GFP_MOVABLE |
+			       __GFP_CMA);
 	if (IS_ERR_VALUE(handle_new)) {
 		zcomp_stream_put(zram->comps[prio]);
 		return PTR_ERR((void *)handle_new);
