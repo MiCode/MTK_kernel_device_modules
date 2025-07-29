@@ -4781,6 +4781,7 @@ dramc: dramc@10230000 {
 				<2875 4159 5529 6932 7114 8180 7453 8088
 				7434 8012 7437 7830 7420 7844 7311 7757>;
 
+			vcp-supply = <&vcp>;
 			operating-points-v2 = <&opp_table_disp>;
 			vdisp-dvfs-opp = /bits/ 8 <3>;
 			mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
