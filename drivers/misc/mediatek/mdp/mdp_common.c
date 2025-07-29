@@ -2307,7 +2307,7 @@ static void cmdq_mdp_init_pmqos(struct platform_device *pdev)
 	}
 
 	if (cmdq_mdp_get_func()->mdpIsCaminSupport()) {
-		isp_mmdvfs_reg = devm_regulator_get(&pdev->dev, "isp-dvfsrc-vcore");
+		isp_mmdvfs_reg = devm_regulator_get_optional(&pdev->dev, "isp-dvfsrc-vcore");
 		if (IS_ERR_OR_NULL(isp_mmdvfs_reg)) {
 			isp_mmdvfs_clk = devm_clk_get(&pdev->dev, "mmdvfs_clk_img");
 			if (IS_ERR_OR_NULL(isp_mmdvfs_clk))
@@ -2777,7 +2777,7 @@ static void mdp_request_voltage(unsigned long frequency, bool is_mdp)
 		}
 	} else {
 		if (cmdq_mdp_get_func()->mdpIsCaminSupport()) {
-			if (!IS_ERR_OR_NULL(isp_mmdvfs_reg)) {
+			if (IS_ERR_OR_NULL(isp_mmdvfs_reg)) {
 				if (IS_ERR_OR_NULL(isp_mmdvfs_clk))
 					CMDQ_ERR("%s wrong isp_mmdvfs_clk\n", __func__);
 				else {
