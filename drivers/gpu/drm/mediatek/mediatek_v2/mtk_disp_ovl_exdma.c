@@ -3081,8 +3081,9 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 						<= 1000)) {
 						avg_ratio =
 						fbt_layer_compress_ratio_tb[i].average_ratio;
-						temp_bw = temp_bw * avg_ratio;
-						do_div(temp_bw, 1000);
+						/* need revert default ratio(0.7) */
+						temp_bw = temp_bw * avg_ratio * 10;
+						do_div(temp_bw, 1000 * 7);
 						break;
 					}
 				}
@@ -3099,8 +3100,9 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 						<= 1000)) {
 						avg_ratio =
 						unchanged_compress_ratio_table[i].average_ratio;
-						temp_bw = temp_bw * avg_ratio;
-						do_div(temp_bw, 1000);
+						/* need revert default ratio(0.7) */
+						temp_bw = temp_bw * avg_ratio * 10;
+						do_div(temp_bw, 1000 * 7);
 						have_get_ratio = 1;
 						break;
 					}
@@ -3117,8 +3119,9 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 						<= 1000)) {
 						avg_ratio =
 						normal_layer_compress_ratio_tb[i].average_ratio;
-						temp_bw = temp_bw * avg_ratio;
-						do_div(temp_bw, 1000);
+						/* need revert default ratio(0.7) */
+						temp_bw = temp_bw * avg_ratio * 10;
+						do_div(temp_bw, 1000 * 7);
 						break;
 					}
 				}
@@ -4297,7 +4300,11 @@ static void mtk_bwm_update_comp_compr_bw(struct mtk_drm_crtc *mtk_crtc,
 		if (!compr_ratio || compr_ratio > 1000)
 			compr_ratio = 1000;
 
-		tmp_bw += srt_bw * compr_ratio / 1000;
+		/* need revert default ratio(0.7) */
+		if (compr_ratio != 1000)
+			tmp_bw += srt_bw * compr_ratio * 10 / (1000 * 7);
+		else
+			tmp_bw += srt_bw;
 		DDPINFO("%s %s idx:%u ratio:%u tmp_bw:%u alloc_id:%u\n", __func__,
 			mtk_dump_comp_str_id(comp->id), idx, compr_ratio, tmp_bw, alloc_id);
 	}
