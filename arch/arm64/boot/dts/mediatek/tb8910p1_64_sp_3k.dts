@@ -9,6 +9,7 @@
 #include <dt-bindings/pinctrl/mt6993-pinfunc.h>
 #include <dt-bindings/phy/phy.h>
 #include <dt-bindings/iio/mt635x-auxadc.h>
+#include <dt-bindings/clock/mt6993-clk.h>
 
 &chosen {
 	bootargs_ext = "arm64.nosme";
@@ -121,6 +122,36 @@
 
 	helper-name-proj = "MTK_DRM_OPT_VIDLE_MTCMOS_DT_EN";
 	helper-value-proj = <1>;
+
+	clocks =
+		<&disp_vdisp_ao_config_clk VDISP_AO_CONFIG_DISP>,
+		<&dispsys_config_clk MM0_CONFIG_DISP>,
+		<&disp0b_dispsys_config_clk MM0B_CONFIG_DISP>,
+		<&ovlsys_config_clk OVLSYS_CONFIG_DISP>,
+		<&ovl1_ovlsys_config_clk OVL1_OVLSYS_CONFIG_DISP>,
+		<&ovl2_ovlsys_config_clk OVL2_OVLSYS_CONFIG_DISP>,
+		<&dispsys1_config_clk MM1_DISP1_CFG_DISP>,
+		<&dispsys1_config_clk MM1_DISP1_S_CFG_DISP>,
+		<&disp1b_dispsys1_config_clk MM1B_DISP1_CFG_DISP>,
+		<&disp1b_dispsys1_config_clk MM1B_DISP1_S_CFG_DISP>,
+		<&dispsys_config_clk MM0_DISP_MUTEX0_DISP>,
+		<&ovlsys_config_clk OVL_MUTEX0_DISP>,
+		<&dispsys1_config_clk MM1_DISP_MUTEX0_DISP>,
+		<&dispsys1_config_clk MM1_DISP_DSI0_DISP>,
+		<&dispsys1_config_clk MM1_DISP_DSI1_DISP>,
+		<&disp0b_dispsys_config_clk MM0B_DISP_MUTEX0_DISP>,
+		<&ovl1_ovlsys_config_clk OVL1_OVL_MUTEX0_DISP>,
+		<&ovl2_ovlsys_config_clk OVL2_OVL_MUTEX0_DISP>,
+		<&disp1b_dispsys1_config_clk MM1B_DISP_MUTEX0_DISP>,
+		<&disp_vdisp_ao_config_clk VDISP_AO_DISP_BWR_DISP>,
+		<&disp_vdisp_ao_config_clk VDISP_AO_DISP_DEBUG_TOP_DISP>,
+		<&dispsys_config_clk MM0_DISP_DBG_DISP>,
+		<&disp0b_dispsys_config_clk MM0B_DISP_DBG_DISP>,
+		<&ovlsys_config_clk OVL_DISP_DBG_DISP>,
+		<&ovl1_ovlsys_config_clk OVL1_DISP_DBG_DISP>,
+		<&ovl2_ovlsys_config_clk OVL2_DISP_DBG_DISP>,
+		<&dispsys1_config_clk MM1_DISP_DBG_DISP>,
+		<&disp1b_dispsys1_config_clk MM1B_DISP_DBG_DISP>;
 
 	status = "okay";
 };

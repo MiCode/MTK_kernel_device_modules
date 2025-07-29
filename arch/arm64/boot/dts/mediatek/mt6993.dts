@@ -136,18 +136,25 @@
 		outproc13 = &disp_ovl2_outproc1;
 		outproc14 = &disp_ovl2_outproc2;
 		ovl0-dlo-async12= &ovl0_dlo_async12;
+		ovl1-dlo-async12= &ovl1_dlo_async12;
+		ovl1-dlo-async14= &ovl1_dlo_async14;
 		ovl2-dlo-async12 = &ovl2_dlo_async12;
 		dli-async0 = &dli_async0;
 		dlo-async0 = &dlo_async0;
+		dli-async11 = &dli_async11;
 		dli-async20 = &dli_async20;
 		dlo-async16 = &dlo_async16;
 		dli-async29 = &dli_async29;
 		dlo-async1 = &dlo_async1;
+		dlo-async2 = &dlo_async2;
 		dli-async21 = &dli_async21;
+		dli-async22 = &dli_async22;
 		dlo-async17 = &dlo_async17;
 		dli-async30 = &dli_async30;
+		dli-async-b0 = &dli_async0_b;
 		dli-async-b2 = &dli_async2_b;
 		dlo-async-b0 = &dlo_async0_b;
+		dlo-async-b11 = &dlo_async11_b;
 		dli-async-b20 = &dli_async20_b;
 		relay5 = &disp_relay5;
 		tdshp0 = &disp_tdshp0;
@@ -186,6 +193,7 @@
 		postmask0 = &disp_postmask0;
 		postmask2 = &disp_postmask1;
 		mdp-rsz2 = &ovl0_rsz0;
+		mdp-rsz4 = &ovl1_rsz0;
 		bwm0 = &disp_bwm0;
 		dsc0 = &disp_dsc_wrap0;
 		dsc1 = &disp_dsc_wrap1;
@@ -10871,6 +10879,13 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			clocks = <&ovlsys_config_clk OVL_MDP_RSZ0_DISP>;
 		};
 
+		ovl1_rsz0: ovl-rsz1@32a70000 {
+			compatible = "mediatek,ovl1_rsz0",
+				"mediatek,mt6993-disp-mdp-rsz";
+			reg = <0 0x32d70000 0 0x1000>;
+			clocks = <&ovl1_ovlsys_config_clk OVL1_OVL_MDP_RSZ0_DISP>;
+		};
+
 		ovl_dli_async0: ovl-dli-async0@32900000 {
 			compatible = "mediatek,ovl0_dli_async",
 				"mediatek,mt6993-ovl-0-dli-async";
@@ -10930,6 +10945,20 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x32900000 0 0x1000>;
 		};
 
+		ovl1_dlo_async12: ovl1-dlo-async12@32c00000 {
+			compatible = "mediatek,ovl1_dlo_async",
+				"mediatek,mt6993-ovl-1-dlo-async";
+			clocks = <&ovl1_ovlsys_config_clk OVL1_OVL_DLO_ASYNC12_DISP>;
+			reg = <0 0x32c00000 0 0x1000>;
+		};
+
+		ovl1_dlo_async14: ovl1-dlo-async14@32c00000 {
+			compatible = "mediatek,ovl1_dlo_async",
+				"mediatek,mt6993-ovl-1-dlo-async";
+			clocks = <&ovl1_ovlsys_config_clk OVL1_OVL_DLO_ASYNC14_DISP>;
+			reg = <0 0x32c00000 0 0x1000>;
+		};
+
 		ovl2_dlo_async12: ovl2-dlo-async12@3e000000 {
 			compatible = "mediatek,ovl2_dlo_async",
 				"mediatek,mt6993-ovl-2-dlo-async";
@@ -10941,6 +10970,13 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			compatible = "mediatek,dli_async",
 				"mediatek,mt6993-disp-dli-async";
 			clocks = <&dispsys_config_clk MM0_DISP_DLI_ASYNC0_DISP>;
+			reg = <0 0x3e300000 0 0x1000>;
+		};
+
+		dli_async11: dli-async11@3e300000 {
+			compatible = "mediatek,dli_async",
+				"mediatek,mt6993-disp-dli-async";
+			clocks = <&dispsys_config_clk MM0_DISP_DLI_ASYNC11_DISP>;
 			reg = <0 0x3e300000 0 0x1000>;
 		};
 
@@ -10965,10 +11001,24 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x3e300000 0 0x1000>;
 		};
 
+		dlo_async2: dlo-async2@3e300000 {
+			compatible = "mediatek,dlo_async",
+				"mediatek,mt6993-disp-dlo-async";
+			clocks = <&dispsys_config_clk MM0_DISP_DLO_ASYNC2_DISP>;
+			reg = <0 0x3e300000 0 0x1000>;
+		};
+
 		dli_async21: dli-async21@3e700000 {
 			compatible = "mediatek,dli_async",
 				"mediatek,mt6993-disp-dli-async";
 			clocks = <&dispsys1_config_clk MM1_DISP_DLI_ASYNC21_DISP>;
+			reg = <0 0x3e700000 0 0x1000>;
+		};
+
+		dli_async22: dli-async22@3e700000 {
+			compatible = "mediatek,dli_async",
+				"mediatek,mt6993-disp-dli-async";
+			clocks = <&dispsys1_config_clk MM1_DISP_DLI_ASYNC22_DISP>;
 			reg = <0 0x3e700000 0 0x1000>;
 		};
 
@@ -11009,6 +11059,13 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x3e700000 0 0x1000>;
 		};
 
+		dli_async0_b: dli-async0-b@3e500000 {
+			compatible = "mediatek,dli_async_b",
+				"mediatek,mt6993-disp-b-dli-async";
+			clocks = <&disp0b_dispsys_config_clk MM0B_DISP_DLI_ASYNC0_DISP>;
+			reg = <0 0x3e500000 0 0x1000>;
+		};
+
 		dli_async2_b: dli-async2-b@3e500000 {
 			compatible = "mediatek,dli_async_b",
 				"mediatek,mt6993-disp-b-dli-async";
@@ -11020,6 +11077,13 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			compatible = "mediatek,dlo_async_b",
 				"mediatek,mt6993-disp-b-dlo-async";
 			clocks = <&disp0b_dispsys_config_clk MM0B_DISP_DLO_ASYNC0_DISP>;
+			reg = <0 0x3e500000 0 0x1000>;
+		};
+
+		dlo_async11_b: dl11-async0-b@3e500000 {
+			compatible = "mediatek,dlo_async_b",
+				"mediatek,mt6993-disp-b-dlo-async";
+			clocks = <&disp0b_dispsys_config_clk MM0B_DISP_DLO_ASYNC11_DISP>;
 			reg = <0 0x3e500000 0 0x1000>;
 		};
 
