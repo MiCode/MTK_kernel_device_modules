@@ -755,6 +755,8 @@ int mtk_uart_apdma_polling_tx_finish(void)
 		ret = readx_poll_timeout(readl, hub_dma_tx_chan->base + VFF_VALID_SIZE,
 			vff_valid_size, vff_valid_size == 0, VFF_POLL_INTERVAL, VFF_POLL_TIMEOUT);
 		pr_info("%s: polling vff done: valid_size: %d, ret: %d\n", __func__, vff_valid_size, ret);
+		if(ret)
+			return ret;
 	}
 
 	// Check apdma internal buf size
@@ -763,6 +765,8 @@ int mtk_uart_apdma_polling_tx_finish(void)
 		ret = readx_poll_timeout(readl, hub_dma_tx_chan->base + VFF_INT_BUF_SIZE,
 			tx_data_cnt, tx_data_cnt == 0, IBUF_POLL_INTERVAL, IBUF_POLL_TIMEOUT);
 		pr_info("%s: polling int buf done: data_cnt: %d, ret: %d\n", __func__, tx_data_cnt, ret);
+		if(ret)
+			return ret;
 	}
 
 	irq_get_irqchip_state(hub_dma_tx_chan->irq, IRQCHIP_STATE_PENDING, &is_irq_pending);
@@ -1156,7 +1160,7 @@ static irqreturn_t vchan_complete_thread_irq(int irq, void *dev_id)
 		vchan_vdesc_fini(vd);
 	}
 #if IS_ENABLED(CONFIG_MTK_UARTHUB)
-	if (c->dir == DMA_DEV_TO_MEM && c->is_hub_port)
+	if (c->dir == DMA_MEM_TO_DEV && c->is_hub_port)
 		atomic_set(&hub_dma_tx_chan->txdma_state, DMA_TX_DONE);
 #endif
 	c->rec_info[idx].complete_time = sched_clock();
@@ -1211,7 +1215,7 @@ static int mtk_uart_apdma_tx_handler(struct mtk_chan *c)
 	vchan_cookie_complete_thread_irq(&d->vd);
 	c->rec_info[idx].trans_duration_time = sched_clock() - c->rec_info[idx].trans_time;
 #if IS_ENABLED(CONFIG_MTK_UARTHUB)
-	if (c->dir == DMA_DEV_TO_MEM && c->is_hub_port)
+	if (c->dir == DMA_MEM_TO_DEV && c->is_hub_port)
 		atomic_set(&hub_dma_tx_chan->txdma_state, DMA_TX_RUNIMG);
 #endif
 	return 0;
