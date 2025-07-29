@@ -2002,7 +2002,7 @@ static int lcm_panel_init_v2(void *dsi_drv, struct drm_panel *panel, void *handl
 	static int flag;
 	int i;
 
-	pr_info("%s ++, fps = %d\n", __func__, current_fps);
+	pr_info("%s nt36672e-vdo-frameratev5 ++, fps = %d\n", __func__, current_fps);
 
 	if (!panel) {
 		pr_err("%s, error, panel is NULL\n", __func__);
@@ -2056,7 +2056,7 @@ static int lcm_panel_init(struct drm_panel *panel)
 	int ret;
 	struct jdi *ctx = panel_to_jdi(panel);
 
-	pr_info("%s ++\n", __func__);
+	pr_info("%s nt36672e-vdo-frameratev5 ++\n", __func__);
 
 	if (ctx->prepared) {
 		pr_info("%s skip\n", __func__);
@@ -2081,7 +2081,7 @@ static int lcm_panel_deinit(struct drm_panel *panel)
 {
 	struct jdi *ctx = panel_to_jdi(panel);
 
-	pr_info("%s ++\n", __func__);
+	pr_info("%s nt36672e-vdo-frameratev5 ++\n", __func__);
 
 	if (!ctx->prepared) {
 		pr_info("%s skip\n", __func__);
@@ -2106,7 +2106,7 @@ static int lcm_panel_deinit_v2(void *dsi_drv, struct drm_panel *panel, void *han
 	struct jdi *ctx = panel_to_jdi(panel);
 	static struct mipi_dsi_msg deinit_code[ARRAY_SIZE(lcm_deinit_setting_vfp)] = { 0 };
 
-	pr_info("%s ++, fps = %d\n", __func__, current_fps);
+	pr_info("%s nt36672e-vdo-frameratev5 ++, fps = %d\n", __func__, current_fps);
 
 	if (!ctx->prepared) {
 		pr_info("%s skip\n", __func__);

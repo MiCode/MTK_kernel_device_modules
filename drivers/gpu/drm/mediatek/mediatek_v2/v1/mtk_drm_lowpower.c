@@ -872,42 +872,6 @@ out:
 static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc);
 static void mtk_drm_idlemgr_disable_crtc(struct drm_crtc *crtc);
 
-
-static void mtk_drm_vidle_control(struct drm_crtc *crtc, bool enable)
-{
-	struct mtk_drm_private *priv = NULL;
-	static bool vidle_status;
-	bool is_ff_enabled = false;
-
-	if (crtc == NULL || crtc->dev == NULL)
-		return;
-
-	priv = crtc->dev->dev_private;
-	if (priv== NULL)
-		return;
-	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_FULL_SCENARIO) ||
-		!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_VDO_PANEL) ||
-		!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_HOME_SCREEN_IDLE))
-		return;
-
-	is_ff_enabled = mtk_vidle_is_ff_enabled();
-	DDPINFO("%s, enable:%d, vidle:%d, ff:%d\n", __func__, enable, vidle_status, is_ff_enabled);
-	if (enable && !is_ff_enabled && !vidle_status) {
-		CRTC_MMP_MARK((int)drm_crtc_index(crtc), enter_vidle, 0x1d1e, enable);
-		mtk_vidle_enable(true, priv);
-		mtk_vidle_force_enable_mml(true);
-		mtk_vidle_config_ff(true);
-		mtk_vidle_force_enable_mml(false);
-		vidle_status = true;
-	} else if (!enable && vidle_status) {
-		CRTC_MMP_MARK((int)drm_crtc_index(crtc), leave_vidle, 0x1d1e0ff, enable);
-		mtk_vidle_force_enable_mml(true);
-		mtk_vidle_config_ff(false);
-		mtk_vidle_enable(false, priv);
-		vidle_status = false;
-	}
-}
-
 static void mtk_drm_vdo_mode_enter_idle(struct drm_crtc *crtc)
 {
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
@@ -919,6 +883,7 @@ static void mtk_drm_vdo_mode_enter_idle(struct drm_crtc *crtc)
 	struct mtk_ddp_comp *comp;
 	unsigned int avail_bw = 0, bw_base = 0;
 	unsigned int req_bw = avail_bw + 1;
+	unsigned int timing_changed = 0;
 
 	mtk_crtc_pkt_create(&handle, crtc, client);
 
@@ -961,15 +926,28 @@ static void mtk_drm_vdo_mode_enter_idle(struct drm_crtc *crtc)
 	comp = mtk_ddp_comp_request_output(mtk_crtc);
 	if (comp) {
 		int en = 0;
+
+		/*disable vidle before mode switch*/
+		if (comp && mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_VDO_PANEL) &&
+			(mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_FULL_SCENARIO) ||
+			mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_HOME_SCREEN_IDLE))) {
+			mtk_ddp_comp_io_cmd(comp, NULL, DSI_VFP_IDLE_TIMING_CHANGED, &timing_changed);
+			/*if (timing_changed)
+			 *	mtk_vidle_config_ff(false);
+			 */
+		}
 		mtk_ddp_comp_io_cmd(comp, handle, DSI_VFP_IDLE_MODE, NULL);
 		mtk_ddp_comp_io_cmd(comp, handle, DSI_LFR_SET, &en);
 		/*Not turn off vdo ltpo when enter idle*/
 		//mtk_ddp_comp_io_cmd(comp, handle, DSI_LTPO_VDO_SET, &en);
-		mtk_drm_vidle_control(crtc, true);
 	}
 
 	cmdq_pkt_flush(handle);
 	cmdq_pkt_destroy(handle);
+
+	/*vidle config after mode switch*/
+	if (timing_changed)
+		mtk_vidle_hint_decision("enter_hsidle");
 }
 
 static void mtk_drm_cmd_mode_enter_idle(struct drm_crtc *crtc)
@@ -1000,6 +978,7 @@ static void mtk_drm_vdo_mode_leave_idle(struct drm_crtc *crtc)
 	struct cmdq_client *client = mtk_crtc->gce_obj.client[CLIENT_CFG];
 	struct mtk_ddp_comp *comp;
 	unsigned int *trace;
+	unsigned int timing_changed = 0;
 
 	mtk_crtc_pkt_create(&handle, crtc, client);
 
@@ -1014,7 +993,15 @@ static void mtk_drm_vdo_mode_leave_idle(struct drm_crtc *crtc)
 	if (comp) {
 		int en = 1;
 
-		mtk_drm_vidle_control(crtc, false);
+		/* disable vidle before mode switch*/
+		if (comp && mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_VDO_PANEL) &&
+			(mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_FULL_SCENARIO) ||
+			mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_HOME_SCREEN_IDLE))) {
+			mtk_ddp_comp_io_cmd(comp, NULL, DSI_VFP_IDLE_TIMING_CHANGED, &timing_changed);
+			/*if (timing_changed) //screen flash when leave hsidle
+			 *	mtk_vidle_config_ff(false);
+			 */
+		}
 		mtk_ddp_comp_io_cmd(comp, handle, DSI_VFP_DEFAULT_MODE, NULL);
 		mtk_ddp_comp_io_cmd(comp, handle, DSI_LFR_SET, &en);
 		/*Make sure turn on vdo ltpo when enter idle, TODO: only choose one(LFR or VDO LTPO)*/
@@ -1028,6 +1015,10 @@ static void mtk_drm_vdo_mode_leave_idle(struct drm_crtc *crtc)
 	}
 	cmdq_pkt_flush(handle);
 	cmdq_pkt_destroy(handle);
+
+	/* vidle config after mode switch*/
+	if (timing_changed)
+		mtk_vidle_hint_decision("leave_hsidle");
 }
 
 static void mtk_drm_cmd_mode_leave_idle(struct drm_crtc *crtc)

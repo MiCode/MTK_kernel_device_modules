@@ -8030,18 +8030,6 @@ void mtk_drm_top_clk_isr_put(struct mtk_ddp_comp *comp)
 	}
 }
 
-void mtk_vidle_multi_crtc_stop(unsigned int crtc_id)
-{
-	if (crtc_id == 0) {
-		/* crtc0 case, if no other crtc, vidle work */
-		if (atomic_read(&top_clk_ref) == 1)
-			mtk_set_vidle_stop_flag(VIDLE_STOP_MULTI_CRTC, 0);
-	} else {
-		/* multi crtc, stop vidle */
-		mtk_set_vidle_stop_flag(VIDLE_STOP_MULTI_CRTC, 1);
-	}
-}
-
 static void mtk_drm_first_enable(struct drm_device *drm)
 {
 	struct drm_crtc *crtc;

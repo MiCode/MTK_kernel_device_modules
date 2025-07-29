@@ -17832,9 +17832,6 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 		goto end;
 	}
 
-	/* V-idle multi crtc stop */
-	mtk_vidle_multi_crtc_stop(crtc_idx);
-
 	mtk_drm_idlemgr_kick(__func__, crtc, 0);
 
 	if (mtk_crtc_state->base.event) {
@@ -24517,6 +24514,7 @@ int mtk_crtc_enter_tui(struct drm_crtc *crtc)
 	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
 
 	mtk_vidle_hint_update(VIDLE_HINT_TUI_ON);
+	CRTC_MMP_MARK(crtc_id, leave_vidle, 0x5ec, 0x0);
 	mtk_vidle_config_ff(false);
 
 	mtk_crtc->crtc_blank = true;

@@ -19,12 +19,10 @@
 #include <mt-plat/mtk_irq_mon.h>
 
 static atomic_t g_ff_enabled = ATOMIC_INIT(0);
-static bool vidle_paused;
 
 static struct mtk_disp_vidle_para mtk_disp_vidle_flag = {
 	0,	/* vidle_en */
 	0,	/* vidle_init */
-	0,	/* vidle_stop */
 	0,	/* rc_en */
 	0,	/* wdt_en */
 };
@@ -109,6 +107,7 @@ void mtk_vidle_flag_init(void *_crtc)
 		DDPMSG("%s panel:%d te duration is not set, disable vidle\n", __func__, type);
 		return;
 	}
+	DDPMSG("%s, panel:%d\n", __func__, type);
 }
 
 static unsigned int mtk_vidle_check(unsigned int vidle_item)
@@ -321,72 +320,36 @@ void mtk_vidle_sync_mmdvfsrc_status_wdt(unsigned int wdt_en)
 void mtk_vidle_set_all_flag(unsigned int en, unsigned int stop)
 {
 	mtk_disp_vidle_flag.vidle_en = en;
-	mtk_disp_vidle_flag.vidle_stop = stop;
 }
 
 void mtk_vidle_get_all_flag(unsigned int *en, unsigned int *stop)
 {
 	*en = mtk_disp_vidle_flag.vidle_en;
-	*stop = mtk_disp_vidle_flag.vidle_stop;
-}
-
-static void mtk_vidle_pause(bool en)
-{
-	if (disp_dpc_driver.dpc_pause == NULL)
-		return;
-
-	if (!mtk_vidle_is_ff_enabled())
-		return;
-
-	if (en && !vidle_paused) {
-		CRTC_MMP_EVENT_START(0, pause_vidle, mtk_disp_vidle_flag.vidle_stop,
-				vidle_data.te_duration);
-		disp_dpc_driver.dpc_pause(DPC_SUBSYS_DISP, en);
-		vidle_paused = true;
-	} else if (!en && vidle_paused) {
-		disp_dpc_driver.dpc_pause(DPC_SUBSYS_DISP, en);
-		CRTC_MMP_EVENT_END(0, pause_vidle, mtk_disp_vidle_flag.vidle_stop,
-				vidle_data.te_duration);
-		vidle_paused = false;
-	}
-}
-
-static void mtk_set_vidle_stop_flag_v1(unsigned int flag, unsigned int stop)
-{
-	unsigned int origignal_flag = mtk_disp_vidle_flag.vidle_stop;
-
-	if (!mtk_disp_vidle_flag.vidle_en)
-		return;
-
-	if (stop)
-		mtk_disp_vidle_flag.vidle_stop =
-			mtk_disp_vidle_flag.vidle_stop | flag;
-	else
-		mtk_disp_vidle_flag.vidle_stop =
-			mtk_disp_vidle_flag.vidle_stop & ~flag;
-
-	if (origignal_flag != mtk_disp_vidle_flag.vidle_stop)
-		CRTC_MMP_MARK(0, pause_vidle, mtk_disp_vidle_flag.vidle_stop,
-				mtk_vidle_is_ff_enabled());
-
-	if (mtk_disp_vidle_flag.vidle_stop)
-		mtk_vidle_pause(true);
-	else
-		mtk_vidle_pause(false);
-}
-
-void mtk_set_vidle_stop_flag(unsigned int flag, unsigned int stop)
-{
-	if (vidle_data.dpc_version == DPC_VER1)
-		return mtk_set_vidle_stop_flag_v1(flag, stop);
 }
 
 static int mtk_set_dt_configure_all(unsigned int dur_frame, unsigned int dur_vblank)
 {
-	if (disp_dpc_driver.dpc_dt_set_all)
-		return disp_dpc_driver.dpc_dt_set_all(dur_frame, dur_vblank);
+	int ret = 0;
 
-	return 0;
+	if (disp_dpc_driver.dpc_dt_set_all)
+		ret = disp_dpc_driver.dpc_dt_set_all(dur_frame, dur_vblank);
+
+	if (vidle_data.panel_type == PANEL_TYPE_VDO) {
+		if (ret < 0 && !vidle_data.hint.vdo_vblank_fuse) {
+			mtk_vidle_hint_update(VIDLE_HINT_VDO_VBLANK_INAVAIL);
+			DDPMSG("%s panel:%d forbid vidle mode, dur_frame:%uus, dur_vb:%uus, flag:0x%x, ret:%d\n",
+				__func__, vidle_data.panel_type, dur_frame,
+				dur_vblank, vidle_data.hint.vdo_vblank_fuse, ret);
+		} else if (ret >= 0 && vidle_data.hint.vdo_vblank_fuse) {
+			mtk_vidle_hint_update(VIDLE_HINT_VDO_VBLANK_AVAIL);
+			DDPMSG("%s panel:%d allow vidle mode, dur_frame:%u, dur_vb:%uus, flag:0x%x, ret:%d\n",
+				__func__, vidle_data.panel_type, dur_frame,
+				dur_vblank, vidle_data.hint.vdo_vblank_fuse, ret);
+		}
+	}
+	DDPMSG("%s: dur_frame:%uus, dur_vb:%uus, ret:%d\n",
+		__func__, dur_frame, dur_vblank, ret);
+	return ret;
 }
 
 int mtk_vidle_update_dt_v1_by_type(void *_crtc, enum mtk_panel_type type)
@@ -448,18 +411,6 @@ int mtk_vidle_update_dt_v1_by_type(void *_crtc, enum mtk_panel_type type)
 	ret = mtk_set_dt_configure_all(dur_frame, dur_vblank);
 	vidle_data.te_duration = dur_frame;
 	vidle_data.vb_duration = dur_vblank;
-
-	if (ret < 0 &&
-		!(mtk_disp_vidle_flag.vidle_stop & VIDLE_STOP_VDO_HIGH_FPS)) {
-		mtk_set_vidle_stop_flag(VIDLE_STOP_VDO_HIGH_FPS, 1);
-		DDPMSG("%s forbid vidle mode, panel:%d, dur_frame:%u, dur_vb:%uus, flag:0x%x\n",
-			__func__, type, dur_frame, dur_vblank, mtk_disp_vidle_flag.vidle_stop);
-	} else if (ret >= 0 &&
-		(mtk_disp_vidle_flag.vidle_stop & VIDLE_STOP_VDO_HIGH_FPS)) {
-		mtk_set_vidle_stop_flag(VIDLE_STOP_VDO_HIGH_FPS, 0);
-		DDPMSG("%s allow vidle mode, panel:%d, dur_frame:%u, dur_vb:%uus, flag:0x%x\n",
-			__func__, type, dur_frame, dur_vblank, mtk_disp_vidle_flag.vidle_stop);
-	}
 
 	return dur_frame;
 }
@@ -560,18 +511,6 @@ int mtk_vidle_update_dt_v1_by_period(void *_crtc, unsigned int dur_frame, unsign
 	vidle_data.te_duration = dur_frame;
 	vidle_data.vb_duration = dur_vblank;
 
-	if (ret < 0 &&
-		!(mtk_disp_vidle_flag.vidle_stop & VIDLE_STOP_VDO_HIGH_FPS)) {
-		mtk_set_vidle_stop_flag(VIDLE_STOP_VDO_HIGH_FPS, 1);
-		DDPINFO("%s forbid vidle mode, dur_frame:%uus, dur_vb:%uus, flag:0x%x\n",
-			__func__, dur_frame, dur_vblank, mtk_disp_vidle_flag.vidle_stop);
-	} else if (ret >= 0 &&
-		(mtk_disp_vidle_flag.vidle_stop & VIDLE_STOP_VDO_HIGH_FPS)) {
-		mtk_set_vidle_stop_flag(VIDLE_STOP_VDO_HIGH_FPS, 0);
-		DDPINFO("%s allow vidle mode, dur_frame:%uus, dur_vb:%uus, flag:0x%x\n",
-			__func__, dur_frame, dur_vblank, mtk_disp_vidle_flag.vidle_stop);
-	}
-
 	return dur_frame;
 }
 
@@ -590,27 +529,6 @@ bool mtk_vidle_is_ff_enabled(void)
 	return (bool)atomic_read(&g_ff_enabled);
 }
 
-void mtk_vidle_force_enable_mml_v1(bool en)
-{
-	if (!disp_dpc_driver.dpc_dc_force_enable)
-		return;
-
-	if (!mtk_disp_vidle_flag.vidle_en)
-		return;
-
-	/* some case, like multi crtc we need to stop V-idle */
-	if (mtk_disp_vidle_flag.vidle_stop)
-		return;
-
-	disp_dpc_driver.dpc_dc_force_enable(en);
-}
-
-void mtk_vidle_force_enable_mml(bool en)
-{
-	if (vidle_data.dpc_version == DPC_VER1)
-		return mtk_vidle_force_enable_mml_v1(en);
-}
-
 void mtk_vidle_mmdvfs_ctrl(bool en)
 {
 	if (!disp_dpc_driver.dpc_mmdvfs_ctrl)
@@ -621,32 +539,21 @@ void mtk_vidle_mmdvfs_ctrl(bool en)
 
 static void mtk_vidle_enable_v1(bool en, void *_drm_priv)
 {
-	static bool status;
-
 	if (!disp_dpc_driver.dpc_enable)
 		return;
 
 	if (!mtk_disp_vidle_flag.vidle_en)
-		return;
-
-	/* some case, like multi crtc we need to stop V-idle */
-	if (mtk_disp_vidle_flag.vidle_stop && en)
-		return;
-
-	if (en == status)
-		return;
+		goto out;
 
 	disp_dpc_driver.dpc_enable(en);
-	if (!en && vidle_paused) {
-		CRTC_MMP_EVENT_END(0, pause_vidle,
-				mtk_disp_vidle_flag.vidle_stop, 0xFFFFFFFF);
-		vidle_paused = false;
-	}
-	/* TODO: enable timestamp */
 
-	status = en;
-	DDPINFO("%s, en:%d, stop:0x%x, pause:%d, status:%d\n", __func__, en,
-		mtk_disp_vidle_flag.vidle_stop, vidle_paused, status);
+out:
+	/* reset status to config dpc setting at first time*/
+	if (!en && !mtk_vidle_is_ff_enabled())
+		atomic_set(&g_ff_enabled, -1);
+	DDPINFO("%s, %s en:%d,g_ff_enabled:%d\n",
+		__func__, mtk_disp_vidle_flag.vidle_en ? "done" : "skip",
+		en, atomic_read(&g_ff_enabled));
 }
 
 static void mtk_vidle_enable_v2(bool _en, void *_drm_priv)
@@ -691,6 +598,7 @@ void mtk_vidle_set_panel_type(enum mtk_panel_type type)
 	if (!disp_dpc_driver.dpc_init_panel_type)
 		return;
 	disp_dpc_driver.dpc_init_panel_type(type);
+	DDPMSG("%s, set panel type:%d\n", __func__, type);
 }
 
 void mtk_vidle_hrt_bw_set(const u32 bw_in_mb)
@@ -761,7 +669,8 @@ void mtk_vidle_config_ff(bool en)
 	 * the default value of g_ff_enabled is set as -1(true)
 	 * so the first config_ff(false) can pass this same check
 	 */
-	if (vidle_data.dpc_version == DPC_VER2 && mtk_vidle_is_ff_enabled() == en)
+	if ((vidle_data.dpc_version == DPC_VER2 || vidle_data.dpc_version == DPC_VER1) &&
+		mtk_vidle_is_ff_enabled() == en)
 		return;
 
 	ret = disp_dpc_driver.dpc_config(DPC_SUBSYS_DISP, en);
@@ -829,6 +738,20 @@ u32 mtk_vidle_hint_update(enum mtk_vidle_hint_type type)
 	case VIDLE_HINT_HSIDLE_LEAVE:
 		vidle_data.hint.hsidle_fuse--;
 		break;
+	case VIDLE_HINT_VDO_VBLANK_INAVAIL:
+		vidle_data.hint.vdo_vblank_fuse++;
+		break;
+	case VIDLE_HINT_VDO_VBLANK_AVAIL:
+		if (vidle_data.hint.vdo_vblank_fuse > 0)
+			vidle_data.hint.vdo_vblank_fuse--;
+		break;
+	case VIDLE_HINT_MMDVFS_DISABLE:
+		vidle_data.hint.mmdvfs_disabled++;
+		break;
+	case VIDLE_HINT_MMDVFS_ENABLE:
+		if (vidle_data.hint.mmdvfs_disabled > 0)
+			vidle_data.hint.mmdvfs_disabled--;
+		break;
 	default:
 		break;
 	}
@@ -842,6 +765,7 @@ u32 mtk_vidle_hint_update(enum mtk_vidle_hint_type type)
 int mtk_vidle_hint_decision(const char *caller)
 {
 	bool decision;
+	static bool last_decision;
 
 	vidle_data.hint.mode_switch_debounce -= (vidle_data.hint.mode_switch_debounce > 0);
 	vidle_data.hint.mtcmos_debounce -= (vidle_data.hint.mtcmos_debounce > 0);
@@ -850,10 +774,20 @@ int mtk_vidle_hint_decision(const char *caller)
 	decision = !(vidle_data.hint.crtc_fuse |
 		     vidle_data.hint.tui_fuse |
 		     vidle_data.hint.hsidle_fuse |
+		     vidle_data.hint.vdo_vblank_fuse |
 		     vidle_data.hint.doze_debounce |
 		     vidle_data.hint.mode_switch_debounce |
+		     vidle_data.hint.mmdvfs_disabled |
 		     vidle_data.hint.mtcmos_debounce);
 
+	if (last_decision != decision) {
+		DDPINFO("%s, from:%s decision:%d\n", __func__, caller ? caller : "unknown", decision);
+		last_decision = decision;
+		if (decision)
+			CRTC_MMP_MARK(0, enter_vidle, 0xdec1510, decision);
+		else
+			CRTC_MMP_MARK(0, leave_vidle, 0xdec1510, decision);
+	}
 	mtk_vidle_config_ff(decision);
 
 	return decision;
@@ -901,7 +835,8 @@ void mtk_vidle_register(const struct dpc_funcs *funcs, enum mtk_dpc_version vers
 
 	if (version == DPC_VER1)
 		mtk_vidle_register_v1(funcs);
-	else if (version == DPC_VER2)
+
+	if (version == DPC_VER2 || version == DPC_VER1)
 		atomic_set(&g_ff_enabled, -1);	/* indicate not initialized yet */
 
 	complete(&dpc_registered);

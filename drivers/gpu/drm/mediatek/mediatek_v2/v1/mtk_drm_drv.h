@@ -662,8 +662,8 @@ void mtk_set_aod_scp_semaphore(int lock);
 unsigned int mtk_aod_scp_vdisp_sema_check(void);
 int mtk_drm_get_mml_mode_caps(void);
 int mtk_drm_get_mml_hw_caps(void);
-int mtk_drm_get_vcp_state(void);
-void mtk_drm_put_vcp_state(void);
+int mtk_drm_get_mmdvfs_state(void);
+void mtk_drm_put_mmdvfs_state(void);
 void mtk_drm_mmdvfs_enable_vcp(struct drm_crtc *crtc, bool en);
 
 #endif /* MTK_DRM_DRV_H */

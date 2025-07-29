@@ -952,7 +952,7 @@ static void push_table_cb(void *dsi, dcs_write_gce cb,
 
 static void panel_init(struct lcm *ctx)
 {
-	pr_info("[LCM] %s begin\n", __func__);
+	pr_info("[LCM] vtdr6126a-vdo %s begin\n", __func__);
 	ctx->reset_gpio = devm_gpiod_get(ctx->dev, "reset", GPIOD_OUT_HIGH);
 	gpiod_set_value(ctx->reset_gpio, 1);
 	mdelay(2);
@@ -995,7 +995,7 @@ static int lcm_disable(struct drm_panel *panel)
 {
 	struct lcm *ctx = panel_to_lcm(panel);
 
-	pr_info("[LCM] %s begin\n", __func__);
+	pr_info("[LCM] vtdr6126a-vdo %s begin\n", __func__);
 
 	if (!ctx->enabled)
 		return 0;
@@ -1013,7 +1013,7 @@ static int lcm_unprepare(struct drm_panel *panel)
 
 	if (!ctx->prepared)
 		return 0;
-	pr_info("[LCM] %s begin\n", __func__);
+	pr_info("[LCM] vtdr6126a-vdo %s begin\n", __func__);
 	g_aod_enable=0;
 	//push_table(ctx, lcm_suspend_setting,
 		//sizeof(lcm_suspend_setting) / sizeof(struct LCM_setting_table));
@@ -1050,7 +1050,7 @@ static int lcm_prepare(struct drm_panel *panel)
 	struct lcm *ctx = panel_to_lcm(panel);
 	int ret;
 
-	pr_info("[LCM] %s begin\n", __func__);
+	pr_info("[LCM] vtdr6126a-vdo %s begin\n", __func__);
 	if (ctx->prepared)
 		return 0;
 
@@ -1714,7 +1714,7 @@ static int mtk_panel_ext_param_set(struct drm_panel *panel,
 	int ret = 0;
 	struct drm_display_mode *m = get_mode_by_id(connector, mode);
 
-	pr_info("[LCM] %s FPS From %d to %d\n", __func__, g_lcm_fresh_mode, drm_mode_vrefresh(m));
+	pr_info("[LCM] vtdr6126a-vdo %s FPS From %d to %d\n", __func__, g_lcm_fresh_mode, drm_mode_vrefresh(m));
 
 	if (ext == NULL) {
 		pr_info("[LCM] %s ext is null\n", __func__);
@@ -2086,7 +2086,7 @@ static int lcm_panel_init_v2(void *dsi_drv, struct drm_panel *panel, void *handl
 	static int flag;
 	int i;
 
-	pr_info("%s ++, fps = %d\n", __func__, g_lcm_fresh_mode);
+	pr_info("%s vtdr6126a-vdo ++, fps = %d\n", __func__, g_lcm_fresh_mode);
 
 	if (ctx->prepared) {
 		pr_info("%s skip\n", __func__);
@@ -2209,7 +2209,7 @@ static int lcm_panel_init(struct drm_panel *panel)
 	int ret = 0;
 	struct lcm *ctx = panel_to_lcm(panel);
 
-	pr_info("%s ++\n", __func__);
+	pr_info("%s vtdr6126a-vdo ++\n", __func__);
 
 	if (ctx->prepared) {
 		pr_info("%s skip\n", __func__);
@@ -2234,7 +2234,7 @@ static int lcm_panel_deinit(struct drm_panel *panel)
 {
 	struct lcm *ctx = panel_to_lcm(panel);
 
-	pr_info("%s ++\n", __func__);
+	pr_info("%s vtdr6126a-vdo ++\n", __func__);
 
 	if (!ctx->prepared) {
 		pr_info("%s skip\n", __func__);
@@ -2258,7 +2258,7 @@ static int lcm_panel_deinit_v2(void *dsi_drv, struct drm_panel *panel, void *han
 	struct lcm *ctx = panel_to_lcm(panel);
 	static struct mipi_dsi_msg deinit_code[ARRAY_SIZE(lcm_suspend_setting_v2)] = { 0 };
 
-	pr_info("%s ++\n", __func__);
+	pr_info("%s vtdr6126a-vdo  ++\n", __func__);
 
 	if (!ctx->prepared) {
 		pr_info("%s skip\n", __func__);

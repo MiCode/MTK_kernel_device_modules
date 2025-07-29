@@ -1752,6 +1752,7 @@ static void mtk_drm_enable_ap_ccf(bool en, struct drm_crtc *crtc, bool mode_swit
 		if (priv && mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_MMDVFS_MODE_SWITCH)) {
 			mmdvfs_ap_ccf_enable(true);
+			mtk_vidle_hint_update(VIDLE_HINT_MMDVFS_DISABLE);
 			atomic_set(&g_ap_ccf_state, 1);
 			ap_crtc = crtc;
 		}
@@ -1768,6 +1769,7 @@ static void mtk_drm_enable_ap_ccf(bool en, struct drm_crtc *crtc, bool mode_swit
 				mtk_drm_mmdvfs_mode_switch(ap_crtc, true);
 			else
 				mmdvfs_ap_ccf_enable(false);
+			mtk_vidle_hint_update(VIDLE_HINT_MMDVFS_ENABLE);
 			atomic_set(&g_ap_ccf_state, 0);
 			ap_crtc = NULL;
 		}
@@ -1784,14 +1786,18 @@ static int mtk_disp_mmdvfs_notifier(const bool enable, const bool wdt)
 		mutex_lock(&mmdvfs_lock);
 		mtk_drm_enable_ap_ccf(false, NULL, true);
 		atomic_set(&g_mmdvfs_alive, 1);
-		DDPMMCLK("%s mmdvfs START!!,alive:%d, ap_ccf:%d\n",
+		DDPMSG("%s mmdvfs START!!,alive:%d, ap_ccf:%d\n",
 			__func__, atomic_read(&g_mmdvfs_alive), atomic_read(&g_ap_ccf_state));
 		mutex_unlock(&mmdvfs_lock);
 	} else {
 		mutex_lock(&mmdvfs_lock);
+		if (atomic_read(&g_vcp_ref) > 0 && atomic_read(&g_mmdvfs_alive)) {
+			CRTC_MMP_MARK(0, leave_vidle, 0xdead, atomic_read(&g_vcp_ref));
+			mtk_vidle_config_ff(false);
+		}
 		mtk_drm_enable_ap_ccf(false, NULL, false);
 		atomic_set(&g_mmdvfs_alive, 0);
-		DDPMMCLK("%s mmdvfs %s!!,alive:%d, ap_ccf:%d\n",
+		DDPMSG("%s mmdvfs %s!!,alive:%d, ap_ccf:%d\n",
 			__func__, atomic_read(&g_vcp_ref) > 0 ? "DEAD" : "STOP",
 			atomic_read(&g_mmdvfs_alive), atomic_read(&g_ap_ccf_state));
 		mutex_unlock(&mmdvfs_lock);
@@ -1799,13 +1805,13 @@ static int mtk_disp_mmdvfs_notifier(const bool enable, const bool wdt)
 	return 0;
 }
 
-int mtk_drm_get_vcp_state(void)
+int mtk_drm_get_mmdvfs_state(void)
 {
 	mutex_lock(&mmdvfs_lock);
 	return atomic_read(&g_mmdvfs_alive);
 }
 
-void mtk_drm_put_vcp_state(void)
+void mtk_drm_put_mmdvfs_state(void)
 {
 	mutex_unlock(&mmdvfs_lock);
 }
@@ -1836,7 +1842,7 @@ void mtk_drm_mmdvfs_enable_vcp(struct drm_crtc *crtc, bool en)
 	ret = mtk_mmdvfs_enable_vcp(en, VCP_PWR_USR_DISP);
 
 	if (en) {
-		vcp_state = mtk_drm_get_vcp_state();
+		vcp_state = mtk_drm_get_mmdvfs_state();
 		if (vcp_state == 0) {
 			/* notify mmdvfs force up dvfs level when vcp off*/
 			mtk_drm_enable_ap_ccf(true, crtc, false);
@@ -1845,7 +1851,7 @@ void mtk_drm_mmdvfs_enable_vcp(struct drm_crtc *crtc, bool en)
 			mtk_drm_enable_ap_ccf(true, crtc, false);
 			mtk_drm_enable_ap_ccf(false, crtc, true);
 		}
-		mtk_drm_put_vcp_state();
+		mtk_drm_put_mmdvfs_state();
 		atomic_inc(&g_vcp_ref);
 		if (atomic_read(&g_vcp_ref) == 1)
 			mtk_vidle_mmdvfs_ctrl(true);
@@ -1859,12 +1865,12 @@ void mtk_drm_mmdvfs_enable_vcp(struct drm_crtc *crtc, bool en)
 }
 #else
 
-int mtk_drm_get_vcp_state(void)
+int mtk_drm_get_mmdvfs_state(void)
 {
 	return 1;
 }
 
-void mtk_drm_put_vcp_state(void)
+void mtk_drm_put_mmdvfs_state(void)
 {
 	//do nothing
 }
@@ -2062,7 +2068,7 @@ void mtk_drm_set_mmclk(struct drm_crtc *crtc, int level, bool lp_mode,
 		}
 
 		/*MMDVFS of mode switch*/
-		cur_vcp_state = mtk_drm_get_vcp_state();
+		cur_vcp_state = mtk_drm_get_mmdvfs_state();
 		if (cur_vcp_state) {
 			DDPMSG("%s, update mmclk by DPC,level:%u,freq:%lu\n",
 				__func__, vdisp_opp, freq);
@@ -2085,7 +2091,7 @@ void mtk_drm_set_mmclk(struct drm_crtc *crtc, int level, bool lp_mode,
 			else
 				set_disp_freq_by_regulator(true); //mmqos skip mminfra dvfs request
 		}
-		mtk_drm_put_vcp_state();
+		mtk_drm_put_mmdvfs_state();
 		return;
 	}
 

@@ -26,12 +26,6 @@ struct mtk_disp_vidle_para {
 #define DISP_VIDLE_GCE_TS_EN BIT(5)
 #define DISP_DPC_PRE_TE_EN BIT(6)
 
-/* V-idle stop case */
-#define VIDLE_STOP_DEBUGE           BIT(0)
-#define VIDLE_STOP_MULTI_CRTC       BIT(1)
-#define VIDLE_STOP_LCM_DISCONNECT   BIT(2)
-#define VIDLE_STOP_VDO_HIGH_FPS     BIT(3)
-
 #define VIDLE_MTCMOS_DEBOUNCE 6	/* 6 for resync */
 #define VIDLE_MODE_SWITCH_DEBOUNCE 3
 #define VIDLE_DOZE_DEBOUNCE 3
@@ -47,6 +41,10 @@ enum mtk_vidle_hint_type {
 	VIDLE_HINT_TUI_OFF,
 	VIDLE_HINT_HSIDLE_ENTER,
 	VIDLE_HINT_HSIDLE_LEAVE,
+	VIDLE_HINT_VDO_VBLANK_AVAIL,
+	VIDLE_HINT_VDO_VBLANK_INAVAIL,
+	VIDLE_HINT_MMDVFS_ENABLE,
+	VIDLE_HINT_MMDVFS_DISABLE,
 };
 
 struct mtk_vidle_hint {
@@ -56,6 +54,8 @@ struct mtk_vidle_hint {
 	u8 crtc_fuse;			/* 0: okay, or +1 by others(multi crtc, DP, ...) */
 	u8 tui_fuse;			/* 0: okay, or +1 by enter tui */
 	u8 hsidle_fuse;			/* 0: okay, or +1 by enter hs idle */
+	u8 vdo_vblank_fuse;		/* 0: okay, or +1 by vdo panel vblank too short */
+	u8 mmdvfs_disabled;		/* 0: okay, or +1 by mmdvfs not ready */
 };
 
 struct mtk_disp_dpc_data {
@@ -70,7 +70,6 @@ void mtk_vidle_sync_mmdvfsrc_status_rc(unsigned int rc_en);
 void mtk_vidle_sync_mmdvfsrc_status_wdt(unsigned int wdt_en);
 void mtk_vidle_flag_init(void *crtc);
 void mtk_vidle_enable(bool en, void *drm_priv);
-void mtk_vidle_force_enable_mml(bool en);
 void mtk_vidle_clear_wfe_event(enum mtk_vidle_voter_user user, struct cmdq_pkt *pkt, int event);
 int mtk_vidle_user_power_keep(enum mtk_vidle_voter_user user);
 void mtk_vidle_user_power_release(enum mtk_vidle_voter_user user);
@@ -80,7 +79,6 @@ void mtk_vidle_user_power_release_by_gce(enum mtk_vidle_voter_user user, struct 
 int mtk_vidle_force_power_ctrl_by_cpu(bool power_on);
 int mtk_vidle_pq_power_get(const char *caller);
 void mtk_vidle_pq_power_put(const char *caller);
-void mtk_set_vidle_stop_flag(unsigned int flag, unsigned int stop);
 void mtk_vidle_set_all_flag(unsigned int en, unsigned int stop);
 void mtk_vidle_get_all_flag(unsigned int *en, unsigned int *stop);
 void mtk_vidle_hrt_bw_set(const u32 bw_in_mb);

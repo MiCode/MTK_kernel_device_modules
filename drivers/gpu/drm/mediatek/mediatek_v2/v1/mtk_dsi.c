@@ -13917,6 +13917,7 @@ static void mtk_dsi_dy_fps_cmdq_cb(struct cmdq_cb_data data)
 		mtk_crtc->base.dev->dev_private;
 	unsigned int cb_mmclk_req_idx = cb_data->mmclk_req_idx;
 	unsigned int last_mmclk_req_idx;
+	struct drm_crtc *crtc = &mtk_crtc->base;
 
 	DDPINFO("%s vdo mode fps change done\n", __func__);
 
@@ -13941,6 +13942,13 @@ static void mtk_dsi_dy_fps_cmdq_cb(struct cmdq_cb_data data)
 		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 	}
 done:
+	/*vdo panel allow vidle after mode switch*/
+	if (drm_crtc_index(crtc) == 0 &&
+		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_VDO_PANEL) &&
+		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_FULL_SCENARIO)) {
+		DDPMSG("%s, update vidle config\n", __func__);
+		mtk_vidle_hint_decision("update_vdo_timing");
+	}
 	cmdq_pkt_destroy(cb_data->cmdq_handle);
 	kfree(cb_data);
 }
@@ -13966,17 +13974,14 @@ static void mtk_dsi_vdo_timing_change(struct mtk_dsi *dsi,
 	/*Msync 2.0*/
 	unsigned int vfp_early_stop_value = 0;
 	struct mtk_drm_private *priv = (mtk_crtc->base).dev->dev_private;
+	struct drm_crtc *crtc = NULL;
 	int index = 0;
 
 	DDPINFO("%s+\n", __func__);
 
-	if (is_bdg_supported()) {
-		struct drm_crtc *crtc = NULL;
-
-		crtc = &mtk_crtc->base;
-		index = drm_crtc_index(crtc);
-		CRTC_MMP_MARK(index, mode_switch, 1, 0);
-	}
+	crtc = &mtk_crtc->base;
+	index = drm_crtc_index(crtc);
+	CRTC_MMP_MARK(index, mode_switch, 1, 0);
 
 	if (!dsi) {
 		DDPPR_ERR("%s, %d, invalid parameter\n", __func__, __LINE__);
@@ -13999,6 +14004,14 @@ static void mtk_dsi_vdo_timing_change(struct mtk_dsi *dsi,
 		return;
 	}
 	mtk_crtc_pkt_create(&handle, &(mtk_crtc->base), client);
+
+	/*vdo panel disable vidle before mode switch*/
+	if (index == 0 &&
+		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_VDO_PANEL) &&
+		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_FULL_SCENARIO)) {
+		CRTC_MMP_MARK(0, leave_vidle, 0xd51, 0);
+		mtk_vidle_config_ff(false);
+	}
 
 	if (fps_chg_index & MODE_DSI_CLK) {
 		DDPINFO("%s, change MIPI Clock\n", __func__);
@@ -14511,6 +14524,20 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		enable = (bool *)params;
 		*enable = dsi->output_en;
 		break;
+	case DSI_VFP_IDLE_TIMING_CHANGED:
+	{
+		struct mtk_drm_crtc *crtc = comp->mtk_crtc;
+		unsigned int *timing_changed = (unsigned int *)params;
+
+		if (IS_ERR_OR_NULL(timing_changed))
+			break;
+		panel_ext = mtk_dsi_get_panel_ext(comp);
+		if (panel_ext && panel_ext->params
+			&& panel_ext->params->vfp_low_power)
+			*timing_changed = panel_ext->params->vfp_low_power ? 1 : 0;
+		DDPMSG("%s, timing_changed:%u\n", __func__, *timing_changed);
+	}
+		break;
 	case DSI_VFP_IDLE_MODE:
 	{
 		struct mtk_drm_crtc *crtc = comp->mtk_crtc;
@@ -14528,7 +14555,7 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			vfp_lp_dyn = vfp_low_power;
 
 		if (vfp_low_power && vfp_lp_dyn) {
-			DDPINFO("vfp_low_power=%d,vfp_lp_dyn=%d\n", vfp_low_power, vfp_lp_dyn);
+			DDPMSG("vfp_low_power=%d,vfp_lp_dyn=%d\n", vfp_low_power, vfp_lp_dyn);
 			if (is_bdg_supported())
 				mtk_dsi_stop_vdo_mode(dsi, handle, __LINE__);
 			mtk_dsi_porch_setting(comp, handle, DSI_VFP,
@@ -14545,10 +14572,10 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		}
 
 		/*update vidle timing*/
-		if (!is_bdg_supported() && priv &&
-			!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_FULL_SCENARIO) &&
+		if (!is_bdg_supported() && priv && vfp_low_power && vfp_lp_dyn &&
 			mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_VDO_PANEL) &&
-			mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_HOME_SCREEN_IDLE)) {
+			(mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_FULL_SCENARIO) ||
+			mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_HOME_SCREEN_IDLE))) {
 			struct drm_display_mode *mode = NULL;
 			unsigned int fps = 0, vtotal = 0, vtotal_lowpower = 0;
 			unsigned int dur_line = 0, dur_vblank = 0, dur_frame = 0;
@@ -14572,9 +14599,9 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			dur_line = 1000000000UL / fps / vtotal;
 			dur_vblank = dur_line * vfp_low_power / 1000;
 			dur_frame = dur_line * vtotal_lowpower / 1000;
-			DDPMSG("%s, cmd:%d idle+ vidle update DT, dur:%uus,%uus, fps:%u, vtotal:%d->%d\n",
+			DDPINFO("%s, cmd:%d idle+ vidle update DT, dur:%uus,%uus, fps:%u, vtotal:%d->%d, vfp:%ulines\n",
 				__func__, cmd, dur_frame, dur_vblank,
-				fps, vtotal, vtotal_lowpower);
+				fps, vtotal, vtotal_lowpower, vfp_low_power);
 			if (mtk_vidle_update_dt_by_period(&crtc->base, dur_frame, dur_vblank) < 0)
 				DDPMSG("%s, cmd:%d idle+ vidle err, dur:%uus,%uus, fps:%u, vtotal:%d->%d\n",
 					__func__, cmd, dur_frame, dur_vblank,
@@ -14642,10 +14669,13 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		}
 
 		/*update vidle timing*/
-		if (!is_bdg_supported() && priv &&
-			!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_FULL_SCENARIO) &&
+		if (panel_ext && panel_ext->params
+			&& panel_ext->params->vfp_low_power)
+			vfp_low_power = panel_ext->params->vfp_low_power;
+		if (!is_bdg_supported() && priv && vfp_low_power > 0 &&
 			mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_VDO_PANEL) &&
-			mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_HOME_SCREEN_IDLE)) {
+			(mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_FULL_SCENARIO) ||
+			mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_HOME_SCREEN_IDLE))) {
 			struct drm_display_mode *mode = NULL;
 			unsigned int fps = 0, vtotal = 0, vfp = 0;
 			unsigned int dur_line = 0, dur_vblank = 0, dur_frame = 0;
@@ -14669,7 +14699,7 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			dur_vblank = dur_line * vfp / 1000;
 			dur_frame = 1000000 / fps;
 
-			DDPMSG("%s, cmd:%d idle- vidle update DT, fps:%u, dur:%uus,%uus\n",
+			DDPINFO("%s, cmd:%d idle- vidle update DT, fps:%u, dur:%uus,%uus\n",
 				__func__, cmd, fps, dur_frame, dur_vblank);
 			if (mtk_vidle_update_dt_by_period(&(crtc->base), dur_frame, dur_vblank) < 0)
 				DDPMSG("%s, cmd:%d idle- vidle err, fps:%u, dur:%uus,%uus\n",
@@ -15738,7 +15768,7 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		struct mtk_drm_crtc *crtc = NULL;
 		unsigned int *dur_vblank = (unsigned int *)params;
 		struct drm_display_mode *mode = NULL;
-		unsigned int fps = 0, vtotal = 0, vfp = 0;
+		unsigned int fps = 0, vtotal = 0, vfp = 0, dur_frame = 0;
 
 		if (comp == NULL || comp->mtk_crtc == NULL) {
 			DDPMSG("%s, cmd:%d, invalid comp, crtc\n", __func__, cmd);
@@ -15762,6 +15792,8 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 
 		vfp = mode->vsync_start - mode->vdisplay;
 		*dur_vblank = 1000000000UL / fps / vtotal * vfp / 1000;
+		DDPINFO("%s, fps:%u, vtotal:%u, vfp:%u, dur_vb:%uus\n",
+			__func__, fps, vtotal, vfp, *dur_vblank);
 	}
 		break;
 	case GET_VALID_PARTIAL_ROI:
