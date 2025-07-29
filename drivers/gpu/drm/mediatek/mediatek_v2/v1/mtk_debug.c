@@ -3661,6 +3661,26 @@ static void process_dbg_opt(const char *opt)
 		}
 
 		mtkfb_set_aod_backlight_level(level);
+	} else if (strncmp(opt, "panel_hbm:", 10) == 0) {
+		unsigned int en;
+		int ret;
+		struct drm_crtc *crtc;
+
+		ret = sscanf(opt, "panel_hbm:%u\n", &en);
+		if (ret != 1) {
+			DDPPR_ERR("%d error to parse cmd %s\n", __LINE__, opt);
+			return;
+		}
+
+		/* this debug cmd only for crtc0 */
+		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
+					typeof(*crtc), head);
+		if (IS_ERR_OR_NULL(crtc)) {
+			DDPPR_ERR("find crtc fail\n");
+			return;
+		}
+
+		mtk_drm_crtc_set_panel_hbm(crtc, en);
 	} else if (!strncmp(opt, "postmask_relay:", 15)) {
 		unsigned int relay;
 		int ret;

@@ -3051,12 +3051,8 @@ int mtk_drm_setbacklight_at_te(struct drm_crtc *crtc, unsigned int level,
 		return -EINVAL;
 	}
 
-	if (is_frame_mode) {
-		cmdq_pkt_clear_event(cmdq_handle,
-			mtk_crtc->gce_obj.event[EVENT_STREAM_BLOCK]);
-		cmdq_pkt_wfe(cmdq_handle,
-			mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
-	}
+	cmdq_pkt_clear_event(cmdq_handle, mtk_crtc->gce_obj.event[EVENT_STREAM_BLOCK]);
+	mtk_use_cabc_event(cmdq_handle, mtk_crtc, WAIT_AND_CLEAR_OPT, __LINE__);
 
 	/* Record Vblank start timestamp */
 	mtk_vblank_config_rec_start(mtk_crtc, cmdq_handle, SET_BL);
@@ -3096,12 +3092,10 @@ int mtk_drm_setbacklight_at_te(struct drm_crtc *crtc, unsigned int level,
 			comp->funcs->io_cmd(comp, cmdq_handle, DSI_SET_BL_ELVSS, &bl_ext_config);
 
 	}
-	if (is_frame_mode) {
-		cmdq_pkt_set_event(cmdq_handle,
-			mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
-		cmdq_pkt_set_event(cmdq_handle,
-			mtk_crtc->gce_obj.event[EVENT_STREAM_BLOCK]);
 
+	mtk_use_cabc_event(cmdq_handle, mtk_crtc, SET_OPT, __LINE__);
+	cmdq_pkt_set_event(cmdq_handle, mtk_crtc->gce_obj.event[EVENT_STREAM_BLOCK]);
+	if (is_frame_mode) {
 		/* Record Vblank end timestamp and calculate duration */
 		mtk_vblank_config_rec_end_cal(mtk_crtc, cmdq_handle, SET_BL);
 	}
@@ -3241,12 +3235,8 @@ int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level,
 		mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle,
 			DDP_FIRST_PATH, 0);
 
-	if (is_frame_mode) {
-		cmdq_pkt_clear_event(cmdq_handle,
-			mtk_crtc->gce_obj.event[EVENT_STREAM_BLOCK]);
-		cmdq_pkt_wfe(cmdq_handle,
-			mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
-	}
+	cmdq_pkt_clear_event(cmdq_handle, mtk_crtc->gce_obj.event[EVENT_STREAM_BLOCK]);
+	mtk_use_cabc_event(cmdq_handle, mtk_crtc, WAIT_AND_CLEAR_OPT, __LINE__);
 
 	/* Record Vblank start timestamp */
 	mtk_vblank_config_rec_start(mtk_crtc, cmdq_handle, SET_BL);
@@ -3287,12 +3277,10 @@ int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level,
 			comp->funcs->io_cmd(comp, cmdq_handle, DSI_SET_BL_ELVSS, &bl_ext_config);
 
 	}
-	if (is_frame_mode) {
-		cmdq_pkt_set_event(cmdq_handle,
-			mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
-		cmdq_pkt_set_event(cmdq_handle,
-			mtk_crtc->gce_obj.event[EVENT_STREAM_BLOCK]);
 
+	mtk_use_cabc_event(cmdq_handle, mtk_crtc, SET_OPT, __LINE__);
+	cmdq_pkt_set_event(cmdq_handle, mtk_crtc->gce_obj.event[EVENT_STREAM_BLOCK]);
+	if (is_frame_mode) {
 		/* Record Vblank end timestamp and calculate duration */
 		mtk_vblank_config_rec_end_cal(mtk_crtc, cmdq_handle, SET_BL);
 	}
@@ -3515,13 +3503,6 @@ int mtk_drm_setbacklight_grp(struct drm_crtc *crtc, unsigned int level,
 		return -EINVAL;
 	}
 
-	if (is_frame_mode) {
-		cmdq_pkt_clear_event(cmdq_handle,
-				mtk_crtc->gce_obj.event[EVENT_STREAM_BLOCK]);
-		cmdq_pkt_wfe(cmdq_handle,
-				mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
-	}
-
 	if (mtk_crtc_with_sub_path(crtc, mtk_crtc->ddp_mode))
 		mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle,
 			DDP_SECOND_PATH, 0);
@@ -3529,6 +3510,8 @@ int mtk_drm_setbacklight_grp(struct drm_crtc *crtc, unsigned int level,
 		mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle,
 			DDP_FIRST_PATH, 0);
 
+	cmdq_pkt_clear_event(cmdq_handle, mtk_crtc->gce_obj.event[EVENT_STREAM_BLOCK]);
+	mtk_use_cabc_event(cmdq_handle, mtk_crtc, WAIT_AND_CLEAR_OPT, __LINE__);
 	if (is_frame_mode) {
 		/* Record Vblank start timestamp */
 		mtk_vblank_config_rec_start(mtk_crtc, cmdq_handle, SET_BL);
@@ -3547,12 +3530,9 @@ int mtk_drm_setbacklight_grp(struct drm_crtc *crtc, unsigned int level,
 
 	}
 
+	mtk_use_cabc_event(cmdq_handle, mtk_crtc, SET_OPT, __LINE__);
+	cmdq_pkt_set_event(cmdq_handle, mtk_crtc->gce_obj.event[EVENT_STREAM_BLOCK]);
 	if (is_frame_mode) {
-		cmdq_pkt_set_event(cmdq_handle,
-			mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
-		cmdq_pkt_set_event(cmdq_handle,
-			mtk_crtc->gce_obj.event[EVENT_STREAM_BLOCK]);
-
 		/* Record Vblank end timestamp and calculate duration */
 		mtk_vblank_config_rec_end_cal(mtk_crtc, cmdq_handle, SET_BL);
 	}
@@ -3650,12 +3630,9 @@ int mtk_drm_aod_setbacklight(struct drm_crtc *crtc, unsigned int level)
 		return -EINVAL;
 	}
 
-	if (is_frame_mode) {
-		cmdq_pkt_clear_event(cmdq_handle,
-			mtk_crtc->gce_obj.event[EVENT_STREAM_BLOCK]);
-		cmdq_pkt_wfe(cmdq_handle,
-			mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
-	}
+	cmdq_pkt_clear_event(cmdq_handle,
+		mtk_crtc->gce_obj.event[EVENT_STREAM_BLOCK]);
+	mtk_use_cabc_event(cmdq_handle, mtk_crtc, WAIT_AND_CLEAR_OPT, __LINE__);
 
 	if (mtk_crtc_with_sub_path(crtc, mtk_crtc->ddp_mode))
 		mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle,
@@ -3672,12 +3649,9 @@ int mtk_drm_aod_setbacklight(struct drm_crtc *crtc, unsigned int level)
 		output_comp->funcs->io_cmd(output_comp,
 			cmdq_handle, DSI_SET_BL_AOD, &level);
 
-	if (is_frame_mode) {
-		cmdq_pkt_set_event(cmdq_handle,
-			mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
-		cmdq_pkt_set_event(cmdq_handle,
-			mtk_crtc->gce_obj.event[EVENT_STREAM_BLOCK]);
-	}
+	mtk_use_cabc_event(cmdq_handle, mtk_crtc, SET_OPT, __LINE__);
+	cmdq_pkt_set_event(cmdq_handle,
+		mtk_crtc->gce_obj.event[EVENT_STREAM_BLOCK]);
 
 	/* Record Vblank end timestamp and calculate duration */
 	mtk_vblank_config_rec_end_cal(mtk_crtc, cmdq_handle, SET_BL);
@@ -3774,21 +3748,15 @@ int mtk_drm_crtc_set_panel_hbm(struct drm_crtc *crtc, bool en)
 
 	mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle, DDP_FIRST_PATH, 0);
 
-	if (is_frame_mode) {
-		cmdq_pkt_clear_event(cmdq_handle,
-				mtk_crtc->gce_obj.event[EVENT_STREAM_BLOCK]);
-		cmdq_pkt_wfe(cmdq_handle,
-				mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
-	}
+	cmdq_pkt_clear_event(cmdq_handle,
+			mtk_crtc->gce_obj.event[EVENT_STREAM_BLOCK]);
+	mtk_use_cabc_event(cmdq_handle, mtk_crtc, WAIT_AND_CLEAR_OPT, __LINE__);
 
 	comp->funcs->io_cmd(comp, cmdq_handle, DSI_HBM_SET, &en);
 
-	if (is_frame_mode) {
-		cmdq_pkt_set_event(cmdq_handle,
-				mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
-		cmdq_pkt_set_event(cmdq_handle,
-				mtk_crtc->gce_obj.event[EVENT_STREAM_BLOCK]);
-	}
+	mtk_use_cabc_event(cmdq_handle, mtk_crtc, SET_OPT, __LINE__);
+	cmdq_pkt_set_event(cmdq_handle,
+			mtk_crtc->gce_obj.event[EVENT_STREAM_BLOCK]);
 
 	cmdq_pkt_flush(cmdq_handle);
 	cmdq_pkt_destroy(cmdq_handle);

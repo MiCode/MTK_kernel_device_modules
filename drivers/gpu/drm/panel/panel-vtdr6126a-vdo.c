@@ -162,8 +162,6 @@ static unsigned int g_aod_setbacklight; //record aod_setbacklight state
 static enum RES_SWITCH_TYPE res_switch_type = RES_SWITCH_NO_USE;
 static int current_fps = 120;
 
-#define CMD_V2_EN
-
 #define lcm_dcs_write_seq(ctx, seq...)                                     \
 	({                                                                     \
 		const u8 d[] = {seq};                                          \
@@ -245,7 +243,6 @@ static struct LCM_setting_table cmd_table_set_fps[] = {
 	{0x6C,1,{0x01}},
 };
 
-#ifdef CMD_V2_EN
 static struct LCM_setting_table_v2 lcm_initialization_setting_v2_144hz[] = {
 	//frame select, 0x00:144Hz, 0x01:120Hz, 0x02:90Hz, 0x03:60Hz
 	{2,{0x6C,0x00}},
@@ -749,7 +746,6 @@ static struct LCM_setting_table_v2 lcm_initialization_setting_v2_60hz[] = {
 	{1, {0x29}},
 	{0, {20}},
 };
-#endif
 
 static struct LCM_setting_table lcm_initialization_setting[] = {
 	//frame select, 0x00:144Hz, 0x01:120Hz, 0x02:90Hz, 0x03:60Hz
@@ -876,7 +872,7 @@ static struct LCM_setting_table lcm_initialization_setting[] = {
 	{0x29, 0, {}},
 	{REGFLAG_DELAY, 20,{}},
 };
-#ifdef CMD_V2_EN
+
 static struct LCM_setting_table_v2 lcm_suspend_setting_v2[] = {
 	// Display off sequence
 	{1, {0x28}},
@@ -885,7 +881,7 @@ static struct LCM_setting_table_v2 lcm_suspend_setting_v2[] = {
 	{1, {0x10}},
 	{0, {100}},
 };
-#endif
+
 static struct LCM_setting_table lcm_suspend_setting[] = {
 	// Display off sequence
 	{0x28, 0, {}},
@@ -1577,7 +1573,6 @@ static int lcm_setbacklight_cmdq(void *dsi, dcs_write_gce cb,
 	return 0;
 }
 
-#ifdef CMD_V2_EN
 static struct LCM_setting_table_v2 dim_frame_speed_v2[] = {
 	 //Diming by Frame, set 0x08 frame time for HBM DIMING
 	{0x3, {0xF0, 0xAA,0x13}},
@@ -1714,7 +1709,6 @@ static int lcm_setbacklight_cmdq_v2(void *dsi, mtk_dsi_ddic_cmd cb,
 
 	return 0;
 }
-#endif
 
 struct drm_display_mode *get_mode_by_id(struct drm_connector *connector,
 	unsigned int mode)
@@ -1852,6 +1846,49 @@ static int panel_set_aod_light_mode(void *dsi, dcs_write_gce cb,
 	bl_tb0[1] = ((aod_mapped_level >> 8) & 0x0f);
 	bl_tb0[2] = (aod_mapped_level & 0xff);
 	cb(dsi, handle, bl_tb0, ARRAY_SIZE(bl_tb0));
+
+	g_aod_setbacklight = 1;
+	mapped_level = aod_mapped_level;
+
+	return 0;
+}
+
+static int panel_set_aod_light_mode_v2(void *dsi_drv, mtk_dsi_ddic_cmd cb,
+		void *handle, unsigned int mode, struct mtk_dsi_cmd_option *cmd_opt)
+{
+	unsigned int aod_mapped_level = 0;
+	struct mipi_dsi_msg bl_tb0_cmd = { 0 };
+
+	//Three level doze backlight 20241213 start
+	switch (mode) {
+	case 2:
+		aod_mapped_level = 0x18;  //5nit
+		break;
+	case 11:
+		aod_mapped_level = 0x99;  //30nit
+		break;
+	case 23:
+		aod_mapped_level = 0x12D;  //60nit
+		break;
+	default:
+		aod_mapped_level = 0x12D;  //60nit
+		break;
+	}
+	//Three level doze backlight 20241213 end
+
+	pr_info("[LCM] %s level is %u,aod_mapped_level is %d\n", __func__, mode, aod_mapped_level);
+
+	bl_tb0[1] = ((aod_mapped_level >> 8) & 0x0f);
+	bl_tb0[2] = (aod_mapped_level & 0xff);
+
+	bl_tb0_cmd.tx_buf = bl_tb0;
+	bl_tb0_cmd.tx_len = 3;
+	struct mtk_dsi_cmd_msg bl_tb0_msg = {
+		.cmd_num = 1,
+		.transfer_mode = PACKET_HS_MODE,
+		.cmd_msg = &bl_tb0_cmd,
+	};
+	cb(dsi_drv, handle, cmd_opt, &bl_tb0_msg);
 
 	g_aod_setbacklight = 1;
 	mapped_level = aod_mapped_level;
@@ -2040,6 +2077,102 @@ done:
 	return 0;
 }
 
+static struct LCM_setting_table_v2 hbm_mode_enter_setting_v2[] = {
+//Alpha mode control
+	{3,{0xF0,0xAA,0x13}},
+	{2,{0xC6,0x01}},
+
+	//51-DBV <= 0x190: 1st&&2nd, need from alpha_gain table;
+	//51-DBV > 0x190: 3th&&4th, need current backlight value.
+	{5,{0x63,0x10,0x00,0x0D,0xBB}},
+	{2,{0x62,0x03}},
+};
+
+static struct LCM_setting_table_v2 hbm_mode_exit_setting_v2[] = {
+//Alpha mode control
+	{2,{0x62,0x00}},
+};
+
+static int panel_hbm_set_cmdq_v2(struct drm_panel *panel, void *dsi_drv,
+			    mtk_dsi_ddic_cmd cb, void *handle, bool en,
+			    struct mtk_dsi_cmd_option *cmd_opt)
+{
+	int i;
+	struct lcm *ctx = panel_to_lcm(panel);
+
+	if (!cb) {
+		pr_info("[LCM] %s cb is null\n", __func__);
+		return -1;
+	}
+
+	if (ctx->hbm_en == en) {
+		pr_info("[LCM] %s FPS=%dHz, already en=%d skip, mapped_level=%d, aod=%d\n", __func__,
+			g_lcm_fresh_mode, en, mapped_level, g_aod_enable);
+		goto done;
+	}
+
+	pr_info("[LCM] %s FPS=%dHz en=%d, mapped_level=%d, aod=%d\n", __func__,
+		g_lcm_fresh_mode, en, mapped_level, g_aod_enable);
+
+	if(en) {
+		struct mipi_dsi_msg enter_setting_v2[ARRAY_SIZE(hbm_mode_enter_setting_v2)] = { 0 };
+
+		if (mapped_level <= 0x190) {
+			//dynamic selection from alpha_gain table
+			hbm_mode_enter_setting_v2[2].para_list[1] = alpha_gain[mapped_level][0];
+			//dynamic selection from alpha_gain table
+			hbm_mode_enter_setting_v2[2].para_list[2] = alpha_gain[mapped_level][1];
+			hbm_mode_enter_setting_v2[2].para_list[3] = 0x01; //default value:0x01
+			hbm_mode_enter_setting_v2[2].para_list[4] = 0x91; //default value:0x91
+		} else {
+			hbm_mode_enter_setting_v2[2].para_list[1] = 0x10; //default value:0x10, no need change
+			hbm_mode_enter_setting_v2[2].para_list[2] = 0x00; //default value:0x00, no need change
+			//dynamic selection from current backli3ht value
+			hbm_mode_enter_setting_v2[2].para_list[3] = ((mapped_level >> 8) & 0x0f);
+			//dynamic selection from current backlight value
+			hbm_mode_enter_setting_v2[2].para_list[4] = (mapped_level & 0xff);
+		}
+
+		for (i = 0; i < ARRAY_SIZE(hbm_mode_enter_setting_v2); i++) {
+			enter_setting_v2[i].tx_len= hbm_mode_enter_setting_v2[i].count;
+			enter_setting_v2[i].tx_buf = hbm_mode_enter_setting_v2[i].para_list;
+		}
+
+		struct mtk_dsi_cmd_msg enter_setting_v2_msg = {
+			.cmd_num = ARRAY_SIZE(hbm_mode_enter_setting_v2),
+			.transfer_mode = PACKET_HS_MODE,
+			.cmd_msg = enter_setting_v2,
+		};
+		cb(dsi_drv, handle, cmd_opt, &enter_setting_v2_msg);
+
+		pr_info("[LCM] %s HBM_CMD=0x%X, HBM_PARA=0x%X,0x%X,0x%X,0x%X\n",
+			__func__, hbm_mode_enter_setting_v2[2].para_list[0],
+			    hbm_mode_enter_setting_v2[2].para_list[1], hbm_mode_enter_setting_v2[2].para_list[2],
+			    hbm_mode_enter_setting_v2[2].para_list[3], hbm_mode_enter_setting_v2[2].para_list[4]);
+	} else {
+		struct mipi_dsi_msg exit_setting_v2[ARRAY_SIZE(hbm_mode_exit_setting_v2)] = { 0 };
+
+		for (i = 0; i < ARRAY_SIZE(hbm_mode_exit_setting_v2); i++) {
+			exit_setting_v2[i].tx_len= hbm_mode_exit_setting_v2[i].count;
+			exit_setting_v2[i].tx_buf = hbm_mode_exit_setting_v2[i].para_list;
+		}
+
+		struct mtk_dsi_cmd_msg exit_setting_v2_msg = {
+			.cmd_num = ARRAY_SIZE(hbm_mode_exit_setting_v2),
+			.transfer_mode = PACKET_HS_MODE,
+			.cmd_msg = exit_setting_v2,
+		};
+		cb(dsi_drv, handle, cmd_opt, &exit_setting_v2_msg);
+	}
+
+	ctx->hbm_en = en;
+	ctx->hbm_wait = true;
+	g_hbm_enable = ctx->hbm_en;
+
+done:
+	return 0;
+}
+
 static void panel_hbm_get_state(struct drm_panel *panel, bool *state)
 {
 	struct lcm *ctx = panel_to_lcm(panel);
@@ -2097,7 +2230,6 @@ static int mode_switch(struct drm_panel *panel,
 	return ret;
 }
 
-#ifdef CMD_V2_EN
 static int lcm_panel_init_v2(void *dsi_drv, struct drm_panel *panel, void *handle, mtk_dsi_ddic_cmd cb,
 			struct mtk_dsi_cmd_option *cmd_opt)
 {
@@ -2226,7 +2358,6 @@ static int lcm_panel_init_v2(void *dsi_drv, struct drm_panel *panel, void *handl
 end:
 	return ret;
 }
-#endif
 
 static int lcm_panel_init(struct drm_panel *panel)
 {
@@ -2272,7 +2403,6 @@ static int lcm_panel_deinit(struct drm_panel *panel)
 	return 0;
 }
 
-#ifdef CMD_V2_EN
 static int lcm_panel_deinit_v2(void *dsi_drv, struct drm_panel *panel, void *handle, mtk_dsi_ddic_cmd cb,
 			struct mtk_dsi_cmd_option *cmd_opt)
 {
@@ -2317,7 +2447,6 @@ static int lcm_panel_deinit_v2(void *dsi_drv, struct drm_panel *panel, void *han
 end:
 	return ret;
 }
-#endif
 
 static struct mtk_panel_funcs ext_funcs = {
 	.set_backlight_cmdq = lcm_setbacklight_cmdq,
@@ -2340,15 +2469,15 @@ static struct mtk_panel_funcs ext_funcs = {
 	.doze_disable = panel_doze_disable,
 #if IS_ENABLED(CONFIG_TRANSSION_DOZE_BRIGHTNESS_SUPPORT)
 	.set_aod_light_mode = panel_set_aod_light_mode,
+	.set_aod_light_mode_v2 = panel_set_aod_light_mode_v2,
 #endif
 
 	.panel_init = lcm_panel_init,
 	.panel_deinit = lcm_panel_deinit,
-#ifdef CMD_V2_EN
 	.panel_init_v2 = lcm_panel_init_v2,
 	.panel_deinit_v2 = lcm_panel_deinit_v2,
 	.set_backlight_cmdq_v2 = lcm_setbacklight_cmdq_v2,
-#endif
+	.hbm_set_cmdq_v2 = panel_hbm_set_cmdq_v2,
 };
 #endif
 

@@ -9108,7 +9108,6 @@ void mipi_dsi_dcs_write_gce(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 					DSI_DUAL_EN, DSI_DUAL_EN);
 		}
 	} else {
-		mtk_use_cabc_event(handle, mtk_crtc, WAIT_AND_CLEAR_OPT, __LINE__);
 		/* set BL cmd */
 		mtk_dsi_vm_cmdq(dsi, &msg, handle, VM_VFP_EN);
 
@@ -9129,7 +9128,6 @@ void mipi_dsi_dcs_write_gce(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 		mtk_dsi_cmdq_poll(&dsi->ddp_comp, handle,
 			dsi->ddp_comp.regs_pa + DSI_INTSTA,
 			VM_CMD_DONE_INT_EN, VM_CMD_DONE_INT_EN);
-		mtk_use_cabc_event(handle, mtk_crtc, SET_OPT, __LINE__);
 	}
 
 	mtk_dsi_power_keep_gce(dsi, handle, false);
@@ -15021,10 +15019,11 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			panel_ext->funcs->set_backlight_grp_cmdq_v2(dsi,
 					mtk_mipi_dsi_cmd, handle, *(int *)params, &cmd_opt);
 		} else if (panel_ext && panel_ext->funcs
-			&& panel_ext->funcs->set_backlight_grp_cmdq)
+			&& panel_ext->funcs->set_backlight_grp_cmdq) {
 			panel_ext->funcs->set_backlight_grp_cmdq(dsi,
 					mipi_dsi_dcs_grp_write_gce,
 					handle, *(int *)params);
+		}
 	}
 		break;
 	case DSI_SET_BL_ELVSS:
