@@ -3597,7 +3597,7 @@ static int psy_charger_get_property(struct power_supply *psy,
 	struct mtk_charger *info;
 	struct charger_device *chg;
 	int ret = 0, chg_vbat = 0, vbat_max = 0, vsys_min = 0, vsys_max = 0, idx = 0;
-	struct chg_alg_device *alg = NULL;
+	bool en_div = false, en_div2 = false;
 
 	info = (struct mtk_charger *)power_supply_get_drvdata(psy);
 	if (info == NULL) {
@@ -3634,14 +3634,10 @@ static int psy_charger_get_property(struct power_supply *psy,
 		if (idx == DVCHG1_SETTING || idx == DVCHG2_SETTING ||
 		    idx == HVDVCHG1_SETTING || idx == HVDVCHG2_SETTING) {
 			val->intval = false;
-			alg = get_chg_alg_by_name("pe5");
-			if (alg == NULL)
-				chr_err("get pe5 fail\n");
-			else {
-				ret = chg_alg_is_algo_ready(alg);
-				if (ret == ALG_RUNNING)
-					val->intval = true;
-			}
+			charger_dev_is_enabled(info->dvchg1_dev, &en_div);
+			charger_dev_is_enabled(info->hvdvchg1_dev, &en_div2);
+			if (en_div || en_div2)
+				val->intval = true;
 			break;
 		}
 
