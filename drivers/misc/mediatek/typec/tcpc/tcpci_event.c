@@ -1088,6 +1088,13 @@ void pd_notify_pe_bist_mode(struct pd_port *pd_port, uint8_t mode)
 	if (!noti)
 		return;
 
+	if (mode == PD_BIST_MODE_DISABLE)
+		tcpci_sink_vbus(tcpc, TCP_VBUS_CTRL_REQUEST, pd_port->request_v,
+				pd_port->request_i);
+	else
+		tcpci_sink_vbus(tcpc, TCP_VBUS_CTRL_REQUEST, TCPC_VBUS_SINK_0V,
+				0);
+
 	if (old_mode == PD_BIST_MODE_TEST_DATA)
 		pd_enable_bist_test_mode(pd_port, false);
 
