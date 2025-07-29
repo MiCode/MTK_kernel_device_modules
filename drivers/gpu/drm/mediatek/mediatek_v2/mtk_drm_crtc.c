@@ -16827,7 +16827,7 @@ void mtk_drm_crtc_atomic_resume(struct drm_crtc *crtc,
 		priv->usage[index] = mtk_drm_crtc_usage_enable(priv, index);
 
 		if (priv->usage[index] == DISP_OPENING) {
-			DDPINFO("%s %d wait for opening\n", __func__, index);
+			DDPMSG("%s crtc%d wait for opening\n", __func__, index);
 			if (!(output_comp &&
 				mtk_ddp_comp_get_type(output_comp->id) == MTK_DISP_WDMA)) {
 				CRTC_MMP_EVENT_END((int) index, resume, mtk_crtc->enabled, 2);
