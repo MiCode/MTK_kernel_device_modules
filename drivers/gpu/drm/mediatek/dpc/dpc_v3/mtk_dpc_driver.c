@@ -85,9 +85,6 @@ module_param(wfe_prete, int, 0644);
 int dt_strategy;
 module_param(dt_strategy, int, 0644);
 
-int toggle_cg_fsm = 1;
-module_param(toggle_cg_fsm, int, 0644);
-
 int mask_busy_irq = 1;
 module_param(mask_busy_irq, int, 0644);
 
@@ -3326,11 +3323,6 @@ static void dpc_gce_ref_cnt(struct cmdq_pkt *pkt, bool add, const enum mtk_vidle
 /*SPR3*/	GCE_IF(lop, R_CMDQ_EQUAL, rop);
 		cmdq_pkt_write(pkt, NULL, g_priv->dpc_pa + DISP_REG_DPC_MML_INFRA_PLL_OFF_CFG, 0x1a1a1a, U32_MAX);
 
-		if (!toggle_cg_fsm) {
-			dpc_hwccf_vote(VOTE_SET, pkt, user, NO_LOCK, gpr);
-			goto vote_out;
-		}
-
 		cmdq_pkt_poll_sleep(pkt, 0, 0x31410000, 0xfffe);	/* polling all fsm idle */
 		cmdq_pkt_write(pkt, NULL, xpu_base, mask, U32_MAX);	/* vote xpu6 mtcmos voter */
 		cmdq_pkt_poll_sleep(pkt, mask, xpu_base + 0x8, mask);	/* check xpu6 local enable */
@@ -3382,7 +3374,6 @@ static void dpc_gce_ref_cnt(struct cmdq_pkt *pkt, bool add, const enum mtk_vidle
 		rop.reg = true;
 		rop.idx = global_sta;
 /*SPR1*/	cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_AND, mtcmos_sta, &lop, &rop);
-
 		if (reuse)
 			GCE_FI_REUSE(&reuse[3]);
 		else
@@ -3394,14 +3385,7 @@ static void dpc_gce_ref_cnt(struct cmdq_pkt *pkt, bool add, const enum mtk_vidle
 		rop.reg = false;
 		rop.value = 1;
 /*SPR3*/	GCE_IF(lop, R_CMDQ_EQUAL, rop);
-			cmdq_pkt_write(pkt, NULL, 0x31471234, BIT(22), U32_MAX);/* set cg47 */
-			cmdq_pkt_poll_sleep(pkt, BIT(22), 0x314122bc, BIT(22));	/* check en is set */
-			cmdq_pkt_poll_sleep(pkt, 0, 0x314118bc, BIT(22));	/* check sta idle */
-			cmdq_pkt_write(pkt, NULL, 0x31471238, BIT(22), U32_MAX);/* clr cg47 */
-			cmdq_pkt_poll_sleep(pkt, 0, 0x314122bc, BIT(22));	/* check en is clr */
-			cmdq_pkt_poll_sleep(pkt, 0, 0x314118bc, BIT(22));	/* check sta idle */
-
-vote_out:
+			dpc_toggle_cg_fsm(pkt, __LINE__);
 		if (reuse)
 			GCE_FI_REUSE(&reuse[4]);
 		else
@@ -3423,7 +3407,9 @@ vote_out:
 		// if (dummy_voter == 0) unvote hwccf
 		cmdq_pkt_read(pkt, NULL, 0x31350160, dummy_voter);
 		GCE_IF(lop, R_CMDQ_EQUAL, rop);
-		dpc_hwccf_vote(VOTE_CLR, pkt, user, NO_LOCK, gpr);
+		cmdq_pkt_poll_sleep(pkt, 0, 0x31410000, 0xfffe);	/* polling all fsm idle */
+		cmdq_pkt_write(pkt, NULL, xpu_base + 0x4, mask, U32_MAX);	/* unvote xpu6 mtcmos voter */
+		cmdq_pkt_poll_sleep(pkt, 0, xpu_base + 0x8, mask);		/* check xpu6 local enable */
 		cmdq_pkt_write(pkt, NULL, g_priv->dpc_pa + DISP_REG_DPC3_DTx_SW_TRIG(56), 1, U32_MAX);
 		cmdq_pkt_write(pkt, NULL, g_priv->dpc_pa + DISP_REG_DPC_MML_INFRA_PLL_OFF_CFG, 0x000a00, U32_MAX);
 		if (reuse)
@@ -3610,9 +3596,11 @@ static void dpc_hwccf_vote(bool on, struct cmdq_pkt *pkt, const enum mtk_vidle_v
 {
 	int ret = 0;
 	u32 value = 0;
-	u32 xpu_base = 0x31471700;	/* XPU6 */
 	u32 mask = 0;
 	unsigned long flags;
+
+	if (pkt)
+		return;
 
 	switch (user) {
 	case DISP_VIDLE_USER_DISP_VCORE:
@@ -3623,94 +3611,45 @@ static void dpc_hwccf_vote(bool on, struct cmdq_pkt *pkt, const enum mtk_vidle_v
 		break;
 	}
 
-	if (pkt) {
-		if (lock)
-			cmdq_pkt_wfe(pkt, g_priv->event_hwccf_vote);
-		if (on) {
-			if (!toggle_cg_fsm) {
-				cmdq_pkt_write(pkt, NULL, xpu_base, mask, U32_MAX);		/* vote mtcmos voter */
-				cmdq_pkt_poll_sleep(pkt, mask, xpu_base + 0x8, mask);		/* check local en */
-				cmdq_pkt_poll_sleep(pkt, mask, 0x31413700, mask);		/* check global en */
-				cmdq_pkt_poll_sleep(pkt, 0, 0x3141131c, mask);			/* check status idle */
-				cmdq_pkt_poll_sleep(pkt, mask, 0x31412900, mask);		/* check pm ack */
-			}
-		} else {
-			if (toggle_cg_fsm)
-				cmdq_pkt_poll_sleep(pkt, 0, 0x31410000, 0xfffe);	/* polling all fsm idle */
+	if (lock)
+		spin_lock_irqsave(&g_priv->excp_spin_lock, flags);
 
-			cmdq_pkt_write(pkt, NULL, xpu_base + 0x4, mask, U32_MAX);	/* unvote xpu6 mtcmos voter */
-			cmdq_pkt_poll_sleep(pkt, 0, xpu_base + 0x8, mask);		/* check xpu6 local enable */
-		}
-		if (lock)
-			cmdq_pkt_set_event(pkt, g_priv->event_hwccf_vote);
+	if (on) {
+		/* polling all fsm idle */
+		ret = readl_poll_timeout_atomic(hwccf_total_sta, value, !(value & 0xfffe), 1, 10000);
+		if (ret < 0)
+			goto err1;
+
+		writel(mask, hwccf_xpu0_mtcmos_set);			/* vote xpu0 mtcmos voter */
+
+		ret = readl_poll_timeout_atomic(hwccf_xpu0_local_en, value, (value & mask) == mask, 1, 2000);
+		if (ret < 0)
+			goto err2;
+		ret = readl_poll_timeout_atomic(hwccf_global_en, value, (value & mask) == mask, 1, 10000);
+		if (ret < 0)
+			goto err3;
+		ret = readl_poll_timeout_atomic(hwccf_mtcmos_sta, value, !(value & mask), 1, 10000);
+		if ((ret < 0) && ((readl(hwccf_global_sta) & mask) == 0))
+			dpc_toggle_cg_fsm(NULL, __LINE__);
+
+		ret = readl_poll_timeout_atomic(hwccf_mtcmos_pm_ack, value, (value & mask) == mask, 1, 10000);
+		if (ret < 0)
+			goto err4;
 	} else {
-		if (lock) {
-			spin_lock_irqsave(&g_priv->excp_spin_lock, flags);
-		}
+		/* polling all fsm idle */
+		ret = readl_poll_timeout_atomic(hwccf_total_sta, value, !(value & 0xfffe), 1, 10000);
+		if (ret < 0)
+			goto err1;
 
-		if (on) {
-			if (toggle_cg_fsm) {
-				/* polling all fsm idle */
-				ret = readl_poll_timeout_atomic(hwccf_total_sta, value, !(value & 0xfffe), 1, 10000);
-				if (ret < 0)
-					goto err1;
-			}
+		writel(mask, hwccf_xpu0_mtcmos_clr);			/* vote xpu0 mtcmos voter */
 
-			writel(mask, hwccf_xpu0_mtcmos_set);			/* vote xpu0 mtcmos voter */
-
-			ret = readl_poll_timeout_atomic(hwccf_xpu0_local_en, value, (value & mask) == mask, 1, 2000);
-			if (ret < 0)
-				goto err2;
-			ret = readl_poll_timeout_atomic(hwccf_global_en, value, (value & mask) == mask, 1, 10000);
-			if (ret < 0)
-				goto err3;
-			ret = readl_poll_timeout_atomic(hwccf_mtcmos_sta, value, !(value & mask), 1, 10000);
-			if (ret < 0) {
-				if (!toggle_cg_fsm)
-					goto err4;
-
-				if ((readl(hwccf_global_sta) & mask) == 0) {
-					writel(BIT(16), hwccf_cg47_set);
-					ret = readl_poll_timeout_atomic(hwccf_cg47_en, value, value & BIT(16), 1, 200);
-					if (ret < 0)
-						goto err5;
-					ret = readl_poll_timeout_atomic(hwccf_cg47_sta, value, !(value & BIT(16)),
-									1, 10000);
-					if (ret < 0)
-						goto err6;
-
-					writel(BIT(16), hwccf_cg47_clr);
-					ret = readl_poll_timeout_atomic(hwccf_cg47_en, value, !(value & BIT(16)),
-									1, 200);
-					if (ret < 0)
-						goto err7;
-					ret = readl_poll_timeout_atomic(hwccf_cg47_sta, value, !(value & BIT(16)),
-									1, 10000);
-					if (ret < 0)
-						goto err8;
-				}
-			}
-			ret = readl_poll_timeout_atomic(hwccf_mtcmos_pm_ack, value, (value & mask) == mask, 1, 10000);
-			if (ret < 0)
-				goto err9;
-		} else {
-			if (toggle_cg_fsm) {
-				/* polling all fsm idle */
-				ret = readl_poll_timeout_atomic(hwccf_total_sta, value, !(value & 0xfffe), 1, 10000);
-				if (ret < 0)
-					goto err1;
-			}
-
-			writel(mask, hwccf_xpu0_mtcmos_clr);			/* vote xpu0 mtcmos voter */
-
-			ret = readl_poll_timeout_atomic(hwccf_xpu0_local_en, value, !(value & mask), 1, 2000);
-			if (ret < 0)
-				goto err2;
-		}
-
-		if (lock)
-			spin_unlock_irqrestore(&g_priv->excp_spin_lock, flags);
+		ret = readl_poll_timeout_atomic(hwccf_xpu0_local_en, value, !(value & mask), 1, 2000);
+		if (ret < 0)
+			goto err2;
 	}
+
+	if (lock)
+		spin_unlock_irqrestore(&g_priv->excp_spin_lock, flags);
 
 	return;
 
@@ -3724,21 +3663,6 @@ err3:
 	DPCERR("pwr(%u) mask(%#x) polling global_en(%#x) timeout, ret(%d)", on, mask, value, ret);
 	goto err_dump;
 err4:
-	DPCERR("pwr(%u) mask(%#x) polling status(%#x) idle timeout 2, ret(%d)", on, mask, value, ret);
-	goto err_dump;
-err5:
-	DPCERR("pwr(%u) mask(%#x) polling cg47_en(%#x) timeout, ret(%d)", on, mask, value, ret);
-	goto err_dump;
-err6:
-	DPCERR("pwr(%u) mask(%#x) polling cg47_sta(%#x) idle timeout, ret(%d)", on, mask, value, ret);
-	goto err_dump;
-err7:
-	DPCERR("pwr(%u) mask(%#x) polling cg47_clr(%#x) timeout, ret(%d)", on, mask, value, ret);
-	goto err_dump;
-err8:
-	DPCERR("pwr(%u) mask(%#x) polling cg47_sta(%#x) idle timeout 2, ret(%d)", on, mask, value, ret);
-	goto err_dump;
-err9:
 	DPCERR("pwr(%u) mask(%#x) polling mtcmos pm ack (%#x) timeout, ret(%d)", on, mask, value, ret);
 	goto err_dump;
 err_dump:
