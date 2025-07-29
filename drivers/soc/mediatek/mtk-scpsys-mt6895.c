@@ -133,10 +133,10 @@ enum regmap_type {
 static const char *bus_list[BUS_TYPE_NUM] = {
 	[IFR_TYPE] = "infracfg",
 	[SMI_TYPE] = "smi_comm",
-	[VLP_TYPE] = "vlp_comm",
-	[MFGRPC_TYPE] = "mgfrpc_comm",
-	[NEMI_TYPE] = "nemi_comm",
-	[SEMI_TYPE] = "semi_comm",
+	[VLP_TYPE] = "vlpcfg",
+	[MFGRPC_TYPE] = "mfgrpc",
+	[NEMI_TYPE] = "nemi_bus",
+	[SEMI_TYPE] = "semi_bus",
 };
 
 static const struct scp_domain_data scp_domain_data_mt6895[] = {
