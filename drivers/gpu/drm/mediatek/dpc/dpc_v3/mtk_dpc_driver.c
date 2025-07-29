@@ -2241,6 +2241,9 @@ irqreturn_t mt6993_irq_handler(int irq, void *dev_id)
 		return IRQ_HANDLED;
 	}
 
+	if (!g_priv->enabled) /* dpc enable off */
+		return IRQ_HANDLED;
+
 	if (dpc_mminfra_on_off(true, DISP_VIDLE_USER_DISP_DPC_CFG)) {
 		dpc_mmp(mminfra, MMPROFILE_FLAG_END, U32_MAX, U32_MAX);
 		return IRQ_NONE;
