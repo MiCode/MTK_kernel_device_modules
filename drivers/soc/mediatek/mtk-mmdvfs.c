@@ -253,11 +253,11 @@ static void set_all_clk(struct mmdvfs_drv_data *drv_data,
 	if (i < 0)
 		opp_level = 0;
 
+	if (drv_data->ccf_ena_support && ap_ccf_mutex)
+		mmdvfs_set_ccf_enable_mutex(true);
 	mutex_lock(&drv_data->lp_mutex);
 	do {
 		if (drv_data->ccf_ena_support) {
-			if (ap_ccf_mutex)
-				mmdvfs_set_ccf_enable_mutex(true);
 
 			pr_notice(
 				"%s: vcp_cb_ready:%d is_ccf_enable:%d ccf_enable_boot:%d voltage:%u vol_inc:%d ap_ccf_mutex:%d\n",
@@ -266,17 +266,12 @@ static void set_all_clk(struct mmdvfs_drv_data *drv_data,
 				voltage, vol_inc, ap_ccf_mutex);
 
 			if ((opp_level == drv_data->last_opp_level &&
-				!drv_data->ccf_enable_boot) || !drv_data->is_ccf_enable) {
-				if (ap_ccf_mutex)
-					mmdvfs_set_ccf_enable_mutex(false);
+				!drv_data->ccf_enable_boot) || !drv_data->is_ccf_enable)
 				break;
-			}
 
 			if (drv_data->ccf_enable_boot)
 				drv_data->ccf_enable_boot = false;
 
-			if (ap_ccf_mutex)
-				mmdvfs_set_ccf_enable_mutex(false);
 		} else if (opp_level == drv_data->last_opp_level)
 			break;
 
@@ -298,6 +293,9 @@ static void set_all_clk(struct mmdvfs_drv_data *drv_data,
 		drv_data->last_opp_level = opp_level;
 	} while (0);
 	mutex_unlock(&drv_data->lp_mutex);
+	if (drv_data->ccf_ena_support && ap_ccf_mutex)
+		mmdvfs_set_ccf_enable_mutex(false);
+
 	blocking_notifier_call_chain(&mmdvfs_notifier_list, opp_level, NULL);
 	if (log_level & 1 << log_freq)
 		pr_notice("set clk to opp level:%d\n", opp_level);
