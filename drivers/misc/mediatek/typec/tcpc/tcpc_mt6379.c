@@ -290,26 +290,7 @@ struct tcpc_ofdata {
 	u8 lp_rplvl_sel_mask;
 	bool new_auto_idle;
 	bool vconn_clmt;
-};
-
-enum {
-	OFDATA_MT6379,
-	OFDATA_MT6720,
-	OFDATA_MAX,
-};
-
-static const struct tcpc_ofdata tcpc_ofdatas[OFDATA_MAX] = {
-	[OFDATA_MT6379] = {
-		.pid = MT6379_PID,
-		.lp_rplvl_sel_mask = 0x30,
-		.new_auto_idle = false,
-		.vconn_clmt = true,
-	}, [OFDATA_MT6720] = {
-		.pid = MT6720_PID,
-		.lp_rplvl_sel_mask = 0x10,
-		.new_auto_idle = true,
-		.vconn_clmt = false, /* Auto Enable in soft-start only */
-	},
+	int (*post_irq_handler)(void *data);
 };
 
 struct mt6379_tcpc_data {
@@ -2296,6 +2277,14 @@ static struct tcpc_ops mt6379_tcpc_ops = {
 	.enable_io_boost = mt6379_enable_io_boost,
 };
 
+static int mt6379_tcpc_post_irq_handler(void *data)
+{
+	struct mt6379_tcpc_data *ddata = data;
+
+	/* MT6379 do retrigger */
+	return regmap_write(ddata->rmap, MT6379_REG_SPMI_TXDRV2, MT6379_MASK_RCS_INT_DONE);
+}
+
 static irqreturn_t mt6379_pd_evt_handler(int irq, void *data)
 {
 	struct mt6379_tcpc_data *ddata = data;
@@ -2323,10 +2312,10 @@ static irqreturn_t mt6379_pd_evt_handler(int irq, void *data)
 			break;
 	} while (1);
 
-	if (handled) {
-		ret = mt6379_write8(ddata, MT6379_REG_SPMI_TXDRV2, MT6379_MASK_RCS_INT_DONE);
+	if (handled && ddata->ofdata && ddata->ofdata->post_irq_handler) {
+		ret = ddata->ofdata->post_irq_handler(ddata);
 		if (ret)
-			MT6379_DBGINFO("Failed to do IRQ retrigger\n");
+			dev_info(ddata->dev, "%s, Failed to do post irq handler\n", __func__);
 	}
 
 	pm_relax(ddata->dev);
@@ -2753,9 +2742,24 @@ static const struct dev_pm_ops mt6379_tcpc_pm_ops = {
 #endif	/* CONFIG_PM_SLEEP */
 };
 
+static const struct tcpc_ofdata mt6379_tcpc_ofdata = {
+	.pid = MT6379_PID,
+	.lp_rplvl_sel_mask = 0x30,
+	.new_auto_idle = false,
+	.vconn_clmt = true,
+	.post_irq_handler = mt6379_tcpc_post_irq_handler,
+};
+
+static const struct tcpc_ofdata mt6720_tcpc_ofdata = {
+	.pid = MT6720_PID,
+	.lp_rplvl_sel_mask = 0x10,
+	.new_auto_idle = true,
+	.vconn_clmt = false, /* Auto Enable in soft-start only */
+};
+
 static const struct of_device_id __maybe_unused mt6379_tcpc_of_match[] = {
-	{ .compatible = "mediatek,mt6379-tcpc", .data = &tcpc_ofdatas[OFDATA_MT6379], },
-	{ .compatible = "mediatek,mt6720-tcpc", .data = &tcpc_ofdatas[OFDATA_MT6720], },
+	{ .compatible = "mediatek,mt6379-tcpc", .data = &mt6379_tcpc_ofdata, },
+	{ .compatible = "mediatek,mt6720-tcpc", .data = &mt6720_tcpc_ofdata, },
 	{ }
 };
 MODULE_DEVICE_TABLE(of, mt6379_tcpc_of_match);
