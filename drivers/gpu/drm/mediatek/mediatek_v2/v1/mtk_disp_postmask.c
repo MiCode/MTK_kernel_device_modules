@@ -1123,7 +1123,8 @@ static int mtk_disp_postmask_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct mtk_disp_postmask *priv;
 	enum mtk_ddp_comp_id comp_id;
-	int ret;
+	int ret = 0, len = 0;
+	const __be32 *ranges = NULL;
 
 	DDPINFO("%s+\n", __func__);
 
@@ -1145,6 +1146,13 @@ static int mtk_disp_postmask_probe(struct platform_device *pdev)
 	}
 
 	priv->data = of_device_get_match_data(dev);
+
+	ranges = of_get_property(dev->of_node, "dma-ranges", &len);
+	if (ranges) {
+		ret = dma_set_mask_and_coherent(dev, DMA_BIT_MASK(34));
+		if (ret)
+			DDPPR_ERR("Failed to set_coherent_mask: %d\n", ret);
+	}
 
 	platform_set_drvdata(pdev, priv);
 
