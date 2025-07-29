@@ -174,7 +174,7 @@ static inline ssize_t audio_ipi_test_store(struct device *dev,
 		return -EINVAL;
 
 	scp_audio_ipi_registration(SCP_AUDIO_IPI_TEST1, audio_ipi_test_recv, "ipi_test");
-	ret = scp_send_message(SCP_AUDIO_IPI_TEST1, &value, sizeof(value), 20, 0);
+	ret = scp_push_message(SCP_AUDIO_IPI_TEST1, &value, sizeof(value), 20, 0);
 	pr_info("audio_ipi_test value:%d, ret:%d\n", value, ret);
 
 	return count;
