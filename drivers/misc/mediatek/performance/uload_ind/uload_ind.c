@@ -333,6 +333,8 @@ static int init_core_cpus(int val)
 			goto new_core_cpus_alloc_err;
 
 		if (curr_core_cpus == NULL) {
+			if (core_cpus_head != NULL)
+                                free_core_cpus();
 			curr_core_cpus = core_cpus;
 			core_cpus_head = curr_core_cpus;
 		} else {
