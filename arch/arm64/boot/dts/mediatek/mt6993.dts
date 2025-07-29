@@ -18672,8 +18672,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					3200 2600
 					3300 2700
 					3300 2700>;
-			lvsys-thd-volt-h = <3500 2800
-					3500 2800
+			lvsys-thd-volt-h = <3500 2900
+					3500 2900
 					3600 2900
 					3600 2900>;
 			lvsys-thd-volt-tb1-l = <3400 3100
