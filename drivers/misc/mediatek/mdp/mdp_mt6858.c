@@ -383,27 +383,79 @@ void cmdq_mdp_dump_mmsys_config(const struct cmdqRecStruct *handle)
 	}
 
 	/*DISP_MUTEX MOD*/
+	value = CMDQ_REG_GET32(MM_MUTEX_BASE + 0x000);
+	CMDQ_ERR("%s: 0x%08x\n", "MDP_MUTEX_INTEN", value);
+	value = CMDQ_REG_GET32(MM_MUTEX_BASE + 0x004);
+	CMDQ_ERR("%s: 0x%08x\n", "MDP_MUTEX_INTSTA", value);
+	value = CMDQ_REG_GET32(MM_MUTEX_BASE + 0x008);
+	CMDQ_ERR("%s: 0x%08x\n", "MDP_MUTEX_CFG", value);
+
+	value = CMDQ_REG_GET32(MM_MUTEX_BASE + 0x020);
+	CMDQ_ERR("%s: 0x%08x\n", "MDP_MUTEX0_EN", value);
+	value = CMDQ_REG_GET32(MM_MUTEX_BASE + 0x024);
+	CMDQ_ERR("%s: 0x%08x\n", "MDP_MUTEX0_SHADOW_CTRL", value);
+	value = CMDQ_REG_GET32(MM_MUTEX_BASE + 0x028);
+	CMDQ_ERR("%s: 0x%08x\n", "MDP_MUTEX0_RST", value);
+	value = CMDQ_REG_GET32(MM_MUTEX_BASE + 0x02C);
+	CMDQ_ERR("%s: 0x%08x\n", "MDP_MUTEX0_CTL", value);
 	value = CMDQ_REG_GET32(MM_MUTEX_BASE + 0x030);
 	CMDQ_ERR("%s: 0x%08x\n", "MDP_MUTEX0_MOD0", value);
 	value = CMDQ_REG_GET32(MM_MUTEX_BASE + 0x034);
 	CMDQ_ERR("%s: 0x%08x\n", "MDP_MUTEX0_MOD1", value);
+
+	value = CMDQ_REG_GET32(MM_MUTEX_BASE + 0x040);
+	CMDQ_ERR("%s: 0x%08x\n", "MDP_MUTEX1_EN", value);
+	value = CMDQ_REG_GET32(MM_MUTEX_BASE + 0x044);
+	CMDQ_ERR("%s: 0x%08x\n", "MDP_MUTEX1_SHADOW_CTRL", value);
+	value = CMDQ_REG_GET32(MM_MUTEX_BASE + 0x048);
+	CMDQ_ERR("%s: 0x%08x\n", "MDP_MUTEX1_RST", value);
+	value = CMDQ_REG_GET32(MM_MUTEX_BASE + 0x04C);
+	CMDQ_ERR("%s: 0x%08x\n", "MDP_MUTEX1_CTL", value);
 	value = CMDQ_REG_GET32(MM_MUTEX_BASE + 0x050);
 	CMDQ_ERR("%s: 0x%08x\n", "MDP_MUTEX1_MOD0", value);
 	value = CMDQ_REG_GET32(MM_MUTEX_BASE + 0x054);
 	CMDQ_ERR("%s: 0x%08x\n", "MDP_MUTEX1_MOD1", value);
+
+	value = CMDQ_REG_GET32(MM_MUTEX_BASE + 0x060);
+	CMDQ_ERR("%s: 0x%08x\n", "MDP_MUTEX2_EN", value);
+	value = CMDQ_REG_GET32(MM_MUTEX_BASE + 0x064);
+	CMDQ_ERR("%s: 0x%08x\n", "MDP_MUTEX2_SHADOW_CTRL", value);
+	value = CMDQ_REG_GET32(MM_MUTEX_BASE + 0x068);
+	CMDQ_ERR("%s: 0x%08x\n", "MDP_MUTEX2_RST", value);
+	value = CMDQ_REG_GET32(MM_MUTEX_BASE + 0x06C);
+	CMDQ_ERR("%s: 0x%08x\n", "MDP_MUTEX2_CTL", value);
 	value = CMDQ_REG_GET32(MM_MUTEX_BASE + 0x070);
 	CMDQ_ERR("%s: 0x%08x\n", "MDP_MUTEX2_MOD0", value);
 	value = CMDQ_REG_GET32(MM_MUTEX_BASE + 0x074);
 	CMDQ_ERR("%s: 0x%08x\n", "MDP_MUTEX2_MOD1", value);
+
+	value = CMDQ_REG_GET32(MM_MUTEX_BASE + 0x080);
+	CMDQ_ERR("%s: 0x%08x\n", "MDP_MUTEX3_EN", value);
+	value = CMDQ_REG_GET32(MM_MUTEX_BASE + 0x084);
+	CMDQ_ERR("%s: 0x%08x\n", "MDP_MUTEX3_SHADOW_CTRL", value);
+	value = CMDQ_REG_GET32(MM_MUTEX_BASE + 0x088);
+	CMDQ_ERR("%s: 0x%08x\n", "MDP_MUTEX3_RST", value);
+	value = CMDQ_REG_GET32(MM_MUTEX_BASE + 0x08C);
+	CMDQ_ERR("%s: 0x%08x\n", "MDP_MUTEX3_CTL", value);
 	value = CMDQ_REG_GET32(MM_MUTEX_BASE + 0x090);
 	CMDQ_ERR("%s: 0x%08x\n", "MDP_MUTEX3_MOD0", value);
 	value = CMDQ_REG_GET32(MM_MUTEX_BASE + 0x094);
 	CMDQ_ERR("%s: 0x%08x\n", "MDP_MUTEX3_MOD1", value);
+
+	value = CMDQ_REG_GET32(MM_MUTEX_BASE + 0x0A0);
+	CMDQ_ERR("%s: 0x%08x\n", "MDP_MUTEX4_EN", value);
+	value = CMDQ_REG_GET32(MM_MUTEX_BASE + 0x0A4);
+	CMDQ_ERR("%s: 0x%08x\n", "MDP_MUTEX4_SHADOW_CTRL", value);
+	value = CMDQ_REG_GET32(MM_MUTEX_BASE + 0x0A8);
+	CMDQ_ERR("%s: 0x%08x\n", "MDP_MUTEX4_RST", value);
+	value = CMDQ_REG_GET32(MM_MUTEX_BASE + 0x0AC);
+	CMDQ_ERR("%s: 0x%08x\n", "MDP_MUTEX4_CTL", value);
 	value = CMDQ_REG_GET32(MM_MUTEX_BASE + 0x0B0);
 	CMDQ_ERR("%s: 0x%08x\n", "MDP_MUTEX4_MOD0", value);
 	value = CMDQ_REG_GET32(MM_MUTEX_BASE + 0x0B4);
 	CMDQ_ERR("%s: 0x%08x\n", "MDP_MUTEX4_MOD1", value);
 	value = CMDQ_REG_GET32(MM_MUTEX_BASE + 0x0D0);
+
 	CMDQ_ERR("%s: 0x%08x\n", "MDP_MUTEX5_MOD0", value);
 	value = CMDQ_REG_GET32(MM_MUTEX_BASE + 0x0D4);
 	CMDQ_ERR("%s: 0x%08x\n", "MDP_MUTEX5_MOD1", value);
@@ -778,7 +830,8 @@ void cmdq_mdp_dump_rsz(const unsigned long base, const char *label)
 	value[4] = CMDQ_REG_GET32(base + 0x014);    /*  RSZ_OUTPUT_IMAGE    */
 	value[5] = CMDQ_REG_GET32(base + 0x018);/*  RSZ_HORIZONTAL_COEFF_STEP */
 	value[6] = CMDQ_REG_GET32(base + 0x01C);/*  RSZ_VERTICAL_COEFF_STEP */
-	CMDQ_REG_SET32(base + 0x044, 0x00000001);
+	/* set RSZ_DEBUG_SEL(0x44) to 0x08 for checking rsz output handshake */
+	CMDQ_REG_SET32(base + 0x044, 0x00000008);
 	value[7] = CMDQ_REG_GET32(base + 0x048);    /*  RSZ_DEBUG_1    */
 	CMDQ_REG_SET32(base + 0x044, 0x00000002);
 	value[8] = CMDQ_REG_GET32(base + 0x048);    /*  RSZ_DEBUG_2 */
