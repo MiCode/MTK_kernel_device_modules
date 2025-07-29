@@ -378,6 +378,8 @@ struct mtk_dp {
 	u32 phy_params[DPTX_PHY_LEVEL_COUNT];
 	u32 usb_last_state;
 	u32 project_support_max_h_v[2];
+	u32 phy_params_linkrate_mask, phy_params_special[DPTX_PHY_LEVEL_COUNT];
+
 	unsigned long long starttime;
 	bool trigger_db_flag;
 

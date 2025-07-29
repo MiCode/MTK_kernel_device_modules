@@ -2392,6 +2392,9 @@ int mdrv_DPTx_SetTrainingStart(struct mtk_dp *mtk_dp)
 	do {
 		DPTXMSG("LinkRate:0x%x, LaneCount:%x", ubLinkRate, ubLaneCount);
 
+		// special setting for eye diagram
+		mhal_DPTx_swing_pre_emp_optimized_for_certain_linkrate(mtk_dp, ubLinkRate);
+
 		mtk_dp->training_info.cr_done = false;
 		mtk_dp->training_info.eq_done = false;
 
@@ -3734,6 +3737,16 @@ static int mtk_dp_dt_parse_pdata(struct mtk_dp *mtk_dp,
 		mtk_dp->phy_params, ARRAY_SIZE(mtk_dp->phy_params));
 	if (ret)
 		DPTXMSG("get phy_params fail, use default val, ret %d\n", ret);
+
+	memset(mtk_dp->phy_params_special, 0, sizeof(mtk_dp->phy_params_special));
+	ret = of_property_read_u32_array(dev->of_node, "tuning-phy-params",
+		mtk_dp->phy_params_special, ARRAY_SIZE(mtk_dp->phy_params_special));
+	if (ret)
+		DPTXMSG("not get phy_params_special, use default val, ret %d\n", ret);
+
+	// phy parameter for eye test
+	if (of_property_read_u32(dev->of_node, "tuning-phy-linkrate-mask", &mtk_dp->phy_params_linkrate_mask))
+		mtk_dp->phy_params_linkrate_mask = 0;
 
 	ret = mtk_dp_vsvoter_parse(mtk_dp, dev->of_node);
 	if (ret)

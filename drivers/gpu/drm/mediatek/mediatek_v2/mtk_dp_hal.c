@@ -2833,6 +2833,67 @@ void mhal_DPTx_swing_pre_emp_optimized(struct mtk_dp *mtk_dp)
 		DPTXMSG("set phy_params, use default val");
 }
 
+void mhal_DPTx_swing_pre_emp_optimized_for_certain_linkrate(struct mtk_dp *mtk_dp, u8 ubTargetLinkRate)
+{
+	u8 bit;
+
+	switch (ubTargetLinkRate) {
+	case DP_LINKRATE_RBR:
+		bit = 0;
+		break;
+	case DP_LINKRATE_HBR:
+		bit = 1;
+		break;
+	case DP_LINKRATE_HBR2:
+		bit = 2;
+		break;
+	case DP_LINKRATE_HBR3:
+		bit = 3;
+		break;
+	default:
+		bit = -1;
+		break;
+	}
+
+	if (bit >= 0 && (mtk_dp->phy_params_linkrate_mask & (1 << bit))) {
+		if (mtk_dp->phy_params_special[0] != 0 || mtk_dp->phy_params_special[1] != 0 ||
+				mtk_dp->phy_params_special[2] != 0 || mtk_dp->phy_params_special[3] != 0 ||
+				mtk_dp->phy_params_special[4] != 0 || mtk_dp->phy_params_special[5] != 0) {
+			msPhyWrite4Byte(mtk_dp, 0x1138, mtk_dp->phy_params_special[0]);
+			msPhyWrite4Byte(mtk_dp, 0x1238, mtk_dp->phy_params_special[0]);
+			msPhyWrite4Byte(mtk_dp, 0x1338, mtk_dp->phy_params_special[0]);
+			msPhyWrite4Byte(mtk_dp, 0x1438, mtk_dp->phy_params_special[0]);
+
+			msPhyWrite4Byte(mtk_dp, 0x113C, mtk_dp->phy_params_special[1]);
+			msPhyWrite4Byte(mtk_dp, 0x123C, mtk_dp->phy_params_special[1]);
+			msPhyWrite4Byte(mtk_dp, 0x133C, mtk_dp->phy_params_special[1]);
+			msPhyWrite4Byte(mtk_dp, 0x143C, mtk_dp->phy_params_special[1]);
+
+			msPhyWrite4Byte(mtk_dp, 0x1140, mtk_dp->phy_params_special[2]);
+			msPhyWrite4Byte(mtk_dp, 0x1240, mtk_dp->phy_params_special[2]);
+			msPhyWrite4Byte(mtk_dp, 0x1340, mtk_dp->phy_params_special[2]);
+			msPhyWrite4Byte(mtk_dp, 0x1440, mtk_dp->phy_params_special[2]);
+
+			msPhyWrite4Byte(mtk_dp, 0x1144, mtk_dp->phy_params_special[3]);
+			msPhyWrite4Byte(mtk_dp, 0x1244, mtk_dp->phy_params_special[3]);
+			msPhyWrite4Byte(mtk_dp, 0x1344, mtk_dp->phy_params_special[3]);
+			msPhyWrite4Byte(mtk_dp, 0x1444, mtk_dp->phy_params_special[3]);
+
+			msPhyWrite4Byte(mtk_dp, 0x1148, mtk_dp->phy_params_special[4]);
+			msPhyWrite4Byte(mtk_dp, 0x1248, mtk_dp->phy_params_special[4]);
+			msPhyWrite4Byte(mtk_dp, 0x1348, mtk_dp->phy_params_special[4]);
+			msPhyWrite4Byte(mtk_dp, 0x1448, mtk_dp->phy_params_special[4]);
+
+			msPhyWrite4Byte(mtk_dp, 0x114C, mtk_dp->phy_params_special[5]);
+			msPhyWrite4Byte(mtk_dp, 0x124C, mtk_dp->phy_params_special[5]);
+			msPhyWrite4Byte(mtk_dp, 0x134C, mtk_dp->phy_params_special[5]);
+			msPhyWrite4Byte(mtk_dp, 0x144C, mtk_dp->phy_params_special[5]);
+			DPTXMSG("set phy_params_special by setting in dts");
+		} else
+			DPTXMSG("set phy_params_special, use default val");
+	}
+}
+
 void mhal_DPTx_PHYSetting(struct mtk_dp *mtk_dp, BYTE MAX_LANECOUNT)
 {
 	if (mtk_dp->cfg_ver == 2) {
