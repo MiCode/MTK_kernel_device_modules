@@ -81,7 +81,6 @@
 #define NETLINK_EVENT_CCCI_NOTIFY "NLEvent_CCCINotify"
 #define NETLINK_EVENT_DISPLAY_HRT "NLEventDispHRT"
 #define NETLINK_EVENT_ISP_HRT "NLEventIspHRT"
-#define NETLINK_EVENT_HRT "NLEventHRT"
 #define NETLINK_EVENT_AUDIOADSPNOTIFY "NLEvent_ADSPEvt"
 #define NETLINK_EVENT_SYSCPUFREQ "NLEvent_SysCpufreq"
 #define NETLINK_EVENT_SYSOOM		"NLEvent_SysOOM"
@@ -810,6 +809,7 @@ struct mbraink_memory_emiInfo {
 struct mbraink_timer_mapping_info {
 	unsigned long long timer;
 	u64 read_counter;
+	u32 recognize_counter;
 };
 
 struct mbraink_mmpc {

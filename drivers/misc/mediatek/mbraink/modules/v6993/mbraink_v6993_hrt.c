@@ -62,47 +62,9 @@ static struct mbraink2hrt_ops mbraink_v6993_isp_hrt_ops = {
 	.isp_hrt_notify = mbraink_v6993_isp_hrt_notify,
 };
 
-static ssize_t mbraink_platform_hrt_info_show(struct device *dev,
-					      struct device_attribute *attr,
-					      char *buf)
-{
-	char netlink_buf[NETLINK_EVENT_MESSAGE_SIZE] = {'\0'};
-	int n = 0;
-	int pos = 0;
-	struct timespec64 tv = { 0 };
-	long long timestamp = 0;
-
-	ktime_get_real_ts64(&tv);
-	timestamp = (tv.tv_sec*1000)+(tv.tv_nsec/1000000);
-
-	n = snprintf(netlink_buf + pos,
-			NETLINK_EVENT_MESSAGE_SIZE - pos,
-			"%s:%llu",
-			NETLINK_EVENT_HRT,
-			timestamp);
-
-	if (n < 0 || n >= NETLINK_EVENT_MESSAGE_SIZE - pos)
-		return snprintf(buf, PAGE_SIZE, "hrt notified failed due to snprintf\n");
-	mbraink_netlink_send_msg(netlink_buf);
-
-	return snprintf(buf, PAGE_SIZE, "hrt notified, timestamp = %llu\n", timestamp);
-}
-
-static ssize_t mbraink_platform_hrt_info_store(struct device *dev,
-						struct device_attribute *attr,
-						const char *buf,
-						size_t count)
-{
-	return count;
-}
-static DEVICE_ATTR_RW(mbraink_platform_hrt_info);
-
 int mbraink_v6993_hrt_init(struct device *dev)
 {
 	int ret = 0;
-
-	if (dev)
-		ret = device_create_file(dev, &dev_attr_mbraink_platform_hrt_info);
 
 	ret = mtk_mbrain2disp_register_hrt_cb(mbraink_v6993_display_hrt_notify);
 	if (ret)
@@ -118,9 +80,6 @@ int mbraink_v6993_hrt_init(struct device *dev)
 int mbraink_v6993_hrt_deinit(struct device *dev)
 {
 	int ret = 0;
-
-	if (dev)
-		device_remove_file(dev, &dev_attr_mbraink_platform_hrt_info);
 
 	ret = mtk_mbrain2disp_unregister_hrt_cb(mbraink_v6993_display_hrt_notify);
 	if (ret)

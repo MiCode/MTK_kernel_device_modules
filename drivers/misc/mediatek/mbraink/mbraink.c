@@ -21,6 +21,9 @@
 #include <linux/sched/clock.h>
 #include <linux/suspend.h>
 #include <clocksource/arm_arch_timer.h>
+#include <linux/random.h>
+#include <linux/ratelimit.h>
+#include <linux/spinlock.h>
 
 #include "mbraink_power.h"
 #include "mbraink_video.h"
@@ -50,9 +53,10 @@
 
 static DEFINE_MUTEX(power_lock);
 static DEFINE_MUTEX(pmu_lock);
+static DEFINE_SPINLOCK(mbraink_recognize_lock);
 struct mbraink_data mbraink_priv;
 long long last_resume_timestamp;
-
+unsigned int mbraink_recognize_counter;
 
 
 #define MAX_LOGMISCDATA_LOG_SIZE 256
@@ -1439,6 +1443,7 @@ static long handleMemoryEmiInfo(unsigned long arg, void *mbraink_data)
 static long handle_timer_mapping_info(unsigned long arg, void *mbraink_data)
 {
 	long ret = 0;
+	unsigned long flags;
 	struct mbraink_timer_mapping_info *pTimerMappingInfo =
 		(struct mbraink_timer_mapping_info *)(mbraink_data);
 
@@ -1446,6 +1451,12 @@ static long handle_timer_mapping_info(unsigned long arg, void *mbraink_data)
 
 	pTimerMappingInfo->timer = sched_clock();
 	pTimerMappingInfo->read_counter = arch_timer_read_counter();
+
+	spin_lock_irqsave(&mbraink_recognize_lock, flags);
+
+	pTimerMappingInfo->recognize_counter = mbraink_recognize_counter;
+
+	spin_unlock_irqrestore(&mbraink_recognize_lock, flags);
 
 	if (copy_to_user((struct mbraink_timer_mapping_info *)arg, pTimerMappingInfo,
 			sizeof(struct mbraink_timer_mapping_info))) {
@@ -2591,11 +2602,35 @@ static ssize_t mbraink_gpu_store(struct device *dev,
 
 static DEVICE_ATTR_RW(mbraink_gpu);
 
+static ssize_t mbraink_recognize_show(struct device *dev,
+				struct device_attribute *attr,
+				char *buf)
+{
+	unsigned long flags;
+	unsigned int recognize_counter = 0;
+
+	spin_lock_irqsave(&mbraink_recognize_lock, flags);
+	recognize_counter = mbraink_recognize_counter;
+	spin_unlock_irqrestore(&mbraink_recognize_lock, flags);
+
+	return snprintf(buf, PAGE_SIZE, "%u\n", recognize_counter);
+}
+
+static ssize_t mbraink_recognize_store(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf,
+					size_t count)
+{
+	return count;
+}
+static DEVICE_ATTR_RW(mbraink_recognize);
 
 static int mbraink_dev_init(void)
 {
 	dev_t mbraink_dev_no = 0;
 	int attr_ret = 0;
+	unsigned long flags;
+	unsigned int recognize_counter = 0;
 
 	mbraink_priv.suspend_power_info_en[0] = '0';
 	mbraink_priv.last_suspend_timestamp = 0;
@@ -2604,6 +2639,12 @@ static int mbraink_dev_init(void)
 	mbraink_priv.pmu_en = 0;
 	memset(&mbraink_priv.suspend_battery_buffer, 0,
 		sizeof(struct mbraink_battery_data));
+
+	get_random_bytes(&recognize_counter, sizeof(recognize_counter));
+
+	spin_lock_irqsave(&mbraink_recognize_lock, flags);
+	mbraink_recognize_counter = recognize_counter;
+	spin_unlock_irqrestore(&mbraink_recognize_lock, flags);
 
 	/*Allocating Major number*/
 	if ((alloc_chrdev_region(&mbraink_dev_no, 0, 1, CHRDEV_NAME)) < 0) {
@@ -2651,6 +2692,10 @@ static int mbraink_dev_init(void)
 
 	attr_ret = device_create_file(&mbraink_device, &dev_attr_mbraink_gpu);
 	pr_info("[MBK_INFO] %s: device create file mbraink gpu ret = %d\n", __func__, attr_ret);
+
+	attr_ret = device_create_file(&mbraink_device, &dev_attr_mbraink_recognize);
+	pr_info("[MBK_INFO] %s: device create file mbraink recognize ret = %d, recog=%u\n",
+		__func__, attr_ret, recognize_counter);
 
     #if IS_ENABLED(CONFIG_PM)
 	attr_ret = register_pm_notifier(&mbraink_sys_res_pm_notifier_func);
@@ -2732,7 +2777,9 @@ int mbraink_netlink_send_msg(const char *msg)
 		}
 		genlmsg_end(skb, msg_head);
 		ret = genlmsg_unicast(&init_net, skb, mbraink_priv.client_pid);
-		if (ret < 0)
+		static DEFINE_RATELIMIT_STATE(ratelimit, 3 * HZ, 10);
+
+		if (ret < 0 && __ratelimit(&ratelimit))
 			pr_notice("[%s] genlmsg_unicast fail, ret=[%d]\n", __func__, ret);
 	}
 	return ret;
@@ -2898,6 +2945,7 @@ static void mbraink_dev_exit(void)
 #endif
 	device_remove_file(&mbraink_device, &dev_attr_mbraink_info);
 	device_remove_file(&mbraink_device, &dev_attr_mbraink_gpu);
+	device_remove_file(&mbraink_device, &dev_attr_mbraink_recognize);
 
 	device_unregister(&mbraink_device);
 	mbraink_device.class = NULL;
