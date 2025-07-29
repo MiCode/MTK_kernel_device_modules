@@ -268,6 +268,7 @@ static struct timer_list hrt_issue_timer;
 #define DSI_TIME_CON1(data)	(data->dsi_time_con ? data->dsi_time_con + 0x4 : 0xA4)
 #define PREFETCH_EN BIT(31)
 #define FLD_PREFETCH_TIME REG_FLD_MSB_LSB(30, 16)
+#define FLD_PREFETCH_TIME_MT6993 REG_FLD_MSB_LSB(19, 0)
 #define DSI_RESERVED(data)	(data->dsi_reserved ? data->dsi_reserved : 0xF0)
 #define DSI_VDE_BLOCK_ULTRA BIT(29)
 
@@ -2824,13 +2825,24 @@ static void mtk_dsi_set_prefetch_time(struct mtk_dsi *dsi)
 {
 	struct mtk_panel_ext *panel_ext = NULL;
 	u32 val = 0, mask = 0;
+	struct mtk_drm_crtc *mtk_crtc =	dsi->is_slave ?
+			dsi->master_dsi->ddp_comp.mtk_crtc : dsi->ddp_comp.mtk_crtc;
+	struct mtk_drm_private *priv = NULL;
 
 	if (IS_ERR_OR_NULL(dsi) || IS_ERR_OR_NULL(dsi->driver_data)) {
 		pr_info("%s:%d NULL Pointer\n", __func__, __LINE__);
 		return;
 	}
+
+	if (mtk_crtc && mtk_crtc->base.dev)
+		priv = mtk_crtc->base.dev->dev_private;
+
 	if (dsi->panel && dsi->ext && dsi->ext->params->prefetch_time) {
-		SET_VAL_MASK(val, mask, dsi->ext->params->prefetch_time, FLD_PREFETCH_TIME);
+		if (priv && priv->data->mmsys_id == MMSYS_MT6993)
+			SET_VAL_MASK(val, mask, dsi->ext->params->prefetch_time, FLD_PREFETCH_TIME_MT6993);
+		else
+			SET_VAL_MASK(val, mask, dsi->ext->params->prefetch_time, FLD_PREFETCH_TIME);
+
 		mtk_dsi_mask(dsi, DSI_TIME_CON1(dsi->driver_data), mask, val);
 		mtk_dsi_mask(dsi, DSI_TIME_CON1(dsi->driver_data), PREFETCH_EN, PREFETCH_EN);
 		pr_info("%s DSI_TIME_CON1= 0x%x\n", __func__,
