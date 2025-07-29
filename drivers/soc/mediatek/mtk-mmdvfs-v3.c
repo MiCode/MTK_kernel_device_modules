@@ -22,6 +22,7 @@
 #include <linux/workqueue.h>
 #include <linux/soc/mediatek/mtk_mmdvfs.h>
 
+#include "clkchk.h"
 #include "clk-fmeter.h"
 #include "clk-mtk.h"
 #include "mtk-mmdvfs-v3.h"
@@ -1946,8 +1947,10 @@ static int mmdvfs_mmup_notifier_callback(struct notifier_block *nb, unsigned lon
 			mmdvfs_v3_restore_step();
 		break;
 	case VCP_EVENT_STOP:
-		if (readl(MEM_HFLV_ASSERT))
+		if (readl(MEM_HFLV_ASSERT)) {
+			clkchk_external_dump();
 			BUG_ON(1);
+		}
 
 		if (dpc_fp[0])
 			mmdvfs_rc_enable_cb_all(false, true);
