@@ -35,6 +35,7 @@
 
 #define MT6363_RG_BUCK_EFUSE_RSV1	0x1447
 #define MT6363_RG_BUCK_EFUSE_RSV1_MASK	0xf0
+#define MT6363_RG_BUCK_EFUSE_RSV1_SHIFT	4
 
 /*
  * MT6363 regulators' information
@@ -516,8 +517,10 @@ static int mt6363_va15_set_voltage_sel(struct regulator_dev *rdev, unsigned int 
 	ret = regmap_update_bits(rdev->regmap, rdev->desc->vsel_reg, rdev->desc->vsel_mask, sel);
 	if (ret)
 		goto va15_unlock;
-	ret = regmap_update_bits(rdev->regmap, MT6363_RG_BUCK_EFUSE_RSV1,
-				 MT6363_RG_BUCK_EFUSE_RSV1_MASK, sel);
+	ret = regmap_update_bits(rdev->regmap,
+				 MT6363_RG_BUCK_EFUSE_RSV1,
+				 MT6363_RG_BUCK_EFUSE_RSV1_MASK,
+				 sel << MT6363_RG_BUCK_EFUSE_RSV1_SHIFT);
 	if (ret)
 		goto va15_unlock;
 
