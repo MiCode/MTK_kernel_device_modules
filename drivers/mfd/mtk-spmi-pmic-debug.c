@@ -369,14 +369,20 @@ void mtk_spmi_pmic_get_parity_err_cnt(u16 *buf)
 				dev_info(dev, "Failed to select mt6688 dbgmux to parity error type 4\n");
 				continue;
 			}
-			if (rev == MT6688_CHIP_REV_E3) {
+
+			if (rev >= MT6688_CHIP_REV_E3) {
 				/* For E3 read parity err status only! */
 				ret = regmap_read(regmap, sts_addr, &parity_err_sta);
 				if (ret)
 					dev_info(dev, "Failed to read mt6688 parity err status\n");
 
 				parity_err_sta = FIELD_GET(MT6688_MASK_SPMI_PARITY_ERR, parity_err_sta);
+			} else {
+				parity_err_sta = 0;
+				dev_info(dev, "mt6688 rev%d does not support parity err status\n",
+					 rev);
 			}
+
 			ret = regmap_read(regmap, cnt_addr, &parity_err_cnt);
 			if (ret)
 				dev_info(dev, "Failed to read mt6688 parity err cnt\n");
