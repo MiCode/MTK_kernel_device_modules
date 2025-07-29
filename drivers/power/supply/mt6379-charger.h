@@ -158,6 +158,8 @@ enum mt6379_charger_reg_field {
 	F_SHIP_RST_DIS, F_PD_MDEN,
 	/* MT6379_REG_BB_VOUT_SEL */
 	F_PREUV_EN,
+	/* MT6379_REG_VDDA_SUPPLY */
+	F_FON_OSC,
 	/* MT6379_REG_CHG_STAT0 */
 	F_ST_PWR_RDY,
 	/* MT6379_REG_CHG_STAT1 */
@@ -443,6 +445,7 @@ struct mt6379_charger_data {
 	bool *bc12_dn;
 
 	bool enable_fsw;
+	bool enable_fon_osc;
 	struct mutex icc_trim_lock;
 	bool icc_needs_trim;
 	bool icc_trimmed;

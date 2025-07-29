@@ -267,6 +267,7 @@ static struct mt6379_charger_field mt6379_charger_fields[F_MAX] = {
 	MT6379_CHARGER_FIELD(F_SHIP_RST_DIS, MT6379_REG_CORE_CTRL2, 0, 0),
 	MT6379_CHARGER_FIELD(F_PD_MDEN, MT6379_REG_CORE_CTRL2, 1, 1),
 	MT6379_CHARGER_FIELD(F_PREUV_EN, MT6379_REG_BB_VOUT_SEL, 7, 7),
+	MT6379_CHARGER_FIELD(F_FON_OSC, MT6379_REG_VDDA_SUPPLY, 6, 6),
 	MT6379_CHARGER_FIELD(F_ST_PWR_RDY, MT6379_REG_CHG_STAT0, 0, 0),
 	MT6379_CHARGER_FIELD(F_ST_MIVR, MT6379_REG_CHG_STAT1, 7, 7),
 	MT6379_CHARGER_FIELD(F_ST_AICC_DONE, MT6379_REG_CHG_STAT2, 2, 2),
@@ -2946,6 +2947,9 @@ static int mt6379_charger_get_pdata(struct device *dev)
 		dev_info(dev, "%s, enable_fsw = %d\n", __func__, cdata->enable_fsw);
 	}
 
+	cdata->enable_fon_osc = device_property_read_bool(dev, "fon-osc-enable");
+	dev_info(dev, "%s, enable_fon_osc = %d\n", __func__, cdata->enable_fon_osc);
+
 	dev->platform_data = pdata;
 
 	return 0;
@@ -4272,6 +4276,13 @@ static void mt6379_charger_shutdown(struct platform_device *pdev)
 static int __maybe_unused mt6379_charger_suspend(struct device *dev)
 {
 	struct mt6379_charger_data *cdata = dev_get_drvdata(dev);
+	int ret = 0;
+
+	if (cdata->enable_fon_osc) {
+		ret = mt6379_charger_field_set(cdata, F_FON_OSC, 0);
+		if (ret)
+			dev_info(cdata->dev, "%s, Failed to set fon_osc\n", __func__);
+	}
 
 	/*
 	 * If customer need to sleep while charging, set support_fsw_wakeup = 1
@@ -4287,6 +4298,12 @@ static int __maybe_unused mt6379_charger_resume(struct device *dev)
 	struct mt6379_charger_data *cdata = dev_get_drvdata(dev);
 	int ret = 0;
 	u32 val = 0;
+
+	if (cdata->enable_fon_osc) {
+		ret = mt6379_charger_field_set(cdata, F_FON_OSC, 1);
+		if (ret)
+			dev_info(cdata->dev, "%s, Failed to set fon_osc\n", __func__);
+	}
 
 	if (!cdata->enable_fsw)
 		return 0;
