@@ -11,6 +11,7 @@
 #include <linux/miscdevice.h>
 #include <linux/of.h>
 #include <linux/workqueue.h>
+#include <linux/suspend.h>
 #include "adsp_feature_define.h"
 #include "adsp_helper.h"
 #include "audio_mbox.h"
@@ -133,6 +134,40 @@ static int scp_audio_unlock_clk_source(void)
 	return _scp_audio_clock_control(false, false);
 }
 
+#if IS_ENABLED(CONFIG_PM)
+static int scp_audio_pm_suspend_prepare(void)
+{
+	bool ret;
+
+	ret = flush_suspend_work(SCP_A_ID);
+	if (ret)
+		pr_info("%s, flush_suspend_work ret %d\n", __func__, ret);
+
+	return NOTIFY_DONE;
+}
+
+static int scp_audio_pm_event(struct notifier_block *notifier,
+			 unsigned long pm_event, void *unused)
+{
+	switch (pm_event) {
+	case PM_POST_HIBERNATION:
+		pr_notice("%s: PM_POST_HIBERNATION\n", __func__);
+		return NOTIFY_DONE;
+	case PM_SUSPEND_PREPARE:
+		return scp_audio_pm_suspend_prepare();
+	case PM_POST_SUSPEND:
+		pr_notice("%s: PM_POST_SUSPEND\n", __func__);
+		return NOTIFY_DONE;
+	}
+	return NOTIFY_OK;
+}
+
+static struct notifier_block scp_audio_pm_notifier_block = {
+	.notifier_call = scp_audio_pm_event,
+	.priority = 0,
+};
+#endif
+
 static int scp_audio_drv_probe(struct platform_device *pdev)
 {
 	int ret = -1;
@@ -192,6 +227,14 @@ static int scp_audio_drv_probe(struct platform_device *pdev)
 		goto EXIT;
 	}
 
+#if IS_ENABLED(CONFIG_PM)
+	ret = register_pm_notifier(&scp_audio_pm_notifier_block);
+	if (ret) {
+		pr_warn("%s, failed to register PM notifier %d\n", __func__, ret);
+		goto EXIT;
+	}
+#endif
+
 #if IS_ENABLED(CONFIG_DEBUG_FS)
 	struct dentry *file = NULL;
 
@@ -219,6 +262,7 @@ EXIT:
 	pr_info("%s, done ret:%d", __func__, ret);
 	return ret;
 }
+
 static const struct of_device_id scp_qos_scene_of_ids[] = {
 	{ .compatible = "mediatek,mt6858-audio-dsp-hrt-bw"},
 	{},
