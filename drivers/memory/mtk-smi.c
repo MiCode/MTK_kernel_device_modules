@@ -4310,7 +4310,11 @@ static int mtk_smi_larb_probe(struct platform_device *pdev)
 		larb->is_two_dram_path_ostdl = true;
 
 	is_mpu_violation(dev, false);
-	return ret;
+	if (ret < 0)
+		return ret;
+	else
+		return 0;
+
 }
 
 static void mtk_smi_larb_remove(struct platform_device *pdev)
