@@ -397,14 +397,15 @@ static s32 c3d_config_frame(struct mml_comp *comp, struct mml_task *task,
 		goto exit;
 
 	do {
-		ret = mml_pq_get_comp_config_result(task, C3D_WAIT_TIMEOUT_MS);
-		if (ret) {
+		if ((mml_pq_debug_mode & MML_PQ_FORCE_TIMEOUT_DBG) ||
+			mml_pq_get_comp_config_result(task, C3D_WAIT_TIMEOUT_MS)) {
 			mml_pq_comp_config_clear(task);
 			c3d_frm->config_success = false;
 			c3d_relay(comp, pkt, base_pa, true, alpha);
-			mml_pq_err("get c3d param timeout: %d in %dms",
-				ret, C3D_WAIT_TIMEOUT_MS);
 			ret = -ETIMEDOUT;
+			mml_pq_err("%s: %s c3d param timeout: %d in %dms", __func__,
+				(mml_pq_debug_mode & MML_PQ_FORCE_TIMEOUT_DBG) ? "simulate" : "get",
+				ret, C3D_WAIT_TIMEOUT_MS);
 			goto exit;
 		}
 
@@ -508,13 +509,12 @@ static s32 c3d_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 		goto exit;
 
 	do {
-		if ((mml_pq_debug_mode & MML_PQ_FORCE_TIMEOUT_DBG) ||
-			mml_pq_get_comp_config_result(task, C3D_WAIT_TIMEOUT_MS)) {
+		ret = mml_pq_get_comp_config_result(task, C3D_WAIT_TIMEOUT_MS);
+		if (ret) {
 			mml_pq_comp_config_clear(task);
-			ret = -ETIMEDOUT;
-			mml_pq_err("%s: %s c3d param timeout: %d in %dms", __func__,
-				(mml_pq_debug_mode & MML_PQ_FORCE_TIMEOUT_DBG) ? "simulate" : "get",
+			mml_pq_err("get c3d param timeout: %d in %dms",
 				ret, C3D_WAIT_TIMEOUT_MS);
+			ret = -ETIMEDOUT;
 			goto exit;
 		}
 

@@ -42,6 +42,8 @@
 	(_comp->hw_ops->op ? _comp->hw_ops->op(_comp, ##__VA_ARGS__) : 0)
 #define REG_NOT_SUPPORT 0xfff
 
+#define DEFAULT_PANEL_NITS (400)
+
 enum mml_hdr_reg_index {
 	HDR_TOP,
 	HDR_RELAY,
@@ -134,44 +136,6 @@ enum mml_hdr_reg_index {
 	HDR_REG_MAX_COUNT
 };
 
-static u32 hdr_default_ootf_table_mt6993[HDR_OOTF_NUM] = {
-	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
-	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
-	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
-	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
-	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
-	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
-	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
-	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
-	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
-	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
-	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
-	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
-	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
-	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
-	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
-	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
-	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
-	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
-	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
-	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
-	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
-	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
-	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
-	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
-	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
-	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
-	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
-	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
-	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
-	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
-	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
-	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
-	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
-	1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024,
-	1024, 1024, 1024
-};
-
 static u32 region_pq_default_ootf_table_mt6993[HDR_OOTF_NUM] = {
 	8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192,
 	8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192,
@@ -210,7 +174,7 @@ static u32 region_pq_default_ootf_table_mt6993[HDR_OOTF_NUM] = {
 	8192, 8192, 8192
 };
 
-static u32 hdr_default_eotf_table_mt6993[HDR_OETF_NUM] = {
+static u32 hdr_default_oetf_table_mt6993[HDR_OETF_NUM] = {
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -253,7 +217,7 @@ static u32 hdr_default_eotf_table_mt6993[HDR_OETF_NUM] = {
 	63197, 63667, 64132, 64592, 65048, 456
 };
 
-static u32 region_pq_default_eotf_table_mt6993[HDR_OETF_NUM] = {
+static u32 region_pq_default_oetf_table_mt6993[HDR_OETF_NUM] = {
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -491,7 +455,6 @@ struct hdr_data {
 	bool two_curve;	/* mt6993 HW Change two curve array OOTF OETF*/
 	bool hdr_debug;	/* supported in mt6989 and afterwards */
 	u32 histogram_bin;
-	u32 *hdr_default_ootf;
 	u32 *region_pq_default_ootf;
 	u32 *hdr_default_oetf;
 	u32 *region_pq_default_oetf;
@@ -562,10 +525,9 @@ static const struct hdr_data mt6993_mmlt_hdr_data = {
 	.two_curve = true,
 	.histogram_bin = 128,
 	.hdr_debug = true,
-	.hdr_default_ootf = hdr_default_ootf_table_mt6993,
 	.region_pq_default_ootf = region_pq_default_ootf_table_mt6993,
-	.hdr_default_oetf = hdr_default_eotf_table_mt6993,
-	.region_pq_default_oetf = region_pq_default_eotf_table_mt6993,
+	.hdr_default_oetf = hdr_default_oetf_table_mt6993,
+	.region_pq_default_oetf = region_pq_default_oetf_table_mt6993,
 };
 
 static const struct hdr_data mt6993_mmlf_hdr_data = {
@@ -577,10 +539,9 @@ static const struct hdr_data mt6993_mmlf_hdr_data = {
 	.two_curve = true,
 	.histogram_bin = 128,
 	.hdr_debug = true,
-	.hdr_default_ootf = hdr_default_ootf_table_mt6993,
 	.region_pq_default_ootf = region_pq_default_ootf_table_mt6993,
-	.hdr_default_oetf = hdr_default_eotf_table_mt6993,
-	.region_pq_default_oetf = region_pq_default_eotf_table_mt6993,
+	.hdr_default_oetf = hdr_default_oetf_table_mt6993,
+	.region_pq_default_oetf = region_pq_default_oetf_table_mt6993,
 };
 
 struct mml_comp_hdr {
@@ -756,7 +717,8 @@ static void hdr_init(struct mml_comp *comp, struct cmdq_pkt *pkt, const phys_add
 }
 
 static void hdr_relay(struct mml_comp *comp, struct cmdq_pkt *pkt, const phys_addr_t base_pa,
-		      struct mml_frame_data *src, u32 relay, u32 is_timeout, bool is_sdr_path)
+		      struct mml_frame_data *src, u32 relay, u32 is_timeout, bool is_sdr_path,
+		      struct mml_pq_param *pq_param , const struct mml_frame_dest *dest)
 {
 	struct mml_comp_hdr *hdr = comp_to_hdr(comp);
 	if (hdr->data->two_curve) {
@@ -902,119 +864,177 @@ static void hdr_relay(struct mml_comp *comp, struct cmdq_pkt *pkt, const phys_ad
 						0 << 0,
 						0x1);
 				}
-				mml_pq_err("%s:sdr case timeout, %s CSC setting and linear effect",
-					__func__,
+				mml_pq_err("%s:%s, %s CSC setting and linear effect",
+					__func__,"sdr case timeout" ,
 					MML_FMT_IS_YUV(src->format) ? "YUV input" : "RGB input");
 			} else {
-				/* enable eotf and oetf,and set hdr_abort_en = 0 to make HDR Linear effect*/
-				cmdq_pkt_write(pkt, NULL,
-					base_pa + hdr->data->reg_table[HDR_TOP],
-					1 << 27 | 1 << 19 | 0 << 16 | 0 << 1 | 1 << 0,
-					0x080b0003);
-				cmdq_pkt_write(pkt, NULL,
-					base_pa + hdr->data->reg_table[HDR_OOTF_CTRL_0],
-					1 << 0,
-					0x1);
-				/* make HDR Fixed Linear effect with panel nist 400 from ALG*/
-				cmdq_pkt_write(pkt, NULL,
-					base_pa + hdr->data->reg_table[HDR_EOTF_CTRL],
-					1 << 18 | 2 << 16 | 25600,
-					0x7FFFF);
-				cmdq_pkt_write(pkt,NULL,
-					base_pa + hdr->data->reg_table[HDR_TONE_MAP_TOP],
-					0 << 0,
-					0x1);
-				cmdq_pkt_write(pkt, NULL,
-					base_pa + hdr->data->reg_table[HDR_3x3_COEF_00],
-					0 << 2 | 1 << 1 | 1 << 0,
-					0xF);
-				cmdq_pkt_write(pkt, NULL,
-					base_pa + hdr->data->reg_table[HDR_3x3_COEF_01],
-					5503,
-					0xFFFF);
-				cmdq_pkt_write(pkt, NULL,
-					base_pa + hdr->data->reg_table[HDR_3x3_COEF_02],
-					64380,
-					0xFFFF);
-				cmdq_pkt_write(pkt, NULL,
-					base_pa + hdr->data->reg_table[HDR_3x3_COEF_03],
-					65285,
-					0xFFFF);
-				cmdq_pkt_write(pkt, NULL,
-					base_pa + hdr->data->reg_table[HDR_3x3_COEF_04],
-					65269,
-					0xFFFF);
-				cmdq_pkt_write(pkt, NULL,
-					base_pa + hdr->data->reg_table[HDR_3x3_COEF_05],
-					4407,
-					0xFFFF);
-				cmdq_pkt_write(pkt, NULL,
-					base_pa + hdr->data->reg_table[HDR_3x3_COEF_06],
-					65492,
-					0xFFFF);
-				cmdq_pkt_write(pkt, NULL,
-					base_pa + hdr->data->reg_table[HDR_3x3_COEF_07],
-					11,
-					0xFFFF);
-				cmdq_pkt_write(pkt, NULL,
-					base_pa + hdr->data->reg_table[HDR_3x3_COEF_08],
-					65456,
-					0xFFFF);
-				cmdq_pkt_write(pkt, NULL,
-					base_pa + hdr->data->reg_table[HDR_3x3_COEF_09],
-					4165,
-					0xFFFF);
-				cmdq_pkt_write(pkt, NULL,
-					base_pa + hdr->data->reg_table[HDR_3x3_COEF_10],
-					0,
-					0xFFFF);
-				cmdq_pkt_write(pkt, NULL,
-					base_pa + hdr->data->reg_table[HDR_3x3_COEF_11],
-					0,
-					0xFFFF);
-				cmdq_pkt_write(pkt, NULL,
-					base_pa + hdr->data->reg_table[HDR_3x3_COEF_12],
-					0,
-					0xFFFF);
-				cmdq_pkt_write(pkt, NULL,
-					base_pa + hdr->data->reg_table[HDR_3x3_COEF_13],
-					65535 << 16 | 0 << 0,
-					0xFFFFFFFF);
-				cmdq_pkt_write(pkt, NULL,
-					base_pa + hdr->data->reg_table[HDR_3x3_COEF_14],
-					65535 << 16 | 0 << 0,
-					0xFFFFFFFF);
-				cmdq_pkt_write(pkt, NULL,
-					base_pa + hdr->data->reg_table[HDR_3x3_COEF_15],
-					65535 << 16 | 0 << 0,
-					0xFFFFFFFF);
 				cmdq_pkt_write(pkt, NULL,
 					base_pa + hdr->data->reg_table[HDR_RELAY],
 					0 << 0,
 					0x1);
-				/* Y2R R2Y setting */
-				if (MML_FMT_IS_YUV(src->format)) {
-					cmdq_pkt_write(pkt, NULL,
-						base_pa + hdr->data->reg_table[HDR_R2Y_09],
-						1 << 4 | 0 << 2 | 0 << 1 | 1 << 0,
-						0x1F);
+				cmdq_pkt_write(pkt, NULL,
+					base_pa + hdr->data->reg_table[HDR_TOP],
+					src->color.gamma == MML_GAMMA_SMPTEST2084 ?
+					1 << 27 | 1 << 19 | 0 << 16 | 0 << 1 | 1 << 0 :
+					0 << 27 | 0 << 19 | 1 << 16 | 0 << 1 | 1 << 0,
+					0x080b0003);
+				cmdq_pkt_write(pkt, NULL,
+					base_pa + hdr->data->reg_table[HDR_OOTF_CTRL_0],
+					0 << 0,
+					0x1);
+				/* make HDR Fixed Linear effect with panel nist 400 from ALG*/
+				cmdq_pkt_write(pkt, NULL,
+					base_pa + hdr->data->reg_table[HDR_EOTF_CTRL],
+					1 << 18 | 2 << 16 |
+					(pq_param->current_panel_lum ?
+					(10000 * 1024) / (pq_param->current_panel_lum) * 1000 :
+					(10000 * 1024 / DEFAULT_PANEL_NITS)),
+					0x7FFFF);
+				cmdq_pkt_write(pkt,NULL,
+					base_pa + hdr->data->reg_table[HDR_TONE_MAP_TOP],
+					0,
+					0x1);
+				/* 3x3 coeff matrix */
+				cmdq_pkt_write(pkt, NULL,
+					base_pa + hdr->data->reg_table[HDR_3x3_COEF_00],
+					0,
+					0x1);
+				/* Y2R setting */
+				if ((src->color.ycbcr_enc == MML_YCBCR_ENC_BT709 ||
+					src->color.ycbcr_enc == MML_YCBCR_ENC_BT601 ||
+					src->color.ycbcr_enc == MML_YCBCR_ENC_BT2020) &&
+					src->color.color_range == MML_COLOR_RANGE_FULL &&
+					MML_FMT_IS_RGB(src->format)) {
 					cmdq_pkt_write(pkt, NULL,
 						base_pa + hdr->data->reg_table[HDR_Y2R_09],
-						1 << 5 | 0 << 2 | 1 << 1 |1 << 0,
+						1 << 1 | 0 << 0,
+						0x3);
+					cmdq_pkt_write(pkt, NULL,
+						base_pa + hdr->data->reg_table[HDR_Y2R_08],
+						0,
+						0x1000000);
+				} else if ((src->color.ycbcr_enc == MML_YCBCR_ENC_BT709 ||
+					src->color.ycbcr_enc == MML_YCBCR_ENC_BT601 ||
+					src->color.ycbcr_enc == MML_YCBCR_ENC_BT2020) &&
+					src->color.color_range == MML_COLOR_RANGE_LIMITED &&
+					MML_FMT_IS_RGB(src->format)) {
+					cmdq_pkt_write(pkt, NULL,
+						base_pa + hdr->data->reg_table[HDR_Y2R_00],
+						0 << 16 | 9567 << 0,
+						0xFFFFFFFF);
+					cmdq_pkt_write(pkt, NULL,
+						base_pa + hdr->data->reg_table[HDR_Y2R_01],
+						0,
+						0xFFFFFFFF);
+					cmdq_pkt_write(pkt, NULL,
+						base_pa + hdr->data->reg_table[HDR_Y2R_02],
+						0 << 16 | 9567 << 0,
+						0xFFFFFFFF);
+					cmdq_pkt_write(pkt, NULL,
+						base_pa + hdr->data->reg_table[HDR_Y2R_03],
+						0,
+						0xFFFFFFFF);
+					cmdq_pkt_write(pkt, NULL,
+						base_pa + hdr->data->reg_table[HDR_Y2R_04],
+						9567,
+						0xFFFF);
+					cmdq_pkt_write(pkt, NULL,
+						base_pa + hdr->data->reg_table[HDR_Y2R_05],
+						9796608 << 0,
+						0xFFFFFFFF);
+					cmdq_pkt_write(pkt, NULL,
+						base_pa + hdr->data->reg_table[HDR_Y2R_06],
+						9796608 << 0,
+						0xFFFFFFFF);
+					cmdq_pkt_write(pkt, NULL,
+						base_pa + hdr->data->reg_table[HDR_Y2R_07],
+						9796608 << 0,
+						0xFFFFFFFF);
+					cmdq_pkt_write(pkt, NULL,
+						base_pa + hdr->data->reg_table[HDR_Y2R_08],
+						0 << 24 | 65536 << 0,
+						0x10FFFFF);
+					cmdq_pkt_write(pkt, NULL,
+						base_pa + hdr->data->reg_table[HDR_Y2R_09],
+						0 << 5 | 1 << 1 | 1 << 0,
+						0x23);
+				} else if (
+					src->color.ycbcr_enc == MML_YCBCR_ENC_BT709 &&
+					src->color.color_range == MML_COLOR_RANGE_LIMITED &&
+					MML_FMT_IS_YUV(src->format)) {
+					cmdq_pkt_write(pkt, NULL,
+						base_pa + hdr->data->reg_table[HDR_Y2R_09],
+						1 << 5 | 2 << 2 | 1 << 1 | 1 << 0,
+						0x3F);
+				} else if (src->color.ycbcr_enc == MML_YCBCR_ENC_BT601 &&
+					src->color.color_range == MML_COLOR_RANGE_LIMITED &&
+					MML_FMT_IS_YUV(src->format)) {
+					cmdq_pkt_write(pkt, NULL,
+						base_pa + hdr->data->reg_table[HDR_Y2R_09],
+						1 << 5 | 3 << 2 | 1 << 1 | 1 << 0,
+						0x3F);
+				} else if (src->color.ycbcr_enc == MML_YCBCR_ENC_BT2020 &&
+					src->color.color_range == MML_COLOR_RANGE_LIMITED &&
+					MML_FMT_IS_YUV(src->format)) {
+					cmdq_pkt_write(pkt, NULL,
+						base_pa + hdr->data->reg_table[HDR_Y2R_09],
+						1 << 5 | 0 << 2 | 1 << 1 | 1 << 0,
+						0x3F);
+				} else if (src->color.ycbcr_enc == MML_YCBCR_ENC_BT2020_CON &&
+					src->color.color_range == MML_COLOR_RANGE_LIMITED &&
+					MML_FMT_IS_YUV(src->format)) {
+					cmdq_pkt_write(pkt, NULL,
+						base_pa + hdr->data->reg_table[HDR_Y2R_09],
+						1 << 5 | 1 << 2 | 1 << 1 | 1 << 0,
 						0x3F);
 				} else {
+					mml_pq_err("%s:%s, unexpected color space for Y2R setting",
+						__func__, "hdr case timeout");
+				}
+				cmdq_pkt_write(pkt, NULL,
+					base_pa + hdr->data->reg_table[HDR_Y2R_13],
+					65535 << 16 | 0 << 0,
+					0xFFFFFFFF);
+				/* R2Y setting */
+				if (dest->data.color.ycbcr_enc == MML_YCBCR_ENC_BT601) {
 					cmdq_pkt_write(pkt, NULL,
 						base_pa + hdr->data->reg_table[HDR_R2Y_09],
-						1 << 4 | 0 << 2 | 0 << 1 | 1 << 0,
+						1 << 4 | 2 << 2 | 1 << 1 | 1 << 0,
 						0x1F);
+				} else if (dest->data.color.ycbcr_enc == MML_YCBCR_ENC_BT709) {
 					cmdq_pkt_write(pkt, NULL,
-						base_pa + hdr->data->reg_table[HDR_Y2R_09],
-						1 << 5 | 0 << 2 | 1 << 1 | 0 << 0,
-						0x3F);
+						base_pa + hdr->data->reg_table[HDR_R2Y_09],
+						1 << 4 | 0 << 2 | 1 << 1 | 1 << 0,
+						0x1F);
+				} else if (dest->data.color.ycbcr_enc == MML_YCBCR_ENC_BT2020) {
+					cmdq_pkt_write(pkt, NULL,
+						base_pa + hdr->data->reg_table[HDR_R2Y_09],
+						1 << 4 | 1 << 2 | 1 << 1 | 1 << 0,
+						0x1F);
+				} else {
+					mml_pq_err("%s:%s, unexpected color space for R2Y setting",
+						__func__, "hdr case timeout");
 				}
-				mml_pq_err("%s:hdr case timeout, %s CSC setting and linear effect",
-					__func__,
+
+				mml_pq_err("%s:%s, %s CSC setting and linear effect",
+					__func__, "hdr case timeout",
 					MML_FMT_IS_YUV(src->format) ? "YUV input" : "RGB input");
+				mml_pq_err("%s:%s, panel nits %u hdr_video_mode %u",
+					__func__, "hdr case timeout",
+					pq_param->current_panel_lum,
+					pq_param->src_hdr_video_mode);
+				mml_pq_err("%s:%s, src gamut %u ycbcr_enc %u color_range %u gamma %u",
+					__func__, "hdr case timeout",
+					src->color.gamut,
+					src->color.ycbcr_enc,
+					src->color.color_range,
+					src->color.gamma);
+				mml_pq_err("%s:%s, dest gamut %u ycbcr_enc %u color_range %u gamma %u",
+					__func__, "hdr case timeout",
+					dest->data.color.gamut,
+					dest->data.color.ycbcr_enc,
+					dest->data.color.color_range,
+					dest->data.color.gamma);
 			}
 		} else {
 			if(relay) {
@@ -1279,11 +1299,13 @@ static s32 hdr_config_frame(struct mml_comp *comp, struct mml_task *task,
 
 	if (!dest->pq_config.en_hdr) {
 		/* relay mode */
-		hdr_relay(comp, pkt, base_pa, src, 0x1, 0x0, is_sdr_path);
+		hdr_relay(comp, pkt, base_pa, src, 0x1, 0x0, is_sdr_path,
+			&task->pq_param[ccfg->node->out_idx], dest);
 		return 0;
 	}
 
-	hdr_relay(comp, pkt, base_pa, src, 0x0, 0x0, is_sdr_path);
+	hdr_relay(comp, pkt, base_pa, src, 0x0, 0x0, is_sdr_path,
+		&task->pq_param[ccfg->node->out_idx], dest);
 
 	do {
 		if ((mml_pq_debug_mode & MML_PQ_FORCE_TIMEOUT_DBG) ||
@@ -1291,7 +1313,8 @@ static s32 hdr_config_frame(struct mml_comp *comp, struct mml_task *task,
 			mml_pq_comp_config_clear(task);
 			hdr_frm->config_success = false;
 			if (!hdr->data->tile_loss) {
-				hdr_relay(comp, pkt, base_pa, src, 0x1, 0x1, is_sdr_path);
+				hdr_relay(comp, pkt, base_pa, src, 0x1, 0x1, is_sdr_path,
+					&task->pq_param[ccfg->node->out_idx], dest);
 				if (hdr->data->two_curve && mml_isdc(mode)) {
 					if (is_sdr_path) {
 						hdr_write_two_curve(comp, task, ccfg,
@@ -1299,8 +1322,8 @@ static s32 hdr_config_frame(struct mml_comp *comp, struct mml_task *task,
 							hdr->data->region_pq_default_oetf, 3);
 					} else {
 						hdr_write_two_curve(comp, task, ccfg,
-							hdr->data->hdr_default_ootf,
-							hdr->data->hdr_default_oetf, 3);
+							NULL,
+							hdr->data->hdr_default_oetf, 2);
 					}
 					cmdq_pkt_write(pkt, NULL,
 						base_pa + hdr->data->reg_table[HDR_LUT_CTRL_0],
@@ -1323,7 +1346,8 @@ static s32 hdr_config_frame(struct mml_comp *comp, struct mml_task *task,
 		if (!result) {
 			hdr_frm->config_success = false;
 			if (!hdr->data->tile_loss) {
-				hdr_relay(comp, pkt, base_pa, src, 0x1, 0x1, is_sdr_path);
+				hdr_relay(comp, pkt, base_pa, src, 0x1, 0x1, is_sdr_path,
+					&task->pq_param[ccfg->node->out_idx], dest);
 				if (hdr->data->two_curve && mml_isdc(mode)) {
 					if (is_sdr_path) {
 						hdr_write_two_curve(comp, task, ccfg,
@@ -1331,8 +1355,8 @@ static s32 hdr_config_frame(struct mml_comp *comp, struct mml_task *task,
 							hdr->data->region_pq_default_oetf, 3);
 					} else {
 						hdr_write_two_curve(comp, task, ccfg,
-							hdr->data->hdr_default_ootf,
-							hdr->data->hdr_default_oetf, 3);
+							NULL,
+							hdr->data->hdr_default_oetf, 2);
 					}
 					cmdq_pkt_write(pkt, NULL,
 						base_pa + hdr->data->reg_table[HDR_LUT_CTRL_0],
