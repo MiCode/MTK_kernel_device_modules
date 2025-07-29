@@ -3677,7 +3677,7 @@
 
 			gpueb-mem-table =
 				<0 0x4000>,   /* 16KB */
-				<1 0x32000>,  /* 204KB */
+				<1 0x64000>,  /* 204KB */
 				<2 0x180000>; /* 1.5MB */
 			gpueb-mem-name-table =
 				"MEM_ID_GPUFREQ", /* GPUFREQ */
