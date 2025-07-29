@@ -9,10 +9,11 @@
 #include <linux/module.h>
 
 static int engine_cooler_enable = -1;
-static int yield_duration = 2000;
+static int ec_duration = 2000;
 static int lr_frame_time_buffer = 300000;
 static int smallest_yield_time;
 #define MAX_ENGINE_COOLER_DATA_SIZE 2
+#define MAX_HEAVY_THREAD_DATA_SIZE 10
 #if !defined(UINT64_MAX)
 #define UINT64_MAX ((uint64_t)0xFFFFFFFFFFFFFFFFULL)
 #endif
@@ -21,13 +22,16 @@ static int smallest_yield_time;
 #define SEC2NSEC (1000000000)
 #endif
 
-static struct engine_cooler_data_internal s_ECData[MAX_ENGINE_COOLER_DATA_SIZE];
+static int s_tgid;
+static struct engine_cooler_data_internal s_ECData;
+static struct engine_cooler_heavy_thread_data s_HeavyThreadData[MAX_HEAVY_THREAD_DATA_SIZE];
+static struct render_frame_info s_render_info[MAX_RENDER_SIZE];
 static bool is_register_fpsgo_cb = false;
 static DEFINE_MUTEX(s_ec_lock);
 DEFINE_MUTEX(g_ec_private_lock);
 
 module_param(engine_cooler_enable, int, 0644);
-module_param(yield_duration, int ,0644);
+module_param(ec_duration, int ,0644);
 module_param(lr_frame_time_buffer, int ,0644);
 module_param(smallest_yield_time, int, 0644);
 
@@ -43,7 +47,6 @@ extern int get_fpsgo_frame_info(int max_num, unsigned long mask,
 
 void engine_cooler_get_info(struct engine_cooler_data *ec_data)
 {
-	int i = 0;
 	struct game_package *pack = NULL;
 	unsigned long *query_mask = NULL;
 	static uint64_t last_update_time;
@@ -60,16 +63,8 @@ void engine_cooler_get_info(struct engine_cooler_data *ec_data)
 	}
 
 	mutex_lock(&s_ec_lock);
-	for (i = 0; i < MAX_ENGINE_COOLER_DATA_SIZE; i++) {
-
-		if (s_ECData[i].data.pid == 0)
-			continue;
-
-		if (ec_data->pid == s_ECData[i].data.pid) {
-			memcpy(ec_data, &(s_ECData[i].data), sizeof(struct engine_cooler_data));
-			break;
-		}
-	}
+	if (ec_data->pid == s_ECData.data.pid)
+		memcpy(ec_data, &(s_ECData.data), sizeof(struct engine_cooler_data));
 	mutex_unlock(&s_ec_lock);
 
 	if (get_now_time() - last_update_time < SEC2NSEC)
@@ -103,26 +98,22 @@ EXPORT_SYMBOL(engine_cooler_get_info);
 void engine_cooler_set_last_sleep_duration(int pid, uint64_t duration)
 {
 	mutex_lock(&s_ec_lock);
-	for (int i = 0; i < MAX_ENGINE_COOLER_DATA_SIZE; i++) {
-		if (s_ECData[i].data.pid == pid) {
-			s_ECData[i].data.last_sleep_duration_ns = duration;
-			break;
-		}
-	}
+	if (pid == s_ECData.data.pid)
+		s_ECData.data.last_sleep_duration_ns = duration;
 	mutex_unlock(&s_ec_lock);
 }
 EXPORT_SYMBOL(engine_cooler_set_last_sleep_duration);
 
-int engine_cooler_get_firtst_sleep_duration(void)
+int engine_cooler_trigger_duration(void)
 {
-	return yield_duration * 1000;
+	return ec_duration * 1000;
 }
-EXPORT_SYMBOL(engine_cooler_get_firtst_sleep_duration);
+EXPORT_SYMBOL(engine_cooler_trigger_duration);
 
 static void engine_cooler_cb_from_fpsgo(unsigned long cmd, struct render_frame_info *iter)
 {
 	if (cmd == 1 << GET_FPSGO_QUEUE_END) {
-		if (iter) 
+		if (iter)
 			update_engine_cooler_data(iter->pid); //need to check queue_end
 	}
 }
@@ -200,96 +191,114 @@ int engine_cooler_get_smallest_yield_time(void)
 }
 EXPORT_SYMBOL(engine_cooler_get_smallest_yield_time);
 
+static int get_max_loading_thread(struct render_frame_info *render_info)
+{
+	int max_dep_pid_loading = 0;
+	int max_dep_loading_idx = -1;
+	int pid = -1;
+
+	for (int k = 0; k < render_info->dep_num; k++) {
+		if (render_info->dep_arr[k].pid == render_info->pid)
+			continue;
+		if (max_dep_pid_loading < render_info->dep_arr[k].loading) {
+			max_dep_pid_loading = render_info->dep_arr[k].loading;
+			max_dep_loading_idx = k; //find max dep loading idx
+		}
+	}
+	if (max_dep_loading_idx != -1)
+		pid = render_info->dep_arr[max_dep_loading_idx].pid;
+
+	return pid;
+}
+
 int get_render_frame_info(struct game_package *pack)
 {
-	int ret = 0, i = 0, j = 0, k = 0;
+	int ret = 0, i = 0, j = 0;
 	unsigned long query_mask = 0;
-	int max_dep_pid_loading = 0;
-	int max_dep_loading_idx = 0;
 	int render_idx = -1;
-	int oldest_update_idx = 0;
-	uint64_t oldest_update_time = UINT64_MAX;
-	bool find_render_target = false;
-	struct render_frame_info *render_info = NULL;
+	bool find_heavy_target = false;
+	int max_loading_pid = -1;
+	uint64_t less_heaviest_count = UINT64_MAX;
+	int less_heaviest_idx = -1;
+	int most_heaviest_count = 0;
+	int most_heaviest_idx = -1;
+
 
 	if (pack->data)
 		query_mask = *((unsigned long *)(pack->data));
 
-	render_info = game_alloc_atomic(sizeof(struct render_frame_info) * MAX_RENDER_SIZE);
-	if (!render_info) {
-		pr_debug("%s: allocate memory failed\n", __func__);
-		goto end;
-	}
-	ret = get_fpsgo_frame_info(MAX_RENDER_SIZE, query_mask, 1, -1, render_info);
-	for (j = 0; j < MAX_RENDER_SIZE; j++) {
-		max_dep_pid_loading = 0;
-		max_dep_loading_idx = 0;
-		for (k = 0; k < render_info[j].dep_num; k++) {
-			if (max_dep_pid_loading < render_info[j].dep_arr[k].loading) {
-				max_dep_pid_loading = render_info[j].dep_arr[k].loading;
-				max_dep_loading_idx = k; //find max dep loading idx
-			}
+	ret = get_fpsgo_frame_info(MAX_RENDER_SIZE, query_mask, 1, -1, s_render_info);
 
-			if (render_info[j].dep_arr[max_dep_loading_idx].pid == pack->cur_pid)
+	for (j = 0; j < MAX_RENDER_SIZE; j++) {
+		for (int k = 0; k < s_render_info->dep_num; k++) {
+			if (s_render_info[j].dep_arr[k].pid == pack->cur_pid)
 				render_idx = j;
 		}
-		if (render_idx != -1)
-			break;
 	}
+	if (render_idx >= 0)
+		max_loading_pid = get_max_loading_thread(&s_render_info[render_idx]);
 
-	if (render_idx == -1)
+	if (render_idx < 0 || max_loading_pid < 0) {
+		game_print_trace("cannot find specific render & logic");
 		goto end;
+	}
 
 	mutex_lock(&s_ec_lock);
-	for (i = 0, find_render_target = false; i < MAX_ENGINE_COOLER_DATA_SIZE; i++) {
-		if (s_ECData[i].data.pid == pack->cur_pid) {
-			s_ECData[i].data.heaviest_pid = render_info[render_idx].dep_arr[max_dep_loading_idx].pid;
-			s_ECData[i].data.render_pid = render_info[render_idx].pid;
-			s_ECData[i].data.target_fps = render_info[render_idx].target_fps;
-			s_ECData[i].latest_update_timestamp = get_now_time();
-			find_render_target = true;
-			game_print_trace("find target cur_pid = %d, render_idx = %d, render_pid = %d, heaviest_pid = %d, target_fps = %d",
-				pack->cur_pid, render_idx, s_ECData[i].data.render_pid, s_ECData[i].data.heaviest_pid, s_ECData[i].data.target_fps);
-			break;
+	if (s_tgid != game_get_tgid(pack->cur_pid)) {
+		s_tgid = game_get_tgid(pack->cur_pid);
+		memset(&s_HeavyThreadData, 0, sizeof(struct engine_cooler_heavy_thread_data) *
+			MAX_HEAVY_THREAD_DATA_SIZE);
+	}
+	for (i = 0, find_heavy_target = false; i < MAX_HEAVY_THREAD_DATA_SIZE; i++) {
+		if (s_HeavyThreadData[i].pid == max_loading_pid) {
+			s_HeavyThreadData[i].heaviest_count += 1;
+			find_heavy_target = true;
 		}
-
-		if (oldest_update_time > s_ECData[i].latest_update_timestamp) {
-			oldest_update_time = s_ECData[i].latest_update_timestamp;
-			oldest_update_idx = i;
+		if (s_HeavyThreadData[i].heaviest_count < less_heaviest_count) {
+			less_heaviest_idx = i;
+			less_heaviest_count = s_HeavyThreadData[i].heaviest_count;
 		}
+		if (s_HeavyThreadData[i].heaviest_count > most_heaviest_count) {
+			most_heaviest_idx = i;
+			most_heaviest_count = s_HeavyThreadData[i].heaviest_count;
+		}
+		if (s_HeavyThreadData[i].heaviest_count != 0)
+			game_print_trace("s_HeavyThreadData[%d] pid = %d heaviest_count=%d", i,
+				s_HeavyThreadData[i].pid, s_HeavyThreadData[i].heaviest_count);
 	}
 
-	if (find_render_target == false) {
-		memset(&(s_ECData[oldest_update_idx]), 0, sizeof(struct engine_cooler_data_internal));
-		s_ECData[oldest_update_idx].latest_update_timestamp = get_now_time();
-		s_ECData[oldest_update_idx].data.pid = pack->cur_pid;
-		s_ECData[oldest_update_idx].data.heaviest_pid =
-			render_info[render_idx].dep_arr[max_dep_loading_idx].pid;
-		s_ECData[oldest_update_idx].data.last_sleep_duration_ns = 0;
-		s_ECData[oldest_update_idx].data.render_pid = render_info[render_idx].pid;
-		s_ECData[oldest_update_idx].data.target_fps = render_info[render_idx].target_fps;
-		game_print_trace("Re-asign target cur_pid = %d, render_idx = %d, render_pid = %d, heaviest_pid = %d, target_fps = %d",
-			pack->cur_pid, render_idx, s_ECData[oldest_update_idx].data.render_pid,
-			s_ECData[oldest_update_idx].data.heaviest_pid,
-			s_ECData[oldest_update_idx].data.target_fps);
+	if (less_heaviest_idx != -1 && find_heavy_target == false) {
+		s_HeavyThreadData[less_heaviest_idx].pid = max_loading_pid;
+		s_HeavyThreadData[less_heaviest_idx].heaviest_count = 1;
+	}
+
+	if (most_heaviest_idx != -1 && s_HeavyThreadData[most_heaviest_idx].pid == pack->cur_pid) {
+		s_ECData.data.pid = pack->cur_pid;
+		s_ECData.data.heaviest_pid = pack->cur_pid;
+		s_ECData.data.render_pid = s_render_info[render_idx].pid;
+		s_ECData.data.target_fps = s_render_info[render_idx].target_fps;
+		if (s_ECData.data.pid != pack->cur_pid)
+			s_ECData.data.last_sleep_duration_ns = 0;
 	}
 	mutex_unlock(&s_ec_lock);
 
 end:
-	game_free(render_info, sizeof(struct render_frame_info) * MAX_RENDER_SIZE);
 	return ret;
 }
 
 void update_engine_cooler_data(int cur_pid)
 {
-	int i = 0;
-
 	mutex_lock(&s_ec_lock);
-	for (i = 0; i < MAX_ENGINE_COOLER_DATA_SIZE; i++) {
-		if (s_ECData[i].data.render_pid == cur_pid) {
-			s_ECData[i].data.last_sleep_duration_ns = 0;
-			break;
-		}
-	}
+	if (s_ECData.data.render_pid == cur_pid)
+		s_ECData.data.last_sleep_duration_ns = 0;
+	mutex_unlock(&s_ec_lock);
+}
+
+void game_ec_init(void)
+{
+	mutex_lock(&s_ec_lock);
+	memset(&s_ECData, 0, sizeof(struct engine_cooler_data_internal));
+	memset(s_HeavyThreadData, 0, sizeof(struct engine_cooler_heavy_thread_data) * MAX_HEAVY_THREAD_DATA_SIZE);
+	memset(s_render_info, 0, sizeof(struct render_frame_info) * MAX_RENDER_SIZE);
 	mutex_unlock(&s_ec_lock);
 }

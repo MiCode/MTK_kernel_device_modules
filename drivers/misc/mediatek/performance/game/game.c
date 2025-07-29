@@ -276,6 +276,7 @@ static int __init game_init(void)
 	wake_up_process(kGame_task);
 	game_sysfs_init();
 	frame_interpolate_init();
+	game_ec_init();
 	loom_init();
 end:
 	return ret;
