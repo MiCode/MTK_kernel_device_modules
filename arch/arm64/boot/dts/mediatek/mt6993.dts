@@ -1872,8 +1872,8 @@ pkvm_seninf_6993,pkvm_cmdq";
 			reg = <0x4d8 0x4>;
 		};
 
-		fab_info: fab-info@234 {
-			reg = <0x234 0x4>;
+		fab_info: fab-info@c8 {
+			reg = <0xc8 0x4>;
 		};
 	};
 
@@ -18723,7 +18723,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 			nvmem-cells =<&fab_info>;
 			nvmem-cell-names = "fab_info";
-			es-version = <16>;
 		};
 
 		cpu_power_throttling: cpu-power-throttling {
@@ -18765,7 +18764,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 			nvmem-cells =<&fab_info>;
 			nvmem-cell-names = "fab_info";
-			es-version = <16>;
 		};
 
 		gpu_power_throttling: gpu-power-throttling {
@@ -18794,7 +18792,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 			nvmem-cells =<&fab_info>;
 			nvmem-cell-names = "fab_info";
-			es-version = <16>;
 		};
 
 		apu_power_throttling: apu-power-throttling {
@@ -18814,7 +18811,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 			nvmem-cells =<&fab_info>;
 			nvmem-cell-names = "fab_info";
-			es-version = <16>;
 		};
 
 		md_power_throttling: md-power-throttling {
@@ -18855,7 +18851,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 			nvmem-cells =<&fab_info>;
 			nvmem-cell-names = "fab_info";
-			es-version = <16>;
 		};
 
 		es_low_battery_throttling: es-low-battery-throttling {
