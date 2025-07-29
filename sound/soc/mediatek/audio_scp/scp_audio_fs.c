@@ -133,6 +133,7 @@ static int scp_audio_debug_cmds_init_message(void)
 	}
 
 	do {
+		retry_count--;
 		ret = scp_send_message_with_wakelock(SCP_AUDIO_IPI_DBG_INIT,
 			mem_info, sizeof(mem_info), 0, 0);
 		if (ret != ADSP_IPI_DONE)
