@@ -982,7 +982,7 @@ void mtk_dbgtp_default_cfg_load(struct mtk_drm_private *priv)
 
 	/* debug top default setting */
 	priv->mtk_dbgtp_sta.dbgtp_en = true;
-	priv->mtk_dbgtp_sta.dbgtp_switch = 0x1795;
+	priv->mtk_dbgtp_sta.dbgtp_switch = 0x4;
 	priv->mtk_dbgtp_sta.dbgtp_prd_trig_en = true;
 	priv->mtk_dbgtp_sta.dbgtp_trig_prd = 260;
 	priv->mtk_dbgtp_sta.dbgtp_timeout_en = 0x0;
@@ -1078,7 +1078,7 @@ void mtk_dbgtp_default_cfg_load(struct mtk_drm_private *priv)
 
 	/* ovlsys default setting */
 	/* ovlsys0 */
-	priv->mtk_dbgtp_sta.ovlsys[0].subsys_mon_en = true;
+	priv->mtk_dbgtp_sta.ovlsys[0].subsys_mon_en = false;
 	priv->mtk_dbgtp_sta.ovlsys[0].subsys_smi_trig_en = true;
 	priv->mtk_dbgtp_sta.ovlsys[0].subsys_crossbar_info_en = false;
 	priv->mtk_dbgtp_sta.ovlsys[0].subsys_inlinerotate_info_en = false;
@@ -1231,7 +1231,7 @@ void mtk_dbgtp_default_cfg_load(struct mtk_drm_private *priv)
 	priv->mtk_dbgtp_sta.mmlsys[1].crossbar_mon_cfg0 = 0x00000000;//MML_PQ_OUT
 	priv->mtk_dbgtp_sta.mmlsys[1].crossbar_mon_cfg1 = 0x00000000;//MML_PQ_IN
 	/* mmlsys2 */
-	priv->mtk_dbgtp_sta.mmlsys[2].subsys_mon_en = true;
+	priv->mtk_dbgtp_sta.mmlsys[2].subsys_mon_en = false;
 	priv->mtk_dbgtp_sta.mmlsys[2].subsys_smi_trig_en = true;
 	priv->mtk_dbgtp_sta.mmlsys[2].subsys_crossbar_info_en = true;
 	priv->mtk_dbgtp_sta.mmlsys[2].subsys_inlinerotate_info_en = false;
