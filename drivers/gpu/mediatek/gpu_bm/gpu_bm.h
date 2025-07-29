@@ -15,6 +15,7 @@
 #define GPU_BW_MLP_MODE                 (6)
 #define GPU_BW_FB_PRED_MODE             (7)
 #define GPU_BW_PEAK_SP_PERF_MODE        (8)
+#define GPU_BW_MED_CURVE_MODE           (9)
 
 #define GPU_BW_RATIO_CEIL               (300)
 #define GPU_BW_RATIO_FLOOR              (10)

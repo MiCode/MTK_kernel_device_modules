@@ -27,9 +27,9 @@ static int g_mode_hmlp_flag;
 static DEFINE_MUTEX(g_GPU_BM_lock);
 static unsigned int g_mode;
 static unsigned int g_value;
-static unsigned int idx, min_idx, high_idx, low_idx;
+static int idx, min_idx, high_idx, med_idx, low_idx;
 #if defined(CONFIG_MTK_GPUFREQ_V2)
-static unsigned int idx_freq, min_freq, high_freq, low_freq, peak_perf_limit_freq;
+static unsigned int idx_freq, min_freq, high_freq, med_freq, low_freq, peak_perf_limit_freq;
 static int gpu_bm_freq_inited;
 #endif
 static int gpu_bm_idx_inited;
@@ -179,13 +179,29 @@ static void setupfw_work_handler(struct work_struct *work)
 	int ret = -1;
 
 	qos_d.cmd = QOS_IPI_SETUP_GPU_INFO;
-	qos_d.u.gpu_info.addr = (unsigned int)setupfw_data.phyaddr;
+	if (setupfw_data.phyaddr <= UINT_MAX && setupfw_data.size <= UINT_MAX) {
+		qos_d.u.gpu_info.addr = (unsigned int)setupfw_data.phyaddr;
+
 #if IS_ENABLED(CONFIG_ARM64)
-	qos_d.u.gpu_info.addr_hi = (unsigned int)(setupfw_data.phyaddr >> 32);
+		qos_d.u.gpu_info.addr_hi = (unsigned int)(setupfw_data.phyaddr >> 32);
 #else
-	qos_d.u.gpu_info.addr_hi = (unsigned int)(setupfw_data.phyaddr);
+		qos_d.u.gpu_info.addr_hi = (unsigned int)(setupfw_data.phyaddr);
 #endif /* CONFIG_ARM64 */
-	qos_d.u.gpu_info.size = (unsigned int)setupfw_data.size;
+
+		qos_d.u.gpu_info.size = (unsigned int)setupfw_data.size;
+
+		ret = 0;
+	} else {
+		qos_d.u.gpu_info.addr = 0;
+		qos_d.u.gpu_info.addr_hi = 0;
+		qos_d.u.gpu_info.size = 0;
+		ret = -1;
+	}
+
+	if (ret == -1) {
+		pr_info("%s: set qos_d fail (%d)\n", __func__, ret);
+		return;
+	}
 
 #ifdef CONFIG_MTK_TINYSYS_SSPM_V3
 	ret = qos_ipi_to_sspm_scmi_command(qos_d.cmd,
@@ -236,6 +252,7 @@ void MTKGPUQoS_mode(int seg_flag)
 
 	mtk_get_gpu_loading(&loading);
 
+/* get gpu opp or freq */
 #if defined(CONFIG_MTK_GPUFREQ_V2)
 	idx_freq = gpufreq_get_cur_out_freq(TARGET_DEFAULT);
 	idx = gpufreq_get_cur_oppidx(TARGET_DEFAULT);
@@ -249,6 +266,7 @@ void MTKGPUQoS_mode(int seg_flag)
 			high_idx = gpu_opp_high;
 		else
 			high_idx = (gpu_opp_num - 1) / 4 + 1;
+		med_idx = (gpu_opp_num - 1) / 5 * 2 + 1;
 		low_idx = (gpu_opp_num - 1) / 3 * 2 + 1;
 		gpu_bm_idx_inited = 1;
 	}
@@ -256,6 +274,7 @@ void MTKGPUQoS_mode(int seg_flag)
 	if (!gpu_bm_freq_inited && idx_freq > 0) {
 		min_freq = gpufreq_get_freq_by_idx(TARGET_DEFAULT, min_idx);
 		high_freq = gpufreq_get_freq_by_idx(TARGET_DEFAULT, high_idx);
+		med_freq = gpufreq_get_freq_by_idx(TARGET_DEFAULT, med_idx);
 		low_freq = gpufreq_get_freq_by_idx(TARGET_DEFAULT, low_idx);
 		peak_perf_limit_freq = gpufreq_get_freq_by_idx(TARGET_DEFAULT, GPU_BM_PEAK_INDEX_TOP_LIMIT);
 		gpu_bm_freq_inited = 1;
@@ -272,11 +291,13 @@ void MTKGPUQoS_mode(int seg_flag)
 			high_idx = gpu_opp_high;
 		else
 			high_idx = (gpu_opp_num - 1) / 4 + 1;
+		med_idx = (gpu_opp_num - 1) / 5 * 2 + 1;
 		low_idx = (gpu_opp_num - 1) / 3 * 2 + 1;
 		gpu_bm_idx_inited = 1;
 	}
 #endif
 
+/* Check gpu qos use mode */
 	/* sport mode */
 	if (g_mode_sport_flag) {
 		/* if gpu freq at top quartile, boost dram freq. */
@@ -345,6 +366,11 @@ void MTKGPUQoS_mode(int seg_flag)
 						gpu_info_buf->freq = GPU_BM_PEAK_PERF_MODE;
 				else if (g_mode_hmlp_flag == GPU_BW_MLP_MODE && idx_freq < high_freq)
 					gpu_info_buf->freq = g_value;
+				else if (idx_freq >= med_freq && idx_freq < high_freq)
+					if(gpu_opp_num > 50)
+						gpu_info_buf->freq = GPU_BW_MED_CURVE_MODE;
+					else
+						gpu_info_buf->freq = 0;
 				else
 					gpu_info_buf->freq = 0;
 
@@ -370,6 +396,11 @@ void MTKGPUQoS_mode(int seg_flag)
 						gpu_info_buf->freq = GPU_BM_PEAK_PERF_MODE;
 				else if (g_mode_hmlp_flag == GPU_BW_MLP_MODE && idx > high_idx)
 					gpu_info_buf->freq = g_value;
+				else if (idx <= med_idx && idx > high_idx)
+					if(gpu_opp_num > 50)
+						gpu_info_buf->freq = GPU_BW_MED_CURVE_MODE;
+					else
+						gpu_info_buf->freq = 0;
 				else
 					gpu_info_buf->freq = 0;
 
@@ -488,7 +519,7 @@ EXPORT_SYMBOL(MTKGPUQoS_mode_ratio);
 
 static void bw_v1_gpu_power_change_notify(int power_on)
 {
-	static int ctx;
+	static unsigned int ctx;
 
 	if (!power_on) {
 		ctx = gpu_info_buf->ctx;
@@ -545,7 +576,7 @@ void MTKGPUQoS_setup(struct v1_data *v1, phys_addr_t phyaddr, size_t size)
 	g_mode_hmlp_flag = 0;
 	setting_priority = 0;
 #if defined(CONFIG_MTK_GPUFREQ_V2)
-	idx_freq = min_freq = high_freq = low_freq = peak_perf_limit_freq = -1;
+	idx_freq = min_freq = high_freq = med_freq = low_freq = peak_perf_limit_freq = 0;
 	gpu_bm_freq_inited = 0;
 #endif
 
