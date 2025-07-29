@@ -356,7 +356,10 @@ static void set_max_framerate(UINT16 framerate, kal_bool min_framelength_en)
 static void write_shutter(kal_uint32 shutter)
 {
 	kal_uint16 realtime_fps = 0;
+	int l_shift = 0;
 
+	LOG_INF("E: shutter = %d\n", shutter);
+	// Set framelength
 	spin_lock(&imgsensor_drv_lock);
 	if (shutter > imgsensor.min_frame_length - imgsensor_info.margin)
 		imgsensor.frame_length = shutter + imgsensor_info.margin;
@@ -365,14 +368,21 @@ static void write_shutter(kal_uint32 shutter)
 	if (imgsensor.frame_length > imgsensor_info.max_frame_length)
 		imgsensor.frame_length = imgsensor_info.max_frame_length;
 	spin_unlock(&imgsensor_drv_lock);
+
+	// Set shutter
 	shutter = (shutter < imgsensor_info.min_shutter) ?
 		imgsensor_info.min_shutter : shutter;
-	shutter =
-		(shutter >
-			(imgsensor_info.max_frame_length -
-			imgsensor_info.margin)) ?
-			(imgsensor_info.max_frame_length -
-			imgsensor_info.margin) : shutter;
+	// Set long exposure: l_shift
+	if(shutter > (imgsensor_info.max_frame_length - imgsensor_info.margin)) {
+		for(l_shift = 1; l_shift < 11; l_shift++)
+			if((shutter >> l_shift)
+				< (imgsensor_info.max_frame_length - imgsensor_info.margin))
+				break;
+	}
+	if(l_shift > 11)
+		l_shift = 11;
+	shutter = shutter >> l_shift;
+	LOG_INF("l_shift = %d, shutter = %d\n", l_shift, shutter);
 
 	// Framelength should be an even number
 	shutter = (shutter >> 1) << 1;
@@ -385,20 +395,24 @@ static void write_shutter(kal_uint32 shutter)
 		else if (realtime_fps >= 147 && realtime_fps <= 150)
 			set_max_framerate(146, 0);
 		else {
-			// Extend frame length
+			// Update frame length register
 			write_cmos_sensor(0x0340,
 				imgsensor.frame_length & 0xFFFF);
 		}
 	} else {
-		// Extend frame length
+		// Update frame length register
 		write_cmos_sensor(0x0340,
 			imgsensor.frame_length & 0xFFFF);
 	}
 
-	// Update Shutter
-	write_cmos_sensor(0X0202, shutter & 0xFFFF);
+	// Update shutter register
+	write_cmos_sensor(0x0202, shutter);
 
-	LOG_INF("Exit shutter =%d, framelength =%d\n",
+	// Update l_shift register
+	write_cmos_sensor_8(0x0702, l_shift);
+	write_cmos_sensor_8(0X0704, l_shift);
+
+	LOG_INF("X: shutter = %d, framelength = %d\n",
 		shutter,
 		imgsensor.frame_length);
 }
