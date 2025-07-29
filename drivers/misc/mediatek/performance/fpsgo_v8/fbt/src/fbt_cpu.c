@@ -1769,7 +1769,7 @@ static void fbt_query_dep_list_loading(struct render_info *thr)
 
 		if (cur_runtime > 0) {
 			thr->dep_arr[i].latest_runtime = cur_runtime;
-			if (prev_runtime > 0 && cur_runtime > prev_runtime && window > 0)
+			if (prev_runtime > 0 && cur_runtime >= prev_runtime && window > 0)
 				thr->dep_arr[i].loading =
 					(int)div64_u64((cur_runtime - prev_runtime) * 100, window);
 		}
