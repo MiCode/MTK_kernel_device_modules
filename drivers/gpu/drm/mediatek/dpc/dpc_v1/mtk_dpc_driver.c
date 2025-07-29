@@ -4954,18 +4954,6 @@ static int mtk_dpc_probe_v1(struct platform_device *pdev)
 		return ret;
 	}
 
-#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
-	if (g_priv->mmdvfs_power_sync) {
-		if (dpc_enable_vcp(true, DPC_SUBSYS_DISP) < 0)
-			DPCERR("failed to enable vcp and register vcp nb\n");
-		else {
-			priv->vcp_nb.notifier_call = dpc_vcp_notifier;
-			vcp_A_register_notify_ex(VDISP_FEATURE_ID, &priv->vcp_nb);
-			dpc_enable_vcp(false, DPC_SUBSYS_DISP);
-		}
-	}
-#endif
-
 	/* enable external signal from DSI and TE */
 	writel(0x1F, dpc_base + DISP_REG_DPC_DISP_EXT_INPUT_EN);
 	writel(0x3, dpc_base + DISP_REG_DPC_MML_EXT_INPUT_EN);
@@ -4998,6 +4986,18 @@ static int mtk_dpc_probe_v1(struct platform_device *pdev)
 	spin_lock_init(&vlp_lock);
 	spin_lock_init(&dpc_lock);
 	spin_lock_init(&dpc_state_lock);
+
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
+	if (g_priv->mmdvfs_power_sync) {
+		if (dpc_enable_vcp(true, DPC_SUBSYS_DISP) < 0)
+			DPCERR("failed to enable vcp and register vcp nb\n");
+		else {
+			priv->vcp_nb.notifier_call = dpc_vcp_notifier;
+			vcp_A_register_notify_ex(VDISP_FEATURE_ID, &priv->vcp_nb);
+			dpc_enable_vcp(false, DPC_SUBSYS_DISP);
+		}
+	}
+#endif
 
 	mtk_vidle_register(&funcs_v1, DPC_VER1);
 	mml_dpc_register(&funcs_v1, DPC_VER1);
