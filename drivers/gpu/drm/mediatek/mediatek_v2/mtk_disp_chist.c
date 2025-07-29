@@ -625,14 +625,14 @@ static int disp_chist_set_config(struct mtk_ddp_comp *comp,
 			channel_config.roi_end_y = channel_config.roi_end_y
 				? channel_config.roi_end_y : chist_data->primary_data->frame_height - 1;
 
-			if (channel_config.roi_end_x <= channel_config.roi_start_x) {
+			if (channel_config.roi_end_x < channel_config.roi_start_x) {
 				PQ_ERR("%s, config invalid! comp:%d ch:%d roi_start_x:%d roi_end_x:%d\n",
 					__func__, comp->id, channel_id,
 					channel_config.roi_start_x, channel_config.roi_end_x);
 				channel_config.roi_start_x = 0;
 				channel_config.roi_end_x = chist_data->primary_data->frame_width - 1;
 			}
-			if (channel_config.roi_end_y <= channel_config.roi_start_y) {
+			if (channel_config.roi_end_y < channel_config.roi_start_y) {
 				PQ_ERR("%s, config invalid! comp:%d ch:%d roi_start_y:%d roi_end_y:%d\n",
 					__func__, comp->id, channel_id,
 					channel_config.roi_start_y, channel_config.roi_end_y);
