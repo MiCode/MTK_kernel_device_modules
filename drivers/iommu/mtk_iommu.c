@@ -382,18 +382,20 @@ static const struct mtk_iommu_iova_region mt6855_multi_dom[] = {
 };
 
 /*
- * 0.NORMAL: total: 8.125G + 96M
+ * 0.NORMAL: total: 6.125G + 96M
  *	-CAM/MDP
  *	-NORMAL: 0x1_0000_0000~0x1_05FF_FFFF(96MB)
  *	-LK
  *	-NORMAL: 0x1_0800_0000~0x1_0FFF_FFFF(128MB)
  *	-Video uP
- *	-NORMAL: 0x2_0000_0000~0x3_FFFF_FFFF(8GB)
+ *	-JPEG/ENC
+ *	-NORMAL: 0x2_8000_0000~0x3_FFFF_FFFF(6GB)
  * 1.CAM/MDP:        0x0000_4000~0xFBFF_FFFF(4GB)
  * 2.AIE_RESV_64M:   0xFC00_0000~0xFFFF_FFFF(64MB)
  * 3.LK_RESV:        0x1_0600_0000~0x1_07FF_FFFF(32MB)
  * 4.VDO_UP:         0x1_1000_0000~0x1_6FFF_FFFF(1.5GB)
  * 5.VDEC:           0x1_7000_0000~0x1_FFFF_FFFF(2.25GB)
+ * 6.JPEG_VENC:      0x2_0000_0000~0x2_7FFF_FFFF(2GB)
  */
 static const struct mtk_iommu_iova_region mt6858_multi_dom_mm[] = {
 #if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
@@ -403,6 +405,7 @@ static const struct mtk_iommu_iova_region mt6858_multi_dom_mm[] = {
 	{ .iova_base = 0x106000000ULL, .size = SZ_32M, .type = NORMAL},		/* 3.LK_RESV:32MB */
 	{ .iova_base = 0x110000000ULL, .size = 0x60000000, .type = PROTECTED},	/* 4.VDO_UP:1.5GB */
 	{ .iova_base = 0x170000000ULL, .size = 0x90000000, .type = NORMAL},	/* 5.VDEC:2.25GB */
+	{ .iova_base = 0x200000000ULL, .size = 0x80000000, .type = NORMAL},	/* 6.JPEG_VENC:2GB */
 #endif
 };
 
