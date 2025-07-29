@@ -1243,8 +1243,9 @@
 
 	teeperf {
 		compatible = "mediatek,teeperf";
-		svp-cpu-hint-mode = <1>;
-		svp-cpu-uclamp-min = <409>;
+		cpu-type = <2>;
+		cpu-map = <2>;
+		svp-cpu-index = <18>;
 	};
 
 	dfd_mcu: dfd-mcu {
