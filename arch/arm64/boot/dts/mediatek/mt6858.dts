@@ -1508,6 +1508,22 @@
 			};
 		};
 
+		spm_resource_setting: spm-resource-setting {
+			compatible = "mediatek,spm-resource-setting";
+			setting-size = <11>;
+			setting-value-table =
+					<0x53504d00>,
+					<0x00000f3c>,
+					<0x0000003c>,
+					<0x00000f32>,
+					<0x0000007d>,
+					<0x00000f3c>,
+					<0x0000007d>,
+					<0x00000000>,
+					<0x00000001>,
+					<0x000006a4>,
+					<0x0000003c>;
+		};
 	};
 
 	mgm: mgm {
