@@ -1263,6 +1263,7 @@
 		nr-header-row = <0>;
 		chip-id-offset = <0x18>;
 		check-pattern-offset = <0x0>;
+		bypass-check-dfd-status = <1>; /* This property allows bypassing DFD status check */
 		dfd-disable-efuse = <25 12>;
 		efuse-sec-ctrl = <27 0 6>;
 		dfd_cache: dfd-cache {
