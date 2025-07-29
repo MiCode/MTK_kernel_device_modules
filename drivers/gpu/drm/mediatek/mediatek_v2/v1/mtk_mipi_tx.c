@@ -5025,12 +5025,13 @@ static int mtk_mipi_tx_pll_prepare_mt6858(struct clk_hw *hw)
 		return -EINVAL;
 	}
 
-	writel(0x0, mipi_tx->regs + MIPITX_PRESERVED);
-	writel(0x00FF12E0, mipi_tx->regs + MIPITX_PLL_CON4);
+	mtk_mipi_tx_update_bits(mipi_tx, MIPITX_VOLTAGE_SEL,
+		FLD_RG_DSI_PRD_REF_SEL, 0x0);
+
 	/* BG_LPF_EN / BG_CORE_EN */
-	writel(0x3FFF0180, mipi_tx->regs + MIPITX_LANE_CON);
-	usleep_range(500, 600);
 	writel(0x3FFF0080, mipi_tx->regs + MIPITX_LANE_CON);
+	usleep_range(500, 600);
+	writel(0x3FFF00C0, mipi_tx->regs + MIPITX_LANE_CON);
 
 #ifdef IF_ONE
 	/* Switch OFF each Lane */
@@ -5116,6 +5117,8 @@ static int mtk_mipi_tx_pll_cphy_prepare_mt6858(struct clk_hw *hw)
 	/*set volate: cphy need 500mV*/
 	mtk_mipi_tx_update_bits(mipi_tx, MIPITX_VOLTAGE_SEL,
 		FLD_RG_DSI_HSTX_LDO_REF_SEL, 0xD << 6);
+	mtk_mipi_tx_update_bits(mipi_tx, MIPITX_VOLTAGE_SEL,
+		FLD_RG_DSI_PRD_REF_SEL, 0x0);
 
 	/* change the mipi_volt */
 	if (mipi_volt) {
@@ -5124,13 +5127,11 @@ static int mtk_mipi_tx_pll_cphy_prepare_mt6858(struct clk_hw *hw)
 			FLD_RG_DSI_HSTX_LDO_REF_SEL, mipi_volt << 6);
 	}
 
-	writel(0x0, mipi_tx->regs + MIPITX_PRESERVED);
 	/* step 0 */
 	/* BG_LPF_EN / BG_CORE_EN */
-	writel(0x00FF12E0, mipi_tx->regs + MIPITX_PLL_CON4);
 	/* BG_LPF_EN=0 BG_CORE_EN=1 */
 	writel(0x3FFF0088, mipi_tx->regs + MIPITX_LANE_CON);
-	//usleep_range(1, 1); /* 1us */
+	usleep_range(1, 2); /* 1us */
 	/* BG_LPF_EN=1 */
 	writel(0x3FFF00C8, mipi_tx->regs + MIPITX_LANE_CON);
 
@@ -5957,9 +5958,6 @@ static void mtk_mipi_tx_pll_unprepare_mt6858(struct clk_hw *hw)
 	dev_dbg(mipi_tx->dev, "unprepare\n");
 
 	mtk_mipi_tx_clear_bits(mipi_tx, MIPITX_PLL_CON1, RG_DSI_PLL_EN);
-
-	/* TODO: should clear bit8 to set SW_ANA_CK_EN here */
-	mtk_mipi_tx_clear_bits(mipi_tx, MIPITX_SW_CTRL_CON4, 1);
 
 	mtk_mipi_tx_set_bits(mipi_tx, MIPITX_PLL_PWR, AD_DSI_PLL_SDM_ISO_EN);
 	mtk_mipi_tx_clear_bits(mipi_tx, MIPITX_PLL_PWR, AD_DSI_PLL_SDM_PWR_ON);
