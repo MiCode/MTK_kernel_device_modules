@@ -3069,33 +3069,31 @@ static void dpc_ap_vote_mmpc(bool add, const enum mtk_vidle_voter_user user)
 static void dpc_ap_ref_cnt(bool add, const enum mtk_vidle_voter_user user, bool lock)
 {
 	unsigned long flags;
-	s32 cnt;
+	s32 cnt, old_cnt;
 
 	if (lock)
 		spin_lock_irqsave(&g_priv->excp_spin_lock, flags);
 
-	cnt = add ? atomic_inc_return(&hwccf_ref) : atomic_dec_return(&hwccf_ref);
-	if (add && cnt == 1) {
+	old_cnt = add ? atomic_fetch_or(BIT(user), &hwccf_ref) : atomic_fetch_and(~BIT(user), &hwccf_ref);
+	cnt = atomic_read(&hwccf_ref);
+
+	if (!old_cnt && cnt) {
 		dpc_mmp(hwccf_vote, MMPROFILE_FLAG_START, BIT(28) | user, cnt);
 		dpc_hwccf_vote(VOTE_SET, NULL, user, NO_LOCK, 0);
-	} else if (!add && cnt == 0) {
+	} else if (old_cnt && !cnt) {
 		dpc_hwccf_vote(VOTE_CLR, NULL, user, NO_LOCK, 0);
 		dpc_mmp(hwccf_vote, MMPROFILE_FLAG_END, BIT(29) | user, cnt);
-	} else if (cnt < 0) {
-		atomic_set_release(&hwccf_ref, 0);
-		dpc_mmp(folder, MMPROFILE_FLAG_PULSE, (add ? BIT(28) : BIT(29)) | user, 0xdead0022);
-	} else {
+	} else
 		dpc_mmp(hwccf_vote, MMPROFILE_FLAG_PULSE, (add ? BIT(28) : BIT(29)) | user, cnt);
-	}
 
 	if (lock)
 		spin_unlock_irqrestore(&g_priv->excp_spin_lock, flags);
 
-	if (cnt < 0) {
+	if (!add && !(old_cnt & BIT(user))) {
 		if (unlikely(irq_aee))
-			DPCAEE("underflow user(%u) hwccf_ref(%d)", user, cnt);
+			DPCAEE("underflow user(%u) hwccf_ref(%#x)", user, cnt);
 		else
-			DPCERR("underflow user(%u) hwccf_ref(%d)", user, cnt);
+			DPCERR("underflow user(%u) hwccf_ref(%#x)", user, cnt);
 	}
 }
 
