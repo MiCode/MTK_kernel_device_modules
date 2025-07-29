@@ -405,13 +405,23 @@ static void release_pq_task(struct kref *ref)
 	release_tile_init_result(pq_task->tile_init.result);
 	release_comp_config_result(pq_task->comp_config.result);
 
-	mml_pq_msg("%s aal_hist[%p] hdr_hist[%p]",
-		__func__, pq_task->aal_hist[0], pq_task->hdr_hist[0]);
+	mml_pq_msg("%s aal_hist[%p] aal_hist[%p] hdr_hist[%p] hdr_hist[%p]",
+		__func__, pq_task->aal_hist[0], pq_task->aal_hist[1],
+		pq_task->hdr_hist[0], pq_task->hdr_hist[1]);
 
 	kfree(pq_task->aal_readback.readback_data.pipe0_hist);
+	kfree(pq_task->aal_hist[0]);
+	pq_task->aal_hist[0] = NULL;
 	kfree(pq_task->aal_readback.readback_data.pipe1_hist);
+	kfree(pq_task->aal_hist[1]);
+	pq_task->aal_hist[1] = NULL;
+
 	kfree(pq_task->hdr_readback.readback_data.pipe0_hist);
+	kfree(pq_task->hdr_hist[0]);
+	pq_task->hdr_hist[0] = NULL;
 	kfree(pq_task->hdr_readback.readback_data.pipe1_hist);
+	kfree(pq_task->hdr_hist[1]);
+	pq_task->hdr_hist[1] = NULL;
 
 	kfree(pq_task->tile_init.frame_data);
 	kfree(pq_task->comp_config.frame_data);
