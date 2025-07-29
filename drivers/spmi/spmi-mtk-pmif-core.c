@@ -1019,6 +1019,7 @@ static struct pmif mt6xxx_pmif_arb[] = {
 	},
 };
 
+
 static struct pmif mt6989_pmif_arb[] = {
 	{
 		.regs = mt6xxx_regs,
@@ -1055,6 +1056,19 @@ static struct pmif mt6993_pmif_arb[] = {
 		.read_cmd = pmif_spmi_read_cmd,
 		.write_cmd = pmif_spmi_write_cmd,
 		.caps = 5,
+	},
+};
+
+static struct pmif mt6895_pmif_arb[] = {
+	{
+		.regs = mt6xxx_regs,
+		.spmimst_regs = mt6853_spmi_regs,
+		.soc_chan = 2,
+		.mstid = SPMI_MASTER_1,
+		.pmifid = PMIF_PMIFID_SPMI0,
+		.read_cmd = pmif_spmi_read_cmd,
+		.write_cmd = pmif_spmi_write_cmd,
+		.caps = 6,
 	},
 };
 
@@ -2584,6 +2598,60 @@ static int mtk_spmi_probe(struct platform_device *pdev)
 			dev_notice(&pdev->dev, "[SPMIMST]:failed to enable spmi master clk\n");
 			goto err_put_ctrl;
 		}
+	} else if(arb->caps == 6) {
+		arb->pmif_clk_mux = devm_clk_get(&pdev->dev, "pmif_clk_mux");
+		if (IS_ERR(arb->pmif_clk_mux))
+			dev_notice(&pdev->dev, "[PMIF]:failed to get clock: %ld\n",
+				PTR_ERR(arb->pmif_clk_mux));
+		else
+			err = clk_prepare_enable(arb->pmif_clk_mux);
+		if (err)
+			dev_notice(&pdev->dev, "[PMIF]:failed to enable pmif_clk_mux\n");
+
+		arb->spmimst_m_clk_mux = devm_clk_get(&pdev->dev, "spmimst_m_clk_mux");
+		if (IS_ERR(arb->spmimst_m_clk_mux))
+			dev_notice(&pdev->dev, "[SPMIMST]:failed to get clock: %ld\n",
+				PTR_ERR(arb->spmimst_m_clk_mux));
+		else
+			err = clk_prepare_enable(arb->spmimst_m_clk_mux);
+		if (err)
+			dev_notice(&pdev->dev, "[PMIF]:failed to enable spmimst_m_clk\n");
+
+		arb->spmimst_p_clk_mux = devm_clk_get(&pdev->dev, "spmimst_p_clk_mux");
+		if (IS_ERR(arb->spmimst_p_clk_mux))
+			dev_notice(&pdev->dev, "[SPMIMST]:failed to get clock: %ld\n",
+				PTR_ERR(arb->spmimst_p_clk_mux));
+		else
+			err = clk_prepare_enable(arb->spmimst_p_clk_mux);
+		if (err)
+			dev_notice(&pdev->dev, "[SPMIMST]:failed to enable spmimst_p_clk\n");
+
+		arb->vlp_pmif_clk_mux = devm_clk_get(&pdev->dev, "vlp_pmif_clk_mux");
+		if (IS_ERR(arb->vlp_pmif_clk_mux))
+			dev_notice(&pdev->dev, "[PMIF]:failed to get clock: %ld\n",
+				PTR_ERR(arb->vlp_pmif_clk_mux));
+		else
+			err = clk_prepare_enable(arb->vlp_pmif_clk_mux);
+		if (err)
+			dev_notice(&pdev->dev, "[PMIF]:failed to enable vlp_pmif_clk\n");
+
+		arb->vlp_spmimst_m_clk_mux = devm_clk_get(&pdev->dev, "vlp_spmimst_m_clk_mux");
+		if (IS_ERR(arb->vlp_spmimst_m_clk_mux))
+			dev_notice(&pdev->dev, "[SPMIMST]:failed to get clock: %ld\n",
+				PTR_ERR(arb->vlp_spmimst_m_clk_mux));
+		else
+			err = clk_prepare_enable(arb->vlp_spmimst_m_clk_mux);
+		if (err)
+			dev_notice(&pdev->dev, "[SPMIMST]:failed to enable vlp_spmimst_m_clk\n");
+
+		arb->vlp_spmimst_p_clk_mux = devm_clk_get(&pdev->dev, "vlp_spmimst_p_clk_mux");
+		if (IS_ERR(arb->vlp_spmimst_p_clk_mux))
+			dev_notice(&pdev->dev, "[SPMIMST]:failed to get clock: %ld\n",
+				PTR_ERR(arb->vlp_spmimst_p_clk_mux));
+		else
+			err = clk_prepare_enable(arb->vlp_spmimst_p_clk_mux);
+		if (err)
+			dev_notice(&pdev->dev, "[SPMIMST]:failed to enable vlp_spmimst_p_clk\n");
 	}
 #else
 	dev_notice(&pdev->dev, "[PMIF]:no need to get clock at fpga\n");
@@ -2776,6 +2844,14 @@ err_domain_remove:
 #if !defined(CONFIG_FPGA_EARLY_PORTING)
 	if (arb->caps == 1)
 		clk_disable_unprepare(arb->spmimst_clk_mux);
+	else if(arb->caps == 6) {
+		clk_disable_unprepare(arb->pmif_clk_mux);
+		clk_disable_unprepare(arb->spmimst_m_clk_mux);
+		clk_disable_unprepare(arb->spmimst_p_clk_mux);
+		clk_disable_unprepare(arb->vlp_pmif_clk_mux);
+		clk_disable_unprepare(arb->vlp_spmimst_m_clk_mux);
+		clk_disable_unprepare(arb->vlp_spmimst_p_clk_mux);
+	}
 #endif
 err_put_ctrl:
 	spmi_controller_put(ctrl);
@@ -2824,7 +2900,7 @@ static const struct of_device_id mtk_spmi_match_table[] = {
 		.data = &mt6893_pmif_arb,
 	}, {
 		.compatible = "mediatek,mt6895-spmi",
-		.data = &mt6xxx_pmif_arb,
+		.data = &mt6895_pmif_arb,
 	}, {
 		.compatible = "mediatek,mt6897-spmi",
 		.data = &mt6xxx_pmif_arb,
