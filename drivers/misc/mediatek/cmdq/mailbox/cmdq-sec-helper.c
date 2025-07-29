@@ -28,7 +28,7 @@ static s32 cmdq_sec_realloc_addr_list(struct cmdq_pkt *pkt, const u32 count)
 		return -ENOMEM;
 	if (count && sec_data->addrMetadatas)
 		memcpy(curr, prev,
-			sizeof(*sec_data) * sec_data->addrMetadataMaxCount);
+			sizeof(struct cmdq_sec_addr_meta) * sec_data->addrMetadataMaxCount);
 	kfree(prev);
 
 	sec_data->addrMetadatas = (u64)curr;
