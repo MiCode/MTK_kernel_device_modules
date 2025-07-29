@@ -4338,7 +4338,6 @@ static kal_uint32 preview(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	spin_unlock(&imgsensor_drv_lock);
 
 	preview_setting();
-	write_sensor_QSC();
 
 	LOG_DEBUG("X!\n");
 	return ERROR_NONE;
@@ -4379,7 +4378,6 @@ static kal_uint32 capture(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	imgsensor.autoflicker_en = KAL_FALSE;
 	spin_unlock(&imgsensor_drv_lock);
 	capture_setting(imgsensor.current_fps);
-	write_sensor_QSC();
 	set_mirror_flip(imgsensor.mirror);
 	LOG_DEBUG("X!\n");
 	return ERROR_NONE;
@@ -4398,7 +4396,6 @@ static kal_uint32 normal_video(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	imgsensor.autoflicker_en = KAL_FALSE;
 	spin_unlock(&imgsensor_drv_lock);
 	normal_video_setting(imgsensor.current_fps);
-	write_sensor_QSC();
 	set_mirror_flip(imgsensor.mirror);
 	LOG_DEBUG("X!\n");
 	return ERROR_NONE;
@@ -4446,7 +4443,6 @@ static kal_uint32 slim_video(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	imgsensor.autoflicker_en = KAL_FALSE;
 	spin_unlock(&imgsensor_drv_lock);
 	slim_video_setting();
-	write_sensor_QSC();
 	set_mirror_flip(imgsensor.mirror);
 	LOG_DEBUG("X!\n");
 	return ERROR_NONE;
@@ -4470,7 +4466,6 @@ static kal_uint32 Custom1(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	imgsensor.autoflicker_en = KAL_FALSE;
 	spin_unlock(&imgsensor_drv_lock);
 	custom1_setting();
-	write_sensor_QSC();
 	set_mirror_flip(imgsensor.mirror);
 	LOG_DEBUG("X!\n");
 	return ERROR_NONE;
@@ -4495,7 +4490,6 @@ static kal_uint32 Custom2(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	imgsensor.autoflicker_en = KAL_FALSE;
 	spin_unlock(&imgsensor_drv_lock);
 	custom2_setting();
-	write_sensor_QSC();
 	set_mirror_flip(imgsensor.mirror);
 	LOG_DEBUG("X!\n");
 	return ERROR_NONE;
