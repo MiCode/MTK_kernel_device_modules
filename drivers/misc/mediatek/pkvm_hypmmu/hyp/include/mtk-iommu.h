@@ -10,7 +10,6 @@
 
 extern u64 page_pool_base;
 extern u64 page_pool_size;
-extern void *v7s_page_nodes;
 
 bool mtkiommu_dabt_handler(struct user_pt_regs *regs, u64 esr, u64 addr);
 bool mtk_iommu_smc_handler(struct user_pt_regs *regs);

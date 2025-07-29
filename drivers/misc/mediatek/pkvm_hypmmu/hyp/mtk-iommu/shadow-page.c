@@ -13,8 +13,13 @@
 
 #define DEBUG_SHADOW_PAGE 0
 
+#define MAX_PAGE_POOL_SZ_MB (64UL)
+#define MAX_PAGE_NODES ((MAX_PAGE_POOL_SZ_MB << 20) >> V7S_PAGE_TABLE_SHIFT)
+
 static u64 total_pages;
 static u64 avail_pages;
+
+struct v7s_page v7s_page_nodes[MAX_PAGE_NODES];
 
 static struct share_region share_regions[MAX_TABLE_NUM][MAX_SHARE_REGION_NUM];
 
@@ -156,6 +161,10 @@ void create_v7s_pages(u64 rmem_pa, u64 rmem_size)
 	struct v7s_page *pages = (struct v7s_page *)v7s_page_nodes;
 	u32 idx;
 	static int init_list;
+
+#if (DEBUG_SHADOW_PAGE)
+	MOD_PUTS2("max pool mb_size page_nodes", MAX_PAGE_POOL_SZ_MB, MAX_PAGE_NODES);
+#endif
 
 	if (init_list == 0) {
 		mod_ops->puts("init list head");

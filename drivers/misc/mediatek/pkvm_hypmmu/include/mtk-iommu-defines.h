@@ -29,7 +29,8 @@
 #define NS_BANK 0
 #define PROT_1_BANK 1
 #define PROT_2_BANK 2
-#define MAX_BANK 3
+#define PROT_3_BANK 3
+#define MAX_BANK 4
 
 #define REG_MMU_BANK_OFFSET 0x1000
 
@@ -55,6 +56,7 @@
 	((1 << (CONFIG_MTK_IOMMU_PGTABLE_EXT - 20)) * sizeof(u32))
 
 #define V7S_PAGE_TABLE_SIZE	(SZ_1K)
+#define V7S_PAGE_TABLE_SHIFT	(10UL)
 #define V7S_PAGE_SIZE		(SZ_4K)
 
 #define ARM_V7S_CONT_PAGES		16

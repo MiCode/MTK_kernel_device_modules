@@ -16,8 +16,8 @@ static u64 rmem_base;
 static u64 rmem_size;
 static void *rmem_base_va;
 static u32 enable_jpeg_prot_2;
-static u64 v7s_page_nodes_pa;
-void *v7s_page_nodes;
+static u64 infra_mpu_percpu_ipc_pa;
+static void *infra_mpu_percpu_ipc_va;
 
 static DEFINE_HYP_SPINLOCK(ac_table_lock);
 
@@ -35,7 +35,7 @@ static struct mtk_iommu_device devices[MAX_IOMMU_DEVICES];
  *  +------------------------------------+
  *  | mm hw pgd (64kb)                   |
  *  | apu hw pgd (64kb)                  |
- *  | v7s pages nodes (n * sizeof(list)) |
+ *  | infra-mpu percpu ipc 8 * 32KB (tfa)|
  *  | reserved                           | 1MB
  *  +------------------------------------+
  *  | v7s page pool                      |
@@ -73,7 +73,7 @@ static void static_alloc(void)
 	prot_pgd_pa[1] = rmem_base + PROT_APU_PGD_OFFSET;
 	hw_pgd_pa[0] = rmem_base + HW_MM_PGD_OFFSET;
 	hw_pgd_pa[1] = rmem_base + HW_APU_PGD_OFFSET;
-	v7s_page_nodes_pa = rmem_base + V7S_PAGE_NODES_OFFSET;
+	infra_mpu_percpu_ipc_pa = rmem_base + V7S_PAGE_NODES_OFFSET;
 	page_pool_base = rmem_base + PAGE_POOL_OFFSET;
 	page_pool_size = rmem_size - PAGE_POOL_OFFSET;
 
@@ -416,7 +416,6 @@ void mtk_iommu_hyp_init(struct user_pt_regs *regs)
 	/* get va */
 	ac_table_va = mod_ops->hyp_va(ac_table_pa);
 	rmem_base_va = mod_ops->hyp_va(rmem_base);
-	v7s_page_nodes = mod_ops->hyp_va(v7s_page_nodes_pa);
 
 	/* clean ac_table */
 	mod_ops->memset(ac_table_va, 0, ac_table_size);
@@ -426,6 +425,10 @@ void mtk_iommu_hyp_init(struct user_pt_regs *regs)
 	register_smc_handler();
 
 	register_mtkiommu_pmm_hal();
+
+	/* Share buffer with INFRA-MPU */
+	infra_mpu_percpu_ipc_va = mod_ops->hyp_va(infra_mpu_percpu_ipc_pa);
+	infra_mpu_set_ipc_base(infra_mpu_percpu_ipc_pa, infra_mpu_percpu_ipc_va);
 
 	regs->regs[0] = SMCCC_RET_SUCCESS;
 	regs->regs[1] = 0;

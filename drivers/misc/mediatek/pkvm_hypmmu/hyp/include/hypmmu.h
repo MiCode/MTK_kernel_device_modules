@@ -42,4 +42,7 @@ void register_mtkiommu_pmm_hal(void);
 void register_gpumpu_pmm_hal(void);
 void register_inframpu_pmm_hal(void);
 
+/* INFRA-MPU */
+void infra_mpu_set_ipc_base(u64 pa, void *va);
+
 #endif

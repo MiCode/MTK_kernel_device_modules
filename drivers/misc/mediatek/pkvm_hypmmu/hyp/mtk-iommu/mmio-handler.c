@@ -241,6 +241,11 @@ bool mtkiommu_dabt_handler(struct user_pt_regs *regs, u64 esr, u64 addr)
 #endif
 
 	offset = addr - dev->bank_reg[NS_BANK].reg_base;
+
+	/* Handle mmio trap for NS bank, others PROT BANKS just R/W ignore */
+	if (offset >= SZ_4K)
+		return true;
+
 	if (is_write)
 		mmio_write(regs, dev, esr, offset);
 	else
