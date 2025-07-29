@@ -3988,6 +3988,7 @@ s32 cmdq_pkt_flush_async(struct cmdq_pkt *pkt,
 #endif
 	struct cmdq_client *client = pkt->cl;
 	s32 err;
+	const u16 sleep_time = 1;
 
 	if (!client) {
 		cmdq_err("client is NULL");
@@ -4076,17 +4077,31 @@ s32 cmdq_pkt_flush_async(struct cmdq_pkt *pkt,
 	end[end_cnt++] = sched_clock();
 #endif
 	mutex_lock(&client->chan_mutex);
-	err = mbox_send_message(client->chan, pkt);
-	if (!pkt->task_alloc) {
+	pkt->retry_cnt = 0;
+	do {
+		err = mbox_send_message(client->chan, pkt);
+		if (!pkt->task_alloc) {
 #if IS_ENABLED(CONFIG_MTK_CMDQ_MBOX_EXT)
-		if (!pkt->rec_irq)
-			err = -ECONNABORTED;
+			if (!pkt->rec_irq)
+				err = -ECONNABORTED;
+			else {
+				mbox_client_txdone(client->chan, 0);
+				err = 0;
+				break;
+			}
 #else
-		err = -ECONNABORTED;
+			err = -ECONNABORTED;
 #endif
-	}
-	/* We can send next packet immediately, so just call txdone. */
-	mbox_client_txdone(client->chan, 0);
+		} else {
+			mbox_client_txdone(client->chan, 0);
+			err = 0;
+			break;
+		}
+
+		/* We can send next packet immediately, so just call txdone. */
+		mbox_client_txdone(client->chan, 0);
+		msleep_interruptible(sleep_time);
+	} while (++pkt->retry_cnt < CMDQ_FLUSH_RETRY_MAX);
 	mutex_unlock(&client->chan_mutex);
 #if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
 	end[end_cnt] = sched_clock();

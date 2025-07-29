@@ -62,6 +62,9 @@ void cmdq_controller_set_fp(struct cmdq_util_controller_fp *cust_cmdq_util);
 #define CMDQ_OPCODE_MATCH_FAIL		(0xFFFFFFFE)
 #define CMDQ_CONFIG_NODE_NAME		"cmdq-config"
 
+#define CMDQ_FLUSH_RETRY_MAX		5
+
+
 enum CMDQ_PKT_ID_ARR_IDX {
 	CMDQ_PKT_ID_CNT,
 	CMDQ_PKT_BUFFER_CNT,
@@ -261,6 +264,7 @@ struct cmdq_pkt {
 	u16			cookie;
 	u16			cookie_diff;
 	cmdq_skip_timeout_cb skip_timeout_cb;
+	u8			retry_cnt;
 };
 
 struct cmdq_thread {

@@ -1424,7 +1424,10 @@ static void cmdq_task_exec(struct cmdq_pkt *pkt, struct cmdq_thread *thread)
 	} while (++i < alloc_retry_cnt);
 
 	if (unlikely(!task)) {
-		cmdq_task_callback(pkt, -ENOMEM);
+		if (pkt->retry_cnt == CMDQ_FLUSH_RETRY_MAX - 1) {
+			cmdq_msg("allocate fail, call user callback");
+			cmdq_task_callback(pkt, -ENOMEM);
+		}
 		cmdq_mtcmos_by_fast(cmdq, false);
 		cmdq_trace_end("%s pkt:%p", __func__, pkt);
 		return;
