@@ -245,7 +245,7 @@
 			    kvm-arm.hyp_lm_size_mb=2000 \
 			    kvm-arm.protected_prefault=9 \
 			    kvm-arm.protected_modules=pkvm_mgmt,pkvm_tmem,pkvm_smmu,pkvm_mkp,\
-pkvm_seninf_mt6993,pkvm_cmdq";
+pkvm_seninf_6993,pkvm_cmdq";
 		mkp_panic = "on";
 	};
 
