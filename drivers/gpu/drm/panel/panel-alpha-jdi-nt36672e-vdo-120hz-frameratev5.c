@@ -1617,8 +1617,8 @@ static struct mtk_panel_params ext_params = {
 		.switch_en = 1,
 		.pll_clk = 556,
 		.vfp_lp_dyn = 4178,
-		.hfp = 76,
-		.vfp = 2590,
+		.hfp = 162,
+		.vfp = 2571,
 	},
 };
 
@@ -1700,8 +1700,8 @@ static struct mtk_panel_params ext_params_90hz = {
 		.switch_en = 1,
 		.pll_clk = 556,
 		.vfp_lp_dyn = 2578,
-		.hfp = 76,
-		.vfp = 940,
+		.hfp = 162,
+		.vfp = 900,
 	},
 };
 
@@ -1783,8 +1783,8 @@ static struct mtk_panel_params ext_params_120hz = {
 		.switch_en = 1,
 		.pll_clk = 556,
 		.vfp_lp_dyn = 2578,
-		.hfp = 76,
-		.vfp = 116,
+		.hfp = 162,
+		.vfp = 70,
 	},
 };
 
