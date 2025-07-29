@@ -2118,8 +2118,10 @@ void scp_reset_wait_timeout(void)
 	if (timeout == 0) {
 		retry_count_before_KE++;
 		pr_notice("[SCP] reset timeout... %d\n",retry_count_before_KE);
-		if (scpreg.recovery_wfi_detect && (retry_count_before_KE >= MAX_RETRY_BEFORE_KE))
+		if ((scpreg.recovery_wfi_detect == 1) && (retry_count_before_KE >= MAX_RETRY_BEFORE_KE))
 			BUG_ON(1);
+		else if (scpreg.recovery_wfi_detect == 2)
+			pr_notice("[SCP] trigger force reset.\n");
 		else
 			msleep(10000); /* reserve time to let aee finish its job */
 	}
@@ -2961,7 +2963,6 @@ static int scp_device_probe(struct platform_device *pdev)
 	const char *scp_scpsys_regmap_en = NULL;
 	const char *scp_mbrain = NULL;
 	const char *scp_thermal_wq = NULL;
-	const char *scp_recovery_wfi_detect = NULL;
 	const char *scp_ipi_timeout_bugon = NULL;
 	const char *scp_task_monitor_dbg = NULL;
 	const char *scp_dts_str = NULL;
@@ -3188,13 +3189,11 @@ static int scp_device_probe(struct platform_device *pdev)
 	}
 
 	/* scp recovery wfi detect */
-	scpreg.recovery_wfi_detect = 0;
-	if (!of_property_read_string(pdev->dev.of_node,
-				"scp-recovery-wfi-detect", &scp_recovery_wfi_detect)){
-		if (!strncmp(scp_recovery_wfi_detect, "enable", strlen("enable"))) {
-			pr_notice("[SCP] scp_recovery_wfi_detect enabled\n");
-			scpreg.recovery_wfi_detect = 1;
-		}
+	ret = of_property_read_u32(pdev->dev.of_node, "scp-recovery-wfi-detect"
+								, &scpreg.recovery_wfi_detect);
+	if (ret) {
+		pr_notice("[SCP] scp_recovery_wfi_detect disabled\n");
+		scpreg.recovery_wfi_detect = 0;
 	}
 
 	/* scp ipi timeout retry > N times bugon */

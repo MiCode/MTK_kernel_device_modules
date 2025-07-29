@@ -522,7 +522,21 @@ static unsigned int scp_crash_dump(enum scp_core_id id)
 			scpdump_cal[idx].start = ktime_get_boottime_ns();
 #endif
 
-			scp_do_dump(DO_DUMP);
+			/* polling status,
+			 * 0: FORCE_RST_STA_DONE
+			 * 1: FORCE_RST_STA_RETRY
+			 */
+			while (polling != 0 && retry > 0) {
+				polling = scp_do_dump(DO_DUMP);
+				retry--;
+			}
+
+			if (retry == 0)
+				pr_notice("[SCP] Force reset time out:%d\n", POLLING_RETRY);
+
+			/* reset val */
+			polling = 1;
+			retry = POLLING_RETRY;
 
 #if SCP_SECURE_DUMP_MEASURE
 			scpdump_cal[idx].end = ktime_get_boottime_ns();

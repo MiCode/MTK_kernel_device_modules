@@ -10,6 +10,10 @@
 #include "scp_helper.h"
 #include "scp_ipi_pin.h"
 
+/* force reset status */
+#define	FORCE_RST_STA_DONE	0
+#define	FORCE_RST_STA_RETRY	1
+
 #define AED_LOG_PRINT_SIZE	SZ_16K
 #define SCP_LOCK_OFS	0xE0
 #define SCP_TCM_LOCK_BIT	(1 << 20)
