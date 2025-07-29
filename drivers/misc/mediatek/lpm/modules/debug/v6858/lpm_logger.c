@@ -103,7 +103,6 @@ static char *pwr_ctrl_str[PW_MAX_COUNT] = {
 	[PW_PERI_WAKE_SRC] = "peri_wake_src",
 	[PW_PERI_WAKE_SRC_CUST] = "peri_wake_src_cust",
 	[PW_WAKELOCK_TIMER_VAL] = "wakelock_timer_val",
-	[PW_WDT_DISABLE] = "wdt_disable",
 
 	/* SPM_SRC_REQ */
 	[PW_REG_SPM_ADSP_MAILBOX_REQ] = "reg_spm_adsp_mailbox_req",
