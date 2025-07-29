@@ -697,6 +697,13 @@ int mtk_ccci_register_md_state_cb(
 //#define MTK_TC10_FEATURE_SRIL
 
 /*
+ * Get a fixed and continuous block of memory
+ * from the dts to store dump info.
+ */
+//#define MTK_TC10_FEATURE_DUMP_BUF_FROM_DT
+
+
+/*
  * When phone enter upload mode, md ee info message
  * will save this memory, for big data analysis.
  */
