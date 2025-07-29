@@ -7508,6 +7508,26 @@ dramc: dramc@10230000 {
 			mediatek,larbs-port = <M4U_L0_P6_DISP_FAKE_ENG0>;
 		};
 
+		iommu-test-ktf-vdo1 {
+			compatible = "mediatek,mm-iommu-test-ktf-vdo1";
+			iommus = <&disp_iommu M4U_PORT_L21_VIDEO_UP0>;
+		};
+
+		iommu-test-ktf-vdo2 {
+			compatible = "mediatek,mm-iommu-test-ktf-vdo2";
+			iommus = <&disp_iommu M4U_L4_P9_HW_VDEC_RG_CTRL_DMA_EXT>;
+		};
+
+		iommu-test-ktf-cam1 {
+			compatible = "mediatek,mm-iommu-test-ktf-cam1";
+			iommus = <&disp_iommu M4U_L2_P4_MDP_FAKE_ENG0>;
+		};
+
+		iommu-test-ktf-aie1 {
+			compatible = "mediatek,mm-iommu-test-ktf-aie1";
+			iommus = <&disp_iommu M4U_L20_P3_IPESYS_SMI_FDVT_WRB_0>;
+		};
+
 		mtkheap-page-prot {
 			compatible = "mediatek,dmaheap-mtk-sec-page";
 			heap-name = "mtk_prot_page-uncached";
