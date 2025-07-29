@@ -4935,7 +4935,6 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 				DDPMSG("DDR: %u Mbps\n", mtk_dramc_get_data_rate());
 				mtk_dump_mminfra_ck(priv);
 #endif
-#if defined(DRM_DSI_UNDERRUN_AEE)
 				if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_DSI_UNDERRUN_AEE)) {
 					if (aee_get_mode() == 4)
 						DDPAEE_FATAL("[IRQ] %s:buffer underrun. TS:0x%llx, NTS:0x%llx\n",
@@ -4946,7 +4945,6 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 							mtk_dump_comp_str(comp), (u64)arch_timer_read_counter(),
 							(u64)sched_clock());
 				}
-#endif
 				mtk_dprec_snapshot();
 
 				if (dsi->encoder.crtc) {
@@ -4972,12 +4970,10 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 			}
 
 			/* could dump SMI register while dsi not attached to CRTC */
-#if defined(DRM_DSI_UNDERRUN_AEE)
 			if (aee_cooldown &&
 			    (!dsi->driver_data->smi_dbg_disable &&
 			    mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_DSI_UNDERRUN_AEE)))
 				mtk_smi_dbg_hang_detect("dsi-underrun");
-#endif
 
 			if (!atomic_read(&priv->need_recover)) {
 				struct mtk_crtc_state *state;

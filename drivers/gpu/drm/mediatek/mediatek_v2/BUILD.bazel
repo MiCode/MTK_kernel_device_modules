@@ -131,7 +131,6 @@ define_mgk_ddk_ko(
     ]),
     local_defines = select({
             "@mgk_internal//:mgk_internal_setting" : [
-                "DRM_DSI_UNDERRUN_AEE=1",
                 "DISP_VIDLE_ENABLE=1",
                 "DISP_PQ_ODDMR_SLC_ENABLE=1"
             ],
