@@ -46,6 +46,9 @@ module_param(uac_out_max_rate, uint, 0644);
 unsigned int disable_mtk_quirk;
 module_param(disable_mtk_quirk, uint, 0644);
 
+unsigned int uac_ctrl_timeout_ms = 3000; /* 3 sec */
+module_param(uac_ctrl_timeout_ms, uint, 0644);
+
 struct mtk_usb_audio_quirk {
 	struct usb_device_id dev_option;
 	u32 uac_flags;
@@ -661,6 +664,134 @@ static void xhci_mtk_mbrain_cleanup(struct device *dev)
 	}
 }
 
+struct uac_reset_ws {
+	struct usb_device *udev;
+	struct work_struct reset_work;
+};
+
+struct uac_ctrl_req {
+	struct list_head list;
+	struct urb *urb;
+	ktime_t submit_time;
+};
+
+static DEFINE_SPINLOCK(uac_ctrl_lock);
+static LIST_HEAD(uac_ctrl_list);
+static int uac_ctrl_req_free = 128;
+
+static void uac_reset_device_work(struct work_struct *data)
+{
+	struct uac_reset_ws *uac_ws = container_of(data, struct uac_reset_ws, reset_work);
+	struct usb_device *udev = uac_ws->udev;
+	int ret;
+
+	if (!xhci_mtk_is_valid_uac_dev(udev))
+		goto exit;
+
+	dev_info(&udev->dev, "%s: device reset", __func__);
+
+	ret = usb_lock_device_for_reset(udev, NULL);
+	if (ret < 0) {
+		dev_info(&udev->dev, "%s: lock for reset fail\n", __func__);
+		goto exit;
+	}
+
+	/* try to reset the device */
+	usb_reset_device(udev);
+	usb_unlock_device(udev);
+
+exit:
+	kfree(uac_ws);
+}
+
+static void uac_queue_reset_device(struct usb_device *udev)
+{
+	struct uac_reset_ws *uac_ws;
+
+	uac_ws = kzalloc(sizeof(struct uac_reset_ws), GFP_ATOMIC);
+	if (!uac_ws)
+		return;
+
+	uac_ws->udev = udev;
+	INIT_WORK(&uac_ws->reset_work, uac_reset_device_work);
+	queue_work(system_unbound_wq, &uac_ws->reset_work);
+}
+
+static void uac_ctrl_req_submit(struct urb *urb)
+{
+	struct uac_ctrl_req *uac_req;
+	struct usb_ctrlrequest *ctrl;
+
+	/* Check if the request is neither USB_REQ_SET_INTERFACE nor UAC_SET_CUR */
+	ctrl = (struct usb_ctrlrequest *)urb->setup_packet;
+	if ((ctrl->bRequest != USB_REQ_SET_INTERFACE && ctrl->bRequest != UAC_SET_CUR) ||
+			ctrl->wValue == 0)
+		return;
+
+	spin_lock(&uac_ctrl_lock);
+
+	/* Check if the crequests has reached the maximum allowed to avoid stack overflow */
+	if (!uac_ctrl_req_free)
+		goto err_out;
+
+	uac_req = kzalloc(sizeof(*uac_req), GFP_ATOMIC);
+	if (unlikely(!uac_req))
+		goto err_out;
+
+	uac_req->urb = urb;
+	uac_req->submit_time = ktime_get();
+
+	list_add_tail(&uac_req->list, &uac_ctrl_list);
+	uac_ctrl_req_free--;
+
+err_out:
+	spin_unlock(&uac_ctrl_lock);
+}
+
+static void uac_ctrl_req_complete(struct urb *urb, bool timeout_reset)
+{
+	struct uac_ctrl_req *uac_req, *tmp;
+	struct device *dev = &urb->dev->dev;
+	bool urb_timeout = false;
+
+	spin_lock(&uac_ctrl_lock);
+
+	list_for_each_entry_safe(uac_req, tmp, &uac_ctrl_list, list) {
+		if (uac_req->urb == urb) {
+			s64 time_ms = ktime_ms_delta(ktime_get(), uac_req->submit_time);
+			struct usb_ctrlrequest *ctrl = (struct usb_ctrlrequest *)urb->setup_packet;
+
+			/* Check if the control request has timed out */
+			if (uac_ctrl_timeout_ms && time_ms > uac_ctrl_timeout_ms) {
+				dev_info(dev, "%s: took %lld ms on ep%d%s, bRequest=0x%x\n",
+					__func__, time_ms, usb_endpoint_num(&urb->ep->desc),
+					usb_urb_dir_in(urb) ? "in" : "out", ctrl->bRequest);
+				urb_timeout = true;
+			}
+
+			/* del the urb from the list */
+			list_del(&uac_req->list);
+			uac_ctrl_req_free++;
+			kfree(uac_req);
+			break;
+		}
+	}
+
+	/* if timeout and reset is needed, reset the device */
+	if (urb_timeout && timeout_reset) {
+		/* clear the list if reset is needed */
+		list_for_each_entry_safe(uac_req, tmp, &uac_ctrl_list, list) {
+			list_del(&uac_req->list);
+			uac_ctrl_req_free++;
+			kfree(uac_req);
+		}
+		uac_queue_reset_device(urb->dev);
+		WARN_ON(1);
+	}
+
+	spin_unlock(&uac_ctrl_lock);
+}
+
 static void xhci_trace_ep_urb_enqueue(void *data, struct urb *urb)
 {
 	u32 ep_type;
@@ -679,6 +810,8 @@ static void xhci_trace_ep_urb_enqueue(void *data, struct urb *urb)
 			xhci_mtk_usb_clear_packet_size_quirk(urb);
 			/* apply set interface face delay */
 			xhci_mtk_usb_set_interface_quirk(urb);
+			/* add to uac_ctrl_list list */
+			uac_ctrl_req_submit(urb);
 		}
 
 		xhci_mtk_usb_set_persist_quirk(urb);
@@ -686,6 +819,26 @@ static void xhci_trace_ep_urb_enqueue(void *data, struct urb *urb)
 		if (xhci_mtk_is_usb_audio(urb)) {
 			/* add URB_ISO_ASAP flag */
 			xhci_mtk_usb_asap_quirk(urb);
+		}
+	}
+}
+
+static void xhci_trace_ep_urb_dequeue(void *data, struct urb *urb)
+{
+	u32 ep_type;
+
+	if (!urb || !urb->dev)
+		return;
+
+	ep_type = usb_endpoint_type(&urb->ep->desc);
+
+	if (ep_type == USB_ENDPOINT_XFER_CONTROL) {
+		if (!urb->setup_packet)
+			return;
+
+		if (xhci_mtk_is_usb_audio(urb)) {
+			/* Check if need to reset device */
+			uac_ctrl_req_complete(urb, true);
 		}
 	}
 }
@@ -706,6 +859,8 @@ static void xhci_trace_ep_urb_giveback(void *data, struct urb *urb)
 		if (xhci_mtk_is_usb_audio(urb)) {
 			/* apply set sample rate delay */
 			xhci_mtk_usb_set_sample_rate_quirk(urb);
+			/* remove from uac_ctrl_list list */
+			uac_ctrl_req_complete(urb, false);
 		}
 	}
 
@@ -715,6 +870,7 @@ static void xhci_trace_ep_urb_giveback(void *data, struct urb *urb)
 void xhci_mtk_trace_init(struct device *dev)
 {
 	WARN_ON(register_trace_xhci_urb_enqueue_(xhci_trace_ep_urb_enqueue, dev));
+	WARN_ON(register_trace_xhci_urb_dequeue_(xhci_trace_ep_urb_dequeue, dev));
 	WARN_ON(register_trace_xhci_urb_giveback_(xhci_trace_ep_urb_giveback, dev));
 
 	xhci_mtk_mbrain_init(dev);
@@ -723,6 +879,7 @@ void xhci_mtk_trace_init(struct device *dev)
 void xhci_mtk_trace_deinit(struct device *dev)
 {
 	WARN_ON(unregister_trace_xhci_urb_enqueue_(xhci_trace_ep_urb_enqueue, dev));
+	WARN_ON(unregister_trace_xhci_urb_dequeue_(xhci_trace_ep_urb_dequeue, dev));
 	WARN_ON(unregister_trace_xhci_urb_giveback_(xhci_trace_ep_urb_giveback, dev));
 
 	xhci_mtk_mbrain_cleanup(dev);
