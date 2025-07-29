@@ -11850,7 +11850,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			scp-bus-tracker-ver = <0x2>;
 			scp-tracker-timeout-bugon = "enable";
 			scp-mbrain = "enable";
-			scp-recovery-wfi-detect = "enable";
+			scp-recovery-wfi-detect = <0x2>; /* version 2 */
 			scp-ipi-timeout-bugon = "enable";
 			scp-task-monitor-dbg = "enable";
 			scp-asan = "disable";

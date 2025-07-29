@@ -8455,7 +8455,7 @@ dramc: dramc@10230000 {
 			scp-scpsys-regmap = "enable";
 			scp-bus-tracker-ver = <0x2>;
 			scp-mbrain = "enable";
-			scp-recovery-wfi-detect = "enable";
+			scp-recovery-wfi-detect = <0x1>;
 			scp-ipi-timeout-bugon = "enable";
 			scp-task-monitor-dbg = "enable";
 			scp-asan = "disable";
