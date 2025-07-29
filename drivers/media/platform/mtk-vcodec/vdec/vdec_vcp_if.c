@@ -47,6 +47,18 @@ struct vcp_dec_mem_list {
 	struct list_head list;
 };
 
+static bool is_valid_inst(struct vdec_inst *inst)
+{
+	return (inst != NULL && inst->ctx != inst->ctx->dev_ctx && !inst->vcu.abort && inst->vcu.init_done);
+}
+
+static void vdec_vcp_set_vcu(struct vdec_vcu_inst *vcu)
+{
+	vcu->daemon_pid = vcp_cmd_ex(VDEC_FEATURE_ID, VCP_GET_GEN, "vdec_srv");
+	if (vcu->ctx == vcu->ctx->dev_ctx)
+		vcu->abort = false;
+}
+
 static void put_fb_to_free(struct vdec_inst *inst, struct vdec_fb *fb)
 {
 	struct ring_fb_list *list;
@@ -173,14 +185,17 @@ static int vdec_vcp_ipi_send(struct vdec_inst *inst, void *msg, int len,
 	struct mtk_ipi_device *ipidev;
 	struct vdec_ap_ipi_cmd *msg_cmd = (struct vdec_ap_ipi_cmd *)msg;
 	struct vdec_ap_ipi_cmd_indp *msg_indp = (struct vdec_ap_ipi_cmd_indp *)msg;
-	bool use_msg_indp = (is_ack || msg_cmd->msg_id == AP_IPIMSG_DEC_INIT ||
-		(msg_cmd->msg_id & IPIMSG_TYPE_BITS) == IPIMSG_NO_INST_OFFSET); // msg use VDEC_MSG_PREFIX
+	bool is_indp_msg = (msg_cmd->msg_id == AP_IPIMSG_DEC_INIT ||
+		(msg_cmd->msg_id & IPIMSG_TYPE_BITS) == IPIMSG_NO_INST_OFFSET);
+	bool use_msg_indp = (is_ack || is_indp_msg); // msg use VDEC_MSG_PREFIX
 
 	if ((!use_msg_indp && msg_cmd->vcu_inst_addr == 0) ||
 	     (use_msg_indp && msg_indp->ap_inst_addr == 0 && !is_ack)) {
 		mtk_vcodec_err(inst, "msg 0x%x inst addr null", msg_cmd->msg_id);
 		return -EINVAL;
 	}
+	if (is_indp_msg)
+		vdec_vcp_set_vcu(&inst->vcu);
 
 	if (preempt_count())
 		ipi_wait_type = IPI_SEND_POLLING;
@@ -363,7 +378,10 @@ ipi_err_wait_and_unlock:
 	inst->ctx->err_msg = *(__u32 *)msg;
 
 ipi_err_unlock:
-	inst->vcu.abort = 1;
+	if (inst->ctx == inst->ctx->dev_ctx)
+		inst->vcu.abort = 0; // reset
+	else
+		inst->vcu.abort = 1;
 	if (!is_ack)
 		mutex_unlock(msg_mutex);
 
@@ -1055,13 +1073,6 @@ static int vdec_vcp_ipi_isr(unsigned int id, void *prdata, void *data, unsigned 
 	return 0;
 }
 
-static void vdec_vcp_set_vcu(struct vdec_vcu_inst *vcu)
-{
-	vcu->daemon_pid = vcp_cmd_ex(VDEC_FEATURE_ID, VCP_GET_GEN, "vdec_srv");
-	if (vcu->ctx == vcu->ctx->dev_ctx)
-		vcu->abort = false;
-}
-
 static int vdec_vcp_backup(struct vdec_inst *inst)
 {
 	struct vdec_ap_ipi_cmd_indp msg;
@@ -1076,7 +1087,6 @@ static int vdec_vcp_backup(struct vdec_inst *inst)
 	msg.msg_id = AP_IPIMSG_DEC_BACKUP;
 	msg.ctx_id = inst->ctx->id;
 	msg.ap_inst_addr = (uintptr_t)&inst->vcu;
-	vdec_vcp_set_vcu(&inst->vcu);
 
 	err = vdec_vcp_ipi_send(inst, &msg, sizeof(msg), false, false, false);
 	mtk_vcodec_debug(inst, "- ret=%d", err);
@@ -1098,7 +1108,6 @@ static int vdec_vcp_resume(struct vdec_inst *inst)
 	msg.msg_id = AP_IPIMSG_DEC_RESUME;
 	msg.ctx_id = inst->ctx->id;
 	msg.ap_inst_addr = (uintptr_t)&inst->vcu;
-	vdec_vcp_set_vcu(&inst->vcu);
 
 	err = vdec_vcp_ipi_send(inst, &msg, sizeof(msg), false, false, false);
 	mtk_vcodec_debug(inst, "- ret=%d", err);
@@ -1113,11 +1122,9 @@ static bool has_valid_vcp_inst(struct mtk_vcodec_dev *dev)
 	int curr_daemon_pid = vcp_cmd_ex(VDEC_FEATURE_ID, VCP_GET_GEN, "vdec_srv");
 
 	list_for_each_entry(ctx, &dev->ctx_list, list) {
-		if (ctx != NULL && ctx->drv_handle != 0 && ctx != &dev->dev_ctx) {
-			inst = (struct vdec_inst *)ctx->drv_handle;
-			if (inst->vcu.init_done && !inst->vcu.abort && inst->vcu.daemon_pid == curr_daemon_pid)
-				return true;
-		}
+		inst = (struct vdec_inst *)ctx->drv_handle;
+		if (is_valid_inst(inst) && inst->vcu.daemon_pid == curr_daemon_pid)
+			return true;
 	}
 	return false;
 }
@@ -1165,8 +1172,10 @@ static int vcp_vdec_notify_callback(struct notifier_block *this,
 			ctx = list_entry(p, struct mtk_vcodec_ctx, list);
 			if (ctx != NULL && ctx->drv_handle != 0) {
 				inst = (struct vdec_inst *)(ctx->drv_handle);
-				inst->vcu.failure = VDEC_IPI_MSG_STATUS_FAIL;
-				inst->vcu.abort = 1;
+				if (is_valid_inst(inst) || inst->vcu.in_ipi || inst->vcu.in_res_ipi) {
+					inst->vcu.failure = VDEC_IPI_MSG_STATUS_FAIL;
+					inst->vcu.abort = 1;
+				}
 				if (inst->vcu.in_ipi) {
 					inst->vcu.signaled = true;
 					wake_up(&inst->vcu.wq);
@@ -1384,7 +1393,6 @@ static int vdec_vcp_init(struct mtk_vcodec_ctx *ctx, unsigned long *h_vdec)
 	mtk_vcodec_debug(inst, "inst=%lx vdec_inst=%lx svp_mode=%d",
 		(unsigned long)inst, (unsigned long)&inst->vcu, ctx->dec_params.svp_mode);
 	*h_vdec = (unsigned long)inst;
-	vdec_vcp_set_vcu(&inst->vcu);
 
 	mtk_vcodec_add_ctx_list(ctx);
 
@@ -1632,7 +1640,6 @@ static int vdec_vcp_set_pwr_ctrl(struct vdec_inst *inst, struct mtk_smi_pwr_ctrl
 	msg.ap_data_addr = (uintptr_t)ctrl_info;
 	msg.info.type = ctrl_info->type;
 	msg.info.hw_id = ctrl_info->hw_id;
-	vdec_vcp_set_vcu(&inst->vcu);
 
 	return vdec_vcp_ipi_send(inst, &msg, sizeof(msg), false, true, false);
 }
@@ -1898,7 +1905,6 @@ static int vdec_vcp_query_cap(struct vdec_inst *inst, int query_cap_id, uintptr_
 	msg.ctx_id = inst->ctx->id;
 	msg.ap_inst_addr = (uintptr_t)&inst->vcu;
 	msg.ap_data_addr = ap_data_addr;
-	vdec_vcp_set_vcu(&inst->vcu);
 
 	return vdec_vcp_ipi_send(inst, &msg, sizeof(msg), false, true, false);
 }
