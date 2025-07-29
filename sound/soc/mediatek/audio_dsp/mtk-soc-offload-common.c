@@ -603,7 +603,7 @@ static int mtk_compr_offload_set_metadata(struct snd_soc_component *component,
 					  struct snd_compr_stream *stream,
 					  struct snd_compr_metadata *metadata)
 {
-	pr_info("%s()\n, metadata.key = %d, metadata.value[0] = %d",
+	pr_info("%s(), metadata.key = %d, metadata.value[0] = %d\n",
 		 __func__, metadata->key, metadata->value[0]);
 	mtk_scp_ipi_send(get_dspscene_by_dspdaiid(ID),
 			 AUDIO_IPI_MSG_ONLY,
