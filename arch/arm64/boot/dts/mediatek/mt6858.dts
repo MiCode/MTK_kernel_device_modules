@@ -4047,6 +4047,16 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				#size-cells = <0>;
 		};
 
+		spmi_pmif_mpu: spmi-pmif-mpu@1c024900 {
+			compatible = "mediatek,mt6858-spmi-pmif-mpu";
+			reg = <0 0x1c024900 0 0x000500>;
+			reg-names = "pmif_mpu";
+			mediatek,pmic-all-rgn-en = <0x1>;
+			mediatek,pmic-all-rgn-en-2 = <0x0>;
+			mediatek,kernel-enable-time = <0x3c>;
+			disable = <0>;
+		};
+
 		gce: gce@1e980000 {
 			compatible = "mediatek,mt6858-gce";
 			reg = <0 0x1e980000 0 0x4000>;
