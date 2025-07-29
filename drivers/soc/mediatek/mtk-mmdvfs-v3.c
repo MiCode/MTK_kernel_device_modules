@@ -2046,8 +2046,12 @@ static int mmdvfs_vcp_init_thread(void *data)
 	struct iommu_domain *domain;
 	int i, retry = 0;
 
-	if (mmdvfs_init_done)
+	mmdvfs_get_bootmode();
+	if (mmdvfs_init_done || bootmode == RECOVERY_BOOT) {
+		MMDVFS_DBG("mmdvfs_init_done:%d bootmode:%u skip vcp init",
+			mmdvfs_init_done, bootmode);
 		return 0;
+	}
 
 	mmup_ena = is_mmup_enable_ex();
 	MMDVFS_DBG("mmup_ena:%d", mmup_ena);
