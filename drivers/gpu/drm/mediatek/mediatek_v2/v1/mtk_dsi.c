@@ -3124,11 +3124,11 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 		} else {
 			u32 fifo_us = 0;
 
-			fifo_us = DIV_ROUND_UP(buf_con * 1000 * 7, consume_rate * 10);
+			fifo_us = DIV_ROUND_UP(buf_con * 1000 * 18, consume_rate * 32);
 			ultra_lo_fifo_us = DIV_ROUND_UP(fifo_us * 8, 10);
 			ultra_hi_fifo_us = DIV_ROUND_UP(fifo_us * 9, 10);
-			urgent_lo_fifo_us = DIV_ROUND_UP(fifo_us * 4, 10);
-			urgent_hi_fifo_us = DIV_ROUND_UP(fifo_us * 6, 10);
+			urgent_lo_fifo_us = DIV_ROUND_UP(fifo_us * 5, 10);
+			urgent_hi_fifo_us = DIV_ROUND_UP(fifo_us * 8, 10);
 		}
 		ultra_lo_fifo_us = dbg_ultra_low ? dbg_ultra_low : ultra_lo_fifo_us;
 		ultra_hi_fifo_us = dbg_ultra_high? dbg_ultra_high : ultra_hi_fifo_us;
