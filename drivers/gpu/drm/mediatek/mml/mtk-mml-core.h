@@ -1162,6 +1162,24 @@ struct mml_topology_cache *mml_topology_create(struct mml_dev *mml,
 u64 mml_core_time_dur_us(const struct timespec64 *lhs, const struct timespec64 *rhs);
 
 /*
+ * mml_core_get_frame_str - get info string of mml frame data
+ *
+ * @frame:	string buffer
+ * @size:	string buffer size
+ * @data:	frame data to get info
+ */
+void mml_core_get_frame_str(char *frame, size_t size, const struct mml_frame_data *data);
+
+/*
+ * mml_core_get_pqen_str - get enable string of mml pq config
+ *
+ * @pqen:	string buffer
+ * @size:	string buffer size
+ * @pq_config:	pq config to get info
+ */
+void mml_core_get_pqen_str(char *pqen, size_t size, const struct mml_pq_config *pq_config);
+
+/*
  * mml_core_dump_buf - dump mml frame data into cache buffer
  *
  * @task:	task to dump

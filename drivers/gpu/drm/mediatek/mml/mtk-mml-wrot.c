@@ -1117,6 +1117,10 @@ static bool wrot_color_mat(const struct mml_frame_config *cfg,
 	    cfg->info.dest[wrot_frm->out_idx].pq_config.en_ccorr ||
 	    cfg->info.dest[wrot_frm->out_idx].pq_config.en_c3d) {
 		profile = profile_out;
+
+		/* align PQ FW CSC setting.
+		 * TODO: extend FW support and remove the following.
+		 */
 		if (profile_in == MML_YCBCR_PROFILE_BT2020 ||
 		    profile_in == MML_YCBCR_PROFILE_FULL_BT2020)
 			profile = MML_YCBCR_PROFILE_BT709;

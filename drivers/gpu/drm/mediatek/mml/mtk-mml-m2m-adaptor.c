@@ -305,65 +305,27 @@ static struct mml_buffer *ctx_get_submit_buffer(struct mml_m2m_ctx *ctx,
 		return &ctx->submit.buffer.dest[0];
 }
 
-static void get_fmt_str(char *fmt, size_t sz, enum mml_color f)
-{
-	int ret;
-
-	ret = snprintf(fmt, sz, "%u%s%s%s%s%s%s%s%s",
-		MML_FMT_HW_FORMAT(f),
-		MML_FMT_SWAP(f) ? "s" : "",
-		MML_FMT_ALPHA(f) && MML_FMT_IS_YUV(f) ? "y" : "",
-		MML_FMT_BLOCK(f) ? "b" : "",
-		MML_FMT_INTERLACED(f) ? "i" : "",
-		MML_FMT_UFO(f) ? "u" : "",
-		MML_FMT_10BIT_TILE(f) ? "t" :
-		MML_FMT_10BIT_PACKED(f) ? "p" :
-		MML_FMT_10BIT_LOOSE(f) ? "l" : "",
-		MML_FMT_10BIT_JUMP(f) ? "j" : "",
-		MML_FMT_AFBC(f) ? "c" :
-		MML_FMT_HYFBC(f) ? "h" : "");
-	if (ret < 0)
-		fmt[0] = '\0';
-}
-
-static void get_frame_str(char *frame, size_t sz, const struct mml_frame_data *data)
-{
-	char fmt[24];
-	int ret;
-
-	get_fmt_str(fmt, sizeof(fmt), data->format);
-	ret = snprintf(frame, sz, "(%u, %u)[%u %u] %#010x C%s P%hu%s",
-		data->width, data->height, data->y_stride,
-		MML_FMT_AFBC(data->format) ? data->vert_stride : data->uv_stride,
-		data->format, fmt,
-		data->profile,
-		data->secure ? " sec" : "");
-	if (ret < 0)
-		frame[0] = '\0';
-}
-
 static void dump_m2m_ctx(struct mml_m2m_ctx *ctx)
 {
 	const struct mml_m2m_frame *output;
 	const struct mml_m2m_frame *capture;
 	const struct mml_frame_data *src;
 	const struct mml_frame_dest *dest;
-	const struct mml_pq_config *pq_config;
 	char frame[60];
+	char pqen[80];
 
 	output = ctx_get_frame(ctx, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE);
 	capture = ctx_get_frame(ctx, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE);
 	src = ctx_get_submit_frame(ctx, output->format.type);
 	dest = ctx_get_submit_dest(ctx, 0);
-	pq_config = &ctx->param.pq_submit.pq_config;
 
-	get_frame_str(frame, sizeof(frame), src);
+	mml_core_get_frame_str(frame, sizeof(frame), src);
 	mml_log("[m2m] in v4l2:(%u, %u) mml:%s plane:%hhu",
 		output->format.fmt.pix_mp.width, output->format.fmt.pix_mp.height,
 		frame,
 		src->plane_cnt);
 
-	get_frame_str(frame, sizeof(frame), &dest->data);
+	mml_core_get_frame_str(frame, sizeof(frame), &dest->data);
 	mml_log("[m2m]out v4l2:(%u, %u) mml:%s plane:%hhu r:%hu%s",
 		capture->format.fmt.pix_mp.width, capture->format.fmt.pix_mp.height,
 		frame,
@@ -380,23 +342,15 @@ static void dump_m2m_ctx(struct mml_m2m_ctx *ctx)
 		dest->compose.width,
 		dest->compose.height);
 
-	mml_log("[m2m]v4l2-ctrl: r:%d%s%s%s alpha:%d pq %u:%s%s%s%s%s%s%s%s%s%s",
+	mml_core_get_pqen_str(pqen, sizeof(pqen), &ctx->param.pq_submit.pq_config);
+	mml_log("[m2m]v4l2-ctrl: r:%d%s%s%s alpha:%d pq %u:%s",
 		ctx->param.rotation,
 		ctx->param.hflip ? " hflip" : "",
 		ctx->param.vflip ? " vflip" : "",
 		ctx->param.secure ? " sec" : "",
 		ctx->param.alpha,
 		ctx->param.pq_submit.id,
-		pq_config->en ? " PQ" : "",
-		pq_config->en_fg ? " FG" : "",
-		pq_config->en_hdr ? " HDR" : "",
-		pq_config->en_ccorr ? " CCORR" : "",
-		pq_config->en_dre ? " DRE" : "",
-		pq_config->en_sharp ? " SHP" : "",
-		pq_config->en_ur ? " UR" : "",
-		pq_config->en_dc ? " DC" : "",
-		pq_config->en_color ? " COLOR" : "",
-		pq_config->en_c3d ? " C3D" : "");
+		pqen);
 }
 
 static int mml_check_scaling_ratio(const struct mml_rect *crop,
@@ -714,18 +668,15 @@ static enum mml_ycbcr_profile m2m_map_ycbcr_prof_mplane(
 	case V4L2_COLORSPACE_JPEG:
 		return MML_YCBCR_PROFILE_JPEG;
 	case V4L2_COLORSPACE_REC709:
-	case V4L2_COLORSPACE_DCI_P3:
-		if (pix_mp->quantization == V4L2_QUANTIZATION_FULL_RANGE)
-			return MML_YCBCR_PROFILE_FULL_BT709;
-		return MML_YCBCR_PROFILE_BT709;
+		return pix_mp->quantization == V4L2_QUANTIZATION_FULL_RANGE ?
+			MML_YCBCR_PROFILE_FULL_BT709 : MML_YCBCR_PROFILE_BT709;
 	case V4L2_COLORSPACE_BT2020:
-		if (pix_mp->quantization == V4L2_QUANTIZATION_FULL_RANGE)
-			return MML_YCBCR_PROFILE_FULL_BT2020;
-		return MML_YCBCR_PROFILE_BT2020;
+		return pix_mp->quantization == V4L2_QUANTIZATION_FULL_RANGE ?
+			MML_YCBCR_PROFILE_FULL_BT2020 : MML_YCBCR_PROFILE_BT2020;
+	case V4L2_COLORSPACE_DCI_P3:
 	default:
-		if (pix_mp->quantization == V4L2_QUANTIZATION_FULL_RANGE)
-			return MML_YCBCR_PROFILE_FULL_BT601;
-		return MML_YCBCR_PROFILE_BT601;
+		return pix_mp->quantization == V4L2_QUANTIZATION_FULL_RANGE ?
+			MML_YCBCR_PROFILE_FULL_BT601 : MML_YCBCR_PROFILE_BT601;
 	}
 }
 

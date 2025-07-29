@@ -109,6 +109,23 @@ static u32 format_drm_to_mml(u32 drm_format, u64 modifier)
 	return drm_format;
 }
 
+static enum mml_ycbcr_profile color_desc_to_profile(const struct mml_color_desc *color)
+{
+	switch (color->ycbcr_enc) {
+	case MML_YCBCR_ENC_BT709:
+		return color->color_range == MML_COLOR_RANGE_FULL ?
+			MML_YCBCR_PROFILE_FULL_BT709 : MML_YCBCR_PROFILE_BT709;
+	case MML_YCBCR_ENC_BT2020:
+	case MML_YCBCR_ENC_BT2020_CON:
+		return color->color_range == MML_COLOR_RANGE_FULL ?
+			MML_YCBCR_PROFILE_FULL_BT2020 : MML_YCBCR_PROFILE_BT2020;
+	/* case MML_YCBCR_ENC_P3: */
+	default:
+		return color->color_range == MML_COLOR_RANGE_FULL ?
+			MML_YCBCR_PROFILE_FULL_BT601 : MML_YCBCR_PROFILE_BT601;
+	}
+}
+
 int mml_drm_get_hw_caps(u32 *mode_caps, u32 *pq_caps)
 {
 	*mode_caps = mml_topology_get_mode_caps();
@@ -117,8 +134,46 @@ int mml_drm_get_hw_caps(u32 *mode_caps, u32 *pq_caps)
 }
 EXPORT_SYMBOL_GPL(mml_drm_get_hw_caps);
 
-bool mml_drm_query_hw_support(const struct mml_frame_info *info)
+static void dump_info(const char *tag, const struct mml_frame_info *info)
 {
+	const struct mml_frame_data *src = &info->src;
+	const struct mml_frame_dest *dest;
+	char frame[60];
+	char pqen[80];
+	u32 i;
+
+	mml_core_get_frame_str(frame, sizeof(frame), src);
+	mml_msg("[drm][%s]    in:%s mode:%u", tag, frame, info->mode);
+	if (info->dest[0].pq_config.en_region_pq) {
+		mml_core_get_frame_str(frame, sizeof(frame), &info->seg_map);
+		mml_msg("[drm][%s] pq in:%s", tag, frame);
+	}
+	for (i = 0; i < info->dest_cnt; i++) {
+		dest = &info->dest[i];
+		mml_core_get_frame_str(frame, sizeof(frame), &dest->data);
+		mml_core_get_pqen_str(pqen, sizeof(pqen), &dest->pq_config);
+		mml_msg("[drm][%s] out %u:%s r:%u%s%s",
+			tag, i,
+			frame,
+			dest->rotate,
+			dest->flip ? " flip" : "",
+			pqen);
+		mml_msg("[drm][%s]crop %u:(%u, %u, %u, %u) compose:(%u, %u, %u, %u)",
+			tag, i,
+			dest->crop.r.left,
+			dest->crop.r.top,
+			dest->crop.r.width,
+			dest->crop.r.height,
+			dest->compose.left,
+			dest->compose.top,
+			dest->compose.width,
+			dest->compose.height);
+	}
+}
+
+bool mml_drm_query_hw_support(struct mml_frame_info *info)
+{
+	struct mml_frame_data *src = &info->src;
 	static u32 hw_caps;
 	u32 i;
 
@@ -128,48 +183,60 @@ bool mml_drm_query_hw_support(const struct mml_frame_info *info)
 		goto not_support;
 	}
 
-	if (!info->src.format) {
-		mml_err("[drm]invalid src mml color format %#010x", info->src.format);
+	if (info->dest_cnt > MML_MAX_OUTPUTS)
+		info->dest_cnt = MML_MAX_OUTPUTS;
+
+	if (mtk_mml_msg)
+		dump_info("query ", info);
+
+	if (!src->format) {
+		mml_err("[drm]invalid src mml color format %#010x", src->format);
 		goto not_support;
 	}
 
-	if (info->src.modifier && info->src.modifier != MML_AFBC) {
-		mml_err("[drm]invalid src mml color format modifier %#010llx", info->src.modifier);
+	src->format = format_drm_to_mml(src->format, src->modifier);
+	if (src->modifier && src->modifier != MML_AFBC &&
+	    !MML_FMT_AFBC(src->format)) {
+		mml_err("[drm]invalid src modifier %#010llx, format %#x",
+			src->modifier, src->format);
 		goto not_support;
 	}
 
-	if (info->src.modifier &&
-		!MML_FMT_AFBC(format_drm_to_mml(info->src.format, info->src.modifier))) {
-		mml_err("[drm]invalid src afbc fmt modifier: %#010llx, format %#x",
-			info->src.modifier, info->src.format);
+	if (MML_FMT_BLOCK(src->format) &&
+	    (src->width & 0x0f || src->height & 0x1f)) {
+		mml_err(
+			"[drm]invalid blk width %u height %u must alignment width 16x height 32x",
+			src->width, src->height);
 		goto not_support;
 	}
 
-	if (MML_FMT_BLOCK(info->src.format)) {
-		if ((info->src.width & 0x0f) || (info->src.height & 0x1f)) {
-			mml_err(
-				"[drm]invalid blk width %u height %u must alignment width 16x height 32x",
-				info->src.width, info->src.height);
+	if (mml_sz_out(src->width, src->height)) {
+		mml_msg("[drm]not support src size %u %u", src->width, src->height);
+		goto not_support;
+	}
+
+	/* colorspace for source */
+	if (src->color.ycbcr_enc) {
+		if (src->color.gamut >= MML_GAMUT_UNSUPPORTED ||
+		    src->color.ycbcr_enc >= MML_YCBCR_ENC_UNSUPPORTED ||
+		    src->color.color_range >= MML_COLOR_RANGE_UNSUPPORTED ||
+		    src->color.gamma >= MML_GAMMA_UNSUPPORTED) {
+			mml_msg("[drm]not support src colorspace %u.%u.%u.%u",
+				src->color.gamut, src->color.ycbcr_enc,
+				src->color.color_range, src->color.gamma);
 			goto not_support;
 		}
-	}
-
-	if (mml_sz_out(info->src.width, info->src.height)) {
-		mml_msg("[drm]not support src size %u %u", info->src.width, info->src.height);
-		goto not_support;
-	}
-
-	if (info->dest_cnt > MML_MAX_OUTPUTS) {
-		mml_msg("[drm]dest count exceed %u", info->dest_cnt);
-		goto not_support;
+		if (MML_FMT_IS_RGB(src->format))
+			src->color.color_range = MML_COLOR_RANGE_FULL;
+		src->profile = color_desc_to_profile(&src->color);
 	}
 
 	for (i = 0; i < info->dest_cnt; i++) {
-		const struct mml_frame_dest *dest = &info->dest[i];
+		struct mml_frame_dest *dest = &info->dest[i];
 		u32 destw = dest->data.width;
 		u32 desth = dest->data.height;
-		u32 crop_srcw = dest->crop.r.width ? dest->crop.r.width : info->src.width;
-		u32 crop_srch = dest->crop.r.height ? dest->crop.r.height : info->src.height;
+		u32 crop_srcw = dest->crop.r.width ? dest->crop.r.width : src->width;
+		u32 crop_srch = dest->crop.r.height ? dest->crop.r.height : src->height;
 
 		if (!destw || !desth || !crop_srcw || !crop_srch) {
 			mml_msg("[drm]not support empty size %u %u %u %u",
@@ -182,27 +249,19 @@ bool mml_drm_query_hw_support(const struct mml_frame_info *info)
 			goto not_support;
 		}
 
-		/* color space not support for destination */
-		if (dest->data.profile == MML_YCBCR_PROFILE_BT2020 ||
-			dest->data.profile == MML_YCBCR_PROFILE_FULL_BT709 ||
-			dest->data.profile == MML_YCBCR_PROFILE_FULL_BT2020) {
-			mml_err("[drm]not support output profile %d", dest->data.profile);
-			goto not_support;
-		}
-
 		if (dest->rotate == MML_ROT_90 || dest->rotate == MML_ROT_270)
 			swap(destw, desth);
 
 		if (crop_srcw > destw * 20 || crop_srch > desth * 24 ||
-			destw > crop_srcw * 32 || desth > crop_srch * 32) {
+		    destw > crop_srcw * 32 || desth > crop_srch * 32) {
 			mml_err("[drm]exceed HW limitation src %ux%u dest %ux%u",
 				crop_srcw, crop_srch, destw, desth);
 			goto not_support;
 		}
 
 		if (crop_srcw * desth > destw * crop_srch * 16 ||
-			destw * crop_srch > crop_srcw * desth * 16) {
-			mml_err("[drm]exceed tile ratio limitation src %ux%u dest %ux%u",
+		    destw * crop_srch > crop_srcw * desth * 16) {
+			mml_err("[drm]exceed ratio limitation src %ux%u dest %ux%u",
 				crop_srcw, crop_srch, destw, desth);
 			goto not_support;
 		}
@@ -220,12 +279,20 @@ bool mml_drm_query_hw_support(const struct mml_frame_info *info)
 			goto not_support;
 		}
 
+		dest->data.format = format_drm_to_mml(dest->data.format, dest->data.modifier);
+		if (dest->data.modifier && dest->data.modifier != MML_AFBC &&
+		    !MML_FMT_AFBC(dest->data.format)) {
+			mml_err("[drm]invalid dest modifier %#010llx, format %#x",
+				dest->data.modifier, dest->data.format);
+			goto not_support;
+		}
+
 		if ((dest->compose.width || dest->compose.height) &&
-			(dest->compose.width != dest->data.width ||
-			dest->compose.height != dest->data.height)) {
+		    (dest->compose.width != dest->data.width ||
+		    dest->compose.height != dest->data.height)) {
 			/* compress format or rgb format, compose must same as out size */
 			if (MML_FMT_COMPRESS(dest->data.format) ||
-				!MML_FMT_IS_YUV(dest->data.format))
+			    !MML_FMT_IS_YUV(dest->data.format))
 				goto not_support;
 
 			/* set compose, use h/v subsample (420/422), out size must even */
@@ -234,18 +301,90 @@ bool mml_drm_query_hw_support(const struct mml_frame_info *info)
 			if (MML_FMT_V_SUBSAMPLE(dest->data.format) && dest->data.height & 0x1)
 				goto not_support;
 		}
+
+		/* colorspace for destination */
+		if (!src->color.ycbcr_enc || !dest->data.color.ycbcr_enc) {
+			/* legacy ycbcr profile */
+			if (dest->data.profile == MML_YCBCR_PROFILE_BT2020 ||
+			    dest->data.profile == MML_YCBCR_PROFILE_FULL_BT2020) {
+				mml_err("[drm]not support output profile %d", dest->data.profile);
+				goto not_support;
+			}
+		} else {
+			if (dest->data.color.gamut >= MML_GAMUT_UNSUPPORTED ||
+			    dest->data.color.gamma >= MML_GAMMA_UNSUPPORTED) {
+				mml_msg("[drm][warn]not support dest gamut %u gamma %u",
+					dest->data.color.gamut, dest->data.color.gamma);
+				dest->data.color = src->color;
+			}
+			if (dest->data.color.gamut != src->color.gamut ||
+			    dest->data.color.gamma != src->color.gamma) {
+				if (!dest->pq_config.en_hdr &&
+				    !dest->pq_config.en_ccorr &&
+				    !dest->pq_config.en_c3d) {
+					mml_msg("[drm]not support CSC without corresponded PQ");
+					goto not_support;
+				}
+				if (dest->data.color.ycbcr_enc >= MML_YCBCR_ENC_UNSUPPORTED ||
+				    dest->data.color.color_range >= MML_COLOR_RANGE_UNSUPPORTED) {
+					mml_msg("[drm]not support dest encode %u range %u",
+						dest->data.color.ycbcr_enc,
+						dest->data.color.color_range);
+					goto not_support;
+				}
+
+				/* align PQ FW CSC setting.
+				 * TODO: extend FW support and remove the following.
+				 */
+				if (src->color.ycbcr_enc == MML_YCBCR_ENC_BT2020 ||
+				    src->color.ycbcr_enc == MML_YCBCR_ENC_BT2020_CON) {
+					if (dest->data.color.ycbcr_enc != MML_YCBCR_ENC_BT709 ||
+					    dest->data.color.color_range != MML_COLOR_RANGE_LIMITED)
+						mml_msg("[drm][warn]not support pq encode %u range %u",
+							dest->data.color.ycbcr_enc,
+							dest->data.color.color_range);
+					dest->data.color.ycbcr_enc = MML_YCBCR_ENC_BT709;
+					dest->data.color.color_range = MML_COLOR_RANGE_LIMITED;
+				}
+			} else if (MML_FMT_IS_YUV(src->format) && MML_FMT_IS_YUV(dest->data.format)) {
+				if (dest->data.color.ycbcr_enc >= MML_YCBCR_ENC_UNSUPPORTED ||
+				    dest->data.color.color_range >= MML_COLOR_RANGE_UNSUPPORTED) {
+					mml_msg("[drm][warn]not support dest encode %u range %u",
+						dest->data.color.ycbcr_enc,
+						dest->data.color.color_range);
+					dest->data.color = src->color;
+				}
+			} else {
+				dest->data.color.ycbcr_enc = src->color.ycbcr_enc;
+				dest->data.color.color_range = src->color.color_range;
+			}
+			if (MML_FMT_IS_RGB(dest->data.format))
+				dest->data.color.color_range = MML_COLOR_RANGE_FULL;
+			dest->data.profile = color_desc_to_profile(&dest->data.color);
+		}
 	}
 
 	if (hw_caps & MML_HW_ALPHARSZ) {
 		/* hardware support alpha resize case */
-		if (info->alpha && !MML_FMT_ALPHA(info->src.format)) {
-			mml_err("[drm]alpha enable without alpha input format %#010x",
-				info->src.format);
-			goto not_support;
+		if (info->alpha) {
+			if (!MML_FMT_ALPHA(src->format)) {
+				mml_err("[drm]alpha enable without alpha input format %#010x",
+					src->format);
+				goto not_support;
+			}
+			if (!(hw_caps & MML_HW_ALPHARSZ_R2R)) {
+				info->dest[0].data.format = MML_FMT_YUVA8888;
+				info->dest[0].data.color.ycbcr_enc = MML_YCBCR_ENC_BT601;
+				info->dest[0].data.color.color_range = MML_COLOR_RANGE_FULL;
+				info->dest[0].data.profile =
+					color_desc_to_profile(&info->dest[0].data.color);
+				mml_msg("[drm]fixed dest format %#010x profile%u for alpha resize",
+					info->dest[0].data.format, info->dest[0].data.profile);
+			}
 		}
 	} else if (info->alpha &&
-		MML_FMT_ALPHA(info->src.format) &&
-		MML_FMT_ALPHA(info->dest[0].data.format)) {
+		   MML_FMT_ALPHA(src->format) &&
+		   MML_FMT_ALPHA(info->dest[0].data.format)) {
 		/* for alpha rotate */
 		const struct mml_frame_dest *dest = &info->dest[0];
 		u32 srccw = dest->crop.r.width;
@@ -268,6 +407,8 @@ bool mml_drm_query_hw_support(const struct mml_frame_info *info)
 		}
 	}
 
+	if (mtk_mml_msg)
+		dump_info("return", info);
 	return true;
 
 not_support:
@@ -275,8 +416,8 @@ not_support:
 }
 EXPORT_SYMBOL_GPL(mml_drm_query_hw_support);
 
-enum mml_mode mml_drm_query_frame(struct mml_drm_ctx *dctx, struct mml_frame_info *info,
-	struct mml_frame_info_cache *info_cache)
+static enum mml_mode mml_drm_query_frame(struct mml_drm_ctx *dctx,
+	struct mml_frame_info *info, struct mml_frame_info_cache *info_cache)
 {
 	u8 i;
 	struct mml_topology_cache *tp = mml_topology_get_cache(dctx->ctx.mml);
@@ -289,11 +430,6 @@ enum mml_mode mml_drm_query_frame(struct mml_drm_ctx *dctx, struct mml_frame_inf
 				sizeof(info->dest[i].pq_config));
 		}
 	}
-
-	if (info->dest_cnt > MML_MAX_OUTPUTS)
-		info->dest_cnt = MML_MAX_OUTPUTS;
-
-	info->src.format = format_drm_to_mml(info->src.format, info->src.modifier);
 
 	if (!mml_drm_query_hw_support(info)) {
 		reason = mml_query_not_support;
@@ -347,6 +483,9 @@ enum mml_mode mml_drm_query_frame(struct mml_drm_ctx *dctx, struct mml_frame_inf
 			mode = MML_MODE_MML_DECOUPLE2;
 		else
 			mode = MML_MODE_MDP_DECOUPLE;
+	} else if (mode == MML_MODE_DIRECT_LINK) {
+		info->dest[0].data.format = MML_FMT_10BIT(info->src.format) ?
+			MML_FMT_YUVA1010102 : MML_FMT_YUVA8888;
 	}
 
 	if (mode == MML_MODE_MML_DECOUPLE && !(mml_dc & 0x1)) {
@@ -876,6 +1015,7 @@ s32 mml_drm_submit(struct mml_drm_ctx *dctx, struct mml_submit *submit,
 		   void *cb_param)
 {
 	struct mml_ctx *ctx = &dctx->ctx;
+	struct mml_frame_data *src = &submit->info.src;
 	struct mml_frame_config *cfg;
 	struct mml_task *task = NULL;
 	u32 disp_fid = submit->disp_id;
@@ -887,8 +1027,7 @@ s32 mml_drm_submit(struct mml_drm_ctx *dctx, struct mml_submit *submit,
 	mml_trace_begin("%s_%u_%u", __func__, pre_jobid, disp_fid);
 
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
-	mml_mmp_raw(submit, MMPROFILE_FLAG_PULSE,
-		pre_jobid, submit->info.mode,
+	mml_mmp_raw(submit, MMPROFILE_FLAG_PULSE, pre_jobid, submit->info.mode,
 		&submit->info, sizeof(submit->info));
 #else
 	mml_mmp(submit, MMPROFILE_FLAG_PULSE, pre_jobid, submit->info.mode);
@@ -927,36 +1066,42 @@ s32 mml_drm_submit(struct mml_drm_ctx *dctx, struct mml_submit *submit,
 	if (submit->buffer.dest_cnt > MML_MAX_OUTPUTS)
 		submit->buffer.dest_cnt = MML_MAX_OUTPUTS;
 
+	dump_info("submit", &submit->info);
+
 	/* always fixup format/modifier for afbc case
 	 * the format in info should change to fourcc format in future design
 	 * and store mml format in another structure
 	 */
-	submit->info.src.format = format_drm_to_mml(
-		submit->info.src.format, submit->info.src.modifier);
+	src->format = format_drm_to_mml(src->format, src->modifier);
+	if (src->color.ycbcr_enc)
+		src->profile = color_desc_to_profile(&src->color);
+
+	for (i = 0; i < submit->info.dest_cnt; i++) {
+		struct mml_frame_data *dest = &submit->info.dest[i].data;
+
+		dest->format = format_drm_to_mml(dest->format, dest->modifier);
+		if (dest->color.ycbcr_enc)
+			dest->profile = color_desc_to_profile(&dest->color);
+	}
 
 	/* always fixup plane offset */
 	if (likely(submit->info.mode != MML_MODE_SRAM_READ)) {
-		frame_calc_plane_offset(&submit->info.src, &submit->buffer.src);
+		frame_calc_plane_offset(src, &submit->buffer.src);
 		frame_calc_plane_offset(&submit->info.seg_map, &submit->buffer.seg_map);
 		for (i = 0; i < submit->info.dest_cnt; i++)
 			frame_calc_plane_offset(&submit->info.dest[i].data,
 				&submit->buffer.dest[i]);
 	}
 
-	if (MML_FMT_AFBC_YUV(submit->info.src.format)) {
-		submit->info.src.y_stride =
-			mml_color_get_min_y_stride(submit->info.src.format, submit->info.src.width);
-		submit->info.src.uv_stride = 0;
-		submit->info.src.plane_cnt = 1;
+	if (MML_FMT_AFBC_YUV(src->format)) {
+		src->y_stride =
+			mml_color_get_min_y_stride(src->format, src->width);
+		src->uv_stride = 0;
+		src->plane_cnt = 1;
 		submit->buffer.src.cnt = 1;
 		submit->buffer.src.fd[1] = -1;
 		submit->buffer.src.fd[2] = -1;
 	}
-
-	for (i = 0; i < submit->info.dest_cnt; i++)
-		submit->info.dest[i].data.format = format_drm_to_mml(
-			submit->info.dest[i].data.format,
-			submit->info.dest[i].data.modifier);
 
 	/* give default act time in case something wrong in disp
 	 * the 2604 base on cmd mode
@@ -1093,7 +1238,7 @@ s32 mml_drm_submit(struct mml_drm_ctx *dctx, struct mml_submit *submit,
 		task->buf.src.apu_handle = mml_get_apu_handle(&submit->buffer.src);
 	} else {
 		result = drm_frame_buf_to_task_buf(ctx, &task->buf.src,
-			&submit->buffer.src, submit->info.src.format, submit->info.src.secure,
+			&submit->buffer.src, src->format, src->secure,
 			"mml_drm_rdma");
 		if (result) {
 			mml_err("[drm]%s get src dma buf fail", __func__);

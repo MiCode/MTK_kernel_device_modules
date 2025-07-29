@@ -11081,6 +11081,10 @@ static int mtk_drm_mml_ctrl_query_hw_support(struct mtk_drm_mml_query_hw_support
 	}
 
 	query->support = mml_drm_query_hw_support(&info);
+	if (copy_to_user(query->info, &info, sizeof(info))) {
+		DDPINFO("%s copy_to_user mml frame info failed\n", __func__);
+		return -EINVAL;
+	}
 
 	return 0;
 }

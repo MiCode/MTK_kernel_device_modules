@@ -3929,8 +3929,8 @@ _copy_layer_info_by_disp(struct drm_mtk_layering_info *disp_info_user,
 			 int debug_mode, unsigned int disp_idx)
 {
 	struct drm_mtk_layering_info *l_info = &layering_info;
-	unsigned long layer_size = 0;
-	int ret = 0;
+	unsigned long layer_size = 0, mml_cfg_size = 0;
+	int ret = 0, layer_num = 0;
 
 	if (l_info->layer_num[disp_idx] <= 0) {
 		/* direct skip */
@@ -3941,8 +3941,9 @@ _copy_layer_info_by_disp(struct drm_mtk_layering_info *disp_info_user,
 	disp_info_user->gles_tail[disp_idx] = l_info->gles_tail[disp_idx];
 	disp_info_user->disp_caps[disp_idx] = l_info->disp_caps[disp_idx];
 
-	layer_size = sizeof(struct drm_mtk_layer_config) *
-		     disp_info_user->layer_num[disp_idx];
+	layer_num = disp_info_user->layer_num[disp_idx];
+	layer_size = sizeof(struct drm_mtk_layer_config) * layer_num;
+	mml_cfg_size = sizeof(struct mml_frame_info) * layer_num;
 
 	if (debug_mode) {
 		memcpy(disp_info_user->input_config[disp_idx],
@@ -3950,6 +3951,12 @@ _copy_layer_info_by_disp(struct drm_mtk_layering_info *disp_info_user,
 	} else {
 		if (copy_to_user(disp_info_user->input_config[disp_idx],
 				 l_info->input_config[disp_idx], layer_size)) {
+			DDPINFO("[DISP][FB]: copy_to_user failed! line:%d\n",
+				__LINE__);
+			ret = -EFAULT;
+		}
+		if (copy_to_user(disp_info_user->mml_cfg[disp_idx],
+				 l_info->mml_cfg[disp_idx], mml_cfg_size)) {
 			DDPINFO("[DISP][FB]: copy_to_user failed! line:%d\n",
 				__LINE__);
 			ret = -EFAULT;
@@ -4723,6 +4730,8 @@ static void check_is_mml_layer(const int disp_idx,
 			}
 
 			if (j < mml_cnt) {
+				*mml_info = multi_mml_info[j];
+
 				DDPINFO("%s,L%d,m:%d\n", __func__, i, multi_mml_info[j].mode);
 				c->layer_caps |= mml_mode_mapping(multi_mml_info[j].mode);
 				j ++;

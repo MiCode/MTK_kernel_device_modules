@@ -706,23 +706,25 @@ static void get_fmt_str(char *fmt, size_t sz, enum mml_color f)
 		fmt[0] = '\0';
 }
 
-static void get_frame_str(char *frame, size_t sz, const struct mml_frame_data *data)
+void mml_core_get_frame_str(char *frame, size_t size, const struct mml_frame_data *data)
 {
 	char fmt[24];
 	int ret;
 
 	get_fmt_str(fmt, sizeof(fmt), data->format);
-	ret = snprintf(frame, sz, "(%u, %u)[%u %u] %#010x C%s P%hu%s",
+	ret = snprintf(frame, size, "(%u, %u)[%u %u] %#010x C%s P%u.%u.%u.%u.%u%s",
 		data->width, data->height, data->y_stride,
 		MML_FMT_AFBC(data->format) ? data->vert_stride : data->uv_stride,
 		data->format, fmt,
 		data->profile,
+		data->color.gamut, data->color.ycbcr_enc,
+		data->color.color_range, data->color.gamma,
 		data->secure ? " sec" : "");
 	if (ret < 0)
 		frame[0] = '\0';
 }
 
-static const char *ovlid_str(enum mml_mode mode, enum mml_layer_id ovlsys_id)
+static const char *get_ovlid_str(enum mml_mode mode, enum mml_layer_id ovlsys_id)
 {
 	if (mode != MML_MODE_DIRECT_LINK)
 		return "";
@@ -739,12 +741,36 @@ static const char *ovlid_str(enum mml_mode mode, enum mml_layer_id ovlsys_id)
 	return "";
 }
 
-static void dump_task(struct mml_task *task)
+void mml_core_get_pqen_str(char *pqen, size_t size, const struct mml_pq_config *pq_config)
+{
+	int ret;
+
+	ret = snprintf(pqen, size, "%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
+		pq_config->en ? " PQ" : "",
+		pq_config->en_fg ? " FG" : "",
+		pq_config->en_hdr ? " HDR" : "",
+		pq_config->en_ccorr ? " CCORR" : "",
+		pq_config->en_dre ? " DRE" : "",
+		pq_config->en_region_pq ? " AIR" : "",
+		pq_config->en_sharp ? " SHP" : "",
+		pq_config->en_ur ? " UR" : "",
+		pq_config->en_dc ? " DC" : "",
+		pq_config->en_color ? " COLOR" : "",
+		pq_config->en_c3d ? " C3D" : "",
+		pq_config->en_clarity ? " CLA" : "",
+		pq_config->en_color_adaptive ? " CADPT" : "",
+		pq_config->en_cv_based_sdr ? " CVSDR" : "");
+	if (ret < 0)
+		pqen[0] = '\0';
+}
+
+static void dump_task(const struct mml_task *task)
 {
 	const struct mml_frame_config *cfg = task->config;
 	const struct mml_topology_path *path = cfg->path[0];
 	const struct mml_frame_dest *dest;
 	char frame[60];
+	char pqen[80];
 	u32 i, sz = 0;
 	s32 ret;
 
@@ -757,7 +783,7 @@ static void dump_task(struct mml_task *task)
 			cfg->dpc ? " dpc" : "",
 			path->sof_irq ? " irq" : "");
 
-	get_frame_str(frame, sizeof(frame), &cfg->info.src);
+	mml_core_get_frame_str(frame, sizeof(frame), &cfg->info.src);
 	mml_log("    in:%s plane:%hhu alpha:%s%s%s%s%s job:%u mode:%hhu %s%s acttime %u",
 		frame,
 		task->buf.src.cnt,
@@ -770,22 +796,24 @@ static void dump_task(struct mml_task *task)
 		task->buf.src.invalid ? " invalid" : "",
 		task->job.jobid,
 		cfg->info.mode,
+		task->adaptor_type == MML_ADAPTOR_M2M ? "m2m" :
 		cfg->disp_vdo ? "vdo" : "cmd",
-		task->adaptor_type == MML_ADAPTOR_M2M ?
-			" m2m" : ovlid_str(cfg->info.mode, cfg->info.ovlsys_id),
+		get_ovlid_str(cfg->info.mode, cfg->info.ovlsys_id),
 		cfg->info.act_time);
 	if (cfg->info.dest[0].pq_config.en_region_pq) {
-		get_frame_str(frame, sizeof(frame), &cfg->info.seg_map);
-		mml_log(" pq in:%s plane:%hhu%s%s",
+		mml_core_get_frame_str(frame, sizeof(frame), &cfg->info.seg_map);
+		mml_log(" pq in:%s plane:%hhu%s%s%s",
 			frame,
 			task->buf.seg_map.cnt,
 			task->buf.seg_map.fence ? " fence" : "",
-			task->buf.seg_map.flush ? " flush" : "");
+			task->buf.seg_map.flush ? " flush" : "",
+			task->buf.seg_map.invalid ? " invalid" : "");
 	}
 	for (i = 0; i < cfg->info.dest_cnt; i++) {
 		dest = &cfg->info.dest[i];
-		get_frame_str(frame, sizeof(frame), &dest->data);
-		mml_log(" out %u:%s plane:%hhu r:%hu%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
+		mml_core_get_frame_str(frame, sizeof(frame), &dest->data);
+		mml_core_get_pqen_str(pqen, sizeof(pqen), &dest->pq_config);
+		mml_log(" out %u:%s plane:%hhu r:%hu%s%s%s%s%s",
 			i,
 			frame,
 			task->buf.dest[i].cnt,
@@ -794,16 +822,7 @@ static void dump_task(struct mml_task *task)
 			task->buf.dest[i].fence ? " fence" : "",
 			task->buf.dest[i].flush ? " flush" : "",
 			task->buf.dest[i].invalid ? " invalid" : "",
-			dest->pq_config.en ? " PQ" : "",
-			dest->pq_config.en_fg ? " FG" : "",
-			dest->pq_config.en_hdr ? " HDR" : "",
-			dest->pq_config.en_ccorr ? " CCORR" : "",
-			dest->pq_config.en_dre ? " DRE" : "",
-			dest->pq_config.en_sharp ? " SHP" : "",
-			dest->pq_config.en_ur ? " UR" : "",
-			dest->pq_config.en_dc ? " DC" : "",
-			dest->pq_config.en_color ? " COLOR" : "",
-			dest->pq_config.en_c3d ? " C3D" : "");
+			pqen);
 		mml_log("crop %u:(%u, %u, %u, %u) compose:(%u, %u, %u, %u)",
 			i,
 			dest->crop.r.left,

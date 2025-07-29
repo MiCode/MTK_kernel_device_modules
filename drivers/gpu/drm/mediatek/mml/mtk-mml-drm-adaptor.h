@@ -99,7 +99,7 @@ int mml_drm_get_hw_caps(u32 *mode_caps, u32 *pq_caps);
  *
  * Return:	True for support, false for not support.
  */
-bool mml_drm_query_hw_support(const struct mml_frame_info *info);
+bool mml_drm_query_hw_support(struct mml_frame_info *info);
 
 /*
  * mml_drm_query_cap - Query current running mode and possible support mode
