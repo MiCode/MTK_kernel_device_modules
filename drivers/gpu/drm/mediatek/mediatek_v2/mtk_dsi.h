@@ -218,6 +218,9 @@ struct mtk_dsi {
 	bool cur_panel_param_changed;
 	struct drm_display_mode max_vrefresh_mode;
 	int led_type;
+	struct mutex modes_lock;
+	int modes_cnt;
+	bool modes_filled;
 };
 
 enum dsi_porch_type;

@@ -7234,8 +7234,35 @@ mtk_dsi_connector_detect(struct drm_connector *connector, bool force)
 static int mtk_dsi_connector_get_modes(struct drm_connector *connector)
 {
 	struct mtk_dsi *dsi = connector_to_dsi(connector);
+	int ret = 0;
 
-	return drm_panel_get_modes(dsi->panel, connector);
+	mutex_lock(&dsi->modes_lock);
+	ret = drm_panel_get_modes(dsi->panel, connector);
+	mutex_unlock(&dsi->modes_lock);
+
+	return ret;
+}
+
+static int mtk_dsi_connector_fill_modes(struct drm_connector *connector,
+					    uint32_t maxX, uint32_t maxY)
+{
+	struct mtk_dsi *dsi = connector_to_dsi(connector);
+
+	if (!dsi) {
+		DDPPR_ERR("%s dsi is NULL\n", __func__);
+		return 0;
+	}
+
+	if (dsi->modes_filled) {
+		DDPMSG("%s count:%d\n", __func__, dsi->modes_cnt);
+		return dsi->modes_cnt;
+	}
+
+	dsi->modes_cnt = drm_helper_probe_single_connector_modes(connector, maxX, maxY);
+	dsi->modes_filled = true;
+	DDPMSG("%s fill_modes count:%d\n", __func__, dsi->modes_cnt);
+
+	return dsi->modes_cnt;
 }
 
 static int mtk_dsi_atomic_check(struct drm_encoder *encoder,
@@ -7451,7 +7478,7 @@ static const struct drm_encoder_helper_funcs mtk_dsi_encoder_helper_funcs = {
 static const struct drm_connector_funcs mtk_dsi_connector_funcs = {
 	/*.dpms = drm_atomic_helper_connector_dpms,*/
 	.detect = mtk_dsi_connector_detect,
-	.fill_modes = drm_helper_probe_single_connector_modes,
+	.fill_modes = mtk_dsi_connector_fill_modes,
 	.destroy = drm_connector_cleanup,
 	.reset = mtk_dsi_connector_reset,
 	.atomic_duplicate_state = mtk_dsi_connector_duplicate_state,
@@ -8211,6 +8238,7 @@ unsigned int mtk_dsi_mode_change_index(struct mtk_dsi *dsi,
 		cur_panel_params->dyn.switch_en);
 
 	if (panel_ext->funcs && panel_ext->funcs->ext_param_set) {
+		mutex_lock(&dsi->modes_lock);
 		if (panel_ext->funcs->ext_param_set(dsi->panel, &dsi->conn,
 			dst_mode_idx))
 			DDPMSG("%s, error:not support dst mode:%d\n",
@@ -8220,6 +8248,7 @@ unsigned int mtk_dsi_mode_change_index(struct mtk_dsi *dsi,
 			DDPINFO("%s:%d adjust_panel_params->dyn.switch_en %d\n",
 				__func__, __LINE__, adjust_panel_params->dyn.switch_en);
 		}
+		mutex_unlock(&dsi->modes_lock);
 	}
 
 	if (cur_panel_params && adjust_panel_params &&
@@ -13292,8 +13321,10 @@ unsigned int mtk_dsi_get_line_time(struct mtk_drm_crtc *mtk_crtc,
 
 	if (mode_idx > -1) {
 		if (dsi->ext && dsi->ext->funcs && dsi->ext->funcs->ext_param_get) {
+			mutex_lock(&dsi->modes_lock);
 			ret = dsi->ext->funcs->ext_param_get(dsi->panel, &dsi->conn,
 					&panel_params, mode_idx);
+			mutex_unlock(&dsi->modes_lock);
 			if (ret || !panel_params) {
 				panel_params = dsi->ext->params;
 				DDPMSG("%s, error:not support this mode:%d\n", __func__, mode_idx);
@@ -14207,8 +14238,12 @@ unsigned long long mtk_dsi_get_frame_hrt_bw_base_by_mode(
 
 	if (panel_ext && panel_ext->funcs && panel_ext->funcs->ext_param_get) {
 		struct mtk_panel_params *panel_params = NULL;
-		int ret = panel_ext->funcs->ext_param_get(dsi->panel, &dsi->conn,
+		int ret = 0;
+
+		mutex_lock(&dsi->modes_lock);
+		ret = panel_ext->funcs->ext_param_get(dsi->panel, &dsi->conn,
 			&panel_params, mode_idx);
+		mutex_unlock(&dsi->modes_lock);
 
 		if (ret || !panel_params) {
 			panel_params = dsi->ext->params;
@@ -14676,10 +14711,13 @@ static void mtk_dsi_vdo_timing_change(struct mtk_dsi *dsi,
 		return;
 	}
 
+	mutex_lock(&dsi->modes_lock);
 	if (dsi->ext && dsi->ext->funcs &&
 		dsi->ext->funcs->ext_param_set)
 		dsi->ext->funcs->ext_param_set(dsi->panel, &dsi->conn,
 			state->prop_val[CRTC_PROP_DISP_MODE_IDX]);
+	mutex_unlock(&dsi->modes_lock);
+
 	//1.fps change index
 	fps_chg_index = mtk_crtc->mode_change_index;
 
@@ -15249,8 +15287,11 @@ static u32 mtk_dsi_get_line_time_ns(struct mtk_dsi *dsi,
 			struct mtk_panel_params *panel_params = NULL;
 			int ret = 0;
 
+			mutex_lock(&dsi->modes_lock);
 			ret = dsi->ext->funcs->ext_param_get(dsi->panel, &dsi->conn,
 					&panel_params, mode_idx);
+			mutex_unlock(&dsi->modes_lock);
+
 			if (ret || !panel_params) {
 				DDPMSG("%s, error:not support this mode:%d\n", __func__, mode_idx);
 			} else
@@ -15669,6 +15710,7 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			break;
 		}
 
+		mutex_lock(&dsi->modes_lock);
 		list_for_each_entry_safe(max_mode, next, &dsi->conn.modes, head) {
 
 			if (max_mode == NULL) {
@@ -15682,6 +15724,7 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 				memcpy(&dsi->max_vrefresh_mode, max_mode, sizeof(struct drm_display_mode));
 			}
 		}
+		mutex_unlock(&dsi->modes_lock);
 	}
 		break;
 	case DSI_GET_MODE_CONT:
@@ -15694,22 +15737,27 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 
 		cont = (unsigned int *)params;
 		*cont = 0;
+		mutex_lock(&dsi->modes_lock);
 		list_for_each_entry_safe(mode, next, &dsi->conn.modes, head) {
 			if (mode == NULL)
 				break;
 			(*cont)++;
 		}
+		mutex_unlock(&dsi->modes_lock);
 	}
 		break;
 	case DSI_SET_PANEL_PARAMS_BY_IDX:
 	{
 		struct mtk_crtc_state *state =
 			to_mtk_crtc_state(comp->mtk_crtc->base.state);
+
 		state->prop_val[CRTC_PROP_DISP_MODE_IDX] = *((unsigned int *)params);
+		mutex_lock(&dsi->modes_lock);
 		if (dsi->ext && dsi->ext->funcs &&
 			dsi->ext->funcs->ext_param_set)
 			dsi->ext->funcs->ext_param_set(dsi->panel, &dsi->conn,
 				state->prop_val[CRTC_PROP_DISP_MODE_IDX]);
+		mutex_unlock(&dsi->modes_lock);
 	}
 		break;
 
@@ -16128,6 +16176,8 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		u16 vdisplay = 0;
 
 		panel_ext = mtk_dsi_get_panel_ext(comp);
+
+		mutex_lock(&dsi->modes_lock);
 		list_for_each_entry(m, &dsi->conn.modes, head)
 			num++;
 
@@ -16153,6 +16203,7 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 					crtc->res_switch = RES_SWITCH_ON_DDIC;
 			}
 		}
+		mutex_unlock(&dsi->modes_lock);
 
 		/* check platform res switch option */
 		if (!(((crtc->res_switch == RES_SWITCH_ON_DDIC) &&
@@ -16211,6 +16262,7 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		uint32_t old_blob_id = 0;
 		struct mtk_panel_params *panel_params = NULL;
 
+		mutex_lock(&dsi->modes_lock);
 		if (mtk_crtc->res_switch == RES_SWITCH_ON_AP) {
 			list_for_each_entry(m, &dsi->conn.modes, head) {
 				connector_caps->width_after_pq[i] =
@@ -16226,6 +16278,7 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 				i++;
 			}
 		}
+		mutex_unlock(&dsi->modes_lock);
 
 		/* set lcm_color_mode */
 		panel_params = mtk_drm_get_lcm_ext_params(&mtk_crtc->base);
@@ -18024,6 +18077,8 @@ static int mtk_dsi_probe(struct platform_device *pdev)
 	//wake_up_process(dsi->hotplug_task);
 #endif
 	timer_setup(&hrt_issue_timer, hrt_issue_timer_callback, 0);
+
+	mutex_init(&dsi->modes_lock);
 
 	DDPINFO("%s-\n", __func__);
 	return ret;
