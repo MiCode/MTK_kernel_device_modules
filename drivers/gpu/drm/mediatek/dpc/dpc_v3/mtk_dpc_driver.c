@@ -3002,19 +3002,20 @@ static void dpc_ap_vote_mmpc(bool add, const enum mtk_vidle_voter_user user)
 	return;
 }
 
-static void dpc_ap_ref_cnt(bool add, const enum mtk_vidle_voter_user user)
+static void dpc_ap_ref_cnt(bool add, const enum mtk_vidle_voter_user user, bool lock)
 {
 	unsigned long flags;
 	s32 cnt;
 
-	spin_lock_irqsave(&g_priv->hwccf_ref_lock, flags);
-	cnt = add ? atomic_inc_return(&hwccf_ref) : atomic_dec_return(&hwccf_ref);
+	if (lock)
+		spin_lock_irqsave(&g_priv->hwccf_ref_lock, flags);
 
+	cnt = add ? atomic_inc_return(&hwccf_ref) : atomic_dec_return(&hwccf_ref);
 	if (add && cnt == 1) {
 		dpc_mmp(hwccf_vote, MMPROFILE_FLAG_START, BIT(28) | user, cnt);
-		dpc_hwccf_vote(VOTE_SET, NULL, user, false, 0);
+		dpc_hwccf_vote(VOTE_SET, NULL, user, NO_LOCK, 0);
 	} else if (!add && cnt == 0) {
-		dpc_hwccf_vote(VOTE_CLR, NULL, user, false, 0);
+		dpc_hwccf_vote(VOTE_CLR, NULL, user, NO_LOCK, 0);
 		dpc_mmp(hwccf_vote, MMPROFILE_FLAG_END, BIT(29) | user, cnt);
 	} else if (cnt < 0) {
 		atomic_set_release(&hwccf_ref, 0);
@@ -3023,7 +3024,8 @@ static void dpc_ap_ref_cnt(bool add, const enum mtk_vidle_voter_user user)
 		dpc_mmp(hwccf_vote, MMPROFILE_FLAG_PULSE, (add ? BIT(28) : BIT(29)) | user, cnt);
 	}
 
-	spin_unlock_irqrestore(&g_priv->hwccf_ref_lock, flags);
+	if (lock)
+		spin_unlock_irqrestore(&g_priv->hwccf_ref_lock, flags);
 
 	if (cnt < 0) {
 		if (unlikely(irq_aee))
@@ -3056,7 +3058,7 @@ static int dpc_vidle_power_keep_v3(const enum mtk_vidle_voter_user _user)
 		if (user_cnt == 1) {
 			dpc_mminfra_on_off(true, user);
 			if (excep_by_xpu & BIT(0))
-				dpc_ap_ref_cnt(VOTE_SET, user);
+				dpc_ap_ref_cnt(VOTE_SET, user, NO_LOCK);
 			else
 				dpc_ap_vote_mmpc(VOTE_SET, user);
 		}
@@ -3110,7 +3112,7 @@ static int dpc_vidle_power_keep_v3(const enum mtk_vidle_voter_user _user)
 		dpc_pre_cg_ctrl(VOTE_SET, false);
 
 		tracing_mark_write(trace_buf_keep[3][0]);
-		dpc_ap_ref_cnt(VOTE_SET, user);
+		dpc_ap_ref_cnt(VOTE_SET, user, WITH_LOCK);
 
 		writel(0x1, dpc_base + DISP_REG_DPC_DUMMY1);
 	} else {
@@ -3165,7 +3167,7 @@ static void dpc_vidle_power_release_v3(const enum mtk_vidle_voter_user _user)
 		user_cnt = atomic_dec_return(&g_user_15);
 		if (user_cnt == 0) {
 			if (excep_by_xpu & BIT(0))
-				dpc_ap_ref_cnt(VOTE_CLR, user);
+				dpc_ap_ref_cnt(VOTE_CLR, user, NO_LOCK);
 			else
 				dpc_ap_vote_mmpc(VOTE_CLR, user);
 			dpc_mminfra_on_off(false, user);
@@ -3225,7 +3227,7 @@ static void dpc_vidle_power_release_v3(const enum mtk_vidle_voter_user _user)
 
 	if (excep_by_xpu & BIT(0)) {
 		tracing_mark_write(trace_buf_release[1][0]);
-		dpc_ap_ref_cnt(VOTE_CLR, user);
+		dpc_ap_ref_cnt(VOTE_CLR, user, WITH_LOCK);
 
 		tracing_mark_write(trace_buf_release[2][0]);
 		dpc_pre_cg_ctrl(VOTE_CLR, false);
@@ -3289,7 +3291,7 @@ static void dpc_gce_ref_cnt(struct cmdq_pkt *pkt, bool add, const enum mtk_vidle
 		cmdq_pkt_write(pkt, NULL, g_priv->dpc_pa + DISP_REG_DPC_MML_INFRA_PLL_OFF_CFG, 0x1a1a1a, U32_MAX);
 
 		if (!toggle_cg_fsm) {
-			dpc_hwccf_vote(VOTE_SET, pkt, user, false, gpr);
+			dpc_hwccf_vote(VOTE_SET, pkt, user, NO_LOCK, gpr);
 			goto vote_out;
 		}
 
@@ -3385,7 +3387,7 @@ vote_out:
 		// if (dummy_voter == 0) unvote hwccf
 		cmdq_pkt_read(pkt, NULL, 0x31350160, dummy_voter);
 		GCE_IF(lop, R_CMDQ_EQUAL, rop);
-		dpc_hwccf_vote(VOTE_CLR, pkt, user, false, gpr);
+		dpc_hwccf_vote(VOTE_CLR, pkt, user, NO_LOCK, gpr);
 		cmdq_pkt_write(pkt, NULL, g_priv->dpc_pa + DISP_REG_DPC3_DTx_SW_TRIG(56), 1, U32_MAX);
 		cmdq_pkt_write(pkt, NULL, g_priv->dpc_pa + DISP_REG_DPC_MML_INFRA_PLL_OFF_CFG, 0x000a00, U32_MAX);
 		if (reuse)
@@ -4332,7 +4334,7 @@ static void process_dbg_opt(const char *opt)
 	return;
 err:
 	DPCERR();
-	(void)dpc_ap_ref_cnt(0, 0);
+	(void)dpc_ap_ref_cnt(0, 0, 0);
 	(void)dpc_gce_ref_cnt(0, 0, 0, 0, 0);
 }
 

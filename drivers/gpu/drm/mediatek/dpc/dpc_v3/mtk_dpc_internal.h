@@ -516,6 +516,9 @@ enum GCE_COND_REVERSE_COND {
 #define VOTE_SET 1
 #define VOTE_CLR 0
 
+#define WITH_LOCK 1
+#define NO_LOCK 0
+
 #define DPC_DISP_DT_CNT 32
 #define DPC_MML_DT_CNT 25
 
@@ -600,6 +603,8 @@ static void dpc_hwccf_vote(bool on, struct cmdq_pkt *pkt, const enum mtk_vidle_v
 static void process_dbg_opt(const char *opt);
 static int dpc_vidle_power_keep_v3(const enum mtk_vidle_voter_user _user);
 static void dpc_vidle_power_release_v3(const enum mtk_vidle_voter_user _user);
+static void dpc_ap_ref_cnt(bool add, const enum mtk_vidle_voter_user user, bool lock);
+static void dpc_ap_vote_mmpc(bool add, const enum mtk_vidle_voter_user user);
 
 struct mtk_dpc {
 	struct platform_device *pdev;
