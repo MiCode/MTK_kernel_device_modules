@@ -481,7 +481,10 @@ static bool vmm_check_efuse_valid(void)
 {
 	ISP_LOGI("EFUSE_ISP_VMIN_REG: %d", EFUSE_ISP_VMIN_REG);
 	ISP_LOGI("EFUSE_VDE_VMIN_REG: %d", EFUSE_VDE_VMIN_REG);
-	if (EFUSE_ISP_VMIN_REG < 4 || EFUSE_VDE_VMIN_REG < 4) {
+	if (ISP_575_VBIN_VAL < 4 || ISP_600_VBIN_VAL < 4 ||
+		ISP_650_VBIN_VAL < 4 || ISP_700_VBIN_VAL < 4 ||
+		VDE_575_VBIN_VAL < 4 || VDE_600_VBIN_VAL < 4 ||
+		VDE_650_VBIN_VAL < 4 || VDE_700_VBIN_VAL < 4) {
 		ISP_LOGI("vmin efuse check fail. Disable AVS flow!");
 		return false;
 	}
@@ -1422,14 +1425,14 @@ static int vmm_cvfs_reg_show(struct seq_file *m, void *v)
 	else if (vmm_extra_deterioration)
 		recover_degrade = 5;
 
-	seq_printf(m, "EFUSE_ISP_VMIN_REG: %x\n", EFUSE_ISP_VMIN_REG);
-	seq_printf(m, "EFUSE_ISP_VB_VERSION: %x\n", EFUSE_ISP_VB_VERSION);
-	seq_printf(m, "EFUSE_VDE_VMIN_REG: %x\n", EFUSE_VDE_VMIN_REG);
-	seq_printf(m, "EFUSE_CAM_DMIN_OP5760: %x\n", EFUSE_CAM_DMIN_OP5760);
-	seq_printf(m, "EFUSE_IMG_DMIN_OP5760: %x\n", EFUSE_IMG_DMIN_OP5760);
-	seq_printf(m, "EFUSE_IPE_DMIN_OP5760: %x\n", EFUSE_IPE_DMIN_OP5760);
-	seq_printf(m, "EFUSE_ISP_CAM_SFT: %x\n", EFUSE_ISP_CAM_SFT);
-	seq_printf(m, "EFUSE_ISP_IPS_REG: %x\n", EFUSE_ISP_IPS_REG);
+	seq_printf(m, "EFUSE_ISP_VMIN_REG: 0x%x\n", EFUSE_ISP_VMIN_REG);
+	seq_printf(m, "EFUSE_ISP_VB_VERSION: 0x%x\n", EFUSE_ISP_VB_VERSION);
+	seq_printf(m, "EFUSE_VDE_VMIN_REG: 0x%x\n", EFUSE_VDE_VMIN_REG);
+	seq_printf(m, "EFUSE_CAM_DMIN_OP5760: 0x%x\n", EFUSE_CAM_DMIN_OP5760);
+	seq_printf(m, "EFUSE_IMG_DMIN_OP5760: 0x%x\n", EFUSE_IMG_DMIN_OP5760);
+	seq_printf(m, "EFUSE_IPE_DMIN_OP5760: 0x%x\n", EFUSE_IPE_DMIN_OP5760);
+	seq_printf(m, "EFUSE_ISP_CAM_SFT: 0x%x\n", EFUSE_ISP_CAM_SFT);
+	seq_printf(m, "EFUSE_ISP_IPS_REG: 0x%x\n", EFUSE_ISP_IPS_REG);
 
 	seq_printf(m, "VB_SEARCH_VMM_ISP_0p575: %dmV\n",
 		((readl(AVS_PHASE1_VMIN_2_REG) & 0xff)+recover_degrade)*(VMM_ONE_STEP_MARGIN/1000));
