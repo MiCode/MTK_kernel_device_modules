@@ -341,7 +341,24 @@ static int soc_temp_lvts_read_temp(struct thermal_zone_device *tz, int *temperat
 	return 0;
 }
 
-static void lvts_write_device(struct lvts_data *lvts_data, unsigned int data,
+static noinline void writel_lcov(u32 value, void *addr)
+{
+	writel(value, addr);
+}
+
+static noinline int readl_lcov(void *addr)
+{
+	return readl(addr);
+}
+
+static noinline int readl_poll_timeout_lcov(void *addr,
+	u32 data, bool cond, u32 delay_us, u32 iteration)
+{
+	return readl_poll_timeout(addr, data, cond, delay_us, iteration);
+}
+
+
+static noinline void lvts_write_device(struct lvts_data *lvts_data, unsigned int data,
 	int tc_id)
 {
 	void __iomem *base;
@@ -350,10 +367,10 @@ static void lvts_write_device(struct lvts_data *lvts_data, unsigned int data,
 
 	base = GET_BASE_ADDR(tc_id);
 
-	writel(data, LVTS_CONFIG_0 + base);
+	writel_lcov(data, LVTS_CONFIG_0 + base);
 
 	udelay(5);
-	ret = readl_poll_timeout(LVTS_CONFIG_0 + base, data,
+	ret = readl_poll_timeout_lcov(LVTS_CONFIG_0 + base, data,
 				 !(data & DEVICE_ACCESS_STARTUS),
 				 2, 200);
 	if (ret)
@@ -361,31 +378,31 @@ static void lvts_write_device(struct lvts_data *lvts_data, unsigned int data,
 			"write device err: LVTS %d didn't ready, data 0x%x\n", tc_id, data);
 }
 
-static unsigned int lvts_read_device(struct lvts_data *lvts_data,
+static noinline unsigned int lvts_read_device(struct lvts_data *lvts_data,
 	unsigned int reg_idx, int tc_id)
 {
 	struct device *dev = lvts_data->dev;
 	void __iomem *base;
-	unsigned int data;
+	unsigned int data = 0;
 	int ret;
 
 	base = GET_BASE_ADDR(tc_id);
-	writel(READ_DEVICE_REG(reg_idx), LVTS_CONFIG_0 + base);
+	writel_lcov(READ_DEVICE_REG(reg_idx), LVTS_CONFIG_0 + base);
 
 
-	ret = readl_poll_timeout(LVTS_CONFIG_0 + base, data,
+	ret = readl_poll_timeout_lcov(LVTS_CONFIG_0 + base, data,
 				 !(data & DEVICE_ACCESS_STARTUS),
 				 2, 200);
 	if (ret)
 		dev_err(dev,
 			"read device err: LVTS %d didn't ready, reg_idx 0x%x\n", tc_id, reg_idx);
 
-	data = (readl(LVTSRDATA0_0 + base));
+	data = (readl_lcov(LVTSRDATA0_0 + base));
 
 	return data;
 }
 
-static void device_identification_v1(struct lvts_data *lvts_data)
+static noinline void device_identification_v1(struct lvts_data *lvts_data)
 {
 	struct device *dev = lvts_data->dev;
 	unsigned int i, data;
@@ -394,40 +411,40 @@ static void device_identification_v1(struct lvts_data *lvts_data)
 	for (i = 0; i < lvts_data->num_tc; i++) {
 		base = GET_BASE_ADDR(i);
 
-		writel(ENABLE_LVTS_CTRL_CLK, LVTSCLKEN_0 + base);
+		writel_lcov(ENABLE_LVTS_CTRL_CLK, LVTSCLKEN_0 + base);
 
 		lvts_write_device(lvts_data, RESET_ALL_DEVICES, i);
 
 		lvts_write_device(lvts_data, READ_BACK_DEVICE_ID, i);
 
 		/* Check LVTS device ID */
-		data = (readl(LVTS_ID_0 + base) & GENMASK(7, 0));
+		data = (readl_lcov(LVTS_ID_0 + base) & GENMASK(7, 0));
 		if (data != (0x81 + i))
 			dev_err(dev, "LVTS_TC_%d, Device ID should be 0x%x, but 0x%x\n",
 				i, (0x81 + i), data);
 	}
 }
 
-static void disable_sensing_points(struct lvts_data *lvts_data, unsigned int tc_id)
+static noinline void disable_sensing_points(struct lvts_data *lvts_data, unsigned int tc_id)
 {
 	void __iomem *base;
 
 	base = GET_BASE_ADDR(tc_id);
-	writel(DISABLE_SENSING_POINT, LVTSMONCTL0_0 + base);
+	writel_lcov(DISABLE_SENSING_POINT, LVTSMONCTL0_0 + base);
 }
 
-static void disable_all_sensing_points(struct lvts_data *lvts_data)
+static noinline void disable_all_sensing_points(struct lvts_data *lvts_data)
 {
 	unsigned int i;
 	void __iomem *base;
 
 	for (i = 0; i < lvts_data->num_tc; i++) {
 		base = GET_BASE_ADDR(i);
-		writel(DISABLE_SENSING_POINT, LVTSMONCTL0_0 + base);
+		writel_lcov(DISABLE_SENSING_POINT, LVTSMONCTL0_0 + base);
 	}
 }
 
-static void enable_sensing_points(struct lvts_data *lvts_data, unsigned int tc_id)
+static noinline void enable_sensing_points(struct lvts_data *lvts_data, unsigned int tc_id)
 {
 	struct device *dev = lvts_data->dev;
 	struct tc_settings *tc = lvts_data->tc;
@@ -452,10 +469,10 @@ static void enable_sensing_points(struct lvts_data *lvts_data, unsigned int tc_i
 
 		flag = flag | (0x1<<j);
 	}
-	writel(flag, LVTSMONCTL0_0 + base);
+	writel_lcov(flag, LVTSMONCTL0_0 + base);
 }
 
-static void enable_all_sensing_points(struct lvts_data *lvts_data)
+static noinline void enable_all_sensing_points(struct lvts_data *lvts_data)
 {
 	struct device *dev = lvts_data->dev;
 	struct tc_settings *tc = lvts_data->tc;
@@ -481,12 +498,12 @@ static void enable_all_sensing_points(struct lvts_data *lvts_data)
 
 			flag = flag | (0x1<<j);
 		}
-		writel(flag, LVTSMONCTL0_0 + base);
+		writel_lcov(flag, LVTSMONCTL0_0 + base);
 	}
 }
 
 #ifdef DUMP_MORE_LOG
-static void read_controller_reg_when_error(struct lvts_data *lvts_data)
+static noinline void read_controller_reg_when_error(struct lvts_data *lvts_data)
 {
 	unsigned int i;
 	void __iomem *base;
@@ -496,7 +513,7 @@ static void read_controller_reg_when_error(struct lvts_data *lvts_data)
 		base = GET_BASE_ADDR(i);
 
 		for (j = 0; j < NUM_LVTS_CONTROLLER_REG; j++) {
-			temp = readl(g_lvts_controller_addrs[j] + base);
+			temp = readl_lcov(g_lvts_controller_addrs[j] + base);
 			g_lvts_controller_value_e[i][j] = temp;
 		}
 	}
@@ -515,14 +532,14 @@ static int lvts_write_device_reg(struct lvts_data *lvts_data, unsigned int confi
 	config = config | (dev_reg_idx << 8) | data;
 
 
-	writel(config, LVTS_CONFIG_0 + base);
+	writel_lcov(config, LVTS_CONFIG_0 + base);
 
 	udelay(5);
 
 	return 1;
 }
 
-static void read_device_reg_when_error(struct lvts_data *lvts_data)
+static noinline void read_device_reg_when_error(struct lvts_data *lvts_data)
 {
 	int i, j;
 	unsigned int addr;
@@ -545,7 +562,7 @@ static void read_device_reg_when_error(struct lvts_data *lvts_data)
 			 * Wait until DEVICE_ACCESS_START = 0
 			 */
 			cnt = 0;
-			while ((readl(LVTS_CONFIG_0 + base) & BIT(24))) {
+			while ((readl_lcov(LVTS_CONFIG_0 + base) & BIT(24))) {
 				cnt++;
 
 				if (cnt == 100) {
@@ -555,7 +572,7 @@ static void read_device_reg_when_error(struct lvts_data *lvts_data)
 				udelay(2);
 			}
 
-			g_lvts_device_value_e[i][j] = (readl(LVTSRDATA0_0 + base));
+			g_lvts_device_value_e[i][j] = (readl_lcov(LVTSRDATA0_0 + base));
 		}
 	}
 }
@@ -671,7 +688,7 @@ static int lvts_thermal_check_all_sensing_point_idle(struct lvts_data *lvts_data
 	for (i = 0; i < lvts_data->num_tc; i++) {
 		//offset = lvts_tscpu_g_tc[i].tc_offset;
 		base = GET_BASE_ADDR(i);
-		temp = readl(base + LVTSMSRCTL1_0);
+		temp = readl_lcov(base + LVTSMSRCTL1_0);
 		/* Check if bit10=bit7=bit0=0 */
 		if ((temp & 0x481) != 0) {
 			error_code = (i << 16) + ((temp & BIT(10)) >> 8) +
@@ -685,7 +702,7 @@ static int lvts_thermal_check_all_sensing_point_idle(struct lvts_data *lvts_data
 	return 0;
 }
 
-void lvts_wait_for_all_sensing_point_idle(struct lvts_data *lvts_data)
+static noinline void lvts_wait_for_all_sensing_point_idle(struct lvts_data *lvts_data)
 {
 	struct device *dev = lvts_data->dev;
 	int cnt = 0, i, error_code, mask;
@@ -709,7 +726,7 @@ void lvts_wait_for_all_sensing_point_idle(struct lvts_data *lvts_data)
 	}
 	for (i = 0; i < lvts_data->num_tc; i++) {
 		base = GET_BASE_ADDR(i);
-		temp = readl(LVTSMSRCTL1_0 + base);
+		temp = readl_lcov(LVTSMSRCTL1_0 + base);
 		if ((temp & mask) != 0) {
 			error_code = ((temp & BIT(10)) >> 8) +
 				((temp & BIT(7)) >> 6) +
@@ -739,7 +756,7 @@ void dump_lvts_error_info(struct lvts_data *lvts_data)
 }
 #endif
 
-static void set_polling_speed(struct lvts_data *lvts_data, int tc_id)
+static noinline void set_polling_speed(struct lvts_data *lvts_data, int tc_id)
 {
 	struct tc_settings *tc = lvts_data->tc;
 	unsigned int lvtsMonCtl1, lvtsMonCtl2;
@@ -776,11 +793,11 @@ static void set_polling_speed(struct lvts_data *lvts_data, int tc_id)
 	 *                       <--> Sensor interval delay
 	 *                                             <--> Group interval delay
 	 */
-	writel(lvtsMonCtl1, LVTSMONCTL1_0 + base);
-	writel(lvtsMonCtl2, LVTSMONCTL2_0 + base);
+	writel_lcov(lvtsMonCtl1, LVTSMONCTL1_0 + base);
+	writel_lcov(lvtsMonCtl2, LVTSMONCTL2_0 + base);
 }
 
-static void set_hw_filter(struct lvts_data *lvts_data, int tc_id)
+static noinline void set_hw_filter(struct lvts_data *lvts_data, int tc_id)
 {
 	struct tc_settings *tc = lvts_data->tc;
 	unsigned int option;
@@ -798,10 +815,10 @@ static void set_hw_filter(struct lvts_data *lvts_data, int tc_id)
 	 */
 	option = (option << 9) | (option << 6) | (option << 3) | option;
 
-	writel(option, LVTSMSRCTL0_0 + base);
+	writel_lcov(option, LVTSMSRCTL0_0 + base);
 }
 
-static int get_dominator_index(struct lvts_data *lvts_data, int tc_id)
+static noinline int get_dominator_index(struct lvts_data *lvts_data, int tc_id)
 {
 	struct device *dev = lvts_data->dev;
 	struct tc_settings *tc = lvts_data->tc;
@@ -825,7 +842,7 @@ static int get_dominator_index(struct lvts_data *lvts_data, int tc_id)
 	return d_index;
 }
 
-static void disable_hw_reboot_interrupt(struct lvts_data *lvts_data, int tc_id)
+static noinline void disable_hw_reboot_interrupt(struct lvts_data *lvts_data, int tc_id)
 {
 	unsigned int temp;
 	void __iomem *base;
@@ -845,11 +862,11 @@ static void disable_hw_reboot_interrupt(struct lvts_data *lvts_data, int tc_id)
 	 * offset to MSR_RAW.
 	 * When MSR_RAW is larger, SW will convert lower temperature/
 	 */
-	temp = readl(LVTSPROTCTL_0 + base);
-	writel(temp | 0x3FFF, LVTSPROTCTL_0 + base);
+	temp = readl_lcov(LVTSPROTCTL_0 + base);
+	writel_lcov(temp | 0x3FFF, LVTSPROTCTL_0 + base);
 
 	/* Disable the interrupt of AP SW */
-	temp = readl(LVTSMONINT_0 + base);
+	temp = readl_lcov(LVTSMONINT_0 + base);
 
 	temp = temp & ~(STAGE3_INT_EN);
 
@@ -865,10 +882,10 @@ static void disable_hw_reboot_interrupt(struct lvts_data *lvts_data, int tc_id)
 						LOW_OFFSET0_INT_EN);
 	}
 
-	writel(temp, LVTSMONINT_0 + base);
+	writel_lcov(temp, LVTSMONINT_0 + base);
 }
 
-static void enable_hw_reboot_interrupt(struct lvts_data *lvts_data, int tc_id)
+static noinline void enable_hw_reboot_interrupt(struct lvts_data *lvts_data, int tc_id)
 {
 	unsigned int temp;
 	void __iomem *base;
@@ -876,7 +893,7 @@ static void enable_hw_reboot_interrupt(struct lvts_data *lvts_data, int tc_id)
 	base = GET_BASE_ADDR(tc_id);
 
 	/* Enable the interrupt of AP SW */
-	temp = readl(LVTSMONINT_0 + base);
+	temp = readl_lcov(LVTSMONINT_0 + base);
 
 	if (lvts_data->enable_dump_log) {
 		temp = temp | HIGH_OFFSET3_INT_EN |
@@ -892,14 +909,14 @@ static void enable_hw_reboot_interrupt(struct lvts_data *lvts_data, int tc_id)
 		temp = temp | STAGE3_INT_EN;
 	}
 
-	writel(temp, LVTSMONINT_0 + base);
+	writel_lcov(temp, LVTSMONINT_0 + base);
 
 	/* Clear the offset */
-	temp = readl(LVTSPROTCTL_0 + base);
-	writel(temp & ~PROTOFFSET, LVTSPROTCTL_0 + base);
+	temp = readl_lcov(LVTSPROTCTL_0 + base);
+	writel_lcov(temp & ~PROTOFFSET, LVTSPROTCTL_0 + base);
 }
 
-static void set_tc_hw_reboot_threshold(struct lvts_data *lvts_data,
+static noinline void set_tc_hw_reboot_threshold(struct lvts_data *lvts_data,
 	int trip_point, int tc_id)
 {
 	struct tc_settings *tc = lvts_data->tc;
@@ -912,11 +929,11 @@ static void set_tc_hw_reboot_threshold(struct lvts_data *lvts_data,
 
 	disable_hw_reboot_interrupt(lvts_data, tc_id);
 
-	temp = readl(LVTSPROTCTL_0 + base);
+	temp = readl_lcov(LVTSPROTCTL_0 + base);
 	if (d_index == ALL_SENSING_POINTS) {
 		/* Maximum of 4 sensing points */
 		config = (0x1 << 16);
-		writel(config | temp, LVTSPROTCTL_0 + base);
+		writel_lcov(config | temp, LVTSPROTCTL_0 + base);
 		msr_raw = 0;
 		for (i = 0; i < tc[tc_id].num_sensor; i++) {
 			cur_msr_raw = ops->lvts_temp_to_raw(&(tc[tc_id].coeff), i, trip_point);
@@ -926,28 +943,28 @@ static void set_tc_hw_reboot_threshold(struct lvts_data *lvts_data,
 	} else {
 		/* Select protection sensor */
 		config = ((d_index << 2) + 0x2) << 16;
-		writel(config | temp, LVTSPROTCTL_0 + base);
+		writel_lcov(config | temp, LVTSPROTCTL_0 + base);
 		msr_raw = ops->lvts_temp_to_raw(&(tc[tc_id].coeff), d_index, trip_point);
 	}
 
 	if (lvts_data->enable_dump_log) {
 		/* high offset INT */
-		writel(msr_raw, LVTSOFFSETH_0 + base);
+		writel_lcov(msr_raw, LVTSOFFSETH_0 + base);
 
 		/*
 		 * lowoffset INT
 		 * set a big msr_raw = 0xffff(very low temperature)
 		 * to let lowoffset INT not be triggered
 		 */
-		writel(0xffff, LVTSOFFSETL_0 + base);
+		writel_lcov(0xffff, LVTSOFFSETL_0 + base);
 	} else {
-		writel(msr_raw, LVTSPROTTC_0 + base);
+		writel_lcov(msr_raw, LVTSPROTTC_0 + base);
 	}
 
 	enable_hw_reboot_interrupt(lvts_data, tc_id);
 }
 
-static void set_all_tc_hw_reboot(struct lvts_data *lvts_data)
+static noinline void set_all_tc_hw_reboot(struct lvts_data *lvts_data)
 {
 	struct tc_settings *tc = lvts_data->tc;
 	int i, trip_point;
@@ -1034,7 +1051,7 @@ static int pass_msr_to_tfa(struct lvts_data *lvts_data,
 	return 0;
 }
 
-static void update_all_tc_hw_reboot_point(struct lvts_data *lvts_data,
+static noinline void update_all_tc_hw_reboot_point(struct lvts_data *lvts_data,
 	int trip_point)
 {
 	struct tc_settings *tc = lvts_data->tc;
@@ -1381,7 +1398,7 @@ static int of_update_lvts_data(struct lvts_data *lvts_data,
 	return 0;
 }
 
-static enum interrupt_type interrupt_type_switch(struct lvts_data *lvts_data,
+static noinline enum interrupt_type interrupt_type_switch(struct lvts_data *lvts_data,
 	unsigned int tc_id, unsigned int interrupt_reg_status)
 {
 	void __iomem *base;
@@ -1389,7 +1406,7 @@ static enum interrupt_type interrupt_type_switch(struct lvts_data *lvts_data,
 	enum interrupt_type ret;
 
 	base = GET_BASE_ADDR(tc_id);
-	interrupt_reg_val = readl(LVTSMONINT_0 + base);
+	interrupt_reg_val = readl_lcov(LVTSMONINT_0 + base);
 
 	if (interrupt_reg_status & THERMAL_HOT_INTERRUPT_0) {
 		interrupt_reg_val = interrupt_reg_val & ~(HOT_INT0_EN);
@@ -1409,7 +1426,7 @@ static enum interrupt_type interrupt_type_switch(struct lvts_data *lvts_data,
 	}
 
 	disable_sensing_points(lvts_data, tc_id);
-	writel(interrupt_reg_val, LVTSMONINT_0 + base);
+	writel_lcov(interrupt_reg_val, LVTSMONINT_0 + base);
 	enable_sensing_points(lvts_data, tc_id);
 
 	return ret;
@@ -1491,7 +1508,7 @@ static void tc_irq_handler(struct lvts_data *lvts_data, int tc_id, char thermint
 	BUG();
 }
 
-static void lvts_debug_to_sysram(struct lvts_data *lvts_data, int tc_id)
+static noinline void lvts_debug_to_sysram(struct lvts_data *lvts_data, int tc_id)
 {
 	int i, temp;
 	void __iomem *base;
@@ -1504,61 +1521,61 @@ static void lvts_debug_to_sysram(struct lvts_data *lvts_data, int tc_id)
 
 	/* DEBUG1 for device id & history max MSR & Rdata */
 	for (i = 0; i < NUM_LVTS_DEBUG1_REG; i++) {
-		temp = readl(g_lvts_controller_debug1_addr[i] + base);
+		temp = readl_lcov(g_lvts_controller_debug1_addr[i] + base);
 		g_lvts_controller_debug1_value[i] = temp;
 	}
 	temp = (g_lvts_controller_debug1_value[0] & 0x1FFFFF);
 	temp |= (g_lvts_controller_debug1_value[1] << 24);
-	writel( temp, (void __iomem *)(thermal_csram_base + LVTS_DEBUG1_OFFSET));
-	writel(g_lvts_controller_debug1_value[2],
+	writel_lcov( temp, (void __iomem *)(thermal_csram_base + LVTS_DEBUG1_OFFSET));
+	writel_lcov(g_lvts_controller_debug1_value[2],
 			(void __iomem *)(thermal_csram_base + LVTS_DEBUG1_OFFSET + 4));
-	writel(g_lvts_controller_debug1_value[3],
+	writel_lcov(g_lvts_controller_debug1_value[3],
 			(void __iomem *)(thermal_csram_base + LVTS_DEBUG1_OFFSET + 8));
 
 	/* DEBUG2 for reboot gating legacy MSR & Rdata */
 	for (i = 0; i < NUM_LVTS_DEBUG2_REG; i++) {
-		temp = readl(g_lvts_controller_debug2_addr[i] + base);
+		temp = readl_lcov(g_lvts_controller_debug2_addr[i] + base);
 		g_lvts_controller_debug2_value[i] = temp;
 	}
 	temp = (g_lvts_controller_debug2_value[1] & 0xFFFF) << 16 |
 				(g_lvts_controller_debug2_value[0] & 0xFFFF);
-	writel( temp, (void __iomem *)(thermal_csram_base + debug2_offset));
+	writel_lcov( temp, (void __iomem *)(thermal_csram_base + debug2_offset));
 	temp = (g_lvts_controller_debug2_value[3] & 0xFFFF) << 16 |
 				(g_lvts_controller_debug2_value[2] & 0xFFFF);
-	writel( temp, (void __iomem *)(thermal_csram_base + debug2_offset + 0x4));
-	writel(g_lvts_controller_debug2_value[4],
+	writel_lcov( temp, (void __iomem *)(thermal_csram_base + debug2_offset + 0x4));
+	writel_lcov(g_lvts_controller_debug2_value[4],
 			(void __iomem *)(thermal_csram_base + debug2_offset + 0x8));
-	writel(g_lvts_controller_debug2_value[5],
+	writel_lcov(g_lvts_controller_debug2_value[5],
 			(void __iomem *)(thermal_csram_base + debug2_offset + 0xC));
-	writel(g_lvts_controller_debug2_value[6],
+	writel_lcov(g_lvts_controller_debug2_value[6],
 			(void __iomem *)(thermal_csram_base + debug2_offset + 0x10));
-	writel(g_lvts_controller_debug2_value[7],
+	writel_lcov(g_lvts_controller_debug2_value[7],
 			(void __iomem *)(thermal_csram_base + debug2_offset + 0x14));
-	writel(tc_id, (void __iomem *)(thermal_csram_base + debug2_offset + 0x18));
+	writel_lcov(tc_id, (void __iomem *)(thermal_csram_base + debug2_offset + 0x18));
 
 	/* DEBUG3 for ATP info */
 	for (i = 0; i < NUM_LVTS_DEBUG3_REG; i++) {
-		temp = readl(g_lvts_controller_debug3_addr[i] + base);
+		temp = readl_lcov(g_lvts_controller_debug3_addr[i] + base);
 		g_lvts_controller_debug3_value[i] = temp;
 	}
-	writel(g_lvts_controller_debug3_value[0],
+	writel_lcov(g_lvts_controller_debug3_value[0],
 			(void __iomem *)(thermal_csram_base + LVTS_DEBUG3_OFFSET));
-	writel(g_lvts_controller_debug3_value[1],
+	writel_lcov(g_lvts_controller_debug3_value[1],
 			(void __iomem *)(thermal_csram_base + LVTS_DEBUG3_OFFSET + 0x4));
 	temp = (g_lvts_controller_debug3_value[2] & 0xFFFF) |
 			((g_lvts_controller_debug3_value[3]&0xFFFF) << 16);
-	writel(temp, (void __iomem *)(thermal_csram_base + LVTS_DEBUG3_OFFSET + 0x8));
+	writel_lcov(temp, (void __iomem *)(thermal_csram_base + LVTS_DEBUG3_OFFSET + 0x8));
 	temp = (g_lvts_controller_debug3_value[4] & 0xFFFF) |
 			((g_lvts_controller_debug3_value[5]&0xFFFF) << 16);
-	writel(temp, (void __iomem *)(thermal_csram_base + LVTS_DEBUG3_OFFSET + 0xC));
+	writel_lcov(temp, (void __iomem *)(thermal_csram_base + LVTS_DEBUG3_OFFSET + 0xC));
 
 	/* DEBUG4 for EDATA & C & LVTSPROTTC */
 	if (!(lvts_data->debug_addr_v2)) {
 		for (i = 0; i < NUM_LVTS_DEBUG4_REG; i++) {
-			temp = readl(g_lvts_controller_debug4_addr[i] + base);
+			temp = readl_lcov(g_lvts_controller_debug4_addr[i] + base);
 			g_lvts_controller_debug4_value[i] = temp;
 
-			writel(g_lvts_controller_debug4_value[i],
+			writel_lcov(g_lvts_controller_debug4_value[i],
 			(void __iomem *)(thermal_csram_base + LVTS_DEBUG4_OFFSET + (i << 2)));
 		}
 	}
@@ -2181,7 +2198,7 @@ static void set_calibration_data_v4(struct lvts_data *lvts_data)
 }
 
 
-static void init_controller_v4(struct lvts_data *lvts_data)
+static noinline void init_controller_v4(struct lvts_data *lvts_data)
 {
 	unsigned int i;
 	void __iomem *base;
@@ -2190,15 +2207,15 @@ static void init_controller_v4(struct lvts_data *lvts_data)
 		base = GET_BASE_ADDR(i);
 
 		lvts_write_device(lvts_data, SET_DEVICE_LOW_POWER_SINGLE_MODE_V4, i);
-		writel(0x13121110, LVTSTSSEL_0 + base);
-		writel(SET_CALC_SCALE_RULES, LVTSCALSCALE_0 + base);
+		writel_lcov(0x13121110, LVTSTSSEL_0 + base);
+		writel_lcov(SET_CALC_SCALE_RULES, LVTSCALSCALE_0 + base);
 
 		set_polling_speed(lvts_data, i);
 		set_hw_filter(lvts_data, i);
 	}
 }
 
-static void init_controller_v5(struct lvts_data *lvts_data)
+static noinline void init_controller_v5(struct lvts_data *lvts_data)
 {
 	unsigned int i;
 	void __iomem *base;
@@ -2207,8 +2224,8 @@ static void init_controller_v5(struct lvts_data *lvts_data)
 		base = GET_BASE_ADDR(i);
 
 		lvts_write_device(lvts_data, SET_DEVICE_SINGLE_MODE_V5, i);
-		writel(0x13121110, LVTSTSSEL_0 + base);
-		writel(SET_CALC_SCALE_RULES, LVTSCALSCALE_0 + base);
+		writel_lcov(0x13121110, LVTSTSSEL_0 + base);
+		writel_lcov(SET_CALC_SCALE_RULES, LVTSCALSCALE_0 + base);
 
 		set_polling_speed(lvts_data, i);
 		set_hw_filter(lvts_data, i);
@@ -3272,7 +3289,7 @@ enum mt6983_lvts_controller_enum {
 	MT6983_LVTS_CTRL_NUM
 };
 
-static void mt6983_device_identification(struct lvts_data *lvts_data)
+static noinline void mt6983_device_identification(struct lvts_data *lvts_data)
 {
 	struct device *dev = lvts_data->dev;
 	unsigned int i, data;
@@ -3282,14 +3299,14 @@ static void mt6983_device_identification(struct lvts_data *lvts_data)
 	for (i = 0; i < lvts_data->num_tc; i++) {
 		base = GET_BASE_ADDR(i);
 
-		writel(ENABLE_LVTS_CTRL_CLK, LVTSCLKEN_0 + base);
+		writel_lcov(ENABLE_LVTS_CTRL_CLK, LVTSCLKEN_0 + base);
 
 		lvts_write_device(lvts_data, RESET_ALL_DEVICES, i);
 
 		lvts_write_device(lvts_data, READ_BACK_DEVICE_ID, i);
 
 		/* Check LVTS device ID */
-		data = (readl(LVTS_ID_0 + base) & GENMASK(7, 0));
+		data = (readl_lcov(LVTS_ID_0 + base) & GENMASK(7, 0));
 
 		lvts_dev_id = 0x81 + i;
 
@@ -3872,7 +3889,7 @@ enum mt6985_lvts_controller_enum {
 	MT6985_LVTS_CTRL_NUM
 };
 
-static void device_identification_v2(struct lvts_data *lvts_data)
+static noinline void device_identification_v2(struct lvts_data *lvts_data)
 {
 	struct device *dev = lvts_data->dev;
 	unsigned int i, data;
@@ -3882,14 +3899,14 @@ static void device_identification_v2(struct lvts_data *lvts_data)
 	for (i = 0; i < lvts_data->num_tc; i++) {
 		base = GET_BASE_ADDR(i);
 
-		writel(ENABLE_LVTS_CTRL_CLK, LVTSCLKEN_0 + base);
+		writel_lcov(ENABLE_LVTS_CTRL_CLK, LVTSCLKEN_0 + base);
 
 		lvts_write_device(lvts_data, RESET_ALL_DEVICES, i);
 
 		lvts_write_device(lvts_data, READ_BACK_DEVICE_ID | 0x55, i);
 
 		/* Check LVTS device ID */
-		data = (readl(LVTS_ID_0 + base) & GENMASK(7, 0));
+		data = (readl_lcov(LVTS_ID_0 + base) & GENMASK(7, 0));
 
 		lvts_dev_id = 0x81 + i;
 
@@ -5189,7 +5206,7 @@ enum mt6895_lvts_controller_enum {
 	MT6895_LVTS_CTRL_NUM
 };
 
-static void mt6895_device_identification(struct lvts_data *lvts_data)
+static noinline void mt6895_device_identification(struct lvts_data *lvts_data)
 {
 	struct device *dev = lvts_data->dev;
 	unsigned int i, data;
@@ -5200,14 +5217,14 @@ static void mt6895_device_identification(struct lvts_data *lvts_data)
 	for (i = 0; i < lvts_data->num_tc; i++) {
 		base = GET_BASE_ADDR(i);
 
-		writel(ENABLE_LVTS_CTRL_CLK, LVTSCLKEN_0 + base);
+		writel_lcov(ENABLE_LVTS_CTRL_CLK, LVTSCLKEN_0 + base);
 
 		lvts_write_device(lvts_data, RESET_ALL_DEVICES, i);
 
 		lvts_write_device(lvts_data, READ_BACK_DEVICE_ID, i);
 
 		/* Check LVTS device ID */
-		data = (readl(LVTS_ID_0 + base) & GENMASK(7, 0));
+		data = (readl_lcov(LVTS_ID_0 + base) & GENMASK(7, 0));
 
 		if  (tc[i].domain_index == MT6895_AP_DOMAIN)
 			lvts_dev_id = 0x82 + i;
