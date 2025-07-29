@@ -570,7 +570,6 @@ struct venc_frm_buf {
 	unsigned int num_planes;
 	u64 timestamp;
 	bool has_meta;
-	struct dma_buf *meta_dma;
 	struct dma_buf_attachment *buf_att;
 	struct sg_table *sgt;
 	dma_addr_t meta_addr;
@@ -588,7 +587,6 @@ struct venc_frm_buf {
 	struct dma_buf *metabuffer_dma;
 	dma_addr_t metabuffer_addr;
 	dma_addr_t dyparams_dma_addr;
-	struct dma_buf *dyparams_dma;
 	unsigned int dyparams_offset;
 	bool has_adab;
 	struct dma_buf *adab_dma;

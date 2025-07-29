@@ -2088,6 +2088,7 @@ static int vidioc_venc_qbuf(struct file *file, void *priv,
 	struct mtk_video_enc_buf *mtkbuf;
 	struct vb2_v4l2_buffer *vb2_v4l2;
 	struct dma_buf *dmabuf;
+	int reserved_fd;
 
 	if (mtk_vcodec_is_state(ctx, MTK_STATE_ABORT)) {
 		mtk_v4l2_err("[%d] Call on QBUF after unrecoverable error",
@@ -2114,6 +2115,12 @@ static int vidioc_venc_qbuf(struct file *file, void *priv,
 	}
 	vb2_v4l2 = to_vb2_v4l2_buffer(vb);
 	mtkbuf = to_video_enc_buf(vb2_v4l2);
+
+	// reserved use for fd of general buffer (output buf) or meta buffer (input buf)
+	if (buf->reserved == 0xFFFFFFFF || buf->reserved == 0)
+		reserved_fd = -1;
+	else
+		reserved_fd = (int)buf->reserved;
 
 	if (buf->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
 		if (!ctx->has_first_input) {
@@ -2167,15 +2174,11 @@ static int vidioc_venc_qbuf(struct file *file, void *priv,
 				buf->length, vb, buf->flags, vb->timestamp);
 		}
 	} else {
-		if (buf->reserved == 0xFFFFFFFF || buf->reserved == 0)
-			mtkbuf->general_user_fd = -1;
-		else
-			mtkbuf->general_user_fd = (int)buf->reserved;
-
-		mtk_v4l2_debug(1, "[%d][BS_BUF] id=%d BS (%d) vb=%p flags=0x%x, general_buf_fd=%d, mtkbuf->general_user_fd = %d",
+		mtkbuf->general_user_fd = reserved_fd;
+		mtk_v4l2_debug(1, "[%d][BS_BUF] id=%d BS (%d) vb=%p flags=0x%x, general_buf_fd=%d(%u), mtkbuf->general_user_fd = %d",
 				ctx->id, buf->index,
 				buf->length, vb, buf->flags,
-				buf->reserved, mtkbuf->general_user_fd);
+				reserved_fd, buf->reserved, mtkbuf->general_user_fd);
 	}
 
 	if (buf->flags & V4L2_BUF_FLAG_NO_CACHE_CLEAN) {
@@ -2198,15 +2201,15 @@ static int vidioc_venc_qbuf(struct file *file, void *priv,
 	mtkbuf->frm_buf.qpmap_dma = 0;
 	mtkbuf->frm_buf.qprects_dma = 0;
 	mtkbuf->frm_buf.metabuffer_dma = 0;
-	mtkbuf->frm_buf.dyparams_dma = 0;
+	mtkbuf->frm_buf.dyparams_dma_addr = 0;
 	mtkbuf->frm_buf.has_adab = 0;
 
 	if (buf->flags & V4L2_BUF_FLAG_QP_META &&
-		buf->reserved > 0 &&
+		reserved_fd > 0 &&
 		buf->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
 		struct device *dev = NULL;
 
-		dmabuf = dma_buf_get(buf->reserved);
+		dmabuf = dma_buf_get(reserved_fd);
 		if (IS_ERR(dmabuf)) {
 			mtk_v4l2_err("%s qpmap_dma is err 0x%lx\n", __func__, PTR_ERR(dmabuf));
 			mtk_venc_queue_error_event(ctx);
@@ -2222,12 +2225,12 @@ static int vidioc_venc_qbuf(struct file *file, void *priv,
 			return -EINVAL;
 
 		mtkbuf->frm_buf.has_qpmap = 1;
-		mtk_v4l2_debug(1, "[%d] Have Qpmap fd, buf->index:%d, qpmap_dma:%p, fd:%u",
-			ctx->id, buf->index, mtkbuf->frm_buf.qpmap_dma, buf->reserved);
+		mtk_v4l2_debug(1, "[%d] Have Qpmap fd, buf->index:%d, qpmap_dma:%p, fd:%d(%u)",
+			ctx->id, buf->index, mtkbuf->frm_buf.qpmap_dma, reserved_fd, buf->reserved);
 	}
 
 	if (buf->flags & V4L2_BUF_FLAG_HAS_META &&
-		buf->reserved > 0 &&
+		reserved_fd > 0 &&
 		buf->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
 		struct dma_buf_attachment *meta_buf_att;
 		struct sg_table *meta_sgt;
@@ -2237,9 +2240,9 @@ static int vidioc_venc_qbuf(struct file *file, void *priv,
 		struct meta_describe meta_desc;
 		struct device *dev = NULL;
 
-		dmabuf = dma_buf_get(buf->reserved);
+		dmabuf = dma_buf_get(reserved_fd);
 		if (IS_ERR(dmabuf)) {
-			mtk_v4l2_err("%s metabuffer_dma is err 0x%lx\n", __func__, PTR_ERR(dmabuf));
+			mtk_v4l2_err("metabuffer_dma is err 0x%lx\n", PTR_ERR(dmabuf));
 			mtk_venc_queue_error_event(ctx);
 			return -EINVAL;
 		}
@@ -2270,8 +2273,8 @@ static int vidioc_venc_qbuf(struct file *file, void *priv,
 			return -EINVAL;
 		}
 		mtkbuf->frm_buf.metabuffer_dma = dmabuf;
-		mtk_v4l2_debug(2, "V4L2_BUF_FLAG_HAS_META  buf->reserved:%d dma_buf=%p, DMA=%pad",
-			buf->reserved, dmabuf, &mtkbuf->frm_buf.metabuffer_addr);
+		mtk_v4l2_debug(2, "V4L2_BUF_FLAG_HAS_META  buf->reserved:%d(%u) dma_buf=%p, DMA=%pad",
+			reserved_fd, buf->reserved, dmabuf, &mtkbuf->frm_buf.metabuffer_addr);
 
 		for (; index < MTK_MAX_METADATA_NUM; index++) {
 			memset(&meta_desc, 0, sizeof(meta_desc));
@@ -2362,19 +2365,16 @@ static int vidioc_venc_qbuf(struct file *file, void *priv,
 			} else {
 				if (meta_desc.type == METADATA_HDR) {
 					mtkbuf->frm_buf.has_meta = 1;
-					mtkbuf->frm_buf.meta_dma = mtkbuf->frm_buf.metabuffer_dma;
 					mtkbuf->frm_buf.meta_addr =
 						mtkbuf->frm_buf.metabuffer_addr + meta_desc.value;
 					//vpud use fd to get va and pa,we should add a
 					//offset to get real address of hdr
 					mtkbuf->frm_buf.meta_offset = meta_desc.value;
 				} else if (meta_desc.type == METADATA_DYNAMICPARAM) {
-					mtkbuf->frm_buf.dyparams_dma = mtkbuf->frm_buf.metabuffer_dma;
 					mtkbuf->frm_buf.dyparams_dma_addr = mtkbuf->frm_buf.metabuffer_addr;
 					mtkbuf->frm_buf.dyparams_offset = meta_desc.value;
-					mtk_v4l2_debug(2,"meta data:dyparams_dma:%p dyparams_dma_addr  iova %pad",
-						mtkbuf->frm_buf.dyparams_dma,
-						&mtkbuf->frm_buf.dyparams_dma_addr);
+					mtk_v4l2_debug(2,"meta data: dyparams_dma_addr iova %pad, offset %u",
+						&mtkbuf->frm_buf.dyparams_dma_addr, mtkbuf->frm_buf.dyparams_offset);
 				}
 			}
 		}
@@ -2839,15 +2839,6 @@ static void vb2ops_venc_buf_finish(struct vb2_buffer *vb)
 		}
 	}
 
-	if (mtkbuf->frm_buf.metabuffer_dma == NULL && !IS_ERR_OR_NULL(mtkbuf->frm_buf.meta_dma)) {
-		mtk_v4l2_debug(4, "dma_buf_put dma_buf=%p, DMA=%pad",
-			mtkbuf->frm_buf.meta_dma, &mtkbuf->frm_buf.meta_addr);
-		mtk_vcodec_dma_unmap_detach(
-			mtkbuf->frm_buf.meta_dma, &mtkbuf->frm_buf.buf_att, &mtkbuf->frm_buf.sgt, DMA_TO_DEVICE);
-		dma_buf_put(mtkbuf->frm_buf.meta_dma);
-		mtkbuf->frm_buf.meta_dma = NULL;
-	}
-
 	if (!IS_ERR_OR_NULL(mtkbuf->frm_buf.metabuffer_dma)) {
 		mtk_v4l2_debug(2, "dma_buf_put dma_buf=%p, DMA=%pad",
 			mtkbuf->frm_buf.metabuffer_dma, &mtkbuf->frm_buf.metabuffer_addr);
@@ -2867,9 +2858,15 @@ static void vb2ops_venc_buf_finish(struct vb2_buffer *vb)
 	if (!IS_ERR_OR_NULL(mtkbuf->frm_buf.adab_dma)) {
 		mtk_v4l2_debug(2, "dma_buf_put adab_dma=%p, DMA=%pad",
 			mtkbuf->frm_buf.adab_dma, &mtkbuf->frm_buf.adab_dma_addr);
-
 		dma_buf_put(mtkbuf->frm_buf.adab_dma);
 		mtkbuf->frm_buf.adab_dma = NULL;
+	}
+
+	if (!IS_ERR_OR_NULL(mtkbuf->frm_buf.qprects_dma)) {
+		mtk_v4l2_debug(2, "dma_buf_put qprects_dma=%p, DMA=%pad",
+			mtkbuf->frm_buf.qprects_dma, &mtkbuf->frm_buf.qprects_dma_addr);
+		dma_buf_put(mtkbuf->frm_buf.qprects_dma);
+		mtkbuf->frm_buf.qprects_dma = NULL;
 	}
 
 	vcodec_trace_end();

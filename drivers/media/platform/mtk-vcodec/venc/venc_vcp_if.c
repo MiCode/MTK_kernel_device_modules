@@ -1394,7 +1394,7 @@ int vcp_enc_encode(struct venc_inst *inst, unsigned int bs_mode,
 			vsi->qprects_meta_size = 0;
 		}
 
-		if (frm_buf->dyparams_dma) {
+		if (frm_buf->dyparams_dma_addr) {
 			vsi->dynamicparams_addr = frm_buf->dyparams_dma_addr;
 			vsi->dynamicparams_size = sizeof(struct inputqueue_dynamic_info);
 			vsi->dynamicparams_offset = frm_buf->dyparams_offset;
