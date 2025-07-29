@@ -1760,8 +1760,12 @@ void clear_ux_info(struct sbe_render_info *thr)
 	global_sbe_dy_enhance_max_pid = 0;
 	global_sbe_render_loading = 0;
 	global_sbe_render_loading_pid = 0;
+	global_ux_blc = 0;
+	global_ux_max_pid = 0;
 	thr->buffer_count_filter = 0;
 	thr->rescue_more_count = 0;
+	thr->peak_frame_count = 0;
+	thr->loading_type = 0;
 	release_all_ux_info(thr);
 }
 
