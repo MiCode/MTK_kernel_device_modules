@@ -684,6 +684,7 @@ static ssize_t max_speed_host_store(struct device *dev,
 {
 	struct ssusb_mtk *ssusb = dev_get_drvdata(dev);
 	struct mtu3 *mtu = ssusb->u3d;
+	struct otg_switch_mtk *otg_sx = &ssusb->otg_switch;
 	int speed;
 
 	if (!strncmp(buf, "super-speed-plus", 16))
@@ -700,6 +701,10 @@ static ssize_t max_speed_host_store(struct device *dev,
 	dev_info(dev, "store host max speed %s\n", buf);
 
 	mtu->max_speed_host = speed;
+
+	if (ssusb_get_host_speed(ssusb) != speed && otg_sx->current_role == USB_ROLE_HOST)
+		ssusb_set_mode(otg_sx, otg_sx->current_role, true);
+
 	return count;
 }
 
