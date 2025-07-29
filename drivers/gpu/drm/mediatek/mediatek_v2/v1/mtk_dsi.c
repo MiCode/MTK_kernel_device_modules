@@ -14874,9 +14874,12 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			DDPPR_ERR("GCE handle is NULL\n");
 			return 0;
 		}
-
+		/*
+		 * rd_rdy don't clear and wait for ESD &
+		 * Read LCM will clear the bit.
+		 */
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DSI_INTSTA, 0x0, ~0);
+			comp->regs_pa + DSI_INTSTA, 0x0, 0xfffffffe);
 
 		if (atomic_read(&comp->mtk_crtc->force_high_step) == 1) {
 			DDPMSG("IRQ_LEVEL_NORMAL force_high_step = 1, skip underrun irq\n");
