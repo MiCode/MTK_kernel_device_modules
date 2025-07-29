@@ -145,6 +145,10 @@ bool check_print_msg_info(const struct ipi_msg_t *p_ipi_msg)
 	if (p_ipi_msg == NULL)
 		return false;
 
+	if (p_ipi_msg->task_scene == TASK_SCENE_AUD_DAEMON_A &&
+		p_ipi_msg->msg_id == AUDIO_DSP_TASK_DVFS_VOTE)
+		return true;
+
 	if (p_ipi_msg->msg_id == AUDIO_DSP_TASK_OPEN ||
 	    p_ipi_msg->msg_id == AUDIO_DSP_TASK_CLOSE ||
 	    p_ipi_msg->msg_id == AUDIO_DSP_TASK_HWPARAM ||
