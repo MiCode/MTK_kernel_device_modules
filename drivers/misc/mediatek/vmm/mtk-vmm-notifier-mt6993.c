@@ -1247,12 +1247,16 @@ static unsigned int vmm_cal_avs_phase1(unsigned int OPP, unsigned int efuse_bin,
 	if (efuse_bin >= ATE_BASE_BIN)
 		result_vol = result_vol - (efuse_bin-ATE_BASE_BIN) * VMM_ONE_STEP_MARGIN;
 
-	if (vmm_aging)
+	if (vmm_aging) {
 		degrade = AGING_DEGRADE;
-	else if (vmm_slttwo_deterioration)
+	} else if (vmm_slttwo_deterioration) {
 		degrade = SLTTWO_DEGRADE;
-	else if (vmm_extra_deterioration)
+		vmm_sign = vmm_sign*95/100;
+	} else if (vmm_extra_deterioration) {
 		degrade = EXTRA_DEGRADE;
+		vmm_sign = vmm_sign*95/100;
+	}
+	vmm_sign = VMM_ROUNDUP(vmm_sign, VMM_ONE_STEP_MARGIN);
 
 	result_vol = result_vol-degrade > 0 ? result_vol-degrade : 0;
 
