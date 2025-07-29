@@ -9658,6 +9658,32 @@ static void mtk_crtc_cmdq_timeout_cb(struct cmdq_cb_data data)
 #endif
 }
 
+void wb_err_dump(struct cmdq_cb_data data)
+{
+	struct mtk_cmdq_cb_data *cb_data = data.data;
+	struct drm_crtc *crtc = cb_data->crtc;
+	int crtc_id = drm_crtc_index(crtc);
+	const struct mtk_addon_scenario_data *addon_data;
+	struct cmdq_cb_data data2 = {
+		.err = data.err,
+		.data = crtc,
+	};
+
+	DDPMSG("%s crtc%d output fence %u scenario %d\n",
+		__func__, crtc_id, cb_data->wb_fence_idx, cb_data->wb_scn);
+	addon_data = mtk_addon_get_scenario_data(__func__, crtc, cb_data->wb_scn);
+	if (addon_data) {
+		bool g = g_mobile_log;
+
+		g_mobile_log = 1;
+		mtk_drm_crtc_addon_dump(crtc, addon_data);
+		mtk_drm_crtc_addon_analysis(crtc, addon_data);
+		g_mobile_log = g;
+	}
+
+	mtk_crtc_cmdq_timeout_cb(data2);
+}
+
 int mtk_crtc_cmdq_timeout_aee_cb(struct cmdq_cb_data data)
 {
 	static DEFINE_RATELIMIT_STATE(aee_rate, 30 * HZ, 1);
@@ -20776,8 +20802,12 @@ static void mtk_drm_wb_cb(struct cmdq_cb_data data)
 	mtk_crtc->sec_on = sec_on;
 	if (crtc->state) {
 		state = to_mtk_crtc_state(crtc->state);
-		if(fence_idx >= state->prop_val[CRTC_PROP_OUTPUT_FENCE_IDX])
+		if(fence_idx >= state->prop_val[CRTC_PROP_OUTPUT_FENCE_IDX]) {
+			DDPINFO("%s output fence %u disable from %u\n",
+				__func__, fence_idx,
+				(u32)state->prop_val[CRTC_PROP_OUTPUT_ENABLE]);
 			state->prop_val[CRTC_PROP_OUTPUT_ENABLE] = 0;
+		}
 	}
 
 	DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
@@ -21348,6 +21378,8 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 		/* dbi idle count */
 		mtk_dbi_idle_count_insert_wb_fence(mtk_crtc, wb_cb_data->wb_fence_idx);
 		mtk_vidle_user_power_release_by_gce(DISP_VIDLE_USER_DISP_CMDQ, handle);
+		handle->err_cb.cb = wb_err_dump;
+		handle->err_cb.data = wb_cb_data;
 		if (cmdq_pkt_flush_threaded(handle, mtk_drm_wb_cb, wb_cb_data) < 0)
 			DDPPR_ERR("failed to flush gce_cb threaded\n");
 	} else if (state->prop_val[CRTC_PROP_OUTPUT_ENABLE]
