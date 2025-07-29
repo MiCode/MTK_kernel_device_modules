@@ -118,7 +118,7 @@ static struct imgsensor_info_struct imgsensor_info = {
 	.margin = 10,		/* sensor framelength & shutter margin */
 	.min_shutter = 4,	/* min shutter */
 	.min_gain = 64, /*1x gain*/
-	.max_gain = 15872, /*16x gain*/
+	.max_gain = 1024, /*16x gain*/
 	.min_gain_iso = 100,
 	.gain_step = 16,
 	.gain_type = 0,
@@ -1486,9 +1486,9 @@ kal_uint16 addr_data_pair_video_jn1[] = {
 	0x6028, 0x4000,
 	0xF46A, 0xAE80,
 	0x0344, 0x0000,
-	0x0346, 0x02F4,
+	0x0346, 0x0308,
 	0x0348, 0x1FFF,
-	0x034A, 0x1503,
+	0x034A, 0x1517,
 	0x034C, 0x0FF0,
 	0x034E, 0x08F8,
 	0x0350, 0x0008,
