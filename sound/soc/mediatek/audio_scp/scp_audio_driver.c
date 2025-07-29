@@ -244,6 +244,13 @@ static int scp_audio_drv_probe(struct platform_device *pdev)
 		ret = -1;
 		goto EXIT;
 	}
+
+	file = debugfs_create_file("adsptrace0", S_IFREG | 0644, NULL, NULL, &adsp_trace_ops);
+	if (!file) {
+		pr_info("%s, create debug ops fail!\n", __func__);
+		ret = -1;
+		goto EXIT;
+	}
 #endif
 
 	/* adsp bus probe */

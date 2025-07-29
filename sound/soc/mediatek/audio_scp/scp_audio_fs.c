@@ -9,6 +9,7 @@
 #include <linux/io.h>
 #include <linux/module.h>
 #include <linux/miscdevice.h>
+#include <linux/kfifo.h>
 #include "adsp_helper.h"
 #include "scp_audio_ipi.h"
 
@@ -229,4 +230,131 @@ const struct file_operations scp_audio_debug_ops = {
 	.open = simple_open,
 	.read = scp_audio_debug_read,
 	.write = scp_audio_debug_write,
+};
+
+/* ---------------------------- trace fs ----------------------------------- */
+#define ADSP_TRACE_SIZE   (256 * 1024) /* bottom of debug memory, Must align firmware */
+
+struct kfifo tracefifo;
+struct wait_queue_head trace_waitq;
+
+static void adsp_trace_update_w_ptr(int id, void *buf, unsigned int len)
+{
+	u32 *data = (u32 *)buf;
+	unsigned int cid, size, flag;
+
+	if (!buf)
+		return;
+
+	cid = data[0];
+	size = data[1];
+	flag = data[2];
+
+	tracefifo.kfifo.in += size;
+
+	if (flag) { /* TRACE_GOING = 1 */
+		/* drop data if it don't have space for next update */
+		/* TODO: LOCK reader */
+		if (kfifo_avail(&tracefifo) < size) {
+			tracefifo.kfifo.out += size;
+			pr_info("%s(), drop data size:%u, len:%d, avail:%d", __func__, size,
+				 kfifo_len(&tracefifo),
+				 kfifo_avail(&tracefifo));
+		}
+	}
+
+	pr_info("%s(), return size:+%d, len:%d, avail:%d", __func__, size,
+		 kfifo_len(&tracefifo),
+		 kfifo_avail(&tracefifo));
+
+	/* wakeup if trace_poll */
+	wake_up_interruptible(&trace_waitq);
+}
+
+static unsigned int adsp_trace_poll(struct file *filp, poll_table *wait)
+{
+	if (!(filp->f_mode & FMODE_READ))
+		return POLLERR;
+
+	poll_wait(filp, &trace_waitq, wait);
+
+	if (!kfifo_is_empty(&tracefifo))
+		return POLLIN | POLLRDNORM;
+
+	return 0;
+}
+
+static int adsp_trace_open(struct inode *inode, struct file *file)
+{
+	char *buffer = NULL;
+	size_t size;
+
+	if (!kfifo_initialized(&tracefifo)) {
+		/* trace kfifo initialize, use bottom of debug memory */
+		init_waitqueue_head(&trace_waitq);
+
+		buffer = adsp_get_reserve_mem_virt(ADSP_A_DEBUG_DUMP_MEM_ID);
+		size = adsp_get_reserve_mem_size(ADSP_A_DEBUG_DUMP_MEM_ID);
+
+		if (!buffer || size < ADSP_TRACE_SIZE)
+			return -ENOMEM;
+
+		buffer += size - ADSP_TRACE_SIZE;
+		kfifo_init(&tracefifo, buffer, ADSP_TRACE_SIZE);
+
+		scp_audio_ipi_registration(SCP_AUDIO_IPI_TRAX_DONE, adsp_trace_update_w_ptr, "trace_update_w");
+
+		pr_info("%s(), init done %d, %p, %zu", __func__,
+			 kfifo_initialized(&tracefifo), buffer, size);
+	}
+
+	return nonseekable_open(inode, file);
+}
+
+static ssize_t adsp_trace_read(struct file *filp, char __user *buf,
+			       size_t count, loff_t *pos)
+{
+	unsigned int copied;
+	int ret;
+
+	/* TODO: LOCK reader */
+	ret = kfifo_to_user(&tracefifo, buf, count, &copied);
+
+	pr_info("%s(), ret %d, copied %u", __func__, ret, copied);
+	return ret ? ret : copied;
+}
+
+static ssize_t adsp_trace_write(struct file *filp, const char __user *buffer,
+				size_t count, loff_t *ppos)
+{
+	char buf[64] = {0};
+	unsigned int enable = 0;
+	int ret = 0;
+
+	if (kstrtouint_from_user(buffer, count, 0, &enable) != 0)
+		return -EINVAL;
+
+	if (enable) {
+		kfifo_reset(&tracefifo);
+		strscpy(buf, "trace_start", sizeof(buf) - 1);
+	} else {
+		strscpy(buf, "trace_stop", sizeof(buf) - 1);
+	}
+
+	pr_info("%s(), send '%s' to adsp kfifo:%d/%d", __func__, buf,
+		kfifo_avail(&tracefifo),
+		kfifo_size(&tracefifo));
+
+	ret = scp_push_message(SCP_AUDIO_IPI_DBG_CMDS, buf, sizeof(buf), 0, 0);
+	pr_info("%s() send cmd: %s, ret: %d\n", __func__, buf, ret);
+
+	return count;
+}
+
+const struct file_operations adsp_trace_ops = {
+	.open = adsp_trace_open,
+	.read = adsp_trace_read,
+	.write = adsp_trace_write,
+	.poll = adsp_trace_poll,
+	.llseek = noop_llseek,
 };
