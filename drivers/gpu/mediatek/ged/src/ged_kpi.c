@@ -60,6 +60,8 @@
 	pr_debug(GED_KPI_TAG"%s %d : "fmt, __func__, __LINE__, ##args)
 
 #define GED_KPI_SEC_DIVIDER 1000000000
+#define GED_KPI_FPS_INVALID_PERIOD 120000000 //ns
+
 #define GED_KPI_MAX_FPS 60
 /* set default margin to be distinct from FPSGO(0 or 3) */
 #define GED_KPI_DEFAULT_FPS_MARGIN 4
@@ -118,6 +120,7 @@ enum gpu_fps_reason {
 	GED_FPS_REASON_7 = 7,
 	GED_FPS_REASON_8 = 8,
 	GED_FPS_REASON_9 = 9,
+	GED_FPS_REASON_10 = 10, // long queue duration
 };
 
 
@@ -215,6 +218,7 @@ struct GED_KPI_HEAD {
 	int t_last_gpu_fps;
 	int candidate_fps;
 	int candidate_fps_cnt;
+	bool has_long_queue_period;
 
 	int t_cpu_target;
 	int t_gpu_target;
@@ -631,6 +635,13 @@ static inline void check_refresh_diff(struct GED_KPI_HEAD *psHead)
 			psHead->t_gpu_target = g_gpu_target_default;
 			return;
 		}
+
+		if (psHead->has_long_queue_period) {
+			psHead->t_use_gpu_fps_reason = GED_FPS_REASON_10;
+			psHead->t_gpu_target = g_gpu_target_default;
+			return;
+		}
+
 		if (psHead->t_gpu_fps < g_ged_gpu_fps[GED_FPS_LEVEL_0].fps_margin) {
 			// keep use previous fps
 			if (psHead->t_gpu_target < g_gpu_target_default) {
@@ -760,10 +771,15 @@ static inline void update_by_internal_fps(struct GED_KPI_HEAD *psHead, struct GE
 		psHead->ullElapsed_time_per_sec = 0;
 		psHead->frame_count = 0;
 		g_set_panel_refresh_rate = false;
+		psHead->has_long_queue_period = false;
 	} else {
 		psHead->ullElapsed_time_per_sec += ullTimeStampS_diff;
 		psHead->frame_count++;
 	}
+
+
+	if (ullTimeStampS_diff > GED_KPI_FPS_INVALID_PERIOD)
+		psHead->has_long_queue_period = true;
 
 	psHead->ullPreTimeStampS = psKPI->ullTimeStampS;
 
@@ -805,10 +821,10 @@ static inline void update_by_internal_fps(struct GED_KPI_HEAD *psHead, struct GE
 		psHead->frame_count = 0;
 		psHead->ullElapsed_time_per_sec = 0;
 		check_refresh_diff(psHead);
+		psHead->has_long_queue_period = false;
 		trace_GPU_DVFS__Policy__Common__Check_Target(psHead->pid,
 			(int)(psHead->ullWnd % 0xF), psHead->t_gpu_fps, psHead->t_use_gpu_fps_reason,
 			psHead->t_gpu_target);
-
 	}
 }
 
