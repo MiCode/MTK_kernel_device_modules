@@ -1175,7 +1175,13 @@ void dpc_group_enable(const u16 group, bool en)
 	if (group == DPC_SUBSYS_DISP)
 		dpc_disp_group_enable(en);
 	else {
-		dpc_mml_group_enable(en);
+		static int ref;
+		int check = en ? --ref : ref++;
+
+		if (!check)
+			dpc_mml_group_enable(en);
+		dpc_mmp(mml_group_en, MMPROFILE_FLAG_PULSE, en, ref);
+
 		dpc_mtcmos_auto(group, (enum mtk_dpc_mtcmos_mode)en);
 	}
 }

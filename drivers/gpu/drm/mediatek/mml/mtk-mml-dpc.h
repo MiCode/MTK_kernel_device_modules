@@ -31,7 +31,7 @@ enum mml_dl_dpc_config {
  */
 void mml_dpc_register(const struct dpc_funcs *funcs, enum mtk_dpc_version version);
 
-void mml_dpc_group_enable(u32 sysid, bool en);
+void mml_dpc_group_enable(u32 sysid, bool en, int *auto_ref);
 void mml_dpc_mtcmos_auto(u32 sysid, const bool en, const s8 mode);
 int mml_dpc_power_keep(u32 sysid);
 void mml_dpc_power_release(u32 sysid);

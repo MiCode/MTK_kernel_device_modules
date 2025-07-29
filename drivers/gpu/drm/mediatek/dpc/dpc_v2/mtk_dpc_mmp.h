@@ -33,6 +33,7 @@ struct dpc_mmp_events_t {
 	mmp_event mtcmos_ovl0;
 	mmp_event mtcmos_disp1;
 	mmp_event mtcmos_mml1;
+	mmp_event mml_group_en;
 	mmp_event vdisp_level;
 	mmp_event mtcmos_auto;
 	mmp_event ch_bw;

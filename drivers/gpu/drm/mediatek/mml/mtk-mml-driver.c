@@ -127,6 +127,7 @@ struct mml_dpc {
 	atomic_t exc_pw_cnt[mml_max_sys];
 	atomic_t dc_force_cnt[mml_max_sys];
 	struct mutex dpc_mutex[mml_max_sys];
+	int auto_ref;
 };
 
 struct mml_sys_state {
@@ -1421,7 +1422,7 @@ void mml_dpc_dc_enable(struct mml_dev *mml, u32 sysid, bool dcen)
 
 	mml_msg_dpc("%s group en sys %u group %s",
 		__func__, sysid, dcen ? "false" : "true");
-	mml_dpc_group_enable(sysid, !dcen);
+	mml_dpc_group_enable(sysid, !dcen, &mml->dpc.auto_ref);
 }
 
 void mml_pw_set_kick_cb(struct mml_dev *mml,

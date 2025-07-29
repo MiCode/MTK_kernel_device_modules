@@ -44,22 +44,25 @@ void mml_dpc_register(const struct dpc_funcs *funcs, enum mtk_dpc_version versio
 }
 EXPORT_SYMBOL_GPL(mml_dpc_register);
 
-void mml_dpc_group_enable(u32 sysid, bool en)
+void mml_dpc_group_enable(u32 sysid, bool en, int *auto_ref)
 {
+	int check;
+
 	if (mml_dpc_funcs.dpc_group_enable == NULL) {
 		mml_msg_dpc("%s dpc_group_enable not exist", __func__);
 		return;
 	}
 
 	switch (mml_dpc_version) {
-	case DPC_VER1:
 	case DPC_VER2:
 		mml_dpc_funcs.dpc_group_enable(
 			mml_sysid_to_dpc_subsys(sysid), en);
 		break;
+	case DPC_VER1:
 	case DPC_VER3:
-		mml_dpc_funcs.dpc_group_enable(
-			mml_sysid_to_dpc_subsys_v3(sysid), en);
+		check = en ? --(*auto_ref) : (*auto_ref)++;
+		if (!check)
+			mml_dpc_funcs.dpc_group_enable(DPC_SUBSYS_MML1, en);
 		break;
 	default:
 		mml_err("%s mml_dpc_version %d", __func__, mml_dpc_version);
