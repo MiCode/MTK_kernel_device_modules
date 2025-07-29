@@ -606,7 +606,8 @@ void mtk_vidle_hrt_bw_set(const u32 bw_in_mb)
 	vidle_data.hrt_bw = bw_in_mb;
 	if (disp_dpc_driver.dpc_hrt_bw_set) {
 		if (vidle_data.dpc_version == DPC_VER1)
-			disp_dpc_driver.dpc_hrt_bw_set(DPC_SUBSYS_DISP, bw_in_mb, !atomic_read(&g_ff_enabled));
+			disp_dpc_driver.dpc_hrt_bw_set(DPC_SUBSYS_DISP, bw_in_mb,
+					(atomic_read(&g_ff_enabled) <= 0));
 		else
 			disp_dpc_driver.dpc_hrt_bw_set(DPC_SUBSYS_DISP, bw_in_mb, true);
 	} else
@@ -618,7 +619,8 @@ void mtk_vidle_srt_bw_set(const u32 bw_in_mb)
 	vidle_data.srt_bw = bw_in_mb;
 	if (disp_dpc_driver.dpc_srt_bw_set) {
 		if (vidle_data.dpc_version == DPC_VER1)
-			disp_dpc_driver.dpc_srt_bw_set(DPC_SUBSYS_DISP, bw_in_mb, !atomic_read(&g_ff_enabled));
+			disp_dpc_driver.dpc_srt_bw_set(DPC_SUBSYS_DISP, bw_in_mb,
+					(atomic_read(&g_ff_enabled) <= 0));
 		else
 			disp_dpc_driver.dpc_srt_bw_set(DPC_SUBSYS_DISP, bw_in_mb, true);
 	} else
@@ -628,7 +630,8 @@ void mtk_vidle_dvfs_set(const u8 level)
 {
 	vidle_data.level = level;
 	if (disp_dpc_driver.dpc_dvfs_set)
-		disp_dpc_driver.dpc_dvfs_set(DPC_SUBSYS_DISP, level, true);
+		disp_dpc_driver.dpc_dvfs_set(DPC_SUBSYS_DISP, level,
+					(atomic_read(&g_ff_enabled) <= 0));
 	else
 		DDPINFO("%s NOT SET:%d\n", __func__, level);
 }
@@ -677,6 +680,8 @@ void mtk_vidle_config_ff(bool en)
 
 	if (ret == 0)
 		atomic_set(&g_ff_enabled, en);
+	DDPINFO("%s, %s en:%d, g_ff_enabled:%d\n", __func__,
+		ret == 0 ? "done" : "failed", en, atomic_read(&g_ff_enabled));
 }
 
 void mtk_vidle_dpc_analysis(void)
