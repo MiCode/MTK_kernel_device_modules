@@ -7832,7 +7832,7 @@ int mtk_dsi_read_gce(struct mtk_ddp_comp *comp, void *handle,
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DSI_CMDQ_CON(dsi->driver_data),
 		0x2, CMDQ_SIZE);
 
-	if (dsi->driver_data->require_phy_reset)
+	if (mtk_dsi_is_cmd_mode(comp) && dsi->driver_data->require_phy_reset)
 		mtk_dsi_runtime_phy_reset_gce(dsi, handle);
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DSI_START,
 		0x0, ~0);
@@ -9462,7 +9462,7 @@ static void mtk_dsi_cmdq_pack_gce(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 
 	mtk_dsi_poll_for_idle(dsi, handle);
 
-	if (dsi->driver_data->require_phy_reset)
+	if (mtk_dsi_is_cmd_mode(comp) && dsi->driver_data->require_phy_reset)
 		mtk_dsi_runtime_phy_reset_gce(dsi, handle);
 
 	if ((!dsi->driver_data->keep_hs_eotp) && para_table->is_hs == 1)
@@ -9609,7 +9609,7 @@ static void mtk_dsi_cmdq_grp_gce(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 		mtk_ddp_write_mask(comp, DIS_EOT,
 				DSI_TXRX_CTRL(dsi->driver_data), DIS_EOT, handle);
 
-	if (dsi->driver_data->require_phy_reset)
+	if (mtk_dsi_is_cmd_mode(comp) && dsi->driver_data->require_phy_reset)
 		mtk_dsi_runtime_phy_reset_gce(dsi, handle);
 
 	for (j = 0; j < para_size; j++) {
@@ -9770,7 +9770,7 @@ void mipi_dsi_dcs_write_gce(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 					0x0, DSI_DUAL_EN);
 		}
 
-		if (dsi->driver_data->require_phy_reset) {
+		if (mtk_dsi_is_cmd_mode(comp) && dsi->driver_data->require_phy_reset) {
 			/* CMD mode require phy reset only */
 			mtk_dsi_runtime_phy_reset_gce(dsi, handle);
 		}
@@ -9877,7 +9877,8 @@ void mipi_dsi_dcs_write_gce_dyn(struct mtk_dsi *dsi, struct cmdq_pkt *handle,
 				0x0, DSI_DUAL_EN);
 	}
 
-	if (dsi->driver_data && dsi->driver_data->require_phy_reset) {
+	if (mtk_dsi_is_cmd_mode(&dsi->ddp_comp) && dsi->driver_data &&
+		dsi->driver_data->require_phy_reset) {
 		/* CMD mode require phy reset only */
 		mtk_dsi_runtime_phy_reset_gce(dsi, handle);
 	}
@@ -9955,7 +9956,7 @@ void mipi_dsi_dcs_write_gce2(struct mtk_dsi *dsi, struct cmdq_pkt *dummy,
 
 		mtk_dsi_cmdq_gce(dsi, handle, &msg);
 
-		if (dsi->driver_data->require_phy_reset) {
+		if (mtk_dsi_is_cmd_mode(&dsi->ddp_comp) && dsi->driver_data->require_phy_reset) {
 			/* CMD mode require phy reset only */
 			mtk_dsi_runtime_phy_reset_gce(dsi, handle);
 		}
@@ -10833,7 +10834,7 @@ static int mtk_dsi_ddic_handler_grp_write_by_gce(struct mtk_dsi *dsi,
 	}
 	mtk_dsi_poll_for_idle(dsi, handle);
 
-	if (dsi->driver_data->require_phy_reset) {
+	if (mtk_dsi_is_cmd_mode(comp) && dsi->driver_data->require_phy_reset) {
 		/* CMD mode require phy reset only */
 		mtk_dsi_runtime_phy_reset_gce(dsi, handle);
 	}
@@ -10961,7 +10962,7 @@ static void _mtk_mipi_dsi_read_gce(struct mtk_dsi *dsi,
 		return;
 	}
 
-	if (dsi->driver_data->require_phy_reset)
+	if (mtk_dsi_is_cmd_mode(comp) && dsi->driver_data->require_phy_reset)
 		mtk_dsi_runtime_phy_reset_gce(dsi, handle);
 
 	if (dsi->slave_dsi) {
