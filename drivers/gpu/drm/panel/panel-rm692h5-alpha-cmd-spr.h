@@ -71,7 +71,7 @@
 #define FHD_SPR_IN_DSC_VER                     18
 #define FHD_SPR_IN_DSC_SLICE_MODE              1
 #define FHD_SPR_IN_DSC_RGB_SWAP                0
-#define FHD_SPR_IN_DSC_DSC_CFG                 0x0001d828
+#define FHD_SPR_IN_DSC_DSC_CFG                 0x14028
 #define FHD_SPR_IN_DSC_RCT_ON                  0
 #define FHD_SPR_IN_DSC_BIT_PER_CHANNEL         10
 #define FHD_SPR_IN_DSC_DSC_LINE_BUF_DEPTH      0
@@ -5100,6 +5100,7 @@ unsigned int rm692h5_mtk_spr_ip_cfg[] = {
 	0x00000001,
 	0x0000007e,
 	0x0000007e,
+	0x00000001,
 	0x00000001,
 };
 #endif

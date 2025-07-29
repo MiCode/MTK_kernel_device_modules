@@ -698,6 +698,7 @@
 #define DISP_MTK_SPR_SHADOW_CTRL               0x140
 	#define BYPASS_SHADOW                      REG_FLD_MSB_LSB(1, 1)
 	#define SR2WRK_CG_ON                       REG_FLD_MSB_LSB(3, 3)
+#define DISP_MTK_SPR_POSTMASK_IGNORE_EN        0x144
 
 //MT6991 DISPSYS Config
 #define MT6991_DISPSYS_SPR_SEL                 0x030
@@ -819,6 +820,7 @@ static void mtk_spr_prepare(struct mtk_ddp_comp *comp)
 {
 	struct mtk_disp_spr *spr = NULL;
 	struct mtk_ddp_comp *out_comp = NULL;
+	struct mtk_drm_private *priv;
 	unsigned int panel_spr_enable;
 	struct mtk_panel_spr_params *spr_params;
 	unsigned int i = 0;
@@ -827,6 +829,10 @@ static void mtk_spr_prepare(struct mtk_ddp_comp *comp)
 	DDPINFO("%s+\n", __func__);
 
 	if (!comp || !comp->mtk_crtc || !comp->mtk_crtc->panel_ext)
+		return;
+
+	priv = comp->mtk_crtc->base.dev->dev_private;
+	if (priv == NULL)
 		return;
 
 	mtk_ddp_comp_clk_prepare(comp);
@@ -893,6 +899,9 @@ static void mtk_spr_prepare(struct mtk_ddp_comp *comp)
 				(MT6991_DISP_MTK_SPR_REG_SPR_OUT_OF_BOUNDARY_REPEAT_EN + offset + 0x4 * i),
 				NULL);
 		}
+		if (priv->data->mmsys_id > MMSYS_MT6991)
+			mtk_ddp_write_relaxed(comp, *(spr_params->mtk_spr_ip_params + i),
+				(DISP_MTK_SPR_POSTMASK_IGNORE_EN + offset), NULL);
 	}
 }
 
