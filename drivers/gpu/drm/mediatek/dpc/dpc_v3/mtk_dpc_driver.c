@@ -149,6 +149,7 @@ static atomic_t pre_cg_ref = ATOMIC_INIT(0);
 
 static atomic_t excep_ret[32] = { ATOMIC_INIT(0) };
 static atomic_t g_user_9 = ATOMIC_INIT(0);
+static atomic_t g_user_11 = ATOMIC_INIT(0);
 static atomic_t g_user_12 = ATOMIC_INIT(0);
 static atomic_t g_user_14 = ATOMIC_INIT(0);
 static atomic_t g_user_15 = ATOMIC_INIT(0);
@@ -1177,6 +1178,60 @@ static u8 bw_to_level_v3(const u32 total_bw)
 		total_bw, g_urate_freq_steps[step_size - 1]);
 
 	return step_size - 1;
+}
+
+static inline mmp_event dpc_user_to_event(const enum mtk_vidle_voter_user user)
+{
+	struct dpc_mmp_events_t *ev = dpc_mmp_get_event();
+
+	switch (user) {
+	case DISP_VIDLE_USER_NST_LOCK:
+		return ev->user_9;
+	case DISP_VIDLE_USER_MML_CLK_ISR:
+		return ev->user_11;
+	case DISP_VIDLE_USER_MML2:
+		return ev->user_12;
+	case DISP_VIDLE_USER_FOR_FRAME:
+		return ev->user_14;
+	case DISP_VIDLE_USER_TOP_CLK_ISR:
+		return ev->user_15;
+	case DISP_VIDLE_USER_CRTC:
+		return ev->user_16;
+	case DISP_VIDLE_USER_PQ:
+		return ev->user_17;
+	case DISP_VIDLE_USER_MML1:
+		return ev->user_18;
+	case DISP_VIDLE_USER_MML0:
+		return ev->user_19;
+	case DISP_VIDLE_USER_DISP_DPC_CFG:
+		return ev->user_26;
+	case DISP_VIDLE_FORCE_KEEP:
+		return ev->user_31;
+	default:
+		return 0;
+	}
+}
+
+static inline atomic_t *dpc_user_to_ref(const enum mtk_vidle_voter_user user)
+{
+	switch (user) {
+	case DISP_VIDLE_USER_NST_LOCK:
+		return &g_user_9;
+	case DISP_VIDLE_USER_MML_CLK_ISR:
+		return &g_user_11;
+	case DISP_VIDLE_USER_MML2:
+		return &g_user_12;
+	case DISP_VIDLE_USER_FOR_FRAME:
+		return &g_user_14;
+	case DISP_VIDLE_USER_TOP_CLK_ISR:
+		return &g_user_15;
+	case DISP_VIDLE_USER_CRTC:
+		return &g_user_16;
+	case DISP_VIDLE_USER_PQ:
+		return &g_user_17;
+	default:
+		return NULL;
+	}
 }
 
 static u8 dpc_max_dvfs_level(void)
@@ -3041,6 +3096,12 @@ static int dpc_vidle_power_keep_v3(const enum mtk_vidle_voter_user _user)
 	int ret = VOTER_PM_DONE;
 	enum mtk_vidle_voter_user user = _user & DISP_VIDLE_USER_MASK;
 	unsigned long flags;
+	MMP_Event user_mmp = dpc_user_to_event(user);
+	atomic_t *user_ref = dpc_user_to_ref(user);
+
+	/* No need this user for xpu exception */
+	if ((excep_by_xpu & BIT(0)) && (user == DISP_VIDLE_USER_FOR_FRAME))
+		return ret;
 
 	if (!dpc_buck_status(-1)) { /* buck off */
 		dpc_mmp(folder, MMPROFILE_FLAG_PULSE, BIT(28) | user, 0xdead0011);
@@ -3053,8 +3114,11 @@ static int dpc_vidle_power_keep_v3(const enum mtk_vidle_voter_user _user)
 			|| user == DISP_VIDLE_USER_DISP_DPC_CFG) {
 		spin_lock_irqsave(&g_priv->excp_spin_lock, flags);
 
-		user_cnt = atomic_inc_return(&g_user_15);
-		dpc_mmp(user_15, user_cnt == 1 ? MMPROFILE_FLAG_START : MMPROFILE_FLAG_PULSE, 1, user_cnt);
+		if (user_ref) {
+			user_cnt = atomic_inc_return(user_ref);
+			dpc_mmp_raw(user_mmp, user_cnt == 1 ? MMPROFILE_FLAG_START : MMPROFILE_FLAG_PULSE, 1, user_cnt);
+		}
+
 		if (user_cnt == 1) {
 			dpc_mminfra_on_off(true, user);
 			if (excep_by_xpu & BIT(0))
@@ -3068,10 +3132,6 @@ static int dpc_vidle_power_keep_v3(const enum mtk_vidle_voter_user _user)
 		return ret;
 	}
 
-	/* No need this user for xpu exception */
-	if ((excep_by_xpu & BIT(0)) && (user == DISP_VIDLE_USER_FOR_FRAME))
-		return ret;
-
 	tracing_mark_write(trace_buf_keep[0][0]);
 
 	if (excep_by_xpu & BIT(0))
@@ -3079,29 +3139,9 @@ static int dpc_vidle_power_keep_v3(const enum mtk_vidle_voter_user _user)
 	else
 		spin_lock_irqsave(&g_priv->excp_spin_lock, flags);
 
-	switch (user) {
-	case DISP_VIDLE_USER_NST_LOCK:
-		user_cnt = atomic_inc_return(&g_user_9);
-		dpc_mmp(user_9, user_cnt == 1 ? MMPROFILE_FLAG_START : MMPROFILE_FLAG_PULSE, 1, user_cnt);
-		break;
-	case DISP_VIDLE_USER_FOR_FRAME:
-		user_cnt = atomic_inc_return(&g_user_14);
-		dpc_mmp(user_14, user_cnt == 1 ? MMPROFILE_FLAG_START : MMPROFILE_FLAG_PULSE, 1, user_cnt);
-		break;
-	case DISP_VIDLE_USER_CRTC:
-		user_cnt = atomic_inc_return(&g_user_16);
-		dpc_mmp(user_16, user_cnt == 1 ? MMPROFILE_FLAG_START : MMPROFILE_FLAG_PULSE, 1, user_cnt);
-		break;
-	case DISP_VIDLE_USER_PQ:
-		user_cnt = atomic_inc_return(&g_user_17);
-		dpc_mmp(user_17, user_cnt == 1 ? MMPROFILE_FLAG_START : MMPROFILE_FLAG_PULSE, 1, user_cnt);
-		break;
-	case DISP_VIDLE_USER_MML2:
-		user_cnt = atomic_inc_return(&g_user_12);
-		dpc_mmp(user_12, user_cnt == 1 ? MMPROFILE_FLAG_START : MMPROFILE_FLAG_PULSE, 1, user_cnt);
-		break;
-	default:
-		break;
+	if (user_ref) {
+		user_cnt = atomic_inc_return(user_ref);
+		dpc_mmp_raw(user_mmp, user_cnt == 1 ? MMPROFILE_FLAG_START : MMPROFILE_FLAG_PULSE, 1, user_cnt);
 	}
 
 	if (excep_by_xpu & BIT(0)) {
@@ -3154,6 +3194,12 @@ static void dpc_vidle_power_release_v3(const enum mtk_vidle_voter_user _user)
 	s32 user_cnt = 0;
 	enum mtk_vidle_voter_user user = _user & DISP_VIDLE_USER_MASK;
 	unsigned long flags;
+	MMP_Event user_mmp = dpc_user_to_event(user);
+	atomic_t *user_ref = dpc_user_to_ref(user);
+
+	/* No need this user for xpu exception */
+	if ((excep_by_xpu & BIT(0)) && (user == DISP_VIDLE_USER_FOR_FRAME))
+		return;
 
 	if (atomic_read(&excep_ret[user]) <= 0) {
 		dpc_mmp(folder, MMPROFILE_FLAG_PULSE, BIT(29) | user, 0xdead0011);
@@ -3164,7 +3210,7 @@ static void dpc_vidle_power_release_v3(const enum mtk_vidle_voter_user _user)
 			|| user == DISP_VIDLE_USER_DISP_DPC_CFG) {
 		spin_lock_irqsave(&g_priv->excp_spin_lock, flags);
 
-		user_cnt = atomic_dec_return(&g_user_15);
+		user_cnt = atomic_dec_return(user_ref);
 		if (user_cnt == 0) {
 			if (excep_by_xpu & BIT(0))
 				dpc_ap_ref_cnt(VOTE_CLR, user, NO_LOCK);
@@ -3172,7 +3218,7 @@ static void dpc_vidle_power_release_v3(const enum mtk_vidle_voter_user _user)
 				dpc_ap_vote_mmpc(VOTE_CLR, user);
 			dpc_mminfra_on_off(false, user);
 		} else if (user_cnt < 0) {
-			atomic_set_release(&g_user_15, 0);
+			atomic_set_release(user_ref, 0);
 			spin_unlock_irqrestore(&g_priv->excp_spin_lock, flags);
 			if (unlikely(irq_aee))
 				DPCAEE("user(%u) underflow", user);
@@ -3183,13 +3229,10 @@ static void dpc_vidle_power_release_v3(const enum mtk_vidle_voter_user _user)
 
 		atomic_dec(&excep_ret[user]);
 		spin_unlock_irqrestore(&g_priv->excp_spin_lock, flags);
-		dpc_mmp(user_15, user_cnt == 0 ? MMPROFILE_FLAG_END : MMPROFILE_FLAG_PULSE, 1, user_cnt);
+
+		dpc_mmp_raw(user_mmp, user_cnt == 0 ? MMPROFILE_FLAG_END : MMPROFILE_FLAG_PULSE, 0, user_cnt);
 		return;
 	}
-
-	/* No need this user for xpu exception */
-	if ((excep_by_xpu & BIT(0)) && (user == DISP_VIDLE_USER_FOR_FRAME))
-		return;
 
 	tracing_mark_write(trace_buf_release[0][0]);
 
@@ -3198,29 +3241,17 @@ static void dpc_vidle_power_release_v3(const enum mtk_vidle_voter_user _user)
 	else
 		spin_lock_irqsave(&g_priv->excp_spin_lock, flags);
 
-	switch (user) {
-	case DISP_VIDLE_USER_NST_LOCK:
-		user_cnt = atomic_dec_if_positive(&g_user_9);
-		dpc_mmp(user_9, user_cnt == 0 ? MMPROFILE_FLAG_END : MMPROFILE_FLAG_PULSE, 0, user_cnt);
-		break;
-	case DISP_VIDLE_USER_FOR_FRAME:
-		user_cnt = atomic_dec_if_positive(&g_user_14);
-		dpc_mmp(user_14, user_cnt == 0 ? MMPROFILE_FLAG_END : MMPROFILE_FLAG_PULSE, 0, user_cnt);
-		break;
-	case DISP_VIDLE_USER_CRTC:
-		user_cnt = atomic_dec_if_positive(&g_user_16);
-		dpc_mmp(user_16, user_cnt == 0 ? MMPROFILE_FLAG_END : MMPROFILE_FLAG_PULSE, 0, user_cnt);
-		break;
-	case DISP_VIDLE_USER_PQ:
-		user_cnt = atomic_dec_if_positive(&g_user_17);
-		dpc_mmp(user_17, user_cnt == 0 ? MMPROFILE_FLAG_END : MMPROFILE_FLAG_PULSE, 0, user_cnt);
-		break;
-	case DISP_VIDLE_USER_MML2:
-		user_cnt = atomic_dec_if_positive(&g_user_12);
-		dpc_mmp(user_12, user_cnt == 0 ? MMPROFILE_FLAG_END : MMPROFILE_FLAG_PULSE, 0, user_cnt);
-		break;
-	default:
-		break;
+	if (user_ref) {
+		user_cnt = atomic_dec_return(user_ref);
+		dpc_mmp_raw(user_mmp, user_cnt == 0 ? MMPROFILE_FLAG_END : MMPROFILE_FLAG_PULSE, 0, user_cnt);
+
+		if (user_cnt < 0) {
+			atomic_set_release(user_ref, 0);
+			if (unlikely(irq_aee))
+				DPCAEE("user(%u) underflow", user);
+			else
+				DPCERR("user(%u) underflow", user);
+		}
 	}
 
 	dpc_apsrc_enable(false, user);

@@ -265,6 +265,8 @@ int mtk_vidle_user_power_keep_v3(enum mtk_vidle_voter_user _user)
 		vidle_data.pm_ret_crtc = pm_ret;
 	else if (user == DISP_VIDLE_USER_NST_LOCK)
 		vidle_data.pm_ret_nst_lock = pm_ret;
+	else if (user == DISP_VIDLE_USER_TOP_CLK_ISR)
+		vidle_data.pm_ret_isr = pm_ret;
 
 	return pm_ret;
 }
@@ -281,6 +283,9 @@ void mtk_vidle_user_power_release_v3(enum mtk_vidle_voter_user _user)
 		return;
 	} else if (user == DISP_VIDLE_USER_NST_LOCK && vidle_data.pm_ret_nst_lock != VOTER_PM_DONE) {
 		DDPINFO("%s skipped, user(%u) ret(%d)\n", __func__, user, vidle_data.pm_ret_nst_lock);
+		return;
+	} else if (user == DISP_VIDLE_USER_TOP_CLK_ISR && vidle_data.pm_ret_isr != VOTER_PM_DONE) {
+		DDPAEE("%s skipped, user(%u) ret(%d)\n", __func__, user, vidle_data.pm_ret_isr);
 		return;
 	}
 

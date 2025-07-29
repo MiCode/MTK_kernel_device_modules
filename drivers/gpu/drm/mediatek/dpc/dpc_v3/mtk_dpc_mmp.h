@@ -20,6 +20,8 @@ static inline void dpc_mmp_init(void) {}
 	mmprofile_log_ex(dpc_mmp_get_event()->event, flag, v1, v2)
 #define dpc_mmp2(event, flag, v1h, v1l, v2h, v2l) \
 	mmprofile_log_ex(dpc_mmp_get_event()->event, flag, v1h << 16 | v1l, v2h << 16 | v2l)
+#define dpc_mmp_raw(event, flag, v1, v2) \
+	mmprofile_log_ex(event, flag, v1, v2)
 
 struct dpc_mmp_events_t {
 	mmp_event folder;
@@ -57,6 +59,7 @@ struct dpc_mmp_events_t {
 	mmp_event user_19;
 	mmp_event user_18;
 	mmp_event user_12;
+	mmp_event user_11;
 	mmp_event hide;
 };
 
