@@ -20,17 +20,17 @@ filegroup(
 )
 
 define_mgk_ddk_ko(
-    name = "pkvm_seninf",
+    name = "pkvm_seninf_mt6993",
     srcs = [
-        "pkvm_seninf_host.c",
-        "pkvm_seninf_host.h",
+        "isp8/pkvm_seninf_host.c",
+        "isp8/pkvm_seninf_host.h",
     ],
-    out = "pkvm_seninf.ko",
+    out = "pkvm_seninf_mt6993.ko",
     copts = [
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
     ],
     ko_deps = [
         "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_mgmt:pkvm_mgmt".format(kernel_version),
-        "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_seninf/hyp:hyp".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_seninf/isp8/hyp:hyp_mt6993".format(kernel_version),
     ],
 )
