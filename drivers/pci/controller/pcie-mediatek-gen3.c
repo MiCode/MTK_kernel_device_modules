@@ -1669,6 +1669,9 @@ static void mtk_pcie_mtcmos_disable_hwccf_ctrl(struct mtk_pcie_port *port, bool 
 {
 	u32 val = 0;
 
+	if (!port || !port->vlpcfg)
+		return;
+
 	val = readl_relaxed(port->vlpcfg + VLPCFG_HWCCF_MTCMOS_CTRL_SEL_REG);
 	if (port->port_num == 0) {
 		if (enable)
