@@ -650,7 +650,7 @@ struct vcodec_work {
 	struct mtk_vcodec_ctx *ctx;
 	enum vcodec_work_type type;
 	struct completion done;
-	bool is_working;
+	bool has_queued;
 };
 
 /**

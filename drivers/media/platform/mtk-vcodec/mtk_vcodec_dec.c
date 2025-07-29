@@ -248,7 +248,7 @@ static void queue_dec_work(struct mtk_vcodec_ctx *ctx, enum vcodec_work_type typ
 	work->ctx = ctx;
 	work->type = type;
 	reinit_completion(&work->done);
-	work->is_working = true;
+	work->has_queued = true;
 	mtk_v4l2_debug(is_run ? 8 : 2, "[%d][WORK] queue type %d work", ctx->id, type);
 
 	spin_lock_irqsave(&dev->worker_mq.lock, flags);
@@ -276,9 +276,8 @@ static void complete_dec_work(struct mtk_vcodec_ctx *ctx, struct vcodec_work *wo
 {
 	bool is_run = (work == &ctx->worker_node);
 
-	work->is_working = false;
-	complete_all(&work->done);
 	mtk_v4l2_debug(is_run ? 8 : 2, "[%d][WORK] type %d work complete", ctx->id, work->type);
+	complete_all(&work->done);
 }
 
 static void flush_dec_work(struct mtk_vcodec_ctx *ctx, enum vcodec_work_type type)
@@ -297,8 +296,8 @@ static void flush_dec_work(struct mtk_vcodec_ctx *ctx, enum vcodec_work_type typ
 		return;
 	}
 
-	if (!work->is_working) {
-		mtk_v4l2_debug(1, "[%d][WORK] type %d not working, no need flush", ctx->id, type);
+	if (!work->has_queued) {
+		mtk_v4l2_debug(1, "[%d][WORK] type %d not queued before, no need flush", ctx->id, type);
 		return;
 	}
 
