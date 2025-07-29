@@ -4310,7 +4310,9 @@ static int RPO_rule(struct drm_crtc *crtc,
 		if (!(!(mtk_crtc->is_dual_pipe) &&
 			(i == 0 && private && private->data &&
 			(private->data->mmsys_id == MMSYS_MT6789 ||
-			private->data->mmsys_id == MMSYS_MT6855)))) {
+			private->data->mmsys_id == MMSYS_MT6855 ||
+			private->data->mmsys_id == MMSYS_MT6991 ||
+			private->data->mmsys_id == MMSYS_MT6993)))) {
 			if (same_ratio_limitation(crtc, c, RATIO_LIMIT,
 				disp_w, disp_h))
 				continue;
