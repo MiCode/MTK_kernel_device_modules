@@ -6437,11 +6437,22 @@ static void mtk_output_dsi_disable(struct mtk_dsi *dsi, struct cmdq_pkt *cmdq_ha
 
 	/* 2. If VDO mode, stop it and set to CMD mode */
 	if (!mtk_dsi_is_cmd_mode(&dsi->ddp_comp)) {
-		mtk_dsi_stop_vdo_mode(dsi, cmdq_handle, __LINE__);
-		if (cmdq_handle) {
-			cmdq_pkt_flush(cmdq_handle);
-			cmdq_pkt_destroy(cmdq_handle);
+		struct cmdq_pkt *handle_tmp = NULL;
+		struct cmdq_client *client;
+
+		if (!cmdq_handle) {
+			client = mtk_crtc->gce_obj.client[CLIENT_DSI_CFG] ?
+				mtk_crtc->gce_obj.client[CLIENT_DSI_CFG] : mtk_crtc->gce_obj.client[CLIENT_CFG];
+			mtk_crtc_pkt_create(&handle_tmp, &mtk_crtc->base, client);
+		} else {
+			handle_tmp = cmdq_handle;
 		}
+
+		mtk_use_cabc_event(handle_tmp, mtk_crtc, WAIT_AND_CLEAR_OPT, __LINE__);
+		mtk_dsi_stop_vdo_mode(dsi, cmdq_handle, __LINE__);
+		mtk_use_cabc_event(handle_tmp, mtk_crtc, SET_OPT, __LINE__);
+		cmdq_pkt_flush(handle_tmp);
+		cmdq_pkt_destroy(handle_tmp);
 	} else {
 		if (mtk_crtc->path_data->is_discrete_path)
 			mtk_dsi_wait_idle(dsi, CMD_DONE_INT_FLAG, 2000, NULL);
