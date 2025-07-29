@@ -597,6 +597,7 @@ void set_vdec_opp(struct mtk_vcodec_dev *dev, u32 freq)
 			}
 			mtk_vcodec_dvfs_qos_log(false, "[VDEC] freq %u, voltage %d", freq, volt);
 		}
+		dev->vdec_dvfs_params.cur_freq = freq;
 	}
 #endif
 }
@@ -642,8 +643,7 @@ void mtk_vdec_dvfs_begin_inst(struct mtk_vcodec_ctx *ctx)
 
 	if (need_update(ctx)) {
 		update_freq(ctx->dev, MTK_INST_DECODER);
-		mtk_vcodec_dvfs_qos_log(false, "[VDEC] freq %u", ctx->dev->vdec_dvfs_params.target_freq);
-		set_vdec_opp(ctx->dev, ctx->dev->vdec_dvfs_params.target_freq);
+		mtk_vcodec_dvfs_qos_log(false, "[VDEC] pre-calculated freq %u", ctx->dev->vdec_dvfs_params.target_freq);
 	}
 }
 
@@ -653,11 +653,11 @@ void mtk_vdec_dvfs_end_inst(struct mtk_vcodec_ctx *ctx)
 
 	if (remove_update(ctx)) {
 		update_freq(ctx->dev, MTK_INST_DECODER);
-		mtk_vcodec_dvfs_qos_log(false, "[VDEC] freq %u", ctx->dev->vdec_dvfs_params.target_freq);
-		set_vdec_opp(ctx->dev, ctx->dev->vdec_dvfs_params.target_freq);
+		mtk_vcodec_dvfs_qos_log(false, "[VDEC] pre-calculated freq %u", ctx->dev->vdec_dvfs_params.target_freq);
 	}
 }
 
+// This function check for the boost condition for DVFS
 void mtk_vdec_dvfs_check_boost(struct mtk_vcodec_ctx *ctx)
 {
 #if DEC_DVFS
@@ -685,18 +685,114 @@ void mtk_vdec_dvfs_check_boost(struct mtk_vcodec_ctx *ctx)
 #endif
 }
 
-void mtk_vdec_pmqos_begin_inst(struct mtk_vcodec_ctx *ctx)
+/*
+ * Function: mtk_vdec_dvfs_begin_frame
+ * Description: This function can only be used in vdec_prepare.
+ * It uses ipi mutex to prevent race condition
+ * Deadlock occurs with check alive when using dec_dvfs_mutex.
+ */
+void mtk_vdec_dvfs_begin_frame(struct mtk_vcodec_ctx *ctx, int hw_id)
 {
+	struct mtk_vcodec_dev *dev = ctx->dev;
+	u8 orig = 0;
+	int next_freq, cur_freq = dev->vdec_dvfs_params.cur_freq;
+	bool pwr_on;
+
+	mtk_vdec_dvfs_check_boost(ctx);
+
+	/* Adjust freq in AP: need to define regulator or mmdvfs_clk in dts*/
+	if (dev->vdec_reg == 0 && dev->vdec_mmdvfs_clk == 0)
+		return;
+
+	if (hw_id < 0 || hw_id >= MTK_VDEC_HW_NUM)
+		return;
+
+	if (dev->vdec_dvfs_params.init_boost)
+		next_freq = ctx->dev->vdec_dvfs_params.normal_max_freq;
+	else
+		next_freq = ctx->dev->vdec_dvfs_params.target_freq;
+
+	orig = (dev->vdec_dvfs_params.version == 2) ?
+		(dev->vdec_dvfs_params.lock_cnt[0] | dev->vdec_dvfs_params.lock_cnt[1]) :
+		dev->vdec_dvfs_params.lock_cnt[0];
+
+	dev->vdec_dvfs_params.lock_cnt[hw_id]++;
+	if (dev->vdec_dvfs_params.lock_cnt[hw_id] > 1)
+		mtk_vcodec_dvfs_qos_log(false, "[VDEC] lock_cnt oor %s %d", __func__, __LINE__);
+
+	pwr_on = (dev->vdec_dvfs_params.version == 2) ?
+		(orig ^ (dev->vdec_dvfs_params.lock_cnt[0] | dev->vdec_dvfs_params.lock_cnt[1])) :
+		(orig ^ dev->vdec_dvfs_params.lock_cnt[0]);
+
+	dev->vdec_dvfs_params.frame_need_update = (next_freq != cur_freq) && pwr_on;
+
+	if (dev->vdec_dvfs_params.frame_need_update) {
+		mtk_vcodec_dvfs_qos_log(false, "[VDEC] f_begin freq %u", next_freq);
+		set_vdec_opp(ctx->dev, ctx->dev->vdec_dvfs_params.target_freq);
+	}
+}
+
+/*
+ * Function name: mtk_vdec_dvfs_end_frame
+ * Description: This function can only be used in vdec_unprepare.
+ * Use ipi mutex to prevent race condition
+ * Deadlock occurs with check alive whenusing dec_dvfs_mutex.
+ */
+void mtk_vdec_dvfs_end_frame(struct mtk_vcodec_ctx *ctx, int hw_id)
+{
+	struct mtk_vcodec_dev *dev = ctx->dev;
+	u8 orig = 0;
+	int cur_freq = dev->vdec_dvfs_params.cur_freq;
+	bool pwr_on;
+
+	/* Adjust freq in AP: need to define regulator or mmdvfs_clk in dts*/
+	if (dev->vdec_reg == 0 && dev->vdec_mmdvfs_clk == 0)
+		return;
+
+	if (hw_id < 0 || hw_id >= MTK_VDEC_HW_NUM)
+		return;
+
+
+	orig = (dev->vdec_dvfs_params.version == 2) ?
+		(dev->vdec_dvfs_params.lock_cnt[0] | dev->vdec_dvfs_params.lock_cnt[1]) :
+		dev->vdec_dvfs_params.lock_cnt[0];
+
+	if (dev->vdec_dvfs_params.lock_cnt[hw_id] > 0)
+		dev->vdec_dvfs_params.lock_cnt[hw_id]--;
+
+	pwr_on = (dev->vdec_dvfs_params.version == 2) ?
+		(orig ^ (dev->vdec_dvfs_params.lock_cnt[0] | dev->vdec_dvfs_params.lock_cnt[1])) :
+		(orig ^ dev->vdec_dvfs_params.lock_cnt[0]);
+
+	dev->vdec_dvfs_params.frame_need_update =
+		(cur_freq != dev->vdec_dvfs_params.min_freq) && !pwr_on;
+
+	if (dev->vdec_dvfs_params.frame_need_update) {
+		mtk_vcodec_dvfs_qos_log(false, "[VDEC] f_end freq %u", dev->vdec_dvfs_params.min_freq);
+		set_vdec_opp(dev, dev->vdec_dvfs_params.min_freq);
+	}
+}
+
+/*
+ * Function name: mtk_vdec_mmqos_begin_frame
+ * Description: This function can only be used in vdec_prepare.
+ * Use ipi mutex to prevent race condition
+ * Deadlock occurs with check alive whenusing dec_dvfs_mutex.
+ */
+void mtk_vdec_mmqos_begin_frame(struct mtk_vcodec_ctx *ctx)
+{
+	struct mtk_vcodec_dev *dev = 0;
 	int i;
 	bool overspec_bw = false;
-	struct mtk_vcodec_dev *dev = 0;
 	u64 target_bw = 0;
 
 	dev = ctx->dev;
-	mtk_vcodec_dvfs_qos_log(false, "[VDVFS][VDEC] ctx = %p",  ctx);
+
+	if (!dev->vdec_dvfs_params.frame_need_update)
+		return;
 
 	overspec_bw = (ctx->picinfo.buf_w > dev->vdec_dvfs_params.os_bw[0] &&
-		dev->vdec_dvfs_params.os_bw[1] > 0);
+	dev->vdec_dvfs_params.os_bw[1] > 0);
 
 	for (i = 0; i < dev->vdec_larb_cnt; i++) {
 		if (dev->vdec_dvfs_params.init_boost) {
@@ -710,13 +806,7 @@ void mtk_vdec_pmqos_begin_inst(struct mtk_vcodec_ctx *ctx)
 		}
 
 		if (dev->vdec_larb_bw[i].larb_type < VCODEC_LARB_SUM) {
-			if (!dev->vdec_dvfs_params.set_bw_in_min_freq &&
-				(dev->vdec_dvfs_params.target_freq == dev->vdec_dvfs_params.min_freq)) {
-				mtk_icc_set_bw(dev->vdec_qos_req[i],
-					MBps_to_icc(0), 0);
-				mtk_vcodec_dvfs_qos_log(false, "[VDEC] larb %d bw %u (min opp, no request) MB/s",
-				dev->vdec_larb_bw[i].larb_id, (u32)target_bw);
-			} else if (overspec_bw) {
+			if (overspec_bw) {
 				// bw overspec handling
 				mtk_icc_set_bw(dev->vdec_qos_req[i], MBps_to_icc(0), 0);
 				mtk_vcodec_dvfs_qos_log(true, "[VDEC] overspec, request 0 (dflt)");
@@ -733,139 +823,21 @@ void mtk_vdec_pmqos_begin_inst(struct mtk_vcodec_ctx *ctx)
 	}
 }
 
-void mtk_vdec_pmqos_end_inst(struct mtk_vcodec_ctx *ctx)
-{
-	int i;
-	struct mtk_vcodec_dev *dev = 0;
-	u64 target_bw = 0;
-
-	dev = ctx->dev;
-	mtk_vcodec_dvfs_qos_log(false, "[VDVFS][VDEC] ctx = %p",  ctx);
-
-
-	for (i = 0; i < dev->vdec_larb_cnt; i++) {
-		target_bw = (u64)dev->vdec_larb_bw[i].larb_base_bw *
-			dev->vdec_dvfs_params.target_freq /
-			dev->vdec_dvfs_params.min_freq;
-
-		if (list_empty(&dev->vdec_dvfs_inst)) /* no more instances */
-			target_bw = 0;
-
-		if (dev->vdec_larb_bw[i].larb_type < VCODEC_LARB_SUM) {
-			if (!dev->vdec_dvfs_params.set_bw_in_min_freq &&
-				dev->vdec_dvfs_params.target_freq == dev->vdec_dvfs_params.min_freq) {
-				mtk_icc_set_bw(dev->vdec_qos_req[i],
-					MBps_to_icc(0), 0);
-				mtk_vcodec_dvfs_qos_log(false, "[VDEC] larb %d bw %u (min opp, no request) MB/s",
-				dev->vdec_larb_bw[i].larb_id, (u32)target_bw);
-			} else {
-				mtk_icc_set_bw(dev->vdec_qos_req[i],
-					MBps_to_icc((u32)target_bw), 0);
-				mtk_vcodec_dvfs_qos_log(false, "[VDEC] larb %d w %u MB/s",
-				dev->vdec_larb_bw[i].larb_id, (u32)target_bw);
-			}
-		} else {
-			mtk_vcodec_dvfs_qos_log(false, "[VDEC] unknown larb type %d",
-				dev->vdec_larb_bw[i].larb_type);
-		}
-	}
-}
-
-
-void mtk_vdec_dvfs_begin_frame(struct mtk_vcodec_ctx *ctx, int hw_id)
-{
-	struct mtk_vcodec_dev *dev = ctx->dev;
-	u8 orig = 0;
-
-	/* Adjust freq in AP: need to define regulator or mmdvfs_clk in dts*/
-	if (dev->vdec_reg == 0 && dev->vdec_mmdvfs_clk == 0)
-		return;
-
-	if (hw_id < 0 || hw_id >= MTK_VDEC_HW_NUM)
-		return;
-
-
-	orig = dev->vdec_dvfs_params.lock_cnt[0] | dev->vdec_dvfs_params.lock_cnt[1];
-
-	dev->vdec_dvfs_params.lock_cnt[hw_id]++;
-	if (dev->vdec_dvfs_params.lock_cnt[hw_id] > 1)
-		mtk_vcodec_dvfs_qos_log(false, "[VDEC] lock_cnt oor %s %d", __func__, __LINE__);
-
-	dev->vdec_dvfs_params.frame_need_update = (dev->vdec_dvfs_params.version == 2) ?
-		(orig ^ (dev->vdec_dvfs_params.lock_cnt[0] | dev->vdec_dvfs_params.lock_cnt[1])) : 1;
-
-	if (!dev->vdec_dvfs_params.per_frame_adjust)
-		dev->vdec_dvfs_params.frame_need_update = 0;
-
-	if (dev->vdec_dvfs_params.frame_need_update &&
-		(dev->vdec_dvfs_params.target_freq != dev->vdec_dvfs_params.min_freq)) {
-		mtk_vcodec_dvfs_qos_log(false, "[VDEC] f_begin freq %u",
-			ctx->dev->vdec_dvfs_params.target_freq);
-		set_vdec_opp(ctx->dev, ctx->dev->vdec_dvfs_params.target_freq);
-	}
-}
-
-
-void mtk_vdec_dvfs_end_frame(struct mtk_vcodec_ctx *ctx, int hw_id)
-{
-	struct mtk_vcodec_dev *dev = ctx->dev;
-	u8 orig = 0;
-
-	/* Adjust freq in AP: need to define regulator or mmdvfs_clk in dts*/
-	if (dev->vdec_reg == 0 && dev->vdec_mmdvfs_clk == 0)
-		return;
-
-	if (hw_id < 0 || hw_id >= MTK_VDEC_HW_NUM)
-		return;
-
-
-	orig = dev->vdec_dvfs_params.lock_cnt[0] | dev->vdec_dvfs_params.lock_cnt[1];
-
-	if (dev->vdec_dvfs_params.lock_cnt[hw_id] > 0)
-		dev->vdec_dvfs_params.lock_cnt[hw_id]--;
-
-	dev->vdec_dvfs_params.frame_need_update = (dev->vdec_dvfs_params.version == 2) ?
-		(orig ^ (dev->vdec_dvfs_params.lock_cnt[0] | dev->vdec_dvfs_params.lock_cnt[1])) : 1;
-
-	if (!dev->vdec_dvfs_params.per_frame_adjust)
-		dev->vdec_dvfs_params.frame_need_update = 0;
-
-	if (dev->vdec_dvfs_params.frame_need_update &&
-		(dev->vdec_dvfs_params.target_freq != dev->vdec_dvfs_params.min_freq)) {
-		mtk_vcodec_dvfs_qos_log(false, "[VDEC] f_end freq %u", ctx->dev->vdec_dvfs_params.min_freq);
-		set_vdec_opp(ctx->dev, ctx->dev->vdec_dvfs_params.min_freq);
-	}
-}
-
-
-void mtk_vdec_pmqos_begin_frame(struct mtk_vcodec_ctx *ctx)
+/*
+ * Function name: mtk_vdec_mmqos_end_frame
+ * Description: This function can only be used in vdec_unprepare.
+ * Use ipi mutex to prevent race condition
+ * Deadlock occurs with check alive whenusing dec_dvfs_mutex.
+ */
+void mtk_vdec_mmqos_end_frame(struct mtk_vcodec_ctx *ctx)
 {
 	struct mtk_vcodec_dev *dev = 0;
-
 	dev = ctx->dev;
 
-	if (dev->vdec_dvfs_params.frame_need_update &&
-		(dev->vdec_dvfs_params.set_bw_in_min_freq ||
-		(dev->vdec_dvfs_params.target_freq != dev->vdec_dvfs_params.min_freq))) {
-		mtk_vdec_pmqos_begin_inst(ctx);
-	}
-	dev->vdec_dvfs_params.frame_need_update = 0;
-}
-
-
-void mtk_vdec_pmqos_end_frame(struct mtk_vcodec_ctx *ctx)
-{
-	int i;
-	struct mtk_vcodec_dev *dev = 0;
-
-	dev = ctx->dev;
-
-	if (!dev->vdec_dvfs_params.frame_need_update ||
-		(!dev->vdec_dvfs_params.set_bw_in_min_freq &&
-		dev->vdec_dvfs_params.target_freq == dev->vdec_dvfs_params.min_freq))
+	if (!dev->vdec_dvfs_params.frame_need_update)
 		return;
 
-	for (i = 0; i < dev->vdec_larb_cnt; i++) {
+	for (int i = 0; i < dev->vdec_larb_cnt; i++) {
 		if (dev->vdec_larb_bw[i].larb_type < VCODEC_LARB_SUM) {
 			mtk_icc_set_bw(dev->vdec_qos_req[i], 0, 0);
 			mtk_vcodec_dvfs_qos_log(false, "[VDEC] set larb %u bw", dev->vdec_larb_bw[i].larb_id);
@@ -874,7 +846,6 @@ void mtk_vdec_pmqos_end_frame(struct mtk_vcodec_ctx *ctx)
 				dev->vdec_larb_bw[i].larb_type);
 		}
 	}
-	dev->vdec_dvfs_params.frame_need_update = 0;
 }
 
 /*prepare mmdvfs data to vcp to begin*/
@@ -958,7 +929,6 @@ void mtk_vdec_force_update_freq(struct mtk_vcodec_dev *dev)
 {
 	update_freq(dev, MTK_INST_DECODER);
 	mtk_vcodec_dvfs_qos_log(false, "[VDEC] freq %u", dev->vdec_dvfs_params.target_freq);
-	set_vdec_opp(dev, dev->vdec_dvfs_params.target_freq);
 }
 
 void mtk_vdec_dvfs_update_dvfs_params(struct mtk_vcodec_ctx *ctx)
@@ -1052,4 +1022,22 @@ bool mtk_vdec_dvfs_monitor_op_rate(struct mtk_vcodec_ctx *ctx, int buf_type)
 			return true;
 	}
 	return false;
+}
+
+void vdec_dvfs_qos_ctrl(struct mtk_vcodec_ctx *ctx, bool prepare,
+	unsigned int need, unsigned int hw_id)
+{
+	if (ctx == NULL || hw_id >= MTK_VDEC_HW_NUM || ctx->dev->power_in_vcp)
+		return;
+
+	if (ctx->dev->vdec_dvfs_params.mmdvfs_in_vcp)
+		ctx->dev->vdec_dvfs_params.frame_need_update = need;
+
+	if (prepare) {
+		mtk_vdec_dvfs_begin_frame(ctx, hw_id);
+		mtk_vdec_mmqos_begin_frame(ctx);
+	} else {
+		mtk_vdec_dvfs_end_frame(ctx, hw_id);
+		mtk_vdec_mmqos_end_frame(ctx);
+	}
 }

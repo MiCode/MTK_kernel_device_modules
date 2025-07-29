@@ -108,7 +108,7 @@ int vdec_if_set_param(struct mtk_vcodec_ctx *ctx,
  * Return: 0 if flush successfully, otherwise it is failed.
  */
 int vdec_if_flush(struct mtk_vcodec_ctx *ctx, struct mtk_vcodec_mem *bs,
-				   struct vdec_fb *fb, enum vdec_flush_type type);
+	struct vdec_fb *fb, enum vdec_flush_type type);
 
 int vdec_if_dev_ctx_init(struct mtk_vcodec_dev *dev);
 void vdec_if_dev_ctx_deinit(struct mtk_vcodec_dev *dev);
