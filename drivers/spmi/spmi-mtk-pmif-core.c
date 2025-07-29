@@ -1061,12 +1061,16 @@ static struct pmif mt6993_pmif_arb[] = {
 int (*register_spmi_md_force_assert)(unsigned int id, char *buf, unsigned int len) = NULL;
 EXPORT_SYMBOL(register_spmi_md_force_assert);
 
-static void pmif_pmif_acc_vio_irq_handler(int irq, void *data)
+static void pmif_pmif_acc_vio_irq_handler(int irq_0, int irq_1, int irq_2, void *data)
 {
 	struct pmif *arb = data;
 	u32 vio_chan = 0xFFFFFFFF;
 	u32 vio_slvid = 0;
 	int aee_warning_flag = 0;
+	unsigned int buf = 0;
+	/* if fail path is pmif-m/p set 0/1 to notify md */
+	if (irq_1 || irq_2)
+		buf = 1;
 	/* Mark vio_info as uninitialized */
 	struct spmi_acc_vio_info vio_info = {
 		.chan = 0xFFFFFFFF,
@@ -1094,7 +1098,7 @@ static void pmif_pmif_acc_vio_irq_handler(int irq, void *data)
 		pr_notice("[PMIF] MD HW MPU violation!\n");
 		if (register_spmi_md_force_assert != NULL) {
 			pr_notice("[PMIF]:Trigger MD assert DONE\n");
-			register_spmi_md_force_assert(ID_PMIF_FORCE_MD_ASSERT, NULL, 0);
+			register_spmi_md_force_assert(ID_PMIF_FORCE_MD_ASSERT, (char *)&buf, sizeof(unsigned int));
 		}
 		aee_warning_flag = 1;
 	} else if ((vio_chan == PMIF_CH_TIA_HW2) && (vio_slvid == 0)) {
@@ -1356,7 +1360,7 @@ static irqreturn_t pmif_event_0_irq_handler(int irq, void *data)
 				pmif_hw_monitor_irq_handler(irq, data);
 			break;
 			case IRQ_ALL_PMIC_MPU_VIO_V4:
-				pmif_pmif_acc_vio_irq_handler(irq, data);
+				pmif_pmif_acc_vio_irq_handler(irq_0, irq_1, irq_2, data);
 			break;
 			default:
 				pr_notice("%s IRQ[%d] triggered\n",
