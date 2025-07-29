@@ -528,7 +528,7 @@ int mt6993_set_freq_limit(int upper_limit, int lower_limit, int *request_id, int
 	bool found = false;
 	int ret;
 	int type = calltype;
-	uint32_t currnet_opp = 0;
+	uint32_t currnet_opp = 0, target_opp = 0, tmp, upper0 = 0, lower0 = 0;
 
 	// mapping user opp to real opp
 	if (type == SW_THROTTLE_SYSFS) { // sysfs node
@@ -606,17 +606,22 @@ int mt6993_set_freq_limit(int upper_limit, int lower_limit, int *request_id, int
 			unsigned long timeout = jiffies + msecs_to_jiffies(1000); // 1 second timeout
 
 			do {
-				currnet_opp = apu_readl(
+				udelay(1000);
+				tmp = apu_readl(
 					(apupw.regs[apu_md32_mbox] + ENGINE_ONOFF_OPP_SYNC_REG));
-				currnet_opp = (currnet_opp >> 16) & 0xF;
-				if (currnet_opp != 0)
+				currnet_opp = (tmp >> 16) & 0xF;
+				target_opp = (tmp >> 20) & 0xF;
+				upper0 = (tmp >> 24) & 0xF;
+				lower0 = (tmp >> 28) & 0xF;
+				if ((currnet_opp != 0) && (target_opp != 0) &&
+				    (upper0 == 1) && (lower0 == USER_MIN_OPP_VAL))
 					break;
 				if (time_after(jiffies, timeout)) {
 					apu_pr_info_ratelimited("%s: timeout waiting for OPP sync\n", __func__);
 					ret = -ETIMEDOUT;
 					break;
 				}
-				udelay(50);
+				//udelay(50);
 			} while (1);
 			apu_pr_info_ratelimited("%s, currnet_opp = %08x", __func__, currnet_opp);
 			sw_throttle_sync_mode = 0; // clr sync mode after done.
