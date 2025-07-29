@@ -321,8 +321,11 @@ static void __used cpu_limit_default_setting(struct device *dev, enum cpu_pt_typ
 static bool parse_bootup_pt_table(struct device_node *np, struct tag_bootmode *tag)
 {
 	struct cpu_bootup_pt_priv *bootup_pt_info_p;
-	int ret, k;
+	int ret, k, bootup_temp, bootup_voltage;
+	int bootup_temp_count, bootup_volts_count, num;
+	int temp_stage, volt_stage, val, index;
 	char buf[NAME_LENGTH];
+	u32 *temp_threshold = NULL, *volt_threshold = NULL;
 
 	bootup_pt_info_p = &cpu_bootup_pt_info;
 	bootup_pt_info_p->max_lv = 1;
@@ -333,22 +336,85 @@ static bool parse_bootup_pt_table(struct device_node *np, struct tag_bootmode *t
 
 	memset(buf, 0, sizeof(buf));
 
-	ret = snprintf(buf, sizeof(buf), "%s%d", bootup_pt_info_p->freq_limit_booting_name, tag->bootmode);
-	if (ret < 0){
-		pr_notice("can't merge %s %d\n", bootup_pt_info_p->freq_limit_booting_name, tag->bootmode);
-		for (k = 0; k < CLUSTER_NUM; k++)
-			bootup_pt_info_p->freq_limit_booting[k] = CPU_UNLIMIT_FREQ;
+	bootup_temp_count = of_property_count_u32_elems(np, "bootup-temperature-stage-threshold");
+	bootup_volts_count = of_property_count_u32_elems(np, "bootup-voltage-threshold");
+	num = of_property_count_u32_elems(np, "bootup-throttle-level");
+
+	if (num != (bootup_temp_count + 1)*(bootup_volts_count + 1))
+		return false;
+
+	temp_threshold = kcalloc(bootup_temp_count, sizeof(u32), GFP_KERNEL);
+	if (!temp_threshold)
+		return false;
+	volt_threshold = kcalloc(bootup_volts_count, sizeof(u32), GFP_KERNEL);
+	if (!temp_threshold || !volt_threshold) {
+		kfree(temp_threshold);
 		return false;
 	}
-	ret = of_property_read_u32_array(np, buf,
-		&bootup_pt_info_p->freq_limit_booting[0], CLUSTER_NUM);
+	ret = of_property_read_u32(np, "bootup-temp", &bootup_temp);
+	ret |= of_property_read_u32(np, "bootup-voltage", &bootup_voltage);
+	ret |= of_property_read_u32_array(np, "bootup-temperature-stage-threshold", temp_threshold, bootup_temp_count);
+	ret |= of_property_read_u32_array(np, "bootup-voltage-threshold", volt_threshold, bootup_volts_count);
 	if (ret < 0) {
-		pr_notice("%s: get %s fail %d\n", __func__, buf, ret);
+		kfree(temp_threshold);
+		kfree(volt_threshold);
+		return false;
+	}
+
+	for (temp_stage = 0; temp_stage < bootup_temp_count; temp_stage++) {
+		if (bootup_temp > temp_threshold[temp_stage])
+			break;
+	}
+	for (volt_stage = 0; volt_stage < bootup_volts_count; volt_stage++) {
+		if (bootup_voltage > volt_threshold[volt_stage])
+			break;
+	}
+
+	index = temp_stage * (bootup_volts_count + 1) + volt_stage;
+	if(index >= num){
+		kfree(temp_threshold);
+		kfree(volt_threshold);
+		return false;
+	}
+
+	ret = of_property_read_u32_index(np, "bootup-throttle-level", index, &val);
+	if (ret < 0) {
+		kfree(temp_threshold);
+		kfree(volt_threshold);
+		return false;
+	}
+	if (val != 0){
+		ret = snprintf(buf, sizeof(buf), "%s%d-lv%d", bootup_pt_info_p->freq_limit_booting_name,
+				tag->bootmode, val);
+		if (ret < 0){
+			pr_notice("can't merge %s %d\n", bootup_pt_info_p->freq_limit_booting_name, tag->bootmode);
+			for (k = 0; k < CLUSTER_NUM; k++)
+				bootup_pt_info_p->freq_limit_booting[k] = CPU_UNLIMIT_FREQ;
+			kfree(temp_threshold);
+			kfree(volt_threshold);
+			return false;
+		}
+		ret = of_property_read_u32_array(np, buf,
+			&bootup_pt_info_p->freq_limit_booting[0], CLUSTER_NUM);
+		if (ret < 0) {
+			pr_notice("%s: get %s fail %d\n", __func__, buf, ret);
+			for (k = 0; k < CLUSTER_NUM; k++)
+				bootup_pt_info_p->freq_limit_booting[k] = CPU_UNLIMIT_FREQ;
+			kfree(temp_threshold);
+			kfree(volt_threshold);
+			return false;
+		}
+	} else if (val == 0){
+		pr_notice("%s: bootup unlimited", __func__);
 		for (k = 0; k < CLUSTER_NUM; k++)
 			bootup_pt_info_p->freq_limit_booting[k] = CPU_UNLIMIT_FREQ;
+		kfree(temp_threshold);
+		kfree(volt_threshold);
 		return false;
 	}
 	pr_notice("%s: bootmode:0x%x\n", __func__, tag->bootmode);
+	kfree(temp_threshold);
+	kfree(volt_threshold);
 	return true;
 
 }
