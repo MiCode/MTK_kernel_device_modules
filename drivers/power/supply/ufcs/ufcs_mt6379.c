@@ -87,14 +87,7 @@ module_param(test_direct_read, int, 0644);
 
 struct ufcs_drvdata {
 	bool direct_read_buffer;
-};
-
-static const struct ufcs_drvdata mt6379_drvdata = {
-	.direct_read_buffer = false,
-};
-
-static const struct ufcs_drvdata mt6720_drvdata = {
-	.direct_read_buffer = true,
+	int (*post_irq_handler)(void *data);
 };
 
 struct mt6379_data {
@@ -327,6 +320,14 @@ static int mt6379_get_message(struct mt6379_data *udata, struct ufcs_message *ms
 	return mt6379_recover_rx_buffer(udata, ret);
 }
 
+static int mt6379_ufcs_post_irq_handler(void *data)
+{
+	struct mt6379_data *udata = data;
+
+	/* MT6379 do retrigger */
+	return regmap_write(udata->regmap, MT6379_REG_SPMI_TXDRV2, MT6379_RCS_INT_DONE_MASK);
+}
+
 static irqreturn_t mt6379_ufcs_evt_handler(int irq, void *data)
 {
 	struct mt6379_data *udata = data;
@@ -387,10 +388,12 @@ out:
 	if (ret)
 		dev_err(udata->dev, "Failed to unmask UFCS IRQ\n");
 
-	/* Retrigger */
-	ret = regmap_write(regmap, MT6379_REG_SPMI_TXDRV2, MT6379_RCS_INT_DONE_MASK);
-	if (ret)
-		dev_err(udata->dev, "Failed to do IRQ retrigger\n");
+	/* Do RCS retrigger */
+	if (udata->drvdata && udata->drvdata->post_irq_handler) {
+		ret = udata->drvdata->post_irq_handler(udata);
+		if (ret)
+			dev_info(udata->dev, "%s, Failed to do post irq handler\n", __func__);
+	}
 
 	return IRQ_HANDLED;
 }
@@ -446,6 +449,15 @@ static int mt6379_ufcs_probe(struct platform_device *pdev)
 	dev_info(dev, "%s: successfully\n", __func__);
 	return 0;
 }
+
+static const struct ufcs_drvdata mt6379_drvdata = {
+	.direct_read_buffer = false,
+	.post_irq_handler = mt6379_ufcs_post_irq_handler,
+};
+
+static const struct ufcs_drvdata mt6720_drvdata = {
+	.direct_read_buffer = true,
+};
 
 static const struct of_device_id mt6379_ufcs_dev_match[] = {
 	{ .compatible = "mediatek,mt6379-ufcs", .data = &mt6379_drvdata },

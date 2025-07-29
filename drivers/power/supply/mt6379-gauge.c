@@ -499,6 +499,7 @@ struct gauge_chip_desc {
 	char *gauge_path_name;
 	char *gauge_name;
 	const char *cdev_gauge_name;
+	int (*post_irq_handler)(void *data);
 };
 
 struct mt6379_priv {
@@ -666,6 +667,14 @@ static int mt6379_gauge_dump_registers(struct mt6379_priv *priv)
 	return 0;
 }
 
+static int mt6379_gauge_post_irq_handler(void *data)
+{
+	struct mt6379_priv *priv = data;
+
+	/* MT6379 do retrigger */
+	return regmap_write(priv->regmap, MT6379_REG_SPMI_TXDRV2, MT6379_MASK_RCS_INT_DONE);
+}
+
 static irqreturn_t gauge_irq_thread(int irq, void *data)
 {
 	static const u8 mask[NUM_IRQ_REG] = { 0x9F, 0x1B, 0x0D };
@@ -741,11 +750,11 @@ static irqreturn_t gauge_irq_thread(int irq, void *data)
 		dev_info(priv->dev, "%s, Failed to clear %s INT status\n",
 			 __func__, priv->desc->gauge_name);
 
-	/* MT6379 do retrigger */
-	if (handled) {
-		ret = regmap_write(priv->regmap, MT6379_REG_SPMI_TXDRV2, MT6379_MASK_RCS_INT_DONE);
+	/* Do RCS retrigger */
+	if (handled && priv->desc->post_irq_handler) {
+		ret = priv->desc->post_irq_handler(priv);
 		if (ret)
-			dev_notice(priv->dev, "%s, Failed to do rcs IRQ retrigger\n", __func__);
+			dev_info(priv->dev, "%s, Failed to do post irq handler\n", __func__);
 	}
 
 	return handled ? IRQ_HANDLED : IRQ_NONE;
@@ -4980,6 +4989,7 @@ static const struct gauge_chip_desc mt6379_bat1_desc = {
 	.gauge_name = "MT6379 GAUGE BAT1",
 	.cdev_gauge_name = "MT_pmic_adc_cali",
 	.mask_gm30_evt = MT6379_MASK_BM1_EVT,
+	.post_irq_handler = mt6379_gauge_post_irq_handler,
 };
 
 static const struct gauge_chip_desc mt6379_bat2_desc = {
@@ -4990,6 +5000,7 @@ static const struct gauge_chip_desc mt6379_bat2_desc = {
 	.gauge_name = "MT6379 GAUGE BAT2",
 	.cdev_gauge_name = "MT_pmic_adc_cali2",
 	.mask_gm30_evt = MT6379_MASK_BM2_EVT,
+	.post_irq_handler = mt6379_gauge_post_irq_handler,
 };
 
 static const struct gauge_chip_desc mt6720_bat_desc = {
