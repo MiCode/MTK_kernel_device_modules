@@ -1098,7 +1098,6 @@ void init_cti(struct mtk_mmmc_power_domain *mmmc_power_domain, bool dump)
 
 		if (!cti)
 			continue;
-		MM_MONITOR_DBG("CTI hwid=%d", i);
 		base = cti->base_addr_va;
 		/* enable CTI */
 		writel(0xC5ACCE55, base + LAR);
@@ -1190,7 +1189,7 @@ u32 mtk_init_monitor_by_subsys_id(u32 subsys_id, bool dump_and_force_init)
 		MM_MONITOR_ERR("power_domain:%d empty data", subsys_id);
 		return -EINVAL;
 	}
-	MM_MONITOR_DBG("subsys_id:%d bwr_cnt:%d ela_cnt:%d cti_cnt:%d hrt_debug_enabled:%d kernel_no_ctrl:%d",
+	MM_MONITOR_INFO("subsys_id:%d bwr_cnt:%d ela_cnt:%d cti_cnt:%d hrt_debug_enabled:%d kernel_no_ctrl:%d",
 		subsys_id, mmmc_power_domain->bwr_total_cnt,
 		mmmc_power_domain->ela_total_cnt, mmmc_power_domain->cti_total_cnt,
 		hrt_debug_enabled, mmmc_power_domain->kernel_no_ctrl);
