@@ -11692,10 +11692,10 @@ static int mtk_dsi_cmd_transfer(struct mtk_dsi *mtk_dsi, struct cmdq_pkt *handle
 			DDPMSG("%s, Notice!! panel_mode != dsi mode, (%d, %d)\n", __func__, panel_mode, dsi_mode);
 
 		/* stop vdo is run by external and use cmd mode directly */
-		if (cmd_msg->vdo_mode_flag & MTK_DSI_SKIP_STOP_VDO_MODE) {
+		if (flags & MTK_DSI_SKIP_STOP_VDO_MODE) {
 			DDPDSI_CMD("%s, skip stop vdo mode, use cmd mode\n", __func__);
 			goto cmd_mode_transfer;
-		} else if ((cmd_msg->vdo_mode_flag & MTK_DSI_FORCE_STOP_VDO_MODE) ||
+		} else if ((flags & MTK_DSI_FORCE_STOP_VDO_MODE) ||
 			(cmd_msg->transfer_mode == PACKET_LP_MODE) ||
 			((cmd_msg->transfer_mode == PACKET_NULL) && mtk_dsi_use_lp_mode_by_cmd(cmd_msg)) ||
 			(cmd_msg->cmd_num > 1 && cmd_msg->is_package) ||
@@ -11839,9 +11839,9 @@ cmd_mode_transfer:
 		return rd_total_sz;
 	}
 
-	// panel and dsi are vdo mode all, but user no "stop/vdo mode"
+	/* panel and dsi are vdo mode all, but user no "stop/vdo mode" */
 	if (!panel_mode && dsi_mode &&
-		!(cmd_msg->vdo_mode_flag & MTK_DSI_SKIP_STOP_VDO_MODE) &&
+		!(flags & MTK_DSI_SKIP_STOP_VDO_MODE) &&
 		need_start_vdo_mode != true)
 		DDPPR_ERR("%s error, panel and dsi are vdo mode, but use cmd mode send?, flag:0x%x, vdo_flag:0x%x\n",
 				__func__, flags, cmd_msg->vdo_mode_flag);
@@ -12492,9 +12492,8 @@ void mtk_dsi_send_switch_cmd(struct mtk_dsi *dsi,
 				cmd_msg.transfer_mode = PACKET_LP_MODE;
 				cmd_msg.cmd_num = 1;
 				cmd_msg.cmd_msg = &msg;
-				cmd_msg.vdo_mode_flag = MTK_DSI_SKIP_STOP_VDO_MODE;
 
-				cmd_opt.flags = MTK_MIPI_DSI_GCE_INPUT_HANDLE_READY;
+				cmd_opt.flags = MTK_MIPI_DSI_GCE_INPUT_HANDLE_READY | MTK_DSI_SKIP_STOP_VDO_MODE;
 				ret = mtk_mipi_dsi_cmd(dsi, handle, &cmd_opt, &cmd_msg);
 				if (ret)
 					DDPPR_ERR("%s error, i=%d\n", __func__);

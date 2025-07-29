@@ -5274,28 +5274,26 @@ read_test_done:
 			{0x02, {0x51, 0x27}},
 			//{0x0, {100}}, test delay
 		};
-		struct mipi_dsi_msg local_cmd_msg[ARRAY_SIZE(cmd_msg)] = { 0 };
 
-		for (i = 0; i < ARRAY_SIZE(cmd_msg); i++) {
-			local_cmd_msg[i].tx_len = cmd_msg[i].count;
-			local_cmd_msg[i].tx_buf = cmd_msg[i].para_list;
-			if ((local_cmd & BIT(1)) && (i%2)) {
-				DDPMSG("new_write_ddic, i=%d set LP mode\n", i);
-				local_cmd_msg[i].flags |= MIPI_DSI_MSG_USE_LPM;
-			}
-		}
-		if (local_cmd && (!(local_cmd & BIT(2)))) {
+		if (local_cmd) {
+			struct mipi_dsi_msg local_cmd_msg[ARRAY_SIZE(cmd_msg)] = { 0 };
+
 			DDPMSG("new_write_ddic, use local cmd\n", __func__);
+			for (i = 0; i < ARRAY_SIZE(cmd_msg); i++) {
+				local_cmd_msg[i].tx_len = cmd_msg[i].count;
+				local_cmd_msg[i].tx_buf = cmd_msg[i].para_list;
+				if ((local_cmd & BIT(1)) && (i%2)) {
+					DDPMSG("new_write_ddic, i=%d set LP mode\n", i);
+					local_cmd_msg[i].flags |= MIPI_DSI_MSG_USE_LPM;
+				}
+			}
+
 			test_cmd.is_package = package;
 			test_cmd.transfer_mode = mode;
 			test_cmd.vm_porch = vm_porch;
 			test_cmd.cmd_num = ARRAY_SIZE(cmd_msg);
 			test_cmd.cmd_msg = local_cmd_msg;
 		} else {
-			if (local_cmd & BIT(2)) {
-				test_cmd.vdo_mode_flag |= MTK_DSI_FORCE_STOP_VDO_MODE;
-				DDPMSG("new_write_ddic, use MTK_DSI_FORCE_STOP_VDO_MODE\n", __func__);
-			}
 			msg.tx_len = tx_len;
 			msg.tx_buf = tx_buf;
 			test_cmd.cmd_num = 1;

@@ -52,11 +52,9 @@ enum dsi_cmd_verion {
 #define MTK_MIPI_DSI_GCE_USE_DSI_CMD_EVENT		BIT(22)
 #define MTK_MIPI_DSI_GCE_BUSY_POLLING			BIT(23)
 
+#define MTK_DSI_FORCE_STOP_VDO_MODE				BIT(29)
+#define MTK_DSI_SKIP_STOP_VDO_MODE				BIT(30)
 #define MTK_DSI_FROCE_CMD_MODE_TRANSFER			BIT(31)
-
-/* vdo mode flag */
-#define MTK_DSI_FORCE_STOP_VDO_MODE				BIT(0)
-#define MTK_DSI_SKIP_STOP_VDO_MODE				BIT(1)
 
 struct mtk_dsi_cmd_option {
 	u32 flags;
@@ -88,7 +86,7 @@ struct mtk_dsi_cmd_msg {
 	bool is_rd; /* 0:write 1:read */
 	bool is_package;
 	bool rd_to_slot;
-	u32 vdo_mode_flag;
+	u32 vdo_mode_flag; /* reserved */
 	u32 slot_idx;
 	u32 cmd_num;
 	enum mtk_dsi_vm_porch vm_porch;
