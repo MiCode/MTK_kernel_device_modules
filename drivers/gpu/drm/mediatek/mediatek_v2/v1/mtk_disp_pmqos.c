@@ -1843,19 +1843,19 @@ void mtk_drm_mmdvfs_enable_vcp(struct drm_crtc *crtc, bool en)
 
 	if (en) {
 		vcp_state = mtk_drm_get_mmdvfs_state();
-		if (vcp_state == 0) {
+		if (atomic_read(&g_vcp_ref) == 0) {
 			/* notify mmdvfs force up dvfs level when vcp off*/
 			mtk_drm_enable_ap_ccf(true, crtc, false);
-		} else if (atomic_read(&g_vcp_ref) == 0) {
+
 			/* notify mmdvfs pull down dvfs level if vcp has been ready*/
-			mtk_drm_enable_ap_ccf(true, crtc, false);
-			mtk_drm_enable_ap_ccf(false, crtc, true);
+			if (vcp_state)
+				mtk_drm_enable_ap_ccf(false, crtc, true);
 		}
 		mtk_drm_put_mmdvfs_state();
 		atomic_inc(&g_vcp_ref);
 		if (atomic_read(&g_vcp_ref) == 1)
 			mtk_vidle_mmdvfs_ctrl(true);
-	} else
+	} else if (atomic_read(&g_vcp_ref) == 0)
 		mtk_drm_enable_ap_ccf(false, crtc, false);
 
 	DDPMSG("%s, crtc:%d %s vcp %s,vcp:%d,mmdvfs:%d,ap_ccf:%d, ret:%d\n",

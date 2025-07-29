@@ -678,6 +678,9 @@ static int mtk_drm_esd_recover(struct drm_crtc *crtc)
 		dsi = container_of(output_comp, struct mtk_dsi, ddp_comp);
 		bdg_common_deinit(DISP_BDG_DSI0, NULL, dsi);
         }
+	/* vcp ref++, no need to disable vcp when esd recovery */
+	mtk_drm_mmdvfs_enable_vcp(crtc, true);
+
 	mtk_drm_crtc_disable(crtc, true);
 	CRTC_MMP_MARK(index, esd_recovery, 0, 2);
 
@@ -705,6 +708,9 @@ static int mtk_drm_esd_recover(struct drm_crtc *crtc)
 
 	mtk_drm_crtc_enable(crtc, true);
 	CRTC_MMP_MARK(index, esd_recovery, 0, 3);
+
+	/* vcp ref-- */
+	mtk_drm_mmdvfs_enable_vcp(crtc, false);
 
 	/* resubmit MML IR && since MML DL layer disable already, no need to resubmit */
 	if (mtk_crtc->is_mml) {
