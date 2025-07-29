@@ -9342,8 +9342,7 @@ static void mtk_crtc_update_hrt_qos(struct drm_crtc *crtc,
 		for_each_comp_in_target_ddp_mode_bound(comp, mtk_crtc,
 				i, j, ddp_mode, 0)
 			mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_UPDATE_BW, &flag);
-		if (priv->data->mmsys_id == MMSYS_MT6895 && priv->seg_id != 3 &&
-			mtk_crtc->is_dual_pipe) {
+		if (priv->data->mmsys_id == MMSYS_MT6895 && mtk_crtc->is_dual_pipe) {
 			for_each_comp_in_dual_pipe(comp, mtk_crtc, i, j) {
 				mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_UPDATE_BW, &flag);
 			}
