@@ -7,9 +7,9 @@
 #define __SENINF_UTIL_H__
 
 #include <linux/types.h>
+#include <pkvm_sys.h>
 
 #include "seninf_tee_reg.h"
-#include "sys.h"
 
 #define OUTMUX_INDEX_START 2
 #define OUTMUX_INDEX_END 11

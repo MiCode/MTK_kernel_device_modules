@@ -7,9 +7,9 @@
 #include <linux/delay.h>
 #include <asm/kvm_pkvm_module.h>
 
+#include "cmdq_errno.h"
 #include "pkvm_cmdq_hyp.h"
 #include "pkvm_cmdq_platform.h"
-#include "trustzone.h"
 
 #ifdef memset
 #undef memset

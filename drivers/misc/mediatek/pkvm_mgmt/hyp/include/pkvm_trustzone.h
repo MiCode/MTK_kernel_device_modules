@@ -3,8 +3,8 @@
  * Copyright (c) 2025 MediaTek Inc.
  */
 
-#ifndef __REE_TRUSTZONE_H__
-#define __REE_TRUSTZONE_H__
+#ifndef __PKVM_TRUSTZONE_H__
+#define __PKVM_TRUSTZONE_H__
 
 #include <linux/types.h>
 
@@ -30,4 +30,4 @@
 
 typedef int TZ_RESULT;
 
-#endif /* __REE_TRUSTZONE_H__ */
+#endif /* __PKVM_TRUSTZONE_H__ */

@@ -17,7 +17,6 @@ define_mgk_ddk_library(
     srcs = [
         "pkvm_seninf_hyp.c",
         "pkvm_seninf_hyp.h",
-        "secio_api.c",
         "secure_port.h",
         "seninf_auth.c",
         "seninf_auth.h",
@@ -30,14 +29,14 @@ define_mgk_ddk_library(
         "seninf_util.h",
         "sensor_cfg_sec.c",
         "sensor_cfg_sec.h",
-        "sys.h",
-        "trustzone.h",
     ],
     pkvm_el2 = True,
+    header_deps = ["//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_mgmt/hyp:export_headers".format(kernel_version)],
     copts = [
         "-I$(srctree)/arch/arm64/kvm/hyp/include/nvhe",
         "-I$(DEVICE_MODULES_PATH)/include/linux/soc/mediatek",
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pkvm_mgmt/hyp/include",
     ],
     local_defines = [
         "IS_MULTI_SEC_PORT_SUPPORT",

@@ -11,3 +11,7 @@ void kvm_nvhe_sym(hyp_pmm_unassign_buffer_v2)(struct user_pt_regs *);
 void kvm_nvhe_sym(hyp_pmm_defragment)(struct user_pt_regs *);
 void kvm_nvhe_sym(hyp_pmm_secure_range)(u64 pa, u64 size, u8 attr);
 void kvm_nvhe_sym(hyp_pmm_unsecure_range)(u64 pa, u64 size, u8 attr);
+
+typedef int TZ_RESULT;
+TZ_RESULT kvm_nvhe_sym(SECIO_WRITE)(uint32_t io_type, uint32_t reg_offset, uint32_t write_val);
+TZ_RESULT kvm_nvhe_sym(SECIO_READ)(uint32_t io_type, uint32_t reg_offset, uint32_t *read_val);

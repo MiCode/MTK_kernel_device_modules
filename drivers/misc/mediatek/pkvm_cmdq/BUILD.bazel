@@ -31,5 +31,6 @@ define_mgk_ddk_ko(
     ],
     ko_deps = [
         "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_cmdq/hyp:hyp".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_mgmt:pkvm_mgmt".format(kernel_version),
     ],
 )

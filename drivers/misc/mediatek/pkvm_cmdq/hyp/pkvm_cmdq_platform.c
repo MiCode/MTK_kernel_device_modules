@@ -5,8 +5,8 @@
 
 #include "pkvm_cmdq_hyp.h"
 #include "pkvm_cmdq_platform.h"
-#include "sys.h"
 #include <asm/kvm_pkvm_module.h>
+#include <pkvm_sys.h>
 
 #define GCED_BASE_PA 0x30100000
 #define GCED2_BASE_PA 0x30300000

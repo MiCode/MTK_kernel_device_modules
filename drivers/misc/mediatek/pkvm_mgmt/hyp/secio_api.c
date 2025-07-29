@@ -5,9 +5,8 @@
 
 #include <linux/arm-smccc.h>
 #include <pkvm_mgmt/pkvm_mgmt.h>
-
-#include "sys.h"
-#include "trustzone.h"
+#include <pkvm_sys.h>
+#include <pkvm_trustzone.h>
 
 #define SIO_READ (0)
 #define SIO_WRITE (1)

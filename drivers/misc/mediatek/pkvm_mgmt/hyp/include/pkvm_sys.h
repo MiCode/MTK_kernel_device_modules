@@ -8,7 +8,7 @@
 
 #include <linux/types.h>
 
-#include "trustzone.h"
+#include "pkvm_trustzone.h"
 
 /* SECURE_IO usage */
 enum SECIO_TYPE {

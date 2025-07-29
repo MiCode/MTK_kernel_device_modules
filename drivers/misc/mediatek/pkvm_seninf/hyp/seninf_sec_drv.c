@@ -3,12 +3,13 @@
  * Copyright (c) 2025 MediaTek Inc.
  */
 
+#include <pkvm_sys.h>
+#include <pkvm_trustzone.h>
+
 #include "pkvm_seninf_hyp.h"
 #include "seninf_ta.h"
 #include "seninf_tee_reg.h"
 #include "seninf_util.h"
-#include "sys.h"
-#include "trustzone.h"
 
 SENINF_RETURN seninf_drv_sync_to_pa(void *args)
 {

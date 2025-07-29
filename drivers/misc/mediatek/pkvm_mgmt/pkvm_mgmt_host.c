@@ -19,6 +19,8 @@
 EXPORT_SYMBOL(kvm_nvhe_sym(hyp_pmm_hal_register));
 EXPORT_SYMBOL(kvm_nvhe_sym(hyp_pmm_secure_range));
 EXPORT_SYMBOL(kvm_nvhe_sym(hyp_pmm_unsecure_range));
+EXPORT_SYMBOL(kvm_nvhe_sym(SECIO_WRITE));
+EXPORT_SYMBOL(kvm_nvhe_sym(SECIO_READ));
 
 static unsigned long mod_token;
 static int hyp_pmm_assign_buffer_v2_hcall;
