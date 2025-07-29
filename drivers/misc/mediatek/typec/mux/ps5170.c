@@ -695,33 +695,30 @@ static int ps5170_probe(struct i2c_client *client)
 #if IS_ENABLED(CONFIG_MTK_USB_TYPEC_MUX)
 	ps->mux = mtk_typec_mux_register(dev, &mux_desc);
 #else
-	ps->mux = typec_switch_register(dev, &mux_desc);
+	ps->mux = typec_mux_register(dev, &mux_desc);
 #endif
 	if (IS_ERR(ps->mux)) {
 		dev_info(dev, "error registering typec mux: %ld\n",
 			PTR_ERR(ps->mux));
-		return PTR_ERR(ps->mux);
+		ret = PTR_ERR(ps->mux);
+		goto err_unregister_sw;
 	}
 
 	i2c_set_clientdata(client, ps);
 
 	ret = ps5170_pinctrl_init(ps);
-	if (ret < 0) {
-#if IS_ENABLED(CONFIG_MTK_USB_TYPEC_MUX)
-		mtk_typec_switch_unregister(ps->sw);
-#else
-		mtk_typec_switch_unregister(ps->sw);
-#endif
-		return ret;
-	}
+	if (ret < 0)
+		goto err_unregister_mux;
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_USB_MTU3)
 	ssusb_power_notifier_init(ps);
 #endif
 
 	ps->wq = create_singlethread_workqueue("ps5170_wq");
-	if (!ps->wq)
-		return -ENOMEM;
+	if (!ps->wq) {
+		ret = -ENOMEM;
+		goto err_unregister_mux;
+	}
 
 	mutex_init(&ps->lock);
 	INIT_WORK(&ps->reconfig_dp_work, ps5170_reconfig_dp_work);
@@ -729,6 +726,20 @@ static int ps5170_probe(struct i2c_client *client)
 	/* switch off after init done */
 	ps5170_switch_set(ps->sw, TYPEC_ORIENTATION_NONE);
 	dev_info(dev, "probe done\n");
+	return 0;
+
+err_unregister_mux:
+#if IS_ENABLED(CONFIG_MTK_USB_TYPEC_MUX)
+	mtk_typec_mux_unregister(ps->mux);
+#else
+	typec_mux_unregister(ps->mux);
+#endif
+err_unregister_sw:
+#if IS_ENABLED(CONFIG_MTK_USB_TYPEC_MUX)
+	mtk_typec_switch_unregister(ps->sw);
+#else
+	typec_switch_unregister(ps->sw);
+#endif
 	return ret;
 }
 
@@ -741,9 +752,16 @@ static void ps5170_remove(struct i2c_client *client)
 		ssusb_power_unregister_notifier(ps->ssusb, &ps->ssusb_nb);
 #endif
 
+#if IS_ENABLED(CONFIG_MTK_USB_TYPEC_MUX)
+	mtk_typec_mux_unregister(ps->mux);
 	mtk_typec_switch_unregister(ps->sw);
+#else
 	typec_mux_unregister(ps->mux);
-	/* typec_switch_unregister(pi->sw); */
+	typec_switch_unregister(ps->sw);
+#endif
+
+	flush_workqueue(ps->wq);
+	destroy_workqueue(ps->wq);
 }
 
 static int __maybe_unused ps5170_suspend(struct device *dev)
