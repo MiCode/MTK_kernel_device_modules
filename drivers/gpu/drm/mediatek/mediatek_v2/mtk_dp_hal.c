@@ -173,31 +173,6 @@ void mhal_dump_reg(struct mtk_dp *mtk_dp)
 		DPTXMSG("[DP Debug]dptx phy reg[0x%x] = 0x%x 0x%x 0x%x 0x%x",
 			reg, val[0], val[1], val[2], val[3]);
 	}
-	////////////////////////////////////////////////////////
-
-	Data[0]=0x2;
-	drm_dp_dpcd_write(&mtk_dp->aux, 0x10B, Data, 0x1);
-	drm_dp_dpcd_write(&mtk_dp->aux, 0x10C, Data, 0x1);
-	drm_dp_dpcd_write(&mtk_dp->aux, 0x10D, Data, 0x1);
-	drm_dp_dpcd_write(&mtk_dp->aux, 0x10E, Data, 0x1);
-
-	drm_dp_dpcd_read(&mtk_dp->aux, 0x210, Data, 0x1);
-	DPTXMSG("[DP Debug]DPCD 210 = 0x%x\n",Data[0]);
-	drm_dp_dpcd_read(&mtk_dp->aux, 0x211, Data, 0x1);
-	DPTXMSG("[DP Debug]DPCD 211 = 0x%x\n",Data[0]);
-	drm_dp_dpcd_read(&mtk_dp->aux, 0x212, Data, 0x1);
-	DPTXMSG("[DP Debug]DPCD 212 = 0x%x\n",Data[0]);
-	drm_dp_dpcd_read(&mtk_dp->aux, 0x213, Data, 0x1);
-	DPTXMSG("[DP Debug]DPCD 213 = 0x%x\n",Data[0]);
-	drm_dp_dpcd_read(&mtk_dp->aux, 0x214, Data, 0x1);
-	DPTXMSG("[DP Debug]DPCD 214 = 0x%x\n",Data[0]);
-	drm_dp_dpcd_read(&mtk_dp->aux, 0x215, Data, 0x1);
-	DPTXMSG("[DP Debug]DPCD 215 = 0x%x\n",Data[0]);
-	drm_dp_dpcd_read(&mtk_dp->aux, 0x216, Data, 0x1);
-	DPTXMSG("[DP Debug]DPCD 216 = 0x%x\n",Data[0]);
-	drm_dp_dpcd_read(&mtk_dp->aux, 0x217, Data, 0x1);
-	DPTXMSG("[DP Debug]DPCD 217 = 0x%x\n",Data[0]);
-
 }
 
 void mhal_DPTx_Verify_Clock(struct mtk_dp *mtk_dp)
