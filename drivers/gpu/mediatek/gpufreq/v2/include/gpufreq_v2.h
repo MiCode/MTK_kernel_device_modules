@@ -25,6 +25,7 @@
 #define GPUFREQ_MAX_GPM3_NUM            (20)
 #define GPUFREQ_MAX_BUSTRK_NUM          (10)
 #define GPUFREQ_MAX_PMIC_REG_NUM        (20)
+#define GPUFREQ_MAX_PTP3_ATMC_NUM       (10)
 #define GPUFREQ_DUMP_INFRA_SIZE         (8192)
 #define GPUFREQ_UNREFERENCED(param)     ((void)(param))
 #define GPUFREQ_PROFILE_TYPE_STRING(type) \
@@ -463,6 +464,10 @@ struct gpufreq_ptp3_shared_status {
 	unsigned int prbc_mode;
 	unsigned int freq_tracker_mode;
 	unsigned int volt_tracker_mode;
+	unsigned int atmc_top_bv[GPUFREQ_MAX_PTP3_ATMC_NUM];
+	unsigned int atmc_top_fc[GPUFREQ_MAX_PTP3_ATMC_NUM];
+	unsigned int atmc_stack_bv[GPUFREQ_MAX_PTP3_ATMC_NUM];
+	unsigned int atmc_stack_fc[GPUFREQ_MAX_PTP3_ATMC_NUM];
 };
 
 struct gpu_ptp3_info {
