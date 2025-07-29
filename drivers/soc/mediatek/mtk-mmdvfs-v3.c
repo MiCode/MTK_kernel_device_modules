@@ -2413,6 +2413,7 @@ static int mmdvfs_v3_probe(struct platform_device *pdev)
 
 	if (of_property_read_bool(node, "mmdvfs-free-run"))
 		mmdvfs_free_run = true;
+	mmdvfs_restore_step = of_property_read_bool(node, "mediatek,restore-step");
 
 	mmdvfs_v3_dev = &pdev->dev;
 	larbnode = of_parse_phandle(pdev->dev.of_node, "mediatek,larbs", 0);
