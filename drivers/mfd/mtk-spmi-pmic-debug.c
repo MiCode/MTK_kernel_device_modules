@@ -25,6 +25,7 @@
 #define MT6688_MASK_REVISION		GENMASK(3, 0)
 #define MT6688_MASK_RG_PARITY_ERR_CLR	BIT(3)
 #define MT6688_MASK_RG_SPMI_DBGMUX_SEL	GENMASK(5, 0)
+#define MT6688_MASK_SPMI_PARITY_ERR	BIT(3)
 #define MT6688_VENDOR_ID		0x80
 #define MT6688_PARITY_ERROR_TYPE_4	0x26
 #define MT6688_CHIP_REV_E1		0
@@ -373,6 +374,8 @@ void mtk_spmi_pmic_get_parity_err_cnt(u16 *buf)
 				ret = regmap_read(regmap, sts_addr, &parity_err_sta);
 				if (ret)
 					dev_info(dev, "Failed to read mt6688 parity err status\n");
+
+				parity_err_sta = FIELD_GET(MT6688_MASK_SPMI_PARITY_ERR, parity_err_sta);
 			}
 			ret = regmap_read(regmap, cnt_addr, &parity_err_cnt);
 			if (ret)
