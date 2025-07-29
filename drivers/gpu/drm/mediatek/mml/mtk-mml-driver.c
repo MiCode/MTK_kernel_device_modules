@@ -1934,6 +1934,18 @@ static void mml_record_crc_check(struct mml_task *task)
 	}
 }
 
+void mml_dpc_status_dump(struct mml_dev *mml)
+{
+	int i;
+
+	for (i = 0; i < mml_max_sys; i++) {
+		mml_err("mmlsys%d task_cnt:%d exc_pw_cnt:%d dc_force_cnt:%d",
+			i, atomic_read(&mml->dpc.task_cnt[i]),
+			atomic_read(&mml->dpc.exc_pw_cnt[i]),
+			atomic_read(&mml->dpc.dc_force_cnt[i]));
+	}
+}
+
 void mml_record_track(struct mml_dev *mml, struct mml_task *task)
 {
 	const struct mml_frame_config *cfg = task->config;

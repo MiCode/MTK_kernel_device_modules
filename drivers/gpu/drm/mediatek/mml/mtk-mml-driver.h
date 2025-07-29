@@ -279,6 +279,13 @@ void mml_clock_unlock(struct mml_dev *mml);
 void mml_lock_wake_lock(struct mml_dev *mml, bool lock);
 
 /*
+ * mml_dpc_status_dump - dpc ref cnt for debug print
+ *
+ * @mml: The mml driver instance
+ */
+void mml_dpc_status_dump(struct mml_dev *mml);
+
+/*
  * mml_record_track - record mml task behavior for debug print
  *
  * @mml: The mml driver instance

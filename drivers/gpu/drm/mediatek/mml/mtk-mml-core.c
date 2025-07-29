@@ -2181,6 +2181,8 @@ static void core_taskdump(struct mml_task *task, u32 pipe, int err)
 		return;
 	}
 
+	mml_dpc_status_dump(cfg->mml);
+
 	cnt = mml_err_cnt++;
 
 	mml_mmp(irq_err, MMPROFILE_FLAG_PULSE, task->job.jobid, cnt);
