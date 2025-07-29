@@ -13,15 +13,15 @@ package(
 )
 
 define_mgk_ddk_library(
-    name = "hyp_mt6993",
+    name = "hyp_6993",
     srcs = [
-        "mt6993/secure_port.h",
-        "mt6993/seninf_auth.c",
-        "mt6993/seninf_drv_csi_info.c",
-        "mt6993/seninf_drv_csi_info.h",
-        "mt6993/seninf_sec_drv.c",
-        "mt6993/seninf_tee_reg.h",
-        "mt6993/seninf_util.h",
+        "6993/secure_port.h",
+        "6993/seninf_auth.c",
+        "6993/seninf_drv_csi_info.c",
+        "6993/seninf_drv_csi_info.h",
+        "6993/seninf_sec_drv.c",
+        "6993/seninf_tee_reg.h",
+        "6993/seninf_util.h",
         "pkvm_seninf_hyp.c",
         "pkvm_seninf_hyp.h",
         "seninf_auth.h",
@@ -39,7 +39,7 @@ define_mgk_ddk_library(
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pkvm_mgmt/hyp/include",
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pkvm_seninf/isp8",
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pkvm_seninf/isp8/hyp",
-        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pkvm_seninf/isp8/hyp/mt6993",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pkvm_seninf/isp8/hyp/6993",
     ],
     local_defines = [
         "IS_MULTI_SEC_PORT_SUPPORT",
