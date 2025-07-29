@@ -18482,6 +18482,10 @@ void mtk_crtc_release_cmdq_pkt(struct mtk_cmdq_pkt_info *pkt_info)
 	/* reset to release buffers */
 	cmdq_pkt_reset(pkt_info->cmdq_handle);
 
+	/* reset the pkt err_cb */
+	pkt_info->cmdq_handle->err_cb.cb = mtk_crtc_cmdq_timeout_cb;
+	pkt_info->cmdq_handle->err_cb.data = &pkt_info->mtk_crtc->base;
+
 	mutex_lock(&pkt_pool->lock);
 
 	mtk_drm_trace_begin("rel_pkt_info_id %u pf_idx %u",
