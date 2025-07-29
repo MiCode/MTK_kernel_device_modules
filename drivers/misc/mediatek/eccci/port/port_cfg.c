@@ -398,6 +398,23 @@ static struct port_t md_ccci_ports[] = {
 		(PORT_F_WITH_CHAR_NODE|PORT_F_CH_TRAFFIC|PORT_F_DUMP_RAW_DATA),
 		&char_port_ops, 53, "ttyCMIPC10",},
 
+#ifdef MTK_TC10_FEATURE_PORT
+#ifdef MTK_TC10_FEATURE_SRIL
+	{CCCI_RIL_IPC0_TX, CCCI_RIL_IPC0_RX, 1, 1, 0xFF, 0xFF, MD1_NORMAL_HIF,
+		PORT_F_WITH_CHAR_NODE,
+		&char_port_ops, 54, "ccci_umts_ipc0",},
+	{CCCI_RIL_IPC1_TX, CCCI_RIL_IPC1_RX, 1, 1, 0xFF, 0xFF, MD1_NORMAL_HIF,
+		PORT_F_WITH_CHAR_NODE,
+		&char_port_ops, 55, "ccci_cdma_ipc0",},
+#endif
+	{CCCI_VT_CTL_TX, CCCI_VT_CTL_RX, 1, 1, 0xFF, 0xFF, MD1_NORMAL_HIF,
+		PORT_F_WITH_CHAR_NODE,
+		&char_port_ops, 56, "ttyC4",},
+/* NAD test, for md NAD test */
+	{CCCI_AT_TX, CCCI_AT_RX, 1, 1, 0xFF, 0xFF, MD1_NORMAL_HIF,
+		 PORT_F_WITH_CHAR_NODE,
+		&char_port_ops, 57, "ttyC_AT",},
+#endif
 	/* IPC char port minor= minor idx + CCCI_IPC_MINOR_BASE(100) */
 	{CCCI_IPC_TX, CCCI_IPC_RX, 1, 1, 0xFF, 0xFF,
 		MD1_NORMAL_HIF, PORT_F_WITH_CHAR_NODE,

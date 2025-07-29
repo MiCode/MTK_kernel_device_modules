@@ -44,4 +44,10 @@
  */
 //#define MTK_TC10_FEATURE_CHANGE_TX_POWER
 
+
+/*
+ * This feature for add port
+ */
+//#define MTK_TC10_FEATURE_PORT
+
 #endif
