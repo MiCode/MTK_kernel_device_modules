@@ -1466,6 +1466,7 @@ s32 cmdq_mdp_handle_sec_setup(struct cmdqSecDataStruct *secData,
 	u32 addr_meta_size;
 	struct cmdq_client *cl = NULL;
 	bool is_sec_meta_data_support;
+	int cmdq_mtee;
 
 	/* set secure data */
 	handle->secStatus = NULL;
@@ -1560,14 +1561,17 @@ s32 cmdq_mdp_handle_sec_setup(struct cmdqSecDataStruct *secData,
 
 	cmdq_sec_pkt_set_mtee(handle->pkt,
 		cmdq_mdp_get_func()->mdpIsMtee(handle));
+	cmdq_mtee = ((struct cmdq_sec_data *)handle->pkt->sec_data)->mtee;
+	if (!cmdq_mtee) {
+		CMDQ_MSG("%s Check mtee = %d\n", __func__, cmdq_mtee);
+		return -EFAULT;
+	}
 
 	/* config handle->pkt_rb and handle->thread_rb */
 	cmdq_mdp_config_readback_thread(handle);
 
 	CMDQ_MSG("%s done, handle:%p mtee:%d dapc:%#llx port:%#llx engine:%#llx\n",
-		__func__, handle,
-		((struct cmdq_sec_data *)handle->pkt->sec_data)->mtee,
-		dapc, port, handle->engineFlag);
+		__func__, handle, cmdq_mtee, dapc, port, handle->engineFlag);
 
 	kfree(addr_meta);
 	return 0;
