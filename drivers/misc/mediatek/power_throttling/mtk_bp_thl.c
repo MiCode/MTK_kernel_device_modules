@@ -12,6 +12,7 @@
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
 #include <linux/power_supply.h>
+#include <linux/nvmem-consumer.h>
 #include "mtk_bp_thl.h"
 #include "mtk_md_power_throttling.h"
 #if IS_ENABLED(CONFIG_MTK_ECCCI_DRIVER)
@@ -21,6 +22,7 @@
 #define BPCB_MAX_NUM 16
 #define MAX_VALUE 0x7FFF
 
+static const char *efuse_field = "fab_info";
 static struct task_struct *bp_notify_thread;
 static bool bp_notify_flag;
 static bool bp_hpt_notify_only_flag;
@@ -726,10 +728,41 @@ static int parse_md_setting(struct device *dev, struct md_bp_priv *md_priv)
 
 static int bp_thl_probe(struct platform_device *pdev)
 {
+	size_t len;
 	struct bp_thl_priv *priv;
+	struct device_node *es_np;
 	struct md_bp_priv *md_priv;
+	struct nvmem_cell *cell;
 	int ret;
+	u32 *nvmem_buf, value, mp_version, eng_version;
+	unsigned int es_version;
 
+	cell = nvmem_cell_get(&pdev->dev, efuse_field);
+	if (!IS_ERR(cell)) {
+		nvmem_buf = (u32 *)nvmem_cell_read(cell, &len);
+		nvmem_cell_put(cell);
+		ret = of_property_read_u32(pdev->dev.of_node, "es-version", &es_version);
+		if (ret){
+			pr_info ("get es_version failed, set to max");
+			es_version = 0;
+		}
+		if (!IS_ERR(nvmem_buf)) {
+			value = *nvmem_buf;
+			mp_version = (value >> 8) & 0x3F; // [13:8]
+			eng_version = value & 0x1F;        // [4:0]
+			pr_info("[%s]:mp_version = %d, eng_version = %d\n", __func__, mp_version, eng_version);
+			if (mp_version < 1 && eng_version < es_version) {
+				es_np = of_find_compatible_node(NULL, NULL, "mediatek,es-mtk-bp-thl");
+				if (es_np != NULL)
+					pdev->dev.of_node = es_np;
+				else
+					pr_info("es_np is NULL");
+			} else
+				pr_info("es-sample or es-version not found\n");
+			kfree(nvmem_buf);
+		} else
+			pr_info ("[%s]:get fab_info failed", __func__);
+	}
 	priv = devm_kzalloc(&pdev->dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
 		return -ENOMEM;

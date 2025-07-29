@@ -6,6 +6,7 @@
 #include <linux/device.h>
 #include <linux/module.h>
 #include <linux/notifier.h>
+#include <linux/nvmem-consumer.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
@@ -119,6 +120,7 @@ struct multi_voltage_table {
 	unsigned int selected_table;
 };
 
+static const char *efuse_field = "fab_info";
 struct multi_voltage_table lbat_voltage_table;
 struct multi_voltage_table lvsys_voltage_table;
 static struct notifier_block lbat_nb;
@@ -2033,8 +2035,41 @@ static int low_battery_register_setting(struct platform_device *pdev,
 static int low_battery_throttling_probe(struct platform_device *pdev)
 {
 	int ret, i;
+	size_t len;
 	struct lbat_thl_priv *priv;
-	struct device_node *np = pdev->dev.of_node;
+	struct device_node *np = pdev->dev.of_node, *es_np;
+	struct nvmem_cell *cell;
+	u32 *nvmem_buf, value, mp_version, eng_version;
+	unsigned int es_version;
+
+
+	cell = nvmem_cell_get(&pdev->dev, efuse_field);
+	if (!IS_ERR(cell)) {
+		nvmem_buf = (u32 *)nvmem_cell_read(cell, &len);
+		nvmem_cell_put(cell);
+		ret = of_property_read_u32(np, "es-version", &es_version);
+		if (ret){
+			pr_info ("get es_version failed, set to max");
+			es_version = 0;
+		}
+		if (!IS_ERR(nvmem_buf)) {
+			value = *nvmem_buf;
+			mp_version = (value >> 8) & 0x3F; // [13:8]
+			eng_version = value & 0x1F;        // [4:0]
+			pr_info("[%s]:mp_version = %d, es_version = %d\n", __func__, mp_version, eng_version);
+			if (mp_version < 1 && eng_version < es_version) {
+				es_np = of_find_compatible_node(NULL, NULL, "mediatek,es-low-battery-throttling");
+				if (es_np != NULL){
+					pdev->dev.of_node = es_np;
+					np = es_np;
+				} else
+					pr_info("es_np is NULL");
+			}
+				pr_info("es-sample or es-version not found\n");
+			kfree(nvmem_buf);
+		} else
+			pr_info ("[%s]:get fab_info failed", __func__);
+	}
 
 	switch_pt = true;
 	ret = of_property_read_u32(np, "lbat-max-tb-num", &max_tb_num);

@@ -3,6 +3,7 @@
  * Copyright (c) 2024 MediaTek Inc.
  * Author: Victor Lin <Victor-wc.lin@mediatek.com>
  */
+#include <linux/nvmem-consumer.h>
 #include <linux/of.h>
 #include <linux/platform_device.h>
 #include "mtk_apu_power_throttling.h"
@@ -13,6 +14,7 @@
 #define APU_LIMIT_OPP0 0
 
 static bool pt_apu_drv_inited = 0;
+static const char *efuse_field = "fab_info";
 
 struct apu_pt_priv {
 	char max_lv_name[32];
@@ -274,6 +276,38 @@ static int parse_dts(struct platform_device *pdev)
 static int mtk_apu_power_throttling_probe(struct platform_device *pdev)
 {
 	int ret = 0;
+	size_t len;
+	struct device_node *es_np;
+	struct nvmem_cell *cell;
+	u32 *nvmem_buf, value, mp_version, eng_version;
+	unsigned int es_version;
+
+	cell = nvmem_cell_get(&pdev->dev, efuse_field);
+	if (!IS_ERR(cell)) {
+		nvmem_buf = (u32 *)nvmem_cell_read(cell, &len);
+		nvmem_cell_put(cell);
+		ret = of_property_read_u32(pdev->dev.of_node, "es-version", &es_version);
+		if (ret){
+			pr_info ("get es_version failed, set to max");
+			es_version = 0;
+		}
+		if (!IS_ERR(nvmem_buf)) {
+			value = *nvmem_buf;
+			mp_version = (value >> 8) & 0x3F; // [13:8]
+			eng_version = value & 0x1F;        // [4:0]
+			pr_info("[%s]:mp_version = %d, eng_version = %d\n", __func__, mp_version, eng_version);
+			if (mp_version < 1 && eng_version < es_version) {
+				es_np = of_find_compatible_node(NULL, NULL, "mediatek,es-cpu-power-throttling");
+				if (es_np != NULL)
+					pdev->dev.of_node = es_np;
+				else
+					pr_info("es_np is NULL");
+			} else
+				pr_info("es-sample or es-version not found\n");
+			kfree(nvmem_buf);
+		} else
+			pr_info ("[%s]:get fab_info failed", __func__);
+	}
 
 	ret = parse_dts(pdev);
 	if (ret) {

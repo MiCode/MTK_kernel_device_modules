@@ -12,6 +12,7 @@
 #include <linux/cpu.h>
 #include <linux/arm-smccc.h>
 #include <linux/soc/mediatek/mtk_sip_svc.h>
+#include <linux/nvmem-consumer.h>
 #include "mtk_battery_oc_throttling.h"
 #include "mtk_low_battery_throttling.h"
 #include "mtk_bp_thl.h"
@@ -36,6 +37,7 @@ static bool bootup_pt_support;
 static bool switch_pt;
 static int lbat_tb_num;
 static unsigned int mpmm_gear;
+static const char *efuse_field = "fab_info";
 
 enum cpu_pt_table_num {
 	CPU_PT_TABLE0,
@@ -822,13 +824,44 @@ EXPORT_SYMBOL(register_pt_isolate_cb);
 
 static int mtk_cpu_power_throttling_probe(struct platform_device *pdev)
 {
+	int cpu, ret, max_lv;
+	size_t len;
 	struct cpufreq_policy *policy;
 	struct cpu_pt_policy *pt_policy;
 	struct cpu_bootup_pt_policy *bootup_pt_policy;
-	unsigned int i = 0, j = 0, k = 0;
-	int cpu, ret, max_lv;
+	struct device_node *es_np;
+	struct nvmem_cell *cell;
 	s32 *freq_limit_t;
 	s32 *freq_limit_booting_t;
+	u32 *nvmem_buf, value, mp_version, eng_version;
+	unsigned int i = 0, j = 0, k = 0, es_version;
+
+	cell = nvmem_cell_get(&pdev->dev, efuse_field);
+	if (!IS_ERR(cell)) {
+		nvmem_buf = (u32 *)nvmem_cell_read(cell, &len);
+		nvmem_cell_put(cell);
+		ret = of_property_read_u32(pdev->dev.of_node, "es-version", &es_version);
+		if (ret){
+			pr_info ("get es_version failed, set to max");
+			es_version = 0;
+		}
+		if (!IS_ERR(nvmem_buf)) {
+			value = *nvmem_buf;
+			mp_version = (value >> 8) & 0x3F; // [13:8]
+			eng_version = value & 0x1F;        // [4:0]
+			pr_info("[%s]:mp_version = %d, eng_version = %d\n", __func__, mp_version, eng_version);
+			if (mp_version < 1 && eng_version < es_version) {
+				es_np = of_find_compatible_node(NULL, NULL, "mediatek,es-cpu-power-throttling");
+				if (es_np != NULL)
+					pdev->dev.of_node = es_np;
+				else
+					pr_info("es_np is NULL");
+			} else
+				pr_info("es-sample or es-version not found\n");
+			kfree(nvmem_buf);
+		} else
+			pr_info ("[%s]:get fab_info failed", __func__);
+	}
 
 	switch_pt = false;
 	bootup_pt_support = false;

@@ -10,6 +10,7 @@
 #include "mtk_low_battery_throttling.h"
 #include "mtk_bp_thl.h"
 #include "gpufreq_v2.h"
+#include <linux/nvmem-consumer.h>
 
 #define CREATE_TRACE_POINTS
 #include "mtk_low_battery_throttling_trace.h"
@@ -23,6 +24,7 @@ static unsigned int system_boot_completed;
 static bool bootup_pt_support;
 static bool switch_pt;
 static int lbat_tb_num;
+static const char *efuse_field = "fab_info";
 
 enum gpu_pt_table_num {
 	GPU_PT_TABLE0,
@@ -473,13 +475,44 @@ static DEVICE_ATTR_RW(boot_notify);
 static int mtk_gpu_power_throttling_probe(struct platform_device *pdev)
 {
 	struct device_node *np = pdev->dev.of_node;
-	struct device_node *np_bootmode;
+	struct device_node *es_np, *np_bootmode;
 	struct gpu_pt_priv *gpu_pt_data;
+	struct nvmem_cell *cell;
 	struct tag_bootmode *tag;
 	int i, j, ret = 0, num = 0;
 	char buf[32];
 	switch_pt = false;
 	bootup_pt_support = false;
+	u32 *nvmem_buf, value, mp_version, eng_version, es_version;
+	size_t len;
+
+	cell = nvmem_cell_get(&pdev->dev, efuse_field);
+	if (!IS_ERR(cell)) {
+		nvmem_buf = (u32 *)nvmem_cell_read(cell, &len);
+		nvmem_cell_put(cell);
+		ret = of_property_read_u32(np, "es-version", &es_version);
+		if (ret){
+			pr_info ("get es_version failed, set to max");
+			es_version = 0;
+		}
+		if (!IS_ERR(nvmem_buf)) {
+			value = *nvmem_buf;
+			mp_version = (value >> 8) & 0x3F; // [13:8]
+			eng_version = value & 0x1F;        // [4:0]
+			pr_info("[%s]:mp_version = %d, eng_version = %d\n", __func__, mp_version, eng_version);
+			if (mp_version < 1 && eng_version < es_version) {
+				es_np = of_find_compatible_node(NULL, NULL, "mediatek,es-gpu-power-throttling");
+				if (es_np != NULL){
+					pdev->dev.of_node = es_np;
+					np = es_np;
+				} else
+					pr_info("es_np is NULL");
+			} else
+				pr_info("es-sample or es-version not found\n");
+			kfree(nvmem_buf);
+		} else
+			pr_info ("[%s]:get fab_info failed", __func__);
+	}
 
 	for (i = 0; i < POWER_THROTTLING_TYPE_MAX; i++) {
 		gpu_pt_data = &gpu_pt_info[i];
