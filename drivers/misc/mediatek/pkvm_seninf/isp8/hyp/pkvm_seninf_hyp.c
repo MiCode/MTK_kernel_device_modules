@@ -5,11 +5,11 @@
 
 #include <asm/kvm_pkvm_module.h>
 #include <linux/arm-smccc.h>
+#include <seninf_ta.h>
 
 #include "pkvm_seninf_hyp.h"
 #include "seninf_auth.h"
 #include "seninf_sec_drv.h"
-#include "seninf_ta.h"
 #include "seninf_tee_reg.h"
 #include "sensor_cfg_sec.h"
 

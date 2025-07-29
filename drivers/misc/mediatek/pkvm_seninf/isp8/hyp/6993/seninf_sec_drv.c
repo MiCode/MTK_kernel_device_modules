@@ -5,9 +5,9 @@
 
 #include <pkvm_sys.h>
 #include <pkvm_trustzone.h>
+#include <seninf_ta.h>
 
 #include "pkvm_seninf_hyp.h"
-#include "seninf_ta.h"
 #include "seninf_tee_reg.h"
 #include "seninf_util.h"
 

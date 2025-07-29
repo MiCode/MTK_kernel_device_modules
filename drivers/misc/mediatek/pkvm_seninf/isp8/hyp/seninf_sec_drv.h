@@ -6,7 +6,7 @@
 #ifndef __SENINF_SEC_DRV_H__
 #define __SENINF_SEC_DRV_H__
 
-#include "seninf_ta.h"
+#include <seninf_ta.h>
 
 typedef enum {
 	SENINF_DRV_RETURN_SUCCESS,

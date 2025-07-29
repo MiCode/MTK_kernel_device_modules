@@ -7,9 +7,9 @@
 #define __SENINF_AUTH_H__
 
 #include <linux/types.h>
+#include <seninf_ta.h>
 
 #include "seninf_drv_csi_info.h"
-#include "seninf_ta.h"
 #include "seninf_tee_reg.h"
 
 SENINF_RETURN seninf_auth(SENINF_TEE_REG *preg, uint64_t pa);
