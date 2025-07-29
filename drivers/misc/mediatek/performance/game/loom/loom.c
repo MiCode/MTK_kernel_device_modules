@@ -17,6 +17,7 @@ static int loom_select_is_set;
 static int loom_flt_is_set;
 static int update_active_list_period;
 static struct kobject *loom_kobj;
+static int loom_disable_fpsgo_passive_mode;
 
 /* print struct loom_attr_info related hlist */
 #define MAX_PID_DIGIT 7
@@ -444,6 +445,17 @@ static void loom_flt_cfg_apply(int set)
 #endif  // IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
 }
 
+void loom_set_fbt_passive_mode(int active)
+{
+	loom_mode_lock();
+	loom_disable_fpsgo_passive_mode = active;
+	if (loom_disable_fpsgo_passive_mode)
+		fbt_set_magt_workaround_passive_mode(0);
+	else
+		fbt_set_magt_workaround_passive_mode(1);
+	loom_mode_unlock();
+}
+
 int loom_activate(int pid)
 {
 	struct loom_render_info *iter = NULL;
@@ -459,7 +471,8 @@ int loom_activate(int pid)
 	}
 
 	//switch_fpsgo_control(0, pid, 0, 0);
-	fbt_set_magt_workaround_passive_mode(1);
+	if (!loom_disable_fpsgo_passive_mode)
+		fbt_set_magt_workaround_passive_mode(1);
 	ret = loom_register_frame_info_cb(1, &fpsgo_loom_frame_info_cb);
 	loom_select_cfg_apply(1);
 	loom_flt_cfg_apply(1);
@@ -568,6 +581,43 @@ static void clear_all_loom_render_info(void)
 		loom_delete_render_info(iter);
 	}
 }
+
+static ssize_t loom_disable_fpsgo_passive_mode_show(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	int val = 0;
+
+	loom_mode_lock();
+	val = loom_disable_fpsgo_passive_mode;
+	loom_mode_unlock();
+
+	return scnprintf(buf, PAGE_SIZE, "%d\n", val);
+}
+
+static ssize_t loom_disable_fpsgo_passive_mode_store(struct kobject *kobj,
+	struct kobj_attribute *attr, const char *buf, size_t count)
+{
+	char *acBuffer = NULL;
+	int arg;
+
+	acBuffer = loom_calloc(FI_SYSFS_MAX_BUFF_SIZE, sizeof(char));
+	if (!acBuffer)
+		goto out;
+
+	if ((count > 0) && (count < FI_SYSFS_MAX_BUFF_SIZE) &&
+		scnprintf(acBuffer, FI_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
+		acBuffer[count] = '\0';
+		if (kstrtoint(acBuffer, 0, &arg) == 0) {
+			if (arg >= 0 && arg <= 1)
+				loom_set_fbt_passive_mode(arg);
+		}
+	}
+out:
+	kfree(acBuffer);
+	return count;
+}
+
+static KOBJ_ATTR_RW(loom_disable_fpsgo_passive_mode);
 
 static ssize_t loom_enable_by_process_show(struct kobject *kobj,
 	struct kobj_attribute *attr, char *buf)
@@ -769,6 +819,7 @@ void loom_exit(void)
 
 	game_sysfs_remove_file(loom_kobj, &kobj_attr_loom_enable_by_process);
 	game_sysfs_remove_file(loom_kobj, &kobj_attr_loom_task_cfg);
+	game_sysfs_remove_file(loom_kobj, &kobj_attr_loom_disable_fpsgo_passive_mode);
 }
 
 /* TODO */
@@ -778,6 +829,7 @@ int loom_init(void)
 	if (!game_get_sysfs_dir(&loom_kobj)) {
 		game_sysfs_create_file(loom_kobj, &kobj_attr_loom_enable_by_process);
 		game_sysfs_create_file(loom_kobj, &kobj_attr_loom_task_cfg);
+		game_sysfs_create_file(loom_kobj, &kobj_attr_loom_disable_fpsgo_passive_mode);
 	}
 	init_loom_loading_ctrl();
 	// Todo: create file node
