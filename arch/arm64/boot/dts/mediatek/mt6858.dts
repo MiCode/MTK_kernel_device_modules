@@ -7467,6 +7467,13 @@ dramc: dramc@10230000 {
 			};
 		};
 
+		iommu-test-ktf-normal {
+			compatible = "mediatek,mm-iommu-test-ktf1";
+			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
+			iommus = <&disp_iommu M4U_L0_P6_DISP_FAKE_ENG0>;
+			mediatek,larbs-port = <M4U_L0_P6_DISP_FAKE_ENG0>;
+		};
+
 		mtkheap-page-prot {
 			compatible = "mediatek,dmaheap-mtk-sec-page";
 			heap-name = "mtk_prot_page-uncached";
