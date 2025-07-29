@@ -2342,7 +2342,7 @@ static void mtk_oddmr_top_prepare(struct mtk_ddp_comp *comp, struct cmdq_pkt *ha
 		oddmr_data->data->od_version == MTK_OD_V3) {
 		mtk_oddmr_write(comp, 32, MT6991_DISP_ODDMR_TOP_CTR_1, handle);
 		mtk_oddmr_write(comp, 1, MT6991_DISP_ODDMR_TOP_CTR_2, handle);
-		if (od_support == true && oddmr_data->primary_data->od_state >= ODDMR_INIT_DONE)
+		if (od_support == true && oddmr_data->primary_data->od_state >= ODDMR_LOAD_PARTS)
 			SET_VAL_MASK(value, mask, 1, MT6991_REG_ODDMR_TOP_CLK_FORCE_EN);
 		else
 			SET_VAL_MASK(value, mask, 0, MT6991_REG_ODDMR_TOP_CLK_FORCE_EN);
@@ -4788,7 +4788,7 @@ static int mtk_oddmr_od_init_sram(struct mtk_ddp_comp *comp,
 	ODDMRAPI_LOG("od_init_sram_pq_count, %d\n", table->pq_od.counts);
 	for (i = 0; i < table->pq_od.counts; i++) {
 		mtk_oddmr_write(comp, param_pq[i].value, param_pq[i].addr, pkg);
-		ODDMRAPI_LOG("i %d, 0x%x 0x%x\n", i, param_pq[i].value, param_pq[i].addr);
+		//ODDMRAPI_LOG("i %d, 0x%x 0x%x\n", i, param_pq[i].value, param_pq[i].addr);
 	}
 
 	if (priv->data->mmsys_id != MMSYS_MT6897)
@@ -4827,10 +4827,10 @@ static int mtk_oddmr_od_init_sram(struct mtk_ddp_comp *comp,
 				mtk_oddmr_write_mask(comp, value, DISP_ODDMR_OD_SRAM_CTRL_0, mask, pkg);
 			rows = (srams < 3) ? 17 : 16;
 			cols = (srams % 2 == 1) ? 17 : 16;
-			ODDMRFLOW_LOG("channel%d sram%d size %dx%d\n", change_channel , srams, rows, cols);
+			//ODDMRFLOW_LOG("channel%d sram%d size %dx%d\n", change_channel , srams, rows, cols);
 			for (i = 0; i < rows * cols; i++) {
 				tmp_data = raw_table[raw_idx];
-				ODDMRAPI_LOG("od_init_sram_tmp_data, %u\n", tmp_data);
+				//ODDMRAPI_LOG("od_init_sram_tmp_data, %u\n", tmp_data);
 				raw_idx++;
 				if (oddmr_data->data->od_version >= MTK_OD_V2) {
 					mtk_oddmr_write(comp, tmp_data,
@@ -4915,9 +4915,9 @@ static void mtk_oddmr_od_table_fps_minmax(struct mtk_disp_oddmr *oddmr_data)
 				min_fps = od_param->od_tables[idx]->table_basic_info.min_fps;
 			if (max_fps < od_param->od_tables[idx]->table_basic_info.max_fps)
 				max_fps = od_param->od_tables[idx]->table_basic_info.max_fps;
-			ODDMRAPI_LOG("table_idx %d,min_fps:%d,max_fps:%d\n", idx,
-			od_param->od_tables[idx]->table_basic_info.min_fps,
-			od_param->od_tables[idx]->table_basic_info.max_fps);
+			// ODDMRAPI_LOG("table_idx %d,min_fps:%d,max_fps:%d\n", idx,
+			// od_param->od_tables[idx]->table_basic_info.min_fps,
+			// od_param->od_tables[idx]->table_basic_info.max_fps);
 		}
 	}
 	if (min_fps == 0) {
@@ -9069,7 +9069,7 @@ static int mtk_oddmr_od_trigger_frame(struct mtk_ddp_comp *comp)
 			atomic_read(&oddmr_data->primary_data->sof_irq_for_od_sram) == 1,
 			msecs_to_jiffies(200));
 	if (ret <= 0)
-		PC_ERR("od_trigger_frame timeout %d\n", ret);
+		PC_ERR("oddmr_od_trigger_frame timeout %d\n", ret);
 	else if (oddmr_data->primary_data->od_fps_mode != 1)
 		oddmr_data->primary_data->sof_time = comp->mtk_crtc->sof_time;
 	return ret;
@@ -9150,6 +9150,11 @@ static int mtk_oddmr_od_init(struct mtk_ddp_comp *comp, void *data)
 			mtk_oddmr_release_clock(comp);
 
 			ret = mtk_oddmr_od_trigger_frame(comp);
+			if (ret <= 0)
+				return -1;
+		} else {
+			PC_ERR("%s:%d, clock not on %d\n", __func__, __LINE__, ret);
+			return ret;
 		}
 	}
 
@@ -9344,6 +9349,8 @@ static int mtk_oddmr_od_init(struct mtk_ddp_comp *comp, void *data)
 		if (oddmr_data->data->od_version == MTK_OD_V2 && !oddmr_data->dmr_enable)
 			mtk_oddmr_set_top_clk_force(comp, 0, NULL);
 		mtk_crtc_check_trigger(comp->mtk_crtc, false, true);
+	} else {
+		PC_ERR("%s:%d, clock not on %d\n", __func__, __LINE__, ret);
 	}
 	return ret;
 }
