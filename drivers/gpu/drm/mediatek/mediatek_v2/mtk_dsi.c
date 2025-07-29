@@ -7271,7 +7271,9 @@ static int mtk_dsi_atomic_check(struct drm_encoder *encoder,
 			break;
 		}
 	}
+
 	return 0;
+
 }
 
 void mtk_dsi_connector_reset(struct drm_connector *connector)
@@ -7334,6 +7336,8 @@ static int mtk_dsi_connector_set_property(struct drm_connector *connector,
 			mtk_conn_state->prop_val[index][i] = val;
 			DDPINFO("connector:%d set property:%s %llu\n",
 					index, property->name, val);
+			if (i == CONNECTOR_PROP_LED_TYPE)
+				dsi->led_type = mtk_conn_state->prop_val[index][i];
 			return ret;
 		}
 	}
@@ -7596,6 +7600,7 @@ static int mtk_dsi_create_connector(struct drm_device *drm, struct mtk_dsi *dsi)
 
 	dsi->conn.dpms = DRM_MODE_DPMS_OFF;
 	drm_connector_attach_encoder(&dsi->conn, &dsi->encoder);
+
 
 	return 0;
 }
@@ -17811,6 +17816,7 @@ static int mtk_dsi_probe(struct platform_device *pdev)
 	dsi->host.ops = &mtk_dsi_ops;
 	dsi->host.dev = dev;
 	dsi->dev = dev;
+	dsi->led_type = -1;
 
 	dsi->is_slave = of_property_read_bool(dev->of_node,
 					      "mediatek,dual-dsi-slave");

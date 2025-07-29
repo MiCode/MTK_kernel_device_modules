@@ -474,22 +474,12 @@ void disp_aal_notify_backlight_changed(struct mtk_ddp_comp *comp,
 	AALAPI_LOG("%s output_comp[%s]\n", __func__, mtk_dump_comp_str(output_comp));
 
 	if (mtk_ddp_comp_get_type(output_comp->id) == MTK_DSI) {
-
-		struct mtk_connector_state *mtk_conn_state = NULL;
-		unsigned int conn_index = 0;
-
 		dsi = container_of(output_comp, struct mtk_dsi, ddp_comp);
-		if (dsi) {
-			mtk_conn_state = to_mtk_connector_state(dsi->conn.state);
-			conn_index = dsi->conn.index;
-		}
-
-		if (mtk_conn_state &&
-				mtk_conn_state->prop_val[conn_index][CONNECTOR_PROP_LED_TYPE] ==
-					LED_TYPE_ATOMIC)
+		if (dsi && dsi->led_type == LED_TYPE_ATOMIC)
 			hwc_control = true;
 
-		AALAPI_LOG("%s: hwc_control[%d]\n", __func__, hwc_control);
+		AALAPI_LOG("%s: hwc_control[%d] led_type[%d]\n", __func__, hwc_control,
+			dsi->led_type);
 	}
 
 	mtk_ddp_comp_io_cmd(output_comp, NULL, GET_CONNECTOR_ID, &connector_id);
