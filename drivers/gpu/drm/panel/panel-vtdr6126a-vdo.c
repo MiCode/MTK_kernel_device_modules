@@ -1328,7 +1328,15 @@ static struct mtk_panel_params ext_params_120hz = {
 		.dfps_cmd_table[0] = {0, 2, {0x6C, 0x01}}, //120Hz
 	},
 	.data_rate = MODE_1_DATA_RATE,
+	.vfp_low_power = 2892, // HS idle to 60 fps
 	//.tran_panel_params = &panel_driver_status,
+	.dyn = {
+		.switch_en = 1,
+		.pll_clk = 561,
+		.vfp_lp_dyn = 2950,
+		.hfp = 114,
+		.vfp = 76,
+	},
 };
 
 static struct mtk_panel_params ext_params_90hz = {
@@ -1394,7 +1402,15 @@ static struct mtk_panel_params ext_params_90hz = {
 		.dfps_cmd_table[0] = {0, 2, {0x6C, 0x02}}, //90Hz
 	},
 	.data_rate = MODE_2_DATA_RATE,
+	.vfp_low_power = 2892, // HS idle to 60 fps
 	//.tran_panel_params = &panel_driver_status,
+	.dyn = {
+		.switch_en = 1,
+		.pll_clk = 561,
+		.vfp_lp_dyn = 2950,
+		.hfp = 114,
+		.vfp = 1016,
+	},
 };
 
 static struct mtk_panel_params ext_params_60hz = {
@@ -1460,7 +1476,15 @@ static struct mtk_panel_params ext_params_60hz = {
 		.dfps_cmd_table[0] = {0, 2, {0x6C, 0x03}}, //60Hz
 	},
 	.data_rate = MODE_3_DATA_RATE,
+	.vfp_low_power = 4700, // HS idle to 45 fps
 	//.tran_panel_params = &panel_driver_status,
+	.dyn = {
+		.switch_en = 1,
+		.pll_clk = 561,
+		.vfp_lp_dyn = 4800,
+		.hfp = 114,
+		.vfp = 2892,
+	},
 };
 
 //Adjust dim speed 20241212 start
@@ -2564,7 +2588,7 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
 	if (ret < 0)
 		drm_panel_remove(&ctx->panel);
 #if defined(CONFIG_MTK_PANEL_EXT)
-	ret = mtk_panel_ext_create(dev, &ext_params_144hz, &ext_funcs, &ctx->panel);
+	ret = mtk_panel_ext_create(dev, &ext_params_120hz, &ext_funcs, &ctx->panel);
 	if (ret < 0)
 		return ret;
 #endif
