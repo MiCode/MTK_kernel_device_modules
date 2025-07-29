@@ -2927,6 +2927,18 @@ static int usb_offload_probe(struct platform_device *pdev)
 	uodev->total_connected = 0;
 	uodev->last_card_num = -EINVAL;
 
+	uob_assign_array(UO_STRUCT_DCBAA, NULL, BUF_DCBAA_SIZE);
+	uob_assign_array(UO_STRUCT_CTX, NULL, BUF_CTX_SIZE);
+	uob_assign_array(UO_STRUCT_ERST, NULL, BUF_ERST_SIZE);
+	uob_assign_array(UO_STRUCT_EVRING, NULL, BUF_EV_RING_SIZE);
+	uob_assign_array(UO_STRUCT_TRRING, NULL, BUF_TR_RING_SIZE);
+	uob_assign_array(UO_STRUCT_URB, NULL, BUF_URB_SIZE);
+
+	uob_init(UO_STRUCT_ERST);
+	uob_init(UO_STRUCT_EVRING);
+	uob_init(UO_STRUCT_TRRING);
+	uob_init(UO_STRUCT_URB);
+
 	node_xhci_host = of_parse_phandle(uodev->dev->of_node, "xhci-host", 0);
 	if (node_xhci_host) {
 
@@ -3013,18 +3025,6 @@ static int usb_offload_probe(struct platform_device *pdev)
 	WARN_ON(register_trace_xhci_alloc_virt_device(monitor_alloc_virt_device, NULL));
 	WARN_ON(register_trace_xhci_free_virt_device(monitor_free_virt_device, NULL));
 
-	uob_assign_array(UO_STRUCT_DCBAA, NULL, BUF_DCBAA_SIZE);
-	uob_assign_array(UO_STRUCT_CTX, NULL, BUF_CTX_SIZE);
-	uob_assign_array(UO_STRUCT_ERST, NULL, BUF_ERST_SIZE);
-	uob_assign_array(UO_STRUCT_EVRING, NULL, BUF_EV_RING_SIZE);
-	uob_assign_array(UO_STRUCT_TRRING, NULL, BUF_TR_RING_SIZE);
-	uob_assign_array(UO_STRUCT_URB, NULL, BUF_URB_SIZE);
-
-	uob_init(UO_STRUCT_ERST);
-	uob_init(UO_STRUCT_EVRING);
-	uob_init(UO_STRUCT_TRRING);
-	uob_init(UO_STRUCT_URB);
-
 	usb_offload_hid_probe();
 	usb_offload_debug_init(uodev);
 
@@ -3038,6 +3038,10 @@ INIT_OFFLOAD_NOTIFY_FAIL:
 INIT_MISC_DEV_FAIL:
 INIT_SHAREMEM_FAIL:
 	of_node_put(node_xhci_host);
+	uob_deinit(UO_STRUCT_ERST);
+	uob_deinit(UO_STRUCT_EVRING);
+	uob_deinit(UO_STRUCT_TRRING);
+	uob_deinit(UO_STRUCT_URB);
 	USB_OFFLOAD_ERR("Probe Fail!!!");
 	return ret;
 }

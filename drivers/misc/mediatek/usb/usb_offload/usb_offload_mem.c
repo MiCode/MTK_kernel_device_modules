@@ -561,7 +561,7 @@ struct uo_buffer *uob_get_empty(enum uo_struct type)
 
 struct uo_buffer *uob_get_first(enum uo_struct type)
 {
-	if (type >= UO_STRUCT_NUM)
+	if (type >= UO_STRUCT_NUM || !uodev->buf_array[type].first_buf)
 		return NULL;
 
 	USB_OFFLOAD_MEM_DBG("get first buffer (%s, buf:%p)\n",
