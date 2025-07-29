@@ -1331,11 +1331,8 @@ static void scp_write_reset_register_with_retry(int cpu_id)
 
 void scp_wdt_reset(int cpu_id)
 {
-	int scp_awake_flag = 0;
-
 	/* Need to awawke scp avoid peri off */
 	if (scp_awake_lock((void *)SCP_A_ID) == -1) {
-		scp_awake_flag = -1;
 		pr_notice("[SCP] %s: awake scp fail\n", __func__);
 	}
 
@@ -1359,11 +1356,6 @@ void scp_wdt_reset(int cpu_id)
 
 	scp_write_reset_register_with_retry(cpu_id);
 
-	}
-
-	if(scp_awake_flag == 0) {
-		if (scp_awake_unlock((void *)SCP_A_ID) == -1)
-			pr_notice("[SCP] %s: awake unlock fail\n", __func__);
 	}
 }
 EXPORT_SYMBOL(scp_wdt_reset);
@@ -2121,6 +2113,8 @@ void scp_reset_wait_timeout(void)
 			CORE_RDY_TO_REBOOT;
 	pr_notice("[SCP] %s() SCP GPR in wfi c0:%lx c1:%lx, sap:%d\n",
 		__func__, c0, c1, is_sap_ready_to_reboot());
+	pr_notice("[SCP] %s() SCP core status c0:%x c1:%x sap:%x\n", __func__, core0_halt, core1_halt, sap_halt);
+
 	if (timeout == 0) {
 		retry_count_before_KE++;
 		pr_notice("[SCP] reset timeout... %d\n",retry_count_before_KE);
