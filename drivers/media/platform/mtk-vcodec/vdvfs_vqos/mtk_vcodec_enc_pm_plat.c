@@ -661,14 +661,12 @@ void mtk_venc_dvfs_check_boost(struct mtk_vcodec_dev *dev)
 	mtk_vcodec_dvfs_qos_log(false, "[VDVFS] cur_time:%u, last_boost_time:%u",
 		cur_in_timestamp, dev->venc_dvfs_params.last_boost_time);
 
-	if (cur_in_timestamp - dev->venc_dvfs_params.last_boost_time >=
-		VENC_INIT_BOOST_INTERVAL && dev->venc_dvfs_params.init_boost) {
-		mutex_lock(&dev->enc_dvfs_mutex);
+	if (dev->venc_dvfs_params.init_boost &&
+		cur_in_timestamp - dev->venc_dvfs_params.last_boost_time >= VENC_INIT_BOOST_INTERVAL) {
 		dev->venc_dvfs_params.init_boost = 0;
 		set_venc_opp(dev, dev->venc_dvfs_params.target_freq);
 		mtk_vcodec_dvfs_qos_log(true, "[VDVFS][VENC] stop boost, set freq %u",
 			dev->venc_dvfs_params.target_freq);
-		mutex_unlock(&dev->enc_dvfs_mutex);
 	}
 #endif
 }
