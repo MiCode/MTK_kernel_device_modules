@@ -341,7 +341,8 @@ int cmdq_sec_pkt_wait_complete(struct cmdq_pkt *pkt)
 	do {
 		if (timeout_ms == CMDQ_NO_TIMEOUT) {
 			cmdq_msg("%s: timeout:%u", __func__, timeout_ms);
-			wait_for_completion(&pkt->cmplt);
+			if(wait_for_completion_interruptible(&pkt->cmplt) < 0)
+				continue;
 			break;
 		}
 
