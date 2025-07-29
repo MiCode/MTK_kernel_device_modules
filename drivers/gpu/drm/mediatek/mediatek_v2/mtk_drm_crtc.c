@@ -9692,7 +9692,7 @@ int mtk_crtc_cmdq_timeout_aee_cb(struct cmdq_cb_data data)
 	static DEFINE_RATELIMIT_STATE(aee_rate, 30 * HZ, 1);
 
 	if (__ratelimit(&aee_rate))
-		return CMDQ_AEE_WARN;
+		return CMDQ_AEE_EXCEPTION;
 
 	return CMDQ_NO_AEE;
 }
