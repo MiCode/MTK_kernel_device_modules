@@ -825,7 +825,7 @@ static void wdma_ddr_config_mt6993(struct mtk_ddp_comp *comp, struct golden_sett
 	u32 line_cnt;
 
 	/* enable ddr hrt req */
-	cmdq_pkt_write(handle, NULL, comp->regs_pa + MT6993_WDMA_DDREN_CTRL, 0x2, U32_MAX);
+	cmdq_pkt_write(handle, NULL, comp->regs_pa + MT6993_WDMA_DDREN_CTRL, 0, U32_MAX);
 	/* enable stash */
 	cmdq_pkt_write(handle, NULL, comp->regs_pa + MT6993_DISP_WDMA_STASH_CFG, 0x3, U32_MAX);
 	/* enable ultra/preultra sideband for hrt */
@@ -2974,7 +2974,7 @@ static const struct mtk_disp_wdma_data mt6993_wdma_driver_data = {
 	.buf_con1_fld_fifo_pseudo_size_uv = REG_FLD_MSB_LSB(22, 12),
 	.bus_priority_mask = 0xd4000000,
 	.stash_leading_time = 20,
-	.sodi_config = mt6989_mtk_sodi_config,
+	.sodi_config = mt6993_mtk_sodi_config,
 	.aid_sel = &mtk_wdma_aid_sel_MT6993,
 	.check_wdma_sec_reg = &mtk_wdma_check_sec_reg_MT6989,
 	.support_shadow = false,

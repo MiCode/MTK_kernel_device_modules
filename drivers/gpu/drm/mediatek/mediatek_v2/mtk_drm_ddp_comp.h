@@ -143,6 +143,9 @@ struct drm_crtc_state;
 	#define DVFS_HALT_MASK_SEL_WDMA0              REG_FLD_MSB_LSB(22, 22)
 	#define DVFS_HALT_MASK_SEL_WDMA1              REG_FLD_MSB_LSB(23, 23)
 
+#define DISPSYS1_SODI_REQ_SEL 0x0F0
+	#define DISPSYS1_SODI_REQ_SEL_WDMA1           BIT(25)
+
 enum mtk_ddp_comp_type {
 	MTK_DISP_OVL,
 	MTK_DISP_RDMA,

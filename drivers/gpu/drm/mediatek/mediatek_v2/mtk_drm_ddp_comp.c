@@ -3803,62 +3803,6 @@ void mt6993_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 					HRT_URGENT_CTL_SEL_RDMA5);
 		SET_VAL_MASK(emi_req_val, emi_req_mask, en,
 					DVFS_HALT_MASK_SEL_RDMA5);
-	} else if ((id == DDP_COMPONENT_OVLSYS_WDMA0) ||
-				(id == DDP_COMPONENT_OVLSYS_WDMA1)) {
-		unsigned int va;
-
-		if (handle == NULL) {
-			if (en) {
-				va = (readl(priv->ovlsys0_regs + MMSYS_SODI_REQ_MASK));
-				va |= MT6989_OVLSYS_MISC_SODI_WDMA_SEL;
-				writel_relaxed(va, priv->ovlsys0_regs + MMSYS_SODI_REQ_MASK);
-			} else {
-				va = (readl(priv->ovlsys0_regs + MMSYS_SODI_REQ_MASK));
-				va = (va & ~(MT6989_OVLSYS_MISC_SODI_WDMA_SEL));
-				writel_relaxed(va, priv->ovlsys0_regs + MMSYS_SODI_REQ_MASK);
-			}
-		} else {
-			if (en) {
-				cmdq_pkt_write(handle, NULL, priv->ovlsys0_regs_pa +
-						MMSYS_SODI_REQ_MASK,
-						MT6989_OVLSYS_MISC_SODI_WDMA_SEL,
-						MT6989_OVLSYS_MISC_SODI_WDMA_SEL);
-			} else {
-				cmdq_pkt_write(handle, NULL, priv->ovlsys0_regs_pa +
-						MMSYS_SODI_REQ_MASK,
-						0,
-						MT6989_OVLSYS_MISC_SODI_WDMA_SEL);
-			}
-		}
-		return;
-	} else if ((id == DDP_COMPONENT_OVLSYS_WDMA2) ||
-				(id == DDP_COMPONENT_OVLSYS_WDMA3)) {
-		unsigned int va;
-
-		if (handle == NULL) {
-			if (en) {
-				va = (readl(priv->ovlsys1_regs + MMSYS_SODI_REQ_MASK));
-				va |= MT6989_OVLSYS_MISC_SODI_WDMA_SEL;
-				writel_relaxed(va, priv->ovlsys1_regs + MMSYS_SODI_REQ_MASK);
-			} else {
-				va = (readl(priv->ovlsys1_regs + MMSYS_SODI_REQ_MASK));
-				va = (va & ~(MT6989_OVLSYS_MISC_SODI_WDMA_SEL));
-				writel_relaxed(va, priv->ovlsys1_regs + MMSYS_SODI_REQ_MASK);
-			}
-		} else {
-			if (en) {
-				cmdq_pkt_write(handle, NULL, priv->ovlsys1_regs_pa +
-						MMSYS_SODI_REQ_MASK,
-						MT6989_OVLSYS_MISC_SODI_WDMA_SEL,
-						MT6989_OVLSYS_MISC_SODI_WDMA_SEL);
-			} else {
-				cmdq_pkt_write(handle, NULL, priv->ovlsys1_regs_pa +
-						MMSYS_SODI_REQ_MASK,
-						0,
-						MT6989_OVLSYS_MISC_SODI_WDMA_SEL);
-			}
-		}
-		return;
 	} else if (id == DDP_COMPONENT_MDP_RDMA0) {
 		unsigned int addr, value, tmp = 0;
 
@@ -3894,6 +3838,33 @@ void mt6993_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 		comp = priv->ddp_comp[DDP_COMPONENT_VDISP_AO];
 		mtk_ddp_comp_io_cmd(comp, handle, VDISP_AO_CHG_16_QOS, &en);
 
+		return;
+	} else if (id == DDP_COMPONENT_WDMA1) {
+		unsigned int va;
+
+		if (!handle) {
+			if (en) {
+				va = (readl(priv->side_config_regs + DISPSYS1_SODI_REQ_SEL));
+				va |= DISPSYS1_SODI_REQ_SEL_WDMA1;
+				writel_relaxed(va, priv->ovlsys0_regs + DISPSYS1_SODI_REQ_SEL);
+			} else {
+				va = (readl(priv->side_config_regs + DISPSYS1_SODI_REQ_SEL));
+				va = (va & ~(DISPSYS1_SODI_REQ_SEL_WDMA1));
+				writel_relaxed(va, priv->side_config_regs + DISPSYS1_SODI_REQ_SEL);
+			}
+		} else {
+			if (en) {
+				cmdq_pkt_write(handle, NULL,
+					priv->side_config_regs_pa + DISPSYS1_SODI_REQ_SEL,
+					DISPSYS1_SODI_REQ_SEL_WDMA1,
+					DISPSYS1_SODI_REQ_SEL_WDMA1);
+			} else {
+				cmdq_pkt_write(handle, NULL,
+					priv->side_config_regs_pa + DISPSYS1_SODI_REQ_SEL,
+					0,
+					DISPSYS1_SODI_REQ_SEL_WDMA1);
+			}
+		}
 		return;
 	} else
 		return;
