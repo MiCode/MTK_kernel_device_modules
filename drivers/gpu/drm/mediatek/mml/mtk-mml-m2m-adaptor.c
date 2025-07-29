@@ -240,8 +240,16 @@ done:
 static void m2m_task_signal_irq(struct mml_task *task)
 {
 	enum vb2_buffer_state vb_state = VB2_BUF_STATE_DONE;
+	struct mml_m2m_ctx *mctx = container_of(task->ctx, struct mml_m2m_ctx, ctx);
+	struct device *mmu_dev = mml_get_mmu_dev(task->ctx->mml, mctx->param.secure);
 
 	mml_msg("[m2m]%s signal user done job id %u", __func__, task->job.jobid);
+
+	/* invalidate */
+	if (mmu_dev && task->buf.dest[0].invalid)
+		dma_sync_sgtable_for_cpu(mmu_dev, task->buf.dest[0].dma[0].sgt,
+			DMA_BIDIRECTIONAL);
+
 	mml_trace_ex_begin("%s_%u", __func__, task->job.jobid);
 	if (unlikely(!task->pkts[0] || (task->config->dual && !task->pkts[1])))
 		vb_state = VB2_BUF_STATE_ERROR;
