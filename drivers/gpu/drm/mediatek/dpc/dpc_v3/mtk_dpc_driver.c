@@ -1714,7 +1714,7 @@ static void mt6993_set_mtcmos(const u32 subsys, const enum mtk_dpc_mtcmos_mode m
 	value = en ? 0x33 : 0x552;
 	mask = (subsys == DPC3_SUBSYS_DISP) ? 0x3f80000 : BIT(g_priv->mtcmos_cfg[subsys].link_bit);
 
-	spin_lock_irqsave(&g_priv->mtcmos_cfg_lock, flags);
+	spin_lock_irqsave(&g_priv->excp_spin_lock, flags);
 
 	if (en) {
 		if (subsys == DPC3_SUBSYS_DISP) {
@@ -1753,7 +1753,7 @@ static void mt6993_set_mtcmos(const u32 subsys, const enum mtk_dpc_mtcmos_mode m
 	else if (subsys < g_priv->subsys_cnt)
 		g_priv->mtcmos_cfg[subsys].mode = (enum mtk_dpc_mtcmos_mode)en;
 
-	spin_unlock_irqrestore(&g_priv->mtcmos_cfg_lock, flags);
+	spin_unlock_irqrestore(&g_priv->excp_spin_lock, flags);
 
 	dpc_mmp(mtcmos_auto, MMPROFILE_FLAG_PULSE, subsys, en);
 
@@ -2007,7 +2007,7 @@ static int dpc_config_v3(const u32 subsys, bool en)
 	static bool is_mminfra_ctrl_by_dpc;
 
 	dpc_mmp(config, MMPROFILE_FLAG_START, subsys, en);
-	dpc_vidle_power_keep_v3(DISP_VIDLE_USER_DISP_DPC_CFG);
+
 	if (!en && is_mminfra_ctrl_by_dpc) {
 		if (unlikely(dump_to_kmsg))
 			DPCDUMP("dpc get mminfra");
@@ -2018,6 +2018,11 @@ static int dpc_config_v3(const u32 subsys, bool en)
 			return 0;
 		is_mminfra_ctrl_by_dpc = false;
 	}
+
+	if (excep_by_xpu & BIT(0))
+		dpc_ap_ref_cnt(VOTE_SET, DISP_VIDLE_USER_DISP_DPC_CFG, WITH_LOCK);
+	else
+		dpc_ap_vote_mmpc(VOTE_SET, DISP_VIDLE_USER_DISP_DPC_CFG);
 
 	dpc_wait_pwr_ack_v3(DPC3_SUBSYS_DISP);
 
@@ -2154,7 +2159,11 @@ static int dpc_config_v3(const u32 subsys, bool en)
 		else
 			mtk_dprec_logger_pr(DPREC_LOGGER_FENCE, "dpc put mminfra\n");
 	}
-	dpc_vidle_power_release_v3(DISP_VIDLE_USER_DISP_DPC_CFG);
+
+	if (excep_by_xpu & BIT(0))
+		dpc_ap_ref_cnt(VOTE_CLR, DISP_VIDLE_USER_DISP_DPC_CFG, WITH_LOCK);
+	else
+		dpc_ap_vote_mmpc(VOTE_CLR, DISP_VIDLE_USER_DISP_DPC_CFG);
 	dpc_mmp(config, MMPROFILE_FLAG_END, subsys, en);
 
 	return 0;
@@ -3063,7 +3072,7 @@ static void dpc_ap_ref_cnt(bool add, const enum mtk_vidle_voter_user user, bool 
 	s32 cnt;
 
 	if (lock)
-		spin_lock_irqsave(&g_priv->hwccf_ref_lock, flags);
+		spin_lock_irqsave(&g_priv->excp_spin_lock, flags);
 
 	cnt = add ? atomic_inc_return(&hwccf_ref) : atomic_dec_return(&hwccf_ref);
 	if (add && cnt == 1) {
@@ -3080,7 +3089,7 @@ static void dpc_ap_ref_cnt(bool add, const enum mtk_vidle_voter_user user, bool 
 	}
 
 	if (lock)
-		spin_unlock_irqrestore(&g_priv->hwccf_ref_lock, flags);
+		spin_unlock_irqrestore(&g_priv->excp_spin_lock, flags);
 
 	if (cnt < 0) {
 		if (unlikely(irq_aee))
@@ -3110,8 +3119,7 @@ static int dpc_vidle_power_keep_v3(const enum mtk_vidle_voter_user _user)
 			return VOTER_PM_SKIP_PWR_OFF;
 	}
 
-	if (user == DISP_VIDLE_USER_TOP_CLK_ISR || user == DISP_VIDLE_USER_MML_CLK_ISR
-			|| user == DISP_VIDLE_USER_DISP_DPC_CFG) {
+	if (user == DISP_VIDLE_USER_TOP_CLK_ISR || user == DISP_VIDLE_USER_MML_CLK_ISR) {
 		spin_lock_irqsave(&g_priv->excp_spin_lock, flags);
 
 		if (user_ref) {
@@ -3206,8 +3214,7 @@ static void dpc_vidle_power_release_v3(const enum mtk_vidle_voter_user _user)
 		return;
 	}
 
-	if (user == DISP_VIDLE_USER_TOP_CLK_ISR || user == DISP_VIDLE_USER_MML_CLK_ISR
-			|| user == DISP_VIDLE_USER_DISP_DPC_CFG) {
+	if (user == DISP_VIDLE_USER_TOP_CLK_ISR || user == DISP_VIDLE_USER_MML_CLK_ISR) {
 		spin_lock_irqsave(&g_priv->excp_spin_lock, flags);
 
 		user_cnt = atomic_dec_return(user_ref);
@@ -3639,8 +3646,9 @@ static void dpc_hwccf_vote(bool on, struct cmdq_pkt *pkt, const enum mtk_vidle_v
 		if (lock)
 			cmdq_pkt_set_event(pkt, g_priv->event_hwccf_vote);
 	} else {
-		if (lock)
-			spin_lock_irqsave(&g_priv->hwccf_ref_lock, flags);
+		if (lock) {
+			spin_lock_irqsave(&g_priv->excp_spin_lock, flags);
+		}
 
 		if (on) {
 			if (toggle_cg_fsm) {
@@ -3703,7 +3711,7 @@ static void dpc_hwccf_vote(bool on, struct cmdq_pkt *pkt, const enum mtk_vidle_v
 		}
 
 		if (lock)
-			spin_unlock_irqrestore(&g_priv->hwccf_ref_lock, flags);
+			spin_unlock_irqrestore(&g_priv->excp_spin_lock, flags);
 	}
 
 	return;
@@ -3737,7 +3745,7 @@ err9:
 	goto err_dump;
 err_dump:
 	if (lock)
-		spin_unlock_irqrestore(&g_priv->hwccf_ref_lock, flags);
+		spin_unlock_irqrestore(&g_priv->excp_spin_lock, flags);
 	dump_stack();
 #if IS_ENABLED(CONFIG_MTK_HWCCF)
 	clkchk_external_dump();
