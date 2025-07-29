@@ -10729,6 +10729,11 @@ dramc: dramc@10230000 {
 			usb = <&ssusb>;
 			//usb-killer-detect;
 			enable-fsw-control = <0>; // fsw-control default is enable
+			/*
+			 * fon-osc-enable : force wakeup clock for preoc
+			 * set true will enable fon_osc when resume
+			 */
+			// fon-osc-enable;
 			//pmic-uvlo = <&mt6363_dynamic_loading_throttling>;
 			otg-supply = <&mt6720_otg_vbus>;
 			mt6720_otg_vbus: usb-otg-vbus-regulator {
