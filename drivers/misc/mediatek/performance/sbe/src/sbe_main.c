@@ -1630,7 +1630,6 @@ void sbe_notify_update_fpsgo_jerk_boost_info(int tgid, int pid, int blc, unsigne
 		return;
 	}
 
-	sbe_get_tree_lock(__func__);
 	if (dep_arr_fpsgo) {
 		memset(g_dep_arr, 0, sizeof(struct task_info) * FPSGO_MAX_TASK_NUM);
 		memcpy(g_dep_arr, dep_arr_fpsgo, sizeof(struct task_info) * FPSGO_MAX_TASK_NUM);
@@ -1646,7 +1645,6 @@ void sbe_notify_update_fpsgo_jerk_boost_info(int tgid, int pid, int blc, unsigne
 		vpPush->dep_arr = g_dep_arr;
 
 	sbe_queue_work(vpPush);
-	sbe_put_tree_lock(__func__);
 }
 
 int sbe_get_kthread_tid(void)
