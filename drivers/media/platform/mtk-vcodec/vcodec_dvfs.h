@@ -79,6 +79,7 @@ struct dvfs_params {
 	u8 allow_oc;		/* allow oc freq */
 	u8 per_frame_adjust;	/* do per frame adjust dvfs / pmqos */
 	u8 per_frame_adjust_op_rate; /* per frame adjust threshold */
+	u32 suspend_min_freq;		/* min freq */
 	u32 min_freq;		/* min freq */
 	u32 normal_max_freq;	/* normal max freq (no oc) */
 	u32 freq_sum;		/* summation of all instances */
