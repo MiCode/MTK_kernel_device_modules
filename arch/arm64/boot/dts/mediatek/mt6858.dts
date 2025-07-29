@@ -5345,7 +5345,7 @@ dramc: dramc@10230000 {
 
 		mipi_tx_config0: mipi-tx-config0@11e50000 {
 			compatible = "mediatek,mipi_tx_config0",
-					"mediatek,mt6855-mipi-tx";
+					"mediatek,mt6858-mipi-tx";
 			reg = <0 0x11e50000 0 0x1000>;
 			clocks = <&clk26m>;
 			#clock-cells = <0>;
