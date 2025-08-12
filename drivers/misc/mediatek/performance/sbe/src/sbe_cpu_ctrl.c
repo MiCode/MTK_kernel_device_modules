@@ -35,6 +35,8 @@
 #include "sbe_sysfs.h"
 #include "core_ctl.h"
 
+#include "sbe_trace_event.h"
+
 #define NSEC_PER_HUSEC 100000
 #define SBE_RESCUE_MODE_UNTIL_QUEUE_END 2
 #define RESCUE_MAX_MONITOR_DROP_ARR_SIZE 10
@@ -533,7 +535,7 @@ void sbe_notify_ux_jank_detection(bool enable, int tgid, int pid, unsigned long 
 	if (!enable_ux_jank_detection_fp || !sbe_ai_ctrl_enabled)
 		return;
 
-	proc_name = kcalloc(MAX_PROCESS_NAME_LEN, sizeof(char), GFP_KERNEL);
+	proc_name = vzalloc(MAX_PROCESS_NAME_LEN * sizeof(char));
 	if (!proc_name)
 		goto out;
 
@@ -546,7 +548,7 @@ void sbe_notify_ux_jank_detection(bool enable, int tgid, int pid, unsigned long 
 	if (enable && test_bit(SBE_HWUI, &mask) && sbe_thr != NULL)
 		sbe_set_curr_thread_info(pid, buf_id);
 
-	kfree(proc_name);
+	vfree(proc_name);
 out:
 	return;
 }
@@ -665,6 +667,7 @@ void __sbe_set_per_task_cap(struct sbe_render_info *thr, int min_cap, int max_ca
 	unsigned long cur_max;
 	struct sched_attr attr = {};
 	struct task_struct *p;
+	bool need_trace = trace_sbe_trace_enabled();
 
 	attr.sched_policy = -1;
 	attr.sched_flags =
@@ -690,11 +693,14 @@ void __sbe_set_per_task_cap(struct sbe_render_info *thr, int min_cap, int max_ca
 		}
 	}
 
-	local_dep_str = kcalloc(MAX_TASK_NUM + 1, 7 * sizeof(char), GFP_KERNEL);
-	if (!local_dep_str)
-		goto out;
+	if (need_trace) {
+		local_dep_str = vzalloc((MAX_TASK_NUM + 1) * 7 * sizeof(char));
+		if (!local_dep_str)
+			goto out;
+		local_dep_str[0] = '\0';
+	}
 
-	for (i = 0; i < thr->dep_num; i++) {
+	for (i = 0; i < min(thr->dep_num, MAX_TASK_NUM); i++) {
 		if (thr->dep_arr[i] <= 0)
 			continue;
 
@@ -727,19 +733,25 @@ void __sbe_set_per_task_cap(struct sbe_render_info *thr, int min_cap, int max_ca
 		sbe_systrace_c(thr->dep_arr[i], 0, attr.sched_util_min, "min_cap");
 		sbe_systrace_c(thr->dep_arr[i], 0, attr.sched_util_max, "max_cap");
 
-		if (strlen(local_dep_str) == 0)
-			ret = snprintf(temp, sizeof(temp), "%d", thr->dep_arr[i]);
-		else
-			ret = snprintf(temp, sizeof(temp), ",%d", thr->dep_arr[i]);
+		if (need_trace && local_dep_str) {
+			if (strlen(local_dep_str) == 0)
+				ret = snprintf(temp, sizeof(temp), "%d", thr->dep_arr[i]);
+			else
+				ret = snprintf(temp, sizeof(temp), ",%d", thr->dep_arr[i]);
 
-		if (ret > 0 && strlen(local_dep_str) + strlen(temp) < 256)
-			strncat(local_dep_str, temp, strlen(temp));
+			if (ret > 0 && strlen(local_dep_str) + strlen(temp) < 256)
+				strcat(local_dep_str, temp);
+		}
 	}
 
-	sbe_trace("[%d] dep-list %s", thr->pid, local_dep_str);
+	if (need_trace && local_dep_str) {
+		local_dep_str[255] = '\0';
+		sbe_trace("[%d] dep-list %s", thr->pid, local_dep_str);
+	}
 
 out:
-	kfree(local_dep_str);
+	if (local_dep_str)
+		vfree(local_dep_str);
 }
 
 void sbe_set_per_task_cap(struct sbe_render_info *thr)
@@ -980,7 +992,7 @@ int sbe_query_cur_buffer_count(struct sbe_render_info *thr)
 	int tmp_render_num = 0;
 	struct render_fw_info *tmp_render_arr = NULL;
 
-	tmp_render_arr = kcalloc(FPSGO_MAX_RENDER_INFO_SIZE, sizeof(struct render_fw_info), GFP_KERNEL);
+	tmp_render_arr = vzalloc(sizeof(struct render_fw_info) * FPSGO_MAX_RENDER_INFO_SIZE);
 	if (!tmp_render_arr)
 		return -ENOMEM;
 
@@ -993,7 +1005,7 @@ int sbe_query_cur_buffer_count(struct sbe_render_info *thr)
 			break;
 		}
 	}
-	kfree(tmp_render_arr);
+	vfree(tmp_render_arr);
 	if (unlikely(i >= tmp_render_num)) {
 		sbe_trace("pid:%d buffer_id:0x%llx not get cur_buffer_count", thr->pid, thr->buffer_id);
 		return -EINVAL;
@@ -1314,7 +1326,7 @@ void set_sbe_thread_vip(int set_vip, int tgid, char *dep_name, int dep_num)
 	sbe_pid = sbe_get_kthread_tid();
 
 	if (dep_num > 0) {
-		local_specific_tid_arr = kcalloc(dep_num, sizeof(int), GFP_KERNEL);
+		local_specific_tid_arr = vzalloc(dep_num * sizeof(int));
 		if (local_specific_tid_arr) {
 			local_specific_tid_num = sbe_split_task_tid(dep_name, dep_num,
 					local_specific_tid_arr, __func__);
@@ -1344,7 +1356,7 @@ void set_sbe_thread_vip(int set_vip, int tgid, char *dep_name, int dep_num)
 		}
 	}
 out:
-	kfree(local_specific_tid_arr);
+	vfree(local_specific_tid_arr);
 #endif
 }
 
@@ -1736,7 +1748,7 @@ static void release_scroll(struct ux_scroll_info *info)
 	}
 
 	list_del(&info->queue_list);
-	kfree(info->score);
+	vfree(info->score);
 	kmem_cache_free(ux_scroll_info_cachep, info);
 }
 
@@ -2093,9 +2105,7 @@ void enqueue_ux_scroll_info(int type, unsigned long long start_ts, struct sbe_re
 	if (new_node != NULL)
 		memset(new_node, 0, sizeof(struct ux_scroll_info));
 
-	new_node->score = kmalloc(
-					(RESCUE_MAX_MONITOR_DROP_ARR_SIZE) * sizeof(int)
-					, GFP_KERNEL | __GFP_ZERO);
+	new_node->score = vzalloc((RESCUE_MAX_MONITOR_DROP_ARR_SIZE) * sizeof(int));
 
 	if (!new_node->score) {
 		kmem_cache_free(ux_scroll_info_cachep, new_node);
@@ -2519,7 +2529,7 @@ void fpsgo2sbe_hint_frameinfo(unsigned long cmd, struct render_frame_info *iter)
 	if (sbe_tgid <= 0 || iter->tgid != sbe_tgid)
 		return;
 
-	tmp_dep_arr = kcalloc(MAX_TASK_NUM, sizeof(struct task_info), GFP_KERNEL);
+	tmp_dep_arr = vzalloc(sizeof(struct task_info) * MAX_TASK_NUM);
 	//get cur render dep
 	if (tmp_dep_arr)
 		dep_num = fpsgo_other2xgf_get_critical_tasks(iter->pid,
@@ -2529,7 +2539,8 @@ void fpsgo2sbe_hint_frameinfo(unsigned long cmd, struct render_frame_info *iter)
 		sbe_notify_update_fpsgo_jerk_boost_info(iter->tgid, iter->pid,
 				iter->blc, cmd,  iter->jerk_boost_flag, tmp_dep_arr);
 
-	kfree(tmp_dep_arr);
+	if (tmp_dep_arr)
+		vfree(tmp_dep_arr);
 }
 
 void update_fpsgo_hint_param(int scrolling, int tgid)
@@ -2658,7 +2669,8 @@ int __init sbe_cpu_ctrl_init(void)
 		sizeof(struct ux_scroll_info), 0, SLAB_HWCACHE_ALIGN, NULL);
 	hwui_frame_info_cachep = kmem_cache_create("hwui_frame_info",
 		sizeof(struct hwui_frame_info), 0, SLAB_HWCACHE_ALIGN, NULL);
-	if (!frame_info_cachep || !ux_scroll_info_cachep || !hwui_frame_info_cachep)
+	if (!frame_info_cachep || !ux_scroll_info_cachep
+		|| !hwui_frame_info_cachep)
 		return -1;
 
 	return 0;

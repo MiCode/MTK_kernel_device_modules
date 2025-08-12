@@ -6,6 +6,7 @@
 #include <linux/rbtree.h>
 #include <linux/workqueue.h>
 #include <linux/hrtimer.h>
+#include <linux/slab.h>
 
 #define SBE_AFFNITY_TASK 0
 /*define cpu mask, maybe change setting to DTS not here*/

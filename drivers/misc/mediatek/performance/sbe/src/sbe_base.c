@@ -397,7 +397,7 @@ int sbe_get_render_tid_by_render_pid(int tgid, int pid,
 		!out_tid_num || out_tid_max_num <= 0)
 		return -EINVAL;
 
-	tmp_arr = kcalloc(out_tid_max_num, sizeof(struct render_fw_info), GFP_KERNEL);
+	tmp_arr = vzalloc(out_tid_max_num * sizeof(struct render_fw_info));
 	if (!tmp_arr)
 		return -ENOMEM;
 
@@ -421,7 +421,7 @@ int sbe_get_render_tid_by_render_pid(int tgid, int pid,
 	}
 	*out_tid_num = index;
 
-	kfree(tmp_arr);
+	vfree(tmp_arr);
 
 	return 0;
 }
@@ -856,7 +856,7 @@ static ssize_t sbe_render_info_status_show(struct kobject *kobj,
 	int length = 0;
 	int i;
 
-	temp = kcalloc(SBE_SYSFS_MAX_BUFF_SIZE, sizeof(char), GFP_KERNEL);
+	temp = vzalloc(SBE_SYSFS_MAX_BUFF_SIZE * sizeof(char));
 	if (!temp)
 		goto out;
 
@@ -907,7 +907,7 @@ static ssize_t sbe_render_info_status_show(struct kobject *kobj,
 	length = scnprintf(buf, PAGE_SIZE, "%s", temp);
 
 out:
-	kfree(temp);
+	vfree(temp);
 	return length;
 }
 static KOBJ_ATTR_RO(sbe_render_info_status);

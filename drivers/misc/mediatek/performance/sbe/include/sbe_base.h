@@ -7,6 +7,7 @@
 #define __SBE_BASE_H__
 
 #include <linux/rbtree.h>
+#include <linux/vmalloc.h>
 
 #define TARGET_UNLIMITED_FPS 240
 #define MAX_TASK_NUM 100

@@ -225,7 +225,7 @@ static void __sbe_receive_frame_end(struct sbe_render_info *f_render,
 	unsigned long long t_enqueue_end   = 0;
 
 	if (get_sbe_extra_sub_en_deque_enable()) {
-		fpsgo_render_info = kcalloc(FPSGO_MAX_RENDER_INFO_SIZE, sizeof(struct render_frame_info), GFP_KERNEL);
+		fpsgo_render_info = vzalloc(sizeof(struct render_frame_info) * FPSGO_MAX_RENDER_INFO_SIZE);
 		if (!fpsgo_render_info) {
 			fpsgo_other2xgf_calculate_dep(f_render->pid, f_render->buffer_id,
 				&local_raw, &local_ema, &enq_running_time,
@@ -246,7 +246,7 @@ static void __sbe_receive_frame_end(struct sbe_render_info *f_render,
 					break;
 				}
 			}
-			kfree(fpsgo_render_info);
+			vfree(fpsgo_render_info);
 		}
 
 		if (find_match_render
@@ -290,7 +290,7 @@ static void __sbe_receive_frame_end(struct sbe_render_info *f_render,
 		fpsgo_other2comp_set_no_boost_info(1, f_render->dep_arr[i], 0);
 
 	memset(f_render->dep_arr, 0, MAX_TASK_NUM * sizeof(int));
-	tmp_dep_arr = kcalloc(MAX_TASK_NUM, sizeof(struct task_info), GFP_KERNEL);
+	tmp_dep_arr = vzalloc(sizeof(struct task_info) * MAX_TASK_NUM);
 	if (tmp_dep_arr) {
 		f_render->dep_num = fpsgo_other2xgf_get_critical_tasks(f_render->pid,
 			MAX_TASK_NUM, tmp_dep_arr, 1, f_render->buffer_id);
@@ -299,7 +299,7 @@ static void __sbe_receive_frame_end(struct sbe_render_info *f_render,
 				f_render->dep_arr[i] = tmp_dep_arr[i].pid;
 		} else
 			f_render->dep_num = 0;
-		kfree(tmp_dep_arr);
+		vfree(tmp_dep_arr);
 	} else {
 		sbe_systrace_c(f_render->pid, bufID, frameid, "[ux]get_dep_malloc_fail");
 		sbe_systrace_c(f_render->pid, bufID, 0, "[ux]get_dep_malloc_fail");
@@ -469,12 +469,14 @@ void sbe_set_critical_task(int cur_pid, unsigned long long id,
 
 	sbe_get_render_tid_by_render_pid(sbe_get_tgid(cur_pid), cur_pid, out_tid_arr,
 		out_bufID_arr, &out_tid_num, FPSGO_MAX_RENDER_INFO_SIZE);
-	if (out_tid_num <= 0)
+	if (out_tid_num <= 0) {
+		sbe_trace("%s: out_tid_num = 0", __func__);
 		return;
+	}
 
 	if (dep_mode && dep_num > 0) {
-		local_specific_tid_arr = kcalloc(dep_num, sizeof(int), GFP_KERNEL);
-		local_specific_action_arr = kcalloc(dep_num, sizeof(struct task_info), GFP_KERNEL);
+		local_specific_tid_arr = vzalloc(dep_num * sizeof(int));
+		local_specific_action_arr = vzalloc(dep_num * sizeof(struct task_info));
 		if (local_specific_tid_arr && local_specific_action_arr) {
 			int local_action = 0;
 			int op_dep_by_tid = 0;
@@ -527,8 +529,8 @@ void sbe_set_critical_task(int cur_pid, unsigned long long id,
 			}
 		}
 
-		kfree(local_specific_action_arr);
-		kfree(local_specific_tid_arr);
+		vfree(local_specific_action_arr);
+		vfree(local_specific_tid_arr);
 	} else if (dep_mode == 5 && dep_num == 0) {
 		//CLEAR dep set before
 		fpsgo_other2xgf_set_critical_tasks(cur_pid, id, NULL, 0, 0);
@@ -648,7 +650,7 @@ int sbe_get_render_tid_by_render_name(int tgid, char *name,
 		!out_tid_num || out_tid_max_num <= 0)
 		return -EINVAL;
 
-	tmp_arr = kcalloc(out_tid_max_num, sizeof(struct render_fw_info), GFP_KERNEL);
+	tmp_arr = vzalloc(out_tid_max_num * sizeof(struct render_fw_info));
 	if (!tmp_arr)
 		return -ENOMEM;
 
@@ -672,7 +674,7 @@ int sbe_get_render_tid_by_render_name(int tgid, char *name,
 	}
 	*out_tid_num = index;
 
-	kfree(tmp_arr);
+	vfree(tmp_arr);
 
 	return 0;
 }
