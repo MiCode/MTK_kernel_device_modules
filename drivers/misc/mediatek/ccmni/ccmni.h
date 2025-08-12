@@ -60,7 +60,16 @@
 /* set networktype to MD */
 #define  SIOCSNETTYPE		(SIOCDEVPRIVATE + 15)
 
+/*
+ * This feature increase ccmni num to 30
+ */
+//#define MTK_TC10_FEATURE_CCMNI_PORT
+#ifdef MTK_TC10_FEATURE_CCMNI_PORT
+#define  CCMNI_INTERFACE_NUM    30
+#else
 #define  CCMNI_INTERFACE_NUM    21
+#endif
+
 #define  DPMAIF_DRIVER          (1<<2)
 #define  CLDMA_DRIVER           (1<<0)
 
