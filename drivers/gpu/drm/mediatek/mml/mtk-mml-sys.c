@@ -7,6 +7,7 @@
 #include <linux/clk.h>
 #include <linux/component.h>
 #include <linux/delay.h>
+#include <linux/iopoll.h>
 #include <linux/module.h>
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
@@ -55,10 +56,13 @@
 #define SYS_WLA20_RG_WDMA1_0	0x9c8
 #define SYS_WLA20_RG_WDMA1_1	0x9cc
 
+#define SYS_MT6993_CGCON0_SMI	0x00000002
+
 enum sys_register {
 	SYS_SW0_RST_B_REG,
 	SYS_SW1_RST_B_REG,
 	SYS_BYPASS_MUX_SHADOW,
+	SYS_REG_CG_CON0,
 	sys_register_total,
 };
 
@@ -66,12 +70,14 @@ static const u16 sys_mt6989[] = {
 	[SYS_SW0_RST_B_REG] = 0x700,
 	[SYS_SW1_RST_B_REG] = 0x704,
 	[SYS_BYPASS_MUX_SHADOW] = 0xf00,
+	[SYS_REG_CG_CON0] = 0x100,
 };
 
 static const u16 sys_mt6993[] = {
 	[SYS_SW0_RST_B_REG] = 0xac0,
 	[SYS_SW1_RST_B_REG] = 0xac4,
 	[SYS_BYPASS_MUX_SHADOW] = 0x998,
+	[SYS_REG_CG_CON0] = 0xa78,
 };
 
 #define MML_MAX_SYS_COMPONENTS	32
@@ -1705,6 +1711,43 @@ static s32 mml_sys_comp_clk_disable(struct mml_comp *comp,
 	return 0;
 }
 
+static s32 mml_sys_comp_clk_disable_poll(struct mml_comp *comp, bool dpc)
+{
+	struct mml_sys *sys = comp_to_sys(comp);
+	u32 value = 0, i;
+	int ret;
+
+	comp->clk_cnt--;
+	if (comp->clk_cnt > 0)
+		return 0;
+	if (comp->clk_cnt < 0) {
+		mml_err("%s comp %u %s cnt %d",
+			__func__, comp->id, comp->name, comp->clk_cnt);
+		return -EINVAL;
+	}
+
+	if (sys->data->irq) {
+		/* clear sys irq en to make sure mml hw does not burst after clock off */
+		writel(0, comp->base + SYS_MDP_IRQ);
+	}
+
+	mml_mmp(clk_disable, MMPROFILE_FLAG_START, comp->id, 0);
+	for (i = 0; i < ARRAY_SIZE(comp->clks); i++) {
+		if (IS_ERR_OR_NULL(comp->clks[i]))
+			break;
+		clk_disable_unprepare(comp->clks[i]);
+	}
+
+	ret = readl_poll_timeout_atomic(comp->base + sys->data->reg[SYS_REG_CG_CON0],
+		value, value == ~SYS_MT6993_CGCON0_SMI, 1, 500);
+	if (ret < 0)
+		mml_err("%s comp %u %s poll fail", __func__, comp->id, comp->name);
+
+	mml_mmp(clk_disable, MMPROFILE_FLAG_END, comp->id, 0);
+
+	return 0;
+}
+
 static void mml_sys_taskdone(struct mml_comp *comp, struct mml_task *task,
 	struct mml_comp_config *ccfg)
 {
@@ -1762,7 +1805,7 @@ static const struct mml_comp_hw_ops sys_hw_ops_mminfra_mt6993 = {
 	.mminfra_pw_enable = mml_mminfra_pw_enable,
 	.mminfra_pw_disable = mml_mminfra_pw_disable,
 	.clk_enable = &mml_sys_comp_clk_enable,
-	.clk_disable = &mml_sys_comp_clk_disable,
+	.clk_disable = &mml_sys_comp_clk_disable_poll,
 	.task_done = &mml_sys_taskdone,
 };
 
