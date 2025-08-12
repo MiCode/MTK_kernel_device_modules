@@ -8970,10 +8970,8 @@ dramc: dramc@10230000 {
 	usb_offload: usb-offload {
 		compatible = "mediatek,usb-offload";
 		xhci-host = <&usb_host>;
-		mediatek,main-sram = "afe-sram";
 		mediatek,reserved-sram-size = <0x4000>;
 		mediatek,ready-for-xhci;
-		mediatek,explicit-feedback;
 		mediatek,hub-offload;
 		mediatek,idle-lowpwr;
 	};
