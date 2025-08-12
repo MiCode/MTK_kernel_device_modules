@@ -757,6 +757,13 @@ u32 mtk_vidle_hint_update(enum mtk_vidle_hint_type type)
 		if (vidle_data.hint.mmdvfs_disabled > 0)
 			vidle_data.hint.mmdvfs_disabled--;
 		break;
+	case VIDLE_HINT_VDO_MODE_SWITCH_START:
+		vidle_data.hint.vdo_mode_switch++;
+		break;
+	case VIDLE_HINT_VDO_MODE_SWITCH_DONE:
+		if (vidle_data.hint.vdo_mode_switch > 0)
+			vidle_data.hint.vdo_mode_switch--;
+		break;
 	default:
 		break;
 	}
@@ -782,11 +789,11 @@ int mtk_vidle_hint_decision(const char *caller)
 		     vidle_data.hint.vdo_vblank_fuse |
 		     vidle_data.hint.doze_debounce |
 		     vidle_data.hint.mode_switch_debounce |
+		     vidle_data.hint.vdo_mode_switch |
 		     vidle_data.hint.mmdvfs_disabled |
 		     vidle_data.hint.mtcmos_debounce);
 
 	if (last_decision != decision) {
-		DDPINFO("%s, from:%s decision:%d\n", __func__, caller ? caller : "unknown", decision);
 		last_decision = decision;
 		if (decision)
 			CRTC_MMP_MARK(0, enter_vidle, 0xdec1510, decision);

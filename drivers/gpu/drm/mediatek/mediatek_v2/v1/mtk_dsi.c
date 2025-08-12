@@ -4482,6 +4482,7 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 				}
 			}
 			dump_cur_pos(mtk_crtc);
+			mtk_vidle_dpc_analysis();
 			if (dsi->encoder.crtc)
 				mtk_drm_crtc_dump_vr_rg(dsi->encoder.crtc);
 
@@ -4504,7 +4505,6 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 				if (dsi->encoder.crtc)
 					mtk_drm_crtc_mini_analysis(dsi->encoder.crtc);
 
-				mtk_vidle_dpc_analysis();
 
 				//printing status of mmqos and mmdvfs and smi info
 				atomic_set(&mtk_crtc->smi_info_dump_event, 1);
@@ -14006,7 +14006,10 @@ static void mtk_dsi_vdo_timing_change(struct mtk_dsi *dsi,
 		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_VDO_PANEL) &&
 		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_FULL_SCENARIO)) {
 		CRTC_MMP_MARK(0, leave_vidle, 0xd51, 0);
-		mtk_vidle_config_ff(false);
+		if (mtk_vidle_is_ff_enabled()) {
+			mtk_vidle_config_ff(false);
+			usleep_range(500, 550);
+		}
 	}
 
 	if (fps_chg_index & MODE_DSI_CLK) {
@@ -14788,12 +14791,14 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		mutex_unlock(&conn->dev->mode_config.mutex);
 	}
 		break;
-
 	case IRQ_LEVEL_IDLE:
 	{
 		unsigned int inten = 0;
+		struct mtk_drm_crtc *crtc = comp->mtk_crtc;
+		struct mtk_drm_private *priv = (crtc->base).dev->dev_private;
 
-		if (!mtk_dsi_is_cmd_mode(&dsi->ddp_comp) && handle) {
+		if (!mtk_dsi_is_cmd_mode(&dsi->ddp_comp) && handle && priv &&
+			!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_VDO_PANEL)) {
 			inten = FRAME_DONE_INT_FLAG;
 			cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + DSI_INTEN, 0, inten);

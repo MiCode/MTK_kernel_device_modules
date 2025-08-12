@@ -91,7 +91,7 @@ extern int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...);
 
 /* common registers*/
 #define VCORE_DVFSRC_HRT_BW_MASK      0x3FF
-#define VCORE_DVFSRC_SRT_BW_MASK      0xFFC
+#define VCORE_DVFSRC_SRT_BW_MASK      0x1FF800
 
 #define DISP_REG_DPC_EN                                  0x000UL
 #define DISP_REG_DPC_RESET                               0x004UL

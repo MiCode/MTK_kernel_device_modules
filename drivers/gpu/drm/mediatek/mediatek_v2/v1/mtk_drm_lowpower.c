@@ -34,6 +34,13 @@
 #define MAX_ENTER_IDLE_RSZ_RATIO 300
 #define MTK_DRM_CPU_MAX_COUNT 8
 
+#define MTK_IDLEMGR_VIDLE_TIMER_INACTIVE (-1)
+#define MTK_IDLEMGR_VIDLE_TIMER_START 1
+#define MTK_IDLEMGR_VIDLE_TIMER_STOP 0
+static struct timer_list vidle_timer;
+static atomic_t g_vidle_timer_active = ATOMIC_INIT(0);
+static spinlock_t vidle_timer_lock;
+
 #ifdef SHARE_WROT_SRAM
 static int register_share_sram;
 static unsigned int is_wrot_sram_enabled;
@@ -868,6 +875,66 @@ void mtk_drm_idlemgr_monitor(bool enable, struct drm_crtc *crtc)
 out:
 	DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 }
+static void mtk_vidle_timer_fun(struct timer_list *timer)
+{
+	unsigned long flags = 0;
+
+	spin_lock_irqsave(&vidle_timer_lock, flags);
+	if (atomic_read(&g_vidle_timer_active) == MTK_IDLEMGR_VIDLE_TIMER_START) {
+		DDPINFO("%s,active:%d->%d\n", __func__,
+			atomic_read(&g_vidle_timer_active), MTK_IDLEMGR_VIDLE_TIMER_STOP);
+		atomic_set(&g_vidle_timer_active, MTK_IDLEMGR_VIDLE_TIMER_STOP);
+		mtk_vidle_hint_update(VIDLE_HINT_VDO_MODE_SWITCH_DONE);
+		spin_unlock_irqrestore(&vidle_timer_lock, flags);
+
+		mtk_vidle_hint_decision("hsidle");
+	} else
+		spin_unlock_irqrestore(&vidle_timer_lock, flags);
+}
+
+static void mtk_vidle_start_timer(struct drm_crtc *crtc)
+{
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
+	struct mtk_drm_crtc *mtk_crtc = NULL;
+	unsigned long flags = 0;
+	unsigned int delay = 70;
+
+	if (IS_ERR_OR_NULL(crtc))
+		return;
+
+	if (drm_crtc_index(crtc) == 0 && priv &&
+		mtk_drm_helper_get_opt(priv->helper_opt,
+				MTK_DRM_OPT_VIDLE_VDO_PANEL)) {
+		delay = mtk_drm_get_idle_check_interval(crtc) + 17;
+		mod_timer(&vidle_timer, jiffies + msecs_to_jiffies(delay));
+
+		spin_lock_irqsave(&vidle_timer_lock, flags);
+		DDPINFO("%s,active:%d->%d, timer:%ums\n", __func__,
+			atomic_read(&g_vidle_timer_active), MTK_IDLEMGR_VIDLE_TIMER_START,
+			delay);
+		atomic_set(&g_vidle_timer_active, MTK_IDLEMGR_VIDLE_TIMER_START);
+		spin_unlock_irqrestore(&vidle_timer_lock, flags);
+	}
+}
+
+static void mtk_vidle_get_timer(void)
+{
+	unsigned long flags = 0;
+
+	spin_lock_irqsave(&vidle_timer_lock, flags);
+	if (atomic_read(&g_vidle_timer_active) == MTK_IDLEMGR_VIDLE_TIMER_STOP)
+		mtk_vidle_hint_update(VIDLE_HINT_VDO_MODE_SWITCH_START);
+	DDPINFO("%s,active:%d->%d\n", __func__,
+		atomic_read(&g_vidle_timer_active), MTK_IDLEMGR_VIDLE_TIMER_INACTIVE);
+	atomic_set(&g_vidle_timer_active, MTK_IDLEMGR_VIDLE_TIMER_INACTIVE);
+	spin_unlock_irqrestore(&vidle_timer_lock, flags);
+
+	if (mtk_vidle_is_ff_enabled()) {
+		mtk_vidle_config_ff(false);
+		usleep_range(500, 550);
+	}
+}
+
 
 static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc);
 static void mtk_drm_idlemgr_disable_crtc(struct drm_crtc *crtc);
@@ -918,7 +985,9 @@ static void mtk_drm_vdo_mode_enter_idle(struct drm_crtc *crtc)
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt,
 				   MTK_DRM_OPT_IDLEMGR_DISABLE_ROUTINE_IRQ)) {
-		mtk_disp_mutex_inten_disable_cmdq(mtk_crtc->mutex[0], handle);
+		if (!mtk_drm_helper_get_opt(priv->helper_opt,
+					MTK_DRM_OPT_VIDLE_VDO_PANEL))
+			mtk_disp_mutex_inten_disable_cmdq(mtk_crtc->mutex[0], handle);
 		for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
 			mtk_ddp_comp_io_cmd(comp, handle, IRQ_LEVEL_IDLE, NULL);
 	}
@@ -932,9 +1001,8 @@ static void mtk_drm_vdo_mode_enter_idle(struct drm_crtc *crtc)
 			(mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_FULL_SCENARIO) ||
 			mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_HOME_SCREEN_IDLE))) {
 			mtk_ddp_comp_io_cmd(comp, NULL, DSI_VFP_IDLE_TIMING_CHANGED, &timing_changed);
-			/*if (timing_changed)
-			 *	mtk_vidle_config_ff(false);
-			 */
+			if (timing_changed)
+				mtk_vidle_get_timer();
 		}
 		mtk_ddp_comp_io_cmd(comp, handle, DSI_VFP_IDLE_MODE, NULL);
 		mtk_ddp_comp_io_cmd(comp, handle, DSI_LFR_SET, &en);
@@ -947,7 +1015,7 @@ static void mtk_drm_vdo_mode_enter_idle(struct drm_crtc *crtc)
 
 	/*vidle config after mode switch*/
 	if (timing_changed)
-		mtk_vidle_hint_decision("enter_hsidle");
+		mtk_vidle_start_timer(crtc);
 }
 
 static void mtk_drm_cmd_mode_enter_idle(struct drm_crtc *crtc)
@@ -998,9 +1066,8 @@ static void mtk_drm_vdo_mode_leave_idle(struct drm_crtc *crtc)
 			(mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_FULL_SCENARIO) ||
 			mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_HOME_SCREEN_IDLE))) {
 			mtk_ddp_comp_io_cmd(comp, NULL, DSI_VFP_IDLE_TIMING_CHANGED, &timing_changed);
-			/*if (timing_changed) //screen flash when leave hsidle
-			 *	mtk_vidle_config_ff(false);
-			 */
+			if (timing_changed)
+				mtk_vidle_get_timer();
 		}
 		mtk_ddp_comp_io_cmd(comp, handle, DSI_VFP_DEFAULT_MODE, NULL);
 		mtk_ddp_comp_io_cmd(comp, handle, DSI_LFR_SET, &en);
@@ -1018,7 +1085,7 @@ static void mtk_drm_vdo_mode_leave_idle(struct drm_crtc *crtc)
 
 	/* vidle config after mode switch*/
 	if (timing_changed)
-		mtk_vidle_hint_decision("leave_hsidle");
+		mtk_vidle_start_timer(crtc);
 }
 
 static void mtk_drm_cmd_mode_leave_idle(struct drm_crtc *crtc)
@@ -1892,6 +1959,13 @@ int mtk_drm_idlemgr_init(struct drm_crtc *crtc, int index)
 		}
 
 		cpu_latency_qos_add_request(&idlemgr->cpu_qos_req, PM_QOS_DEFAULT_VALUE);
+	}
+
+	if (!mode && mtk_drm_helper_get_opt(priv->helper_opt,
+				MTK_DRM_OPT_VIDLE_VDO_PANEL)) {
+		spin_lock_init(&vidle_timer_lock);
+		timer_setup(&vidle_timer, mtk_vidle_timer_fun, 0);
+		DDPMSG("%s, setup vidle timer\n", __func__);
 	}
 
 	return 0;

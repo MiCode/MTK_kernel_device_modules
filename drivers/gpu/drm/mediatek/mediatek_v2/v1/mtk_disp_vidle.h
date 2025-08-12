@@ -45,11 +45,14 @@ enum mtk_vidle_hint_type {
 	VIDLE_HINT_VDO_VBLANK_INAVAIL,
 	VIDLE_HINT_MMDVFS_ENABLE,
 	VIDLE_HINT_MMDVFS_DISABLE,
+	VIDLE_HINT_VDO_MODE_SWITCH_START,
+	VIDLE_HINT_VDO_MODE_SWITCH_DONE,
 };
 
 struct mtk_vidle_hint {
 	u8 mtcmos_debounce;		/* 0: okay */
 	u8 mode_switch_debounce;	/* 0: okay */
+	u8 vdo_mode_switch;	    /* 0: okay */
 	u8 doze_debounce;		/* 0: okay */
 	u8 crtc_fuse;			/* 0: okay, or +1 by others(multi crtc, DP, ...) */
 	u8 tui_fuse;			/* 0: okay, or +1 by enter tui */
