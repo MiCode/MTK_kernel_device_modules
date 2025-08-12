@@ -2149,10 +2149,6 @@ int mdrv_DPTx_TrainingFlow(struct mtk_dp *mtk_dp, u8 ubLaneRate, u8 ubLaneCount)
 		mtk_dp->training_info.ubLinkLaneCount = ubTargetLaneCount;
 
 		mhal_DPTx_SetScramble(mtk_dp, true);
-
-		ubTempValue[0] = ubTargetLaneCount
-			| DPTX_AUX_SET_ENAHNCED_FRAME;
-		drm_dp_dpcd_write(&mtk_dp->aux, DPCD_00101, ubTempValue, 0x1);
 		mhal_DPTx_SetEF_Mode(mtk_dp, ENABLE_DPTX_EF_MODE);
 
 		DPTXMSG("Link Training PASS\n");
