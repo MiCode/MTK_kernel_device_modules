@@ -1525,7 +1525,7 @@ void mtk_drm_pan_disp_set_hrt_bw(struct drm_crtc *crtc, const char *caller)
 			DDPPR_ERR("%s can not get first exdma from lk\n", __func__);
 	} else if (priv->data->mmsys_id == MMSYS_MT6991)
 		mtk_crtc->usage_ovl_fmt[1] = 4;
-	else if (priv->data->mmsys_id == MMSYS_MT6993)
+	else
 		mtk_crtc->usage_ovl_fmt[0] = 4;
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MAX_CHANNEL_HRT)) {
