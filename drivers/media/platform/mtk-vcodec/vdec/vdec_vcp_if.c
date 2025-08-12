@@ -18,7 +18,6 @@
 #include "mtk_vcodec_drv.h"
 #include "vdec_drv_if.h"
 #include "mtk_vcodec_dec_pm.h"
-#include "mtk_vcodec_dec_pm_plat.h"
 // TODO: need remove ISR ipis
 #include "mtk_vcodec_intr.h"
 
@@ -130,6 +129,11 @@ static void get_dpb_size(struct vdec_inst *inst, unsigned int *dpb_sz)
 	if (inst->vsi->low_pw_mode && inst->ctx->q_data[MTK_Q_DATA_SRC].fmt->fourcc != V4L2_PIX_FMT_HEIF)
 		*dpb_sz += mtk_vdec_lpw_limit;
 	mtk_vcodec_debug(inst, "sz=%d", *dpb_sz);
+}
+
+static void get_dvfs_data(struct mtk_vcodec_dev *dev, unsigned int need)
+{
+	dev->vdec_dvfs_params.frame_need_update = need;
 }
 
 static void check_error_code(struct vdec_inst *inst, unsigned int hw_id)
@@ -904,14 +908,14 @@ return_vdec_ipi_ack:
 				break;
 			// TODO: need remove HW locks /power & ISR ipis
 			case VCU_IPIMSG_DEC_LOCK_LAT:
+				get_dvfs_data(vcu->ctx->dev, msg->data);
 				vdec_decode_prepare(vcu->ctx, MTK_VDEC_LAT);
-				vdec_dvfs_qos_ctrl(vcu->ctx, true, msg->data, MTK_VDEC_LAT);
 				atomic_set(&dev->dec_hw_active[MTK_VDEC_LAT], 1);
 				msg->msg_id = AP_IPIMSG_DEC_LOCK_LAT_DONE;
 				vdec_vcp_ipi_send(inst, msg, sizeof(*msg), true, false, false);
 				break;
 			case VCU_IPIMSG_DEC_UNLOCK_LAT:
-				vdec_dvfs_qos_ctrl(vcu->ctx, false, msg->data, MTK_VDEC_LAT);
+				get_dvfs_data(vcu->ctx->dev, msg->data);
 				atomic_set(&dev->dec_hw_active[MTK_VDEC_LAT], 0);
 				vdec_decode_unprepare(vcu->ctx, MTK_VDEC_LAT);
 				msg->msg_id = AP_IPIMSG_DEC_UNLOCK_LAT_DONE;
@@ -922,19 +926,19 @@ return_vdec_ipi_ack:
 					mtk_vcodec_dec_clock_on(&vcu->ctx->dev->pm, MTK_VDEC_CORE);
 					dev->dec_ao_pw_cnt++;
 				} else {
+					get_dvfs_data(vcu->ctx->dev, msg->data);
 					vdec_decode_prepare(vcu->ctx, MTK_VDEC_CORE);
 					atomic_set(&dev->dec_hw_active[MTK_VDEC_CORE], 1);
 				}
-				vdec_dvfs_qos_ctrl(vcu->ctx, true, msg->data, MTK_VDEC_CORE);
 				msg->msg_id = AP_IPIMSG_DEC_LOCK_CORE_DONE;
 				vdec_vcp_ipi_send(inst, msg, sizeof(*msg), true, false, false);
 				break;
 			case VCU_IPIMSG_DEC_UNLOCK_CORE:
-				vdec_dvfs_qos_ctrl(vcu->ctx, false, msg->data, MTK_VDEC_CORE);
 				if (msg->payload) {
 					dev->dec_ao_pw_cnt--;
 					mtk_vcodec_dec_clock_off(&vcu->ctx->dev->pm, MTK_VDEC_CORE);
 				} else {
+					get_dvfs_data(vcu->ctx->dev, msg->data);
 					atomic_set(&dev->dec_hw_active[MTK_VDEC_CORE], 0);
 					vdec_decode_unprepare(vcu->ctx, MTK_VDEC_CORE);
 				}
