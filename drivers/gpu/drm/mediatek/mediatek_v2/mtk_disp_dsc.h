@@ -16,4 +16,6 @@ struct mtk_disp_dsc_data {
 	bool reset_after_eof;
 };
 
+int mtk_dsc_bist_pattern(struct mtk_ddp_comp *comp, unsigned int color);
+
 #endif

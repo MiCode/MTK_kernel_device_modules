@@ -1679,6 +1679,22 @@ static void mtk_dsc_config_trigger(struct mtk_ddp_comp *comp, struct cmdq_pkt *h
 	}
 }
 
+int mtk_dsc_bist_pattern(struct mtk_ddp_comp *comp, unsigned int color)
+{
+	void __iomem *baddr = comp->regs;
+	u32 val;
+
+	val = color ? (color | 0x40000000) : 0x0;
+
+	writel(val, baddr + DISP_REG_DSC_MUTE_CON);
+	if (comp->mtk_crtc && comp->mtk_crtc->is_dual_pipe &&
+		comp->mtk_crtc->panel_ext && comp->mtk_crtc->panel_ext->params &&
+		comp->mtk_crtc->panel_ext->params->output_mode == MTK_PANEL_DUAL_PORT)
+		writel(val, baddr + DISP_REG_DSC_MUTE_CON + DISP_REG_DSC1_OFFSET);
+
+	return 0;
+}
+
 void mtk_dsc_dump(struct mtk_ddp_comp *comp)
 {
 	void __iomem *baddr = comp->regs;

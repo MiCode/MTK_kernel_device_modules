@@ -6214,6 +6214,55 @@ test_2c_done:
 		}
 
 		ret = mtk_dsi_bist_pattern_test(comp, pattern);
+	} else if (strncmp(opt, "dscpattern:", 11) == 0) {
+		struct mtk_ddp_comp *comp = NULL;
+		struct drm_crtc *crtc;
+		struct mtk_drm_private *priv;
+		char *p = (char *)opt + 11;
+		unsigned int pattern = 0;
+		int ret = 0;
+
+		/* Enable dsc pattern:
+		 * Red: echo dscpattern:0x4FF00000 > /sys/kernel/debug/mtkfb
+		 * Green: echo dscpattern:0x4003FC00 > /sys/kernel/debug/mtkfb
+		 * Blue: echo dscpattern:0x400000FF > /sys/kernel/debug/mtkfb
+		 *
+		 * Disable dsc pattern:
+		 * echo dscpattern:0x0 > /sys/kernel/debug/mtkfb
+		 */
+		ret = kstrtouint(p, 0, &pattern);
+		if (ret) {
+			pr_info("line=%d error to parse cmd %s\n", __LINE__, opt);
+			return;
+		}
+		DDPMSG("set_dsc_pattern: 0x%x\n", pattern);
+		/* this debug cmd only for crtc0 */
+		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
+					typeof(*crtc), head);
+		if (!crtc) {
+			pr_info("find crtc fail\n");
+			return;
+		}
+		if (!crtc->dev || !crtc->dev->dev_private) {
+			DDPINFO("find crtc->dev fail");
+			return;
+		}
+
+		priv = crtc->dev->dev_private;
+		comp = priv->ddp_comp[DDP_COMPONENT_DSC0];
+		if (!comp) {
+			DDPINFO("cannot find output component\n");
+			return;
+		}
+
+		mtk_dsc_bist_pattern(comp, pattern);
+		if (comp->mtk_crtc && comp->mtk_crtc->panel_ext &&
+			comp->mtk_crtc->panel_ext->params &&
+			comp->mtk_crtc->panel_ext->params->output_mode == MTK_PANEL_DUAL_PORT &&
+			comp->mtk_crtc->panel_ext->params->dsc_params.dual_dsc_enable) {
+			comp = priv->ddp_comp[DDP_COMPONENT_DSC1];
+			mtk_dsc_bist_pattern(comp, pattern);
+		}
 	}
 }
 
