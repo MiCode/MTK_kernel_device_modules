@@ -1029,12 +1029,92 @@ static ssize_t skip_blocktag_store(struct device *dev,
 	return count;
 }
 
+static u32 mcq_get_irq(struct ufs_hba *hba, unsigned int cpu)
+{
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+	struct blk_mq_tag_set *tag_set = &hba->host->tag_set;
+	struct blk_mq_queue_map *map = &tag_set->map[HCTX_TYPE_DEFAULT];
+	unsigned int nr = map->nr_queues;
+	unsigned int q_index;
+
+	q_index = map->mq_map[cpu];
+	if (q_index > nr) {
+		dev_err(hba->dev, "hwq index %d exceed %d\n",
+			q_index, nr);
+		return MTK_MCQ_INVALID_IRQ;
+	}
+
+	return host->mcq_intr_info[q_index].irq;
+}
+
+static void irq_affinity_boost(struct ufs_hba *hba, bool boost)
+{
+	unsigned int aff_boost[8] = {0, 1, 2, 3, 0, 1, 2, 3};
+	unsigned int aff_original[8] = {3, 1, 2, 3, 4, 5, 6, 7};
+	unsigned int irq, cpu;
+	int i, ret;
+
+	for (i = 0; i < 8; i++) {
+		irq = mcq_get_irq(hba, i);
+		if (irq == MTK_MCQ_INVALID_IRQ) {
+			dev_err(hba->dev,
+			    "invalid irq. unable to bind irq to cpu%d\n", i);
+		}
+
+		cpu = boost ? aff_boost[i] : aff_original[i];
+
+		ret = irq_set_affinity(irq, cpumask_of(cpu));
+		if (ret) {
+			dev_err(hba->dev, "set irq %d affinity to CPU %d failed\n",
+				irq, cpu);
+		}
+	}
+}
+
+static ssize_t irq_affinity_boost_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct ufs_hba *hba = dev_get_drvdata(dev);
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+	ssize_t size = 0;
+	int value;
+
+	value = atomic_read(&host->irq_affinity_boost);
+	size += snprintf(buf + size, PAGE_SIZE, "%d\n", value);
+
+	return size;
+}
+
+static ssize_t irq_affinity_boost_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct ufs_hba *hba = dev_get_drvdata(dev);
+	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
+	const char *opcode = buf;
+	u32 boost;
+
+	if (kstrtou32(opcode, 0, &boost) || boost > 1)
+		return -EINVAL;
+
+	if (boost == atomic_xchg(&host->irq_affinity_boost, boost))
+		return count;
+
+	if (boost)
+		irq_affinity_boost(hba, true);
+	else
+		irq_affinity_boost(hba, false);
+
+	return count;
+}
+
 static DEVICE_ATTR_RW(skip_blocktag);
 static DEVICE_ATTR_RW(dbg_tp_unregister);
+static DEVICE_ATTR_RW(irq_affinity_boost);
 
 static struct attribute *ufs_mtk_sysfs_attrs[] = {
 	&dev_attr_skip_blocktag.attr,
 	&dev_attr_dbg_tp_unregister.attr,
+	&dev_attr_irq_affinity_boost.attr,
 	NULL
 };
 

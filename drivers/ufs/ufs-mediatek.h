@@ -298,6 +298,7 @@ struct ufs_mtk_host {
 	atomic_t clkscale_control;
 	atomic_t skip_btag;
 	atomic_t dbg_tp_unregister;
+	atomic_t irq_affinity_boost;
 	u16 ref_clk_ungating_wait_us;
 	u16 ref_clk_gating_wait_us;
 	u32 ip_ver;
