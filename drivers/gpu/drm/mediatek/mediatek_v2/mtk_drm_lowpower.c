@@ -2466,6 +2466,7 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 	unsigned long long start, end;
 	char *perf_string = NULL;
 	unsigned int cpu_online_start = 0, cpu_online_end = 0;
+	int comp_idx;
 
 	DDPINFO("crtc%d do %s+\n", crtc_id, __func__);
 
@@ -2731,6 +2732,12 @@ static void mtk_drm_idlemgr_enable_crtc(struct drm_crtc *crtc)
 		if (cmp_id < DDP_COMPONENT_ID_MAX)
 			mtk_ddp_comp_io_cmd(priv->ddp_comp[cmp_id],
 				NULL, PMQOS_UPDATE_BW, NULL);
+		if (mtk_crtc->is_dual_pipe) {
+			comp_idx = dual_pipe_comp_mapping(priv->data->mmsys_id, cmp_id);
+
+			if (comp_idx < DDP_COMPONENT_ID_MAX)
+				mtk_ddp_comp_io_cmd(priv->ddp_comp[comp_idx], NULL, PMQOS_UPDATE_BW, NULL);
+		}
 	}
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
 		mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_UPDATE_BW, NULL);

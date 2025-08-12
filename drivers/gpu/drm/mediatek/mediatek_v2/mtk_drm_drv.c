@@ -121,7 +121,9 @@
 #define DRIVER_MINOR 0
 #define IDLE_FPS 10 /*when fps is less than or euqal to 10, hwc not sending hw vsync*/
 
-//#define DRM_BYPASS_PQ_MT6993 /* 6993 bring up without PQ */
+#if IS_ENABLED(CONFIG_MTK_DISPLAY_DUAL_PIPE_DUAL_PORT_SUPPORT)
+#define DRM_BYPASS_PQ_MT6993 /* 6993 bring up without PQ */
+#endif
 
 void disp_dbg_deinit(void);
 void disp_dbg_probe(void);
@@ -4093,6 +4095,9 @@ static struct pwr_clk_map pwr_clk_map[] = {
 
 static const enum pwr_clk_id mt6993_pwr_on_order[] = {
 	CLK_DSI_PHY0,
+#if IS_ENABLED(CONFIG_MTK_DISPLAY_DUAL_PIPE_DUAL_PORT_SUPPORT)
+	CLK_DSI_PHY1,
+#endif
 	CLK_DIS0_A,
 	CLK_DIS0_B,
 	CLK_DIS1_A,
@@ -4103,7 +4108,6 @@ static const enum pwr_clk_id mt6993_pwr_on_order[] = {
 	CLK_MML0,
 	CLK_MML1,
 	CLK_MML2,
-
 };
 
 static const enum pwr_clk_id mt6993_pwr_off_order[] = {
@@ -4118,6 +4122,9 @@ static const enum pwr_clk_id mt6993_pwr_off_order[] = {
 	CLK_MML1,
 	CLK_MML2,
 	CLK_DSI_PHY0,
+#if IS_ENABLED(CONFIG_MTK_DISPLAY_DUAL_PIPE_DUAL_PORT_SUPPORT)
+	CLK_DSI_PHY1,
+#endif
 };
 
 
@@ -4246,6 +4253,7 @@ static const enum mtk_ddp_comp_id mt6993_mtk_ddp_main_bringup[] = {
 	DDP_COMPONENT_DSI_LPC,
 	DDP_COMPONENT_VDISP_AO,
 #ifndef DRM_BYPASS_PQ_MT6993
+#if !IS_ENABLED(CONFIG_MTK_DISPLAY_DUAL_PIPE_DUAL_PORT_SUPPORT)
 	/* PQ0_OUT_CB0 -> DLO_ASYNC0 -> DLI_ASYC20 -> DISP_CHIST0*/
 	DDP_COMPONENT_DLO_ASYNC0, DDP_COMPONENT_DLI_ASYNC20, DDP_COMPONENT_CHIST0,
 	/* PQ0_OUT_CB3 -> DLO_ASYNC1 -> DLI_ASYC21 -> DISP_CHIST1*/
@@ -4256,6 +4264,50 @@ static const enum mtk_ddp_comp_id mt6993_mtk_ddp_main_bringup[] = {
 	DDP_COMPONENT_DLI_ASYNC30, DDP_COMPONENT_INSIDE_PC_CB1,
 	DDP_COMPONENT_DBI_COUNT0,
 #endif
+#endif
+};
+
+static const enum mtk_ddp_comp_id mt6993_mtk_ovlsys_dual_main_bringup[] = {
+	DDP_COMPONENT_OVL1_EXDMA3,
+	DDP_COMPONENT_OVL1_BLENDER1,
+	DDP_COMPONENT_OVL1_EXDMA4,
+	DDP_COMPONENT_OVL1_BLENDER2,
+	DDP_COMPONENT_OVL1_EXDMA5,
+	DDP_COMPONENT_OVL1_BLENDER3,
+	DDP_COMPONENT_OVL1_EXDMA6,
+	DDP_COMPONENT_OVL1_BLENDER4,
+	DDP_COMPONENT_OVL1_EXDMA7,
+	DDP_COMPONENT_OVL1_BLENDER5,
+	DDP_COMPONENT_OVL1_EXDMA2,
+	DDP_COMPONENT_OVL1_EXDMA_OUT_CB3,
+	DDP_COMPONENT_OVL1_BLENDER6,
+	DDP_COMPONENT_OVL1_OUTPROC0,
+	//DDP_COMPONENT_OVL0_OUTPROC_OUT_CB6,
+	DDP_COMPONENT_OVLSYS1_DLO_ASYNC14,
+	DDP_COMPONENT_OVL_EXDMA0,
+};
+
+static const enum mtk_ddp_comp_id mt6993_mtk_ddp_dual_main_bringup[] = {
+	DDP_COMPONENT_SYS_B_DLI_ASYNC0,
+#ifdef DRM_BYPASS_PQ_MT6993
+	DDP_COMPONENT_SYS_B_PQ0_OUT_CB3,
+#elif defined(PQ_PATH_11)
+	DDP_COMPONENT_SYS_B_MDP_RSZ0,		DDP_COMPONENT_SYS_B_TDSHP0,
+	DDP_COMPONENT_SYS_B_AAL0,		DDP_COMPONENT_SYS_B_DMDP_AAL0,
+	DDP_COMPONENT_SYS_B_COLOR0,		DDP_COMPONENT_SYS_B_CCORR0,
+	DDP_COMPONENT_SYS_B_C3D0,		DDP_COMPONENT_SYS_B_CCORR1,
+	DDP_COMPONENT_SYS_B_C3D1,		DDP_COMPONENT_SYS_B_GAMMA0,
+	DDP_COMPONENT_SYS_B_POSTMASK0,	DDP_COMPONENT_SYS_B_DITHER0,
+	DDP_COMPONENT_SYS_B_PQ0_OUT_CB0,
+#endif
+	DDP_COMPONENT_SYS_B_DLO_ASYNC11, DDP_COMPONENT_DLI_ASYNC11,
+	DDP_COMPONENT_DLO_ASYNC1, DDP_COMPONENT_DLI_ASYNC21,
+	DDP_COMPONENT_SPLITTER0_IN_CB1,
+	DDP_COMPONENT_SPLITTER0_OUT_CB1,
+	DDP_COMPONENT_COMP0_OUT_CB1,
+	DDP_COMPONENT_MERGE0_OUT_CB1,
+	//DDP_COMPONENT_DSI_LPC,
+	//DDP_COMPONENT_VDISP_AO,
 };
 
 static const enum mtk_ddp_comp_id mt6993_mtk_ddp_mem_dp_wo_tdshp[] = {
@@ -5095,6 +5147,10 @@ static const struct mtk_addon_module_data mt6993_addon_ovl_rsz_data[] = {
 	{OVL_RSZ_2, ADDON_BEFORE, DDP_COMPONENT_OVL0_BLENDER1},
 	//{OVL_RSZ_3, ADDON_BEFORE, DDP_COMPONENT_OVL1_BLENDER9},
 };
+static const struct mtk_addon_module_data mt6993_addon_ovl_rsz1_data[] = {
+	//{OVL_RSZ_2, ADDON_BEFORE, DDP_COMPONENT_OVL0_BLENDER1},
+	{OVL_RSZ_3, ADDON_BEFORE, DDP_COMPONENT_OVL1_BLENDER1},
+};
 
 static const struct mtk_addon_scenario_data mt6993_addon_main[ADDON_SCN_NR] = {
 	[NONE] = {
@@ -5146,8 +5202,25 @@ static const struct mtk_addon_scenario_data mt6993_addon_main[ADDON_SCN_NR] = {
 	},
 };
 
+static const struct mtk_addon_scenario_data mt6993_addon_main_dual[ADDON_SCN_NR] = {
+	[NONE] = {
+		.module_num = 0,
+		.hrt_type = HRT_TB_TYPE_GENERAL1,
+	},
+	[ONE_SCALING] = {
+		.module_num = ARRAY_SIZE(mt6993_addon_ovl_rsz1_data),
+		.module_data = mt6993_addon_ovl_rsz1_data,
+		.hrt_type = HRT_TB_TYPE_GENERAL1,
+	},
+};
+
 static const enum mtk_ddp_comp_id mt6993_scaling_main[] = {
 	DDP_COMPONENT_MDP_RSZ0,
+};
+
+
+static const enum mtk_ddp_comp_id mt6993_scaling_main_dual[] = {
+	DDP_COMPONENT_MDP_RSZ1,
 };
 
 static const struct mtk_addon_scenario_data mt6993_addon_ext[ADDON_SCN_NR] = {
@@ -6314,14 +6387,14 @@ static const struct mtk_crtc_path_data mt6993_mtk_main_path_data = {
 //	.path[DDP_MINOR][0] = mt6993_mtk_ddp_main_bringup_minor,
 //	.path_len[DDP_MINOR][0] = ARRAY_SIZE(mt6989_mtk_ddp_main_bringup_minor),
 //	.path_req_hrt[DDP_MINOR][0] = true,
-//	.dual_ovl_path[0] = mt6989_mtk_ovlsys_dual_main_bringup,
-//	.dual_ovl_path_len[0] = ARRAY_SIZE(mt6989_mtk_ovlsys_dual_main_bringup),
-//	.dual_path[0] = mt6989_mtk_ddp_dual_main_bringup,
-//	.dual_path_len[0] = ARRAY_SIZE(mt6989_mtk_ddp_dual_main_bringup),
+	.dual_ovl_path[0] = mt6993_mtk_ovlsys_dual_main_bringup,
+	.dual_ovl_path_len[0] = ARRAY_SIZE(mt6993_mtk_ovlsys_dual_main_bringup),
+	.dual_path[0] = mt6993_mtk_ddp_dual_main_bringup,
+	.dual_path_len[0] = ARRAY_SIZE(mt6993_mtk_ddp_dual_main_bringup),
 //	.wb_path[DDP_MAJOR] = mt6983_mtk_ddp_main_wb_path,
 //	.wb_path_len[DDP_MAJOR] = ARRAY_SIZE(mt6983_mtk_ddp_main_wb_path),
 	.addon_data = mt6993_addon_main,
-//	.addon_data_dual = mt6989_addon_main_dual,
+	.addon_data_dual = mt6989_addon_main_dual,
 	.scaling_data = mt6993_scaling_main,
 //	.scaling_data_dual = mt6989_scaling_main_dual,
 };

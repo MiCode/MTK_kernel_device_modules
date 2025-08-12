@@ -866,6 +866,9 @@ void mtk_disp_update_channel_hrt_common(struct mtk_drm_crtc *mtk_crtc,
 	if (!mtk_crtc->ddp_ctx[mtk_crtc->ddp_mode].req_hrt[DDP_FIRST_PATH])
 		return;
 
+	if (mtk_crtc->is_dual_pipe)
+		bw_base = bw_base * 5 / 8;
+
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
 		if (((mtk_ddp_comp_get_type(comp->id) == MTK_OVL_EXDMA) &&
 			(comp->id != DDP_COMPONENT_OVL_EXDMA0))||
@@ -882,6 +885,17 @@ void mtk_disp_update_channel_hrt_common(struct mtk_drm_crtc *mtk_crtc,
 		}
 	}
 
+	if (mtk_crtc->is_dual_pipe) {
+		for_each_comp_in_dual_pipe(comp, mtk_crtc, i, j) {
+			if ((mtk_ddp_comp_get_type(comp->id) == MTK_OVL_EXDMA &&
+			    comp->id != DDP_COMPONENT_OVL_EXDMA0) ||
+			    mtk_ddp_comp_get_type(comp->id) == MTK_DISP_MDP_RDMA) {
+				type = CHANNEL_HRT_READ;
+				ssc_bw = mtk_disp_get_ssc_bw(comp, type, bw_base);
+				subcomm_bw_sum[ssc_bw.ssc_id] += ssc_bw.bw;
+			}
+		}
+	}
 	if (ssc_cnt == 0) {
 		DDPPR_ERR("ssc_cnt not exist\n");
 		return;
@@ -923,7 +937,18 @@ void mtk_disp_update_channel_hrt_write_common(struct mtk_drm_crtc *mtk_crtc,
 		ssc_bw = mtk_disp_get_ssc_bw(comp, type, bw_base);
 		subcomm_bw_sum[ssc_bw.ssc_id] += ssc_bw.bw;
 	}
-
+	if (mtk_crtc->is_dual_pipe) {
+		for_each_comp_in_dual_pipe(comp, mtk_crtc, i, j) {
+			/* update wdma total bw for cwb */
+			if (crtc_state->prop_val[CRTC_PROP_OUTPUT_ENABLE]) {
+				scn = mtk_crtc_wb_get_scn(crtc_state);
+				comp = mtk_disp_get_wdma_comp_by_scn(crtc, scn);
+				type = CHANNEL_HRT_WRITE;
+				ssc_bw = mtk_disp_get_ssc_bw(comp, type, bw_base);
+				subcomm_bw_sum[ssc_bw.ssc_id] += ssc_bw.bw;
+			}
+		}
+	}
 	if (ssc_cnt == 0) {
 		DDPPR_ERR("ssc_cnt not exist\n");
 		return;
@@ -1550,16 +1575,20 @@ void mtk_drm_pan_disp_set_hrt_bw(struct drm_crtc *crtc, const char *caller)
 		comp = mtk_drm_get_pan_disp_comp(mtk_crtc);
 		if (!IS_ERR_OR_NULL(comp)) {
 			mtk_ddp_comp_io_cmd(comp, NULL, OVL_COMP_TO_PHY_ID, &phy_id);
-			DDPINFO("get fisrt exdma comp:%s, phy_id:%u\n",
+			DDPINFO("get first exdma comp:%s, phy_id:%u\n",
 					mtk_dump_comp_str_id(comp->id), phy_id);
 			mtk_crtc->usage_ovl_fmt[phy_id] = 4;
+			if(mtk_crtc->is_dual_pipe)
+				mtk_crtc->usage_ovl_fmt[phy_id + mtk_crtc->real_layer_nr] = 4;
 		} else
 			DDPPR_ERR("%s can not get first exdma from lk\n", __func__);
 	} else if (priv->data->mmsys_id == MMSYS_MT6991)
 		mtk_crtc->usage_ovl_fmt[1] = 4;
-	else if (priv->data->mmsys_id == MMSYS_MT6993)
+	else if (priv->data->mmsys_id == MMSYS_MT6993) {
 		mtk_crtc->usage_ovl_fmt[0] = 4;
-
+		if (mtk_crtc->is_dual_pipe)
+			mtk_crtc->usage_ovl_fmt[mtk_crtc->real_layer_nr] = 4;
+	}
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MAX_CHANNEL_HRT)) {
 		mtk_crtc->usage_ovl_fmt[0] = 4;
 		slot = mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_CUR_BW_VAL(0));

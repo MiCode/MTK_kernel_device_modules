@@ -799,13 +799,15 @@ static void mtk_ovl_exdma_all_layer_off(struct mtk_ddp_comp *comp,
 
 	DDPINFO("%s+ %s pkt: %p\n", __func__, mtk_dump_comp_str(comp), handle);
 	if (keep_first_layer) {
-		if (comp->id == DDP_COMPONENT_OVL_EXDMA2 || comp->id == DDP_COMPONENT_OVL_EXDMA3) {
+		if (comp->id == DDP_COMPONENT_OVL_EXDMA2 || comp->id == DDP_COMPONENT_OVL_EXDMA3 ||
+		    (comp->mtk_crtc->is_dual_pipe && (comp->id == DDP_COMPONENT_OVL1_EXDMA2 ||
+		    comp->id == DDP_COMPONENT_OVL1_EXDMA3))) {
 			DDPINFO("%s+ %s not off\n", __func__, mtk_dump_comp_str(comp));
 			return;
 		}
 	}
 
-	if (comp && comp->bind_comp && comp->bind_comp->funcs && comp->bind_comp->funcs->stop) {
+	if (comp && comp->bind_comp && comp->bind_comp->funcs && comp->bind_comp->funcs->layer_off) {
 		DDPINFO("%s+ %s bind stop\n", __func__, mtk_dump_comp_str(comp));
 		comp->bind_comp->funcs->layer_off(comp->bind_comp, 0, 0, handle);
 	}
@@ -903,8 +905,10 @@ static void mtk_ovl_exdma_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 		comp->regs_pa + regs[OVL_EXDMA_DATAPATH_CON],
 		value, mask);
 
-	if (priv->data->ovl_exdma_rule
-		&& comp->id == mtk_addon_path_get_cmp(crtc, 0, ONE_SCALING, MTK_OVL_EXDMA)) {
+	if (priv->data->ovl_exdma_rule &&
+	    (comp->id == mtk_addon_path_get_cmp(crtc, 0, ONE_SCALING, MTK_OVL_EXDMA) ||
+	    (mtk_crtc->is_dual_pipe && (DUAL_MAPPING_LEFT_EXDMA(comp->id)) ==
+	    mtk_addon_path_get_cmp(crtc, 0, ONE_SCALING, MTK_OVL_EXDMA)))) {
 		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa
 			+ regs[OVL_EXDMA_DATAPATH_CON],
 			OVL_EXDMA_OUTPUT_CLAMP, REG_FLD_MASK(reg_fld[FLD_OUTPUT_CLAMP]));
@@ -3657,6 +3661,8 @@ static void mtk_ovl_exdma_addon_config(struct mtk_ddp_comp *comp,
 	const u16 *regs = exdma->data->regs;
 	const u32 *reg_fld = exdma->data->reg_fld;
 
+	DDPINFO("%s+ %s\n", __func__, mtk_dump_comp_str(comp));
+
 	mtk_crtc = comp->mtk_crtc;
 	crtc = &mtk_crtc->base;
 	crtc_state = to_mtk_crtc_state(crtc->state);
@@ -3760,8 +3766,10 @@ static void mtk_ovl_exdma_addon_config(struct mtk_ddp_comp *comp,
 
 		mtk_ovl_exdma_golden_setting(comp, config->is_dc, handle);
 
-		if (priv->data->ovl_exdma_rule
-			&& comp->id == mtk_addon_path_get_cmp(crtc, 0, ONE_SCALING, MTK_OVL_EXDMA)) {
+		if (priv->data->ovl_exdma_rule &&
+		    (comp->id == mtk_addon_path_get_cmp(crtc, 0, ONE_SCALING, MTK_OVL_EXDMA) ||
+		    (mtk_crtc->is_dual_pipe && (DUAL_MAPPING_LEFT_EXDMA(comp->id)) ==
+		    mtk_addon_path_get_cmp(crtc, 0, ONE_SCALING, MTK_OVL_EXDMA)))) {
 			cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa
 				+ regs[OVL_EXDMA_DATAPATH_CON], OVL_EXDMA_OUTPUT_CLAMP,
 				REG_FLD_MASK(reg_fld[FLD_OUTPUT_CLAMP]));
@@ -3796,10 +3804,14 @@ static void mtk_ovl_exdma_config_begin(struct mtk_ddp_comp *comp, struct cmdq_pk
 	if (comp->mtk_crtc->base.index != 0)
 		return;
 
+	DDPINFO("%s+ %s\n", __func__, mtk_dump_comp_str(comp));
+
 	crtc_state = to_mtk_crtc_state(crtc->state);
 
 	if (priv->data->ovl_exdma_rule &&
-		comp->id == mtk_addon_path_get_cmp(crtc, 0, ONE_SCALING, MTK_OVL_EXDMA)) {
+	    (comp->id == mtk_addon_path_get_cmp(crtc, 0, ONE_SCALING, MTK_OVL_EXDMA) ||
+	    (mtk_crtc->is_dual_pipe && (DUAL_MAPPING_LEFT_EXDMA(comp->id)) ==
+	    mtk_addon_path_get_cmp(crtc, 0, ONE_SCALING, MTK_OVL_EXDMA)))) {
 		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa
 			+ regs[OVL_EXDMA_DATAPATH_CON], OVL_EXDMA_OUTPUT_CLAMP,
 			REG_FLD_MASK(reg_fld[FLD_OUTPUT_CLAMP]));
@@ -4127,11 +4139,14 @@ static int mtk_ovl_replace_bootup_mva(struct mtk_ddp_comp *comp,
 		aid_sel_offset = mtk_ovl_aid_sel(comp);
 
 		if (mmsys_reg && aid_sel_offset &&
-			(comp->id == DDP_COMPONENT_OVL_EXDMA3 || comp->id == DDP_COMPONENT_OVL_EXDMA4))
+		    (comp->id == DDP_COMPONENT_OVL_EXDMA3 || comp->id == DDP_COMPONENT_OVL_EXDMA4 ||
+		    (comp->mtk_crtc->is_dual_pipe && (comp->id == DDP_COMPONENT_OVL1_EXDMA3 ||
+		    comp->id == DDP_COMPONENT_OVL1_EXDMA4))))
 			cmdq_pkt_write(handle, comp->cmdq_base,	mmsys_reg + aid_sel_offset,
 				0x0, 0x7);
 		layer_addr = read_phy_layer_addr(comp, 0);
-		if (comp->id == DDP_COMPONENT_OVL_EXDMA2 || comp->id == DDP_COMPONENT_OVL_EXDMA3) {
+		if (comp->id == DDP_COMPONENT_OVL_EXDMA2 || comp->id == DDP_COMPONENT_OVL_EXDMA3 ||
+		    comp->id == DDP_COMPONENT_OVL1_EXDMA2 || comp->id == DDP_COMPONENT_OVL1_EXDMA3) {
 			DDPMSG("%s, replace mva same as pa %pad\n", __func__, &layer_addr);
 			/* TODO: add helper */
 			/* mtk_crtc->lk_dma_addr = layer_addr; */

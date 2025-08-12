@@ -1202,6 +1202,7 @@ struct mtk_drm_crtc {
 	struct cmdq_pkt *bwm_loop_cmdq_handle;
 	struct mtk_drm_plane *planes;
 	unsigned int layer_nr;
+	unsigned int real_layer_nr;
 	bool pending_planes;
 	unsigned int ovl_usage_status;
 	void __iomem *ovlsys0_regs;
@@ -1932,3 +1933,4 @@ struct mtk_ddp_comp *mtk_crtc_get_comp_with_index(struct mtk_drm_crtc *mtk_crtc,
 struct mtk_ddp_comp *mtk_disp_get_wdma_comp_by_scn(struct drm_crtc *crtc, enum addon_scenario scn);
 enum addon_scenario mtk_crtc_wb_get_scn(struct mtk_crtc_state *state);
 #endif /* MTK_DRM_CRTC_H */
+bool mtk_crtc_is_dual_pipe(struct drm_crtc *crtc);

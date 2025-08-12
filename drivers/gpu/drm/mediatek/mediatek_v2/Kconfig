@@ -78,6 +78,15 @@ config MTK_MT6382_BDG
 	  Normal project will disable it first
 	  If you are not sure about this, do not set it to y
 
+config MTK_DISPLAY_DUAL_PIPE_DUAL_PORT_SUPPORT
+	bool "support lcm dual pipe and dual dsi port"
+	help
+	  This config decide if device support lcm dual pipe and dual dsi port
+	  If dsi support dual port, dual dsc may also should support
+	  If this value is Y, display maybe dual pipe
+	  If dsi support dual port, each dsi could calculate lower mmclk, and
+	  support more types lcm
+
 config MTK_SE_SUPPORT
 	bool "Support auto RVC and AVM"
 	help

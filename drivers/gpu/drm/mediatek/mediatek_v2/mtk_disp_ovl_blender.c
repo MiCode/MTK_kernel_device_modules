@@ -64,7 +64,6 @@
 /*Specific value define*/
 
 
-
 /*OVL_BLD_DATAPATH_CON*/
 #define DISP_BGCLR_IN_SEL				BIT(0)
 #define DISP_BGCLR_OUT_TO_PROC			BIT(4)
@@ -297,7 +296,7 @@ int mtk_ovl_blender_analysis(struct mtk_ddp_comp *comp)
 	path_con = readl(regs[OVL_BLD_DATAPATH_CON] + baddr);
 
 	DDPDUMP("== %s ANALYSIS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
-	DDPDUMP("ovl_en=%d,\nbgclr_in_sel=%d, out_sel=%x\n",
+	DDPDUMP("ovl_en=%d,bgclr_in_sel=%d, out_sel=%x\n",
 		ovl_en & 0x1,
 		REG_FLD_VAL_GET(reg_fld[FLD_BLD_BGCLR_IN_SEL], path_con),
 		REG_FLD_VAL_GET(reg_fld[FLD_BGCLR_OUT_SEL], path_con));
@@ -359,17 +358,17 @@ static void mtk_ovl_blender_all_layer_off(struct mtk_ddp_comp *comp,
 	struct mtk_disp_ovl_blender *bld = comp_to_ovl_blender(comp);
 	const u16 *regs = bld->data->regs;
 
-	DDPINFO("%s+ %s\n", __func__, mtk_dump_comp_str(comp));
-
+	DDPINFO("%s+ %s id:%d  keep_first_layer:%d\n", __func__, mtk_dump_comp_str(comp), comp->id, keep_first_layer);
 	if (keep_first_layer) {
-		if (comp->id == DDP_COMPONENT_OVL0_BLENDER0 || comp->id == DDP_COMPONENT_OVL0_BLENDER1) {
+		if (comp->id == DDP_COMPONENT_OVL0_BLENDER0 || comp->id == DDP_COMPONENT_OVL0_BLENDER1 ||
+		    (comp->mtk_crtc->is_dual_pipe &&
+		    (comp->id == mtk_ddp_get_nth_comp(comp->mtk_crtc, MTK_OVL_BLENDER, 0, true)))) {
 			DDPINFO("%s+ %s not off\n", __func__, mtk_dump_comp_str(comp));
 			mtk_drm_crtc_blender_ovl_path(comp->mtk_crtc, comp, handle, false);
 			mtk_ovl_blender_connect(comp, handle, 0, 0);
 			return;
 		}
 	}
-
 	/**
 	 * cmdq_pkt_write(handle, comp->cmdq_base,
 	 *		   comp->regs_pa + DISP_REG_OVL_BLD_DATAPATH_CON, 0, ~0);
@@ -389,7 +388,10 @@ static void mtk_ovl_blender_config(struct mtk_ddp_comp *comp,
 	const u16 *regs = bld->data->regs;
 	unsigned int width = 0, height = 0;
 
-	width = cfg->w;
+	if (comp->mtk_crtc->is_dual_pipe)
+		width = cfg->w / 2;
+	else
+		width = cfg->w;
 
 	if (bld->set_partial_update != MTK_PARTIAL_UPDATE_SISO)
 		height = cfg->h;
@@ -649,6 +651,8 @@ static int mtk_ovl_blender_first_layer(struct mtk_ddp_comp *comp)
 
 	if (first_blender && (first_blender->id == comp->id))
 		return 1;
+	else if(first_blender && comp->mtk_crtc->is_dual_pipe && (DUAL_MAPPING_BLENDER(first_blender->id) == comp->id))
+		return 1;
 	else
 		return 0;
 }
@@ -661,9 +665,13 @@ static void mtk_ovl_blender_connect(struct mtk_ddp_comp *comp, struct cmdq_pkt *
 	struct mtk_disp_ovl_blender *bld = comp_to_ovl_blender(comp);
 	const u16 *regs = bld->data->regs;
 	unsigned int ovl_bld_con_val = 0;
+	struct mtk_ddp_comp *last_blender;
 
 	if (comp->funcs->first_layer)
 		crtc_first_layer = comp->funcs->first_layer(comp);
+
+	last_blender = comp->mtk_crtc->last_blender;
+
 	DDPINFO("%s,%d, prev %s, next %s, %d\n", __func__, __LINE__,
 		mtk_dump_comp_str_id(prev), mtk_dump_comp_str_id(next), comp->id);
 
@@ -672,7 +680,7 @@ static void mtk_ovl_blender_connect(struct mtk_ddp_comp *comp, struct cmdq_pkt *
 	else
 		ovl_bld_con_val |= DISP_BGCLR_IN_SEL;
 
-	if (comp->mtk_crtc->last_blender != comp ||
+	if ((last_blender != comp && (DUAL_MAPPING_BLENDER(last_blender->id) != comp->id))||
 			((mtk_ddp_comp_get_type(next) == MTK_OVL_BLENDER ||
 			mtk_ddp_comp_get_type(next) == MTK_OVL_EXDMA) &&
 			next != DDP_COMPONENT_ID_MAX)) {

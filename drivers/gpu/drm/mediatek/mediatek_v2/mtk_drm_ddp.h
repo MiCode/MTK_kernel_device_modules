@@ -24,6 +24,10 @@
 #define DISP_MUTEX_INT_MSK                                                     \
 	((__DISP_MUTEX_INT_MSK << DISP_MUTEX_TOTAL) | __DISP_MUTEX_INT_MSK)
 
+#define DUAL_MAPPING_BLENDER(n) ((n) + 10)
+#define DUAL_MAPPING_EXDMA(n) ((n) + 10)
+#define DUAL_MAPPING_OUTPROC(n) ((n) + 6)
+#define DUAL_MAPPING_LEFT_EXDMA(n) ((n) - 10)
 /* CHIST path select*/
 #define DISP_CHIST0_FROM_RDMA0_POS 0
 #define DISP_CHIST1_FROM_RDMA0_POS 1
@@ -342,6 +346,9 @@ void mtk_ddp_remove_comp_from_path_with_cmdq(struct mtk_drm_crtc *mtk_crtc,
 					     enum mtk_ddp_comp_id cur,
 					     enum mtk_ddp_comp_id next,
 					     struct cmdq_pkt *handle);
+
+unsigned int mtk_ddp_get_nth_comp(struct mtk_drm_crtc *mtk_crtc, enum mtk_ddp_comp_type type,
+				  unsigned int index, bool is_dual);
 
 struct mtk_disp_mutex *mtk_disp_mutex_get(struct device *dev, unsigned int id);
 int mtk_disp_mutex_prepare(struct mtk_disp_mutex *mutex);

@@ -773,7 +773,8 @@ unsigned long long _layering_get_frame_bw(struct drm_crtc *crtc,
 		return bw_base;
 
 	fps = vact_fps;
-
+	if (mtk_crtc->is_dual_pipe)
+		width = width / 2;
 	bw_base = (unsigned long long)width * height * fps * 125 * 4;
 
 	bw_base = DO_COMMON_DIV(bw_base, 100 * 1024 * 1024);
