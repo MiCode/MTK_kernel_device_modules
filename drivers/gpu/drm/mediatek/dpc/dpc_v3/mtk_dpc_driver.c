@@ -1523,6 +1523,7 @@ static void dpc_ch_bw_set_v2(const u32 subsys, const u8 idx, const u32 bw_in_mb)
 {
 	u32 value = 0;
 	u32 ch_bw = bw_in_mb;
+	u32 mask = 0x1fff;
 
 	if (bw_in_mb > 0) {
 		/* debug only: report bw for mminfra frequency lower bound */
@@ -1531,15 +1532,19 @@ static void dpc_ch_bw_set_v2(const u32 subsys, const u8 idx, const u32 bw_in_mb)
 
 		ch_bw = ch_bw * 100 / g_priv->ch_bw_urate / 16;
 		ch_bw = ch_bw > 0 ? ch_bw : 1;
+		if (ch_bw > mask) {
+			DPCERR("subsys(%u) idx(%u) bw_in_mb(%u) ch_bw(%u)MB", subsys, idx, bw_in_mb, ch_bw * 16);
+			ch_bw = mask;
+		}
 	}
 
 	if (idx < 24) {
 	/* use display voter for both display and mml, since mml voter is reserved for others */
-		value = readl(dpc_base + g_priv->ch_bw_cfg[idx].offset) & ~(0x3ff << g_priv->ch_bw_cfg[idx].shift);
+		value = readl(dpc_base + g_priv->ch_bw_cfg[idx].offset) & ~(mask << g_priv->ch_bw_cfg[idx].shift);
 		value |= ch_bw << g_priv->ch_bw_cfg[idx].shift;
 
 		if (unlikely(debug_dvfs))
-			DPCFUNC("subsys(%u) idx(%u) bw(%u)MB", subsys, idx, ch_bw);
+			DPCFUNC("subsys(%u) idx(%u) bw(%u)MB", subsys, idx, ch_bw * 16);
 
 		writel(value, dpc_base + g_priv->ch_bw_cfg[idx].offset);
 		dpc_mmp(ch_bw, MMPROFILE_FLAG_PULSE, idx, ch_bw);
@@ -3816,8 +3821,8 @@ static void dpc_analysis_v3(void)
 	written += scnprintf(msg + written, 512 - written,
 		"dram[cfg hrt srt](%#010x %#06x %#06x) ",
 		readl(dpc_base + DISP_REG_DPC_DISP_HRTBW_SRTBW_CFG),
-		(readl(dpc_base + g_priv->ch_bw_cfg[24].offset)) & 0xfff,
-		(readl(dpc_base + g_priv->ch_bw_cfg[25].offset) >> g_priv->ch_bw_cfg[25].shift) & 0xfff);
+		(readl(dpc_base + g_priv->ch_bw_cfg[24].offset)) & 0xffff,
+		(readl(dpc_base + g_priv->ch_bw_cfg[25].offset) >> g_priv->ch_bw_cfg[25].shift) & 0xffff);
 
 	written += scnprintf(msg + written, 512 - written,
 		"[ddremi mminfra](%#010x %#08x)(%#010x %#08x) ",
@@ -3839,16 +3844,16 @@ static void dpc_analysis_v3(void)
 
 	written += scnprintf(msg + written, 512 - written,
 		"ch[hrt srt w](%#04x %#04x %#04x %#04x)(%#04x %#04x %#04x %#04x)(%#04x %#04x) dt",
-		(readl(dpc_base + g_priv->ch_bw_cfg[2].offset) >> g_priv->ch_bw_cfg[2].shift) & 0xfff,
-		(readl(dpc_base + g_priv->ch_bw_cfg[6].offset) >> g_priv->ch_bw_cfg[6].shift) & 0xfff,
-		(readl(dpc_base + g_priv->ch_bw_cfg[10].offset) >> g_priv->ch_bw_cfg[10].shift) & 0xfff,
-		(readl(dpc_base + g_priv->ch_bw_cfg[14].offset) >> g_priv->ch_bw_cfg[14].shift) & 0xfff,
-		(readl(dpc_base + g_priv->ch_bw_cfg[0].offset) >> g_priv->ch_bw_cfg[0].shift) & 0xfff,
-		(readl(dpc_base + g_priv->ch_bw_cfg[4].offset) >> g_priv->ch_bw_cfg[4].shift) & 0xfff,
-		(readl(dpc_base + g_priv->ch_bw_cfg[8].offset) >> g_priv->ch_bw_cfg[8].shift) & 0xfff,
-		(readl(dpc_base + g_priv->ch_bw_cfg[12].offset) >> g_priv->ch_bw_cfg[12].shift) & 0xfff,
-		(readl(dpc_base + g_priv->ch_bw_cfg[7].offset) >> g_priv->ch_bw_cfg[7].shift) & 0xfff,
-		(readl(dpc_base + g_priv->ch_bw_cfg[11].offset) >> g_priv->ch_bw_cfg[11].shift) & 0xfff);
+		(readl(dpc_base + g_priv->ch_bw_cfg[2].offset) >> g_priv->ch_bw_cfg[2].shift) & 0xffff,
+		(readl(dpc_base + g_priv->ch_bw_cfg[6].offset) >> g_priv->ch_bw_cfg[6].shift) & 0xffff,
+		(readl(dpc_base + g_priv->ch_bw_cfg[10].offset) >> g_priv->ch_bw_cfg[10].shift) & 0xffff,
+		(readl(dpc_base + g_priv->ch_bw_cfg[14].offset) >> g_priv->ch_bw_cfg[14].shift) & 0xffff,
+		(readl(dpc_base + g_priv->ch_bw_cfg[0].offset) >> g_priv->ch_bw_cfg[0].shift) & 0xffff,
+		(readl(dpc_base + g_priv->ch_bw_cfg[4].offset) >> g_priv->ch_bw_cfg[4].shift) & 0xffff,
+		(readl(dpc_base + g_priv->ch_bw_cfg[8].offset) >> g_priv->ch_bw_cfg[8].shift) & 0xffff,
+		(readl(dpc_base + g_priv->ch_bw_cfg[12].offset) >> g_priv->ch_bw_cfg[12].shift) & 0xffff,
+		(readl(dpc_base + g_priv->ch_bw_cfg[7].offset) >> g_priv->ch_bw_cfg[7].shift) & 0xffff,
+		(readl(dpc_base + g_priv->ch_bw_cfg[11].offset) >> g_priv->ch_bw_cfg[11].shift) & 0xffff);
 
 	for (i = 0; i < DPC2_VIDLE_CNT; i ++) /* TODO: priv->dt_cnt */
 		if (g_priv->dpc2_dt_usage[i].en)
