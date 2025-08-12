@@ -9047,13 +9047,26 @@ dramc: dramc@10230000 {
 			&mt6369_vant18
 			&mt6369_vaux18>;
 	};
-	// PMIC TODO:
-#if 0
-	pmic_ecid: pmic-ecid {
-		compatible = "mediatek,mt6363-efuse",
-		status = "disabled";
-	}
-#endif
+
+	pmic-ecid {
+		compatible = "mediatek,mt6363-efuse";
+		mt6363-ecid {
+			ecid = /bits/ 16 <0 0 0 0>;
+			slvid = <4>;
+		};
+		mt6369-ecid {
+			ecid = /bits/ 16 <0 0 0 0>;
+			slvid = <5>;
+		};
+		mt6685-ecid {
+			ecid =  /bits/ 16 <0 0 0 0>;
+			slvid = <9>;
+		};
+		mt6319-6-ecid {
+			ecid =  /bits/ 16 <0 0 0 0 0 0 0 0>;
+			slvid = <6>;
+		};
+	};
 
 	speech_usip_mem: speech-usip-mem {
 		compatible = "mediatek,speech-usip-mem";
