@@ -20,9 +20,9 @@ static int loom_task_cfg_length;
 static int loom_render_num;
 static HLIST_HEAD(loom_render_list);
 static HLIST_HEAD(loom_task_cfg);
-static DEFINE_MUTEX(render_lock);
-static DEFINE_MUTEX(cfg_lock);
-static DEFINE_MUTEX(mode_lock);
+static DEFINE_MUTEX(render_lock);	// main lock for loom
+static DEFINE_MUTEX(cfg_lock);		// lock for loom_task_cfg
+static DEFINE_MUTEX(mode_lock);		// lock for register fpsgo callback
 //static DEFINE_MUTEX(loom_cb_lock);  need or not??
 
 void *loom_alloc(int size)
@@ -296,6 +296,7 @@ struct loom_attr_info *loom_search_add_task_cfg(struct hlist_head *head, int mod
 
 	iter->vip_set = 0;
 	iter->cmask_set = 0;
+	iter->is_exclusive = 0;
 out:
 	return iter;
 }

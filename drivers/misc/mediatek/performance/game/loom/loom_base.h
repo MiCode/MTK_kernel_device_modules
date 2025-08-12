@@ -43,8 +43,9 @@ struct loom_attr_info {
 	int rescue_time;
 	struct hlist_node hlist;
 
-	int vip_set;
-	int cmask_set;
+	int vip_set;		// flag indicates vip is already set
+	int cmask_set;		// flag indicates the cpu mask which is already set
+	int is_exclusive;	// flag indicates whether affinity is cpu dedicated
 };
 
 struct loom_render_info {

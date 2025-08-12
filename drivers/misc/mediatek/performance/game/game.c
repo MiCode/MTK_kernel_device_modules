@@ -254,6 +254,7 @@ static void __exit game_exit(void)
 	if (kGame_task)
 		kthread_stop(kGame_task);
 	set_cpus_allowed_ptr_by_kernel_fp = NULL;
+	loom_set_cpus_allowed_ptr_by_kernel_fp = NULL;
 	loom_exit();
 	game_sysfs_exit();
 }
@@ -267,6 +268,7 @@ static int __init game_init(void)
 		pr_info("register mtk_set_cpus_allowed_ptr hooks failed, returned %d\n", ret);
 
 	set_cpus_allowed_ptr_by_kernel_fp = &set_cpus_allowed_ptr_by_kernel;
+	loom_set_cpus_allowed_ptr_by_kernel_fp = &set_cpus_allowed_ptr_by_kernel;
 
 	kGame_task = kthread_create(gameMain, NULL, "kGameThread");
 	if (kGame_task == NULL) {

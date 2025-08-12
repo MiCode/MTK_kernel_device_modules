@@ -7,6 +7,7 @@
 #define _KERNEL_CORE_CTRL_H
 
 extern int (*set_cpus_allowed_ptr_by_kernel_fp)(struct task_struct *p, const struct cpumask *new_mask);
+extern int (*loom_set_cpus_allowed_ptr_by_kernel_fp)(struct task_struct *p, const struct cpumask *new_mask);
 int set_cpus_allowed_ptr_by_kernel(struct task_struct *p, const struct cpumask *new_mask);
 
 #endif

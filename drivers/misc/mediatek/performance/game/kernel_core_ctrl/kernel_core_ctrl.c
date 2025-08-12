@@ -13,6 +13,7 @@
 #include "common.h"
 #include "eas/eas_plus.h"
 #include "kernel_core_ctrl.h"
+#include "game.h"
 
 int set_cpus_allowed_ptr_by_kernel(struct task_struct *p, const struct cpumask *new_mask)
 {

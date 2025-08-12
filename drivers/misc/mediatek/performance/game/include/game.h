@@ -37,6 +37,8 @@ void game_free(void *pvBuf, int i32Size);
 uint64_t get_now_time(void);
 
 void loom_main_trace(const char *fmt, ...);
+void loom_systrace_c(pid_t pid, unsigned long long bufID,
+	int val, const char *fmt, ...);
 void game_main_trace(const char *fmt, ...);
 void game_print_trace(const char *fmt, ...);
 void game_systrace_c(int type, pid_t pid, unsigned long long bufID,

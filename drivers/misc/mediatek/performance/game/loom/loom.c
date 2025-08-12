@@ -8,7 +8,10 @@
 #include "game_sysfs.h"
 #include "game.h"
 #include "fpsgo_frame_info.h"
+#include "loom.h"
+#include "loom_base.h"
 #include "loom_loading_ctrl.h"
+#include "loom_ofp.h"
 
 #define DEFAULT_LOOM_UPDATE_LIST_PERIOD NSEC_PER_SEC
 #define LOOM_WORKAROUND_SKIP_CNT 50
@@ -62,6 +65,128 @@ static void print_hlist(const char *tag, int tgid, struct hlist_head *head)
 	loom_free(hlist_str);
 }
 
+int cpumask_to_cpu_id(int cpu_mask)
+{
+	int cpu_id = 0;
+
+	if (cpu_mask == 0 || (cpu_mask & (cpu_mask - 1)) != 0) {
+		loom_main_trace("invalid mask for finding cpuid. mask=%d", cpu_mask);
+		return -1;
+	}
+
+	while (cpu_mask > 1) {
+		cpu_mask >>= 1;
+		cpu_id++;
+	}
+	return cpu_id;
+}
+
+static void cpumask_to_cpu_cluster(int cpu_mask, int *cpuid, int *cpu_cluster)
+{
+	int cpu = 0;
+
+	*cpuid = -1;
+	*cpu_cluster = -1;
+
+	if (cpu_mask & 128) {  // big cluster
+		*cpuid = 7;
+		*cpu_cluster = 2;
+	} else if (cpu_mask & 112) {  // middle cluster
+		*cpu_cluster = 1;
+		for(cpu = 4; cpu < 7; cpu++) {
+			if (cpu_mask & (1 << cpu)) {
+				*cpuid = cpu;
+				break;
+			}
+		}
+	} else if (cpu_mask & 15) {  // little cluster
+		*cpu_cluster = 0;
+		for(cpu = 0; cpu < 4; cpu++) {
+			if (cpu_mask & (1 << cpu)) {
+				*cpuid = cpu;
+				break;
+			}
+		}
+	}
+	game_main_trace("[%s] cpumask=%d, cpuid=%d, cluster=%d", __func__, cpu_mask, *cpuid, *cpu_cluster);
+}
+
+static int loom_task_cpuselect_reset(struct loom_attr_info *iter)
+{
+	int ret = 0;
+
+	if (!iter)
+		return -EINVAL;
+
+	if (iter->cmask_set && iter->is_exclusive) {
+		ret = loom_ctask_cpu_dedicated(iter->pid, -1);
+		if (!ret) {
+			int cpuid = cpumask_to_cpu_id(iter->cmask_set);
+
+			loom_notify_dedicated(cpuid, 0);
+			iter->cmask_set = 0;
+			iter->is_exclusive = 0;
+			loom_main_trace("[%s]pid=%d reset cpu_dedicated.", __func__, iter->pid);
+		}
+	} else if (iter->cmask_set) {
+		ret = loom_sched_setaffinity(iter->pid, 255);
+		if (!ret) {
+			iter->cmask_set = 0;
+			loom_main_trace("[%s]pid=%d reset cpu_affinity.", __func__, iter->pid);
+		}
+	}
+	return ret;
+}
+
+static int loom_task_cpuselect_control(struct loom_attr_info *iter)
+{
+	int ret = 0;
+
+
+	if (!iter)
+		return -EINVAL;
+
+	// cpuselect policy change, reset policy first
+	if ((iter->cpu_mask == LOOM_DEFAULT_VALUE && iter->cmask_set != 0) ||
+		(iter->cpu_mask != LOOM_DEFAULT_VALUE && iter->cpu_mask != iter->cmask_set) ||
+		(!ofp_is_overload && iter->set_exclusive != iter->is_exclusive)) {
+		loom_main_trace("[%s]pid=%d cpuselect change cpumask=%d, prev_mask=%d, exclusive=%d, prev_exclusive=%d",
+			__func__, iter->pid, iter->cpu_mask, iter->cmask_set,
+			iter->set_exclusive, iter->is_exclusive);
+
+		ret = loom_task_cpuselect_reset(iter);
+	}
+
+	if (ret < 0 || iter->cpu_mask == LOOM_DEFAULT_VALUE)	//simply return if reset fail or cpumask not set
+		return ret;
+
+	// Set cpu select
+	if (iter->set_exclusive && !ofp_is_overload) {
+		int cpuid = cpumask_to_cpu_id(iter->cpu_mask);
+
+		if (cpuid == -1)
+			return -EINVAL;
+
+		ret = loom_ctask_cpu_dedicated(iter->pid, cpuid);
+		if (!ret) {
+			loom_notify_dedicated(cpuid, 1);
+			iter->cmask_set = iter->cpu_mask;
+			iter->is_exclusive = 1;
+		}
+
+		loom_main_trace("[%s]pid=%d cpudedicated set. cpuid=%d, ret=%d",
+		__func__, iter->pid, cpuid, ret);
+	} else {
+		ret = loom_sched_setaffinity(iter->pid, iter->cpu_mask);
+		if (ret >= 0)
+			iter->cmask_set = iter->cpu_mask;
+	}
+	loom_main_trace("[%s]pid=%d cpuselect set.cpumask=%d, exclusive=%d",
+		__func__, iter->pid, iter->cpu_mask, iter->set_exclusive);
+	return ret;
+}
+
+
 int loom_task_control(struct loom_attr_info *iter)
 {
 	int ret = 0;
@@ -80,23 +205,12 @@ int loom_task_control(struct loom_attr_info *iter)
 		iter->vip_set = 0;
 	}
 
-	if (iter->cpu_mask != LOOM_DEFAULT_VALUE) {
-		ret = loom_sched_setaffinity(iter->pid, iter->cpu_mask);
-		if (ret >= 0)
-			iter->cmask_set = 1;
-	} else if (iter->cmask_set && iter->cpu_mask == LOOM_DEFAULT_VALUE) {
-		ret = loom_sched_setaffinity(iter->pid, 255);
-		if (ret >= 0)
-			iter->cmask_set = 0;
-	}
-
+	ret = loom_task_cpuselect_control(iter);
 	return ret;
 }
 
 void loom_reset_task_setting(struct loom_attr_info *info)
 {
-	int ret = 0;
-
 	if (!info || info->pid <= 0)
 		return;
 
@@ -104,11 +218,7 @@ void loom_reset_task_setting(struct loom_attr_info *info)
 		unset_task_priority_based_vip(info->pid);
 		info->vip_set = 0;
 	}
-	if (info->cmask_set) {
-		ret = loom_sched_setaffinity(info->pid, 255);
-		if (ret >= 0)
-			info->cmask_set = 0;
-	}
+	loom_task_cpuselect_reset(info);
 }
 
 static void list_a_except_b(struct hlist_head *list_a,
@@ -137,6 +247,7 @@ static void list_a_except_b(struct hlist_head *list_a,
 		if (ptr_b && info_b->pid == info_a->pid) {
 			info_b->vip_set = info_a->vip_set;
 			info_b->cmask_set = info_a->cmask_set;
+			info_b->is_exclusive = info_a->is_exclusive;
 		}
 
 		if (!ptr_b || info_b->pid != info_a->pid) {
@@ -153,6 +264,7 @@ static void list_a_except_b(struct hlist_head *list_a,
 			if (remove_iter) {
 				remove_iter->vip_set = info_a->vip_set;
 				remove_iter->cmask_set = info_a->cmask_set;
+				remove_iter->is_exclusive = info_a->is_exclusive;
 			}
 		}
 		ptr_a = ptr_a->next;
@@ -383,36 +495,6 @@ void loom_reset_operation(struct loom_render_info *info)
 	loom_clear_loading_ctrl_list(&info->lc_active_list);
 }
 
-static void cpumask_to_cpu_cluster(int cpu_mask, int *cpuid, int *cpu_cluster)
-{
-	int cpu = 0;
-
-	*cpuid = -1;
-	*cpu_cluster = -1;
-
-	if (cpu_mask & 128) {  // big cluster
-		*cpuid = 7;
-		*cpu_cluster = 2;
-	} else if (cpu_mask & 112) {  // middle cluster
-		*cpu_cluster = 1;
-		for(cpu = 4; cpu < 7; cpu++) {
-			if (cpu_mask & (1 << cpu)) {
-				*cpuid = cpu;
-				break;
-			}
-		}
-	} else if (cpu_mask & 15) {  // little cluster
-		*cpu_cluster = 0;
-		for(cpu = 0; cpu < 4; cpu++) {
-			if (cpu_mask & (1 << cpu)) {
-				*cpuid = cpu;
-				break;
-			}
-		}
-	}
-	game_main_trace("[%s] cpumask=%d, cpuid=%d, cluster=%d", __func__, cpu_mask, *cpuid, *cpu_cluster);
-}
-
 static void loom_set_operation(struct loom_render_info *info)
 {
 	struct loom_attr_info *iter;
@@ -542,13 +624,13 @@ static int loom_register_frame_info_cb(int set, fpsgo_frame_info_callback cb)
 
 void loom_disable_fbt_passive_mode(int active)
 {
-	loom_mode_lock();
+	loom_render_lock();
 	loom_disable_fpsgo_passive_mode = active;
 	if (loom_disable_fpsgo_passive_mode)
 		fbt_set_magt_workaround_passive_mode(0);
 	else
 		fbt_set_magt_workaround_passive_mode(1);
-	loom_mode_unlock();
+	loom_render_unlock();
 }
 
 int loom_activate(int pid)
@@ -565,11 +647,20 @@ int loom_activate(int pid)
 		loom_mode_unlock();
 		return -ENOMEM;
 	}
-	//switch_fpsgo_control(0, pid, 0, 0);
+
+	/*
+	 * loom related configurations:
+	 * 1. fpsgo passive mode
+	 * 2. loom-cpuselect config
+	 * 3. loom-flt config
+	 * 4. loom cpu-dedicated switch
+	 */
 	if (!loom_disable_fpsgo_passive_mode)
 		fbt_set_magt_workaround_passive_mode(1);
 	loom_select_cfg_apply(1);
 	loom_flt_cfg_apply(1);
+	loom_cpu_dedicated(1);
+
 	loom_render_unlock();
 
 	ret = loom_register_frame_info_cb(1, &fpsgo_loom_frame_info_cb);
@@ -593,11 +684,12 @@ int loom_deactivate(int pid)
 	loom_reset_operation(iter);
 	loom_delete_render_info(iter);
 
+	/* turn off loom related configs */
 	if (!loom_get_render_num()) {
-		//switch_fpsgo_control(0, pid, 1, 0);
 		fbt_set_magt_workaround_passive_mode(0);
 		loom_select_cfg_apply(0);
 		loom_flt_cfg_apply(0);
+		loom_cpu_dedicated(0);
 	}
 
 	loom_render_unlock();
@@ -687,9 +779,9 @@ static ssize_t loom_disable_fpsgo_passive_mode_show(struct kobject *kobj,
 {
 	int val = 0;
 
-	loom_mode_lock();
+	loom_render_lock();
 	val = loom_disable_fpsgo_passive_mode;
-	loom_mode_unlock();
+	loom_render_unlock();
 
 	return scnprintf(buf, PAGE_SIZE, "%d\n", val);
 }
@@ -952,6 +1044,13 @@ void loom_exit(void)
 	loom_render_lock();
 	clear_all_loom_render_info();
 	exit_loom_loading_ctrl();
+	loom_ofp_exit();
+
+	/* loom module exit, reset all loom related configs */
+	fbt_set_magt_workaround_passive_mode(0);
+	loom_select_cfg_apply(0);
+	loom_flt_cfg_apply(0);
+	loom_cpu_dedicated(0);
 	loom_render_unlock();
 
 	loom_register_frame_info_cb(0, &fpsgo_loom_frame_info_cb);
@@ -978,6 +1077,7 @@ int loom_init(void)
 		game_sysfs_create_file(loom_kobj, &kobj_attr_loom_disable_fpsgo_passive_mode);
 		game_sysfs_create_file(loom_kobj, &kobj_attr_loom_early_bypass);
 	}
+	loom_ofp_init();
 	init_loom_loading_ctrl();
 	// Todo: create file node
 	return 0;

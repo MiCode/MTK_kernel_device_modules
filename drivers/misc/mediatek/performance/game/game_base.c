@@ -32,6 +32,41 @@ void loom_main_trace(const char *fmt, ...)
 	trace_loom_main_trace(log);
 }
 
+void loom_systrace_c(pid_t pid, unsigned long long bufID,
+	int val, const char *fmt, ...)
+{
+	char log[256];
+	va_list args;
+	int len;
+	char buf2[256];
+
+	if (!trace_loom_systrace_enabled())
+		return;
+
+	memset(log, ' ', sizeof(log));
+	va_start(args, fmt);
+	len = vsnprintf(log, sizeof(log), fmt, args);
+	va_end(args);
+
+	if (unlikely(len < 0))
+		return;
+	else if (unlikely(len == 256))
+		log[255] = '\0';
+
+	if (!bufID) {
+		len = snprintf(buf2, sizeof(buf2), "C|%d|%s|%d\n", pid, log, val);
+	} else {
+		len = snprintf(buf2, sizeof(buf2), "C|%d|%s|%d|0x%llx\n",
+			pid, log, val, bufID);
+	}
+	if (unlikely(len < 0))
+		return;
+	else if (unlikely(len == 256))
+		buf2[255] = '\0';
+
+	trace_loom_systrace(buf2);
+}
+
 void game_main_trace(const char *fmt, ...)
 {
 	char log[256];

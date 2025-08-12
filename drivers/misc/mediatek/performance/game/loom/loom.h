@@ -17,10 +17,13 @@ int loom_set_task_cfg(char *proc_name, char *thread_name,
 	int limit_min_freq, int limit_max_freq,
 	int set_rescue, int rescue_f_opp, int rescue_c_freq, int rescue_time);
 int loom_reset_task_cfg(char *proc_name, char *thread_name, int pid);
+int cpumask_to_cpu_id(int cpu_mask);
 
 extern void set_task_priority_based_vip_and_throttle(int pid, int prio, unsigned int throttle_time);
 extern void unset_task_priority_based_vip(int pid);
 extern int vip_loom_select_cfg_apply(int val, int caller_id);
 extern int vip_loom_flt_cfg_apply(int val, int caller_id);
+extern int loom_cpu_dedicated(unsigned int enable);
+extern int loom_ctask_cpu_dedicated(int pid, int aff_cpu);
 
 #endif  // _LOOM_H_
