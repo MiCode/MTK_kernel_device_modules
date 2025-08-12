@@ -10263,6 +10263,8 @@ dramc: dramc@10230000 {
 		/* mediatek,headset-codec = <&accdet>; */
 		mediatek,platform = <&afe>;
 		mediatek,ipm = <1>; /* 0: old version; 1: IPM2.0 */
+		volume-throttle-enable = <0>;
+		volume-throttle = <0 0 0 6 6 6>;
 	};
 
 	/* scene: $enable $bandwidth */
