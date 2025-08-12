@@ -90,7 +90,7 @@
 			    8250.nr_uarts=3 \
 			    androidboot.hardware=mt6858 \
 			    android_arch_task_struct_size=512 \
-			    vmalloc=400M swiotlb=noforce cma=64M \
+			    vmalloc=400M swiotlb=noforce \
 			    firmware_class.path=/vendor/firmware \
 			    cgroup.memory=nosocket,nokmem \
 			    disable_dma32=on \
