@@ -1556,10 +1556,10 @@ static s32 hdr_config_tile(struct mml_comp *comp, struct mml_task *task,
 	if (hdr->data->two_curve) {
 		cmdq_pkt_write(pkt, NULL,
 			base_pa + hdr->data->reg_table[HDR_HIST_CTRL_0],
-			(hdr_crop_ys << 16) + hdr_hist_begin_x, U32_MAX);
+			((hdr_crop_ye * 1/8) << 16) + hdr_hist_begin_x, U32_MAX);
 		cmdq_pkt_write(pkt, NULL,
 			base_pa + hdr->data->reg_table[HDR_HIST_CTRL_1],
-			(hdr_crop_ye << 16) + hdr_hist_end_x, U32_MAX);
+			((hdr_crop_ye * 7/8) << 16) + hdr_hist_end_x, U32_MAX);
 	} else {
 		cmdq_pkt_write(pkt, NULL,
 			base_pa + hdr->data->reg_table[HDR_HIST_CTRL_0], hdr_hist_begin_x, 0x0000ffff);
