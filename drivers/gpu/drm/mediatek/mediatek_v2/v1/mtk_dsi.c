@@ -1398,7 +1398,10 @@ CONFIG_REG:
 	value = 0x55;
 #else
 	// if process <= N28, value should be 0x55
-	value = 0xAA;
+	if(priv->data->mmsys_id == MMSYS_MT6895)
+		value = 0x55;
+	else
+		value = 0xAA;
 #endif
 	if (handle)
 		cmdq_pkt_write((struct cmdq_pkt *)handle, comp->cmdq_base,
