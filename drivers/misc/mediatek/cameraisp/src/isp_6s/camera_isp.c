@@ -2232,12 +2232,16 @@ static inline void Prepare_Enable_ccf_clock(enum ISP_DEV_NODE_ENUM module)
 		ret = pm_runtime_resume_and_get(isp_devs[ISP_CAM_A_IDX].dev);
 		if (ret < 0)
 			LOG_NOTICE("cannot pm runtime get ISP_CAM_A_IDX mtcmos\n");
+		else
+			LOG_NOTICE("pm runtime get ISP_CAM_A_IDX mtcmos\n");
 	}
 
 	if (module == ISP_CAM_B_IDX) {
 		ret = pm_runtime_resume_and_get(isp_devs[ISP_CAM_B_IDX].dev);
 		if (ret < 0)
 			LOG_NOTICE("cannot pm runtime get ISP_CAM_B_IDX mtcmos\n");
+		else
+			LOG_NOTICE("pm runtime get ISP_CAM_B_IDX mtcmos\n");
 	}
 
 	if (IS_3RAW_PLATFORM(g_platform_id)) {
@@ -2365,6 +2369,19 @@ static inline void Prepare_Enable_ccf_clock(enum ISP_DEV_NODE_ENUM module)
 	if (ret)
 		LOG_NOTICE("cannot pre-en ISP_TOP_MUX_CAMTM clock\n");
 
+	if (module == ISP_CAM_A_IDX) {
+		unsigned int cama_cg_con;
+
+		cama_cg_con = ISP_RD32(CAMSYS_RAWA_REG_CG_CON);
+		LOG_NOTICE(">>> CAMSYS_RAWA_REG_CG_CON: 0x%x\n", cama_cg_con);
+	}
+
+	if (module == ISP_CAM_B_IDX) {
+		unsigned int camb_cg_con;
+
+		camb_cg_con = ISP_RD32(CAMSYS_RAWB_REG_CG_CON);
+		LOG_NOTICE(">>> CAMSYS_RAWB_REG_CG_CON: 0x%x\n", camb_cg_con);
+	}
 }
 
 static inline void Disable_Unprepare_ccf_clock(enum ISP_DEV_NODE_ENUM module)
@@ -2446,12 +2463,16 @@ static inline void Disable_Unprepare_ccf_clock(enum ISP_DEV_NODE_ENUM module)
 		ret = pm_runtime_put_sync(isp_devs[ISP_CAM_B_IDX].dev);
 		if (ret < 0)
 			LOG_NOTICE("cannot pm runtime put ISP_CAM_B_IDX mtcmos\n");
+		else
+			LOG_NOTICE("pm runtime put ISP_CAM_B_IDX mtcmos\n");
 	}
 
 	if (module == ISP_CAM_A_IDX) {
 		ret = pm_runtime_put_sync(isp_devs[ISP_CAM_A_IDX].dev);
 		if (ret < 0)
 			LOG_NOTICE("cannot pm runtime put ISP_CAM_A_IDX mtcmos\n");
+		else
+			LOG_NOTICE("pm runtime put ISP_CAM_A_IDX mtcmos\n");
 	}
 
 	ret = pm_runtime_put_sync(isp_devs[ISP_CAMSYS_CONFIG_IDX].dev);
