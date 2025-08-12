@@ -77,9 +77,9 @@ module_param(dbg_align_prete, int, 0644);
 #define DPC_DEBUG_RTFF_CNT 10
 static void __iomem *debug_rtff[DPC_DEBUG_RTFF_CNT];
 
-#define MTK_VIDLE_VDO_DISP_DT_MASK 0xe0001870
+#define MTK_VIDLE_VDO_DISP_DT_MASK 0xe0001830
 #define MTK_VIDLE_VDO_MML_DT_MASK 0x00000183
-#define MTK_VIDLE_CMD_DISP_DT_MASK 0xe00030ea
+#define MTK_VIDLE_CMD_DISP_DT_MASK 0xe00030aa
 #define MTK_VIDLE_CMD_MML_MASK 0x0000030a
 
 #define MTK_DPC_MMDVFS_MAX_COUNT   2
@@ -1888,7 +1888,7 @@ static int dpc_dt_set_dur_func(u32 dur_frame, u32 dur_vblank, bool force, bool l
 		/* update DT table affected by TE duration */
 		dpc_dt_update_table(1, duration - DT_TE_SAFEZONE_WO_MTCMOS);
 		dpc_dt_update_table(5, duration - DT_TE_SAFEZONE_WO_MTCMOS);
-		dpc_dt_update_table(6, duration - DT_DISP1TE_OFFSET);
+		dpc_dt_update_table(6, duration - DT_DISP1TE_OFFSET_WO_MTCMOS);
 		dpc_dt_update_table(12, duration - DT_POST_DVFS_OFF_WO_MTCMOS);
 		dpc_dt_update_table(33, duration - DT_TE_SAFEZONE_WO_MTCMOS);
 		dpc_dt_update_table(40, duration - DT_POST_DVFS_OFF_WO_MTCMOS);
@@ -1896,7 +1896,7 @@ static int dpc_dt_set_dur_func(u32 dur_frame, u32 dur_vblank, bool force, bool l
 		/* update DT timer affected by TE duration */
 		dpc_dt_set(1, duration - DT_TE_SAFEZONE_WO_MTCMOS);
 		dpc_dt_set(5, duration - DT_TE_SAFEZONE_WO_MTCMOS);
-		dpc_dt_set(6, duration - DT_DISP1TE_OFFSET);
+		dpc_dt_set(6, duration - DT_DISP1TE_OFFSET_WO_MTCMOS);
 		dpc_dt_set(12, duration - DT_POST_DVFS_OFF_WO_MTCMOS);
 		dpc_dt_set(33, duration - DT_TE_SAFEZONE_WO_MTCMOS);
 		dpc_dt_set(40, duration - DT_POST_DVFS_OFF_WO_MTCMOS);
@@ -2109,6 +2109,9 @@ static void dpc_disp_group_enable_func(const enum mtk_dpc_disp_vidle group, bool
 		}
 		return;
 	}
+
+	if (dbg_runtime_ctrl)
+		dt_mask |= BIT(6);
 	for (i = 0; i < DPC_DISP_DT_CNT; ++i) {
 		if (group == g_disp_dt_usage[i].group) {
 			if (BIT(g_disp_dt_usage[i].index) & dt_mask) {
@@ -2560,6 +2563,8 @@ static void dpc_enable_v1(const u8 en)
 			dt_mask = MTK_VIDLE_CMD_DISP_DT_MASK;
 		else
 			dt_mask = MTK_VIDLE_VDO_DISP_DT_MASK;
+		if (dbg_runtime_ctrl)
+			dt_mask |= BIT(6);
 		dpc_dt_en_all(DPC_SUBSYS_DISP, dt_mask);
 
 		/* CMD panel: DT enable only 1, 3, 8, 9
@@ -3533,11 +3538,16 @@ static int dpc_config_v1(const u32 subsys, bool en)
 		writel(0x3, dpc_base + DISP_REG_DPC_MML_EXT_INPUT_EN);
 		writel(0x3ff, dpc_base + DISP_REG_DPC_MML_DT_FOLLOW_CFG); /* all follow 39~41 */
 
-		/* trigger HW status on, before switch resource to auto mode */
+		/* manually trigger HW status on, before switch resource mode */
 		writel(0x1830, dpc_base + DISP_REG_DPC_DISP_DT_SW_TRIG_EN);
 		writel(0x1, dpc_base + DISP_REG_DPC_DTx_SW_TRIG(5));
 		writel(0x1, dpc_base + DISP_REG_DPC_DTx_SW_TRIG(12));
 	} else {
+		/* manually trigger HW status on, before switch resource mode */
+		writel(0x1830, dpc_base + DISP_REG_DPC_DISP_DT_SW_TRIG_EN);
+		writel(0x1, dpc_base + DISP_REG_DPC_DTx_SW_TRIG(5));
+		writel(0x1, dpc_base + DISP_REG_DPC_DTx_SW_TRIG(12));
+
 		dpc_mtcmos_vote_v1(DPC_SUBSYS_DIS1, 6, 1);
 		mtk_disp_wait_pwr_ack(DPC_SUBSYS_DIS1);
 		dpc_mtcmos_vote_v1(DPC_SUBSYS_DIS0, 6, 1);
@@ -3565,6 +3575,13 @@ static int dpc_config_v1(const u32 subsys, bool en)
 	dpc_group_enable_func(DPC_MML_VIDLE_HRT_BW, en, false);
 	dpc_group_enable_func(DPC_MML_VIDLE_MMINFRA_OFF, en, false);
 
+	if (g_priv->get_sys_status && g_panel_type == PANEL_TYPE_VDO &&
+		mtk_dpc_support_cap(DPC_VIDLE_LOWER_VDISP_DVFS)) {
+		unsigned int state = g_priv->get_sys_status(SYS_VALUE_VDISP_DVFS_LEVEL, NULL);
+
+		dpc_mmp(vdisp_off, MMPROFILE_FLAG_PULSE, state, en);
+	}
+
 	if (en) {
 		/* pwr on delay default 100 + 50 us, modify to 30 us */
 		writel(0x30c, dpc_base + 0xa44);
@@ -3579,8 +3596,6 @@ static int dpc_config_v1(const u32 subsys, bool en)
 		dpc_mtcmos_vote_v1(DPC_SUBSYS_OVL1, 6, 0);
 		if (readl(dpc_base + DISP_REG_DPC_MML1_MTCMOS_CFG))
 			dpc_mtcmos_vote_v1(DPC_SUBSYS_MML1, 6, 0);
-
-		writel(0, dpc_base + DISP_REG_DPC_DISP_DT_SW_TRIG_EN);
 	} else {
 		writel(mask, dpc_base + DISP_REG_DPC_DISP_MASK_CFG);
 		writel(0x1f, dpc_base + DISP_REG_DPC_DISP_EXT_INPUT_EN);
@@ -3591,6 +3606,7 @@ static int dpc_config_v1(const u32 subsys, bool en)
 		writel(0x3ff, dpc_base + DISP_REG_DPC_MML_DT_FOLLOW_CFG); /* all follow 39~41 */
 	}
 
+	writel(0, dpc_base + DISP_REG_DPC_DISP_DT_SW_TRIG_EN);
 	writel(0, dpc_base + DISP_REG_DPC_MERGE_DISP_INT_CFG);
 	writel(0, dpc_base + DISP_REG_DPC_MERGE_MML_INT_CFG);
 
