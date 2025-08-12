@@ -67,6 +67,7 @@
 #define PROPNAME_SCP_DVFS_DISABLE      "scp-dvfs-disable"
 #define PROPNAME_SCP_DVFS_CORES        "scp-cores"
 #define PROPNAME_SCP_CORE_ONLINE_MASK  "scp-core-online-mask"
+#define PROPNAME_SCP_SMP_SUPPORT       "smp-support"
 #define PROPNAME_SCP_VLP_SUPPORT       "vlp-support"
 #define PROPNAME_SCP_IPS_SUPPORT       "ips-support"
 #define PROPNAME_PMIC                  "pmic"
@@ -259,6 +260,11 @@ struct scp_pmic_regs scp_pmic_hw_regs[MAX_SCP_DVFS_CHIP_HW] = {
 static bool is_core_online(uint32_t core_id)
 {
 	return (CORE_ONLINE_MSK << core_id) & g_dvfs_dev.core_online_msk;
+}
+
+static bool is_core_smp(void)
+{
+	return g_dvfs_dev.smp_support;
 }
 
 static void slp_ipi_init(void)
@@ -2199,7 +2205,7 @@ static void mt_scp_start_res_prof(void)
 		return;
 	}
 
-	if (!is_core_online(SCP_CORE_1))
+	if (!is_core_online(SCP_CORE_1) || is_core_smp())
 		return;
 
 	/* if there are core0 & core1 */
@@ -2260,7 +2266,7 @@ static void mt_scp_stop_res_prof(void)
 				res.user, res.duration);
 	}
 
-	if (!is_core_online(SCP_CORE_1))
+	if (!is_core_online(SCP_CORE_1) || is_core_smp())
 		return;
 
 	/* if there are core0 & core1 */
@@ -2314,7 +2320,7 @@ static int mt_scp_dump_sleep_count(void)
 	}
 
 	/* if no enable core1 */
-	if (!is_core_online(SCP_CORE_1)) {
+	if (!is_core_online(SCP_CORE_1) || is_core_smp()) {
 		pr_notice("[SCP] [%s:%d] - scp_sleep_cnt_0 = %d\n",
 			__func__, __LINE__, scp_ipi_ackdata0);
 		goto FINISH;
@@ -2769,6 +2775,10 @@ static int __init mt_scp_dts_init(struct platform_device *pdev)
 		g_dvfs_dev.core_online_msk = SCP_CORE_0_ONLINE_MASK;
 		WARN_ON(1);
 	}
+
+	g_dvfs_dev.smp_support = of_property_read_bool(node, PROPNAME_SCP_SMP_SUPPORT);
+	if (g_dvfs_dev.smp_support)
+		pr_notice("[%s]: smp support is enabled\n", __func__);
 
 	if (g_dvfs_dev.vlp_support)
 		g_dvfs_dev.pmic_sshub_en = false;

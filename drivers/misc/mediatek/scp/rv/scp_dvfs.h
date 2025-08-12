@@ -252,6 +252,7 @@ struct scp_dvfs_hw {
 	bool pmic_sshub_en;
 	bool sleep_init_done;
 	bool pre_mux_en;
+	bool smp_support;
 	u32 scp_opp_nums;
 	int vow_lp_en_gear;
 	int cur_dbg_core;
