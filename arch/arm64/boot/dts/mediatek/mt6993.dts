@@ -18871,7 +18871,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		};
 
 		gpu_power_throttling: gpu-power-throttling {
-			compatible = "mediatek,engineer-sample-gpu-power-throttling";
+			compatible = "mediatek,gpu-power-throttling";
 			bootmode = <&chosen>;
 			lbat-max-level = <2>;
 			lbat-max-tb-num = <3>;
@@ -18896,6 +18896,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 			nvmem-cells =<&fab_info>;
 			nvmem-cell-names = "fab_info";
+
+			bootup-delay-release-time = <20>;
 		};
 
 		apu_power_throttling: apu-power-throttling {
@@ -19120,6 +19122,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			soc-limit-freq-lv1 = <2147483647>;
 			soc-limit-freq-lv2 = <702000>;
 			soc-limit-freq-lv3 = <702000>;
+
+			bootup-delay-release-time = <20>;
 		};
 
 		es_apu_power_throttling: es-apu-power-throttling {
