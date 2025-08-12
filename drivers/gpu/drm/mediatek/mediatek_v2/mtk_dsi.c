@@ -5515,6 +5515,22 @@ static void mtk_update_panel_param(struct mtk_drm_crtc *mtk_crtc, struct mtk_dsi
 	} else
 		dsi->cur_panel_param_changed = false;
 }
+static void mtk_update_panel_param_external(struct mtk_drm_crtc *mtk_crtc, struct mtk_dsi *dsi)
+{
+	DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
+	if (!mtk_crtc->enabled) {
+		DDPMSG("%s crtc is disable\n", __func__);
+		DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
+		return;
+	}
+	mtk_drm_idlemgr_kick(__func__, &mtk_crtc->base, 0);
+	mtk_vidle_user_power_keep(DISP_VIDLE_USER_CRTC);
+
+	mtk_update_panel_param(mtk_crtc, dsi);
+
+	mtk_vidle_user_power_release(DISP_VIDLE_USER_CRTC);
+	DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
+}
 static void mtk_output_en_doze_switch(struct mtk_dsi *dsi)
 {
 	bool doze_enabled = mtk_dsi_doze_state(dsi);
