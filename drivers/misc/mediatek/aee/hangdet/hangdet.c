@@ -198,16 +198,15 @@ static struct kprobe kp_hrtimer_wakeup_entry = {
 
 static int generic_entry_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 {
-	if (ri && ri->rph && ri->rph->rp && ri->rph->rp->kp.symbol_name)
-		__irq_log_store(ri->rph->rp->kp.symbol_name, -5);
-
+	if (ri && ri->rph && ri->rph->rp && ri->rph->rp->kp.addr)
+		irq_log_entry_store(ri->rph->rp->kp.addr);
 	return 0;
 }
 
 static int generic_return_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 {
-	if (ri && ri->rph && ri->rph->rp && ri->rph->rp->kp.symbol_name)
-		__irq_log_store(ri->rph->rp->kp.symbol_name, 0);
+	if (ri && ri->rph && ri->rph->rp && ri->rph->rp->kp.addr)
+		irq_log_exit_store(ri->rph->rp->kp.addr);
 
 	return 0;
 }
