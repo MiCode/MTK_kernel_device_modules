@@ -4105,9 +4105,6 @@ static const enum pwr_clk_id mt6993_pwr_on_order[] = {
 	CLK_OVL0,
 	CLK_OVL1,
 	CLK_OVL2,
-	CLK_MML0,
-	CLK_MML1,
-	CLK_MML2,
 };
 
 static const enum pwr_clk_id mt6993_pwr_off_order[] = {
@@ -4118,9 +4115,6 @@ static const enum pwr_clk_id mt6993_pwr_off_order[] = {
 	CLK_OVL0,
 	CLK_OVL1,
 	CLK_OVL2,
-	CLK_MML0,
-	CLK_MML1,
-	CLK_MML2,
 	CLK_DSI_PHY0,
 #if IS_ENABLED(CONFIG_MTK_DISPLAY_DUAL_PIPE_DUAL_PORT_SUPPORT)
 	CLK_DSI_PHY1,

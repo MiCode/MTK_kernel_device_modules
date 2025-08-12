@@ -101,9 +101,8 @@ enum mtk_dpc_subsys_v3 {
 	DPC3_SUBSYS_DPTX,
 	DPC3_SUBSYS_PERI,
 	DPC3_SUBSYS_CNT,
-	DPC3_SUBSYS_DISP_DDIC = 0xc,	/* disp1ab */
-	DPC3_SUBSYS_DISP_PQ = 0xf,	/* disp0ab disp1ab */
-	DPC3_SUBSYS_DISP = 0x7f,	/* disp0ab disp1ab ovl012 */
+	DPC3_SUBSYS_DISP = DPC3_SUBSYS_DIS1A,
+	DPC3_SUBSYS_MML = DPC3_SUBSYS_MML2,
 };
 
 enum mtk_dpc_disp_vidle {
