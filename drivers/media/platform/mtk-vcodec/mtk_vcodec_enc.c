@@ -860,13 +860,19 @@ static int vidioc_venc_s_ctrl(struct v4l2_ctrl *ctrl)
 		ctx->param_change |= MTK_ENCODE_PARAM_HIGHQUALITY;
 		break;
 	case V4L2_CID_MTK_VIDEO_ENC_RC_MAX_QP:
-		mtk_v4l2_debug(0, "V4L2_CID_MTK_VIDEO_ENC_RC_MAX_QP");
-		p->max_qp = ctrl->val;
+		mtk_v4l2_debug(0, "V4L2_CID_MTK_VIDEO_ENC_RC_MAX_QP %u %u %u",
+		ctrl->p_new.p_u32[0], ctrl->p_new.p_u32[1], ctrl->p_new.p_u32[2]);
+		p->i_max_qp = (int)ctrl->p_new.p_u32[0];
+		p->p_max_qp = (int)ctrl->p_new.p_u32[1];
+		p->b_max_qp = (int)ctrl->p_new.p_u32[2];
 		ctx->param_change |= MTK_ENCODE_PARAM_MAXQP;
 		break;
 	case V4L2_CID_MTK_VIDEO_ENC_RC_MIN_QP:
-		mtk_v4l2_debug(0, "V4L2_CID_MTK_VIDEO_ENC_RC_MIN_QP");
-		p->min_qp = ctrl->val;
+		mtk_v4l2_debug(0, "V4L2_CID_MTK_VIDEO_ENC_RC_MIN_QP %u %u %u",
+		ctrl->p_new.p_u32[0], ctrl->p_new.p_u32[1], ctrl->p_new.p_u32[2]);
+		p->i_min_qp = (int)ctrl->p_new.p_u32[0];
+		p->p_min_qp = (int)ctrl->p_new.p_u32[1];
+		p->b_min_qp = (int)ctrl->p_new.p_u32[2];
 		ctx->param_change |= MTK_ENCODE_PARAM_MINQP;
 		break;
 	case V4L2_CID_MTK_VIDEO_ENC_RC_I_P_QP_DELTA:
@@ -1676,8 +1682,13 @@ static void mtk_venc_set_param(struct mtk_vcodec_ctx *ctx,
 	param->lowlatencywfd = enc_params->lowlatencywfd;
 	param->slice_count = enc_params->slice_count;
 
-	param->max_qp = enc_params->max_qp;
-	param->min_qp = enc_params->min_qp;
+	param->i_max_qp = enc_params->i_max_qp;
+	param->i_min_qp = enc_params->i_min_qp;
+	param->p_max_qp = enc_params->p_max_qp;
+	param->p_min_qp = enc_params->p_min_qp;
+	param->b_max_qp = enc_params->b_max_qp;
+	param->b_min_qp = enc_params->b_min_qp;
+
 	param->framelvl_qp = enc_params->framelvl_qp;
 	param->ip_qpdelta = enc_params->ip_qpdelta;
 	param->qp_control_mode = enc_params->qp_control_mode;
@@ -3069,7 +3080,7 @@ static int vb2ops_venc_start_streaming(struct vb2_queue *q, unsigned int count)
 	ret = venc_if_set_param(ctx, VENC_SET_PARAM_ENC, &param);
 
 	mtk_v4l2_debug(0,
-		"fmt 0x%x, P/L %d/%d, w/h %d/%d, buf %d/%d, fps/bps %d/%d(%d), gop %d, ip# %d opr %d async %d grid size %d/%d b#%d, slbc %d maxqp %d minqp %d",
+		"fmt 0x%x, P/L %d/%d, w/h %d/%d, buf %d/%d, fps/bps %d/%d(%d), gop %d, ip# %d opr %d async %d grid size %d/%d b#%d",
 		param.input_yuv_fmt, param.profile,
 		param.level, param.width, param.height,
 		param.buf_width, param.buf_height,
@@ -3077,7 +3088,11 @@ static int vb2ops_venc_start_streaming(struct vb2_queue *q, unsigned int count)
 		param.gop_size, param.intra_period,
 		param.operationrate, ctx->async_mode,
 		(param.heif_grid_size>>16), param.heif_grid_size&0xffff,
-		param.num_b_frame, param.slbc_ready, param.max_qp, param.min_qp);
+		param.num_b_frame);
+	mtk_v4l2_debug(0, "slbc %d maxqp (%d, %d, %d) minqp (%d, %d, %d)",
+		param.slbc_ready,
+		param.i_max_qp, param.p_max_qp, param.b_max_qp,
+		param.i_min_qp, param.p_min_qp, param.b_min_qp);
 
 	ctx->enc_params.slbc_encode_performance = isENCODE_PERFORMANCE_USAGE(param.width,
 		param.height, param.frm_rate, param.operationrate);
@@ -3546,16 +3561,22 @@ static int mtk_venc_param_change(struct mtk_vcodec_ctx *ctx)
 	}
 
 	if (!ret && mtkbuf->param_change & MTK_ENCODE_PARAM_MAXQP) {
-		enc_prm.max_qp = mtkbuf->enc_params.max_qp;
-		mtk_v4l2_debug(1, "[%d] idx=%d, max_qp=%d",
-			ctx->id, mtkbuf->vb.vb2_buf.index, mtkbuf->enc_params.max_qp);
+		enc_prm.i_max_qp = mtkbuf->enc_params.i_max_qp;
+		enc_prm.p_max_qp = mtkbuf->enc_params.p_max_qp;
+		enc_prm.b_max_qp = mtkbuf->enc_params.b_max_qp;
+		mtk_v4l2_debug(1, "[%d] idx=%d, max_qp=%d %d %d",
+			ctx->id, mtkbuf->vb.vb2_buf.index, mtkbuf->enc_params.i_max_qp,
+			mtkbuf->enc_params.p_max_qp, mtkbuf->enc_params.b_max_qp);
 		ret |= venc_if_set_param(ctx, VENC_SET_PARAM_ADJUST_MAX_QP, &enc_prm);
 	}
 
 	if (!ret && mtkbuf->param_change & MTK_ENCODE_PARAM_MINQP) {
-		enc_prm.min_qp = mtkbuf->enc_params.min_qp;
-		mtk_v4l2_debug(1, "[%d] idx=%d, min_qp=%d",
-			ctx->id, mtkbuf->vb.vb2_buf.index, mtkbuf->enc_params.min_qp);
+		enc_prm.i_min_qp = mtkbuf->enc_params.i_min_qp;
+		enc_prm.p_min_qp = mtkbuf->enc_params.p_min_qp;
+		enc_prm.b_min_qp = mtkbuf->enc_params.b_min_qp;
+		mtk_v4l2_debug(1, "[%d] idx=%d, min_qp=%d %d %d",
+			ctx->id, mtkbuf->vb.vb2_buf.index, mtkbuf->enc_params.i_min_qp,
+			mtkbuf->enc_params.p_min_qp, mtkbuf->enc_params.b_min_qp);
 		ret |= venc_if_set_param(ctx, VENC_SET_PARAM_ADJUST_MIN_QP, &enc_prm);
 	}
 
@@ -4553,7 +4574,9 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	cfg.ops = ops;
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 
-	ctx->enc_params.max_qp = -1;
+	ctx->enc_params.i_max_qp = -1;
+	ctx->enc_params.p_max_qp = -1;
+	ctx->enc_params.b_max_qp = -1;
 	memset(&cfg, 0, sizeof(cfg));
 	cfg.id = V4L2_CID_MTK_VIDEO_ENC_RC_MAX_QP;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
@@ -4562,11 +4585,14 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	cfg.min = -1;
 	cfg.max = 51;
 	cfg.step = 1;
-	cfg.def = ctx->enc_params.max_qp;
+	cfg.def = -1;
+	cfg.dims[0] = 3;
 	cfg.ops = ops;
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 
-	ctx->enc_params.min_qp = -1;
+	ctx->enc_params.i_min_qp = -1;
+	ctx->enc_params.p_min_qp = -1;
+	ctx->enc_params.b_min_qp = -1;
 	memset(&cfg, 0, sizeof(cfg));
 	cfg.id = V4L2_CID_MTK_VIDEO_ENC_RC_MIN_QP;
 	cfg.type = V4L2_CTRL_TYPE_INTEGER;
@@ -4575,7 +4601,8 @@ int mtk_vcodec_enc_ctrls_setup(struct mtk_vcodec_ctx *ctx)
 	cfg.min = -1;
 	cfg.max = 51;
 	cfg.step = 1;
-	cfg.def = ctx->enc_params.min_qp;
+	cfg.def = -1;
+	cfg.dims[0] = 3;
 	cfg.ops = ops;
 	mtk_vcodec_enc_custom_ctrls_check(handler, &cfg, NULL);
 
