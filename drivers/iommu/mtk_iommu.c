@@ -36,6 +36,9 @@
 #include <linux/arm-smccc.h>
 #include <asm/barrier.h>
 #include <soc/mediatek/smi.h>
+#if IS_ENABLED(CONFIG_MTK_GZVM_VENDOR_HOOKS)
+#include <linux/soc/mediatek/gzvm_hook.h>
+#endif
 #if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_DBG)
 #include <../misc/mediatek/iommu/iommu_debug.h>
 #endif
@@ -232,6 +235,8 @@
 #define LEGACY_MULTI_LARB		BIT(26)
 #define PM_DOMAIN_SKIP			BIT(27)
 #define CHECK_MMINFRA_POWER		BIT(28)
+#define ENABLE_TLB_FLUSH_GZVM		BIT(29)
+
 #define POWER_ON_STA		1
 #define POWER_OFF_STA		0
 
@@ -1270,6 +1275,23 @@ static void mtk_iommu_tlb_flush_range_sync(unsigned long iova, size_t size,
 	if (need_sync_all)
 		mtk_iommu_tlb_flush_all(orig_data);
 }
+
+#if IS_ENABLED(CONFIG_MTK_GZVM_VENDOR_HOOKS)
+static void mtk_iommu_tlb_flush_sync_all(void)
+{
+	struct list_head *mm_head = &mm_iommu_list;
+	struct list_head *apu_head = &apu_iommu_list;
+	struct mtk_iommu_data *data;
+
+	for_each_m4u(data, mm_head) {
+		mtk_iommu_tlb_flush(data, true);
+	}
+
+	for_each_m4u(data, apu_head) {
+		mtk_iommu_tlb_flush(data, true);
+	}
+}
+#endif
 
 static void mtk_iommu_dump_iova(struct mtk_iommu_data *data,
 		enum iommu_bank bank, u64 fault_iova)
@@ -3243,6 +3265,11 @@ skip_smi:
 	}
 #endif
 
+#if IS_ENABLED(CONFIG_MTK_GZVM_VENDOR_HOOKS)
+	if (MTK_IOMMU_HAS_FLAG(data->plat_data, ENABLE_TLB_FLUSH_GZVM))
+		gzvm_register_iommu_sync_cb(mtk_iommu_tlb_flush_sync_all);
+#endif
+
 	mtk_iommu_isr_pause_timer_init(data);
 
 	pr_info("%s done dev:%s, head:%lx\n", __func__, dev_name(dev),
@@ -3771,7 +3798,7 @@ static const struct mtk_iommu_plat_data mt6858_data_disp = {
 	.m4u_plat	= M4U_MT6858,
 	.flags          = OUT_ORDER_WR_EN | GET_DOM_ID_LEGACY |
 			  NOT_STD_AXI_MODE | TLB_SYNC_EN | IOMMU_SEC_EN |
-			  SKIP_CFG_PORT | IOVA_34_EN |
+			  SKIP_CFG_PORT | IOVA_34_EN | ENABLE_TLB_FLUSH_GZVM |
 			  HAS_SMI_SUB_COMM | SAME_SUBSYS | PGTABLE_PA_35_EN,
 	.hw_list        = &mm_iommu_list,
 	.inv_sel_reg    = REG_MMU_INV_SEL_GEN2,

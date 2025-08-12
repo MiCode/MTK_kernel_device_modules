@@ -49,6 +49,7 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/misc/mediatek/iommu:iommu_debug".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/iommu:mtk_iommu_util".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/smi:mtk-smi-dbg".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/hooks/geniezone_vendor_hooks:gzvm_hooks".format(kernel_version),
     ],
     includes = ["."],
     out = "mtk_iommu.ko",
