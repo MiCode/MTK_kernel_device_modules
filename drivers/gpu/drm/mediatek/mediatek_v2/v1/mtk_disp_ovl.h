@@ -55,7 +55,7 @@ struct compress_info {
 	 * but mtk decoder is different among platforms.
 	 */
 	const char name[25];
-
+	unsigned int header_bw_min;
 	bool (*l_config)(struct mtk_ddp_comp *comp,
 			unsigned int idx, struct mtk_plane_state *state,
 			struct cmdq_pkt *handle);

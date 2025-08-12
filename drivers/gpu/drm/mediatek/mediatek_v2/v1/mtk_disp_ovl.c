@@ -4914,6 +4914,7 @@ static int mtk_ovl_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		struct mtk_disp_ovl *ovl = comp_to_ovl(comp);
 		unsigned int phy_id = 0, port_bw = bw_val, total_bw = 0, hdr_bw = 0;
 		struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+		unsigned int afbc_hdr_bw_min = 0;
 
 		if (!mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_MMQOS_SUPPORT))
@@ -4972,8 +4973,13 @@ static int mtk_ovl_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		}
 
 		if (!IS_ERR_OR_NULL(comp->hdr_qos_req)) {
-			if (total_bw)
-				hdr_bw = (total_bw > 32) ? total_bw / 32 : 1;
+			if (total_bw) {
+				hdr_bw = (total_bw > 32) ? (total_bw / 32 + 1) : 1;
+				if (ovl && ovl->data && ovl->data->compr_info) {
+					afbc_hdr_bw_min = ovl->data->compr_info->header_bw_min;
+					hdr_bw = (hdr_bw > afbc_hdr_bw_min) ? hdr_bw : afbc_hdr_bw_min;
+				}
+			}
 
 			if (comp->last_hdr_bw != hdr_bw) {
 				DDPQOS("%s/%u,layer:%u update hdr:%u->%u total:%u bw:%u\n",
@@ -4993,6 +4999,7 @@ static int mtk_ovl_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		struct mtk_disp_ovl *ovl = comp_to_ovl(comp);
 		unsigned int phy_id = 0, port_bw = bw_val, total_bw = 0, hdr_bw = 0;
 		struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+		unsigned int afbc_hdr_bw_min = 0;
 
 		if (!mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_MMQOS_SUPPORT))
@@ -5074,8 +5081,13 @@ static int mtk_ovl_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		}
 
 		if (!IS_ERR_OR_NULL(comp->hdr_qos_req)) {
-			if (total_bw)
-				hdr_bw = (total_bw > 32) ? total_bw / 32 : 1;
+			if (total_bw) {
+				hdr_bw = (total_bw > 32) ? (total_bw / 32 + 1) : 1;
+				if (ovl && ovl->data && ovl->data->compr_info) {
+					afbc_hdr_bw_min = ovl->data->compr_info->header_bw_min;
+					hdr_bw = (hdr_bw > afbc_hdr_bw_min) ? hdr_bw : afbc_hdr_bw_min;
+				}
+			}
 
 			if (hdr_bw > comp->last_hdr_bw) {
 				DDPQOS("%s/%u,layer:%u hdr fast up:%u->%u total:%u bw:%u\n",
@@ -6839,6 +6851,7 @@ static const struct mtk_disp_ovl_data mt6855_ovl_driver_data = {
 
 static const struct compress_info compr_info_mt6858  = {
 	.name = "AFBC_V1_2_MTK_1",
+	.header_bw_min = 129,
 	.l_config = &compr_l_config_AFBC_V1_2,
 };
 
