@@ -5437,7 +5437,7 @@ dramc: dramc@10230000 {
 			interrupts =
 				<GIC_SPI 343 IRQ_TYPE_LEVEL_HIGH 0>, /* DPC_DISP_IRQ_BIT */
 				<GIC_SPI 344 IRQ_TYPE_LEVEL_HIGH 0>; /* DPC_MML_IRQ_BIT */
-			vidle-mask = <0x436>;
+			vidle-mask = <0x43e>;
 		};
 
 		reserved@14021000 {
