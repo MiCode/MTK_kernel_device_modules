@@ -45,6 +45,8 @@
 #include "mdp_dpc.h"
 #include "mtk_vdisp.h"
 
+#define DPC_MEM_SIZE 0x2000
+
 int debug_mmp = 1;
 module_param(debug_mmp, int, 0644);
 int debug_dvfs;
@@ -514,6 +516,8 @@ static void dpc_dt_en_all(const u32 subsys, u32 dt_en)
 
 static void dpc_dt_set_update(u16 dt, u32 us)
 {
+	if (dt >= DPC2_VIDLE_CNT)
+		return;
 	if (g_priv->dpc2_dt_usage) {
 		g_priv->dpc2_dt_usage[dt].val = us;
 	} else {
@@ -1966,7 +1970,7 @@ static void process_dbg_opt(const char *opt)
 
 	if (strncmp(opt, "wr:", 3) == 0) {
 		ret = sscanf(opt, "wr:0x%x=0x%x\n", &v1, &v2);
-		if (ret != 2)
+		if (ret != 2 || v1 >= DPC_MEM_SIZE)
 			goto err;
 		DPCFUNC("(%pK)=(%x)", dpc_base + v1, v2);
 		writel(v2, dpc_base + v1);
