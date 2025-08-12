@@ -1091,6 +1091,9 @@ static int lcm_setbacklight_cmdq_v2(void *dsi, mtk_dsi_ddic_cmd cb,
 
 	cmd_bl_level[0].para_list[1] = (unsigned char)((level>>8) & 0xF);
 	cmd_bl_level[0].para_list[2] = (unsigned char)(level & 0xFF);
+
+	//print too much log
+#ifdef IF_ZERO
 	pr_info("%s level %d, (0x%x, 0x%x, 0x%x), (0x%x,0x%x)\n",
 			__func__, level,
 			cmd_bl_level[0].para_list[0],
@@ -1098,6 +1101,7 @@ static int lcm_setbacklight_cmdq_v2(void *dsi, mtk_dsi_ddic_cmd cb,
 			cmd_bl_level[0].para_list[2],
 			cmd_set_backlight_pre_set[0].para_list[0],
 			cmd_set_backlight_pre_set[0].para_list[1]);
+#endif
 
 	if (!cb)
 		return -1;
