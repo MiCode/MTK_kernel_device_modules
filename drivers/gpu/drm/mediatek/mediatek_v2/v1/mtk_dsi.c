@@ -13916,7 +13916,6 @@ static void mtk_dsi_dy_fps_cmdq_cb(struct cmdq_cb_data data)
 		mtk_crtc->base.dev->dev_private;
 	unsigned int cb_mmclk_req_idx = cb_data->mmclk_req_idx;
 	unsigned int last_mmclk_req_idx;
-	struct drm_crtc *crtc = &mtk_crtc->base;
 
 	DDPINFO("%s vdo mode fps change done\n", __func__);
 
@@ -13941,13 +13940,6 @@ static void mtk_dsi_dy_fps_cmdq_cb(struct cmdq_cb_data data)
 		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 	}
 done:
-	/*vdo panel allow vidle after mode switch*/
-	if (drm_crtc_index(crtc) == 0 &&
-		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_VDO_PANEL) &&
-		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_FULL_SCENARIO)) {
-		DDPMSG("%s, update vidle config\n", __func__);
-		mtk_vidle_hint_decision("update_vdo_timing");
-	}
 	cmdq_pkt_destroy(cb_data->cmdq_handle);
 	kfree(cb_data);
 }
@@ -14535,7 +14527,6 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		if (panel_ext && panel_ext->params
 			&& panel_ext->params->vfp_low_power)
 			*timing_changed = panel_ext->params->vfp_low_power ? 1 : 0;
-		DDPMSG("%s, timing_changed:%u\n", __func__, *timing_changed);
 	}
 		break;
 	case DSI_VFP_IDLE_MODE:
@@ -14555,7 +14546,6 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			vfp_lp_dyn = vfp_low_power;
 
 		if (vfp_low_power && vfp_lp_dyn) {
-			DDPMSG("vfp_low_power=%d,vfp_lp_dyn=%d\n", vfp_low_power, vfp_lp_dyn);
 			if (is_bdg_supported())
 				mtk_dsi_stop_vdo_mode(dsi, handle, __LINE__);
 			mtk_dsi_porch_setting(comp, handle, DSI_VFP,

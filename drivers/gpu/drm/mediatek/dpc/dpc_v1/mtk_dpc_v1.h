@@ -23,16 +23,16 @@
 #define DT_MIN_VBLANK    2500
 #define DT_MIN_FRAME     2000
 
-#define DT_TE_30  32500
-#define DT_TE_45  21600
-#define DT_TE_60  16000
-#define DT_TE_90  10700
+#define DT_TE_30  33000
+#define DT_TE_45  21900
+#define DT_TE_60  16300
+#define DT_TE_90  10800
 #define DT_TE_120 8000
 #define DT_TE_150 6300
 #define DT_TE_180 5200
 #define DT_TE_210 4400
 #define DT_TE_240 3800
-#define DT_TE_360 2650
+#define DT_TE_360 2400
 #define DT_TE_SAFEZONE 650
 #define DT_OFF0 240
 #define DT_OFF1 500
@@ -55,6 +55,17 @@
 #define DT_4  (DT_OFF0)
 #define DT_7  (DT_OFF1 + DT_PRE_DISP1_OFF)
 #define DT_13 (DT_OFF1 + DT_PRE_MMINFRA_OFF)
+
+#define DT_OFF0_WO_MTCMOS 30
+#define DT_TE_SAFEZONE_WO_MTCMOS 350
+#define DT_POST_DVFS_OFF_WO_MTCMOS 1700
+
+#define DT_11_WO_MTCMOS (DT_OFF0_WO_MTCMOS)
+#define DT_12_WO_MTCMOS (DT_TE_360 - DT_POST_DVFS_OFF_WO_MTCMOS)
+#define DT_5_WO_MTCMOS  (DT_TE_360 - DT_TE_SAFEZONE_WO_MTCMOS)
+#define DT_1_WO_MTCMOS  (DT_TE_360 - DT_TE_SAFEZONE_WO_MTCMOS)
+#define DT_6_WO_MTCMOS  (DT_TE_360 - DT_DISP1TE_OFFSET)
+#define DT_4_WO_MTCMOS  (DT_OFF0_WO_MTCMOS)
 
 #define MTK_DPC_OF_DISP_SUBSYS(id)  ((int)(id) >= DPC_SUBSYS_DISP && (int)(id) <= DPC_SUBSYS_OVL0)
 #define MTK_DPC_OF_MML_SUBSYS(id)  ((int)(id) >= DPC_SUBSYS_MML && (int)(id) <= DPC_SUBSYS_MML0)

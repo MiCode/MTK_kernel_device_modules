@@ -1865,21 +1865,39 @@ static int dpc_dt_set_dur_v1(u32 dur_frame, u32 dur_vblank)
 		goto out;
 
 	dpc_mmp(dt, MMPROFILE_FLAG_START, g_te_duration, dur_frame);
-	/* update DT table affected by TE duration */
-	dpc_dt_update_table(1, duration - DT_OVL_OFFSET);
-	dpc_dt_update_table(5, duration - DT_DISP1_OFFSET);
-	dpc_dt_update_table(6, duration - DT_DISP1TE_OFFSET);
-	dpc_dt_update_table(12, duration - DT_MMINFRA_OFFSET);
-	dpc_dt_update_table(33, duration - DT_OVL_OFFSET);
-	dpc_dt_update_table(40, duration - DT_MMINFRA_OFFSET);
+	if (mtk_dpc_support_cap(DPC_VIDLE_MTCMOS_OFF)) {
+		/* update DT table affected by TE duration */
+		dpc_dt_update_table(1, duration - DT_OVL_OFFSET);
+		dpc_dt_update_table(5, duration - DT_DISP1_OFFSET);
+		dpc_dt_update_table(6, duration - DT_DISP1TE_OFFSET);
+		dpc_dt_update_table(12, duration - DT_MMINFRA_OFFSET);
+		dpc_dt_update_table(33, duration - DT_OVL_OFFSET);
+		dpc_dt_update_table(40, duration - DT_MMINFRA_OFFSET);
 
-	/* update DT timer affected by TE duration */
-	dpc_dt_set(1, duration - DT_OVL_OFFSET);
-	dpc_dt_set(5, duration - DT_DISP1_OFFSET);
-	dpc_dt_set(6, duration - DT_DISP1TE_OFFSET);
-	dpc_dt_set(12, duration - DT_MMINFRA_OFFSET);
-	dpc_dt_set(33, duration - DT_OVL_OFFSET);
-	dpc_dt_set(40, duration - DT_MMINFRA_OFFSET);
+		/* update DT timer affected by TE duration */
+		dpc_dt_set(1, duration - DT_OVL_OFFSET);
+		dpc_dt_set(5, duration - DT_DISP1_OFFSET);
+		dpc_dt_set(6, duration - DT_DISP1TE_OFFSET);
+		dpc_dt_set(12, duration - DT_MMINFRA_OFFSET);
+		dpc_dt_set(33, duration - DT_OVL_OFFSET);
+		dpc_dt_set(40, duration - DT_MMINFRA_OFFSET);
+	} else {
+		/* update DT table affected by TE duration */
+		dpc_dt_update_table(1, duration - DT_TE_SAFEZONE_WO_MTCMOS);
+		dpc_dt_update_table(5, duration - DT_TE_SAFEZONE_WO_MTCMOS);
+		dpc_dt_update_table(6, duration - DT_DISP1TE_OFFSET);
+		dpc_dt_update_table(12, duration - DT_POST_DVFS_OFF_WO_MTCMOS);
+		dpc_dt_update_table(33, duration - DT_TE_SAFEZONE_WO_MTCMOS);
+		dpc_dt_update_table(40, duration - DT_POST_DVFS_OFF_WO_MTCMOS);
+
+		/* update DT timer affected by TE duration */
+		dpc_dt_set(1, duration - DT_TE_SAFEZONE_WO_MTCMOS);
+		dpc_dt_set(5, duration - DT_TE_SAFEZONE_WO_MTCMOS);
+		dpc_dt_set(6, duration - DT_DISP1TE_OFFSET);
+		dpc_dt_set(12, duration - DT_POST_DVFS_OFF_WO_MTCMOS);
+		dpc_dt_set(33, duration - DT_TE_SAFEZONE_WO_MTCMOS);
+		dpc_dt_set(40, duration - DT_POST_DVFS_OFF_WO_MTCMOS);
+	}
 
 	g_te_duration = duration;
 	g_vb_duration = dur_vblank;
@@ -1900,14 +1918,25 @@ static int dpc_dt_set_dur_v1(u32 dur_frame, u32 dur_vblank)
 		goto out;
 	} else if (g_panel_type == PANEL_TYPE_VDO) {
 		if (g_disp_dt_usage[4].ep == DT_MAX_TIMEOUT) {
-			dpc_dt_update_table(4, DT_4);
-			dpc_dt_update_table(11, DT_11);
-			dpc_dt_update_table(32, DT_4);
-			dpc_dt_update_table(39, DT_11);
-			dpc_dt_set(4, DT_4);
-			dpc_dt_set(11, DT_11);
-			dpc_dt_set(32, DT_4);
-			dpc_dt_set(39, DT_11);
+			if (mtk_dpc_support_cap(DPC_VIDLE_MTCMOS_OFF)) {
+				dpc_dt_update_table(4, DT_4);
+				dpc_dt_update_table(11, DT_11);
+				dpc_dt_update_table(32, DT_4);
+				dpc_dt_update_table(39, DT_11);
+				dpc_dt_set(4, DT_4);
+				dpc_dt_set(11, DT_11);
+				dpc_dt_set(32, DT_4);
+				dpc_dt_set(39, DT_11);
+			} else {
+				dpc_dt_update_table(4, DT_4_WO_MTCMOS);
+				dpc_dt_update_table(11, DT_11_WO_MTCMOS);
+				dpc_dt_update_table(32, DT_4_WO_MTCMOS);
+				dpc_dt_update_table(39, DT_11_WO_MTCMOS);
+				dpc_dt_set(4, DT_4_WO_MTCMOS);
+				dpc_dt_set(11, DT_11_WO_MTCMOS);
+				dpc_dt_set(32, DT_4_WO_MTCMOS);
+				dpc_dt_set(39, DT_11_WO_MTCMOS);
+			}
 		}
 	}
 

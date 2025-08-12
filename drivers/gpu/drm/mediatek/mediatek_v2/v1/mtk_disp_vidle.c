@@ -347,8 +347,6 @@ static int mtk_set_dt_configure_all(unsigned int dur_frame, unsigned int dur_vbl
 				dur_vblank, vidle_data.hint.vdo_vblank_fuse, ret);
 		}
 	}
-	DDPMSG("%s: dur_frame:%uus, dur_vb:%uus, ret:%d\n",
-		__func__, dur_frame, dur_vblank, ret);
 	return ret;
 }
 
