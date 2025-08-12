@@ -116,7 +116,7 @@ static void giveback_urb(struct urb *urb, int actual_length, int status);
 static struct dsp_payload *new_payload(int length);
 static void free_payload(struct dsp_payload *payload);
 static void clear_payload_list(struct hid_ep_info *ep);
-static bool is_hid_urb(struct urb *urb, struct usb_interface_descriptor *intf_desc,
+static bool is_valid_hid_urb(struct urb *urb, struct usb_interface_descriptor *intf_desc,
 	struct usb_endpoint_descriptor *ep_desc);
 
 /* hid ep helper */
@@ -153,8 +153,7 @@ static void hid_trace_dequeue(void *unused, struct urb *urb)
 	dir = usb_endpoint_dir_in(&urb->ep->desc);
 	hid = get_hid_ep(dir);
 
-	if (is_hid_urb(urb, &hid->intf_desc, &hid->ep_desc)) {
-
+	if (is_valid_hid_urb(urb, &hid->intf_desc, &hid->ep_desc)) {
 		/* to check if previous round finished or not
 		 * example: hold key would cause duration between dsp irq too long,
 		 *          a dequeue event might be involved between them
@@ -201,7 +200,7 @@ bool usb_offload_trace_hid_enqueue(struct xhci_hcd *xhci, struct urb *urb)
 	struct hid_ep_info *hid;
 	int delay_ms = 3;
 
-	if (!is_hid_urb(urb, &intf_desc, &ep_desc))
+	if (!is_valid_hid_urb(urb, &intf_desc, &ep_desc))
 		return false;
 
 	hid = get_hid_ep_safe(usb_endpoint_dir_in(&urb->ep->desc),
@@ -805,13 +804,14 @@ static void clear_payload_list(struct hid_ep_info *hid)
 	}
 }
 
-static bool is_hid_urb(struct urb *urb, struct usb_interface_descriptor *intf_desc,
+static bool is_valid_hid_urb(struct urb *urb, struct usb_interface_descriptor *intf_desc,
 	struct usb_endpoint_descriptor *ep_desc)
 {
 	struct usb_host_config *actconfig = NULL;
 	struct usb_host_endpoint *ep;
 	struct usb_device *dev;
 	struct usb_host_interface *intf;
+	struct usb_audio_dev *audio_dev;
 	int intf_num, i;
 	bool found_hid_req = false;
 
@@ -819,6 +819,12 @@ static bool is_hid_urb(struct urb *urb, struct usb_interface_descriptor *intf_de
 		return found_hid_req;
 
 	dev = urb->dev;
+	audio_dev = usb_offload_get_uadev(dev->slot_id);
+	if (!audio_dev) {
+		hid_dbg("not our audio device, slot:%d\n", dev->slot_id);
+		return false;
+	}
+
 	ep = urb->ep;
 	actconfig = dev->actconfig;
 
@@ -839,6 +845,7 @@ static bool is_hid_urb(struct urb *urb, struct usb_interface_descriptor *intf_de
 			break;
 		}
 	}
+
 	return found_hid_req;
 }
 

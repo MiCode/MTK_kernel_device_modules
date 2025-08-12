@@ -297,6 +297,19 @@ done:
 	return subs;
 }
 
+struct usb_audio_dev *usb_offload_get_uadev(unsigned int slot_id)
+{
+	struct usb_audio_dev *dev;
+	int i;
+
+	for (i = 0; i < SNDRV_CARDS; i++) {
+		dev = &uadev[i];
+		if (dev->is_valid && slot_id == dev->slot_id)
+			return dev;
+	}
+	return NULL;
+}
+
 static void sound_usb_connect(struct snd_usb_audio *chip)
 {
 	struct usb_interface *intf = NULL;
