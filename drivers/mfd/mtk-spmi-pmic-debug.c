@@ -709,6 +709,13 @@ int mtk_spmi_pmic_dump_rg_data(u8 slvid, u32 *rdata, enum dump_rg rg_name)
 }
 EXPORT_SYMBOL_GPL(mtk_spmi_pmic_dump_rg_data);
 
+void mtk_spmi_pmic_print_dbg(const char *pmic_model, u32 mstid, u32 slvid,
+	const char *bus_kind, const char *evt)
+{
+	pr_info("[pmic_chk_exp_k] %s %s %d-%d %s\n", pmic_model, bus_kind, mstid, slvid, evt);
+}
+EXPORT_SYMBOL_GPL(mtk_spmi_pmic_print_dbg);
+
 static int mtk_spmi_debug_parse_dt(struct device *dev, struct mtk_spmi_pmic_debug_data *data)
 {
 	struct device_node *node_parent, *node;

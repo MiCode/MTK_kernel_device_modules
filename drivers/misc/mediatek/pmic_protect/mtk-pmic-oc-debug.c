@@ -15,6 +15,7 @@
 #include <aee.h>
 #endif
 #include <mtk_ccci_common.h>
+#include <mtk-spmi-pmic-debug.h>
 
 #define NOTIFY_TIMES_MAX	2
 #define LVSYS_VIO18_SWITCH	0
@@ -25,6 +26,13 @@ struct oc_debug_t {
 	unsigned int times;
 	bool is_md_reg;
 	char md_data;
+
+	/* PMIC debug info: model, IDs, bus kind, reglator name */
+	const char *pmic_model;
+	u32 mstid;
+	u32 slvid;
+	const char *bus_kind;
+	const char *reg_name;
 };
 
 struct oc_debug_info {
@@ -100,6 +108,40 @@ static struct oc_debug_t mt6835_oc_debug[] = {
 	REG_OC_DEBUG(mt6377_vusb),
 	REG_OC_DEBUG(mt6377_vio28),
 	REG_OC_DEBUG(mt6377_vfp),
+};
+
+static struct oc_debug_t mt6858_oc_debug[] = {
+	MD_REG_OC_DEBUG(mt6363_vcn15, BIT(5)),
+	REG_OC_DEBUG(mt6363_vcn13),
+	MD_REG_OC_DEBUG(mt6363_vrf09, BIT(2)),
+	REG_OC_DEBUG(mt6363_vrf12),
+	MD_REG_OC_DEBUG(mt6363_vrf13, BIT(3)),
+	MD_REG_OC_DEBUG(mt6363_vrf18, BIT(4)),
+	REG_OC_DEBUG(mt6363_vrfio18),
+	REG_OC_DEBUG(mt6363_vsram_mdfe),
+	REG_OC_DEBUG(mt6363_vtref18),
+	REG_OC_DEBUG(mt6363_vsram_apu),
+	REG_OC_DEBUG(mt6363_vaux18),
+	REG_OC_DEBUG(mt6363_vemc),
+	REG_OC_DEBUG(mt6363_vufs12),
+	REG_OC_DEBUG(mt6363_vufs18),
+	REG_OC_DEBUG(mt6363_vio18),
+	REG_OC_DEBUG(mt6363_vio075),
+	REG_OC_DEBUG(mt6363_va12_1),
+	REG_OC_DEBUG(mt6363_va12_2),
+	REG_OC_DEBUG(mt6363_va15),
+	REG_OC_DEBUG(mt6369_vio28),
+	REG_OC_DEBUG(mt6369_vfp),
+	REG_OC_DEBUG(mt6369_vusb),
+	REG_OC_DEBUG(mt6369_vaud28),
+	REG_OC_DEBUG(mt6369_vcn33_1),
+	REG_OC_DEBUG(mt6369_vcn33_2),
+	REG_OC_DEBUG(mt6369_vefuse),
+	REG_OC_DEBUG(mt6369_vmch),
+	REG_OC_DEBUG(mt6369_vmc),
+	REG_OC_DEBUG(mt6369_vant18),
+	REG_OC_DEBUG(mt6369_vaux18),
+	MD_REG_OC_DEBUG(VPA, BIT(0)),
 };
 
 static struct oc_debug_t mt6879_oc_debug[] = {
@@ -238,6 +280,11 @@ static struct oc_debug_info mt6835_debug_info = {
 	.oc_debug_num = ARRAY_SIZE(mt6835_oc_debug),
 };
 
+static struct oc_debug_info mt6858_debug_info = {
+	.oc_debug = mt6858_oc_debug,
+	.oc_debug_num = ARRAY_SIZE(mt6858_oc_debug),
+};
+
 static struct oc_debug_info mt6879_debug_info = {
 	.oc_debug = mt6879_oc_debug,
 	.oc_debug_num = ARRAY_SIZE(mt6879_oc_debug),
@@ -270,6 +317,8 @@ static int regulator_oc_notify(struct notifier_block *nb, unsigned long event,
 	int len = 0;
 	char oc_str[30] = "";
 	struct oc_debug_t *oc_dbg;
+	int evt_len = 0;
+	char evt[50] = "";
 
 	if (event != REGULATOR_EVENT_OVER_CURRENT)
 		return NOTIFY_OK;
@@ -282,8 +331,9 @@ static int regulator_oc_notify(struct notifier_block *nb, unsigned long event,
 		return NOTIFY_OK;
 	}
 
-	pr_notice("regulator:%s OC %d times\n",
-		  oc_dbg->name, oc_dbg->times);
+	evt_len += snprintf(evt, sizeof(evt), "%s OC %d times", oc_dbg->reg_name, oc_dbg->times);
+	mtk_spmi_pmic_print_dbg(oc_dbg->pmic_model, oc_dbg->mstid, oc_dbg->slvid, oc_dbg->bus_kind, evt);
+
 	len += snprintf(oc_str, 30, "PMIC OC:%s", oc_dbg->name);
 	if (len < 0)
 		pr_notice("[%s] failed to use snprintf\n", __func__);
@@ -306,8 +356,28 @@ static int regulator_oc_notify(struct notifier_block *nb, unsigned long event,
 static int register_oc_notifier(struct platform_device *pdev,
 				struct oc_debug_t *oc_debug, size_t oc_debug_num)
 {
-	int i, ret;
+	int i, j, ret;
 	struct regulator *reg = NULL;
+	struct device_node *np = pdev->dev.of_node;
+	int count;
+	struct device_node *reg_node, *parent_node, *grandparent_node, *spmi_node;
+	const char *reg_name;
+	const char *pmic_name;
+	u32 spmi_dev_mask = 0, slvid = 0;
+	int spmi_p = -1, spmi_m = -1;
+
+	of_property_read_s32(np, "spmi-p", &spmi_p);
+	of_property_read_s32(np, "spmi-m", &spmi_m);
+
+	spmi_node = of_parse_phandle(np, "spmi", 0);
+	if (!spmi_node)
+		dev_notice(&pdev->dev, "Failed to get SPMI node\n");
+	else
+		of_property_read_u32(spmi_node, "spmi-dev-mask", &spmi_dev_mask);
+
+	count = of_count_phandle_with_args(np, "regulators", NULL);
+	if (count < 0)
+		dev_notice(&pdev->dev, "Error finding regulators in DTS: %d\n", count);
 
 	for (i = 0; i < oc_debug_num; i++, oc_debug++) {
 		reg = devm_regulator_get_optional(&pdev->dev,
@@ -325,6 +395,98 @@ static int register_oc_notifier(struct platform_device *pdev,
 		if (ret) {
 			dev_notice(&pdev->dev,
 				   "regulator notifier request failed\n");
+		}
+
+		// Initialize PMIC debug info with default values
+		oc_debug->pmic_model = "MTK_PMIC";
+		oc_debug->mstid = 0xFF;
+		oc_debug->slvid = 0xFF;
+		oc_debug->bus_kind = "SPMI";
+		oc_debug->reg_name = oc_debug->name;
+
+		for (j = 0; j < count; j++) {
+			reg_node = of_parse_phandle(np, "regulators", j);
+			if (!reg_node) {
+				dev_notice(&pdev->dev, "Failed to get regulator node at index %d\n", j);
+				continue;
+			}
+
+			ret = of_property_read_string(reg_node, "regulator-name", &reg_name);
+			if (ret) {
+				dev_notice(&pdev->dev, "Failed to read regulator-name for node at index %d\n", j);
+				of_node_put(reg_node);
+				continue;
+			}
+
+			if (!strcmp(oc_debug->name, reg_name)) {
+
+				ret = of_property_read_string(reg_node, "regulator-compatible", &oc_debug->reg_name);
+				if (ret) {
+					dev_notice(&pdev->dev,
+						   "Failed to read regulator-compatible for node at index %d\n", j);
+					of_node_put(reg_node);
+					continue;
+				}
+
+				parent_node = of_get_parent(reg_node);
+				if (!parent_node) {
+					dev_notice(&pdev->dev, "Failed to get parent node for %s\n", reg_name);
+					of_node_put(reg_node);
+					continue;
+				}
+
+				grandparent_node = of_get_parent(parent_node);
+				if (!grandparent_node) {
+					dev_notice(&pdev->dev, "Failed to get grandparent node for %s\n", reg_name);
+					of_node_put(parent_node);
+					of_node_put(reg_node);
+					continue;
+				}
+
+				ret = of_property_read_u32_index(grandparent_node, "reg", 0, &slvid);
+				if (ret) {
+					dev_notice(&pdev->dev,
+						"Failed to read reg from grandparent node for %s\n",
+						reg_name);
+				} else {
+					oc_debug->slvid = slvid;
+					oc_debug->mstid = (BIT(slvid) & spmi_dev_mask)? spmi_p : spmi_m;
+					dev_notice(&pdev->dev, "Set slvid=%d for regulator %s\n", slvid, reg_name);
+				}
+
+				ret = of_property_read_string(grandparent_node, "compatible", &pmic_name);
+				if (ret) {
+					dev_notice(&pdev->dev,
+						"Failed to read compatible from grandparent node for %s\n",
+						reg_name);
+				} else {
+					// Find the position of the comma in the string
+					const char *model = strchr(pmic_name, ',');
+
+					// Check if the comma was found
+					if (model && *(model + 1)) {
+						// Move the pointer past the comma
+						model++;
+						oc_debug->pmic_model= model;
+						oc_debug->bus_kind = "SPMI"; // TODO: from DTS query bus kind
+
+						// Log the extracted model name
+						dev_notice(&pdev->dev,
+							"Extracted pmic_name=%s for regulator %s\n",
+							oc_debug->pmic_model, reg_name);
+					} else {
+						// Handle error if the expected format is not present
+						dev_notice(&pdev->dev, "Invalid compatible format for %s\n", reg_name);
+					}
+				}
+
+				of_node_put(grandparent_node);
+				of_node_put(parent_node);
+				of_node_put(reg_node);
+				break;
+			}
+
+			of_node_put(reg_node);
 		}
 	}
 	return 0;
@@ -400,7 +562,7 @@ static int vio18_switch(struct platform_device *pdev, struct oc_debug_info *info
 	if (!vio18_ctrl->main_regmap)
 		return -EINVAL;
 
-	if (info == &mt6855_debug_info)
+	if (info == &mt6855_debug_info || info == &mt6858_debug_info)
 		vio18_ctrl->second_switch = 0x56;
 	else if (info == &mt6879_debug_info)
 		vio18_ctrl->second_switch = 0x57;
@@ -466,11 +628,14 @@ static int pmic_oc_debug_probe(struct platform_device *pdev)
 
 static const struct of_device_id pmic_oc_debug_of_match[] = {
 	{
+		.compatible = "mediatek,mt6835-oc-debug",
+		.data = &mt6835_debug_info,
+	}, {
 		.compatible = "mediatek,mt6855-oc-debug",
 		.data = &mt6855_debug_info,
 	}, {
-		.compatible = "mediatek,mt6835-oc-debug",
-		.data = &mt6835_debug_info,
+		.compatible = "mediatek,mt6858-oc-debug",
+		.data = &mt6858_debug_info,
 	}, {
 		.compatible = "mediatek,mt6879-oc-debug",
 		.data = &mt6879_debug_info,

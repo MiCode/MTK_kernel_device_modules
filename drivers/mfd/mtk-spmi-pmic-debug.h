@@ -36,6 +36,8 @@ enum dump_rg {
 	MAX_DUMP_RG_NUM,
 };
 extern int mtk_spmi_pmic_dump_rg_data(u8 slvid, u32 *rdata, enum dump_rg rg_name);
+extern void mtk_spmi_pmic_print_dbg(const char *pmic_model, u32 mstid, u32 slvid,
+				const char *bus_kind, const char *evt);
 
 MODULE_AUTHOR("HS Chien <HS.Chien@mediatek.com>");
 MODULE_DESCRIPTION("Debug driver for MediaTek SPMI PMIC");

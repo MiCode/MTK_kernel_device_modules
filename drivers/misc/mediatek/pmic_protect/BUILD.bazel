@@ -33,9 +33,11 @@ define_mgk_ddk_ko(
     ko_deps = [
 		"//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
 		"//kernel_device_modules-{}/drivers/misc/mediatek/eccci:ccci_md_all".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/mfd:mtk-spmi-pmic-debug".format(kernel_version),
 	],
     copts = [
-        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/"
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/mfd/"
     ],
 )
 
