@@ -6210,6 +6210,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			"clk_pll_1";
 
 			scp-core-online-mask = <0x7>;
+			smp-support;
 			vlp-support;
 			ips-support;
 
