@@ -2122,10 +2122,8 @@ static void mtk_oddmr_dmr_srt_cal(struct mtk_ddp_comp *comp, int en)
 	oddmr_data = comp_to_oddmr(comp);
 	mtk_crtc = comp->mtk_crtc;
 	cur_bin_idx = atomic_read(&oddmr_data->dmr_data.cur_bin_idx);
-	if (cur_bin_idx == -1)
-		return;
-	dmr_cfg_data = &oddmr_data->primary_data->dmr_multi_bin[cur_bin_idx];
 	if (en) {
+		dmr_cfg_data = &oddmr_data->primary_data->dmr_multi_bin[cur_bin_idx];
 		table_size = dmr_cfg_data->table_index.table_byte_num;
 		srt = table_size;
 		vrefresh = oddmr_data->primary_data->current_timing.vrefresh;
@@ -2139,7 +2137,7 @@ static void mtk_oddmr_dmr_srt_cal(struct mtk_ddp_comp *comp, int en)
 	} else {
 		oddmr_data->qos_srt_dmrr = 0;
 	}
-	ODDMRAPI_LOG("cal srt %d/%d\n", oddmr_data->qos_srt_dmrr,oddmr_data->last_qos_srt_dmrr);
+	DDPINFO("cal srt %d/%d en=%d\n", oddmr_data->qos_srt_dmrr,oddmr_data->last_qos_srt_dmrr, en);
 }
 
 static void mtk_oddmr_set_spr2rgb(struct mtk_ddp_comp *comp, struct cmdq_pkt *pkg)
@@ -6773,6 +6771,7 @@ static void mtk_oddmr_dmr_state_chg(struct mtk_ddp_comp *comp,
 				MT6991_DISP_ODDMR_REG_DMR_UDMA_BASE_ADDR_0, handle);
 			mtk_oddmr_write(comp, addr >> 20,
 				MT6991_DISP_ODDMR_REG_DMR_UDMA_BASE_ADDR_1, handle);
+			mtk_oddmr_dmr_srt_cal(comp, oddmr_data->dmr_enable);
 		}
 	}
 	/* update remap gain */
