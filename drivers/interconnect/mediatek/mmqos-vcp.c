@@ -19,6 +19,7 @@ static phys_addr_t mmqos_memory_pa;
 static void *mmqos_memory_va;
 static bool mmqos_vcp_cb_ready;
 static bool mmqos_vcp_init_done;
+static bool mmqos_vcp_in_init;
 static struct notifier_block vcp_ready_notifier;
 static int vcp_power;
 static DEFINE_MUTEX(mmqos_vcp_pwr_mutex);
@@ -217,7 +218,8 @@ static int mmqos_vcp_notifier_callback(struct notifier_block *nb, unsigned long 
 		mmqos_vcp_ipi_send(FUNC_MMQOS_INIT, 0, NULL);
 		mmqos_vcp_cb_ready = true;
 		if ((mmqos_state & VMMRC_ENABLE) && (mmqos_state & VMMRC_VCP_NO_WARM_BOOT) &&
-			mmqos_vcp_bw_fp && mmqos_vcp_bw_fp->write_last_bw_to_vmmrc)
+			mmqos_vcp_bw_fp && mmqos_vcp_bw_fp->write_last_bw_to_vmmrc &&
+			!mmqos_vcp_in_init)
 			mmqos_vcp_bw_fp->write_last_bw_to_vmmrc();
 		break;
 	case VCP_EVENT_STOP:
@@ -234,6 +236,7 @@ int mmqos_vcp_init_thread(void *data)
 	struct iommu_domain *domain;
 	int retry = 0;
 
+	mmqos_vcp_in_init = true;
 	while (mtk_mmqos_enable_vcp(true) < 0) {
 		if (++retry > 100) {
 			MMQOS_ERR("vcp is not power on yet");
@@ -278,6 +281,7 @@ int mmqos_vcp_init_thread(void *data)
 	vcp_A_register_notify_ex(MMQOS_FEATURE_ID, &vcp_ready_notifier);
 
 	mtk_mmqos_enable_vcp(false);
+	mmqos_vcp_in_init = false;
 
 	return 0;
 }

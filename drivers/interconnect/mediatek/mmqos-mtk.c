@@ -682,8 +682,6 @@ u32 read_register(u32 offset)
 
 static int start_write_bw(bool skip_vcp)
 {
-	u32 orig = 0;
-
 	if (!skip_vcp) {
 		if ((mmqos_state & VMMRC_VCP_ENABLE) &&
 			(mmqos_state & VMMRC_VCP_NO_WARM_BOOT)) {
@@ -709,17 +707,10 @@ static int start_write_bw(bool skip_vcp)
 					if (!disp_freq_by_regulator)
 						MMQOS_AEE("vcp enable fail");
 				}
-
 				return -EINVAL;
 			}
 		}
 #endif
-	}
-	if ((mmqos_state & MMPC_ENABLE) || (mmqos_state & MMPC_V2_ENABLE))
-		write_register(APMCU_MASK_OFFSET, 0);
-	else {
-		orig = read_register(APMCU_MASK_OFFSET);
-		write_register(APMCU_MASK_OFFSET, orig | BIT(gmmqos->apmcu_mask_bit));
 	}
 
 	return 0;
@@ -727,14 +718,6 @@ static int start_write_bw(bool skip_vcp)
 
 static void stop_write_bw(bool skip_vcp)
 {
-	u32 orig = 0;
-
-	if ((mmqos_state & MMPC_ENABLE) || (mmqos_state & MMPC_V2_ENABLE))
-		write_register(APMCU_MASK_OFFSET, gmmqos->mmpc_sw_en_all_on);
-	else {
-		orig = read_register(APMCU_MASK_OFFSET);
-		write_register(APMCU_MASK_OFFSET, orig & ~BIT(gmmqos->apmcu_mask_bit));
-	}
 	if (!skip_vcp) {
 #if IS_ENABLED(CONFIG_MTK_MMQOS_VCP)
 		//disable vcp
@@ -801,13 +784,19 @@ void set_channel_bw_reg_value(bool is_on)
 static void set_channel_bw_to_hw(bool skip_vcp)
 {
 	int i, result = 0;
+	u32 orig = 0;
+
+	result = start_write_bw(skip_vcp);
+	if (result < 0)
+		return;
 
 	rt_mutex_lock(&gmmqos->vmmrc_hw_lock);
-	result = start_write_bw(skip_vcp);
-	if (result < 0) {
-		rt_mutex_unlock(&gmmqos->vmmrc_hw_lock);
-
-		return;
+	/* start write bw */
+	if ((mmqos_state & MMPC_ENABLE) || (mmqos_state & MMPC_V2_ENABLE))
+		write_register(APMCU_MASK_OFFSET, 0);
+	else {
+		orig = read_register(APMCU_MASK_OFFSET);
+		write_register(APMCU_MASK_OFFSET, orig | BIT(gmmqos->apmcu_mask_bit));
 	}
 
 	if (mmqos_state & MMPC_V2_ENABLE) {
@@ -822,8 +811,17 @@ static void set_channel_bw_to_hw(bool skip_vcp)
 		for (i = 0 ; i < MAX_REG_VALUE_NUM; i++)
 			write_register(APMCU_OFF_BW_OFFSET(i), off_reg_value[i]);
 	}
-	stop_write_bw(skip_vcp);
+
+	/* stop write bw */
+	if ((mmqos_state & MMPC_ENABLE) || (mmqos_state & MMPC_V2_ENABLE))
+		write_register(APMCU_MASK_OFFSET, gmmqos->mmpc_sw_en_all_on);
+	else {
+		orig = read_register(APMCU_MASK_OFFSET);
+		write_register(APMCU_MASK_OFFSET, orig & ~BIT(gmmqos->apmcu_mask_bit));
+	}
 	rt_mutex_unlock(&gmmqos->vmmrc_hw_lock);
+
+	stop_write_bw(skip_vcp);
 }
 
 void mmqos_write_last_bw_to_vmmrc(void)
