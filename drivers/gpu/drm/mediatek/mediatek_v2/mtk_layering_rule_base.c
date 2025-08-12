@@ -3796,6 +3796,10 @@ static int check_disp_info(struct drm_mtk_layering_info *disp_info)
 		return -1;
 	}
 
+	if (disp_info->disp_idx < 0 || disp_info->disp_idx >= MAX_CRTC) {
+		return -1;
+	}
+
 	for (disp_idx = 0; disp_idx < HRT_DISP_TYPE_NUM; disp_idx++) {
 		int mode = disp_info->disp_mode[disp_idx];
 		int ghead = disp_info->gles_head[disp_idx];
