@@ -668,12 +668,13 @@ static int irq_to_ipi_type(int irq)
 }
 #endif
 
-#define MAX_HWT_IRQ_FILE_SIZE SZ_128K
-#define MAX_HWT_IRQ_BUF_SIZE (MAX_HWT_IRQ_FILE_SIZE / 2)
+#define MAX_HWT_IRQ_FILE_SIZE SZ_256K
+#define MAX_HWT_IRQ_BUF_SIZE 0x00015400 /* SZ_256K/3 ~= 85k */
 #define CHK_HWT_IRQ 1
+#define MAX_HWT_IRQ_BUF_NUM 3
+static unsigned int irq_buf_index;
 static char *hwt_irq_info;
-static char *irq_buf_a;
-static char *irq_buf_b;
+static char *irq_buf_array[MAX_HWT_IRQ_BUF_NUM];
 #if CHK_HWT_IRQ
 static char *cur_buf;
 static int write_irq_buf_index;
@@ -709,7 +710,7 @@ static void show_irq_info(char *addr)
 
 	/*record first row： timestamp*/
 	record_irq_time = sched_clock();
-	scnprintf(msg, SZ_256, "\ntime: %llu\n", record_irq_time);
+	scnprintf(msg, SZ_256, "\nstart time: %llu\n", record_irq_time);
 	log_hwt_irq_info(addr, "%s", msg);
 
 	/*record second row： CPU-num*/
@@ -805,6 +806,12 @@ flush:
 		}
 	}
 
+	/*record end row： end timestamp*/
+	memset(msg, 0, SZ_256);
+	record_irq_time = sched_clock();
+	scnprintf(msg, SZ_256, "\nend time: %llu\n", record_irq_time);
+	log_hwt_irq_info(addr, "%s", msg);
+
 }
 
 static void save_irq_info(void)
@@ -812,13 +819,16 @@ static void save_irq_info(void)
 	if (hwt_irq_info == NULL)
 		return;
 
-	if (cur_buf == irq_buf_a)
-		cur_buf = irq_buf_b;
-	else
-		cur_buf = irq_buf_a;
+	if (irq_buf_index >= MAX_HWT_IRQ_BUF_NUM)
+		return;
+
+	cur_buf = irq_buf_array[irq_buf_index];
 	memset(cur_buf, 0, MAX_HWT_IRQ_BUF_SIZE);
-	write_irq_buf_index = 0;
+	write_irq_buf_index = 0; /* reset write buf index */
 	show_irq_info(cur_buf);
+	irq_buf_index++;
+	if (irq_buf_index >= MAX_HWT_IRQ_BUF_NUM)
+		irq_buf_index = 0; /* reset irq buf index */
 }
 #endif
 
@@ -1120,6 +1130,9 @@ static void kwdt_process_kick(int local_bit, int cpu,
 	static int j;
 #endif
 #endif
+#if CHK_HWT_IRQ
+	bool save_irq_flag = false;
+#endif
 
 	if (toprgu_base && (ioread32(toprgu_base + WDT_MODE) & WDT_MODE_EN))
 		r_counter = ioread32(toprgu_base + WDT_COUNTER) / (32 * 1024);
@@ -1185,6 +1198,9 @@ static void kwdt_process_kick(int local_bit, int cpu,
 	if ((((~(local_bit - 1)) & local_bit) == local_bit) && j++ > 3) {
 		int cpu = 0;
 		int smp_ret[MAX_CPUNR] = {255};
+#if CHK_HWT_IRQ
+		save_irq_flag = true;
+#endif
 
 		for (cpu = 0; cpu < CPU_NR; cpu++) {
 			smp_ret[cpu] = 255;
@@ -1233,9 +1249,6 @@ static void kwdt_process_kick(int local_bit, int cpu,
 		local_bit = 0;
 #if !IS_ENABLED(CONFIG_MTK_AEE_HANGDET_IMPROVE_PERFORMANCE)
 		kwdt_time_sync();
-#if CHK_HWT_IRQ
-		save_irq_info();
-#endif
 #endif
 		if (toprgu_base)
 			iowrite32(WDT_RST_RELOAD, toprgu_base + WDT_RST);
@@ -1262,6 +1275,13 @@ static void kwdt_process_kick(int local_bit, int cpu,
 		cpus_kick_bit &= ~(1 << original_kicker);
 		cpus_skip_bit |= (1 << original_kicker);
 	}
+
+#if CHK_HWT_IRQ
+	if (save_irq_flag) {
+		save_irq_flag = false;
+		save_irq_info();
+	}
+#endif
 
 	spin_unlock_bh(&lock);
 
@@ -1809,8 +1829,9 @@ static int __init hangdet_init(void)
 #if IS_ENABLED(CONFIG_MTK_HANG_DETECT_DB)
 	hwt_irq_info = kmalloc(MAX_HWT_IRQ_FILE_SIZE, GFP_KERNEL);
 	if (hwt_irq_info != NULL) {
-		irq_buf_a = hwt_irq_info;
-		irq_buf_b = hwt_irq_info + MAX_HWT_IRQ_BUF_SIZE;
+		irq_buf_array[0] = hwt_irq_info;
+		irq_buf_array[1] = hwt_irq_info + MAX_HWT_IRQ_BUF_SIZE;
+		irq_buf_array[2] = hwt_irq_info + 2 * MAX_HWT_IRQ_BUF_SIZE;
 #if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
 		res = mrdump_mini_add_extra_file((unsigned long)hwt_irq_info,
 			__pa_nodebug(hwt_irq_info), MAX_HWT_IRQ_FILE_SIZE, "HWT_IRQ");
