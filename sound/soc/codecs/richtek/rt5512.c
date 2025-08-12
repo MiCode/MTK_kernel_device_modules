@@ -660,6 +660,14 @@ static int rt5512_codec_put_volsw(struct snd_kcontrol *kcontrol,
 		snd_soc_kcontrol_component(kcontrol);
 	int  put_ret = 0;
 
+#if IS_ENABLED(CONFIG_MTK_BATTERY_PERCENT_THROTTLING) && !defined(SKIP_SB)
+	if (strstr(kcontrol->id.name, "Volume_Ctrl") != NULL) {
+		int diff = mtk_spk_vol_thl_get();
+
+		if (diff)
+			ucontrol->value.integer.value[0] -= diff;
+	}
+#endif
 	pm_runtime_get_sync(component->dev);
 	put_ret = snd_soc_put_volsw(kcontrol, ucontrol);
 	if (put_ret < 0)

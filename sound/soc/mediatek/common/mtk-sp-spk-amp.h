@@ -114,5 +114,12 @@ int mtk_spk_send_ipi_buf_to_dsp(void *data_buffer, uint32_t data_size);
 int mtk_spk_recv_ipi_buf_from_dsp(int8_t *buffer,
 				  int16_t size,
 				  uint32_t *buf_len);
+
+#if IS_ENABLED(CONFIG_MTK_BATTERY_PERCENT_THROTTLING) && !defined(SKIP_SB)
+int mtk_spk_vol_thl_get(void);
+void mtk_spk_vol_thl_register(struct device *dev, void (*cb)(void));
+void mtk_spk_vol_update(struct snd_soc_card *card, const char *name);
+#endif
+
 #endif
 

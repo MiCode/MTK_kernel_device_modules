@@ -39,6 +39,10 @@
 #include "../audio_scp/mtk-scp-audio-pcm.h"
 #endif
 
+#if IS_ENABLED(CONFIG_MTK_BATTERY_PERCENT_THROTTLING) && !defined(SKIP_SB)
+#include "mtk_bp_thl.h"
+#endif
+
 #define MTK_SPK_NAME "Speaker Codec"
 #define MTK_SPK_REF_NAME "Speaker Codec Ref"
 
@@ -73,6 +77,163 @@ static struct mtk_spk_i2c_ctrl mtk_spk_list[MTK_SPK_TYPE_NUM] = {
 	},
 #endif /* CONFIG_SND_SOC_TFA9874 */
 };
+
+#if IS_ENABLED(CONFIG_MTK_BATTERY_PERCENT_THROTTLING) && !defined(SKIP_SB)
+/* Mapping of reduced volume corresponding to battery levels.
+ * Notice that these values have no unit, as the gain difference per dB may vary
+ * depending on the hardware design.
+ */
+static int vol_thl_map[BATTERY_PERCENT_LEVEL_NUM];
+
+static atomic_t vol_thl = ATOMIC_INIT(0);
+
+static void (*vol_thl_cb)(void);
+
+static void mtk_spk_vol_thl_set(int value)
+{
+	atomic_set(&vol_thl, value);
+}
+
+int mtk_spk_vol_thl_get(void)
+{
+	return (int)atomic_read(&vol_thl);
+}
+EXPORT_SYMBOL(mtk_spk_vol_thl_get);
+
+/**
+ * mtk_spk_vol_thl_cb - Adjust speaker volume based on battery level
+ * @level: Battery level
+ *
+ * This function is invoked when the battery level changes. It adjusts the
+ * speaker volume based on the battery level to avoid drawing a large current at
+ * low voltage, which may trigger a low voltage reboot.
+ */
+void mtk_spk_vol_thl_cb(BATTERY_PERCENT_LEVEL level)
+{
+	static BATTERY_PERCENT_LEVEL prev;
+	int diff;
+
+	if (level >= BATTERY_PERCENT_LEVEL_NUM)
+		return;
+
+	diff = vol_thl_map[level] - vol_thl_map[prev];
+	pr_debug("[LowV] %s(%u): curr=%d, prev=%d, diff=%d\n",
+		 __func__, level, vol_thl_map[level], vol_thl_map[prev], diff);
+
+	prev = level;
+
+	if (diff == 0)
+		return;
+
+	mtk_spk_vol_thl_set(diff);
+
+	/* Invoke the platform-specific callback */
+	if (vol_thl_cb)
+		vol_thl_cb();
+}
+
+/**
+ * mtk_spk_vol_thl_register - Register volume throttle callback if enabled
+ * @dev: The device node to be enabled
+ * @cb: Callback function when throttling is triggered
+ */
+void mtk_spk_vol_thl_register(struct device *dev, void (*cb)(void))
+{
+	int i, ret;
+
+	ret = of_property_read_u32(dev->of_node, "volume-throttle-enable", &i);
+	if (ret || i != 1) {
+		dev_info(dev, "[LowV] Volume throttle is disabled\n");
+		return;
+	}
+
+	/* Add "volume-throttle = <0 0 0 6 6 6>;" if there are 6 battery levels.
+	 * This config does not reduce the volume at level 0-2, and reduces 6
+	 * units at level 3-5. The unit typically represents gain value not dB.
+	 */
+	ret = of_property_count_elems_of_size(dev->of_node, "volume-throttle",
+					      sizeof(u32));
+	if (ret < 0) {
+		dev_info(dev, "[LowV] Volume map is not defined\n");
+		return;
+	}
+
+	if (ret != BATTERY_PERCENT_LEVEL_NUM) {
+		dev_info(dev, "[LowV] Size mismatch: %d (expected %u)\n",
+			 ret, BATTERY_PERCENT_LEVEL_NUM);
+		return;
+	}
+
+	ret = of_property_read_u32_array(dev->of_node, "volume-throttle",
+					 (u32 *)&vol_thl_map,
+					 BATTERY_PERCENT_LEVEL_NUM);
+	if (ret != 0) {
+		dev_info(dev, "[LowV] Failed to read array: %d\n", ret);
+		return;
+	}
+
+	for (i = 0; i < BATTERY_PERCENT_LEVEL_NUM; i++)
+		dev_info(dev, "[LowV] map[%d] = %d\n", i, vol_thl_map[i]);
+
+	vol_thl_cb = cb;
+	register_bp_thl_notify(&mtk_spk_vol_thl_cb, BATTERY_PERCENT_PRIO_AUDIO);
+}
+EXPORT_SYMBOL(mtk_spk_vol_thl_register);
+
+/**
+ * mtk_spk_vol_update - Update volume by triggering the kcontrol
+ * @card: Sound card pointer
+ * @name: Kcontrol name
+ */
+void mtk_spk_vol_update(struct snd_soc_card *card, const char *name)
+{
+	struct snd_soc_component *component;
+	struct snd_kcontrol *kcontrol;
+	struct snd_ctl_elem_value ucontrol = { 0 };
+	long temp, *value;
+	int ret;
+
+	/* This function is called from a callback controlled by battery module.
+	 * Therefore, we must check if the sound card has been initialized.
+	 */
+	if (!snd_soc_card_is_instantiated(card)) {
+		dev_info(card->dev, "Parent card not yet available\n");
+		return;
+	}
+
+	kcontrol = snd_soc_card_get_kcontrol(card, name);
+	if (!kcontrol) {
+		dev_info(card->dev, "Invalid kcontrol '%s'\n", name);
+		return;
+	}
+
+	component = snd_soc_kcontrol_component(kcontrol);
+	if (!component) {
+		dev_info(card->dev, "No component for '%s'\n", name);
+		return;
+	}
+
+	ret = kcontrol->get(kcontrol, &ucontrol);
+	if (ret) {
+		dev_info(card->dev, "Failed to read '%s': %d\n", name, ret);
+		return;
+	}
+
+	value = &ucontrol.value.integer.value[0];
+	temp = *value;
+
+	ret = kcontrol->put(kcontrol, &ucontrol);
+	if (ret < 0) {
+		dev_info(card->dev, "Failed to write '%s': %d\n", name, ret);
+		return;
+	}
+
+	ret = kcontrol->get(kcontrol, &ucontrol);
+	if (ret == 0)
+		pr_debug("[LowV] %s: %ld -> %ld\n", __func__, temp, *value);
+}
+EXPORT_SYMBOL(mtk_spk_vol_update);
+#endif
 
 static int mtk_spk_i2c_probe(struct i2c_client *client)
 {

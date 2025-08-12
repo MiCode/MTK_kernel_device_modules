@@ -80,6 +80,18 @@ static const struct soc_enum mt6858_spk_type_enum[] = {
 			    mt6858_spk_i2s_type_str),
 };
 
+#if IS_ENABLED(CONFIG_MTK_BATTERY_PERCENT_THROTTLING) && !defined(SKIP_SB)
+void mt6858_vol_thl_cb(void)
+{
+#if IS_ENABLED(CONFIG_SND_SOC_RT5512)
+	/* "Volume_Ctrl" is registered but "Left" or "Right" are used because of
+	 * `sound-name-prefix` defined in the DTS node.
+	 */
+	mtk_spk_vol_update(&mt6858_mt6369_soc_card, "Left Volume_Ctrl");
+#endif
+}
+#endif
+
 static int mt6858_spk_type_get(struct snd_kcontrol *kcontrol,
 			       struct snd_ctl_elem_value *ucontrol)
 {
@@ -1928,6 +1940,9 @@ static int mt6858_mt6369_dev_probe(struct platform_device *pdev)
 	if (!MT6369_PROBE_DONE)
 		mt6858_mt6369_bypass_primary_codec(pdev);
 
+#if IS_ENABLED(CONFIG_MTK_BATTERY_PERCENT_THROTTLING) && !defined(SKIP_SB)
+	mtk_spk_vol_thl_register(&pdev->dev, &mt6858_vol_thl_cb);
+#endif
 	card->dev = &pdev->dev;
 
 	ret = devm_snd_soc_register_card(&pdev->dev, card);
