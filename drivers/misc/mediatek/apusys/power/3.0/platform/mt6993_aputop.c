@@ -38,11 +38,12 @@
 #define NEED_CHK	(0)
 #define RPC_ALIVE_DBG	(0)
 #define SMC_APUSYS_PWR_DUMP	(0)
-#define TIMER_RDY	(0)
+#define TIMER_RDY	(1)
 #define CLIENT_NUM	(6)
 #define SW_THROTTLE_PT_THERMAL	(0)
 #define SW_THROTTLE_SYSFS	(1)
 #define SW_THROTTLE_LIMIT_HAL	(2)
+#define INIT_SRAM_TYPE	(1)
 static uint32_t mbox_data;
 
 unsigned int mt6993_user_max_opp;
@@ -369,22 +370,56 @@ static int mt6993_apu_top_off(struct device *dev)
 }
 
 #if TIMER_RDY
+static struct workqueue_struct *limit_wq;
+static struct work_struct limit_work;
 static struct timer_list limit_timer;
-static int limit_timer_active;
+static atomic_t limit_timer_active = ATOMIC_INIT(0);
 static int last_upper_request_id = -1;
 static int last_lower_request_id = -1;
 
-static void mt6993_limit_timer_callback(struct timer_list *t)
+static void mt6993_limit_work_func(struct work_struct *work)
 {
+	int upper, lower, upper_id, lower_id;
+
+	/* Read values under lock */
+	mutex_lock(&lock);
+	upper = global_upper_limit;
+	lower = global_lower_limit;
+	upper_id = last_upper_request_id;
+	lower_id = last_lower_request_id;
+	mutex_unlock(&lock);
+
+	/* Print info */
 	apu_pr_info_ratelimited(
 		"%s: upper_limit=%d (user %d), lower_limit=%d (user %d)\n", __func__,
-		global_upper_limit, last_upper_request_id,
-		global_lower_limit, last_lower_request_id);
+		upper, upper_id, lower, lower_id);
+}
 
-	/* Re-arm timer for continuous monitoring */
-	if (limit_timer_active)
+static void mt6993_limit_timer_callback(struct timer_list *t)
+{
+	if (atomic_read(&limit_timer_active)) {
+		queue_work(limit_wq, &limit_work);
 		mod_timer(&limit_timer, jiffies + msecs_to_jiffies(5000));
+	}
+}
 
+static int mt6993_timer_init(void)
+{
+	limit_wq = create_singlethread_workqueue("apu_limit_wq");
+	if (!limit_wq)
+		return -ENOMEM;
+
+	INIT_WORK(&limit_work, mt6993_limit_work_func);
+	timer_setup(&limit_timer, mt6993_limit_timer_callback, 0);
+	return 0;
+}
+
+static void mt6993_timer_cleanup(void)
+{
+	atomic_set(&limit_timer_active, 0);
+	del_timer_sync(&limit_timer);
+	cancel_work_sync(&limit_work);
+	destroy_workqueue(limit_wq);
 }
 #endif
 
@@ -396,13 +431,18 @@ static int mt6993_update_bounds(void)
 	int irregular_limits[CLIENT_NUM];
 	int irregular_count = 0;
 	int skip = 0;
+	int upper_id = -1, lower_id = -1;
 	struct client_work *cw;
 
 	list_for_each_entry(cw, &client_list, list) {
-		if (cw->upper_limit > new_upper_limit)
+		if (cw->upper_limit > new_upper_limit) {
 			new_upper_limit = cw->upper_limit;
-		if (cw->lower_limit < new_lower_limit)
+			upper_id = cw->request_id;
+		}
+		if (cw->lower_limit < new_lower_limit) {
 			new_lower_limit = cw->lower_limit;
+			lower_id = cw->request_id;
+		}
 	}
 
 	/* Skip irregular lower_limit and reset new lower_limits */
@@ -448,19 +488,16 @@ static int mt6993_update_bounds(void)
 
 #if TIMER_RDY
 	/* Update request IDs for logging */
-	last_upper_request_id = cw->request_id;
-	last_lower_request_id = cw->request_id;
+	last_upper_request_id = upper_id;
+	last_lower_request_id = lower_id;
 
 	/* Start/restart timer if limits are not at default values */
-	if (limit_timer_active)
-		del_timer(&limit_timer);
-
-	if (new_upper_limit != mt6993_user_max_opp || new_lower_limit != USER_MIN_OPP_VAL)
-		limit_timer_active = 1;
-
-	if (limit_timer_active)
+	if (new_upper_limit != mt6993_user_max_opp || new_lower_limit != USER_MIN_OPP_VAL) {
+		atomic_set(&limit_timer_active, 1);
 		mod_timer(&limit_timer, jiffies + msecs_to_jiffies(5000));
-
+	} else {
+		atomic_set(&limit_timer_active, 0);
+	}
 #endif
 
 	global_upper_limit = new_upper_limit;
@@ -598,9 +635,8 @@ int mt6993_set_freq_limit(int upper_limit, int lower_limit, int *request_id, int
 
 	ret = mt6993_update_bounds();
 	if (ret == 0 && type == SW_THROTTLE_PT_THERMAL) {
-#if LOCAL_DBG
-		pr_info("%s: input from apu_sw_throttle, detected bounds changed, sending to apu\n", __func__);
-#endif
+		apu_pr_info_ratelimited("%s: upper_limit=%d (user %d), lower_limit=%d (user %d)\n", __func__,
+		global_upper_limit, last_upper_request_id, global_lower_limit, last_lower_request_id);
 		mt6993_aputop_opp_limit(global_upper_limit, global_lower_limit, 1);
 		if (sw_throttle_sync_mode == 1) { // if sync mode is on, polling opp level
 			unsigned long timeout = jiffies + msecs_to_jiffies(1000); // 1 second timeout
@@ -627,7 +663,10 @@ int mt6993_set_freq_limit(int upper_limit, int lower_limit, int *request_id, int
 			sw_throttle_sync_mode = 0; // clr sync mode after done.
 		}
 	} else if (ret == 0 && type == SW_THROTTLE_SYSFS) {
-		pr_info("%s: input from sysfs, detected bounds changed, sending to apu\n", __func__);
+		apu_pr_info_ratelimited("%s: input from sysfs, detected bounds changed, sending to apu\n", __func__);
+		apu_pr_info_ratelimited(
+		"%s: upper_limit=%d (user %d), lower_limit=%d (user %d)\n", __func__,
+		global_upper_limit, last_upper_request_id, global_lower_limit, last_lower_request_id);
 		mt6993_aputop_opp_limit(global_upper_limit, global_lower_limit, 2);
 	} else if (ret == 0 && type == SW_THROTTLE_LIMIT_HAL) {
 #if LOCAL_DBG
@@ -699,10 +738,18 @@ static void mt6993_prepare_freq_input(int upper_limit, int lower_limit, int *opp
 	for (int i = 0; i < OPP_TABLE_SIZE; i++) {
 		int freq = mt6993_mdla_pll_freq[i];
 
+		// Skip 0 frequency entries
+		if (freq == 0)
+			continue;
+
 		if (freq <= upper_limit) {
 			tmp_opp_max = i;
 			break;
 		}
+	}
+	if (mt6993_user_max_opp == 3) {
+		tmp_opp_max = tmp_opp_max - mt6993_user_max_opp;
+		tmp_opp_min = tmp_opp_min - mt6993_user_max_opp;
 	}
 
 	if (upper_limit == lower_limit)
@@ -711,7 +758,7 @@ static void mt6993_prepare_freq_input(int upper_limit, int lower_limit, int *opp
 	if (lower_limit < mt6993_mdla_pll_freq[OPP_TABLE_SIZE-1])
 		tmp_opp_min = 15 - mt6993_user_max_opp; // set to opp15
 
-	if (upper_limit > mt6993_mdla_pll_freq[0])
+	if (upper_limit > mt6993_mdla_pll_freq[mt6993_user_max_opp])
 		tmp_opp_max = mt6993_user_max_opp; // set to opp0
 
 	if (tmp_opp_min < tmp_opp_max) {
@@ -1365,6 +1412,9 @@ void mt6993_apu_top_procfs_exit(void)
 static int mt6993_apu_top_pb(struct platform_device *pdev)
 {
 	int ret = 0, val = 0;
+	unsigned int reg_data;
+	struct arm_smccc_res res;
+	int init_max, init_min;
 
 	/* Initialize max_user_opp first */
 	ret = mt6993_init_user_max_opp(pdev);
@@ -1395,6 +1445,25 @@ static int mt6993_apu_top_pb(struct platform_device *pdev)
 	}
 
 	mt6993_activate_apu_cooling_device(pdev);
+
+	//init vapu are sram
+	init_max = mt6993_user_max_opp;
+	init_min = USER_MIN_OPP_VAL;
+	reg_data = (
+			((init_max & 0x3f) << 0) |	// [5:0]
+			((init_min & 0x3f) << 6) |	// [11:6]
+			((init_max & 0x3f) << 12) |	// [17:12]
+			((init_min & 0x3f) << 18) |	// [2m3:18]
+			((INIT_SRAM_TYPE & 0xff) << 24));	// dedicate 1 byte
+	arm_smccc_smc(MTK_SIP_APUSYS_CONTROL, MTK_APUSYS_KERNEL_OP_APUSYS_PWR_WRITE_OPP_LIMIT,
+			reg_data, 0, 0, 0, 0, 0, &res);
+	if (((int) res.a0) < 0)
+		pr_info("%s: init sram, smc id: %d,return error(%lu)\n",
+			__func__,
+			MTK_APUSYS_KERNEL_OP_APUSYS_PWR_WRITE_OPP_LIMIT, res.a0);
+
+	pr_info("%s: init sram as %d/%d/%d/%d\n", __func__,
+			init_max, init_min, init_max, init_min);
 
 	mt6993_init_remote_data_sync(apupw.regs[apu_md32_mbox], apupw.regs[apu_are]);
 	// init lock
@@ -1429,7 +1498,9 @@ static int mt6993_apu_top_pb(struct platform_device *pdev)
 	ret = mt6993_apu_top_procfs_init();
 
 #if TIMER_RDY
-	timer_setup(&limit_timer, mt6993_limit_timer_callback, 0);
+	ret = mt6993_timer_init();
+	if (ret)
+		pr_info("%s: init timer failed\n", __func__);
 #endif
 
 	return ret;
@@ -1464,7 +1535,7 @@ static int mt6993_apu_top_rm(struct platform_device *pdev)
 	mt6993_apu_top_procfs_exit();
 
 #if TIMER_RDY
-	del_timer(&limit_timer);
+	mt6993_timer_cleanup();
 #endif
 
 	return 0;
