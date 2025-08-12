@@ -38,8 +38,8 @@ struct dma_buf *apu_sysmem_dmaheap_alloc(uint64_t size, uint64_t flags)
 
 out:
 	if (dbuf) {
-		apu_sysmem_debug("heap(%s) dbuf(0x%llx) size(%llu) flags(0x%llx)\n",
-		dbuf->exp_name, (uint64_t)dbuf, size, flags);
+		apu_sysmem_debug("heap(%s) dbuf(0x%pK) size(%llu) flags(0x%llx)\n",
+		dbuf->exp_name, dbuf, size, flags);
 	}
 
 	return dbuf;
@@ -47,7 +47,7 @@ out:
 
 int apu_sysmem_dmaheap_free(struct dma_buf *dbuf)
 {
-	apu_sysmem_debug("dbuf(0x%llx)\n", (uint64_t)dbuf);
+	apu_sysmem_debug("dbuf(0x%pK)\n", dbuf);
 
 	if (IS_ERR_OR_NULL(dbuf))
 		return -EINVAL;

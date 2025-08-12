@@ -1201,7 +1201,7 @@ static int ammu_appendix_cb_process(enum apu_appendix_cb_type type,
 
 	/* check argument */
 	if (!size || va == NULL || !cmd_info->num_subcmds) {
-		AMMU_LOG_ERR("Invalid size: %u, va: %p, num_subcmds: %u\n",
+		AMMU_LOG_ERR("Invalid size: %u, va: 0x%pK, num_subcmds: %u\n",
 			size, va, cmd_info->num_subcmds);
 		return -EINVAL;
 	}

@@ -78,7 +78,7 @@ static int apu_sysmem_aram_attach(struct dma_buf *dbuf,
 	list_add_tail(&asla->node, &info->attachments);
 	mutex_unlock(&info->mtx);
 
-	apu_sysmem_debug("dbuf(0x%llx)\n", (uint64_t)dbuf);
+	apu_sysmem_debug("dbuf(0x%pK)\n", dbuf);
 
 	goto out;
 

@@ -187,8 +187,8 @@ static struct apu_sysmem_buffer *apu_sysmem_alloc(struct apu_sysmem_allocator *a
 	list_add_tail(&buf->a_node, &allocator->buffers);
 	mutex_unlock(&allocator->mtx);
 
-	apu_sysmem_debug("alloc sysbuf(0x%llx/0x%llx) done, memtype(%d) size(%llu) flags(0x%llx) name(%s)\n",
-		(uint64_t)buf, (uint64_t)buf->dbuf, mem_type, size, flags, name);
+	apu_sysmem_debug("alloc sysbuf(0x%pK/0x%pK) done, memtype(%d) size(%llu) flags(0x%llx) name(%s)\n",
+		buf, buf->dbuf, mem_type, size, flags, name);
 
 	/* get dmabuf's ref */
 	get_dma_buf(buf->dbuf);
@@ -209,8 +209,8 @@ static int apu_sysmem_free(struct apu_sysmem_allocator *allocator,
 {
 	struct dma_buf *dbuf = buf->dbuf;
 
-	apu_sysmem_debug("free(0x%llx/0x%llx) memtype(%d) size(%llu) flags(0x%llx)\n",
-		(uint64_t)buf, (uint64_t)buf->dbuf, buf->mem_type, buf->size, buf->flags);
+	apu_sysmem_debug("free(0x%pK/0x%pK) memtype(%d) size(%llu) flags(0x%llx)\n",
+		buf, buf->dbuf, buf->mem_type, buf->size, buf->flags);
 
 	/* delete from allocator's buffer list */
 	mutex_lock(&allocator->mtx);
@@ -268,7 +268,7 @@ static struct apu_sysmem_map *apu_sysmem_map(struct apu_sysmem_allocator *alloca
 
 	/* get dmabuf's ref */
 	if (IS_ERR_OR_NULL(dbuf)) {
-		apu_sysmem_err("dbuf is error or null 0x%llx", (uint64_t) dbuf);
+		apu_sysmem_err("dbuf is error or null 0x%pK", dbuf);
 		goto out;
 	}
 	/* get dmabuf's ref */
@@ -304,8 +304,8 @@ static struct apu_sysmem_map *apu_sysmem_map(struct apu_sysmem_allocator *alloca
 	/* map vaddr */
 	if (mem_type == APU_SYSMEM_TYPE_DRAM) {
 		if (dma_buf_vmap_unlocked(map->dbuf, &map->map)) {
-			apu_sysmem_err("vmap dmabuf failed, dbuf(0x%llx) map_bitmask(0x%llx)\n",
-				(uint64_t)dbuf, map_bitmask);
+			apu_sysmem_err("vmap failed, dbuf(%pK) map_mask(0x%llx)\n",
+				dbuf, map_bitmask);
 			goto free_map;
 		}
 	}
@@ -325,7 +325,8 @@ static struct apu_sysmem_map *apu_sysmem_map(struct apu_sysmem_allocator *alloca
 	map->sgt = dma_buf_map_attachment_unlocked(map->attach, DMA_BIDIRECTIONAL);
 	if (IS_ERR(map->sgt)) {
 		ret = PTR_ERR(map->sgt);
-		apu_sysmem_err("dma_buf_map_attachment_unlocked failed: %d\n", ret);
+		apu_sysmem_err("dma_buf_map_attachment_unlocked failed: %d\n",
+			ret);
 		goto detach_dbuf;
 	}
 
@@ -341,8 +342,8 @@ static struct apu_sysmem_map *apu_sysmem_map(struct apu_sysmem_allocator *alloca
 	ret = apu_mem_map_iova(apu_sysmem_mapflag2ammu(map_bitmask), allocator->session_id,
 		map->device_iova, map->size, &map->device_va, a_SLC_DC_EN);
 	if (ret) {
-		apu_sysmem_err("map dmabuf eva failed(%d), dbuf(0x%llx) map_bitmask(0x%llx)\n",
-			ret, (uint64_t)dbuf, map_bitmask);
+		apu_sysmem_err("map dmabuf eva failed(%d), dbuf(0x%pK) map_bitmask(0x%llx)\n",
+			ret, dbuf, map_bitmask);
 		goto unmap_dbuf;
 	}
 
@@ -355,8 +356,8 @@ static struct apu_sysmem_map *apu_sysmem_map(struct apu_sysmem_allocator *alloca
 	list_add_tail(&map->a_node, &allocator->maps);
 	mutex_unlock(&allocator->mtx);
 
-	apu_sysmem_debug("map(0x%llx/0x%llx) map_bitmask(0x%llx) dva(0x%llx) iova(0x%llx) size(%llu)\n",
-		(uint64_t)map, (uint64_t)map->dbuf, map->map_bitmask, map->device_va, map->device_iova, map->size);
+	apu_sysmem_debug("map(0x%pK/0x%pK) map_bitmask(0x%llx) dva(0x%llx) iova(0x%llx) size(%llu)\n",
+		map, map->dbuf, map->map_bitmask, map->device_va, map->device_iova, map->size);
 
 	goto out;
 
@@ -381,8 +382,8 @@ static int apu_sysmem_unmap(struct apu_sysmem_allocator *allocator,
 {
 	struct dma_buf *dbuf = map->dbuf;
 
-	apu_sysmem_debug("unmap(0x%llx/0x%llx) map_bitmask(0x%llx) dva(0x%llx) iova(0x%llx) size(%llu)\n",
-		(uint64_t)map, (uint64_t)map->dbuf, map->map_bitmask, map->device_va,
+	apu_sysmem_debug("unmap(0x%pK/0x%pK) map_bitmask(0x%llx) dva(0x%llx) iova(0x%llx) size(%llu)\n",
+		map, map->dbuf, map->map_bitmask, map->device_va,
 		map->device_iova, map->size);
 
 	/* delete from allocator's buffer list */
@@ -417,23 +418,23 @@ static void apu_sysmem_dump(struct apu_sysmem_allocator *allocator)
 	struct apu_sysmem_buffer *buf = NULL;
 	uint32_t idx = 0;
 
-	apu_sysmem_info("allocator(0x%llx/0x%llx) dump:\n", (uint64_t)allocator, allocator->session_id);
+	apu_sysmem_info("allocator(0x%pK/0x%llx) dump:\n", allocator, allocator->session_id);
 
 	mutex_lock(&allocator->mtx);
 
 	idx = 0;
 	list_for_each_entry(buf, &allocator->buffers, a_node) {
-		apu_sysmem_info(" buf[%u]: name(%s/%s) dbuf(0x%llx) size(%llu) mem_type(%d) vaddr(%p)\n",
+		apu_sysmem_info(" buf[%u]: name(%s/%s) dbuf(0x%pK) size(%llu) mem_type(%d) vaddr(%pK)\n",
 			idx, buf->dbuf->exp_name, buf->dbuf->name,
-			(uint64_t)buf->dbuf, buf->size, buf->mem_type, buf->vaddr);
+			buf->dbuf, buf->size, buf->mem_type, buf->vaddr);
 		idx++;
 	}
 
 	idx = 0;
 	list_for_each_entry(map, &allocator->maps, a_node) {
-		apu_sysmem_info(" map[%u]: name(%s/%s) dbuf(0x%llx) device_va(0x%llx) device_iova(0x%llx) size(%llu) map_bitmask(0x%llx)\n",
+		apu_sysmem_info(" map[%u]: name(%s/%s) dbuf(0x%pK) device_va(0x%llx) device_iova(0x%llx) size(%llu) map_bitmask(0x%llx)\n",
 			idx, map->dbuf->exp_name, map->dbuf->name,
-			(uint64_t)map->dbuf, map->device_va, map->device_iova,
+			map->dbuf, map->device_va, map->device_iova,
 			map->size, map->map_bitmask);
 		idx++;
 	}
@@ -447,7 +448,7 @@ struct apu_sysmem_allocator *apu_sysmem_create_allocator(uint64_t session_id)
 	uint32_t ssid;
 	int ret;
 
-	apu_sysmem_debug("session_id(0x%llx)\n", session_id);
+	apu_sysmem_debug("session_id(0x%llx) allocator create\n", session_id);
 
 	ret = apu_mem_table_alloc(session_id);
 	if (ret) {
@@ -455,11 +456,11 @@ struct apu_sysmem_allocator *apu_sysmem_create_allocator(uint64_t session_id)
 		goto out;
 	}
 
-
 	/* ssid */
 	ret = apu_mem_ssid_get(session_id, &ssid);
+
 	if (ret) {
-		apu_sysmem_err("Failed to get ssid: %d\n", ret);
+		apu_sysmem_err("Failed to get ssid: %d/%d\n", ret, ssid);
 		goto out;
 	}
 
@@ -506,7 +507,7 @@ int apu_sysmem_delete_allocator(struct apu_sysmem_allocator *allocator)
 
 	apu_mem_table_free(allocator->session_id);
 
-	apu_sysmem_debug("delete allocator(0x%llx/0x%llx)\n", (uint64_t)allocator, allocator->session_id);
+	apu_sysmem_debug("delete allocator(0x%pK/0x%llx)\n", allocator, allocator->session_id);
 
 	kfree(allocator);
 	ret = 0;
