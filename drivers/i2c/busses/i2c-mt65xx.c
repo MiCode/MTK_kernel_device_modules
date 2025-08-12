@@ -985,7 +985,6 @@ static void mtk_i2c_clock_disable(struct mtk_i2c *i2c)
 int mtk_i2c_clock_enable_ex(struct i2c_adapter *adap)
 {
 	int ret = 0;
-	unsigned long flags;
 	struct mtk_i2c *i2c = i2c_get_adapdata(adap);
 
 	if (!i2c) {
@@ -999,17 +998,9 @@ int mtk_i2c_clock_enable_ex(struct i2c_adapter *adap)
 		goto err;
 	}
 
-	if (i2c->ch_offset_i2c == i2c->i2c_offset_ap) {
+	if (i2c->ch_offset_i2c == i2c->i2c_offset_ap)
 		i2c->clk_ex_flag = 1;
-		spin_lock_irqsave(&i2c->multi_host_lock, flags);
-		if (mtk_i2c_read(i2c, OFFSET_TIMING) == 0) {
-			mtk_i2c_write_shadow(i2c, SHADOW_REG_MODE, OFFSET_MULTI_DMA);
-			/* Make sure shadow reg mode is ready before writing register */
-			mb();
-			mtk_i2c_write(i2c, i2c->ac_timing.htiming, OFFSET_TIMING);
-		}
-		spin_unlock_irqrestore(&i2c->multi_host_lock, flags);
-	}
+
 err:
 	return ret;
 }
@@ -1053,7 +1044,6 @@ static void mtk_i2c_init_hw(struct mtk_i2c *i2c)
 				mtk_i2c_write_scp(i2c, I2C_SCP_INTR_EN, OFFSET_MCU_INTR);
 				mtk_i2c_write_ccu(i2c, I2C_CCU_INTR_EN, OFFSET_MCU_INTR);
 			}
-			mtk_i2c_write(i2c, i2c->ac_timing.htiming, OFFSET_TIMING);
 		}
 		intr_stat_reg_scp = mtk_i2c_read_scp(i2c, OFFSET_INTR_STAT);
 		if (intr_stat_reg_scp & I2C_CONFERR)
