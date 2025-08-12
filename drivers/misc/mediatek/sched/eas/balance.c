@@ -80,7 +80,7 @@ static void detach_task(struct task_struct *p, struct rq *src_rq, int dst_cpu)
 /* modified from kmainline detach_one_task() */
 static struct task_struct *detach_one_task(struct rq *src_rq, int dst_cpu)
 {
-	struct task_struct *p, *best_task = NULL, *backup = NULL;
+	struct task_struct *p = NULL, *best_task = NULL, *backup = NULL;
 	int dst_capacity, src_capacity;
 	unsigned int task_util_src, task_util_dst, margin_src;
 	bool latency_sensitive = false, in_many_heavy_tasks;
@@ -104,6 +104,10 @@ static struct task_struct *detach_one_task(struct rq *src_rq, int dst_cpu)
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
 	ts[1] = sched_clock();
 #endif
+
+	if (!in_many_heavy_tasks)
+		goto unlock;
+
 	if (is_dpt_v2_support()) {
 		src_capacity = DPT_V2_MAX_RUNNING_TIME_LOCAL;
 		dst_capacity = DPT_V2_MAX_RUNNING_TIME_LOCAL * cpu_freq_ceiling(dst_cpu) / get_cpu_max_freq(dst_cpu);
@@ -168,6 +172,7 @@ static struct task_struct *detach_one_task(struct rq *src_rq, int dst_cpu)
 	if (p)
 		detach_task(p, src_rq, dst_cpu);
 
+unlock:
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
 	ts[4] = sched_clock();
 #endif
@@ -183,8 +188,8 @@ static struct task_struct *detach_one_task(struct rq *src_rq, int dst_cpu)
 			cannot_migrate_counter[6], cannot_migrate_counter[7],
 			cannot_migrate_counter[8], src_rq->nr_running, src_rq->cfs.nr_running,
 			src_rq->cfs.h_nr_running, src_rq->cfs.h_nr_delayed,
-			ts[5]-ts[0], ts[1]-ts[0], ts[2]-ts[1], ts[3]-ts[2], ts[4]-ts[3],
-			ts[5]-ts[4]);
+			ts[5]-ts[0], ts[1]-ts[0], (ts[2])? ts[2]-ts[1]: 0,ts[3]-ts[2],
+			(ts[3])? ts[4]-ts[3]: 0, ts[5]-ts[4]);
 #endif
 
 	return p;
