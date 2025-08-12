@@ -406,7 +406,7 @@ static int __init ssc_init(void)
 					0, 0, 0, 0);
 
 	if (ret)
-		ssc_aee_print("[SSC] SCMI common set fail!\n");
+		pr_info("[SSC] SCMI common set fail!\n");
 	else
 		pr_info("[SSC] notify done! (r1:%d r2:%d r3:%d)\n",
 				rvalue.r1, rvalue.r2, rvalue.r3);
