@@ -230,7 +230,7 @@ int get_render_frame_info(struct game_package *pack)
 	ret = get_fpsgo_frame_info(MAX_RENDER_SIZE, query_mask, 1, -1, s_render_info);
 
 	for (j = 0; j < MAX_RENDER_SIZE; j++) {
-		for (int k = 0; k < s_render_info->dep_num; k++) {
+		for (int k = 0; k < s_render_info[j].dep_num; k++) {
 			if (s_render_info[j].dep_arr[k].pid == pack->cur_pid)
 				render_idx = j;
 		}
