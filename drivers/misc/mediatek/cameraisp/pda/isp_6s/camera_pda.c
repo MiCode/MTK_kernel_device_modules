@@ -33,6 +33,7 @@
 #define PDA_MMQOS
 // --------------------------------
 
+#include <soc/mediatek/mmdvfs_v3.h>
 #define PDA_DEV_NAME "camera-pda"
 
 #define LOG_INF(format, args...)                                               \
@@ -128,6 +129,8 @@ unsigned int g_CurrentProcRoiNum[PDA_MAX_QUANTITY];
 
 static inline void PDA_Prepare_Enable_ccf_clock(void)
 {
+	mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_PDA);
+
 #if IS_ENABLED(CONFIG_OF)
 	/* consumer device starting work*/
 	if (g_PDA_quantity > 0)
@@ -155,6 +158,8 @@ static inline void PDA_Disable_Unprepare_ccf_clock(void)
 	LOG_INF("pm_runtime_put_sync done\n");
 #endif
 #endif
+
+	mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_PDA);
 }
 /**************************************************************
  *
