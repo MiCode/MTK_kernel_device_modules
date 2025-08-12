@@ -285,19 +285,24 @@ static void flush_dec_work(struct mtk_vcodec_ctx *ctx, enum vcodec_work_type typ
 	struct vcodec_work *work;
 	int ret;
 
-	if (type == VCODEC_WORK_INIT)
+	if (type == VCODEC_WORK_INIT) {
+		vcodec_trace_begin("wait init work");
 		work = &ctx->init_node;
-	else if (type == VCODEC_WORK_START)
+	} else if (type == VCODEC_WORK_START) {
+		vcodec_trace_begin("wait start work");
 		work = &ctx->start_node;
-	else if (type == VCODEC_WORK_RUN)
+	} else if (type == VCODEC_WORK_RUN) {
+		vcodec_trace_begin("wait run work");
 		work = &ctx->worker_node;
-	else {
+	} else {
 		mtk_v4l2_err("[%d] invalid work type %d", ctx->id, type);
+		vcodec_trace_end();
 		return;
 	}
 
 	if (!work->has_queued) {
 		mtk_v4l2_debug(1, "[%d][WORK] type %d not queued before, no need flush", ctx->id, type);
+		vcodec_trace_end();
 		return;
 	}
 
@@ -309,6 +314,7 @@ wait_flush_done:
 		goto wait_flush_done;
 	}
 	mtk_v4l2_debug(2, "[%d][WORK] type %d work flush done", ctx->id, type);
+	vcodec_trace_end();
 }
 
 static void get_supported_format(struct mtk_vcodec_ctx *ctx)
@@ -4289,9 +4295,8 @@ static void vb2ops_vdec_stop_streaming(struct vb2_queue *q)
 	mutex_unlock(&ctx->buf_lock);
 
 	// check start work done
-	vcodec_trace_begin("wait start work");
 	flush_dec_work(ctx, VCODEC_WORK_START);
-	vcodec_trace_end();
+	flush_dec_work(ctx, VCODEC_WORK_RUN);
 
 	vcodec_trace_begin("dvfs(stream_off)");
 	mutex_lock(&ctx->dev->dec_dvfs_mutex);
