@@ -90,4 +90,6 @@ obj-y += drivers/media/virtio/
 
 obj-y += drivers/video/backlight/
 
+obj-y += drivers/hooks/geniezone_vendor_hooks/
+
 endif

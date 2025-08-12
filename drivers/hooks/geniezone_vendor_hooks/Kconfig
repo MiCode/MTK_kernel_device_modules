@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: GPL-2.0
+
+config MTK_GZVM_VENDOR_HOOKS
+	tristate "GenieZone Hypervisor hooks to vendor modules"
+	depends on ARM64
+	help
+	  This option enables support for GenieZone Hypervisor
+	  vendor-specific hooks in the kernel.
+	  Say Y here if you are building a kernel with support
+	  for gzvm vendor-specific hooks. If unsure, say N.
+	  To compile this driver as a module, choose M here: the
+	  module will be called gzvm_hooks.
