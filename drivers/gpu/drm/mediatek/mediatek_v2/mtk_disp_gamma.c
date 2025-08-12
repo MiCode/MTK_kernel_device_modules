@@ -1034,9 +1034,10 @@ static void disp_gamma_config(struct mtk_ddp_comp *comp,
 				if (primary_data->need_refinalize) {
 					if (gamma->lut_updated)
 						disp_gamma_write_sram_v2(comp, 0, GAMMA_RESUME);
-					if (gamma->is_right_pipe ||!comp->mtk_crtc->is_dual_pipe)
+					if (gamma->is_right_pipe ||!comp->mtk_crtc->is_dual_pipe){
 						disp_gamma_flush_sram(comp, GAMMA_RESUME);
-					primary_data->need_refinalize = false;
+						primary_data->need_refinalize = false;
+					}
 				}
 			}
 			cmdq_pkt_write(handle, comp->cmdq_base,
