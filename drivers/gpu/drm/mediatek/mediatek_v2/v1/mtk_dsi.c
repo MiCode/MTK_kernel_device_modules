@@ -36,6 +36,7 @@
 #include <linux/ratelimit.h>
 #include <soc/mediatek/smi.h>
 #include <soc/mediatek/dramc.h>
+#include <soc/mediatek/emi.h>
 #if IS_ENABLED(CONFIG_ENABLE_DSI_HOTPLUG)
 #include <uapi/linux/sched/types.h>
 #endif
@@ -4539,6 +4540,11 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 			++underrun_cnt;
 
 			mtk_disp_clr_debug_deteriorate();
+
+#if !IS_ENABLED(CONFIG_MTK_EMI_LEGACY)
+			mtk_emiisu_record_off();
+#endif
+
 			if (comp->id == DDP_COMPONENT_DSI0)
 				DRM_MMP_MARK(dsi, underrun_cnt|(0<<16), 0);
 		}
