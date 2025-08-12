@@ -4527,11 +4527,6 @@ static void mtk_dpc_shutdown_v3(struct platform_device *pdev)
 	struct mtk_dpc *priv = platform_get_drvdata(pdev);
 
 	priv->skip_force_power = true;
-
-	if (dpc_buck_status(-1)) {
-		writel(0, dpc_base + DISP_REG_DPC_DISP_INTEN);
-		writel(0, dpc_base + DISP_REG_DPC_MML_INTEN);
-	}
 }
 
 struct platform_driver mtk_dpc_driver_v3 = {
