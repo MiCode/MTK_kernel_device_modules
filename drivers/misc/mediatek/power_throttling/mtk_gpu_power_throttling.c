@@ -260,6 +260,7 @@ static bool parse_switchpt_table(struct device_node *np)
 	return true;
 }
 
+static unsigned int delay_time_s;
 static bool parse_bootup_pt_table(struct device_node *np, struct tag_bootmode *tag)
 {
 	int ret;
@@ -278,6 +279,14 @@ static bool parse_bootup_pt_table(struct device_node *np, struct tag_bootmode *t
 		pr_notice("can't merge %s %d\n", gpu_bootup_pt_data->freq_limit_booting_name, tag->bootmode);
 		gpu_bootup_pt_data->freq_limit_booting[0] = GPU_LIMIT_FREQ;
 		return false;
+	}
+
+	ret = of_property_read_u32(np,
+		"bootup-delay-release-time", &delay_time_s);
+	if (ret < 0) {
+		delay_time_s = 0;
+		pr_info("[%s] read bootup-delay-release-time fail, ret = %d\n",
+			__func__, ret);
 	}
 
 	ret |= of_property_read_u32(np, buf, &gpu_bootup_pt_data->freq_limit_booting[0]);
@@ -443,12 +452,22 @@ static ssize_t boot_notify_show(struct device *dev,
 	return len;
 }
 
+static void release_gpu_performance_work_func(struct work_struct *work)
+{
+	s32 freq_limit;
+
+	freq_limit = GPUPPM_RESET_IDX;
+	gpufreq_set_limit(TARGET_DEFAULT, LIMIT_LOW_BATT, freq_limit, GPUPPM_KEEP_IDX);
+}
+
 static ssize_t boot_notify_store(struct device *dev,
 		struct device_attribute *attr,
 		const char *buf, size_t size)
 {
 	unsigned int boot_completed = 0;
-	s32 freq_limit;
+	static struct delayed_work work_struct;
+
+	INIT_DELAYED_WORK(&work_struct, release_gpu_performance_work_func);
 
 	if (bootup_pt_support == false){
 		dev_info(dev, "not support gpu bootup\n");
@@ -463,9 +482,7 @@ static ssize_t boot_notify_store(struct device *dev,
 		return -EINVAL;
 	}
 	system_boot_completed = boot_completed;
-
-	freq_limit = GPUPPM_RESET_IDX;
-	gpufreq_set_limit(TARGET_DEFAULT, LIMIT_LOW_BATT, freq_limit, GPUPPM_KEEP_IDX);
+	schedule_delayed_work(&work_struct, delay_time_s * HZ);
 
 	return size;
 }
