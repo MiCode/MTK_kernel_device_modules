@@ -413,7 +413,6 @@ static int get_auxadc_out(struct pmic_adc_device *adc_dev,
 			  int channel, int channel2, int *val)
 {
 	struct auxadc_channels *auxadc_chan = &auxadc_chans[channel];
-	struct regulator *vaux18;
 	unsigned int poll_en = 0, sleep_min, sleep_max;
 	int ret;
 	u16 buf = 0;
@@ -442,15 +441,6 @@ static int get_auxadc_out(struct pmic_adc_device *adc_dev,
 			wdata = auxadc_chan->regs->src_sel |
 			      (channel2 << auxadc_chan->regs->ext_thr_sel_shift) |
 			      (1 << auxadc_chan->regs->extsrc_ana_power_shift);
-			vaux18 = devm_regulator_get_optional(adc_dev->dev, "mt6688-aux18");
-			if (IS_ERR(vaux18)) {
-				pr_info("failed to get mt6688 vaux18\n");
-				return PTR_ERR(vaux18);
-			}
-			ret = regulator_enable(vaux18);
-			if (ret || !regulator_is_enabled(vaux18))
-				dev_info(adc_dev->dev, "%s enable 6688 vaux18 failed\n",
-					 auxadc_chan->ch_name);
 		} else {
 			wdata = auxadc_chan->regs->src_sel |
 			      (channel2 << auxadc_chan->regs->ext_thr_sel_shift);
@@ -504,13 +494,6 @@ static int get_auxadc_out(struct pmic_adc_device *adc_dev,
 		ret = regmap_update_bits(adc_dev->regmap,
 					 auxadc_chan->regs->ext_thr_sel_reg,
 					 auxadc_chan->regs->ext_thr_sel_mask, buf);
-		if (auxadc_chan->regs->extsrc_ana_power_shift &&
-		    regulator_is_enabled(vaux18)) {
-			ret = regulator_disable(vaux18);
-			if (ret || regulator_is_enabled(vaux18))
-				dev_info(adc_dev->dev, "%s disable 6688 vaux18 failed\n",
-					 auxadc_chan->ch_name);
-		}
 	}
 
 	return ret;
