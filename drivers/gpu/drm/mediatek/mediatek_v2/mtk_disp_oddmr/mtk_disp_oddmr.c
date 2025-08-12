@@ -594,6 +594,7 @@
 //ODDMR TOP
 #define MT6993_DISP_ODDMR_TOP_CTR_4					0x10
 	#define MT6993_REG_DBI_SW_RST					REG_FLD_MSB_LSB(2, 2)
+	#define MT6993_REG_DMR_SW_RST					REG_FLD_MSB_LSB(1, 1)
 
 #define DISP_ODDMR_TOP_SHADOW_CTRL					0x14
 	#define BYPASS_SHADOW							REG_FLD_MSB_LSB(0, 0)
@@ -781,6 +782,7 @@ static int g_slc_period;
 
 static int g_dbi_update;
 static bool g_dmr_dump_en;
+#define DMR_LN_OFFSET 2048
 
 /* 0: instant trigger, 1: delay trigger 2: no trigger*/
 static uint32_t g_od_check_trigger = 1;
@@ -1903,9 +1905,9 @@ static int mtk_oddmr_dmr_bpp(struct mtk_ddp_comp *comp, bool max)
 
 	if (dmr_cfg_info->table_index.table_byte_num) {
 		if (max)
-			table_size = oddmr_data->dmr_data.max_table_size;
+			table_size = oddmr_data->dmr_data.max_table_size + DMR_LN_OFFSET;
 		else
-			table_size = dmr_cfg_info->table_index.table_byte_num;
+			table_size = dmr_cfg_info->table_index.table_byte_num + DMR_LN_OFFSET;
 		layer_size = dmr_cfg_info->basic_info.panel_width
 			* dmr_cfg_info->basic_info.panel_height * 4;
 		ret = (400 * table_size + layer_size - 1) / layer_size;
@@ -2124,7 +2126,7 @@ static void mtk_oddmr_dmr_srt_cal(struct mtk_ddp_comp *comp, int en)
 	cur_bin_idx = atomic_read(&oddmr_data->dmr_data.cur_bin_idx);
 	if (en) {
 		dmr_cfg_data = &oddmr_data->primary_data->dmr_multi_bin[cur_bin_idx];
-		table_size = dmr_cfg_data->table_index.table_byte_num;
+		table_size = dmr_cfg_data->table_index.table_byte_num + DMR_LN_OFFSET;
 		srt = table_size;
 		vrefresh = oddmr_data->primary_data->current_timing.vrefresh;
 		//blanking ratio
@@ -2947,7 +2949,7 @@ static void mtk_oddmr_dmr_config(struct mtk_ddp_comp *comp,
 				}
 			}
 			// dmr udma config
-			mtk_oddmr_write(comp, dmr_udma_height,
+			mtk_oddmr_write(comp, dmr_udma_height + 1,
 				MT6991_DISP_ODDMR_REG_DMR_UDMA_HEIGHT_OUT, handle);
 			mtk_oddmr_write(comp, dmr_udma_y_ini,
 				MT6991_DISP_ODDMR_REG_DMR_UDMA_Y_INI, handle);
@@ -2985,7 +2987,7 @@ static void mtk_oddmr_dmr_config(struct mtk_ddp_comp *comp,
 		if (is_compression_mode) {
 			for (i = 0; i < dmr_cfg_data->dmr_pu_info.slice_num; i++)
 				dmr_udma_height += dmr_cfg_data->dmr_pu_info.slice_size[i];
-			mtk_oddmr_write(comp, dmr_udma_height,
+			mtk_oddmr_write(comp, dmr_udma_height + 1,
 				MT6991_DISP_ODDMR_REG_DMR_UDMA_HEIGHT_OUT, handle);
 			mtk_oddmr_write(comp, 0,
 				MT6991_DISP_ODDMR_REG_DMR_UDMA_Y_INI, handle);
@@ -5477,7 +5479,7 @@ static int mtk_oddmr_dmr_alloc_table(struct mtk_ddp_comp *comp, unsigned int idx
 			if (dmr_ln_offset != 0 && dma_buffer_size % dmr_ln_offset != 0)
 				PC_ERR("%s dmr table size does not align to ln_offset\n", __func__);
 			gem = mtk_drm_gem_create(comp->mtk_crtc->base.dev,
-				dma_buffer_size, true);
+				(dma_buffer_size + DMR_LN_OFFSET), true);
 			if (!gem) {
 				PC_ERR("%s gem create fail\n", __func__);
 				return -EFAULT;
@@ -7997,6 +7999,17 @@ static void mtk_oddmr_set_dmr_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 	}
 	if (enable) {
 		if (oddmr_data->data->dbi_version == MTK_DBI_V3) {
+			//0.reg_dmr_swt_rst 1->0
+			value = 0;mask = 0;
+			SET_VAL_MASK(value, mask, 1, MT6993_REG_DMR_SW_RST);
+			mtk_oddmr_write_mask(comp, value,
+				MT6993_DISP_ODDMR_TOP_CTR_4, mask, handle);
+
+			value = 0;mask = 0;
+			SET_VAL_MASK(value, mask, 0, MT6993_REG_DMR_SW_RST);
+			mtk_oddmr_write_mask(comp, value,
+				MT6993_DISP_ODDMR_TOP_CTR_4, mask, handle);
+
 			value = 0; mask = 0;
 			SET_VAL_MASK(value, mask, 1, MT6993_REG_DMR_CLK_EN);
 			mtk_oddmr_write_mask(comp, value,
@@ -14511,7 +14524,7 @@ static int mtk_oddmr_set_partial_update(struct mtk_ddp_comp *comp,
 						break;
 					}
 				}
-				mtk_oddmr_write(comp, dmr_udma_height,
+				mtk_oddmr_write(comp, dmr_udma_height + 1,
 					MT6991_DISP_ODDMR_REG_DMR_UDMA_HEIGHT_OUT, handle);
 				mtk_oddmr_write(comp, dmr_udma_y_ini,
 					MT6991_DISP_ODDMR_REG_DMR_UDMA_Y_INI, handle);
@@ -14595,7 +14608,7 @@ static int mtk_oddmr_set_partial_update(struct mtk_ddp_comp *comp,
 			if (dmr_support && oddmr_data->dmr_enable && is_compression_mode) {
 				for (i = 0; i < dmr_cfg_data->dmr_pu_info.slice_num; i++)
 					dmr_udma_height += dmr_cfg_data->dmr_pu_info.slice_size[i];
-				mtk_oddmr_write(comp, dmr_udma_height,
+				mtk_oddmr_write(comp, dmr_udma_height + 1,
 					MT6991_DISP_ODDMR_REG_DMR_UDMA_HEIGHT_OUT, handle);
 				mtk_oddmr_write(comp, 0,
 					MT6991_DISP_ODDMR_REG_DMR_UDMA_Y_INI, handle);
