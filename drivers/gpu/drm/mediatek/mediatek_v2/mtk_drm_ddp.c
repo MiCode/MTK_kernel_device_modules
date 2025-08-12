@@ -44500,22 +44500,64 @@ void mtk_ddp_disable_merge_irq_MT6993(struct drm_device *drm)
 {
 	struct mtk_drm_private *priv = drm->dev_private;
 
-	if (priv->ovlsys0_regs)
+	if (priv->ovlsys0_regs) {
+		writel_relaxed(1, priv->ovlsys0_regs);
 		writel_relaxed(0, priv->ovlsys0_regs + OVLSYS_INTMERGE);
-	if (priv->ovlsys1_regs)
+	}
+	if (priv->ovlsys1_regs) {
+		writel_relaxed(1, priv->ovlsys1_regs);
 		writel_relaxed(0, priv->ovlsys1_regs + OVLSYS_INTMERGE);
-	if (priv->ovlsys2_regs)
+	}
+	if (priv->ovlsys2_regs) {
+		writel_relaxed(1, priv->ovlsys2_regs);
 		writel_relaxed(0, priv->ovlsys2_regs + OVLSYS_INTMERGE);
-	if (priv->config_regs)
+	}
+	if (priv->config_regs) {
+		writel_relaxed(1, priv->config_regs);
 		writel_relaxed(0, priv->config_regs + MT6993_DISPSYS_INTMERGE);
-	if (priv->side_config_regs)
+	}
+	if (priv->side_config_regs) {
+		writel_relaxed(1, priv->side_config_regs);
 		writel_relaxed(0, priv->side_config_regs + MT6993_DISPSYS1_INTMERGE);
-	if (priv->sys_b_config_regs)
+	}
+	if (priv->sys_b_config_regs) {
+		writel_relaxed(1, priv->sys_b_config_regs);
 		writel_relaxed(0, priv->sys_b_config_regs + MT6993_DISPSYS_INTMERGE);
-	if (priv->sys_b_side_config_regs)
+	}
+	if (priv->sys_b_side_config_regs) {
+		writel_relaxed(1, priv->sys_b_side_config_regs);
 		writel_relaxed(0, priv->sys_b_side_config_regs + MT6993_DISPSYS1_INTMERGE);
+	}
 }
 
+void mtk_ddp_disable_inten_MT6993(struct drm_device *drm)
+{
+	struct mtk_drm_private *priv = drm->dev_private;
+	struct mtk_ddp *ddp = dev_get_drvdata(priv->mutex_dev);
+
+	if (priv->ovlsys0_regs)
+		writel_relaxed(0, priv->ovlsys0_regs);
+	if (priv->ovlsys1_regs)
+		writel_relaxed(0, priv->ovlsys1_regs);
+	if (priv->ovlsys2_regs)
+		writel_relaxed(0, priv->ovlsys2_regs);
+	if (priv->config_regs)						// disp0a 0x3e300000
+		writel_relaxed(0, priv->config_regs);
+	if (priv->side_config_regs)					// disp1a 0x3e700000
+		writel_relaxed(0, priv->side_config_regs);
+	if (priv->sys_b_config_regs)					// disp0b 0x3e500000
+		writel_relaxed(0, priv->sys_b_config_regs);
+	if (priv->sys_b_side_config_regs)				// disp1b 0x3e900000
+		writel_relaxed(0, priv->sys_b_side_config_regs);
+	if (ddp->side_regs)						// disp1a mutex0 0x3e720000
+		writel_relaxed(0, ddp->side_regs);
+	if (ddp->sys_b_regs)						// disp0b mutex0 0x3e520000
+		writel_relaxed(0, ddp->sys_b_regs);
+	if (ddp->regs)							// disp0a mutex0 0x3e320000
+		writel_relaxed(0, ddp->regs);
+	if (ddp->sys_b_side_regs)					// disp1b mutex0 0x3e920000
+		writel_relaxed(0, ddp->sys_b_side_regs);
+}
 
 void mtk_ddp_clean_ovl_pq_crossbar(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle)
 {

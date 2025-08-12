@@ -126,6 +126,7 @@ struct mtk_mmsys_driver_data {
 	bool need_emi_eff;
 	bool larb_ssc_ch_mapping;
 	void (*disable_merge_irq)(struct drm_device *drm);
+	void (*disable_inten)(struct drm_device *drm);
 	void (*gce_event_config)(struct drm_device *drm);
 	void (*vdisp_ao_irq_config)(struct drm_device *drm);
 	void (*vdisp_ao_qos_config)(struct drm_device *drm);

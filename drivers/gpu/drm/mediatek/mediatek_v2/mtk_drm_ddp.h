@@ -556,6 +556,8 @@ unsigned int mtk_ddp_ovl_resource_list(struct mtk_drm_private *priv, unsigned in
 void mtk_ddp_disable_merge_irq(struct drm_device *drm);
 void mtk_ddp_disable_merge_irq_MT6993(struct drm_device *drm);
 
+void mtk_ddp_disable_inten_MT6993(struct drm_device *drm);
+
 void mtk_ddp_clean_ovl_pq_crossbar(struct mtk_drm_crtc *mtk_crtc,
 	struct cmdq_pkt *handle);
 

@@ -7583,6 +7583,7 @@ static const struct mtk_mmsys_driver_data mt6993_mmsys_driver_data = {
 	.bypass_infra_ddr_control = true,
 	.use_infra_mem_res = false,
 	.disable_merge_irq = mtk_ddp_disable_merge_irq_MT6993,
+	.disable_inten = mtk_ddp_disable_inten_MT6993,
 	.gce_event_config = mtk_gce_event_config_MT6993,
 	.vdisp_ao_irq_config = mtk_vdisp_ao_irq_config_MT6993,
 	.vdisp_ao_qos_config = mtk_vdisp_ao_qos_config_MT6993,
@@ -8471,6 +8472,10 @@ void mtk_drm_top_clk_disable_unprepare(struct drm_crtc *crtc)
 		}
 
 		priv->power_state = false;
+
+		/* Disable inten of all subsys before disable all IRQs */
+		if (priv->data->disable_inten)
+			priv->data->disable_inten(crtc->dev);
 
 		/* Disable all IRQs. Call only after power_state is set to false. */
 		mtk_crtc_vdisp_ao_config(crtc);

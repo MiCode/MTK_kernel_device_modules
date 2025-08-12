@@ -1914,16 +1914,36 @@ void mtk_dbi_count_dump(struct mtk_ddp_comp *comp)
 	}
 }
 
+static inline void _mtk_dbi_count_clean_irq_mask(struct mtk_ddp_comp *comp, bool add)
+{
+	static int ref;
+
+	/* clean inten before unprepare, use ref cnt for multi crtc */
+	if (add)
+		++ref;
+	else
+		--ref;
+
+	if (!ref)
+		mtk_dbi_count_write_cpu(comp, 0, DISP_DBI_COUNT_IRQ_MASK);
+	else if (ref < 0) {
+		DDPMSG("%s ref cnt error, reset to 0\n", __func__);
+		ref = 0;
+	}
+}
+
 static void mtk_dbi_count_prepare(struct mtk_ddp_comp *comp)
 {
 	DBI_COUNT_INFO("%s +++\n", mtk_dump_comp_str(comp));
 	mtk_ddp_comp_clk_prepare(comp);
+	_mtk_dbi_count_clean_irq_mask(comp, 1);
 }
 
 static void mtk_dbi_count_unprepare(struct mtk_ddp_comp *comp)
 {
 
 	DBI_COUNT_INFO("%s +++\n", mtk_dump_comp_str(comp));
+	_mtk_dbi_count_clean_irq_mask(comp, 0);
 	mtk_ddp_comp_clk_unprepare(comp);
 
 }
