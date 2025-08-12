@@ -17,6 +17,7 @@
 #include "mtk-mml-color.h"
 #include "mtk-mml-core.h"
 #include "mtk-mml-driver.h"
+#include "mtk-mml-mat-fw.h"
 #include "tile_driver.h"
 #include "mtk-mml-tile.h"
 #include "tile_mdp_func.h"
@@ -60,6 +61,13 @@
 #define APU_DIRECT_COUPLE_CONTROL_EN	0x154	/* APU_DIRECT_COUPLE_CONTROL_ENABLE */
 #define APU_DIRECT_COUPLE_CONTROL	0x158
 #define RDMA_TRANSFORM_0		0x200
+#define RDMA_TRANSFORM_1		0x208
+#define RDMA_TRANSFORM_2		0x210
+#define RDMA_TRANSFORM_3		0x218
+#define RDMA_TRANSFORM_4		0x220
+#define RDMA_TRANSFORM_5		0x228
+#define RDMA_TRANSFORM_6		0x230
+#define RDMA_TRANSFORM_7		0x238
 #define RDMA_DMABUF_CON_0		0x240
 #define RDMA_URGENT_TH_CON_0		0x244
 #define RDMA_ULTRA_TH_CON_0		0x248
@@ -444,6 +452,7 @@ struct rdma_data {
 	bool alpha_rsz_crop;	/* WA: align rdma crop size when alpha resize */
 	bool write_sec_reg;	/* WA: write rdma registers in secured domain */
 	bool tile_reset;	/* WA: write dummy register to clean up states */
+	bool ext_mat;
 	bool stash;		/* enable stash prefetch with delay time */
 	bool ddren_reg;		/* platform with ddren reg */
 
@@ -719,6 +728,7 @@ static const struct rdma_data mt6991_mmlt_rdma_data = {
 	.px_per_tick = 2,
 	.alpha_rsz_crop = true,
 	.tile_reset = true,
+	.ext_mat = true,
 	.stash = true,
 	.golden = {
 		[GOLDEN_FMT_ARGB] = {
@@ -754,6 +764,7 @@ static const struct rdma_data mt6991_mmlf_rdma_data = {
 	.sram_size = 512 * 1024,	/* 1MB sram divid to 512K + 512K */
 	.alpha_rsz_crop = true,
 	.tile_reset = true,
+	.ext_mat = true,
 	.stash = true,
 	.golden = {
 		[GOLDEN_FMT_ARGB] = {
@@ -787,6 +798,7 @@ static const struct rdma_data mt6993_mmld_rdma_data = {
 	.tile_width = 1080,
 	.px_per_tick = 2,
 	.sram_size = 512 * 1024,	/* 1MB sram divid to 512K + 512K */
+	.ext_mat = true,
 	.stash = true,
 	.ddren_reg = true,
 	.golden = {
@@ -848,6 +860,8 @@ struct rdma_frame_data {
 	u8 blk_tile;
 	u8 color_tran;
 	u8 matrix_sel;
+	u8 ext_matrix;
+	struct mml_ycbcr_mat m;
 	u32 bits_per_pixel_y;
 	u32 bits_per_pixel_uv;
 	u32 hor_shift_uv;
@@ -1075,7 +1089,48 @@ static u32 rdma_get_label_count(struct mml_comp *comp, struct mml_task *task,
 	return RDMA_LABEL_TOTAL;
 }
 
-static void rdma_color_fmt(struct mml_frame_config *cfg,
+static bool rdma_color_mat(const struct mml_frame_config *cfg,
+			   struct rdma_frame_data *rdma_frm)
+{
+	u16 profile_in = cfg->info.src.profile;
+
+	if (mml_mat_fw) {
+		/* TODO: call mtk-mml-mat-fw.c */
+		return true;
+	}
+
+	if (rdma_frm->color_tran) {
+		if (profile_in == MML_YCBCR_PROFILE_BT2020) {
+			/* i0 = 0; i1 = 0; i2 = 0; */
+			rdma_frm->m.o0 = GENMASK(8, 0) & (u16)16;
+			rdma_frm->m.o1 = GENMASK(8, 0) & (u16)128;
+			rdma_frm->m.o2 = GENMASK(8, 0) & (u16)128;
+			rdma_frm->m.c00 = GENMASK(14, 0) & (u16)921;
+			rdma_frm->m.c01 = GENMASK(14, 0) & (u16)2378;
+			rdma_frm->m.c02 = GENMASK(14, 0) & (u16)208;
+			rdma_frm->m.c10 = GENMASK(14, 0) & (u16)-501;
+			rdma_frm->m.c11 = GENMASK(14, 0) & (u16)-1293;
+			rdma_frm->m.c12 = GENMASK(14, 0) & (u16)1794;
+			rdma_frm->m.c20 = GENMASK(14, 0) & (u16)1794;
+			rdma_frm->m.c21 = GENMASK(14, 0) & (u16)-1649;
+			rdma_frm->m.c22 = GENMASK(14, 0) & (u16)-144;
+		} else {
+			return false;
+		}
+	} else {
+		return false;
+	}
+
+	rdma_frm->ext_matrix = 1;
+	rdma_frm->m.vector_sign_bit = 9;
+	rdma_frm->m.vector_precision = 8;
+	rdma_frm->m.coef_sign_bit = 15;
+	rdma_frm->m.coef_precision = 12;
+	return true;
+}
+
+static void rdma_color_fmt(const struct mml_comp_rdma *rdma,
+			   const struct mml_frame_config *cfg,
 			   struct rdma_frame_data *rdma_frm)
 {
 	u32 fmt = cfg->info.src.format;
@@ -1250,6 +1305,11 @@ static void rdma_color_fmt(struct mml_frame_config *cfg,
 	default:
 		mml_err("[rdma] not support format %x", fmt);
 		break;
+	}
+
+	if (rdma->data->ext_mat) {
+		if (rdma_color_mat(cfg, rdma_frm))
+			return;
 	}
 
 	/*
@@ -1598,7 +1658,7 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 		}
 	}
 
-	rdma_color_fmt(cfg, rdma_frm);
+	rdma_color_fmt(rdma, cfg, rdma_frm);
 
 	/* Enable dither on output, not input */
 	rdma_write(pkt, base_pa, hw_pipe, CPR_RDMA_DITHER_CON, 0x0, write_sec);
@@ -1668,8 +1728,37 @@ static s32 rdma_config_frame(struct mml_comp *comp, struct mml_task *task,
 
 	rdma_write(pkt, base_pa, hw_pipe, CPR_RDMA_TRANSFORM_0,
 		   (rdma_frm->matrix_sel << 23) +
+		   (rdma_frm->ext_matrix << 20) +
 		   (rdma_frm->color_tran << 16),
 		   write_sec);
+	if (rdma->data->ext_mat) {
+		cmdq_pkt_write(pkt, NULL, base_pa + RDMA_TRANSFORM_1,
+			((u32)rdma_frm->m.i0 << 0) |
+			((u32)rdma_frm->m.i1 << 10) |
+			((u32)rdma_frm->m.i2 << 20), U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + RDMA_TRANSFORM_2,
+			((u32)rdma_frm->m.o0 << 0) |
+			((u32)rdma_frm->m.o1 << 10) |
+			((u32)rdma_frm->m.o2 << 20), U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + RDMA_TRANSFORM_3,
+			((u32)rdma_frm->m.c00 << 0) |
+			((u32)rdma_frm->m.c01 << 16), U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + RDMA_TRANSFORM_4,
+			((u32)rdma_frm->m.c02 << 0) |
+			((u32)rdma_frm->m.c10 << 16), U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + RDMA_TRANSFORM_5,
+			((u32)rdma_frm->m.c11 << 0) |
+			((u32)rdma_frm->m.c12 << 16), U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + RDMA_TRANSFORM_6,
+			((u32)rdma_frm->m.c20 << 0) |
+			((u32)rdma_frm->m.c21 << 16), U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + RDMA_TRANSFORM_7,
+			((u32)rdma_frm->m.c22 << 0), U32_MAX);
+	}
+	mat_msg("[rdma] en:%d sel:%d ext:%d",
+		rdma_frm->color_tran, rdma_frm->matrix_sel, rdma_frm->ext_matrix);
+	if (rdma_frm->ext_matrix)
+		mml_mat_dump("[rdma] ", &rdma_frm->m);
 
 	if (MML_FMT_V_SUBSAMPLE(src->format) &&
 	    !MML_FMT_V_SUBSAMPLE(dst_fmt) &&
@@ -2547,7 +2636,7 @@ static void rdma_debug_dump(struct mml_comp *comp)
 	struct mml_comp_rdma *rdma = comp_to_rdma(comp);
 	void __iomem *base = comp->base;
 	const bool write_sec = rdma->data->write_sec_reg;
-	u32 value[36], comp_con;
+	u32 value[43], comp_con;
 	u32 apu_en;
 	u32 state, greq;
 	u32 i;
@@ -2627,6 +2716,22 @@ static void rdma_debug_dump(struct mml_comp *comp)
 		value[0], value[1], value[2], comp_con);
 	mml_err("RDMA_CON %#010x RDMA_TRANSFORM_0 %#010x",
 		value[33], value[34]);
+	if (value[34] & BIT(20)) {
+		value[36] = readl(base + RDMA_TRANSFORM_1);
+		value[37] = readl(base + RDMA_TRANSFORM_2);
+		value[38] = readl(base + RDMA_TRANSFORM_3);
+		value[39] = readl(base + RDMA_TRANSFORM_4);
+		value[40] = readl(base + RDMA_TRANSFORM_5);
+		value[41] = readl(base + RDMA_TRANSFORM_6);
+		value[42] = readl(base + RDMA_TRANSFORM_7);
+		mml_err("RDMA_TRANSFORM_1 %#010x RDMA_TRANSFORM_2 %#010x",
+			value[36], value[37]);
+		mml_err("RDMA_TRANSFORM_3 %#010x RDMA_TRANSFORM_4 %#010x RDMA_TRANSFORM_5 %#010x",
+			value[38], value[39], value[40]);
+		mml_err("RDMA_TRANSFORM_6 %#010x RDMA_TRANSFORM_7 %#010x",
+			value[41], value[42]);
+	}
+
 	mml_err("RDMA_MF_BKGD_SIZE_IN_BYTE %#010x RDMA_MF_BKGD_SIZE_IN_PXL %#010x",
 		value[4], value[5]);
 	mml_err("RDMA_MF_SRC_SIZE %#010x RDMA_MF_CLIP_SIZE %#010x RDMA_MF_OFFSET_1 %#010x",

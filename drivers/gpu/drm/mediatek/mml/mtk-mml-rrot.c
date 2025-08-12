@@ -23,7 +23,7 @@
 #include "mtk-mml-mmp.h"
 #include "mtk-mml-dle-adaptor.h"
 #include "mtk-mml-rrot-golden.h"
-#include "mtk-mml-dpc.h"
+#include "mtk-mml-mat-fw.h"
 #include "tile_driver.h"
 #include "tile_mdp_func.h"
 
@@ -80,6 +80,13 @@
 #define RROT_STASH_ULTRA_TH_CON_3	0x1c8
 #define RROT_STASH_PREULTRA_TH_CON_3	0x1cc
 #define RROT_TRANSFORM_0		0x200
+#define RROT_TRANSFORM_1		0x208
+#define RROT_TRANSFORM_2		0x210
+#define RROT_TRANSFORM_3		0x218
+#define RROT_TRANSFORM_4		0x220
+#define RROT_TRANSFORM_5		0x228
+#define RROT_TRANSFORM_6		0x230
+#define RROT_TRANSFORM_7		0x238
 
 #define RROT_DMABUF_CON_0		0x240
 #define RROT_URGENT_TH_CON_0		0x244
@@ -224,6 +231,7 @@ struct rrot_data {
 	bool alpha_pq_r2y;	/* WA: fix rrot r2y to BT601 full when alpha resize */
 	bool ddren_off;		/* WA: disable ddren manually after frame done */
 	bool vcsel;		/* route with dedicated DISP VC channel */
+	bool ext_mat;
 
 	/* threshold golden setting for racing mode */
 	struct rrot_golden golden[GOLDEN_FMT_TOTAL];
@@ -269,6 +277,7 @@ static const struct rrot_data mt6991_rrot_data = {
 	.alpha_pq_r2y = true,
 	.ddren_off = true,
 	.vcsel = true,
+	.ext_mat = true,
 	.golden = {
 		[GOLDEN_FMT_ARGB] = {
 			.cnt = ARRAY_SIZE(th_argb_mt6991),
@@ -301,6 +310,7 @@ static const struct rrot_data mt6993_rrot_data = {
 	.tile_width = 2048,
 	.px_per_tick = 2,
 	.vcsel = true,
+	.ext_mat = true,
 	.golden = {
 		[GOLDEN_FMT_ARGB] = {
 			.cnt = ARRAY_SIZE(th_argb_mt6991),
@@ -372,6 +382,7 @@ struct rrot_frame_data {
 	u8 color_tran;
 	u8 matrix_sel;
 	u8 ext_matrix;
+	struct mml_ycbcr_mat m;
 	u32 bits_per_pixel_y;
 	u32 bits_per_pixel_uv;
 	u32 hor_shift_uv;
@@ -673,11 +684,76 @@ static u32 rrot_get_label_count(struct mml_comp *comp, struct mml_task *task,
 	return RROT_LABEL_TOTAL;
 }
 
-static void rrot_color_fmt(struct mml_frame_config *cfg,
+static bool rrot_color_mat(const struct mml_frame_config *cfg,
+			   struct rrot_frame_data *rrot_frm)
+{
+	u16 profile_in = cfg->info.src.profile;
+	u16 profile_out = cfg->info.dest[0].data.profile;
+
+	if (mml_mat_fw) {
+		/* TODO: call mtk-mml-mat-fw.c */
+		return true;
+	}
+
+	if (rrot_frm->color_tran) {
+		if (profile_in == MML_YCBCR_PROFILE_BT2020) {
+			/* i0 = 0; i1 = 0; i2 = 0; */
+			rrot_frm->m.o0 = GENMASK(8, 0) & (u16)16;
+			rrot_frm->m.o1 = GENMASK(8, 0) & (u16)128;
+			rrot_frm->m.o2 = GENMASK(8, 0) & (u16)128;
+			rrot_frm->m.c00 = GENMASK(14, 0) & (u16)921;
+			rrot_frm->m.c01 = GENMASK(14, 0) & (u16)2378;
+			rrot_frm->m.c02 = GENMASK(14, 0) & (u16)208;
+			rrot_frm->m.c10 = GENMASK(14, 0) & (u16)-501;
+			rrot_frm->m.c11 = GENMASK(14, 0) & (u16)-1293;
+			rrot_frm->m.c12 = GENMASK(14, 0) & (u16)1794;
+			rrot_frm->m.c20 = GENMASK(14, 0) & (u16)1794;
+			rrot_frm->m.c21 = GENMASK(14, 0) & (u16)-1649;
+			rrot_frm->m.c22 = GENMASK(14, 0) & (u16)-144;
+		} else {
+			return false;
+		}
+	} else if (cfg->info.mode == MML_MODE_DIRECT_LINK) {
+		if (profile_in == MML_YCBCR_PROFILE_FULL_BT709 &&
+		    profile_out == MML_YCBCR_PROFILE_FULL_BT601) {
+			rrot_frm->color_tran = 1;
+			rrot_frm->m.i0 = GENMASK(8, 0) & (u16)0;
+			rrot_frm->m.i1 = GENMASK(8, 0) & (u16)-128;
+			rrot_frm->m.i2 = GENMASK(8, 0) & (u16)-128;
+			rrot_frm->m.o0 = GENMASK(8, 0) & (u16)0;
+			rrot_frm->m.o1 = GENMASK(8, 0) & (u16)128;
+			rrot_frm->m.o2 = GENMASK(8, 0) & (u16)128;
+			rrot_frm->m.c00 = GENMASK(14, 0) & (u16)4096;
+			rrot_frm->m.c01 = GENMASK(14, 0) & (u16)416;
+			rrot_frm->m.c02 = GENMASK(14, 0) & (u16)803;
+			rrot_frm->m.c10 = GENMASK(14, 0) & (u16)0;
+			rrot_frm->m.c11 = GENMASK(14, 0) & (u16)4054;
+			rrot_frm->m.c12 = GENMASK(14, 0) & (u16)-453;
+			rrot_frm->m.c20 = GENMASK(14, 0) & (u16)0;
+			rrot_frm->m.c21 = GENMASK(14, 0) & (u16)-297;
+			rrot_frm->m.c22 = GENMASK(14, 0) & (u16)4028;
+		} else {
+			return false;
+		}
+	} else {
+		return false;
+	}
+
+	rrot_frm->ext_matrix = 1;
+	rrot_frm->m.vector_sign_bit = 9;
+	rrot_frm->m.vector_precision = 8;
+	rrot_frm->m.coef_sign_bit = 15;
+	rrot_frm->m.coef_precision = 12;
+	return true;
+}
+
+static void rrot_color_fmt(const struct mml_comp_rrot *rrot,
+			   const struct mml_frame_config *cfg,
 			   struct rrot_frame_data *rrot_frm)
 {
 	u32 fmt = cfg->info.src.format;
 	u16 profile_in = cfg->info.src.profile;
+	u16 profile_out = cfg->info.dest[0].data.profile;
 
 	rrot_frm->color_tran = 0;
 	rrot_frm->matrix_sel = 15;
@@ -850,6 +926,11 @@ static void rrot_color_fmt(struct mml_frame_config *cfg,
 		break;
 	}
 
+	if (rrot->data->ext_mat) {
+		if (rrot_color_mat(cfg, rrot_frm))
+			return;
+	}
+
 	/*
 	 * 4'b0000:  0 RGB to JPEG
 	 * 4'b0001:  1 RGB to FULL709
@@ -891,6 +972,51 @@ static void rrot_color_fmt(struct mml_frame_config *cfg,
 		else
 			mml_err("[rrot] unknown color conversion %x",
 				profile_in);
+	} else if (cfg->info.mode == MML_MODE_DIRECT_LINK) {
+		if (profile_in == MML_YCBCR_PROFILE_FULL_BT601 &&
+		    profile_out == MML_YCBCR_PROFILE_BT601) {
+			rrot_frm->color_tran = 1;
+			rrot_frm->matrix_sel = 8;
+		} else if (profile_in == MML_YCBCR_PROFILE_FULL_BT601 &&
+			   profile_out == MML_YCBCR_PROFILE_BT709) {
+			rrot_frm->color_tran = 1;
+			rrot_frm->matrix_sel = 9;
+		} else if (profile_in == MML_YCBCR_PROFILE_BT601 &&
+			   profile_out == MML_YCBCR_PROFILE_FULL_BT601) {
+			rrot_frm->color_tran = 1;
+			rrot_frm->matrix_sel = 10;
+		} else if (profile_in == MML_YCBCR_PROFILE_BT709 &&
+			   profile_out == MML_YCBCR_PROFILE_FULL_BT601) {
+			rrot_frm->color_tran = 1;
+			rrot_frm->matrix_sel = 11;
+		} else if (profile_in == MML_YCBCR_PROFILE_BT709 &&
+			   profile_out == MML_YCBCR_PROFILE_BT601) {
+			rrot_frm->color_tran = 1;
+			rrot_frm->matrix_sel = 12;
+		} else if (profile_in == MML_YCBCR_PROFILE_BT601 &&
+			   profile_out == MML_YCBCR_PROFILE_BT709) {
+			rrot_frm->color_tran = 1;
+			rrot_frm->matrix_sel = 13;
+		} else if (profile_in == MML_YCBCR_PROFILE_FULL_BT601 &&
+			   profile_out == MML_YCBCR_PROFILE_FULL_BT709) {
+			rrot_frm->color_tran = 1;
+			rrot_frm->matrix_sel = 14;
+		} else if (profile_in == MML_YCBCR_PROFILE_FULL_BT709 &&
+			   profile_out == MML_YCBCR_PROFILE_BT709) {
+			rrot_frm->color_tran = 1;
+			rrot_frm->matrix_sel = 8;
+		} else if (profile_in == MML_YCBCR_PROFILE_BT709 &&
+			   profile_out == MML_YCBCR_PROFILE_FULL_BT709) {
+			rrot_frm->color_tran = 1;
+			rrot_frm->matrix_sel = 10;
+		} else if (profile_in == MML_YCBCR_PROFILE_FULL_BT709 &&
+			   profile_out == MML_YCBCR_PROFILE_FULL_BT601) {
+			rrot_frm->color_tran = 1;
+			rrot_frm->matrix_sel = 12; /* inaccurate but better than none */
+		} else if (profile_in != profile_out) {
+			mml_err("[rrot] unknown color conversion %x %x",
+				profile_in, profile_out);
+		}
 	}
 }
 
@@ -1289,7 +1415,7 @@ static s32 rrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 		rrot_frm->binning,
 		U32_MAX);
 
-	rrot_color_fmt(cfg, rrot_frm);
+	rrot_color_fmt(rrot, cfg, rrot_frm);
 	rrot_calc_slice(cfg, src, rrot_frm);
 
 	/* Enable dither on output, not input */
@@ -1360,6 +1486,34 @@ static s32 rrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 		   (rrot_frm->color_tran << 16) +
 		   (1 << 15),	/* BITEXTEND_WITH_ZERO */
 		   U32_MAX);
+	if (rrot->data->ext_mat) {
+		cmdq_pkt_write(pkt, NULL, base_pa + RROT_TRANSFORM_1,
+			((u32)rrot_frm->m.i0 << 0) |
+			((u32)rrot_frm->m.i1 << 10) |
+			((u32)rrot_frm->m.i2 << 20), U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + RROT_TRANSFORM_2,
+			((u32)rrot_frm->m.o0 << 0) |
+			((u32)rrot_frm->m.o1 << 10) |
+			((u32)rrot_frm->m.o2 << 20), U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + RROT_TRANSFORM_3,
+			((u32)rrot_frm->m.c00 << 0) |
+			((u32)rrot_frm->m.c01 << 16), U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + RROT_TRANSFORM_4,
+			((u32)rrot_frm->m.c02 << 0) |
+			((u32)rrot_frm->m.c10 << 16), U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + RROT_TRANSFORM_5,
+			((u32)rrot_frm->m.c11 << 0) |
+			((u32)rrot_frm->m.c12 << 16), U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + RROT_TRANSFORM_6,
+			((u32)rrot_frm->m.c20 << 0) |
+			((u32)rrot_frm->m.c21 << 16), U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + RROT_TRANSFORM_7,
+			((u32)rrot_frm->m.c22 << 0), U32_MAX);
+	}
+	mat_msg("[rrot] en:%d sel:%d ext:%d",
+		rrot_frm->color_tran, rrot_frm->matrix_sel, rrot_frm->ext_matrix);
+	if (rrot_frm->ext_matrix)
+		mml_mat_dump("[rrot] ", &rrot_frm->m);
 
 	if (MML_FMT_V_SUBSAMPLE(src->format) &&
 	    !MML_FMT_V_SUBSAMPLE(dst_fmt) &&
@@ -2685,6 +2839,21 @@ static void rrot_debug_dump(struct mml_comp *comp)
 	value[2] = readl(base + RROT_TRANSFORM_0);
 	mml_err("RROT_SRC_CON %#010x RROT_COMP_CON %#010x RROT_TRANSFORM_0 %#010x",
 		value[0], value[1], value[2]);
+	if (value[2] & BIT(20)) {
+		value[0] = readl(base + RROT_TRANSFORM_1);
+		value[1] = readl(base + RROT_TRANSFORM_2);
+		value[2] = readl(base + RROT_TRANSFORM_3);
+		value[3] = readl(base + RROT_TRANSFORM_4);
+		value[4] = readl(base + RROT_TRANSFORM_5);
+		value[5] = readl(base + RROT_TRANSFORM_6);
+		value[6] = readl(base + RROT_TRANSFORM_7);
+		mml_err("RROT_TRANSFORM_1 %#010x RROT_TRANSFORM_2 %#010x",
+			value[0], value[1]);
+		mml_err("RROT_TRANSFORM_3 %#010x RROT_TRANSFORM_4 %#010x RROT_TRANSFORM_5 %#010x",
+			value[2], value[3], value[4]);
+		mml_err("RROT_TRANSFORM_6 %#010x RROT_TRANSFORM_7 %#010x",
+			value[5], value[6]);
+	}
 
 	value[0] = readl(base + RROT_MF_BKGD_SIZE_IN_BYTE);
 	value[1] = readl(base + RROT_SF_BKGD_SIZE_IN_BYTE);

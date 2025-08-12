@@ -666,7 +666,7 @@ static enum mml_ycbcr_profile m2m_map_ycbcr_prof_mplane(
 
 	switch (pix_mp->colorspace) {
 	case V4L2_COLORSPACE_JPEG:
-		return MML_YCBCR_PROFILE_JPEG;
+		return MML_YCBCR_PROFILE_FULL_BT601;
 	case V4L2_COLORSPACE_REC709:
 		return pix_mp->quantization == V4L2_QUANTIZATION_FULL_RANGE ?
 			MML_YCBCR_PROFILE_FULL_BT709 : MML_YCBCR_PROFILE_BT709;

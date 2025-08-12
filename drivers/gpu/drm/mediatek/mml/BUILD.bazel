@@ -54,6 +54,7 @@ define_mgk_ddk_ko(
         "mtk-mml-fg-fw.c",
         "mtk-mml-hdr.c",
         "mtk-mml-m2m-adaptor.c",
+        "mtk-mml-mat-fw.c",
         "mtk-mml-merge.c",
         "mtk-mml-monitor.c",
         "mtk-mml-mutex.c",

@@ -22,7 +22,7 @@
 #include "mtk-mml-driver.h"
 #include "mtk-mml-dle-adaptor.h"
 #include "mtk-mml-pq-core.h"
-
+#include "mtk-mml-mat-fw.h"
 #include "tile_driver.h"
 #include "mtk-mml-tile.h"
 #include "tile_mdp_func.h"
@@ -356,9 +356,6 @@ module_param(mml_wrot_bkgd, int, 0644);
 int wrot_stash_delay = 20;
 module_param(wrot_stash_delay, int, 0644);
 
-int mml_mat_fw;
-module_param(mml_mat_fw, int, 0644);
-
 /* ceil_m and floor_m helper function */
 static u32 ceil_m(u64 n, u64 d)
 {
@@ -590,16 +587,7 @@ struct wrot_frame_data {
 	u8 mat_sel;
 	u8 ext_mat;
 	u32 dither_con;
-	struct {
-		/* pre-add vector, 9-bit */
-		u16 i0, i1, i2;
-		/* post-add vector, 9-bit */
-		u16 o0, o1, o2;
-		/* matrix coefficient, 15-bit */
-		u16 c00, c01, c02;
-		u16 c10, c11, c12;
-		u16 c20, c21, c22;
-	} m;
+	struct mml_ycbcr_mat m;
 	/* bits per pixel y */
 	u32 bbp_y;
 	/* bits per pixel uv */
@@ -1127,7 +1115,7 @@ static bool wrot_color_mat(const struct mml_frame_config *cfg,
 	} else
 		profile = profile_in;
 
-	if (wrot_frm->mat_en == 1) {
+	if (wrot_frm->mat_en) {
 		if (profile == MML_YCBCR_PROFILE_BT709 && MML_FMT_10BIT(fmt)) {
 			wrot_frm->m.i0 = GENMASK(8, 0) & (u16)-16;
 			wrot_frm->m.i1 = GENMASK(8, 0) & (u16)-128;
@@ -1160,10 +1148,34 @@ static bool wrot_color_mat(const struct mml_frame_config *cfg,
 			return false;
 		}
 	} else {
-		return false;
+		if (profile == MML_YCBCR_PROFILE_FULL_BT709 &&
+		    profile_out == MML_YCBCR_PROFILE_FULL_BT601) {
+			wrot_frm->mat_en = 1;
+			wrot_frm->m.i0 = GENMASK(8, 0) & (u16)0;
+			wrot_frm->m.i1 = GENMASK(8, 0) & (u16)-128;
+			wrot_frm->m.i2 = GENMASK(8, 0) & (u16)-128;
+			wrot_frm->m.o0 = GENMASK(8, 0) & (u16)0;
+			wrot_frm->m.o1 = GENMASK(8, 0) & (u16)128;
+			wrot_frm->m.o2 = GENMASK(8, 0) & (u16)128;
+			wrot_frm->m.c00 = GENMASK(14, 0) & (u16)1024;
+			wrot_frm->m.c01 = GENMASK(14, 0) & (u16)104;
+			wrot_frm->m.c02 = GENMASK(14, 0) & (u16)201;
+			wrot_frm->m.c10 = GENMASK(14, 0) & (u16)0;
+			wrot_frm->m.c11 = GENMASK(14, 0) & (u16)1014;
+			wrot_frm->m.c12 = GENMASK(14, 0) & (u16)-113;
+			wrot_frm->m.c20 = GENMASK(14, 0) & (u16)0;
+			wrot_frm->m.c21 = GENMASK(14, 0) & (u16)-74;
+			wrot_frm->m.c22 = GENMASK(14, 0) & (u16)1007;
+		} else {
+			return false;
+		}
 	}
 
 	wrot_frm->ext_mat = 1;
+	wrot_frm->m.vector_sign_bit = 9;
+	wrot_frm->m.vector_precision = 8;
+	wrot_frm->m.coef_sign_bit = 15;
+	wrot_frm->m.coef_precision = 10;
 	return true;
 }
 
@@ -1307,7 +1319,7 @@ static void wrot_color_fmt(const struct mml_comp_wrot *wrot,
 	    profile_in == MML_YCBCR_PROFILE_FULL_BT2020)
 		profile_in = MML_YCBCR_PROFILE_BT709;
 
-	if (wrot_frm->mat_en == 1) {
+	if (wrot_frm->mat_en) {
 		if (MML_FMT_IS_RGB(cfg->info.src.format) &&
 		    !cfg->info.dest[wrot_frm->out_idx].pq_config.en)
 			wrot_frm->mat_sel = 5;
@@ -1315,7 +1327,7 @@ static void wrot_color_fmt(const struct mml_comp_wrot *wrot,
 			wrot_frm->mat_sel = 6;
 		else if (profile_in == MML_YCBCR_PROFILE_BT709)
 			wrot_frm->mat_sel = 7;
-		else if (profile_in == MML_YCBCR_PROFILE_JPEG)
+		else if (profile_in == MML_YCBCR_PROFILE_FULL_BT601)
 			wrot_frm->mat_sel = 4;
 		else if (profile_in == MML_YCBCR_PROFILE_FULL_BT709)
 			wrot_frm->mat_sel = 5;
@@ -1323,20 +1335,20 @@ static void wrot_color_fmt(const struct mml_comp_wrot *wrot,
 			mml_err("[wrot] unknown profile conversion %x",
 				profile_in);
 	} else {
-		if (profile_in == MML_YCBCR_PROFILE_JPEG &&
+		if (profile_in == MML_YCBCR_PROFILE_FULL_BT601 &&
 		    profile_out == MML_YCBCR_PROFILE_BT601) {
 			wrot_frm->mat_en = 1;
 			wrot_frm->mat_sel = 8;
-		} else if (profile_in == MML_YCBCR_PROFILE_JPEG &&
+		} else if (profile_in == MML_YCBCR_PROFILE_FULL_BT601 &&
 			   profile_out == MML_YCBCR_PROFILE_BT709) {
 			wrot_frm->mat_en = 1;
 			wrot_frm->mat_sel = 9;
 		} else if (profile_in == MML_YCBCR_PROFILE_BT601 &&
-			   profile_out == MML_YCBCR_PROFILE_JPEG) {
+			   profile_out == MML_YCBCR_PROFILE_FULL_BT601) {
 			wrot_frm->mat_en = 1;
 			wrot_frm->mat_sel = 10;
 		} else if (profile_in == MML_YCBCR_PROFILE_BT709 &&
-			   profile_out == MML_YCBCR_PROFILE_JPEG) {
+			   profile_out == MML_YCBCR_PROFILE_FULL_BT601) {
 			wrot_frm->mat_en = 1;
 			wrot_frm->mat_sel = 11;
 		} else if (profile_in == MML_YCBCR_PROFILE_BT709 &&
@@ -1347,7 +1359,7 @@ static void wrot_color_fmt(const struct mml_comp_wrot *wrot,
 			   profile_out == MML_YCBCR_PROFILE_BT709) {
 			wrot_frm->mat_en = 1;
 			wrot_frm->mat_sel = 13;
-		} else if (profile_in == MML_YCBCR_PROFILE_JPEG &&
+		} else if (profile_in == MML_YCBCR_PROFILE_FULL_BT601 &&
 			   profile_out == MML_YCBCR_PROFILE_FULL_BT709) {
 			wrot_frm->mat_en = 1;
 			wrot_frm->mat_sel = 14;
@@ -1359,6 +1371,10 @@ static void wrot_color_fmt(const struct mml_comp_wrot *wrot,
 			   profile_out == MML_YCBCR_PROFILE_FULL_BT709) {
 			wrot_frm->mat_en = 1;
 			wrot_frm->mat_sel = 10;
+		} else if (profile_in == MML_YCBCR_PROFILE_FULL_BT709 &&
+			   profile_out == MML_YCBCR_PROFILE_FULL_BT601) {
+			wrot_frm->mat_en = 1;
+			wrot_frm->mat_sel = 12; /* inaccurate but better than none */
 		} else if (profile_in != profile_out) {
 			mml_err("[wrot] unknown profile conversion %x %x",
 				profile_in, profile_out);
@@ -1834,6 +1850,10 @@ static s32 wrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 		cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_CSC_COEFFICIENT_7],
 			((u32)wrot_frm->m.c22 << 0), U32_MAX);
 	}
+	mat_msg("[wrot] en:%d sel:%d ext:%d",
+		wrot_frm->mat_en, wrot_frm->mat_sel, wrot_frm->ext_mat);
+	if (wrot_frm->ext_mat)
+		mml_mat_dump("[wrot] ", &wrot_frm->m);
 
 	/* Set the fixed ALPHA as 0xff */
 	cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_DITHER], 0xff000000, U32_MAX);
