@@ -16116,11 +16116,13 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			clocks = <&disp_vdisp_ao_config_clk VDISP_AO_DISP_DPC_DISP>,
 				<&disp_vdisp_ao_config_clk VDISP_AO_DISP_BUS_DISP>,
 				<&ovlsys_config_clk OVL_SMI_SUB_COMM0_DISP>,
-				<&ovlsys_config_clk OVL_FAKE_ENG0_DISP>;
+				<&ovlsys_config_clk OVL_FAKE_ENG0_DISP>,
+				<&ovlsys_config_clk OVL_FAKE_ENG1_DISP>;
 			clock-names = "CLK_DISP_VCORE",
 				"CLK_VDISP_PERI",
 				"CLK_OVL0",
-				"CLK_OVL0_FAKE_ENG0";
+				"CLK_OVL0_FAKE_ENG0",
+				"CLK_OVL0_FAKE_ENG1";
 		};
 
 		smmu-test-ktf1 {
