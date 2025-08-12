@@ -17,6 +17,9 @@ enum {
 #if IS_ENABLED(CONFIG_MTK_MMDVFS) && IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 int mtk_mmdvfs_enable_vcp(const bool enable, const u8 idx);
 int mmdvfs_get_version(void);
+#if IS_ENABLED(CONFIG_MTK_DISP_MMDVFS_INIT_SEQUENCE)
+void mmdvfs_disp_boot_ready(void);
+#endif
 #else
 static inline int mtk_mmdvfs_enable_vcp(const bool enable, const u8 idx) { return 0; }
 static inline int mmdvfs_get_version(void) { return 0; }

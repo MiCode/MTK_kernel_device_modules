@@ -478,6 +478,14 @@ static inline void mmdvfs_mmup_sram_init(void)
 	}
 }
 
+#if IS_ENABLED(CONFIG_MTK_DISP_MMDVFS_INIT_SEQUENCE)
+void mmdvfs_disp_boot_ready(void)
+{
+	mmdvfs_hfrp_ipi_send(FUNC_MMDVFS_INIT_CLEAR_VOTE_VCORE, 0, 0, NULL, false);
+}
+EXPORT_SYMBOL_GPL(mmdvfs_disp_boot_ready);
+#endif
+
 static int mmdvfs_mmup_notifier_callback(struct notifier_block *nb, unsigned long action, void *data)
 {
 	switch (action) {
