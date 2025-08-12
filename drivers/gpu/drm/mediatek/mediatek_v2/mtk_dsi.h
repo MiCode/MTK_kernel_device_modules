@@ -99,6 +99,8 @@ struct mtk_dsi_driver_data {
 	const u32 dsi_reserved;
 	const u32 dsi_state_dbg6;
 	const u32 dsi_dbg_sel;
+	const u32 dsi_self_pat_con0;
+	const u32 dsi_self_pat_con1;
 	const u32 dsi_shadow_dbg;
 	const u32 dsi_scramble_con;
 	const u32 dsi_target_nl;
@@ -226,7 +228,7 @@ struct mtk_dsi {
 enum dsi_porch_type;
 extern int dsi_cmd_v2_dbg[DSI_CMD_V2_SCN_NUM];
 extern int esd_flush_fail_flag;
-
+int mtk_dsi_bist_pattern_test(struct mtk_ddp_comp *comp, unsigned int color);
 s32 mtk_dsi_poll_for_idle(struct mtk_dsi *dsi, struct cmdq_pkt *handle);
 irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id);
 void mtk_dsi_set_mmclk_by_datarate_V1(struct mtk_dsi *dsi,

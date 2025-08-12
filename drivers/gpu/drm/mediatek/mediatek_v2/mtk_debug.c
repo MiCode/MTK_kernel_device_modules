@@ -6184,6 +6184,36 @@ test_2c_done:
 	} else if (strncmp(opt, "dsi_self_pat_dis", 16) == 0) {
 		g_dsi_self_pat_en = false;
 		g_dsi_self_pat_dis = true;
+	}  else if (strncmp(opt, "dsipattern:", 11) == 0) {
+		struct mtk_ddp_comp *comp = NULL;
+		struct drm_crtc *crtc;
+		struct mtk_drm_crtc *mtk_crtc;
+		char *p = (char *)opt + 11;
+		unsigned int pattern = 0;
+		int ret = 0;
+
+		ret = kstrtouint(p, 0, &pattern);
+		if (ret) {
+			pr_info("line=%d error to parse cmd %s\n", __LINE__, opt);
+			return;
+		}
+		DDPMSG("set_dsi_pattern: 0x%x\n", pattern);
+		/* this debug cmd only for crtc0 */
+		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
+					typeof(*crtc), head);
+		if (!crtc) {
+			pr_info("find crtc fail\n");
+			return;
+		}
+
+		mtk_crtc = to_mtk_crtc(crtc);
+		comp = mtk_ddp_comp_request_output(mtk_crtc);
+		if (!comp || !comp->funcs || !comp->funcs->io_cmd) {
+			DDPINFO("cannot find output component\n");
+			return;
+		}
+
+		ret = mtk_dsi_bist_pattern_test(comp, pattern);
 	}
 }
 

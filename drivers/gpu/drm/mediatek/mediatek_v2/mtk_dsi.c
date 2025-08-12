@@ -333,8 +333,8 @@ static struct timer_list hrt_issue_timer;
 #define DSI_CPHY_CON0(data)	(data->reg_phy_base ? 0x1e0 : 0x120)
 
 #define DSI_DBG_CON1		0x224
-#define DSI_SELF_PAT_CON0	0x230
-#define DSI_SELF_PAT_CON1	0x234
+#define DSI_SELF_PAT_CON0(data)	(data->dsi_self_pat_con0 ? data->dsi_self_pat_con0 : 0x178)
+#define DSI_SELF_PAT_CON1(data)	(data->dsi_self_pat_con1 ? data->dsi_self_pat_con1 : 0x17c)
 #define DSI_CKSUM_OUT		0x250
 
 
@@ -4132,8 +4132,8 @@ static void mtk_dsi_config_vdo_timing(struct mtk_dsi *dsi)
 #ifdef DSI_SELF_PATTERN
 static void mtk_dsi_self_pattern(struct mtk_dsi *dsi)
 {
-	writel(0x0fff0411, dsi->regs + DSI_SELF_PAT_CON0);
-	writel(0x0fff0fff, dsi->regs + DSI_SELF_PAT_CON1);
+	writel(0x0fff0411, dsi->regs + DSI_SELF_PAT_CON0(dsi->driver_data));
+	writel(0x0fff0fff, dsi->regs + DSI_SELF_PAT_CON1(dsi->driver_data));
 }
 #endif
 
@@ -8752,10 +8752,12 @@ static void mtk_dsi_config_trigger(struct mtk_ddp_comp *comp,
 		}
 		break;
 	case MTK_TRIG_FLAG_PATGEN_EN:
-		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DSI_SELF_PAT_CON0, 0xc11, ~0);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DSI_SELF_PAT_CON0(dsi->driver_data), 0xc11, ~0);
 		break;
 	case MTK_TRIG_FLAG_PATGEN_DIS:
-		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DSI_SELF_PAT_CON0, 0xc00, ~0);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DSI_SELF_PAT_CON0(dsi->driver_data), 0xc00, ~0);
 		break;
 	default:
 		break;
@@ -11114,6 +11116,23 @@ static void ddic_read_timeout_cb(struct cmdq_cb_data data)
 		mtk_drm_crtc_analysis(crtc);
 		mtk_drm_crtc_dump(crtc);
 	}
+}
+
+int mtk_dsi_bist_pattern_test(struct mtk_ddp_comp *comp, unsigned int color)
+{
+	struct mtk_dsi *dsi =
+			container_of(comp, struct mtk_dsi, ddp_comp);
+
+	writel(color | 0xc00, dsi->regs + DSI_SELF_PAT_CON0(dsi->driver_data));
+	if (dsi->slave_dsi)
+		writel(color | 0xc00, dsi->slave_dsi->regs + DSI_SELF_PAT_CON0(dsi->driver_data));
+	pr_notice("DSI_BIST_Pattern_Test SELF_PAT_MODE 0x%x\n",
+		readl(dsi->regs + DSI_SELF_PAT_CON0(dsi->driver_data)));
+	if (dsi->slave_dsi)
+		pr_notice("[Slave] DSI_BIST_Pattern_Test SELF_PAT_MODE 0x%x\n",
+			readl(dsi->slave_dsi->regs + DSI_SELF_PAT_CON0(dsi->driver_data)));
+
+	return 0;
 }
 
 int mtk_mipi_dsi_read_gce(struct mtk_dsi *dsi,
@@ -17523,6 +17542,8 @@ static const struct mtk_dsi_driver_data mt6991_dsi_driver_data = {
 	.dsi_hstx_ckl_wc = 0x100,
 	.dsi_mem_conti = 0x048,
 	.dsi_time_con = 0x200,
+	.dsi_self_pat_con0 = 0x230,
+	.dsi_self_pat_con1 = 0x234,
 	.dsi_reserved = 0x3f8,
 	.dsi_state_dbg6 = 0x274,
 	.dsi_dbg_sel = 0x274,
@@ -17586,6 +17607,8 @@ static const struct mtk_dsi_driver_data mt6993_dsi_driver_data = {
 	.dsi_hstx_ckl_wc = 0x100,
 	.dsi_mem_conti = 0x048,
 	.dsi_time_con = 0x200,
+	.dsi_self_pat_con0 = 0x230,
+	.dsi_self_pat_con1 = 0x234,
 	.dsi_reserved = 0x3f8,
 	.dsi_state_dbg6 = 0x274,
 	.dsi_dbg_sel = 0x274,
