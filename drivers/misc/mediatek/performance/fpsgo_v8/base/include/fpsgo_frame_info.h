@@ -303,6 +303,7 @@ extern int fpsgo_other2fstb_set_target(int mode, int pid, int use, int priority,
 	int target_fps, unsigned long long target_time, unsigned long long bufID);
 extern int fpsgo_other2fstb_calculate_target_fps(int policy, int pid,
 	unsigned long long bufID, unsigned long long cur_ts);
+extern int fpsgo_other2fstb_get_magt_target_hint(int tgid, int pid, unsigned long long bufID);
 
 /* FPSGO General API of XGF */
 extern void fpsgo_other2xgf_calculate_dep(int pid, unsigned long long bufID,

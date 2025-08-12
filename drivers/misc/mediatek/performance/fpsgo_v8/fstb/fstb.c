@@ -396,6 +396,38 @@ static struct fstb_user_target_hint *fstb_get_user_target_hint(int mode,
 	return iter;
 }
 
+int fpsgo_other2fstb_get_magt_target_hint(int tgid, int pid, unsigned long long bufID)
+{
+	int magt_target_fps = 0;
+	const int magt_prio = 1;
+	struct fstb_user_target_hint *final_hint, *process_hint, *render_hint;
+
+	mutex_lock(&fstb_user_target_hint_lock);
+	process_hint = fstb_get_user_target_hint(0, tgid, 0);
+	render_hint = fstb_get_user_target_hint(1, pid, bufID);
+	if (render_hint)
+		final_hint = render_hint;
+	else if (process_hint)
+		final_hint = process_hint;
+	else {
+		mutex_unlock(&fstb_user_target_hint_lock);
+		return 0;
+	}
+
+	if (final_hint->target_fps_hint[magt_prio]) {
+		magt_target_fps = final_hint->target_fps_hint[magt_prio] <= dfps_ceiling ?
+						final_hint->target_fps_hint[magt_prio] : dfps_ceiling;
+	}
+
+	mutex_unlock(&fstb_user_target_hint_lock);
+
+	fpsgo_systrace_c_fstb_man(pid, bufID, magt_target_fps, "fstb_magt_fps[%d]", magt_prio);
+
+	return magt_target_fps;
+}
+EXPORT_SYMBOL(fpsgo_other2fstb_get_magt_target_hint);
+
+
 static int fstb_arbitrate_target(int raw_target_fps, int raw_target_time,
 	struct fstb_frame_info *iter)
 {

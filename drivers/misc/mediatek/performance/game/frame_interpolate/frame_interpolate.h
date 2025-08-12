@@ -27,6 +27,7 @@ extern int fpsgo_other2fstb_get_fps_info(int pid, unsigned long long bufID,
 	struct render_fps_info *info);
 extern int fpsgo_other2fstb_set_target(int mode, int pid, int use, int priority,
 	int target_fps, unsigned long long target_time, unsigned long long bufID);
+extern int fpsgo_other2fstb_get_magt_target_hint(int tgid, int pid, unsigned long long bufID);
 extern int fpsgo_other2xgf_get_critical_tasks(int pid, int max_num,
 	struct task_info *arr, int filter_non_cfs, unsigned long long bufID);
 extern int fpsgo_other2xgf_set_critical_tasks(int rpid, unsigned long long bufID,

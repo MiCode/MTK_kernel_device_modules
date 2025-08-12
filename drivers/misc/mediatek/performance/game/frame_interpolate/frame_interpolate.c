@@ -91,12 +91,20 @@ static void fi_queuework_cb(struct work_struct *psWork)
 	struct fi_notifier_push_tag *vpPush = NULL;
 	struct game_render_info *iter_thr = NULL;
 	struct render_fps_info fps_info;
-	int target_fps = 0, fps_info_ret = 0;
+	int target_fps = 0, fps_info_ret = 0, magt_target_fps = 0;
 
 	vpPush = container_of(psWork, struct fi_notifier_push_tag, sWork);
 	// TODO(Ann): It has still a bug when calculating target fps.
 	target_fps = fpsgo_other2fstb_calculate_target_fps(2, vpPush->pid,
 		vpPush->buffer_id, vpPush->cur_queue_end_ts);
+
+	// TODO(Ann): Workaround for avoiding getting the wrong target fps which is set from us, and
+	// get magt target fps.
+	magt_target_fps = fpsgo_other2fstb_get_magt_target_hint(vpPush->tgid, vpPush->pid,
+		vpPush->buffer_id);
+
+	if (magt_target_fps)
+		target_fps = magt_target_fps;
 
 	fps_info.target_fps_diff = 0;
 	fps_info_ret = fpsgo_other2fstb_get_fps_info(vpPush->pid, vpPush->buffer_id,
@@ -234,6 +242,8 @@ int game_switch_frame_inteprolate_onoff(int pid, int enable)
 		iter_thr = frame_interp_search_and_add_render_info(pid, 0);
 		if (iter_thr) {
 			if (iter_thr->is_fpsgo_render_created) {
+				fpsgo_other2fstb_set_target(1, iter_thr->frame_info.pid, 0, 2, 0, 0,
+					iter_thr->frame_info.buffer_id);
 				fpsgo_other2comp_user_close(iter_thr->frame_info.tgid, iter_thr->frame_info.pid,
 					iter_thr->frame_info.buffer_id);
 				switch_fpsgo_control(0, iter_thr->frame_info.tgid, 1, 0);
@@ -312,6 +322,8 @@ void game_clear_render_info(int mode)
 				n = rb_next(n);
 				continue;
 			}
+			fpsgo_other2fstb_set_target(1, tmp_iter->frame_info.pid, 0, 2, 0, 0,
+				tmp_iter->frame_info.buffer_id);
 			fpsgo_other2comp_user_close(tmp_iter->frame_info.tgid, tmp_iter->frame_info.pid,
 				tmp_iter->frame_info.buffer_id);
 			switch_fpsgo_control(0, tmp_iter->frame_info.tgid, 1, 0);
@@ -389,7 +401,10 @@ void fpsgo_fi_receive_q2q_cb(unsigned long cmd, struct render_frame_info *iter)
 				iter_thr->frame_info.buffer_id, NULL, 0, 0);
 			iter_thr->is_fpsgo_render_created = 1;
 		} else { // render thread changed.
-			if (iter->pid != iter_thr->frame_info.pid) {
+			if (iter->pid != iter_thr->frame_info.pid ||
+				iter->buffer_id != iter_thr->old_buffer_id) {
+				fpsgo_other2fstb_set_target(1, iter_thr->frame_info.pid, 0, 2, 0, 0,
+				iter_thr->frame_info.buffer_id);
 				fpsgo_other2comp_user_close(iter_thr->frame_info.tgid, iter_thr->frame_info.pid,
 					iter_thr->frame_info.buffer_id);
 				iter_thr->frame_info = *iter;
@@ -454,6 +469,8 @@ void fpsgo_fi_receive_q2q_cb(unsigned long cmd, struct render_frame_info *iter)
 			iter_thr->fpsgo_target_fps, set_target_fps);
 	} else {
 		if (iter_thr->is_fpsgo_render_created) {
+			fpsgo_other2fstb_set_target(1, iter_thr->frame_info.pid, 0, 2, 0, 0,
+				iter_thr->frame_info.buffer_id);
 			fpsgo_other2comp_user_close(iter_thr->frame_info.tgid, iter_thr->frame_info.pid,
 				iter_thr->frame_info.buffer_id);
 			switch_fpsgo_control(0, iter_thr->frame_info.tgid, 1, 0);
@@ -559,7 +576,7 @@ void fpsgo_fi_receive_all_fi_cb(unsigned long cmd, struct render_frame_info *ite
 	}
 
 	game_main_trace("[%s] pid=%d, buf=%llu, tgid=%d, target_fps=%d, fi_enabled=%lu, ratio=%d, frs=%d",
-		__func__, iter->pid, iter->buffer_id, iter->tgid, target_fps,
+		__func__, iter_thr->frame_info.pid, iter_thr->frame_info.buffer_id, iter->tgid, target_fps,
 		iter_thr->fi_enabled, iter_thr->interpolation_ratio,
 		iter_thr->target_fps_diff);
 out:
