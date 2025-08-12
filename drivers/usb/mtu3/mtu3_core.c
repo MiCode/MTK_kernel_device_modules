@@ -990,9 +990,7 @@ static irqreturn_t mtu3_link_isr(struct mtu3 *mtu)
 
 	if (udev_speed == USB_SPEED_UNKNOWN) {
 		mtu3_gadget_disconnect(mtu);
-		pm_runtime_put(mtu->dev);
 	} else {
-		pm_runtime_get(mtu->dev);
 		mtu3_ep0_setup(mtu);
 
 		if (udev_speed >= (int)MTU3_SPEED_SUPER)
