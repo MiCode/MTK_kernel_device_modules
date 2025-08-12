@@ -1230,9 +1230,8 @@ static int md_cd_power_off(struct ccci_modem *md, unsigned int timeout)
 		CCCI_NORMAL_LOG(0, TAG, "[POWER OFF] OFF done delay 4ms\n");
 	}
 
-	/* 1. power off srclkena for gen97 */
-	if ((md_cd_plat_val_ptr.md_gen == 6297 || md_cd_plat_val_ptr.md_gen == 6295) &&
-	    (md_cd_plat_val_ptr.power_flow_config & (1 << SRCCLKENA_SETTING_BIT))) {
+	/* 1. power off srclkena */
+	if (md_cd_plat_val_ptr.power_flow_config & (1 << SRCCLKENA_SETTING_BIT)) {
 		ret = regmap_read(md->hw_info->plat_val->infra_ao_base,
 			INFRA_AO_MD_SRCCLKENA, &reg_value);
 		if (ret) {
