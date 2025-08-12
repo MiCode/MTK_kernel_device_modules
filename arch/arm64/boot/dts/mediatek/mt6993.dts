@@ -568,9 +568,6 @@ pkvm_seninf_6993,pkvm_cmdq";
 		vcore-supply = <&mt6667_13_buck1>;
 		vsram-supply = <&mt6661_5_buck6>;
 		mm-supply = <&mt6667_7_buck3>;
-		procl-supply = <&mt6667_7_buck1>;
-		procm-supply = <&mt6667_8_buck1>;
-		procb-supply = <&mt6667_12_buck1>;
 	};
 
 	pmrc_gip: gip@1c02c000 {
@@ -1895,12 +1892,6 @@ pkvm_seninf_6993,pkvm_cmdq";
 		reg-names = "USRAM", "CSRAM", "ESRAM";
 		cslog-range = <0x03d0>, <0x0fa0>;
 		tbl-off = <4>, <76>, <148>, <220>;
-
-		/* regulator */
-		proc1-supply = <&mt6667_7_buck1>; //L
-		proc2-supply = <&mt6667_8_buck1>; //M
-		proc3-supply = <&mt6667_12_buck1>; //B
-		proc4-supply = <&mt6667_12_buck1>; //DSU
 
 		/* csram sysram base */
 		csram-sys-base = <&csram_sys>;
@@ -22986,6 +22977,11 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 /* delete VSIM1/2 node */
 /delete-node/ &mt6661_6_ld20_1;
 /delete-node/ &mt6661_6_ld20_2;
+
+/* delete CPU nodes */
+/delete-node/ &mt6667_7_buck1;
+/delete-node/ &mt6667_8_buck1;
+/delete-node/ &mt6667_12_buck1;
 
 &spmi {
         pmic: mt6661-4@4 {
