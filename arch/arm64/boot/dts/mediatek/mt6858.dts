@@ -3026,7 +3026,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<&dvfsrc MT6873_MASTER_HRT_MMSYS
 				&dvfsrc MT6873_SLAVE_HRT_DDR_EMI>;
 		interconnect-names = "icc-bw", "icc-hrt-bw";
-		vcp-supply = <&vcp>;
 		vmmrc-base = <0x1ec00000>;
 		vmmrc-mask = <0x2e814>;
 		vmmrc-mask-bit = <8>;
