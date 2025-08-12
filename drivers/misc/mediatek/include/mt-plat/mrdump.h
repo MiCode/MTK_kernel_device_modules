@@ -160,7 +160,7 @@ struct mrdump_mini_header {
 	struct mrdump_mini_reg_desc reg_desc[ELF_NGREG];
 };
 
-#define MRDUMP_MINI_NR_SECTION 60
+#define MRDUMP_MINI_NR_SECTION 120
 #define MRDUMP_MINI_SECTION_SIZE (32 * 1024)
 #define NT_IPANIC_MISC 4095
 #define MRDUMP_MINI_NR_MISC 80
