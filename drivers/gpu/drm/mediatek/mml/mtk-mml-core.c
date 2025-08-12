@@ -1137,16 +1137,20 @@ static void mml_core_qos_update_dpc(struct mml_frame_config *cfg, bool trigger)
 	struct mml_task_pipe *task_pipe;
 	struct mml_task *task;
 	const struct mml_topology_path *path = cfg->path[0];
+	const u8 *larb_sys_map;
 	u32 srt_bw[MML_MAX_LARB] = {0}, hrt_bw[MML_MAX_LARB] = {0}, srt_bw_max = 0, hrt_bw_max = 0;
 	u32 stash_srt_bw[MML_MAX_LARB] = {0}, stash_hrt_bw[MML_MAX_LARB] = {0};
 	u32 dpc_dvfs_lv = 0;
 	enum mml_sys_id sysid;
-	u8 larb_idx;
+	u8 larb_idx, sys_idx;
 	u32 i;
 	bool bw_en = false;
 
 	if (unlikely(!tp))
 		return;
+
+	/* use assign platform larb map if support */
+	larb_sys_map = tp->larb_sys_map;
 
 	for (i = 0; i < ARRAY_SIZE(tp->path_clts); i++) {
 		u32 task_srt_max[MML_MAX_LARB] = {0}, task_hrt_max[MML_MAX_LARB] = {0};
@@ -1157,14 +1161,24 @@ static void mml_core_qos_update_dpc(struct mml_frame_config *cfg, bool trigger)
 			task = task_pipe->task;
 
 			for (larb_idx = 0; larb_idx < MML_MAX_LARB; larb_idx++) {
-				task_srt_max[larb_idx] =
-					max_t(u32, task_srt_max[larb_idx], task->dpc_srt_bw[larb_idx]);
-				task_hrt_max[larb_idx] =
-					max_t(u32, task_hrt_max[larb_idx], task->dpc_hrt_bw[larb_idx]);
+				sys_idx = larb_sys_map ? larb_sys_map[larb_idx] : larb_idx;
 
-				task_stash_srt_max[larb_idx] = max_t(u32, task_stash_srt_max[larb_idx],
+#if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
+				if (sys_idx >= mml_max_sys) {
+					mml_err("%s sysid %u wrong from larb idx %u map %p",
+						__func__, sys_idx, larb_idx, larb_sys_map);
+					sys_idx = mml_sys_dma;
+				}
+#endif
+
+				task_srt_max[sys_idx] =
+					max_t(u32, task_srt_max[sys_idx], task->dpc_srt_bw[larb_idx]);
+				task_hrt_max[sys_idx] =
+					max_t(u32, task_hrt_max[sys_idx], task->dpc_hrt_bw[larb_idx]);
+
+				task_stash_srt_max[sys_idx] = max_t(u32, task_stash_srt_max[sys_idx],
 					task->dpc_srt_write_bw[larb_idx]);
-				task_stash_hrt_max[larb_idx] = max_t(u32, task_stash_hrt_max[larb_idx],
+				task_stash_hrt_max[sys_idx] = max_t(u32, task_stash_hrt_max[sys_idx],
 					task->dpc_hrt_write_bw[larb_idx]);
 			}
 
@@ -1172,17 +1186,17 @@ static void mml_core_qos_update_dpc(struct mml_frame_config *cfg, bool trigger)
 				bw_en = true;
 		}
 
-		for (larb_idx = 0; larb_idx < MML_MAX_LARB; larb_idx++) {
-			srt_bw[larb_idx] += task_srt_max[larb_idx];
-			hrt_bw[larb_idx] += task_hrt_max[larb_idx];
-			stash_srt_bw[larb_idx] += task_stash_srt_max[larb_idx];
-			stash_hrt_bw[larb_idx] += task_stash_hrt_max[larb_idx];
+		for (sys_idx = 0; sys_idx < mml_max_sys; sys_idx++) {
+			srt_bw[sys_idx] += task_srt_max[sys_idx];
+			hrt_bw[sys_idx] += task_hrt_max[sys_idx];
+			stash_srt_bw[sys_idx] += task_stash_srt_max[sys_idx];
+			stash_hrt_bw[sys_idx] += task_stash_hrt_max[sys_idx];
 		}
 	}
 
-	for (larb_idx = 0; larb_idx < MML_MAX_LARB; larb_idx++) {
-		srt_bw_max = max_t(u32, srt_bw_max, srt_bw[larb_idx]);
-		hrt_bw_max = max_t(u32, hrt_bw_max, hrt_bw[larb_idx]);
+	for (sys_idx = 0; sys_idx < mml_max_sys; sys_idx++) {
+		srt_bw_max = max_t(u32, srt_bw_max, srt_bw[sys_idx]);
+		hrt_bw_max = max_t(u32, hrt_bw_max, hrt_bw[sys_idx]);
 	}
 
 	if (bw_en && !srt_bw_max && !hrt_bw_max)
@@ -1204,16 +1218,16 @@ static void mml_core_qos_update_dpc(struct mml_frame_config *cfg, bool trigger)
 	}
 
 	/* set dpc hrt/srt bw */
-	for (larb_idx = 0; larb_idx < MML_MAX_LARB; larb_idx++) {
-		mml_dpc_srt_bw_set(larb_idx, srt_bw[larb_idx], false);
-		mml_dpc_hrt_bw_set(larb_idx, hrt_bw_max, false);
+	for (sys_idx = 0; sys_idx < mml_max_sys; sys_idx++) {
+		mml_dpc_srt_bw_set(sys_idx, srt_bw[sys_idx], false);
+		mml_dpc_hrt_bw_set(sys_idx, hrt_bw_max, false);
 
-		mml_mmp(dpc_bw_srt, MMPROFILE_FLAG_PULSE, larb_idx, srt_bw[larb_idx]);
-		mml_mmp(dpc_bw_hrt, MMPROFILE_FLAG_PULSE, larb_idx, hrt_bw_max);
+		mml_mmp(dpc_bw_srt, MMPROFILE_FLAG_PULSE, sys_idx, srt_bw[sys_idx]);
+		mml_mmp(dpc_bw_hrt, MMPROFILE_FLAG_PULSE, sys_idx, hrt_bw_max);
 
 		/* set channel bw for dpc2.0 */
-		mml_dpc_channel_bw_set_by_idx(larb_idx, stash_srt_bw[larb_idx], false);
-		mml_dpc_channel_bw_set_by_idx(larb_idx, stash_hrt_bw[larb_idx], true);
+		mml_dpc_channel_bw_set_by_idx(sys_idx, stash_srt_bw[sys_idx], false);
+		mml_dpc_channel_bw_set_by_idx(sys_idx, stash_hrt_bw[sys_idx], true);
 	}
 
 	/* set dpc dvfs (mminfra, bus) */

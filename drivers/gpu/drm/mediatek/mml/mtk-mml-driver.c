@@ -1633,6 +1633,17 @@ void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
 	mml->port_srt_bw[larb_idx][comp->larb_port] = srt_bw;
 	mml->port_hrt_bw[larb_idx][comp->larb_port] = hrt_bw;
 
+	/* For hybrid case, also update another larb port cache,
+	 * so that next time update component to other bw mode will do icc_set again
+	 * to config correct bandwidth.
+	 */
+	if (comp->bw_hybrid) {
+		u8 larb_idx_revert = cfg->dpc ? comp->larb_idx : comp->larb_idx_dpc;
+
+		mml->port_srt_bw[larb_idx_revert][comp->larb_port] = srt_bw;
+		mml->port_hrt_bw[larb_idx_revert][comp->larb_port] = hrt_bw;
+	}
+
 skip_update:
 	if (cfg->dpc) {
 		task->dpc_srt_bw[larb_idx] += srt_bw;

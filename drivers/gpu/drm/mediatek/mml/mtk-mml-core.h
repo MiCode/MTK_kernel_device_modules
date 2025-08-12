@@ -555,6 +555,15 @@ struct mml_topology_cache {
 	u32 dpc_qos_ref;
 	struct mutex qos_mutex;	/* lock to qos operation */
 	struct mml_dvfs *dvfs;
+
+	/* map hybrid larb index to mml sys index,
+	 * which helps convert larb to one of mmlsys and give to dpc functions,
+	 * as one of dpc group.
+	 *
+	 * e.g.,
+	 * larb_idx_sys_map[MML_LARB58_IDX] = mml_sys_dma
+	 */
+	const u8 *larb_sys_map;
 };
 
 struct mml_comp_config {

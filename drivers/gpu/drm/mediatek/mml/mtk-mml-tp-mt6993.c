@@ -623,6 +623,14 @@ static u16 engine_reset_bit[MML_ENGINE_TOTAL] = {
 };
 /* !!Above code generate by topology parser (tpparser.py)!! */
 
+static u8 mt6993_larb_sys_map[MML_MAX_LARB] = {
+	[MML_LARB2_IDX] = mml_sys_tile,
+	[MML_LARB3_IDX] = mml_sys_frame,
+	[MML_LARB56_IDX] = mml_sys_dma,
+	[MML_LARB57_IDX] = mml_sys_dma,
+	[MML_LARB58_IDX] = mml_sys_dma,
+};
+
 static inline bool engine_input(u32 id)
 {
 	return id == MML2_RDMA1 ||
@@ -1003,6 +1011,11 @@ static s32 tp_init_cache(struct mml_dev *mml, struct mml_topology_cache *cache,
 			__func__);
 		return -ECHILD;
 	}
+
+	/* assign larb index to mmlsys id map,
+	 * since mml2_rrot0 in hybrid mode, which use in both dc and dl mode.
+	 */
+	cache->larb_sys_map = mt6993_larb_sys_map;
 
 	/* assign sys id for mmlsys/mutex compse different behavior */
 	for (i = MML1_MMLSYS; i < MML1_ENGINE_TOTAL; i++) {
