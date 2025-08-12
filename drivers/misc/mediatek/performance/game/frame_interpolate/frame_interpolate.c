@@ -388,6 +388,16 @@ void fpsgo_fi_receive_q2q_cb(unsigned long cmd, struct render_frame_info *iter)
 			fpsgo_other2comp_user_create(iter_thr->frame_info.tgid, iter_thr->frame_info.pid,
 				iter_thr->frame_info.buffer_id, NULL, 0, 0);
 			iter_thr->is_fpsgo_render_created = 1;
+		} else { // render thread changed.
+			if (iter->pid != iter_thr->frame_info.pid) {
+				fpsgo_other2comp_user_close(iter_thr->frame_info.tgid, iter_thr->frame_info.pid,
+					iter_thr->frame_info.buffer_id);
+				iter_thr->frame_info = *iter;
+				iter_thr->old_buffer_id = iter->buffer_id;
+				iter_thr->frame_info.buffer_id = FRAME_INTERPOLATE_BUFFER_ID;
+				fpsgo_other2comp_user_create(iter_thr->frame_info.tgid, iter_thr->frame_info.pid,
+					iter_thr->frame_info.buffer_id, NULL, 0, 0);
+			}
 		}
 
 		if (test_bit(GET_FPSGO_BUFFER_TIME, &cmd)) {
@@ -420,7 +430,7 @@ void fpsgo_fi_receive_q2q_cb(unsigned long cmd, struct render_frame_info *iter)
 			gpu_set_target_fps = set_target_fps;
 			do_div(set_target_fps, iter_thr->interpolation_ratio);
 
-			fpsgo_other2fstb_set_target(1, iter_thr->frame_info.pid, 1, 0, set_target_fps, 0,
+			fpsgo_other2fstb_set_target(1, iter_thr->frame_info.pid, 1, 2, set_target_fps, 0,
 				iter_thr->frame_info.buffer_id);
 
 	#if IS_ENABLED(CONFIG_MTK_GPU_SUPPORT)
@@ -438,8 +448,9 @@ void fpsgo_fi_receive_q2q_cb(unsigned long cmd, struct render_frame_info *iter)
 			iter_thr->frame_count = iter_thr->frame_count % GAME_MAX_FRAME_COUNT;
 		}
 
-		game_main_trace("[%s] cmd=%lu, tgid=%d, frame=%d, ts=%llu, target_fps=%d, set_fps=%d",
-			__func__, cmd, iter_thr->frame_info.tgid, iter_thr->frame_count, ts,
+		game_main_trace("[%s] cmd=%lu,pid=%d,buf=0x%llx,tgid=%d,f_c=%d,ts=%llu,target_fps=%d,s_fps=%d",
+			__func__, cmd, iter_thr->frame_info.pid, iter_thr->frame_info.buffer_id,
+			iter_thr->frame_info.tgid, iter_thr->frame_count, ts,
 			iter_thr->fpsgo_target_fps, set_target_fps);
 	} else {
 		if (iter_thr->is_fpsgo_render_created) {
@@ -542,6 +553,8 @@ void fpsgo_fi_receive_all_fi_cb(unsigned long cmd, struct render_frame_info *ite
 		if (iter_thr->target_fps_diff != 0) {
 			iter_thr->interpolation_ratio = 1;
 			iter_thr->user_target_fps = 0;
+		} else {
+			iter_thr->interpolation_ratio = 2;
 		}
 	}
 
