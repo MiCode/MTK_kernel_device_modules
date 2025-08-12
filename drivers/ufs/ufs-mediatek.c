@@ -498,99 +498,6 @@ static void ufs_mtk_dbg_sel(struct ufs_hba *hba)
 	}
 }
 
-static void ufs_mtk_dbg_sel_mphy(struct ufs_hba *hba)
-{
-	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
-	static void __iomem *peri_dbg_mon;
-	static void __iomem *gpio;
-
-	/* Cannot touch mphy in user load or no mphy dump in dts */
-	if (host->mphy_base == NULL)
-		return;
-
-	/* only start one time, and only monitor host0 sdf */
-	if (host->host_id == 1)
-		return;
-
-	if (gpio == NULL)
-		gpio = ioremap(0x1002D000, 0x1000);
-
-	if (peri_dbg_mon == NULL)
-		peri_dbg_mon = ioremap(0x16840000, 0x1000);
-
-	/* dbg_mon gpio control bit */
-	if (gpio)
-		writel(0xA2, gpio+0x840);
-	/*
-	 * UFSCFG_AO (0xB0~0xB8) SUBSYS_DEBUG_MON_SEL0~3
-	 * 0: ufshci, 1: mphy, 2: unipro
-	 */
-	if (peri_dbg_mon) {
-		writel(0x1, peri_dbg_mon+0xB0);
-		writel(0x1, peri_dbg_mon+0xB4);
-		writel(0x1, peri_dbg_mon+0xB8);
-		writel(0x1, peri_dbg_mon+0xBC);
-	}
-
-	writel(0x00000001, host->mphy_base + 0x0);
-	writel(0x07321300, host->mphy_base + 0x04);
-	writel(0x00000002, host->mphy_base + 0x08);
-}
-
-static void ufs_mtk_dbg_sel_ufshci(struct ufs_hba *hba)
-{
-	struct ufs_mtk_host *host = ufshcd_get_variant(hba);
-	static void __iomem *peri_dbg_mon;
-	static void __iomem *gpio;
-
-	/* only start one time, and only monitor host0 sdf */
-	if (host->host_id == 1)
-		return;
-
-	if (gpio == NULL)
-		gpio = ioremap(0x1002D000, 0x1000);
-
-	if (peri_dbg_mon == NULL)
-		peri_dbg_mon = ioremap(0x16840000, 0x1000);
-
-	/* dbg_mon gpio control bit */
-	if (gpio)
-		writel(0xA2, gpio+0x840);
-	/*
-	 * UFSCFG_AO (0xB0~0xB8) SUBSYS_DEBUG_MON_SEL0~3
-	 * 0: ufshci, 1: mphy, 2: unipro
-	 */
-	if (peri_dbg_mon) {
-		writel(0x0, peri_dbg_mon+0xB0);
-		writel(0x0, peri_dbg_mon+0xB4);
-		writel(0x0, peri_dbg_mon+0xB8);
-		writel(0x0, peri_dbg_mon+0xBC);
-	}
-
-	/*
-	 * set
-	 * 0x22f0[3:0] = 4'hc
-	 * 0x22d0[[1:0] = 2'b11
-	 * 0x22c0[9:4] = 6'h1
-	 * set
-	 * 0x22f0[11:8] = 4'h1
-	 * 0x22d4[7:6] = 2'b01
-	 * 0x22c0[15:10] = 6'h4
-	 * read 0x22c8[15:0]
-	 */
-	ufshcd_writel(hba,
-		ufshcd_readl(hba, 0x22F0) & 0xFFFFF0F0 | 0x10c, 0x22F0);
-
-	ufshcd_writel(hba,
-		ufshcd_readl(hba, 0x22D0) & 0xFFFFFFFC | 0x3, 0x22D0);
-
-	ufshcd_writel(hba,
-		ufshcd_readl(hba, 0x22D4) & 0xFFFFFF3F | 0x40, 0x22D4);
-
-	ufshcd_writel(hba,
-		ufshcd_readl(hba, 0x22C0) & 0xFFFF000F | 0x1010, 0x22C0);
-}
-
 static int ufs_mtk_wait_idle_state(struct ufs_hba *hba,
 			    unsigned long retry_ms)
 {
@@ -2718,19 +2625,6 @@ static void ufs_mtk_dbg_register_dump(struct ufs_hba *hba)
 		/* Direct debugging information to REG_MTK_PROBE */
 		ufs_mtk_dbg_sel(hba);
 		/* Dump ufshci register 0x22C8 */
-		ufshcd_dump_regs(hba, REG_UFS_PROBE, 0x4,
-				"Debug Probe (0x22C8): ");
-	}
-
-	if (host->ip_ver == IP_VER_MT6993) {
-		/* Direct debugging information to mphy */
-		ufs_mtk_dbg_sel_mphy(hba);
-		/* Dump ufshci register 0x22C8 */
-		ufshcd_dump_regs(hba, REG_UFS_PROBE, 0x4,
-				"Debug Probe (0x22C8): ");
-
-		/* Direct debugging information to ufshci */
-		ufs_mtk_dbg_sel_ufshci(hba);
 		ufshcd_dump_regs(hba, REG_UFS_PROBE, 0x4,
 				"Debug Probe (0x22C8): ");
 	}
