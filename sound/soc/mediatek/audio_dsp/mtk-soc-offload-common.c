@@ -674,7 +674,9 @@ static int mtk_dsp_mp3_dl_handler(struct mtk_base_dsp *dsp,
 			pr_debug("%s update read ptr!", __func__);
 			return ret;
 		}
+#ifdef DEBUG_VERBOSE
 		pr_debug("%s no need to update read ptr!", __func__);
+#endif
 	}
 #ifdef DEBUG_VERBOSE
 	dump_rbuf_s(__func__, &dsp->dsp_mem[id].ring_buf);
