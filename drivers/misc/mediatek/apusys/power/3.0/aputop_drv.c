@@ -526,7 +526,10 @@ int apu_sw_throttle(int *request_id, unsigned long state)
 		aputop.param4 = 1; // force sync mode
 
 	ret = pwr_data->plat_aputop_func(NULL, aputop.func_id, &aputop);
-	apu_pr_info_ratelimited("%s:  state is %ld ,and request_id is %d\n", __func__, state, *request_id);
+	/* always record swpt info. */
+	if (*request_id < 4)
+		pr_info("%s: state is %ld ,and request_id is %d\n", __func__, state, *request_id);
+
 	if (ret < 0)
 		ret = 0;
 out:

@@ -389,10 +389,28 @@ static void mt6993_limit_work_func(struct work_struct *work)
 	lower_id = last_lower_request_id;
 	mutex_unlock(&lock);
 
-	/* Print info */
-	apu_pr_info_ratelimited(
-		"%s: upper_limit=%d (user %d), lower_limit=%d (user %d)\n", __func__,
-		upper, upper_id, lower, lower_id);
+	/* Only print info when there's a real user request */
+	if (upper_id != -1 || lower_id != -1) {
+		apu_pr_info_ratelimited(
+			"%s: upper_limit=%d (user %d), lower_limit=%d (user %d)\n", __func__,
+			upper, upper_id, lower, lower_id);
+	}
+
+	/* Do first OPP table dump */
+	if (!first_dump) {
+		mt6993_request_opp_table();
+		first_dump = 1;
+	}
+
+	/* Stop timer if freq tables are ready and no real user request */
+	if (mt6993_mdla_pll_freq[OPP_TABLE_SIZE - 1] != 0 &&
+		mt6993_mvpu_pll_freq[OPP_TABLE_SIZE - 1] != 0 &&
+		upper_id == -1 && lower_id == -1) {
+		atomic_set(&limit_timer_active, 0);
+		apu_pr_info_ratelimited(
+			"%s: dump_opp_table success, min_freq = %d\n",
+			__func__, mt6993_mdla_pll_freq[OPP_TABLE_SIZE - 1]);
+	}
 }
 
 static void mt6993_limit_timer_callback(struct timer_list *t)
@@ -411,6 +429,11 @@ static int mt6993_timer_init(void)
 
 	INIT_WORK(&limit_work, mt6993_limit_work_func);
 	timer_setup(&limit_timer, mt6993_limit_timer_callback, 0);
+
+	/* Start timer to ensure OPP table dump */
+	atomic_set(&limit_timer_active, 1);
+	mod_timer(&limit_timer, jiffies + msecs_to_jiffies(2000));
+
 	return 0;
 }
 
@@ -634,6 +657,7 @@ int mt6993_set_freq_limit(int upper_limit, int lower_limit, int *request_id, int
 	}
 
 	ret = mt6993_update_bounds();
+	/* case1: throttle info from apu_sw_throttle */
 	if (ret == 0 && type == SW_THROTTLE_PT_THERMAL) {
 		apu_pr_info_ratelimited("%s: upper_limit=%d (user %d), lower_limit=%d (user %d)\n", __func__,
 		global_upper_limit, last_upper_request_id, global_lower_limit, last_lower_request_id);
@@ -659,7 +683,9 @@ int mt6993_set_freq_limit(int upper_limit, int lower_limit, int *request_id, int
 				}
 				//udelay(50);
 			} while (1);
+			#if LOCAL_DBG
 			apu_pr_info_ratelimited("%s, currnet_opp = %08x", __func__, currnet_opp);
+			#endif
 			sw_throttle_sync_mode = 0; // clr sync mode after done.
 		}
 	} else if (ret == 0 && type == SW_THROTTLE_SYSFS) {
@@ -715,6 +741,16 @@ static int mt6993_client_input_show(struct seq_file *m, void *v)
 	return 0;
 }
 
+static inline int freq_over_range_check(int freq)
+{
+	if (freq > mt6993_mdla_pll_freq[mt6993_user_max_opp])
+		return mt6993_mdla_pll_freq[mt6993_user_max_opp];
+	else if (freq < mt6993_mdla_pll_freq[USER_MIN_OPP_VAL])
+		return mt6993_mdla_pll_freq[USER_MIN_OPP_VAL];
+	else
+		return freq;
+}
+
 static void mt6993_prepare_freq_input(int upper_limit, int lower_limit, int *opp_max, int *opp_min)
 {
 	int tmp_opp_min = -1;
@@ -725,6 +761,9 @@ static void mt6993_prepare_freq_input(int upper_limit, int lower_limit, int *opp
 		mt6993_request_opp_table();
 		first_dump = 1;
 	}
+
+	upper_limit = freq_over_range_check(upper_limit);
+	lower_limit = freq_over_range_check(lower_limit);
 
 	for (int i = OPP_TABLE_SIZE-1; i >= 0; i--) {
 		int freq = mt6993_mdla_pll_freq[i];
@@ -759,7 +798,7 @@ static void mt6993_prepare_freq_input(int upper_limit, int lower_limit, int *opp
 		tmp_opp_min = 15 - mt6993_user_max_opp; // set to opp15
 
 	if (upper_limit > mt6993_mdla_pll_freq[mt6993_user_max_opp])
-		tmp_opp_max = mt6993_user_max_opp; // set to opp0
+		tmp_opp_max = 0; // set to opp0
 
 	if (tmp_opp_min < tmp_opp_max) {
 		pr_info("%s: opp_max=%d, opp_min=%d\n , lower limit cannot be greater than upper limit!\n",
@@ -922,14 +961,14 @@ static int mt6993_engine_freq_proc_show(struct seq_file *m, void *v)
 	mbox_status = mbox_status & 0xFFFF;
 	mbox_status = mbox_status >> 2;
 
-	if (!mbox_status) {
-		seq_puts(m, "0\n");
-		goto out;
-	}
-
 	if (!first_dump) {
 		mt6993_request_opp_table();
 		first_dump = 1;
+	}
+
+	if (!mbox_status) {
+		seq_puts(m, "0\n");
+		goto out;
 	}
 
 	if (((mbox_status >> 0) & 0x1) != 0x1)
@@ -1570,7 +1609,8 @@ static int mt6993_apu_top_func(struct platform_device *pdev,
 	int dla_max, dla_min;
 	int request_id = -1;
 
-	apu_pr_info_ratelimited("%s func_id : %d\n", __func__, aputop->func_id);
+	if (aputop->func_id != APUTOP_FUNC_APU_THROTTLE)
+		apu_pr_info_ratelimited("%s func_id : %d\n", __func__, aputop->func_id);
 
 	switch (aputop->func_id) {
 #if APMCU_REQ_RPC_SLEEP

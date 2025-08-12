@@ -13,7 +13,7 @@
 #include "mt6993_apupwr_prot.h"
 #include "apusys_secure.h"
 
-#define LOCAL_DBG	(1)
+#define LOCAL_DBG	(0)
 static void __iomem *spare_reg_base;
 static void __iomem *are_sram_base;
 // for saving data after sync with remote site
@@ -23,6 +23,7 @@ static struct apu_pwr_curr_info curr_info;
 int mt6993_mdla_pll_freq[OPP_TABLE_SIZE];
 int mt6993_mvpu_pll_freq[OPP_TABLE_SIZE];
 int opp_request_bit;
+static int first_dump;
 static const char * const pll_name[] = {
 				"PLL_CONN", "PLL_RV33", "PLL_MVPU", "PLL_MDLA"};
 static const char * const buck_name[] = {
@@ -66,10 +67,10 @@ static void _opp_limiter(int vpu_max, int vpu_min, int dla_max, int dla_min,
 	vpu_min = over_range_check(vpu_min);
 	dla_max = over_range_check(dla_max);
 	dla_min = over_range_check(dla_min);
-#if LOCAL_DBG
-	apu_pr_info_ratelimited("%s type:%d, %d/%d/%d/%d\n", __func__, type,
+
+	pr_info("%s type:%d, %d/%d/%d/%d\n", __func__, type,
 			vpu_max, vpu_min, dla_max, dla_min);
-#endif
+
 
 	for (i = 0 ; i < CLUSTER_NUM ; i++) {
 		opp_limit_tbl[i].dev_opp_lmt.vpu_max = vpu_max & 0x3f;
@@ -515,16 +516,21 @@ out:
 void mt6993_request_opp_table(void)
 {
 	struct aputop_rpmsg_data rpmsg_data;
-	int retry = 10, ret = 0;
+	int retry = 10, ret = 0, timeout = 0;
 
 	opp_request_bit = 1;
 	memset(&rpmsg_data, 0, sizeof(struct aputop_rpmsg_data));
+	/* set rpmsg timeout to 1s for opp dump in the first time */
+	if (first_dump == 0)
+		timeout = 1000;
+	else
+		timeout = 200;
 
 	rpmsg_data.cmd = APUTOP_DUMP_OPP_TBL;
 	rpmsg_data.data0 = 1; // pseudo data
 	do {
-		ret = aputop_send_rpmsg(&rpmsg_data, 200);
-		if (mt6993_mdla_pll_freq[USER_MID_OPP_VAL - 1] != 0)
+		ret = aputop_send_rpmsg(&rpmsg_data, timeout);
+		if (mt6993_mdla_pll_freq[USER_MID_OPP_VAL - 1] != 0 && mt6993_mvpu_pll_freq[USER_MID_OPP_VAL - 1] != 0)
 			break;
 		udelay(1000);
 	} while (--retry);
@@ -533,9 +539,11 @@ void mt6993_request_opp_table(void)
 	rpmsg_data.cmd = APUTOP_DUMP_OPP_TBL2;
 	rpmsg_data.data0 = 1; // pseudo data
 	do {
-		ret = aputop_send_rpmsg(&rpmsg_data, 200);
-		if (mt6993_mdla_pll_freq[OPP_TABLE_SIZE - 1] != 0)
+		ret = aputop_send_rpmsg(&rpmsg_data, timeout);
+		if (mt6993_mdla_pll_freq[OPP_TABLE_SIZE - 1] != 0 && mt6993_mvpu_pll_freq[OPP_TABLE_SIZE - 1] != 0) {
+			first_dump = 1;
 			break;
+		}
 		udelay(1000);
 	} while (--retry);
 
@@ -563,7 +571,6 @@ static void save_opp_table(struct tiny_dvfs_opp_tbl *tbl, int start_index)
 	for (i = 0; i < size; i++) {
 		if (i + start_index < OPP_TABLE_SIZE)
 			mt6993_mvpu_pll_freq[i + start_index] = mytbl.opp[i].pll_freq[PLL_VPU];
-		pr_info("\n");
 	}
 }
 
