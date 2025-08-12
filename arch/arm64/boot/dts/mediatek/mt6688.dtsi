@@ -35,7 +35,7 @@
 				regulator-min-microvolt = <1800000>;
 				regulator-max-microvolt = <2000000>;
 				regulator-allowed-modes = <0 1>;
-				regulator-boot-on;
+				regulator-always-on;
 			};
 			vdig18 {
 				regulator-name = "mt6688-vdig18";
