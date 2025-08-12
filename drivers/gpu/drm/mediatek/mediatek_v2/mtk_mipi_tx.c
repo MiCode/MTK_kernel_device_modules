@@ -259,6 +259,7 @@
 
 //common reg
 #define MIPITX_LANE_CON (0x000CUL)
+#define RG_DSI_DEM_EN BIT(9)
 #define MIPITX_VOLTAGE_SEL (0x0010UL)
 #define FLD_RG_DSI_HSTX_LDO_REF_SEL (0xf << 6)
 #define MIPITX_PRESERVED (0x0014UL)
@@ -2227,6 +2228,12 @@ static int mtk_mipi_tx_pll_dphy_config_mt6989(struct mtk_mipi_tx *mipi_tx)
 	usleep_range(500, 600);
 	writel(0x3FFF00C0, mipi_tx->regs + MIPITX_LANE_CON_MT6983);
 
+#if IS_ENABLED(CONFIG_DEM_EN)
+	/*DSI_DEM_EN*/
+	mtk_mipi_tx_update_bits(mipi_tx, MIPITX_LANE_CON_MT6983,
+		RG_DSI_DEM_EN, RG_DSI_DEM_EN);
+#endif
+
 #ifdef IF_ONE
 	/* Switch OFF each Lane */
 	mtk_mipi_tx_update_bits(mipi_tx, mipi_tx->driver_data->d0_sw_ctl_en, FLD_DSI_SW_CTL_EN,
@@ -2335,6 +2342,12 @@ static int mtk_mipi_tx_pll_dphy_config_mt6991(struct mtk_mipi_tx *mipi_tx)
 	usleep_range(500, 600);
 	writel(0x3FFF00C0, mipi_tx->regs + MIPITX_LANE_CON_MT6983);
 
+#if IS_ENABLED(CONFIG_DEM_EN)
+	/*DSI_DEM_EN*/
+	mtk_mipi_tx_update_bits(mipi_tx, MIPITX_LANE_CON_MT6983,
+		RG_DSI_DEM_EN, RG_DSI_DEM_EN);
+#endif
+
 #ifdef IF_ONE
 	/* Switch OFF each Lane */
 	mtk_mipi_tx_update_bits(mipi_tx, mipi_tx->driver_data->d0_sw_ctl_en, FLD_DSI_SW_CTL_EN,
@@ -2438,6 +2451,12 @@ static int mtk_mipi_tx_pll_dphy_config_mt6993(struct mtk_mipi_tx *mipi_tx)
 	writel(0x3FFF0180, mipi_tx->regs + MIPITX_LANE_CON_MT6983);
 	usleep_range(500, 600);
 	writel(0x3FFF00C0, mipi_tx->regs + MIPITX_LANE_CON_MT6983);
+
+#if IS_ENABLED(CONFIG_DEM_EN)
+	/*DSI_DEM_EN*/
+	mtk_mipi_tx_update_bits(mipi_tx, MIPITX_LANE_CON_MT6983,
+		RG_DSI_DEM_EN, RG_DSI_DEM_EN);
+#endif
 
 #ifdef IF_ONE
 	/* Switch OFF each Lane */
@@ -2681,6 +2700,12 @@ static int mtk_mipi_tx_pll_cphy_config_mt6989(struct mtk_mipi_tx *mipi_tx)
 			FLD_RG_DSI_HSTX_LDO_REF_SEL, mipi_volt << 6);
 	}
 
+#if IS_ENABLED(CONFIG_DEM_EN)
+	/*DSI_DEM_EN*/
+	mtk_mipi_tx_update_bits(mipi_tx, MIPITX_LANE_CON_MT6983,
+		RG_DSI_DEM_EN, RG_DSI_DEM_EN);
+#endif
+
 	/* value different from MT6983 */
 	if (rate < 2500)
 		writel(0xFFFF00F0, mipi_tx->regs + MIPITX_PRESERVED_MT6983);
@@ -2766,6 +2791,12 @@ static int mtk_mipi_tx_pll_cphy_config_mt6991(struct mtk_mipi_tx *mipi_tx)
 		mtk_mipi_tx_update_bits(mipi_tx, MIPITX_VOLTAGE_SEL_MT6983,
 			FLD_RG_DSI_HSTX_LDO_REF_SEL, mipi_volt << 6);
 	}
+
+#if IS_ENABLED(CONFIG_DEM_EN)
+	/*DSI_DEM_EN*/
+	mtk_mipi_tx_update_bits(mipi_tx, MIPITX_LANE_CON_MT6983,
+		RG_DSI_DEM_EN, RG_DSI_DEM_EN);
+#endif
 
 	/* value different from MT6983 */
 	if (rate < 2500)
@@ -2853,6 +2884,12 @@ static int mtk_mipi_tx_pll_cphy_config_mt6993(struct mtk_mipi_tx *mipi_tx)
 		mtk_mipi_tx_update_bits(mipi_tx, MIPITX_VOLTAGE_SEL_MT6983,
 			FLD_RG_DSI_HSTX_LDO_REF_SEL, mipi_volt << 6);
 	}
+
+#if IS_ENABLED(CONFIG_DEM_EN)
+	/*DSI_DEM_EN*/
+	mtk_mipi_tx_update_bits(mipi_tx, MIPITX_LANE_CON_MT6983,
+		RG_DSI_DEM_EN, RG_DSI_DEM_EN);
+#endif
 
 	if (mipi_tx->sw_ver == B0_CHIP)
 		mtk_mipi_tx_update_bits(mipi_tx, MIPITX_VOLTAGE_SEL_MT6983,

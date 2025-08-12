@@ -1,3 +1,11 @@
+config DEM_EN
+	bool "enable dem Support for MediaTek SoCs"
+	help
+	  Used to make MIPI signal and eye diagram better. The mipi
+	  wiring maybe very long, resulting in more signal loss.
+	  This leads to poor mipi signal and bad eye diagram.
+	  Enable DEM to improve MIPI signal and eye diagram.
+
 config DRM_MEDIATEK_V2
 	bool "Version 2 of DRM Support for Mediatek SoCs"
 	select FONT_SUPPORT
