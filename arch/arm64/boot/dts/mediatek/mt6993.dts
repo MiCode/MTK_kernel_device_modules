@@ -214,6 +214,7 @@
 		op-mode = <1>;
 		mediatek,larbs-uisp = <&smi_larb27>;
 		scp-dvfs-supply = <&scp_dvfs>;
+		vcp-supply = <&vcp>;
 		apu-supply = <&apusys_aov>;
 		sensor-i2c = <&i2c2 &i2c4 &i2c9>;
 		ulposc-support;
