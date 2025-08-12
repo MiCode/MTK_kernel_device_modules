@@ -302,7 +302,7 @@ EXPORT_SYMBOL(mtk_clear_smpu_log);
 
 unsigned int mtk_get_axiid(unsigned int emi_id)
 {
-	unsigned int value;
+	unsigned int value, i;
 	struct emi_mpu *mpu;
 	void __iomem *emi_cen_base;
 	struct reg_info_t *dump_reg;
@@ -326,6 +326,17 @@ unsigned int mtk_get_axiid(unsigned int emi_id)
 	axiid_ext_value = (readl(emi_cen_base + dump_reg[2].offset)>>axiid_ext_offset) & axiid_ext_mask;
 	masterid_value = (readl(emi_cen_base + dump_reg[2].offset)>>masterid_offset) & masterid_mask;
 	value = (axiid_ext_value<<18) + (axiid_value<<5) + masterid_value;
+
+	pr_info("smpu gets axiid from emimpu:\n");
+	for (i = 0; i < mpu->dump_cnt; i++) {
+		dump_reg[i].value = readl(
+			emi_cen_base + dump_reg[i].offset);
+
+		pr_info("%s(%d),%s(%x),%s(%x);\n",
+				"emi", emi_id,
+				"off", dump_reg[i].offset,
+				"val", dump_reg[i].value);
+	}
 
 	return value;
 }
