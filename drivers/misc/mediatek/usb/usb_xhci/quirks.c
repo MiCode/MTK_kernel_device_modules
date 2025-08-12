@@ -40,8 +40,14 @@ module_param(uac_out_max_bits, uint, 0644);
 unsigned int uac_in_max_rate;
 module_param(uac_in_max_rate, uint, 0644);
 
+unsigned int uac_in_min_rate;
+module_param(uac_in_min_rate, uint, 0644);
+
 unsigned int uac_out_max_rate;
 module_param(uac_out_max_rate, uint, 0644);
+
+unsigned int uac_out_min_rate;
+module_param(uac_out_min_rate, uint, 0644);
 
 unsigned int disable_mtk_quirk;
 module_param(disable_mtk_quirk, uint, 0644);
@@ -265,7 +271,8 @@ static void xhci_mtk_usb_update_format(struct snd_usb_substream *subs,
 			kfree(fp->rate_table);
 			kfree(fp->chmap);
 			kfree(fp);
-		} else if ((rate_max && (fp->rate_max > rate_max)) || fp->rate_min < rate_min)
+		} else if ((rate_max && (fp->rate_max > rate_max)) ||
+				(rate_min && (fp->rate_min < rate_min)))
 			xhci_mtk_usb_update_sample_rate(fp, rate_max, rate_min);
 	}
 }
@@ -277,7 +284,9 @@ static void xhci_mtk_usb_format_quirk(struct snd_usb_audio *chip)
 	unsigned int in_max_bits = uac_in_max_bits;
 	unsigned int out_max_bits = uac_out_max_bits;
 	unsigned int in_max_rate = uac_in_max_rate;
+	unsigned int in_min_rate = uac_in_min_rate;
 	unsigned int out_max_rate = uac_out_max_rate;
+	unsigned int out_min_rate = uac_out_min_rate;
 
 	/* Restrict the playback format to 16 bit for bestechnic device */
 	if (chip->usb_id == USB_ID(0xbe57, 0x0238))
@@ -288,27 +297,32 @@ static void xhci_mtk_usb_format_quirk(struct snd_usb_audio *chip)
 			&& le16_to_cpu(chip->dev->descriptor.bcdDevice) == 0x49) {
 		in_max_rate = 48000;
 		out_max_rate = 48000;
+	} else if (chip->usb_id == USB_ID(0x2a70, 0x1881)) {
+		in_min_rate = 48000;
 	}
 
-	if (!in_max_bits && !out_max_bits && !in_max_rate && !out_max_rate)
+	if (!in_max_bits && !out_max_bits && !in_max_rate && !out_max_rate &&
+		!in_min_rate && !out_min_rate)
 		return;
 
 	/* list all streams */
 	list_for_each_entry(as, &chip->pcm_list, list) {
 		/* Restrict the playback format */
-		if (out_max_bits || out_max_rate) {
-			dev_info(&chip->dev->dev, "Restrict playback format to bit rate %d, sample rate %d\n",
-				out_max_bits, out_max_rate);
+		if (out_max_bits || out_max_rate || out_min_rate) {
+			dev_info(&chip->dev->dev, "Restrict playback format to bit rate %d, sample rate %d %d\n",
+				out_max_bits, out_max_rate, out_min_rate);
 			subs = &as->substream[SNDRV_PCM_STREAM_PLAYBACK];
-			xhci_mtk_usb_update_format(subs, out_max_bits, 0, out_max_rate, 0);
+			xhci_mtk_usb_update_format(subs, out_max_bits, 0,
+				out_max_rate ? out_max_rate : INT_MAX, out_min_rate);
 		}
 
 		/* Restrict the capture format */
-		if (in_max_bits || in_max_rate) {
-			dev_info(&chip->dev->dev, "Restrict capture format to bit rate %d, sample rate %d\n",
-				in_max_bits, in_max_rate);
+		if (in_max_bits || in_max_rate || in_min_rate) {
+			dev_info(&chip->dev->dev, "Restrict capture format to bit rate %d, sample rate %d %d\n",
+				in_max_bits, in_max_rate, in_min_rate);
 			subs = &as->substream[SNDRV_PCM_STREAM_CAPTURE];
-			xhci_mtk_usb_update_format(subs, in_max_bits, 0, in_max_rate, 0);
+			xhci_mtk_usb_update_format(subs, in_max_bits, 0,
+				in_max_rate ? in_max_rate : INT_MAX, in_min_rate);
 		}
 	}
 }
