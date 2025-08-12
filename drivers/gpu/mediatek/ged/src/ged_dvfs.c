@@ -2779,17 +2779,20 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 
 void start_mewtwo_timer(void)
 {
-	if (hrtimer_try_to_cancel(&gpu_mewtwo_timer)) {
-		hrtimer_cancel(&gpu_mewtwo_timer);
-		hrtimer_start(&gpu_mewtwo_timer, gpu_mewtwo_timer_expire, HRTIMER_MODE_REL);
-	} else
-		hrtimer_start(&gpu_mewtwo_timer, gpu_mewtwo_timer_expire, HRTIMER_MODE_REL);
-
+	if (gpu_mewtwo_timer.function != NULL) {
+		if (hrtimer_try_to_cancel(&gpu_mewtwo_timer)) {
+			hrtimer_cancel(&gpu_mewtwo_timer);
+			hrtimer_start(&gpu_mewtwo_timer, gpu_mewtwo_timer_expire, HRTIMER_MODE_REL);
+		} else
+			hrtimer_start(&gpu_mewtwo_timer, gpu_mewtwo_timer_expire, HRTIMER_MODE_REL);
+	}
 }
 void cancel_mewtwo_timer(void)
 {
-	if (hrtimer_try_to_cancel(&gpu_mewtwo_timer))
-		hrtimer_cancel(&gpu_mewtwo_timer);
+	if (gpu_mewtwo_timer.function != NULL) {
+		if (hrtimer_try_to_cancel(&gpu_mewtwo_timer))
+			hrtimer_cancel(&gpu_mewtwo_timer);
+	}
 }
 
 int get_api_sync_flag(void)

@@ -1101,6 +1101,15 @@ unsigned int ged_gpufreq_get_power_state(void)
 	return gpufreq_get_power_state();
 }
 
+unsigned int ged_gpufreq_get_gpufreq_ready(void)
+{
+#if IS_ENABLED(CONFIG_MTK_GPU_LEGACY)
+	return 1;
+#else
+	return gpufreq_wrapper_ready();
+#endif
+}
+
 unsigned int ged_gpufreq_get_dcs_sysram(void)
 {
 	// write min_core_num to sysram if dcs enable

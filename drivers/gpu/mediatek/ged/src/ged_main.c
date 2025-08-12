@@ -724,6 +724,13 @@ static int ged_pdrv_probe(struct platform_device *pdev)
 
 	GED_LOGI("@%s: start to probe ged driver\n", __func__);
 
+	/* defer probe when gpufreq wrapper isn't ready */
+	if (!ged_gpufreq_get_gpufreq_ready() && !ged_gpufreq_bringup()) {
+		GED_LOGE("gpufreq wrapper has not been probed, defer ged probe");
+		err = -EPROBE_DEFER;
+		goto ERROR;
+	}
+
 	if (proc_create(GED_DRIVER_DEVICE_NAME, 0644, NULL, &ged_proc_fops)
 		== NULL) {
 		err = GED_ERROR_FAIL;

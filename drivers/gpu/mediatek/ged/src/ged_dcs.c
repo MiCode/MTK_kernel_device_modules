@@ -23,6 +23,7 @@
 #endif /* CONFIG_MTK_GPUFREQ_V2 */
 
 static unsigned int g_dcs_enable;
+static unsigned int g_dcs_init;
 static unsigned int g_dcs_support;
 static unsigned int g_dcs_opp_setting;
 static struct mutex g_DCS_lock;
@@ -84,6 +85,7 @@ static void _dcs_init_core_mask_table(void)
 	if (!g_core_mask_table || !mask_table) {
 		GED_LOGE("Failed to query core mask from gpufreq");
 		g_dcs_enable = 0;
+		g_dcs_init = 0;
 		return;
 	}
 
@@ -96,6 +98,7 @@ static void _dcs_init_core_mask_table(void)
 			i, g_core_mask_table[i].num, g_core_mask_table[i].mask);
 	}
 
+	g_dcs_init = 1;
 
 	// return mask_table;
 }
@@ -438,8 +441,10 @@ int is_dcs_enable(void)
 
 void dcs_enable(int enable)
 {
-	if (g_core_mask_table == NULL)
+	if (g_core_mask_table == NULL || !g_dcs_init) {
+		GED_LOGE("dcs_enable fail");
 		return;
+	}
 
 	mutex_lock(&g_DCS_lock);
 

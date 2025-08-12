@@ -622,7 +622,7 @@ static void ged_notify_sw_sync_work_handle(struct work_struct *psWork)
 	GED_DVFS_COMMIT_TYPE eCommitType;
 	u64 timeout_value;
 	/*only one policy at a time*/
-	if (psNotify) {
+	if (psNotify && g_HT_hwvsync_emu.function != NULL) {
 		mutex_lock(&gsPolicyLock);
 		timeout_value = lb_timeout;
 		psNotify->bUsed = false;
@@ -743,7 +743,9 @@ void ged_cancel_backup_timer(void)
 
 	temp = ged_get_time();
 #if IS_ENABLED(CONFIG_MTK_GPU_COMMON_DVFS_SUPPORT) /* ENABLE_TIMER_BACKUP */
-	if ((g_ged_frame_base_optimize == 0 || g_bGPUClock) && ged_timer_or_trace_enable()) {
+	if ((g_ged_frame_base_optimize == 0 || g_bGPUClock) &&
+		ged_timer_or_trace_enable() &&
+		g_HT_hwvsync_emu.function != NULL) {
 		if (hrtimer_try_to_cancel(&g_HT_hwvsync_emu)) {
 			/* Timer is either queued or in cb
 			 * cancel it to ensure it is not bother any way
@@ -806,7 +808,7 @@ GED_ERROR ged_notify_sw_vsync(GED_VSYNC_TYPE eType,
 	/*critical session begin*/
 	mutex_lock(&gsVsyncStampLock);
 
-	if (eType == GED_VSYNC_SW_EVENT) {
+	if (eType == GED_VSYNC_SW_EVENT && g_HT_hwvsync_emu.function != NULL) {
 		sw_vsync_ts = temp;
 #if IS_ENABLED(CONFIG_MTK_GPU_COMMON_DVFS_SUPPORT) /* ENABLE_TIMER_BACKUP */
 		if (hrtimer_try_to_cancel(&g_HT_hwvsync_emu)) {
@@ -1872,7 +1874,7 @@ void ged_dvfs_gpu_clock_switch_notify(enum ged_gpu_power_state power_state)
 		if (g_timer_on) {
 			ged_log_buf_print(ghLogBuf_DVFS,
 				"[GED_K] Timer Already Start");
-		} else if (ged_timer_or_trace_enable()) {
+		} else if (ged_timer_or_trace_enable() && g_HT_hwvsync_emu.function != NULL) {
 			hrtimer_start(&g_HT_hwvsync_emu,
 				ns_to_ktime(GED_DVFS_TIMER_TIMEOUT), HRTIMER_MODE_REL);
 			ged_log_buf_print(ghLogBuf_DVFS,
@@ -1886,7 +1888,8 @@ void ged_dvfs_gpu_clock_switch_notify(enum ged_gpu_power_state power_state)
 		if (g_ged_frame_base_optimize &&
 			(policy_state == POLICY_STATE_FB ||
 			 policy_state == POLICY_STATE_FB_FALLBACK ||
-			 ged_timer_or_trace_enable())) {
+			 ged_timer_or_trace_enable()) &&
+			 g_HT_hwvsync_emu.function != NULL) {
 			int timer_flag = 0;
 			if (hrtimer_try_to_cancel(&g_HT_hwvsync_emu)) {
 				/* frame base pass power off timer*/

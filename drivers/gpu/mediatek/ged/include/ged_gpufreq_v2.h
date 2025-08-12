@@ -52,6 +52,7 @@ void ged_gpufreq_print_tables(void);
 
 unsigned int ged_gpufreq_get_power_state(void);
 int ged_get_max_freq_in_opp(void);
+unsigned int ged_gpufreq_get_gpufreq_ready(void);
 
 // for async ratio
 int ged_get_sc_freq_by_virt_opp(int oppidx);
