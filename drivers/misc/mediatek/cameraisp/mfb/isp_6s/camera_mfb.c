@@ -749,7 +749,7 @@ void MFBQOS_Update(bool start, unsigned int scen, unsigned long bw)
 	struct dev_pm_opp *opp;
 	unsigned int qos_port_temp = 0;
 
-	LOG_INF("start: %d, MFB scen: %d, bw: %lu", start, scen, bw);
+	LOG_DBG("start: %d, MFB scen: %d, bw: %lu", start, scen, bw);
 
 	if (g_platform_id == 0x6858) {
 		if (start) { /* start MFB, configure MMDVFS to highest CLK */
@@ -882,7 +882,7 @@ void MFBQOS_Update(bool start, unsigned int scen, unsigned long bw)
 	}
 
 	if (g_platform_id == 0x6858) {
-		LOG_INF("freq = %lu", freq);
+		LOG_DBG("freq = %lu", freq);
 		ret = clk_set_rate(img_mmdvfs_clk, freq);
 	} else {
 		ret = regulator_set_voltage(regu, volt, INT_MAX);
@@ -898,7 +898,7 @@ void MFBQOS_Update(bool start, unsigned int scen, unsigned long bw)
 		qos_report = qos_total;
 	spin_unlock(&SpinLockMfbPmqos);
 
-	LOG_INF("qos_report: %lu\n", qos_report);
+	LOG_DBG("qos_report: %lu\n", qos_report);
 	for (i = 0; i < MFB_PORT_NUM; i++) {
 		switch (i) {
 		case 0:
@@ -926,7 +926,7 @@ void MFBQOS_Update(bool start, unsigned int scen, unsigned long bw)
 			qos_port_temp = qos_report * 16 / 100;
 			break;
 		}
-		if (qos_report == 800000000) {
+		if (qos_report == 2000000000) {
 			qos_port_temp = qos_report; // temp to test
 			LOG_INF("qos for MFB capture !");
 		}
