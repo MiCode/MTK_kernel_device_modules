@@ -320,6 +320,7 @@ static void __used cpu_limit_default_setting(struct device *dev, enum cpu_pt_typ
 	}
 }
 
+static unsigned int delay_time_s;
 static bool parse_bootup_pt_table(struct device_node *np, struct tag_bootmode *tag)
 {
 	struct cpu_bootup_pt_priv *bootup_pt_info_p;
@@ -413,6 +414,13 @@ static bool parse_bootup_pt_table(struct device_node *np, struct tag_bootmode *t
 		kfree(temp_threshold);
 		kfree(volt_threshold);
 		return false;
+	}
+	ret = of_property_read_u32(np,
+		"bootup-delay-release-time", &delay_time_s);
+	if (ret < 0) {
+		delay_time_s = 0;
+		pr_info("[%s] read bootup-delay-release-time fail, ret = %d\n",
+			__func__, ret);
 	}
 	pr_notice("%s: bootmode:0x%x\n", __func__, tag->bootmode);
 	kfree(temp_threshold);
@@ -677,14 +685,26 @@ static ssize_t boot_notify_show(struct device *dev,
 	return len;
 }
 
+static void release_cpu_performance_work_func(struct work_struct *work)
+{
+	struct cpu_bootup_pt_policy *bootup_pt_policy;
+	s32 freq_limit;
+
+	list_for_each_entry(bootup_pt_policy, &bootup_pt_policy_list, cpu_bootup_pt_list) {
+		freq_limit = FREQ_QOS_MAX_DEFAULT_VALUE;
+		pr_info("%s: freq_limit=%d\n", __func__, freq_limit);
+		freq_qos_update_request(&bootup_pt_policy->qos_req, freq_limit);
+	}
+}
+
 static ssize_t boot_notify_store(struct device *dev,
 		struct device_attribute *attr,
 		const char *buf, size_t size)
 {
 	unsigned int boot_completed = 0;
-	struct cpu_bootup_pt_policy *bootup_pt_policy;
-	s32 freq_limit;
+	static struct delayed_work work_struct;
 
+	INIT_DELAYED_WORK(&work_struct, release_cpu_performance_work_func);
 	if (bootup_pt_support == false){
 		dev_info(dev, "not support cpu bootup\n");
 		return -EINVAL;
@@ -698,12 +718,7 @@ static ssize_t boot_notify_store(struct device *dev,
 		return -EINVAL;
 	}
 	system_boot_completed = boot_completed;
-
-	list_for_each_entry(bootup_pt_policy, &bootup_pt_policy_list, cpu_bootup_pt_list) {
-		freq_limit = FREQ_QOS_MAX_DEFAULT_VALUE;
-		pr_info("%s: freq_limit=%d\n", __func__, freq_limit);
-		freq_qos_update_request(&bootup_pt_policy->qos_req, freq_limit);
-	}
+	schedule_delayed_work(&work_struct, delay_time_s * HZ);
 
 	return size;
 }
