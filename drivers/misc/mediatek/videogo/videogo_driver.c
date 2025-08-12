@@ -79,7 +79,7 @@ static int set_rt_non_idle_preempt;
 static int set_cpu_pf_ctrl;
 static int set_slc_wce_ctrl;
 static int set_ct_to_vip;
-//static int set_cpu_freq_min;
+static int set_cpu_freq_min;
 static int set_gpu_freq_min;
 static int target_fps_count[MAX_CODEC_TYPE] = {0};
 static int alive_count[MAX_CODEC_TYPE] = {0};
@@ -133,6 +133,7 @@ static int videogo_probe(struct platform_device *pdev)
 
 	/* VP Low Power */
 	videogo_read_and_set_bool(np, "cpu-pf-ctrl", &mtk_vgo_cpu_pf_ctrl);
+	videogo_read_and_set_u32(np, "set-cpu-freq", mtk_vgo_cpu_freq_val, &mtk_vgo_cpu_freq, 3);
 	videogo_read_and_set_bool(np, "rt-non-idle-preempt", &mtk_vgo_rt_non_idle_preempt);
 	videogo_read_and_set_bool(np, "runnable-boost-disable", &mtk_vgo_runnable_boost_disable);
 	videogo_read_and_set_bool(np, "slc-wce-ctrl", &mtk_vgo_slc_wce_ctrl);
@@ -528,6 +529,13 @@ static int videogo_controller_fn(void *arg)
 								VGO_RUNNABLE_BOOST_DISABLE, 1, 0, 0);
 				set_runnable_boost_disable = 1;
 			}
+			if (!set_cpu_freq_min && mtk_vgo_cpu_freq) {
+				send_service_info("acq mtk_vgo_cpu_freq",
+								VGO_CPU_FREQ_MIN,
+								mtk_vgo_cpu_freq_val[0], mtk_vgo_cpu_freq_val[1],
+								mtk_vgo_cpu_freq_val[2]);
+				set_cpu_freq_min = 1;
+			}
 			if (!set_margin_ctrl && mtk_vgo_margin_ctrl) {
 				send_service_info("acq margin_ctrl",
 								VGO_MARGIN_CONTROL_0,
@@ -558,8 +566,8 @@ static int videogo_controller_fn(void *arg)
 				mtk_vgo_debug("acq slc_wce_ctrl");
 				set_slc_wce_ctrl = 1;
 			}
-			mtk_vgo_info("[VP] runnable_disable:%d margin_ctrl:%d util_boost_disable:%d rt_non_idle:%d pf_ctrl:%d slc_wce_ctrl:%d",
-				set_runnable_boost_disable, set_margin_ctrl,
+			mtk_vgo_info("[VP] runnable_disable:%d cpu_freq:%d margin_ctrl:%d util_boost_disable:%d rt_non_idle:%d pf_ctrl:%d slc_wce_ctrl:%d",
+				set_runnable_boost_disable, set_cpu_freq_min, set_margin_ctrl,
 				set_util_est_boost_disable, set_rt_non_idle_preempt,
 				set_cpu_pf_ctrl, set_slc_wce_ctrl);
 		} else {
@@ -567,6 +575,11 @@ static int videogo_controller_fn(void *arg)
 				send_service_info("rel Runnable_boost_disable",
 								VGO_RUNNABLE_BOOST_DISABLE, -1, 0, 0);
 				set_runnable_boost_disable = 0;
+			}
+			if (set_cpu_freq_min) {
+				send_service_info("rel set_cpu_freq_min",
+								VGO_CPU_FREQ_MIN, -1, 0, 0);
+				set_cpu_freq_min = 0;
 			}
 			if (set_margin_ctrl) {
 				send_service_info("rel margin_ctrl",

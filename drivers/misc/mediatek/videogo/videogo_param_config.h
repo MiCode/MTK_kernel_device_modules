@@ -33,6 +33,13 @@ static unsigned int mtk_vgo_margin_ctrl_val[3];
 static int num_margin_ctrl = ARRAY_SIZE(mtk_vgo_margin_ctrl_val);
 module_param_array(mtk_vgo_margin_ctrl_val, uint, &num_margin_ctrl, 0644);
 
+static bool mtk_vgo_cpu_freq = true;
+module_param(mtk_vgo_cpu_freq, bool, 0644);
+
+static unsigned int mtk_vgo_cpu_freq_val[3];
+static int num_cpu_freq = ARRAY_SIZE(mtk_vgo_cpu_freq_val);
+module_param_array(mtk_vgo_cpu_freq_val, uint, &num_cpu_freq, 0644);
+
 static bool mtk_vgo_runnable_boost_disable = true;
 module_param(mtk_vgo_runnable_boost_disable, bool, 0644);
 
