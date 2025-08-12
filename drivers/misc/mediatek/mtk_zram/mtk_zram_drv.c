@@ -2866,6 +2866,7 @@ static int zram_hw_bvec_write_dc(struct zram *zram, struct bio_vec *bvec,
 		.bio = bio,
 	};
 	unsigned long element = 0;
+	bool retried = false;
 
 	if (is_partial_io(bvec)) {
 		pr_info("%s: Partial IO is not supported.\n", __func__);
@@ -2904,10 +2905,17 @@ again:
 			if (current->flags & PF_EXITING)
 				return ret;
 
+			/* Don't block processes except for kswapd */
+			if (retried && !current_is_kswapd())
+				return ret;
+
 			atomic64_inc(&zram->stats.hw_busy_wait);
 
 			/* HW is busy. Relinquish CPU to take a breath. */
 			WAIT_FOR_HWCOMP();
+
+			/* Retried in this session */
+			retried = true;
 
 			goto again;
 		}
