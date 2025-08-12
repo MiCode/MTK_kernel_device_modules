@@ -16725,6 +16725,53 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 		pmic_oc_debug: pmic-oc-debug {
 			compatible = "mediatek,mt6993-oc-debug";
+			spmi = <&spmi>;
+			spmi-m = <0>;
+			spmi-p = <2>;
+			regulators = <&mt6661_4_ld20_1
+				&mt6661_4_ld20_2
+				&mt6661_4_ldc0_3
+				&mt6661_4_ldc0_4
+				&mt6661_4_ln60_5
+				&mt6661_4_ln60_6
+				&mt6661_4_lnc0_10
+				&mt6661_4_ln60_7
+				&mt6661_4_lnc0_8
+				&mt6661_4_lnc0_9
+				&mt6661_4_lnc0_s_11
+				&mt6661_4_lnc0_s_12
+				&mt6661_3_ld20_1
+				&mt6661_3_ld20_2
+				&mt6661_3_ldc0_3
+				&mt6661_3_ldc0_4
+				&mt6661_3_ln60_5
+				&mt6661_3_ln60_6
+				&mt6661_3_lnc0_10
+				&mt6661_3_ln60_7
+				&mt6661_3_lnc0_8
+				&mt6661_3_lnc0_9
+				&mt6661_3_lnc0_s_11
+				&mt6661_3_lnc0_s_12
+				&mt6661_5_ld20_1
+				&mt6661_5_ld20_2
+				&mt6661_5_ldc0_3
+				&mt6661_5_ln60_5
+				&mt6661_5_ln60_6
+				&mt6661_5_lnc0_10
+				&mt6661_5_ln60_7
+				&mt6661_5_lnc0_8
+				&mt6661_5_lnc0_9
+				&mt6661_5_lnc0_s_12
+				&mt6661_6_ldc0_3
+				&mt6661_6_ldc0_4
+				&mt6661_6_ln60_5
+				&mt6661_6_ln60_6
+				&mt6661_6_lnc0_10
+				&mt6661_6_ln60_7
+				&mt6661_6_lnc0_8
+				&mt6661_6_lnc0_9
+				&mt6661_6_lnc0_s_11
+				&mt6661_6_lnc0_s_12>;
 		};
 
 		pmic-ecid {
