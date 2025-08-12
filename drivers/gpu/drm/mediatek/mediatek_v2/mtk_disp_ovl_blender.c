@@ -680,11 +680,11 @@ static void mtk_ovl_blender_connect(struct mtk_ddp_comp *comp, struct cmdq_pkt *
 	else
 		ovl_bld_con_val |= DISP_BGCLR_IN_SEL;
 
-	if ((last_blender != comp && (DUAL_MAPPING_BLENDER(last_blender->id) != comp->id))||
-			((mtk_ddp_comp_get_type(next) == MTK_OVL_BLENDER ||
-			mtk_ddp_comp_get_type(next) == MTK_OVL_EXDMA) &&
-			next != DDP_COMPONENT_ID_MAX)) {
-
+	if ((last_blender && last_blender != comp && (comp->mtk_crtc->is_dual_pipe &&
+	    DUAL_MAPPING_BLENDER(last_blender->id) != comp->id))||
+	    ((mtk_ddp_comp_get_type(next) == MTK_OVL_BLENDER ||
+	    mtk_ddp_comp_get_type(next) == MTK_OVL_EXDMA) &&
+	    next != DDP_COMPONENT_ID_MAX)) {
 		DDPDBG("%s,%d, %s, to Blender\n", __func__, __LINE__,
 			mtk_dump_comp_str_id(prev));
 
