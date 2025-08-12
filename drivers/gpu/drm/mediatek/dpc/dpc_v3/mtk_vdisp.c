@@ -532,6 +532,7 @@ void mtk_vdisp_ctrl(int on_off, const char *c_n, uint32_t ops, uint32_t bit)
 		atomic_dec(&g_vdisp_ctrl_cnt);
 
 		if (atomic_read(&g_vdisp_ctrl_cnt) == 2) {
+			mtk_vidle_user_power_clean_up_by_gce();
 			ret = readx_poll_timeout(vdisp_hwccf_check_power, , value,
 						 value == 0, POLL_DELAY_1US, TIMEOUT_10MS);
 			if (ret) {

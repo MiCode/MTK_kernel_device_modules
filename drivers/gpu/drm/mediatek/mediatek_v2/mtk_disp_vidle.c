@@ -142,14 +142,17 @@ void mtk_vidle_user_power_release_by_gce(enum mtk_vidle_voter_user user, struct 
 	disp_dpc_driver.dpc_vidle_power_release_by_gce(pkt, user, NULL);
 }
 
-void mtk_vidle_user_power_clean_up_by_gce(struct cmdq_pkt *pkt)
+void mtk_vidle_user_power_clean_up_by_gce(void)
 {
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(vidle_data.drm_priv->crtc[0]);
+
 	if (disp_dpc_driver.dpc_power_clean_up_by_gce == NULL)
 		return;
-
-	disp_dpc_driver.dpc_power_clean_up_by_gce(pkt);
+	if (!mtk_crtc)
+		return;
+	disp_dpc_driver.dpc_power_clean_up_by_gce(mtk_crtc->gce_obj.client[CLIENT_CFG]);
 }
-
+EXPORT_SYMBOL(mtk_vidle_user_power_clean_up_by_gce);
 
 void mtk_dpc_monitor_config(struct cmdq_pkt *pkt, const u32 value)
 {

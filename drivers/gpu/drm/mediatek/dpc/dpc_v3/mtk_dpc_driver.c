@@ -3514,21 +3514,36 @@ static void dpc_vidle_power_release_by_gce_v3(struct cmdq_pkt *pkt, const enum m
 	}
 }
 
-static void dpc_power_clean_up_by_gce(struct cmdq_pkt *pkt)
+static void dpc_power_clean_up_by_gce(struct cmdq_client *client)
 {
 	u32 val = 0;
 	int user;
+	struct cmdq_pkt *cmdq_handle;
 
 	val = readl(mmpc_dummy_voter);
 	if (val == 0)
 		return;
+	if (!client)
+		return;
+	if (!(excep_by_xpu & BIT(1)))
+		return;
+
+	cmdq_mbox_enable(client->chan);
+	cmdq_handle = cmdq_pkt_create(client);
+	if (!cmdq_handle) {
+		DPCERR("create handle fail\n");
+		return;
+	}
+	cmdq_pkt_set_event(cmdq_handle, g_priv->event_hwccf_vote);
 	for (user = 0; user < 32; user++) {
 		if (val & (1 << user)) {
 			DPCERR("user:%d did not release", user);
-			cmdq_pkt_set_event(pkt, g_priv->event_hwccf_vote);
-			dpc_vidle_power_release_by_gce_v3(pkt, user, NULL);
+			dpc_vidle_power_release_by_gce_v3(cmdq_handle, user, NULL);
 		}
 	}
+	cmdq_pkt_flush(cmdq_handle);
+	cmdq_pkt_destroy(cmdq_handle);
+	cmdq_mbox_disable(client->chan);
 }
 
 static void dpc_hwccf_vote(bool on, struct cmdq_pkt *pkt, const enum mtk_vidle_voter_user user, bool lock,
