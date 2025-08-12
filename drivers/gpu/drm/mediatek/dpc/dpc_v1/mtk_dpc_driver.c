@@ -1848,7 +1848,7 @@ static int dpc_vidle_is_available(void)
 }
 
 /* dur_frame and dur_vblank are in unit of us*/
-static int dpc_dt_set_dur_v1(u32 dur_frame, u32 dur_vblank)
+static int dpc_dt_set_dur_func(u32 dur_frame, u32 dur_vblank, bool force, bool lock)
 {
 	unsigned int duration = 0;
 	unsigned long flags = 0;
@@ -1859,9 +1859,10 @@ static int dpc_dt_set_dur_v1(u32 dur_frame, u32 dur_vblank)
 	if (dpc_pm_ctrl(true, __func__))
 		return -1;
 
-	spin_lock_irqsave(&dpc_lock, flags);
+	if (lock)
+		spin_lock_irqsave(&dpc_lock, flags);
 	duration = dpc_align_fps_duration(dur_frame);
-	if (g_te_duration == duration && g_vb_duration == dur_vblank)
+	if (!force && g_te_duration == duration && g_vb_duration == dur_vblank)
 		goto out;
 
 	dpc_mmp(dt, MMPROFILE_FLAG_START, g_te_duration, dur_frame);
@@ -1941,10 +1942,16 @@ static int dpc_dt_set_dur_v1(u32 dur_frame, u32 dur_vblank)
 	}
 
 out:
-	spin_unlock_irqrestore(&dpc_lock, flags);
+	if (lock)
+		spin_unlock_irqrestore(&dpc_lock, flags);
 	dpc_pm_ctrl(false, __func__);
 
 	return duration;
+}
+
+static int dpc_dt_set_dur_v1(u32 dur_frame, u32 dur_vblank)
+{
+	return dpc_dt_set_dur_func(dur_frame, dur_vblank, false, true);
 }
 
 static void dpc_dsi_pll_set_v1(const u32 value)
@@ -2495,7 +2502,7 @@ static void dpc_enable_v1(const u8 en)
 	}
 
 	spin_lock_irqsave(&dpc_lock, flags);
-	if (en && g_priv->vidle_mask == 0) { //dpc_vidle_is_available() == 0) {
+	if (en && g_priv->vidle_mask == 0) {
 		DPCERR("in-available, cap:0x%x, dur:%u-%u, panel:%d, en:%d",
 			g_priv->vidle_mask, g_te_duration, g_vb_duration,
 			g_panel_type, en);
@@ -2515,6 +2522,10 @@ static void dpc_enable_v1(const u8 en)
 		if (g_priv->skip_rdone)
 			writel(DPC_DT_MML_SKIP_RDONE, dpc_base + DISP_REG_DPC_MML_DT_CFG);
 
+		/* init DT timer */
+		if (g_panel_type == PANEL_TYPE_VDO && g_te_duration > 0 && g_vb_duration > 0)
+			dpc_dt_set_dur_func(g_te_duration, g_vb_duration, true, false);
+
 		/* CMD panel: DT enable only 1, 3, 5, 6, 7, 12, 13, 29, 30, 31
 		 * VDO panel: DT enable only 4, 5, 6, 11, 12, 29, 30, 31
 		 */
@@ -2532,7 +2543,6 @@ static void dpc_enable_v1(const u8 en)
 		else
 			dt_mask = MTK_VIDLE_VDO_MML_DT_MASK;
 		dpc_dt_en_all(DPC_SUBSYS_MML, dt_mask);
-		dpc_mmp(mml_dt, MMPROFILE_FLAG_PULSE, dt_mask, en);
 
 		mtk_disp_enable_gce_vote(true);
 		if (g_panel_type == PANEL_TYPE_CMD)
@@ -2620,9 +2630,10 @@ inavail:
 
 out:
 	dpc_pm_ctrl(false, __func__);
-	DPCFUNC("en:%d,panel:%d,cap:0x%x,cnt:%d,window:0x%x",
+	DPCFUNC("en:%d,panel:%d,cap:0x%x,cnt:%d,window:0x%x,duration:%u,%u",
 		en, g_panel_type, g_priv->vidle_mask,
-		atomic_read(&g_priv->dpc_en_cnt), atomic_read(&g_vidle_window));
+		atomic_read(&g_priv->dpc_en_cnt), atomic_read(&g_vidle_window),
+		g_te_duration, g_vb_duration);
 }
 
 static void dpc_hrt_bw_set_v1(const u32 subsys, const u32 bw_in_mb, bool force)
@@ -4457,6 +4468,11 @@ static void _dpc_analysis(bool detail)
 		readl(dpc_base + DISP_REG_DPC_MML_INTEN),
 		readl(dpc_base + DISP_REG_DPC_MERGE_DISP_INT_CFG),
 		readl(dpc_base + DISP_REG_DPC_MERGE_MML_INT_CFG));
+	DPCDUMP("DT counter: DT4:0x%x,DT5:0x%x,DT11:0x%x,DT12:0x%x",
+		readl(dpc_base + DISP_REG_DPC_DTx_COUNTER(4)),
+		readl(dpc_base + DISP_REG_DPC_DTx_COUNTER(5)),
+		readl(dpc_base + DISP_REG_DPC_DTx_COUNTER(11)),
+		readl(dpc_base + DISP_REG_DPC_DTx_COUNTER(12)));
 
 	status = g_priv->get_sys_status(SYS_STATE_APSRC, &value);
 	DPCDUMP("APSRC req:0x%x, value:%#04x", status, value);
