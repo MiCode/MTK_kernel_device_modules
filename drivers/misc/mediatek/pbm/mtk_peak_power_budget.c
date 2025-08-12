@@ -79,6 +79,7 @@ struct xpu_dbg_t last_mbrain_xpu_dbg, last_klog_xpu_dbg;
 static ppb_mbrain_func cb_func;
 static ppb_mbrain_func cb_func_hpt;
 static struct timer_list ppb_dbg_timer;
+static struct delayed_work ppb3_dbg_work;
 struct ppb_cgppt_dbg_operation *cgppt_dbg_ops;
 
 struct tag_bootmode {
@@ -1125,7 +1126,7 @@ static int __used get_ppb3_debug_info(struct ppb3_dbg_t *data)
 }
 
 
-static void __used ppb3_print_dbg_log(struct timer_list *timer)
+static void __used ppb3_print_dbg_log(struct work_struct *work)
 {
 	struct ppb3_dbg_t ppb3_dbg_data;
 	int offset, ret;
@@ -1238,7 +1239,7 @@ static void __used ppb3_print_dbg_log(struct timer_list *timer)
 
 		pr_info_ratelimited("%s\n", str);
 
-		mod_timer(&ppb_dbg_timer, jiffies + PPB3_LOG_DURATION);
+		schedule_delayed_work(&ppb3_dbg_work, PPB3_LOG_DURATION);
 
 		if ((ppb3_dbg_data.oc_count != prev_oc_count) && (cb_func_hpt != NULL))
 			cb_func_hpt();
@@ -1884,11 +1885,14 @@ static void bat_handler(struct work_struct *work)
 
 	if (temp != last_temp || soc != last_soc || uisoc != last_uisoc || pb.combo0_uisoc != last_combo0_uisoc
 		|| aging_stage != last_aging_stage) {
-		if (timer_pending(&ppb_dbg_timer)) {
-			del_timer_sync(&ppb_dbg_timer);
-			if (pb.version == 2)
+		if (pb.version == 2) {
+			if (timer_pending(&ppb_dbg_timer)) {
+				del_timer_sync(&ppb_dbg_timer);
 				ppb_print_dbg_log(NULL);
-			if (pb.version == 3)
+			}
+		}
+		if (pb.version == 3){
+			if (cancel_delayed_work_sync(&ppb3_dbg_work))
 				ppb3_print_dbg_log(NULL);
 		}
 
@@ -3439,8 +3443,8 @@ static int peak_power_budget_probe(struct platform_device *pdev)
 	}
 
 	if (pb.version == 3) {
-		timer_setup(&ppb_dbg_timer, ppb3_print_dbg_log, TIMER_DEFERRABLE);
-		mod_timer(&ppb_dbg_timer, jiffies + PPB3_LOG_DURATION);
+		INIT_DELAYED_WORK(&ppb3_dbg_work, ppb3_print_dbg_log);
+		schedule_delayed_work(&ppb3_dbg_work, PPB3_LOG_DURATION);
 		spbm_scmi_init();
 	} else {
 		timer_setup(&ppb_dbg_timer, ppb_print_dbg_log, TIMER_DEFERRABLE);
