@@ -1767,7 +1767,7 @@
 			iommus = <&apu_iommu0 M4U_LARB34_APU_CODE>;
 		};
 
-		videogo {
+		videogo: videogo {
 			compatible =  "mediatek,videogo";
 			/* Create Instance*/
 			cgroup-colocate = <0>;          /* 0:disable, 1:enable */
