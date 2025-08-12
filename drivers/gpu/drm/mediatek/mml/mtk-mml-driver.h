@@ -118,8 +118,8 @@ void mml_dpc_task_cnt_inc(struct mml_task *task);
 void mml_dpc_task_cnt_dec(struct mml_task *task);
 void mml_dpc_exc_keep(struct mml_dev *mml, u32 sysid);
 void mml_dpc_exc_release(struct mml_dev *mml, u32 sysid);
-void mml_dpc_exc_keep_task(struct mml_task *task, const struct mml_topology_path *path);
-void mml_dpc_exc_release_task(struct mml_task *task, const struct mml_topology_path *path);
+void mml_dpc_exc_keep_path(struct mml_dev *mml, const struct mml_topology_path *path);
+void mml_dpc_exc_release_path(struct mml_dev *mml, const struct mml_topology_path *path);
 void mml_dpc_dc_enable(struct mml_dev *mml, u32 sysid, bool en);
 
 void mml_pw_set_kick_cb(struct mml_dev *mml, void (*kick_idle_cb)(void *disp_param), void *param);
