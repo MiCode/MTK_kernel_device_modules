@@ -155,6 +155,7 @@ struct mml_dev {
 	struct cmdq_client *cmdq_clts[MML_MAX_CMDQ_CLTS];
 	u8 cmdq_clt_cnt;
 	struct kthread_worker *kt_config;
+	struct mml_comp *sys_comps[mml_max_sys];
 
 	u32 sw_ver;
 	atomic_t drm_cnt;
@@ -2548,6 +2549,45 @@ void mml_isr_wait(struct mml_dev *mml, struct mml_task *task)
 			mml_err("%s task job %u isr not remove node",
 				__func__, task->job.jobid);
 	}
+}
+
+void mml_drv_sys_comp_set(struct mml_dev *mml, u32 sys_comp_id, u32 index)
+{
+	mml->sys_comps[index] = mml->comps[sys_comp_id];
+}
+EXPORT_SYMBOL_GPL(mml_drv_sys_comp_set);
+
+s32 mml_drv_sys_pw_enable(struct mml_dev *mml, enum mml_mode mode, bool by_mminfra,
+	s32 (*pw_enable)(struct mml_comp *comp, const s8 mode, bool pw_by_mminfra))
+{
+	s32 ret;
+	u32 i;
+
+	for (i = 0; i < ARRAY_SIZE(mml->sys_comps); i++) {
+		if (!mml->sys_comps[i])
+			break;
+		ret = pw_enable(mml->sys_comps[i], mode, by_mminfra);
+		if (ret < 0)
+			return ret;
+	}
+
+	return 0;
+}
+
+s32 mml_drv_sys_pw_disable(struct mml_dev *mml, enum mml_mode mode, bool by_mminfra,
+	s32 (*pw_disable)(struct mml_comp *comp, const s8 mode, bool pw_by_mminfra))
+{
+	s32 ret, i;
+
+	for (i = ARRAY_SIZE(mml->sys_comps) - 1; i >= 0; i--) {
+		if (!mml->sys_comps[i])
+			break;
+		ret = pw_disable(mml->sys_comps[i], mode, by_mminfra);
+		if (ret < 0)
+			return ret;
+	}
+
+	return 0;
 }
 
 static void mml_process_dbg_cmd(const char *cmd, struct mml_dev *mml)

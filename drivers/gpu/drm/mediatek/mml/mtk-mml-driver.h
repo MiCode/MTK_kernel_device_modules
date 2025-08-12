@@ -540,6 +540,14 @@ void mml_isr_notify(struct mml_dev *mml, struct mml_comp *comp, struct list_head
 
 void mml_isr_wait(struct mml_dev *mml, struct mml_task *task);
 
+void mml_drv_sys_comp_set(struct mml_dev *mml, u32 sys_comp_id, u32 index);
+
+s32 mml_drv_sys_pw_enable(struct mml_dev *mml, enum mml_mode mode, bool by_mminfra,
+	s32 (*pw_enable)(struct mml_comp *comp, const s8 mode, bool pw_by_mminfra));
+
+s32 mml_drv_sys_pw_disable(struct mml_dev *mml, enum mml_mode mode, bool by_mminfra,
+	s32 (*pw_enable)(struct mml_comp *comp, const s8 mode, bool pw_by_mminfra));
+
 extern struct platform_driver mml_sys_driver;
 extern struct platform_driver mml_aal_driver;
 extern struct platform_driver mml_color_driver;

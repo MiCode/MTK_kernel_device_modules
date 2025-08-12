@@ -1046,6 +1046,13 @@ static s32 tp_init_cache(struct mml_dev *mml, struct mml_topology_cache *cache,
 		path->mux_group = grp_dispatch[i];
 	}
 
+	/* for mt6993, it is necessary for dpc to enable all subsys,
+	 * hence cache all sys into driver, to enable all on/off feature.
+	 */
+	mml_drv_sys_comp_set(mml, MML2_MMLSYS, 0);
+	mml_drv_sys_comp_set(mml, MML0_MMLSYS, 1);
+	mml_drv_sys_comp_set(mml, MML1_MMLSYS, 2);
+
 	return 0;
 }
 

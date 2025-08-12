@@ -204,8 +204,8 @@ struct mml_sys {
 	u32 comp_cnt;
 	/* MML component bound count */
 	u32 comp_bound;
-
 	u8 sub_comp_type[MML_MAX_SYS_COMPONENTS];
+	struct mml_dev *mml;
 
 	/* clock for dpc */
 	struct clk *clk_sys_26m;
@@ -1483,7 +1483,6 @@ s32 mml_sys_pw_enable(struct mml_comp *comp, const s8 mode, bool pw_by_mminfra)
 {
 	int ret;
 	struct mml_sys *sys = comp_to_sys(comp);
-	bool pwon = comp->pw_cnt == 0;
 
 	ret = mml_comp_pw_enable(comp, mode, sys->pwr_control_by_mminfra);
 
@@ -1494,12 +1493,6 @@ s32 mml_sys_pw_enable(struct mml_comp *comp, const s8 mode, bool pw_by_mminfra)
 			mml_err("enable sys comp %u auto cnt %d", comp->id, sys->dpc_auto_cnt);
 	}
 
-	if (!ret && pwon) {
-		ret = clk_prepare_enable(sys->clk_sys_26m);
-		if (ret)
-			mml_err("%s clk_sys_26m fail %d", __func__, ret);
-	}
-
 	return ret;
 }
 
@@ -1507,10 +1500,6 @@ s32 mml_sys_pw_disable(struct mml_comp *comp, const s8 mode, bool pw_by_mminfra)
 {
 	int ret;
 	struct mml_sys *sys = comp_to_sys(comp);
-	bool pwoff = comp->pw_cnt == 1;
-
-	if (pwoff)
-		clk_disable_unprepare(sys->clk_sys_26m);
 
 	if (mml_iscouple(mode)) {
 		if (--sys->dpc_auto_cnt == 0)
@@ -1520,6 +1509,43 @@ s32 mml_sys_pw_disable(struct mml_comp *comp, const s8 mode, bool pw_by_mminfra)
 	}
 
 	ret = mml_comp_pw_disable(comp, mode, sys->pwr_control_by_mminfra);
+
+	return ret;
+}
+
+s32 mml_sys_pw_enable_mt6993(struct mml_comp *comp, const s8 mode, bool pw_by_mminfra)
+{
+	struct mml_sys *sys = comp_to_sys(comp);
+	int ret;
+
+	/* enable all sys power (larbs) once */
+	ret = mml_drv_sys_pw_enable(sys->mml, mode, sys->pwr_control_by_mminfra,
+		mml_comp_pw_enable);
+
+	if (mml_iscouple(mode)) {
+		if (++sys->dpc_auto_cnt == 1)
+			mml_dpc_mtcmos_auto(comp->sysid, true, mode);
+		if (sys->dpc_auto_cnt <= 0)
+			mml_err("enable sys comp %u auto cnt %d", comp->id, sys->dpc_auto_cnt);
+	}
+
+	return ret;
+}
+
+s32 mml_sys_pw_disable_mt6993(struct mml_comp *comp, const s8 mode, bool pw_by_mminfra)
+{
+	struct mml_sys *sys = comp_to_sys(comp);
+	int ret;
+
+	if (mml_iscouple(mode)) {
+		if (--sys->dpc_auto_cnt == 0)
+			mml_dpc_mtcmos_auto(comp->sysid, false, mode);
+		if (sys->dpc_auto_cnt < 0)
+			mml_err("disable sys comp %u auto cnt %d", comp->id, sys->dpc_auto_cnt);
+	}
+
+	ret = mml_drv_sys_pw_disable(sys->mml, mode, sys->pwr_control_by_mminfra,
+		mml_comp_pw_disable);
 
 	return ret;
 }
@@ -1624,12 +1650,20 @@ static s32 mml_comp_clk_aid_enable(struct mml_comp *comp)
 
 static s32 mml_sys_comp_clk_enable(struct mml_comp *comp)
 {
+	struct mml_sys *sys = comp_to_sys(comp);
+	bool clkon = comp->clk_cnt == 0;
 	int ret;
 
 	/* original clk enable */
 	ret = mml_comp_clk_aid_enable(comp);
 	if (ret < 0)
 		return ret;
+
+	if (clkon) {
+		ret = clk_prepare_enable(sys->clk_sys_26m);
+		if (ret)
+			mml_err("%s clk_sys_26m fail %d", __func__, ret);
+	}
 
 	mml_mmp(clk_enable, MMPROFILE_FLAG_PULSE, comp->id, 0);
 
@@ -1640,6 +1674,7 @@ static s32 mml_sys_comp_clk_disable(struct mml_comp *comp,
 				    bool dpc)
 {
 	struct mml_sys *sys = comp_to_sys(comp);
+	bool clkoff = comp->clk_cnt == 1;
 	u32 i;
 
 	comp->clk_cnt--;
@@ -1655,6 +1690,9 @@ static s32 mml_sys_comp_clk_disable(struct mml_comp *comp,
 		/* clear sys irq en to make sure mml hw does not burst after clock off */
 		writel(0, comp->base + SYS_MDP_IRQ);
 	}
+
+	if (clkoff)
+		clk_disable_unprepare(sys->clk_sys_26m);
 
 	mml_mmp(clk_disable, MMPROFILE_FLAG_START, comp->id, 0);
 	for (i = 0; i < ARRAY_SIZE(comp->clks); i++) {
@@ -1711,6 +1749,16 @@ static const struct mml_comp_hw_ops sys_hw_ops = {
 static const struct mml_comp_hw_ops sys_hw_ops_mminfra = {
 	.pw_enable = mml_sys_pw_enable,
 	.pw_disable = mml_sys_pw_disable,
+	.mminfra_pw_enable = mml_mminfra_pw_enable,
+	.mminfra_pw_disable = mml_mminfra_pw_disable,
+	.clk_enable = &mml_sys_comp_clk_enable,
+	.clk_disable = &mml_sys_comp_clk_disable,
+	.task_done = &mml_sys_taskdone,
+};
+
+static const struct mml_comp_hw_ops sys_hw_ops_mminfra_mt6993 = {
+	.pw_enable = mml_sys_pw_enable_mt6993,
+	.pw_disable = mml_sys_pw_disable_mt6993,
 	.mminfra_pw_enable = mml_mminfra_pw_enable,
 	.mminfra_pw_disable = mml_mminfra_pw_disable,
 	.clk_enable = &mml_sys_comp_clk_enable,
@@ -2991,6 +3039,7 @@ struct mml_sys *mml_sys_create(struct platform_device *pdev,
 	if (!sys)
 		return ERR_PTR(-ENOMEM);
 
+	sys->mml = mml;	/* store driver instance for later use driver common api */
 	ret = mml_sys_init(pdev, sys, comp_ops);
 	if (ret) {
 		dev_err(dev, "failed to init mml sys: %d\n", ret);
@@ -3407,7 +3456,7 @@ static const struct mml_data mt6993_mmlt_data = {
 		[MML_CT_SYS_OUT] = &dl_ddp_funcs,
 	},
 	.aid_sel = sys_config_aid_sel_bits_sys,
-	.hw_ops = &sys_hw_ops_mminfra,
+	.hw_ops = &sys_hw_ops_mminfra_mt6993,
 	.debug_ops = &sys_debug_ops_mt6991,
 	.gpr = {CMDQ_GPR_R12, CMDQ_GPR_R14},
 	.px_per_tick = 2,
@@ -3437,7 +3486,7 @@ static const struct mml_data mt6993_mmlf_data = {
 		[MML_CT_SYS_OUT] = &dl_ddp_funcs,
 	},
 	.aid_sel = sys_config_aid_sel_bits_sys,
-	.hw_ops = &sys_hw_ops_mminfra,
+	.hw_ops = &sys_hw_ops_mminfra_mt6993,
 	.debug_ops = &sys_debug_ops_mt6991,
 	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
 	.px_per_tick = 2,
@@ -3467,7 +3516,7 @@ static const struct mml_data mt6993_mmld_data = {
 		[MML_CT_SYS_OUT] = &dl_ddp_funcs,
 	},
 	.aid_sel = sys_config_aid_sel_bits_sys,
-	.hw_ops = &sys_hw_ops_mminfra,
+	.hw_ops = &sys_hw_ops_mminfra_mt6993,
 	.debug_ops = &sys_debug_ops_mt6993,
 	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
 	.px_per_tick = 2,
