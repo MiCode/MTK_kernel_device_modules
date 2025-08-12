@@ -703,8 +703,11 @@ static ssize_t boot_notify_store(struct device *dev,
 {
 	unsigned int boot_completed = 0;
 	static struct delayed_work work_struct;
+	static int only_do_one_time;
 
-	INIT_DELAYED_WORK(&work_struct, release_cpu_performance_work_func);
+	if (only_do_one_time == 0)
+		INIT_DELAYED_WORK(&work_struct, release_cpu_performance_work_func);
+
 	if (bootup_pt_support == false){
 		dev_info(dev, "not support cpu bootup\n");
 		return -EINVAL;
@@ -718,7 +721,10 @@ static ssize_t boot_notify_store(struct device *dev,
 		return -EINVAL;
 	}
 	system_boot_completed = boot_completed;
-	schedule_delayed_work(&work_struct, delay_time_s * HZ);
+	if (only_do_one_time == 0) {
+		schedule_delayed_work(&work_struct, delay_time_s * HZ);
+		only_do_one_time = 1;
+	}
 
 	return size;
 }
