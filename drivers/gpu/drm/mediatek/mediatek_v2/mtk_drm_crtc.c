@@ -5484,6 +5484,7 @@ static inline bool _mtk_crtc_is_wb_addon(const struct mtk_addon_module_data *add
 	case DISP_WDMA_MID:
 	case DISP_WDMA1:
 	case DISP_WDMA1_v3:
+	case DISP_WDMA1_v3_pq:
 	case DISP_WDMA1_DL:
 	case DISP_OVLSYS_WDMA0:
 	case DISP_OVLSYS_WDMA0_v2:

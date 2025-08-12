@@ -4562,7 +4562,11 @@ static const struct mtk_addon_module_data mt6993_addon_wdma1_data[] = {
 
 static const struct mtk_addon_module_data mt6993_addon_wdma1_pq_data[] = {
 	/* mt6993 CWB MTK_DRM_MID -> WDMA_WRITE_BACK_MID */
-	{DISP_WDMA1_v3, ADDON_AFTER, DDP_COMPONENT_DLI_ASYNC21},
+#ifdef DRM_BYPASS_PQ_MT6993
+	{DISP_WDMA1_v3_pq, ADDON_AFTER, DDP_COMPONENT_DLI_ASYNC21},
+#else
+	{DISP_WDMA1_v3_pq, ADDON_AFTER, DDP_COMPONENT_PQ0_OUT_CB0},
+#endif
 };
 
 static const struct mtk_addon_module_data mt6993_addon_wdma1_pc_data[] = {

@@ -144,40 +144,76 @@ static void mtk_dlo_async_prepare(struct mtk_ddp_comp *comp)
 	mtk_ddp_comp_clk_prepare(comp);
 }
 
-static void mtk_dlo_async_size_config(struct mtk_ddp_comp *comp, struct mtk_ddp_config *cfg,
-		       struct cmdq_pkt *handle)
+static u32 mtk_dlo_async_get_in_relay_size_offset(struct mtk_ddp_comp *comp)
 {
 	struct mtk_disp_dlo_async *dlo = comp_to_dlo_async(comp);
-
-	u32 dlo_in_relay_size, alias_id;
-	unsigned int value = 0, mask = 0;
-
-	alias_id = mtk_ddp_comp_get_alias(comp->id);
+	u32 alias_id = mtk_ddp_comp_get_alias(comp->id);
+	u32 size_offset;
 
 	switch(mtk_ddp_comp_get_type(comp->id)) {
 	case MTK_OVL_0_DLO_ASYNC:
 	case MTK_OVL_1_DLO_ASYNC:
 	case MTK_OVL_2_DLO_ASYNC:
-		dlo_in_relay_size = dlo->data->regs[OVL_DL_OUT_RELAY0_SIZE] + alias_id * 4;
+		size_offset = dlo->data->regs[OVL_DL_OUT_RELAY0_SIZE] + alias_id * 4;
 		break;
 	case MTK_DISP_DLO_ASYNC:
 	case MTK_DISP_B_DLO_ASYNC:
 		if (alias_id < 31)
-			dlo_in_relay_size = dlo->data->regs[DISP_DLO_ASYNC0_SIZE] + alias_id * 4;
+			size_offset = dlo->data->regs[DISP_DLO_ASYNC0_SIZE] + alias_id * 4;
 		else
-			dlo_in_relay_size = dlo->data->regs[DISP_DLO_ASYNC31_SIZE] +
-									((alias_id - 31) * 4);
+			size_offset = dlo->data->regs[DISP_DLO_ASYNC31_SIZE] + (alias_id - 31) * 4;
 		break;
 	default:
-		DDPMSG("Not dlo async module\n");
+		DDPMSG("%s not support dlo%u %s\n", __func__, alias_id, mtk_dump_comp_str(comp));
+		size_offset = 0;
+	}
+
+	return size_offset;
+}
+
+static void mtk_dlo_async_addon_config_mt6993(struct mtk_ddp_comp *comp,
+	enum mtk_ddp_comp_id prev,
+	enum mtk_ddp_comp_id next,
+	union mtk_addon_config *addon_config,
+	struct cmdq_pkt *handle)
+{
+	struct mtk_addon_wdma_config *cfg = (struct mtk_addon_wdma_config *)addon_config;
+	u32 alias_id = mtk_ddp_comp_get_alias(comp->id);
+	u32 size_offset = mtk_dlo_async_get_in_relay_size_offset(comp);
+	u32 value, mask;
+
+	DDPDBG("%s+\n", __func__);
+
+	if (!addon_config)
+		return;
+
+	if (addon_config->config_type.module != DISP_WDMA1_v3_pq) {
+		DDPINFO("%s addon:%d comp:%s addon module:%d not support\n",
+			__func__, addon_config->config_type.module, mtk_dump_comp_str(comp),
+			addon_config->config_type.module);
 		return;
 	}
+
+	SET_VAL_MASK(value, mask, cfg->wdma_src_roi.width, DISP_REG_RELAY_WIDTH);
+	SET_VAL_MASK(value, mask, cfg->wdma_src_roi.height, DISP_REG_RELAY_HEIGHT);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + size_offset, value, mask);
+	DDPINFO("%s comp %d %s alias %d value %#x\n",
+		__func__, comp->id, mtk_dump_comp_str(comp), alias_id, value);
+}
+
+static void mtk_dlo_async_size_config(struct mtk_ddp_comp *comp, struct mtk_ddp_config *cfg,
+		       struct cmdq_pkt *handle)
+{
+	struct mtk_disp_dlo_async *dlo = comp_to_dlo_async(comp);
+	u32 alias_id = mtk_ddp_comp_get_alias(comp->id);
+	u32 size_offset = mtk_dlo_async_get_in_relay_size_offset(comp);
+	unsigned int value = 0, mask = 0;
 
 	SET_VAL_MASK(value, mask, cfg->w, DISP_REG_RELAY_WIDTH);
 	SET_VAL_MASK(value, mask, cfg->h, DISP_REG_RELAY_HEIGHT);
 
-	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + dlo_in_relay_size,
-					value, mask);
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + size_offset, value, mask);
 
 	DDPINFO("%s comp->id %d alias_id %d value 0x%x\n", __func__, comp->id, alias_id, value);
 }
@@ -200,6 +236,15 @@ static const struct mtk_ddp_comp_funcs mtk_disp_dlo_async_funcs = {
 static const struct dlo_async_data dlo_data_mt6991 = {
 	.funcs = &mtk_disp_dlo_async_funcs,
 	.regs = ovl_dlo_regs_mt6991,
+};
+
+static const struct mtk_ddp_comp_funcs mtk_disp_dlo_async_funcs_mt6993 = {
+	.start = mtk_dlo_async_start,
+	.stop = mtk_dlo_async_stop,
+	.addon_config = mtk_dlo_async_addon_config_mt6993,
+	.prepare = mtk_dlo_async_prepare,
+	.unprepare = mtk_dlo_async_unprepare,
+	.config = mtk_dlo_async_size_config,
 };
 
 static const struct dlo_async_data dlo_data_mt6993 = {
@@ -265,7 +310,7 @@ static int mtk_disp_dlo_async_probe(struct platform_device *pdev)
 	else
 		comp_id = mtk_ddp_comp_get_id(dev->of_node, MTK_DISP_DLO_ASYNC);
 
-	DDPMSG("comp_id:%d", comp_id);
+	DDPMSG("probe dlo comp_id:%d", comp_id);
 	if ((int)comp_id < 0) {
 		dev_err(dev, "Failed to identify by alias: %d\n", comp_id);
 		return comp_id;

@@ -128,7 +128,34 @@ static void mtk_dli_async_addon_config(struct mtk_ddp_comp *comp,
 	}
 }
 
-static void mtk_dli_async_addon_config_mt6993(struct mtk_ddp_comp *comp,
+static u32 mtk_dli_async_get_in_relay_size_offset(struct mtk_ddp_comp *comp)
+{
+	struct mtk_disp_dli_async *dli = comp_to_dli_async(comp);
+	u32 alias_id = mtk_ddp_comp_get_alias(comp->id);
+	u32 size_offset;
+
+	switch(mtk_ddp_comp_get_type(comp->id)) {
+	case MTK_OVL_0_DLI_ASYNC:
+	case MTK_OVL_1_DLI_ASYNC:
+	case MTK_OVL_2_DLI_ASYNC:
+		size_offset = dli->data->regs[OVL_DL_IN_RELAY0_SIZE] + alias_id * 4;
+		break;
+	case MTK_DISP_DLI_ASYNC:
+	case MTK_DISP_B_DLI_ASYNC:
+		if (alias_id < 20)
+			size_offset = dli->data->regs[DISP_DLI_ASYNC0_SIZE] + alias_id * 4;
+		else
+			size_offset = dli->data->regs[DISP_DLI_ASYNC20_SIZE] + (alias_id - 20) * 4;
+		break;
+	default:
+		DDPMSG("%s not support dli%u %s\n", __func__, alias_id, mtk_dump_comp_str(comp));
+		size_offset = 0;
+	}
+
+	return size_offset;
+}
+
+static void mtk_dli_async_addon_config_dl_mt6993(struct mtk_ddp_comp *comp,
 	enum mtk_ddp_comp_id prev,
 	enum mtk_ddp_comp_id next,
 	union mtk_addon_config *addon_config,
@@ -142,18 +169,8 @@ static void mtk_dli_async_addon_config_mt6993(struct mtk_ddp_comp *comp,
 
 	DDPINFO("%s+\n", __func__);
 
-	if (!addon_config)
-		return;
-
 	priv = mtk_crtc->base.dev->dev_private;
 	dli_in_relay_size = dli->data->regs[OVL_DL_IN_RELAY0_SIZE];
-
-	if (addon_config->config_type.module != DISP_MML_DL_EXDMA_v2) {
-		DDPINFO("%s addon:%d comp:%s dli:%#x p:%u w:%u h:%u skip\n",
-			__func__, addon_config->config_type.module, mtk_dump_comp_str(comp),
-			dli_in_relay_size, pipe, width, height);
-		return;
-	}
 
 	pipe = addon_config->addon_mml_config.pipe;
 	width = addon_config->addon_mml_config.mml_dst_roi[pipe].width;
@@ -169,41 +186,56 @@ static void mtk_dli_async_addon_config_mt6993(struct mtk_ddp_comp *comp,
 	CRTC_MMP_MARK(0, dli_relay, comp->id, height << 16 | width);
 }
 
+static void mtk_dli_async_addon_config_cwb_mt6993(struct mtk_ddp_comp *comp,
+	enum mtk_ddp_comp_id prev,
+	enum mtk_ddp_comp_id next,
+	union mtk_addon_config *addon_config,
+	struct cmdq_pkt *handle)
+{
+	struct mtk_addon_wdma_config *cfg = (struct mtk_addon_wdma_config *)addon_config;
+	u32 alias_id = mtk_ddp_comp_get_alias(comp->id);
+	u32 size_offset = mtk_dli_async_get_in_relay_size_offset(comp);
+	u32 value = 0, mask = 0;
+
+	SET_VAL_MASK(value, mask, cfg->wdma_src_roi.width, DISP_REG_RELAY_WIDTH);
+	SET_VAL_MASK(value, mask, cfg->wdma_src_roi.height, DISP_REG_RELAY_HEIGHT);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + size_offset, value, mask);
+	DDPINFO("%s comp %d %s alias %d value %#x\n",
+		__func__, comp->id, mtk_dump_comp_str(comp), alias_id, value);
+}
+
+static void mtk_dli_async_addon_config_mt6993(struct mtk_ddp_comp *comp,
+	enum mtk_ddp_comp_id prev,
+	enum mtk_ddp_comp_id next,
+	union mtk_addon_config *addon_config,
+	struct cmdq_pkt *handle)
+{
+	if (!addon_config)
+		return;
+
+	if (addon_config->config_type.module == DISP_MML_DL_EXDMA_v2)
+		mtk_dli_async_addon_config_dl_mt6993(comp, prev, next, addon_config, handle);
+	else if (addon_config->config_type.module == DISP_WDMA1_v3_pq)
+		mtk_dli_async_addon_config_cwb_mt6993(comp, prev, next, addon_config, handle);
+	else
+		DDPINFO("%s addon:%d comp:%s addon module:%d not support\n",
+			__func__, addon_config->config_type.module, mtk_dump_comp_str(comp),
+			addon_config->config_type.module);
+}
+
 static void mtk_dli_async_size_config(struct mtk_ddp_comp *comp, struct mtk_ddp_config *cfg,
 		       struct cmdq_pkt *handle)
 {
-	struct mtk_disp_dli_async *dli = comp_to_dli_async(comp);
-
-	u32 dli_in_relay_size, alias_id;
+	u32 alias_id = mtk_ddp_comp_get_alias(comp->id);
+	u32 size_offset = mtk_dli_async_get_in_relay_size_offset(comp);
 	unsigned int value = 0, mask = 0;
-
-	alias_id = mtk_ddp_comp_get_alias(comp->id);
-
-	switch(mtk_ddp_comp_get_type(comp->id)) {
-	case MTK_OVL_0_DLI_ASYNC:
-	case MTK_OVL_1_DLI_ASYNC:
-	case MTK_OVL_2_DLI_ASYNC:
-		dli_in_relay_size = dli->data->regs[OVL_DL_IN_RELAY0_SIZE] + alias_id * 4;
-		break;
-	case MTK_DISP_DLI_ASYNC:
-	case MTK_DISP_B_DLI_ASYNC:
-		if (alias_id < 20)
-			dli_in_relay_size = dli->data->regs[DISP_DLI_ASYNC0_SIZE] + alias_id * 4;
-		else
-			dli_in_relay_size = dli->data->regs[DISP_DLI_ASYNC20_SIZE] +
-									((alias_id - 20) * 4);
-		break;
-	default:
-		DDPMSG("Not DLI async module\n");
-		return;
-	}
 
 	SET_VAL_MASK(value, mask, cfg->w, DISP_REG_RELAY_WIDTH);
 	SET_VAL_MASK(value, mask, cfg->h, DISP_REG_RELAY_HEIGHT);
 
-	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + dli_in_relay_size,
-					value, mask);
-	DDPINFO("%s comp->id %d alias_id %d value 0x%x\n", __func__, comp->id, alias_id, value);
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + size_offset, value, mask);
+	DDPINFO("%s comp->id %d alias_id %d value %#x\n", __func__, comp->id, alias_id, value);
 }
 
 void mtk_dli_async_dump_mt6991(struct mtk_ddp_comp *comp)
@@ -388,7 +420,7 @@ static int mtk_disp_dli_async_probe(struct platform_device *pdev)
 		comp_id = mtk_ddp_comp_get_id(dev->of_node, MTK_DISP_DLI_ASYNC);
 	}
 
-	DDPMSG("Probing dli comp_id:%d", comp_id);
+	DDPMSG("probe dli comp_id:%d", comp_id);
 	if ((int)comp_id < 0) {
 		dev_err(dev, "Failed to identify by alias: %d\n", comp_id);
 		return comp_id;
