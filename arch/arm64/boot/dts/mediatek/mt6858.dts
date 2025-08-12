@@ -9014,6 +9014,38 @@ dramc: dramc@10230000 {
 	pmic-oc-debug {
 		compatible = "mediatek,mt6858-oc-debug";
 		status = "okay";
+		spmi = <&spmi>;
+		spmi-m = <0>;
+		spmi-p = <2>;
+		regulators = <&mt6363_vcn15
+			&mt6363_vcn13
+			&mt6363_vrf09
+			&mt6363_vrf12
+			&mt6363_vrf13
+			&mt6363_vrf18
+			&mt6363_vrfio18
+			&mt6363_vsram_mdfe
+			&mt6363_vtref18
+			&mt6363_vsram_apu
+			&mt6363_vaux18
+			&mt6363_vemc
+			&mt6363_vufs12
+			&mt6363_vufs18
+			&mt6363_vio18
+			&mt6363_vio075
+			&mt6363_va12_1
+			&mt6363_va12_2
+			&mt6363_va15
+			&mt6369_vio28
+			&mt6369_vfp
+			&mt6369_vusb
+			&mt6369_vaud28
+			&mt6369_vcn33_1
+			&mt6369_vcn33_2
+			&mt6369_vefuse
+			&mt6369_vmc
+			&mt6369_vant18
+			&mt6369_vaux18>;
 	};
 	// PMIC TODO:
 #if 0
