@@ -3535,7 +3535,7 @@ static int disp_aal_probe(struct platform_device *pdev)
 
 	if (of_property_read_u32(dev->of_node, "mtk-cabc-no-support",
 		&priv->primary_data->aal_fo->mtk_cabc_no_support)) {
-		PQ_ERR("%s, comp_id: %d, mtk-cabc-no-support = %d\n",
+		DDPINFO("%s, comp_id: %d, mtk-cabc-no-support = %d\n",
 			__func__, comp_id, priv->primary_data->aal_fo->mtk_cabc_no_support);
 		priv->primary_data->aal_fo->mtk_cabc_no_support = 0;
 	}
