@@ -128,7 +128,7 @@ void mtk_vidle_get_timer(void)
 		CRTC_MMP_MARK(0, leave_vidle, 0x9e7, atomic_read(&g_vidle_timer_active));
 		mtk_vidle_config_ff(false);
 		spin_unlock_irqrestore(&vidle_timer_lock, flags);
-		usleep_range(500, 550);
+		usleep_range(1200, 1500);
 	} else
 		spin_unlock_irqrestore(&vidle_timer_lock, flags);
 }

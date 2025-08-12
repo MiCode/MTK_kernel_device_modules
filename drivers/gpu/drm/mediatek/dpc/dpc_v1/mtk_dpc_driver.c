@@ -1080,6 +1080,8 @@ static unsigned int mt6858_get_sys_status(enum dpc_sys_status_id id, unsigned in
 		break;
 #endif
 	case SYS_VALUE_VDISP_DVFS_LEVEL:
+		if (!atomic_read(&g_mmdvfs_available) || g_panel_type == PANEL_TYPE_CMD)
+			return 0;
 		mask = 0x1c;
 		if (g_priv->sys_va[VDISP_DVFSRC_DEBUG])
 			addr = g_priv->sys_va[VDISP_DVFSRC_DEBUG];
@@ -1292,7 +1294,7 @@ static void mtk_dpc_idle_ratio_debug(enum dpc_idle_cmd cmd)
 		else if (start)
 			period = end - start;
 
-		if (period < 1000000000)
+		if (period < 800000000)
 			break;
 
 		for (id = 0; id < DPC_IDLE_ID_MAX; id++) {
@@ -2024,6 +2026,23 @@ static void dpc_irq_enable(const u32 subsys, bool en, bool manual)
 	}
 }
 
+static unsigned int dpc_polling_dvfsrc_ack_done(void)
+{
+	unsigned int value = 0xdead;
+	int ret = 0;
+
+	if (atomic_read(&g_mmdvfs_available) && g_panel_type == PANEL_TYPE_VDO &&
+		mtk_dpc_support_cap(DPC_VIDLE_LOWER_VDISP_DVFS)) {
+		ret = readl_poll_timeout_atomic(g_priv->sys_va[VDISP_DVFSRC_DEBUG],
+					value, (value & BIT(0)) == 0, 1, 200);
+		if (ret < 0)
+			DPCERR("wait vidle HW ops done timeout, ret:%d, req:0x%x",
+				ret, value);
+	}
+
+	return value;
+}
+
 static void dpc_disp_group_enable_func(const enum mtk_dpc_disp_vidle group, bool en, bool dt_ctrl)
 {
 	int i, avail = 0;
@@ -2057,6 +2076,10 @@ static void dpc_disp_group_enable_func(const enum mtk_dpc_disp_vidle group, bool
 		break;
 	case DPC_DISP_VIDLE_VDISP_DVFS:
 		value = (en && avail) ? 0 : 1;
+
+		/*make sure DPC HW ack done, before sw force on*/
+		if (value == 1 && !readl(dpc_base + DISP_REG_DPC_DISP_VDISP_DVFS_CFG))
+			dpc_polling_dvfsrc_ack_done();
 		writel(value, dpc_base + DISP_REG_DPC_DISP_VDISP_DVFS_CFG);
 		break;
 	case DPC_DISP_VIDLE_HRT_BW:
@@ -2119,6 +2142,10 @@ static void dpc_mml_group_enable_func(const enum mtk_dpc_mml_vidle group, bool e
 		break;
 	case DPC_MML_VIDLE_VDISP_DVFS:
 		value = (en && avail) ? 0 : 1;
+
+		/*make sure DPC HW ack done, before sw force on*/
+		if (value == 1 && !readl(dpc_base + DISP_REG_DPC_MML_VDISP_DVFS_CFG))
+			dpc_polling_dvfsrc_ack_done();
 		writel(value, dpc_base + DISP_REG_DPC_MML_VDISP_DVFS_CFG);
 		break;
 	case DPC_MML_VIDLE_HRT_BW:
@@ -2295,7 +2322,7 @@ void dpc_dc_force_enable_func(const bool en, bool lock)
 				dbg_mmp = 1;
 				dbg_irq = 1;
 				dbg_mtcmos_off = 1;
-				if (g_priv->mmsys_id == MMSYS_MT6858)
+				if (g_panel_type == PANEL_TYPE_VDO && mtk_dpc_support_cap(DPC_VIDLE_LOWER_VDISP_DVFS))
 					dbg_vdisp_level = 1;
 			}
 
@@ -2604,10 +2631,8 @@ static void dpc_enable_v1(const u8 en)
 			dbg_mmp = 0;
 			dbg_irq = 0;
 			dbg_mtcmos_off = 0;
-			if (g_priv->mmsys_id == MMSYS_MT6858)
-				dbg_vdisp_level = 0;
+			dbg_vdisp_level = 0;
 		}
-
 	}
 
 	/* enable gce event */
@@ -3086,6 +3111,8 @@ static void dpc_dvfs_set_v1(const u32 subsys, const u8 level, bool force)
 
 	/* switch vdisp to SW or HW mode */
 	avail = mtk_dpc_support_cap(DPC_VIDLE_LOWER_VDISP_DVFS);
+	if (force && avail)
+		dpc_polling_dvfsrc_ack_done();
 	writel((force || !avail)? 1 : 0, dpc_base + addr);
 
 	dpc_mmp(vdisp_level, MMPROFILE_FLAG_PULSE,
@@ -3380,7 +3407,7 @@ static void dpc_mtcmos_auto_v1(const u32 subsys, const enum mtk_dpc_mtcmos_mode 
 				dbg_mmp = 1;
 				dbg_irq = 1;
 				dbg_mtcmos_off = 1;
-				if (g_priv->mmsys_id == MMSYS_MT6858)
+				if (g_panel_type == PANEL_TYPE_VDO && mtk_dpc_support_cap(DPC_VIDLE_LOWER_VDISP_DVFS))
 					dbg_vdisp_level = 1;
 				dpc_irq_enable(DPC_SUBSYS_DISP, true, false);
 			}
@@ -3401,7 +3428,7 @@ static void dpc_mtcmos_auto_v1(const u32 subsys, const enum mtk_dpc_mtcmos_mode 
 				dbg_mmp = 1;
 				dbg_irq = 1;
 				dbg_mtcmos_off = 1;
-				if (g_priv->mmsys_id == MMSYS_MT6858)
+				if (g_panel_type == PANEL_TYPE_VDO && mtk_dpc_support_cap(DPC_VIDLE_LOWER_VDISP_DVFS))
 					dbg_vdisp_level = 1;
 				dpc_irq_enable(DPC_SUBSYS_MML, true, false);
 			}
@@ -3487,7 +3514,7 @@ static int dpc_config_v1(const u32 subsys, bool en)
 			dbg_mmp = 1;
 			dbg_irq = 1;
 			dbg_mtcmos_off = 1;
-			if (g_priv->mmsys_id == MMSYS_MT6858)
+			if (g_panel_type == PANEL_TYPE_VDO && mtk_dpc_support_cap(DPC_VIDLE_LOWER_VDISP_DVFS))
 				dbg_vdisp_level = 1;
 			mtk_dpc_idle_ratio_debug(DPC_VIDLE_RATIO_START);
 		}
@@ -3505,6 +3532,11 @@ static int dpc_config_v1(const u32 subsys, bool en)
 		writel(mask, dpc_base + DISP_REG_DPC_MML_MASK_CFG);
 		writel(0x3, dpc_base + DISP_REG_DPC_MML_EXT_INPUT_EN);
 		writel(0x3ff, dpc_base + DISP_REG_DPC_MML_DT_FOLLOW_CFG); /* all follow 39~41 */
+
+		/* trigger HW status on, before switch resource to auto mode */
+		writel(0x1830, dpc_base + DISP_REG_DPC_DISP_DT_SW_TRIG_EN);
+		writel(0x1, dpc_base + DISP_REG_DPC_DTx_SW_TRIG(5));
+		writel(0x1, dpc_base + DISP_REG_DPC_DTx_SW_TRIG(12));
 	} else {
 		dpc_mtcmos_vote_v1(DPC_SUBSYS_DIS1, 6, 1);
 		mtk_disp_wait_pwr_ack(DPC_SUBSYS_DIS1);
@@ -3547,6 +3579,8 @@ static int dpc_config_v1(const u32 subsys, bool en)
 		dpc_mtcmos_vote_v1(DPC_SUBSYS_OVL1, 6, 0);
 		if (readl(dpc_base + DISP_REG_DPC_MML1_MTCMOS_CFG))
 			dpc_mtcmos_vote_v1(DPC_SUBSYS_MML1, 6, 0);
+
+		writel(0, dpc_base + DISP_REG_DPC_DISP_DT_SW_TRIG_EN);
 	} else {
 		writel(mask, dpc_base + DISP_REG_DPC_DISP_MASK_CFG);
 		writel(0x1f, dpc_base + DISP_REG_DPC_DISP_EXT_INPUT_EN);
@@ -3606,8 +3640,7 @@ static int dpc_config_v1(const u32 subsys, bool en)
 			dbg_mmp = 0;
 			dbg_irq = 0;
 			dbg_mtcmos_off = 0;
-			if (g_priv->mmsys_id == MMSYS_MT6858)
-				dbg_vdisp_level = 0;
+			dbg_vdisp_level = 0;
 		}
 
 		mtk_reset_dpc_state(DPC_STATE_OF_GROUPS);
@@ -3733,7 +3766,7 @@ static void dpc_mtcmos_vote_v1(const u32 subsys, const u8 thread, const bool en)
 irqreturn_t mtk_dpc_disp_irq_handler(int irq, void *dev_id)
 {
 	struct mtk_dpc *priv = dev_id;
-	u32 status, merge_status;
+	u32 status, merge_status, vdisp_state = 0;
 	irqreturn_t ret = IRQ_NONE;
 
 	if (IS_ERR_OR_NULL(priv))
@@ -3760,7 +3793,10 @@ irqreturn_t mtk_dpc_disp_irq_handler(int irq, void *dev_id)
 
 	if (likely(dbg_mmp)) {
 		if (status & DISP_DPC_INT_DT6) {
-			dpc_mmp(prete, MMPROFILE_FLAG_PULSE, 0, DISP_DPC_INT_DT6);
+			if (g_priv->get_sys_status && g_panel_type == PANEL_TYPE_VDO &&
+				mtk_dpc_support_cap(DPC_VIDLE_LOWER_VDISP_DVFS))
+				vdisp_state = g_priv->get_sys_status(SYS_VALUE_VDISP_DVFS_LEVEL, NULL);
+			dpc_mmp(prete, MMPROFILE_FLAG_PULSE, vdisp_state, DISP_DPC_INT_DT6);
 			mtk_update_dpc_state(DPC_VIDLE_BW_MASK | DPC_VIDLE_VDISP_MASK, false);
 		}
 
@@ -4436,7 +4472,7 @@ static void _dpc_analysis(bool detail)
 		readl(dpc_base + DISP_REG_DPC_DISP_HIGH_HRT_BW),
 		readl(dpc_base + DISP_REG_DPC_MML_HRTBW_SRTBW_CFG),
 		readl(dpc_base + DISP_REG_DPC_MML_SW_HRT_BW),
-		g_priv->get_sys_status(SYS_STATE_HRT_BW, NULL));
+		g_priv->get_sys_status ? g_priv->get_sys_status(SYS_STATE_HRT_BW, NULL) : 0xdead);
 	DPCDUMP("vdisp cfg: disp:%u(%#04x %#04x), mml:%u(%#04x %#04x), vdisp_sta:0x%x",
 		g_vdisp_level_disp,
 		readl(dpc_base + DISP_REG_DPC_DISP_VDISP_DVFS_CFG),
@@ -4444,7 +4480,7 @@ static void _dpc_analysis(bool detail)
 		g_vdisp_level_mml,
 		readl(dpc_base + DISP_REG_DPC_MML_VDISP_DVFS_CFG),
 		readl(dpc_base + DISP_REG_DPC_MML_VDISP_DVFS_VAL),
-		g_priv->get_sys_status(SYS_VALUE_VDISP_DVFS_LEVEL, NULL));
+		g_priv->get_sys_status ? g_priv->get_sys_status(SYS_VALUE_VDISP_DVFS_LEVEL, NULL): 0xdead);
 	DPCDUMP("vdisp req: disp:%u,mml:%u,bw:%u(%u,%u)(%u,%u)(%u,%u)(%u,%u)",
 		g_priv->dvfs_bw.disp_level, g_priv->dvfs_bw.mml_level,
 		g_priv->dvfs_bw.bw_level,
@@ -4474,12 +4510,14 @@ static void _dpc_analysis(bool detail)
 		readl(dpc_base + DISP_REG_DPC_DTx_COUNTER(11)),
 		readl(dpc_base + DISP_REG_DPC_DTx_COUNTER(12)));
 
-	status = g_priv->get_sys_status(SYS_STATE_APSRC, &value);
-	DPCDUMP("APSRC req:0x%x, value:%#04x", status, value);
-	status = g_priv->get_sys_status(SYS_STATE_MMINFRA, &value);
-	DPCDUMP("MMINFRA req:0x%x, value:%#04x", status, value);
-	status = g_priv->get_sys_status(SYS_STATE_EMI, &value);
-	DPCDUMP("EMI req:0x%x, value:%#04x", status, value);
+	if (g_priv->get_sys_status) {
+		status = g_priv->get_sys_status(SYS_STATE_APSRC, &value);
+		DPCDUMP("APSRC req:0x%x, value:%#04x", status, value);
+		status = g_priv->get_sys_status(SYS_STATE_MMINFRA, &value);
+		DPCDUMP("MMINFRA req:0x%x, value:%#04x", status, value);
+		status = g_priv->get_sys_status(SYS_STATE_EMI, &value);
+		DPCDUMP("EMI req:0x%x, value:%#04x", status, value);
+	}
 
 	if (!detail && !dbg_runtime_ctrl)
 		goto out;
@@ -4532,6 +4570,18 @@ static void _dpc_analysis(bool detail)
 
 out:
 	DPCDUMP("===================================================");
+
+	if (atomic_read(&g_mmdvfs_available) && g_panel_type == PANEL_TYPE_VDO &&
+		mtk_dpc_support_cap(DPC_VIDLE_LOWER_VDISP_DVFS)) {
+		value = readl(dpc_base + DISP_REG_DPC_DISP_VDISP_DVFS_VAL);
+		if (value > 0) {
+			writel(1, dpc_base + DISP_REG_DPC_DISP_VDISP_DVFS_CFG);
+			writel(value + 1, dpc_base + DISP_REG_DPC_DISP_VDISP_DVFS_VAL);
+			udelay(100);
+			writel(value, dpc_base + DISP_REG_DPC_DISP_VDISP_DVFS_VAL);
+			DPCFUNC("sw force update vdisp level:%u\n", value);
+		}
+	}
 	dpc_pm_ctrl(false, __func__);
 }
 
@@ -4813,6 +4863,27 @@ static void process_dbg_opt(const char *opt)
 		if (ret != 1)
 			goto err;
 		dpc_dvfs_set_v1(DPC_SUBSYS_DISP, val, true);
+	} else if (strncmp(opt, "underrun_trace", 14) == 0) {
+		unsigned int state = 0, value = 0;
+
+		if (!g_priv->get_sys_status)
+			goto end;
+
+		if (atomic_read(&g_mmdvfs_available) && g_panel_type == PANEL_TYPE_VDO &&
+			mtk_dpc_support_cap(DPC_VIDLE_LOWER_VDISP_DVFS)) {
+			state = g_priv->get_sys_status(SYS_VALUE_VDISP_DVFS_LEVEL, &value);
+			dpc_mmp(vdisp_off, MMPROFILE_FLAG_PULSE, state, value);
+		}
+
+		if (mtk_dpc_support_cap(DPC_VIDLE_APSRC_OFF)) {
+			state = g_priv->get_sys_status(SYS_STATE_APSRC, &value);
+			dpc_mmp(apsrc_off, MMPROFILE_FLAG_PULSE, state, value);
+		}
+
+		if (mtk_dpc_support_cap(DPC_VIDLE_ZERO_HRT_BW)) {
+			state = g_priv->get_sys_status(SYS_STATE_HRT_BW, &value);
+			dpc_mmp(dvfs_off, MMPROFILE_FLAG_PULSE, state, value);
+		}
 	} else if (strncmp(opt, "dt:", 3) == 0) {
 		ret = sscanf(opt, "dt:%u,%u\n", &v1, &v2);
 		if (ret != 2)
@@ -4934,6 +5005,7 @@ static const struct dpc_funcs funcs_v1 = {
 	.dpc_dsi_pll_set = dpc_dsi_pll_set_v1,
 	.dpc_init_panel_type = dpc_init_panel_type_v1,
 	.dpc_mmdvfs_ctrl = dpc_mmdvfs_ctrl,
+	.dpc_debug_cmd = process_dbg_opt,
 };
 
 static int mtk_dpc_state_monitor_thread(void *data)
@@ -5131,8 +5203,7 @@ static int mtk_dpc_probe_v1(struct platform_device *pdev)
 		dbg_mmp = 0;
 		dbg_irq = 0;
 		dbg_mtcmos_off = 0;
-		if (g_priv->mmsys_id == MMSYS_MT6858)
-			dbg_vdisp_level = 0;
+		dbg_vdisp_level = 0;
 	}
 	DPCFUNC("- mmsys:0x%x, panel:%d, vidle:0x%x, ret:%d",
 		priv->mmsys_id, g_panel_type, priv->vidle_mask, ret);

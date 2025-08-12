@@ -4485,8 +4485,12 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 					underrun_happened |= FRAME_DONE_INT_FLAG;
 				}
 			}
+
+			if (!mtk_dsi_is_cmd_mode(comp) && (drm_crtc_index(&mtk_crtc->base) == 0) &&
+				mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_VDO_PANEL))
+				mtk_vidle_debug_cmd_adapter("underrun_trace");
+
 			dump_cur_pos(mtk_crtc);
-			mtk_vidle_dpc_analysis();
 			if (dsi->encoder.crtc)
 				mtk_drm_crtc_dump_vr_rg(dsi->encoder.crtc);
 
@@ -4509,6 +4513,7 @@ irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 				if (dsi->encoder.crtc)
 					mtk_drm_crtc_mini_analysis(dsi->encoder.crtc);
 
+				mtk_vidle_dpc_analysis();
 
 				//printing status of mmqos and mmdvfs and smi info
 				atomic_set(&mtk_crtc->smi_info_dump_event, 1);
