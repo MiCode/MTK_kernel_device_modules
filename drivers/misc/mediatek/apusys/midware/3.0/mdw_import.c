@@ -94,8 +94,8 @@ int mdw_apu_mem_alloc(uint32_t type, uint32_t size,
 		return -EINVAL;
 
 	ret = apu_mem_alloc(mapped_type, size, addr, sid);
-	mdw_flw_debug("type(%u->%u)size(%u)addr(0x%llx)sid(%u)\n",
-		type, mapped_type, size, *addr, *sid);
+	mdw_flw_debug("type(%u->%u)size(%u)addr(%pK)sid(%u)\n",
+		type, mapped_type, size, (void *)*addr, *sid);
 
 	return ret;
 }
@@ -108,13 +108,13 @@ int mdw_apu_mem_free(uint32_t sid)
 
 int mdw_apu_mem_import(uint64_t session, uint32_t sid)
 {
-	mdw_flw_debug("s(0x%llx)sid(%u)\n", (uint64_t)session, sid);
+	mdw_flw_debug("s(%pK)sid(%u)\n", (void *)session, sid);
 	return apu_mem_import(session, sid);
 }
 
 int mdw_apu_mem_unimport(uint64_t session, uint32_t sid)
 {
-	mdw_flw_debug("s(0x%llx)sid(%u)\n", (uint64_t)session, sid);
+	mdw_flw_debug("s(%pK)sid(%u)\n", (void *)session, sid);
 	return apu_mem_unimport(session, sid);
 }
 
@@ -123,15 +123,15 @@ int mdw_apu_mem_map(uint64_t session, uint32_t sid, uint64_t *vaddr)
 	int ret = 0;
 
 	ret = apu_mem_map(session, sid, vaddr);
-	mdw_flw_debug("s(0x%llx)sid(%u)vaddr(0x%llx)\n",
-		session, sid, *vaddr);
+	mdw_flw_debug("s(%pK)sid(%u)vaddr(%pK)\n",
+		(void *)session, sid, (void *)*vaddr);
 
 	return ret;
 }
 
 int mdw_apu_mem_unmap(uint64_t session, uint32_t sid)
 {
-	mdw_flw_debug("s(0x%llx)sid(%u)\n", (uint64_t)session, sid);
+	mdw_flw_debug("s(%pK)sid(%u)\n", (void *)session, sid);
 	return apu_mem_unmap(session, sid);
 }
 

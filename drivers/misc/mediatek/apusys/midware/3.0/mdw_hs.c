@@ -13,7 +13,7 @@ int mdw_hs_ioctl(struct mdw_fpriv *mpriv, void *data)
 	unsigned int type = 0;
 	int ret = 0;
 
-	mdw_flw_debug("s(0x%llx) op:%d\n", (uint64_t)mpriv, args->in.op);
+	mdw_flw_debug("s(0x%llx) op:%d\n", mpriv->id, args->in.op);
 
 	switch (args->in.op) {
 	case MDW_HS_IOCTL_OP_BASIC:
@@ -71,9 +71,9 @@ int mdw_hs_ioctl(struct mdw_fpriv *mpriv, void *data)
 
 		args->out.mem.start = mdev->minfos[type].device_va;
 		args->out.mem.size = mdev->minfos[type].size;
-		mdw_flw_debug("mem(%u) start(0x%llx) size(0x%x)\n",
+		mdw_flw_debug("mem(%u) start(%pK) size(0x%x)\n",
 			args->out.mem.type,
-			args->out.mem.start,
+			(void *)args->out.mem.start,
 			args->out.mem.size);
 		break;
 

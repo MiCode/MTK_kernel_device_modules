@@ -110,6 +110,7 @@ struct apusys_cmd_handle {
 };
 
 struct apusys_cmd_info {
+	uint64_t session;
 	uint64_t session_id;
 	uint64_t cmd_uid;
 	uint32_t num_subcmds;

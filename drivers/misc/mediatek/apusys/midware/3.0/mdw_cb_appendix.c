@@ -80,8 +80,8 @@ int mdw_cb_appendix_process(int process_type, uint32_t idx, struct apusys_cmd_in
 	mutex_lock(&g_acb_mtx);
 	hash_for_each_possible(g_acb_hash, acb_info, hash_node, idx) {
 		if (acb_info->idx == idx) {
-			mdw_flw_debug("appendix-#%u owner(%u) id(0x%llx/0x%llx) process type(%d) cmdbuf(%pK/%u)\n",
-				idx, acb_info->owner, cmd_info->session_id, cmd_info->cmd_uid, process_type, va, size);
+			mdw_flw_debug("appendix-#%u owner(%u) id(0x%llx) process type(%d) cmdbuf(%pK/%u)\n",
+				idx, acb_info->owner, cmd_info->cmd_uid, process_type, va, size);
 			ret = acb_info->cb_process(process_type, cmd_info, va, size);
 			break;
 		}

@@ -352,7 +352,7 @@ static void mdw_rv_ipi_cmplt_cmd(struct mdw_ipi_msg_sync *s_msg)
 	}
 	if (ret)
 		mdw_drv_err("s(0x%llx) c(0x%llx) ret(%d/0x%llx) time(%llu) pid(%d/%d)\n",
-			(uint64_t)c->mpriv, c->kid, ret, c->einfos->c.sc_rets,
+			c->mpriv->id, c->kid, ret, c->einfos->c.sc_rets,
 			c->einfos->c.total_us, c->pid, c->tgid);
 	c->enter_rv_cb_time = mrdev->enter_rv_cb_time;
 	c->rv_cb_time = mrdev->rv_cb_time;

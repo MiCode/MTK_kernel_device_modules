@@ -91,9 +91,9 @@ static uint32_t mdw_dplcy_appendix_cb_size(uint32_t num_subcmds)
 static void mdw_dplcy_dump_cmd_tb(struct mdw_dplcy_cmd_tb *cmd_tb)
 {
 	int i;
-	mdw_flw_debug("uid(0x%llx) target(%llu) round(%u) num_subcmds(%u) session(%llu)\n",
+	mdw_flw_debug("uid(0x%llx) target(%llu) round(%u) num_subcmds(%u) session(0x%llx)\n",
 		      cmd_tb->uid, cmd_tb->dvfs_target_time, cmd_tb->iter_round,
-		      cmd_tb->num_subcmds, (uint64_t)cmd_tb->mpriv);
+		      cmd_tb->num_subcmds, cmd_tb->mpriv->id);
 	mdw_flw_debug(
 		"history_tma(0x%x) record_quality(%u) valid_record_num(%u) recommand_opp(%d/%d/%d)\n",
 		cmd_tb->history_tma, cmd_tb->record_quality, cmd_tb->valid_record_num,
@@ -244,7 +244,7 @@ static int mdw_dplcy_postprocess(struct policy_cb *cb, struct mdw_dplcy_cmd_tb *
 
 	if (cb->unexpect_code != 0) {
 		mdw_drv_err("dplcy err(%d) session(0x%llx) c-uid(0x%llx/0x%llx)\n",
-			      cb->unexpect_code, (uint64_t)cmd_tb->mpriv, cb->cmd_tb_id,
+			      cb->unexpect_code, cmd_tb->mpriv->id, cb->cmd_tb_id,
 			      cmd_tb->uid);
 		mdw_exception("dplcy err\n");
 	}
@@ -350,7 +350,7 @@ static int mdw_dplcy_postprocess(struct policy_cb *cb, struct mdw_dplcy_cmd_tb *
 
 static void mdw_dplcy_clear_cmd_tb(struct mdw_dplcy_cmd_tb *cmd_tb)
 {
-	mdw_flw_debug("clear dplcy tbl(%pK/0x%llx/0x%llx)\n", cmd_tb, (uint64_t)cmd_tb->mpriv,
+	mdw_flw_debug("clear dplcy tbl(%pK/0x%llx/0x%llx)\n", cmd_tb, cmd_tb->mpriv->id,
 		      cmd_tb->uid);
 	memset(cmd_tb->recommand_opp, -1, sizeof(cmd_tb->recommand_opp));
 	memset(cmd_tb->history_point_tma, 0, sizeof(cmd_tb->history_point_tma));
@@ -365,21 +365,21 @@ static void mdw_dplcy_clear_cmd_tb(struct mdw_dplcy_cmd_tb *cmd_tb)
 static void mdw_dplcy_delete_cmd_tb(struct mdw_dplcy_cmd_tb *cmd_tb)
 {
 	struct mdw_fpriv *mpriv = cmd_tb->mpriv;
-	mdw_flw_debug("delete dplcy tbl(%pK/0x%llx/0x%llx)\n", cmd_tb, (uint64_t)cmd_tb->mpriv,
+	mdw_flw_debug("delete dplcy tbl(%pK/0x%llx/0x%llx)\n", cmd_tb, cmd_tb->mpriv->id,
 		      cmd_tb->uid);
 	hash_del(&cmd_tb->hash_node);
 	devm_kfree(mpriv->dev, cmd_tb);
 }
 
-static struct mdw_dplcy_cmd_tb *mdw_dplcy_create_cmd_tb(struct policy_cb *cb, uint64_t session_id,
+static struct mdw_dplcy_cmd_tb *mdw_dplcy_create_cmd_tb(struct policy_cb *cb, uint64_t session,
 							uint64_t cmd_uid, uint32_t num_subcmds)
 {
 	struct mdw_dplcy_cmd_tb *cmd_tb = NULL;
-	struct mdw_fpriv *mpriv = (struct mdw_fpriv *)session_id;
+	struct mdw_fpriv *mpriv = (struct mdw_fpriv *)session;
 
 	cmd_tb = devm_kzalloc(mpriv->dev, sizeof(*cmd_tb), GFP_KERNEL);
 	if (IS_ERR_OR_NULL(cmd_tb)) {
-		mdw_drv_err("create fail dplcy tbl(0x%llx/0x%llx) for cb(%pK)\n", session_id,
+		mdw_drv_err("create fail dplcy tbl(0x%llx/0x%llx) for cb(%pK)\n", mpriv->id,
 			    cmd_uid, cb);
 		cmd_tb = NULL;
 		goto out;
@@ -391,17 +391,17 @@ static struct mdw_dplcy_cmd_tb *mdw_dplcy_create_cmd_tb(struct policy_cb *cb, ui
 	cmd_tb->num_subcmds = num_subcmds;
 	memset(cmd_tb->recommand_opp, -1, sizeof(cmd_tb->recommand_opp));
 
-	mdw_flw_debug("create dplcy tbl(%pK/0x%llx/0x%llx) for cb(%pK)\n", cmd_tb, session_id,
+	mdw_flw_debug("create dplcy tbl(%pK/0x%llx/0x%llx) for cb(%pK)\n", cmd_tb, mpriv->id,
 		      cmd_uid, cb);
 out:
 	return cmd_tb;
 }
 
-static struct mdw_dplcy_cmd_tb *mdw_dplcy_find_cmd_tb(struct policy_cb *cb, uint64_t session_id,
+static struct mdw_dplcy_cmd_tb *mdw_dplcy_find_cmd_tb(struct policy_cb *cb, uint64_t session,
 						      uint64_t cmd_uid)
 {
 	struct mdw_dplcy_cmd_tb *tmp = NULL;
-	struct mdw_fpriv *mpriv = (struct mdw_fpriv *)session_id;
+	struct mdw_fpriv *mpriv = (struct mdw_fpriv *)session;
 	hash_for_each_possible (g_dplcy_mgr->all_cmd_hash, tmp, hash_node, cmd_uid) {
 		if (tmp->mpriv == mpriv && tmp->uid == cmd_uid)
 			goto out;
@@ -431,17 +431,17 @@ static int mdw_dplcy_appendix_cb_process(enum apu_appendix_cb_type type,
 		return -EINVAL;
 	}
 
-	mdw_flw_debug("type(%u) id(0x%llx/0x%llx) appendix(%pK/%u)\n",
-		type, cmd_info->session_id, cmd_info->cmd_uid, va, size);
+	mdw_flw_debug("type(%u) id(0x%llx) appendix(%pK/%u)\n",
+		type, cmd_info->cmd_uid, va, size);
 
 	switch (type) {
 	case APU_APPENDIX_CB_CREATE:
 		down_read(&g_dplcy_mgr->rw_sem);
-		cmd_tb = mdw_dplcy_find_cmd_tb(cb, cmd_info->session_id, cmd_info->cmd_uid);
+		cmd_tb = mdw_dplcy_find_cmd_tb(cb, cmd_info->session, cmd_info->cmd_uid);
 		up_read(&g_dplcy_mgr->rw_sem);
 
 		if (cmd_tb == NULL) {
-			cmd_tb = mdw_dplcy_create_cmd_tb(cb, cmd_info->session_id, cmd_info->cmd_uid,
+			cmd_tb = mdw_dplcy_create_cmd_tb(cb, cmd_info->session, cmd_info->cmd_uid,
 				cmd_info->num_subcmds);
 			if (cmd_tb == NULL) {
 				ret = -EINVAL;

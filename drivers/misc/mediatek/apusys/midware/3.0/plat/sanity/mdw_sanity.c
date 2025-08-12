@@ -13,7 +13,7 @@ int mdw_sanity_einfo_check(struct mdw_cmd *c)
 	if (c->exec_infos->size != sizeof(struct mdw_cmd_exec_info) +
 		c->num_subcmds * sizeof(struct mdw_subcmd_exec_info)) {
 		mdw_drv_err("s(0x%llx)cmd invalid(0x%llx/0x%llx) einfo(%llu/%lu)\n",
-			(uint64_t)c->mpriv, c->uid, c->kid,
+			c->mpriv->id, c->uid, c->kid,
 			c->exec_infos->size,
 			sizeof(struct mdw_cmd_exec_info) +
 			c->num_subcmds * sizeof(struct mdw_subcmd_exec_info));
@@ -30,7 +30,7 @@ int mdw_sanity_adj_check(struct mdw_cmd *c)
     /* check execute_order exist */
 	if (c->adj_matrix == NULL) {
 		mdw_drv_err("s(0x%llx)cmd(0x%llx/0x%llx) miss adj matrix(%pK)\n",
-			(uint64_t)c->mpriv, c->uid, c->kid, c->adj_matrix);
+			c->mpriv->id, c->uid, c->kid, c->adj_matrix);
 		return -EINVAL;
 	}
 
@@ -49,7 +49,7 @@ int mdw_sanity_adj_check(struct mdw_cmd *c)
 				continue;
 
 			mdw_drv_err("s(0x%llx)c(0x%llx/0x%llx) adj matrix(%u/%u) fail\n",
-				(uint64_t)c->mpriv, c->uid, c->kid, i, j);
+				c->mpriv->id, c->uid, c->kid, i, j);
 			return -EINVAL;
 		}
 	}
@@ -86,7 +86,7 @@ int mdw_sanity_order_check(struct mdw_cmd *c)
 	/* check execute_order exist */
 	if (c->execute_orders == NULL) {
 		mdw_drv_err("s(0x%llx)cmd(0x%llx/0x%llx) miss execution order(%pK)\n",
-			(uint64_t)c->mpriv, c->uid, c->kid, c->execute_orders);
+			c->mpriv->id, c->uid, c->kid, c->execute_orders);
 		return -EINVAL;
 	}
 

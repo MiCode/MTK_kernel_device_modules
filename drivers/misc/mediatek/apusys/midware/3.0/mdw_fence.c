@@ -100,7 +100,7 @@ int mdw_fence_init(struct mdw_cmd *c)
 		atomic_add_return(1, &c->mpriv->exec_seqno));
 
 	mdw_flw_debug("fence init, c(0x%llx) fence(%s/%llu-%llu)\n",
-		(uint64_t)c, c->fence->name, c->fence->base_fence.context,
+		c->kid, c->fence->name, c->fence->base_fence.context,
 		c->fence->base_fence.seqno);
 
 	return ret;

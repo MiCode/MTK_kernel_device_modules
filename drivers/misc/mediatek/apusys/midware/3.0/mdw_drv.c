@@ -27,7 +27,7 @@ static void mdw_drv_priv_delete(struct kref *ref)
 	struct mdw_fpriv *mpriv =
 			container_of(ref, struct mdw_fpriv, ref);
 
-	mdw_drv_debug("mpriv(0x%llx) free\n", (uint64_t) mpriv);
+	mdw_drv_debug("mpriv(0x%llx) free\n", mpriv->id);
 
 	mutex_lock(&mpriv->mtx);
 	mdw_mem_release_session(mpriv);
@@ -36,7 +36,7 @@ static void mdw_drv_priv_delete(struct kref *ref)
 	mdw_mem_pool_destroy(&mpriv->cmd_buf_pool);
 	if (mpriv->mem_allocator) {
 		if (apu_sysmem_delete_allocator(mpriv->mem_allocator)) {
-			mdw_drv_err("session(0x%llx) delete mem allcator failed\n", (uint64_t)mpriv);
+			mdw_drv_err("session(0x%llx) delete mem allcator failed\n", mpriv->id);
 			mdw_exception("delete mem allcator failed\n");
 		}
 	}
@@ -48,14 +48,14 @@ static void mdw_drv_priv_delete(struct kref *ref)
 static void mdw_drv_priv_get(struct mdw_fpriv *mpriv)
 {
 	mdw_flw_debug("mpriv(0x%llx) ref(%u)\n",
-		(uint64_t) mpriv, kref_read(&mpriv->ref));
+		mpriv->id, kref_read(&mpriv->ref));
 	kref_get(&mpriv->ref);
 }
 
 static void mdw_drv_priv_put(struct mdw_fpriv *mpriv)
 {
 	mdw_flw_debug("mpriv(0x%llx) ref(%u)\n",
-		(uint64_t) mpriv, kref_read(&mpriv->ref));
+		mpriv->id, kref_read(&mpriv->ref));
 	kref_put(&mpriv->ref, mdw_drv_priv_delete);
 }
 
@@ -79,6 +79,7 @@ static int mdw_drv_open(struct inode *inode, struct file *filp)
 	if (!mpriv)
 		return -ENOMEM;
 
+	mpriv->id = atomic64_inc_return(&mdw_dev->session_id_cnt);
 	mpriv->mdev = mdw_dev;
 	mpriv->dev = mdw_dev->misc_dev->this_device;
 	filp->private_data = mpriv;
@@ -101,9 +102,9 @@ static int mdw_drv_open(struct inode *inode, struct file *filp)
 		atomic_inc(&g_inited);
 	}
 
-	mpriv->mem_allocator = apu_sysmem_create_allocator((uint64_t)mpriv);
+	mpriv->mem_allocator = apu_sysmem_create_allocator(mpriv->id);
 	if (mpriv->mem_allocator == NULL) {
-		mdw_drv_err("session(0x%llx) create mem allocator failed\n", (uint64_t)mpriv);
+		mdw_drv_err("session(0x%llx) create mem allocator failed\n", mpriv->id);
 		ret = -ENOMEM;
 		goto free_session;
 	}
@@ -112,19 +113,19 @@ static int mdw_drv_open(struct inode *inode, struct file *filp)
 		MDW_MEM_TYPE_MAIN, MDW_BUF_TYPE_CMD, MDW_MEM_POOL_CHUNK_SIZE,
 		MDW_DEFAULT_ALIGN, F_MDW_MEM_32BIT);
 	if (ret) {
-		mdw_drv_err("session(0x%llx) create mem pool failed(%d)\n", (uint64_t)mpriv, ret);
+		mdw_drv_err("session(0x%llx) create mem pool failed(%d)\n", mpriv->id, ret);
 		goto delete_allocator;
 	}
 
 	mdw_dev_session_create(mpriv);
 	mpriv->mdev->plat_funcs->create_session(mpriv);
-	mdw_flw_debug("mpriv(0x%lx)\n", (unsigned long)mpriv);
+	mdw_flw_debug("mpriv(0x%llx)\n", mpriv->id);
 	mdw_trace_end();
 	goto out;
 
 delete_allocator:
 	if (apu_sysmem_delete_allocator(mpriv->mem_allocator))
-		mdw_drv_err("session(0x%llx) delete mem allcator failed\n", (uint64_t)mpriv);
+		mdw_drv_err("session(0x%llx) delete mem allcator failed\n", mpriv->id);
 free_session:
 	kfree(mpriv);
 out:
@@ -136,13 +137,21 @@ static int mdw_drv_close(struct inode *inode, struct file *filp)
 	struct mdw_fpriv *mpriv = NULL;
 
 	mpriv = filp->private_data;
-	mdw_flw_debug("mpriv(0x%llx)\n", (uint64_t)mpriv);
+	mdw_flw_debug("mpriv(0x%llx)\n", mpriv->id);
 	mutex_lock(&mpriv->mtx);
 	mdw_cmd_release_session(mpriv);
 	mutex_unlock(&mpriv->mtx);
 	mpriv->put_ref(mpriv);
 
 	return 0;
+}
+
+static void mdw_drv_initialize(struct mdw_device *mdev)
+{
+	atomic_set(&mdev->cmd_running, 0);
+	atomic_set(&mdev->pwr_usage, 0);
+	atomic_set(&mdev->ipi_usage, 0);
+	atomic64_set(&mdev->session_id_cnt, 0);
 }
 
 static const struct file_operations mdw_fops = {
@@ -185,9 +194,7 @@ static int mdw_platform_probe(struct platform_device *pdev)
 	mdev->misc_dev = &mdw_misc_dev;
 	mdw_dev = mdev;
 	platform_set_drvdata(pdev, mdev);
-	atomic_set(&mdev->cmd_running, 0);
-	atomic_set(&mdev->pwr_usage, 0);
-	atomic_set(&mdev->ipi_usage, 0);
+	mdw_drv_initialize(mdev);
 
 	ret = mdw_sysfs_init(mdev);
 	if (ret)
@@ -271,6 +278,7 @@ static int mdw_rpmsg_probe(struct rpmsg_device *rpdev)
 	mdev->misc_dev = &mdw_misc_dev;
 	mdw_dev = mdev;
 	dev_set_drvdata(dev, mdev);
+	mdw_drv_initialize(mdev);
 
 	ret = mdw_sysfs_init(mdev);
 	if (ret)

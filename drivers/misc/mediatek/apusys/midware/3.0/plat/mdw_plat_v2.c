@@ -142,7 +142,7 @@ static struct mdw_mem_map *mdw_plat_v2_create_msg(struct mdw_cmd *c)
 
 	/* assign cmd info */
 	rmc = (struct mdw_rv_msg_cmd *)rv_cb->vaddr;
-	rmc->session_id = (uint64_t)c->mpriv;
+	rmc->session_id = c->mpriv->id;
 	rmc->cmd_id = c->kid;
 	rmc->pid = (uint32_t)c->pid;
 	rmc->tgid = (uint32_t)c->tgid;
@@ -231,7 +231,7 @@ static void mdw_plat_v2_reset_info(struct mdw_rv_msg_cmd *rmc, struct mdw_cmd *c
 
 	if (mdw_mem_flush(c->mpriv, rc->cb))
 		mdw_drv_warn("s(0x%llx) c(0x%llx/0x%llx) flush rv cbs(%llu) fail\n",
-			(uint64_t)c->mpriv, c->kid, c->inference_id, rc->cb->size);
+			c->mpriv->id, c->kid, c->inference_id, rc->cb->size);
 }
 static void mdw_plat_v2_show_msg(struct mdw_mem_map *map)
 {
@@ -442,7 +442,7 @@ static int mdw_plat_v2_postprocess_cmd(struct mdw_cmd *c)
 	/* invalidate */
 	if (mdw_mem_invalidate(c->mpriv, rc->cb))
 		mdw_drv_warn("s(0x%llx) c(0x%llx/0x%llx/0x%llx) invalidate rcbs(%llu) fail\n",
-			(uint64_t)c->mpriv, c->uid, c->kid,
+			c->mpriv->id, c->uid, c->kid,
 			c->inference_id, rc->cb->size);
 
 	/* copy exec info out */
@@ -514,7 +514,7 @@ static int mdw_plat_v2_check_sc_rets(struct mdw_cmd *c, int ipi_ret)
 		/* trigger exception if dma */
 		if (is_dma) {
 			mdw_drv_err("s(0x%llx)pid(%d/%d)c(0x%llx)fail(%d/0x%llx)\n",
-				(uint64_t)c->mpriv, c->pid, c->tgid,
+				c->mpriv->id, c->pid, c->tgid,
 				c->kid, ret, c->einfos->c.sc_rets);
 			dma_exception("EDMA exec fail\n");
 		}
@@ -558,7 +558,7 @@ static int mdw_plat_v2_cmd_sanity_check(struct mdw_cmd *c)
 	if (c->priority >= MDW_PRIORITY_MAX ||
 		c->num_subcmds > MDW_SUBCMD_MAX) {
 		mdw_drv_err("s(0x%llx)cmd invalid(0x%llx/0x%llx)(%u/%u)\n",
-			(uint64_t)c->mpriv, c->uid, c->kid,
+			c->mpriv->id, c->uid, c->kid,
 			c->priority, c->num_subcmds);
 		goto out;
 	}

@@ -112,6 +112,8 @@ struct mdw_mem_map {
 	struct kref ref;
 	void (*get)(struct mdw_mem_map *map);
 	void (*put)(struct mdw_mem_map *map);
+
+	uint64_t id;
 };
 
 enum mdw_queue_type {
@@ -142,6 +144,8 @@ struct mdw_mem {
 	struct kref ref;
 	void (*get)(struct mdw_mem *m);
 	void (*put)(struct mdw_mem *m);
+
+	uint64_t id;
 };
 
 /* default chunk size of memory pool */
@@ -152,6 +156,7 @@ struct mdw_mem_pool_chunk {
 	struct mdw_mem *mem;
 	struct mdw_mem_map *map;
 	struct list_head pool_node;
+	uint64_t id;
 };
 
 struct mdw_mem_pool {
@@ -173,6 +178,8 @@ struct mdw_mem_pool {
 	struct kref m_ref;
 	void (*get)(struct mdw_mem_pool *pool);
 	void (*put)(struct mdw_mem_pool *pool);
+
+	uint64_t id;
 };
 
 struct mdw_dinfo {
@@ -287,6 +294,8 @@ struct mdw_device {
 
 	atomic_t pwr_usage;
 	atomic_t ipi_usage;
+
+	atomic64_t session_id_cnt;
 };
 
 struct mdw_fpriv {
@@ -309,6 +318,9 @@ struct mdw_fpriv {
 
 	/* cmd execute id counter */
 	uint32_t counter;
+
+	/* mpriv id */
+	uint64_t id;
 };
 
 struct mdw_exec_info {
