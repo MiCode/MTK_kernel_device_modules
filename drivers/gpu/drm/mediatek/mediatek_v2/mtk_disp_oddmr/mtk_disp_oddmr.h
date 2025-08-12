@@ -695,6 +695,7 @@ struct mtk_disp_oddmr_dmr_data {
 	atomic_t cus_setting_state;
 	atomic_t cus_own_data_state;
 	atomic_t reg_tuning_chg;
+	atomic_t dmr_cfg_done;
 	unsigned int max_table_size;
 };
 
@@ -753,6 +754,7 @@ struct mtk_disp_oddmr_primary {
 	struct wait_queue_head od_deinit_wq;
 	struct wait_queue_head frame_dirty_wq;
 	struct wait_queue_head dmr_switch_wq;
+	struct wait_queue_head dmr_enable_wq;
 	struct mutex clock_lock;
 	struct mutex timing_lock;
 	struct mutex dbi_data_lock;

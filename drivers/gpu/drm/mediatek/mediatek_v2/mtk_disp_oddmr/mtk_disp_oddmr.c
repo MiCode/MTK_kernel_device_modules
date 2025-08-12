@@ -1894,25 +1894,28 @@ static int mtk_oddmr_dmr_bpp(struct mtk_ddp_comp *comp, bool max)
 {
 	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
 	int ret = 0;
-	unsigned long  table_size, layer_size;
+	unsigned long table_size = 0, layer_size = 1;
 	struct mtk_drm_dmr_cfg_info *dmr_cfg_info;
 	int cur_bin_idx;
 
-	cur_bin_idx = atomic_read(&oddmr_data->dmr_data.cur_bin_idx);
-	if (cur_bin_idx == -1)
-		return 0;
-	dmr_cfg_info = &oddmr_data->primary_data->dmr_multi_bin[cur_bin_idx];
-
-	if (dmr_cfg_info->table_index.table_byte_num) {
-		if (max)
-			table_size = oddmr_data->dmr_data.max_table_size + DMR_LN_OFFSET;
-		else
-			table_size = dmr_cfg_info->table_index.table_byte_num + DMR_LN_OFFSET;
+	if (max) {
+		table_size = oddmr_data->dmr_data.max_table_size + DMR_LN_OFFSET;
+		dmr_cfg_info = &oddmr_data->primary_data->dmr_multi_bin[0];
 		layer_size = dmr_cfg_info->basic_info.panel_width
 			* dmr_cfg_info->basic_info.panel_height * 4;
-		ret = (400 * table_size + layer_size - 1) / layer_size;
-		ODDMRFLOW_LOG("dmr hrt %d\n", ret);
+	} else {
+		cur_bin_idx = atomic_read(&oddmr_data->dmr_data.cur_bin_idx);
+		DDPINFO("cur_bin_idx %d\n", cur_bin_idx);
+		if (cur_bin_idx == -1)
+			return 0;
+		dmr_cfg_info = &oddmr_data->primary_data->dmr_multi_bin[cur_bin_idx];
+		table_size = dmr_cfg_info->table_index.table_byte_num + DMR_LN_OFFSET;
+		layer_size = dmr_cfg_info->basic_info.panel_width
+			* dmr_cfg_info->basic_info.panel_height * 4;
 	}
+	ret = (400 * table_size + layer_size - 1) / layer_size;
+	DDPINFO("dmr hrt %d\n", ret);
+
 	return ret;
 }
 
@@ -3875,6 +3878,8 @@ int mtk_oddmr_analysis(struct mtk_ddp_comp *comp)
 {
 	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
 	bool dmr_support, od_support, dbi_support;
+	unsigned int cur_binset_idx = atomic_read(&oddmr_data->dmr_data.cur_binset_idx);
+	int cur_bin_idx = atomic_read(&oddmr_data->dmr_data.cur_bin_idx);
 
 	dmr_support = oddmr_data->primary_data->dmr_support;
 	od_support = oddmr_data->primary_data->od_support;
@@ -3889,9 +3894,10 @@ int mtk_oddmr_analysis(struct mtk_ddp_comp *comp)
 			oddmr_data->primary_data->dmr_state,
 			oddmr_data->dbi_enable,
 			oddmr_data->primary_data->dbi_state);
-	DDPDUMP("oddmr current bl %u, fps %u %u x %u\n",
+	DDPDUMP("oddmr current bl %u, fps %u, dbv_mode %u, %u x %u\n",
 			oddmr_data->primary_data->current_timing.bl_level,
 			oddmr_data->primary_data->current_timing.vrefresh,
+			oddmr_data->primary_data->current_timing.dbv_mode,
 			oddmr_data->primary_data->current_timing.hdisplay,
 			oddmr_data->primary_data->current_timing.vdisplay);
 	DDPDUMP("OD: r_sel %d, dram_sel %d, dram_sel %d, sram0 %d, sram1 %d\n",
@@ -3901,6 +3907,9 @@ int mtk_oddmr_analysis(struct mtk_ddp_comp *comp)
 			oddmr_data->od_data.od_sram_table_idx[0],
 			oddmr_data->od_data.od_sram_table_idx[1]);
 	mtk_oddmr_dump_od_param(comp);
+	DDPDUMP("-- DeMura Current info dump --\n");
+	DDPDUMP("cur_binset_idx: %u\n", cur_binset_idx);
+	DDPDUMP("cur_bin_idx: %d\n", cur_bin_idx);
 	DDPDUMP("DMR: cur_dbv_node %d, cur_fps_node %d\n",
 			atomic_read(&oddmr_data->dmr_data.cur_dbv_node),
 			atomic_read(&oddmr_data->dmr_data.cur_fps_node));
@@ -6313,6 +6322,7 @@ int mtk_oddmr_hrt_cal_notify(struct drm_device *dev, int disp_idx, int *oddmr_hr
 			}
 			/* DMR HRT */
 			if (oddmr_data->dmr_enable_req) {
+				CRTC_MMP_MARK(0, oddmr_dmr_query_hrt_done, 0, 0);
 				temp_hrt = mtk_oddmr_dmr_bpp(comp, true);
 				if (oddmr_data->data->is_dmr_support_stash) {
 					/* stash bw = data_bw / 4096 * 16 */
@@ -6669,6 +6679,7 @@ static void disp_oddmr_primary_data_init(struct mtk_ddp_comp *comp)
 	init_waitqueue_head(&primary_data->od_deinit_wq);
 	init_waitqueue_head(&primary_data->frame_dirty_wq);
 	init_waitqueue_head(&primary_data->dmr_switch_wq);
+	init_waitqueue_head(&primary_data->dmr_enable_wq);
 	mutex_init(&primary_data->clock_lock);
 	mutex_init(&primary_data->timing_lock);
 	mutex_init(&primary_data->dbi_data_lock);
@@ -6933,9 +6944,16 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			break;
 		mtk_oddmr_od_sec_bypass(comp, sec_on, handle);
 
+		if (oddmr_data->primary_data->dmr_support) {
+			if (atomic_read(&oddmr_data->dmr_data.dmr_cfg_done) == 2)
+				atomic_set(&oddmr_data->dmr_data.dmr_cfg_done, 1);
+			wake_up_all(&oddmr_data->primary_data->dmr_enable_wq);
+		}
+
 		mutex_lock(&oddmr_data->primary_data->dmr_data_lock);
 		dmr_timing_state = atomic_read(&oddmr_data->dmr_data.dmr_timing_state);
 		if(dmr_enable != oddmr_data->dmr_enable) {
+			CRTC_MMP_MARK(0, oddmr_dmr_cfg_done, 0, 0);
 			oddmr_data->primary_data->slc_frame_cnt[DMR_SLC] = 0;
 			if (oddmr_data->dmr_enable == 0)
 				mtk_oddmr_set_dmr_enable(comp, 0, handle);
@@ -6960,6 +6978,7 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			}
 		} else if (oddmr_data->dmr_enable) {
 			if (dmr_timing_state) {
+				CRTC_MMP_MARK(0, oddmr_dmr_timing_state_chg, 0, 0);
 				mtk_oddmr_dmr_state_chg(comp, handle, dmr_timing_state);
 				atomic_set(&oddmr_data->dmr_data.dmr_timing_state, 0);
 				wake_up_all(&oddmr_data->primary_data->dmr_switch_wq);
@@ -8141,7 +8160,7 @@ static void mtk_oddmr_set_dmr_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 			mutex_unlock(&oddmr_data->primary_data->timing_lock);
 			DDPMSG("-- DeMura Current info dump --\n");
 			DDPMSG("cur_binset_idx: %u\n", cur_binset_idx);
-			DDPMSG("cur_bin_idx: %u\n", cur_bin_idx);
+			DDPMSG("cur_bin_idx: %d\n", cur_bin_idx);
 			DDPMSG("cur_dbv: %u\n", cur_dbv);
 			DDPMSG("cur_fps: %u\n", cur_fps);
 			DDPMSG("cur_dbv_mode: %u\n", cur_dbv_mode);
@@ -9822,7 +9841,7 @@ static void mtk_oddmr_dmr_gain_cfg(struct mtk_ddp_comp *comp,
 		if(g_dmr_dump_en) {
 			DDPMSG("-- DeMura Current gain info dump --\n");
 			DDPMSG("cur_binset_idx: %u\n", cur_binset_idx);
-			DDPMSG("cur_bin_idx: %u\n", cur_bin_idx);
+			DDPMSG("cur_bin_idx: %d\n", cur_bin_idx);
 			DDPMSG("cur_dbv: %u\n", cur_dbv);
 			DDPMSG("cur_fps: %u\n", cur_fps);
 			DDPMSG("cur_dbv_mode: %u\n", cur_dbv_mode);
@@ -11797,7 +11816,7 @@ static int mtk_oddmr_dmr_init(struct mtk_ddp_comp *comp, struct mtk_drm_dmr_cfg_
 		return -1;
 	}
 	if (oddmr_data->primary_data->dmr_state == ODDMR_INIT_DONE) {
-		PC_ERR("dmr can not init when running\n");
+		PC_ERR("dmr bin can not load when dmr_state is ODDMR_INIT_DONE\n");
 		return -1;
 	}
 
@@ -11886,7 +11905,7 @@ static int mtk_oddmr_dmr_init(struct mtk_ddp_comp *comp, struct mtk_drm_dmr_cfg_
 	atomic_set(&oddmr_data->dmr_data.cur_binset_idx, 0);
 	//dbv mode lookup
 	for(i = 1; i < dmr_binset->dbv_interval_num; i++)
-		if(cur_dbv < dmr_binset->dbv_interval_node[i])
+		if(cur_dbv <= dmr_binset->dbv_interval_node[i])
 			break;
 	i--;
 	atomic_set(&oddmr_data->dmr_data.cur_bin_idx, dmr_binset->dbv_interval_bin_idx[i]);
@@ -13076,8 +13095,31 @@ static int mtk_oddmr_dmr_enable(struct mtk_ddp_comp *comp, bool en)
 	ODDMRAPI_LOG("%d\n", enable);
 	if (oddmr_data->primary_data->dmr_state < ODDMR_INIT_DONE) {
 		PC_ERR("can not enable, state %d\n", oddmr_data->primary_data->dmr_state);
-		return -EFAULT;
+		return -1;
 	}
+	if (atomic_read(&oddmr_data->primary_data->dmr_hrt_done) == 2) {
+		PC_ERR("previous layering rule for dmr enable not finished\n");
+		drm_trigger_repaint(DRM_REPAINT_FOR_IDLE, comp->mtk_crtc->base.dev);
+		ret = wait_event_interruptible_timeout(g_oddmr_hrt_wq,
+			atomic_read(&oddmr_data->primary_data->dmr_hrt_done) == 1,
+			msecs_to_jiffies(200));
+		if (ret <= 0) {
+			PC_ERR("previous dmr enable repaint timeout %d\n", ret);
+			return -1;
+		}
+	}
+	if (atomic_read(&oddmr_data->dmr_data.dmr_cfg_done) == 2) {
+		PC_ERR("previous layering rule for dmr enable not finished\n");
+		drm_trigger_repaint(DRM_REPAINT_FOR_IDLE, comp->mtk_crtc->base.dev);
+		ret = wait_event_interruptible_timeout(oddmr_data->primary_data->dmr_enable_wq,
+				atomic_read(&oddmr_data->dmr_data.dmr_cfg_done) == 1,
+				msecs_to_jiffies(200));
+		if (ret <= 0) {
+			PC_ERR("previous dmr enable:%d timeout\n");
+			return -1;
+		}
+	}
+	CRTC_MMP_EVENT_START(0, oddmr_dmr_enable, 0, 0);
 	if (en && oddmr_data->use_slc[DMR_SLC]) {
 		int ret;
 
@@ -13093,18 +13135,33 @@ static int mtk_oddmr_dmr_enable(struct mtk_ddp_comp *comp, bool en)
 		oddmr1_data->dmr_enable_req = enable;
 	}
 	atomic_set(&oddmr_data->primary_data->dmr_hrt_done, 2);
+	atomic_set(&oddmr_data->dmr_data.dmr_cfg_done, 2);
 	drm_trigger_repaint(DRM_REPAINT_FOR_IDLE, comp->mtk_crtc->base.dev);
 	if (oddmr_data->primary_data->dmr_first_en == 0) {
 		oddmr_data->primary_data->dmr_first_en = 1;
+		CRTC_MMP_MARK(0, oddmr_dmr_enable, 0, 0);
 		return 0;
 	}
 	ret = wait_event_interruptible_timeout(g_oddmr_hrt_wq,
-			atomic_read(&oddmr_data->primary_data->dmr_hrt_done) == 1, msecs_to_jiffies(200));
+			atomic_read(&oddmr_data->primary_data->dmr_hrt_done) == 1,
+			msecs_to_jiffies(200));
 	if (ret <= 0) {
-		atomic_set(&oddmr_data->primary_data->dmr_hrt_done, 0);
 		PC_ERR("enable %d repaint timeout %d\n", enable, ret);
+		CRTC_MMP_MARK(0, oddmr_dmr_enable, 9, 1);
 		return -1;
 	}
+	atomic_set(&oddmr_data->primary_data->dmr_hrt_done, 0);
+
+	ret = wait_event_interruptible_timeout(oddmr_data->primary_data->dmr_enable_wq,
+				atomic_read(&oddmr_data->dmr_data.dmr_cfg_done) == 1,
+				msecs_to_jiffies(200));
+	if (ret <= 0) {
+		PC_ERR("dmr enable:%d timeout\n", en);
+		CRTC_MMP_MARK(0, oddmr_dmr_enable, 9, 2);
+		return -1;
+	}
+	atomic_set(&oddmr_data->dmr_data.dmr_cfg_done, 0);
+	CRTC_MMP_EVENT_END(0, oddmr_dmr_enable, 0, 0);
 	return 0;
 }
 
