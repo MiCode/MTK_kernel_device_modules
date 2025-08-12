@@ -901,11 +901,7 @@ static void check_stream_is_on(void)
 		framecnt = read_cmos_sensor_8(0x0005);
 		if (framecnt != 0xFF) {
 			LOG_INF("IMX06C stream is on, %d\n", framecnt);
-			// try_time--;
-			// if(try_time == 0) {
-			//     break;
-			// }
-			// mdelay(50);
+			break;
 		} else {
 			LOG_INF("IMX06C stream is not on %d\n", framecnt);
 		}
@@ -5230,7 +5226,16 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 		*(MUINT32 *)(uintptr_t)(*(feature_data + 1)) = 0;
 		break;
 	case SENSOR_FEATURE_GET_GAIN_RANGE_BY_SCENARIO:
-		*(feature_data + 1) = imgsensor_info.min_gain;
+		switch (*feature_data) {
+		case MSDK_SCENARIO_ID_CUSTOM1:
+		case MSDK_SCENARIO_ID_CUSTOM2:
+		case MSDK_SCENARIO_ID_CUSTOM4:
+			*(feature_data + 1) = imgsensor_info.min_gain*4;
+			break;
+		default:
+			*(feature_data + 1) = imgsensor_info.min_gain;
+			break;
+		}
 		*(feature_data + 2) = imgsensor_info.max_gain;
 		break;
 	case SENSOR_FEATURE_GET_BASE_GAIN_ISO_AND_STEP:
