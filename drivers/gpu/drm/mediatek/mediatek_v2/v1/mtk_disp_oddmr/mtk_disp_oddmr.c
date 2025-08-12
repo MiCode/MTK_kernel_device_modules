@@ -8902,15 +8902,22 @@ static int mtk_oddmr_dbi_init(struct mtk_ddp_comp *comp, struct mtk_drm_dbi_cfg_
 		return -1;
 	}
 
+	mutex_lock(&oddmr_data->primary_data->dbi_data_lock);
 	dbi_cfg_data =	&oddmr_data->primary_data->dbi_cfg_info;
 	dbi_cfg_data_tb1 = &oddmr_data->primary_data->dbi_cfg_info_tb1;
 	memcpy(dbi_cfg_data, cfg_info, sizeof(struct mtk_drm_dbi_cfg_info));
 
+	if (dbi_cfg_data->basic_info.panel_id_len < 0 || dbi_cfg_data->basic_info.panel_id_len > 16) {
+		mutex_unlock(&oddmr_data->primary_data->dbi_data_lock);
+		ODDMRFLOW_LOG("panelid len %d invalid!\n", dbi_cfg_data->basic_info.panel_id_len);
+		return -1;
+	}
 	/*match panel id */
 	expect_panel_id.len = dbi_cfg_data->basic_info.panel_id_len;
 	if(expect_panel_id.len)
 		memcpy(expect_panel_id.data, dbi_cfg_data->basic_info.panel_id, expect_panel_id.len);
 	if (!mtk_oddmr_match_panelid(&oddmr_data->primary_data->panelid, &expect_panel_id)) {
+		mutex_unlock(&oddmr_data->primary_data->dbi_data_lock);
 		ODDMRFLOW_LOG("panelid does not match\n");
 		return -1;
 	}
@@ -9290,6 +9297,7 @@ static int mtk_oddmr_dbi_init(struct mtk_ddp_comp *comp, struct mtk_drm_dbi_cfg_
 	oddmr_data->dbi_data.min_block_v = dbi_cfg_data->basic_info.partial_update_scale_factor_v;
 	oddmr_data->dbi_data.min_block_h = dbi_cfg_data->basic_info.partial_update_scale_factor_h;
 	oddmr_data->primary_data->dbi_state = ODDMR_INIT_DONE;
+	mutex_unlock(&oddmr_data->primary_data->dbi_data_lock);
 
 	return 0;
 
@@ -9299,6 +9307,7 @@ fail:
 			vfree(data[i]);
 
 	}
+	mutex_unlock(&oddmr_data->primary_data->dbi_data_lock);
 	return -EFAULT;
 
 
@@ -10755,6 +10764,13 @@ static int mtk_oddmr_pq_ioctl_transact(struct mtk_ddp_comp *comp,
 	unsigned int temp;
 	unsigned int cur_dbv;
 	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
+
+	if (cmd == PQ_ODDMR_DMR_INIT || cmd == PQ_ODDMR_DMR_ENABLE || cmd == PQ_ODDMR_DMR_DISABLE ||
+		cmd == PQ_ODDMR_DMR_BINSET_INIT || cmd == PQ_ODDMR_DMR_BINSET_CHG ||
+		cmd == PQ_ODDMR_DMR_CUS_BINSET_INIT || cmd == PQ_ODDMR_DMR_CUS_SETTING_INIT ||
+		cmd == PQ_ODDMR_DMR_CUS_OWN_DATA_INIT || cmd == PQ_ODDMR_DMR_REG_TUNING_ENABLE ||
+		cmd == PQ_ODDMR_DMR_REG_TUNING_INIT)
+		return 0;
 
 	switch (cmd) {
 	case PQ_ODDMR_DMR_INIT:
