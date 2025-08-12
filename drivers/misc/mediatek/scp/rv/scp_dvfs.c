@@ -1033,6 +1033,32 @@ static int mt_scp_dvfs_sleep_cnt_proc_show(struct seq_file *m, void *v)
 	return 0;
 }
 
+/****************************
+ * show scp dvfs freq(cycle count)
+ *****************************/
+static int mt_scp_freq_proc_show(struct seq_file *m, void *v)
+{
+	struct ipi_tx_data_t ipi_data;
+	unsigned int *scp_ack_data = NULL;
+	int ret;
+
+	if (!g_dvfs_dev.sleep_init_done)
+		slp_ipi_init();
+
+	ipi_data.arg1 = SCP_SLEEP_FREQ_GET;
+	ret = mtk_ipi_send_compl(&scp_ipidev, IPI_OUT_C_SLEEP_0,
+		IPI_SEND_WAIT, &ipi_data, PIN_OUT_C_SIZE_SLEEP_0, 100);
+	scp_ack_data = &scp_ipi_ackdata0;
+	if (ret != IPI_ACTION_DONE) {
+		pr_notice("[%s] ipi send failed with error: %d\n",
+			__func__, ret);
+		return -ESCP_DVFS_IPI_FAILED;
+	}
+	seq_printf(m, "scp freq: %u\n", *scp_ack_data);
+
+	return 0;
+}
+
 /**********************************
  * write scp dvfs sleep
  ***********************************/
@@ -1345,6 +1371,7 @@ static const struct proc_ops mt_ ## name ## _proc_fops = {\
 PROC_FOPS_RO(scp_ips);
 PROC_FOPS_RO(scp_dvfs_state);
 PROC_FOPS_RO(scp_dvfs_opp);
+PROC_FOPS_RO(scp_freq);
 PROC_FOPS_RW(scp_dvfs_sleep_cnt);
 PROC_FOPS_RW(scp_dvfs_sleep);
 PROC_FOPS_RW(scp_dvfs_ctrl);
@@ -1363,6 +1390,7 @@ static int mt_scp_dvfs_create_procfs(void)
 		PROC_ENTRY(scp_ips),
 		PROC_ENTRY(scp_dvfs_state),
 		PROC_ENTRY(scp_dvfs_opp),
+		PROC_ENTRY(scp_freq),
 		PROC_ENTRY(scp_dvfs_sleep_cnt),
 		PROC_ENTRY(scp_dvfs_sleep),
 		PROC_ENTRY(scp_dvfs_ctrl)
