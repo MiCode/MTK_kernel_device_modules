@@ -121,9 +121,7 @@
 #define DRIVER_MINOR 0
 #define IDLE_FPS 10 /*when fps is less than or euqal to 10, hwc not sending hw vsync*/
 
-#if IS_ENABLED(CONFIG_MTK_DISPLAY_DUAL_PIPE_DUAL_PORT_SUPPORT)
-#define DRM_BYPASS_PQ_MT6993 /* 6993 bring up without PQ */
-#endif
+//#define DRM_BYPASS_PQ_MT6993 /* 6993 bring up without PQ */
 
 void disp_dbg_deinit(void);
 void disp_dbg_probe(void);
@@ -4212,6 +4210,7 @@ static const enum mtk_ddp_comp_id mt6993_mtk_ddp_main_bringup[] = {
 	DDP_COMPONENT_C3D1,		DDP_COMPONENT_GAMMA0,
 	DDP_COMPONENT_POSTMASK0,	DDP_COMPONENT_DITHER0,
 	DDP_COMPONENT_PQ0_OUT_CB0,
+#if !IS_ENABLED(CONFIG_MTK_DISPLAY_DUAL_PIPE_DUAL_PORT_SUPPORT)
 	DDP_COMPONENT_PC_IN_CB0, DDP_COMPONENT_SPR0,
 	DDP_COMPONENT_PC_OUT_CB2,
 	DDP_COMPONENT_RELAY5,
@@ -4222,6 +4221,11 @@ static const enum mtk_ddp_comp_id mt6993_mtk_ddp_main_bringup[] = {
 	DDP_COMPONENT_POSTALIGN0,
 	DDP_COMPONENT_SPLITTER0_IN_CB9,
 	DDP_COMPONENT_SPLITTER0_OUT_CB0,
+#else
+	DDP_COMPONENT_DLO_ASYNC0, DDP_COMPONENT_DLI_ASYNC20,
+	DDP_COMPONENT_SPLITTER0_IN_CB0,
+	DDP_COMPONENT_SPLITTER0_OUT_CB0,
+#endif
 #elif defined(PQ_PATH_19)
 	DDP_COMPONENT_MDP_RSZ0,		DDP_COMPONENT_TDSHP0,
 	DDP_COMPONENT_DMDP_AAL0,	DDP_COMPONENT_AAL0,
@@ -4284,7 +4288,7 @@ static const enum mtk_ddp_comp_id mt6993_mtk_ovlsys_dual_main_bringup[] = {
 static const enum mtk_ddp_comp_id mt6993_mtk_ddp_dual_main_bringup[] = {
 	DDP_COMPONENT_SYS_B_DLI_ASYNC0,
 #ifdef DRM_BYPASS_PQ_MT6993
-	DDP_COMPONENT_SYS_B_PQ0_OUT_CB3,
+	DDP_COMPONENT_SYS_B_PQ0_OUT_CB4,
 #elif defined(PQ_PATH_11)
 	DDP_COMPONENT_SYS_B_MDP_RSZ0,		DDP_COMPONENT_SYS_B_TDSHP0,
 	DDP_COMPONENT_SYS_B_AAL0,		DDP_COMPONENT_SYS_B_DMDP_AAL0,
@@ -5218,7 +5222,7 @@ static const enum mtk_ddp_comp_id mt6993_scaling_main[] = {
 
 
 static const enum mtk_ddp_comp_id mt6993_scaling_main_dual[] = {
-	DDP_COMPONENT_MDP_RSZ1,
+	DDP_COMPONENT_SYS_B_MDP_RSZ0,
 };
 
 static const struct mtk_addon_scenario_data mt6993_addon_ext[ADDON_SCN_NR] = {
@@ -6392,9 +6396,9 @@ static const struct mtk_crtc_path_data mt6993_mtk_main_path_data = {
 //	.wb_path[DDP_MAJOR] = mt6983_mtk_ddp_main_wb_path,
 //	.wb_path_len[DDP_MAJOR] = ARRAY_SIZE(mt6983_mtk_ddp_main_wb_path),
 	.addon_data = mt6993_addon_main,
-	.addon_data_dual = mt6989_addon_main_dual,
+	.addon_data_dual = mt6993_addon_main_dual,
 	.scaling_data = mt6993_scaling_main,
-//	.scaling_data_dual = mt6989_scaling_main_dual,
+	.scaling_data_dual = mt6993_scaling_main_dual,
 };
 
 static const struct mtk_crtc_path_data mt6993_mtk_main_full_set_data = {

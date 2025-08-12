@@ -27636,8 +27636,10 @@ static int mtk_ddp_disp0_pq_in_cb_MT6993(enum mtk_ddp_comp_id cur,
 	case DDP_COMPONENT_MDP_RSZ0:
 	case DDP_COMPONENT_SYS_B_MDP_RSZ0:
 		value = MT6993_DISP_PQ_IN_CB_TO_MDP_RSZ0;
+#if !IS_ENABLED(CONFIG_MTK_DISPLAY_DUAL_PIPE_DUAL_PORT_SUPPORT)
 		if (MT6993_CHIST_PATH_CONNECT & DISP_CHIST_BEFORE_PQ)
 			value |= MT6993_DISP_PQ_IN_CB_TO_PQ_OUT_CB_in3;
+#endif
 		break;
 	case DDP_COMPONENT_PQ0_OUT_CB3:
 	case DDP_COMPONENT_SYS_B_PQ0_OUT_CB3:
@@ -28831,7 +28833,8 @@ static int mtk_ddp_mout_en_MT6993(const struct mtk_mmsys_reg_data *data,
 	}
 
 	if (mtk_ddp_comp_get_type(cur) == MTK_OVL_EXDMA) {
-		if (cur == DDP_COMPONENT_OVL_EXDMA2 || cur == DDP_COMPONENT_OVL2_EXDMA2)
+		if (cur == DDP_COMPONENT_OVL_EXDMA2 || cur == DDP_COMPONENT_OVL1_EXDMA2 ||
+		    cur == DDP_COMPONENT_OVL2_EXDMA2)
 			value = mtk_ddp_ovl_rsz_in_cb_MT6993(cur, next, addr);
 		else
 			value = mtk_ddp_ovl_exdma_out_cb_MT6993(cur, next, addr);

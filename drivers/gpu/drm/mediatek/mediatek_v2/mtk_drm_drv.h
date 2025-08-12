@@ -36,9 +36,7 @@
 #endif
 #define MTK_DRM_ASYNC_HANDLE
 
-#if !IS_ENABLED(CONFIG_MTK_DISPLAY_DUAL_PIPE_DUAL_PORT_SUPPORT)
 #define PQ_PATH_11
-#endif
 
 struct device;
 struct device_node;

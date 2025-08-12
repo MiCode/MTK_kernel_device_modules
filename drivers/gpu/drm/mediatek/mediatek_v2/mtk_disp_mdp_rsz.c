@@ -771,7 +771,7 @@ static void mtk_disp_mdp_rsz_config_overhead(struct mtk_ddp_comp *comp,
 		right_in_w =  cfg->rsz_src_w / 2;
 
 		/*set component overhead*/
-		if (comp->id == DDP_COMPONENT_MDP_RSZ0) {
+		if (comp->id == DDP_COMPONENT_MDP_RSZ0 || comp->id == DDP_COMPONENT_SYS_B_MDP_RSZ0) {
 			/* copy from post-accumulation */
 			rsz->tile_overhead.left_out_tile_loss = cfg->tile_overhead.left_overhead;
 			rsz->tile_overhead.is_support = cfg->tile_overhead.is_support;
@@ -908,6 +908,8 @@ static void mtk_mdp_rsz_config(struct mtk_ddp_comp *comp,
 		if (comp->id == DDP_COMPONENT_MDP_RSZ0)
 			tile_idx = 0;
 		else if (comp->id == DDP_COMPONENT_MDP_RSZ1)
+			tile_idx = 1;
+		else if (comp->id == DDP_COMPONENT_SYS_B_MDP_RSZ0)
 			tile_idx = 1;
 
 		rsz_config->tw[tile_idx].in_len =
@@ -1672,7 +1674,7 @@ static const struct mtk_disp_mdp_rsz_data mt6991_mdp_rsz_driver_data = {
 };
 
 static const struct mtk_disp_mdp_rsz_data mt6993_mdp_rsz_driver_data = {
-	.tile_length = 1660, .in_max_height = 4096,
+	.tile_length = 3320, .in_max_height = 4096,
 	.support_shadow = false,
 	.need_bypass_shadow = true,
 };

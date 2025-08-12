@@ -2794,7 +2794,11 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 		layer_src |= LSRC_COLOR;
 	else if ((pending->pq_loop_type == 2)
 		&& (!priv->data->ovl_exdma_rule ||
+#if IS_ENABLED(CONFIG_MTK_DISPLAY_DUAL_PIPE_DUAL_PORT_SUPPORT)
+		(comp->id != cmp_id && DUAL_MAPPING_LEFT_EXDMA(comp->id) != cmp_id)))
+#else
 		comp->id != cmp_id))
+#endif
 		layer_src |= LSRC_PQ;
 
 	if (rotate) {
@@ -3518,7 +3522,8 @@ bool compr_ovl_exdma_l_config_AFBC_V1_2(struct mtk_ddp_comp *comp,
 
 		if (pending->pq_loop_type == 2) {
 			if (priv->data->ovl_exdma_rule &&
-				comp->id == cmp_id && cmp_id < DDP_COMPONENT_ID_MAX) {
+			    (comp->id == cmp_id || (mtk_crtc->is_dual_pipe &&
+			    DUAL_MAPPING_LEFT_EXDMA(comp->id))) && cmp_id < DDP_COMPONENT_ID_MAX) {
 				cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa +
 					       regs[OVL_EXDMA_L0_SRC_SIZE], lx_src_size, ~0);
 			} else {
@@ -3545,9 +3550,10 @@ bool compr_ovl_exdma_l_config_AFBC_V1_2(struct mtk_ddp_comp *comp,
 			lx_hdr_pitch, ~0);
 
 		if (comp->bind_comp) {
-			if (pending->pq_loop_type == 2
-				&& (priv->data->ovl_exdma_rule &&
-				comp->id == cmp_id && cmp_id < DDP_COMPONENT_ID_MAX))
+			if (pending->pq_loop_type == 2 &&
+			    (priv->data->ovl_exdma_rule &&
+			    (comp->id == cmp_id || (mtk_crtc->is_dual_pipe &&
+			    DUAL_MAPPING_LEFT_EXDMA(comp->id))) && cmp_id < DDP_COMPONENT_ID_MAX))
 				cmdq_pkt_write(handle, comp->cmdq_base, comp->bind_comp->regs_pa +
 					regs[OVL_EXDMA_L0_SRC_SIZE], pending->dst_roi, ~0);
 			else
@@ -3696,8 +3702,9 @@ static void mtk_ovl_exdma_addon_config(struct mtk_ddp_comp *comp,
 		mtk_ovl_exdma_addon_rsz_config(comp, prev, next, src, dst, handle);
 	}
 
-	if (((addon_config->config_type.module == OVL_RSZ_2)) &&
-		addon_config->config_type.type == ADDON_BEFORE) {
+	if ((addon_config->config_type.module == OVL_RSZ_2 ||
+	    addon_config->config_type.module == OVL_RSZ_3) &&
+	    addon_config->config_type.type == ADDON_BEFORE) {
 		struct mtk_addon_rsz_config *config =
 			&addon_config->addon_rsz_config;
 
