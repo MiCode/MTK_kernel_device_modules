@@ -3026,7 +3026,7 @@ static int dpc_vidle_power_keep_v3(const enum mtk_vidle_voter_user _user)
 	if ((excep_by_xpu & BIT(0)) && (user == DISP_VIDLE_USER_FOR_FRAME))
 		return ret;
 
-	if (!dpc_buck_status(-1)) { /* buck off */
+	if ((dpc_user_to_subsys(user) != DPC3_SUBSYS_MML) && (dpc_buck_status(-1) == 0)) { /* MML skip to check buck */
 		dpc_mmp(folder, MMPROFILE_FLAG_PULSE, BIT(28) | user, 0xdead0011);
 
 		if (excep_by_xpu & BIT(0))
