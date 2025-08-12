@@ -18822,7 +18822,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 							<0 1 2>;
 			bootmode = <&chosen>;
 			gauge = <&mtk_gauge>;
-			lbat-thl-enable-pct = <40>;
+			lbat-thl-enable-pct = <40 45 50 55>;
 
 			nvmem-cells =<&fab_info>;
 			nvmem-cell-names = "fab_info";
@@ -19052,6 +19052,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 							<0 1 2>,
 							<0 1 2>,
 							<0 1 2>;
+			lbat-thl-enable-pct = <40 45 50 55>;
 			bootmode = <&chosen>;
 			gauge = <&mtk_gauge>;
 		};
