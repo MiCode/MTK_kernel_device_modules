@@ -144,6 +144,8 @@ static struct dsp_msg_queue_t g_dsp_msg_queue[NUM_OPENDSP_TYPE][DSP_NUM_PATH];
 
 static DEFINE_RATELIMIT_STATE(dump_limit, 30 * HZ, 1);
 static struct workqueue_struct *dump_workqueue;
+static s64 g_dsp_send_thread_start_us[NUM_OPENDSP_TYPE] = {0};
+static struct ipi_msg_t *g_cur_ipi_msg[NUM_OPENDSP_TYPE] = {NULL};
 
 /*
  * =============================================================================
@@ -553,6 +555,9 @@ int dsp_send_msg_to_queue(
 	const uint32_t k_restart_sleep_max_us = (k_restart_sleep_min_us + 200);
 	struct ipi_msg_t *p_ipi_msg = NULL;
 
+	int n = 0;
+	char dump_str[128] = {0};
+
 
 	ipi_dbg("in, dsp_id: %u, ipi_id: %u, buf: %p, len: %u, wait_ms: %u",
 		dsp_id, ipi_id, buf, len, wait_ms);
@@ -642,6 +647,18 @@ int dsp_send_msg_to_queue(
 			pr_info("wait %u ms timeout, will still send to dsp later!! ipi_id: %u, msg: 0x%x, task: %d",
 				wait_ms, ipi_id, p_ipi_msg->msg_id,
 				p_ipi_msg->task_scene);
+			/* dump the dsp_send_thread start time */
+			n = snprintf(dump_str, sizeof(dump_str),
+				     "dsp_send_thread_id_%d start at [%lld.%lld]", dsp_id,
+				(g_dsp_send_thread_start_us[dsp_id] / USEC_PER_SEC),
+				(g_dsp_send_thread_start_us[dsp_id] % USEC_PER_SEC));
+			if (n < 0 || n >= sizeof(dump_str))
+				pr_info("error to get string dump_str");
+
+			if (g_cur_ipi_msg[dsp_id] != NULL)
+				DUMP_IPI_MSG(dump_str, g_cur_ipi_msg[dsp_id]);
+			else
+				pr_info("%s, g_cur_ipi_msg[%d] is NULL", dump_str, dsp_id);
 			break;
 		}
 		if (retval == -ERESTARTSYS) {
@@ -1234,6 +1251,7 @@ static int dsp_send_msg_to_dsp(
 	const uint32_t k_max_try_wake_cnt = 100;
 	const uint32_t k_sleep_min_us = 50;
 	const uint32_t k_sleep_max_us = (k_sleep_min_us + 10);
+	ktime_t start = ktime_get();
 
 	int ret = 0;
 	int n = 0;
@@ -1248,8 +1266,11 @@ static int dsp_send_msg_to_dsp(
 	if (!is_audio_dsp_support(dsp_id))
 		return -ENODEV;
 
+	g_dsp_send_thread_start_us[dsp_id] = ktime_to_us(start);
+
 	audio_ipi_id = audio_get_audio_ipi_id_by_dsp(dsp_id);
 	p_ipi_msg = (struct ipi_msg_t *)p_dsp_msg->buf;
+	g_cur_ipi_msg[dsp_id] = p_ipi_msg;
 
 	if (is_audio_use_scp(dsp_id)) {
 		for (try_wake_cnt = 0; try_wake_cnt < k_max_try_wake_cnt; try_wake_cnt++) {
@@ -1267,6 +1288,10 @@ static int dsp_send_msg_to_dsp(
 				DUMP_IPC_MSG(dump_str, p_dsp_msg);
 				return 0;
 			}
+
+			if (try_wake_cnt == 0)
+				pr_info("scp awake lock fail, retry\n");
+
 			usleep_range(k_sleep_min_us, k_sleep_max_us);
 		}
 	}
