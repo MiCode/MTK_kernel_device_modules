@@ -402,6 +402,23 @@ struct mml_topology_cache *mml_topology_create(struct mml_dev *mml,
 			tp = err == -EAGAIN ? NULL : ERR_PTR(err);
 		}
 		mml_comp_init_larb_idx(mml, tp);
+
+#if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
+		if (!err && !tp->larb_sys_map) {
+			for (i = 0; i < MML_MAX_COMPONENTS; i++) {
+				struct mml_comp *comp = mml_dev_get_comp_by_id(mml, i);
+
+				if (!comp)
+					break;
+
+				if (comp->bw_hybrid) {
+					mml_err("%s comp %u bw hybrid w/o mml_topology_cache->larb_sys_map",
+						__func__, i);
+					break;
+				}
+			}
+		}
+#endif
 	}
 	return tp;
 }
@@ -1138,8 +1155,8 @@ static void mml_core_qos_update_dpc(struct mml_frame_config *cfg, bool trigger)
 	struct mml_task *task;
 	const struct mml_topology_path *path = cfg->path[0];
 	const u8 *larb_sys_map;
-	u32 srt_bw[MML_MAX_LARB] = {0}, hrt_bw[MML_MAX_LARB] = {0}, srt_bw_max = 0, hrt_bw_max = 0;
-	u32 stash_srt_bw[MML_MAX_LARB] = {0}, stash_hrt_bw[MML_MAX_LARB] = {0};
+	u32 srt_bw[mml_max_sys] = {0}, hrt_bw[mml_max_sys] = {0}, srt_bw_max = 0, hrt_bw_max = 0;
+	u32 stash_srt_bw[mml_max_sys] = {0}, stash_hrt_bw[mml_max_sys] = {0};
 	u32 dpc_dvfs_lv = 0;
 	enum mml_sys_id sysid;
 	u8 larb_idx, sys_idx;
@@ -1153,8 +1170,8 @@ static void mml_core_qos_update_dpc(struct mml_frame_config *cfg, bool trigger)
 	larb_sys_map = tp->larb_sys_map;
 
 	for (i = 0; i < ARRAY_SIZE(tp->path_clts); i++) {
-		u32 task_srt_max[MML_MAX_LARB] = {0}, task_hrt_max[MML_MAX_LARB] = {0};
-		u32 task_stash_srt_max[MML_MAX_LARB] = {0}, task_stash_hrt_max[MML_MAX_LARB] = {0};
+		u32 task_srt_max[mml_max_sys] = {0}, task_hrt_max[mml_max_sys] = {0};
+		u32 task_stash_srt_max[mml_max_sys] = {0}, task_stash_hrt_max[mml_max_sys] = {0};
 
 		/* scan all tasks in this cmdq client and find max srt hrt */
 		list_for_each_entry(task_pipe, &tp->path_clts[i].tasks, entry_clt) {
@@ -1167,6 +1184,8 @@ static void mml_core_qos_update_dpc(struct mml_frame_config *cfg, bool trigger)
 				if (sys_idx >= mml_max_sys) {
 					mml_err("%s sysid %u wrong from larb idx %u map %p",
 						__func__, sys_idx, larb_idx, larb_sys_map);
+					if (!larb_sys_map)
+						mml_err("must porting mml_topology_cache->larb_sys_map");
 					sys_idx = mml_sys_dma;
 				}
 #endif
