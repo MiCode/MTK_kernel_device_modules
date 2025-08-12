@@ -8387,23 +8387,19 @@ void mtk_drm_top_clk_prepare_enable(struct drm_crtc *crtc)
 	mtk_drm_trace_end();
 
 	spin_lock_irqsave(&top_clk_lock, flags);
+	atomic_inc(&top_clk_ref);
+	if (atomic_read(&top_clk_ref) == 1) {
+		DDPFENCE("%s:%d power_state = true\n", __func__, __LINE__);
+		priv->power_state = true;
 
-	if (atomic_inc_return(&top_clk_ref) > 1) {
-		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_FULL_SCENARIO)) {
-			mtk_vidle_hint_update(VIDLE_HINT_MULTI_CRTC_ON);
-			mtk_vidle_config_ff(false);
-			DDPINFO("%s crtc%d vidle_hint(%#x)\n", __func__, drm_crtc_index(crtc),
-					mtk_vidle_hint_update(VIDLE_HINT_GET));
-		}
-		goto out;
+		/* Enable IRQs and QOS config. Call only after power_state is set to true. */
+		mtk_crtc_vdisp_ao_config(crtc);
 	}
 
-	/* The following is only for top_clk_ref is 1, which is only 1 crtc */
-	DDPFENCE("%s:%d power_state = true\n", __func__, __LINE__);
-	priv->power_state = true;
-
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_FULL_SCENARIO)) {
-		if ((atomic_read(&debug_power_async) & 0x2) && mtk_drm_idlemgr_get_async_status(crtc)) {
+		if ((atomic_read(&debug_power_async) & 0x2) &&
+			atomic_read(&top_clk_ref) == 1 &&
+			mtk_drm_idlemgr_get_async_status(crtc)) {
 			ret = mtk_drm_sw_async_trigger(crtc, USER_SW_ASYNC_VIDLE,
 						mtk_drm_power_on_vidle_func, (void *)priv);
 			if (ret < 0) {
@@ -8411,23 +8407,27 @@ void mtk_drm_top_clk_prepare_enable(struct drm_crtc *crtc)
 				mtk_drm_power_on_vidle_func((void *)priv);
 			}
 		} else {
-			mtk_vidle_enable(true, priv);
-			mtk_vidle_hint_update(VIDLE_HINT_MTCMOS_ON);
+			if (atomic_read(&top_clk_ref) == 1) {
+				mtk_vidle_enable(true, priv);
+				mtk_vidle_hint_update(VIDLE_HINT_MTCMOS_ON);
+			} else {
+				/* disable ff for multi crtc */
+				mtk_vidle_hint_update(VIDLE_HINT_MULTI_CRTC_ON);
+				DDPINFO("%s crtc%d vidle_hint(%#x)\n", __func__, drm_crtc_index(crtc),
+					mtk_vidle_hint_update(VIDLE_HINT_GET));
+			}
 			mtk_vidle_config_ff(false);
 		}
 	} else {
-		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_DECOUPLE_MODE)) {
-			struct mtk_drm_crtc *mtk_crtc0 = to_mtk_crtc(priv->crtc[0]);
+		struct mtk_drm_crtc *mtk_crtc0 = to_mtk_crtc(priv->crtc[0]);
 
-			if (mtk_crtc0)
+		if (atomic_read(&top_clk_ref) == 1)  {
+			if (mtk_crtc0 &&
+				mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_DECOUPLE_MODE))
 				mtk_crtc0->is_mml_dc = false;
 		}
 	}
 
-	/* Enable IRQs and QOS config. Must be called after power_state is set and DPC is configured. */
-	mtk_crtc_vdisp_ao_config(crtc);
-
-out:
 	spin_unlock_irqrestore(&top_clk_lock, flags);
 
 	DRM_MMP_MARK(top_clk, atomic_read(&top_clk_ref),
@@ -8472,6 +8472,9 @@ void mtk_drm_top_clk_disable_unprepare(struct drm_crtc *crtc)
 
 		priv->power_state = false;
 
+		/* Disable all IRQs. Call only after power_state is set to false. */
+		mtk_crtc_vdisp_ao_config(crtc);
+
 		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_FULL_SCENARIO)) {
 			mtk_vidle_config_ff(false);
 			mtk_vidle_enable(false, priv);
@@ -8486,9 +8489,6 @@ void mtk_drm_top_clk_disable_unprepare(struct drm_crtc *crtc)
 			mtk_vidle_config_ff(false);
 			mtk_vidle_enable(false, priv);
 		}
-
-		/* Disable all IRQs. Call only after power_state is set to false. */
-		mtk_crtc_vdisp_ao_config(crtc);
 	} else {
 		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_FULL_SCENARIO)) {
 			mtk_vidle_hint_update(VIDLE_HINT_MULTI_CRTC_OFF);
