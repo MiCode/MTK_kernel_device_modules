@@ -105,5 +105,7 @@ void mtk_vidle_wait_init(void *_drm_priv);
 void mtk_vidle_mmdvfs_ctrl(bool en);
 int mtk_vidle_get_power_if_in_use(void);
 void mtk_vidle_put_power(void);
+void mtk_vidle_get_timer(void);
+void mtk_vidle_start_timer(void *_crtc, unsigned int delay);
 
 #endif

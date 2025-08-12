@@ -34,6 +34,13 @@ static atomic_t g_vidle_pq_ref = ATOMIC_INIT(0);
 static DEFINE_MUTEX(g_vidle_pq_ref_lock);
 static DECLARE_COMPLETION(dpc_registered);
 
+#define MTK_IDLEMGR_VIDLE_TIMER_INACTIVE (-1)
+#define MTK_IDLEMGR_VIDLE_TIMER_START 1
+#define MTK_IDLEMGR_VIDLE_TIMER_STOP 0
+static struct timer_list vidle_timer;
+static atomic_t g_vidle_timer_active = ATOMIC_INIT(0);
+static spinlock_t vidle_timer_lock;
+
 struct mtk_disp_vidle {
 	u8 level;
 	u32 hrt_bw;
@@ -65,6 +72,67 @@ static struct mtk_disp_vidle vidle_data = {
 	.pm_ret_crtc = 0,
 };
 
+static void mtk_vidle_timer_fun(struct timer_list *timer)
+{
+	unsigned long flags = 0;
+
+	spin_lock_irqsave(&vidle_timer_lock, flags);
+	if (atomic_read(&g_vidle_timer_active) == MTK_IDLEMGR_VIDLE_TIMER_START) {
+		DDPINFO("%s,active:%d->%d\n", __func__,
+			atomic_read(&g_vidle_timer_active), MTK_IDLEMGR_VIDLE_TIMER_STOP);
+		atomic_set(&g_vidle_timer_active, MTK_IDLEMGR_VIDLE_TIMER_STOP);
+		mtk_vidle_hint_update(VIDLE_HINT_VDO_MODE_SWITCH_DONE);
+		mtk_vidle_hint_decision("hsidle");
+	}
+	spin_unlock_irqrestore(&vidle_timer_lock, flags);
+}
+
+void mtk_vidle_start_timer(void *_crtc, unsigned int delay)
+{
+	struct mtk_drm_crtc *mtk_crtc = NULL;
+	unsigned long flags = 0;
+	struct drm_crtc *crtc = NULL;
+
+	if (vidle_data.panel_type != PANEL_TYPE_VDO)
+		return;
+
+	crtc = (struct drm_crtc *)_crtc;
+	if (IS_ERR_OR_NULL(crtc) || !delay)
+		return;
+
+	mod_timer(&vidle_timer, jiffies + msecs_to_jiffies(delay));
+
+	spin_lock_irqsave(&vidle_timer_lock, flags);
+	DDPINFO("%s,active:%d->%d, timer:%ums\n", __func__,
+		atomic_read(&g_vidle_timer_active), MTK_IDLEMGR_VIDLE_TIMER_START,
+		delay);
+	atomic_set(&g_vidle_timer_active, MTK_IDLEMGR_VIDLE_TIMER_START);
+	spin_unlock_irqrestore(&vidle_timer_lock, flags);
+}
+
+void mtk_vidle_get_timer(void)
+{
+	unsigned long flags = 0;
+
+	if (vidle_data.panel_type != PANEL_TYPE_VDO)
+		return;
+
+	spin_lock_irqsave(&vidle_timer_lock, flags);
+	if (atomic_read(&g_vidle_timer_active) == MTK_IDLEMGR_VIDLE_TIMER_STOP)
+		mtk_vidle_hint_update(VIDLE_HINT_VDO_MODE_SWITCH_START);
+	DDPINFO("%s,active:%d->%d\n", __func__,
+		atomic_read(&g_vidle_timer_active), MTK_IDLEMGR_VIDLE_TIMER_INACTIVE);
+	atomic_set(&g_vidle_timer_active, MTK_IDLEMGR_VIDLE_TIMER_INACTIVE);
+
+	if (mtk_vidle_is_ff_enabled()) {
+		CRTC_MMP_MARK(0, leave_vidle, 0x9e7, atomic_read(&g_vidle_timer_active));
+		mtk_vidle_config_ff(false);
+		spin_unlock_irqrestore(&vidle_timer_lock, flags);
+		usleep_range(500, 550);
+	} else
+		spin_unlock_irqrestore(&vidle_timer_lock, flags);
+}
+
 void mtk_vidle_flag_init(void *_crtc)
 {
 	struct mtk_drm_private *priv = NULL;
@@ -95,9 +163,12 @@ void mtk_vidle_flag_init(void *_crtc)
 		DDPMSG("%s, lcm is not connected\n", __func__);
 	else if (mtk_dsi_is_cmd_mode(output_comp))
 		type = PANEL_TYPE_CMD;
-	else if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_VDO_PANEL))
+	else if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_VDO_PANEL)) {
 		type = PANEL_TYPE_VDO;
-	else
+		spin_lock_init(&vidle_timer_lock);
+		timer_setup(&vidle_timer, mtk_vidle_timer_fun, 0);
+		DDPMSG("%s, setup vidle timer\n", __func__);
+	} else
 		DDPMSG("%s, invalid panel type:%d\n", __func__, type);
 
 	mtk_vidle_set_panel_type(type);

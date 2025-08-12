@@ -17996,6 +17996,8 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 	}
 
 	if (crtc_id == 0 && mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_FULL_SCENARIO)) {
+		bool cmd_mode = mtk_dsi_is_cmd_mode(output_comp);
+
 		/* update DT timer to avoid mismatch between real TE and DT timer */
 		if (crtc->state->active && !mtk_crtc_state->prop_val[CRTC_PROP_DOZE_ACTIVE]) {
 			if (crtc->state->active_changed ||
@@ -18004,8 +18006,7 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 					(bool)crtc->state->active_changed,
 					old_mtk_state->doze_changed, mtk_crtc_state->doze_changed);
 				mtk_vidle_hint_update(VIDLE_HINT_DOZE);
-				mtk_vidle_update_dt_by_type(crtc, mtk_dsi_is_cmd_mode(output_comp) ?
-							    PANEL_TYPE_CMD : PANEL_TYPE_VDO);
+				mtk_vidle_update_dt_by_type(crtc, cmd_mode ? PANEL_TYPE_CMD : PANEL_TYPE_VDO);
 			}
 		}
 
@@ -18013,7 +18014,8 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 			mtk_vidle_hint_update(VIDLE_HINT_DOZE);
 
 		if (mtk_crtc_state->disp_mode_changed) {
-			mtk_vidle_hint_update(VIDLE_HINT_MODE_SWITCH);
+			if (cmd_mode)
+				mtk_vidle_hint_update(VIDLE_HINT_MODE_SWITCH);
 			mtk_vidle_user_power_keep(DISP_VIDLE_USER_DISP_DPC_CFG | VOTER_ONLY);
 		} else
 			mtk_vidle_user_power_release_by_gce(DISP_VIDLE_USER_DISP_DPC_CFG, mtk_crtc_state->cmdq_handle);

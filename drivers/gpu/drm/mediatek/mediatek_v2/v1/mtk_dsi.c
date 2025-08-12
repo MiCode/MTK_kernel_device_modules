@@ -13940,6 +13940,11 @@ static void mtk_dsi_dy_fps_cmdq_cb(struct cmdq_cb_data data)
 		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
 	}
 done:
+	if (drm_crtc_index(cb_data->crtc) == 0 && priv &&
+		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_VDO_PANEL) &&
+		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_FULL_SCENARIO)) {
+		mtk_vidle_start_timer(cb_data->crtc, 30);
+	}
 	cmdq_pkt_destroy(cb_data->cmdq_handle);
 	kfree(cb_data);
 }
@@ -14000,11 +14005,7 @@ static void mtk_dsi_vdo_timing_change(struct mtk_dsi *dsi,
 	if (index == 0 &&
 		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_VDO_PANEL) &&
 		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_FULL_SCENARIO)) {
-		CRTC_MMP_MARK(0, leave_vidle, 0xd51, 0);
-		if (mtk_vidle_is_ff_enabled()) {
-			mtk_vidle_config_ff(false);
-			usleep_range(500, 550);
-		}
+		mtk_vidle_get_timer();
 	}
 
 	if (fps_chg_index & MODE_DSI_CLK) {
