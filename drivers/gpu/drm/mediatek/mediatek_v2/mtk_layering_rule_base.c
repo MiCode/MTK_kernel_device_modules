@@ -77,6 +77,7 @@ static bool have_gpu_cached;
 static int last_fbt_weight;
 
 static DEFINE_MUTEX(layering_info_lock);
+static DEFINE_MUTEX(layering_rule_lock);
 
 #define DISP_MML_LAYER_LIMIT 1
 #define DISP_LAYER_RULE_MAX_NUM 1024
@@ -5704,9 +5705,11 @@ int mtk_layering_rule_ioctl(struct drm_device *dev, void *data,
 	struct drm_mtk_layering_info *disp_info_user = data;
 	int ret;
 
+	mutex_lock(&layering_rule_lock);
 	ret = layering_rule_start(disp_info_user, 0, dev);
 	if (ret < 0)
 		DDPPR_ERR("layering_rule_start error:%d\n", ret);
+	mutex_unlock(&layering_rule_lock);
 
 	return 0;
 }
