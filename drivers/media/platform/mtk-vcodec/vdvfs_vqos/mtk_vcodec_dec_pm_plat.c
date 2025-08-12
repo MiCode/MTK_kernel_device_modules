@@ -97,7 +97,6 @@ static bool mtk_dec_tput_init(struct mtk_vcodec_dev *dev)
 		vdec_dvfs_params_checklist[VDEC_DVFS_CHECKLIST_THROUGHPUT_NORMAL_MAX] = 1;
 
 	dev->vdec_dvfs_params.codec_type = MTK_INST_DECODER;
-	dev->vdec_dvfs_params.suspend_min_freq = 1; // to request the minimal freq.
 	dev->vdec_dvfs_params.min_freq = nmin;
 	dev->vdec_dvfs_params.normal_max_freq = nmax;
 	dev->vdec_dvfs_params.allow_oc = 0;
@@ -455,7 +454,6 @@ void mtk_prepare_vdec_emi_bw(struct mtk_vcodec_dev *dev)
 	} else
 		vdec_dvfs_params_checklist[VDEC_DVFS_CHECKLIST_THROUGHPUT_NORMAL_MAX] = 1;
 
-	dev->vdec_dvfs_params.suspend_min_freq = 1; // to request the minimal freq.
 	dev->vdec_dvfs_params.min_freq = nmin;
 	dev->vdec_dvfs_params.normal_max_freq = nmax;
 
@@ -698,7 +696,7 @@ void mtk_vdec_dvfs_begin_frame(struct mtk_vcodec_ctx *ctx, int hw_id)
 	struct mtk_vcodec_dev *dev = ctx->dev;
 	u8 orig = 0;
 	int next_freq, cur_freq = dev->vdec_dvfs_params.cur_freq;
-	bool pwr_on = false;
+	bool pwr_on;
 
 	mtk_vdec_dvfs_check_boost(ctx);
 
@@ -730,7 +728,7 @@ void mtk_vdec_dvfs_begin_frame(struct mtk_vcodec_ctx *ctx, int hw_id)
 
 	if (dev->vdec_dvfs_params.frame_need_update) {
 		mtk_vcodec_dvfs_qos_log(false, "[VDEC] f_begin freq %u", next_freq);
-		set_vdec_opp(ctx->dev, next_freq);
+		set_vdec_opp(ctx->dev, ctx->dev->vdec_dvfs_params.target_freq);
 	}
 }
 
@@ -745,7 +743,7 @@ void mtk_vdec_dvfs_end_frame(struct mtk_vcodec_ctx *ctx, int hw_id)
 	struct mtk_vcodec_dev *dev = ctx->dev;
 	u8 orig = 0;
 	int cur_freq = dev->vdec_dvfs_params.cur_freq;
-	bool pwr_off = false;
+	bool pwr_on;
 
 	/* Adjust freq in AP: need to define regulator or mmdvfs_clk in dts*/
 	if (dev->vdec_reg == 0 && dev->vdec_mmdvfs_clk == 0)
@@ -762,17 +760,16 @@ void mtk_vdec_dvfs_end_frame(struct mtk_vcodec_ctx *ctx, int hw_id)
 	if (dev->vdec_dvfs_params.lock_cnt[hw_id] > 0)
 		dev->vdec_dvfs_params.lock_cnt[hw_id]--;
 
-	pwr_off = (dev->vdec_dvfs_params.version == 2) ?
+	pwr_on = (dev->vdec_dvfs_params.version == 2) ?
 		(orig ^ (dev->vdec_dvfs_params.lock_cnt[0] | dev->vdec_dvfs_params.lock_cnt[1])) :
 		(orig ^ dev->vdec_dvfs_params.lock_cnt[0]);
 
 	dev->vdec_dvfs_params.frame_need_update =
-		(cur_freq != dev->vdec_dvfs_params.suspend_min_freq) && pwr_off;
+		(cur_freq != dev->vdec_dvfs_params.min_freq) && !pwr_on;
 
 	if (dev->vdec_dvfs_params.frame_need_update) {
-		mtk_vcodec_dvfs_qos_log(false, "[VDEC] f_end freq (set 1 == set min_freq) %u",
-			dev->vdec_dvfs_params.suspend_min_freq);
-		set_vdec_opp(dev, dev->vdec_dvfs_params.suspend_min_freq);
+		mtk_vcodec_dvfs_qos_log(false, "[VDEC] f_end freq %u", dev->vdec_dvfs_params.min_freq);
+		set_vdec_opp(dev, dev->vdec_dvfs_params.min_freq);
 	}
 }
 
