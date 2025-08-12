@@ -57,6 +57,9 @@ struct loom_render_info {
 	unsigned long long queue_end_ts;
 	struct hlist_head active_list;
 	struct list_head lc_active_list;
+
+	int q_cnt; // workaround for minchao app hang
+
 	// do we need to save queue ts?
 };
 

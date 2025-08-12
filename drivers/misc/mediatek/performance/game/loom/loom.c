@@ -11,11 +11,14 @@
 #include "loom_loading_ctrl.h"
 
 #define DEFAULT_LOOM_UPDATE_LIST_PERIOD NSEC_PER_SEC
+#define LOOM_WORKAROUND_SKIP_CNT 50
 
 static int fi_cb_is_registerd;
 static int loom_select_is_set;
 static int loom_flt_is_set;
 static int update_active_list_period;
+static int loom_early_bypass; // workaround for minchao
+
 static struct kobject *loom_kobj;
 static int loom_disable_fpsgo_passive_mode;
 
@@ -394,6 +397,20 @@ void fpsgo_loom_frame_info_cb(unsigned long cmd, struct render_frame_info *iter)
 	if (!info)
 		goto out;
 
+	if (loom_early_bypass && info->q_cnt < LOOM_WORKAROUND_SKIP_CNT) {
+		/*
+		 * This is the workaround for minchao app hang.
+		 * if we affinity Gamethread at the beggining of game launch,
+		 * it will fail to fork RHIthread somehow (maybe caused by game logic).
+		 * We skip the first few frames and take control after RHIthread is forked.
+		 *
+		 * This is a workaround solution. The correct solution should be telling
+		 * minchao studio to solve this bug.
+		 */
+		info->q_cnt++;
+		goto out;
+	}
+
 	info->queue_end_ts = game_get_time();
 	info->pid = iter->pid;
 	info->buffer_id = iter->buffer_id;
@@ -639,6 +656,47 @@ out:
 
 static KOBJ_ATTR_RW(loom_disable_fpsgo_passive_mode);
 
+static ssize_t loom_early_bypass_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	int arg = -1;
+
+	loom_render_lock();
+	arg = loom_early_bypass;
+	loom_render_unlock();
+	return scnprintf(buf, PAGE_SIZE, "%d\n", arg);
+}
+
+static ssize_t loom_early_bypass_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+	char *acBuffer = NULL;
+	int arg;
+
+	acBuffer = kcalloc(FI_SYSFS_MAX_BUFF_SIZE, sizeof(char), GFP_KERNEL);
+	if (!acBuffer)
+		goto out;
+
+	if ((count > 0) && (count < FI_SYSFS_MAX_BUFF_SIZE)) {
+		if (scnprintf(acBuffer, FI_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
+			if (kstrtoint(acBuffer, 0, &arg) != 0)
+				goto out;
+
+			if (arg >=0 && arg <= 1) {
+				loom_render_lock();
+				loom_early_bypass = arg;
+				loom_render_unlock();
+			}
+		}
+	}
+out:
+	kfree(acBuffer);
+	return count;
+}
+static KOBJ_ATTR_RW(loom_early_bypass);
+
 static ssize_t loom_enable_by_process_show(struct kobject *kobj,
 	struct kobj_attribute *attr, char *buf)
 {
@@ -840,6 +898,7 @@ void loom_exit(void)
 	game_sysfs_remove_file(loom_kobj, &kobj_attr_loom_enable_by_process);
 	game_sysfs_remove_file(loom_kobj, &kobj_attr_loom_task_cfg);
 	game_sysfs_remove_file(loom_kobj, &kobj_attr_loom_disable_fpsgo_passive_mode);
+	game_sysfs_remove_file(loom_kobj, &kobj_attr_loom_early_bypass);
 }
 
 /* TODO */
@@ -850,6 +909,7 @@ int loom_init(void)
 		game_sysfs_create_file(loom_kobj, &kobj_attr_loom_enable_by_process);
 		game_sysfs_create_file(loom_kobj, &kobj_attr_loom_task_cfg);
 		game_sysfs_create_file(loom_kobj, &kobj_attr_loom_disable_fpsgo_passive_mode);
+		game_sysfs_create_file(loom_kobj, &kobj_attr_loom_early_bypass);
 	}
 	init_loom_loading_ctrl();
 	// Todo: create file node

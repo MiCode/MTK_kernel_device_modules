@@ -329,6 +329,7 @@ struct loom_render_info *loom_search_add_render_info(int tgid, int add)
 	iter->tgid = tgid;
 	iter->pid = 0;
 	iter->buffer_id = 0;
+	iter->q_cnt = 0;
 	iter->target_fps = 0;
 	iter->last_update_ts = 0;
 	INIT_HLIST_HEAD(&iter->active_list);
