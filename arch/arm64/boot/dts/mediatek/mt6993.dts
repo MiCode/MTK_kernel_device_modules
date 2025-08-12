@@ -189,7 +189,7 @@
 		oddmr2 = &disp_oddmr2;
 		dbi-count0 = &disp_dbi_count0;
 		mdp-rsz0 = &disp_rsz0;
-		mdp-rsz6 = &disp_rsz1;
+		mdp-rsz7 = &disp_rsz1;
 		postmask0 = &disp_postmask0;
 		postmask2 = &disp_postmask1;
 		mdp-rsz2 = &ovl0_rsz0;
