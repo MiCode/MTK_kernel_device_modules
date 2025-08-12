@@ -431,7 +431,8 @@ static void mtk_dsc1_config(struct mtk_ddp_comp *comp,
 
 	bit_per_pixel = dsc_params->bit_per_pixel;
 	bit_per_channel = dsc_params->bit_per_channel;
-	line_buf_depth = dsc_params->bit_per_channel + 1;
+	line_buf_depth = (dsc_param_load_mode != 1) ?
+		dsc_params->dsc_line_buf_depth : dsc_params->bit_per_channel + 1;
 
 	if (dsc_params->enable == 1) {
 		DDPINFO("%s, w:%d, h:%d, slice_mode:%d,slice(%d,%d),bpp:%d\n",
@@ -621,8 +622,10 @@ static void mtk_dsc1_config(struct mtk_ddp_comp *comp,
 		else
 			reg_val |= (dsc_params->bit_per_pixel << 8);
 
-		bp_enable = 1;
 		reg_val |= (dsc_params->rct_on<< 18);
+
+		bp_enable = (dsc_param_load_mode != 1) ?
+			dsc_params->bp_enable : 1;
 		reg_val |= (bp_enable << 19);
 
 		mtk_ddp_write_relaxed(comp,	reg_val,
@@ -1048,7 +1051,8 @@ static void mtk_dsc_config(struct mtk_ddp_comp *comp,
 
 	bit_per_pixel = dsc_params->bit_per_pixel;
 	bit_per_channel = dsc_params->bit_per_channel;
-	line_buf_depth = dsc_params->bit_per_channel + 1;
+	line_buf_depth = (dsc_param_load_mode != 1) ?
+		dsc_params->dsc_line_buf_depth : dsc_params->bit_per_channel + 1;
 
 	if (dsc_params->enable == 1) {
 		DDPINFO("%s, w:%d, h:%d, slice_mode:%d,slice(%d,%d),bpp:%d\n",
@@ -1238,8 +1242,10 @@ static void mtk_dsc_config(struct mtk_ddp_comp *comp,
 		else
 			reg_val |= (dsc_params->bit_per_pixel << 8);
 
-		bp_enable = 1;
 		reg_val |= (dsc_params->rct_on<< 18);
+
+		bp_enable = (dsc_param_load_mode != 1) ?
+			dsc_params->bp_enable : 1;
 		reg_val |= (bp_enable << 19);
 
 		mtk_ddp_write_relaxed(comp,	reg_val,
