@@ -122,8 +122,8 @@ void loom_clear_loom_attr(struct hlist_head *head)
 	INIT_HLIST_HEAD(head);
 }
 
-/* use for delete loom lc active list */
-static void loom_clear_loading_ctrl_list(struct list_head *head)
+/* use for delete or reset loom lc active list */
+void loom_clear_loading_ctrl_list(struct list_head *head)
 {
 	struct loom_loading_ctrl *iter = NULL, *tmp = NULL;
 
@@ -330,8 +330,10 @@ struct loom_render_info *loom_search_add_render_info(int tgid, int add)
 	iter->pid = 0;
 	iter->buffer_id = 0;
 	iter->q_cnt = 0;
-	iter->target_fps = 0;
 	iter->last_update_ts = 0;
+	iter->queue_end_ts = 0;
+	iter->thermal_bypass = 0;
+	iter->last_thermal_check_ts = 0;
 	INIT_HLIST_HEAD(&iter->active_list);
 	INIT_LIST_HEAD(&iter->lc_active_list);
 
