@@ -18903,8 +18903,15 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		apu_power_throttling: apu-power-throttling {
 			compatible = "mediatek,apu-power-throttling";
 			lbat-max-level = <2>;
+			lbat-max-tb-num = <3>;
 			lbat-limit-opp-lv1 = <0>;
 			lbat-limit-opp-lv2 = <0>;
+
+			lbat-limit-opp-tb1-lv1 = <1>;
+			lbat-limit-opp-tb1-lv2 = <1>;
+
+			lbat-limit-opp-tb2-lv1 = <10>;
+			lbat-limit-opp-tb2-lv2 = <10>;
 
 			oc-max-level = <2>;
 			oc-limit-opp-lv1 = <0>;
@@ -19129,8 +19136,15 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		es_apu_power_throttling: es-apu-power-throttling {
 			compatible = "mediatek,es-apu-power-throttling";
 			lbat-max-level = <2>;
+			lbat-max-tb-num = <3>;
 			lbat-limit-opp-lv1 = <0>;
 			lbat-limit-opp-lv2 = <0>;
+
+			lbat-limit-opp-tb1-lv1 = <1>;
+			lbat-limit-opp-tb1-lv2 = <1>;
+
+			lbat-limit-opp-tb2-lv1 = <10>;
+			lbat-limit-opp-tb2-lv2 = <10>;
 
 			oc-max-level = <2>;
 			oc-limit-opp-lv1 = <0>;
