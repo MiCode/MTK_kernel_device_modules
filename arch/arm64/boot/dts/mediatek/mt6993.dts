@@ -18862,6 +18862,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 						<2 2 2>; //boot temperature stage 2
 			bootup-temperature-stage-threshold = <0 (-10)>;
 			bootup-voltage-threshold = <3700 3500>;
+			bootup-delay-release-time = <10>;
 			limit-freq-bootmode0-lv1 = <2200000 28000000 3000000>;
 			limit-freq-bootmode0-lv2 = <2200000 2200000 2200000>;
 
@@ -19091,6 +19092,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 						<2 2 2>; //boot temperature stage 2
 			bootup-temperature-stage-threshold = <0 (-10)>;
 			bootup-voltage-threshold = <3700 3500>;
+			bootup-delay-release-time = <10>;
 			limit-freq-bootmode0-lv1 = <2200000 28000000 3000000>;
 			limit-freq-bootmode0-lv2 = <2200000 2200000 2200000>;
 		};
