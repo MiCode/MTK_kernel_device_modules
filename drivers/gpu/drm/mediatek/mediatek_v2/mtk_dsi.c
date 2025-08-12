@@ -2615,6 +2615,7 @@ static int mtk_dsi_poweron(struct mtk_dsi *dsi)
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 	int ret;
 	struct mtk_mipi_tx *mipi_tx = phy_get_drvdata(dsi->phy);
+	struct mtk_panel_ext *panel_ext = dsi->ext;
 
 	DDPDBG("%s+\n", __func__);
 
@@ -2629,6 +2630,14 @@ static int mtk_dsi_poweron(struct mtk_dsi *dsi)
 		priv = dsi->master_dsi->encoder.dev->dev_private;
 	else
 		return -1;
+
+	if (dsi->panel) {
+		if (panel_ext && panel_ext->funcs && panel_ext->funcs->prepare_power) {
+			ret = panel_ext->funcs->prepare_power(dsi->panel);
+			if (ret < 0)
+				DRM_ERROR("failed to prepare power the panel\n");
+		}
+	}
 
 	ret = mtk_dsi_set_data_rate(dsi);
 	if (ret < 0) {
@@ -5266,6 +5275,8 @@ static void mtk_dsi_poweroff(struct mtk_dsi *dsi)
 {
 	DDPDBG("%s +\n", __func__);
 #ifndef CONFIG_FPGA_EARLY_PORTING
+	struct mtk_panel_ext *panel_ext = dsi->ext;
+	int ret;
 
 	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
 		if (dsi->clk_refcnt == 0) {
@@ -5295,6 +5306,15 @@ static void mtk_dsi_poweroff(struct mtk_dsi *dsi)
 
 		phy_power_off(dsi->phy);
 		pm_runtime_put_sync(dsi->host.dev);
+	}
+
+	if (dsi->panel) {
+		if (panel_ext && panel_ext->funcs &&
+			panel_ext->funcs->unprepare_power) {
+			ret = panel_ext->funcs->unprepare_power(dsi->panel);
+			if (ret < 0)
+				DRM_ERROR("failed to unprepare power the panel\n");
+		}
 	}
 #endif
 	DDPDBG("%s -\n", __func__);

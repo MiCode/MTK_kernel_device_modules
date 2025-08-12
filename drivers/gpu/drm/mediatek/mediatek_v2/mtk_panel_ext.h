@@ -747,6 +747,8 @@ struct mtk_panel_funcs {
 			void *handle, unsigned int flag);
 	int (*get_virtual_heigh)(void);
 	int (*get_virtual_width)(void);
+	int (*prepare_power)(struct drm_panel *panel);
+	int (*unprepare_power)(struct drm_panel *panel);
 #if IS_ENABLED(CONFIG_ENABLE_SERDES_HOTPLUG)
 	int (*get_link_status)(struct drm_panel *panel);
 #endif
