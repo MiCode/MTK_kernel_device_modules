@@ -3110,7 +3110,136 @@ int mtk_drm_setbacklight_at_te(struct drm_crtc *crtc, unsigned int level,
 	return ret;
 }
 
+int _mtk_drm_dsi_cmd_test(struct drm_crtc *crtc, unsigned int level,
+	unsigned int panel_ext_param, unsigned int cfg_flag, unsigned int lock)
+{
+	struct mtk_drm_crtc *mtk_crtc = NULL;
+	struct cmdq_pkt *cmdq_handle;
+	struct mtk_ddp_comp *comp = NULL;
+	struct mtk_cmdq_cb_data *cb_data;
+	bool is_frame_mode;
+	int index = 0;
+	int ret = 0;
+	struct mtk_drm_private *priv = NULL;
+	struct mtk_panel_params *panel_ext = NULL;
 
+	if (!crtc || !crtc->dev) {
+		DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
+		return -EINVAL;
+	}
+	index = drm_crtc_index(crtc);
+	priv = crtc->dev->dev_private;
+	if (!priv) {
+		DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
+		return -EINVAL;
+	}
+	panel_ext = mtk_drm_get_lcm_ext_params(crtc);
+
+	mtk_crtc = to_mtk_crtc(crtc);
+	if (!mtk_crtc) {
+		DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
+		return -EINVAL;
+	}
+
+	CRTC_MMP_EVENT_START(index, dsi_cmd_test, (unsigned long)crtc,
+			level);
+
+	if (lock)
+		DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
+
+	if (crtc->state == NULL){
+		DDPINFO("Sleep State set backlight stop --crtc not ebable\n");
+		CRTC_MMP_EVENT_END(index, dsi_cmd_test, 0, 0);
+		if (lock)
+			DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+		return -EINVAL;
+	}
+	comp = mtk_ddp_comp_request_output(mtk_crtc);
+
+	if (!(mtk_crtc->enabled)) {
+		DDPINFO("Sleep State set backlight stop --crtc not ebable\n");
+		CRTC_MMP_EVENT_END(index, dsi_cmd_test, 0, 1);
+		if (lock)
+			DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+		return -EINVAL;
+	}
+
+	if (!comp) {
+		DDPINFO("%s no output comp\n", __func__);
+		CRTC_MMP_EVENT_END(index, dsi_cmd_test, 0, 2);
+		if (lock)
+			DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+		return -EINVAL;
+	}
+
+	if (unlikely(!panel_ext)) {
+		DDPPR_ERR("%s error:can't find panel_ext handle\n", __func__);
+		CRTC_MMP_EVENT_END(index, dsi_cmd_test, 0, 3);
+		if (lock)
+			DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+		return -EINVAL;
+	}
+
+	mtk_drm_idlemgr_kick(__func__, crtc, 0);
+
+	cb_data = kmalloc(sizeof(*cb_data), GFP_KERNEL);
+	if (!cb_data) {
+		if (lock)
+			DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+		DDPPR_ERR("cb data creation failed\n");
+		CRTC_MMP_EVENT_END(index, dsi_cmd_test, 0, 4);
+		return -EINVAL;
+	}
+
+	is_frame_mode = mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base);
+	if (is_frame_mode)
+		cmdq_handle = cmdq_pkt_create(mtk_crtc->gce_obj.client[CLIENT_CFG]);
+	else
+		cmdq_handle = cmdq_pkt_create( mtk_crtc->gce_obj.client[CLIENT_DSI_CFG]);
+
+	if (!cmdq_handle) {
+		DDPPR_ERR("%s:%d NULL cmdq handle\n", __func__, __LINE__);
+		if (lock)
+			DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+		CRTC_MMP_EVENT_END(index, dsi_cmd_test, 0, 5);
+		return -EINVAL;
+	}
+
+	if (mtk_crtc_with_sub_path(crtc, mtk_crtc->ddp_mode))
+		mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle,
+			DDP_SECOND_PATH, 0);
+	else
+		mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle,
+			DDP_FIRST_PATH, 0);
+
+	cmdq_pkt_clear_event(cmdq_handle, mtk_crtc->gce_obj.event[EVENT_STREAM_BLOCK]);
+	mtk_use_cabc_event(cmdq_handle, mtk_crtc, WAIT_AND_CLEAR_OPT, __LINE__);
+
+	if (cfg_flag & (0x1 << LP_MODE_TEST)) {
+
+		DDPINFO("%s cfg_flag = %d,level=%d\n", __func__, cfg_flag, level);
+		CRTC_MMP_MARK(index, dsi_cmd_test, cmdq_handle, cfg_flag);
+		if (comp && comp->funcs && comp->funcs->io_cmd)
+			comp->funcs->io_cmd(comp, cmdq_handle, DSI_SET_BL_LP_TEST, &level);
+	}
+	mtk_use_cabc_event(cmdq_handle, mtk_crtc, SET_OPT, __LINE__);
+	cmdq_pkt_set_event(cmdq_handle, mtk_crtc->gce_obj.event[EVENT_STREAM_BLOCK]);
+
+	cb_data->crtc = crtc;
+	cb_data->cmdq_handle = cmdq_handle;
+
+	if (cmdq_pkt_flush_threaded(cmdq_handle, bl_cmdq_cb, cb_data) < 0) {
+		DDPPR_ERR("failed to flush bl_cmdq_cb\n");
+		ret = -EINVAL;
+	}
+	if (lock)
+		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+
+	CRTC_MMP_EVENT_END(index, dsi_cmd_test, (unsigned long)crtc,
+			level);
+
+	return ret;
+}
 
 int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level,
 	unsigned int panel_ext_param, unsigned int cfg_flag, unsigned int lock)

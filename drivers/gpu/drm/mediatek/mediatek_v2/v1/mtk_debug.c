@@ -696,6 +696,30 @@ int __mtkfb_set_backlight_level(unsigned int level, unsigned int panel_ext_param
 	return ret;
 }
 
+int mtk_drm_dsi_cmd_test(unsigned int level, unsigned int panel_ext_param,
+			       unsigned int cfg_flag)
+{
+	struct drm_crtc *crtc;
+	int ret = 0;
+
+	if (IS_ERR_OR_NULL(drm_dev)) {
+		DDPPR_ERR("%s error, invalid drm dev\n", __func__);
+		return -EINVAL;
+	}
+
+	/* this debug cmd only for crtc0 */
+	crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
+				typeof(*crtc), head);
+	if (IS_ERR_OR_NULL(crtc)) {
+		DDPPR_ERR("%s failed to find crtc\n", __func__);
+		return -EINVAL;
+	}
+
+	ret = _mtk_drm_dsi_cmd_test(crtc, level, panel_ext_param, cfg_flag, 1);
+
+	return ret;
+}
+
 int mtkfb_set_backlight_level(unsigned int level, unsigned int panel_ext_param,
 				 unsigned int cfg_flag)
 {
@@ -3587,6 +3611,18 @@ static void process_dbg_opt(const char *opt)
 		msleep(20);
 		enable = 1;
 		comp->funcs->io_cmd(comp, NULL, LCM_RESET, &enable);
+	} else if (strncmp(opt, "mtk_dsi_cmd_test:", 17) == 0) {
+		unsigned int level;
+		int ret;
+
+		ret = sscanf(opt, "mtk_dsi_cmd_test:%u\n", &level);
+		if (ret != 1) {
+			DDPPR_ERR("%d error to parse cmd %s\n",
+				__LINE__, opt);
+			return;
+		}
+
+		mtk_drm_dsi_cmd_test(level, 0, 0x1 << LP_MODE_TEST);
 	} else if (strncmp(opt, "backlight:", 10) == 0) {
 		unsigned int level;
 		int ret;

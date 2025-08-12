@@ -1810,6 +1810,39 @@ static int jdi_setbacklight_cmdq(void *dsi, dcs_write_gce cb, void *handle,
 	return 0;
 }
 
+int jdi_setbacklight_cmdq_test_v2(void *dsi_drv, mtk_dsi_ddic_cmd cb,
+		void *handle, unsigned int param, struct mtk_dsi_cmd_option *cmd_opt)
+{
+	struct mipi_dsi_msg bl_tb0_cmd = { 0 };
+	static char bl_tb0_test[] = {0x51, 0x0D, 0xBB};
+	static unsigned int mapped_level_test;
+
+	if (param > 511)
+		param = 511;
+
+	//Adjust dim speed 20241212 start
+	if(param <= 255)
+		mapped_level_test = param * 3515 / 255;
+	else if (param > 255 && param <= 511)
+		mapped_level_test = 3515 + (param - 256) * (4095-3515) / 255;
+
+	bl_tb0_test[1] = ((mapped_level_test >> 8) & 0x0f);
+	bl_tb0_test[2] = (mapped_level_test & 0xff);
+
+	bl_tb0_cmd.tx_buf = bl_tb0_test;
+	bl_tb0_cmd.tx_len = 3;
+	struct mtk_dsi_cmd_msg bl_tb0_msg = {
+		.cmd_num = 1,
+		.transfer_mode = PACKET_LP_MODE,
+		.cmd_msg = &bl_tb0_cmd,
+	};
+
+	cb(dsi_drv, handle, cmd_opt, &bl_tb0_msg);
+	pr_info("[LCM] %s level = %d, mapped_level = %d\n", __func__, param, mapped_level_test);
+
+	return 0;
+}
+
 struct drm_display_mode *get_mode_by_id(struct drm_connector *connector,
 	unsigned int mode)
 {
@@ -2157,6 +2190,7 @@ static struct mtk_panel_funcs ext_funcs = {
 	.panel_deinit = lcm_panel_deinit,
 	.panel_init_v2 = lcm_panel_init_v2,
 	.panel_deinit_v2 = lcm_panel_deinit_v2,
+	.mtk_dsi_cmd_test_lp_v2 = jdi_setbacklight_cmdq_test_v2,
 };
 
 #endif

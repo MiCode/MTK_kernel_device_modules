@@ -30,6 +30,11 @@
 struct mtk_dsi;
 struct cmdq_pkt;
 
+enum dsi_cmd_test {
+	LP_MODE_TEST,
+	TEST_NUM
+};
+
 enum dsi_cmd_verion {
 	DSI_CMD_V1, /* legacy */
 	DSI_CMD_V2,
@@ -875,6 +880,8 @@ struct mtk_panel_funcs {
 		mtk_dsi_ddic_cmd cb, void *handle,
 		unsigned int x, unsigned int y, unsigned int w, unsigned int h,
 		struct mtk_dsi_cmd_option *cmd_opt);
+	int (*mtk_dsi_cmd_test_lp_v2)(void *dsi_drv, mtk_dsi_ddic_cmd cb,
+		void *handle, unsigned int param, struct mtk_dsi_cmd_option *cmd_opt);
 };
 
 void mtk_panel_init(struct mtk_panel_ctx *ctx);

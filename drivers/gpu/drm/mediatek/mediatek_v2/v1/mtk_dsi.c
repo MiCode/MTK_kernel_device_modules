@@ -14993,6 +14993,21 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		}
 	}
 		break;
+	case DSI_SET_BL_LP_TEST:
+	{
+		struct mtk_dsi *dsi = container_of(comp, struct mtk_dsi, ddp_comp);
+
+		panel_ext = mtk_dsi_get_panel_ext(comp);
+		if ((mtk_dsi_cmd_version() == DSI_CMD_V2) && panel_ext &&
+			panel_ext->funcs && panel_ext->funcs->mtk_dsi_cmd_test_lp_v2) {
+			struct mtk_dsi_cmd_option cmd_opt = { 0 };
+
+			cmd_opt.flags = MTK_MIPI_DSI_GCE_INPUT_HANDLE_READY;
+			panel_ext->funcs->mtk_dsi_cmd_test_lp_v2(dsi, mtk_mipi_dsi_cmd, handle,
+					*(int *)params, &cmd_opt);
+		}
+	}
+		break;
 	case DSI_SET_BL_AOD:
 	{
 		struct mtk_dsi *dsi =
