@@ -8436,7 +8436,7 @@ dramc: dramc@10230000 {
 					< 5   0 0>,	/* vcore */
 					< 6 135 0>,	/* barge in */
 					< 7  10 0>,	/* vow dump */
-					< 8  80 0>,	/* vow vendor M */
+					< 8  40 0>,	/* vow vendor M */
 					< 9  43 0>,	/* vow vendor A */
 					<10  22 0>,	/* vow vendor G */
 					<11  20 0>,	/* vow dual mic */
