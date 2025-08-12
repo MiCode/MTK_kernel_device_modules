@@ -1680,9 +1680,9 @@ static void mt6991_set_mtcmos(const u32 subsys, const enum mtk_dpc_mtcmos_mode m
 static void mt6993_set_mtcmos(const u32 subsys, const enum mtk_dpc_mtcmos_mode mode)
 {
 #if IS_ENABLED(CONFIG_MTK_HWCCF)
-	int ret;
+	int ret = 0;
 	bool en = has_cap(DPC_CAP_MTCMOS) ? (mode == DPC_MTCMOS_AUTO ? true : false) : false;
-	u32 value = en ? 0x33 : 0x552;
+	u32 value = 0;
 	u32 mask = dpc_subsys_to_mask(subsys);
 	u32 temp = 0;
 	u16 i = 0;
@@ -1708,12 +1708,27 @@ static void mt6993_set_mtcmos(const u32 subsys, const enum mtk_dpc_mtcmos_mode m
 	 */
 	spin_lock_irqsave(&g_priv->excp_spin_lock, flags);
 
+	if (g_priv->ff_blocked) {
+		/* Only display can unblock, because only display has a debounce mechanism. */
+		if (en && subsys == DPC3_SUBSYS_DISP)
+			g_priv->ff_blocked = false;
+		else
+			en = false;
+
+		dpc_mmp(mtcmos_auto, MMPROFILE_FLAG_PULSE, subsys, (mode << 16) | en);
+	}
+
+	/* Early return if mode is unchanged, or to prevent handover when MTCMOS is off */
+	if (g_priv->mtcmos_cfg[subsys].mode == (enum mtk_dpc_mtcmos_mode)en)
+		goto out;
+
 	if (!(excep_by_xpu & BIT(1))) {
 		ret = readx_poll_timeout_atomic(try_busy_voter, DISP_VIDLE_USER_DISP_DPC_CFG, temp, temp, 1, 2000);
 		if (ret < 0)
 			dpc_hwccf_dump("mmpc_busy_voter idle timeout", DISP_VIDLE_USER_DISP_DPC_CFG);
 	}
 
+	value = en ? 0x33 : 0x552;
 	if (en) {
 		for (i = idx_beg; i < idx_end; i++) {
 			/* release forced vote req, SW_CTRL = 0, must clr before master_en */
@@ -1769,6 +1784,7 @@ static void mt6993_set_mtcmos(const u32 subsys, const enum mtk_dpc_mtcmos_mode m
 
 	writel(BIT(DISP_VIDLE_USER_DISP_DPC_CFG), mmpc_dummy_voter + 0x8);
 
+out:
 	spin_unlock_irqrestore(&g_priv->excp_spin_lock, flags);
 
 	dpc_mmp(mtcmos_auto, MMPROFILE_FLAG_END, subsys, en);
@@ -2089,7 +2105,7 @@ static int dpc_config_v3(const u32 subsys, bool en)
 
 		/* re-link, master_en = 0 */
 		g_priv->set_mtcmos(DPC3_SUBSYS_DISP, (enum mtk_dpc_mtcmos_mode)en);
-		// g_priv->set_mtcmos(DPC3_SUBSYS_MML, (enum mtk_dpc_mtcmos_mode)en);
+		g_priv->set_mtcmos(DPC3_SUBSYS_MML, (enum mtk_dpc_mtcmos_mode)en);
 	}
 
 	if (en && has_cap(DPC_CAP_MMINFRA_PLL) && !is_mminfra_ctrl_by_dpc) {
@@ -3921,13 +3937,18 @@ static int dpc_smi_force_on_callback(struct notifier_block *nb, unsigned long ac
 
 static int dpc_smi_pwr_get_if_in_use(void *data)
 {
+	unsigned long flags;
+
 	if (hwccf_is_enabled(MM_HWCCF,HW_CCF_MTCMOS_GRP_0, HWCCF_VOTE, 18) != 1) {
 		DPCFUNC("disp vcore mtcmos not on");
 		return -1;
 	}
 
 	mtk_vidle_hint_update(VIDLE_HINT_SMI_DUMP);
-	if (g_priv && g_priv->mtcmos_cfg && (g_priv->mtcmos_cfg[DPC3_SUBSYS_DIS1A].mode == DPC_MTCMOS_AUTO)) {
+	if (g_priv) {
+		spin_lock_irqsave(&g_priv->excp_spin_lock, flags);
+		g_priv->ff_blocked = true;
+		spin_unlock_irqrestore(&g_priv->excp_spin_lock, flags);
 		mtk_vidle_config_ff(false);
 		DPCFUNC("disable ff and add debounce");
 	}

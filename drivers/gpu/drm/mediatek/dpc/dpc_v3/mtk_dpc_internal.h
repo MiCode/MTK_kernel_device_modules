@@ -616,7 +616,8 @@ struct mtk_dpc {
 	int mml_irq;
 	resource_size_t dpc_pa;
 	void __iomem *mminfra_hangfree;
-	bool enabled;
+	bool enabled;				/* status of dpc_enable */
+	bool ff_blocked;			/* temp block ff, not allow set_mtcmos(true) when ff_blocked is true */
 	bool vcp_is_alive;
 	bool skip_force_power;
 	spinlock_t skip_force_power_lock;
