@@ -24597,6 +24597,7 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 	mutex_init(&mtk_crtc->cwb_lock);
 	mutex_init(&mtk_crtc->mml_lock);
 	mutex_init(&mtk_crtc->mml_ir_sram.lock);
+	mutex_init(&mtk_crtc->mml_cfg_dc_lock);
 	spin_lock_init(&mtk_crtc->pf_time_lock);
 	mtk_crtc->config_regs = priv->config_regs;
 	mtk_crtc->config_regs_pa = priv->config_regs_pa;

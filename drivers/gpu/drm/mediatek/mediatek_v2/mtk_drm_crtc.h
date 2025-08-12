@@ -1356,6 +1356,7 @@ struct mtk_drm_crtc {
 	struct mml_submit *mml_cfg_pq;
 	struct mtk_mml_cb_para mml_cb;
 	unsigned int *linetime;// ns by mode
+	struct mutex mml_cfg_dc_lock;
 
 	struct mutex mml_lock;	/* protect priv->mml_ctx */
 	atomic_t wait_mml_last_job_is_flushed;

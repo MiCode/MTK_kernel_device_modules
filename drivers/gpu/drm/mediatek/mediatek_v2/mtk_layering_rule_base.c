@@ -4851,6 +4851,7 @@ static void check_is_mml_layer(const int disp_idx,
 			mml_dc_layers = true;
 	}
 
+	DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->mml_cfg_dc_lock, __func__, __LINE__, false);
 	if (mtk_crtc->mml_cfg_dc && mml_dc_layers == false &&
 		!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_FULL_SCENARIO)) {
 		for (i = 0; i < MML_MAX_OUTPUTS; i++)
@@ -4862,6 +4863,7 @@ static void check_is_mml_layer(const int disp_idx,
 			__func__, mtk_crtc->is_mml_dc, c->layer_caps,
 			MTK_MML_DISP_DECOUPLE_LAYER);
 	}
+	DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->mml_cfg_dc_lock, __func__, __LINE__, false);
 
 	if (disp_info->gles_head[disp_idx] != -1) {
 		int adjusted_gles_head = -1;
