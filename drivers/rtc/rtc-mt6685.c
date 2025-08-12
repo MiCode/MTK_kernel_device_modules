@@ -575,6 +575,30 @@ exit:
 	return false;
 }
 
+static u8 get_rtc_ext_status_value(struct mt6685_rtc *rtc)
+{
+	struct nvmem_cell *cell;
+	u8 *buf, data;
+
+	cell = nvmem_cell_get(rtc->rtc_dev->dev.parent, "rtc_status");
+	if (IS_ERR(cell)) {
+		dev_notice(rtc->rtc_dev->dev.parent, "Failed to get con cell = %p\n", cell);
+		return 0;
+	}
+
+	buf = nvmem_cell_read(cell, NULL);
+	nvmem_cell_put(cell);
+
+	if (IS_ERR(buf)) {
+		dev_notice(rtc->rtc_dev->dev.parent, "Failed to read con cell\n");
+		return 0;
+	}
+	data = *buf;
+	kfree(buf);
+
+	return data;
+}
+
 static void set_rtc_ext_status_value(struct mt6685_rtc *rtc, u8 val)
 {
 	struct nvmem_cell *cell;
@@ -762,6 +786,7 @@ static irqreturn_t mtk_rtc_irq_handler_thread(int irq, void *data)
 #ifdef SUPPORT_PWR_OFF_ALARM
 	bool pwron_alarm = false;
 	struct rtc_time nowtm, tm;
+	u8 ext_rtc_con = 0;
 #endif
 
 	mutex_lock(&rtc->lock);
@@ -783,6 +808,15 @@ static irqreturn_t mtk_rtc_irq_handler_thread(int irq, void *data)
 	mtk_rtc_reset_bbpu_alarm_status(rtc);
 
 #ifdef SUPPORT_PWR_OFF_ALARM
+	if (rtc->ext_sts_support) {
+		ext_rtc_con = get_rtc_ext_con_value(rtc);
+		set_rtc_ext_con_value(rtc, ext_rtc_con | (0x80));
+		udelay(150);
+		set_rtc_ext_status_value(rtc, 0xC);
+		ext_rtc_con = get_rtc_ext_status_value(rtc);
+		dev_notice(rtc->rtc_dev->dev.parent, "ext_rtc_status= %x\n", ext_rtc_con);
+	}
+
 	pwron_alarm = mtk_rtc_is_pwron_alarm(rtc, &nowtm, &tm);
 	nowtm.tm_year += RTC_MIN_YEAR;
 	tm.tm_year += RTC_MIN_YEAR;
@@ -1622,8 +1656,14 @@ static void mtk_rtc_shutdown(struct platform_device *pdev)
 	is_pwron_alarm = mtk_rtc_is_pwron_alarm(rtc,
 				&rtc_time_now, &rtc_time_alarm);
 
-	if (rtc->ext_sts_support)
+	if (rtc->ext_sts_support) {
+		ext_rtc_con = get_rtc_ext_con_value(rtc);
+		set_rtc_ext_con_value(rtc, ext_rtc_con | (0x80));
+		udelay(150);
 		set_rtc_ext_status_value(rtc, 0xC); /* Clear ext alarm status */
+		ext_rtc_con = get_rtc_ext_status_value(rtc);
+		dev_notice(rtc->rtc_dev->dev.parent, "ext_rtc_status= %x\n", ext_rtc_con);
+	}
 
 	if (is_pwron_alarm) {
 		rtc_time_now.tm_year += RTC_MIN_YEAR_OFFSET;
