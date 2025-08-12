@@ -139,7 +139,7 @@ static int lvsys_thd_enable;
 static int vbat_thd_enable;
 unsigned int pmic_level_num;
 bool lvsys_lv1_trigger;
-unsigned int exec_thl_enable_pct;
+unsigned int *exec_thl_enable_pct;
 
 static unsigned int __used KTF_check_vbat(void)
 {
@@ -1287,14 +1287,6 @@ static void psy_handler(struct work_struct *work)
 	temp = val.intval; // because of battery bug, remove me if battery driver fix
 #endif
 
-	ret = power_supply_get_property(psy, POWER_SUPPLY_PROP_CAPACITY, &val);
-	if (ret)
-		return;
-	soc = val.intval;
-	if (soc < exec_thl_enable_pct)
-		lbat_data->exec_thl_enable = true;
-	else
-		lbat_data->exec_thl_enable = false;
 
 	lbat_data->lbat_mbrain_info.bat_temp = temp;
 	temp_stage = lbat_data->temp_cur_stage;
@@ -1353,6 +1345,19 @@ static void psy_handler(struct work_struct *work)
 		lbat_data->aging_cur_stage = aging_stage;
 		lbat_data->lvsys_aging_cur_stage = lvsys_aging_stage;
 	}
+
+	ret = power_supply_get_property(psy, POWER_SUPPLY_PROP_CAPACITY, &val);
+	if (ret)
+		return;
+	soc = val.intval;
+	if (exec_thl_enable_pct != NULL &&
+		soc < exec_thl_enable_pct[lbat_data->temp_cur_stage])
+		lbat_data->exec_thl_enable = true;
+	else if (exec_thl_enable_pct == NULL)
+		lbat_data->exec_thl_enable = true;
+	else
+		lbat_data->exec_thl_enable = false;
+
 }
 
 static int lvsys_notifier_call(struct notifier_block *this,
@@ -2164,10 +2169,19 @@ static int low_battery_throttling_probe(struct platform_device *pdev)
 		lvsys_lv1_trigger = false;
 	}
 
-	ret = of_property_read_u32(np, "lbat-thl-enable-pct", &exec_thl_enable_pct);
-	if (ret) {
-		dev_notice(&pdev->dev, "[%s] Always enable exec_throttle\n", __func__);
-		exec_thl_enable_pct = MAX_INT;
+	exec_thl_enable_pct = NULL;
+	if (of_property_count_u32_elems(np, "lbat-thl-enable-pct") ==
+		(priv->temp_max_stage + 1)) {
+		exec_thl_enable_pct = devm_kmalloc_array(&pdev->dev,
+			priv->temp_max_stage + 1, sizeof(u32), GFP_KERNEL);
+		ret = of_property_read_u32_array(np, "lbat-thl-enable-pct",
+			exec_thl_enable_pct, priv->temp_max_stage + 1);
+		if (ret) {
+			dev_notice(&pdev->dev, "[%s] Always enable exec_throttle\n", __func__);
+			for (i = 0; i < priv->temp_max_stage + 1; i++)
+				exec_thl_enable_pct[i] = MAX_INT;
+
+		}
 	}
 
 	ret = device_create_file(&(pdev->dev),
