@@ -10380,6 +10380,7 @@ static int mtk_oddmr_get_dmr_cfg_data(struct mtk_ddp_comp *comp,
 		ODDMRLOW_LOG("data index=%d\n", index);
 		if (data[index])
 			vfree(data[index]);
+		index++;
 	}
 
 	if(table_log > dmr_cfg_data->table_index.table_byte_num)
@@ -11616,12 +11617,24 @@ static int mtk_oddmr_dmr_binset_init (struct mtk_ddp_comp *comp,
 		oddmr_data->primary_data->dmr_state = ODDMR_RELOAD;
 		//need release previous binset config info
 		for (i = 0; i < dmr_binset_cfg_info->binset_num; i++) {
-			vfree(dmr_binset_cfg_info->binset_list[i].dbv_interval_node);
-			vfree(dmr_binset_cfg_info->binset_list[i].dbv_interval_bin_idx);
+			dmr_binset_cfg_info->binset_list[i].dbv_interval_num = 0;
+			if (dmr_binset_cfg_info->binset_list[i].dbv_interval_node)
+				vfree(dmr_binset_cfg_info->binset_list[i].dbv_interval_node);
+			if (dmr_binset_cfg_info->binset_list[i].dbv_interval_bin_idx)
+				vfree(dmr_binset_cfg_info->binset_list[i].dbv_interval_bin_idx);
 		}
-		if (dmr_binset_cfg_info->remap_params.remap_reduce_offset_num)
+		dmr_binset_cfg_info->binset_num = 0;
+		dmr_binset_cfg_info->binfile_num = 0;
+		dmr_binset_cfg_info->remap_params.remap_gain_target_code = 0;
+		dmr_binset_cfg_info->remap_params.remap_reduce_offset_num = 0;
+		dmr_binset_cfg_info->remap_params.remap_dbv_gain_num = 0;
+		if (dmr_binset_cfg_info->remap_params.remap_reduce_offset_node)
+			vfree(dmr_binset_cfg_info->remap_params.remap_reduce_offset_node);
+		if (dmr_binset_cfg_info->remap_params.remap_reduce_offset_value)
 			vfree(dmr_binset_cfg_info->remap_params.remap_reduce_offset_value);
-		if (dmr_binset_cfg_info->remap_params.remap_dbv_gain_num)
+		if (dmr_binset_cfg_info->remap_params.remap_dbv_gain_node)
+			vfree(dmr_binset_cfg_info->remap_params.remap_dbv_gain_node);
+		if (dmr_binset_cfg_info->remap_params.remap_dbv_gain_value)
 			vfree(dmr_binset_cfg_info->remap_params.remap_dbv_gain_value);
 	}
 
@@ -11641,12 +11654,12 @@ static int mtk_oddmr_dmr_binset_init (struct mtk_ddp_comp *comp,
 		if (!data[index]) {
 			PC_ERR("%s:%d, param buffer alloc fail\n",
 				__func__, __LINE__);
-			return -1;
+			goto fail;
 		}
 		if (copy_from_user(data[index],
 			binset_cfg_info->binset_list[i].dbv_interval_node, size)) {
 			PC_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
-			return -1;
+			goto fail;
 		}
 		dmr_binset_cfg_info->binset_list[i].dbv_interval_node = (uint32_t *)data[index];
 		index++;
@@ -11658,14 +11671,15 @@ static int mtk_oddmr_dmr_binset_init (struct mtk_ddp_comp *comp,
 		if (!data[index]) {
 			PC_ERR("%s:%d, param buffer alloc fail\n",
 				__func__, __LINE__);
-			return -1;
+			goto fail;
 		}
 		if (copy_from_user(data[index],
 			binset_cfg_info->binset_list[i].dbv_interval_bin_idx, size)) {
 			PC_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
-			return -1;
+			goto fail;
 		}
 		dmr_binset_cfg_info->binset_list[i].dbv_interval_bin_idx = (uint32_t *)data[index];
+		index++;
 	}
 
 	if (dmr_binset_cfg_info->remap_params.remap_reduce_offset_num) {
@@ -11674,12 +11688,12 @@ static int mtk_oddmr_dmr_binset_init (struct mtk_ddp_comp *comp,
 		if (!data[index]) {
 			PC_ERR("%s:%d, param buffer alloc fail\n",
 				__func__, __LINE__);
-			return -1;
+			goto fail;
 		}
 		if (copy_from_user(data[index],
 			dmr_binset_cfg_info->remap_params.remap_reduce_offset_node, size)) {
 			PC_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
-			return -1;
+			goto fail;
 		}
 		dmr_binset_cfg_info->remap_params.remap_reduce_offset_node = (uint32_t *)data[index];
 		index++;
@@ -11691,12 +11705,12 @@ static int mtk_oddmr_dmr_binset_init (struct mtk_ddp_comp *comp,
 		if (!data[index]) {
 			PC_ERR("%s:%d, param buffer alloc fail\n",
 				__func__, __LINE__);
-			return -1;
+			goto fail;
 		}
 		if (copy_from_user(data[index],
 			dmr_binset_cfg_info->remap_params.remap_reduce_offset_value, size)) {
 			PC_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
-			return -1;
+			goto fail;
 		}
 		dmr_binset_cfg_info->remap_params.remap_reduce_offset_value = (uint32_t *)data[index];
 		index++;
@@ -11708,12 +11722,12 @@ static int mtk_oddmr_dmr_binset_init (struct mtk_ddp_comp *comp,
 		if (!data[index]) {
 			PC_ERR("%s:%d, param buffer alloc fail\n",
 				__func__, __LINE__);
-			return -1;
+			goto fail;
 		}
 		if (copy_from_user(data[index],
 			dmr_binset_cfg_info->remap_params.remap_dbv_gain_node, size)) {
 			PC_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
-			return -1;
+			goto fail;
 		}
 		dmr_binset_cfg_info->remap_params.remap_dbv_gain_node = (uint32_t *)data[index];
 		index++;
@@ -11725,18 +11739,24 @@ static int mtk_oddmr_dmr_binset_init (struct mtk_ddp_comp *comp,
 		if (!data[index]) {
 			PC_ERR("%s:%d, param buffer alloc fail\n",
 				__func__, __LINE__);
-			return -1;
+			goto fail;
 		}
 		if (copy_from_user(data[index],
 			dmr_binset_cfg_info->remap_params.remap_dbv_gain_value, size)) {
 			PC_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
-			return -1;
+			goto fail;
 		}
 		dmr_binset_cfg_info->remap_params.remap_dbv_gain_value = (uint32_t *)data[index];
 		index++;
 	}
-
 	return 0;
+
+fail:
+	for (i = 0; i < ARRAY_SIZE(data); i++) {
+		if (data[i])
+			vfree(data[i]);
+	}
+	return -1;
 }
 
 static int mtk_oddmr_dmr_init(struct mtk_ddp_comp *comp, struct mtk_drm_dmr_cfg_info *cfg_info)
@@ -11934,7 +11954,7 @@ static int mtk_oddmr_dmr_cus_own_data_init(struct mtk_ddp_comp *comp,
 
 fail:
 	vfree(data);
-	return -EFAULT;
+	return -1;
 }
 
 static int mtk_oddmr_dmr_cus_binset_init(struct mtk_ddp_comp *comp,
@@ -12092,7 +12112,7 @@ fail:
 		if (data[i])
 			vfree(data[i]);
 	}
-	return -EFAULT;
+	return -1;
 }
 
 static int mtk_oddmr_dmr_cus_setting_init(struct mtk_ddp_comp *comp,
@@ -12305,7 +12325,7 @@ fail:
 		if (data[i])
 			vfree(data[i]);
 	}
-	return -EFAULT;
+	return -1;
 }
 
 static int mtk_oddmr_reg_tuning_init(struct mtk_ddp_comp *comp, struct mtk_drm_oddmr_reg_tuning *tuning_reg_info)
@@ -12345,11 +12365,11 @@ static int mtk_oddmr_reg_tuning_init(struct mtk_ddp_comp *comp, struct mtk_drm_o
 		data[index] = vmalloc(size);
 		if (!data[index]) {
 			PC_ERR("%s:%d, param buffer alloc fail\n", __func__, __LINE__);
-			return -1;
+			goto fail;
 		}
 		if (copy_from_user(data[index],	tuning_reg_info->reg_value, size)) {
 			PC_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
-			return -1;
+			goto fail;
 		}
 		reg_tuning_info->reg_value = (uint32_t *)data[index];
 		index++;
@@ -12357,11 +12377,11 @@ static int mtk_oddmr_reg_tuning_init(struct mtk_ddp_comp *comp, struct mtk_drm_o
 		data[index] = vmalloc(size);
 		if (!data[index]) {
 			PC_ERR("%s:%d, param buffer alloc fail\n", __func__, __LINE__);
-			return -1;
+			goto fail;
 		}
 		if (copy_from_user(data[index], tuning_reg_info->reg_addr, size)) {
 			PC_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
-			return -1;
+			goto fail;
 		}
 		reg_tuning_info->reg_addr = (uint32_t *)data[index];
 		index++;
@@ -12369,18 +12389,24 @@ static int mtk_oddmr_reg_tuning_init(struct mtk_ddp_comp *comp, struct mtk_drm_o
 		data[index] = vmalloc(size);
 		if (!data[index]) {
 			PC_ERR("%s:%d, param buffer alloc fail\n", __func__, __LINE__);
-			return -1;
+			goto fail;
 		}
 		if (copy_from_user(data[index], tuning_reg_info->reg_mask, size)) {
 			PC_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
-			return -1;
+			goto fail;
 		}
 		reg_tuning_info->reg_mask = (uint32_t *)data[index];
 		index++;
 	}
 	atomic_set(&oddmr_data->dmr_data.reg_tuning_chg, 1);
-
 	return 0;
+
+fail:
+	for (i = 0; i < ARRAY_SIZE(data); i++) {
+		if (data[i])
+			vfree(data[i]);
+	}
+	return -1;
 }
 
 uint32_t mtk_oddmr_dbi_alpha_blend_int(uint32_t list_num, uint32_t *list_node,
