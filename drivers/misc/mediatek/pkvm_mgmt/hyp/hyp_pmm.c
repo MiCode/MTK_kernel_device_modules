@@ -313,6 +313,46 @@ void hyp_pmm_unsecure_range(u64 pa, u64 size, u8 attr)
 	secure_range(pa, size, attr, false);
 }
 
+static void kvm_secure_pages_common(u32 *ipc, u32 count, u8 attr)
+{
+	u32 i, entry, order, idx;
+	u64 pa;
+	struct pmm_hal *hal;
+
+	for_each_pmm_hal(hal, i) {
+		/* skip cpu hal, only non-cpu for kvm iommu */
+		if (i == 0)
+			continue;
+
+		if (hal->prepare)
+			hal->prepare();
+
+		/* processing for each page from ipc */
+		for (idx = 0; idx < count; idx++) {
+			entry = ipc[idx];
+			order = GET_PMM_ENTRY_ORDER(entry);
+			pa = GET_PMM_ENTRY_PFN(entry) << PAGE_SHIFT;
+			if (attr)
+				hal->secure_v2(pa, order, attr);
+			else
+				hal->unsecure_v2(pa, order, attr);
+		}
+
+		if (hal->sync)
+			hal->sync();
+	}
+}
+
+void hyp_pmm_kvm_secure_pages(u32 *pmm_ipc, u32 count, u8 attr)
+{
+	kvm_secure_pages_common(pmm_ipc, count, attr);
+}
+
+void hyp_pmm_kvm_unsecure_pages(u32 *pmm_ipc, u32 count, u8 attr)
+{
+	kvm_secure_pages_common(pmm_ipc, count, attr);
+}
+
 static int hal_register(void *hal)
 {
 	int i;

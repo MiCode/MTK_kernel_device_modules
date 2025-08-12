@@ -5,6 +5,10 @@
 
 #include <linux/types.h>
 
+#define PMM_MSG_ORDER_SHIFT (24UL)
+#define PMM_MSG_ENTRY(pa, page_order) \
+	((pa >> PAGE_SHIFT) | ((u32)(page_order) << PMM_MSG_ORDER_SHIFT))
+
 struct pmm_hal {
     const char *name;
 

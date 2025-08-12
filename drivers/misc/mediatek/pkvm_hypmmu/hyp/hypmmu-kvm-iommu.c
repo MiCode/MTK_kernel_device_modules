@@ -8,9 +8,12 @@
 #include <kvm/iommu.h>
 #include <linux/arm-smccc.h>
 #include <pkvm_mgmt/iommu.h>
+#include <include/export.h>
 
 #include "include/hypmmu.h"
 #include "include/mtk-iommu.h"
+
+#define DEBUG_KVM_IOMMU 0
 
 static bool snapshot_done;
 
@@ -65,14 +68,66 @@ static void _iotlb_sync(struct kvm_hyp_iommu_domain *domain,
 {
 }
 
+static struct kvm_pmm_ipc percpu_pmm_ipc[MAX_CPUS];
+
 static void _host_stage2_idmap(struct kvm_hyp_iommu_domain *domain,
 				    phys_addr_t start, phys_addr_t end,
 				    int prot)
 {
+	u64 size, idx;
+	u8 order, cpuid;
+	struct kvm_pmm_ipc *percpu;
+
+	/* ignore if it's in mmio */
+	if (prot & IOMMU_MMIO)
+		return;
+	/* skip when snapshot not done */
+	if (!snapshot_done)
+		return;
+
+	size = end - start;
+	order  = get_order(size);
+	cpuid = get_cpu_id();
+	percpu = &percpu_pmm_ipc[cpuid];
+
+	/* gathering pages */
+	idx = percpu->index++;
+	percpu->pmm_ipc[idx] = PMM_MSG_ENTRY(start, order);
+
+#if (DEBUG_KVM_IOMMU >= 2)
+	MOD_PUTS3("host_s2_idmap start end prot", start, end, prot);
+#endif
 }
 
 static void _host_stage2_idmap_complete(bool map)
 {
+	u8 cpuid;
+	struct kvm_pmm_ipc *percpu;
+	u8 attr;
+
+	if (!snapshot_done)
+		return;
+
+	cpuid = get_cpu_id();
+	percpu = &percpu_pmm_ipc[cpuid];
+
+	if (!percpu->index)
+		return;
+
+	if (!map) {
+		attr = HYP_PMM_ATTR_PROT_MEM;
+		hyp_pmm_kvm_secure_pages(&percpu->pmm_ipc[0], percpu->index, attr);
+	} else
+		hyp_pmm_kvm_unsecure_pages(&percpu->pmm_ipc[0], percpu->index, 0);
+
+	//MOD_PUTS2("cpuid idx", cpuid, idx);
+	percpu->index = 0;
+
+#if (DEBUG_KVM_IOMMU)
+	//MOD_PUTS1("host_s2_idmap_complete map", map);
+	//if (!map)
+	//	MOD_PUTS1("host_s2_idmap_complete unmap", map);
+#endif
 }
 
 struct kvm_iommu_ops hypmmu_ops = {
@@ -94,7 +149,16 @@ void iommu_finalise(struct user_pt_regs *regs)
 {
 	int ret;
 
+#if (DEBUG_KVM_IOMMU)
+	MOD_PUTS("iommu_finalise");
+#endif
+
+	MOD_PUTS("before snapshot");
 	ret = mod_ops->iommu_snapshot_host_stage2(NULL);
-	regs->regs[0] = SMCCC_RET_SUCCESS;
+	if (ret)
+		MOD_PUTS1("snapshot failed ret", ret);
+	MOD_PUTS("after snapshot");
 	snapshot_done = true;
+
+	regs->regs[0] = SMCCC_RET_SUCCESS;
 }

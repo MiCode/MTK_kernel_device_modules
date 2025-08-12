@@ -10,6 +10,8 @@
 
 #include "include/mod_debug.h"
 
+#define MAX_CPUS (8)
+
 #ifdef memset
 #undef memset
 #endif
@@ -29,10 +31,16 @@
 #define HYP_PMM_ATTR_AP_MD_SHM (4)
 #define HYP_PMM_ATTR_AP_SCP_SHM (5)
 
+struct kvm_pmm_ipc {
+	u32 pmm_ipc[1024];
+	u32 index;
+};
+
 /* EL2 modules */
 extern const struct pkvm_module_ops *mod_ops;
 
 /* HYPMMU */
+u8 get_cpu_id(void);
 u8 hypmmu_get_srinfo(u8 attr);
 
 /*
