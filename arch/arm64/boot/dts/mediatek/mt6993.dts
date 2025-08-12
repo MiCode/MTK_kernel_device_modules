@@ -11880,20 +11880,17 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<19 0x200 0x0>,  /* low power debug */
 				<21 0x1800 0x0>; /* task monitor debug */
 
-#if 0
-			scp-resource-dump = "disable";   /* enable dump scp related resource */
+			scp-resource-dump = "enable";   /* enable dump scp related resource */
 			/* regulator */
-			scp-supply-num = <3>;	/* total number of scp related regulator */
-			vscp0-supply = <&mt6363_vbuck4>;
-			vscp1-supply = <&mt6363_vsram_apu>;
-			vscp2-supply = <&mt6363_vs3>;
-#endif
+			scp-supply-num = <1>;	/* total number of scp related regulator */
+			vscp0-supply = <&mt6661_5_buck6>;
+
 			/* dump register */
 			/* cell means register info (address,size), not total reg num */
 			scp-resource-reg-dump-cell = <2>;
-			scp-resource-reg-dump = <0x1c013008 0x4>,
-				<0x1c001908 0x4>,
-				<0x1c001818 0x4>;
+			scp-resource-reg-dump = <0x1df2c220 0x4>,
+				<0x1df2b004 0x4>,
+				<0x1df2b114 0x4>;
 			/* scp fmeter dump */
 			scp-clk-fmeter-dump = "disable";
 			scp-u1-id = <59>;
