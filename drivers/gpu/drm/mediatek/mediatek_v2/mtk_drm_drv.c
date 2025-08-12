@@ -136,7 +136,7 @@ u32 *disp_perfs;
 static atomic_t top_isr_ref; /* irq power status protection */
 static atomic_t top_clk_ref; /* top clk status protection*/
 static spinlock_t top_clk_lock; /* power status protection*/
-static atomic_t debug_power_async = ATOMIC_INIT(3);
+static atomic_t debug_power_async = ATOMIC_INIT(0);
 
 struct device *g_dpc_dev; /* mminfra power control */
 

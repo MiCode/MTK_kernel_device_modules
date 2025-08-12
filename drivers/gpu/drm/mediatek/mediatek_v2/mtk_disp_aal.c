@@ -3307,6 +3307,7 @@ static void disp_aal_config(struct mtk_ddp_comp *comp,
 			disp_aal_write_dre3_curve_full(comp);
 			mutex_unlock(&aal_data->primary_data->config_lock);
 		} else {
+#if defined(ENABLE_AAL_SW_ASYNC_FLOW)
 			ret = mtk_drm_sw_async_trigger(crtc, USER_SW_ASYNC_AAL,
 						disp_aal_write_dre3_curve_full_async, (void *)comp);
 			if (ret < 0) {
@@ -3316,6 +3317,11 @@ static void disp_aal_config(struct mtk_ddp_comp *comp,
 				disp_aal_write_dre3_curve_full(comp);
 				mutex_unlock(&aal_data->primary_data->config_lock);
 			}
+#else
+			mutex_lock(&aal_data->primary_data->config_lock);
+			disp_aal_write_dre3_curve_full(comp);
+			mutex_unlock(&aal_data->primary_data->config_lock);
+#endif
 		}
 	}
 

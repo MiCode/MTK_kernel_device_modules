@@ -244,7 +244,7 @@ static void mtk_drm_idlemgr_get_private_data(struct drm_crtc *crtc,
 		data->cpu_mask = 0xf; //cpu0~3
 		data->cpu_freq = 1000000; // 1Ghz
 		data->cpu_dma_latency = PM_QOS_DEFAULT_VALUE;
-		data->sw_async = true;
+		data->sw_async = false;
 		data->hw_async = true;
 		data->sram_sleep = false;
 		break;
@@ -1836,7 +1836,7 @@ int mtk_drm_sw_async_trigger(struct drm_crtc *crtc,
 	idlemgr_ctx = idlemgr->idlemgr_ctx;
 
 	if (!idlemgr_ctx->priv.sw_async) {
-		DDPPR_ERR("%s, not support sw async, user:0x%x\n", __func__, user_id);
+		//DDPPR_ERR("%s, not support sw async, user:0x%x\n", __func__, user_id);
 		return -EFAULT;
 	}
 
