@@ -6,7 +6,7 @@
 #define __SHAREBUF_H
 
 #include <asm/kvm_pkvm_module.h>
-#include "lib/spinlock.h"
+#include <nvhe/spinlock.h>
 #include "handle.h"
 
 // TODO: add comment here

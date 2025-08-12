@@ -4,7 +4,7 @@
  */
 
 #include <asm/kvm_pkvm_module.h>
-#include <pkvm_mgmt/spinlock.h>
+#include <nvhe/spinlock.h>
 
 #include <include/export.h>
 #include "include/hypmmu.h"

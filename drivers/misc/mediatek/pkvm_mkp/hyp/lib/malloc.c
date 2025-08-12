@@ -6,7 +6,7 @@
 #include "malloc.h"
 #include <asm/page-def.h>
 #include "stdlib.h"
-#include "spinlock.h"
+#include <nvhe/spinlock.h>
 
 // TODO: supposed that MKP_HEAP_START is depends on mkp reserved memory location
 #define MKP_HEAP_START          0x80000000

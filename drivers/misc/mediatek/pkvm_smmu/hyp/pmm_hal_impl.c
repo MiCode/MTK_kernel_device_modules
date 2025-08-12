@@ -4,10 +4,9 @@
  */
 
 #include "smmu_mgmt.h"
-#include "hyp_spinlock.h"
+#include <nvhe/spinlock.h>
 
 #include <asm/kvm_pkvm_module.h>
-//#include <nvhe/spinlock.h>
 
 #include "../../pkvm_mgmt/hyp/include/export.h"
 

@@ -5,7 +5,7 @@
 #include <asm/kvm_pkvm_module.h>
 #include "handle.h"
 #include "policy.h"
-#include "lib/spinlock.h"
+#include <nvhe/spinlock.h>
 
 static hyp_spinlock_t polvio_lock __cacheline_aligned;
 static u32 policy_violations[MKP_POLICY_NR];

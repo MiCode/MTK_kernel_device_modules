@@ -8,7 +8,7 @@
 #include <linux/arm-smccc.h>
 
 #include <pkvm_mgmt/pkvm_mgmt.h>
-#include <pkvm_mgmt/spinlock.h>
+#include <nvhe/spinlock.h>
 #include "include/pkvm_ctrl.h"
 #include "include/hyp_pmm.h"
 

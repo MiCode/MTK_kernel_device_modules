@@ -6,7 +6,7 @@
 #include <asm/alternative.h>
 #include <asm/lse.h>
 #include <asm/rwonce.h>
-#include "lib/spinlock.h"
+#include <nvhe/spinlock.h>
 #include "policy.h"
 #include "mkp_err.h"
 #include "handle.h"

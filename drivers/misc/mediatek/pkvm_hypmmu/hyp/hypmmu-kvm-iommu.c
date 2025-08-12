@@ -7,7 +7,7 @@
 #include <asm/kvm_pkvm_module.h>
 #include <kvm/iommu.h>
 #include <linux/arm-smccc.h>
-#include <pkvm_mgmt/iommu.h>
+#include <nvhe/iommu.h>
 #include <include/export.h>
 
 #include "include/hypmmu.h"

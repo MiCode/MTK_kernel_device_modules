@@ -4,7 +4,7 @@
  */
 #include <asm/kvm_pkvm_module.h>
 #include <linux/arm-smccc.h>
-#include "lib/spinlock.h"
+#include <nvhe/spinlock.h>
 #include "lib/malloc.h"
 #include "handle.h"
 #include "policy.h"

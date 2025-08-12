@@ -16,7 +16,7 @@
 #include <asm/kvm_hyp.h>
 #include <linux/arm-smccc.h>
 #include <pkvm_mgmt/trap_handler.h>
-#include <pkvm_mgmt/spinlock.h>
+#include <nvhe/spinlock.h>
 #include <kvm/iommu.h>
 
 #ifdef memset

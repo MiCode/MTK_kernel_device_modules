@@ -11,7 +11,7 @@
 #include "smmu.h"
 #include "arch_spinlock.h"
 #include "arm_smmuv3.h"
-#include "hyp_spinlock.h"
+#include <nvhe/spinlock.h>
 #include "list.h"
 #include <linux/arm-smccc.h>
 #include "malloc.h"

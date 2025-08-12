@@ -5,7 +5,8 @@
 #ifndef __SMMU_H
 #define __SMMU_H
 
-#include "hyp_spinlock.h"
+#include <asm/kvm_pkvm_module.h>
+#include <nvhe/spinlock.h>
 
 typedef unsigned int uint;
 extern const struct pkvm_module_ops *pkvm_smmu_ops;

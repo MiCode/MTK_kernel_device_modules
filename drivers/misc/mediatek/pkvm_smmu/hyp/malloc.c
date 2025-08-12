@@ -4,7 +4,7 @@
  */
 #include "malloc.h"
 #include <asm/page-def.h>
-#include "hyp_spinlock.h"
+#include <nvhe/spinlock.h>
 #include "smmu_mgmt.h"
 
 #define MALLOC_ALIGN 64

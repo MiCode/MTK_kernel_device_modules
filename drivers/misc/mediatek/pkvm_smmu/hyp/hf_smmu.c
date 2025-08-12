@@ -8,7 +8,6 @@
 #include "smmu_mgmt.h"
 #include <asm/kvm_pkvm_module.h>
 #include <asm/barrier.h>
-#include "hyp_spinlock.h"
 
 #define REG64(addr) ((volatile uint64_t *)(uintptr_t)(addr))
 #define writel_64(v, a) (*REG64(a) = (v))

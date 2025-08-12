@@ -6,7 +6,7 @@
 #define __HANDLE_H
 
 #include <asm/kvm_pkvm_module.h>
-#include "lib/spinlock.h"
+#include <nvhe/spinlock.h>
 #include "policy.h"
 
 #define cpu_reg(regs, r)	(regs)->regs[r]
