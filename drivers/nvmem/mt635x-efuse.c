@@ -317,7 +317,7 @@ static ssize_t efuse_pmic_ecid_show(struct device *dev,
 		if (efuse->pmic_name[slvid] != NULL) {
 			ptr += snprintf(ptr, BUF_SIZE, "%s:", efuse->pmic_name[slvid]);
 			for (i = 0; i < EFUSE_ECID_SIZE; ++i)
-				ptr += snprintf(ptr, BUF_SIZE, "%X ", efuse->pmic_ecid[slvid][i]);
+				ptr += snprintf(ptr, BUF_SIZE, "%04X ", efuse->pmic_ecid[slvid][i]);
 			ptr += snprintf(ptr, BUF_SIZE, "\n");
 		}
 	}
