@@ -9,6 +9,7 @@
 #include <linux/clk.h>
 #include <linux/cpu.h>
 #include <linux/delay.h>
+#include <linux/workqueue.h>
 #include <linux/hrtimer.h>
 #include <linux/init.h>
 #include <linux/interconnect.h>
@@ -55,7 +56,7 @@ static int cm_mgr_idx;
 static int cm_chip_ver;
 static unsigned int prev_freq_idx[CM_MGR_CPU_CLUSTER];
 static unsigned int prev_freq[CM_MGR_CPU_CLUSTER];
-
+static struct delayed_work cm_thermal_work;
 static struct cm_mgr_hook local_hk;
 
 u32 *cm_mgr_perfs;
@@ -554,6 +555,13 @@ static void cm_mgr_thermal_hint(int is_thermal)
 	cm_mgr_to_sspm_command(IPI_CM_MGR_ENABLE, !(is_thermal & 0x02));
 }
 
+static void cm_mgr_thermal_routine(struct work_struct *work)
+{
+	pr_info("cm mgr thermal hint: [0x%x, 0x%x]\n",
+	cm_mgr_get_perf_mode_enable(),
+	cm_mgr_get_enable());
+	schedule_delayed_work(&cm_thermal_work, 10 * HZ);
+}
 static int cm_mgr_check_dts_setting_mt6993(struct platform_device *pdev)
 {
 #if IS_ENABLED(CONFIG_MTK_DVFSRC)
@@ -727,6 +735,8 @@ static int platform_cm_mgr_probe(struct platform_device *pdev)
 	dev_pm_genpd_set_performance_state(&pdev->dev, 0);
 
 	cm_thermal_hint_register(cm_mgr_thermal_hint);
+	INIT_DELAYED_WORK(&cm_thermal_work, cm_mgr_thermal_routine);
+	schedule_delayed_work(&cm_thermal_work, 10 * HZ);
 
 	cm_mgr_get_sspm_version();
 
@@ -738,7 +748,6 @@ static int platform_cm_mgr_probe(struct platform_device *pdev)
 				   cm_mgr_get_perf_mode_thd());
 	cm_mgr_to_sspm_command(IPI_CM_MGR_CHIP_VER, cm_chip_ver);
 	cm_mgr_to_sspm_command(IPI_CM_MGR_ENABLE, cm_mgr_get_enable());
-
 	pr_info("%s(%d): platform-cm_mgr_probe Done.\n", __func__, __LINE__);
 
 	return 0;
@@ -751,6 +760,7 @@ static void platform_cm_mgr_remove(struct platform_device *pdev)
 {
 	cm_mgr_unregister_hook(&local_hk);
 	cm_thermal_hint_unregister();
+	cancel_delayed_work_sync(&cm_thermal_work);
 	cm_mgr_common_exit();
 	icc_put(cm_mgr_get_bw_path());
 }
