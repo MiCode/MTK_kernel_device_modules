@@ -325,7 +325,7 @@ static unsigned int mt6363_regulator_get_mode(struct regulator_dev *rdev)
 	ret = regmap_read(rdev->regmap, info->modeset_reg, &val);
 	if (ret) {
 		dev_err(&rdev->dev, "Failed to get mt6363 mode: %d\n", ret);
-		return ret;
+		return 0;
 	}
 
 	if (val & info->modeset_mask)
@@ -341,7 +341,7 @@ static unsigned int mt6363_regulator_get_mode(struct regulator_dev *rdev)
 	if (ret) {
 		dev_err(&rdev->dev,
 			"Failed to get mt6363 lp mode: %d\n", ret);
-		return ret;
+		return 0;
 	}
 
 	if (val)

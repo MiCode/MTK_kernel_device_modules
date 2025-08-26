@@ -146,7 +146,7 @@ static unsigned int mt6315_regulator_get_mode(struct regulator_dev *rdev)
 	if (ret != 0) {
 		dev_err(&rdev->dev,
 			"Failed to get mt6315 buck mode: %d\n", ret);
-		return ret;
+		return 0;
 	}
 
 	if (rdev_get_id(rdev) == MT6315_ID_VBUCK1)
@@ -163,7 +163,7 @@ static unsigned int mt6315_regulator_get_mode(struct regulator_dev *rdev)
 	if (ret != 0) {
 		dev_err(&rdev->dev,
 			"Failed to get mt6315 buck lp mode: %d\n", ret);
-		return ret;
+		return 0;
 	}
 
 	if (regval & info->lp_mode_mask)
