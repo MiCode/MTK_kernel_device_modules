@@ -2154,7 +2154,6 @@ static struct iommu_group *mtk_iommu_device_group(struct device *dev)
 
 	hw_list = c_data->hw_list;
 	if (!hw_list) {
-		dump_stack();
 		dev_info(dev, "hw_list is NULL\n");
 		return ERR_PTR(-ENODEV);
 	}
@@ -3198,15 +3197,6 @@ skip_smi:
 
 	platform_set_drvdata(pdev, data);
 
-	ret = iommu_device_sysfs_add(&data->iommu, dev, NULL,
-				     "mtk-iommu.%pa", &ioaddr);
-	if (ret)
-		goto out_link_remove;
-
-	ret = iommu_device_register(&data->iommu, &mtk_iommu_ops, dev);
-	if (ret)
-		goto out_sysfs_remove;
-
 	spin_lock_init(&data->tlb_lock);
 
 	if (MTK_IOMMU_HAS_FLAG(data->plat_data, SHARE_PGTABLE)) {
@@ -3218,12 +3208,21 @@ skip_smi:
 		data->hw_list = data->plat_data->hw_list;
 	}
 
+	ret = iommu_device_sysfs_add(&data->iommu, dev, NULL,
+				     "mtk-iommu.%pa", &ioaddr);
+	if (ret)
+		goto out_list_del;
+
+	ret = iommu_device_register(&data->iommu, &mtk_iommu_ops, dev);
+	if (ret)
+		goto out_sysfs_remove;
+
 	if (data->plat_data->iommu_type == MM_IOMMU &&
 	    !MTK_IOMMU_HAS_FLAG(data->plat_data, SMI_DEV_LINK_SKIP)) {
 		ret = component_master_add_with_match(dev, &mtk_iommu_com_ops,
 						      match);
 		if (ret)
-			goto out_list_del;
+			goto out_device_unregister;
 	}
 
 	/* register the notifier for power domain just for mm_iommu */
@@ -3276,12 +3275,12 @@ skip_smi:
 		(unsigned long)data->hw_list);
 	return ret;
 
-out_list_del:
-	list_del(&data->list);
+out_device_unregister:
 	iommu_device_unregister(&data->iommu);
 out_sysfs_remove:
 	iommu_device_sysfs_remove(&data->iommu);
-out_link_remove:
+out_list_del:
+	list_del(&data->list);
 	device_link_remove(data->smicomm_dev, dev);
 out_runtime_disable:
 	pm_runtime_disable(dev);
