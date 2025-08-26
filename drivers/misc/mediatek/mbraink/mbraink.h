@@ -90,6 +90,9 @@
 #define POWER_SMAP_INFO	(NR_CODE_LAGACY_MAX + 4)
 #define CHIPID_INFO (NR_CODE_LAGACY_MAX + 5)
 #define MEMORY_CM_VOTE_INFO	(NR_CODE_LAGACY_MAX + 6)
+#define SW_COUNT_SET (NR_CODE_LAGACY_MAX + 7)
+#define MEMORY_CPUQOS_INFO (NR_CODE_LAGACY_MAX + 8)
+#define MEMORY_MMQOS_INFO (NR_CODE_LAGACY_MAX + 9)
 
 /*Mbrain Delegate IOCTL List*/
 #define AUTO_IOCTL_INFO			_IOR(IOC_MAGIC, AUTO_IOCTL, \
@@ -242,6 +245,11 @@
 					struct mbraink_chipid_info*)
 #define RO_MEMORY_CM_VOTE_INFO	_IOR(IOC_MAGIC, MEMORY_CM_VOTE_INFO, \
 						struct mbraink_memory_cmVoteInfo*)
+#define WO_SW_COUNT_SET  _IOW(IOC_MAGIC, SW_COUNT_SET, char*)
+#define RO_MEMORY_CPUQOS_INFO		_IOR(IOC_MAGIC, MEMORY_CPUQOS_INFO,	\
+						struct mbraink_memory_cpuQosInfo*)
+#define RO_MEMORY_MMQOS_INFO		_IOR(IOC_MAGIC, MEMORY_MMQOS_INFO,	\
+						struct mbraink_mem_mmQosInfo*)
 
 #define SUSPEND_DATA	0
 #define RESUME_DATA		1

@@ -11,6 +11,7 @@
 #include <linux/platform_device.h>
 #include <mbraink_modules_ops_def.h>
 #include "mbraink_v6993_memory.h"
+#include "mbraink_v6993_systeminfo.h"
 
 #include <swpm_module_psp.h>
 #include <dvfsrc-mb.h>
@@ -23,6 +24,8 @@
 #include <linux/vmalloc.h>
 
 #include <dvfsrc-vsmr.h>
+#include <mtk_qos_share.h>
+#include <mmqos.h>
 
 struct device *mbraink_v6993_device;
 static struct task_struct *mbraink_slbc_thread;
@@ -396,6 +399,99 @@ static int mbraink_v6993_memory_getCmVoteInfo(struct mbraink_memory_cmVoteInfo *
 	return ret;
 }
 
+static int mbraink_v6993_memory_getCPUQosInfo
+	(struct mbraink_memory_cpuQosInfo  *pMemoryCpuQos)
+{
+	int ret = 0;
+	int i = 0;
+	struct mtk_qos_mbrain_data mtkQosData;
+
+	if (pMemoryCpuQos == NULL) {
+		ret = -1;
+		goto End;
+	}
+
+	if (mbraink_v6993_pmic_read() != MT6661_RESERVED_VAL) {
+		pMemoryCpuQos->data_lv_length = 0;
+		goto End;
+	}
+
+	if (MAX_CPU_QOS_LV_SZ != MAX_DATA_QOS_LV_SIZE) {
+		pr_notice("cpu qos info data sz mis-match");
+		ret = -1;
+		goto End;
+	}
+
+	memset(&mtkQosData, 0, sizeof(struct mtk_qos_mbrain_data));
+	if (qos_mbrain_get_data(&mtkQosData) != 0) {
+		pr_info("qos_mbrain_get_data fail\n");
+		ret = -1;
+		goto End;
+	}
+
+	pMemoryCpuQos->version = mtkQosData.version;
+	pMemoryCpuQos->data_lv_length = mtkQosData.data_length;
+
+	for (i = 0; i < MAX_CPU_QOS_LV_SZ; i++)
+		pMemoryCpuQos->data[i] = mtkQosData.data[i];
+
+End:
+	return ret;
+}
+
+static int mbraink_v6993_memory_getMMQosInfo
+	(struct mbraink_mem_mmQosInfo  *pMemoryMMQos)
+{
+	int ret = 0;
+	int i = 0;
+	int level = 0;
+	struct MM_SWCount_Data *SWCount = NULL;
+
+	if (pMemoryMMQos == NULL) {
+		ret = -1;
+		goto End;
+	}
+
+	if (mbraink_v6993_pmic_read() != MT6661_RESERVED_VAL) {
+		pMemoryMMQos->subsys_num = 0;
+		goto End;
+	}
+
+	if (MAX_MMQOS_SUBSYS != MAX_SUBSYS_NUMS) {
+		pr_notice("mm qos info subsys sz mis-match");
+		ret = -1;
+		goto End;
+	}
+
+	if (MAX_MMQOS_SWCNT_LV_SZ != MAX_SW_CNT_LEVEL_NUM) {
+		pr_notice("mm qos info SW cnt sz mis-match");
+		ret = -1;
+		goto End;
+	}
+
+	SWCount = get_mm_sw_cnt_for_mbrain();
+	if (SWCount) {
+		pMemoryMMQos->version = 1;
+		pMemoryMMQos->subsys_num = MAX_SUBSYS_NUMS;
+		for (i = 0; i < MAX_SUBSYS_NUMS; i++) {
+			pMemoryMMQos->mmQosSub[i].sid = SWCount[i].sid;
+			pMemoryMMQos->mmQosSub[i].data_lv_length =
+				SWCount[i].data_length;
+			for (level = 0; level < MAX_SW_CNT_LEVEL_NUM; level++) {
+				pMemoryMMQos->mmQosSub[i].sw_cnt[level] =
+					SWCount[i].sw_cnt_level[level].count;
+			}
+		}
+	} else {
+		pr_info("get mm sw cnt is NULL\n");
+		ret = -1;
+		goto End;
+	}
+
+End:
+	return ret;
+}
+
 static struct mbraink_memory_ops mbraink_v6993_memory_ops = {
 	.getDdrInfo = mbraink_v6993_memory_getDdrInfo,
 	.getMdvInfo = mbraink_v6993_memory_getMdvInfo,
@@ -404,6 +500,8 @@ static struct mbraink_memory_ops mbraink_v6993_memory_ops = {
 	.getCmProfileInfo = mbraink_v6993_memory_getCmProfileInfo,
 	.getVsmrInfo = mbraink_v6993_memory_getVsmrInfo,
 	.getCmVoteInfo = mbraink_v6993_memory_getCmVoteInfo,
+	.getCpuQosInfo = mbraink_v6993_memory_getCPUQosInfo,
+	.getMMQosInfo = mbraink_v6993_memory_getMMQosInfo,
 };
 
 /*This function must be called in mutex*/

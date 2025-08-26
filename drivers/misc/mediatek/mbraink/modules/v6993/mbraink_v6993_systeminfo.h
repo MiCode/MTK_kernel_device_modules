@@ -7,7 +7,10 @@
 
 #include "mbraink_ioctl_struct_def.h"
 
-int mbraink_v6993_systeminfo_init(void);
-int mbraink_v6993_systeminfo_deinit(void);
+#define MT6661_RESERVED_VAL 0xce
 
+int mbraink_v6993_systeminfo_init(struct device *dev);
+int mbraink_v6993_systeminfo_deinit(struct device *dev);
+
+int mbraink_v6993_pmic_read(void);
 #endif /*end of MBRAINK_V6993_SYSTEMINFO_H*/

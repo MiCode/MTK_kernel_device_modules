@@ -14,12 +14,14 @@ static struct mbraink_systeminfo_ops _mbraink_systeminfo_ops;
 int mbraink_systeminfo_init(void)
 {
 	_mbraink_systeminfo_ops.get_chipid_info = NULL;
+	_mbraink_systeminfo_ops.set_sw_count_mode = NULL;
 	return 0;
 }
 
 int mbraink_systeminfo_deinit(void)
 {
 	_mbraink_systeminfo_ops.get_chipid_info = NULL;
+	_mbraink_systeminfo_ops.set_sw_count_mode = NULL;
 	return 0;
 }
 
@@ -31,6 +33,7 @@ int register_mbraink_systeminfo_ops(struct mbraink_systeminfo_ops *ops)
 	pr_info("%s: register.\n", __func__);
 
 	_mbraink_systeminfo_ops.get_chipid_info = ops->get_chipid_info;
+	_mbraink_systeminfo_ops.set_sw_count_mode = ops->set_sw_count_mode;
 
 	return 0;
 }
@@ -41,6 +44,7 @@ int unregister_mbraink_systeminfo_ops(void)
 	pr_info("%s: unregister.\n", __func__);
 
 	_mbraink_systeminfo_ops.get_chipid_info = NULL;
+	_mbraink_systeminfo_ops.set_sw_count_mode = NULL;
 
 	return 0;
 }
@@ -54,5 +58,17 @@ int mbraink_get_chipid_info(struct mbraink_chipid_info *chipid_info)
 		ret = _mbraink_systeminfo_ops.get_chipid_info(chipid_info);
 	else
 		pr_info("%s: Do not support system info query.\n", __func__);
+	return ret;
+}
+
+int mbraink_set_sw_count_mode(int is_en)
+{
+	int ret = 0;
+
+	if (_mbraink_systeminfo_ops.set_sw_count_mode)
+		ret = _mbraink_systeminfo_ops.set_sw_count_mode(is_en);
+	else
+		pr_info("%s: Do not support sw count mode set.\n", __func__);
+
 	return ret;
 }

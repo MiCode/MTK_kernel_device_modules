@@ -13,5 +13,5 @@
 int mbraink_systeminfo_init(void);
 int mbraink_systeminfo_deinit(void);
 int mbraink_get_chipid_info(struct mbraink_chipid_info *chipid_info);
-
+int mbraink_set_sw_count_mode(int is_en);
 #endif /*end of MBRAINK_MEMORY_H*/

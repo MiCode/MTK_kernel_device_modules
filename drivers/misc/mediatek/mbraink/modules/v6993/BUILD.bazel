@@ -63,6 +63,7 @@ define_mgk_ddk_ko(
         "-I$(DEVICE_MODULES_PATH)/include/soc/mediatek",
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cm_mgr",
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/slbc",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/qos",
     ],
     ko_deps = [
         "//kernel_device_modules-{}/drivers/misc/mediatek/mbraink:mtk_mbraink".format(kernel_version),
@@ -92,6 +93,7 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/interconnect/mediatek:mmqos-common".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/cm_mgr:mtk_cm_mgr_mt6993".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/slbc:mtk_slbc".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/qos:mtk_qos".format(kernel_version),
     ],
     header_deps = [
         "//kernel_device_modules-{}/drivers/misc/mediatek/mbraink:mtk_mbraink_h".format(kernel_version),

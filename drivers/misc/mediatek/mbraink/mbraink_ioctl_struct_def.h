@@ -128,6 +128,10 @@
 #define MAX_CM_CPU_NUM 8
 #define MAX_CM_SPLIT 5
 
+#define MAX_CPU_QOS_LV_SZ 10
+#define MAX_MMQOS_SWCNT_LV_SZ 6
+#define MAX_MMQOS_SUBSYS 6
+
 enum mbraink_op_mode {
 	mbraink_op_mode_normal = 0,
 	mbraink_op_mode_sbe = 1,
@@ -933,6 +937,24 @@ struct mbraink_chipid_info {
 
 struct mbraink_memory_cmVoteInfo {
 	uint32_t info[MAX_CM_CPU_NUM][MAX_CM_SPLIT];
+};
+
+struct mbraink_memory_cpuQosInfo {
+	uint8_t version;
+	uint8_t data_lv_length;
+	uint32_t data[MAX_CPU_QOS_LV_SZ];
+};
+
+struct mbraink_mem_mmQosSubData {
+	int sid;
+	uint8_t data_lv_length;
+	u64 sw_cnt[MAX_MMQOS_SWCNT_LV_SZ];
+};
+
+struct mbraink_mem_mmQosInfo {
+	uint8_t version;
+	uint8_t subsys_num;
+	struct mbraink_mem_mmQosSubData mmQosSub[MAX_MMQOS_SUBSYS];
 };
 
 #endif

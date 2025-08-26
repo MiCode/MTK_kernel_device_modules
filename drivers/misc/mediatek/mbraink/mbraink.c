@@ -1656,6 +1656,67 @@ static long handleMemoryCmVoteInfo(unsigned long arg, void *mbraink_data)
 	return ret;
 }
 
+static long handle_sw_count_mode(unsigned long arg)
+{
+	long ret = 0;
+	char buf[2] = {'\0'};
+
+	if (copy_from_user(buf, (char *)arg, sizeof(buf))) {
+		pr_notice("Data write suspend_power_en from UserSpace Err!\n");
+		return -EPERM;
+	}
+
+	if (buf[0] == '1')
+		ret = mbraink_set_sw_count_mode(1);
+	else
+		ret = mbraink_set_sw_count_mode(0);
+	return ret;
+}
+
+static long handleMemoryCpuQosInfo(unsigned long arg, void *mbraink_data)
+{
+	long ret = 0;
+	struct mbraink_memory_cpuQosInfo *pMemoryCpuQosInfo =
+		(struct mbraink_memory_cpuQosInfo *)(mbraink_data);
+
+	memset(pMemoryCpuQosInfo,
+			0,
+			sizeof(struct mbraink_memory_cpuQosInfo));
+	ret = mbraink_memory_getCpuQosInfo(pMemoryCpuQosInfo);
+	if (ret == 0) {
+		if (copy_to_user((struct mbraink_memory_cpuQosInfo *)arg,
+				pMemoryCpuQosInfo,
+				sizeof(struct mbraink_memory_cpuQosInfo))) {
+			pr_notice("Copy memory cpu qos Info to UserSpace error!\n");
+			ret = -EPERM;
+		}
+	}
+
+	return ret;
+}
+
+static long handleMemoryMMQosInfo(unsigned long arg, void *mbraink_data)
+{
+	long ret = 0;
+	struct mbraink_mem_mmQosInfo *pMemoryMMQosInfo =
+		(struct mbraink_mem_mmQosInfo *)(mbraink_data);
+
+	memset(pMemoryMMQosInfo,
+			0,
+			sizeof(struct mbraink_mem_mmQosInfo));
+	ret = mbraink_memory_getMMQosInfo(pMemoryMMQosInfo);
+	if (ret == 0) {
+		if (copy_to_user((struct mbraink_mem_mmQosInfo *)arg,
+				pMemoryMMQosInfo,
+				sizeof(struct mbraink_mem_mmQosInfo))) {
+			pr_notice("Copy memory mm qos Info to UserSpace error!\n");
+			ret = -EPERM;
+		}
+	}
+
+	return ret;
+}
+
 static long mbraink_ioctl(struct file *filp,
 							unsigned int cmd,
 							unsigned long arg)
@@ -2271,6 +2332,30 @@ static long mbraink_ioctl(struct file *filp,
 		kfree(mbraink_data);
 		break;
 	}
+	case WO_SW_COUNT_SET:
+	{
+		ret = handle_sw_count_mode(arg);
+		break;
+	}
+	case RO_MEMORY_CPUQOS_INFO:
+	{
+		mbraink_data = kmalloc(sizeof(struct mbraink_memory_cpuQosInfo), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handleMemoryCpuQosInfo(arg, mbraink_data);
+		kfree(mbraink_data);
+		break;
+	}
+	case RO_MEMORY_MMQOS_INFO:
+	{
+		mbraink_data = kmalloc(sizeof(struct mbraink_mem_mmQosInfo), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handleMemoryMMQosInfo(arg, mbraink_data);
+		kfree(mbraink_data);
+		break;
+	}
+
 	default:
 		pr_notice("%s:illegal ioctl number %u.\n", __func__, cmd);
 		return -EINVAL;

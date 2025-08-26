@@ -20,6 +20,8 @@ int mbraink_memory_init(void)
 	_mbraink_memory_ops.getCmProfileInfo = NULL;
 	_mbraink_memory_ops.getVsmrInfo = NULL;
 	_mbraink_memory_ops.getCmVoteInfo = NULL;
+	_mbraink_memory_ops.getCpuQosInfo = NULL;
+	_mbraink_memory_ops.getMMQosInfo = NULL;
 	return 0;
 }
 
@@ -32,6 +34,8 @@ int mbraink_memory_deinit(void)
 	_mbraink_memory_ops.getCmProfileInfo = NULL;
 	_mbraink_memory_ops.getVsmrInfo = NULL;
 	_mbraink_memory_ops.getCmVoteInfo = NULL;
+	_mbraink_memory_ops.getCpuQosInfo = NULL;
+	_mbraink_memory_ops.getMMQosInfo = NULL;
 	return 0;
 }
 
@@ -49,7 +53,8 @@ int register_mbraink_memory_ops(struct mbraink_memory_ops *ops)
 	_mbraink_memory_ops.getCmProfileInfo = ops->getCmProfileInfo;
 	_mbraink_memory_ops.getVsmrInfo = ops->getVsmrInfo;
 	_mbraink_memory_ops.getCmVoteInfo = ops->getCmVoteInfo;
-
+	_mbraink_memory_ops.getCpuQosInfo = ops->getCpuQosInfo;
+	_mbraink_memory_ops.getMMQosInfo = ops->getMMQosInfo;
 	return 0;
 }
 EXPORT_SYMBOL(register_mbraink_memory_ops);
@@ -64,7 +69,9 @@ int unregister_mbraink_memory_ops(void)
 	_mbraink_memory_ops.getEmiInfo = NULL;
 	_mbraink_memory_ops.getCmProfileInfo = NULL;
 	_mbraink_memory_ops.getVsmrInfo = NULL;
-
+	_mbraink_memory_ops.getCmVoteInfo = NULL;
+	_mbraink_memory_ops.getCpuQosInfo = NULL;
+	_mbraink_memory_ops.getMMQosInfo = NULL;
 	return 0;
 }
 EXPORT_SYMBOL(unregister_mbraink_memory_ops);
@@ -187,6 +194,44 @@ int mbraink_memory_getCmVoteInfo(struct mbraink_memory_cmVoteInfo *pCmVoteInfo)
 		ret = _mbraink_memory_ops.getCmVoteInfo(pCmVoteInfo);
 	else
 		pr_info("%s: Do not support ioctl getCmVoteInfo query.\n", __func__);
+
+	return ret;
+}
+
+int mbraink_memory_getCpuQosInfo(struct mbraink_memory_cpuQosInfo *pCpuQosInfo)
+{
+	int ret = 0;
+
+	if (pCpuQosInfo == NULL) {
+		pr_info("%s: Cpu Qos Info is null.\n", __func__);
+		return -1;
+	}
+
+	if (_mbraink_memory_ops.getCpuQosInfo)
+		ret = _mbraink_memory_ops.getCpuQosInfo(pCpuQosInfo);
+	else {
+		pr_info("%s: Do not support ioctl getCpuQosInfo query.\n", __func__);
+		pCpuQosInfo->data_lv_length = 0;
+	}
+
+	return ret;
+}
+
+int mbraink_memory_getMMQosInfo(struct mbraink_mem_mmQosInfo *pMMQosInfo)
+{
+	int ret = 0;
+
+	if (pMMQosInfo == NULL) {
+		pr_info("%s: MM Qos Info is null.\n", __func__);
+		return -1;
+	}
+
+	if (_mbraink_memory_ops.getMMQosInfo)
+		ret = _mbraink_memory_ops.getMMQosInfo(pMMQosInfo);
+	else {
+		pr_info("%s: Do not support ioctl getMMQosInfo query.\n", __func__);
+		pMMQosInfo->subsys_num = 0;
+	}
 
 	return ret;
 }
