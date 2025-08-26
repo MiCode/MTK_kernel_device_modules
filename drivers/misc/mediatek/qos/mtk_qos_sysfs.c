@@ -56,9 +56,9 @@ static ssize_t qos_evt_tri_dbg_show(struct device *dev,
 	int i = 0;
 	char *ptr = buf;
 
-	for (i=0; i<NR_TRI; i++) {
-		evt_tri_dbg_tbl[i] = qos_share_sram_read_dbg(i * 4);
-		ptr += snprintf(ptr, PAGE_SIZE - (ptr - buf), "evt_tri_dbg[%d] = %d\n", i, evt_tri_dbg_tbl[i]);
+	for (i=0; i<NR_SW_COUNT_LEVEL; i++) {
+		sw_count_tbl[i] = qos_share_sram_read_dbg(i * 4);
+		ptr += snprintf(ptr, PAGE_SIZE - (ptr - buf), "sw_count_tbl[%d] = %d\n", i, sw_count_tbl[i]);
 	}
 	return ptr - buf;
 }
@@ -67,11 +67,17 @@ static ssize_t qos_evt_tri_dbg_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
 	int val = 0;
+	int i = 0;
+	struct mtk_qos_mbrain_data qos_data = {0};
 
 	if (kstrtoint(buf, 10, &val))
 		return -EINVAL;
 
-	qos_evt_tri_dbg_enable(val);
+	//qos_evt_tri_dbg_enable(val);
+	qos_mbrain_get_data(&qos_data);
+	for (i = 0; i<NR_SW_COUNT_LEVEL; i++)
+		pr_info("qos share sram_dbg to Mbrain:%d\n", qos_data.data[i]);
+
 	return count;
 }
 static DEVICE_ATTR_RW(qos_evt_tri_dbg);

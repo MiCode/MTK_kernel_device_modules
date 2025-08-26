@@ -285,3 +285,28 @@ extern u32 qos_share_sram_read(u32 offset)
 	return readl(qos_share_sram_base + offset);
 }
 EXPORT_SYMBOL_GPL(qos_share_sram_read);
+
+extern unsigned int qos_mbrain_get_data(struct mtk_qos_mbrain_data *qos_data)
+{
+	// 0: success
+	int i = 0;
+
+	if (qos_data == NULL)
+		return -1;
+
+	qos_data->version = 0x01;
+	qos_data->data_length = NR_SW_COUNT_LEVEL;
+
+	for (i=0; i<NR_SW_COUNT_LEVEL; i++) {
+		sw_count_tbl[i] = qos_share_sram_read_dbg(i * 4);
+		pr_info("%s to sw_count_tbl:%d\n", __func__, sw_count_tbl[i]);
+	}
+
+	memcpy(qos_data->data, sw_count_tbl, sizeof(sw_count_tbl));
+
+	for (i = 0; i<NR_SW_COUNT_LEVEL; i++)
+		pr_info("%s to Mbrain:%d\n", __func__, qos_data->data[i]);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(qos_mbrain_get_data);

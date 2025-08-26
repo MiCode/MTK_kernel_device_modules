@@ -9,6 +9,7 @@
 #define HIST_NUM 8
 #define BW_TYPE  4
 #define BW_NUM 16
+#define MAX_DATA_QOS_LV_SIZE 10
 #define SRC_TYPE 4  // EMI_OCC_BW,EMI_DATA_BW,DRAM_OCC_BW,DRAM_DATA_BW,
 
 struct qos_rec_data {
@@ -23,6 +24,25 @@ struct qos_rec_data {
 
 	/* remaining size = 3804 bytes */
 };
+
+enum sw_count_ddr_level {
+	DDR_LEVEL_2133,
+	DDR_LEVEL_3094,
+	DDR_LEVEL_4266,
+	DDR_LEVEL_6400,
+	DDR_LEVEL_8533,
+	DDR_LEVEL_10667,
+	NR_SW_COUNT_LEVEL
+};
+
+struct mtk_qos_mbrain_data {
+	uint8_t version;
+	uint8_t data_length;  // 6
+	uint32_t data[MAX_DATA_QOS_LV_SIZE];
+};
+
+extern unsigned int sw_count_tbl[NR_SW_COUNT_LEVEL];
+
 #if IS_ENABLED(CONFIG_MTK_QOS_LEGACY)
 static inline int qos_init_rec_share(void)
 {
@@ -73,6 +93,7 @@ static inline unsigned int qos_ltr_buffer_support(void)
 extern int qos_share_init_sram(void __iomem *regs, unsigned int bound);
 extern int qos_share_init_sram_ext(void __iomem *regs, unsigned int bound);
 extern int qos_share_init_sram_dbg(void __iomem *regs, unsigned int bound);
+extern unsigned int qos_mbrain_get_data(struct mtk_qos_mbrain_data *qos_data);
 extern unsigned int qos_rec_check_sram_ext(void);
 extern unsigned int qos_ltr_buffer_support(void);
 extern u32 qos_share_sram_read(u32 id);

@@ -32,6 +32,7 @@ struct mtk_qos *m_qos;
 static void __iomem *qos_sram_base;
 static unsigned int qos_sram_bound;
 unsigned int evt_tri_dbg_tbl[NR_TRI];
+unsigned int sw_count_tbl[NR_SW_COUNT_LEVEL] = {0};
 unsigned int mtk_qos_enable = 1;
 unsigned int is_enable_qos_ltr_buffer = 0xFFFF;
 
