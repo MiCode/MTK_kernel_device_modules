@@ -198,7 +198,7 @@ void venc_encode_prepare(void *ctx_prepare,
 		 */
 		mtk_venc_pmqos_lock_unlock(dev, true);
 		mtk_venc_pmqos_monitor(dev, VCODEC_SMI_MONITOR_START);
-		mtk_venc_pmqos_frame_req(ctx);
+		mtk_venc_pmqos_frame_req(ctx, true);
 		mtk_venc_pmqos_lock_unlock(dev, false);
 	}
 	dev->pw_cnt[core_id]++;
@@ -226,6 +226,7 @@ static void venc_encode_unprepare_no_lock(void *ctx_unprepare,
 	if (core_id == MTK_VENC_CORE_0) {
 		mtk_venc_pmqos_lock_unlock(dev, true);
 		mtk_venc_pmqos_monitor(ctx->dev, VCODEC_SMI_MONITOR_STOP);
+		mtk_venc_pmqos_frame_req(ctx, false);
 		mtk_venc_pmqos_lock_unlock(dev, false);
 	}
 	if (!mtk_vcodec_is_vcp(MTK_INST_ENCODER) && dev->enc_irq[core_id] > 0 && dev->pw_cnt[core_id] == 0)

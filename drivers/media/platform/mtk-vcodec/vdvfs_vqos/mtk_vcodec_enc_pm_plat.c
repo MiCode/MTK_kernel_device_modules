@@ -927,7 +927,7 @@ static void mtk_venc_pmqos_monitor_debugger(struct mtk_vcodec_dev *dev, u32 *cur
 }
 #endif
 
-void mtk_venc_pmqos_frame_req(struct mtk_vcodec_ctx *ctx)
+void mtk_venc_pmqos_frame_req(struct mtk_vcodec_ctx *ctx, bool start)
 {
 #if ENC_EMI_BW
 	struct mtk_vcodec_dev *dev = ctx->dev;
@@ -942,63 +942,71 @@ void mtk_venc_pmqos_frame_req(struct mtk_vcodec_ctx *ctx)
 	else if (dev->venc_dvfs_params.version == 1)
 		smi_common_num = 1;
 
-	if (qos->need_smi_monitor) {
+	if (start) {
+		if (qos->need_smi_monitor) {
+			if (qos->apply_monitor_config) {
+				if (qos->smi_monitor_in_vcp) {
+					ret = venc_if_get_param(ctx, GET_PARAM_VENC_HW_TIME_FOR_SMI_MONITOR,
+						ctx->hw_proc_time_smi_monitor);
+					if (ret)
+						mtk_v4l2_err("[%d] GET_PARAM_VENC_HW_TIME_FOR_SMI_MONITOR fail ret %d",
+							ctx->id, ret);
+					mtk_vcodec_dvfs_qos_log(false,
+						"[VQOS] ctx->hw_proc_time_smi_monitor [0] = %d, [1] = %d",
+						ctx->hw_proc_time_smi_monitor[0], ctx->hw_proc_time_smi_monitor[1]);
 
-		if (!qos->apply_monitor_config)
+					common_bw[0] = (u32)(qos->data_total[SMI_COMMON_ID_0][SMI_MON_READ]
+						/ qos->max_mon_frm_cnt / ctx->hw_proc_time_smi_monitor[0]);
+
+					if (smi_common_num == 1) {
+						common_bw[1] = (u32)(qos->data_total[SMI_COMMON_ID_0][SMI_MON_WRITE]
+							/ qos->max_mon_frm_cnt / ctx->hw_proc_time_smi_monitor[0]);
+					} else if (smi_common_num == 2) {
+						common_bw[1] = (u32)(qos->data_total[SMI_COMMON_ID_1][SMI_MON_READ]
+							/ qos->max_mon_frm_cnt / ctx->hw_proc_time_smi_monitor[1]);
+						common_bw[2] = (u32)(qos->data_total[SMI_COMMON_ID_0][SMI_MON_WRITE]
+							/ qos->max_mon_frm_cnt / ctx->hw_proc_time_smi_monitor[0]);
+						common_bw[3] = (u32)(qos->data_total[SMI_COMMON_ID_1][SMI_MON_WRITE]
+							/ qos->max_mon_frm_cnt/ ctx->hw_proc_time_smi_monitor[1]);
+					}
+				} else {
+					common_bw[0] = (u32)((((qos->data_total[SMI_COMMON_ID_0][SMI_MON_READ] * cur_fps
+						/ qos->max_mon_frm_cnt) >> 2) * 5) >> 20);
+
+					if (smi_common_num == 1) {
+						common_bw[1] = (u32)((((qos->data_total[SMI_COMMON_ID_0][SMI_MON_WRITE]
+							* cur_fps / qos->max_mon_frm_cnt) >> 2) * 5) >> 20);
+					} else if (smi_common_num == 2) {
+						common_bw[1] = (u32)((((qos->data_total[SMI_COMMON_ID_1][SMI_MON_READ]
+							* cur_fps / qos->max_mon_frm_cnt) >> 2) * 5) >> 20);
+						common_bw[2] = (u32)((((qos->data_total[SMI_COMMON_ID_0][SMI_MON_WRITE]
+							* cur_fps / qos->max_mon_frm_cnt) >> 2) * 5) >> 20);
+						common_bw[3] = (u32)((((qos->data_total[SMI_COMMON_ID_1][SMI_MON_WRITE]
+							* cur_fps / qos->max_mon_frm_cnt) >> 2) * 5) >> 20);
+					}
+				}
+
+				qos->monitor_ring_frame_cnt = 0;
+				qos->apply_monitor_config = false;
+				memset(qos->data_total, 0,
+					sizeof(unsigned long long) * smi_common_num * MTK_VCODEC_QOS_TYPE);
+				mtk_venc_pmqos_monitor_debugger(dev, common_bw);
+			}
+		} else
 			return;
-
-		if (qos->smi_monitor_in_vcp) {
-
-			ret = venc_if_get_param(ctx, GET_PARAM_VENC_HW_TIME_FOR_SMI_MONITOR,
-				ctx->hw_proc_time_smi_monitor);
-			if (ret)
-				mtk_v4l2_err("[%d] GET_PARAM_VENC_HW_TIME_FOR_SMI_MONITOR fail ret %d", ctx->id, ret);
-			mtk_vcodec_dvfs_qos_log(false, "[VQOS] ctx->hw_proc_time_smi_monitor[0] = %d, [1] = %d",
-				ctx->hw_proc_time_smi_monitor[0], ctx->hw_proc_time_smi_monitor[1]);
-
-			common_bw[0] = (u32)(qos->data_total[SMI_COMMON_ID_0][SMI_MON_READ]
-				/ qos->max_mon_frm_cnt / ctx->hw_proc_time_smi_monitor[0]);
-
-			if (smi_common_num == 1) {
-				common_bw[1] = (u32)(qos->data_total[SMI_COMMON_ID_0][SMI_MON_WRITE]
-					/ qos->max_mon_frm_cnt / ctx->hw_proc_time_smi_monitor[0]);
-			} else if (smi_common_num == 2) {
-				common_bw[1] = (u32)(qos->data_total[SMI_COMMON_ID_1][SMI_MON_READ]
-					/ qos->max_mon_frm_cnt / ctx->hw_proc_time_smi_monitor[1]);
-				common_bw[2] = (u32)(qos->data_total[SMI_COMMON_ID_0][SMI_MON_WRITE]
-					/ qos->max_mon_frm_cnt / ctx->hw_proc_time_smi_monitor[0]);
-				common_bw[3] = (u32)(qos->data_total[SMI_COMMON_ID_1][SMI_MON_WRITE]
-					/ qos->max_mon_frm_cnt/ ctx->hw_proc_time_smi_monitor[1]);
-			}
-		} else {
-			common_bw[0] = (u32)((((qos->data_total[SMI_COMMON_ID_0][SMI_MON_READ] * cur_fps
-				/ qos->max_mon_frm_cnt) >> 2) * 5) >> 20);
-
-			if (smi_common_num == 1) {
-				common_bw[1] = (u32)((((qos->data_total[SMI_COMMON_ID_0][SMI_MON_WRITE] * cur_fps
-					/ qos->max_mon_frm_cnt) >> 2) * 5) >> 20);
-			} else if (smi_common_num == 2) {
-				common_bw[1] = (u32)((((qos->data_total[SMI_COMMON_ID_1][SMI_MON_READ] * cur_fps
-					/ qos->max_mon_frm_cnt) >> 2) * 5) >> 20);
-				common_bw[2] = (u32)((((qos->data_total[SMI_COMMON_ID_0][SMI_MON_WRITE] * cur_fps
-					/ qos->max_mon_frm_cnt) >> 2) * 5) >> 20);
-				common_bw[3] = (u32)((((qos->data_total[SMI_COMMON_ID_1][SMI_MON_WRITE] * cur_fps
-					/ qos->max_mon_frm_cnt) >> 2) * 5) >> 20);
-			}
-		}
-
-		qos->monitor_ring_frame_cnt = 0;
-		qos->apply_monitor_config = false;
-		memset(qos->data_total, 0,
-			sizeof(unsigned long long) * smi_common_num * MTK_VCODEC_QOS_TYPE);
-		mtk_venc_pmqos_monitor_debugger(dev, common_bw);
-	} else
-		return;
+	}
 
 	for (i = 0; i < dev->venc_larb_cnt; i++) {
-		mtk_icc_set_bw(dev->venc_qos_req[i], MBps_to_icc(common_bw[i]), 0);
-		mtk_vcodec_dvfs_qos_log(false, "[VQOS] set larb%d: %dMB/s",
-			dev->venc_larb_bw[i].larb_id, common_bw[i]);
+		if (start) {
+			mtk_icc_set_bw(dev->venc_qos_req[i], MBps_to_icc(qos->prev_comm_bw[i]), 0);
+			mtk_vcodec_dvfs_qos_log(false, "[VQOS] set larb%d: %dMB/s",
+				dev->venc_larb_bw[i].larb_id, qos->prev_comm_bw[i]);
+		} else {
+			mtk_icc_set_bw(dev->venc_qos_req[i], 0, 0);
+			mtk_vcodec_dvfs_qos_log(false, "[VQOS] set larb%d: 0MB/s",
+				dev->venc_larb_bw[i].larb_id);
+		}
+
 	}
 #endif
 }
