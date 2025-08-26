@@ -1791,6 +1791,7 @@ static void mtk_dsi_runtime_phy_reset_gce(struct mtk_dsi *dsi, struct cmdq_pkt *
 static void mtk_dsi_clear_rxrd_irq(struct mtk_dsi *dsi)
 {
 	mtk_dsi_mask(dsi, DSI_INTSTA, LPRX_RD_RDY_INT_FLAG, 0);
+	CRTC_MMP_MARK(0, esd_check, 0xdddd, 0x1);
 }
 unsigned int mtk_dsi_default_rate(struct mtk_dsi *dsi)
 {
@@ -3875,6 +3876,7 @@ static void mtk_dsi_stop(struct mtk_dsi *dsi)
 	writel(0, dsi->regs + DSI_START);
 	writel(0, dsi->regs + DSI_INTEN);
 	writel(0, dsi->regs + DSI_INTSTA);
+	CRTC_MMP_MARK(0, esd_check, 0xdddd, 0x2);
 }
 
 static void mtk_dsi_set_interrupt_enable(struct mtk_dsi *dsi)
@@ -3919,6 +3921,7 @@ static void mtk_dsi_set_interrupt_enable(struct mtk_dsi *dsi)
 	}
 
 	writel(0, dsi->regs + DSI_INTSTA);
+	CRTC_MMP_MARK(0, esd_check, 0xdddd, 0x3);
 	writel(inten, dsi->regs + DSI_INTEN);
 }
 
@@ -4811,6 +4814,7 @@ static irqreturn_t mtk_dsi_irq(int irq, void *dev_id)
 		} while (tmp & DSI_BUSY);
 
 		mtk_dsi_mask(dsi, DSI_INTSTA, status, 0);
+		CRTC_MMP_MARK(0, esd_check, 0xddd1, status);
 		mtk_dsi_irq_data_set(dsi, status);
 		wake_up_interruptible(&dsi->irq_wait_queue);
 	}
@@ -5587,6 +5591,7 @@ static void _mtk_dsi_read_ddic_by6382(struct mtk_dsi *dsi,
 	mtk_dsi_cmdq_poll(comp, handle, comp->regs_pa + DSI_INTSTA, 0x1, 0x1);
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DSI_INTSTA,
 		0x0, 0x1);
+	CRTC_MMP_MARK(0, esd_check, 0xddd2, 0x1);
 
 	cmdq_pkt_mem_move(handle, comp->cmdq_base,
 		comp->regs_pa + DSI_RX_DATA0(dsi->driver_data), read_slot,
@@ -5607,6 +5612,7 @@ static void _mtk_dsi_read_ddic_by6382(struct mtk_dsi *dsi,
 		0x1, 0x1);
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DSI_INTSTA,
 		0x0, 0x1);
+	CRTC_MMP_MARK(0, esd_check, 0xddd2, 0x2);
 
 	mtk_dsi_poll_for_idle(dsi, handle);
 
@@ -7342,6 +7348,7 @@ int mtk_dsi_read_gce(struct mtk_ddp_comp *comp, void *handle,
 	CRTC_MMP_MARK(index, esd_check, 4, 1);
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DSI_INTSTA,
 		0x0, 0x1);
+	CRTC_MMP_MARK(0, esd_check, 0xddd2, 0x3);
 
 	cmdq_pkt_mem_move(handle, comp->cmdq_base,
 		comp->regs_pa + DSI_RX_DATA0(dsi->driver_data),
@@ -7355,6 +7362,7 @@ int mtk_dsi_read_gce(struct mtk_ddp_comp *comp, void *handle,
 		0x1, 0x1);
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DSI_INTSTA,
 		0x0, 0x1);
+	CRTC_MMP_MARK(0, esd_check, 0xddd2, 0x4);
 	CRTC_MMP_MARK(index, esd_check, 4, 2);
 	mtk_dsi_poll_for_idle(dsi, handle);
 	CRTC_MMP_MARK(index, esd_check, 4, 3);
@@ -10164,6 +10172,7 @@ static void _mtk_mipi_dsi_read_gce(struct mtk_dsi *dsi,
 
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DSI_INTSTA,
 		0x0, 0x1);
+	CRTC_MMP_MARK(0, esd_check, 0xddd2, 0x5);
 
 	cmdq_pkt_mem_move(handle, comp->cmdq_base,
 		comp->regs_pa + DSI_RX_DATA0(dsi->driver_data),
@@ -10185,6 +10194,7 @@ static void _mtk_mipi_dsi_read_gce(struct mtk_dsi *dsi,
 		0x1, 0x1);
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DSI_INTSTA,
 		0x0, 0x1);
+	CRTC_MMP_MARK(0, esd_check, 0xddd2, 0x6);
 
 	mtk_dsi_poll_for_idle(dsi, handle);
 	if (dsi->slave_dsi) {
@@ -10725,6 +10735,7 @@ static ssize_t mtk_dsi_host_send_cmd(struct mtk_dsi *dsi,
 		}
 		DDPINFO("%s wait RXDY done\n", __func__);
 		mtk_dsi_mask(dsi, DSI_INTSTA, LPRX_RD_RDY_INT_FLAG, 0);
+		CRTC_MMP_MARK(0, esd_check, 0xdddd, 0x4);
 		mtk_dsi_mask(dsi, DSI_RACK(dsi->driver_data), RACK, RACK);
 	}
 
@@ -14903,6 +14914,7 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DSI_INTSTA, 0x0, ~0);
+		CRTC_MMP_MARK(0, esd_check, 0xddd2, 0x8);
 		if (!mtk_dsi_is_cmd_mode(&dsi->ddp_comp)) {
 			inten |= FRAME_DONE_INT_FLAG;
 			if (priv && (priv->data->mmsys_id == MMSYS_MT6989 ||
@@ -14950,6 +14962,7 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		 */
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DSI_INTSTA, 0x0, 0xfffffffe);
+		CRTC_MMP_MARK(0, esd_check, 0xddd2, 0x9);
 
 		if (atomic_read(&comp->mtk_crtc->force_high_step) == 1) {
 			DDPMSG("IRQ_LEVEL_NORMAL force_high_step = 1, skip underrun irq\n");
