@@ -95,7 +95,7 @@ struct scp_status_reg *c1_t1_m = NULL;
 void (*scp_do_tbufdump)(uint32_t*, uint32_t*) = NULL;
 
 int scp_ee_enable;
-int scp_reset_counts = 100000;
+int scp_reset_counts = SCP_MAX_RECOVERY_CNT;
 bool scp_need_aed_dump = true;
 bool scp_reset_stress = true;
 static atomic_t coredumping = ATOMIC_INIT(0);
@@ -826,7 +826,7 @@ void scp_aed(enum SCP_RESET_TYPE type, enum scp_core_id id)
 
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 	if(scp_need_aed_dump) {
-		if (!scp_reset_stress)
+		if (!scp_reset_stress && scp_reset_counts < (SCP_MAX_RECOVERY_CNT - scp_recovery_db_cnt + 1))
 			scp_need_aed_dump = false;
 		/* scp aed api, only detail information available*/
 		aed_common_exception_api("scp", NULL, 0, NULL, 0,

@@ -210,6 +210,8 @@ struct mtk_pin_dump scp_pin_dump[SCP_IPI_COUNT] = {
 
 static unsigned int scp_ipi_dump_timout = 100;
 
+unsigned int scp_recovery_db_cnt = 1;
+
 void dump_u1u2_clock(void)
 {
 	if(scp_clk_fmeter_dump_info.en) {
@@ -3360,6 +3362,16 @@ static int scp_device_probe(struct platform_device *pdev)
 			return -1;
 		}
 	}
+
+	/* get recovery DB limitation */
+	ret = of_property_read_u32(pdev->dev.of_node,
+					"scp-recovery-db-cnt",
+					&scp_recovery_db_cnt);
+	if(ret || !(scp_recovery_db_cnt > 0 && scp_recovery_db_cnt < SCP_MAX_RECOVERY_CNT)) {
+		scp_recovery_db_cnt = 1;
+		ret = 0;
+	}
+	pr_notice("[SCP]: recovery DB cnt: %u\n", scp_recovery_db_cnt);
 
 	return ret;
 }

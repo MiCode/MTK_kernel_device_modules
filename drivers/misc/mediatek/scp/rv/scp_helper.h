@@ -312,6 +312,9 @@ extern struct tasklet_struct scp_A_irq1_tasklet;
 /* scp awake variable */
 extern unsigned int scp_awake_timeout;
 
+#define SCP_MAX_RECOVERY_CNT (100000)
+extern unsigned int scp_recovery_db_cnt;
+
 enum MTK_TINYSYS_SCP_KERNEL_OP {
 	MTK_TINYSYS_SCP_KERNEL_OP_DUMP_START = 0,
 	MTK_TINYSYS_SCP_KERNEL_OP_DUMP_POLLING,
