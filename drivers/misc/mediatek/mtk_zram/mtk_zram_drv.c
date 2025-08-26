@@ -57,6 +57,10 @@ static const char *default_mode = "hwonly";
 static const char *default_mode = "swonly";
 #endif
 
+#define MAX_MEMPOOL_SIZE	(8192)
+#define MEMPOOL_NEW_SIZE	(4096)
+static int mempool_min_size = MEMPOOL_NEW_SIZE; /* For non swonly modes */
+
 static DEFINE_STATIC_KEY_FALSE(kcompressd_enabled);
 static inline bool is_kcompressd_enabled(void)
 {
@@ -3318,6 +3322,52 @@ const struct zram_mode_operations mode_ops[] = {
 };
 
 /*
+ * mempool will be resized only when updating comp_mode.
+ * So please update mempool_size before setting comp_mode as follows,
+ *
+ *	echo [size] > /sys/block/zram0/mempool_size
+ *	echo [mode] > /sys/block/zram0/comp_mode
+ */
+
+static ssize_t mempool_size_show(struct device *dev,
+				   struct device_attribute *attr,
+				   char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE, "%d\n", mempool_min_size);
+}
+
+static ssize_t mempool_size_store(struct device *dev,
+				    struct device_attribute *attr,
+				    const char *buf,
+				    size_t len)
+{
+	u64 pool_size;
+	struct zram *zram = dev_to_zram(dev);
+	int err;
+
+	pool_size = memparse(buf, NULL);
+	if (!pool_size || pool_size > MAX_MEMPOOL_SIZE)
+		return -EINVAL;
+
+	down_write(&zram->init_lock);
+	if (init_done(zram)) {
+		pr_info("Cannot change mempool_size for initialized device\n");
+		err = -EBUSY;
+		goto out_unlock;
+	}
+
+	mempool_min_size = (int)pool_size;
+	pr_info("%s: new min mempool size %d\n", __func__, mempool_min_size);
+	up_write(&zram->init_lock);
+
+	return len;
+
+out_unlock:
+	up_write(&zram->init_lock);
+	return err;
+}
+
+/*
  * Compression mode -
  * hybrid: HW compression first, fallback to SW compression if necessary.
  * hwonly: No fallback to SW except !zram_hw_compress.
@@ -3368,7 +3418,6 @@ static void comp_mode_set_algorithm(struct zram *zram)
 		comp_algorithm_set(zram, ZRAM_PRIMARY_COMP, default_compressor);
 }
 
-#define MEMPOOL_NEW_SIZE	(16)
 static void comp_mode_set(struct zram *zram, const char *mode)
 {
 	int i, ret = -1;
@@ -3403,7 +3452,7 @@ retry:
 
 	} else {
 		/* Resize mempool size for fs_bio_set */
-		if (mempool_resize(&fs_bio_set.bio_pool, MEMPOOL_NEW_SIZE))
+		if (mempool_resize(&fs_bio_set.bio_pool, mempool_min_size))
 			pr_info("%s: failed to resize mempool size!\n", __func__);
 		else
 			pr_info("%s: Resize mempool size successfully!\n", __func__);
@@ -3790,6 +3839,7 @@ static DEVICE_ATTR_RW(recomp_algorithm);
 static DEVICE_ATTR_WO(recompress);
 #endif
 static DEVICE_ATTR_RW(comp_mode);
+static DEVICE_ATTR_RW(mempool_size);
 
 static struct attribute *zram_disk_attrs[] = {
 	&dev_attr_disksize.attr,
@@ -3818,6 +3868,7 @@ static struct attribute *zram_disk_attrs[] = {
 	&dev_attr_recompress.attr,
 #endif
 	&dev_attr_comp_mode.attr,
+	&dev_attr_mempool_size.attr,
 	NULL,
 };
 

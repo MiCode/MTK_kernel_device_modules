@@ -29,7 +29,7 @@ config ZRAM_ENGINE_COMP_FIFO_BITS
 config ZRAM_ENGINE_DECOMP_FIFO_BITS
 	int "The entry bits of ZRAM ENGINE Decompression FIFOs (3-7)"
 	range 3 7
-	default "7"
+	default "3"
 	help
 	  This will create per-cpu fifos with depth of 2^3 ~ 2^7 for
 	  decompression.
