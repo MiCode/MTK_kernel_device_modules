@@ -2729,10 +2729,12 @@ static int panel_ext_reset(struct drm_panel *panel, int on)
 {
 	struct jdi *ctx = panel_to_jdi(panel);
 
+	pr_info("[LCM] %s begin\n", __func__);
 	ctx->reset_gpio =
 		devm_gpiod_get(ctx->dev, "reset", GPIOD_OUT_HIGH);
 	gpiod_set_value(ctx->reset_gpio, on);
 	devm_gpiod_put(ctx->dev, ctx->reset_gpio);
+	pr_info("[LCM] %s end\n", __func__);
 
 	return 0;
 }
