@@ -28,6 +28,9 @@
 
 #define MMQOS_MAX_LARB_SSC_OSTDL		(10)
 
+#define MMQOS_MAX_DVFS_STEP_NUM		(11)
+#define MMQOS_DVFS_VALUE_NUM		(3)
+
 extern u32 stop_record;
 
 enum {
