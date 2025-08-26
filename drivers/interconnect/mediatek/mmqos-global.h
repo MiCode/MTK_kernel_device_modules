@@ -56,6 +56,7 @@ enum mmqos_state_level {
 	MMUP_ENABLE = BIT(20),
 	AXI_MON_LIMITER_SUPPORT = BIT(21),
 	VMMRC_VCP_NO_WARM_BOOT = BIT(22),
+	MMQOS_SW_COUNT_SUPPORT = BIT(23),
 };
 extern u32 mmqos_state;
 

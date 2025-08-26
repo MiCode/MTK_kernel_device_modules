@@ -130,7 +130,6 @@
 
 #define MAX_BUF_LEN			1024
 
-
 #define mmqos_debug_dump_line(file, fmt, args...)	\
 ({							\
 	if (file)					\
@@ -243,6 +242,7 @@ struct mtk_mmqos {
 	u32 bwl_hrt_w_margin;
 	u32 bwl_srt_r_margin;
 	u32 bwl_srt_w_margin;
+	void __iomem *mmqos_sram_base;
 };
 
 u32 mmqos_state;
@@ -1993,6 +1993,32 @@ struct MM_bwData *get_mm_bw_data_for_mbrain(void)
 }
 EXPORT_SYMBOL(get_mm_bw_data_for_mbrain);
 
+struct MM_SWCount_Data g_SWCount_Data[MAX_SUBSYS_NUM] = {0};
+
+struct MM_SWCount_Data *get_mm_sw_cnt_for_mbrain(void)
+{
+	if (!(mmqos_state & MMPC_V2_ENABLE) || !(mmqos_state & MMQOS_SW_COUNT_SUPPORT)) {
+		MMQOS_ERR("Not support for qos sw count mbrain.\n");
+		return NULL;
+	}
+
+	if (!gmmqos->mmqos_sram_base) {
+		MMQOS_ERR("No MMQoS SRAM base\n");
+		return NULL;
+	}
+
+	for (int sid = 0; sid < MAX_SUBSYS_NUM; sid++) {
+		g_SWCount_Data[sid].sid = sid;
+		g_SWCount_Data[sid].data_length = 6;
+		// total bw
+		for (int lvl = 0; lvl < MAX_SW_CNT_LEVEL_NUM; lvl++)
+			g_SWCount_Data[sid].sw_cnt_level[lvl].count =
+				readq(gmmqos->mmqos_sram_base + ((sid * 6) + lvl) * 8);
+	}
+	return g_SWCount_Data;
+}
+EXPORT_SYMBOL(get_mm_sw_cnt_for_mbrain);
+
 static void mmpc_subsys_hw_mode_full_dump(struct seq_file *file, int sid)
 {
 	if (mmqos_state & MMPC_V2_ENABLE) {
@@ -2910,7 +2936,7 @@ EXPORT_SYMBOL_GPL(mtk_mmqos_probe);
 int mtk_mmqos_v2_probe(struct platform_device *pdev)
 {
 	struct task_struct *kthr_vcp, *kthr_mmup;
-	u32 base_tmp, mminfra_base_tmp, range, hfrp_base_temp;
+	u32 base_tmp, mminfra_base_tmp, range, hfrp_base_temp, sram_base;
 	int ret, probe_ret;
 
 	probe_ret = mtk_mmqos_probe(pdev);
@@ -2982,6 +3008,11 @@ int mtk_mmqos_v2_probe(struct platform_device *pdev)
 					gmmqos->mmpc_total_mmqos_bw, gmmqos->mmpc_total_pmqos_bw,
 					gmmqos->vmmrc_level_hex);
 			}
+			if (mmqos_state & MMQOS_SW_COUNT_SUPPORT) {
+				of_property_read_u32(pdev->dev.of_node, "mmqos-sram-base", &sram_base);
+				gmmqos->mmqos_sram_base = ioremap((phys_addr_t)sram_base, 0x1000);
+				MMQOS_DBG("mmqos sw count sram base: %#x", sram_base);
+			}
 		} else {
 			MMQOS_DBG("no VMMRC_ENABLE & MMPC_ENABLE & MMPC_V2_ENABLE");
 		}
@@ -3017,7 +3048,6 @@ int mtk_mmqos_v2_probe(struct platform_device *pdev)
 	MMQOS_DBG("bwl_hrt_r_margin:%u, bwl_hrt_w_margin:%u, bwl_srt_r_margin:%u, bwl_srt_w_margin:%u",
 		gmmqos->bwl_hrt_r_margin, gmmqos->bwl_hrt_w_margin,
 		gmmqos->bwl_srt_r_margin, gmmqos->bwl_srt_w_margin);
-
 
 	return probe_ret;
 }

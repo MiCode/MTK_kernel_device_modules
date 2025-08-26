@@ -38,6 +38,7 @@ enum hrt_scen {
 
 #define MAX_BW_VALUE_NUMS	24
 #define MAX_SUBSYS_NUMS		6
+#define MAX_SW_CNT_LEVEL_NUM		6
 
 struct mmpc {
 	int bw;
@@ -54,6 +55,18 @@ struct MM_bwData {
 
 extern struct MM_bwData g_sidData[MAX_SUBSYS_NUMS];
 
+struct sw_cnt {
+	u64 count;
+};
+
+struct MM_SWCount_Data {
+	int sid;
+	uint8_t data_length;  // 6
+	struct sw_cnt sw_cnt_level[MAX_SW_CNT_LEVEL_NUM];
+};
+
+extern struct MM_SWCount_Data g_SWCount_Data[MAX_SUBSYS_NUMS];
+
 #if IS_ENABLED(CONFIG_INTERCONNECT_MTK_MMQOS_COMMON)
 void mtk_mmqos_wait_throttle_done(void);
 s32 mtk_mmqos_set_hrt_bw(enum hrt_type type, u32 bw);
@@ -67,6 +80,7 @@ void mtk_mmqos_is_dualpipe_enable(bool is_enable);
 void mtk_mmqos_set_md_type(u32 md_type);
 s32 mtk_mmqos_get_cam_hrt(void);
 struct MM_bwData *get_mm_bw_data_for_mbrain(void);
+struct MM_SWCount_Data *get_mm_sw_cnt_for_mbrain(void);
 #else
 static inline void
 mtk_mmqos_wait_throttle_done(void) { return; }
@@ -103,6 +117,7 @@ static inline s32
 mtk_mmqos_get_cam_hrt(void) { return 0; }
 
 struct MM_bwData *get_mm_bw_data_for_mbrain(void) { return NULL; }
+struct MM_SWCount_Data *get_mm_sw_cnt_for_mbrain(void) { return NULL; }
 #endif
 
 #endif /* MTK_MMQOS_H */
