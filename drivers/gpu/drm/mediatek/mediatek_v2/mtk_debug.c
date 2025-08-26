@@ -3443,12 +3443,106 @@ void mtk_drm_crtc_diagnose(void)
 	}
 }
 
+unsigned char do_lp_read(struct mtk_ddp_comp *comp, uint8_t cmd, unsigned int count)
+{
+	unsigned char reg_value = 0x00;
+	struct LCM_setting_table_V4 read_table;
+
+	pr_notice("%s++\n", __func__);
+
+	memset(&read_table, 0, sizeof(struct LCM_setting_table_V4));
+
+	read_table.cmd = cmd;
+	read_table.count = count;
+	read_table.para_list[0] = 0x0;
+	read_table.flag = 1;
+
+	reg_value = read_lcm_lp_by_cmdq(comp, &read_table,
+		sizeof(read_table) / sizeof(struct LCM_setting_table_V4),
+		count,
+		1);
+
+	pr_notice("%s--\n", __func__);
+
+	return reg_value;
+
+}
+
+void do_lp_write(struct mtk_ddp_comp *comp, unsigned char cmd, unsigned char *para,
+	unsigned int count)
+{
+	struct LCM_setting_table_V4 write_table;
+	int i;
+
+	pr_notice("%s++\n", __func__);
+
+	write_table.cmd = cmd;
+	write_table.count = count;
+	write_table.flag = 0;
+	for (i = 0; i < count; i++)
+		write_table.para_list[i] = para[i];
+
+	write_lcm_lp_by_cmdq(comp, &write_table,
+		sizeof(write_table) / sizeof(struct LCM_setting_table_V4),
+		1);
+
+	pr_notice("%s--\n", __func__);
+}
+
+unsigned char do_lp_read_dual(struct mtk_ddp_comp *comp, uint8_t cmd, unsigned int count)
+{
+	unsigned char reg_value = 0x00;
+	struct LCM_setting_table_V4 read_table;
+
+	pr_notice("%s++\n", __func__);
+
+	memset(&read_table, 0, sizeof(struct LCM_setting_table_V4));
+
+	read_table.cmd = cmd;
+	read_table.count = count;
+	read_table.para_list[0] = 0x0;
+	read_table.flag = 1;
+
+	reg_value = read_lcm_lp_by_cmdq_dual(comp, &read_table,
+		sizeof(read_table) / sizeof(struct LCM_setting_table_V4),
+		count,
+		1);
+
+	pr_notice("%s--\n", __func__);
+
+	return reg_value;
+
+}
+
+void do_lp_write_dual(struct mtk_ddp_comp *comp, unsigned char cmd, unsigned char *para,
+	unsigned int count)
+{
+	struct LCM_setting_table_V4 write_table;
+	int i;
+
+	pr_notice("%s++\n", __func__);
+
+	write_table.cmd = cmd;
+	write_table.count = count;
+	write_table.flag = 0;
+	for (i = 0; i < count; i++)
+		write_table.para_list[i] = para[i];
+
+	write_lcm_lp_by_cmdq_dual(comp, &write_table,
+		sizeof(write_table) / sizeof(struct LCM_setting_table_V4),
+		1);
+
+	pr_notice("%s--\n", __func__);
+}
+
+static char dbg_buf[2048];
 static void process_dbg_opt(const char *opt)
 {
 	struct mtk_drm_private *priv = NULL;
 	struct drm_crtc *crtc = NULL;
 	struct mtk_drm_crtc *mtk_crtc = NULL;
 	struct mtk_ddp_comp *output_comp = NULL;
+	char *buf = dbg_buf + strlen(dbg_buf);
 
 	DDPINFO("display_debug cmd %s\n", opt);
 
@@ -6262,6 +6356,314 @@ test_2c_done:
 			comp->mtk_crtc->panel_ext->params->dsc_params.dual_dsc_enable) {
 			comp = priv->ddp_comp[DDP_COMPONENT_DSC1];
 			mtk_dsc_bist_pattern(comp, pattern);
+		}
+	}  else if (strncmp(opt, "set_dsi_cmd:", 12) == 0) {
+		int para_cnt, i;
+		char para[16] = {0};
+		static char fmt[256] = {0};
+		static const char temp[] = "set_dsi_cmd:hs:0x%x";
+		static const char temp1[] = "set_dsi_cmd:lp:0x%x";
+		int ret = 0;
+		struct mtk_ddp_comp *comp;
+		struct drm_crtc *crtc;
+		struct mtk_drm_crtc *mtk_crtc;
+		int cmd_send_type = 0;
+		char *str =  NULL;
+
+		DDPINFO("Enter set_dsi_cmd! dbg_buf=%lu\n", strlen(dbg_buf));
+		/* Write DDIC:
+		 * adb command example:
+		 * HS: echo set_dsi_cmd:hs:0xDA,0xb > /sys/kernel/debug/mtkfb
+		 * LP: echo set_dsi_cmd:lp:0xDA,0xb > /sys/kernel/debug/mtkfb
+		 */
+
+		/* this debug cmd only for crtc0 */
+		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
+					typeof(*crtc), head);
+		if (!crtc) {
+			DDPINFO("find crtc fail\n");
+			return;
+		}
+
+		mtk_crtc = to_mtk_crtc(crtc);
+		comp = mtk_ddp_comp_request_output(mtk_crtc);
+		if (!comp || !comp->funcs || !comp->funcs->io_cmd) {
+			DDPINFO("cannot find output component\n");
+			return;
+		}
+
+		memset(fmt, 0, sizeof(fmt));
+
+		if (strncmp((char *)opt + 12, "hs", 2) == 0) {
+			cmd_send_type = 0;
+			strncpy((char *)fmt, (char *)temp, sizeof(temp));
+		} else if (strncmp((char *)opt + 12, "lp", 2) == 0) {
+			cmd_send_type = 1;
+			strncpy((char *)fmt, (char *)temp1, sizeof(temp1));
+		} else {
+			snprintf(buf, 50, "error to parse cmd %s\n", opt);
+			return;
+		}
+
+		for (i = 0; i < ARRAY_SIZE(para); i++)
+			strncat(fmt, ",0x%hhx", sizeof(fmt) - strlen(fmt) - 1);
+
+		strncat(fmt, "\n", sizeof(fmt) - strlen(fmt) - 1);
+
+		str = kstrdup(fmt, GFP_KERNEL);
+		if (str) {
+			DDPINFO("set_lp_cmd %s\n", __func__);
+			ret = sscanf(opt, fmt,
+				&para[0], &para[1], &para[2], &para[3], &para[4],
+				&para[5], &para[6], &para[7], &para[8], &para[9],
+				&para[10], &para[11], &para[12], &para[13],
+				&para[14], &para[15]);
+
+			if (ret < 1 || ret > ARRAY_SIZE(para) - 1) {
+				snprintf(buf, 50, "error to parse cmd %s\n", opt);
+				return;
+			}
+
+			para_cnt = ret;
+			DDPINFO("cmd=0x%x, para_cnt=%d\n", para[0], para_cnt);
+			for (i = 0; i < para_cnt; i++)
+				DDPINFO("para[%d] = 0x%x\n", i, para[i]);
+
+			if (cmd_send_type == 0)/*hs*/
+				dsi_dcs_write_lcm(comp, para, para_cnt);
+			else if(cmd_send_type == 1)/*lp*/
+				do_lp_write(comp, para[0], para, para_cnt);
+		}
+	} else if (strncmp(opt, "get_lp_cmd:", 11) == 0) {
+		char p[5] = {0};
+		char num[5] = {0};
+		unsigned int cmd;
+		int ret = 0;
+		unsigned int count = 0;
+		int i = 0;
+		int temp_len = 0;
+		struct mtk_ddp_comp *comp;
+		struct drm_crtc *crtc;
+		struct mtk_drm_crtc *mtk_crtc;
+
+		DDPINFO("Enter get_lp_cmd! dbg_buf=%ld\n", strlen(dbg_buf));
+		/* Read DDIC:
+		 * adb command example:
+		 * echo get_lp_cmd:0xDA,1 > /sys/kernel/debug/mtkfb
+		 * cat /sys/kernel/debug/mtkfb
+		 */
+
+		/* this debug cmd only for crtc0 */
+		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
+					typeof(*crtc), head);
+		if (!crtc) {
+			DDPINFO("find crtc fail\n");
+			return;
+		}
+
+		mtk_crtc = to_mtk_crtc(crtc);
+		comp = mtk_ddp_comp_request_output(mtk_crtc);
+		if (!comp || !comp->funcs || !comp->funcs->io_cmd) {
+			DDPINFO("cannot find output component\n");
+			return;
+		}
+
+#define SPRINTF_DEV_ATTR(fmt, arg...) \
+		do { \
+			temp_len = snprintf(buf, 500, fmt, ##arg); \
+			buf += temp_len; \
+		} while (0)
+
+		strncpy(p, (char *)opt + 11, 4);
+		if (strncmp((char *)opt + 16, "0", 1) == 0)
+			strncpy(num, (char *)opt + 16, 2);
+		else if (strncmp((char *)opt + 16, "1", 1) == 0)
+			strncpy(num, (char *)opt + 16, 2);
+		else
+			snprintf(buf, 50, "error to parse read count %s\n", opt);
+
+		ret = kstrtouint(p, 0, &cmd);
+		if (ret) {
+			snprintf(buf, 50, "error to parse cmd %s\n", opt);
+			return;
+		}
+
+		ret = kstrtouint(num, 10, &count);
+		if (ret) {
+			snprintf(buf, 50, "error to parse count %s\n", opt);
+			return;
+		}
+
+		if (count > 10) {
+			DDPINFO("Count should no more than 10!\n");
+			return;
+		}
+
+		DDPINFO("cmd=0x%x, count=%d\n", cmd, count);
+
+		ret = do_lp_read(comp, cmd, count);
+
+		for (i = 0; i < count; i++) {
+			pr_notice("read reg:0x%02x, value:0x%02x\n",
+				cmd, reg_value_buf[i]);
+			SPRINTF_DEV_ATTR("read reg:0x%02x, value:0x%02x\n",
+				cmd, reg_value_buf[i]);
+		}
+	} else if (strncmp(opt, "set_dsi_cmd_dual:", 17) == 0) {
+		int para_cnt, i;
+		char para[16] = {0};
+		static char fmt[256] = {0};
+		static const char temp[] = "set_dsi_cmd_dual:hs:0x%x";
+		static const char temp1[] = "set_dsi_cmd_dual:lp:0x%x";
+		int ret = 0;
+		struct mtk_ddp_comp *comp;
+		struct drm_crtc *crtc;
+		struct mtk_drm_crtc *mtk_crtc;
+		int cmd_send_type = 0;
+		char *str =  NULL;
+
+		DDPINFO("Enter set_dsi_cmd_dual! dbg_buf=%lu\n", strlen(dbg_buf));
+		/* Write DDIC:
+		 * adb command example:
+		 * HS: echo set_dsi_cmd_dual:hs:0xDA,0xb > /sys/kernel/debug/mtkfb
+		 * LP: echo set_dsi_cmd_dual:lp:0xDA,0xb > /sys/kernel/debug/mtkfb
+		 */
+
+		/* this debug cmd only for crtc0 */
+		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
+					typeof(*crtc), head);
+		if (!crtc) {
+			DDPINFO("find crtc fail\n");
+			return;
+		}
+
+		mtk_crtc = to_mtk_crtc(crtc);
+		comp = mtk_ddp_comp_request_output(mtk_crtc);
+		if (!comp || !comp->funcs || !comp->funcs->io_cmd) {
+			DDPINFO("cannot find output component\n");
+			return;
+		}
+
+		memset(fmt, 0, sizeof(fmt));
+
+		if (strncmp((char *)opt + 17, "hs", 2) == 0) {
+			cmd_send_type = 0;
+			strncpy((char *)fmt, (char *)temp, sizeof(temp));
+		} else if (strncmp((char *)opt + 17, "lp", 2) == 0) {
+			cmd_send_type = 1;
+			strncpy((char *)fmt, (char *)temp1, sizeof(temp1));
+		} else {
+			snprintf(buf, 50, "error to parse cmd %s\n", opt);
+			return;
+		}
+
+		for (i = 0; i < ARRAY_SIZE(para); i++)
+			strncat(fmt, ",0x%hhx", sizeof(fmt) - strlen(fmt) - 1);
+
+		strncat(fmt, "\n", sizeof(fmt) - strlen(fmt) - 1);
+
+		str = kstrdup(fmt, GFP_KERNEL);
+		if (str) {
+			DDPINFO("set_dsi_cmd_dual %s\n", __func__);
+			ret = sscanf(opt, fmt,
+				&para[0], &para[1], &para[2], &para[3], &para[4],
+				&para[5], &para[6], &para[7], &para[8], &para[9],
+				&para[10], &para[11], &para[12], &para[13],
+				&para[14], &para[15]);
+
+			if (ret < 1 || ret > ARRAY_SIZE(para) - 1) {
+				snprintf(buf, 50, "error to parse cmd %s\n", opt);
+				return;
+			}
+
+			para_cnt = ret;
+			DDPINFO("cmd=0x%x, para_cnt=%d\n", para[0], para_cnt);
+			for (i = 0; i < para_cnt; i++)
+				DDPINFO("para[%d] = 0x%x\n", i, para[i]);
+
+			if (cmd_send_type == 0)/*hs*/
+				dsi_dcs_write_lcm_dual(comp, para, para_cnt);
+			else if(cmd_send_type == 1)/*lp*/
+				do_lp_write_dual(comp, para[0], para, para_cnt);
+		}
+	} else if (strncmp(opt, "get_lp_cmd_dual:", 16) == 0) {
+		char p[5] = {0};
+		char num[5] = {0};
+		unsigned int cmd;
+		int ret = 0;
+		unsigned int count = 0;
+		int i = 0;
+		int temp_len = 0;
+		struct mtk_ddp_comp *comp;
+		struct drm_crtc *crtc;
+		struct mtk_drm_crtc *mtk_crtc;
+
+		DDPINFO("Enter get_lp_cmd_dual! dbg_buf=%ld\n", strlen(dbg_buf));
+		/* Read dual DDIC:
+		 * adb command example:
+		 * echo get_lp_cmd_dual:0xDA,1 > /sys/kernel/debug/mtkfb
+		 * cat /sys/kernel/debug/mtkfb
+		 */
+
+		/* this debug cmd only for crtc0 */
+		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
+					typeof(*crtc), head);
+		if (!crtc) {
+			DDPINFO("find crtc fail\n");
+			return;
+		}
+
+		mtk_crtc = to_mtk_crtc(crtc);
+		comp = mtk_ddp_comp_request_output(mtk_crtc);
+		if (!comp || !comp->funcs || !comp->funcs->io_cmd) {
+			DDPINFO("cannot find output component\n");
+			return;
+		}
+
+#define SPRINTF_DEV_ATTR(fmt, arg...) \
+		do { \
+			temp_len = snprintf(buf, 500, fmt, ##arg); \
+			buf += temp_len; \
+		} while (0)
+
+		strncpy(p, (char *)opt + 16, 4);
+		if (strncmp((char *)opt + 21, "0", 1) == 0)
+			strncpy(num, (char *)opt + 21, 2);
+		else if (strncmp((char *)opt + 21, "1", 1) == 0)
+			strncpy(num, (char *)opt + 21, 2);
+		else
+			snprintf(buf, 50, "error to parse read count %s\n", opt);
+
+		ret = kstrtouint(p, 0, &cmd);
+		if (ret) {
+			snprintf(buf, 50, "error to parse cmd %s\n", opt);
+			return;
+		}
+
+		ret = kstrtouint(num, 10, &count);
+		if (ret) {
+			snprintf(buf, 50, "error to parse count %s\n", opt);
+			return;
+		}
+
+		if (count > 10) {
+			DDPINFO("Count should no more than 10!\n");
+			return;
+		}
+
+		DDPINFO("cmd=0x%x, count=%d\n", cmd, count);
+
+		ret = do_lp_read_dual(comp, cmd, count);
+
+		for (i = 0; i < count; i++) {
+			pr_notice("[Master] read reg:0x%02x, value:0x%02x\n",
+				cmd, reg_value_buf[i]);
+			SPRINTF_DEV_ATTR("read reg:0x%02x, value:0x%02x\n",
+				cmd, reg_value_buf[i]);
+			pr_notice("[Slave] read reg:0x%02x, value:0x%02x\n",
+				cmd, reg_value_buf1[i]);
+			SPRINTF_DEV_ATTR("read reg:0x%02x, value:0x%02x\n",
+				cmd, reg_value_buf1[i]);
 		}
 	}
 }

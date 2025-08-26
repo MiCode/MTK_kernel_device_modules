@@ -60,6 +60,32 @@ enum MTK_DSI_CMD_V2_SCN_OPS {
 	DSI_CMD_V2_SCN_NUM
 };
 
+struct LCM_setting_table_V4 {
+	uint8_t cmd;
+	unsigned int count;
+	char para_list[128];
+	unsigned int flag;
+};
+
+extern unsigned char reg_value_buf[16];
+extern unsigned char reg_value_buf1[16];
+extern int read_lcm_lp_by_cmdq(struct mtk_ddp_comp *comp, struct LCM_setting_table_V4 *para_tbl,
+		unsigned int size,
+		unsigned int count,
+		unsigned char force_update);
+extern int write_lcm_lp_by_cmdq(struct mtk_ddp_comp *comp, struct LCM_setting_table_V4 *para_tbl,
+		unsigned int size,
+		unsigned char force_update);
+extern ssize_t dsi_dcs_write_lcm(struct mtk_ddp_comp *comp, const void *data, size_t len);
+
+extern int read_lcm_lp_by_cmdq_dual(struct mtk_ddp_comp *comp, struct LCM_setting_table_V4 *para_tbl,
+		unsigned int size,
+		unsigned int count,
+		unsigned char force_update);
+extern int write_lcm_lp_by_cmdq_dual(struct mtk_ddp_comp *comp, struct LCM_setting_table_V4 *para_tbl,
+		unsigned int size,
+		unsigned char force_update);
+extern ssize_t dsi_dcs_write_lcm_dual(struct mtk_ddp_comp *comp, const void *data, size_t len);
 extern int mtk_disp_hrt_bw_dbg(void);
 extern int mtk_mdp_rsz_bypass_info(struct mtk_ddp_comp *comp);
 
