@@ -82,8 +82,16 @@ static void mtk_vidle_timer_fun(struct timer_list *timer)
 			atomic_read(&g_vidle_timer_active), MTK_IDLEMGR_VIDLE_TIMER_STOP);
 		atomic_set(&g_vidle_timer_active, MTK_IDLEMGR_VIDLE_TIMER_STOP);
 		mtk_vidle_hint_update(VIDLE_HINT_VDO_MODE_SWITCH_DONE);
+		if (atomic_read(&vidle_data.drm_priv->kernel_pm.status) == KERNEL_SHUTDOWN ||
+			atomic_read(&vidle_data.drm_priv->kernel_pm.wakelock_cnt) == 0) {
+			DDPMSG("%s, cancel vidle ops when power off\n", __func__);
+			goto out;
+		}
+
 		mtk_vidle_hint_decision("hsidle");
 	}
+
+out:
 	spin_unlock_irqrestore(&vidle_timer_lock, flags);
 }
 
@@ -91,15 +99,20 @@ void mtk_vidle_start_timer(void *_crtc, unsigned int delay)
 {
 	struct mtk_drm_crtc *mtk_crtc = NULL;
 	unsigned long flags = 0;
+	unsigned int min_delay = 30;
 	struct drm_crtc *crtc = NULL;
 
 	if (vidle_data.panel_type != PANEL_TYPE_VDO)
 		return;
 
 	crtc = (struct drm_crtc *)_crtc;
-	if (IS_ERR_OR_NULL(crtc) || !delay)
+	if (IS_ERR_OR_NULL(crtc))
 		return;
 
+	if (vidle_data.te_duration)
+		min_delay = vidle_data.te_duration / 1000 + 1;
+	if (delay < min_delay)
+		delay = min_delay;
 	mod_timer(&vidle_timer, jiffies + msecs_to_jiffies(delay));
 
 	spin_lock_irqsave(&vidle_timer_lock, flags);
@@ -131,6 +144,28 @@ void mtk_vidle_get_timer(void)
 		usleep_range(1200, 1500);
 	} else
 		spin_unlock_irqrestore(&vidle_timer_lock, flags);
+}
+
+void mtk_vidle_enable_timer(bool en)
+{
+	unsigned long flags = 0;
+
+	if (vidle_data.panel_type != PANEL_TYPE_VDO)
+		return;
+
+	spin_lock_irqsave(&vidle_timer_lock, flags);
+	if (en) {
+		if (atomic_read(&g_vidle_timer_active) == MTK_IDLEMGR_VIDLE_TIMER_INACTIVE) {
+			mtk_vidle_hint_update(VIDLE_HINT_VDO_MODE_SWITCH_DONE);
+			atomic_set(&g_vidle_timer_active, MTK_IDLEMGR_VIDLE_TIMER_STOP);
+		}
+	} else {
+		if (atomic_read(&g_vidle_timer_active) == MTK_IDLEMGR_VIDLE_TIMER_STOP)
+			mtk_vidle_hint_update(VIDLE_HINT_VDO_MODE_SWITCH_START);
+		atomic_set(&g_vidle_timer_active, MTK_IDLEMGR_VIDLE_TIMER_INACTIVE);
+	}
+	spin_unlock_irqrestore(&vidle_timer_lock, flags);
+	DDPMSG("%s, en:%d, active:%d\n", __func__, en, atomic_read(&g_vidle_timer_active));
 }
 
 void mtk_vidle_flag_init(void *_crtc)

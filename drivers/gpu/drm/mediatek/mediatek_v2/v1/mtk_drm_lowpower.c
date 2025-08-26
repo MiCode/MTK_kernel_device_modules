@@ -948,11 +948,8 @@ static void mtk_drm_vdo_mode_enter_idle(struct drm_crtc *crtc)
 	cmdq_pkt_destroy(handle);
 
 	/*vidle config after mode switch*/
-	if (timing_changed) {
-		unsigned int delay = mtk_drm_get_idle_check_interval(crtc);
-
-		mtk_vidle_start_timer(crtc, delay);
-	}
+	if (timing_changed)
+		mtk_vidle_start_timer(crtc, 0);
 }
 
 static void mtk_drm_cmd_mode_enter_idle(struct drm_crtc *crtc)
@@ -1022,11 +1019,8 @@ static void mtk_drm_vdo_mode_leave_idle(struct drm_crtc *crtc)
 	cmdq_pkt_destroy(handle);
 
 	/* vidle config after mode switch*/
-	if (timing_changed) {
-		unsigned int delay = mtk_drm_get_idle_check_interval(crtc) + 17;
-
-		mtk_vidle_start_timer(crtc, delay);
-	}
+	if (timing_changed)
+		mtk_vidle_start_timer(crtc, 0);
 }
 
 static void mtk_drm_cmd_mode_leave_idle(struct drm_crtc *crtc)

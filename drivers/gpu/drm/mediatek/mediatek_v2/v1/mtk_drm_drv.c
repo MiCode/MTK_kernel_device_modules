@@ -7887,6 +7887,8 @@ void mtk_drm_top_clk_prepare_enable(struct drm_crtc *crtc)
 		CRTC_MMP_MARK(0, leave_vidle,
 			0xc10c0001, atomic_read(&top_clk_ref));
 		mtk_vidle_config_ff(false);
+		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_VDO_PANEL))
+			mtk_vidle_enable_timer(true);
 	} else {
 		struct mtk_drm_crtc *mtk_crtc0 = to_mtk_crtc(priv->crtc[0]);
 
@@ -7936,6 +7938,8 @@ void mtk_drm_top_clk_disable_unprepare(struct drm_crtc *crtc)
 		priv->power_state = false;
 
 		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_FULL_SCENARIO)) {
+			if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_VDO_PANEL))
+				mtk_vidle_enable_timer(false);
 			CRTC_MMP_MARK(0, leave_vidle,
 				(0xc10c0ff | 0x10000000), atomic_read(&top_clk_ref));
 			mtk_vidle_config_ff(false);

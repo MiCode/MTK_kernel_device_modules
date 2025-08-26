@@ -13961,7 +13961,7 @@ done:
 	if (drm_crtc_index(cb_data->crtc) == 0 && priv &&
 		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_VDO_PANEL) &&
 		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_FULL_SCENARIO)) {
-		mtk_vidle_start_timer(cb_data->crtc, 30);
+		mtk_vidle_start_timer(cb_data->crtc, 0);
 	}
 	cmdq_pkt_destroy(cb_data->cmdq_handle);
 	kfree(cb_data);

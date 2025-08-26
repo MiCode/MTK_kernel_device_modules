@@ -107,5 +107,6 @@ int mtk_vidle_get_power_if_in_use(void);
 void mtk_vidle_put_power(void);
 void mtk_vidle_get_timer(void);
 void mtk_vidle_start_timer(void *_crtc, unsigned int delay);
+void mtk_vidle_enable_timer(bool en);
 
 #endif
