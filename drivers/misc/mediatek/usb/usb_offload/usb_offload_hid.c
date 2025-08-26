@@ -689,6 +689,9 @@ skip_stop_ep:
 		hid_dump_ep(hid, "<End DSP>");
 	}
 
+	/* wait for dsp */
+	mdelay(10);
+
 	/* UO_PROV_NUM would identify as moving transfer ring back to ap view */
 	xhci_realloc_hid_ring(hid, UO_PROV_NUM);
 
