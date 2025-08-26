@@ -4094,6 +4094,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			clocks = <&mminfra_config_clk CLK_MMINFRA_GCE_D_GCE>,
 				<&mminfra_config_clk CLK_MMINFRA_GCE_26M_GCE>;
 			clock-names = "gce","gce-timer";
+			cmdq-mmp-thread-exec = <0x00030059>;
 		};
 
 		gce_sec: gce-mbox-sec@1e980000 {
