@@ -2503,6 +2503,11 @@ pkvm_seninf_6993,pkvm_cmdq";
 		compatible = "mediatek,sleep";
 		reg = <0 0x1c004000 0 0xa000>;
 		interrupts = <GIC_SPI 821 IRQ_TYPE_LEVEL_HIGH 0>;
+		sleep-debug {
+			compatible = "mediatek,sleep-debug";
+			interrupts = <GIC_SPI 808 IRQ_TYPE_LEVEL_HIGH 0>;
+			interrupt-names = "spm-dbg-ack-chk";
+		};
 	};
 
 	pbus@1c001000 {
