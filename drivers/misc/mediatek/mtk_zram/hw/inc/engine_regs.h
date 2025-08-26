@@ -626,4 +626,40 @@ static inline uint64_t engine_get_smmu_faulting_addr(struct engine_control_t *ct
 	return ((uint64_t)(reg_val & 0xF) << 32) | (reg_val & 0xFFFFFFF0);
 }
 
+#define ZRAM_TBU_IRQ_STA_RAS_CRI_BIT	(0)
+#define ZRAM_TBU_IRQ_STA_RAS_CRI	(1UL << ZRAM_TBU_IRQ_STA_RAS_CRI_BIT)
+#define ZRAM_TBU_IRQ_STA_RAS_ERI_BIT	(1)
+#define ZRAM_TBU_IRQ_STA_RAS_ERI	(1UL << ZRAM_TBU_IRQ_STA_RAS_ERI_BIT)
+#define ZRAM_TBU_IRQ_STA_RAS_FHI_BIT	(2)
+#define ZRAM_TBU_IRQ_STA_RAS_FHI	(1UL << ZRAM_TBU_IRQ_STA_RAS_FHI_BIT)
+
+/* Disable ZRAM SMMU TBU IRQ */
+static inline void engine_disable_smmu_tbu_irq(struct engine_control_t *ctrl)
+{
+	writel(0xF, ctrl->zram_smmu_base + SMMU_IRQ_DIS);
+}
+
+/* Query ZRAM SMMU TBU IRQ status */
+static inline uint32_t engine_get_smmu_tbu_irq_sta(struct engine_control_t *ctrl)
+{
+	return readl(ctrl->zram_smmu_base + SMMU_IRQ_STA);
+}
+
+/* Clear ZRAM SMMU TBU IRQ and return pending count */
+static inline uint32_t engine_clear_smmu_tbu_irq(struct engine_control_t *ctrl, uint32_t ras_bit)
+{
+	uint32_t pend_cnt;
+
+	/* Read pending count of the interrupt source */
+	pend_cnt = readl(ctrl->zram_smmu_base + SMMU_IRQ_CNT + ras_bit * 0x4);
+
+	/* Clear pending count */
+	writel(pend_cnt, ctrl->zram_smmu_base + SMMU_IRQ_ACK_CNT);
+
+	/* Clear the interrupt */
+	writel(1UL << ras_bit, ctrl->zram_smmu_base + SMMU_IRQ_ACK);
+
+	return pend_cnt;
+}
+
 #endif /* _ENGINE_REGS_H_ */

@@ -318,6 +318,35 @@ static inline int engine_gear_dec_enable_clock_disable_irq(struct engine_control
 	return ret;
 }
 
+/*
+ * Called by ISR handler to check whether the clock is enabled (not 0).
+ * If enabled, return 0 with lock acquired.
+ */
+static inline int engine_gear_get_clock_not_zero_irq_safe(struct engine_gear_control_t *gear_ctrl)
+{
+	int ret = -1;
+
+	if (spin_trylock(&gear_ctrl->lock)) {
+
+		/* Return 0 if clk_usage is not 0; otherwise, unlock the lock */
+		if (gear_ctrl->clk_usage != 0)
+			ret = 0;
+		else
+			spin_unlock(&gear_ctrl->lock);
+	}
+
+	return ret;
+}
+
+/*
+ * Called by ISR handler to pair with engine_gear_get_clock_not_zero_irq_safe if necessary.
+ * It's called to do unlock.
+ */
+static inline void engine_gear_put_clock_irq_safe(struct engine_gear_control_t *gear_ctrl)
+{
+	spin_unlock(&gear_ctrl->lock);
+}
+
 /* Disable clk mux for engine (can be called in atomic context) */
 void engine_gear_enc_disable_clock(struct engine_control_t *ctrl, struct engine_gear_control_t *gear_ctrl);
 void engine_gear_dec_disable_clock(struct engine_control_t *ctrl, struct engine_gear_control_t *gear_ctrl);

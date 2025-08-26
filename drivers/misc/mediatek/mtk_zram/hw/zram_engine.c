@@ -447,9 +447,8 @@ static irqreturn_t dcomp_irq_handler(int irq, void *data)
 static irqreturn_t smmu_irq_handler(int irq, void *data)
 {
 	struct zram_engine_t *hwz = data;
-	//uint32_t status;
-
-	pr_info("%s\n", __func__);
+	uint32_t status;
+	uint32_t pend_cnt;
 
 	if (!hwz)
 		return IRQ_HANDLED;
@@ -461,8 +460,39 @@ static irqreturn_t smmu_irq_handler(int irq, void *data)
 		return IRQ_HANDLED;
 	}
 
-	/* TODO: handle translation fault */
+	if (engine_gear_get_clock_not_zero_irq_safe(&hwz->gear_ctrl) != 0) {
+#ifdef ZRAM_ENGINE_DEBUG
+		pr_info("%s: engine is off!\n", __func__);
+#endif
+		return IRQ_HANDLED;
+	}
 
+	/* Handle TBU RAS fault */
+	status = engine_get_smmu_tbu_irq_sta(&hwz->ctrl);
+	if (status == 0) {
+		pr_info("%s: %x\n", __func__, status);
+		engine_gear_put_clock_irq_safe(&hwz->gear_ctrl);
+		return IRQ_HANDLED;
+	}
+
+	pr_info("%s: %x\n", __func__, status);
+
+	if (status & ZRAM_TBU_IRQ_STA_RAS_CRI) {
+		pend_cnt = engine_clear_smmu_tbu_irq(&hwz->ctrl, ZRAM_TBU_IRQ_STA_RAS_CRI_BIT);
+		pr_info("%s: RAS CRI detected %u\n", __func__, pend_cnt);
+	}
+
+	if (status & ZRAM_TBU_IRQ_STA_RAS_ERI) {
+		pend_cnt = engine_clear_smmu_tbu_irq(&hwz->ctrl, ZRAM_TBU_IRQ_STA_RAS_ERI_BIT);
+		pr_info("%s: RAS ERI detected %u\n", __func__, pend_cnt);
+	}
+
+	if (status & ZRAM_TBU_IRQ_STA_RAS_FHI) {
+		pend_cnt = engine_clear_smmu_tbu_irq(&hwz->ctrl, ZRAM_TBU_IRQ_STA_RAS_FHI_BIT);
+		pr_info("%s: RAS FHI detected %u\n", __func__, pend_cnt);
+	}
+
+	engine_gear_put_clock_irq_safe(&hwz->gear_ctrl);
 	return IRQ_HANDLED;
 }
 
