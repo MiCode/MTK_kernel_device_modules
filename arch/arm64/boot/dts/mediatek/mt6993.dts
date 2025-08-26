@@ -9177,6 +9177,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			hw-trace-disable = <16 17 18 19>;
 			gce-fast-mtcmos;
 			ao-ctrl-by-mminfra;
+			cmdq-mmp-thread-exec = <0x20030859>;
 		};
 
 		gce_sec: gce-mbox-sec@30100000 {
