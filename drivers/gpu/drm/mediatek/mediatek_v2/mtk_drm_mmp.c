@@ -404,12 +404,22 @@ void init_crtc_mmp_event(void)
 			crtc_mmp_root, "oddmr_ctl");
 		g_CRTC_MMP_Events[i].oddmr_dmr_enable = mmprofile_register_event(
 			crtc_mmp_root, "oddmr_dmr_enable");
+		g_CRTC_MMP_Events[i].oddmr_dmr_hw_enable = mmprofile_register_event(
+			crtc_mmp_root, "oddmr_dmr_hw_enable");
 		g_CRTC_MMP_Events[i].oddmr_dmr_cfg_done = mmprofile_register_event(
 			crtc_mmp_root, "oddmr_dmr_cfg_done");
 		g_CRTC_MMP_Events[i].oddmr_dmr_query_hrt_done = mmprofile_register_event(
 			crtc_mmp_root, "oddmr_dmr_query_hrt_done");
 		g_CRTC_MMP_Events[i].oddmr_dmr_timing_state_chg = mmprofile_register_event(
 			crtc_mmp_root, "oddmr_dmr_timing_state_chg");
+		g_CRTC_MMP_Events[i].oddmr_dmr_bin_chg = mmprofile_register_event(
+			crtc_mmp_root, "oddmr_dmr_bin_chg");
+		g_CRTC_MMP_Events[i].oddmr_dmr_io_cmd = mmprofile_register_event(
+			crtc_mmp_root, "oddmr_dmr_io_cmd");
+		g_CRTC_MMP_Events[i].oddmr_dmr_ch_hrt = mmprofile_register_event(
+			crtc_mmp_root, "oddmr_dmr_ch_hrt");
+		g_CRTC_MMP_Events[i].oddmr_dmr_srt = mmprofile_register_event(
+			crtc_mmp_root, "oddmr_dmr_srt");
 		g_CRTC_MMP_Events[i].dsi_underrun_irq = mmprofile_register_event(
 			crtc_mmp_root, "dsi_underrun_irq");
 		g_CRTC_MMP_Events[i].pq_frame_config = mmprofile_register_event(

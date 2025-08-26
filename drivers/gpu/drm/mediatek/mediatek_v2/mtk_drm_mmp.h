@@ -188,9 +188,14 @@ struct CRTC_MMP_Events {
 	mmp_event oddmr_sof_thread;
 	mmp_event oddmr_ctl;
 	mmp_event oddmr_dmr_enable;
+	mmp_event oddmr_dmr_hw_enable;
 	mmp_event oddmr_dmr_cfg_done;
 	mmp_event oddmr_dmr_query_hrt_done;
 	mmp_event oddmr_dmr_timing_state_chg;
+	mmp_event oddmr_dmr_bin_chg;
+	mmp_event oddmr_dmr_io_cmd;
+	mmp_event oddmr_dmr_ch_hrt;
+	mmp_event oddmr_dmr_srt;
 	/*dsi underrun irq check*/
 	mmp_event dsi_underrun_irq;
 	/*pq common ioctl*/

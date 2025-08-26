@@ -698,6 +698,10 @@ struct mtk_disp_oddmr_dmr_data {
 	atomic_t reg_tuning_chg;
 	atomic_t dmr_cfg_done;
 	unsigned int max_table_size;
+	unsigned int dmr_bl_level;
+	unsigned int dmr_vrefresh;
+	unsigned int dmr_dbv_mode;
+	unsigned int dmr_binset_idx;
 };
 
 struct mtk_disp_oddmr_cfg {

@@ -3633,6 +3633,7 @@ int mtk_drm_set_dbv_mode(struct drm_crtc *crtc, unsigned int dbv_mode)
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_drm_private *priv = NULL;
 	struct mtk_ddp_comp *oddmr_comp;
+	int i,j;
 
 	if (!crtc || !crtc->dev) {
 		DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
@@ -3649,8 +3650,10 @@ int mtk_drm_set_dbv_mode(struct drm_crtc *crtc, unsigned int dbv_mode)
 	}
 
 	/* set dbv_mode */
-	oddmr_comp = priv->ddp_comp[DDP_COMPONENT_ODDMR0];
-	mtk_ddp_comp_io_cmd(oddmr_comp, NULL, ODDMR_DBV_MODE_CHG, &dbv_mode);
+	for_each_comp_in_cur_crtc_path(oddmr_comp, mtk_crtc, i, j) {
+		if (mtk_ddp_comp_get_type(oddmr_comp->id) == DDP_COMPONENT_ODDMR0)
+			mtk_ddp_comp_io_cmd(oddmr_comp, NULL, ODDMR_DBV_MODE_CHG, &dbv_mode);
+	}
 
 	return 0;
 }
@@ -3660,6 +3663,7 @@ int mtk_drm_set_dmr_binset(struct drm_crtc *crtc, unsigned int binset)
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_drm_private *priv = NULL;
 	struct mtk_ddp_comp *oddmr_comp;
+	int i,j;
 
 	if (!crtc || !crtc->dev) {
 		DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
@@ -3676,8 +3680,10 @@ int mtk_drm_set_dmr_binset(struct drm_crtc *crtc, unsigned int binset)
 	}
 
 	/* set dbv_mode */
-	oddmr_comp = priv->ddp_comp[DDP_COMPONENT_ODDMR0];
-	mtk_ddp_comp_io_cmd(oddmr_comp, NULL, ODDMR_BINSET_CHG, &binset);
+	for_each_comp_in_cur_crtc_path(oddmr_comp, mtk_crtc, i, j) {
+		if (mtk_ddp_comp_get_type(oddmr_comp->id) == DDP_COMPONENT_ODDMR0)
+			mtk_ddp_comp_io_cmd(oddmr_comp, NULL, ODDMR_BINSET_CHG, &binset);
+	}
 
 	return 0;
 }
@@ -3687,6 +3693,7 @@ int mtk_drm_get_dmr_cus_own_data(struct drm_crtc *crtc, void *cus_data)
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_drm_private *priv = NULL;
 	struct mtk_ddp_comp *oddmr_comp;
+	int i,j;
 
 	if (!crtc || !crtc->dev) {
 		DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
@@ -3703,8 +3710,10 @@ int mtk_drm_get_dmr_cus_own_data(struct drm_crtc *crtc, void *cus_data)
 	}
 
 	/* get dmr customer data */
-	oddmr_comp = priv->ddp_comp[DDP_COMPONENT_ODDMR0];
-	mtk_ddp_comp_io_cmd(oddmr_comp, NULL, GET_ODDMR_CUS_OWN_DATA, cus_data);
+	for_each_comp_in_cur_crtc_path(oddmr_comp, mtk_crtc, i, j) {
+		if (mtk_ddp_comp_get_type(oddmr_comp->id) == DDP_COMPONENT_ODDMR0)
+			mtk_ddp_comp_io_cmd(oddmr_comp, NULL, GET_ODDMR_CUS_OWN_DATA, cus_data);
+	}
 
 	return 0;
 }
@@ -9251,6 +9260,10 @@ static void mtk_crtc_update_ddp_state(struct drm_crtc *crtc,
 
 			if (lyeblob_ids->ddp_blob_id)
 				mtk_crtc_atomic_ddp_config(crtc, old_mtk_state, cmdq_handle);
+
+			/* update DMR valid hrt */
+			mtk_ddp_comp_io_cmd(priv->ddp_comp[DDP_COMPONENT_ODDMR0], cmdq_handle,
+				COMP_ODDMR_VALID_HRT, NULL);
 
 			if (index == 0 || sphrt_enable) {
 
