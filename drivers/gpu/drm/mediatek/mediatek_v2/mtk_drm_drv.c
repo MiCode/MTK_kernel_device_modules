@@ -4563,7 +4563,11 @@ static const struct mtk_addon_module_data mt6993_addon_wdma1_data[] = {
 #ifdef DRM_BYPASS_PQ_MT6993
 	{DISP_WDMA1_v3, ADDON_AFTER, DDP_COMPONENT_DLI_ASYNC20},
 #else
+#if IS_ENABLED(CONFIG_MTK_DISPLAY_DUAL_PIPE_DUAL_PORT_SUPPORT)
+	{DISP_WDMA1_v3, ADDON_AFTER, DDP_COMPONENT_DLI_ASYNC0},
+#else
 	{DISP_WDMA1_v3, ADDON_AFTER, DDP_COMPONENT_DLI_ASYNC21},
+#endif
 #endif
 };
 
@@ -4572,8 +4576,25 @@ static const struct mtk_addon_module_data mt6993_addon_wdma1_pq_data[] = {
 #ifdef DRM_BYPASS_PQ_MT6993
 	{DISP_WDMA1_v3_pq, ADDON_AFTER, DDP_COMPONENT_DLI_ASYNC21},
 #else
+#if IS_ENABLED(CONFIG_MTK_DISPLAY_DUAL_PIPE_DUAL_PORT_SUPPORT)
+	{DISP_WDMA1_v3_pq, ADDON_AFTER, DDP_COMPONENT_DLI_ASYNC20},
+#else
 	{DISP_WDMA1_v3_pq, ADDON_AFTER, DDP_COMPONENT_PQ0_OUT_CB0},
 #endif
+#endif
+};
+
+static const struct mtk_addon_module_data mt6993_addon_dual_wdma1_data[] = {
+	/* mt6993 CWB
+	 * MTK_DRM_BEFORE_PQ -> WDMA_WRITE_BACK_OVL
+	 * MTK_DRM_MML -> WDMA_WRITE_BACK_EXDMA_DL
+	 */
+	{DISP_WDMA1_v4, ADDON_AFTER, DDP_COMPONENT_SYS_B_DLI_ASYNC0},
+};
+
+static const struct mtk_addon_module_data mt6993_addon_dual_wdma1_pq_data[] = {
+	/* mt6993 CWB MTK_DRM_MID -> WDMA_WRITE_BACK_MID */
+	{DISP_WDMA1_v4_pq, ADDON_AFTER, DDP_COMPONENT_DLI_ASYNC21},
 };
 
 static const struct mtk_addon_module_data mt6993_addon_wdma1_pc_data[] = {
@@ -5174,8 +5195,13 @@ static const struct mtk_addon_scenario_data mt6993_addon_main[ADDON_SCN_NR] = {
 		.hrt_type = HRT_TB_TYPE_GENERAL1,
 	},
 	[WDMA_WRITE_BACK] = {
+#if IS_ENABLED(CONFIG_MTK_DISPLAY_DUAL_PIPE_DUAL_PORT_SUPPORT)
+		.module_num = ARRAY_SIZE(mt6993_addon_wdma1_pq_data),
+		.module_data = mt6993_addon_wdma1_pq_data,
+#else
 		.module_num = ARRAY_SIZE(mt6993_addon_wdma1_pc_data),
 		.module_data = mt6993_addon_wdma1_pc_data,
+#endif
 		.hrt_type = HRT_TB_TYPE_GENERAL1,
 	},
 
@@ -5215,6 +5241,16 @@ static const struct mtk_addon_scenario_data mt6993_addon_main_dual[ADDON_SCN_NR]
 	[ONE_SCALING] = {
 		.module_num = ARRAY_SIZE(mt6993_addon_ovl_rsz1_data),
 		.module_data = mt6993_addon_ovl_rsz1_data,
+		.hrt_type = HRT_TB_TYPE_GENERAL1,
+	},
+	[WDMA_WRITE_BACK] = {
+		.module_num = ARRAY_SIZE(mt6993_addon_dual_wdma1_pq_data),
+		.module_data = mt6993_addon_dual_wdma1_pq_data,
+		.hrt_type = HRT_TB_TYPE_GENERAL1,
+	},
+	[WDMA_WRITE_BACK_OVL] = {
+		.module_num = ARRAY_SIZE(mt6993_addon_dual_wdma1_data),
+		.module_data = mt6993_addon_dual_wdma1_data,
 		.hrt_type = HRT_TB_TYPE_GENERAL1,
 	},
 };

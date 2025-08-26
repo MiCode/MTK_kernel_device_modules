@@ -134,19 +134,56 @@ static const int disp_wdma1_path_v2[] = {
 
 /* mt6993 cwb */
 static const int disp_wdma1_path_v3[] = {
+#if IS_ENABLED(CONFIG_MTK_DISPLAY_DUAL_PIPE_DUAL_PORT_SUPPORT)
+	DDP_COMPONENT_PQ0_OUT_CB4,
+	DDP_COMPONENT_DLO_ASYNC3,
+	DDP_COMPONENT_DLI_ASYNC23,
+	DDP_COMPONENT_SPLITTER0_OUT_CB2,
+	DDP_COMPONENT_COMP0_OUT_CB2,
+	DDP_COMPONENT_MERGE0_OUT_CB2,
+	DDP_COMPONENT_WDMA1,
+#else
 	DDP_COMPONENT_SPLITTER0_OUT_CB1,
 	DDP_COMPONENT_COMP0_OUT_CB1,
 	DDP_COMPONENT_MERGE0_OUT_CB1,
 	DDP_COMPONENT_WDMA1,
+#endif
 };
 
 static const int disp_wdma1_path_v3_pq[] = {
+#if IS_ENABLED(CONFIG_MTK_DISPLAY_DUAL_PIPE_DUAL_PORT_SUPPORT)
+	DDP_COMPONENT_SPLITTER0_OUT_CB2,
+	DDP_COMPONENT_COMP0_OUT_CB2,
+	DDP_COMPONENT_MERGE0_OUT_CB2,
+	DDP_COMPONENT_WDMA1,
+#else
 	DDP_COMPONENT_DLO_ASYNC2,
 	DDP_COMPONENT_DLI_ASYNC22,
 	DDP_COMPONENT_SPLITTER0_OUT_CB1,
 	DDP_COMPONENT_COMP0_OUT_CB1,
 	DDP_COMPONENT_MERGE0_OUT_CB1,
 	DDP_COMPONENT_WDMA1,
+#endif
+};
+
+/* mt6993 dual cwb */
+static const int disp_wdma1_path_v4[] = {
+	DDP_COMPONENT_SYS_B_PQ0_OUT_CB4,
+	DDP_COMPONENT_SYS_B_DLO_ASYNC12,
+	DDP_COMPONENT_DLI_ASYNC12,
+	DDP_COMPONENT_DLO_ASYNC4,
+	DDP_COMPONENT_DLI_ASYNC24,
+	DDP_COMPONENT_SPLITTER0_OUT_CB3,
+	DDP_COMPONENT_COMP0_OUT_CB3,
+	DDP_COMPONENT_MERGE0_OUT_CB3,
+	DDP_COMPONENT_WDMA0,
+};
+
+static const int disp_wdma1_path_v4_pq[] = {
+	DDP_COMPONENT_SPLITTER0_OUT_CB3,
+	DDP_COMPONENT_COMP0_OUT_CB3,
+	DDP_COMPONENT_MERGE0_OUT_CB3,
+	DDP_COMPONENT_WDMA0,
 };
 
 static const int disp_wdma2_path[] = {
@@ -426,6 +463,14 @@ static const struct mtk_addon_path_data addon_module_path[ADDON_MODULE_NUM] = {
 		[DISP_WDMA1_v3_pq] = {
 				.path = disp_wdma1_path_v3_pq,
 				.path_len = ARRAY_SIZE(disp_wdma1_path_v3_pq),
+			},
+		[DISP_WDMA1_v4] = {
+				.path = disp_wdma1_path_v4,
+				.path_len = ARRAY_SIZE(disp_wdma1_path_v4),
+			},
+		[DISP_WDMA1_v4_pq] = {
+				.path = disp_wdma1_path_v4_pq,
+				.path_len = ARRAY_SIZE(disp_wdma1_path_v4_pq),
 			},
 		[DISP_WDMA1_DL] = {
 				.path = disp_wdma1_dl_path,

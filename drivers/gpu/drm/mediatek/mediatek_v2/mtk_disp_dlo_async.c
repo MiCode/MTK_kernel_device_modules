@@ -186,7 +186,9 @@ static void mtk_dlo_async_addon_config_mt6993(struct mtk_ddp_comp *comp,
 
 	if (!addon_config)
 		return;
-
+#if IS_ENABLED(CONFIG_MTK_DISPLAY_DUAL_PIPE_DUAL_PORT_SUPPORT)
+		return;
+#endif
 	if (addon_config->config_type.module != DISP_WDMA1_v3_pq) {
 		DDPINFO("%s addon:%d comp:%s addon module:%d not support\n",
 			__func__, addon_config->config_type.module, mtk_dump_comp_str(comp),

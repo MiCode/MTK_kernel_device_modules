@@ -938,15 +938,13 @@ void mtk_disp_update_channel_hrt_write_common(struct mtk_drm_crtc *mtk_crtc,
 		subcomm_bw_sum[ssc_bw.ssc_id] += ssc_bw.bw;
 	}
 	if (mtk_crtc->is_dual_pipe) {
-		for_each_comp_in_dual_pipe(comp, mtk_crtc, i, j) {
-			/* update wdma total bw for cwb */
-			if (crtc_state->prop_val[CRTC_PROP_OUTPUT_ENABLE]) {
-				scn = mtk_crtc_wb_get_scn(crtc_state);
-				comp = mtk_disp_get_wdma_comp_by_scn(crtc, scn);
-				type = CHANNEL_HRT_WRITE;
-				ssc_bw = mtk_disp_get_ssc_bw(comp, type, bw_base);
-				subcomm_bw_sum[ssc_bw.ssc_id] += ssc_bw.bw;
-			}
+		/* update wdma total bw for cwb */
+		if (crtc_state->prop_val[CRTC_PROP_OUTPUT_ENABLE]) {
+			scn = mtk_crtc_wb_get_scn(crtc_state);
+			comp = mtk_disp_get_wdma_comp_by_scn_dual(crtc, scn);
+			type = CHANNEL_HRT_WRITE;
+			ssc_bw = mtk_disp_get_ssc_bw(comp, type, bw_base);
+			subcomm_bw_sum[ssc_bw.ssc_id] += ssc_bw.bw;
 		}
 	}
 	if (ssc_cnt == 0) {

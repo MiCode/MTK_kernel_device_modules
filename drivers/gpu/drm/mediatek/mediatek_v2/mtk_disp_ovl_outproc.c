@@ -383,6 +383,9 @@ static void mtk_ovl_outproc_addon_config(struct mtk_ddp_comp *comp,
 	struct mtk_disp_ovl_outproc *outproc = comp_to_ovl_outproc(comp);
 	const u16 *regs = outproc->data->regs;
 
+#if IS_ENABLED(CONFIG_MTK_DISPLAY_DUAL_PIPE_DUAL_PORT_SUPPORT)
+	return;
+#endif
 	width = addon_config->addon_wdma_config.wdma_dst_roi.width;
 	height = addon_config->addon_wdma_config.wdma_dst_roi.height;
 

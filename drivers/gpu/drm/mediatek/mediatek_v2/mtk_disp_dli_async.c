@@ -216,8 +216,10 @@ static void mtk_dli_async_addon_config_mt6993(struct mtk_ddp_comp *comp,
 
 	if (addon_config->config_type.module == DISP_MML_DL_EXDMA_v2)
 		mtk_dli_async_addon_config_dl_mt6993(comp, prev, next, addon_config, handle);
+#if !IS_ENABLED(CONFIG_MTK_DISPLAY_DUAL_PIPE_DUAL_PORT_SUPPORT)
 	else if (addon_config->config_type.module == DISP_WDMA1_v3_pq)
 		mtk_dli_async_addon_config_cwb_mt6993(comp, prev, next, addon_config, handle);
+#endif
 	else
 		DDPINFO("%s addon:%d comp:%s addon module:%d not support\n",
 			__func__, addon_config->config_type.module, mtk_dump_comp_str(comp),

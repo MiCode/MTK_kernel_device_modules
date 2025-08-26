@@ -5339,6 +5339,7 @@ static void mtk_addon_path_io_cmd(struct drm_crtc *crtc, const enum addon_scenar
 	const struct mtk_addon_module_data *addon_module;
 	const struct mtk_addon_path_data *path_data;
 	struct mtk_ddp_comp *comp = NULL;
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 
 	addon_data = mtk_addon_get_scenario_data(__func__, crtc, scn);
 	if (!addon_data)
@@ -5355,6 +5356,26 @@ static void mtk_addon_path_io_cmd(struct drm_crtc *crtc, const enum addon_scenar
 			mtk_ddp_comp_io_cmd(comp, NULL, io_cmd, params);
 		}
 	}
+	if (mtk_crtc && mtk_crtc->is_dual_pipe) {
+		addon_data = mtk_addon_get_scenario_data_dual
+			(__func__, crtc, scn);
+		if (!addon_data)
+			return;
+		for (i = 0; i < addon_data->module_num; i++) {
+			addon_module = &addon_data->module_data[i];
+			path_data = mtk_addon_module_get_path(addon_module->module);
+			for (j = 0; j < path_data->path_len; j++) {
+				if (mtk_ddp_comp_get_type(path_data->path[j]) ==
+					MTK_DISP_VIRTUAL)
+					continue;
+				comp = priv->ddp_comp[path_data->path[j]];
+				if (!comp)
+					continue;
+				mtk_ddp_comp_io_cmd(comp, NULL, io_cmd, params);
+			}
+		}
+	}
+
 }
 
 enum mtk_ddp_comp_id mtk_addon_path_get_cmp(struct drm_crtc *crtc, unsigned int path,
@@ -5485,6 +5506,8 @@ static inline bool _mtk_crtc_is_wb_addon(const struct mtk_addon_module_data *add
 	case DISP_WDMA1:
 	case DISP_WDMA1_v3:
 	case DISP_WDMA1_v3_pq:
+	case DISP_WDMA1_v4:
+	case DISP_WDMA1_v4_pq:
 	case DISP_WDMA1_DL:
 	case DISP_OVLSYS_WDMA0:
 	case DISP_OVLSYS_WDMA0_v2:

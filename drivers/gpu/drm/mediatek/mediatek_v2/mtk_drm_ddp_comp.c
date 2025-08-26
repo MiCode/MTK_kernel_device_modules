@@ -3866,6 +3866,33 @@ void mt6993_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 			}
 		}
 		return;
+	} else if (id == DDP_COMPONENT_WDMA0) {
+		unsigned int va;
+
+		if (!handle) {
+			if (en) {
+				va = (readl(priv->side_config_regs + DISPSYS1_SODI_REQ_SEL));
+				va |= DISPSYS1_SODI_REQ_SEL_WDMA0;
+				writel_relaxed(va, priv->ovlsys0_regs + DISPSYS1_SODI_REQ_SEL);
+			} else {
+				va = (readl(priv->side_config_regs + DISPSYS1_SODI_REQ_SEL));
+				va = (va & ~(DISPSYS1_SODI_REQ_SEL_WDMA0));
+				writel_relaxed(va, priv->side_config_regs + DISPSYS1_SODI_REQ_SEL);
+			}
+		} else {
+			if (en) {
+				cmdq_pkt_write(handle, NULL,
+					priv->side_config_regs_pa + DISPSYS1_SODI_REQ_SEL,
+					DISPSYS1_SODI_REQ_SEL_WDMA0,
+					DISPSYS1_SODI_REQ_SEL_WDMA0);
+			} else {
+				cmdq_pkt_write(handle, NULL,
+					priv->side_config_regs_pa + DISPSYS1_SODI_REQ_SEL,
+					0,
+					DISPSYS1_SODI_REQ_SEL_WDMA0);
+			}
+		}
+		return;
 	} else
 		return;
 
