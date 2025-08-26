@@ -57,7 +57,7 @@ static ssize_t mbraink_platform_system_info_store(struct device *dev,
 						const char *buf,
 						size_t count)
 {
-	int command;
+	int command = 0;
 	int retSize = 0;
 
 	retSize = kstrtoint(buf, 10, &command);
