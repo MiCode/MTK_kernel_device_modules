@@ -377,6 +377,46 @@ static atomic_t limit_timer_active = ATOMIC_INIT(0);
 static int last_upper_request_id = -1;
 static int last_lower_request_id = -1;
 
+static void mt6993_get_curr_hwvoter_info(void)
+{
+	uint32_t upp0 = 0x0, low0 = 0x0, upp1 = 0x0, low1 = 0x0;
+	uint32_t upp2 = 0x0, low2 = 0x0, cmn = 0x0, umn = 0x0;
+	uint32_t hwvoter_value = 0x0, sram_value = 0x0;
+	struct arm_smccc_res res;
+
+	/* fetch hwvoter value & opp_limiter sram value from RV via ATF */
+	arm_smccc_smc(MTK_SIP_APUSYS_CONTROL, MTK_APUSYS_KERNEL_OP_APUSYS_PWR_GET_HWVOTER_VALUE,
+			0, 0, 0, 0, 0, 0, &res);
+	if (((int) res.a0) < 0) {
+		pr_info("%s: get hwvoter value failed, smc id:%d, return error(%lu)\n",
+				__func__, MTK_APUSYS_KERNEL_OP_APUSYS_PWR_GET_HWVOTER_VALUE, res.a0);
+		return;
+	}
+
+	hwvoter_value = (uint32_t) res.a1;
+	/* Extract individual voter values */
+	upp0 = hwvoter_value & 0xF;
+	upp1 = (hwvoter_value >> 4) & 0xF;
+	upp2 = (hwvoter_value >> 8) & 0xF;
+	low0 = (hwvoter_value >> 12) & 0xF;
+	low1 = (hwvoter_value >> 16) & 0xF;
+	low2 = (hwvoter_value >> 20) & 0xF;
+	cmn = (hwvoter_value >> 24) & 0xF;
+	umn = (hwvoter_value >> 28) & 0xF;
+
+	arm_smccc_smc(MTK_SIP_APUSYS_CONTROL, MTK_APUSYS_KERNEL_OP_APUSYS_PWR_GET_OPP_LIMITER_VALUE,
+			0, 0, 0, 0, 0, 0, &res);
+	if (((int) res.a0) < 0) {
+		pr_info("%s: get opp_limiter sram value failed, smc id:%d, return error(%lu)\n",
+				__func__, MTK_APUSYS_KERNEL_OP_APUSYS_PWR_GET_OPP_LIMITER_VALUE, res.a0);
+		return;
+	}
+
+	sram_value = (uint32_t) res.a1;
+	pr_info("%s: sram_value = 0x%x, hwvoter = (%x/%x, %x/%x, %x/%x, %x/%x)\n",
+		__func__, sram_value, upp0, low0, upp1, low1, upp2, low2, cmn, umn);
+}
+
 static void mt6993_limit_work_func(struct work_struct *work)
 {
 	int upper, lower, upper_id, lower_id;
@@ -394,13 +434,13 @@ static void mt6993_limit_work_func(struct work_struct *work)
 		apu_pr_info_ratelimited(
 			"%s: upper_limit=%d (user %d), lower_limit=%d (user %d)\n", __func__,
 			upper, upper_id, lower, lower_id);
+
+		mt6993_get_curr_hwvoter_info();
 	}
 
 	/* Do first OPP table dump */
-	if (!first_dump) {
+	if (!first_dump)
 		mt6993_request_opp_table();
-		first_dump = 1;
-	}
 
 	/* Stop timer if freq tables are ready and no real user request */
 	if (mt6993_mdla_pll_freq[OPP_TABLE_SIZE - 1] != 0 &&
@@ -410,14 +450,16 @@ static void mt6993_limit_work_func(struct work_struct *work)
 		apu_pr_info_ratelimited(
 			"%s: dump_opp_table success, min_freq = %d\n",
 			__func__, mt6993_mdla_pll_freq[OPP_TABLE_SIZE - 1]);
+		first_dump = 1;
 	}
+
 }
 
 static void mt6993_limit_timer_callback(struct timer_list *t)
 {
 	if (atomic_read(&limit_timer_active)) {
 		queue_work(limit_wq, &limit_work);
-		mod_timer(&limit_timer, jiffies + msecs_to_jiffies(5000));
+		mod_timer(&limit_timer, jiffies + msecs_to_jiffies(3000));
 	}
 }
 
