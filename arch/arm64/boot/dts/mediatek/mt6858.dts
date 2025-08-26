@@ -3499,6 +3499,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			gpueb-support = <1>;
 			ghpm-support = <0>;
 			gpueb-logger-support = <0>;
+			gpu-mpu-support = <1>;
+			gpu-mpu-data-size = <0xc00>;
 			mbox-count = <1>;
 			mbox-size = <160>; /* 160 slot * 4 = 640 byte */
 			slot-size = <4>;   /* 1 slot = 4 bytes */
