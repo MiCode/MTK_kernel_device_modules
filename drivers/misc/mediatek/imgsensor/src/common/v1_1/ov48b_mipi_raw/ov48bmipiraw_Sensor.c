@@ -2020,8 +2020,8 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 			*pScenarios = 0xff;
 			break;
 		}
-		pr_debug("SENSOR_FEATURE_GET_SEAMLESS_SCENARIOS %llu %u\n",
-			*feature_data, *pScenarios);
+		// pr_debug("SENSOR_FEATURE_GET_SEAMLESS_SCENARIOS %llu %u\n",
+		// *feature_data, *pScenarios);
 		break;
 	case SENSOR_FEATURE_SEAMLESS_SWITCH:
 		pAeCtrls = (MUINT32 *)((uintptr_t)(*(feature_data+1)));

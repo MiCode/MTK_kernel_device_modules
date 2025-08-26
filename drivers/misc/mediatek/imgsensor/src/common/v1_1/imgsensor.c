@@ -2359,8 +2359,8 @@ static int imgsensor_open(struct inode *a_pstInode, struct file *a_pstFile)
 	mutex_lock(&gimgsensor_open_mutex);
 
 	atomic_inc(&pimgsensor->imgsensor_open_cnt);
-	PK_DBG("%s %d\n", __func__,
-		atomic_read(&pimgsensor->imgsensor_open_cnt));
+	// PK_DBG("%s %d\n", __func__,
+	// atomic_read(&pimgsensor->imgsensor_open_cnt));
 
 	mutex_unlock(&gimgsensor_open_mutex);
 	return 0;
@@ -2393,8 +2393,8 @@ static int imgsensor_release(struct inode *a_pstInode, struct file *a_pstFile)
 
 	}
 
-	PK_DBG("%s %d\n", __func__,
-		atomic_read(&pimgsensor->imgsensor_open_cnt));
+	// PK_DBG("%s %d\n", __func__,
+	// atomic_read(&pimgsensor->imgsensor_open_cnt));
 
 	mutex_unlock(&gimgsensor_open_mutex);
 	return 0;

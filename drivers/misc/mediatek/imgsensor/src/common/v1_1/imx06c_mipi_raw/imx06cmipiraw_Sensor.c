@@ -896,6 +896,7 @@ static void check_stream_is_on(void)
 	// int try_time = 3;
 	int timeout = (10000/imgsensor.current_fps)+1;
 
+	LOG_INF(" timeout:%d\n", timeout);
 	for (i = 0; i < timeout; i++) {
 
 		framecnt = read_cmos_sensor_8(0x0005);
@@ -938,8 +939,10 @@ static kal_uint32 streaming_control(kal_bool enable)
 		//write_cmos_sensor_8(0x3021, 0x01);/*complete mode*/
 		write_cmos_sensor_8(0x0100, 0X01);
 		check_stream_is_on();
-	} else
+	} else {
+		check_stream_is_on();
 		write_cmos_sensor_8(0x0100, 0x00);
+	}
 	return ERROR_NONE;
 }
 
