@@ -55,12 +55,17 @@ define_mgk_ddk_ko(
     ko_deps = [
         "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/hwccf:hwccf".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv:vcp_status".format(kernel_version),
     ],
     hdrs = glob(["**/*.h"]),
     includes = ["."],
     copts = [
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
     ],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv:vcp_status_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/include:vcp_public_headers".format(kernel_version),
+    ]
 )
 
 define_mgk_ddk_ko(

@@ -17,6 +17,7 @@
 #include "hwccf_provider_data.h"
 #endif
 #include "mtk-mminfra-util.h"
+#include "vcp_status.h"
 
 #define MM_TIMESTAMP_NUM	(5)
 
@@ -346,6 +347,7 @@ int mtk_mminfra_on_off(bool on_off, u32 mm_pwr, u32 mm_type)
 		pr_notice("%s:[err] power(%d) on_off(%d) fail, type(%d) ret(%d).\n",
 			__func__, mm_pwr, on_off, mm_type, ret);
 		clkchk_external_dump();
+		vcp_cmd_ex(HWCCF_FEATURE_ID, VCP_DUMP, "mminfra");
 		mtk_mminfra_voter_debug(mm_type);
 		BUG_ON(1);
 	}
