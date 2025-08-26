@@ -14575,9 +14575,9 @@ static void mtk_dsi_cmd_timing_change(struct mtk_dsi *dsi,
 
 	for (i = 0; i < 3; i++) {
 		/* Power off DSI */
-		mtk_dsi_enter_idle(dsi, 1, false);
+		mtk_dsi_enter_idle(dsi, 0, false);
 		if (dsi->slave_dsi)
-			mtk_dsi_enter_idle(dsi->slave_dsi, 1, false);
+			mtk_dsi_enter_idle(dsi->slave_dsi, 0, false);
 
 		CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 2, 3);
 
@@ -14594,9 +14594,9 @@ static void mtk_dsi_cmd_timing_change(struct mtk_dsi *dsi,
 		}
 
 		/* Power on DSI */
-		ret = mtk_dsi_leave_idle(dsi, 1, false);
+		ret = mtk_dsi_leave_idle(dsi, 0, false);
 		if (dsi->slave_dsi)
-			ret = mtk_dsi_leave_idle(dsi->slave_dsi, 1, false);
+			ret = mtk_dsi_leave_idle(dsi->slave_dsi, 0, false);
 
 		CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 2, 4);
 		if (ret == 0)
