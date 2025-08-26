@@ -6380,6 +6380,7 @@ dramc: dramc@10230000 {
 			"clk_pll_9";
 
 			scp-core-online-mask = <0x3>;
+			smp-support;
 			vlp-support;
 
 			dvfs-opp =
