@@ -8507,6 +8507,8 @@ dramc: dramc@10230000 {
 
 			/* awake timeout count plt setting */
 			awake-timeout = <10000>; /* 100 ms */
+
+			scp-recovery-db-cnt = <3>;
 		};
 	};
 
