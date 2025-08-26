@@ -14747,7 +14747,6 @@ static void mtk_dsi_vdo_timing_change(struct mtk_dsi *dsi,
 	struct mtk_drm_crtc *mtk_crtc, struct drm_crtc_state *old_state)
 {
 	unsigned int vfp = 0;
-	unsigned int t_vfp = 0;
 	unsigned int hfp = 0;
 	unsigned int hbp = 0;
 	unsigned int vbp = 0;
@@ -14849,9 +14848,9 @@ static void mtk_dsi_vdo_timing_change(struct mtk_dsi *dsi,
 						dsi->ext->params->data_rate_khz);
 			}
 			if (dsi->data_rate) {
-				mtk_dsi_phy_timconfig(dsi, NULL);
+				mtk_dsi_phy_timconfig(dsi, handle);
 				if (dsi->slave_dsi)
-					mtk_dsi_phy_timconfig(dsi->slave_dsi, NULL);
+					mtk_dsi_phy_timconfig(dsi->slave_dsi, handle);
 			}
 		}
 		/* if change hfp, get hfp */
