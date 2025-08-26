@@ -1100,7 +1100,7 @@ TZ_RESULT KREE_TeeServiceCallPlus(KREE_SESSION_HANDLE handle, uint32_t command,
 
 	mutex_lock(&session_handle->sess_lock);
 	ret = KREE_TeeServiceCallPlus_Internal(handle, command, paramTypes,
-			param, -1);
+			param, cpumask);
 	mutex_unlock(&session_handle->sess_lock);
 	if (unlikely(ret != TZ_RESULT_SUCCESS))
 		goto tee_service_call_plus_out;

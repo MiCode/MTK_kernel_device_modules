@@ -870,7 +870,7 @@ us_map_fail:
 				for (i = 0; i < pin->nrPages; i++)
 					put_page(delpages[i]);
 			}
-			kfree(pin->pageArray);
+			kvfree(pin->pageArray);
 		}
 		/*kfree(pin);*/
 		//vfree(pin);
