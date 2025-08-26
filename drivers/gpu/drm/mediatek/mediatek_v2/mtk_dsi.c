@@ -4326,6 +4326,35 @@ static s32 mtk_dsi_wait_idle(struct mtk_dsi *dsi, u32 irq_flag,
 	return mtk_dsi_wait_for_irq_done(dsi, irq_flag, timeout);
 }
 
+static void mtk_dsi_power_keep_gce_v2(struct mtk_dsi *dsi, struct cmdq_pkt *cmdq_handle, bool keep)
+{
+	struct mtk_drm_crtc *mtk_crtc = NULL;
+	enum mtk_vidle_voter_user user = DISP_VIDLE_USER_DDIC_CMDQ;
+
+	if (!dsi || !cmdq_handle)
+		return;
+
+	mtk_crtc = dsi->ddp_comp.mtk_crtc;
+	if ((drm_crtc_index(&mtk_crtc->base) != 0) || !mtk_dsi_is_cmd_mode(&dsi->ddp_comp))
+		return;
+
+	if (cmdq_handle->cl == mtk_crtc->gce_obj.client[CLIENT_CFG])
+		user = DISP_VIDLE_USER_CMD_CLIENT_CFG;
+	else if (cmdq_handle->cl == mtk_crtc->gce_obj.client[CLIENT_TRIG_LOOP])
+		user = DISP_VIDLE_USER_CMD_CLIENT_TIRGLOOP;
+	else if (cmdq_handle->cl == mtk_crtc->gce_obj.client[CLIENT_DSI_CFG])
+		user = DISP_VIDLE_USER_CMD_CLIENT_DSI;
+	else if (cmdq_handle->cl == mtk_crtc->gce_obj.client[CLIENT_SUB_CFG])
+		user = DISP_VIDLE_USER_CMD_CLIENT_SUB_CFG;
+	else
+		DDPPR_ERR("%s fail, client type is invalid\n");
+
+	if (keep)
+		mtk_vidle_user_power_keep_by_gce(user, cmdq_handle, 0);
+	else
+		mtk_vidle_user_power_release_by_gce(user, cmdq_handle);
+}
+
 static void mtk_dsi_power_keep_gce(struct mtk_dsi *dsi, struct cmdq_pkt *cmdq_handle, bool keep)
 {
 	struct mtk_drm_crtc *mtk_crtc = NULL;
@@ -12520,8 +12549,6 @@ static int mtk_dsi_cmd_transfer(struct mtk_dsi *mtk_dsi, struct cmdq_pkt *handle
 			cmd_msg->cmd_num, cmd_msg->transfer_mode, cmd_msg->is_package,
 			cmd_msg->is_rd, cmd_msg->rd_to_slot, cmd_msg->read_scn);
 
-	mtk_dsi_power_keep_gce(mtk_dsi, handle, true);
-
 	if (cmd_msg->is_rd && handle && (cmd_msg->read_scn == ESD_CHECK_SCN)) {
 		int i;
 
@@ -12654,7 +12681,6 @@ static int mtk_dsi_cmd_transfer(struct mtk_dsi *mtk_dsi, struct cmdq_pkt *handle
 				0x0, 0x1); //DE comment: no need
 		}
 		mtk_dsi_poll_for_idle(mtk_dsi, handle);
-		mtk_dsi_power_keep_gce(mtk_dsi, handle, false);
 
 		return rd_total_sz;
 	}
@@ -12697,7 +12723,6 @@ static int mtk_dsi_cmd_transfer(struct mtk_dsi *mtk_dsi, struct cmdq_pkt *handle
 		cmdq_size = mtk_setup_dsi_cmdq(mtk_dsi, handle, total_cmdq_size, &msg);
 		if (cmdq_size < 0) {
 			DDPPR_ERR("%s, out of dsi cmdq size, i=%d, tx_len=%zu\n", __func__, i, msg.tx_len);
-			mtk_dsi_power_keep_gce(mtk_dsi, handle, false);
 			return -ENOMEM;
 		}
 		if (!cmd_msg->is_package) {
@@ -12730,8 +12755,6 @@ static int mtk_dsi_cmd_transfer(struct mtk_dsi *mtk_dsi, struct cmdq_pkt *handle
 	mtk_ddp_write_mask(&mtk_dsi->ddp_comp, 0x0, DSI_CMDQ_CON(mtk_dsi->driver_data), CMDQ_PAGE, handle);
 	check_dsi_page_chg(index, mtk_dsi, 3, 0);
 
-	mtk_dsi_power_keep_gce(mtk_dsi, handle, false);
-
 	CRTC_MMP_MARK(index, ddic_cmd_v2_msg, 10, cmd_msg->is_package);
 	DDPDSI_CMD("%s done\n", __func__);
 	return 0;
@@ -12743,7 +12766,6 @@ static int _mtk_mipi_dsi_cmd(struct mtk_drm_crtc *mtk_crtc, struct mtk_dsi *dsi,
 	int ret = 0;
 	struct cmdq_pkt *handle = NULL;
 	struct mtk_cmdq_cb_data *cb_data;
-	//bool is_cmd_mode = true; /* only support cmd mode */
 	int index = drm_crtc_index(&mtk_crtc->base);
 
 	DDPDSI_CMD("%s ++ flags:0x%x\n", __func__, flags);
@@ -12792,11 +12814,19 @@ static int _mtk_mipi_dsi_cmd(struct mtk_drm_crtc *mtk_crtc, struct mtk_dsi *dsi,
 	}
 
 transfer_cmd:
+
+	/* if you need add function, please add between keep/release power */
+	mtk_dsi_power_keep_gce_v2(dsi, handle, true);
+
 	ret = mtk_dsi_cmd_transfer(dsi, handle, cmd_msg);
 	if (flags & MTK_MIPI_DSI_CMD_BY_CPU) {
 		CRTC_MMP_MARK(index, ddic_cmd_v2_tag, 10, (unsigned long)cmd_msg);
+		mtk_dsi_power_keep_gce_v2(dsi, handle, false);
 		return ret;
 	}
+
+	mtk_dsi_power_keep_gce_v2(dsi, handle, false);
+
 	if ((flags & MTK_MIPI_DSI_GCE_USE_DSI_CMD_EVENT) || (flags & MTK_MIPI_DSI_CMD_EXTERNAL)) {
 		/*only support cmd mode */
 		CRTC_MMP_MARK(index, ddic_cmd_v2_tag, 11, (unsigned long)cmd_msg);

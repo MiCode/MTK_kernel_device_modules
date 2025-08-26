@@ -15,6 +15,17 @@
 /* NOTE: user 0 to 7 is reserved for genpd notifier enum disp_pd_id { ... } */
 enum mtk_vidle_voter_user {
 	DISP_VIDLE_USER_DISP_VCORE = 0,
+
+	/* used by external user */
+	DISP_VIDLE_USER_EXT_CLIENT_CFG = 2,
+	DISP_VIDLE_USER_EXT_CLIENT_DSI = 3,
+
+	/* used by mtk_dsi_cmd_transfer */
+	DISP_VIDLE_USER_CMD_CLIENT_CFG = 4,
+	DISP_VIDLE_USER_CMD_CLIENT_TIRGLOOP = 5,
+	DISP_VIDLE_USER_CMD_CLIENT_SUB_CFG = 6,
+	DISP_VIDLE_USER_CMD_CLIENT_DSI = 7,
+
 	DISP_VIDLE_USER_DDIC = 8,
 	DISP_VIDLE_USER_NST_LOCK = 9,
 	DISP_VIDLE_USER_PQ2 = 10,
