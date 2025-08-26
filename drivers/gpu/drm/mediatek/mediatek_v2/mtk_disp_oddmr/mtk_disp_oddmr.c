@@ -649,8 +649,10 @@
 #define DISP_ODDMR_DDREN_CTRL_DMR					0x78
 	#define REG_DMR_DDREN_REQ_DISABLE				REG_FLD_MSB_LSB(0, 0)
 	#define REG_DMR_USE_HRT_DDREN_REQ				REG_FLD_MSB_LSB(1, 1)
+	#define REG_DMR_SRT_DDREN_REQ					REG_FLD_MSB_LSB(5, 5)
 	#define REG_DMR_STASH_DDREN_REQ_DISABLE			REG_FLD_MSB_LSB(16, 16)
 	#define REG_DMR_STASH_USE_HRT_DDREN_REQ			REG_FLD_MSB_LSB(17, 17)
+	#define REG_DMR_STASH_SRT_DDREN_REQ				REG_FLD_MSB_LSB(21, 21)
 
 #define MT6993_DISP_ODDMR_SMI_SB_FLG_DBI			0x5c
 	#define MT6993_REG_DBI_RE_ULTRA_MODE			REG_FLD_MSB_LSB(11, 8)
@@ -8537,9 +8539,11 @@ static void mtk_oddmr_set_dmr_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 		if (oddmr_data->data->dbi_version == MTK_DBI_V3) {
 			value = 0; mask = 0;
 			SET_VAL_MASK(value, mask, 0, REG_DMR_DDREN_REQ_DISABLE);
-			SET_VAL_MASK(value, mask, 1, REG_DMR_USE_HRT_DDREN_REQ);
+			SET_VAL_MASK(value, mask, 0, REG_DMR_USE_HRT_DDREN_REQ);
+			SET_VAL_MASK(value, mask, 1, REG_DMR_SRT_DDREN_REQ);
 			SET_VAL_MASK(value, mask, 0, REG_DMR_STASH_DDREN_REQ_DISABLE);
-			SET_VAL_MASK(value, mask, 1, REG_DMR_STASH_USE_HRT_DDREN_REQ);
+			SET_VAL_MASK(value, mask, 0, REG_DMR_STASH_USE_HRT_DDREN_REQ);
+			SET_VAL_MASK(value, mask, 1, REG_DMR_STASH_SRT_DDREN_REQ);
 			mtk_oddmr_write_mask(comp, value,
 				DISP_ODDMR_DDREN_CTRL_DMR, mask, handle);
 		} else {
