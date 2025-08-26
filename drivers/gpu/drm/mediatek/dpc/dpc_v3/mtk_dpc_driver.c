@@ -3516,33 +3516,45 @@ static void dpc_vidle_power_release_by_gce_v3(struct cmdq_pkt *pkt, const enum m
 
 static void dpc_power_clean_up_by_gce(struct cmdq_client *client)
 {
-	u32 val = 0;
-	int user;
-	struct cmdq_pkt *cmdq_handle;
+	u32 val = 0, xpu_val;
+	u32 xpu_base = 0x31471700;	/* XPU6 */
+	u32 mask = 0x1ff80000; // dpc_subsys_to_mask(dpc_user_to_subsys(user));
+	struct cmdq_pkt *pkt;
+	static bool aee_dumped;
 
-	val = readl(mmpc_dummy_voter);
-	if (val == 0)
-		return;
 	if (!client)
 		return;
 	if (!(excep_by_xpu & BIT(1)))
 		return;
 
+	xpu_val = readl(hwccf_xpu6_local_en);
+	if ((xpu_val & mask) == 0)
+		return;
+
+	val = readl(mmpc_dummy_voter);
+	if ((val == 0) && !aee_dumped) {
+		DPCAEE("mmpc_dummy_voter zero, xpu6(%#x)", xpu_val);
+		aee_dumped = true;
+	}
+	DPCERR("xpu6(%#x) user(%#x) did not release", xpu_val, val);
+
 	cmdq_mbox_enable(client->chan);
-	cmdq_handle = cmdq_pkt_create(client);
-	if (!cmdq_handle) {
+	pkt = cmdq_pkt_create(client);
+	if (!pkt) {
 		DPCERR("create handle fail\n");
 		return;
 	}
-	cmdq_pkt_set_event(cmdq_handle, g_priv->event_hwccf_vote);
-	for (user = 0; user < 32; user++) {
-		if (val & (1 << user)) {
-			DPCERR("user:%d did not release", user);
-			dpc_vidle_power_release_by_gce_v3(cmdq_handle, user, NULL);
-		}
-	}
-	cmdq_pkt_flush(cmdq_handle);
-	cmdq_pkt_destroy(cmdq_handle);
+
+	cmdq_pkt_poll_sleep(pkt, 0, 0x31410000, 0xfffe);		/* polling all fsm idle */
+	cmdq_pkt_write(pkt, NULL, xpu_base + 0x4, mask, U32_MAX);	/* unvote xpu6 mtcmos voter */
+	cmdq_pkt_poll_sleep(pkt, 0, xpu_base + 0x8, mask);		/* check xpu6 local enable */
+	cmdq_pkt_write(pkt, NULL, g_priv->dpc_pa + DISP_REG_DPC_MML_INFRA_PLL_OFF_CFG, 0x000a00, U32_MAX);
+
+	cmdq_pkt_write(pkt, NULL, 0x31350168, 0, U32_MAX);		/* clear all vote bits */
+	cmdq_pkt_set_event(pkt, g_priv->event_hwccf_vote);
+
+	cmdq_pkt_flush(pkt);
+	cmdq_pkt_destroy(pkt);
 	cmdq_mbox_disable(client->chan);
 }
 

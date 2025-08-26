@@ -34,7 +34,7 @@
 		r = snprintf(str, 199, "DPC:" fmt, ##args);                                      \
 		if (r < 0)                                                                       \
 			pr_info("snprintf error\n");                                             \
-		aee_kernel_warning_api(__FILE__, __LINE__,                                       \
+		aee_kernel_exception_api(__FILE__, __LINE__,                                     \
 				       DB_OPT_DEFAULT | DB_OPT_FTRACE | DB_OPT_MMPROFILE_BUFFER, \
 				       str, fmt, ##args);                                        \
 	} while (0)
