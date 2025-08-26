@@ -66,6 +66,14 @@ config MTK_DISP_LOGGER
 	  stage, but can still manual disable this function
 	  through debugfs or procfs.
 
+config MTK_DISP_MMDVFS_INIT_SEQUENCE
+	bool "Configure initialization sequence of DISP and MMDVFS"
+	help
+	  Say yes here to add support for adjusting the initialization sequence
+	  between DISP and MMDVFS . This can be used to resolve issues with screen
+	  flickering that arise due to the order in which these components are
+	  started during the boot process.
+
 config MTK_DISP_DEBUG
 	bool "Support display debug function, default disable in user load"
 	help

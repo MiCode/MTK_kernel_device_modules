@@ -106,6 +106,9 @@
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 #include "vcp_status.h"
 #endif
+#if IS_ENABLED(CONFIG_MTK_DISP_MMDVFS_INIT_SEQUENCE)
+#include <soc/mediatek/mmdvfs_public.h>
+#endif
 
 #include "mtk-mminfra-debug.h"
 #include "mtk-mminfra-util.h"
@@ -10310,6 +10313,10 @@ static void mtk_drm_kms_lateinit(struct kthread_work *work)
 	}
 
 	mtk_drm_first_enable(drm);
+
+#if IS_ENABLED(CONFIG_MTK_DISP_MMDVFS_INIT_SEQUENCE)
+	mmdvfs_disp_boot_ready();
+#endif
 
 	/* power off mtcmos */
 	/* Because of align lk hw power status,

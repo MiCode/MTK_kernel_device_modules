@@ -1,6 +1,7 @@
 load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
 load("@mgk_info//:kernel_version.bzl","kernel_version")
 load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:dict.bzl", "DEFCONFIG_OVERLAYS")
 
 config_setting(
     name = "trustonic_tee",
@@ -241,7 +242,10 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/interconnect/mediatek:mmqos-common".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/hwccf:hwccf".format(kernel_version),
         "//kernel_device_modules-{}/drivers/memory/mediatek:emi".format(kernel_version),
-    ],
+     ] + ([
+         "//kernel_device_modules-{}/drivers/soc/mediatek/mmdvfs:mtk-mmdvfs-v5".format(kernel_version),
+     ] if "entry_level.config" not in DEFCONFIG_OVERLAYS else []),
+
     header_deps = [
         "//kernel_device_modules-{}/drivers/tee/gud:mobicore_public_hdrs".format(kernel_version),
         "//kernel_device_modules-{}/drivers/iommu/arm/arm-smmu-v3:smmu_public_headers".format(kernel_version),
