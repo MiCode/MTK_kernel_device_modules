@@ -15903,7 +15903,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x0011bb00 0 0x100>,
 				<0 0x0011b8dc 0 0x224>,
 				<0 0x0011b920 0 0x0>,
-				<0 0x0011b864 0 0x2c>;
+				<0 0x0011b864 0 0x18>;
 		reg-names = "sram", "share_sram", "share_sram_ext", "share_sram_dbg";
 			mediatek,enable = <1>;
 		};
