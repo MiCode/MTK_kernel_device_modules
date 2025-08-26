@@ -918,9 +918,7 @@ static void mtk_drm_vdo_mode_enter_idle(struct drm_crtc *crtc)
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt,
 				   MTK_DRM_OPT_IDLEMGR_DISABLE_ROUTINE_IRQ)) {
-		if (!mtk_drm_helper_get_opt(priv->helper_opt,
-					MTK_DRM_OPT_VIDLE_VDO_PANEL))
-			mtk_disp_mutex_inten_disable_cmdq(mtk_crtc->mutex[0], handle);
+		mtk_disp_mutex_inten_disable_cmdq(mtk_crtc->mutex[0], handle);
 		for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
 			mtk_ddp_comp_io_cmd(comp, handle, IRQ_LEVEL_IDLE, NULL);
 	}

@@ -14870,11 +14870,8 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	case IRQ_LEVEL_IDLE:
 	{
 		unsigned int inten = 0;
-		struct mtk_drm_crtc *crtc = comp->mtk_crtc;
-		struct mtk_drm_private *priv = (crtc->base).dev->dev_private;
 
-		if (!mtk_dsi_is_cmd_mode(&dsi->ddp_comp) && handle && priv &&
-			!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_VDO_PANEL)) {
+		if (!mtk_dsi_is_cmd_mode(&dsi->ddp_comp) && handle) {
 			inten = FRAME_DONE_INT_FLAG;
 			cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + DSI_INTEN, 0, inten);
