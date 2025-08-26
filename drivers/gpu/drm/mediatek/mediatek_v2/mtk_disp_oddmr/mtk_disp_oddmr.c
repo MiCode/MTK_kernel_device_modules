@@ -4644,13 +4644,25 @@ void mtk_disp_oddmr_debug(struct drm_crtc *crtc, const char *opt)
 		oddmr_data->primary_data->dmr_support = strncmp(opt + 12, "1", 1) == 0;
 		ODDMRFLOW_LOG("dmr_support = %d\n", oddmr_data->primary_data->dmr_support);
 	} else if (strncmp(opt, "check_trigger:", 14) == 0) {
-		unsigned int on, ret;
+		unsigned int on, ret, val;
 
-		ret = sscanf(opt, "check_trigger:%u\n", &on);
+		ret = sscanf(opt, "check_trigger:%u,%u\n", &on, &val);
+		if (ret == 2) {
+			if (on != 0) {
+				ODDMRFLOW_LOG("error to parse cmd %s\n", opt);
+				return;
+			}
+			ODDMRFLOW_LOG("check_trigger = %u, od_wait_time = %u\n", on, val);
+			g_od_check_trigger = on;
+			oddmr_data->primary_data->od_wait_time = val;
+			return;
+		}
+
 		if (ret != 1) {
 			ODDMRFLOW_LOG("error to parse cmd %s\n", opt);
 			return;
 		}
+		oddmr_data->primary_data->od_wait_time = 0;
 		ODDMRFLOW_LOG("check_trigger = %u\n", on);
 		g_od_check_trigger = on;
 	} else if (strncmp(opt, "od_fps_mode:", 12) == 0) {
@@ -9385,19 +9397,27 @@ static void disp_oddmr_sof_handle(struct mtk_ddp_comp *comp)
 			oddmr_data->primary_data->frame_dirty_last = frame_req_trig;
 
 		if (priv->data->mmsys_id != MMSYS_MT6989) {
-			uint32_t second = 1000000, eof;
-			u16 fps = oddmr_data->primary_data->current_timing.vrefresh;
+			if (oddmr_data->primary_data->od_wait_time == 0) {
+				uint32_t second = 1000000, eof;
+				u16 fps = oddmr_data->primary_data->current_timing.vrefresh;
 
-			if (fps <= 0)
-				fps = 10;
-			eof = 1 * second / fps;
-			ODDMRLOW_LOG("fps: %u eof %u\n", fps, eof);
+				if (fps <= 0)
+					fps = 10;
+				eof = 1 * second / fps;
+				ODDMRLOW_LOG("fps: %u eof %u\n", fps, eof);
 
-			atomic_set(&oddmr_data->primary_data->frame_dirty, 0);
-			if (eof > 2000) {
+				atomic_set(&oddmr_data->primary_data->frame_dirty, 0);
+				if (eof > 2000) {
+					ret = wait_event_interruptible_timeout(oddmr_data->primary_data->frame_dirty_wq,
+						atomic_read(&oddmr_data->primary_data->frame_dirty) == 1,
+						usecs_to_jiffies(eof - 2000));
+				}
+			} else {
+				ODDMRLOW_LOG("od_wait_time %u\n", oddmr_data->primary_data->od_wait_time);
+				atomic_set(&oddmr_data->primary_data->frame_dirty, 0);
 				ret = wait_event_interruptible_timeout(oddmr_data->primary_data->frame_dirty_wq,
 					atomic_read(&oddmr_data->primary_data->frame_dirty) == 1,
-					usecs_to_jiffies(eof - 2000));
+					msecs_to_jiffies(oddmr_data->primary_data->od_wait_time));
 			}
 		} else {
 			atomic_set(&oddmr_data->primary_data->frame_dirty, 0);
@@ -10006,7 +10026,7 @@ static int mtk_oddmr_od_deinit(struct mtk_ddp_comp *comp, void *data)
 		sizeof(oddmr_data->primary_data->od_content_timing));
 	oddmr_data->primary_data->frame_dirty_last = 0;
 	oddmr_data->primary_data->od_fps_mode = 0;
-	oddmr_data->primary_data->od_wait_time = 0;
+	// oddmr_data->primary_data->od_wait_time = 0;
 	oddmr_data->primary_data->od_min_fps = 0;
 	oddmr_data->primary_data->od_max_fps = 0;
 	oddmr_data->primary_data->sof_time = ktime_set(0, 0);
