@@ -12,6 +12,7 @@ static int engine_cooler_enable = -1;
 static int ec_duration = 2000;
 static int lr_frame_time_buffer = 300000;
 static int smallest_yield_time;
+static int s_apply_frs_diff;
 #define MAX_ENGINE_COOLER_DATA_SIZE 2
 #define MAX_HEAVY_THREAD_DATA_SIZE 10
 #if !defined(UINT64_MAX)
@@ -34,6 +35,7 @@ module_param(engine_cooler_enable, int, 0644);
 module_param(ec_duration, int ,0644);
 module_param(lr_frame_time_buffer, int ,0644);
 module_param(smallest_yield_time, int, 0644);
+module_param(s_apply_frs_diff, int, 0644);
 
 void get_mutext_lock(void **lock)
 {
@@ -223,10 +225,11 @@ int get_render_frame_info(struct game_package *pack)
 	int most_heaviest_count = 0;
 	int most_heaviest_idx = -1;
 
-
+	mutex_lock(&s_ec_lock);
 	if (pack->data)
 		query_mask = *((unsigned long *)(pack->data));
 
+	memset(s_render_info, 0, sizeof(struct render_frame_info) * MAX_RENDER_SIZE);
 	ret = get_fpsgo_frame_info(MAX_RENDER_SIZE, query_mask, 1, -1, s_render_info);
 
 	for (j = 0; j < MAX_RENDER_SIZE; j++) {
@@ -243,7 +246,6 @@ int get_render_frame_info(struct game_package *pack)
 		goto end;
 	}
 
-	mutex_lock(&s_ec_lock);
 	if (s_tgid != game_get_tgid(pack->cur_pid)) {
 		s_tgid = game_get_tgid(pack->cur_pid);
 		memset(&s_HeavyThreadData, 0, sizeof(struct engine_cooler_heavy_thread_data) *
@@ -277,12 +279,15 @@ int get_render_frame_info(struct game_package *pack)
 		s_ECData.data.heaviest_pid = pack->cur_pid;
 		s_ECData.data.render_pid = s_render_info[render_idx].pid;
 		s_ECData.data.target_fps = s_render_info[render_idx].target_fps;
+		if (likely(s_apply_frs_diff))
+			s_ECData.data.target_fps_diff = s_render_info[render_idx].target_fps_diff;
+		else
+			s_ECData.data.target_fps_diff = 0;
 		if (s_ECData.data.pid != pack->cur_pid)
 			s_ECData.data.last_sleep_duration_ns = 0;
 	}
-	mutex_unlock(&s_ec_lock);
-
 end:
+	mutex_unlock(&s_ec_lock);
 	return ret;
 }
 
@@ -300,5 +305,6 @@ void game_ec_init(void)
 	memset(&s_ECData, 0, sizeof(struct engine_cooler_data_internal));
 	memset(s_HeavyThreadData, 0, sizeof(struct engine_cooler_heavy_thread_data) * MAX_HEAVY_THREAD_DATA_SIZE);
 	memset(s_render_info, 0, sizeof(struct render_frame_info) * MAX_RENDER_SIZE);
+	s_apply_frs_diff = 1;
 	mutex_unlock(&s_ec_lock);
 }

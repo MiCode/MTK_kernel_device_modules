@@ -16,6 +16,7 @@ struct engine_cooler_data {
 	int render_pid;
 	int heaviest_pid;
 	int target_fps;
+	int target_fps_diff;
 	int last_sleep_duration_ns;
 };
 
