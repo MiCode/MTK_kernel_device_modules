@@ -138,6 +138,19 @@ static int loom_task_cpuselect_reset(struct loom_attr_info *iter)
 	return ret;
 }
 
+/* check whether cpumask change or set_exclusive change*/
+static int policy_change(int policy_set, int prev_set)
+{
+	int change = 0;
+
+	if (policy_set > 0 && prev_set != policy_set)
+		change = 1;
+	else if (policy_set <= 0 && prev_set != 0)
+		change = 1;
+
+	return change;
+}
+
 static int loom_task_cpuselect_control(struct loom_attr_info *iter)
 {
 	int ret = 0;
@@ -147,9 +160,8 @@ static int loom_task_cpuselect_control(struct loom_attr_info *iter)
 		return -EINVAL;
 
 	// cpuselect policy change, reset policy first
-	if ((iter->cpu_mask == LOOM_DEFAULT_VALUE && iter->cmask_set != 0) ||
-		(iter->cpu_mask != LOOM_DEFAULT_VALUE && iter->cpu_mask != iter->cmask_set) ||
-		(!ofp_is_overload && iter->set_exclusive != iter->is_exclusive)) {
+	if (policy_change(iter->cpu_mask, iter->cmask_set) ||
+		(!ofp_is_overload && policy_change(iter->set_exclusive, iter->is_exclusive))) {
 		loom_main_trace("[%s]pid=%d cpuselect change cpumask=%d, prev_mask=%d, exclusive=%d, prev_exclusive=%d",
 			__func__, iter->pid, iter->cpu_mask, iter->cmask_set,
 			iter->set_exclusive, iter->is_exclusive);
@@ -161,7 +173,7 @@ static int loom_task_cpuselect_control(struct loom_attr_info *iter)
 		return ret;
 
 	// Set cpu select
-	if (iter->set_exclusive && !ofp_is_overload) {
+	if (iter->set_exclusive == 1 && !ofp_is_overload) {
 		int cpuid = cpumask_to_cpu_id(iter->cpu_mask);
 
 		if (cpuid == -1)

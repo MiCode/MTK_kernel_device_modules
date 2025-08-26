@@ -4911,7 +4911,7 @@ int fbt_sep_ctrl(struct fbt_separate_ctrl *info, int sep_loading_ctrl, int loadi
 					int th_upbound, unsigned long long ts, int expected_fps_change,
 					unsigned long long  q2q_t_ns, int q_diff_min_clamp,
 					int q_diff_max_clamp,unsigned int expected_fpks,
-					int expect_fps_margin, int frame_lowbd,int frame_upbd,
+					int expect_fps_margin, int frame_lowbd,int frame_upbd, int cooler_on,
 					unsigned long long last_target_t,unsigned long long *target_time_m)
 {
 	int ret = 0;
@@ -4924,7 +4924,7 @@ int fbt_sep_ctrl(struct fbt_separate_ctrl *info, int sep_loading_ctrl, int loadi
 	if (!info)
 		return -EPERM;
 
-	if (!sep_loading_ctrl || expected_fps_change) {
+	if (!sep_loading_ctrl || expected_fps_change || cooler_on) {
 		if (!list_empty(&info->loading_list)) {
 			fbt_loading_info_list_delete(&info->loading_list);
 			info->count_loading = 0;
@@ -5487,7 +5487,7 @@ static int fbt_boost_policy(
 	fbt_sep_ctrl(&boost_info->sep_ctrl_info, sep_loading_ctrl_final, lc_th_final,
 		lc_th_upbound_final, ts, expected_fps_change, thread_info->Q2Q_time,
 		quota_v2_diff_clamp_min_final, quota_v2_diff_clamp_max_final, expected_fpks,
-		expected_fps_margin_final, frame_lowbd_final, frame_upbd_final,
+		expected_fps_margin_final, frame_lowbd_final, frame_upbd_final, cooler_on,
 		boost_info->target_time_m, &final_target_m);
 	final_target_m = fbt_post_process_target_t(pid, buffer_id, final_target_m,
 		boost_info->target_time_m, thread_info->Q2Q_time, target_time, expected_fpks,
