@@ -235,6 +235,8 @@ int mt6993_fe_trigger(struct snd_pcm_substream *substream, int cmd,
 		if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
 			if ((runtime->period_size * 1000) / rate <= 10)
 				mt6993_aud_delay(300);
+			else
+				mt6993_aud_delay(200);
 		}
 
 		/* set irq counter */
