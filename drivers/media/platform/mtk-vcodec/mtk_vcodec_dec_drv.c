@@ -45,6 +45,8 @@ module_param(mtk_vcodec_dvfs_qos_log_en, bool, 0644);
 module_param(mtk_vcodec_vcp, int, 0644);
 char mtk_vdec_property_prev[LOG_PROPERTY_SIZE];
 char mtk_vdec_vcp_log_prev[LOG_PROPERTY_SIZE];
+module_param(mtk_vdec_work_debug_level, int, 0644);
+module_param(mtk_vdec_work_infos_level, int, 0644);
 module_param(mtk_vdec_lpw_limit, int, 0644);
 module_param(mtk_vdec_lpw_timeout, int, 0644);
 module_param(mtk_vdec_lpw_start, int, 0644);

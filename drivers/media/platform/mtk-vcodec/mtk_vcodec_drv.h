@@ -763,6 +763,7 @@ struct mtk_vcodec_ctx {
 	struct vcodec_work init_node;
 	struct vcodec_work start_node;
 	struct vcodec_work worker_node;
+	struct work_struct q_run_work;
 	struct vdec_pic_info last_decoded_picinfo;
 	struct mtk_video_dec_buf *dec_flush_buf;
 	struct mtk_video_enc_buf *enc_flush_buf;
@@ -1025,6 +1026,7 @@ struct mtk_vcodec_dev {
 	struct workqueue_struct *vdec_buf_wq;
 	struct work_struct vdec_buf_work;
 	struct workqueue_struct *vdec_set_frame_wq;
+	struct workqueue_struct *vdec_q_work_wq;
 
 	int vdec_op_rate_cnt;
 	//int venc_op_rate_cnt;

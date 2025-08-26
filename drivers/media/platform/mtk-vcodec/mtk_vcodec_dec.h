@@ -16,6 +16,8 @@
 #define MTK_VDEC_WAIT_GROUP_MS		180
 #define MTK_VDEC_OPEN_CGRP_MS		200
 
+extern int mtk_vdec_work_debug_level;
+extern int mtk_vdec_work_infos_level;
 extern int mtk_vdec_lpw_limit;
 extern int mtk_vdec_lpw_timeout;
 extern int mtk_vdec_lpw_start;
