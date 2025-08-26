@@ -409,6 +409,7 @@ static unsigned int sec_on;
 static int irq3a_wait_cnt = 1;
 static int irq3a_print_vf_off[ISP_IRQ_TYPE_AMOUNT] = {-1};
 static unsigned int cq_recovery[ISP_IRQ_TYPE_AMOUNT];
+static bool fst_tg_err = MFALSE;
 
 #if IS_ENABLED(CONFIG_PM_WAKELOCKS)
 struct wakeup_source *isp_wake_lock;
@@ -6487,6 +6488,10 @@ EXIT:
 
 	spin_lock(&(IspInfo.SpinLockIspRef));
 	LOG_INF("- X. UserCount: %d.", IspInfo.UserCount);
+
+	if ((IspInfo.UserCount == 0) && (fst_tg_err == MTRUE))
+		fst_tg_err = MFALSE;
+
 	spin_unlock(&(IspInfo.SpinLockIspRef));
 	mutex_unlock(&open_isp_mutex);
 	return 0;
@@ -11989,15 +11994,14 @@ static void SMI_INFO_DUMP(enum ISP_IRQ_TYPE_ENUM irq_module)
 			!(g_ISPIntStatus_SMI[irq_module].ispIntErr & TG_GBERR_ST)) ||
 			(g_ISPIntStatus_SMI[irq_module].ispIntErr & TG_ERR_ST)){
 			if ((g_ISPIntStatus_SMI[irq_module].ispInt5Err & INT_ST_MASK_CAM_WARN) ||
-				(g_ISPIntStatus_SMI[irq_module].ispIntErr & TG_ERR_ST)) {
+				((g_ISPIntStatus_SMI[irq_module].ispIntErr & TG_ERR_ST) && !fst_tg_err)) {
 
+				fst_tg_err = MTRUE;
 				LOG_NOTICE("ERR:SMI_DUMP by module:%d\n",
 					   irq_module);
 
 				mtk_smi_dbg_hang_detect("camera_isp");
 
-			} else if (irq_module == ISP_IRQ_TYPE_INT_CAM_B_ST) {
-				mtk_smi_dbg_hang_detect("camera_isp_camb");
 			}
 			g_ISPIntStatus_SMI[irq_module].ispIntErr =
 				g_ISPIntStatus_SMI[irq_module].ispInt5Err = 0;
