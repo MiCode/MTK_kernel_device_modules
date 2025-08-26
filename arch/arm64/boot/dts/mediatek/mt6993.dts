@@ -1975,6 +1975,12 @@ pkvm_seninf_6993,pkvm_cmdq";
 			"dfg_crtl_base";
 	};
 
+	cmep: cmep@5392827 {
+		compatible = "mediatek,cmep";
+		reg = <0 0x5392827 0 0x1>, /*low battery status*/
+			<0 0x539285c 0 0x4>; /*SWPT freq limit BCPU*/
+	};
+
 	nfc:nfc {
 	};
 
@@ -18929,6 +18935,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			soc-limit-freq-lv2 = < 2200000 2200000 2200000>;
 			soc-limit-freq-lv3 = < 2200000 2200000 2200000>;
 
+			soc-limit-cmep-lv1 = <0>;
+			soc-limit-cmep-lv2 = <0>;
+			soc-limit-cmep-lv3 = <0>;
+
 			mpmm-enable = <1>;
 			mpmm-gear = <0>;
 
@@ -19168,6 +19178,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			soc-limit-freq-lv1 = < 2147483647  2147483647 2147483647>;
 			soc-limit-freq-lv2 = < 2200000 2200000 2200000>;
 			soc-limit-freq-lv3 = < 2200000 2200000 2200000>;
+
+			soc-limit-cmep-lv1 = <0>;
+			soc-limit-cmep-lv2 = <0>;
+			soc-limit-cmep-lv3 = <0>;
 
 			mpmm-enable = <1>;
 			mpmm-gear = <0>;
