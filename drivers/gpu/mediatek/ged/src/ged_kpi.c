@@ -2371,11 +2371,13 @@ static GED_ERROR ged_kpi_push_timestamp(
 		case GED_TIMESTAMP_TYPE_1:
 			atomic_inc_return(&event_QedBuffer_cnt);
 			atomic_inc_return(&event_3d_fence_cnt);
-			ged_eb_dvfs_task(EB_UPDATE_FB_TARGET_TIME, div_u64(fb_timeout, 1000));
+			if (!(is_fdvfs_enable() & POLICY_MODE_V2))
+				ged_eb_dvfs_task(EB_UPDATE_FB_TARGET_TIME, div_u64(fb_timeout, 1000));
 			break;
 		case GED_TIMESTAMP_TYPE_2:
 			atomic_dec_return(&event_3d_fence_cnt);
-			ged_eb_dvfs_task(EB_UPDATE_FB_TARGET_TIME_DONE, div_u64(fb_timeout, 1000));
+			if (!(is_fdvfs_enable() & POLICY_MODE_V2))
+				ged_eb_dvfs_task(EB_UPDATE_FB_TARGET_TIME_DONE, div_u64(fb_timeout, 1000));
 			// reset SF edge effect api_boost
 			if (get_sf_edge_hint() == SF_EDGE_EFFECT && check_service_uncomplete())
 				reset_sf_edge_hint();

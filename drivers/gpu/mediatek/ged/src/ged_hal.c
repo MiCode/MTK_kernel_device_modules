@@ -2352,7 +2352,10 @@ static ssize_t fallback_timing_show(struct kobject *kobj,
 		struct kobj_attribute *attr,
 		char *buf)
 {
-	return scnprintf(buf, PAGE_SIZE, "%u\n", g_frame_target_mode * 100 + g_frame_target_time);
+	if (is_fdvfs_enable() & POLICY_MODE_V2)
+		return scnprintf(buf, PAGE_SIZE, "%u\n", mtk_gpueb_sysram_read(SYSRAM_GPU_FB_TARGET_HD));
+	else
+		return scnprintf(buf, PAGE_SIZE, "%u\n", g_frame_target_mode * 100 + g_frame_target_time);
 }
 
 static ssize_t fallback_timing_store(struct kobject *kobj,
@@ -2380,6 +2383,7 @@ static ssize_t fallback_timing_store(struct kobject *kobj,
 					g_frame_target_mode = GED_DEFAULT_FRAME_TARGET_MODE;
 					g_frame_target_time = GED_DEFAULT_FRAME_TARGET_TIME;
 				}
+				mtk_gpueb_sysram_write(SYSRAM_GPU_FB_TARGET_HD, i32Value);
 				ged_eb_dvfs_task(EB_DBG_CMD, 0);
 				ged_eb_dvfs_task(EB_REINIT, 0);
 			}

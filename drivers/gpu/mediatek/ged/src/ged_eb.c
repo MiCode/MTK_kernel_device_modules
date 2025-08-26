@@ -2083,6 +2083,7 @@ void ged_do_platform_related_init(void)
 	mtk_gpueb_sysram_write(fdvfs_v2_table[GPU_EB_WORKLOAD_MODE].addr, workloadMode);
 	mtk_gpueb_sysram_write(fdvfs_v2_table[GPU_FB_NPU_HINT_MS].addr, 0);
 	mtk_gpueb_sysram_write(SYSRAM_GPU_EB_CMD_DVFS_MARGIN_VALUE, 0);
+	mtk_gpueb_sysram_write(SYSRAM_GPU_FB_TARGET_HD, g_frame_target_mode * 100 + g_frame_target_time);
 
 	GED_LOGI("ts_rb_num(%u) mbrain_max_num(%u)",
 		ged_get_ts_rb_num(), ged_get_mbrain_max_num());
