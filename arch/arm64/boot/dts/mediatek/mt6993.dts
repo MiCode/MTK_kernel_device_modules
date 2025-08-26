@@ -575,6 +575,7 @@ pkvm_seninf_6993,pkvm_cmdq";
 		vcore-supply = <&mt6667_13_buck1>;
 		vsram-supply = <&mt6661_5_buck6>;
 		mm-supply = <&mt6667_7_buck3>;
+		pmic = <&mt6661_3>;
 	};
 
 	pmrc_gip: gip@1c02c000 {
