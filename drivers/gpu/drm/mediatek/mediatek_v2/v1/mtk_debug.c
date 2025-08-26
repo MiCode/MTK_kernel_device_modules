@@ -644,6 +644,11 @@ void mtk_dump_mminfra_ck(void *_priv)
 			mt_get_fmeter_freq(22, CKGEN_CK2),
 			mt_get_fmeter_freq(20, CKGEN_CK2),
 			mt_get_fmeter_freq(9, ABIST));
+	} else if (priv->data->mmsys_id == MMSYS_MT6858) {
+		DDPMSG("FM_MMINFRA_CK:%u FM_DISP_CK:%u FM_EMIPLL:%u\n",
+			mt_get_fmeter_freq(6, CKGEN),
+			mt_get_fmeter_freq(5, CKGEN),
+			mt_get_fmeter_freq(45, CKGEN));
 	}
 }
 
