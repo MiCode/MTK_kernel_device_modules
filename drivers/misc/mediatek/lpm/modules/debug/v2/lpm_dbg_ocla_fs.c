@@ -34,6 +34,12 @@ enum spm_ocla_smc_ctrl_type {
 	SPM_OCLA_SMC_CONFIG,
 };
 
+static unsigned int ocla_dbg_enable;
+static unsigned int ocla_sel_tmp;
+static void *ocla_sram_base;
+static size_t ocla_sram_size;
+static void *ocla_sram_bk;
+
 static unsigned int ocla_proccess_buffer(char *buf, unsigned int count, ...)
 {
 	va_list args;
@@ -57,7 +63,6 @@ static unsigned int ocla_proccess_buffer(char *buf, unsigned int count, ...)
 	return i;
 }
 
-static unsigned int ocla_dbg_enable;
 static ssize_t ocla_dbg_enable_write(char *FromUserBuf, size_t sz, void *priv)
 {
 	unsigned int magic, enable;
@@ -183,7 +188,6 @@ static const struct mtk_lp_sysfs_op ocla_packet_fops = {
 	.fs_write = ocla_packet_write,
 };
 
-static unsigned int ocla_sel_tmp;
 static ssize_t ocla_usr_sel_read(char *ToUserBuf, size_t sz, void *priv)
 {
 	char *p = ToUserBuf;
@@ -265,25 +269,54 @@ static const struct mtk_lp_sysfs_op ocla_config_fops = {
 	.fs_write = ocla_config_write,
 };
 
-static void *ocla_sram_base;
-static size_t ocla_sram_size;
-static ssize_t ocla_sram_dump(char *ToUserBuf, size_t sz, void *priv)
+static void ocla_sram_dump_internal(void *des, void const *src, size_t sz)
 {
-	char *p = ToUserBuf;
 	unsigned int enabled;
-	size_t cpy_size;
 
 	enabled = ocla_enable_get();
-	cpy_size = min(sz, ocla_sram_size);
-
 	if (enabled)
 		ocla_enable_set(0);
 
-	memcpy(p, ocla_sram_base, cpy_size);
-	p += cpy_size;
+	memcpy(des, src, sz);
 
 	if (enabled)
 		ocla_enable_set(enabled);
+}
+
+static ssize_t ocla_dbg_sram_dump(char *ToUserBuf, size_t sz, void *priv)
+{
+	char *p = ToUserBuf;
+	size_t cpy_size;
+
+	if (!ocla_dbg_enable)
+		return p - ToUserBuf;
+
+	cpy_size = min(sz, ocla_sram_size);
+
+	ocla_sram_dump_internal(p, ocla_sram_base, cpy_size);
+
+	p += cpy_size;
+
+	return p - ToUserBuf;
+}
+
+static const struct mtk_lp_sysfs_op ocla_dbg_sram_dump_fops = {
+	.fs_read = ocla_dbg_sram_dump,
+};
+
+static unsigned int ocla_sram_backup_flag;
+static ssize_t ocla_sram_dump(char *ToUserBuf, size_t sz, void *priv)
+{
+	char *p = ToUserBuf;
+	size_t cpy_size;
+
+	cpy_size = min(sz, ocla_sram_size);
+	if (!ocla_sram_bk || ocla_sram_backup_flag == 0)
+		ocla_sram_dump_internal(p, ocla_sram_base, cpy_size);
+	else
+		ocla_sram_dump_internal(p, ocla_sram_bk, cpy_size);
+
+	p += cpy_size;
 
 	return p - ToUserBuf;
 }
@@ -291,6 +324,28 @@ static ssize_t ocla_sram_dump(char *ToUserBuf, size_t sz, void *priv)
 static const struct mtk_lp_sysfs_op ocla_sram_dump_fops = {
 	.fs_read = ocla_sram_dump,
 };
+
+void lpm_ocla_pause(void)
+{
+	ocla_enable_set(0);
+}
+
+void lpm_ocla_continue(void)
+{
+	ocla_enable_set(1);
+}
+
+int lpm_ocla_sram_bk(void)
+{
+	if (!ocla_sram_bk)
+		return -ENODEV;
+
+	ocla_sram_dump_internal(ocla_sram_bk, ocla_sram_base, ocla_sram_size);
+	ocla_sram_backup_flag = 1;
+
+	return 0;
+}
+EXPORT_SYMBOL(lpm_ocla_sram_bk);
 
 void lpm_ocla_fs_init(void)
 {
@@ -316,6 +371,8 @@ void lpm_ocla_fs_init(void)
 			__func__, __LINE__);
 		return;
 	}
+	ocla_sram_bk = kzalloc(ocla_sram_size, GFP_KERNEL);
+
 	mtk_ocla_sysfs_root_entry_create();
 	mtk_ocla_sysfs_entry_node_add("ocla_dbg_enable", 0200,
 					&ocla_dbg_enable_fops, NULL);
@@ -323,6 +380,8 @@ void lpm_ocla_fs_init(void)
 					&ocla_enable_fops, NULL);
 	mtk_ocla_sysfs_entry_node_add("ocla_sram_dump", 0444,
 					&ocla_sram_dump_fops, NULL);
+	mtk_ocla_sysfs_entry_node_add("ocla_dbg_sram_dump", 0444,
+					&ocla_dbg_sram_dump_fops, NULL);
 	mtk_ocla_sysfs_entry_node_add("ocla_packet", 0644,
 					&ocla_packet_fops, NULL);
 	mtk_ocla_sysfs_entry_node_add("ocla_user_sel", 0644,
@@ -334,7 +393,7 @@ EXPORT_SYMBOL(lpm_ocla_fs_init);
 
 int lpm_ocla_fs_deinit(void)
 {
+	kfree(ocla_sram_bk);
 	return 0;
 }
 EXPORT_SYMBOL(lpm_ocla_fs_deinit);
-

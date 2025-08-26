@@ -209,6 +209,10 @@ void lpm_dbg_pm_exit(void);
 
 int spm_common_dbg_dump(void);
 
+void lpm_ocla_pause(void);
+void lpm_ocla_continue(void);
+int lpm_ocla_sram_bk(void);
+
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_PINCTRL_MTK_PARIS)
 extern void gpio_dump_regs(void);
 #endif
