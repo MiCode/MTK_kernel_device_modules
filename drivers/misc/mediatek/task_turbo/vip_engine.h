@@ -98,6 +98,7 @@ extern void (*task_turbo_do_set_binder_uclamp_param)(pid_t pid, int binder_uclam
 extern void (*task_turbo_do_unset_binder_uclamp_param)(pid_t pid);
 extern void (*task_turbo_do_binder_uclamp_stuff)(int cmd);
 extern void (*task_turbo_do_enable_binder_uclamp_inheritance)(int enable);
+extern int (*task_turbo_launch_turbo_cb)(void);
 extern void (*vip_engine_set_vip_ctrl_node_cs)(int pid, int vip_prio, unsigned int throttle_time);
 extern void (*vip_engine_unset_vip_ctrl_node_cs)(int pid, int vip_prio);
 extern void (*vip_engine_set_vip_ctrl_node_sbe)(int pid, int vip_prio, unsigned int throttle_time);

@@ -106,8 +106,20 @@ static pid_t turbo_pid[TURBO_PID_COUNT] = {0};
 static unsigned int task_turbo_feats;
 static struct task_struct *inherited_rwsem_owners[INHERITED_RWSEM_COUNT] = {NULL};
 static struct cgroup_subsys_state *top_app_css;
+
+/*
+ * Exported pointer for VIP engine enable flag.
+ */
 int *tt_vip_enable_p;
 EXPORT_SYMBOL(tt_vip_enable_p);
+
+/*
+ * Callback for turbo state change notification to VIP engine.
+ * Should be set by VIP engine module if interested.
+ * Return 0 on success, <0 on error.
+ */
+int (*task_turbo_launch_turbo_cb)(void) = NULL;
+EXPORT_SYMBOL_GPL(task_turbo_launch_turbo_cb);
 
 static bool is_turbo_task(struct task_struct *p);
 static void rwsem_stop_turbo_inherit(struct rw_semaphore *sem);
@@ -1013,6 +1025,8 @@ static int set_task_turbo_feats(const char *buf,
 	spin_unlock(&TURBO_SPIN_LOCK);
 
 	if (!ret) {
+		if (task_turbo_launch_turbo_cb)
+			task_turbo_launch_turbo_cb();
 		pr_info("%s: task_turbo_feats is change to %d successfully",
 				TAG, task_turbo_feats);
 		trace_turbo_feats_set(task_turbo_feats);

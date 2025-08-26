@@ -102,8 +102,42 @@ static atomic_t loom_cpu_dedicated_enable;
 static const char * const caller_id_desc[MAX_TYPE] = {
 	"DEBUG_NODE", "FPSGO", "UX", "VIDEO"
 };
-int (*loom_set_cpus_allowed_ptr_by_kernel_fp)(struct task_struct *p, const struct cpumask *new_mask);
+
+int  (*loom_set_cpus_allowed_ptr_by_kernel_fp)(struct task_struct *p, const struct cpumask *new_mask) = NULL;
 EXPORT_SYMBOL(loom_set_cpus_allowed_ptr_by_kernel_fp);
+int  (*wi_add_tgid_hook)(int pid) = NULL;
+EXPORT_SYMBOL(wi_add_tgid_hook);
+int  (*wi_del_tgid_hook)(int pid) = NULL;
+EXPORT_SYMBOL(wi_del_tgid_hook);
+int  (*disable_tt_vip_hook)(u64) = NULL;
+EXPORT_SYMBOL(disable_tt_vip_hook);
+void (*turn_on_tgd_hook)(void) = NULL;
+EXPORT_SYMBOL(turn_on_tgd_hook);
+void (*turn_off_tgd_hook)(void) = NULL;
+EXPORT_SYMBOL(turn_off_tgd_hook);
+int  (*set_tgd_hook)(int tgd) = NULL;
+EXPORT_SYMBOL(set_tgd_hook);
+int  (*unset_tgd_hook)(int tgd) = NULL;
+EXPORT_SYMBOL(unset_tgd_hook);
+void (*set_td_hook)(int td) = NULL;
+EXPORT_SYMBOL(set_td_hook);
+void (*unset_td_hook)(int td) = NULL;
+EXPORT_SYMBOL(unset_td_hook);
+void (*set_tdtgd_hook)(int tgd) = NULL;
+EXPORT_SYMBOL(set_tdtgd_hook);
+void (*unset_tdtgd_hook)(int tgd) = NULL;
+EXPORT_SYMBOL(unset_tdtgd_hook);
+int (*tt_vip_algo_hook)(int ct_vip_qualified, int launch_vip_qualified,
+						int ssid_tgid, int sui_tgid, int f_tgid, bool touching) = NULL;
+EXPORT_SYMBOL(tt_vip_algo_hook);
+int  (*is_target_found_hook)(const char*, int) = NULL;
+EXPORT_SYMBOL(is_target_found_hook);
+#if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
+void (*binder_start_vip_inherit_hook)(int, int) = NULL;
+EXPORT_SYMBOL(binder_start_vip_inherit_hook);
+void (*binder_stop_vip_inherit_hook)(int, int) = NULL;
+EXPORT_SYMBOL(binder_stop_vip_inherit_hook);
+#endif
 
 struct devinfo_tag {
 	u32 data_size;
@@ -220,11 +254,6 @@ void exp_trace_turbo_vip(const char *desc, int pid)
 }
 EXPORT_SYMBOL(exp_trace_turbo_vip);
 
-int (*wi_add_tgid_hook)(int pid) = NULL;
-EXPORT_SYMBOL(wi_add_tgid_hook);
-int (*wi_del_tgid_hook)(int pid) = NULL;
-EXPORT_SYMBOL(wi_del_tgid_hook);
-
 /*
  * update_win_pid_status - Update the status of a window PID
  * @buf: the user-provided buffer with the PID and status
@@ -270,9 +299,6 @@ static const struct kernel_param_ops update_win_pid_status_ops = {
 module_param_cb(update_win_pid_status, &update_win_pid_status_ops, &win_pid_status_param, 0664);
 MODULE_PARM_DESC(update_win_pid_status, "send window pid and status to task turbo");
 
-int (*disable_tt_vip_hook)(u64) = NULL;
-EXPORT_SYMBOL(disable_tt_vip_hook);
-
 /*
  * enable_tt_vip - Master switch for enabling or disabling tt vip feature
  * @buf: the user-provided buffer with the value to set
@@ -308,11 +334,6 @@ static const struct kernel_param_ops enable_tt_vip_ops = {
 module_param_cb(enable_tt_vip, &enable_tt_vip_ops, &tt_vip_enable, 0664);
 MODULE_PARM_DESC(enable_tt_vip, "Enable or disable tt vip");
 
-void (*turn_on_tgd_hook)(void) = NULL;
-EXPORT_SYMBOL(turn_on_tgd_hook);
-void (*turn_off_tgd_hook)(void) = NULL;
-EXPORT_SYMBOL(turn_off_tgd_hook);
-
 static int enable_tgd_param;
 static int enable_tgd(const char *buf, const struct kernel_param *kp)
 {
@@ -345,9 +366,6 @@ static const struct kernel_param_ops enable_tgd_ops = {
 module_param_cb(enable_tgd, &enable_tgd_ops, &enable_tgd_param, 0664);
 MODULE_PARM_DESC(enable_tgd, "enable tgd to vip for debug");
 
-int (*set_tgd_hook)(int tgd) = NULL;
-EXPORT_SYMBOL(set_tgd_hook);
-
 static int set_tgd_param;
 static int set_tgd(const char *buf, const struct kernel_param *kp)
 {
@@ -378,9 +396,6 @@ static const struct kernel_param_ops set_tgd_ops = {
 
 module_param_cb(set_tgd, &set_tgd_ops, &set_tgd_param, 0664);
 MODULE_PARM_DESC(set_tgd, "set tgd to vip for debug");
-
-int (*unset_tgd_hook)(int tgd) = NULL;
-EXPORT_SYMBOL(unset_tgd_hook);
 
 static int unset_tgd_param;
 static int unset_tgd(const char *buf, const struct kernel_param *kp)
@@ -413,9 +428,6 @@ static const struct kernel_param_ops unset_tgd_ops = {
 module_param_cb(unset_tgd, &unset_tgd_ops, &unset_tgd_param, 0664);
 MODULE_PARM_DESC(unset_tgd, "unset tgd to vip for debug");
 
-void (*set_td_hook)(int td) = NULL;
-EXPORT_SYMBOL(set_td_hook);
-
 static int set_td_param;
 static int set_td(const char *buf, const struct kernel_param *kp)
 {
@@ -446,9 +458,6 @@ static const struct kernel_param_ops set_td_ops = {
 
 module_param_cb(set_td, &set_td_ops, &set_td_param, 0664);
 MODULE_PARM_DESC(set_td, "set td to vip for debug");
-
-void (*unset_td_hook)(int td) = NULL;
-EXPORT_SYMBOL(unset_td_hook);
 
 static int unset_td_param;
 static int unset_td(const char *buf, const struct kernel_param *kp)
@@ -535,9 +544,6 @@ static const struct kernel_param_ops unset_vvtd_ops = {
 module_param_cb(unset_vvtd, &unset_vvtd_ops, &unset_vvtd_param, 0664);
 MODULE_PARM_DESC(unset_vvtd, "unset td to vvip for debug");
 
-void (*set_tdtgd_hook)(int tgd) = NULL;
-EXPORT_SYMBOL(set_tdtgd_hook);
-
 static int set_tdtgd_param;
 static int set_tdtgd(const char *buf, const struct kernel_param *kp)
 {
@@ -573,9 +579,6 @@ static const struct kernel_param_ops set_tdtgd_ops = {
 
 module_param_cb(set_tdtgd, &set_tdtgd_ops, &set_tdtgd_param, 0664);
 MODULE_PARM_DESC(set_tdtgd, "set tdtgd to vip for debug");
-
-void (*unset_tdtgd_hook)(int tgd) = NULL;
-EXPORT_SYMBOL(unset_tdtgd_hook);
 
 static int unset_tdtgd_param;
 static int unset_tdtgd(const char *buf, const struct kernel_param *kp)
@@ -703,6 +706,18 @@ int enforce_ct_to_vip(int val, int caller_id)
 	return 0;
 }
 EXPORT_SYMBOL_GPL(enforce_ct_to_vip);
+
+/*
+ * Callback for turbo state change notification from task_turbo.
+ * This function will be called when turbo is enabled.
+ * Return 0 on success, <0 on error.
+ */
+int task_turbo_launch_turbo_notify(void)
+{
+	if (tt_vip_enable == VIPE_MODE_ON)
+		queue_work(system_highpri_wq, &tt_vip_worker);
+	return 0;
+}
 
 /**
  * enforce_ct_to_vip_param - Callback for setting enforce_ct_to_vip via sysfs
@@ -1386,9 +1401,6 @@ bool is_util_overhigh(unsigned long util)
 }
 EXPORT_SYMBOL(is_util_overhigh);
 
-int (*tt_vip_algo_hook)(int ct_vip_qualified, int ssid_tgid, int sui_tgid, int f_tgid, bool touching) = NULL;
-EXPORT_SYMBOL(tt_vip_algo_hook);
-
 static inline void cpumask_complement(struct cpumask *dstp,
 				      const struct cpumask *srcp)
 {
@@ -1416,16 +1428,14 @@ int tt_cpu_count_check(void)
 static void tt_vip(void)
 {
 	bool ct_vip_qualified = false;
+	bool launch_vip_qualified = false;
 	bool touching = false;
 	int tmp_avg_cpu_loading = 0;
 
 	/* The effect after touch ends lasts for TOUCH_SUSTAIN_MS milliseconds */
 	if (ktime_to_ms(ktime_get() - cur_touch_time) < TOUCH_SUSTAIN_MS)
 		touching = true;
-#if IS_ENABLED(CONFIG_MTK_TASK_TURBO)
-	if (launch_turbo_enable())
-		touching = true;
-#endif
+
 	mutex_lock(&cpu_loading_lock);
 	tmp_avg_cpu_loading = avg_cpu_loading;
 	mutex_unlock(&cpu_loading_lock);
@@ -1435,15 +1445,16 @@ static void tt_vip(void)
 	/* enforced_qualified_mask can forcibly make critical task(s) to VIP */
 	if (enforced_qualified_mask)
 		ct_vip_qualified = true;
-	mutex_unlock(&enforced_qualified_lock);
-
-	mutex_lock(&wi_lock);
-
 	if (tt_cpu_count_check() <= MIN_CPUS)
 		ct_vip_qualified = false;
+	mutex_unlock(&enforced_qualified_lock);
 
+#if IS_ENABLED(CONFIG_MTK_TASK_TURBO)
+	launch_vip_qualified = (launch_turbo_enable() && ct_vip_qualified);
+#endif
+	mutex_lock(&wi_lock);
 	if (tt_vip_algo_hook)
-		tt_vip_algo_hook(ct_vip_qualified, ssid_tgid, sui_tgid, f_tgid, touching);
+		tt_vip_algo_hook(ct_vip_qualified, launch_vip_qualified, ssid_tgid, sui_tgid, f_tgid, touching);
 
 	mutex_unlock(&wi_lock);
 }
@@ -1460,9 +1471,6 @@ static void tt_vip_event_handler(struct work_struct *work)
 {
 	tt_vip();
 }
-
-int (*is_target_found_hook)(const char*, int) = NULL;
-EXPORT_SYMBOL(is_target_found_hook);
 
 /*
  * tt_vip_periodic_handler - Periodic work handler for VIP management
@@ -1620,10 +1628,6 @@ static void probe_android_rvh_prepare_prio_fork(void *ignore, struct task_struct
 }
 
 #if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
-void (*binder_start_vip_inherit_hook)(int, int);
-EXPORT_SYMBOL(binder_start_vip_inherit_hook);
-void (*binder_stop_vip_inherit_hook)(int, int);
-EXPORT_SYMBOL(binder_stop_vip_inherit_hook);
 bool binder_start_vip_inherit(struct task_struct *from,
 					struct task_struct *to)
 {
@@ -2477,11 +2481,11 @@ static int __init init_vip_engine(void)
 		pr_info("%s: init input handler failed, returned %d\n", TAG, ret);
 #if IS_ENABLED(CONFIG_MTK_TASK_TURBO)
 	tt_vip_enable_p = &tt_vip_enable;
+	task_turbo_launch_turbo_cb = task_turbo_launch_turbo_notify;
 #endif
 #if IS_ENABLED(CONFIG_MTK_FPSGO_V8) || IS_ENABLED(CONFIG_MTK_FPSGO)
 	task_turbo_enforce_ct_to_vip_fp = enforce_ct_to_vip;
 #endif
-
 	task_turbo_do_set_binder_uclamp_param = do_set_binder_uclamp_param;
 	task_turbo_do_unset_binder_uclamp_param = do_unset_binder_uclamp_param;
 	task_turbo_do_binder_uclamp_stuff = do_binder_uclamp_stuff;
