@@ -35,6 +35,7 @@ struct usb_dp_selector {
 	struct typec_switch_dev *sw;
 	struct typec_mux_dev *mux;
 	struct mutex lock;
+	enum typec_orientation orientation;
 	void __iomem *selector_reg_address;
 	int uds_ver;
 	bool is_dp;
@@ -110,6 +111,20 @@ static int usb_dp_selector_switch_set(struct typec_switch_dev *sw,
 			uds->dp_sw_connect = false;
 			uds->is_dp = false;
 		}
+
+		/* switch mux to u3 off state */
+		if (uds->orientation == TYPEC_ORIENTATION_NORMAL) {
+			if (uds->uds_ver == uds_V1)
+				uds_setbits(uds->selector_reg_address, (1 << 11));
+			else if (uds->uds_ver == uds_V2)
+				uds_setbits(uds->selector_reg_address, (1 << 18));
+		} else if (uds->orientation == TYPEC_ORIENTATION_REVERSE) {
+			if (uds->uds_ver == uds_V1)
+				uds_clrbits(uds->selector_reg_address, (1 << 11));
+			else if (uds->uds_ver == uds_V2)
+				uds_clrbits(uds->selector_reg_address, (1 << 18));
+		}
+
 		break;
 	case TYPEC_ORIENTATION_NORMAL:
 		/* USB NORMAL TX1, DP TX2 */
@@ -153,6 +168,7 @@ static int usb_dp_selector_switch_set(struct typec_switch_dev *sw,
 		break;
 	}
 
+	uds->orientation = orientation;
 	return 0;
 }
 
@@ -309,6 +325,7 @@ static int usb_dp_selector_probe(struct platform_device *pdev)
 
 	uds->is_dp = false;
 	uds->dp_sw_connect = false;
+	uds->orientation = TYPEC_ORIENTATION_NONE;
 
 	INIT_DEFERRABLE_WORK(&uds->check_wk, check_hpd);
 
