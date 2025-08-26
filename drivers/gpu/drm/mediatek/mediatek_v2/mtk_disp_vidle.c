@@ -19,6 +19,7 @@
 #include <mt-plat/mtk_irq_mon.h>
 
 static atomic_t g_ff_enabled = ATOMIC_INIT(0);
+static atomic_t g_need_config = ATOMIC_INIT(1);
 static bool vidle_paused;
 
 static struct mtk_disp_vidle_para mtk_disp_vidle_flag = {
@@ -736,7 +737,7 @@ static void mtk_vidle_enable_v2(bool _en, void *_drm_priv)
 
 	/* reset status to config dpc setting at first time*/
 	if (!en && !mtk_vidle_is_ff_enabled())
-		atomic_set(&g_ff_enabled, -1);
+		atomic_set(&g_need_config, 1);
 }
 
 void mtk_vidle_enable(bool _en, void *_drm_priv)
@@ -823,6 +824,8 @@ u8 mtk_vidle_check_pll(void)
 
 void mtk_vidle_config_ff(bool en)
 {
+	unsigned long flags;
+
 	if (!disp_dpc_driver.dpc_config)
 		return;
 
@@ -833,16 +836,20 @@ void mtk_vidle_config_ff(bool en)
 	if (en && (atomic_read(&vidle_data.drm_priv->kernel_pm.wakelock_cnt) != 1))
 		return;
 
-	/* skip the same config
-	 * the default value of g_ff_enabled is set as -1(true)
-	 * so the first config_ff(false) can pass this same check
+	spin_lock_irqsave(&vidle_hint_lock, flags);
+
+	/* The first call after resume (g_need_config == 1) must always proceed and cannot be skipped.
+	 * For all other cases (g_need_config == 0), skip the same config.
 	 */
-	if ((vidle_data.dpc_version != DPC_VER1) && mtk_vidle_is_ff_enabled() == en)
-		return;
+	if ((vidle_data.dpc_version != DPC_VER1) &&
+	    (atomic_cmpxchg(&g_need_config, 1, 0) == 0) && (mtk_vidle_is_ff_enabled() == en))
+		goto out;
 
 	disp_dpc_driver.dpc_config(DPC_SUBSYS_DISP, en);
 
 	atomic_set(&g_ff_enabled, en);
+out:
+	spin_unlock_irqrestore(&vidle_hint_lock, flags);
 }
 EXPORT_SYMBOL(mtk_vidle_config_ff);
 
@@ -958,8 +965,8 @@ int mtk_vidle_hint_decision(const char *caller)
 		     vidle_data.hint.mtcmos_debounce |
 		     vidle_data.hint.smi_dump_debounce);
 
-	mtk_vidle_config_ff(decision);
 	spin_unlock_irqrestore(&vidle_hint_lock, flags);
+	mtk_vidle_config_ff(decision);
 
 	return decision;
 }
