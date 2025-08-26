@@ -642,10 +642,6 @@
 	};
 };
 
-&mmlsys2_config {
-	dl-enable;
-};
-
 &disp_dpc {
 	vidle-mask = <0x3>;
 };
