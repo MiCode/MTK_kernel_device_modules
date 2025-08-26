@@ -126,6 +126,10 @@
 #define MD_SECBLK_NUM 6
 #define MD_SEC_SZ (MD_SECBLK_NUM*MD_BLK_SZ)
 
+#define MD_BLK_MAX_NUM 108
+#define MD_DATA_TOTAL_SZ (MD_MDHD_SZ+MD_BLK_SZ*MD_BLK_MAX_NUM)
+#define MD_MAX_SZ (MD_HD_SZ+MD_DATA_TOTAL_SZ)
+
 #define MAX_GPU_FENCE_RECORD_DATA 8
 
 #define MAX_CM_CPU_NUM 8
@@ -377,6 +381,11 @@ struct mbraink_modem_raw {
 	unsigned char data1[MD_HD_SZ];
 	unsigned char data2[MD_MDHD_SZ];
 	unsigned char data3[MD_SEC_SZ];
+};
+
+struct mbraink_modem_all_raw {
+	unsigned short count;
+	unsigned char data[MD_MAX_SZ];
 };
 
 struct mbraink_memory_mdvInfo {

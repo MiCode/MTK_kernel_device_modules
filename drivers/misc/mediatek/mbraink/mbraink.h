@@ -96,7 +96,7 @@
 #define POWER_SPM_ALL_RAW	(NR_CODE_LAGACY_MAX + 10)
 #define POWER_SPM_L2_ALL_INFO	(NR_CODE_LAGACY_MAX + 11)
 #define MEMORY_CM_DDR_VOTE_INFO	(NR_CODE_LAGACY_MAX + 12)
-
+#define MODEM_ALL_INFO	(NR_CODE_LAGACY_MAX + 13)
 
 /*Mbrain Delegate IOCTL List*/
 #define AUTO_IOCTL_INFO			_IOR(IOC_MAGIC, AUTO_IOCTL, \
@@ -142,6 +142,8 @@
 
 #define RO_MODEM_INFO			_IOR(IOC_MAGIC, MODEM_INFO, \
 							struct mbraink_modem_raw*)
+#define RO_MODEM_ALL_INFO			_IOR(IOC_MAGIC, MODEM_ALL_INFO, \
+							struct mbraink_modem_all_raw*)
 #define WO_MONITOR_BINDER_PROCESS	_IOW(IOC_MAGIC,	MONITOR_BINDER_PROCESS,	\
 						struct mbraink_monitor_processlist*)
 #define RO_TRACE_BINDER			_IOR(IOC_MAGIC, TRACE_BINDER_INFO,	\

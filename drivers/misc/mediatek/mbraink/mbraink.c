@@ -767,6 +767,29 @@ static long handle_modem_info(unsigned long arg, void *mbraink_data)
 	return ret;
 }
 
+static long handle_modem_all_info(unsigned long arg, void *mbraink_data)
+{
+	long ret = 0;
+	struct mbraink_modem_all_raw *modem_all_buffer =
+		(struct mbraink_modem_all_raw *)(mbraink_data);
+
+	if (copy_from_user(modem_all_buffer,
+			(struct mbraink_modem_all_raw *) arg,
+			sizeof(struct mbraink_modem_all_raw))) {
+		pr_notice("Data write modem_all_buffer from UserSpace Err!\n");
+		return -EPERM;
+	}
+	mbraink_power_get_modem_all_info(modem_all_buffer);
+
+	if (copy_to_user((struct mbraink_modem_all_raw *) arg,
+			modem_all_buffer,
+			sizeof(struct mbraink_modem_all_raw))) {
+		pr_notice("Copy modem_all_buffer to UserSpace error!\n");
+		return -EPERM;
+	}
+	return ret;
+}
+
 static long handle_monitor_binder_process(unsigned long arg, void *mbraink_data)
 {
 	long ret = 0;
@@ -1975,6 +1998,15 @@ static long mbraink_ioctl(struct file *filp,
 		if (!mbraink_data)
 			goto End;
 		ret = handle_modem_info(arg, mbraink_data);
+		kfree(mbraink_data);
+		break;
+	}
+	case RO_MODEM_ALL_INFO:
+	{
+		mbraink_data = kmalloc(sizeof(struct mbraink_modem_all_raw), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handle_modem_all_info(arg, mbraink_data);
 		kfree(mbraink_data);
 		break;
 	}

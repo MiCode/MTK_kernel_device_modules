@@ -23,6 +23,7 @@ int mbraink_power_init(void)
 	_mbraink_power_ops.getScpInfo = NULL;
 	_mbraink_power_ops.getScpTaskInfo = NULL;
 	_mbraink_power_ops.getModemInfo = NULL;
+	_mbraink_power_ops.getModemAllInfo = NULL;
 	_mbraink_power_ops.getSpmiInfo = NULL;
 	_mbraink_power_ops.getUvloInfo = NULL;
 	_mbraink_power_ops.getPmicVoltageInfo = NULL;
@@ -56,6 +57,7 @@ int mbraink_power_deinit(void)
 	_mbraink_power_ops.getScpInfo = NULL;
 	_mbraink_power_ops.getScpTaskInfo = NULL;
 	_mbraink_power_ops.getModemInfo = NULL;
+	_mbraink_power_ops.getModemAllInfo = NULL;
 	_mbraink_power_ops.getSpmiInfo = NULL;
 	_mbraink_power_ops.getUvloInfo = NULL;
 	_mbraink_power_ops.getPmicVoltageInfo = NULL;
@@ -94,6 +96,7 @@ int register_mbraink_power_ops(struct mbraink_power_ops *ops)
 	_mbraink_power_ops.getScpInfo = ops->getScpInfo;
 	_mbraink_power_ops.getScpTaskInfo = ops->getScpTaskInfo;
 	_mbraink_power_ops.getModemInfo = ops->getModemInfo;
+	_mbraink_power_ops.getModemAllInfo = ops->getModemAllInfo;
 	_mbraink_power_ops.getSpmiInfo = ops->getSpmiInfo;
 	_mbraink_power_ops.getUvloInfo = ops->getUvloInfo;
 	_mbraink_power_ops.getPmicVoltageInfo = ops->getPmicVoltageInfo;
@@ -130,6 +133,7 @@ int unregister_mbraink_power_ops(void)
 	_mbraink_power_ops.getScpInfo = NULL;
 	_mbraink_power_ops.getScpTaskInfo = NULL;
 	_mbraink_power_ops.getModemInfo = NULL;
+	_mbraink_power_ops.getModemAllInfo = NULL;
 	_mbraink_power_ops.getSpmiInfo = NULL;
 	_mbraink_power_ops.getUvloInfo = NULL;
 	_mbraink_power_ops.getPmicVoltageInfo = NULL;
@@ -350,6 +354,24 @@ int mbraink_power_get_modem_info(struct mbraink_modem_raw *modem_buffer)
 
 	return ret;
 }
+
+int mbraink_power_get_modem_all_info(struct mbraink_modem_all_raw *modem_all_buffer)
+{
+	int ret = 0;
+
+	if (modem_all_buffer == NULL) {
+		pr_info("%s: power modem all buffer is null.\n", __func__);
+		return -1;
+	}
+
+	if (_mbraink_power_ops.getModemAllInfo)
+		ret = _mbraink_power_ops.getModemAllInfo(modem_all_buffer);
+	else
+		pr_info("%s: Do not support ioctl get power modem all info query.\n", __func__);
+
+	return ret;
+}
+
 
 int mbraink_power_get_spmi_info(struct mbraink_spmi_struct_data *mbraink_spmi_data)
 {

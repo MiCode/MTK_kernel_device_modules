@@ -31,6 +31,7 @@ int mbraink_power_get_scp_info(struct mbraink_power_scp_info *scp_info);
 int mbraink_power_get_scp_task_info(struct mbraink_power_scp_task_info *scp_info);
 
 int mbraink_power_get_modem_info(struct mbraink_modem_raw *modem_buffer);
+int mbraink_power_get_modem_all_info(struct mbraink_modem_all_raw *modem_all_buffer);
 
 int mbraink_power_get_spmi_info(struct mbraink_spmi_struct_data *mbraink_spmi_data);
 

@@ -65,11 +65,6 @@ long long g_spm_l1_data[SPM_L1_DATA_NUM];
 
 #if IS_ENABLED(CONFIG_MTK_ECCCI_DRIVER)
 #include "mtk_ccci_common.h"
-
-//sammi-spinlock
-unsigned int g_md_last_has_data_blk_idx;
-unsigned int g_md_last_read_blk_idx;
-unsigned int g_md_read_count;
 #endif
 
 #if IS_ENABLED(CONFIG_MTK_LOW_POWER_MODULE)
@@ -527,19 +522,14 @@ static int mbraink_v6993_power_get_scp_task_info(struct mbraink_power_scp_task_i
 }
 
 #if IS_ENABLED(CONFIG_MTK_ECCCI_DRIVER)
-static int mbraink_v6993_power_get_modem_info(struct mbraink_modem_raw *modem_buffer)
+
+static int mbraink_v6993_power_get_modem_all_info(struct mbraink_modem_all_raw *modem_all_buffer)
 {
 	int shm_size = 0;
 	void __iomem *shm_addr = NULL;
 	unsigned char *base_addr = NULL;
-	unsigned char *read_addr = NULL;
-	int i = 0;
-	unsigned int mem_status = 0;
-	unsigned int read_blk_idx = 0;
-	unsigned int offset = 0;
-	bool ret = true;
 
-	if (modem_buffer == NULL)
+	if (modem_all_buffer == NULL)
 		return 0;
 
 	shm_addr = get_smem_start_addr(SMEM_USER_32K_LOW_POWER, &shm_size);
@@ -553,74 +543,20 @@ static int mbraink_v6993_power_get_modem_info(struct mbraink_modem_raw *modem_bu
 		return 0;
 	}
 
+	pr_notice("shm_size(%d)", shm_size);
+
 	base_addr = (unsigned char *)shm_addr;
-
-	if (modem_buffer->type == 0) {
-		read_addr = base_addr;
-		memcpy(modem_buffer->data1, read_addr, MD_HD_SZ);
-		read_addr = base_addr + MD_HD_SZ;
-		memcpy(modem_buffer->data2, read_addr, MD_MDHD_SZ);
-
-		if (modem_buffer->data1[0] != 1 ||  modem_buffer->data1[2] != 8) {
-			modem_buffer->is_has_data = 0;
-			modem_buffer->count = 0;
-			return 0;
-		}
-
-		g_md_read_count = 0;
-		g_md_last_read_blk_idx = g_md_last_has_data_blk_idx;
-
-		pr_notice("g_md_last_read_blk_idx(%d)", g_md_last_read_blk_idx);
-	}
-
-	read_blk_idx = g_md_last_read_blk_idx;
-	i = 0;
-	ret = true;
-	while ((g_md_read_count < MD_BLK_MAX_NUM) && (i < MD_SECBLK_NUM)) {
-		offset = MD_HD_SZ + MD_MDHD_SZ + read_blk_idx*MD_BLK_SZ;
-		if (offset > shm_size) {
-			ret = false;
-			break;
-		}
-		read_addr = base_addr + offset;
-		memcpy(&mem_status, read_addr, sizeof(mem_status));
-
-		read_blk_idx = (read_blk_idx + 1) % MD_BLK_MAX_NUM;
-		g_md_read_count++;
-
-		if (mem_status == MD_STATUS_W_DONE) {
-			offset = i*MD_BLK_SZ;
-			if ((offset + MD_BLK_SZ) > sizeof(modem_buffer->data3)) {
-				ret = false;
-				break;
-			}
-
-			memcpy(modem_buffer->data3 + offset, read_addr, MD_BLK_SZ);
-			//reset mem_status mem_count after read data
-			mem_status = MD_STATUS_R_DONE;
-			memcpy(read_addr, &mem_status, sizeof(mem_status));
-			memset(read_addr + sizeof(mem_status), 0, 4); //mem_count
-			i++;
-			g_md_last_has_data_blk_idx = read_blk_idx;
-		}
-	}
-
-	if ((g_md_read_count < MD_BLK_MAX_NUM) && (ret == true))
-		modem_buffer->is_has_data = 1;
-	else
-		modem_buffer->is_has_data = 0;
-
-	g_md_last_read_blk_idx = read_blk_idx;
-	modem_buffer->count = i;
+	memcpy(modem_all_buffer->data, base_addr, MD_MAX_SZ);
+	modem_all_buffer->count = MD_BLK_MAX_NUM;
 
 	return 0;
 }
 
 #else
 
-static int mbraink_v6993_power_get_modem_info(struct mbraink_modem_raw *modem_buffer)
+static int mbraink_v6993_power_get_modem_all_info(struct mbraink_modem_all_raw *modem_all_buffer)
 {
-	pr_notice("not support eccci modem interface\n");
+	pr_notice("not support eccci modem all info interface\n");
 	return 0;
 }
 
@@ -1312,7 +1248,8 @@ static struct mbraink_power_ops mbraink_v6993_power_ops = {
 	.getSpmL2AllInfo = mbraink_v6993_power_get_spm_l2_all_info,
 	.getScpInfo = mbraink_v6993_power_get_scp_info,
 	.getScpTaskInfo = mbraink_v6993_power_get_scp_task_info,
-	.getModemInfo = mbraink_v6993_power_get_modem_info,
+	.getModemInfo = NULL,
+	.getModemAllInfo = mbraink_v6993_power_get_modem_all_info,
 	.getSpmiInfo = mbraink_v6993_power_get_spmi_info,
 	.getUvloInfo = NULL,
 	.getPmicVoltageInfo = mbraink_v6993_power_get_pmic_voltage_info,
