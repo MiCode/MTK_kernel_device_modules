@@ -24,6 +24,7 @@
 #include <linux/random.h>
 #include <linux/ratelimit.h>
 #include <linux/spinlock.h>
+#include <linux/vmalloc.h>
 
 #include "mbraink_power.h"
 #include "mbraink_video.h"
@@ -1984,12 +1985,12 @@ static long mbraink_ioctl(struct file *filp,
 	}
 	case RO_POWER_SPM_ALL_RAW:
 	{
-		mbraink_data = kmalloc(sizeof(struct mbraink_power_spm_all_raw), GFP_KERNEL);
+		mbraink_data = vmalloc(sizeof(struct mbraink_power_spm_all_raw));
 		if (!mbraink_data)
 			goto End;
 
 		ret = handle_power_spm_all_raw(arg, mbraink_data);
-		kfree(mbraink_data);
+		vfree(mbraink_data);
 		break;
 	}
 	case RO_MODEM_INFO:
@@ -2003,11 +2004,11 @@ static long mbraink_ioctl(struct file *filp,
 	}
 	case RO_MODEM_ALL_INFO:
 	{
-		mbraink_data = kmalloc(sizeof(struct mbraink_modem_all_raw), GFP_KERNEL);
+		mbraink_data = vmalloc(sizeof(struct mbraink_modem_all_raw));
 		if (!mbraink_data)
 			goto End;
 		ret = handle_modem_all_info(arg, mbraink_data);
-		kfree(mbraink_data);
+		vfree(mbraink_data);
 		break;
 	}
 	case RO_MEMORY_MDV_INFO:
