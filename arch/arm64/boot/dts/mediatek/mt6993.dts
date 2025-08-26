@@ -1889,6 +1889,14 @@ pkvm_seninf_6993,pkvm_cmdq";
 		fab_info: fab-info@c8 {
 			reg = <0xc8 0x4>;
 		};
+
+		efuse_segment: segment@78 {
+			reg = <0x78 0x4>;
+		};
+
+		isp_efuse_data: isp-efuse-data@23c {
+			reg = <0x23c 0x4>;
+		};
 	};
 
 	cpuhvfs: cpuhvfs@51c1400 {
@@ -14925,6 +14933,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			    "cksys_mm_cam_sel",
 			    "cksys_mm_camtm_sel",
 			    "mmdvfs_mux";
+
+			nvmem-cells = <&efuse_segment>, <&isp_efuse_data>;
+			nvmem-cell-names = "efuse_segment_cell", "isp-efuse-data";
 		};
 
 		cam_bwr: cam-bwr@3a00d000 {
