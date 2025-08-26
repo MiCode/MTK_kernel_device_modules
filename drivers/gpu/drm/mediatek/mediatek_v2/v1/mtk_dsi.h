@@ -45,6 +45,13 @@ enum PREURGENT_MODE {
 	PREURGENT_SUPPORT_ALL,
 };
 
+enum CHANGE_VFP_SOURCE {
+	SOURCE_TIMING_CHANGE = 0,
+	SOURCE_IDLE_MODE,
+	SOURCE_DEFAULT_MODE,
+	SOURCE_MAX,
+};
+
 struct mtk_dsi_driver_data {
 	const u32 reg_cmdq0_ofs;
 	const u32 reg_cmdq1_ofs;

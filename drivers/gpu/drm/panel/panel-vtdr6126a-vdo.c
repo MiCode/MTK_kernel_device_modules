@@ -115,6 +115,9 @@
 #define DSC_RC_TGT_OFFSET_HI        3
 #define DSC_RC_TGT_OFFSET_LO        3
 
+/* For low power idle mode */
+#define IDLE_60_TO_45               0
+
 static unsigned int rc_buf_thresh[14] = {
 //The original values VS values multiplied by 64
 896, 1792, 2688, 3584, 4480, 5376, 6272, 6720, 7168, 7616, 7744, 7872, 8000, 8064};
@@ -1257,7 +1260,7 @@ static struct mtk_panel_params ext_params_144hz = {
 			.range_bpg_ofs = range_bpg_ofs,
 			},
 	},
-	//.change_fps_by_vfp_send_cmd = 1,
+	.change_fps_by_vfp_send_cmd = 1,
 	.dyn_fps = {
 		.switch_en = 0,
 		.dfps_cmd_table[0] = {0, 2, {0x6C, 0x00}}, //144Hz
@@ -1331,13 +1334,17 @@ static struct mtk_panel_params ext_params_120hz = {
 			.range_bpg_ofs = range_bpg_ofs,
 		},
 	},
-	//.change_fps_by_vfp_send_cmd = 1,
+	.change_fps_by_vfp_send_cmd = 1,
 	.dyn_fps = {
 		.switch_en = 0,
 		.dfps_cmd_table[0] = {0, 2, {0x6C, 0x01}}, //120Hz
 	},
 	.data_rate = MODE_1_DATA_RATE,
 	.vfp_low_power = 2892, // HS idle to 60 fps
+	.low_power_fps = {
+		.switch_en = 1,
+		.dfps_cmd_table[0] = {0, 2, {0x6C, 0x03}}, //60Hz
+	},
 	//.tran_panel_params = &panel_driver_status,
 	.dyn = {
 		.switch_en = 1,
@@ -1413,13 +1420,17 @@ static struct mtk_panel_params ext_params_90hz = {
 			.range_bpg_ofs = range_bpg_ofs,
 		},
 	},
-	//.change_fps_by_vfp_send_cmd = 1,
+	.change_fps_by_vfp_send_cmd = 1,
 	.dyn_fps = {
 		.switch_en = 0,
 		.dfps_cmd_table[0] = {0, 2, {0x6C, 0x02}}, //90Hz
 	},
 	.data_rate = MODE_2_DATA_RATE,
 	.vfp_low_power = 2892, // HS idle to 60 fps
+	.low_power_fps = {
+		.switch_en = 1,
+		.dfps_cmd_table[0] = {0, 2, {0x6C, 0x03}}, //60Hz
+	},
 	//.tran_panel_params = &panel_driver_status,
 	.dyn = {
 		.switch_en = 1,
@@ -1495,13 +1506,17 @@ static struct mtk_panel_params ext_params_60hz = {
 			.range_bpg_ofs = range_bpg_ofs,
 			},
 	},
-	//.change_fps_by_vfp_send_cmd = 1,
+	.change_fps_by_vfp_send_cmd = 1,
 	.dyn_fps = {
 		.switch_en = 0,
 		.dfps_cmd_table[0] = {0, 2, {0x6C, 0x03}}, //60Hz
 	},
 	.data_rate = MODE_3_DATA_RATE,
+	#if IDLE_60_TO_45
 	.vfp_low_power = 4700, // HS idle to 45 fps
+	#else
+	.vfp_low_power = 2892, // HS idle to 60 fps
+	#endif
 	//.tran_panel_params = &panel_driver_status,
 	.dyn = {
 		.switch_en = 1,
