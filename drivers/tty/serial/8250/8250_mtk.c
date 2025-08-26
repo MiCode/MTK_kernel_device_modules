@@ -1792,6 +1792,7 @@ void mtk8250_set_flush_flag(struct tty_struct *tty, bool status)
 {
 	struct uart_8250_port *up = NULL;
 	struct uart_8250_dma *dma = NULL;
+	struct mtk8250_data *data = NULL;
 
 	if (tty == NULL) {
 		pr_info("[%s] current tty is null\n", __func__);
@@ -1802,15 +1803,25 @@ void mtk8250_set_flush_flag(struct tty_struct *tty, bool status)
 		pr_info("[%s] current up is null\n", __func__);
 		return;
 	}
+	data = up->port.private_data;
+	if (data == NULL) {
+		pr_info("[%s] current data is null\n", __func__);
+		return;
+	}
+
+	mutex_lock(&data->uart_mutex);
 	dma = up->dma;
 	if (dma == NULL || dma->rxchan == NULL || dma->txchan == NULL) {
 		pr_info("[%s] current dma is null\n", __func__);
+		mutex_unlock(&data->uart_mutex);
 		return;
 	}
-#ifdef KERNEL_mtk_uart_set_apdma_status
+
+#if defined(KERNEL_mtk_uart_set_apdma_status)
 	KERNEL_mtk_uart_set_apdma_status(dma->rxchan, status);
 	KERNEL_mtk_uart_set_apdma_status(dma->txchan, status);
 #endif
+	mutex_unlock(&data->uart_mutex);
 }
 EXPORT_SYMBOL(mtk8250_set_flush_flag);
 

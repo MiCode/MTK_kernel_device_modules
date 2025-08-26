@@ -1569,20 +1569,50 @@ static int mtk_uart_apdma_slave_config(struct dma_chan *chan,
 	return 0;
 }
 
+static void mtk_uart_apdma_synchronize(struct dma_chan *chan)
+{
+	unsigned long flags;
+	struct mtk_chan *c = NULL;
+	LIST_HEAD(head);
+
+	if (!chan)
+		return;
+
+	c = to_mtk_uart_apdma_chan(chan);
+	if (!c)
+		return;
+
+	synchronize_irq(c->irq);
+
+	spin_lock_irqsave(&c->vc.lock, flags);
+	vchan_get_all_descriptors(&c->vc, &head);
+	spin_unlock_irqrestore(&c->vc.lock, flags);
+
+	vchan_dma_desc_free_list(&c->vc, &head);
+
+}
+
 static int mtk_uart_apdma_terminate_all(struct dma_chan *chan)
 {
+#if IS_ENABLED(CONFIG_MTK_UARTHUB)
+	struct mtk_uart_apdmadev *mtkd = NULL;
+#endif
+	struct mtk_chan *c = NULL;
+	unsigned int status;
+	int ret;
+	bool state;
+
 	if (!chan)
 		return -EINVAL;
 
 #if IS_ENABLED(CONFIG_MTK_UARTHUB)
-	struct mtk_uart_apdmadev *mtkd = to_mtk_uart_apdma_dev(chan->device);
+	mtkd = to_mtk_uart_apdma_dev(chan->device);
+	if (!mtkd)
+		return -EINVAL;
 #endif
-	struct mtk_chan *c = to_mtk_uart_apdma_chan(chan);
-	unsigned long flags;
-	unsigned int status;
-	LIST_HEAD(head);
-	int ret;
-	bool state;
+	c = to_mtk_uart_apdma_chan(chan);
+	if (!c)
+		return -EINVAL;
 
 #if IS_ENABLED(CONFIG_MTK_UARTHUB)
 	if (mtkd->support_hub && (mtkd->support_wakeup) && c->is_hub_port) {
@@ -1594,7 +1624,7 @@ static int mtk_uart_apdma_terminate_all(struct dma_chan *chan)
 #endif
 	if (mtk_uart_apdma_read(c, VFF_INT_BUF_SIZE)) {
 		mtk_uart_apdma_write(c, VFF_FLUSH, VFF_FLUSH_B);
-		ret = readx_poll_timeout(readl, c->base + VFF_FLUSH,
+		ret = readx_poll_timeout_atomic(readl, c->base + VFF_FLUSH,
 				  status, status != VFF_FLUSH_B, 10, 100);
 		/*
 		 * DMA hardware will generate a interrupt immediately
@@ -1618,7 +1648,7 @@ static int mtk_uart_apdma_terminate_all(struct dma_chan *chan)
 	 * 3. set stop as 0
 	 */
 	mtk_uart_apdma_write(c, VFF_STOP, VFF_STOP_B);
-	ret = readx_poll_timeout(readl, c->base + VFF_EN,
+	ret = readx_poll_timeout_atomic(readl, c->base + VFF_EN,
 			  status, !status, 10, 100);
 	if (ret)
 		dev_err(c->vc.chan.device->dev, "stop: fail, status=0x%x\n",
@@ -1632,16 +1662,11 @@ static int mtk_uart_apdma_terminate_all(struct dma_chan *chan)
 	else if (c->dir == DMA_MEM_TO_DEV)
 		mtk_uart_apdma_write(c, VFF_INT_FLAG, VFF_TX_INT_CLR_B);
 
-	synchronize_irq(c->irq);
-
-	spin_lock_irqsave(&c->vc.lock, flags);
-	vchan_get_all_descriptors(&c->vc, &head);
-	spin_unlock_irqrestore(&c->vc.lock, flags);
-
-	vchan_dma_desc_free_list(&c->vc, &head);
 #if IS_ENABLED(CONFIG_MTK_UARTHUB)
-	if (mtkd->support_hub && (mtkd->support_wakeup) && c->is_hub_port)
+	if (mtkd->support_hub && (mtkd->support_wakeup) && c->is_hub_port) {
+		synchronize_irq(c->irq);
 		mtk_uart_set_apdma_clk(false);
+	}
 #endif
 	return 0;
 }
@@ -1791,6 +1816,7 @@ static int mtk_uart_apdma_probe(struct platform_device *pdev)
 	mtkd->ddev.device_config = mtk_uart_apdma_slave_config;
 	mtkd->ddev.device_pause = mtk_uart_apdma_device_pause;
 	mtkd->ddev.device_terminate_all = mtk_uart_apdma_terminate_all;
+	mtkd->ddev.device_synchronize = mtk_uart_apdma_synchronize;
 	mtkd->ddev.src_addr_widths = BIT(DMA_SLAVE_BUSWIDTH_1_BYTE);
 	mtkd->ddev.dst_addr_widths = BIT(DMA_SLAVE_BUSWIDTH_1_BYTE);
 	mtkd->ddev.directions = BIT(DMA_DEV_TO_MEM) | BIT(DMA_MEM_TO_DEV);
