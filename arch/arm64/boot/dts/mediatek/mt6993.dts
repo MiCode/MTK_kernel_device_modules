@@ -17525,10 +17525,16 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			bat2-aging-multiples = <0 0>;
 
 			soc-max-level = <3>;
-			soc-hpt-volt-lv0 = <0>;
-			soc-hpt-volt-lv1 = <2>;
-			soc-hpt-volt-lv2 = <0>;
-			soc-hpt-volt-lv3 = <0>;
+			soc-max-tb-num = <2>;
+			soc-hpt-volt-tb0-lv0 = <0>;
+			soc-hpt-volt-tb0-lv1 = <2>;
+			soc-hpt-volt-tb0-lv2 = <0>;
+			soc-hpt-volt-tb0-lv3 = <0>;
+
+			soc-hpt-volt-tb1-lv0 = <1>;
+			soc-hpt-volt-tb1-lv1 = <1>;
+			soc-hpt-volt-tb1-lv2 = <0>;
+			soc-hpt-volt-tb1-lv3 = <0>;
 
 			bat-ocv-table-num = <0>;
 
