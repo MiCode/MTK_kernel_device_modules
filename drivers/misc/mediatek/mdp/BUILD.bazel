@@ -79,6 +79,8 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/dma-buf/heaps:mtk_heap_debug".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/iommu:iommu_debug".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/smi:mtk-smi-dbg".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/interconnect/mediatek:mtk-emi".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/interconnect/mediatek:mmqos-common".format(kernel_version),
     ] + ([
         "//kernel_device_modules-{}/drivers/soc/mediatek/mmdvfs:mtk-mmdvfs-v5".format(kernel_version),
     ] if "entry_level.config" not in DEFCONFIG_OVERLAYS else []),
@@ -112,6 +114,7 @@ define_mgk_ddk_ko(
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi/",
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/tinysys_scmi/",
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/iommu/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/interconnect/mediatek/",
     ],
     header_deps = [
         "//kernel_device_modules-{}/drivers/iommu/arm/arm-smmu-v3:smmu_public_headers".format(kernel_version),
@@ -191,6 +194,8 @@ platforms = [
         "//kernel_device_modules-{}/drivers/misc/mediatek/iommu:iommu_debug".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/smi:mtk-smi-dbg".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:cmdq-sec-drv".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/interconnect/mediatek:mtk-emi".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/interconnect/mediatek:mmqos-common".format(kernel_version),
     ] + ([
         "//kernel_device_modules-{}/drivers/soc/mediatek/mmdvfs:mtk-mmdvfs-v5".format(kernel_version),
     ] if "entry_level.config" not in DEFCONFIG_OVERLAYS else []),
@@ -226,6 +231,7 @@ platforms = [
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi/",
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/tinysys_scmi/",
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/iommu/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/interconnect/mediatek/",
     ],
     header_deps = [
         "//kernel_device_modules-{}/drivers/iommu/arm/arm-smmu-v3:smmu_public_headers".format(kernel_version),
@@ -283,6 +289,8 @@ platforms = [
         "//kernel_device_modules-{}/drivers/misc/mediatek/iommu:iommu_debug".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/smi:mtk-smi-dbg".format(kernel_version),
         "//kernel_device_modules-{}/drivers/dma-buf/heaps:mtk_sec_heap".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/interconnect/mediatek:mtk-emi".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/interconnect/mediatek:mmqos-common".format(kernel_version),
     ] + ([
         "//kernel_device_modules-{}/drivers/soc/mediatek/mmdvfs:mtk-mmdvfs-v5".format(kernel_version),
     ] if "entry_level.config" not in DEFCONFIG_OVERLAYS else []),
@@ -317,6 +325,7 @@ platforms = [
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi/",
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/tinysys_scmi/",
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/iommu/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/interconnect/mediatek/",
     ],
     header_deps = [
         "//kernel_device_modules-{}/drivers/iommu/arm/arm-smmu-v3:smmu_public_headers".format(kernel_version),

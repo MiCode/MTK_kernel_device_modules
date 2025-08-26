@@ -26,6 +26,13 @@
 #include "cmdq_virtual.h"
 #include "cmdq_reg.h"
 #include "mdp_common.h"
+
+#include "mmqos-vcp.h"
+#include "mtk-interconnect.h"
+#include <linux/pm_opp.h>
+#include <linux/regulator/consumer.h>
+#include <soc/mediatek/mmdvfs_v3.h>
+#include <soc/mediatek/smi.h>
 #if IS_ENABLED(CONFIG_MMPROFILE)
 #include "cmdq_mmp.h"
 #endif
@@ -4535,6 +4542,12 @@ static s32 cmdq_pkt_flush_async_ex_impl(struct cmdqRecStruct *handle,
 	}
 	wait_q = &cmdq_wait_queue[(u32)handle->thread];
 	thread = handle->thread;
+
+	/* check vcp ready or not*/
+	if (mmdvfs_get_version()) {
+		if (!mmqos_vcp_ready_done())
+			CMDQ_ERR("mmqos_vcp_cb_ready_done is false\n");
+	}
 	err = cmdq_pkt_flush_async(handle->pkt, cmdq_pkt_flush_handler,
 		(void *)handle);
 	wake_up(wait_q);
