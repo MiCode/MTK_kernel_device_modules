@@ -345,6 +345,8 @@ static irqreturn_t rt5133_intr_handler(int irq_number, void *data)
 	if (ret)
 		goto out_intr_handler;
 
+	dev_info(priv->dev, "%s, intr_evts = %x\n", __func__, intr_evts);
+
 	handle_evts = intr_evts & RT5133_BASE_EVT_MASK;
 	/*
 	 * VREF_EVT is a special case, if base off
