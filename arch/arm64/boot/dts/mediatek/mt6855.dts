@@ -4367,7 +4367,8 @@
 			compatible = "mediatek,vcodec-enc";
 			mediatek,platform = "platform:mt6855";
 			mediatek,ipm = <1>;
-			reg = <0 0x17020000 0 0x6000>,
+			venc-core-count = <1>;
+			reg = <0 0x17020000 0 0x2000>,
 				  <0 0x17820000 0 0x20000>;
 			reg-names =
 				"VENC_SYS",
