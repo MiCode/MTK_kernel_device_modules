@@ -916,7 +916,7 @@ static int mt6993_opp_proc_show(struct seq_file *m, void *v)
 		first_dump = 1;
 	}
 
-	seq_puts(m, "APU Support Frequency points (Unit is KHZ), (MDLA, MVPU)\n");
+	seq_puts(m, "NPU Support Frequency points (Unit is KHZ), (MDLA, MVPU)\n");
 	for (i = 0; i < ARRAY_SIZE(mt6993_mdla_pll_freq); i++) {
 		if (mt6993_mdla_pll_freq[i] == 0)
 			continue;
@@ -1508,27 +1508,27 @@ static int mt6993_apu_top_pb(struct platform_device *pdev)
 	// init lock
 	mutex_init(&lock);
 	// init apudvfs proc
-	apudvfs_dir = proc_mkdir("apudvfs", NULL);
+	apudvfs_dir = proc_mkdir("npudvfs", NULL);
 	if (!apudvfs_dir)
 		return -ENOMEM;
 
-	if (!proc_create("apu_opp_table", 0, apudvfs_dir, &opp_proc_ops)) {
+	if (!proc_create("npu_opp_table", 0, apudvfs_dir, &opp_proc_ops)) {
 		//remove_proc_entry("apudvfs", NULL);
-		pr_info("%s: create apu_opp_table failed\n", __func__);
+		pr_info("%s: create npu_opp_table failed\n", __func__);
 		return -ENOMEM;
 	}
 
-	if (!proc_create_data("apu_cur_mdla_freq", 0, apudvfs_dir, &engine_freq_proc_ops, "mdla")) {
-		pr_info("%s: create apu_cur_mdla_freq failed\n", __func__);
+	if (!proc_create_data("npu_cur_mdla_freq", 0, apudvfs_dir, &engine_freq_proc_ops, "mdla")) {
+		pr_info("%s: create npu_cur_mdla_freq failed\n", __func__);
 		return -ENOMEM;
 	}
 
-	if (!proc_create_data("apu_cur_mvpu_freq", 0, apudvfs_dir, &engine_freq_proc_ops, "mvpu")) {
-		pr_info("%s: create apu_cur_mvpu_freq failed\n", __func__);
+	if (!proc_create_data("npu_cur_mvpu_freq", 0, apudvfs_dir, &engine_freq_proc_ops, "mvpu")) {
+		pr_info("%s: create npu_cur_mvpu_freq failed\n", __func__);
 		return -ENOMEM;
 	}
 
-	if (!proc_create("apu_user_limit", 0644, apudvfs_dir, &client_input_ops)) {
+	if (!proc_create("npu_user_limit", 0644, apudvfs_dir, &client_input_ops)) {
 		//remove_proc_entry("apudvfs", NULL);
 		pr_info("%s: create user_limit failed\n", __func__);
 		return -ENOMEM;
@@ -1565,11 +1565,11 @@ static int mt6993_apu_top_rm(struct platform_device *pdev)
 	mutex_unlock(&lock);
 	mutex_destroy(&lock);
 	// rm client input and apudvfs opp table
-	remove_proc_entry("apu_user_limit", apudvfs_dir);
-	remove_proc_entry("apu_cur_mvpu_freq", apudvfs_dir);
-	remove_proc_entry("apu_cur_mdla_freq", apudvfs_dir);
-	remove_proc_entry("apu_opp_table", apudvfs_dir);
-	remove_proc_entry("apudvfs", NULL);
+	remove_proc_entry("npu_user_limit", apudvfs_dir);
+	remove_proc_entry("npu_cur_mvpu_freq", apudvfs_dir);
+	remove_proc_entry("npu_cur_mdla_freq", apudvfs_dir);
+	remove_proc_entry("npu_opp_table", apudvfs_dir);
+	remove_proc_entry("npudvfs", NULL);
 
 	mt6993_apu_top_procfs_exit();
 
