@@ -71,6 +71,11 @@ struct mtk_dsi_driver_data {
 	const u32 sram_unit;
 	const u32 urgent_lo_fifo_us;
 	const u32 urgent_hi_fifo_us;
+	bool calc_golden_by_pct;
+	const u32 ultra_lo_fifo_pct;
+	const u32 ultra_hi_fifo_pct;
+	const u32 urgent_lo_fifo_pct;
+	const u32 urgent_hi_fifo_pct;
 	const u32 output_valid_fifo_us;
 	bool dsi_buffer;
 	bool smi_dbg_disable;

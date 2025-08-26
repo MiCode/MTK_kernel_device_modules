@@ -2977,16 +2977,6 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 
 	buffer_unit = dsi->driver_data->buffer_unit;
 	sram_unit = dsi->driver_data->sram_unit;
-	ultra_lo_fifo_us = dbg_ultra_low;
-	ultra_hi_fifo_us = dbg_ultra_high;
-	urgent_lo_fifo_us = dsi->driver_data->urgent_lo_fifo_us ?
-				dsi->driver_data->urgent_lo_fifo_us : 11;
-	urgent_lo_fifo_us = dbg_urgent_low ?
-				dbg_urgent_low : urgent_lo_fifo_us;
-	urgent_hi_fifo_us = dsi->driver_data->urgent_hi_fifo_us ?
-				dsi->driver_data->urgent_hi_fifo_us : 12;
-	urgent_hi_fifo_us = dbg_urgent_high ?
-				dbg_urgent_high : urgent_hi_fifo_us;
 	output_valid_us = dsi->driver_data->output_valid_fifo_us ?
 				dsi->driver_data->output_valid_fifo_us : 25;
 	output_valid_us = dbg_output_valid ?
@@ -3093,9 +3083,12 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 			ps_wc = width * dsi_buf_bpp;
 	}
 
-	if (priv->data->mmsys_id == MMSYS_MT6993 ||
-		priv->data->mmsys_id == MMSYS_MT6858) {
+	if (dsi->driver_data->calc_golden_by_pct) {
 		u32 image_time, line_time, consume_rate;
+		u32 ultra_lo_fifo_pct = dsi->driver_data->ultra_lo_fifo_pct;
+		u32 ultra_hi_fifo_pct = dsi->driver_data->ultra_hi_fifo_pct;
+		u32 urgent_lo_fifo_pct = dsi->driver_data->urgent_lo_fifo_pct;
+		u32 urgent_hi_fifo_pct = dsi->driver_data->urgent_hi_fifo_pct;
 
 		unsigned int compress_rate = mtk_dsi_get_dsc_compress_rate(dsi);
 
@@ -3119,21 +3112,17 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 
 		fill_rate = mmsys_clk * 96 * dli_relay_1tnp * dsi_buf_bpp * 1000 / compress_rate / buffer_unit;
 
-		if (priv->data->mmsys_id == MMSYS_MT6993) {
-			ultra_lo_fifo_us = DIV_ROUND_UP(buf_con * 1000 * 8, consume_rate * 10);
+		ultra_lo_fifo_us = DIV_ROUND_UP(buf_con * ultra_lo_fifo_pct, consume_rate * 100);
+		if (priv->data->mmsys_id == MMSYS_MT6993)
 			ultra_lo_fifo_us = (ultra_lo_fifo_us >= 35) ? ultra_lo_fifo_us : 35;
-			ultra_hi_fifo_us = ultra_lo_fifo_us + 1;
-			urgent_lo_fifo_us = DIV_ROUND_UP(buf_con * 1000 * 6, consume_rate * 10);
-			urgent_hi_fifo_us = DIV_ROUND_UP(buf_con * 1000 * 8, consume_rate * 10);
-		} else {
-			u32 fifo_us = 0;
+		ultra_hi_fifo_us = ultra_hi_fifo_pct ?
+				DIV_ROUND_UP(buf_con * ultra_hi_fifo_pct, consume_rate * 100) :
+				ultra_lo_fifo_us + 1;
+		urgent_lo_fifo_us = DIV_ROUND_UP(buf_con * urgent_lo_fifo_pct, consume_rate * 100);
+		urgent_hi_fifo_us = urgent_hi_fifo_pct ?
+				DIV_ROUND_UP(buf_con * urgent_hi_fifo_pct, consume_rate * 100) :
+				urgent_lo_fifo_us + 1;
 
-			fifo_us = DIV_ROUND_UP(buf_con * 1000 * 18, consume_rate * 32);
-			ultra_lo_fifo_us = DIV_ROUND_UP(fifo_us * 8, 10);
-			ultra_hi_fifo_us = DIV_ROUND_UP(fifo_us * 9, 10);
-			urgent_lo_fifo_us = DIV_ROUND_UP(fifo_us * 5, 10);
-			urgent_hi_fifo_us = DIV_ROUND_UP(fifo_us * 8, 10);
-		}
 		ultra_lo_fifo_us = dbg_ultra_low ? dbg_ultra_low : ultra_lo_fifo_us;
 		ultra_hi_fifo_us = dbg_ultra_high? dbg_ultra_high : ultra_hi_fifo_us;
 		urgent_lo_fifo_us = dbg_urgent_low ? dbg_urgent_low : urgent_lo_fifo_us;
@@ -3169,6 +3158,15 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 			output_valid = output_valid < (u32)buf_con ? output_valid : (u32)buf_con;
 		}
 	} else {
+		urgent_lo_fifo_us = dsi->driver_data->urgent_lo_fifo_us ?
+					dsi->driver_data->urgent_lo_fifo_us : 11;
+		urgent_lo_fifo_us = dbg_urgent_low ?
+					dbg_urgent_low : urgent_lo_fifo_us;
+		urgent_hi_fifo_us = dsi->driver_data->urgent_hi_fifo_us ?
+					dsi->driver_data->urgent_hi_fifo_us : 12;
+		urgent_hi_fifo_us = dbg_urgent_high ?
+					dbg_urgent_high : urgent_hi_fifo_us;
+
 		if (dsi->ext->params->is_cphy) {
 			sodi_hi = tmp - (12 * (fill_rate - dsi->data_rate * 2 * dsi->lanes / 7
 					/ buffer_unit) / 10);
@@ -16493,8 +16491,11 @@ static const struct mtk_dsi_driver_data mt6993_dsi_driver_data = {
 	.smi_dbg_disable = true,
 	.buffer_unit = 32,
 	.sram_unit = 32,
-	.urgent_lo_fifo_us = 30,
-	.urgent_hi_fifo_us = 31,
+	.calc_golden_by_pct = true,
+	.ultra_lo_fifo_pct = 80 * 1000,
+	.ultra_hi_fifo_pct = 0,
+	.urgent_lo_fifo_pct = 60 * 1000,
+	.urgent_hi_fifo_pct = 80 * 1000,
 	.output_valid_fifo_us = 35,
 	.max_vfp = 0xffe,
 	.mmclk_by_datarate = mtk_dsi_set_mmclk_by_datarate_V2,
@@ -16782,8 +16783,11 @@ static const struct mtk_dsi_driver_data mt6858_dsi_driver_data = {
 	.disable_te_timeout_by_set_cnt = true,
 	.buffer_unit = 32,
 	.sram_unit = 32,
-	.urgent_lo_fifo_us = 14,
-	.urgent_hi_fifo_us = 34,
+	.calc_golden_by_pct = true,
+	.ultra_lo_fifo_pct = 18000 * 80 / 32,
+	.ultra_hi_fifo_pct = 18000 * 90 / 32,
+	.urgent_lo_fifo_pct = 18000 * 50 / 32,
+	.urgent_hi_fifo_pct = 18000 * 80 / 32,
 	.max_vfp = 0x7ffe,
 	.mmclk_by_datarate = mtk_dsi_set_mmclk_by_datarate_V2,
 	.n_verion = VER_N6,
