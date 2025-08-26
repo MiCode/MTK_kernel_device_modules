@@ -3925,8 +3925,7 @@ static void ged_dvfs_workload_mode(int i32WorkloadMode)
 
 static int ged_get_dvfs_workload_mode(void)
 {
-	if (is_fdvfs_enable() & POLICY_MODE_V2)
-		return mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_EB_WORKLOAD_MODE].addr);
+
 	return gx_dvfs_workload_mode;
 }
 

@@ -662,6 +662,10 @@ static ssize_t dvfs_workload_mode_show(struct kobject *kobj,
 				"call mtk_get_dvfs_workload_mode false\n");
 		pos += length;
 	}
+
+	if (is_fdvfs_enable() & POLICY_MODE_V2)
+		ui32DvfsWorkloadMode = mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_EB_WORKLOAD_MODE].addr);
+
 	length = scnprintf(buf + pos, PAGE_SIZE - pos,
 			"%d\n", ui32DvfsWorkloadMode);
 	pos += length;
