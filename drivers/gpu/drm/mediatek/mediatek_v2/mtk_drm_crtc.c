@@ -153,6 +153,7 @@ static struct mtk_drm_property mtk_crtc_property[CRTC_PROP_MAX] = {
 	{DRM_MODE_PROP_ATOMIC, "DBI_COUNT_BLOCK_H", 0, ULONG_MAX, 0},
 	{DRM_MODE_PROP_ATOMIC, "DBI_COUNT_BLOCK_V", 0, ULONG_MAX, 0},
 	{DRM_MODE_PROP_ATOMIC, "DBI_COUNT_FENCE_IDX", 0, ULONG_MAX, 0},
+	{DRM_MODE_PROP_ATOMIC, "STYLUS_MODE", 0, ULONG_MAX, 0}
 };
 
 static struct cmdq_pkt *sb_cmdq_handle;
@@ -11889,6 +11890,7 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 	unsigned int _dsi_state_dbg7 = 0;
 	unsigned int _dsi_state_dbg7_2 = 0;
 	unsigned int *addr;
+	int crtc_state_stylus = to_mtk_crtc_state(crtc_state)->prop_val[CRTC_PROP_STYLUS];
 
 	if (unlikely(!mtk_crtc)) {
 		DDPPR_ERR("%s:%d invalid pointer mtk_crtc\n",
@@ -11956,7 +11958,7 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 		}
 	}
 
-	if ((drm_crtc_index(crtc) != 2) && (priv && priv->power_state)) {
+	if ((drm_crtc_index(crtc) != 2) && (priv && priv->power_state) && !crtc_state_stylus) {
 		// only VDO mode panel use CMDQ call
 		if (!mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base) &&
 				!cb_data->msync2_enable) {
@@ -12107,6 +12109,16 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 			} else {
 				mtk_release_present_fence(session_id, cb_data->pres_fence_idx,
 						ktime_get());
+			}
+		}
+		if (!mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base) &&
+				crtc_state_stylus) {
+			if (use_frame_submit) {
+				mtk_release_union_fence(session_id, cb_data->pres_fence_idx,
+						mtk_crtc->pf_time, MTK_UNION_FENCE_PRESENT, NULL);
+			} else {
+				mtk_release_present_fence(session_id, cb_data->pres_fence_idx,
+						mtk_crtc->pf_time);
 			}
 		}
 	}
