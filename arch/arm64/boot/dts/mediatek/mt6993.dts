@@ -6453,6 +6453,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			compatible = "mediatek,gpu_reduce_mips";
 			reduce-mips-support = <2>;
 			soc-timer-unit = <1000>;
+			ged-supply = <&ged>;
 		};
 
 		gpu_qos: gpu-qos@124800 {
