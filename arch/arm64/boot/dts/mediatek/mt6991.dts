@@ -6863,6 +6863,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			hw-trace-built-in;
 			hw-trace-vm;
 			cmdq-print-debug = <1>;
+			cmdq-mmp-thread-exec = <0x20030859>;
 		};
 
 		gce_sec: gce-mbox-sec@300c0000 {
