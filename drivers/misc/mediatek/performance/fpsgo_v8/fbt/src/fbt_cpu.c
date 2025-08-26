@@ -2330,7 +2330,7 @@ void fbt_cal_min_max_cap(struct render_info *thr,
 
 
 	// separate_pct_b, separate_pct_m
-	if (separate_aa_final && boost_affinity_final &&
+	if (separate_aa_final &&
 		(separate_pct_b_final || separate_pct_m_final) &&
 		jerk != FPSGO_JERK_SECOND) {
 		raw_min_cap_b = min_cap_b;
