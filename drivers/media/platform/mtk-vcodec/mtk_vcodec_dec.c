@@ -4421,7 +4421,6 @@ static void mtk_vdec_worker(struct mtk_vcodec_ctx *ctx)
 	struct v4l2_mtk_color_desc color_desc = {.hdr_type = 0};
 	struct vdec_fb drain_fb;
 
-	mutex_lock(&ctx->worker_lock);
 	mtk_vdec_do_gettimeofday(&worktvstart);
 
 	if (!mtk_vcodec_is_state(ctx, MTK_STATE_HEADER)) {
@@ -4668,8 +4667,6 @@ vdec_worker_finish:
 	mtk_vdec_do_gettimeofday(&vputvend);
 	ts_delta = timespec64_sub(vputvend, worktvstart);
 	mtk_vcodec_perf_log("worker:%lld (ns)", timespec64_to_ns(&ts_delta));
-
-	mutex_unlock(&ctx->worker_lock);
 }
 
 static int mtk_vdec_worker_loop(void *arg)
@@ -4678,6 +4675,7 @@ static int mtk_vdec_worker_loop(void *arg)
 	struct vcodec_work *work;
 	struct mtk_vcodec_ctx *ctx;
 	int ret;
+	enum vcodec_work_type work_type; // for use after free DB debug
 
 	// non-rt thread priority, MAX_NICE(+19)(low priority) to MIN_NICE(-20)(high priority) (+120)
 	set_user_nice(current, MIN_NICE + 2);
@@ -4692,14 +4690,17 @@ static int mtk_vdec_worker_loop(void *arg)
 
 		vcodec_trace_begin_func();
 		work = dequeue_dec_work(dev);
+		work_type = work->type;
 		ctx = work->ctx;
-		if (work->type == VCODEC_WORK_INIT)
+		mutex_lock(&ctx->worker_lock);
+		if (work_type == VCODEC_WORK_INIT)
 			mtk_vdec_init_work(ctx);
-		else if (work->type == VCODEC_WORK_START)
+		else if (work_type == VCODEC_WORK_START)
 			mtk_vdec_start_work(ctx);
-		else if (work->type == VCODEC_WORK_RUN)
+		else if (work_type == VCODEC_WORK_RUN)
 			mtk_vdec_worker(ctx);
 		complete_dec_work(ctx, work);
+		mutex_unlock(&ctx->worker_lock);
 		vcodec_trace_end();
 	} while (!kthread_should_stop());
 
