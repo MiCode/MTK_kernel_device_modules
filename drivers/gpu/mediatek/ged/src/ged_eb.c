@@ -1389,8 +1389,10 @@ int mtk_gpueb_sysram_write(int offset, int val)
 {
 	unsigned int real_offset = offset;
 
-	if (!mtk_gpueb_dvfs_sysram_base_addr)
+	if (!mtk_gpueb_dvfs_sysram_base_addr) {
+		GED_LOGE("%s: sysram_base_addr is Null. offset(%d)", __func__, offset);
 		return -EADDRNOTAVAIL;
+	}
 
 	if (ged_fp && ged_fp->get_sysram) {
 		// use virtual offset to query real offset

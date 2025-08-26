@@ -86,6 +86,7 @@ static int ged_pdrv_probe(struct platform_device *pdev);
 static void ged_pdrv_remove(struct platform_device *pdev);
 static void ged_exit(void);
 static int ged_init(void);
+static bool g_ged_probe_done;
 
 /**
  * ===============================================
@@ -665,6 +666,11 @@ GED_ERROR check_frame_base_optimize(void)
 	return ret;
 }
 
+unsigned int ged_driver_done(void)
+{
+	return g_ged_probe_done;
+}
+EXPORT_SYMBOL(ged_driver_done);
 
 /******************************************************************************
  * Module related
@@ -911,6 +917,7 @@ static int ged_pdrv_probe(struct platform_device *pdev)
 	gpufreq_ged_log = 0;
 #endif /* CONFIG_MTK_ENABLE_GMO */
 
+	g_ged_probe_done = true;
 	GED_LOGI("@%s: ged driver probe done\n", __func__);
 
 ERROR:

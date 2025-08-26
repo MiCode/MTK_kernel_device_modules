@@ -15,6 +15,7 @@
 #include "ged_log.h"
 #include "ged_base.h"
 #include "ged_eb.h"
+#include "ged_global.h"
 
 static int ged_platform_pdrv_probe(struct platform_device *pdev);
 static void ged_platform_pdrv_remove(struct platform_device *pdev);
@@ -104,6 +105,13 @@ static int ged_platform_pdrv_probe(struct platform_device *pdev)
 	GED_ERROR err = GED_OK;
 
 	GED_LOGI("@%s: start to probe ged_platform driver\n", __func__);
+
+	/* defer probe when ged wrapper isn't ready */
+	if (!ged_driver_done()) {
+		GED_LOGE("ged has not been probed, defer ged platform probe");
+		err = -EPROBE_DEFER;
+		return err;
+	}
 
 	err = ged_init_platform_info();
 	if (err != GED_OK)

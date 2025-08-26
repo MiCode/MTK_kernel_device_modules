@@ -101,4 +101,5 @@ extern int mtk_gpueb_sysram_batch_read(int max_read_count,
 
 /* set core_mask to DDK */
 extern int (*ged_dvfs_set_gpu_core_mask_fp)(u64 core_mask);
+unsigned int ged_driver_done(void);
 #endif
