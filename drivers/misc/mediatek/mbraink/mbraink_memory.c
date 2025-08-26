@@ -22,6 +22,7 @@ int mbraink_memory_init(void)
 	_mbraink_memory_ops.getCmVoteInfo = NULL;
 	_mbraink_memory_ops.getCpuQosInfo = NULL;
 	_mbraink_memory_ops.getMMQosInfo = NULL;
+	_mbraink_memory_ops.getCmDDRVoteInfo = NULL;
 	return 0;
 }
 
@@ -36,6 +37,7 @@ int mbraink_memory_deinit(void)
 	_mbraink_memory_ops.getCmVoteInfo = NULL;
 	_mbraink_memory_ops.getCpuQosInfo = NULL;
 	_mbraink_memory_ops.getMMQosInfo = NULL;
+	_mbraink_memory_ops.getCmDDRVoteInfo = NULL;
 	return 0;
 }
 
@@ -55,6 +57,8 @@ int register_mbraink_memory_ops(struct mbraink_memory_ops *ops)
 	_mbraink_memory_ops.getCmVoteInfo = ops->getCmVoteInfo;
 	_mbraink_memory_ops.getCpuQosInfo = ops->getCpuQosInfo;
 	_mbraink_memory_ops.getMMQosInfo = ops->getMMQosInfo;
+	_mbraink_memory_ops.getCmDDRVoteInfo = ops->getCmDDRVoteInfo;
+
 	return 0;
 }
 EXPORT_SYMBOL(register_mbraink_memory_ops);
@@ -72,6 +76,8 @@ int unregister_mbraink_memory_ops(void)
 	_mbraink_memory_ops.getCmVoteInfo = NULL;
 	_mbraink_memory_ops.getCpuQosInfo = NULL;
 	_mbraink_memory_ops.getMMQosInfo = NULL;
+	_mbraink_memory_ops.getCmDDRVoteInfo = NULL;
+
 	return 0;
 }
 EXPORT_SYMBOL(unregister_mbraink_memory_ops);
@@ -232,6 +238,23 @@ int mbraink_memory_getMMQosInfo(struct mbraink_mem_mmQosInfo *pMMQosInfo)
 		pr_info("%s: Do not support ioctl getMMQosInfo query.\n", __func__);
 		pMMQosInfo->subsys_num = 0;
 	}
+
+	return ret;
+}
+
+int mbraink_memory_getCmDDRVoteInfo(struct mbraink_memory_cmDDRVoteInfo *pCmDDRVoteInfo)
+{
+	int ret = 0;
+
+	if (pCmDDRVoteInfo == NULL) {
+		pr_info("%s: CM DDR Vote Info is null.\n", __func__);
+		return -1;
+	}
+
+	if (_mbraink_memory_ops.getCmDDRVoteInfo)
+		ret = _mbraink_memory_ops.getCmDDRVoteInfo(pCmDDRVoteInfo);
+	else
+		pr_info("%s: Do not support ioctl getCmDDRVoteInfo query.\n", __func__);
 
 	return ret;
 }

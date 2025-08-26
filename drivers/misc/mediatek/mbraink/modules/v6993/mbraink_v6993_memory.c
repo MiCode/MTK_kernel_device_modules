@@ -492,6 +492,41 @@ End:
 	return ret;
 }
 
+// formal implementation for trunk is TBD
+#if defined(MBRAIN_CM_DDR_SUPPORT)
+static int mbraink_v6993_memory_getCmDDRVoteInfo(struct mbraink_memory_cmDDRVoteInfo *pCmDDRVoteInfo)
+{
+	int i = 0;
+	struct cm_ddr_vote_info cmDDRVoteInfo;
+	int ret = 0;
+
+	memset(&cmDDRVoteInfo, 0x00, sizeof(struct cm_ddr_vote_info));
+	if (pCmDDRVoteInfo == NULL) {
+		pr_info("(%s)cm ddr vote is null\n", __func__);
+		return -1;
+	}
+
+	if (NR_DRAM_OPP > MAX_NR_DRAM_OPP) {
+		pr_info("(%s) check cm ddr vote struct fail\n", __func__);
+		return -1;
+	}
+
+	ret = cm_profile_get_ddr_vote(&cmDDRVoteInfo);
+	if (ret != 0) {
+		pr_info("(%s) get cm ddr vote fail\n", __func__);
+		return ret;
+	}
+
+	for (i = 0; i < NR_DRAM_OPP; i++) {
+		pCmDDRVoteInfo->ddr_info[i] = cmDDRVoteInfo.ddr_info[i];
+		pCmDDRVoteInfo->ceil_info[i] = cmDDRVoteInfo.ceil_info[i];
+		pCmDDRVoteInfo->floor_info[i] = cmDDRVoteInfo.floor_info[i];
+	}
+
+	return ret;
+}
+#endif
+
 static struct mbraink_memory_ops mbraink_v6993_memory_ops = {
 	.getDdrInfo = mbraink_v6993_memory_getDdrInfo,
 	.getMdvInfo = mbraink_v6993_memory_getMdvInfo,

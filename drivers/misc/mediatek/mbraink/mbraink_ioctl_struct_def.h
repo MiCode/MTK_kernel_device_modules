@@ -130,6 +130,7 @@
 
 #define MAX_CM_CPU_NUM 8
 #define MAX_CM_SPLIT 5
+#define MAX_NR_DRAM_OPP 10
 
 #define MAX_CPU_QOS_LV_SZ 10
 #define MAX_MMQOS_SWCNT_LV_SZ 6
@@ -971,6 +972,12 @@ struct mbraink_mem_mmQosInfo {
 	uint8_t version;
 	uint8_t subsys_num;
 	struct mbraink_mem_mmQosSubData mmQosSub[MAX_MMQOS_SUBSYS];
+};
+
+struct mbraink_memory_cmDDRVoteInfo {
+	uint32_t ddr_info[MAX_NR_DRAM_OPP];
+	uint32_t ceil_info[MAX_NR_DRAM_OPP];
+	uint32_t floor_info[MAX_NR_DRAM_OPP];
 };
 
 #endif

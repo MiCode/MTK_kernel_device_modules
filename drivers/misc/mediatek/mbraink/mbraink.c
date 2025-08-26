@@ -1680,6 +1680,7 @@ static long handleChipIdInfo(unsigned long arg, void *mbraink_data)
 
 	return ret;
 }
+
 static long handleMemoryCmVoteInfo(unsigned long arg, void *mbraink_data)
 {
 	long ret = 0;
@@ -1756,6 +1757,28 @@ static long handleMemoryMMQosInfo(unsigned long arg, void *mbraink_data)
 				pMemoryMMQosInfo,
 				sizeof(struct mbraink_mem_mmQosInfo))) {
 			pr_notice("Copy memory mm qos Info to UserSpace error!\n");
+			ret = -EPERM;
+		}
+	}
+
+	return ret;
+}
+
+static long handleMemoryCmDDRVoteInfo(unsigned long arg, void *mbraink_data)
+{
+	long ret = 0;
+	struct mbraink_memory_cmDDRVoteInfo *pMemoryCmDDRVoteInfo =
+		(struct mbraink_memory_cmDDRVoteInfo *)(mbraink_data);
+
+	memset(pMemoryCmDDRVoteInfo,
+			0,
+			sizeof(struct mbraink_memory_cmDDRVoteInfo));
+	ret = mbraink_memory_getCmDDRVoteInfo(pMemoryCmDDRVoteInfo);
+	if (ret == 0) {
+		if (copy_to_user((struct mbraink_memory_cmDDRVoteInfo *)arg,
+				pMemoryCmDDRVoteInfo,
+				sizeof(struct mbraink_memory_cmDDRVoteInfo))) {
+			pr_notice("Copy memory CM DDRVote Info to UserSpace error!\n");
 			ret = -EPERM;
 		}
 	}
@@ -2421,7 +2444,15 @@ static long mbraink_ioctl(struct file *filp,
 		kfree(mbraink_data);
 		break;
 	}
-
+	case RO_MEMORY_CM_DDR_VOTE_INFO:
+	{
+		mbraink_data = kmalloc(sizeof(struct mbraink_memory_cmDDRVoteInfo), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handleMemoryCmDDRVoteInfo(arg, mbraink_data);
+		kfree(mbraink_data);
+		break;
+	}
 	default:
 		pr_notice("%s:illegal ioctl number %u.\n", __func__, cmd);
 		return -EINVAL;

@@ -18,6 +18,7 @@ struct mbraink_memory_ops {
 	int (*getCmVoteInfo)(struct mbraink_memory_cmVoteInfo *pCmVoteInfo);
 	int (*getCpuQosInfo)(struct mbraink_memory_cpuQosInfo *pMemoryCpuQos);
 	int (*getMMQosInfo)(struct mbraink_mem_mmQosInfo *pMemoryMMQos);
+	int (*getCmDDRVoteInfo)(struct mbraink_memory_cmDDRVoteInfo *pCmDDRVoteInfo);
 };
 int register_mbraink_memory_ops(struct mbraink_memory_ops *ops);
 int unregister_mbraink_memory_ops(void);

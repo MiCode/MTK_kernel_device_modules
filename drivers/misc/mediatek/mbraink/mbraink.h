@@ -93,9 +93,9 @@
 #define SW_COUNT_SET (NR_CODE_LAGACY_MAX + 7)
 #define MEMORY_CPUQOS_INFO (NR_CODE_LAGACY_MAX + 8)
 #define MEMORY_MMQOS_INFO (NR_CODE_LAGACY_MAX + 9)
-
 #define POWER_SPM_ALL_RAW	(NR_CODE_LAGACY_MAX + 10)
 #define POWER_SPM_L2_ALL_INFO	(NR_CODE_LAGACY_MAX + 11)
+#define MEMORY_CM_DDR_VOTE_INFO	(NR_CODE_LAGACY_MAX + 12)
 
 
 /*Mbrain Delegate IOCTL List*/
@@ -262,6 +262,8 @@
 						struct mbraink_memory_cpuQosInfo*)
 #define RO_MEMORY_MMQOS_INFO		_IOR(IOC_MAGIC, MEMORY_MMQOS_INFO,	\
 						struct mbraink_mem_mmQosInfo*)
+#define RO_MEMORY_CM_DDR_VOTE_INFO	_IOR(IOC_MAGIC, MEMORY_CM_DDR_VOTE_INFO, \
+						struct mbraink_memory_cmDDRVoteInfo*)
 
 #define SUSPEND_DATA	0
 #define RESUME_DATA		1

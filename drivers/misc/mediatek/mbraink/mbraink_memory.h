@@ -23,6 +23,7 @@ int mbraink_memory_getVsmrInfo(struct mbraink_memory_vsmrInfo *pVsmrInfo);
 int mbraink_memory_getCmVoteInfo(struct mbraink_memory_cmVoteInfo *pCmVoteInfo);
 int mbraink_memory_getCpuQosInfo(struct mbraink_memory_cpuQosInfo *pCpuQosInfo);
 int mbraink_memory_getMMQosInfo(struct mbraink_mem_mmQosInfo *pMMQosInfo);
+int mbraink_memory_getCmDDRVoteInfo(struct mbraink_memory_cmDDRVoteInfo *pCmDDRVoteInfo);
 
 #endif /*end of MBRAINK_MEMORY_H*/
 
