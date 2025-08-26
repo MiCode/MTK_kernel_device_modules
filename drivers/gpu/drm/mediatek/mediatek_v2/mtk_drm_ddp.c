@@ -37596,11 +37596,41 @@ static irqreturn_t mtk_disp_mutex_irq_handler(int irq, void *dev_id)
 		if (!ddp->mutex[m_id].is_vdo)
 			val = val & ~(0x1 << (m_id + ddp->data->disp_mutex_total));
 		if (val & (0x1 << m_id)) {
+			unsigned int *addr = NULL;
+
 			DDPIRQ("[IRQ] mutex%d sof!\n", m_id);
-			DRM_MMP_MARK(mutex[m_id], val, 0);
-			if (m_id == 0) {
-				drm_trace_tag_mark("mutex0_sof");
-				DRM_MMP_EVENT_START(drm, 0, 0);
+
+			if (m_id == 4) {
+				addr = mtk_get_gce_backup_slot_va(mtk_crtc0, DISP_SLOT_MUTEX4_DEBUG);
+				if ( *addr == 1) {
+					DRM_MMP_MARK(mutex[m_id], val, 0xFFFF);
+					DDP_DBGTP("debug top and fifo mon enable\n");
+				} else
+					DRM_MMP_MARK(mutex[m_id], val, 0);
+				*addr = 0;
+			} else if (m_id == 5) {
+				addr = mtk_get_gce_backup_slot_va(mtk_crtc0, DISP_SLOT_MUTEX5_DEBUG);
+				if ( *addr == 1) {
+					DRM_MMP_MARK(mutex[m_id], val, 0xFFFF);
+					DDP_DBGTP("trigger stop\n");
+				} else
+					DRM_MMP_MARK(mutex[m_id], val, 0);
+				*addr = 0;
+			} else if (m_id == 6) {
+				addr = mtk_get_gce_backup_slot_va(mtk_crtc0, DISP_SLOT_MUTEX6_DEBUG);
+				if ( *addr == 1) {
+					DDP_DBGTP("debug top and fifo mon disable\n");
+					DRM_MMP_MARK(mutex[m_id], val, 0xFFFF);
+				} else
+					DRM_MMP_MARK(mutex[m_id], val, 0);
+				*addr = 0;
+			} else {
+				DRM_MMP_MARK(mutex[m_id], val, 0);
+
+				if (m_id == 0) {
+					drm_trace_tag_mark("mutex0_sof");
+					DRM_MMP_EVENT_START(drm, 0, 0);
+				}
 			}
 
 			if (priv && (priv->data->mmsys_id == MMSYS_MT6991

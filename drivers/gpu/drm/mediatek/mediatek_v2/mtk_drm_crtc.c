@@ -12840,6 +12840,8 @@ VDO_MODE:
 		slot_src_addr = mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_UNDERRUNED);
 		cmdq_pkt_read(cmdq_handle, mtk_crtc->gce_obj.base, slot_src_addr, var1);
 		GCE_IF(lop, R_CMDQ_EQUAL, rop);
+		/* Enable trace top funnel */
+		cmdq_pkt_write(cmdq_handle, NULL, 0x0d070000, 0xAC, BIT(7) | BIT(5) | BIT(3) | BIT(2));
 		if (!priv->mtk_dbgtp_sta.is_validation_mode)
 			mtk_dbgtp_switch(mtk_crtc, cmdq_handle, true);
 		GCE_FI;
@@ -13287,6 +13289,9 @@ void mtk_crtc_start_trig_loop(struct drm_crtc *crtc)
 	dma_addr_t slot_src_addr;
 	dma_addr_t slot_dts_addr;
 	dma_addr_t slot_addr;
+	dma_addr_t slot_mutex4_debug;
+	dma_addr_t slot_mutex5_debug;
+	dma_addr_t slot_mutex6_debug;
 	struct mtk_ddp_comp *output_comp;
 	struct mtk_ddp_comp *dbi_comp;
 	int i, j;
@@ -13596,7 +13601,12 @@ skip_prete:
 				slot_src_addr = mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_UNDERRUNED);
 				cmdq_pkt_read(cmdq_handle, mtk_crtc->gce_obj.base, slot_src_addr, var1);
 				GCE_IF(lop, R_CMDQ_EQUAL, rop);
-				mtk_disp_dbg_cmdq_use_mutex(mtk_crtc, cmdq_handle, 6);
+				/* Set mutex4 debug slot to 1 When enable debug top */
+				slot_mutex4_debug = mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_MUTEX4_DEBUG);
+				cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base, slot_mutex4_debug, 1, ~0);
+				mtk_disp_dbg_cmdq_use_mutex(mtk_crtc, cmdq_handle, 4);
+				/* Enable trace top funnel */
+				cmdq_pkt_write(cmdq_handle, NULL, 0x0d070000, 0xAC, BIT(7) | BIT(5) | BIT(3) | BIT(2));
 				mtk_dbgtp_fifo_mon_set_trig_threshold(mtk_crtc, cmdq_handle);
 				if (!priv->mtk_dbgtp_sta.is_validation_mode)
 					mtk_dbgtp_switch(mtk_crtc, cmdq_handle, true);
@@ -13604,13 +13614,28 @@ skip_prete:
 			}
 		}
 
+		/* back up dsi status */
+		if (crtc_id == 0) {
+			slot_addr = mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_DSI_DEBUG_STATUS);
+			cmdq_pkt_mem_move(cmdq_handle, mtk_crtc->gce_obj.base,
+				output_comp->regs_pa + 0x0C, slot_addr, CMDQ_THR_SPR_IDX3);
+		}
+
+		GCE_DO(wfe, EVENT_CMD_EOF);
+
 		/* For dbgtp fifo mon WA */
 		if ((priv->data->mmsys_id == MMSYS_MT6993) &&
 			(priv->mtk_dbgtp_sta.fifo_mon_en[0]) && (crtc_id == 0)) {
-			GCE_DO(wfe, EVENT_TAIL_TARGET_LINE);
+			/* Disable trace top funnel */
+			cmdq_pkt_write(cmdq_handle, NULL, 0x0d070000, 0x0, BIT(7) | BIT(5) | BIT(3) | BIT(2));
+			/*GCE_DO(wfe, EVENT_TAIL_TARGET_LINE);*/
 			mtk_dbgtp_fifo_mon_config(mtk_crtc, cmdq_handle);
 			if (!priv->mtk_dbgtp_sta.is_validation_mode)
 				mtk_dbgtp_switch(mtk_crtc, cmdq_handle, false);
+			/* Set mutex6 debug slot to 1 When Disable debug top */
+			slot_mutex6_debug = mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_MUTEX6_DEBUG);
+			cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base, slot_mutex6_debug, 1, ~0);
+			mtk_disp_dbg_cmdq_use_mutex(mtk_crtc, cmdq_handle, 6);
 			/* gce if (A || B) start */
 			slot_addr = mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_CONDITION);
 			/* clear result */
@@ -13648,20 +13673,14 @@ skip_prete:
 			// when eof, fifo mon will trigger stop ELA
 			cmdq_pkt_write(cmdq_handle, NULL, 0x3EFC0014, 0x1, 0xf);
 			cmdq_pkt_write(cmdq_handle, NULL, 0x3EFC0018, 0x1, 0xf);
-			mtk_disp_dbg_cmdq_use_mutex(mtk_crtc, cmdq_handle, 6);
+			/* Set mutex5 debug slot to 1 When need trigger stop */
+			slot_mutex5_debug = mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_MUTEX5_DEBUG);
+			cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base, slot_mutex5_debug, 1, ~0);
+			mtk_disp_dbg_cmdq_use_mutex(mtk_crtc, cmdq_handle, 5);
 			slot_src_addr = mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_TRIG_STARTED);
 			cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base, slot_src_addr, 0, ~0);
 			GCE_FI;
 		}
-
-		/* back up dsi status */
-		if (crtc_id == 0) {
-			slot_addr = mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_DSI_DEBUG_STATUS);
-			cmdq_pkt_mem_move(cmdq_handle, mtk_crtc->gce_obj.base,
-				output_comp->regs_pa + 0x0C, slot_addr, CMDQ_THR_SPR_IDX3);
-		}
-
-		GCE_DO(wfe, EVENT_CMD_EOF);
 
 		if (profile_trig && (crtc_id == 0))
 			mtk_crtc_backup_tpr_to_slot(mtk_crtc, cmdq_handle, DISP_SLOT_TRIG_TICK(4));
@@ -13767,6 +13786,9 @@ skip_prete:
 				/* For dbgtp fifo mon WA */
 				if ((priv->data->mmsys_id == MMSYS_MT6993) &&
 					(priv->mtk_dbgtp_sta.fifo_mon_en[0]) && (crtc_id == 0)) {
+					/* Disable trace top funnel */
+					cmdq_pkt_write(cmdq_handle, NULL, 0x0d070000,
+						0x0, BIT(7) | BIT(5) | BIT(3) | BIT(2));
 					mtk_dbgtp_fifo_mon_config(mtk_crtc, cmdq_handle);
 					if (!priv->mtk_dbgtp_sta.is_validation_mode)
 						mtk_dbgtp_switch(mtk_crtc, cmdq_handle, false);
