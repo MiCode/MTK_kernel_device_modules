@@ -312,6 +312,7 @@ extern void (*mtk_dvfs_margin_value_fp)(int i32MarginValue);
 extern int (*mtk_get_dvfs_margin_value_fp)(void);
 extern int ged_get_dvfs_margin(void);
 extern unsigned int ged_get_dvfs_margin_mode(void);
+int ged_get_dvfs_margin_value_cmd(void);
 
 extern void (*mtk_loading_base_dvfs_step_fp)(int i32MarginValue);
 extern int (*mtk_get_loading_base_dvfs_step_fp)(void);

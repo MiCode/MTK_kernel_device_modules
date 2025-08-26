@@ -726,6 +726,7 @@ int ged_to_fdvfs_command(unsigned int cmd, struct fdvfs_ipi_data *ipi_data)
 	case GPUFDVFS_IPI_GET_LB_TUNE_PARAM:
 	case GPUFDVFS_IPI_GET_DEFAULT_POLICY_MODE:
 	case GPUFDVFS_IPI_GET_LOADING_MODE:
+	case GPUFDVFS_IPI_GET_FB_MARGIM:
 		ret = mtk_ipi_send_compl_to_gpueb(
 			g_fast_dvfs_ipi_channel,
 			IPI_SEND_POLLING, ipi_data,
@@ -1863,6 +1864,9 @@ int ged_eb_dvfs_task(enum ged_eb_dvfs_task_index index, int value)
 			// g_tb_dvfs_margin_step [24:27]
 			tmp |= ((ged_dvfs_get_margin_step() & 0xF) << 24);
 			mtk_gpueb_sysram_write(SYSRAM_GPU_EB_CMD_TB_DVFS_MARGIN, tmp);
+			if (ged_get_dvfs_margin_value_cmd() > 0)
+				mtk_gpueb_sysram_write(SYSRAM_GPU_EB_CMD_DVFS_MARGIN_VALUE,
+					ged_get_dvfs_margin_value_cmd());
 		break;
 		case EB_FB_RSF_POLICY_ENABLE:
 			mtk_gpueb_dvfs_fb_rsf_policy_enable(value);
@@ -2078,6 +2082,7 @@ void ged_do_platform_related_init(void)
 	mtk_get_dvfs_workload_mode(&workloadMode);
 	mtk_gpueb_sysram_write(fdvfs_v2_table[GPU_EB_WORKLOAD_MODE].addr, workloadMode);
 	mtk_gpueb_sysram_write(fdvfs_v2_table[GPU_FB_NPU_HINT_MS].addr, 0);
+	mtk_gpueb_sysram_write(SYSRAM_GPU_EB_CMD_DVFS_MARGIN_VALUE, 0);
 
 	GED_LOGI("ts_rb_num(%u) mbrain_max_num(%u)",
 		ged_get_ts_rb_num(), ged_get_mbrain_max_num());

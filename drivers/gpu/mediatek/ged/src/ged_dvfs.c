@@ -1972,6 +1972,7 @@ int gx_fb_dvfs_margin = DEFAULT_DVFS_MARGIN;/* 10-bias */
 
 // default frame-based margin mode + value is 130
 static int dvfs_margin_value = DEFAULT_DVFS_MARGIN;
+static int dvfs_margin_value_cmd;
 unsigned int dvfs_margin_mode = DYNAMIC_MARGIN_MODE_PERF;
 static int g_uncomplete_type;
 
@@ -3681,10 +3682,12 @@ static void ged_dvfs_margin_value(int i32MarginValue)
 	if (i32MarginValue == -1) {
 		dvfs_margin_mode = CONFIGURE_MARGIN_MODE;
 		dvfs_margin_value = DEFAULT_DVFS_MARGIN;
+		dvfs_margin_value_cmd = 777;
 		mutex_unlock(&gsDVFSLock);
 		return;
 	} else if (i32MarginValue == -2) {
 		dvfs_margin_mode = VARIABLE_MARGIN_MODE_OPP_INDEX;
+		dvfs_margin_value_cmd = 888;
 		mutex_unlock(&gsDVFSLock);
 		return;
 	} else if (i32MarginValue == 999) {
@@ -3695,6 +3698,7 @@ static void ged_dvfs_margin_value(int i32MarginValue)
 
 	i32MarginValue_ori = i32MarginValue;
 	i32MarginValue = i32MarginValue & 0x3ff;
+	dvfs_margin_value_cmd = i32MarginValue_ori;
 
 	if ((i32MarginValue >= 0) && (i32MarginValue <= 100))
 		dvfs_margin_mode = CONFIGURE_MARGIN_MODE;
@@ -3738,6 +3742,12 @@ static int ged_get_dvfs_margin_value(void)
 {
 	int ret = 0;
 
+	if (is_fdvfs_enable() & POLICY_MODE_V2)
+		ret = mtk_gpueb_sysram_read(SYSRAM_GPU_EB_CMD_DVFS_MARGIN_VALUE) & 0x3ff;
+
+	if (ret)
+		return ret;
+
 	if (dvfs_margin_mode == CONFIGURE_MARGIN_MODE)
 		ret = dvfs_margin_value/10;
 	else if (dvfs_margin_mode == DYNAMIC_MARGIN_MODE_CONFIG_FPS_MARGIN)
@@ -3757,6 +3767,11 @@ static int ged_get_dvfs_margin_value(void)
 		ret = 999;
 
 	return ret;
+}
+
+int ged_get_dvfs_margin_value_cmd(void)
+{
+	return dvfs_margin_value_cmd;
 }
 
 int ged_get_dvfs_margin(void)
@@ -3887,6 +3902,8 @@ static void ged_dvfs_loading_mode(int i32MarginValue)
 
 static int ged_get_dvfs_loading_mode(void)
 {
+	if (is_fdvfs_enable() & POLICY_MODE_V2)
+		return mtk_gpueb_sysram_read(SYSRAM_GPU_EB_LOADING_MODE);
 	return gx_dvfs_loading_mode;
 }
 
@@ -3908,6 +3925,8 @@ static void ged_dvfs_workload_mode(int i32WorkloadMode)
 
 static int ged_get_dvfs_workload_mode(void)
 {
+	if (is_fdvfs_enable() & POLICY_MODE_V2)
+		return mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_EB_WORKLOAD_MODE].addr);
 	return gx_dvfs_workload_mode;
 }
 

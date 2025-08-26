@@ -670,6 +670,7 @@ enum {
 	GPUFDVFS_IPI_SET_CONFIG             = 22,
 	GPUFDVFS_IPI_SET_FB_MFRC_POLICY     = 23,
 	GPUFDVFS_IPI_GET_LOADING_MODE    	= 24,
+	GPUFDVFS_IPI_GET_FB_MARGIM          = 25,
 
 	NR_GPUFDVFS_IPI,
 };
@@ -1051,7 +1052,8 @@ GEN("fix_freq_id", GPU_FIX_FREQ_ID, 2, "enable|id") \
 GEN("gpu_version", GPU_EB_VERSION, 1, "gpu_version") \
 GEN("desire_mask", GOV_DESIRE_MASK, 1, "desire_mask") \
 GEN("fb_mfrc", GPU_FB_MFRC_2, 1, "fb_mfrc_2") \
-GEN("ultra_loading_flag", ULTRA_LOADING_FLAG, 1, "ultra_loading_flag")
+GEN("ultra_loading_flag", ULTRA_LOADING_FLAG, 1, "ultra_loading_flag") \
+GEN("dvfs_margin_value", GPU_EB_CMD_DVFS_MARGIN_VALUE, 1, "dvfs_margin_value_cmd")
 
 // generate sysram index list according to FDVFS_V2_COUNTER
 #define GEN(name, index, count, var) index,

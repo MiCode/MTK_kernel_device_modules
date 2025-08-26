@@ -510,6 +510,9 @@ static ssize_t dvfs_margin_value_store(struct kobject *kobj,
 		if (scnprintf(acBuffer, GED_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
 			if (kstrtoint(acBuffer, 0, &i32Value) == 0)
 				mtk_dvfs_margin_value(i32Value);
+
+			ged_eb_dvfs_task(EB_DBG_CMD, 0);
+			ged_eb_dvfs_task(EB_REINIT, 0);
 		}
 	}
 
