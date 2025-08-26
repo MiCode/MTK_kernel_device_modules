@@ -1319,10 +1319,37 @@ void mml_update(u32 comp_id, struct mml_task_reuse *reuse, u16 label_idx, u32 va
  */
 void mml_reuse_touch(u32 comp_id, struct mml_task_reuse *reuse, u16 label_idx);
 
+/* mml_write_array - mark check without change value
+ *
+ * @comp_id	component id for check
+ * @pkt:	cmdq task
+ * @addr:	register addr or dma addr
+ * @value:	value to write
+ * @mask:	mask to value
+ * @reuse:	label cache for cmdq_reuse from task, which caches label of
+ *		this task and pipe.
+ * @cache:	task cache from mml config
+ * @reuses:	mml reuse array instance to record reuse anchor
+ *
+ * return:	0 if success, error no if fail
+ */
 s32 mml_write_array(u32 comp_id, struct cmdq_pkt *pkt, dma_addr_t addr, u32 value, u32 mask,
 	struct mml_task_reuse *reuse, struct mml_pipe_cache *cache,
 	struct mml_reuse_array *reuses);
 
+/* mml_update_array - update new value to cache, index by offs index and reuse label index.
+ *
+ * @comp_id	component id for check
+ * @reuse:	label cache for cmdq_reuse from task, which caches label of
+ *		this task and pipe.
+ * @reuses:	mml reuse array instance which contain index to one of reuse,
+ *		and describe an array to update.
+ * @reuse_idx:	index of reuse
+ * @ off_idx:	index of reuses
+ * @value:	value to be update
+ *
+ * return:	0 if success, error no if fail
+ */
 void mml_update_array(u32 comp_id, struct mml_task_reuse *reuse,
 	struct mml_reuse_array *reuses, u32 reuse_idx, u32 off_idx, u32 value);
 

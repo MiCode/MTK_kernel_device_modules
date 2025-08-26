@@ -2883,7 +2883,7 @@ void mml_update(u32 comp_id, struct mml_task_reuse *reuse, u16 label_idx, u32 va
 
 	if (comp_id != reuse->label_mods[label_idx])
 		mml_err("%s label idx %u/%u mod %u %u module overwrite value %#x",
-			__func__, label_idx, reuse->label_mods[label_idx], comp_id,
+			__func__, label_idx, reuse->label_idx, comp_id,
 			reuse->label_mods[label_idx], value);
 
 	reuse->labels[label_idx].val = value;
@@ -2898,7 +2898,7 @@ void mml_reuse_touch(u32 comp_id, struct mml_task_reuse *reuse, u16 label_idx)
 
 	if (comp_id != reuse->label_mods[label_idx])
 		mml_err("%s label idx %u/%u mod %u %u module overwrite",
-			__func__, label_idx, reuse->label_mods[label_idx], comp_id,
+			__func__, label_idx, reuse->label_idx, comp_id,
 			reuse->label_mods[label_idx]);
 
 	reuse->label_check[label_idx] = true;
@@ -2986,14 +2986,24 @@ s32 mml_write_array(u32 comp_id, struct cmdq_pkt *pkt, dma_addr_t addr, u32 valu
 void mml_update_array(u32 comp_id, struct mml_task_reuse *reuse,
 	struct mml_reuse_array *reuses, u32 reuse_idx, u32 off_idx, u32 value)
 {
-	u32 label_idx = reuses->offs[reuse_idx].label_idx;
-	struct cmdq_reuse *label = &reuse->labels[label_idx];
-	u64 *va = label->va + reuses->offs[reuse_idx].offset * off_idx;
+	u32 label_idx;
+	struct cmdq_reuse *label;
+	u64 *va;
+
+	if (reuse_idx >= reuses->idx) {
+		mml_err("%s comp %u reuses off idx %u reuses cnt %u overflow",
+			__func__, comp_id, reuse_idx, reuses->idx);
+		return;
+	}
+
+	label_idx = reuses->offs[reuse_idx].label_idx;
+	label = &reuse->labels[label_idx];
+	va = label->va + reuses->offs[reuse_idx].offset * off_idx;
 
 	if (comp_id != reuse->label_mods[label_idx])
 		mml_err("%s label idx %u/%u mod %u %u module overwrite value %#x",
-			__func__, label_idx, comp_id, reuse->label_mods[label_idx],
-			reuse->label_idx, value);
+			__func__, label_idx, reuse->label_idx,
+			comp_id, reuse->label_mods[label_idx], value);
 
 	*va = (*va & GENMASK_ULL(63, 32)) | value;
 	reuse->label_check[label_idx] = true;

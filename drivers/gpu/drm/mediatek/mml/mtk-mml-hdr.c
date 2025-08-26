@@ -1257,6 +1257,18 @@ static s32 hdr_write_two_curve(struct mml_comp *comp, struct mml_task *task,
 	return 0;
 }
 
+static inline void hdr_print_reuse_array(struct mml_reuse_array *reuse_array, const char *name)
+{
+	u32 i;
+
+	for (i = 0; i < reuse_array->idx; i++)
+		mml_msg("%s offs %u reuse label %u step %u cnt %u",
+			name, i,
+			reuse_array->offs[i].label_idx,
+			reuse_array->offs[i].offset,
+			reuse_array->offs[i].cnt);
+}
+
 static s32 hdr_config_frame(struct mml_comp *comp, struct mml_task *task,
 			    struct mml_comp_config *ccfg)
 {
@@ -1388,10 +1400,13 @@ static s32 hdr_config_frame(struct mml_comp *comp, struct mml_task *task,
 		mml_pq_msg("[hdr][config][%x] = %#x mask(%#x)",
 			regs[i].offset, regs[i].value, regs[i].mask);
 	}
+	hdr_print_reuse_array(&hdr_frm->reuse_reg, "regs");
 
 	if (mml_isdc(mode)) {
 		if (hdr->data->two_curve) {
 			hdr_write_two_curve(comp, task, ccfg, ootf_curve, oetf_curve, update_curve);
+			hdr_print_reuse_array(&hdr_frm->reuse_curve_ootf, "ootf");
+			hdr_print_reuse_array(&hdr_frm->reuse_curve_oetf, "oetf");
 		} else {
 			for (i = 0; i < HDR_CURVE_NUM; i += 2) {
 				mml_write_array(comp->id, pkt, base_pa + hdr->data->reg_table[HDR_GAIN_TABLE_1],
@@ -1399,6 +1414,7 @@ static s32 hdr_config_frame(struct mml_comp *comp, struct mml_task *task,
 				mml_write_array(comp->id, pkt, base_pa + hdr->data->reg_table[HDR_GAIN_TABLE_2],
 					curve[i + 1], U32_MAX, reuse, cache, &hdr_frm->reuse_curve);
 			}
+			hdr_print_reuse_array(&hdr_frm->reuse_curve, "curves");
 		}
 	} else if (mode == MML_MODE_DDP_ADDON || mode == MML_MODE_DIRECT_LINK) {
 		hdr->curve_pq_task = task->pq_task;
@@ -1431,6 +1447,14 @@ static s32 hdr_config_frame(struct mml_comp *comp, struct mml_task *task,
 		queue_work(hdr->hdr_curve_wq, &hdr->hdr_curve_task);
 		hdr_hist_ctrl(comp, task, ccfg, result);
 	}
+
+	/* check mml reuse array for safe */
+	if (hdr_frm->reuse_reg.idx + hdr_frm->reuse_curve.idx +
+		hdr_frm->reuse_curve_ootf.idx + hdr_frm->reuse_curve_oetf.idx >
+		HDR_LABEL_TOTAL)
+		mml_pq_err("%s reuse count reuse_reg %u reuse_curve %u ootf %u oetf %u overflow",
+			__func__, hdr_frm->reuse_reg.idx, hdr_frm->reuse_curve.idx,
+			hdr_frm->reuse_curve_ootf.idx, hdr_frm->reuse_curve_oetf.idx);
 
 	if (hdr->data->two_curve) {
 		/* userspace already setted*/
@@ -1925,11 +1949,15 @@ static s32 reconfig_frame_ootf(struct mml_comp *comp, struct mml_task *task,
 		}
 	}
 
-	if (cnt != 0)
+	if (hdr_frm->reuse_curve_ootf.idx) {
+		u32 offs_idx = hdr_frm->reuse_curve_ootf.idx - 1;
+
 		mml_update_array(comp->id, reuse,
 			&hdr_frm->reuse_curve_ootf,
-				1, (i - hdr_frm->reuse_curve_ootf.offs[0].cnt),
-				ootf_curve[val_idx]);
+			offs_idx,
+			hdr_frm->reuse_curve_ootf.offs[offs_idx].cnt - 1,
+			ootf_curve[val_idx]);
+	}
 	return 0;
 }
 
@@ -1950,20 +1978,25 @@ static s32 reconfig_frame_oetf(struct mml_comp *comp, struct mml_task *task,
 					&hdr_frm->reuse_curve_oetf, 0, i + j,
 					(oetf_curve[val_idx + 7 - 2 * j] << 16) |
 					(oetf_curve[val_idx + 6 - 2 * j]));
-			else
+			else {
 				mml_update_array(comp->id, reuse,
 					&hdr_frm->reuse_curve_oetf, 1,
 					i + j - hdr_frm->reuse_curve_oetf.offs[0].cnt,
 					(oetf_curve[val_idx + 7 - 2 * j] << 16) |
 					(oetf_curve[val_idx + 6 - 2 * j]));
+			}
 		}
 	}
 
-	if (cnt != 0)
+	if (cnt && hdr_frm->reuse_curve_oetf.idx) {
+		u32 offs_idx = hdr_frm->reuse_curve_oetf.idx - 1;
+
 		mml_update_array(comp->id, reuse,
-			&hdr_frm->reuse_curve_oetf, 1,
-			(i - hdr_frm->reuse_curve_oetf.offs[0].cnt),
+			&hdr_frm->reuse_curve_oetf,
+			offs_idx,
+			hdr_frm->reuse_curve_oetf.offs[offs_idx].cnt - 1,
 			oetf_curve[val_idx]);
+	}
 
 	return 0;
 }
