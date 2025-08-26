@@ -49,6 +49,7 @@ bool mtk_get_gpu_memory_pool(size_t *pMemPool);
 
 /* unit: 0~100 % */
 bool mtk_get_gpu_loading(unsigned int *pLoading);
+bool mtk_get_gpu_loading_avg(unsigned int *pLoading);
 bool mtk_get_gpu_block(unsigned int *pBlock);
 bool mtk_get_gpu_idle(unsigned int *pIlde);
 bool mtk_set_bottom_gpu_freq(unsigned int ui32FreqLevel);

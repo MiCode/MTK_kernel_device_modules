@@ -146,6 +146,10 @@ unsigned int gpu_idle;
 atomic_t g_gpu_loading_log = ATOMIC_INIT(0);
 unsigned long g_um_gpu_tar_freq;
 
+atomic_t g_gpu_loading_avg_log = ATOMIC_INIT(0);
+unsigned int gpu_loading_avg;
+#define GPU_LOADING_AVG_WINDOW_SIZE 16
+
 spinlock_t g_sSpinLock;
 /* calculate loading reset time stamp */
 unsigned long g_ulCalResetTS_us;
@@ -932,6 +936,11 @@ bool ged_dvfs_cal_gpu_utilization_ex(unsigned int *pui32Loading,
 	unsigned int cur_opp_idx = 0;
 	u32 opp_loading = 0;
 
+	unsigned int window_size_us = GPU_LOADING_AVG_WINDOW_SIZE*1000;
+	static unsigned long long sum_delta_time;	 // unit: us
+	static unsigned long long sum_loading ;   // unit: % * us
+	unsigned long long delta_time;
+
 	if (ged_dvfs_cal_gpu_utilization_ex_fp != NULL) {
 		ged_dvfs_cal_gpu_utilization_ex_fp(pui32Loading, pui32Block,
 			pui32Idle, (void *) Util_Ex);
@@ -959,6 +968,24 @@ bool ged_dvfs_cal_gpu_utilization_ex(unsigned int *pui32Loading,
 				ged_dvfs_early_force_fallback(Util_Ex);
 			else
 				early_force_fallback = 0 ;
+
+			delta_time = Util_Ex->delta_time / 1000;
+			gpu_loading_avg = *pui32Loading;
+			sum_loading += gpu_loading_avg * delta_time;
+			sum_delta_time += delta_time;
+
+			if (sum_delta_time >= window_size_us) {
+				if (sum_delta_time != 0)
+					gpu_loading_avg = sum_loading / sum_delta_time;
+
+				if (gpu_loading_avg > 100)
+					gpu_loading_avg = 100;
+
+				atomic_set(&g_gpu_loading_avg_log, gpu_loading_avg);
+				trace_tracing_mark_write(5566, "avg-loading", gpu_loading_avg);
+				sum_loading = 0;
+				sum_delta_time = 0;
+			}
 
 			gpu_av_loading = *pui32Loading;
 			atomic_set(&g_gpu_loading_log, gpu_av_loading);
@@ -4140,6 +4167,18 @@ unsigned int ged_dvfs_get_gpu_loading(void)
 	return loading;
 }
 
+unsigned int ged_dvfs_get_gpu_loading_avg(void)
+{
+	unsigned int loading = 0;
+
+	loading = (unsigned int)atomic_read(&g_gpu_loading_avg_log);
+
+	if (g_curr_pwr_state != GED_POWER_ON)
+		loading = 0;
+
+	return loading;
+}
+
 unsigned int ged_dvfs_get_gpu_blocking(void)
 {
 	return gpu_block;
@@ -4703,6 +4742,7 @@ GED_ERROR ged_dvfs_system_init(void)
 	mtk_custom_boost_gpu_freq_fp = ged_dvfs_custom_boost_gpu_freq;
 	mtk_custom_upbound_gpu_freq_fp = ged_dvfs_custom_ceiling_gpu_freq;
 	mtk_get_gpu_loading_fp = ged_dvfs_get_gpu_loading;
+	mtk_get_gpu_loading_avg_fp = ged_dvfs_get_gpu_loading_avg;
 	mtk_get_gpu_block_fp = ged_dvfs_get_gpu_blocking;
 	mtk_get_gpu_idle_fp = ged_dvfs_get_gpu_idle;
 

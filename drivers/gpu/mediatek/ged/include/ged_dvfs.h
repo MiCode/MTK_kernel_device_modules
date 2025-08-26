@@ -159,6 +159,7 @@ void ged_dvfs_vsync_offset_level_set(int i32level);
 int ged_dvfs_vsync_offset_level_get(void);
 
 unsigned int ged_dvfs_get_gpu_loading(void);
+unsigned int ged_dvfs_get_gpu_loading_avg(void);
 unsigned int ged_dvfs_get_gpu_blocking(void);
 unsigned int ged_dvfs_get_gpu_idle(void);
 unsigned int ged_dvfs_get_custom_ceiling_gpu_freq(void);
