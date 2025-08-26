@@ -94,6 +94,10 @@
 #define MEMORY_CPUQOS_INFO (NR_CODE_LAGACY_MAX + 8)
 #define MEMORY_MMQOS_INFO (NR_CODE_LAGACY_MAX + 9)
 
+#define POWER_SPM_ALL_RAW	(NR_CODE_LAGACY_MAX + 10)
+#define POWER_SPM_L2_ALL_INFO	(NR_CODE_LAGACY_MAX + 11)
+
+
 /*Mbrain Delegate IOCTL List*/
 #define AUTO_IOCTL_INFO			_IOR(IOC_MAGIC, AUTO_IOCTL, \
 							struct mbraink_auto_ioctl_info*)
@@ -132,6 +136,10 @@
 #define RO_POWER_SPM_RAW			_IOR(IOC_MAGIC, POWER_SPM_RAW, \
 								struct mbraink_power_spm_raw*)
 
+#define RO_POWER_SPM_ALL_RAW			_IOR(IOC_MAGIC, POWER_SPM_ALL_RAW, \
+								struct mbraink_power_spm_all_raw*)
+
+
 #define RO_MODEM_INFO			_IOR(IOC_MAGIC, MODEM_INFO, \
 							struct mbraink_modem_raw*)
 #define WO_MONITOR_BINDER_PROCESS	_IOW(IOC_MAGIC,	MONITOR_BINDER_PROCESS,	\
@@ -147,6 +155,10 @@
 
 #define RO_POWER_SPM_L2_INFO	_IOR(IOC_MAGIC, POWER_SPM_L2_INFO, \
 						struct mbraink_power_spm_l2_info*)
+
+#define RO_POWER_SPM_L2_ALL_INFO	_IOR(IOC_MAGIC, POWER_SPM_L2_ALL_INFO, \
+						struct mbraink_power_spm_l2_all_info*)
+
 
 #define RO_POWER_SCP_INFO	_IOR(IOC_MAGIC, POWER_SCP_INFO, \
 						struct mbraink_power_scp_info*)

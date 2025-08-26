@@ -21,8 +21,11 @@ int mbraink_power_getVcoreInfo(struct mbraink_power_vcoreInfo *pmbrainkPowerVcor
 void mbraink_get_power_wakeup_info(struct mbraink_power_wakeup_data *wakeup_info_buffer);
 
 int mbraink_power_get_spm_info(struct mbraink_power_spm_raw *power_spm_buffer);
+int mbraink_power_get_spm_all_info(struct mbraink_power_spm_all_raw *power_spm_all_buffer);
+
 int mbraink_power_get_spm_l1_info(long long *spm_l1_array, int spm_l1_size);
 int mbraink_power_get_spm_l2_info(struct mbraink_power_spm_l2_info *spm_l2_info);
+int mbraink_power_get_spm_l2_all_info(struct mbraink_power_spm_l2_all_info *spm_l2_all_info);
 
 int mbraink_power_get_scp_info(struct mbraink_power_scp_info *scp_info);
 int mbraink_power_get_scp_task_info(struct mbraink_power_scp_task_info *scp_info);

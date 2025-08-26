@@ -99,6 +99,9 @@
 
 #define DATA_HD_SZ 8
 
+#define MAX_POWER_SPM_TBL_ALL_SZ (9680)
+#define MAX_POWER_SPM_TBL_SUSPEND_ALL_SZ (3232)
+
 #define MAX_POWER_SPM_TBL_SEC_SZ (928)
 #define MAX_POWER_MMDVFS_SEC_SZ (264)
 #define MAX_POWER_MMDVFS_USER_SEC_SZ (1032)
@@ -344,9 +347,22 @@ struct mbraink_power_spm_raw {
 	unsigned char spm_data[MAX_POWER_SPM_TBL_SEC_SZ];
 };
 
+struct mbraink_power_spm_all_raw {
+	uint8_t type;
+	unsigned short pos;
+	unsigned short size;
+	unsigned char spm_data[MAX_POWER_SPM_TBL_ALL_SZ];
+};
+
+
 struct mbraink_power_spm_l2_info {
 	unsigned int value[4];
 	unsigned char spm_data[SPM_L2_SZ];
+};
+
+struct mbraink_power_spm_l2_all_info {
+	unsigned int value[4];
+	unsigned char spm_data[MAX_POWER_SPM_TBL_SUSPEND_ALL_SZ];
 };
 
 struct mbraink_power_scp_info {

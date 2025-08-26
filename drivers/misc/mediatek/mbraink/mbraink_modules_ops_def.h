@@ -45,8 +45,10 @@ struct mbraink_power_ops {
 	int (*getVcoreInfo)(struct mbraink_power_vcoreInfo *pmbrainkPowerVcoreInfo);
 	void (*getWakeupInfo)(struct mbraink_power_wakeup_data *wakeup_info_buffer);
 	int (*getSpmInfo)(struct mbraink_power_spm_raw *power_spm_buffer);
+	int (*getSpmAllInfo)(struct mbraink_power_spm_all_raw *power_spm_all_buffer);
 	int (*getSpmL1Info)(long long *spm_l1_array, int spm_l1_size);
 	int (*getSpmL2Info)(struct mbraink_power_spm_l2_info *spm_l2_info);
+	int (*getSpmL2AllInfo)(struct mbraink_power_spm_l2_all_info *spm_l2_all_info);
 	int (*getScpInfo)(struct mbraink_power_scp_info *scp_info);
 	int (*getScpTaskInfo)(struct mbraink_power_scp_task_info *scp_task_info);
 	int (*getModemInfo)(struct mbraink_modem_raw *modem_buffer);

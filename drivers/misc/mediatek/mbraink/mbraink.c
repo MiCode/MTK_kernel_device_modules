@@ -721,6 +721,29 @@ static long handle_power_spm_raw(unsigned long arg, void *mbraink_data)
 	return ret;
 }
 
+static long handle_power_spm_all_raw(unsigned long arg, void *mbraink_data)
+{
+	struct mbraink_power_spm_all_raw *power_spm_all_buffer =
+		(struct mbraink_power_spm_all_raw *)(mbraink_data);
+	long ret = 0;
+
+	if (copy_from_user(power_spm_all_buffer,
+			(struct mbraink_power_spm_all_raw *) arg,
+			sizeof(struct mbraink_power_spm_all_raw))) {
+		pr_notice("Data write power_spm_all_buffer from UserSpace Err!\n");
+		return -EPERM;
+	}
+	mbraink_power_get_spm_all_info(power_spm_all_buffer);
+	if (copy_to_user((struct mbraink_power_spm_all_raw *) arg,
+			power_spm_all_buffer,
+			sizeof(struct mbraink_power_spm_all_raw))) {
+		pr_notice("Copy power_spm_all_buffer to UserSpace error!\n");
+		return -EPERM;
+	}
+	return ret;
+}
+
+
 static long handle_modem_info(unsigned long arg, void *mbraink_data)
 {
 	long ret = 0;
@@ -843,6 +866,29 @@ static long handle_power_spm_l2_info(unsigned long arg, void *mbraink_data)
 	}
 	return ret;
 }
+
+static long handle_power_spm_l2_all_info(unsigned long arg, void *mbraink_data)
+{
+	struct mbraink_power_spm_l2_all_info *power_spm_l2_all_buffer =
+		(struct mbraink_power_spm_l2_all_info *)(mbraink_data);
+	long ret = 0;
+
+	if (copy_from_user(power_spm_l2_all_buffer,
+			(struct mbraink_power_spm_l2_all_info *) arg,
+			sizeof(struct mbraink_power_spm_l2_all_info))) {
+		pr_notice("Data write power_spm_l2_all_buffer from UserSpace Err!\n");
+		return -EPERM;
+	}
+	mbraink_power_get_spm_l2_all_info(power_spm_l2_all_buffer);
+	if (copy_to_user((struct mbraink_power_spm_l2_all_info *) arg,
+			power_spm_l2_all_buffer,
+			sizeof(struct mbraink_power_spm_l2_all_info))) {
+		pr_notice("Copy power_spm_l2_all_buffer to UserSpace error!\n");
+		return -EPERM;
+	}
+	return ret;
+}
+
 
 static long handle_power_scp_info(unsigned long arg, void *mbraink_data)
 {
@@ -1885,7 +1931,18 @@ static long mbraink_ioctl(struct file *filp,
 		mbraink_data = kmalloc(sizeof(struct mbraink_power_spm_raw), GFP_KERNEL);
 		if (!mbraink_data)
 			goto End;
+
 		ret = handle_power_spm_raw(arg, mbraink_data);
+		kfree(mbraink_data);
+		break;
+	}
+	case RO_POWER_SPM_ALL_RAW:
+	{
+		mbraink_data = kmalloc(sizeof(struct mbraink_power_spm_all_raw), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+
+		ret = handle_power_spm_all_raw(arg, mbraink_data);
 		kfree(mbraink_data);
 		break;
 	}
@@ -1940,6 +1997,15 @@ static long mbraink_ioctl(struct file *filp,
 		if (!mbraink_data)
 			goto End;
 		ret = handle_power_spm_l2_info(arg, mbraink_data);
+		kfree(mbraink_data);
+		break;
+	}
+	case RO_POWER_SPM_L2_ALL_INFO:
+	{
+		mbraink_data = kmalloc(sizeof(struct mbraink_power_spm_l2_all_info), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handle_power_spm_l2_all_info(arg, mbraink_data);
 		kfree(mbraink_data);
 		break;
 	}
