@@ -3020,7 +3020,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					&smi_larb11 &smi_larb13 &smi_larb14
 					&smi_larb16 &smi_larb17 &smi_larb20>;
 		mediatek,commons-supply = <&smi_disp_common>;
-		mmqos-state = <0x4177ed>;
+		mmqos-state = <0x1c177ed>;
 		mmqos-log-level = <0>;
 		interconnects = <&dvfsrc MT6873_MASTER_MMSYS &dvfsrc MT6873_SLAVE_DDR_EMI>,
 				<&dvfsrc MT6873_MASTER_HRT_MMSYS
@@ -3034,6 +3034,13 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		mminfra-base = <0x1e800000>;
 		w-hrt-ostdl = <1>;
 		r-srt-ostdl = <4>;
+		dvfsrc-level-base = <0x1c00f000>;
+		required-opps = <&dvfsrc_freq_opp0>,
+				<&dvfsrc_freq_opp1>,
+				<&dvfsrc_freq_opp2>,
+				<&dvfsrc_freq_opp3>,
+				<&dvfsrc_freq_opp4>,
+				<&dvfsrc_freq_opp5>;
 	};
 
 	mminfra-debug@1e827000 {
