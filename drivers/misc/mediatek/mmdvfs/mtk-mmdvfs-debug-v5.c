@@ -693,7 +693,7 @@ static struct mmdvfs_res_mbrain_debug_ops *mmdvfs_debug_v5_mbrain_usr_get(void)
 #if IS_ENABLED(CONFIG_MTK_MMDVFS_VCP)
 static int mmdvfs_v5_dbg_ftrace_thread(void *data)
 {
-	int i, j, ret;
+	int i, j, retry = 0;
 
 	if (!SRAM_BASE) {
 		MMDVFS_DBG("mmdvfs_v5 SRAM_BASE not ready");
@@ -707,12 +707,14 @@ static int mmdvfs_v5_dbg_ftrace_thread(void *data)
 		//sram
 		mtk_mmdvfs_enable_vcp(true, user ? user[0].id : 0);
 		mmdvfs_mmup_cb_mutex_lock();
-		ret = mmdvfs_mmup_cb_ready_get();
-		if (!ret || !unlikely(SRAM_BASE)) {
-			mmdvfs_mmup_cb_mutex_unlock();
-			mtk_mmdvfs_enable_vcp(false, user ? user[0].id : 0);
-			MMDVFS_ERR("mmup_cb_ready:%d SRAM_BASE:%d", ret, SRAM_BASE ? true : false);
-			continue;
+		while (!mmdvfs_mmup_cb_ready_get()) {
+			if (++retry > 100) {
+				mmdvfs_mmup_cb_mutex_unlock();
+				mtk_mmdvfs_enable_vcp(false, user ? user[0].id : 0);
+				MMDVFS_DBG("mmdvfs_v5 init not ready");
+				return -ETIMEDOUT;
+			}
+			ssleep(1);
 		}
 
 		// power opp
