@@ -1992,7 +1992,7 @@ s32 cmdq_mdp_wait(struct cmdqRecStruct *handle,
 
 	if (results && results->count &&
 		results->count <= CMDQ_MAX_DUMP_REG_COUNT) {
-		CMDQ_SYSTRACE_BEGIN("%s assign regs\n", __func__);
+		CMDQ_TRACE_FORCE_BEGIN("%s assign regs\n", __func__);
 		/* clear results */
 		memset(CMDQ_U32_PTR(results->regValues), 0,
 			results->count * sizeof(CMDQ_U32_PTR(
@@ -2003,7 +2003,7 @@ s32 cmdq_mdp_wait(struct cmdqRecStruct *handle,
 			CMDQ_U32_PTR(results->regValues)[i] =
 				handle->reg_values[i];
 		mutex_unlock(&mdp_task_mutex);
-		CMDQ_SYSTRACE_END();
+		CMDQ_TRACE_FORCE_END();
 	}
 
 	/* consume again since maybe more conflict task in waiting */

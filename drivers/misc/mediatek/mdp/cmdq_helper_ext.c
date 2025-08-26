@@ -4377,10 +4377,10 @@ s32 cmdq_pkt_wait_flush_ex_result(struct cmdqRecStruct *handle)
 		MMPROFILE_FLAG_PULSE, ((unsigned long)handle),
 		handle->wakedUp - handle->beginWait);
 
-	CMDQ_SYSTRACE_BEGIN("%s_wait_release\n", __func__);
+	CMDQ_TRACE_FORCE_BEGIN("%s_wait_release\n", __func__);
 	cmdq_pkt_release_handle(handle);
 
-	CMDQ_SYSTRACE_END();
+	CMDQ_TRACE_FORCE_END();
 	CMDQ_PROF_MMP(mdp_mmp_get_event()->wait_task_clean,
 		MMPROFILE_FLAG_PULSE, ((unsigned long)handle->pkt),
 		(unsigned long)handle->pkt);
