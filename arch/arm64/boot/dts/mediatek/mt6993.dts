@@ -142,19 +142,25 @@
 		dli-async0 = &dli_async0;
 		dlo-async0 = &dlo_async0;
 		dli-async11 = &dli_async11;
+		dli-async12 = &dli_async12;
 		dli-async20 = &dli_async20;
 		dlo-async16 = &dlo_async16;
 		dli-async29 = &dli_async29;
 		dlo-async1 = &dlo_async1;
 		dlo-async2 = &dlo_async2;
+		dlo-async3 = &dlo_async3;
+		dlo-async4 = &dlo_async4;
 		dli-async21 = &dli_async21;
 		dli-async22 = &dli_async22;
+		dli-async23 = &dli_async23;
+		dli-async24 = &dli_async24;
 		dlo-async17 = &dlo_async17;
 		dli-async30 = &dli_async30;
 		dli-async-b0 = &dli_async0_b;
 		dli-async-b2 = &dli_async2_b;
 		dlo-async-b0 = &dlo_async0_b;
 		dlo-async-b11 = &dlo_async11_b;
+		dlo-async-b12 = &dlo_async12_b;
 		dli-async-b20 = &dli_async20_b;
 		relay5 = &disp_relay5;
 		tdshp0 = &disp_tdshp0;
@@ -200,6 +206,7 @@
 		dsi0 = &dsi0;
 		dsi1 = &dsi1;
 		mutex0 = &disp1_mutex0;
+		wdma0 = &disp_wdma0;
 		wdma1 = &disp_wdma1;
 		ovl0-dli-async0 = &ovl_dli_async0;
 		mml-mutex0 = &mml1_mutex0;
@@ -10973,6 +10980,13 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x3e300000 0 0x1000>;
 		};
 
+		dli_async12: dli-async12@3e300000 {
+			compatible = "mediatek,dli_async",
+				"mediatek,mt6993-disp-dli-async";
+			clocks = <&dispsys_config_clk MM0_DISP_DLI_ASYNC12_DISP>;
+			reg = <0 0x3e300000 0 0x1000>;
+		};
+
 		dlo_async16: dlo-async16@3e300000 {
 			compatible = "mediatek,dlo_async",
 				"mediatek,mt6993-disp-dlo-async";
@@ -11001,6 +11015,20 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x3e300000 0 0x1000>;
 		};
 
+		dlo_async3: dlo-async3@3e300000 {
+			compatible = "mediatek,dlo_async",
+				"mediatek,mt6993-disp-dlo-async";
+			clocks = <&dispsys_config_clk MM0_DISP_DLO_ASYNC3_DISP>;
+			reg = <0 0x3e300000 0 0x1000>;
+		};
+
+		dlo_async4: dlo-async4@3e300000 {
+			compatible = "mediatek,dlo_async",
+				"mediatek,mt6993-disp-dlo-async";
+			clocks = <&dispsys_config_clk MM0_DISP_DLO_ASYNC4_DISP>;
+			reg = <0 0x3e300000 0 0x1000>;
+		};
+
 		dli_async21: dli-async21@3e700000 {
 			compatible = "mediatek,dli_async",
 				"mediatek,mt6993-disp-dli-async";
@@ -11012,6 +11040,20 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			compatible = "mediatek,dli_async",
 				"mediatek,mt6993-disp-dli-async";
 			clocks = <&dispsys1_config_clk MM1_DISP_DLI_ASYNC22_DISP>;
+			reg = <0 0x3e700000 0 0x1000>;
+		};
+
+		dli_async23: dli-async23@3e700000 {
+			compatible = "mediatek,dli_async",
+				"mediatek,mt6993-disp-dli-async";
+			clocks = <&dispsys1_config_clk MM1_DISP_DLI_ASYNC23_DISP>;
+			reg = <0 0x3e700000 0 0x1000>;
+		};
+
+		dli_async24: dli-async24@3e700000 {
+			compatible = "mediatek,dli_async",
+				"mediatek,mt6993-disp-dli-async";
+			clocks = <&dispsys1_config_clk MM1_DISP_DLI_ASYNC24_DISP>;
 			reg = <0 0x3e700000 0 0x1000>;
 		};
 
@@ -11073,10 +11115,17 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x3e500000 0 0x1000>;
 		};
 
-		dlo_async11_b: dl11-async0-b@3e500000 {
+		dlo_async11_b: dlo-async11-b@3e500000 {
 			compatible = "mediatek,dlo_async_b",
 				"mediatek,mt6993-disp-b-dlo-async";
 			clocks = <&disp0b_dispsys_config_clk MM0B_DISP_DLO_ASYNC11_DISP>;
+			reg = <0 0x3e500000 0 0x1000>;
+		};
+
+		dlo_async12_b: dlo-async12-b@3e500000 {
+			compatible = "mediatek,dlo_async_b",
+				"mediatek,mt6993-disp-b-dlo-async";
+			clocks = <&disp0b_dispsys_config_clk MM0B_DISP_DLO_ASYNC12_DISP>;
 			reg = <0 0x3e500000 0 0x1000>;
 		};
 
@@ -11085,6 +11134,31 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"mediatek,mt6993-disp-b-dli-async";
 			clocks = <&disp1b_dispsys1_config_clk MM1B_DISP_DLI_ASYNC20_DISP>;
 			reg = <0 0x3e900000 0 0x1000>;
+		};
+
+		disp_wdma0: disp1-wdma0@3e760000 {
+			compatible = "mediatek,disp_wdma0",
+					"mediatek,mt6993-disp-wdma";
+			reg = <0 0x3e760000 0 0x1000>;
+			interrupts = <GIC_SPI 445 IRQ_TYPE_LEVEL_HIGH 0>;
+			clocks = <&dispsys1_config_clk MM1_DISP_WDMA0_DISP>;
+			fifo-size-1plane = <1036>;
+			fifo-size-2plane = <518>;
+			fifo-size-uv-2plane = <518>;
+			fifo-size-3plane = <345>;
+			fifo-size-uv-3plane = <345>;
+			mediatek,larb = <&smi_larb33 SMMU_L33_P0_DISP_WDMA0>;
+			mediatek,smi-id = <33>;
+			mtk,smmu-shared = <&mm_smmu_disp>;
+			mtk,smmu-shared-sec = <&mm_smmu_svp_disp>;
+			interconnects =
+				<&mmqos MASTER_LARB_PORT(SMMU_L33_P0_DISP_WDMA0)
+					&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(SMMU_L33_P5_DISP_WDMA0_STASH)
+					&mmqos SLAVE_COMMON(0)>;
+			interconnect-names =
+				"DDP_COMPONENT_WDMA0_hrt_qos",
+				"DDP_COMPONENT_WDMA0_stash_qos";
 		};
 
 		disp_wdma1: disp1-wdma1@3e770000 {
