@@ -1067,6 +1067,76 @@ static ssize_t lvsys_modify_threshold_store(struct device *dev,
 }
 static DEVICE_ATTR_RW(lvsys_modify_threshold);
 
+static ssize_t exec_thl_enable_pct_array_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	unsigned int i;
+	int len = 0;
+
+	if (exec_thl_enable_pct != NULL) {
+		for(i = 0; i < lbat_data->temp_max_stage + 1; i++) {
+			len += snprintf(buf + len, PAGE_SIZE,
+				"%u ", exec_thl_enable_pct[i]);
+		}
+	} else {
+		len += snprintf(buf + len, PAGE_SIZE,
+			"exec_thl_enable_pct is NULL");
+	}
+	len += snprintf(buf + len, PAGE_SIZE, "\n");
+
+	return len;
+}
+
+static ssize_t exec_thl_enable_pct_array_store(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t size)
+{
+	unsigned int array_idx = 0;
+	int ret, soc;
+	char str[30];
+	char cmd[21];
+	union power_supply_propval val = { .intval = 0 };
+
+	if (sscanf(buf, "%20s %u\n", cmd, &array_idx) != 2) {
+		dev_info(dev, "Failed to read lbat-thl-enable-pct array_idx\n");
+		return -EINVAL;
+	}
+	if (strlen(cmd) >= sizeof(cmd))
+		return -EINVAL;
+
+	if (strncmp(cmd, "array_index", 11))
+		return -EINVAL;
+
+	ret = snprintf(str, sizeof(str), "lbat-thl-enable-pct%u", array_idx);
+	if ((ret < 0) || (ret >= sizeof(str)))
+		return -EINVAL;
+
+	if (exec_thl_enable_pct != NULL) {
+		ret = of_property_read_u32_array(dev->of_node, str,
+			exec_thl_enable_pct, lbat_data->temp_max_stage + 1);
+		if (ret) {
+			dev_notice(dev, "[%s] DTS no %s\n", __func__, str);
+			return -EINVAL;
+		}
+	} else {
+		dev_notice(dev, "[%s] exec_thl_enable_pct is NULL\n", __func__);
+		return -EINVAL;
+	}
+
+	ret = power_supply_get_property(lbat_data->psy, POWER_SUPPLY_PROP_CAPACITY, &val);
+	soc = val.intval;
+	if (exec_thl_enable_pct != NULL &&
+		soc < exec_thl_enable_pct[lbat_data->temp_cur_stage])
+		lbat_data->exec_thl_enable = true;
+	else if (exec_thl_enable_pct == NULL)
+		lbat_data->exec_thl_enable = true;
+	else
+		lbat_data->exec_thl_enable = false;
+
+	return size;
+}
+static DEVICE_ATTR_RW(exec_thl_enable_pct_array);
+
 static int lbat_psy_event(struct notifier_block *nb, unsigned long event, void *v)
 {
 	if (!lbat_data)
@@ -2170,11 +2240,11 @@ static int low_battery_throttling_probe(struct platform_device *pdev)
 	}
 
 	exec_thl_enable_pct = NULL;
-	if (of_property_count_u32_elems(np, "lbat-thl-enable-pct") ==
+	if (of_property_count_u32_elems(np, "lbat-thl-enable-pct0") ==
 		(priv->temp_max_stage + 1)) {
 		exec_thl_enable_pct = devm_kmalloc_array(&pdev->dev,
 			priv->temp_max_stage + 1, sizeof(u32), GFP_KERNEL);
-		ret = of_property_read_u32_array(np, "lbat-thl-enable-pct",
+		ret = of_property_read_u32_array(np, "lbat-thl-enable-pct0",
 			exec_thl_enable_pct, priv->temp_max_stage + 1);
 		if (ret) {
 			dev_notice(&pdev->dev, "[%s] Always enable exec_throttle\n", __func__);
@@ -2200,6 +2270,8 @@ static int low_battery_throttling_probe(struct platform_device *pdev)
 		&dev_attr_lvsys_table);
 	ret |= device_create_file(&(pdev->dev),
 		&dev_attr_lvsys_modify_threshold);
+	ret |= device_create_file(&(pdev->dev),
+		&dev_attr_exec_thl_enable_pct_array);
 	if (ret) {
 		dev_notice(&pdev->dev, "create file error ret=%d\n", ret);
 		return ret;
