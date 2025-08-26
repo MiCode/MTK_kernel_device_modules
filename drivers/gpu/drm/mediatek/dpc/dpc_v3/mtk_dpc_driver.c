@@ -1106,7 +1106,8 @@ static void dpc_enable_v3(const u8 en)
 
 		/* [0] urgent from 1:MML_DDREN_URG & DISP1_HRT_URG, 0:all subsys */
 		/* [1] disp_vcore controlled by 1:DPC_EN, 0:DUMMY1 */
-		writel(0x3, dpc_base + DISP_REG_DPC_DUMMY0);
+		writel(0x2, dpc_base + DISP_REG_DPC_DUMMY0);
+		writel(0, dpc_base + DISP_REG_DPC_ACT_SWITCH_CFG);
 
 		writel(0, dpc_base + DISP_REG_DPC_MERGE_DISP_INT_CFG);
 		writel(0, dpc_base + DISP_REG_DPC_MERGE_DISP_INTSTA);
@@ -1940,7 +1941,7 @@ void dpc_group_enable_v3(const u16 group, bool en)
 
 		/* [0] urgent from 1:MML_DDREN_URG & DISP1_HRT_URG, 0:all subsys */
 		/* [1] disp_vcore controlled by 1:DPC_EN, 0:DUMMY1 */
-		writel(0b01, dpc_base + DISP_REG_DPC_DUMMY0);
+		writel(0b00, dpc_base + DISP_REG_DPC_DUMMY0);
 
 		/* [0] disp_vcore SW_CTRL */
 		/* [1] disp_vcore SW_CTRL_VALUE */
