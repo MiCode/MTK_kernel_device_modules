@@ -2165,6 +2165,9 @@ int mtk_dbi_count_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 
 		mtk_dbi_count_hrt_cal_ratio(comp, CHANNEL_HRT_RW, &weight);
 		bw_val = (weight * bw_base + 399) / 400;
+		bw_val = bw_val > dbi_count->data->min_port_bw ?
+			bw_val : dbi_count->data->min_port_bw; //set low bound
+
 		bw_val *= (en > 0) ? 1 : 0;
 		if (bw_val > dbi_count->last_hrt) {
 			__mtk_disp_set_module_hrt(dbi_count->qos_req_w_hrt, comp->id, bw_val,
@@ -2260,6 +2263,8 @@ int mtk_dbi_count_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			/* DBI outstanding */
 			mtk_dbi_count_hrt_cal_ratio(comp, CHANNEL_HRT_RW, &weight);
 			bw_val = (weight * bw_base + 399) / 400;
+			bw_val = bw_val > dbi_count->data->min_port_bw ?
+				bw_val : dbi_count->data->min_port_bw; //set low bound
 			bw_val *= (en > 0) ? 1 : 0;
 			if(bw_val == dbi_count->last_hrt)
 				break;
@@ -3093,6 +3098,7 @@ static const struct mtk_disp_dbi_count_data mt6993_dbi_count_driver_data = {
 	.stash_lead_time = 20,
 	.min_stash_port_bw = 49,
 	.use_slot_trigger = true,
+	.min_port_bw = 1025,
 };
 
 static const struct of_device_id mtk_disp_dbi_count_driver_dt_match[] = {

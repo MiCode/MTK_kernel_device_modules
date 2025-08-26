@@ -602,6 +602,7 @@ struct mtk_disp_oddmr_data {
 	unsigned int stash_lead_time;
 	bool is_dbi_support_stash;
 	bool is_od_support_stash;
+	unsigned int min_port_bw;
 	unsigned int min_stash_port_bw;
 	int slc_read_alloc;
 	int slc_period;

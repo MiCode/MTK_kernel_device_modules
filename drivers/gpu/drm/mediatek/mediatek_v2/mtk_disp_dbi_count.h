@@ -30,6 +30,7 @@ struct mtk_disp_dbi_count_data {
 	irqreturn_t (*irq_handler)(int irq, void *dev_id);
 	unsigned int stash_lead_time;
 	unsigned int min_stash_port_bw;
+	unsigned int min_port_bw;
 	bool use_slot_trigger;
 };
 

@@ -7580,6 +7580,9 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 					bw_val += (stash_bw * dmr_enable);
 				}
 			}
+			bw_val = bw_val > oddmr_data->data->min_port_bw ?
+				bw_val : oddmr_data->data->min_port_bw; //set low bound
+			bw_val *= (dmr_enable > 0) ? 1 : 0;
 			__mtk_disp_set_module_hrt(oddmr_data->qos_req_dmrr_hrt, comp->id, bw_val,
 				priv->data->respective_ostdl);
 			oddmr_data->last_hrt_dmrr = bw_val;
@@ -7593,6 +7596,8 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 				/* stash bw = data_bw / 4096 * 16 */
 				bw_val += (bw_val / 256 > 17) ? (bw_val / 256) : 17;
 			}
+			bw_val = bw_val > oddmr_data->data->min_port_bw ?
+				bw_val : oddmr_data->data->min_port_bw; //set low bound
 			bw_val *= (dbi_enable > 0) ? 1 : 0;
 			__mtk_disp_set_module_hrt(oddmr_data->qos_req_dbir_hrt, comp->id, bw_val,
 				priv->data->respective_ostdl);
@@ -7620,11 +7625,14 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 						od_param->od_basic_info.basic_param.od_mode);
 				bw_val = DIV_ROUND_UP(layer_num * bw_base, 2 * 400);
 				/* OD R/W stash bw = data_bw / 4096 * 16 */
-				if (oddmr_data->data->is_od_support_stash &&
-						oddmr_data->data->od_version >= MTK_OD_V3) {
-					stash_bw = bw_val / 256;
-					stash_bw = stash_bw > oddmr_data->data->min_stash_port_bw ?
-						stash_bw : oddmr_data->data->min_stash_port_bw; //set low bound
+				if (oddmr_data->data->od_version >= MTK_OD_V3) {
+					if (oddmr_data->data->is_od_support_stash) {
+						stash_bw = bw_val / 256;
+						stash_bw = stash_bw > oddmr_data->data->min_stash_port_bw ?
+							stash_bw : oddmr_data->data->min_stash_port_bw; //set low bound
+					}
+					bw_val = bw_val > oddmr_data->data->min_port_bw ?
+						bw_val : oddmr_data->data->min_port_bw; //set low bound
 				}
 			} else {
 				bw_val = 0;
@@ -7704,6 +7712,9 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			else
 				bw_val += (stash_bw * dmr_enable);
 		}
+		bw_val = bw_val > oddmr_data->data->min_port_bw ?
+			bw_val : oddmr_data->data->min_port_bw; //set low bound
+		bw_val *= (dmr_enable > 0) ? 1 : 0;
 		if (bw_val > oddmr_data->last_hrt_dmrr) {
 			CRTC_MMP_MARK(0, oddmr_dmr_io_cmd, PMQOS_SET_HRT_BW_DELAY, 1);
 			ODDMRLOW_LOG("dmrr bw_val fast up %u -> %u\n", oddmr_data->last_hrt_dmrr, bw_val);
@@ -7746,6 +7757,8 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			/* stash bw = data_bw / 4096 * 16 */
 			bw_val += (bw_val / 256 > 17) ? (bw_val / 256) : 17;
 		}
+		bw_val = bw_val > oddmr_data->data->min_port_bw ?
+				bw_val : oddmr_data->data->min_port_bw; //set low bound
 		bw_val *= (dbi_enable > 0) ? 1 : 0;
 		if (bw_val > oddmr_data->last_hrt_dbir) {
 			ODDMRLOW_LOG("dbir bw_val fast up %u -> %u\n", oddmr_data->last_hrt_dbir, bw_val);
@@ -7785,11 +7798,14 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 					od_param->od_basic_info.basic_param.od_mode);
 			bw_val = DIV_ROUND_UP(layer_num * bw_base, 2 * 400);
 			/* OD R/W stash bw = data_bw / 4096 * 16 */
-			if (oddmr_data->data->is_od_support_stash &&
-					oddmr_data->data->od_version >= MTK_OD_V3) {
-				stash_bw = bw_val / 256;
-				stash_bw = stash_bw > oddmr_data->data->min_stash_port_bw ?
-					stash_bw : oddmr_data->data->min_stash_port_bw; //set low bound
+			if (oddmr_data->data->od_version >= MTK_OD_V3) {
+				if (oddmr_data->data->is_od_support_stash) {
+					stash_bw = bw_val / 256;
+					stash_bw = stash_bw > oddmr_data->data->min_stash_port_bw ?
+						stash_bw : oddmr_data->data->min_stash_port_bw; //set low bound
+				}
+				bw_val = bw_val > oddmr_data->data->min_port_bw ?
+					bw_val : oddmr_data->data->min_port_bw; //set low bound
 			}
 		} else {
 			bw_val = 0;
@@ -15688,6 +15704,7 @@ static const struct mtk_disp_oddmr_data mt6993_oddmr_driver_data = {
 	.stash_lead_time = 20,
 	.is_dbi_support_stash = true,
 	.is_od_support_stash = true,
+	.min_port_bw = 1025,
 	.min_stash_port_bw = 49,
 	.slc_read_alloc = 1,
 	.slc_period = 1,
