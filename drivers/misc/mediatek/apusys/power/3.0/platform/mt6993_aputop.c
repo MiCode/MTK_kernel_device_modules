@@ -947,13 +947,23 @@ static const struct proc_ops opp_proc_ops = {
 	.proc_release = single_release,
 };
 
-/* show engine current frequency in procfs */
-static int mt6993_engine_freq_proc_show(struct seq_file *m, void *v)
+/* show engine current frequency or bw in procfs */
+static int mt6993_engine_proc_show(struct seq_file *m, void *v)
 {
 	uint32_t opp = 0, mbox_status = 0;
 	int nearest_freq, mdla_ret = 0, mvpu_ret = 0;
+	uint32_t qos;
 	const char *type = (const char *)m->private;
 
+	/* get npu current bw_mnoc value */
+	if (strcmp(type, "qos") == 0) {
+		qos = apu_readl(
+			(apupw.regs[apu_md32_mbox] + BW_MNOC_SYNC_REG));
+		seq_printf(m, "%d\n", qos);
+		goto out;
+	}
+
+	/* get engine current freq */
 	mbox_status = apu_readl(
 			(apupw.regs[apu_md32_mbox] + ENGINE_ONOFF_OPP_SYNC_REG));
 	pr_info("%s, mbox_status = %08x", __func__, mbox_status);
@@ -1013,7 +1023,7 @@ out:
 
 static int mt6993_engine_freq_proc_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, mt6993_engine_freq_proc_show, pde_data(inode));
+	return single_open(file, mt6993_engine_proc_show, pde_data(inode));
 }
 
 static const struct proc_ops engine_freq_proc_ops = {
@@ -1024,6 +1034,7 @@ static const struct proc_ops engine_freq_proc_ops = {
 };
 
 static struct proc_dir_entry *apudvfs_dir;
+static struct proc_dir_entry *npuqos;
 
 static int mt6993_init_user_max_opp(struct platform_device *pdev)
 {
@@ -1509,6 +1520,7 @@ static int mt6993_apu_top_pb(struct platform_device *pdev)
 	mutex_init(&lock);
 	// init apudvfs proc
 	apudvfs_dir = proc_mkdir("npudvfs", NULL);
+	npuqos = proc_mkdir("npu_qos", NULL);
 	if (!apudvfs_dir)
 		return -ENOMEM;
 
@@ -1531,6 +1543,11 @@ static int mt6993_apu_top_pb(struct platform_device *pdev)
 	if (!proc_create("npu_user_limit", 0644, apudvfs_dir, &client_input_ops)) {
 		//remove_proc_entry("apudvfs", NULL);
 		pr_info("%s: create user_limit failed\n", __func__);
+		return -ENOMEM;
+	}
+
+	if (!proc_create_data("npubw", 0444, npuqos, &engine_freq_proc_ops, "qos")) {
+		pr_info("%s: create npu_bw failed\n", __func__);
 		return -ENOMEM;
 	}
 

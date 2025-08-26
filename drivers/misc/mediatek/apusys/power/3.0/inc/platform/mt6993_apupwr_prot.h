@@ -34,6 +34,7 @@
  * The following are used for data exchange through spare register(s)
  * direction : uP write -> APMCU read
  */
+#define BW_MNOC_SYNC_REG				SPARE_DBG_REG5
 #define ENGINE_ONOFF_OPP_SYNC_REG		SPARE_DBG_REG6
 #define DRV_STAT_SYNC_REG               SPARE_DBG_REG7
 #define MBRAIN_DATA_SYNC_0_REG          SPARE_DBG_REG8  // pll recording
