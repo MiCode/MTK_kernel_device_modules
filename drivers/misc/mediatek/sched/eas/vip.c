@@ -545,13 +545,13 @@ void set_top_app_vip(unsigned int prio)
 {
 	set_group_vip_prio_by_name("top-app", prio);
 }
-EXPORT_SYMBOL_GPL(set_top_app_vip);
+EXPORT_SYMBOL(set_top_app_vip);
 
 void unset_top_app_vip(void)
 {
 	set_group_vip_prio_by_name("top-app", DEFAULT_VIP_PRIO_THRESHOLD);
 }
-EXPORT_SYMBOL_GPL(unset_top_app_vip);
+EXPORT_SYMBOL(unset_top_app_vip);
 /* end of top-app interface */
 
 /* foreground interface */
