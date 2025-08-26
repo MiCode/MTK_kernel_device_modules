@@ -1280,6 +1280,8 @@ static bool tp_check_tput_dc(struct mml_frame_info *info, struct mml_topology_ca
 	info_cache->duration = pixel / max_clock;
 	if (info_cache->duration > MML_DC_MAX_DURATION_US)
 		return false;
+	if (!info_cache->remain)
+		return false;
 
 	tput = pixel / info_cache->remain;
 	for (i = 0; i < tp->dvfs->opp_cnt; i++) {
