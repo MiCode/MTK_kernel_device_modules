@@ -771,7 +771,7 @@ static void mtk_disp_mdp_rsz_config_overhead(struct mtk_ddp_comp *comp,
 		right_in_w =  cfg->rsz_src_w / 2;
 
 		/*set component overhead*/
-		if (comp->id == DDP_COMPONENT_MDP_RSZ0 || comp->id == DDP_COMPONENT_SYS_B_MDP_RSZ0) {
+		if (comp->id == DDP_COMPONENT_MDP_RSZ0) {
 			/* copy from post-accumulation */
 			rsz->tile_overhead.left_out_tile_loss = cfg->tile_overhead.left_overhead;
 			rsz->tile_overhead.is_support = cfg->tile_overhead.is_support;
@@ -797,7 +797,7 @@ static void mtk_disp_mdp_rsz_config_overhead(struct mtk_ddp_comp *comp,
 			rsz->tile_overhead.left_in_width = cfg->tile_overhead.left_in_width;
 			rsz->tile_overhead.left_overhead = cfg->tile_overhead.left_overhead;
 		}
-		if (comp->id == DDP_COMPONENT_MDP_RSZ1) {
+		if (comp->id == DDP_COMPONENT_MDP_RSZ1 || comp->id == DDP_COMPONENT_SYS_B_MDP_RSZ0) {
 			/* copy from post-accumulation */
 			rsz->tile_overhead.right_out_tile_loss = cfg->tile_overhead.right_overhead;
 			rsz->tile_overhead.is_support = cfg->tile_overhead.is_support;

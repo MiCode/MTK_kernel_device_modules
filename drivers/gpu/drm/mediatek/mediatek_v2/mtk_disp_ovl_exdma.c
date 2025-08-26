@@ -2319,7 +2319,8 @@ static void _ovl_exdma_common_config(struct mtk_ddp_comp *comp, unsigned int idx
 
 		if (pending->pq_loop_type == 2) {
 			if (priv->data->ovl_exdma_rule &&
-				comp->id == cmp_id && cmp_id < DDP_COMPONENT_ID_MAX) {
+			    (comp->id == cmp_id || (mtk_crtc->is_dual_pipe &&
+			    (DUAL_MAPPING_LEFT_EXDMA(comp->id) == cmp_id))) && cmp_id < DDP_COMPONENT_ID_MAX) {
 				cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa +
 					regs[OVL_EXDMA_L0_SRC_SIZE], src_size, ~0);
 			} else {
@@ -2337,7 +2338,9 @@ static void _ovl_exdma_common_config(struct mtk_ddp_comp *comp, unsigned int idx
 		if (comp->bind_comp) { // need_to_think
 			if (pending->pq_loop_type == 2) {
 				if (priv->data->ovl_exdma_rule &&
-					comp->id == cmp_id && cmp_id < DDP_COMPONENT_ID_MAX) {
+				    (comp->id == cmp_id || (mtk_crtc->is_dual_pipe &&
+				    (DUAL_MAPPING_LEFT_EXDMA(comp->id) == cmp_id)))
+				    && cmp_id < DDP_COMPONENT_ID_MAX) {
 					if (blender_need_align == 1)
 						cmdq_pkt_write(handle, comp->cmdq_base, comp->bind_comp->regs_pa +
 							regs[OVL_EXDMA_L0_SRC_SIZE], pending->dst_roi + 1, ~0);
