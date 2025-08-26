@@ -295,7 +295,8 @@ struct cmdq_thread {
 #if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
 	bool			is_virtio;
 #endif
-	bool thread_timeout;
+	bool			thread_timeout;
+	bool			mmp_exec;
 };
 
 struct cmdq_skip_timeout_cb_data {

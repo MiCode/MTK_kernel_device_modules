@@ -203,6 +203,8 @@ int cmdq_ftrace_ena;
 EXPORT_SYMBOL(cmdq_ftrace_ena);
 module_param(cmdq_ftrace_ena, int, 0644);
 
+static u32 cmdq_mmp_thread_exec;
+
 struct cmdq_hw_trace_bit {
 	uint8_t enable : 1;
 	uint8_t dump : 1;
@@ -237,6 +239,7 @@ struct cmdq_mmp_event {
 	mmp_event cmdq_irq;
 	mmp_event loop_irq;
 	mmp_event thread_en;
+	mmp_event thread_exec[32];
 	mmp_event thread_suspend;
 	mmp_event submit;
 	mmp_event wait;
@@ -734,6 +737,9 @@ static inline void cmdq_mmp_init(void)
 {
 #ifndef CMDQ_SKIP_BY_CMDQ_BUILT
 #if IS_ENABLED(CONFIG_CMDQ_MMPROFILE_SUPPORT)
+	u32 bit;
+	unsigned long thread_exec = cmdq_mmp_thread_exec;
+
 	mmprofile_enable(1);
 	if (cmdq_mmp.cmdq) {
 		mmprofile_start(1);
@@ -752,6 +758,18 @@ static inline void cmdq_mmp_init(void)
 	cmdq_mmp.pkt_size = mmprofile_register_event(cmdq_mmp.cmdq, "pkt_size");
 	cmdq_mmp.wait = mmprofile_register_event(cmdq_mmp.cmdq, "wait");
 	cmdq_mmp.warning = mmprofile_register_event(cmdq_mmp.cmdq, "warning");
+
+	for_each_set_bit(bit, &thread_exec,
+		min_t(u32, 32, (u32)ARRAY_SIZE(cmdq_mmp.thread_exec))) {
+		char name[10];
+		u32 len;
+
+		len = snprintf(name, sizeof(name), "thread%u", bit);
+		if (!len || len >= sizeof(name))
+			name[sizeof(name) - 1] = 0;
+		cmdq_mmp.thread_exec[bit] = mmprofile_register_event(cmdq_mmp.thread_en, name);
+	}
+
 	mmprofile_enable_event_recursive(cmdq_mmp.cmdq, 1);
 	mmprofile_start(1);
 #endif
@@ -1086,6 +1104,10 @@ static void cmdq_thread_err_reset(struct cmdq *cmdq, struct cmdq_thread *thread,
 #if IS_ENABLED(CONFIG_CMDQ_MMPROFILE_SUPPORT)
 	mmprofile_log_ex(cmdq_mmp.thread_en, MMPROFILE_FLAG_PULSE,
 		MMP_THD(thread, cmdq), CMDQ_THR_ENABLED);
+	if (thread->mmp_exec) {
+		mmprofile_log_ex(cmdq_mmp.thread_exec[thread->idx], MMPROFILE_FLAG_START,
+			MMP_THD(thread, cmdq), CMDQ_THR_ENABLED);
+	}
 #endif
 #endif
 }
@@ -1094,6 +1116,10 @@ static void cmdq_thread_disable(struct cmdq *cmdq, struct cmdq_thread *thread)
 {
 #ifndef CMDQ_SKIP_BY_CMDQ_BUILT
 #if IS_ENABLED(CONFIG_CMDQ_MMPROFILE_SUPPORT)
+	if (thread->mmp_exec) {
+		mmprofile_log_ex(cmdq_mmp.thread_exec[thread->idx], MMPROFILE_FLAG_END,
+			MMP_THD(thread, cmdq), CMDQ_THR_ENABLED);
+	}
 	mmprofile_log_ex(cmdq_mmp.thread_en, MMPROFILE_FLAG_PULSE,
 		MMP_THD(thread, cmdq), CMDQ_THR_DISABLED);
 #endif
@@ -1497,6 +1523,11 @@ static void cmdq_task_exec(struct cmdq_pkt *pkt, struct cmdq_thread *thread)
 #if IS_ENABLED(CONFIG_CMDQ_MMPROFILE_SUPPORT)
 		mmprofile_log_ex(cmdq_mmp.thread_en, MMPROFILE_FLAG_PULSE,
 			MMP_THD(thread, cmdq), CMDQ_THR_ENABLED);
+		if (thread->mmp_exec) {
+			mmprofile_log_ex(cmdq_mmp.thread_exec[thread->idx], MMPROFILE_FLAG_START,
+				MMP_THD(thread, cmdq), CMDQ_THR_ENABLED);
+		}
+
 #endif
 #endif
 
@@ -3460,6 +3491,7 @@ static int cmdq_probe(struct platform_device *pdev)
 	of_property_read_u32(dev->of_node, "cmdq-pwr-log", &cmdq_pwr_log);
 	of_property_read_u32(dev->of_node, "cmdq-proc-debug-off", &cmdq_proc_debug_off);
 	of_property_read_u32(dev->of_node, "cmdq-print-debug", &cmdq_print_debug);
+	of_property_read_u32(dev->of_node, "cmdq-mmp-thread-exec", &cmdq_mmp_thread_exec);
 
 	cmdq_msg("hwid:%d dump_buf_size %d error irq %d proc_debug_off:%d print_debug:%d",
 		cmdq->hwid, cmdq_dump_buf_size,
@@ -3629,6 +3661,9 @@ static int cmdq_probe(struct platform_device *pdev)
 		mutex_init(&cmdq->thread[i].pkt_id_mutex);
 		INIT_WORK(&cmdq->thread[i].timeout_work,
 			cmdq_thread_handle_timeout_work);
+
+		if (i < ARRAY_SIZE(cmdq_mmp.thread_exec) && cmdq_mmp.thread_exec[i])
+			cmdq->thread[i].mmp_exec = true;
 	}
 
 	err = mbox_controller_register(&cmdq->mbox);
