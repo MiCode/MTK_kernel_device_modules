@@ -4877,13 +4877,15 @@ skip_hwcq:
 	pm_runtime_set_autosuspend_delay(host->dev, MTK_MMC_AUTOSUSPEND_DELAY);
 	pm_runtime_use_autosuspend(host->dev);
 	pm_runtime_enable(host->dev);
+
+	bitmap_zero(host->err_bag.err_bitmap, ERR_BIT_SIZE);
+	INIT_KFIFO(host->err_info_bag_ring);
+
 	ret = mmc_add_host(mmc);
 
 	if (ret)
 		goto end;
 
-	bitmap_zero(host->err_bag.err_bitmap, ERR_BIT_SIZE);
-	INIT_KFIFO(host->err_info_bag_ring);
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MMC_DEBUG)
 	ret = mmc_dbg_register(mmc);
