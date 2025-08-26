@@ -485,6 +485,15 @@ static void mtk_pcie_config_tlp_header(struct pci_bus *bus, unsigned int devfn,
 	writel_relaxed(val, port->base + PCIE_CFGNUM_REG);
 }
 
+static void mtk_pcie_block_config_access(struct mtk_pcie_port *port)
+{
+	u32 val;
+
+	val = readl_relaxed(port->base + PCIE_CFGNUM_REG);
+	val |= PCIE_CFG_BUS(0xf);
+	writel_relaxed(val, port->base + PCIE_CFGNUM_REG);
+}
+
 static void __iomem *mtk_pcie_map_bus(struct pci_bus *bus, unsigned int devfn,
 				      int where)
 {
@@ -544,6 +553,8 @@ static int mtk_pcie_config_read(struct pci_bus *bus, unsigned int devfn,
 		}
 	}
 
+	mtk_pcie_block_config_access(port);
+
 	return 0;
 }
 
@@ -551,6 +562,7 @@ static int mtk_pcie_config_write(struct pci_bus *bus, unsigned int devfn,
 				 int where, int size, u32 val)
 {
 	struct mtk_pcie_port *port = bus->sysdata;
+	int ret;
 
 	if (port->soft_off)
 		return 0;
@@ -574,7 +586,10 @@ static int mtk_pcie_config_write(struct pci_bus *bus, unsigned int devfn,
 		}
 	}
 
-	return pci_generic_config_write32(bus, devfn, where, 4, val);
+	ret = pci_generic_config_write32(bus, devfn, where, 4, val);
+	mtk_pcie_block_config_access(port);
+
+	return ret;
 }
 
 static struct pci_ops mtk_pcie_ops = {
@@ -2350,6 +2365,8 @@ u32 mtk_pcie_dump_link_info(int port)
 	if (val & PCI_ERR_UNC_COMP_TIME)
 		ret_val |= BIT(6);
 
+	mtk_pcie_block_config_access(pcie_port);
+
 	val = readl_relaxed(pcie_port->base + PCIE_MSI_SET_BASE_REG +
 			    PCIE_MSI_SET_OFFSET + PCIE_MSI_SET_STATUS_OFFSET);
 	if (val & DRIVER_OWN_IRQ_STATUS)
@@ -2424,6 +2441,8 @@ int mtk_pcie_disable_data_trans(int port)
 	val &= ~PCIE_DCR2_CPL_TO;
 	val |= PCIE_CPL_TIMEOUT_64US;
 	writel_relaxed(val, pcie_port->base + PCIE_CONF_DEV2_CTL_STS);
+
+	mtk_pcie_block_config_access(pcie_port);
 
 	pr_info("reset control signal(0x148)=%#x, IP config control(0x84)=%#x\n",
 		readl_relaxed(pcie_port->base + PCIE_RST_CTRL_REG),
@@ -3498,6 +3517,8 @@ static int mtk_pcie_switch_to_lpclk(struct mtk_pcie_port *port, bool enable)
 static int mtk_pcie_suspend_l12_6993(struct mtk_pcie_port *port)
 {
 	mtk_pcie_switch_to_lpclk(port, true);
+	if (port->pcidev->state_saved)
+		port->pcidev->state_saved = false;
 
 	return 0;
 }
