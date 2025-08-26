@@ -13,6 +13,8 @@
 #include <linux/arm-smccc.h>
 #include <linux/soc/mediatek/mtk_sip_svc.h>
 #include <linux/nvmem-consumer.h>
+#include <linux/io.h>
+#include <linux/of_platform.h>
 #include "mtk_battery_oc_throttling.h"
 #include "mtk_low_battery_throttling.h"
 #include "mtk_bp_thl.h"
@@ -67,6 +69,7 @@ struct cpu_pt_priv {
 	u32 *core_active;
 	u32 mpmm_enable;
 	u32 mpmm_activate_lv;
+	u32 *soc_limit_cmep_lv;
 };
 
 struct cpu_bootup_pt_priv {
@@ -146,6 +149,82 @@ static struct cpu_pause_tbl cicb = {
 
 static LIST_HEAD(pt_policy_list);
 static LIST_HEAD(bootup_pt_policy_list);
+
+#if IS_ENABLED(CONFIG_MTK_BATTERY_PERCENT_THROTTLING)
+static void __iomem *cmep_addr;
+static void __iomem *swpt_freq_limit_B_addr;
+
+static int cmep_init(void)
+{
+	struct device_node *dev_node;
+	struct platform_device *pdev_temp;
+	struct resource *sram_res;
+	int ret = 0;
+
+	/* init cmep */
+	dev_node = of_find_node_by_name(NULL, "cmep");
+	if (!dev_node) {
+		pr_info("failed to find node cmep @ %s\n", __func__);
+		return -ENODEV;
+	}
+
+	pdev_temp = of_find_device_by_node(dev_node);
+	of_node_put(dev_node); // release reference
+
+	if (!pdev_temp) {
+		pr_info("failed to find cmep pdev @ %s\n", __func__);
+		return -EINVAL;
+	}
+
+	sram_res = platform_get_resource(pdev_temp, IORESOURCE_MEM, 0);
+	if (sram_res) {
+		cmep_addr = ioremap(sram_res->start, resource_size(sram_res));
+		if (!cmep_addr) {
+			pr_info("%s ioremap failed\n", __func__);
+			cmep_addr = NULL;
+			return -ENOMEM;
+		}
+	} else {
+		pr_info("%s can't find cmep resource\n", __func__);
+		cmep_addr = NULL;
+		return -ENODEV;
+	}
+	sram_res = platform_get_resource(pdev_temp, IORESOURCE_MEM, 1);
+	if (sram_res) {
+		swpt_freq_limit_B_addr = ioremap(sram_res->start, resource_size(sram_res));
+		if (!swpt_freq_limit_B_addr) {
+			pr_info("%s ioremap failed\n", __func__);
+			swpt_freq_limit_B_addr = NULL;
+			return -ENOMEM;
+		}
+	} else {
+		pr_info("%s can't find swpt_freq_limit_B_addr resource\n", __func__);
+		swpt_freq_limit_B_addr = NULL;
+		return -ENODEV;
+	}
+	iowrite8(1, cmep_addr); // set init cmep_addr default value
+	iowrite32(CPU_UNLIMIT_FREQ, swpt_freq_limit_B_addr); // set init swpt_freq_limit_B_addr default value
+	return ret;
+}
+
+static void cmep_exit(void)
+{
+	if (cmep_addr) {
+		iounmap(cmep_addr);
+		pr_info("cmep_addr unmapped\n");
+		cmep_addr = NULL;
+	} else
+		pr_info("cmep_addr already unmapped\n");
+
+	if (swpt_freq_limit_B_addr) {
+		iounmap(swpt_freq_limit_B_addr);
+		pr_info("swpt_freq_limit_B_addr unmapped\n");
+		swpt_freq_limit_B_addr = NULL;
+	} else
+		pr_info("swpt_freq_limit_B_addr already unmapped\n");
+
+}
+#endif
 
 static int pt_set_cpu_active(unsigned int cpu, bool active)
 {
@@ -275,6 +354,46 @@ static void cpu_pt_battery_percent_cb(enum BATTERY_PERCENT_LEVEL_TAG level)
 		mpmm_enable(mpmm_gear);
 	else if (pt_info_p->mpmm_enable != 0 && level < pt_info_p->mpmm_activate_lv)
 		mpmm_enable (DISABLE_MPMM);
+
+	// CME policy trigger by battery percentage
+	if (!cmep_addr) {
+		pr_info("cmep_addr is NULL, skip write!\n");
+		return;
+	}
+
+	u8 tcm_val = 1;
+	s32 freq_limit_B = CPU_UNLIMIT_FREQ;
+	int lv_idx;
+
+	if (!cmep_addr || !swpt_freq_limit_B_addr) {
+		pr_info("%s: addr is NULL, skip tcm control (cmep:%p, B:%p)\n",
+			__func__, cmep_addr, swpt_freq_limit_B_addr);
+		return;
+	}
+
+	if (level < 0) {
+		pr_info("%s: invalid level %d, skip tcm control\n", __func__, level);
+		goto write_reg;
+	}
+
+	if (level == BATTERY_PERCENT_LEVEL_0)
+		goto write_reg;
+
+	lv_idx = level - 1;
+	if (lv_idx < 0 || lv_idx >= pt_info_p->max_lv) {
+		pr_info("%s: invalid lv_idx %d (level=%d, max_lv=%u), set default\n",
+			__func__, lv_idx, level, pt_info_p->max_lv);
+		goto write_reg;
+	}
+
+	tcm_val = (pt_info_p->soc_limit_cmep_lv[lv_idx] == 0) ? 0 : 1;
+	freq_limit_B = pt_info_p->freq_limit[lv_idx * CLUSTER_NUM + 2];
+
+write_reg:
+	iowrite8(tcm_val, cmep_addr);
+	iowrite32(freq_limit_B, swpt_freq_limit_B_addr);
+
+	// pr_info("%s: level=%d, tcm_val=%u, B=%d\n", __func__, level, tcm_val, freq_limit_B);
 }
 #endif
 static void __used cpu_limit_default_setting(struct device *dev, enum cpu_pt_type type)
@@ -496,6 +615,9 @@ static int __used parse_cpu_limit_table(struct device *dev)
 		if (!pt_info_p->core_active)
 			return -ENOMEM;
 
+		if (i == SOC_POWER_THROTTLING)
+			pt_info_p->soc_limit_cmep_lv = kzalloc(sizeof(u32) * pt_info_p->max_lv , GFP_KERNEL);
+
 		for (j = 0; j < pt_info_p->max_lv; j++) {
 			memset(buf, 0, sizeof(buf));
 			ret = snprintf(buf, sizeof(buf), "%s%d", pt_info_p->freq_limit_name, j+1);
@@ -521,6 +643,20 @@ static int __used parse_cpu_limit_table(struct device *dev)
 					pr_notice("%s: get %s fail %d set core limit to 1\n", __func__, buf, ret);
 					for (k = 0; k < CORE_NUM; k++)
 						pt_info_p->core_active[j * CORE_NUM + k] = 1;
+				}
+				// For cmep
+				if (cmep_addr != NULL) {
+					memset(buf, 0, sizeof(buf));
+					if (snprintf(buf, sizeof(buf), "soc-limit-cmep-lv%d", j + 1) < 0) {
+						pr_info("%s: snprintf fail at lv%d\n", __func__, j + 1);
+						break;
+					}
+					ret = of_property_read_u32(np, buf, &pt_info_p->soc_limit_cmep_lv[j]);
+					if (ret) {
+						pr_info("%s: get %s fail (%d)at cmep-lv\n", __func__, buf, ret);
+						break;
+					}
+					pr_info("%s: %s = %u\n", __func__, buf, pt_info_p->soc_limit_cmep_lv[j]);
 				}
 				ret = of_property_read_u32(np, "mpmm-enable", &pt_info_p->mpmm_enable);
 				if (ret) {
@@ -878,6 +1014,9 @@ static int mtk_cpu_power_throttling_probe(struct platform_device *pdev)
 
 	switch_pt = false;
 	bootup_pt_support = false;
+#if IS_ENABLED(CONFIG_MTK_BATTERY_PERCENT_THROTTLING)
+	cmep_init();
+#endif
 	ret = parse_cpu_limit_table(&pdev->dev);
 	if (ret != 0)
 		return ret;
@@ -1008,6 +1147,9 @@ static void mtk_cpu_power_throttling_remove(struct platform_device *pdev)
 		list_del(&pt_policy->cpu_pt_list);
 		kfree(pt_policy);
 	}
+#if IS_ENABLED(CONFIG_MTK_BATTERY_PERCENT_THROTTLING)
+	cmep_exit();
+#endif
 }
 static const struct of_device_id cpu_power_throttling_of_match[] = {
 	{ .compatible = "mediatek,cpu-power-throttling", },
