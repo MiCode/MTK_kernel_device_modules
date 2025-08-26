@@ -2073,12 +2073,6 @@ static void dpc_disp_group_enable_func(const enum mtk_dpc_disp_vidle group, bool
 		value = (en && avail) ? (BIT(0) | BIT(4) | BIT(6)) : 0;
 		if (g_priv->mtcmos_mask & (0x1 << DPC_MTCMOS_ID_DIS1))
 			writel(value, dpc_base + DISP_REG_DPC_DISP1_MTCMOS_CFG);
-
-		/* DDR_SRC and EMI_REQ DT is follow DISP1 */
-		value1 = (en && mtk_dpc_support_cap(DPC_VIDLE_APSRC_OFF)) ?
-					0x00010001 : 0x000D000D;
-		writel(value1, dpc_base + DISP_REG_DPC_DISP_DDRSRC_EMIREQ_CFG);
-		dpc_mmp(disp_group_auto, MMPROFILE_FLAG_PULSE, DPC_VIDLE_APSRC_OFF, value1);
 		break;
 	case DPC_DISP_VIDLE_VDISP_DVFS:
 		value = (en && avail) ? 0 : 1;
@@ -2087,6 +2081,12 @@ static void dpc_disp_group_enable_func(const enum mtk_dpc_disp_vidle group, bool
 		if (value == 1 && !readl(dpc_base + DISP_REG_DPC_DISP_VDISP_DVFS_CFG))
 			dpc_polling_dvfsrc_ack_done();
 		writel(value, dpc_base + DISP_REG_DPC_DISP_VDISP_DVFS_CFG);
+
+		/* DDR_SRC and EMI_REQ DT is follow DISP1 */
+		value1 = (en && mtk_dpc_support_cap(DPC_VIDLE_APSRC_OFF)) ?
+					0x00010001 : 0x000D000D;
+		writel(value1, dpc_base + DISP_REG_DPC_DISP_DDRSRC_EMIREQ_CFG);
+		dpc_mmp(disp_group_auto, MMPROFILE_FLAG_PULSE, DPC_VIDLE_APSRC_OFF, value1);
 		break;
 	case DPC_DISP_VIDLE_HRT_BW:
 	case DPC_DISP_VIDLE_SRT_BW:
@@ -2142,12 +2142,6 @@ static void dpc_mml_group_enable_func(const enum mtk_dpc_mml_vidle group, bool e
 		value = (en && avail) ? (BIT(0) | BIT(4)) : 0;
 		if (g_priv->mtcmos_mask & (0x1 << DPC_MTCMOS_ID_MML1))
 			writel(value, dpc_base + DISP_REG_DPC_MML1_MTCMOS_CFG);
-
-		/* DDR_SRC and EMI_REQ DT is follow MML1 */
-		value1 = (en && mtk_dpc_support_cap(DPC_VIDLE_APSRC_OFF)) ?
-					0x00010001 : 0x000D000D;
-		writel(value1, dpc_base + DISP_REG_DPC_MML_DDRSRC_EMIREQ_CFG);
-		dpc_mmp(mml_group_auto, MMPROFILE_FLAG_PULSE, DPC_VIDLE_APSRC_OFF, value1);
 		break;
 	case DPC_MML_VIDLE_VDISP_DVFS:
 		value = (en && avail) ? 0 : 1;
@@ -2156,6 +2150,12 @@ static void dpc_mml_group_enable_func(const enum mtk_dpc_mml_vidle group, bool e
 		if (value == 1 && !readl(dpc_base + DISP_REG_DPC_MML_VDISP_DVFS_CFG))
 			dpc_polling_dvfsrc_ack_done();
 		writel(value, dpc_base + DISP_REG_DPC_MML_VDISP_DVFS_CFG);
+
+		/* DDR_SRC and EMI_REQ DT is follow MML1 */
+		value1 = (en && mtk_dpc_support_cap(DPC_VIDLE_APSRC_OFF)) ?
+					0x00010001 : 0x000D000D;
+		writel(value1, dpc_base + DISP_REG_DPC_MML_DDRSRC_EMIREQ_CFG);
+		dpc_mmp(mml_group_auto, MMPROFILE_FLAG_PULSE, DPC_VIDLE_APSRC_OFF, value1);
 		break;
 	case DPC_MML_VIDLE_HRT_BW:
 	case DPC_MML_VIDLE_SRT_BW:
