@@ -11219,6 +11219,12 @@ dramc: dramc@10230000 {
 	evb-fg-off = <1>;
 };
 
+&mt6685_mfd {
+	mt6685_consys: mt6685-consys {
+		compatible = "mediatek,mt6685-consys";
+	};
+};
+
 #include "mediatek/bat_setting/mt6858_battery_prop.dtsi"
 
 /delete-node/ &mt6363_vbuck1_sshub;
