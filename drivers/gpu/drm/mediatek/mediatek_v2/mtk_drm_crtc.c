@@ -23435,7 +23435,7 @@ void mtk_crtc_vblank_irq_for_lpc_resync(struct drm_crtc *crtc)
 	int index = drm_crtc_index(crtc);
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	char tag_name[100] = {'\0'};
-	long long ts = 0;
+	unsigned long long ts = 0;
 	ktime_t ktime;
 	struct mtk_ddp_comp *comp = mtk_ddp_comp_request_output_lpc(mtk_crtc);
 

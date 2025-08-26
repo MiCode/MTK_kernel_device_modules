@@ -2632,7 +2632,7 @@ void mtk_wakeup_pf_wq(unsigned int m_id)
 	unsigned int crtc_idx = 0;
 	struct mtk_drm_private *drm_priv = NULL;
 	ktime_t sof_time = 0;
-	long long sof_ts = 0;
+	unsigned long long sof_ts = 0;
 	struct mtk_ddp_comp *lpc_comp = NULL;
 	bool lpc_en = false;
 

@@ -376,16 +376,36 @@ void set_pl_kernel_offset(struct mtk_ddp_comp *comp)
 	lpc->ts_offset = arch_timer_read_counter() - ts;
 
 	DDPINFO("%s,ker:%llu,offset:%llu\n", __func__, ts, lpc->ts_offset);
+	drm_trace_tag_value("lpc_ts_offset", lpc->ts_offset);
 }
-ktime_t pl_kernel_offset(struct mtk_ddp_comp *comp)
+void mtk_dsi_lpc_sys_time_ts(unsigned long long *sys_time_ts, struct mtk_drm_crtc *mtk_crtc, struct mtk_ddp_comp *comp)
 {
+	int index = 0;
+	unsigned long ts0, ts1;
 	struct mtk_dsi_lpc *lpc = comp_to_dsi_lpc(comp);
 
-	return lpc->ts_offset;
+	index = mtk_dsi_lpc_unit(mtk_crtc);
+	if (index < 0) {
+		DDPMSG("%s lpc unit error\n", __func__);
+		return;
+	}
+
+	ts0 = readl(comp->regs+ DSI_LPC_SYS_TIMER_TIMESTAMP0);
+	ts1 = readl(comp->regs + DSI_LPC_SYS_TIMER_TIMESTAMP1);
+	*sys_time_ts = (ts1 << 32 | ts0) << 7;
+	if (*sys_time_ts > lpc->ts_offset)
+		*sys_time_ts -= lpc->ts_offset;
+	else
+		DDPPR_ERR("%s,error,ts_offset:%llu\n", __func__, lpc->ts_offset);
+
+	drm_trace_tag_value("lpc_sys_time_timestamp0", ts0);
+	drm_trace_tag_value("lpc_sys_time_timestamp1", ts1);
+	drm_trace_tag_value("lpc_sys_time_timestamp", *sys_time_ts);
+	DDPPR_ERR("%s,error,t0:%llu,t1:%llu,sys_time_ts:%llu,ts_offset:%llu\n",
+				__func__, ts0, ts1, *sys_time_ts, lpc->ts_offset);
 }
-void mtk_dsi_lpc_sof_ts(long long *sof_ts, struct mtk_drm_crtc *mtk_crtc, struct mtk_ddp_comp *comp)
+void mtk_dsi_lpc_sof_ts(unsigned long long *sof_ts, struct mtk_drm_crtc *mtk_crtc, struct mtk_ddp_comp *comp)
 {
-	/* repot sof time */
 	int index = 0;
 	unsigned long ts0, ts1;
 	struct mtk_dsi_lpc *lpc = comp_to_dsi_lpc(comp);
@@ -399,10 +419,19 @@ void mtk_dsi_lpc_sof_ts(long long *sof_ts, struct mtk_drm_crtc *mtk_crtc, struct
 	ts0 = readl(comp->regs+ DSI_LPC_SOF_TIMESTAMP_0(index));
 	ts1 = readl(comp->regs + DSI_LPC_SOF_TIMESTAMP_1(index));
 	*sof_ts = (ts1 << 32 | ts0) << 7;
-	*sof_ts -= pl_kernel_offset(comp);
+	if (*sof_ts > lpc->ts_offset)
+		*sof_ts -= lpc->ts_offset;
+	else {
+		unsigned long long sys_time_ts = 0;
+
+		mtk_dsi_lpc_sys_time_ts(&sys_time_ts, mtk_crtc, comp);
+
+		*sof_ts = ktime_get();
+	}
 
 	lpc->lpc_sof_status = 1;
-
+	drm_trace_tag_value("lpc_sof_timestamp0", ts0);
+	drm_trace_tag_value("lpc_sof_timestamp1", ts1);
 	drm_trace_tag_value("lpc_sof_timestamp", *sof_ts);
 }
 void mtk_dsi_lpc_event_te_ts(unsigned long *event_te_ts_diff, struct mtk_drm_crtc *mtk_crtc,
@@ -433,12 +462,12 @@ void mtk_dsi_lpc_event_te_ts(unsigned long *event_te_ts_diff, struct mtk_drm_crt
 		pre_event_te_ts = event_te_ts;
 	}
 }
-void mtk_dsi_lpc_resync_ts(long long *resync_ts, struct mtk_drm_crtc *mtk_crtc,
+void mtk_dsi_lpc_resync_ts(unsigned long long *resync_ts, struct mtk_drm_crtc *mtk_crtc,
 	struct mtk_ddp_comp *comp)
 {
-	/* repot resync time */
 	int index = 0;
 	unsigned long ts0, ts1;
+	struct mtk_dsi_lpc *lpc = comp_to_dsi_lpc(comp);
 
 	index = mtk_dsi_lpc_unit(mtk_crtc);
 	if (index < 0) {
@@ -449,8 +478,17 @@ void mtk_dsi_lpc_resync_ts(long long *resync_ts, struct mtk_drm_crtc *mtk_crtc,
 	ts0 = readl(comp->regs + DSI_LPC_RESYNC_TE_TIMESTAMP_0(index));
 	ts1 = readl(comp->regs + DSI_LPC_RESYNC_TE_TIMESTAMP_1(index));
 	*resync_ts = (ts1 << 32 | ts0) << 7;
-	*resync_ts -= pl_kernel_offset(comp);
+	if (*resync_ts > lpc->ts_offset)
+		*resync_ts -= lpc->ts_offset;
+	else {
+		unsigned long long sys_time_ts = 0;
 
+		mtk_dsi_lpc_sys_time_ts(&sys_time_ts, mtk_crtc, comp);
+
+		*resync_ts = ktime_get();
+	}
+	drm_trace_tag_value("lpc_resync_timestamp0", ts0);
+	drm_trace_tag_value("lpc_resync_timestamp1", ts1);
 	drm_trace_tag_value("lpc_resync_timestamp", *resync_ts);
 }
 int mtk_dsi_lpc_interrupt_enable(struct mtk_drm_crtc *mtk_crtc,
@@ -723,14 +761,14 @@ static int mtk_dsi_lpc_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle
 		break;
 	case DSI_LPC_GET_SOF_TS:
 	{
-		long long *ts = (long long *)params;
+		unsigned long long *ts = (unsigned long long *)params;
 
 		mtk_dsi_lpc_sof_ts(ts,mtk_crtc, comp);
 	}
 		break;
 	case DSI_LPC_GET_RESYNC_TS:
 	{
-		long long *ts = (long long *)params;
+		unsigned long long *ts = (unsigned long long *)params;
 
 		mtk_dsi_lpc_resync_ts(ts,mtk_crtc, comp);
 	}
