@@ -388,9 +388,12 @@ static void mtk_ovl_blender_config(struct mtk_ddp_comp *comp,
 	const u16 *regs = bld->data->regs;
 	unsigned int width = 0, height = 0;
 
-	if (comp->mtk_crtc->is_dual_pipe)
-		width = cfg->w / 2;
-	else
+	if (comp->mtk_crtc->is_dual_pipe) {
+		if (cfg->tile_overhead.is_support)
+			width = cfg->tile_overhead.left_in_width;
+		else
+			width = cfg->w / 2;
+	} else
 		width = cfg->w;
 
 	if (bld->set_partial_update != MTK_PARTIAL_UPDATE_SISO)
