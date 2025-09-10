@@ -1591,8 +1591,8 @@ static void __iomem *plls_base[PLL_SYS_NUM];
 	}
 
 static const struct mtk_pll_div_table mfgpll_div_table[] = {
-	{ .div = 0, .freq = 1900000000},
-	{ .div = 1, .freq = 1069000000 },
+	{ .div = 0, .freq = 3800000000},
+	{ .div = 1, .freq = 1900000000 },
 	{ .div = 2, .freq = 954000000 },
 	{ .div = 3, .freq = 389000000 },
 	{ .div = 4, .freq = 1 },
