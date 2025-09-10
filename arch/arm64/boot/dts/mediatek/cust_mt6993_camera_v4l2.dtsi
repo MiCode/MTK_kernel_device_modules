@@ -548,6 +548,7 @@
 		compatible = "mediatek,imgsensor";
 		sensor-names = "ov48b_mipi_raw",
 					"imx06a_mipi_raw",
+					"imx09a_mipi_raw",
 					"imx06c_mipi_raw",
 					"ov50ddual_mipi_raw";
 		reg = <0x36 0 0>;
