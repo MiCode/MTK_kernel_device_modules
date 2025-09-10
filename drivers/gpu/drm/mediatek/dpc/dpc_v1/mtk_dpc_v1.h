@@ -21,6 +21,7 @@
 
 #define DT_MAX_TIMEOUT   40329
 #define DT_MIN_VBLANK    2500
+#define DT_MIN_VBLANK_WO_MTCMOS    4500
 #define DT_MIN_FRAME     2000
 
 #define DT_TE_30  33000

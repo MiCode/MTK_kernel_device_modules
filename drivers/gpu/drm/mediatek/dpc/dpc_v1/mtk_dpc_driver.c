@@ -1834,8 +1834,13 @@ static int dpc_vidle_is_available(void)
 	switch (g_panel_type) {
 	case PANEL_TYPE_VDO:
 		/* support vidle if VDO vblank period is enough */
-		if (g_vb_duration > DT_MIN_VBLANK)
-			ret = 1;
+		if (mtk_dpc_support_cap(DPC_VIDLE_MTCMOS_OFF)) {
+			if (g_vb_duration > DT_MIN_VBLANK)
+				ret = 1;
+		} else {
+			if (g_vb_duration > DT_MIN_VBLANK_WO_MTCMOS)
+				ret = 1;
+		}
 		break;
 	case PANEL_TYPE_CMD:
 		/* support vidle if CMD frame period is enough */

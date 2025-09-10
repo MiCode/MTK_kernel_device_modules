@@ -14713,13 +14713,20 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		mtk_dsi_change_vfp(dsi, crtc, handle, cur_mode, SOURCE_IDLE_MODE);
 
 		/*update vidle timing*/
-		if (!is_bdg_supported() && priv && vfp_low_power && vfp_lp_dyn &&
+		if (!is_bdg_supported() && priv &&
 			mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_VDO_PANEL) &&
 			(mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_FULL_SCENARIO) ||
 			mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_HOME_SCREEN_IDLE))) {
 			struct drm_display_mode *mode = NULL;
 			unsigned int fps = 0, vtotal = 0, vtotal_lowpower = 0;
 			unsigned int dur_line = 0, dur_vblank = 0, dur_frame = 0;
+
+			panel_ext = mtk_dsi_get_panel_ext(comp);
+			if (panel_ext && panel_ext->params
+				&& panel_ext->params->vfp_low_power)
+				vfp_low_power = panel_ext->params->vfp_low_power;
+			else
+				break;
 
 			mode = mtk_crtc_get_display_mode_by_comp("hs_idle+", &crtc->base, comp, false);
 			if (mode == NULL) {
