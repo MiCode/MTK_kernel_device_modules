@@ -86,24 +86,12 @@ static struct task_struct *detach_one_task(struct rq *src_rq, int dst_cpu)
 	bool latency_sensitive = false, in_many_heavy_tasks;
 	struct root_domain *rd __maybe_unused = cpu_rq(smp_processor_id())->rd;
 	int type;
-#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
-	u64 ts[6];
-	unsigned int counter = 0, backup_counter = 0;
-	int break_reason = 0;
-	unsigned int cannot_migrate_counter[9] = {0};
-
-	ts[0] = sched_clock();
-#endif
 
 	lockdep_assert_rq_held(src_rq);
 
 	rcu_read_lock(); /* must hold runqueue lock for queue se is currently on */
 
 	in_many_heavy_tasks = rd->android_vendor_data1;
-
-#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
-	ts[1] = sched_clock();
-#endif
 
 	if (!in_many_heavy_tasks)
 		goto unlock;
@@ -117,17 +105,8 @@ static struct task_struct *detach_one_task(struct rq *src_rq, int dst_cpu)
 		margin_src = get_adaptive_margin(src_rq->cpu);
 	}
 
-#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
-	ts[2] = sched_clock();
-#endif
 	list_for_each_entry_reverse(p, &src_rq->cfs_tasks, se.group_node) {
-#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
-		counter++;
-#endif
 		type = mtk_can_migrate_task(p, dst_cpu);
-#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
-		cannot_migrate_counter[type + 6]++;
-#endif
 		if (type <= 0)
 			continue;
 
@@ -146,51 +125,22 @@ static struct task_struct *detach_one_task(struct rq *src_rq, int dst_cpu)
 			!fits_capacity(task_util_src, src_capacity, margin_src)) {
 			/* when too many big task, pull misfit runnable task */
 			best_task = p;
-#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
-			break_reason = 2;
-#endif
 			break;
 		} else if (latency_sensitive &&
 			task_util_dst <= dst_capacity) {
 			best_task = p;
-#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
-			break_reason = 3;
-#endif
 			break;
 		} else if (latency_sensitive && !backup) {
-#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
-			backup_counter++;
-#endif
 			backup = p;
 		}
 	}
-#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
-	ts[3] = sched_clock();
-#endif
 	p = best_task ? best_task : backup;
 
 	if (p)
 		detach_task(p, src_rq, dst_cpu);
 
 unlock:
-#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
-	ts[4] = sched_clock();
-#endif
 	rcu_read_unlock();
-#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
-	ts[5] = sched_clock();
-	if (ts[5] - ts[0] > 100000U)
-		printk_deferred("this_cpu=%d cpu=%d, func=%s, counter=%d break_reason=%d backup_counter=%d cannot_migrate_counter=[%u, %u, %u, %u, %u, %u, %u, %u, %u] nr_running=%d cfs_nr_running=%d cfs_h_nr_running=%d cfs_nr_delayed=%d, total_duration=%llu, ts[1]-ts[0]=%llu, ts[2]-ts[1]=%llu, ts[3]-ts[2]=%llu, ts[4]-ts[3]=%llu, ts[5]-ts[4]=%llu\n",
-			dst_cpu, src_rq->cpu, __func__, counter, break_reason, backup_counter,
-			cannot_migrate_counter[0], cannot_migrate_counter[1],
-			cannot_migrate_counter[2], cannot_migrate_counter[3],
-			cannot_migrate_counter[4], cannot_migrate_counter[5],
-			cannot_migrate_counter[6], cannot_migrate_counter[7],
-			cannot_migrate_counter[8], src_rq->nr_running, src_rq->cfs.nr_running,
-			src_rq->cfs.h_nr_running, src_rq->cfs.h_nr_delayed,
-			ts[5]-ts[0], ts[1]-ts[0], (ts[2])? ts[2]-ts[1]: 0,ts[3]-ts[2],
-			(ts[3])? ts[4]-ts[3]: 0, ts[5]-ts[4]);
-#endif
 
 	return p;
 }
@@ -392,9 +342,6 @@ void hook_sched_balance_newidle(void *data, struct rq *this_rq, struct rq_flags 
 	bool latency_sensitive = false;
 	struct cpumask effective_softmask;
 	bool had_pull_vvip = false;
-#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
-	u64 ts[16];
-#endif
 
 	if (!get_eas_hook())
 		return;
@@ -437,59 +384,27 @@ void hook_sched_balance_newidle(void *data, struct rq *this_rq, struct rq_flags 
 	 * further scheduler activity on it and we're being very careful to
 	 * re-start the picking loop.
 	 */
-#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
-	ts[0] = sched_clock();
-#endif
 	rq_unpin_lock(this_rq, rf);
 	raw_spin_rq_unlock(this_rq);
-#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
-	ts[1] = sched_clock();
-#endif
 
 	this_cpu = this_rq->cpu;
 
 	/* try to pull runnable VVIP if this_cpu is in big gear */
-#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
-	ts[2] = sched_clock();
-#endif
 	try_to_pull_VVIP(this_cpu, &had_pull_vvip, &src_rf);
-	if (had_pull_vvip) {
-#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
-		ts[4] = sched_clock();
-#endif
+	if (had_pull_vvip)
 		goto out;
-	}
 
 	for_each_cpu(cpu, cpu_active_mask) {
-#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
-		ts[7] = sched_clock();
-#endif
-		if (cpu == this_cpu){
-#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
-			ts[14] = sched_clock();
-#endif
-			goto cont;
-		}
+		if (cpu == this_cpu)
+			continue;
 
-#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
-		ts[8] = sched_clock();
-#endif
 		src_rq = cpu_rq(cpu);
 		rq_lock_irqsave(src_rq, &src_rf);
 		update_rq_clock(src_rq);
-#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
-		ts[9] = sched_clock();
-#endif
 		if (src_rq->active_balance) {
-#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
-			ts[14] = sched_clock();
-#endif
 			rq_unlock_irqrestore(src_rq, &src_rf);
-			goto cont;
+			continue;
 		}
-#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
-		ts[10] = sched_clock();
-#endif
 		if ((src_rq->misfit_task_load > misfit_load) &&
 			(cpu_cap_ceiling(this_cpu) > cpu_cap_ceiling(cpu))) {
 			p = src_rq->curr;
@@ -511,65 +426,22 @@ void hook_sched_balance_newidle(void *data, struct rq *this_rq, struct rq_flags 
 			}
 			p = NULL;
 		}
-#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
-		ts[11] = sched_clock();
-#endif
 
 		if (src_rq->nr_running <= 1) {
-#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
-			ts[14] = sched_clock();
-#endif
 			rq_unlock_irqrestore(src_rq, &src_rf);
-			goto cont;
+			continue;
 		}
-
-#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
-		ts[12] = sched_clock();
-#endif
 		p = detach_one_task(src_rq, this_cpu);
-#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
-		ts[13] = sched_clock();
-#endif
-
 		rq_unlock_irqrestore(src_rq, &src_rf);
 
-#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
-		ts[14] = sched_clock();
-#endif
 		if (p) {
 			if (trace_sched_force_migrate_enabled())
 				trace_sched_force_migrate(p, this_cpu, MIGR_IDLE_BALANCE);
 			attach_one_task(this_rq, p);
-#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
-			ts[15] = sched_clock();
-			if (ts[15] - ts[7] > 100000U)
-				printk_deferred("break: this_cpu=%d cpu=%d, func=%s, ts[8]-ts[7]=%llu, ts[9]-ts[8]=%llu, ts[10]-ts[9]=%llu, ts[11]]-ts[10]=%llu, ts[12]-ts[11]=%llu ts[13]-ts[12]=%llu ts[14]-ts[13]=%llu ts[15]-ts[14]=%llu\n",
-					this_cpu, cpu, __func__,
-					(ts[8] > ts[7])? ts[8]-ts[7]: 0,
-					(ts[9] > ts[8])? ts[9]-ts[8]: 0,
-					(ts[10] > ts[9])? ts[10]-ts[9]: 0, ts[11]-ts[10],
-					(ts[12] > ts[11])? ts[12]-ts[11]: 0, ts[13]-ts[12],
-					(ts[13]) ? ts[14]-ts[13] : 0, ts[15]-ts[14]);
-#endif
 			break;
 		}
-cont:
-#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
-		ts[15] = sched_clock();
-		if (ts[15] - ts[7] > 100000U)
-			printk_deferred("continue: this_cpu=%d cpu=%d, func=%s, ts[8]-ts[7]=%llu, ts[9]-ts[8]=%llu, ts[10]-ts[9]=%llu, ts[11]]-ts[10]=%llu, ts[12]-ts[11]=%llu ts[13]-ts[12]=%llu ts[14]-ts[13]=%llu ts[15]-ts[14]=%llu\n",
-				this_cpu, cpu, __func__, (ts[8] > ts[7])? ts[8]-ts[7]: 0,
-				(ts[9] > ts[8])? ts[9]-ts[8]: 0,
-				(ts[10] > ts[9])? ts[10]-ts[9]: 0, ts[11]-ts[10],
-				(ts[12] > ts[11])? ts[12]-ts[11]: 0, ts[13]-ts[12],
-				(ts[13])? ts[14]-ts[13]: 0, ts[15]-ts[14]);
-#endif
-	;
 	}
 
-#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
-	ts[3] = sched_clock();
-#endif
 	/*
 	 * If p is null meaning that we have not pull a runnable task, we try to
 	 * pull a latency sensitive running task.
@@ -577,26 +449,10 @@ cont:
 	if (!p && misfit_task_rq)
 		*done = migrate_running_task(this_cpu, best_running_task,
 					misfit_task_rq, MIGR_IDLE_PULL_MISFIT_RUNNING);
-
-#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
-	ts[4] = sched_clock();
-#endif
 	if (best_running_task)
 		put_task_struct(best_running_task);
 out:
-#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
-	ts[5] = sched_clock();
-#endif
 	raw_spin_rq_lock(this_rq);
-#if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
-	ts[6] = sched_clock();
-
-	if (ts[6] - ts[0] > 1000000U)
-		printk_deferred("cpu=%d, func=%s, ts[1]-ts[0]=%llu, ts[2]-ts[1]=%llu, ts[3]-ts[2]=%llu, ts[4]-ts[3]=%llu, ts[5]-ts[4]=%llu ts[6]-ts[5]=%llu\n",
-			this_cpu, __func__, ts[1]-ts[0], ts[2]-ts[1],
-			(ts[3] > ts[2])? ts[3]-ts[2]: 0, ts[4]-ts[3], ts[5]-ts[4],
-			ts[6]-ts[5]);
-#endif
 	/*
 	 * While browsing the domains, we released the rq lock, a task could
 	 * have been enqueued in the meantime. Since we're not going idle,
