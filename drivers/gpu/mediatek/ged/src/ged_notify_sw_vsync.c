@@ -273,6 +273,7 @@ void ged_eb_dvfs_trace_dump(void)
 	int ged_policy_state =  ged_get_policy_state();
 	int freq_id = ged_get_cur_oppidx();
 	unsigned int is_offscreen = 0;
+	unsigned int is_silence = 0;
 	static int pre_eb_policy_state;
 	static int pre_ged_policy_state;
 	static int pre_freq_id;
@@ -284,6 +285,7 @@ void ged_eb_dvfs_trace_dump(void)
 	union combineData tmp_multi = {0};
 	static unsigned int pre_is_offscreen;
 	static unsigned int pre_eb_nor_cnt, eb_nor_cnt;
+	static unsigned int pre_is_silence;
 
 	//struct GpuUtilization_Ex util_ex;
 
@@ -371,8 +373,12 @@ void ged_eb_dvfs_trace_dump(void)
 			tmp_multi = mtk_gpueb_sysram_multi_read(fdvfs_v2_table[GPU_LOWPWR_TRACE].addr);
 			trace_GPU_DVFS__EB_LOWPWR(tmp_multi.fourVar.var1, tmp_multi.fourVar.var2,
 										tmp_multi.fourVar.var3, tmp_multi.fourVar.var4);
-			if(tmp_multi.fourVar.var4 == 1)
-				trace_tracing_mark_write(5566, "silence", tmp_multi.fourVar.var1);
+
+			is_silence = tmp_multi.fourVar.var4;
+			if (is_silence != pre_is_silence) {
+				trace_tracing_mark_write(5566, "silence", is_silence);
+				pre_is_silence = is_silence;
+			}
 		}
 	}
 

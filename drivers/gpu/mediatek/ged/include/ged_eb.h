@@ -1053,7 +1053,9 @@ GEN("gpu_version", GPU_EB_VERSION, 1, "gpu_version") \
 GEN("desire_mask", GOV_DESIRE_MASK, 1, "desire_mask") \
 GEN("fb_mfrc", GPU_FB_MFRC_2, 1, "fb_mfrc_2") \
 GEN("ultra_loading_flag", ULTRA_LOADING_FLAG, 1, "ultra_loading_flag") \
-GEN("dvfs_margin_value", GPU_EB_CMD_DVFS_MARGIN_VALUE, 1, "dvfs_margin_value_cmd")
+GEN("dvfs_margin_value", GPU_EB_CMD_DVFS_MARGIN_VALUE, 1, "dvfs_margin_value_cmd") \
+GEN("ap_cur_core_mask", GPU_AP_CUR_MASK, 1, "ap_cur_core_mask")
+
 
 // generate sysram index list according to FDVFS_V2_COUNTER
 #define GEN(name, index, count, var) index,

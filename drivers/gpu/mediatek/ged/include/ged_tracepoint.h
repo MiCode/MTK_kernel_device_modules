@@ -1127,6 +1127,23 @@ TRACE_EVENT(GPU_DVFS__Policy__DCS__Detail,
 	TP_printk("core_mask=%u", __entry->core_mask)
 );
 
+TRACE_EVENT(GPU_DVFS__Policy__Mask__Detail,
+
+	TP_PROTO(unsigned int core_mask),
+
+	TP_ARGS(core_mask),
+
+	TP_STRUCT__entry(
+		__field(unsigned int, core_mask)
+	),
+
+	TP_fast_assign(
+		__entry->core_mask = core_mask;
+	),
+
+	TP_printk("core_mask=%x", __entry->core_mask)
+);
+
 TRACE_EVENT(GPU_DVFS__Policy__DCS_CONFIG,
 
 	TP_PROTO(unsigned int config, unsigned int major_core),

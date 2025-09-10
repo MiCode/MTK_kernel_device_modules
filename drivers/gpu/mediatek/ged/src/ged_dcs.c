@@ -64,9 +64,12 @@ EXPORT_SYMBOL(ged_dvfs_set_gpu_core_mask_fp);
 
 void ged_dvfs_set_gpu_core_mask(u64 core_mask)
 {
-	if (ged_dvfs_set_gpu_core_mask_fp != NULL)
+	if (ged_dvfs_set_gpu_core_mask_fp != NULL) {
 		ged_dvfs_set_gpu_core_mask_fp(core_mask);
-	else
+		trace_GPU_DVFS__Policy__Mask__Detail(core_mask);
+		if (is_fdvfs_enable() & POLICY_MODE_V2)
+			mtk_gpueb_sysram_write(fdvfs_v2_table[GPU_AP_CUR_MASK].addr, core_mask);
+	} else
 		GED_LOGE("ged_dvfs_set_gpu_core_mask_fp is null");
 }
 
@@ -314,8 +317,6 @@ int dcs_set_fix_core_mask(gov_mask_config_t config, unsigned int core_mask)
 
 	ged_dvfs_set_gpu_core_mask(core_mask);
 
-	g_setting_dirty = true;
-
 	trace_GPU_DVFS__Policy__DCS(config, g_cur_core_num, g_fix_core_num, g_lowpwr_mode);
 	trace_GPU_DVFS__Policy__DCS__Detail(core_mask);
 	/* TODO: set return error */
@@ -431,6 +432,7 @@ int dcs_restore_max_core_mask(void)
 	else
 		ged_dvfs_set_gpu_core_mask(g_core_mask_table[0].mask);
 
+	g_setting_dirty = false;
 	g_cur_core_num = g_max_core_num;
 	trace_GPU_DVFS__Policy__DCS(g_max_core_num, g_cur_core_num, g_fix_core_num, g_lowpwr_mode);
 	trace_GPU_DVFS__Policy__DCS__Detail(g_core_mask_table[0].mask);
