@@ -559,6 +559,7 @@ static bool disp_c3d_flush_3dlut_sram(struct mtk_ddp_comp *comp, enum C3D_CMDQ_T
 	switch (cmd_type) {
 	case C3D_USERSPACE:
 		if (c3d_data->auto_flip == 1) {
+			CRTC_MMP_MARK(0, c3d_frame_config, (0xFF << 16) | comp->id, (unsigned long)cmdq_handle);
 			cmdq_pkt_refinalize(cmdq_handle);
 			atomic_inc(&c3d_data->c3d_clock_ref);
 			if (comp->mtk_crtc->is_dual_pipe) {
@@ -567,6 +568,7 @@ static bool disp_c3d_flush_3dlut_sram(struct mtk_ddp_comp *comp, enum C3D_CMDQ_T
 				atomic_inc(&c3d1_data->c3d_clock_ref);
 			}
 
+			CRTC_MMP_MARK(0, c3d_frame_config, (0xFE << 16) | comp->id, (unsigned long)cmdq_handle);
 			if (cmdq_pkt_flush_async(cmdq_handle,
 					disp_c3d_async_flush_done_cb, (void *)cb_data) < 0) {
 				PQ_ERR("failed to flush %s\n", __func__);
@@ -846,10 +848,10 @@ static int disp_c3d_set_3dlut_v2(struct mtk_ddp_comp *comp,
 		return 0;
 	}
 	mtk_drm_idlemgr_kick(__func__, &mtk_crtc->base, 0);
-	DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
 
 	// 2. lock for protect crtc & power
 	clk_ret = disp_c3d_acquire_clock(comp);
+	DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
 	if (clk_ret == 0) {
 		pm_ret = mtk_vidle_pq_power_get(__func__);
 		if (pm_ret) {
@@ -1174,7 +1176,6 @@ static void disp_c3d_unprepare(struct mtk_ddp_comp *comp)
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 	struct mtk_disp_c3d_primary *primary_data = c3d_data->primary_data;
 	struct cmdq_client *client = NULL;
-	int retry = 0;
 
 	c3d_data->has_set_1dlut = false;
 
@@ -1183,14 +1184,8 @@ static void disp_c3d_unprepare(struct mtk_ddp_comp *comp)
 	mutex_lock(&primary_data->clk_lock);
 	atomic_dec(&c3d_data->c3d_clock_ref);
 	while (atomic_read(&c3d_data->c3d_clock_ref) > 0) {
-		if (retry >= 5) {
-			PQ_ERR("%s: can't wait clk_ref to 0\n", __func__);
-			break;
-		}
-		DDPMSG("%s: retry: %d\n", __func__, retry);
 		mutex_unlock(&primary_data->clk_lock);
-		usleep_range(50, 100);
-		retry++;
+		usleep_range(500, 600);
 		mutex_lock(&primary_data->clk_lock);
 	}
 
