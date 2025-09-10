@@ -13806,7 +13806,7 @@ static void mtk_dsi_cmd_timing_change(struct mtk_dsi *dsi,
 
 	for (i = 0; i < 3; i++) {
 		/* Power off DSI */
-		mtk_dsi_enter_idle(dsi, 1, false);
+		mtk_dsi_enter_idle(dsi, 0, false);
 		CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 2, 3);
 
 		if (dsi->mipi_hopping_sta && dsi->ext->params->dyn.switch_en)
@@ -13815,7 +13815,7 @@ static void mtk_dsi_cmd_timing_change(struct mtk_dsi *dsi,
 			mtk_mipi_tx_pll_rate_set_adpt(dsi->phy, 0);
 
 		/* Power on DSI */
-		ret = mtk_dsi_leave_idle(dsi, 1, false);
+		ret = mtk_dsi_leave_idle(dsi, 0, false);
 		CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 2, 4);
 		if (ret == 0)
 			break;
