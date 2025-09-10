@@ -9032,7 +9032,7 @@ dramc: dramc@10230000 {
 		compatible = "mediatek,mt6858-oc-debug";
 		status = "okay";
 		spmi = <&spmi>;
-		spmi-m = <0>;
+		spmi-m = <1>;
 		spmi-p = <2>;
 		regulators = <&mt6363_vcn15
 			&mt6363_vcn13
