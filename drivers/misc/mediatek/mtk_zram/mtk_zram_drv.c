@@ -2041,13 +2041,14 @@ static unsigned long alloc_zspool_memory(struct zram *zram, unsigned int comp_le
 			__GFP_KSWAPD_RECLAIM |
 			__GFP_NOWARN |
 			__GFP_HIGHMEM |
-			__GFP_MOVABLE);
+			__GFP_MOVABLE |
+			__GFP_CMA);
 	if (IS_ERR_VALUE(handle)) {
 		preempt_enable();
 		atomic64_inc(&zram->stats.writestall);
 		handle = zs_malloc(zram->mem_pool, comp_len,
 				GFP_NOIO | __GFP_HIGHMEM |
-				__GFP_MOVABLE);
+				__GFP_MOVABLE | __GFP_CMA);
 		if (IS_ERR_VALUE(handle))
 			return PTR_ERR((void *)handle);
 		preempt_disable();
