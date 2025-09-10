@@ -27,6 +27,7 @@
 #define FEATURE_6989_SCP_OC		(BIT(3))
 #define FEATURE_CHANGE_REBOOT_TEMP_IN_TFA  (BIT(4))
 #define FEATURE_THERMAL_REBOOT_KERNEL_BYPASS   (BIT(5))
+#define FEATURE_GATING_WHEN_THERMAL_REBOOT  (BIT(6))
 #define SCP_OC_DUMP_LOG         (0)
 #define ENABLE_FEATURE(feature)		(lvts_data->feature_bitmap |= feature)
 #define DISABLE_FEATURE(feature)	(lvts_data->feature_bitmap &= (~feature))
@@ -338,6 +339,7 @@ struct tag_chipid {
 #define LVTS_SINGLE_SENSE	(1 << 9)
 #define ENABLE_SENSING_POINT(num)	(LVTS_SINGLE_SENSE | GENMASK((num - 1), 0))
 #define DISABLE_SENSING_POINT	(LVTS_SINGLE_SENSE | 0x0)
+#define LVTS_GATE_VALID (1UL << 20)
 #define LVTSMONCTL1_0	0x004
 #define LVTSMONCTL2_0	0x008
 #define LVTSMONINT_0	0x00C
