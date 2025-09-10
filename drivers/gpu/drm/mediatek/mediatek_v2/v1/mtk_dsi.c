@@ -13980,7 +13980,8 @@ done:
 }
 
 static void mtk_dsi_update_vfp(struct mtk_dsi *dsi,  struct mtk_drm_crtc *mtk_crtc,
-	enum CHANGE_VFP_SOURCE source, unsigned int *vfp, unsigned int *mod_vfp)
+	struct cmdq_pkt *handle, enum CHANGE_VFP_SOURCE source,
+	unsigned int *vfp, unsigned int *mod_vfp)
 {
 	struct mtk_ddp_comp *comp = &dsi->ddp_comp;
 	struct mtk_crtc_state *state = NULL;
@@ -13991,6 +13992,7 @@ static void mtk_dsi_update_vfp(struct mtk_dsi *dsi,  struct mtk_drm_crtc *mtk_cr
 	case SOURCE_TIMING_CHANGE:
 	{
 		struct drm_display_mode adjusted_mode;
+		unsigned int vfp_early_stop_value = 0;
 
 		state = to_mtk_crtc_state(mtk_crtc->base.state);
 		priv = (mtk_crtc->base).dev->dev_private;
@@ -14010,6 +14012,30 @@ static void mtk_dsi_update_vfp(struct mtk_dsi *dsi,  struct mtk_drm_crtc *mtk_cr
 		if (is_bdg_supported()) {
 			if (dsi->bdg_mipi_hopping_sta)
 				dsi->vm.vfront_porch = *vfp;
+		}
+
+		/* Msync 2.0 ToDo: can we change vm.vfront_porch according msync?
+		 * mmdvfs,dramdvfs according to vm.vfront_porch?
+		 */
+		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MSYNC2_0) &&
+			dsi && dsi->ext && dsi->ext->params && dsi->ext->params->msync2_enable) {
+			if (state->prop_val[CRTC_PROP_MSYNC2_0_ENABLE] != 0) {
+				DDPDBG("[Msync]%s,%d\n", __func__, __LINE__);
+				/* update VFP_MIN to vm.vfront_porch
+				 * avoid cmdq read operation, we re-write FLD_VFP_EARLY_STOP_EN
+				 */
+				vfp_early_stop_value = REG_FLD_VAL(FLD_VFP_EARLY_STOP_EN, 1) |
+					REG_FLD_VAL(VFP_EARLY_STOP_FLD_REG_MIN_NL, dsi->vm.vfront_porch);
+				cmdq_pkt_write(handle, comp->cmdq_base,
+					comp->regs_pa + DSI_VFP_EARLY_STOP(dsi->driver_data),
+					vfp_early_stop_value, ~0);
+				/*update VFP to max_vfp_for_msync*/
+				if (dsi->mipi_hopping_sta && dsi->ext && dsi->ext->params &&
+					dsi->ext->params->dyn.max_vfp_for_msync_dyn)
+					vfp = dsi->ext->params->dyn.max_vfp_for_msync_dyn;
+				else if (dsi->ext && dsi->ext->params)
+					vfp = dsi->ext->params->max_vfp_for_msync;
+			}
 		}
 	}
 	break;
@@ -14039,6 +14065,21 @@ static void mtk_dsi_update_vfp(struct mtk_dsi *dsi,  struct mtk_drm_crtc *mtk_cr
 			*mod_vfp = panel_ext->params->dyn.vfp;
 		else
 			*mod_vfp = *vfp;
+
+		/*Msync 2.0*/
+		/*leave idle need keep msync status*/
+		if (priv && mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MSYNC2_0) &&
+			panel_ext && panel_ext->params && panel_ext->params->msync2_enable) {
+			if (state->prop_val[CRTC_PROP_MSYNC2_0_ENABLE] != 0) {
+				if (dsi->mipi_hopping_sta &&
+					panel_ext->params->dyn.max_vfp_for_msync_dyn)
+					vfp = panel_ext->params->dyn.max_vfp_for_msync_dyn;
+				else
+					vfp = panel_ext->params->max_vfp_for_msync;
+				DDPDBG("[Msync]%s,%d vfront_porch %d\n",
+					__func__, __LINE__, vfp);
+			}
+		}
 	}
 	break;
 	default:
@@ -14052,28 +14093,25 @@ static void mtk_dsi_update_vfp(struct mtk_dsi *dsi,  struct mtk_drm_crtc *mtk_cr
 static void mtk_dsi_change_vfp(struct mtk_dsi *dsi, struct mtk_drm_crtc *mtk_crtc,
 	struct cmdq_pkt *handle, unsigned int cur_mode, enum CHANGE_VFP_SOURCE source)
 {
-	struct cmdq_client *client = mtk_crtc->gce_obj.client[CLIENT_DSI_CFG];
 	struct mtk_ddp_comp *comp = &dsi->ddp_comp;
-	struct mtk_crtc_state *state = to_mtk_crtc_state(mtk_crtc->base.state);
-	struct mtk_panel_ext *panel_ext = NULL;
 	unsigned int vfp = 0, mod_vfp = 0;
-	bool is_idle_mode = false;
+	bool is_idle_mode = false, need_send_cmd = false;
 
 	DDPINFO("%s+\n", __func__);
 
-	if (!dsi) {
+	if (!dsi || dsi->ext == NULL || dsi->ext->params == NULL) {
 		DDPINFO("%s, %d, invalid parameter\n", __func__, __LINE__);
 		return;
 	}
 
-	panel_ext = mtk_dsi_get_panel_ext(comp);
-
-	if (source == SOURCE_IDLE_MODE)
-		is_idle_mode = true;
+	if (dsi->ext->params->change_fps_by_vfp_send_cmd) {
+		need_send_cmd = (source == SOURCE_TIMING_CHANGE) ||
+			((source == SOURCE_IDLE_MODE || source == SOURCE_DEFAULT_MODE) &&
+				dsi->ext->params->low_power_fps.switch_en);
+	}
 
 	// stop vdo mode
-	if (dsi && dsi->ext && dsi->ext->params &&
-		dsi->ext->params->change_fps_by_vfp_send_cmd) {
+	if (need_send_cmd) {
 		/* wait and clear EOF
 		 * avoid other display related task break fps change task
 		 * because fps change need stop & re-start vdo mode
@@ -14109,24 +14147,28 @@ static void mtk_dsi_change_vfp(struct mtk_dsi *dsi, struct mtk_drm_crtc *mtk_crt
 		}
 	}
 
-	mtk_dsi_update_vfp(dsi, mtk_crtc, source, &vfp, &mod_vfp);
+	mtk_dsi_update_vfp(dsi, mtk_crtc, handle, source, &vfp, &mod_vfp);
 
-	// porch setting
-	mtk_dsi_porch_setting(comp, handle, DSI_VFP, mod_vfp);
-	if (dsi->slave_dsi)
-		mtk_dsi_porch_setting(&dsi->slave_dsi->ddp_comp, handle,
-					DSI_VFP, mod_vfp);
+	if (vfp & mod_vfp) {
+		// porch setting
+		mtk_dsi_porch_setting(comp, handle, DSI_VFP, mod_vfp);
+		if (dsi->slave_dsi)
+			mtk_dsi_porch_setting(&dsi->slave_dsi->ddp_comp, handle,
+						DSI_VFP, mod_vfp);
 
-	if (is_bdg_supported()) {
-		mtk_dsi_vfp_porch_setting_6382(dsi, vfp, handle);
-		mtk_dsi_start_vdo_mode(comp, handle, __LINE__);
-		mtk_disp_mutex_trigger(comp->mtk_crtc->mutex[0], handle);
-		mtk_dsi_trigger(comp, handle);
+		if (is_bdg_supported()) {
+			mtk_dsi_vfp_porch_setting_6382(dsi, vfp, handle);
+			mtk_dsi_start_vdo_mode(comp, handle, __LINE__);
+			mtk_disp_mutex_trigger(comp->mtk_crtc->mutex[0], handle);
+			mtk_dsi_trigger(comp, handle);
+		}
 	}
 
 	// send cmd
-	if (dsi && dsi->ext && dsi->ext->params &&
-		dsi->ext->params->change_fps_by_vfp_send_cmd) {
+	if (need_send_cmd) {
+		if (source == SOURCE_IDLE_MODE)
+			is_idle_mode = true;
+
 		/*1.2 send cmd: send cmd*/
 		mtk_dsi_send_switch_cmd(dsi, handle, mtk_crtc, cur_mode, is_idle_mode);
 		/*1.3 send cmd: start vdo mode*/
@@ -14144,7 +14186,6 @@ static void mtk_dsi_change_vfp(struct mtk_dsi *dsi, struct mtk_drm_crtc *mtk_crt
 		 */
 		mtk_use_cabc_event(handle, mtk_crtc, SET_OPT, __LINE__);
 	}
-
 }
 
 static void mtk_dsi_vdo_timing_change(struct mtk_dsi *dsi,

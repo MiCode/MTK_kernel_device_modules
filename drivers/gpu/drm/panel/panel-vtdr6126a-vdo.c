@@ -115,7 +115,7 @@
 #define DSC_RC_TGT_OFFSET_HI        3
 #define DSC_RC_TGT_OFFSET_LO        3
 
-/* For low power idle mode */
+// for vidle test and measure low power related. panel doesn't support 45fps
 #define IDLE_60_TO_45               0
 
 static unsigned int rc_buf_thresh[14] = {
