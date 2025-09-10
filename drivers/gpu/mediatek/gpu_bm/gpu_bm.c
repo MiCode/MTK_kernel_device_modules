@@ -266,7 +266,10 @@ void MTKGPUQoS_mode(int seg_flag)
 			high_idx = gpu_opp_high;
 		else
 			high_idx = (gpu_opp_num - 1) / 4 + 1;
-		med_idx = (gpu_opp_num - 1) / 5 * 2 + 1;
+		if(gpu_opp_num > 57)
+			med_idx = (gpu_opp_num - 1) / 7 * 3 + 3;
+		else
+			med_idx = (gpu_opp_num - 1) / 5 * 2 + 1;
 		low_idx = (gpu_opp_num - 1) / 3 * 2 + 1;
 		gpu_bm_idx_inited = 1;
 	}
@@ -291,7 +294,10 @@ void MTKGPUQoS_mode(int seg_flag)
 			high_idx = gpu_opp_high;
 		else
 			high_idx = (gpu_opp_num - 1) / 4 + 1;
-		med_idx = (gpu_opp_num - 1) / 5 * 2 + 1;
+		if(gpu_opp_num > 57)
+			med_idx = (gpu_opp_num - 1) / 7 * 3 + 3;
+		else
+			med_idx = (gpu_opp_num - 1) / 5 * 2 + 1;
 		low_idx = (gpu_opp_num - 1) / 3 * 2 + 1;
 		gpu_bm_idx_inited = 1;
 	}
