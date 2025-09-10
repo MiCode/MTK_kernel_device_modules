@@ -144,7 +144,7 @@ const struct pq_cmd_prop g_pq_cmd_map[] = {
 //	{PQ_ODDMR_DMR_CUS_SETTING_INIT,      sizeof(struct mtk_drm_cus_setting_info),      PQ_CMD_WRITE,},
 //	{PQ_ODDMR_DMR_CUS_OWN_DATA_INIT,     sizeof(struct cus_own_data),                  PQ_CMD_WRITE,},
 	{PQ_ODDMR_OD_DEINIT,                 0,                                            PQ_CMD_WRITE,},
-	{PQ_VIRTUAL_SET_PROPERTY,            sizeof(unsigned int) * 32,                    PQ_CMD_WRITE,},
+	{PQ_VIRTUAL_SET_PROPERTY,            sizeof(unsigned int) * DISP_PQ_PERSIST_PROPERTY_MAX, PQ_CMD_WRITE,},
 	{PQ_VIRTUAL_CHECK_TRIGGER,           sizeof(bool),                                 PQ_CMD_WRITE,},
 	{PQ_VIRTUAL_RELAY_ENGINES,           sizeof(struct mtk_pq_relay_enable),           PQ_CMD_WRITE,},
 	{PQ_VIRTUAL_PAPER_MODE,              0,                                            PQ_CMD_WRITE,},
@@ -1257,12 +1257,12 @@ static int disp_pq_proxy_virtual_get_persist_property(struct drm_crtc *crtc, voi
 	int i;
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct pq_common_data *pq_data = mtk_crtc->pq_data;
-	unsigned int pq_persist_property[32];
+	unsigned int pq_persist_property[DISP_PQ_PERSIST_PROPERTY_MAX];
 
 	memset(pq_persist_property, 0, sizeof(pq_persist_property));
 	memcpy(pq_persist_property, (unsigned int *)data, sizeof(pq_persist_property));
 
-	for (i = 0; i < DISP_PQ_PROPERTY_MAX; i++) {
+	for (i = 0; i < DISP_PQ_PERSIST_PROPERTY_MAX; i++) {
 		pq_data->old_persist_property[i] = pq_data->new_persist_property[i];
 		pq_data->new_persist_property[i] = pq_persist_property[i];
 	}

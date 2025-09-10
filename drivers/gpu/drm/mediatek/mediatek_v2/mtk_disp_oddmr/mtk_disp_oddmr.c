@@ -11648,7 +11648,7 @@ static int mtk_oddmr_dbi_init(struct mtk_ddp_comp *comp, struct mtk_drm_dbi_cfg_
 	dbi_cfg_data_tb1 = &oddmr_data->primary_data->dbi_cfg_info_tb1;
 	memcpy(dbi_cfg_data, cfg_info, sizeof(struct mtk_drm_dbi_cfg_info));
 
-	if (dbi_cfg_data->basic_info.panel_id_len < 0 || dbi_cfg_data->basic_info.panel_id_len > 16) {
+	if (dbi_cfg_data->basic_info.panel_id_len > 16) {
 		mutex_unlock(&oddmr_data->primary_data->dbi_data_lock);
 		PC_ERR("panelid len %d invalid!\n", dbi_cfg_data->basic_info.panel_id_len);
 		return -1;
@@ -12317,7 +12317,7 @@ __load_done:
 		return -1;
 	}
 
-	if (dmr_cfg_data->basic_info.panel_id_len < 0 || dmr_cfg_data->basic_info.panel_id_len > 16) {
+	if (dmr_cfg_data->basic_info.panel_id_len > 16) {
 		mutex_unlock(&oddmr_data->primary_data->dmr_data_lock);
 		PC_ERR("panelid len %d invalid!\n", dmr_cfg_data->basic_info.panel_id_len);
 		return -1;
