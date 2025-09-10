@@ -1323,6 +1323,9 @@ static ssize_t cpu_reboot_show(struct kobject *kobj,
 {
 	int len = 0;
 
+	if (!tm_data.is_cputcm)
+		return -ENODEV;
+
 	len += snprintf(buf + len, PAGE_SIZE - len,
 		"%d, %d, %d, %d, %d ,%d, %d, %d, %d, %d, %d, %d\n",
 		therm_intf_read_cputcm(CPU_COOLER_REBOOT_BASE),
@@ -1346,6 +1349,9 @@ static ssize_t cpu_reboot_store(struct kobject *kobj,
 {
 	int len, i;
 	int values[CPU_COOLER_DEBUG_THERMAL_SRAM_LEN] = { 0 };
+
+	if (!tm_data.is_cputcm)
+		return -ENODEV;
 
 	len = sscanf(buf, "%10d %10d %10d %10d %10d %10d %10d %10d %10d %10d %10d %10d",
 		&values[0], &values[1], &values[2], &values[3],
@@ -2086,19 +2092,23 @@ static ssize_t lvts_info1_show(struct kobject *kobj,
 {
 	int len = 0;
 
-	len += snprintf(buf + len, PAGE_SIZE - len, "%x,%x,%x,%x,%x,%x,%x,%x,%x,%x\n",
-		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET),
-		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 4),
-		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 8),
-		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 12),
-		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 16),
-		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 20),
-		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 24),
-		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 28),
-		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 32),
-		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 36));
+	if (tm_data.is_cputcm) {
+		len += snprintf(buf + len, PAGE_SIZE - len, "%x,%x,%x,%x,%x,%x,%x,%x,%x,%x\n",
+			therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET),
+			therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 4),
+			therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 8),
+			therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 12),
+			therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 16),
+			therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 20),
+			therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 24),
+			therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 28),
+			therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 32),
+			therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 36));
+	} else {
+		len = -ENODEV;
+	}
 
-		return len;
+	return len;
 }
 
 static ssize_t lvts_info2_show(struct kobject *kobj,
@@ -2106,19 +2116,23 @@ static ssize_t lvts_info2_show(struct kobject *kobj,
 {
 	int len = 0;
 
-	len += snprintf(buf + len, PAGE_SIZE - len, "%x,%x,%x,%x,%x,%x,%x,%x,%x,%x\n",
-		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 40),
-		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 44),
-		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 48),
-		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 52),
-		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 56),
-		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 60),
-		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 64),
-		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 68),
-		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 72),
-		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 76));
+	if (tm_data.is_cputcm) {
+		len += snprintf(buf + len, PAGE_SIZE - len, "%x,%x,%x,%x,%x,%x,%x,%x,%x,%x\n",
+			therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 40),
+			therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 44),
+			therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 48),
+			therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 52),
+			therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 56),
+			therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 60),
+			therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 64),
+			therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 68),
+			therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 72),
+			therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 76));
+	} else {
+		len = -ENODEV;
+	}
 
-		return len;
+	return len;
 }
 
 static ssize_t lvts_info3_show(struct kobject *kobj,
@@ -2126,21 +2140,25 @@ static ssize_t lvts_info3_show(struct kobject *kobj,
 {
 	int len = 0;
 
-	len += snprintf(buf + len, PAGE_SIZE - len, "%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x\n",
-		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 80),
-		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 84),
-		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 88),
-		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 92),
-		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 96),
-		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 100),
-		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 104),
-		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 108),
-		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 112),
-		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 116),
-		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 120),
-		therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 124));
+	if (tm_data.is_cputcm) {
+		len += snprintf(buf + len, PAGE_SIZE - len, "%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x\n",
+			therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 80),
+			therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 84),
+			therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 88),
+			therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 92),
+			therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 96),
+			therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 100),
+			therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 104),
+			therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 108),
+			therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 112),
+			therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 116),
+			therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 120),
+			therm_intf_read_cputcm_s32(MBRAIN_LOG_OFFSET + 124));
+	} else {
+		len = -ENODEV;
+	}
 
-		return len;
+	return len;
 }
 
 static void thermal_hint_notify(unsigned int source, unsigned int enable)
