@@ -17,6 +17,13 @@ struct wrapper_data {
 	const u32 max_ostd;
 	const u32 icc_dst_id;
 };
+
+#define UT_MAX_REQUEST 6
+static s32 qos_ut_case;
+static struct list_head ut_req_list;
+static bool ut_req_init;
+struct mm_qos_request ut_req[UT_MAX_REQUEST] = {};
+
 static struct wrapper_data wrapper_data_mt6983 = {
 	.max_ostd = 40,
 	.icc_dst_id = SLAVE_COMMON(0),
@@ -107,7 +114,7 @@ s32 mm_qos_add_request(struct list_head *owner_list,
 		pr_notice("mm_add: Invalid req pointer\n");
 		return -EINVAL;
 	}
-	if (req->init) {
+	if (req->init || !list_empty(&(req->owner_node))) {
 		pr_notice("mm_add(0x%08x) req is init\n", req->master_id);
 		return -EINVAL;
 	}
@@ -119,17 +126,17 @@ s32 mm_qos_add_request(struct list_head *owner_list,
 	req->bw_value = 0;
 	req->hrt_value = 0;
 	pr_info("[mmqos]mm_qos_add_request3\n");
-	INIT_LIST_HEAD(&(req->owner_node));
-	pr_info("[mmqos]mm_qos_add_request4\n");
-	list_add_tail(&(req->owner_node), owner_list);
-	pr_info("[mmqos]mm_qos_add_request5\n");
 	req->icc_path = mtk_icc_get(dev, smi_master_id, dst_id);
-	pr_info("[mmqos]mm_qos_add_request6\n");
+	pr_info("[mmqos]mm_qos_add_request4\n");
 	if (IS_ERR_OR_NULL(req->icc_path)) {
 		pr_notice("get icc path fail: src=%#x dst=%#x\n",
 			smi_master_id, dst_id);
 		return -EINVAL;
 	}
+	pr_info("[mmqos]mm_qos_add_request5\n");
+	INIT_LIST_HEAD(&(req->owner_node));
+	pr_info("[mmqos]mm_qos_add_request6\n");
+	list_add_tail(&(req->owner_node), owner_list);
 	pr_info("[mmqos]mm_qos_add_request7\n");
 	req->init = true;
 	pr_info("[mmqos]mm_qos_add_request8\n");
@@ -220,6 +227,7 @@ void mm_qos_remove_all_request(struct list_head *owner_list)
 	list_for_each_entry_safe(req, temp, owner_list, owner_node) {
 		pr_notice("mm_del(0x%08x)\n", req->master_id);
 		list_del(&(req->owner_node));
+		INIT_LIST_HEAD(&(req->owner_node));
 		req->init = false;
 	}
 	mutex_unlock(&bw_mutex);
@@ -349,10 +357,16 @@ static const struct of_device_id of_mmqos_wrapper_match_tbl[] = {
 };
 static int mmqos_wrapper_probe(struct platform_device *pdev)
 {
+	int i;
+
 	dev = &pdev->dev;
 	mmqos_wrapper = (struct wrapper_data *)of_device_get_match_data(&pdev->dev);
 	/* 256:Write BW, 2: HRT */
 	max_bw_bound = mmqos_wrapper->max_ostd * 256 * 2;
+
+	for (i = 0; i < UT_MAX_REQUEST; i++)
+		INIT_LIST_HEAD(&ut_req[i].owner_node);
+
 	return 0;
 }
 static struct platform_driver mmqos_wrapper_drv = {
@@ -380,14 +394,10 @@ static void __exit mtk_mmqos_wrapper_exit(void)
 }
 module_init(mtk_mmqos_wrapper_init);
 module_exit(mtk_mmqos_wrapper_exit);
-#define UT_MAX_REQUEST 6
-static s32 qos_ut_case;
-static struct list_head ut_req_list;
-static bool ut_req_init;
-struct mm_qos_request ut_req[UT_MAX_REQUEST] = {};
+
 int mmqos_ut_set(const char *val, const struct kernel_param *kp)
 {
-	int result, value;
+	int result, value, ret;
 	u32 req_id, master, dst_id;
 
 	result = sscanf(val, "%d %d %i %d %i", &qos_ut_case,
@@ -408,7 +418,11 @@ int mmqos_ut_set(const char *val, const struct kernel_param *kp)
 	}
 
 	if (qos_ut_case >= 0) {
-		mm_qos_add_request(&ut_req_list, &ut_req[req_id], master, dst_id);
+		ret = mm_qos_add_request(&ut_req_list, &ut_req[req_id], master, dst_id);
+		if (ret < 0) {
+			pr_notice("invalid req: %u, skip ut case, ret:%d\n", req_id, ret);
+			return -EINVAL;
+		}
 	}
 	switch (qos_ut_case) {
 	case 0:
