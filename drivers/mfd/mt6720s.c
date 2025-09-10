@@ -400,7 +400,7 @@ static int mt6720_register_interrupt(struct mt6720_info *info)
 	}
 
 	ret = devm_request_threaded_irq(dev, info->irq, NULL, mt6720_irq_thread_handler,
-					IRQF_TRIGGER_LOW | IRQF_ONESHOT, dev_name(dev), info);
+					IRQF_ONESHOT, dev_name(dev), info);
 	if (ret) {
 		dev_info(dev, "Failed to request MT6720 IRQ(irq:%d)\n", info->irq);
 		return ret;
@@ -473,17 +473,6 @@ static int mt6720_probe(struct spmi_device *sdev)
 		return PTR_ERR(regmap);
 	}
 
-	/* If using RCS, should set RCS config */
-	if (!info->bypass_retrigger) {
-		ret = regmap_write(regmap, MT6720_REG_SPMI_RCS2, info->svid);
-		if (ret)
-			dev_info(dev, "%s, Failed to set rcs_addr\n", __func__);
-
-		ret = regmap_write(regmap, MT6720_REG_SPMI_RCS1, 0x91);
-		if (ret)
-			dev_info(dev, "%s, Failed to enable MT6720 RCS\n", __func__);
-	}
-
 	ret = regmap_read(regmap, MT6720_REG_DEV_INFO, &ven_id);
 	if (ret) {
 		dev_info(dev, "Failed to read device information\n");
@@ -499,6 +488,13 @@ static int mt6720_probe(struct spmi_device *sdev)
 	if (ret) {
 		dev_info(dev, "Fialed to register interrupt\n");
 		return ret;
+	}
+
+	/* If using RCS, should set RCS config */
+	if (!info->bypass_retrigger) {
+		ret = regmap_update_bits(regmap, MT6720_REG_SPMI_RCS1, 0x80, 0x80);
+		if (ret)
+			dev_info(dev, "%s, Failed to enable MT6720 RCS\n", __func__);
 	}
 
 	return devm_of_platform_populate(dev);
