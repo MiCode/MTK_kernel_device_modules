@@ -1330,6 +1330,7 @@ mgk_64_kleaf_platform_modules = {
     "//kernel_device_modules-{}/drivers/gpu/mediatek/gpu_pdma:mtk_gpu_pdma_mt6993".format(kernel_version): "mt6993",
     "//kernel_device_modules-{}/drivers/gpu/mediatek/gpufreq/v2:mtk_gpufreq_mt6855".format(kernel_version): "mt6855",
     "//kernel_device_modules-{}/drivers/gpu/mediatek/gpufreq/v2:mtk_gpufreq_mt6858".format(kernel_version): "mt6858",
+    "//kernel_device_modules-{}/drivers/gpu/mediatek/gpufreq/v2:mtk_gpufreq_mt6878".format(kernel_version): "mt6878",
     "//kernel_device_modules-{}/drivers/gpu/mediatek/gpufreq/v2:mtk_gpufreq_mt6895".format(kernel_version): "mt6895",
     "//kernel_device_modules-{}/drivers/gpu/mediatek/gpufreq/v2:mtk_gpufreq_mt6991".format(kernel_version): "mt6991",
     "//kernel_device_modules-{}/drivers/gpu/mediatek/gpufreq/v2:mtk_gpufreq_mt6993".format(kernel_version): "mt6993",
