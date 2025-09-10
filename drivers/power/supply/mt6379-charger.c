@@ -1221,11 +1221,12 @@ static int mt6379_charger_get_property(struct power_supply *psy, enum power_supp
 	}
 }
 
+#define ROUND_UP_BASE(x, base)	((((x) + (base) - 1) / (base)) * (base))
 static int mt6379_charger_set_property(struct power_supply *psy, enum power_supply_property psp,
 				       const union power_supply_propval *val)
 {
 	struct mt6379_charger_data *cdata = power_supply_get_drvdata(psy);
-	u32 value = 0, aicr = 0;
+	u32 value = 0, aicr = 0, new_vsysov = 0;
 	int ret = 0;
 
 	if (!cdata)
@@ -1244,6 +1245,26 @@ static int mt6379_charger_set_property(struct power_supply *psy, enum power_supp
 
 		return mt6379_charger_field_set(cdata, F_CC, val->intval);
 	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_VOLTAGE:
+		if (cdata->id == CHARGER_ID_MT6379)
+			return mt6379_charger_field_set(cdata, F_CV, val->intval);
+
+		ret = mt6379_charger_field_get(cdata, F_VSYSOV, &value);
+		if (ret) {
+			dev_info(cdata->dev, "%s, Failed to get sysov\n", __func__);
+			return ret;
+		}
+
+		if (val->intval <= 4500000)
+			new_vsysov = 4600000;
+		else if (val->intval + 90000 >= value)
+			new_vsysov = ROUND_UP_BASE(val->intval + 100000, 100000);
+
+		ret = mt6379_charger_field_set(cdata, F_VSYSOV, new_vsysov);
+		if (ret) {
+			dev_info(cdata->dev, "%s, Failed to set vsysov\n", __func__);
+			return ret;
+		}
+
 		return mt6379_charger_field_set(cdata, F_CV, val->intval);
 	case POWER_SUPPLY_PROP_INPUT_CURRENT_LIMIT:
 		if (cdata->bypass_mode_entered)
