@@ -128,6 +128,7 @@ enum gpufreq_config_target {
 	CONFIG_PTP3             = 17,
 	CONFIG_MFG2_BEFORE_OFF  = 18,
 	CONFIG_DEVAPC_HANDLE    = 19,
+	CONFIG_PREUVLO          = 35,
 };
 
 enum gpufreq_config_value {
