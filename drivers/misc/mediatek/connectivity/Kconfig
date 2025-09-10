@@ -315,6 +315,15 @@ config MTK_COMBO_CHIP_CONSYS_6858
 	  is
 	  MT6858(BT/WIFI/GPS combo chip)
 
+config MTK_COMBO_CHIP_CONSYS_6878
+	bool "MTK MT6878 combo chip support"
+	help
+	  this config is used to decide SOC consys version
+	  in current platform
+	  is
+	  MT6878(BT/WIFI/GPS combo chip)
+
+
 #
 # Target Platform Selection
 #
