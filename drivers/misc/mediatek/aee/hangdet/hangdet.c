@@ -1546,24 +1546,33 @@ static int __init init_wk_check_bit(void)
 
 static void wdt_mark_stage(unsigned int stage)
 {
-	unsigned int reg = ioread32(toprgu_base + WDT_NONRST_REG2);
+	unsigned int reg = 0;
 
-	reg = (reg & ~(WDT_STAGE_MASK << WDT_STAGE_OFS))
-		| (stage << WDT_STAGE_OFS);
-	iowrite32(reg, toprgu_base + WDT_NONRST_REG2);
+	if (toprgu_base) {
+		reg = ioread32(toprgu_base + WDT_NONRST_REG2);
+
+		reg = (reg & ~(WDT_STAGE_MASK << WDT_STAGE_OFS))
+			| (stage << WDT_STAGE_OFS);
+		iowrite32(reg, toprgu_base + WDT_NONRST_REG2);
+	} else
+		pr_warn("toprgu_base is not defined!\n");
 }
 
 static void reboot_set_flag(bool op)
 {
-	unsigned int reg = ioread32(toprgu_base + WDT_NONRST_REG2);
+	unsigned int reg = 0;
 
-	pr_info("reboot set flag, old value 0x%x, %d.\n", reg, op);
-	reg = ((reg & ~(REBOOT_FLAG_MASK << REBOOT_FLAG_OFS))
-		| (op ? 1 : 0) << REBOOT_FLAG_OFS);
-	iowrite32(reg, toprgu_base + WDT_NONRST_REG2);
-	pr_info("reboot set flag new value 0x%x.\n", reg);
+	if (toprgu_base) {
+		reg = ioread32(toprgu_base + WDT_NONRST_REG2);
+		pr_info("reboot set flag, old value 0x%x, %d.\n", reg, op);
+
+		reg = ((reg & ~(REBOOT_FLAG_MASK << REBOOT_FLAG_OFS))
+			| (op ? 1 : 0) << REBOOT_FLAG_OFS);
+		iowrite32(reg, toprgu_base + WDT_NONRST_REG2);
+		pr_info("reboot set flag new value 0x%x.\n", reg);
+	} else
+		pr_warn("toprgu_base is not defined!\n");
 }
-
 
 static int aee_reset(struct notifier_block *nb, unsigned long action, void *data)
 {
@@ -1851,7 +1860,7 @@ static int __init hangdet_init(void)
 
 	toprgu_base = of_iomap(np_toprgu, 0);
 	if (!toprgu_base)
-		pr_debug("toprgu iomap failed\n");
+		pr_err("toprgu iomap failed\n");
 	else {
 		int err1, err2;
 
