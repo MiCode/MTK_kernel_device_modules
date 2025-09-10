@@ -222,6 +222,8 @@ void init_crtc_mmp_event(void)
 			crtc_mmp_root, "atomic_begin");
 		g_CRTC_MMP_Events[i].atomic_flush = mmprofile_register_event(
 			crtc_mmp_root, "atomic_flush");
+		g_CRTC_MMP_Events[i].crtc_usage= mmprofile_register_event(
+			crtc_mmp_root, "crtc_usage");
 		g_CRTC_MMP_Events[i].enable_vblank = mmprofile_register_event(
 			crtc_mmp_root, "enable_vblank");
 		g_CRTC_MMP_Events[i].disable_vblank = mmprofile_register_event(
@@ -244,6 +246,10 @@ void init_crtc_mmp_event(void)
 			crtc_mmp_root, "dsi_suspend");
 		g_CRTC_MMP_Events[i].dsi_resume = mmprofile_register_event(
 			crtc_mmp_root, "dsi_resume");
+		g_CRTC_MMP_Events[i].dsi_disable = mmprofile_register_event(
+			crtc_mmp_root, "dsi_disable");
+		g_CRTC_MMP_Events[i].dsi_enable = mmprofile_register_event(
+			crtc_mmp_root, "dsi_enable");
 		g_CRTC_MMP_Events[i].backlight = mmprofile_register_event(
 			crtc_mmp_root, "backlight");
 		g_CRTC_MMP_Events[i].backlight_grp = mmprofile_register_event(
@@ -276,6 +282,8 @@ void init_crtc_mmp_event(void)
 			crtc_mmp_root, "kick_trigger");
 		g_CRTC_MMP_Events[i].atomic_commit = mmprofile_register_event(
 			crtc_mmp_root, "atomic_commit");
+		g_CRTC_MMP_Events[i].set_mmclk = mmprofile_register_event(
+			crtc_mmp_root, "set_mmclk");
 		g_CRTC_MMP_Events[i].bwm20 = mmprofile_register_event(
 			crtc_mmp_root, "bwm20");
 		g_CRTC_MMP_Events[i].pu_ddic_cmd = mmprofile_register_event(

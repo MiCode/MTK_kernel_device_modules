@@ -655,6 +655,32 @@ static void dump_disp_info(struct drm_mtk_layering_info *disp_info,
 	layer_info = NULL;
 }
 
+static void dump_disp_caps_info(struct drm_device *dev,
+					struct drm_mtk_layering_info *disp_info, const int line)
+{
+	int j;
+	unsigned int disp_idx = 0;
+	struct mtk_drm_private *priv = dev->dev_private;
+
+	if (priv->data->mmsys_id != MMSYS_MT6878)
+		return;
+
+	if (get_layering_opt(LYE_OPT_SPHRT))
+		disp_idx = disp_info->disp_idx;
+
+	for (; disp_idx < HRT_DISP_TYPE_NUM ; disp_idx++) {
+		if (disp_info->layer_num[disp_idx] <= 0)
+			continue;
+
+		for (j = 0; j < disp_info->layer_num[disp_idx]; j++) {
+			struct drm_mtk_layer_config *c = &disp_info->input_config[disp_idx][j];
+
+			if (MTK_MML_OVL_LAYER & c->layer_caps)
+				DDPINFO("%s, %d, idx=%d, j=%d, cap=0x%x\n", __func__, line, disp_idx, j, c->layer_caps);
+		}
+	}
+}
+
 static void check_gles_change(struct debug_gles_range *dbg_gles, const int line, const bool print)
 {
 
@@ -2891,7 +2917,8 @@ static int mtk_lye_get_comp_id(int disp_idx, int disp_list, struct drm_device *d
 		if (priv->data->mmsys_id == MMSYS_MT6985 ||
 			priv->data->mmsys_id == MMSYS_MT6897 ||
 			priv->data->mmsys_id == MMSYS_MT6989 ||
-			priv->data->mmsys_id == MMSYS_MT6858) {
+			priv->data->mmsys_id == MMSYS_MT6858 ||
+			priv->data->mmsys_id == MMSYS_MT6878) {
 			if (HRT_GET_FIRST_SET_BIT(ovl_mapping_tb -
 				HRT_GET_FIRST_SET_BIT(ovl_mapping_tb)) >=
 				layer_map_idx) {
@@ -3230,6 +3257,10 @@ static void clear_layer(struct drm_mtk_layering_info *disp_info,
 	if (!get_layering_opt(LYE_OPT_CLEAR_LAYER))
 		return;
 
+	if ((priv->data->mmsys_id == MMSYS_MT6878) &&
+		(disp_info->disp_idx == 3))
+		return;
+
 	drm_for_each_crtc(crtc, drm_dev) {
 		if (drm_crtc_index(crtc) == 0)
 			break;
@@ -3296,6 +3327,16 @@ static void clear_layer(struct drm_mtk_layering_info *disp_info,
 				DDPMSG("%s:remove clear(rsz), caps:0x%08x\n",
 				       __func__, c->layer_caps);
 			}
+		}
+
+		if ((priv->data->mmsys_id == MMSYS_MT6878) &&
+			mtk_has_layer_cap(c, MTK_DISP_CLIENT_CLEAR_LAYER) &&
+			mtk_has_layer_cap(c, MTK_MML_DISP_NOT_SUPPORT) &&
+			mtk_has_layer_cap(c, MTK_MDP_ROT_LAYER)) {
+			c->layer_caps &= ~MTK_DISP_CLIENT_CLEAR_LAYER;
+			mtk_rollback_layer_to_GPU(disp_info, di, top);
+			DDPMSG("%s:remove clear(mml_disp_not_support), caps:0x%08x\n",
+			       __func__, c->layer_caps);
 		}
 
 		if (mtk_has_layer_cap(c, MTK_DISP_CLIENT_CLEAR_LAYER)) {
@@ -4347,7 +4388,8 @@ static int RPO_rule(struct drm_crtc *crtc,
 			(private->data->mmsys_id != MMSYS_MT6897)
 			&& (private->data->mmsys_id != MMSYS_MT6991)
 			&& (private->data->mmsys_id != MMSYS_MT6993)
-			&& (private->data->mmsys_id != MMSYS_MT6858))
+			&& (private->data->mmsys_id != MMSYS_MT6858)
+			&& (private->data->mmsys_id != MMSYS_MT6878))
 			continue;
 
 		if (scale_cnt >= l_rule_info->rpo_scale_num)
@@ -4599,11 +4641,14 @@ static void check_is_mml_layer(const int disp_idx,
 			} else {
 				if (i < 32)
 					mml_ovl_layers |= (1 << i);
-				else {
+				else if (priv->data->mmsys_id != MMSYS_MT6878) {
 					DDPMSG("disp can't handle layer_idx%d as mml layer\n", i);
 					c->layer_caps &= ~MTK_MML_OVL_LAYER;
 					vfree(multi_mml_info);
 					return;
+				} else {
+					DDPMSG("disp can't handle layer_idx%d as mml layer and not support MDP\n", i);
+					c->layer_caps |= MTK_MML_DISP_NOT_SUPPORT;
 				}
 
 				if (calc_mml_rsz_ratio(&(disp_info->mml_cfg[disp_idx][i])) > 100)
@@ -5028,6 +5073,8 @@ static int layering_rule_start(struct drm_mtk_layering_info *disp_info_user,
 	DDPMSG("[Input data]\n");
 	dump_disp_info(&layering_info, DISP_DEBUG_LEVEL_INFO);
 #endif
+	dump_disp_caps_info(dev, &layering_info, __LINE__);
+
 	if (get_layering_opt(LYE_OPT_SPHRT))
 		disp_idx = disp_info_user->disp_idx;
 	/* fix the hrt bandwidth before the 1st valid input layers

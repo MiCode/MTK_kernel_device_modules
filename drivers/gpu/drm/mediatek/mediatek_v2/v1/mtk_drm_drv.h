@@ -36,6 +36,8 @@
 #endif
 #define MTK_DRM_ASYNC_HANDLE
 
+#define KERNEL_POWER_OFF_CHARGING_BOOT 8
+
 #define PQ_PATH_11
 
 extern unsigned int dsi_delay;
@@ -122,6 +124,8 @@ struct mtk_mmsys_driver_data {
 	bool has_smi_limitation;
 	bool doze_ctrl_pmic;
 	bool can_compress_rgb565;
+	bool need_seg_id;
+	bool need_rpo_ratio_for_mmclk;
 	bool need_emi_eff;
 	bool not_support_csc;
 	bool wcg_2nd_3st_support;
@@ -348,10 +352,10 @@ struct mtk_drm_private {
 
 	bool need_cwb_path_disconnect;
 	bool cwb_is_preempted;
+	bool is_dual_disp;
 
 	bool dma_parms_allocated;
 
-	bool already_first_config;
 	bool is_tablet;
 
 	/*
@@ -363,7 +367,12 @@ struct mtk_drm_private {
 	struct mml_drm_ctx *mml_ctx;
 	atomic_t need_recover;
 
+	struct mutex cmdq_prepare_instr_lock;
+	struct mutex path_modify_lock;
+	struct mutex set_mmclk_lock;
+
 	unsigned int seg_id;
+	unsigned int boot_mode;
 
 	unsigned int srt_channel_bw_sum[MAX_CRTC][BW_CHANNEL_NR];
 	unsigned int srt_channel_write_bw_sum[MAX_CRTC][BW_CHANNEL_NR];
@@ -665,5 +674,6 @@ int mtk_drm_get_mml_hw_caps(void);
 int mtk_drm_get_mmdvfs_state(void);
 void mtk_drm_put_mmdvfs_state(void);
 void mtk_drm_mmdvfs_enable_vcp(struct drm_crtc *crtc, bool en);
+bool mtk_disp_check_segment(struct mtk_drm_crtc *mtk_crtc, struct mtk_drm_private *priv);
 
 #endif /* MTK_DRM_DRV_H */

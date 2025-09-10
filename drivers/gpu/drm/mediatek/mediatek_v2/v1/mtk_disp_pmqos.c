@@ -270,7 +270,30 @@ void __mtk_disp_set_module_hrt(struct icc_path *request, int comp_id,
 		DRM_MMP_MARK(ostdl, (comp_id << 16) | bandwidth, respective_ostdl);
 }
 
-static bool mtk_disp_check_segment(struct mtk_drm_crtc *mtk_crtc,
+
+static bool mtk_disp_check_segment_mt6878(struct mtk_drm_crtc *mtk_crtc,
+				struct mtk_drm_private *priv)
+{
+	bool ret = true;
+
+	switch (priv->seg_id) {
+	case 1:
+		if (dsi1_status)
+			ret = false;
+		break;
+	default:
+		ret = true;
+		break;
+	}
+	//DDPMSG("%s, segment:%d, ret=%d\n", __func__, priv->seg_id, ret);
+
+	if (ret == false)
+		DDPPR_ERR("%s fail: segment:%d\n", __func__, priv->seg_id);
+
+	return ret;
+}
+
+static bool mtk_disp_check_segment_mt6897(struct mtk_drm_crtc *mtk_crtc,
 				struct mtk_drm_private *priv)
 {
 	bool ret = true;
@@ -278,34 +301,22 @@ static bool mtk_disp_check_segment(struct mtk_drm_crtc *mtk_crtc,
 	int vact = 0;
 	int vrefresh = 0;
 
-	if (IS_ERR_OR_NULL(mtk_crtc)) {
-		DDPPR_ERR("%s, mtk_crtc is NULL\n", __func__);
-		return ret;
-	}
-
-	if (IS_ERR_OR_NULL(priv)) {
-		DDPPR_ERR("%s, private is NULL\n", __func__);
-		return ret;
-	}
-
 	hact = mtk_crtc->base.state->adjusted_mode.hdisplay;
 	vact = mtk_crtc->base.state->adjusted_mode.vdisplay;
 	vrefresh = drm_mode_vrefresh(&mtk_crtc->base.state->adjusted_mode);
 
-	if (priv->data->mmsys_id == MMSYS_MT6897 && !priv->is_tablet) {
-		switch (priv->seg_id) {
-		case 1:
-			if (hact >= 1440 && vrefresh > 120)
-				ret = false;
-			break;
-		case 2:
-			if (hact >= 1440 && vrefresh > 144)
-				ret = false;
-			break;
-		default:
-			ret = true;
-			break;
-		}
+	switch (priv->seg_id) {
+	case 1:
+		if (hact >= 1440 && vrefresh > 120)
+			ret = false;
+		break;
+	case 2:
+		if (hact >= 1440 && vrefresh > 144)
+			ret = false;
+		break;
+	default:
+		ret = true;
+		break;
 	}
 
 	if (priv->data->mmsys_id == MMSYS_MT6895) {
@@ -342,6 +353,36 @@ static bool mtk_disp_check_segment(struct mtk_drm_crtc *mtk_crtc,
 	if (ret == false)
 		DDPPR_ERR("%s, check sement fail: segment:%d, mode(%d, %d, %d)\n",
 			__func__, priv->seg_id, hact, vact, vrefresh);
+
+	return ret;
+}
+
+bool mtk_disp_check_segment(struct mtk_drm_crtc *mtk_crtc,
+				struct mtk_drm_private *priv)
+{
+	bool ret = true;
+
+	if (IS_ERR_OR_NULL(mtk_crtc)) {
+		DDPPR_ERR("%s, mtk_crtc is NULL\n", __func__);
+		return ret;
+	}
+
+	if (IS_ERR_OR_NULL(priv)) {
+		DDPPR_ERR("%s, private is NULL\n", __func__);
+		return ret;
+	}
+
+	if (seg_id_dbg) {
+		priv->seg_id = seg_id_dbg;
+		DDPMSG("%s, seg_id=%d\n", __func__, priv->seg_id);
+	}
+
+	if (priv->data->need_seg_id && !priv->is_tablet) {
+		if (priv->data->mmsys_id == MMSYS_MT6878)
+			ret = mtk_disp_check_segment_mt6878(mtk_crtc, priv);
+		else if (priv->data->mmsys_id == MMSYS_MT6897)
+			ret = mtk_disp_check_segment_mt6897(mtk_crtc, priv);
+	}
 
 	return ret;
 }
@@ -2115,17 +2156,21 @@ void mtk_drm_set_mmclk_by_pixclk(struct drm_crtc *crtc,
 {
 	int i;
 	unsigned long freq = pixclk * 1000000;
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
 
+	mutex_lock(&priv->set_mmclk_lock);
 	g_freq = freq;
 
 	if (freq > g_freq_steps[step_size - 1]) {
 		DDPPR_ERR("%s:pixleclk (%lu) is to big for mmclk (%lu)\n",
 			caller, freq, g_freq_steps[step_size - 1]);
 		mtk_drm_set_mmclk(crtc, step_size - 1, false, caller);
+		mutex_unlock(&priv->set_mmclk_lock);
 		return;
 	}
 	if (!freq) {
 		mtk_drm_set_mmclk(crtc, -1, false, caller);
+		mutex_unlock(&priv->set_mmclk_lock);
 		return;
 	}
 	for (i = step_size - 2 ; i >= 0; i--) {
@@ -2140,6 +2185,7 @@ void mtk_drm_set_mmclk_by_pixclk(struct drm_crtc *crtc,
 				mtk_drm_set_mmclk(crtc, 0, true, caller);
 		}
 	}
+	mutex_unlock(&priv->set_mmclk_lock);
 }
 
 unsigned long mtk_drm_get_freq(struct drm_crtc *crtc, const char *caller)

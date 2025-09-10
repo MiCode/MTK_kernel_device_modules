@@ -119,6 +119,8 @@ bool g_vidle_apsrc_debug;
 EXPORT_SYMBOL(g_vidle_apsrc_debug);
 bool g_profile_log;
 bool g_qos_log;
+bool g_hrt_by_larb_debug;
+bool g_hrt_by_larb_log;
 
 bool g_irq_log;
 unsigned int mipi_volt;
@@ -152,6 +154,7 @@ static bool partial_roi_highlight;
 static bool partial_force_roi;
 static unsigned int partial_y_offset;
 static unsigned int partial_height;
+unsigned int seg_id_dbg;
 
 int dsi_cmd_v2_dbg[DSI_CMD_V2_SCN_NUM] = {1, 1, 1, 1, 1, 1};
 int esd_flush_fail_flag;
@@ -1142,6 +1145,9 @@ static int debug_get_info(unsigned char *stringbuf, int buf_len)
 	n += disp_helper_get_option_list(stringbuf + n, buf_len - n);
 #endif
 	n += mtk_drm_primary_display_get_debug_state(private, stringbuf + n,
+		buf_len - n);
+
+	n += mtk_drm_secondary_display_get_debug_state(private, stringbuf + n,
 		buf_len - n);
 
 	n += mtk_drm_dump_wk_lock(private, stringbuf + n,
@@ -3156,6 +3162,16 @@ static void process_dbg_opt(const char *opt)
 		} else if (strncmp(opt + 6, "off", 3) == 0) {
 			g_trace_log = 0;
 		}
+	} else if (strncmp(opt, "hrt_by_larb_log:", 16) == 0) {
+		if (strncmp(opt + 16, "on", 2) == 0)
+			g_hrt_by_larb_log = 1;
+		else if (strncmp(opt + 16, "off", 3) == 0)
+			g_hrt_by_larb_log = 0;
+	} else if (strncmp(opt, "hrt_by_larb_debug:", 18) == 0) {
+		if (strncmp(opt + 18, "on", 2) == 0)
+			g_hrt_by_larb_debug = 1;
+		else if (strncmp(opt + 18, "off", 3) == 0)
+			g_hrt_by_larb_debug = 0;
 	} else if (strncmp(opt, "logger:", 7) == 0) {
 		if (strncmp(opt + 7, "on", 2) == 0) {
 #if IS_ENABLED(CONFIG_MTK_MME_SUPPORT)
@@ -4635,6 +4651,61 @@ static void process_dbg_opt(const char *opt)
 		/* fill connector prop caps for hwc */
 		mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_FILL_CONNECTOR_PROP_CAPS, mtk_crtc);
 		DDPINFO("set panel color_mode to %d\n", params->lcm_color_mode);
+	} else if (strncmp(opt, "fake_csc:", 9) == 0) {
+		unsigned int temp = 0, fake_hdr_en = 0, disp_idx = 3;
+		struct drm_crtc *crtc;
+		struct mtk_panel_params *params = NULL;
+		struct mtk_drm_crtc *mtk_crtc;
+		struct mtk_ddp_comp *output_comp;
+		struct mtk_crtc_state *state;
+		unsigned int mode_cont, cur_mode_idx, i, idx;
+		int ret;
+
+		DDPMSG("%s, input:%s, ++\n", __func__, opt);
+		//ret = sscanf(opt, "fake_csc:%u,%u\n", &fake_hdr_en, &disp_idx);
+		ret = sscanf(opt, "fake_csc:%x\n", &temp);
+		if (ret != 1) {
+			DDPPR_ERR("%d error to parse cmd %s\n", __LINE__, opt);
+			return;
+		}
+		fake_hdr_en = temp & 0xf;
+		disp_idx = (temp >> 4) & 0xf;
+		DDPMSG("%s,1, temp=0x%x, hdr_en=%d, disp_idx=%d\n", __func__, temp, fake_hdr_en, disp_idx);
+		drm_for_each_crtc(crtc, drm_dev) {
+			mtk_crtc = to_mtk_crtc(crtc);
+			idx = drm_crtc_index(&mtk_crtc->base);
+			if (idx != disp_idx)
+				continue;
+
+			state = to_mtk_crtc_state(mtk_crtc->base.state);
+			cur_mode_idx = state->prop_val[CRTC_PROP_DISP_MODE_IDX];
+			output_comp = mtk_ddp_comp_request_output(mtk_crtc);
+			if (!output_comp) {
+				DDPMSG("output_comp is null!\n");
+				return;
+			}
+			mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_GET_MODE_CONT, &mode_cont);
+
+			DDPMSG("set panel color_mode info: mode_cont = %d, cur_mode_idx = %d\n",
+								mode_cont, cur_mode_idx);
+
+			for (i = 0; i < mode_cont; i++) {
+				mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_SET_PANEL_PARAMS_BY_IDX, &i);
+				params = mtk_drm_get_lcm_ext_params(crtc);
+				if (!params) {
+					DDPINFO("[Fake HDR] find lcm ext fail[%d]\n", i);
+					return;
+				}
+				params->lcm_color_mode = (fake_hdr_en) ?
+					MTK_DRM_COLOR_MODE_DISPLAY_P3 : MTK_DRM_COLOR_MODE_NATIVE;
+			}
+			mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_SET_PANEL_PARAMS_BY_IDX, &cur_mode_idx);
+
+			/* fill connector prop caps for hwc */
+			mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_FILL_CONNECTOR_PROP_CAPS, mtk_crtc);
+			DDPMSG("set panel color_mode to %d, idx:%d\n", params->lcm_color_mode, idx);
+		}
+		DDPMSG("%s,--\n", __func__);
 	} else if (strncmp(opt, "fake_mode:", 10) == 0) {
 		unsigned int en = 0;
 		struct drm_crtc *crtc;
@@ -5113,10 +5184,15 @@ static void process_dbg_opt(const char *opt)
 		else if (strncmp(opt + 10, "2", 1) == 0)
 			crtc_idx = 2;
 
-		if (strncmp(opt + 11, "1", 1) == 0)
+		if (strncmp(opt + 11, "1", 1) == 0) {
 			priv->usage[crtc_idx] = DISP_OPENING;
-		else if (strncmp(opt + 11, "0", 1) == 0)
+			CRTC_MMP_MARK(crtc_idx, crtc_usage,
+				priv->usage[crtc_idx], 2);
+		} else if (strncmp(opt + 11, "0", 1) == 0) {
 			priv->usage[crtc_idx] = DISP_ENABLE;
+			CRTC_MMP_MARK(crtc_idx, crtc_usage,
+				priv->usage[crtc_idx], 2);
+		}
 		DDPMSG("set crtc %d usage to %d", crtc_idx, priv->usage[crtc_idx]);
 	} else if (strncmp(opt, "spr_ip_cfg:", 11) == 0) {
 		struct drm_crtc *crtc;
@@ -5742,7 +5818,7 @@ test_2c_done:
 		};
 
 		cmd_opt.flags = MTK_MIPI_DSI_CRTC_ID | MTK_MIPI_DSI_CMD_KICK_IDLE |
-			MTK_MIPI_DSI_CMD_NEED_LOCK | MTK_MIPI_DSI_CMD_BY_CPU;
+			MTK_MIPI_DSI_CMD_NEED_LOCK | MTK_MIPI_DSI_CMD_BY_CPU;
 		cmd_opt.crtc_id = 0;
 
 		DDPMSG("hc3 3c_init ++\n");
@@ -5751,6 +5827,27 @@ test_2c_done:
 			DDPMSG("hc3 3c_init fail\n");
 
 		DDPMSG("hc3 3c_init pass\n");
+	} else if (strncmp(opt, "disp_segment:", 13) == 0) {
+		if (strncmp(opt + 13, "0", 1) == 0) {
+			seg_id_dbg = 0;
+		} else if (strncmp(opt + 13, "1", 1) == 0) {
+			DDPMSG("%s, seg 1\n", __func__);
+			seg_id_dbg = 1;
+		} else if (strncmp(opt + 13, "2", 1) == 0) {
+			DDPMSG("%s, seg 2\n", __func__);
+			seg_id_dbg = 2;
+		} else if (strncmp(opt + 13, "3", 1) == 0) {
+			DDPMSG("%s, seg 3\n", __func__);
+			seg_id_dbg = 3;
+		} else if (strncmp(opt + 13, "fail", 4) == 0) {
+			DDPMSG("%s, seg fail\n", __func__);
+			seg_id_dbg = 1;
+			dsi1_status = true;
+		}  else if (strncmp(opt + 13, "test", 4) == 0) {
+			DDPMSG("%s, seg test\n", __func__);
+			dsi1_status = true;
+		}
+		DDPMSG("%s, seg_id_dbg=%d\n", __func__, seg_id_dbg);
 	}
 }
 

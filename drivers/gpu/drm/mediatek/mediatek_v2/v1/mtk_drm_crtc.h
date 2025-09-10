@@ -1214,6 +1214,7 @@ struct mtk_drm_crtc {
 	bool vblank_en;
 	unsigned int hwvsync_en;
 
+	bool already_first_config;
 	atomic_t already_config;
 
 	bool layer_rec_en;
@@ -1427,6 +1428,8 @@ struct mtk_cmdq_cb_data {
 };
 #define TIGGER_INTERVAL_S(x) ((unsigned long long)x*1000*1000*1000)
 extern unsigned int disp_spr_bypass;
+extern bool dsi1_status;
+extern unsigned int seg_id_dbg;
 
 int mtk_drm_crtc_enable_vblank(struct drm_crtc *crtc);
 void mtk_drm_crtc_disable_vblank(struct drm_crtc *crtc);
@@ -1572,6 +1575,8 @@ int mtk_drm_crtc_get_panel_original_size(struct drm_crtc *crtc, unsigned int *wi
 unsigned int mtk_drm_primary_frame_bw(struct drm_crtc *crtc);
 
 unsigned int mtk_drm_primary_display_get_debug_state(
+	struct mtk_drm_private *priv, char *stringbuf, int buf_len);
+unsigned int mtk_drm_secondary_display_get_debug_state(
 	struct mtk_drm_private *priv, char *stringbuf, int buf_len);
 
 bool mtk_crtc_with_trigger_loop(struct drm_crtc *crtc);

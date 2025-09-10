@@ -102,6 +102,7 @@ struct CRTC_MMP_Events {
 	mmp_event atomic_delay;
 	mmp_event atomic_begin;
 	mmp_event atomic_flush;
+	mmp_event crtc_usage;
 	mmp_event enable_vblank;
 	mmp_event disable_vblank;
 	mmp_event esd_check;
@@ -115,6 +116,8 @@ struct CRTC_MMP_Events {
 	mmp_event resume;
 	mmp_event dsi_suspend;
 	mmp_event dsi_resume;
+	mmp_event dsi_disable;
+	mmp_event dsi_enable;
 	mmp_event backlight;
 	mmp_event backlight_grp;
 	mmp_event ddic_send_cmd;
@@ -131,6 +134,7 @@ struct CRTC_MMP_Events {
 	mmp_event check_trigger;
 	mmp_event kick_trigger;
 	mmp_event atomic_commit;
+	mmp_event set_mmclk;
 	mmp_event bwm20;
 	mmp_event pu_ddic_cmd;
 	mmp_event pu_final_roi;

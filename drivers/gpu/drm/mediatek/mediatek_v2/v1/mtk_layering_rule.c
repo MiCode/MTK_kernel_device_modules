@@ -226,6 +226,32 @@ static void filter_2nd_display(struct drm_mtk_layering_info *disp_info)
 	}
 }
 
+static void filter_4th_display(struct drm_device *dev,
+	struct drm_mtk_layering_info *disp_info)
+{
+	unsigned int i = 0, j = 0;
+	struct mtk_drm_private *priv = dev->dev_private;
+	const u8 disp_idx = get_layering_opt(LYE_OPT_SPHRT) ? disp_info->disp_idx : 0;
+	struct drm_mtk_layer_config *lc;
+
+	if (priv->data->mmsys_id != MMSYS_MT6878 || disp_idx != 3)
+		return;
+
+	for (j = 0; j < disp_info->layer_num[i]; j++) {
+		if (mtk_is_gles_layer(disp_info, i, j))
+			continue;
+
+		lc = &disp_info->input_config[i][j];
+
+		if (MTK_MML_OVL_LAYER & lc->layer_caps) {
+			mtk_rollback_layer_to_GPU(disp_info, i, j);
+			DDPDBG("%s disp_idx:%d Rollback MML_OVL_LAYER to GPU i:%d, j:%d\n",
+				__func__, disp_idx, i, j);
+			continue;
+		}
+	}
+}
+
 static bool is_ovl_wcg(enum mtk_drm_dataspace ds)
 {
 	bool ret = false;
@@ -417,6 +443,8 @@ static bool filter_by_hw_limitation(struct drm_device *dev,
 
 	/* Is this nessasary? */
 	filter_2nd_display(disp_info);
+
+	filter_4th_display(dev, disp_info);
 
 	return flag;
 }
@@ -646,7 +674,8 @@ static uint16_t get_mapping_table(struct drm_device *dev, int disp_idx, int disp
 		if (priv->data->mmsys_id == MMSYS_MT6985 ||
 			priv->data->mmsys_id == MMSYS_MT6897 ||
 			priv->data->mmsys_id == MMSYS_MT6989 ||
-			priv->data->mmsys_id == MMSYS_MT6858)
+			priv->data->mmsys_id == MMSYS_MT6858 ||
+			priv->data->mmsys_id == MMSYS_MT6878)
 			if (get_layering_opt(LYE_OPT_SPDA_OVL_SWITCH))
 				map = get_dynamic_mapping_table(dev, disp_idx, disp_list,
 						DISP_HW_OVL_TB, addon_data->hrt_type);
@@ -679,7 +708,8 @@ static uint16_t get_mapping_table(struct drm_device *dev, int disp_idx, int disp
 			if (priv->data->mmsys_id == MMSYS_MT6985 ||
 				priv->data->mmsys_id == MMSYS_MT6897 ||
 				priv->data->mmsys_id == MMSYS_MT6989 ||
-				priv->data->mmsys_id == MMSYS_MT6858)
+				priv->data->mmsys_id == MMSYS_MT6858 ||
+				priv->data->mmsys_id == MMSYS_MT6878)
 				if (get_layering_opt(LYE_OPT_SPDA_OVL_SWITCH))
 					tmp_map = get_dynamic_mapping_table(dev, disp_idx,
 						disp_list, DISP_HW_LAYER_TB, addon_data->hrt_type);
@@ -760,7 +790,8 @@ void mtk_layering_rule_init(struct drm_device *dev)
 		if(private->data->mmsys_id != MMSYS_MT6991 &&
 			private->data->mmsys_id != MMSYS_MT6989 &&
 			private->data->mmsys_id != MMSYS_MT6993 &&
-			private->data->mmsys_id != MMSYS_MT6858) {
+			private->data->mmsys_id != MMSYS_MT6858 &&
+			private->data->mmsys_id != MMSYS_MT6878) {
 			comp = private->ddp_comp[module_data->attach_comp];
 			if (!comp) {
 				DDPPR_ERR("RPO attached comp is NULL %d\n", module_data->attach_comp);
