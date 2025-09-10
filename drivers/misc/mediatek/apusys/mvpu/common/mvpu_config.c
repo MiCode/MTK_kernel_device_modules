@@ -14,6 +14,11 @@ int mvpu_config_init(struct mtk_apu *apu)
 
 	pr_info("%s +\n", __func__);
 
+	if (g_mvpu_platdata == NULL) {
+		pr_info("platdata is NULL, by pass init MVPU config");
+		return 0;
+	}
+
 	if (g_mvpu_platdata->sw_ver == MVPU_SW_VER_MVPU20 || g_mvpu_platdata->sw_ver == MVPU_SW_VER_MVPU25 ||
 		g_mvpu_platdata->sw_ver == MVPU_SW_VER_MVPU25a|| g_mvpu_platdata->sw_ver == MVPU_SW_VER_MVPU25b) {
 		ret = mvpu2_preempt_dram_init(apu);
@@ -30,6 +35,11 @@ int mvpu_config_init(struct mtk_apu *apu)
 int mvpu_config_remove(struct mtk_apu *apu)
 {
 	int ret = 0;
+
+	if (g_mvpu_platdata == NULL) {
+		pr_info("platdata is NULL, by pass remove MVPU config");
+		return 0;
+	}
 
 	if (g_mvpu_platdata->sw_ver == MVPU_SW_VER_MVPU20 || g_mvpu_platdata->sw_ver == MVPU_SW_VER_MVPU25 ||
 		g_mvpu_platdata->sw_ver == MVPU_SW_VER_MVPU25a|| g_mvpu_platdata->sw_ver == MVPU_SW_VER_MVPU25b) {
