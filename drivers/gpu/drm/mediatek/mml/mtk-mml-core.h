@@ -519,7 +519,7 @@ struct mml_topology_ops {
 						       u32 pipe,
 						       struct mml_frame_size *panel);
 	enum mml_mode (*support_couple)(void);
-	bool (*support_dc2)(void);
+	bool (*support_dc2)(struct mml_frame_info *info);
 	enum mml_hw_caps (*support_hw_caps)(void);
 };
 

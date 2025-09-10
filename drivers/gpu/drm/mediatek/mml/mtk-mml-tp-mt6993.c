@@ -1723,6 +1723,13 @@ static void tp_pre_query_mode(struct mml_dev *mml, struct mml_frame_info *info,
 	/* skip all racing mode check if user prefer dc */
 	if (mml_isdc(info->mode)) {
 		*reason = mml_query_userdc;
+		if (info->mode == MML_MODE_MML_DECOUPLE2 &&
+			tp_query_mode_dc2(info) != MML_MODE_MML_DECOUPLE2)
+			return;
+		if (info->mode == MML_MODE_MML_DECOUPLE &&
+			tp_query_mode_dc(info) != MML_MODE_MML_DECOUPLE)
+			return;
+
 		mode = info->mode;
 		goto check_dc_tput;
 	}
@@ -1844,9 +1851,12 @@ static enum mml_mode tp_support_couple(void)
 	return MML_MODE_DIRECT_LINK;
 }
 
-static bool tp_support_dc2(void)
+static bool tp_support_dc2(struct mml_frame_info *info)
 {
-	return true;
+	if (tp_query_mode_dc2(info) == MML_MODE_MML_DECOUPLE2)
+		return true;
+
+	return false;
 }
 
 static enum mml_hw_caps support_hw_caps(void)

@@ -460,7 +460,6 @@ static enum mml_mode mml_drm_query_frame(struct mml_drm_ctx *dctx,
 			mml_err("Unknown mode");
 		}
 		mml_msg("[drm]query mode caps 0x%x", info_cache->mode_caps);
-		goto support;
 	} else if (tp->op->query_mode2) {
 		mode = tp->op->query_mode2(dctx->ctx.mml, info, &reason,
 			dctx->panel_width, dctx->panel_height, info_cache);
@@ -479,27 +478,36 @@ static enum mml_mode mml_drm_query_frame(struct mml_drm_ctx *dctx,
 		 */
 		mml_msg("[drm]%s mode %u to mdp dc or mml dc2 couple %d",
 			__func__, mode, mml_dev_get_couple_cnt(dctx->ctx.mml));
-		if (tp->op->support_dc2 && tp->op->support_dc2())
-			mode = MML_MODE_MML_DECOUPLE2;
-		else
+		if (tp->op->support_dc2) {
+			if (tp->op->support_dc2(info)) {
+				info_cache->mode_caps = BIT(MML_MODE_MML_DECOUPLE2);
+				mode = MML_MODE_MML_DECOUPLE2;
+			} else {
+				info_cache->mode_caps = 0;
+				mode = MML_MODE_NOT_SUPPORT;
+			}
+		} else {
+			info_cache->mode_caps = BIT(MML_MODE_MML_DECOUPLE);
 			mode = MML_MODE_MDP_DECOUPLE;
+		}
 	} else if (mode == MML_MODE_DIRECT_LINK) {
 		info->dest[0].data.format = MML_FMT_10BIT(info->src.format) ?
 			MML_FMT_YUVA1010102 : MML_FMT_YUVA8888;
 	}
 
 	if (mode == MML_MODE_MML_DECOUPLE && !(mml_dc & 0x1)) {
-		mode = tp->op->support_dc2() ?
+		mode = tp->op->support_dc2 ?
 			MML_MODE_MML_DECOUPLE2 : MML_MODE_MDP_DECOUPLE;
+		info_cache->mode_caps = BIT(mode);
 		reason = mml_query_dc_off;
 	}
 
 	if (mode == MML_MODE_MML_DECOUPLE2 && !(mml_dc & 0x2)) {
+		info_cache->mode_caps = 0;
 		mode = MML_MODE_NOT_SUPPORT;
 		reason = mml_query_dc_off;
 	}
 
-support:
 	mml_mmp2(query_mode, MMPROFILE_FLAG_PULSE, info->mode, mode, 0, reason);
 	mml_msg("[drm]query mode %u result mode %u reason %d", info->mode, mode, (s32)reason);
 	return mode;
@@ -673,7 +681,7 @@ int mml_drm_query_multi_layer(struct mml_drm_ctx *dctx,
 			}
 
 			if (mode == MML_MODE_MML_DECOUPLE && !(mml_dc & 0x1)) {
-				mode = tp->op->support_dc2() ?
+				mode = tp->op->support_dc2 ?
 					MML_MODE_MML_DECOUPLE2 : MML_MODE_MDP_DECOUPLE;
 				reason = mml_query_dc_off;
 			}

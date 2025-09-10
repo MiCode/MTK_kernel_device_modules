@@ -1681,7 +1681,7 @@ static enum mml_mode tp_support_couple(void)
 	return MML_MODE_DIRECT_LINK;
 }
 
-static bool tp_support_dc2(void)
+static bool tp_support_dc2(struct mml_frame_info *info)
 {
 	return true;
 }
