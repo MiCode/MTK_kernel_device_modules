@@ -1188,10 +1188,9 @@ static void set_rtc_spare_fg_value(struct mtk_gauge *gauge, u8 val)
 
 static void fgauge_read_RTC_boot_status(struct mtk_gauge *gauge)
 {
-	unsigned int hw_id = 0x6379;
-	u8 spare0_reg = 0;
-	unsigned int spare0_reg_b13 = 0;
-	u8 spare3_reg = 0;
+	struct mt6379_priv *priv = container_of(gauge, struct mt6379_priv, gauge);
+	u32 hw_id = 0x6379, spare0_reg_b13 = 0;
+	u8 spare0_reg = 0, spare3_reg = 0;
 	int spare3_reg_valid = 0;
 
 	spare0_reg = get_rtc_spare0_fg_value(gauge);
@@ -1214,9 +1213,11 @@ static void fgauge_read_RTC_boot_status(struct mtk_gauge *gauge)
 		gauge->hw_status.bat_plug_out_time = 31;
 	}
 
-	bm_err(gauge->gm, "[%s]rtc_invalid %d plugout %d plugout_time %d spare3 0x%x spare0 0x%x hw_id 0x%x\n",
-	       __func__, gauge->hw_status.rtc_invalid, gauge->hw_status.is_bat_plugout,
-	       gauge->hw_status.bat_plug_out_time, spare3_reg, spare0_reg, hw_id);
+	dev_info(priv->dev,
+		 "[%s] %s, rtc_invalid %d plugout %d plugout_time %d spare3 0x%x spare0 0x%x hw_id 0x%x\n",
+		 __func__, priv->desc->gauge_name, gauge->hw_status.rtc_invalid,
+		 gauge->hw_status.is_bat_plugout, gauge->hw_status.bat_plug_out_time,
+		 spare3_reg, spare0_reg, hw_id);
 }
 
 static int fgauge_set_info(struct mtk_gauge *gauge, enum gauge_property ginfo, unsigned int value)
@@ -4320,15 +4321,16 @@ static int initial_set(struct mtk_gauge *gauge, struct mtk_gauge_sysfs_field_inf
 	regmap_raw_read(gauge->regmap, rg[bat_idx][MT6379_REG_SYSTEM_INFO_CON0],
 			&rev_val, sizeof(rev_val));
 
-	bm_err(gauge->gm, "%s bat_plug:%d chr:%d info0:0x%x\n",
-	       priv->desc->gauge_name, bat_flag, is_charger_exist, rev_val);
+	dev_info(priv->dev, "%s, %s bat_plug:%d chr:%d info0:0x%x\n",
+		 __func__, priv->desc->gauge_name, bat_flag, is_charger_exist, rev_val);
 
 	fgauge_get_info(gauge, GAUGE_PROP_CON1_VAILD, &valid);
 	fgauge_get_info(gauge, GAUGE_PROP_CON1_UISOC, &ui_soc);
 
 	regmap_raw_read(gauge->regmap, rg[bat_idx][MT6379_REG_SYSTEM_INFO_CON1],
 			&rev_val, sizeof(rev_val));
-	bm_err(gauge->gm, "%s valid:%d uisoc:%d info1:0x%x\n", priv->desc->gauge_name, valid, ui_soc, rev_val);
+	dev_info(priv->dev, "%s, %s valid:%d uisoc:%d info1:0x%x\n",
+		 __func__, priv->desc->gauge_name, valid, ui_soc, rev_val);
 
 	gauge->hw_status.pl_charger_status = is_charger_exist;
 
@@ -4909,11 +4911,13 @@ static int mtk_gauge_proprietary_init(struct mt6379_priv *priv)
 	gauge->hw_status.car_tune_value = 1000;
 	gauge->attr = mt6379_sysfs_field_tbl;
 
-	dev_notice(priv->dev, "%s, %s before battery_psy_init (1)\n", __func__, priv->desc->gauge_name);
+	dev_info(priv->dev, "%s, %s before battery_psy_init (1)\n",
+		 __func__, priv->desc->gauge_name);
 	if (battery_psy_init(gauge->pdev))
 		return -ENOMEM;
 
-	dev_notice(priv->dev, "%s, %s before setting psy config (2)\n", __func__, priv->desc->gauge_name);
+	dev_info(priv->dev, "%s, %s before setting psy config (2)\n",
+		 __func__, priv->desc->gauge_name);
 	gauge->psy_desc.name = priv->desc->psy_desc_name;
 	gauge->name = priv->desc->mtk_gauge_name;
 	gauge->psy_desc.type = POWER_SUPPLY_TYPE_UNKNOWN;
@@ -4926,7 +4930,7 @@ static int mtk_gauge_proprietary_init(struct mt6379_priv *priv)
 	if (IS_ERR(gauge->psy))
 		return PTR_ERR(gauge->psy);
 
-	dev_notice(priv->dev, "%s, %s before creating sysfs (3)\n", __func__, priv->desc->gauge_name);
+	dev_info(priv->dev, "%s, %s before creating sysfs (3)\n", __func__, priv->desc->gauge_name);
 	mt6379_sysfs_create_group(gauge);
 	initial_set(gauge, 0, 0);
 	battery_init(gauge->pdev);

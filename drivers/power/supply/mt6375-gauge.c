@@ -857,10 +857,9 @@ static void set_rtc_spare_fg_value(struct mtk_gauge *gauge, u8 val)
 
 static void fgauge_read_RTC_boot_status(struct mtk_gauge *gauge)
 {
-	unsigned int hw_id = 0x6375;
-	u8 spare0_reg = 0;
-	unsigned int spare0_reg_b13 = 0;
-	u8 spare3_reg = 0;
+	struct mt6375_priv *priv = container_of(gauge, struct mt6375_priv, gauge);
+	u32 hw_id = 0x6375, spare0_reg_b13 = 0;
+	u8 spare0_reg = 0, spare3_reg = 0;
 	int spare3_reg_valid = 0;
 
 	spare0_reg = get_rtc_spare0_fg_value(gauge);
@@ -883,9 +882,10 @@ static void fgauge_read_RTC_boot_status(struct mtk_gauge *gauge)
 		gauge->hw_status.bat_plug_out_time = 31;
 	}
 
-	bm_err(gauge->gm, "[%s]rtc_invalid %d plugout %d plugout_time %d spare3 0x%x spare0 0x%x hw_id 0x%x\n",
-	       __func__, gauge->hw_status.rtc_invalid, gauge->hw_status.is_bat_plugout,
-	       gauge->hw_status.bat_plug_out_time, spare3_reg, spare0_reg, hw_id);
+	dev_info(priv->dev,
+		 "[%s] mt6375-gauge, rtc_invalid %d plugout %d plugout_time %d spare3 0x%x spare0 0x%x hw_id 0x%x\n",
+		 __func__, gauge->hw_status.rtc_invalid, gauge->hw_status.is_bat_plugout,
+		 gauge->hw_status.bat_plug_out_time, spare3_reg, spare0_reg, hw_id);
 }
 
 static int fgauge_set_info(struct mtk_gauge *gauge, enum gauge_property ginfo, unsigned int value)
@@ -3460,6 +3460,7 @@ static int battery_cic2_get(struct mtk_gauge *gauge, struct mtk_gauge_sysfs_fiel
 
 static int initial_set(struct mtk_gauge *gauge, struct mtk_gauge_sysfs_field_info *attr, int val)
 {
+	struct mt6375_priv *priv = container_of(gauge, struct mt6375_priv, gauge);
 	int is_charger_exist = 0, bat_flag = 0, valid = 0, ui_soc = 0;
 	u16 rev_val = 0;
 
@@ -3470,12 +3471,14 @@ static int initial_set(struct mtk_gauge *gauge, struct mtk_gauge_sysfs_field_inf
 	fgauge_get_info(gauge, GAUGE_PROP_PL_CHARGING_STATUS, &is_charger_exist);
 
 	regmap_raw_read(gauge->regmap, RG_SYSTEM_INFO_CON0, &rev_val, sizeof(rev_val));
-	bm_err(gauge->gm, "mt6375-gauge bat_plug:%d chr:%d info0:0x%x\n", bat_flag, is_charger_exist, rev_val);
+	dev_info(priv->dev, "%s, mt6375-gauge bat_plug:%d chr:%d info0:0x%x\n",
+		 __func__, bat_flag, is_charger_exist, rev_val);
 	fgauge_get_info(gauge, GAUGE_PROP_CON1_VAILD, &valid);
 	fgauge_get_info(gauge, GAUGE_PROP_CON1_UISOC, &ui_soc);
 
 	regmap_raw_read(gauge->regmap, RG_SYSTEM_INFO_CON1, &rev_val, sizeof(rev_val));
-	bm_err(gauge->gm, "mt6375-gauge valid:%d uisoc:%d info1:0x%x\n", valid, ui_soc, rev_val);
+	dev_info(priv->dev, "%s, mt6375-gauge valid:%d uisoc:%d info1:0x%x\n",
+		 __func__, valid, ui_soc, rev_val);
 
 	gauge->hw_status.pl_charger_status = is_charger_exist;
 

@@ -3274,7 +3274,8 @@ int battery_psy_init(struct platform_device *pdev)
 	gm = devm_kzalloc(&pdev->dev, sizeof(*gm), GFP_KERNEL);
 	if (!gm)
 		return -ENOMEM;
-	bm_err(gm, "[%s] into\n", __func__);
+
+	dev_info(&pdev->dev, "[%s] into\n", __func__);
 
 	gauge = dev_get_drvdata(&pdev->dev);
 	gauge->gm = gm;
