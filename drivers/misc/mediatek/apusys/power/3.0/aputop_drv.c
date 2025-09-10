@@ -49,6 +49,21 @@ module_param(dev_bitmap, uint, 0444);
 MODULE_PARM_DESC(dev_bitmap,
 "Different devices combination for fpga platform, check platform code for detail");
 
+int __weak register_pt_low_battery_apu_cb(apu_throttle_callback cb)
+{
+	return 0;
+}
+
+int __weak register_pt_over_current_apu_cb(apu_throttle_callback cb)
+{
+	return 0;
+}
+
+int __weak register_pt_battery_percent_apu_cb(apu_throttle_callback cb)
+{
+	return 0;
+}
+
 static void apu_pwr_wake_lock(void)
 {
 #if IS_ENABLED(CONFIG_PM_SLEEP)
@@ -148,6 +163,7 @@ static int aputop_cdev_probe(struct platform_device *pdev)
 	return ret;
 }
 
+
 void aputop_cdev_rm(struct platform_device *pdev)
 {
 	struct apu_cooling_device *apu_cdev;
@@ -196,7 +212,7 @@ static int apu_top_probe(struct platform_device *pdev)
 	if (check_pwr_data())
 		return -ENODEV;
 
-	dev_info(&pdev->dev, "%s %s\n", __func__, pwr_data->plat_name);
+	dev_info(&pdev->dev, " %s %s\n", __func__, pwr_data->plat_name);
 
 	aputop_parse_dts(pdev);
 
@@ -207,7 +223,9 @@ static int apu_top_probe(struct platform_device *pdev)
 
 	pm_runtime_enable(&pdev->dev);
 	aputop_cdev_probe(pdev);
+
 	flag = pwr_data->plat_aputop_pb(pdev);
+
 	aputop_init_done = flag;
 	register_pt_callbacks();
 
@@ -259,6 +277,9 @@ static int apu_top_resume(struct device *dev)
 #ifndef MT6983_PLAT_DATA
 const struct apupwr_plat_data mt6983_plat_data;
 #endif
+#ifndef MT6878_PLAT_DATA
+const struct apupwr_plat_data mt6878_plat_data;
+#endif
 #ifndef MT6879_PLAT_DATA
 const struct apupwr_plat_data mt6879_plat_data;
 #endif
@@ -290,6 +311,7 @@ const struct apupwr_plat_data mt6993_plat_data;
 static const struct of_device_id of_match_apu_top[] = {
 	{ .compatible = "mt6983,apu_top_3", .data = &mt6983_plat_data},
 	{ .compatible = "mt6879,apu_top_3", .data = &mt6879_plat_data},
+	{ .compatible = "mt6878,apu_top_3", .data = &mt6878_plat_data},
 	{ .compatible = "mt6897,apu_top_3", .data = &mt6897_plat_data},
 	{ .compatible = "mt6895,apu_top_3", .data = &mt6895_plat_data},
 	{ .compatible = "mt6985,apu_top_3", .data = &mt6985_plat_data},
