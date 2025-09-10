@@ -792,6 +792,12 @@ static int _v1_hwccf_irq_voter_nowait(struct regmap *regmap, uint32_t setclr_ofs
 	HWCCF_PROFILE_RESET(nowait);
 	HWCCF_PROFILE_START(nowait);
 
+	if (regmap == regmaps[MM_HWCCF]) {
+		// dummy read mmup reg
+		val = readl(__CORE_R_GPR11_reg);
+		HWCCF_DBG("__CORE_R_GPR11_reg = 0x%08x\n", val);
+	}
+
 	// Check repeat vote
 	val = hwccf_read(regmap, en_ofs);
 	if (is_set ? IS_MASK_SET(val, vote_val) : IS_MASK_CLR(val, vote_val)) {
