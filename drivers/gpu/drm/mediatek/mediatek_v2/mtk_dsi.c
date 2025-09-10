@@ -8744,9 +8744,6 @@ static void mtk_dsi_config_trigger(struct mtk_ddp_comp *comp,
 			DDPMSG("%s trigger reset start\n", __func__);
 		} else {
 			dma_addr_t dsi_chksum_slot = 0x0;
-			struct mtk_ddp_comp *comp1 = NULL;
-
-			comp1 = priv->ddp_comp[DDP_COMPONENT_DSC0];
 
 			cmdq_pkt_wfe(handle,
 				mtk_crtc->gce_obj.event[EVENT_CMD_EOF]);
@@ -8762,8 +8759,6 @@ static void mtk_dsi_config_trigger(struct mtk_ddp_comp *comp,
 				dsi_chksum_slot, CMDQ_THR_SPR_IDX1, ~0);
 			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
 				comp->regs_pa + 0x224, 0x100, 0x100);
-			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
-				comp1->regs_pa + 0x78, 0x400000ff, ~0);
 			cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + DSI_CON_CTRL(dsi->driver_data), DSI_RESET, DSI_RESET);
 			cmdq_pkt_write(handle, comp->cmdq_base,
@@ -8782,11 +8777,6 @@ static void mtk_dsi_config_trigger(struct mtk_ddp_comp *comp,
 				comp->regs_pa + DSI_DBG_CON1, 0x0, ~0);
 			DDPMSG("%s trigger reset stop\n", __func__);
 		} else {
-			struct mtk_ddp_comp *comp1 = NULL;
-
-			comp1 = priv->ddp_comp[DDP_COMPONENT_DSC0];
-			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
-				comp1->regs_pa + 0x78, 0x0, ~0);
 			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
 				comp->regs_pa + DSI_DBG_CON1, 0x0, ~0);
 			DDPMSG("%s vdo trigger reset stop\n", __func__);
