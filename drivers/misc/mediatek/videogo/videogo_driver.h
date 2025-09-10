@@ -12,19 +12,18 @@
 #define CLASS_NAME "videogo_class"
 #define VGO_IOCTL_SET_PROCTIME _IOWR('v', 1, struct inst_data_user)
 #define VGO_IOCTL_GET _IOR('a', 'a', struct vgo_powerhal_info*)
+#define MAX_POLICY 8
 
 
 #define TARGET_FPS  (60ULL)
 #define FHD_SIZE    (1920*1080)
 #define TARGET_FPS_CHECKER(val0, val1, val2) \
-	(((unsigned long long)(val0) * 10ULL) <= \
-	(((unsigned long long)(val1)) * ((unsigned long long)(val2)) * \
-	((unsigned long long)(10 + ((val2) / 10)))))
+	(((unsigned long long)(val0) * 100ULL) <= \
+	((unsigned long long)(val1) * (100ULL + (unsigned long long)(val2))))
 
 extern void mtk_vcodec_vgo_send(int type, void *data);
 extern int videogo_active_fn(void *arg);
 extern int enforce_ct_to_vip(int val, int caller_id);
-
 
 enum codec_type {
 	VDEC,
@@ -43,7 +42,7 @@ enum work_type {
 	VGO_REL_CGRP
 };
 
-enum vgo_powerhal_type {
+enum vgo_policy_type {
 	VGO_CPU_FREQ_MIN,
 	VGO_GPU_FREQ_MIN,
 	VGO_MARGIN_CONTROL_0,
@@ -51,7 +50,29 @@ enum vgo_powerhal_type {
 	VGO_RUNNABLE_BOOST_ENABLE,
 	VGO_UCLAMP_MIN_TA,
 	VGO_UTIL_EST_BOOST,
-	VGO_RT_NON_IDLE_PREEMPT
+	VGO_RT_NON_IDLE_PREEMPT,
+	VGO_VDEC_TASK_TURBO_PER_TASK_VIP,
+	VGO_VENC_TASK_TURBO_PER_TASK_VIP,
+	VGO_BTASK_UP_THRESH_CLUSTER_0,
+	VGO_CPUCORE_MIN_CLUSTER_0,
+	VGO_CPU_PF_DISABLE_0,
+	VGO_WLC_WCE_DISABLE,
+	VGO_CPU_BUSY_THRES_0,
+	VGO_CPU_USAGE_THRES_0,
+	VGO_CT_TO_VIP,
+	VGO_POLICY_MAX
+};
+
+enum vgo_policy_exec_mode {
+	VGO_POLICY_EXEC_ONCE,
+	VGO_POLICY_EXEC_ALEAYS
+};
+
+enum vgo_scenario_type {
+	VGO_VCODEC_PERF,
+	VGO_VP_LOOM,
+	VGO_VP,
+	VGO_TRANS
 };
 
 struct vgo_delay_work {
@@ -62,10 +83,9 @@ struct vgo_delay_work {
 };
 
 struct vgo_powerhal_info {
-	enum vgo_powerhal_type type;
+	enum vgo_policy_type type;
 	int data[3];
 };
-
 
 struct data_entry {
 	int type;
@@ -108,6 +128,19 @@ struct inst_node {
 	int hw_proc_time[3];
 	int post_proc_time;
 	struct list_head list;
+};
+
+struct task_tgid {
+	pid_t worker_tgid[2];
+	pid_t ipi_recv_tgid[2];
+	pid_t c2_tgid;
+};
+
+struct scenario_policy {
+	enum vgo_scenario_type type_id;
+	const char *name;
+	int policy_ids[MAX_POLICY];	// MAX Policy 8
+	bool (*check_func)(void);
 };
 
 static const char * const thermal_zones[] = {

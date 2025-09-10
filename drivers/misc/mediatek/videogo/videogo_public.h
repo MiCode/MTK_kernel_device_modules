@@ -5,6 +5,8 @@
 #ifndef VIDEOGO_PUBLIC_H
 #define VIDEOGO_PUBLIC_H
 
+#include <linux/sched.h>
+
 enum videogo_data_type {
 	VGO_SEND_UPDATE_FN,
 	VGO_SEND_OPRATE,
@@ -35,11 +37,19 @@ struct inst_data {
 };
 
 // VGO_SEND_OPRATE
-// VGO_RECV_STATE_OPEN
 struct oprate_data {
 	int inst_type;      /* VDEC/VENC */
 	int ctx_id;
 	int oprate;         /* Set from VideoGo */
+};
+
+// VGO_RECV_STATE_OPEN
+struct inst_task_data {
+	int inst_type;      /* VDEC/VENC */
+	int ctx_id;
+	pid_t worker_tgid;
+	pid_t ipi_recv_tgid;
+	pid_t c2_tgid;
 };
 
 struct vgo_data {

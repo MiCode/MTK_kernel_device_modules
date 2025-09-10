@@ -27,14 +27,13 @@
 #include "videogo_public.h"
 #include "videogo_param_config.h"
 #include "videogo_utils.h"
+#include "videogo_service_utils.h"
+#include "videogo_policy_table.h"
 
 #if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
 #include "eas/group.h"
 #endif
-#include "pf_ctrl.h"
-#include "slbc_sdk.h"
 
-static DECLARE_KFIFO(service_fifo, struct vgo_powerhal_info, 16);
 
 static DECLARE_WAIT_QUEUE_HEAD(passive_wq);
 
@@ -47,7 +46,6 @@ static atomic_t runnable_boost_enable_cnt;
 static atomic_t cgrp_cnt;
 #endif
 
-static DECLARE_WAIT_QUEUE_HEAD(service_wq);
 
 static struct task_struct *active_thread;
 
@@ -59,11 +57,11 @@ static struct list_head inst_list[MAX_CODEC_TYPE] = {
 };
 //static LIST_HEAD(transcoding_list);
 static DEFINE_MUTEX(passive_workqueue_mutex);
-static DEFINE_MUTEX(service_mutex);
 struct mutex inst_list_mutex[MAX_CODEC_TYPE] = {
 		__MUTEX_INITIALIZER(inst_list_mutex[VDEC]),
 		__MUTEX_INITIALIZER(inst_list_mutex[VENC]) };
 //static int inst_list_length[MAX_CODEC_TYPE] = {0};
+static struct task_tgid video_task;
 
 static int major_num;
 static struct class *videogo_class;
@@ -71,20 +69,16 @@ static struct device *videogo_device;
 static struct cdev videogo_cdev;
 
 // RUNNABLE_BOOST/MARGIN_CONTROL
-static int set_runnable_boost_disable;
-static int set_margin_ctrl;
-static int set_uclamp_min_ta;
-static int set_util_est_boost_disable;
-static int set_rt_non_idle_preempt;
-static int set_cpu_pf_ctrl;
-static int set_slc_wce_ctrl;
-static int set_ct_to_vip;
-static int set_cpu_freq_min;
-static int set_gpu_freq_min;
-static int target_fps_count[MAX_CODEC_TYPE] = {0};
-static int alive_count[MAX_CODEC_TYPE] = {0};
-static int isTranscoding;
+static atomic_t reset_loom;
 //static struct task_struct *kvideogo_active;
+int isTranscoding;
+EXPORT_SYMBOL(isTranscoding);
+
+int target_fps_count[MAX_CODEC_TYPE] = {0};
+EXPORT_SYMBOL(target_fps_count);
+
+int alive_count[MAX_CODEC_TYPE] = {0};
+EXPORT_SYMBOL(alive_count);
 
 static inline void videogo_read_and_set_bool(struct device_node *np, const char *prop_name, bool *var)
 {
@@ -136,9 +130,13 @@ static int videogo_probe(struct platform_device *pdev)
 	videogo_read_and_set_u32(np, "set-cpu-freq", mtk_vgo_cpu_freq_val, &mtk_vgo_cpu_freq, 3);
 	videogo_read_and_set_bool(np, "rt-non-idle-preempt", &mtk_vgo_rt_non_idle_preempt);
 	videogo_read_and_set_bool(np, "runnable-boost-disable", &mtk_vgo_runnable_boost_disable);
-	videogo_read_and_set_bool(np, "slc-wce-ctrl", &mtk_vgo_slc_wce_ctrl);
+	videogo_read_and_set_bool(np, "slc-wce-ctrl", &mtk_vgo_slc_wce_disable);
 	videogo_read_and_set_bool(np, "util-est-boost-disable", &mtk_vgo_util_est_boost_disable);
 	videogo_read_and_set_u32(np, "margin-control", mtk_vgo_margin_ctrl_val, &mtk_vgo_margin_ctrl, 3);
+
+	/* Codec Performance */
+//	videogo_read_and_set_bool(np, "vdec-task-turbo", &mtk_vgo_vdec_task_turbo);
+//	videogo_read_and_set_bool(np, "venc-task-turbo", &mtk_vgo_venc_task_turbo);
 
 	/* Transcoding */
 	videogo_read_and_set_bool(np, "ct-to-vip", &mtk_vgo_ct_to_vip);
@@ -166,23 +164,6 @@ static struct platform_driver videogo_driver = {
 		.of_match_table = videogo_of_match,
 	},
 };
-
-static void send_service_info(const char *log_msg, int service_type,
-								int data0, int data1, int data2)
-{
-	struct vgo_powerhal_info service_info;
-
-	mtk_vgo_debug("%s: %d %d %d", log_msg, data0, data1, data2);
-	service_info.type = service_type;
-	service_info.data[0] = data0;
-	service_info.data[1] = data1;
-	service_info.data[2] = data2;
-	mutex_lock(&service_mutex);
-	kfifo_in(&service_fifo, &service_info, 1);
-	mutex_unlock(&service_mutex);
-
-	wake_up_interruptible(&service_wq);
-}
 
 static void videogo_vcodec_send_fn(int iotype, void *data)
 {
@@ -213,12 +194,12 @@ static void videogo_vcodec_send_fn(int iotype, void *data)
 		memcpy(entry->data, data, sizeof(struct inst_data));
 		break;
 	case VGO_RECV_STATE_OPEN:
-		entry->data = kmalloc(sizeof(struct oprate_data), GFP_KERNEL);
+		entry->data = kmalloc(sizeof(struct inst_task_data), GFP_KERNEL);
 		if (!entry->data) {
 			kfree(entry);
 			return;
 		}
-		memcpy(entry->data, data, sizeof(struct oprate_data));
+		memcpy(entry->data, data, sizeof(struct inst_task_data));
 		break;
 	default:
 		mtk_vgo_err("type: %d not support", iotype);
@@ -240,7 +221,7 @@ static int is_transcoding(struct inst_node *info0, enum codec_type type)
 	int ret = 0;
 
 	// Check has the same caller_pid of venc from vdec list
-	// One VENC can be paired with multiple VDECs
+	// One VENC(info0) can be paired with multiple VDECs(info1)
 	list_for_each_entry_safe(info1, tmp, &inst_list[list_type], list) {
 		if (info1->caller_pid == info0->caller_pid) {
 			// abnormal oprate, it means best effort mode
@@ -250,14 +231,18 @@ static int is_transcoding(struct inst_node *info0, enum codec_type type)
 			// oprate is 0, it means best effort mode
 			// Need to avoid Vilte Scenario
 			if (info1->oprate == 0 && info0->oprate == 0) {
-				ret = 1;
-
 				// Could be Vilte Scenario
 				// TODO: Need to check by ViLTE Scenario Hints
-				if (info0->width * info0->height <= FHD_SIZE &&
-					info0->oprate_avdvfs < 35)
-					ret = 0;
+				if (info0->width * info0->height > FHD_SIZE ||
+					info0->oprate_avdvfs >= 35)
+					ret = 1;
 			}
+
+			// Special Case
+			if (info1->oprate == 0 && info0->oprate >= 120)
+				ret = 1;
+			if (info1->oprate >= 30 && info0->oprate == 0)
+				ret = 1;
 
 			if (info1->oprate_avdvfs != 0 && info0->oprate_avdvfs != 0) {
 				if ((info1->oprate != 0 || info0->oprate != 0) &&
@@ -301,7 +286,7 @@ static void videogo_work_handler(struct work_struct *work)
 	kvfree(vgowork);
 }
 
-static void videogo_send_delay_work(enum work_type type, unsigned int delay_ms, struct oprate_data *info)
+static void videogo_send_delay_work(enum work_type type, unsigned int delay_ms, struct inst_task_data *info)
 {
 	struct vgo_delay_work *work =
 		kvzalloc(sizeof(struct vgo_delay_work), GFP_KERNEL);
@@ -328,6 +313,7 @@ static int videogo_process_data(int iotype, void *data)
 		struct inst_init_data *init_data = (struct inst_init_data *)data;
 		int type = init_data->inst_type;
 
+		mtk_vgo_debug("[%d][%d] VGO_RECV_INSTANCE_INC", init_data->ctx_id, init_data->inst_type);
 		if (type >= 0 && type < MAX_CODEC_TYPE) {
 			info0 = kmalloc(sizeof(*info0), GFP_KERNEL);
 			if (!info0)
@@ -361,7 +347,7 @@ static int videogo_process_data(int iotype, void *data)
 				target_fps_count[type]++;
 			mutex_unlock(&inst_list_mutex[type]);
 
-			if (!isTranscoding)
+			if (!isTranscoding && type == VENC)
 				isTranscoding = is_transcoding(info0, type);
 
 		} else {
@@ -372,6 +358,7 @@ static int videogo_process_data(int iotype, void *data)
 		struct inst_init_data *inst_data = (struct inst_init_data *)data;
 		int type = inst_data->inst_type;
 
+		mtk_vgo_debug("[%d][%d] VGO_RECV_INSTANCE_DEC", inst_data->ctx_id, inst_data->inst_type);
 		if (type >= 0 && type < MAX_CODEC_TYPE) {
 			mutex_lock(&inst_list_mutex[type]);
 
@@ -399,6 +386,7 @@ static int videogo_process_data(int iotype, void *data)
 		struct inst_node *target_inst_info = NULL;
 		int type = run_data->inst_type;
 
+		mtk_vgo_debug("[%d][%d] VGO_RECV_RUNNING_UPDATE", run_data->ctx_id, run_data->inst_type);
 		if (type >= 0 && type < MAX_CODEC_TYPE) {
 			mutex_lock(&inst_list_mutex[type]);
 			target_fps_count[type] = 0;
@@ -427,9 +415,28 @@ static int videogo_process_data(int iotype, void *data)
 				if (!isTranscoding && type == VENC)
 					isTranscoding = is_transcoding(target_inst_info, type);
 
-				mtk_vgo_info("[%d][%d] oprate_avdvfs:%d oprate:%d isTrans:%d",
+				if (mtk_vgo_sc_vp_lp_loom) {
+					int target_fps = target_inst_info->oprate;
+
+					if (!target_inst_info->oprate_vgo && !target_fps) {
+						target_inst_info->oprate_vgo = target_inst_info->oprate_avdvfs;
+						target_fps = target_inst_info->oprate_vgo;
+					}
+
+					if (TARGET_FPS_CHECKER(target_inst_info->oprate_avdvfs, target_fps, -10)) {
+						mtk_vgo_err("[%d][%d] FPS is dropping, reset loom (%d <= %d)",
+							target_inst_info->ctx_id, target_inst_info->inst_type,
+							target_inst_info->oprate_avdvfs, target_fps);
+						target_inst_info->oprate_vgo = 0;
+						atomic_inc(&reset_loom);
+					}
+				}
+
+				mtk_vgo_info("[%d][%d] oprate_avdvfs:%d oprate:%d isTrans:%d hw_proc_time:%d %d %d",
 					target_inst_info->ctx_id, target_inst_info->inst_type,
-					target_inst_info->oprate_avdvfs, target_inst_info->oprate, isTranscoding);
+					target_inst_info->oprate_avdvfs, target_inst_info->oprate, isTranscoding,
+					target_inst_info->hw_proc_time[0], target_inst_info->hw_proc_time[1],
+					target_inst_info->hw_proc_time[2]);
 			} else
 				mtk_vgo_err("[%d][%d] Cannot find Inst", run_data->ctx_id, run_data->inst_type);
 		} else {
@@ -437,7 +444,12 @@ static int videogo_process_data(int iotype, void *data)
 			return -EINVAL;
 		}
 	} else if (iotype == VGO_RECV_STATE_OPEN) {
-		struct oprate_data *dev_data = (struct oprate_data *)data;
+		struct inst_task_data *task_data = (struct inst_task_data *)data;
+
+		mtk_vgo_debug("[%d][%d] VGO_RECV_STATE_OPEN", task_data->ctx_id, task_data->inst_type);
+		video_task.worker_tgid[task_data->inst_type] = task_data->worker_tgid;
+		video_task.ipi_recv_tgid[task_data->inst_type] = task_data->ipi_recv_tgid;
+		video_task.c2_tgid = task_data->c2_tgid;
 
 		if (mtk_vgo_runnable_boost_enable) {
 			if (atomic_cmpxchg(&runnable_boost_enable_cnt, 0, 1) == 0)
@@ -445,7 +457,7 @@ static int videogo_process_data(int iotype, void *data)
 					VGO_RUNNABLE_BOOST_ENABLE, 1, 0, 0);
 			else
 				atomic_inc(&runnable_boost_enable_cnt);
-			videogo_send_delay_work(VGO_REL_RUNNABLE_BOOST_ENABLE, 40, dev_data);
+			videogo_send_delay_work(VGO_REL_RUNNABLE_BOOST_ENABLE, 40, task_data);
 		}
 
 #if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
@@ -455,7 +467,7 @@ static int videogo_process_data(int iotype, void *data)
 				group_set_cgroup_colocate(CGRP_FG, 0);
 			} else
 				atomic_inc(&cgrp_cnt);
-			videogo_send_delay_work(VGO_REL_CGRP, 200, dev_data);
+			videogo_send_delay_work(VGO_REL_CGRP, 200, task_data);
 		}
 #endif
 	}
@@ -504,6 +516,8 @@ static int videogo_passive_fn(void *arg)
 static int videogo_controller_fn(void *arg)
 {
 	int ret = 0;
+	int i, j, pid;
+	int vals[3] = {0};
 
 	while(!kthread_should_stop()) {
 		ret = wait_event_interruptible(controller_wq,
@@ -522,132 +536,138 @@ static int videogo_controller_fn(void *arg)
 		int total_vdec = alive_count[VDEC];
 		int total_venc = alive_count[VENC];
 
+//		for (i = 0; i < ARRAY_SIZE(scenario_table); i++) {
+//			struct scenario_policy *sc = &scenario_table[i];
+//			bool active = sc->check_func ? sc->check_func() : false;
+
+//			for (j = 0; sc->policy_ids[j] != -1; j++) {
+//				pid = sc->policy_ids[j];
+//				struct vgo_policy *cfg = &vgo_table[pid];
+
+//				if (active) {
+//					if (!cfg->set && *(cfg->enable)) {
+//						//if (atomic_inc_return(&(cfg->ref_count)) == 1) {
+//							memset(vals, 0, sizeof(vals));
+//							for (j = 0; j < cfg->val_cnt; j++)
+//								vals[j] = *(cfg->val[j]);
+//							cfg->set_func(cfg->cmd_id, vals, cfg->cmd_name);
+//							cfg->set = cfg->exec_mode == VGO_POLICY_EXEC_ONCE;
+//						//}
+//					}
+//				} else {
+//					if (cfg->set) {
+//						cfg->unset_func(cfg->cmd_id, cfg->cmd_name);
+//						cfg->set = false;
+//					}
+//				}
+//				if (active)
+//					mtk_vgo_info("%s: %s active:%d set:%d",
+//					sc->name, cfg->cmd_name, active, cfg->set);
+//			}
+//		}
+
+		bool isLoom = mtk_vgo_sc_vp_lp_loom;
+		int local_reset_room = atomic_read(&reset_loom);
+
 		if (total_vdec_target_fps > 0 && total_vdec_target_fps <= 2 &&
 			!total_venc && total_vdec_target_fps == total_vdec) {
-			if (!set_runnable_boost_disable && mtk_vgo_runnable_boost_disable) {
-				send_service_info("acq runnable_boost_disable",
-								VGO_RUNNABLE_BOOST_DISABLE, 1, 0, 0);
-				set_runnable_boost_disable = 1;
+			if (isLoom && local_reset_room == 0) {
+				if (mtk_vgo_cpu_usage_thres_0)
+					set_cpu_usage_monitor(-1, vals, "cpu_usage_monitor");
+
+				for (i = 0; i < ARRAY_SIZE(loom_table); i++) {
+					struct vgo_policy *cfg = &loom_table[i];
+
+					if (cfg->set || *(cfg->enable) == 0)
+						continue;
+
+					memset(vals, 0, sizeof(vals));
+					for (j = 0; j < cfg->val_cnt; j++)
+						vals[j] = *(cfg->val[j]);
+					cfg->set_func(cfg->cmd_id, vals, cfg->cmd_name);
+					cfg->set = true;
+					mtk_vgo_debug("%s %d", cfg->cmd_name, cfg->set);
+				}
+			} else {
+				unset_cpu_usage_monitor(-1, NULL);
+
+				for (i = 0; i < ARRAY_SIZE(loom_table); i++) {
+					struct vgo_policy *cfg = &loom_table[i];
+
+					if (!cfg->set)
+						continue;
+
+					cfg->unset_func(cfg->cmd_id, cfg->cmd_name);
+					cfg->set = false;
+				}
+				if (local_reset_room)
+					atomic_dec(&reset_loom);
 			}
-			if (!set_cpu_freq_min && mtk_vgo_cpu_freq) {
-				send_service_info("acq mtk_vgo_cpu_freq",
-								VGO_CPU_FREQ_MIN,
-								mtk_vgo_cpu_freq_val[0], mtk_vgo_cpu_freq_val[1],
-								mtk_vgo_cpu_freq_val[2]);
-				set_cpu_freq_min = 1;
+
+			for (i = 0; i < ARRAY_SIZE(vp_lp_table); i++) {
+				struct vgo_policy *cfg = &vp_lp_table[i];
+
+				if (cfg->set || *(cfg->enable) == 0)
+					continue;
+				memset(vals, 0, sizeof(vals));
+				for (j = 0; j < cfg->val_cnt; j++)
+					vals[j] = *(cfg->val[j]);
+				cfg->set_func(cfg->cmd_id, vals, cfg->cmd_name);
+				cfg->set = true;
+				mtk_vgo_debug("%s %d", cfg->cmd_name, cfg->set);
 			}
-			if (!set_margin_ctrl && mtk_vgo_margin_ctrl) {
-				send_service_info("acq margin_ctrl",
-								VGO_MARGIN_CONTROL_0,
-								mtk_vgo_margin_ctrl_val[0], mtk_vgo_margin_ctrl_val[1],
-								mtk_vgo_margin_ctrl_val[2]);
-				set_margin_ctrl = 1;
-			}
-			if (!set_util_est_boost_disable && mtk_vgo_util_est_boost_disable) {
-				send_service_info("acq util_est_boost",
-								VGO_UTIL_EST_BOOST, 0, 0, 0);
-				set_util_est_boost_disable = 1;
-			}
-			if (!set_rt_non_idle_preempt && mtk_vgo_rt_non_idle_preempt) {
-				send_service_info("acq rt_non_idle_preempt",
-								VGO_RT_NON_IDLE_PREEMPT, 1, 0, 0);
-				set_rt_non_idle_preempt = 1;
-			}
-			if (!set_cpu_pf_ctrl && mtk_vgo_cpu_pf_ctrl) {
-				if (mtk_set_pf_ctrl_enable(true, PF_CTRL_USER_VP) == 0)
-					set_cpu_pf_ctrl = 1;
-				else
-					mtk_vgo_err("Failed to mtk_set_pf_ctrl_enable");
-				ret = mtk_get_pf_ctrl_enable();
-				mtk_vgo_debug("acq cpu_pf_ctrl_%s: %d", ret ? "enable" : "disable", ret);
-			}
-			if (!set_slc_wce_ctrl && mtk_vgo_slc_wce_ctrl) {
-				slbc_disable_dcc(true); // 1: disable WCE, 0: enable (default)
-				mtk_vgo_debug("acq slc_wce_ctrl");
-				set_slc_wce_ctrl = 1;
-			}
-			mtk_vgo_info("[VP] runnable_disable:%d cpu_freq:%d margin_ctrl:%d util_boost_disable:%d rt_non_idle:%d pf_ctrl:%d slc_wce_ctrl:%d",
-				set_runnable_boost_disable, set_cpu_freq_min, set_margin_ctrl,
-				set_util_est_boost_disable, set_rt_non_idle_preempt,
-				set_cpu_pf_ctrl, set_slc_wce_ctrl);
+
 		} else {
-			if (set_runnable_boost_disable) {
-				send_service_info("rel Runnable_boost_disable",
-								VGO_RUNNABLE_BOOST_DISABLE, -1, 0, 0);
-				set_runnable_boost_disable = 0;
+			unset_cpu_usage_monitor(-1, NULL);
+
+			for (i = 0; i < ARRAY_SIZE(loom_table); i++) {
+				struct vgo_policy *cfg = &loom_table[i];
+
+				if (!cfg->set)
+					continue;
+				cfg->unset_func(cfg->cmd_id, cfg->cmd_name);
+				cfg->set = false;
 			}
-			if (set_cpu_freq_min) {
-				send_service_info("rel set_cpu_freq_min",
-								VGO_CPU_FREQ_MIN, -1, 0, 0);
-				set_cpu_freq_min = 0;
-			}
-			if (set_margin_ctrl) {
-				send_service_info("rel margin_ctrl",
-								VGO_MARGIN_CONTROL_0, -1, 0, 0);
-				set_margin_ctrl = 0;
-			}
-			if (set_util_est_boost_disable) {
-				send_service_info("rel util_est_boost_disable",
-								VGO_UTIL_EST_BOOST, -1, 0, 0);
-				set_util_est_boost_disable = 0;
-			}
-			if (set_rt_non_idle_preempt) {
-				send_service_info("rel rt_non_idle_preempt",
-								VGO_RT_NON_IDLE_PREEMPT, -1, 0, 0);
-				set_rt_non_idle_preempt = 0;
-			}
-			if (set_cpu_pf_ctrl) {
-				mtk_set_pf_ctrl_enable(false, PF_CTRL_USER_VP);
-				ret = mtk_get_pf_ctrl_enable();
-				mtk_vgo_debug("rel cpu_pf_ctrl_%s: %d", ret ? "enable" : "disable", ret);
-				set_cpu_pf_ctrl = 0;
-			}
-			if (set_slc_wce_ctrl) {
-				slbc_disable_dcc(false);
-				mtk_vgo_debug("rel slc_wce_ctrl");
-				set_slc_wce_ctrl = 0;
-			}
-		}
-		if (isTranscoding) {
-			if (!set_uclamp_min_ta && mtk_vgo_uclamp_min_ta) {
-				send_service_info("acq uclamp_min_ta",
-					VGO_UCLAMP_MIN_TA, mtk_vgo_uclamp_min_ta_val, 0, 0);
-				set_uclamp_min_ta = 1;
-			}
-			if (!set_gpu_freq_min && mtk_vgo_gpu_freq_min) {
-				send_service_info("acq gpu_freq_min",
-					VGO_GPU_FREQ_MIN, mtk_vgo_gpu_freq_min_opp, 0, 0);
-				set_gpu_freq_min = 1;
-			}
-			if (!set_ct_to_vip && mtk_vgo_ct_to_vip) {
-				mtk_vgo_debug("acq ct_to_vip");
-				enforce_ct_to_vip(1, 3);
-				set_ct_to_vip = 1;
-			}
-			mtk_vgo_info("[TRANS] uclamp_min:%d gpu_min:%d ta_vip:%d",
-				set_uclamp_min_ta, set_gpu_freq_min, set_ct_to_vip);
-		} else {
-			if (set_uclamp_min_ta) {
-				send_service_info("rel uclamp_min_ta",
-								VGO_UCLAMP_MIN_TA, -1, 0, 0);
-				set_uclamp_min_ta = 0;
-			}
-			if (set_gpu_freq_min) {
-				send_service_info("rel gpu_freq_min",
-								VGO_GPU_FREQ_MIN, -1, 0, 0);
-				set_gpu_freq_min = 0;
-			}
-			if (set_ct_to_vip) {
-				mtk_vgo_debug("rel ct_to_vip");
-				enforce_ct_to_vip(0, 3);
-				set_ct_to_vip = 0;
+			for (i = 0; i < ARRAY_SIZE(vp_lp_table); i++) {
+				struct vgo_policy *cfg = &vp_lp_table[i];
+
+				if (!cfg->set)
+					continue;
+				cfg->unset_func(cfg->cmd_id, cfg->cmd_name);
+				cfg->set = false;
 			}
 		}
 
-		mtk_vgo_debug("runnable_disable:%d margin_ctrl:%d util_boost_disable:%d rt_non_idle:%d uclamp_min:%d gpu_min:%d ta_vip:%d",
-			set_runnable_boost_disable, set_margin_ctrl,
-			set_util_est_boost_disable, set_rt_non_idle_preempt,
-			set_uclamp_min_ta, set_gpu_freq_min, set_ct_to_vip);
+		if (isTranscoding) {
+			for (i = 0; scenario_table[VGO_TRANS].policy_ids[i] != -1; i++) {
+				pid = scenario_table[VGO_TRANS].policy_ids[i];
+				struct vgo_policy *cfg = &vgo_table[pid];
+
+				if (cfg->set || *(cfg->enable) == 0)
+					continue;
+//					if (atomic_inc_return(&(cfg->ref_count)) == 1) {
+				memset(vals, 0, sizeof(vals));
+				for (j = 0; j < cfg->val_cnt; j++)
+					vals[j] = *(cfg->val[j]);
+				cfg->set_func(cfg->cmd_id, vals, cfg->cmd_name);
+				cfg->set = true;
+				mtk_vgo_debug("%s %d", cfg->cmd_name, cfg->set);
+//					}
+			}
+		} else {
+			for (i = 0; scenario_table[VGO_TRANS].policy_ids[i] != -1; i++) {
+				int pid = scenario_table[VGO_TRANS].policy_ids[i];
+				struct vgo_policy *cfg = &vgo_table[pid];
+
+				if (!cfg->set)
+					continue;
+//					if (atomic_dec_return(&(cfg->ref_count)) == 0) {
+				cfg->unset_func(cfg->cmd_id, cfg->cmd_name);
+				cfg->set = false;
+//					}
+			}
+		}
+
 	}
 	return 0;
 }
@@ -723,6 +743,8 @@ static int __init videogo_init(void)
 	mutex_init(&service_mutex);
 
 	mtk_vgo_info("videogo: _init");
+
+	cpu_usage_init();
 
 	ret = platform_driver_register(&videogo_driver);
 	if (ret)
@@ -830,6 +852,7 @@ static void videogo_exit(void)
 	unregister_chrdev(major_num, DEVICE_NAME);
 
 	platform_driver_unregister(&videogo_driver);
+	cpu_usage_exit();
 }
 
 module_init(videogo_init);
