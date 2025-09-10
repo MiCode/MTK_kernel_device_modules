@@ -155,6 +155,8 @@ static int mt6375_regmap_read(void *context, const void *reg_buf,
 static const struct regmap_bus mt6375_regmap_bus = {
 	.write = mt6375_regmap_write,
 	.read = mt6375_regmap_read,
+	.max_raw_read = 16,
+	.max_raw_write = 15,
 };
 
 static bool mt6375_is_accessible_reg(struct device *dev, unsigned int reg)
