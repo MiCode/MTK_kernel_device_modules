@@ -56,7 +56,8 @@ static int global_upper_limit;
 static int global_lower_limit = USER_MIN_OPP_VAL + 1;
 static struct mutex lock;
 static int sys_request_id = 5; // for sysfs input
-static int limit_debug_request_id = 4; // for Limit_HAL cmd input
+static int limit_debug_request_id = 4; // for Debug Limit cmd input
+static int powerhal_request_id = 7; // for PowerHAL cmd input
 static int first_dump;
 static int sw_throttle_sync_mode;
 struct client_work {
@@ -1152,6 +1153,7 @@ static struct proc_dir_entry *npu_pwr_stats_root;
 static struct proc_dir_entry *npu_dir, *npu_power_on_dir, *npu_npufreq_dir;
 static struct proc_dir_entry *engine_dirs[TIME_ENGINE_MAX];
 static struct proc_dir_entry *engine_power_on_dirs[TIME_ENGINE_MAX];
+static struct proc_dir_entry *npu_hal_dir_root;
 
 static const char * const engine_names[] = {
 	"mvputop", "mvpu0", "mvpu1", "mdla0", "mdla1", "mdla2", "mdla3", "all_engines"
@@ -1298,6 +1300,96 @@ out:
 	return 0;
 }
 
+/* NPU OPP number proc node */
+static int mt6993_opp_num_proc_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "%d\n", USER_MIN_OPP_VAL - mt6993_user_max_opp);
+	return 0;
+}
+
+static int mt6993_opp_num_proc_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, mt6993_opp_num_proc_show, NULL);
+}
+
+/* NPU OPP limit proc node */
+static int mt6993_opp_limit_proc_show(struct seq_file *m, void *v)
+{
+	int upper, lower, upper_id, lower_id;
+
+	/* Read values under lock */
+	mutex_lock(&lock);
+	upper = global_upper_limit;
+	lower = global_lower_limit;
+	upper_id = last_upper_request_id;
+	lower_id = last_lower_request_id;
+	mutex_unlock(&lock);
+
+	seq_printf(m, "upper_limit=%d (user %d), lower_limit=%d (user %d)\n", upper, upper_id, lower, lower_id);
+	return 0;
+}
+
+static int mt6993_opp_limit_proc_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, mt6993_opp_limit_proc_show, NULL);
+}
+
+static ssize_t mt6993_opp_limit_proc_write(struct file *file,
+	const char __user *buf, size_t count, loff_t *ppos)
+{
+	int min_opp = 0, max_opp = 0, opp_count = 0;
+	int ret;
+	char *input;
+	char *pos;
+
+	input = kzalloc(count + 1, GFP_KERNEL);
+	if (!input)
+		return -ENOMEM;
+
+	if (copy_from_user(input, buf, count)) {
+		kfree(input);
+		return -EFAULT;
+	}
+
+	input[count] = '\0';
+	pos = strchr(input, ' ');
+	if (pos) {
+		*pos = '\0';
+		ret = kstrtoint(input, 0, &max_opp);
+		if (ret)
+			goto out;
+
+		pos++;
+		ret = kstrtoint(pos, 0, &min_opp);
+		if (ret)
+			goto out;
+	} else {
+		ret = -EINVAL;
+		goto out;
+	}
+
+	opp_count = USER_MIN_OPP_VAL - mt6993_user_max_opp;
+	if (min_opp < 0 || min_opp > opp_count)
+		min_opp = opp_count;
+	if (max_opp < 0 || max_opp > opp_count)
+		max_opp = 0;
+
+	// Ensure min_opp >= max_opp (min means larger OPP, i.e., lower freq)
+	if (min_opp < max_opp) {
+		ret = -EINVAL;
+		goto out;
+	}
+
+	apu_pr_info_ratelimited("%s: upper_limit=%d, lower_limit=%d\n", __func__,
+			max_opp, min_opp);
+	mt6993_set_freq_limit(max_opp, min_opp, &powerhal_request_id, SW_THROTTLE_SYSFS);
+
+	ret = count;
+out:
+	kfree(input);
+	return ret;
+}
+
 /* --- Open functions --- */
 
 static int npupw_stts_all_sqopen(struct inode *inode, struct file *file)
@@ -1349,10 +1441,48 @@ static const struct proc_ops npupw_stts_engine_ops = {
 	.proc_release = single_release,
 };
 
+static const struct proc_ops opp_num_proc_ops = {
+	.proc_open    = mt6993_opp_num_proc_open,
+	.proc_read    = seq_read,
+	.proc_lseek   = seq_lseek,
+	.proc_release = single_release,
+};
+
+static const struct proc_ops opp_limit_proc_ops = {
+	.proc_open    = mt6993_opp_limit_proc_open,
+	.proc_read    = seq_read,
+	.proc_write   = mt6993_opp_limit_proc_write,
+	.proc_lseek   = seq_lseek,
+	.proc_release = single_release,
+};
+
+
 /* --- Main Procfs Init Function --- */
 int mt6993_apu_top_procfs_init(void)
 {
 	int ret = 0;
+
+	npu_hal_dir_root = proc_mkdir("npu_hal", NULL);
+	ret = IS_ERR_OR_NULL(npu_hal_dir_root);
+	if (ret) {
+		pr_info("failed to create npu_hal dir\n");
+		goto out;
+	}
+
+	if (IS_ERR_OR_NULL(
+			proc_create("opp_num", 0444, npu_hal_dir_root,
+				&opp_num_proc_ops))) {
+		pr_info("failed to create npu_hal/opp_num\n");
+		ret = -ENOMEM;
+		goto out;
+	}
+	if (IS_ERR_OR_NULL(
+			proc_create("opp_limit", 0644, npu_hal_dir_root,
+				&opp_limit_proc_ops))) {
+		pr_info("failed to create npu_hal/opp_limit\n");
+		ret = -ENOMEM;
+		goto out;
+	}
 
 	npu_pwr_stats_root = proc_mkdir("npu_pwr_stats", NULL);
 	ret = IS_ERR_OR_NULL(npu_pwr_stats_root);
@@ -1505,6 +1635,13 @@ void mt6993_apu_top_procfs_exit(void)
 
 	/* Remove root */
 	remove_proc_entry("npu_pwr_stats", NULL);
+
+	/* Remove hal */
+	if (!IS_ERR_OR_NULL(npu_hal_dir_root)) {
+		remove_proc_entry("opp_num", npu_hal_dir_root);
+		remove_proc_entry("opp_limit", npu_hal_dir_root);
+		remove_proc_entry("npu_hal", NULL);
+	}
 }
 
 static int mt6993_apu_top_pb(struct platform_device *pdev)
