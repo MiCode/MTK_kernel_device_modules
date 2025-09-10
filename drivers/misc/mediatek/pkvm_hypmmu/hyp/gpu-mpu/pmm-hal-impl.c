@@ -209,6 +209,7 @@ static DEFINE_HYP_SPINLOCK(g_shared_sram_lock);
 static unsigned short g_mpu_byp_table_cnt[2 * MPU_BYP_TABLE_ENTRY_NUM]; /* two MPU areas */
 
 static u64 gpu_mpu_map_io(u64 reg_base, u32 size, const char *reg_name);
+static u64 gpu_mpu_map_nc(u64 reg_base, u32 size, const char *reg_name);
 static int ipi_communication(void);
 static bool check_bypass(unsigned short entry);
 static void pmm_pre_init(void);
@@ -228,6 +229,28 @@ static u64 gpu_mpu_map_io(u64 reg_base, u32 size, const char *reg_name)
 
 	err = mod_ops->create_private_mapping((phys_addr_t)reg_base, (size_t)size,
 			PAGE_HYP_DEVICE, &vptr);
+	if (err) {
+		if (reg_name)
+			MOD_PUTS(reg_name);
+		MOD_PUTS3("[ERROR] map failed", reg_base, size, err);
+		return 0;
+	}
+#if (DEBUG_HAL)
+	if (reg_name)
+		MOD_PUTS(reg_name);
+	MOD_PUTS3("map successfully", reg_base, size, vptr);
+#endif
+
+	return vptr;
+}
+
+static u64 gpu_mpu_map_nc(u64 reg_base, u32 size, const char *reg_name)
+{
+	int err;
+	unsigned long vptr = 0;
+
+	err = mod_ops->create_private_mapping((phys_addr_t)reg_base, (size_t)size,
+			PAGE_HYP | KVM_PGTABLE_PROT_NORMAL_NC, &vptr);
 	if (err) {
 		if (reg_name)
 			MOD_PUTS(reg_name);
@@ -359,7 +382,7 @@ static void pmm_pre_init(void)
 
 	g_gpueb_reg[NAME_GPU_MPU_TABLE_BASE].pa = DRV_Reg32(g_gpueb_reg[NAME_GPR_TBL_ADDR].va);
 	g_gpueb_reg[NAME_GPU_MPU_TABLE_BASE].pa = g_gpueb_reg[NAME_GPU_MPU_TABLE_BASE].pa << MPU_PAGE_SHIFT;
-	g_gpueb_reg[NAME_GPU_MPU_TABLE_BASE].va = gpu_mpu_map_io(g_gpueb_reg[NAME_GPU_MPU_TABLE_BASE].pa,
+	g_gpueb_reg[NAME_GPU_MPU_TABLE_BASE].va = gpu_mpu_map_nc(g_gpueb_reg[NAME_GPU_MPU_TABLE_BASE].pa,
 			MPU_TABLE_SIZE, g_gpueb_reg[NAME_GPU_MPU_TABLE_BASE].name);
 #endif
 
