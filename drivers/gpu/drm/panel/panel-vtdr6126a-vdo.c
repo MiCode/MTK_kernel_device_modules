@@ -61,22 +61,22 @@
 
 /*Parameter setting for 120Hz Start*/
 #define MODE_1_FPS                  120
-#define MODE_1_VFP                  76
-#define MODE_1_HFP                  114
+#define MODE_1_VFP                  53
+#define MODE_1_HFP                  124
 #define MODE_1_DATA_RATE            1112
 /*Parameter setting for 120Hz End*/
 
 /*Parameter setting for 90Hz Start*/
 #define MODE_2_FPS                  90
-#define MODE_2_VFP                  1016
-#define MODE_2_HFP                  114
+#define MODE_2_VFP                  982
+#define MODE_2_HFP                  124
 #define MODE_2_DATA_RATE            1112
 /*Parameter setting for 90Hz End*/
 
 /*Parameter setting for 60Hz Start*/
 #define MODE_3_FPS                  60
-#define MODE_3_VFP                  2892
-#define MODE_3_HFP                  114
+#define MODE_3_VFP                  2840
+#define MODE_3_HFP                  124
 #define MODE_3_DATA_RATE            1112
 /*Parameter setting for 60Hz End*/
 
