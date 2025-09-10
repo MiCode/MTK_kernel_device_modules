@@ -596,6 +596,7 @@ int pd_core_init(struct tcpc_device *tcpc)
 #endif	/* CONFIG_USB_PD_BLOCK_TCPM */
 
 	pd_port->tcpc = tcpc;
+	pd_port->pe_state_curr = PE_IDLE2;
 
 	pe_data_init(pe_data);
 
