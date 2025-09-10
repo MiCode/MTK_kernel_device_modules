@@ -63,6 +63,11 @@ s32 cmdqCoreRegisterCB(u32 engGroup,
 	if (!cmdq_core_is_valid_group_priv(engGroup))
 		return -EFAULT;
 
+	if (!cmdq_group_cb) {
+		CMDQ_ERR("%s callback group not ready\n", __func__);
+		return -EFAULT;
+	}
+
 	CMDQ_MSG("Register %d group engines' callback\n", engGroup);
 	CMDQ_MSG("clockOn:%ps dumpInfo:%ps resetEng:%ps clockOff:%ps\n",
 		clockOn, dumpInfo, resetEng, clockOff);
