@@ -1492,6 +1492,9 @@ static enum mml_mode tp_query_mode_dl(struct mml_dev *mml, struct mml_frame_info
 		goto decouple;
 	}
 
+	if (info->alpha)
+		goto decouple;
+
 	if (info->src.width > MML_DL_MAX_W) {
 		*reason = mml_query_inwidth;
 		goto decouple;
