@@ -14203,7 +14203,7 @@ cpuqos_mode,dnth0,dnth1,upth0,upth1";
 		};
 		mt6319_6_regulator: mt6319-6-regulator {
 			compatible = "mediatek,mt6315_6-regulator";
-			buck-size = <2>;
+			buck-size = <3>;
 			buck1-modeset-mask = <0x3>;
 			buck3-modeset-mask = <0x3>;
 
@@ -14236,7 +14236,7 @@ cpuqos_mode,dnth0,dnth1,upth0,upth1";
 		};
 		mt6319_7_regulator: mt6319-7-regulator {
 			compatible = "mediatek,mt6315_7-regulator";
-			buck-size = <2>;
+			buck-size = <3>;
 			buck1-modeset-mask = <0xb>;
 
 			mt6319_7_vbuck1: 7-vbuck1 {
