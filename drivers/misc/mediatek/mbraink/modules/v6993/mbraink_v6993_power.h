@@ -14,7 +14,7 @@
 
 
 #define MAX_POWER_HD_SZ 8
-#define SPM_TOTAL_MAX_SIG_NUM (1000)
+#define SPM_TOTAL_MAX_SIG_NUM (200)
 
 
 #define MMDVFS_DATA_SZ (256)
