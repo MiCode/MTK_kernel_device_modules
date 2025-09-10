@@ -710,21 +710,22 @@ void mtk_vdec_dvfs_begin_frame(struct mtk_vcodec_ctx *ctx, int hw_id)
 		return;
 
 	if (dev->vdec_dvfs_params.init_boost)
-		next_freq = ctx->dev->vdec_dvfs_params.normal_max_freq;
+		next_freq = (ctx->dev->vdec_dvfs_params.target_freq > ctx->dev->vdec_dvfs_params.normal_max_freq) ?
+			ctx->dev->vdec_dvfs_params.target_freq : ctx->dev->vdec_dvfs_params.normal_max_freq;
 	else
 		next_freq = ctx->dev->vdec_dvfs_params.target_freq;
 
 	orig = (dev->vdec_dvfs_params.version == 2) ?
-		(dev->vdec_dvfs_params.lock_cnt[0] | dev->vdec_dvfs_params.lock_cnt[1]) :
-		dev->vdec_dvfs_params.lock_cnt[0];
+		((dev->vdec_dvfs_params.lock_cnt[0] > 0) | (dev->vdec_dvfs_params.lock_cnt[1] > 0)) :
+		(dev->vdec_dvfs_params.lock_cnt[0] > 0);
 
 	dev->vdec_dvfs_params.lock_cnt[hw_id]++;
 	if (dev->vdec_dvfs_params.lock_cnt[hw_id] > 1)
 		mtk_vcodec_dvfs_qos_log(false, "[VDEC] lock_cnt oor %s %d", __func__, __LINE__);
 
 	pwr_on = (dev->vdec_dvfs_params.version == 2) ?
-		(orig ^ (dev->vdec_dvfs_params.lock_cnt[0] | dev->vdec_dvfs_params.lock_cnt[1])) :
-		(orig ^ dev->vdec_dvfs_params.lock_cnt[0]);
+		(orig ^ ((dev->vdec_dvfs_params.lock_cnt[0] > 0) | (dev->vdec_dvfs_params.lock_cnt[1] > 0))) :
+		(orig ^ (dev->vdec_dvfs_params.lock_cnt[0] > 0));
 
 	dev->vdec_dvfs_params.frame_need_update = (next_freq != cur_freq) && pwr_on;
 
@@ -756,15 +757,15 @@ void mtk_vdec_dvfs_end_frame(struct mtk_vcodec_ctx *ctx, int hw_id)
 
 
 	orig = (dev->vdec_dvfs_params.version == 2) ?
-		(dev->vdec_dvfs_params.lock_cnt[0] | dev->vdec_dvfs_params.lock_cnt[1]) :
-		dev->vdec_dvfs_params.lock_cnt[0];
+		((dev->vdec_dvfs_params.lock_cnt[0] > 0) | (dev->vdec_dvfs_params.lock_cnt[1] > 0)) :
+		(dev->vdec_dvfs_params.lock_cnt[0] > 0);
 
 	if (dev->vdec_dvfs_params.lock_cnt[hw_id] > 0)
 		dev->vdec_dvfs_params.lock_cnt[hw_id]--;
 
 	pwr_off = (dev->vdec_dvfs_params.version == 2) ?
-		(orig ^ (dev->vdec_dvfs_params.lock_cnt[0] | dev->vdec_dvfs_params.lock_cnt[1])) :
-		(orig ^ dev->vdec_dvfs_params.lock_cnt[0]);
+		(orig ^ ((dev->vdec_dvfs_params.lock_cnt[0] > 0) | (dev->vdec_dvfs_params.lock_cnt[1] > 0))) :
+		(orig ^ (dev->vdec_dvfs_params.lock_cnt[0] > 0));
 
 	dev->vdec_dvfs_params.frame_need_update =
 		(cur_freq != dev->vdec_dvfs_params.suspend_min_freq) && pwr_off;
@@ -798,7 +799,8 @@ void mtk_vdec_mmqos_begin_frame(struct mtk_vcodec_ctx *ctx)
 	dev->vdec_dvfs_params.os_bw[1] > 0);
 
 	for (i = 0; i < dev->vdec_larb_cnt; i++) {
-		if (dev->vdec_dvfs_params.init_boost) {
+		if (dev->vdec_dvfs_params.init_boost &&
+			dev->vdec_dvfs_params.normal_max_freq > dev->vdec_dvfs_params.target_freq) {
 			target_bw = (u64)dev->vdec_larb_bw[i].larb_base_bw *
 				dev->vdec_dvfs_params.normal_max_freq /
 				dev->vdec_dvfs_params.min_freq;
