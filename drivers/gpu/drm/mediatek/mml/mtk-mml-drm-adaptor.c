@@ -490,9 +490,6 @@ static enum mml_mode mml_drm_query_frame(struct mml_drm_ctx *dctx,
 			info_cache->mode_caps = BIT(MML_MODE_MML_DECOUPLE);
 			mode = MML_MODE_MDP_DECOUPLE;
 		}
-	} else if (mode == MML_MODE_DIRECT_LINK) {
-		info->dest[0].data.format = MML_FMT_10BIT(info->src.format) ?
-			MML_FMT_YUVA1010102 : MML_FMT_YUVA8888;
 	}
 
 	if (mode == MML_MODE_MML_DECOUPLE && !(mml_dc & 0x1)) {
@@ -523,8 +520,14 @@ enum mml_mode mml_drm_query_cap(struct mml_drm_ctx *dctx,
 				struct mml_frame_info *info)
 {
 	struct mml_frame_info_cache info_cache = {0};
+	enum mml_mode mode;
 
-	return mml_drm_query_frame(dctx, info, &info_cache);
+	mode = mml_drm_query_frame(dctx, info, &info_cache);
+	if (mode == MML_MODE_DIRECT_LINK) {
+		info->dest[0].data.format = MML_FMT_10BIT(info->src.format) ?
+			MML_FMT_YUVA1010102 : MML_FMT_YUVA8888;
+	}
+	return mode;
 }
 EXPORT_SYMBOL_GPL(mml_drm_query_cap);
 
@@ -571,10 +574,12 @@ int mml_drm_query_multi_layer(struct mml_drm_ctx *dctx,
 				infos[i].mode = MML_MODE_NOT_SUPPORT;
 				continue;
 			}
+
+			/* use mml-frame remain time to compare dl/dc opp */
 			info_cache[mml_layer_cnt].remain = remain[mml_sys_frame];
 			mode = mml_drm_query_frame(dctx, &infos[i], &info_cache[mml_layer_cnt]);
 			if (mode == MML_MODE_NOT_SUPPORT ||
-				remain[mml_sys_frame] < info_cache[mml_layer_cnt].duration) {
+			    remain[mml_sys_frame] < info_cache[mml_layer_cnt].duration) {
 				infos[i].mode = MML_MODE_NOT_SUPPORT;
 				info_cache[mml_layer_cnt].mode_caps = 0;
 				mml_msg("[drm][query][r1]layer %u not support remain %u need %u",
@@ -644,7 +649,7 @@ int mml_drm_query_multi_layer(struct mml_drm_ctx *dctx,
 				}
 			}
 
-			/* use mml-frame remain time to compare dl/dc opp */
+			/* use cumulative remain time to compare dl/dc opp */
 			if (infos[i].mode == MML_MODE_MML_DECOUPLE2)
 				info_cache[mml_layer_cnt].remain = remain[mml_sys_tile];
 			else
@@ -652,10 +657,12 @@ int mml_drm_query_multi_layer(struct mml_drm_ctx *dctx,
 			mode = tp->op->query_mode3(mml, &infos[i], &reason,
 				dctx->panel_width, dctx->panel_height, &info_cache[mml_layer_cnt]);
 
-			if (mode == MML_MODE_DIRECT_LINK)
+			if (mode == MML_MODE_DIRECT_LINK) {
 				mml_msg("[drm][query][r3]layer %u mode dl active time %u",
 					i, infos[i].act_time);
-			else if (mode == MML_MODE_MML_DECOUPLE) {
+				infos[i].dest[0].data.format = MML_FMT_10BIT(infos[i].src.format) ?
+					MML_FMT_YUVA1010102 : MML_FMT_YUVA8888;
+			} else if (mode == MML_MODE_MML_DECOUPLE) {
 				if (remain[mml_sys_frame] < info_cache[mml_layer_cnt].duration) {
 					mml_msg("[drm][query][r3]layer %u dc not support remain %u need %u",
 						i, remain[mml_sys_frame],
