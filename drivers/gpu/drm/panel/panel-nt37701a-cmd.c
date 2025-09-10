@@ -152,6 +152,12 @@ static struct lcm *panel_ctx;
 static int panel_doze_disable(struct drm_panel *panel, void *dsi, dcs_write_gce cb, void *handle);
 static int panel_doze_disable_grp(struct drm_panel *panel,
 	void *dsi, dcs_grp_write_gce cb, void *handle);
+static int panel_doze_disable_v2(struct drm_panel *panel,
+		void *dsi, mtk_dsi_ddic_cmd cb, void *handle,
+		struct mtk_dsi_cmd_option *cmd_opt);
+static int panel_doze_disable_grp_v2(struct drm_panel *panel,
+		void *dsi, mtk_dsi_ddic_cmd cb, void *handle,
+		struct mtk_dsi_cmd_option *cmd_opt);
 
 
 static inline struct lcm *panel_to_lcm(struct drm_panel *panel)
@@ -299,6 +305,158 @@ static int lcm_disable(struct drm_panel *panel)
 	return 0;
 }
 
+struct LCD_setting_table {
+	unsigned char count;
+	unsigned char para_list[200];
+};
+
+static struct LCD_setting_table lcm_deinit_setting[] = {
+	{ 0x01, {0x28} },
+	{ 0x00, {20} },
+	{ 0x01, {0x10} },
+	{ 0x00, {125} },
+};
+
+static struct LCD_setting_table lcm_init_setting_pre[] = {
+	//enter aod with no black
+	{ 0x05, {0xFF, 0xAA, 0x55, 0xA5, 0x80} },
+	{ 0x02, {0x6F, 0x61} },
+	{ 0x02, {0xF3, 0x80} },
+	//dimming setting
+	{ 0x06, {0xF0, 0x55, 0xAA, 0x52, 0x08, 0x00} },
+	{ 0x02, {0xB2, 0x98} },
+	{ 0x02, {0x6F, 0x02} },
+	{ 0x03, {0xB2, 0x10, 0x10} },
+	// AVDD EL power setting
+	{ 0x06, {0xF0, 0x55, 0xAA, 0x52, 0x08, 0x00} },
+	{ 0x02, {0xB5, 0x80} },
+	{ 0x02, {0x6F, 0x05} },
+	{ 0x05, {0xB5, 0x7F, 0x00, 0x28, 0x00} },
+	{ 0x02, {0x6F, 0x0B} },
+	{ 0x04, {0xB5, 0x00, 0x28, 0x00} },
+	{ 0x02, {0x6F, 0x10} },
+	{ 0x06, {0xB5, 0x28, 0x28, 0x28, 0x28, 0x28} },
+	{ 0x02, {0x6F, 0x16} },
+	{ 0x03, {0xB5, 0x0D, 0x19} },
+	{ 0x02, {0x6F, 0x1B} },
+	{ 0x03, {0xB5, 0x0D, 0x1A} },
+	//RCN setting
+	{ 0x05, {0xFF, 0xAA, 0x55, 0xA5, 0x80} },
+	{ 0x02, {0x6F, 0x1D} },
+	{ 0x02, {0xF2, 0x05} },
+	{ 0x06, {0xF0, 0x55, 0xAA, 0x52, 0x08, 0x00} },
+	{ 0x02, {0x6F, 0x1C} },
+	//Demura gain mapping
+	{ 0x04, {0xC0, 0x03, 0x12, 0x11} },
+	{ 0x06, {0xF0, 0x55, 0xAA, 0x52, 0x08, 0x00} },
+	{ 0x02, {0x03, 0x01} },
+	// DSC setting
+	{ 0x05, {0x3B, 0x00, 0x14, 0x00, 0x14} },
+	{ 0x02, {0x90, 0x11} },
+	{ 0x13, {0x91, 0xAB, 0x28, 0x00, 0x0C, 0xC2, 0x00, 0x02, 0x32,
+			0x01, 0x31, 0x00, 0x08, 0x08, 0xBB, 0x07, 0x7B, 0x10, 0xF0} },
+	{ 0x02, {0x2C, 0x00} },
+	{ 0x05, {0x51, 0x07, 0xFF, 0x0F, 0xFE} },
+	{ 0x02, {0x53, 0x20} },
+	{ 0x02, {0x35, 0x00} },
+	{ 0x05, {0x2A, 0x00, 0x00, 0x04, 0xC3} },
+	{ 0x05, {0x2B, 0x00, 0x00, 0x0A, 0x97} },
+};
+
+static struct LCD_setting_table lcm_init_setting_mid_120hz[] = {
+	// FCON1(HFR1,120Hz)
+	{ 0x02, {0x2F, 0x03} },
+	{ 0x02, {0x5F, 0x01} }, //gir off
+	{ 0x06, {0xF0, 0x55, 0xAA, 0x52, 0x08, 0x00} },
+	{ 0x02, {0x6F, 0x0A} },
+	{ 0x02, {0xC0, 0x20} }, //Preset1 gamma
+};
+
+static struct LCD_setting_table lcm_init_setting_mid_90hz[] = {
+	// FCON1(HFR1,90Hz)
+	{ 0x02, {0x2F, 0x04} },
+	{ 0x02, {0x5F, 0x01} }, //gir off
+	{ 0x06, {0xF0, 0x55, 0xAA, 0x52, 0x08, 0x00} },
+	{ 0x02, {0x6F, 0x0B} },
+	{ 0x02, {0xC0, 0x20} }, //Preset1 gamma
+};
+
+static struct LCD_setting_table lcm_init_setting_mid_60hz[] = {
+	// FCON1(HFR1,60Hz)
+	{ 0x02, {0x2F, 0x02} },
+	{ 0x02, {0x5F, 0x01} }, //gir off
+	{ 0x06, {0xF0, 0x55, 0xAA, 0x52, 0x08, 0x00} },
+	{ 0x02, {0x6F, 0x09} },
+	{ 0x02, {0xC0, 0x20} }, //Preset1 gamma
+};
+
+static struct LCD_setting_table lcm_init_setting_post[] = {
+	// Video Trim mipi speed = 1100Mbps @ osc 127.9525Mhz
+	{ 0x06, {0xF0, 0x55, 0xAA, 0x52, 0x08, 0x01} },
+	{ 0x08, {0xCC, 0x9B, 0x01, 0x94, 0xD0, 0x22, 0x02, 0x00} },
+	// Gamma update
+	{ 0x06, {0xF0, 0x55, 0xAA, 0x52, 0x08, 0x02} },
+	{ 0x02, {0xCC, 0x30} },
+	{ 0x02, {0xCE, 0x01} },
+	{ 0x00, {20} },
+	{ 0x02, {0xCC, 0x00} },
+	//ddic round corner on
+	{ 0x06, {0xF0, 0x55, 0xAA, 0x52, 0x08, 0x07} },
+	{ 0x02, {0xC0, 0x01} },
+	// ESD active low
+	{ 0x06, {0xF0, 0x55, 0xAA, 0x52, 0x08, 0x00} },
+	{ 0x02, {0x6F, 0x05} },
+	{ 0x02, {0xBE, 0x88} },
+	// Source-on-test
+	{ 0x06, {0xF0, 0x55, 0xAA, 0x52, 0x08, 0x00} },
+	{ 0x02, {0x6F, 0x02} },
+	{ 0x02, {0xC1, 0xD8} },
+	//demura
+	{ 0x06, {0xF0, 0x55, 0xAA, 0x52, 0x08, 0x04} },
+	{ 0x02, {0x6F, 0x0D} },
+	{ 0x02, {0xCA, 0x05} },
+
+	{ 0x02, {0x11, 0x00} },
+	{ 0x00, {120} },
+	{ 0x02, {0x29, 0x00} },
+};
+
+static struct LCD_setting_table mode_setting_gir_on_120hz[] = {
+	/* frequency select 120hz */
+	{ 0x02, {0x2F, 0x03} },
+	{ 0x02, {0x5F, 0x00} }, //gir on
+	{ 0x06, {0xF0, 0x55, 0xAA, 0x52, 0x08, 0x00} },
+	{ 0x02, {0x6F, 0x0A} },
+	{ 0x02, {0xC0, 0x60} }, //Preset3 gamma
+};
+
+static struct LCD_setting_table mode_setting_gir_on_90hz[] = {
+	/* frequency select 90hz */
+	{ 0x02, {0x2F, 0x04} },
+	{ 0x02, {0x5F, 0x00} }, //gir on
+	{ 0x06, {0xF0, 0x55, 0xAA, 0x52, 0x08, 0x00} },
+	{ 0x02, {0x6F, 0x0B} },
+	{ 0x02, {0xC0, 0x60} }, //Preset3 gamma
+};
+
+static struct LCD_setting_table mode_setting_gir_off_60hz[] = {
+	/* frequency select 60hz */
+	{ 0x02, {0x2F, 0x02} },
+	{ 0x02, {0x5F, 0x01} }, //gir off
+	{ 0x06, {0xF0, 0x55, 0xAA, 0x52, 0x08, 0x00} },
+	{ 0x02, {0x6F, 0x09} },
+	{ 0x02, {0xC0, 0x00} }, //Normal gamma
+};
+
+static struct LCD_setting_table mode_setting_gir_on_60hz[] = {
+	/* frequency select 60hz */
+	{ 0x02, {0x2F, 0x02} },
+	{ 0x02, {0x5F, 0x00} }, //gir on
+	{ 0x06, {0xF0, 0x55, 0xAA, 0x52, 0x08, 0x00} },
+	{ 0x02, {0x6F, 0x09} },
+	{ 0x02, {0xC0, 0x40} }, //Preset2 gamma
+};
+
 static int lcm_unprepare(struct drm_panel *panel)
 {
 	struct lcm *ctx = panel_to_lcm(panel);
@@ -306,10 +464,10 @@ static int lcm_unprepare(struct drm_panel *panel)
 	if (!ctx->prepared)
 		return 0;
 
-	lcm_dcs_write_seq_static(ctx, 0x28);
-	msleep(20);
-	lcm_dcs_write_seq_static(ctx, 0x10);
-	msleep(125);
+	// lcm_dcs_write_seq_static(ctx, 0x28);
+	// msleep(20);
+	// lcm_dcs_write_seq_static(ctx, 0x10);
+	// msleep(125);
 
 	ctx->error = 0;
 	ctx->prepared = false;
@@ -333,7 +491,7 @@ static int lcm_unprepare(struct drm_panel *panel)
 	return 0;
 }
 
-static void lcm_panel_init(struct lcm *ctx)
+static void panel_init(struct lcm *ctx)
 {
 	pr_info("%s: +\n", __func__);
 	if (ctx->prepared) {
@@ -480,13 +638,13 @@ static int lcm_prepare(struct drm_panel *panel)
 	lcm_panel_bias_enable();
 #endif
 
-	lcm_panel_init(ctx);
+	// panel_init(ctx);
 
 	ret = ctx->error;
 	if (ret < 0)
 		lcm_unprepare(panel);
 
-	ctx->prepared = true;
+	// ctx->prepared = true;
 
 #if defined(CONFIG_MTK_PANEL_EXT)
 	mtk_panel_tch_rst(panel);
@@ -967,6 +1125,77 @@ static int lcm_setbacklight_cmdq(void *dsi, dcs_write_gce cb,
 	return 0;
 }
 
+static int lcm_setbacklight_cmdq_v2(void *dsi, mtk_dsi_ddic_cmd cb,
+	void *handle, unsigned int level, struct mtk_dsi_cmd_option *cmd_opt)
+{
+	char bl_tb[] = {0x51, 0x07, 0xff};
+	char dimmingon_tb[] = {0x53, 0x28};
+	char dimmingoff_tb[] = {0x53, 0x20};
+	struct mipi_dsi_msg bl_tb_cmd = { 0 };
+
+	if (gDcEnable && level < gDcThreshold)
+		level = gDcThreshold;
+
+	bl_tb[1] = (level >> 8) & 0xFF;
+	bl_tb[2] = level & 0xFF;
+	if (!cb)
+		return -1;
+	if (atomic_read(&doze_enable)) {
+		pr_info("%s: Return it when aod on, %d %d %d\n",
+			__func__, level, bl_tb[1], bl_tb[2]);
+		//return 0; //need for SQC set backlight
+	}
+	if (doze_had && is_aod_mode()) {
+		struct lcm *ctx = mipi_dsi_get_drvdata(dsi);
+
+		pr_info("%s is in AOD mode need to call doze disable\n", __func__);
+		panel_doze_disable_v2(&ctx->panel, dsi, cb, handle, cmd_opt);
+	}
+	doze_had = false;
+	pr_info("%s %d %d %d\n", __func__, level, bl_tb[1], bl_tb[2]);
+
+	bl_tb_cmd.tx_buf = bl_tb;
+	bl_tb_cmd.tx_len = 3;
+	struct mtk_dsi_cmd_msg bl_tb_msg = {
+		.cmd_num = 1,
+		.transfer_mode = PACKET_HS_MODE,
+		.cmd_msg = &bl_tb_cmd,
+	};
+	cb(dsi, handle, cmd_opt, &bl_tb_msg);
+
+	if (!dimming_on && level) {
+		struct mipi_dsi_msg dimmingon_cmd = { 0 };
+
+		dimmingon_cmd.tx_buf = dimmingon_tb;
+		dimmingon_cmd.tx_len = 2;
+		struct mtk_dsi_cmd_msg dimmingon_msg = {
+			.cmd_num = 1,
+			.transfer_mode = PACKET_HS_MODE,
+			.cmd_msg = &dimmingon_cmd,
+		};
+
+		cb(dsi, handle, cmd_opt, &dimmingon_msg);
+		dimming_on = true;
+		pr_info("%s dimming status:%d\n", __func__, dimming_on);
+	} else if (dimming_on && !level) {
+		struct mipi_dsi_msg dimmingoff_cmd = { 0 };
+
+		dimmingoff_cmd.tx_buf = dimmingoff_tb;
+		dimmingoff_cmd.tx_len = 2;
+		struct mtk_dsi_cmd_msg dimmingoff_msg = {
+			.cmd_num = 1,
+			.transfer_mode = PACKET_HS_MODE,
+			.cmd_msg = &dimmingoff_cmd,
+		};
+
+		cb(dsi, handle, cmd_opt, &dimmingoff_msg);
+		dimming_on = false;
+		pr_info("%s dimming status:%d\n", __func__, dimming_on);
+	}
+
+	return 0;
+}
+
 static int lcm_set_bl_elvss_cmdq(void *dsi, dcs_grp_write_gce cb, void *handle,
 		struct mtk_bl_ext_config *bl_ext_config)
 {
@@ -1051,6 +1280,169 @@ static int lcm_set_bl_elvss_cmdq(void *dsi, dcs_grp_write_gce cb, void *handle,
 		pr_info("%s elvss = -%d\n", __func__, pulses);
 		elvss_tb[0].para_list[1] = (u8)((1<<7)|pulses);
 		cb(dsi, handle, elvss_tb, ARRAY_SIZE(elvss_tb));
+	}
+	return 0;
+}
+
+static int lcm_set_bl_elvss_cmdq_v2(void *dsi, mtk_dsi_ddic_cmd cb,
+		void *handle, struct mtk_bl_ext_config *bl_ext_config, struct mtk_dsi_cmd_option *cmd_opt)
+{
+	int pulses;
+	int level;
+	bool need_cfg_elvss = false;
+	int i;
+
+	static struct mtk_panel_para_table bl_tb[] = {
+			{3, {0x51, 0x0f, 0xff}},
+		};
+	static struct mtk_panel_para_table bl_elvss_tb[] = {
+			{3, { 0x51, 0x0f, 0xff}},
+			{2, { 0x83, 0xff}},
+		};
+	static struct mtk_panel_para_table elvss_tb[] = {
+			{2, { 0x83, 0xff}},
+		};
+	static struct mtk_panel_para_table dimmingon_tb[] = {
+			{3, {0x53, 0x28}},
+		};
+	static struct mtk_panel_para_table dimmingoff_tb[] = {
+			{3, {0x53, 0x20}},
+		};
+
+	if (!cb)
+		return -1;
+
+	struct mipi_dsi_msg bl_tb_cmd[ARRAY_SIZE(bl_tb)] = { 0 };
+	struct mipi_dsi_msg bl_elvss_tb_cmd[ARRAY_SIZE(bl_elvss_tb)] = { 0 };
+	struct mipi_dsi_msg elvss_tb_cmd[ARRAY_SIZE(elvss_tb)] = { 0 };
+	struct mipi_dsi_msg dimmingon_tb_cmd[ARRAY_SIZE(dimmingon_tb)] = { 0 };
+	struct mipi_dsi_msg dimmingoff_tb_cmd[ARRAY_SIZE(dimmingoff_tb)] = { 0 };
+
+	pulses = bl_ext_config->elvss_pn;
+	level = bl_ext_config->backlight_level;
+
+	if (bl_ext_config->cfg_flag & (0x1<<SET_BACKLIGHT_LEVEL)) {
+
+		if (bl_ext_config->cfg_flag & (0x1<<SET_ELVSS_PN))
+			need_cfg_elvss = true;
+
+		if (gDcEnable && level < gDcThreshold)
+			level = gDcThreshold;
+
+		if (atomic_read(&doze_enable)) {
+			pr_info("%s: Return it when aod on, %d %d %d\n",
+				__func__, level, bl_tb[0].para_list[1], bl_tb[0].para_list[2]);
+			if (need_cfg_elvss) {
+				pr_info("%s elvss = -%d\n", __func__, pulses);
+				elvss_tb[0].para_list[1] = (u8)((1<<7)|pulses);
+				for (i = 0; i < ARRAY_SIZE(elvss_tb_cmd); i++) {
+					elvss_tb_cmd[i].tx_len= elvss_tb[i].count;
+					elvss_tb_cmd[i].tx_buf = elvss_tb[i].para_list;
+				}
+				struct mtk_dsi_cmd_msg elvss_tb_msg = {
+					.is_rd = 0, /* 0:write 1:read */
+					.is_package = 1,
+					.cmd_num = ARRAY_SIZE(elvss_tb_cmd),
+					.transfer_mode = PACKET_HS_MODE,
+					.cmd_msg = elvss_tb_cmd,
+				};
+				cb(dsi, handle, cmd_opt, &elvss_tb_msg);
+			}
+			return 0;
+		}
+
+		if (doze_had && is_aod_mode()) {
+			struct lcm *ctx = mipi_dsi_get_drvdata(dsi);
+
+			pr_info("%s is in AOD mode need to call doze disable\n", __func__);
+			panel_doze_disable_grp_v2(&ctx->panel, dsi, cb, handle, cmd_opt);
+		}
+
+		doze_had = false;
+
+		if (need_cfg_elvss) {
+			bl_elvss_tb[0].para_list[1] = (level >> 8) & 0xf;
+			bl_elvss_tb[0].para_list[2] = (level) & 0xFF;
+			pr_info("%s backlight = -%d\n", __func__, level);
+			pr_info("%s elvss = -%d\n", __func__, pulses);
+			bl_elvss_tb[1].para_list[1] = (u8)((1<<7)|pulses);
+			for (i = 0; i < ARRAY_SIZE(bl_elvss_tb_cmd); i++) {
+				bl_elvss_tb_cmd[i].tx_len= bl_elvss_tb[i].count;
+				bl_elvss_tb_cmd[i].tx_buf = bl_elvss_tb[i].para_list;
+			}
+			struct mtk_dsi_cmd_msg bl_elvss_tb_msg = {
+				.is_rd = 0, /* 0:write 1:read */
+				.is_package = 1,
+				.cmd_num = ARRAY_SIZE(bl_elvss_tb_cmd),
+				.transfer_mode = PACKET_HS_MODE,
+				.cmd_msg = bl_elvss_tb_cmd,
+			};
+			cb(dsi, handle, cmd_opt, &bl_elvss_tb_msg);
+		} else {
+			pr_info("%s backlight = -%d\n", __func__, level);
+			bl_tb[0].para_list[1] = (level >> 8) & 0xf;
+			bl_tb[0].para_list[2] = (level) & 0xFF;
+			for (i = 0; i < ARRAY_SIZE(bl_tb_cmd); i++) {
+				bl_tb_cmd[i].tx_len= bl_tb[i].count;
+				bl_tb_cmd[i].tx_buf = bl_tb[i].para_list;
+			}
+			struct mtk_dsi_cmd_msg bl_tb_msg = {
+				.is_rd = 0, /* 0:write 1:read */
+				.is_package = 1,
+				.cmd_num = ARRAY_SIZE(bl_tb_cmd),
+				.transfer_mode = PACKET_HS_MODE,
+				.cmd_msg = bl_tb_cmd,
+			};
+			cb(dsi, handle, cmd_opt, &bl_tb_msg);
+		}
+
+		if (!dimming_on && level) {
+			for (i = 0; i < ARRAY_SIZE(dimmingon_tb_cmd); i++) {
+				dimmingon_tb_cmd[i].tx_len= dimmingon_tb[i].count;
+				dimmingon_tb_cmd[i].tx_buf = dimmingon_tb[i].para_list;
+			}
+			struct mtk_dsi_cmd_msg dimmingon_tb_msg = {
+				.is_rd = 0, /* 0:write 1:read */
+				.is_package = 1,
+				.cmd_num = ARRAY_SIZE(dimmingon_tb_cmd),
+				.transfer_mode = PACKET_HS_MODE,
+				.cmd_msg = dimmingon_tb_cmd,
+			};
+			cb(dsi, handle, cmd_opt, &dimmingon_tb_msg);
+			dimming_on = true;
+			pr_info("%s dimming status:%d\n", __func__, dimming_on);
+		} else if (dimming_on && !level) {
+			for (i = 0; i < ARRAY_SIZE(dimmingoff_tb_cmd); i++) {
+				dimmingoff_tb_cmd[i].tx_len= dimmingoff_tb[i].count;
+				dimmingoff_tb_cmd[i].tx_buf = dimmingoff_tb[i].para_list;
+			}
+			struct mtk_dsi_cmd_msg dimmingoff_tb_msg = {
+				.is_rd = 0, /* 0:write 1:read */
+				.is_package = 1,
+				.cmd_num = ARRAY_SIZE(dimmingoff_tb_cmd),
+				.transfer_mode = PACKET_HS_MODE,
+				.cmd_msg = dimmingoff_tb_cmd,
+			};
+			cb(dsi, handle, cmd_opt, &dimmingoff_tb_msg);
+			dimming_on = false;
+			pr_info("%s dimming status:%d\n", __func__, dimming_on);
+		}
+
+	} else if (bl_ext_config->cfg_flag & (0x1<<SET_ELVSS_PN)) {
+		pr_info("%s elvss = -%d\n", __func__, pulses);
+		elvss_tb[0].para_list[1] = (u8)((1<<7)|pulses);
+		for (i = 0; i < ARRAY_SIZE(elvss_tb_cmd); i++) {
+			elvss_tb_cmd[i].tx_len= elvss_tb[i].count;
+			elvss_tb_cmd[i].tx_buf = elvss_tb[i].para_list;
+		}
+		struct mtk_dsi_cmd_msg elvss_tb_msg = {
+			.is_rd = 0, /* 0:write 1:read */
+			.is_package = 1,
+			.cmd_num = ARRAY_SIZE(elvss_tb_cmd),
+			.transfer_mode = PACKET_HS_MODE,
+			.cmd_msg = elvss_tb_cmd,
+		};
+		cb(dsi, handle, cmd_opt, &elvss_tb_msg);
 	}
 	return 0;
 }
@@ -1227,6 +1619,133 @@ static int mode_switch(struct drm_panel *panel,
 	return ret;
 }
 
+static int mode_switch_v2(void *dsi_drv, struct drm_panel *panel, void *handle,
+		mtk_dsi_ddic_cmd cb, struct drm_connector *connector, unsigned int cur_mode,
+		unsigned int dst_mode, enum MTK_PANEL_MODE_SWITCH_STAGE stage,
+		struct mtk_dsi_cmd_option *cmd_opt)
+{
+	int i = 0;
+	int ret = 0;
+	static int flag;
+	struct drm_display_mode *m = get_mode_by_id(connector, dst_mode);
+	static struct mipi_dsi_msg fps_120hz_gir_on[ARRAY_SIZE(mode_setting_gir_on_120hz)] = { 0 };
+	static struct mipi_dsi_msg fps_120hz_gir_off[ARRAY_SIZE(lcm_init_setting_mid_120hz)] = { 0 };
+	static struct mipi_dsi_msg fps_90hz_gir_on[ARRAY_SIZE(mode_setting_gir_on_90hz)] = { 0 };
+	static struct mipi_dsi_msg fps_90hz_gir_off[ARRAY_SIZE(lcm_init_setting_mid_90hz)] = { 0 };
+	static struct mipi_dsi_msg fps_60hz_gir_on[ARRAY_SIZE(mode_setting_gir_on_60hz)] = { 0 };
+	static struct mipi_dsi_msg fps_60hz_gir_off[ARRAY_SIZE(mode_setting_gir_off_60hz)] = { 0 };
+	struct lcm *ctx = panel_to_lcm(panel);
+
+	if (stage == BEFORE_DSI_POWERDOWN) {
+		pr_info("%s cur_mode = %d dst_mode %d vrefresh %d\n",
+			__func__, cur_mode, dst_mode, drm_mode_vrefresh(m));
+
+		if (!flag) {
+			flag = 1;
+			for (i = 0; i < ARRAY_SIZE(mode_setting_gir_on_120hz); i++) {
+				fps_120hz_gir_on[i].tx_len = mode_setting_gir_on_120hz[i].count;
+				fps_120hz_gir_on[i].tx_buf = mode_setting_gir_on_120hz[i].para_list;
+			}
+			for (i = 0; i < ARRAY_SIZE(lcm_init_setting_mid_120hz); i++) {
+				fps_120hz_gir_off[i].tx_len = lcm_init_setting_mid_120hz[i].count;
+				fps_120hz_gir_off[i].tx_buf = lcm_init_setting_mid_120hz[i].para_list;
+			}
+			for (i = 0; i < ARRAY_SIZE(mode_setting_gir_on_90hz); i++) {
+				fps_90hz_gir_on[i].tx_len = mode_setting_gir_on_90hz[i].count;
+				fps_90hz_gir_on[i].tx_buf = mode_setting_gir_on_90hz[i].para_list;
+			}
+			for (i = 0; i < ARRAY_SIZE(lcm_init_setting_mid_90hz); i++) {
+				fps_90hz_gir_off[i].tx_len = lcm_init_setting_mid_90hz[i].count;
+				fps_90hz_gir_off[i].tx_buf = lcm_init_setting_mid_90hz[i].para_list;
+			}
+			for (i = 0; i < ARRAY_SIZE(mode_setting_gir_on_60hz); i++) {
+				fps_60hz_gir_on[i].tx_len = mode_setting_gir_on_60hz[i].count;
+				fps_60hz_gir_on[i].tx_buf = mode_setting_gir_on_60hz[i].para_list;
+			}
+			for (i = 0; i < ARRAY_SIZE(mode_setting_gir_off_60hz); i++) {
+				fps_60hz_gir_off[i].tx_len = mode_setting_gir_off_60hz[i].count;
+				fps_60hz_gir_off[i].tx_buf = mode_setting_gir_off_60hz[i].para_list;
+			}
+		}
+		struct mtk_dsi_cmd_msg fps_120hz_gir_on_cmd = {
+			.is_rd = 0, /* 0:write 1:read */
+			.is_package = 1,
+			.rd_to_slot = 0,
+			.cmd_num = ARRAY_SIZE(mode_setting_gir_on_120hz),
+			.transfer_mode = PACKET_HS_MODE,
+			.cmd_msg = fps_120hz_gir_on,
+		};
+
+		struct mtk_dsi_cmd_msg fps_120hz_gir_off_cmd = {
+			.is_rd = 0, /* 0:write 1:read */
+			.is_package = 1,
+			.rd_to_slot = 0,
+			.cmd_num = ARRAY_SIZE(lcm_init_setting_mid_120hz),
+			.transfer_mode = PACKET_HS_MODE,
+			.cmd_msg = fps_120hz_gir_off,
+		};
+
+		struct mtk_dsi_cmd_msg fps_90hz_gir_on_cmd = {
+			.is_rd = 0, /* 0:write 1:read */
+			.is_package = 1,
+			.rd_to_slot = 0,
+			.cmd_num = ARRAY_SIZE(mode_setting_gir_on_90hz),
+			.transfer_mode = PACKET_HS_MODE,
+			.cmd_msg = fps_90hz_gir_on,
+		};
+
+		struct mtk_dsi_cmd_msg fps_90hz_gir_off_cmd = {
+			.is_rd = 0, /* 0:write 1:read */
+			.is_package = 1,
+			.rd_to_slot = 0,
+			.cmd_num = ARRAY_SIZE(lcm_init_setting_mid_90hz),
+			.transfer_mode = PACKET_HS_MODE,
+			.cmd_msg = fps_90hz_gir_off,
+		};
+
+		struct mtk_dsi_cmd_msg fps_60hz_gir_on_cmd = {
+			.is_rd = 0, /* 0:write 1:read */
+			.is_package = 1,
+			.rd_to_slot = 0,
+			.cmd_num = ARRAY_SIZE(mode_setting_gir_on_60hz),
+			.transfer_mode = PACKET_HS_MODE,
+			.cmd_msg = fps_60hz_gir_on,
+		};
+
+		struct mtk_dsi_cmd_msg fps_60hz_gir_off_cmd = {
+			.is_rd = 0, /* 0:write 1:read */
+			.is_package = 1,
+			.rd_to_slot = 0,
+			.cmd_num = ARRAY_SIZE(mode_setting_gir_off_60hz),
+			.transfer_mode = PACKET_HS_MODE,
+			.cmd_msg = fps_60hz_gir_off,
+		};
+
+		if (drm_mode_vrefresh(m) == 120 && ctx->gir_status) {
+			cb(dsi_drv, handle, cmd_opt, &fps_120hz_gir_on_cmd);
+			ctx->dynamic_fps = 120;
+		} else if (drm_mode_vrefresh(m) == 120 && !ctx->gir_status) {
+			cb(dsi_drv, handle, cmd_opt, &fps_120hz_gir_off_cmd);
+			ctx->dynamic_fps = 120;
+		} else if (drm_mode_vrefresh(m) == 90 && ctx->gir_status) {
+			cb(dsi_drv, handle, cmd_opt, &fps_90hz_gir_on_cmd);
+			ctx->dynamic_fps = 90;
+		} else if (drm_mode_vrefresh(m) == 90 && !ctx->gir_status) {
+			cb(dsi_drv, handle, cmd_opt, &fps_90hz_gir_off_cmd);
+			ctx->dynamic_fps = 90;
+		} else if (drm_mode_vrefresh(m) == 60 && ctx->gir_status) {
+			cb(dsi_drv, handle, cmd_opt, &fps_60hz_gir_on_cmd);
+			ctx->dynamic_fps = 60;
+		} else if (drm_mode_vrefresh(m) == 60 && !ctx->gir_status) {
+			cb(dsi_drv, handle, cmd_opt, &fps_60hz_gir_off_cmd);
+			ctx->dynamic_fps = 60;
+		} else
+			ret = 1;
+	}
+
+	return ret;
+}
+
 struct mtk_panel_para_table msync_level_90[] = {
 	/* frequency select 90hz */
 	{2, {0x2F, 0x04}},
@@ -1321,6 +1840,87 @@ static int panel_doze_disable(struct drm_panel *panel,
 	return 0;
 }
 
+static int panel_doze_disable_v2(struct drm_panel *panel,
+		void *dsi, mtk_dsi_ddic_cmd cb, void *handle,
+		struct mtk_dsi_cmd_option *cmd_opt)
+{
+	char page0_tb[] = {0xF0, 0x55, 0xAA, 0x52, 0x08, 0x00};
+	char data_remap_enable_tb[] = {0xB2, 0x98};
+	char cmd0_tb[] = {0x65, 0x00};
+	char cmd1_tb[] = {0x38, 0x00};
+	char page_51[] = {0x51, 0x00, 0x08};
+	char cmd2_tb[] = {0x2C, 0x00};
+	struct mipi_dsi_msg page0_tb_cmd = { 0 };
+	struct mipi_dsi_msg data_remap_enable_tb_cmd = { 0 };
+	struct mipi_dsi_msg cmd0_tb_cmd = { 0 };
+	struct mipi_dsi_msg cmd1_tb_cmd = { 0 };
+	struct mipi_dsi_msg page_51_cmd = { 0 };
+	struct mipi_dsi_msg cmd2_tb_cmd = { 0 };
+
+	pr_info("%s +\n", __func__);
+
+	page0_tb_cmd.tx_buf = page0_tb;
+	page0_tb_cmd.tx_len = ARRAY_SIZE(page0_tb);
+	struct mtk_dsi_cmd_msg page0_tb_msg = {
+		.cmd_num = 1,
+		.transfer_mode = PACKET_HS_MODE,
+		.cmd_msg = &page0_tb_cmd,
+	};
+	cb(dsi, handle, cmd_opt, &page0_tb_msg);
+
+	data_remap_enable_tb_cmd.tx_buf = data_remap_enable_tb;
+	data_remap_enable_tb_cmd.tx_len = ARRAY_SIZE(data_remap_enable_tb);
+	struct mtk_dsi_cmd_msg data_remap_enable_tb_msg = {
+		.cmd_num = 1,
+		.transfer_mode = PACKET_HS_MODE,
+		.cmd_msg = &data_remap_enable_tb_cmd,
+	};
+	cb(dsi, handle, cmd_opt, &data_remap_enable_tb_msg);
+
+	cmd0_tb_cmd.tx_buf = cmd0_tb;
+	cmd0_tb_cmd.tx_len = ARRAY_SIZE(cmd0_tb);
+	struct mtk_dsi_cmd_msg cmd0_tb_msg = {
+		.cmd_num = 1,
+		.transfer_mode = PACKET_HS_MODE,
+		.cmd_msg = &cmd0_tb_cmd,
+	};
+	cb(dsi, handle, cmd_opt, &cmd0_tb_msg);
+
+	cmd1_tb_cmd.tx_buf = cmd1_tb;
+	cmd1_tb_cmd.tx_len = ARRAY_SIZE(cmd1_tb);
+	struct mtk_dsi_cmd_msg cmd1_tb_msg = {
+		.cmd_num = 1,
+		.transfer_mode = PACKET_HS_MODE,
+		.cmd_msg = &cmd1_tb_cmd,
+	};
+	cb(dsi, handle, cmd_opt, &cmd1_tb_msg);
+
+	page_51_cmd.tx_buf = page_51;
+	page_51_cmd.tx_len = ARRAY_SIZE(page_51);
+	struct mtk_dsi_cmd_msg page_51_msg = {
+		.cmd_num = 1,
+		.transfer_mode = PACKET_HS_MODE,
+		.cmd_msg = &page_51_cmd,
+	};
+	cb(dsi, handle, cmd_opt, &page_51_msg);
+
+	usleep_range(50 * 1000, 50 * 1000 + 10);
+
+	cmd2_tb_cmd.tx_buf = cmd2_tb;
+	cmd2_tb_cmd.tx_len = ARRAY_SIZE(cmd2_tb);
+	struct mtk_dsi_cmd_msg cmd2_tb_msg = {
+		.cmd_num = 1,
+		.transfer_mode = PACKET_HS_MODE,
+		.cmd_msg = &cmd2_tb_cmd,
+	};
+	cb(dsi, handle, cmd_opt, &cmd2_tb_msg);
+
+	atomic_set(&doze_enable, 0);
+	pr_info("%s -\n", __func__);
+
+	return 0;
+}
+
 static int panel_doze_disable_grp(struct drm_panel *panel,
 	void *dsi, dcs_grp_write_gce cb, void *handle)
 {
@@ -1345,6 +1945,276 @@ static int panel_doze_disable_grp(struct drm_panel *panel,
 	return 0;
 }
 
+static int panel_doze_disable_grp_v2(struct drm_panel *panel,
+		void *dsi, mtk_dsi_ddic_cmd cb, void *handle,
+		struct mtk_dsi_cmd_option *cmd_opt)
+{
+	int i;
+
+	static struct mtk_panel_para_table cmd0_tb[] = {
+			{6, {0xF0, 0x55, 0xAA, 0x52, 0x08, 0x00}},
+			{2, {0xB2, 0x98}},
+			{2, {0x65, 0x00}},
+			{2, {0x38, 0x00}},
+			{3, {0x51, 0x00, 0x08}},
+		};
+	static struct mtk_panel_para_table cmd1_tb[] = {
+			{2, {0x2C, 0x00}},
+		};
+
+	struct mipi_dsi_msg cmd0_tb_cmd[ARRAY_SIZE(cmd0_tb)] = { 0 };
+	struct mipi_dsi_msg cmd1_tb_cmd[ARRAY_SIZE(cmd1_tb)] = { 0 };
+
+	for (i = 0; i < ARRAY_SIZE(cmd0_tb_cmd); i++) {
+		cmd0_tb_cmd[i].tx_len= cmd0_tb[i].count;
+		cmd0_tb_cmd[i].tx_buf = cmd0_tb[i].para_list;
+	}
+	struct mtk_dsi_cmd_msg cmd0_tb_msg = {
+		.cmd_num = ARRAY_SIZE(cmd0_tb_cmd),
+		.transfer_mode = PACKET_HS_MODE,
+		.cmd_msg = cmd0_tb_cmd,
+	};
+	cb(dsi, handle, cmd_opt, &cmd0_tb_msg);
+
+	usleep_range(50 * 1000, 50 * 1000 + 10);
+
+	for (i = 0; i < ARRAY_SIZE(cmd1_tb_cmd); i++) {
+		cmd1_tb_cmd[i].tx_len= cmd1_tb[i].count;
+		cmd1_tb_cmd[i].tx_buf = cmd1_tb[i].para_list;
+	}
+	struct mtk_dsi_cmd_msg cmd1_tb_msg = {
+		.cmd_num = ARRAY_SIZE(cmd1_tb_cmd),
+		.transfer_mode = PACKET_HS_MODE,
+		.cmd_msg = cmd1_tb_cmd,
+	};
+	cb(dsi, handle, cmd_opt, &cmd1_tb_msg);
+
+	atomic_set(&doze_enable, 0);
+	pr_info("%s -\n", __func__);
+
+	return 0;
+}
+
+static int lcm_panel_init(struct drm_panel *panel)
+{
+	int ret = 0;
+	struct lcm *ctx = panel_to_lcm(panel);
+
+	pr_info("%s: +\n", __func__);
+
+	if (ctx->prepared) {
+		pr_info("%s: panel has been prepared, nothing to do!\n", __func__);
+		return 0;
+	}
+
+	panel_init(ctx);
+	ret = ctx->error;
+	if (ret < 0) {
+		pr_err("%s error\n", __func__);
+		lcm_unprepare(panel);
+		return -1;
+	}
+
+	ctx->prepared = true;
+	pr_info("%s: -\n", __func__);
+
+	return 0;
+}
+
+static int lcm_panel_deinit(struct drm_panel *panel)
+{
+	struct lcm *ctx = panel_to_lcm(panel);
+
+	pr_info("%s: +\n", __func__);
+
+	if (!ctx->prepared) {
+		pr_info("%s skip\n", __func__);
+		return 0;
+	}
+
+	lcm_dcs_write_seq_static(ctx, 0x28);
+	msleep(20);
+	lcm_dcs_write_seq_static(ctx, 0x10);
+	msleep(125);
+
+	pr_info("%s: -\n", __func__);
+	return 0;
+}
+
+static int lcm_panel_init_v2(void *dsi_drv, struct drm_panel *panel, void *handle, mtk_dsi_ddic_cmd cb,
+			struct mtk_dsi_cmd_option *cmd_opt)
+{
+	int ret = 0;
+	struct lcm *ctx = panel_to_lcm(panel);
+	static struct mipi_dsi_msg
+		init_120hz[ARRAY_SIZE(lcm_init_setting_pre) +
+					ARRAY_SIZE(lcm_init_setting_mid_120hz) +
+					ARRAY_SIZE(lcm_init_setting_post)] = { 0 };
+	static struct mipi_dsi_msg
+		init_90hz[ARRAY_SIZE(lcm_init_setting_pre) +
+					ARRAY_SIZE(lcm_init_setting_mid_90hz) +
+					ARRAY_SIZE(lcm_init_setting_post)] = { 0 };
+	static struct mipi_dsi_msg
+		init_60hz[ARRAY_SIZE(lcm_init_setting_pre) +
+					ARRAY_SIZE(lcm_init_setting_mid_60hz) +
+					ARRAY_SIZE(lcm_init_setting_post)] = { 0 };
+	static int flag;
+	int i, j0, j1, j2, k;
+
+	pr_info("%s ++, fps = %d\n", __func__, current_fps);
+
+	if (!panel) {
+		pr_err("%s, error, panel is NULL\n", __func__);
+		return -1;
+	}
+
+	if (ctx->prepared) {
+		pr_info("%s skip\n", __func__);
+		return 0;
+	}
+
+	if (!flag) {
+		flag = 1;
+		for (i = 0; i < ARRAY_SIZE(lcm_init_setting_pre); i++) {
+			init_120hz[i].tx_len = lcm_init_setting_pre[i].count;
+			init_120hz[i].tx_buf = lcm_init_setting_pre[i].para_list;
+			init_90hz[i].tx_len = lcm_init_setting_pre[i].count;
+			init_90hz[i].tx_buf = lcm_init_setting_pre[i].para_list;
+			init_60hz[i].tx_len = lcm_init_setting_pre[i].count;
+			init_60hz[i].tx_buf = lcm_init_setting_pre[i].para_list;
+		}
+		for (j0 = 0; j0 < ARRAY_SIZE(lcm_init_setting_mid_120hz); j0++) {
+			init_120hz[i + j0].tx_len = lcm_init_setting_mid_120hz[j0].count;
+			init_120hz[i + j0].tx_buf = lcm_init_setting_mid_120hz[j0].para_list;
+		}
+		for (j1 = 0; j1 < ARRAY_SIZE(lcm_init_setting_mid_90hz); j1++) {
+			init_90hz[i + j1].tx_len = lcm_init_setting_mid_90hz[j1].count;
+			init_90hz[i + j1].tx_buf = lcm_init_setting_mid_90hz[j1].para_list;
+		}
+		for (j2 = 0; j2 < ARRAY_SIZE(lcm_init_setting_mid_60hz); j2++) {
+			init_60hz[i + j2].tx_len = lcm_init_setting_mid_60hz[j2].count;
+			init_60hz[i + j2].tx_buf = lcm_init_setting_mid_60hz[j2].para_list;
+		}
+		for (k = 0; k < ARRAY_SIZE(lcm_init_setting_post); k++) {
+			init_120hz[i + j0 + k].tx_len = lcm_init_setting_post[k].count;
+			init_120hz[i + j0 + k].tx_buf = lcm_init_setting_post[k].para_list;
+			init_90hz[i + j1 + k].tx_len = lcm_init_setting_post[k].count;
+			init_90hz[i + j1 + k].tx_buf = lcm_init_setting_post[k].para_list;
+			init_60hz[i + j2 + k].tx_len = lcm_init_setting_post[k].count;
+			init_60hz[i + j2 + k].tx_buf = lcm_init_setting_post[k].para_list;
+		}
+	}
+	struct mtk_dsi_cmd_msg cmd_msg_120hz = {
+		.is_rd = 0, /* 0:write 1:read */
+		.is_package = 0,
+		.rd_to_slot = 0,
+		.cmd_num = ARRAY_SIZE(lcm_init_setting_pre) +
+					ARRAY_SIZE(lcm_init_setting_mid_120hz) +
+					ARRAY_SIZE(lcm_init_setting_post),
+		.transfer_mode = PACKET_LP_MODE,
+		.cmd_msg = init_120hz,
+	};
+
+	struct mtk_dsi_cmd_msg cmd_msg_90hz = {
+		.is_rd = 0, /* 0:write 1:read */
+		.is_package = 0,
+		.rd_to_slot = 0,
+		.cmd_num = ARRAY_SIZE(lcm_init_setting_pre) +
+					ARRAY_SIZE(lcm_init_setting_mid_90hz) +
+					ARRAY_SIZE(lcm_init_setting_post),
+		.transfer_mode = PACKET_LP_MODE,
+		.cmd_msg = init_90hz,
+	};
+
+	struct mtk_dsi_cmd_msg cmd_msg_60hz = {
+		.is_rd = 0, /* 0:write 1:read */
+		.is_package = 0,
+		.rd_to_slot = 0,
+		.cmd_num = ARRAY_SIZE(lcm_init_setting_pre) +
+					ARRAY_SIZE(lcm_init_setting_mid_60hz) +
+					ARRAY_SIZE(lcm_init_setting_post),
+		.transfer_mode = PACKET_LP_MODE,
+		.cmd_msg = init_60hz,
+	};
+
+	ctx->reset_gpio = devm_gpiod_get(ctx->dev, "reset", GPIOD_OUT_HIGH);
+	gpiod_set_value(ctx->reset_gpio, 0);
+	udelay(12 * 1000);
+	gpiod_set_value(ctx->reset_gpio, 1);
+	udelay(1 * 1000);
+	gpiod_set_value(ctx->reset_gpio, 0);
+	udelay(10 * 1000);
+	gpiod_set_value(ctx->reset_gpio, 1);
+	udelay(12 * 1000);
+	devm_gpiod_put(ctx->dev, ctx->reset_gpio);
+
+	if (current_fps == 120)
+		ret = cb(dsi_drv, handle, cmd_opt, &cmd_msg_120hz);
+	else if (current_fps == 90)
+		ret = cb(dsi_drv, handle, cmd_opt, &cmd_msg_90hz);
+	else if (current_fps == 60)
+		ret = cb(dsi_drv, handle, cmd_opt, &cmd_msg_60hz);
+	else {
+		pr_info("%s fps is error, %d\n", __func__, current_fps);
+		goto end;
+	}
+
+	if (ret < 0) {
+		pr_err("%s error\n", __func__);
+		goto end;
+	};
+
+	ctx->prepared = true;
+	pr_info("%s --\n", __func__);
+
+end:
+	return ret;
+}
+
+static int lcm_panel_deinit_v2(void *dsi_drv, struct drm_panel *panel, void *handle, mtk_dsi_ddic_cmd cb,
+			struct mtk_dsi_cmd_option *cmd_opt)
+{
+	int i, ret = 0;
+	static int flag;
+	struct lcm *ctx = panel_to_lcm(panel);
+	static struct mipi_dsi_msg deinit_code[ARRAY_SIZE(lcm_deinit_setting)] = { 0 };
+
+	pr_info("%s ++, fps = %d\n", __func__, current_fps);
+
+	if (!ctx->prepared) {
+		pr_info("%s skip\n", __func__);
+		return 0;
+	}
+
+	if (!flag) {
+		flag = 1;
+		for (i = 0; i < ARRAY_SIZE(lcm_deinit_setting); i++) {
+			deinit_code[i].tx_len= lcm_deinit_setting[i].count;
+			deinit_code[i].tx_buf = lcm_deinit_setting[i].para_list;
+		}
+	}
+
+	struct mtk_dsi_cmd_msg deinit_cmd = {
+		.is_rd = 0, /* 0:write 1:read */
+		.is_package = 0,
+		.rd_to_slot = 0,
+		.cmd_num = ARRAY_SIZE(lcm_deinit_setting),
+		.transfer_mode = PACKET_LP_MODE,
+		.cmd_msg = deinit_code,
+	};
+
+	ret = cb(dsi_drv, handle, cmd_opt, &deinit_cmd);
+	if (ret < 0) {
+		pr_info("%s error\n", __func__);
+		goto end;
+	}
+
+	pr_info("%s --\n", __func__);
+
+end:
+	return ret;
+}
+
 
 
 static struct mtk_panel_funcs ext_funcs = {
@@ -1360,6 +2230,16 @@ static struct mtk_panel_funcs ext_funcs = {
 	.msync_te_level_switch_grp = msync_te_level_switch_grp,
 	.get_res_switch_type = mtk_get_res_switch_type,
 	.scaling_mode_mapping = mtk_scaling_mode_mapping,
+
+	.panel_init = lcm_panel_init,
+	.panel_deinit = lcm_panel_deinit,
+	.panel_init_v2 = lcm_panel_init_v2,
+	.panel_deinit_v2 = lcm_panel_deinit_v2,
+	.mode_switch_v2 = mode_switch_v2,
+	.set_backlight_cmdq_v2 = lcm_setbacklight_cmdq_v2,
+	.set_aod_light_mode_v2 = lcm_setbacklight_cmdq_v2,
+	.doze_disable_v2 = panel_doze_disable_v2,
+	.set_bl_elvss_cmdq_v2 = lcm_set_bl_elvss_cmdq_v2,
 };
 #endif
 
