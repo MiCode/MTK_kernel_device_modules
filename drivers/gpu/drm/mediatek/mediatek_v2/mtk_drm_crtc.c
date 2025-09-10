@@ -11888,7 +11888,7 @@ static void mtk_disp_cksm_update(struct mtk_drm_crtc *mtk_crtc, struct disp_modu
 		}
 
 		DDPMSG("%s %s %s first: 0x%x, curr: 0x%x, result: %d, loop: %u\n",
-			__func__, info->name, inst->name, *inst->curr_cksm, inst->first_cksm,
+			__func__, info->name, inst->name, inst->first_cksm, *inst->curr_cksm,
 			*inst->cmp_result, info->loop_cnt);
 	}
 
