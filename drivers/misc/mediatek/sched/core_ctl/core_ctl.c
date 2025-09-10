@@ -1330,7 +1330,7 @@ int core_ctl_force_pause_request(unsigned int cpu, bool is_pause,
 
 	if (is_pause) {
 		if (ret) {
-			pr_info("[Core Force Pause] Already Pause: cpu=%d, paused=0x%lx, online=0x%lx, act=0x%lx, req[%d]=%u\n",
+			pr_info_ratelimited("[Core Force Pause] Already Pause: cpu=%d, paused=0x%lx, online=0x%lx, act=0x%lx, req[%d]=%u\n",
 				cpu, cpu_pause_mask->bits[0], cpu_online_mask->bits[0],
 				cpu_active_mask->bits[0], cpu, cpu_stat->force_pause_req);
 		} else {
@@ -1340,7 +1340,7 @@ int core_ctl_force_pause_request(unsigned int cpu, bool is_pause,
 		}
 	} else {
 		if (ret) {
-			pr_info("[Core Force Pause] Already Resume: cpu=%d, paused=0x%lx, online=0x%lx, act=0x%lx, req[%d]=%u\n",
+			pr_info_ratelimited("[Core Force Pause] Already Resume: cpu=%d, paused=0x%lx, online=0x%lx, act=0x%lx, req[%d]=%u\n",
 				cpu, cpu_pause_mask->bits[0], cpu_online_mask->bits[0],
 				cpu_active_mask->bits[0], cpu, cpu_stat->force_pause_req);
 		} else {
