@@ -179,6 +179,7 @@ struct pmic_lvsys_notify {
 	unsigned int *thd_volts_h;
 	unsigned int *cur_lv_ptr;
 	unsigned int *cur_hv_ptr;
+	bool *falling_flag;
 	int thd_volts_l_size;
 	int thd_volts_h_size;
 	int bat_type;
@@ -477,6 +478,17 @@ static void vsys_work_handler(struct work_struct *work)
 	int ret = 0, vsys_voltage = 0;
 
 	mutex_lock(&lvsys_notify->lock);
+	if (lvsys_notify->falling_flag[get_cur_hv_idx()] == false) {
+#if LVSYS_DBG
+		pr_info("[%s] lvsys %d rising is triggered\n", __func__, get_cur_hv_idx() + 1);
+#endif
+		mutex_unlock(&lvsys_notify->lock);
+		return;
+#if LVSYS_DBG
+	} else {
+		pr_info("[%s] lvsys %d falling is triggered\n", __func__, get_cur_hv_idx() + 1);
+#endif
+	}
 	if (IS_ERR(lvsys_notify->chan_vsys)) {
 		mutex_unlock(&lvsys_notify->lock);
 		return;
@@ -501,29 +513,11 @@ static void vsys_work_handler(struct work_struct *work)
 			dev_notice(lvsys_notify->dev,
 				   "[%s] event: rising %dmV(VSYS), %dmV(HV THRESHOLD)\n",
 				   __func__, vsys_voltage, *(lvsys_notify->cur_hv_ptr));
+		lvsys_notify->falling_flag[get_cur_hv_idx()] = false;
 		lvsys_notify->cur_lv_ptr = get_next_lv_ptr();
 		if (lvsys_notify->cur_hv_ptr - 1 &&
 			(lvsys_notify->cur_hv_ptr - 1 >= lvsys_notify->thd_volts_h)) {
 			lvsys_notify->cur_hv_ptr--;
-		}
-	} else if (vsys_voltage < *(lvsys_notify->cur_lv_ptr)) {
-		if (!lvsys_notify->cur_lv_ptr) {
-			mutex_unlock(&lvsys_notify->lock);
-			return;
-		}
-		event = EVENT_LVSYS_F | *(lvsys_notify->cur_lv_ptr);
-		blocking_notifier_call_chain(&lvsys_notifier_list, event, NULL);
-#if !LVSYS_DBG
-		if (__ratelimit(&ratelimit_log))
-#endif
-			dev_notice(lvsys_notify->dev,
-				   "[%s] event: falling %dmV(VSYS), %dmV(LV THRESHOLD)\n",
-				   __func__, vsys_voltage, *(lvsys_notify->cur_lv_ptr));
-		lvsys_notify->cur_hv_ptr = get_next_hv_ptr();
-		if (lvsys_notify->cur_lv_ptr + 1 &&
-		   (lvsys_notify->cur_lv_ptr + 1 <=
-		    lvsys_notify->thd_volts_l + lvsys_notify->thd_volts_l_size - 1)) {
-			lvsys_notify->cur_lv_ptr++;
 		}
 	}
 	mutex_unlock(&lvsys_notify->lock);
@@ -537,7 +531,7 @@ static void vsys_timer_callback(struct timer_list *timer)
 static void setup_vsys_timer(void)
 {
 	del_timer_sync(&vsys_timer);
-	mod_timer(&vsys_timer, jiffies + msecs_to_jiffies(1));
+	mod_timer(&vsys_timer, jiffies + msecs_to_jiffies(50));
 }
 
 static irqreturn_t lvsys_f_int_handler(int irq, void *data)
@@ -554,6 +548,7 @@ static irqreturn_t lvsys_f_int_handler(int irq, void *data)
 		return IRQ_HANDLED;
 	}
 	int_notify = lvsys_notify->info->lvsys_int_notify[(get_cur_lv_idx() * LVSYS_EDGE_NUM) + 1];
+	lvsys_notify->falling_flag[get_cur_lv_idx()] = true;
 #if LVSYS_DBG
 	dev_notice(lvsys_notify->dev, "lvsys_int_notify[%d]: %d\n",
 		   (get_cur_lv_idx() * LVSYS_EDGE_NUM) + 1, int_notify);
@@ -598,6 +593,7 @@ static irqreturn_t lvsys_r_int_handler(int irq, void *data)
 		return IRQ_HANDLED;
 	}
 	int_notify = lvsys_notify->info->lvsys_int_notify[get_cur_hv_idx() * LVSYS_EDGE_NUM];
+	lvsys_notify->falling_flag[get_cur_hv_idx()] = false;
 #if LVSYS_DBG
 	dev_notice(lvsys_notify->dev, "lvsys_int_notify[%d]: %d\n",
 		   get_cur_hv_idx() * LVSYS_EDGE_NUM, int_notify);
@@ -810,6 +806,12 @@ static int pmic_lvsys_parse_dt(struct device_node *lvsys_np)
 #endif
 	lvsys_notify->cur_lv_ptr = lvsys_notify->thd_volts_l;
 	lvsys_notify->cur_hv_ptr = lvsys_notify->thd_volts_h;
+
+	lvsys_notify->falling_flag = devm_kmalloc_array(lvsys_notify->dev,
+							lvsys_notify->thd_volts_l_size,
+							sizeof(bool), GFP_KERNEL);
+	for (i = 0; i < lvsys_notify->thd_volts_l_size; i++)
+		lvsys_notify->falling_flag[i] = false;
 
 	thd_volt_size = lvsys_notify->thd_volts_l_size + lvsys_notify->thd_volts_h_size;
 	thd_volt_arr = devm_kmalloc_array(lvsys_notify->dev, thd_volt_size,
