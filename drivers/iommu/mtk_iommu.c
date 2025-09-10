@@ -523,6 +523,48 @@ static const struct mtk_iommu_iova_region mt6879_multi_dom_apu[] = {
 };
 
 /*
+ * 0.NORMAL: total: 9.5G + 96M
+ *	-CAM/IMG
+ *	-NORMAL: 0x1_0000_0000~0x1_05FF_FFFF(96MB)
+ *	-LK
+ *	-NORMAL: 0x1_0800_0000~0x1_0FFF_FFFF(128MB)
+ *	-Video uP
+ *	-NORMAL: 0x1_A000_0000~0x3_FFFF_FFFF(9.5GB)
+ * 1.CAM/IMG:        0x0000_4000~0xFFFF_FFFF(4GB)
+ * 2.LK_RESV:        0x1_0600_0000~0x1_07FF_FFFF(32MB)
+ * 3.VDO_UP:         0x1_1000_0000~0x1_3FFF_FFFF(768M)
+ * 4.VDEC:           0x1_4000_0000~0x1_9FFF_FFFF(1.5GB)
+ */
+static const struct mtk_iommu_iova_region mt6881_multi_dom_mm[] = {
+#if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
+	{ .iova_base = SZ_4K, .size = (SZ_4G * 4 - SZ_4K), .type = NORMAL},	/* 0.NORMAL */
+	{ .iova_base = SZ_4K, .size = (SZ_4G - SZ_4K - SZ_64M), .type = NORMAL},/* 1.CAM/IMG: 4G */
+	{ .iova_base = 0x106000000ULL, .size = SZ_32M, .type = NORMAL},		/* 1.LK_RESV:32MB */
+	{ .iova_base = 0x110000000ULL, .size = SZ_128M * 6, .type = PROTECTED}, /* 4,VDO_UP_768MB */
+	{ .iova_base = 0x140000000ULL, .size = 0x60000000, .type = NORMAL}, /* 5,VDO_UP_1.5G */
+#endif
+};
+
+/*
+ * 0.APU_DATA(NORMAL): 12.375GB
+ *	0x1_0000_0000~0x1_05FF_FFFF(96MB)
+ *	0x1_0800_0000~0x3_FFFF_FFFF(11.875GB)
+ * 1.APU_SECURE:     0x1000~0x1FFF_FFFF(512MB)
+ * 2.APU_INVALID:    0x2000_0000~0x3FFF_FFFF(512MB)
+ * 3.APU_CODE:       0x4000_0000~0xFFFF_FFFF(3GB)
+ * 5.LK_RESV:        0x1_0600_0000~0x1_07FF_FFFF(32MB)
+ */
+static const struct mtk_iommu_iova_region mt6881_multi_dom_apu[] = {
+#if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
+	{ .iova_base = SZ_4K, .size = (SZ_4G * 4 - SZ_4K), .type = NORMAL},	/* 0.APU_DATA */
+	{ .iova_base = SZ_4K, .size = (SZ_512M - SZ_4K), .type = SECURE},	/* 1.APU_SECURE */
+	{ .iova_base = SZ_512M, .size = SZ_512M, .type = NORMAL},		/* 2.APU_INVALID */
+	{ .iova_base = SZ_1G, .size = (SZ_1G * 3ULL), .type = NORMAL},		/* 3.APU_CODE */
+	{ .iova_base = 0x106000000ULL, .size = SZ_32M, .type = NORMAL},		/* 4.LK_RESV */
+#endif
+};
+
+/*
  * 0,NORMAL: total: 12GB + 64MB
  *	0x1000~0x1_03FF_FFFF(4GB + 64MB)
  *	0x2_0000_0000~0x3_FFFF_FFFF (8GB)
@@ -3966,6 +4008,40 @@ static const struct mtk_iommu_plat_data mt6879_data_apu0 = {
 	/* not use larbid_remap */
 };
 
+static const struct mtk_iommu_plat_data mt6881_data_disp = {
+	.m4u_plat	= M4U_MT6881,
+	.flags          = OUT_ORDER_WR_EN | GET_DOM_ID_LEGACY |
+			  NOT_STD_AXI_MODE | TLB_SYNC_EN |/* IOMMU_SEC_EN |*/
+			  SKIP_CFG_PORT | IOVA_34_EN | SMI_DEV_LINK_SKIP | /* PGTABLE_PA_35_EN |*/
+			  HAS_SMI_SUB_COMM | SAME_SUBSYS |
+			  PM_OPS_SKIP | PM_DOMAIN_SKIP | IOMMU_CLK_AO_EN,
+	.hw_list        = &mm_iommu_list,
+	.inv_sel_reg    = REG_MMU_INV_SEL_GEN2,
+	.iommu_id	= DISP_IOMMU,
+	.iommu_type     = MM_IOMMU,
+	.tab_id		= MM_TABLE,
+	.normal_dom	= 0,
+	.iova_region    = mt6881_multi_dom_mm,
+	.iova_region_nr = ARRAY_SIZE(mt6881_multi_dom_mm),
+	.mau_count	= 4,
+};
+
+static const struct mtk_iommu_plat_data mt6881_data_apu0 = {
+	.m4u_plat	= M4U_MT6881,
+	.flags          = TLB_SYNC_EN | PM_DOMAIN_SKIP | /*IOMMU_SEC_EN | PGTABLE_PA_35_EN |*/
+			  GET_DOM_ID_LEGACY | IOVA_34_EN | /*LINK_WITH_APU |*/
+			  PM_OPS_SKIP | IOMMU_CLK_AO_EN,
+	.hw_list        = &apu_iommu_list,
+	.inv_sel_reg    = REG_MMU_INV_SEL_GEN2,
+	.iommu_id	= APU_IOMMU0,
+	.iommu_type     = APU_IOMMU,
+	.tab_id		= APU_TABLE,
+	.normal_dom	= 0,
+	.iova_region    = mt6881_multi_dom_apu,
+	.iova_region_nr = ARRAY_SIZE(mt6881_multi_dom_apu),
+	.mau_count	= 4,
+};
+
 static const struct mtk_iommu_plat_data mt6886_data_disp = {
 	.m4u_plat	= M4U_MT6886,
 	.flags          = OUT_ORDER_WR_EN | GET_DOM_ID_LEGACY | SKIP_CFG_PORT |
@@ -4458,6 +4534,8 @@ static const struct of_device_id mtk_iommu_of_ids[] = {
 	{ .compatible = "mediatek,mt6878-disp-iommu", .data = &mt6878_data_disp},
 	{ .compatible = "mediatek,mt6879-apu-iommu0", .data = &mt6879_data_apu0},
 	{ .compatible = "mediatek,mt6879-disp-iommu", .data = &mt6879_data_disp},
+	{ .compatible = "mediatek,mt6881-apu-iommu0", .data = &mt6881_data_apu0},
+	{ .compatible = "mediatek,mt6881-disp-iommu", .data = &mt6881_data_disp},
 	{ .compatible = "mediatek,mt6886-apu-iommu0", .data = &mt6886_data_apu0},
 	{ .compatible = "mediatek,mt6886-disp-iommu", .data = &mt6886_data_disp},
 	{ .compatible = "mediatek,mt6893-iommu0", .data = &mt6893_data_iommu0},
