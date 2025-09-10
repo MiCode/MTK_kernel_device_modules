@@ -5224,6 +5224,8 @@ static int layering_rule_start(struct drm_mtk_layering_info *disp_info_user,
 		if (priv && priv->data->need_emi_eff) {
 			weight = (400 * 10000) / default_emi_eff;
 			layering_info.hrt_weight = weight;
+			lyeblob_ids->overlap_ovl = weight;
+			lyeblob_ids->overlap_ovl_of_bwm = weight;
 			if (l_rule_info->dal_enable)
 				layering_info.hrt_weight += (200 * 10000) / default_emi_eff;
 			if (get_layering_opt(LYE_OPT_OVL_BW_MONITOR)) {
@@ -5234,6 +5236,8 @@ static int layering_rule_start(struct drm_mtk_layering_info *disp_info_user,
 		} else {
 			weight = 400;
 			layering_info.hrt_weight = weight;
+			lyeblob_ids->overlap_ovl = weight;
+			lyeblob_ids->overlap_ovl_of_bwm = weight;
 			if (l_rule_info->dal_enable)
 				layering_info.hrt_weight += 200;
 			if (get_layering_opt(LYE_OPT_OVL_BW_MONITOR)) {
