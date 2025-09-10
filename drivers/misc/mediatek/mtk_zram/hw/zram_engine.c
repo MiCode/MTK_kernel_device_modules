@@ -1763,9 +1763,6 @@ MODULE_DEVICE_TABLE(of, mtk_hwzram_of_match);
 /* Uninitialize platform resource for zram engine */
 static void zram_engine_platform_deinit(struct platform_device *pdev, struct zram_engine_t *hwz)
 {
-	/* Unregister TBU monitor before disable clock & put runtime pm */
-	zram_engine_tbu_unregister();
-
 #ifndef FPGA_EMULATION
 	/*
 	 * Disable clock for zram engine -
@@ -1857,13 +1854,6 @@ static int zram_engine_platform_init(struct platform_device *pdev, struct zram_e
 	/*
 	 * Power & clock is prepared. It's safe to start engine initialization.
 	 */
-
-	/* Register TBU monitor after clock enable & runtime pm get */
-	ret = zram_engine_tbu_register(&pdev->dev, hwz->ctrl.zram_smmu_base);
-	if (ret) {
-		pr_info("%s: zram_engine_tbu_register fail: (%d)\n", __func__, ret);
-		return ret;
-	}
 
 	return 0;
 }
@@ -2471,6 +2461,13 @@ static int mtk_hwzram_probe(struct platform_device *pdev)
 		goto clear_hw;
 	}
 
+	/* Register TBU monitor after clock enable & runtime pm get */
+	ret = zram_engine_tbu_register(&pdev->dev, hwz->ctrl.zram_smmu_base);
+	if (ret) {
+		pr_info("%s: zram_engine_tbu_register fail: (%d)\n", __func__, ret);
+		goto clear_sw;
+	}
+
 	/*
 	 * Set a refcount to hwz & add to hw_list.
 	 * This refcount is counted for the user doing probing.
@@ -2506,6 +2503,9 @@ static int mtk_hwzram_probe(struct platform_device *pdev)
 
 	pr_info("%s: done\n", __func__);
 	return 0;
+
+clear_sw:
+	zram_engine_sw_deinit(hwz);
 
 clear_hw:
 	zram_engine_hw_deinit(hwz);
@@ -2548,6 +2548,9 @@ static void mtk_hwzram_remove(struct platform_device *pdev)
 
 	/* It's time to disable rtff check */
 	static_branch_disable(&engine_rtff_check);
+
+	/* Unregister TBU monitor before disable clock & put runtime pm */
+	zram_engine_tbu_unregister();
 
 	/* Clear resource for SW control */
 	zram_engine_sw_deinit(hwz);
