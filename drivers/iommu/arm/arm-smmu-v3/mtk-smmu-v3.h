@@ -698,6 +698,7 @@ struct mtk_smmu_data {
 	atomic_t			is_suspend;
 	struct notifier_block		pm_nb;
 	struct wakeup_source		*suspend_lock;
+	atomic_t			ras_detected;
 };
 
 enum mtk_smmu_tfm_type {

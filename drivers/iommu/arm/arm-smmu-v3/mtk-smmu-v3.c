@@ -1803,6 +1803,37 @@ static irqreturn_t mtk_smmu_sec_irq_process(int irq, void *dev)
 	return IRQ_NONE;
 }
 
+static void mtk_smmu_ras_init(struct mtk_smmu_data *data)
+{
+	atomic_set(&data->ras_detected, 0);
+}
+
+static bool mtk_smmu_ras_irq_detected(unsigned int irq_sta)
+{
+	if ((irq_sta & STA_TCU_RAS_CRI) &&
+	    (irq_sta & STA_TCU_RAS_ERI) &&
+	    (irq_sta & STA_TCU_RAS_FHI))
+		return true;
+
+	return false;
+}
+
+static void mtk_smmu_ras_irq_handler(struct mtk_smmu_data *data)
+{
+	if (atomic_read(&data->ras_detected) < INT_MAX) {
+		atomic_inc(&data->ras_detected);
+	} else {
+		pr_info("[%s] ras_detected reset to 0", __func__);
+		atomic_set(&data->ras_detected, 0);
+	}
+}
+
+static void mtk_smmu_ras_irq_monitor(struct mtk_smmu_data *data, unsigned int irq_sta)
+{
+	if (mtk_smmu_ras_irq_detected(irq_sta))
+		mtk_smmu_ras_irq_handler(data);
+}
+
 static int mtk_smmu_irq_handler(int irq, void *dev)
 {
 	static DEFINE_RATELIMIT_STATE(irq_rs, SMMU_FAULT_RS_INTERVAL,
@@ -1840,6 +1871,7 @@ static int mtk_smmu_irq_handler(int irq, void *dev)
 	}
 
 	smmuwp_process_intr(smmu, true);
+	mtk_smmu_ras_irq_monitor(data, irq_sta);
 
 #if IS_ENABLED(CONFIG_MTK_IOMMU_DEBUG)
 	spin_lock_irqsave(&data->pmu_lock, flags);
@@ -3084,6 +3116,8 @@ static int mtk_smmu_data_init(struct mtk_smmu_data *data)
 	populate_iommu_groups(data, dev->of_node);
 
 	mtk_smmu_irq_pause_timer_init(data);
+
+	mtk_smmu_ras_init(data);
 
 	data->hw_init_flag = 0;
 
