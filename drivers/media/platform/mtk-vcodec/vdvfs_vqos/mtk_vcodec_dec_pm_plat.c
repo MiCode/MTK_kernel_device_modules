@@ -609,7 +609,7 @@ void mtk_vdec_dvfs_sync_vsi_data(struct mtk_vcodec_ctx *ctx)
 	struct mtk_vcodec_dev *dev = ctx->dev;
 	struct vdec_inst *inst = (struct vdec_inst *) ctx->drv_handle;
 
-	if (mtk_vcodec_is_state(ctx, MTK_STATE_ABORT) || inst == (void *) 0)
+	if (mtk_vcodec_is_state(ctx, MTK_STATE_ABORT))
 		return;
 
 	if (IS_ERR_OR_NULL(inst) || IS_ERR_OR_NULL(inst->vsi)) {
@@ -628,7 +628,7 @@ void mtk_vdec_dvfs_sync_boost_data(struct mtk_vcodec_ctx *ctx)
 	struct mtk_vcodec_dev *dev = ctx->dev;
 	struct vdec_inst *inst = (struct vdec_inst *) ctx->drv_handle;
 
-	if (mtk_vcodec_is_state(ctx, MTK_STATE_ABORT) || inst == (void *) 0)
+	if (mtk_vcodec_is_state(ctx, MTK_STATE_ABORT))
 		return;
 
 	if (IS_ERR_OR_NULL(inst) || IS_ERR_OR_NULL(inst->vsi)) {
@@ -664,7 +664,7 @@ void mtk_vdec_dvfs_check_boost(struct mtk_vcodec_ctx *ctx)
 {
 #if DEC_DVFS
 	unsigned int cur_in_timestamp;
-	struct mtk_vcodec_dev *dev = 0;
+	struct mtk_vcodec_dev *dev = NULL;
 
 	if (ctx != NULL)
 		dev = ctx->dev;
@@ -675,12 +675,14 @@ void mtk_vdec_dvfs_check_boost(struct mtk_vcodec_ctx *ctx)
 		// sync the init_boost until the boosting is off
 		mtk_vdec_dvfs_sync_boost_data(ctx);
 	} else {
+		if (!dev->vdec_dvfs_params.init_boost)
+			return;
 		cur_in_timestamp = jiffies_to_msecs(jiffies);
 		mtk_vcodec_dvfs_qos_log(false, "[VDVFS] cur_time:%u, last_boost_time:%u",
 			cur_in_timestamp, dev->vdec_dvfs_params.last_boost_time);
 
-		if (cur_in_timestamp - dev->vdec_dvfs_params.last_boost_time >=
-			VDEC_INIT_BOOST_INTERVAL && dev->vdec_dvfs_params.init_boost) {
+		if (dev->vdec_dvfs_params.init_boost &&
+			cur_in_timestamp - dev->vdec_dvfs_params.last_boost_time >= VDEC_INIT_BOOST_INTERVAL) {
 			dev->vdec_dvfs_params.init_boost = 0;
 		}
 	}

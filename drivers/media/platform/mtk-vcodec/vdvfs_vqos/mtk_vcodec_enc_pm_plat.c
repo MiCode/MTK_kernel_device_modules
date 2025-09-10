@@ -607,8 +607,14 @@ void mtk_venc_dvfs_sync_vsi_data(struct mtk_vcodec_ctx *ctx)
 	if (mtk_vcodec_is_state(ctx, MTK_STATE_ABORT))
 		return;
 
+	if (IS_ERR_OR_NULL(inst) || IS_ERR_OR_NULL(inst->vsi)) {
+		mtk_v4l2_err("[VDVFS][%d] inst/vsi is err or null", ctx->id);
+		return;
+	}
+
 	dev->venc_dvfs_params.target_freq = inst->vsi->config.target_freq;
 	dev->venc_dvfs_params.target_bw_factor = inst->vsi->config.target_bw_factor;
+	dev->venc_dvfs_params.init_boost = inst->vsi->config.init_boost;
 	mtk_vcodec_cpu_adaptive_ctrl(ctx, inst->vsi->config.cpu_hint);
 }
 
@@ -621,11 +627,9 @@ void mtk_venc_dvfs_begin_inst(struct mtk_vcodec_ctx *ctx)
 	if (need_update(ctx)) {
 		update_freq(dev, MTK_INST_ENCODER);
 		mtk_vcodec_dvfs_qos_log(false, "[VENC] freq %u", dev->venc_dvfs_params.target_freq);
-		if (dev->venc_dvfs_params.mmdvfs_in_adaptive) {
-			dev->venc_dvfs_params.last_boost_time = jiffies_to_msecs(jiffies);
-			dev->venc_dvfs_params.init_boost = 1;
+		if (dev->venc_dvfs_params.mmdvfs_in_adaptive)
 			set_venc_opp(dev, dev->venc_dvfs_params.normal_max_freq); // boost at beginning
-		} else
+		else
 			set_venc_opp(dev, dev->venc_dvfs_params.target_freq);
 	}
 }
@@ -644,29 +648,56 @@ void mtk_venc_dvfs_end_inst(struct mtk_vcodec_ctx *ctx)
 }
 void mtk_venc_init_boost(struct mtk_vcodec_ctx *ctx)
 {
-	ctx->dev->venc_dvfs_params.last_boost_time = jiffies_to_msecs(jiffies);
-	ctx->dev->venc_dvfs_params.init_boost = 1;
+	if (!ctx->dev->venc_dvfs_params.mmdvfs_in_vcp) {
+		ctx->dev->venc_dvfs_params.init_boost = 1;
+		ctx->dev->venc_dvfs_params.last_boost_time = jiffies_to_msecs(jiffies);
+	}
 	mtk_vcodec_cpu_adaptive_ctrl(ctx, true);
 }
 
-void mtk_venc_dvfs_check_boost(struct mtk_vcodec_dev *dev)
+void mtk_venc_dvfs_sync_boost_data(struct mtk_vcodec_ctx *ctx)
 {
-#if ENC_DVFS
-	unsigned int cur_in_timestamp;
+	struct mtk_vcodec_dev *dev = ctx->dev;
+	struct venc_inst *inst = (struct venc_inst *) ctx->drv_handle;
 
-	if (!dev->venc_dvfs_params.mmdvfs_in_adaptive || !dev->venc_dvfs_params.init_boost)
+	if (mtk_vcodec_is_state(ctx, MTK_STATE_ABORT))
 		return;
 
-	cur_in_timestamp = jiffies_to_msecs(jiffies);
-	mtk_vcodec_dvfs_qos_log(false, "[VDVFS] cur_time:%u, last_boost_time:%u",
-		cur_in_timestamp, dev->venc_dvfs_params.last_boost_time);
+	if (IS_ERR_OR_NULL(inst) || IS_ERR_OR_NULL(inst->vsi)) {
+		mtk_v4l2_err("[VDVFS][%d] inst/vsi is err or null", ctx->id);
+		return;
+	}
+	dev->venc_dvfs_params.init_boost = inst->vsi->config.init_boost;
+}
 
-	if (dev->venc_dvfs_params.init_boost &&
-		cur_in_timestamp - dev->venc_dvfs_params.last_boost_time >= VENC_INIT_BOOST_INTERVAL) {
-		dev->venc_dvfs_params.init_boost = 0;
-		set_venc_opp(dev, dev->venc_dvfs_params.target_freq);
-		mtk_vcodec_dvfs_qos_log(true, "[VDVFS][VENC] stop boost, set freq %u",
-			dev->venc_dvfs_params.target_freq);
+void mtk_venc_dvfs_check_boost(struct mtk_vcodec_ctx *ctx)
+{
+#if ENC_DVFS
+	unsigned int cur_in_timestamp = 0;
+	struct mtk_vcodec_dev *dev = NULL;
+
+	if (ctx != NULL)
+		dev = ctx->dev;
+	if (dev == NULL || !dev->venc_dvfs_params.mmdvfs_in_adaptive)
+		return;
+
+	if (dev->venc_dvfs_params.mmdvfs_in_vcp) {
+		// sync the init_boost until the boosting is off
+		mtk_venc_dvfs_sync_boost_data(ctx);
+	} else {
+		if (!dev->venc_dvfs_params.init_boost)
+			return;
+		cur_in_timestamp = jiffies_to_msecs(jiffies);
+		mtk_vcodec_dvfs_qos_log(false, "[VDVFS] cur_time:%u, last_boost_time:%u",
+			cur_in_timestamp, dev->venc_dvfs_params.last_boost_time);
+
+		if (dev->venc_dvfs_params.init_boost &&
+			cur_in_timestamp - dev->venc_dvfs_params.last_boost_time >= VENC_INIT_BOOST_INTERVAL) {
+			dev->venc_dvfs_params.init_boost = 0;
+			set_venc_opp(dev, dev->venc_dvfs_params.target_freq);
+			mtk_vcodec_dvfs_qos_log(true, "[VDVFS][VENC] stop boost, set freq %u",
+				dev->venc_dvfs_params.target_freq);
+		}
 	}
 #endif
 }

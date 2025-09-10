@@ -570,6 +570,7 @@ struct venc_vcu_config {
 	struct v4l2_venc_frame_qp_range frame_qp_range;
 	struct v4l2_venc_nal_length nal_length;
 	__u8 use_clean_gop;
+	__u8 init_boost;
 	struct v4l2_venc_adab_info adab_info;
 	struct v4l2_venc_i_frame_size_control i_frm_sz_ctrl;
 	__u32 compatibility_option;
