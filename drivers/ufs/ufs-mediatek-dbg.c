@@ -1679,7 +1679,7 @@ void ufs_mtk_dbg_l2_dump(struct ufs_hba *hba)
 	u32 dl_rx_info_0 = 0, dl_rx_info_1 = 0;
 	u64 dl_tx_info = 0, dl_rx_info = 0;
 
-	if (host->ip_ver < IP_VER_MT6899)
+	if (host->ip_ver < IP_VER_MT6899 || host->legacy_ip_ver)
 		return;
 
 	err = ufshcd_dme_get_attr_backdoor(hba,
