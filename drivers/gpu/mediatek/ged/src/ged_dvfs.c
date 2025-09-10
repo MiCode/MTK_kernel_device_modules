@@ -21,6 +21,7 @@
 #include <linux/hrtimer.h>
 #include <linux/vmalloc.h>
 #include <linux/timekeeping.h>
+#include <linux/pm_qos.h>
 
 #include "ged_dvfs.h"
 #include "ged_kpi.h"
@@ -107,6 +108,7 @@ static unsigned int g_cust_boost_freq_id;
 
 static struct cmd_info g_cust_upbound_freq_id_info;
 static struct cmd_info g_cust_boost_freq_id_info;
+static struct pm_qos_request cpuidle_dbg_qos_req;
 
 #define LIMITER_FPSGO 0
 #define LIMITER_APIBOOST 1
@@ -2924,6 +2926,14 @@ void set_api_sync_flag(int flag)
 		MTKGPUQoS_mode_ratio(6080);
 	} else if (flag == 10) {
 		MTKGPUQoS_mode_ratio(8);
+	} else if (flag == 13) {
+		cpu_latency_qos_update_request(&cpuidle_dbg_qos_req, PM_QOS_DEFAULT_VALUE);
+	} else if (flag == 14) {
+		cpu_latency_qos_add_request(&cpuidle_dbg_qos_req, PM_QOS_DEFAULT_VALUE);
+		cpu_latency_qos_update_request(&cpuidle_dbg_qos_req, 2);
+	} else if (flag == 15) {
+		cpu_latency_qos_add_request(&cpuidle_dbg_qos_req, PM_QOS_DEFAULT_VALUE);
+		cpu_latency_qos_update_request(&cpuidle_dbg_qos_req, 2000);
 #if !IS_ENABLED(CONFIG_MTK_LEGACY_THERMAL) && !IS_ENABLED(CONFIG_MTK_PLAT_POWER_6781) \
 	&& !IS_ENABLED(CONFIG_MTK_GPU_MT6855_SUPPORT)
 	} else if ((flag & 0xFFF00000) == 0x55600000) {
