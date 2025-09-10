@@ -1632,6 +1632,7 @@ mgk_64_kleaf_platform_modules = {
     "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:cmdq-platform-mt6858".format(kernel_version): "mt6858",
     "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:cmdq-platform-mt6789".format(kernel_version): "mt6789",
     "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:cmdq-platform-mt6895".format(kernel_version): "mt6895",
+    "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:cmdq-platform-mt6878".format(kernel_version): "mt6878",
     "//vendor/mediatek/kernel_modules/mtkcam/mtk-dpe:camera_dpe_isp8":"mt6991",
     "//vendor/mediatek/kernel_modules/mtkcam/mtk-dpe:camera_dpe_isp70":"mt6895",
     "//vendor/mediatek/kernel_modules/mtkcam/mtk-mae:mtk_mae":"mt6991",
