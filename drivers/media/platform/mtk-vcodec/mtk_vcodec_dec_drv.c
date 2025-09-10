@@ -135,20 +135,21 @@ static int fops_vcodec_open(struct file *file)
 	mtk_buf->vb.vb2_buf.planes[0].length = 1;
 
 	mutex_lock(&dev->dev_mutex);
+	ctx->dev = dev;
+	ctx->dev_ctx = &dev->dev_ctx;
 	ctx->dec_flush_buf = mtk_buf;
 	ctx->type = MTK_INST_DECODER;
 	dev->id_counter++;
 	if (dev->id_counter <= 0)
 		dev->id_counter = 1;
 	ctx->id = dev->id_counter;
+	ctx->trace_count_tgid = current->tgid;
 	mtk_vcodec_send_info_to_vgo(ctx, MTK_VCODEC_VGO_OPEN);
 
 	v4l2_fh_init(&ctx->fh, video_devdata(file));
 	file->private_data = &ctx->fh;
 	v4l2_fh_add(&ctx->fh);
 	INIT_LIST_HEAD(&ctx->list);
-	ctx->dev = dev;
-	ctx->dev_ctx = &dev->dev_ctx;
 	for (i = 0; i < MTK_VDEC_HW_NUM; i++)
 		init_waitqueue_head(&ctx->queue[i]);
 	mutex_init(&ctx->buf_lock);
@@ -165,8 +166,6 @@ static int fops_vcodec_open(struct file *file)
 	spin_lock_init(&ctx->state_lock);
 	spin_lock_init(&ctx->lpw_lock);
 	atomic_set(&ctx->output_cnt_in_driver, 0);
-
-	ctx->trace_count_tgid = current->tgid;
 
 	ret = mtk_vcodec_dec_ctrls_setup(ctx);
 	if (ret) {

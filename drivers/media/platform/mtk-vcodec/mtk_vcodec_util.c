@@ -1744,11 +1744,14 @@ void mtk_vcodec_send_info_to_vgo(struct mtk_vcodec_ctx *ctx, enum mtk_vcodec_sen
 
 	switch (type) {
 	case MTK_VCODEC_VGO_OPEN: {
-		struct oprate_data data = {0};
+		struct inst_task_data data = {0};
 
 		vgo_type = VGO_RECV_STATE_OPEN;
 		data.inst_type = ctx->type;
 		data.ctx_id    = ctx->id;
+		data.worker_tgid   = ctx->dev->worker_thread->tgid;
+		data.ipi_recv_tgid = ctx->dev->ipi_recv_task->tgid;
+		data.c2_tgid       = current->tgid; // since open by c2 VcodecProcess thread
 
 		mtk_v4l2_debug(2, "[%d] vgo open (type %d,%d): inst_type %s(%d)",
 			ctx->id, type, vgo_type, INST_TYPE_STR(data.inst_type), data.inst_type);

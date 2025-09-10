@@ -1191,7 +1191,7 @@ void venc_vcp_probe(struct mtk_vcodec_dev *dev)
 			mtk_v4l2_debug(0, " ipi_register, ret %d\n", ret);
 	}
 
-	kthread_run(vcp_enc_ipi_handler, dev, "venc_ipi_recv");
+	dev->ipi_recv_task = kthread_run(vcp_enc_ipi_handler, dev, "venc_ipi_recv");
 
 	dev->vcp_notify.notifier_call = vcp_venc_notify_callback;
 	dev->vcp_notify.priority = 1;

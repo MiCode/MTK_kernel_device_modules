@@ -975,6 +975,7 @@ struct mtk_vcodec_dev {
 	struct mtk_vcodec_msgq mq;
 	struct mtk_vcodec_msgq worker_mq;
 	struct task_struct *worker_thread;
+	struct task_struct *ipi_recv_task;
 
 	int dec_irq[MTK_VDEC_IRQ_NUM];
 	int enc_irq[MTK_VENC_HW_NUM];

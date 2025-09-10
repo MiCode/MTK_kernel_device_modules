@@ -114,12 +114,14 @@ static int fops_vcodec_open(struct file *file)
 #endif
 
 	mutex_lock(&dev->dev_mutex);
+	ctx->dev = dev;
+	ctx->dev_ctx = &dev->dev_ctx;
+	ctx->enc_flush_buf = mtk_buf;
+	ctx->type = MTK_INST_ENCODER;
 	/*
 	 * Use simple counter to uniquely identify this context. Only
 	 * used for logging.
 	 */
-	ctx->enc_flush_buf = mtk_buf;
-	ctx->type = MTK_INST_ENCODER;
 	dev->id_counter++;
 	if (dev->id_counter <= 0)
 		dev->id_counter = 1;
@@ -130,8 +132,6 @@ static int fops_vcodec_open(struct file *file)
 	file->private_data = &ctx->fh;
 	v4l2_fh_add(&ctx->fh);
 	INIT_LIST_HEAD(&ctx->list);
-	ctx->dev = dev;
-	ctx->dev_ctx = &dev->dev_ctx;
 	init_waitqueue_head(&ctx->queue[0]);
 	init_waitqueue_head(&ctx->queue[1]);
 	spin_lock_init(&ctx->state_lock);
