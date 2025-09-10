@@ -211,7 +211,7 @@ static int generic_return_handler(struct kretprobe_instance *ri, struct pt_regs 
 	return 0;
 }
 
-#define MAX_PROBES 6
+#define MAX_PROBES 7
 static struct kretprobe *registered_probes[MAX_PROBES];
 static unsigned int num_probes;
 
@@ -1992,6 +1992,7 @@ static int __init hangdet_init(void)
 	register_symbol_probe("tick_handle_oneshot_broadcast");
 	register_symbol_probe("hrtimer_forward");
 	register_symbol_probe("profile_tick");
+	register_symbol_probe("run_posix_cpu_timers");
 
 	for_each_kernel_tracepoint(lookup_tracepoints, NULL);
 	res = hrtimer_tp_register();
