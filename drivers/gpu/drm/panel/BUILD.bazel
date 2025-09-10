@@ -100,6 +100,7 @@ PANELS = [
     "panel-nt37801-cmd-ltpo",
     "panel-nt37801-cmd-spr",
     "panel-nt37701a-cmd",
+    "panel-nt37701a-cmd-mipichg",
     "panel-truly-td4330-cmd",
     "panel-samsung-s68fc01-vdo-aod",
     "panel-hx-nt37701-dphy-cmd",
