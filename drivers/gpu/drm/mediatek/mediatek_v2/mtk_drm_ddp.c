@@ -37536,10 +37536,9 @@ static irqreturn_t mtk_disp_mutex_irq_handler(int irq, void *dev_id)
 		val = readl(ddp->side_regs + DISP_REG_MUTEX_INTSTA);
 
 	if (!val) {
-		ret = IRQ_NONE;
 		DRM_MMP_MARK(IRQ, 0xdeadbeef, ddp->side_regs_pa);
-		mtk_dump_dbg_slot();
-		goto out;
+		mtk_drm_top_clk_isr_put(&ddp->ddp_comp);
+		return IRQ_HANDLED;
 	}
 
 	DDPIRQ("MM_MUTEX irq, val:0x%x\n", val);
@@ -44817,6 +44816,7 @@ SKIP_OVLSYS_CONFIG:
 	ddp->cmdq_base = cmdq_register_device(dev);
 
 	if (num_irqs) {
+		writel_relaxed(0, ddp->regs + DISP_REG_MUTEX_INTEN);
 		ret = devm_request_irq(dev, irq, mtk_disp_mutex_irq_handler,
 				       IRQF_TRIGGER_NONE | IRQF_SHARED, dev_name(dev),
 				       ddp);
