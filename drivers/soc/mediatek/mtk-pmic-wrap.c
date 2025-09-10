@@ -3498,7 +3498,7 @@ static int pwrap_wait_for_state(struct pmic_wrapper *wrp,
 
 	if (HAS_CAP(wrp->master->caps, PWRAP_CAP_ARB)) {
 		start_time_ns = sched_clock();
-		timeout_ns = 10000 * 1000;  /* 10000us */
+		timeout_ns = 50000 * 1000;  /* 50000us */
 
 		do {
 			if (pwrap_timeout_ns(start_time_ns, timeout_ns)) {
