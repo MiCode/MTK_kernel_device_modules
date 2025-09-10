@@ -2243,6 +2243,8 @@ static int mtk_i2c_do_transfer(struct mtk_i2c *i2c, struct i2c_msg *msgs,
 		/* flush before sending DMA start */
 		mb();
 		writel(I2C_DMA_START_EN, i2c->pdmabase + OFFSET_EN);
+		/* make sure DMA start complete */
+		mb();
 	} else if (i2c->op != I2C_MASTER_RD) {
 		data_size = msgs->len;
 		ptr = msgs->buf;
@@ -2275,6 +2277,8 @@ static int mtk_i2c_do_transfer(struct mtk_i2c *i2c, struct i2c_msg *msgs,
 				fifo_data_len);
 	}
 	mtk_i2c_write(i2c, start_reg, OFFSET_START);
+	/* make sure start complete */
+	mb();
 
 	if (poll_en) {
 		cur_time = ktime_get_ns();
