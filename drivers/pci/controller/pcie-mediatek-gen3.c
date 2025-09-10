@@ -276,6 +276,7 @@
 
 #define PCIE_CONF_DEV_CAP_REG		0x1084
 #define PCIE_CONF_DEV_CTL_STS_REG	0x1088
+#define PCIE_CONF_LINK_CTL_STS_REG	0x1090
 
 /* pcie read completion timeout */
 #define PCIE_CONF_DEV2_CTL_STS		0x10a8
@@ -455,6 +456,7 @@ struct mtk_pcie_port {
 	u32 saved_l1ss_ctl1;
 	u32 saved_l1ss_ctl2;
 	u8 ext_pos;
+	u16 aer_pos;
 	DECLARE_BITMAP(msi_irq_in_use, PCIE_MSI_IRQS_NUM);
 };
 
@@ -562,7 +564,7 @@ static int mtk_pcie_config_write(struct pci_bus *bus, unsigned int devfn,
 				 int where, int size, u32 val)
 {
 	struct mtk_pcie_port *port = bus->sysdata;
-	int ret;
+	int ret, reg;
 
 	if (port->soft_off)
 		return 0;
@@ -579,6 +581,21 @@ static int mtk_pcie_config_write(struct pci_bus *bus, unsigned int devfn,
 		val <<= (where & 0x3) * 8;
 
 	ret = pci_generic_config_write32(bus, devfn, where, 4, val);
+	if ((port->port_num == 0) && (bus->number == 0) && (where == 0x90)) {
+		if ((val & PCI_EXP_LNKCTL_LD) != 0) {
+			dev_info(port->dev, "config write lnkctl, bus:%#x, devfn:%#x, where:%#x, size:%#x, val:%#x\n",
+				 bus->number, devfn, where, size, val);
+			dump_stack();
+		}
+
+		reg = readl_relaxed(port->base + PCIE_CONF_LINK_CTL_STS_REG);
+		if ((reg & PCI_EXP_LNKCTL_LD) != 0) {
+			dev_info(port->dev, "config read lnkctl after write, bus:%#x, devfn:%#x, where:%#x, size:%#x, val:%#x, reg:%#x\n",
+				 bus->number, devfn, where, size, val, reg);
+			dump_stack();
+		}
+	}
+
 	mtk_pcie_block_config_access(port);
 
 	return ret;
@@ -1932,8 +1949,10 @@ static int mtk_pcie_probe(struct platform_device *pdev)
 	if (!port->pcidev)
 		port->pcidev = pci_get_slot(host->bus, 0);
 
-	if (port->pcidev)
+	if (port->pcidev) {
 		port->ext_pos = pci_find_capability(port->pcidev, PCI_CAP_ID_EXP);
+		port->aer_pos = pci_find_ext_capability(port->pcidev, PCI_EXT_CAP_ID_ERR);
+	}
 
 	if (port->rpm)
 		mtk_pcie_enable_host_bridge_rpm(port);
@@ -2113,6 +2132,7 @@ static void mtk_pcie_monitor_mac(struct mtk_pcie_port *port)
 {
 	u32 val = 0;
 	u32 command = 0xffffffff;
+	u32 lnkctl = 0xffffffff;
 	u32 devctl = 0xffffffff;
 	u32 devctl2 = 0xffffffff;
 
@@ -2139,6 +2159,7 @@ static void mtk_pcie_monitor_mac(struct mtk_pcie_port *port)
 		mtk_pcie_mac_dbg_set_partition(port, PCIE_DEBUG_SEL_PARTITION(0x7, 0x7, 0x7, 0x7));
 		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x8, 0xa, 0xe, 0xf));
 		mtk_pcie_mac_dbg_set_partition(port, PCIE_DEBUG_SEL_PARTITION(0x9, 0x9, 0x9, 0x9));
+		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x14, 0x15, 0x16, 0x17));
 		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x25, 0x26, 0xb6, 0xb7));
 		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0xb8, 0xb9, 0xba, 0xbb));
 		mtk_pcie_mac_dbg_set_partition(port, PCIE_DEBUG_SEL_PARTITION(0xc, 0xc, 0xc, 0xc));
@@ -2165,10 +2186,11 @@ static void mtk_pcie_monitor_mac(struct mtk_pcie_port *port)
 		}
 
 		pci_read_config_dword(port->pcidev, PCI_COMMAND, &command);
+		pci_read_config_dword(port->pcidev, port->ext_pos + PCI_EXP_LNKCTL, &lnkctl);
 		pci_read_config_dword(port->pcidev, port->ext_pos + PCI_EXP_DEVCTL2, &devctl2);
 	}
 
-	pr_info("Port%d, ltssm reg:%#x, link sta:%#x, power sta:%#x, LP ctrl:%#x, DIS LP STS0:%#x, DIS LP STS1:%#x, IP basic sta:%#x, int sta:%#x, msi set0 sta: %#x, msi set1 sta: %#x, axi err add:%#x, axi err info:%#x, spm res ack=%#x, adt pending sta:=%#x, err addr_l=%#x, err addr_h=%#x, err info=%#x, IF_CTRL=%#x, tx_credit0=%#x, tx_credit1=%#x, phy err=%#x, tag_id=%#x, cfgnum=%#x, command=%#x, devctl=%#x, devctl2=%#x\n",
+	pr_info("Port%d, ltssm reg:%#x, link sta:%#x, power sta:%#x, LP ctrl:%#x, DIS LP STS0:%#x, DIS LP STS1:%#x, IP basic sta:%#x, int sta:%#x, msi set0 sta: %#x, msi set1 sta: %#x, axi err add:%#x, axi err info:%#x, spm res ack=%#x, adt pending sta:=%#x, err addr_l=%#x, err addr_h=%#x, err info=%#x, IF_CTRL=%#x, tx_credit0=%#x, tx_credit1=%#x, phy err=%#x, tag_id=%#x, cfgnum=%#x, command=%#x, lnkctl=%#x, devctl=%#x, devctl2=%#x\n",
 		port->port_num,
 		readl_relaxed(port->base + PCIE_LTSSM_STATUS_REG),
 		readl_relaxed(port->base + PCIE_LINK_STATUS_REG),
@@ -2196,7 +2218,7 @@ static void mtk_pcie_monitor_mac(struct mtk_pcie_port *port)
 		readl_relaxed(port->base + PHY_ERR_DEBUG_LANE0),
 		readl_relaxed(port->base + PCIE_ULTRA_SETTING_REG),
 		readl_relaxed(port->base + PCIE_CFGNUM_REG),
-		command, devctl, devctl2);
+		command, lnkctl, devctl, devctl2);
 
 	/* Clear LTSSM record info after dump */
 	writel_relaxed(PCIE_LTSSM_STATE_CLEAR, port->base + PCIE_LTSSM_STATUS_REG);
@@ -2348,22 +2370,18 @@ u32 mtk_pcie_dump_link_info(int port)
 			       pcie_port->base + PCIE_INT_STATUS_REG);
 	}
 
-	/* PCIe RxErr */
-	val = PCIE_CFG_FORCE_BYTE_EN | PCIE_CFG_BYTE_EN(0xf) |
-	      PCIE_CFG_HEADER(0, 0);
-	writel_relaxed(val, pcie_port->base + PCIE_CFGNUM_REG);
-	val = readl_relaxed(pcie_port->base + PCIE_AER_CO_STATUS);
-	if (val & AER_CO_RE)
-		ret_val |= BIT(7);
+	if (pcie_port->aer_pos && pcie_port->pcidev && !pcie_port->skip_cfg_dump) {
+		pci_read_config_dword(pcie_port->pcidev, pcie_port->aer_pos + PCI_ERR_COR_STATUS, &val);
+		if (val & PCI_ERR_COR_RCVR)
+			ret_val |= BIT(7);
 
-	val = readl_relaxed(pcie_port->base + PCIE_AER_UNC_STATUS);
-	if (val & PCIE_AER_UNC_MTLP)
-		ret_val |= BIT(8);
+		pci_read_config_dword(pcie_port->pcidev, pcie_port->aer_pos + PCI_ERR_UNCOR_STATUS, &val);
+		if (val & PCI_ERR_UNC_MALF_TLP)
+			ret_val |= BIT(8);
 
-	if (val & PCI_ERR_UNC_COMP_TIME)
-		ret_val |= BIT(6);
-
-	mtk_pcie_block_config_access(pcie_port);
+		if (val & PCI_ERR_UNC_COMP_TIME)
+			ret_val |= BIT(6);
+	}
 
 	val = readl_relaxed(pcie_port->base + PCIE_MSI_SET_BASE_REG +
 			    PCIE_MSI_SET_OFFSET + PCIE_MSI_SET_STATUS_OFFSET);
