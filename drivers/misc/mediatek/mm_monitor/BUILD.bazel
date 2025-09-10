@@ -20,6 +20,7 @@ PLATFORMS = [
     "mt6895",
     "mt6991",
     "mt6993",
+    "mt6878",
 ]
 
 define_mgk_ddk_ko(
