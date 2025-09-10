@@ -9,12 +9,16 @@
 
 #include <mtk-iommu-defines.h>
 #include "include/hypmmu.h"
+#include "include/mpool.h"
 #include "include/mtk-iommu.h"
 
 #define DEBUG_SHADOW_PAGE 0
 
 #define MAX_PAGE_POOL_SZ_MB (64UL)
 #define MAX_PAGE_NODES ((MAX_PAGE_POOL_SZ_MB << 20) >> V7S_PAGE_TABLE_SHIFT)
+
+#define TOTAL_PAGES() (SZ_32M >> V7S_PAGE_TABLE_SHIFT)
+#define MPOOL_ALLOC_CONTIG(sz) mpool_alloc_contiguous(&iommu_mpool, sz, 1)
 
 static u64 total_pages;
 static u64 avail_pages;
@@ -25,6 +29,12 @@ static struct share_region share_regions[MAX_TABLE_NUM][MAX_SHARE_REGION_NUM];
 
 static struct list_head page_list;
 static DEFINE_HYP_SPINLOCK(pgae_list_lock);
+
+static phys_addr_t iommu_mpool_pa;
+static void *iommu_mpool_va;
+static size_t iommu_mpool_size;
+static struct mpool iommu_mpool;
+static struct list_head inuse_page_list;
 
 static hyp_spinlock_t hw_table_access_lock[MAX_TABLE_NUM];
 static hyp_spinlock_t prot_table_access_lock[MAX_TABLE_NUM];
@@ -78,25 +88,57 @@ static bool in_share_region(u64 iova, u64 tid)
 	return false;
 }
 
+static void iommu_assign_mpool(phys_addr_t pa, size_t size)
+{
+	iommu_mpool_pa = pa;
+	iommu_mpool_size = size;
+}
+
+static void iommu_map_mpool(void *va)
+{
+	phys_addr_t pa = iommu_mpool_pa;
+	size_t size = iommu_mpool_size;
+
+	if (!pa || !size)
+		return;
+
+	iommu_mpool_va = va;
+	mpool_init(&iommu_mpool, 1);
+	mpool_enable_locks();
+	mpool_add_chunk(&iommu_mpool, iommu_mpool_va, size);
+}
+
+static void create_lv2_pgtbl_info(void)
+{
+	uint32_t total_pages = TOTAL_PAGES();
+
+	INIT_LIST_HEAD(&inuse_page_list);
+
+	for (unsigned int i = 0; i < total_pages; i++) {
+		v7s_page_nodes[i].lv2_page_index = i;
+		v7s_page_nodes[i].lv2_va_start = MPOOL_ALLOC_CONTIG(V7S_PAGE_TABLE_SIZE);
+		v7s_page_nodes[i].lv2_pa_start = mod_ops->hyp_pa(v7s_page_nodes[i].lv2_va_start);
+	}
+}
+
 static struct v7s_page *v7s_phys_to_page(phys_addr_t pa)
 {
-	struct v7s_page *pages = (struct v7s_page *)v7s_page_nodes;
-	u64 pfn;
+	struct v7s_page *p;
 
-	pfn = ((u64)pa - page_pool_base) >> ARM_V7S_TABLE_SHIFT;
-
-	return &pages[pfn];
+	hyp_spin_lock(&pgae_list_lock);
+	list_for_each_entry(p, &inuse_page_list, lv2_pgtbl_node) {
+		if (pa >= p->lv2_pa_start && pa < p->lv2_pa_start + V7S_PAGE_TABLE_SIZE) {
+			hyp_spin_unlock(&pgae_list_lock);
+			return &v7s_page_nodes[p->lv2_page_index];
+		}
+	}
+	hyp_spin_unlock(&pgae_list_lock);
+	return NULL;
 }
 
 static phys_addr_t v7s_page_to_phys(struct v7s_page *page)
 {
-	struct v7s_page *pages = (struct v7s_page *)v7s_page_nodes;
-	u64 pfn = page - pages;
-	phys_addr_t pa;
-
-	pa = page_pool_base + (pfn << ARM_V7S_TABLE_SHIFT);
-
-	return pa;
+	return page->lv2_pa_start;
 }
 
 static void dump_usage(void)
@@ -118,6 +160,7 @@ static struct v7s_page *alloc_v7s_page(void)
 	page = list_last_entry(&page_list, struct v7s_page, node);
 	list_del(&page->node);
 	avail_pages--;
+	list_add_tail(&page->lv2_pgtbl_node, &inuse_page_list);
 
 	dump_usage();
 out:
@@ -142,6 +185,18 @@ static struct v7s_page *zalloc_v7s_page(void)
 	return page;
 }
 
+static void list_remove_entry(struct v7s_page *page)
+{
+	struct v7s_page *p;
+
+	list_for_each_entry(p, &inuse_page_list, lv2_pgtbl_node) {
+		if (p->lv2_page_index == page->lv2_page_index) {
+			list_del(&p->lv2_pgtbl_node);
+			return;
+		}
+	}
+}
+
 static void free_v7s_page(struct v7s_page *page)
 {
 	WARN_ON(page == NULL);
@@ -149,6 +204,7 @@ static void free_v7s_page(struct v7s_page *page)
 	hyp_spin_lock(&pgae_list_lock);
 	list_add_tail(&page->node, &page_list);
 	avail_pages++;
+	list_remove_entry(page);
 
 	dump_usage();
 
@@ -184,6 +240,10 @@ void create_v7s_pages(u64 rmem_pa, u64 rmem_size)
 	MOD_PUTS6("create_v7s_pages", rmem_pa, rmem_size,
 		nr_pages, total_pages, avail_pages, sizeof(struct v7s_page));
 #endif
+
+	iommu_assign_mpool(rmem_pa, rmem_size);
+	iommu_map_mpool(mod_ops->hyp_va(rmem_pa));
+	create_lv2_pgtbl_info();
 }
 
 static bool arm_v7s_pte_is_cont(arm_v7s_iopte pte, int lvl)

@@ -147,6 +147,10 @@ struct mtk_iommu_device {
 
 struct v7s_page {
 	struct list_head node;
+	struct list_head lv2_pgtbl_node;
+	unsigned int lv2_page_index;
+	phys_addr_t lv2_pa_start;
+	void *lv2_va_start;
 };
 
 struct share_region {
