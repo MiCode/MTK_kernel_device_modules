@@ -1652,7 +1652,7 @@ int adsp_task_init(int task_id, struct mtk_base_dsp *dsp)
 
 	ret = audio_send_ipi_msg(&ipi_msg, task_scene,
 				 AUDIO_IPI_LAYER_TO_DSP, AUDIO_IPI_PAYLOAD,
-				 AUDIO_IPI_MSG_BYPASS_ACK, AUDIO_DSP_TASK_MSGA2DSHAREMEM,
+				 AUDIO_IPI_MSG_NEED_ACK, AUDIO_DSP_TASK_MSGA2DSHAREMEM,
 				 sizeof(struct audio_dsp_dram), 0,
 				 &dsp->dsp_mem[task_id].msg_atod_share_buf);
 	if (ret)
@@ -1661,7 +1661,7 @@ int adsp_task_init(int task_id, struct mtk_base_dsp *dsp)
 
 	ret = audio_send_ipi_msg(&ipi_msg, task_scene,
 				 AUDIO_IPI_LAYER_TO_DSP, AUDIO_IPI_PAYLOAD,
-				 AUDIO_IPI_MSG_BYPASS_ACK, AUDIO_DSP_TASK_MSGD2ASHAREMEM,
+				 AUDIO_IPI_MSG_NEED_ACK, AUDIO_DSP_TASK_MSGD2ASHAREMEM,
 				 sizeof(struct audio_dsp_dram), 0,
 				 &dsp->dsp_mem[task_id].msg_dtoa_share_buf);
 	if (ret)
