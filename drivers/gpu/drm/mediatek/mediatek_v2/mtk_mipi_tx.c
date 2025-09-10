@@ -18,6 +18,9 @@
 #include "mtk_mipi_tx.h"
 #include "platform/mtk_drm_platform.h"
 #include <linux/pm_domain.h>
+#include <linux/of.h>
+#include <linux/module.h>
+#include <linux/platform_device.h>
 
 #define MIPITX_DSI_CON 0x00
 #define RG_DSI_LDOCORE_EN BIT(0)
@@ -7157,6 +7160,125 @@ static void backup_mipitx_impedance_mt6983(struct mtk_mipi_tx *mipi_tx)
 #endif /* mipitx impedance print */
 }
 
+static int read_efuse_test_code(unsigned int index)
+{
+	struct device_node *np_chosen = NULL;
+	struct devinfo_tag *tags;
+	struct devinfo_tag {
+		unsigned int data_size;
+		unsigned int data[300];
+	};
+
+	if (index > 300){
+		pr_err("index is error\n");
+		return 0;
+	}
+
+	np_chosen = of_find_node_by_path("/chosen");
+	tags = (struct devinfo_tag *) of_get_property(np_chosen, "atag,devinfo", NULL);
+
+	return tags->data[index];
+}
+struct efuse_struct {
+	unsigned int d1_dem;
+	unsigned int d1;
+	unsigned int ck_dem;
+	unsigned int ck;
+	unsigned int d0_dem;
+	unsigned int d0;
+	unsigned int d2_dem;
+	unsigned int d2;
+	unsigned int d3_dem;
+	unsigned int d3;
+};
+static void backup_mipitx_impedance_mt6993(struct mtk_mipi_tx *mipi_tx)
+{
+	unsigned int i = 0;
+	unsigned int j = 0;
+	unsigned int efuse_value[2] = {0};
+	unsigned int FAB_value = 0;
+	struct efuse_struct ef;
+
+	DDPMSG("%s MIPI_TX\n", __func__);
+	efuse_value[0] = read_efuse_test_code(105);		//7014
+	efuse_value[1] = read_efuse_test_code(106);		//7018
+	FAB_value = read_efuse_test_code(141);
+
+	DDPMSG("%s:FAB_value=0x%x, 0-4bit >= 0xc, has efuse\n", __func__, FAB_value);
+	DDPMSG("%s: read efuse_value0=0x%x\n", __func__, efuse_value[0]);
+	DDPMSG("%s: read efuse_value1=0x%x\n", __func__, efuse_value[1]);
+	if (efuse_value[0] == 0 && efuse_value[1] == 0)
+		return;
+
+	mipi_tx->has_efuse = 1;
+
+	ef.d1_dem = (efuse_value[0] >> 28) & ((1U << mipi_tx->driver_data->efuse_readdem_bit)-1);
+	ef.d1 = (efuse_value[0] >> 24) & ((1U << mipi_tx->driver_data->efuse_read_bit)-1);
+	ef.ck_dem = (efuse_value[0] >> 20) & ((1U << mipi_tx->driver_data->efuse_readdem_bit)-1);
+	ef.ck = (efuse_value[0] >> 16) & ((1U << mipi_tx->driver_data->efuse_read_bit)-1);
+	ef.d0_dem = (efuse_value[0] >> 12) & ((1U << mipi_tx->driver_data->efuse_readdem_bit)-1);
+	ef.d0 = (efuse_value[0] >> 8) & ((1U << mipi_tx->driver_data->efuse_read_bit)-1);
+	ef.d2_dem = (efuse_value[0] >> 4) & ((1U << mipi_tx->driver_data->efuse_readdem_bit)-1);
+	ef.d2 = (efuse_value[0] >> 0) & ((1U << mipi_tx->driver_data->efuse_read_bit)-1);
+
+	ef.d3_dem = (efuse_value[1] >> 4) & ((1U << mipi_tx->driver_data->efuse_readdem_bit)-1);
+	ef.d3 = efuse_value[1] & ((1U << mipi_tx->driver_data->efuse_read_bit)-1);
+	rt_mt6886_code_backup[0][0] = (ef.d2 & 0x1) | ((ef.d2 & 0x2) << 7) |
+		((ef.d2 & 0x4) << 14)  | ((ef.d2 & 0x8) << 21);
+	rt_mt6886_code_backup[1][0] = rt_mt6886_code_backup[0][0];
+	rt_mt6886_dem_backup[0][0] = (ef.d2_dem & 0x1) | ((ef.d2_dem & 0x2) << 7) |
+		((ef.d2_dem & 0x4) << 14);
+	rt_mt6886_dem_backup[1][0] = rt_mt6886_dem_backup[0][0];
+
+	rt_mt6886_code_backup[0][1] = (ef.d0 & 0x1) | ((ef.d0 & 0x2) << 7) |
+		((ef.d0 & 0x4) << 14)  | ((ef.d0 & 0x8) << 21);
+	rt_mt6886_code_backup[1][1] = rt_mt6886_code_backup[0][1];
+	rt_mt6886_dem_backup[0][1] = (ef.d0_dem & 0x1) | ((ef.d0_dem & 0x2) << 7) |
+		((ef.d0_dem & 0x4) << 14);
+	rt_mt6886_dem_backup[1][1] = rt_mt6886_dem_backup[0][1];
+
+	rt_mt6886_code_backup[0][2] = (ef.ck & 0x1) | ((ef.ck & 0x2) << 7) |
+		((ef.ck & 0x4) << 14)  | ((ef.ck & 0x8) << 21);
+	rt_mt6886_code_backup[1][2] = rt_mt6886_code_backup[0][2];
+	rt_mt6886_dem_backup[0][2] = (ef.ck_dem & 0x1) | ((ef.ck_dem & 0x2) << 7) |
+		((ef.ck_dem & 0x4) << 14);
+	rt_mt6886_dem_backup[1][2] = rt_mt6886_dem_backup[0][2];
+
+	rt_mt6886_code_backup[0][3] = (ef.d1 & 0x1) | ((ef.d1 & 0x2) << 7) |
+		((ef.d1 & 0x4) << 14)  | ((ef.d1 & 0x8) << 21);
+	rt_mt6886_code_backup[1][3] = rt_mt6886_code_backup[0][3];
+	rt_mt6886_dem_backup[0][3] = (ef.d1_dem & 0x1) | ((ef.d1_dem & 0x2) << 7) |
+		((ef.d1_dem & 0x4) << 14);
+	rt_mt6886_dem_backup[1][3] = rt_mt6886_dem_backup[0][3];
+
+	rt_mt6886_code_backup[0][4] = (ef.d3 & 0x1) | ((ef.d3 & 0x2) << 7) |
+		((ef.d3 & 0x4) << 14)  | ((ef.d3 & 0x8) << 21);
+	rt_mt6886_code_backup[1][4] = rt_mt6886_code_backup[0][4];
+	rt_mt6886_dem_backup[0][4] = (ef.d3_dem & 0x1) | ((ef.d3_dem & 0x2) << 7) |
+		((ef.d3_dem & 0x4) << 14);
+	rt_mt6886_dem_backup[1][4] = rt_mt6886_dem_backup[0][4];
+
+	/* backup mipitx impedance */
+	for (j = 0; j < 5; j++) {
+		DDPDBG("%s efuse: 0x%08x 0x%08x 0x%08x 0x%08x\n", __func__,
+			rt_mt6886_code_backup[0][j],
+			rt_mt6886_code_backup[1][j],
+			rt_mt6886_dem_backup[0][j],
+			rt_mt6886_dem_backup[1][j]);
+	}
+	for (i = 0; i < 5; i++) {
+		DDPDBG("[0x%08lx 0x%08lx 0x%08lx 0x%08lx]:0x%08x 0x%08x 0x%08x 0x%08x\n",
+			(unsigned long)mipi_tx->regs + MIPITX_D2P_RTCODE0_MT6886 + i * 0x100,
+			(unsigned long)mipi_tx->regs + MIPITX_D2N_RTCODE0_MT6886 + i * 0x100,
+			(unsigned long)mipi_tx->regs + MIPITX_D2P_RT_DEM_CODE_MT6886 + i * 0x100,
+			(unsigned long)mipi_tx->regs + MIPITX_D2N_RT_DEM_CODE_MT6886 + i * 0x100,
+			readl((mipi_tx->regs + MIPITX_D2P_RTCODE0_MT6886 + i * 0x100)),
+			readl((mipi_tx->regs + MIPITX_D2N_RTCODE0_MT6886 + i * 0x100)),
+			readl((mipi_tx->regs + MIPITX_D2P_RT_DEM_CODE_MT6886 + i * 0x100)),
+			readl((mipi_tx->regs + MIPITX_D2N_RT_DEM_CODE_MT6886 + i * 0x100)));
+	}
+}
+
 void refill_mipitx_impedance(struct mtk_mipi_tx *mipi_tx)
 {
 	unsigned int i = 0;
@@ -7397,6 +7519,38 @@ static void refill_mipitx_impedance_mt6983(struct mtk_mipi_tx *mipi_tx)
 		}
 	}
 #endif /* mipitx impedance print */
+}
+static void refill_mipitx_impedance_mt6993(struct mtk_mipi_tx *mipi_tx)
+{
+	/* backup mipitx impedance */
+	unsigned int i = 0;
+	unsigned int j = 0;
+
+	DDPDBG("%s MIPI_TX\n", __func__);
+	if (mipi_tx->has_efuse != 1)
+		return;
+
+	for (j = 0; j < 5; j++) {
+		writel(rt_mt6886_code_backup[0][j], mipi_tx->regs +
+				MIPITX_D2P_RTCODE0_MT6886 + j * 0x100);
+		writel(rt_mt6886_code_backup[1][j], mipi_tx->regs +
+				MIPITX_D2N_RTCODE0_MT6886 + j * 0x100);
+		writel(rt_mt6886_dem_backup[0][j], mipi_tx->regs +
+				MIPITX_D2P_RT_DEM_CODE_MT6886 + j * 0x100);
+		writel(rt_mt6886_dem_backup[1][j], mipi_tx->regs +
+				MIPITX_D2N_RT_DEM_CODE_MT6886 + j * 0x100);
+	}
+	for (i = 0; i < 5; i++) {
+		DDPDBG("[0x%08lx 0x%08lx 0x%08lx 0x%08lx]:0x%08x 0x%08x 0x%08x 0x%08x\n",
+			(unsigned long)mipi_tx->regs + MIPITX_D2P_RTCODE0_MT6886 + i * 0x100,
+			(unsigned long)mipi_tx->regs + MIPITX_D2N_RTCODE0_MT6886 + i * 0x100,
+			(unsigned long)mipi_tx->regs + MIPITX_D2P_RT_DEM_CODE_MT6886 + i * 0x100,
+			(unsigned long)mipi_tx->regs + MIPITX_D2N_RT_DEM_CODE_MT6886 + i * 0x100,
+			readl((mipi_tx->regs + MIPITX_D2P_RTCODE0_MT6886 + i * 0x100)),
+			readl((mipi_tx->regs + MIPITX_D2N_RTCODE0_MT6886 + i * 0x100)),
+			readl((mipi_tx->regs + MIPITX_D2P_RT_DEM_CODE_MT6886 + i * 0x100)),
+			readl((mipi_tx->regs + MIPITX_D2N_RT_DEM_CODE_MT6886 + i * 0x100)));
+	}
 }
 
 #endif
@@ -8035,8 +8189,10 @@ static const struct mtk_mipitx_data mt6993_mipitx_data = {
 	.dsi_get_pcw = _dsi_get_pcw_mt6989,
 	.dsi_get_pcw_khz = _dsi_get_pcw_khz_mt6989,
 	.dsi_get_data_rate = _dsi_get_data_rate_N4,
-	.backup_mipitx_impedance = backup_mipitx_impedance_mt6897,
-	.refill_mipitx_impedance = refill_mipitx_impedance_mt6897,
+	.efuse_read_bit = 4,
+	.efuse_readdem_bit = 3,
+	.backup_mipitx_impedance = backup_mipitx_impedance_mt6993,
+	.refill_mipitx_impedance = refill_mipitx_impedance_mt6993,
 	.pll_rate_switch_gce = mtk_mipi_tx_pll_rate_switch_gce_N4,
 	.pll_rate_khz_switch_gce = mtk_mipi_tx_pll_rate_khz_switch_gce_N4,
 	.phy = MIPITX_DPHY,
@@ -8456,8 +8612,10 @@ static const struct mtk_mipitx_data mt6993_mipitx_cphy_data = {
 	.pll_unprepare = mtk_mipi_tx_pll_unprepare_mt6993,
 	.dsi_get_pcw = _dsi_get_pcw_mt6989,
 	.dsi_get_data_rate = _dsi_get_data_rate_mt6983,
-	.backup_mipitx_impedance = backup_mipitx_impedance_mt6897,
-	.refill_mipitx_impedance = refill_mipitx_impedance_mt6897,
+	.efuse_read_bit = 4,
+	.efuse_readdem_bit = 3,
+	.backup_mipitx_impedance = backup_mipitx_impedance_mt6993,
+	.refill_mipitx_impedance = refill_mipitx_impedance_mt6993,
 	.pll_rate_switch_gce = mtk_mipi_tx_pll_rate_switch_cphy_gce_mt6983,
 	.phy = MIPITX_CPHY,
 };

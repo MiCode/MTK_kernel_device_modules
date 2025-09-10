@@ -124,6 +124,7 @@ struct mtk_mipi_tx {
 	struct clk *pll;
 	unsigned int disp_offset[2]; //for mt6989 dispsys1 dsi0/dsi1 reg offset
 	u32 sw_ver; // segment id
+	u32 has_efuse;
 };
 
 struct mtk_mipitx_data {
@@ -180,6 +181,8 @@ struct mtk_mipitx_data {
 	unsigned int (*dsi_get_pcw)(unsigned long data_rate, unsigned int pcw_ratio);
 	unsigned int (*dsi_get_pcw_khz)(unsigned long data_rate_khz, unsigned int pcw_ratio);
 	unsigned int (*dsi_get_data_rate)(struct phy *phy);
+	const u32 efuse_read_bit;
+	const u32 efuse_readdem_bit;
 	void (*backup_mipitx_impedance)(struct mtk_mipi_tx *mipi_tx);
 	void (*refill_mipitx_impedance)(struct mtk_mipi_tx *mipi_tx);
 	void (*pll_rate_switch_gce)(struct phy *phy, void *handle, unsigned long rate);
