@@ -342,6 +342,11 @@ static struct match_platform mt8792_match = {
 	.init = &mt8xxx_init,
 };
 
+static struct match_platform mt8910_match = {
+	.name = "mediatek,mt8910-clkbuf",
+	.init = &mt8xxx_init,
+};
+
 static struct match_platform mt8781_match = {
 	.name = "mediatek,mt8781-clkbuf",
 	.init = &mt8xxx_init,
@@ -352,6 +357,7 @@ static struct match_platform *matches_platform[] = {
 	&mt8786_match,
 	&mt8792_match,
 	&mt8781_match,
+	&mt8910_match,
 	NULL,
 };
 

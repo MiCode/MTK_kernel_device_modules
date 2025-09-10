@@ -1672,6 +1672,15 @@ static struct clkbuf_operation clkbuf_ops_v3 = {
 	.set_xo_cmd_hdlr = __set_xo_cmd_hdlr_v2,
 };
 
+/* MT6687 tablet ops */
+static struct clkbuf_operation clkbuf_ops_v3_tb = {
+	.get_pmrcen = __get_pmrcen_v2,
+	.dump_pmic_debug_regs = __dump_pmic_debug_regs_v2,
+	.get_xo_cmd_hdlr = __get_xo_cmd_hdlr_v2,
+	.set_xo_cmd_hdlr = __set_xo_cmd_hdlr_v2,
+	.set_pmic_common_hdlr = __set_pmic_common_hdlr,
+	.get_pmic_common_hdlr = __get_pmic_common_hdlr,
+};
 
 static struct clkbuf_operation clkbuf_ops_lv1 = {
 	.get_pmrcen = __get_pmrcen_lv1,
@@ -1697,6 +1706,12 @@ static struct clkbuf_hdlr pmic_hdlr_v2 = {
 static struct clkbuf_hdlr pmic_hdlr_v3 = {
 	.ops = &clkbuf_ops_v3,
 	.data = &mt6687_data,
+};
+
+/* MT6687 tablet hdlr */
+static struct clkbuf_hdlr pmic_hdlr_v3_tb = {
+	.ops = &clkbuf_ops_v3_tb,
+	.data = &mt6687_tb_data,
 };
 
 static struct clkbuf_hdlr pmic_hdlr_lv1_6366 = {
@@ -1949,6 +1964,13 @@ static struct match_pmic mt6687_match_pmic = {
 	.parse_dts = &pmic_parse_dts_v1,
 };
 
+static struct match_pmic mt6687_tb_match_pmic = {
+	.name = "mediatek,mt6687-tb-clkbuf",
+	.hdlr = &pmic_hdlr_v3_tb,
+	.init = &pmic_init_v1,
+	.parse_dts = &pmic_parse_dts_v1,
+};
+
 static struct match_pmic mt6359p_match_pmic = {
 	.name = "mediatek,mt6359p-clkbuf",
 	.hdlr = &pmic_hdlr_lv2,
@@ -1971,6 +1993,7 @@ static struct match_pmic *matches_pmic[] = {
 	&mt6358_tb_match_pmic,
 	&mt6685_match_pmic,
 	&mt6687_match_pmic,
+	&mt6687_tb_match_pmic,
 	&mt6685_tb_match_pmic,
 	&mt6359p_match_pmic,
 	NULL,

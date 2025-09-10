@@ -39,6 +39,7 @@ define_mgk_ddk_ko(
         "src/dcxo-6685.c",
         "src/dcxo-6685-tb.c",
         "src/dcxo-6687.c",
+        "src/dcxo-6687-tb.c",
         "src/pmif-data-v1.c",
         "src/src-data-v1.c",
         "src/src-data-v2.c",
