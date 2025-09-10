@@ -503,7 +503,7 @@ static int mdw_mem_ioctl_free(struct mdw_fpriv *mpriv,
 	int ret = 0;
 
 	dbuf = dma_buf_get(args->in.free.handle);
-	if (!dbuf) {
+	if (IS_ERR_OR_NULL(dbuf)) {
 		mdw_drv_err("invalid handle(%llu) to get dbuf\n", args->in.free.handle);
 		return -EINVAL;
 	}
@@ -605,7 +605,7 @@ static int mdw_mem_ioctl_unmap(struct mdw_fpriv *mpriv,
 	int ret = 0;
 
 	dbuf = dma_buf_get(args->in.map.handle);
-	if (!dbuf) {
+	if (IS_ERR_OR_NULL(dbuf)) {
 		mdw_drv_err("s(0x%llx) invalid handle(%llu) to get dbuf\n",
 			mpriv->id, args->in.unmap.handle);
 		return -EINVAL;
