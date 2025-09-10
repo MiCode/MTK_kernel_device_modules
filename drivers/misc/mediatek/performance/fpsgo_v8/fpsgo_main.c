@@ -516,20 +516,20 @@ int fpsgo_notify_qudeq(int qudeq,
 		qudeq, startend, id, pid);
 
 	if (!fpsgo_is_enable())
-		return 0;
+		goto out;
 
 	vpPush =
 		(struct FPSGO_NOTIFIER_PUSH_TAG *)
 		fpsgo_alloc_atomic(sizeof(struct FPSGO_NOTIFIER_PUSH_TAG));
 	if (!vpPush) {
 		FPSGO_LOGE("[FPSGO_CTRL] OOM\n");
-		return 0;
+		goto out;
 	}
 
 	if (!kfpsgo_tsk) {
 		FPSGO_LOGE("[FPSGO_CTRL] NULL WorkQueue\n");
 		fpsgo_free(vpPush, sizeof(struct FPSGO_NOTIFIER_PUSH_TAG));
-		return 0;
+		goto out;
 	}
 
 	cur_ts = fpsgo_get_time();
@@ -551,6 +551,7 @@ int fpsgo_notify_qudeq(int qudeq,
 	}
 #endif
 
+out:
 	return FPSGO_VERSION_CODE;
 }
 

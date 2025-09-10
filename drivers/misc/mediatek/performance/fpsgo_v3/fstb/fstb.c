@@ -755,6 +755,9 @@ int fpsgo_ctrl2fstb_switch_fstb(int enable)
 
 	mtk_fstb_dprintk_always("%s %d\n", __func__, fstb_enable);
 	if (!fstb_enable) {
+		fstb_active = 0;
+		fstb_active_dbncd = 0;
+		fstb_idle_cnt = 0;
 		hlist_for_each_entry_safe(iter, t,
 				&fstb_frame_infos, hlist) {
 			hlist_del(&iter->hlist);

@@ -1661,6 +1661,9 @@ int fpsgo_ctrl2fstb_switch_fstb(int enable)
 
 	fstb_enable = enable;
 	if (!fstb_enable) {
+		fstb_active = 0;
+		fstb_active_dbncd = 0;
+		fstb_idle_cnt = 0;
 		hlist_for_each_entry_safe(iter, t, &fstb_frame_info_list, hlist) {
 			fstb_delete_frame_info(iter->pid, iter->bufid, iter);
 		}
