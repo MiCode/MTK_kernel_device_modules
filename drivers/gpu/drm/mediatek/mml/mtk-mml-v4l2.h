@@ -34,6 +34,13 @@ enum {
 	MML_M2M_CID_SECURE,
 };
 
+enum mml_v4l2_caps {
+	MML_V4L2_CAP_PQ_HDR2SDR		= 0x00000001,	/* display HDR2SDR */
+	MML_V4L2_CAP_PQ_FG		= 0x00000002,	/* video AV1 FG */
+	MML_V4L2_CAP_ROT		= 0x00000004,	/* frame ROT */
+	MML_V4L2_CAP_SUPPORT		= 0x80000000,	/* query cap support */
+};
+
 struct v4l2_pq_submit {
 	uint32_t id;
 	struct mml_pq_config pq_config;

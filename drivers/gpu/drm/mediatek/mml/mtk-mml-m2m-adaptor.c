@@ -1058,11 +1058,36 @@ static int m2m_ctrls_create(struct mml_m2m_ctx *ctx)
 	return 0;
 }
 
+static enum mml_v4l2_caps default_mml_v4l2_caps(void)
+{
+	return MML_V4L2_CAP_PQ_HDR2SDR | MML_V4L2_CAP_PQ_FG |
+		MML_V4L2_CAP_ROT; // add MML_V4L2_CAP_SUPPORT in tp if needed
+}
+
 static int mml_m2m_querycap(struct file *file, void *fh,
 			    struct v4l2_capability *cap)
 {
+	struct video_device *vdev = video_devdata(file);
+	struct mml_dev *mml = video_get_drvdata(vdev);
+	struct mml_topology_cache *tp = mml_topology_get_cache(mml);
+	u8 card_info[32];
+
 	strscpy(cap->driver, MML_M2M_MODULE_NAME, sizeof(cap->driver));
-	strscpy(cap->card, MML_M2M_DEVICE_NAME, sizeof(cap->card));
+
+	if (tp->op->support_v4l2_caps)
+		cap->reserved[0] = tp->op->support_v4l2_caps();
+	else
+		cap->reserved[0] = default_mml_v4l2_caps();
+
+	if (snprintf(card_info, sizeof(card_info), "%s %#010x",
+		MML_M2M_DEVICE_NAME, cap->reserved[0]) < 0) {
+		mml_err("Failed to get card_info\n");
+		return -EINVAL;
+	}
+	strscpy(cap->card, card_info, sizeof(cap->card));
+
+	mml_msg("%s card %s, reserved[0] %#010x", __func__, card_info, cap->reserved[0]);
+
 	return 0;
 }
 

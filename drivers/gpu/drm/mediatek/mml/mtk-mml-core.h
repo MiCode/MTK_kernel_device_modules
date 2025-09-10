@@ -521,6 +521,7 @@ struct mml_topology_ops {
 	enum mml_mode (*support_couple)(void);
 	bool (*support_dc2)(struct mml_frame_info *info);
 	enum mml_hw_caps (*support_hw_caps)(void);
+	enum mml_v4l2_caps (*support_v4l2_caps)(void);
 };
 
 enum mml_throughput_index {
