@@ -281,6 +281,7 @@ void mtk_free_clk_data(struct clk_onecell_data *clk_data);
 
 /* special cg */
 #define CLK_EN_MM_INFRA_PWR		BIT(22)
+#define CLK_NO_RES			BIT(24)
 #define HWV_CHK_VCP_READY		BIT(25)
 
 
