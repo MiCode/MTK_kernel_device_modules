@@ -327,6 +327,9 @@ static int opfunc_scp_state_change(struct msg_op_data *op)
 	if (drv_type > STATE_CHG_DRV_SCP)
 		return -1;
 
+	if ((g_core_ctx.state == 1 && cur_state == 1) ||
+		(g_core_ctx.state == 0 && cur_state == 0))
+		return 0;
 
 	pr_info("[%s] type=[%d] state=[%d] conn=[%d] scp ready=[%d]", __func__,
 				drv_type, cur_state, g_core_ctx.enable,
@@ -566,10 +569,6 @@ static void conap_scp_msg_notify(uint16_t drv_type, uint16_t msg_id,
 static void conap_scp_ipi_ctrl_notify(unsigned int state)
 {
 	int ret;
-
-	if ((g_core_ctx.state == 1 && state == 1) ||
-		(g_core_ctx.state == 0 && state == 0))
-		return;
 
 	pr_info("[%s] state=[%d]->[%d]", __func__, g_core_ctx.state, state);
 
