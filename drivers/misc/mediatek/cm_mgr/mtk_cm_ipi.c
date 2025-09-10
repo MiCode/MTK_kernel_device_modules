@@ -12,7 +12,7 @@
 
 #include "mtk_cm_ipi.h"
 
-static int cm_ipi_enable = 1;
+static int cm_ipi_enable;
 static int scmi_cm_id;
 static struct scmi_tinysys_info_st *_tinfo;
 
