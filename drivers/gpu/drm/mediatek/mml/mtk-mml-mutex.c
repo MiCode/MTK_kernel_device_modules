@@ -672,8 +672,44 @@ static void mutex_debug_dump(struct mml_comp *comp)
 	}
 }
 
+static void mutex_reset(struct mml_comp *comp, struct mml_frame_config *cfg, u32 pipe)
+{
+	struct mml_mutex *mutex = comp_to_mutex(comp);
+	struct mml_pipe_cache *cache = &cfg->cache[pipe];
+	struct mml_comp_config *ccfg = cache->cfg;
+	const struct mml_topology_path *path = cfg->path[ccfg->pipe];
+	void __iomem *base = comp->base;
+	struct mutex_frame_data *mutex_frm = mutex_frm_data(ccfg);
+	const u32 rst_off = mutex->data->rst_offset;
+	s32 mutex_id = -1;
+	u32 i;
+
+	if (mutex->data->sofgrp_assign) {
+		for (i = 0; i < path->node_cnt; i++) {
+			struct mutex_module *mod = &mutex->modules[path->nodes[i].id];
+
+			if (mod->select)
+				mutex_id = mod->mutex_id;
+		}
+	} else {
+		/* use mutex stream to trigger related sof group */
+		mutex_id = path->mux_group;
+	}
+
+	if (mutex_frm && mutex_frm->src_reset && rst_off) {
+		u32 offset = MUTEX_RST(mutex_id, rst_off);
+
+		writel(1, base + offset);
+		writel(0, base + offset);
+		mml_msg("%s comp %u reset mutex %#x mutex id %d src %#x path id %u",
+			__func__, mutex->comp.id,
+			offset, mutex_id, mutex_frm->src_reset, path->path_id);
+	}
+}
+
 static const struct mml_comp_debug_ops mutex_debug_ops = {
 	.dump = &mutex_debug_dump,
+	.reset = &mutex_reset,
 };
 
 static int mml_bind(struct device *dev, struct device *master, void *data)

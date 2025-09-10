@@ -2257,6 +2257,10 @@ static void core_taskdump(struct mml_task *task, u32 pipe, int err)
 
 	call_dbg_op(path->mmlsys, reset, cfg, pipe);
 
+	call_dbg_op(path->mutex, reset, cfg, pipe);
+	if (path->mutex2)
+		call_dbg_op(path->mutex2, reset, cfg, pipe);
+
 	mml_err("error %d engine reset end", cnt);
 	mml_cmdq_err = 0;
 
