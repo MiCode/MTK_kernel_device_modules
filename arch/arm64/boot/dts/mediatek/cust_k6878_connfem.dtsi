@@ -1,0 +1,94 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (C) 2020 MediaTek Inc.
+ */
+&connfem {
+	epa-elna-mtk {
+		parts = <&nofem &nofem>,		/* [0]iPA/iLNA MT6631 */
+			<&nofem &nofem>,		/* [1]iPA/iLNA MT6631/MT6686 */
+			<&nofem &nofem>,		/* [2]iPA/iLNA MT6637 */
+			<&mxd7751s &mxd7751s>,		/* [3]MT6631, MXD7751S */
+			<&sky85320 &sky85720>,		/* [4]MT6631, Skyworks eFEM - Closed-Loop */
+			<&sky85320 &sky85720>,		/* [5]MT6631/MT6686, Skyworks eFEM - Closed-Loop */
+			<&qm42195 &qm45197>,		/* [6]MT6637, Qorvo eFEM - Closed-Loop */
+			<&wlan7207h &wlan7207c>,	/* [7]MT6637, NXP eFEM - Closed-Loop */
+			<&nofem &sky85732>,		/* [8]Skyworks eFEM - Closed-Loop */
+			<&nofem &sky85732>,		/* [9]Skyworks eFEM - Closed-Loop + BT Bypass */
+			<&nofem &qm45197>,		/* [10]MT6637, Qorvo eFEM - Closed-Loop */
+			<&rtc7620 &nofem>;		/* [11]Richwave eFEM - Closed-Loop */
+
+		hwid {
+			gpio = <&pio 131 0x0>,
+				<&pio 132 0x0>,
+				<&pio 92 0x0>;
+		};
+
+		wifi {
+			flags-3 {
+				/* open-loop; */
+			};
+			flags-4 {
+				/* open-loop; */
+			};
+			flags-5 {
+				/* open-loop; */
+			};
+			flags-6 {
+				/* open-loop; */
+			};
+			flags-7 {
+				/* open-loop; */
+			};
+			flags-8 {
+				/* open-loop; */
+			};
+			flags-9 {
+				/* open-loop; */
+			};
+			flags-10 {
+				/* open-loop; */
+			};
+			flags-11 {
+				/* open-loop; */
+			};
+		};
+		bt {
+			flags-3 {
+				/* choose one of: epa-elna / epa / elna / bypass */
+				bypass;
+			};
+			flags-4 {
+				/* choose one of: epa-elna / epa / elna / bypass */
+				bypass;
+			};
+			flags-5 {
+				/* choose one of: epa-elna / epa / elna / bypass */
+				bypass;
+			};
+			flags-6 {
+				/* choose one of: epa-elna / epa / elna / bypass */
+				epa-elna;
+			};
+			flags-7 {
+				/* choose one of: epa-elna / epa / elna / bypass */
+				epa-elna;
+			};
+			flags-8 {
+				/* choose one of: epa-elna / epa / elna / bypass */
+				epa-elna;
+			};
+			flags-9 {
+				/* choose one of: epa-elna / epa / elna / bypass */
+				bypass;
+			};
+			flags-10 {
+				/* choose one of: epa-elna / epa / elna / bypass */
+				epa-elna;
+			};
+			flags-11 {
+				/* choose one of: epa-elna / epa / elna / bypass */
+				epa-elna;
+			};
+		};
+	};
+};
