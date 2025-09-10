@@ -156,6 +156,7 @@ static uint32_t apusys_pwr_smc_call(struct device *dev, uint32_t smc_id,
 static void plat_get_up_drv_data(struct aputop_func_param *aputop)
 {
 	int sub_func = 0;
+	struct arm_smccc_res res;
 
 	sub_func = aputop->param1;
 
@@ -168,6 +169,11 @@ static void plat_get_up_drv_data(struct aputop_func_param *aputop)
 	} else if (sub_func == 2) {
 		mbox_data = apu_readl(
 				apupw.regs[apu_md32_mbox] + MBRAIN_DATA_SYNC_1_REG);
+	} else if (sub_func == 3) {
+		arm_smccc_smc(MTK_SIP_APUSYS_CONTROL,
+			      MTK_APUSYS_KERNEL_OP_APUSYS_QOS_SETTING,
+			      aputop->param2, aputop->param3,
+			      aputop->param4, 0, 0, 0, &res);
 	} else {
 		pr_info("%s#%d invalid sub_func : %d\n",
 				__func__, __LINE__, sub_func);
