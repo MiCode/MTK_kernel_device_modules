@@ -4741,6 +4741,11 @@ static void mtk_crtc_cwb_set_sec(struct drm_crtc *crtc)
 			cwb_info->is_sec = true;
 		}
 	}
+	if (mtk_crtc->sec_on) {
+		DDPINFO("%s:%d skip cwb addon connect due to sec on\n",
+				__func__, __LINE__);
+		cwb_info->is_sec = true;
+	}
 }
 
 /* static bool mtk_crtc_check_fb_secure(struct drm_crtc *crtc)
@@ -5548,6 +5553,12 @@ _mtk_crtc_wb_addon_module_connect(
 	if (index != 0 || mtk_crtc_is_dc_mode(crtc) ||
 		!state->prop_val[CRTC_PROP_OUTPUT_ENABLE])
 		return;
+
+	if (mtk_crtc->sec_on) {
+		DDPINFO("%s:%d skip wb addon connect due to sec on\n",
+				__func__, __LINE__);
+		return;
+	}
 
 	to_info = mtk_crtc_get_total_overhead(mtk_crtc);
 
@@ -19644,9 +19655,11 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 			return -EINVAL;
 		}
 
-		event = mtk_crtc_wb_addon_get_event(crtc);
-		cmdq_pkt_wfe(handle, event);
-		_mtk_crtc_wb_addon_module_disconnect(crtc, mtk_crtc->ddp_mode, handle);
+		if (!mtk_crtc->sec_on) {
+			event = mtk_crtc_wb_addon_get_event(crtc);
+			cmdq_pkt_wfe(handle, event);
+			_mtk_crtc_wb_addon_module_disconnect(crtc, mtk_crtc->ddp_mode, handle);
+		}
 		mtk_crtc->capturing = false;
 		wb_cb_data->cmdq_handle = handle;
 		wb_cb_data->crtc = crtc;
