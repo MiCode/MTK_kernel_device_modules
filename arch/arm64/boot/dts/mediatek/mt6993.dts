@@ -12799,6 +12799,11 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			pmif = <&spmi 0 2>;
 		};
 
+		pmic_tia: pmic-tia@1c01d6ac {
+			compatible = "mediatek,pmic_tia";
+			reg = <0 0x1c01d6ac 0 0>;
+		};
+
 		srclken_rc: srclken-rc@1c011000 {
 				compatible = "mediatek,srclken-rc-v4";
 				reg = <0 0x1c011000 0 0x900>;
