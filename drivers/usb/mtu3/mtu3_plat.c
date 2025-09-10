@@ -1928,6 +1928,8 @@ sleep_err:
 	ssusb_clear_host_low_speed_bypass(ssusb);
 	resume_ip_and_ports(ssusb, msg);
 	if (ssusb->is_host) {
+		/* hold wakelock 2000 ms to avoid suspend too early */
+		pm_wakeup_event(ssusb->dev, 2000);
 		ssusb_set_mode(&ssusb->otg_switch, USB_ROLE_HOST, true);
 	}
 err:
@@ -1991,7 +1993,8 @@ static int mtu3_resume_common(struct device *dev, pm_message_t msg)
 		}
 		if (of_device_is_compatible(ssusb->dev->of_node, "mediatek,mt6993-mtu3")) {
 			/* re-init USB Host when plug-on OTG Gender only */
-			/* dev_info(ssusb->dev, "SSUSB_SET_MODE.\n"); */
+			/* hold wakelock 2000 ms to avoid suspend too early */
+			pm_wakeup_event(ssusb->dev, 2000);
 			ssusb_set_mode(&ssusb->otg_switch, USB_ROLE_HOST, true);
 		}
 	}
