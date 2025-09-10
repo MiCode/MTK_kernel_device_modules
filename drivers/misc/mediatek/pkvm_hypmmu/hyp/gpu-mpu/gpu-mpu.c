@@ -8,7 +8,7 @@
 
 void gpu_mpu_hyp_init(struct user_pt_regs *regs)
 {
-	register_gpumpu_pmm_hal();
+	register_gpumpu_pmm_hal(regs);
 
 	regs->regs[0] = SMCCC_RET_SUCCESS;
 	regs->regs[1] = 0;
