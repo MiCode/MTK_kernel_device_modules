@@ -22,8 +22,12 @@
 #include "pmic_lbat_service.h"
 #include <linux/soc/mediatek/mtk_tinysys_ipi.h>
 #include <mcupm_ipi_id.h>
-#if !IS_ENABLED(CONFIG_MTK_GPU_LEGACY)
+
+#if IS_ENABLED(CONFIG_MTK_GPU_LEGACY)
+#include "gpufreq_v2_legacy.h"
+#else
 #include <include/gpueb_ipi.h>
+#include "gpufreq_v2.h"
 #endif
 
 #define CREATE_TRACE_POINTS
@@ -37,7 +41,6 @@
 #include <tinysys-scmi.h>
 #endif
 #include "mtk_peak_power_budget.h"
-#include <gpufreq_v2.h>
 
 #define STR_SIZE 1024
 #define MAX_VALUE 0x7FFF

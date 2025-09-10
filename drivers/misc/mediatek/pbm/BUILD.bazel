@@ -1,6 +1,7 @@
 load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
 load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
 load("@mgk_info//:kernel_version.bzl","kernel_version",)
+load("@mgk_info//:dict.bzl", "DEFCONFIG_OVERLAYS",)
 
 package(
     default_visibility = [
@@ -64,7 +65,7 @@ define_mgk_ddk_ko(
     srcs = [
         "mtk_peak_power_budget.c",
         "mtk_peak_power_budget.h",
-	"mtk_peak_power_budget_mbrain.h",
+        "mtk_peak_power_budget_mbrain.h",
         "mtk_peak_power_budget_trace.h",
         "mtk_peak_power_budget_cgppt.h"
     ],
@@ -74,10 +75,12 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/misc/mediatek/tinysys_scmi:ddk_public_headers".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/cg_ppt:cg_ppt_headers".format(kernel_version),
         "//kernel_device_modules-{}/drivers/gpu/mediatek/mt-plat:gpu_utility_headers".format(kernel_version),
-        "//kernel_device_modules-{}/drivers/gpu/mediatek/gpufreq:mtk_gpufreq_headers".format(kernel_version),
-        "//kernel_device_modules-{}/drivers/gpu/mediatek/gpufreq/v2:gpufreq_public_headers".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/mcupm:mcupm_public_headers".format(kernel_version),
-    ],
+    ] + (
+        ["//kernel_device_modules-{}/drivers/gpu/mediatek/gpufreq/v2_legacy:gpufreq_public_headers".format(kernel_version)]
+        if "entry_level.config" in DEFCONFIG_OVERLAYS else
+        ["//kernel_device_modules-{}/drivers/gpu/mediatek/gpufreq/v2:gpufreq_public_headers".format(kernel_version)]
+    ),
     ko_deps = [
 	"//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:mtk_battery_oc_throttling".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:mtk_low_battery_throttling".format(kernel_version),
@@ -86,9 +89,12 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/soc/mediatek:mtk_tinysys_ipi".format(kernel_version),
         "//kernel_device_modules-{}/drivers/gpu/mediatek/gpueb:mtk_gpueb".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/tinysys_scmi:tinysys-scmi".format(kernel_version),
-        "//kernel_device_modules-{}/drivers/gpu/mediatek/gpufreq/v2:mtk_gpufreq_wrapper".format(kernel_version),
-                "//kernel_device_modules-{}/drivers/misc/mediatek/mcupm/v3:mcupm".format(kernel_version),
-    ],
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mcupm/v3:mcupm".format(kernel_version),
+    ] + (
+        ["//kernel_device_modules-{}/drivers/gpu/mediatek/gpufreq/v2_legacy:mtk_gpufreq_wrapper_legacy".format(kernel_version)]
+        if "entry_level.config" in DEFCONFIG_OVERLAYS else
+        ["//kernel_device_modules-{}/drivers/gpu/mediatek/gpufreq/v2:mtk_gpufreq_wrapper".format(kernel_version)]
+    ),
     includes = [
         ".",
         "$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mbraink",
