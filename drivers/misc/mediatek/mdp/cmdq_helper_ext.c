@@ -1316,7 +1316,7 @@ int cmdq_core_print_status_seq(struct seq_file *m, void *v)
 
 static s32 cmdq_core_get_thread_id(s32 scenario)
 {
-	return cmdq_get_func()->getThreadID(scenario, false);
+	return cmdq_get_func()->getThreadID(0, scenario, false);
 }
 
 static void cmdq_core_dump_thread(const struct cmdqRecStruct *handle,

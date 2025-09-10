@@ -337,7 +337,7 @@ static void cmdq_task_reset_thread(struct cmdqRecStruct *handle)
 
 	/* try thread static assign first */
 	handle->thread = cmdq_get_func()->getThreadID(
-		handle->scenario, handle->secData.is_secure);
+		handle->engineFlag, handle->scenario, handle->secData.is_secure);
 
 	/* acquire an empty thread */
 	if (handle->thread == CMDQ_INVALID_THREAD) {

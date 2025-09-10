@@ -208,7 +208,9 @@ platforms = [
         "CMDQ_MDP_COLOR",
         "MML_STASH_SUPPORT",
         "CMDQ_SECURE_PATH_SUPPORT",
-    ],
+    ] + ([
+        "ISP_GCE_M_SEC_SUPPORT",
+    ] if p == "mt6858" else []),
 
     copts = [
         "-I$(DEVICE_MODULES_PATH)/drivers/devfreq",

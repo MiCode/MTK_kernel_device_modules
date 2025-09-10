@@ -29,7 +29,7 @@ typedef bool(*CmdqShouldEnablePrefetch) (
 typedef int (*CmdqDispThread) (enum CMDQ_SCENARIO_ENUM scenario);
 
 /* get thread index from scenario and secure */
-typedef int (*CmdqGetThreadID) (enum CMDQ_SCENARIO_ENUM scenario,
+typedef int (*CmdqGetThreadID) (u64 engine_flag, enum CMDQ_SCENARIO_ENUM scenario,
 	const bool secure);
 
 /* priority from scenario */

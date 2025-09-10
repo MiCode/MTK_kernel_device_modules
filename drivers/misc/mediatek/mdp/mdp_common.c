@@ -710,7 +710,7 @@ static s32 cmdq_mdp_lock_thread(struct cmdqRecStruct *handle)
 	 * common clock enable here to avoid disable when mdp engines still
 	 * need use for later tasks
 	 */
-	CMDQ_MSG("%s handle:0x%p pkt:0x%p engine:0x%016llx\n",
+	CMDQ_ERR("%s handle:0x%p pkt:0x%p engine:0x%016llx\n",
 		__func__, handle, handle->pkt, handle->engineFlag);
 	err = cmdq_mdp_common_clock_enable(handle->engineFlag);
 	if (err != 0)
@@ -933,8 +933,15 @@ static bool cmdq_mdp_check_engine_conflict(
 }
 
 #ifdef CMDQ_SECURE_PATH_SUPPORT
-static s32 cmdq_mdp_get_sec_thread(void)
+static s32 cmdq_mdp_get_sec_thread(u64 engine_flag)
 {
+#if defined(ISP_GCE_M_SEC_SUPPORT)
+	if (engine_flag & cmdq_mdp_get_func()->mdpGetIspFlag()) {
+		CMDQ_LOG("CMDQ_THREAD_SEC_ISP engineFlag:0x%llx thread:%d\n",
+			engine_flag, CMDQ_THREAD_SEC_ISP);
+		return CMDQ_THREAD_SEC_ISP;
+	}
+#endif
 	return CMDQ_THREAD_SEC_MDP;
 }
 #endif
@@ -952,7 +959,7 @@ static s32 cmdq_mdp_find_free_thread(struct cmdqRecStruct *handle)
 		return CMDQ_INVALID_THREAD;
 
 	if (handle->secData.is_secure)
-		return cmdq_mdp_get_sec_thread();
+		return cmdq_mdp_get_sec_thread(handle->engineFlag);
 #endif
 	conflict = cmdq_mdp_check_engine_conflict(handle, &thread);
 	if (conflict) {
@@ -1008,7 +1015,6 @@ static s32 cmdq_mdp_find_free_thread(struct cmdqRecStruct *handle)
 				thread = index;
 			}
 		}
-		CMDQ_MSG("acquire thread:%d\n", thread);
 	}
 
 	return thread;
@@ -1061,7 +1067,7 @@ static s32 cmdq_mdp_consume_handle(void)
 #ifdef CMDQ_SECURE_PATH_SUPPORT
 		if (handle->secData.is_secure) {
 			ctx = cmdq_core_get_context();
-			task_cnt = ctx->thread[(u32)cmdq_mdp_get_sec_thread()].handle_count;
+			task_cnt = ctx->thread[(u32)cmdq_mdp_get_sec_thread(handle->engineFlag)].handle_count;
 			/* sec thread and more than 4 task -> queue the task */
 			if (task_cnt + 1 > CMDQ_MAX_TASK_CNT_ON_THREAD) {
 				mutex_unlock(&mdp_thread_mutex);

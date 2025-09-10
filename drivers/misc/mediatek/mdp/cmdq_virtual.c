@@ -198,7 +198,7 @@ int cmdq_virtual_disp_thread(enum CMDQ_SCENARIO_ENUM scenario)
 	return CMDQ_INVALID_THREAD;
 }
 
-int cmdq_virtual_get_thread_index(enum CMDQ_SCENARIO_ENUM scenario,
+int cmdq_virtual_get_thread_index(u64 engine_flag, enum CMDQ_SCENARIO_ENUM scenario,
 	const bool secure)
 {
 	if (!secure)
@@ -213,6 +213,11 @@ int cmdq_virtual_get_thread_index(enum CMDQ_SCENARIO_ENUM scenario,
 	case CMDQ_SCENARIO_USER_SPACE:
 	case CMDQ_SCENARIO_DEBUG:
 	case CMDQ_SCENARIO_DEBUG_MDP:
+#if defined(ISP_GCE_M_SEC_SUPPORT)
+		/* CMDQ_MIN_SECURE_THREAD_ID */
+		if (engine_flag & cmdq_mdp_get_func()->mdpGetIspFlag())
+			return CMDQ_THREAD_SEC_ISP;
+#endif
 		/* because there is one input engine for MDP, reserve one
 		 * secure thread is enough
 		 */
