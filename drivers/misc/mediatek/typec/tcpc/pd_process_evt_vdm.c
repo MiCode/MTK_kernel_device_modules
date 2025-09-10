@@ -322,6 +322,8 @@ DECL_PE_STATE_TRANSITION(PD_DPM_MSG_DISCOVER_CABLE_ID) = {
 	{ PE_SNK_READY, PE_DFP_CBL_VDM_IDENTITY_REQUEST },
 
 	{ PE_SRC_CBL_SEND_SOFT_RESET, PE_SRC_VDM_IDENTITY_REQUEST },
+	{ PE_SRC_VDM_IDENTITY_ACKED, PE_SRC_VDM_IDENTITY_REQUEST },
+	{ PE_SRC_VDM_IDENTITY_NAKED, PE_SRC_VDM_IDENTITY_REQUEST },
 };
 DECL_PE_STATE_REACTION(PD_DPM_MSG_DISCOVER_CABLE_ID);
 
@@ -354,9 +356,9 @@ static inline bool pd_process_ctrl_msg(
 	if (pd_event->msg != PD_CTRL_GOOD_CRC)
 		return false;
 
-	if (pe_data->vdm_state_flags &
-		VDM_STATE_FLAG_ENABLE_VDM_RESPONSE_TIMER)
-		pd_enable_timer(pd_port, pe_data->vdm_state_timer);
+	if (pe_data->pe_state_flags &
+		PE_STATE_FLAG_ENABLE_VDM_RESPONSE_TIMER)
+		pd_enable_pe_state_timer(pd_port, pe_data->pe_state_timer);
 
 	switch (pd_port->pe_state_curr) {
 #if CONFIG_USB_PD_DBG_DP_UFP_U_AUTO_ATTENTION
@@ -379,8 +381,8 @@ static inline bool pd_process_ctrl_msg(
 		break;
 	}
 
-	if (pe_data->vdm_state_flags &
-		VDM_STATE_FLAG_BACK_READY_IF_RECV_GOOD_CRC) {
+	if (pe_data->pe_state_flags &
+		PE_STATE_FLAG_BACK_READY_IF_RECV_GOOD_CRC) {
 		pe_transit_ready_state(pd_port);
 		return true;
 	}
@@ -428,7 +430,6 @@ static inline bool pd_process_uvdm(
  * [BLOCK] Process Data MSG (VDM)
  */
 
-#if (PE_EVT_INFO_VDM_DIS == 0)
 static const char * const pe_vdm_cmd_name[] = {
 	"DiscoverID",
 	"DiscoverSVIDs",
@@ -473,12 +474,9 @@ static inline const char *assign_vdm_dp_cmd_name(uint8_t cmd)
 	return NULL;
 }
 
-#endif /* if (PE_EVT_INFO_VDM_DIS == 0) */
-
 static inline void print_vdm_msg(
 	struct pd_port *pd_port, struct pd_event *pd_event)
 {
-#if (PE_EVT_INFO_VDM_DIS == 0)
 	uint8_t cmd;
 #if PE_INFO_ENABLE
 	uint8_t cmd_type;
@@ -508,8 +506,6 @@ static inline void print_vdm_msg(
 
 	PE_INFO("%s:%s\n", name, pe_vdm_cmd_type_name[cmd_type]);
 #endif /* PE_INFO_ENABLE */
-
-#endif	/* PE_EVT_INFO_VDM_DIS */
 }
 
 static inline bool pd_process_sop_vdm(
@@ -563,13 +559,6 @@ static inline bool pd_process_data_msg(
 			     PD_VDO_VER_MIN(vdm_hdr));
 #endif	/* CONFIG_USB_PD_REV30 */
 
-	/* From Port Partner, copy curr_state from pd_state */
-	if (PD_VDO_CMDT(vdm_hdr) == CMDT_INIT) {
-		pd_port->pe_vdm_state = pd_port->pe_pd_state;
-		pd_port->pe_state_curr = pd_port->pe_pd_state;
-		PE_DBG("reset vdm_state\n");
-	}
-
 	print_vdm_msg(pd_port, pd_event);
 
 	if (!pd_check_svid_valid(pd_port, pd_port->curr_vdm_svid)) {
@@ -592,8 +581,8 @@ static inline bool pd_process_dpm_msg(
 	if (pd_event->msg != PD_DPM_ACK)
 		return false;
 
-	if (pd_port->pe_data.vdm_state_flags &
-		VDM_STATE_FLAG_BACK_READY_IF_DPM_ACK) {
+	if (pd_port->pe_data.pe_state_flags &
+		PE_STATE_FLAG_BACK_READY_IF_DPM_ACK) {
 		pe_transit_ready_state(pd_port);
 		return true;
 	}
@@ -640,10 +629,6 @@ static inline bool pd_process_pe_msg(
 {
 	switch (pd_event->msg) {
 	case PD_PE_VDM_NOT_SUPPORT:
-		break;
-
-	case PD_PE_VDM_RESET:
-		pd_port->pe_data.reset_vdm_state = true;
 		break;
 
 	default:

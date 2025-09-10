@@ -55,12 +55,12 @@ extern int tcpci_alert(struct tcpc_device *tcpc, bool masked);
 extern void tcpci_vbus_level_refresh(struct tcpc_device *tcpc);
 int tcpci_alert_wakeup(struct tcpc_device *tcpc);
 
-static inline int tcpci_check_vbus_valid(struct tcpc_device *tcpc)
+static inline bool tcpci_check_vbus_valid(struct tcpc_device *tcpc)
 {
 	return tcpc->vbus_level >= TCPC_VBUS_VALID;
 }
 
-int tcpci_check_vbus_valid_from_ic(struct tcpc_device *tcpc);
+bool tcpci_check_vbus_valid_from_ic(struct tcpc_device *tcpc);
 bool tcpci_check_vsafe0v(struct tcpc_device *tcpc);
 int tcpci_alert_status_clear(struct tcpc_device *tcpc, uint32_t mask);
 int tcpci_fault_status_clear(struct tcpc_device *tcpc, uint8_t status);
@@ -90,6 +90,7 @@ int tcpci_notify_wd_status(struct tcpc_device *tcpc, bool water_detected);
 
 int tcpci_notify_fod_status(struct tcpc_device *tcpc);
 #if CONFIG_CABLE_TYPE_DETECTION
+int tcpci_reset_ctd(struct tcpc_device *tcpc);
 int tcpci_notify_cable_type(struct tcpc_device *tcpc);
 #endif /* CONFIG_CABLE_TYPE_DETECTION */
 int tcpci_notify_typec_otp(struct tcpc_device *tcpc);
@@ -118,10 +119,12 @@ int tcpci_transmit(struct tcpc_device *tcpc,
 
 int tcpci_set_bist_test_mode(struct tcpc_device *tcpc, bool en);
 
-#if CONFIG_USB_PD_RETRY_CRC_DISCARD
 int tcpci_retransmit(struct tcpc_device *tcpc);
-#endif	/* CONFIG_USB_PD_RETRY_CRC_DISCARD */
 #endif	/* CONFIG_USB_POWER_DELIVERY */
+
+#if CONFIG_TYPEC_DIRECT_CHARGE
+int tcpci_notify_direct_charge(struct tcpc_device *tcpc, bool en);
+#endif	/* CONFIG_TYPEC_DIRECT_CHARGE */
 
 int tcpci_notify_typec_state(struct tcpc_device *tcpc);
 

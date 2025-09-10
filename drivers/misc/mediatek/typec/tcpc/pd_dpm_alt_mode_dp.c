@@ -663,8 +663,7 @@ bool dp_dfp_u_notify_attention(struct pd_port *pd_port,
 		if (valid_connected)
 			valid_connected =
 				dp_dfp_u_request_dp_configuration(pd_port);
-		break;
-
+		fallthrough;
 	case DP_DFP_U_OPERATION:
 		tcpci_dp_attention(tcpc, dp_data->remote_status);
 		break;
@@ -1173,7 +1172,7 @@ bool dp_parse_svid_data(
 	uint32_t sig = DP_SIG_HBR3, receptacle = 0, usb2 = 0;
 	int i = 0;
 
-	np = of_find_node_by_name(
+	np = of_get_child_by_name(
 		pd_port->tcpc->dev.of_node, "displayport");
 	if (np == NULL) {
 		pr_err("%s get displayport data fail\n", __func__);
@@ -1182,13 +1181,13 @@ bool dp_parse_svid_data(
 
 	pr_info("dp, svid\n");
 	svid_data->svid = USB_SID_DISPLAYPORT;
-	ufp_np = of_find_node_by_name(np, "ufp-d");
+	ufp_np = of_get_child_by_name(np, "ufp-d");
 	if (!ufp_np)
-		ufp_np = of_find_node_by_name(np, "ufp_d");
+		ufp_np = of_get_child_by_name(np, "ufp_d");
 
-	dfp_np = of_find_node_by_name(np, "dfp-d");
+	dfp_np = of_get_child_by_name(np, "dfp-d");
 	if (!dfp_np)
-		dfp_np = of_find_node_by_name(np, "dfp_d");
+		dfp_np = of_get_child_by_name(np, "dfp_d");
 
 	if (ufp_np) {
 		pr_info("dp, ufp_np\n");

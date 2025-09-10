@@ -911,6 +911,11 @@ extern int tcpm_typec_error_recovery(struct tcpc_device *tcpc);
 extern int tcpm_typec_disable_function(
 	struct tcpc_device *tcpc, bool disable);
 
+#if CONFIG_TYPEC_DIRECT_CHARGE
+extern int tcpm_set_direct_charge_en(struct tcpc_device *tcpc, bool en);
+extern bool tcpm_inquire_during_direct_charge(struct tcpc_device *tcpc);
+#endif	/* CONFIG_TYPEC_DIRECT_CHARGE */
+
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
 extern int tcpm_check_pd_attached(struct tcpc_device *tcpc);
 
@@ -1114,10 +1119,6 @@ extern uint8_t tcpm_inquire_pd_charging_policy(struct tcpc_device *tcpc);
 extern uint8_t tcpm_inquire_pd_charging_policy_default(
 	struct tcpc_device *tcpc);
 
-#if CONFIG_USB_PD_DIRECT_CHARGE
-extern int tcpm_set_direct_charge_en(struct tcpc_device *tcpc, bool en);
-extern bool tcpm_inquire_during_direct_charge(struct tcpc_device *tcpc);
-#endif	/* CONFIG_USB_PD_DIRECT_CHARGE */
 extern int tcpm_set_exit_attached_snk_via_cc(struct tcpc_device *tcpc, bool en);
 extern bool tcpm_inquire_exit_attached_snk_via_cc(struct tcpc_device *tcpc);
 
@@ -1232,15 +1233,19 @@ extern int tcpm_update_pd_status_event(
 /* Empty function if configuration not defined */
 
 #define TCPC_CLASS_NA
+#define TYPEC_DIRECT_CHARGE_NA
 #define USB_POWER_DELIVERY_NA
 #define USB_PD_REV30_NA
-#define USB_PD_DIRECT_CHARGE_NA
 #define USB_PD_REV30_PPS_SINK_NA
 #define USB_PD_REV30_BAT_INFO_NA
 #define USB_PD_REV30_STATUS_NA
 
 #if IS_ENABLED(CONFIG_TCPC_CLASS)
 #undef TCPC_CLASS_NA
+
+#if CONFIG_TYPEC_DIRECT_CHARGE
+#undef TYPEC_DIRECT_CHARGE_NA
+#endif	/* CONFIG_TYPEC_DIRECT_CHARGE */
 
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
 #undef USB_POWER_DELIVERY_NA
@@ -1257,10 +1262,6 @@ extern int tcpm_update_pd_status_event(
 #undef USB_PD_REV30_STATUS_NA
 #endif	/* CONFIG_USB_PD_REV30_STATUS_LOCAL */
 #endif	/* CONFIG_USB_PD_REV30 */
-
-#if CONFIG_USB_PD_DIRECT_CHARGE
-#undef USB_PD_DIRECT_CHARGE_NA
-#endif	/* CONFIG_USB_PD_DIRECT_CHARGE */
 
 #endif	/* CONFIG_USB_POWER_DELIVERY */
 #endif	/* CONFIG_TCPC_CLASS */
@@ -1793,7 +1794,7 @@ static inline uint8_t tcpm_inquire_pd_charging_policy_default(
 }
 #endif	/* USB_POWER_DELIVERY_NA */
 
-#ifdef USB_PD_DIRECT_CHARGE_NA
+#ifdef TYPEC_DIRECT_CHARGE_NA
 static inline int tcpm_set_direct_charge_en(
 	struct tcpc_device *tcpc, bool en)
 {
@@ -1805,7 +1806,7 @@ static inline bool tcpm_inquire_during_direct_charge(
 {
 	return false;
 }
-#endif	/* USB_PD_DIRECT_CHARGE_NA */
+#endif	/* TYPEC_DIRECT_CHARGE_NA */
 
 #ifdef USB_POWER_DELIVERY_NA
 static inline int tcpm_set_exit_attached_snk_via_cc(
@@ -1912,9 +1913,9 @@ static inline int tcpm_update_pd_status_event(
 #endif	/* USB_PD_REV30_STATUS_NA */
 
 #undef TCPC_CLASS_NA
+#undef TYPEC_DIRECT_CHARGE_NA
 #undef USB_POWER_DELIVERY_NA
 #undef USB_PD_REV30_NA
-#undef USB_PD_DIRECT_CHARGE_NA
 #undef USB_PD_REV30_PPS_SINK_NA
 #undef USB_PD_REV30_BAT_INFO_NA
 #undef USB_PD_REV30_STATUS_NA

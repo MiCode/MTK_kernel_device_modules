@@ -89,6 +89,7 @@ void pe_prs_snk_src_source_on_entry(struct pd_port *pd_port)
 
 	pd_dpm_dynamic_enable_vconn(pd_port);
 	pd_dpm_prs_enable_power_source(pd_port, true);
+	pd_enable_pe_state_timer(pd_port, PD_TIMER_NEW_SOURCE);
 
 	/* Send PS_Rdy in process_event after source_on */
 }

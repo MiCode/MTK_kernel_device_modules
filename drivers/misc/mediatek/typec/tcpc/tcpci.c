@@ -3,7 +3,6 @@
  * Copyright (c) 2020 MediaTek Inc.
  */
 
-#if IS_ENABLED(CONFIG_TCPC_CLASS)
 #include "inc/tcpci.h"
 #include <linux/time.h>
 #include <linux/slab.h>
@@ -83,7 +82,7 @@ static int tcpc_check_notify_time(struct tcpc_device *tcpc,
 }
 #endif /* CONFIG_TCPC_NOTIFICATION_NON_BLOCKING */
 
-int tcpci_check_vbus_valid_from_ic(struct tcpc_device *tcpc)
+bool tcpci_check_vbus_valid_from_ic(struct tcpc_device *tcpc)
 {
 	int vbus_level = tcpc->vbus_level;
 
@@ -395,6 +394,14 @@ int tcpci_notify_fod_status(struct tcpc_device *tcpc)
 EXPORT_SYMBOL(tcpci_notify_fod_status);
 
 #if CONFIG_CABLE_TYPE_DETECTION
+int tcpci_reset_ctd(struct tcpc_device *tcpc)
+{
+	if (tcpc->ops->reset_ctd)
+		return tcpc->ops->reset_ctd(tcpc);
+	return 0;
+}
+EXPORT_SYMBOL(tcpci_reset_ctd);
+
 int tcpci_notify_cable_type(struct tcpc_device *tcpc)
 {
 	struct tcp_notify tcp_noti;
@@ -613,7 +620,6 @@ int tcpci_transmit(struct tcpc_device *tcpc,
 }
 EXPORT_SYMBOL(tcpci_transmit);
 
-#if CONFIG_USB_PD_RETRY_CRC_DISCARD
 int tcpci_retransmit(struct tcpc_device *tcpc)
 {
 	int ret = 0;
@@ -632,7 +638,6 @@ int tcpci_retransmit(struct tcpc_device *tcpc)
 	return ret;
 }
 EXPORT_SYMBOL(tcpci_retransmit);
-#endif	/* CONFIG_USB_PD_RETRY_CRC_DISCARD */
 
 int tcpci_set_bist_test_mode(struct tcpc_device *tcpc, bool en)
 {
@@ -643,6 +648,17 @@ int tcpci_set_bist_test_mode(struct tcpc_device *tcpc, bool en)
 }
 EXPORT_SYMBOL(tcpci_set_bist_test_mode);
 #endif	/* CONFIG_USB_POWER_DELIVERY */
+
+#if CONFIG_TYPEC_DIRECT_CHARGE
+int tcpci_notify_direct_charge(struct tcpc_device *tcpc, bool en)
+{
+	mutex_lock(&tcpc->access_lock);
+	tcpc->typec_during_direct_charge = en;
+	mutex_unlock(&tcpc->access_lock);
+
+	return 0;
+}
+#endif	/* CONFIG_TYPEC_DIRECT_CHARGE */
 
 int tcpci_notify_typec_state(struct tcpc_device *tcpc)
 {
@@ -1149,4 +1165,3 @@ EXPORT_SYMBOL(tcpci_notify_request_bat_info);
 #endif	/* CONFIG_USB_PD_REV30_BAT_INFO */
 #endif	/* CONFIG_USB_PD_REV30 */
 #endif	/* CONFIG_USB_POWER_DELIVERY */
-#endif	/* CONFIG_TCPC_CLASS */

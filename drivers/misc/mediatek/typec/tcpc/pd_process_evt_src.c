@@ -91,26 +91,6 @@ static inline bool pd_process_ctrl_msg(
 	struct pd_port *pd_port, struct pd_event *pd_event)
 
 {
-#if CONFIG_USB_PD_PARTNER_CTRL_MSG_FIRST
-	struct tcpc_device __maybe_unused *tcpc = pd_port->tcpc;
-
-	switch (pd_port->pe_state_curr) {
-	case PE_SRC_GET_SINK_CAP:
-
-#if CONFIG_USB_PD_PR_SWAP
-	case PE_DR_SRC_GET_SOURCE_CAP:
-#endif	/* CONFIG_USB_PD_PR_SWAP */
-		if (pd_event->msg >= PD_CTRL_GET_SOURCE_CAP &&
-			pd_event->msg <= PD_CTRL_VCONN_SWAP) {
-			PE_DBG("Port Partner Request First\n");
-			pd_port->pe_state_curr = PE_SRC_READY;
-			pd_disable_timer(
-				pd_port, PD_TIMER_SENDER_RESPONSE);
-		}
-		break;
-	}
-#endif	/* CONFIG_USB_PD_PARTNER_CTRL_MSG_FIRST */
-
 	switch (pd_event->msg) {
 	case PD_CTRL_GOOD_CRC:
 		return pd_process_ctrl_msg_good_crc(pd_port, pd_event);
@@ -388,14 +368,8 @@ static inline bool pd_process_timer_msg_source_start(
 			return false;
 	}
 
-	switch (pd_port->pe_state_curr) {
-	case PE_SRC_STARTUP:
-	case PE_SRC_CBL_SEND_SOFT_RESET:
-		PE_TRANSIT_STATE(pd_port, PE_SRC_SEND_CAPABILITIES);
-		return true;
-	}
-
-	return false;
+	PE_TRANSIT_STATE(pd_port, PE_SRC_SEND_CAPABILITIES);
+	return true;
 };
 
 static inline bool pd_process_timer_msg_source_cap(

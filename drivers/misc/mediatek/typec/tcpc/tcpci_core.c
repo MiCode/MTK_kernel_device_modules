@@ -4,7 +4,6 @@
  */
 
 #include <linux/module.h>
-#if IS_ENABLED(CONFIG_TCPC_CLASS)
 #include <linux/init.h>
 #include <linux/device.h>
 #include <linux/version.h>
@@ -26,7 +25,7 @@
 #endif /* CONFIG_USB_POWER_DELIVERY */
 #include "inc/rt-regmap.h"
 
-#define TCPC_CORE_VERSION		"2.0.31_MTK"
+#define TCPC_CORE_VERSION		"2.0.32_MTK"
 
 static ssize_t tcpc_show_property(struct device *dev,
 				  struct device_attribute *attr, char *buf);
@@ -428,7 +427,7 @@ struct tcpc_device *tcpc_device_register(struct device *parent,
 
 	ret = device_register(&tcpc->dev);
 	if (ret) {
-		kfree(tcpc);
+		devm_kfree(parent, tcpc);
 		return ERR_PTR(ret);
 	}
 	device_init_wakeup(&tcpc->dev, true);
@@ -936,10 +935,29 @@ void __weak sched_set_fifo(struct task_struct *p)
 MODULE_DESCRIPTION("Richtek TypeC Port Control Core");
 MODULE_AUTHOR("Jeff Chang <jeff_chang@richtek.com>");
 MODULE_VERSION(TCPC_CORE_VERSION);
-#endif	/* CONFIG_TCPC_CLASS */
 MODULE_LICENSE("GPL");
 
 /* Release Version
+ * 2.0.32_MTK
+ * (1) Let PE go back to ready states when tx failed
+ * (2) Increase CONFIG_USB_PD_VCONN_READY_TOUT from 5ms to 10ms
+ * (3) Increase the priority of irq_thread
+ * (4) Fix and revise I2C/IO transactions when system resumed
+ * (5) Revise WD
+ * (6) Design new rx_pending2
+ * (7) Fix OTP onoff sequence
+ * (8) Implement tcpci_popcount
+ * (9) Reset CTD in tcpc_typec_init()
+ * (10) Revise SinkTxNG
+ * (11) Unbind direct_charge with PD
+ * (12) Revise PD Tx discard flow
+ * (13) Revise timer-related flows
+ * (14) Remove VDM postpone related flows
+ * (15) Enable UFP flow delay back with smaller delay time
+ * (16) Revise of parsing function calls
+ * (17) Implement tNewSrc when PR_Swap to Source
+ * (18) Implement the feature of Tx Failed Pending
+ *
  * 2.0.31_MTK
  * (1) Do I2C/IO transactions when system resumed
  * (2) Reduce log printing

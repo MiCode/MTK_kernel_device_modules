@@ -4,7 +4,6 @@
  */
 
 #include <linux/module.h>
-#if IS_ENABLED(CONFIG_TCPC_CLASS)
 #include <linux/kernel.h>
 #include <linux/of.h>
 #include <linux/platform_device.h>
@@ -58,7 +57,7 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 	uint16_t pd_revision = 0x0316;
 	uint32_t partner_vdos[VDO_MAX_NR];
 	struct typec_displayport_data dp_data = {.status = 0, .conf = 0};
-	struct typec_mux_state state = {.mode = 0, .data = &dp_data};
+	struct typec_mux_state state = {.mode = event, .data = &dp_data};
 
 	mt_dbg(rpmd->dev, "event = %lu, idx = %d\n", event, idx);
 
@@ -755,7 +754,6 @@ module_exit(rt_pd_manager_exit);
 MODULE_AUTHOR("Jeff Chang");
 MODULE_DESCRIPTION("Richtek pd manager driver");
 MODULE_VERSION(RT_PD_MANAGER_VERSION);
-#endif	/* CONFIG_TCPC_CLASS */
 MODULE_LICENSE("GPL");
 
 /*

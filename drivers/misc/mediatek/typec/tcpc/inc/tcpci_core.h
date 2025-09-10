@@ -61,10 +61,6 @@
 		(TYPEC_INFO_ENABLE)|\
 		(DP_INFO_ENABLE)|(DP_DBG_ENABLE)|(TCPM_DBG_ENABLE))
 
-/* Disable VDM DBG Msg */
-#define PE_STATE_INFO_VDM_DIS	0
-#define PE_EVT_INFO_VDM_DIS	0
-
 #define PD_WARN_ON(x)	WARN_ON(x)
 
 struct tcpc_device;
@@ -162,6 +158,12 @@ enum tcpm_rx_cap_type {
 	TCPC_RX_CAP_CABLE_RESET = 1 << 6,
 };
 
+enum pd_failed_discard_pending {
+	PD_PENDING_NONE = 0,
+	PD_FAILED_PENDING,
+	PD_DISCARD_PENDING,
+};
+
 struct tcpc_ops {
 	int (*init)(struct tcpc_device *tcpc, bool sw_reset);
 	int (*init_alert_mask)(struct tcpc_device *tcpc);
@@ -195,6 +197,10 @@ struct tcpc_ops {
 	int (*set_force_discharge)(struct tcpc_device *tcpc, bool en, int mv);
 #endif	/* CONFIG_TYPEC_CAP_FORCE_DISCHARGE */
 
+#if CONFIG_CABLE_TYPE_DETECTION
+	int (*reset_ctd)(struct tcpc_device *tcpc);
+#endif /* CONFIG_CABLE_TYPE_DETECTION */
+
 	void (*set_command)(struct tcpc_device *tcpc, u8 cmd);
 
 	int (*enable_io_boost)(struct tcpc_device *tcpc, bool en);
@@ -211,10 +217,7 @@ struct tcpc_ops {
 			uint16_t header, const uint32_t *data);
 	int (*set_bist_test_mode)(struct tcpc_device *tcpc, bool en);
 
-#if CONFIG_USB_PD_RETRY_CRC_DISCARD
 	int (*retransmit)(struct tcpc_device *tcpc);
-#endif	/* CONFIG_USB_PD_RETRY_CRC_DISCARD */
-
 #endif	/* CONFIG_USB_POWER_DELIVERY */
 };
 
@@ -252,7 +255,6 @@ struct tcpc_device {
 	spinlock_t timer_tick_lock;
 	atomic_t pending_event;
 	atomic_t suspend_pending;
-	atomic_t is_suspended;
 	uint64_t timer_tick;
 	wait_queue_head_t event_wait_que;
 	wait_queue_head_t timer_wait_que;
@@ -303,6 +305,10 @@ struct tcpc_device {
 
 	uint32_t tcpc_flags;
 
+#if CONFIG_TYPEC_DIRECT_CHARGE
+	bool typec_during_direct_charge;
+#endif	/* CONFIG_TYPEC_DIRECT_CHARGE */
+
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
 	u64 io_time_start;
 	u64 io_time_diff;
@@ -311,15 +317,6 @@ struct tcpc_device {
 	uint8_t pd_event_count;
 	uint8_t pd_event_head_index;
 	uint8_t pd_msg_buffer_allocated;
-
-	bool pd_pending_vdm_event;
-	bool pd_pending_vdm_reset;
-	bool pd_pending_vdm_good_crc;
-	bool pd_pending_vdm_attention;
-	bool pd_postpone_vdm_timeout;
-
-	struct pd_msg pd_attention_vdm_msg;
-	struct pd_event pd_vdm_event;
 
 	struct pd_msg pd_msg_buffer[PD_MSG_BUF_SIZE];
 	struct pd_event pd_event_ring_buffer[PD_EVENT_BUF_SIZE];
@@ -339,13 +336,11 @@ struct tcpc_device {
 	uint8_t pd_transmit_state;
 	uint8_t pd_wait_vbus_once;
 
-#if CONFIG_USB_PD_DIRECT_CHARGE
-	bool pd_during_direct_charge;
-#endif	/* CONFIG_USB_PD_DIRECT_CHARGE */
 	bool pd_exit_attached_snk_via_cc;
-#if CONFIG_USB_PD_RETRY_CRC_DISCARD
-	bool pd_discard_pending;
-#endif	/* CONFIG_USB_PD_RETRY_CRC_DISCARD */
+	enum pd_failed_discard_pending pd_failed_discard_pending;
+#if CONFIG_USB_PD_CHECK_RX_PENDING_IF_SRTOUT
+	bool pd_rx_pending;
+#endif	/* CONFIG_USB_PD_CHECK_RX_PENDING_IF_SRTOUT */
 
 	uint8_t pd_retry_count;
 
@@ -383,9 +378,7 @@ struct tcpc_device {
 	uint8_t sink_vbus_type;
 
 	int bootmode;
-#if CONFIG_WATER_DETECTION
-	bool wd_in_kpoc;
-#endif /* CONFIG_WATER_DETECTION */
+
 	enum tcpc_fod_status typec_fod;
 #if CONFIG_CABLE_TYPE_DETECTION
 	enum tcpc_cable_type typec_cable_type;

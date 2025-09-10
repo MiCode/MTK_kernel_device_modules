@@ -32,6 +32,7 @@ enum pd_pe_state_machine {
 #define PE_STATE_FLAG_BACK_READY_IF_RECV_GOOD_CRC	(1<<9)
 #define PE_STATE_FLAG_BACK_READY_IF_DPM_ACK		(1<<10)
 #define PE_STATE_FLAG_DPM_ACK_IMMEDIATELY		(1<<11)
+#define PE_STATE_FLAG_ENABLE_VDM_RESPONSE_TIMER		(1<<12)
 
 #define PE_STATE_DISCARD_AND_UNEXPECTED(pd_port) {\
 	pd_port->pe_data.pe_state_flags = \
@@ -42,10 +43,7 @@ enum pd_pe_state_machine {
 	pd_port->pe_data.pe_state_flags = \
 	PE_STATE_FLAG_ENABLE_SENDER_RESPONSE_TIMER; }
 
-#define PE_STATE_WAIT_MSG(pd_port) {\
-	pd_port->pe_data.pe_state_flags = \
-	PE_STATE_FLAG_BACK_READY_IF_SR_TIMER_TOUT |\
-	PE_STATE_FLAG_ENABLE_SENDER_RESPONSE_TIMER; }
+#define PE_STATE_WAIT_MSG(pd_port) PE_STATE_WAIT_MSG_OR_TX_FAILED(pd_port)
 
 #define PE_STATE_WAIT_MSG_HRESET_IF_TOUT(pd_port) {\
 	pd_port->pe_data.pe_state_flags = \
@@ -113,28 +111,23 @@ enum pd_pe_state_machine {
 	pd_port->pe_data.pe_state_flags |= \
 	PE_STATE_FLAG_DPM_ACK_IMMEDIATELY; }
 
-#define VDM_STATE_FLAG_ENABLE_VDM_RESPONSE_TIMER	(1<<0)
-#define VDM_STATE_FLAG_DPM_ACK_IMMEDIATELY		(1<<1)
-#define VDM_STATE_FLAG_BACK_READY_IF_DPM_ACK		(1<<2)
-#define VDM_STATE_FLAG_BACK_READY_IF_RECV_GOOD_CRC	(1<<3)
-
 #define VDM_STATE_DPM_INFORMED(pd_port)	{\
-	pd_port->pe_data.vdm_state_flags = \
-	VDM_STATE_FLAG_BACK_READY_IF_DPM_ACK |\
-	VDM_STATE_FLAG_DPM_ACK_IMMEDIATELY; }
+	pd_port->pe_data.pe_state_flags = \
+	PE_STATE_FLAG_BACK_READY_IF_DPM_ACK |\
+	PE_STATE_FLAG_DPM_ACK_IMMEDIATELY; }
 
 #define VDM_STATE_REPLY_VDM_REQUEST(pd_port)	{\
-	pd_port->pe_data.vdm_state_flags = \
-	VDM_STATE_FLAG_BACK_READY_IF_RECV_GOOD_CRC; }
+	pd_port->pe_data.pe_state_flags = \
+	PE_STATE_FLAG_BACK_READY_IF_RECV_GOOD_CRC; }
 
 #define VDM_STATE_NORESP_CMD(pd_port)	{\
-	pd_port->pe_data.vdm_state_flags = \
-	VDM_STATE_FLAG_BACK_READY_IF_RECV_GOOD_CRC; }
+	pd_port->pe_data.pe_state_flags = \
+	PE_STATE_FLAG_BACK_READY_IF_RECV_GOOD_CRC; }
 
 #define VDM_STATE_RESPONSE_CMD(pd_port, timer_id)	{\
-	pd_port->pe_data.vdm_state_flags = \
-	VDM_STATE_FLAG_ENABLE_VDM_RESPONSE_TIMER; \
-	pd_port->pe_data.vdm_state_timer = timer_id; }
+	pd_port->pe_data.pe_state_flags = \
+	PE_STATE_FLAG_ENABLE_VDM_RESPONSE_TIMER; \
+	pd_port->pe_data.pe_state_timer = timer_id; }
 
 static inline bool pd_check_pe_during_hard_reset(struct pd_port *pd_port)
 {

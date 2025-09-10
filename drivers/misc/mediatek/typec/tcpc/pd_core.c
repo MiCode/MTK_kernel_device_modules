@@ -102,7 +102,7 @@ static inline int pd_parse_pdata_bats(
 
 	for (i = 0; i < pd_port->bat_nr; i++) {
 		snprintf(temp_string, 26, "bat-info%d", i);
-		sub = of_find_node_by_name(np, temp_string);
+		sub = of_get_child_by_name(np, temp_string);
 		if (!sub) {
 			pr_err("%s get sub bat node fail\n", __func__);
 			return -ENODEV;
@@ -210,7 +210,7 @@ static inline int pd_parse_pdata_countries(
 
 	for (i = 0; i < pd_port->country_nr; i++) {
 		snprintf(temp_string, 26, "country%d", i);
-		sub = of_find_node_by_name(np, temp_string);
+		sub = of_get_child_by_name(np, temp_string);
 		if (!sub) {
 			pr_err("%s get sub country node fail\n",
 				__func__);
@@ -378,7 +378,7 @@ static int pd_parse_pdata(struct pd_port *pd_port)
 	int ret = 0, i;
 
 	pr_info("%s\n", __func__);
-	np = of_find_node_by_name(pd_port->tcpc->dev.of_node, "pd-data");
+	np = of_get_child_by_name(pd_port->tcpc->dev.of_node, "pd-data");
 
 	if (np) {
 		ret = of_property_read_u32(np, "pd,source-pdo-size",
@@ -511,9 +511,9 @@ static void pd_core_power_flags_init(struct pd_port *pd_port)
 	struct pd_port_power_caps *src_cap =
 				&pd_port->local_src_cap_default;
 
-	np = of_find_node_by_name(pd_port->tcpc->dev.of_node, "dpm-caps");
+	np = of_get_child_by_name(pd_port->tcpc->dev.of_node, "dpm-caps");
 	if (!np)
-		np = of_find_node_by_name(pd_port->tcpc->dev.of_node, "dpm_caps");
+		np = of_get_child_by_name(pd_port->tcpc->dev.of_node, "dpm_caps");
 
 	for (i = 0; i < ARRAY_SIZE(supported_dpm_caps); i++) {
 		if (of_property_read_bool(np, supported_dpm_caps[i].prop_name) ||
@@ -580,7 +580,6 @@ static void fg_bat_absent_work(struct work_struct *work)
 void pe_data_init(struct pe_data *pe_data)
 {
 	pe_data->pe_state_timer = PD_TIMER_NR;
-	pe_data->vdm_state_timer = PD_TIMER_NR;
 }
 
 int pd_core_init(struct tcpc_device *tcpc)
@@ -597,7 +596,6 @@ int pd_core_init(struct tcpc_device *tcpc)
 #endif	/* CONFIG_USB_PD_BLOCK_TCPM */
 
 	pd_port->tcpc = tcpc;
-	pd_port->pe_pd_state = PE_IDLE2;
 
 	pe_data_init(pe_data);
 

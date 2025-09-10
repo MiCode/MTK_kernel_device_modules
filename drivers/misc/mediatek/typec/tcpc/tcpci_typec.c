@@ -3,7 +3,6 @@
  * Copyright (c) 2020 MediaTek Inc.
  */
 
-#if IS_ENABLED(CONFIG_TCPC_CLASS)
 #include <linux/delay.h>
 #include <linux/cpu.h>
 #include <linux/power_supply.h>
@@ -887,29 +886,26 @@ static inline bool typec_cc_change_source_entry(struct tcpc_device *tcpc)
 static inline bool typec_attached_snk_cc_change(struct tcpc_device *tcpc)
 {
 	uint8_t cc_res = typec_get_cc_res();
-	bool changed = false;
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
 	struct pd_port *pd_port = &tcpc->pd_port;
 #endif	/* CONFIG_USB_POWER_DELIVERY */
 
-	if (cc_res != tcpc->typec_remote_rp_level) {
-		TYPEC_DBG("RpLvl Change\n");
-		tcpc->typec_remote_rp_level = cc_res;
-		changed = true;
-	}
+	if (cc_res == tcpc->typec_remote_rp_level)
+		return true;
+
+	TYPEC_DBG("RpLvl Change\n");
+	tcpc->typec_remote_rp_level = cc_res;
 
 #if CONFIG_USB_PD_REV30
-	if (pd_port->pe_data.pd_connected && pd_check_rev30(pd_port) &&
-	    cc_res == TYPEC_CC_VOLT_SNK_3_0)
+	if (pd_port->pe_data.pd_connected && pd_check_rev30(pd_port))
 		pd_put_sink_tx_event(tcpc, cc_res);
 #endif	/* CONFIG_USB_PD_REV30 */
 
-	if (changed)
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
-		if (!pd_port->pe_data.pd_connected)
+	if (!pd_port->pe_data.pd_connected)
 #endif	/* CONFIG_USB_POWER_DELIVERY */
-			tcpci_sink_vbus(tcpc,
-				TCP_VBUS_CTRL_TYPEC, TCPC_VBUS_SINK_5V, -1);
+		tcpci_sink_vbus(tcpc, TCP_VBUS_CTRL_TYPEC,
+				TCPC_VBUS_SINK_5V, -1);
 
 	return true;
 }
@@ -1004,10 +1000,6 @@ static inline bool typec_handle_cc_changed_entry(struct tcpc_device *tcpc)
 static inline void typec_attach_wait_entry(struct tcpc_device *tcpc)
 {
 	bool as_sink = tcpc_typec_is_act_as_sink_role(tcpc);
-#if CONFIG_USB_PD_REV30
-	uint8_t cc_res = typec_get_cc_res();
-	struct pd_port *pd_port = &tcpc->pd_port;
-#endif	/* CONFIG_USB_PD_REV30 */
 
 	switch (tcpc->typec_state) {
 	case typec_attached_src:
@@ -1027,11 +1019,6 @@ static inline void typec_attach_wait_entry(struct tcpc_device *tcpc)
 #endif	/* CONFIG_TYPEC_CAP_DBGACC_SNK */
 	case typec_attached_custom_src:
 		TYPEC_DBG("RpLvl Alert\n");
-#if CONFIG_USB_PD_REV30
-		if (pd_port->pe_data.pd_connected && pd_check_rev30(pd_port) &&
-		    cc_res != TYPEC_CC_VOLT_SNK_3_0)
-			pd_put_sink_tx_event(tcpc, cc_res);
-#endif	/* CONFIG_USB_PD_REV30 */
 		tcpc_enable_timer(tcpc, TYPEC_TIMER_PDDEBOUNCE);
 		return;
 
@@ -1085,15 +1072,13 @@ static inline void typec_attach_wait_entry(struct tcpc_device *tcpc)
 
 static inline int typec_attached_snk_cc_detach(struct tcpc_device *tcpc)
 {
-#if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
-#if CONFIG_USB_PD_DIRECT_CHARGE
+#if CONFIG_TYPEC_DIRECT_CHARGE
 	if (typec_is_cc_open()) {
 		mutex_lock(&tcpc->access_lock);
-		tcpc->pd_during_direct_charge = false;
+		tcpc->typec_during_direct_charge = false;
 		mutex_unlock(&tcpc->access_lock);
 	}
-#endif	/* CONFIG_USB_PD_DIRECT_CHARGE */
-#endif	/* CONFIG_USB_POWER_DELIVERY */
+#endif	/* CONFIG_TYPEC_DIRECT_CHARGE */
 	tcpc_enable_timer(tcpc, TYPEC_TIMER_PDDEBOUNCE);
 	return 0;
 }
@@ -1432,17 +1417,15 @@ int tcpc_typec_handle_timeout(struct tcpc_device *tcpc, uint32_t timer_id)
 {
 	int ret = 0;
 
-	if (timer_id >= TYPEC_TIMER_START_ID &&
-	    tcpc_is_timer_active(tcpc, TYPEC_TIMER_START_ID, PD_TIMER_NR)) {
-		TYPEC_DBG("[Type-C] Ignore timer_evt\n");
-		return 0;
-	}
-
 	if (timer_id == TYPEC_TIMER_ERROR_RECOVERY)
 		return typec_handle_error_recovery_timeout(tcpc);
 	else if (timer_id == TYPEC_RT_TIMER_STATE_CHANGE)
 		return typec_alert_attach_state_change(tcpc);
-	else if (tcpc_typec_is_cc_open_state(tcpc)) {
+	else if (timer_id >= TYPEC_TIMER_START_ID &&
+		tcpc_is_timer_active(tcpc, TYPEC_TIMER_START_ID, PD_TIMER_NR)) {
+		TYPEC_DBG("[Type-C] Ignore timer_evt\n");
+		return 0;
+	} else if (tcpc_typec_is_cc_open_state(tcpc)) {
 		TYPEC_DBG("[Open] Ignore timer_evt\n");
 		return 0;
 	}
@@ -1498,7 +1481,7 @@ int tcpc_typec_handle_timeout(struct tcpc_device *tcpc, uint32_t timer_id)
 #endif	/* CONFIG_TYPEC_ATTACHED_SRC_SAFE0V_DELAY */
 
 	case TYPEC_RT_TIMER_LOW_POWER_MODE:
-		typec_enter_low_power_mode(tcpc);
+		ret = typec_enter_low_power_mode(tcpc);
 		break;
 
 #if CONFIG_TYPEC_ATTACHED_SRC_SAFE0V_TIMEOUT
@@ -1512,24 +1495,20 @@ int tcpc_typec_handle_timeout(struct tcpc_device *tcpc, uint32_t timer_id)
 
 #if CONFIG_TYPEC_CAP_ROLE_SWAP
 	case TYPEC_RT_TIMER_ROLE_SWAP_STOP:
-		typec_handle_role_swap_stop(tcpc);
+		ret = typec_handle_role_swap_stop(tcpc);
 		break;
 #endif	/* CONFIG_TYPEC_CAP_ROLE_SWAP */
 
 	case TYPEC_RT_TIMER_DISCHARGE:
-		if (!tcpc->typec_power_ctrl) {
-			mutex_lock(&tcpc->access_lock);
-			tcpci_enable_discharge(tcpc, false, 0);
-			mutex_unlock(&tcpc->access_lock);
-		}
+		mutex_lock(&tcpc->access_lock);
+		ret = tcpci_enable_discharge(tcpc, false, 0);
+		mutex_unlock(&tcpc->access_lock);
 		break;
 
 #if CONFIG_WATER_DETECTION
 	case TYPEC_RT_TIMER_WD_IN_KPOC:
-		if (tcpc->wd_in_kpoc) {
-			tcpci_report_usb_port_detached(tcpc);
-			ret = tcpci_set_water_protection(tcpc, true);
-		}
+		ret = tcpci_report_usb_port_detached(tcpc);
+		ret |= tcpci_set_water_protection(tcpc, true);
 		break;
 #endif /* CONFIG_WATER_DETECTION */
 	}
@@ -1567,14 +1546,13 @@ static inline int typec_handle_vbus_present(struct tcpc_device *tcpc)
 
 static inline int typec_attached_snk_vbus_absent(struct tcpc_device *tcpc)
 {
-#if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
-#if CONFIG_USB_PD_DIRECT_CHARGE
-	if (tcpc->pd_during_direct_charge && !tcpci_check_vsafe0v(tcpc)) {
+#if CONFIG_TYPEC_DIRECT_CHARGE
+	if (tcpc->typec_during_direct_charge && !tcpci_check_vsafe0v(tcpc)) {
 		TYPEC_DBG("Ignore vbus_absent(snk), DirectCharge\n");
 		return 0;
 	}
-#endif	/* CONFIG_USB_PD_DIRECT_CHARGE */
-
+#endif	/* CONFIG_TYPEC_DIRECT_CHARGE */
+#if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
 	if (tcpc->pd_wait_hard_reset_complete &&
 	    typec_get_cc_res() != TYPEC_CC_VOLT_OPEN) {
 		TYPEC_DBG("Ignore vbus_absent(snk), HReset & CC!=0\n");
@@ -1905,6 +1883,9 @@ int tcpc_typec_init(struct tcpc_device *tcpc, uint8_t typec_role)
 	if (!typec_is_cc_no_res()) {
 		tcpci_set_cc(tcpc, TYPEC_CC_OPEN);
 		usleep_range(20000, 30000);
+#if CONFIG_CABLE_TYPE_DETECTION
+		tcpci_reset_ctd(tcpc);
+#endif /* CONFIG_CABLE_TYPE_DETECTION */
 	}
 	typec_unattached_entry(tcpc);
 #if CONFIG_TYPEC_CAP_NORP_SRC
@@ -1969,7 +1950,6 @@ repeat:
 	if (i > 0)
 		tcpci_lock_typec(tcpc);
 	if (tcpc->bootmode == 8 || tcpc->bootmode == 9) {
-		tcpc->wd_in_kpoc = wd;
 		if (wd) {
 			tcpc_enable_timer(tcpc, TYPEC_RT_TIMER_WD_IN_KPOC);
 		} else {
@@ -2100,4 +2080,3 @@ out:
 	return ret;
 }
 EXPORT_SYMBOL(tcpc_typec_handle_otp);
-#endif	/* CONFIG_TCPC_CLASS */

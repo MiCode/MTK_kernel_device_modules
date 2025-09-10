@@ -121,7 +121,7 @@ static inline bool pd_process_data_msg_bist(
 {
 	struct tcpc_device __maybe_unused *tcpc = pd_port->tcpc;
 
-	if (pd_port->request_v > 5000) {
+	if (pd_port->request_v != 5000) {
 		PE_INFO("bist_not_vsafe5v\n");
 		return false;
 	}
@@ -141,8 +141,6 @@ static inline bool pd_process_data_msg_bist(
 		PE_DBG("Unsupport BIST\n");
 		return false;
 	}
-
-	return false;
 }
 
 /*
@@ -204,7 +202,7 @@ static inline bool pd_process_ctrl_msg_good_crc(
 
 	if (pd_port->pe_data.pe_state_flags &
 		PE_STATE_FLAG_ENABLE_SENDER_RESPONSE_TIMER)
-		pd_enable_timer(pd_port, PD_TIMER_SENDER_RESPONSE);
+		pd_enable_pe_state_timer(pd_port, PD_TIMER_SENDER_RESPONSE);
 
 	return false;
 }
@@ -296,7 +294,8 @@ static inline bool pd_process_ctrl_msg(
 			PE_STATE_FLAG_BACK_READY_IF_SR_TIMER_TOUT) {
 			pe_transit_ready_state(pd_port);
 			return true;
-		} else if (pd_port->pe_data.vdm_state_timer < PD_TIMER_NR) {
+		} else if (pd_port->pe_data.pe_state_flags &
+			PE_STATE_FLAG_ENABLE_VDM_RESPONSE_TIMER) {
 			vdm_put_pe_event(pd_port->tcpc, PD_PE_VDM_NOT_SUPPORT);
 		}
 		break;
@@ -550,11 +549,9 @@ static inline bool pd_process_hw_msg(
 	case PD_HW_TX_FAILED:
 	case PD_HW_TX_DISCARD:
 		return pd_process_hw_msg_tx_failed_discard(pd_port, pd_event);
-#if CONFIG_USB_PD_RETRY_CRC_DISCARD
 	case PD_HW_TX_RETRANSMIT:
 		tcpci_retransmit(pd_port->tcpc);
 		return true;
-#endif	/* CONFIG_USB_PD_RETRY_CRC_DISCARD */
 
 	default:
 		return false;
@@ -570,14 +567,22 @@ static inline bool pd_check_rx_pending(struct pd_port *pd_port)
 {
 	bool pending = false;
 	struct tcpc_device __maybe_unused *tcpc = pd_port->tcpc;
+	uint32_t alert_status = 0, alert_mask = 0;
 
 	if (mutex_is_locked(&tcpc->rxbuf_lock)) {
 		PE_INFO("rx_pending\n");
 		pending = true;
+	} else if (tcpci_get_alert_status_and_mask(tcpc, &alert_status,
+						   &alert_mask) >= 0) {
+		alert_status &= alert_mask;
+		if (alert_status & TCPC_V10_REG_ALERT_RX_STATUS) {
+			PE_INFO("rx_pending2\n");
+			pending = true;
+		}
 	}
-
+	tcpc->pd_rx_pending = pending;
 	if (pending)
-		pd_enable_timer(pd_port, PD_TIMER_SENDER_RESPONSE);
+		pd_enable_pe_state_timer(pd_port, PD_TIMER_SENDER_RESPONSE);
 
 	return pending;
 }

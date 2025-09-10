@@ -58,26 +58,6 @@ static bool pd_process_ctrl_msg_get_source_cap(
 static inline bool pd_process_ctrl_msg(
 	struct pd_port *pd_port, struct pd_event *pd_event)
 {
-#if CONFIG_USB_PD_PARTNER_CTRL_MSG_FIRST
-	struct tcpc_device __maybe_unused *tcpc = pd_port->tcpc;
-
-	switch (pd_port->pe_state_curr) {
-	case PE_SNK_GET_SOURCE_CAP:
-
-#if CONFIG_USB_PD_PR_SWAP
-	case PE_DR_SNK_GET_SINK_CAP:
-#endif	/* CONFIG_USB_PD_PR_SWAP */
-		if (pd_event->msg >= PD_CTRL_GET_SOURCE_CAP &&
-			pd_event->msg <= PD_CTRL_VCONN_SWAP) {
-			PE_DBG("Port Partner Request First\n");
-			pd_port->pe_state_curr = PE_SNK_READY;
-			pd_disable_timer(
-				pd_port, PD_TIMER_SENDER_RESPONSE);
-		}
-		break;
-	}
-#endif	/* CONFIG_USB_PD_PARTNER_CTRL_MSG_FIRST */
-
 	switch (pd_event->msg) {
 	case PD_CTRL_GOOD_CRC:
 		return PE_MAKE_STATE_TRANSIT_SINGLE(
@@ -390,6 +370,7 @@ static inline void pd_report_typec_only_charger(struct pd_port *pd_port)
 	pd_dpm_sink_vbus(pd_port, true);
 	pd_set_rx_enable(pd_port, PD_RX_CAP_PE_IDLE);
 	pd_notify_pe_hard_reset_completed(pd_port);
+	pd_notify_tcp_event_2nd_result(pd_port, TCPM_ERROR_NO_PD_CONNECTED);
 	pd_update_connect_state(pd_port, state);
 }
 

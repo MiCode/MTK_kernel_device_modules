@@ -462,11 +462,6 @@ static inline void dpm_update_request(
 		dpm_update_request_not_bat(pd_port, req_info, flags);
 	pd_port->prev_src_pdo = pd_port->last_src_pdo;
 	pd_port->last_src_pdo = src_cap->pdos[req_info->pos-1];
-
-#if CONFIG_USB_PD_DIRECT_CHARGE
-	pd_notify_pe_direct_charge(pd_port,
-			req_info->vmin < TCPC_VBUS_SINK_5V);
-#endif	/* CONFIG_USB_PD_DIRECT_CHARGE */
 }
 
 int pd_dpm_update_tcp_request(struct pd_port *pd_port,
@@ -656,7 +651,9 @@ void pd_dpm_snk_standby_power(struct pd_port *pd_port)
 
 void pd_dpm_snk_transition_power(struct pd_port *pd_port)
 {
-	tcpci_sink_vbus(pd_port->tcpc, TCP_VBUS_CTRL_REQUEST,
+	struct tcpc_device __maybe_unused *tcpc = pd_port->tcpc;
+
+	tcpci_sink_vbus(tcpc, TCP_VBUS_CTRL_REQUEST,
 		pd_port->request_v_new, pd_port->request_i_new);
 
 	pd_port->request_v = pd_port->request_v_new;
@@ -667,6 +664,11 @@ void pd_dpm_snk_transition_power(struct pd_port *pd_port)
 		PDO_TYPE(pd_port->last_src_pdo) == PDO_TYPE_APDO;
 	pd_dpm_start_pps_request(pd_port, pd_port->request_apdo);
 #endif	/* CONFIG_USB_PD_REV30_PPS_SINK */
+
+#if CONFIG_TYPEC_DIRECT_CHARGE
+	tcpci_notify_direct_charge(tcpc,
+			pd_port->request_v < TCPC_VBUS_SINK_5V);
+#endif	/* CONFIG_TYPEC_DIRECT_CHARGE */
 }
 
 void pd_dpm_snk_hard_reset(struct pd_port *pd_port)

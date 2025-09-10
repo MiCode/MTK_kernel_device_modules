@@ -176,6 +176,11 @@ static inline bool pd_process_timer_msg(
 			PE_PRS_SRC_SNK_TRANSITION_TO_OFF,
 			PE_PRS_SRC_HARD_RESET);
 
+	case PD_TIMER_NEW_SOURCE:
+		return PE_MAKE_STATE_TRANSIT_SINGLE(
+			PE_PRS_SNK_SRC_SOURCE_ON,
+			PE_PRS_SRC_HARD_RESET);
+
 	default:
 		return false;
 	}

@@ -4,7 +4,6 @@
  */
 
 #include <linux/module.h>
-#if IS_ENABLED(CONFIG_TCPC_CLASS)
 #include <linux/delay.h>
 #include <linux/device.h>
 #include <linux/gpio/consumer.h>
@@ -36,7 +35,7 @@ static int mt6370_write_helper(struct mt6370_tcpc_data *ddata, u32 reg,
 	int ret = 0;
 
 	atomic_inc(&tcpc->suspend_pending);
-	wait_event(tcpc->resume_wait_que, !atomic_read(&tcpc->is_suspended) ||
+	wait_event(tcpc->resume_wait_que,
 		   !ddata->dev->parent->power.is_suspended);
 	ret = regmap_bulk_write(ddata->rmap, reg, data, count);
 	atomic_dec_if_positive(&tcpc->suspend_pending);
@@ -50,7 +49,7 @@ static int mt6370_read_helper(struct mt6370_tcpc_data *ddata, u32 reg,
 	int ret = 0;
 
 	atomic_inc(&tcpc->suspend_pending);
-	wait_event(tcpc->resume_wait_que, !atomic_read(&tcpc->is_suspended) ||
+	wait_event(tcpc->resume_wait_que,
 		   !ddata->dev->parent->power.is_suspended);
 	ret = regmap_bulk_read(ddata->rmap, reg, data, count);
 	atomic_dec_if_positive(&tcpc->suspend_pending);
@@ -179,12 +178,15 @@ static inline int mt6370_init_alert_mask(struct mt6370_tcpc_data *ddata)
 static irqreturn_t mt6370_intr_handler(int irq, void *data)
 {
 	struct mt6370_tcpc_data *ddata = data;
+	int ret = 0;
 
 	MT6370_INFO("++\n");
 	pm_stay_awake(ddata->dev);
-	tcpci_lock_typec(ddata->tcpc);
-	tcpci_alert(ddata->tcpc, false);
-	tcpci_unlock_typec(ddata->tcpc);
+	do {
+		tcpci_lock_typec(ddata->tcpc);
+		ret = tcpci_alert(ddata->tcpc, false);
+		tcpci_unlock_typec(ddata->tcpc);
+	} while (ret != -ENODATA);
 	pm_relax(ddata->dev);
 	MT6370_INFO("--\n");
 
@@ -758,30 +760,34 @@ static int mt6370_set_rx_enable(struct tcpc_device *tcpc, u8 enable)
 static int mt6370_get_message(struct tcpc_device *tcpc, u32 *payload, u16 *msg_head,
 			      enum tcpm_transmit_type *frame_type)
 {
+	int ret = 0;
+	u8 cnt = 0, buf[32] = {0};
 	struct mt6370_tcpc_data *ddata = tcpc_get_dev_data(tcpc);
-	u8 cnt = 0, buf[32];
-	int ret;
 
 	ret = mt6370_bulk_read(ddata, TCPC_V10_REG_RX_BYTE_CNT,
-			       buf, sizeof(buf));
-	if (ret)
+			       buf, 4);
+	if (ret < 0)
 		return ret;
 
 	cnt = buf[0];
 	*frame_type = buf[1];
 	*msg_head = le16_to_cpu(*(u16 *)&buf[2]);
 
-	MT6370_INFO("Count is %d\n", cnt);
-	MT6370_INFO("FrameType is %d\n", *frame_type);
-	MT6370_INFO("MessageType is %d\n", PD_HEADER_TYPE(*msg_head));
+	MT6370_INFO("Count is %u\n", cnt);
+	MT6370_INFO("FrameType is %u\n", *frame_type);
+	MT6370_INFO("MessageType is %u\n", PD_HEADER_TYPE(*msg_head));
 
-	/* TCPC 1.0 ==> no need to subtract the size of msg_head */
-	if (cnt > 3) {
-		cnt -= 3; /* MSG_HDR */
-		if (cnt > sizeof(buf) - 4)
-			cnt = sizeof(buf) - 4;
-		memcpy(payload, buf + 4, cnt);
-	}
+	if (cnt <= 3)
+		return ret;
+
+	cnt -= 3; /* FRAME_TYPE + HEADER */
+	if (cnt > sizeof(buf) - 4)
+		cnt = sizeof(buf) - 4;
+	ret = mt6370_bulk_read(ddata, TCPC_V10_REG_RX_DATA,
+			       buf + 4, cnt);
+	if (ret < 0)
+		return ret;
+	memcpy(payload, buf + 4, cnt);
 
 	return ret;
 }
@@ -789,7 +795,6 @@ static int mt6370_get_message(struct tcpc_device *tcpc, u32 *payload, u16 *msg_h
 /* transmit count (1byte) + message header (2byte) + data object (7*4) */
 #define MT6370_TRANSMIT_MAX_SIZE (1 + sizeof(u16) + sizeof(u32) * 7)
 
-#if CONFIG_USB_PD_RETRY_CRC_DISCARD
 static int mt6370_retransmit(struct tcpc_device *tcpc)
 {
 	struct mt6370_tcpc_data *ddata = tcpc_get_dev_data(tcpc);
@@ -797,7 +802,6 @@ static int mt6370_retransmit(struct tcpc_device *tcpc)
 	return mt6370_write8(ddata, TCPC_V10_REG_TRANSMIT,
 			     TCPC_V10_REG_TRANSMIT_SET(tcpc->pd_retry_count, TCPC_TX_SOP));
 }
-#endif /* CONFIG_USB_PD_RETRY_CRC_DISCARD */
 
 static int mt6370_transmit(struct tcpc_device *tcpc, enum tcpm_transmit_type type,
 			   u16 header, const u32 *data)
@@ -868,11 +872,8 @@ static struct tcpc_ops mt6370_tcpc_ops = {
 	.get_message = mt6370_get_message,
 	.transmit = mt6370_transmit,
 	.set_bist_test_mode = mt6370_set_bist_test_mode,
-#endif	/* CONFIG_USB_POWER_DELIVERY */
-
-#if CONFIG_USB_PD_RETRY_CRC_DISCARD
 	.retransmit = mt6370_retransmit,
-#endif	/* CONFIG_USB_PD_RETRY_CRC_DISCARD */
+#endif	/* CONFIG_USB_POWER_DELIVERY */
 
 #if CONFIG_TYPEC_CAP_FORCE_DISCHARGE
 	.set_force_discharge = mt6370_set_force_discharge,
@@ -928,11 +929,7 @@ static int mt6370_register_tcpcdev(struct mt6370_tcpc_data *ddata)
 #if CONFIG_USB_PD_DISABLE_PE
 	tcpc->disable_pe = device_property_read_bool(dev, "tcpc,disable-pe");
 #endif	/* CONFIG_USB_PD_DISABLE_PE */
-
-#if CONFIG_USB_PD_RETRY_CRC_DISCARD
 	tcpc->tcpc_flags |= TCPC_FLAGS_RETRY_CRC_DISCARD;
-#endif	/* CONFIG_USB_PD_RETRY_CRC_DISCARD */
-
 #if CONFIG_USB_PD_REV30
 	tcpc->tcpc_flags |= TCPC_FLAGS_PD_REV30;
 
@@ -1064,14 +1061,19 @@ static void mt6370_tcpc_shutdown(struct platform_device *pdev)
 static int __maybe_unused mt6370_tcpc_suspend(struct device *dev)
 {
 	struct mt6370_tcpc_data *ddata = dev_get_drvdata(dev);
+	int ret = 0;
 
 	dev_info(dev, "%s irq_gpio = %d\n",
 		      __func__, gpiod_get_value(ddata->irq_gpio));
 
-	return tcpm_suspend(ddata->tcpc);
+	ret = tcpm_suspend(ddata->tcpc);
+	if (ret)
+		return ret;
+	disable_irq(ddata->irq);
+	return 0;
 }
 
-static int __maybe_unused mt6370_tcpc_suspend_late(struct device *dev)
+static int __maybe_unused mt6370_tcpc_check_suspend_pending(struct device *dev)
 {
 	struct mt6370_tcpc_data *ddata = dev_get_drvdata(dev);
 
@@ -1088,16 +1090,19 @@ static int __maybe_unused mt6370_tcpc_resume(struct device *dev)
 	dev_info(dev, "%s irq_gpio = %d\n",
 		      __func__, gpiod_get_value(ddata->irq_gpio));
 
+	enable_irq(ddata->irq);
 	tcpm_resume(ddata->tcpc);
 
 	return 0;
 }
 
 static const struct dev_pm_ops mt6370_tcpc_pm_ops = {
-	SET_SYSTEM_SLEEP_PM_OPS(mt6370_tcpc_suspend, mt6370_tcpc_resume)
 #if IS_ENABLED(CONFIG_PM_SLEEP)
-	.suspend_late = mt6370_tcpc_suspend_late,
+	.prepare = mt6370_tcpc_check_suspend_pending,
 #endif	/* CONFIG_PM_SLEEP */
+	SET_SYSTEM_SLEEP_PM_OPS(mt6370_tcpc_suspend, mt6370_tcpc_resume)
+	SET_LATE_SYSTEM_SLEEP_PM_OPS(mt6370_tcpc_check_suspend_pending, NULL)
+	SET_NOIRQ_SYSTEM_SLEEP_PM_OPS(mt6370_tcpc_check_suspend_pending, NULL)
 };
 
 static const struct of_device_id mt6370_tcpc_of_match[] = {
@@ -1121,7 +1126,6 @@ module_platform_driver(mt6370_tcpc_driver);
 
 MODULE_DESCRIPTION("MT6370 TCPC Driver");
 MODULE_VERSION(MT6370_DRV_VERSION);
-#endif	/* CONFIG_TCPC_CLASS */
 MODULE_LICENSE("GPL");
 
 /**** Release Note ****

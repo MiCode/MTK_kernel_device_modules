@@ -4,12 +4,12 @@
  */
 
 #include <linux/module.h>
-#if IS_ENABLED(CONFIG_TCPC_CLASS)
 #include <linux/interrupt.h>
 #include <linux/of.h>
 #include <linux/of_irq.h>
 #include <linux/of_platform.h>
 #include <linux/regmap.h>
+#include <linux/i2c.h>
 #include <linux/pm_runtime.h>
 #include <linux/iio/consumer.h>
 #include <linux/sched/clock.h>
@@ -501,11 +501,12 @@ static int mt6379_write_helper(struct mt6379_tcpc_data *ddata, u32 reg,
 			       const void *data, size_t count)
 {
 	struct tcpc_device *tcpc = ddata->tcpc;
+	struct device *parent = ddata->dev->parent;
 	int ret = 0;
 
 	atomic_inc(&tcpc->suspend_pending);
-	wait_event(tcpc->resume_wait_que, !atomic_read(&tcpc->is_suspended) ||
-		   !ddata->dev->parent->power.is_suspended);
+	if (parent->bus == &i2c_bus_type)
+		wait_event(tcpc->resume_wait_que, !parent->power.is_suspended);
 	ret = regmap_bulk_write(ddata->rmap, rg_xlate(ddata, reg), data, count);
 	atomic_dec_if_positive(&tcpc->suspend_pending);
 	return ret;
@@ -515,11 +516,12 @@ static int mt6379_read_helper(struct mt6379_tcpc_data *ddata, u32 reg,
 			      void *data, size_t count)
 {
 	struct tcpc_device *tcpc = ddata->tcpc;
+	struct device *parent = ddata->dev->parent;
 	int ret = 0;
 
 	atomic_inc(&tcpc->suspend_pending);
-	wait_event(tcpc->resume_wait_que, !atomic_read(&tcpc->is_suspended) ||
-		   !ddata->dev->parent->power.is_suspended);
+	if (parent->bus == &i2c_bus_type)
+		wait_event(tcpc->resume_wait_que, !parent->power.is_suspended);
 	ret = regmap_bulk_read(ddata->rmap, rg_xlate(ddata, reg), data, count);
 	atomic_dec_if_positive(&tcpc->suspend_pending);
 	return ret;
@@ -734,17 +736,14 @@ static int mt6379_set_force_discharge(struct tcpc_device *tcpc, bool en, int mv)
 }
 #endif	/* CONFIG_TYPEC_CAP_FORCE_DISCHARGE */
 
-static int __mt6379_get_cc_hi(struct mt6379_tcpc_data *ddata)
+#if CONFIG_CABLE_TYPE_DETECTION
+static int mt6379_reset_ctd(struct tcpc_device *tcpc)
 {
-	int ret;
-	u8 data;
+	struct mt6379_tcpc_data *ddata = tcpc_get_dev_data(tcpc);
 
-	ret = mt6379_read8(ddata, MT6379_REG_MTST5, &data);
-	if (ret < 0)
-		return ret;
-	return ((data ^ MT6379_MSK_HIDET_CC) & MT6379_MSK_HIDET_CC)
-		>> MT6379_SFT_HIDET_CC1;
+	return mt6379_write8(ddata, MT6379_REG_MTINT3, MT6379_MSK_CTD);
 }
+#endif /* CONFIG_CABLE_TYPE_DETECTION */
 
 static int mt6379_enable_io_boost(struct tcpc_device *tcpc, bool en)
 {
@@ -790,6 +789,18 @@ static void mt6379_vbus_to_cc_dwork_handler(struct work_struct *work)
 	}
 	data = (data & MT6379_MSK_VBUS_TO_CC) >> MT6379_SFT_VBUS_TO_CC1;
 	tcpci_notify_vbus_short_cc_status(ddata->tcpc, data);
+}
+
+static int __mt6379_get_cc_hi(struct mt6379_tcpc_data *ddata)
+{
+	int ret;
+	u8 data;
+
+	ret = mt6379_read8(ddata, MT6379_REG_MTST5, &data);
+	if (ret < 0)
+		return ret;
+	return ((data ^ MT6379_MSK_HIDET_CC) & MT6379_MSK_HIDET_CC)
+		>> MT6379_SFT_HIDET_CC1;
 }
 
 static int mt6379_hidet_cc_evt_process(struct mt6379_tcpc_data *ddata)
@@ -1119,8 +1130,10 @@ static int mt6379_is_water_detected(struct mt6379_tcpc_data *ddata,
 	struct tcpc_desc *desc = ddata->desc;
 	u32 lb = desc->wd_sbu_ph_lbound;
 	u32 ub = desc->wd_sbu_calib_init * 110 / 100;
+#if CONFIG_CABLE_TYPE_DETECTION
 	enum tcpc_cable_type cable_type;
 	u8 ctd_evt;
+#endif /*CONFIG_CABLE_TYPE_DETECTION*/
 	struct tcpc_device *tcpc = ddata->tcpc;
 
 	if (tcpc->tcpc_flags & TCPC_FLAGS_WD_DUAL_PORT &&
@@ -1164,6 +1177,7 @@ static int mt6379_is_water_detected(struct mt6379_tcpc_data *ddata,
 	}
 
 	for (i = 0; i < CONFIG_WD_SBU_PH_RETRY; i++) {
+		msleep(20);
 		ret = mt6379_get_wd_adc(ddata, chan, &wd_adc);
 		if (ret < 0) {
 			MT6379_DBGINFO("get chan%d adc fail(%d)\n", chan, ret);
@@ -1180,7 +1194,6 @@ static int mt6379_is_water_detected(struct mt6379_tcpc_data *ddata,
 			*wd = false;
 			goto out;
 		}
-		msleep(20);
 	}
 
 #if CONFIG_CABLE_TYPE_DETECTION
@@ -1506,7 +1519,7 @@ static int mt6379_tcpc_init(struct tcpc_device *tcpc, bool sw_reset)
 	mt6379_write8(ddata, MT6379_REG_LPWRCTRL5, 0x2F);
 
 	/* Set HILOCCFILTER 250us */
-	mt6379_write8(ddata, MT6379_REG_HILOCTRL9, 0xAA);
+	mt6379_write8(ddata, MT6379_REG_HILOCTRL9, 0x8A);
 
 	/* Enable CC open 40ms when BATON disconnect */
 	mt6379_set_bits(ddata, MT6379_REG_SHIELDCTRL1, MT6379_MSK_OPEN40MS_EN);
@@ -1533,6 +1546,9 @@ static int mt6379_tcpc_init(struct tcpc_device *tcpc, bool sw_reset)
 		mt6379_write8(ddata, 0xF0, 0x86);
 		mt6379_set_bits(ddata, MT6379_REG_RXLIQIDLECTRL, 0x01);
 		mt6379_write8(ddata, 0xF1, 0x00); // test mode exit
+	} else {
+		/* Enable RETRY_WAIT_IDLE */
+		mt6379_write8(ddata, MT6379_REG_TXHRSTCTRL, 0x81);
 	}
 
 	/* Sync IRQ to 3M path */
@@ -1818,9 +1834,9 @@ static int mt6379_set_low_power_mode(struct tcpc_device *tcpc, bool en,
 			return ret;
 	}
 
-	if (tcpc->tcpc_flags & TCPC_FLAGS_TYPEC_OTP) {
-		ret = mt6379_enable_typec_otp_fwen(tcpc, !en &&
-				tcpc_typec_is_act_as_sink_role(tcpc));
+	if ((tcpc->tcpc_flags & TCPC_FLAGS_TYPEC_OTP) &&
+	    (en || !tcpc_typec_is_act_as_sink_role(tcpc))) {
+		ret = mt6379_enable_typec_otp_fwen(tcpc, false);
 		if (ret < 0)
 			return ret;
 	}
@@ -1846,12 +1862,21 @@ static int mt6379_set_low_power_mode(struct tcpc_device *tcpc, bool en,
 		data = MT6379_MSK_VBUSDET_EN | MT6379_MSK_BMCIOOSC_EN;
 	}
 	ret = mt6379_write8(ddata, MT6379_REG_SYSCTRL2, data);
+	if (ret < 0)
+		return ret;
 	/* Let CC pins re-toggle */
-	if (en && ret >= 0 &&
-	    (tcpc->typec_local_cc & TYPEC_CC_DRP)) {
+	if (en && (tcpc->typec_local_cc & TYPEC_CC_DRP)) {
 		udelay(32);
 		ret = mt6379_write8(ddata, TCPC_V10_REG_COMMAND,
 				    TCPM_CMD_LOOK_CONNECTION);
+		if (ret < 0)
+			return ret;
+	}
+	if ((tcpc->tcpc_flags & TCPC_FLAGS_TYPEC_OTP) &&
+	    !en && tcpc_typec_is_act_as_sink_role(tcpc)) {
+		ret = mt6379_enable_typec_otp_fwen(tcpc, true);
+		if (ret < 0)
+			return ret;
 	}
 	return ret;
 }
@@ -1900,7 +1925,7 @@ static int mt6379_get_message(struct tcpc_device *tcpc, u32 *payload,
 	struct mt6379_tcpc_data *ddata = tcpc_get_dev_data(tcpc);
 
 	ret = mt6379_bulk_read(ddata, TCPC_V10_REG_RX_BYTE_CNT,
-			       buf, sizeof(buf));
+			       buf, 14);
 	if (ret < 0)
 		return ret;
 
@@ -1908,17 +1933,23 @@ static int mt6379_get_message(struct tcpc_device *tcpc, u32 *payload,
 	*frame_type = buf[1];
 	*msg_head = le16_to_cpu(*(u16 *)&buf[2]);
 
-	MT6379_DBGINFO("Count is %d\n", cnt);
-	MT6379_DBGINFO("FrameType is %d\n", *frame_type);
-	MT6379_DBGINFO("MessageType is %d\n", PD_HEADER_TYPE(*msg_head));
+	MT6379_DBGINFO("Count is %u\n", cnt);
+	MT6379_DBGINFO("FrameType is %u\n", *frame_type);
+	MT6379_DBGINFO("MessageType is %u\n", PD_HEADER_TYPE(*msg_head));
 
-	/* TCPC 1.0 ==> no need to subtract the size of msg_head */
-	if (cnt > 3) {
-		cnt -= 3; /* MSG_HDR */
-		if (cnt > sizeof(buf) - 4)
-			cnt = sizeof(buf) - 4;
-		memcpy(payload, buf + 4, cnt);
+	if (cnt <= 3)
+		return ret;
+
+	cnt -= 3; /* FRAME_TYPE + HEADER */
+	if (cnt > sizeof(buf) - 4)
+		cnt = sizeof(buf) - 4;
+	if (cnt > 10) {
+		ret = mt6379_bulk_read(ddata, TCPC_V10_REG_RX_DATA + 10,
+				       buf + 14, cnt - 10);
+		if (ret < 0)
+			return ret;
 	}
+	memcpy(payload, buf + 4, cnt);
 
 	return ret;
 }
@@ -1969,9 +2000,7 @@ static int mt6379_set_bist_test_mode(struct tcpc_device *tcpc, bool en)
 		(ddata, TCPC_V10_REG_TCPC_CTRL,
 		 TCPC_V10_REG_TCPC_CTRL_BIST_TEST_MODE);
 }
-#endif /* CONFIG_USB_POWER_DELIVERY */
 
-#if CONFIG_USB_PD_RETRY_CRC_DISCARD
 static int mt6379_retransmit(struct tcpc_device *tcpc)
 {
 	struct mt6379_tcpc_data *ddata = tcpc_get_dev_data(tcpc);
@@ -1980,7 +2009,7 @@ static int mt6379_retransmit(struct tcpc_device *tcpc)
 			     TCPC_V10_REG_TRANSMIT_SET(tcpc->pd_retry_count,
 			     TCPC_TX_SOP));
 }
-#endif /* CONFIG_USB_PD_RETRY_CRC_DISCARD */
+#endif /* CONFIG_USB_POWER_DELIVERY */
 
 static int mt6379_set_cc_hidet(struct tcpc_device *tcpc, bool en)
 {
@@ -2258,11 +2287,8 @@ static struct tcpc_ops mt6379_tcpc_ops = {
 	.get_message = mt6379_get_message,
 	.transmit = mt6379_transmit,
 	.set_bist_test_mode = mt6379_set_bist_test_mode,
-#endif	/* CONFIG_USB_POWER_DELIVERY */
-
-#if CONFIG_USB_PD_RETRY_CRC_DISCARD
 	.retransmit = mt6379_retransmit,
-#endif	/* CONFIG_USB_PD_RETRY_CRC_DISCARD */
+#endif	/* CONFIG_USB_POWER_DELIVERY */
 
 	.set_cc_hidet = mt6379_set_cc_hidet,
 	.get_cc_hi = mt6379_get_cc_hi,
@@ -2274,6 +2300,10 @@ static struct tcpc_ops mt6379_tcpc_ops = {
 #if CONFIG_TYPEC_CAP_FORCE_DISCHARGE
 	.set_force_discharge = mt6379_set_force_discharge,
 #endif	/* CONFIG_TYPEC_CAP_FORCE_DISCHARGE */
+
+#if CONFIG_CABLE_TYPE_DETECTION
+	.reset_ctd = mt6379_reset_ctd,
+#endif /* CONFIG_CABLE_TYPE_DETECTION */
 	.enable_io_boost = mt6379_enable_io_boost,
 };
 
@@ -2290,27 +2320,17 @@ static irqreturn_t mt6379_pd_evt_handler(int irq, void *data)
 	struct mt6379_tcpc_data *ddata = data;
 	bool handled = false;
 	int ret = 0;
-	u8 pd_evt = 0, pd_stat = 0;
 
 	MT6379_DBGINFO("++\n");
 	pm_stay_awake(ddata->dev);
 
 	do {
-		ret = mt6379_read8(ddata, MT6379_REG_PD_EVT, &pd_evt);
-		ret |= mt6379_read8(ddata, MT6379_REG_PD_STAT, &pd_stat);
-		if (ret || !pd_stat)
-			break;
-
-		MT6379_DBGINFO("pd_evt:0x%02X, pd_stat:0x%02X\n",
-			       pd_evt, pd_stat);
-
-		handled = true;
 		tcpci_lock_typec(ddata->tcpc);
 		ret = tcpci_alert(ddata->tcpc, false);
 		tcpci_unlock_typec(ddata->tcpc);
-		if (ret < 0)
-			break;
-	} while (1);
+		if (ret >= 0)
+			handled = true;
+	} while (ret != -ENODATA);
 
 	if (handled && ddata->ofdata && ddata->ofdata->post_irq_handler) {
 		ret = ddata->ofdata->post_irq_handler(ddata);
@@ -2370,9 +2390,7 @@ static int mt6379_register_tcpcdev(struct mt6379_tcpc_data *ddata)
 #endif	/* CONFIG_USB_PD_DISABLE_PE */
 
 	/* Init tcpc_flags */
-#if CONFIG_USB_PD_RETRY_CRC_DISCARD
 	tcpc->tcpc_flags |= TCPC_FLAGS_RETRY_CRC_DISCARD;
-#endif	/* CONFIG_USB_PD_RETRY_CRC_DISCARD */
 #if CONFIG_USB_PD_REV30
 	tcpc->tcpc_flags |= TCPC_FLAGS_PD_REV30;
 #endif	/* CONFIG_USB_PD_REV30 */
@@ -2719,7 +2737,7 @@ static int __maybe_unused mt6379_tcpc_suspend(struct device *dev)
 	return tcpm_suspend(ddata->tcpc);
 }
 
-static int __maybe_unused mt6379_tcpc_suspend_late(struct device *dev)
+static int __maybe_unused mt6379_tcpc_check_suspend_pending(struct device *dev)
 {
 	struct mt6379_tcpc_data *ddata = dev_get_drvdata(dev);
 
@@ -2736,10 +2754,12 @@ static int __maybe_unused mt6379_tcpc_resume(struct device *dev)
 }
 
 static const struct dev_pm_ops mt6379_tcpc_pm_ops = {
-	SET_SYSTEM_SLEEP_PM_OPS(mt6379_tcpc_suspend, mt6379_tcpc_resume)
 #if IS_ENABLED(CONFIG_PM_SLEEP)
-	.suspend_late = mt6379_tcpc_suspend_late,
+	.prepare = mt6379_tcpc_check_suspend_pending,
 #endif	/* CONFIG_PM_SLEEP */
+	SET_SYSTEM_SLEEP_PM_OPS(mt6379_tcpc_suspend, mt6379_tcpc_resume)
+	SET_LATE_SYSTEM_SLEEP_PM_OPS(mt6379_tcpc_check_suspend_pending, NULL)
+	SET_NOIRQ_SYSTEM_SLEEP_PM_OPS(mt6379_tcpc_check_suspend_pending, NULL)
 };
 
 static const struct tcpc_ofdata mt6379_tcpc_ofdata = {
@@ -2789,5 +2809,4 @@ module_platform_driver(mt6379_tcpc_driver);
 MODULE_AUTHOR("Gene Chen <gene_chen@richtek.com>");
 MODULE_DESCRIPTION("MT6379 USB Type-C Port Controller Interface Driver");
 MODULE_VERSION("1.0.3");
-#endif	/* CONFIG_TCPC_CLASS */
 MODULE_LICENSE("GPL");

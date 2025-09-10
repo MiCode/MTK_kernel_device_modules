@@ -38,20 +38,17 @@ struct pd_event {
 	uint8_t msg;
 	uint8_t msg_sec;
 	struct pd_msg *pd_msg;
+	bool vdm;
 };
 
-void pd_postpone_vdm_event_timeout(struct tcpc_device *tcpc);
 struct pd_msg *pd_alloc_msg(struct tcpc_device *tcpc);
 void pd_free_msg(struct tcpc_device *tcpc, struct pd_msg *pd_msg);
 
 bool pd_get_event(struct tcpc_device *tcpc, struct pd_event *pd_event);
-bool pd_put_event(struct tcpc_device *tcpc,
-		const struct pd_event *pd_event, bool from_port_partner);
+bool pd_put_event(struct tcpc_device *tcpc, struct pd_event *pd_event);
 void pd_free_event(struct tcpc_device *tcpc, struct pd_event *pd_event);
 
-bool pd_get_vdm_event(struct tcpc_device *tcpc, struct pd_event *pd_event);
-bool pd_put_vdm_event(struct tcpc_device *tcpc,
-			struct pd_event *pd_event, bool from_port_partner);
+bool pd_put_vdm_event(struct tcpc_device *tcpc, struct pd_event *pd_event);
 
 bool pd_get_deferred_tcp_event(
 	struct tcpc_device *tcpc, struct tcp_dpm_event *tcp_event);
@@ -167,21 +164,18 @@ enum pd_msg_type {
 	PD_HW_VBUS_ABSENT,
 	PD_HW_VBUS_SAFE0V,
 	PD_HW_VBUS_STABLE,
-	PD_HW_TX_FAILED,	/* no good crc or discard */
-	PD_HW_TX_DISCARD,	/* discard vdm msg */
+	PD_HW_TX_FAILED,	/* no good crc */
+	PD_HW_TX_DISCARD,
 #if CONFIG_USB_PD_REV30
 	PD_HW_SINK_TX_CHANGE,
 #endif	/* CONFIG_USB_PD_REV30 */
-#if CONFIG_USB_PD_RETRY_CRC_DISCARD
 	PD_HW_TX_RETRANSMIT,
-#endif	/* CONFIG_USB_PD_RETRY_CRC_DISCARD */
 	PD_HW_MSG_NR,
 /* PE Message type*/
 	PD_PE_RESET_PRL_COMPLETED = 0,
 	PD_PE_POWER_ROLE_AT_DEFAULT,
 	PD_PE_HARD_RESET_COMPLETED,
 	PD_PE_IDLE,
-	PD_PE_VDM_RESET,
 	PD_PE_VDM_NOT_SUPPORT,
 	PD_PE_MSG_NR,
 /* DPM Message type */

@@ -3,7 +3,6 @@
  * Copyright (c) 2021 MediaTek Inc.
  */
 
-#if IS_ENABLED(CONFIG_TCPC_CLASS)
 #include <linux/sched/clock.h>
 
 #include "inc/tcpci_typec.h"
@@ -104,9 +103,9 @@ static int tcpci_alert_tx_success(struct tcpc_device *tcpc)
 	mutex_unlock(&tcpc->access_lock);
 
 	if (tx_state == PD_TX_STATE_WAIT_CRC_VDM)
-		pd_put_vdm_event(tcpc, &evt, false);
+		pd_put_vdm_event(tcpc, &evt);
 	else
-		pd_put_event(tcpc, &evt, false);
+		pd_put_event(tcpc, &evt);
 
 	return 0;
 }
@@ -132,10 +131,6 @@ static int tcpci_alert_tx_failed(struct tcpc_device *tcpc)
 static int tcpci_alert_tx_discard(struct tcpc_device *tcpc)
 {
 	uint8_t tx_state = PD_TX_STATE_GOOD_CRC;
-	bool retry_crc_discard =
-		!!(tcpc->tcpc_flags & TCPC_FLAGS_RETRY_CRC_DISCARD);
-
-	TCPC_DBG("Discard\n");
 
 	mutex_lock(&tcpc->access_lock);
 	tcpc->io_time_diff = 0;
@@ -146,18 +141,10 @@ static int tcpci_alert_tx_discard(struct tcpc_device *tcpc)
 	if (tx_state == PD_TX_STATE_WAIT_CRC_VDM)
 		vdm_put_hw_event(tcpc, PD_HW_TX_DISCARD);
 	else {
-		if (retry_crc_discard) {
-#if CONFIG_USB_PD_RETRY_CRC_DISCARD
-			mutex_lock(&tcpc->access_lock);
-			tcpc->pd_discard_pending = true;
-			mutex_unlock(&tcpc->access_lock);
-			tcpc_enable_timer(tcpc, PD_TIMER_DISCARD);
-#else
-			TCPC_ERR("RETRY_CRC_DISCARD\n");
-#endif	/* CONFIG_USB_PD_RETRY_CRC_DISCARD */
-		} else {
-			pd_put_hw_event(tcpc, PD_HW_TX_FAILED);
-		}
+		mutex_lock(&tcpc->access_lock);
+		tcpc->pd_failed_discard_pending = PD_DISCARD_PENDING;
+		tcpc_enable_timer(tcpc, PD_TIMER_FAILED_DISCARD);
+		mutex_unlock(&tcpc->access_lock);
 	}
 
 	return 0;
@@ -283,11 +270,20 @@ static inline bool tcpci_check_hard_reset_complete(
 		mutex_lock(&tcpc->access_lock);
 		tcpc->pd_transmit_state = PD_TX_STATE_DISCARD;
 		mutex_unlock(&tcpc->access_lock);
-		pd_put_hw_event(tcpc, PD_HW_TX_FAILED);
+		pd_put_hw_event(tcpc, PD_HW_TX_DISCARD);
 		return true;
 	}
 
 	return false;
+}
+
+static inline int tcpci_popcount(uint32_t n)
+{
+	int c = 0;
+
+	for (; n; ++c)
+		n &= n - 1;
+	return c;
 }
 #endif	/* CONFIG_USB_POWER_DELIVERY */
 
@@ -358,7 +354,7 @@ int tcpci_alert(struct tcpc_device *tcpc, bool masked)
 		if (tcpci_check_hard_reset_complete(tcpc, &alert_status))
 			atomic_dec_if_positive(&tcpc->tx_pending);
 	}
-	i = __builtin_popcount(alert_status & TCPC_V10_REG_ALERT_TX_MASK);
+	i = tcpci_popcount(alert_status & TCPC_V10_REG_ALERT_TX_MASK);
 	while (i-- > 0)
 		atomic_dec_if_positive(&tcpc->tx_pending);
 	TCPC_DBG("%s tx_pending = %d\n", __func__,
@@ -494,4 +490,3 @@ int tcpci_report_power_control(struct tcpc_device *tcpc, bool en)
 	tcpci_enable_io_boost(tcpc, en); //easier to handle attach/detach state
 	return 0;
 }
-#endif	/* CONFIG_TCPC_CLASS */

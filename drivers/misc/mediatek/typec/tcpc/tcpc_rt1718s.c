@@ -4,7 +4,6 @@
  */
 
 #include <linux/module.h>
-#if IS_ENABLED(CONFIG_TCPC_CLASS)
 #include <linux/device.h>
 #include <linux/slab.h>
 #include <linux/i2c.h>
@@ -50,6 +49,7 @@
 #define RT1718S_RT_MASK1		(0x91)
 #define RT1718S_RT_MASK5		(0x95)
 #define RT1718S_RT_INT1			(0x98)
+#define RT1718S_RT_INT3			(0x9A)
 #define RT1718S_RT_ST1			(0x9F)
 #define RT1718S_RT_ST2			(0xA0)
 #define RT1718S_RT_ST3			(0xA1)
@@ -77,7 +77,6 @@
 
 #define RT1718S_VBUSVOLCTRL		(0xF213)
 #define RT1718S_SBU_CTRL_01		(0xF23A)
-#define RT1718S_NEW_RXBMCCTRL1		(0xF240)
 
 /* RT1718S_PHY_CTRL8: 0x89 */
 #define RT1718S_M_PRLRSTB		BIT(1)
@@ -147,6 +146,8 @@ struct rt1718s_chip {
 	int irq;
 
 	struct delayed_work fod_polling_dwork;
+
+	bool is_deinit;
 };
 
 enum RT1718S_vend_int {
@@ -185,7 +186,7 @@ static const struct regmap_config rt1718s_regmap_config = {
 
 	.reg_format_endian	= REGMAP_ENDIAN_BIG,
 
-	/* page 1(TCPC) : 0x00 ~ 0xff, page 2 : 0xf200 ~0xf2ff */
+	/* page 1(TCPC) : 0x00 ~ 0xff, page 2 : 0xf200 ~ 0xf2ff */
 	.max_register		= RT1718S_P2END,
 	.writeable_reg		= rt1718s_is_accessible_reg,
 	.readable_reg		= rt1718s_is_accessible_reg,
@@ -217,15 +218,9 @@ static int rt1718s_regmap_read(void *context, const void *reg, size_t reg_size,
 	xfer[1].buf = val;
 
 	atomic_inc(&tcpc->suspend_pending);
-	ret = wait_event_timeout(tcpc->resume_wait_que,
-				 !atomic_read(&tcpc->is_suspended),
-				 msecs_to_jiffies(1000));
-	if (!ret) {
-		ret = -ETIME;
-		goto out;
-	}
+	wait_event(tcpc->resume_wait_que,
+		   !chip->dev->parent->power.is_suspended);
 	ret = i2c_transfer(i2c->adapter, xfer, 2);
-out:
 	atomic_dec_if_positive(&tcpc->suspend_pending);
 	if (ret < 0)
 		return ret;
@@ -243,6 +238,9 @@ static int rt1718s_regmap_write(void *context, const void *val, size_t val_size)
 	struct i2c_msg xfer;
 	int ret = 0;
 
+	if (chip->is_deinit)
+		return -EACCES;
+
 	xfer.addr = i2c->addr;
 	xfer.flags = 0;
 	if (*(u8 *)val == RT1718S_P1PREFIX) {
@@ -254,15 +252,9 @@ static int rt1718s_regmap_write(void *context, const void *val, size_t val_size)
 	}
 
 	atomic_inc(&tcpc->suspend_pending);
-	ret = wait_event_timeout(tcpc->resume_wait_que,
-				 !atomic_read(&tcpc->is_suspended),
-				 msecs_to_jiffies(1000));
-	if (!ret) {
-		ret = -ETIME;
-		goto out;
-	}
+	wait_event(tcpc->resume_wait_que,
+		   !chip->dev->parent->power.is_suspended);
 	ret = i2c_transfer(i2c->adapter, &xfer, 1);
-out:
 	atomic_dec_if_positive(&tcpc->suspend_pending);
 	if (ret < 0)
 		return ret;
@@ -355,11 +347,8 @@ static const struct reg_sequence rt1718s_init_settings[] = {
 	{ RT1718S_WATCHDOGCTRL, 0xEB, 0 },
 	/* VBUS_VALID debounce time: 375us */
 	{ RT1718S_LPWRCTRL5, 0x2F, 0 },
-	/* VBUS_VALID threshold: 3.6V */
-	{ RT1718S_HILOCTRL9, 0xAA, 0 },
-
-	/* Improve for Lecroy Mx4 signal noise */
-	{ RT1718S_NEW_RXBMCCTRL1, 0x12, 0 },
+	/* VBUS_VALID threshold: 3.4V */
+	{ RT1718S_HILOCTRL9, 0x8A, 0 },
 
 	/* set vbus ovp as 20V and ratio as 1.2 */
 	{ RT1718S_VBUSVOLCTRL, 0x3F, 0 },
@@ -606,13 +595,6 @@ static int rt1718s_get_cc(struct tcpc_device *tcpc, int *cc1, int *cc2)
 	return 0;
 }
 
-static inline int rt1718s_enable_vsafe0v_detect(struct rt1718s_chip *chip,
-						bool en)
-{
-	return (en ? rt1718s_set_bits : rt1718s_clr_bits)
-		(chip, RT1718S_RT_MASK1, RT1718S_M_VBUS_SAFE0V);
-}
-
 static int rt1718s_set_cc(struct tcpc_device *tcpc, int pull)
 {
 	int ret = 0;
@@ -712,7 +694,7 @@ static int rt1718s_tcpc_deinit(struct tcpc_device *tcpc)
 		usleep_range(20000, 30000);
 	}
 	rt1718s_write8(chip, RT1718S_SYS_CTRL3, RT1718S_SWRESET_MASK);
-	atomic_set(&tcpc->is_suspended, true);
+	chip->is_deinit = true;
 
 	return 0;
 }
@@ -978,9 +960,6 @@ static int rt1718s_set_low_power_mode(struct tcpc_device *tcpc, bool en,
 	if (ret < 0)
 		return ret;
 
-	ret = rt1718s_enable_vsafe0v_detect(chip, !en);
-	if (ret < 0)
-		return ret;
 	if (en) {
 		data = RT1718S_M_LPWR_EN;
 #if CONFIG_TYPEC_CAP_NORP_SRC
@@ -1045,7 +1024,7 @@ static int rt1718s_get_message(struct tcpc_device *tcpc, u32 *payload,
 	int ret = 0;
 
 	ret = rt1718s_bulk_read(chip, TCPC_V10_REG_RX_BYTE_CNT,
-				buf, sizeof(buf));
+				buf, 4);
 	if (ret < 0)
 		return ret;
 
@@ -1053,17 +1032,21 @@ static int rt1718s_get_message(struct tcpc_device *tcpc, u32 *payload,
 	*frame_type = buf[1];
 	*msg_head = le16_to_cpu(*(u16 *)&buf[2]);
 
-	RT1718S_DBGINFO("Count is %d\n", cnt);
-	RT1718S_DBGINFO("FrameType is %d\n", *frame_type);
-	RT1718S_DBGINFO("MessageType is %d\n", PD_HEADER_TYPE(*msg_head));
+	RT1718S_DBGINFO("Count is %u\n", cnt);
+	RT1718S_DBGINFO("FrameType is %u\n", *frame_type);
+	RT1718S_DBGINFO("MessageType is %u\n", PD_HEADER_TYPE(*msg_head));
 
-	/* TCPC 1.0 ==> no need to subtract the size of msg_head */
-	if (cnt > 3) {
-		cnt -= 3; /* MSG_HDR */
-		if (cnt > sizeof(buf) - 4)
-			cnt = sizeof(buf) - 4;
-		memcpy(payload, buf + 4, cnt);
-	}
+	if (cnt <= 3)
+		return ret;
+
+	cnt -= 3; /* FRAME_TYPE + HEADER */
+	if (cnt > sizeof(buf) - 4)
+		cnt = sizeof(buf) - 4;
+	ret = rt1718s_bulk_read(chip, TCPC_V10_REG_RX_DATA,
+				buf + 4, cnt);
+	if (ret < 0)
+		return ret;
+	memcpy(payload, buf + 4, cnt);
 
 	return ret;
 }
@@ -1115,9 +1098,7 @@ static int rt1718s_set_bist_test_mode(struct tcpc_device *tcpc, bool en)
 		(chip, TCPC_V10_REG_TCPC_CTRL,
 		 TCPC_V10_REG_TCPC_CTRL_BIST_TEST_MODE);
 }
-#endif	/* CONFIG_USB_POWER_DELIVERY */
 
-#if CONFIG_USB_PD_RETRY_CRC_DISCARD
 static int rt1718s_retransmit(struct tcpc_device *tcpc)
 {
 	struct rt1718s_chip *chip = tcpc_get_dev_data(tcpc);
@@ -1126,7 +1107,7 @@ static int rt1718s_retransmit(struct tcpc_device *tcpc)
 			      TCPC_V10_REG_TRANSMIT_SET(tcpc->pd_retry_count,
 			      TCPC_TX_SOP));
 }
-#endif /* CONFIG_USB_PD_RETRY_CRC_DISCARD */
+#endif	/* CONFIG_USB_POWER_DELIVERY */
 
 static int rt1718s_enable_rpdet_auto(struct rt1718s_chip *chip, bool en)
 {
@@ -1171,6 +1152,15 @@ static int rt1718s_set_force_discharge(struct tcpc_device *tcpc,
 		(chip, TCPC_V10_REG_POWER_CTRL, TCPC_V10_REG_FORCE_DISC_EN);
 }
 #endif	/* CONFIG_TYPEC_CAP_FORCE_DISCHARGE */
+
+#if CONFIG_CABLE_TYPE_DETECTION
+static int rt1718s_reset_ctd(struct tcpc_device *tcpc)
+{
+	struct rt1718s_chip *chip = tcpc_get_dev_data(tcpc);
+
+	return rt1718s_write8(chip, RT1718S_RT_INT3, RT1718S_M_CABLE_TYPEC);
+}
+#endif /* CONFIG_CABLE_TYPE_DETECTION */
 
 static void rt1718s_set_command(struct tcpc_device *tcpc, u8 cmd)
 {
@@ -1217,11 +1207,8 @@ static struct tcpc_ops rt1718s_tcpc_ops = {
 	.get_message = rt1718s_get_message,
 	.transmit = rt1718s_transmit,
 	.set_bist_test_mode = rt1718s_set_bist_test_mode,
-#endif	/* CONFIG_USB_POWER_DELIVERY */
-
-#if CONFIG_USB_PD_RETRY_CRC_DISCARD
 	.retransmit = rt1718s_retransmit,
-#endif	/* CONFIG_USB_PD_RETRY_CRC_DISCARD */
+#endif	/* CONFIG_USB_POWER_DELIVERY */
 
 	.set_cc_hidet = rt1718s_set_cc_hidet,
 	.get_cc_hi = rt1718s_get_cc_hi,
@@ -1229,6 +1216,10 @@ static struct tcpc_ops rt1718s_tcpc_ops = {
 #if CONFIG_TYPEC_CAP_FORCE_DISCHARGE
 	.set_force_discharge = rt1718s_set_force_discharge,
 #endif	/* CONFIG_TYPEC_CAP_FORCE_DISCHARGE */
+
+#if CONFIG_CABLE_TYPE_DETECTION
+	.reset_ctd = rt1718s_reset_ctd,
+#endif /* CONFIG_CABLE_TYPE_DETECTION */
 
 	.set_command = rt1718s_set_command,
 };
@@ -1332,11 +1323,7 @@ static int rt1718s_register_tcpcdev(struct rt1718s_chip *chip)
 	tcpc->disable_pe = device_property_read_bool(chip->dev,
 						     "tcpc,disable-pe");
 #endif	/* CONFIG_USB_PD_DISABLE_PE */
-
-#if CONFIG_USB_PD_RETRY_CRC_DISCARD
 	tcpc->tcpc_flags |= TCPC_FLAGS_RETRY_CRC_DISCARD;
-#endif  /* CONFIG_USB_PD_RETRY_CRC_DISCARD */
-
 #if CONFIG_USB_PD_REV30
 	tcpc->tcpc_flags |= TCPC_FLAGS_PD_REV30;
 #endif	/* CONFIG_USB_PD_REV30 */
@@ -1358,11 +1345,14 @@ static int rt1718s_register_tcpcdev(struct rt1718s_chip *chip)
 static irqreturn_t rt1718s_intr_handler(int irq, void *data)
 {
 	struct rt1718s_chip *chip = data;
+	int ret = 0;
 
 	pm_stay_awake(chip->dev);
-	tcpci_lock_typec(chip->tcpc);
-	tcpci_alert(chip->tcpc, false);
-	tcpci_unlock_typec(chip->tcpc);
+	do {
+		tcpci_lock_typec(chip->tcpc);
+		ret = tcpci_alert(chip->tcpc, false);
+		tcpci_unlock_typec(chip->tcpc);
+	} while (ret != -ENODATA);
 	pm_relax(chip->dev);
 
 	return IRQ_HANDLED;
@@ -1495,10 +1485,24 @@ static void rt1718s_shutdown(struct i2c_client *i2c)
 static int __maybe_unused rt1718s_suspend(struct device *dev)
 {
 	struct rt1718s_chip *chip = dev_get_drvdata(dev);
+	int ret = 0;
 
 	dev_info(dev, "%s ++\n", __func__);
 
-	return tcpm_suspend(chip->tcpc);
+	ret = tcpm_suspend(chip->tcpc);
+	if (ret)
+		return ret;
+	disable_irq(chip->irq);
+	return 0;
+}
+
+static int __maybe_unused rt1718s_check_suspend_pending(struct device *dev)
+{
+	struct rt1718s_chip *chip = dev_get_drvdata(dev);
+
+	dev_info(dev, "%s ++\n", __func__);
+
+	return tcpm_check_suspend_pending(chip->tcpc);
 }
 
 static int __maybe_unused rt1718s_resume(struct device *dev)
@@ -1507,13 +1511,19 @@ static int __maybe_unused rt1718s_resume(struct device *dev)
 
 	dev_info(dev, "%s ++\n", __func__);
 
+	enable_irq(chip->irq);
 	tcpm_resume(chip->tcpc);
 
 	return 0;
 }
 
 static const struct dev_pm_ops rt1718s_pm_ops = {
+#if IS_ENABLED(CONFIG_PM_SLEEP)
+	.prepare = rt1718s_check_suspend_pending,
+#endif	/* CONFIG_PM_SLEEP */
 	SET_SYSTEM_SLEEP_PM_OPS(rt1718s_suspend, rt1718s_resume)
+	SET_LATE_SYSTEM_SLEEP_PM_OPS(rt1718s_check_suspend_pending, NULL)
+	SET_NOIRQ_SYSTEM_SLEEP_PM_OPS(rt1718s_check_suspend_pending, NULL)
 };
 
 static const struct of_device_id rt1718s_of_match_table[] = {
@@ -1538,5 +1548,4 @@ module_i2c_driver(rt1718s_driver);
 MODULE_AUTHOR("Lucas Tsai <lucas_tsai@richtek.com>");
 MODULE_DESCRIPTION("RT1718S USB Type-C Port Controller Interface Driver");
 MODULE_VERSION(RT1718S_DRV_VERSION);
-#endif	/* CONFIG_TCPC_CLASS */
 MODULE_LICENSE("GPL");
