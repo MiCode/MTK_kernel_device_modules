@@ -1841,7 +1841,9 @@ static int mtu3_suspend_common(struct device *dev, pm_message_t msg)
 
 	ssusb->is_suspended = true;
 
-	if (mtu3_readl(ssusb->mac_base, U3D_USB20_OPSTATE) == OPM_A_WRCON)
+	ssusb->current_speed = ssusb_get_host_speed(ssusb);
+
+	if (ssusb->current_speed == USB_SPEED_UNKNOWN)
 		ssusb->host_dev = false;
 	else
 		ssusb->host_dev = true;
@@ -1986,6 +1988,11 @@ static int mtu3_resume_common(struct device *dev, pm_message_t msg)
 		if (of_device_is_compatible(ssusb->dev->of_node, "mediatek,mt6991-mtu3")) {
 			ssusb_host_disable(ssusb);
 			ssusb_host_enable(ssusb);
+		}
+		if (of_device_is_compatible(ssusb->dev->of_node, "mediatek,mt6993-mtu3")) {
+			/* re-init USB Host when plug-on OTG Gender only */
+			/* dev_info(ssusb->dev, "SSUSB_SET_MODE.\n"); */
+			ssusb_set_mode(&ssusb->otg_switch, USB_ROLE_HOST, true);
 		}
 	}
 

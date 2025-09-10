@@ -455,6 +455,8 @@ struct ssusb_mtk {
 	/* power notifier */
 	struct blocking_notifier_head power_nh;
 	bool power_nh_init;
+	/* speed */
+	enum usb_device_speed current_speed;
 };
 
 /**
