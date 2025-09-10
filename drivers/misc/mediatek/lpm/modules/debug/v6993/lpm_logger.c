@@ -672,15 +672,14 @@ static char *pwr_ctrl_str[PW_MAX_COUNT] = {
 };
 
 struct subsys_req plat_subsys_req[] = {
-	{"md", SPM_REQ_STA_6, (0x3F << 26), SPM_REQ_STA_7, 0x7, 0},
 	{"conn", SPM_REQ_STA_3, (0x3F << 26), SPM_REQ_STA_4, 0x3, 0},
 	{"scp", SPM_REQ_STA_9, (0x7F << 17), 0, 0, 0},
 	{"adsp", SPM_REQ_STA_0, (0x7F << 1), 0, 0, 0},
 	{"ufs", SPM_REQ_STA_15, (0x7F << 25), SPM_REQ_STA_16, 0x7F, 0},
 	{"apu", SPM_REQ_STA_0, (0x7 << 29), SPM_REQ_STA_1, 0x3F, 0},
-	{"mm_proc", SPM_REQ_STA_7, (0x1FF << 3), 0, 0, 0},
 	{"uarthub", SPM_REQ_STA_15, (0x1F << 20), 0, 0, 0},
 	{"pcie", SPM_REQ_STA_7, (0x3FFF << 12), 0, 0, 0},
+	{"perisys", SPM_REQ_STA_7, (0x1F << 26), 0, 0, 0},
 	{"srclkeni", SPM_REQ_STA_14, (0x3 << 30), SPM_REQ_STA_15, 0x3F, 0},
 	{"spm", SPM_SRC_REQ_0, 0x8F38, SPM_SRC_REQ_1, 0x3, 0},
 };
