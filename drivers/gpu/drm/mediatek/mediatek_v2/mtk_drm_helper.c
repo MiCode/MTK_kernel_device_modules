@@ -279,6 +279,8 @@ void mtk_drm_helper_init(struct device *dev, struct mtk_drm_helper **helper_opt)
 			"MTK_DRM_OPT_TILE_OVERHEAD", 1);
 	mtk_drm_helper_set_opt_by_name(tmp_opt,
 			"MTK_DRM_OPT_IDLEMGR_DISABLE_ROUTINE_IRQ", 1);
+	mtk_drm_helper_set_opt_by_name(tmp_opt,
+			"MTK_DRM_OPT_IDLEMGR_BY_REPAINT", 1);
 #endif
 	*helper_opt = tmp_opt;
 }
