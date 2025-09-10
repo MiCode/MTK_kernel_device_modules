@@ -502,6 +502,9 @@ static const char * const mtk_lp_state_name[NUM_SPM_STAT] = {
 	"D3",
 	"D4",
 	"D6X",
+	"CHIFR_DATA",
+	"CHIFR_TCU",
+	"SYSCO",
 };
 static void mtk_get_lp_info(struct lpm_dbg_lp_info *info, int type)
 {
@@ -510,8 +513,10 @@ static void mtk_get_lp_info(struct lpm_dbg_lp_info *info, int type)
 
 	if (type == SPM_IDLE_STAT)
 		smc_id = MT_SPM_DBG_SMC_IDLE_PWR_STAT;
-	else
+	else if (type == SPM_SUSPEND_STAT)
 		smc_id = MT_SPM_DBG_SMC_SUSPEND_PWR_STAT;
+	else
+		smc_id = MT_SPM_DBG_SMC_COMMON_PWR_STAT;
 
 	for (i = 0; i < NUM_SPM_STAT; i++) {
 		info->record[i].count = lpm_smc_spm_dbg(smc_id,
@@ -546,6 +551,14 @@ static ssize_t system_stat_read(char *ToUserBuf, size_t sz, void *priv)
 	mtk_get_lp_info(&info, SPM_SUSPEND_STAT);
 	for (i = 0; i < NUM_SPM_STAT; i++) {
 		mtk_dbg_spm_log("Suspend %s:%lld:%lld.%03lld\n",
+			mtk_lp_state_name[i], info.record[i].count,
+			PCM_TICK_TO_SEC(info.record[i].duration),
+			PCM_TICK_TO_SEC((info.record[i].duration % PCM_32K_TICKS_PER_SEC) * 1000));
+	}
+
+	mtk_get_lp_info(&info, SPM_COMMON_STAT);
+	for (i = 0; i < NUM_SPM_STAT; i++) {
+		mtk_dbg_spm_log("Common %s:%lld:%lld.%03lld\n",
 			mtk_lp_state_name[i], info.record[i].count,
 			PCM_TICK_TO_SEC(info.record[i].duration),
 			PCM_TICK_TO_SEC((info.record[i].duration % PCM_32K_TICKS_PER_SEC) * 1000));
