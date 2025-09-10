@@ -691,6 +691,9 @@
 #define SSUSB_U2_UTMI_DATABUS_16_8	BIT(3)
 #define SSUSB_U2_UTMI_DATABUS_16_8_1P	BIT(4)
 
+/* U3D_SSUSB_SPM_CTRL */
+#define SSUSB_SPM_CTRL_DDREN_ACK_DIS	(0x1U << 31)
+
 /* U3D_SSUSB_IP_TRUNK_VERS */
 #define IP_TRUNK_VERS(x)		(((x) >> 16) & 0xffff)
 

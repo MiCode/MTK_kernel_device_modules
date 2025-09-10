@@ -290,6 +290,9 @@ int mtu3_device_enable(struct mtu3 *mtu)
 			mtu3_readl(ibase, U3D_SSUSB_SYS_CK_CTRL));
 	}
 
+	if (ssusb->plat_type == PLAT_FPGA)
+		mtu3_setbits(ibase, U3D_SSUSB_SPM_CTRL_V2, SSUSB_SPM_CTRL_DDREN_ACK_DIS);
+
 	return ssusb_check_clocks(mtu->ssusb, check_clk);
 }
 
