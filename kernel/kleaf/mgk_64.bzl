@@ -847,6 +847,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:panel-hx-nt37701-dphy-cmd".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:panel-hx-nt37701-dphy-cmd-120hz".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:panel-nt37701a-cmd".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/gpu/drm/panel:panel-nt37701a-cmd-mipichg".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:mtk_disp_notify".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:mtk_panel_ext".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:mtk_sync".format(kernel_version),
