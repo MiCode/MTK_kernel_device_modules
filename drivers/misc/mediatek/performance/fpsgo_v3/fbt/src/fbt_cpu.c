@@ -2044,7 +2044,10 @@ static int fbt_group_dep(int group_by_lr, struct fpsgo_loading *dep_arr, int dep
 	for (i = 0; i < dep_size; i++) {
 		struct fpsgo_loading *fl = &dep_arr[i];
 
-		if (fl->heavyidx == FPSGO_GROUP_OTHERS && fl->action == XGF_ADD_DEP_FORCE_GROUPING)
+		if (fl->action == XGF_ADD_DEP_FORCE_GROUPING_HEAVY)
+			fl->heavyidx = FPSGO_GROUP_HEAVY;
+
+		if (fl->action == XGF_ADD_DEP_FORCE_GROUPING_SECOND)
 			fl->heavyidx = FPSGO_GROUP_SECOND;
 	}
 	return ret;
