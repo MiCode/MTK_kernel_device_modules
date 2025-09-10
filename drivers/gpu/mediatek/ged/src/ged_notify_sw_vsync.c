@@ -333,6 +333,10 @@ void ged_eb_dvfs_trace_dump(void)
 		trace_tracing_mark_write(5566, "limitter_floor",
 			ged_get_cur_limiter_floor());
 		trace_tracing_mark_write(5566, "fix", ged_is_fix_dvfs());
+
+		if (ged_is_fix_dvfs())
+			trace_tracing_mark_write(5566, "fix_opp", ged_dvfs_get_fix_cmd());
+
 		if (ged_get_cur_limiter_ceil() == LIMIT_POWERHAL) {
 			custom_ceiling_info = ged_dvfs_get_custom_ceiling_gpu_freq_info();
 			trace_tracing_mark_write(5566, "limitter_ceil_pid",
@@ -509,6 +513,11 @@ void ged_eb_dvfs_frame_done_dump(void)
 		mtk_gpueb_sysram_read(SYSRAM_GPU_T_GPU));
 	trace_tracing_mark_write(5566, "t_gpu_target",
 		mtk_gpueb_sysram_read(SYSRAM_GPU_T_GPU_TARGET));
+
+	if (ged_is_fix_dvfs()) {
+		trace_tracing_mark_write(5566, "fix", ged_is_fix_dvfs());
+		trace_tracing_mark_write(5566, "fix_opp", ged_dvfs_get_fix_cmd());
+	}
 
 	// loading
 	//trace_GPU_DVFS__Loading(ged_dvfs_get_gpu_loading(), 0,

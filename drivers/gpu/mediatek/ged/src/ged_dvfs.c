@@ -346,6 +346,7 @@ static unsigned int g_is_gpu_uncomplete;
 static int g_fix_opp_by_cmd = -1;
 static bool g_force_commit;
 static int g_sf_edge_hint;
+static int g_dcs_virtual_fix_cmd;
 
 unsigned int ged_npu_hint_enable = 0;
 
@@ -4622,6 +4623,23 @@ void ged_notify_fix_freq_volt_from_gpufreq(
 }
 EXPORT_SYMBOL(ged_notify_fix_freq_volt_from_gpufreq);
 
+void ged_notify_dcs_fix_opp_from_gpufreq(int gpu_opp, int stack_opp)
+{
+	int core_num = 0;
+
+	if (stack_opp >= ged_get_opp_num_real() && stack_opp < ged_get_opp_num()) {
+		g_dcs_virtual_fix_cmd = stack_opp;
+		core_num = ged_get_sc_core_by_virt_opp(stack_opp);
+	} else {
+		g_dcs_virtual_fix_cmd = 0;
+		core_num = dcs_get_max_core_num();
+	}
+
+	if (core_num > 0)
+		dcs_set_g_cur_core_num(core_num);
+}
+EXPORT_SYMBOL(ged_notify_dcs_fix_opp_from_gpufreq);
+
 int ged_is_fix_dvfs(void)
 {
 	int dvfs_state = 0;
@@ -4635,6 +4653,11 @@ int ged_is_fix_dvfs(void)
 		return 1;
 
 	return 0;
+}
+
+int ged_dvfs_get_fix_cmd(void)
+{
+	return g_fix_opp_by_cmd;
 }
 
 int ged_dvfs_get_util_active(void)
@@ -4787,6 +4810,7 @@ GED_ERROR ged_dvfs_system_init(void)
 #if !IS_ENABLED(CONFIG_MTK_GPU_LEGACY) /* MTK_GPU_EB_SUPPORT */
 	ged_notify_gpu_fix_opp_fp = ged_notify_fix_opp_from_gpufreq;
 	ged_notify_gpu_fix_freq_volt_fp = ged_notify_fix_freq_volt_from_gpufreq;
+	ged_notify_dcs_fix_opp_fp = ged_notify_dcs_fix_opp_from_gpufreq;
 #endif
 
 	spin_lock_init(&g_sSpinLock);

@@ -111,6 +111,8 @@ EXPORT_SYMBOL(ged_notify_gpu_fix_opp_fp);
 void (*ged_notify_gpu_fix_freq_volt_fp)(unsigned int fgpu, unsigned int vgpu,
 	unsigned int fstack, unsigned int vtstack);
 EXPORT_SYMBOL(ged_notify_gpu_fix_freq_volt_fp);
+void (*ged_notify_dcs_fix_opp_fp)(int gpu_opp, int stack_opp);
+EXPORT_SYMBOL(ged_notify_dcs_fix_opp_fp);
 #if IS_ENABLED(CONFIG_DEVAPC_ARCH_MULTI)
 static bool gpufreq_devapc_vio_callback(void);
 static bool gpufreq_bus_tracker_vio_callback(int slave_type);
@@ -1375,6 +1377,10 @@ int gpufreq_fix_target_oppidx(enum gpufreq_target target, int oppidx)
 	if (ret)
 		goto done;
 
+	/* notify DCS Policy */
+	if (ged_notify_dcs_fix_opp_fp)
+		ged_notify_dcs_fix_opp_fp(oppidx, oppidx);
+
 	/* implement on EB */
 	if (g_gpueb_support && g_gpufreq_ready) {
 		raw_spin_lock_irqsave(&gpufreq_ipi_lock, g_ipi_irq_flags);
@@ -1424,6 +1430,10 @@ int gpufreq_fix_dual_target_oppidx(int gpu_oppidx, int stack_oppidx)
 	int ret = GPUFREQ_SUCCESS;
 
 	GPUFREQ_TRACE_START("gpu_oppidx=%d, stack_oppidx=%d", gpu_oppidx, stack_oppidx);
+
+	/* notify DCS Policy */
+	if (ged_notify_dcs_fix_opp_fp)
+		ged_notify_dcs_fix_opp_fp(gpu_oppidx, stack_oppidx);
 
 	/* implement on EB */
 	if (g_gpueb_support && g_gpufreq_ready) {

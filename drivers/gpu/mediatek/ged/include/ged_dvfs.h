@@ -294,6 +294,7 @@ void ged_dvfs_record_soc_timer(u64 soc_timer);
 void ged_notify_fix_opp_from_gpufreq(int gpu_opp, int stack_opp);
 void ged_notify_fix_freq_volt_from_gpufreq(
 	unsigned int gpu_freq, unsigned int gpu_volt, unsigned int stack_freq, unsigned int stack_volt);
+void ged_notify_dcs_fix_opp_from_gpufreq(int gpu_opp, int stack_opp);
 int ged_is_fix_dvfs(void);
 
 extern void (*ged_kpi_set_gpu_dvfs_hint_fp)(int t_gpu_target,
@@ -398,6 +399,7 @@ void ged_dvfs_set_lb_async_perf_diff(int perfDiffTH);
 int ged_dvfs_get_lb_async_perf_diff(void);
 void ged_dvfs_write_sysram_virtual_commit_idx(int top_idx, int stack_idx);
 int ged_dvfs_get_lb_win_size_cmd(void);
+int ged_dvfs_get_fix_cmd(void);
 
 /* MBrain */
 //GPU freq part:

@@ -551,6 +551,8 @@ struct gpufreq_shared_status {
 	int opp_num_stack;
 	int signed_opp_num_gpu;
 	int signed_opp_num_stack;
+	int virtual_opp_num_gpu;
+	int virtual_opp_num_stack;
 	int power_count;
 	int buck_count;
 	int mtcmos_count;
@@ -638,6 +640,8 @@ struct gpufreq_shared_status {
 	struct gpufreq_opp_info working_table_stack[GPUFREQ_MAX_OPP_NUM];
 	struct gpufreq_opp_info signed_table_gpu[GPUFREQ_MAX_OPP_NUM];
 	struct gpufreq_opp_info signed_table_stack[GPUFREQ_MAX_OPP_NUM];
+	struct gpufreq_opp_info virtual_table_gpu[GPUFREQ_MAX_OPP_NUM];
+	struct gpufreq_opp_info virtual_table_stack[GPUFREQ_MAX_OPP_NUM];
 	struct gpuppm_limit_info limit_table[LIMIT_NUM];
 	struct gpufreq_adj_info aging_table_gpu[GPUFREQ_MAX_ADJ_NUM];
 	struct gpufreq_adj_info aging_table_stack[GPUFREQ_MAX_ADJ_NUM];
@@ -750,6 +754,7 @@ extern unsigned long (*ged_get_last_commit_stack_idx_fp)(void);
 extern void (*ged_notify_gpu_fix_opp_fp)(int gpu_opp, int stack_opp);
 extern void (*ged_notify_gpu_fix_freq_volt_fp)(unsigned int fgpu, unsigned int vgpu,
 	unsigned int fstack, unsigned int vtstack);
+extern void (*ged_notify_dcs_fix_opp_fp)(int gpu_opp, int stack_opp);
 
 /**************************************************
  * External Function

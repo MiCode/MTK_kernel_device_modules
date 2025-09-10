@@ -254,6 +254,11 @@ int dcs_get_avail_mask_num(void)
 	return g_avail_mask_num;
 }
 
+void dcs_set_g_cur_core_num(int core_num)
+{
+	g_cur_core_num = core_num;
+}
+
 int dcs_set_core_mask(unsigned int core_mask, unsigned int core_num, int commit_type)
 {
 	int ret = GED_OK;
@@ -301,7 +306,8 @@ int dcs_set_fix_core_mask(gov_mask_config_t config, unsigned int core_mask)
 {
 	int ret = GED_OK;
 
-	if (dcs_get_gov_enable() && (is_fdvfs_enable() & POLICY_MODE_V2))
+	if (dcs_get_gov_enable() && (is_fdvfs_enable() & POLICY_MODE_V2) &&
+		config != GOV_MASK_FORCE)
 		return ret;
 
 	mutex_lock(&g_DCS_lock);

@@ -26,6 +26,7 @@ struct dcs_virtual_opp {
 
 // supported notify target
 typedef enum {
+	GOV_MASK_FORCE, // force setting core
 	GOV_MASK_DEBUG, // debug cmd ipi
 	GOV_MASK_AP_DCS_POLICY, // runtime user ipi
 	GOV_MASK_DCS_POLICY,
@@ -54,6 +55,7 @@ unsigned int dcs_get_fix_num(void);
 unsigned int dcs_get_fix_mask(void);
 void dcs_set_setting_dirty(void);
 bool dcs_get_setting_dirty(void);
+void dcs_set_g_cur_core_num(int core_num);
 
 // for dcs_stress
 int dcs_get_dcs_stress(void);

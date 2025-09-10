@@ -416,6 +416,76 @@ done:
 	return ret;
 }
 
+static int gpu_virtual_opp_table_proc_show(struct seq_file *m, void *v)
+{
+	const struct gpufreq_opp_info *opp_table = NULL;
+	int ret = GPUFREQ_SUCCESS;
+	int opp_num = 0, i = 0;
+
+	mutex_lock(&gpufreq_debug_lock);
+
+	opp_num = g_shared_status->virtual_opp_num_gpu;
+	opp_table = g_shared_status->virtual_table_gpu;
+	if (!opp_table) {
+		GPUFREQ_LOGE("fail to get GPU virtual OPP table (ENOENT)");
+		ret = GPUFREQ_ENOENT;
+		goto done;
+	}
+
+	for (i = 0; i < opp_num; i++) {
+		if (g_shared_status->test_mode == TEST_PRIVILEGE)
+			seq_printf(m,
+				"[%02d] freq: %7d, volt: %6d, vsram: %6d, posdiv: %1d, margin: %5d, power: %5d\n",
+				i, opp_table[i].freq, opp_table[i].volt,
+				opp_table[i].vsram, opp_table[i].posdiv,
+				opp_table[i].margin, opp_table[i].power);
+		else
+			seq_printf(m,
+				"[%02d] freq: %7d, volt: %6d, vsram: %6d\n",
+				i, opp_table[i].freq, opp_table[i].volt + opp_table[i].margin, 75000);
+	}
+
+done:
+	mutex_unlock(&gpufreq_debug_lock);
+
+	return ret;
+}
+
+static int stack_virtual_opp_table_proc_show(struct seq_file *m, void *v)
+{
+	const struct gpufreq_opp_info *opp_table = NULL;
+	int ret = GPUFREQ_SUCCESS;
+	int opp_num = 0, i = 0;
+
+	mutex_lock(&gpufreq_debug_lock);
+
+	opp_num = g_shared_status->virtual_opp_num_stack;
+	opp_table = g_shared_status->virtual_table_stack;
+	if (!opp_table) {
+		GPUFREQ_LOGE("fail to get STACK virtual OPP table (ENOENT)");
+		ret = GPUFREQ_ENOENT;
+		goto done;
+	}
+
+	for (i = 0; i < opp_num; i++) {
+		if (g_shared_status->test_mode == TEST_PRIVILEGE)
+			seq_printf(m,
+				"[%02d] freq: %7d, volt: %6d, vsram: %6d, posdiv: %1d, margin: %5d, power: %5d\n",
+				i, opp_table[i].freq, opp_table[i].volt,
+				opp_table[i].vsram, opp_table[i].posdiv,
+				opp_table[i].margin, opp_table[i].power);
+		else
+			seq_printf(m,
+				"[%02d] freq: %7d, volt: %6d, vsram: %6d\n",
+				i, opp_table[i].freq, opp_table[i].volt + opp_table[i].margin, 75000);
+	}
+
+done:
+	mutex_unlock(&gpufreq_debug_lock);
+
+	return ret;
+}
+
 static int limit_table_proc_show(struct seq_file *m, void *v)
 {
 	const struct gpuppm_limit_info *limit_table = NULL;
@@ -1256,8 +1326,10 @@ PROC_FOPS_RO(gpufreq_status);
 PROC_FOPS_RO(infra_status);
 PROC_FOPS_RO(gpu_working_opp_table);
 PROC_FOPS_RO(gpu_signed_opp_table);
+PROC_FOPS_RO(gpu_virtual_opp_table);
 PROC_FOPS_RO(stack_working_opp_table);
 PROC_FOPS_RO(stack_signed_opp_table);
+PROC_FOPS_RO(stack_virtual_opp_table);
 PROC_FOPS_RO(asensor_info);
 PROC_FOPS_RW(limit_table);
 PROC_FOPS_RW(fix_target_opp_index);
@@ -1284,6 +1356,7 @@ static int gpufreq_create_procfs(void)
 		PROC_ENTRY(infra_status),
 		PROC_ENTRY(gpu_working_opp_table),
 		PROC_ENTRY(gpu_signed_opp_table),
+		PROC_ENTRY(gpu_virtual_opp_table),
 		PROC_ENTRY(asensor_info),
 		PROC_ENTRY(limit_table),
 		PROC_ENTRY(fix_target_opp_index),
@@ -1299,6 +1372,7 @@ static int gpufreq_create_procfs(void)
 	const struct procfs_entry dualbuck_entries[] = {
 		PROC_ENTRY(stack_working_opp_table),
 		PROC_ENTRY(stack_signed_opp_table),
+		PROC_ENTRY(stack_virtual_opp_table),
 	};
 
 	dir = proc_mkdir(GPUFREQ_DIR_NAME, NULL);

@@ -165,7 +165,8 @@ static void ged_eb_work_cb(struct work_struct *psWork)
 		if (is_fdvfs_enable() & POLICY_MODE_V2) {
 			mutex_lock(&gsPolicyLock);
 			dcs_set_setting_dirty();
-			if (psEBEvent->idx[1] == GOV_MASK_DEBUG && psEBEvent->idx[0] != 0)
+			if ((psEBEvent->idx[1] == GOV_MASK_DEBUG || psEBEvent->idx[1] == GOV_MASK_FORCE) &&
+				psEBEvent->idx[0] != 0)
 				dcs_set_fix_core_mask(psEBEvent->idx[1], psEBEvent->idx[0]);
 			else
 				ged_kpi_fastdvfs_update_dcs();
