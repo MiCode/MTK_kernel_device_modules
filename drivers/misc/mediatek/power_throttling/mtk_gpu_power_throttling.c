@@ -9,7 +9,11 @@
 #include "mtk_battery_oc_throttling.h"
 #include "mtk_low_battery_throttling.h"
 #include "mtk_bp_thl.h"
+#if IS_ENABLED(CONFIG_MTK_GPU_LEGACY)
+#include "gpufreq_v2_legacy.h"
+#else
 #include "gpufreq_v2.h"
+#endif
 #include <linux/nvmem-consumer.h>
 
 #define CREATE_TRACE_POINTS
