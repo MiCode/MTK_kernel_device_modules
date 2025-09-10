@@ -1074,6 +1074,11 @@ static int mml_m2m_querycap(struct file *file, void *fh,
 
 	strscpy(cap->driver, MML_M2M_MODULE_NAME, sizeof(cap->driver));
 
+	if (!tp){
+		mml_err("%s Failed to get tp\n", __func__);
+		return -EINVAL;
+	}
+
 	if (tp->op->support_v4l2_caps)
 		cap->reserved[0] = tp->op->support_v4l2_caps();
 	else
