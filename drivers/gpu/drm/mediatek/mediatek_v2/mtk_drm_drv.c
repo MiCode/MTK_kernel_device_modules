@@ -12827,6 +12827,10 @@ static const struct of_device_id mtk_ddp_comp_dt_ids[] = {
 	 .data = (void *)MTK_DISP_DBGTP},
 	{.compatible = "mediatek,mt6993-disp-dbi-count",
 	 .data = (void *)MTK_DISP_DBI_COUNT},
+	{.compatible = "mediatek,mt6993-disp-splitter",
+	 .data = (void *)MTK_DISP_SPLITTER},
+	{.compatible = "mediatek,mt6993-disp-gdma",
+	 .data = (void *)MTK_DISP_GDMA},
 	{} };
 
 static struct disp_iommu_device disp_iommu;
@@ -13417,7 +13421,7 @@ SKIP_MMLSYS_CONFIG:
 		    || comp_type == MTK_OVL_2_DLI_ASYNC || comp_type == MTK_OVL_2_DLO_ASYNC
 		    || comp_type == MTK_DISP_R2Y
 		    || comp_type == MTK_DISP_DVO || comp_type == MTK_DISP_BWM
-		    || comp_type == MTK_DISP_RELAY
+		    || comp_type == MTK_DISP_RELAY || comp_type == MTK_DISP_SPLITTER || comp_type == MTK_DISP_GDMA
 		) {
 			dev_info(dev, "Adding component match for %s, comp_id:%d\n",
 				 node->full_name, comp_id);
@@ -13780,6 +13784,8 @@ static struct platform_driver *const mtk_drm_drivers[] = {
 	&mtk_disp_relay_driver,
 	&mtk_disp_dbgtp_driver,
 	&mtk_disp_dbi_count_driver,
+	&mtk_disp_splitter_driver,
+	&mtk_disp_gdma_driver
 };
 
 static int __init mtk_drm_init(void)

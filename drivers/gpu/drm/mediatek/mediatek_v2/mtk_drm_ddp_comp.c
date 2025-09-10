@@ -370,6 +370,8 @@ static const char *const mtk_ddp_comp_stem[MTK_DDP_COMP_TYPE_MAX] = {
 	[MTK_DISP_DSC] = "dsc",
 	[MTK_DISP_VDCM] = "vdcm",
 	[MTK_DISP_MERGE] = "merge",
+	[MTK_DISP_SPLITTER] = "splitter",
+	[MTK_DISP_GDMA] = "gdma",
 	[MTK_DISP_DPTX] = "dptx",
 	[MTK_DISP_RDMA_OUT_RELAY] = "rmda_out_relay",
 	[MTK_DISP_VIRTUAL] = "virtual",
@@ -1731,7 +1733,8 @@ static void mtk_ddp_comp_set_larb(struct device *dev, struct device_node *node,
 	/* check if this module need larb_dev */
 	if (type != MTK_DISP_OVL && type != MTK_DISP_RDMA && type != MTK_DISP_WDMA &&
 		type != MTK_DISP_POSTMASK && type != MTK_DISP_MDP_RDMA && type != MTK_DISP_ODDMR &&
-		type != MTK_OVL_EXDMA && type != MTK_DISP_BWM && type != MTK_DISP_DBI_COUNT)
+		type != MTK_OVL_EXDMA && type != MTK_DISP_BWM && type != MTK_DISP_DBI_COUNT &&
+		type != MTK_DISP_GDMA)
 		return;
 
 	count = of_property_count_u32_elems(node, "mediatek,larb");

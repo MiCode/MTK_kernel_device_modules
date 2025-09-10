@@ -72,6 +72,8 @@ subdir-ccflags-y += -Wno-error
 #		  mtk_disp_vdisp_ao.o \
 #		  mtk_disp_bwm.o\
 #		  mtk_disp_dbi_count.o \
+#		  mtk_disp_splitter.o \
+#		  mtk_disp_gdma.o \
 
 #ccflags-y += -DDRM_CMDQ_DISABLE
 #mediatek-drm-y += mtk_cmdq_dummy.o

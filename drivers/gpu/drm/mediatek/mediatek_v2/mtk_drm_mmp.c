@@ -63,6 +63,8 @@ void init_drm_mmp_event(void)
 		mmprofile_register_event(g_DRM_MMP_Events.rdma, "RDMA4");
 	g_DRM_MMP_Events.rdma5 =
 		mmprofile_register_event(g_DRM_MMP_Events.rdma, "RDMA5");
+	g_DRM_MMP_Events.gdma =
+		mmprofile_register_event(g_DRM_MMP_Events.IRQ, "GDMA");
 	g_DRM_MMP_Events.mdp_rdma =
 		mmprofile_register_event(g_DRM_MMP_Events.IRQ, "MDP_RDMA");
 	g_DRM_MMP_Events.mdp_rdma0 =

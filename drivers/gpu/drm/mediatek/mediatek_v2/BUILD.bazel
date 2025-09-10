@@ -111,6 +111,8 @@ define_mgk_ddk_ko(
         "mtk_dvo.c",
         "mtk_dsi_lpc.c",
         "mtk_disp_dbgtp.c",
+        "mtk_disp_splitter.c",
+        "mtk_disp_gdma.c",
     ],
     includes = [
         ".",

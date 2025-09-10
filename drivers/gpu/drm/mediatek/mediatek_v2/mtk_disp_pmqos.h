@@ -43,6 +43,7 @@ enum CHANNEL_BW_MODE {
 #define RDMA_REQ_HRT (0x2)
 #define MDP_RDMA_REQ_HRT (0x3)
 #define WDMA_REQ_HRT (0x4)
+#define GDMA_REQ_HRT (0x5)
 
 #define BW_CHANNEL_NR 4
 

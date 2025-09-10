@@ -34,6 +34,7 @@ struct DRM_MMP_Events {
 	mmp_event rdma3;
 	mmp_event rdma4;
 	mmp_event rdma5;
+	mmp_event gdma;
 	mmp_event mdp_rdma;
 	mmp_event mdp_rdma0;
 	mmp_event mdp_rdma1;
