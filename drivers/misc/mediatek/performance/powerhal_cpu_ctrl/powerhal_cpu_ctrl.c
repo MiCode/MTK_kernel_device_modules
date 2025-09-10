@@ -325,7 +325,7 @@ static ssize_t perfmgr_perfserv_freq_proc_write(
 
 	tmp = buf;
 	while ((tok = strsep(&tmp, " ")) != NULL) {
-		if (cpu >= CORE_MAX) {
+		if (cpu < 0 || cpu >= CORE_MAX) {
 			pr_debug("@%s: cpu number error: %d\n", __func__, i);
 			goto out;
 		}
