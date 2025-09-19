@@ -16,9 +16,31 @@
 #include "mt6768-afe-gpio.h"
 #include "../../codecs/mt6358.h"
 #include "../common/mtk-sp-spk-amp.h"
+#if IS_ENABLED(CONFIG_SND_SOC_SIA81XX)
+	  #include "../../codecs/sia81xx/sipa_aux_dev_if.h"
+extern int sipa_multi_channel_power_off(uint8_t pa_idx);
+extern int sipa_multi_channel_power_on(uint8_t pa_idx);
+#endif
 
 #if IS_ENABLED(CONFIG_SND_SOC_MT6358_ACCDET)
       #include "../../codecs/mt6358-accdet.h"
+#endif
+
+/* lc audio add for fs1815cn bringup start */
+#if IS_ENABLED(CONFIG_SND_SOC_FS181X)
+extern int frsm_i2ca_set_scene(int spkid, int scene);
+extern int frsm_i2ca_spk_switch(int spkid, bool on);
+static int frsm_gmode[2], frsm_gswitch[2]; 
+extern int frsm_i2ca_spk_switch(int spkid, bool on);
+#endif
+
+/* lc audio add for fs1815cn bringup end */
+#if IS_ENABLED(CONFIG_LCT_AUDIO_INFO)
+extern int lct_audio_info_create_sysfs(void);
+#endif
+
+#if IS_ENABLED(CONFIG_SND_SOC_OCA72XXX)
+extern int oca72xxx_set_pa(int dev_index, int on_off);
 #endif
 
 /*
@@ -75,6 +97,62 @@ static int mt6768_spk_i2s_in_type_get(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+/* lc audio add for fs1815cn bringup start */
+// FourSemi Add V5 Start
+#if IS_ENABLED(CONFIG_SND_SOC_FS181X)
+int spk1_ext_amp_switch_get(struct snd_kcontrol *kcontrol,
+			    struct snd_ctl_elem_value *ucontrol)
+{
+	int spk_switch = frsm_gswitch[0];
+	pr_info("%s() : %s", __func__, spk_switch ? "Onn" : "Off");
+	ucontrol->value.integer.value[0] = spk_switch;
+
+	return 0;
+}
+
+int spk1_ext_amp_switch_put(struct snd_kcontrol *kcontrol,
+			    struct snd_ctl_elem_value *ucontrol)
+{
+	int spk_switch = ucontrol->value.integer.value[0];
+
+	pr_info("%s() : %d", __func__, spk_switch);
+	if (frsm_i2ca_spk_switch(1, !!spk_switch)) {
+		pr_err("%s() to %s failed", __func__, spk_switch ? "Onn" : "Off");
+	} else {
+		frsm_gswitch[0] = (int)spk_switch;
+	}
+
+	return 0;
+}
+
+int spk1_ext_amp_mode_get(struct snd_kcontrol *kcontrol,
+			    struct snd_ctl_elem_value *ucontrol)
+{
+	int spk_mode = frsm_gmode[0];
+	pr_info("%s() : %d", __func__, spk_mode);
+	ucontrol->value.integer.value[0] = spk_mode;
+
+	return 0;
+}
+
+int spk1_ext_amp_mode_put(struct snd_kcontrol *kcontrol,
+			    struct snd_ctl_elem_value *ucontrol)
+{
+	int spk_mode = ucontrol->value.integer.value[0];
+
+	pr_info("%s() : %d", __func__, spk_mode);
+	if (frsm_i2ca_set_scene(1, spk_mode)) {
+		pr_err("%s() to mode %d failed", __func__, spk_mode);
+	} else {
+		frsm_gmode[0] = spk_mode;
+	}
+
+	return 0;
+}
+#endif
+// FourSemi Add V5 End
+/* lc audio add for fs1815cn bringup end */
+
 static int mt6768_mt6358_spk_amp_event(struct snd_soc_dapm_widget *w,
 				       struct snd_kcontrol *kcontrol,
 				       int event)
@@ -87,9 +165,19 @@ static int mt6768_mt6358_spk_amp_event(struct snd_soc_dapm_widget *w,
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
 		/* spk amp on control */
+#if IS_ENABLED(CONFIG_SND_SOC_FS181X) || IS_ENABLED(CONFIG_SND_SOC_SIA81XX) || IS_ENABLED(CONFIG_SND_SOC_OCA72XXX)
+		frsm_i2ca_spk_switch(1, true);
+		sipa_multi_channel_power_on(1);
+		oca72xxx_set_pa(0,1);
+#endif
 		break;
 	case SND_SOC_DAPM_PRE_PMD:
 		/* spk amp off control */
+#if IS_ENABLED(CONFIG_SND_SOC_FS181X) || IS_ENABLED(CONFIG_SND_SOC_SIA81XX) || IS_ENABLED(CONFIG_SND_SOC_OCA72XXX)
+		frsm_i2ca_spk_switch(1, false);
+		sipa_multi_channel_power_off(1);
+		oca72xxx_set_pa(0,0);
+#endif
 		break;
 	default:
 		break;
@@ -117,6 +205,16 @@ static const struct snd_kcontrol_new mt6768_mt6358_controls[] = {
 		     mt6768_spk_i2s_out_type_get, NULL),
 	SOC_ENUM_EXT("MTK_SPK_I2S_IN_TYPE_GET", mt6768_spk_type_enum[1],
 		     mt6768_spk_i2s_in_type_get, NULL),
+/* lc audio add for fs1815cn bringup start */
+	// FourSemi Add V5 Start
+#if IS_ENABLED(CONFIG_SND_SOC_FS181X)
+	SOC_SINGLE_EXT("SPK1 Ext AMP Switch", SND_SOC_NOPM, 0, 1, 0,
+			spk1_ext_amp_switch_get, spk1_ext_amp_switch_put),
+	SOC_SINGLE_EXT("SPK1 Ext AMP Mode", SND_SOC_NOPM, 0, 15, 0,
+			spk1_ext_amp_mode_get, spk1_ext_amp_mode_put),
+#endif
+// FourSemi Add V5 End
+/* lc audio add for fs1815cn bringup end */
 };
 
 /*
@@ -906,6 +1004,10 @@ static int mt6768_mt6358_dev_probe(struct platform_device *pdev)
 
 	dev_info(&pdev->dev, "%s()\n", __func__);
 
+#if IS_ENABLED(CONFIG_LCT_AUDIO_INFO)
+	lct_audio_info_create_sysfs();
+#endif
+
 	/* update speaker type */
 	ret = mtk_spk_update_info(card, pdev);
 	if (ret) {
@@ -954,6 +1056,13 @@ static int mt6768_mt6358_dev_probe(struct platform_device *pdev)
 	}
 
 	card->dev = &pdev->dev;
+
+#if IS_ENABLED(CONFIG_SND_SOC_SIA81XX)
+	ret = soc_aux_init_only_sia81xx(pdev, card);
+	if (ret)
+		dev_err(&pdev->dev, "%s soc_aux_init_only_sia81xx fail %d\n",
+				__func__, ret);
+#endif
 
 	ret = devm_snd_soc_register_card(&pdev->dev, card);
 	if (ret)

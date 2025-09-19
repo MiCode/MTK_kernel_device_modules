@@ -15,6 +15,18 @@ IMGSENSOR_DRIVER_OBJ := \
 	../common/$(COMMON_VERSION)/imgsensor_sensor_list.o \
 	imgsensor_clk.o \
 
+obj-$(CONFIG_GC_GC6133C_I) += gc_gc6133c_i.o
+gc_gc6133c_i-objs :=
+gc_gc6133c_i-objs += ../common/$(COMMON_VERSION)/gc_gc6133c_i/gc_gc6133c_i.o
+
+obj-$(CONFIG_SC_SC080CS_II) += sc_sc080cs_ii.o
+sc_sc080cs_ii-objs :=
+sc_sc080cs_ii-objs += ../common/$(COMMON_VERSION)/sc_sc080cs_ii/sc_sc080cs_ii.o
+
+obj-$(CONFIG_SP_SP0821_III) += sp_sp0821_iii.o
+sp_sp0821_iii-objs :=
+sp_sp0821_iii-objs += ../common/$(COMMON_VERSION)/sp_sp0821_iii/sp_sp0821_iii.o
+
 ifeq ($(CONFIG_MTK_IMGSENSOR_ISP4_T), m)
 obj-$(CONFIG_MTK_IMGSENSOR_ISP4_T) += $(MTK_PLATFORM_KO).o
 $(eval $(MTK_PLATFORM_KO)-objs += $(IMGSENSOR_DRIVER_OBJ))

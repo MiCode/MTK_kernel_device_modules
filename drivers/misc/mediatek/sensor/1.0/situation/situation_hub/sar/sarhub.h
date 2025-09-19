@@ -11,4 +11,5 @@
 int __init sarhub_init(void);
 void __exit sarhub_exit(void);
 
+extern int sar_data_report_t(int32_t value[3], int64_t time_stamp);
 #endif

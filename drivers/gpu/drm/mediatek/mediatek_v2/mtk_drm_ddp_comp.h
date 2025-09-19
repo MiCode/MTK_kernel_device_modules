@@ -954,6 +954,7 @@ enum mtk_ddp_io_cmd {
 	PMQOS_GET_LARB_PORT_HRT_BW,
 	OVL_REPLACE_BOOTUP_MVA,
 	BACKUP_INFO_CMP,
+	LC_ESD_RESTORE_BACKLIGHT,
 	LCM_RESET,
 	LCM_CUST_FUNC,
 	DSI_SEND_DDIC_CMD_PACK,
@@ -1237,6 +1238,7 @@ struct mtk_ddp_comp {
 	struct mtk_ddp_comp *bind_comp;
 	int pm_ret;
 	u32 doze_bypass;
+	struct mutex panel_lock;
 };
 
 static inline void mtk_ddp_comp_config_overhead(struct mtk_ddp_comp *comp,

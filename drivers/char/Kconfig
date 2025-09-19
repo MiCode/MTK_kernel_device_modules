@@ -5,3 +5,5 @@
 
 source "$(KCONFIG_EXT_PREFIX)drivers/char/hw_random/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/char/rpmb/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/char/xlogchar/Kconfig"
+

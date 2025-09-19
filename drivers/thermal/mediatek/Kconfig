@@ -7,6 +7,14 @@ config DEVICE_MODULES_MTK_THERMAL
 	  get temperature information from thermal sensors or
 	  turn on throttle mechaisms for thermal mitigation.
 
+config MTK_CHARGER_THERMAL
+	tristate "Mediatek charger cooling framework"
+	help
+	  Enable this option to turn on charger throttle mechanisms
+	  for Mediatek platforms.
+	  This option depends on MTK_CHARGER which is
+	  MTK charger driver.
+
 if DEVICE_MODULES_MTK_THERMAL
 
 config MTK_SOC_THERMAL
@@ -70,15 +78,6 @@ config MTK_MD_THERMAL
 	  for Mediatek platforms.
 	  This option depends on MTK_ECCCI_DRIVER which is the
 	  IPC interface between AP SoC and modem.
-
-config MTK_CHARGER_THERMAL
-	tristate "Mediatek charger cooling framework"
-	depends on MTK_CHARGER
-	help
-	  Enable this option to turn on charger throttle mechanisms
-	  for Mediatek platforms.
-	  This option depends on MTK_CHARGER which is
-	  MTK charger driver.
 
 config MTK_BACKLIGHT_THERMAL
 	tristate "Mediatek backlight cooling framework"

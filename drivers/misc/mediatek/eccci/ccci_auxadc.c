@@ -87,7 +87,28 @@ EXPORT_SYMBOL(ccci_get_adc_num);
 
 int ccci_get_adc_val(void)
 {
-	return adc_val;
+	/*Begin for MTK AP patch ALPS08862352 DRDI optimization on reading ADC at 20240517 */
+	int ret;
+	int val = 0;
+	struct iio_channel *md_channel;
+
+	md_channel = iio_channel_get(md_adc_pdev, "md-channel");
+
+	if (IS_ERR(md_channel)) {
+        ret = PTR_ERR(md_channel);
+	    CCCI_ERROR_LOG(-1, TAG, "%s: fail to get iio channel (%d)\n", __func__, ret);
+	    return adc_val;
+	}
+	ret = iio_read_channel_raw(md_channel, &val);
+	iio_channel_release(md_channel);
+	if (ret < 0) {
+		CCCI_ERROR_LOG(-1, TAG, "%s: iio_read_channel_raw fail\n", __func__);
+		return adc_val;
+	}
+
+	CCCI_NORMAL_LOG(0, TAG, "%s: val = %d\n", __func__, val);
+	return val;
+    /*End for MTK AP patch ALPS08862352 DRDI optimization on reading ADC at 20240517 */
 }
 EXPORT_SYMBOL(ccci_get_adc_val);
 

@@ -172,7 +172,7 @@ int mtk_vidle_force_power_ctrl_by_cpu(bool power_on)
 	if (disp_dpc_driver.dpc_vidle_power_keep == NULL ||
 		disp_dpc_driver.dpc_vidle_power_release == NULL) {
 		DDPMSG("%s power_on[%d] power ctrl api is null\n", __func__, power_on);
-		return -1;
+		return ret;
 	}
 
 	if (power_on)

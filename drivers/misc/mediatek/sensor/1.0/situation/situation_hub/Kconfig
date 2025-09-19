@@ -9,3 +9,5 @@ source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/sensor/1.0/situation/situatio
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/sensor/1.0/situation/situation_hub/tilt_detector/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/sensor/1.0/situation/situation_hub/flat/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/sensor/1.0/situation/situation_hub/sar/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/sensor/1.0/situation/situation_hub/sar_detector/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/sensor/1.0/situation/situation_hub/sar_detector_1/Kconfig"

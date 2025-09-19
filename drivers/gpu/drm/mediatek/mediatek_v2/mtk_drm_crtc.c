@@ -70,6 +70,7 @@
 #if !IS_ENABLED(CONFIG_DRM_MEDIATEK_DPTX_AUTO)
 #include "mtk_dp.h"
 #endif
+#include "mi_disp/mi_dsi_panel.h"
 /* *****Panel_Master*********** */
 #include "mtk_fbconfig_kdebug.h"
 #include "mtk_layering_rule_base.h"
@@ -20698,6 +20699,7 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 		mtk_drm_cwb_init(&mtk_crtc->base);
 
 	mtk_disp_chk_recover_init(&mtk_crtc->base);
+	mi_disp_esd_chk_init(&mtk_crtc->base);
 
 	if (output_comp && mtk_ddp_comp_get_type(output_comp->id) == MTK_DSI)
 		mtk_drm_fake_vsync_init(&mtk_crtc->base);

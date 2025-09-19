@@ -116,4 +116,6 @@ obj-$(CONFIG_DRM_MEDIATEK_PANEL) += mediatek-drm-gateic.o
 obj-$(CONFIG_DRM_MEDIATEK_PANEL) += mediatek-drm-panel-drv.o
 obj-$(CONFIG_DRM_MEDIATEK_PANEL) += mediatek-cust-panel-sample.o
 
+obj-$(CONFIG_DRM_PANEL_DSI_PANEL_P15A) += dsi_panel_p15a_null_dsc_vdo.o dsi_panel_p15a_42_02_0a_dsc_vdo.o dsi_panel_p15a_46_03_0b_dsc_vdo.o dsi_panel_p15a_43_02_0c_dsc_vdo.o dsi_panel_p15a_36_0f_0d_dsc_vdo.o dsi_panel_p15a_bias.o
+
 ccflags-$(CONFIG_DRM_MEDIATEK_PANEL) += -I$(DEVICE_MODULES_PATH)/drivers/leds/

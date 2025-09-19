@@ -600,15 +600,15 @@ static int pt_arg_verify(int pt_low_vol, int pt_low_bat, int pt_over_cur)
 static int pt_is_low(int pt_low_vol, int pt_low_bat, int pt_over_cur)
 {
 	int is_low = 0;
-
-	if (pt_low_vol >= pt_low_bat_level ||
-			pt_low_bat >= pt_bat_pc_level ||
-			pt_over_cur >= pt_bat_oc_level) {
+/*
+	if (pt_low_bat != BATTERY_PERCENT_LEVEL_0
+			|| pt_low_vol != LOW_BATTERY_LEVEL_0
+			|| pt_over_cur != BATTERY_OC_LEVEL_0) {
 		is_low = 1;
 		if (pt_strict)
 			is_low = 2;
 	}
-
+*/
 	return is_low;
 }
 
@@ -2037,6 +2037,9 @@ static struct platform_driver flashlight_platform_driver = {
 	},
 };
 
+
+extern void flashlights_ocp8132_init_robe(void);
+extern void flashlights_ocp8132_exit_robe(void);
 static int __init flashlight_init(void)
 {
 	int ret;
@@ -2068,12 +2071,15 @@ static int __init flashlight_init(void)
 
 	pr_debug("Init done\n");
 
+	flashlights_ocp8132_init_robe();
 	return 0;
 }
 
 static void __exit flashlight_exit(void)
 {
 	pr_debug("Exit start\n");
+
+	flashlights_ocp8132_exit_robe();
 
 	platform_driver_unregister(&flashlight_platform_driver);
 

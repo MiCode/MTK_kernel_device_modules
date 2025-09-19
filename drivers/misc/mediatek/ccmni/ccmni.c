@@ -448,13 +448,20 @@ static void ccmni_data_handle_list(int status, unsigned int ccmni_idx)
 	unsigned long flags;
 	struct sk_buff *skb = NULL;
 	struct ccmni_instance *ccmni = NULL;
+	int ret = 0;
 
 	ccmni = ccmni_ctl_blk->ccmni_inst[ccmni_idx];
 
 	if (status) {
 		atomic_set(&ccmni->is_up, 1);
 		while (!skb_queue_empty(&ccmni->rx_list))
-			recv_from_rx_list(&ccmni->rx_list, ccmni_idx);
+			ret += recv_from_rx_list(&ccmni->rx_list, ccmni_idx);
+
+		if (ret) {
+			spin_lock_bh(ccmni->spinlock);
+			ret = napi_gro_list_flush(ccmni);
+			spin_unlock_bh(ccmni->spinlock);
+		}
 	} else {
 		atomic_set(&ccmni->is_up, 0);
 		spin_lock_irqsave(&ccmni->rx_list.lock, flags);
@@ -487,6 +494,11 @@ static int ccmni_queue_recv_skb(unsigned int ccmni_idx, struct sk_buff *skb)
 		while (!skb_queue_empty(&ccmni->rx_list))
 			ret += recv_from_rx_list(&ccmni->rx_list, ccmni_idx);
 
+		if (ret) {
+			spin_lock_bh(ccmni->spinlock);
+			ret = napi_gro_list_flush(ccmni);
+			spin_unlock_bh(ccmni->spinlock);
+		}
 		/*The packet may be out of order when ccmni is up at the*/
 		/* same time, it will be correctly handled by TCP stack.*/
 		ret += ccmni_rx_callback(ccmni_idx, skb, NULL);

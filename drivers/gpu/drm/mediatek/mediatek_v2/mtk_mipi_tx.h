@@ -25,15 +25,15 @@
 #define RG_DSI_PLL_EN BIT(4)
 #define FLD_RG_DSI_PLL_POSDIV (0x7 << 8)
 #define FLD_RG_DSI_PLL_POSDIV_ REG_FLD_MSB_LSB(10, 8)
-#define RG_DSI_PLL_LVROD_EN	BIT(4)
-#define RG_DSI_PLL_RST_DLY			(0x3 << 23)
+#define RG_DSI_PLL_LVROD_EN_DEF	BIT(4)
+#define RG_DSI_PLL_RST_DLY_DEF			(0x3 << 23)
 #define RG_RG_DSI_PLL_LVR_REFSEL	(0x3 << 25)
 
 #define MIPITX_PLL_CON2 (0x0034UL)
 #define RG_DSI_PLL_SDM_SSC_EN BIT(1)
 #define MIPITX_PLL_CON3 (0x0038UL)
 #define MIPITX_PLL_CON4 (0x003CUL)
-	#define RG_DSI_PLL_ICHP		(0x3 << 12)
+#define RG_DSI_PLL_ICHP_DEF		(0x3 << 12)
 
 #define MIPITX_D2_SW_CTL_EN (0x0144UL)
 #define DSI_D2_SW_CTL_EN BIT(0)

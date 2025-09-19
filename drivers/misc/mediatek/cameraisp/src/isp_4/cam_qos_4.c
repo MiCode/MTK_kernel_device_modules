@@ -166,7 +166,7 @@ void mtk_pmqos_add(struct device *dev, enum ISP_IRQ_TYPE_ENUM module, u32 portID
 	case ISP_IRQ_TYPE_INT_CAMSV_5_ST:
 		switch (portID) {
 		case _camsv_imgo_:
-			LOG_NOTICE("warning: modlue(%d): unsupported M4U_PORT_CAM_SOC2\n",
+			LOG_DBG("warning: modlue(%d): unsupported M4U_PORT_CAM_SOC2\n",
 				module);
 			gSV_BW_REQ[module - ISP_IRQ_TYPE_INT_CAMSV_0_ST] =
 				mtk_icc_get(dev, MASTER_LARB_PORT(m4u_port.l3_cam_soc2),

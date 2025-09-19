@@ -26,6 +26,8 @@
 #include <linux/dma-buf.h>
 #include <linux/dma-mapping.h>
 #include <linux/kmemleak.h>
+#include <linux/string.h>
+#include <linux/proc_fs.h>
 #include <uapi/linux/sched/types.h>
 #include <drm/drm_auth.h>
 #define NONE DEL_NONE
@@ -102,6 +104,11 @@
 #include "slbc_ops.h"
 #include <linux/syscalls.h>
 
+#ifdef CONFIG_MI_DISP
+#include "mi_disp/mi_disp_feature.h"
+#include "mi_disp/mi_disp_log.h"
+#endif
+
 #if IS_ENABLED(CONFIG_MTK_DEVINFO)
 #include <linux/nvmem-consumer.h>
 #endif
@@ -127,6 +134,9 @@
 #define DRIVER_MAJOR 1
 #define DRIVER_MINOR 0
 #define IDLE_FPS 10 /*when fps is less than or euqal to 10, hwc not sending hw vsync*/
+
+atomic_t resume_pending;
+wait_queue_head_t resume_wait_q;
 
 void disp_dbg_deinit(void);
 void disp_dbg_probe(void);
@@ -9322,8 +9332,14 @@ static int mtk_drm_pm_notifier(struct notifier_block *notifier, unsigned long pm
 
 	switch (pm_event) {
 	case PM_SUSPEND_PREPARE:
-		if (atomic_read(&priv->kernel_pm.wakelock_cnt) != 0) {
-			DDPMSG("%s PM_SUSPEND_PREPARE but wakelock is held, interrupt the suspend flow\n", __func__);
+		if ((priv->data->mmsys_id != MMSYS_MT6765
+			&& priv->data->mmsys_id != MMSYS_MT6768
+			&& priv->data->mmsys_id != MMSYS_MT6781
+			&& priv->data->mmsys_id != MMSYS_MT6833
+			&& priv->data->mmsys_id != MMSYS_MT6853
+			&& priv->data->mmsys_id != MMSYS_MT6885)
+			&& (atomic_read(&priv->kernel_pm.wakelock_cnt) != 0)) {
+			DDPMSG("%s mmsys_id = %d PM_SUSPEND_PREPARE but wakelock is held, interrupt the suspend flow\n", __func__, priv->data->mmsys_id);
 			return NOTIFY_BAD;
 		}
 		DDPMSG("%s PM_SUSPEND_PREPARE, Disabling CRTC wakelock\n", __func__);
@@ -11764,6 +11780,155 @@ void mtk_drm_get_chipid(struct mtk_drm_private *private)
 		private->sw_ver, chip_id->hw_ver, chip_id->hw_code, chip_id->hw_subcode);
 }
 
+static ssize_t lcd_name_show(struct kobject *kobj,
+				struct kobj_attribute *attr,
+				char *buf)
+{
+	const char* data = NULL;
+	char *temp = NULL;
+	char *temp2 = NULL;
+	struct device_node *chosen;
+	unsigned long size = 0;
+	char lcm_name[64];
+	DDPINFO("read lcm_name from cmdline start\n");
+	chosen = of_find_node_by_path("/chosen");
+	if (chosen) {
+		data = of_get_property(chosen,"bootargs",(int *)&size);
+		if (!data) {
+			pr_info("Invalid lcm name\n");
+			return -1;
+		}
+		temp = strstr(data,"lcm_name=");
+		if(!temp){
+			pr_info("Invalid lcm name temp\n");
+			return -1;
+		}
+		temp2 = strstr(temp,"=");
+		if(!temp2){
+			pr_info("Invalid lcm name temp2\n");
+			return -1;
+		}
+		strncpy(lcm_name,temp2+1,30);
+		}
+	DDPINFO("read lcm_name from cmdline end\n");
+	return snprintf(buf, PAGE_SIZE, "%s\n", lcm_name);
+}
+
+static ssize_t lcd_whitepoint_show(struct kobject *kobj,
+				struct kobj_attribute *attr,
+				char *buf)
+{
+	const char* data = NULL;
+	char *temp = NULL;
+	char *temp2 = NULL;
+	struct device_node *chosen;
+	unsigned long size = 0;
+	char lcm_white_point[64];
+	DDPINFO("read lcm_white_point from cmdline start\n");
+	chosen = of_find_node_by_path("/chosen");
+	if (chosen) {
+		data = of_get_property(chosen,"bootargs",(int *)&size);
+		if (!data) {
+			pr_info("Invalid lcm whitepoint\n");
+			return -1;
+		}
+		temp = strstr(data,"lcm_white_point=");
+		if(!temp){
+			pr_info("Invalid lcm whitepoint temp\n");
+			return -1;
+		}
+		temp2 = strstr(temp,"=");
+		if(!temp2){
+			pr_info("Invalid lcm whitepoint temp2\n");
+			return -1;
+		}
+		strncpy(lcm_white_point,temp2+1,7);
+		}
+	DDPINFO("read lcm_white_point from cmdline end\n");
+	return  snprintf(buf, PAGE_SIZE, "%s\n", lcm_white_point);
+}
+
+static struct kobj_attribute dev_attr_lcd_name =
+		__ATTR(lcd_name, 0644, lcd_name_show, NULL);
+static struct kobj_attribute dev_attr_wp_info =
+		__ATTR(wp_info, 0644, lcd_whitepoint_show, NULL);
+static struct kobject *lcd_node;
+
+static struct proc_dir_entry *tp_lockdown;
+static int tp_lockdown_info_read(struct seq_file *m, void *v)
+{
+	const char* data = NULL;
+	char *temp = NULL;
+	char *temp2 = NULL;
+	struct device_node *chosen;
+	unsigned long size = 0;
+	char lcm_lockdown_info[64];
+	DDPINFO("read lcm_lockdown_info from cmdline start\n");
+	chosen = of_find_node_by_path("/chosen");
+	if (chosen) {
+		data = of_get_property(chosen,"bootargs",(int *)&size);
+		if (!data) {
+			pr_info("Invalid lcm lockdown info\n");
+			return -1;
+		}
+		temp = strstr(data,"lcm_lockdown_info=");
+		if(!temp){
+			pr_info("Invalid lcm lockdown info temp\n");
+			return -1;
+		}
+		temp2 = strstr(temp,"=");
+		if(!temp2){
+			pr_info("Invalid lcm lockdown info temp2\n");
+			return -1;
+		}
+		strncpy(lcm_lockdown_info,temp2+1,16);
+		}
+	DDPINFO("read lcm_lockdown_info from cmdline end\n");
+	seq_printf(m, "%s\n", lcm_lockdown_info);
+	return 0;
+}
+
+static int tp_lockdown_info_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, tp_lockdown_info_read, NULL);
+}
+
+static const struct proc_ops tp_lockdown_proc_fops = {
+	.proc_open = tp_lockdown_info_open,
+	.proc_read = seq_read,
+};
+
+static int lcd_info_create_sysfs(void)
+{
+	int ret;
+	lcd_node = kobject_create_and_add("android_lcd", NULL);
+	if(lcd_node == NULL) {
+		pr_info(" lcd_name_create_sysfs_ failed\n");
+		ret=-ENOMEM;
+		return ret;
+	}
+	ret=sysfs_create_file(lcd_node, &dev_attr_lcd_name.attr);
+	if(ret) {
+		pr_info("%s failed \n", __func__);
+		kobject_del(lcd_node);
+	}
+
+	ret=sysfs_create_file(lcd_node, &dev_attr_wp_info.attr);
+	if(ret) {
+		pr_info("%s, dev_attr_wp_info failed \n", __func__);
+		kobject_del(lcd_node);
+	}
+
+	tp_lockdown = proc_create("tp_lockdown_info", 0444, NULL,
+		&tp_lockdown_proc_fops);
+	if (tp_lockdown == NULL) {
+		pr_info("Couldn't create proc tp_lockdown_info!");
+		return -ENOMEM;
+	}
+
+	return 0;
+}
+
 static int mtk_drm_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -11785,6 +11950,8 @@ static int mtk_drm_probe(struct platform_device *pdev)
 	disp_dbg_probe();
 	PanelMaster_probe();
 	DDPINFO("%s+\n", __func__);
+
+	lcd_info_create_sysfs();
 
 	//drm_debug = 0x1F; /* DRIVER messages */
 	private = devm_kzalloc(dev, sizeof(*private), GFP_KERNEL);
@@ -12275,11 +12442,14 @@ err_node:
 	return ret;
 }
 
+int lcm_shutdown_symbol = 0;
+EXPORT_SYMBOL(lcm_shutdown_symbol);
 static void mtk_drm_shutdown(struct platform_device *pdev)
 {
 	struct mtk_drm_private *private = platform_get_drvdata(pdev);
 	struct drm_device *drm = private->drm;
 	int ret = 0;
+	lcm_shutdown_symbol = 1;
 
 	if (!drm)
 		return;
@@ -12329,6 +12499,19 @@ static int mtk_drm_remove(struct platform_device *pdev)
 }
 
 #ifdef CONFIG_PM_SLEEP
+static int mtk_drm_sys_prepare(struct device *dev)
+{
+        atomic_inc(&resume_pending);
+        return 0;
+}
+
+static void mtk_drm_sys_complete(struct device *dev)
+{
+        atomic_set(&resume_pending, 0);
+        wake_up_all(&resume_wait_q);
+        return;
+}
+
 static int mtk_drm_sys_suspend(struct device *dev)
 {
 	struct mtk_drm_private *private = dev_get_drvdata(dev);
@@ -12391,8 +12574,12 @@ static int mtk_drm_sys_resume(struct device *dev)
 }
 #endif
 
-static SIMPLE_DEV_PM_OPS(mtk_drm_pm_ops, mtk_drm_sys_suspend,
-			 mtk_drm_sys_resume);
+static const struct dev_pm_ops mtk_drm_pm_ops = {
+        .prepare = mtk_drm_sys_prepare,
+        .complete = mtk_drm_sys_complete,
+        .suspend = mtk_drm_sys_suspend,
+        .resume = mtk_drm_sys_resume,
+};
 
 static const struct of_device_id mtk_drm_of_ids[] = {
 	{.compatible = "mediatek,mt2701-mmsys",
@@ -12522,6 +12709,9 @@ static int __init mtk_drm_init(void)
 	int i;
 
 	DDPINFO("%s+\n", __func__);
+#ifdef CONFIG_MI_DISP
+	mi_disp_feature_init();
+#endif
 	for (i = 0; i < ARRAY_SIZE(mtk_drm_drivers); i++) {
 		DDPINFO("%s register %s driver\n",
 			__func__, mtk_drm_drivers[i]->driver.name);

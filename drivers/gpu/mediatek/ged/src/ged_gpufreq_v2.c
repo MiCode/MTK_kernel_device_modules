@@ -7,7 +7,11 @@
 #include <linux/random.h>
 #include <linux/slab.h>
 #include <linux/of.h>
+#if IS_ENABLED(CONFIG_MTK_GPU_LEGACY)
+#include <gpufreq_v2_legacy.h>
+#else
 #include <gpufreq_v2.h>
+#endif
 #include <ged_base.h>
 #include <ged_dcs.h>
 #include <ged_dvfs.h>

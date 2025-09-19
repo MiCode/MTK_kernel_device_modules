@@ -845,3 +845,12 @@ config DRM_PANEL_N11A_42_02_0A_DSC_VDO
 	  n11a 42 02 0a panel with DSC and VDO mode. The panel has a
 	  1220x2772 resolution and uses 24-bits RGB per pixel.
 	  It provides a MIPI DSI interface to host.
+
+config DRM_PANEL_DSI_PANEL_P15A
+	tristate "dsi panel p15a"
+	depends on OF
+	depends on DRM_MIPI_DSI
+	depends on BACKLIGHT_CLASS_DEVICE
+	help
+	  p15a lcm drv
+

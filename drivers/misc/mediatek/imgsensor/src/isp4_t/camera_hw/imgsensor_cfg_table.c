@@ -28,7 +28,8 @@ struct IMGSENSOR_HW_CFG imgsensor_custom_config[] = {
 			{IMGSENSOR_HW_ID_MCLK, IMGSENSOR_HW_PIN_MCLK},
 			{IMGSENSOR_HW_ID_REGULATOR, IMGSENSOR_HW_PIN_AVDD},
 			{IMGSENSOR_HW_ID_REGULATOR, IMGSENSOR_HW_PIN_DOVDD},
-			{IMGSENSOR_HW_ID_GPIO, IMGSENSOR_HW_PIN_DVDD},
+			{IMGSENSOR_HW_ID_REGULATOR, IMGSENSOR_HW_PIN_DVDD},
+			{IMGSENSOR_HW_ID_REGULATOR, IMGSENSOR_HW_PIN_AFVDD},
 			{IMGSENSOR_HW_ID_GPIO, IMGSENSOR_HW_PIN_PDN},
 			{IMGSENSOR_HW_ID_GPIO, IMGSENSOR_HW_PIN_RST},
 			{IMGSENSOR_HW_ID_NONE, IMGSENSOR_HW_PIN_NONE},
@@ -44,7 +45,7 @@ struct IMGSENSOR_HW_CFG imgsensor_custom_config[] = {
 			#ifdef IMGSENSOR_TB8786P2
 			{IMGSENSOR_HW_ID_REGULATOR, IMGSENSOR_HW_PIN_DVDD},
 			#else
-			{IMGSENSOR_HW_ID_GPIO, IMGSENSOR_HW_PIN_DVDD},
+			{IMGSENSOR_HW_ID_REGULATOR, IMGSENSOR_HW_PIN_DVDD},
 			#endif
 			{IMGSENSOR_HW_ID_GPIO, IMGSENSOR_HW_PIN_PDN},
 			{IMGSENSOR_HW_ID_GPIO, IMGSENSOR_HW_PIN_RST},
@@ -207,19 +208,114 @@ struct IMGSENSOR_HW_POWER_SEQ platform_power_sequence[] = {
 
 /* Legacy design */
 struct IMGSENSOR_HW_POWER_SEQ sensor_power_sequence[] = {
+#if defined(S5KJNS_TRULY_MAIN_I_MIPI_RAW)
+	{
+		SENSOR_DRVNAME_S5KJNS_TRULY_MAIN_I_MIPI_RAW,
+		{
+			{RST, Vol_Low, 1},
+			{AFVDD, Vol_2800, 1},
+			{DOVDD, Vol_1800, 1},
+			{DVDD, Vol_1100, 1},
+			{AVDD, Vol_2800, 1},
+			{RST, Vol_High, 1},
+			{SensorMCLK, Vol_High, 10}
+		},
+	},
+#endif
+#if defined(SC5000_TRULY_MAIN_II_MIPI_RAW)
+	{
+		SENSOR_DRVNAME_SC5000_TRULY_MAIN_II_MIPI_RAW,
+		{
+			{SensorMCLK, Vol_High, 5},
+			{RST, Vol_Low, 1},
+			{DOVDD, Vol_1800, 1},
+			{DVDD, Vol_1200, 1},
+			{AVDD, Vol_2800, 1},
+			{AFVDD, Vol_2800, 1},
+			{RST, Vol_High, 10}
+		},
+	},
+#endif
+#if defined(IMX852_OFILM_MAIN_III_MIPI_RAW)
+	{
+		SENSOR_DRVNAME_IMX852_OFILM_MAIN_III_MIPI_RAW,
+		{
+			{SensorMCLK, Vol_High, 5},
+			{RST, Vol_Low, 1},
+//			{SensorMCLK, Vol_High, 1},
+			{AVDD, Vol_2900, 1},
+			{DOVDD, Vol_1800, 1},
+			{DVDD, Vol_1100, 1},
+			{AFVDD, Vol_2800, 1},
+			{RST, Vol_High, 5}
+		},
+	},
+#endif
+#if defined(SC820CS_TRULY_FRONT_I_MIPI_RAW)
+		{
+			SENSOR_DRVNAME_SC820CS_TRULY_FRONT_I_MIPI_RAW,
+			{
+				{RST, Vol_Low, 1},
+				{DOVDD, Vol_1800, 1},
+				{DVDD, Vol_1200, 1},
+				{AVDD, Vol_2800, 1},
+				{SensorMCLK, Vol_High, 1},
+				{RST, Vol_High, 5}
+			},
+		},
+#endif
+#if defined(OV08F_OFILM_FRONT_II_MIPI_RAW)
+	{
+		SENSOR_DRVNAME_OV08F_OFILM_FRONT_II_MIPI_RAW,
+		{
+			{RST, Vol_Low, 0},
+			{DOVDD, Vol_1800, 1},
+			{AVDD, Vol_2800, 1},
+			{DVDD, Vol_1200, 5},
+			{RST, Vol_High, 1},
+			{SensorMCLK, Vol_High, 8}
+		},
+	},
+#endif
+#if defined(GC08A8_CXT_FRONT_III_MIPI_RAW)
+	{
+		SENSOR_DRVNAME_GC08A8_CXT_FRONT_III_MIPI_RAW,
+		{
+			{RST, Vol_Low, 1},
+			{DOVDD, Vol_1800, 1},
+			{DVDD, Vol_1200, 1},
+			{AVDD, Vol_2800, 3},
+			{SensorMCLK, Vol_High, 3},
+			{RST, Vol_High, 3}
+		},
+	},
+#endif
+#if defined(MT815_JK_FRONT_IIII_MIPI_RAW)
+        {
+                SENSOR_DRVNAME_MT815_JK_FRONT_IIII_MIPI_RAW,
+                {
+                        {RST, Vol_Low, 1},
+                        {DOVDD, Vol_1800, 1},
+                        {DVDD, Vol_1200, 1},
+                        {AVDD, Vol_2800, 3},
+                        {SensorMCLK, Vol_High, 3},
+                        {RST, Vol_High, 3}
+                },
+        },
+#endif
 #if defined(GC08A3_MIPI_RAW)
 	{
 		SENSOR_DRVNAME_GC08A3_MIPI_RAW,
 		{
-			{PDN, Vol_Low, 0},
-			{RST, Vol_Low, 0},
-			{DOVDD, Vol_1800, 1},
-			{DVDD, Vol_1200, 1},
+                        {SensorMCLK, Vol_High, 0},
+                        {DVDD, Vol_1200, 1},
+                        {DOVDD, Vol_1800, 0},
+                        {AVDD, Vol_2800, 0},
 			{AFVDD, Vol_2800, 1},
-			{AVDD, Vol_2800, 1},
-			{SensorMCLK, Vol_High, 1},
+			{PDN, Vol_Low, 0},
 			{PDN, Vol_High, 0},
-			{RST, Vol_High, 5}
+			{RST, Vol_Low, 0},
+			{RST, Vol_High, 3}
 		},
 	},
 #endif

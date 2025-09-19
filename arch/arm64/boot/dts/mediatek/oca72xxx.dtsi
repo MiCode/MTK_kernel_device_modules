@@ -1,0 +1,13 @@
+/*mono dtsi config*/
+&i2c5 {
+/* OCS OCA72XXX Smart K PA */
+	oca72xxx_pa@5B {
+		compatible = "ocs,oca72xxx_pa";
+		reg = <0x5B>;
+		reset-gpio = <&pio 159 0>; /*oca72390没有reset，oca72559需要打开*/
+		dev_index = < 0 >;
+		esd-enable = "false";
+		status = "okay";
+	};
+/* OCS OCA72XXX Smart K PA End */
+};

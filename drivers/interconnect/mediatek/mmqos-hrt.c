@@ -196,11 +196,13 @@ EXPORT_SYMBOL_GPL(mtk_mmqos_get_hrt_ratio);
 static void notify_bw_throttle(enum hrt_scen scen, bool is_start)
 {
 	u64 start_jiffies = jiffies;
+	u32 max_cam_bw = MULTIPLY_RATIO(mmqos_hrt->cam_max_bw)
+			/ mtk_mmqos_get_hrt_ratio(HRT_CAM);
 
 	blocking_notifier_call_chain(&mmqos_hrt->hrt_bw_throttle_notifier,
-		is_start?BW_THROTTLE_START:BW_THROTTLE_END, NULL);
-	pr_notice("%s: scen(%d) notify_time=%u\n", __func__,
-		scen, jiffies_to_msecs(jiffies-start_jiffies));
+		is_start?BW_THROTTLE_START:BW_THROTTLE_END, (void *)(&(max_cam_bw)));
+	pr_notice("%s: scen(%d) notify_time=%u cam_max_bw=%d\n", __func__,
+		scen, jiffies_to_msecs(jiffies-start_jiffies), max_cam_bw);
 }
 
 static void set_md_hrt_by_scen(u8 md_scen, bool in_speech, u32 md_type)

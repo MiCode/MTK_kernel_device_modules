@@ -68,9 +68,10 @@ aliases {
 		mtk_leds: mtk_leds {
 			backlight {
 				label = "lcd-backlight";
-				max-brightness = <255>;
-				max-hw-brightness = <1023>;
-				min-hw-brightness = <4>;
+				min-brightness = <1>;
+				max-brightness = <4095>;
+				max-hw-brightness = <4095>;
+				led_mode = <4>;
 			};
 		};
 
@@ -115,6 +116,11 @@ aliases {
 			fbt-cpu-mask = <255 192 63 63 192 63>;
 			sbe-resceue-enable = <1>;
 			boost-dram = <2>;
+		};
+
+		simtray: simtray {
+			compatible = "xiaomi,simtray-status";
+			status-gpio =	<&pio 47 0>;
 		};
 
 		disp_pwm: disp_pwm0@1100e000 {
@@ -2621,14 +2627,33 @@ transparent_hugepage=never";
 		interrupts = <GIC_SPI 163 IRQ_TYPE_LEVEL_HIGH 0>;
 	};
 
+	fpsensor_fp_eint:fpsensor_fp_eint{
+		compatible = "mediatek,fpsensor_fp_eint";
+		int-gpios = <&pio 8 0x0>;
+	};
+
+	fpsensor_finger:fpsensor_finger{
+		compatible = "mediatek,fingerprint","mediatek,goodix_fp";
+		fpc,enable-wakeup;
+	};
+
+	silead_fp: silead_fp {
+		compatible = "sil,silead_fp";
+	};
+
 	goodix_fp: fingerprint {
 		compatible = "mediatek,goodix-fp";
+	};
+
+	//add for swtp by longcheer begain
+	swtp: swtp {
+		compatible = "mediatek, swtp-eint";
 	};
 
 	regulator_vibrator: regulator-vibrator {
 		compatible = "regulator-vibrator";
 		label = "vibrator";
-		min-volt = <2300000>;
+		min-volt = <3000000>;
 		max-volt = <3200000>;
 		min-limit = <15>;
 		max-limit = <15000>;
@@ -3235,12 +3260,14 @@ transparent_hugepage=never";
 		nvmem-cell-names = "thermal-calibration-data";
 	};
 
+	/* auxadc 0(cpu ntc) */
 	tboard_thermistor1: thermal-sensor1 {
 		compatible = "mediatek,mtboard-thermistor1";
 		io-channels = <&auxadc 0>;
 		io-channel-names = "thermistor-ch0";
 	};
 
+	/* auxadc 1(PA ntc) */
 	tboard_thermistor2: thermal-sensor2 {
 		compatible = "mediatek,mtboard-thermistor2";
 		io-channels = <&auxadc 1>;
@@ -3474,9 +3501,10 @@ transparent_hugepage=never";
 			reg = <0 0x11cc0800 0 0x100>;
 			clocks = <&clk26m>;
 			clock-names = "ref";
-			mediatek,discth = <0x7>;
-			mediatek,eye-vrt = <0x5>;
-			mediatek,eye-term = <0x5>;
+			mediatek,discth = <0xa>;
+			mediatek,rev6 = <0x3>;
+			mediatek,eye-vrt = <0x7>;
+			mediatek,eye-term = <0x7>;
 			nvmem-cells = <&u2_phy_data>;
 			nvmem-cell-names = "intr_cal";
 			nvmem-cell-masks = <0x1f>;
@@ -4797,7 +4825,20 @@ transparent_hugepage=never";
 	flashlight_core: flashlight_core {
 		compatible = "mediatek,flashlight_core";
 	};
-
+	flashlights_ocp8132: flashlights_ocp8132 {
+		compatible = "mediatek,flashlights_ocp8132";
+		decouple = <1>;
+		channel@1 {
+			type = <0>;
+			ct = <0>;
+			part = <0>;
+		};
+		channel@2 {
+			type = <0>;
+			ct = <1>;
+			part = <0>;
+		};
+	};
 	flashlights_mt6370: flashlights_mt6370 {
 		compatible = "mediatek,flashlights_mt6370";
 		decouple = <0>;
@@ -5048,6 +5089,59 @@ transparent_hugepage=never";
 		vbat_threshold = <4150>;
 	};
 
+	pe5: pe5 {
+		compatible = "mediatek,charger,pe5";
+		gauge = <&mtk_gauge>;
+		polling_interval = <10000>;
+		ta_cv_ss_repeat_tmin = <25>;
+		vbat_cv = <4350>;
+		start_soc_min = <0>;
+		start_soc_max = <80>;
+		start_vbat_max = <4300>;
+		idvchg_term = <500>;
+		idvchg_step = <50>;
+		ita_level = <3000 2500 2000 1500>;
+		rcable_level = <250 300 375 500>;
+		ita_level_dual = <5000 3700 3400 3000>;
+		rcable_level_dual = <230 350 450 550>;
+		idvchg_ss_init = <1000>;
+		idvchg_ss_step = <250>;
+		idvchg_ss_step1 = <100>;
+		idvchg_ss_step2 = <50>;
+		idvchg_ss_step1_vbat = <4000>;
+		idvchg_ss_step2_vbat = <4200>;
+		ta_blanking = <400>;
+		swchg_aicr = <0>;
+		swchg_ichg = <1200>;
+		swchg_aicr_ss_init = <400>;
+		swchg_aicr_ss_step = <200>;
+		swchg_off_vbat = <4250>;
+		force_ta_cv_vbat = <4250>;
+		chg_time_max = <5400>;
+		tta_level_def = <0 0 0 0 25 50 60 70 80>;
+		tta_curlmt = <0 0 0 0 0 300 600 900 (-1)>;
+		tta_recovery_area = <3>;
+		tbat_level_def = <0 0 0 5 25 40 43 46 50>;
+		tbat_curlmt = <(-1) (-1) (-1) 300 0 600 900 1050 (-1)>;
+		tbat_recovery_area = <3>;
+		tdvchg_level_def = <0 0 0 5 25 55 60 65 70>;
+		tdvchg_curlmt = <(-1) (-1) (-1) 300 0 300 600 900 (-1)>;
+		tdvchg_recovery_area = <3>;
+		tswchg_level_def = <0 0 0 5 25 65 70 75 80>;
+		tswchg_curlmt = <(-1) (-1) (-1) 200 0 200 300 400 (-1)>;
+		tswchg_recovery_area = <3>;
+		ifod_threshold = <200>;
+		rsw_min = <20>;
+		ircmp_rbat = <40>;
+		ircmp_vclamp = <80>;
+		vta_cap_min = <6800>;
+		vta_cap_max = <11000>;
+		ita_cap_min = <1000>;
+		support_ta = "pca_ta_pps", "pd_adapter";
+		allow_not_check_ta_status;
+		vbat_threshold = <4150>;
+	};
+
 	charger: charger {
 		compatible = "mediatek,charger";
 		gauge = <&mtk_gauge>;
@@ -5123,9 +5217,9 @@ transparent_hugepage=never";
 	extcon_usb: extcon_usb {
 		compatible = "mediatek,extcon-usb";
 		charger = <&mt6370_chg>;
-		vbus-supply = <&otg_vbus>;
+		/*vbus-supply = <&otg_vbus>;
 		vbus-voltage = <5000000>;
-		vbus-current = <1800000>;
+		vbus-current = <1800000>;*/
 		tcpc = "type_c_port0";
 		mediatek,bypss-typec-sink = <1>;
 		mediatek,u2;
@@ -5150,6 +5244,9 @@ transparent_hugepage=never";
 	tcpc_pd: tcpc_pd_eint {
 	};
 
+        cp_eint_pin: cp_eint_pin {
+        };
+
 	irtx_pwm:irtx_pwm {
 		compatible = "mediatek,irtx-pwm";
 		pwm_ch = <0>;
@@ -5169,6 +5266,12 @@ transparent_hugepage=never";
 
 	touch_tui0: touch-tui0 {
 		compatible = "mediatek,tui_common";
+	};
+
+	xiaomi_touch: xiaomi_touch {
+		status = "ok";
+		compatible = "xiaomi-touch";
+		touch,name = "xiaomi-touch";
 	};
 
 	nfc:nfc {
@@ -5619,6 +5722,89 @@ transparent_hugepage=never";
 	};
 };
 
+&pio{
+        camera_pins_sc080cs_mclk_on: camera_pins_sc080cs_mclk_on {
+                pins_cmd_dat {
+                        pinmux = <PINMUX_GPIO111__FUNC_CMMCLK3>;
+                };
+        };
+        camera_pins_sc080cs_mclk_off: camera_pins_sc080cs_mclk_off {
+                pins_cmd_dat {
+                        pinmux = <PINMUX_GPIO111__FUNC_GPIO111>;
+                };
+        };
+};
+
+&pio{
+        camera_pins_gc6133c_mclk_on: camera_pins_gc6133c_mclk_on {
+                pins_cmd_dat {
+                        pinmux = <PINMUX_GPIO111__FUNC_CMMCLK3>;
+                };
+        };
+        camera_pins_gc6133c_mclk_off: camera_pins_gc6133c_mclk_off {
+                pins_cmd_dat {
+                        pinmux = <PINMUX_GPIO111__FUNC_GPIO111>;
+                };
+        };
+};
+
+&pio{
+        camera_pins_sp0821_mclk_on: camera_pins_sp0821_mclk_on {
+                pins_cmd_dat {
+                        pinmux = <PINMUX_GPIO111__FUNC_CMMCLK3>;
+                };
+        };
+        camera_pins_sp0821_mclk_off: camera_pins_sp0821_mclk_off {
+                pins_cmd_dat {
+                        pinmux = <PINMUX_GPIO111__FUNC_GPIO111>;
+                };
+        };
+};
+
+&i2c4 {
+        sc080cs@36 {
+        compatible = "sc,sc080cs_yuv";
+        reg = <0x36>;
+        reset-gpio = <&pio 112 0x0>;
+        pinctrl-names = "sc080cs_mclk_on",
+                        "sc080cs_mclk_off";
+        pinctrl-0 = <&camera_pins_sc080cs_mclk_on>;
+        pinctrl-1 = <&camera_pins_sc080cs_mclk_off>;
+        vcamio-supply = <&mt_pmic_vcamio_ldo_reg>;
+        vcama-supply = <&mt_pmic_vcama1_ldo_reg>;
+        //vcamd-supply = <&mt_pmic_vcamd_ldo_reg>;
+        status = "okay";
+      };
+
+        gc6133c@40 {
+        compatible = "gc,gc6133c_yuv";
+        reg = <0x40>;
+        reset-gpio = <&pio 112 0x0>;
+        pinctrl-names = "gc6133c_mclk_on",
+                        "gc6133c_mclk_off";
+        pinctrl-0 = <&camera_pins_gc6133c_mclk_on>;
+        pinctrl-1 = <&camera_pins_gc6133c_mclk_off>;
+        vcamio-supply = <&mt_pmic_vcamio_ldo_reg>;
+        vcama-supply = <&mt_pmic_vcama1_ldo_reg>;
+        //vcamd-supply = <&mt_pmic_vcamd_ldo_reg>;
+        status = "okay";
+      };
+
+        sp0821@43 {
+        compatible = "sp,sp0821_yuv";
+        reg = <0x43>;
+        reset-gpio = <&pio 112 0x0>;
+        pinctrl-names = "sp0821_mclk_on",
+                        "sp0821_mclk_off";
+        pinctrl-0 = <&camera_pins_sp0821_mclk_on>;
+        pinctrl-1 = <&camera_pins_sp0821_mclk_off>;
+        vcamio-supply = <&mt_pmic_vcamio_ldo_reg>;
+        vcama-supply = <&mt_pmic_vcama1_ldo_reg>;
+        //vcamd-supply = <&mt_pmic_vcamd_ldo_reg>;
+        status = "okay";
+      };
+};
+
 #include "mediatek/mt6358_6768.dtsi"
 #include "mediatek/cust_mt6768_msdc.dtsi"
 #include "mediatek/bat_setting/mt6768_battery_prop.dtsi"
@@ -5687,9 +5873,9 @@ transparent_hugepage=never";
 	regulator-always-on;
 };
 
-&mt_pmic_vio28_ldo_reg {
+/* &mt_pmic_vio28_ldo_reg {
 	regulator-always-on;
-};
+};*/
 
 &mt_pmic_va12_ldo_reg {
 	regulator-always-on;

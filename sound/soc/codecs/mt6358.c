@@ -25,6 +25,10 @@
 #include "mt6358-accdet.h"
 #endif
 
+#if IS_ENABLED(CONFIG_SND_SOC_OCA72XXX)
+extern int oca72xxx_add_codec_controls(void *codec);
+#endif
+
 #define MAX_DEBUG_WRITE_INPUT 256
 #define CODEC_SYS_DEBUG_SIZE (1024 * 32)
 
@@ -6609,7 +6613,7 @@ static void mt6358_codec_init_reg(struct mt6358_priv *priv)
 
 	/* accdet s/w enable */
 	regmap_update_bits(priv->regmap, MT6358_ACCDET_CON13,
-			   0xFFFF, 0x700E);
+			   0xFFFF, 0x3006);
 
 	/* Set HP_EINT trigger level to 2.0v */
 	regmap_update_bits(priv->regmap, MT6358_AUDENC_ANA_CON11,
@@ -6694,6 +6698,13 @@ static int mt6358_codec_probe(struct snd_soc_component *cmpnt)
 	snd_soc_add_component_controls(cmpnt,
 				       mt6358_snd_vow_controls,
 				       ARRAY_SIZE(mt6358_snd_vow_controls));
+#if IS_ENABLED(CONFIG_SND_SOC_OCA72XXX)
+ 	ret = oca72xxx_add_codec_controls((void *)cmpnt);
+ 	if (ret < 0) {
+ 		pr_err("%s: add_codec_controls failed, ret %d\n", __func__, ret);
+ 	};
+#endif
+
 	mt6358_codec_init_reg(priv);
 
 #if !defined(SKIP_SB) && !defined(CONFIG_FPGA_EARLY_PORTING)

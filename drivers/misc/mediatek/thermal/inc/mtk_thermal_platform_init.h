@@ -52,6 +52,10 @@ extern void mtktspmic_exit(void);
 extern int mtktspmic_init(void);
 extern void mtkts_bif_exit(void);
 extern int mtkts_bif_init(void);
+extern int mtkts_usb_init(void);
+extern void mtkts_usb_exit(void);
+extern int mtkts_chargeic_init(void);
+extern void mtkts_chargeic_exit(void);
 //for thermal cooler
 extern int ta_init(void);
 #if IS_ENABLED(CONFIG_MTK_THERMAL_PA_VIA_ATCMD)

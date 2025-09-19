@@ -11,6 +11,17 @@
 static struct REGULATOR *preg_own;
 static bool Is_Notify_call[IMGSENSOR_SENSOR_IDX_MAX_NUM][REGULATOR_TYPE_MAX_NUM];
 
+//C3U add for commom_diff_vol start
+#define REGULATOR_PUT 1
+#if REGULATOR_PUT
+static bool regulator_status[IMGSENSOR_SENSOR_IDX_MAX_NUM][REGULATOR_TYPE_MAX_NUM] = {{false}};
+static void check_for_regulator_get(struct REGULATOR *preg,struct device *pdevice, unsigned int sensor_index,unsigned int regulator_index);
+static void check_for_regulator_put(struct REGULATOR *preg,unsigned int sensor_index, unsigned int regulator_index);
+static struct device_node *of_node_record = NULL;
+static DEFINE_MUTEX(g_regulator_state_mutex);
+#endif
+//C3U add for commom_diff_vol end
+
 struct reg_oc_debug_t {
 	const char *name;
 	struct notifier_block nb;
@@ -42,6 +53,7 @@ struct REGULATOR_CTRL regulator_control[REGULATOR_TYPE_MAX_NUM] = {
 	{"vcama"},
 	{"vcamd"},
 	{"vcamio"},
+	{"vcamaf"},
 };
 
 static struct REGULATOR reg_instance;
@@ -164,6 +176,12 @@ static enum IMGSENSOR_RETURN regulator_init(void *pinstance)
 		return IMGSENSOR_RETURN_ERROR;
 	}
 
+	//C3U add for commom_diff_vol start
+	#if REGULATOR_PUT
+	of_node_record = pdevice->of_node;
+	#endif
+	//C3U add for commom_diff_vol end
+
 	for (j = IMGSENSOR_SENSOR_IDX_MIN_NUM;
 		j < IMGSENSOR_SENSOR_IDX_MAX_NUM;
 		j++) {
@@ -183,6 +201,12 @@ static enum IMGSENSOR_RETURN regulator_init(void *pinstance)
 					j, i, str_regulator_name);
 
 			atomic_set(&preg->enable_cnt[j][i], 0);
+			//C3U add for commom_diff_vol start
+			#if REGULATOR_PUT
+			regulator_status[j][i] = true;
+			pr_debug("regulator_state[%d][%d]: %d\n",j,i,regulator_status[j][i]);
+			#endif
+			//C3U add for commom_diff_vol end
 		}
 	}
 	pdevice->of_node = pof_node;
@@ -226,13 +250,20 @@ static enum IMGSENSOR_RETURN regulator_set(
 	int reg_type_offset;
 	atomic_t	*enable_cnt;
 
-	if (pin > IMGSENSOR_HW_PIN_DOVDD   ||
+	if (pin > IMGSENSOR_HW_PIN_AFVDD   ||
 	    pin < IMGSENSOR_HW_PIN_AVDD    ||
 	    pin_state < IMGSENSOR_HW_PIN_STATE_LEVEL_0 ||
 	    pin_state >= IMGSENSOR_HW_PIN_STATE_LEVEL_HIGH)
 		return IMGSENSOR_RETURN_ERROR;
 
 	reg_type_offset = REGULATOR_TYPE_VCAMA;
+
+	//C3U add for commom_diff_vol start
+	#if REGULATOR_PUT
+	pr_debug("sensor_idx %d, regulator %s, status %d\n", sensor_idx, regulator_control[(reg_type_offset + pin - IMGSENSOR_HW_PIN_AVDD)].pregulator_type,regulator_status[sensor_idx][(reg_type_offset + pin - IMGSENSOR_HW_PIN_AVDD)]);
+	check_for_regulator_get(preg, gimgsensor_device, sensor_idx,(reg_type_offset + pin - IMGSENSOR_HW_PIN_AVDD));
+	#endif
+	//C3U add for commom_diff_vol end
 
 	pregulator =
 		preg->pregulator[(unsigned int)sensor_idx][
@@ -265,6 +296,12 @@ static enum IMGSENSOR_RETURN regulator_set(
 				    regulator_voltage[
 				   pin_state - IMGSENSOR_HW_PIN_STATE_LEVEL_0]);
 
+				//C3U add for commom_diff_vol start
+				#if REGULATOR_PUT
+				check_for_regulator_put(preg, sensor_idx,(reg_type_offset + pin - IMGSENSOR_HW_PIN_AVDD));
+				#endif
+				//C3U add for commom_diff_vol end
+
 				return IMGSENSOR_RETURN_ERROR;
 			}
 			atomic_inc(enable_cnt);
@@ -276,9 +313,19 @@ static enum IMGSENSOR_RETURN regulator_set(
 					pr_info(
 					    "[regulator]fail to regulator_disable, powertype: %d\n",
 					    pin);
+			    //C3U add for commom_diff_vol start
+			    #if REGULATOR_PUT
+			    check_for_regulator_put(preg, sensor_idx,(reg_type_offset + pin - IMGSENSOR_HW_PIN_AVDD));
+			    #endif
+			    //C3U add for commom_diff_vol end
 					return IMGSENSOR_RETURN_ERROR;
 				}
 			}
+			//C3U add for commom_diff_vol start
+			#if REGULATOR_PUT
+			check_for_regulator_put(preg, sensor_idx,(reg_type_offset + pin - IMGSENSOR_HW_PIN_AVDD));
+			#endif
+			//C3U add for commom_diff_vol end
 			atomic_dec(enable_cnt);
 		}
 	} else {
@@ -290,6 +337,79 @@ static enum IMGSENSOR_RETURN regulator_set(
 
 	return IMGSENSOR_RETURN_SUCCESS;
 }
+
+//C3U add for commom_diff_vol start
+#if REGULATOR_PUT
+static void check_for_regulator_get(struct REGULATOR *preg,struct device *pdevice, unsigned int sensor_index, unsigned int regulator_index)
+{
+	struct device_node *pof_node = NULL;
+	char str_regulator_name[LENGTH_FOR_SNPRINTF];
+
+	if (!preg || !pdevice) {
+		pr_err("Fatal: Null ptr.preg:%pK,pdevice:%pK\n", preg, pdevice);
+		return;
+	}
+
+	if (sensor_index >= IMGSENSOR_SENSOR_IDX_MAX_NUM || regulator_index >= REGULATOR_TYPE_MAX_NUM ) {
+		pr_err("Invalid sensor_idx:%d regulator_idx: %d\n",sensor_index, regulator_index);
+		return;
+	}
+
+	pr_debug("cam%d_%s\n", sensor_index, regulator_control[regulator_index].pregulator_type);
+
+	mutex_lock(&g_regulator_state_mutex);
+
+	if (regulator_status[sensor_index][regulator_index] == false) {
+		pof_node = pdevice->of_node;
+		pdevice->of_node = of_node_record;
+
+		snprintf(str_regulator_name, sizeof(str_regulator_name), "cam%d_%s", sensor_index, regulator_control[regulator_index].pregulator_type);
+		preg->pregulator[sensor_index][regulator_index] = regulator_get(pdevice, str_regulator_name);
+
+		if (preg != NULL)
+		{
+			regulator_status[sensor_index][regulator_index] = true;
+			pr_debug("[cam%d_%s] regulator_state[%d][%d]: %d\n",sensor_index, 			regulator_control[regulator_index].pregulator_type,sensor_index,regulator_index,regulator_status[sensor_index][regulator_index]);
+		}
+		else
+			pr_err("get regulator failed.\n");
+
+		pdevice->of_node = pof_node;
+	}
+
+	mutex_unlock(&g_regulator_state_mutex);
+
+	return;
+}
+
+
+static void check_for_regulator_put(struct REGULATOR *preg, unsigned int sensor_index, unsigned int regulator_index)
+{
+	if (!preg) {
+		pr_err("Fatal: Null ptr.\n");
+		return;
+	}
+	if (sensor_index >= IMGSENSOR_SENSOR_IDX_MAX_NUM || regulator_index >= REGULATOR_TYPE_MAX_NUM ) {
+		pr_err("Invalid sensor_idx:%d regulator_idx: %d\n", sensor_index, regulator_index);
+		return;
+	}
+
+	pr_debug("[%d]cam%d_%s\n",__LINE__,sensor_index, regulator_control[regulator_index].pregulator_type);
+	mutex_lock(&g_regulator_state_mutex);
+
+	if (regulator_status[sensor_index][regulator_index] == true) {
+		regulator_put(preg->pregulator[sensor_index][regulator_index]);
+		preg->pregulator[sensor_index][regulator_index] = NULL;
+		regulator_status[sensor_index][regulator_index] = false;
+		pr_debug("[%d]cam%d_%s  regulator_status[%d][%d]:%d\n", __LINE__,sensor_index, regulator_control[regulator_index].pregulator_type,sensor_index,regulator_index,regulator_status[sensor_index][regulator_index]);
+	}
+
+	mutex_unlock(&g_regulator_state_mutex);
+
+	return;
+}
+#endif
+//C3U add for commom_diff_vol end
 
 static struct IMGSENSOR_HW_DEVICE device = {
 	.pinstance = (void *)&reg_instance,

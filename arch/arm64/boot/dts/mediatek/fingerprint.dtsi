@@ -1,0 +1,159 @@
+/*
+ * Copyright (c) 2019 MediaTek Inc.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+&spi2 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	fpc_tee@2 {
+		compatible = "fpc,fpc_spi";
+		reg = <0>;
+		fpc,enable-wakeup;
+		spi-max-frequency = <10000000>;
+		netlink-event = <31>;
+		VFP-supply = <&mt_pmic_vldo28_ldo_reg>;
+		avdd-supply = <&mt_pmic_vldo28_ldo_reg>;
+		status = "okay";
+	};
+};
+
+&fpsensor_finger {
+	pinctrl-names =  "fpsensor_fpc_rst_low", "fpsensor_fpc_rst_high", "fpsensor_fpc_cs_low", "fpsensor_fpc_cs_high";
+	pinctrl-0 = <&fpsensor_fpc_rst_low>;
+	pinctrl-1 = <&fpsensor_fpc_rst_high>;
+        pinctrl-2 = <&fpsensor_fpc_cs_low>;
+        pinctrl-3 = <&fpsensor_fpc_cs_high>;
+	VFP-supply = <&mt_pmic_vldo28_ldo_reg>;
+	status = "okay";
+};
+
+&pio {
+	fpsensor_fpc_rst_low: fpsensor_fpc_rst_low {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO31__FUNC_GPIO31>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+
+        fpsensor_fpc_cs_low: fpsensor_fpc_cs_low {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO25__FUNC_GPIO25>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+
+	fpsensor_fpc_rst_high: fpsensor_fpc_rst_high {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO31__FUNC_GPIO31>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+
+	fpsensor_fpc_cs_high: fpsensor_fpc_cs_high {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO25__FUNC_SPI2_CSB>;
+			slew-rate = <1>;
+			bias-pull-up;
+		};
+	};
+};
+
+&silead_fp {
+	pinctrl-names = "default", "rst-low", "rst-high" ,
+	                "irq-init", "spi-default", "irq_rst-low", "irq_rst-high";
+	pinctrl-0 = <&silfp_default>;
+	pinctrl-1 = <&silfp_rst_low>;
+	pinctrl-2 = <&silfp_rst_high>;
+	pinctrl-3 = <&silfp_irq>;
+	pinctrl-4 = <&fingerprint_pins_default>;
+	pinctrl-5 = <&silfp_irq_rst_low>;
+	pinctrl-6 = <&silfp_irq_rst_high>;
+	avdd-supply = <&mt_pmic_vldo28_ldo_reg>;
+	status = "okay";
+};
+
+&pio {
+	fingerprint_pins_default: fp_default {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO25__FUNC_SPI2_CSB>;
+			slew-rate = <1>;
+			bias-pull-up;
+		};
+
+		pins_cmd2_dat {
+			pinmux = <PINMUX_GPIO27__FUNC_SPI2_CLK>;
+			slew-rate = <1>;
+			drive-strength = <1>;
+			bias-pull-down;
+		};
+
+		pins_cmd3_dat {
+			pinmux = <PINMUX_GPIO28__FUNC_SPI2_MI>;
+			slew-rate = <0>;
+			bias-pull-down;
+		};
+
+		pins_cmd4_dat {
+			pinmux = <PINMUX_GPIO26__FUNC_SPI2_MO>;
+			slew-rate = <1>;
+			bias-pull-down;
+		};
+	};
+};
+
+&pio {
+	silfp_default: silfpdefault {
+	};
+
+	silfp_rst_high: state_reset_high {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO31__FUNC_GPIO31>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+
+	silfp_rst_low: state_reset_low {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO31__FUNC_GPIO31>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+
+	silfp_irq_rst_high: state_irq_to_reset_high {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO8__FUNC_GPIO8>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+
+	silfp_irq_rst_low: state_irq_to_reset_low {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO8__FUNC_GPIO8>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+
+	silfp_irq: fp_eint@8 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO8__FUNC_GPIO8>;
+			slew-rate = <0>;
+			bias-pull-down = <00>;
+		};
+	};
+};
+

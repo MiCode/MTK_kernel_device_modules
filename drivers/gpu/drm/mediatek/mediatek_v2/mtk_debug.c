@@ -1634,6 +1634,8 @@ int mtk_ddic_dsi_read_cmd(struct mtk_ddic_dsi_msg *cmd_msg)
 	return ret;
 }
 
+EXPORT_SYMBOL(mtk_ddic_dsi_read_cmd);
+
 void ddic_dsi_send_cmd_test(unsigned int case_num)
 {
 	unsigned int i = 0, j = 0;

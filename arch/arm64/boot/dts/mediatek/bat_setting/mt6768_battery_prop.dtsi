@@ -69,5 +69,4 @@
 /* Multi gauge0 enable*/
 	rbat-pull-up-volt = <(2800)>;
 /* Rbat pull up voltage*/
-#include "mt6768_battery_table.dtsi"
 };

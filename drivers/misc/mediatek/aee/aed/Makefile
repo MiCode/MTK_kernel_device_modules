@@ -21,5 +21,5 @@ aee_aed-y	+= \
 	aed-debug.o \
 	aee-common.o \
 	slog.o
-
+aee_aed-$(CONFIG_MTK_LAST_KMSG) += last_kmsg.o
 obj-$(CONFIG_MTK_AEE_FEATURE)	+= aee_rs.o

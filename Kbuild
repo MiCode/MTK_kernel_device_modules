@@ -82,6 +82,8 @@ obj-y += drivers/gpu/drm/mediatek/
 
 obj-y += drivers/input/touchscreen/
 
+obj-y += drivers/input/fingerprint/
+
 obj-y += drivers/gpu/drm/panel/
 
 obj-y += drivers/gpu/drm/bridge/
@@ -109,5 +111,9 @@ obj-y += sound/virtio/
 obj-y += drivers/pci/controller/
 
 obj-y += drivers/video/backlight/
+
+obj-y += drivers/block/zram/
+
+obj-y += drivers/staging/binder_prio/
 
 endif

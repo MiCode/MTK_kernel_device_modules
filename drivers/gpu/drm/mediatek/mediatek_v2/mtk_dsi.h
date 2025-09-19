@@ -24,11 +24,24 @@
 #include "mtk-cmdq-ext.h"
 #endif
 
+#ifdef CONFIG_MI_DISP
+#include <uapi/drm/mi_disp.h>
+#include "mi_disp/mi_disp_feature.h"
+#include "mi_disp/mi_dsi_panel.h"
+#include "mi_disp/mi_dsi_display.h"
+#include "mi_disp/mi_panel_ext.h"
+#include "mi_disp/mi_disp_input_handler.h"
+#include "mi_disp/mi_disp_lhbm.h"
+#include "mi_disp/mi_disp_print.h"
+#endif
+
+
+#ifndef CONFIG_MI_DISP
 struct t_condition_wq {
 	wait_queue_head_t wq;
 	atomic_t condition;
 };
-
+#endif
 enum DSI_N_Version {
 	VER_N12 = 0,
 	VER_N7,
@@ -99,6 +112,7 @@ struct mtk_dsi_driver_data {
 	const u32 dsi_rx_con;
 };
 
+#ifndef CONFIG_MI_DISP
 struct mtk_dsi {
 	struct mtk_ddp_comp ddp_comp;
 	struct device *dev;
@@ -191,7 +205,7 @@ struct mtk_dsi {
 	enum drm_connector_status connect_status;
 #endif
 };
-
+#endif
 enum dsi_porch_type;
 
 s32 mtk_dsi_poll_for_idle(struct mtk_dsi *dsi, struct cmdq_pkt *handle);

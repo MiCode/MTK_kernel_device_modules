@@ -2,6 +2,10 @@
 menu "MediaTek pinctrl drivers"
 	depends on ARCH_MEDIATEK || COMPILE_TEST
 
+config CUSTOM_PRODUCT_DEW
+	tristate "P15A project define macro for battery secret driver"
+	default n
+
 config DEVICE_MODULES_EINT_MTK
 	tristate "MediaTek External Interrupt Support"
 	depends on PINCTRL_MTK || PINCTRL_MTK_MOORE || DEVICE_MODULES_PINCTRL_MTK_PARIS || COMPILE_TEST

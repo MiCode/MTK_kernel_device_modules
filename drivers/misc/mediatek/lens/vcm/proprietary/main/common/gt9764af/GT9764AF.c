@@ -34,9 +34,15 @@ static struct i2c_client *g_pstAF_I2Cclient;
 static int *g_pAF_Opened;
 static spinlock_t *g_pAF_SpinLock;
 
-static unsigned long g_u4AF_INF;
+
+#define MOVE_CODE_STEP_MAX 50
+#define WAIT_STABLE_TIME 3  // ms
+static unsigned long g_u4AF_INF = 0;
 static unsigned long g_u4AF_MACRO = 1023;
-static unsigned long g_u4CurrPosition;
+static unsigned long g_u4CurrPosition = 0;
+static unsigned long AF_STARTCODE_UP = 500;
+static unsigned long AF_STARTCODE_DOWN = 350;
+
 #define Min_Pos 0
 #define Max_Pos 1023
 
@@ -133,18 +139,22 @@ static int initAF(void)
 {
 	LOG_INF("+\n");
 
+	//wait driver ic ready
+	mdelay(5);
+
 	if (*g_pAF_Opened == 1) {
 
 		//int i4RetValue = 0;
+		//int ret = 0;
 		//int cnt = 0;
 		unsigned char Temp;
 
 		s4AF_ReadReg(0x00, &Temp);  //ic info
 		LOG_INF("Check HW version: 0x00 is %x\n", Temp);
 		s4AF_WriteReg(0, 0x02, 0x00); //CONTROL
-
-
-
+		s4AF_WriteReg(0, 0x02, 0x02);
+		s4AF_WriteReg(0, 0x06, 0x40);
+		s4AF_WriteReg(0, 0x07, 0x78);
 		spin_lock(g_pAF_SpinLock);
 		*g_pAF_Opened = 2;
 		spin_unlock(g_pAF_SpinLock);
@@ -159,7 +169,6 @@ static int initAF(void)
 static inline int moveAF(unsigned long a_u4Position)
 {
 	int ret = 0;
-
 	if (setPosition((unsigned short)a_u4Position) == 0) {
 		g_u4CurrPosition = a_u4Position;
 		ret = 0;
@@ -230,9 +239,35 @@ long GT9764AF_Ioctl(struct file *a_pstFile, unsigned int a_u4Command,
 int GT9764AF_Release(struct inode *a_pstInode, struct file *a_pstFile)
 {
 	int Ret = 0;
+	unsigned char Temp;
+	unsigned long m_cur_dac_code = 0;
 
 	LOG_INF("Start\n");
 
+	if (*g_pAF_Opened == 2) {
+		s4AF_ReadReg(0x03, &Temp); //CODE MSB
+		LOG_INF("0x03 REG: %x\n", Temp);
+		m_cur_dac_code = Temp;
+		s4AF_ReadReg(0x04, &Temp); //CODE LSB
+		LOG_INF("0x04 REG: %x\n", Temp);
+		m_cur_dac_code = m_cur_dac_code * 256 + Temp;
+		g_u4CurrPosition = m_cur_dac_code;
+		if (g_u4CurrPosition > (AF_STARTCODE_UP + MOVE_CODE_STEP_MAX)) {
+			m_cur_dac_code = AF_STARTCODE_UP + MOVE_CODE_STEP_MAX;
+			setPosition((unsigned short)m_cur_dac_code);
+			LOG_INF("release 1 dac_target_code = %ld\n",
+				m_cur_dac_code);
+			msleep(WAIT_STABLE_TIME);
+			g_u4CurrPosition = m_cur_dac_code;
+		}
+                if (g_u4CurrPosition > (AF_STARTCODE_DOWN + MOVE_CODE_STEP_MAX)) {
+                        m_cur_dac_code = AF_STARTCODE_DOWN + MOVE_CODE_STEP_MAX;
+                        setPosition((unsigned short)m_cur_dac_code);
+                        LOG_INF("release 2 dac_target_code = %ld\n",
+                                m_cur_dac_code);
+                        msleep(WAIT_STABLE_TIME);
+                }
+	}
 	if (*g_pAF_Opened) {
 		LOG_INF("Free\n");
 

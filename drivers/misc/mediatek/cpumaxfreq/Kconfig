@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: GPL-2.0
+#
+# Kconfig for mi memory info
+#
+config MI_CPU_MAX_FREQ
+	tristate "Xiaomi cpu max frequency value"
+	default n
+	help
+	  Say 'm' here to support MI CPU MAX FREQ detection

@@ -171,7 +171,7 @@ static const struct mtk_mmqos_desc mmqos_desc_mt6768 = {
 		.hrt_bw = {5332, 0, 0},
 		.hrt_total_bw = 22000, /*Todo: Use DRAMC API 5500*2(channel)*2(io width)*/
 		.md_speech_bw = { 5332, 5332},
-		.hrt_ratio = {1000, 860, 880, 1000}, /* MD, CAM, DISP, MML */
+		.hrt_ratio = {1000, 1000, 880, 1000}, /* MD, CAM, DISP, MML */
 		.blocking = true,
 		.emi_ratio = 705,
 	},
@@ -179,7 +179,7 @@ static const struct mtk_mmqos_desc mmqos_desc_mt6768 = {
 		.hrt_bw = {5141, 0, 0},
 		.hrt_total_bw = 17064, /*Todo: Use DRAMC API 4266*2(channel)*2(io width)*/
 		.md_speech_bw = { 5141, 5141},
-		.hrt_ratio = {1000, 880, 900, 1000}, /* MD, CAM, DISP, MML */
+		.hrt_ratio = {1000, 1000, 900, 1000}, /* MD, CAM, DISP, MML */
 		.blocking = true,
 		.emi_ratio = 800,
 	},
@@ -187,7 +187,7 @@ static const struct mtk_mmqos_desc mmqos_desc_mt6768 = {
 		{ 0x1, 0x2, 0x1, 0x1, 0x2, 0x3}
 	},
 	.comm_port_hrt_types = {
-		{ HRT_MAX_BWL, HRT_NONE, HRT_NONE, HRT_NONE, HRT_NONE, HRT_DISP },
+		{ HRT_MAX_BWL, HRT_NONE, HRT_NONE, HRT_CAM, HRT_NONE, HRT_DISP },
 	},
 	.freq_mode = NO_MMINFRA,
 };

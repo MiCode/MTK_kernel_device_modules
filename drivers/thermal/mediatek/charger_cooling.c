@@ -25,12 +25,13 @@ struct charger_cooler_info {
 static struct charger_cooler_info charger_cl_data;
 /* < -1 is unlimit, unit is uA. */
 static const int master_charger_state_to_current_limit[CHARGER_STATE_NUM] = {
-	UNLIMIT_CURRENT_MASK, 5200000, 4600000, 4200000, 3800000, 3400000, 3000000, 2600000, 2200000
-	, 1800000, 1400000, 1000000, 700000, 500000, 0
+	-1, 5400000, 5000000, 4500000, 4000000, 3700000, 3400000, 3000000,
+	2800000, 2500000, 2250000, 1500000, 1000000, 800000, 500000, 350000
 };
+
 static const int slave_charger_state_to_current_limit[CHARGER_STATE_NUM] = {
-	-1, 5200000, 4600000, 4200000, 3800000, 3400000, 3000000, 2600000, 2200000, 1800000, 1400000
-	, 1000000, 700000, 500000, 0
+	-1, 5400000, 5000000, 4500000, 4000000, 3700000, 3400000, 3000000,
+	2800000, 2500000, 2250000, 1500000, 1000000, 800000, 500000, 350000
 };
 
 /*==================================================
@@ -39,13 +40,31 @@ static const int slave_charger_state_to_current_limit[CHARGER_STATE_NUM] = {
  */
 static int charger_throttle(struct charger_cooling_device *charger_cdev, unsigned long state)
 {
+	int ret = -1;
 	struct device *dev = charger_cdev->dev;
+	union  power_supply_propval thermal_lv;
+
+	if (charger_cdev->bat_psy == NULL) {
+		charger_cdev->bat_psy = power_supply_get_by_name("battery");
+		if (charger_cdev->bat_psy == NULL){
+			pr_info("Couldn't get bat_psy, return\n");
+			return -EINVAL;
+		}
+	}
+
+	thermal_lv.intval = state;
+
+	ret = power_supply_set_property(charger_cdev->bat_psy, POWER_SUPPLY_PROP_CHARGE_CONTROL_LIMIT, &thermal_lv);
+	if (ret < 0) {
+		dev_err(charger_cdev->dev, "set battery charge control limit fail\n");
+	}
 
 	charger_cdev->target_state = state;
 	charger_cdev->pdata->state_to_charger_limit(charger_cdev);
 	charger_cl_data.cur_state = state;
 	charger_cl_data.cur_current = master_charger_state_to_current_limit[state];
-	dev_info(dev, "%s: set lv = %ld done\n", charger_cdev->name, state);
+	dev_info(dev, "name:%s, set lv = %ld, set current:%d done\n",
+		charger_cdev->name, state, master_charger_state_to_current_limit[state]);
 	return 0;
 }
 static int charger_cooling_get_max_state(struct thermal_cooling_device *cdev, unsigned long *state)
@@ -161,23 +180,14 @@ static int cooling_state_to_charger_limit_v1(struct charger_cooling_device *chg)
 	return ret;
 }
 
-
-static const struct charger_cooling_platform_data mt6360_pdata = {
-	.state_to_charger_limit = cooling_state_to_charger_limit_v1,
-};
-
-static const struct charger_cooling_platform_data mt6375_pdata = {
+static const struct charger_cooling_platform_data mt6768_pdata = {
 	.state_to_charger_limit = cooling_state_to_charger_limit_v1,
 };
 
 static const struct of_device_id charger_cooling_of_match[] = {
 	{
-		.compatible = "mediatek,mt6360-charger-cooler",
-		.data = (void *)&mt6360_pdata,
-	},
-	{
-		.compatible = "mediatek,mt6375-charger-cooler",
-		.data = (void *)&mt6375_pdata,
+		.compatible = "mediatek,mt6768-charger-cooler",
+		.data = (void *)&mt6768_pdata,
 	},
 	{},
 };
@@ -259,7 +269,21 @@ static int charger_cooling_probe(struct platform_device *pdev)
 	if (!charger_cdev)
 		return -ENOMEM;
 
+	dev_info(dev, "register %s charger cooling probe start\n", charger_cdev->name);
+
+	charger_cdev->chg_psy = power_supply_get_by_name("mtk-master-charger");
+	if (charger_cdev->chg_psy == NULL || IS_ERR(charger_cdev->chg_psy)) {
+		pr_info("Couldn't get chg_psy\n");
+		return -EPROBE_DEFER;
+	}
+
 	charger_cdev->pdata = of_device_get_match_data(dev);
+
+	charger_cdev->bat_psy = power_supply_get_by_name("battery");
+	if (charger_cdev->chg_psy == NULL || IS_ERR(charger_cdev->chg_psy)) {
+		pr_info("Couldn't get bat_psy\n");
+		return -EPROBE_DEFER;
+	}
 
 	len = (strlen(np->name) > (MAX_CHARGER_COOLER_NAME_LEN - 1)) ?
 		(MAX_CHARGER_COOLER_NAME_LEN - 1) : strlen(np->name);
@@ -270,11 +294,7 @@ static int charger_cooling_probe(struct platform_device *pdev)
 	charger_cdev->throttle = charger_throttle;
 	charger_cdev->pdata = of_device_get_match_data(dev);
 	charger_cdev->type = get_charger_type();
-	charger_cdev->chg_psy = power_supply_get_by_name("mtk-master-charger");
-	if (charger_cdev->chg_psy == NULL || IS_ERR(charger_cdev->chg_psy)) {
-		pr_info("Couldn't get chg_psy\n");
-		return -EINVAL;
-	}
+
 	if (charger_cdev->type == DUAL_CHARGER) {
 		charger_cdev->s_chg_psy = power_supply_get_by_name("mtk-slave-charger");
 		if (charger_cdev->s_chg_psy == NULL || IS_ERR(charger_cdev->s_chg_psy)) {
@@ -299,7 +319,7 @@ static int charger_cooling_probe(struct platform_device *pdev)
 	charger_cdev->cdev = cdev;
 
 	platform_set_drvdata(pdev, charger_cdev);
-	dev_info(dev, "register %s done\n", charger_cdev->name);
+	dev_info(dev, "register %s charger cooling probe done\n", charger_cdev->name);
 
 	return 0;
 }

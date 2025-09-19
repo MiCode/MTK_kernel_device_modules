@@ -708,6 +708,23 @@
 #define SENSOR_DRVNAME_MAX96712A2_MIPI_YUV        "max96712a2_mipi_yuv"
 #define SENSOR_DRVNAME_MAX96712A3_MIPI_YUV        "max96712a3_mipi_yuv"
 #define SENSOR_DRVNAME_LT7911_MIPI_YUV        "lt7911_mipi_yuv"
+
+/*for P15A start*/
+#define S5KJNS_TRULY_MAIN_I_SENSOR_ID                        0x38ef
+#define SENSOR_DRVNAME_S5KJNS_TRULY_MAIN_I_MIPI_RAW         "s5kjns_truly_main_i_mipi_raw"
+#define SC5000_TRULY_MAIN_II_SENSOR_ID                       0xc75b
+#define SENSOR_DRVNAME_SC5000_TRULY_MAIN_II_MIPI_RAW        "sc5000_truly_main_ii_mipi_raw"
+#define IMX852_OFILM_MAIN_III_SENSOR_ID                       0x0852
+#define SENSOR_DRVNAME_IMX852_OFILM_MAIN_III_MIPI_RAW        "imx852_ofilm_main_iii_mipi_raw"
+#define SC820CS_TRULY_FRONT_I_SENSOR_ID          0xD154
+#define SENSOR_DRVNAME_SC820CS_TRULY_FRONT_I_MIPI_RAW        "sc820cs_truly_front_i_mipi_raw"
+#define OV08F_OFILM_FRONT_II_SENSOR_ID          0x5608
+#define SENSOR_DRVNAME_OV08F_OFILM_FRONT_II_MIPI_RAW        "ov08f_ofilm_front_ii_mipi_raw"
+#define GC08A8_CXT_FRONT_III_SENSOR_ID          0x08a8
+#define SENSOR_DRVNAME_GC08A8_CXT_FRONT_III_MIPI_RAW    	"gc08a8_cxt_front_iii_mipi_raw"
+#define MT815_JK_FRONT_IIII_SENSOR_ID          0x0815
+#define SENSOR_DRVNAME_MT815_JK_FRONT_IIII_MIPI_RAW            "mt815_jk_front_iiii_mipi_raw"
+/*for P15A end*/
 /************************************
  * I3C SENSOR PID (TOTAL 48-BITS)
  ************************************/

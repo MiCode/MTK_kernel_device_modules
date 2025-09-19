@@ -81,6 +81,18 @@ struct IMGSENSOR  gimgsensor;
 struct IMGSENSOR *pgimgsensor = &gimgsensor;
 MUINT32 last_id;
 
+#if 1
+//begin sensorname
+#define SENSOR_NUM 2
+#define SENSOR_LENGTH 40
+unsigned char fusion_id_main[96] = {0};
+unsigned char sn_main[96] = {0};
+unsigned char fusion_id_front[96] = {0};
+unsigned char sn_front[96] = {0};
+char imgsensor_name[SENSOR_NUM][SENSOR_LENGTH] = {0};
+//end sensorname
+#endif
+
 /*prevent imgsensor race condition in vulunerbility test*/
 struct mutex imgsensor_mutex;
 
@@ -599,6 +611,11 @@ int imgsensor_set_driver(struct IMGSENSOR_SENSOR *psensor)
 					    psensor_inst->psensor_name);
 
 					ret = drv_idx;
+
+#if 1
+					strcpy(imgsensor_name[psensor->inst.sensor_idx], psensor_inst->psensor_name);
+#endif
+
 					break;
 				}
 			} else {
@@ -3054,8 +3071,83 @@ static const struct file_operations gimgsensor_file_operations = {
 #endif
 };
 
+#if 1
+static ssize_t imgsensor_name_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	ssize_t ret = 0;
+	int num1 = 0;
+	int num2 = 0;
+	unsigned int i = 0;
+
+	for (i = 0; i < SENSOR_NUM; i++) {
+		if (strstr(imgsensor_name[i], "main") != NULL) {
+			num1 = sprintf(buf, "WIDE=%s\n", imgsensor_name[i]);
+			pr_err("WIDE=%s\n", imgsensor_name[i]);
+			continue;
+		}
+
+		if (strstr(imgsensor_name[i], "front") != NULL) {
+			num2 = sprintf(buf + num1, "FRONT=%s\n", imgsensor_name[i]);
+			if(num2 > 0)
+			    pr_err("FRONT=%s\n", imgsensor_name[i]);
+			continue;
+		}
+
+	}
+	ret = strlen(buf) + 1;
+	return ret;
+}
+static DEVICE_ATTR(sensor, 0664, imgsensor_name_show, NULL);
+static ssize_t sensorid_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+int i;
+ssize_t size = 0;
+
+//main
+for (i = 0; i < 16; i++) {
+	sprintf(buf + 2*i, "%02x", fusion_id_main[i]);
+}
+size = strlen(buf);
+pr_err("[zengx] size=%zu\n", size);
+//front
+for (i = 0; i < 16; i++) {
+	sprintf(buf + 32 + 2*i, "%02x", fusion_id_front[i]);
+}
+return 100;
+}
+static DEVICE_ATTR(sensorid, 0664, sensorid_show, NULL);
+static ssize_t sensorsn_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	int i;
+	ssize_t size = 0;
+//main
+//pr_err("[wpc] NULL sensor main3 =%02x.\n",sn_main[i]);
+
+	//strncpy(buf, "main:", 5);
+	for (i = 0; i < 25; i++) {
+	sprintf(buf + i, "%1c", sn_main[i]);
+	pr_err(" zengx sn_main[%d] = %02x = %1c", i, sn_main[i], sn_main[i]);
+	}
+	size = strlen(buf);
+	pr_err("[zengx] size=%zu\n", size);
+//front
+	//strncpy(buf + size, "1", 1);
+	for (i = 0; i < 25; i++) {
+	sprintf(buf + size + i, "%1cx", sn_front[i]);
+	pr_err(" zengx sn_front[%d] = %02x = %1c", i, sn_front[i], sn_front[i]);
+	}
+return 179;
+}
+
+static DEVICE_ATTR(sensorsn, 0664, sensorsn_show, NULL);
+#endif
+
 static inline int imgsensor_driver_register(void)
 {
+#if 1
+    int ret1;
+#endif
+
 	dev_t dev_no = MKDEV(IMGSENSOR_DEVICE_NNUMBER, 0);
 
 	if (alloc_chrdev_region(&dev_no, 0, 1, IMGSENSOR_DEV_NAME)) {
@@ -3099,6 +3191,18 @@ static inline int imgsensor_driver_register(void)
 		    dev_no,
 		    NULL,
 		    IMGSENSOR_DEV_NAME);
+
+#if 1
+	ret1 = sysfs_create_file(&gimgsensor_device->kobj, &dev_attr_sensor.attr);
+	if(ret1 < 0)
+        pr_err("sysfs_create_file sensor failed");
+  	ret1 = sysfs_create_file(&gimgsensor_device->kobj, &dev_attr_sensorid.attr);
+    if(ret1 < 0)
+        pr_err("sysfs_create_file sensorid failed");
+  	ret1 = sysfs_create_file(&gimgsensor_device->kobj, &dev_attr_sensorsn.attr);
+    if(ret1 < 0)
+        pr_err("sysfs_create_file sensorsn failed");
+#endif
 
 	return 0;
 }

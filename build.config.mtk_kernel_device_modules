@@ -19,6 +19,7 @@ FILES="
 
 EXT_MODULES+="
 kernel_device_modules-6.6
+../vendor/longcheer/mtk/kernel_modules
 ../vendor/mediatek/kernel_modules/connectivity/common
 ../vendor/mediatek/kernel_modules/connectivity/conninfra
 ../vendor/mediatek/kernel_modules/connectivity/connfem

@@ -235,6 +235,8 @@ static void sys_msg_handler(struct port_t *port, struct sk_buff *skb)
 	case MD_SW_MD1_TX_POWER_REQ:
 		/* Fall through */
 	case MD_DISPLAY_DYNAMIC_MIPI:
+		mtk_disp_mipi_clk_change(0, ccci_h->reserved);
+		break;
 		/* Fall through */
 	case MD_NR_BAND_ACTIVATE_INFO:
 		fallthrough;

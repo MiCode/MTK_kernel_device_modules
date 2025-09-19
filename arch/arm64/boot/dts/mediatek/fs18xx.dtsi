@@ -1,0 +1,20 @@
+/* platform device */
+&odm {
+	frsm_amp: frsm_amp  {
+		compatible = "foursemi,frsm-amp";
+		frsm,amp-ndev = <1>;
+		frsm,class-enable;
+		status = "ok";
+	};
+};
+
+/* i2c device */
+&i2c5 {
+	spk_amp1: fs18xx@35 {
+		compatible = "foursemi,fs1815";
+		reg = <0x35>;
+		spkr-id = <1>;
+		fwm-name = "frsm-spk1.bin";
+		status = "okay";
+	};
+};

@@ -108,4 +108,10 @@ obj-y += ../$(DEVICE_MODULES_REL_DIR)/sound/virtio/
 
 obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/pci/controller/
 
+obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/input/fingerprint/
+
+obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/block/zram/
+
+obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/staging/binder_prio/
+
 endif

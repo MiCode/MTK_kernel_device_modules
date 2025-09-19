@@ -51,7 +51,14 @@ source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/wla/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/pkvm_mkp/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/pkvm_mgmt/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/pkvm_smmu/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/mi-memory/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/miev/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/simtray/Kconfig"
 
+
+source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/kswapd_aff/Kconfig"
+
+source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/cpumaxfreq/Kconfig"
 config MTK_PLAT_POWER_MT6768
 	tristate "Platform power specified macro"
 	help
@@ -140,6 +147,24 @@ config MTK_WWAN_PWRCTL_SUPPORT
 	  Inluce power on/off, warm/cold reset, and soft on.
 	  Provides the commands with ioctl for user space.
 	  If unsure, say N
+
+config GC_GC6133C_I
+        tristate "camera QVGA module 1"
+	default n
+        help
+          Used for camera QVGA module 1
+
+config SC_SC080CS_II
+        tristate "camera QVGA module 2"
+	default n
+        help
+          Used for camera QVGA module 2
+
+config SP_SP0821_III
+        tristate "camera QVGA module 3"
+	default n
+        help
+          Used for camera QVGA module 3
 endmenu # Power
 
 menu "SSPM"
@@ -301,6 +326,7 @@ source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/conn_scp/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/nfc/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/memory-amms/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/mddp/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/wifi_ant_check/Kconfig"
 endmenu # Modem
 
 menu "Other Peripherals"
@@ -330,6 +356,7 @@ source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/rps/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/task_turbo/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/pgboost/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/ktchbst/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/perfhelper/Kconfig"
 endmenu # Performance
 
 menu "Secure Boot"

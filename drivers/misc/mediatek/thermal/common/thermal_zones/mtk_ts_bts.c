@@ -700,8 +700,9 @@ int mtkts_bts_get_hw_temp(void)
 
 
 	if ((tsatm_thermal_get_catm_type() == 2) &&
-		(tsdctm_thermal_get_ttj_on() == 0))
-		t_ret2 = wakeup_ta_algo(TA_CATMPLUS_TTJ);
+		(tsdctm_thermal_get_ttj_on() == 0)) {
+			t_ret2 = wakeup_ta_algo(TA_CATMPLUS_TTJ);
+		}
 
 	if (t_ret2 < 0)
 		pr_notice("[Thermal/TZ/BTS]wakeup_ta_algo out of memory\n");
@@ -719,8 +720,9 @@ static int mtkts_bts_get_temp(struct thermal_zone_device *thermal, int *t)
 {
 	*t = mtkts_bts_get_hw_temp();
 
-	/* if ((int) *t > 52000) */
-	/* mtkts_bts_dprintk("T=%d\n", (int) *t); */
+	if ((int) *t > 40000)
+		/* mtkts_bts_dprintk("T=%d\n", (int) *t); */
+		pr_notice("[Thermal/TZ/BTS] %s CPU NTC Temp=%d\n", __func__, (int) *t);
 
 #if IS_ENABLED(CONFIG_LVTS_DYNAMIC_ENABLE_REBOOT)
 	if (*t > DYNAMIC_REBOOT_TRIP_TEMP)
@@ -1327,8 +1329,7 @@ static int mtkts_bts_probe(struct platform_device *pdev)
 	struct proc_dir_entry *entry = NULL;
 	struct proc_dir_entry *mtkts_AP_dir = NULL;
 
-	mtkts_bts_dprintk("[%s]\n", __func__);
-
+	pr_notice("[Thermal/TZ/BTS] %s line=%d\n", __func__, __LINE__);
 
 	if (!pdev->dev.of_node) {
 		mtkts_bts_printk("[%s] Only DT based supported\n",
@@ -1420,11 +1421,13 @@ int mtkts_bts_init(void)
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MEDIATEK_MT6577_AUXADC)
 	err = platform_driver_register(&mtk_thermal_bts_driver);
+	pr_err("define CONFIG_DEVICE_MODULES_MEDIATEK_MT6577_AUXADC\n");
 	if (err) {
 		mtkts_bts_printk("thermal driver callback register failed.\n");
 		return err;
 	}
 #else
+	pr_err("undefine CONFIG_DEVICE_MODULES_MEDIATEK_MT6577_AUXADC\n");
 	/* setup default table */
 	mtkts_bts_prepare_table(g_RAP_ntc_table);
 

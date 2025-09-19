@@ -34,6 +34,8 @@
 #include "mtk_dump.h"
 #include "mtk_disp_bdg.h"
 #include "mtk_dsi.h"
+#include "mi_disp_esd_check.h"
+
 
 #define ESD_TRY_CNT 5
 #define ESD_CHK_TRY_CNT 5
@@ -41,6 +43,7 @@
 #define esd_timer_to_mtk_crtc(x) container_of(x, struct mtk_drm_crtc, esd_timer)
 
 static DEFINE_MUTEX(pinctrl_lock);
+static atomic_t panel_dead;
 
 /* pinctrl implementation */
 long _set_state(struct drm_crtc *crtc, const char *name)
@@ -575,8 +578,8 @@ static int mtk_drm_esd_recover(struct drm_crtc *crtc)
 
 done:
 	CRTC_MMP_EVENT_END(index, esd_recovery, 0, ret);
+	mtk_ddp_comp_io_cmd(output_comp, NULL, LC_ESD_RESTORE_BACKLIGHT, NULL);
 	mtk_drm_trace_end();
-
 	return 0;
 }
 
@@ -897,3 +900,13 @@ void mtk_disp_chk_recover_init(struct drm_crtc *crtc)
 			output_comp && mtk_ddp_comp_get_type(output_comp->id) == MTK_DSI && mode)
 		mtk_disp_esd_chk_init(crtc);
 }
+int get_panel_dead_flag(void)
+{
+	return atomic_read(&panel_dead);
+}
+EXPORT_SYMBOL(get_panel_dead_flag);
+void set_panel_dead_flag(int value)
+{
+	return atomic_set(&panel_dead, value);
+}
+EXPORT_SYMBOL(set_panel_dead_flag);

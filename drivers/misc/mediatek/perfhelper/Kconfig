@@ -1,0 +1,6 @@
+config PERFHELPER
+    tristate "Perf helper"
+    default n
+    help
+        mimd kernel node, like global_reclaim/mimd_trigger etc.
+

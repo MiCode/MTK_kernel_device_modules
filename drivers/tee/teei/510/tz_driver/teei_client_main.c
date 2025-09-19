@@ -22,6 +22,7 @@
 #include <linux/sched.h>
 #include <linux/of_reserved_mem.h>
 
+#define ISEE_FP_SINGLE_CHANNEL 1
 #define TEEI_SWITCH_BIG_CORE
 
 #ifdef TEEI_FIND_PREFER_CORE_AUTO
@@ -70,7 +71,7 @@ DECLARE_SEMA(pm_sema, 0);
 DECLARE_COMPLETION(boot_decryto_lock);
 
 #if !IS_ENABLED(CONFIG_MICROTRUST_DYNAMIC_CORE)
-#define TZ_PREFER_BIND_CORE (6)
+#define TZ_PREFER_BIND_CORE (7)
 #endif
 
 #define TEEI_RT_POLICY			(0x01)
@@ -228,20 +229,26 @@ int teei_set_switch_pri(unsigned long policy)
 
 void teei_cpus_read_lock(void)
 {
-	if (current != teei_cpu_write_owner)
-		cpus_read_lock();
+	if (current != teei_cpu_write_owner) {
+		down_write(&teei_cpus_lock);
+ 		cpus_read_lock();
+	}
+
 }
 
 void teei_cpus_read_unlock(void)
 {
-	if (current != teei_cpu_write_owner)
-		cpus_read_unlock();
+	if (current != teei_cpu_write_owner) {
+ 		cpus_read_unlock();
+		up_write(&teei_cpus_lock);
+	}
 }
 
 void teei_cpus_write_lock(void)
 {
 #ifdef ISEE_FP_SINGLE_CHANNEL
-	cpus_write_lock();
+	down_write(&teei_cpus_lock);
+	cpus_read_lock();
 	teei_cpu_write_owner = current;
 #endif
 }
@@ -250,7 +257,8 @@ void teei_cpus_write_unlock(void)
 {
 #ifdef ISEE_FP_SINGLE_CHANNEL
 	teei_cpu_write_owner = NULL;
-	cpus_write_unlock();
+	cpus_read_unlock();
+	up_write(&teei_cpus_lock);
 #endif
 }
 

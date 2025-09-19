@@ -13,7 +13,7 @@
  *===========================================================
  */
 #define CHARGER_COOLING_UNLIMITED_STATE	(0)
-#define CHARGER_STATE_NUM 15
+#define CHARGER_STATE_NUM 16
 #define MAX_CHARGER_COOLER_NAME_LEN		(20)
 #define UNLIMIT_CURRENT_MASK 0x10000000
 
@@ -50,6 +50,7 @@ struct charger_cooling_device {
 	enum charger_type type;
 	struct power_supply *chg_psy;
 	struct power_supply *s_chg_psy;
+	struct power_supply *bat_psy;
 	const struct charger_cooling_platform_data *pdata;
 };
 

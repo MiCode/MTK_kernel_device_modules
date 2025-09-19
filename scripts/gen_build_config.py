@@ -29,7 +29,7 @@ def get_config_in_defconfig(file_name, kernel_dir):
 
 def help():
     print('Usage:')
-    print('  python scripts/gen_build_config.py --project <project> --kernel-defconfig <kernel project defconfig file> --kernel-defconfig-overlays <kernel project overlay defconfig files> --kernel-build-config-overlays <kernel build config overlays> --build-mode <mode> --out-file <gen build.config>')
+    print('  python scripts/gen_build_config.py --project <project> --custom_lq_project <custom project devicename> --kernel-defconfig <kernel project defconfig file> --kernel-defconfig-overlays <kernel project overlay defconfig files> --kernel-build-config-overlays <kernel build config overlays> --build-mode <mode> --out-file <gen build.config>')
     print('Or:')
     print('  python scripts/gen_build_config.py -p <project> --kernel-defconfig <kernel project defconfig file> --kernel-defconfig-overlays <kernel project overlay defconfig files> --kernel-build-config-overlays <kernel build config overlays> -m <mode> -o <gen build.config>')
     print('')
@@ -39,6 +39,7 @@ def help():
 def main(**args):
 
     project = args["project"]
+    custom_lq_project = args["custom_lq_project"]
     kernel_defconfig = args["kernel_defconfig"]
     kernel_defconfig_overlays = args["kernel_defconfig_overlays"]
     kernel_build_config_overlays = args["kernel_build_config_overlays"]
@@ -134,8 +135,11 @@ def main(**args):
     file_text.append("sysroot_flags+=\"--sysroot=${ROOT_DIR}/build/kernel/build-tools/sysroot\"")
     file_text.append("export HOSTCFLAGS=\"${sysroot_flags} -I${ROOT_DIR}/prebuilts/kernel-build-tools/linux-x86/include\"")
     file_text.append("export HOSTLDFLAGS=\"${sysroot_flags} ${LLD_COMPILER_RT} -L ${ROOT_DIR}/prebuilts/kernel-build-tools/linux-x86/lib64\"")
+    file_text.append("export LQ_KERNEL_DIR=${ROOT_DIR}/vendor/longcheer/mtk/kernel_modules")
+    file_text.append("export CUSTOM_LQ_PROJECT={}".format(custom_lq_project))
 
     file_text.append("\nDEFCONFIG=olddefconfig")
+
     all_defconfig = '${ROOT_DIR}/${KERNEL_DIR}/arch/arm64/configs/gki_defconfig'
     pre_defconfig_cmds = 'cd ${KERNEL_DIR} && make O=${OUT_DIR} gki_defconfig && cd ${ROOT_DIR}'
     if kernel_arch == 'arm':
@@ -149,6 +153,9 @@ def main(**args):
     all_defconfig = '%s ${ROOT_DIR}/%s/kernel/configs/sign.config' % (all_defconfig, kernel_dir)
     if mode_config:
         all_defconfig = '%s ${ROOT_DIR}/%s/kernel/configs/%s' % (all_defconfig, kernel_dir, mode_config)
+
+    all_defconfig = '%s ${ROOT_DIR}/vendor/longcheer/mtk/kernel_modules/config/%s/%s_overlay.config' % (all_defconfig, custom_lq_project, custom_lq_project)
+
     pre_defconfig_cmds = '%s && mkdir -p ${OUT_DIR} && cd ${OUT_DIR} && bash ${ROOT_DIR}/${KERNEL_DIR}/scripts/kconfig/merge_config.sh -m .config %s && cd ${ROOT_DIR}' % (pre_defconfig_cmds, all_defconfig)
     pre_defconfig_cmds = 'PRE_DEFCONFIG_CMDS=\'if [ -f ${OUT_DIR}/.config ]; then cp -f -p ${OUT_DIR}/.config ${OUT_DIR}/.config.timestamp; else touch ${OUT_DIR}/.config.timestamp; fi; %s\'' % (pre_defconfig_cmds)
     file_text.append(pre_defconfig_cmds)
@@ -312,6 +319,7 @@ if __name__ == '__main__':
     parser.add_argument("-m","--build-mode", dest="build_mode", help="specify the build mode to build kernel.", default="user")
     parser.add_argument("--abi", dest="abi_mode", help="specify whether build.config is used to check ABI.", default="no")
     parser.add_argument("-o","--out-file", dest="out_file", help="specify the generated build.config file.", required=True)
+    parser.add_argument("-cp","--custom-lq-project", dest="custom_lq_project", help="custom longcheer project devicename", default="")
 
     args = parser.parse_args()
     main(**args.__dict__)

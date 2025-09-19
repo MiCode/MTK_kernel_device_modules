@@ -69,6 +69,12 @@ config MTK_PANIC_ON_WARN
 	  exception to test AEE dump flow, include in KE, HWT, HW_reboot, EE,
 	  and kernelAPI exception
 
+config MTK_LAST_KMSG
+	bool "export /proc/last_kmsg"
+	depends on MTK_AEE_AED
+	help
+	  LASG KMSG support
+
 config MTK_AEE_YOCTO
 	bool "AED runs on the Yocto system"
 	help

@@ -1,0 +1,21 @@
+
+&pio {
+	wifi_ant_check: wifi_ant_check {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO15__FUNC_GPIO15>;
+			drive-strength = <2>;
+			bias-disable;
+			input-enable;
+		};
+	};
+};
+&odm {
+	wifi_ant_check {
+		compatible = "wifi_ant_check";
+		gpio = <&pio 15 0>;
+		debounce-time = <30>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&wifi_ant_check>;
+	};
+};
+

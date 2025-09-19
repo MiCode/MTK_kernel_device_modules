@@ -46,6 +46,7 @@ int ut_pf_gp_transfer_data(struct TEEC_Context *context, struct TEEC_UUID *uuid,
 		return -1;
 
 	memset(&session, 0, sizeof(session));
+	printk("ut_pf_gp_transfer_data fp_uuid num is ---> %x, %x\n", uuid->timeLow, uuid->timeMid);
 	result = TEEC_OpenSession(context, &session, uuid, TEEC_LOGIN_PUBLIC,
 			NULL, NULL, &returnOrigin);
 	if (result != TEEC_SUCCESS) {

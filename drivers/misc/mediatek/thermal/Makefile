@@ -25,6 +25,7 @@ ccflags-y  += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/base/power/include/
 ccflags-y  += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpufreq/v2_legacy/include/
 ccflags-y  += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/thermal/common/inc/
 ccflags-y  += -I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mediatek_v2
+ccflags-y  += -I$(srctree)/drivers/power/supply
 
 ifneq ($(strip $(CONFIG_MTK_APUSYS_SUPPORT)),)
 ccflags-y  += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/apusys/power/2.5/inc/
@@ -66,6 +67,13 @@ thermal_monitor-y += common/thermal_zones/mtk_ts_pa.o
 thermal_monitor-y += common/thermal_zones/mtk_ts_pa_thput.o
 thermal_monitor-y += common/thermal_zones/mtk_ts_charger.o
 
+# /* usb add ntc node -s */
+thermal_monitor-y += common/thermal_zones/mtk_ts_usb.o
+# /* usb ic add ntc node -e */
+
+# /* charge ic add ntc node -s */
+thermal_monitor-y += common/thermal_zones/mtk_ts_charge_ic.o
+# /* charge ic add ntc node -e */
 
 ifeq ($(strip $(CONFIG_MTK_PLAT_POWER_6853)),)
 thermal_monitor-y += common/thermal_zones/mtk_ts_wmt.o

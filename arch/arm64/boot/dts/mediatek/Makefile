@@ -10,6 +10,9 @@ DTC_INCLUDE += $(DEVICE_MODULES_PATH)/arch/$(SRCARCH)/boot/dts $(DEVICE_MODULES_
 #DTC_INCLUDE += $(DEVICE_MODULES_REL_PATH)/arch/$(SRCARCH)/boot/dts
 DTC_INCLUDE += $(dir $(src))
 
+# add LQ-KERNEL dtsi
+DTC_INCLUDE += $(LQ_KERNEL_DIR)/config/$(CUSTOM_LQ_PROJECT)
+
 # for devicetree overlay
 DTC_FLAGS += -@
 

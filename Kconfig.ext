@@ -122,4 +122,26 @@ source "$(KCONFIG_EXT_PREFIX)drivers/hypervisor/host/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)drivers/hypervisor/nebula/Kconfig"
 
+source "$(KCONFIG_EXT_PREFIX)/drivers/input/fingerprint/Kconfig"
+
 source "$(KCONFIG_EXT_PREFIX)/drivers/video/backlight/Kconfig"
+
+source "$(LQ_KERNEL_DIR)/Kconfig"
+
+source "$(KCONFIG_EXT_PREFIX)drivers/block/zram/Kconfig"
+
+source "$(KCONFIG_EXT_PREFIX)sound/soc/codecs/sia81xx/Kconfig"
+
+source "$(KCONFIG_EXT_PREFIX)sound/soc/codecs/fs181x/Kconfig"
+
+source "$(KCONFIG_EXT_PREFIX)drivers/staging/binder_prio/Kconfig"
+
+config FACTORY_BUILD
+	bool "distiguish factory version from dev version"
+	default n
+	help
+	  This macro will be defined when build factory version. It is used to
+	  distinguish factory and dev codes in kernel.
+
+source "$(KCONFIG_EXT_PREFIX)/sound/soc/codecs/lct_audio_pa_info/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)/sound/soc/codecs/oca72xxx/Kconfig"

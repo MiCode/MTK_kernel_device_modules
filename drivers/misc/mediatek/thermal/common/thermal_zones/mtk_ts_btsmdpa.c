@@ -760,8 +760,9 @@ static int mtkts_btsmdpa_get_temp(struct thermal_zone_device *thermal, int *t)
 {
 	*t = mtkts_btsmdpa_get_hw_temp();
 
-	if ((int)*t > 52000)
-		mtkts_btsmdpa_dprintk("T=%d\n", (int)*t);
+	if ((int)*t > 40000)
+		//mtkts_btsmdpa_dprintk("T=%d\n", (int)*t);
+		pr_notice("[Thermal/TZ/USB] %s PA NTC Temp=%d\n", __func__, (int) *t);
 
 	if ((int)*t >= polling_trip_temp1)
 		thermal->polling_delay_jiffies = interval * 1000;
@@ -1362,7 +1363,7 @@ static int mtkts_btsmdpa_probe(struct platform_device *pdev)
 	int err = 0;
 	int ret = 0;
 
-	mtkts_btsmdpa_dprintk("[%s]\n", __func__);
+	pr_notice("[Thermal/TZ/PA] %s line=%d\n", __func__, __LINE__);
 
 
 	if (!pdev->dev.of_node) {

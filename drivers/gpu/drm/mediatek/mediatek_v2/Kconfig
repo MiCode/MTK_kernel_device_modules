@@ -162,3 +162,4 @@ config MTK_LK_NO_DISPLAY
 	  CONFIG_MTK_DISP_NO_LK for auto.
 
 source "$(KCONFIG_EXT_PREFIX)drivers/gpu/drm/mediatek/mediatek_v2/mtk_drm_edp/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/gpu/drm/mediatek/mediatek_v2/mi_disp/Kconfig"

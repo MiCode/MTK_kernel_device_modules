@@ -878,6 +878,7 @@ static void mtk_gpio_set(struct gpio_chip *chip, unsigned int gpio, int value)
 	(void)mtk_hw_set_value(hw, desc, PINCTRL_PIN_REG_DO, !!value);
 }
 
+#define W1_ONE_WIRE_GPIO      17
 static int mtk_gpio_direction_input(struct gpio_chip *chip, unsigned int gpio)
 {
 	struct mtk_pinctrl *hw = gpiochip_get_data(chip);
@@ -885,6 +886,13 @@ static int mtk_gpio_direction_input(struct gpio_chip *chip, unsigned int gpio)
 	if (gpio >= hw->soc->npins)
 		return -EINVAL;
 
+#if IS_ENABLED(CONFIG_CUSTOM_PRODUCT_DEW)
+	if (gpio == W1_ONE_WIRE_GPIO) {
+		const struct mtk_pin_desc *desc;
+		desc = (const struct mtk_pin_desc *)&hw->soc->pins[gpio];
+		return mtk_hw_set_value(hw, desc, PINCTRL_PIN_REG_DIR, 0);
+	}
+#endif
 	return pinctrl_gpio_direction_input(chip->base + gpio);
 }
 
@@ -897,7 +905,13 @@ static int mtk_gpio_direction_output(struct gpio_chip *chip, unsigned int gpio,
 		return -EINVAL;
 
 	mtk_gpio_set(chip, gpio, value);
-
+#if IS_ENABLED(CONFIG_CUSTOM_PRODUCT_DEW)
+	if (gpio == W1_ONE_WIRE_GPIO) {
+		const struct mtk_pin_desc *desc;
+		desc = (const struct mtk_pin_desc *)&hw->soc->pins[gpio];
+		return mtk_hw_set_value(hw, desc, PINCTRL_PIN_REG_DIR, 1);
+	}
+#endif
 	return pinctrl_gpio_direction_output(chip->base + gpio);
 }
 

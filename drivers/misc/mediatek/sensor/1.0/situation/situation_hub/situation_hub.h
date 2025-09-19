@@ -52,4 +52,12 @@
 #include "sar/sarhub.h"
 #endif
 
+#if IS_ENABLED(CONFIG_MTK_SAR_DETECTOR_HUB)
+#include "sar_detector/sar_detector.h"
+#endif
+
+#if IS_ENABLED(CONFIG_MTK_SAR_DETECTOR_1_HUB)
+#include "sar_detector_1/sar_detector_1.h"
+#endif
+
 #endif

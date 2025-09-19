@@ -1861,6 +1861,7 @@ const struct mtk_disp_rdma_data mt6768_rdma_driver_data = {
 	.has_greq_urg_num = false,
 	.is_support_34bits = false,
 	.dsi_buffer = false,
+	.disable_underflow = true,
 };
 
 const struct mtk_disp_rdma_data mt6761_rdma_driver_data = {

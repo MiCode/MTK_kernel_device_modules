@@ -93,6 +93,9 @@ static int normal_tx_ring2queue[NORMAL_TXQ_NUM];
 
 #define NET_TX_FIRST_QUE	0
 
+//rxq push thread flush gro list time, 2ms
+#define RX_FLSUH_TIME (2000000)
+
 #define TAG "cldma"
 
 struct md_cd_ctrl *cldma_ctrl;
@@ -1122,6 +1125,7 @@ static int cldma_net_rx_push_thread(void *arg)
 	unsigned long ccmni_temp_state = 0;
 	unsigned int ccmni_flush_state[CCMNI_INTERFACE_NUM];
 	struct lhif_header *lhif;
+	u64 time_limit = 0;
 
 	while (1) {
 		if (skb_queue_empty(&queue->skb_list.skb_list)) {
@@ -1133,6 +1137,8 @@ static int cldma_net_rx_push_thread(void *arg)
 
 			ret = wait_event_interruptible(queue->rx_wq,
 				!skb_queue_empty(&queue->skb_list.skb_list));
+
+			time_limit = local_clock();
 			if (ret == -ERESTARTSYS)
 				continue;	/* FIXME */
 		}
@@ -1171,6 +1177,16 @@ static int cldma_net_rx_push_thread(void *arg)
 		}
 
 		cldma_recv_skb(lhif->netif, skb);
+
+		if ((local_clock() - time_limit) >= RX_FLSUH_TIME) {  //>= 2ms
+			cldma_flush_napi_rx_list(ccmni_flush_count,
+				ccmni_flush_state, queue->index);
+			ccmni_flush_count = 0;
+			ccmni_temp_state = 0;
+			ccmni_idx = 0xFFFFFFFF;
+
+			time_limit = local_clock();
+		}
 
 #ifdef CCCI_SKB_TRACE
 		per_md_data->netif_rx_profile[6] =
@@ -3295,6 +3311,8 @@ static int ccci_cldma_hif_init(struct platform_device *pdev,
 	ccci_hif_register(CLDMA_HIF_ID, (void *)cldma_ctrl,
 		&ccci_hif_cldma_ops);
 	ccmni_ops.send_skb = &md_cd_send_skb;
+
+	ccmni_set_cur_speed(0);
 	return 0;
 }
 

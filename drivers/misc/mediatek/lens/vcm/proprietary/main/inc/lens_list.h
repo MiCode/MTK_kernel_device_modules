@@ -385,4 +385,31 @@ extern long WV511AAF_Ioctl(struct file *a_pstFile, unsigned int a_u4Command,
 extern int WV511AAF_Release(struct inode *a_pstInode, struct file *a_pstFile);
 extern int WV511AAF_GetFileName(unsigned char *pFileName);
 
+#define PD9302AF_SetI2Cclient PD9302AF_SetI2Cclient_Main
+#define PD9302AF_Ioctl PD9302AF_Ioctl_Main
+#define PD9302AF_Release PD9302AF_Release_Main
+#define PD9302AF_PowerDown PD9302AF_PowerDown_Main
+#define PD9302AF_GetFileName PD9302AF_GetFileName_Main
+extern int PD9302AF_SetI2Cclient(struct i2c_client *pstAF_I2Cclient,
+				spinlock_t *pAF_SpinLock, int *pAF_Opened);
+extern long PD9302AF_Ioctl(struct file *a_pstFile, unsigned int a_u4Command,
+				unsigned long a_u4Param);
+extern int PD9302AF_Release(struct inode *a_pstInode, struct file *a_pstFile);
+extern int PD9302AF_PowerDown(struct i2c_client *pstAF_I2Cclient,
+				int *pAF_Opened);
+extern int PD9302AF_GetFileName(unsigned char *pFileName);
+
+#define GT9778WAF_SetI2Cclient GT9778WAF_SetI2Cclient_Main
+#define GT9778WAF_Ioctl GT9778WAF_Ioctl_Main
+#define GT9778WAF_Release GT9778WAF_Release_Main
+#define GT9778WAF_PowerDown GT9778WAF_PowerDown_Main
+#define GT9778WAF_GetFileName GT9778WAF_GetFileName_Main
+extern int GT9778WAF_SetI2Cclient(struct i2c_client *pstAF_I2Cclient,
+				spinlock_t *pAF_SpinLock, int *pAF_Opened);
+extern long GT9778WAF_Ioctl(struct file *a_pstFile, unsigned int a_u4Command,
+				unsigned long a_u4Param);
+extern int GT9778WAF_Release(struct inode *a_pstInode, struct file *a_pstFile);
+extern int GT9778WAF_PowerDown(struct i2c_client *pstAF_I2Cclient,
+				int *pAF_Opened);
+extern int GT9778WAF_GetFileName(unsigned char *pFileName);
 #endif
