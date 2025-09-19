@@ -398,9 +398,8 @@
 			tcpc-dual,supported-modes = <0>;
 			/* tcpc_device's name */
 			tcpc,name = "type_c_port0";
-			/* 0: SNK Only, 1: SRC Only, 2: DRP, */
-			/* 3: Try.SRC, 4: Try.SNK */
-			tcpc,role-def = <4>;
+			/* 0: Unknown, 1: SNK, 2: SRC, 3: DRP, 4: Try.SRC, 5: Try.SNK */
+			tcpc,role-def = <5>;
 			/* 0: Default, 1: 1.5, 2: 3.0 */
 			tcpc,rp-level = <0>;
 			/* 0: Never, 1: Always, 2: EMarkOnly, 3: StartOnly */

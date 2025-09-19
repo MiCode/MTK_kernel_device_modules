@@ -27,9 +27,7 @@
 #include "../common/mtk-sp-pcm-ops.h"
 #include "../common/mtk-sram-manager.h"
 
-#if IS_ENABLED(CONFIG_MTK_ION)
 #include "../common/mtk-mmap-ion.h"
-#endif
 
 #include "mt6781-afe-common.h"
 #include "mt6781-afe-clk.h"
@@ -53,6 +51,7 @@
 
 static const struct snd_pcm_hardware mt6781_afe_hardware = {
 	.info = (SNDRV_PCM_INFO_MMAP |
+		 SNDRV_PCM_INFO_NO_PERIOD_WAKEUP |
 		 SNDRV_PCM_INFO_INTERLEAVED |
 		 SNDRV_PCM_INFO_MMAP_VALID),
 	.formats = (SNDRV_PCM_FMTBIT_S16_LE |
@@ -146,13 +145,17 @@ int mt6781_fe_trigger(struct snd_pcm_substream *substream, int cmd,
 	unsigned int rate = runtime->rate;
 	int fs;
 	int ret = 0;
-	bool dsp_reset = false;
 
-	dev_info(afe->dev, "%s(), %s cmd %d, irq_id %d dsp_reset %d\n",
-		 __func__, memif->data->name, cmd, irq_id, dsp_reset);
+	if (!in_interrupt())
+		dev_info(afe->dev,
+			 "%s(), %s cmd %d, irq_id %d, is_afe_need_triggered %d, no_period_wakeup %d\n",
+			 __func__, memif->data->name, cmd, irq_id,
+			 is_afe_need_triggered(memif),
+			 runtime->no_period_wakeup);
 
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
+	case SNDRV_PCM_TRIGGER_RESUME:
 		if (is_afe_need_triggered(memif)) {
 			ret = mtk_memif_set_enable(afe, id);
 			if (ret) {
@@ -170,12 +173,6 @@ int mt6781_fe_trigger(struct snd_pcm_substream *substream, int cmd,
 		if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
 			if ((runtime->period_size * 1000) / rate <= 10)
 				udelay(300);
-		}
-
-		if (ret) {
-			dev_info(afe->dev, "%s(), error, id %d, memif enable, ret %d\n",
-				__func__, id, ret);
-			return ret;
 		}
 
 		/* set irq counter */
@@ -213,27 +210,13 @@ int mt6781_fe_trigger(struct snd_pcm_substream *substream, int cmd,
 				}
 			}
 		}
-#if defined(CONFIG_SND_SOC_MTK_AUDIO_DSP) || defined(CONFIG_MTK_VOW_BARGE_IN_SUPPORT)
-#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUDIO_DSP)
-	/* only when adsp enable using hw semaphore to set memif */
-		dsp_reset = mtk_audio_get_adsp_reset_status();
-		if (runtime->stop_threshold == ~(0U) && is_adsp_system_running() &&
-		    !dsp_reset)
-			ret = 0;
-		else
-			ret = mtk_dsp_memif_set_disable(afe, id);
-#elif defined(CONFIG_MTK_VOW_BARGE_IN_SUPPORT)
-		if (runtime->stop_threshold == ~(0U))
-			ret = 0;
-		else
+		if (is_afe_need_triggered(memif)) {
 			ret = mtk_memif_set_disable(afe, id);
-#endif
-#else
-		ret = mtk_memif_set_disable(afe, id);
-#endif
-		if (ret) {
-			dev_info(afe->dev, "%s(), error, id %d, memif enable, ret %d\n",
-				__func__, id, ret);
+			if (ret) {
+				dev_info(afe->dev,
+					"%s(), error, id %d, memif enable, ret %d\n",
+					__func__, id, ret);
+			}
 		}
 
 		if (!runtime->no_period_wakeup) {
@@ -1098,7 +1081,6 @@ static int mt6781_adsp_mem_set(struct snd_kcontrol *kcontrol,
 }
 #endif
 
-#if IS_ENABLED(CONFIG_MTK_ION)
 static int mt6781_mmap_dl_scene_get(struct snd_kcontrol *kcontrol,
 				    struct snd_ctl_elem_value *ucontrol)
 {
@@ -1187,7 +1169,12 @@ static int mt6781_mmap_ion_get(struct snd_kcontrol *kcontrol,
 static int mt6781_mmap_ion_set(struct snd_kcontrol *kcontrol,
 			       struct snd_ctl_elem_value *ucontrol)
 {
-	return mtk_get_ion_buffer();
+	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
+	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
+
+	dev_info(afe->dev, "%s() afe %p\n", __func__, afe);
+	mtk_exporter_init(afe->dev);
+	return 0;
 }
 
 static int mt6781_dl_mmap_fd_get(struct snd_kcontrol *kcontrol,
@@ -1231,7 +1218,6 @@ static int mt6781_ul_mmap_fd_set(struct snd_kcontrol *kcontrol,
 {
 	return 0;
 }
-#endif
 
 static const struct snd_kcontrol_new mt6781_pcm_kcontrols[] = {
 	SOC_SINGLE_EXT("Audio IRQ1 CNT", SND_SOC_NOPM, 0, 0x3ffff, 0,
@@ -1308,7 +1294,6 @@ static const struct snd_kcontrol_new mt6781_pcm_kcontrols[] = {
 		       mt6781_adsp_mem_get,
 		       mt6781_adsp_mem_set),
 #endif
-#if IS_ENABLED(CONFIG_MTK_ION)
 	SOC_SINGLE_EXT("mmap_play_scenario", SND_SOC_NOPM, 0, 0x1, 0,
 		       mt6781_mmap_dl_scene_get, mt6781_mmap_dl_scene_set),
 	SOC_SINGLE_EXT("mmap_record_scenario", SND_SOC_NOPM, 0, 0x1, 0,
@@ -1325,7 +1310,6 @@ static const struct snd_kcontrol_new mt6781_pcm_kcontrols[] = {
 		       SND_SOC_NOPM, 0, 0xffffffff, 0,
 		       mt6781_ul_mmap_fd_get,
 		       mt6781_ul_mmap_fd_set),
-#endif
 };
 
 /* dma widget & routes*/
@@ -5513,10 +5497,6 @@ static const struct file_operations mt6781_debugfs_ops = {
 	.read = mt6781_debugfs_read,
 };
 
-static const struct snd_soc_component_driver mt6781_afe_pcm_component = {
-	.name = "mt6781-afe-pcm-dai",
-};
-
 static int mt6781_dai_memif_register(struct mtk_base_afe *afe)
 {
 	struct mtk_base_afe_dai *dai;
@@ -5741,21 +5721,12 @@ static int mt6781_afe_pcm_dev_probe(struct platform_device *pdev)
 
 	/* register platform */
 	ret = devm_snd_soc_register_component(&pdev->dev,
-					     &mt6781_afe_component, NULL, 0);
-	if (ret) {
-		dev_info(dev, "err_platform\n");
-		goto err_platform;
-	}
-
-	dev_info(dev, "%s(), devm_snd_soc_register_component\n", __func__);
-
-	ret = devm_snd_soc_register_component(&pdev->dev,
-					      &mt6781_afe_pcm_component,
+					      &mt6781_afe_component,
 					      afe->dai_drivers,
 					      afe->num_dai_drivers);
 	if (ret) {
-		dev_info(dev, "err_dai_component\n");
-		goto err_dai_component;
+		dev_info(dev, "err_platform\n");
+		goto err_pm_disable;
 	}
 
 	dev_info(dev, "%s(), --\n", __func__);
@@ -5768,12 +5739,6 @@ static int mt6781_afe_pcm_dev_probe(struct platform_device *pdev)
 	ultra_set_dsp_afe(afe);
 #endif
 	return 0;
-
-err_dai_component:
-	snd_soc_unregister_component(&pdev->dev);
-
-err_platform:
-	snd_soc_unregister_component(&pdev->dev);
 
 err_pm_disable:
 	pm_runtime_disable(&pdev->dev);

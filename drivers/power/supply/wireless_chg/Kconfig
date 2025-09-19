@@ -1,0 +1,44 @@
+# SPDX-License-Identifier: GPL-2.0
+
+config WIRELESS_SC96231
+	tristate "wireless charging sc96231 driver"
+	help
+		Say yes here to enable xmext use sc96231 wireless rev chg driver.
+		Say no if not using xmext use sc96231 wireless rev chg driver.
+
+config WIRELESS_CHG_CLASS
+	tristate "wireless charging class"
+	help
+		Say yes here to enable wls chg class.
+		Say no if not using wls chg class
+
+config WIRELESS_CHG_CLASS_INTF
+	tristate "wireless charging class driver"
+	help
+		Say yes here to enable wireless_charger_class driver.
+		Say no if not using wireless_charger_class driver.
+
+config XM_WLS_CHG_CLASS_INTF
+	bool "support wireless charging class ops"
+	default n
+	help
+		Say yes here to use wireless_charger_class ops.
+		Say no if using wireless_charger_class weak ops.
+
+config WIRELESS_SC96281
+	tristate "southchip wireless charger driver"
+	help
+		Say yes here to enable sc96281 wireless charger driver.
+		Say no if not using sc96281 wireless charger driver.
+  
+  config XM_WLS_MANAGER
+	tristate "wls_cp_manager contral wireless adapter charging"
+	help
+		Say yes here to enable wls_cp_manager contral wls adapter charging driver.
+		Say no if not using wls_cp_manager contral wls adapter charging driver.
+
+config SUPPORT_SOUTHCHIP_PDPHY
+	bool "support southchip pdphy"
+	default n
+	help
+	support southchip pdphy.

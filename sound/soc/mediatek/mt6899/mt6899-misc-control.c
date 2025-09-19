@@ -25,6 +25,10 @@
 #define SGEN_TIE_CH1_KCONTROL_NAME "Audio_SineGen_Tie_Ch1"
 #define SGEN_TIE_CH2_KCONTROL_NAME "Audio_SineGen_Tie_Ch2"
 
+#if IS_ENABLED(CONFIG_MTK_ULTRASND_PROXIMITY)
+extern unsigned int elliptic_add_platform_controls(void *platform);
+#endif
+
 static const char *const mt6899_sgen_mode_str[] = {
 	"I0I1",   "I2",     "I3I4",   "I5I6",
 	"I7I8",   "I9",     "I10I11", "I12I13",
@@ -918,6 +922,10 @@ int mt6899_add_misc_control(struct snd_soc_component *component)
 				       mt6899_afe_scp_dmic_controls,
 				       ARRAY_SIZE(mt6899_afe_scp_dmic_controls));
 
+	//for ellipitc mixer control
+#if IS_ENABLED(CONFIG_MTK_ULTRASND_PROXIMITY)
+	elliptic_add_platform_controls(component);
+#endif
 	return 0;
 }
 

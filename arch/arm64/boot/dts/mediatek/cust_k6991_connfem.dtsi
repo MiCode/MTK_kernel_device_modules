@@ -22,8 +22,9 @@
 			"sku1_backup",			/* [13] SKU1 Backup TxHD160 2G+2A */
 			"sku2_backup",			/* [14] SKU2 Backup 2G+2A */
 			"sku2_backup",			/* [15] SKU2 Backup TxHD160 2G+2A */
-			"qm42655_qm45655_2g2a";		/* [16] SKU1-1 with MXD7282 BT eFEM 2G+2A */
-
+			"qm42655_qm45655_2g2a",		/* [16] SKU1-1 with MXD7282 BT eFEM 2G+2A */
+			"qm42655_qm45655_sky85732",	/* [17] SKU1-1 BN2 sky85732 2G+2A+1A */
+			"vc536421_vc576821";		/* [18] SKU1-1 with VC5364/5768-21 */
 
 		hwid {
 			/* HWID bit[0]
@@ -761,6 +762,94 @@
 				};
 			};
 		};
+
+		/***************************************************************
+		 * [HW][17] sku1-1 BN2 SKY85732 2G+2A+1A
+		 **************************************************************/
+		hw-17 {
+			using-fems =
+				<&qm42655>,
+				<&qm45655>,
+				<&sky85732>;
+
+			layout-flag = <0x00000000>;
+			layout =
+				<&g_wf0_bt0_qm42655>,
+				<&g_wf1_bt1_qm42655>,
+				<&a_wf0_qm45655>,
+				<&a_wf1_qm45655>,
+				<&a_wf2_bt0_sky85732>;
+
+			layout-spdt =
+				<&spdt_a2_filter>,
+				<&spdt_g_bt1_antswap>;
+
+			common {
+				flags {
+					fe-ant-cnt = [96];
+					fe-conn-dpdt-sp3t = [80];
+					fe-conn-spdt = [98];
+					fe-bt-wf-usage = [98];
+					fe-conn-spdt-2 = [80];
+				};
+			};
+
+			wifi {
+				using-states =
+					<&qm42655_rxl>,
+					<&qm45655_rxl>,
+					<&sky85732_default>;
+			};
+
+			bt {
+				flags {
+					efem-mode = [03]; /* 3:epa_elna, 2:epa, 1:elna, 0:bypass */
+					rx-mode = [34]; /* 0x34: G-band RxL, HBBT RxH */
+				};
+			};
+		};
+
+		/***************************************************************
+		 * [HW][18] SKU1-1 with VC5364-21/VC5768-21
+		 **************************************************************/
+		hw-18 {
+			using-fems =
+				<&vc536421>,
+				<&vc576821>;
+
+			layout-flag = <0x00000000>;
+			layout =
+				<&g_wf0_bt0_vc536421>,
+				<&g_wf1_bt1_vc536421>,
+				<&a_wf0_vc576821>,
+				<&a_wf1_vc576821>;
+
+			layout-spdt =
+				<&spdt_g_bt1_antswap>;
+
+			common {
+				flags {
+					fe-ant-cnt = [85];
+					fe-conn-dpdt-sp3t = [80];
+					fe-conn-spdt = [90];
+					fe-bt-wf-usage = [80];
+					fe-conn-spdt-2 = [80];
+				};
+			};
+
+			wifi {
+				using-states =
+					<&vc536421_rxl>;
+			};
+
+			bt {
+				flags {
+					efem-mode = [03]; /* 3:epa_elna, 2:epa, 1:elna, 0:bypass */
+					rx-mode = [34]; /* 0x34: G-band RxL, HBBT RxH */
+				};
+			};
+		};
+
 	};
 };
 /* Connsys FEM End */

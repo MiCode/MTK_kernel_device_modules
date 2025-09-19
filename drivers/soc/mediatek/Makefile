@@ -8,6 +8,10 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmdvfs/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmdebug/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/iommu/arm/arm-smmu-v3/
 ccflags-y += -I$(srctree)/drivers/soc/mediatek/
+ifneq ($(filter m,$(CONFIG_MTK_PLAT_POWER_MT8788)),)
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/spm_v4/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/helio-dvfsrc/
+endif
 obj-$(CONFIG_MTK_CMDQ) += mtk-cmdq-helper.o
 obj-$(CONFIG_MTK_DVFSRC) += mtk-dvfsrc.o mtk-dvfsrc-start.o
 obj-$(CONFIG_MTK_IPI) += mtk_tinysys_ipi.o
@@ -26,6 +30,9 @@ obj-$(CONFIG_DEVICE_MODULES_MTK_SCPSYS) += mtk-scpsys-mt6761.o mtk-scpsys-bringu
 endif
 ifneq ($(wildcard $(srctree)/$(src)/mtk-scpsys-mt6765.c),)
 obj-$(CONFIG_DEVICE_MODULES_MTK_SCPSYS) += mtk-scpsys-mt6765.o mtk-scpsys-bringup.o
+endif
+ifneq ($(wildcard $(srctree)/$(src)/mtk-scpsys-mt6771.c),)
+obj-$(CONFIG_DEVICE_MODULES_MTK_SCPSYS) += mtk-scpsys-mt6771.o mtk-scpsys-bringup.o
 endif
 ifneq ($(wildcard $(srctree)/$(src)/mtk-scpsys-mt6781.c),)
 obj-$(CONFIG_DEVICE_MODULES_MTK_SCPSYS) += mtk-scpsys-mt6781.o mtk-scpsys-bringup.o
@@ -76,6 +83,9 @@ obj-$(CONFIG_DEVICE_MODULES_MTK_MMSYS) += mtk-mmsys.o
 obj-$(CONFIG_DEVICE_MODULES_MTK_DEVAPC) += devapc/
 obj-$(CONFIG_MTK_DEVMPU) += devmpu/
 obj-$(CONFIG_MTK_MMDVFS) += mtk-mmdvfs.o
+ifneq ($(filter m,$(CONFIG_MTK_PLAT_POWER_MT8788)),)
+obj-$(CONFIG_MTK_PMQOS) += mmdvfs_pmqos.o
+endif
 ifneq ($(filter y m,$(CONFIG_MTK_TINYSYS_VCP_SUPPORT)),)
 obj-$(CONFIG_MTK_MMDVFS) += mtk-mmdvfs-v3.o
 endif

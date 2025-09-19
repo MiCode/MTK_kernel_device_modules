@@ -214,6 +214,7 @@
 
 //enum mtk_ddp_comp_id g_last_active_bld = DDP_COMPONENT_OVL0_BLENDER0;
 
+#define OVLSYS_BLENDER_NUM 10
 #define MAX_LAYER_NUM 1
 struct mtk_ovl_backup_info {
 	unsigned int layer;
@@ -336,6 +337,25 @@ static void ovl_blender_printf_status(unsigned int status)
 			REG_FLD_VAL_GET(BLD2BLD_READY, status));
 }
 
+void mtk_ovl_blender_cur_pos_dump(struct mtk_ddp_comp *comp)
+{
+	void __iomem *baddr;
+	unsigned int reg_val;
+
+	if (!comp || comp->blank_mode)
+		return;
+
+	baddr = comp->regs;
+	if (!baddr) {
+		DDPINFO("%s, %s is NULL!\n", __func__, mtk_dump_comp_str(comp));
+		return;
+	}
+
+	reg_val = readl(OVL_BLD_DBG_STATUS0 + baddr);
+	DDPMSG("%s cur_pos(%u,%u)\n", mtk_dump_comp_str(comp),
+		reg_val & 0x1fff, (reg_val >> 16) & 0x1fff);
+}
+
 int mtk_ovl_blender_analysis(struct mtk_ddp_comp *comp)
 {
 	int i = 0;
@@ -395,6 +415,38 @@ int mtk_ovl_blender_analysis(struct mtk_ddp_comp *comp)
 	return 0;
 }
 
+
+static bool is_right_ovl_comp_MT6991(struct mtk_ddp_comp *comp)
+{
+	switch (comp->id) {
+	case DDP_COMPONENT_OVL0_BLENDER0:
+	case DDP_COMPONENT_OVL0_BLENDER1:
+	case DDP_COMPONENT_OVL0_BLENDER2:
+	case DDP_COMPONENT_OVL0_BLENDER3:
+	case DDP_COMPONENT_OVL0_BLENDER4:
+	case DDP_COMPONENT_OVL0_BLENDER5:
+	case DDP_COMPONENT_OVL0_BLENDER6:
+	case DDP_COMPONENT_OVL0_BLENDER7:
+	case DDP_COMPONENT_OVL0_BLENDER8:
+	case DDP_COMPONENT_OVL0_BLENDER9:
+		return false;
+	case DDP_COMPONENT_OVL1_BLENDER0:
+	case DDP_COMPONENT_OVL1_BLENDER1:
+	case DDP_COMPONENT_OVL1_BLENDER2:
+	case DDP_COMPONENT_OVL1_BLENDER3:
+	case DDP_COMPONENT_OVL1_BLENDER4:
+	case DDP_COMPONENT_OVL1_BLENDER5:
+	case DDP_COMPONENT_OVL1_BLENDER6:
+	case DDP_COMPONENT_OVL1_BLENDER7:
+	case DDP_COMPONENT_OVL1_BLENDER8:
+	case DDP_COMPONENT_OVL1_BLENDER9:
+		return true;
+	default:
+		DDPDBG("%s invalid ovl module=%d\n", __func__, comp->id);
+		return false;
+	}
+}
+
 static void _store_bg_roi(struct mtk_ddp_comp *comp, int h, int w)
 {
 	struct mtk_disp_ovl_blender *ovl = comp_to_ovl_blender(comp);
@@ -423,7 +475,9 @@ static void mtk_ovl_blender_all_layer_off(struct mtk_ddp_comp *comp,
 #if IS_ENABLED(CONFIG_MTK_LCM_DUAL_PORT_SUPPORT)
 	if (comp->id == DDP_COMPONENT_OVL0_BLENDER3){
 #else
-	if (comp->id == DDP_COMPONENT_OVL0_BLENDER0 || comp->id == DDP_COMPONENT_OVL0_BLENDER1){
+	if (comp->id == DDP_COMPONENT_OVL0_BLENDER0 || comp->id == DDP_COMPONENT_OVL0_BLENDER1 ||
+	    (comp->mtk_crtc->is_dual_pipe && (comp->id == DDP_COMPONENT_OVL1_BLENDER0 ||
+	    comp->id == DDP_COMPONENT_OVL1_BLENDER1))) {
 #endif
 		DDPDBG("%s+ %s not off\n", __func__, mtk_dump_comp_str(comp));
 		return;
@@ -443,9 +497,26 @@ static void mtk_ovl_blender_config(struct mtk_ddp_comp *comp,
 			   struct mtk_ddp_config *cfg, struct cmdq_pkt *handle)
 {
 	struct mtk_disp_ovl_blender *ovl = comp_to_ovl_blender(comp);
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	struct drm_crtc *crtc = &mtk_crtc->base;
 	unsigned int width = 0, height = 0;
 
-	width = cfg->w;
+	if (comp->mtk_crtc->is_dual_pipe) {
+		if (cfg->tile_overhead.is_support) {
+			if (ovl->data->is_right_ovl_comp && ovl->data->is_right_ovl_comp(comp))
+				width = cfg->tile_overhead.right_in_width;
+			else
+				width = cfg->tile_overhead.left_in_width;
+		} else
+			width = cfg->w / 2;
+		if (drm_crtc_index(crtc) == 2 && (width % 2)) {
+			if (ovl->data->is_right_ovl_comp && ovl->data->is_right_ovl_comp(comp))
+				width += 1;
+			else
+				width -= 1;
+		}
+	} else
+		width = cfg->w;
 
 	if (ovl->set_partial_update != 1)
 		height = cfg->h;
@@ -481,7 +552,8 @@ static void mtk_ovl_blender_config_begin(struct mtk_ddp_comp *comp, struct cmdq_
 	if ((new_mtk_state->prop_val[CRTC_PROP_USER_SCEN] & USER_SCEN_BLANK) || (idx == 999)) {
 		if (comp->id > g_last_active_bld)
 			return;
-		else if (comp->id == DDP_COMPONENT_OVL0_BLENDER1)
+		else if (comp->id == DDP_COMPONENT_OVL0_BLENDER1 || (comp->mtk_crtc->is_dual_pipe &&
+			 comp->id == DDP_COMPONENT_OVL1_BLENDER1))
 			value = DISP_BGCLR_OUT_TO_NEXT_LAYER;
 		else if (comp->id == g_last_active_bld)
 			value = DISP_BGCLR_IN_SEL | DISP_BGCLR_OUT_TO_PROC;
@@ -620,6 +692,8 @@ static int mtk_ovl_blender_first_layer_mt6991(struct mtk_ddp_comp *comp)
 	DDPDBG("%s %s\n", __func__, mtk_dump_comp_str(comp));
 
 	if (first_blender && (first_blender->id == comp->id))
+		return 1;
+	else if(first_blender && comp->mtk_crtc->is_dual_pipe && (first_blender->id + OVLSYS_BLENDER_NUM == comp->id))
 		return 1;
 	else
 		return 0;
@@ -952,8 +1026,10 @@ static void _ovl_bld_common_config(struct mtk_ddp_comp *comp, unsigned int idx,
 	/*bind_comp == NULL => when it does not use EXDMA2, no bind_comp, config size.*/
 	/*comp->id != bind_comp->id => exdma2->bind_comp does not need to be config size again.*/
 	if ((priv->data->mmsys_id == MMSYS_MT6991) &&
-		((priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2]->bind_comp == NULL)
-		|| (comp->id != priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2]->bind_comp->id))) {
+		(((priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2]->bind_comp == NULL)
+		|| (comp->id != priv->ddp_comp[DDP_COMPONENT_OVL_EXDMA2]->bind_comp->id) ||
+		((priv->ddp_comp[DDP_COMPONENT_OVL1_EXDMA2]->bind_comp == NULL)
+		|| (comp->id != priv->ddp_comp[DDP_COMPONENT_OVL1_EXDMA2]->bind_comp->id))))) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_REG_BLD_OVL_SRC_SIZE(id), src_size, ~0);
 	}
@@ -1323,6 +1399,7 @@ static const struct mtk_disp_ovl_blender_data mt6991_ovl_bldner_driver_data = {
 	.support_shadow = false,
 	.need_bypass_shadow = true,
 	.greq_num_dl = 0xFFFF,
+	.is_right_ovl_comp = &is_right_ovl_comp_MT6991,
 //	.is_support_34bits = true,
 //	.aid_sel_mapping = &mtk_ovl_aid_sel_MT6991,
 //	.aid_per_layer_setting = true,

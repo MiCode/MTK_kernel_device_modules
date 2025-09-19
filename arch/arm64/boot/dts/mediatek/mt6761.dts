@@ -1224,10 +1224,10 @@ firmware_class.path=/vendor/firmware kvm-arm.mode=none";
 		dvfsrc-opp-num = <3>;
 		dvfs-opp =
 		/*	vcore	vsram	uv	dvfsrc	spm	freq	mux */
-		<	0xff	0xff	0xff	0x0	0x0	250	0>,
-		<	0xff	0xff	0xff	0x0	0x0	273	3>,
-		<	0xff	0xff	0xff	0x2	0x8	330	5>,
-		<	0xff	0xff	0xff	0x3	0xC	416	6>;
+		<	650000	900000	0xff	0x0	0x0	250	0>,
+		<	650000	900000	0xff	0x0	0x0	273	3>,
+		<	700000	900000	0xff	0x2	0x8	330	5>,
+		<	800000	900000	0xff	0x3	0xC	416	6>;
 
 		pmic = <&main_pmic>;
 		pmic-feature = "pmic-vow-lp", "pmic-pmrc";
@@ -1240,6 +1240,10 @@ firmware_class.path=/vendor/firmware kvm-arm.mode=none";
 		gpio = <&gpio 1>;
 		gpio-feature = "gpio-mode";
 		gpio-feature-cfg = <0>;
+		dvfsrc-vscp-supply = <&dvfsrc_vscp>;
+		sshub-vcore-supply = <&mt_pmic_vcore_buck_reg>;
+		sshub-vsram-supply = <&mt_pmic_vsram_others_ldo_reg>;
+		legacy-support-v3;
 	};
 
 	sleep_reg_md@1000f000 {
@@ -1389,6 +1393,11 @@ firmware_class.path=/vendor/firmware kvm-arm.mode=none";
 	security_ao@1001a000 {
 		compatible = "mediatek,security_ao";
 		reg = <0 0x1001a000 0 0x1000>;
+	};
+
+	masp@1000a000 {
+		compatible = "mediatek,masp";
+		reg = <0 0x1000a000 0 0x1000>;
 	};
 
 	topckgen_ao@1001b000 {
@@ -1551,7 +1560,7 @@ firmware_class.path=/vendor/firmware kvm-arm.mode=none";
 	};
 
 	hwrng: hwrng {
-		compatible = "mediatek,mt67xx-rng";
+		compatible = "arm,sec-rng";
 		methods = "smc";
 		method-fid = /bits/ 16 <0x26a>;
 		quality = /bits/ 16 <900>;
@@ -3229,6 +3238,7 @@ firmware_class.path=/vendor/firmware kvm-arm.mode=none";
 		compatible = "mediatek,mtk-smi-dbg";
 		mediatek-larb-supply = <&smi_larb0 &smi_larb1 &smi_larb2>;
 		mediatek-common-supply = <&smi_common>;
+		skip-bug-On;
 	};
 
 	mdp_rdma0: mdp_rdma0@14004000 {

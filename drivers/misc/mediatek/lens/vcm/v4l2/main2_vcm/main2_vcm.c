@@ -47,6 +47,7 @@ struct main2_vcm_device {
 	bool is_powered_off;
 	bool is_stop_flag;
 	wait_queue_head_t wait_queue_head;
+	u16 cur_pos;
 };
 
 static struct workqueue_struct *main2_vcm_init_wq;
@@ -81,6 +82,10 @@ struct VcmDriverConfig {
 	unsigned int slave_addr;
 	uint8_t I2CSendNum;
 	struct stVCM_I2CFormat I2Cfmt[I2CSEND_MAXSIZE];
+#ifdef __XIAOMI_CAMERA__
+	int32_t read_code_addr;
+	uint8_t read_capability;
+#endif
 
 	// Uninit param
 	unsigned int origin_focus_pos;
@@ -112,6 +117,21 @@ struct VcmDriverList {
 struct mtk_vcm_info {
 	struct VcmDriverList *p_vcm_info;
 };
+
+#ifdef __XIAOMI_CAMERA__
+struct read_af_data {
+	int32_t code;
+	uint64_t timestamp;
+	int32_t sensordev;
+};
+
+struct AfCodeData {
+  struct read_af_data *read_af_data;
+};
+struct read_af_data afdata;
+
+#define VIDIOC_XIAOMI_S_LENS_INFO _IOWR('V', BASE_VIDIOC_PRIVATE + 4, struct AfCodeData)
+#endif
 
 struct VCM_Hall_data {
 	unsigned int hall_value;
@@ -250,6 +270,37 @@ static void register_setting(struct i2c_client *client, char table[][3], int tab
 	}
 }
 
+#ifdef __XIAOMI_CAMERA__
+static void read_register_pos(struct main2_vcm_device *main2_vcm, void __user *buf)
+{
+	int ret = 0;
+	unsigned short addr = g_vcmconfig.vcm_config.read_code_addr;
+	struct i2c_client *client = v4l2_get_subdevdata(&main2_vcm->sd);
+	struct timespec64 ts = ktime_to_timespec64(ktime_get_boottime());
+
+	ret = i2c_smbus_read_word_data(client,addr);
+	LOG_INF("read_register_pos ret = 0x%x ",ret);
+
+	ret = ((ret & 0xff) << 8 )|((ret & 0xff00) >> 8);
+	if(g_vcmconfig.vcm_config.read_capability){
+		afdata.code = ret & 0x3ff;
+	}else{
+		afdata.code = (ret >> 2) & 0x3fff;
+	}
+	afdata.timestamp = timespec64_to_ns(&ts);
+	afdata.sensordev = 3;
+
+	LOG_INF("read_register_pos ret = %d afdata.timestamp = %lld addr = %d",afdata.code,afdata.timestamp, addr);
+
+	ret = copy_to_user((struct read_af_data *)buf, &afdata, sizeof(struct read_af_data));
+	if (ret < 0)
+	{
+		LOG_INF("copy_to_user fail ret =%d \n",ret);
+		ret = -EFAULT;
+	}
+}
+#endif
+
 static int main2_vcm_set_position(struct main2_vcm_device *main2_vcm, u16 val)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&main2_vcm->sd);
@@ -305,6 +356,8 @@ static int main2_vcm_set_position(struct main2_vcm_device *main2_vcm, u16 val)
 		}
 	}
 
+	main2_vcm->cur_pos = val;
+
 	return ret;
 }
 
@@ -319,13 +372,15 @@ static int main2_vcm_release(struct main2_vcm_device *main2_vcm)
 
 	struct i2c_client *client = v4l2_get_subdevdata(&main2_vcm->sd);
 
+	LOG_INF("current position: %d\n", main2_vcm->cur_pos);
+
 	long_step = g_vcmconfig.vcm_config.move_long_steps_pct *
 			(1 << g_vcmconfig.vcm_config.vcm_bits) / 100;
 	short_step = g_vcmconfig.vcm_config.move_short_steps_pct *
 			(1 << g_vcmconfig.vcm_config.vcm_bits) / 100;
 
-	diff_dac = g_vcmconfig.vcm_config.origin_focus_pos - main2_vcm->focus->val;
-	val = main2_vcm->focus->val;
+	diff_dac = g_vcmconfig.vcm_config.origin_focus_pos - main2_vcm->cur_pos;
+	val = main2_vcm->cur_pos;
 
 	if (long_step == 0) {
 		LOG_INF("no need to process long step\n");
@@ -415,6 +470,8 @@ LAST_STEP_TO_ORIGIN:
 	}
 
 	register_setting(client, g_vcmconfig.vcm_config.wr_rls_table, 8);
+
+	LOG_INF("-\n");
 
 	return 0;
 }
@@ -619,6 +676,8 @@ static long main2_vcm_ops_core_ioctl(struct v4l2_subdev *sd, unsigned int cmd, v
 	int ret = 0;
 	struct main2_vcm_device *main2_vcm = sd_to_main2_vcm_vcm(sd);
 	struct i2c_client *client = v4l2_get_subdevdata(&main2_vcm->sd);
+	struct v4l2_ctrl_handler *hdl = &main2_vcm->ctrls;
+	const struct v4l2_ctrl_ops *ops = &main2_vcm_vcm_ctrl_ops;
 
 	client->addr = g_vcmconfig.vcm_config.slave_addr >> 1;
 
@@ -645,6 +704,17 @@ static long main2_vcm_ops_core_ioctl(struct v4l2_subdev *sd, unsigned int cmd, v
 			break;
 		}
 
+		LOG_INF("vcm bits: %d, decimal data: %d\n",
+			g_vcmconfig.vcm_config.vcm_bits,
+			(1 << g_vcmconfig.vcm_config.vcm_bits));
+		if (g_vcmconfig.vcm_config.vcm_bits > 31) {
+			LOG_INF("vcm bits overflow (31 is max), reset to 10\n");
+			g_vcmconfig.vcm_config.vcm_bits = 10;
+		}
+		main2_vcm->focus = v4l2_ctrl_new_std(hdl, ops, V4L2_CID_FOCUS_ABSOLUTE,
+			  0, (1 << g_vcmconfig.vcm_config.vcm_bits)-1,
+			  MAIN2_VCM_FOCUS_STEPS, 0);
+
 		// Confirm hardware requirements and adjust/remove the delay.
 		usleep_range(g_vcmconfig.vcm_config.ctrl_delay_us,
 			g_vcmconfig.vcm_config.ctrl_delay_us + 100);
@@ -659,10 +729,10 @@ static long main2_vcm_ops_core_ioctl(struct v4l2_subdev *sd, unsigned int cmd, v
 	case VCM_IOC_POWER_ON:
 	{
 		// customized area
-		LOG_INF("active mode, current pos:%d\n", main2_vcm->focus->val);
+		LOG_INF("active mode, current pos:%d\n", main2_vcm->cur_pos);
 
 		register_setting(client, g_vcmconfig.vcm_config.resume_table, 8);
-		ret = main2_vcm_set_position(main2_vcm, main2_vcm->focus->val);
+		ret = main2_vcm_set_position(main2_vcm, main2_vcm->cur_pos);
 		if (ret < 0) {
 			LOG_INF("%s I2C failure: %d\n",
 				__func__, ret);
@@ -713,6 +783,16 @@ static long main2_vcm_ops_core_ioctl(struct v4l2_subdev *sd, unsigned int cmd, v
 		}
 	}
 	break;
+#ifdef __XIAOMI_CAMERA__
+	case VIDIOC_XIAOMI_S_LENS_INFO:
+	{
+		//struct read_af_data *afinfo = arg;
+		struct AfCodeData *afinfo = arg;
+		read_register_pos(main2_vcm, afinfo->read_af_data);
+		LOG_INF("read_register_pos\n");
+	}
+	break;
+#endif
 	default:
 		ret = -ENOIOCTLCMD;
 		break;
@@ -746,15 +826,18 @@ static void main2_vcm_subdev_cleanup(struct main2_vcm_device *main2_vcm)
 static int main2_vcm_init_controls(struct main2_vcm_device *main2_vcm)
 {
 	struct v4l2_ctrl_handler *hdl = &main2_vcm->ctrls;
-	const struct v4l2_ctrl_ops *ops = &main2_vcm_vcm_ctrl_ops;
+	//const struct v4l2_ctrl_ops *ops = &main2_vcm_vcm_ctrl_ops;
 
 	v4l2_ctrl_handler_init(hdl, 1);
 
-	main2_vcm->focus = v4l2_ctrl_new_std(hdl, ops, V4L2_CID_FOCUS_ABSOLUTE,
-			  0, MAIN2_VCM_MAX_FOCUS_POS, MAIN2_VCM_FOCUS_STEPS, 0);
+	//main2_vcm->focus = v4l2_ctrl_new_std(hdl, ops, V4L2_CID_FOCUS_ABSOLUTE,
+	//		  0, MAIN2_VCM_MAX_FOCUS_POS, MAIN2_VCM_FOCUS_STEPS, 0);
 
-	if (hdl->error)
+	if (hdl->error) {
+		LOG_INF("Failed to initialize controls, error %d\n",
+			hdl->error);
 		return hdl->error;
+	}
 
 	main2_vcm->sd.ctrl_handler = hdl;
 

@@ -448,6 +448,7 @@
 
 	rt-pd-manager {
 		compatible = "mediatek,rt-pd-manager";
+		mediatek,not_support_u3;
 	};
 
 	typec_mux_switch: typec_mux_switch {
@@ -455,7 +456,6 @@
 		orientation-switch;
 		mode-switch;
 		accessory;
-		mediatek,inverse-orientation;
 		status = "okay";
 	};
 
@@ -688,6 +688,19 @@
 	regulator-max-microvolt = <3000000>;
 };
 
+&mt6359p_vsram_others_reg {
+	regulator-always-on;
+};
+
+&mt6359p_vbif28_reg {
+	regulator-always-on;
+};
+
+&mt6359p_vproc1_reg {
+	regulator-always-on;
+};
+
+
 &mt6359p_vproc2_reg {
 	regulator-always-on;
 };
@@ -727,8 +740,8 @@
 };
 
 &mddriver {
-	md_vdigrf-supply = <&mt6359p_vpu_reg>;
-
+	md-vdigrf-supply = <&mt6359p_vpu_reg>;
+	md-vdigrf = <700000 700000>;
 };
 &ssusb {
 	port {

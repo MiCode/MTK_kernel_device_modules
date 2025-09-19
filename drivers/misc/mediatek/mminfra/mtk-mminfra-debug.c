@@ -1241,11 +1241,6 @@ static bool mminfra_devapc_power_cb(void)
 				readl(dbg->mminfra_mtcmos_base + 0x4),
 				mm_dapc_pwr_on,
 				is_mminfra_shutdown);
-			if ((readl(dbg->mminfra_mtcmos_base) & dbg->mm_mtcmos_mask)
-				== dbg->mm_mtcmos_mask) {
-				spin_unlock_irqrestore(&mm_dapc_lock, flags);
-				return true;
-			}
 
 			if (!is_mminfra_shutdown && !mm_dapc_pwr_on) {
 				pr_info("%s set mminfra pwr on\n", __func__);
@@ -1259,7 +1254,11 @@ static bool mminfra_devapc_power_cb(void)
 		}
 	}
 	spin_unlock_irqrestore(&mm_dapc_lock, flags);
-	return is_mminfra_power_on();
+	if(!is_mminfra_power_on()) {
+		pr_info("%s: mminfra power is off\n", __func__);
+		return false;
+	} else
+		return true;
 }
 
 static struct devapc_power_callbacks devapc_power_handle = {

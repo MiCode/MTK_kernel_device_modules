@@ -52,6 +52,11 @@
 #define RG_USB20_FS_SR_SHIFT		0
 #define RG_USB20_FS_SR_MASK		0x7
 
+#define PHYA_U2_CR1_3			0x17
+#define RG_USB20_SQD			GENMASK(1,0)
+#define RG_USB20_SQD_SHIFT		0
+#define RG_USB20_SQD_MASK		0x3
+
 #define PHYA_U2_CR2_0			0x18
 #define RG_USB20_SQTH			GENMASK(3,0)
 #define RG_USB20_SQTH_SHIFT		0
@@ -111,6 +116,11 @@
 #define RG_USB20_OSC_CALI		GENMASK(6,0)
 #define RG_USB20_OSC_CALI_SHIFT		0
 #define RG_USB20_OSC_CALI_MASK		0x7F
+
+#define PHYA_U2_EXT_CR0_1               0x31
+#define RG_USB20_OSC_IBAND              GENMASK(7,0)
+#define RG_USB20_OSC_IBAND_SHIFT	0
+#define RG_USB20_OSC_IBAND_MASK		0xFF
 
 #define PHYA_U2_EXT_CR1_0		0x34
 #define RH_USB20_OSC_BUF_0		BIT(0)
@@ -242,6 +252,7 @@ struct eusb2_repeater {
 	struct proc_dir_entry *root;
 	struct work_struct procfs_work;
 	struct workqueue_struct *wq;
+	bool otg_gender;
 };
 
 static void eusb2_rptr_prop_parse(struct eusb2_repeater *rptr)
@@ -617,6 +628,9 @@ static int eusb2_repeater_power_on(struct phy *phy)
 	regmap_read(rptr->regmap, MT6379_REG_DEV_INFO, &chip_rev);
 	dev_info(rptr->dev, "eusb2 repeater power on chip_rev(%x) submode(%x)\n", chip_rev, rptr->submode);
 
+	/* set SQD to deglitch 1x */
+	regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR1_3, RG_USB20_SQD_MASK, 0x0);
+
 	if ((chip_rev & MT6379_CHIP_REV_MASK) <= 0x2) {
 		regmap_update_bits(rptr->regmap, rptr->base + 0x92, 0x7, 0x7);
 
@@ -651,6 +665,9 @@ static int eusb2_repeater_power_on(struct phy *phy)
 
 		regmap_update_bits(rptr->regmap, rptr->base + PHYA_EU2_CR1_0, RG_USB20_OSC_BIAS_0,
 				RG_USB20_OSC_BIAS_0);
+
+		/* Set OSC_IBAND to 0x52 */
+		regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_EXT_CR0_1, 0xFF, 0x52);
 
 		/* on */
 		/* RG_USB20_REV_A[5] = 0x1 */
@@ -709,7 +726,8 @@ static int eusb2_repeater_power_on(struct phy *phy)
 			/* device connected */
 			return 0;
 		} else if (rptr->submode == PHY_MODE_SUSPEND_NO_DEV) {
-			dev_info(rptr->dev, "OTG gender LP mode\n");
+			dev_info(rptr->dev, "PHY on OTG gender LP mode\n");
+			rptr->otg_gender = false;
 			/* OTG gender LP mode */
 			/* RG_USB20_HSTX_SRCTRL[1] 1'b0 */
 			regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR1_2, RG_USB20_HSTX_SRCTRL, 0);
@@ -779,6 +797,78 @@ static int eusb2_repeater_power_on(struct phy *phy)
 			regmap_update_bits(rptr->regmap, rptr->base + 0x92, 0x7, 0x7);
 			regmap_update_bits(rptr->regmap, rptr->base + 0x94, 0x2, 0x2);
 
+			if (rptr->otg_gender == true) {
+				dev_info(rptr->dev, "Wrong Status, OTG gender mode but normal pwr on...\n");
+				rptr->otg_gender = false;
+				/* RG_USB20_HSTX_SRCTRL[1] 1'b0 */
+				regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR1_2, RG_USB20_HSTX_SRCTRL, 0);
+
+				/* RG_USB20_REV_COM[7:6]	2'b00 */
+				regmap_update_bits(rptr->regmap, rptr->base + PHYA_COM_CR0_2, RG_USB20_REV_COM, 0);
+
+				/* RG_eusb20_hsrx_bias_en_sel	2'b01 */
+				regmap_update_bits(rptr->regmap, rptr->base + PHYA_EU2_CR1_2,
+					RG_EUSB20_HSRX_BIAS_EN_SEL, 1 << 2);
+
+				/* RG_frc_usb20_hsrx_bias_en_sel	1'b0 */
+				regmap_update_bits(rptr->regmap, rptr->base + PHYD_COM_CR3_2, RG_RFC_USB20_HSRX_BIAS_EN_SEL, 0);
+
+				/* RG_usb20_hsrx_bias_en_sel	2'b10 */
+				regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR2_1,
+					RG_USB20_HSRX_BIAS_EN_SEL_LP, 0x1 << 2);
+
+				/* rg_init_sw_phy_sel	1'b1 */
+				regmap_update_bits(rptr->regmap, rptr->base + PHYD_COM_CR2_1,
+					RG_INIT_SW_PHY_SEL, RG_INIT_SW_PHY_SEL);
+
+				/* RG_USB20_BC11_SW_EN 1'b0 */
+				regmap_update_bits(rptr->regmap, rptr->base + PHYA_COM_CR0_3, RG_USB20_BC11_SW_EN, 0);
+
+				/* RG_USB20_BGR_EN 1'b1 */
+				regmap_update_bits(rptr->regmap, rptr->base + PHYA_COM_CR0_0, RG_USB20_BGR_EN, RG_USB20_BGR_EN);
+				udelay(30);
+
+				/* RG_USB20_OSC_BUF[0] = 0x1 */
+				regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_EXT_CR1_0,
+					RH_USB20_OSC_BUF_0, RH_USB20_OSC_BUF_0);
+
+				/* RG_USB20_ROSC_EN = 0x1 */
+				regmap_update_bits(rptr->regmap, rptr->base + PHYA_COM_CR0_3,
+					RG_USB20_ROSC_EN, RG_USB20_ROSC_EN);
+
+				udelay(10);
+
+				/* RG_USB20_ROSC_EN = 0x0 */
+				regmap_update_bits(rptr->regmap, rptr->base + PHYA_COM_CR0_3,
+					RG_USB20_ROSC_EN, 0);
+
+				udelay(30);
+
+				/* RG_USB20_OSC_BUF[0] = 0x0 */
+				regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_EXT_CR1_0,
+					RH_USB20_OSC_BUF_0, 0);
+
+				/* RG_USB20_ROSC_EN = 0x1 */
+				regmap_update_bits(rptr->regmap, rptr->base + PHYA_COM_CR0_3,
+					RG_USB20_ROSC_EN, RG_USB20_ROSC_EN);
+
+				udelay(100);
+
+				/* RG_USB20_REV_A[5]	1'b1 */
+				regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR0_2,
+					RG_USB20_REV_A_5, RG_USB20_REV_A_5);
+
+				/* RG_EUSB_LOGRST	1'b0 */
+				regmap_update_bits(rptr->regmap, rptr->base + PHYD_DBG_CR0_1, RG_EUSB_LOGRST, 0);
+
+				/* RG_INIT_SW_PHY_SEL = 0x0 */
+				regmap_update_bits(rptr->regmap, rptr->base + PHYD_COM_CR2_1,
+					RG_INIT_SW_PHY_SEL, 0);
+
+				udelay(300);
+			}
+
+
 			/* off */
 			/* RG_USB_EN_SRC_SEL = 0x1 */
 			regmap_update_bits(rptr->regmap, rptr->base + PHYD_COM_CR2_3,
@@ -810,6 +900,9 @@ static int eusb2_repeater_power_on(struct phy *phy)
 
 			regmap_update_bits(rptr->regmap, rptr->base + PHYA_EU2_CR1_0, RG_USB20_OSC_BIAS_0,
 				RG_USB20_OSC_BIAS_0);
+
+			/* Set OSC_IBAND to 0x52 */
+			regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_EXT_CR0_1, 0xFF, 0x52);
 
 			/* on */
 			/* RG_USB20_REV_A[5] = 0x1 */
@@ -902,6 +995,7 @@ static int eusb2_repeater_power_off(struct phy *phy)
 			return 0;
 		} else if (rptr->submode == PHY_MODE_SUSPEND_NO_DEV) {
 			dev_info(rptr->dev, "OTG gender LP mode\n");
+			rptr->otg_gender = true;
 			/* OTG gender LP mode */
 			/* RG_EUSB_LOGRST	1'b1 */
 			regmap_update_bits(rptr->regmap, rptr->base + PHYD_DBG_CR0_1, RG_EUSB_LOGRST, RG_EUSB_LOGRST);
@@ -1606,6 +1700,8 @@ static int eusb2_repeater_probe(struct platform_device *pdev)
 	phy_provider = devm_of_phy_provider_register(dev, of_phy_simple_xlate);
 	if (IS_ERR(phy_provider))
 		return PTR_ERR(phy_provider);
+
+	rptr->otg_gender = false;
 
 	dev_info(dev, "MTK MT6379 eusb2 repeater probe done\n");
 

@@ -1189,7 +1189,6 @@ void vip_replace_next_task_fair(void *unused, struct rq *rq, struct task_struct 
 	struct vip_task_struct *vts;
 	struct task_struct *vip;
 
-
 	if (unlikely(!vip_enable))
 		return;
 
@@ -1217,7 +1216,6 @@ __no_kcsan
 void vip_dequeue_task(void *unused, struct rq *rq, struct task_struct *p, int flags)
 {
 	struct vip_task_struct *vts = &((struct mtk_task *) p->android_vendor_data1)->vip_task;
-
 	if (unlikely(!vip_enable))
 		return;
 

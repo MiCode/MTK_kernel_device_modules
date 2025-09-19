@@ -11,6 +11,8 @@ struct mtk_extcon_info {
 	struct workqueue_struct *extcon_wq;
 	struct regulator *vbus;
 	unsigned int vbus_vol;
+	unsigned int vbus_vol_request;
+	unsigned int vbus_vol_max;
 	unsigned int vbus_cur;
 	bool vbus_on;
 	struct power_supply *usb_psy;
@@ -29,6 +31,8 @@ struct mtk_extcon_info {
 	struct delayed_work wq_detcable;
 	unsigned int vbus_limit_cur;
 	bool vbus_cur_inlimit;
+	int vdd_boost_en_gpio_a;
+	int vdd_boost_en_gpio_b;
 };
 
 struct usb_role_info {

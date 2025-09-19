@@ -81,7 +81,7 @@ static void mtk_merge_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 		priv = comp->mtk_crtc->base.dev->dev_private;
 
 	if (priv && priv->data && (priv->data->mmsys_id == MMSYS_MT6985 ||
-		priv->data->mmsys_id == MMSYS_MT6897)) {
+		priv->data->mmsys_id == MMSYS_MT6897 || priv->data->mmsys_id == MMSYS_MT6991)) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 				   comp->regs_pa + DISP_REG_VPP_MERGE_ENABLE, 0x1, ~0);
 	} else {
@@ -101,7 +101,7 @@ static void mtk_merge_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
 
 	if (priv->data->mmsys_id == MMSYS_MT6985 ||
-		priv->data->mmsys_id == MMSYS_MT6897) {
+		priv->data->mmsys_id == MMSYS_MT6897 || priv->data->mmsys_id == MMSYS_MT6991) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_REG_VPP_MERGE_ENABLE, 0x0, ~0);
 	} else {
@@ -189,6 +189,39 @@ static void mtk_merge_config(struct mtk_ddp_comp *comp,
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_REG_VPP_MERGE_CFG_12,
 			0x11,
+			~0);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_REG_VPP_MERGE_CFG_24,
+			(merge_config.width_left) | (merge_config.height << 16),
+			~0);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_REG_VPP_MERGE_CFG_25,
+			(merge_config.width_right) | (merge_config.height << 16),
+			~0);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_REG_VPP_MERGE_CFG_26,
+			(merge_config.width_left) | (merge_config.height << 16),
+			~0);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_REG_VPP_MERGE_CFG_27,
+			(merge_config.width_right) | (merge_config.height << 16),
+			~0);
+	} else if (priv->data->mmsys_id == MMSYS_MT6991) {
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_REG_VPP_MERGE_CFG_0,
+			merge_config.width_left | (merge_config.height << 16),
+			~0);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_REG_VPP_MERGE_CFG_1,
+			merge_config.width_right | (merge_config.height << 16),
+			~0);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_REG_VPP_MERGE_CFG_4,
+			cfg->w | (merge_config.height << 16),
+			~0);
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_REG_VPP_MERGE_CFG_12,
+			0x18,
 			~0);
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_REG_VPP_MERGE_CFG_24,
@@ -423,6 +456,7 @@ static const struct of_device_id mtk_disp_merge_driver_dt_match[] = {
 	{.compatible = "mediatek,mt6895-disp-merge", },
 	{.compatible = "mediatek,mt6985-disp-merge", },
 	{.compatible = "mediatek,mt6897-disp-merge", },
+	{.compatible = "mediatek,mt6991-disp-merge", },
 	{},
 };
 MODULE_DEVICE_TABLE(of, mtk_disp_merge_driver_dt_match);

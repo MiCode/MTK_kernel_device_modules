@@ -53,18 +53,18 @@ static struct imgsensor_info_struct imgsensor_info = {
 
 	.checksum_value = 0xafd83a68, /* checksum value for Camera Auto Test */
 
-	.pre = {
+		.pre = {
 		.pclk = 381000000,	/* record different mode's pclk */
 		.linelength = 6024,	/* record different mode's linelength */
 		.framelength = 2108, /* record different mode's framelength */
-		.startx = 0, /* record different mode's startx of grabwindow */
-		.starty = 0, /* record different mode's starty of grabwindow */
+		.startx = 172, /* record different mode's startx of grabwindow */
+		.starty = 132, /* record different mode's starty of grabwindow */
 
 		/* record different mode's width of grabwindow */
-		.grabwindow_width = 2672,
+		.grabwindow_width = 2328,
 
 		/* record different mode's height of grabwindow */
-		.grabwindow_height = 2008,
+		.grabwindow_height = 1746,
 
 		/* following for MIPIDataLowPwr2HighSpeedSettleDelayCount
 		 * by different scenario
@@ -79,10 +79,10 @@ static struct imgsensor_info_struct imgsensor_info = {
 		.pclk = 597000000,
 		.linelength = 6024,
 		.framelength = 4128,
-		.startx = 0,
-		.starty = 0,
-		.grabwindow_width = 5344,
-		.grabwindow_height = 4016,
+		.startx = 344,
+		.starty = 262,
+		.grabwindow_width = 4656,
+		.grabwindow_height = 3492,
 		.mipi_data_lp2hs_settle_dc = 85,	/* unit , ns */
 		.max_framerate = 240,
 		.mipi_pixel_rate = 561920000,
@@ -91,10 +91,10 @@ static struct imgsensor_info_struct imgsensor_info = {
 		 .pclk = 375000000,
 		 .linelength = 6024,
 		 .framelength = 4126,
-		 .startx = 0,
-		 .starty = 0,
-		 .grabwindow_width = 5344,
-		 .grabwindow_height = 4016,
+		.startx = 344,
+		.starty = 262,
+		.grabwindow_width = 4656,
+		.grabwindow_height = 3492,
 		 .mipi_data_lp2hs_settle_dc = 85,	/* unit , ns */
 		 .max_framerate = 150,
 	},
@@ -102,10 +102,10 @@ static struct imgsensor_info_struct imgsensor_info = {
 		.pclk = 561000000,
 		.linelength = 6024,
 		.framelength = 3104,
-		.startx = 0,
-		.starty = 0,
-		.grabwindow_width = 5344,
-		.grabwindow_height = 3004,
+		.startx = 344,
+		.starty = 192,
+		.grabwindow_width = 4656,
+		.grabwindow_height = 2620,
 		.mipi_data_lp2hs_settle_dc = 85,/* unit , ns */
 		.max_framerate = 300,
 		.mipi_pixel_rate = 528000000,
@@ -220,13 +220,13 @@ static struct imgsensor_struct imgsensor = {
 /* Sensor output window information */
 static struct SENSOR_WINSIZE_INFO_STRUCT imgsensor_winsize_info[5] = {
 {5344, 4016, 0, 0, 5344, 4016, 2672, 2008,
-0000, 0000, 2672, 2008, 0, 0, 2672, 2008},		/* Preview */
+0000, 0000, 2672, 2008, 172, 132, 2328, 1746},		/* Preview */
 
 {5344, 4016, 0, 0, 5344, 4016, 5344, 4016,
-0000, 0000, 5344, 4016, 0, 0, 5344, 4016},		/* capture */
+0000, 0000, 5344, 4016, 344, 262, 4656, 3492},		/* capture */
 
 {5344, 4016, 0, 0, 5344, 3004, 5344, 3004,
-0000, 0000, 5344, 3004, 0, 0, 5344, 3004},		/* video */
+0000, 0000, 5344, 3004, 344, 192, 4656, 2620},		/* video */
 
 {5344, 4016, 0, 0, 5344, 4016, 1336, 1004,
 0034, 0000, 1280, 720, 0, 0, 1280, 720},		/* hight speed video */

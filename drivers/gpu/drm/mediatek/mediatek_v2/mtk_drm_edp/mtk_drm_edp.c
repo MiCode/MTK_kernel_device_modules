@@ -15,6 +15,7 @@
 #include <drm/drm_panel.h>
 #include <drm/drm_print.h>
 #include <drm/drm_probe_helper.h>
+#include <drm/mediatek_drm.h>
 #include <linux/arm-smccc.h>
 #include <linux/clk.h>
 #include <linux/device.h>
@@ -37,6 +38,11 @@
 #include "mtk_drm_edp_regs.h"
 #include "mtk_drm_edp_api.h"
 #include "../mtk_drm_crtc.h"
+#include "../mtk_drm_drv.h"
+
+#ifdef EDPTX_AUTOTEST_SUPPORT
+#include "mtk_drm_edp_phy_autotest.h"
+#endif
 
 #define EDPTX_DEBUG_INFO		"[eDPTX]"
 #define EDPTX_COLOR_BAR			0
@@ -68,17 +74,35 @@
 #define MTK_EDP_MAX_LINK_RATE			"max-linkrate-mhz"
 
 enum {
-	MTK_DP_CAL_GLB_BIAS_TRIM = 0,
-	MTK_DP_CAL_CLKTX_IMPSE,
-	MTK_DP_CAL_LN_TX_IMPSEL_PMOS_0,
-	MTK_DP_CAL_LN_TX_IMPSEL_PMOS_1,
-	MTK_DP_CAL_LN_TX_IMPSEL_PMOS_2,
-	MTK_DP_CAL_LN_TX_IMPSEL_PMOS_3,
-	MTK_DP_CAL_LN_TX_IMPSEL_NMOS_0,
-	MTK_DP_CAL_LN_TX_IMPSEL_NMOS_1,
-	MTK_DP_CAL_LN_TX_IMPSEL_NMOS_2,
-	MTK_DP_CAL_LN_TX_IMPSEL_NMOS_3,
-	MTK_DP_CAL_MAX,
+	DPTX_LANE0 = 0x0,
+	DPTX_LANE1 = 0x1,
+	DPTX_LANE2 = 0x2,
+	DPTX_LANE3 = 0x3,
+	DPTX_LANE_MAX,
+};
+
+enum {
+	EFUSE_IP_MIPI_DSI_EDP_D2 = 0,
+	EFUSE_IP_MIPI_DSI_EDP_D2_DEM,
+	EFUSE_IP_MIPI_DSI_EDP_D0,
+	EFUSE_IP_MIPI_DSI_EDP_D0_DEM,
+	EFUSE_IP_MIPI_DSI_EDP_D1,
+	EFUSE_IP_MIPI_DSI_EDP_D1_DEM,
+	EFUSE_IP_MIPI_DSI_EDP_D3,
+	EFUSE_IP_MIPI_DSI_EDP_D3_DEM,
+	EFUSE_IP_MIPI_DSI_EDP_S0_D2,
+	EFUSE_IP_MIPI_DSI_EDP_S0_D2_DEM,
+	EFUSE_IP_MIPI_DSI_EDP_S0_D0,
+	EFUSE_IP_MIPI_DSI_EDP_S0_D0_DEM,
+	EFUSE_IP_MIPI_DSI_EDP_S0_D1,
+	EFUSE_IP_MIPI_DSI_EDP_S0_D1_DEM,
+	EFUSE_IP_MIPI_DSI_EDP_S0_D3,
+	EFUSE_IP_MIPI_DSI_EDP_S0_D3_DEM,
+	EFUSE_IP_MIPI_CKM_CKTX_IMPSEL_PMOS,
+	EFUSE_IP_MIPI_CKM_CKTX_IMPSEL_NMOS,
+	EFUSE_IP_MIPI_BIAS_INTR_CTRL,
+	EFUSE_IP_MIPI_V2V_VTRIM,
+	MTK_EDP_CAL_MAX,
 };
 
 struct mtk_edp_enable {
@@ -91,7 +115,7 @@ struct mtk_dp_train_info {
 	/* link_rate is in multiple of 0.27Gbps */
 	int link_rate;
 	int lane_count;
-	unsigned int channel_eq_pattern;
+	u8 channel_eq_pattern;
 };
 
 struct mtk_dp_info {
@@ -116,12 +140,13 @@ struct mtk_edp {
 	u8 max_linkrate;
 	struct clk *power_clk;
 	u8 rx_cap[DP_RECEIVER_CAP_SIZE];
-	u32 cal_data[MTK_DP_CAL_MAX];
+	u32 cal_data[MTK_EDP_CAL_MAX];
 	u32 irq_thread_handle;
 	/* irq_thread_lock is used to protect irq_thread_handle */
 	spinlock_t irq_thread_lock;
 
 	struct device *dev;
+	struct device *dpc_dev;
 	struct drm_bridge bridge;
 	struct drm_bridge *next_bridge;
 	struct drm_connector *conn;
@@ -146,96 +171,184 @@ struct mtk_edp {
 	bool edp_ui_enable;
 	bool has_fec;
 
+	/* Kernel suspend and resume event */
 	bool suspend;
-	struct notifier_block nb;	/* Kernel suspend and resume event */
+	struct notifier_block nb;
+
+#ifdef EDPTX_AUTOTEST_SUPPORT
+	/* eDP as DP for AUTOTEST */
+	struct dp_cts_auto_req cts_req;
+#endif
+
 };
 
 struct mtk_edp_data {
 	int bridge_type;
 	unsigned int smc_cmd;
 	const struct mtk_edp_efuse_fmt *efuse_fmt;
+	enum mtk_mmsys_id mmsys_id;
 };
 
-static const struct mtk_edp_efuse_fmt mt8678_edp_efuse_fmt[MTK_DP_CAL_MAX] = {
-	[MTK_DP_CAL_GLB_BIAS_TRIM] = {
-		.idx = 3,
-		.shift = 27,
-		.mask = 0x1f,
-		.min_val = 1,
-		.max_val = 0x1e,
+static const struct mtk_edp_efuse_fmt mt8678_edp_efuse_fmt[MTK_EDP_CAL_MAX] = {
+	[EFUSE_IP_MIPI_DSI_EDP_D2] = {
+		.idx = 0,
+		.shift = 0,
+		.mask = 0xf,
+		.min_val = 0,
+		.max_val = 0xf,
 		.default_val = 0xf,
 	},
-	[MTK_DP_CAL_CLKTX_IMPSE] = {
+	[EFUSE_IP_MIPI_DSI_EDP_D2_DEM] = {
 		.idx = 0,
-		.shift = 9,
-		.mask = 0xf,
-		.min_val = 1,
-		.max_val = 0xe,
-		.default_val = 0x8,
-	},
-	[MTK_DP_CAL_LN_TX_IMPSEL_PMOS_0] = {
-		.idx = 2,
-		.shift = 28,
-		.mask = 0xf,
-		.min_val = 1,
-		.max_val = 0xe,
-		.default_val = 0x8,
-	},
-	[MTK_DP_CAL_LN_TX_IMPSEL_PMOS_1] = {
-		.idx = 2,
-		.shift = 20,
-		.mask = 0xf,
-		.min_val = 1,
-		.max_val = 0xe,
-		.default_val = 0x8,
-	},
-	[MTK_DP_CAL_LN_TX_IMPSEL_PMOS_2] = {
-		.idx = 2,
-		.shift = 12,
-		.mask = 0xf,
-		.min_val = 1,
-		.max_val = 0xe,
-		.default_val = 0x8,
-	},
-	[MTK_DP_CAL_LN_TX_IMPSEL_PMOS_3] = {
-		.idx = 2,
 		.shift = 4,
-		.mask = 0xf,
-		.min_val = 1,
-		.max_val = 0xe,
-		.default_val = 0x8,
+		.mask = 0x7,
+		.min_val = 0,
+		.max_val = 0x7,
+		.default_val = 0x7,
 	},
-	[MTK_DP_CAL_LN_TX_IMPSEL_NMOS_0] = {
-		.idx = 2,
-		.shift = 24,
-		.mask = 0xf,
-		.min_val = 1,
-		.max_val = 0xe,
-		.default_val = 0x8,
-	},
-	[MTK_DP_CAL_LN_TX_IMPSEL_NMOS_1] = {
-		.idx = 2,
-		.shift = 16,
-		.mask = 0xf,
-		.min_val = 1,
-		.max_val = 0xe,
-		.default_val = 0x8,
-	},
-	[MTK_DP_CAL_LN_TX_IMPSEL_NMOS_2] = {
-		.idx = 2,
+	[EFUSE_IP_MIPI_DSI_EDP_D0] = {
+		.idx = 0,
 		.shift = 8,
 		.mask = 0xf,
-		.min_val = 1,
-		.max_val = 0xe,
-		.default_val = 0x8,
+		.min_val = 0,
+		.max_val = 0xf,
+		.default_val = 0xf,
 	},
-	[MTK_DP_CAL_LN_TX_IMPSEL_NMOS_3] = {
+	[EFUSE_IP_MIPI_DSI_EDP_D0_DEM] = {
+		.idx = 0,
+		.shift = 12,
+		.mask = 0x7,
+		.min_val = 0,
+		.max_val = 0x7,
+		.default_val = 0x7,
+	},
+	[EFUSE_IP_MIPI_DSI_EDP_D1] = {
+		.idx = 0,
+		.shift = 24,
+		.mask = 0xf,
+		.min_val = 0,
+		.max_val = 0xf,
+		.default_val = 0xf,
+	},
+	[EFUSE_IP_MIPI_DSI_EDP_D1_DEM] = {
+		.idx = 0,
+		.shift = 28,
+		.mask = 0x7,
+		.min_val = 0,
+		.max_val = 0x7,
+		.default_val = 0x7,
+	},
+	[EFUSE_IP_MIPI_DSI_EDP_D3] = {
+		.idx = 1,
+		.shift = 0,
+		.mask = 0xf,
+		.min_val = 0,
+		.max_val = 0xf,
+		.default_val = 0xf,
+	},
+	[EFUSE_IP_MIPI_DSI_EDP_D3_DEM] = {
+		.idx = 1,
+		.shift = 4,
+		.mask = 0x7,
+		.min_val = 0,
+		.max_val = 0x7,
+		.default_val = 0x7,
+	},
+	[EFUSE_IP_MIPI_DSI_EDP_S0_D2] = {
+		.idx = 1,
+		.shift = 16,
+		.mask = 0xf,
+		.min_val = 0,
+		.max_val = 0xf,
+		.default_val = 0xf,
+	},
+	[EFUSE_IP_MIPI_DSI_EDP_S0_D2_DEM] = {
+		.idx = 1,
+		.shift = 20,
+		.mask = 0x7,
+		.min_val = 0,
+		.max_val = 0x7,
+		.default_val = 0x7,
+	},
+	[EFUSE_IP_MIPI_DSI_EDP_S0_D0] = {
+		.idx = 1,
+		.shift = 24,
+		.mask = 0xf,
+		.min_val = 0,
+		.max_val = 0xf,
+		.default_val = 0xf,
+	},
+	[EFUSE_IP_MIPI_DSI_EDP_S0_D0_DEM] = {
+		.idx = 1,
+		.shift = 28,
+		.mask = 0x7,
+		.min_val = 0,
+		.max_val = 0x7,
+		.default_val = 0x7,
+	},
+	[EFUSE_IP_MIPI_DSI_EDP_S0_D1] = {
 		.idx = 2,
 		.shift = 0,
 		.mask = 0xf,
-		.min_val = 1,
-		.max_val = 0xe,
-		.default_val = 0x8,
+		.min_val = 0,
+		.max_val = 0xf,
+		.default_val = 0xf,
+	},
+	[EFUSE_IP_MIPI_DSI_EDP_S0_D1_DEM] = {
+		.idx = 2,
+		.shift = 4,
+		.mask = 0x7,
+		.min_val = 0,
+		.max_val = 0x7,
+		.default_val = 0x7,
+	},
+	[EFUSE_IP_MIPI_DSI_EDP_S0_D3] = {
+		.idx = 2,
+		.shift = 7,
+		.mask = 0xf,
+		.min_val = 0,
+		.max_val = 0xf,
+		.default_val = 0xf,
+	},
+	[EFUSE_IP_MIPI_DSI_EDP_S0_D3_DEM] = {
+		.idx = 2,
+		.shift = 11,
+		.mask = 0x7,
+		.min_val = 0,
+		.max_val = 0x7,
+		.default_val = 0x7,
+	},
+	[EFUSE_IP_MIPI_CKM_CKTX_IMPSEL_PMOS] = {
+		.idx = 2,
+		.shift = 14,
+		.mask = 0xf,
+		.min_val = 0x0,
+		.max_val = 0xf,
+		.default_val = 0xf,
+	},
+	[EFUSE_IP_MIPI_CKM_CKTX_IMPSEL_NMOS] = {
+		.idx = 2,
+		.shift = 18,
+		.mask = 0xf,
+		.min_val = 0x0,
+		.max_val = 0xf,
+		.default_val = 0xf,
+	},
+	[EFUSE_IP_MIPI_BIAS_INTR_CTRL] = {
+		.idx = 2,
+		.shift = 22,
+		.mask = 0x3f,
+		.min_val = 0x0,
+		.max_val = 0x3f,
+		.default_val = 0x0,
+	},
+	[EFUSE_IP_MIPI_V2V_VTRIM] = {
+		.idx = 2,
+		.shift = 28,
+		.mask = 0xf,
+		.min_val = 0x0,
+		.max_val = 0xf,
+		.default_val = 0xa,
 	},
 };
 
@@ -274,11 +387,12 @@ struct notify_dev {
 
 /* staitc global variable define */
 static struct mtk_edp *g_mtk_edp;
-struct notify_dev edptx_notify_data;
-struct class *switch_edp_class;
+static struct notify_dev edptx_notify_data;
+static struct class *switch_edp_class;
 static atomic_t device_count;
 
-int edp_notify_uevent_user(struct notify_dev *sdev, int state)
+#ifdef EDPTX_ANDROID_SUPPORT
+static int edp_notify_uevent_user(struct notify_dev *sdev, int state)
 {
 	char *envp[4];
 	char name_buf[120];
@@ -321,6 +435,7 @@ int edp_notify_uevent_user(struct notify_dev *sdev, int state)
 
 	return 0;
 }
+#endif
 
 static struct mtk_edp *mtk_edp_from_bridge(struct drm_bridge *b)
 {
@@ -365,6 +480,55 @@ static int mtk_edp_update_bits(struct mtk_edp *mtk_edp, u32 offset,
 	return ret;
 }
 
+#ifdef EDPTX_DEBUG
+static u32 mtk_edp_phy_read(struct mtk_edp *mtk_edp, u32 offset)
+{
+	u32 read_val;
+	int ret;
+	struct regmap *regs = mtk_edp->phy_regs ? mtk_edp->phy_regs : mtk_edp->regs;
+
+	ret = regmap_read(regs, offset, &read_val);
+	if (ret) {
+		dev_info(mtk_edp->dev, "Failed to read register 0x%x: %d\n",
+			offset, ret);
+		return 0;
+	}
+
+	return read_val;
+}
+
+static int mtk_edp_phy_write(struct mtk_edp *mtk_edp, u32 offset, u32 val)
+{
+	struct regmap *regs = mtk_edp->phy_regs ? mtk_edp->phy_regs : mtk_edp->regs;
+	int ret = 0;
+
+	ret = regmap_write(regs, offset, val);
+	if (ret) {
+		dev_info(mtk_edp->dev, "Failed to write register 0x%8x with value 0x%x\n",
+			offset, val);
+		return ret;
+	}
+
+	return 0;
+}
+#endif
+
+static int mtk_edp_phy_update_bits(struct mtk_edp *mtk_edp, u32 offset,
+			      u32 mask, u32 val)
+{
+	struct regmap *regs = mtk_edp->phy_regs ? mtk_edp->phy_regs : mtk_edp->regs;
+	int ret = 0;
+
+	ret = regmap_update_bits(regs, offset, mask, val);
+	if (ret) {
+		dev_info(mtk_edp->dev, "Failed to update register 0x%04x with value 0x%08x, mask 0x%x\n",
+			offset, val, mask);
+		return ret;
+	}
+
+	return 0;
+}
+
 static void mtk_edp_bulk_16bit_write(struct mtk_edp *mtk_edp, u32 offset, u8 *buf,
 				    size_t length)
 {
@@ -386,40 +550,66 @@ static bool mtk_edp_plug_state(struct mtk_edp *mtk_edp)
 		  HPD_STATUS_DP_AUX_TX_P0_MASK);
 }
 
+#ifdef EDPTX_AUTOTEST_SUPPORT
+static bool mtk_edp_autotest_request(struct mtk_edp *mtk_edp, u8 *dpcd_201)
+{
+	ssize_t ret = 0;
+	u8 device_service_irq_vector;
+	u8 device_service_irq_vector_esi0;
+
+	ret = drm_dp_dpcd_readb(&mtk_edp->aux, DP_DEVICE_SERVICE_IRQ_VECTOR,
+					&device_service_irq_vector);
+	if (!ret) {
+		dev_info(mtk_edp->dev, "[eDPTX] Read DP_DEVICE_SERVICE_IRQ_VECTOR failed: %ld\n",
+			 ret);
+		return FALSE;
+	}
+
+	ret = drm_dp_dpcd_readb(&mtk_edp->aux, DP_DEVICE_SERVICE_IRQ_VECTOR_ESI0,
+					&device_service_irq_vector_esi0);
+	if (!ret) {
+		dev_info(mtk_edp->dev, "[eDPTX] Read DP_DEVICE_SERVICE_IRQ_VECTOR failed: %ld\n",
+			 ret);
+		return FALSE;
+	}
+
+	*dpcd_201 = device_service_irq_vector | device_service_irq_vector_esi0;
+	dev_info(mtk_edp->dev, "%s %s 0x%x\n", EDPTX_DEBUG_INFO, __func__, *dpcd_201);
+
+	return device_service_irq_vector & DP_AUTOMATED_TEST_REQUEST ? TRUE : FALSE;
+}
+#endif
+
 static void mtk_edp_hpd_sink_event(struct mtk_edp *mtk_edp)
 {
-	ssize_t ret;
-	u8 sink_count;
-	u8 link_status[DP_LINK_STATUS_SIZE] = {};
-	u32 sink_count_reg;
-	u32 link_status_reg;
+#ifdef EDPTX_AUTOTEST_SUPPORT
+	u8 dpcd_201;
+	bool autotest_request;
+#endif
 
-	sink_count_reg = DP_SINK_COUNT_ESI;
-	link_status_reg = DP_LANE0_1_STATUS;
-	ret = drm_dp_dpcd_readb(&mtk_edp->aux, sink_count_reg, &sink_count);
-	if (ret < 0) {
-		dev_info(mtk_edp->dev,
-			 "[eDPTX] Read sink count failed: %ld\n", ret);
-		return;
+	dev_info(mtk_edp->dev, "%s %s+\n", EDPTX_DEBUG_INFO, __func__);
+
+	/* AUTOMETED_TEST_REQUEST */
+#ifdef EDPTX_AUTOTEST_SUPPORT
+	autotest_request = mtk_edp_autotest_request(mtk_edp, &dpcd_201);
+	if (autotest_request) {
+		/* eDP PHY auto test */
+		mtk_edp->cts_req.regs = mtk_edp->regs;
+		if (mtk_edp->phy_regs)
+			mtk_edp->cts_req.phyd_regs = mtk_edp->phy_regs;
+		else
+			mtk_edp->cts_req.phyd_regs = mtk_edp->regs;
+
+		mtk_edp->cts_req.aux = &mtk_edp->aux;
+
+		autotest_request = mtk_edp_phy_auto_test(&mtk_edp->cts_req, dpcd_201);
+		if (!autotest_request)
+			dev_info(mtk_edp->dev, "%s %s phy autotest fail!\n", EDPTX_DEBUG_INFO, __func__);
 	}
+#endif
 
-	ret = drm_dp_dpcd_readb(&mtk_edp->aux, DP_SINK_COUNT, &sink_count);
-	if (ret < 0) {
-		dev_info(mtk_edp->dev,
-			 "[eDPTX] Read DP_SINK_COUNT_ESI failed: %ld\n", ret);
-		return;
-	}
-
-	ret = drm_dp_dpcd_read(&mtk_edp->aux, link_status_reg, link_status,
-			       sizeof(link_status));
-	if (!ret) {
-		drm_info(mtk_edp->drm_dev, "[eDPTX] Read link status failed: %ld\n",
-			 ret);
-		return;
-	}
-
+	dev_info(mtk_edp->dev, "%s %s-\n", EDPTX_DEBUG_INFO, __func__);
 }
-
 
 static void mtk_edp_msa_bypass_enable(struct mtk_edp *mtk_edp, bool enable)
 {
@@ -812,6 +1002,383 @@ static int mtk_edp_aux_do_transfer(struct mtk_edp *mtk_edp, bool is_read, u8 cmd
 	return 0;
 }
 
+static void mtk_edp_set_calibration_data(struct mtk_edp *mtk_edp)
+{
+	u32 *cal_data = mtk_edp->cal_data;
+	u32 lane = 0x0,  data_index = 0x0, offset = 0x0;
+	u32 n_total_l = 0x0, temp_l = 0x0, code_s01p2_d = 0x0, code_dem_s01p2_d = 0x0;
+	u32 temp_l_preemp3_swing0 = 0x0, code_s0p3_d, code_dem_sop3_d = 0x0;
+
+	/* Bandgap*/
+	mtk_edp_phy_update_bits(mtk_edp, ANA_AUX_RG_REG_2,
+					RG_DSI_V2V_VTRIM,
+					cal_data[EFUSE_IP_MIPI_V2V_VTRIM] << 16);
+	mtk_edp_phy_update_bits(mtk_edp, ANA_AUX_RG_REG_2,
+					RG_DSI_BIAS_INTR_CTRL,
+					cal_data[EFUSE_IP_MIPI_BIAS_INTR_CTRL] << 0);
+	/* AUX R50 */
+	mtk_edp_phy_update_bits(mtk_edp, ANA_AUX_RG_REG_3,
+					RG_CKM_CKTX_IMPSEL_PMOS,
+					cal_data[EFUSE_IP_MIPI_CKM_CKTX_IMPSEL_PMOS] << 8);
+	mtk_edp_phy_update_bits(mtk_edp, ANA_AUX_RG_REG_3,
+					RG_CKM_CKTX_IMPSEL_NMOS,
+					cal_data[EFUSE_IP_MIPI_CKM_CKTX_IMPSEL_NMOS] << 12);
+
+	/* Main-Link RT code for Swing 0 and Swing 1 */
+	for (lane = 0; lane < mtk_edp->max_lanes; lane++) {
+		/* Swing 0 */
+		switch (lane) {
+		case DPTX_LANE0:
+			offset = PHYD_DIG_LAN0_OFFSET;
+			data_index = EFUSE_IP_MIPI_DSI_EDP_S0_D0;
+			break;
+		case DPTX_LANE1:
+			offset = PHYD_DIG_LAN1_OFFSET;
+			data_index = EFUSE_IP_MIPI_DSI_EDP_S0_D1;
+			break;
+		case DPTX_LANE2:
+			offset = PHYD_DIG_LAN2_OFFSET;
+			data_index = EFUSE_IP_MIPI_DSI_EDP_S0_D2;
+			break;
+		case DPTX_LANE3:
+			offset = PHYD_DIG_LAN3_OFFSET;
+			data_index = EFUSE_IP_MIPI_DSI_EDP_S0_D3;
+			break;
+		default:
+			pr_info("%s invalid lane %d\n", EDPTX_DEBUG_INFO, lane);
+			return;
+		}
+
+		/* Swing 0 */
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_0,
+						RG_DSI_LN_P_RT_CODE_LV_SW0_PRE_0,
+						cal_data[data_index] << 0);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_0,
+						RG_DSI_LN_N_RT_CODE_LV_SW0_PRE_0,
+						cal_data[data_index] << 16);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_0,
+						RG_DSI_LN_P_RT_CODE_LV_SW0_PRE_1,
+						cal_data[data_index] << 4);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_0,
+						RG_DSI_LN_N_RT_CODE_LV_SW0_PRE_1,
+						cal_data[data_index] << 20);
+		/* Swing 1 */
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_2,
+						RG_DSI_LN_P_RT_CODE_LV_SW1_PRE_0,
+						cal_data[data_index] << 0);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_2,
+						RG_DSI_LN_N_RT_CODE_LV_SW1_PRE_0,
+						cal_data[data_index] << 16);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_2,
+						RG_DSI_LN_P_RT_CODE_LV_SW1_PRE_1,
+						cal_data[data_index] << 4);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_2,
+						RG_DSI_LN_N_RT_CODE_LV_SW1_PRE_1,
+						cal_data[data_index] << 20);
+	}
+
+	/* Main-Link RT_DEM code for Swing 0 and Swing 1 */
+	for (lane = 0; lane < mtk_edp->max_lanes; lane++) {
+		/* Swing 0 */
+		switch (lane) {
+		case DPTX_LANE0:
+			offset = PHYD_DIG_LAN0_OFFSET;
+			data_index = EFUSE_IP_MIPI_DSI_EDP_S0_D0_DEM;
+			break;
+		case DPTX_LANE1:
+			offset = PHYD_DIG_LAN1_OFFSET;
+			data_index = EFUSE_IP_MIPI_DSI_EDP_S0_D1_DEM;
+			break;
+		case DPTX_LANE2:
+			offset = PHYD_DIG_LAN2_OFFSET;
+			data_index = EFUSE_IP_MIPI_DSI_EDP_S0_D2_DEM;
+			break;
+		case DPTX_LANE3:
+			offset = PHYD_DIG_LAN3_OFFSET;
+			data_index = EFUSE_IP_MIPI_DSI_EDP_S0_D3_DEM;
+			break;
+		default:
+			pr_info("%s invalid lane %d\n", EDPTX_DEBUG_INFO, lane);
+			return;
+		}
+
+		/* Swing 0 */
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_8,
+						RG_DSI_LN_P_RT_DEM_CODE_LV_SW0_PRE_0,
+						cal_data[data_index] << 0);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_8,
+						RG_DSI_LN_N_RT_DEM_CODE_LV_SW0_PRE_0,
+						cal_data[data_index] << 16);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_8,
+						RG_DSI_LN_P_RT_DEM_CODE_LV_SW0_PRE_1,
+						cal_data[data_index] << 3);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_8,
+						RG_DSI_LN_N_RT_DEM_CODE_LV_SW0_PRE_1,
+						cal_data[data_index] << 19);
+		/* Swing 1 */
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_10,
+						RG_DSI_LN_P_RT_DEM_CODE_LV_SW1_PRE_0,
+						cal_data[data_index] << 0);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_10,
+						RG_DSI_LN_N_RT_DEM_CODE_LV_SW1_PRE_0,
+						cal_data[data_index] << 16);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_10,
+						RG_DSI_LN_P_RT_DEM_CODE_LV_SW1_PRE_1,
+						cal_data[data_index] << 3);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_10,
+						RG_DSI_LN_N_RT_DEM_CODE_LV_SW1_PRE_1,
+						cal_data[data_index] << 19);
+	}
+
+	/* Main-Link RT code for Swing 2 and Swing 3 */
+	for (lane = 0; lane < mtk_edp->max_lanes; lane++) {
+		/* Swing 0 */
+		switch (lane) {
+		case DPTX_LANE0:
+			offset = PHYD_DIG_LAN0_OFFSET;
+			data_index = EFUSE_IP_MIPI_DSI_EDP_D0;
+			break;
+		case DPTX_LANE1:
+			offset = PHYD_DIG_LAN1_OFFSET;
+			data_index = EFUSE_IP_MIPI_DSI_EDP_D1;
+			break;
+		case DPTX_LANE2:
+			offset = PHYD_DIG_LAN2_OFFSET;
+			data_index = EFUSE_IP_MIPI_DSI_EDP_D2;
+			break;
+		case DPTX_LANE3:
+			offset = PHYD_DIG_LAN3_OFFSET;
+			data_index = EFUSE_IP_MIPI_DSI_EDP_D3;
+			break;
+		default:
+			pr_info("%s invalid lane %d\n", EDPTX_DEBUG_INFO, lane);
+			return;
+		}
+
+		/* Swing 2 */
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_4,
+						RG_DSI_LN_P_RT_CODE_LV_SW2_PRE_0,
+						cal_data[data_index] << 0);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_4,
+						RG_DSI_LN_N_RT_CODE_LV_SW2_PRE_0,
+						cal_data[data_index] << 16);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_4,
+						RG_DSI_LN_P_RT_CODE_LV_SW2_PRE_1,
+						cal_data[data_index] << 4);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_4,
+						RG_DSI_LN_N_RT_CODE_LV_SW2_PRE_1,
+						cal_data[data_index] << 20);
+		/* Swing 3 */
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_6,
+						RG_DSI_LN_P_RT_CODE_LV_SW3_PRE_0,
+						cal_data[data_index] << 0);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_6,
+						RG_DSI_LN_N_RT_CODE_LV_SW3_PRE_0,
+						cal_data[data_index] << 16);
+	}
+
+	/* Main-Link RT_DEM code for swing 2 and swing 3 */
+	for (lane = 0; lane < mtk_edp->max_lanes; lane++) {
+		/* Swing 0 */
+		switch (lane) {
+		case DPTX_LANE0:
+			offset = PHYD_DIG_LAN0_OFFSET;
+			data_index = EFUSE_IP_MIPI_DSI_EDP_D0_DEM;
+			break;
+		case DPTX_LANE1:
+			offset = PHYD_DIG_LAN1_OFFSET;
+			data_index = EFUSE_IP_MIPI_DSI_EDP_D1_DEM;
+			break;
+		case DPTX_LANE2:
+			offset = PHYD_DIG_LAN2_OFFSET;
+			data_index = EFUSE_IP_MIPI_DSI_EDP_D2_DEM;
+			break;
+		case DPTX_LANE3:
+			offset = PHYD_DIG_LAN3_OFFSET;
+			data_index = EFUSE_IP_MIPI_DSI_EDP_D3_DEM;
+			break;
+		default:
+			pr_info("%s invalid lane %d\n", EDPTX_DEBUG_INFO, lane);
+			return;
+		}
+
+		/* Swing 2 */
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_12,
+						RG_DSI_LN_P_RT_DEM_CODE_LV_SW2_PRE_0,
+						cal_data[data_index] << 0);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_12,
+						RG_DSI_LN_N_RT_DEM_CODE_LV_SW2_PRE_0,
+						cal_data[data_index] << 16);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_12,
+						RG_DSI_LN_P_RT_DEM_CODE_LV_SW2_PRE_1,
+						cal_data[data_index] << 3);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_12,
+						RG_DSI_LN_N_RT_DEM_CODE_LV_SW2_PRE_1,
+						cal_data[data_index] << 19);
+		/* Swing 3 */
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_14,
+						RG_DSI_LN_P_RT_CODE_LV_SW3_PRE_0,
+						cal_data[data_index] << 0);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_14,
+						RG_DSI_LN_N_RT_CODE_LV_SW3_PRE_0,
+						cal_data[data_index] << 16);
+	}
+
+	/* Pre-emphasis 2 for swing 0 and swing 1 */
+	for (lane = 0; lane < mtk_edp->max_lanes; lane++) {
+		/* Swing 0 */
+		switch (lane) {
+		case DPTX_LANE0:
+			offset = PHYD_DIG_LAN0_OFFSET;
+			n_total_l = cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D0] +
+							cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D0_DEM] + 22;
+			temp_l = (n_total_l / 10) * 9 - 20;
+			code_s01p2_d = temp_l < cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D0] ?
+						temp_l : cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D0] - 1;
+			code_dem_s01p2_d = n_total_l - 22 - code_s01p2_d;
+			break;
+		case DPTX_LANE1:
+			offset = PHYD_DIG_LAN1_OFFSET;
+			n_total_l = cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D1] +
+							cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D1_DEM] + 22;
+			temp_l = (n_total_l / 10) * 9 - 20;
+			code_s01p2_d = temp_l < cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D1] ?
+						temp_l : cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D1] - 1;
+			code_dem_s01p2_d = n_total_l - 22 - code_s01p2_d;
+			break;
+		case DPTX_LANE2:
+			offset = PHYD_DIG_LAN2_OFFSET;
+			n_total_l = cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D2] +
+							cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D2_DEM] + 22;
+			temp_l = (n_total_l / 10) * 9 - 20;
+			code_s01p2_d = temp_l < cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D2] ?
+						temp_l : cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D2] - 1;
+			code_dem_s01p2_d = n_total_l - 22 - code_s01p2_d;
+			break;
+		case DPTX_LANE3:
+			offset = PHYD_DIG_LAN3_OFFSET;
+			n_total_l = cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D3] +
+							cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D3_DEM] + 22;
+			temp_l = (n_total_l / 10) * 9 - 20;
+			code_s01p2_d = temp_l < cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D3] ?
+						temp_l : cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D3] - 1;
+			code_dem_s01p2_d = n_total_l - 22 - code_s01p2_d;
+			break;
+		default:
+			pr_info("%s invalid lane %d\n", EDPTX_DEBUG_INFO, lane);
+			return;
+		}
+
+		/* Swing 0 */
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_0,
+						RG_DSI_LN_P_RT_CODE_LV_SW0_PRE_2,
+						code_s01p2_d << 8);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_0,
+						RG_DSI_LN_N_RT_CODE_LV_SW0_PRE_2,
+						code_s01p2_d << 24);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_8,
+						RG_DSI_LN_P_RT_DEM_CODE_LV_SW0_PRE_2,
+						code_dem_s01p2_d << 8);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_8,
+						RG_DSI_LN_N_RT_DEM_CODE_LV_SW0_PRE_2,
+						code_dem_s01p2_d << 24);
+		/* Swing 1 */
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_2,
+						RG_DSI_LN_P_RT_CODE_LV_SW1_PRE_2,
+						code_s01p2_d << 8);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_2,
+						RG_DSI_LN_N_RT_CODE_LV_SW1_PRE_2,
+						code_s01p2_d << 24);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_10,
+						RG_DSI_LN_P_RT_DEM_CODE_LV_SW1_PRE_2,
+						code_dem_s01p2_d << 8);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_10,
+						RG_DSI_LN_N_RT_DEM_CODE_LV_SW1_PRE_2,
+						code_dem_s01p2_d << 16);
+	}
+
+	/* Pre-emphasis 3 for swing 0 */
+	for (lane = 0; lane < mtk_edp->max_lanes; lane++) {
+		/* Swing 0 */
+		switch (lane) {
+		case DPTX_LANE0:
+			offset = PHYD_DIG_LAN0_OFFSET;
+			n_total_l = cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D0] +
+							cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D0_DEM] + 22;
+			temp_l = (n_total_l / 10) * 9 - 20;
+			code_s01p2_d = temp_l < cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D0] ?
+						temp_l : cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D0] - 1;
+			code_dem_s01p2_d = n_total_l - 22 - code_s01p2_d;
+			break;
+		case DPTX_LANE1:
+			offset = PHYD_DIG_LAN1_OFFSET;
+			n_total_l = cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D1] +
+							cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D1_DEM] + 22;
+			temp_l = (n_total_l / 10) * 9 - 20;
+			code_s01p2_d = temp_l < cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D1] ?
+						temp_l : cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D1] - 1;
+			code_dem_s01p2_d = n_total_l - 22 - code_s01p2_d;
+			break;
+		case DPTX_LANE2:
+			offset = PHYD_DIG_LAN2_OFFSET;
+			n_total_l = cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D2] +
+							cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D2_DEM] + 22;
+			temp_l = (n_total_l / 10) * 9 - 20;
+			code_s01p2_d = temp_l < cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D2] ?
+						temp_l : cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D2] - 1;
+			code_dem_s01p2_d = n_total_l - 22 - code_s01p2_d;
+			break;
+		case DPTX_LANE3:
+			offset = PHYD_DIG_LAN3_OFFSET;
+			n_total_l = cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D3] +
+							cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D3_DEM] + 22;
+			temp_l = (n_total_l / 10) * 9 - 20;
+			code_s01p2_d = temp_l < cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D3] ?
+						temp_l : cal_data[EFUSE_IP_MIPI_DSI_EDP_S0_D3] - 1;
+			code_dem_s01p2_d = n_total_l - 22 - code_s01p2_d;
+			break;
+		default:
+			pr_info("%s invalid lane %d\n", EDPTX_DEBUG_INFO, lane);
+			return;
+		}
+
+		temp_l_preemp3_swing0 = (n_total_l / 100) * 84 - 20;
+		code_s0p3_d = temp_l_preemp3_swing0 < code_s01p2_d ?
+					temp_l_preemp3_swing0 : (code_s01p2_d - 1);
+		code_dem_sop3_d = n_total_l - 22 - code_s0p3_d;
+
+		/* Swing 0 */
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_0,
+						RG_DSI_LN_P_RT_CODE_LV_SW0_PRE_3,
+						code_s0p3_d << 12);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_0,
+						RG_DSI_LN_N_RT_CODE_LV_SW0_PRE_3,
+						code_s0p3_d << 28);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_8,
+						RG_DSI_LN_P_RT_DEM_CODE_LV_SW0_PRE_3,
+						code_dem_sop3_d << 11);
+		mtk_edp_phy_update_bits(mtk_edp, offset + DRIVING_PARAM_8,
+						RG_DSI_LN_N_RT_DEM_CODE_LV_SW0_PRE_3,
+						code_dem_sop3_d << 27);
+	}
+
+	/* Set IPMUX_CONTROL to eDP Mode */
+	mtk_edp_phy_update_bits(mtk_edp, PHYD_DIG_GLB_OFFSET + IPMUX_CONTROL, 0,
+					RG_EDPTX_DSI_PHYD_SEL);
+
+	mtk_edp_phy_update_bits(mtk_edp, PHYD_DIG_LAN0_OFFSET + 0x7C,
+					0xffffffff, 0xDDDDDDDB);
+	mtk_edp_phy_update_bits(mtk_edp, PHYD_DIG_LAN1_OFFSET + 0x7C,
+					0xffffffff, 0xDDDDDDDB);
+	mtk_edp_phy_update_bits(mtk_edp, PHYD_DIG_LAN2_OFFSET + 0x7C,
+					0xffffffff, 0xDDDDDDDB);
+	mtk_edp_phy_update_bits(mtk_edp, PHYD_DIG_LAN3_OFFSET + 0x7C,
+					0xffffffff, 0xDDDDDDDB);
+
+	mtk_edp_phy_update_bits(mtk_edp, ANA_AUX_RG_REG_3,
+				XTP_CKTX_675_VOLTAGE_SEL, RG_XTP_GLB_CKTX_VLDO_SEL);
+}
+
 static int mtk_edp_phy_configure(struct mtk_edp *mtk_edp,
 				u32 link_rate, int lane_count,
 				bool set_swing_pre, unsigned int *swing,
@@ -837,7 +1404,7 @@ static int mtk_edp_phy_configure(struct mtk_edp *mtk_edp,
 
 	ret = phy_configure(mtk_edp->phy, &phy_opts);
 	if (ret)
-		return ret;
+		goto err_phy_config;
 
 	/* Turn on phy power after phy configure */
 	mtk_edp_update_bits(mtk_edp, REG_3FF8_DP_ENC_4P_3,
@@ -845,7 +1412,13 @@ static int mtk_edp_phy_configure(struct mtk_edp *mtk_edp,
 	mtk_edp_update_bits(mtk_edp, MTK_DP_TOP_PWR_STATE,
 			   DP_PWR_STATE_BANDGAP_TPLL_LANE, DP_PWR_STATE_MASK);
 
+	mtk_edp_set_calibration_data(mtk_edp);
+
 	return 0;
+
+err_phy_config:
+		phy_exit(mtk_edp->phy);
+	return ret;
 }
 
 static void mtk_edp_set_swing_pre_emphasis(struct mtk_edp *mtk_edp, int lane_count,
@@ -857,8 +1430,8 @@ static void mtk_edp_set_swing_pre_emphasis(struct mtk_edp *mtk_edp, int lane_cou
 	for (lane = 0; lane < lane_count; lane++) {
 
 		dev_info(mtk_edp->dev,
-			"[eDPTX] Link training lane%d: swing_val = 0x%x, pre-emphasis = 0x%x\n",
-			lane, swing_val[lane], preemphasis[lane]);
+			"%s Link training lane%d: swing_val = 0x%x, pre-emphasis = 0x%x\n",
+			EDPTX_DEBUG_INFO, lane, swing_val[lane], preemphasis[lane]);
 	}
 
 	mtk_edp_phy_configure(mtk_edp, 0, lane_count, TRUE, swing_val, preemphasis);
@@ -1128,7 +1701,7 @@ static void mtk_edp_phyd_wait_aux_ldo_ready(struct mtk_edp *mtk_edp, unsigned lo
 		pr_info("%s %s AUX not ready\n", EDPTX_DEBUG_INFO, __func__);
 }
 
-static void mtk_edp_set_lanes(struct mtk_edp *mtk_edp, int lanes)
+static void mtk_edp_set_lanes(struct mtk_edp *mtk_edp, u8 lanes)
 {
 	/* Turn off phy power before phy configure */
 	mtk_edp_update_bits(mtk_edp, REG_3F44_DP_ENC_4P_3,
@@ -1160,30 +1733,28 @@ static void mtk_edp_get_calibration_data(struct mtk_edp *mtk_edp)
 	int i = 0;
 	size_t len = 0;
 
-	cell = nvmem_cell_get(dev, "dp_calibration_data");
+	cell = nvmem_cell_get(dev, "edp_calibration_data");
 	if (IS_ERR(cell)) {
-		dev_info(dev, "Failed to get nvmem cell dp_calibration_data\n");
+		dev_info(dev, "%s Failed to get nvmem cell dp_calibration_data\n", EDPTX_DEBUG_INFO);
 		goto use_default_val;
 	}
 
 	buf = (u32 *)nvmem_cell_read(cell, &len);
 	nvmem_cell_put(cell);
 
-	if (IS_ERR(buf) || ((len / sizeof(u32)) != 4)) {
-		dev_info(dev, "Failed to read nvmem_cell_read\n");
-
+	if (IS_ERR(buf) || len / sizeof(u32) != 3) {
+		dev_info(dev, "%s Failed to read nvmem_cell_read\n", EDPTX_DEBUG_INFO);
 		if (!IS_ERR(buf))
 			kfree(buf);
 
 		goto use_default_val;
 	}
 
-	for (i = 0; i < MTK_DP_CAL_MAX; i++) {
+	for (i = 0; i < MTK_EDP_CAL_MAX; i++) {
 		fmt = &mtk_edp->data->efuse_fmt[i];
 		cal_data[i] = (buf[fmt->idx] >> fmt->shift) & fmt->mask;
-
 		if (cal_data[i] < fmt->min_val || cal_data[i] > fmt->max_val) {
-			dev_info(mtk_edp->dev, "Invalid efuse data, idx = %d\n", i);
+			dev_info(mtk_edp->dev, "%s Invalid efuse data, idx = %d\n", EDPTX_DEBUG_INFO, i);
 			kfree(buf);
 			goto use_default_val;
 		}
@@ -1193,8 +1764,8 @@ static void mtk_edp_get_calibration_data(struct mtk_edp *mtk_edp)
 	return;
 
 use_default_val:
-	dev_info(mtk_edp->dev, "[eDPTX] Use default calibration data\n");
-	for (i = 0; i < MTK_DP_CAL_MAX; i++)
+	dev_info(mtk_edp->dev, "%s Use default calibration data\n", EDPTX_DEBUG_INFO);
+	for (i = 0; i < MTK_EDP_CAL_MAX; i++)
 		cal_data[i] = mtk_edp->data->efuse_fmt[i].default_val;
 }
 
@@ -1255,8 +1826,8 @@ static void mtk_edp_video_mute(struct mtk_edp *mtk_edp, bool enable)
 		      EDP_VIDEO_UNMUTE, enable,
 		      x3, 0xFEFD, 0, 0, 0, &res);
 
-	dev_info(mtk_edp->dev, "[eDPTX] smc cmd: 0x%x, p1: %s, ret: 0x%lx-0x%lx\n",
-		EDP_VIDEO_UNMUTE, enable ? "enable" : "disable", res.a0, res.a1);
+	dev_info(mtk_edp->dev, "%s smc cmd: 0x%x, p1: %s, ret: 0x%lx-0x%lx\n",
+		EDPTX_DEBUG_INFO, EDP_VIDEO_UNMUTE, enable ? "enable" : "disable", res.a0, res.a1);
 }
 
 static void mtk_edp_aux_panel_poweron(struct mtk_edp *mtk_edp, bool pwron)
@@ -1325,10 +1896,13 @@ static void mtk_edp_initialize_priv_data(struct mtk_edp *mtk_edp)
 {
 	mtk_edp->train_info.link_rate = mtk_edp->max_linkrate;
 	mtk_edp->train_info.lane_count = mtk_edp->max_lanes;
-	if (mtk_edp_plug_state(mtk_edp))
+	if (mtk_edp_plug_state(mtk_edp)) {
 		mtk_edp->train_info.cable_plugged_in = true;
-	else
+		edptx_notify_data.state = 1;
+	} else {
 		mtk_edp->train_info.cable_plugged_in = false;
+		edptx_notify_data.state = 0;
+	}
 
 	pr_info("%s cable_plugged_in = %d\n", EDPTX_DEBUG_INFO, mtk_edp->train_info.cable_plugged_in);
 	mtk_edp->info.format = DP_PIXELFORMAT_RGB;
@@ -1454,7 +2028,6 @@ static void mtk_edp_train_update_swing_pre(struct mtk_edp *mtk_edp, int lanes,
 	}
 
 	mtk_edp_set_swing_pre_emphasis(mtk_edp, lanes, swing, preemphasis);
-
 }
 
 static void mtk_edp_pattern(struct mtk_edp *mtk_edp, bool is_tps1)
@@ -1509,10 +2082,9 @@ static int mtk_edp_train_setting(struct mtk_edp *mtk_edp, u8 target_link_rate,
 		return ret;
 
 	dev_info(mtk_edp->dev,
-		"Link train target_link_rate = 0x%x, target_lane_count = 0x%x\n",
-		target_link_rate, target_lane_count);
+		"%s Link train target_link_rate = 0x%x, target_lane_count = 0x%x\n",
+		EDPTX_DEBUG_INFO, target_link_rate, target_lane_count);
 
-	pr_info("%s %s-\n", EDPTX_DEBUG_INFO, __func__);
 	return 0;
 }
 
@@ -1523,6 +2095,7 @@ static int mtk_edp_train_cr(struct mtk_edp *mtk_edp, u8 target_lane_count)
 	u8 prev_lane_adjust = 0xff;
 	int train_retries = 0;
 	int voltage_retries = 0;
+	int ret = 0;
 
 	if (!target_lane_count)
 		return -ENODEV;
@@ -1537,8 +2110,13 @@ static int mtk_edp_train_cr(struct mtk_edp *mtk_edp, u8 target_lane_count)
 			return -ENODEV;
 		}
 
-		drm_dp_dpcd_read(&mtk_edp->aux, DP_ADJUST_REQUEST_LANE0_1,
+		ret = drm_dp_dpcd_read(&mtk_edp->aux, DP_ADJUST_REQUEST_LANE0_1,
 				 lane_adjust, sizeof(lane_adjust));
+		if (ret < 0) {
+			dev_info(mtk_edp->dev, "%s %s failed to read adjust request %d\n",
+					EDPTX_DEBUG_INFO, __func__, ret);
+			return ret;
+		}
 		mtk_edp_train_update_swing_pre(mtk_edp, target_lane_count,
 					      lane_adjust);
 
@@ -1546,7 +2124,13 @@ static int mtk_edp_train_cr(struct mtk_edp *mtk_edp, u8 target_lane_count)
 						       mtk_edp->rx_cap);
 
 		/* check link status from sink device */
-		drm_dp_dpcd_read_link_status(&mtk_edp->aux, link_status);
+		ret = drm_dp_dpcd_read_link_status(&mtk_edp->aux, link_status);
+		if (ret < 0) {
+			dev_info(mtk_edp->dev, "%s %s failed to link status %d\n",
+					EDPTX_DEBUG_INFO, __func__, ret);
+			return ret;
+		}
+
 		if (drm_dp_clock_recovery_ok(link_status,
 					     target_lane_count)) {
 			dev_info(mtk_edp->dev, "%s CR training pass\n", EDPTX_DEBUG_INFO);
@@ -1569,7 +2153,7 @@ static int mtk_edp_train_cr(struct mtk_edp *mtk_edp, u8 target_lane_count)
 			 */
 			if (voltage_retries > MTK_DP_TRAIN_VOLTAGE_LEVEL_RETRY ||
 			    (prev_lane_adjust & DP_ADJUST_VOLTAGE_SWING_LANE0_MASK) == 3) {
-				dev_dbg(mtk_edp->dev, "Link train CR fail\n");
+				dev_info(mtk_edp->dev, "%s Link train CR fail\n", EDPTX_DEBUG_INFO);
 				break;
 			}
 		} else {
@@ -1580,7 +2164,7 @@ static int mtk_edp_train_cr(struct mtk_edp *mtk_edp, u8 target_lane_count)
 			voltage_retries = 0;
 		}
 		prev_lane_adjust = link_status[4];
-		dev_info(mtk_edp->dev, "[eDPTX] CR training retries: %d\n", voltage_retries);
+		dev_info(mtk_edp->dev, "%s CR training retries: %d\n", EDPTX_DEBUG_INFO, voltage_retries);
 	} while (train_retries < MTK_DP_TRAIN_DOWNSCALE_RETRY);
 
 	/* Failed to train CR, and disable pattern. */
@@ -1596,6 +2180,7 @@ static int mtk_edp_train_eq(struct mtk_edp *mtk_edp, u8 target_lane_count)
 	u8 lane_adjust[2] = {};
 	u8 link_status[DP_LINK_STATUS_SIZE] = {};
 	int train_retries = 0;
+	int ret = 0;
 
 	if (!target_lane_count)
 		return -ENODEV;
@@ -1609,8 +2194,13 @@ static int mtk_edp_train_eq(struct mtk_edp *mtk_edp, u8 target_lane_count)
 			return -ENODEV;
 		}
 
-		drm_dp_dpcd_read(&mtk_edp->aux, DP_ADJUST_REQUEST_LANE0_1,
+		ret = drm_dp_dpcd_read(&mtk_edp->aux, DP_ADJUST_REQUEST_LANE0_1,
 				 lane_adjust, sizeof(lane_adjust));
+		if (ret < 0) {
+			dev_info(mtk_edp->dev, "%s %s failed to read adjust request %d\n",
+					EDPTX_DEBUG_INFO, __func__, ret);
+			return ret;
+		}
 		mtk_edp_train_update_swing_pre(mtk_edp, target_lane_count,
 					      lane_adjust);
 
@@ -1618,7 +2208,13 @@ static int mtk_edp_train_eq(struct mtk_edp *mtk_edp, u8 target_lane_count)
 						   mtk_edp->rx_cap);
 
 		/* check link status from sink device */
-		drm_dp_dpcd_read_link_status(&mtk_edp->aux, link_status);
+		ret = drm_dp_dpcd_read_link_status(&mtk_edp->aux, link_status);
+		if (ret < 0) {
+			dev_info(mtk_edp->dev, "%s %s failed to link status %d\n",
+					EDPTX_DEBUG_INFO, __func__, ret);
+			return ret;
+		}
+
 		if (drm_dp_channel_eq_ok(link_status, target_lane_count)) {
 			dev_info(mtk_edp->dev, "%s EQ training pass\n", EDPTX_DEBUG_INFO);
 
@@ -1628,9 +2224,11 @@ static int mtk_edp_train_eq(struct mtk_edp *mtk_edp, u8 target_lane_count)
 			mtk_edp_train_set_pattern(mtk_edp, 0);
 			return 0;
 		}
-		dev_info(mtk_edp->dev, "[eDPTX] EQ training retries: %d\n", train_retries);
+		dev_info(mtk_edp->dev, "%s EQ training retries: %d\n",
+				EDPTX_DEBUG_INFO, train_retries);
 	} while (train_retries < MTK_DP_TRAIN_DOWNSCALE_RETRY);
 
+	dev_info(mtk_edp->dev, "%s EQ training fail\n", EDPTX_DEBUG_INFO);
 	/* Failed to train EQ, and disable pattern. */
 	drm_dp_dpcd_writeb(&mtk_edp->aux, DP_TRAINING_PATTERN_SET,
 			   DP_TRAINING_PATTERN_DISABLE);
@@ -1808,7 +2406,7 @@ static int mtk_edp_training(struct mtk_edp *mtk_edp)
 	mtk_edp_training_set_scramble(mtk_edp, true);
 	mtk_edp_set_enhanced_frame_mode(mtk_edp);
 
-	pr_info("[%s %s-\n", EDPTX_DEBUG_INFO, __func__);
+	pr_info("%s %s-\n", EDPTX_DEBUG_INFO, __func__);
 
 	return 0;
 }
@@ -1857,10 +2455,15 @@ static void mtk_edp_pm_ctl(struct mtk_edp *mtk_edp, bool enable)
 	/* DISP_EDPTX_PWR_CON */
 	void *address = ioremap(0x31B50074, 0x1);
 
-	if (enable)
-		writel(0xC2FC224D, address);
-	else
-		writel(0xC2FC2372, address);
+	if (enable) {
+		/* Subsys power-on reset */
+		writel(readl(address) | (1 << 0), address);
+		/* Enable subsys clock */
+		writel(readl(address) & ~(1 << 4), address);
+	} else {
+		writel(readl(address) & ~(1 << 0), address);
+		writel(readl(address) |  (1 << 4), address);
+	}
 
 	if (address)
 		iounmap(address);
@@ -1883,12 +2486,7 @@ static irqreturn_t mtk_edp_hpd_event_thread(int hpd, void *dev)
 
 	if (status & MTK_DP_THREAD_HPD_EVENT) {
 		dev_info(mtk_edp->dev, "[eDPTX] Receive IRQ from sink devices\n");
-		/*
-		 * mtk_edp_hpd_sink_event(mtk_edp);
-		 * ret = mtk_edp_training(mtk_edp);
-		 * if (ret)
-		 *	pr_info("%s link trainning failed %d\n", EDPTX_DEBUG_INFO, ret);
-		 */
+		mtk_edp_hpd_sink_event(mtk_edp);
 		dev_info(mtk_edp->dev, "%s %s-\n", EDPTX_DEBUG_INFO, __func__);
 		return IRQ_HANDLED;
 	}
@@ -1899,9 +2497,15 @@ static irqreturn_t mtk_edp_hpd_event_thread(int hpd, void *dev)
 			mtk_edp->need_debounce = false;
 			mod_timer(&mtk_edp->debounce_timer,
 				  jiffies + msecs_to_jiffies(100) - 1);
+			edptx_notify_data.state = 0;
 		} else {
-			mtk_edp_pm_ctl(mtk_edp, true);
 			dev_info(mtk_edp->dev, "%s MTK_DP_HPD_CONNECT\n", EDPTX_DEBUG_INFO);
+			if (mtk_edp->data->mmsys_id == MMSYS_MT6991) {
+				/* After re-plgugging, we need to reset the MMPC reg to reset the clk state */
+				mtk_edp_pm_ctl(mtk_edp, true);
+			}
+
+			edptx_notify_data.state = 1;
 		}
 	}
 
@@ -1942,8 +2546,13 @@ static irqreturn_t mtk_edp_hpd_event(int hpd, void *dev)
 {
 	struct mtk_edp *mtk_edp = dev;
 	bool cable_sta_chg = false;
-	unsigned long flags;
-	u32 irq_status = mtk_edp_swirq_get_clear(mtk_edp) |
+	unsigned long flags = 0x0;
+	u32 irq_status = 0x0;
+
+	if (mtk_edp->suspend)
+		return IRQ_HANDLED;
+
+	irq_status = mtk_edp_swirq_get_clear(mtk_edp) |
 			 mtk_edp_hwirq_get_clear(mtk_edp);
 
 	if (!irq_status)
@@ -2031,10 +2640,15 @@ static int mtk_edp_dt_parse(struct mtk_edp *mtk_edp,
 	/* eDP PHY ioremap resource */
 	mtk_edp->phy_regs = NULL;
 	phy_base = devm_platform_ioremap_resource(pdev, 1);
-	if (!IS_ERR(phy_base)) {
-		mtk_edp->phy_regs = devm_regmap_init_mmio(dev, phy_base, &mtk_edp_phy_regmap_config);
-		if (IS_ERR(mtk_edp->phy_regs))
-			mtk_edp->phy_regs = NULL;
+	if (IS_ERR(phy_base)) {
+		dev_info(dev, "%s failed to phy ioremap %ld\n", EDPTX_DEBUG_INFO, PTR_ERR(phy_base));
+		return PTR_ERR(phy_base);
+	}
+	mtk_edp->phy_regs = devm_regmap_init_mmio(dev, phy_base, &mtk_edp_phy_regmap_config);
+	if (IS_ERR(mtk_edp->phy_regs)) {
+		dev_info(dev, "%s failed to phy regmap init %ld\n",
+				EDPTX_DEBUG_INFO, PTR_ERR(mtk_edp->phy_regs));
+		return PTR_ERR(mtk_edp->phy_regs);
 	}
 
 	ret = device_property_read_u32(dev, MTK_EDP_MAX_LANE_COUNT, &lane_count);
@@ -2078,25 +2692,15 @@ static enum drm_connector_status mtk_edp_bdg_detect(struct drm_bridge *bridge)
 
 	struct mtk_edp *mtk_edp = mtk_edp_from_bridge(bridge);
 	enum drm_connector_status ret = connector_status_disconnected;
-	bool enabled = mtk_edp->enabled;
 	u8 sink_count = 0;
 	int ret_value = 0;
 
 	pr_info("%s %s\n", EDPTX_DEBUG_INFO, __func__);
 
-	if (!mtk_edp->train_info.cable_plugged_in) {
+	if (!mtk_edp_plug_state(mtk_edp) && mtk_edp->use_hpd) {
 		pr_info("%s edp return status : 0x%x\n", EDPTX_DEBUG_INFO, ret);
 		return ret;
 	}
-
-
-	if (mtk_edp->next_bridge) {
-		pr_info("%s edp return status : 0x%x\n", EDPTX_DEBUG_INFO, connector_status_connected);
-		return connector_status_connected;
-	}
-
-	if (!enabled)
-		mtk_edp_aux_panel_poweron(mtk_edp, true);
 
 	/*
 	 * Some dongles still source HPD when they do not connect to any
@@ -2107,17 +2711,15 @@ static enum drm_connector_status mtk_edp_bdg_detect(struct drm_bridge *bridge)
 	 */
 	ret_value = drm_dp_dpcd_readb(&mtk_edp->aux, DP_SINK_COUNT, &sink_count);
 	if (ret_value < 0) {
-		pr_info("%s Failed to read sink count ,status: 0x%x\n", EDPTX_DEBUG_INFO, ret);
+		pr_info("%s Failed to erad sink count ,status: 0x%x\n", EDPTX_DEBUG_INFO, ret);
 		return ret;
 	}
 
 	if (DP_GET_SINK_COUNT(sink_count))
 		ret = connector_status_connected;
 
-	if (!enabled)
-		mtk_edp_aux_panel_poweron(mtk_edp, false);
-
-	pr_info("%s edp return status : 0x%x\n", EDPTX_DEBUG_INFO, connector_status_connected);
+	pr_info("%s edp sink count: 0x%x return status:0x%x\n", EDPTX_DEBUG_INFO,
+			DP_GET_SINK_COUNT(sink_count), ret);
 	return ret;
 }
 
@@ -2126,15 +2728,9 @@ static struct edid *mtk_edp_get_edid(struct drm_bridge *bridge,
 {
 
 	struct mtk_edp *mtk_edp = mtk_edp_from_bridge(bridge);
-	bool enabled = mtk_edp->enabled;
 	struct edid *new_edid = NULL;
 
 	pr_info("%s %s+\n", EDPTX_DEBUG_INFO, __func__);
-
-	if (!enabled) {
-		drm_atomic_bridge_chain_pre_enable(bridge, connector->state->state);
-		mtk_edp_aux_panel_poweron(mtk_edp, true);
-	}
 
 	new_edid = drm_get_edid(connector, &mtk_edp->aux.ddc);
 
@@ -2148,12 +2744,11 @@ static struct edid *mtk_edp_get_edid(struct drm_bridge *bridge,
 		new_edid = NULL;
 	}
 
-	if (!enabled) {
-		mtk_edp_aux_panel_poweron(mtk_edp, false);
-		drm_atomic_bridge_chain_post_disable(bridge, connector->state->state);
-	}
-
 	if (new_edid) {
+#ifdef EDPTX_AUTOTEST_SUPPORT
+		mtk_edp->cts_req.edid = new_edid;
+		mtk_edp->cts_req.connector = connector;
+#endif
 		pr_info("%s EDID raw data:\n", EDPTX_DEBUG_INFO);
 		print_hex_dump(KERN_NOTICE, "\t", DUMP_PREFIX_NONE, 16, 1,
 					new_edid, EDID_LENGTH * (new_edid->extensions + 1), false);
@@ -2236,7 +2831,7 @@ static void mtk_edp_aux_init(struct mtk_edp *mtk_edp)
 
 static int mtk_edp_poweron(struct mtk_edp *mtk_edp)
 {
-	int ret;
+	int ret = 0;
 
 	ret = phy_init(mtk_edp->phy);
 	if (ret) {
@@ -2244,18 +2839,8 @@ static int mtk_edp_poweron(struct mtk_edp *mtk_edp)
 		return ret;
 	}
 
-	ret = mtk_edp_phy_configure(mtk_edp, 0x6, 1, false, NULL, NULL);
-	if (ret) {
-		dev_info(mtk_edp->dev, "%s Failed to configure phy: %d\n", EDPTX_DEBUG_INFO, ret);
-		goto err_phy_config;
-	}
-
 	mtk_edp_init_port(mtk_edp);
 	mtk_edp_power_enable(mtk_edp);
-
-	return ret;
-err_phy_config:
-		phy_exit(mtk_edp->phy);
 
 	return ret;
 }
@@ -2271,6 +2856,7 @@ static int mtk_edp_bridge_attach(struct drm_bridge *bridge,
 {
 	struct mtk_edp *mtk_edp = mtk_edp_from_bridge(bridge);
 	struct drm_panel *panel = NULL;
+	struct mtk_drm_private *mtk_priv = bridge->driver_private;
 	int ret;
 
 	dev_info(mtk_edp->dev, "%s %s+\n", EDPTX_DEBUG_INFO, __func__);
@@ -2309,6 +2895,18 @@ static int mtk_edp_bridge_attach(struct drm_bridge *bridge,
 				return ret;
 			}
 		}
+	}
+
+	if (mtk_edp->data->mmsys_id == MMSYS_MT6991) {
+		mtk_edp->dpc_dev = mtk_priv->dpc_dev;
+		/* get mminfra before eDPTX on */
+		if (mtk_edp->dpc_dev) {
+			ret = pm_runtime_resume_and_get(mtk_edp->dpc_dev);
+			if (ret < 0)
+				dev_info(mtk_edp->dev, "%s Failed to power on mminfra power\n", EDPTX_DEBUG_INFO);
+		}
+
+		mtk_edp_pm_ctl(mtk_edp, true);
 	}
 
 	mtk_edp_aux_init(mtk_edp);
@@ -2373,9 +2971,15 @@ static void mtk_edp_bridge_atomic_enable(struct drm_bridge *bridge,
 					struct drm_bridge_state *old_state)
 {
 	struct mtk_edp *mtk_edp = mtk_edp_from_bridge(bridge);
-	int ret;
+	int ret = 0;
 
 	dev_info(mtk_edp->dev, "%s %s+\n", EDPTX_DEBUG_INFO, __func__);
+
+	if (mtk_edp->enabled) {
+		dev_info(mtk_edp->dev, "%s %s already enabled\n", EDPTX_DEBUG_INFO, __func__);
+		return;
+	}
+
 	mtk_edp->conn = drm_atomic_get_new_connector_for_encoder(old_state->base.state,
 								bridge->encoder);
 	if (!mtk_edp->conn) {
@@ -2385,6 +2989,7 @@ static void mtk_edp_bridge_atomic_enable(struct drm_bridge *bridge,
 
 	mtk_edp_aux_panel_poweron(mtk_edp, true);
 	mtk_edp_parse_capabilities(mtk_edp);
+
 	ret = mtk_edp_training(mtk_edp);
 	if (ret) {
 		drm_err(mtk_edp->drm_dev, "%s Training failed, %d\n", EDPTX_DEBUG_INFO, ret);
@@ -2417,9 +3022,12 @@ static void mtk_edp_bridge_atomic_disable(struct drm_bridge *bridge,
 	struct mtk_edp *mtk_edp = mtk_edp_from_bridge(bridge);
 
 	pr_info("%s %s+\n", EDPTX_DEBUG_INFO, __func__);
-	mtk_edp->enabled = false;
-	mtk_edp_video_enable(mtk_edp, false);
+	if (!mtk_edp->enabled) {
+		dev_info(mtk_edp->dev, "%s %s already disabled\n", EDPTX_DEBUG_INFO, __func__);
+		return;
+	}
 
+	mtk_edp_video_enable(mtk_edp, false);
 	if (mtk_edp->train_info.cable_plugged_in) {
 		drm_dp_dpcd_writeb(&mtk_edp->aux, DP_SET_POWER, DP_SET_POWER_D3);
 		usleep_range(2000, 3000);
@@ -2430,6 +3038,7 @@ static void mtk_edp_bridge_atomic_disable(struct drm_bridge *bridge,
 			   DP_PWR_STATE_BANDGAP_TPLL,
 			   DP_PWR_STATE_MASK);
 
+	mtk_edp->enabled = false;
 	pr_info("%s %s-\n", EDPTX_DEBUG_INFO, __func__);
 	/* Ensure the sink is muted */
 	msleep(20);
@@ -2644,19 +3253,18 @@ static int mtk_edp_register_phy(struct mtk_edp *mtk_edp)
 	return 0;
 }
 
-#ifdef EDPTX_ANDROID_SUPPORT
 static ssize_t state_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	int ret;
-	struct notify_dev *sdev = (struct notify_dev *)
-		dev_get_drvdata(dev);
+	struct notify_dev *sdev = &edptx_notify_data;
 
 	if (sdev->print_state) {
 		ret = sdev->print_state(sdev, buf);
 		if (ret >= 0)
 			return ret;
 	}
+
 	return sprintf(buf, "%d\n", sdev->state);
 }
 
@@ -2664,8 +3272,7 @@ static ssize_t name_show(struct device *dev, struct device_attribute *attr,
 		char *buf)
 {
 	int ret;
-	struct notify_dev *sdev = (struct notify_dev *)
-		dev_get_drvdata(dev);
+	struct notify_dev *sdev = &edptx_notify_data;
 
 	if (sdev->print_name) {
 		ret = sdev->print_name(sdev, buf);
@@ -2679,8 +3286,7 @@ static ssize_t crtc_show(struct device *dev, struct device_attribute *attr,
 		char *buf)
 {
 	int ret;
-	struct notify_dev *sdev = (struct notify_dev *)
-		dev_get_drvdata(dev);
+	struct notify_dev *sdev = &edptx_notify_data;
 
 	if (sdev->print_crtc) {
 		ret = sdev->print_crtc(sdev, buf);
@@ -2705,7 +3311,7 @@ static int create_switch_class(void)
 	return 0;
 }
 
-int edptx_uevent_dev_register(struct notify_dev *sdev)
+static int edptx_uevent_dev_register(struct notify_dev *sdev)
 {
 	int ret;
 
@@ -2756,7 +3362,6 @@ int edptx_uevent_dev_register(struct notify_dev *sdev)
 
 	return ret;
 }
-#endif
 
 static const char LK_TAG_NAME[] = "mediatek_drm.lkdisplay=";
 
@@ -2806,10 +3411,10 @@ static int mtk_drm_edp_notifier(struct notifier_block *notifier, unsigned long p
 {
 	struct mtk_edp *mtk_edp = container_of(notifier, struct mtk_edp, nb);
 	struct device *dev = mtk_edp->dev;
-
+#ifdef EDPTX_DEBUG
 	pr_info("%s %s pm_event %lu dev %s usage_count %d\n", EDPTX_DEBUG_INFO,
 	       __func__, pm_event, dev_name(dev), atomic_read(&dev->power.usage_count));
-
+#endif
 	switch (pm_event) {
 	case PM_SUSPEND_PREPARE:
 		mtk_edp_suspend(dev);
@@ -2874,8 +3479,6 @@ static int mtk_edp_probe(struct platform_device *pdev)
 		mtk_edp->aux.wait_hpd_asserted = mtk_edp_wait_hpd_asserted;
 	}
 
-#ifdef EDPTX_ANDROID_SUPPORT
-	/* Andrioid use HWC */
 	edptx_notify_data.name = "edptx";
 	edptx_notify_data.index = 0;
 	edptx_notify_data.state = DPTX_STATE_NO_DEVICE;
@@ -2883,19 +3486,21 @@ static int mtk_edp_probe(struct platform_device *pdev)
 	ret = edptx_uevent_dev_register(&edptx_notify_data);
 	if (ret)
 		dev_info(dev, "%s switch_dev_register failed, returned:%d!\n", EDPTX_DEBUG_INFO, ret);
-#endif
 
-	mtk_edp->power_clk = devm_clk_get(dev, "power");
-	if (IS_ERR(mtk_edp->power_clk)) {
-		pr_info("%s Failed to get power clock\n",EDPTX_DEBUG_INFO);
-		return PTR_ERR(mtk_edp->power_clk);
+	if (mtk_edp->data->mmsys_id == MMSYS_MT6991) {
+		mtk_edp->power_clk = devm_clk_get(dev, "power");
+		if (IS_ERR(mtk_edp->power_clk)) {
+			pr_info("%s Failed to get power clock\n", EDPTX_DEBUG_INFO);
+			return PTR_ERR(mtk_edp->power_clk);
+		}
+
+		ret = clk_prepare_enable(mtk_edp->power_clk);
+		if (ret)
+			dev_info(mtk_edp->dev, "%s Failed to enable power clock: %d\n",
+				EDPTX_DEBUG_INFO, ret);
 	}
-	ret = clk_prepare_enable(mtk_edp->power_clk);
-	if (ret)
-		dev_info(mtk_edp->dev, "%s Failed to enable power clock: %d\n", EDPTX_DEBUG_INFO, ret);
 
 	platform_set_drvdata(pdev, mtk_edp);
-
 	ret = mtk_edp_register_phy(mtk_edp);
 	if (ret)
 		return ret;
@@ -2932,6 +3537,7 @@ static int mtk_edp_probe(struct platform_device *pdev)
 static void mtk_edp_remove(struct platform_device *pdev)
 {
 	struct mtk_edp *mtk_edp = platform_get_drvdata(pdev);
+	struct notify_dev *sdev = &edptx_notify_data;
 	int ret = 0;
 
 	pm_runtime_put(&pdev->dev);
@@ -2944,54 +3550,21 @@ static void mtk_edp_remove(struct platform_device *pdev)
 
 	if (mtk_edp->data->bridge_type != DRM_MODE_CONNECTOR_eDP)
 		del_timer_sync(&mtk_edp->debounce_timer);
+
+	device_remove_file(sdev->dev, &dev_attr_state);
+	device_remove_file(sdev->dev, &dev_attr_name);
+	device_remove_file(sdev->dev, &dev_attr_crtc);
+	if (switch_edp_class)
+		class_destroy(switch_edp_class);
+
 	platform_device_unregister(mtk_edp->phy_dev);
 }
-
-int mtk_drm_ioctl_enable_edp(struct drm_device *dev, void *data,
-	struct drm_file *file_priv)
-{
-	struct mtk_edp_enable *edp_enable = data;
-	struct mtk_edp *mtk_edp = g_mtk_edp;
-	int event;
-
-	if ((edp_enable == NULL) || (mtk_edp == NULL)) {
-		pr_info("%s IOCTL: ERROR!\n", EDPTX_DEBUG_INFO);
-		return -EFAULT;
-	}
-
-	dev_info(mtk_edp->dev, "%s %s enable=%d\n", EDPTX_DEBUG_INFO, __func__, edp_enable->enable);
-	event = mtk_edp_plug_state(mtk_edp) ? connector_status_connected :
-		connector_status_disconnected;
-	if (edp_enable->enable == true) {
-		if (mtk_edp->edp_ui_enable == true) {
-			dev_info(mtk_edp->dev, "%s eDP has already been enabled, return\n", EDPTX_DEBUG_INFO);
-			return 0;
-		}
-		mtk_edp->edp_ui_enable = true;
-		if (event == connector_status_connected) {
-			edp_notify_uevent_user(&edptx_notify_data,
-				DPTX_STATE_ACTIVE);
-		} else {
-			edp_notify_uevent_user(&edptx_notify_data,
-				DPTX_STATE_NO_DEVICE);
-		}
-	} else {
-		if (mtk_edp->edp_ui_enable == false) {
-			dev_info(mtk_edp->dev, "%s eDP has already been disabled, return\n", EDPTX_DEBUG_INFO);
-			return 0;
-		}
-		mtk_edp->edp_ui_enable = false;
-		edp_notify_uevent_user(&edptx_notify_data,
-			DPTX_STATE_NO_DEVICE);
-	}
-	return 0;
-}
-EXPORT_SYMBOL(mtk_drm_ioctl_enable_edp);
 
 #ifdef CONFIG_PM_SLEEP
 static int mtk_edp_suspend(struct device *dev)
 {
 	struct mtk_edp *mtk_edp = dev_get_drvdata(dev);
+	int ret = 0;
 
 	if (mtk_edp->suspend) {
 		dev_info(mtk_edp->dev, "%s %s already suspend\n", EDPTX_DEBUG_INFO, __func__);
@@ -3010,11 +3583,21 @@ static int mtk_edp_suspend(struct device *dev)
 	if (mtk_edp->use_hpd)
 		mtk_edp_hwirq_enable(mtk_edp, false);
 
-	clk_disable_unprepare(mtk_edp->power_clk);
+	if (mtk_edp->data->mmsys_id == MMSYS_MT6991) {
+		clk_disable_unprepare(mtk_edp->power_clk);
+		mtk_edp_pm_ctl(mtk_edp, false);
+	}
+
 	pm_runtime_put_sync(dev);
+	/* put mminfra after eDPTX off */
+	if (mtk_edp->data->mmsys_id == MMSYS_MT6991)
+		if (mtk_edp->dpc_dev) {
+			ret = pm_runtime_put_sync(mtk_edp->dpc_dev);
+			if (ret < 0)
+				dev_info(mtk_edp->dev, "%s Failed to power off mminfra power\n", EDPTX_DEBUG_INFO);
+		}
 
 	mtk_edp->suspend = true;
-
 	dev_info(mtk_edp->dev, "%s %s usage_count %d -\n", EDPTX_DEBUG_INFO,
 			__func__, atomic_read(&dev->power.usage_count));
 
@@ -3024,6 +3607,7 @@ static int mtk_edp_suspend(struct device *dev)
 static int mtk_edp_resume(struct device *dev)
 {
 	struct mtk_edp *mtk_edp = dev_get_drvdata(dev);
+	int ret = 0;
 
 	if (!mtk_edp->suspend) {
 		dev_info(mtk_edp->dev, "%s %s already resume\n", EDPTX_DEBUG_INFO, __func__);
@@ -3033,21 +3617,27 @@ static int mtk_edp_resume(struct device *dev)
 	dev_info(mtk_edp->dev, "%s %s usage_count %d +\n", EDPTX_DEBUG_INFO, __func__,
 			atomic_read(&dev->power.usage_count));
 
-	pm_runtime_get_sync(dev);
+	/* get mminfra before eDPTX on */
+	if (mtk_edp->data->mmsys_id == MMSYS_MT6991)
+		if (mtk_edp->dpc_dev) {
+			ret = pm_runtime_resume_and_get(mtk_edp->dpc_dev);
+			if (ret < 0)
+				dev_info(mtk_edp->dev, "%s Failed to power on mminfra power\n", EDPTX_DEBUG_INFO);
+		}
 
-	if (clk_prepare_enable(mtk_edp->power_clk))
-		dev_info(mtk_edp->dev, "%s Failed to enable power clock\n", EDPTX_DEBUG_INFO);
+	pm_runtime_get_sync(dev);
+	if (mtk_edp->data->mmsys_id == MMSYS_MT6991) {
+		mtk_edp_pm_ctl(mtk_edp, true);
+		if (clk_prepare_enable(mtk_edp->power_clk))
+			dev_info(mtk_edp->dev, "%s Failed to enable power clock\n", EDPTX_DEBUG_INFO);
+	}
 
 	mtk_edp_init_port(mtk_edp);
 	if (mtk_edp->use_hpd)
 		mtk_edp_hwirq_enable(mtk_edp, true);
 	mtk_edp_power_enable(mtk_edp);
 
-	if (mtk_edp->next_bridge)
-		mtk_edp->train_info.cable_plugged_in = true;
-
 	mtk_edp->suspend = false;
-
 	dev_info(mtk_edp->dev, "%s %s usage_count %d -\n", EDPTX_DEBUG_INFO, __func__,
 			atomic_read(&dev->power.usage_count));
 
@@ -3061,6 +3651,7 @@ static const struct mtk_edp_data mt8678_edp_data = {
 	.bridge_type = DRM_MODE_CONNECTOR_eDP,
 	.smc_cmd = MTK_DP_SIP_ATF_EDP_VIDEO_UNMUTE,
 	.efuse_fmt = mt8678_edp_efuse_fmt,
+	.mmsys_id = MMSYS_MT6991,
 };
 
 static const struct of_device_id mtk_edp_of_match[] = {

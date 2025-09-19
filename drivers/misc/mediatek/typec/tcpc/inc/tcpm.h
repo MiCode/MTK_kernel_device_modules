@@ -331,6 +331,9 @@ struct tcp_ny_typec_otp {
 
 struct tcp_ny_wd0_state {
 	bool wd0;
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+	bool is_typec_port0;
+#endif
 };
 
 struct tcp_ny_vbus_short_cc {
@@ -927,6 +930,9 @@ extern uint8_t tcpm_inquire_pd_data_role(
 extern uint8_t tcpm_inquire_pd_power_role(
 	struct tcpc_device *tcpc);
 
+extern uint8_t tcpm_inquire_pd_state_curr(
+	struct tcpc_device *tcpc_dev);
+
 extern uint8_t tcpm_inquire_pd_vconn_role(
 	struct tcpc_device *tcpc);
 
@@ -1423,6 +1429,12 @@ static inline uint8_t tcpm_inquire_pd_data_role(
 
 static inline uint8_t tcpm_inquire_pd_power_role(
 	struct tcpc_device *tcpc)
+{
+	return 0;
+}
+
+static inline uint8_t tcpm_inquire_pd_state_curr(
+	struct tcpc_device *tcpc_dev)
 {
 	return 0;
 }

@@ -9,8 +9,15 @@
 #include "adsp_core.h"
 #include "adsp_platform.h"
 #include "adsp_mbox.h"
-
 #include "adsp_platform_driver.h"
+#if IS_ENABLED(CONFIG_MTK_ADSP_LEGACY)
+#include "adsp_ipi.h"
+#include "audio_ipi_platform_common.h"
+#include "audio_messenger_ipi.h"
+#include "adsp_ipi_queue.h"
+struct ipi_ctrl_s adsp_ipi_ctrl;
+char *adsp_core_ids[ADSP_CORE_TOTAL] = {"ADSP A"};
+#endif
 
 static int (*ipi_queue_recv_msg_hanlder)(
 	uint32_t core_id, /* enum adsp_core_id */
@@ -87,6 +94,158 @@ struct mtk_mbox_device adsp_mboxdev = {
 	.ipi_cb = adsp_ipi_cb,
 	/*.post_cb = adsp_post_cb, */
 };
+
+#if IS_ENABLED(CONFIG_MTK_ADSP_LEGACY)
+void adsp_ipi_handler(int irq, void *data, int cid)
+{
+	struct adsp_priv *pdata = (struct adsp_priv *)data;
+	struct ipi_ctrl_s *ctrl;
+	struct adsp_share_obj *recv_obj;
+	int ret = -1;
+
+	enum adsp_ipi_id ipi_id;
+	u8 share_buf[SHARE_BUF_SIZE - 16];
+	u32 len;
+
+	if (!pdata) {
+		pr_info("%s pdata[%p]\n", __func__, pdata);
+		return;
+	}
+	if (pdata->id >= ADSP_CORE_TOTAL) {
+		pr_info("%s core_id[%d] is invalid\n", __func__, pdata->id);
+		return;
+	}
+
+	ctrl = pdata->ipi_ctrl;
+	recv_obj = ctrl->recv_obj;
+	ipi_id = recv_obj->id;
+	len = recv_obj->len;
+
+	memcpy_fromio(share_buf,
+			(void *)recv_obj->share_buf, len);
+	adsp_mt_clr_sysirq(cid);
+
+	if (ipi_id == ADSP_IPI_ADSP_A_READY ||
+	    ipi_id == ADSP_IPI_DVFS_SUSPEND ||
+	    ipi_id == ADSP_IPI_LOGGER_INIT)
+		adsp_ipi_descs[ipi_id].handler(ipi_id, share_buf, len);
+	else {
+		if (ipi_queue_recv_msg_hanlder != NULL) {
+			ret = ipi_queue_recv_msg_hanlder(
+				cid, ipi_id, share_buf, len, adsp_ipi_descs[ipi_id].handler);
+		}
+
+		if (ret != 0) {
+			pr_info("ipi queue not ready!! core: %u, ipi_id: %u, share_buf: %p, len: %u, ipi_handler: %p",
+				cid, ipi_id, share_buf, len, adsp_ipi_descs[ipi_id].handler);
+			adsp_ipi_descs[ipi_id].handler(ipi_id, share_buf, len);
+		}
+	}
+
+}
+EXPORT_SYMBOL(adsp_ipi_handler);
+
+/*
+ * ipi initialize
+ */
+void adsp_ipi_init(void)
+{
+	struct adsp_priv *pdata = get_adsp_core_by_id(ADSP_A_ID);
+	struct ipi_ctrl_s *ctrl = NULL;
+	void __iomem *base = adsp_get_sharedmem_base(pdata, ADSP_SHAREDMEM_IPCBUF);
+
+	pdata->ipi_ctrl = &adsp_ipi_ctrl;
+	ctrl = pdata->ipi_ctrl;
+	mutex_init(&ctrl->lock);
+	ctrl->recv_obj = (struct adsp_share_obj *)base;
+	ctrl->send_obj = ctrl->recv_obj + 1;
+	pr_debug("[adsp_ipi]ctrl->recv_obj = 0x%p\n", ctrl->recv_obj);
+	pr_debug("[adsp_ipi]ctrl->send_obj = 0x%p\n", ctrl->send_obj);
+}
+EXPORT_SYMBOL(adsp_ipi_init);
+
+enum adsp_ipi_status adsp_ipi_send_ipc(enum adsp_ipi_id id, void *buf,
+				       unsigned int  len, unsigned int wait,
+				       unsigned int  adsp_id)
+{
+	struct adsp_priv *pdata = get_adsp_core_by_id(adsp_id);
+	struct ipi_ctrl_s *ctrl;
+	struct adsp_share_obj *send_obj;
+	struct ipi_msg_t *p_ipi_msg = NULL;
+	ktime_t start_time;
+	s64     time_ipc_us;
+	static bool busy_log_flag;
+	static u8 share_buf[SHARE_BUF_SIZE - 16];
+
+	if (unlikely(!pdata))
+		return -EACCES;
+	ctrl = pdata->ipi_ctrl;
+	send_obj = ctrl->send_obj;
+
+	if (in_interrupt() && wait) {
+		pr_info("adsp_ipi_send: cannot use in isr");
+		return ADSP_IPI_ERROR;
+	}
+
+	if (len > sizeof(send_obj->share_buf) || buf == NULL) {
+		pr_info("adsp_ipi_send: %s buffer error",
+			adsp_core_ids[pdata->id]);
+		return ADSP_IPI_ERROR;
+	}
+
+	if (mutex_trylock(&ctrl->lock) == 0) {
+		pr_info("adsp_ipi_send:%s %d mutex_trylock busy,owner=%d",
+			adsp_core_ids[pdata->id], id,
+			ctrl->ipi_mutex_owner);
+		return ADSP_IPI_BUSY;
+	}
+
+	/* get adsp ipi mutex owner */
+	ctrl->ipi_mutex_owner = id;
+
+	if (adsp_mt_check_swirq(pdata->id) > 0) {
+		if (busy_log_flag == false) {
+			busy_log_flag = true;
+			p_ipi_msg = (struct ipi_msg_t *)share_buf;
+			if (p_ipi_msg->magic == IPI_MSG_MAGIC_NUMBER)
+				DUMP_IPI_MSG("busy. ipc owner", p_ipi_msg);
+			else
+				pr_info("adsp_ipi_send: %s %d host to adsp busy, ipi last time = %d",
+					adsp_core_ids[pdata->id], id,
+					ctrl->ipi_owner);
+		}
+		mutex_unlock(&ctrl->lock);
+		return ADSP_IPI_BUSY;
+	}
+	busy_log_flag = false;
+
+	/* get adsp ipi send owner */
+	ctrl->ipi_owner = id;
+
+	memcpy(share_buf, buf, len);
+	memcpy_toio((void *)send_obj->share_buf, buf, len);
+
+	send_obj->len = len;
+	send_obj->id = id;
+	dsb(SY);
+
+	/* send host to adsp ipi */
+	adsp_mt_set_swirq(pdata->id);
+
+	if (wait) {
+		start_time = ktime_get();
+		while (adsp_mt_check_swirq(pdata->id) > 0) {
+			time_ipc_us = ktime_us_delta(ktime_get(), start_time);
+			if (time_ipc_us > 1000) /* 1 ms */
+				break;
+		}
+	}
+	mutex_unlock(&ctrl->lock);
+
+	return ADSP_IPI_DONE;
+}
+EXPORT_SYMBOL(adsp_ipi_send_ipc);
+#endif
 
 void hook_ipi_queue_recv_msg_hanlder(
 	int (*recv_msg_hanlder)(
@@ -429,4 +588,3 @@ enum adsp_ipi_status adsp_ipi_unregistration(enum adsp_ipi_id id)
 		return ADSP_IPI_ERROR;
 }
 EXPORT_SYMBOL_GPL(adsp_ipi_unregistration);
-

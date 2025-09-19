@@ -41,6 +41,8 @@ extern struct VAL_NON_CACHE_MEMORY_LIST_T ncache_mem_list[VCODEC_INST_NUM_x_10];
 
 /* For both hybrid and pure HW */
 extern struct VAL_VCODEC_HW_LOCK_T CodecHWLock;	/* mutex : VdecHWLock */
+extern struct VAL_VCODEC_HW_LOCK_T grVcodecDecHWLock;	/* mutex : VdecHWLock */
+extern struct VAL_VCODEC_HW_LOCK_T grVcodecEncHWLock;	/* mutex : VencHWLock */
 
 extern unsigned int gu4LockDecHWCount;	/* spinlock : LockDecHWCountLock */
 extern unsigned int gu4LockEncHWCount;	/* spinlock : LockEncHWCountLock */

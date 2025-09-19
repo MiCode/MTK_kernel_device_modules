@@ -200,6 +200,29 @@ unsigned int mtk_ovl_outproc_sys_mapping_MT6991(struct mtk_ddp_comp *comp)
 	}
 }
 
+static bool is_right_ovl_comp_MT6991(struct mtk_ddp_comp *comp)
+{
+	switch (comp->id) {
+	case DDP_COMPONENT_OVL0_OUTPROC0:
+	case DDP_COMPONENT_OVL0_OUTPROC1:
+	case DDP_COMPONENT_OVL0_OUTPROC2:
+	case DDP_COMPONENT_OVL0_OUTPROC3:
+	case DDP_COMPONENT_OVL0_OUTPROC4:
+	case DDP_COMPONENT_OVL0_OUTPROC5:
+		return false;
+	case DDP_COMPONENT_OVL1_OUTPROC0:
+	case DDP_COMPONENT_OVL1_OUTPROC1:
+	case DDP_COMPONENT_OVL1_OUTPROC2:
+	case DDP_COMPONENT_OVL1_OUTPROC3:
+	case DDP_COMPONENT_OVL1_OUTPROC4:
+	case DDP_COMPONENT_OVL1_OUTPROC5:
+		return true;
+	default:
+		DDPDBG("%s invalid ovl module=%d\n", __func__, comp->id);
+		return false;
+	}
+}
+
 unsigned int mtk_ovl_outproc_aid_sel_MT6991(struct mtk_ddp_comp *comp)
 {
 	switch (comp->id) {
@@ -441,6 +464,27 @@ static void mtk_ovl_outproc_addon_config(struct mtk_ddp_comp *comp,
 				 union mtk_addon_config *addon_config,
 				 struct cmdq_pkt *handle)
 {
+	unsigned int width, height;
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	struct drm_crtc *crtc = &mtk_crtc->base;
+
+#if IS_ENABLED(CONFIG_MTK_DISPLAY_DUAL_PIPE_DUAL_PORT_SUPPORT)
+	return;
+#endif
+
+	width = addon_config->addon_wdma_config.wdma_dst_roi.width;
+	height = addon_config->addon_wdma_config.wdma_dst_roi.height;
+
+	DDPINFO("%s,%s,w:%d, h:%d\n", __func__, mtk_dump_comp_str(comp), width, height);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_REG_OVL_OUTPROC_EN,
+		       0x1, ~0);
+
+	if (width != 0 && height != 0)
+		cmdq_pkt_write(handle, comp->cmdq_base,
+				   comp->regs_pa + DISP_REG_OVL_OUTPROC_ROI_SIZE,
+				   height << 16 | width, ~0);
+
 	return;
 }
 
@@ -1005,6 +1049,7 @@ static const struct mtk_disp_ovl_outproc_data mt6991_ovl_driver_data = {
 	.aid_sel_mapping = &mtk_ovl_outproc_aid_sel_MT6991,
 	.aid_per_layer_setting = true,
 	.mmsys_mapping = &mtk_ovl_outproc_mmsys_mapping_MT6991,
+	.is_right_ovl_comp = &is_right_ovl_comp_MT6991,
 };
 
 static const struct of_device_id mtk_disp_ovl_outproc_driver_dt_match[] = {

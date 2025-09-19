@@ -28,8 +28,8 @@ subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/lpm/modules/i
 endif
 
 ifeq ($(CONFIG_DEVICE_MODULES_VIDEO_MEDIATEK_VCODEC),m)
-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/videocodec/
-subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/misc/mediatek/videocodec/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/videocodec/include
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/misc/mediatek/videocodec/include
 endif
 
 ccflags-y += -I$(srctree)/sound/usb

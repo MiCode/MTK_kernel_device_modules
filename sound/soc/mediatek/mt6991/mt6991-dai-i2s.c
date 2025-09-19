@@ -111,6 +111,16 @@ enum {
 	ETDM_SLAVE_SEL_ETDMOUT7_SLAVE = 15,
 };
 
+enum {
+        SMARTPA_NONE = 0,
+        SMARTPA_AW882XX,
+        SMARTPA_FS19XX,
+        SMARTPA_TFA98XX,
+        SMARTPA_CS35L43,
+        SMARTPA_SIA91XX,
+        SMARTPA_MAX,
+};
+
 static unsigned int get_etdm_wlen(snd_pcm_format_t format)
 {
 	unsigned int wlen = 0;
@@ -2318,6 +2328,7 @@ static const struct snd_kcontrol_new mtk_i2sout4_ch1_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("DL6_CH1", AFE_CONN116_1, I_DL6_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL7_CH1", AFE_CONN116_1, I_DL7_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL8_CH1", AFE_CONN116_1, I_DL8_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL_4CH_CH1", AFE_CONN116_1, I_DL_4CH_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL_24CH_CH1", AFE_CONN116_1, I_DL_24CH_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL_24CH_CH13", AFE_CONN116_2, I_DL_24CH_CH13, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL24_CH1", AFE_CONN116_2, I_DL24_CH1, 1, 0),
@@ -2349,6 +2360,7 @@ static const struct snd_kcontrol_new mtk_i2sout4_ch2_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("DL7_CH2", AFE_CONN117_1, I_DL7_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL8_CH2", AFE_CONN117_1, I_DL8_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL_4CH_CH1", AFE_CONN117_1, I_DL_4CH_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL_4CH_CH2", AFE_CONN117_1, I_DL_4CH_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL_24CH_CH2", AFE_CONN117_1, I_DL_24CH_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL_24CH_CH14", AFE_CONN117_2, I_DL_24CH_CH14, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL24_CH2", AFE_CONN117_2, I_DL24_CH2, 1, 0),
@@ -2376,6 +2388,7 @@ static const struct snd_kcontrol_new mtk_i2sout4_ch3_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("DL3_CH1", AFE_CONN118_1, I_DL3_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL6_CH1", AFE_CONN118_1, I_DL6_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL6_CH2", AFE_CONN118_1, I_DL6_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL8_CH1", AFE_CONN118_1, I_DL8_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL_24CH_CH3", AFE_CONN118_1, I_DL_24CH_CH3, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL_24CH_CH13", AFE_CONN118_2, I_DL_24CH_CH13, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL_24CH_CH15", AFE_CONN118_2, I_DL_24CH_CH15, 1, 0),
@@ -2391,6 +2404,7 @@ static const struct snd_kcontrol_new mtk_i2sout4_ch3_mix[] = {
 
 static const struct snd_kcontrol_new mtk_i2sout4_ch4_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("DL3_CH2", AFE_CONN119_1, I_DL3_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL8_CH2", AFE_CONN119_1, I_DL8_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL_24CH_CH4", AFE_CONN119_1, I_DL_24CH_CH4, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL_24CH_CH14", AFE_CONN119_2, I_DL_24CH_CH14, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL_24CH_CH16", AFE_CONN119_2, I_DL_24CH_CH16, 1, 0),
@@ -4043,9 +4057,12 @@ static const struct snd_soc_dapm_route mtk_dai_i2s_routes[] = {
 	{"I2SOUT4_CH7", "DL7_CH2", "DL7"},
 	{"I2SOUT4_CH1", "DL8_CH1", "DL8"},
 	{"I2SOUT4_CH2", "DL8_CH2", "DL8"},
+	{"I2SOUT4_CH3", "DL8_CH1", "DL8"},
+	{"I2SOUT4_CH4", "DL8_CH2", "DL8"},
 	{"I2SOUT4_CH8", "DL8_CH1", "DL8"},
 	{"I2SOUT4_CH8", "DL8_CH2", "DL8"},
 	{"I2SOUT4_CH2", "DL_4CH_CH1", "DL_4CH"},
+	{"I2SOUT4_CH1", "DL_4CH_CH1", "DL_4CH"},
 	{"I2SOUT4_CH2", "DL_4CH_CH2", "DL_4CH"},
 	{"I2SOUT4_CH1", "DL_24CH_CH1", "DL_24CH"},
 	{"I2SOUT4_CH2", "DL_24CH_CH2", "DL_24CH"},
@@ -4683,7 +4700,19 @@ static int mtk_dai_i2s_config(struct mtk_base_afe *afe,
 	}
 
 	if (is_etdm_in_pad_top(id) && !is_etdm_in_lpbk(afe, id))
-		pad_top = 0x3;
+                if (get_smartpa_type() == SMARTPA_TFA98XX) {
+                        dev_info(afe->dev, "%s(), i2s tfa pa", __func__);
+                        pad_top = 0x3;
+                } else if (get_smartpa_type() == SMARTPA_CS35L43) {
+                        dev_info(afe->dev, "%s(), i2s cs pa", __func__);
+                        pad_top = 0x3;
+                } else if (get_smartpa_type() == SMARTPA_SIA91XX) {
+                        dev_dbg(afe->dev, "%s(), i2s sia pa", __func__);
+                        pad_top = 0x3;
+                }else {
+                        dev_info(afe->dev, "%s(), i2s default val 0x3 on DX4", __func__);
+			pad_top = 0x3;
+                }
 	else
 		pad_top = 0x5;
 
@@ -4713,6 +4742,13 @@ static int mtk_dai_i2s_config(struct mtk_base_afe *afe,
 				       etdm_data.init_point_mask,
 				       (i2s_priv->slave_mode ? 0x5 : pad_top),
 				       etdm_data.init_point_shift);
+                if(get_smartpa_type() == SMARTPA_SIA91XX) {
+                  dev_dbg(afe->dev, "%s(), i2s delay DAI_I2SIN6 0.5", __func__);
+                  mtk_regmap_update_bits(afe->regmap, etdm_data.ip_mode_reg,
+                                         REG_SDATA_DELAY_0P5T_EN_MASK,
+                                         0x1,
+                                         REG_SDATA_DELAY_0P5T_EN_SFT);
+                }
 		mtk_regmap_update_bits(afe->regmap, etdm_data.lrck_reset_reg,
 				       etdm_data.lrck_reset_mask,
 				       0x1,

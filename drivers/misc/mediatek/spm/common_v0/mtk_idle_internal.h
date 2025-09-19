@@ -243,6 +243,8 @@ extern int mtk8250_request_to_wakeup(void);
 void mcdi_task_pause_fun_register(void *fun);
 /* register cpu notifier */
 extern int mtk_idle_hotplug_cb_init(void);
+#if IS_ENABLED(CONFIG_MTK_ECCCI_DRIVER)
 extern void md_notify_flightmode_cb_register(void *cb);
+#endif
 
 #endif /* __MTK_IDLE_INTERNAL_H__ */

@@ -110,15 +110,25 @@ long fpsgo_sched_setaffinity(pid_t pid, const struct cpumask *in_mask)
 
 	/* Prevent p going away */
 	get_task_struct(p);
+
+	// MIUI ADD: Performance_PerformanceEnhance
+	get_task_struct(p->group_leader);
+	// END Performance_PerformanceEnhance
 	rcu_read_unlock();
 
-	if (p->flags & PF_NO_SETAFFINITY) {
+	// MIUI ADD: Performance_PerformanceEnhance
+	//if (p->flags & PF_NO_SETAFFINITY) {
+	if (p->flags & PF_NO_SETAFFINITY || rt_task(p->group_leader)) {
+	// END Performance_PerformanceEnhance
 		retval = -EINVAL;
 		goto out_put_task;
 	}
 
 	retval = set_cpus_allowed_ptr_by_kernel(p, in_mask);
 out_put_task:
+	// MIUI ADD: Performance_PerformanceEnhance
+	put_task_struct(p->group_leader);
+	// END Performance_PerformanceEnhance
 	put_task_struct(p);
 	return retval;
 }
@@ -894,7 +904,7 @@ struct render_info *fpsgo_search_and_add_render_info(int pid,
 	iter_thr->powerRL.uclamp_m = 100;
 	iter_thr->powerRL.ruclamp_m = 100;
 	iter_thr->frame_count = 0;
-
+	iter_thr->frame_hint = 0;
 
 	fbt_set_render_boost_attr(iter_thr);
 	fbt_init_ux(iter_thr);

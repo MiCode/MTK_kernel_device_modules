@@ -16,6 +16,7 @@
 
 		mtk-spmi-pmic-debug {
 			compatible = "mediatek,spmi-pmic-debug";
+			cid-addr = <0x63 0x9 0x8>;
 		};
 
 		pmic_adc: mt6363-auxadc {
@@ -138,7 +139,7 @@
 			};
 
 			home {
-				linux,keycodes = <115>;
+				linux,keycodes = <114>;
 			};
 		};
 
@@ -318,6 +319,7 @@
 				regulator-enable-ramp-delay = <680>;
 				regulator-allowed-modes = <0 2>;
 				regulator-allow-set-load;
+				regulator-always-on;
 			};
 			mt6363_vcn13: vcn13 {
 				regulator-compatible = "VCN13";

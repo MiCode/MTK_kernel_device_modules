@@ -47,6 +47,7 @@ struct main4_vcm_device {
 	bool is_powered_off;
 	bool is_stop_flag;
 	wait_queue_head_t wait_queue_head;
+	u16 cur_pos;
 };
 
 static struct workqueue_struct *main4_vcm_init_wq;
@@ -305,6 +306,8 @@ static int main4_vcm_set_position(struct main4_vcm_device *main4_vcm, u16 val)
 		}
 	}
 
+	main4_vcm->cur_pos = val;
+
 	return ret;
 }
 
@@ -319,13 +322,15 @@ static int main4_vcm_release(struct main4_vcm_device *main4_vcm)
 
 	struct i2c_client *client = v4l2_get_subdevdata(&main4_vcm->sd);
 
+	LOG_INF("current position: %d\n", main4_vcm->cur_pos);
+
 	long_step = g_vcmconfig.vcm_config.move_long_steps_pct *
 			(1 << g_vcmconfig.vcm_config.vcm_bits) / 100;
 	short_step = g_vcmconfig.vcm_config.move_short_steps_pct *
 			(1 << g_vcmconfig.vcm_config.vcm_bits) / 100;
 
-	diff_dac = g_vcmconfig.vcm_config.origin_focus_pos - main4_vcm->focus->val;
-	val = main4_vcm->focus->val;
+	diff_dac = g_vcmconfig.vcm_config.origin_focus_pos - main4_vcm->cur_pos;
+	val = main4_vcm->cur_pos;
 
 	if (long_step == 0) {
 		LOG_INF("no need to process long step\n");
@@ -415,6 +420,8 @@ LAST_STEP_TO_ORIGIN:
 	}
 
 	register_setting(client, g_vcmconfig.vcm_config.wr_rls_table, 8);
+
+	LOG_INF("-\n");
 
 	return 0;
 }
@@ -619,6 +626,8 @@ static long main4_vcm_ops_core_ioctl(struct v4l2_subdev *sd, unsigned int cmd, v
 	int ret = 0;
 	struct main4_vcm_device *main4_vcm = sd_to_main4_vcm_vcm(sd);
 	struct i2c_client *client = v4l2_get_subdevdata(&main4_vcm->sd);
+	struct v4l2_ctrl_handler *hdl = &main4_vcm->ctrls;
+	const struct v4l2_ctrl_ops *ops = &main4_vcm_vcm_ctrl_ops;
 
 	client->addr = g_vcmconfig.vcm_config.slave_addr >> 1;
 
@@ -645,6 +654,17 @@ static long main4_vcm_ops_core_ioctl(struct v4l2_subdev *sd, unsigned int cmd, v
 			break;
 		}
 
+		LOG_INF("vcm bits: %d, decimal data: %d\n",
+			g_vcmconfig.vcm_config.vcm_bits,
+			(1 << g_vcmconfig.vcm_config.vcm_bits));
+		if (g_vcmconfig.vcm_config.vcm_bits > 31) {
+			LOG_INF("vcm bits overflow (31 is max), reset to 10\n");
+			g_vcmconfig.vcm_config.vcm_bits = 10;
+		}
+		main4_vcm->focus = v4l2_ctrl_new_std(hdl, ops, V4L2_CID_FOCUS_ABSOLUTE,
+			  0, (1 << g_vcmconfig.vcm_config.vcm_bits)-1,
+			  MAIN4_VCM_FOCUS_STEPS, 0);
+
 		// Confirm hardware requirements and adjust/remove the delay.
 		usleep_range(g_vcmconfig.vcm_config.ctrl_delay_us,
 			g_vcmconfig.vcm_config.ctrl_delay_us + 100);
@@ -659,10 +679,10 @@ static long main4_vcm_ops_core_ioctl(struct v4l2_subdev *sd, unsigned int cmd, v
 	case VCM_IOC_POWER_ON:
 	{
 		// customized area
-		LOG_INF("active mode, current pos:%d\n", main4_vcm->focus->val);
+		LOG_INF("active mode, current pos:%d\n", main4_vcm->cur_pos);
 
 		register_setting(client, g_vcmconfig.vcm_config.resume_table, 8);
-		ret = main4_vcm_set_position(main4_vcm, main4_vcm->focus->val);
+		ret = main4_vcm_set_position(main4_vcm, main4_vcm->cur_pos);
 		if (ret < 0) {
 			LOG_INF("%s I2C failure: %d\n",
 				__func__, ret);
@@ -746,15 +766,18 @@ static void main4_vcm_subdev_cleanup(struct main4_vcm_device *main4_vcm)
 static int main4_vcm_init_controls(struct main4_vcm_device *main4_vcm)
 {
 	struct v4l2_ctrl_handler *hdl = &main4_vcm->ctrls;
-	const struct v4l2_ctrl_ops *ops = &main4_vcm_vcm_ctrl_ops;
+	//const struct v4l2_ctrl_ops *ops = &main4_vcm_vcm_ctrl_ops;
 
 	v4l2_ctrl_handler_init(hdl, 1);
 
-	main4_vcm->focus = v4l2_ctrl_new_std(hdl, ops, V4L2_CID_FOCUS_ABSOLUTE,
-			  0, MAIN4_VCM_MAX_FOCUS_POS, MAIN4_VCM_FOCUS_STEPS, 0);
+	//main4_vcm->focus = v4l2_ctrl_new_std(hdl, ops, V4L2_CID_FOCUS_ABSOLUTE,
+	//		  0, MAIN4_VCM_MAX_FOCUS_POS, MAIN4_VCM_FOCUS_STEPS, 0);
 
-	if (hdl->error)
+	if (hdl->error) {
+		LOG_INF("Failed to initialize controls, error %d\n",
+			hdl->error);
 		return hdl->error;
+	}
 
 	main4_vcm->sd.ctrl_handler = hdl;
 

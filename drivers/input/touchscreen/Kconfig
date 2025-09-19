@@ -44,6 +44,10 @@ config TOUCHSCREEN_FOCALTECH_TOUCH
          Set Y or M to select this feature for touch compile,
          and set N to disable.for car serdes touch feature.
 
+config TOUCHSCREEN_CHSC5448_P785
+	tristate "CHSC5448_P785 for Mediatek package"
+	default n
+
 source "$(KCONFIG_EXT_PREFIX)drivers/input/touchscreen/BoTai_Multi_Touch/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/input/touchscreen/GT9966/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/input/touchscreen/gt9xx/Kconfig"

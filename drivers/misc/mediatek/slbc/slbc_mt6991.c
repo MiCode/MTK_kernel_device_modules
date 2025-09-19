@@ -82,7 +82,11 @@ enum mtk_slbc_kernel_ops {
 #define SLBC_CHECK_TIME			msecs_to_jiffies(1000)
 #define SLBC_CHECK_TIMEOUT		msecs_to_jiffies(5000)
 #define SLBC_TIMEOUT_LIMIT		500
+#define SLBC_SCMI_RETRY_MAX		10 /* max retry times for slbc scmi init */
 
+// MIUI ADD: Game_Power_SLC
+#define SLBC_WAY_MAX			10
+// END: Game_Power_SLC
 
 #define GID_MAX					64
 #define GID_REQ					(-1)
@@ -108,6 +112,14 @@ enum slc_gid_list {
 	GID_DBI,
 };
 
+// MIUI ADD: Game_Power_SLC
+#define SLC_FORCE       1
+#define SLC_CEIL        2
+#define SLC_WINDOW      3
+#define SLC_PRIO        4
+#define SLC_VENC        5
+// END: Game_Power_SLC
+
 #define BUF_ID_NOT_CARE			0x00000000
 #define BUF_ID_GPU				0x0000000f
 #define BUF_ID_OVL				0x000000f0
@@ -117,6 +129,7 @@ enum slc_gid_list {
 static struct mtk_slbc *slbc;
 
 static int venc_count;
+static int venc_disable_flag;
 
 static bool slbc_cg_pri;
 static int slb_disable;
@@ -1486,17 +1499,17 @@ int slbc_disable_dcc(bool disable)
 {
 	mutex_lock(&slbc_ref_lock);
 	if (disable) {
-		if (venc_count == 0)
+		if (venc_disable_flag == 0)
 			slbc_smc_send(MTK_SLBC_KERNEL_OP_CPU_DCC, 0, 0);
-		venc_count++;
+		venc_disable_flag = 1;
 	} else {
-		venc_count--;
-		if (venc_count == 0)
+		if (venc_disable_flag == 1)
 			slbc_smc_send(MTK_SLBC_KERNEL_OP_CPU_DCC, 1, 1);
+		venc_disable_flag = 0;
 	}
-	pr_info("#@# %s(%d) venc_count %d\n",
-		__func__, __LINE__, venc_count);
-	slbc_sram_write(SLBC_DCC_COUNT, venc_count);
+	pr_info("#@# %s(%d) venc_disable_flag %d\n",
+		__func__, __LINE__, venc_disable_flag);
+	slbc_sram_write(SLBC_DCC_COUNT, venc_disable_flag);
 	mutex_unlock(&slbc_ref_lock);
 	return 0;
 }
@@ -1670,7 +1683,7 @@ static int dbg_slbc_proc_show(struct seq_file *m, void *v)
 	seq_printf(m, "slbc_force 0x%x\n", slbc_force);
 	seq_printf(m, "buffer_ref %x\n", buffer_ref);
 	seq_printf(m, "slbc_ref %x\n", slbc_ref);
-	seq_printf(m, "venc_count %x\n", venc_count);
+	seq_printf(m, "venc_count %x\n", venc_disable_flag);
 	seq_printf(m, "dcc_count %x\n", venc_count);
 	seq_printf(m, "debug_level %x\n", debug_level);
 	seq_printf(m, "slbc_sta %x\n", slbc_sta);
@@ -2003,6 +2016,197 @@ out:
 
 PROC_FOPS_RW(dbg_slbc);
 
+// MIUI ADD: Game_Power_SLC
+static ssize_t slbc_proc_write_common(const char __user *buffer,
+		size_t count, loff_t *pos, enum slc_ach_uid id, int target)
+{
+	int ret = 0;
+	unsigned long val_in;
+	unsigned long size;
+	char *buf = (char *) __get_free_page(GFP_USER);
+	if (!buf)
+		return -ENOMEM;
+	ret = -EFAULT;
+	if (copy_from_user(buf, buffer, count))
+		goto out;
+	buf[count] = '\0';
+	ret = sscanf(buf, "%ld",  &val_in);
+	if (ret < 1) {
+		ret = -EPERM;
+		goto out;
+	}
+	size = val_in & 0xff;
+	switch (target) {
+		case SLC_FORCE:
+			pr_info("%s slbc_force_cache size: %ld\n", __func__, size);
+			slbc_force_cache(id, size);
+			break;
+		case SLC_CEIL:
+			pr_info("%s slbc_ceil size: %ld\n", __func__, size);
+			slbc_ceil(id, size);
+			break;
+		case SLC_WINDOW:
+			pr_info("%s slbc_window size: %ld\n", __func__, size);
+			slbc_window(size);
+			break;
+		case SLC_PRIO:
+			pr_info("%s slbc_cg_priority size: %ld\n", __func__, size);
+			slbc_cg_priority(size);
+			break;
+		case SLC_VENC:
+			pr_info("%s slbc_disable_dcc size: %ld\n", __func__, size);
+			slbc_disable_dcc(size);
+			break;
+		default:
+			pr_info("%s unknown target.\n", __func__);
+			break;
+	}
+out:
+	free_page((unsigned long)buf);
+	if (ret < 0)
+		return ret;
+	return count;
+}
+
+static int slbc_proc_show_common(struct seq_file *m, int id, int force) {
+	int ret = 0;
+	struct scmi_tinysys_status rvalue = {0};
+	ret = slbc_ctrl_scmi_info(IPI_SLBC_CACHE_USER_CONFIG, id, 0, 0, 0, &rvalue);
+	if (!ret) {
+		seq_printf(m, "%d\n", force ? rvalue.r1 : rvalue.r2);
+	}
+	return ret;
+}
+
+static int slbc_window_proc_show(struct seq_file *m, void *v)
+{
+	return 0;
+}
+static ssize_t slbc_window_proc_write(struct file *file,
+		const char __user *buffer, size_t count, loff_t *pos)
+{
+	return slbc_proc_write_common(buffer, count, pos, ID_CPU, SLC_WINDOW);
+}
+PROC_FOPS_RW(slbc_window);
+
+static int slbc_prio_proc_show(struct seq_file *m, void *v)
+{
+	return 0;
+}
+static ssize_t slbc_prio_proc_write(struct file *file,
+		const char __user *buffer, size_t count, loff_t *pos)
+{
+	return slbc_proc_write_common(buffer, count, pos, ID_CPU, SLC_PRIO);
+}
+PROC_FOPS_RW(slbc_prio);
+
+static int slbc_venc_proc_show(struct seq_file *m, void *v)
+{
+	return 0;
+}
+static ssize_t slbc_venc_proc_write(struct file *file,
+		const char __user *buffer, size_t count, loff_t *pos)
+{
+	return slbc_proc_write_common(buffer, count, pos, ID_CPU, SLC_VENC);
+}
+PROC_FOPS_RW(slbc_venc);
+
+static int cpu_force_proc_show(struct seq_file *m, void *v)
+{
+	return slbc_proc_show_common(m, ID_CPU, 1);
+}
+static ssize_t cpu_force_proc_write(struct file *file,
+		const char __user *buffer, size_t count, loff_t *pos)
+{
+	return slbc_proc_write_common(buffer, count, pos, ID_CPU, SLC_FORCE);
+}
+PROC_FOPS_RW(cpu_force);
+
+static int cpu_ceil_proc_show(struct seq_file *m, void *v)
+{
+	return slbc_proc_show_common(m, ID_CPU, SLC_CEIL);
+}
+static ssize_t cpu_ceil_proc_write(struct file *file,
+		const char __user *buffer, size_t count, loff_t *pos)
+{
+	return slbc_proc_write_common(buffer, count, pos, ID_CPU, SLC_CEIL);
+}
+PROC_FOPS_RW(cpu_ceil);
+
+static int gpu_force_proc_show(struct seq_file *m, void *v)
+{
+	return slbc_proc_show_common(m, ID_GPU, SLC_FORCE);
+}
+static ssize_t gpu_force_proc_write(struct file *file,
+		const char __user *buffer, size_t count, loff_t *pos)
+{
+	return slbc_proc_write_common(buffer, count, pos, ID_GPU, SLC_FORCE);
+}
+PROC_FOPS_RW(gpu_force);
+
+static int gpu_ceil_proc_show(struct seq_file *m, void *v)
+{
+	return slbc_proc_show_common(m, ID_GPU, SLC_CEIL);
+}
+static ssize_t gpu_ceil_proc_write(struct file *file,
+		const char __user *buffer, size_t count, loff_t *pos)
+{
+	return slbc_proc_write_common(buffer, count, pos, ID_GPU, SLC_CEIL);
+}
+PROC_FOPS_RW(gpu_ceil);
+
+static int hit_rate_proc_show(struct seq_file *m, void *v)
+{
+	int cpu_hit_rate = slbc_get_cache_hit_rate(ID_CPU);
+	int gpu_hit_rate = slbc_get_cache_hit_rate(ID_GPU);
+
+	seq_printf(m, "hit rate,cpu %d%%, gpu %d%%\n", cpu_hit_rate, gpu_hit_rate);
+	return 0;
+}
+static ssize_t hit_rate_proc_write(struct file *file,
+		const char __user *buffer, size_t count, loff_t *pos)
+{
+	return 0;
+}
+
+PROC_FOPS_RW(hit_rate);
+
+static int hit_bw_proc_show(struct seq_file *m, void *v)
+{
+       int cpu_hit_bw = slbc_get_cache_hit_bw(ID_CPU);
+       int gpu_hit_bw = slbc_get_cache_hit_bw(ID_GPU);
+
+       seq_printf(m, "hit rate,cpu %d kb/ms, gpu %d kb/ms\n", cpu_hit_bw, gpu_hit_bw);
+       return 0;
+}
+
+static ssize_t hit_bw_proc_write(struct file *file,
+               const char __user *buffer, size_t count, loff_t *pos)
+{
+       return 0;
+}
+
+PROC_FOPS_RW(hit_bw);
+
+static int cache_usage_proc_show(struct seq_file *m, void *v)
+{
+       int usage_cpu,usage_gpu,usage_others;
+
+       int ret = slbc_get_cache_usage(&usage_cpu, &usage_gpu, &usage_others);
+
+       seq_printf(m, "cpu_usage: %d, gpu_usage: %d, others_usage: %d\n", usage_cpu, usage_gpu, usage_others);
+       return ret;
+}
+
+static ssize_t cache_usage_proc_write(struct file *file,
+               const char __user *buffer, size_t count, loff_t *pos)
+{
+       return 0;
+}
+
+PROC_FOPS_RW(cache_usage);
+// END: Game_Power_SLC
+
 static int trace_slbc_proc_show(struct seq_file *m, void *v)
 {
 	slbc_trace_dump(m);
@@ -2107,6 +2311,18 @@ static int slbc_create_debug_fs(void)
 	};
 
 	const struct pentry entries[] = {
+		// MIUI ADD: Game_Power_SLC
+		PROC_ENTRY(slbc_window),
+		PROC_ENTRY(slbc_prio),
+		PROC_ENTRY(slbc_venc),
+		PROC_ENTRY(cache_usage),
+		PROC_ENTRY(hit_bw),
+		PROC_ENTRY(hit_rate),
+		PROC_ENTRY(cpu_force),
+		PROC_ENTRY(cpu_ceil),
+		PROC_ENTRY(gpu_force),
+		PROC_ENTRY(gpu_ceil),
+		// END: Game_Power_SLC
 		PROC_ENTRY(dbg_slbc),
 		PROC_ENTRY(trace_slbc),
 	};
@@ -2234,7 +2450,7 @@ static int slbc_probe(struct platform_device *pdev)
 {
 	struct device_node *node = pdev->dev.of_node;
 	struct device *dev = &pdev->dev;
-	int ret = 0;
+	int ret = 0, i = 0;
 	/* struct resource *res; */
 	uint32_t reg[4] = {0, 0, 0, 0};
 
@@ -2243,14 +2459,28 @@ static int slbc_probe(struct platform_device *pdev)
 		pr_info("SLBC FAILED TO CREATE TRACE MEMORY (%d)\n", ret);
 
 #if IS_ENABLED(CONFIG_MTK_SLBC_IPI)
-	ret = slbc_scmi_init();
-	if (ret < 0)
+	for (i = 0; i < SLBC_SCMI_RETRY_MAX; i++) {
+		ret = slbc_scmi_init();
+		if (ret == 0) {
+			pr_info("slbc scmi init succeeded after retry %d\n", i);
+			SLBC_TRACE_REC(LVL_NORM, TYPE_N, 0, ret,
+				"slbc scmi init succeeded after retry %d", i);
+			break;
+		}
+		udelay(500);
+	}
+	if (ret < 0) {
+		pr_info("SLBC FAILED TO INIT SCMI (%d)\n", ret);
+		SLBC_TRACE_REC(LVL_ERR, TYPE_N, 0, ret,
+					"failed to init scmi (%d)", ret);
 		return ret;
+	}
 
 	ret = slbc_shared_dram_init(pdev);
-	if(ret){
+	if (ret) {
 		pr_info("SLBC FAILED TO INIT SHARED DRAM MEMORY (%d)\n", ret);
-		return ret;
+		SLBC_TRACE_REC(LVL_ERR, TYPE_N, 0, ret,
+				"failed to init shared dram (%d)", ret);
 	}
 #endif /* CONFIG_MTK_SLBC_IPI */
 
@@ -2339,8 +2569,19 @@ static int slbc_probe(struct platform_device *pdev)
 	}
 
 	if (slbc_enable) {
-		slbc_sspm_enable(slbc_enable);
-		slbc_get_sspm_ver(&slbc_sspm_major_ver, &slbc_sspm_minor_ver, &slbc_sspm_patch_ver);
+		ret = slbc_sspm_enable(slbc_enable);
+		if (ret) {
+			pr_info("SLBC FAILED TO ENABLE SSPM SLBC (%d)\n", ret);
+			SLBC_TRACE_REC(LVL_ERR, TYPE_N, 0, ret,
+					"failed to enable sspm slbc (%d)", ret);
+		}
+
+		ret = slbc_get_sspm_ver(&slbc_sspm_major_ver, &slbc_sspm_minor_ver, &slbc_sspm_patch_ver);
+		if (ret) {
+			pr_info("SLBC FAILED TO GET SSPM VERSION (%d)\n", ret);
+			SLBC_TRACE_REC(LVL_ERR, TYPE_N, 0, ret,
+					"failed to get sspm version (%d)", ret);
+		}
 	}
 
 #ifdef SLBC_CB_TEST

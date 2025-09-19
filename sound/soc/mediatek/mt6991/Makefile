@@ -24,6 +24,9 @@ subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/sound/soc/mediatek/common
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sched/eas
 subdir-ccflags-y += -I$(srctree)/kernel/sched/
 
+# throttle include path
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling
+
 # platform driver
 obj-$(CONFIG_DEVICE_MODULES_SND_SOC_MT6991) += snd-soc-mt6991-afe.o
 snd-soc-mt6991-afe-objs += \

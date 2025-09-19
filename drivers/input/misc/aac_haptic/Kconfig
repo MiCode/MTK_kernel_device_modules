@@ -1,0 +1,5 @@
+config AAC_VIBRATOR
+    tristate "AAC Vibrator driver"
+    default y
+    help 
+    AAC Vibrator driver

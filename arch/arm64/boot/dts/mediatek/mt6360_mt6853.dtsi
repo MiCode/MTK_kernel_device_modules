@@ -50,6 +50,8 @@
 			compatible = "mediatek,mt6315_3-regulator";
 			interrupt-parent = <&pio>;
 			interrupts = <0 IRQ_TYPE_LEVEL_HIGH 0 0>;
+			buck-size = <4>;
+			buck1-modeset-mask = <0x3>;
 
 			mt6315_3_vbuck1: 3-vbuck1 {
 				regulator-compatible = "vbuck1";
@@ -435,8 +437,8 @@
 
 &mddriver {
 	md-vmodem-supply = <&mt6315_3_vbuck1>;
-	md-vmodem = <800000 800000>;
+	md-vmodem = <825000 825000>;
 	md-vsram-supply = <&mt6315_3_vbuck4>;
-	md-vsram = <800000 800000>;
+	md-vsram = <825000 825000>;
 };
 

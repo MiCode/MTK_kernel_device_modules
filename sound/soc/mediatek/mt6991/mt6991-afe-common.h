@@ -98,6 +98,7 @@ enum {
 	MT6991_DAI_ADDA_CH56,
 	MT6991_DAI_AP_DMIC,
 	MT6991_DAI_AP_DMIC_CH34,
+	MT6991_DAI_AP_DMIC_CH56,
 	MT6991_DAI_VOW,
 	MT6991_DAI_VOW_SCP_DMIC,
 	MT6991_DAI_CONNSYS_I2S,
@@ -164,6 +165,9 @@ enum {
 	MT6991_DAI_MTKAIF = MT6991_DAI_NUM,
 	MT6991_DAI_MISO_ONLY,
 	MT6991_GPIO_EXT_HP_AMP,
+	MT6991_GPIO_TOP_DMIC_POWER,
+	MT6991_GPIO_BOT_DMIC_POWER,
+	MT6991_GPIO_BACK_DMIC_POWER,
 };
 
 #define MT6991_DAI_I2S_MAX_NUM 13 //depends each platform's max i2s num
@@ -679,6 +683,7 @@ struct mt6991_afe_private {
 	int ap_dmic;
 	unsigned int audio_r_miso1_enable;
 	unsigned int miso_only;
+    unsigned int afe_dump;
 
 	/* fmi2s gpio mode for A/B */
 	int fmi2s_gpio_mode;

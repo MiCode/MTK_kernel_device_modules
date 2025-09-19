@@ -62,6 +62,7 @@ enum DPTx_Return_Status {
 	DPTX_EDID_FAIL			= 4,
 	DPTX_TRANING_FAIL		= 5,
 	DPTX_RETRANING			= 6,
+	DPTX_WAIT_TRIGGER		= 7,
 };
 
 enum DPTX_TRAINING_STATE {
@@ -190,6 +191,9 @@ enum DP_VIDEO_TIMING_TYPE {
 	SINK_2560_1600,
 	SINK_3840_2160_30,
 	SINK_3840_2160,
+#ifdef CONFIG_MTK_DPTX_PATCH_FOR_TABLET_ENABLE
+	SINK_3840_2160_60_CVT_RB,
+#endif
 	SINK_7680_4320,
 	SINK_MAX,
 };
@@ -293,7 +297,11 @@ void mtk_dp_set_pin_assign(u8 type);
 extern void mtk_dp_intf_mode_copy(struct drm_display_mode *mode);
 extern void mtk_dp_intf_prepare_clk(void);
 extern void mtk_dp_intf_unprepare_clk(void);
+#ifdef CONFIG_MTK_DPTX_PATCH_FOR_TABLET_ENABLE
+extern void mhal_DPTx_ModeCopy(struct drm_display_mode *mode);
+#else
 extern void mhal_DPTx_VideoClock(bool enable, int resolution);
+#endif
 void mtk_dp_clock_debug(unsigned int clksrc, unsigned int con1);
 unsigned int mtk_de_get_clk_debug(void);
 unsigned int mtk_de_get_clksrc(void);

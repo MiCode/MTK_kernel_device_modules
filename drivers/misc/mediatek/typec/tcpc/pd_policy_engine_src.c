@@ -247,6 +247,15 @@ void pe_src_give_source_cap_ext_entry(struct pd_port *pd_port)
 }
 #endif	/* CONFIG_USB_PD_REV30_SRC_CAP_EXT_LOCAL */
 
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+void pe_src_give_sink_cap_ext_entry(struct pd_port *pd_port)
+{
+	PE_STATE_WAIT_TX_SUCCESS(pd_port);
+ 
+	pd_dpm_send_sink_cap_ext(pd_port);
+}
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
+
 /*
  * [PD3.0] Figure 8-80 Source Give Source Status State Diagram
  */

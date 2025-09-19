@@ -221,6 +221,7 @@ struct fbt_boost_info {
 	unsigned int last_normal_blc_m;
 	unsigned int sbe_rescue;
 	unsigned long long sbe_rescue_target_time;
+	unsigned int ai_boost;
 
 	/* adjust loading */
 	int loading_weight;
@@ -468,6 +469,7 @@ struct render_info {
 	int buffer_count_filter;
 	int rescue_more_count;
 	struct ux_rescue_check *ux_rchk;
+	int ai_boost;
 
 	/*fbt*/
 	int linger;

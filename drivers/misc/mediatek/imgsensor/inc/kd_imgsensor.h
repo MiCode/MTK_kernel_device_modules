@@ -303,6 +303,11 @@
 #define S5KHM2SP_SENSOR_ID                      0x1AD2
 #define S5K4H7ALPHA_SENSOR_ID                   0x487B
 #define S5KGD2_SENSOR_ID                        0x0842
+#define S5KGD1SP_SENSOR_ID                      0x0841
+#define S5KGD1_SENSOR_ID                        0x0841
+#define S5KGD1GMS_SENSOR_ID                     (0x0841 + 1)
+#define S5KGM2SP_SENSOR_ID                      0x08D2
+#define S5KGM2SPGMS_SENSOR_ID                   (0x08D2 + 1)
 
 /*HI*/
 #define HI841_SENSOR_ID                         0x0841
@@ -404,7 +409,6 @@
 #define SHARP3D_SENSOR_ID                       0x003d
 #define T8EV5_SENSOR_ID                         0x1011
 
-#define S5KGD1SP_SENSOR_ID                      0x0841
 #define HI846_SENSOR_ID                         0x0846
 #define OV02A10_MONO_SENSOR_ID                  0x2509
 #define IMX686_SENSOR_ID                        0X0686
@@ -592,7 +596,12 @@
 #define SENSOR_DRVNAME_S5KHM2SP_MIPI_RAW        "s5khm2sp_mipi_raw"
 #define SENSOR_DRVNAME_S5KJN1_MIPI_RAW			"s5kjn1_mipi_raw"
 #define SENSOR_DRVNAME_S5K4H7ALPHA_MIPI_RAW     "s5k4h7alpha_mipi_raw"
-#define SENSOR_DRVNAME_S5KGD2_MIPI_RAW         "s5kgd2_mipi_raw"
+#define SENSOR_DRVNAME_S5KGD2_MIPI_RAW          "s5kgd2_mipi_raw"
+#define SENSOR_DRVNAME_S5KGD1SP_MIPI_RAW        "s5kgd1sp_mipi_raw"
+#define SENSOR_DRVNAME_S5KGD1_MIPI_RAW          "s5kgd1_mipi_raw"
+#define SENSOR_DRVNAME_S5KGD1GMS_MIPI_RAW       "s5kgd1gms_mipi_raw"
+#define SENSOR_DRVNAME_S5KGM2SP_MIPI_RAW        "s5kgm2sp_mipi_raw"
+#define SENSOR_DRVNAME_S5KGM2SPGMS_MIPI_RAW     "s5kgm2spgms_mipi_raw"
 /*HI*/
 #define SENSOR_DRVNAME_HI841_MIPI_RAW           "hi841_mipi_raw"
 #define SENSOR_DRVNAME_HI707_YUV                "hi707_yuv"
@@ -670,7 +679,6 @@
 #define SENSOR_DRVNAME_IMX135_MIPI_RAW_8MP      "imx135_mipi_raw_8mp"
 #define SENSOR_DRVNAME_OV13870_MIPI_RAW_5MP     "ov13870_mipi_raw_5mp"
 #define SENSOR_DRVNAME_OV8856_MIPI_RAW_5MP      "ov8856_mipi_raw_5mp"
-#define SENSOR_DRVNAME_S5KGD1SP_MIPI_RAW        "s5kgd1sp_mipi_raw"
 #define SENSOR_DRVNAME_HI846_MIPI_RAW           "hi846_mipi_raw"
 #define SENSOR_DRVNAME_GC02M0_MIPI_RAW          "gc02m0_mipi_raw"
 #define SENSOR_DRVNAME_GC08A3_MIPI_RAW          "gc08a3_mipi_raw"
@@ -705,6 +713,25 @@
  ************************************/
 /* SONY */
 #define IMX866RGB_I3C_PID							0x036008660000
+/*XIAOMI ADD START*/
+#define DALIOVX8000WIDE_SENSOR_ID                  0x5650
+#define SENSOR_DRVNAME_DALIOVX8000WIDE_MIPI_RAW   "daliovx8000wide_mipi_raw"
+
+#define DALIOV20BFRONT_SENSOR_ID                  0x2043
+#define SENSOR_DRVNAME_DALIOV20BFRONT_MIPI_RAW   "daliov20bfront_mipi_raw"
+
+#define DALIOV08F10ULTRA_SENSOR_ID                 0x5608
+#define SENSOR_DRVNAME_DALIOV08F10ULTRA_MIPI_RAW  "daliov08f10ultra_mipi_raw"
+
+#define RODINOV20BFRONT_SENSOR_ID                  0x2042
+#define SENSOR_DRVNAME_RODINOV20BFRONT_MIPI_RAW   "rodinov20bfront_mipi_raw"
+
+#define RODINSC820CSULTRA_SENSOR_ID                  0xd154
+#define SENSOR_DRVNAME_RODINSC820CSULTRA_MIPI_RAW   "rodinsc820csultra_mipi_raw"
+
+#define RODINIMX882WIDE_SENSOR_ID                  0x8202
+#define SENSOR_DRVNAME_RODINIMX882WIDE_MIPI_RAW   "rodinimx882wide_mipi_raw"
+/*XIAOMI ADD END*/
 
 
 /************************************

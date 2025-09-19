@@ -44,6 +44,8 @@ extern void wmt_tm_deinit(void);
 extern int wmt_tm_init(void);
 extern void tsallts_exit(void);
 extern int tsallts_init(void);
+extern int mtk_thermal_ipi_init(void);
+extern int mtk_thermal_ipi_exit(void);
 extern int mtk_imgs_init(void);
 extern void mtk_imgs_exit(void);
 extern void mtkts_dctm_exit(void);

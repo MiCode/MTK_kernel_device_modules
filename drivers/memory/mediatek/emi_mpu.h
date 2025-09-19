@@ -68,6 +68,12 @@ struct emi_mpu {
 	void __iomem **miu_kp_base;
 	void __iomem **miu_mpu_base;
 
+	void __iomem *mmpc_emi_req;
+	void __iomem *mmpc_ddrsrc_req;
+	void __iomem *ovl1_fake0_en;
+	void __iomem *ovl1_exdma2_en;
+	void __iomem *ovl1_exdma7_en;
+
 	/* interrupt id */
 	unsigned int irq;
 

@@ -121,7 +121,8 @@ int fpsgo_ctrl2comp_set_target_time(int tgid, int render_tid, unsigned long long
 int fpsgo_ctrl2comp_set_dep_list(int tgid, int render_tid, unsigned long long buffer_id,
 	int *dep_arr, int dep_num);
 int notify_fpsgo_touch_latency_ko_ready(void);
-int fpsgo_com_get_mfrc_is_on(void);
+int fpsgo_com_set_mfrc_active(int tgid, int enable);
+int fpsgo_com_get_mfrc_is_active(int tgid);
 
 #endif
 

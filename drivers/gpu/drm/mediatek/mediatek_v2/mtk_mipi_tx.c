@@ -17,6 +17,7 @@
 #include "mtk_dump.h"
 #include "mtk_mipi_tx.h"
 #include "platform/mtk_drm_platform.h"
+#include <linux/pm_domain.h>
 
 #define MIPITX_DSI_CON 0x00
 #define RG_DSI_LDOCORE_EN BIT(0)
@@ -2330,11 +2331,11 @@ static int mtk_mipi_tx_pll_dphy_config_mt6991(struct mtk_mipi_tx *mipi_tx)
 			FLD_RG_DSI_V2I_REF_SEL, 0x0);
 #endif
 
-	mtk_mipi_tx_clear_bits(mipi_tx, MIPITX_PLL_CON4, RG_DSI_PLL_ICHP);
-	mtk_mipi_tx_set_bits(mipi_tx, MIPITX_PLL_CON1, RG_DSI_PLL_LVROD_EN);
+	mtk_mipi_tx_clear_bits(mipi_tx, MIPITX_PLL_CON4, RG_DSI_PLL_ICHP_1);
+	mtk_mipi_tx_set_bits(mipi_tx, MIPITX_PLL_CON1, RG_DSI_PLL_LVROD_EN_1);
 
 	mtk_mipi_tx_update_bits(mipi_tx, MIPITX_PLL_CON1,
-							RG_DSI_PLL_RST_DLY, 0x1 << 23);
+							RG_DSI_PLL_RST_DLY_1, 0x1 << 23);
 	mtk_mipi_tx_update_bits(mipi_tx, MIPITX_PLL_CON1,
 							RG_RG_DSI_PLL_LVR_REFSEL, 0x1 << 25);
 
@@ -7162,6 +7163,28 @@ static const struct phy_ops mtk_mipi_tx_ops = {
 	.owner = THIS_MODULE,
 };
 
+static struct notifier_block nb;
+static int mipi_tx_genpd_event_notifier(struct notifier_block *nb,
+			  unsigned long event, void *data)
+{
+	switch (event) {
+	case GENPD_NOTIFY_PRE_ON:
+		mtk_set_aod_scp_semaphore(1);
+		break;
+	case GENPD_NOTIFY_OFF:
+		if (mtk_aod_scp_vdisp_sema_check() == 0)
+			mtk_set_aod_scp_semaphore(0);
+		break;
+	case GENPD_NOTIFY_ON:
+	case GENPD_NOTIFY_PRE_OFF:
+	default:
+		break;
+	}
+
+	return 0;
+}
+
+
 static int mtk_mipi_tx_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -7260,6 +7283,11 @@ static int mtk_mipi_tx_probe(struct platform_device *pdev)
 #ifdef MTK_FILL_MIPI_IMPEDANCE
 	mipi_tx->driver_data->backup_mipitx_impedance(mipi_tx);
 #endif
+
+	nb.notifier_call = mipi_tx_genpd_event_notifier;
+	ret = dev_pm_genpd_add_notifier(dev, &nb);
+	if (ret)
+		DDPMSG("mipi_tx_genpd_event_notifier register fail!\n");
 
 	DDPINFO("%s-\n", __func__);
 
@@ -8414,6 +8442,33 @@ static const struct mtk_mipitx_data mt6833_mipitx_data = {
 	.refill_mipitx_impedance = refill_mipitx_impedance,
 };
 
+static const struct mtk_mipitx_data mt6833_mipitx_cphy_data = {
+	.mppll_preserve = (0 << 8),
+	.dsi_pll_sdm_pcw_chg = RG_DSI_PLL_SDM_PCW_CHG,
+	.dsi_pll_en = RG_DSI_PLL_EN,
+	.ck_sw_ctl_en = MIPITX_CK_SW_CTL_EN,
+	.d0_sw_ctl_en = MIPITX_D0_SW_CTL_EN,
+	.d1_sw_ctl_en = MIPITX_D1_SW_CTL_EN,
+	.d2_sw_ctl_en = MIPITX_D2_SW_CTL_EN,
+	.d3_sw_ctl_en = MIPITX_D3_SW_CTL_EN,
+	.d0_sw_lptx_pre_oe = MIPITX_D0_SW_LPTX_PRE_OE,
+	.d0c_sw_lptx_pre_oe = MIPITX_D0C_SW_LPTX_PRE_OE,
+	.d1_sw_lptx_pre_oe = MIPITX_D1_SW_LPTX_PRE_OE,
+	.d1c_sw_lptx_pre_oe = MIPITX_D1C_SW_LPTX_PRE_OE,
+	.d2_sw_lptx_pre_oe = MIPITX_D2_SW_LPTX_PRE_OE,
+	.d2c_sw_lptx_pre_oe = MIPITX_D2C_SW_LPTX_PRE_OE,
+	.d3_sw_lptx_pre_oe = MIPITX_D3_SW_LPTX_PRE_OE,
+	.d3c_sw_lptx_pre_oe = MIPITX_D3C_SW_LPTX_PRE_OE,
+	.ck_sw_lptx_pre_oe = MIPITX_CK_SW_LPTX_PRE_OE,
+	.ckc_sw_lptx_pre_oe = MIPITX_CKC_SW_LPTX_PRE_OE,
+	.pll_prepare = mtk_mipi_tx_pll_cphy_prepare_mt6873,
+	.pll_unprepare = mtk_mipi_tx_pll_cphy_unprepare_mt6873,
+	.dsi_get_pcw = _dsi_get_pcw,
+	.dsi_get_data_rate = _dsi_get_data_rate,
+	.backup_mipitx_impedance = backup_mipitx_impedance,
+	.refill_mipitx_impedance = refill_mipitx_impedance,
+};
+
 static const struct mtk_mipitx_data mt6877_mipitx_data = {
 	.mppll_preserve = (0 << 8),
 	.dsi_pll_sdm_pcw_chg = RG_DSI_PLL_SDM_PCW_CHG,
@@ -8629,8 +8684,11 @@ static const struct of_device_id mtk_mipi_tx_match[] = {
 	{.compatible = "mediatek,mt6879-mipi-tx", .data = &mt6879_mipitx_data},
 	{.compatible = "mediatek,mt6855-mipi-tx", .data = &mt6855_mipitx_data},
 	{.compatible = "mediatek,mt6835-mipi-tx", .data = &mt6835_mipitx_data},
+	{.compatible = "mediatek,mt6771-mipi-tx", .data = &mt6885_mipitx_data},
 	{.compatible = "mediatek,mt6873-mipi-tx-cphy",
 		.data = &mt6873_mipitx_cphy_data},
+	{.compatible = "mediatek,mt6833-mipi-tx-cphy",
+		.data = &mt6833_mipitx_cphy_data},
 	{.compatible = "mediatek,mt6879-mipi-tx-cphy",
 		.data = &mt6879_mipitx_cphy_data},
 	{.compatible = "mediatek,mt6885-mipi-tx-cphy",

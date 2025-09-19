@@ -151,6 +151,7 @@ struct dvfs_data {
 	int dvfsrc_opp_num;
 	bool legacy_support_v1;
 	bool legacy_support_v2;
+	bool legacy_support_v3;
 };
 
 extern int scp_pll_ctrl_set(unsigned int pll_ctrl_flag, unsigned int pll_sel);

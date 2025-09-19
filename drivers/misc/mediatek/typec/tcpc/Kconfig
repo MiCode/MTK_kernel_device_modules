@@ -72,6 +72,15 @@ config TCPC_MT6379
 	  Type-C Port Controller Manager to provide USB PD and USB
 	  Type-C functionalities.
 
+config TCPC_SC2150
+	tristate "SouthChip SC2150 TypeC port Controller Driver"
+	depends on TCPC_CLASS
+	help
+	  Say Y to enable
+	  SouthChip SC2150
+	  TypeC port Controller
+	  Driver
+
 config USB_PD_VBUS_STABLE_TOUT
 	int "PD VBUS Stable Timeout"
 	depends on USB_POWER_DELIVERY
@@ -110,3 +119,9 @@ config MTK_TYPEC_WATER_DETECT_BY_PCB
 	  need to be enabled.
 	  Say Yes to let PCB decides enabling water detection or not.
 	  If unsure, say N.
+
+config SUPPORT_SOUTHCHIP_PDPHY
+	bool "support southchip pdphy"
+	default n
+	help
+	support southchip pdphy.

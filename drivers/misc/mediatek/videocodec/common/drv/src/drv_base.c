@@ -22,7 +22,10 @@ EXPORT_SYMBOL_GPL(ncache_mem_list);
 /* For both hybrid and pure HW */
 struct VAL_VCODEC_HW_LOCK_T CodecHWLock;	/* mutex : CodecHWLock */
 EXPORT_SYMBOL_GPL(CodecHWLock);
-
+struct VAL_VCODEC_HW_LOCK_T grVcodecDecHWLock;	/* mutex : VdecHWLock */
+EXPORT_SYMBOL_GPL(grVcodecDecHWLock);
+struct VAL_VCODEC_HW_LOCK_T grVcodecEncHWLock;	/* mutex : VencHWLock */
+EXPORT_SYMBOL_GPL(grVcodecEncHWLock);
 unsigned int gu4LockDecHWCount;	/* spinlock : LockDecHWCountLock */
 EXPORT_SYMBOL_GPL(gu4LockDecHWCount);
 unsigned int gu4LockEncHWCount;	/* spinlock : LockEncHWCountLock */

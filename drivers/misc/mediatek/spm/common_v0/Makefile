@@ -29,7 +29,7 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mcdi/include/
 ifneq ($(CONFIG_MEDIATEK_CPU_DVFS),)
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cpufreq_v2/inc/
 endif
-# ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/clkbuf/v1/inc/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/clkbuf/src/
 
 obj-$(CONFIG_MTK_SPM_V0) += MTK_INTERNAL_SPM.o
 MTK_INTERNAL_SPM-y += mtk_spm.o

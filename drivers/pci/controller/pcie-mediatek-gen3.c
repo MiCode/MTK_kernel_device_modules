@@ -1337,6 +1337,10 @@ static void mtk_pcie_irq_handler(struct irq_desc *desc)
 		if (port->port_num == 0)
 			mtk_pcie_disable_data_trans(port->port_num);
 
+		int_enable = readl_relaxed(port->base + PCIE_INT_ENABLE_REG);
+		int_enable &= ~PCIE_AXI_POST_ERR_ENABLE;
+		writel_relaxed(int_enable, port->base + PCIE_INT_ENABLE_REG);
+
 		writel_relaxed(PCIE_AXI_POST_ERR_EVT, port->base + PCIE_INT_STATUS_REG);
 		dev_info(port->dev, "PCIe error %#lx detected\n", status);
 	}
@@ -1982,6 +1986,12 @@ static void mtk_pcie_monitor_mac(struct mtk_pcie_port *port)
 		mtk_pcie_mac_dbg_set_partition(port, PCIE_DEBUG_SEL_PARTITION(0x5, 0x5, 0x5, 0x5));
 		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x08, 0x09, 0x0a, 0x0b));
 		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x0c, 0x0d, 0x0e, 0x0f));
+		mtk_pcie_mac_dbg_set_partition(port, PCIE_DEBUG_SEL_PARTITION(0x7, 0x7, 0x7, 0x7));
+		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x8, 0xa, 0xb, 0xe));
+		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0xf, 0x13, 0x14, 0xe));
+		mtk_pcie_mac_dbg_set_partition(port, PCIE_DEBUG_SEL_PARTITION(0x9, 0x9, 0x9, 0x9));
+		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x25, 0x26, 0xb6, 0xb7));
+		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0xb8, 0xb9, 0xba, 0xbb));
 		mtk_pcie_mac_dbg_set_partition(port, PCIE_DEBUG_SEL_PARTITION(0xc, 0xc, 0xc, 0xc));
 		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x45, 0x47, 0x48, 0x49));
 		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x4a, 0x4b, 0x4c, 0x4d));

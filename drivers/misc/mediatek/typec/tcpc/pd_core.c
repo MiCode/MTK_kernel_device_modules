@@ -1438,4 +1438,33 @@ struct pd_battery_info *pd_get_battery_info(
 	return NULL;
 }
 
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+void pd_add_miss_msg(struct pd_port *pd_port,struct pd_event *pd_event,
+                uint8_t msg)
+{
+    struct pd_msg *pd_msg = pd_event->pd_msg;
+    struct pd_msg * miss_msg = NULL;
+    uint8_t sop_type = 0;
+    struct pd_event evt = {
+        .event_type = PD_EVT_CTRL_MSG,
+        .msg = msg,
+        .pd_msg = NULL,
+    };
+    if (pd_msg != NULL) {
+        sop_type = pd_msg->frame_type;
+    }
+    pd_put_event(pd_port->tcpc,&evt,true);
+    miss_msg = pd_alloc_msg(pd_port->tcpc);
+    if (miss_msg == NULL) {
+        return;
+    }
+    if (pd_msg != NULL)
+        memcpy(miss_msg,pd_msg,sizeof(struct pd_msg));
+
+    pd_put_pd_msg_event(pd_port->tcpc,miss_msg);
+    pd_port->pe_data.msg_id_rx[sop_type]--;
+    return;
+}
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
+
 #endif	/* CONFIG_USB_PD_REV30 */

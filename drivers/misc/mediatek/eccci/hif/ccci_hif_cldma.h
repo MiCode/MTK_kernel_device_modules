@@ -392,5 +392,6 @@ extern struct ccci_cldma_clk_node cldma_clk_table[];
 
 extern int regmap_write(struct regmap *map, unsigned int reg, unsigned int val);
 extern int regmap_read(struct regmap *map, unsigned int reg, unsigned int *val);
+extern void ccmni_set_cur_speed(u64 cur_dl_speed);
 
 #endif				/* __MODEM_CD_H__ */

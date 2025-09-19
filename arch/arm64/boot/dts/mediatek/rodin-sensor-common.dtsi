@@ -1,0 +1,59 @@
+/* sx9373 power start */
+&mt6368_vrf18_aif {
+	regulator-min-microvolt = <1800000>;
+	regulator-max-microvolt = <1800000>;
+	regulator-always-on;
+};
+/* sx9373 power end */
+
+/* aw21024_led start */
+&i2c11 {
+	aw21024_led@30 {
+		compatible = "awinic,aw21024_led";
+		reg = <0x30>;
+		reset-gpio = <&pio 3 0>;
+		apse_mode;
+		/* 0:16M 1:8M 2:1M 3:512K 4:256K 5:125K 6:62K 7:31K */
+		clk_pwm = <1>;
+		/* 255 1023 2047 */
+		max_brightness = <255>;
+		led_current = <63>;
+		led_wbr = <255>;
+		led_wbg = <255>;
+		led_wbb = <255>;
+		brightness = <125>;
+		status = "okay";
+	};
+};
+/* aw21024_led end */
+
+/* GPIO IRTX start */
+&irtx_pwm {
+	pwm_ch = <0>;
+	pinctrl-names = "irtx_gpio_led_default", "irtx_gpio_led_set";
+	pinctrl-0 = <&irtx_gpio_led_default>;
+	pinctrl-1 = <&irtx_gpio_led_set>;
+	status = "okay";
+};
+
+&pio {
+	/* IRTX GPIO Settings -Start */
+	/* default: GPIO0, output, high */
+	irtx_gpio_led_default:irtx_gpio_led_def@gpio119 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO119__FUNC_GPIO119>;
+			slew-rate = <1>;
+			bias-disable;
+			output-low;
+			input-schmitt-enable = <0>;
+		};
+	};
+	irtx_gpio_led_set:irtx_gpio_led_set@gpio119 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO119__FUNC_PWM_0>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+};
+/* GPIO IRTX end */

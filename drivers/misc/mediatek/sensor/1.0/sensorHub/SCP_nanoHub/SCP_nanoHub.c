@@ -39,6 +39,10 @@
 #include <linux/timekeeping.h>
 #include <uapi/linux/sched/types.h>
 
+#if IS_ENABLED(CONFIG_USE_PSENSOR_STK33652)
+#include <linux/regulator/consumer.h>
+#endif
+
 /* ALGIN TO SCP SENSOR_IPI_SIZE AT FILE CONTEXTHUB_FW.H, ALGIN
  * TO SCP_SENSOR_HUB_DATA UNION, ALGIN TO STRUCT DATA_UNIT_T
  * SIZEOF(STRUCT DATA_UNIT_T) = SCP_SENSOR_HUB_DATA = SENSOR_IPI_SIZE
@@ -1278,11 +1282,32 @@ static void sensor_disable_report_flush(uint8_t handle)
 	}
 	mutex_unlock(&flush_mtx);
 }
+
+
+#if IS_ENABLED(CONFIG_USE_PSENSOR_STK33652)
+static struct regulator *psensor_mt6370_ldo;
+#endif
+
+
 int sensor_enable_to_hub(uint8_t handle, int enabledisable)
 {
 	uint8_t sensor_type = handle + ID_OFFSET;
 	struct ConfigCmd cmd;
 	int ret = 0;
+
+#if IS_ENABLED(CONFIG_USE_PSENSOR_STK33652)
+	if (handle == ID_PROXIMITY) {
+		if (enabledisable == 1) {
+			ret = regulator_enable(psensor_mt6370_ldo);
+			if (ret < 0)
+				pr_debug("enable regulator mt6370-vib-ldo fail, ret = %d\n",ret);
+		} else {
+			ret = regulator_disable(psensor_mt6370_ldo);
+			if (ret < 0)
+				pr_debug("disable regulator mt6370-vib-ldo fail, ret = %d\n",ret);
+		}
+	}
+#endif
 
 	if (enabledisable == 1)
 		scp_register_feature(SENS_FEATURE_ID);
@@ -2271,6 +2296,9 @@ static int sensorHub_probe(struct platform_device *pdev)
 	struct task_struct *task_power_reset = NULL;
 	struct sched_param param = { .sched_priority = MAX_RT_PRIO - 1 };
 
+#if IS_ENABLED(CONFIG_USE_PSENSOR_STK33652)
+	int ret = 0;
+#endif
 	pr_debug("%s\n", __func__);
 	SCP_sensorHub_init_sensor_state();
 	obj = kzalloc(sizeof(*obj), GFP_KERNEL);
@@ -2347,6 +2375,15 @@ static int sensorHub_probe(struct platform_device *pdev)
 		goto exit_kthread_power_up;
 	}
 
+#if IS_ENABLED(CONFIG_USE_PSENSOR_STK33652)
+	psensor_mt6370_ldo = regulator_get(NULL, "mt6370-vib-ldo");
+	if (IS_ERR(psensor_mt6370_ldo)) { /* handle return value */
+		ret = PTR_ERR(psensor_mt6370_ldo);
+		pr_debug("get mt6370-vib-ldo fail, error: %d\n", ret);
+		goto exit_kthread_power_up;
+	}
+#endif
+
 	SCP_sensorHub_init_flag = 0;
 	pr_debug("init done, data_unit_t size: %d,SCP_SENSOR_HUB_DATA size:%d\n",
 		(int)sizeof(struct data_unit_t),
@@ -2378,6 +2415,9 @@ static int sensorHub_remove(struct platform_device *pdev)
 	if (obj)
 		wakeup_source_unregister(obj->ws);
 
+#if IS_ENABLED(CONFIG_USE_PSENSOR_STK33652)
+	regulator_put(psensor_mt6370_ldo);
+#endif
 	return 0;
 }
 

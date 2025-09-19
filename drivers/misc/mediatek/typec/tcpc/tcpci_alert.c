@@ -172,7 +172,6 @@ static void tcpci_alert_recv_msg(struct tcpc_device *tcpc)
 	pd_msg = pd_alloc_msg(tcpc);
 	if (pd_msg == NULL)
 		return;
-
 	rv = tcpci_get_message(tcpc, pd_msg->payload, &pd_msg->msg_hdr,
 			       &pd_msg->frame_type);
 	if (rv < 0 || pd_msg->msg_hdr == 0) {
@@ -292,6 +291,9 @@ int tcpci_alert(struct tcpc_device *tcpc, bool masked)
 	uint32_t alert_status = 0, alert_mask = 0;
 	const uint8_t typec_role = tcpc->typec_role,
 		      vbus_level = tcpc->vbus_level;
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+    uint32_t chip_vid = 0;
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
 	mutex_lock(&tcpc->access_lock);
@@ -304,8 +306,13 @@ int tcpci_alert(struct tcpc_device *tcpc, bool masked)
 		return rv;
 
 	TCPC_INFO("Alert:0x%04x, Mask:0x%04x\n", alert_status, alert_mask);
-
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+    rv = tcpci_get_chip_vid(tcpc, &chip_vid);
+    if (!(!rv && (chip_vid == SOUTHCHIP_PD_VID)))
+		alert_status &= alert_mask;
+#else
 	alert_status &= alert_mask;
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 
 	if (typec_role == TYPEC_ROLE_UNKNOWN ||
 		typec_role >= TYPEC_ROLE_NR) {

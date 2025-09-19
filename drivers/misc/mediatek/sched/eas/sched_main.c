@@ -44,9 +44,7 @@
 
 #define CREATE_TRACE_POINTS
 #include "eas_trace.h"
-
 #define TAG "EAS_IOCTL"
-
 int mtk_sched_asym_cpucapacity  =  1;
 unsigned int dn_pct = -1;
 unsigned int up_pct = -1;
@@ -386,11 +384,13 @@ static void mtk_set_cpus_allowed_ptr(void *data, struct task_struct *p,
 	struct affinity_context *ctx, bool *skip_user_ptr)
 {
 	struct cpumask *kernel_allowed_mask = &((struct mtk_task *) p->android_vendor_data1)->kernel_allowed_mask;
-	struct rq *rq = task_rq(p);
+	struct rq_flags rf;
+	struct rq *rq = task_rq_lock(p, &rf);
 	cpumask_t new_mask;
 
 	// not set or invalid cpu mask
 	if (cpumask_empty(kernel_allowed_mask)){
+		task_rq_unlock(rq, p, &rf);
 		return;
 	}
 
@@ -405,6 +405,7 @@ static void mtk_set_cpus_allowed_ptr(void *data, struct task_struct *p,
 		cpumask_copy(&new_mask, ctx->new_mask);
 		trace_sched_skip_user(p, *skip_user_ptr, p->user_cpus_ptr, kernel_allowed_mask, &new_mask);
 	}
+	task_rq_unlock(rq, p, &rf);
 }
 
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
@@ -1003,7 +1004,6 @@ static int __init mtk_scheduler_init(void)
 	init_updown_migration();
 	init_percore_l3_bw();
 	init_dsu_pwr_enable();
-
 	ret = init_sched_common_sysfs();
 	if (ret)
 		return ret;

@@ -226,7 +226,7 @@ static int mtk_voice_md2_pcm_copy(struct snd_soc_component *component,
 				  struct snd_pcm_substream *substream,
 				  int channel,
 				  unsigned long pos,
-				  void __user *buf,
+				  struct iov_iter *buf,
 				  unsigned long bytes)
 {
 	return 0;

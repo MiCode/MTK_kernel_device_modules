@@ -41,6 +41,9 @@
 #include "md_sys1_platform.h"
 #include "modem_secure_base.h"
 
+#if IS_ENABLED(CONFIG_MTK_SPM_V4)
+#include "mtk_spm_sleep.h"
+#endif
 #include "ccci_debug.h"
 #include "hif/ccci_hif_cldma.h"
 //#include "hif/ccci_hif_ccif.h"
@@ -62,10 +65,15 @@ bool spm_is_md1_sleep_ccci(void)
 {
 	struct arm_smccc_res res;
 
-	if ((md_cd_plat_val_ptr.md_gen < 6295) && s_spm_md_sleep_callback) {
+	if (md_cd_plat_val_ptr.md_gen < 6295) {
 		CCCI_NORMAL_LOG(0, TAG, "[%s][%d] using spm\n",
 				__func__, md_cd_plat_val_ptr.md_gen);
-		return s_spm_md_sleep_callback();
+#if IS_ENABLED(CONFIG_MTK_SPM_V4)
+		return spm_is_md1_sleep();
+#else
+		if (s_spm_md_sleep_callback)
+			return s_spm_md_sleep_callback();
+#endif
 	}
 	arm_smccc_smc(MTK_SIP_KERNEL_CCCI_CONTROL, MD_CLOCK_REQUEST,
 		MD_GET_SLEEP_MODE, 0, 0, 0, 0, 0, &res);
@@ -712,7 +720,7 @@ static int md_cd_dump_info(struct ccci_modem *md,
 		struct ccci_smem_region *ccb_ctl =
 			ccci_md_get_smem_by_user_id(SMEM_USER_RAW_CCB_CTRL);
 
-		if (ccb_ctl) {
+		if (ccb_ctl && ccb_ctl->size) {
 			CCCI_MEM_LOG_TAG(0, TAG,
 				"Dump CCB CTRL share memory\n");
 			ccci_util_mem_dump(CCCI_DUMP_MEM_DUMP,

@@ -676,6 +676,20 @@
 			alloc-ranges = <0 0x40000000 0 0x80000000>;
 		};
 
+		dpmaif_resv_cache_mem: ccci-dpmaif-cache-memory {
+			compatible = "mediatek,dpmaif-resv-cache-mem";
+			size = <0 0x00190000>; /* 1638400 Bytes for 1rxq */
+			alignment = <0 0x10000>;
+			alloc-ranges = <0 0x40000000 0 0xf0000000>;
+		};
+
+		dpmaif_resv_nocache_mem: ccci-dpmaif-nocache-memory {
+			compatible = "mediatek,dpmaif-resv-nocache-mem";
+			no-map;
+			size = <0 0x0050000>; /* 327680 Bytes */
+			alignment = <0 0x10000>;
+			alloc-ranges = <0 0x40000000 0 0xf0000000>;
+		};
 	};
 
 	aliases {
@@ -3673,7 +3687,7 @@
 			<0 0x1022E000 0 0x1000>; /*SRAM*/
 		interrupts = <GIC_SPI 253 IRQ_TYPE_LEVEL_HIGH 0>;
 		mediatek,dpmaif-ver = <2>;
-		mediatek,dpmaif-cap = <0x4>;
+		mediatek,dpmaif-cap = <0x4a>;
 		mediatek,plat-info = <6877>;
 		clocks = <&infracfg_ao_clk CLK_IFRAO_DPMAIF_MAIN>,
 			<&infracfg_ao_clk CLK_IFRAO_CLDMA_BCLK>;
@@ -5612,6 +5626,7 @@
 			"disp_wdma0_eof0",
 			"disp_token_stream_block0",
 			"disp_token_cabc_eof0",
+			"disp_token_vdo_cabc_eof0",
 			"disp_wdma0_eof2",
 			"disp_dsi0_sof0";
 
@@ -5626,6 +5641,7 @@
 			<&gce_mbox CMDQ_EVENT_DISP_WDMA0_FRAME_DONE>,
 			<&gce_mbox CMDQ_SYNC_TOKEN_STREAM_BLOCK>,
 			<&gce_mbox CMDQ_SYNC_TOKEN_CABC_EOF>,
+			<&gce_mbox CMDQ_SYNC_TOKEN_VDO_MODE_CABC_EOF>,
 			<&gce_mbox CMDQ_EVENT_DISP_WDMA0_FRAME_DONE>,
 			<&gce_mbox CMDQ_EVENT_DSI0_SOF>;
 
@@ -5924,6 +5940,7 @@
 				&smi_larb14 &smi_larb16 &smi_larb17 &smi_larb18
 				&smi_larb19 &smi_larb20>;
 		mediatek-common-supply = <&smi_common>;
+		skip-bug-On;
 	};
 
 	smi_larb4: smi-larb4@1602e000 {
@@ -8546,7 +8563,6 @@
 		orientation-switch;
 		mode-switch;
 		accessory;
-		mediatek,inverse-orientation;
 		status = "okay";
 		port {
 			ssusb_mux: endpoint {

@@ -991,7 +991,7 @@ initcall_debug=1";
 			reusable;
 			size = <0 0x10000000>;
 			alignment = <0 0x1000000>;
-			alloc-range = <0 0xc0000000 0 0x10000000>;
+			alloc-ranges = <0 0 0 0xffffffff>;
 		};
 
 		ion-carveout-heap {
@@ -3496,6 +3496,12 @@ pwrap: pwrap@1000d000 {
 		interrupt-names = "RGX";
 		clock-frequency = <570000000>;
 		ged-supply = <&ged>;
+		gpu-frame-base-optimize = <1>;
+	};
+
+	gpu_dvfs_prefence: gpu-prefence {
+		compatible = "mediatek,gpu_prefence";
+		dvfs-prefence-enable = <1>;
 	};
 
 	mfg_cfg: mfg_cfg@13ffe000 {
@@ -3643,9 +3649,7 @@ pwrap: pwrap@1000d000 {
 		#mtk-interconnect-cells = <1>;
 		mediatek,larbs-supply = <&smi_larb0 &smi_larb1 &smi_larb2 &smi_larb3>;
 		mediatek,commons-supply = <&smi_common>;
-		disable-ostd;
-		disable-bwl;
-		mmqos-state = <0x7>;
+		mmqos-state = <0x4>;
 		mmqos-log-level = <0>;
 		clocks = <&topckgen CLK_TOP_MM_SEL>;
 		clock-names = "mm";

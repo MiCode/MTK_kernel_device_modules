@@ -16,6 +16,8 @@
 #include <linux/slab.h>
 #include <linux/string.h>
 #include <leds-mtk.h>
+#include "mtk_low_battery_throttling.h"
+#include "mtk_bp_thl.h"
 
 
 /****************************************************************************
@@ -36,6 +38,10 @@ static DEFINE_MUTEX(leds_mutex);
 static BLOCKING_NOTIFIER_HEAD(mtk_leds_chain_head);
 
 struct mt_leds_desp_info *leds_info;
+
+#if IS_ENABLED(CONFIG_MTK_BATTERY_PERCENT_THROTTLING)
+static int led_bat_per_pt[MAX_BL_PT_NUM];
+#endif
 
 int mtk_leds_register_notifier(struct notifier_block *nb)
 {
@@ -541,6 +547,54 @@ int setMaxBrightness(int connector_id, int percent, bool enable)
 }
 EXPORT_SYMBOL(setMaxBrightness);
 
+int setPTBrightness(int percent)
+{
+	int i = 0;
+	int brightness = 0;
+
+	struct mt_led_data *led_dat = NULL;
+
+	while (i < leds_info->lens) {
+		pr_info("led %d name %s\n", i, leds_info->leds[i]->name);
+		if (strstr(leds_info->leds[i]->name, "lcd-backlight")) {
+			led_dat = container_of(leds_info->leds[i],
+				struct mt_led_data, desp);
+
+			pr_info("led_dat->last_percent %d\n", led_dat->last_percent);
+
+			if (led_dat->last_percent != 0) {
+				brightness = led_dat->last_brightness * percent / led_dat->last_percent;
+				led_dat->last_percent = percent;
+			}
+
+			pr_info("last_brightness %d, brightness = %d\n", led_dat->last_brightness, brightness);
+
+			mtk_set_brightness(&led_dat->conf.cdev, brightness);
+		}
+		i++;
+	}
+
+	return 0;
+}
+
+#if IS_ENABLED(CONFIG_MTK_BATTERY_PERCENT_THROTTLING)
+static void mt_leds_bat_low_cb(BATTERY_PERCENT_LEVEL level)
+{
+	int percent = 100;
+
+	if (level >= BATTERY_PERCENT_LEVEL_NUM) {
+		pr_info("%s:%d invalid level %d\n", __func__, __LINE__, level);
+		return;
+	}
+
+	percent = led_bat_per_pt[(int)level];
+
+	pr_info("%s:%d lv = %d, percent = %d\n", __func__, __LINE__, level, percent);
+
+	setPTBrightness(percent);
+}
+#endif
+
 int mt_leds_parse_dt(struct mt_led_data *mdev, struct fwnode_handle *fwnode)
 {
 	int ret = 0;
@@ -597,13 +651,49 @@ int mt_leds_parse_dt(struct mt_led_data *mdev, struct fwnode_handle *fwnode)
 	if (!ret) {
 		if (!strncmp(state, "half", strlen("half")))
 			mdev->conf.cdev.brightness = mdev->conf.cdev.max_brightness / 2;
+		else if (!strncmp(state, "FifteenPercent", strlen("FifteenPercent")))
+			mdev->conf.cdev.brightness = mdev->conf.cdev.max_brightness * 10/ 121;
 		else if (!strncmp(state, "on", strlen("on")))
 			mdev->conf.cdev.brightness = mdev->conf.cdev.max_brightness;
+		else if (!strncmp(state, "FourteenPercent", strlen("FourteenPercent")))
+			mdev->conf.cdev.brightness = mdev->conf.cdev.max_brightness * 38 / 255;
 		else
 			mdev->conf.cdev.brightness = 0;
 	} else {
 		mdev->conf.cdev.brightness = mdev->conf.cdev.max_brightness * 40 / 100;
 	}
+
+#if IS_ENABLED(CONFIG_MTK_BATTERY_PERCENT_THROTTLING)
+	ret = fwnode_property_read_u32(fwnode, "reg-bat-percent-pt", &(mdev->conf.reg_battery_percent_pt));
+
+	if (ret) {
+		pr_info("No need to register battery percent pt notify");
+		mdev->conf.reg_battery_percent_pt = 0;
+	}
+
+	pr_info("%s:%d ret = %d, reg_battery_percent_pt = %d\n", __func__, __LINE__, ret,
+		mdev->conf.reg_battery_percent_pt);
+
+	ret = fwnode_property_read_u32_array(fwnode, "bl-bat-pt-percent", mdev->conf.bl_bat_pt_per,
+		MAX_BL_PT_NUM);
+
+	if (ret) {
+		pr_info("failed to read battery percent properity, use default value");
+		mdev->conf.bl_bat_pt_per[0] = mdev->conf.bl_bat_pt_per[1] = mdev->conf.bl_bat_pt_per[2] = 100;
+		mdev->conf.bl_bat_pt_per[3] = mdev->conf.bl_bat_pt_per[4] = mdev->conf.bl_bat_pt_per[5] = 67;
+	}
+
+	pr_info("%s:%d ret = %d, bl_bat_pt_per value: %d, %d, %d, %d, %d, %d\n",
+		__func__, __LINE__, ret,
+		mdev->conf.bl_bat_pt_per[0], mdev->conf.bl_bat_pt_per[1],
+		mdev->conf.bl_bat_pt_per[2], mdev->conf.bl_bat_pt_per[3],
+		mdev->conf.bl_bat_pt_per[4], mdev->conf.bl_bat_pt_per[5]);
+
+	memcpy(led_bat_per_pt, mdev->conf.bl_bat_pt_per, sizeof(mdev->conf.bl_bat_pt_per));
+
+	if (mdev->conf.reg_battery_percent_pt == 1)
+		register_bp_thl_notify(mt_leds_bat_low_cb, BATTERY_PERCENT_PRIO_BACKLIGHT);
+#endif
 
 	strscpy(mdev->desp.name, mdev->conf.cdev.name,
 		sizeof(mdev->desp.name));
@@ -695,7 +785,9 @@ int mt_leds_classdev_register(struct device *parent,
 	if (ret < 0 || ret >= (4096 - strlen(led_dat->debug.buffer)))
 		pr_info("print log init error!");
 
-	led_dat->last_brightness = 0;
+	led_dat->last_brightness = led_dat->conf.cdev.brightness;
+	led_dat->last_percent = 100;
+
 	mtk_set_hw_brightness(led_dat,
 		brightness_maptolevel(&led_dat->conf, led_dat->conf.cdev.brightness),
 		0, 1 << SET_BACKLIGHT_LEVEL);

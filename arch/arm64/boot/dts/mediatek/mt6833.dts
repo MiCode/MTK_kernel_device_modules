@@ -510,7 +510,7 @@
 		reserve-memory-scp_share {  /* TODO: remove after lk2 ready */
 			compatible = "mediatek,reserve-memory-scp_share";
 			no-map;
-			size = <0 0x003A0000>; /*3MB + 128K share mem size */
+			size = <0 0x00420000>; /*3MB + 128K share mem size */
 			alignment = <0 0x1000000>;
 			alloc-ranges = <0 0x50000000 0 0x40000000>;
 		};
@@ -531,6 +531,21 @@
 			size = <0 0x610000>; /* 6M + 64K */
 			alignment = <0 0x10000>;
 			alloc-ranges = <0 0x40000000 0 0x60000000>;
+		};
+
+		dpmaif_resv_cache_mem: ccci-dpmaif-cache-memory {
+			compatible = "mediatek,dpmaif-resv-cache-mem";
+			size = <0 0x00190000>; /* 1638400 Bytes for 1rxq */
+			alignment = <0 0x10000>;
+			alloc-ranges = <0 0x40000000 0 0xf0000000>;
+		};
+
+		dpmaif_resv_nocache_mem: ccci-dpmaif-nocache-memory {
+			compatible = "mediatek,dpmaif-resv-nocache-mem";
+			no-map;
+			size = <0 0x0050000>; /* 327680 Bytes */
+			alignment = <0 0x10000>;
+			alloc-ranges = <0 0x40000000 0 0xf0000000>;
 		};
 	};
 
@@ -3184,7 +3199,7 @@
 			<0 0x1022e000 0 0x1000>; /*SRAM*/
 		interrupts = <GIC_SPI 209 IRQ_TYPE_LEVEL_HIGH 0>;
 		mediatek,dpmaif-ver = <2>;
-		mediatek,dpmaif-cap = <6>;
+		mediatek,dpmaif-cap = <0x4a>;
 		clocks = <&infracfg_ao_clk CLK_IFRAO_DPMAIF_MAIN>,
 			<&infracfg_ao_clk CLK_IFRAO_CLDMA_BCLK>;
 		clock-names = "infra-dpmaif-clk",
@@ -3194,7 +3209,7 @@
 		required-opps = <&dvfsrc_freq_opp0>,
 					<&dvfsrc_freq_opp1>;
 		net-spd-ver = <2>;
-		mediatek,ap-plat-info = <6833>;
+		mediatek,plat-info = <6833>;
 		dpmaif-infracfg = <&infracfg_ao_clk>;
 	};
 
@@ -3862,7 +3877,7 @@
 		/* feature ID, size, alignment */
 		scp-mem-tbl =
 		< 0 0x0      0x0>,      /* secure dump, its size is in secure_dump_size */
-		< 1 0x4E300  0x0>,  /* vow, 297KB (2 model size)*/
+		< 1 0xCA700  0x0>,  /* vow, 297KB (2 model size)*/
 		< 2 0x100000 0x0>, /* ensor main, 1 MB */
 		< 3 0x180000 0x0>, /* logger, 1.5 MB */
 		< 4 0x19000  0x0>,  /* audio, 100 KB */
@@ -6890,8 +6905,8 @@ gpufreq: gpufreq {
 		reg = <0x4e>;
 		mt-dual,supported_modes = <0>; /* 0: dfp/ufp, 1: dfp, 2: ufp */
 		mt-tcpc,name = "type_c_port0"; /* tcpc_device's name */
-		/* 0: SNK Only, 1: SRC Only, 2: DRP, 3: Try.SRC, 4: Try.SNK */
-		mt-tcpc,role-def = <4>;
+		/* 0: Unknown, 1: SNK, 2: SRC, 3: DRP, 4: Try.SRC, 5: Try.SNK */
+		mt-tcpc,role-def = <5>;
 		mt-tcpc,rp-level = <1>; /* 0: Default, 1: 1.5, 2: 3.0 */
 		/* 0: Never, 1: Always, 2: EMarkOnly, 3: StartOnly */
 		mt-tcpc,vconn-supply  = <1>;
@@ -7075,10 +7090,10 @@ grpid = <11>;
 		};
 		mt6315_3_regulator: mt6315_3_regulator {
 			compatible = "mediatek,mt6315_3-regulator";
-			buck-size = <3>;
+			buck-size = <4>;
 			buck1-modeset-mask = <0x3>;
 
-			mt6315_3_vbuck1: 3_vbuck1 {
+			mt6315_3_vbuck1: 3-vbuck1 {
 				regulator-compatible = "vbuck1";
 				regulator-name = "3_vbuck1";
 				regulator-min-microvolt = <300000>;
@@ -7088,7 +7103,7 @@ grpid = <11>;
 				regulator-always-on;
 			};
 
-			mt6315_3_vbuck3: 3_vbuck3 {
+			mt6315_3_vbuck3: 3-vbuck3 {
 				regulator-compatible = "vbuck3";
 				regulator-name = "3_vbuck3";
 				regulator-min-microvolt = <300000>;
@@ -7098,7 +7113,7 @@ grpid = <11>;
 				regulator-always-on;
 			};
 
-			mt6315_3_vbuck4: 3_vbuck4 {
+			mt6315_3_vbuck4: 3-vbuck4 {
 				regulator-compatible = "vbuck4";
 				regulator-name = "3_vbuck4";
 				regulator-min-microvolt = <300000>;

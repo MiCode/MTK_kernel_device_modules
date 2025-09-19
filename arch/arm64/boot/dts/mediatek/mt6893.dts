@@ -722,6 +722,7 @@
 
 	rt-pd-manager {
 		compatible = "mediatek,rt-pd-manager";
+		mediatek,not_support_u3;
 	};
 
 	usb_boost: usb-boost-manager {
@@ -754,7 +755,6 @@
 		orientation-switch;
 		mode-switch;
 		accessory;
-		mediatek,inverse-orientation;
 		status = "okay";
 		port {
 			ssusb_mux: endpoint {

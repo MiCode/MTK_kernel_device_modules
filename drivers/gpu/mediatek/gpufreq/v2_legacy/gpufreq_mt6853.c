@@ -2472,7 +2472,7 @@ int __gpufreq_power_control(enum gpufreq_power_state power)
 		__gpufreq_footprint_power_step(0x04);
 
 		/* config ocl timestamp */
-		//__gpufreq_set_timestamp();
+		__gpufreq_set_timestamp();
 		__gpufreq_footprint_power_step(0x05);
 
 		/* free DVFS when power on */
@@ -2546,6 +2546,8 @@ static int __gpufreq_init_segment_id(struct platform_device *pdev)
 	unsigned int *efuse_buf;
 	size_t efuse_len;
 #endif
+	struct device_node *node;
+	int load_type ;
 
 #if IS_ENABLED(CONFIG_MTK_DEVINFO)
 	efuse_cell = nvmem_cell_get(&pdev->dev, "efuse_segment_cell");
@@ -2562,11 +2564,29 @@ static int __gpufreq_init_segment_id(struct platform_device *pdev)
 	}
 
 	g_efuse_id = (*efuse_buf & 0xFF);
+	GPUFREQ_LOGI("CONFIG_MTK_DEVINFO defined : g_efuse_id = 0x%08X" , g_efuse_id);
 	kfree(efuse_buf);
 
 #else
 	g_efuse_id = 0x0;
+	GPUFREQ_LOGI("CONFIG_MTK_DEVINFO undefined : g_efuse_id = 0x%08X" , g_efuse_id);
 #endif /* CONFIG_MTK_DEVINFO */
+
+	node = of_find_compatible_node(NULL, NULL, "mediatek,mt6853-dvfsp");
+	if (node) {
+		if(!of_property_read_u32(node, "load-type", &load_type)){
+			GPUFREQ_LOGI("mt6853-dvfsp load-type = %d", load_type);
+			if(load_type == 1){
+				GPUFREQ_LOGI("[info]tv1 segment update g_efuse_id");
+				g_efuse_id = 0x10 ;
+			}
+		} else {
+			GPUFREQ_LOGI("[info]can't find load-type !!");
+		}
+	} else {
+		GPUFREQ_LOGI("[info]mediatek,mt6853-dvfsp load-type failed !!");
+	}
+
 	switch (g_efuse_id) {
 	case 0x01:
 		segment_id = MT6853_SEGMENT;

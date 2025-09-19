@@ -52,12 +52,26 @@ static int larb_bound_table[HRT_BOUND_NUM][HRT_LEVEL_NUM] = {
  * primary and secondary display.Each table has 16 elements which
  * represent the layer mapping rule by the number of input layers.
  */
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 static uint16_t layer_mapping_table[HRT_TB_NUM] = {
 #if IS_ENABLED(CONFIG_MTK_LCM_DUAL_PORT_SUPPORT)
 	0x0003, 0x007C, 0x007A, 0x0001
 #else
+#if IS_ENABLED(CONFIG_MTK_DISPLAY_DUAL_PIPE_DUAL_PORT_SUPPORT)
+	0x0001, 0x007E, 0x007A, 0x0001
+#else
 	0x0003, 0x007E, 0x007A, 0x0001
 #endif
+#endif
+};
+#else
+static uint16_t layer_mapping_table[HRT_TB_NUM] = {
+	0x0003, 0x0003, 0x007A, 0x0001
+};
+#endif
+
+static uint16_t layer_mapping_table_mt6771[HRT_TB_NUM] = {
+	0x000F, 0x007E, 0x007A, 0x0001
 };
 static uint16_t layer_mapping_table_mt6985[HRT_TB_NUM] = {
 	0x0003, 0x007E, 0x007A, 0x0001
@@ -82,6 +96,9 @@ static uint16_t larb_mapping_tb_vds_switch[HRT_TB_NUM] = {
  */
 static uint16_t ovl_mapping_table[HRT_TB_NUM] = {
 	0x0002, 0x0045, 0x0045, 0x0001
+};
+static uint16_t ovl_mapping_table_mt6771[HRT_TB_NUM] = {
+	0x0008, 0x0045, 0x0045, 0x0001
 };
 static uint16_t ovl_mapping_table_mt6985[HRT_TB_NUM] = {
 	0x0002, 0x0055, 0x0055, 0x0001
@@ -323,7 +340,8 @@ static void filter_by_fbdc(struct drm_device *dev,
 			continue;
 
 		if ((can_be_compress(dev, c->src_fmt) == 0) ||
-			(priv && disp_info->disp_idx > HRT_PRIMARY &&
+			(priv && priv->data->mmsys_id == MMSYS_MT6877 &&
+			disp_info->disp_idx > HRT_PRIMARY &&
 			mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_SPHRT)))
 			mtk_rollback_compress_layer_to_GPU(disp_info,
 							   HRT_PRIMARY, i);
@@ -592,12 +610,14 @@ static uint16_t get_mapping_table(struct drm_device *dev, int disp_idx, int disp
 			else {
 					map = ovl_mapping_table_mt6985[addon_data->hrt_type];
 			}
-		else if (priv->data->ovl_exdma_rule)
+		else if (l_rule_info.ovl_exdma_rule)
 			if (get_layering_opt(LYE_OPT_SPDA_OVL_SWITCH))
 				map = get_dynamic_mapping_table(dev, disp_idx,
 						disp_list, DISP_HW_LAYER_TB, addon_data->hrt_type);
 			else
 				map = layer_mapping_table_mt6985[addon_data->hrt_type];
+		else if (priv->data->mmsys_id == MMSYS_MT6771)
+			map = ovl_mapping_table_mt6771[addon_data->hrt_type];
 		else
 			map = ovl_mapping_table[addon_data->hrt_type];
 		if (priv->secure_static_path_switch == true ||
@@ -626,6 +646,8 @@ static uint16_t get_mapping_table(struct drm_device *dev, int disp_idx, int disp
 				else {
 						tmp_map = layer_mapping_table_mt6985[addon_data->hrt_type];
 				}
+			else if (priv->data->mmsys_id == MMSYS_MT6771)
+				tmp_map = layer_mapping_table_mt6771[addon_data->hrt_type];
 			else
 				tmp_map = layer_mapping_table[addon_data->hrt_type];
 			if (priv->secure_static_path_switch == true ||
@@ -657,6 +679,7 @@ void mtk_layering_rule_init(struct drm_device *dev)
 {
 	struct mtk_drm_private *private = dev->dev_private;
 
+	l_rule_info.ovl_exdma_rule = private->data->ovl_exdma_rule;
 	l_rule_info.primary_fps = 60;
 	l_rule_info.hrt_idx = 0;
 	mtk_register_layering_rule_ops(&l_rule_ops, &l_rule_info);
@@ -801,6 +824,7 @@ static int layering_get_valid_hrt(struct drm_crtc *crtc,
 			MTK_DRM_OPT_MMQOS_SUPPORT))
 		return 600;
 
+#if !IS_ENABLED(CONFIG_MTK_PMQOS)
 	if (get_layering_opt(LYE_OPT_SPHRT)) {
 		if (priv->pre_defined_bw[disp_idx] != 0xffffffff) {
 			avail_bw = priv->pre_defined_bw[disp_idx];
@@ -866,6 +890,7 @@ static int layering_get_valid_hrt(struct drm_crtc *crtc,
 
 	DDPINFO("disp %u get avail HRT BW:%llu : %llu %llu\n",
 		disp_idx, avail_bw, dvfs_bw, tmp);
+#endif
 
 	return dvfs_bw;
 }

@@ -31,6 +31,9 @@
 //#define DRM_OVL_SELF_PATTERN
 //#define MTK_DSI1_SUPPORT_DSC1
 //#define MTK_DSI2_SUPPORT_R2Y0
+#if IS_ENABLED(CONFIG_MTK_LK_NO_DISPLAY)
+#define CONFIG_MTK_DISP_NO_LK
+#endif
 
 #define MTK_DRM_FENCE_SUPPORT
 #if IS_ENABLED(CONFIG_MTK_CMDQ_MBOX_EXT)
@@ -104,6 +107,8 @@ struct mtk_mmsys_driver_data {
 	bool wb_skip_sec_buf;
 	void (*update_channel_hrt)(struct mtk_drm_crtc *mtk_crtc,
 			unsigned int bw_base, unsigned int channel_bw[]);
+	void (*update_channel_hrt_write)(struct mtk_drm_crtc *mtk_crtc,
+			unsigned int bw_base, unsigned int channel_bw[]);
 	unsigned int (*get_channel_idx)(enum CHANNEL_TYPE type, unsigned int i);
 	void (*update_channel_bw_by_layer)(unsigned int layer, unsigned int bpp,
 			unsigned int *subcomm_bw_sum, unsigned int size,
@@ -160,10 +165,12 @@ enum drm_kernel_pm_status {
 struct mtk_drm_kernel_pm {
 	bool shutdown;
 	struct notifier_block nb;	/* Kernel suspend and resume event */
+	struct notifier_block vcp_nb;	/* VCP suspend and resume event */
 	struct mutex lock;		/* To block any request after kernel suspend */
 	atomic_t status;
 	atomic_t wakelock_cnt;
 	wait_queue_head_t wq;
+	bool skip_mminfra_ctrl;
 };
 
 struct lateinit_task {
@@ -203,6 +210,7 @@ struct mtk_drm_private {
 	unsigned int ovlsys_usage[MAX_CRTC]; //describe each CRTC OVLSYS connect state
 	unsigned int req_hrt[MAX_CRTC];
 	unsigned int req_hrt_channel_bw[MAX_CRTC][BW_CHANNEL_NR];
+	unsigned int req_hrt_channel_write_bw[MAX_CRTC][BW_CHANNEL_NR];
 	unsigned int num_pipes;
 
 	unsigned int sw_ver;
@@ -314,6 +322,7 @@ struct mtk_drm_private {
 	unsigned int seg_id;
 
 	unsigned int srt_channel_bw_sum[MAX_CRTC][BW_CHANNEL_NR];
+	unsigned int srt_channel_write_bw_sum[MAX_CRTC][BW_CHANNEL_NR];
 	unsigned int total_srt[MAX_CRTC];
 	unsigned int no_hwc_layers;
 	unsigned int no_hwc_overlap;
@@ -553,7 +562,7 @@ void mtk_drm_suspend_release_present_fence(struct device *dev,
 void mtk_drm_suspend_release_sf_present_fence(struct device *dev,
 					      unsigned int index);
 void mtk_drm_top_clk_prepare_enable(struct drm_crtc *crtc);
-void mtk_drm_top_clk_disable_unprepare(struct drm_device *drm);
+void mtk_drm_top_clk_disable_unprepare(struct drm_crtc *crtc);
 struct mtk_panel_params *mtk_drm_get_lcm_ext_params(struct drm_crtc *crtc);
 struct mtk_panel_funcs *mtk_drm_get_lcm_ext_funcs(struct drm_crtc *crtc);
 bool mtk_drm_session_mode_is_decouple_mode(struct drm_device *dev);
@@ -587,6 +596,8 @@ int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action);
 void **mtk_drm_disp_mtee_cb_init(void);
 bool mtk_disp_is_svp_on_mtee(void);
 void _mtk_sent_aod_scp_sema(void __iomem *_SPM_SEMA_AP);
+void mtk_set_aod_scp_semaphore(int lock);
+unsigned int mtk_aod_scp_vdisp_sema_check(void);
 int mtk_drm_get_mml_mode_caps(void);
 int mtk_drm_get_mml_hw_caps(void);
 #endif /* MTK_DRM_DRV_H */

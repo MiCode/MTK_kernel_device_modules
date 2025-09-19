@@ -43,4 +43,7 @@
 #define REG_JPGDEC_HYBRID_378(X) (JPEG_HYBRID_DEC_BASE(X) + 0x0378)
 #define REG_JPGDEC_HYBRID_384(X) (JPEG_HYBRID_DEC_BASE(X) + 0x0384)
 
+#define REG_JPGDEC_LARB_F00(base, idx) ((base) + 0xF00 + (idx) * 4)
+#define REG_JPGDEC_LARB_F80(base, idx) ((base) + 0xF80 + (idx) * 4)
+
 #endif

@@ -1070,7 +1070,7 @@ char *scp_pickup_log_for_aee(void)
 		return NULL;
 	last_log = &scp_A_last_log[DEFAULT_IDX]; /* default value */
 
-	for (i = last_log_info.scp_log_buf_maxlen; i >= CMP_SAFT_RANGE; i--) {
+	for (i = last_log_info.scp_log_buf_maxlen-1; i >= CMP_SAFT_RANGE; i--) {
 		if (scp_A_last_log[i-0] != keyword1[7])
 			continue;
 		if (scp_A_last_log[i-1] != keyword1[6])
@@ -1091,7 +1091,7 @@ char *scp_pickup_log_for_aee(void)
 		return last_log;
 	}
 
-	for (i = last_log_info.scp_log_buf_maxlen; i >= CMP_SAFT_RANGE; i--) {
+	for (i = last_log_info.scp_log_buf_maxlen-1; i >= CMP_SAFT_RANGE; i--) {
 		if (scp_A_last_log[i-0] != keyword2[8])
 			continue;
 		if (scp_A_last_log[i-1] != keyword2[7])

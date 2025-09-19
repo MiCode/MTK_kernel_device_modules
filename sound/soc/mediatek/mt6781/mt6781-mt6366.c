@@ -26,6 +26,10 @@
  */
 #define EXT_SPK_AMP_W_NAME "Ext_Speaker_Amp"
 
+static struct snd_soc_card mt6781_mt6366_soc_card;
+
+struct mt6781_compress_info compr_info;
+
 static const char *const mt6781_spk_type_str[] = {MTK_SPK_NOT_SMARTPA_STR,
 						  MTK_SPK_RICHTEK_RT5509_STR,
 						  MTK_SPK_MEDIATEK_MT6660_STR};
@@ -72,6 +76,63 @@ static int mt6781_spk_i2s_in_type_get(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+static int mt6781_compress_info_set(struct snd_kcontrol *kcontrol,
+				    const unsigned int __user *data,
+				    unsigned int size)
+{
+	if (copy_from_user(&compr_info,
+			   data,
+			   sizeof(struct mt6781_compress_info))) {
+		pr_info("%s() copy fail, data=%p, size=%d\n",
+			__func__, data, size);
+		return -EFAULT;
+	}
+	return 0;
+}
+
+static int mt6781_compress_info_get(struct snd_kcontrol *kcontrol,
+				    unsigned int __user *data, unsigned int size)
+{
+	struct snd_soc_card *card = &mt6781_mt6366_soc_card;
+	struct snd_card *snd_card;
+	struct snd_soc_dai_link *dai_link;
+
+	struct snd_device *snd_dev;
+	struct snd_compr *compr;
+	int ret = 0, i = 0;
+
+	snd_card = card->snd_card;
+
+	pr_info("i = %d, compr_info->id: %s\n", compr_info.device, compr_info.id);
+
+	list_for_each_entry(snd_dev, &snd_card->devices, list) {
+		if ((unsigned int)snd_dev->type == (unsigned int)SNDRV_DEV_COMPRESS) {
+			compr = snd_dev->device_data;
+			if (compr->device == compr_info.device) {
+				pr_debug("%s() compr->direction %s\n",
+					 __func__,
+					 (compr->direction) ? "Capture" : "Playback");
+				compr_info.dir = compr->direction;
+				for_each_card_prelinks(card, i, dai_link) {
+					if (i == compr_info.device) {
+						pr_debug("device = %d, dai_link->name: %s\n",
+							 i, dai_link->stream_name);
+						strscpy(compr_info.id, dai_link->stream_name,
+							sizeof(compr_info.id));
+						break;
+					}
+				}
+			}
+			break;
+		}
+	}
+	if (copy_to_user(data, &compr_info, sizeof(struct mt6781_compress_info))) {
+		pr_info("%s(), copy_to_user fail", __func__);
+		ret = -EFAULT;
+	}
+	return ret;
+}
+
 static int mt6781_mt6366_spk_amp_event(struct snd_soc_dapm_widget *w,
 				       struct snd_kcontrol *kcontrol,
 				       int event)
@@ -114,6 +175,9 @@ static const struct snd_kcontrol_new mt6781_mt6366_controls[] = {
 		     mt6781_spk_i2s_out_type_get, NULL),
 	SOC_ENUM_EXT("MTK_SPK_I2S_IN_TYPE_GET", mt6781_spk_type_enum[1],
 		     mt6781_spk_i2s_in_type_get, NULL),
+	SND_SOC_BYTES_TLV("MTK_COMPRESS_INFO",
+			  sizeof(struct mt6781_compress_info),
+			  mt6781_compress_info_get, mt6781_compress_info_set),
 };
 
 /*
@@ -585,57 +649,63 @@ SND_SOC_DAILINK_DEFS(vow,
 SND_SOC_DAILINK_DEFS(ultra,
 	DAILINK_COMP_ARRAY(COMP_DUMMY()),
 	DAILINK_COMP_ARRAY(COMP_DUMMY()),
-	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd_scp_ultra")));
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-scp-ultra")));
 #endif
-#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUDIO_DSP)
+#if (IS_ENABLED(CONFIG_SND_SOC_MTK_AUDIO_DSP) && IS_ENABLED(CONFIG_SND_SOC_MTK_OFFLOAD))
 SND_SOC_DAILINK_DEFS(dspoffload,
 	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_offload_dai")),
 	DAILINK_COMP_ARRAY(COMP_DUMMY()),
-	DAILINK_COMP_ARRAY(COMP_PLATFORM("mt_soc_offload_common")));
-	SND_SOC_DAILINK_DEFS(dspvoip,
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("mt-soc-offload-common")));
+#endif
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUDIO_DSP)
+SND_SOC_DAILINK_DEFS(dspvoip,
 	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_voip_dai")),
 	DAILINK_COMP_ARRAY(COMP_DUMMY()),
-	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd_audio_dsp")));
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
 SND_SOC_DAILINK_DEFS(dspprimary,
 	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_primary_dai")),
 	DAILINK_COMP_ARRAY(COMP_DUMMY()),
-	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd_audio_dsp")));
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
 SND_SOC_DAILINK_DEFS(dspdeepbuf,
 	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_deepbuf_dai")),
 	DAILINK_COMP_ARRAY(COMP_DUMMY()),
-	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd_audio_dsp")));
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
 SND_SOC_DAILINK_DEFS(dspfast,
 	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_fast_dai")),
 	DAILINK_COMP_ARRAY(COMP_DUMMY()),
-	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd_audio_dsp")));
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
 SND_SOC_DAILINK_DEFS(dspplayback,
 	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_Playback_dai")),
 	DAILINK_COMP_ARRAY(COMP_DUMMY()),
-	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd_audio_dsp")));
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
 SND_SOC_DAILINK_DEFS(dspcapture1,
 	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_capture_ul1_dai")),
 	DAILINK_COMP_ARRAY(COMP_DUMMY()),
-	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd_audio_dsp")));
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
 SND_SOC_DAILINK_DEFS(dspcallfinal,
 	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_call_final_dai")),
 	DAILINK_COMP_ARRAY(COMP_DUMMY()),
-	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd_audio_dsp")));
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
 SND_SOC_DAILINK_DEFS(dspktv,
 	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_ktv_dai")),
 	DAILINK_COMP_ARRAY(COMP_DUMMY()),
-	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd_audio_dsp")));
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
 SND_SOC_DAILINK_DEFS(dspcaptureraw,
 	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_capture_raw_dai")),
 	DAILINK_COMP_ARRAY(COMP_DUMMY()),
-	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd_audio_dsp")));
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
 SND_SOC_DAILINK_DEFS(dspfmadsp,
 	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_fm_adsp_dai")),
 	DAILINK_COMP_ARRAY(COMP_DUMMY()),
-	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd_audio_dsp")));
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
 SND_SOC_DAILINK_DEFS(dspa2dp,
 	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_a2dp_dai")),
 	DAILINK_COMP_ARRAY(COMP_DUMMY()),
-	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd_audio_dsp")));
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
+SND_SOC_DAILINK_DEFS(dspulproc,
+	DAILINK_COMP_ARRAY(COMP_CPU("audio_task_ulproc_dai")),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-audio-dsp")));
 #endif
 static struct snd_soc_dai_link mt6781_mt6366_dai_links[] = {
 	/* Front End DAI links */
@@ -1159,6 +1229,11 @@ static struct snd_soc_dai_link mt6781_mt6366_dai_links[] = {
 		.name = "DSP_Playback_A2DP",
 		.stream_name = "DSP_Playback_A2DP",
 		SND_SOC_DAILINK_REG(dspa2dp),
+	},
+	{
+		.name = "DSP_Capture_Process",
+		.stream_name = "DSP_Capture_Process",
+		SND_SOC_DAILINK_REG(dspulproc),
 	},
 #endif
 };

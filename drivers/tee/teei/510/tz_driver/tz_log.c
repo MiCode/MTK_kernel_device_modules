@@ -22,6 +22,7 @@
 
 #include <teei_client_main.h>
 #include "tz_log.h"
+#include "teei_id.h"
 #include "nt_smc_call.h"
 #include "notify_queue.h"
 #include "switch_queue.h"
@@ -421,7 +422,7 @@ int tz_log_probe(struct platform_device *pdev)
 	s->get = 0;
 	s->read_get = 0;
 	s->log_pages = alloc_pages(GFP_KERNEL | __GFP_ZERO,
-				   get_order(TZ_LOG_SIZE));
+				   teei_get_order(TZ_LOG_SIZE));
 	if (!s->log_pages) {
 		result = -ENOMEM;
 		goto error_alloc_log;
@@ -429,7 +430,7 @@ int tz_log_probe(struct platform_device *pdev)
 	s->log = page_address(s->log_pages);
 
 	s->boot_log_pages = alloc_pages(GFP_KERNEL | __GFP_ZERO,
-				   get_order(TZ_LOG_SIZE));
+				   teei_get_order(TZ_LOG_SIZE));
 	if (!s->boot_log_pages) {
 		result = -ENOMEM;
 		goto error_alloc_boot_log;
@@ -461,9 +462,9 @@ int tz_log_probe(struct platform_device *pdev)
 	return 0;
 
 error_panic_notifier:
-	__free_pages(s->boot_log_pages, get_order(TZ_LOG_SIZE));
+	__free_pages(s->boot_log_pages, teei_get_order(TZ_LOG_SIZE));
 error_alloc_boot_log:
-	__free_pages(s->log_pages, get_order(TZ_LOG_SIZE));
+	__free_pages(s->log_pages, teei_get_order(TZ_LOG_SIZE));
 error_alloc_log:
 	kfree(s);
 	g_tz_log_state = NULL;
@@ -478,8 +479,8 @@ int tz_log_remove(struct platform_device *pdev)
 	atomic_notifier_chain_unregister(&panic_notifier_list,
 					 &s->panic_notifier);
 
-	__free_pages(s->log_pages, get_order(TZ_LOG_SIZE));
-	__free_pages(s->boot_log_pages, get_order(TZ_LOG_SIZE));
+	__free_pages(s->log_pages, teei_get_order(TZ_LOG_SIZE));
+	__free_pages(s->boot_log_pages, teei_get_order(TZ_LOG_SIZE));
 	kfree(s);
 	g_tz_log_state = NULL;
 

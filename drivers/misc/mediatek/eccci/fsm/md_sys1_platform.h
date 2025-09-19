@@ -163,5 +163,9 @@ unsigned int ccci_get_ap_plat(void);
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_SPMI_MTK_PMIF)
 extern void spmi_dump_pmif_record_reg(void);
 #endif
+#if IS_ENABLED(CONFIG_MTK_SPM_V4)
+extern void register_exec_ccci_kern_func_pfn(int (*f) (unsigned int id, char *buf, unsigned int len));
+#endif
+
 u32 get_expected_boot_status_val(void);
 #endif				/* __MD_SYS1_PLATFORM_H__ */

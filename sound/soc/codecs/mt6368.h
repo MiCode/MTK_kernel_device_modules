@@ -5890,6 +5890,7 @@ struct mt6368_priv {
 	int hp_impedance;
 	int hp_current_calibrate_val;
 	struct mt6368_codec_ops ops;
+	unsigned int codec_dump;
 
 	/* debugfs */
 	struct dentry *debugfs;

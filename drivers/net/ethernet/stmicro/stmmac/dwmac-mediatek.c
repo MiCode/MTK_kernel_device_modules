@@ -138,8 +138,9 @@ struct mediatek_dwmac_plat_data {
 struct mediatek_dwmac_variant {
 	int (*dwmac_set_phy_interface)(struct mediatek_dwmac_plat_data *plat);
 	int (*dwmac_set_delay)(struct mediatek_dwmac_plat_data *plat);
-	int (*dwmac_set_base_addr)(struct platform_device *pdev,
-				   struct stmmac_resources *stmmac_res);
+	int (*dwmac_fix_hw_info)(struct platform_device *pdev,
+				 struct stmmac_resources *stmmac_res,
+				 struct plat_stmmacenet_data *plat_dat);
 	/* clock ids to be requested */
 	const char * const *clk_list;
 	int num_clks;
@@ -1241,8 +1242,9 @@ static int mt8678_set_delay(struct mediatek_dwmac_plat_data *plat)
 	return 0;
 }
 
-int mt8678_set_base_addr(struct platform_device *pdev,
-			 struct stmmac_resources *stmmac_res)
+int mt8678_fix_hw_info(struct platform_device *pdev,
+		       struct stmmac_resources *stmmac_res,
+		       struct plat_stmmacenet_data *plat_dat)
 {
 	struct device_node *dn;
 	struct chipid *chipid;
@@ -1264,16 +1266,18 @@ int mt8678_set_base_addr(struct platform_device *pdev,
 		return -ENODEV;
 	}
 
-	if(sw_ver)
+	if (sw_ver) {
 		stmmac_res->addr = devm_platform_ioremap_resource_byname(pdev, "b0");
-
+		plat_dat->tx_fifo_size = 16384;
+		plat_dat->rx_fifo_size = 16384;
+	}
 	return 0;
 }
 
 static const struct mediatek_dwmac_variant mt8678_gmac_variant = {
 	.dwmac_set_phy_interface = mt8678_set_interface,
 	.dwmac_set_delay = mt8678_set_delay,
-	.dwmac_set_base_addr = mt8678_set_base_addr,
+	.dwmac_fix_hw_info = mt8678_fix_hw_info,
 	.clk_list = mt8678_dwmac_clk_l,
 	.num_clks = ARRAY_SIZE(mt8678_dwmac_clk_l),
 	.dma_bit_mask = 40,
@@ -1516,18 +1520,17 @@ static int mediatek_dwmac_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
-	if(priv_plat->variant->dwmac_set_base_addr) {
-		ret = priv_plat->variant->dwmac_set_base_addr(pdev, &stmmac_res);
-		if (ret)
-			return ret;
-	}
-
 	plat_dat = stmmac_probe_config_dt(pdev, stmmac_res.mac);
 	if (IS_ERR(plat_dat))
 		return PTR_ERR(plat_dat);
 
 	mediatek_dwmac_common_data(pdev, plat_dat, priv_plat);
 	mediatek_dwmac_init(pdev, priv_plat);
+	if (priv_plat->variant->dwmac_fix_hw_info) {
+		ret = priv_plat->variant->dwmac_fix_hw_info(pdev, &stmmac_res, plat_dat);
+		if (ret)
+			return ret;
+	}
 
 	ret = mediatek_dwmac_clks_config(priv_plat, true);
 	if (ret)

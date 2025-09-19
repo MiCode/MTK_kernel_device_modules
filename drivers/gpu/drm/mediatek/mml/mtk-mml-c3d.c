@@ -398,7 +398,7 @@ static s32 c3d_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 
 
 	mml_pq_trace_ex_begin("%s %d", __func__, cfg->info.mode);
-	if (!dest->pq_config.en_c3d)
+	if (!dest->pq_config.en_c3d || !c3d_frm->config_success)
 		goto exit;
 
 	do {

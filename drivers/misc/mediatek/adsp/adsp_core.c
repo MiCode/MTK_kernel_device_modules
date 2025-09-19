@@ -12,8 +12,11 @@
 #include <linux/arm-smccc.h>    /* for Kernel Native SMC API */
 #include <linux/pm_domain.h>
 #include <linux/soc/mediatek/mtk_sip_svc.h> /* for SMC ID table */
-#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
+#if IS_ENABLED(CONFIG_DEVAPC_ARCH_MULTI)
 #include <linux/soc/mediatek/devapc_public.h>
+#endif
+#if IS_ENABLED(CONFIG_MTK_ADSP_LEGACY)
+#include "adsp_ipi.h"
 #endif
 #include <mt-plat/mtk_irq_mon.h>
 #include "adsp_clk.h"
@@ -132,6 +135,27 @@ bool has_system_l2sram(void)
 }
 EXPORT_SYMBOL(has_system_l2sram);
 
+#if IS_ENABLED(CONFIG_MTK_ADSP_LEGACY)
+void __iomem *adsp_get_sharedmem_base(struct adsp_priv *pdata, int id)
+{
+	void __iomem *dst = NULL;
+	const struct sharedmem_info *item;
+
+	if (unlikely(id >= ADSP_SHAREDMEM_NUM))
+		return NULL;
+
+	item = pdata->mapping_table + id;
+	if (item->offset)
+		dst = pdata->dtcm + pdata->dtcm_size - item->offset;
+
+	if (unlikely(!dst))
+		return NULL;
+
+	return dst;
+}
+EXPORT_SYMBOL(adsp_get_sharedmem_base);
+#endif
+
 int adsp_copy_to_sharedmem(struct adsp_priv *pdata, int id, const void *src,
 			   int count)
 {
@@ -248,6 +272,10 @@ enum adsp_ipi_status adsp_send_message(enum adsp_ipi_id id, void *buf,
 	if (id == ADSP_IPI_DVFS_SUSPEND)
 		set_adsp_state(pdata, ADSP_SUSPENDING);
 
+#if IS_ENABLED(CONFIG_MTK_ADSP_LEGACY)
+	ret = adsp_ipi_send_ipc(id, buf, len, wait, core_id);
+	(void) msg;
+#else
 	msg.ipihd.id = id;
 	msg.ipihd.len = len;
 	msg.ipihd.options = 0xffff0000;
@@ -255,6 +283,7 @@ enum adsp_ipi_status adsp_send_message(enum adsp_ipi_id id, void *buf,
 	msg.data = buf;
 
 	ret = adsp_mbox_send(pdata->send_mbox, &msg, wait);
+#endif
 
 	if ((id == ADSP_IPI_DVFS_SUSPEND) && (ret != MBOX_DONE))
 		set_adsp_state(pdata, ADSP_RUNNING);
@@ -295,10 +324,16 @@ static irqreturn_t adsp_irq_top_handler(int irq, void *data)
 	struct irq_t *pdata = (struct irq_t *)data;
 
 	adsp_mt_clr_spm(pdata->cid);
+
+#if IS_ENABLED(CONFIG_MTK_ADSP_LEGACY)
+	if (pdata->clear_irq)
+		pdata->clear_irq(pdata->cid);
+#else
 	if (!pdata->clear_irq)
 		return IRQ_NONE;
 
 	pdata->clear_irq(pdata->cid);
+#endif
 
 #ifndef CFG_FPGA
 	irq_log_store();
@@ -326,6 +361,13 @@ int adsp_threaded_irq_registration(u32 core_id, u32 irq_id,
 {
 	int ret = 0;
 	struct adsp_priv *pdata = get_adsp_core_by_id(core_id);
+
+#if IS_ENABLED(CONFIG_MTK_ADSP_LEGACY)
+	if ((pdata->cirq_num) & (irq_id >= pdata->cirq_num)) {
+		pr_info("%s() irq_id=%d is not supported\n",__func__,irq_id);
+		goto EXIT;
+	}
+#endif
 
 	if (unlikely(!pdata))
 		return -EACCES;
@@ -742,7 +784,7 @@ static int adsp_system_init(void)
 	return ret;
 }
 
-#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
+#if IS_ENABLED(CONFIG_DEVAPC_ARCH_MULTI)
 static bool devapc_power_cb(void)
 {
 	adsp_check_adsppll_freq(ADSPPLLDIV);
@@ -803,7 +845,7 @@ int adsp_system_bootup(void)
 
 	adsp_deregister_feature(SYSTEM_FEATURE_ID);
 
-#if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_DEVAPC)
+#if IS_ENABLED(CONFIG_DEVAPC_ARCH_MULTI)
 	register_devapc_power_callback(&devapc_power_handle);
 #endif
 

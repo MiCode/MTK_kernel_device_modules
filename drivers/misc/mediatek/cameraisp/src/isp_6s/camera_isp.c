@@ -5649,6 +5649,36 @@ static long ISP_ioctl(struct file *pFile, unsigned int Cmd, unsigned long Param)
 				/* Enable clock */
 				ISP_EnableClock(dev_node_idx, MTRUE);
 
+			if (IS_CCU_AVAILABLE(g_platform_id)) {
+				if ((dev_node_idx == ISP_CAM_A_IDX) ||
+					(dev_node_idx == ISP_CAM_B_IDX) ||
+					((dev_node_idx == ISP_CAM_C_IDX) &&
+						IS_3RAW_PLATFORM(g_platform_id))){
+					unsigned int temp = 0;
+
+					LOG_NOTICE("CAM%c: Set CAM_REG_CTL_CAMCTL_CCU_INTx_EN",
+						'A' + dev_node_idx - ISP_CAM_A_IDX);
+					ISP_WR32(CAM_REG_CTL_CAMCTL_CCU_INT_EN(dev_node_idx),
+						0x00004003);
+					ISP_RD32(CAM_REG_CTL_CAMCTL_CCU_INT_STATUS(dev_node_idx));
+
+					ISP_WR32(CAM_REG_CTL_CAMCTL_CCU_INT2_EN(dev_node_idx), 0x300);
+					ISP_RD32(CAM_REG_CTL_CAMCTL_CCU_INT2_STATUS(dev_node_idx));
+
+					ISP_WR32(CAM_REG_CTL_CAMCTL_CCU_INT3_EN(dev_node_idx), 0x0);
+					ISP_RD32(CAM_REG_CTL_CAMCTL_CCU_INT3_STATUS(dev_node_idx));
+
+					temp = ISP_RD32(CAM_REG_CTL_CAMCTL_CCU_INT6_EN(dev_node_idx));
+					temp |= 0x1;
+					ISP_WR32(CAM_REG_CTL_CAMCTL_CCU_INT6_EN(dev_node_idx), temp);
+					ISP_RD32(CAM_REG_CTL_CAMCTL_CCU_INT6_STATUS(dev_node_idx));
+				} else if (dev_node_idx == ISP_CAMSV0_IDX) {
+					LOG_NOTICE("CAMSV0: Set CAM_REG_CTL_CAMSV_CCU_INT_EN");
+					ISP_WR32(CAM_REG_CTL_CAMSV_CCU_INT_EN(dev_node_idx), 0x1);
+					ISP_RD32(CAM_REG_CTL_CAMSV_CCU_INT_STATUS(dev_node_idx));
+				}
+			}
+
 				spin_lock(&(IspInfo.SpinLockClock));
 				if (G_u4EnableClockCount[dev_node_idx] == 1) {
 					spin_unlock(&(IspInfo.SpinLockClock));

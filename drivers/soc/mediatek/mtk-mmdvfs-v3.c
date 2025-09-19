@@ -54,6 +54,10 @@ static void *mmdvfs_vcp_va;
 
 static bool mmdvfs_mmup_sram;
 static void __iomem *mmdvfs_mmup_sram_va;
+static bool mmdvfs_mux_cb_sram;
+static bool mux_cb_sram_init;
+static void __iomem *mmdvfs_mux_cb_time_sram_va;
+static void __iomem *mmdvfs_mux_cb_val_sram_va;
 
 static bool mmup_ena;
 #define MMDVFS_HFRP_FEATURE_ID (mmup_ena ? MMDVFS_MMUP_FEATURE_ID : MMDVFS_VCP_FEATURE_ID)
@@ -163,6 +167,24 @@ void __iomem *mmdvfs_get_mmup_sram(void)
 	return mmdvfs_mmup_sram_va;
 }
 EXPORT_SYMBOL_GPL(mmdvfs_get_mmup_sram);
+
+bool mmdvfs_get_mux_cb_sram_enable(void)
+{
+	return mux_cb_sram_init;
+}
+EXPORT_SYMBOL_GPL(mmdvfs_get_mux_cb_sram_enable);
+
+void __iomem *mmdvfs_get_mux_cb_time_sram(void)
+{
+	return mmdvfs_mux_cb_time_sram_va;
+}
+EXPORT_SYMBOL_GPL(mmdvfs_get_mux_cb_time_sram);
+
+void __iomem *mmdvfs_get_mux_cb_val_sram(void)
+{
+	return mmdvfs_mux_cb_val_sram_va;
+}
+EXPORT_SYMBOL_GPL(mmdvfs_get_mux_cb_val_sram);
 
 bool mmdvfs_get_mmup_enable(void)
 {
@@ -1822,6 +1844,16 @@ static void mmdvfs_vcp_notifier_callback_ready(void)
 
 void mmdvfs_disp_boot_ready(void)
 {
+	int retry = 0;
+
+	while (!mmdvfs_is_init_done()) {
+		if (++retry > 100) {
+			MMDVFS_ERR("mmdvfs is not ready yet");
+			return;
+		}
+		msleep(50);
+	}
+
 	if (!mmdvfs_disp_boot) {
 		mmdvfs_vcp_notifier_callback_ready();
 		mmdvfs_disp_boot = true;
@@ -1855,6 +1887,20 @@ static int mmdvfs_mmup_notifier_callback(struct notifier_block *nb, unsigned lon
 			MMDVFS_ERR("sram_init:%d virt:%#lx offset:%#x va:%#lx",
 				sram_init, (unsigned long)(void *)vcp_get_sram_virt_ex(),
 				readl(MEM_SRAM_OFFSET), (unsigned long)(void *)mmdvfs_mmup_sram_va);
+		}
+		if (mmdvfs_mux_cb_sram && unlikely(!mux_cb_sram_init)) {
+			mmdvfs_mux_cb_time_sram_va =
+				vcp_get_sram_virt_ex() +readl(MEM_SRAM_MUX_CB_TIME_OFS);
+			mmdvfs_mux_cb_val_sram_va =
+				vcp_get_sram_virt_ex() + readl(MEM_SRAM_MUX_CB_VAL_OFS);
+			mux_cb_sram_init = true;
+			MMDVFS_ERR("mux_cb_sram_init:%d virt:%#lx",
+				mux_cb_sram_init, (unsigned long)(void *)vcp_get_sram_virt_ex());
+			MMDVFS_ERR("mux_cb_time_ofs:%#x va:%#lx mux_cb_val_ofs:%#x va:%#lx",
+				readl(MEM_SRAM_MUX_CB_TIME_OFS),
+				(unsigned long)(void *)mmdvfs_mux_cb_time_sram_va,
+				readl(MEM_SRAM_MUX_CB_VAL_OFS),
+				(unsigned long)(void *)mmdvfs_mux_cb_val_sram_va);
 		}
 		mutex_lock(&mmdvfs_vcp_cb_mutex);
 		mmdvfs_vcp_cb_ready = true;
@@ -1945,11 +1991,11 @@ static int mmdvfs_vcp_init_thread(void *data)
 	MMDVFS_DBG("mmup_ena:%d", mmup_ena);
 
 	while (!mmdebug_is_init_done()) {
-		if (++retry > 100) {
+		if (++retry > 2000) {
 			MMDVFS_ERR("mmdebug is not ready yet");
 			return -ETIMEDOUT;
 		}
-		ssleep(1);
+		msleep(50);
 	}
 
 	retry = 0;
@@ -2501,8 +2547,10 @@ static int mmdvfs_mux_probe(struct platform_device *pdev)
 	of_property_read_s32(node, "mediatek,dpsw-thres", &dpsw_thr);
 	mmdvfs_restore_step = of_property_read_bool(node, "mediatek,restore-step");
 	mmdvfs_mmup_sram = of_property_read_bool(node, "mediatek,mmup-sram");
-	MMDVFS_DBG("version:%d swrgo:%d free_run:%d dpsw_thr:%d restore_step:%d mmup_sram:%d",
-		mmdvfs_mux_version, mmdvfs_swrgo, mmdvfs_free_run, dpsw_thr, mmdvfs_restore_step, mmdvfs_mmup_sram);
+	mmdvfs_mux_cb_sram = of_property_read_bool(node, "mediatek,mux-cb-sram");
+	MMDVFS_DBG("version:%d swrgo:%d free_run:%d dpsw_thr:%d restore_step:%d mmup_sram:%d mux_cb_sram:%d",
+		mmdvfs_mux_version, mmdvfs_swrgo, mmdvfs_free_run, dpsw_thr, mmdvfs_restore_step,
+		mmdvfs_mmup_sram, mmdvfs_mux_cb_sram);
 
 	larb = of_parse_phandle(pdev->dev.of_node, "mediatek,vdec-larb", 0);
 	if (larb) {

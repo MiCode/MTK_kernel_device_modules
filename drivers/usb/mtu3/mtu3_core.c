@@ -279,6 +279,8 @@ void mtu3_device_disable(struct mtu3 *mtu)
 {
 	void __iomem *ibase = mtu->ippc_base;
 
+	ssusb_wait_power_state(mtu->ssusb, MTU3_STATE_POWER_OFF);
+
 	if (mtu->u3_capable)
 		mtu3_setbits(ibase, SSUSB_U3_CTRL(0),
 			(SSUSB_U3_PORT_DIS | SSUSB_U3_PORT_PDN));

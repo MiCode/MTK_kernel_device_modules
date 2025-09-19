@@ -29,11 +29,19 @@
 #include <net/sock.h>		/* netlink */
 #include <linux/suspend.h>
 #include "mtk_battery.h"
+#include "mtk_charger.h"
+#if defined(CONFIG_SUPPORT_DUAL_BATTERY)
+#include "mpc8011b.h"
+#include "fuelgauge_class.h"
+#else
+#include "bq28z610.h"
+#endif
 #include "mtk_battery_table.h"
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 #include <mt-plat/aee.h>
 #endif
-
+#include "../../misc/mediatek/power_throttling/mtk_low_battery_throttling.h"
+#include "charger_partition.h"
 
 struct mtk_battery *gmb;
 
@@ -84,6 +92,10 @@ void __attribute__ ((weak))
 
 void __attribute__ ((weak))
 	fg_drv_update_daemon(struct mtk_battery *gm)
+{
+}
+
+static void charger_parse_cmdline(struct mtk_battery *gm)
 {
 }
 
@@ -2750,27 +2762,452 @@ static int reset_set(struct mtk_battery *gm,
 	return 0;
 }
 
+static int night_charging_get(struct mtk_battery *gm,
+	struct mtk_battery_sysfs_field_info *attr,
+	int *val)
+{
+	*val = night_charging_get_flag();
+	return 0;
+}
+
+static int night_charging_set(struct mtk_battery *gm,
+	struct mtk_battery_sysfs_field_info *attr,
+	int val)
+{
+	night_charging_set_flag(!!val);
+        gm->night_charging = !!val;
+	return 0;
+}
+
+static int input_suspend_get(struct mtk_battery *gm,
+	struct mtk_battery_sysfs_field_info *attr,
+	int *val)
+{
+	*val = input_suspend_get_flag();
+	return 0;
+}
+
+static int input_suspend_set(struct mtk_battery *gm,
+	struct mtk_battery_sysfs_field_info *attr,
+	int val)
+{
+	input_suspend_set_flag(!!val);
+	return 0;
+}
+
+static int smart_batt_get(struct mtk_battery *gm,
+	struct mtk_battery_sysfs_field_info *attr,
+	int *val)
+{
+	*val = gm->smart_batt_diff_fv;
+	bm_err(gm, "%s val:%d\n",
+		__func__, *val);
+	return 0;
+}
+
+static int smart_batt_set(struct mtk_battery *gm,
+	struct mtk_battery_sysfs_field_info *attr,
+	int val)
+{
+	smart_batt_set_diff_fv(val);
+	gm->smart_batt_diff_fv = val;
+	bm_err(gm, "%s val:%d\n",
+		__func__, val);
+	return 0;
+}
+
+static int smart_fv_get(struct mtk_battery *gm,
+	struct mtk_battery_sysfs_field_info *attr,
+	int *val)
+{
+	*val = gm->smart_fv_diff_fv;
+	bm_err(gm, "%s val:%d\n",
+		__func__, *val);
+	return 0;
+}
+
+static int smart_fv_set(struct mtk_battery *gm,
+	struct mtk_battery_sysfs_field_info *attr,
+	int val)
+{
+	smart_fv_set_diff_fv(val);
+	gm->smart_fv_diff_fv = val;
+	bm_err(gm, "%s val:%d\n",
+		__func__, val);
+	return 0;
+}
+
+//charger partition rw node
+static int charger_partition_test_get(struct mtk_battery *gm,
+	struct mtk_battery_sysfs_field_info *attr,
+	int *val)
+{
+	int ret = 0;
+	charger_partition_info_1 *info_1 = NULL;
+
+	ret = charger_partition_alloc(CHARGER_PARTITION_HOST_KERNEL, CHARGER_PARTITION_INFO_1, sizeof(charger_partition_info_1));
+	if(ret < 0) {
+		chr_err("[charger] %s failed to alloc\n", __func__);
+		return -1;
+	}
+
+	info_1 = (charger_partition_info_1 *)charger_partition_read(CHARGER_PARTITION_HOST_KERNEL, CHARGER_PARTITION_INFO_1, sizeof(charger_partition_info_1));
+	if(!info_1) {
+		chr_err("[charger] %s failed to read\n", __func__);
+		ret = charger_partition_dealloc(CHARGER_PARTITION_HOST_KERNEL, CHARGER_PARTITION_INFO_1, sizeof(charger_partition_info_1));
+		if(ret < 0) {
+			pr_err("[charger] %s failed to dealloc\n", __func__);
+			return -1;
+		}
+		return -1;
+	}
+	pr_err("[charger] %s ret: %d, info_1->test: %u\n", __func__, ret, info_1->test);
+	*val = info_1->test;
+
+	ret = charger_partition_dealloc(CHARGER_PARTITION_HOST_KERNEL, CHARGER_PARTITION_INFO_1, sizeof(charger_partition_info_1));
+	if(ret < 0) {
+		chr_err("[charger] %s failed to dealloc\n", __func__);
+		return -1;
+	}
+	return 0;
+}
+
+static int charger_partition_test_set(struct mtk_battery *gm,
+	struct mtk_battery_sysfs_field_info *attr,
+	int val)
+{
+	int ret = 0;
+	charger_partition_info_1 info_1 = {.power_off_mode = 2, .zero_speed_mode = 2, .test = 2, .reserved = 0};
+
+	ret = charger_partition_alloc(CHARGER_PARTITION_HOST_KERNEL, CHARGER_PARTITION_INFO_1, sizeof(charger_partition_info_1));
+	if(ret < 0) {
+		chr_err("[charger] %s failed to alloc\n", __func__);
+		return -1;
+	}
+
+	info_1.test = val;
+	ret = charger_partition_write(CHARGER_PARTITION_HOST_KERNEL, CHARGER_PARTITION_INFO_1, (void *)&info_1, sizeof(charger_partition_info_1));
+	if(ret < 0) {
+		chr_err("[charger] %s failed to write\n", __func__);
+		ret = charger_partition_dealloc(CHARGER_PARTITION_HOST_KERNEL, CHARGER_PARTITION_INFO_1, sizeof(charger_partition_info_1));
+		if(ret < 0) {
+			pr_err("[charger] %s failed to dealloc\n", __func__);
+			return -1;
+		}
+		return -1;
+	}
+	pr_err("[charger] %s ret: %d, info_1.test: %u\n", __func__, ret, info_1.test);
+
+	ret = charger_partition_dealloc(CHARGER_PARTITION_HOST_KERNEL, CHARGER_PARTITION_INFO_1, sizeof(charger_partition_info_1));
+	if(ret < 0) {
+		chr_err("[charger] %s failed to dealloc\n", __func__);
+		return -1;
+	}
+	return 0;
+}
+
+static int charger_partition_poweroffmode_get(struct mtk_battery *gm,
+	struct mtk_battery_sysfs_field_info *attr,
+	int *val)
+{
+	int ret = 0;
+	charger_partition_info_1 *info_1 = NULL;
+
+	ret = charger_partition_alloc(CHARGER_PARTITION_HOST_KERNEL, CHARGER_PARTITION_INFO_1, sizeof(charger_partition_info_1));
+	if(ret < 0) {
+		chr_err("[charger] %s failed to alloc\n", __func__);
+		return -1;
+	}
+
+	info_1 = (charger_partition_info_1 *)charger_partition_read(CHARGER_PARTITION_HOST_KERNEL, CHARGER_PARTITION_INFO_1, sizeof(charger_partition_info_1));
+	if(!info_1) {
+		chr_err("[charger] %s failed to read\n", __func__);
+		ret = charger_partition_dealloc(CHARGER_PARTITION_HOST_KERNEL, CHARGER_PARTITION_INFO_1, sizeof(charger_partition_info_1));
+		if(ret < 0) {
+			pr_err("[charger] %s failed to dealloc\n", __func__);
+			return -1;
+		}
+		return -1;
+	}
+	pr_err("[charger] %s ret: %d, info_1->power_off_mode: %u\n", __func__, ret, info_1->power_off_mode);
+	*val = info_1->power_off_mode;
+
+	ret = charger_partition_dealloc(CHARGER_PARTITION_HOST_KERNEL, CHARGER_PARTITION_INFO_1, sizeof(charger_partition_info_1));
+	if(ret < 0) {
+		chr_err("[charger] %s failed to dealloc\n", __func__);
+		return -1;
+	}
+	return 0;
+}
+
+static int charger_partition_poweroffmode_set(struct mtk_battery *gm,
+	struct mtk_battery_sysfs_field_info *attr,
+	int val)
+{
+	int ret = 0;
+	charger_partition_info_1 info_1 = {.power_off_mode = 2, .zero_speed_mode = 2, .test = 0x34567890, .reserved = 0};
+
+	ret = charger_partition_alloc(CHARGER_PARTITION_HOST_KERNEL, CHARGER_PARTITION_INFO_1, sizeof(charger_partition_info_1));
+	if(ret < 0) {
+		chr_err("[charger] %s failed to alloc\n", __func__);
+		return -1;
+	}
+
+	info_1.power_off_mode = val;
+	ret = charger_partition_write(CHARGER_PARTITION_HOST_KERNEL, CHARGER_PARTITION_INFO_1, (void *)&info_1, sizeof(charger_partition_info_1));
+	if(ret < 0) {
+		chr_err("[charger] %s failed to write\n", __func__);
+		ret = charger_partition_dealloc(CHARGER_PARTITION_HOST_KERNEL, CHARGER_PARTITION_INFO_1, sizeof(charger_partition_info_1));
+		if(ret < 0) {
+			pr_err("[charger] %s failed to dealloc\n", __func__);
+			return -1;
+		}
+		return -1;
+	}
+	pr_err("[charger] %s ret: %d, info_1.power_off_mode: %u, info_1.test: 0x%0x\n", __func__, ret, info_1.power_off_mode, info_1.test);
+
+	ret = charger_partition_dealloc(CHARGER_PARTITION_HOST_KERNEL, CHARGER_PARTITION_INFO_1, sizeof(charger_partition_info_1));
+	if(ret < 0) {
+		chr_err("[charger] %s failed to dealloc\n", __func__);
+		return -1;
+	}
+	return 0;
+}
+
+static int shipmode_count_reset_get(struct mtk_battery *gm,
+	struct mtk_battery_sysfs_field_info *attr,
+	int *val)
+{
+	*val = gm->shipmode_flag;
+	return 0;
+}
+
+static int shipmode_count_reset_set(struct mtk_battery *gm,
+	struct mtk_battery_sysfs_field_info *attr,
+	int val)
+{
+	gm->shipmode_flag = val;
+        bm_debug(gm, "[%s] shipmode_flag = %d\n",
+		__func__,
+		gm->shipmode_flag);
+
+	return 0;
+}
+
+#if defined(CONFIG_RUST_DETECTION)
+#define LPD_IMPEDANCE_DETE_PRECISION 10
+static int otg_ui_support_get(struct mtk_battery *gm,
+	struct mtk_battery_sysfs_field_info *attr,
+	int *val)
+{
+	*val = 1;
+	chr_err("[%s] *val: %d\n", __func__, *val);
+	return 0;
+}
+
+static int cid_status_get(struct mtk_battery *gm,
+	struct mtk_battery_sysfs_field_info *attr,
+	int *val)
+{
+	*val = manual_get_cid_status();
+	chr_err("[%s] *val: %d\n", __func__, *val);
+	return 0;
+}
+
+static int cc_toggle_get(struct mtk_battery *gm,
+	struct mtk_battery_sysfs_field_info *attr,
+	int *val)
+{
+	manual_get_cc_toggle(&gm->control_cc_toggle);
+	*val = !!gm->control_cc_toggle;
+	chr_err("[%s] *val: %d\n", __func__, *val);
+	return 0;
+}
+
+static int cc_toggle_set(struct mtk_battery *gm,
+	struct mtk_battery_sysfs_field_info *attr,
+	int val)
+{
+	gm->control_cc_toggle = val;
+	manual_set_cc_toggle(!!val);
+	chr_err("[%s] *val: %d\n", __func__, gm->control_cc_toggle);
+	return 0;
+}
+
+static int dp_get(struct mtk_battery *gm,
+	struct mtk_battery_sysfs_field_info *attr,
+	int *val)
+{
+	*val = lpd_dp_res_get_from_charger(1) * LPD_IMPEDANCE_DETE_PRECISION;
+	chr_err("[%s] *val: %d\n", __func__, *val);
+	return 0;
+}
+
+static int dm_get(struct mtk_battery *gm,
+	struct mtk_battery_sysfs_field_info *attr,
+	int *val)
+{
+	*val = lpd_dp_res_get_from_charger(2) * LPD_IMPEDANCE_DETE_PRECISION;
+	chr_err("[%s] *val: %d\n", __func__, *val);
+	return 0;
+}
+
+static int sbu1_get(struct mtk_battery *gm,
+	struct mtk_battery_sysfs_field_info *attr,
+	int *val)
+{
+	*val = lpd_dp_res_get_from_charger(3) * LPD_IMPEDANCE_DETE_PRECISION;
+	chr_err("[%s] *val: %d\n", __func__, *val);
+	return 0;
+}
+
+static int sbu2_get(struct mtk_battery *gm,
+	struct mtk_battery_sysfs_field_info *attr,
+	int *val)
+{
+	*val = lpd_dp_res_get_from_charger(4) * LPD_IMPEDANCE_DETE_PRECISION;
+	chr_err("[%s] *val: %d\n", __func__, *val);
+	return 0;
+}
+
+static int lpd_update_en_get(struct mtk_battery *gm,
+	struct mtk_battery_sysfs_field_info *attr,
+	int *val)
+{
+	*val = gm->lpd_update_en;
+	chr_err("[%s] *val: %d\n", __func__, *val);
+	return 0;
+}
+
+static int lpd_update_en_set(struct mtk_battery *gm,
+	struct mtk_battery_sysfs_field_info *attr,
+	int val)
+{
+	lpd_update_en_set_to_charger(val);
+	gm->lpd_update_en = val;
+	chr_err("[%s] val: %d\n", __func__, val);
+	return 0;
+}
+
+static int moisture_detection_en_get(struct mtk_battery *gm,
+	struct mtk_battery_sysfs_field_info *attr,
+	int *val)
+{
+	*val = gm->lpd_en_manual;
+	chr_err("[%s] *val: %d\n", __func__, *val);
+	return 0;
+}
+
+static int moisture_detection_en_set(struct mtk_battery *gm,
+	struct mtk_battery_sysfs_field_info *attr,
+	int val)
+{
+	liquid_detectin_enable_man(val);
+	gm->lpd_en_manual = val;
+	chr_err("[%s] val: %d\n", __func__, val);
+	return 0;
+}
+
+static int dis_uart_get(struct mtk_battery *gm,
+	struct mtk_battery_sysfs_field_info *attr,
+	int *val)
+{
+	*val = gm->dis_uart;
+	chr_err("[%s] *val: %d\n", __func__, *val);
+	return 0;
+}
+
+static int dis_uart_set(struct mtk_battery *gm,
+	struct mtk_battery_sysfs_field_info *attr,
+	int val)
+{
+	disable_uart_manual(val);
+	gm->dis_uart = val;
+	chr_err("[%s] val: %d\n", __func__, val);
+	return 0;
+}
+
+static int moisture_detection_status_get(struct mtk_battery *gm,
+	struct mtk_battery_sysfs_field_info *attr,
+	int *val)
+{
+	if(gm->info != NULL)
+	{
+		*val = !!gm->info->lpd_flag;
+	}else{
+		*val = 0;
+	}
+	chr_err("[%s] *val: %d\n", __func__, *val);
+	return 0;
+}
+
+static int lpd_charging_get(struct mtk_battery *gm,
+	struct mtk_battery_sysfs_field_info *attr,
+	int *val)
+{
+	*val = gm->lpd_charging_limit;
+	chr_err("[%s] *val: %d\n", __func__, *val);
+	return 0;
+}
+
+static int lpd_charging_set(struct mtk_battery *gm,
+	struct mtk_battery_sysfs_field_info *attr,
+	int val)
+{
+	gm->lpd_charging_limit = !!val;
+	lpd_charging_set_to_charger(!!val);
+	chr_err("[%s] val: %d\n", __func__, val);
+	return 0;
+}
+#endif
+
 static ssize_t bat_sysfs_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
 {
 	struct power_supply *psy;
+	struct mtk_battery_manager *bm;
 	struct mtk_battery *gm;
 	struct mtk_battery_sysfs_field_info *battery_attr;
 	int val;
 	ssize_t ret;
+#if defined CONFIG_SUPPORT_DUAL_BATTERY
+	char t_data[70] = {0};
+#endif
 
+#ifndef CONFIG_SUPPORT_DUAL_BATTERY
 	ret = kstrtos32(buf, 0, &val);
 	if (ret < 0)
 		return ret;
 
 	psy = dev_get_drvdata(dev);
-	gm = (struct mtk_battery *)power_supply_get_drvdata(psy);
+	bm = (struct mtk_battery_manager *)power_supply_get_drvdata(psy);
+	gm = bm->gm1;
 
 	battery_attr = container_of(attr,
 		struct mtk_battery_sysfs_field_info, attr);
 	if (battery_attr->set != NULL)
 		battery_attr->set(gm, battery_attr, val);
+#else
+	psy = dev_get_drvdata(dev);
+	bm = (struct mtk_battery_manager *)power_supply_get_drvdata(psy);
+	gm = bm->gm1;
 
+	battery_attr = container_of(attr,
+		struct mtk_battery_sysfs_field_info, attr);
+	if(battery_attr->set != NULL){
+		ret = kstrtos32(buf, 0, &val);
+		if (ret < 0)
+			return ret;
+	}
+
+	if (battery_attr->setbuf != NULL){
+		memset(t_data, 0, sizeof(t_data));
+		strncpy(t_data, buf, count);
+		battery_attr->setbuf(gm, battery_attr, t_data);
+	} else if (battery_attr->set != NULL) {
+		battery_attr->set(gm, battery_attr, val);
+	}
+#endif
 	return count;
 }
 
@@ -2779,19 +3216,26 @@ static ssize_t bat_sysfs_show(struct device *dev,
 {
 	struct power_supply *psy;
 	struct mtk_battery *gm;
+	struct mtk_battery_manager *bm;
 	struct mtk_battery_sysfs_field_info *battery_attr;
 	int val = 0;
+	char t_buf[256] = {0};
 	ssize_t count;
 
 	psy = dev_get_drvdata(dev);
-	gm = (struct mtk_battery *)power_supply_get_drvdata(psy);
+	bm = (struct mtk_battery_manager *)power_supply_get_drvdata(psy);
+	gm = bm->gm1;
 
 	battery_attr = container_of(attr,
 		struct mtk_battery_sysfs_field_info, attr);
-	if (battery_attr->get != NULL)
+	if (battery_attr->getbuf != NULL){
+		battery_attr->getbuf(gm, battery_attr, t_buf);
+		count = scnprintf(buf, PAGE_SIZE, "%s\n", t_buf);
+	} else if (battery_attr->get != NULL) {
 		battery_attr->get(gm, battery_attr, &val);
-
-	count = scnprintf(buf, PAGE_SIZE, "%d\n", val);
+		count = scnprintf(buf, PAGE_SIZE, "%d\n", val);
+	} else
+		count = scnprintf(buf, PAGE_SIZE, "%d\n", val);
 	return count;
 }
 
@@ -2800,6 +3244,368 @@ static int wakeup_fg_set(struct mtk_battery *gm,
 	int val)
 {
 	wakeup_fg_algo(gm, val);
+	return 0;
+}
+
+/* for smart_chg */
+static void set_error(struct mtk_battery *gm)
+{
+	gm->smart_chg[SMART_CHG_STATUS_FLAG].en_ret = 1;
+	bm_debug(gm, "%s en_ret=%d\n", __func__, gm->smart_chg[SMART_CHG_STATUS_FLAG].en_ret);
+}
+
+static void set_success(struct mtk_battery *gm)
+{
+	gm->smart_chg[SMART_CHG_STATUS_FLAG].en_ret = 0;
+}
+
+static int smart_chg_is_error(struct mtk_battery *gm)
+{
+	return gm->smart_chg[SMART_CHG_STATUS_FLAG].en_ret? true : false;
+}
+
+static void handle_smart_chg_functype(struct mtk_battery *gm,
+	const int func_type, const int en_ret, const int func_val)
+{
+	unsigned int temp = 0;
+	unsigned int volt = 0;
+	struct battery_data *bat_data = &gm->bm->bs_data;
+
+	switch (func_type) {
+	case SMART_CHG_NAVIGATION ... SMART_CHG_WLS_SUPER_CHG:
+	case SMART_CHG_TRAVELWAIT ... SMART_CHG_BYPASS:
+		gm->smart_chg[func_type].en_ret = en_ret;
+		gm->smart_chg[func_type].active_status = false;
+		gm->smart_chg[func_type].func_val = func_val;
+		set_success(gm);
+		bm_err(gm, "%s set func_type:%d\n", __func__, func_type);
+		break;
+	case SMART_CHG_SENSING_CHG:
+		if (!gm->smart_chg[func_type].use_fake_func_val) {
+			gm->smart_chg[func_type].en_ret = en_ret;
+			gm->smart_chg[func_type].active_status = false;
+			gm->smart_chg[func_type].func_val = func_val;
+			if (func_val >= FAKE_DESKTOP_STAT) {
+				gm->smart_chg[func_type].use_fake_func_val = true;
+				gm->smart_chg[func_type].func_val = func_val - FAKE_CLEAR_STAT;
+			}
+		} else {
+			if (func_val >= FAKE_CLEAR_STAT) {
+				gm->smart_chg[func_type].en_ret = en_ret;
+				gm->smart_chg[func_type].active_status = false;
+				gm->smart_chg[func_type].func_val = func_val - FAKE_CLEAR_STAT;
+				if (func_val == FAKE_CLEAR_STAT)
+					gm->smart_chg[func_type].use_fake_func_val = false;
+			} else
+				bm_err(gm, "%s ignore func_type %d during fake posture setting. \n", __func__, func_type);
+		}
+		set_success(gm);
+		bm_err(gm, "%s set func_type:%d\n", __func__, func_type);
+		break;
+	case SMART_CHG_WLS_QUIET:
+		gm->smart_chg[func_type].en_ret = en_ret;
+		gm->smart_chg[func_type].active_status = false;
+		gm->smart_chg[func_type].func_val = func_val;
+		set_success(gm);
+		bm_err(gm, "%s set func_type:%d\n", __func__, func_type);
+		smart_wls_quiet_set_status();
+		break;
+	case SMART_CHG_EXTREME_COLD_CHG:
+		gm->smart_chg[func_type].en_ret = en_ret;
+		gm->smart_chg[func_type].active_status = false;
+		gm->smart_chg[func_type].func_val = func_val;
+		set_success(gm);
+		bm_err(gm, "%s set func_type:%d\n", __func__, func_type);
+		if(gm->smart_chg[SMART_CHG_EXTREME_COLD_CHG].en_ret)
+		{
+			bm_err(gm, "smart_chg extreme_cold chg triggger\n");
+			gm->extreme_cold_chg_flag = true;
+			if(!gm->smart_chg[SMART_CHG_EXTREME_COLD_CHG].active_status)
+				gm->smart_chg[SMART_CHG_EXTREME_COLD_CHG].active_status = true;
+			exec_throttle_level_get(&temp);
+			exec_throttle_volt_get(&volt);
+			exec_throttle_set_extreme_cold_chg(true);
+			bm_err(gm, "smart_chg extreme_cold , O12/O12U cur_pt:%d, cur_volt:%d\n", temp, volt);
+			power_supply_changed(bat_data->psy);
+		} else {
+			gm->extreme_cold_chg_flag = false;
+			exec_throttle_set_extreme_cold_chg(false);
+			exec_throttle_level_get(&temp);
+			exec_throttle_volt_get(&volt);
+			bm_err(gm, "smart_chg extreme_cold chg don't triggger, O12 pt level:%d, volt:%d, gauge_temp:%d\n", temp, volt, gm->ext_gauge_temp);
+			power_supply_changed(bat_data->psy);
+		}
+		break;
+	default:
+		bm_err(gm, "%s ERROR: Not supported func type: %d\n", __func__, func_type);
+		set_error(gm);
+		break;
+	}
+}
+
+static int handle_smart_chg_funcval_status(struct mtk_battery *gm)
+{
+	int all_func_val = 0;
+
+	// smart sensechg val use bit[19:16]
+	if (gm->smart_chg[SMART_CHG_SENSING_CHG].en_ret) {
+		all_func_val = (gm->smart_chg[SMART_CHG_SENSING_CHG].func_val & 0xF) << 16;
+	}
+
+	bm_err(gm, "%s all_func_val:%#X\n", __func__, all_func_val);
+	return all_func_val;
+}
+
+static int handle_smart_chg_functype_status(struct mtk_battery *gm)
+{
+	int i;
+	int all_func_status = 0;
+	all_func_status |= !!gm->smart_chg[SMART_CHG_STATUS_FLAG].en_ret;	//handle bit0
+
+	bm_debug(gm, "%s all_func_status =%#X, en_ret=%d\n", __func__, all_func_status, gm->smart_chg[SMART_CHG_STATUS_FLAG].en_ret);
+
+	/* save functype[i] enable status in all_func_status bit[i] */
+	for(i = SMART_CHG_FEATURE_MIN_NUM; i <= SMART_CHG_FEATURE_MAX_NUM; i++){	 //handle bit1 ~ bit SMART_CHG_FEATURE_MAX_NUM
+		if(gm->smart_chg[i].en_ret)
+			all_func_status |= BIT_MASK(i);
+		else
+			all_func_status &= ~BIT_MASK(i);
+
+		bm_debug(gm, "%s type:%d, en_ret=%d, active_status=%d,func_val=%d, all_func_status=%#X\n",
+			__func__, i, gm->smart_chg[i].en_ret, gm->smart_chg[i].active_status, gm->smart_chg[i].func_val,all_func_status);
+	}
+
+	bm_err(gm, "%s all_func_status:%#X\n", __func__, all_func_status);
+	return all_func_status;
+}
+
+static int smart_chg_set(struct mtk_battery *gm,
+	struct mtk_battery_sysfs_field_info *attr,
+	int val)
+{
+	// DECLEAR_BITMAP(func_type, SMART_CHG_FEATURE_MAX_NUM);
+	bool en_ret = val & 0x1;
+	unsigned long func_type = (val & 0xFFFE) >> 1;
+	int func_val = val >> 16;
+	int bit_pos;
+	int all_func_status;
+
+	bm_err(gm, "%s get val:%#X, func_type:%lu, en_ret:%d, func_val:%d\n",
+		__func__,val, func_type, en_ret, func_val);
+
+	bit_pos = find_first_bit(&func_type, SMART_CHG_FEATURE_MAX_NUM);
+
+	/*  */
+	if(bit_pos == SMART_CHG_FEATURE_MAX_NUM || find_next_bit(&func_type, SMART_CHG_FEATURE_MAX_NUM , bit_pos + 1) != SMART_CHG_FEATURE_MAX_NUM){
+		bm_err(gm, "%s ERROR: zero or more than one func type!\n", __func__);
+		bm_debug(gm, "%s find_next_bit = %lu, bit_pos = %d\n",
+			__func__, find_next_bit(&func_type, SMART_CHG_FEATURE_MAX_NUM , bit_pos + 1), bit_pos);
+		set_error(gm);
+	} else
+		set_success(gm);
+
+	// if func_type bit0 is 1, bit_pos = 0, not 1. so ++bit_pos.
+	if(!smart_chg_is_error(gm))
+		handle_smart_chg_functype(gm, ++bit_pos, en_ret, func_val);
+
+    /* update smart_chg[0] status */
+	all_func_status = handle_smart_chg_functype_status(gm);
+	gm->smart_chg[SMART_CHG_STATUS_FLAG].en_ret = all_func_status & 0x1;
+	gm->smart_chg[SMART_CHG_STATUS_FLAG].active_status = (all_func_status & 0xFFFE) >> 1;
+
+	return 0;
+}
+
+static int smart_chg_get(struct mtk_battery *gm,
+	struct mtk_battery_sysfs_field_info *attr,
+	int *val)
+{
+	*val = handle_smart_chg_functype_status(gm) | handle_smart_chg_funcval_status(gm);
+
+	bm_err(gm, "%s val:%#X\n", __func__, *val);
+	return 0;
+}
+/* smart chg end */
+
+#if defined(CONFIG_XM_SOH_SN)
+static int calc_rvalue_get(struct mtk_battery *gm,
+	struct mtk_battery_sysfs_field_info *attr,
+	int *val)
+{
+	int calc_rvalue = 0;
+	bms_get_property(BMS_PROP_CALC_RVALUE, &calc_rvalue);
+	*val = calc_rvalue;
+	bm_err(gm,"%s val:%d\n", __func__, *val);
+	return 0;
+}
+
+static int soh_sn_getbuf(struct mtk_battery *gm,
+	struct mtk_battery_sysfs_field_info *attr,
+	char *buf)
+{
+	char data[32] = {0};
+#if defined(CONFIG_SUPPORT_DUAL_BATTERY)
+	if (gm->fg_slave_dev)
+		fuelgauge_dev_fg_get_soh_sn(gm->fg_slave_dev, data);
+#else
+	if (gm->ti_bms_psy)
+		bms_get_soh_sn(gm->ti_bms_psy, data);
+#endif
+	snprintf(buf, PAGE_SIZE, "%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d",
+			data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7],
+			data[8], data[9], data[10], data[11], data[12], data[13], data[14], data[15],
+			data[16], data[17], data[18], data[19], data[20], data[21], data[22], data[23],
+			data[24], data[25], data[26], data[27], data[28], data[29], data[30], data[31]);
+	bm_err(gm,"%s soh_sn_data = %s\n", __func__, buf);
+	return 0;
+}
+
+#if defined (CONFIG_SUPPORT_DUAL_BATTERY)
+static int fg2_soh_sn_getbuf(struct mtk_battery *gm,
+	struct mtk_battery_sysfs_field_info *attr,
+	char *buf)
+{
+	char data[32] = {0};
+	if (gm->fg_slave_dev)
+		fuelgauge_dev_fg_get_soh_sn(gm->fg_slave_dev, data);
+
+	snprintf(buf, PAGE_SIZE, "%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d",
+			data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7],
+			data[8], data[9], data[10], data[11], data[12], data[13], data[14], data[15],
+			data[16], data[17], data[18], data[19], data[20], data[21], data[22], data[23],
+			data[24], data[25], data[26], data[27], data[28], data[29], data[30], data[31]);
+	bm_err(gm,"%s soh_sn_slave_data = %s\n", __func__, buf);
+	return 0;
+}
+#endif
+#endif
+
+#if defined (CONFIG_SUPPORT_DUAL_BATTERY)
+static int fg2_soh_get(struct mtk_battery *gm,
+	struct mtk_battery_sysfs_field_info *attr,
+	int *val)
+{
+	int fg2_soh = 0;
+	slave_bms_get_property(BMS_PROP_SOH, &fg2_soh);
+	*val = fg2_soh;
+	bm_err(gm,"%s fg2_soh:%d\n", __func__, *val);
+	return 0;
+}
+
+static int fg2_cycle_get(struct mtk_battery *gm,
+	struct mtk_battery_sysfs_field_info *attr,
+	int *val)
+{
+	union power_supply_propval pval = {0};
+	if (gm->bms_slave_psy){
+		power_supply_get_property(gm->bms_slave_psy, POWER_SUPPLY_PROP_CYCLE_COUNT, &pval);
+	} else {
+		gm->bms_slave_psy =  power_supply_get_by_name("bms_slave");
+		if(gm->bms_slave_psy)
+			power_supply_get_property(gm->bms_slave_psy, POWER_SUPPLY_PROP_CYCLE_COUNT, &pval);
+		else
+			bm_err(gm, "%s get bms_slave_psy is NULL\n", __func__);
+	}
+	*val = pval.intval;
+	bm_err(gm,"%s fg2_cycle:%d\n", __func__, *val);
+	return 0;
+}
+
+static int slave_authentic_get(struct mtk_battery *gm,
+	struct mtk_battery_sysfs_field_info *attr,
+	int *val)
+{
+	int slave_authentic = 0;
+	slave_bms_get_property(BMS_PROP_AUTHENTIC, &slave_authentic);
+	*val = slave_authentic;
+	bm_err(gm,"%s slave_authentic:%d\n", __func__, *val);
+	return 0;
+}
+
+static int fg2_design_capacity_get(struct mtk_battery *gm,
+	struct mtk_battery_sysfs_field_info *attr,
+	int *val)
+{
+	union power_supply_propval pval = {0};
+	if (gm->bms_slave_psy){
+		power_supply_get_property(gm->bms_slave_psy, POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN, &pval);
+	} else {
+		gm->bms_slave_psy =  power_supply_get_by_name("bms_slave");
+		if(gm->bms_slave_psy)
+			power_supply_get_property(gm->bms_slave_psy, POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN, &pval);
+		else
+			bm_err(gm, "%s get bms_slave_psy is NULL\n", __func__);
+	}
+	*val = pval.intval;
+	bm_err(gm,"%s fg2_design_capacity:%d\n", __func__, *val);
+	return 0;
+}
+
+static int ui_slave_soh_getbuf(struct mtk_battery *gm,
+	struct mtk_battery_sysfs_field_info *attr,
+	char *buf)
+{
+	char ui_soh_data[70] = {0};
+	int ret = 0;
+	if (gm->fg_slave_dev)
+		fuelgauge_dev_fg_get_ui_soh(gm->fg_slave_dev, ui_soh_data);
+
+	ret = snprintf(buf, PAGE_SIZE, "%d %d %d %d %d %d %d %d %d %d %d\n",
+		ui_soh_data[0],ui_soh_data[1],ui_soh_data[2],ui_soh_data[3],ui_soh_data[4],ui_soh_data[5],
+		ui_soh_data[6],ui_soh_data[7],ui_soh_data[8],ui_soh_data[9],ui_soh_data[10]);
+	bm_err(gm,"%s ui_slave_soh = %s\n", __func__, buf);
+	return 0;
+}
+
+static int ui_slave_soh_setbuf(struct mtk_battery *gm,
+	struct mtk_battery_sysfs_field_info *attr,
+	char *buf)
+{
+	if (gm->fg_slave_dev)
+		fuelgauge_dev_fg_set_ui_soh(gm->fg_slave_dev, buf);
+	bm_err(gm,"%s ui_slave_soh = %s\n", __func__, buf);
+	return 0;
+}
+#endif
+
+static int dfx_interval_get(struct mtk_battery *gm,
+	struct mtk_battery_sysfs_field_info *attr,
+	int *val)
+{
+	*val = dfx_get_report_interval();
+	return 0;
+}
+
+static int dfx_interval_set(struct mtk_battery *gm,
+	struct mtk_battery_sysfs_field_info *attr,
+	int val)
+{
+	dfx_set_report_interval(val);
+	return 0;
+}
+
+static int dfx_fake_report_get(struct mtk_battery *gm,
+	struct mtk_battery_sysfs_field_info *attr,
+	int *val)
+{
+	*val = (int)dfx_get_fake_report_type();
+	return 0;
+}
+
+static int dfx_fake_report_set(struct mtk_battery *gm,
+	struct mtk_battery_sysfs_field_info *attr,
+	int val)
+{
+	dfx_set_fake_report_type(val);
+	return 0;
+}
+
+static int extreme_cold_chg_get(struct mtk_battery *gm,
+	struct mtk_battery_sysfs_field_info *attr,
+	int *val)
+{
+	*val = gm->extreme_cold_chg_flag;
+	bm_err(gm, "get smart_chg extreme_cold flag = %d\n", gm->extreme_cold_chg_flag);
 	return 0;
 }
 
@@ -2817,10 +3623,54 @@ static struct mtk_battery_sysfs_field_info battery_sysfs_field_tbl[] = {
 	BAT_SYSFS_FIELD_WO(reset, BAT_PROP_FG_RESET),
 	BAT_SYSFS_FIELD_RW(log_level, BAT_PROP_LOG_LEVEL),
 	BAT_SYSFS_FIELD_WO(wakeup_fg, BAT_PROP_WAKEUP_FG_ALGO),
+	BAT_SYSFS_FIELD_RW(night_charging, BAT_PROP_NIGHT_CHARGING),
+	BAT_SYSFS_FIELD_RW(input_suspend, BAT_PROP_INPUT_SUSPEND),
+	BAT_SYSFS_FIELD_RW(smart_batt, BAT_PROP_SMART_BATT),
+	BAT_SYSFS_FIELD_RW(smart_fv, BAT_PROP_SMART_FV),
+	BAT_SYSFS_FIELD_RW(charger_partition_test, USB_PROP_CHARGER_PARTITION_TEST),
+	BAT_SYSFS_FIELD_RW(charger_partition_poweroffmode, USB_PROP_CHARGER_PARTITION_POWEROFFMODE),
+	BAT_SYSFS_FIELD_RW(shipmode_count_reset, BAT_PROP_SHIPMODE),
+	BAT_SYSFS_FIELD_RW(smart_chg, BAT_PROP_SMART_CHG),
+	BAT_SYSFS_FIELD_RO(extreme_cold_chg, BAT_PROP_EXTREME_COLD_CHG),
+	BAT_SYSFS_FIELD_RW(dfx_interval, BAT_PROP_DFX_INTERVAL),
+	BAT_SYSFS_FIELD_RW(dfx_fake_report, BAT_PROP_DFX_FAKE_REPORT),
+#if defined(CONFIG_XM_SOH_SN)
+	BAT_SYSFS_FIELD_RO(calc_rvalue, BAT_PROP_CALC_RVALUE),
+	BAT_SYSFS_FIELD_STRING_RO(soh_sn, BAT_PROP_SOH_SN),
+#if defined(CONFIG_SUPPORT_DUAL_BATTERY)
+	BAT_SYSFS_FIELD_STRING_RO(fg2_soh_sn, BAT_PROP_FG2_SOH_SN),
+#endif
+#endif
+#if defined(CONFIG_RUST_DETECTION)
+	BAT_SYSFS_FIELD_RO(otg_ui_support, BAT_PROP_OTG_UI_SUPPORT),
+	BAT_SYSFS_FIELD_RO(cid_status, BAT_PROP_CID_STATUS),
+	BAT_SYSFS_FIELD_RW(cc_toggle, BAT_PROP_CC_TOGGLE),
+	BAT_SYSFS_FIELD_RO(dp, BAT_PROP_DP),
+	BAT_SYSFS_FIELD_RO(dm, BAT_PROP_DM),
+	BAT_SYSFS_FIELD_RO(sbu1, BAT_PROP_SBU1),
+	BAT_SYSFS_FIELD_RO(sbu2, BAT_PROP_SBU2),
+	BAT_SYSFS_FIELD_RW(lpd_update_en, BAT_PROP_LPD_UPDATE_EN),
+	BAT_SYSFS_FIELD_RW(moisture_detection_en, BAT_PROP_MOISTURE_DETECTION_EN),
+	BAT_SYSFS_FIELD_RW(dis_uart, BAT_PROP_DIS_UART),
+	BAT_SYSFS_FIELD_RO(moisture_detection_status, BAT_PROP_MOISTURE_DETECTION_STATUS),
+	BAT_SYSFS_FIELD_RW(lpd_charging  , BAT_PROP_LPD_CHARGING),
+#endif
+#if defined(CONFIG_SUPPORT_DUAL_BATTERY)
+	BAT_SYSFS_FIELD_RO(fg2_soh, BAT_PROP_FG2_SOH),
+	BAT_SYSFS_FIELD_RO(fg2_cycle, BAT_PROP_FG2_CYCLE),
+	BAT_SYSFS_FIELD_RO(slave_authentic, BAT_PROP_SLAVE_AUTHENTIC),
+	BAT_SYSFS_FIELD_RO(fg2_design_capacity, BAT_PROP_FG2_DESIGN_CAPACITY),
+	BAT_SYSFS_FIELD_STRING_RW(ui_slave_soh, BAT_PROP_UI_SLAVE_SOH),
+
+#endif
 };
 
 static struct attribute *
 	battery_sysfs_attrs[ARRAY_SIZE(battery_sysfs_field_tbl) + 1];
+
+struct attribute_group battery_sysfs_attr_group = {
+	.attrs = battery_sysfs_attrs,
+};
 
 static void battery_sysfs_init_attrs(void)
 {
@@ -2836,6 +3686,19 @@ static int battery_sysfs_create_group(struct mtk_battery *gm)
 {
 	battery_sysfs_init_attrs();
 	return 0;
+}
+
+static int mtk_battery_create_sysfs(struct mtk_battery *gm)
+{
+	struct power_supply *usb_psy = NULL;
+
+	usb_psy = power_supply_get_by_name("usb");
+	if (!IS_ERR_OR_NULL(usb_psy)) {
+		gm->info = (struct mtk_charger *)power_supply_get_drvdata(usb_psy);
+	}
+
+	return sysfs_create_group(&gm->bm->bs_data.psy->dev.kobj,
+			&battery_sysfs_attr_group);
 }
 
 /* ============================================================ */
@@ -3300,8 +4163,13 @@ int battery_init(struct platform_device *pdev)
 	gm->log_level = BMLOG_ERROR_LEVEL;
 	gm->sw_iavg_gap = 3000;
 	gm->in_sleep = false;
+	gm->thermal_level = 0;
+	gm->shipmode_flag = false;
+	gm->extreme_cold_chg_flag = false;
 
 	mutex_init(&gm->fg_update_lock);
+
+	charger_parse_cmdline(gm);
 
 	init_waitqueue_head(&gm->wait_que);
 
@@ -3346,9 +4214,11 @@ int battery_init(struct platform_device *pdev)
 	fg_drv_thread_hrtimer_init(gm);
 	battery_sysfs_create_group(gm);
 	gm->battery_sysfs = battery_sysfs_field_tbl;
+	gm->create_sysfs = mtk_battery_create_sysfs;
 
 	/* for gauge hal hw ocv */
 	gm->battery_temp = force_get_tbat(gm, true);
+	gm->ext_gauge_temp = 0;
 	//mtk_power_misc_init(gm);
 
 	ret = mtk_battery_daemon_init(pdev);
@@ -3362,6 +4232,19 @@ int battery_init(struct platform_device *pdev)
 		battery_algo_init(gm);
 		bm_err(gm, "[%s]: enable Kernel mode Gauge\n", __func__);
 	}
+
+#if defined(CONFIG_SUPPORT_DUAL_BATTERY)
+	gm->bms_master_psy = power_supply_get_by_name("bms");
+	gm->bms_slave_psy =  power_supply_get_by_name("bms_slave");
+	gm->fg_master_dev = get_fuelgauge_by_name("fg_master");
+	if (!gm->fg_master_dev) {
+		bm_err(gm, "%s failed to get fg_master_dev\n", __func__);
+	}
+	gm->fg_slave_dev = get_fuelgauge_by_name("fg_slave");
+	if (!gm->fg_slave_dev) {
+		bm_err(gm, "%s failed to get fg_slave_dev\n", __func__);
+	}
+#endif
 
 	return 0;
 }

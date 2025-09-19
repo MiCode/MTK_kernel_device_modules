@@ -13,7 +13,63 @@
 
 #include "mtk_cpuhp_private.h"
 
+#if IS_ENABLED(CONFIG_MT8788_CPUHOTPLUG)
+static int arch_get_nr_clusters(void)
+{
+	int __arch_nr_clusters = -1;
+	int max_id = 0;
+	unsigned int cpu;
 
+	/* assume socket id is monotonic increasing without gap. */
+	for_each_possible_cpu(cpu) {
+		struct cpu_topology *cpu_topo = &cpu_topology[cpu];
+
+		if (cpu_topo->cluster_id > max_id)
+			max_id = cpu_topo->cluster_id;
+	}
+	__arch_nr_clusters = max_id + 1;
+	return __arch_nr_clusters;
+}
+#if IS_BUILTIN(CONFIG_MTK_CPUHOTPLUG)
+static int arch_get_cluster_id(unsigned int cpu)
+#else
+int arch_get_cluster_id(unsigned int cpu)
+#endif
+{
+	struct cpu_topology *cpu_topo = &cpu_topology[cpu];
+
+	return cpu_topo->cluster_id < 0 ? 0 : cpu_topo->cluster_id;
+}
+
+
+#if IS_ENABLED(CONFIG_ARM64)
+static void arch_get_cluster_cpus(struct cpumask *cpus, int cluster_id)
+{
+	unsigned int cpu;
+
+	cpumask_clear(cpus);
+	for_each_possible_cpu(cpu) {
+		struct cpu_topology *cpu_topo = &cpu_topology[cpu];
+
+		if (cpu_topo->cluster_id == cluster_id)
+			cpumask_set_cpu(cpu, cpus);
+	}
+}
+# else
+static void arch_get_cluster_cpus(struct cpumask *cpus, int cluster_id)
+{
+	unsigned int cpu;
+
+	cpumask_clear(cpus);
+	for_each_possible_cpu(cpu) {
+		struct cpu_topology *cpu_topo = &cpu_topology[cpu];
+
+		if (cpu_topo->cluster_id == cluster_id)
+			cpumask_set_cpu(cpu, cpus);
+	}
+}
+#endif
+#else
 static int arch_get_nr_clusters(void)
 {
 	int __arch_nr_clusters = -1;
@@ -69,7 +125,7 @@ static void arch_get_cluster_cpus(struct cpumask *cpus, int cluster_id)
 	}
 }
 #endif
-
+#endif
 static int is_multi_cluster(void)
 {
 	struct device_node *cn, *map;

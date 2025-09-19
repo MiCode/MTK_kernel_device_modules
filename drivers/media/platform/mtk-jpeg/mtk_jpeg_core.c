@@ -1284,6 +1284,11 @@ static void mtk_jpeg_dec_buf_queue(struct vb2_buffer *vb)
 	param = &jpeg_src_buf->dec_param;
 	memset(param, 0, sizeof(*param));
 
+	if (vb2_plane_vaddr(vb, 0) == NULL) {
+		v4l2_err(&jpeg->v4l2_dev, "Error!! vb2_plane_vaddr is NULL\n");
+		return;
+	}
+
 	header_valid = mtk_jpeg_parse(param, (u8 *)vb2_plane_vaddr(vb, 0),
 				      vb2_get_plane_payload(vb, 0));
 	if (!header_valid) {
@@ -1617,6 +1622,9 @@ static void mtk_jpeg_clk_on(struct mtk_jpeg_dev *jpeg)
 					jpeg->variant->clks);
 			if (ret)
 				v4l2_err(&jpeg->v4l2_dev, "Failed to open jpeg clk: %d\n", ret);
+
+			if (jpeg->axdomain)
+				mtk_jpeg_enc_set_axdomain(jpeg, jpeg->larb_base);
 		}
 }
 
@@ -2091,6 +2099,13 @@ static int mtk_jpeg_probe(struct platform_device *pdev)
 		jpeg->support_34bits = MTK_JPEG_SUPPORT_34BITS;
 	}
 	dev_info(&pdev->dev, "use 34bits %d", jpeg->support_34bits);
+
+	ret = of_property_read_u32(pdev->dev.of_node, "axdomain", &jpeg->axdomain);
+	if (ret != 0)
+		jpeg->axdomain = 0;
+
+	dev_info(&pdev->dev, "axdomain %d", jpeg->axdomain);
+
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	jpeg->reg_base = devm_ioremap_resource(&pdev->dev, res);
 	if (IS_ERR(jpeg->reg_base)) {
@@ -2109,6 +2124,16 @@ static int mtk_jpeg_probe(struct platform_device *pdev)
 		jpeg->gcon_base = devm_ioremap_resource(&pdev->dev, res);
 		if (IS_ERR(jpeg->gcon_base)) {
 			ret = PTR_ERR(jpeg->gcon_base);
+			return ret;
+		}
+	}
+
+	if (jpeg->axdomain) {
+		res = platform_get_resource(pdev, IORESOURCE_MEM, VENC_LARB);
+		jpeg->larb_base = devm_ioremap(&pdev->dev, res->start,  resource_size(res));
+		if (IS_ERR(jpeg->larb_base)) {
+			pr_info("get larb base fail\n");
+			ret = PTR_ERR(jpeg->larb_base);
 			return ret;
 		}
 	}

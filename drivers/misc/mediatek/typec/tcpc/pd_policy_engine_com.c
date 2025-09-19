@@ -47,11 +47,21 @@ void pe_idle1_entry(struct pd_port *pd_port)
 
 void pe_idle2_entry(struct pd_port *pd_port)
 {
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+    int rv = 0;
+    uint32_t chip_pid = 0;
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 	pd_free_unexpected_event(pd_port);
 	memset(&pd_port->pe_data, 0, sizeof(struct pe_data));
 	pe_data_init(&pd_port->pe_data);
 	pd_set_rx_enable(pd_port, PD_RX_CAP_PE_IDLE);
 	pd_disable_timer(pd_port, PD_TIMER_PE_IDLE_TOUT);
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+    rv = tcpci_get_chip_pid(pd_port->tcpc, &chip_pid);
+    if (!rv &&  SC660X_PID == chip_pid) {
+        pd_disable_timer(pd_port, PD_TIMER_INT_INVAILD);
+    }
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 	pd_notify_pe_idle(pd_port);
 }
 

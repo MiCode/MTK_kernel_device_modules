@@ -36,6 +36,9 @@ MTK_PERF_IOCTL_MAGT_SRC = $(MTK_PERF_IOCTL_MAGT)
 obj-$(CONFIG_MTK_PERF_IOCTL_MAGT) += mtk_perf_ioctl_magt.o
 mtk_perf_ioctl_magt-objs += $(MTK_PERF_IOCTL_MAGT_SRC)
 
+# mtk_game
+obj-$(CONFIG_MTK_GAME) += game/
+
 #Generic subdir build
 obj-$(CONFIG_MTK_FPSGO_V3) += fpsgo_v3/
 obj-$(CONFIG_MTK_FRS) += frs/

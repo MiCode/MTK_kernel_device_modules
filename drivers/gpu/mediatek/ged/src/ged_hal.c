@@ -1604,6 +1604,7 @@ static ssize_t apo_status_show(struct kobject *kobj,
 	unsigned long long ns_gpu_predict_off_duration;
 	int apo_hint;
 	int apo_autosuspend_delay_ref_count;
+	int apo_autosuspend_delay_ctrl;
 	int pos = 0;
 
 	bGPUAPO = ged_gpu_apo_notify();
@@ -1612,6 +1613,7 @@ static ssize_t apo_status_show(struct kobject *kobj,
 	ns_gpu_predict_off_duration = ged_get_predict_power_duration();
 	apo_hint = ged_get_apo_hint();
 	apo_autosuspend_delay_ref_count = ged_get_apo_autosuspend_delay_ref_count();
+	apo_autosuspend_delay_ctrl = ged_get_apo_autosuspend_delay_ctrl();
 
 	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
 				"[APO VERSION]: %d\n", g_ged_apo_support);
@@ -1630,6 +1632,10 @@ static ssize_t apo_status_show(struct kobject *kobj,
 	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
 				"[Autosuspend_Delay_Ref_Count]: %d\n",
 				apo_autosuspend_delay_ref_count);
+
+	pos += scnprintf(buf + pos, PAGE_SIZE - pos,
+				"[Autosuspend_Delay_Ctrl]: %d\n",
+				apo_autosuspend_delay_ctrl);
 
 	return pos;
 }

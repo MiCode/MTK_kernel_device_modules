@@ -511,7 +511,7 @@ void cmdq_dev_init(struct platform_device *pDevice)
 			gCmdqDev.pDev, &gCmdqDev.regBasePA,
 			gCmdqDev.regBaseVA, gCmdqDev.irqId,
 			gCmdqDev.irqSecId);
-
+#ifndef MT8788_MDP
 		node2 = of_parse_phandle(node, "mediatek,mailbox-gce-m", 0);
 		if (!node2)
 			break;
@@ -539,7 +539,7 @@ void cmdq_dev_init(struct platform_device *pDevice)
 			gCmdqDev.pDev, &gCmdqDev.regBasePA,
 			gCmdqDev.regBaseVA, gCmdqDev.irqId,
 			gCmdqDev.irqSecId);
-
+#endif
 		node2 = of_parse_phandle(node, "mediatek,mailbox-gce", 0);
 		if (!node2)
 			break;

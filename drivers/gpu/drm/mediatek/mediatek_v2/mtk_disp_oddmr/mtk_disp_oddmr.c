@@ -478,7 +478,10 @@
 #define MT6991_DISP_ODDMR_TOP_CTR_3					0x00C
 	#define MT6991_REG_ODDMR_BYPASS					REG_FLD_MSB_LSB(0, 0)
 	#define MT6991_REG_BYPASS_SHADOW				REG_FLD_MSB_LSB(5, 5)
+	#define MT6991_REG_ODDMR_TOP_CLK_GATING_DB_EN	REG_FLD_MSB_LSB(14, 14)
 	#define MT6991_REG_ODDMR_TOP_CLK_FORCE_EN		REG_FLD_MSB_LSB(15, 15)
+#define MT6991_DISP_ODDMR_TOP_CTR_4					0x01C
+	#define MT6991_REG_DMR_SW_RST					REG_FLD_MSB_LSB(1, 1)
 #define MT6991_DISP_ODDMR_TOP_DMR_BYPASS			0x1C4
 #define MT6991_DISP_ODDMR_TOP_OD_S2R_BYPASS			0x1C8
 	#define MT6991_REG_OD_SPR2RGB_BYPASS			REG_FLD_MSB_LSB(0, 0)
@@ -546,6 +549,11 @@
 #define MT6991_DISP_ODDMR_UDMA_DBI_CTRL30				0xE6C
 	#define MT6991_REG_DBI_REQ_STASH_LEAD_CNT			REG_FLD_MSB_LSB(3, 0)
 	#define MT6991_REG_DBI_REQ_STASH_EN					REG_FLD_MSB_LSB(8, 8)
+#define MT6991_DISP_ODDMR_UDMA_DBI_CTRL70				0xF00
+	#define MT6991_REG_PRTCL_PROT_OFF					REG_FLD_MSB_LSB(7, 7)
+#define MT6991_DISP_ODDMR_UDMA_DBI_CTRL88				0xFC0
+	#define MT6991_REG_RB_EN							REG_FLD_MSB_LSB(0, 0)
+
 
 // mt6991 DBI DDREN CTL
 #define MT6991_DISP_ODDMR_REG_DBI_DDREN_CTRL			0x084
@@ -1522,9 +1530,12 @@ static void mtk_oddmr_od_set_res_udma(struct mtk_ddp_comp *comp, struct cmdq_pkt
 	SET_VAL_MASK(reg_value, reg_mask, 1, REG_DE_ALIGN8_EN);
 	SET_VAL_MASK(reg_value, reg_mask, is_h_2x4x_sel, REG_HSD_2X4X_SEL);
 	if (oddmr_priv->data->od_version == MTK_OD_V2) {
-		if (oddmr_priv->spr_format == MTK_PANEL_RGBG_BGRG_TYPE ||
-					oddmr_priv->spr_format == MTK_PANEL_BGRG_RGBG_TYPE)
+		if (oddmr_priv->spr_enable == 1 && oddmr_priv->spr_relay == 0 &&
+				(oddmr_priv->spr_format == MTK_PANEL_RGBG_BGRG_TYPE ||
+				oddmr_priv->spr_format == MTK_PANEL_BGRG_RGBG_TYPE))
 			SET_VAL_MASK(reg_value, reg_mask, 1, MT6991_REG_SPR_RGBG_MODE);
+		else
+			SET_VAL_MASK(reg_value, reg_mask, 0, MT6991_REG_SPR_RGBG_MODE);
 		mtk_oddmr_write_mask(comp, reg_value, MT6991_DISP_ODDMR_OD_SCALING_6, reg_mask, pkg);
 	} else
 		mtk_oddmr_write_mask(comp, reg_value, DISP_ODDMR_OD_SCALING_6, reg_mask, pkg);
@@ -1545,6 +1556,7 @@ static void mtk_oddmr_od_init_end(struct mtk_ddp_comp *comp, struct cmdq_pkt *ha
 	}
 	//od reset
 	if (oddmr_priv->data->od_version == MTK_OD_V2) {
+		mtk_oddmr_set_top_clk_force(comp, 1, handle); //needed by writing sram and udma init
 		mtk_oddmr_set_od_clk(comp, 1, handle);
 		mtk_oddmr_write(comp, 0x200, MT6991_DISP_ODDMR_OD_SW_RESET, handle);
 		mtk_oddmr_write(comp, 0, MT6991_DISP_ODDMR_OD_SW_RESET, handle);
@@ -1579,6 +1591,11 @@ static void mtk_oddmr_od_init_end(struct mtk_ddp_comp *comp, struct cmdq_pkt *ha
 	if (oddmr_priv->data->od_version != MTK_OD_V2)
 		mtk_oddmr_write(comp, 1,
 				DISP_ODDMR_TOP_HRT0_BYPASS, handle);
+
+	if (oddmr_priv->data->od_version == MTK_OD_V2 && g_oddmr_priv->od_update_sram == 0 &&
+			!g_oddmr_priv->dmr_enable)
+		mtk_oddmr_set_top_clk_force(comp, 0, handle); //no need to update sram table, top_clk can be closed
+
 }
 
 static void mtk_oddmr_fill_cfg(struct mtk_ddp_comp *comp, struct mtk_ddp_config *cfg)
@@ -1895,7 +1912,17 @@ static void mtk_oddmr_dbi_srt_cal(struct mtk_ddp_comp *comp, int en)
 		srt = DO_COMMON_DIV(srt, 100);
 		srt = srt * vrefresh;
 		srt = DO_COMMON_DIV(srt, 1000);
-		oddmr_priv->qos_srt_dbir = srt;
+
+		if (srt < oddmr_priv->last_cal_srt_dbi)
+			oddmr_priv->srt_delay_dbi = 0;
+
+		if ((srt < oddmr_priv->qos_srt_dbir) && (oddmr_priv->srt_delay_dbi < 5)) {
+			oddmr_priv->srt_delay_dbi++;
+		} else {
+			oddmr_priv->srt_delay_dbi = 0;
+			oddmr_priv->qos_srt_dbir = srt;
+		}
+		oddmr_priv->last_cal_srt_dbi = srt;
 	} else {
 		oddmr_priv->qos_srt_dbir = 0;
 	}
@@ -2200,6 +2227,8 @@ static void mtk_oddmr_top_prepare(struct mtk_ddp_comp *comp, struct cmdq_pkt *ha
 			MT6991_DISP_ODDMR_REG_ODDMR_OUTP_OUT_HSIZE, handle);
 		mtk_oddmr_write(comp, oddmr_priv->cfg.height,
 			MT6991_DISP_ODDMR_REG_ODDMR_OUTP_OUT_VSIZE, handle);
+		mtk_oddmr_write(comp, 0,
+						MT6991_DISP_ODDMR_REG_DMR_CLK_EN, handle);
 		return;
 	}
 
@@ -3065,6 +3094,11 @@ static void mtk_oddmr_od_config(struct mtk_ddp_comp *comp,
 				mtk_oddmr_set_spr2rgb(comp, NULL);
 			}
 		}
+		value = 0; mask = 0;
+		if (oddmr_priv->data->od_version == MTK_OD_V2) {
+			SET_VAL_MASK(value, mask, 0, MT6991_REG_OD_SPR2RGB_BYPASS); // =1 will cause OD bypass
+			mtk_oddmr_write_mask(default_comp, value, MT6991_DISP_ODDMR_TOP_OD_S2R_BYPASS, mask, handle);
+		}
 
 		uint32_t width = oddmr_priv->cfg.width;
 
@@ -3192,10 +3226,6 @@ static void mtk_oddmr_config(struct mtk_ddp_comp *comp,
 
 	mtk_oddmr_dbi_config(comp,handle);
 	mtk_oddmr_remap_config(comp, handle);
-	if (g_oddmr_priv->dbi_enable == 0 && g_oddmr_priv->dmr_enable == 0) {
-		mtk_oddmr_write(comp, 1,
-			MT6991_DISP_ODDMR_TOP_DMR_BYPASS, handle);
-	}
 }
 
 static void mtk_oddmr_dump_od_table(int table_idx)
@@ -3337,9 +3367,11 @@ void mtk_oddmr_dump(struct mtk_ddp_comp *comp)
 	struct mtk_drm_crtc *mtk_crtc = NULL;
 	struct mtk_disp_oddmr *oddmr_priv = comp_to_oddmr(comp);
 
+	if (!(oddmr_priv->data->dbi_version == MTK_DBI_V2)) {
+		if (g_oddmr_dump_en == false)
+			return;
+	}
 
-	if (g_oddmr_dump_en == false)
-		return;
 	mtk_crtc = comp->mtk_crtc;
 	if(mtk_crtc->base.dev->dev_private)
 		priv = mtk_crtc->base.dev->dev_private;
@@ -4133,6 +4165,8 @@ static int mtk_oddmr_od_table_lookup(struct mtk_disp_oddmr *priv,
 	if (g_oddmr_priv->od_state == ODDMR_TABLE_UPDATING) {
 		ODDMRFLOW_LOG("ODDMR_TABLE_UPDATING\n");
 		*table_idx = tmp_table_idx;
+		if (g_oddmr_priv->data->od_version == MTK_OD_V2)
+			g_oddmr_priv->od_update_sram = 1;
 		return 0;
 	}
 	ODDMRFLOW_LOG("%d\n", __LINE__);
@@ -5274,7 +5308,7 @@ int mtk_oddmr_hrt_cal_notify(int *oddmr_hrt)
 				mtk_crtc->base.state->adjusted_mode.hdisplay);
 		}
 		sum = sum * res_ratio / 1000;
-		ODDMRAPI_LOG("od %d dmr %d dbi %d sum %d res_ratio %llu\n",
+		DDPMSG("od %d dmr %d dbi %d sum %d res_ratio %llu\n",
 			g_oddmr_priv->od_enable, g_oddmr_priv->dmr_enable, g_oddmr_priv->dbi_enable, sum, res_ratio);
 	}
 	if (g_oddmr_hrt_en == false)
@@ -5283,7 +5317,7 @@ int mtk_oddmr_hrt_cal_notify(int *oddmr_hrt)
 	return sum;
 }
 
-static int mtk_oddmr_sum_hrt(struct mtk_ddp_comp *comp, int *oddmr_hrt)
+static int mtk_oddmr_sum_hrt(struct mtk_ddp_comp *comp, enum CHANNEL_TYPE type, int *oddmr_hrt)
 {
 	int sum = 0;
 	unsigned long long res_ratio = 1000;
@@ -5303,10 +5337,20 @@ static int mtk_oddmr_sum_hrt(struct mtk_ddp_comp *comp, int *oddmr_hrt)
 	}
 	oddmr_data = comp_to_oddmr(comp);
 
-	if (is_oddmr_od_support || is_oddmr_dmr_support || is_oddmr_dbi_support) {
+	if (!is_oddmr_od_support && !is_oddmr_dmr_support && !is_oddmr_dbi_support)
+		return 0;
+	if (g_oddmr_hrt_en == false)
+		return 0;
+
+	if (type == CHANNEL_HRT_WRITE) {
 		if (oddmr_data->od_enable) {
-			if (oddmr_data->data->dmr_version == MTK_OD_V2)
-				sum += mtk_oddmr_od_bpp_v(g_od_param.od_basic_info.basic_param.od_mode);
+			if (oddmr_data->data->od_version == MTK_OD_V2)
+				sum += mtk_oddmr_od_bpp_v(g_od_param.od_basic_info.basic_param.od_mode) / 2;
+		}
+	} else {
+		if (oddmr_data->od_enable) {
+			if (oddmr_data->data->od_version == MTK_OD_V2)
+				sum += mtk_oddmr_od_bpp_v(g_od_param.od_basic_info.basic_param.od_mode) / 2;
 			else
 				sum += mtk_oddmr_od_bpp(g_od_param.od_basic_info.basic_param.od_mode);
 		}
@@ -5328,20 +5372,19 @@ static int mtk_oddmr_sum_hrt(struct mtk_ddp_comp *comp, int *oddmr_hrt)
 			}
 			sum += temp_hrt;
 		}
-		if (mtk_crtc->scaling_ctx.scaling_en) {
-			res_ratio =
-				((unsigned long long)mtk_crtc->scaling_ctx.lcm_width *
-				mtk_crtc->scaling_ctx.lcm_height * 1000) /
-				((unsigned long long)mtk_crtc->base.state->adjusted_mode.vdisplay *
-				mtk_crtc->base.state->adjusted_mode.hdisplay);
-		}
-		sum = sum * res_ratio / 1000;
-		ODDMRAPI_LOG("od %d dmr %d dbi %d sum %d res_ratio %llu\n",
-				oddmr_data->od_enable, oddmr_data->dmr_enable, oddmr_data->dbi_enable, sum, res_ratio);
 	}
+	if (mtk_crtc->scaling_ctx.scaling_en) {
+		res_ratio =
+			((unsigned long long)mtk_crtc->scaling_ctx.lcm_width *
+			mtk_crtc->scaling_ctx.lcm_height * 1000) /
+			((unsigned long long)mtk_crtc->base.state->adjusted_mode.vdisplay *
+			mtk_crtc->base.state->adjusted_mode.hdisplay);
+	}
+	sum = sum * res_ratio / 1000;
+	ODDMRAPI_LOG("type:%d, od %d dmr %d dbi %d sum %d res_ratio %llu\n",
+			(int)type, oddmr_data->od_enable, oddmr_data->dmr_enable,
+			oddmr_data->dbi_enable, sum, res_ratio);
 
-	if (g_oddmr_hrt_en == false)
-		return 0;
 	if (oddmr_hrt)
 		*oddmr_hrt += sum;
 	return sum;
@@ -5456,11 +5499,15 @@ static void mtk_cal_oddmr_valid_partial_roi(struct mtk_ddp_comp *comp,
 int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		enum mtk_ddp_io_cmd cmd, void *params)
 {
+	struct mtk_drm_private *priv;
+
 	ODDMRLOW_LOG("cmd %d+\n", cmd);
 	if (!(comp->mtk_crtc && comp->mtk_crtc->base.dev)) {
 		ODDMRFLOW_LOG("%s %u has invalid CRTC or device\n", mtk_dump_comp_str(comp), cmd);
 		return -INVALID;
 	}
+
+	priv = comp->mtk_crtc->base.dev->dev_private;
 
 	switch (cmd) {
 	case FRAME_DIRTY:
@@ -5545,6 +5592,8 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			dmr_binset_idx = cur_binset_idx;
 		}
 
+		mtk_oddmr_dbi_srt_cal(default_comp, g_oddmr_priv->dbi_enable);
+
 		if(dbi_enable != g_oddmr_priv->dbi_enable) {
 			mtk_oddmr_dbi_config(default_comp,handle);
 			dbi_enable = g_oddmr_priv->dbi_enable;
@@ -5558,7 +5607,7 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 
 		data->larb_id = -1;
 		data->bw = 0;
-		if (data->type != CHANNEL_HRT_RW)
+		if (data->type != CHANNEL_HRT_RW && data->type != CHANNEL_HRT_WRITE)
 			break;
 
 		if (comp->larb_num == 1)
@@ -5569,12 +5618,12 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		if (data->larb_id < 0)
 			break;
 
-		mtk_oddmr_sum_hrt(comp, &weight);
+		mtk_oddmr_sum_hrt(comp, data->type, &weight);
 		if (weight > 0) {
 			bw_base = mtk_drm_primary_frame_bw(&comp->mtk_crtc->base);
 			data->bw = bw_base * weight / 400;
-			DDPINFO("%s, oddmr comp:%d, larb:%d, bw:%d, weight:%d\n",
-				__func__, comp->id, data->larb_id, data->bw, weight);
+			DDPINFO("%s, oddmr comp:%d, larb:%d, type:%d, bw:%d, weight:%d\n",
+				__func__, comp->id, data->larb_id, (int)data->type, data->bw, weight);
 		}
 		break;
 	}
@@ -5584,10 +5633,22 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		struct mtk_drm_private *priv =
 			comp->mtk_crtc->base.dev->dev_private;
 		unsigned int force_update = 0; /* force_update repeat last qos BW */
+		unsigned int update_pending = 0;
+		unsigned int crtc_idx, channel_id = 0;
+		struct drm_crtc *crtc;
+		struct mtk_drm_crtc *mtk_crtc;
 
 		if (!mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_MMQOS_SUPPORT))
 			break;
+
+		mtk_crtc = comp->mtk_crtc;
+		crtc = &mtk_crtc->base;
+		crtc_idx = drm_crtc_index(crtc);
+
+		if (priv->data->mmsys_id == MMSYS_MT6991)
+			channel_id = 3;
+
 		ODDMRLOW_LOG("srt odr(%u,%u),odw(%u,%u),dmrr(%u,%u) dbi(%u,%u)\n",
 			oddmr_priv->last_qos_srt_odr, oddmr_priv->qos_srt_odr,
 			oddmr_priv->last_qos_srt_odw, oddmr_priv->qos_srt_odw,
@@ -5596,7 +5657,26 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 
 		if (params) {
 			force_update = *(unsigned int *)params;
+			update_pending = (force_update == DISP_BW_UPDATE_PENDING);
 			force_update = (force_update == DISP_BW_FORCE_UPDATE) ? 1 : 0;
+		}
+
+		if (!force_update && !update_pending) {
+			mtk_crtc->total_srt += oddmr_priv->qos_srt_odr;
+			if (channel_id < 4)
+				priv->srt_channel_bw_sum[crtc_idx][channel_id] += oddmr_priv->qos_srt_odr;
+
+			mtk_crtc->total_srt += oddmr_priv->qos_srt_odw;
+			if (channel_id < 4)
+				priv->srt_channel_write_bw_sum[crtc_idx][channel_id] += oddmr_priv->qos_srt_odw;
+
+			mtk_crtc->total_srt += oddmr_priv->qos_srt_dmrr;
+			if (channel_id < 4)
+				priv->srt_channel_bw_sum[crtc_idx][channel_id] += oddmr_priv->qos_srt_dmrr;
+
+			mtk_crtc->total_srt += oddmr_priv->qos_srt_dbir;
+			if (channel_id < 4)
+				priv->srt_channel_bw_sum[crtc_idx][channel_id] += oddmr_priv->qos_srt_dbir;
 		}
 
 		/* process normal */
@@ -5605,32 +5685,44 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 				oddmr_priv->qos_srt_odr, 0, DISP_BW_NORMAL_MODE,
 				priv->data->real_srt_ostdl);
 			oddmr_priv->last_qos_srt_odr = oddmr_priv->qos_srt_odr;
-			if (!force_update)
+			if (!force_update && update_pending) {
 				comp->mtk_crtc->total_srt += oddmr_priv->qos_srt_odr;
+				if (channel_id < 4)
+					priv->srt_channel_bw_sum[crtc_idx][channel_id] += oddmr_priv->qos_srt_odr;
+			}
 		}
 		if (force_update || oddmr_priv->last_qos_srt_odw != oddmr_priv->qos_srt_odw) {
 			__mtk_disp_set_module_srt(oddmr_priv->qos_req_odw, comp->id,
 				oddmr_priv->qos_srt_odw, 0, DISP_BW_NORMAL_MODE,
 				priv->data->real_srt_ostdl);
 			oddmr_priv->last_qos_srt_odw = oddmr_priv->qos_srt_odw;
-			if (!force_update)
+			if (!force_update && update_pending) {
 				comp->mtk_crtc->total_srt += oddmr_priv->qos_srt_odw;
+				if (channel_id < 4)
+					priv->srt_channel_write_bw_sum[crtc_idx][channel_id] += oddmr_priv->qos_srt_odw;
+			}
 		}
 		if (force_update || oddmr_priv->last_qos_srt_dmrr != oddmr_priv->qos_srt_dmrr) {
 			__mtk_disp_set_module_srt(oddmr_priv->qos_req_dmrr, comp->id,
 				oddmr_priv->qos_srt_dmrr, 0, DISP_BW_NORMAL_MODE,
 				priv->data->real_srt_ostdl);
 			oddmr_priv->last_qos_srt_dmrr = oddmr_priv->qos_srt_dmrr;
-			if (!force_update)
+			if (!force_update && update_pending) {
 				comp->mtk_crtc->total_srt += oddmr_priv->qos_srt_dmrr;
+				if (channel_id < 4)
+					priv->srt_channel_bw_sum[crtc_idx][channel_id] += oddmr_priv->qos_srt_dmrr;
+			}
 		}
 		if (force_update || oddmr_priv->last_qos_srt_dbir != oddmr_priv->qos_srt_dbir) {
 			__mtk_disp_set_module_srt(oddmr_priv->qos_req_dbir, comp->id,
 				oddmr_priv->qos_srt_dbir, 0, DISP_BW_NORMAL_MODE,
 				priv->data->real_srt_ostdl);
 			oddmr_priv->last_qos_srt_dbir = oddmr_priv->qos_srt_dbir;
-			if (!force_update)
+			if (!force_update && update_pending) {
 				comp->mtk_crtc->total_srt += oddmr_priv->qos_srt_dbir;
+				if (channel_id < 4)
+					priv->srt_channel_bw_sum[crtc_idx][channel_id] += oddmr_priv->qos_srt_dbir;
+			}
 		}
 	}
 		break;
@@ -5684,9 +5776,9 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 
 			/* OD outstanding */
 			if (oddmr_priv->data->od_version == MTK_OD_V2)
-				layer_num = mtk_oddmr_od_bpp_v(5);
+				layer_num = mtk_oddmr_od_bpp_v(g_od_param.od_basic_info.basic_param.od_mode) / 2;
 			else
-				layer_num = mtk_oddmr_od_bpp(5);
+				layer_num = mtk_oddmr_od_bpp(g_od_param.od_basic_info.basic_param.od_mode) / 2;
 			bw_val = (layer_num * bw_base / 400) * od_enable;
 			if (bw_val != oddmr_priv->last_hrt_odrw) {
 				__mtk_disp_set_module_hrt(oddmr_priv->qos_req_odr_hrt, comp->id, bw_val,
@@ -5791,9 +5883,9 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 
 		/* OD outstanding */
 		if (oddmr_priv->data->od_version == MTK_OD_V2)
-			layer_num = mtk_oddmr_od_bpp_v(5);
+			layer_num = mtk_oddmr_od_bpp_v(g_od_param.od_basic_info.basic_param.od_mode) / 2;
 		else
-			layer_num = mtk_oddmr_od_bpp(5);
+			layer_num = mtk_oddmr_od_bpp(g_od_param.od_basic_info.basic_param.od_mode) / 2;
 		bw_val = (layer_num * bw_base / 400) * od_enable;
 		if (bw_val > oddmr_priv->last_hrt_odrw) {
 			ODDMRLOW_LOG("odrw bw_val fast up %u -> %u\n", oddmr_priv->last_hrt_odrw, bw_val);
@@ -5896,9 +5988,7 @@ static void mtk_oddmr_od_bypass(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 	ODDMRLOW_LOG("+\n");
 	mtk_oddmr_write(comp, 1,
 			DISP_ODDMR_TOP_OD_BYASS, handle);
-	if (oddmr->data->od_version == MTK_OD_V2)
-		mtk_oddmr_write(comp, 0x200, MT6991_DISP_ODDMR_OD_SW_RESET, handle);
-	else
+	if (oddmr->data->od_version != MTK_OD_V2)
 		mtk_oddmr_write(comp, 0x200, DISP_ODDMR_OD_SW_RESET, handle);
 }
 
@@ -5923,6 +6013,8 @@ static void mtk_oddmr_od_table_chg(struct cmdq_pkt *handle)
 				g_oddmr_current_timing.old_vrefresh = g_oddmr_current_timing.vrefresh;
 				g_oddmr_current_timing.old_bl_level = g_oddmr_current_timing.bl_level;
 			} else if (g_oddmr_priv->data->is_od_4_table && ret == 2) {
+				if (g_oddmr_priv->data->od_version == MTK_OD_V2)
+					g_oddmr_priv->od_update_sram = 1;
 				//TODO:update table work queue(table pq sram) mt6985 no need
 				queue_work(g_oddmr_priv->oddmr_wq, &g_oddmr_priv->update_table_work);
 			} else if (ret == 0) {
@@ -5958,8 +6050,6 @@ static void mtk_oddmr_set_od_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 		enable, sec_on, oddmr_priv->od_force_off);
 	mtk_oddmr_od_srt_cal(comp, en);
 	if (en) {
-		if (oddmr_priv->data->od_version == MTK_OD_V2)
-			mtk_oddmr_set_top_clk_force(comp, 1, handle); //needed by writing sram and udma init
 		if (oddmr_priv->od_enable_last == 0 && en == true) {
 			//OD_PU: make sure related RGs are set before enable
 			if (oddmr_priv->data->od_version == MTK_OD_V2) {
@@ -5988,8 +6078,6 @@ static void mtk_oddmr_set_od_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 			mtk_oddmr_write(comp, 9, MT6991_DISP_ODDMR_REG_ODW_DDREN_CTRL, handle);
 			mtk_oddmr_write(comp, 9, MT6991_DISP_ODDMR_REG_ODR_DDREN_CTRL, handle);
 			mtk_oddmr_set_od_clk(comp, 0, handle);
-			if (!oddmr_priv->dmr_enable)
-				mtk_oddmr_set_top_clk_force(comp, 0, handle);
 		} else {
 			mtk_oddmr_write_mask(comp, 0, DISP_ODDMR_OD_CTRL_EN, 0x01, handle);
 			mtk_oddmr_od_bypass(comp, handle);
@@ -6014,7 +6102,7 @@ static void mtk_oddmr_bypass(struct mtk_ddp_comp *comp, int bypass,
 			g_oddmr1_priv->od_enable =
 				g_oddmr1_priv->od_enable_req && !g_oddmr1_priv->pq_od_bypass;
 		}
-		ODDMRLOW_LOG("pq_od_bypass %d, caller: 0x%x, od_enable %d",
+		ODDMRLOW_LOG("pq_od_bypass %d, caller: 0x%x, od_enable %d\n",
 			g_oddmr_priv->pq_od_bypass, caller, g_oddmr_priv->od_enable);
 		if (bypass == 0) {
 			mtk_oddmr_set_od_enable_dual(comp,
@@ -6029,6 +6117,7 @@ static void mtk_oddmr_set_od_enable_dual(struct mtk_ddp_comp *comp, uint32_t ena
 		struct cmdq_pkt *handle)
 {
 	bool sec_on, en;
+	int od_update_sram_last;
 
 	ODDMRAPI_LOG("+\n");
 	sec_on = default_comp->mtk_crtc->sec_on;
@@ -6039,12 +6128,25 @@ static void mtk_oddmr_set_od_enable_dual(struct mtk_ddp_comp *comp, uint32_t ena
 	if (default_comp->mtk_crtc->is_dual_pipe)
 		en = en && !g_oddmr1_priv->od_force_off;
 
+	if (g_oddmr_priv->data->od_version == MTK_OD_V2) {
+		od_update_sram_last = g_oddmr_priv->od_update_sram;
+		g_oddmr_priv->od_update_sram = 0;
+	}
+
+	if(en && g_oddmr_priv->od_state >= ODDMR_INIT_DONE)
+		mtk_oddmr_od_table_chg(handle);
+	// mtk_oddmr_set_od_enable will use od_update_sram info from mtk_oddmr_od_table_chg
+	// g_oddmr_priv->od_update_sram = 1 means OD will or still update sram table
 	mtk_oddmr_set_od_enable(default_comp, enable, handle);
 	if (default_comp->mtk_crtc->is_dual_pipe)
 		mtk_oddmr_set_od_enable(oddmr1_default_comp, enable, handle);
-	if(en && g_oddmr_priv->od_state >= ODDMR_INIT_DONE)
-		mtk_oddmr_od_table_chg(handle);
+
+	if (g_oddmr_priv->data->od_version == MTK_OD_V2  &&
+			od_update_sram_last == 1 && g_oddmr_priv->od_update_sram == 0 &&
+			!g_oddmr_priv->dmr_enable)
+		mtk_oddmr_set_top_clk_force(default_comp, 0, handle); //updating sram done, top_clk can be closed
 }
+
 static void mtk_oddmr_set_dmr_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 		struct cmdq_pkt *handle)
 {
@@ -6064,6 +6166,27 @@ static void mtk_oddmr_set_dmr_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 	if(is_oddmr_dmr_support) {
 		if (oddmr_priv->data->dmr_version == MTK_DMR_V2) {
 			if (enable) {
+				//1.reg_oddmr_top_clk_force_en=1; reg_oddmr_top_clk_gating_db_en=1
+				value = 0; mask = 0;
+				SET_VAL_MASK(value, mask, 1, MT6991_REG_ODDMR_TOP_CLK_FORCE_EN);
+				SET_VAL_MASK(value, mask, 1, MT6991_REG_ODDMR_TOP_CLK_GATING_DB_EN);
+				mtk_oddmr_write_mask(comp, value,
+					MT6991_DISP_ODDMR_TOP_CTR_3, mask, handle);
+				//2.reg_dmr_clk_en=1
+				mtk_oddmr_write(comp, 1,
+					MT6991_DISP_ODDMR_REG_DMR_CLK_EN, handle);
+				//3.reg_dmr_swt_rst=1
+				value = 0; mask = 0;
+				SET_VAL_MASK(value, mask, 1, MT6991_REG_DMR_SW_RST);
+				mtk_oddmr_write_mask(comp, value,
+					MT6991_DISP_ODDMR_TOP_CTR_4, mask, handle);
+				//4.reg_dmr_swt_rst=0
+				value = 0; mask = 0;
+				SET_VAL_MASK(value, mask, 0, MT6991_REG_DMR_SW_RST);
+				mtk_oddmr_write_mask(comp, value,
+					MT6991_DISP_ODDMR_TOP_CTR_4, mask, handle);
+
+				//5.dmr enable && udma control
 				value = 0; mask = 0;
 				SET_VAL_MASK(value, mask, 1, MT6991_REG_DMR_EN);
 				mtk_oddmr_write_mask(comp, value,
@@ -6072,17 +6195,13 @@ static void mtk_oddmr_set_dmr_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 				SET_VAL_MASK(value, mask, 1, MT6991_REG_DMR_UDMA_EN);
 				mtk_oddmr_write_mask(comp, value,
 					MT6991_DISP_ODDMR_REG_DMR_UDMA_EN, mask, handle);
-				value = 0; mask = 0;
-				SET_VAL_MASK(value, mask, 1, MT6991_REG_ODDMR_TOP_CLK_FORCE_EN);
-				mtk_oddmr_write_mask(comp, value,
-					MT6991_DISP_ODDMR_TOP_CTR_3, mask, handle);
+				//6.reg_dmr_bypass=0
 				mtk_oddmr_write(comp, 0,
 					MT6991_DISP_ODDMR_TOP_DMR_BYPASS, handle);
-				mtk_oddmr_write(comp, 1,
-					MT6991_DISP_ODDMR_REG_DMR_CLK_EN, handle);
+				//7.dmr ddren ctrl
 				mtk_oddmr_write(comp, 4,
 					MT6991_DISP_ODDMR_REG_DMR_DDREN_CTRL, handle);
-
+				//8.stash cmd
 				/* stash_lead_cnt = stash_lead_time / dsi_line_time */
 				if (oddmr_priv->data->is_dmr_support_stash) {
 					output_comp = mtk_ddp_comp_request_output(mtk_crtc);
@@ -6110,6 +6229,18 @@ static void mtk_oddmr_set_dmr_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 				if (oddmr_priv->data->is_dmr_support_stash)
 					mtk_oddmr_write(comp, 0,
 						MT6991_DISP_ODDMR_UDMA_DMR_CTRL30, handle);
+				if (!oddmr_priv->dbi_enable) {
+					mtk_oddmr_write(comp, 1,
+						MT6991_DISP_ODDMR_TOP_DMR_BYPASS, handle);
+					mtk_oddmr_write(comp, 0,
+						MT6991_DISP_ODDMR_REG_DMR_CLK_EN, handle);
+				}
+				if (oddmr_priv->od_update_sram == 0) {
+					value = 0; mask = 0;
+					SET_VAL_MASK(value, mask, 0, MT6991_REG_ODDMR_TOP_CLK_FORCE_EN);
+					mtk_oddmr_write_mask(comp, value,
+						MT6991_DISP_ODDMR_TOP_CTR_3, mask, handle);
+				}
 			}
 			return;
 		}
@@ -6154,6 +6285,24 @@ static void mtk_oddmr_set_dbi_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 	if(is_oddmr_dbi_support) {
 		if (oddmr_priv->data->dbi_version == MTK_DBI_V2) {
 			if (enable) {
+				SET_VAL_MASK(value, mask, 1, MT6991_REG_ODDMR_TOP_CLK_FORCE_EN);
+				SET_VAL_MASK(value, mask, 1, MT6991_REG_ODDMR_TOP_CLK_GATING_DB_EN);
+				mtk_oddmr_write_mask(comp, value,
+					MT6991_DISP_ODDMR_TOP_CTR_3, mask, handle);
+				mtk_oddmr_write(comp, 1,
+						MT6991_DISP_ODDMR_REG_DMR_CLK_EN, handle);
+				value = 0;
+				mask = 0;
+				SET_VAL_MASK(value, mask, 1, MT6991_REG_DMR_SW_RST);
+				mtk_oddmr_write_mask(comp, value,
+					MT6991_DISP_ODDMR_TOP_CTR_4, mask, handle);
+				value = 0;
+				mask = 0;
+				SET_VAL_MASK(value, mask, 0, MT6991_REG_DMR_SW_RST);
+				mtk_oddmr_write_mask(comp, value,
+					MT6991_DISP_ODDMR_TOP_CTR_4, mask, handle);
+				value = 0;
+				mask = 0;
 				SET_VAL_MASK(value, mask, 1, MT6991_REG_DMR_DBI_EN);
 				SET_VAL_MASK(value, mask, 1, MT6991_REG_DMR_DBI_OUT_CUP_EN);
 				mtk_oddmr_write_mask(comp, value,
@@ -6167,6 +6316,16 @@ static void mtk_oddmr_set_dbi_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 					MT6991_DISP_ODDMR_TOP_DMR_BYPASS, handle);
 				mtk_oddmr_write(comp, 4,
 					MT6991_DISP_ODDMR_REG_DBI_DDREN_CTRL, handle);
+				value = 0;
+				mask = 0;
+				SET_VAL_MASK(value, mask, 1, MT6991_REG_PRTCL_PROT_OFF);
+				mtk_oddmr_write_mask(comp, value,
+					MT6991_DISP_ODDMR_UDMA_DBI_CTRL70, mask, handle);
+				value = 0;
+				mask = 0;
+				SET_VAL_MASK(value, mask, 1, MT6991_REG_RB_EN);
+				mtk_oddmr_write_mask(comp, value,
+					MT6991_DISP_ODDMR_UDMA_DBI_CTRL88, mask, handle);
 
 				/* stash_lead_cnt = stash_lead_time / dsi_line_time */
 				if (oddmr_priv->data->is_dbi_support_stash) {
@@ -6180,6 +6339,13 @@ static void mtk_oddmr_set_dbi_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 					reg_val = (1 << 8) | stash_lead_cnt;
 					mtk_oddmr_write(comp, reg_val,
 						MT6991_DISP_ODDMR_UDMA_DBI_CTRL30, handle);
+				}
+				if (!oddmr_priv->dmr_enable && oddmr_priv->od_update_sram == 0) {
+					value = 0;
+					mask = 0;
+					SET_VAL_MASK(value, mask, 0, MT6991_REG_ODDMR_TOP_CLK_FORCE_EN);
+					mtk_oddmr_write_mask(comp, value,
+						MT6991_DISP_ODDMR_TOP_CTR_3, mask, handle);
 				}
 			} else {
 				SET_VAL_MASK(value, mask, 0, MT6991_REG_DMR_DBI_EN);
@@ -6198,6 +6364,9 @@ static void mtk_oddmr_set_dbi_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 				if (oddmr_priv->data->is_dbi_support_stash)
 					mtk_oddmr_write(comp, 0,
 						MT6991_DISP_ODDMR_UDMA_DBI_CTRL30, handle);
+				if (!oddmr_priv->dmr_enable)
+					mtk_oddmr_write(comp, 0,
+						MT6991_DISP_ODDMR_REG_DMR_CLK_EN, handle);
 			}
 			return;
 		}
@@ -6600,8 +6769,9 @@ static void mtk_oddmr_od_gce_pkt_init(struct mtk_drm_crtc *mtk_crtc,
 static int mtk_oddmr_od_init(void)
 {
 	struct mtk_drm_crtc *mtk_crtc;
-	int ret, table_idx;
+	int ret, table_idx, pm_ret = 0;
 	struct cmdq_client *client = NULL;
+	uint32_t value = 0, mask = 0;
 
 	ODDMRAPI_LOG("+\n");
 	DDPMSG("%s+\n",__func__);
@@ -6633,16 +6803,26 @@ static int mtk_oddmr_od_init(void)
 	}
 
 	mtk_crtc = default_comp->mtk_crtc;
-	mtk_drm_set_idlemgr(&mtk_crtc->base, 0, 1);
 	mtk_crtc_check_trigger(default_comp->mtk_crtc, true, true);
+	mtk_drm_idlemgr_kick(__func__, &default_comp->mtk_crtc->base, 1);
 	ret = mtk_oddmr_acquire_clock();
 	ODDMRAPI_LOG("od_init_ret, %d\n", ret);
 	if (ret == 0) {
+		pm_ret = mtk_vidle_pq_power_get(__func__);
+		if (pm_ret) {
+			DDPPR_ERR("%s pq_power_get failed %d, skip\n", __func__, pm_ret);
+			mtk_oddmr_release_clock();
+			return -1;
+		}
 		g_oddmr_priv->od_state = ODDMR_LOAD_DONE;
 		if (g_oddmr_priv->data->od_version == MTK_OD_V2)
 			mtk_oddmr_set_top_clk_force(default_comp, 1, NULL); //needed by writing sram and udma init
 		mtk_oddmr_od_common_init_dual(NULL);
 		mtk_oddmr_set_spr2rgb_dual(NULL);
+		if (g_oddmr_priv->data->od_version == MTK_OD_V2) {
+			SET_VAL_MASK(value, mask, 0, MT6991_REG_OD_SPR2RGB_BYPASS); // =1 will cause OD bypass
+			mtk_oddmr_write_mask(default_comp, value, MT6991_DISP_ODDMR_TOP_OD_S2R_BYPASS, mask, NULL);
+		}
 		mtk_oddmr_od_smi_dual(NULL);
 		mtk_oddmr_od_alloc_dram_dual();
 		mtk_oddmr_od_set_dram_dual(NULL);
@@ -6673,8 +6853,9 @@ static int mtk_oddmr_od_init(void)
 		} else {
 			ODDMRFLOW_LOG("table0 must be valid\n");
 			g_oddmr_priv->od_state = ODDMR_LOAD_PARTS;
+			if (!pm_ret)
+				mtk_vidle_pq_power_put(__func__);
 			mtk_oddmr_release_clock();
-			mtk_drm_set_idlemgr(&mtk_crtc->base, 1, 1);
 			return -1;
 		}
 		if (IS_TABLE_VALID(1, g_od_param.valid_table)) {
@@ -6805,13 +6986,14 @@ static int mtk_oddmr_od_init(void)
 		if (g_oddmr_priv->data->od_version != MTK_OD_V2)
 			mtk_oddmr_set_crop_dual(NULL);
 		g_oddmr_priv->od_state = ODDMR_INIT_DONE;
+		if (!pm_ret)
+			mtk_vidle_pq_power_put(__func__);
 		mtk_oddmr_release_clock();
 		ret = mtk_crtc_user_cmd(&default_comp->mtk_crtc->base,
 				default_comp, ODDMR_CMD_OD_INIT_END, NULL);
 		if (g_oddmr_priv->data->od_version == MTK_OD_V2 && !g_oddmr_priv->dmr_enable)
 			mtk_oddmr_set_top_clk_force(default_comp, 0, NULL);
 	}
-	mtk_drm_set_idlemgr(&mtk_crtc->base, 1, 1);
 	return ret;
 }
 
@@ -6829,15 +7011,6 @@ static int mtk_oddmr_od_enable(struct drm_device *dev, int en)
 	if (g_oddmr_priv->od_state < ODDMR_INIT_DONE) {
 		ODDMRFLOW_LOG("od can not enable, state %d\n", g_oddmr_priv->od_state);
 		return -EFAULT;
-	}
-	mtk_drm_idlemgr_kick(__func__,
-			&default_comp->mtk_crtc->base, 1);
-	ret = mtk_oddmr_acquire_clock();
-	if (ret == 0)
-		mtk_oddmr_release_clock();
-	else {
-		ODDMRFLOW_LOG("clock not on %d\n", ret);
-		return ret;
 	}
 
 	g_oddmr_priv->od_enable_req = enable;
@@ -8716,6 +8889,15 @@ static int mtk_oddmr_dmr_init(struct mtk_drm_dmr_cfg_info *cfg_info)
 
 	ret = mtk_oddmr_acquire_clock();
 	if (ret == 0) {
+		int pm_ret = 0;
+
+		pm_ret = mtk_vidle_pq_power_get(__func__);
+		if (pm_ret) {
+			DDPPR_ERR("%s pq_power_get failed %d, skip\n", __func__, pm_ret);
+			mtk_oddmr_release_clock();
+			return -1;
+		}
+
 		mtk_crtc = default_comp->mtk_crtc;
 
 		//mtk_oddmr_dmr_common_init_dual(NULL);
@@ -8744,6 +8926,8 @@ static int mtk_oddmr_dmr_init(struct mtk_drm_dmr_cfg_info *cfg_info)
 		atomic_set(&g_oddmr_priv->dmr_data.remap_enable, 1);
 		mtk_oddmr_dmr_change_remap_gain(default_comp, NULL);
 		mtk_oddmr_remap_set_enable(default_comp, NULL, true);
+		if (!pm_ret)
+			mtk_vidle_pq_power_put(__func__);
 		mtk_oddmr_release_clock();
 	}
 
@@ -8956,7 +9140,7 @@ fail:
 
 #define share_lifecycle_offset (0x10000)
 bool mtk_drm_dbi_backup(struct drm_crtc *crtc, void *get_phys, void *get_virt,
-	void *get_size, unsigned int curr_fps, unsigned int curr_bl)
+	void *get_size, unsigned int curr_bl, unsigned int curr_fps, int curr_temp)
 {
 #if !IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_CM4_SUPPORT)
 	struct iommu_domain *domain;
@@ -8972,6 +9156,8 @@ bool mtk_drm_dbi_backup(struct drm_crtc *crtc, void *get_phys, void *get_virt,
 	void *table_addr;
 	unsigned int j;
 	static bool mem_maped;
+	static bool mem_init;
+	unsigned int map_size;
 
 	if(!g_oddmr_priv->dbi_data.support_scp)
 		return false;
@@ -8979,6 +9165,11 @@ bool mtk_drm_dbi_backup(struct drm_crtc *crtc, void *get_phys, void *get_virt,
 	DDPMSG("%s: dbi-scp :%d scp rsv mem 0x%llx(0x%llx), size 0x%llx\n", __func__, SCP_DBI_MEM_ID,
 	get_mem_virt(SCP_DBI_MEM_ID), get_mem_phys(SCP_DBI_MEM_ID),
 	get_mem_size(SCP_DBI_MEM_ID));
+
+	if(!mem_init) {
+		memset((void *)get_mem_virt(SCP_DBI_MEM_ID), 0, get_mem_size(SCP_DBI_MEM_ID));
+		mem_init = true;
+	}
 
 	share_mem = (struct mtk_drm_dbi_share_info *)get_mem_virt(SCP_DBI_MEM_ID);
 	share_mem->unused_offset = sizeof(struct mtk_drm_dbi_share_info);
@@ -8993,6 +9184,7 @@ bool mtk_drm_dbi_backup(struct drm_crtc *crtc, void *get_phys, void *get_virt,
 
 	share_mem->curr_fps = curr_fps;
 	share_mem->curr_bl = curr_bl;
+	share_mem->curr_temp = curr_temp;
 
 	DDPMSG("dbi-scp %d/%d\n", share_mem->dbi_init_done, share_mem->dbi_hw_enable);
 
@@ -9013,16 +9205,17 @@ bool mtk_drm_dbi_backup(struct drm_crtc *crtc, void *get_phys, void *get_virt,
 			= width*height*4*3/scale_factor_h/scale_factor_v;
 
 		share_mem->pic_addr_pa[0] = share_mem->lifecycle_addr_pa +
-			width*height*4*3/scale_factor_h/scale_factor_v;
+			(width*height*4*3/scale_factor_h/scale_factor_v + 4095)/4096*4096;
 		share_mem->pic_addr_va[0] = share_mem->lifecycle_addr_va +
-			width*height*4*3/scale_factor_h/scale_factor_v;
+			(width*height*4*3/scale_factor_h/scale_factor_v + 4095)/4096*4096;
 
-		share_mem->pic_addr_pa[1] = share_mem->pic_addr_pa[0] + width*height*3;
-		share_mem->pic_addr_va[1] = share_mem->pic_addr_va[0] + width*height*3;
+		share_mem->pic_addr_pa[1] = share_mem->pic_addr_pa[0] + (width*height*3 + 4095)/4096*4096;
+		share_mem->pic_addr_va[1] = share_mem->pic_addr_va[0] + (width*height*3 + 4095)/4096*4096;
 
-		share_mem->table_addr_pa = share_mem->pic_addr_pa[1] + width*height*3;
-		share_mem->table_addr_va = share_mem->pic_addr_va[1] + width*height*3;
+		share_mem->table_addr_pa = share_mem->pic_addr_pa[1] + (width*height*3 + 4095)/4096*4096;
+		share_mem->table_addr_va = share_mem->pic_addr_va[1] + (width*height*3 + 4095)/4096*4096;
 
+		map_size = get_mem_size(SCP_DBI_MEM_ID) - (share_mem->pic_addr_pa[0] - get_mem_phys(SCP_DBI_MEM_ID));
 		if (!mem_maped) {
 			domain = iommu_get_domain_for_dev(mtk_smmu_get_shared_device(default_comp->dev));
 			if (domain == NULL) {
@@ -9030,7 +9223,7 @@ bool mtk_drm_dbi_backup(struct drm_crtc *crtc, void *get_phys, void *get_virt,
 				return false;
 			}
 			ret = iommu_map(domain, share_mem->pic_addr_pa[0], share_mem->pic_addr_pa[0],
-				ROUNDUP(width*height*3*2, PAGE_SIZE),
+				ROUNDUP(map_size, PAGE_SIZE),
 				IOMMU_READ | IOMMU_WRITE, GFP_KERNEL);
 			if (ret < 0) {
 				DDPPR_ERR("%s, iommu_map fail\n", __func__);
@@ -9279,15 +9472,6 @@ static int mtk_oddmr_dbi_enable(struct drm_device *dev, bool en)
 		ODDMRFLOW_LOG("can not enable, state %d\n", g_oddmr_priv->dbi_state);
 		return -EFAULT;
 	}
-	mtk_drm_idlemgr_kick(__func__,
-			&default_comp->mtk_crtc->base, 1);
-	ret = mtk_oddmr_acquire_clock();
-	if (ret == 0)
-		mtk_oddmr_release_clock();
-	else {
-		ODDMRFLOW_LOG("clock not on %d\n", ret);
-		return ret;
-	}
 
 	g_oddmr_priv->dbi_enable_req = enable;
 	if (default_comp->mtk_crtc->is_dual_pipe)
@@ -9332,15 +9516,6 @@ static int mtk_oddmr_dmr_enable(struct drm_device *dev, bool en)
 	if (g_oddmr_priv->dmr_state < ODDMR_INIT_DONE) {
 		DDPPR_ERR("can not enable, state %d\n", g_oddmr_priv->dmr_state);
 		return -EFAULT;
-	}
-	mtk_drm_idlemgr_kick(__func__,
-		&default_comp->mtk_crtc->base, 0);
-	ret = mtk_oddmr_acquire_clock();
-	if (ret == 0)
-		mtk_oddmr_release_clock();
-	else {
-		DDPPR_ERR("clock not on %d\n", ret);
-		return ret;
 	}
 
 	g_oddmr_priv->dmr_enable_req = enable;
@@ -9615,7 +9790,6 @@ int mtk_drm_ioctl_oddmr_ctl(struct drm_device *dev, void *data,
 		struct drm_file *file_priv)
 {
 	int ret;
-	int pm_ret;
 	struct mtk_drm_oddmr_ctl *param = data;
 
 	ODDMRAPI_LOG("+\n");
@@ -9623,7 +9797,6 @@ int mtk_drm_ioctl_oddmr_ctl(struct drm_device *dev, void *data,
 		ODDMRFLOW_LOG("param is null\n");
 		return -EFAULT;
 	}
-	pm_ret = mtk_vidle_pq_power_get(__func__);
 	ODDMRAPI_LOG("%s: cmd is %u\n", __func__, param->cmd);
 	switch (param->cmd) {
 	case MTK_DRM_ODDMR_OD_INIT:
@@ -9658,8 +9831,6 @@ int mtk_drm_ioctl_oddmr_ctl(struct drm_device *dev, void *data,
 		ret = -EINVAL;
 		break;
 	}
-	if (!pm_ret)
-		mtk_vidle_pq_power_put(__func__);
 	ODDMRFLOW_LOG("cmd %d ret %d\n", param->cmd, ret);
 	return ret;
 }
@@ -10132,24 +10303,24 @@ static int mtk_oddmr_pq_ioctl_transact(struct mtk_ddp_comp *comp,
 		break;
 	case PQ_DBI_GET_HW_ID:
 		ret = 0;
-		DDP_MUTEX_LOCK(&default_comp->mtk_crtc->lock, __func__, __LINE__);
+		DDP_MUTEX_LOCK_CONDITION(&default_comp->mtk_crtc->lock, __func__, __LINE__, false);
 		priv = default_comp->mtk_crtc->base.dev->dev_private;
 		*(unsigned int *)params = priv->data->mmsys_id;
-		DDP_MUTEX_UNLOCK(&default_comp->mtk_crtc->lock, __func__, __LINE__);
+		DDP_MUTEX_UNLOCK_CONDITION(&default_comp->mtk_crtc->lock, __func__, __LINE__, false);
 		break;
 	case PQ_DBI_GET_WIDTH:
 		ret = 0;
-		DDP_MUTEX_LOCK(&default_comp->mtk_crtc->lock, __func__, __LINE__);
+		DDP_MUTEX_LOCK_CONDITION(&default_comp->mtk_crtc->lock, __func__, __LINE__, false);
 		*(unsigned int *)params = mtk_crtc_get_width_by_comp(__func__,
 			&default_comp->mtk_crtc->base, default_comp, false);
-		DDP_MUTEX_UNLOCK(&default_comp->mtk_crtc->lock, __func__, __LINE__);
+		DDP_MUTEX_UNLOCK_CONDITION(&default_comp->mtk_crtc->lock, __func__, __LINE__, false);
 		break;
 	case PQ_DBI_GET_HEIGHT:
 		ret = 0;
-		DDP_MUTEX_LOCK(&default_comp->mtk_crtc->lock, __func__, __LINE__);
+		DDP_MUTEX_LOCK_CONDITION(&default_comp->mtk_crtc->lock, __func__, __LINE__, false);
 		*(unsigned int *)params = mtk_crtc_get_height_by_comp(__func__,
 			&default_comp->mtk_crtc->base, default_comp, false);
-		DDP_MUTEX_UNLOCK(&default_comp->mtk_crtc->lock, __func__, __LINE__);
+		DDP_MUTEX_UNLOCK_CONDITION(&default_comp->mtk_crtc->lock, __func__, __LINE__, false);
 		break;
 	case PQ_DBI_GET_DBV:
 		ret = 0;
@@ -10333,6 +10504,9 @@ static int mtk_oddmr_set_partial_update(struct mtk_ddp_comp *comp,
 	DDPDBG("%s, %s set partial update, height:%d, enable:%d\n",
 		__func__, mtk_dump_comp_str(comp), partial_roi.height, enable);
 
+	if (oddmr->data->od_version != MTK_OD_V2)
+		mtk_oddmr_bypass(comp, (enable == 1) ? 1 : 0, PQ_FEATURE_KRN_PU, handle);
+
 	/* oddmr crop offset set*/
 	oddmr->set_partial_update = enable;
 	overhead_v = (!comp->mtk_crtc->tile_overhead_v.overhead_v)
@@ -10485,6 +10659,12 @@ static int mtk_oddmr_set_partial_update(struct mtk_ddp_comp *comp,
 						+ scale_factor_v -1) / scale_factor_v;
 					mtk_oddmr_write(comp, reg_val,
 						MT6991_DISP_ODDMR_REG_DBI_UDMA_HEIGHT, handle);
+					mtk_oddmr_write(comp, 0,
+						MT6991_DISP_ODDMR_REG_DBI_V_CROP_EN_R, handle);
+					mtk_oddmr_write(comp, 0,
+						MT6991_DISP_ODDMR_REG_DBI_V_CROP_EN_G, handle);
+					mtk_oddmr_write(comp, 0,
+						MT6991_DISP_ODDMR_REG_DBI_V_CROP_EN_B, handle);
 				}
 			}
 
@@ -10842,43 +11022,69 @@ static void mtk_oddmr_update_table_handle(struct work_struct *data)
 {
 	struct cmdq_pkt *cmdq_handle0 = NULL;
 	struct cmdq_pkt *cmdq_handle1 = NULL;
+	struct mtk_drm_crtc *mtk_crtc = default_comp->mtk_crtc;
+	struct cmdq_client *client = NULL;
 	uint32_t update_sram_idx, updata_dram_idx;
+	int ret, pm_ret;
 
-	CRTC_MMP_EVENT_START(0, oddmr_ctl,
-		g_oddmr_priv->od_data.od_dram_sel[0], g_oddmr_priv->od_data.od_dram_sel[1]);
-	ODDMRFLOW_LOG("ODDMR_TABLE_UPDATING\n");
-	g_oddmr_priv->od_state = ODDMR_TABLE_UPDATING;
-	/* In case hasn't yet enabled by mtk_oddmr_set_od_enable. */
-	if (g_oddmr_priv->data->od_version == MTK_OD_V2)
-		mtk_oddmr_set_top_clk_force(default_comp, 1, NULL);
+	ODDMRFLOW_LOG("+\n");
+	mtk_drm_idlemgr_kick(__func__,
+			&default_comp->mtk_crtc->base, 1);
+	ret = mtk_oddmr_acquire_clock();
+	if (ret == 0) {
+		pm_ret = mtk_vidle_pq_power_get(__func__);
+		if (pm_ret) {
+			DDPPR_ERR("%s pq_power_get failed %d, skip\n", __func__, pm_ret);
+			mtk_oddmr_release_clock();
+			return;
+		}
+		CRTC_MMP_EVENT_START(0, oddmr_ctl,
+			g_oddmr_priv->od_data.od_dram_sel[0], g_oddmr_priv->od_data.od_dram_sel[1]);
+		ODDMRFLOW_LOG("ODDMR_TABLE_UPDATING\n");
+		g_oddmr_priv->od_state = ODDMR_TABLE_UPDATING;
+		/* In case hasn't yet enabled by mtk_oddmr_set_od_enable. */
+		if (g_oddmr_priv->data->od_version == MTK_OD_V2)
+			mtk_oddmr_set_top_clk_force(default_comp, 1, NULL);
 
-	update_sram_idx = (uint32_t)!g_oddmr_priv->od_data.od_sram_read_sel;
-	updata_dram_idx = (uint32_t)g_od_param.updata_dram_table;
-	CRTC_MMP_MARK(0, oddmr_ctl, 10, 0);
-	cmdq_handle0 =
-		g_oddmr_priv->od_data.od_sram_pkgs[updata_dram_idx][update_sram_idx];
-	cmdq_pkt_refinalize(cmdq_handle0);
-	CRTC_MMP_MARK(0, oddmr_ctl, (unsigned long)cmdq_handle0, updata_dram_idx);
-	cmdq_pkt_flush(cmdq_handle0);
-	CRTC_MMP_MARK(0, oddmr_ctl, 10, 2);
-	ODDMRFLOW_LOG("now dram0 %d, now_dram1 %d\n",
-		g_oddmr_priv->od_data.od_dram_sel[0], g_oddmr_priv->od_data.od_dram_sel[1]);
-	g_oddmr_priv->od_data.od_dram_sel[update_sram_idx] = updata_dram_idx;
-	if (default_comp->mtk_crtc->is_dual_pipe) {
-		cmdq_handle1 =
-			g_oddmr1_priv->od_data.od_sram_pkgs[updata_dram_idx][update_sram_idx];
-		cmdq_pkt_refinalize(cmdq_handle1);
-		CRTC_MMP_MARK(0, oddmr_ctl, 11, 0);
-		CRTC_MMP_MARK(0, oddmr_ctl, (unsigned long)cmdq_handle1, updata_dram_idx);
-		cmdq_pkt_flush(cmdq_handle1);
-		CRTC_MMP_MARK(0, oddmr_ctl, 11, 2);
-		g_oddmr1_priv->od_data.od_dram_sel[update_sram_idx] = updata_dram_idx;
+		if (mtk_crtc->gce_obj.client[CLIENT_PQ])
+			client = mtk_crtc->gce_obj.client[CLIENT_PQ];
+		else
+			client = mtk_crtc->gce_obj.client[CLIENT_CFG];
+		cmdq_mbox_enable(client->chan);
+		update_sram_idx = (uint32_t)!g_oddmr_priv->od_data.od_sram_read_sel;
+		updata_dram_idx = (uint32_t)g_od_param.updata_dram_table;
+		CRTC_MMP_MARK(0, oddmr_ctl, 10, 0);
+		cmdq_handle0 =
+			g_oddmr_priv->od_data.od_sram_pkgs[updata_dram_idx][update_sram_idx];
+		cmdq_pkt_refinalize(cmdq_handle0);
+		CRTC_MMP_MARK(0, oddmr_ctl, (unsigned long)cmdq_handle0, updata_dram_idx);
+		cmdq_pkt_flush(cmdq_handle0);
+		CRTC_MMP_MARK(0, oddmr_ctl, 10, 2);
+		ODDMRFLOW_LOG("now dram0 %d, now_dram1 %d\n",
+			g_oddmr_priv->od_data.od_dram_sel[0], g_oddmr_priv->od_data.od_dram_sel[1]);
+		g_oddmr_priv->od_data.od_dram_sel[update_sram_idx] = updata_dram_idx;
+		if (default_comp->mtk_crtc->is_dual_pipe) {
+			cmdq_handle1 =
+				g_oddmr1_priv->od_data.od_sram_pkgs[updata_dram_idx][update_sram_idx];
+			cmdq_pkt_refinalize(cmdq_handle1);
+			CRTC_MMP_MARK(0, oddmr_ctl, 11, 0);
+			CRTC_MMP_MARK(0, oddmr_ctl, (unsigned long)cmdq_handle1, updata_dram_idx);
+			cmdq_pkt_flush(cmdq_handle1);
+			CRTC_MMP_MARK(0, oddmr_ctl, 11, 2);
+			g_oddmr1_priv->od_data.od_dram_sel[update_sram_idx] = updata_dram_idx;
+		}
+		cmdq_mbox_disable(client->chan);
+		ODDMRFLOW_LOG("now sram %d, update_sram %d, dram %d\n",
+			g_oddmr_priv->od_data.od_sram_read_sel,update_sram_idx, updata_dram_idx);
+		g_oddmr_priv->od_state = ODDMR_INIT_DONE;
+		ODDMRFLOW_LOG("ODDMR_INIT_DONE\n");
+		CRTC_MMP_EVENT_END(0, oddmr_ctl, update_sram_idx, updata_dram_idx);
+		if (!pm_ret)
+			mtk_vidle_pq_power_put(__func__);
+		mtk_oddmr_release_clock();
+	} else {
+		ODDMRFLOW_LOG("clock not on %d\n", ret);
 	}
-	ODDMRFLOW_LOG("now sram %d, update_sram %d, dram %d\n",
-		g_oddmr_priv->od_data.od_sram_read_sel,update_sram_idx, updata_dram_idx);
-	g_oddmr_priv->od_state = ODDMR_INIT_DONE;
-	ODDMRFLOW_LOG("ODDMR_INIT_DONE\n");
-	CRTC_MMP_EVENT_END(0, oddmr_ctl, update_sram_idx, updata_dram_idx);
 }
 
 static int mtk_oddmr_create_workqueue(struct mtk_disp_oddmr *priv)

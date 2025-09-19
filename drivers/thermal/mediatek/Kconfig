@@ -31,6 +31,12 @@ config MTK_SOC_THERMAL_LVTS
           configures LVTS thermal controllers to collect temperatures
           via ASIF interface.
 
+config MTK_SKIP_THERMAL_ZONE_UPDATE
+	tristate "Skip thermal zone update when system resume"
+	help
+	  Enable this option if you want to skip thermal zone update when system resume
+	  to optimize suspend acquire wakelock time.
+
 config MTK_BOARD_THERMAL
 	tristate "On-board NTC thermistor driver for Mediatek SoCs"
 	help
@@ -136,7 +142,7 @@ config MTK_FAN_THERMAL
 
 config MTK_CPU_ISOLATE_THERMAL
 	tristate "Mediatek cpu isolate cooling devices"
-	depends on MTK_CORE_CTL
+	depends on MTK_CHARGER
 	help
 	  Enable this option to turn on cpu isolate cooler mechanisms
 	  for Mediatek platforms.

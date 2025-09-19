@@ -185,6 +185,9 @@ void legacy_md_dump_register(struct ccci_modem *md)
 	case 6768:
 		md_dump_register_for_mt6768(md);
 		break;
+	case 6771:
+		md_dump_register_for_mt6771(md);
+		break;
 	case 6781:
 		md_dump_register_for_mt6781(md);
 		break;

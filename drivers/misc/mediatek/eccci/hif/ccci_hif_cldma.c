@@ -93,6 +93,9 @@ static int normal_tx_ring2queue[NORMAL_TXQ_NUM];
 
 #define NET_TX_FIRST_QUE	0
 
+//rxq push thread flush gro list time, 2ms
+#define RX_FLSUH_TIME (2000000)
+
 #define TAG "cldma"
 
 struct md_cd_ctrl *cldma_ctrl;
@@ -1122,6 +1125,7 @@ static int cldma_net_rx_push_thread(void *arg)
 	unsigned long ccmni_temp_state = 0;
 	unsigned int ccmni_flush_state[CCMNI_INTERFACE_NUM];
 	struct lhif_header *lhif;
+	u64 time_limit = 0;
 
 	while (1) {
 		if (skb_queue_empty(&queue->skb_list.skb_list)) {
@@ -1133,6 +1137,8 @@ static int cldma_net_rx_push_thread(void *arg)
 
 			ret = wait_event_interruptible(queue->rx_wq,
 				!skb_queue_empty(&queue->skb_list.skb_list));
+
+			time_limit = local_clock();
 			if (ret == -ERESTARTSYS)
 				continue;	/* FIXME */
 		}
@@ -1171,6 +1177,16 @@ static int cldma_net_rx_push_thread(void *arg)
 		}
 
 		cldma_recv_skb(lhif->netif, skb);
+
+		if ((local_clock() - time_limit) >= RX_FLSUH_TIME) {  //>= 2ms
+			cldma_flush_napi_rx_list(ccmni_flush_count,
+				ccmni_flush_state, queue->index);
+			ccmni_flush_count = 0;
+			ccmni_temp_state = 0;
+			ccmni_idx = 0xFFFFFFFF;
+
+			time_limit = local_clock();
+		}
 
 #ifdef CCCI_SKB_TRACE
 		per_md_data->netif_rx_profile[6] =
@@ -2805,7 +2821,8 @@ static int md_cd_send_skb(struct ccmni_tx_para_info *tx_info)
 	struct md_cd_queue *queue;
 	struct cldma_request *tx_req;
 	int ret = 0;
-	struct ccci_header *ccci_h = NULL;
+	struct ccci_header *ccci_h_ptr = NULL;
+	struct ccci_header ccci_h;
 	unsigned int ioc_override = 0;
 	unsigned long flags;
 	unsigned int tx_bytes = 0;
@@ -2875,12 +2892,13 @@ static int md_cd_send_skb(struct ccmni_tx_para_info *tx_info)
 		qno, queue->budget, tx_bytes, tx_ch);
 	tx_req = queue->tx_xmit;
 	if (queue->budget > 0 && tx_req->skb == NULL) {
-		ccci_h = (struct ccci_header *)skb_push(skb,
+		ccci_h_ptr = (struct ccci_header *)skb_push(skb,
 			sizeof(struct ccci_header));
-		ccci_h->channel = tx_ch ;
-		ccci_h->data[0] = tx_info->ccmni_idx;
-		ccci_h->data[1] = skb->len;
-		ccci_h->reserved = 0;
+		ccci_h_ptr->channel = tx_ch ;
+		ccci_h_ptr->data[0] = tx_info->ccmni_idx;
+		ccci_h_ptr->data[1] = skb->len;
+		ccci_h_ptr->reserved = 0;
+		memcpy(&ccci_h, ccci_h_ptr, sizeof(struct ccci_header));
 		ccci_md_inc_tx_seq_num(&md_ctrl->traffic_info,
 			(struct ccci_header *)skb->data);
 		/* wait write done */
@@ -2896,10 +2914,10 @@ static int md_cd_send_skb(struct ccmni_tx_para_info *tx_info)
 #if TRAFFIC_MONITOR_INTERVAL
 		md_ctrl->tx_pre_traffic_monitor[queue->index]++;
 		ccci_channel_update_packet_counter(
-			md_ctrl->traffic_info.logic_ch_pkt_pre_cnt, ccci_h);
+			md_ctrl->traffic_info.logic_ch_pkt_pre_cnt, &ccci_h);
 #endif
 		ccci_md_add_log_history(&md_ctrl->traffic_info, OUT,
-			(int)queue->index, ccci_h, 0);
+			(int)queue->index, &ccci_h, 0);
 		/*
 		 * make sure TGPD is ready by here,
 		 * otherwise there is race conditon between
@@ -2918,7 +2936,7 @@ static int md_cd_send_skb(struct ccmni_tx_para_info *tx_info)
 				jiffies + CLDMA_ACTIVE_T * HZ);
 			CCCI_DEBUG_LOG(0, TAG,
 				"md_ctrl->txq_active=%d, qno%d ,ch%d, start_timer=%d\n",
-				md_ctrl->txq_active, qno, ccci_h->channel, ret);
+				md_ctrl->txq_active, qno, ccci_h.channel, ret);
 			ret = 0;
 #endif
 			md_ctrl->tx_busy_warn_cnt = 0;
@@ -2954,7 +2972,7 @@ static int md_cd_send_skb(struct ccmni_tx_para_info *tx_info)
 			 */
 			CCCI_NORMAL_LOG(0, TAG,
 				"ch=%d qno=%d cldma maybe stop, this package will be dropped!\n",
-				ccci_h->channel, qno);
+				ccci_h.channel, qno);
 		}
 		spin_unlock_irqrestore(&md_ctrl->cldma_timeout_lock, flags);
 	} else {
@@ -3295,6 +3313,8 @@ static int ccci_cldma_hif_init(struct platform_device *pdev,
 	ccci_hif_register(CLDMA_HIF_ID, (void *)cldma_ctrl,
 		&ccci_hif_cldma_ops);
 	ccmni_ops.send_skb = &md_cd_send_skb;
+
+	ccmni_set_cur_speed(0);
 	return 0;
 }
 

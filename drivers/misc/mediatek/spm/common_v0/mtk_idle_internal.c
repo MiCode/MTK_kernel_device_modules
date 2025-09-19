@@ -15,8 +15,7 @@
 #endif
 #include "mtk_idle.h"
 #include "mtk_idle_internal.h"
-//#include "mtk-clkbuf-dcxo.h"
-//#include "mtk_clkbuf_ctl.h"
+#include "clkbuf-ctrl.h"
 
 #include "mtk_spm_internal.h"
 #if IS_ENABLED(CONFIG_MTK_UFS_SUPPORT)
@@ -65,11 +64,13 @@ EXPORT_SYMBOL(spm_set_by_flightmode);
 
 u32 clk_buf_bblpm_enter_cond(void)
 {
-	u32 bblpm_cond = 0;
-	//if (!clk_buf_is_init_done()) {
-		//bblpm_cond |= BBLPM_COND_SKIP;
-		//return bblpm_cond;
-	//}
+	u32 bblpm_cond = 0, out;
+	int ret;
+
+	if (!clk_buf_is_init_done()) {
+		bblpm_cond |= BBLPM_COND_SKIP;
+		return bblpm_cond;
+	}
 
 	if (!spm_flightmode)
 		bblpm_cond |= BBLPM_COND_CEL;
@@ -77,8 +78,9 @@ u32 clk_buf_bblpm_enter_cond(void)
 	if (mtk_spm_read_register(SPM_PWRSTA) & (1 << 1))
 		bblpm_cond |= BBLPM_COND_WCN;
 
-	//if (clk_buf_get_xo_en_sta("XO_NFC") == 1)
-		//bblpm_cond |= BBLPM_COND_NFC;
+	ret = clkbuf_get_auxout(2, &out, "xo_en");
+	if (!ret && out)
+		bblpm_cond |= BBLPM_COND_NFC;
 	return bblpm_cond;
 }
 EXPORT_SYMBOL(clk_buf_bblpm_enter_cond);

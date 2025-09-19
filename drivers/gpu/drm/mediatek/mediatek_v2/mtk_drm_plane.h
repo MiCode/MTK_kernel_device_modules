@@ -239,6 +239,6 @@ char *mtk_get_format_name(uint32_t format);
 void mtk_plane_get_comp_state(struct drm_plane *plane,
 			      struct mtk_plane_comp_state *comp_state,
 			      struct drm_crtc *crtc, int lock);
-unsigned int to_crtc_plane_index(unsigned int plane_index);
+unsigned int to_crtc_plane_index(struct drm_plane *plane);
 
 #endif

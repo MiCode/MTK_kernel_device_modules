@@ -347,7 +347,9 @@ int scp_set_pmic_vcore(unsigned int cur_freq)
 	idx = scp_get_freq_idx(cur_freq);
 	if (idx >= 0 && idx < dvfs->scp_opp_num) {
 		unsigned int vcore;
+#if !IS_ENABLED(CONFIG_SCP_DVFS_MT6771)
 		unsigned int uv = dvfs->opp[idx].uv_idx;
+#endif
 		int max_vcore = 0;
 		int max_vsram = 0;
 
@@ -355,11 +357,14 @@ int scp_set_pmic_vcore(unsigned int cur_freq)
 			max_vcore = dvfs->opp[dvfs->scp_opp_num - 1].vcore + 100000;
 			max_vsram = dvfs->opp[dvfs->scp_opp_num - 1].vsram + 100000;
 		}
-
+#if !IS_ENABLED(CONFIG_SCP_DVFS_MT6771)
 		if (uv != 0xff)
 			vcore = mtk_dvfsrc_vcore_uv_table(uv);
 		else
 			vcore = dvfs->opp[idx].vcore;
+#else
+		vcore = dvfs->opp[idx].vcore;
+#endif
 
 		/* vcore MAX_uV set to highest opp + 100mV */
 
@@ -668,7 +673,7 @@ int scp_pll_ctrl_set(unsigned int pll_ctrl_flag, unsigned int pll_sel)
 
 	if (pll_ctrl_flag == PLL_ENABLE) {
 		if (pre_pll_sel != UNIVPLL_416M) {
-			if (dvfs->legacy_support_v1) {
+			if (dvfs->legacy_support_v1 || dvfs->legacy_support_v3) {
 				if (pre_pll_sel != MAINPLL_273M)
 					ret = clk_prepare_enable(mt_scp_pll->clk_mux);
 			} else
@@ -703,7 +708,7 @@ int scp_pll_ctrl_set(unsigned int pll_ctrl_flag, unsigned int pll_sel)
 			pre_pll_sel = pll_sel;
 	} else if ((pll_ctrl_flag == PLL_DISABLE) &&
 			(pll_sel != UNIVPLL_416M)) {
-		if (dvfs->legacy_support_v1) {
+		if (dvfs->legacy_support_v1 || dvfs->legacy_support_v3) {
 			if (pre_pll_sel != MAINPLL_273M)
 				clk_disable_unprepare(mt_scp_pll->clk_mux);
 		} else
@@ -1588,8 +1593,9 @@ static int __init mt_scp_dvfs_pdrv_probe(struct platform_device *pdev)
 	}
 
 	dvfs->opp = opp;
-	dvfs->legacy_support_v1 = of_property_read_bool(node, "legacy_support_v1");
-	dvfs->legacy_support_v2 = of_property_read_bool(node, "legacy_support_v2");
+	dvfs->legacy_support_v1 = of_property_read_bool(node, "legacy-support-v1");
+	dvfs->legacy_support_v2 = of_property_read_bool(node, "legacy-support-v2");
+	dvfs->legacy_support_v3 = of_property_read_bool(node, "legacy-support-v3");
 
 	/* get dvfsrc table opp count */
 	ret = of_property_read_u32(node, "dvfsrc-opp-num",

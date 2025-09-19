@@ -181,27 +181,31 @@ static void eem_post_work(struct work_struct *work)
 	eem_buck_set_mode(0);
 }
 
+static void deferred_log(struct work_struct *work)
+{
+	eem_error("eem init volt status, cnt:%d, done:%d\n",
+		vboot_check_cnt, eemsn_log->init_vboot_done);
+}
+
+static DECLARE_WORK(log_work, deferred_log);
+
 static enum hrtimer_restart eem_init_check_timer_func(struct hrtimer *timer)
 {
 	int ret;
 
 	if ((eemsn_log->init_vboot_done) || (vboot_check_cnt >= 20)) {
-		eem_error("eem init check disabled, cnt:%d, done:%d\n",
-			vboot_check_cnt, eemsn_log->init_vboot_done);
 		/* hrtimer_cancel(&eem_init_check_timer); */
 #if !EARLY_PORTING
 		/* CPU vporc post-process */
 		schedule_work(&eem_work);
 #endif
+		schedule_work(&log_work);
 		ret = HRTIMER_NORESTART;
 	} else {
 		vboot_check_cnt++;
-		eem_error("eem init check restart, vboot_check_cnt:%d\n",
-			vboot_check_cnt);
 		hrtimer_forward_now(timer, ns_to_ktime(LOG_INTERVAL));
 		ret = HRTIMER_RESTART;
 	}
-
 	return ret;
 }
 #endif
@@ -1772,15 +1776,6 @@ out:
 
 static int eem_force_sensing_proc_show(struct seq_file *m, void *v)
 {
-	struct eem_ipi_data eem_data;
-	unsigned int ipi_ret = 0;
-
-	FUNC_ENTER(FUNC_LV_HELP);
-	memset(&eem_data, 0, sizeof(struct eem_ipi_data));
-	ipi_ret = eem_to_eb(IPI_EEMSN_FORCE_SN_SENSING, &eem_data);
-	seq_printf(m, "ret:%d\n", ipi_ret);
-	FUNC_EXIT(FUNC_LV_HELP);
-
 	return 0;
 }
 

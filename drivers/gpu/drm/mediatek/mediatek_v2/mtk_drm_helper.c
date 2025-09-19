@@ -216,7 +216,7 @@ int mtk_drm_helper_get_opt(struct mtk_drm_helper *helper_opt,
 
 void mtk_drm_helper_init(struct device *dev, struct mtk_drm_helper **helper_opt)
 {
-	int i, value, index, ret;
+	int i, value, index1, index2, ret;
 	struct mtk_drm_helper *tmp_opt;
 
 	tmp_opt = kmalloc(sizeof(help_info), GFP_KERNEL);
@@ -227,13 +227,21 @@ void mtk_drm_helper_init(struct device *dev, struct mtk_drm_helper **helper_opt)
 
 	memcpy(tmp_opt, help_info, sizeof(help_info));
 	for (i = 0; i < MTK_DRM_OPT_NUM; i++) {
-		index = of_property_match_string(dev->of_node, "helper-name",
+		index1 = of_property_match_string(dev->of_node, "helper-name",
 						 help_info[i].desc);
-		if (index < 0)
+		index2 = of_property_match_string(dev->of_node, "helper-name-proj",
+						 help_info[i].desc);
+
+		if (index1 < 0)
 			value = 0;
-		else {
+		else if (index2 >= 0) {
 			ret = of_property_read_u32_index(
-				dev->of_node, "helper-value", index, &value);
+				dev->of_node, "helper-value-proj", index2, &value);
+			if (ret < 0)
+				value = 0;
+		} else {
+			ret = of_property_read_u32_index(
+				dev->of_node, "helper-value", index1, &value);
 			if (ret < 0)
 				value = 0;
 		}
@@ -259,6 +267,20 @@ void mtk_drm_helper_init(struct device *dev, struct mtk_drm_helper **helper_opt)
 #if IS_ENABLED(CONFIG_MTK_LCM_DUAL_PORT_SUPPORT)
 		mtk_drm_helper_set_opt_by_name(tmp_opt,
 				"MTK_DRM_OPT_RPO", 0);
+		mtk_drm_helper_set_opt_by_name(tmp_opt,
+				"MTK_DRM_OPT_IDLEMGR_BY_REPAINT", 1);
+#endif
+#if IS_ENABLED(CONFIG_MTK_DISPLAY_DUAL_PIPE_DUAL_PORT_SUPPORT)
+		mtk_drm_helper_set_opt_by_name(tmp_opt,
+				"MTK_DRM_OPT_PRIM_DUAL_PIPE", 1);
+		mtk_drm_helper_set_opt_by_name(tmp_opt,
+				"MTK_DRM_OPT_IDLEMGR_BY_REPAINT", 1);
+		mtk_drm_helper_set_opt_by_name(tmp_opt,
+				"MTK_DRM_OPT_IDLEMGR_DISABLE_ROUTINE_IRQ", 1);
+		mtk_drm_helper_set_opt_by_name(tmp_opt,
+				"MTK_DRM_OPT_TILE_OVERHEAD", 1);
+		mtk_drm_helper_set_opt_by_name(tmp_opt,
+				"MTK_DRM_OPT_PARTIAL_UPDATE", 0);
 #endif
 	*helper_opt = tmp_opt;
 }

@@ -38,8 +38,9 @@
 #include <gpu_bm.h>
 #endif /* MTK_GPU_BM_2 */
 
-#if !IS_ENABLED(CONFIG_MTK_LEGACY_THERMAL)
-//#include "thermal_interface.h"
+#if !IS_ENABLED(CONFIG_MTK_LEGACY_THERMAL) && !IS_ENABLED(CONFIG_MTK_PLAT_POWER_6781) && \
+	!IS_ENABLED(CONFIG_MTK_GPU_MT6771_SUPPORT)
+#include "thermal_interface.h"
 #endif
 #define MTK_DEFER_DVFS_WORK_MS          10000
 #define MTK_DVFS_SWITCH_INTERVAL_MS     50
@@ -911,7 +912,7 @@ bool ged_dvfs_cal_gpu_utilization_ex(unsigned int *pui32Loading,
 	if (ged_dvfs_cal_gpu_utilization_ex_fp != NULL) {
 		ged_dvfs_cal_gpu_utilization_ex_fp(pui32Loading, pui32Block,
 			pui32Idle, (void *) Util_Ex);
-		Util_Ex->freq = ged_get_cur_freq();
+		Util_Ex->freq = ged_get_cur_stack_freq();
 
 		gpu_util_history_update(Util_Ex);
 
@@ -2598,35 +2599,33 @@ void set_api_sync_flag(int flag)
 	} else if (flag == 6) {
 		dcs_set_fix_num(2);
 		start_mewtwo_timer();
-	} else if (((flag & 0xFFFF0000) == 0x60000) || ((flag & 0xFFFF0000) == 0x70000)) {
+	} else if (((flag & 0xFFFF0000) == 0x60000) || ((flag & 0xFFFF0000) == 0x70000) ||
+		((flag & 0xFF000000) == 0x39000000)) {
 		if (api_sync_flag != flag)
 			api_sync_flag = flag;
 	} else if (flag == 8) {
 		MTKGPUQoS_mode_ratio(0);
 	} else if (flag == 9) {
 		MTKGPUQoS_mode_ratio(6080);
-#if !IS_ENABLED(CONFIG_MTK_LEGACY_THERMAL)
-	} else if ((flag & 0xFFFF0000) == 0x55660000) {
+#if !IS_ENABLED(CONFIG_MTK_LEGACY_THERMAL) && !IS_ENABLED(CONFIG_MTK_PLAT_POWER_6781) && \
+	!IS_ENABLED(CONFIG_MTK_GPU_MT6771_SUPPORT)
+	} else if ((flag & 0xFFF00000) == 0x55600000) {
 		// pre-throttle cases
 		if ((flag & 0x0000FFFF) == 0xFFFF) {
-			// reset default
-			//set_gpu_pre_throttle(0x27BC86AA);
-			//set_gpu_pre_throttle_opp(0x27BC86AA);
+			set_gpu_pre_throttle(0x27BC86AA, (flag & 0x000F0000) >> 16);
+			set_gpu_pre_throttle_opp(0x27BC86AA, (flag & 0x000F0000) >> 16);
 		} else {
 			if ((flag & 0x0000FF00) > 0) {
 				// set preferred temp.
-				//set_gpu_pre_throttle(((flag & 0x0000FF00)>>8)*1000);
+				set_gpu_pre_throttle(((flag & 0x0000FF00)>>8)*1000, (flag & 0x000F0000) >> 16);
 			}
 
 			if ((flag & 0x000000FF) > 0) {
 				// set preferred opp.
-				//set_gpu_pre_throttle_opp((flag & 0x000000FF)-1);
+				set_gpu_pre_throttle_opp((flag & 0x000000FF)-1, (flag & 0x000F0000) >> 16);
 			}
 		}
-		GED_LOGE("new gpu_pre_throttle temp");
-		//GED_LOGE("%s@%d (0x%08x)new gpu_pre_throttle temp: %d / opp: %d",
-		//	__func__, __LINE__, (flag & 0x0000FFFF),
-		//	get_gpu_pre_throttle_temp(), get_gpu_pre_throttle_opp());
+		GED_LOGI("GPT: 0x%08x", (flag & 0x000FFFFF));
 #endif
 	}
 }

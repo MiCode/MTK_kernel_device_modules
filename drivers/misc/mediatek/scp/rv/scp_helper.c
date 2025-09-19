@@ -74,6 +74,9 @@
 #define SCP_A_TIMER 0
 
 #define DEBUG_CMD_BUFFER_SZ  0x40000
+#define MAX_RETRY_BEFORE_KE 30
+
+int retry_count_before_KE;
 
 /* scp resume apmcu ipi debug flag */
 bool scp_ipi_resume_dbg;
@@ -579,15 +582,17 @@ static void scp_A_register_notify_pending(void)
 	struct notifier_block *nb = NULL;
 
 	spin_lock(&notify_register_spinlock);
-	while (node->next) {
-		nb = node->next;
-		node->next = node->next->next;
-		spin_unlock(&notify_register_spinlock);
-		/* should not call blocking API in atomic context */
-		scp_A_register_notify(nb);
-		spin_lock(&notify_register_spinlock);
+	if (unlikely(register_curr != &register_notify_pending)) {
+		while (node->next) {
+			nb = node->next;
+			node->next = node->next->next;
+			spin_unlock(&notify_register_spinlock);
+			/* should not call blocking API in atomic context */
+			scp_A_register_notify(nb);
+			spin_lock(&notify_register_spinlock);
+		}
+		register_curr = &register_notify_pending;
 	}
-	register_curr = &register_notify_pending;
 	spin_unlock(&notify_register_spinlock);
 }
 
@@ -597,15 +602,17 @@ static void scp_A_unregister_notify_pending(void)
 	struct notifier_block *nb = NULL;
 
 	spin_lock(&notify_unregister_spinlock);
-	while (node->next) {
-		nb = node->next;
-		node->next = node->next->next;
-		spin_unlock(&notify_unregister_spinlock);
-		/* should not call blocking API in atomic context */
-		scp_A_unregister_notify(nb);
-		spin_lock(&notify_unregister_spinlock);
+	if (unlikely(unregister_curr != &unregister_notify_pending)) {
+		while (node->next) {
+			nb = node->next;
+			node->next = node->next->next;
+			spin_unlock(&notify_unregister_spinlock);
+			/* should not call blocking API in atomic context */
+			scp_A_unregister_notify(nb);
+			spin_lock(&notify_unregister_spinlock);
+		}
+		unregister_curr = &unregister_notify_pending;
 	}
-	unregister_curr = &unregister_notify_pending;
 	spin_unlock(&notify_unregister_spinlock);
 }
 /*
@@ -617,25 +624,32 @@ static void scp_A_unregister_notify_pending(void)
 void scp_A_register_notify(struct notifier_block *nb)
 {
 	pr_debug("%s start\n", __func__);
+	spin_lock(&notify_register_spinlock);
 	switch (atomic_read(&scp_A_notifier_status)) {
 	/*
 	 * if user register nb after SCP ready event, should notify
 	 * user the ready event, too.
 	 */
 	case SCP_EVENT_READY:
+		spin_unlock(&notify_register_spinlock);
 		nb->notifier_call(nb, SCP_EVENT_READY, NULL);
 		pr_debug("%s callback finished\n", __func__);
-		fallthrough;
+		blocking_notifier_chain_register(&scp_A_notifier_list, nb);
+		pr_debug("%s register finished\n", __func__);
+		break;
 	case SCP_EVENT_STOP:
+		spin_unlock(&notify_register_spinlock);
 		blocking_notifier_chain_register(&scp_A_notifier_list, nb);
 		pr_debug("%s register finished\n", __func__);
 		break;
 	case SCP_EVENT_NOTIFYING:
-		spin_lock(&notify_register_spinlock);
 		register_curr->next = nb;
 		register_curr = register_curr->next;
-		spin_unlock(&notify_register_spinlock);
 		pr_debug("%s pending finished\n", __func__);
+		spin_unlock(&notify_register_spinlock);
+		break;
+	default:
+		spin_unlock(&notify_register_spinlock);
 		break;
 	}
 	pr_debug("%s end\n", __func__);
@@ -651,15 +665,19 @@ EXPORT_SYMBOL_GPL(scp_A_register_notify);
  */
 void scp_A_unregister_notify(struct notifier_block *nb)
 {
+	spin_lock(&notify_unregister_spinlock);
 	switch (atomic_read(&scp_A_notifier_status)) {
 	case SCP_EVENT_STOP:
 	case SCP_EVENT_READY:
+		spin_unlock(&notify_unregister_spinlock);
 		blocking_notifier_chain_unregister(&scp_A_notifier_list, nb);
 		break;
 	case SCP_EVENT_NOTIFYING:
-		spin_lock(&notify_unregister_spinlock);
 		unregister_curr->next = nb;
 		unregister_curr = unregister_curr->next;
+		spin_unlock(&notify_unregister_spinlock);
+		break;
+	default:
 		spin_unlock(&notify_unregister_spinlock);
 		break;
 	}
@@ -1011,25 +1029,6 @@ int reset_scp(int reset)
 	return 0;
 }
 
-/*
- * TODO: what should we do when hibernation ?
- */
-static int scp_pm_event(struct notifier_block *notifier
-			, unsigned long pm_event, void *unused)
-{
-	switch (pm_event) {
-	case PM_POST_HIBERNATION:
-		pr_debug("[SCP] %s: PM_POST_HIBERNATION\n", __func__);
-		return NOTIFY_DONE;
-	}
-	return NOTIFY_OK;
-}
-
-static struct notifier_block scp_pm_notifier_block = {
-	.notifier_call = scp_pm_event,
-	.priority = 0,
-};
-
 
 static inline ssize_t scp_A_status_show(struct device *kobj
 			, struct device_attribute *attr, char *buf)
@@ -1322,8 +1321,12 @@ static void scp_write_reset_register_with_retry(int cpu_id)
 
 void scp_wdt_reset(int cpu_id)
 {
+	int scp_awake_flag = 0;
+	int ret = 0;
+
 	/* Need to awawke scp avoid peri off */
 	if (scp_awake_lock((void *)SCP_A_ID) == -1) {
+		scp_awake_flag = -1;
 		pr_notice("[SCP] %s: awake scp fail\n", __func__);
 	}
 
@@ -1331,15 +1334,15 @@ void scp_wdt_reset(int cpu_id)
 	if (scpreg.secure_dump) {
 		switch (cpu_id) {
 		case 0:
-			scp_do_wdt_set(0);
+			ret = scp_do_wdt_set(0);
 			break;
 		case 1:
-			scp_do_wdt_set(1);
+			ret = scp_do_wdt_set(1);
 			break;
 		}
 
 		if (sap_enabled() && cpu_id == sap_get_core_id())
-			scp_do_wdt_set(cpu_id);
+			ret = scp_do_wdt_set(cpu_id);
 	} else {
 #else
 	{
@@ -1350,6 +1353,11 @@ void scp_wdt_reset(int cpu_id)
 	if (sap_enabled() && cpu_id == sap_get_core_id())
 		sap_wdt_reset();
 
+	}
+
+	if(!scp_awake_flag && ret) {
+		if (scp_awake_unlock((void *)SCP_A_ID) == -1)
+			pr_notice("[SCP] %s: awake unlock fail\n", __func__);
 	}
 }
 EXPORT_SYMBOL(scp_wdt_reset);
@@ -1988,10 +1996,8 @@ void scp_extern_notify(enum SCP_NOTIFY_EVENT notify_status)
 	 * if there is some user (un)register when notifier is notifying,
 	 * should (un)register them after the notify action is finish.
 	 */
-	if (unlikely(register_curr != &register_notify_pending))
-		scp_A_register_notify_pending();
-	if (unlikely(unregister_curr != &unregister_notify_pending))
-		scp_A_unregister_notify_pending();
+	scp_A_register_notify_pending();
+	scp_A_unregister_notify_pending();
 	mutex_unlock(&scp_A_notify_mutex);
 }
 
@@ -2126,9 +2132,12 @@ void scp_reset_wait_timeout(void)
 	pr_notice("[SCP] %s() SCP core status c0:%x c1:%x sap:%x\n", __func__, core0_halt, core1_halt, sap_halt);
 
 	if (timeout == 0) {
-		pr_notice("[SCP] reset timeout...\n");
-		if (scpreg.recovery_wfi_detect)
+		retry_count_before_KE++;
+		pr_notice("[SCP] reset timeout... %d\n",retry_count_before_KE);
+		if (scpreg.recovery_wfi_detect && (retry_count_before_KE >= MAX_RETRY_BEFORE_KE))
 			BUG_ON(1);
+		else
+			msleep(10000); /* reserve time to let aee finish its job */
 	}
 
 }
@@ -3482,10 +3491,6 @@ static int __init scp_init(void)
 	mtk_ipi_register(&scp_ipidev, IPI_IN_KASAN_CHECK,
 			(void *)scp_check_kasan_handler, NULL, &scp_kasan_info);
 
-	ret = register_pm_notifier(&scp_pm_notifier_block);
-	if (ret)
-		pr_notice("[SCP] failed to register PM notifier %d\n", ret);
-
 	/* scp sysfs initialise */
 	pr_debug("[SCP] sysfs init\n");
 	ret = create_files();
@@ -3646,8 +3651,11 @@ void scp_plat_ipi_timeout_cb(int ipi_id)
 	if (scp_pin_dump[ipi_id].count > SCP_IPI_DUMP_TIMEOUT) {
 		scp_dump_function();
 		scp_pin_dump[ipi_id].count = 0;
-		if (scpreg.ipi_timeout_bugon)
-			BUG_ON(1);
+		if (scpreg.ipi_timeout_bugon) {
+			/* trigger coredump */
+			scp_do_halt_set();
+			scp_send_reset_wq(RESET_TYPE_TIMEOUT);
+		}
 	}
 	spin_unlock_irqrestore(&scp_ipidev.lock_monitor, flags);
 }

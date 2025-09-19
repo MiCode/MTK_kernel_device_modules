@@ -405,6 +405,7 @@ static int page_base_free_v2(struct secure_heap_page *sec_heap,
 		uint32_t *pmm_msg = page_address(pmm_page);
 		uint32_t idx_2m, idx, offset;
 		uint32_t entry_num = page_size(pmm_page)/sizeof(uint32_t);
+		unsigned int order = 0U;
 
 		// pr_debug("list_for_each_entry: entry_num%#x\n", entry_num);
 		for (i = 0; i < entry_num && pmm_msg[i]; i++) {
@@ -416,7 +417,9 @@ static int page_base_free_v2(struct secure_heap_page *sec_heap,
 			++page_count;
 		}
 		/* clean buffer in el2 */
-		__free_pages(pmm_page, get_order(PAGE_SIZE));
+		order = get_order(PAGE_SIZE);
+		if (order < NR_PAGE_ORDERS)
+			__free_pages(pmm_page, order);
 	}
 	kfree(buffer->ssheap);
 

@@ -57,6 +57,15 @@
 #include <cmdq-util.h>
 #include <soc/mediatek/smi.h>
 
+#if IS_ENABLED(CONFIG_MTK_PMQOS)
+#include <mmdvfs_pmqos.h>
+#define MMDVFS_DEFAULT_FREQ_STEP 700
+static struct mtk_pm_qos_request mdp_clk_qos_request[MDP_TOTAL_THREAD];
+static struct mtk_pm_qos_request isp_clk_qos_request[MDP_TOTAL_THREAD];
+static u32 step_size;
+static u64 g_freq_steps[MAX_FREQ_STEP];
+#endif
+
 /* mmdvfs with regulator */
 struct regulator *mdp_mmdvfs_reg;
 struct regulator *isp_mmdvfs_reg;
@@ -320,7 +329,11 @@ static s32 cmdq_mdp_enable_common_clock(bool enable, u64 engine_flag)
 				return TASK_STATE_ERROR;
 			}
 		}
+#if IS_ENABLED(CONFIG_COMMON_CLK_MT6771)
+		ret = smi_bus_prepare_enable(SMI_LARB0, "CMDQ");
+#else
 		ret = pm_runtime_resume_and_get(larb);
+#endif
 		mdp_dpc_power_keep();
 		mdp_dpc_dc_force_enable(true);
 		cmdq_mdp_get_func()->mdpEnableCommonClock(enable, engine_flag);
@@ -334,7 +347,11 @@ static s32 cmdq_mdp_enable_common_clock(bool enable, u64 engine_flag)
 		cmdq_mdp_get_func()->mdpEnableCommonClock(enable, engine_flag);
 		mdp_dpc_dc_force_enable(false);
 		mdp_dpc_power_release();
+#if IS_ENABLED(CONFIG_COMMON_CLK_MT6771)
+		ret = smi_bus_disable_unprepare(SMI_LARB0, "CMDQ");
+#else
 		pm_runtime_put_sync(larb);
+#endif
 		if (mdpdev) {
 			ret = pm_runtime_put_sync(mdpdev);
 			if (ret) {
@@ -2295,6 +2312,33 @@ static void cmdq_mdp_init_pmqos(struct platform_device *pdev)
 	if (cmdq_mdp_get_func()->mdpIsCaminSupport())
 		isp_mmdvfs_reg = devm_regulator_get(&pdev->dev, "isp-dvfsrc-vcore");
 
+#if IS_ENABLED(CONFIG_MTK_PMQOS)
+	i = 0;
+	s32 result = 0;
+	/* INIT_LIST_HEAD(&gCmdqMdpContext.mdp_tasks);*/
+
+	for (i = 0; i < MDP_TOTAL_THREAD; i++) {
+		mtk_pm_qos_add_request(&mdp_clk_qos_request[i],
+		  MTK_PM_QOS_MDP_FREQ, PM_QOS_DEFAULT_VALUE);
+		mtk_pm_qos_add_request(&isp_clk_qos_request[i],
+		  MTK_PM_QOS_IMG_FREQ, PM_QOS_DEFAULT_VALUE);
+		result = snprintf(mdp_clk_qos_request[i].owner,
+		  sizeof(mdp_clk_qos_request[i].owner) - 1, "mdp_clk_%d", i);
+		if (result < 0)
+			CMDQ_ERR("get mdp_clk_qos_request[i].owner failed, err: %d\n", result);
+
+		result = snprintf(isp_clk_qos_request[i].owner,
+		  sizeof(isp_clk_qos_request[i].owner) - 1, "isp_clk_%d", i);
+		if (result < 0)
+			CMDQ_ERR("get isp_clk_qos_request[i].owner failed, err: %d\n", result);
+	}
+	/* Call mmdvfs_qos_get_freq_steps to get supported frequency */
+	result = mmdvfs_qos_get_freq_steps(MTK_PM_QOS_MDP_FREQ, &g_freq_steps[0],
+			&step_size);
+	if (result < 0)
+		CMDQ_ERR("get MMDVFS freq steps failed, result: %d\n", result);
+	g_freq_steps[0] = g_freq_steps[0] ? g_freq_steps[0] : MMDVFS_DEFAULT_FREQ_STEP;
+#endif
 }
 
 static int cmdq_mdp_init_larb(struct platform_device *pdev)
@@ -2711,6 +2755,7 @@ void cmdq_mdp_unmap_mmsys_VA(void)
 	cmdq_dev_free_module_base_VA(cmdq_mmsys_base);
 }
 
+#if !IS_ENABLED(CONFIG_MTK_PMQOS)
 static void mdp_request_voltage(unsigned long frequency, bool is_mdp)
 {
 	int low_volt = 0, ret = 0;
@@ -2788,6 +2833,7 @@ static void mdp_update_voltage(u32 thread_id, u64 freq, bool is_mdp)
 	mdp_request_voltage(max_freq, is_mdp);
 	CMDQ_SYSTRACE_END();
 }
+#endif
 
 #define mdp_t(_act_throughput)	\
 	min((_act_throughput), mdp_pmqos_freq[mdp_pmqos_opp_num - 1])
@@ -2809,10 +2855,14 @@ static void cmdq_mdp_begin_task_virtual(struct cmdqRecStruct *handle,
 	s32 denominator;
 	u32 thread_id = handle->thread - MDP_THREAD_START;
 	u32 max_throughput = 0;
+#if !IS_ENABLED(CONFIG_MTK_PMQOS)
 	u32 isp_throughput = 0;
 	u32 mdp_throughput = 0;
 	u32 isp_curr_bandwidth = 0;
 	u32 mdp_curr_bandwidth = 0;
+#else
+	uint32_t act_throughput = 0;
+#endif
 	u32 total_pixel = 0;
 	bool first_task = true;
 	bool expired;
@@ -2833,6 +2883,7 @@ static void cmdq_mdp_begin_task_virtual(struct cmdqRecStruct *handle,
 	if (!handle->prop_addr)
 		goto done;
 
+#if !IS_ENABLED(CONFIG_MTK_PMQOS)
 	if (cmdq_mdp_get_func()->mdpIsCaminSupport() && !isp_pmqos_freq) {
 		CMDQ_ERR("%s isp_pmqos_freq not available\n", __func__);
 		goto done;
@@ -2842,6 +2893,7 @@ static void cmdq_mdp_begin_task_virtual(struct cmdqRecStruct *handle,
 		CMDQ_ERR("%s mdp_pmqos_freq not available\n", __func__);
 		goto done;
 	}
+#endif
 
 	pmqos_curr_record =
 		kzalloc(sizeof(struct mdp_pmqos_record), GFP_KERNEL);
@@ -2981,6 +3033,7 @@ static void cmdq_mdp_begin_task_virtual(struct cmdqRecStruct *handle,
 		thread_id, cmdq_mdp_get_func()->mdpIsIspCamin(handle) ?  false : true,
 		max_throughput, total_pixel);
 
+#if !IS_ENABLED(CONFIG_MTK_PMQOS)
 	/* update isp bandwidth and clock */
 	if (target_pmqos->isp_total_datasize && isp_pmqos_freq) {
 		isp_throughput = isp_t((unsigned long long)(max_throughput));
@@ -3037,6 +3090,26 @@ static void cmdq_mdp_begin_task_virtual(struct cmdqRecStruct *handle,
 		mdp_throughput = max(isp_throughput, mdp_throughput);
 		mdp_update_voltage(thread_id, mdp_throughput, true);
 	}
+#else
+	act_throughput = (max_throughput > g_freq_steps[0]) ? g_freq_steps[0] : max_throughput;
+	/* update isp bandwidth and clock */
+	if (target_pmqos->isp_total_datasize) {
+		mtk_pm_qos_update_request(&isp_clk_qos_request[thread_id],
+			act_throughput);
+		CMDQ_LOG_PMQOS(
+			"[%d]begin task qos update throughput isp %u\n",
+			thread_id, act_throughput);
+	}
+
+	/* update mdp bandwidth and clock */
+	if (target_pmqos->mdp_total_datasize) {
+		mtk_pm_qos_update_request(&mdp_clk_qos_request[thread_id],
+			act_throughput);
+		CMDQ_LOG_PMQOS(
+			"[%d]begin task qos update throughput mdp %u\n",
+			thread_id, act_throughput);
+	}
+#endif
 
 #ifdef MDP_MMPATH
 	if (!handle->prop_addr)
@@ -3099,13 +3172,17 @@ static void cmdq_mdp_end_task_virtual(struct cmdqRecStruct *handle,
 	u32 thread_id = handle->thread - MDP_THREAD_START;
 	u32 max_throughput = 0;
 	u32 pre_throughput = 0;
+#if !IS_ENABLED(CONFIG_MTK_PMQOS)
+	u32 isp_curr_bandwidth = 0;
+	u32 mdp_curr_bandwidth = 0;
 	u32 isp_throughput = 0;
 	u32 mdp_throughput = 0;
+#else
+	uint32_t act_throughput = 0;
+#endif
 	bool trigger = false;
 	bool first_task = true;
 	s32 overdue;
-	u32 isp_curr_bandwidth = 0;
-	u32 mdp_curr_bandwidth = 0;
 	u32 total_pixel = 0;
 	bool expired;
 	ktime_get_real_ts64(&curr_time);
@@ -3113,6 +3190,7 @@ static void cmdq_mdp_end_task_virtual(struct cmdqRecStruct *handle,
 	if (!handle->prop_addr)
 		return;
 
+#if !IS_ENABLED(CONFIG_MTK_PMQOS)
 	if (cmdq_mdp_get_func()->mdpIsCaminSupport() && !isp_pmqos_freq) {
 		CMDQ_ERR("%s isp_pmqos_freq not available\n", __func__);
 		return;
@@ -3122,6 +3200,7 @@ static void cmdq_mdp_end_task_virtual(struct cmdqRecStruct *handle,
 		CMDQ_ERR("%s mdp_pmqos_freq not available\n", __func__);
 		return;
 	}
+#endif
 
 	mdp_curr_pmqos = (struct mdp_pmqos *)handle->prop_addr;
 	pmqos_curr_record = (struct mdp_pmqos_record *)handle->user_private;
@@ -3264,6 +3343,7 @@ static void cmdq_mdp_end_task_virtual(struct cmdqRecStruct *handle,
 	kfree(handle->user_private);
 	handle->user_private = NULL;
 
+#if !IS_ENABLED(CONFIG_MTK_PMQOS)
 	/* update isp bandwidth and clock */
 	if (target_pmqos && target_pmqos->isp_total_datasize && isp_pmqos_freq) {
 		isp_throughput = isp_t((unsigned long long)(max_throughput));
@@ -3358,6 +3438,36 @@ static void cmdq_mdp_end_task_virtual(struct cmdqRecStruct *handle,
 		cmdq_mdp_get_func()->qosClearAll(thread_id);
 		mdp_update_voltage(thread_id, 0, true);
 	}
+#else
+	act_throughput = (max_throughput > g_freq_steps[0]) ? g_freq_steps[0] : max_throughput;
+	/* update isp bandwidth and clock */
+	if (target_pmqos && target_pmqos->isp_total_datasize) {
+		mtk_pm_qos_update_request(&isp_clk_qos_request[thread_id],
+			act_throughput);
+		CMDQ_LOG_PMQOS(
+			"[%d]end task qos update throughput isp %u\n",
+			thread_id, act_throughput);
+	} else if (mdp_curr_pmqos->isp_total_datasize) {
+		mtk_pm_qos_update_request(&isp_clk_qos_request[thread_id], 0);
+		CMDQ_LOG_PMQOS(
+			"[%d]end task qos update throughput isp off %u\n",
+			thread_id, 0);
+	}
+
+	/* update mdp bandwidth and clock */
+	if (target_pmqos && target_pmqos->mdp_total_datasize) {
+		mtk_pm_qos_update_request(&mdp_clk_qos_request[thread_id],
+		act_throughput);
+	CMDQ_LOG_PMQOS(
+		"[%d]end task qos update throughput mdp %u\n",
+		thread_id, act_throughput);
+	} else if (mdp_curr_pmqos->mdp_total_datasize) {
+		mtk_pm_qos_update_request(&mdp_clk_qos_request[thread_id], 0);
+		CMDQ_LOG_PMQOS(
+			"[%d]end task qos update throughput mdp off %u\n",
+			thread_id, 0);
+	}
+#endif
 
 #ifdef MDP_MMPATH
 	if (handle->prop_addr) {
@@ -4180,7 +4290,7 @@ void cmdq_mdp_dump_birsz(const unsigned long base, const char *label)
 
 void cmdq_mdp_dump_rdma(const unsigned long base, const char *label)
 {
-	u32 value[47] = { 0 };
+	u32 value[49] = { 0 };
 	u32 state = 0;
 	u32 grep = 0;
 
@@ -4241,6 +4351,8 @@ void cmdq_mdp_dump_rdma(const unsigned long base, const char *label)
 	value[44] = CMDQ_REG_GET32(base + 0xF08);
 	value[45] = CMDQ_REG_GET32(base + 0xF20);
 	value[46] = CMDQ_REG_GET32(base + 0xF28);
+	value[47] = CMDQ_REG_GET32(base + 0x020);
+	value[48] = CMDQ_REG_GET32(base + 0x200);
 
 	CMDQ_ERR(
 		"=============== [CMDQ] %s Status ====================================\n",
@@ -4294,7 +4406,8 @@ void cmdq_mdp_dump_rdma(const unsigned long base, const char *label)
 		"MDP_RDMA_UFO_DEC_LENGTH_BASE_Y: 0x%08x, MDP_RDMA_UFO_DEC_LENGTH_BASE_C: 0x%08x\n",
 		value[45], value[46]);
 	CMDQ_ERR("RDMA_EN: 0x%08x\n", value[43]);
-	CMDQ_ERR("RDMA_SRC_BASE_1: 0x%08x\n", value[44]);
+	CMDQ_ERR("RDMA_SRC_BASE_1: 0x%08x, RDMA_CON: 0x%08x, RDMA_TRANSFORM_0: 0x%08x\n",
+		value[44], value[47], value[48]);
 
 	/* parse state */
 	CMDQ_ERR("RDMA ack:%d req:%d ufo:%d\n", (value[9] >> 11) & 0x1,

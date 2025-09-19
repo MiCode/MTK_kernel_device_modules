@@ -28,10 +28,10 @@ struct imgsensor_mode_struct {
 	kal_uint32 framelength;	/* record different mode's framelength */
 
 	/* record different mode's startx of grabwindow */
-	kal_uint8 startx;
+	kal_uint16 startx;
 
 	/* record different mode's startx of grabwindow */
-	kal_uint8 starty;
+	kal_uint16 starty;
 
 	/* record different mode's width of grabwindow */
 	kal_uint16 grabwindow_width;

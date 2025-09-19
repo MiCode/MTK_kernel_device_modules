@@ -340,10 +340,12 @@ int drm_show_dal(struct drm_crtc *crtc, bool enable)
 	struct mtk_drm_private *priv = NULL;
 	struct mtk_plane_state *plane_state = NULL;
 	struct mtk_ddp_comp *ovl_comp = NULL;
+	struct mtk_ddp_comp *p_ovl_comp = NULL;
 	struct cmdq_pkt *cmdq_handle = NULL;
 	int layer_id = 0;
 	int ret = 0;
 	u32 bw_base;
+	int comp_index;
 
 	if ((crtc == NULL) || (crtc->dev == NULL)) {
 		DDPPR_ERR("%s: crtc is null\n", __func__);
@@ -398,6 +400,14 @@ int drm_show_dal(struct drm_crtc *crtc, bool enable)
 		bw_base = mtk_drm_primary_frame_bw(crtc);
 		mtk_crtc->usage_ovl_fmt[6] = 4;
 		mtk_ddp_comp_io_cmd(ovl_comp, NULL, PMQOS_SET_HRT_BW, &bw_base);
+		if (mtk_crtc->is_dual_pipe) {
+			comp_index = dual_pipe_comp_mapping(priv->data->mmsys_id, ovl_comp->id);
+
+			if (comp_index < DDP_COMPONENT_ID_MAX)
+				p_ovl_comp = priv->ddp_comp[comp_index];
+			mtk_crtc->usage_ovl_fmt[DISP_PMQOS_OVL1_EXDMA8] = 4;
+			mtk_ddp_comp_io_cmd(p_ovl_comp, NULL, PMQOS_SET_HRT_BW, &bw_base);
+		}
 	}
 	if (enable && priv->data->mmsys_id == MMSYS_MT6899) {
 		bw_base = mtk_drm_primary_frame_bw(crtc);
@@ -411,9 +421,11 @@ int drm_show_dal(struct drm_crtc *crtc, bool enable)
 	/* set DAL config and trigger display */
 	cmdq_handle = mtk_crtc_gce_commit_begin(crtc, NULL, NULL, false);
 
-	if (priv->data->mmsys_id == MMSYS_MT6991)
+	if (priv->data->mmsys_id == MMSYS_MT6991) {
 		mtk_ddp_comp_config_begin(ovl_comp, cmdq_handle, 5);
-
+		if (mtk_crtc->is_dual_pipe)
+			mtk_ddp_comp_config_begin(p_ovl_comp, cmdq_handle, 5);
+	}
 	disable_attached_layer(crtc, ovl_comp, layer_id, cmdq_handle);
 
 	if (mtk_crtc->is_dual_pipe)
@@ -470,6 +482,8 @@ void drm_set_dal(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle)
 	priv = crtc->dev->dev_private;
 	if (priv && priv->data->mmsys_id == MMSYS_MT6991) {
 		mtk_crtc->usage_ovl_fmt[6] = 4;
+		if (mtk_crtc->is_dual_pipe)
+			mtk_crtc->usage_ovl_fmt[DISP_PMQOS_OVL1_EXDMA8] = 4;
 		layer_id = 5;
 	}
 	if (mtk_crtc->is_dual_pipe)

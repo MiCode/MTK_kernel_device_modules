@@ -883,7 +883,7 @@ static int mtk_pcm_scp_voice_trigger(struct snd_pcm_substream *substream,
 static int mtk_pcm_scp_voice_copy(struct snd_pcm_substream *substream,
 				  int channel,
 				  unsigned long pos,
-				  void __user *buf,
+				  struct iov_iter *buf,
 				  unsigned long bytes)
 {
 	count = bytes;

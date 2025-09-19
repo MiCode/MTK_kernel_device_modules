@@ -17,6 +17,7 @@
 #include <linux/plist.h>
 #include <linux/percpu-defs.h>
 #include <linux/input.h>
+#include <linux/sched/signal.h>
 
 #include <kernel/futex/futex.h>
 #include <kernel/sched/sched.h>
@@ -44,7 +45,6 @@
 LIST_HEAD(hmp_domains);
 
 /*TODO: find the magic bias number */
-#define TOP_APP_GROUP_ID	((4-1)*10)
 #define TURBO_PID_COUNT		8
 #define INHERITED_RWSEM_COUNT	4
 #define RENDER_THREAD_NAME	"RenderThread"
@@ -122,6 +122,7 @@ static DEFINE_MUTEX(enforced_qualified_lock);
 static pid_t turbo_pid[TURBO_PID_COUNT] = {0};
 static unsigned int task_turbo_feats;
 static struct task_struct *inherited_rwsem_owners[INHERITED_RWSEM_COUNT] = {NULL};
+static struct cgroup_subsys_state *top_app_css;
 
 static bool is_turbo_task(struct task_struct *p);
 static void set_load_weight(struct task_struct *p, bool update_load);
@@ -807,6 +808,11 @@ static void tt_vip_periodic_handler(struct work_struct *work)
 	tt_vip();
 }
 
+bool is_task_exiting(struct task_struct *task)
+{
+	return task->exit_state == EXIT_ZOMBIE || task->exit_state == EXIT_DEAD;
+}
+
 /*
  * tt_input_event - Handles touch input events for VIP management
  * @handle: input handle associated with the event
@@ -840,7 +846,7 @@ static void tt_input_event(struct input_handle *handle, unsigned int type,
 		diff = cur_touch_time - cur_touch_down_time;
 		cur_touch_down_time = cur_touch_time;
 		if (diff >= TOUCH_SUSTAIN_MS) {
-			if (!is_target_found_hook)
+			if (!is_target_found_hook || is_task_exiting(current))
 				goto hook_unready;
 
 			rcu_read_lock();
@@ -1264,7 +1270,6 @@ static unsigned long cpu_util_without(int cpu, struct task_struct *p)
 
 	return cpu_util(cpu, p, -1, 0);
 }
-
 /**
  * cpu_util() - Estimates the amount of CPU capacity used by CFS tasks.
  * @cpu: the CPU to get the utilization for
@@ -1428,7 +1433,6 @@ out:
 int select_turbo_cpu(struct task_struct *p)
 {
 	int target_cpu = -1;
-
 	if (!is_turbo_task(p))
 		return -1;
 
@@ -1992,18 +1996,13 @@ module_param_cb(unset_turbo_pid, &unset_turbo_pid_param_ops,
 		&unset_turbo_pid_param, 0644);
 MODULE_PARM_DESC(unset_turbo_pid, "unset turbo task by pid");
 
-static inline int get_st_group_id(struct task_struct *task)
+static inline bool is_top_app(struct task_struct *task)
 {
 #if IS_ENABLED(CONFIG_CGROUP_SCHED)
-	const int subsys_id = cpu_cgrp_id;
-	struct cgroup *grp;
-
-	rcu_read_lock();
-	grp = task_cgroup(task, subsys_id);
-	rcu_read_unlock();
-	return grp->kn->id;
+	guard(rcu)();
+	return top_app_css == task_css(task, cpu_cgrp_id);
 #else
-	return 0;
+	return false;
 #endif
 }
 
@@ -2104,7 +2103,7 @@ static void probe_android_vh_cgroup_set_task(void *ignore, int ret, struct task_
 	if (ret)
 		return;
 
-	if (get_st_group_id(p) == TOP_APP_GROUP_ID) {
+	if (is_top_app(p)) {
 		if (!cgroup_check_set_turbo(p))
 			return;
 		add_turbo_list(p);
@@ -2191,6 +2190,20 @@ void init_hmp_domains(void)
 	hmp_cpu_mask_setup();
 }
 
+static void init_top_app_css(void)
+{
+	struct cgroup_subsys_state *root_css = &root_task_group.css;
+	struct cgroup_subsys_state *css = root_css;
+
+	guard(rcu)();
+	css_for_each_child(css, root_css)
+		if (css && css->cgroup && css->cgroup->kn && css->cgroup->kn->name &&
+		    !strcmp(css->cgroup->kn->name, "top-app")) {
+			top_app_css = css;
+			return;
+		}
+}
+
 void hmp_cpu_mask_setup(void)
 {
 	struct hmp_domain *domain;
@@ -2252,7 +2265,7 @@ static void sys_set_turbo_task(struct task_struct *p)
 	if (!launch_turbo_enable())
 		return;
 
-	if (get_st_group_id(p) != TOP_APP_GROUP_ID)
+	if (!is_top_app(p))
 		return;
 
 	if (strcmp(p->comm, RENDER_THREAD_NAME))
@@ -2475,6 +2488,7 @@ static int __init init_task_turbo(void)
 	}
 
 	init_hmp_domains();
+	init_top_app_css();
 
 	/* register tracepoint of scheduler_tick */
 	ret = register_trace_android_vh_scheduler_tick(tt_tick, NULL);

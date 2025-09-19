@@ -373,6 +373,8 @@ struct arm_smmu_impl {
 	void (*free_io_pgtable_ops)(struct io_pgtable_ops *ops);
 	void (*smmu_mem_share)(struct arm_smmu_device *smmu,
 			       unsigned int mem_type);
+	bool (*smmu_dvm_support)(struct arm_smmu_device *smmu);
+	void (*smmu_dvm_connect)(struct arm_smmu_device *smmu);
 };
 
 struct arm_smmu_device *arm_smmu_v3_impl_init(struct arm_smmu_device *smmu);

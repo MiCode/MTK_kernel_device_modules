@@ -53,6 +53,17 @@ ccflags-y += \
 
 endif
 
+ifneq ($(strip $(CONFIG_MEDIATEK_CPU_DVFS_MT6771)),)
+ccflags-y += \
+       -I$(CPUFREQ_ROOT_DIR)/inc/ \
+       -I$(CPUFREQ_ROOT_DIR)/src/plat_k6771/   \
+       -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/ \
+       -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cpufreq_v2/inc/  \
+       -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cpufreq_v2/src/plat_k6771/       \
+       -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/common/include/  \
+       -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eem_v2/
+endif
+
 ifneq ($(strip $(CONFIG_MEDIATEK_CPU_DVFS_MT6761)),)
 ccflags-y += \
 	-I$(CPUFREQ_ROOT_DIR)/inc \
@@ -103,6 +114,9 @@ CPU_DVFS-y += mtk_cpufreq_hybrid.o
 endif
 ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_MT6768)),)
 CPU_DVFS-y += plat_k68/mtk_cpufreq_platform.o
+endif
+ifneq ($(strip $(CONFIG_MEDIATEK_CPU_DVFS_MT6771)),)
+CPU_DVFS-y += plat_k6771/mtk_cpufreq_platform.o
 endif
 ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_MT6765)),)
 CPU_DVFS-y += plat_k6765/mtk_cpufreq_platform.o

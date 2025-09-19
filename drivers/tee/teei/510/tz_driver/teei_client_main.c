@@ -197,6 +197,18 @@ static struct tz_driver_state *tz_drv_state;
 static void *teei_cpu_write_owner;
 static struct platform_device *g_teei_pdev;
 
+int teei_get_order(unsigned long size)
+{
+	int idx = get_order(size);
+
+	if (idx >= 11) {
+		/* MAX_ORDER 10 */
+		idx = 10;
+		IMSG_ERROR("failed to add device data, idx:%x, size:%lx\n",idx,size);
+	}
+	return idx;
+}
+
 int teei_set_switch_pri(unsigned long policy)
 {
 #ifdef DYNAMIC_SET_PRIORITY
@@ -269,10 +281,10 @@ void *tz_malloc_shared_mem(size_t size, int flags)
 {
 #ifdef UT_DMA_ZONE
 	return (void *) __get_free_pages(flags | GFP_DMA,
-					get_order(ROUND_UP(size, SZ_4K)));
+					teei_get_order(ROUND_UP(size, SZ_4K)));
 #else
 	return (void *) __get_free_pages(flags,
-					get_order(ROUND_UP(size, SZ_4K)));
+					teei_get_order(ROUND_UP(size, SZ_4K)));
 #endif
 }
 
@@ -595,10 +607,10 @@ static int init_teei_framework(void)
 
 #ifdef UT_DMA_ZONE
 	boot_vfs_addr = (unsigned long)__get_free_pages(GFP_KERNEL | GFP_DMA,
-					get_order(ROUND_UP(VFS_SIZE, SZ_4K)));
+					teei_get_order(ROUND_UP(VFS_SIZE, SZ_4K)));
 #else
 	boot_vfs_addr = (unsigned long) __get_free_pages(GFP_KERNEL,
-					get_order(ROUND_UP(VFS_SIZE, SZ_4K)));
+					teei_get_order(ROUND_UP(VFS_SIZE, SZ_4K)));
 #endif
 	if ((unsigned char *)boot_vfs_addr == NULL)
 		return TEEI_BOOT_ERROR_CREATE_VFS_ADDR;
@@ -630,7 +642,7 @@ static int init_teei_framework(void)
 
 	TEEI_BOOT_FOOTPRINT("TEEI BOOT Stage1 Completed");
 
-	order = get_order(ROUND_UP(VFS_SIZE, SZ_4K));
+	order = teei_get_order(ROUND_UP(VFS_SIZE, SZ_4K));
 	free_pages(boot_vfs_addr, order);
 
 	boot_soter_flag = END_STATUS;
@@ -751,7 +763,7 @@ static long teei_alloc_shm_handle(unsigned long arg)
 	size = param.size;
 
 	shm_buff = (void *)__get_free_pages(GFP_KERNEL,
-					get_order(ROUND_UP(size, SZ_4K)));
+					teei_get_order(ROUND_UP(size, SZ_4K)));
 	if (shm_buff == NULL) {
 		IMSG_ERROR("Failed to alloc shm!\n");
 		retVal = -ENOMEM;
@@ -807,7 +819,7 @@ free_list:
 #endif
 
 free_shm_buff:
-	free_pages((unsigned long)shm_buff, get_order(ROUND_UP(size, SZ_4K)));
+	free_pages((unsigned long)shm_buff, teei_get_order(ROUND_UP(size, SZ_4K)));
 
 out:
 	return retVal;
@@ -854,7 +866,7 @@ static long teei_release_shm_handle(unsigned long arg)
 	soter_ffa_reclaim_buffer(handle_id);
 #endif
 
-	free_pages((unsigned long)shm_buff, get_order(ROUND_UP(size, SZ_4K)));
+	free_pages((unsigned long)shm_buff, teei_get_order(ROUND_UP(size, SZ_4K)));
 
 	kfree(entry);
 

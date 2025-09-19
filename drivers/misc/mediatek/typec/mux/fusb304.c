@@ -44,15 +44,15 @@ static int fusb304_switch_set(struct typec_switch_dev *sw,
 		/* switch cc1 side */
 		if (fusb->enable)
 			pinctrl_select_state(fusb->pinctrl, fusb->enable);
-		if (fusb->sel_up)
-			pinctrl_select_state(fusb->pinctrl, fusb->sel_up);
+		if (fusb->sel_down)
+			pinctrl_select_state(fusb->pinctrl, fusb->sel_down);
 		break;
 	case TYPEC_ORIENTATION_REVERSE:
 		/* switch cc2 side */
 		if (fusb->enable)
 			pinctrl_select_state(fusb->pinctrl, fusb->enable);
-		if (fusb->sel_down)
-			pinctrl_select_state(fusb->pinctrl, fusb->sel_down);
+		if (fusb->sel_up)
+			pinctrl_select_state(fusb->pinctrl, fusb->sel_up);
 		break;
 	default:
 		break;

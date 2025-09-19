@@ -63,6 +63,8 @@ enum mml_hdr_reg_index {
 	HDR_CURSOR_BUF0,
 	HDR_CURSOR_BUF1,
 	HDR_CURSOR_BUF2,
+	HDR_R2Y_09,
+	HDR_Y2R_09,
 	HDR_TONE_MAP_TOP,
 	HDR_3x3_COEF_00,
 	HDR_B_CHANNEL_NR,
@@ -99,6 +101,8 @@ static const u16 hdr_reg_table_mt6983[HDR_REG_MAX_COUNT] = {
 	[HDR_CURSOR_BUF0] = 0x11c,
 	[HDR_CURSOR_BUF1] = 0x120,
 	[HDR_CURSOR_BUF2] = 0x124,
+	[HDR_R2Y_09] = 0x14c,
+	[HDR_Y2R_09] = 0x178,
 	[HDR_TONE_MAP_TOP] = 0x1b0,
 	[HDR_DEBUG] = 0x1e8,
 	[HDR_DUMMY1] = 0x1d8,
@@ -337,13 +341,17 @@ static void hdr_relay(struct mml_comp *comp, struct cmdq_pkt *pkt, const phys_ad
 }
 
 static void hdr_disable_curve(struct mml_comp *comp, struct cmdq_pkt *pkt,
-	const phys_addr_t base_pa)
+	struct mml_frame_data *src, const phys_addr_t base_pa)
 {
 	struct mml_comp_hdr *hdr = comp_to_hdr(comp);
 
-	if (!hdr->data->tile_loss)
+	mml_pq_msg("%s: input format is %s",
+ 		__func__, MML_FMT_IS_RGB(src->format) ? "RGB" : "YUV");
+
+	if (!hdr->data->tile_loss && !MML_FMT_IS_RGB(src->format)) {
+		mml_pq_err("%s: Use relay setting", __func__);
 		hdr_relay(comp, pkt, base_pa, 0x1);
-	else {
+	} else {
 		cmdq_pkt_write(pkt, NULL,
 			base_pa + hdr->data->reg_table[HDR_TONE_MAP_TOP], 0x0, 0x1);
 		cmdq_pkt_write(pkt, NULL,
@@ -354,7 +362,23 @@ static void hdr_disable_curve(struct mml_comp *comp, struct cmdq_pkt *pkt,
 			base_pa + hdr->data->reg_table[HDR_B_CHANNEL_NR], 0x0, 0x1);
 		cmdq_pkt_write(pkt, NULL,
 			base_pa + hdr->data->reg_table[HDR_A_LUMINANCE], 0x0, 0x1);
+		// HDR_R2Y_09
+		// bit 0 reg_hdr_r2y_en
+		// bit 2~3 r2y_output_format
+		// 0: RGB2REC709 limited YUV
+		// 1: RGB2BT.2020-nc limited YUV
+		// 2: RGB2REC601 limited YUV
+		if(MML_FMT_IS_RGB(src->format)) {
+			mml_pq_err("%s: Input is RGB format, use common R2Y setting", __func__);
+			cmdq_pkt_write(pkt, NULL,
+				base_pa + hdr->data->reg_table[HDR_R2Y_09], 0x1, 0xd);
+			cmdq_pkt_write(pkt, NULL,
+				base_pa + hdr->data->reg_table[HDR_Y2R_09], 0x0, 0x1);
+		} else {
+			mml_pq_err("%s: Input is YUV format, do nothing", __func__);
+		}
 	}
+
 }
 
 static s32 hdr_config_init(struct mml_comp *comp, struct mml_task *task,
@@ -466,6 +490,7 @@ static s32 hdr_config_frame(struct mml_comp *comp, struct mml_task *task,
 	const struct mml_frame_dest *dest = &cfg->info.dest[ccfg->node->out_idx];
 	struct mml_comp_hdr *hdr = comp_to_hdr(comp);
 	const phys_addr_t base_pa = comp->base_pa;
+	struct mml_frame_data *src = &cfg->info.src;
 	struct mml_pq_comp_config_result *result;
 	struct mml_pq_reg *regs;
 	u32 *curve;
@@ -503,7 +528,7 @@ static s32 hdr_config_frame(struct mml_comp *comp, struct mml_task *task,
 		if (ret) {
 			mml_pq_comp_config_clear(task);
 			hdr_frm->config_success = false;
-			hdr_disable_curve(comp, pkt, base_pa);
+			hdr_disable_curve(comp, pkt, src, base_pa);
 			mml_pq_err("%s: get hdr param timeout: %d in %dms",
 				 __func__, ret, HDR_WAIT_TIMEOUT_MS);
 			ret = -ETIMEDOUT;
@@ -513,7 +538,7 @@ static s32 hdr_config_frame(struct mml_comp *comp, struct mml_task *task,
 		result = get_hdr_comp_config_result(task);
 		if (!result) {
 			hdr_frm->config_success = false;
-			hdr_disable_curve(comp, pkt, base_pa);
+			hdr_disable_curve(comp, pkt, src, base_pa);
 			mml_pq_err("%s: not get result from user lib", __func__);
 			ret = -EBUSY;
 			goto exit;
@@ -523,6 +548,19 @@ static s32 hdr_config_frame(struct mml_comp *comp, struct mml_task *task,
 	regs = result->hdr_regs;
 	curve = result->hdr_curve;
 
+	// for debug ALPS09743178, will remove later :
+	// hdr_regs[HDR_TOP] value that bit 0 (hdr_en) should not be 0
+	if (result->hdr_reg_cnt > 1 &&
+		(regs[1].value & 0x1) == 0 &&
+		regs[1].offset == 0) {
+		mml_pq_err("%s:result_id[%llu] [regs][%x] = %#x mask(%#x)",
+			__func__, task->pq_task->comp_config.job_id,
+			regs[0].offset, regs[0].value, regs[0].mask);
+		mml_pq_err("%s:result_id[%llu] [regs][%x] = %#x mask(%#x)",
+			__func__, task->pq_task->comp_config.job_id,
+			regs[1].offset, regs[1].value, regs[1].mask);
+	}
+
 	/* TODO: use different regs */
 	mml_pq_msg("%s:config hdr regs, count: %d", __func__, result->hdr_reg_cnt);
 	for (i = 0; i < result->hdr_reg_cnt; i++) {
@@ -531,7 +569,6 @@ static s32 hdr_config_frame(struct mml_comp *comp, struct mml_task *task,
 		mml_pq_msg("[hdr][config][%x] = %#x mask(%#x)",
 			regs[i].offset, regs[i].value, regs[i].mask);
 	}
-
 	if (mode == MML_MODE_MML_DECOUPLE || mode == MML_MODE_MML_DECOUPLE2) {
 		for (i = 0; i < HDR_CURVE_NUM; i += 2) {
 			mml_write_array(comp->id, pkt, base_pa + hdr->data->reg_table[HDR_GAIN_TABLE_1],
@@ -939,7 +976,7 @@ static s32 hdr_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 	mml_pq_msg("%s pipe_id[%d] engine_id[%d] en_hdr[%d] config_success[%d]", __func__,
 		ccfg->pipe, comp->id, dest->pq_config.en_hdr,
 		hdr_frm->config_success);
-	if (!dest->pq_config.en_hdr)
+	if (!dest->pq_config.en_hdr || !hdr_frm->config_success)
 		return 0;
 
 	do {
@@ -963,6 +1000,19 @@ static s32 hdr_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 	regs = result->hdr_regs;
 	curve = result->hdr_curve;
 
+	// for debug ALPS09743178, will remove later :
+	// hdr_regs[HDR_TOP] value that bit 0 (hdr_en) should not be 0
+	if (result->hdr_reg_cnt > 1 &&
+		(regs[1].value & 0x1) == 0 &&
+		regs[1].offset == 0) {
+		mml_pq_err("%s:result_id[%llu] [regs][%x] = %#x mask(%#x)",
+			__func__, task->pq_task->comp_config.job_id,
+			regs[0].offset, regs[0].value, regs[0].mask);
+		mml_pq_err("%s:result_id[%llu] [regs][%x] = %#x mask(%#x)",
+			__func__, task->pq_task->comp_config.job_id,
+			regs[1].offset, regs[1].value, regs[1].mask);
+	}
+
 	if (mode == MML_MODE_MML_DECOUPLE || mode == MML_MODE_MML_DECOUPLE2) {
 		val_idx = 0;
 		for (i = 0; i < hdr_frm->reuse_reg.idx; i++)
@@ -983,7 +1033,6 @@ static s32 hdr_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 		queue_work(hdr->hdr_curve_wq, &hdr->hdr_curve_task);
 		hdr_hist_ctrl(comp, task, ccfg, result);
 	}
-
 	mml_pq_msg("%s is_hdr_need_readback[%d]",
 		__func__, result->is_hdr_need_readback);
 	hdr_frm->is_hdr_need_readback = result->is_hdr_need_readback;
@@ -1285,7 +1334,7 @@ static void hdr_debug_dump(struct mml_comp *comp)
 {
 	struct mml_comp_hdr *hdr = comp_to_hdr(comp);
 	void __iomem *base = comp->base;
-	u32 value[20];
+	u32 value[22];
 	u32 hdr_top;
 
 	mml_err("hdr component %u dump:", comp->id);
@@ -1315,6 +1364,8 @@ static void hdr_debug_dump(struct mml_comp *comp)
 	value[17] = read_reg_value(comp, hdr->data->reg_table[HDR_DUMMY1]);
 	value[18] = read_reg_value(comp, hdr->data->reg_table[HDR_HIST_ADDR]);
 	value[19] = read_reg_value(comp, hdr->data->reg_table[HDR_HIST_CTRL_2]);
+	value[20] = read_reg_value(comp, hdr->data->reg_table[HDR_R2Y_09]);
+	value[21] = read_reg_value(comp, hdr->data->reg_table[HDR_Y2R_09]);
 
 	mml_err("HDR_TOP %#010x HDR_RELAY %#010x HDR_INTSTA %#010x HDR_ENGSTA %#010x",
 		value[0], value[1], value[2], value[3]);
@@ -1329,6 +1380,7 @@ static void hdr_debug_dump(struct mml_comp *comp)
 		value[13], value[14], value[15]);
 	mml_err("HDR_DEBUG %#010x HDR_DUMMY1 %#010x", value[16], value[17]);
 	mml_err("HDR_HIST_ADDR %#010x HDR_HIST_CTRL_2 %#010x", value[18], value[19]);
+	mml_err("HDR_R2Y_09 %#010x HDR_Y2R_09 %#010x", value[20], value[21]);
 }
 
 static const struct mml_comp_debug_ops hdr_debug_ops = {

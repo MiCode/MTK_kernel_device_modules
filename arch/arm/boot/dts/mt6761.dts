@@ -345,6 +345,7 @@ aliases {
 			ccorr-linear-per-pipe = <0x01>;
 			ccorr-prim-force-linear = <0x0>;
 			doze-bypass = <0x10001>;
+			ccorr-linear = <1>;
 		};
 
 		disp_aal0: disp_aal0@14011000 {
@@ -354,6 +355,7 @@ aliases {
 			interrupts = <GIC_SPI 166 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&mmsys_config CLK_MM_DISP_AAL0>;
 			mtk-aal-support = <1>;
+			mtk-cabc-no-support = <1>;
 			mtk-dre30-support = <0>;
 			doze-bypass = <0x10001>;
 		};
@@ -1552,7 +1554,10 @@ firmware_class.path=/vendor/firmware clk_ignore_unused=1";
 	};
 
 	hwrng: hwrng {
-		compatible = "mediatek,mt67xx-rng";
+		compatible = "arm,sec-rng";
+		methods = "smc";
+		method-fid = /bits/ 16 <0x26a>;
+		quality = /bits/ 16 <900>;
 	};
 
 	bus_dbg@10208000 {
@@ -2701,7 +2706,7 @@ firmware_class.path=/vendor/firmware clk_ignore_unused=1";
 			/*WDT_EINT conn_wdt_irq_b*/
 			   <GIC_SPI 213 IRQ_TYPE_LEVEL_HIGH 0>,
 			/*conn2ap_sw_irq*/
-			   <GIC_SPI 214 IRQ_TYPE_EDGE_RISING>;
+			   <GIC_SPI 214 IRQ_TYPE_EDGE_RISING 0>;
 		power-domains = <&scpsys MT6761_POWER_DOMAIN_CONN>;
 		pmic = <&main_pmic>;
 		memory-region = <&consys_mem>;
@@ -3228,6 +3233,7 @@ firmware_class.path=/vendor/firmware clk_ignore_unused=1";
 		compatible = "mediatek,mtk-smi-dbg";
 		mediatek-larb-supply = <&smi_larb0 &smi_larb1 &smi_larb2>;
 		mediatek-common-supply = <&smi_common>;
+		skip-bug-On;
 	};
 
 	mdp_rdma0: mdp_rdma0@14004000 {
@@ -3716,7 +3722,7 @@ firmware_class.path=/vendor/firmware clk_ignore_unused=1";
 		compatible = "mediatek,mt_soc_pcm_capture";
 	};
 
-	mt_soc_voice_md1 {
+	mt_soc_voice_md1: mt_soc_voice_md1 {
 		compatible = "mediatek,mt_soc_pcm_voice_md1";
 	};
 

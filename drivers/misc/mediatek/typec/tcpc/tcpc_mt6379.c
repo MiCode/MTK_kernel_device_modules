@@ -1407,7 +1407,11 @@ static int mt6379_floating_ground_evt_process(struct mt6379_tcpc_data *ddata)
 	if (ret < 0)
 		return ret;
 	ddata->wd0_state = (data & MT6379_MSK_WD0PULL_STS) ? true : false;
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+	return tcpci_notify_wd0_state(ddata->tcpc, ddata->wd0_state, true);
+#else
 	return tcpci_notify_wd0_state(ddata->tcpc, ddata->wd0_state);
+#endif
 }
 
 /*
@@ -2064,12 +2068,14 @@ static int mt6379_wd12_done_irq_handler(struct mt6379_tcpc_data *ddata)
 static int mt6379_wd0_stfall_irq_handler(struct mt6379_tcpc_data *ddata)
 {
 	/* WD0_PULL_STS from 1 to 0 in normal polling mode */
+	MT6379_INFO("%s wd0 stfall trigger\n", __func__);
 	return mt6379_floating_ground_evt_process(ddata);
 }
 
 static int mt6379_wd0_strise_irq_handler(struct mt6379_tcpc_data *ddata)
 {
 	/* WD0_PULL_STS from 0 to 1 in normal polling mode */
+	MT6379_INFO("%s wd0 strise trigger\n", __func__);
 	return mt6379_floating_ground_evt_process(ddata);
 }
 

@@ -35,14 +35,14 @@ static int inpocket_get_data(int *probability, int *status)
 {
 	int err = 0;
 	struct data_unit_t data;
-	uint64_t time_stamp = 0;
+	//uint64_t time_stamp = 0;
 
 	err = sensor_get_data_from_hub(ID_IN_POCKET, &data);
 	if (err < 0) {
 		pr_err("sensor_get_data_from_hub fail!!\n");
 		return -1;
 	}
-	time_stamp		= data.time_stamp;
+	//time_stamp		= data.time_stamp;
 	*probability	= data.gesture_data_t.probability;
 	return 0;
 }
@@ -134,9 +134,3 @@ void __exit inpocket_exit(void)
 {
 	pr_debug("%s\n", __func__);
 }
-
-module_init(inpocket_init);
-module_exit(inpocket_exit);
-MODULE_LICENSE("GPL");
-MODULE_DESCRIPTION("InPocket driver");
-MODULE_AUTHOR("qiangming.xia@mediatek.com");

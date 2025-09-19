@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# BUILD_PRODUCT_NAME info
+#
+config BUILD_PRODUCT_NAME
+	string "build product"
+	default ""
+	help
+		build product

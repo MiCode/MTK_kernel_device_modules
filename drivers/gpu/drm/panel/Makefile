@@ -48,7 +48,9 @@ obj-$(CONFIG_DRM_PANEL_BOE_TV080WXMLLS) += nt50358a_i2c.o
 obj-$(CONFIG_DRM_PANEL_BOE_TV080WXMLLS) += panel-boe-tv080wxmlls.o
 obj-$(CONFIG_DRM_PANEL_NT37801_CMD_LTPO) += panel-nt37801-cmd-ltpo.o
 obj-$(CONFIG_DRM_PANEL_NT37801_CMD_120HZ) += panel-nt37801-cmd-120hz.o
-obj-$(CONFIG_DRM_PANEL_L12A_42_02_0A_DSC_CMD) += panel-l12a-42-02-0a-dsc-cmd.o
+obj-$(CONFIG_DRM_PANEL_O12_42_02_0A_DSC_CMD) += panel-o12-42-02-0a-dsc-cmd.o
+obj-$(CONFIG_DRM_PANEL_O12_36_02_0B_DSC_CMD) += panel-o12-36-02-0b-dsc-cmd.o
+obj-$(CONFIG_DRM_PANEL_LEDS_KTZ8866) += leds-ktz8866.o
 obj-$(CONFIG_DRM_PANEL_NT37801_CMD_FHD) += panel-nt37801-cmd-fhd.o
 obj-$(CONFIG_DRM_PANEL_NT37801_CMD_SPR) += panel-nt37801-cmd-spr.o
 obj-$(CONFIG_DRM_PANEL_NT37801_CMD_FHD_PLUS) += panel-nt37801-cmd-fhd-plus.o
@@ -64,6 +66,7 @@ obj-$(CONFIG_DRM_PANEL_NT36672C_FHDP_DSI_VDO_DSC_TXD_BOE) += panel-nt36672c-fhdp
 obj-$(CONFIG_DRM_PANEL_BOE_JD9365DA_VDO) += panel-boe-jd9365da-vdo.o
 obj-$(CONFIG_DRM_PANEL_ILI7838E_DV3_ALPHA_CMD) += panel-ili7838e-dv3-alpha-cmd.o
 obj-$(CONFIG_DRM_PANEL_RM692H5_CMD) += panel-rm692h5-cmd.o
+obj-$(CONFIG_DRM_PANEL_JD9635DA_GQ31093GQ) += panel-jd9635da-gq31093gq.o
 obj-$(CONFIG_DRM_PANEL_NT35695_FHD_VDO_AUO_RT5081_HDP) += panel-nt35695_fhd_dsi_vdo_auo_rt5081_hdp.o
 ifneq ($(wildcard $(srctree)/$(src)/k6985v1_64),)
 obj-$(CONFIG_DRM_TD2204_WQHD_AMB678ZY01_S6E3HC3_CMD) += k6985v1_64/td2204-wqhd-amb678zy01-s6e3hc3-cmd.o
@@ -84,12 +87,12 @@ obj-$(CONFIG_DRM_PANEL_NT37707_BOE_FHDPLUS_CMD_LTPS) += k6991v1_64_alpha/panel-n
 obj-$(CONFIG_DRM_PANEL_RM692K0_VSN_FHDPLUS_CMD_LTPS) += k6991v1_64_alpha/panel-rm692k0-vsn-fhdplus-cmd-ltps.o
 obj-$(CONFIG_DRM_PANEL_NT37707_BOE_FHDPLUS_CMD_LTPO) += k6991v1_64_alpha/panel-nt37707-boe-fhdplus-cmd-ltpo.o
 obj-$(CONFIG_DRM_PANEL_RM692J0_TM_FHDPLUS_CMD_LTPO) += k6991v1_64_alpha/panel-rm692j0-tm-fhdplus-cmd-ltpo.o
+obj-$(CONFIG_DRM_PANEL_NT37706A_BOE_FHDPLUS_VDO) += k6991v1_64_alpha/panel-nt37706a-boe-fhdplus-vdo.o
 endif
 obj-$(CONFIG_DRM_PANEL_SERDES_DP) += panel-serdes-dp.o
 obj-$(CONFIG_DRM_PANEL_SERDES) += panel-serdes-max96789.o bridge-serdes-max96789.o
 obj-$(CONFIG_DRM_PANEL_NT37707_C2V_ARP) += panel-nt37707-c2v-arp.o
 obj-$(CONFIG_DRM_PANEL_NT51021H_WUXGA_VDO_BOE) += panel-nt51021h-wuxga-vdo-boe.o
-obj-$(CONFIG_DRM_PANEL_N11A_42_02_0A_DSC_VDO) += panel-n11a-42-02-0a-dsc-vdo.o
 mediatek-drm-gateic-y := mtk_drm_panel_i2c.o \
 		  mtk_drm_gateic_rt4801h.o \
 		  mtk_drm_gateic_rt4831a.o \
@@ -115,4 +118,25 @@ obj-$(CONFIG_DRM_MEDIATEK_PANEL) += mediatek-drm-gateic.o
 obj-$(CONFIG_DRM_MEDIATEK_PANEL) += mediatek-drm-panel-drv.o
 obj-$(CONFIG_DRM_MEDIATEK_PANEL) += mediatek-cust-panel-sample.o
 
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi/			\
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmp/			\
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmdvfs/			\
+             -I$(DEVICE_MODULES_PATH)/drivers/iommu/				\
+             -I$(DEVICE_MODULES_PATH)/drivers/devfreq/				\
+             -I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/				\
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/ \
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cmdq/mailbox/ \
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/iommu/ \
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtk-interconnect/ \
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/slbc/ \
+             -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/scp/include/ \
+             -I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mediatek_v2/mi_disp/ \
+             -I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mediatek_v2/ \
+			 -I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/dpc/ \
+
 ccflags-$(CONFIG_DRM_MEDIATEK_PANEL) += -I$(DEVICE_MODULES_PATH)/drivers/leds/
+
+ifeq (${CONFIG_VIS_DISPLAY_DALI},m)
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mediatek_v2/driver_novatek/dali/
+ccflags-y += -DCONFIG_VIS_DISPLAY_DALI
+endif

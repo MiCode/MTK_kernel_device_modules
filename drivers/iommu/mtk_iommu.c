@@ -340,6 +340,18 @@ static const struct mtk_iommu_iova_region mt8192_multi_dom[] = {
 	#endif
 };
 
+/*
+ * 0,NORMAL:         0x0000_0000~0x7D9F_FFFF
+ *                   0x8260_0000~0xFFFF_FFFF
+ * 1.VPU:            0x7DA0_0000~0x825F_FFFF(76MB)
+ */
+static const struct mtk_iommu_iova_region mt6771_multi_dom[] = {
+#if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
+	{ .iova_base = 0, .size = SZ_4G}, /*0, NORMAL */
+	{ .iova_base = 0x7DA00000, .size = 0x4C00000}, /* 1,VPU */
+#endif
+};
+
 /* use the same data as mt6853 */
 static struct mtk_iommu_iova_region mt6833_multi_dom[] __maybe_unused = {
 	{ .iova_base = 0x0, .size = SZ_4G},	      /* disp : 0 ~ 4G */
@@ -603,13 +615,13 @@ static const struct mtk_iommu_iova_region mt6899_multi_dom_mm[] = {
 };
 
 /*
- * 0.APU_DATA(NORMAL): 12.375GB
- *	0x2000_0000~0x3FFF_FFFF(512MB)
+ * 0.APU_DATA(NORMAL): 11.875GB + 96MB
  *	0x1_0000_0000~0x1_05FF_FFFF(96MB)
  *	0x1_0800_0000~0x3_FFFF_FFFF(11.875GB)
  * 1.APU_SECURE:     0x1000~0x1FFF_FFFF(512MB)
  * 2.APU_CODE:       0x4000_0000~0xFFFF_FFFF(3GB)
  * 3.LK_RESV:        0x1_0600_0000~0x1_07FF_FFFF(32MB)
+ * 4.APU_INVALID:    0x2000_0000~0x3FFF_FFFF(512MB)
  */
 static const struct mtk_iommu_iova_region mt6899_multi_dom_apu[] = {
 #if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
@@ -617,6 +629,7 @@ static const struct mtk_iommu_iova_region mt6899_multi_dom_apu[] = {
 	{ .iova_base = SZ_4K, .size = (SZ_512M - SZ_4K), .type = SECURE}, /* 1.APU_SECURE:512M */
 	{ .iova_base = SZ_1G, .size = (SZ_1G * 3ULL), .type = NORMAL}, /* 2.APU_CODE:3GB */
 	{ .iova_base = 0x106000000ULL, .size = SZ_32M, .type = NORMAL}, /* 3.LK_RESV:32MB */
+	{ .iova_base = SZ_512M, .size = SZ_512M, .type = NORMAL}, /* 4.APU_INVALID:512M */
 #endif
 };
 
@@ -2140,7 +2153,7 @@ static void mtk_iommu_get_resv_regions(struct device *dev,
 		resv = data->plat_data->iova_region + i;
 
 		/* Only reserve when the region is inside the current domain */
-		if (resv->iova_base <= curdom->iova_base ||
+		if (resv->iova_base < curdom->iova_base ||
 		    resv->iova_base + resv->size >= curdom->iova_base + curdom->size)
 			continue;
 
@@ -3596,6 +3609,18 @@ static const struct mtk_iommu_plat_data mt6768_data = {
 	.iommu_type     = MM_IOMMU,
 };
 
+static const struct mtk_iommu_plat_data mt6771_data = {
+	.m4u_plat      = M4U_MT6771,
+	.flags         = HAS_SUB_COMM | OUT_ORDER_WR_EN | WR_THROT_EN |
+			 NOT_STD_AXI_MODE | SHARE_PGTABLE | HAS_EMI_PM |
+			 PGTABLE_PA_35_EN,
+	.inv_sel_reg   = REG_MMU_INV_SEL_GEN1,
+	.iova_region   = mt6771_multi_dom,
+	.iova_region_nr = ARRAY_SIZE(mt6771_multi_dom),
+	.iommu_id	= DISP_IOMMU,
+	.iommu_type     = MM_IOMMU,
+};
+
 static const struct mtk_iommu_plat_data mt6779_data = {
 	.m4u_plat      = M4U_MT6779,
 	.flags         = HAS_SUB_COMM | OUT_ORDER_WR_EN | WR_THROT_EN |
@@ -4251,6 +4276,7 @@ static const struct of_device_id mtk_iommu_of_ids[] = {
 	{ .compatible = "mediatek,mt6761-m4u", .data = &mt6761_data},
 	{ .compatible = "mediatek,mt6765-m4u", .data = &mt6765_data},
 	{ .compatible = "mediatek,mt6768-m4u", .data = &mt6768_data},
+	{ .compatible = "mediatek,mt6771-m4u", .data = &mt6771_data},
 	{ .compatible = "mediatek,mt6779-m4u", .data = &mt6779_data},
 	{ .compatible = "mediatek,mt6781-m4u", .data = &mt6781_data},
 	{ .compatible = "mediatek,mt6833-m4u", .data = &mt6833_data},

@@ -47,3 +47,10 @@ config MTK_PERF_IOCTL_MAGT
 	  Support MAGT analysis performance.
           If you are not sure about this, set n.
 
+config MTK_GAME
+	tristate "GAME module specific"
+	help
+	  MTK game module, in order to decouple with FPSGO module
+	  This module is for game feature use, If some flow modification
+	  for game only, need to modify in this module.
+	  Default it enable on eng, user, userdebug load.

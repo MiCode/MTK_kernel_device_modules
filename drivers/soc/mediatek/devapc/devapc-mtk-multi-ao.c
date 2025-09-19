@@ -982,6 +982,10 @@ static void devapc_extra_handler(int slave_type, const char *vio_master,
 			id = INFRA_SUBSYS_APMCU;
 		else
 			id = INFRA_SUBSYS_GZ;
+
+	else if (!strncasecmp(vio_master, "HFRP2INFRA_M", 12))
+		id = DEVAPC_SUBSYS_HFRP;
+
 	else
 		id = DEVAPC_SUBSYS_RESERVED;
 
@@ -1178,9 +1182,7 @@ static irqreturn_t devapc_violation_irq(int irq_number, void *dev_id)
 
 	/* There are multiple DEVAPC_PD */
 	for (slave_type = 0; slave_type < slave_type_num; slave_type++) {
-		/* Initialize variables for each slave type */
 		devapc_type = ndevices[slave_type].devapc_type;
-		vio_type = DEVAPC_VIO_ABNORMAL;
 
 		/* Only dump the info of subsystem which got violation */
 		if (!is_matched_slave_type(slave_type))
@@ -1193,6 +1195,7 @@ static irqreturn_t devapc_violation_irq(int irq_number, void *dev_id)
 			goto out;
 
 		if (!check_type2_vio_status(slave_type, &vio_idx, &index)) {
+			vio_type = DEVAPC_VIO_ABNORMAL;
 			if (!mtk_devapc_dump_vio_dbg(slave_type, &vio_idx, &index))
 				vio_type = DEVAPC_VIO_NO_VIO_FOUND;
 		}
@@ -1259,7 +1262,6 @@ static irqreturn_t devapc_violation_irq(int irq_number, void *dev_id)
 		pr_info(PFX "WARNING: No violation found in irq_type: %d\n", mtk_devapc_ctx->current_irq_type);
 	} else {
 		pr_info(PFX "WARNING: Abnormal status in irq_type: %d\n", mtk_devapc_ctx->current_irq_type);
-		BUG_ON(1);
 	}
 
 out:

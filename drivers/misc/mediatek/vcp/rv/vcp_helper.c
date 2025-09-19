@@ -2163,6 +2163,8 @@ phys_addr_t vcp_get_reserve_mem_size(enum vcp_reserve_mem_id_t id)
 
 void __iomem *vcp_get_sram_virt(void)
 {
+	if (infra_vcp_support)
+		return vcpreg.infra_sram;
 	return vcpreg.sram;
 }
 

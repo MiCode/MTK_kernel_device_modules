@@ -17,7 +17,9 @@
 #include "mtk-mml-drm-adaptor.h"
 #include "mtk-mml-mmp.h"
 
-#define DISP_MUTEX_CFG	0x008
+#define MUTEX_INTEN	0x000
+#define MUTEX_INSTA	0x004
+#define MUTEX_CFG	0x008
 
 #define MUTEX_MAX_MOD_REGS	((MML_MAX_COMPONENTS + 31) >> 5)
 
@@ -44,6 +46,7 @@ struct mutex_data {
 	u8 gpr[MML_PIPE_CNT];
 
 	u32 (*get_mutex_sof)(struct mml_mutex_ctl *ctl);
+	irqreturn_t (*handler)(int irq, void *dev_id);
 };
 
 struct mutex_module {
@@ -58,7 +61,9 @@ struct mml_mutex {
 	struct mtk_ddp_comp ddp_comp;
 	struct mml_comp comp;
 	const struct mutex_data *data;
+	u32 idx;
 	bool ddp_bound;
+	bool irq;
 	atomic_t connect[MML_PIPE_CNT];
 	enum mml_mode connected_mode;
 
@@ -106,6 +111,9 @@ static s32 mutex_enable(struct mml_mutex *mutex, struct cmdq_pkt *pkt,
 
 	if (mutex_id < 0)
 		return -EINVAL;
+
+	if (mml_irq && mutex->irq)
+		cmdq_pkt_write(pkt, NULL, base_pa + MUTEX_INTEN, U32_MAX, U32_MAX);
 
 	/* Do config mutex mod only in dc mode.
 	 * For direct link mode, config from mml side (which mutex_sof is empty),
@@ -335,8 +343,8 @@ static void mutex_debug_dump(struct mml_comp *comp)
 
 	mml_err("mutex component %u dump:", comp->id);
 
-	value = readl(base + DISP_MUTEX_CFG);
-	mml_err("DISP_MUTEX_CFG %#010x", value);
+	value = readl(base + MUTEX_CFG);
+	mml_err("MUTEX_CFG %#010x", value);
 
 	for (i = 0; i < mutex->data->mutex_cnt; i++) {
 		u32 en, sof;
@@ -592,6 +600,33 @@ static void mutex_addon_config(struct mtk_ddp_comp *ddp_comp,
 		mml_err("%s not support mode %d(%d)", __func__, mode, cfg->submit.info.mode);
 }
 
+static irqreturn_t mml_mutex_irq_handler_mt6991(int irq, void *dev_id)
+{
+	struct mml_mutex *mutex = dev_id;
+	struct mml_comp *comp = &mutex->comp;
+	void __iomem *base = comp->base;
+	unsigned long irq_status = readl(base + MUTEX_INSTA);
+
+	mml_mmp(mutex, MMPROFILE_FLAG_PULSE, comp->id, irq_status);
+
+	if (!irq_status)
+		return IRQ_NONE;
+
+	writel(0, base + MUTEX_INSTA);
+
+	/* stream 1 for mml-frame dl mode,
+	 * mml1_rrot0 as rrot0, mml1_rrot1 as rrot1
+	 */
+	if (irq_status & BIT(1)) {
+		if (mutex->idx == 0)
+			mml_mmp(rrot1, MMPROFILE_FLAG_START, comp->id, 0);
+		else
+			mml_mmp(rrot0, MMPROFILE_FLAG_START, comp->id, 0);
+	}
+
+	return IRQ_HANDLED;
+}
+
 static const struct mtk_ddp_comp_funcs ddp_comp_funcs = {
 	.addon_config = mutex_addon_config,
 };
@@ -609,6 +644,7 @@ static int probe(struct platform_device *pdev)
 	u32 mod[3], comp_id, mutex_id;
 	s32 id_count, i, ret;
 	bool add_ddp = true;
+	int irq;
 
 	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
@@ -621,6 +657,20 @@ static int probe(struct platform_device *pdev)
 	if (ret) {
 		dev_err(dev, "Failed to init mml component: %d\n", ret);
 		return ret;
+	}
+
+	/* get index of wrot by alias */
+	priv->idx = of_alias_get_id(dev->of_node, "mml-mutex");
+
+	irq = platform_get_irq(pdev, 0);
+	if (irq < 0)
+		mml_log("fail to get mutex%u irq %d", priv->idx, irq);
+	else {
+		ret = devm_request_irq(dev, irq, priv->data->handler,
+			IRQF_SHARED, dev_name(dev), priv);
+		priv->irq = true;
+		mml_log("register mutex%u irq %s %d irq %d",
+			priv->idx, ret ? "fail" : "success", ret, irq);
 	}
 
 	of_property_for_each_string(node, "mutex-comps", prop, name) {
@@ -724,6 +774,7 @@ static const struct mutex_data mt6991_mutex_data = {
 	.mod_cnt = 2,
 	.get_mutex_sof = get_mutex_sof_mt6991,
 	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
+	.handler = mml_mutex_irq_handler_mt6991,
 };
 
 static const struct mutex_data mt6991_mmlt_mutex_data = {
@@ -733,6 +784,7 @@ static const struct mutex_data mt6991_mmlt_mutex_data = {
 	.mod_cnt = 2,
 	.get_mutex_sof = get_mutex_sof_mt6991,
 	.gpr = {CMDQ_GPR_R12, CMDQ_GPR_R14},
+	.handler = mml_mutex_irq_handler_mt6991,
 };
 
 const struct of_device_id mml_mutex_driver_dt_match[] = {

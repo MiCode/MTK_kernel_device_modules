@@ -10,6 +10,7 @@ ccflags-y += -Wformat
 
 ### common include path
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include
+ccflags-y += -I$(DEVICE_MODULES_PATH)/sound/soc/mediatek/audio_scp
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/audio_ipi/include
 
 ### for adsp

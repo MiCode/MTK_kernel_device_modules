@@ -17,7 +17,9 @@
 #include "dvfsrc-exp.h"
 #include <linux/regulator/consumer.h>
 
+#if IS_ENABLED(CONFIG_MTK_DVFSRC_HELPER)
 extern int mtk_dvfsrc_set_vcore_avs(int enable);
+#endif
 
 static struct pm_qos_request pm_qos_req;
 static LIST_HEAD(usb_policy_list);
@@ -151,7 +153,9 @@ static int vcore_hold(struct act_arg_obj *arg)
 	if ((of_device_is_compatible(np, "mediatek,mt6897-usb-boost") ||
 		of_device_is_compatible(np, "mediatek,mt6989-usb-boost") ||
 		of_device_is_compatible(np, "mediatek,mt6878-usb-boost")) && reg && (val > 0)) {
+#if IS_ENABLED(CONFIG_MTK_DVFSRC_HELPER)
 		mtk_dvfsrc_set_vcore_avs(false);
+#endif
 
 		ret = regulator_set_voltage(reg, val, INT_MAX);
 		if (!ret)
@@ -181,7 +185,9 @@ static int vcore_release(struct act_arg_obj *arg)
 		regulator_set_voltage(reg, 0, INT_MAX);
 		USB_BOOST_NOTICE("%s: release usb vcore\n", __func__);
 
+#if IS_ENABLED(CONFIG_MTK_DVFSRC_HELPER)
 		mtk_dvfsrc_set_vcore_avs(true);
+#endif
 	}
 
 	return 0;
@@ -486,7 +492,8 @@ int audio_core_hold(void)
 		of_device_is_compatible(np, "mediatek,mt6897-usb-boost") ||
 		of_device_is_compatible(np, "mediatek,mt6886-usb-boost") ||
 		of_device_is_compatible(np, "mediatek,mt6878-usb-boost") ||
-		of_device_is_compatible(np, "mediatek,mt6781-usb-boost")) {
+		of_device_is_compatible(np, "mediatek,mt6781-usb-boost") ||
+		of_device_is_compatible(np, "mediatek,mt6771-usb-boost")) {
 		USB_BOOST_NOTICE("\n");
 		cpu_latency_qos_update_request(&pm_qos_req, 50);
 	}
@@ -513,7 +520,8 @@ int audio_core_release(void)
 		of_device_is_compatible(np, "mediatek,mt6897-usb-boost") ||
 		of_device_is_compatible(np, "mediatek,mt6886-usb-boost") ||
 		of_device_is_compatible(np, "mediatek,mt6878-usb-boost") ||
-		of_device_is_compatible(np, "mediatek,mt6781-usb-boost")) {
+		of_device_is_compatible(np, "mediatek,mt6781-usb-boost") ||
+		of_device_is_compatible(np, "mediatek,mt6771-usb-boost")) {
 		USB_BOOST_NOTICE("\n");
 		cpu_latency_qos_update_request(&pm_qos_req,
 			PM_QOS_DEFAULT_VALUE);

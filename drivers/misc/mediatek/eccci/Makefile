@@ -31,6 +31,8 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/hif/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mdpm/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pbm/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/slbc/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/helio-dvfsrc/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/spm_v4/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/fsm/
 
 ifeq ($(CCCI_OBJ), m)

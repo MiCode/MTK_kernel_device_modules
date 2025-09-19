@@ -11,9 +11,15 @@
 #include <linux/usb/typec.h>
 #include <linux/usb/typec_mux.h>
 #include <linux/usb/typec_dp.h>
+#include <linux/mca/common/mca_event.h>
+#include <linux/mca/common/mca_log.h>
 
 #include "inc/tcpci_typec.h"
+#include "../../../../power/supply/mtk_charger.h"
 
+#ifndef MCA_LOG_TAG
+#define MCA_LOG_TAG "rt_pd_manager"
+#endif
 #define RT_PD_MANAGER_VERSION	"1.0.11"
 
 static bool dbg_log_en;
@@ -57,7 +63,10 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 	uint32_t partner_vdos[VDO_MAX_NR];
 	struct typec_displayport_data dp_data = {.status = 0, .conf = 0};
 	struct typec_mux_state state = {.mode = 0, .data = &dp_data};
-
+	int boot_mode = rpmd->tcpc[idx]->bootmode;
+	struct device_node *np = rpmd->dev->of_node;
+	int rev_chg_cc_toggle = 0;
+	int pd_state_svid = 0;
 	mt_dbg(rpmd->dev, "event = %lu, idx = %d ++\n", event, idx);
 
 	switch (event) {
@@ -145,10 +154,17 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 			typec_set_vconn_role(rpmd->typec_port[idx],
 					     TYPEC_SOURCE);
 			/* set typec switch orientation */
-			typec_set_orientation(rpmd->typec_port[idx],
+			if (of_property_read_bool(np, "mediatek,not_support_u3")) {
+				typec_set_orientation(rpmd->typec_port[idx],
+					      noti->typec_state.polarity ?
+					      TYPEC_ORIENTATION_NORMAL :
+					      TYPEC_ORIENTATION_REVERSE);
+			} else {
+				typec_set_orientation(rpmd->typec_port[idx],
 					      noti->typec_state.polarity ?
 					      TYPEC_ORIENTATION_REVERSE :
 					      TYPEC_ORIENTATION_NORMAL);
+			}
 		} else if ((old_state == TYPEC_ATTACHED_SRC ||
 			    old_state == TYPEC_ATTACHED_DEBUG) &&
 			    new_state == TYPEC_UNATTACHED) {
@@ -230,8 +246,10 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 			 * report charger plug-in without charger type detection
 			 * to not interfering with USB2.0 communication
 			 */
-
 			typec_set_pwr_role(rpmd->typec_port[idx], TYPEC_SINK);
+			if((rpmd->partner_identity[idx].id_header & 0xFFFF) == 0x057e){
+				tcpm_dpm_vdm_discover_id(rpmd->tcpc[idx], NULL);
+			}
 		} else if (noti->swap_state.new_role == PD_ROLE_SOURCE) {
 			dev_info(rpmd->dev, "%s swap power role to source\n",
 					    __func__);
@@ -250,7 +268,6 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 			 * disable host connection,
 			 * and enable device connection
 			 */
-
 			typec_set_data_role(rpmd->typec_port[idx],
 					    TYPEC_DEVICE);
 		} else if (noti->swap_state.new_role == PD_ROLE_DFP) {
@@ -260,8 +277,10 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 			 * disable device connection,
 			 * and enable host connection
 			 */
-
 			typec_set_data_role(rpmd->typec_port[idx], TYPEC_HOST);
+			if((rpmd->partner_identity[idx].id_header & 0xFFFF) == 0x057e){
+				tcpm_dpm_vdm_discover_id(rpmd->tcpc[idx], NULL);
+			}
 		}
 		break;
 	case TCP_NOTIFY_VCONN_SWAP:
@@ -306,14 +325,21 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 						       SVDM_VER_1_0);
 			ret = tcpm_inquire_pd_partner_inform(rpmd->tcpc[idx],
 							     partner_vdos);
-			if (ret != TCPM_SUCCESS)
+			if (ret != TCPM_SUCCESS) {
+				pd_state_svid = (noti->pd_state.connected << 16);
+				usb_set_property(USB_PROP_TYPEC_PD_STATE_SVID, pd_state_svid);
+				mca_log_err("inquire pd partner inform fail(%d)\n", pd_state_svid);
 				break;
+			}
 			rpmd->partner_identity[idx].id_header = partner_vdos[0];
 			rpmd->partner_identity[idx].cert_stat = partner_vdos[1];
 			rpmd->partner_identity[idx].product = partner_vdos[2];
 			rpmd->partner_identity[idx].vdo[0] = partner_vdos[3];
 			rpmd->partner_identity[idx].vdo[1] = partner_vdos[4];
 			rpmd->partner_identity[idx].vdo[2] = partner_vdos[5];
+			pd_state_svid = (noti->pd_state.connected << 16) | (partner_vdos[0] & 0x0000FFFF);
+			usb_set_property(USB_PROP_TYPEC_PD_STATE_SVID, pd_state_svid);
+			mca_log_err("svid = %x\n", partner_vdos[0] & 0x0000FFFF);
 			typec_partner_set_identity(rpmd->partner[idx]);
 			break;
 		};
@@ -345,10 +371,16 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 		typec_mux_set(rpmd->mux[idx], &state);
 		break;
 	case TCP_NOTIFY_WD0_STATE:
-		tcpm_typec_change_role_postpone(rpmd->tcpc[idx],
-						noti->wd0_state.wd0 ?
-						rpmd->role_def[idx] :
-						TYPEC_ROLE_SNK, true);
+		if(boot_mode == 8 || boot_mode == 9){
+			break;
+		}
+		usb_get_property(USB_PROP_TYPEC_CC_TOGGLE_18W, &rev_chg_cc_toggle);
+		mca_log_err("reverse_chg_cc_toggle = %d\n", rev_chg_cc_toggle);
+		if (!rev_chg_cc_toggle)
+			tcpm_typec_change_role_postpone(rpmd->tcpc[idx],
+							noti->wd0_state.wd0 ?
+							rpmd->role_def[idx] :
+							TYPEC_ROLE_SNK, true);
 		break;
 	case TCP_NOTIFY_PS_CHANGE:
 		dev_dbg(rpmd->dev, "%s vbus_level = %d\n",

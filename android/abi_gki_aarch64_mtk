@@ -2424,6 +2424,8 @@
   vm_node_stat
   vm_unmap_ram
   vm_zone_stat
+  vm_map_pages
+  vm_insert_page
   vring_del_virtqueue
   vring_interrupt
   vring_new_virtqueue

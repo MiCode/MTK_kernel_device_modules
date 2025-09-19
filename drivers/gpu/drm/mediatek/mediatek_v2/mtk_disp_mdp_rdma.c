@@ -343,6 +343,8 @@ static void mtk_mdp_rdma_pattern_config(struct mtk_ddp_comp *comp,
 		mode.pitches[0] = mode.width * Bpp;
 		mtk_gem = mtk_drm_gem_create(
 			crtc->dev, mode.pitches[0] * mode.height, true);
+		if (IS_ERR_OR_NULL(mtk_gem))
+			return;
 #ifdef RDMA_PAT_DEBUG
 		for (i = 0; i < mode.height; i++)
 			for (j = 0; j < mode.width; j++) {

@@ -34,6 +34,7 @@ struct mt_led_data {
 	int (*mtk_conn_id_get)(struct mt_led_data *m_data,
 		int flag);
 	struct mutex	led_access;
+	int last_percent;
 };
 
 int mt_leds_parse_dt(struct mt_led_data *mdev, struct fwnode_handle *fwnode);

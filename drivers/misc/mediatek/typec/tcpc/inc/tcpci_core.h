@@ -114,6 +114,9 @@ struct tcpc_desc {
 /* TCPC Alert Register Define */
 #define TCPC_REG_ALERT_EXT_VBUS_80		(1<<(16+1))
 #define TCPC_REG_ALERT_EXT_WAKEUP		(1<<(16+0))
+#define TCPC_REG_POWER_STATUS_VBUS_PRES		(1<<2)
+#define TCPC_REG_POWER_STATUS_EXT_VSAFE0V	(1<<15)	/* extend */
+#define TCPC_FLAGS_LPM_WAKEUP_WATCHDOG		(1<<3)
 
 #define TCPC_REG_ALERT_VBUS_DISCNCT (1<<11)
 #define TCPC_REG_ALERT_RX_BUF_OVF   (1<<10)
@@ -127,7 +130,9 @@ struct tcpc_desc {
 #define TCPC_REG_ALERT_RX_STATUS    (1<<2)
 #define TCPC_REG_ALERT_POWER_STATUS (1<<1)
 #define TCPC_REG_ALERT_CC_STATUS    (1<<0)
-
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+#define TCPC_FLAGS_WATCHDOG_EN		(1<<13)
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 #define TCPC_REG_ALERT_RX_MASK	\
 	(TCPC_REG_ALERT_RX_STATUS | TCPC_REG_ALERT_RX_BUF_OVF)
 
@@ -197,6 +202,11 @@ struct tcpc_ops {
 	int (*alert_status_clear)(struct tcpc_device *tcpc, uint32_t mask);
 	int (*fault_status_clear)(struct tcpc_device *tcpc, uint8_t status);
 	int (*set_alert_mask)(struct tcpc_device *tcpc, uint32_t mask);
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+	int (*get_chip_id)(struct tcpc_device *tcpc,uint32_t *chip_id);
+	int (*get_chip_pid)(struct tcpc_device *tcpc,uint32_t *chip_pid);
+	int (*get_chip_vid)(struct tcpc_device *tcpc,uint32_t *chip_vid);
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 	int (*get_alert_mask)(struct tcpc_device *tcpc, uint32_t *mask);
 	int (*get_alert_status_and_mask)(struct tcpc_device *tcpc, uint32_t *alert, uint32_t *mask);
 	int (*get_power_status)(struct tcpc_device *tcpc);
@@ -219,6 +229,7 @@ struct tcpc_ops {
 	int (*set_vbus_short_cc_en)(struct tcpc_device *tcpc, bool cc1, bool cc2);
 
 	int (*set_low_power_mode)(struct tcpc_device *tcpc, bool en, int pull);
+	int (*set_watchdog)(struct tcpc_device *tcpc, bool en);
 
 #if CONFIG_TYPEC_CAP_AUTO_DISCHARGE
 #if CONFIG_TCPC_AUTO_DISCHARGE_IC
@@ -299,6 +310,10 @@ struct tcpc_device {
 	struct srcu_notifier_head evt_nh[TCP_NOTIFY_IDX_NR];
 	struct tcpc_managed_res *mr_head;
 	struct mutex mr_lock;
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+	int recv_msg_cnt;
+	int int_invaild_cnt;
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 
 	/* For TCPC TypeC */
 	uint8_t typec_state;

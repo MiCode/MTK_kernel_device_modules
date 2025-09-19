@@ -467,7 +467,7 @@ static int xhci_abort_cmd_ring(struct xhci_hcd *xhci, unsigned long flags)
 	 * and try to recover a -ETIMEDOUT with a host controller reset.
 	 */
 	ret = xhci_handshake_check_state(xhci, &xhci->op_regs->cmd_ring,
-			CMD_RING_RUNNING, 0, 5 * 1000 * 1000,
+			CMD_RING_RUNNING, 0, 300 * 1000,
 			XHCI_STATE_REMOVING);
 	if (ret < 0) {
 		xhci_err(xhci, "Abort failed to stop command ring: %d\n", ret);

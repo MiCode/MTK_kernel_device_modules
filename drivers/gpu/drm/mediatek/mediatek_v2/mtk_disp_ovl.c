@@ -44,7 +44,6 @@
 #include "../mml/mtk-mml.h"
 #include <soc/mediatek/smi.h>
 #include "mtk_drm_fb.h"
-
 int mtk_dprec_mmp_dump_ovl_layer(struct mtk_plane_state *plane_state);
 
 #define REG_FLD(width, shift)                                                  \
@@ -405,6 +404,7 @@ int mtk_dprec_mmp_dump_ovl_layer(struct mtk_plane_state *plane_state);
 #define DISP_REG_OVL_SMI_2ND_CFG	(0x8F0)
 
 #define MML_SRAM_SHIFT (512*1024)
+#define DISP_REG_OVL_DUMMY_RESET_MASK (1 << 31)
 
 enum GS_OVL_FLD {
 	GS_OVL_RDMA_ULTRA_TH = 0,
@@ -2415,7 +2415,9 @@ static void set_sec_phy_layer_dom_cmdq(struct mtk_ddp_comp *comp,
 	u32 domain_val = 0, domain_mask = 0;
 	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
 
-	if (priv->data->mmsys_id == MMSYS_MT6768 || priv->data->mmsys_id == MMSYS_MT6765) {
+	if (priv->data->mmsys_id == MMSYS_MT6768 ||
+		priv->data->mmsys_id == MMSYS_MT6765 ||
+		priv->data->mmsys_id == MMSYS_MT6771) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + OVL_SECURE,
 				BIT(id), BIT(id));
@@ -2437,8 +2439,9 @@ static void set_sec_ext_layer_dom_cmdq(struct mtk_ddp_comp *comp,
 {
 	u32 domain_val = 0, domain_mask = 0;
 	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
-
-	if (priv->data->mmsys_id == MMSYS_MT6768 || priv->data->mmsys_id == MMSYS_MT6765) {
+	if (priv->data->mmsys_id == MMSYS_MT6768 ||
+		priv->data->mmsys_id == MMSYS_MT6765 ||
+		priv->data->mmsys_id == MMSYS_MT6771) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + OVL_SECURE,
 				BIT(id + EXT_SECURE_OFFSET),
@@ -2457,8 +2460,9 @@ static void clr_sec_phy_layer_dom_cmdq(struct mtk_ddp_comp *comp,
 {
 	u32 domain_val = 0, domain_mask = 0;
 	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
-
-	if (priv->data->mmsys_id == MMSYS_MT6768 || priv->data->mmsys_id == MMSYS_MT6765) {
+	if (priv->data->mmsys_id == MMSYS_MT6768 ||
+		priv->data->mmsys_id == MMSYS_MT6765 ||
+		priv->data->mmsys_id == MMSYS_MT6771) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + OVL_SECURE,
 				0, BIT(id));
@@ -2480,8 +2484,9 @@ static void clr_sec_ext_layer_dom_cmdq(struct mtk_ddp_comp *comp,
 {
 	u32 domain_val = 0, domain_mask = 0;
 	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
-
-	if (priv->data->mmsys_id == MMSYS_MT6768 || priv->data->mmsys_id == MMSYS_MT6765) {
+	if (priv->data->mmsys_id == MMSYS_MT6768 ||
+		priv->data->mmsys_id == MMSYS_MT6765 ||
+		priv->data->mmsys_id == MMSYS_MT6771) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + OVL_SECURE,
 				0, BIT(id + EXT_SECURE_OFFSET));
@@ -4425,6 +4430,22 @@ static void mtk_ovl_backup_info_cmp(struct mtk_ddp_comp *comp, bool *compare)
 	       sizeof(struct mtk_ovl_backup_info) * MAX_LAYER_NUM);
 }
 
+void set_ovl_reset_flag(struct mtk_drm_crtc *mtk_crtc)
+{
+	struct mtk_drm_private *drm_priv = NULL;
+	struct mtk_ddp_comp *comp_ovl = NULL;
+
+	if (!mtk_crtc || !(mtk_crtc->base.dev) || !(mtk_crtc->base.dev->dev_private))
+		return;
+	drm_priv = mtk_crtc->base.dev->dev_private;
+	comp_ovl = drm_priv->ddp_comp[DDP_COMPONENT_OVL0];
+	if (comp_ovl)
+		writel(DISP_REG_OVL_DUMMY_RESET_MASK, comp_ovl->regs + DISP_REG_OVL_DUMMY_REG);
+	comp_ovl = drm_priv->ddp_comp[DDP_COMPONENT_OVL0_2L];
+	if (comp_ovl)
+		writel(DISP_REG_OVL_DUMMY_RESET_MASK, comp_ovl->regs + DISP_REG_OVL_DUMMY_REG);
+}
+
 static int mtk_ovl_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			  enum mtk_ddp_io_cmd io_cmd, void *params)
 {
@@ -4588,8 +4609,9 @@ static int mtk_ovl_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			port_bw = (bw_val * mtk_crtc->usage_ovl_fmt[phy_id + 1]) >> 2;
 			if (comp->last_hrt_bw_other != port_bw) {
 				DDPQOS("%s/%u,layer:%u update:%u->%u compress:%d bw:%u\n",
-					mtk_dump_comp_str_id(comp->id), comp->id, phy_id, comp->last_hrt_bw_other,
-					port_bw, mtk_crtc->usage_ovl_compr[phy_id + 1], bw_val);
+					mtk_dump_comp_str_id(comp->id), comp->id, (unsigned int)(phy_id + 1U),
+					comp->last_hrt_bw_other, port_bw,
+					mtk_crtc->usage_ovl_compr[phy_id + 1], bw_val);
 				__mtk_disp_set_module_hrt(comp->hrt_qos_req_other, comp->id, port_bw,
 					priv->data->respective_ostdl);
 				comp->last_hrt_bw_other = port_bw;
@@ -4761,6 +4783,9 @@ static int mtk_ovl_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 				*(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
 					DISP_SLOT_CUR_BW_VAL(phy_id)) =	NO_PENDING_HRT;
 			}
+			if (port_bw != NO_PENDING_HRT && port_bw != comp->last_hrt_bw)
+				DDPINFO("%s,layer:%u, bw:%u,last:%u", __func__,
+					phy_id, port_bw, comp->last_hrt_bw);
 		}
 		if (!IS_ERR_OR_NULL(comp->hrt_qos_req_other)) {
 			if (phy_id + 1 >= MAX_LAYER_NR) {
@@ -4779,6 +4804,9 @@ static int mtk_ovl_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 				*(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
 					DISP_SLOT_CUR_BW_VAL(phy_id + 1)) =	NO_PENDING_HRT;
 			}
+			if (port_bw != NO_PENDING_HRT && port_bw != comp->last_hrt_bw_other)
+				DDPINFO("%s,layer:%u, bw:%u,last:%u", __func__,
+					(unsigned int)(phy_id + 1U), port_bw, comp->last_hrt_bw_other);
 		}
 
 		if (!IS_ERR_OR_NULL(comp->hdr_qos_req)) {
@@ -6491,6 +6519,19 @@ static const struct mtk_disp_ovl_data mt6855_ovl_driver_data = {
 	.source_bpc = 8,
 };
 
+static const struct mtk_disp_ovl_data mt6771_ovl_driver_data = {
+	.addr = DISP_REG_OVL_ADDR_BASE,
+	.el_addr_offset = 0X04,
+	.fmt_rgb565_is_0 = true,
+	.fmt_uyvy = 4U << 12,
+	.fmt_yuyv = 5U << 12,
+	.fifo_size = 192,
+	.support_shadow = false,
+	.need_bypass_shadow = false,
+	.is_support_34bits = false,
+	.source_bpc = 8,
+};
+
 static const struct mtk_disp_ovl_data mt8173_ovl_driver_data = {
 	.addr = DISP_REG_OVL_ADDR_MT8173,
 	.el_addr_offset = 0x04,
@@ -6514,6 +6555,8 @@ static const struct of_device_id mtk_disp_ovl_driver_dt_match[] = {
 	 .data = &mt6765_ovl_driver_data},
 	{.compatible = "mediatek,mt6768-disp-ovl",
 	 .data = &mt6768_ovl_driver_data},
+	{.compatible = "mediatek,mt6771-disp-ovl",
+	 .data = &mt6771_ovl_driver_data},
 	{.compatible = "mediatek,mt6779-disp-ovl",
 	 .data = &mt6779_ovl_driver_data},
 	{.compatible = "mediatek,mt8173-disp-ovl",

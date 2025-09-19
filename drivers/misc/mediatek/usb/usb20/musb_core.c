@@ -2629,7 +2629,7 @@ EXPORT_SYMBOL(musb_init_controller);
 
 #if IS_ENABLED(CONFIG_PM)
 
-static void musb_save_context(struct musb *musb)
+void musb_save_context(struct musb *musb)
 {
 	int i;
 	void __iomem *musb_base = musb->mregs;
@@ -2680,7 +2680,7 @@ static void musb_save_context(struct musb *musb)
 	}
 }
 
-static void musb_restore_context(struct musb *musb)
+void musb_restore_context(struct musb *musb)
 {
 	int i;
 	void __iomem *musb_base = musb->mregs;
@@ -3393,6 +3393,50 @@ static int mt_usb_wakeup_init(struct musb *musb)
 
 	return 0;
 }
+
+/* usb top reset */
+#define GLOBALCON_RST0_SET	0x120
+#define GLOBALCON_RST0_CLR	0x124
+/* mt6768/mt6761/mt6765/mt6781 */
+#define SWRST_SET_V1	BIT(1)
+#define SWRST_CLR_V1	BIT(1)
+/* mt6789/mt6833 */
+#define SWRST_SET_V2	BIT(13)
+#define SWRST_CLR_V2	BIT(13)
+
+static void mt_usb_mac_reset(struct musb *musb)
+{
+	struct device_node *node = musb->glue->dev->of_node;
+	u32 tmp = 0;
+	u32 swrst_set = 0, swrst_clr = 0;
+
+	if (of_device_is_compatible(node, "mediatek,mt6768-usb20") ||
+		of_device_is_compatible(node, "mediatek,mt6761-usb20") ||
+		of_device_is_compatible(node, "mediatek,mt6765-usb20") ||
+		of_device_is_compatible(node, "mediatek,mt6781-usb20")) {
+		swrst_set = SWRST_SET_V1;
+		swrst_clr = SWRST_CLR_V1;
+	} else if (of_device_is_compatible(node, "mediatek,mt6789-usb20") ||
+		of_device_is_compatible(node, "mediatek,mt6833-usb20")) {
+		swrst_set = SWRST_SET_V2;
+		swrst_clr = SWRST_CLR_V2;
+	}
+
+	if (IS_ERR_OR_NULL(infracg)) {
+		DBG(0, "infracg init fail");
+		return;
+	}
+	DBG(0, "reset usb ip\n");
+	/* writ 1 to reset */
+	regmap_read(infracg, GLOBALCON_RST0_SET, &tmp);
+	tmp |= swrst_set;
+	regmap_write(infracg, GLOBALCON_RST0_SET, tmp);
+	udelay(10);
+	/* writ 1 to release */
+	regmap_read(infracg, GLOBALCON_RST0_CLR, &tmp);
+	tmp |= swrst_clr;
+	regmap_write(infracg, GLOBALCON_RST0_CLR, tmp);
+}
 #endif
 
 static u32 cable_mode = CABLE_MODE_NORMAL;
@@ -3830,6 +3874,13 @@ static void mt_usb_disable(struct musb *musb)
 	    real_enable, real_disable);
 	if (musb->power == false)
 		return;
+
+	/* reset mac when HM bit is 1 */
+	if (musb_readb(musb->mregs, MUSB_DEVCTL) & MUSB_DEVCTL_HM) {
+		musb_save_context(musb);
+		mt_usb_mac_reset(musb);
+		musb_restore_context(musb);
+	}
 
 	usb_enable_clock(false);
 	/* clock will unprepare when leave here */
@@ -4644,7 +4695,7 @@ static int musb_probe(struct platform_device *pdev)
 	}
 
 #if IS_ENABLED(CONFIG_MTK_MUSB_QMU_SUPPORT)
-	isoc_ep_end_idx = 1;
+	isoc_ep_end_idx = 3;
 	isoc_ep_gpd_count = 512; /* 30 ms for HS, at most (30*8 + 1) */
 
 	mtk_host_qmu_force_isoc_restart = 0;

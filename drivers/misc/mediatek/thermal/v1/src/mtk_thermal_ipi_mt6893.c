@@ -401,12 +401,12 @@ static struct platform_driver thermal_ipi_legacy_driver = {
 			.of_match_table = thermal_ipi_legacy_of_match,
 		},
 };
-int thermal_ipi_legacy_init(void)
+int mtk_thermal_ipi_init(void)
 {
 	platform_driver_register(&thermal_ipi_legacy_driver);
 	return 0;
 }
-void thermal_ipi_exit(void)
+void mtk_thermal_ipi_exit(void)
 {
 	platform_driver_unregister(&thermal_ipi_legacy_driver);
 }

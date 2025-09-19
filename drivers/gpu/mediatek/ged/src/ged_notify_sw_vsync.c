@@ -881,6 +881,13 @@ void ged_set_apo_autosuspend_delay_ctrl(int ctrl)
 }
 EXPORT_SYMBOL(ged_set_apo_autosuspend_delay_ctrl);
 
+int ged_get_apo_autosuspend_delay_ctrl(void)
+{
+	return g_apo_autosuspend_delay_ctrl;
+}
+EXPORT_SYMBOL(ged_get_apo_autosuspend_delay_ctrl);
+
+
 int ged_get_apo_autosuspend_delay_target_ref_count(void)
 {
 	return g_apo_autosuspend_delay_target_ref_count;

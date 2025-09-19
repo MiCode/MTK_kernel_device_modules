@@ -103,6 +103,27 @@ thermal_monitor-y += common/coolers/mtk_cooler_bcct_v1.o
 thermal_monitor-y += common/coolers/mtk_cooler_bcct_2nd.o
 endif
 
+ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_MT8788)),)
+include $(DEVICE_MODULES_PATH)/drivers/misc/mediatek/thermal/v8/src/Makefile
+ccflags-y  += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/thermal/v8/inc
+thermal_monitor-y += v8/mtk_thermal_monitor.o
+thermal_monitor-y += v8/src/mtk_tc.o
+thermal_monitor-y += v8/src/mtk_thermal_ipi.o
+thermal_monitor-y += v8/src/mtk_pmic_efuse.o
+thermal_monitor-y += v8/src/mtk_ts_6358buck1.o
+thermal_monitor-y += v8/src/mtk_ts_6358buck2.o
+thermal_monitor-y += v8/src/mtk_ts_6358buck3.o
+thermal_monitor-y += common/thermal_zones/mtk_ts_cpu_noBank.o
+thermal_monitor-y += common/thermal_zones/mtk_ts_charger2.o
+thermal_monitor-y += common/thermal_zones/mtk_ts_imgsensor.o
+#thermal_monitor-y += common/thermal_zones/mtk_ts_dctm.o
+ifeq ($(CONFIG_MTK_THERMAL_PA_VIA_ATCMD),y)
+thermal_monitor-y += common/coolers/mtk_cooler_mutt.o
+endif
+thermal_monitor-y += common/coolers/mtk_cooler_bcct_v1.o
+thermal_monitor-y += common/coolers/mtk_cooler_bcct_2nd.o
+endif
+
 ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_MT6768)),)
 include $(DEVICE_MODULES_PATH)/drivers/misc/mediatek/thermal/src/Makefile
 ccflags-y  += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/thermal/inc

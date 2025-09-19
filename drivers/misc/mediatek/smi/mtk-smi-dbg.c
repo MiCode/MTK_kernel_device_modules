@@ -1461,6 +1461,9 @@ static int mtk_smi_dbg_probe(struct platform_device *dbg_pdev)
 	if (of_property_read_bool(dev->of_node, "no-pm-runtime"))
 		no_pm_runtime = true;
 
+	if (dbg_version == SMI_DBG_VER_2)
+		spin_lock_init(&smi->v2.lock);
+
 	if ((dbg_version == SMI_DBG_VER_2) &&
 			!of_property_read_u32(dev->of_node, "vcodec-pwr-sta-rg", &tmp)) {
 		vcodec_dbg_data.pwr_sta_rg = ioremap(tmp, 0x4);
@@ -1480,8 +1483,6 @@ static int mtk_smi_dbg_probe(struct platform_device *dbg_pdev)
 	else
 		dev_notice(dev, "smmu not support or hwccf support\n");
 #endif
-	if (dbg_version == SMI_DBG_VER_2)
-		spin_lock_init(&smi->v2.lock);
 
 	of_property_read_u64_index(dev->of_node, "smi-mminfra-skip-rpm", 0,
 				&smi->subsys[SMI_MMINFRA].larb_skip_rpm);

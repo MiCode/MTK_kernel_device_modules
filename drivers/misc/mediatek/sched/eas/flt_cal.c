@@ -17,6 +17,7 @@
 unsigned int (*grp_cal_rat)(unsigned long long x, unsigned long long y);
 EXPORT_SYMBOL(grp_cal_rat);
 #endif
+
 const char *task_event_names[] = {
 	"PUT_PREV_TASK",
 	"PICK_NEXT_TASK",
@@ -44,6 +45,7 @@ const char *cpu_event_names[] = {
 	"CURRENT_TASK",
 	"CPU_IRQ_UPDATE",
 };
+
 
 unsigned int __read_mostly sysctl_sched_init_task_load_pct = INIT_TASK_LOAD_PCT;
 EXPORT_SYMBOL(sysctl_sched_init_task_load_pct);
@@ -641,6 +643,7 @@ void flt_rvh_dequeue_task(void *data, struct rq *rq,
 			if (fsrq->group_nr_running[flt_groupid] > 0)
 				fsrq->group_nr_running[flt_groupid]--;
 		}
+
 	}
 	if (trace_sched_enq_deq_task_enabled())
 		trace_sched_enq_deq_task(p, 0, cpumask_bits(&p->cpus_mask)[0], fsrq);
@@ -873,6 +876,7 @@ static void flt_update_task_ravg(struct task_struct *p, struct rq *rq, int event
 
 	update_task_demand(p, rq, event, wallclock);
 	update_cpu_busy_time(p, rq, event, wallclock, irqtime);
+
 done:
 	fts->last_update_time += delta << 10;
 	fts->mark_start = wallclock;

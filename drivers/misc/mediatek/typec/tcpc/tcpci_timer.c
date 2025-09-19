@@ -69,12 +69,15 @@ static const struct tcpc_timer_desc tcpc_timer_desc[PD_TIMER_NR] = {
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
 DECL_TCPC_TIMEOUT_RANGE(PD_TIMER_DISCOVER_ID, 40, 50),
 DECL_TCPC_TIMEOUT_RANGE(PD_TIMER_BIST_CONT_MODE, 30, 60),
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+DECL_TCPC_TIMEOUT_RANGE(PD_TIMER_HARD_RESET_COMPLETE, 4, 5),
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 DECL_TCPC_TIMEOUT_RANGE(PD_TIMER_NO_RESPONSE, 4500, 5500),
 DECL_TCPC_TIMEOUT_RANGE(PD_TIMER_PS_HARD_RESET, 25, 35),
 DECL_TCPC_TIMEOUT_RANGE(PD_TIMER_PS_SOURCE_OFF, 750, 920),
 DECL_TCPC_TIMEOUT_RANGE(PD_TIMER_PS_SOURCE_ON, 390, 480),
 DECL_TCPC_TIMEOUT_RANGE(PD_TIMER_PS_TRANSITION, 450, 550),
-DECL_TCPC_TIMEOUT_RANGE(PD_TIMER_SENDER_RESPONSE, 27, 30),
+DECL_TCPC_TIMEOUT_RANGE(PD_TIMER_SENDER_RESPONSE, 27, 27),
 DECL_TCPC_TIMEOUT(PD_TIMER_SINK_REQUEST, 100),
 DECL_TCPC_TIMEOUT_RANGE(PD_TIMER_SINK_WAIT_CAP, 310, 620),
 DECL_TCPC_TIMEOUT_RANGE(PD_TIMER_SOURCE_CAPABILITY, 100, 200),
@@ -132,6 +135,9 @@ DECL_TCPC_TIMEOUT(PD_TIMER_PPS_REQUEST, CONFIG_USB_PD_PPS_REQUEST_INTERVAL),
 #endif	/* CONFIG_USB_PD_REV30_PPS_SINK */
 #endif	/* CONFIG_USB_PD_REV30 */
 DECL_TCPC_TIMEOUT(PD_TIMER_PE_IDLE_TOUT, 10),
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+DECL_TCPC_TIMEOUT(PD_TIMER_INT_INVAILD, 100),
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 #endif /* CONFIG_USB_POWER_DELIVERY */
 
 /* TYPEC_RT_TIMER (out of spec) */
@@ -173,6 +179,10 @@ static inline void on_pe_timer_timeout(
 		struct tcpc_device *tcpc, uint32_t timer_id)
 {
 	struct pd_event pd_event = {0};
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+    int rv = 0;
+    uint32_t chip_vid = 0;
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 	int ret = 0;
 
 	pd_event.event_type = PD_EVT_TIMER_MSG;
@@ -236,6 +246,19 @@ static inline void on_pe_timer_timeout(
 		TCPC_INFO("pe_idle tout\n");
 		pd_put_pe_event(&tcpc->pd_port, PD_PE_IDLE);
 		break;
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+    case PD_TIMER_HARD_RESET_COMPLETE:
+        rv = tcpci_get_chip_vid(tcpc, &chip_vid);
+        if (!rv &&  SOUTHCHIP_PD_VID == chip_vid) {
+            pd_put_sent_hard_reset_event(tcpc);
+        }
+        break;
+
+    case PD_TIMER_INT_INVAILD:
+        tcpc->recv_msg_cnt = 0;
+        pd_put_event(tcpc, &pd_event, false);
+        break;
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 
 	default:
 		pd_put_event(tcpc, &pd_event, false);
@@ -390,8 +413,22 @@ void tcpc_restart_timer(struct tcpc_device *tcpc, uint32_t timer_id)
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
 void tcpc_reset_pe_timer(struct tcpc_device *tcpc)
 {
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+    uint32_t chip_pid;
+    int rv = 0;
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 	mutex_lock(&tcpc->timer_lock);
+
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+    rv = tcpci_get_chip_pid(tcpc, &chip_pid);
+    if (!rv &&  SC660X_PID == chip_pid) {
+        tcpc_reset_timer_range(tcpc, 0, PD_TIMER_INT_INVAILD);
+    } else {
+        tcpc_reset_timer_range(tcpc, 0, PD_PE_TIMER_END_ID);
+    }
+#else
 	tcpc_reset_timer_range(tcpc, 0, PD_PE_TIMER_END_ID);
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 	mutex_unlock(&tcpc->timer_lock);
 }
 #endif /* CONFIG_USB_POWER_DELIVERY */

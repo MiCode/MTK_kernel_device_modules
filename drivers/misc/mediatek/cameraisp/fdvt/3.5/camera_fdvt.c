@@ -605,6 +605,8 @@ static int FDVT_ReadRegHW(FDVTRegIO *a_pstCfg)
 		ret = -EFAULT;
 		goto mt_FDVT_read_reg_exit;
 	}
+
+	a_pstCfg->u4value = pFDVTReadBuffer.u4Data[0];
 mt_FDVT_read_reg_exit:
 
 	return ret;
@@ -754,57 +756,55 @@ static long FDVT_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 /***********************************************************
  *
  ************************************************************/
-#ifdef COMPAT_API_NEED_UPDATE
 static int compat_FD_get_register_data(
-		compat_FDVTRegIO __user *data32,
-		FDVTRegIO __user *data)
+	unsigned long arg,
+	FDVTRegIO *data)
 {
-	compat_uint_t count;
-	compat_uptr_t uptr_Addr;
-	compat_uptr_t uptr_Data;
-	int err;
+	long ret = 0;
+	compat_FDVTRegIO data32 = {0};
 
-	err = get_user(uptr_Addr, &data32->pAddr);
-	err |= put_user(compat_ptr(uptr_Addr), &data->pAddr);
-	err |= get_user(uptr_Data, &data32->pData);
-	err |= put_user(compat_ptr(uptr_Data), &data->pData);
-	err |= get_user(count, &data32->u4Count);
-	err |= put_user(count, &data->u4Count);
+	ret = (long)copy_from_user(&data32, compat_ptr(arg),
+		(unsigned long)sizeof(compat_FDVTRegIO));
 
-	return err;
+	if (ret != 0L) {
+		log_inf("Copy data from user failed!\n");
+		return ret;
+	}
+
+	data->pAddr = compat_ptr(data32.pAddr);
+	data->pData = compat_ptr(data32.pData);
+	data->u4Count = data32.u4Count;
+
+	return ret;
 }
 
 static int compat_FD_put_register_data(
-		compat_FDVTRegIO __user *data32,
-		FDVTRegIO __user *data)
+	unsigned long arg,
+	FDVTRegIO *data)
 {
-	compat_uint_t count;
-	/*compat_uptr_t uptr_Addr;*/
-	/*compat_uptr_t uptr_Data;*/
-	int err;
+	long ret = 0;
+	compat_FDVTRegIO data32 = {0};
 
-	/* Assume data pointer is unchanged. */
-	/* err = get_user(uptr_Addr, &data->pAddr); */
-	/* err |= put_user(compat_ptr(uptr_Addr), data32->pAddr); */
-	/* err |= get_user(uptr_Data, &data->pData); */
-	/* err |= put_user(compat_ptr(uptr_Data), &data32->pData); */
-	err = get_user(count, &data->u4Count);
-	err |= put_user(count, &data32->u4Count);
+	data32.u4Count = (compat_uint_t)(data->u4Count);
+	data32.u4value = (compat_uint_t)(data->u4value);
 
-	return err;
+	if (copy_to_user(compat_ptr(arg), &data32,
+			(unsigned long)sizeof(compat_FDVTRegIO)) != 0) {
+		log_inf("copy_to_user failed");
+		ret = -EFAULT;
+	}
+	return ret;
 }
-#endif
 
 static long compat_FD_ioctl(
 	struct file *file, unsigned int cmd, unsigned long arg)
 {
-	// long ret;
+	long ret;
 
 	if (!file->f_op || !file->f_op->unlocked_ioctl)
 		return -ENOTTY;
 
 	switch (cmd) {
-#ifdef COMPAT_API_NEED_UPDATE
 	case COMPAT_FDVT_IOC_INIT_SETPARA_CMD:
 	{
 	return
@@ -817,18 +817,8 @@ static long compat_FD_ioctl(
 	}
 	case COMPAT_FDVT_IOC_G_WAITIRQ:
 	{
-		FDVTRegIO data;
-		int err;
-
-		err = compat_FD_get_register_data(arg, &data);
-		if (err)
-			return err;
-		ret = file->f_op->unlocked_ioctl(
-			file,
-			FDVT_IOC_G_WAITIRQ,
-			(unsigned long)&data);
-		err = compat_FD_put_register_data(arg, &data);
-		return ret ? ret : err;
+	return
+	file->f_op->unlocked_ioctl(file, cmd, (unsigned long)compat_ptr(arg));
 	}
 	case COMPAT_FDVT_IOC_T_SET_FDCONF_CMD:
 	{
@@ -838,10 +828,15 @@ static long compat_FD_ioctl(
 		err = compat_FD_get_register_data(arg, &data);
 		if (err)
 			return err;
-		ret = file->f_op->unlocked_ioctl(
-			file,
-			FDVT_IOC_T_SET_FDCONF_CMD,
-			(unsigned long)&data);
+
+		/* log_dbg("[FDVT] FDVT set FD config\n"); */
+		FaceDetecteConfig();
+		ret = FDVT_SetRegHW((FDVTRegIO *)(&data));
+		if (ret == 0)
+			haveConfig = 1;
+		else
+			log_dbg("Set FD HW register fail");
+
 		return ret ? ret : err;
 	}
 	case COMPAT_FDVT_IOC_G_READ_FDREG_CMD:
@@ -852,10 +847,10 @@ static long compat_FD_ioctl(
 		err = compat_FD_get_register_data(arg, &data);
 		if (err)
 			return err;
-		ret = file->f_op->unlocked_ioctl(
-			file,
-			FDVT_IOC_G_READ_FDREG_CMD,
-			(unsigned long)&data);
+
+		/* log_dbg("[FDVT] FDVT read FD config\n"); */
+		ret = FDVT_ReadRegHW((FDVTRegIO *)(&data));
+
 		err = compat_FD_put_register_data(arg, &data);
 		return ret ? ret : err;
 	}
@@ -867,10 +862,15 @@ static long compat_FD_ioctl(
 		err = compat_FD_get_register_data(arg, &data);
 		if (err)
 			return err;
-		ret = file->f_op->unlocked_ioctl(
-			file,
-			FDVT_IOC_T_SET_SDCONF_CMD,
-			(unsigned long)&data);
+
+		/* log_dbg("[FDVT] FDVT set SD config\n"); */
+		SmileDetecteConfig();
+		ret = FDVT_SetRegHW((FDVTRegIO *)(&data));
+		if (ret == 0)
+			haveConfig = 1;
+		else
+			log_dbg("Set SD HW register fail");
+
 		return ret ? ret : err;
 	}
 	case COMPAT_FDVT_IOC_T_DUMPREG:
@@ -878,7 +878,6 @@ static long compat_FD_ioctl(
 	return
 	file->f_op->unlocked_ioctl(file, cmd, (unsigned long)compat_ptr(arg));
 	}
-#endif
 	default:
 		return -ENOIOCTLCMD;
 		/* return ISP_ioctl(filep, cmd, arg); */

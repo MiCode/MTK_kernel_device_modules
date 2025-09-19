@@ -36,6 +36,7 @@
 #include "bq2589x_reg.h"
 #include "charger_class.h"
 #include "mtk_charger.h"
+#include <mtk_musb.h>
 
 struct delayed_work plug_work;
 struct bq2589x *bq_ex;
@@ -969,7 +970,7 @@ static struct bq2589x_platform_data *bq2589x_parse_dt(struct device_node *np,
 		of_property_read_u32(np, "ti,bq2589x,boost-current",
 				 &pdata->boosti);
 	if (ret) {
-		pdata->boosti = 750;
+		pdata->boosti = 2400;
 		pr_info("Failed to read node of ti,bq2589x,boost-current\n");
 	}
 	bq->otg_enable_pin = of_get_named_gpio(np, "ti,otg-en-gpio", 0);
@@ -1250,6 +1251,11 @@ static void bq2589x_read_byte_work(struct work_struct *work)
 static irqreturn_t bq2589x_irq_handler_thread(int irq, void *data)
 {
 	struct bq2589x *bq = data;
+
+	if (!mt_usb_is_device()) {
+		pr_info("%s: Now is usb host mode. Skip detection\n",__func__);
+		return IRQ_HANDLED;
+	}
 
 	schedule_delayed_work(&bq->read_byte_work, msecs_to_jiffies(40));
 
@@ -1957,11 +1963,15 @@ static int bq2589x_chg_get_property(struct power_supply *psy,
 				val->intval = 0;
 			else if (vbus < BQ2589X_VBUS_UVLO)
 				val->intval = 0;
+			else if (!mt_usb_is_device())
+				val->intval = 0;
 			else
 				val->intval = 1;
 			pr_info("%s usb online(%d),pd(%d), vbus(%d)\n",
 				__func__, val->intval, bq->power_good, vbus);
-		} else
+		} else if (!mt_usb_is_device())
+			val->intval = 0;
+		else
 			val->intval = bq->power_good;
 		break;
 	case POWER_SUPPLY_PROP_STATUS:

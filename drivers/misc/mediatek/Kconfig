@@ -41,7 +41,9 @@ source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/mcdi/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/hps_v3/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/cpuhotplug/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/upower/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/helio-dvfsrc/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/spm/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/spm_v4/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/power_gs_v1/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/thermal/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/smi/Kconfig"
@@ -51,6 +53,22 @@ source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/wla/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/pkvm_mkp/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/pkvm_mgmt/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/pkvm_smmu/Kconfig"
+
+config MTK_PLAT_POWER_MT8788_MCDI
+	tristate "Platform power specified macro"
+	help
+	  This macro is used to distinguish the platform dependent parts
+	  from those power related features.
+	  If the macro is enabled, compile the mt8788 mcdi related code.
+	  If unsure, say N.
+
+config MTK_PLAT_POWER_MT8788
+	tristate "Platform power specified macro"
+	help
+	  This macro is used to distinguish the platform dependent parts
+	  from those power related features.
+	  If the macro is enabled, compile the mt8788 related code.
+	  If unsure, say N.
 
 config MTK_PLAT_POWER_MT6768
 	tristate "Platform power specified macro"
@@ -66,6 +84,14 @@ config MTK_PLAT_POWER_6833
 	  This macro is used to distinguish the platform dependent parts
 	  from those power related features.
 	  If the macro is enabled, compile the mt6768 related code.
+	  If unsure, say N.
+
+config MTK_PLAT_POWER_MT6771
+	tristate "Platform power specified macro"
+	help
+	  This macro is used to distinguish the platform dependent parts
+	  from those power related features.
+	  If the macro is enabled, compile the mt6771 related code.
 	  If unsure, say N.
 
 config MTK_PLAT_POWER_MT6877
@@ -171,6 +197,7 @@ source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/mminfra/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/mmdebug/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/widevine_drm/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/hw_sem/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/cam_log/Kconfig"
 endmenu # MultiMedia, Display, Camera
 
 menu "Security"
@@ -184,6 +211,7 @@ endmenu # Security
 
 menu "Tinysys"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/apusys/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/vpu/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/sspm/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/tinysys_scmi/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/scp/Kconfig"
@@ -499,4 +527,11 @@ config MTK_AUTO_SUPPORT
          Which is used for smart platform modules.
          When the modules/codes only for auto project.
          Say m here if is auto project.
+         If unsure, say N.
+config SCP_DVFS_MT6771
+       tristate "smart platform"
+       help
+         Which is used for distinguish smart platform scp dvfs.
+         When the platform is MT6771 or MT8788, the macro should open.
+         Say m here if is MT6771 or MT8788 project.
          If unsure, say N.

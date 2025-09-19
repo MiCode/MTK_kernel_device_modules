@@ -142,7 +142,7 @@ enum {
 #define MT6360_TORCHCUR_MIN		25000
 #define MT6360_TORCHCUR_STEP		12500
 #define MT6360_TORCHCUR_MAX		400000
-#define MT6360_STROBECUR_MIN		50000
+#define MT6360_STROBECUR_MIN		25000
 #define MT6360_STROBECUR_STEP		12500
 #define MT6360_STROBECUR_MAX		1500000
 #define MT6360_STRBTIMEOUT_MIN		64000
@@ -405,44 +405,33 @@ static inline bool mt6360_fled_check_flags_if_any(unsigned long *flags)
 	return (*flags) ? true : false;
 }
 
-static int mt6360_fled_strobe_brightness_set(
+#define MT6360_REGVAL_ISTROBE_25MA	0x80
+#define MT6360_ULTRA_STROBE_THRESHOLD	50000
+static int __mt6360_fled_strobe_brightness_set(
 			   struct led_classdev_flash *fled_cdev, u32 brightness)
 {
 	struct led_classdev *led_cdev = &fled_cdev->led_cdev;
 	struct mt6360_led_info *mli = dev_get_drvdata(led_cdev->dev->parent);
 	struct led_flash_setting *fs = &fled_cdev->brightness;
 	struct mt6360_fled_classdev *mtfled_cdev = (void *)fled_cdev;
-	int id = mtfled_cdev->index, shift;
+	int id = mtfled_cdev->index;
 	u32 val;
 
 	dev_dbg(led_cdev->dev,
 		"%s: id[%d], brightness %u\n", __func__, id, brightness);
-	val = brightness;
-	val = (val - fs->min) / fs->step;
-	shift = ffs(mtfled_cdev->strobe_bright_mask) - 1;
-	return regmap_update_bits(mli->regmap, mtfled_cdev->strobe_bright_reg,
-				 mtfled_cdev->strobe_bright_mask, val << shift);
+	if (brightness < MT6360_ULTRA_STROBE_THRESHOLD)
+		val = MT6360_REGVAL_ISTROBE_25MA;
+	else
+		val = (brightness - MT6360_ULTRA_STROBE_THRESHOLD) / fs->step;
+	return regmap_write(mli->regmap, mtfled_cdev->strobe_bright_reg, val);
 }
 
-static int mt6360_fled_strobe_brightness_get(
-			  struct led_classdev_flash *fled_cdev, u32 *brightness)
+static int mt6360_fled_strobe_brightness_set(struct led_classdev_flash *flcdev,
+					    u32 brightness)
 {
-	struct led_classdev *led_cdev = &fled_cdev->led_cdev;
-	struct mt6360_led_info *mli = dev_get_drvdata(led_cdev->dev->parent);
-	struct led_flash_setting *fs = &fled_cdev->brightness;
-	struct mt6360_fled_classdev *mtfled_cdev = (void *)fled_cdev;
-	int id = mtfled_cdev->index, shift, ret;
-	u32 regval = 0;
+	struct led_classdev *lcdev = &flcdev->led_cdev;
 
-	dev_dbg(led_cdev->dev, "%s: id[%d]\n", __func__, id);
-	ret = regmap_read(mli->regmap, mtfled_cdev->strobe_bright_reg, &regval);
-	if (ret < 0)
-		return ret;
-	regval &= mtfled_cdev->strobe_bright_mask;
-	shift = ffs(mtfled_cdev->strobe_bright_mask) - 1;
-	regval >>= shift;
-	/* convert to microamp value */
-	*brightness = regval * fs->step + fs->min;
+	dev_info(lcdev->dev, "%s brightness:%d\n", __func__, brightness);
 	return 0;
 }
 
@@ -452,12 +441,14 @@ static int mt6360_fled_strobe_set(
 	struct led_classdev *led_cdev = &fled_cdev->led_cdev;
 	struct mt6360_led_info *mli = dev_get_drvdata(led_cdev->dev->parent);
 	struct mt6360_fled_classdev *mtfled_cdev = (void *)fled_cdev;
+	const struct led_flash_setting *fs = &fled_cdev->brightness;
 	int id = mtfled_cdev->index, ret, regval = 0;
+	unsigned long prev = mli->fl_strobe_flags, curr = prev;
 
 	dev_dbg(led_cdev->dev, "%s: id[%d], state %d\n", __func__, id, state);
-	if (!(state ^ test_bit(id, &mli->fl_strobe_flags))) {
+	if (!(state ^ test_bit(id, &prev))) {
 		dev_dbg(led_cdev->dev,
-			"no change for strobe [%lu]\n", mli->fl_strobe_flags);
+			"no change for strobe [%lu]\n", prev);
 		return 0;
 	}
 	if (mt6360_fled_check_flags_if_any(&mli->fl_torch_flags)) {
@@ -492,6 +483,11 @@ static int mt6360_fled_strobe_set(
 	}
 #endif
 
+	if (state)
+		set_bit(id, &curr);
+	else
+		clear_bit(id, &curr);
+
 	ret = regmap_update_bits(mli->regmap, mtfled_cdev->cs_enable_reg,
 				 mtfled_cdev->cs_enable_mask, state ? 0xff : 0);
 	if (ret < 0) {
@@ -499,21 +495,25 @@ static int mt6360_fled_strobe_set(
 		goto out_strobe_set;
 	}
 	ret = regmap_update_bits(mli->regmap, mtfled_cdev->strobe_enable_reg,
-			     mtfled_cdev->strobe_enable_mask, state ? 0xff : 0);
+			     mtfled_cdev->strobe_enable_mask, curr ? 0xff : 0);
 	if (ret < 0) {
 		dev_err(led_cdev->dev, "Fail to set strb enable [%d]\n", state);
 		goto out_strobe_set;
 	}
-	if (state) {
-		if (!mt6360_fled_check_flags_if_any(&mli->fl_strobe_flags))
-			usleep_range(5000, 6000);
-		set_bit(id, &mli->fl_strobe_flags);
-		mtfled_cdev->faults = 0;
-	} else {
-		clear_bit(id, &mli->fl_strobe_flags);
-		if (!mt6360_fled_check_flags_if_any(&mli->fl_strobe_flags))
-			usleep_range(400, 500);
+
+	ret = __mt6360_fled_strobe_brightness_set(fled_cdev, state ? fs->val : fs->min);
+	if (ret) {
+		dev_notice(led_cdev->dev, "Fail to set strb brightness, ret:%d\n", ret);
+		return ret;
 	}
+
+	if (!prev && curr) {
+		mtfled_cdev->faults = 0;
+		usleep_range(5000, 6000);
+	} else if (prev && !curr)
+		usleep_range(400, 500);
+
+	mli->fl_strobe_flags = curr;
 out_strobe_set:
 	return ret;
 }
@@ -564,7 +564,6 @@ static int mt6360_fled_strobe_fault_get(
 
 static const struct led_flash_ops mt6360_fled_ops = {
 	.flash_brightness_set = mt6360_fled_strobe_brightness_set,
-	.flash_brightness_get = mt6360_fled_strobe_brightness_get,
 	.strobe_set = mt6360_fled_strobe_set,
 	.strobe_get = mt6360_fled_strobe_get,
 	.timeout_set = mt6360_fled_strobe_timeout_set,
@@ -989,6 +988,9 @@ static ssize_t mt6360_strobe_store(struct flashlight_arg arg)
 {
 	struct led_classdev_flash *flcdev;
 	struct led_classdev *lcdev;
+
+	if (arg.channel < 0)
+		return -EINVAL;
 
 	flcdev = mt6360_flash_class[arg.channel];
 	lcdev = &flcdev->led_cdev;

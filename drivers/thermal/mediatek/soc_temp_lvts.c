@@ -28,6 +28,8 @@
 #include "gpueb_common.h"
 #endif
 #include <linux/math64.h>
+#include <trace/hooks/thermal.h>
+
 /*==================================================
  * LVTS debug patch
  *==================================================
@@ -1697,6 +1699,14 @@ static int lvts_get_chipid(void)
 	return chip_id->sw_ver;
 }
 
+#ifdef CONFIG_MTK_SKIP_THERMAL_ZONE_UPDATE
+void hook_tz_pm_notify_suspend(void *data, struct thermal_zone_device *tz , int *irq_wakeable)
+{
+	if(irq_wakeable)
+		*irq_wakeable = true;
+}
+#endif
+
 static int lvts_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -1748,12 +1758,25 @@ static int lvts_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
+#ifdef CONFIG_MTK_SKIP_THERMAL_ZONE_UPDATE
+	ret = register_trace_android_vh_thermal_pm_notify_suspend(hook_tz_pm_notify_suspend,  NULL);
+	pr_info("[%s] register_trace_android_vh_thermal_pm_notify_suspend\n", __func__);
+	if (ret){
+		dev_info(dev, "%s: register_trace_android_vh_thermal_pm_notify_suspend failed, %d\n", __func__, ret);
+		return ret;
+	}
+#endif
 
 	return 0;
 }
 
 static int lvts_remove(struct platform_device *pdev)
 {
+
+#ifdef CONFIG_MTK_SKIP_THERMAL_ZONE_UPDATE
+	unregister_trace_android_vh_thermal_pm_notify_suspend(hook_tz_pm_notify_suspend,  NULL);
+#endif
+
 	return 0;
 }
 

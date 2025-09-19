@@ -49,6 +49,8 @@
 		#io-channel-cells = <1>;
 		/* efuse offset from mt6358 */
 		cali-efuse-offset = <1>;
+		nvmem = <&pmic_efuse>;
+		nvmem-names = "auxadc_efuse_dev";
 		batadc {
 			channel = <AUXADC_BATADC>;
 			resistance-ratio = <3 1>;

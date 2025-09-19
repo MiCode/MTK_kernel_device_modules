@@ -18,6 +18,9 @@
 #endif
 
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_CM4_SUPPORT)
+static void ultra_ipi_IPICmd_Received(int id, void *data, unsigned int len);
+#else
 static int ultra_ipi_recv_handler(unsigned int id,
 				 void *prdata,
 				 void *data,
@@ -26,6 +29,7 @@ static int ultra_ipi_ack_handler(unsigned int id,
 				void *prdata,
 				void *data,
 				unsigned int len);
+#endif
 
 static atomic_t ipi_ack_return;
 static atomic_t ipi_ack_id;
@@ -68,6 +72,10 @@ void ultra_ipi_register(void (*ipi_rx_call)(unsigned int, void *),
 			bool (*ipi_tx_ack_call)(unsigned int, unsigned int))
 {
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_CM4_SUPPORT)
+	scp_ipi_registration(IPI_AUDIO,
+					ultra_ipi_IPICmd_Received, "AUDIO_ULTRA_PCM");
+#else
 	mtk_ipi_register(&scp_ipidev, IPI_IN_AUDIO_ULTRA_SND_0,
 			(mbox_pin_cb_t)ultra_ipi_recv_handler, NULL,
 			 &ultra_ipi_receive);
@@ -75,11 +83,47 @@ void ultra_ipi_register(void (*ipi_rx_call)(unsigned int, void *),
 			(mbox_pin_cb_t)ultra_ipi_ack_handler, NULL,
 			&ultra_ipi_send_ack);
 #endif
+#endif
 	ultra_ipi_rx_handle = ipi_rx_call;
 	ultra_ipi_tx_ack_handle = ipi_tx_ack_call;
 }
 
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_CM4_SUPPORT)
+static void ultra_ipi_IPICmd_Received(int id, void *data, unsigned int len)
+{
+	// struct ipi_msg_t *ipi_msg;
+	// ipi_msg = (struct ipi_msg_t *) data;
+	pr_info("%s(),id/data/len %d/%p/%d\n", __func__, id, data, len);
+
+	pr_info("%s(),size ultra_ipi_receive_info/ultra_ipi_ack_info %d/%d\n",
+		__func__, (int)sizeof(struct ultra_ipi_receive_info), (int)sizeof(struct ultra_ipi_ack_info));
+	if (len == sizeof(struct ultra_ipi_receive_info)) {
+		struct ultra_ipi_receive_info *ipi_info = (struct ultra_ipi_receive_info *) data;
+
+		pr_info("%s(), ultra_ipi_receive_info msg_id/need_ack/param1/param2/msg_length %d/%d/%d/%d/%d\n",
+			__func__, ipi_info->msg_id, ipi_info->msg_need_ack,
+			ipi_info->param1, ipi_info->param2, ipi_info->msg_length);
+
+		pr_info("%s() invoke ultra_ipi_rx_handle\n", __func__);
+		ultra_ipi_rx_handle(ipi_info->msg_id, (void *)ipi_info->msg_data);
+	} else if (len == sizeof(struct ultra_ipi_ack_info)) {
+		struct ultra_ipi_ack_info *ipi_info = (struct ultra_ipi_ack_info *) data;
+
+		pr_info("%s(), ultra_ipi_ack_info: msg_id/need_ack/param1/param2/msg_data %d/%d/%d/%d/%d\n",
+			__func__, ipi_info->msg_id, ipi_info->msg_need_ack,
+			ipi_info->param1, ipi_info->param2, ipi_info->msg_data);
+
+		pr_info("%s() invoke ultra_ipi_tx_ack_handle\n", __func__);
+		ultra_ipi_tx_ack_handle(ipi_info->msg_id, ipi_info->msg_data);
+		atomic_set(&ipi_ack_return, ipi_info->msg_need_ack);
+		atomic_set(&ipi_ack_id, ipi_info->msg_id);
+		atomic_set(&ipi_ack_data, ipi_info->msg_data);
+	} else {
+		pr_info("%s() ignore as len not match ultra_ipi_receive_info or ultra_ipi_ack_info\n", __func__);
+	}
+}
+#else
 static int ultra_ipi_recv_handler(unsigned int id,
 				 void *prdata,
 				 void *data,
@@ -107,6 +151,7 @@ static int ultra_ipi_ack_handler(unsigned int id,
 	return 0;
 }
 #endif
+#endif
 
 bool ultra_ipi_send_msg(unsigned int msg_id,
 		    bool polling_mode,
@@ -133,7 +178,6 @@ bool ultra_ipi_send_msg(unsigned int msg_id,
 		return false;
 	}
 	// TODO: Should handle scp resovery
-
 	if (ultra_GetScpRecoverStatus() == true) {
 		pr_info("scp is recovering, then break\n");
 		return false;
@@ -168,13 +212,27 @@ RESEND_IPI:
 	atomic_set(&ipi_ack_data, 0);
 
 	for (retry_cnt = 0; retry_cnt <= retry_time; retry_cnt++) {
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_CM4_SUPPORT)
+		pr_info("%s(), msg_id/need_ack/param1/param2/msg_length %d/%d/%d/%d/%d\n",
+			__func__, ipi_data.msg_id, ipi_data.msg_need_ack,
+			ipi_data.param1, ipi_data.param2, ipi_data.msg_length );
+
+		ipi_result = scp_ipi_send(
+			 IPI_AUDIO,
+			 &ipi_data,
+			 sizeof(ipi_data), //ipi_data.msg_length,
+			 0, /* avoid busy waiting */
+			 SCP_A_ID);
+#else
 		ipi_result = mtk_ipi_send(&scp_ipidev,
 			IPI_OUT_AUDIO_ULTRA_SND_0,
 			polling_mode ? IPI_SEND_POLLING : IPI_SEND_WAIT,
 			&ipi_data,
 			PIN_OUT_SIZE_AUDIO_ULTRA_SND_0,
 			0);
-		if (ipi_result == IPI_ACTION_DONE)
+#endif
+
+		if (ipi_result == 0)
 			break;
 
 		/* send error, print it */
@@ -191,7 +249,7 @@ RESEND_IPI:
 			msleep(ULTRA_WAITCHECK_INTERVAL_MS);
 	}
 
-	if (ipi_result == IPI_ACTION_DONE) {
+	if (ipi_result == 0) {
 		if (need_ack == ULTRA_IPI_NEED_ACK) {
 			for (ack_cnt = 0; ack_cnt <= ack_time; ack_cnt++) {
 				if ((atomic_read(&ipi_ack_return) == ULTRA_IPI_ACK_BACK) &&

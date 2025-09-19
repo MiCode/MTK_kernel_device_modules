@@ -162,6 +162,10 @@ static const struct linear_range mt_volt_range0[] = {
 	REGULATOR_LINEAR_RANGE(0, 0, 191, 6250),
 };
 
+static const struct linear_range mt_volt_range00[] = {
+	REGULATOR_LINEAR_RANGE(0, 0, 128, 12500),
+};
+
 static const struct linear_range mt_volt_range1[] = {
 	REGULATOR_LINEAR_RANGE(0, 0, 191, 13875),
 };
@@ -495,7 +499,7 @@ static struct mt6373_regulator_info mt6373_regulators[] = {
 		    MT6373_PMIC_RG_BUCK_VBUCK7_LP_SHIFT,
 		    MT6373_PMIC_RG_VBUCK7_FCCM_ADDR,
 		    MT6373_PMIC_RG_VBUCK7_FCCM_SHIFT),
-	MT6373_BUCK(VBUCK8, 0, 1193750, 6250, mt_volt_range0,
+	MT6373_BUCK(VBUCK8, 0, 1600000, 12500, mt_volt_range00,
 		    MT6373_PMIC_RG_BUCK_VBUCK8_EN_ADDR,
 		    MT6373_PMIC_RG_BUCK_VBUCK8_EN_SHIFT,
 		    MT6373_PMIC_RG_BUCK_VBUCK8_VOSEL_ADDR,

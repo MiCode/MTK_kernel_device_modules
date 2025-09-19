@@ -1134,6 +1134,25 @@ static long handle_vdec_fps_info(unsigned long arg, void *mbraink_data)
 	return ret;
 }
 
+static long handle_power_spmi_glitch_info(unsigned long arg, void *mbraink_data)
+{
+	struct mbraink_spmi_glitch_struct_data *power_spmi_glitch_buffer =
+		(struct mbraink_spmi_glitch_struct_data *)(mbraink_data);
+	long ret = 0;
+
+	memset(power_spmi_glitch_buffer,
+		0,
+		sizeof(struct mbraink_spmi_glitch_struct_data));
+	ret = mbraink_power_get_spmi_glitch_info(power_spmi_glitch_buffer);
+	if (copy_to_user((struct mbraink_spmi_glitch_struct_data *) arg,
+			power_spmi_glitch_buffer,
+			sizeof(struct mbraink_spmi_glitch_struct_data))) {
+		pr_notice("Copy power_spmi_glitch_buffer to UserSpace error!\n");
+		return -EPERM;
+	}
+	return ret;
+}
+
 static long mbraink_ioctl(struct file *filp,
 							unsigned int cmd,
 							unsigned long arg)
@@ -1551,6 +1570,15 @@ static long mbraink_ioctl(struct file *filp,
 		if (!mbraink_data)
 			goto End;
 		ret = handle_vdec_fps_info(arg, mbraink_data);
+		kfree(mbraink_data);
+		break;
+	}
+	case RO_POWER_SPMI_GLITCH_INFO:
+	{
+		mbraink_data = kmalloc(sizeof(struct mbraink_spmi_glitch_struct_data), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handle_power_spmi_glitch_info(arg, mbraink_data);
 		kfree(mbraink_data);
 		break;
 	}

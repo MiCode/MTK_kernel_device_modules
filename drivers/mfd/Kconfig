@@ -97,6 +97,17 @@ config MT6685_AUDCLK
 	  SoCs.  Note, that this will only be useful paired with descriptions
 	  of the independent functions as children nodes in the device tree.
 
+
+config MT6685_335CLK
+	tristate "MT6685 335 CLK"
+	depends on MFD_MT6685
+	default m
+	help
+	  This enables support for MT6685 335 clk control.
+	  These PMICs are currently used with the Mediatek series of
+	  SoCs.  Note, that this will only be useful paired with descriptions
+	  of the independent functions as children nodes in the device tree.
+
 config MFD_MT6685
 	tristate "MT6685 SPMI PMIC"
 	depends on OF

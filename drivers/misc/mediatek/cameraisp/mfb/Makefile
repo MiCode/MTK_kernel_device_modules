@@ -21,6 +21,7 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cmdq/mailbox/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtk-interconnect/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mdp/
 
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cmdq/mailbox/
 
@@ -31,6 +32,12 @@ $(info "enter mfb makefile CONFIG_MTK_CAMERA_MFB_ISP6S")
 obj-$(CONFIG_MTK_CAMERA_MFB_ISP6S) += camera_mfb_isp6s.o
 camera_mfb_isp6s-objs += isp_6s/engine_request.o
 camera_mfb_isp6s-objs += isp_6s/camera_mfb.o
+endif
+
+ifeq ($(CONFIG_MTK_CAMERA_MFB_ISP50),m)
+$(info "enter mfb makefile CONFIG_MTK_CAMERA_MFB_ISP50")
+obj-$(CONFIG_MTK_CAMERA_MFB_ISP50) += camera_mfb_isp50.o
+camera_mfb_isp50-objs += isp_50/camera_mfb.o
 endif
 
 $(info "enter mfb makefile 2")

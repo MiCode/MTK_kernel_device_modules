@@ -14,6 +14,7 @@ obj-$(CONFIG_DEVICE_MODULES_DMABUF_HEAPS_DEFERRED_FREE)	+= deferred-free-helper.
 obj-$(CONFIG_DEVICE_MODULES_DMABUF_HEAPS_PAGE_POOL)	+= page_pool.o
 obj-$(CONFIG_DEVICE_MODULES_DMABUF_HEAPS_SYSTEM)	+= system_heap.o
 obj-$(CONFIG_DEVICE_MODULES_DMABUF_HEAPS_REFILL)	+= mtk_heap_refill.o
+obj-$(CONFIG_DEVICE_MODULES_DIO_DMABUF_MAPPER)	        += dio_dma_mapper.o
 
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/iommu/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/iommu/

@@ -757,12 +757,14 @@ retry:
 		       again);
 		goto exit;
 	}
+	Auddrv_Dl2_Spinlock_unlock();
 
 	if (unlikely(copy_from_user(ISRCopyBuffer.pBufferBase, (char *)addr,
 				    size))) {
 		pr_warn("%s Fail copy from user !!\n", __func__);
-		goto exit;
+		return;
 	}
+	Auddrv_Dl2_Spinlock_lock();
 	ISRCopyBuffer.pBufferIndx = ISRCopyBuffer.pBufferBase;
 	ISRCopyBuffer.u4BufferSize = size;
 	ISRCopyBuffer.u4IsrConsumeSize = 0; /* Restart */

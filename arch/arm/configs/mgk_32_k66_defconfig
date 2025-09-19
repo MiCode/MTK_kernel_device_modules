@@ -325,6 +325,7 @@ CONFIG_DRM_PANEL_NOVATEK_NT35695B_CMD=y
 CONFIG_DRM_PANEL_NT35521_HD_VDO_TRULY_RT5081=y
 CONFIG_DRM_PANEL_NT35695_FHD_VDO_AUO_RT5081_HDP=y
 CONFIG_DRM_PANEL_BOE_TV080WXMLLS=y
+CONFIG_DRM_PANEL_NT51021H_WUXGA_VDO_BOE=y
 CONFIG_DRM_MEDIATEK_PANEL=y
 CONFIG_DRM_MEDIATEK_V2=y
 CONFIG_DRM=y
@@ -337,7 +338,7 @@ CONFIG_EROFS_FS_PCPU_KTHREAD_HIPRI=y
 CONFIG_EROFS_FS=y
 CONFIG_EXFAT_FS=y
 CONFIG_EXPERT=y
-CONFIG_EXT_MODULES="../vendor/mediatek/kernel_modules/gpu ../vendor/mediatek/kernel_modules/mtkcam  ../vendor/mediatek/kernel_modules/connectivity/common ../vendor/mediatek/kernel_modules/connectivity/conninfra ../vendor/mediatek/kernel_modules/connectivity/connfem ../vendor/mediatek/kernel_modules/connectivity/wlan/adaptor/build/connac1x ../vendor/mediatek/kernel_modules/connectivity/wlan/adaptor/wlan_page_pool ../vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac1x/6765 ../vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac1x/6768 ../vendor/mediatek/kernel_modules/connectivity/gps/gps_stp ../vendor/mediatek/kernel_modules/connectivity/gps/gps_pwr ../vendor/mediatek/kernel_modules/connectivity/gps/gps_scp ../vendor/mediatek/kernel_modules/connectivity/bt/mt66xx/wmt ../vendor/mediatek/kernel_modules/connectivity/fmradio"
+CONFIG_EXT_MODULES="../vendor/mediatek/kernel_modules/gpu ../vendor/mediatek/kernel_modules/mtkcam  ../vendor/mediatek/kernel_modules/connectivity/common ../vendor/mediatek/kernel_modules/connectivity/conninfra ../vendor/mediatek/kernel_modules/connectivity/connfem ../vendor/mediatek/kernel_modules/connectivity/wlan/adaptor/build/connac1x ../vendor/mediatek/kernel_modules/connectivity/wlan/adaptor/wlan_page_pool ../vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac1x/6765 ../vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m/build/connac1x/6768 ../vendor/mediatek/kernel_modules/connectivity/gps/gps_stp ../vendor/mediatek/kernel_modules/connectivity/gps/gps_pwr ../vendor/mediatek/kernel_modules/connectivity/gps/mi_gps_pwr ../vendor/mediatek/kernel_modules/connectivity/gps/gps_scp ../vendor/mediatek/kernel_modules/connectivity/bt/mt66xx/wmt ../vendor/mediatek/kernel_modules/connectivity/fmradio"
 CONFIG_EXT4_FS_POSIX_ACL=y
 CONFIG_EXT4_FS_SECURITY=y
 CONFIG_EXT4_FS=y
@@ -714,6 +715,7 @@ CONFIG_MTK_V4L2_IMGSENSOR=y
 CONFIG_MTK_VDEC_FMT=y
 CONFIG_MTK_VIDEO_LM3643=y
 CONFIG_MTK_VIDEO_LM3644=y
+CONFIG_MTK_VIDEO_OCP81377=y
 CONFIG_MTK_VIDEO_SY7806=y
 CONFIG_MTK_VMM_NOTIFIER=y
 CONFIG_MTK_VMM_SPM=y
@@ -1111,6 +1113,7 @@ CONFIG_SMP=y
 CONFIG_MTK_ARM=y
 CONFIG_DEBUG_USER=y
 CONFIG_FRAME_WARN=1500
+CONFIG_MTK_GAME=y
 # CONFIG_SLUB_DEBUG is not set
 # CONFIG_SLAB_FREELIST_HARDENED is not set
 # CONFIG_SLAB_FREELIST_RANDOM is not set

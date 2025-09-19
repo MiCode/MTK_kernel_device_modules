@@ -32,6 +32,7 @@
 #define MAX_LPM_STATE_NUM				16
 #define MAX_UFS_INFO_NUM				64
 #define MAX_WIFI_TXTIMEOUT_SZ			32
+#define MAX_PMIC_SPMI_GLITCH_SZ		96
 
 #define NETLINK_EVENT_Q2QTIMEOUT		"NLEvent_Q2QTimeout"
 #define NETLINK_EVENT_UDMFETCH			"M&"
@@ -558,4 +559,10 @@ struct mbraink_vdec_fps {
 	unsigned short pid;
 	int vdec_fps;
 };
+
+struct mbraink_spmi_glitch_struct_data {
+	unsigned int spmi_glitch_count;
+	u16 spmi_glitch[MAX_PMIC_SPMI_GLITCH_SZ];
+};
+
 #endif

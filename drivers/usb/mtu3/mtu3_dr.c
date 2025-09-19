@@ -118,6 +118,7 @@ static void switch_port_to_on(struct ssusb_mtk *ssusb, enum phy_mode mode)
 	/* reset USB MAC/PHY */
 	ssusb_reset(ssusb);
 
+	ssusb_set_power_state(ssusb, MTU3_STATE_POWER_ON);
 	ssusb_vsvoter_set(ssusb);
 	ssusb_phy_power_on(ssusb);
 	ssusb_phy_set_mode(ssusb, mode);
@@ -133,6 +134,13 @@ static void switch_port_to_off(struct ssusb_mtk *ssusb)
 	ssusb_phy_set_mode(ssusb, PHY_MODE_INVALID);
 	ssusb_phy_power_off(ssusb);
 	ssusb_vsvoter_clr(ssusb);
+	ssusb_set_power_state(ssusb, MTU3_STATE_POWER_OFF);
+	/* reset usb if bus is busy */
+	if (ssusb->usb_bus_busy) {
+		ssusb_reset(ssusb);
+		mdelay(100);
+		dev_info(ssusb->dev, "[WARNING] USB bus not idle, reset ssusb\n");
+	}
 	ssusb_clks_disable(ssusb);
 
 	pm_runtime_put(ssusb->dev);
@@ -261,7 +269,7 @@ static void ssusb_mode_sw_work_v2(struct work_struct *work)
 		mdelay(50);
 		/* unregister host driver */
 		ssusb_host_register(ssusb, false);
-		ssusb_set_power_state(ssusb, MTU3_STATE_POWER_OFF);
+		ssusb_wait_power_state(ssusb, MTU3_STATE_POWER_OFF);            
 		ssusb_host_disable(ssusb);
 		switch_port_to_off(ssusb);
 		/* wait for hw to complete host off */
@@ -283,7 +291,6 @@ static void ssusb_mode_sw_work_v2(struct work_struct *work)
 			pm_runtime_put(ssusb->dev);
 		}
 		spin_unlock_irqrestore(&mtu->lock, flags);
-		ssusb_set_power_state(ssusb, MTU3_STATE_POWER_OFF);
 		mtu3_device_disable(mtu);
 		switch_port_to_off(ssusb);
 		pm_relax(ssusb->dev);
@@ -299,7 +306,6 @@ static void ssusb_mode_sw_work_v2(struct work_struct *work)
 	case USB_ROLE_HOST:
 		switch_port_to_on(ssusb, PHY_MODE_USB_HOST);
 		ssusb_host_enable(ssusb);
-		ssusb_set_power_state(ssusb, MTU3_STATE_POWER_ON);
 		ssusb_set_force_mode(ssusb, MTU3_DR_FORCE_HOST);
 		/* register host driver */
 		ssusb_host_register(ssusb, true);
@@ -315,7 +321,6 @@ static void ssusb_mode_sw_work_v2(struct work_struct *work)
 		pm_stay_awake(ssusb->dev);
 		switch_port_to_on(ssusb, PHY_MODE_USB_DEVICE);
 		mtu3_device_enable(mtu);
-		ssusb_set_power_state(ssusb, MTU3_STATE_POWER_ON);
 		ssusb_set_force_mode(ssusb, MTU3_DR_FORCE_DEVICE);
 		mtu3_start(mtu);
 		break;

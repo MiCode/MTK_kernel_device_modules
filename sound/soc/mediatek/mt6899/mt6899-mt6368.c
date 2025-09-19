@@ -17,10 +17,18 @@
 #include "mt6899-afe-clk.h"
 #include "mt6899-afe-gpio.h"
 #include "../../codecs/mt6368.h"
+#include "../../codecs/typec/typec_analog_acc.h"
 #if IS_ENABLED(CONFIG_SND_SOC_MT6368_ACCDET) && !defined(SKIP_ACCDET)
 #include "../../codecs/mt6368-accdet.h"
 #endif
 #include "../common/mtk-sp-spk-amp.h"
+
+#if IS_ENABLED(CONFIG_MIEV)
+#include <miev/mievent.h>
+#include <linux/timer.h>
+#include <linux/timex.h>
+#include <linux/rtc.h>
+#endif
 
 /*
  * if need additional control for the ext spk amp that is connected
@@ -30,6 +38,12 @@
 #define EXT_SPK_AMP_W_NAME "Ext_Speaker_Amp"
 #define BYPASS_CODEC_PROBE 0
 
+enum {
+	SMARTPA_NONE = 0,
+	SMARTPA_AW882XX,
+	SMARTPA_FS19XX,
+	SMARTPA_MAX,
+};
 
 static struct snd_soc_card mt6899_mt6368_soc_card;
 
@@ -39,7 +53,9 @@ static const char *const mt6899_spk_type_str[] = {MTK_SPK_NOT_SMARTPA_STR,
 						  MTK_SPK_RICHTEK_RT5509_STR,
 						  MTK_SPK_MEDIATEK_MT6660_STR,
 						  MTK_SPK_RICHTEK_RT5512_STR,
-						  MTK_SPK_GOODIX_TFA98XX_STR};
+						  MTK_SPK_GOODIX_TFA98XX_STR,
+						  MTK_SPK_AW_AW882XX_STR,
+						  MTK_SPK_FS_FS19XX_STR};
 static const char *const
 	mt6899_spk_i2s_type_str[] = {MTK_SPK_I2S_0_STR,
 				     MTK_SPK_I2S_1_STR,
@@ -2227,6 +2243,11 @@ static int mt6899_mt6368_dev_probe(struct platform_device *pdev)
 	int ret, i;
 	struct snd_soc_dai_link *dai_link;
 
+#if IS_ENABLED(CONFIG_MIEV)
+	struct misight_mievent *mievent;
+	struct timespec64 curTime;
+#endif
+
 	dev_info(&pdev->dev, "%s() successfully start\n", __func__);
 
 	/* update speaker type */
@@ -2246,8 +2267,15 @@ static int mt6899_mt6368_dev_probe(struct platform_device *pdev)
 	}
 
 	/* get speaker codec node */
-	spk_node = of_get_child_by_name(pdev->dev.of_node,
-					"mediatek,speaker-codec");
+	if(get_smartpa_type() == SMARTPA_FS19XX){
+		spk_node = of_get_child_by_name(pdev->dev.of_node,
+			"mediatek,speaker-codec-fs");
+		dev_info(&pdev->dev, "%s(), smartpa is FS19XX\n",__func__);
+	}else{
+		spk_node = of_get_child_by_name(pdev->dev.of_node,
+			"mediatek,speaker-codec");
+		dev_info(&pdev->dev, "%s(), smartpa is Not FS19XX\n",__func__);
+	}
 	if (!spk_node) {
 		dev_info(&pdev->dev,
 			"spk_node of_get_child_by_name fail\n");
@@ -2286,12 +2314,37 @@ static int mt6899_mt6368_dev_probe(struct platform_device *pdev)
 	card->dev = &pdev->dev;
 
 	ret = devm_snd_soc_register_card(&pdev->dev, card);
-	if (ret)
+	if (ret) {
 		dev_info(&pdev->dev, "%s snd_soc_register_card fail %d\n",
 			__func__, ret);
-	else
+#if IS_ENABLED(CONFIG_MIEV)
+		ktime_get_real_ts64(&curTime);
+		mievent  = cdev_tevent_alloc(906001001);
+		cdev_tevent_add_int(mievent, "CurrentTime", curTime.tv_sec);
+		cdev_tevent_add_str(mievent, "Keyword", "sound_card_not_registered");
+		cdev_tevent_write(mievent);
+		cdev_tevent_destroy(mievent);
+#endif
+	} else
 		dev_info(&pdev->dev, "%s snd_soc_register_card pss %d\n",
 				__func__, ret);
+
+#if IS_ENABLED(CONFIG_SND_SOC_TYPEC_ANALOG_ACC)
+	unsigned int acc = 0;
+
+	ret = of_property_read_u32(card->dev->of_node, "unsupported-typec-analog-acc", &acc);
+	if (ret) {
+		dev_err(&pdev->dev, "%s(), get unsupported-typec-analog-acc fail, use defalut 0\n", __func__);
+		acc = 0;
+	}
+	if (acc) {
+		dev_info(&pdev->dev, "%s: typec_analog_acc is unsupported\n", __func__);
+		ret = typec_analog_acc_init(card);
+		if (ret) {
+			dev_err(&pdev->dev, "%s: init typec analog accessory failed ret = %d\n", __func__, ret);
+		}
+	}
+#endif
 	return ret;
 }
 

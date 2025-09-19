@@ -58,6 +58,7 @@
 			scp-i2c1 = &scp_i2c1;
 			dli-async13 = &ovl_dli_async1;
 			wdma1 = &disp_wdma1;
+			wdma4 = &disp_wdma4;
 			exdma0 = &disp_ovl0_exdma0;
 			exdma2 = &disp_ovl0_exdma2;
 			exdma3 = &disp_ovl0_exdma3;
@@ -115,6 +116,7 @@
 			y2r0 = &disp_y2r0;
 			mdp-rdma0 = &disp_mdp_rdma0;
 			mutex0 = &disp1_mutex0;
+			merge0 = &disp_merge0;
 			wdma10 = &ovl_wdma0;
 			wdma11 = &ovl_wdma1;
 			wdma12 = &ovl1_wdma0;
@@ -123,6 +125,8 @@
 			mml-wrot1 = &mml1_wrot2;
 			mml-wrot2 = &mml0_wrot0;
 			mml-wrot3 = &mml0_wrot2;
+			mml-mutex0 = &mml0_mutex0;
+			mml-mutex1 = &mml1_mutex0;
 			mtksmmu0 = &mm_smmu;
 			mtksmmu1 = &gpu_smmu;
 			mtksmmu2 = &apu_smmu;
@@ -180,8 +184,8 @@
 		ulposc-support;
 		vlp-base = <0x1c016000>;
 		ulposc-cali-register = <0x2c0 0x2c4 0x2c8>;
-		ulposc-cali-config = <0x0d233340 0x10000800 0x0000484a>;
-		ulposc-cali-result = <0x0 0x42000800 0x0000484a>;
+		ulposc-cali-config = <0x0d233340 0x10000800 0x0000484f>;
+		ulposc-cali-result = <0x0 0x42000800 0x0000484f>;
 		ulposc-cali-config-num = <3>;
 		ulposc-cali-target = <260>;
 		ulposc-result-target = <26>;
@@ -251,7 +255,7 @@
 	chosen: chosen {
 		bootargs = "console=tty0 root=/dev/ram \
 			    nosoftlockup kasan.page_alloc.sample=1 \
-			    8250.nr_uarts=4 \
+			    8250.nr_uarts=6 \
 			    androidboot.hardware=mt6991 \
 			    vmalloc=400M swiotlb=noforce\
 			    firmware_class.path=/vendor/firmware \
@@ -626,6 +630,10 @@
 		#address-cells = <1>;
 		#size-cells = <1>;
 
+		edp_calibration: edp-data {
+			reg = <0x1b8 0xc>;
+		};
+
 		efuse_segment: segment@78 {
 			reg = <0x78 0x4>;
 		};
@@ -703,6 +711,9 @@
 
 		pcie2_calibration: pcie2@330 {
 			reg = <0x330 0x8>;
+		};
+		isp_efuse_data: isp-efuse-data@7d4 {
+			reg = <0x23c 0x4>;
 		};
 	};
 
@@ -1407,7 +1418,7 @@
 		reg = <0 0x80000000 0 0x40000000>;
 	};
 
-	reserved-memory {
+	reserved_memory: reserved-memory {
 		/*TODO: add reserved memory node here*/
 		#address-cells = <2>;
 		#size-cells = <2>;
@@ -4719,7 +4730,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		mmpc-total-pmqos-bw = <0x9ec>;
 		vmmrc-level-hex = <0x5f0>;
 
-		r-hrt-ostdl = <1>;
+		r-hrt-ostdl = <0>;
 		w-hrt-ostdl = <1>;
 	};
 
@@ -5409,7 +5420,11 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<0 0x16530000 0 0x80>,
 				<0 0x16530080 0 0x80>,
 				<0 0x16540000 0 0x80>,
-				<0 0x16540080 0 0x80>;
+				<0 0x16540080 0 0x80>,
+				<0 0x16550000 0 0x80>,
+				<0 0x16550080 0 0x80>,
+				<0 0x16560000 0 0x80>,
+				<0 0x16560080 0 0x80>;
 			interrupts = <GIC_SPI 299 IRQ_TYPE_LEVEL_HIGH 0>,
 					<GIC_SPI 300 IRQ_TYPE_LEVEL_HIGH 0>,
 					<GIC_SPI 301 IRQ_TYPE_LEVEL_HIGH 0>,
@@ -5417,10 +5432,14 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					<GIC_SPI 779 IRQ_TYPE_LEVEL_HIGH 0>,
 					<GIC_SPI 780 IRQ_TYPE_LEVEL_HIGH 0>,
 					<GIC_SPI 781 IRQ_TYPE_LEVEL_HIGH 0>,
-					<GIC_SPI 782 IRQ_TYPE_LEVEL_HIGH 0>;
+					<GIC_SPI 782 IRQ_TYPE_LEVEL_HIGH 0>,
+					<GIC_SPI 783 IRQ_TYPE_LEVEL_HIGH 0>,
+					<GIC_SPI 784 IRQ_TYPE_LEVEL_HIGH 0>,
+					<GIC_SPI 785 IRQ_TYPE_LEVEL_HIGH 0>,
+					<GIC_SPI 786 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&pericfg_ao_clk CLK_PERAO_AP_DMA_X32W_BCLK_UART>;
 			clock-names = "apdma";
-			dma-requests = <8>;
+			dma-requests = <12>;
 			support-hub = <0xc0>;  /*bit 0~7 to ch 0~7*/
 			#dma-cells = <1>;
 			wakeup-irq-support = <1>;
@@ -5484,6 +5503,28 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			hub-baud = <24000000>;
 			wakeup-irq-support = <1>;
 			rtff-support = <1>;
+		};
+
+		uart4: serial@16040000 {
+			compatible = "mediatek,mt6577-uart";
+			reg = <0 0x16040000 0 0x1000>;
+			interrupts = <GIC_SPI 315 IRQ_TYPE_LEVEL_HIGH 0>;
+			clocks = <&clk26m>, <&pericfg_ao_clk CLK_PERAO_UART4_BCLK_UART>;
+			clock-names = "baud", "bus";
+			dmas = <&apdma 8 &apdma 9>;
+			dma-names = "tx", "rx";
+			uart-line = <4>;
+		};
+
+		uart5: serial@16050000 {
+			compatible = "mediatek,mt6577-uart";
+			reg = <0 0x16050000 0 0x1000>;
+			interrupts = <GIC_SPI 316 IRQ_TYPE_LEVEL_HIGH 0>;
+			clocks = <&clk26m>, <&pericfg_ao_clk CLK_PERAO_UART5_BCLK_UART>;
+			clock-names = "baud", "bus";
+			dmas = <&apdma 10 &apdma 11>;
+			dma-names = "tx", "rx";
+			uart-line = <5>;
 		};
 
 		spi0: spi0@16110000 {
@@ -6303,6 +6344,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,utmi-width = <16>;
 			mediatek,clkgate = <&usbcfg_ao_clk 0x13>;
 			mediatek,usb-mbist = <&usbcfg_ao_mbist_clk>;
+			usb-psy-name = "mtk-master-charger";
+			typec-name = "rt-pd-manager";
+			typec-port-name = "port0";
 			mediatek,usb-ao-cfg = <&usbwkcfg_ao_clk>;
 			cdp-block;
 			port {
@@ -6507,7 +6551,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				clock-names = "ref";
 				#phy-cells = <1>;
 				mediatek,u3-sw-efuse;
-				mediatek,u1u2-exit-equal;
+				mediatek,u3-rx-fix;
+				mediatek,u3gen2-lpm-fix;
 				nvmem-cells = <&u3_phy_data1>, <&u3_phy_data1>,
 						<&u3_phy_data2>, <&u3_phy_data2>,
 						<&u3_phy_data2>, <&u3_phy_data2>,
@@ -7082,6 +7127,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			comp-ids = <MML0_MUTEX>;
 			comp-names = "mml0_mutex0";
 
+			interrupts = <GIC_SPI 465 IRQ_TYPE_LEVEL_HIGH 0>;
+
 			/* !!Following code generate by topology parser (tpparser.py)!! */
 			mutex-comps = "rdma0", "rdma2", "birsz0", "hdr0",
 				"aal0", "rsz0", "rsz2", "tdshp0",
@@ -7142,6 +7189,14 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					&mmqos SLAVE_COMMON(0)>;
 			interconnect-names = "mml_dma", "mml_dma_stash";
 			mmqos-supply = <&mmqos>;
+		};
+
+		disp_merge0: disp-merge0@324d0000 {
+			compatible = "mediatek,disp_merge0",
+				"mediatek,mt6991-disp-merge";
+			reg = <0 0x324d0000 0 0x1000>;
+			clocks = <&dispsys1_config_clk CLK_MM1_DISP_MERGE0_DISP>;
+			status = "disabled";
 		};
 
 		disp1_splitter0: disp1-splitter0@32550000 {
@@ -7260,6 +7315,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			comp-ids = <MML0_RROT0>;
 			comp-names = "mml0_rrot0";
 			pipe = /bits/ 8 <1>;
+
+			interrupts = <GIC_SPI 466 IRQ_TYPE_LEVEL_HIGH 0>;
 
 			clocks = <&mdpsys_config_clk CLK_MDP_MDP_RROT0_MML>;
 			clock-names = "rrot0";
@@ -7518,6 +7575,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			comp-ids = <MML1_MUTEX>;
 			comp-names = "mml1_mutex0";
 
+			interrupts = <GIC_SPI 467 IRQ_TYPE_LEVEL_HIGH 0>;
+
 			/* !!Following code generate by topology parser (tpparser.py)!! */
 			mutex-comps = "rdma0", "rdma2", "birsz0", "hdr0",
 				"aal0", "rsz0", "rsz2", "tdshp0",
@@ -7725,6 +7784,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			comp-names = "mml1_rrot0";
 			pipe = /bits/ 8 <0>;
 
+			interrupts = <GIC_SPI 468 IRQ_TYPE_LEVEL_HIGH 0>;
+
 			clocks = <&mdpsys1_config_clk CLK_MDP1_MDP_RROT0_MML>;
 			clock-names = "rrot0";
 			mediatek,larb = <&smi_larb3 MTK_M4U_TO_PORT(SMMU_L3_P6_MDP_RROT0)>;
@@ -7773,6 +7834,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,larb = <&smi_larb3 MTK_M4U_TO_PORT(SMMU_L3_P7_MDP_FG0)>;
 			mtk,smmu-shared = <&mm_smmu_disp>;
 			mtk,smmu-shared-sec = <&mm_smmu_svp_disp>;
+		};
+
+		wlan: wlan {
+
 		};
 
 		vhost_conninfra: vhost-conninfra@0 {
@@ -8148,6 +8213,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<0 0x4b09fd00 0 0x80>,
 				<0 0x4b140100 0 0x200>,
 				<0 0x4b120000 0 0x100>,
+				<0 0x4b130000 0 0x200>,
 				<0 0x4b09fd80 0 0x280>,
 				<0 0x4b170008 0 0x4>,  /* arbitrary addr to avoid error msg */
 				<0 0x4b170004 0 0x4>,
@@ -8160,6 +8226,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"gpueb_gpr_base",
 				"gpueb_cfgreg_base",
 				"gpueb_intc_base",
+				"gpueb_dma_base",
 				"mbox0_base",
 				"mbox0_init", /* dummy input for mtk_mbox_probe */
 				"mbox0_set",
@@ -8447,7 +8514,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 //				<&dispsys_config_clk CLK_MM_DISP_DLI_ASYNC2_DISP>,
 //				<&dispsys_config_clk CLK_MM_DISP_DLI_ASYNC3_DISP>,
 //				<&dispsys_config_clk CLK_MM_DISP_DLI_ASYNC4_DISP>,
-//				<&dispsys_config_clk CLK_MM_DISP_DLI_ASYNC5_DISP>,
+				<&dispsys_config_clk CLK_MM_DISP_DLI_ASYNC5_DISP>,
 //				<&dispsys_config_clk CLK_MM_DISP_DLI_ASYNC6_DISP>,
 //				<&dispsys_config_clk CLK_MM_DISP_DLI_ASYNC7_DISP>,
 				<&dispsys_config_clk CLK_MM_DISP_DLI_ASYNC8_DISP>,
@@ -8461,8 +8528,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<&dispsys_config_clk CLK_MM_DISP_DLO_ASYNC0_DISP>,
 				<&dispsys_config_clk CLK_MM_DISP_DLO_ASYNC1_DISP>,
 				<&dispsys_config_clk CLK_MM_DISP_DLO_ASYNC2_DISP>,
-//				<&dispsys_config_clk CLK_MM_DISP_DLO_ASYNC3_DISP>,
-//				<&dispsys_config_clk CLK_MM_DISP_DLO_ASYNC4_DISP>,
+				<&dispsys_config_clk CLK_MM_DISP_DLO_ASYNC3_DISP>,
+				<&dispsys_config_clk CLK_MM_DISP_DLO_ASYNC4_DISP>,
 //				<&dispsys_config_clk CLK_MM_DISP_DLO_ASYNC5_DISP>,
 				<&dispsys_config_clk CLK_MM_DISP_DLO_ASYNC6_DISP>,
 //				<&dispsys_config_clk CLK_MM_DISP_DLO_ASYNC7_DISP>,
@@ -8474,8 +8541,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<&dispsys1_config_clk CLK_MM1_DISP_DLI_ASYNC20_DISP>,
 				<&dispsys1_config_clk CLK_MM1_DISP_DLI_ASYNC21_DISP>,
 				<&dispsys1_config_clk CLK_MM1_DISP_DLI_ASYNC22_DISP>,
-//				<&dispsys1_config_clk CLK_MM1_DISP_DLI_ASYNC23_DISP>,
-//				<&dispsys1_config_clk CLK_MM1_DISP_DLI_ASYNC24_DISP>,
+				<&dispsys1_config_clk CLK_MM1_DISP_DLI_ASYNC23_DISP>,
+				<&dispsys1_config_clk CLK_MM1_DISP_DLI_ASYNC24_DISP>,
 //				<&dispsys1_config_clk CLK_MM1_DISP_DLI_ASYNC25_DISP>,
 				<&dispsys1_config_clk CLK_MM1_DISP_DLI_ASYNC26_DISP>,
 //				<&dispsys1_config_clk CLK_MM1_DISP_DLI_ASYNC27_DISP>,
@@ -8519,7 +8586,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 //				<&ovlsys_config_clk CLK_OVL_DLO7_DISP>,
 //				<&ovlsys_config_clk CLK_OVL_DLO8_DISP>,
 //				<&ovlsys_config_clk CLK_OVL_DLO9_DISP>,
-//				<&ovlsys_config_clk CLK_OVL_DLO10_DISP>,
+				<&ovlsys_config_clk CLK_OVL_DLO10_DISP>,
 //				<&ovlsys_config_clk CLK_OVL_DLO11_DISP>,
 //				<&ovlsys_config_clk CLK_OVL_DLO12_DISP>,
 //				<&ovlsys_config_clk CLK_OVLSYS_RELAY0_DISP>,
@@ -8642,6 +8709,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"disp_token_cabc_eof0",
 				"disp_token_cabc_eof1",
 				"disp_token_cabc_eof3",
+				"disp_token_vdo_cabc_eof0",
 				"disp_wdma0_eof2",
 //				"disp_wait_dp_intf0_te",
 				"disp_dp_intf0_eof",
@@ -8668,7 +8736,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"disp_aal0_eof",
 				"disp_aal1_eof",
 				"mml_disp_done_event",
-				"disp_mutex0_sof0";
+				"disp_mutex0_sof0",
+				"disp_ovlsys_ovl_exdma3_sof0",
+				"disp_wdma4_eof0";
 
 			gce-events =
 				<&gce CMDQ_EVENT_DISP1_STREAM_DONE_ENG_EVENT0>,
@@ -8696,6 +8766,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<&gce CMDQ_SYNC_TOKEN_CABC_EOF>,
 				<&gce CMDQ_SYNC_TOKEN_CABC_EOF_1>,
 				<&gce CMDQ_SYNC_TOKEN_CABC_EOF_3>,
+				<&gce CMDQ_SYNC_TOKEN_VDO_MODE_CABC_EOF>,
 				<&gce CMDQ_EVENT_DISP1_FRAME_DONE_SEL5>,
 //				<&gce CMDQ_EVENT_DISP1_DISP_DP_INTF0_SOF>,
 				<&gce CMDQ_EVENT_DISP1_FRAME_DONE_SEL0>,
@@ -8722,7 +8793,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<&gce CMDQ_EVENT_DISP0_FRAME_DONE_SEL2>,
 				<&gce CMDQ_EVENT_DISP0_FRAME_DONE_SEL3>,
 				<&gce CMDQ_SYNC_TOKEN_MML_DISP_DONE_EVENT>,
-				<&gce CMDQ_EVENT_DISP1_STREAM_SOF0>;
+				<&gce CMDQ_EVENT_DISP1_STREAM_SOF0>,
+				<&gce CMDQ_EVENT_OVL0_STREAM_SOF0>,
+				<&gce CMDQ_EVENT_DISP1_FRAME_DONE_SEL7>;
 
 			helper-name = "MTK_DRM_OPT_STAGE",
 				"MTK_DRM_OPT_USE_CMDQ",
@@ -8816,7 +8889,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<0>, /*MTK_DRM_OPT_IDLEMGR_ENTER_ULPS*/
 				<0>, /*MTK_DRM_OPT_IDLEMGR_KEEP_LP11*/
 				<0>, /*MTK_DRM_OPT_DYNAMIC_RDMA_GOLDEN_SETTING*/
-				<0>, /*MTK_DRM_OPT_IDLEMGR_DISABLE_ROUTINE_IRQ*/
+				<1>, /*MTK_DRM_OPT_IDLEMGR_DISABLE_ROUTINE_IRQ*/
 				<1>, /*MTK_DRM_OPT_IDLEMGR_ASYNC*/
 				<0>, /*MTK_DRM_OPT_MET_LOG*/
 				<1>, /*MTK_DRM_OPT_USE_PQ*/
@@ -8834,7 +8907,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<1>, /*MTK_DRM_OPT_RPO*/
 				<0>, /*MTK_DRM_OPT_DUAL_PIPE*/
 				<0>, /*MTK_DRM_OPT_DC_BY_HRT*/
-				<0>, /*MTK_DRM_OPT_OVL_WCG*/
+				<1>, /*MTK_DRM_OPT_OVL_WCG*/
 				<0>, /*MTK_DRM_OPT_OVL_SBCH*/
 				<1>, /*MTK_DRM_OPT_COMMIT_NO_WAIT_VBLANK*/
 				<0>, /*MTK_DRM_OPT_MET*/
@@ -8880,7 +8953,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<0>, /*MTK_DRM_OPT_DPC_PRE_TE_EN*/
 				<1>, /*MTK_DRM_OPT_PARTIAL_UPDATE*/
 				<0>, /*MTK_DRM_OPT_SLC_ALL_CACHE*/
-				<0>, /*MTK_DRM_OPT_OVL_WCG_BY_COLOR_MODE*/
+				<1>, /*MTK_DRM_OPT_OVL_WCG_BY_COLOR_MODE*/
 				<0>, /*"MTK_DRM_OPT_OVLSYS_CASCADE"*/
 				<1>; /*MTK_DRM_OPT_LTPO_VM*/
 
@@ -9068,6 +9141,26 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L33_P10_DISP1_WDMA1)
 					 &mmqos SLAVE_COMMON(1)>;
 			interconnect-names = "DDP_COMPONENT_WDMA1_hrt_qos";
+		};
+
+		disp_wdma4: disp1-wdma4@325d0000 {
+			compatible = "mediatek,disp_wdma4",
+					"mediatek,mt6991-disp-wdma";
+			reg = <0 0x325d0000 0 0x1000>;
+			interrupts = <GIC_SPI 462 IRQ_TYPE_LEVEL_HIGH 0>;
+			clocks = <&dispsys1_config_clk CLK_MM1_DISP_WDMA4_DISP>;
+			fifo-size-1plane = <2177>;
+			fifo-size-2plane = <800>;
+			fifo-size-uv-2plane = <400>;
+			fifo-size-3plane = <797>;
+			fifo-size-uv-3plane = <198>;
+			mediatek,larb = <&smi_larb33 SMMU_L33_P13_DISP1_WDMA4>;
+			mediatek,smi-id = <33>;
+			mtk,smmu-shared = <&mm_smmu_disp>;
+			mtk,smmu-shared-sec = <&mm_smmu_svp_disp>;
+			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L33_P13_DISP1_WDMA4)
+					 &mmqos SLAVE_COMMON(1)>;
+			interconnect-names = "DDP_COMPONENT_WDMA4_hrt_qos";
 		};
 
 		ovlsys-config@32800000 {
@@ -9855,6 +9948,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 		vdisp_ao: vdisp-ao@3e800000 {
 			compatible = "mediatek,mt6991-vdisp-ao";
+			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_DISP_VCORE>;
 			reg = <0 0x3e800000 0 0x1000>;
 		};
 
@@ -9895,7 +9989,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 		disp_dpc: disp-dpc@3e8f0000 {
 			compatible = "mediatek,mt6991-disp-dpc-v2";
-			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_MM_INFRA1>;
+			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_MM_INFRA1>; /* for apb access, not real parent */
+			disp-power-pair-size = <2>;                               /* power domain pair size */
 			reg =
 				<0 0x3e8f0000 0 0x1000>,
 				<0 0x31b501b8 0 0x4>,             /* hfrp rtff pwr con */
@@ -9941,7 +10036,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			interrupts =
 				<GIC_SPI 449 IRQ_TYPE_LEVEL_HIGH 0>; /* DISP_VDISP_AO_MERGE_IRQ_BIT */
 			vidle-mask = <0x13>;
-			root-dev = <&disp_vcore_ctrl>;
+			root-dev = <&vdisp_ao>;
 		};
 
 		mipi_tx_config0: mipi-tx-config@130b0000 {
@@ -10371,6 +10466,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			status = "disabled";
 			reg = <0 0x3ec40000 0 0x4000>,
 					<0 0x130a0000 0 0x1500>;
+			nvmem-cells = <&edp_calibration>;
+			nvmem-cell-names = "edp_calibration_data";
 			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_DISP_EDPTX_DORMANT>;
 			interrupts = <GIC_SPI 448 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&ivi_cksys2_clk	CLK_CK2_DVO_SEL>;
@@ -10400,6 +10497,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			interrupt-names = "combined";
 			#iommu-cells = <1>;
 			mediatek,axslc;
+			mediatek,dvm;
 			dma-coherent;
 
 			iommu-groups {
@@ -10702,6 +10800,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			#iommu-cells = <1>;
 			tcu-prefetch = <2>;
 			mediatek,axslc;
+			mediatek,dvm;
 			dma-coherent;
 
 			iommu-groups {
@@ -10730,7 +10829,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			#iommu-cells = <1>;
 			tcu-prefetch = <2>;
 			mediatek,axslc;
-			dma-coherent;
+			mediatek,dvm;
+			mtk,power-awake;
 
 			/* global mpam: partid, pmg */
 			mtk,gmpam-cfg = <1 0>;
@@ -10805,6 +10905,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			/* ste mpam: sid, partid, pmg */
 			mtk,mpam-cfg = <1 5 0>,
 				       <2 5 0>;
+			mediatek,dvm;
 			dma-coherent;
 		};
 
@@ -11078,7 +11179,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,ipm = <2>;
 			mediatek,slc = <1>;
 			support-acp = <1>;
-			enable-acp-by-sw-ver = <1>;
+			//enable-acp-by-sw-ver = <1>;
 			reg = <0 0x36000000 0 0x1000>,	/* VDEC_BASE */
 				<0 0x3602f000 0 0x1000>,	/* VDEC_SYS */
 				<0 0x36020000 0 0x1000>,	/* VDEC_VLD */
@@ -11165,13 +11266,15 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		jpgenc0: jpgenc@38030000 {
 			compatible = "mediatek,mtk-jpgenc";
 			mediatek,platform = "platform:mt6991";
-			reg = <0 0x38030000 0 0x10000>;
+			reg = <0 0x38030000 0 0x10000>,
+				<0 0x38000000 0 0x10000>,
+				<0 0x380b0000 0 0x10000>;
 			interrupts = <GIC_SPI 488 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&venc_gcon_clk CLK_VEN1_CKE2_JPGENC_JPGENC>,
 				 <&mmdvfs_mux MMDVFS_USER_JPEGENC>;
 			clock-names = "jpgenc", "mmdvfs_clk";
 			power-domains = <&hfrpsys  MT6991_POWER_DOMAIN_VEN0>;
-			mtk,smmu-shared = <&mm_smmu_hfrp>;
+			mtk,smmu-shared = <&mm_smmu_codec>;
 			mediatek,larb = <&smi_larb7>;
 			operating-points-v2 = <&opp_table_venc>;
 			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L7_P7_JPGENC_YRD)
@@ -11186,19 +11289,22 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					"path_jpegenc_c_rmda",
 					"path_jpegenc_q_table",
 					"path_jpegenc_bsdma";
+			axdomain = <224>;
 		};
 
 		jpgenc1: jpgenc@38830000 {
 			compatible = "mediatek,mtk-jpgenc_c0_c1";
 			mediatek,platform = "platform:mt6991";
-			reg = <0 0x38830000 0 0x10000>;
+			reg = <0 0x38830000 0 0x10000>,
+				<0 0x38000000 0 0x10000>,
+				<0 0x388b0000 0 0x10000>;
 			interrupts = <GIC_SPI 493 IRQ_TYPE_LEVEL_HIGH 0>;
 			clocks = <&venc_gcon_clk CLK_VEN1_CKE2_JPGENC>,
 				     <&venc_gcon_core1_clk  CLK_VEN2_CKE2_JPGENC_JPGENC>,
 					 <&mmdvfs_mux MMDVFS_USER_JPEGENC>;
 			clock-names = "jpgenc", "jpgenc_c1", "mmdvfs_clk";
 			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_VEN1>;
-			mtk,smmu-shared = <&mm_smmu_hfrp>;
+			mtk,smmu-shared = <&mm_smmu_codec>;
 			mediatek,larb = <&smi_larb7 &smi_larb8>;
 			operating-points-v2 = <&opp_table_venc>;
 			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L8_P7_JPGENC_YRD)
@@ -11213,6 +11319,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					"path_jpegenc_c_rmda",
 					"path_jpegenc_q_table",
 					"path_jpegenc_bsdma";
+			axdomain = <224>;
 		};
 
 		vcodec_venc: venc@38000000 {
@@ -11220,7 +11327,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,platform = "platform:mt6991";
 			mediatek,ipm = <2>;
 			support-acp = <1>;
-			enable-acp-by-sw-ver = <1>;
+			//enable-acp-by-sw-ver = <1>;
 			reg = <0 0x38020000 0 0x6000>,
 				<0 0x38820000 0 0x6000>,
 				<0 0x38c20000 0 0x6000>;
@@ -11352,7 +11459,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			compatible = "mediatek,jpgdec";
 			reg = <0 0x38040000 0 0x10000>,
 				<0 0x38050000 0 0x10000>,
-				<0 0x38000000 0 0x10000>;
+				<0 0x38000000 0 0x10000>,
+				<0 0x380b0000 0 0x10000>;
 			interrupts = <GIC_SPI 489 IRQ_TYPE_LEVEL_HIGH 0>,
 				<GIC_SPI 490 IRQ_TYPE_LEVEL_HIGH 0>;
 			mediatek,larbs = <&smi_larb7>;
@@ -11362,7 +11470,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<&mmdvfs_mux MMDVFS_USER_JPEGDEC>;
 			clock-names = "MT_CG_VENC_JPGDEC", "MT_CG_VENC_JPGDEC_C1", "mmdvfs_clk";
 			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_VEN0>;
-			mtk,smmu-shared = <&mm_smmu_hfrp>;
+			mtk,smmu-shared = <&mm_smmu_codec>;
+			jpeg-set-axdomain-base-idx = <3>;
+			jpeg-set-axdomain = <0xd>;
 			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L7_P17_JPGDEC_W)
 							&mmqos SLAVE_COMMON(0)>,
 						<&mmqos MASTER_LARB_PORT(SMMU_L7_P18_JPGDEC_BS)
@@ -11386,7 +11496,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 		jpgdec1: jpgdec1@38840000 {
 			compatible = "mediatek,jpgdec_c1";
-			reg = <0 0x38840000 0 0x10000>;
+			reg = <0 0x38840000 0 0x10000>,
+				<0 0x388b0000 0 0x10000>;
 			interrupts = <GIC_SPI 494 IRQ_TYPE_LEVEL_HIGH 0>;
 			mediatek,larbs = <&smi_larb8>;
 			operating-points-v2 = <&opp_table_venc>;
@@ -11394,7 +11505,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<&mmdvfs_mux MMDVFS_USER_JPEGDEC>;
 			clock-names = "MT_CG_VENC_JPGDEC_C2", "mmdvfs_clk";
 			power-domains = <&hfrpsys MT6991_POWER_DOMAIN_VEN1>;
-			mtk,smmu-shared = <&mm_smmu_hfrp>;
+			mtk,smmu-shared = <&mm_smmu_codec>;
+			jpeg-set-axdomain-base-idx = <1>;
+			jpeg-set-axdomain = <0xf>;
 			interconnects = <&mmqos MASTER_LARB_PORT(SMMU_L8_P17_JPGDEC_W)
 							&mmqos SLAVE_COMMON(1)>,
 						<&mmqos MASTER_LARB_PORT(SMMU_L8_P18_JPGDEC_BS)
@@ -11414,10 +11527,14 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 			reg = <0 0x3a300000 0 0x1000>,
 				<0 0x3a301000 0 0x1000>,
-				<0 0x3a302000 0 0x1000>;
+				<0 0x3a302000 0 0x1000>,
+				<0 0x12320f00 0 0x0100>,
+				<0 0x138b0f00 0 0x0100>;
 			reg-names = "seninf-top",
 				"seninf-async-top",
-				"seninf-tm";
+				"seninf-tm",
+				"csi-top-0",
+				"csi-top-1";
 
 			interrupts = <GIC_SPI 547 IRQ_TYPE_LEVEL_HIGH 0>,
 				<GIC_SPI 548 IRQ_TYPE_LEVEL_HIGH 0>,
@@ -12009,6 +12126,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"camsys_cam2mm2_gals_cgpdn",
 				"mmdvfs_mux";
 			mboxes = <&gce_m 24 0 CMDQ_THR_PRIO_1>;
+			nvmem-cells = <&isp_efuse_data>;
+			nvmem-cell-names = "isp-efuse-data";
+			nvmem-cell-masks = <0x7>;
 		};
 
 		cam_bwr: cam-bwr@3a00d000 {
@@ -13065,7 +13185,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 	disp_vcore_ctrl: disp-vcore-vdisp-ctrl@0 {
 		compatible = "mediatek,mt6991-vdisp-ctrl-v2";
-		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_DISP_VCORE>;
+		power-domains = <&hfrpsys MT6991_POWER_DOMAIN_DISP_VCORE>,
+				<&hfrpsys MT6991_POWER_DOMAIN_MM_INFRA0>; /* parent */
+		disp-power-pair-size = <2>;                               /* power domain pair size */
 		clocks =
 			<&disp_vdisp_ao_config_clk CLK_MM_V_DISP_VDISP_AO_CONFIG_DISP>,
 			<&disp_vdisp_ao_config_clk CLK_MM_V_DISP_DPC_DISP>,
@@ -13637,11 +13759,11 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 					<&gce_m 22 3000 CMDQ_THR_PRIO_1>,
 					<&gce_m 23 3000 CMDQ_THR_PRIO_1>,
 					/* power thread */
-					<&gce_m 25 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>,
+					<&gce_m 25 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_2>,
 					<&gce_m 26 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>,
-					<&gce_m 27 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>,
-					<&gce_m 30 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>,
-					<&gce_m 31 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>,
+					<&gce_m 27 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_2>,
+					<&gce_m 30 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_2>,
+					<&gce_m 31 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_2>,
 					/* qos thread */
 					<&gce_m 6 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>,
 					/* secure thread */
@@ -14959,7 +15081,7 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		core-0 = "enable";
 		scp-hwvoter = "disable";
 		scp-sram-size = <0x00360000>;
-		scp-dram-size = <0x200000>; /* scp dram image size */
+		scp-dram-size = <0xF00000>; /* scp dram image size */
 		scp-cache-dump-buf-size = <0x000c4000>;
 		scp-reg-dump-buf-size = <0x00003c00>;
 		scp-tbuf-dump-buf-size = <0x00000400>;
@@ -15099,6 +15221,10 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		scp-resource-reg-dump = <0x1c013008 0x4>,
 			<0x1c001908 0x4>,
 			<0x1c001818 0x4>;
+		/* scp fmeter dump */
+		scp-clk-fmeter-dump = "enable";
+		scp-u1-id = <59>;
+		scp-u2-id = <60>;
 
 		scp-infracfg = <&infracfg_ao_clk>;
 		/* awake timeout count plt setting */
@@ -15149,9 +15275,9 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		ulposc-cali-target = <400 650 850>;
 		ulposc-cali-config =
 			/* con0		con1		con2 */
-			<0x04eaa340	0x10000a00	0x484a>,
-			<0x0416a540	0x10000a00	0x484a>,
-			<0x055ea540	0x10000a00	0x484a>;
+			<0x04eaa340	0x10000a00	0x484f>,
+			<0x0416a540	0x10000a00	0x484f>,
+			<0x055ea540	0x10000a00	0x484f>;
 		clk-dbg-ver = "v4";
 		ccf-fmeter-support;
 		fmeter-args-u2-cali =
@@ -15602,8 +15728,9 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 			<0 0x31ba010c 0 0x4>, /* mbox2 clr */
 			<0 0x31a70028 0 0x4>, /* mbox2 init */
 			<0 0x31bd0000 0 0x1000>, /* cfg ap*/
-			<0 0x31a70040 0 0x10>, /* cfg sec gpr */
-			<0 0x1c00091c 0 0x4>; /* vcp rdy */
+			<0 0x31a70040 0 0x410>, /* cfg sec */
+			<0 0x1c00091c 0 0x4>, /* vcp rdy */
+			<0 0x31a70000 0 0x20>; /* cfg sec ctrl*/
 
 		reg-names = "vcp_sram_base",
 			"vcp_bus_tracker",
@@ -15628,8 +15755,9 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 			"mbox2_clr",
 			"mbox2_init",
 			"vcp_cfgreg_ap",
-			"vcp_sec_gpr",
-			"vcp_vlp_ao_rsvd7";
+			"vcp_cfg_sec",
+			"vcp_vlp_ao_rsvd7",
+			"vcp_cfg_sec_ctrl";
 
 		interrupts = <GIC_SPI 787 IRQ_TYPE_LEVEL_HIGH 0>,
 			<GIC_SPI 788 IRQ_TYPE_LEVEL_HIGH 0>,
@@ -16347,6 +16475,16 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 	gpu-smmu-mpam-mon {
 		compatible = "mtk,smmu-v3-mpam-mon";
 		mtk,smmu = <&gpu_smmu>;
+	};
+
+	emi-pctrl {
+		compatible = "mediatek,emi-pctrl";
+		reg = <0 0x10641000 0 0x1000>;
+	};
+
+	dvm-mi {
+		compatible = "mediatek,dvm-mi";
+		reg = <0 0x10643000 0 0x1000>;
 	};
 
 	smmu_hyp_vms: smmu-hyp-vms {
@@ -17348,7 +17486,7 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 			30220   30850    0    6540>;
 	};
 
-	low-battery-throttling {
+	low_battery_throttling: low-battery-throttling {
 		compatible = "mediatek,low_battery_throttling";
 		lvsys-thd-enable = <1>;
 		vbat-thd-enable = <1>;
@@ -17445,8 +17583,7 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		oc-reduce-tx-lv1 = <0>;
 		oc-reduce-tx-lv2 = <6>;
 
-		soc-max-level = <1>;
-		soc-reduce-tx-lv1 = <0>;
+		soc-max-level = <0>;
 	};
 
 	bp_thl: bp-thl {
@@ -17967,6 +18104,15 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		pinctrl-5 = <&bt_rst_off>;
 		pinctrl-6 = <&bt_find_my_phone_high>;
 		pinctrl-7 = <&bt_find_my_phone_low>;
+	};
+
+	/* BT 7XXX RST GPIO control */
+	combo_bt: combo-bt {
+		compatible = "mediatek,bt_7xxx";
+		pinctrl-names = "bt_rst_on_7xxx",
+				"bt_rst_off_7xxx";
+		pinctrl-0 = <&bt_rst_on_7xxx>;
+		pinctrl-1 = <&bt_rst_off_7xxx>;
 	};
 
 	tboard_thermistor1: thermal-ntc1@1c01d128 {
@@ -20108,7 +20254,7 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 };
 /* WF GPIO end */
 
-/* BT combo GPIO start */
+/* BT 6xxx GPIO start */
 &pio {
 	bt_combo_gpio_init: bt-combo-gpio-init {
 		/* BT_UTXD, GPIO237 */
@@ -20173,7 +20319,24 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		};
 	};
 };
-/* BT combo GPIO end */
+/* BT 6xxx GPIO end */
+
+/* BT 7xxx GPIO start */
+&pio {
+	bt_rst_on_7xxx: bt-rst-on-7xxx {
+		pins-cmd1-dat {
+			pinmux = <PINMUX_GPIO133__FUNC_GPIO133>;
+			output-high;
+		};
+	};
+	bt_rst_off_7xxx: bt-rst-off-7xxx {
+		pins-cmd1-dat {
+			pinmux = <PINMUX_GPIO133__FUNC_GPIO133>;
+			output-low;
+		};
+	};
+};
+/* BT 7xxx GPIO end */
 
 &spmi {
 	pmic: pmic@4 {
@@ -20200,6 +20363,10 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 
 		extbuck-debug {
 			compatible = "mediatek,spmi-pmic-debug";
+			cid-addr = <0x16 0x209 0x208>;
+			spmi-glitch-sta-sel = <0x439>;
+			spmi-glitch-sts = <0x43b>;
+			spmi-debug-out-l = <0x42b 0xf 0x4>;
 		};
 		mt6316_6_regulator: mt6316-6-regulator {
 			compatible = "mediatek,mt6316-6-regulator";
@@ -20232,6 +20399,10 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 
 		extbuck-debug {
 			compatible = "mediatek,spmi-pmic-debug";
+			cid-addr = <0x16 0x209 0x208>;
+			spmi-glitch-sta-sel = <0x439>;
+			spmi-glitch-sts = <0x43b>;
+			spmi-debug-out-l = <0x42b 0xf 0x4>;
 		};
 		mt6316_7_regulator: mt6316-7-regulator {
 			compatible = "mediatek,mt6316-7-regulator";
@@ -20255,6 +20426,10 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 
 		extbuck-debug {
 			compatible = "mediatek,spmi-pmic-debug";
+			cid-addr = <0x16 0x209 0x208>;
+			spmi-glitch-sta-sel = <0x439>;
+			spmi-glitch-sts = <0x43b>;
+			spmi-debug-out-l = <0x42b 0xf 0x4>;
 		};
 		mt6316_8_regulator: mt6316-8-regulator {
 			compatible = "mediatek,mt6316-8-regulator";
@@ -20287,6 +20462,10 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 
 		extbuck-debug {
 			compatible = "mediatek,spmi-pmic-debug";
+			cid-addr = <0x16 0x209 0x208>;
+			spmi-glitch-sta-sel = <0x439>;
+			spmi-glitch-sts = <0x43b>;
+			spmi-debug-out-l = <0x42b 0xf 0x4>;
 		};
 		mt6316_15_regulator: mt6316-15-regulator {
 			compatible = "mediatek,mt6316-15-regulator";
@@ -20516,14 +20695,14 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 			wd,wd0-tdet = <3>;
 			/* example wd0-tsleep = 512x, wd0-tdet = 4ms, wd0 polling time = 512*4ms */
 			pd-data {
-				pd,vid = <0x29cf>;
+				pd,vid = <0x2717>;
 				pd,pid = <0x6379>;
 				pd,source-cap-ext = /bits/ 8 <0xcf 0x29 0x79 0x63
 							      0x00 0x00 0x00 0x00
 							      0x00 0x00 0x00 0x00
 							      0x00 0x00 0x00 0x00
 							      0x00 0x00 0x00 0x00
-							      0x00 0x00 0x01 0x07
+							      0x00 0x00 0x01 0x05
 							      0x00>;
 				pd,sink-cap-ext = /bits/ 8 <0xcf 0x29 0x79 0x63
 							    0x00 0x00 0x00 0x00
@@ -20541,28 +20720,28 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 				pd,charging-policy = <0x31>;
 
 				pd,source-pdo-size = <1>;
-				pd,source-pdo-data = <0x00019096>; /* 5V, 1500 mA */
+				pd,source-pdo-data = <0x00019064>; /* 5V, 1000 mA */
 				pd,sink-pdo-size = <1>;
 				pd,sink-pdo-data = <0x000190c8>;
 
 				/*
 				 * No DP, host + device
 				 *	pd,id-vdo-size = <6>;
-				 *	pd,id-vdo-data = <0xd14029cf 0x0 0x63790000
+				 *	pd,id-vdo-data = <0xd1402717 0x0 0x63790000
 							  0x61000000 0x0 0x41000000>;
 				 * With DP Sink capability
 				 *	pd,id-vdo-size = <6>;
-				 *	pd,id-vdo-data = <0xd54029cf 0x0 0x63790000
+				 *	pd,id-vdo-data = <0xd5402717 0x0 0x63790000
 							  0x61000000 0x0 0x41000000>;
 				 */
 
 				pd,id-vdo-size = <6>;
-				pd,id-vdo-data = <0xd14029cf 0x0 0x63790000
+				pd,id-vdo-data = <0xd1402717 0x0 0x63790000
 						  0x61000000 0x0 0x41000000>;
 
 				bat,nr = <1>;
 				bat-info0 {
-					bat,vid = <0x29cf>;
+					bat,vid = <0x2717>;
 					bat,pid = <0x6379>;
 					bat,mfrs = "bat1";
 					bat,design-cap = <3000>;
@@ -21474,18 +21653,6 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 	regulator-always-on;
 };
 
-&mt6363_vbuck5 {
-	regulator-always-on;
-};
-
-&mt6363_vbuck6 {
-	regulator-always-on;
-};
-
-&mt6363_vsram_digrf {
-	regulator-always-on;
-};
-
 &mt6363_vsram_modem {
 	regulator-always-on;
 };
@@ -21502,10 +21669,6 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 	regulator-always-on;
 };
 
-&mt6363_vcn15 {
-	regulator-always-on;
-};
-
 &mt6363_vufs12 {
 	regulator-always-on;
 };
@@ -21518,9 +21681,6 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 	regulator-always-on;
 };
 
-&mt6363_vrf12 {
-	regulator-always-on;
-};
 
 &mt6373_vbuck4 {
 	regulator-always-on;
@@ -21600,7 +21760,7 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		reg = <0x18>;
 		wakeup-source;
 		interrupts-extended = <&pio 208 IRQ_TYPE_EDGE_FALLING>;
-		enable-gpio = <&pio 1 0x0>;
+		//enable-gpio = <&pio 1 0x0>;
 		gpio-supply = <&rt5133_ldo1>;
 		gpio-controller;
 		#gpio-cells = <2>;
@@ -21692,7 +21852,7 @@ connsys_emi_config_hyp: connsys-emi-config-hyp {
 		compatible = "mtk,nxp-eusb2-repeater";
 		reg = <0x4f>;
 		#phy-cells = <0>;
-		status = "okay";
+		status = "disabled";
 	};
 
 	ps5170: ps5170@28 {

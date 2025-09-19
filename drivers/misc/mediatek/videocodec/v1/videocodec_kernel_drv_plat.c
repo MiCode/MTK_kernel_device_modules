@@ -478,7 +478,7 @@ static long vcodec_lockhw_vdec(struct VAL_HW_LOCK_T *pHWLock, char *bLockedHW)
 	unsigned int FirstUseDecHW = 0;
 	unsigned long ulFlagsLockHW;
 	unsigned long handle = 0, handle_id = 0;
-	long ret = 0;
+	int ret = 0;
 	struct VAL_TIME_T rCurTime;
 	unsigned int u4TimeInterval __maybe_unused;
 	enum VAL_RESULT_T eValRet = VAL_RESULT_NO_ERROR;
@@ -557,7 +557,7 @@ static long vcodec_lockhw_vdec(struct VAL_HW_LOCK_T *pHWLock, char *bLockedHW)
 		if (eValRet == VAL_RESULT_INVALID_ISR) {
 			ret = vcodec_lockhw_dec_fail(*pHWLock, FirstUseDecHW);
 			if (ret) {
-				pr_info("[VDEC] lockhw_dec_fail: %lu\n",
+				pr_info("[VDEC] lockhw_dec_fail: %d\n",
 						ret);
 				return -EFAULT;
 			}
@@ -622,12 +622,20 @@ static long vcodec_lockhw_vdec(struct VAL_HW_LOCK_T *pHWLock, char *bLockedHW)
 			 */
 			mutex_unlock(&VcodecDVFSLock);
 #if IS_ENABLED(CONFIG_PM)
-			pm_runtime_get_sync(gDrvInitParams->vcodec_device);
+			ret = pm_runtime_get_sync(gDrvInitParams->vcodec_device);
+			if (ret)
+				pr_info("[error]%s,pm_runtime_get_sync ret:%d", __func__, ret);
 #else
 #ifndef KS_POWER_WORKAROUND
 			vdec_power_on(gVCodecDev);
 #endif
 #endif
+			if (pHWLock->bSecureInst == VAL_FALSE)
+				gVCodecDev->svp_mode = 0;
+			else
+				gVCodecDev->svp_mode = 1;
+			pr_debug("[lock]%s,svp_mode:%d,bSecureInst:%d", __func__,
+				gVCodecDev->svp_mode, pHWLock->bSecureInst);
 			//if (pHWLock->bSecureInst == VAL_FALSE) {
 				/* Add one line comment for avoid kernel coding
 				 * style, WARNING:BRACES:
@@ -696,7 +704,7 @@ static long vcodec_lockhw_venc(struct VAL_HW_LOCK_T *pHWLock, char *bLockedHW)
 {
 	unsigned int FirstUseEncHW = 0;
 	unsigned long handle = 0, handle_id = 0;
-	long ret = 0;
+	int ret = 0;
 	struct VAL_TIME_T rCurTime;
 	unsigned int u4TimeInterval __maybe_unused;
 	enum VAL_RESULT_T eValRet = VAL_RESULT_NO_ERROR;
@@ -796,7 +804,7 @@ static long vcodec_lockhw_venc(struct VAL_HW_LOCK_T *pHWLock, char *bLockedHW)
 		if (eValRet == VAL_RESULT_INVALID_ISR) {
 			ret = vcodec_lockhw_enc_fail(*pHWLock, FirstUseEncHW);
 			if (ret) {
-				pr_info("lockhw_enc_fail: %lu\n",
+				pr_info("lockhw_enc_fail: %d\n",
 					ret);
 				return -EFAULT;
 			}
@@ -850,12 +858,21 @@ static long vcodec_lockhw_venc(struct VAL_HW_LOCK_T *pHWLock, char *bLockedHW)
 			*bLockedHW = VAL_TRUE;
 
 #if IS_ENABLED(CONFIG_PM)
-			pm_runtime_get_sync(gDrvInitParams->vcodec_device2);
+			ret = pm_runtime_get_sync(gDrvInitParams->vcodec_device2);
+			if (ret)
+				pr_info("[error]%s,pm_runtime_get_sync ret:%d", __func__, ret);
 #else
 #ifndef KS_POWER_WORKAROUND
 			venc_power_on(gVCodecDev));
 #endif
 #endif
+			if (pHWLock->bSecureInst == VAL_FALSE)
+				gVCodecDev->svp_mode = 0;
+			else
+				gVCodecDev->svp_mode = 1;
+			pr_debug("[lock]%s,svp_mode:%d,bSecureInst:%d", __func__,
+				gVCodecDev->svp_mode, pHWLock->bSecureInst);
+
 			enable_irq(VENC_IRQ_ID);
 		} else { /* someone use HW, and check timeout value */
 			if (pHWLock->u4TimeoutMs == 0) {
@@ -1043,7 +1060,7 @@ long vcodec_unlockhw(unsigned long arg)
 	struct VAL_HW_LOCK_T rHWLock;
 	unsigned long handle = 0, handle_id = 0;
 	enum VAL_RESULT_T eValRet __maybe_unused;
-	long ret;
+	int ret = 0;
 	struct codec_job *cur_job = 0;
 	/* pr_debug("VCODEC_UNLOCKHW + tid = %d\n", current->pid); */
 
@@ -1051,7 +1068,7 @@ long vcodec_unlockhw(unsigned long arg)
 	ret = copy_from_user(&rHWLock, user_data_addr,
 				sizeof(struct VAL_HW_LOCK_T));
 	if (ret) {
-		pr_info("[VCODEC] UNLOCKHW, copy_from_user failed: %lu\n",
+		pr_info("[VCODEC] UNLOCKHW, copy_from_user failed: %d\n",
 				ret);
 		return -EFAULT;
 	}
@@ -1099,10 +1116,18 @@ long vcodec_unlockhw(unsigned long arg)
 				 * style, WARNING:BRACES:
 				 */
 				disable_irq(VDEC_IRQ_ID);
+			if (rHWLock.bSecureInst == VAL_FALSE)
+				gVCodecDev->svp_mode = 0;
+			else
+				gVCodecDev->svp_mode = 1;
+			pr_debug("[lock]%s,svp_mode:%d,bSecureInst:%d", __func__,
+				gVCodecDev->svp_mode, rHWLock.bSecureInst);
 			//}
 			/* TODO: check if turning power off is ok */
 #if IS_ENABLED(CONFIG_PM)
-			pm_runtime_put_sync(gDrvInitParams->vcodec_device);
+			ret = pm_runtime_put_sync(gDrvInitParams->vcodec_device);
+			if (ret)
+				pr_info("[error]%s,pm_runtime_put_sync ret:%d", __func__, ret);
 #else
 #ifndef KS_POWER_WORKAROUND
 			vdec_power_off(gVCodecDev);
@@ -1152,9 +1177,17 @@ long vcodec_unlockhw(unsigned long arg)
 				mutex_unlock(&VcodecDVFSLock);
 			}
 			disable_irq(VENC_IRQ_ID);
+			if (rHWLock.bSecureInst == VAL_FALSE)
+				gVCodecDev->svp_mode = 0;
+			else
+				gVCodecDev->svp_mode = 1;
+			pr_debug("[unlock]%s,svp_mode:%d,bSecureInst:%d", __func__,
+				gVCodecDev->svp_mode, rHWLock.bSecureInst);
 			/* turn venc power off */
 #if IS_ENABLED(CONFIG_PM)
-			pm_runtime_put_sync(gDrvInitParams->vcodec_device2);
+			ret = pm_runtime_put_sync(gDrvInitParams->vcodec_device2);
+			if (ret)
+				pr_info("[error]%s,pm_runtime_put_sync ret:%d", __func__, ret);
 #else
 #ifndef KS_POWER_WORKAROUND
 			venc_power_off(gVCodecDev));
@@ -1550,6 +1583,7 @@ long vcodec_plat_unlocked_ioctl(unsigned int cmd, unsigned long arg)
 
 void vcodec_plat_release(void)
 {
+    int ret = 0;
 	/* check if someone didn't unlockHW */
 	if (CodecHWLock.pvHandle != 0) {
 		pr_info("err %s %d, type = %d, 0x%lx, gDrvInitParams->drvOpenCount = %d\n",
@@ -1571,7 +1605,9 @@ void vcodec_plat_release(void)
 			vdec_break();
 			disable_irq(VDEC_IRQ_ID);
 #if IS_ENABLED(CONFIG_PM)
-			pm_runtime_put_sync(gDrvInitParams->vcodec_device);
+			ret = pm_runtime_put_sync(gDrvInitParams->vcodec_device);
+			if (ret)
+				pr_info("[error]%s,pm_runtime_put_sync ret:%d", __func__, ret);
 #else
 			vdec_power_off(gVCodecDev);
 #endif
@@ -1584,7 +1620,9 @@ void vcodec_plat_release(void)
 			venc_break();
 			disable_irq(VENC_IRQ_ID);
 #if IS_ENABLED(CONFIG_PM)
-			pm_runtime_put_sync(gDrvInitParams->vcodec_device2);
+			ret = pm_runtime_put_sync(gDrvInitParams->vcodec_device2);
+			if (ret)
+				pr_info("[error]%s,pm_runtime_put_sync ret:%d", __func__, ret);
 #else
 			venc_power_off(gVCodecDev);
 #endif
@@ -1595,7 +1633,9 @@ void vcodec_plat_release(void)
 				VAL_DRIVER_TYPE_JPEG_ENC) {
 			disable_irq(VENC_IRQ_ID);
 #if IS_ENABLED(CONFIG_PM)
-			pm_runtime_put_sync(gDrvInitParams->vcodec_device2);
+			ret = pm_runtime_put_sync(gDrvInitParams->vcodec_device2);
+			if (ret)
+				pr_info("[error]%s,pm_runtime_put_sync ret:%d", __func__, ret);
 #else
 			venc_power_off(gVCodecDev);
 #endif

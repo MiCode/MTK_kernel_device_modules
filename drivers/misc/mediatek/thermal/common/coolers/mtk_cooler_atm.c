@@ -64,7 +64,9 @@
 #endif
 
 #if defined(CATM_TPCB_EXTEND)
-#include <mt-plat/mtk_devinfo.h>
+//#include <mt-plat/mtk_devinfo.h>
+#include <linux/nvmem-consumer.h>
+#include <linux/of_platform.h>
 #endif
 
 #define CREATE_TRACE_POINTS
@@ -2047,14 +2049,36 @@ static int decide_ttj(void)
 
 #if defined(CATM_TPCB_EXTEND)
 #define CPUFREQ_SEG_CODE_IDX_0 7
+#define CPUFREQ_SEG_CODE_OFFSET_0 0x01c
 
 static void mtk_thermal_get_turbo(void)
 {
+	__u32 value;
+	struct device_node *node;
+	struct platform_device *pdev;
+	struct nvmem_device *nvmem_dev;
 
+	node = of_find_node_by_name(NULL, "therm_ctrl");
+	if (node == NULL) {
+		tscpu_printk("%s fail to get device node\n", __func__);
+		return;
+	}
+	pdev = of_find_device_by_node(node);
+	if (pdev == NULL)
+		tscpu_printk("%s failed to get pdev\n", __func__);
+
+	nvmem_dev = nvmem_device_get(&pdev->dev, "mtk_efuse");
+	if (IS_ERR(nvmem_dev))
+		tscpu_printk("%s failed to get nvmem_dev\n", __func__);
+
+	nvmem_device_read(nvmem_dev, CPUFREQ_SEG_CODE_OFFSET_0, sizeof(__u32), &value);
+	nvmem_device_put(nvmem_dev);
+
+	g_turbo_bin = (value >> 3) & 0x1;
 	//g_turbo_bin =
 		//(get_devinfo_with_index(CPUFREQ_SEG_CODE_IDX_0) >> 3) & 0x1;
 
-	//tscpu_printk("%s: turbo: %d\n", __func__, g_turbo_bin);
+	tscpu_printk("%s: turbo: %d\n", __func__, g_turbo_bin);
 }
 #endif
 

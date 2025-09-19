@@ -103,7 +103,7 @@ void mtk_get_output_timing(struct drm_crtc *crtc)
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	unsigned int crtc_id = drm_crtc_index(&mtk_crtc->base);
 	struct mtk_ddp_comp *comp;
-	struct drm_display_mode timing;
+	struct drm_display_mode timing = {0};
 	unsigned int connector_enable = 0;
 	int ret = 0;
 

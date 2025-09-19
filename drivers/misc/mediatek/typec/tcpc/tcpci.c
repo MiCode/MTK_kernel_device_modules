@@ -126,6 +126,33 @@ bool tcpci_check_vsafe0v(struct tcpc_device *tcpc)
 }
 EXPORT_SYMBOL(tcpci_check_vsafe0v);
 
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+int tcpci_get_chip_id(struct tcpc_device *tcpc,uint32_t *chip_id) 
+{
+    if (tcpc->ops->get_chip_id == NULL) {
+        return -ENOTSUPP;
+    }
+    return tcpc->ops->get_chip_id(tcpc,chip_id);
+}
+
+int tcpci_get_chip_pid(struct tcpc_device *tcpc,uint32_t *chip_pid) 
+{
+    if (tcpc->ops->get_chip_pid == NULL) {
+        return -ENOTSUPP;
+    }
+    return tcpc->ops->get_chip_pid(tcpc,chip_pid);
+}
+
+int tcpci_get_chip_vid(struct tcpc_device *tcpc,uint32_t *chip_vid) 
+{
+    if (tcpc->ops->get_chip_vid == NULL) {
+        return -ENOTSUPP;
+    }
+    return tcpc->ops->get_chip_vid(tcpc,chip_vid);
+}
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
+
+
 int tcpci_alert_status_clear(
 	struct tcpc_device *tcpc, uint32_t mask)
 {
@@ -339,6 +366,30 @@ int tcpci_set_low_power_mode(struct tcpc_device *tcpc, bool en)
 }
 EXPORT_SYMBOL(tcpci_set_low_power_mode);
 
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+int tcpci_set_watchdog(struct tcpc_device *tcpc, bool en)
+{
+    int rv = 0;
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+    uint32_t chip_vid = 0;
+    rv = tcpci_get_chip_vid(tcpc, &chip_vid);
+    if (!rv && (chip_vid == SOUTHCHIP_PD_VID)) {
+        if (tcpc->ops->set_watchdog)
+            rv = tcpc->ops->set_watchdog(tcpc, en);
+    } else {
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
+    if (tcpc->tcpc_flags & TCPC_FLAGS_WATCHDOG_EN)
+        if (tcpc->ops->set_watchdog)
+            rv = tcpc->ops->set_watchdog(tcpc, en);
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+    }
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
+
+    return rv;
+}
+EXPORT_SYMBOL(tcpci_set_watchdog);
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
+
 int tcpci_alert_vendor_defined_handler(struct tcpc_device *tcpc)
 {
 	int ret = 0;
@@ -447,6 +498,20 @@ int tcpci_notify_vbus_short_cc_status(struct tcpc_device *tcpc, bool vsc_status,
 }
 EXPORT_SYMBOL(tcpci_notify_vbus_short_cc_status);
 
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+int tcpci_notify_wd0_state(struct tcpc_device *tcpc, bool wd0_state, bool typec_port_stat)
+{
+	struct tcp_notify tcp_noti;
+
+	tcp_noti.wd0_state.wd0 = wd0_state;
+	tcp_noti.wd0_state.is_typec_port0 = typec_port_stat;
+
+	TCPC_DBG("wd0: %d\n", wd0_state);
+	return tcpc_check_notify_time(tcpc, &tcp_noti, TCP_NOTIFY_IDX_MISC,
+				      TCP_NOTIFY_WD0_STATE);
+}
+EXPORT_SYMBOL(tcpci_notify_wd0_state);
+#else
 int tcpci_notify_wd0_state(struct tcpc_device *tcpc, bool wd0_state)
 {
 	struct tcp_notify tcp_noti;
@@ -458,6 +523,7 @@ int tcpci_notify_wd0_state(struct tcpc_device *tcpc, bool wd0_state)
 				      TCP_NOTIFY_WD0_STATE);
 }
 EXPORT_SYMBOL(tcpci_notify_wd0_state);
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
 

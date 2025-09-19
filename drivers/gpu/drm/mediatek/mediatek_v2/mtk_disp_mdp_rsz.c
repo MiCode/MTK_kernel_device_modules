@@ -1210,10 +1210,13 @@ static void mtk_mdp_rsz_addon_config(struct mtk_ddp_comp *comp,
 static void mtk_mdp_rsz_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
 	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
-
+#if IS_ENABLED(CONFIG_MTK_DISPLAY_DUAL_PIPE_DUAL_PORT_SUPPORT)
+	if (priv->data->mmsys_id == MMSYS_MT6989 && comp->id == DDP_COMPONENT_RSZ1) {
+#else
 	if ((priv->data->mmsys_id == MMSYS_MT6989 && comp->id == DDP_COMPONENT_RSZ1) ||
 		(priv->data->mmsys_id == MMSYS_MT6899) ||
 		(priv->data->mmsys_id == MMSYS_MT6991 && comp->id == DDP_COMPONENT_MDP_RSZ1)) {
+#endif
 		cmdq_pkt_write(handle, comp->cmdq_base,
 		       comp->regs_pa + RSZ_ENABLE, 0, ~0);
 		return;

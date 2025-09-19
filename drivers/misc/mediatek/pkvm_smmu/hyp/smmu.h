@@ -23,6 +23,7 @@ extern const struct pkvm_module_ops *pkvm_smmu_ops;
 #define IDR1 0x4
 #define CR0 0x20
 #define CR0ACK 0x24
+#define CR2_REG 0x2C
 #define GERROR 0x60
 #define GERRORN 0x64
 #define GERROR_IRQ_CFG0 0x68
@@ -38,11 +39,13 @@ extern const struct pkvm_module_ops *pkvm_smmu_ops;
 #define GATOS_SID 0x108
 #define GATOS_ADDR 0x110
 #define GATOS_PAR 0x118
+#define SMMU_TCU_CTL4	0x1E0210
 /* register other */
 #define CMDQ_EN (1U << 3)
 #define EVTQ_EN (1U << 2)
 #define PRIQ_EN (1U << 1)
 #define SMMU_EN (1U << 0)
+#define CR2_PTM (1U << 2)
 #define SFM_ERR_MASK (1 << 8)
 #define CMDQ_ERR_MASK (1 << 0)
 #define CMDQ_ERRORCODE_SHIFT (24)
@@ -145,6 +148,7 @@ typedef struct smmu_device {
 	unsigned int smmu_id;
 	unsigned int reg_size;
 	unsigned int dma_coherent;
+	unsigned int cr2_value;
 	/* driver structure info */
 	struct smmuv3_driver *smmuv3;
 	/* command queue info */
@@ -219,12 +223,37 @@ enum MPU_REQ_ORIGIN_ZONE_ID {
 	MPU_REQ_ORIGIN_EL2_ZONE_MAX = 13,
 };
 /*******************************************************************************
+ * DVM
+ ******************************************************************************/
+#define DVM_MI_DVM_CTRL		(0x4)
+#define AC_FIFO				(0x30)
+#define CR_FIFO				(0x34)
+#define AR_FIFO				(0x38)
+#define AW_R_FIFO			(0x3c)
+#define ACP_OSTD_CNT_0		(0x40) //Outstanding counter for ACP side
+#define ACP_OSTD_CNT_1		(0x44) //Outstanding counter for ACP side
+#define AC_OSTD_CNT			(0x48) //Outstanding counter for AC of TCU side
+#define AR_OSTD_CNT			(0x4c) //Outstanding counter for AR of TCU side
+#define SYNC_OSTD_CNT_0		(0x50) //Outstanding counter for SYNC of TCU side
+#define SYNC_OSTD_CNT_1		(0x54) //Outstanding counter for SYNC of TCU side
+#define COMP_OSTD_CNT		(0x58) //Outstanding counter for COMP of TCU side
+#define AW_OSTD_CNT			(0x5c) //Outstanding counter for AW of TCU side
+#define W_OSTD_CNT			(0x60) //Outstanding counter for W of TCU side
+#define AOL_OSTD_CNT_0		(0x64) //Outstanding counter for AOL
+#define AOL_OSTD_CNT_1		(0x68) //Outstanding counter for AOL
+/* HW DVM status */
+#define HW_DVM_DISABLE	0
+#define HW_DVM_ENABLE	1
+#define HW_DVM_RETRY	2
+/*******************************************************************************
  * Other
  ******************************************************************************/
-#define STE_SHARE 1
+#define CMDQ_SHARE	(0U)
+#define STE_SHARE	(1U)
 #define GET_CMDQ 0
 #define GET_GLOBAL_STE 1
 #define GET_POOL 2
+#define MAX_POLLING_TIME 0xFF
 
 void flush_dcache_range(void *ptr, unsigned int size);
 void write_ste(unsigned long long *st_entry, const unsigned long long *data);

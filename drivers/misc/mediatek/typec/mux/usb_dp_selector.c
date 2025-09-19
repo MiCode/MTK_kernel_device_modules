@@ -231,7 +231,11 @@ static int usb_dp_selector_mux_set(struct typec_mux_dev *mux,
 		/* Mark force HPD WA by DP Team Request. */
 		/* schedule_delayed_work(&uds->check_wk, msecs_to_jiffies(CHECK_HPD_DELAY)); */
 
+#ifndef CONFIG_MTK_DPTX_PATCH_FOR_TABLET_ENABLE
+	} else if (dp_data->status) {
+#else
 	} else {
+#endif
 		u32 irq = dp_data->status & DP_STATUS_IRQ_HPD;
 		u32 state = dp_data->status & DP_STATUS_HPD_STATE;
 
@@ -278,6 +282,34 @@ static void check_hpd(struct work_struct *work)
 #endif
 	}
 }
+
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+static ssize_t dp_connect_store(struct device *dev,
+                 struct device_attribute *attr,
+                 const char *buf, size_t count)
+{
+    return -EINVAL;
+}
+
+static ssize_t dp_connect_show(struct device *dev,
+                struct device_attribute *attr,
+                char *buf)
+{
+    struct usb_dp_selector *uds = dev_get_drvdata(dev);
+
+    return sprintf(buf, "%d\n", uds->dp_sw_connect ? 1 : 0);
+}
+static DEVICE_ATTR_RW(dp_connect);
+
+static struct attribute *uds_attrs[] = {
+    &dev_attr_dp_connect.attr,
+    NULL
+};
+
+static const struct attribute_group uds_group = {
+    .attrs = uds_attrs,
+};
+#endif
 
 static int usb_dp_selector_probe(struct platform_device *pdev)
 {
@@ -345,6 +377,10 @@ static int usb_dp_selector_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, uds);
 
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+	if (sysfs_create_group(&dev->kobj, &uds_group))
+		dev_info(dev, "failed to create sysfs attributes\n");
+#endif
 	dev_info(dev, "probe done\n");
 	return 0;
 }

@@ -18,8 +18,24 @@
 #include "mt6991-afe-clk.h"
 #include "mt6991-afe-gpio.h"
 #include "../../codecs/mt6681-private.h"
+#include "../../codecs/typec/typec_analog_acc.h"
 #if IS_ENABLED(CONFIG_SND_SOC_MT6681_ACCDET) && !defined(SKIP_ACCDET)
 #include "../../codecs/mt6681-accdet.h"
+#endif
+
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO) && IS_ENABLED(CONFIG_SND_SOC_RT9123)
+#include "mt6991-machine.h"
+#endif
+
+#if IS_ENABLED(CONFIG_MTK_BATTERY_PERCENT_THROTTLING)
+#include "mtk_bp_thl.h"
+#endif
+
+#if IS_ENABLED(CONFIG_MIEV)
+#include <miev/mievent.h>
+#include <linux/timer.h>
+#include <linux/timex.h>
+#include <linux/rtc.h>
 #endif
 
 /*
@@ -38,9 +54,14 @@ struct mt6991_compress_info compr_info;
 static const char *const mt6991_spk_type_str[] = {MTK_SPK_NOT_SMARTPA_STR,
 						  MTK_SPK_RICHTEK_RT5509_STR,
 						  MTK_SPK_MEDIATEK_MT6660_STR,
-						  MTK_SPK_RICHTEK_RT5512_STR,
 						  MTK_SPK_GOODIX_TFA98XX_STR,
-						  MTK_SPK_AKM_AK7709_STR};
+						  MTK_SPK_RICHTEK_RT5512_STR,
+						  MTK_SPK_AW_AW882XX_STR,
+						  MTK_SPK_FS_FS19XX_STR,
+						  MTK_SPK_AKM_AK7709_STR,
+						  MTK_SPK_CS_CS35L43_STR,
+						  MTK_SPK_FOURSEMI_FS16XX_STR,
+						  MTK_SPK_SIA_SIA9187_STR};
 static const char *const
 	mt6991_spk_i2s_type_str[] = {MTK_SPK_I2S_0_STR,
 				     MTK_SPK_I2S_1_STR,
@@ -77,6 +98,83 @@ static const struct soc_enum mt6991_spk_type_enum[] = {
 	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(mt6991_spk_i2s_type_str),
 			    mt6991_spk_i2s_type_str),
 };
+
+#if IS_ENABLED(CONFIG_MTK_BATTERY_PERCENT_THROTTLING)
+static unsigned int volume_throttle[BATTERY_PERCENT_LEVEL_NUM];
+static unsigned int last_level;
+
+static void update_volume_throttle(const char *volume_name_l,
+				   const char *volume_name_r,
+				   int old_level, int new_level)
+{
+	struct snd_soc_card *card = &mt6991_mt6681_soc_card;
+	struct snd_kcontrol *kcontrol;
+	struct snd_soc_component *component;
+	struct snd_ctl_elem_value ucontrol;
+	int ret;
+	int diff = volume_throttle[new_level] - volume_throttle[old_level];
+
+	// Left amp
+	kcontrol = snd_soc_card_get_kcontrol(card, volume_name_l);
+	if (!kcontrol) {
+		dev_info(card->dev, "Cannot find kcontrol %s\n", volume_name_l);
+		return;
+	}
+	component = snd_soc_kcontrol_component(kcontrol);
+	if (!component) {
+		dev_info(card->dev, "Cannot find component for kcontrol %s\n", volume_name_l);
+		return;
+	}
+	memset(&ucontrol, 0, sizeof(ucontrol));
+
+	ret = kcontrol->get(kcontrol, &ucontrol);
+	dev_info(component->dev, "Current volume: %ld, throttle level: %d->%d, diff=%d\n",
+					ucontrol.value.integer.value[0], old_level, new_level, diff);
+	if (diff) {
+		ucontrol.value.integer.value[0] += volume_throttle[old_level];
+		ret = kcontrol->put(kcontrol, &ucontrol);
+		dev_info(component->dev, "New volume: %ld, ret=%d\n", ucontrol.value.integer.value[0], ret);
+	}
+
+	// Right amp
+	kcontrol = snd_soc_card_get_kcontrol(card, volume_name_r);
+	if (!kcontrol) {
+		dev_info(card->dev, "Cannot find kcontrol %s\n", volume_name_r);
+		return;
+	}
+	component = snd_soc_kcontrol_component(kcontrol);
+	if (!component) {
+		dev_info(card->dev, "Cannot find component for kcontrol %s\n", volume_name_r);
+		return;
+	}
+	memset(&ucontrol, 0, sizeof(ucontrol));
+
+	ret = kcontrol->get(kcontrol, &ucontrol);
+	dev_info(component->dev, "Current volume: %ld, throttle level: %d->%d, diff=%d\n",
+					ucontrol.value.integer.value[0], old_level, new_level, diff);
+	if (diff) {
+		ucontrol.value.integer.value[0] += volume_throttle[old_level];
+		ret = kcontrol->put(kcontrol, &ucontrol);
+		dev_info(component->dev, "New volume: %ld, ret=%d\n", ucontrol.value.integer.value[0], ret);
+	}
+}
+
+static void audio_pt_battery_percent_cb(enum BATTERY_PERCENT_LEVEL_TAG level)
+{
+	if (level >= BATTERY_PERCENT_LEVEL_NUM) {
+		// invalid
+		return;
+	}
+
+	// throttle by level
+	mtk_spk_set_reduceDb(volume_throttle[level]);
+
+#if IS_ENABLED(CONFIG_SND_SOC_RT5512)
+	update_volume_throttle("Left Volume_Ctrl", "Right Volume_Ctrl", last_level , level);
+#endif
+	last_level = level;
+}
+#endif
 
 static int mt6991_spk_type_get(struct snd_kcontrol *kcontrol,
 			       struct snd_ctl_elem_value *ucontrol)
@@ -119,6 +217,25 @@ static int mt6991_compress_info_set(struct snd_kcontrol *kcontrol,
 			__func__, data, size);
 		return -EFAULT;
 	}
+	return 0;
+}
+
+
+static int mt6991_ipm_info_get(struct snd_kcontrol *kcontrol,
+			       struct snd_ctl_elem_value *ucontrol)
+{
+	unsigned int ipm_info = 0;
+	int ret = 0;
+	struct snd_soc_card *card = &mt6991_mt6681_soc_card;
+
+	ret = of_property_read_u32(card->dev->of_node, "mediatek,ipm", &ipm_info);
+	if (ret) {
+		dev_info(card->dev,
+			 "%s(), get mediatek,ipm fail, use defalut 0\n", __func__);
+		ipm_info = 0;
+	}
+	pr_debug("%s() = %u\n", __func__, ipm_info);
+	ucontrol->value.integer.value[0] = ipm_info;
 	return 0;
 }
 
@@ -224,6 +341,9 @@ static const struct snd_soc_dapm_route mt6991_mt6681_routes[] = {
 	{EXT_SPK_AMP_W_NAME, NULL, "Headphone R Ext Spk Amp"},
 };
 static const struct snd_soc_dapm_route mt6991_mt6681_routes_dummy[] = {};
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO) && IS_ENABLED(CONFIG_SND_SOC_RT9123)
+static const struct snd_soc_dapm_route mt6991_external_codec_routes_dummy[] = {};
+#endif
 
 static const struct snd_kcontrol_new mt6991_mt6681_controls[] = {
 	SOC_DAPM_PIN_SWITCH(EXT_SPK_AMP_W_NAME),
@@ -233,6 +353,9 @@ static const struct snd_kcontrol_new mt6991_mt6681_controls[] = {
 		     mt6991_spk_i2s_out_type_get, NULL),
 	SOC_ENUM_EXT("MTK_SPK_I2S_IN_TYPE_GET", mt6991_spk_type_enum[1],
 		     mt6991_spk_i2s_in_type_get, NULL),
+	SOC_SINGLE_EXT("MTK_IPM_INFO_GET", SND_SOC_NOPM, 0, 0x1, 0,
+		       mt6991_ipm_info_get,
+		       NULL),
 	SND_SOC_BYTES_TLV("MTK_COMPRESS_INFO",
 			  sizeof(struct mt6991_compress_info),
 			  mt6991_compress_info_get, mt6991_compress_info_set),
@@ -791,6 +914,10 @@ SND_SOC_DAILINK_DEFS(ap_dmic_ch34,
 	DAILINK_COMP_ARRAY(COMP_CPU("AP_DMIC_CH34")),
 	DAILINK_COMP_ARRAY(COMP_DUMMY()),
 	DAILINK_COMP_ARRAY(COMP_EMPTY()));
+SND_SOC_DAILINK_DEFS(ap_dmic_ch56,
+	DAILINK_COMP_ARRAY(COMP_CPU("AP_DMIC_CH56")),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_EMPTY()));
 SND_SOC_DAILINK_DEFS(i2sin0,
 	DAILINK_COMP_ARRAY(COMP_CPU("I2SIN0")),
 	DAILINK_COMP_ARRAY(COMP_DUMMY()),
@@ -835,10 +962,20 @@ SND_SOC_DAILINK_DEFS(i2sout3,
 	DAILINK_COMP_ARRAY(COMP_CPU("I2SOUT3")),
 	DAILINK_COMP_ARRAY(COMP_DUMMY()),
 	DAILINK_COMP_ARRAY(COMP_EMPTY()));
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO) && IS_ENABLED(CONFIG_SND_SOC_RT9123)
+SND_SOC_DAILINK_DEFS(i2sout4,
+	DAILINK_COMP_ARRAY(COMP_CPU("I2SOUT4")),
+	DAILINK_COMP_ARRAY(COMP_CODEC(DEVICE_EXTERNAL_CODEC_NAME_1,
+				     DAI_EXTERNAL_CODEC_NAME),
+			   COMP_CODEC(DEVICE_EXTERNAL_CODEC_NAME_2,
+				     DAI_EXTERNAL_CODEC_NAME)),
+	DAILINK_COMP_ARRAY(COMP_EMPTY()));
+#else
 SND_SOC_DAILINK_DEFS(i2sout4,
 	DAILINK_COMP_ARRAY(COMP_CPU("I2SOUT4")),
 	DAILINK_COMP_ARRAY(COMP_DUMMY()),
 	DAILINK_COMP_ARRAY(COMP_EMPTY()));
+#endif
 SND_SOC_DAILINK_DEFS(i2sout5,
 	DAILINK_COMP_ARRAY(COMP_CPU("I2SOUT5")),
 	DAILINK_COMP_ARRAY(COMP_DUMMY()),
@@ -933,6 +1070,12 @@ SND_SOC_DAILINK_DEFS(hostless_src_aaudio,
 	DAILINK_COMP_ARRAY(COMP_CPU("Hostless SRC AAudio DAI")),
 	DAILINK_COMP_ARRAY(COMP_DUMMY()),
 	DAILINK_COMP_ARRAY(COMP_EMPTY()));
+#if IS_ENABLED(CONFIG_SND_SOC_VIRTUAL_HAPTIC)
+SND_SOC_DAILINK_DEFS(virtual_haptic,
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("odm:snd-vir-haptic")));
+#endif
 #if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
 SND_SOC_DAILINK_DEFS(hostless_ul5,
 	DAILINK_COMP_ARRAY(COMP_CPU("Hostless_UL5 DAI")),
@@ -1742,6 +1885,13 @@ static struct snd_soc_dai_link mt6991_mt6681_dai_links[] = {
 		SND_SOC_DAILINK_REG(ap_dmic_ch34),
 	},
 	{
+		.name = "AP_DMIC_CH56",
+		.no_pcm = 1,
+		.dpcm_capture = 1,
+		.ignore_suspend = 1,
+		SND_SOC_DAILINK_REG(ap_dmic_ch56),
+	},
+	{
 		.name = "I2SIN0",
 		.dai_fmt = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_CBS_CFS
 			| SND_SOC_DAIFMT_GATED,
@@ -2071,6 +2221,14 @@ static struct snd_soc_dai_link mt6991_mt6681_dai_links[] = {
 		.ignore_suspend = 1,
 		SND_SOC_DAILINK_REG(hostless_src_aaudio),
 	},
+#if IS_ENABLED(CONFIG_SND_SOC_VIRTUAL_HAPTIC)
+	{
+		.name = "Virtual_Haptic",
+		.stream_name = "Virtual_Haptic",
+		SND_SOC_DAILINK_REG(virtual_haptic),
+	},
+#endif
+
 #if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
 	{
 		.name = "Hostless_UL5",
@@ -2430,12 +2588,44 @@ static int mt6991_mt6681_bypass_primary_codec(struct platform_device *pdev)
 	return 0;
 }
 
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO) && IS_ENABLED(CONFIG_SND_SOC_RT9123)
+static int mt6991_bypass_external_codec(struct platform_device *pdev)
+{
+	struct snd_soc_card *card = &mt6991_mt6681_soc_card;
+	int i, j;
+	struct snd_soc_dai_link *dai_link;
+	struct snd_soc_dai_link_component *codec;
+
+	for_each_card_prelinks(card, i, dai_link) {
+		if (strcmp(dai_link->name, "I2SOUT4") == 0) {
+			for_each_link_codecs(dai_link, j, codec) {
+				codec->name = "snd-soc-dummy";
+				codec->dai_name = "snd-soc-dummy-dai";
+				dev_info(&pdev->dev, "%s() I2SOUT4 modified\n", __func__);
+			}
+		}
+	}
+	card->dapm_routes = mt6991_external_codec_routes_dummy;
+	card->num_dapm_routes = ARRAY_SIZE(mt6991_external_codec_routes_dummy);
+	return 0;
+}
+#endif
+
 static int mt6991_mt6681_dev_probe(struct platform_device *pdev)
 {
 	struct snd_soc_card *card = &mt6991_mt6681_soc_card;
 	struct device_node *platform_node, *spk_node;
 	int ret, i;
 	struct snd_soc_dai_link *dai_link;
+#if IS_ENABLED(CONFIG_MTK_BATTERY_PERCENT_THROTTLING)
+	int is_register_bt_pt;
+	int ret_pt;
+#endif
+
+#if IS_ENABLED(CONFIG_MIEV)
+	struct misight_mievent *mievent;
+	struct timespec64 curTime;
+#endif
 
 	dev_info(&pdev->dev, "%s() successfully start\n", __func__);
 
@@ -2493,15 +2683,66 @@ static int mt6991_mt6681_dev_probe(struct platform_device *pdev)
 		mt6991_mt6681_bypass_primary_codec(pdev);
 	}
 
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO) && IS_ENABLED(CONFIG_SND_SOC_RT9123)
+	if (!external_codec_done) {
+		dev_info(&pdev->dev, "%s external codec probe fail, bypass codec driver\n", __func__);
+		mt6991_bypass_external_codec(pdev);
+	}
+#endif
+
 	card->dev = &pdev->dev;
 
 	ret = devm_snd_soc_register_card(&pdev->dev, card);
-	if (ret)
+	if (ret) {
 		dev_info(&pdev->dev, "%s snd_soc_register_card fail %d\n",
 			__func__, ret);
-	else
+#if IS_ENABLED(CONFIG_MIEV)
+		ktime_get_real_ts64(&curTime);
+		mievent  = cdev_tevent_alloc(906001001);
+		cdev_tevent_add_int(mievent, "CurrentTime", curTime.tv_sec);
+		cdev_tevent_add_str(mievent, "Keyword", "sound_card_not_registered");
+		cdev_tevent_write(mievent);
+		cdev_tevent_destroy(mievent);
+#endif
+	} else
 		dev_info(&pdev->dev, "%s snd_soc_register_card pss %d\n",
 				__func__, ret);
+
+#if IS_ENABLED(CONFIG_MTK_BATTERY_PERCENT_THROTTLING)
+	/* get low battery power throttling is supported */
+	ret_pt = of_property_read_u32(pdev->dev.of_node, "register-battery-percent-pt", &is_register_bt_pt);
+	if (ret_pt) {
+		dev_info(&pdev->dev, "%s(), get register_bt_pt fail, use defalut 0\n", __func__);
+		is_register_bt_pt = 0;
+	}
+	if (is_register_bt_pt) {
+		last_level = 0;
+		for (i = 0; i < BATTERY_PERCENT_LEVEL_NUM; i++)
+			volume_throttle[i] = 0;
+
+		ret_pt = of_property_read_u32_array(pdev->dev.of_node, "volume-throttle",
+					(unsigned int *)&volume_throttle, BATTERY_PERCENT_LEVEL_NUM);
+
+		register_bp_thl_notify(&audio_pt_battery_percent_cb, BATTERY_PERCENT_PRIO_AUDIO);
+	}
+#endif
+
+#if IS_ENABLED(CONFIG_SND_SOC_TYPEC_ANALOG_ACC)
+	unsigned int acc = 0;
+
+	ret = of_property_read_u32(card->dev->of_node, "unsupported-typec-analog-acc", &acc);
+	if (ret) {
+		dev_err(&pdev->dev, "%s(), get unsupported-typec-analog-acc fail, use defalut 0\n", __func__);
+		acc = 0;
+	}
+	if (acc) {
+		dev_info(&pdev->dev, "%s: typec_analog_acc is unsupported\n", __func__);
+		ret = typec_analog_acc_init(card);
+		if (ret) {
+			dev_err(&pdev->dev, "%s: init typec analog accessory failed ret = %d\n", __func__, ret);
+		}
+	}
+#endif
 	return ret;
 }
 

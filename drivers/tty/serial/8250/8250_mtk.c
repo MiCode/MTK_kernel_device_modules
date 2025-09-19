@@ -8,6 +8,7 @@
 #include <linux/clk.h>
 #include <linux/delay.h>
 #include <linux/io.h>
+#include <linux/device.h>
 #include <linux/module.h>
 #include <linux/of_irq.h>
 #include <linux/of_platform.h>
@@ -24,9 +25,11 @@
 #include <linux/atomic.h>
 #include <linux/sched.h>
 #include <linux/sched/clock.h>
+#include <linux/serial_core.h>
 
 #include "8250.h"
 #include "8250_mtk.h"
+#include "../serial_base.h"
 #ifdef CONFIG_SERIAL_8250_DMA
 #include "../../../dma/mediatek/mtk-uart-apdma.h"
 #endif
@@ -85,6 +88,10 @@ static struct uarthub_drv_cbs uarthub_drv_cbs;
 #define MTK_UART_TX_TRIGGER	1
 #define MTK_UART_RX_TRIGGER	MTK_UART_RX_SIZE
 #define MTK_UART_FIFO_SIZE	0x20
+
+#ifdef CONFIG_MTK_NO_SUPPORT_UARTHUB
+#define MTK_UART3_HUB_CHANGE_MODE	BIT(4)
+#endif
 
 #ifdef CONFIG_FPGA_EARLY_PORTING
 #define MTK_UART_FPGA_CLK  10000000
@@ -1301,6 +1308,39 @@ int mtk8250_uart_hub_dev0_clear_tx_request(void)
 }
 EXPORT_SYMBOL(mtk8250_uart_hub_dev0_clear_tx_request);
 
+void mtk8250_set_runtime_active_status(struct tty_struct *tty)
+{
+	struct uart_state *state;
+	struct uart_port *port;
+	struct serial_port_device *port_dev;
+
+	if (tty == NULL) {
+		pr_info("[%s] tty is null\n", __func__);
+		return;
+	}
+
+	state = tty->driver_data;
+	if (state == NULL) {
+		pr_info("[%s] state is null\n", __func__);
+		return;
+	}
+
+	port = state->uart_port;
+	if (port == NULL) {
+		pr_info("[%s] port is null\n", __func__);
+		return;
+	}
+
+	port_dev = port->port_dev;
+	if (port_dev == NULL) {
+		pr_info("[%s] port_dev is null\n", __func__);
+		return;
+	}
+
+	port_dev->dev.power.runtime_status = RPM_ACTIVE;
+}
+EXPORT_SYMBOL(mtk8250_set_runtime_active_status);
+
 static int mtk8250_polling_rx_handle_complete(unsigned int count)
 {
 	int dma_state = 0;
@@ -1382,6 +1422,9 @@ int mtk8250_uart_hub_dev0_clear_rx_request(struct tty_struct *tty)
 
 		if (hub_uart_data != NULL && hub_uart_data->support_wakeup == 1) {
 			mutex_lock(&hub_uart_data->clk_mutex);
+			/*clear uart wakeup status and enable wakeup*/
+			atomic_set(&hub_uart_data->wakeup_state, 0);
+			mtk8250_set_wakeup_irq(hub_uart_data, true);
 			/*mask dma irq*/
 			#if defined(KERNEL_mtk_uart_set_apdma_rx_irq)
 				KERNEL_mtk_uart_set_apdma_rx_irq(false);
@@ -1414,9 +1457,6 @@ int mtk8250_uart_hub_dev0_clear_rx_request(struct tty_struct *tty)
 				if (up)
 					mtk8250_set_rx_threshold(up, UART_FCR_R_TRIG_10, 0);
 			}
-			/*clear uart wakeup status and enable wakeup*/
-			mtk8250_set_wakeup_irq(hub_uart_data, true);
-			atomic_set(&hub_uart_data->wakeup_state, 0);
 			mutex_unlock(&hub_uart_data->clk_mutex);
 		}
 
@@ -2198,14 +2238,20 @@ static int __maybe_unused mtk8250_runtime_suspend(struct device *dev)
 		dev_dbg(dev, "[%s]:data->line[%d], skip disable clock\n",
 			__func__, data->line);
 	} else {
-		atomic_dec(&data->uart_clk_count);
-		dev_dbg(dev, "[%s]:data->line[%d], uart_clk_count[%d]\n",
-			__func__, data->line, atomic_read(&data->uart_clk_count));
-		/* wait until UART in idle status */
-		while
-			(serial_in(up, MTK_UART_DEBUG0));
-		clk_disable_unprepare(data->bus_clk);
+		if (atomic_read(&data->uart_clk_count) == 0U) {
+			dev_dbg(dev, "%s clock count is 0\n", __func__);
+		} else {
+			atomic_dec(&data->uart_clk_count);
+			dev_dbg(dev, "[%s]:data->line[%d], uart_clk_count[%d]\n",
+				__func__, data->line, atomic_read(&data->uart_clk_count));
+			/* wait until UART in idle status */
+			while
+				(serial_in(up, MTK_UART_DEBUG0));
+
+			clk_disable_unprepare(data->bus_clk);
+		}
 	}
+
 	return 0;
 }
 
@@ -2214,19 +2260,21 @@ static int __maybe_unused mtk8250_runtime_resume(struct device *dev)
 	struct mtk8250_data *data = dev_get_drvdata(dev);
 	int err;
 
-	if (data->support_hub && (atomic_read(&data->uart_clk_count)) > 0) {
-		dev_dbg(dev, "[%s]:data->line[%d], skip disable clock\n",
-			__func__, data->line);
-		return 0;
-	}
-	err = clk_prepare_enable(data->bus_clk);
-	if (err) {
-		dev_dbg(dev, "Can't enable bus clock\n");
-		return err;
-	}
-	atomic_inc(&data->uart_clk_count);
-	dev_dbg(dev, "[%s]:data->line[%d], uart_clk_count[%d]\n",
+	if (atomic_read(&data->uart_clk_count) > 0U) {
+		if (data->support_hub)
+			dev_dbg(dev, "[%s]:data->line[%d], skip disable clock\n",
+				__func__, data->line);
+	} else {
+		err = clk_prepare_enable(data->bus_clk);
+		if (err) {
+			dev_dbg(dev, "Can't enable bus clock\n");
+			return err;
+		}
+		atomic_inc(&data->uart_clk_count);
+		dev_dbg(dev, "[%s]:data->line[%d], uart_clk_count[%d]\n",
 			__func__, data->line, atomic_read(&data->uart_clk_count));
+	}
+
 	return 0;
 }
 
@@ -2234,14 +2282,12 @@ static void
 mtk8250_do_pm(struct uart_port *port, unsigned int state, unsigned int old)
 {
 	unsigned char efr = 0;
-	int ret;
 	struct uart_8250_port *up = up_to_u8250p(port);
 
-	if (!state) {
-		ret = pm_runtime_get_sync(port->dev);
-		if (ret)
-			dev_dbg(port->dev, "8250 do PM get sync fail!");
-	}
+	if (!state)
+		if (!mtk8250_runtime_resume(port->dev))
+			pm_runtime_get_sync(port->dev);
+
 	serial8250_rpm_get(up);
 
 	if (up->capabilities & UART_CAP_SLEEP) {
@@ -2261,11 +2307,9 @@ mtk8250_do_pm(struct uart_port *port, unsigned int state, unsigned int old)
 
 	serial8250_rpm_put(up);
 
-	if (state) {
-		ret = pm_runtime_put_sync_suspend(port->dev);
-		if (ret)
-			dev_dbg(port->dev, "8250 do PM put sync fail!");
-	}
+	if (state)
+		if (!pm_runtime_put_sync_suspend(port->dev))
+			mtk8250_runtime_suspend(port->dev);
 }
 
 #ifndef CONFIG_FPGA_EARLY_PORTING
@@ -2767,6 +2811,11 @@ static int mtk8250_probe(struct platform_device *pdev)
 	struct resource *regs;
 	int irq, err;
 	const struct mtk8250_comp *comp;
+#ifdef CONFIG_MTK_NO_SUPPORT_UARTHUB
+	void __iomem *uarthub_uart;
+	struct resource *regs_uarthub;
+	u32 val;
+#endif
 
 	irq = platform_get_irq(pdev, 0);
 	if (irq < 0)
@@ -2782,6 +2831,25 @@ static int mtk8250_probe(struct platform_device *pdev)
 					 resource_size(regs));
 	if (!uart.port.membase)
 		return -ENOMEM;
+
+#ifdef CONFIG_MTK_NO_SUPPORT_UARTHUB
+	/*
+	 * Get the address of uart3 PERI_UART_WAKEUP
+	 * register to change uart3 from uarthub mode
+	 * to uart mode.
+	 */
+	regs_uarthub = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+	if (regs_uarthub) {
+		uarthub_uart = devm_ioremap(&pdev->dev, regs_uarthub->start,
+						 resource_size(regs_uarthub));
+		if (IS_ERR(uarthub_uart))
+			return PTR_ERR(uarthub_uart);
+
+		val = readl(uarthub_uart);
+		writel(val | MTK_UART3_HUB_CHANGE_MODE, uarthub_uart);
+		iounmap(uarthub_uart);
+	}
+#endif
 
 	data = devm_kzalloc(&pdev->dev, sizeof(*data), GFP_KERNEL);
 	if (!data)

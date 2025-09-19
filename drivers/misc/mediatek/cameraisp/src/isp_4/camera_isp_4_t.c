@@ -581,7 +581,6 @@ struct S_START_T {
  */
 static unsigned int g_regScen = 0xa5a5a5a5; /* remove later */
 
-static unsigned int g_virtual_cq_cnt[2] = {0, 0};
 static unsigned int g_virtual_cq_cnt_a;
 static unsigned int g_virtual_cq_cnt_b;
 
@@ -3391,7 +3390,7 @@ static inline void Disable_Unprepare_ccf_clock(void)
 	 * -> CG_SCP_SYS_ISP/CAM -> CG_DISP0_SMI_COMMON -> CG_SCP_SYS_DIS
 	 */
 
-	pr_info("disable CG/MTCMOS through SMI CLK API\n");
+	pr_info("disable CG/MTCMOS through SMI CLK API, G_u4EnableClockCount:%d\n", G_u4EnableClockCount);
 
 	clk_disable_unprepare(isp_clk.ISP_CAM_CAMSV2);
 	clk_disable_unprepare(isp_clk.ISP_CAM_CAMSV1);
@@ -7247,23 +7246,26 @@ static long ISP_ioctl(struct file *pFile, unsigned int Cmd, unsigned long Param)
 		}
 		LOG_NOTICE("ISP_SET_SEC_ENABLE sec_on = %d\n", sec_on);
 		break;
-	case ISP_SET_VIR_CQCNT:
+	case ISP_SET_VIR_CQCNT: {
+		unsigned int g_virtual_cq_cnt[2] = {0};
+
 		if (copy_from_user(&g_virtual_cq_cnt, (void *)Param,
 			sizeof(unsigned int)*2) == 0) {
 			LOG_DBG("From hw_module:%d Virtual CQ count from user land : %d\n",
 				g_virtual_cq_cnt[0], g_virtual_cq_cnt[1]);
+			if (g_virtual_cq_cnt[0] == 0) {
+				g_virtual_cq_cnt_a = g_virtual_cq_cnt[1];
+				LOG_DBG("Update Virtual CQ cnt for hw_module:0\n");
+			} else if (g_virtual_cq_cnt[0] == 1) {
+				g_virtual_cq_cnt_b = g_virtual_cq_cnt[1];
+				LOG_DBG("Update Virtual CQ cnt for hw_module:1\n");
+			}
 		} else {
 			LOG_DBG(
 				"Virtual CQ count copy_from_user failed\n");
 			Ret = -EFAULT;
 		}
-		if (g_virtual_cq_cnt[0] == 0) {
-			g_virtual_cq_cnt_a = g_virtual_cq_cnt[1];
-			LOG_DBG("Update Virtual CQ cnt for hw_module:0\n");
-		} else if (g_virtual_cq_cnt[0] == 1) {
-			g_virtual_cq_cnt_b = g_virtual_cq_cnt[1];
-			LOG_DBG("Update Virtual CQ cnt for hw_module:1\n");
-		}
+	}
 		break;
 	default:
 	{
@@ -9684,7 +9686,7 @@ static void __exit ISP_Exit(void)
 int32_t ISP_MDPClockOnCallback(uint64_t engineFlag)
 {
 	/* pr_info("ISP_MDPClockOnCallback"); */
-	/*pr_info("+MDPEn:%d", G_u4EnableClockCount);*/
+	pr_info("+MDPEn:%d", G_u4EnableClockCount);
 	ISP_EnableClock(MTRUE);
 
 	return 0;
@@ -9711,7 +9713,7 @@ int32_t ISP_MDPClockOffCallback(uint64_t engineFlag)
 {
 	/* pr_info("ISP_MDPClockOffCallback"); */
 	ISP_EnableClock(MFALSE);
-	/*pr_info("-MDPEn:%d", G_u4EnableClockCount);*/
+	pr_info("-MDPEn:%d", G_u4EnableClockCount);
 	return 0;
 }
 

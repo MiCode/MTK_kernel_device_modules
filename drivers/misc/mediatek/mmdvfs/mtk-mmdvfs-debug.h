@@ -36,9 +36,18 @@ struct mmdvfs_res_mbrain_debug_ops {
 struct mmdvfs_res_mbrain_debug_ops *get_mmdvfs_mbrain_dbg_ops(void);
 void mtk_mmdvfs_debug_release_step0(void);
 void mtk_mmdvfs_debug_ulposc_enable(const bool enable);
+#if IS_ENABLED(CONFIG_MTK_MMDVFS)
 int mtk_mmdvfs_debug_force_vcore_notify(const u32 val);
 bool mtk_is_mmdvfs_v3_debug_init_done(void);
 void mmdvfs_debug_status_dump(struct seq_file *file);
+#else
+static inline int mtk_mmdvfs_debug_force_vcore_notify(const u32 val)
+{ return 0; }
+static inline bool mtk_is_mmdvfs_v3_debug_init_done(void)
+{ return false; }
+static inline void mmdvfs_debug_status_dump(struct seq_file *file)
+{ return; }
+#endif
 
 inline void mmdvfs_vcp_cb_mutex_lock(void);
 inline void mmdvfs_vcp_cb_mutex_unlock(void);

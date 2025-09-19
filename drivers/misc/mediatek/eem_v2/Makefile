@@ -98,6 +98,16 @@ mediatek_eem-y += mtk_eem_6761/mtk_eem_internal.o
 mediatek_eem-y += mtk_eem_6761/mtk_eem_api.o
 mediatek_eem-y += mtk_eem_6761/mtk_aee_rr.o
 
+else ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_MT6771)),)
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/thermal/v8/inc/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eem_v2/mtk_eem_6771/inc
+obj-$(CONFIG_MTK_PTPOD_LEGACY) += mediatek_eem.o
+mediatek_eem-y += mtk_eem_6771/mtk_eem.o
+mediatek_eem-y += mtk_eem_6771/mtk_eem_platform.o
+mediatek_eem-y += mtk_eem_6771/mtk_eem_internal.o
+mediatek_eem-y += mtk_eem_6771/mtk_eem_api.o
+mediatek_eem-y += mtk_eem_6771/mtk_aee_rr.o
+
 else ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_MT6877)),)
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eem_v2/mtk_eem_6877/inc
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/thermal/v2/inc

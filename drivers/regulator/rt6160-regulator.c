@@ -42,6 +42,7 @@
 #define RT6160_N_VOUTS		((RT6160_VOUT_MAXUV - RT6160_VOUT_MINUV) / RT6160_VOUT_STPUV + 1)
 
 #define RT6160_I2CRDY_TIMEUS	100
+#define TPS63810_DEVICE_ID      0x04
 
 #define RT6160_POLLING_RG_TIME	60000
 
@@ -275,7 +276,7 @@ static const struct regmap_config rt6160_regmap_config = {
 	.val_bits = 8,
 	.max_register = RT6160_REG_VSELH,
 	.num_reg_defaults_raw = RT6160_NUM_REGS,
-	.cache_type = REGCACHE_FLAT,
+	.cache_type = REGCACHE_NONE,
 
 	.writeable_reg = rt6160_is_accessible_reg,
 	.readable_reg = rt6160_is_accessible_reg,
@@ -320,7 +321,7 @@ static int rt6160_probe(struct i2c_client *i2c)
 	if (ret)
 		return ret;
 
-	if ((devid & RT6160_VID_MASK) != RT6160_VENDOR_ID) {
+	if (((devid & RT6160_VID_MASK) != RT6160_VENDOR_ID) && (devid != TPS63810_DEVICE_ID)) {
 		dev_err(&i2c->dev, "VID not correct [0x%02x]\n", devid);
 		return -ENODEV;
 	}

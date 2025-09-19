@@ -1115,13 +1115,37 @@ void vcp_set_clk(void)
 #if IS_ENABLED(CONFIG_DEVAPC_ARCH_MULTI)
 static bool devapc_power_cb(void)
 {
-	pr_info("[VCP] %s %d\n", __func__, is_suspending);
+	pr_info("[VCP] %s %d\n", __func__, !is_suspending);
 	return !is_suspending;
 }
 
 static struct devapc_power_callbacks devapc_power_handle = {
 	.type = DEVAPC_TYPE_MMUP,
 	.query_power = devapc_power_cb,
+};
+
+static void devapc_dump(void)
+{
+	if (!is_suspending) {
+		pr_info("[VCP] SEC_CTRL: %x %x\n", readl(R_SEC_CTRL_2), readl(R_AHB_BUS_SEC_CTRL));
+		pr_info("[VCP] A DOMAIN: %x %x\n", readl(R_SEC_DOMAIN), readl(R_SEC_DOMAIN_MMPC));
+		pr_info("[VCP] A SEC: %x %x\n", readl(R_DYN_SECURE), readl(R_DYN_SECURE_TH1));
+		pr_info("[VCP] B SEC ADDR: %x %x %x %x\n", readl(R_NS_SECURE_ADDR0), readl(R_NS_SECURE_ADDR1),
+			readl(R_NS_SECURE_ADDR2), readl(R_NS_SECURE_ADDR3));
+		pr_info("[VCP] C DOM(S): %x %x %x %x\n", readl(R_SECURE_DOMAIN_EN0), readl(R_SECURE_DOMAIN_EN1),
+			readl(R_SECURE_DOMAIN7_0), readl(R_SECURE_DOMAIN15_8));
+		pr_info("[VCP]C DOM(S) ADDR: %x %x %x %x\n", readl(R_SECURE_ADDR0), readl(R_SECURE_ADDR1),
+			readl(R_SECURE_ADDR2), readl(R_SECURE_ADDR3));
+		pr_info("[VCP] C DOM(NS): %x %x %x %x\n", readl(R_NSECURE_DOMAIN_EN0), readl(R_NSECURE_DOMAIN_EN1),
+			readl(R_NSECURE_DOMAIN7_0), readl(R_NSECURE_DOMAIN15_8));
+		pr_info("[VCP]C DOM(NS) ADDR: %x %x %x %x\n", readl(R_NSECURE_ADDR0), readl(R_NSECURE_ADDR1),
+			readl(R_NSECURE_ADDR2), readl(R_NSECURE_ADDR3));
+	}
+}
+
+static struct devapc_vio_callbacks devapc_vio_handle = {
+	.id = DEVAPC_SUBSYS_HFRP,
+	.debug_dump = devapc_dump,
 };
 #endif
 
@@ -2913,11 +2937,17 @@ static int vcp_device_probe(struct platform_device *pdev)
 	}
 	pr_debug("[VCP] cfgreg_ap base = 0x%p\n", vcpreg.cfgreg_ap);
 
-	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "vcp_sec_gpr");
-	vcpreg.cfg_sec_gpr = devm_ioremap_resource(dev, res);
-	if (IS_ERR((void const *) vcpreg.cfg_sec_gpr))
-		pr_notice("[VCP] vcpreg.cfg_sec_gpr not support\n");
-	pr_debug("[VCP] cfg_sec_gpr base = 0x%p\n", vcpreg.cfg_sec_gpr);
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "vcp_cfg_sec_ctrl");
+	vcpreg.cfg_sec_ctrl = devm_ioremap_resource(dev, res);
+	if (IS_ERR((void const *) vcpreg.cfg_sec_ctrl))
+		pr_notice("[VCP] vcpreg.cfg_sec_ctrl not support\n");
+	pr_debug("[VCP] cfg_sec_ctrl base = 0x%p\n", vcpreg.cfg_sec_ctrl);
+
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "vcp_cfg_sec");
+	vcpreg.cfg_sec = devm_ioremap_resource(dev, res);
+	if (IS_ERR((void const *) vcpreg.cfg_sec))
+		pr_notice("[VCP] vcpreg.cfg_sec not support\n");
+	pr_debug("[VCP] cfg_sec base = 0x%p\n", vcpreg.cfg_sec);
 
 	of_property_read_u32(pdev->dev.of_node, "vcp-sram-size"
 						, &vcpreg.vcp_tcmsize);
@@ -3561,6 +3591,7 @@ static int __init vcp_init(void)
 
 #if IS_ENABLED(CONFIG_DEVAPC_ARCH_MULTI)
 	register_devapc_power_callback(&devapc_power_handle);
+	register_devapc_vio_callback(&devapc_vio_handle);
 #endif
 
 	pr_notice("[VCP] %s core0 status: 0x%x, core1 status: 0x%x\n",

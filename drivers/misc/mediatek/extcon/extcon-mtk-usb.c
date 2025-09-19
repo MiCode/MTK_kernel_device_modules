@@ -20,11 +20,19 @@
 #include <linux/usb/role.h>
 #include <linux/workqueue.h>
 #include <linux/proc_fs.h>
+#include <linux/mca/common/mca_log.h>
+#include <linux/mca/common/mca_event.h>
 
 #include "extcon-mtk-usb.h"
+#include "../../../power/supply/mtk_charger.h"
+#include "../../../power/supply/pd_cp_manager.h"
 
 #if IS_ENABLED(CONFIG_TCPC_CLASS)
 #include "tcpm.h"
+#endif
+
+#ifndef MCA_LOG_TAG
+#define MCA_LOG_TAG "mca_extcon_usb"
 #endif
 
 static const unsigned int usb_extcon_cable[] = {
@@ -32,6 +40,7 @@ static const unsigned int usb_extcon_cable[] = {
 	EXTCON_USB_HOST,
 	EXTCON_NONE,
 };
+static unsigned int global_role = 0;
 
 static void mtk_usb_extcon_update_role(struct work_struct *work)
 {
@@ -44,40 +53,44 @@ static void mtk_usb_extcon_update_role(struct work_struct *work)
 	new_dr = role->d_role;
 
 	extcon->c_role = new_dr;
+	global_role = new_dr;
 
-	dev_info(extcon->dev, "cur_dr(%d) new_dr(%d)\n", cur_dr, new_dr);
-
-	/* none -> device */
-	if (cur_dr == USB_ROLE_NONE &&
-			new_dr == USB_ROLE_DEVICE) {
-		extcon_set_state_sync(extcon->edev, EXTCON_USB, true);
-	/* none -> host */
-	} else if (cur_dr == USB_ROLE_NONE &&
-			new_dr == USB_ROLE_HOST) {
-		extcon_set_state_sync(extcon->edev, EXTCON_USB_HOST, true);
-	/* device -> none */
-	} else if (cur_dr == USB_ROLE_DEVICE &&
-			new_dr == USB_ROLE_NONE) {
-		extcon_set_state_sync(extcon->edev, EXTCON_USB, false);
-	/* host -> none */
-	} else if (cur_dr == USB_ROLE_HOST &&
-			new_dr == USB_ROLE_NONE) {
-		extcon_set_state_sync(extcon->edev, EXTCON_USB_HOST, false);
-	/* device -> host */
-	} else if (cur_dr == USB_ROLE_DEVICE &&
-			new_dr == USB_ROLE_HOST) {
-		extcon_set_state_sync(extcon->edev, EXTCON_USB, false);
-		extcon_set_state_sync(extcon->edev,	EXTCON_USB_HOST, true);
-	/* host -> device */
-	} else if (cur_dr == USB_ROLE_HOST &&
-			new_dr == USB_ROLE_DEVICE) {
-		extcon_set_state_sync(extcon->edev, EXTCON_USB_HOST, false);
-		extcon_set_state_sync(extcon->edev,	EXTCON_USB, true);
-	}
+	mca_log_err("port-%d cur_dr(%d) new_dr(%d)\n",
+		gpio_is_valid(extcon->vdd_boost_en_gpio_b) ? 1 : 0, cur_dr, new_dr);
 
 	/* usb role switch */
 	if (extcon->role_sw)
 		usb_role_switch_set_role(extcon->role_sw, new_dr);
+	else {
+		/* none -> device */
+		if (cur_dr == USB_ROLE_NONE && new_dr == USB_ROLE_DEVICE) {
+			extcon_set_state_sync(extcon->edev, EXTCON_USB, true);
+		/* none -> host */
+		} else if (cur_dr == USB_ROLE_NONE && new_dr == USB_ROLE_HOST) {
+			extcon_set_state_sync(extcon->edev,
+							EXTCON_USB_HOST, true);
+		/* device -> none */
+		} else if (cur_dr == USB_ROLE_DEVICE &&
+				new_dr == USB_ROLE_NONE) {
+			extcon_set_state_sync(extcon->edev, EXTCON_USB, false);
+		/* host -> none */
+		} else if (cur_dr == USB_ROLE_HOST && new_dr == USB_ROLE_NONE) {
+			extcon_set_state_sync(extcon->edev,
+							EXTCON_USB_HOST, false);
+		/* device -> host */
+		} else if (cur_dr == USB_ROLE_DEVICE &&
+				new_dr == USB_ROLE_HOST) {
+			extcon_set_state_sync(extcon->edev, EXTCON_USB, false);
+			extcon_set_state_sync(extcon->edev,
+							EXTCON_USB_HOST, true);
+		/* host -> device */
+		} else if (cur_dr == USB_ROLE_HOST &&
+				new_dr == USB_ROLE_DEVICE) {
+			extcon_set_state_sync(extcon->edev,
+							EXTCON_USB_HOST, false);
+			extcon_set_state_sync(extcon->edev, EXTCON_USB, true);
+		}
+	}
 
 	kfree(role);
 }
@@ -101,34 +114,20 @@ static int mtk_usb_extcon_set_role(struct mtk_extcon_info *extcon,
 
 	return 0;
 }
-
-static bool usb_is_online(struct mtk_extcon_info *extcon)
+static bool mi_pd_authentication_no_skip(void)
 {
-	union power_supply_propval pval;
-	union power_supply_propval tval;
-	int ret;
-
-	ret = power_supply_get_property(extcon->usb_psy,
-				POWER_SUPPLY_PROP_ONLINE, &pval);
-	if (ret < 0) {
-		dev_info(extcon->dev, "failed to get online prop\n");
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+	int p1_port_is_on = 0, p0_port_is_on = 0;
+	usb_get_property(USB_PROP_TYPEC_PORT1_PLUGIN, &p1_port_is_on);
+	usb_get_property(USB_PROP_TYPEC_PORT0_PLUGIN, &p0_port_is_on);
+	if (p1_port_is_on == 3 && p0_port_is_on == 1) {
+		mca_log_err("P1 port is on, skip PD authentication\n");
 		return false;
 	}
-
-	ret = power_supply_get_property(extcon->usb_psy,
-				POWER_SUPPLY_PROP_TYPE, &tval);
-	if (ret < 0) {
-		dev_info(extcon->dev, "failed to get usb type\n");
-		return false;
-	}
-
-	dev_info(extcon->dev, "online=%d, type=%d\n", pval.intval, tval.intval);
-
-	if (pval.intval && (tval.intval == POWER_SUPPLY_TYPE_USB ||
-			tval.intval == POWER_SUPPLY_TYPE_USB_CDP))
-		return true;
-	else
-		return false;
+	return true;
+#else
+	return true;
+#endif
 }
 
 static void mtk_usb_extcon_psy_detector(struct work_struct *work)
@@ -136,21 +135,55 @@ static void mtk_usb_extcon_psy_detector(struct work_struct *work)
 	struct mtk_extcon_info *extcon = container_of(to_delayed_work(work),
 		struct mtk_extcon_info, wq_psy);
 
-	/* Workaround for PR_SWAP, IF tcpc_dev, then do not switch role. */
-	/* Since we will set USB to none when type-c plug out */
-	#if IS_ENABLED(CONFIG_TCPC_CLASS)
-	if (extcon->tcpc_dev) {
-		if (usb_is_online(extcon) && extcon->c_role == USB_ROLE_NONE)
-			mtk_usb_extcon_set_role(extcon, USB_ROLE_DEVICE);
-	} else {
-	#endif
-		if (usb_is_online(extcon))
-			mtk_usb_extcon_set_role(extcon, USB_ROLE_DEVICE);
-		else
-			mtk_usb_extcon_set_role(extcon, USB_ROLE_NONE);
-#if IS_ENABLED(CONFIG_TCPC_CLASS)
+	union power_supply_propval pval;
+	union power_supply_propval tval;
+	int input_suspend = 0;
+	int ret;
+
+	if (gpio_is_valid(extcon->vdd_boost_en_gpio_b)) {
+		dev_info(extcon->dev, "P1 port NOT support device!\n");
+		return;
 	}
-#endif
+	ret = usb_get_property(USB_PROP_INPUT_SUSPEND, &input_suspend);
+	if (ret < 0) {
+		dev_info(extcon->dev, "failed to get input_suspend\n");
+		return;
+	}
+
+	ret = power_supply_get_property(extcon->usb_psy,
+				POWER_SUPPLY_PROP_ONLINE, &pval);
+	if (ret < 0) {
+		dev_info(extcon->dev, "failed to get online prop\n");
+		return;
+	}
+
+	ret = power_supply_get_property(extcon->usb_psy,
+				POWER_SUPPLY_PROP_TYPE, &tval);
+	if (ret < 0) {
+		dev_info(extcon->dev, "failed to get usb type\n");
+		return;
+	}
+
+	mca_log_err("prot-%d online=%d, input_suspend=%d, type=%d, c_role=%d, global_role=%d\n",
+		gpio_is_valid(extcon->vdd_boost_en_gpio_b) ? 1 : 0,
+		pval.intval, input_suspend, tval.intval, extcon->c_role, global_role);
+
+	/* Workaround for PR_SWAP, Host mode should not come to this function. */
+	if ((extcon->c_role == USB_ROLE_HOST ||
+		(tval.intval != POWER_SUPPLY_TYPE_USB && tval.intval != POWER_SUPPLY_TYPE_USB_CDP && pval.intval) ||
+		global_role != extcon->c_role) && mi_pd_authentication_no_skip()) {
+		mca_log_err("Remain HOST mode or usb_type not sdp or cdp\n");
+		return;
+	}
+
+	if (pval.intval && (tval.intval == POWER_SUPPLY_TYPE_USB ||
+			tval.intval == POWER_SUPPLY_TYPE_USB_CDP))
+		mtk_usb_extcon_set_role(extcon, USB_ROLE_DEVICE);
+	else if (input_suspend && (tval.intval == POWER_SUPPLY_TYPE_USB ||
+			tval.intval == POWER_SUPPLY_TYPE_USB_CDP))
+		mtk_usb_extcon_set_role(extcon, USB_ROLE_DEVICE);
+	else
+		mtk_usb_extcon_set_role(extcon, USB_ROLE_NONE);
 }
 
 static int mtk_usb_extcon_psy_notifier(struct notifier_block *nb,
@@ -183,7 +216,7 @@ static int mtk_usb_extcon_psy_init(struct mtk_extcon_info *extcon)
 		/* try to get by name */
 		extcon->usb_psy = power_supply_get_by_name("primary_chg");
 		if (IS_ERR_OR_NULL(extcon->usb_psy)) {
-			dev_err(dev, "fail to get usb_psy\n");
+			mca_log_err("fail to get usb_psy\n");
 			extcon->usb_psy = NULL;
 			ret = -EINVAL;
 			goto fail;
@@ -195,9 +228,56 @@ static int mtk_usb_extcon_psy_init(struct mtk_extcon_info *extcon)
 	extcon->psy_nb.notifier_call = mtk_usb_extcon_psy_notifier;
 	ret = power_supply_reg_notifier(&extcon->psy_nb);
 	if (ret)
-		dev_err(dev, "fail to register notifer\n");
+		mca_log_err("fail to register notifer\n");
 fail:
 	return ret;
+}
+
+static void xm_enable_18w_reverse_chg(struct charger_device *cp_master,
+                                      struct mtk_extcon_info *extcon, bool is_on)
+{
+	static bool last_on = false;
+	struct charger_device *chg_dev = get_charger_by_name("primary_chg");
+
+	if (last_on == is_on)
+		return;
+	if (!chg_dev) {
+		mca_log_err("failed to get chg_dev");
+		return;
+	}
+
+	if (is_on) {
+		charger_dev_enable_powerpath(chg_dev, false);
+		// enable revert cp boost
+		mca_log_err("port-%d [REV_18W_CHG] start revert 1_2 cp",
+			gpio_is_valid(extcon->vdd_boost_en_gpio_b) ? 1 : 0);
+		charger_dev_enable_acdrv_manual(cp_master, true);
+		charger_dev_cp_set_mode(cp_master, SC8561_REVERSE_1_2_CONVERTER_MODE);
+		charger_dev_cp_rev_chg_config(cp_master, true);
+		if (gpio_is_valid(extcon->vdd_boost_en_gpio_b)) {
+			charger_dev_enable_cp_usb_gate(cp_master, false);
+			charger_dev_cp_enable_wpcgate(cp_master, true);
+		} else {
+			charger_dev_cp_enable_wpcgate(cp_master, false);
+			charger_dev_enable_cp_usb_gate(cp_master, true);
+		}
+		charger_dev_cp_set_qb(cp_master, true);
+		msleep(1500);
+		charger_dev_enable(cp_master, true);
+		charger_dev_cp_dump_register(cp_master);
+		extcon->vbus_vol_request = 9000;
+	} else {
+		mca_log_err("port-%d [REV_18W_CHG] end rev chg",
+			gpio_is_valid(extcon->vdd_boost_en_gpio_b) ? 1 : 0);
+		charger_dev_enable(cp_master, false);
+		charger_dev_cp_set_qb(cp_master, false);
+		charger_dev_cp_set_mode(cp_master, SC8561_FORWARD_2_1_CHARGER_MODE);
+		charger_dev_cp_dump_register(cp_master);
+		charger_dev_cp_rev_chg_config(cp_master, false);
+		usb_set_property(USB_PROP_TYPEC_REVERSE_CHG, 0);
+		charger_dev_enable_powerpath(chg_dev, true);
+	}
+	last_on = is_on;
 }
 
 static int mtk_usb_extcon_set_vbus(struct mtk_extcon_info *extcon,
@@ -205,45 +285,128 @@ static int mtk_usb_extcon_set_vbus(struct mtk_extcon_info *extcon,
 {
 	struct regulator *vbus = extcon->vbus;
 	struct device *dev = extcon->dev;
+	struct charger_device *cp_master;
+	static int last_rqc_vbus = 0;
 	int ret;
+	int rev_quick_chg = 0;
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+	int typec_port1 = 0;
+	int typec_port0 = 0;
+#endif
 
 	/* vbus is optional */
-	if (!vbus || extcon->vbus_on == is_on)
+	usb_get_property(USB_PROP_TYPEC_REVERSE_CHG, &rev_quick_chg);
+	mca_log_err("rev_quick_chg=%d, last_rqc_vbus=%d, request_vbus = %d\n",
+		rev_quick_chg, last_rqc_vbus, extcon->vbus_vol_request);
+	if ((extcon->vbus_on == is_on && !rev_quick_chg && last_rqc_vbus == extcon->vbus_vol_request) || !vbus)
 		return 0;
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+	usb_get_property(USB_PROP_TYPEC_PORT0_PLUGIN, &typec_port0);
+	usb_get_property(USB_PROP_TYPEC_PORT1_PLUGIN, &typec_port1);
+	if (gpio_is_valid(extcon->vdd_boost_en_gpio_b))
+		usb_set_property(USB_PROP_TYPEC_PORT_NUM, 1);
+#endif
 
-	dev_info(dev, "vbus turn %s\n", is_on ? "on" : "off");
-
-	if (is_on) {
-		if (extcon->vbus_vol) {
-			ret = regulator_set_voltage(vbus,
-					extcon->vbus_vol, extcon->vbus_vol);
-			if (ret) {
-				dev_err(dev, "vbus regulator set voltage failed\n");
-				return ret;
-			}
-		}
-
-		if (extcon->vbus_cur) {
-			ret = regulator_set_current_limit(vbus,
-					extcon->vbus_cur, extcon->vbus_cur);
-			if (ret) {
-				dev_err(dev, "vbus regulator set current failed\n");
-				return ret;
-			}
-		}
-
-		ret = regulator_enable(vbus);
-		if (ret) {
-			dev_info(dev, "vbus regulator enable failed\n");
-			return ret;
-		}
-	} else {
-		regulator_disable(vbus);
-		/* Restore to default state */
-		extcon->vbus_cur_inlimit = 0;
+	cp_master = get_charger_by_name("cp_master");
+	if (!cp_master) {
+		mca_log_err("%s: failed to get cp_master\n", __func__);
+		return -1;
 	}
 
+	mca_log_err("port-%d vbus turn %s\n",
+		gpio_is_valid(extcon->vdd_boost_en_gpio_b) ? 1 : 0, is_on ? "on" : "off");
+
+	if (is_on) {
+		if (gpio_is_valid(extcon->vdd_boost_en_gpio_a) || gpio_is_valid(extcon->vdd_boost_en_gpio_b)) {
+			charger_dev_enable_acdrv_manual(cp_master, true);
+			if (gpio_is_valid(extcon->vdd_boost_en_gpio_a) && !rev_quick_chg) {
+				charger_dev_enable_cp_usb_gate(cp_master, false);
+				gpio_set_value(extcon->vdd_boost_en_gpio_a, is_on);
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+				if (typec_port1 != 3)
+					charger_dev_enable_cp_wpc_gate(cp_master, true);
+				usb_set_property(USB_PROP_TYPEC_PORT0_PLUGIN, 3);
+#endif
+				mca_log_err("[BOOST] vdd_boost_en_gpio_a enable\n");
+			} else if (gpio_is_valid(extcon->vdd_boost_en_gpio_b) && !rev_quick_chg) {
+				charger_dev_enable_cp_wpc_gate(cp_master, false);
+				gpio_set_value(extcon->vdd_boost_en_gpio_b, is_on);
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+				if (typec_port0 != 3)
+					charger_dev_enable_cp_usb_gate(cp_master, true);
+				usb_set_property(USB_PROP_TYPEC_PORT1_PLUGIN, 3);
+#endif
+				mca_log_err("[BOOST] vdd_boost_en_gpio_b enable\n");
+			}
+			usb_set_property(USB_PROP_TYPEC_RQC_CONDITION_CHECK, 1);
+			if(rev_quick_chg){
+				xm_enable_18w_reverse_chg(cp_master, extcon, rev_quick_chg);
+			}
+			if (last_rqc_vbus > extcon->vbus_vol_request && !rev_quick_chg) {
+				xm_enable_18w_reverse_chg(cp_master, extcon, rev_quick_chg);
+			}
+		} else {
+			charger_dev_cp_set_mode(cp_master, SC8561_REVERSE_1_1_CONVERTER_MODE);
+			charger_dev_enable_acdrv_manual(cp_master, true);
+			if (extcon->vbus_vol) {
+				ret = regulator_set_voltage(vbus,
+					extcon->vbus_vol, extcon->vbus_vol_max);
+				if (ret) {
+					mca_log_err("vbus regulator set voltage failed\n");
+					return ret;
+				}
+			}
+
+			if (extcon->vbus_cur) {
+				ret = regulator_set_current_limit(vbus,
+					extcon->vbus_cur, extcon->vbus_cur);
+				if (ret) {
+					mca_log_err("vbus regulator set current failed\n");
+					return ret;
+				}
+			}
+
+			ret = regulator_enable(vbus);
+			if (ret) {
+				dev_info(dev, "vbus regulator enable failed\n");
+				return ret;
+			}
+			mca_log_err("vbus regulator enable\n");
+		}
+	} else {
+		/* Restore to default state */
+		extcon->vbus_cur_inlimit = 0;
+		if (gpio_is_valid(extcon->vdd_boost_en_gpio_a) || gpio_is_valid(extcon->vdd_boost_en_gpio_b)) {
+			xm_enable_18w_reverse_chg(cp_master, extcon, false);
+			usb_set_property(USB_PROP_TYPEC_RQC_CONDITION_CHECK, 0);
+		}
+
+		if (gpio_is_valid(extcon->vdd_boost_en_gpio_a)) {
+			gpio_set_value(extcon->vdd_boost_en_gpio_a, is_on);
+			charger_dev_enable_cp_usb_gate(cp_master, true);
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+			usb_set_property(USB_PROP_TYPEC_PORT0_PLUGIN, 0);
+#endif
+			mca_log_err("[BOOST] vdd_boost_en_gpio_a disable\n");
+		} else if (gpio_is_valid(extcon->vdd_boost_en_gpio_b)) {
+			gpio_set_value(extcon->vdd_boost_en_gpio_b, is_on);
+			charger_dev_enable_cp_wpc_gate(cp_master, true);
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+			usb_set_property(USB_PROP_TYPEC_PORT1_PLUGIN, 0);
+#endif
+			mca_log_err("[BOOST] vdd_boost_en_gpio_b disable\n");
+		} else {
+			charger_dev_cp_set_mode(cp_master, SC8561_FORWARD_4_1_CHARGER_MODE);
+			regulator_disable(vbus);
+			mca_log_err("vbus regulator disable\n");
+		}
+		charger_dev_enable_acdrv_manual(cp_master, false);
+	}
+	ret = usb_set_property(USB_PROP_OTG_ENABLE, is_on);
+	if (ret < 0)
+		dev_info(dev, "failed to set otg enable\n");
 	extcon->vbus_on = is_on;
+	last_rqc_vbus = extcon->vbus_vol_request;
 
 	return 0;
 }
@@ -341,17 +504,33 @@ static int mtk_usb_extcon_vbus_init(struct mtk_extcon_info *extcon)
 	int ret = 0;
 	struct device *dev = extcon->dev;
 
+	/* otg external boost probe first */
+	extcon->vdd_boost_en_gpio_a = of_get_named_gpio(dev->of_node, "vdd_boost_5v_en_a", 0);
+	if (!gpio_is_valid(extcon->vdd_boost_en_gpio_a)){
+		dev_info(dev, "failed to parse vdd_boost_5v_en_a\n");
+	}else{
+		gpio_direction_output(extcon->vdd_boost_en_gpio_a, 0);
+		dev_info(dev, "parse vdd_boost_5v_en_a : %d OK!\n", extcon->vdd_boost_en_gpio_a);
+	}
+	extcon->vdd_boost_en_gpio_b = of_get_named_gpio(dev->of_node, "vdd_boost_5v_en_b", 0);
+	if (!gpio_is_valid(extcon->vdd_boost_en_gpio_b)){
+		dev_info(dev, "failed to parse vdd_boost_5v_en_b\n");
+	}else{
+		gpio_direction_output(extcon->vdd_boost_en_gpio_b, 0);
+		dev_info(dev, "parse vdd_boost_5v_en_b : %d OK!\n", extcon->vdd_boost_en_gpio_b);
+	}
+
 	if (!of_property_read_bool(dev->of_node, "vbus-supply")) {
 		ret = -EINVAL;
 		goto fail;
 	}
 
-	extcon->vbus =  devm_regulator_get_exclusive(dev, "vbus");
+	extcon->vbus =  devm_regulator_get(dev, "vbus");
 	if (IS_ERR(extcon->vbus)) {
 		/* try to get by name */
-		extcon->vbus =  devm_regulator_get_exclusive(dev, "usb-otg-vbus");
+		extcon->vbus =  devm_regulator_get(dev, "usb-otg-vbus");
 		if (IS_ERR(extcon->vbus)) {
-			dev_err(dev, "failed to get vbus\n");
+			mca_log_err("failed to get vbus\n");
 			ret = PTR_ERR(extcon->vbus);
 			extcon->vbus = NULL;
 			goto fail;
@@ -360,11 +539,17 @@ static int mtk_usb_extcon_vbus_init(struct mtk_extcon_info *extcon)
 
 	/* sync vbus state */
 	extcon->vbus_on = regulator_is_enabled(extcon->vbus);
-	dev_info(dev, "vbus is %s\n", extcon->vbus_on ? "on" : "off");
+	mca_log_err("vbus is %s\n", extcon->vbus_on ? "on" : "off");
 
 	if (!of_property_read_u32(dev->of_node, "vbus-voltage",
 				&extcon->vbus_vol))
 		dev_info(dev, "vbus-voltage=%d", extcon->vbus_vol);
+
+	if (!of_property_read_u32(dev->of_node, "vbus-voltage-max",
+				&extcon->vbus_vol_max))
+		dev_info(dev, "vbus-voltage-max=%d", extcon->vbus_vol_max);
+	else
+		extcon->vbus_vol_max = extcon->vbus_vol;
 
 	if (!of_property_read_u32(dev->of_node, "vbus-current",
 				&extcon->vbus_cur))
@@ -393,23 +578,26 @@ static int mtk_extcon_tcpc_notifier(struct notifier_block *nb,
 	struct tcp_notify *noti = data;
 	struct mtk_extcon_info *extcon =
 			container_of(nb, struct mtk_extcon_info, tcpc_nb);
-	struct device *dev = extcon->dev;
 	bool vbus_on;
+	int rev_quick_chg = 0;
 
 	switch (event) {
 	case TCP_NOTIFY_SOURCE_VBUS:
-		dev_info(dev, "source vbus = %dmv\n",
-				 noti->vbus_state.mv);
+		mca_log_err("port-%d source vbus = %dmv\n",
+				 gpio_is_valid(extcon->vdd_boost_en_gpio_b) ? 1 : 0, noti->vbus_state.mv);
 		vbus_on = (noti->vbus_state.mv) ? true : false;
+		extcon->vbus_vol_request = noti->vbus_state.mv;
 		mtk_usb_extcon_set_vbus(extcon, vbus_on);
 		break;
 	case TCP_NOTIFY_TYPEC_STATE:
-		dev_info(dev, "old_state=%d, new_state=%d\n",
+		mca_log_err("port-%d old_state=%d, new_state=%d\n",
+				gpio_is_valid(extcon->vdd_boost_en_gpio_b) ? 1 : 0,
 				noti->typec_state.old_state,
 				noti->typec_state.new_state);
 		if (noti->typec_state.old_state == TYPEC_UNATTACHED &&
 			noti->typec_state.new_state == TYPEC_ATTACHED_SRC) {
-			dev_info(dev, "Type-C SRC plug in\n");
+			mca_log_err("port-%d Type-C SRC plug in\n",
+				gpio_is_valid(extcon->vdd_boost_en_gpio_b) ? 1 : 0);
 			mtk_usb_extcon_set_role(extcon, USB_ROLE_HOST);
 		} else if (!(extcon->bypss_typec_sink) &&
 			noti->typec_state.old_state == TYPEC_UNATTACHED &&
@@ -417,7 +605,8 @@ static int mtk_extcon_tcpc_notifier(struct notifier_block *nb,
 			noti->typec_state.new_state == TYPEC_ATTACHED_NORP_SRC ||
 			noti->typec_state.new_state == TYPEC_ATTACHED_CUSTOM_SRC ||
 			noti->typec_state.new_state == TYPEC_ATTACHED_DBGACC_SNK)) {
-			dev_info(dev, "Type-C SINK plug in\n");
+			mca_log_err("port-%d Type-C SINK plug in\n",
+				gpio_is_valid(extcon->vdd_boost_en_gpio_b) ? 1 : 0);
 			mtk_usb_extcon_set_role(extcon, USB_ROLE_DEVICE);
 		} else if ((noti->typec_state.old_state == TYPEC_ATTACHED_SRC ||
 			noti->typec_state.old_state == TYPEC_ATTACHED_SNK ||
@@ -425,23 +614,27 @@ static int mtk_extcon_tcpc_notifier(struct notifier_block *nb,
 			noti->typec_state.old_state == TYPEC_ATTACHED_CUSTOM_SRC ||
 			noti->typec_state.old_state == TYPEC_ATTACHED_DBGACC_SNK) &&
 			noti->typec_state.new_state == TYPEC_UNATTACHED) {
-			dev_info(dev, "Type-C plug out\n");
+			mca_log_err("port-%d Type-C plug out\n",
+				gpio_is_valid(extcon->vdd_boost_en_gpio_b) ? 1 : 0);
 			mtk_usb_extcon_set_role(extcon, USB_ROLE_NONE);
 		}
 		break;
 	case TCP_NOTIFY_DR_SWAP:
-		dev_info(dev, "%s dr_swap, new role=%d\n",
-				__func__, noti->swap_state.new_role);
+		mca_log_err("port-%d dr_swap, new role=%d\n",
+				gpio_is_valid(extcon->vdd_boost_en_gpio_b) ? 1 : 0,
+				noti->swap_state.new_role);
+		usb_get_property(USB_PROP_TYPEC_REVERSE_CHG, &rev_quick_chg);
 		if (noti->swap_state.new_role == PD_ROLE_UFP &&
-				extcon->c_role != USB_ROLE_DEVICE) {
-			dev_info(dev, "switch role to device\n");
-			mtk_usb_extcon_set_role(extcon, USB_ROLE_DEVICE);
+				extcon->c_role == USB_ROLE_HOST) {
+			mca_log_err("switch role to device\n");
+			if(!rev_quick_chg)
+				mtk_usb_extcon_set_role(extcon, USB_ROLE_DEVICE);
 		} else if (noti->swap_state.new_role == PD_ROLE_DFP &&
-				extcon->c_role != USB_ROLE_HOST) {
-			dev_info(dev, "switch role to host\n");
+				(extcon->c_role == USB_ROLE_DEVICE || extcon->c_role == USB_ROLE_NONE || global_role != extcon->c_role)) {
+			mca_log_err("switch role to host\n");
 			mtk_usb_extcon_set_role(extcon, USB_ROLE_HOST);
 		} else
-			dev_info(dev, "wrong condition\n");
+			mca_log_err("wrong condition\n");
 
 		break;
 	}
@@ -592,6 +785,8 @@ static int mtk_usb_extcon_gpio_init(struct mtk_extcon_info *extcon)
 			   &extcon->wq_detcable,
 			   msecs_to_jiffies(10));
 
+	device_init_wakeup(dev, true);
+
 	return 0;
 }
 
@@ -686,34 +881,35 @@ static int mtk_usb_extcon_probe(struct platform_device *pdev)
 
 	extcon->dev = dev;
 
-	/* extcon */
-	extcon->edev = devm_extcon_dev_allocate(dev, usb_extcon_cable);
-	if (IS_ERR(extcon->edev)) {
-		dev_err(dev, "failed to allocate extcon device\n");
-		return -ENOMEM;
-	}
-
-	ret = devm_extcon_dev_register(dev, extcon->edev);
-	if (ret < 0) {
-		dev_info(dev, "failed to register extcon device\n");
-		return ret;
-	}
-
 	/* usb role switch */
 	extcon->role_sw = usb_role_switch_get(extcon->dev);
 	if (IS_ERR(extcon->role_sw)) {
-		dev_err(dev, "failed to get usb role\n");
+		mca_log_err("failed to get usb role\n");
 		return PTR_ERR(extcon->role_sw);
 	}
 
 	/* initial usb role */
 	if (extcon->role_sw)
 		extcon->c_role = USB_ROLE_NONE;
+	else {
+		/* extcon */
+		extcon->edev = devm_extcon_dev_allocate(dev, usb_extcon_cable);
+		if (IS_ERR(extcon->edev)) {
+			dev_info(dev, "failed to allocate extcon device\n");
+			return -ENOMEM;
+		}
+
+		ret = devm_extcon_dev_register(dev, extcon->edev);
+		if (ret < 0) {
+			dev_info(dev, "failed to register extcon device\n");
+			return ret;
+		}
+	}
 
 	/* vbus */
 	ret = mtk_usb_extcon_vbus_init(extcon);
 	if (ret < 0)
-		dev_err(dev, "failed to init vbus\n");
+		mca_log_err("failed to init vbus\n");
 
 	extcon->bypss_typec_sink =
 		of_property_read_bool(dev->of_node,
@@ -734,7 +930,7 @@ static int mtk_usb_extcon_probe(struct platform_device *pdev)
 	/* power psy */
 	ret = mtk_usb_extcon_psy_init(extcon);
 	if (ret < 0)
-		dev_err(dev, "failed to init psy\n");
+		mca_log_err("failed to init psy\n");
 
 	/* get id/vbus gpio resources */
 	ret = mtk_usb_extcon_gpio_init(extcon);
@@ -745,7 +941,7 @@ static int mtk_usb_extcon_probe(struct platform_device *pdev)
 	/* tcpc */
 	ret = mtk_usb_extcon_tcpc_init(extcon);
 	if (ret < 0)
-		dev_err(dev, "failed to init tcpc\n");
+		mca_log_err("failed to init tcpc\n");
 #endif
 
 	platform_set_drvdata(pdev, extcon);
@@ -761,9 +957,18 @@ static int mtk_usb_extcon_remove(struct platform_device *pdev)
 static void mtk_usb_extcon_shutdown(struct platform_device *pdev)
 {
 	struct mtk_extcon_info *extcon = platform_get_drvdata(pdev);
-
+	struct charger_device *cp_master = get_charger_by_name("cp_master");
+	struct charger_device *chg_dev = get_charger_by_name("primary_chg");
 	dev_info(extcon->dev, "shutdown\n");
-
+	if(cp_master){
+		charger_dev_enable_cp_wpc_gate(cp_master, true);
+		charger_dev_enable_cp_usb_gate(cp_master, true);
+		charger_dev_enable_acdrv_manual(cp_master, false);
+		mca_log_err("turn off mos\n");
+	}
+	if(chg_dev){
+		charger_dev_enable_powerpath(chg_dev, true);
+	}
 	mtk_usb_extcon_set_vbus(extcon, false);
 }
 

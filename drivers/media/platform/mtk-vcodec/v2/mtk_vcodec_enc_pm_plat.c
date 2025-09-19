@@ -462,7 +462,7 @@ void set_venc_opp(struct mtk_vcodec_dev *dev, u32 freq)
 void mtk_venc_prepare_vcp_dvfs_data(struct mtk_vcodec_ctx *ctx, struct venc_enc_param *param)
 {
 	param->venc_dvfs_state = MTK_INST_START;
-	ctx->last_monitor_op = 0; // for monitor op rate
+	ctx->last_monitor_op = -1; // for monitor op rate
 	ctx->op_rate_adaptive = ctx->enc_params.operationrate; // for monitor op rate
 
 }
@@ -841,7 +841,7 @@ void mtk_venc_pmqos_frame_req(struct mtk_vcodec_ctx *ctx)
  *	Function name: mtk_venc_dvfs_monitor_op_rate
  *	Description: This function updates the op rate of ctx by monitoring input buffer queued.
  *			1. Montior interval: 500 ms
- *			2. Bypass the first interval
+ *			2. Bypass the first interval, compare op rate of 2nd & 3rd interval
  *			3. The monitored rate needs to be stable (<20% compares to prev interval)
  *			4. Diff > 20% than current used op rate
  *	Returns: Boolean, the op rate needs to be updated
@@ -850,7 +850,8 @@ bool mtk_venc_dvfs_monitor_op_rate(struct mtk_vcodec_ctx *ctx, int buf_type)
 {
 #if ENC_DVFS
 	unsigned int cur_in_timestamp, time_diff, threshold = 20;
-	unsigned int prev_op, cur_op, tmp_op; /* monitored op in the prev interval */
+	unsigned int cur_op, tmp_op; /* monitored op in the prev interval */
+	int prev_op;
 	bool update_op = false;
 	struct vcodec_inst *inst = 0;
 	struct mtk_vcodec_dev *dev = ctx->dev;
@@ -879,8 +880,14 @@ bool mtk_venc_dvfs_monitor_op_rate(struct mtk_vcodec_ctx *ctx, int buf_type)
 		mtk_v4l2_debug(4, "[VDVFS][VENC][ADAPTIVE][%d] prev_op: %d, moni_op: %d, cur_adp_op: %d",
 			ctx->id, prev_op, ctx->last_monitor_op, cur_op);
 
-		if (prev_op <= 0)
+		if (prev_op < 0) {
+			// first interval, bypass
+			ctx->last_monitor_op = 0;
 			return false;
+		} else if (prev_op == 0) {
+			// second interval, need compare to 3rd interval value
+			return false;
+		}
 
 		tmp_op = MAX(ctx->last_monitor_op, prev_op);
 

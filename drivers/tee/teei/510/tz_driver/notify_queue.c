@@ -47,10 +47,10 @@ static unsigned long create_notify_queue(unsigned long size)
 	/* Create the double NQ buffer. */
 #ifdef UT_DMA_ZONE
 	buff_addr = (unsigned long) __get_free_pages(GFP_KERNEL | GFP_DMA,
-					get_order(ROUND_UP(size, SZ_4K)));
+					teei_get_order(ROUND_UP(size, SZ_4K)));
 #else
 	buff_addr = (unsigned long) __get_free_pages(GFP_KERNEL,
-					get_order(ROUND_UP(size, SZ_4K)));
+					teei_get_order(ROUND_UP(size, SZ_4K)));
 #endif
 	if ((unsigned char *)buff_addr == NULL) {
 		IMSG_ERROR("[%s][%d]: Alloc queue buffer failed.\n",
@@ -97,7 +97,7 @@ static unsigned long create_notify_queue(unsigned long size)
 	return buff_addr;
 
 Destroy_buffer:
-	free_pages(buff_addr, get_order(ROUND_UP(size, SZ_4K)));
+	free_pages(buff_addr, teei_get_order(ROUND_UP(size, SZ_4K)));
 return_fn:
 	return 0;
 }

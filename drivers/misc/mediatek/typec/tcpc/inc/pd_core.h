@@ -888,6 +888,7 @@ struct pd_port {
 	wait_queue_head_t tcpm_bk_wait_que;
 #endif	/* CONFIG_USB_PD_BLOCK_TCPM */
 
+	/* XM customize */
 	/* curr_event info */
 	bool curr_is_vdm_evt;
 	struct pd_event curr_pd_event;
@@ -1518,5 +1519,10 @@ static inline uint8_t pd_get_swap_battery_nr(struct pd_port *pd_port)
 struct pd_battery_info *pd_get_battery_info(
 	struct pd_port *pd_port, enum pd_battery_reference ref);
 #endif	/* CONFIG_USB_PD_REV30 */
+
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+void pd_add_miss_msg(struct pd_port *pd_port,struct pd_event *pd_event,
+				uint8_t msg);
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 
 #endif /* PD_CORE_H_ */

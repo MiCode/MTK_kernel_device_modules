@@ -50,6 +50,8 @@ struct DRM_MMP_Events {
 	mmp_event aal;
 	mmp_event aal0;
 	mmp_event aal1;
+	mmp_event chist;
+	mmp_event chist0;
 	mmp_event dp_intf0;
 	mmp_event ddp;
 	mmp_event mutex[DISP_MUTEX_DDP_COUNT];
@@ -60,6 +62,7 @@ struct DRM_MMP_Events {
 	mmp_event pmqos;
 	mmp_event ostdl;
 	mmp_event channel_bw;
+	mmp_event channel_write_bw;
 	mmp_event hrt_bw;
 	mmp_event mutex_lock;
 	mmp_event layering;
@@ -124,6 +127,7 @@ struct CRTC_MMP_Events {
 	mmp_event atomic_commit;
 	mmp_event pu_ddic_cmd;
 	mmp_event pu_final_roi;
+	mmp_event pu_status_err;
 	mmp_event user_cmd_cb;
 	mmp_event bl_cb;
 	mmp_event clk_change;

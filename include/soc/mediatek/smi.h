@@ -33,6 +33,14 @@ enum smi_real_time_type {
 	NON_APMCU,
 };
 
+enum {
+	SMI_LARB0, SMI_LARB1, SMI_LARB2, SMI_LARB3, SMI_LARB4,
+	SMI_LARB5, SMI_LARB6, SMI_LARB7, SMI_LARB8, SMI_LARB9,
+	SMI_LARB10, SMI_LARB11, SMI_LARB12, SMI_LARB13, SMI_LARB14,
+	SMI_LARB15, SMI_LARB16, SMI_LARB17, SMI_LARB18, SMI_LARB19,
+	SMI_LARB20,
+};
+
 extern struct mtk_smi_lock smi_lock;
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI)
@@ -84,6 +92,9 @@ int mtk_smi_set_comm_value(struct device *dev, u32 offset, u32 value);
 int mtk_smi_clear_larb_set_value(struct device *larbdev);
 int mtk_smi_clear_comm_set_value(struct device *dev);
 int mtk_smi_dump_all_setting(struct device *dev, bool is_larb);
+/* only for mt6771 */
+s32 smi_bus_prepare_enable(const u32 id, const char *user);
+s32 smi_bus_disable_unprepare(const u32 id, const char *user);
 #else
 
 

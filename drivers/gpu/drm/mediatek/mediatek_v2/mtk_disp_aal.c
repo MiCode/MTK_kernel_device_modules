@@ -44,6 +44,10 @@
 #include "mtk_disp_gamma.h"
 #include "mtk_dmdp_aal.h"
 #include "mtk_drm_trace.h"
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO) && IS_ENABLED(CONFIG_DRM_MTK_R2Y)
+#include "mtk_disp_ccorr.h"
+#endif
+#include "mtk_disp_tdshp.h"
 
 #if IS_ENABLED(CONFIG_MTK_MME_SUPPORT)
 #include "mmevent_function.h"
@@ -239,63 +243,6 @@ static bool debug_irq_log;
 #define DMDP_AAL_DRE_BILATERAL_Blending_01       (0x5B4)
 #define DMDP_AAL_DRE_BILATERAL_STATUS_CTRL       (0x5B8)
 
-/* TDSHP Clarity */
-#define MDP_TDSHP_00                            (0x000)
-#define MDP_TDSHP_CFG                           (0x110)
-#define MDP_HIST_CFG_00                         (0x064)
-#define MDP_HIST_CFG_01                         (0x068)
-#define MDP_LUMA_HIST_00                        (0x06C)
-#define MDP_LUMA_SUM                            (0x0B4)
-#define MDP_TDSHP_SRAM_1XN_OUTPUT_CNT           (0x0B8)
-#define MDP_Y_FTN_1_0_MAIN                      (0x0BC)
-#define MDP_TDSHP_STATUS_00                     (0x644)
-#define MIDBAND_COEF_V_CUST_FLT1_00             (0x584)
-#define MIDBAND_COEF_V_CUST_FLT1_01             (0x588)
-#define MIDBAND_COEF_V_CUST_FLT1_02             (0x58C)
-#define MIDBAND_COEF_V_CUST_FLT1_03             (0x590)
-#define MIDBAND_COEF_H_CUST_FLT1_00             (0x594)
-#define MIDBAND_COEF_H_CUST_FLT1_01             (0x598)
-#define MIDBAND_COEF_H_CUST_FLT1_02             (0x59C)
-#define MIDBAND_COEF_H_CUST_FLT1_03             (0x600)
-
-#define HIGHBAND_COEF_V_CUST_FLT1_00            (0x604)
-#define HIGHBAND_COEF_V_CUST_FLT1_01            (0x608)
-#define HIGHBAND_COEF_V_CUST_FLT1_02            (0x60C)
-#define HIGHBAND_COEF_V_CUST_FLT1_03            (0x610)
-#define HIGHBAND_COEF_H_CUST_FLT1_00            (0x614)
-#define HIGHBAND_COEF_H_CUST_FLT1_01            (0x618)
-#define HIGHBAND_COEF_H_CUST_FLT1_02            (0x61C)
-#define HIGHBAND_COEF_H_CUST_FLT1_03            (0x620)
-#define HIGHBAND_COEF_RD_CUST_FLT1_00           (0x624)
-#define HIGHBAND_COEF_RD_CUST_FLT1_01           (0x628)
-#define HIGHBAND_COEF_RD_CUST_FLT1_02           (0x62C)
-#define HIGHBAND_COEF_RD_CUST_FLT1_03           (0x630)
-#define HIGHBAND_COEF_LD_CUST_FLT1_00           (0x634)
-#define HIGHBAND_COEF_LD_CUST_FLT1_01           (0x638)
-#define HIGHBAND_COEF_LD_CUST_FLT1_02           (0x63C)
-#define HIGHBAND_COEF_LD_CUST_FLT1_03           (0x640)
-#define MDP_TDSHP_SIZE_PARA                     (0x674)
-#define MDP_TDSHP_FREQUENCY_WEIGHTING	        (0x678)
-#define MDP_TDSHP_FREQUENCY_WEIGHTING_FINAL	(0x67C)
-#define SIZE_PARAMETER_MODE_SEGMENTATION_LENGTH	(0x680)
-#define FINAL_SIZE_ADAPTIVE_WEIGHT_HUGE	        (0x684)
-#define FINAL_SIZE_ADAPTIVE_WEIGHT_BIG	        (0x688)
-#define FINAL_SIZE_ADAPTIVE_WEIGHT_MEDIUM	(0x68C)
-#define FINAL_SIZE_ADAPTIVE_WEIGHT_SMALL	(0x690)
-#define ACTIVE_PARA_FREQ_M	                (0x694)
-#define ACTIVE_PARA_FREQ_H	                (0x698)
-#define ACTIVE_PARA_FREQ_D	                (0x69C)
-#define ACTIVE_PARA_FREQ_L	                (0x700)
-#define ACTIVE_PARA	                        (0x704)
-#define CLASS_0_2_GAIN	                        (0x708)
-#define CLASS_3_5_GAIN	                        (0x70C)
-#define CLASS_6_8_GAIN	                        (0x710)
-#define LUMA_CHROMA_PARAMETER	                (0x714)
-#define MDP_TDSHP_STATUS_ROI_X	                (0x718)
-#define MDP_TDSHP_STATUS_ROI_Y	                (0x71C)
-#define FRAME_WIDTH_HIGHT	                (0x720)
-#define MDP_TDSHP_SHADOW_CTRL	                (0x724)
-
 #define AAL_SERVICE_FORCE_UPDATE 0x1
 #define AAL_DRE3_POINT_NUM		(17)
 #define AAL_DRE_GAIN_POINT16_START	(512)
@@ -464,7 +411,7 @@ void disp_aal_refresh_by_kernel(struct mtk_disp_aal *aal_data, int need_lock)
 
 	if (atomic_read(&aal_data->primary_data->is_init_regs_valid) == 1) {
 		if (need_lock)
-			DDP_MUTEX_LOCK(&comp->mtk_crtc->lock, __func__, __LINE__);
+			DDP_MUTEX_LOCK_CONDITION(&comp->mtk_crtc->lock, __func__, __LINE__, false);
 		atomic_set(&aal_data->primary_data->force_event_en, 1);
 		atomic_set(&aal_data->primary_data->event_en, 1);
 
@@ -474,7 +421,7 @@ void disp_aal_refresh_by_kernel(struct mtk_disp_aal *aal_data, int need_lock)
 		 */
 		mtk_crtc_check_trigger(comp->mtk_crtc, delay_trig, false);
 		if (need_lock)
-			DDP_MUTEX_UNLOCK(&comp->mtk_crtc->lock, __func__, __LINE__);
+			DDP_MUTEX_UNLOCK_CONDITION(&comp->mtk_crtc->lock, __func__, __LINE__, false);
 	}
 }
 
@@ -1126,7 +1073,6 @@ static int disp_aal_update_dre3_sram(struct mtk_ddp_comp *comp,
 
 static void disp_aal_write_dre3_curve_full(struct mtk_ddp_comp *comp)
 {
-	void __iomem *dre3_va = disp_aal_dre3_va(comp);
 	uint32_t reg_value = 0, reg_mask = 0;
 	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
 	struct mtk_ddp_comp *dmdp_aal = aal_data->comp_dmdp_aal;
@@ -1428,20 +1374,13 @@ static void disp_aal_sof_handle_by_cpu(struct mtk_ddp_comp *comp)
 	mtk_drm_trace_begin("aal_sof_thread");
 	AALIRQ_LOG("[SRAM] dre_config(%d) in SOF\n",
 			atomic_read(&aal_data->dre_config));
-	pm_ret = mtk_vidle_pq_power_get(__func__);
-	if (pm_ret < 0) {
-		CRTC_MMP_EVENT_END(0, aal_sof_thread, 0, 0xe);
-		mtk_drm_trace_end();
-		AALERR("pm get error %d\n",pm_ret);
-		return;
-	}
 	mutex_lock(&aal_data->primary_data->clk_lock);
 	first_frame = atomic_read(&aal_data->first_frame);
 	if (atomic_read(&aal_data->is_clock_on) != 1) {
 		AALIRQ_LOG("clock is off\n");
 		mutex_unlock(&aal_data->primary_data->clk_lock);
-		if (!pm_ret)
-			mtk_vidle_pq_power_put(__func__);
+		CRTC_MMP_EVENT_END(0, aal_sof_thread, 0, 2);
+		mtk_drm_trace_end();
 		return;
 	}
 	if (comp->mtk_crtc->is_dual_pipe) {
@@ -1450,18 +1389,26 @@ static void disp_aal_sof_handle_by_cpu(struct mtk_ddp_comp *comp)
 		if (atomic_read(&aal1_data->is_clock_on) != 1) {
 			AALIRQ_LOG("aal1 clock is off\n");
 			mutex_unlock(&aal_data->primary_data->clk_lock);
-			if (!pm_ret)
-				mtk_vidle_pq_power_put(__func__);
+			CRTC_MMP_EVENT_END(0, aal_sof_thread, 0, 2);
+			mtk_drm_trace_end();
 			return;
 		}
 	}
+	pm_ret = mtk_vidle_pq_power_get(__func__);
+	if (pm_ret) {
+		DDPPR_ERR("%s pq_power_get failed %d, skip\n", __func__, pm_ret);
+		mutex_unlock(&aal_data->primary_data->clk_lock);
+		CRTC_MMP_EVENT_END(0, aal_sof_thread, 0, 5);
+		mtk_drm_trace_end();
+		return;
+	}
 	ret = disp_aal_update_dre3_sram(comp, true);
-	mutex_unlock(&aal_data->primary_data->clk_lock);
 	if (!pm_ret)
 		mtk_vidle_pq_power_put(__func__);
+	mutex_unlock(&aal_data->primary_data->clk_lock);
 	CRTC_MMP_MARK(0, aal_sof_thread, 0, 1);
 
-	DDP_MUTEX_LOCK(&comp->mtk_crtc->lock, __func__, __LINE__);
+	DDP_MUTEX_LOCK_CONDITION(&comp->mtk_crtc->lock, __func__, __LINE__, false);
 	if (aal_data->primary_data->dre30_enabled && !ret &&
 	    (first_frame == 1 || atomic_read(&aal_data->primary_data->event_en) == 1))
 		mtk_crtc_user_cmd_impl(&comp->mtk_crtc->base, comp, FLIP_SRAM, NULL, false);
@@ -1471,7 +1418,7 @@ static void disp_aal_sof_handle_by_cpu(struct mtk_ddp_comp *comp)
 		mtk_crtc_check_trigger(comp->mtk_crtc, true, false);
 		atomic_set(&aal_data->primary_data->dre30_write, 0);
 	}
-	DDP_MUTEX_UNLOCK(&comp->mtk_crtc->lock, __func__, __LINE__);
+	DDP_MUTEX_UNLOCK_CONDITION(&comp->mtk_crtc->lock, __func__, __LINE__, false);
 	if (first_frame == 1) {
 		atomic_set(&aal_data->first_frame, 0);
 		if (comp->mtk_crtc->is_dual_pipe)
@@ -1546,7 +1493,11 @@ static int disp_aal_sof_kthread(void *data)
 {
 	struct mtk_ddp_comp *comp = (struct mtk_ddp_comp *)data;
 	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
+	struct sched_param param = {.sched_priority = 85 };
 	int ret;
+
+	if (sched_setscheduler(aal_data->primary_data->sof_irq_event_task, SCHED_RR, &param))
+		pr_notice("aal_sof_irq_event_task setschedule fail");
 
 	while (!kthread_should_stop()) {
 		if (atomic_read(&aal_data->primary_data->sof_irq_available) == 0) {
@@ -1665,7 +1616,8 @@ static void disp_aal_init_dre3_reg(struct mtk_ddp_comp *comp,
 
 	if (priv->data->mmsys_id == MMSYS_MT6768 ||
 		priv->data->mmsys_id == MMSYS_MT6765 ||
-		priv->data->mmsys_id == MMSYS_MT6761)
+		priv->data->mmsys_id == MMSYS_MT6761 ||
+		priv->data->mmsys_id == MMSYS_MT6771)
 		dre_mapping_00 = GKI_DISP_AAL_DRE_MAPPING_00;
 	else
 		dre_mapping_00 = DISP_AAL_DRE_MAPPING_00;
@@ -1793,7 +1745,8 @@ static int disp_aal_write_init_regs(struct mtk_ddp_comp *comp,
 
 	if (priv->data->mmsys_id == MMSYS_MT6768 ||
 		priv->data->mmsys_id == MMSYS_MT6765 ||
-		priv->data->mmsys_id == MMSYS_MT6761) {
+		priv->data->mmsys_id == MMSYS_MT6761 ||
+		priv->data->mmsys_id == MMSYS_MT6771) {
 		cabc_gainlmt_tbl_00 = GKI_DISP_AAL_CABC_GAINLMT_TBL_00;
 		dre_mapping_00 = GKI_DISP_AAL_DRE_MAPPING_00;
 	} else {
@@ -1870,7 +1823,8 @@ static int disp_aal_write_dre_to_reg(struct mtk_ddp_comp *comp,
 
 	if (priv->data->mmsys_id == MMSYS_MT6768 ||
 		priv->data->mmsys_id == MMSYS_MT6765 ||
-		priv->data->mmsys_id == MMSYS_MT6761)
+		priv->data->mmsys_id == MMSYS_MT6761 ||
+		priv->data->mmsys_id == MMSYS_MT6771)
 		dre_mapping_00 = GKI_DISP_AAL_DRE_MAPPING_00;
 	else
 		dre_mapping_00 = DISP_AAL_DRE_MAPPING_00;
@@ -1884,7 +1838,8 @@ static int disp_aal_write_dre_to_reg(struct mtk_ddp_comp *comp,
 
 	if (priv->data->mmsys_id == MMSYS_MT6768 ||
 		priv->data->mmsys_id == MMSYS_MT6765 ||
-		priv->data->mmsys_id == MMSYS_MT6761) {
+		priv->data->mmsys_id == MMSYS_MT6761 ||
+		priv->data->mmsys_id == MMSYS_MT6771) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_AAL_DRE_FLT_FORCE(0),
 		    DRE_REG_2(gain[0], 0, gain[1], 14), ~0);
@@ -2007,19 +1962,26 @@ static int disp_aal_set_dre3_curve(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, const struct DISP_AAL_PARAM *param)
 {
 	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
-	struct DISP_DRE30_PARAM dre30_gain;
+	struct DISP_DRE30_PARAM *dre30_gain;
+
+	dre30_gain = vmalloc(sizeof(*dre30_gain));
+	if(!dre30_gain)
+		return -ENOMEM;
 
 	AALFLOW_LOG("\n");
 	if (atomic_read(&aal_data->primary_data->change_to_dre30) == 0x3) {
-		if (copy_from_user(&dre30_gain, (struct DISP_DRE30_PARAM *)param->dre30_gain,
+		if (copy_from_user(dre30_gain, (struct DISP_DRE30_PARAM *)param->dre30_gain,
 				    sizeof(struct DISP_DRE30_PARAM)) == 0) {
 			mutex_lock(&aal_data->primary_data->config_lock);
-			memcpy(&aal_data->primary_data->dre30_gain, &dre30_gain, sizeof(struct DISP_DRE30_PARAM));
+			memcpy(&aal_data->primary_data->dre30_gain, dre30_gain, sizeof(struct DISP_DRE30_PARAM));
 			mutex_unlock(&aal_data->primary_data->config_lock);
-		} else
+		} else {
+			vfree(dre30_gain);
 			return -1;
+		}
 	}
 
+	vfree(dre30_gain);
 	return 0;
 }
 
@@ -2430,7 +2392,10 @@ static int disp_aal_act_eventctl(struct mtk_ddp_comp *comp, void *data)
 	AALFLOW_LOG("0x%x\n", events);
 	CRTC_MMP_MARK(0, aal_event_ctl, events, 0);
 	delay_trigger = atomic_read(&aal_data->primary_data->force_delay_check_trig);
-	if (priv->data->mmsys_id == MMSYS_MT6768 || priv->data->mmsys_id == MMSYS_MT6761) {
+	if (priv->data->mmsys_id == MMSYS_MT6768 ||
+		priv->data->mmsys_id == MMSYS_MT6765 ||
+		priv->data->mmsys_id == MMSYS_MT6761 ||
+		priv->data->mmsys_id == MMSYS_MT6771) {
 		if(enable && (enable != aal_data->primary_data->pre_enable))
 			mtk_crtc_check_trigger(comp->mtk_crtc, delay_trigger, true);
 	} else {
@@ -2438,9 +2403,6 @@ static int disp_aal_act_eventctl(struct mtk_ddp_comp *comp, void *data)
 			mtk_crtc_check_trigger(comp->mtk_crtc, delay_trigger, true);
 	}
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
-	disp_aal_set_interrupt(comp, enable, NULL);
-#endif
 	if (atomic_read(&aal_data->primary_data->force_event_en))
 		enable = 1;
 	atomic_set(&aal_data->primary_data->event_en, enable);
@@ -2454,7 +2416,9 @@ static int disp_aal_act_eventctl(struct mtk_ddp_comp *comp, void *data)
 		disp_aal_relay_control(comp, false);
 		CRTC_MMP_MARK(0, aal_event_ctl, events, 2);
 	}
-
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
+	disp_aal_set_interrupt(comp, enable, NULL);
+#endif
 	return ret;
 }
 
@@ -2496,17 +2460,21 @@ static int disp_aal_copy_hist_to_user(struct mtk_ddp_comp *comp,
 	unsigned long flags;
 	int ret = 0;
 	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
-	struct DISP_DRE30_HIST dre30_hist;
+	struct DISP_DRE30_HIST *dre30_hist;
 
 	if (hist == NULL) {
 		AALERR("%s DstHist is NULL\n", __func__);
 		return -1;
 	}
 
+	dre30_hist = vmalloc(sizeof(*dre30_hist));
+	if(!dre30_hist)
+		return -ENOMEM;
+
 	/* We assume only one thread will call this function */
 	spin_lock_irqsave(&aal_data->primary_data->hist_lock, flags);
 	if (aal_data->primary_data->aal_fo->mtk_dre30_support && aal_data->primary_data->dre30_enabled)
-		memcpy(&dre30_hist, &aal_data->primary_data->dre30_hist, sizeof(struct DISP_DRE30_HIST));
+		memcpy(dre30_hist, &aal_data->primary_data->dre30_hist, sizeof(struct DISP_DRE30_HIST));
 	aal_data->primary_data->hist.panel_type = atomic_read(&aal_data->primary_data->panel_type);
 	aal_data->primary_data->hist.essStrengthIndex = aal_data->primary_data->ess_level;
 	aal_data->primary_data->hist.ess_enable = aal_data->primary_data->ess_en;
@@ -2535,7 +2503,7 @@ static int disp_aal_copy_hist_to_user(struct mtk_ddp_comp *comp,
 	spin_unlock_irqrestore(&aal_data->primary_data->hist_lock, flags);
 
 	if (aal_data->primary_data->aal_fo->mtk_dre30_support && aal_data->primary_data->dre30_enabled)
-		ret = copy_to_user((void *)hist->dre30_hist, &dre30_hist, sizeof(struct DISP_DRE30_HIST));
+		ret = copy_to_user((void *)hist->dre30_hist, dre30_hist, sizeof(struct DISP_DRE30_HIST));
 	aal_data->primary_data->hist.serviceFlags = 0;
 	atomic_set(&aal_data->hist_available, 0);
 	atomic_set(&aal_data->dre20_hist_is_ready, 0);
@@ -2548,6 +2516,7 @@ static int disp_aal_copy_hist_to_user(struct mtk_ddp_comp *comp,
 	}
 	atomic_set(&aal_data->primary_data->force_event_en, 0);
 
+	vfree(dre30_hist);
 	return ret;
 }
 
@@ -2579,7 +2548,6 @@ int disp_aal_act_set_ess20_spect_param(struct mtk_ddp_comp *comp, void *data)
 int disp_aal_act_init_dre30(struct mtk_ddp_comp *comp, void *data)
 {
 	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
-	struct DISP_DRE30_INIT *init_dre3;
 
 	if (aal_data->primary_data->aal_fo->mtk_dre30_support) {
 		AALFLOW_LOG("\n");
@@ -3005,12 +2973,14 @@ static void disp_aal_init(struct mtk_ddp_comp *comp,
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
 
 	AALFLOW_LOG("+ comd id :%d\n", comp->id);
-	if (cfg->source_bpc == 8)
-		SET_VAL_MASK(value, mask, 1, FLD_AAL_8BIT_SWITCH);
-	else if (cfg->source_bpc == 10)
-		SET_VAL_MASK(value, mask, 0, FLD_AAL_8BIT_SWITCH);
-	else
-		DDPPR_ERR("%s invalid bpc %u\n", __func__, cfg->source_bpc);
+	if (priv->data->mmsys_id != MMSYS_MT6771) {
+		if (cfg->source_bpc == 8)
+			SET_VAL_MASK(value, mask, 1, FLD_AAL_8BIT_SWITCH);
+		else if (cfg->source_bpc == 10)
+			SET_VAL_MASK(value, mask, 0, FLD_AAL_8BIT_SWITCH);
+		else
+			AALERR("%s invalid bpc %u\n", __func__, cfg->source_bpc);
+	}
 
 	if (aal_data->primary_data->relay_state != 0) {
 		AALFLOW_LOG("g_aal_force_relay\n");
@@ -3020,11 +2990,12 @@ static void disp_aal_init(struct mtk_ddp_comp *comp,
 	SET_VAL_MASK(value, mask, 1, FLD_AAL_ENGINE_EN);
 	SET_VAL_MASK(value, mask, 1, FLD_AAL_HIST_EN);
 	if (priv->data->mmsys_id != MMSYS_MT6768 &&
-		 priv->data->mmsys_id != MMSYS_MT6765 &&
-		 priv->data->mmsys_id != MMSYS_MT6761)
+		priv->data->mmsys_id != MMSYS_MT6765 &&
+		priv->data->mmsys_id != MMSYS_MT6761 &&
+		priv->data->mmsys_id != MMSYS_MT6771)
 		SET_VAL_MASK(value, mask, 1, FLD_BLK_HIST_EN);
-	SET_VAL_MASK(value, mask, 0x40, FLD_FRAME_DONE_DELAY);
-
+	if (priv->data->mmsys_id != MMSYS_MT6771)
+		SET_VAL_MASK(value, mask, 0x40, FLD_FRAME_DONE_DELAY);
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_AAL_CFG, value, mask);
 
 	atomic_set(&aal_data->hist_available, 0);
@@ -3071,8 +3042,8 @@ static void disp_aal_primary_data_init(struct mtk_ddp_comp *comp)
 	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
 	struct mtk_disp_aal *companion_aal_data = comp_to_aal(aal_data->companion);
 	char thread_name[20] = "aal_sof_0";
-	struct sched_param param = {.sched_priority = 85 };
 	struct cpumask mask;
+	int ret;
 
 	if (aal_data->is_right_pipe) {
 		kfree(aal_data->primary_data);
@@ -3151,14 +3122,14 @@ static void disp_aal_primary_data_init(struct mtk_ddp_comp *comp)
 	INIT_WORK(&aal_data->primary_data->refresh_task.task, disp_aal_refresh_trigger);
 
 	// start thread for aal sof
-	sprintf(thread_name, "aal_sof_%d", comp->id);
-	aal_data->primary_data->sof_irq_event_task = kthread_create(disp_aal_sof_kthread, comp, thread_name);
+	ret = sprintf(thread_name, "aal_sof_%d", comp->id);
+	if (ret < 0)
+		AALERR("Failed to generate thread_name for aal_sof\n");
+	aal_data->primary_data->sof_irq_event_task = kthread_create(disp_aal_sof_kthread, comp, "%s", thread_name);
 
 	cpumask_setall(&mask);
 	cpumask_clear_cpu(0, &mask);
 	set_cpus_allowed_ptr(aal_data->primary_data->sof_irq_event_task, &mask);
-	if (sched_setscheduler(aal_data->primary_data->sof_irq_event_task, SCHED_RR, &param))
-		pr_notice("aal_sof_irq_event_task setschedule fail");
 
 	wake_up_process(aal_data->primary_data->sof_irq_event_task);
 }
@@ -3272,6 +3243,11 @@ static void disp_aal_bypass(struct mtk_ddp_comp *comp, int bypass,
 	DDPINFO("%s: comp: %s, bypass: %d, caller: %d, relay_state: 0x%x\n",
 		__func__, mtk_dump_comp_str(comp), bypass, caller, primary_data->relay_state);
 
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO) && IS_ENABLED(CONFIG_DRM_MTK_R2Y)
+	if (global_r2y_mtk_crtc[0] == comp->mtk_crtc || global_r2y_mtk_crtc[1] == comp->mtk_crtc)
+		bypass = 1;
+#endif
+
 	if (bypass == 1) {
 		if (primary_data->relay_state == 0) {
 			cmdq_pkt_write(handle, comp->cmdq_base,
@@ -3348,13 +3324,19 @@ static void disp_aal_config_overhead(struct mtk_ddp_comp *comp,
 	struct mtk_ddp_config *cfg)
 {
 	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	struct drm_crtc *crtc = &mtk_crtc->base;
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
 
 	DDPINFO("line: %d\n", __LINE__);
 
 	if (cfg->tile_overhead.is_support) {
 		/*set component overhead*/
 		if (!aal_data->is_right_pipe) {
-			aal_data->overhead.comp_overhead = 8;
+			if (priv->data->mmsys_id == MMSYS_MT6991)
+				aal_data->overhead.comp_overhead = 0;
+			else
+				aal_data->overhead.comp_overhead = 8;
 			/*add component overhead on total overhead*/
 			cfg->tile_overhead.left_overhead += aal_data->overhead.comp_overhead;
 			cfg->tile_overhead.left_in_width += aal_data->overhead.comp_overhead;
@@ -3362,7 +3344,10 @@ static void disp_aal_config_overhead(struct mtk_ddp_comp *comp,
 			aal_data->overhead.in_width = cfg->tile_overhead.left_in_width;
 			aal_data->overhead.total_overhead = cfg->tile_overhead.left_overhead;
 		} else {
-			aal_data->overhead.comp_overhead = 8;
+			if (priv->data->mmsys_id == MMSYS_MT6991)
+				aal_data->overhead.comp_overhead = 0;
+			else
+				aal_data->overhead.comp_overhead = 8;
 			/*add component overhead on total overhead*/
 			cfg->tile_overhead.right_overhead += aal_data->overhead.comp_overhead;
 			cfg->tile_overhead.right_in_width += aal_data->overhead.comp_overhead;
@@ -3397,6 +3382,10 @@ static void disp_aal_config(struct mtk_ddp_comp *comp,
 	int width = cfg->w, height = cfg->h;
 	int out_width = cfg->w;
 	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
+	uint32_t dre_mapping_00;
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	struct drm_crtc *crtc = &mtk_crtc->base;
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
 
 	if (comp->mtk_crtc->is_dual_pipe && cfg->tile_overhead.is_support) {
 		width = aal_data->overhead.in_width;
@@ -3439,9 +3428,14 @@ static void disp_aal_config(struct mtk_ddp_comp *comp,
 	if (aal_data->primary_data->aal_param_valid) {
 		disp_aal_write_dre_to_reg(comp, handle, &aal_data->primary_data->aal_param);
 		disp_aal_write_cabc_to_reg(comp, handle, &aal_data->primary_data->aal_param);
-	} else
-		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_AAL_DRE_MAPPING_00, 1, 1 << 4);
+	} else {
+		if (priv->data->mmsys_id == MMSYS_MT6771)
+			dre_mapping_00 = GKI_DISP_AAL_DRE_MAPPING_00;
+		else
+			dre_mapping_00 = DISP_AAL_DRE_MAPPING_00;
 
+		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + dre_mapping_00, 1, 1 << 4);
+	}
 	if (aal_data->primary_data->aal_fo->mtk_dre30_support) {
 		mutex_lock(&aal_data->primary_data->config_lock);
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
@@ -3455,7 +3449,9 @@ static void disp_aal_config(struct mtk_ddp_comp *comp,
 	}
 
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_AAL_SIZE, val, ~0);
-	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_AAL_OUTPUT_SIZE, out_val, ~0);
+
+	if (priv->data->mmsys_id != MMSYS_MT6771)
+		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_AAL_OUTPUT_SIZE, out_val, ~0);
 
 	if (comp->mtk_crtc->is_dual_pipe && cfg->tile_overhead.is_support) {
 		if (!aal_data->is_right_pipe) {
@@ -3488,13 +3484,14 @@ static void disp_aal_config(struct mtk_ddp_comp *comp,
 
 		aal_data->primary_data->dual_size.aaloverhead = 0;
 	} else {
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_AAL_OUTPUT_OFFSET,
-			(0 << 16) | 0, ~0);
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_AAL_DRE_BLOCK_INFO_00,
-			(aal_data->primary_data->size.width - 1) << 13, ~0);
-
+		if (priv->data->mmsys_id != MMSYS_MT6771) {
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DISP_AAL_OUTPUT_OFFSET,
+				(0 << 16) | 0, ~0);
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DISP_AAL_DRE_BLOCK_INFO_00,
+				(aal_data->primary_data->size.width - 1) << 13, ~0);
+		}
 		aal_data->primary_data->size.aaloverhead = 0;
 	}
 
@@ -3520,7 +3517,9 @@ static void disp_aal_config(struct mtk_ddp_comp *comp,
 
 	disp_aal_init(comp, cfg, handle);
 	disp_aal_set_interrupt(comp, !!atomic_read(&aal_data->primary_data->eof_irq_en), handle);
-	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_CMB_MAIN_0, 0, NEW_CBOOST_EN);
+	if (priv->data->mmsys_id != MMSYS_MT6771)
+		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_CMB_MAIN_0, 0, NEW_CBOOST_EN);
+
 	// for Display Clarity
 	if (aal_data->primary_data->disp_clarity_regs != NULL) {
 		mutex_lock(&aal_data->primary_data->config_lock);
@@ -3529,10 +3528,21 @@ static void disp_aal_config(struct mtk_ddp_comp *comp,
 			DDPMSG("%s: clarity_set_reg failed\n", __func__);
 		mutex_unlock(&aal_data->primary_data->config_lock);
 	}
-	if (aal_data->data->need_bypass_shadow)
-		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_AAL_SHADOW_CTRL, 1, AAL_BYPASS_SHADOW);
-	else
-		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_AAL_SHADOW_CTRL, 0, AAL_BYPASS_SHADOW);
+	if (priv->data->mmsys_id != MMSYS_MT6771) {
+		if (aal_data->data->need_bypass_shadow) {
+			cmdq_pkt_write(handle, comp->cmdq_base,
+					comp->regs_pa + DISP_AAL_SHADOW_CTRL, 1, AAL_BYPASS_SHADOW);
+		} else {
+			cmdq_pkt_write(handle, comp->cmdq_base,
+					comp->regs_pa + DISP_AAL_SHADOW_CTRL, 0, AAL_BYPASS_SHADOW);
+		}
+	}
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO) && IS_ENABLED(CONFIG_DRM_MTK_R2Y)
+	if(global_r2y_mtk_crtc[0] == comp->mtk_crtc || global_r2y_mtk_crtc[1] == comp->mtk_crtc) {
+		disp_aal_bypass(comp, 1, 0, handle);
+	}
+#endif
+
 }
 
 void disp_aal_first_cfg(struct mtk_ddp_comp *comp,
@@ -3657,13 +3667,6 @@ static int disp_aal_probe(struct platform_device *pdev)
 		AALERR("Failed to alloc aal_fo %d\n", ret);
 		goto error_primary;
 	}
-	// for Display Clarity
-	tdshp_node = of_find_compatible_node(NULL, NULL, "mediatek,disp_tdshp0");
-	if (!of_property_read_u32(tdshp_node, "mtk-tdshp-clarity-support",
-		&priv->primary_data->tdshp_clarity_support)) {
-		DDPMSG("disp_tdshp: mtk_tdshp_clarity_support = %d\n",
-			priv->primary_data->tdshp_clarity_support);
-	}
 
 	if (of_property_read_u32(dev->of_node, "mtk-aal-support",
 		&priv->primary_data->aal_fo->mtk_aal_support)) {
@@ -3693,18 +3696,8 @@ static int disp_aal_probe(struct platform_device *pdev)
 				priv->primary_data->dre30_enabled =
 					(priv->primary_data->dre30_en == 1) ? true : false;
 
-			// for Display Clarity
-			if (!of_property_read_u32(dev->of_node, "mtk-aal-clarity-support",
-					&priv->primary_data->aal_clarity_support))
-				DDPMSG("mtk_aal_clarity_support = %d\n",
-						priv->primary_data->aal_clarity_support);
-
-			if ((priv->primary_data->aal_clarity_support == 1)
-					&& (priv->primary_data->tdshp_clarity_support == 1)) {
-				priv->primary_data->disp_clarity_support = 1;
-				DDPMSG("%s: display clarity support = %d\n",
-					__func__, priv->primary_data->disp_clarity_support);
-			}
+			// aal clarity feature phase-out, default no-support
+			priv->primary_data->disp_clarity_support = 0;
 		}
 	}
 
@@ -3815,6 +3808,16 @@ static int disp_aal_remove(struct platform_device *pdev)
 }
 
 static const struct mtk_disp_aal_data mt6768_aal_driver_data = {
+	.support_shadow     = false,
+	.need_bypass_shadow = false,
+	.aal_dre_hist_start = 1024,
+	.aal_dre_hist_end   = 4092,
+	.aal_dre_gain_start = 4096,
+	.aal_dre_gain_end   = 6268,
+	.bitShift = 16,
+};
+
+static const struct mtk_disp_aal_data mt6771_aal_driver_data = {
 	.support_shadow     = false,
 	.need_bypass_shadow = false,
 	.aal_dre_hist_start = 1024,
@@ -4011,6 +4014,7 @@ static const struct mtk_disp_aal_data mt6991_aal_driver_data = {
 static const struct of_device_id mtk_disp_aal_driver_dt_match[] = {
 	{ .compatible = "mediatek,mt6768-disp-aal", .data = &mt6768_aal_driver_data},
 	{ .compatible = "mediatek,mt6761-disp-aal", .data = &mt6761_aal_driver_data},
+	{ .compatible = "mediatek,mt6771-disp-aal", .data = &mt6771_aal_driver_data},
 	{ .compatible = "mediatek,mt6885-disp-aal", .data = &mt6885_aal_driver_data},
 	{ .compatible = "mediatek,mt6833-disp-aal", .data = &mt6833_aal_driver_data},
 	{ .compatible = "mediatek,mt6765-disp-aal", .data = &mt6765_aal_driver_data},

@@ -24,7 +24,7 @@
 #include <linux/seq_file.h>
 #include <linux/uaccess.h>
 #include <linux/debugfs.h>
-
+#include <mtk-spmi-pmic-debug.h>
 #include "spmi-mtk.h"
 
 enum pmif_dbg_regs {
@@ -1767,7 +1767,7 @@ static char *get_spmimst_all_reg_dump(void)
 	if (!IS_ERR_OR_NULL(arb->spmimst_base[2])) {
 		log_size += sprintf(wp + log_size, "\n[SPMI-2] ");
 		for (offset = start; offset <= end; offset += 4) {
-			tmp_dat = readl(arb->spmimst_base[1] + offset);
+			tmp_dat = readl(arb->spmimst_base[2] + offset);
 			log_size += sprintf(wp + log_size,
 					    "(0x%x)=0x%x ", offset, tmp_dat);
 			i++;
@@ -1776,7 +1776,7 @@ static char *get_spmimst_all_reg_dump(void)
 		}
 
 		offset = arb->spmimst_regs[SPMI_MST_DBG];
-		tmp_dat = readl(arb->spmimst_base[1] + offset);
+		tmp_dat = readl(arb->spmimst_base[2] + offset);
 		log_size += sprintf(wp + log_size, "(0x%x)=0x%x\n", offset, tmp_dat);
 	}
 	log_size += sprintf(wp + log_size, "\n[SPMI_MST_NACK_CNT] ");

@@ -25,6 +25,9 @@
 #include "mtk_disp_pq_helper.h"
 #include "mtk_disp_gamma.h"
 #include "mtk_disp_chist.h"
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO) && IS_ENABLED(CONFIG_DRM_MTK_R2Y)
+#include "mtk_disp_ccorr.h"
+#endif
 
 #define DISP_DITHER_EN		0x0
 #define DISP_DITHER_INTEN	0x08
@@ -276,6 +279,20 @@ static void disp_dither_config(struct mtk_ddp_comp *comp,
 			cmdq_pkt_write(handle, comp->cmdq_base,
 				       comp->regs_pa + DITHER_REG(16),
 				       0x40404040, ~0);
+		} else if (cfg->bpc == 5) { /* 565 */
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				       comp->regs_pa + DITHER_REG(15),
+				       0x50500001, ~0);
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				       comp->regs_pa + DITHER_REG(16),
+				       0x50504040, ~0);
+		} else if (cfg->bpc == 6) { /* 666 */
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				       comp->regs_pa + DITHER_REG(15),
+				       0x40400001, ~0);
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				       comp->regs_pa + DITHER_REG(16),
+				       0x40404040, ~0);
 		} else if (cfg->bpc > 10) {
 			/* High depth LCM, no need dither */
 			DDPINFO("%s: High depth LCM (bpp = %u), no dither\n",
@@ -349,6 +366,14 @@ static void disp_dither_config(struct mtk_ddp_comp *comp,
 	else
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_DITHER_SHADOW, 0x0, 0x1);
+
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO) && IS_ENABLED(CONFIG_DRM_MTK_R2Y)
+	if(global_r2y_mtk_crtc[0] == comp->mtk_crtc || global_r2y_mtk_crtc[1] == comp->mtk_crtc) {
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			comp->regs_pa + DISP_REG_DITHER_CFG,
+			primary_data->relay_state, 0x1);
+	}
+#endif
 }
 
 static void disp_dither_init_primary_data(struct mtk_ddp_comp *comp)
@@ -389,7 +414,6 @@ static void disp_dither_first_cfg(struct mtk_ddp_comp *comp,
 	       struct mtk_ddp_config *cfg, struct cmdq_pkt *handle)
 {
 	DDPINFO("%s cfg->bpc=%d\n", __func__, cfg->bpc);
-
 	disp_dither_config(comp, cfg, handle);
 }
 
@@ -424,6 +448,10 @@ static void disp_dither_bypass(struct mtk_ddp_comp *comp, int bypass,
 	DDPINFO("%s: comp: %s, bypass: %d, caller: %d, relay_state: 0x%x\n",
 		__func__, mtk_dump_comp_str(comp), bypass, caller, primary_data->relay_state);
 
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO) && IS_ENABLED(CONFIG_DRM_MTK_R2Y)
+	if (global_r2y_mtk_crtc[0] == comp->mtk_crtc || global_r2y_mtk_crtc[1] == comp->mtk_crtc)
+		bypass = 1;
+#endif
 	if (bypass == 1) {
 		if (primary_data->relay_state == 0) {
 			cmdq_pkt_write(handle, comp->cmdq_base,
@@ -533,8 +561,6 @@ void disp_dither_set_param(struct mtk_ddp_comp *comp,
 			struct cmdq_pkt *handle,
 			bool relay, uint32_t mode)
 {
-	struct mtk_disp_dither *dither_data = comp_to_dither(comp);
-	struct mtk_disp_dither_primary *primary_data = dither_data->primary_data;
 	bool bypass = relay;
 	uint32_t dither_mode = 0x00003000 | (0x1 << mode);
 
@@ -899,6 +925,11 @@ static const struct mtk_disp_dither_data mt6765_dither_driver_data = {
 	.need_bypass_shadow = true,
 };
 
+static const struct mtk_disp_dither_data mt6771_dither_driver_data = {
+	.support_shadow     = false,
+	.need_bypass_shadow = false,
+};
+
 static const struct mtk_disp_dither_data mt6885_dither_driver_data = {
 	.support_shadow     = false,
 	.need_bypass_shadow = false,
@@ -981,6 +1012,8 @@ static const struct of_device_id mtk_disp_dither_driver_dt_match[] = {
 	  .data = &mt6765_dither_driver_data},
 	{ .compatible = "mediatek,mt6768-disp-dither",
 	  .data = &mt6768_dither_driver_data},
+	{ .compatible = "mediatek,mt6771-disp-dither",
+	  .data = &mt6771_dither_driver_data},
 	{ .compatible = "mediatek,mt6781-disp-dither",
 	  .data = &mt6781_dither_driver_data},
 	{ .compatible = "mediatek,mt6885-disp-dither",

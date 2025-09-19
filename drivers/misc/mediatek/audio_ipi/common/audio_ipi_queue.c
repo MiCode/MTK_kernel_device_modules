@@ -414,6 +414,14 @@ int send_message(
 		if (retval != 0) {
 			DUMP_IPI_MSG("task queue timeout", p_ipi_msg);
 			pr_notice("retval: %d!!", retval);
+
+			/* pop message from queue */
+			spin_lock_irqsave(&msg_queue->rw_lock, flags);
+			pop_msg(msg_queue, &p_ipi_msg_pop);
+			spin_unlock_irqrestore(&msg_queue->rw_lock, flags);
+
+			AUD_ASSERT(p_ipi_msg_pop == p_ipi_msg);
+
 		} else if (msg_queue->idx_r == idx_msg) {
 			retval = process_message_in_queue(
 					 msg_queue, p_ipi_msg, idx_msg);

@@ -224,6 +224,276 @@ static inline struct mtk_disp_tdshp *comp_to_tdshp(struct mtk_ddp_comp *comp)
 	return container_of(comp, struct mtk_disp_tdshp, ddp_comp);
 }
 
+static int disp_tdshp_write_clarity_reg(struct mtk_ddp_comp *comp,
+	struct cmdq_pkt *handle, int lock)
+{
+	struct mtk_disp_tdshp *tdshp_data = comp_to_tdshp(comp);
+	struct mtk_disp_tdshp_primary *primary_data = tdshp_data->primary_data;
+	struct DISP_TDSHP_CLARITY_REG *disp_tdshp_regs;
+	int ret = 0;
+
+	if (lock)
+		mutex_lock(&primary_data->data_lock);
+
+	disp_tdshp_regs = &primary_data->tdshp_regs->disp_clarity_regs;
+	if (disp_tdshp_regs == NULL) {
+		DDPINFO("%s: comp %d not initialized\n", __func__, comp->id);
+		ret = -EFAULT;
+		goto clarity_write_reg_unlock;
+	}
+
+	DDPINFO("%s: write clarity reg\n", __func__);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + MIDBAND_COEF_V_CUST_FLT1_00,
+		(disp_tdshp_regs->mid_coef_v_custom_range_flt_0_0 << 0 |
+		disp_tdshp_regs->mid_coef_v_custom_range_flt_0_1 << 8 |
+		disp_tdshp_regs->mid_coef_v_custom_range_flt_0_2 << 16 |
+		disp_tdshp_regs->mid_coef_v_custom_range_flt_0_3 << 24), ~0);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + MIDBAND_COEF_V_CUST_FLT1_01,
+		(disp_tdshp_regs->mid_coef_v_custom_range_flt_0_4 << 0 |
+		disp_tdshp_regs->mid_coef_v_custom_range_flt_1_0 << 8 |
+		disp_tdshp_regs->mid_coef_v_custom_range_flt_1_1 << 16 |
+		disp_tdshp_regs->mid_coef_v_custom_range_flt_1_2 << 24), ~0);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + MIDBAND_COEF_V_CUST_FLT1_02,
+		(disp_tdshp_regs->mid_coef_v_custom_range_flt_1_3 << 0 |
+		disp_tdshp_regs->mid_coef_v_custom_range_flt_1_4 << 8 |
+		disp_tdshp_regs->mid_coef_v_custom_range_flt_2_0 << 16 |
+		disp_tdshp_regs->mid_coef_v_custom_range_flt_2_1 << 24), ~0);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + MIDBAND_COEF_V_CUST_FLT1_03,
+		(disp_tdshp_regs->mid_coef_v_custom_range_flt_2_2 << 0 |
+		disp_tdshp_regs->mid_coef_v_custom_range_flt_2_3 << 8 |
+		disp_tdshp_regs->mid_coef_v_custom_range_flt_2_4 << 16), ~0);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + MIDBAND_COEF_H_CUST_FLT1_00,
+		(disp_tdshp_regs->mid_coef_h_custom_range_flt_0_0 << 0 |
+		disp_tdshp_regs->mid_coef_h_custom_range_flt_0_1 << 8 |
+		disp_tdshp_regs->mid_coef_h_custom_range_flt_0_2 << 16 |
+		disp_tdshp_regs->mid_coef_h_custom_range_flt_0_3 << 24), ~0);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + MIDBAND_COEF_H_CUST_FLT1_01,
+		(disp_tdshp_regs->mid_coef_h_custom_range_flt_0_4 << 0 |
+		disp_tdshp_regs->mid_coef_h_custom_range_flt_1_0 << 8 |
+		disp_tdshp_regs->mid_coef_h_custom_range_flt_1_1 << 16 |
+		disp_tdshp_regs->mid_coef_h_custom_range_flt_1_2 << 24), ~0);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + MIDBAND_COEF_H_CUST_FLT1_02,
+		(disp_tdshp_regs->mid_coef_h_custom_range_flt_1_3 << 0 |
+		disp_tdshp_regs->mid_coef_h_custom_range_flt_1_4 << 8 |
+		disp_tdshp_regs->mid_coef_h_custom_range_flt_2_0 << 16 |
+		disp_tdshp_regs->mid_coef_h_custom_range_flt_2_1 << 24), ~0);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + MIDBAND_COEF_H_CUST_FLT1_03,
+		(disp_tdshp_regs->mid_coef_h_custom_range_flt_2_2 << 0 |
+		disp_tdshp_regs->mid_coef_h_custom_range_flt_2_3 << 8 |
+		disp_tdshp_regs->mid_coef_h_custom_range_flt_2_4 << 16), ~0);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + HIGHBAND_COEF_V_CUST_FLT1_00,
+		(disp_tdshp_regs->high_coef_v_custom_range_flt_0_0 << 0 |
+		disp_tdshp_regs->high_coef_v_custom_range_flt_0_1 << 8 |
+		disp_tdshp_regs->high_coef_v_custom_range_flt_0_2 << 16 |
+		disp_tdshp_regs->high_coef_v_custom_range_flt_0_3 << 24), ~0);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + HIGHBAND_COEF_V_CUST_FLT1_01,
+		(disp_tdshp_regs->high_coef_v_custom_range_flt_0_4 << 0 |
+		disp_tdshp_regs->high_coef_v_custom_range_flt_1_0 << 8 |
+		disp_tdshp_regs->high_coef_v_custom_range_flt_1_1 << 16 |
+		disp_tdshp_regs->high_coef_v_custom_range_flt_1_2 << 24), ~0);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + HIGHBAND_COEF_V_CUST_FLT1_02,
+		(disp_tdshp_regs->high_coef_v_custom_range_flt_1_3 << 0 |
+		disp_tdshp_regs->high_coef_v_custom_range_flt_1_4 << 8 |
+		disp_tdshp_regs->high_coef_v_custom_range_flt_2_0 << 16 |
+		disp_tdshp_regs->high_coef_v_custom_range_flt_2_1 << 24), ~0);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + HIGHBAND_COEF_V_CUST_FLT1_03,
+		(disp_tdshp_regs->high_coef_v_custom_range_flt_2_2 << 0 |
+		disp_tdshp_regs->high_coef_v_custom_range_flt_2_3 << 8 |
+		disp_tdshp_regs->high_coef_v_custom_range_flt_2_4 << 16), ~0);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + HIGHBAND_COEF_H_CUST_FLT1_00,
+		(disp_tdshp_regs->high_coef_h_custom_range_flt_0_0 << 0 |
+		disp_tdshp_regs->high_coef_h_custom_range_flt_0_1 << 8 |
+		disp_tdshp_regs->high_coef_h_custom_range_flt_0_2 << 16 |
+		disp_tdshp_regs->high_coef_h_custom_range_flt_0_3 << 24), ~0);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + HIGHBAND_COEF_H_CUST_FLT1_01,
+		(disp_tdshp_regs->high_coef_h_custom_range_flt_0_4 << 0 |
+		disp_tdshp_regs->high_coef_h_custom_range_flt_1_0 << 8 |
+		disp_tdshp_regs->high_coef_h_custom_range_flt_1_1 << 16 |
+		disp_tdshp_regs->high_coef_h_custom_range_flt_1_2 << 24), ~0);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + HIGHBAND_COEF_H_CUST_FLT1_02,
+		(disp_tdshp_regs->high_coef_h_custom_range_flt_1_3 << 0 |
+		disp_tdshp_regs->high_coef_h_custom_range_flt_1_4 << 8 |
+		disp_tdshp_regs->high_coef_h_custom_range_flt_2_0 << 16 |
+		disp_tdshp_regs->high_coef_h_custom_range_flt_2_1 << 24), ~0);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + HIGHBAND_COEF_H_CUST_FLT1_03,
+		(disp_tdshp_regs->high_coef_h_custom_range_flt_2_2 << 0 |
+		disp_tdshp_regs->high_coef_h_custom_range_flt_2_3 << 8 |
+		disp_tdshp_regs->high_coef_h_custom_range_flt_2_4 << 16), ~0);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + HIGHBAND_COEF_RD_CUST_FLT1_00,
+		(disp_tdshp_regs->high_coef_rd_custom_range_flt_0_0 << 0 |
+		disp_tdshp_regs->high_coef_rd_custom_range_flt_0_1 << 8 |
+		disp_tdshp_regs->high_coef_rd_custom_range_flt_0_2 << 16 |
+		disp_tdshp_regs->high_coef_rd_custom_range_flt_0_3 << 24), ~0);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + HIGHBAND_COEF_RD_CUST_FLT1_01,
+		(disp_tdshp_regs->high_coef_rd_custom_range_flt_0_4 << 0 |
+		disp_tdshp_regs->high_coef_rd_custom_range_flt_1_0 << 8 |
+		disp_tdshp_regs->high_coef_rd_custom_range_flt_1_1 << 16 |
+		disp_tdshp_regs->high_coef_rd_custom_range_flt_1_2 << 24), ~0);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + HIGHBAND_COEF_RD_CUST_FLT1_02,
+		(disp_tdshp_regs->high_coef_rd_custom_range_flt_1_3 << 0 |
+		disp_tdshp_regs->high_coef_rd_custom_range_flt_1_4 << 8 |
+		disp_tdshp_regs->high_coef_rd_custom_range_flt_2_0 << 16 |
+		disp_tdshp_regs->high_coef_rd_custom_range_flt_2_1 << 24), ~0);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + HIGHBAND_COEF_RD_CUST_FLT1_03,
+		(disp_tdshp_regs->high_coef_rd_custom_range_flt_2_2 << 0 |
+		disp_tdshp_regs->high_coef_rd_custom_range_flt_2_3 << 8 |
+		disp_tdshp_regs->high_coef_rd_custom_range_flt_2_4 << 16), ~0);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + HIGHBAND_COEF_LD_CUST_FLT1_00,
+		(disp_tdshp_regs->high_coef_ld_custom_range_flt_0_0 << 0 |
+		disp_tdshp_regs->high_coef_ld_custom_range_flt_0_1 << 8 |
+		disp_tdshp_regs->high_coef_ld_custom_range_flt_0_2 << 16 |
+		disp_tdshp_regs->high_coef_ld_custom_range_flt_0_3 << 24), ~0);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + HIGHBAND_COEF_LD_CUST_FLT1_01,
+		(disp_tdshp_regs->high_coef_ld_custom_range_flt_0_4 << 0 |
+		disp_tdshp_regs->high_coef_ld_custom_range_flt_1_0 << 8 |
+		disp_tdshp_regs->high_coef_ld_custom_range_flt_1_1 << 16 |
+		disp_tdshp_regs->high_coef_ld_custom_range_flt_1_2 << 24), ~0);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + HIGHBAND_COEF_LD_CUST_FLT1_02,
+		(disp_tdshp_regs->high_coef_ld_custom_range_flt_1_3 << 0 |
+		disp_tdshp_regs->high_coef_ld_custom_range_flt_1_4 << 8 |
+		disp_tdshp_regs->high_coef_ld_custom_range_flt_2_0 << 16 |
+		disp_tdshp_regs->high_coef_ld_custom_range_flt_2_1 << 24), ~0);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + HIGHBAND_COEF_LD_CUST_FLT1_03,
+		(disp_tdshp_regs->high_coef_ld_custom_range_flt_2_2 << 0 |
+		disp_tdshp_regs->high_coef_ld_custom_range_flt_2_3 << 8 |
+		disp_tdshp_regs->high_coef_ld_custom_range_flt_2_4 << 16), ~0);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + ACTIVE_PARA,
+		(disp_tdshp_regs->mid_negative_offset << 0 |
+		disp_tdshp_regs->mid_positive_offset << 8 |
+		disp_tdshp_regs->high_negative_offset << 16 |
+		disp_tdshp_regs->high_positive_offset << 24), ~0);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + ACTIVE_PARA_FREQ_D,
+		(disp_tdshp_regs->D_active_parameter_N_gain << 0 |
+		disp_tdshp_regs->D_active_parameter_N_offset << 8 |
+		disp_tdshp_regs->D_active_parameter_P_offset << 16 |
+		disp_tdshp_regs->D_active_parameter_P_gain << 24), ~0);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + ACTIVE_PARA_FREQ_H,
+		(disp_tdshp_regs->High_active_parameter_N_gain << 0 |
+		disp_tdshp_regs->High_active_parameter_N_offset << 8 |
+		disp_tdshp_regs->High_active_parameter_P_offset << 16 |
+		disp_tdshp_regs->High_active_parameter_P_gain << 24), ~0);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + ACTIVE_PARA_FREQ_L,
+		(disp_tdshp_regs->L_active_parameter_N_gain << 0 |
+		disp_tdshp_regs->L_active_parameter_N_offset << 8 |
+		disp_tdshp_regs->L_active_parameter_P_offset << 16 |
+		disp_tdshp_regs->L_active_parameter_P_gain << 24), ~0);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + ACTIVE_PARA_FREQ_M,
+		(disp_tdshp_regs->Mid_active_parameter_N_gain << 0 |
+		disp_tdshp_regs->Mid_active_parameter_N_offset << 8 |
+		disp_tdshp_regs->Mid_active_parameter_P_offset << 16 |
+		disp_tdshp_regs->Mid_active_parameter_P_gain << 24), ~0);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + MDP_TDSHP_SIZE_PARA,
+		(disp_tdshp_regs->SIZE_PARA_SMALL_MEDIUM << 0 |
+		disp_tdshp_regs->SIZE_PARA_MEDIUM_BIG << 6 |
+		disp_tdshp_regs->SIZE_PARA_BIG_HUGE << 12), 0x3FFFF);
+
+	cmdq_pkt_write(handle, comp->cmdq_base,
+		comp->regs_pa + FINAL_SIZE_ADAPTIVE_WEIGHT_HUGE,
+		(disp_tdshp_regs->Mid_size_adaptive_weight_HUGE << 0 |
+		disp_tdshp_regs->Mid_auto_adaptive_weight_HUGE << 5 |
+		disp_tdshp_regs->high_size_adaptive_weight_HUGE << 10 |
+		disp_tdshp_regs->high_auto_adaptive_weight_HUGE << 15), ~0);
+
+	cmdq_pkt_write(handle, comp->cmdq_base,
+		comp->regs_pa + FINAL_SIZE_ADAPTIVE_WEIGHT_BIG,
+		(disp_tdshp_regs->Mid_size_adaptive_weight_BIG << 0 |
+		disp_tdshp_regs->Mid_auto_adaptive_weight_BIG << 5 |
+		disp_tdshp_regs->high_size_adaptive_weight_BIG << 10 |
+		disp_tdshp_regs->high_auto_adaptive_weight_BIG << 15), ~0);
+
+	cmdq_pkt_write(handle, comp->cmdq_base,
+		comp->regs_pa + FINAL_SIZE_ADAPTIVE_WEIGHT_MEDIUM,
+		(disp_tdshp_regs->Mid_size_adaptive_weight_MEDIUM << 0 |
+		disp_tdshp_regs->Mid_auto_adaptive_weight_MEDIUM << 5 |
+		disp_tdshp_regs->high_size_adaptive_weight_MEDIUM << 10 |
+		disp_tdshp_regs->high_auto_adaptive_weight_MEDIUM << 15), ~0);
+
+	cmdq_pkt_write(handle, comp->cmdq_base,
+		comp->regs_pa + FINAL_SIZE_ADAPTIVE_WEIGHT_SMALL,
+		(disp_tdshp_regs->Mid_size_adaptive_weight_SMALL << 0 |
+		disp_tdshp_regs->Mid_auto_adaptive_weight_SMALL << 5 |
+		disp_tdshp_regs->high_size_adaptive_weight_SMALL << 10 |
+		disp_tdshp_regs->high_auto_adaptive_weight_SMALL << 15), ~0);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + MDP_TDSHP_CFG,
+		(disp_tdshp_regs->FREQ_EXTRACT_ENHANCE << 12 |
+		disp_tdshp_regs->FILTER_HIST_EN << 16),
+		((0x1 << 16) | (0x1 << 12)));
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + MDP_TDSHP_FREQUENCY_WEIGHTING,
+		(disp_tdshp_regs->freq_M_weighting << 0 |
+		disp_tdshp_regs->freq_H_weighting << 4 |
+		disp_tdshp_regs->freq_D_weighting << 8 |
+		disp_tdshp_regs->freq_L_weighting << 12), ~0);
+
+	cmdq_pkt_write(handle, comp->cmdq_base,
+		comp->regs_pa + MDP_TDSHP_FREQUENCY_WEIGHTING_FINAL,
+		(disp_tdshp_regs->freq_M_final_weighting << 0 |
+		disp_tdshp_regs->freq_D_final_weighting << 5 |
+		disp_tdshp_regs->freq_L_final_weighting << 10 |
+		disp_tdshp_regs->freq_WH_final_weighting << 15), ~0);
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + LUMA_CHROMA_PARAMETER,
+		(disp_tdshp_regs->luma_low_gain << 0 |
+		disp_tdshp_regs->luma_low_index << 3 |
+		disp_tdshp_regs->luma_high_index << 8 |
+		disp_tdshp_regs->luma_high_gain << 13 |
+		disp_tdshp_regs->chroma_low_gain << 16 |
+		disp_tdshp_regs->chroma_low_index << 19 |
+		disp_tdshp_regs->chroma_high_index << 24 |
+		disp_tdshp_regs->chroma_high_gain << 29), ~0);
+
+	cmdq_pkt_write(handle, comp->cmdq_base,
+		comp->regs_pa + SIZE_PARAMETER_MODE_SEGMENTATION_LENGTH,
+		(disp_tdshp_regs->Luma_adaptive_mode << 0 |
+		disp_tdshp_regs->Chroma_adaptive_mode << 1 |
+		disp_tdshp_regs->SIZE_PARAMETER << 2 |
+		disp_tdshp_regs->Luma_shift << 12 |
+		disp_tdshp_regs->Chroma_shift << 15 |
+		disp_tdshp_regs->Regional_en << 18),
+		(1 << 18) | (0x7 << 15) | (0x7 << 12) | (0x1F << 2) | (1 << 1) | (1 << 0));
+
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + CLASS_0_2_GAIN,
+		(disp_tdshp_regs->class_0_positive_gain << 0 |
+		disp_tdshp_regs->class_0_negative_gain << 5),
+		0x3FF);
+
+clarity_write_reg_unlock:
+	if (lock)
+		mutex_unlock(&primary_data->data_lock);
+
+	return ret;
+}
 static int disp_tdshp_write_tdshp_reg(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, int lock)
 {
@@ -239,15 +509,15 @@ static int disp_tdshp_write_tdshp_reg(struct mtk_ddp_comp *comp,
 		comp->regs_pa + DISP_TDSHP_CFG, 0x2, 0x2);
 
 	/* to avoid different show of dual pipe, pipe1 use pipe0's config data */
-	disp_tdshp_regs = primary_data->tdshp_regs;
+	disp_tdshp_regs = &primary_data->tdshp_regs->disp_tdshp_regs;
 	if (disp_tdshp_regs == NULL) {
 		DDPINFO("%s: comp %d not initialized\n", __func__, comp->id);
 		ret = -EFAULT;
 		goto thshp_write_reg_unlock;
 	}
 
-	DDPINFO("tdshp_en: %x, tdshp_limit: %x, tdshp_ylev_256: %x, tdshp_gain_high:%d, tdshp_gain_mid:%d\n",
-			disp_tdshp_regs->tdshp_en, disp_tdshp_regs->tdshp_limit,
+	DDPINFO("%s: tdshp_en: %x, tdshp_limit: %x, tdshp_ylev_256: %x, tdshp_gain_high:%d, tdshp_gain_mid:%d\n",
+			__func__, disp_tdshp_regs->tdshp_en, disp_tdshp_regs->tdshp_limit,
 			disp_tdshp_regs->tdshp_ylev_256, disp_tdshp_regs->tdshp_gain_high,
 			disp_tdshp_regs->tdshp_gain_mid);
 
@@ -269,15 +539,15 @@ static int disp_tdshp_write_tdshp_reg(struct mtk_ddp_comp *comp,
 
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_TDSHP_02,
 		(disp_tdshp_regs->tdshp_coring_value << 8 |
-				disp_tdshp_regs->tdshp_bound << 16 |
-				disp_tdshp_regs->tdshp_limit << 24), ~0);
+		disp_tdshp_regs->tdshp_bound << 16 |
+		disp_tdshp_regs->tdshp_limit << 24), ~0);
 
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_TDSHP_03,
 		(disp_tdshp_regs->tdshp_sat_proc << 0 |
-				disp_tdshp_regs->tdshp_ac_lpf_coe << 8 |
-				disp_tdshp_regs->tdshp_clip_thr << 16 |
-				disp_tdshp_regs->tdshp_clip_ratio << 24 |
-				disp_tdshp_regs->tdshp_clip_en << 31), ~0);
+		disp_tdshp_regs->tdshp_ac_lpf_coe << 8 |
+		disp_tdshp_regs->tdshp_clip_thr << 16 |
+		disp_tdshp_regs->tdshp_clip_ratio << 24 |
+		disp_tdshp_regs->tdshp_clip_en << 31), ~0);
 
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DISP_TDSHP_05,
 		(disp_tdshp_regs->tdshp_ylev_p048 << 0 |
@@ -482,17 +752,15 @@ thshp_write_reg_unlock:
 }
 
 static int disp_tdshp_update_param(struct mtk_ddp_comp *comp,
-	struct cmdq_pkt *handle, struct DISP_TDSHP_REG *user_tdshp_regs)
+	struct cmdq_pkt *handle, struct TDSHP_CLARITY_REG *user_tdshp_regs)
 {
 	struct mtk_disp_tdshp *tdshp_data = comp_to_tdshp(comp);
 	struct mtk_disp_tdshp_primary *primary_data = tdshp_data->primary_data;
 	int ret = 0;
-	struct DISP_TDSHP_REG *tdshp_regs;
-
-	pr_notice("%s\n", __func__);
+	struct TDSHP_CLARITY_REG *tdshp_regs;
 
 	if (primary_data->tdshp_regs == NULL) {
-		tdshp_regs = kmalloc(sizeof(struct DISP_TDSHP_REG), GFP_KERNEL);
+		tdshp_regs = kmalloc(sizeof(struct TDSHP_CLARITY_REG), GFP_KERNEL);
 		if (tdshp_regs == NULL) {
 			DDPPR_ERR("%s: no memory\n", __func__);
 			return -EFAULT;
@@ -505,11 +773,24 @@ static int disp_tdshp_update_param(struct mtk_ddp_comp *comp,
 		ret = -EFAULT;
 	} else {
 		mutex_lock(&primary_data->data_lock);
-		memcpy(primary_data->tdshp_regs, user_tdshp_regs,
-			sizeof(struct DISP_TDSHP_REG));
+		primary_data->tdshp_regs->dirty_flg = user_tdshp_regs->dirty_flg;
 
-		pr_notice("%s: Set module(%d) lut\n", __func__, comp->id);
-		ret = disp_tdshp_write_tdshp_reg(comp, handle, 0);
+		DDPINFO("%s: comp_id:%d dirty_flg:0x%x\n",
+			__func__, comp->id, primary_data->tdshp_regs->dirty_flg);
+		if (primary_data->tdshp_regs->dirty_flg & TDSHP_REG_DIRTY) {
+			memcpy(&primary_data->tdshp_regs->disp_tdshp_regs, &user_tdshp_regs->disp_tdshp_regs,
+			sizeof(struct DISP_TDSHP_REG));
+			ret |= disp_tdshp_write_tdshp_reg(comp, handle, 0);
+			if (!(primary_data->tdshp_reg_valid & TDSHP_REG_DIRTY))
+				primary_data->tdshp_reg_valid |= TDSHP_REG_DIRTY;
+		}
+		if (primary_data->tdshp_regs->dirty_flg & CLARITY_REG_DIRTY) {
+			memcpy(&primary_data->tdshp_regs->disp_clarity_regs, &user_tdshp_regs->disp_clarity_regs,
+			sizeof(struct DISP_TDSHP_CLARITY_REG));
+			ret |= disp_tdshp_write_clarity_reg(comp, handle, 0);
+			if (!(primary_data->tdshp_reg_valid & CLARITY_REG_DIRTY))
+				primary_data->tdshp_reg_valid |= CLARITY_REG_DIRTY;
+		}
 		mutex_unlock(&primary_data->data_lock);
 	}
 
@@ -539,9 +820,12 @@ static int disp_tdshp_cfg_set_reg(struct mtk_ddp_comp *comp,
 {
 
 	int ret = 0;
-	struct DISP_TDSHP_REG *config = data;
+	struct TDSHP_CLARITY_REG *config = data;
 	struct mtk_disp_tdshp *tdshp = comp_to_tdshp(comp);
 	struct mtk_disp_tdshp_primary *primary_data = tdshp->primary_data;
+
+	if (primary_data->tdshp_reg_valid == DIRTY_NONE)
+		disp_tdshp_bypass(comp, 0, PQ_FEATURE_DEFAULT, handle);
 
 	if (disp_tdshp_update_param(comp, handle, config) < 0) {
 		DDPPR_ERR("%s: failed\n", __func__);
@@ -554,11 +838,6 @@ static int disp_tdshp_cfg_set_reg(struct mtk_ddp_comp *comp,
 			DDPPR_ERR("%s: comp_tdshp1 failed\n", __func__);
 			return -EFAULT;
 		}
-	}
-
-	if (!primary_data->tdshp_reg_valid) {
-		disp_tdshp_bypass(comp, 0, PQ_FEATURE_DEFAULT, handle);
-		primary_data->tdshp_reg_valid = 1;
 	}
 
 	return ret;
@@ -574,8 +853,6 @@ int disp_tdshp_act_get_size(struct mtk_ddp_comp *comp, void *data)
 	struct DISP_TDSHP_DISPLAY_SIZE *dst =
 			(struct DISP_TDSHP_DISPLAY_SIZE *)data;
 
-	pr_notice("%s", __func__);
-
 	mtk_drm_crtc_get_panel_original_size(crtc, &width, &height);
 	if (width == 0 || height == 0) {
 		DDPFUNC("panel original size error(%dx%d).\n", width, height);
@@ -587,8 +864,6 @@ int disp_tdshp_act_get_size(struct mtk_ddp_comp *comp, void *data)
 	primary_data->tdshp_size.lcm_height = height;
 
 	disp_tdshp_wait_size(comp, 60);
-
-	pr_notice("%s ---", __func__);
 	memcpy(dst, &primary_data->tdshp_size, sizeof(primary_data->tdshp_size));
 
 	return 0;
@@ -598,13 +873,19 @@ static void disp_tdshp_config_overhead(struct mtk_ddp_comp *comp,
 	struct mtk_ddp_config *cfg)
 {
 	struct mtk_disp_tdshp *tdshp_data = comp_to_tdshp(comp);
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	struct drm_crtc *crtc = &mtk_crtc->base;
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
 
 	DDPINFO("line: %d\n", __LINE__);
 
 	if (cfg->tile_overhead.is_support) {
 		/*set component overhead*/
 		if (!tdshp_data->is_right_pipe) {
-			tdshp_data->tile_overhead.comp_overhead = 3;
+			if (priv->data->mmsys_id == MMSYS_MT6991)
+				tdshp_data->tile_overhead.comp_overhead = 4;
+			else
+				tdshp_data->tile_overhead.comp_overhead = 3;
 			/*add component overhead on total overhead*/
 			cfg->tile_overhead.left_overhead +=
 				tdshp_data->tile_overhead.comp_overhead;
@@ -616,7 +897,10 @@ static void disp_tdshp_config_overhead(struct mtk_ddp_comp *comp,
 			tdshp_data->tile_overhead.overhead =
 				cfg->tile_overhead.left_overhead;
 		} else {
-			tdshp_data->tile_overhead.comp_overhead = 3;
+			if (priv->data->mmsys_id == MMSYS_MT6991)
+				tdshp_data->tile_overhead.comp_overhead = 4;
+			else
+				tdshp_data->tile_overhead.comp_overhead = 3;
 			/*add component overhead on total overhead*/
 			cfg->tile_overhead.right_overhead +=
 				tdshp_data->tile_overhead.comp_overhead;
@@ -728,7 +1012,7 @@ static void disp_tdshp_config(struct mtk_ddp_comp *comp,
 			comp->regs_pa + DISP_TDSHP_SHADOW_CTRL, 0x0, 0x1);
 
 	// for Display Clarity
-	if (primary_data->aal_clarity_support && *primary_data->aal_clarity_support) {
+	if (primary_data->tdshp_clarity_support) {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_TDSHP_00, 0x1 << 31, 0x1 << 31);
 		cmdq_pkt_write(handle, comp->cmdq_base,
@@ -738,8 +1022,10 @@ static void disp_tdshp_config(struct mtk_ddp_comp *comp,
 			comp->regs_pa + DISP_TDSHP_CFG, 0x0 << 12, 0x1 << 12);
 	}
 
-	if (primary_data->tdshp_reg_valid)
+	if (primary_data->tdshp_reg_valid & TDSHP_REG_DIRTY)
 		disp_tdshp_write_tdshp_reg(comp, handle, 0);
+	if (primary_data->tdshp_clarity_support && (primary_data->tdshp_reg_valid & CLARITY_REG_DIRTY))
+		disp_tdshp_write_clarity_reg(comp, handle, 0);
 
 	if (primary_data->relay_state != 0)
 		cmdq_pkt_write(handle, comp->cmdq_base,
@@ -750,7 +1036,7 @@ static void disp_tdshp_config(struct mtk_ddp_comp *comp,
 	if (primary_data->get_size_available == false) {
 		primary_data->get_size_available = true;
 		wake_up_interruptible(&primary_data->size_wq);
-		pr_notice("size available: (w, h)=(%d, %d)+\n", cfg->w, cfg->h);
+		DDPINFO("size available: (w, h)=(%d, %d)+\n", cfg->w, cfg->h);
 	}
 }
 
@@ -805,7 +1091,7 @@ static int disp_tdshp_user_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handl
 {
 	struct mtk_disp_tdshp *tdshp = comp_to_tdshp(comp);
 
-	pr_notice("%s, cmd: %d\n", __func__, cmd);
+	DDPINFO("%s, cmd: %d\n", __func__, cmd);
 	switch (cmd) {
 	default:
 		DDPPR_ERR("%s: error cmd: %d\n", __func__, cmd);
@@ -854,14 +1140,10 @@ static void disp_tdshp_init_primary_data(struct mtk_ddp_comp *comp)
 		tdshp_data->primary_data = companion_data->primary_data;
 		return;
 	}
-	aal_comp = mtk_ddp_comp_sel_in_cur_crtc_path(comp->mtk_crtc, MTK_DISP_AAL, 0);
-	if (aal_comp) {
-		aal_data = comp_to_aal(aal_comp);
-		primary_data->aal_clarity_support = &aal_data->primary_data->disp_clarity_support;
-	}
+
 	init_waitqueue_head(&primary_data->size_wq);
 	mutex_init(&primary_data->data_lock);
-	primary_data->tdshp_reg_valid = 0;
+	primary_data->tdshp_reg_valid = DIRTY_NONE;
 	primary_data->relay_state = 0x1 << PQ_FEATURE_DEFAULT;
 }
 
@@ -1120,6 +1402,13 @@ static int disp_tdshp_probe(struct platform_device *pdev)
 	if ((int)comp_id < 0) {
 		DDPPR_ERR("Failed to identify by alias: %d\n", comp_id);
 		goto error_primary;
+	}
+
+	// for Display Clarity
+	if (!of_property_read_u32(dev->of_node, "mtk-tdshp-clarity-support",
+			&priv->primary_data->tdshp_clarity_support)) {
+		DDPMSG("%s comp_id: %d, mtk_tdshp_clarity_support = %d\n",
+				__func__, comp_id, priv->primary_data->tdshp_clarity_support);
 	}
 
 	ret = mtk_ddp_comp_init(dev, dev->of_node, &priv->ddp_comp, comp_id,

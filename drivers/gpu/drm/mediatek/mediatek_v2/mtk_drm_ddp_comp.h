@@ -72,6 +72,7 @@ struct drm_crtc_state;
 
 #define MMSYS_MISC                                0xF0
 #define MMSYS_SODI_REQ_MASK                       0xF4
+#define MT6771_MMSYS_SODI_REQ_MASK                0xF8
 #define MMSYS_EMI_REQ_CTL                         0xF8
 
 #define OVLSYS_EXRDMA_ULTRA_SEL0                  0x40
@@ -94,6 +95,7 @@ struct drm_crtc_state;
 
 #define MMSYS_DUMMY0 0x0400
 #define DISP_REG_CONFIG_MMSYS_MISC                0x0F0
+#define MMSYS1_BUF_UNDERRUN_ID0                   0x0BA4
 
 #define SODI_HRT_FIFO_SEL                         REG_FLD_MSB_LSB(3, 0)
 	#define SODI_HRT_FIFO_SEL_DISP0_PD_MODE       REG_FLD_MSB_LSB(0, 0)
@@ -103,6 +105,11 @@ struct drm_crtc_state;
 
 #define SODI_REQ_SEL_APSRC				          REG_FLD_MSB_LSB(0, 0)
 #define SODI_REQ_SEL_DDREN				          REG_FLD_MSB_LSB(1, 1)
+
+#define FLD_SODI_RDMA0_REQ_MASKEN		REG_FLD_MSB_LSB(9, 8)
+#define FLD_SODI_RDMA1_REQ_MASKEN		REG_FLD_MSB_LSB(11, 10)
+#define FLD_SODI_RDMA0_REQ_MASKVAL		REG_FLD_MSB_LSB(13, 12)
+#define FLD_SODI_RDMA1_REQ_MASKVAL		REG_FLD_MSB_LSB(15, 14)
 
 #define SODI_REQ_SEL_ALL                          REG_FLD_MSB_LSB(11, 8)
 	#define SODI_REQ_SEL_RDMA0_PD_MODE            REG_FLD_MSB_LSB(8, 8)
@@ -956,6 +963,9 @@ enum mtk_ddp_io_cmd {
 	LCM_RESET,
 	LCM_CUST_FUNC,
 	DSI_SEND_DDIC_CMD_PACK,
+#ifdef CONFIG_MI_DISP
+	MI_SET_BL_BY_I2C,
+#endif
 	DSI_SET_BL,
 	DSI_SET_BL_AOD,
 	DSI_SET_BL_GRP,
@@ -984,6 +994,7 @@ enum mtk_ddp_io_cmd {
 	GET_FRAME_HRT_BW_BY_DATARATE,
 	GET_FRAME_HRT_BW_BY_MODE,
 	DSI_SEND_DDIC_CMD,
+	DSI_SEND_DDIC_CMD_BLOCK,
 	DSI_READ_DDIC_CMD,
 	DSI_GET_VIRTUAL_HEIGH,
 	DSI_GET_VIRTUAL_WIDTH,
@@ -1006,9 +1017,15 @@ enum mtk_ddp_io_cmd {
 	DSI_INIT_VFP_EARLY_STOP,
 	DSI_DISABLE_VFP_EALRY_STOP,
 	/*Msync 2.0 cmd end*/
+#ifdef CONFIG_MI_DISP_ESD_CHECK
+	ESD_RESTORE_BACKLIGHT,
+	MI_DISP_ESD_CHECK_READ,
+	MI_DISP_ESD_CHECK_CMP,
+#endif
 	DUAL_TE_INIT,
 	OVL_GET_SOURCE_BPC,
 	DSI_GET_LINE_TIME_NS,
+	DSI_GET_LINE_TIME_NS_BY_MODE,
 	DSI_DUMP_LCM_INFO,
 	DSI_SET_TARGET_LINE,
 	DSI_READ_PANELID,
@@ -1334,11 +1351,6 @@ static inline void mtk_ddp_comp_layer_config(struct mtk_ddp_comp *comp,
 {
 	if (comp && comp->funcs && comp->funcs->layer_config &&
 			!comp->blank_mode) {
-		DDPDBG("[DRM]func:%s, line:%d ==>\n",
-			__func__, __LINE__);
-		DDPDBG("comp_funcs:0x%p, layer_config:0x%p\n",
-			comp->funcs, comp->funcs->layer_config);
-
 		comp->funcs->layer_config(comp, idx, state, handle);
 	}
 }
@@ -1572,6 +1584,8 @@ void mt6873_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 void mt6853_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 			    struct cmdq_pkt *handle, void *data);
 void mt6833_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
+			    struct cmdq_pkt *handle, void *data);
+void mt6771_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 			    struct cmdq_pkt *handle, void *data);
 void mt6879_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 			    struct cmdq_pkt *handle, void *data);

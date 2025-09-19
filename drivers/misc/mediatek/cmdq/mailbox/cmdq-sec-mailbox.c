@@ -426,17 +426,17 @@ s32 cmdq_sec_insert_backup_cookie(struct cmdq_pkt *pkt)
 	cmdq_log("%s pkt:%p thread:%u gce:%#lx",
 		__func__, pkt, thread->idx, (unsigned long)cmdq->base_pa);
 
-	err = cmdq_pkt_read(pkt, NULL,
-		(u32)(thread->gce_pa + CMDQ_THR_BASE +
-		CMDQ_THR_SIZE * thread->idx + CMDQ_THR_EXEC_CNT_PA),
-		CMDQ_THR_SPR_IDX1);
-	if (err)
-		return err;
-
 	if (!cpr_not_support_cookie)
 		xpr = CMDQ_CPR_THREAD_COOKIE(thread->idx);
 	else
 		xpr = CMDQ_THR_SPR_IDX1;
+
+	err = cmdq_pkt_read(pkt, NULL,
+		(u32)(thread->gce_pa + CMDQ_THR_BASE +
+		CMDQ_THR_SIZE * thread->idx + CMDQ_THR_EXEC_CNT_PA),
+		xpr);
+	if (err)
+		return err;
 
 	left.reg = true;
 	left.idx = xpr;
@@ -796,6 +796,7 @@ static s32 cmdq_sec_irq_notify_start(struct cmdq_sec *cmdq)
 	cmdq_mbox_enable(cmdq->clt->chan);
 	err = cmdq_pkt_flush_async(cmdq->clt_pkt,
 		cmdq_sec_irq_notify_callback, (void *)cmdq);
+
 	if (err < 0) {
 		cmdq_err("irq cmdq_pkt_flush_async failed:%d", err);
 		cmdq_mbox_stop(cmdq->clt);
@@ -850,20 +851,15 @@ static s32 cmdq_sec_session_init(struct cmdq_sec_context *context)
 #endif
 
 #ifdef CMDQ_SECURE_MTEE_SUPPORT
-		if (!is_pkvm_enabled()) {
-			if (!context->mtee_iwc_msg ||
-				!context->mtee_iwc_ex1 || !context->mtee_iwc_ex2) {
-				err = cmdq_sec_mtee_allocate_wsm(&context->mtee,
-					&context->mtee_iwc_msg,
-					sizeof(struct iwcCmdqMessage_t),
-					&context->mtee_iwc_ex1,
-					sizeof(struct iwcCmdqMessageEx_t),
-					&context->mtee_iwc_ex2,
-					sizeof(struct iwcCmdqMessageEx2_t));
-				if (err)
-					break;
-			}
-		}
+		err = cmdq_sec_mtee_register_wsm(&context->mtee,
+			&context->mtee_iwc_msg,
+			sizeof(struct iwcCmdqMessage_t),
+			&context->mtee_iwc_ex1,
+			sizeof(struct iwcCmdqMessageEx_t),
+			&context->mtee_iwc_ex2,
+			sizeof(struct iwcCmdqMessageEx2_t));
+		if (err)
+			break;
 #endif
 		else {
 			if (!context->pkvm_iwc_msg ||
@@ -1439,12 +1435,12 @@ static const struct dev_pm_ops cmdq_sec_pm_ops = {
 
 static const struct of_device_id cmdq_sec_of_ids[] = {
 	{.compatible = "mediatek,mailbox-gce-sec",},
+	{.compatible = "mediatek,mailbox-gce-svp",},
 	{}
 };
 
 void cmdq_sec_mbox_switch_normal(struct cmdq_client *cl)
 {
-#ifdef CMDQ_GP_SUPPORT
 	struct cmdq_sec *cmdq =
 		container_of(cl->chan->mbox, typeof(*cmdq), mbox);
 	struct cmdq_sec_thread *thread =
@@ -1457,13 +1453,13 @@ void cmdq_sec_mbox_switch_normal(struct cmdq_client *cl)
 	mutex_lock(&cmdq->exec_lock);
 	/* TODO : use other CMD_CMDQ_TL for maintenance */
 	cmdq_sec_task_submit(cmdq, NULL, CMD_CMDQ_TL_PATH_RES_RELEASE,
-		thread->idx, NULL, false);
+		thread->idx, NULL, true);
 	mutex_unlock(&cmdq->exec_lock);
 
 	cmdq_log("[OUT] %s: cl:%p cmdq:%p thrd:%p idx:%u\n",
 		__func__, cl, cmdq, thread, thread->idx);
 	cmdq_sec_mbox_disable(cl->chan);
-#endif
+
 }
 EXPORT_SYMBOL(cmdq_sec_mbox_switch_normal);
 

@@ -104,7 +104,8 @@ struct vcp_regs {
 	void __iomem *bus_prot;
 	void __iomem *cfg_pwr;
 	void __iomem *cfgreg_ap;
-	void __iomem *cfg_sec_gpr;
+	void __iomem *cfg_sec;
+	void __iomem *cfg_sec_ctrl;
 	void __iomem *vcp_vlp_ao_rsvd7;
 	void __iomem *vcp_pwr_ack;
 	void __iomem *vcp_clk_sys;

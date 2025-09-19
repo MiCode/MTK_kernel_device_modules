@@ -130,6 +130,11 @@ static int vdec_init(struct mtk_vcodec_ctx *ctx, unsigned long *h_vdec)
 	VCU_FPTR(vcu_set_v4l2_callback)(inst->vcu.dev, &cb);
 
 	inst->vsi = (struct vdec_vsi *)inst->vcu.vsi;
+	if (inst->vsi == NULL) {
+		mtk_vcodec_err(inst, "vcu->vsi is NULL");
+		vcu_dec_deinit(&inst->vcu);
+		goto error_free_inst;
+	}
 	ctx->input_driven = inst->vsi->input_driven;
 	ctx->output_async = inst->vsi->output_async;
 	ctx->ipi_blocked = &inst->vsi->ipi_blocked;

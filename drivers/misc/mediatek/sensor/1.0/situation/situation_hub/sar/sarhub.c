@@ -116,14 +116,14 @@ static int sar_get_data(int *probability, int *status)
 {
 	int err = 0;
 	struct data_unit_t data;
-	uint64_t time_stamp = 0;
+	//uint64_t time_stamp = 0;
 
 	err = sensor_get_data_from_hub(ID_SAR, &data);
 	if (err < 0) {
 		pr_err_ratelimited("sensor_get_data_from_hub fail!!\n");
 		return -1;
 	}
-	time_stamp		= data.time_stamp;
+	//time_stamp		= data.time_stamp;
 	*probability	= data.sar_event.data[0];
 	return 0;
 }

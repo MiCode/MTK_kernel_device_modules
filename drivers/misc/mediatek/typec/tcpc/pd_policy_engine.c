@@ -53,6 +53,9 @@ static const char *const pe_state_name[] = {
 #if CONFIG_USB_PD_REV30_SRC_CAP_EXT_LOCAL
 	"PE_SRC_GIVE_SOURCE_CAP_EXT",
 #endif	/* CONFIG_USB_PD_REV30_SRC_CAP_EXT_LOCAL */
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+	"PE_SRC_GIVE_SINK_CAP_EXT",
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 #if CONFIG_USB_PD_REV30_STATUS_LOCAL
 	"PE_SRC_GIVE_SOURCE_STATUS",
 #endif	/* CONFIG_USB_PD_REV30_STATUS_LOCAL */
@@ -316,6 +319,9 @@ static const char *const pe_state_name[] = {
 #if CONFIG_USB_PD_REV30_SRC_CAP_EXT_LOCAL
 	"SRC_GIVE_CAP_EXT",
 #endif	/* CONFIG_USB_PD_REV30_SRC_CAP_EXT_LOCAL */
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+	"SRC_GIVE_SNK_CAP_EXT",
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 #if CONFIG_USB_PD_REV30_STATUS_LOCAL
 	"SRC_GIVE_STATUS",
 #endif	/* CONFIG_USB_PD_REV30_STATUS_LOCAL */
@@ -591,6 +597,9 @@ static const struct pe_state_actions pe_state_actions[] = {
 #if CONFIG_USB_PD_REV30_SRC_CAP_EXT_LOCAL
 	PE_STATE_ACTIONS(pe_src_give_source_cap_ext),
 #endif	/* CONFIG_USB_PD_REV30_SRC_CAP_EXT_LOCAL */
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+	PE_STATE_ACTIONS(pe_src_give_sink_cap_ext),
+#endif /* CONFIG_OEM_TCPC_PD_SC2150 */
 #if CONFIG_USB_PD_REV30_STATUS_LOCAL
 	PE_STATE_ACTIONS(pe_src_give_source_status),
 #endif	/* CONFIG_USB_PD_REV30_STATUS_LOCAL */
@@ -945,6 +954,13 @@ void (*pe_get_exit_action(uint8_t pe_state))
 	return retval;
 }
 
+int pd_usb_connected = 0;
+int get_pd_usb_connected(void)
+{
+	return pd_usb_connected;
+}
+EXPORT_SYMBOL(get_pd_usb_connected);
+
 static inline void print_state(
 	struct pd_port *pd_port, uint8_t state)
 {
@@ -993,6 +1009,13 @@ static inline void pd_pe_state_change(
 		PD_BUG_ON(1);
 		return;
 	}
+
+	if (new_state >= PE_IDLE1)
+		pd_usb_connected = 0;
+	else if (new_state == PE_SNK_READY)
+		pd_usb_connected = 1;
+	else if (new_state == PE_SRC_READY)
+		pd_usb_connected = 2;
 
 	if (new_state < PE_IDLE1 && new_state != PE_ERROR_RECOVERY)
 		prev_exit_action = pe_get_exit_action(old_state);
@@ -1079,9 +1102,22 @@ static inline bool pd_try_get_vdm_event(
 {
 	bool ret = false;
 	struct pd_port *pd_port = &tcpc->pd_port;
-
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+    int rv = 0;
+    uint32_t chip_id, chip_pid;
+    rv = tcpci_get_chip_id(tcpc, &chip_id);
+    rv |= tcpci_get_chip_pid(tcpc, &chip_pid);
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 	switch (pd_port->pe_pd_state) {
 #if CONFIG_USB_PD_PE_SINK
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+    case PE_SNK_TRANSITION_SINK:
+        if (!rv && SC2150A_DID == chip_id && 
+                SC2150_PID == chip_pid)  {
+            ret = pd_get_vdm_event(tcpc, pd_event);
+        }
+        break;
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 	case PE_SNK_READY:
 #endif	/* CONFIG_USB_PD_PE_SINK */
 #if CONFIG_USB_PD_PE_SOURCE

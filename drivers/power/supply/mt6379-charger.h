@@ -18,9 +18,13 @@
 #include <linux/regulator/driver.h>
 #include <linux/workqueue.h>
 #include <linux/regmap.h>
+#include <linux/reboot.h>
+#include <linux/reboot-mode.h>
+#include <linux/alarmtimer.h>
 
 #include "charger_class.h"
 #include "mtk_charger.h"
+#include "mtk_battery.h"
 #include "mtk_chg_type_det.h"
 
 extern unsigned int dbg_log_level;
@@ -97,6 +101,12 @@ extern unsigned int dbg_log_level;
 #define MT6379_REG_USBID_CTRL1		(0x190)
 #define MT6379_REG_USBID_CTRL2		(0x191)
 
+/* For store icc calibrated result */
+#define MT6379_REG_WAFER_ID		(0x307)
+#define MT6379_REG_TM_SAVED_ICC_ORIGIN	(0x380)
+#define MT6379_REG_TM_TBTAD		(0x3CB)
+#define MT6379_REG_TM_ICC_OFFSET	(0x3E1)
+
 #define MT6379_REG_PD_SYS_CTRL3		(0x4B0)
 #define MT6379_REG_TYPECOTP_CTRL	(0x4CD)
 
@@ -105,6 +115,7 @@ extern unsigned int dbg_log_level;
 #define MT6379_REG_DPDM_CTRL1		(0x603)
 #define MT6379_REG_DPDM_CTRL2		(0x604)
 #define MT6379_REG_DPDM_CTRL4		(0x606)
+#define MT6379_REG_DPDM_CTRL5		(0x607)
 
 #define MT6379_REG_FGADC_SYS_INFO_CON0	(0x7F9)
 
@@ -120,7 +131,7 @@ enum mt6379_charger_reg_field {
 	/* MT6379_REG_CORE_CTRL2 */
 	F_SHIP_RST_DIS, F_PD_MDEN,
 	/* MT6379_REG_CHG_STAT0 */
-	F_ST_PWR_RDY,
+	F_ST_WLS_CHG_RDY, F_ST_PWR_RDY,
 	/* MT6379_REG_CHG_STAT1 */
 	F_ST_MIVR,
 	/* MT6379_REG_CHG_STAT2 */
@@ -132,7 +143,7 @@ enum mt6379_charger_reg_field {
 	/* MT6379_REG_CHG_TOP1 */
 	F_PP_PG_FLAG, F_BATFET_DIS, F_BATFET_DISDLY, F_QON_RST_EN,
 	/* MT6379_REG_CHG_TOP2 */
-	F_UUG_FULLON, F_CHG_BYPASS,
+	F_UUG_FULLON, F_CHG_OCP, F_CHG_BYPASS,
 	/* MT6379_REG_CHG_IBUS_AICR */
 	F_IBUS_AICR,
 	/* MT6379_REG_CHG_WLIN_AICR */
@@ -175,22 +186,40 @@ enum mt6379_charger_reg_field {
 	F_IC_STAT,
 	/* MT6379_REG_CHG_HD_TOP1 */
 	F_FORCE_VBUS_SINK,
+	/* MT6379_REG_CHG_HD_BUBO5 */
+	F_CHG_RAMP_UP_COMP,
+	/* MT6379_REG_CHG_HD_TRIM6 */
+	F_IEOC_FLOW_RB,
 	/* MT6379_REG_ADC_CONFG1 */
 	F_VBAT_MON_EN, F_VBAT_MON2_EN,
 	/* MT6379_REG_USBID_CTRL1 */
 	F_IS_TDET, F_ID_RUPSEL, F_USBID_EN,
 	/* MT6379_REG_USBID_CTRL2 */
 	F_USBID_FLOATING,
+	/* MT6379_REG_WAFER_ID */
+	F_WAFER_ID,
+	/* MT6379_REG_TM_SAVED_ICC_ORIGIN */
+	F_ICC_ORIGIN,
+	/* MT6379_REG_TM_TBTAD */
+	F_ICC_TRIMMED,
+	/* MT6379_REG_TM_ICC_OFFSET */
+	F_ICC_OFFSET,
 	/* MT6379_REG_BC12_FUNC */
-	F_BC12_EN,
+	F_SPEC_TA_EN, F_BC12_EN, F_BC12_VBUS_EN_OPT,
 	/* MT6379_REG_BC12_STAT */
 	F_PORT_STAT,
 	/* MT6379_REG_DPDM_CTRL1 */
 	F_MANUAL_MODE, F_DPDM_SW_VCP_EN, F_DP_DET_EN, F_DM_DET_EN,
 	/* MT6379_REG_DPDM_CTRL2 */
-	F_DP_LDO_EN, F_DP_LDO_VSEL,
+	F_DP_LDO_EN, F_DP_LDO_VSEL, F_DM_LDO_VSEL, F_DM_LDO_EN,
 	/* MT6379_REG_DPDM_CTRL4 */
 	F_DP_PULL_REN, F_DP_PULL_RSEL,
+	/* MT6375_REG_DPDM_CTRL5 */
+	F_DM_PULL_RSEL, F_DM_PULL_REN,
+	/* MT6375_REG_DPDM_CTRL5 */
+	F_DP_PULL_ISEL, F_DP_PULL_IEN,
+	/* MT6375_REG_DPDM_CTRL5 */
+	F_DM_PULL_ISEL, F_DM_PULL_IEN,
 	F_MAX
 };
 
@@ -207,7 +236,12 @@ enum mt6379_adc_chan {
 	ADC_CHAN_SBU2,
 	ADC_CHAN_VBATMON2,
 	ADC_CHAN_ZCV,
-	ADC_CHAN_MAX
+	ADC_CHAN_SUB_USB_CONNECT,
+	ADC_CHAN_USB_CONNECT,
+	ADC_CHAN_WLSVIN,
+	ADC_CHAN_WLSIIN,
+	ADC_CHAN_MAX,
+
 };
 
 static const char *const mt6379_adc_chan_names[] = {
@@ -223,6 +257,10 @@ static const char *const mt6379_adc_chan_names[] = {
 	[ADC_CHAN_SBU2] = "sbu2",
 	[ADC_CHAN_VBATMON2] = "vbatmon2",
 	[ADC_CHAN_ZCV] = "zcv",
+	[ADC_CHAN_SUB_USB_CONNECT] = "sub-usb-connect",
+	[ADC_CHAN_USB_CONNECT] = "usb-connect",
+	[ADC_CHAN_WLSVIN] = "wlsvin",
+	[ADC_CHAN_WLSIIN] = "wlsiin",
 };
 
 /* irq index */
@@ -288,6 +326,15 @@ enum {
 	MT6379_CHGIN_OV_22_5V,
 };
 
+enum mt6379_chip_rev {
+	MT6379_CHIP_REV_E0 = 0,
+	MT6379_CHIP_REV_E1,
+	MT6379_CHIP_REV_E2,
+	MT6379_CHIP_REV_E3,
+	MT6379_CHIP_REV_E4,
+	MT6379_CHIP_REV_MAX
+};
+
 enum mt6379_batpro_src {
 	MT6379_BATPRO_SRC_VBAT_MON = 0,
 	MT6379_BATPRO_SRC_VBAT_MON2
@@ -328,10 +375,18 @@ struct mt6379_charger_data {
 	struct workqueue_struct *wq;
 	struct work_struct bc12_work;
 	struct delayed_work switching_work;
+	struct delayed_work icc_cali_work;
+	struct delayed_work detect_hvchg_work;
+	struct delayed_work rerun_bc12_work;
 	struct power_supply *psy;
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+	struct power_supply *sc2201_psy;
+#endif
 	struct power_supply_desc psy_desc;
 	struct iio_channel *iio_adcs;
 	struct charger_device *chgdev;
+	struct work_struct fsw_control_work;
+	struct alarm alarm;
 	struct mutex attach_lock;
 	struct mutex cv_lock;
 	struct mutex tm_lock;
@@ -341,12 +396,14 @@ struct mt6379_charger_data {
 	bool batprotect_en;
 	int tm_use_cnt;
 	int vbat0_flag;
+	int fsw_check_nr;
 	atomic_t tchg;
 	atomic_t eoc_cnt;
 	atomic_t no_6pin_used;
 	bool non_switching;
 	u32 zcv;
 	u32 cv;
+	u32 vbat;
 	u8 bypass_mode_entered;
 
 	struct ufcs_port *ufcs;
@@ -358,15 +415,26 @@ struct mt6379_charger_data {
 	enum power_supply_usb_type *psy_usb_type;
 	atomic_t *attach;
 	bool *bc12_dn;
-};
 
-enum mt6379_chip_rev {
-	MT6379_CHIP_REV_E0 = 0,
-	MT6379_CHIP_REV_E1,
-	MT6379_CHIP_REV_E2,
-	MT6379_CHIP_REV_E3,
-	MT6379_CHIP_REV_E4,
-	MT6379_CHIP_REV_MAX
+	struct mutex icc_trim_lock;
+	int hvchg_recheck_count;
+	int project_no;
+	int recheck_count;
+	struct charger_device *cp_master;
+	struct  notifier_block reboot_notifier;
+	bool icc_needs_trim;
+	bool icc_trimmed;
+	bool dynamic_icc_trim_en;
+	int icc_double_check_time_ms;
+	int current_icc_offset_step;
+	int saved_icc_offset_step;
+
+	bool lock_icc_and_aicr;
+	u32 target_aicr_uA;
+	u32 target_icc_uA;
+
+	enum mt6379_chip_rev rev;
+	u32 waferid;
 };
 
 extern int mt6379_charger_init_chgdev(struct mt6379_charger_data *cdata);
@@ -376,7 +444,10 @@ extern int mt6379_charger_field_get(struct mt6379_charger_data *cdata,
 				    enum mt6379_charger_reg_field fd, u32 *val);
 extern int mt6379_charger_fsw_control(struct mt6379_charger_data *cdata);
 extern int mt6379_charger_set_non_switching_setting(struct mt6379_charger_data *cdata);
-
+extern int mi_mt6379_set_dpdm_voltage(struct charger_device *chgdev, int dp, int dm);
+extern int mt6379_otg_regulator_enable(struct regulator_dev *rdev);
+extern int mt6379_otg_regulator_disable(struct regulator_dev *rdev);
+extern int mt6379_otg_set_current_limit(struct regulator_dev *rdev, int min_uA, int max_uA);
 
 static inline int mt6379_enable_tm(struct mt6379_charger_data *cdata, bool en)
 {

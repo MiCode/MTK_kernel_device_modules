@@ -1527,6 +1527,10 @@ static void mml_drm_split_info_racing(struct mml_submit *submit, struct mml_subm
 	submit_pq->buffer.src.cnt = 0;
 	submit_pq->buffer.dest[0].cnt = 0;
 
+	/* cache max size for throughput calc */
+	submit->max_size.width = max_t(u32, info_pq->dest[0].data.width, info_pq->src.width);
+	submit->max_size.height = max_t(u32, info_pq->dest[0].data.height, info_pq->src.height);
+
 	submit->buffer.seg_map.cnt = 0;
 	submit->buffer.dest_cnt = 1;
 	submit->buffer.dest[1].cnt = 0;

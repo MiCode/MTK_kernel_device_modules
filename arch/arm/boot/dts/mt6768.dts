@@ -4143,6 +4143,7 @@ transparent_hugepage=never clk_ignore_unused=1";
 		compatible = "mediatek,mtk-smi-dbg";
 		mediatek-larb-supply = <&smi_larb0 &smi_larb1 &smi_larb2 &smi_larb3 &smi_larb4>;
 		mediatek-common-supply = <&smi_common>;
+		skip-bug-On;
 	};
 
 	smi_larb2: smi_larb2@15021000 {

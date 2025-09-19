@@ -400,8 +400,6 @@ static int pe20_set_ta_vchr(struct chg_alg_device *alg, u32 chr_volt)
 			retry_cnt_max);
 
 	} while (!pe2->is_cable_out_occur &&
-		 (pe2_hal_get_charger_type(alg) !=
-		 POWER_SUPPLY_TYPE_USB_DCP) &&
 		 (retry_cnt < retry_cnt_max));
 
 	if (pe2->is_cable_out_occur)

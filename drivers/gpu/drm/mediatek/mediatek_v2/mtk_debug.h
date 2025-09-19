@@ -176,4 +176,9 @@ enum GCE_COND_REVERSE_COND {
 int mtk_disp_ioctl_debug_log_switch(struct drm_device *dev, void *data,
 	struct drm_file *file_priv);
 
+#if defined(CONFIG_VIS_DISPLAY_DALI)
+void nvt_set_idlemgr(unsigned int flag);
+void nvt_set_pq_trigger(unsigned int flag);
+#endif
+
 #endif

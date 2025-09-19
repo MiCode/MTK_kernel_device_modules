@@ -41,6 +41,8 @@ static int mtk_iommu_init_handler;
 static int smmu_finalise_handler;
 /* SMMU page table merge */
 static int smmu_page_table_merge;
+/* Map DVM MI register in to hypervisor */
+static int dvm_mi_handler;
 
 unsigned int smmu_device_num;
 
@@ -491,23 +493,77 @@ bool device_reg_probe(struct device_node *node, unsigned int *reg_start, unsigne
 {
 	int array_size = 0;
 	unsigned int reg_range = 0U, reg[8] = { 0U };
-	bool ret = false;
 
 	array_size = of_property_count_u32_elems(node, "reg");
 	if (array_size < 0)
-		return ret;
+		return false;
 
-	if (of_property_read_u32_array(node, "reg", reg, array_size))
+	if (of_property_read_u32_array(node, "reg", reg, array_size)) {
 		pr_info("%s: read reg value fail\n", __func__);
-	else {
-		/* Add up device's reg size */
-		for (int j = 3; j < array_size; j = j + 4)
-			reg_range += reg[j];
-		*reg_start = reg[1];
-		*reg_size = reg_range;
-		ret = true;
+		return false;
 	}
-	return ret;
+
+	/* Add up device's reg size */
+	for (int j = 3; j < array_size; j = j + 4)
+		reg_range += reg[j];
+	*reg_start = reg[1];
+	*reg_size = reg_range;
+
+	return true;
+}
+
+void dvm_mi_info_probe(void)
+{
+	struct device_node *node = NULL;
+	unsigned int reg_start_addr = 0U, reg_size = 0U;
+
+	/* DVM MI info */
+	node = of_find_compatible_node(NULL, NULL, "mediatek,dvm-mi");
+	if (!node) {
+		pr_info("%s: dvm mi node can not be found\n", __func__);
+		return;
+	}
+
+	if (device_reg_probe(node, &reg_start_addr, &reg_size)) {
+		pkvm_el2_mod_call(dvm_mi_handler,
+				reg_start_addr, reg_size);
+	}
+}
+
+static bool pctrl_enable(void)
+{
+	bool pctrl_en = false;
+	void __iomem *pctrl_base;
+	struct device_node *node = NULL;
+	unsigned int reg_start_addr = 0U, reg_size = 0U;
+
+	/* PCTRL register info probe */
+	node = of_find_compatible_node(NULL, NULL, "mediatek,emi-pctrl");
+	if (!node) {
+		pr_info("%s: pctrl node can not be found\n", __func__);
+		return pctrl_en;
+	}
+
+	if(!device_reg_probe(node, &reg_start_addr, &reg_size)) {
+		pr_info("%s: pctrl register probe fail\n", __func__);
+		return pctrl_en;
+	}
+
+	pctrl_base = ioremap(reg_start_addr, reg_size);
+	if (!pctrl_base) {
+		pr_info("%s: ioremap pctrl reg fail\n", __func__);
+		return pctrl_en;
+	}
+
+	/* PCTRL enable check */
+	pr_info("%s: PCTRL_CON0: %x\n", __func__, readl(pctrl_base + PCTRL_CON0));
+	pr_info("%s: PCTRL_CON2: %x\n", __func__, readl(pctrl_base + PCTRL_CON2));
+	if ((readl(pctrl_base + PCTRL_CON0) & ACP_SWITCH_LOCK_EN) &&
+		 ((readl(pctrl_base + PCTRL_CON2) & SSYS3_SWITCH_MASK) == 0))
+		pctrl_en = true;
+
+	iounmap(pctrl_base);
+	return pctrl_en;
 }
 
 bool is_device_coherent(struct device_node *node)
@@ -556,11 +612,12 @@ void smmu_device_probe(void)
 
 		if (device_reg_probe(node, &reg_start, &reg_size)) {
 			smmu_dev_id = get_smmu_index_from_fdt(node);
-			if (smmu_dev_id >= 0) {
-				dma_coherent = is_device_coherent(node);
-				pkvm_el2_mod_call(add_smmu_device_handler,
-						reg_start, reg_size, dma_coherent, smmu_dev_id);
-			}
+			if (smmu_dev_id < 0)
+				continue;
+
+			dma_coherent = is_device_coherent(node);
+			pkvm_el2_mod_call(add_smmu_device_handler,
+					reg_start, reg_size, dma_coherent, smmu_dev_id);
 		}
 	}
 }
@@ -578,7 +635,8 @@ void smmu_setup_hvc(void)
 
 	smmu_finalise_handler = pkvm_register_el2_mod_call(
 		kvm_nvhe_sym(smmu_finalise), pkvm_module_token);
-
+	dvm_mi_handler = pkvm_register_el2_mod_call(
+		kvm_nvhe_sym(dvm_mi_reg_mapping), pkvm_module_token);
 }
 
 void smmu_host_hvc(void)
@@ -782,6 +840,12 @@ static int __init smmu_nvhe_init(void)
 	if (ret) {
 		pr_info("%s: smmu init fail, ret = %d\n", __func__, ret);
 		goto free_mem;
+	}
+
+	/* Only in the pctrl enable case, turn on DVM feature */
+	if (pctrl_enable()) {
+		/* get dvm mi register and map into hypervisor */
+		dvm_mi_info_probe();
 	}
 
 	/* get smmu dts info */

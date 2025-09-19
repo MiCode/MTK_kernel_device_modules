@@ -111,6 +111,13 @@ enum {
 	ETDM_SLAVE_SEL_ETDMOUT7_SLAVE = 15,
 };
 
+enum {
+	SMARTPA_NONE = 0,
+	SMARTPA_AW882XX,
+	SMARTPA_FS19XX,
+	SMARTPA_MAX,
+};
+
 static unsigned int get_etdm_wlen(snd_pcm_format_t format)
 {
 	unsigned int wlen = 0;
@@ -3209,8 +3216,18 @@ static int mtk_dai_i2s_config(struct mtk_base_afe *afe,
 
 	if (is_etdm_in_pad_top(id))
 		pad_top = 0x3;
-	else
-		pad_top = 0x5;
+	else {
+            if(get_smartpa_type() == SMARTPA_FS19XX){
+                dev_info(afe->dev, "%s(), i2s fsm pa", __func__);
+                pad_top = 0x5;
+            }else if(get_smartpa_type() == SMARTPA_AW882XX){
+                dev_info(afe->dev, "%s(), i2s aw pa", __func__);
+                pad_top = 0x6;
+            }else{
+                dev_info(afe->dev, "%s(), i2s default five on 24p", __func__);
+                pad_top = 0x5;
+            }
+        }
 
 	switch (id) {
 	case DAI_FMI2S_MASTER:

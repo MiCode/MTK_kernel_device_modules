@@ -330,10 +330,10 @@ static int mem_service_handler(struct npu_scp_ipi_param *recv_msg)
 	}
 
 	spin_unlock_irqrestore(&ctx->lock, flags);
-	pr_info("%s act %d done\n", __func__, recv_msg->act);
+	// pr_info("%s act %d done\n", __func__, recv_msg->act);
 
 	complete(&ctx->worker_comp);
-	pr_info("%s trigger mem service worker thread done\n", __func__);
+	// pr_info("%s trigger mem service worker thread done\n", __func__);
 
 	return ret;
 }

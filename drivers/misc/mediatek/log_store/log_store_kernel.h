@@ -9,7 +9,7 @@
 #include <linux/types.h>
 
 
-#define SRAM_HEADER_SIG (0xabcd1234)
+#define SRAM_HEADER_SIG (0x24013186)
 #define DRAM_HEADER_SIG (0x5678ef90)
 #define LOG_STORE_SIG (0xcdab3412)
 #define LOG_EMMC_SIG (0x785690ef)

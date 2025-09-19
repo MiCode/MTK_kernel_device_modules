@@ -1379,8 +1379,13 @@ static int mt6375_floating_ground_evt_process(struct mt6375_tcpc_data *ddata)
 	ret = mt6375_read8(ddata, MT6375_REG_WD0SET, &data);
 	if (ret < 0)
 		return ret;
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+	return tcpci_notify_wd0_state(ddata->tcpc,
+				      !!(data & MT6375_MSK_WD0PULL_STS), true);
+#else
 	return tcpci_notify_wd0_state(ddata->tcpc,
 				      !!(data & MT6375_MSK_WD0PULL_STS));
+#endif
 }
 
 /*
@@ -1778,7 +1783,13 @@ static int mt6375_set_low_power_mode(struct tcpc_device *tcpc, bool en,
 		mt6375_protocol_reset(tcpc);
 		mt6375_alert_status_clear(tcpc, TCPC_REG_ALERT_RX_ALL_MASK);
 		mt6375_alert_status_clear(tcpc, TCPC_REG_ALERT_RX_ALL_MASK);
-#endif	/* CONFIG_USB_POWER_DELIVERY */
+#endif	/* CONFIG_USB_P/OWER_DELIVERY */
+
+		/* Set Low Power LDO to 2V */
+		ret = mt6375_write8(ddata, MT6375_REG_LPWRCTRL3, 0xD8);
+		if (ret < 0)
+			return ret;
+
 		data = MT6375_MSK_LPWR_EN;
 #if CONFIG_TYPEC_CAP_NORP_SRC
 		data |= MT6375_MSK_VBUSDET_EN;
@@ -2028,12 +2039,14 @@ static int mt6375_wd12_done_irq_handler(struct mt6375_tcpc_data *ddata)
 static int mt6375_wd0_stfall_irq_handler(struct mt6375_tcpc_data *ddata)
 {
 	/* WD0_PULL_STS from 1 to 0 in normal polling mode */
+	MT6375_INFO("%s wd0 stfall trigger\n", __func__);
 	return mt6375_floating_ground_evt_process(ddata);
 }
 
 static int mt6375_wd0_strise_irq_handler(struct mt6375_tcpc_data *ddata)
 {
 	/* WD0_PULL_STS from 0 to 1 in normal polling mode */
+	MT6375_INFO("%s wd0 strise trigger\n", __func__);
 	return mt6375_floating_ground_evt_process(ddata);
 }
 

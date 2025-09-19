@@ -92,12 +92,18 @@ void init_drm_mmp_event(void)
 		mmprofile_register_event(g_DRM_MMP_Events.aal, "AAL0");
 	g_DRM_MMP_Events.aal1 =
 		mmprofile_register_event(g_DRM_MMP_Events.aal, "AAL1");
+	g_DRM_MMP_Events.chist =
+		mmprofile_register_event(g_DRM_MMP_Events.IRQ, "CHIST");
+	g_DRM_MMP_Events.chist0 =
+		mmprofile_register_event(g_DRM_MMP_Events.chist, "CHIST0");
 	g_DRM_MMP_Events.pmqos =
 		mmprofile_register_event(g_DRM_MMP_Events.drm, "PMQOS");
 	g_DRM_MMP_Events.ostdl =
 		mmprofile_register_event(g_DRM_MMP_Events.drm, "OSTDL");
 	g_DRM_MMP_Events.channel_bw =
 		mmprofile_register_event(g_DRM_MMP_Events.drm, "CHANNEL_BW");
+	g_DRM_MMP_Events.channel_write_bw =
+		mmprofile_register_event(g_DRM_MMP_Events.drm, "CHANNEL_WRITE_BW");
 	g_DRM_MMP_Events.hrt_bw =
 		mmprofile_register_event(g_DRM_MMP_Events.drm, "HRT_BW");
 	g_DRM_MMP_Events.mutex_lock =
@@ -262,6 +268,8 @@ void init_crtc_mmp_event(void)
 			crtc_mmp_root, "pu_ddic_cmd");
 		g_CRTC_MMP_Events[i].pu_final_roi = mmprofile_register_event(
 			crtc_mmp_root, "pu_final_roi");
+		g_CRTC_MMP_Events[i].pu_status_err = mmprofile_register_event(
+			crtc_mmp_root, "pu_status_err");
 		g_CRTC_MMP_Events[i].user_cmd_cb =
 			mmprofile_register_event(crtc_mmp_root, "user_cmd_cb");
 		g_CRTC_MMP_Events[i].bl_cb =

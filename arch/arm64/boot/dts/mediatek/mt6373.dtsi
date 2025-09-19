@@ -16,6 +16,7 @@
 
 		mtk-spmi-pmic-debug {
 			compatible = "mediatek,spmi-pmic-debug";
+			cid-addr = <0x73 0x9 0x8>;
 		};
 
 		mt6373_adc: mt6373-auxadc {
@@ -158,10 +159,9 @@
 				regulator-compatible = "VBUCK8";
 				regulator-name = "mt6373_vbuck8";
 				regulator-min-microvolt = <300000>;
-				regulator-max-microvolt = <1193750>;
+				regulator-max-microvolt = <1600000>;
 				regulator-enable-ramp-delay = <200>;
 				regulator-allowed-modes = <0 1 2>;
-				regulator-always-on;
 			};
 			mt6373_vbuck9: vbuck9 {
 				regulator-compatible = "VBUCK9";
@@ -236,6 +236,7 @@
 				regulator-max-microvolt = <2100000>;
 				regulator-enable-ramp-delay = <720>;
 				regulator-allowed-modes = <0 2>;
+				regulator-always-on;
 			};
 			mt6373_vsram_digrf_aif: vsram-digrf-aif {
 				regulator-compatible = "VSRAM_DIGRF_AIF";
@@ -277,6 +278,7 @@
 				regulator-max-microvolt = <3500000>;
 				regulator-enable-ramp-delay = <720>;
 				regulator-allowed-modes = <0 2>;
+				regulator-always-on;
 			};
 			mt6373_vmch: vmch {
 				regulator-compatible = "VMCH";

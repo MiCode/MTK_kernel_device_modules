@@ -59,11 +59,18 @@ int swcq_run_task(struct mmc_host *mmc, int task_id)
 	struct mmc_request data_mrq = {0};
 	struct swcq_host *swcq_host = mmc->cqe_private;
 	struct mmc_request *mrq = swcq_host->mrq[task_id];
-	int flags = mrq->data->flags & MMC_DATA_READ ? 1 : 0;
+	int flags;
 
 #if IS_ENABLED(CONFIG_MMC_CRYPTO)
 	int err;
 #endif
+
+	if (!mrq || !mrq->data) {
+		pr_info("%s: mrq or mrq->data is null, return, mrq: %p, task_id: %d\n", __func__,mrq, task_id);
+		WARN_ON(1);
+		return -EIO;
+	}
+	flags = mrq->data->flags & MMC_DATA_READ ? 1 : 0;
 
 	cmd.flags = MMC_RSP_R1 | MMC_CMD_AC;
 	cmd.opcode = flags ? MMC_EXECUTE_READ_TASK : MMC_EXECUTE_WRITE_TASK;
@@ -337,6 +344,7 @@ int mmc_run_queue_thread(void *data)
 	int task_id = -1;
 	struct mmc_request *done_mrq;
 	struct mmc_request *mrq = NULL;
+	unsigned long flags;
 	// struct sched_param param = { .sched_priority = 1 };
 
 	// sched_setscheduler(current, SCHED_FIFO, &param);
@@ -371,7 +379,10 @@ int mmc_run_queue_thread(void *data)
 				atomic_set(&swcq_host->ongoing_task.done, 0);
 				atomic_set(&swcq_host->ongoing_task.id, MMC_SWCQ_TASK_IDLE);
 				atomic_set(&swcq_host->ongoing_task.blksz, 0);
+				// Acquire spin lock to protect concurrent access
+				spin_lock_irqsave(&swcq_host->lock, flags);
 				swcq_host->mrq[task_id] = NULL;
+				spin_unlock_irqrestore(&swcq_host->lock, flags);
 				atomic_dec(&swcq_host->q_cnt);
 #if IS_ENABLED(CONFIG_MMC_CRYPTO)
 				swcq_mmc_complete_mqr_crypto(mmc);
@@ -467,6 +478,7 @@ SWCQ_ERR_HANDLE:
 				swcq_tskdone(swcq_host),
 				err, task_id);
 			/* force all mrqs with error code before recovery */
+			swcq_mmc_complete_mqr_crypto(mmc);
 			swcq_set_all_mrqs_err(mmc, err);
 			swcq_err_handle(mmc, task_id, step, err);
 		}
@@ -563,16 +575,20 @@ static void swcq_recover_mrqs(struct mmc_host *mmc, struct swcq_host *swcq_host)
 {
 	int id = 0;
 	struct mmc_request *mrq;
+	unsigned long flags;
 
 	for (id = 0; id < NUM_SLOTS; id++) {
 		mrq = swcq_host->mrq[id];
 		if (!mrq)
 			continue;
+		//Acquire spin lock to protect concurrent access
+		spin_lock_irqsave(&swcq_host->lock, flags);
 		swcq_host->mrq[id] = NULL;
+		spin_unlock_irqrestore(&swcq_host->lock, flags);
 		atomic_dec(&swcq_host->q_cnt);
 		mrq->data->bytes_xfered = 0;
 		if (!mrq->data->error)
-			WARN_ON(1);
+			mrq->data->error = -ETIMEDOUT;
 		mmc_cqe_request_done(mmc, mrq);
 	}
 }

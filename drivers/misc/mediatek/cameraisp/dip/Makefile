@@ -54,5 +54,9 @@ ifeq ($(CONFIG_MACH_MT3967),y)
   obj-y += $(subst ",,isp_50)/
 endif
 
+ifeq ($(CONFIG_MTK_CAMERA_DIP_ISP50),m)
+  obj-$(CONFIG_MTK_CAMERA_DIP_ISP50) += isp_50/
+endif
+
 subdir-ccflags-y += -DMTK_DIP_COUNT=$(MTK_DIP_COUNT)
 subdir-ccflags-y += -DMTK_MSF_OFFSET=$(MTK_MSF_OFFSET)

@@ -46,6 +46,18 @@ config MTK_CAM_CAL_ISP4_C
 	  It may be like as "/dev/camera_eeprom0".
 	  User space code will control the driver by open and read this one.
 
+config MTK_CAM_CAL_ISP5_SYL
+	tristate "MTK camera cal driver for isp5 syl"
+	help
+	  This module is used for reading calibration data of camera which
+	  stored in EEPROM component.
+	  MTK_CAM_CAL_ISP5_SYL define if the camera cal driver should be
+	  built in or not. If you want to use EEPROM which contains
+	  calibration data for sensor. You have enable MTK_CAM_CAL_ISP5_SYL
+	  on ProjectConfig. The kernel space for EEPROM will be build.
+	  It may be like as "/dev/camera_eeprom0".
+	  User space code will control the driver by open and read this one.
+
 config MTK_CAM_CAL
 	tristate "MTK camera cal driver"
 	help

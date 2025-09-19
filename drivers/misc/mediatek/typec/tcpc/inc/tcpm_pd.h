@@ -125,6 +125,7 @@ enum pd_battery_reference {
 
 #define PD_SCEDB_SIZE	25
 
+
 #define PD_SCEDB_VR(load_step, ioc)	\
 	((load_step) | (ioc << 2))
 

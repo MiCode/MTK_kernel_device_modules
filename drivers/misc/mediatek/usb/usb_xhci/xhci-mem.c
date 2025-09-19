@@ -1003,6 +1003,10 @@ void xhci_free_virt_device(struct xhci_hcd *xhci, int slot_id)
 	if (dev->out_ctx)
 		xhci_free_container_ctx(xhci, dev->out_ctx);
 
+	/* Set the vdev of sideband  to NULL */
+	if (dev->sideband && dev->sideband->vdev)
+		dev->sideband->vdev = NULL;
+
 	if (dev->udev && dev->udev->slot_id)
 		dev->udev->slot_id = 0;
 	kfree(xhci->devs[slot_id]);

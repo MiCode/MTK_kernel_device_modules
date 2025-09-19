@@ -1536,6 +1536,7 @@ static void fbt_set_task_ls(int set, int ls_mask, int pid, int group, int *ori_l
 			unset_task_ls(pid);
 		*ori_ls = 0;
 	}
+	fpsgo_systrace_c_fbt_debug(pid, 0, *ori_ls, "task_ls");
 #endif
 }
 

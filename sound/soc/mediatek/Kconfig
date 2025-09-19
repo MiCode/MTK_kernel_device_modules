@@ -392,10 +392,30 @@ config SND_SOC_CODEC_MT6357
 	  Select Y if you have such device.
 	  If unsure select "N".
 
+config SND_SOC_CODEC_MT6358
+	tristate "ASoc Audio driver for MT6358 codec"
+	help
+	  This adds ASoC driver for Mediatek boards
+	  with the MT6358 codecs.
+	  Select Y if you have such device.
+	  If unsure select "N".
+
 config SND_SOC_MT6765
 	tristate "ASoC support for Mediatek MT6765 chip"
 	help
 	  This adds ASoC driver for Mediatek MT6765 boards
+	  that can be used with other codecs.
+	  Select Y if you have such device.
+	  If unsure select "N".
+
+config SND_SOC_MT6771
+	tristate "ASoC support for Mediatek MT6771 chip"
+	select DEVICE_MODULES_SND_SOC_MEDIATEK
+	select SND_SOC_MTK_SRAM
+	select SND_SOC_MTK_SMART_PHONE
+	select DMA_SHARED_BUFFER
+	help
+	  This adds ASoC driver for Mediatek MT6771 boards
 	  that can be used with other codecs.
 	  Select Y if you have such device.
 	  If unsure select "N".
@@ -457,6 +477,21 @@ config SND_SOC_MTK_AUTO_AUDIO
           that can be used with other platforms
 	  Select Y if you have such device.
 	  If unsure select "N".
+
+config AW862xx_HAPTIC
+	tristate "Awinic AW862XX haptic driver"
+	depends on I2C
+	help
+	  Say Y here if you have Awinic AW862XX haptic controller
+	  chip in your system.
+	  If unsure, say N.
+	  To compile this driver as a module, choose M here: the
+	  module will be called mpr121_touchkey.
+
+config DMIC_CLK_1P625
+	tristate "DMIC clk set to 1.625mhz"
+	help
+	  DMIC clk set to 1.625mhz
 
 config ADSP_SLB_LEGACY
 	bool "Enable legacy SLB support only for legacy chips"

@@ -41,3 +41,12 @@ config DMABUF_LEGACY_TEST
 	  This config is for legacy chip to skip new chip only case.
 	  If you are sure the chip not support the dmabuf secure test, say Y to
 	  skip the case. If in doubt, say N.
+
+config DEVICE_MODULES_DIO_DMABUF_MAPPER
+	tristate "DMA-BUF mapper for dio"
+	depends on DMABUF_HEAPS
+	help
+	  Choose this option to enable the DirectIO dmabuf mapper.
+	  This mapper could mmap the given dmabuf into a vm_area_struct with the
+	  capability to be the src or dst buffer of DirectIO.
+

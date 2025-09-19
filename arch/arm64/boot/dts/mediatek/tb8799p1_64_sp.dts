@@ -18,6 +18,14 @@ bootargs_ext = "rcu_nocbs=0-7";
 	hardware = "mt8799";
 };
 
+&clkbuf_ctrl {
+	compatible = "mediatek,mt8799-clkbuf";
+};
+
+&mt6685_clkbuf {
+	compatible = "mediatek,mt6685-tb-clkbuf";
+};
+
 &mtk_leds {
 	compatible = "mediatek,i2c-leds";
 
@@ -147,7 +155,7 @@ bootargs_ext = "rcu_nocbs=0-7";
 	pinctrl-names = "mode_te_te";
 	pinctrl-0 = <&mtkfb_pins_lcm_dsi_te>;
 	pinctrl-1 = <&mtkfb_pins_lcm_dsi1_te>;
-
+	is-tablet;
 	status = "okay";
 //	enable-discrete-path = <1>;
 };
@@ -753,22 +761,6 @@ bootargs_ext = "rcu_nocbs=0-7";
 			};
 		};
 	};
-};
-
-&mt6363_vbuck5 {
-	regulator-min-microvolt = <0>;
-};
-
-&mt6363_vsram_digrf {
-	regulator-min-microvolt = <0>;
-};
-
-&mt6363_vrf12 {
-	regulator-min-microvolt = <0>;
-};
-
-&mt6363_vcn15 {
-	regulator-min-microvolt = <0>;
 };
 
 #include <tb8799p1_64_sp/cust.dtsi>

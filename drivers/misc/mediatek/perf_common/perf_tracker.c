@@ -57,7 +57,9 @@ static DECLARE_DELAYED_WORK(charger, charger_handler);
 
 static int perf_tracker_on;
 static DEFINE_MUTEX(perf_ctl_mutex);
+#if IS_ENABLED(CONFIG_MTK_QOS_FRAMEWORK)
 static unsigned int check_dram_bw = 0xFFFF;
+#endif
 
 static struct mtk_btag_mictx_iostat_struct iostat;
 #if IS_ENABLED(CONFIG_MTK_BLOCK_IO_TRACER)
@@ -72,7 +74,9 @@ static unsigned int gpu_pmu_period = 8000000; //8ms
 #endif
 static unsigned int mcupm_freq_enable;
 
+#if IS_ENABLED(CONFIG_MTK_QOS_FRAMEWORK)
 static int emi_last_bw_idx = 0xFFFF;
+#endif
 
 u64 get_cpu_stall(int cpu, u32 offset)
 {
@@ -229,9 +233,11 @@ void perf_tracker(u64 wallclock,
 	long mm_available = 0, mm_free = 0;
 	u32 dram_rate = 0;
 	struct mtk_btag_mictx_iostat_struct *iostat_ptr = &iostat;
+#if IS_ENABLED(CONFIG_MTK_QOS_FRAMEWORK)
 	int emi_bw_idx = 0xFFFF, dram_bw_idx = 0xFFFF;
 	bool bw_idx_checked = 0;
 	u32 bw_record = 0;
+#endif
 	u32 sbin_data[emi_bw_record_nums+u_record_nums+mcupm_record_nums
 		+u_voting_record_nums+u_a_e_record_nums
 		+dram_bw_record_nums
@@ -351,6 +357,7 @@ void perf_tracker(u64 wallclock,
 		sbin_data_ctl |= SBIN_U_A_E_RECORD;
 	}
 
+#if IS_ENABLED(CONFIG_MTK_QOS_FRAMEWORK)
 	if (check_dram_bw == 0) {
 		if (dram_bw_idx != 0xFFFF && bw_idx_checked) {
 			/* dram bw history */
@@ -369,6 +376,7 @@ void perf_tracker(u64 wallclock,
 		sbin_lens += dram_bw_record_nums;
 		sbin_data_ctl |= SBIN_DRAM_BW_RECORD;
 	}
+#endif
 
 	if (!is_percore) { // per cluster
 		sched_freq[0] = cpudvfs_get_cur_freq(0, false);
@@ -492,7 +500,9 @@ static ssize_t store_perf_enable(struct kobject *kobj,
 			mtk_btag_mictx_enable(&ufs_mictx_id, val);
 #endif
 			insert_freq_qos_hook();
+#if IS_ENABLED(CONFIG_MTK_QOS_FRAMEWORK)
 			check_dram_bw = qos_rec_check_sram_ext();
+#endif
 			if (perf_timer_enable)
 				timer_on();
 			else

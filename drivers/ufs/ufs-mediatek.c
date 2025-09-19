@@ -973,6 +973,7 @@ static void ufs_mtk_trace_vh_send_command(void *data, struct ufs_hba *hba, struc
 		return;
 
 	ufs_mtk_btag_send_command(hba, lrbp);
+
 }
 
 static void ufs_mtk_trace_vh_compl_command(void *data, struct ufs_hba *hba, struct ufshcd_lrb *lrbp)
@@ -987,6 +988,7 @@ static void ufs_mtk_trace_vh_compl_command(void *data, struct ufs_hba *hba, stru
 #endif
 
 	ufs_mtk_btag_compl_command(hba, lrbp);
+
 }
 
 void ufs_mtk_trace_vh_check_int_errors(void *data, struct ufs_hba *hba, bool queue_eh_work)
@@ -1017,6 +1019,7 @@ static struct tracepoints_table interests[] = {
 #define FOR_EACH_INTEREST(i) \
 	for (i = 0; i < sizeof(interests) / sizeof(struct tracepoints_table); \
 	i++)
+
 
 static void ufs_mtk_lookup_tracepoints(struct tracepoint *tp,
 				       void *ignore)
@@ -1072,6 +1075,7 @@ static bool ufs_mtk_is_legacy_chipset(struct ufs_hba *hba, u32 hw_ip_ver)
 	switch (hw_ip_ver) {
 	case IP_LEGACY_VER_MT6893:
 	case IP_LEGACY_VER_MT6781:
+	case IP_LEGACY_VER_MT6771:
 		/* can add other legacy chipset ID here accordingly */
 		is_legacy = true;
 		break;
@@ -1912,8 +1916,9 @@ static int ufs_mtk_pwr_change_notify(struct ufs_hba *hba,
 					     dev_req_params);
 		break;
 	case POST_CHANGE:
-		if (ufshcd_is_auto_hibern8_supported(hba))
+		if (ufshcd_is_auto_hibern8_supported(hba)) {
 			ufshcd_writel(hba, reg, REG_AUTO_HIBERNATE_IDLE_TIMER);
+		}
 		break;
 	default:
 		ret = -EINVAL;
@@ -2742,7 +2747,6 @@ static void ufs_mtk_event_notify(struct ufs_hba *hba,
 	struct ufs_event_hist *e;
 
 	trace_ufs_mtk_event(evt, val);
-
 
 	/* error check for mbrain */
 	if (evt <= UFS_EVT_FATAL_ERR){

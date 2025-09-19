@@ -1269,7 +1269,7 @@ transparent_hugepage=never";
 		dvfsrc-vscp-supply = <&dvfsrc_vscp>;
 		sshub-vcore-supply = <&mt_pmic_vcore_buck_reg>;
 		sshub-vsram-supply = <&mt_pmic_vsram_others_ldo_reg>;
-		legacy_support_v1;
+		legacy-support-v1;
 
 	};
 
@@ -1372,6 +1372,7 @@ transparent_hugepage=never";
 		compatible = "mediatek,sleep";
 		reg = <0 0x10006000 0 0x1000>;
 		interrupts = <GIC_SPI 195 IRQ_TYPE_LEVEL_HIGH 0>;
+		dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 	};
 
 	toprgu:toprgu@10007000 {
@@ -4252,6 +4253,7 @@ transparent_hugepage=never";
 		compatible = "mediatek,mtk-smi-dbg";
 		mediatek-larb-supply = <&smi_larb0 &smi_larb1 &smi_larb2 &smi_larb3 &smi_larb4>;
 		mediatek-common-supply = <&smi_common>;
+		skip-bug-On;
 	};
 
 	smi-test {

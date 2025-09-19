@@ -13,6 +13,8 @@
 
 static uint32_t g_sched_plcy_show;
 
+static uint32_t g_last_ulog_value;
+
 static ssize_t reserv_time_remain_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
@@ -207,7 +209,10 @@ static ssize_t ulog_store(struct device *dev,
 
 	if (!kstrtouint(buf, 0, &val)) {
 		mdw_drv_info("set ulog(%u)\n", val);
-		mdev->plat_funcs->set_param(mdev, MDW_INFO_ULOG, val);
+		if (val != g_last_ulog_value) {
+			g_last_ulog_value = val;
+			mdev->plat_funcs->set_param(mdev, MDW_INFO_ULOG, val);
+		}
 	}
 
 	return count;
@@ -304,6 +309,8 @@ int mdw_sysfs_init(struct mdw_device *mdev)
 	int ret = 0;
 
 	g_sched_plcy_show = 0;
+
+	g_last_ulog_value = 0;
 
 	/* create /sys/class/misc/apusys/xxx */
 	ret = sysfs_create_group(&mdev->misc_dev->this_device->kobj,

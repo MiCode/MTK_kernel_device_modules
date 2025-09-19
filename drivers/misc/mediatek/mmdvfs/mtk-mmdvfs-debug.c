@@ -214,6 +214,7 @@ static void mmdvfs_debug_record_opp(const u8 opp)
 void mmdvfs_debug_status_dump(struct seq_file *file)
 {
 	unsigned long flags;
+	uint64_t mux_cb_time;
 	u32 i, j, k, val;
 
 	if (!g_mmdvfs)
@@ -406,16 +407,29 @@ void mmdvfs_debug_status_dump(struct seq_file *file)
 			readl(MEM_REC_VMM_SEC(j)), readl(MEM_REC_VMM_NSEC(j)),
 			readl(MEM_REC_VMM_VOLT(j)),
 			readl(MEM_REC_VMM_TEMP(j)), readl(MEM_REC_VMM_AVS(j)));
-	return;
 
 sram_dump:
 	mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMDVFS_RST);
 	mmdvfs_vcp_cb_mutex_lock();
 	if (!mmdvfs_vcp_cb_ready_get()) {
-		mmdvfs_vcp_cb_mutex_unlock();
 		MMDVFS_DBG("cb_ready:%d", mmdvfs_vcp_cb_ready_get());
-		return;
+		goto sram_dump_end;
 	}
+
+	// sram mux cb records
+	if (mmdvfs_get_mux_cb_sram_enable()) {
+		mmdvfs_debug_dump_line(file, "sram mux cb records");
+		for (i = 0; i < SRAM_MUX_CB_CNT; i++) {
+			mux_cb_time = readq(SRAM_MUX_CB_TIME(i));
+			if (mux_cb_time)
+				mmdvfs_debug_dump_line(file, "[%5llu.%6llu] mux_cb_val:%#x",
+					mux_cb_time/1000000, mux_cb_time%1000000,
+					readl(SRAM_MUX_CB_VAL(i)));
+		}
+	}
+
+	if (!mmdvfs_get_mmup_sram_enable())
+		goto sram_dump_end;
 
 	mmdvfs_debug_dump_line(file, "VER3.5: mux controlled by vcp sram:%#lx", (unsigned long)(void *)SRAM_BASE);
 	// usr
@@ -520,6 +534,7 @@ sram_dump:
 		mmdvfs_debug_dump_line(file, "pwr:%d gear:%u", i, readl(SRAM_PWR_GEAR(i)));
 	mmdvfs_debug_dump_line(file, "pwr:%d ceil:%u", i, readl(SRAM_VMM_CEIL));
 
+sram_dump_end:
 	mmdvfs_vcp_cb_mutex_unlock();
 	mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMDVFS_RST);
 }
@@ -761,10 +776,10 @@ static int mmdvfs_v3_dbg_ftrace_thread(void *data)
 					ftrace_user_opp_v3(i, readl(MEM_USR_OPP(i,
 						readl(MEM_USR_OPP(i, true)) != MAX_OPP)));
 				else if (i == MMDVFS_USER_DISP)
-					ftrace_user_opp_v3(SRAM_USR_DPC, readl(SRAM_USR_VAL(SRAM_USR_DPC, (readl(
+					ftrace_user_opp_v3(i, readl(SRAM_USR_VAL(SRAM_USR_DPC, (readl(
 						SRAM_REC_CNT_USR(SRAM_USR_DPC)) + SRAM_REC_CNT - 1) % SRAM_REC_CNT)));
 				else if (i == MMDVFS_USER_SMI)
-					ftrace_user_opp_v3(SRAM_USR_SMI, readl(SRAM_USR_VAL(SRAM_USR_SMI, (readl(
+					ftrace_user_opp_v3(i, readl(SRAM_USR_VAL(SRAM_USR_SMI, (readl(
 						SRAM_REC_CNT_USR(SRAM_USR_SMI)) + SRAM_REC_CNT - 1) % SRAM_REC_CNT)));
 		} else {                     //mmdvfs v3.0
 			// power opp
@@ -902,7 +917,7 @@ static int mmdvfs_mbrain_get_sys_res_data(void *address, uint32_t size)
 
 		for (j = 0; j < ARRAY_SIZE(record[i].opp_duration); j++) {
 			record[i].opp_duration[j] = readq(SRAM_PWR_TOTAL(i, j));
-			if (j == opp && sec && opp < MAX_OPP)
+			if (j == opp && (sec || usec) && opp < MAX_OPP)
 				record[i].opp_duration[j] += (us - (sec * 1000000 + usec)) / 1000;
 		}
 	}
@@ -918,7 +933,7 @@ dram_cal:
 		usec = readl(MEM_REC_PWR_ALN_NSEC(i, k));
 		opp = readl(MEM_REC_PWR_ALN_OPP(i, k));
 
-		if (sec && opp < MAX_OPP) {
+		if ((sec || usec) && opp < MAX_OPP) {
 			total = readq(MEM_PWR_TOTAL_TIME(i, opp));
 			total += (us - (sec * 1000000 + usec)) / 1000;
 		}

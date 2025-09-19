@@ -10,7 +10,9 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 # GNU General Public License for more details.
 #
-
+ifeq ($(CONFIG_MTK_CM_MGR_LEGACY_MT8788), m)
+obj-y += cm_mgr_plat_k8788/
+else
 ccflags-y += \
 	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cm_mgr_legacy_v1/ \
 	-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/dramc/$(MTK_PLATFORM) \
@@ -74,3 +76,4 @@ endif
 ifneq ($(wildcard $(srctree)/$(src)/mtk_cm_mgr_mt6781.c),)
 obj-${CONFIG_MTK_CM_MGR_MT6781} += mtk_cm_mgr_mt6781.o
 endif
+endif#ifeq ($(CONFIG_MTK_CM_MGR_LEGACY_MT8788), m)

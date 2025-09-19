@@ -48,6 +48,7 @@
 #include "mtk-soc-pcm-common.h"
 #include "mtk-soc-pcm-platform.h"
 #include <linux/dma-mapping.h>
+#include <linux/nvmem-consumer.h>
 
 /*
  *    declaration
@@ -68,7 +69,15 @@ struct mtk_voice_property {
 	int speech_bt_sco_wb;
 	int speech_md_active;
 };
+#if IS_ENABLED(CONFIG_MTK_DEVINFO)
+enum efuse_node {
+	EFUSE_NODE_SP_CHOOSE,
+	EFUSE_NODE_SEGMENT,
+	EFUSE_NODE_NUM
+};
 
+static bool efuse_status;
+#endif
 /*
  *    function implementation
  */
@@ -349,7 +358,7 @@ static int mtk_voice_pcm_copy(struct snd_soc_component *component,
 			      struct snd_pcm_substream *substream,
 			      int channel,
 			      unsigned long pos,
-			      void __user *buf,
+			      struct iov_iter *buf,
 			      unsigned long bytes)
 {
 	return 0;
@@ -404,7 +413,12 @@ static int mtk_voice1_prepare(struct snd_soc_component *component,
 	SetIntfConnection(Soc_Aud_InterCon_Connection,
 			  Soc_Aud_AFE_IO_Block_MODEM_PCM_2_I_CH1,
 			  Soc_Aud_AFE_IO_Block_I2S1_DAC_2);
-
+#if IS_ENABLED(CONFIG_MTK_DEVINFO)
+	if (efuse_status) {
+		pr_info("%s(): EFUSE enable\n", __func__);
+		return 0;
+	}
+#endif
 	/* start I2S DAC out */
 	SetI2SDacOut(substream->runtime->rate, false,
 		     Soc_Aud_I2S_WLEN_WLEN_16BITS);
@@ -432,6 +446,54 @@ static int mtk_voice1_prepare(struct snd_soc_component *component,
 
 	return 0;
 }
+
+#if IS_ENABLED(CONFIG_MTK_DEVINFO)
+static int mtk_voice_init_efuse(struct platform_device *pdev)
+{
+	struct nvmem_cell *efuse_cell[EFUSE_NODE_NUM];
+	const char *efuse_field[EFUSE_NODE_NUM] = {
+		"efuse_sp_choose_cell",
+		"efuse_segment_cell"
+	};
+	unsigned int *efuse_buf;
+	unsigned int seg_val;
+	unsigned int sp_val;
+	size_t efuse_len;
+	int i;
+
+	sp_val = 0;
+	seg_val = 0;
+	for (i = 0; i < EFUSE_NODE_NUM; i++) {
+		efuse_cell[i] = nvmem_cell_get(&pdev->dev, efuse_field[i]);
+
+		if (IS_ERR(efuse_cell[i])) {
+			pr_info("%s(): cannot get efuse_cell %s\n",
+				__func__, efuse_field[i]);
+			return PTR_ERR(efuse_cell[i]);
+		}
+
+		efuse_buf = (unsigned int *)nvmem_cell_read(efuse_cell[i], &efuse_len);
+		nvmem_cell_put(efuse_cell[i]);
+		if (IS_ERR(efuse_buf)) {
+			pr_info("%s(): cannot get efuse_buf %s\n",
+				__func__, efuse_field[i]);
+			continue;
+		}
+		if (i == EFUSE_NODE_SP_CHOOSE)
+			sp_val = (*efuse_buf >> 27) & 0x1;
+		else
+			seg_val = *efuse_buf;
+
+		kfree(efuse_buf);
+	}
+	pr_info("%s(): sp_val=%d seg_val=0x%x\n", __func__, sp_val, seg_val);
+
+	if (sp_val == 1 && seg_val == 0x2)
+		efuse_status = true;
+
+	return 0;
+}
+#endif
 
 static int mtk_pcm_hw_params(struct snd_soc_component *component,
 			     struct snd_pcm_substream *substream,
@@ -473,6 +535,9 @@ static int mtk_voice_probe(struct platform_device *pdev)
 	pdev->name = pdev->dev.kobj.name;
 
 	pr_info("%s(), dev name %s\n", __func__, dev_name(&pdev->dev));
+#if IS_ENABLED(CONFIG_MTK_DEVINFO)
+	mtk_voice_init_efuse(pdev);
+#endif
 	return snd_soc_register_component(&pdev->dev,
 					  &mtk_soc_voice_component,
 					  NULL,

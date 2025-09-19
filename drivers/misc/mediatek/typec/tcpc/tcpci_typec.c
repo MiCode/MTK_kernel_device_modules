@@ -292,6 +292,7 @@ static inline void typec_unattached_src_and_drp_entry(struct tcpc_device *tcpc)
 	TYPEC_NEW_STATE(typec_unattached_src);
 	tcpci_set_cc(tcpc, TYPEC_CC_RP);
 	tcpc_enable_timer(tcpc, TYPEC_TIMER_DRP_SRC_TOGGLE);
+
 	if (tcpc->typec_vbus_to_cc_en && tcpc->tcpc_flags & TCPC_FLAGS_VBUS_SHORT_CC)
 		tcpci_set_vbus_short_cc_en(tcpc, false, false);
 }
@@ -302,6 +303,7 @@ static inline void typec_unattached_snk_and_drp_entry(struct tcpc_device *tcpc)
 	tcpci_set_auto_dischg_discnt(tcpc, false);
 	tcpci_set_cc(tcpc, TYPEC_CC_DRP);
 	typec_enable_low_power_mode(tcpc);
+
 	if (tcpc->typec_vbus_to_cc_en && tcpc->tcpc_flags & TCPC_FLAGS_VBUS_SHORT_CC)
 		tcpci_set_vbus_short_cc_en(tcpc, false, false);
 }
@@ -650,11 +652,22 @@ static inline void typec_norp_src_attached_entry(struct tcpc_device *tcpc)
 #if CONFIG_TYPEC_CAP_TRY_SOURCE
 static inline void typec_try_src_entry(struct tcpc_device *tcpc)
 {
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+    uint32_t vid;
+    int rv = 0;
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 	TYPEC_NEW_STATE(typec_try_src);
 
 	tcpci_set_cc(tcpc, TYPEC_CC_RP);
 	tcpc->typec_drp_try_timeout = false;
 	tcpc_enable_timer(tcpc, TYPEC_TRY_TIMER_DRP_TRY);
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+    /* add once cc_change */
+    rv = tcpci_get_chip_vid(tcpc, &vid);
+    if (!rv && SOUTHCHIP_PD_VID == vid) {
+        tcpc_typec_handle_cc_change(tcpc);
+    }
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 	tcpc_enable_timer(tcpc, TYPEC_TRY_TIMER_TRY_TOUT);
 }
 
@@ -692,11 +705,22 @@ static inline void typec_trywait_snk_pe_entry(struct tcpc_device *tcpc)
 
 static inline void typec_try_snk_entry(struct tcpc_device *tcpc)
 {
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+    uint32_t vid;
+    int rv = 0;
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 	TYPEC_NEW_STATE(typec_try_snk);
 
 	tcpci_set_cc(tcpc, TYPEC_CC_RD);
 	tcpc->typec_drp_try_timeout = false;
 	tcpc_enable_timer(tcpc, TYPEC_TRY_TIMER_DRP_TRY);
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+    /* add once cc_change */
+    rv = tcpci_get_chip_vid(tcpc, &vid);
+    if (!rv && SOUTHCHIP_PD_VID == vid) {
+        tcpc_typec_handle_cc_change(tcpc);
+    }
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 }
 
 static inline void typec_trywait_src_entry(struct tcpc_device *tcpc)
@@ -899,6 +923,7 @@ static inline bool typec_cc_change_source_entry(struct tcpc_device *tcpc)
 static inline bool typec_attached_snk_cc_change(struct tcpc_device *tcpc)
 {
 	uint8_t cc_res = typec_get_cc_res();
+	bool changed = false;
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
 	struct pd_port *pd_port = &tcpc->pd_port;
 #endif	/* CONFIG_USB_POWER_DELIVERY */
@@ -906,13 +931,16 @@ static inline bool typec_attached_snk_cc_change(struct tcpc_device *tcpc)
 	if (cc_res != tcpc->typec_remote_rp_level) {
 		TYPEC_INFO("RpLvl Change\n");
 		tcpc->typec_remote_rp_level = cc_res;
+		changed = true;
+	}
 
 #if CONFIG_USB_PD_REV30
-		if (pd_port->pe_data.pd_connected && pd_check_rev30(pd_port) &&
-		    cc_res == TYPEC_CC_VOLT_SNK_3_0)
-			pd_put_sink_tx_event(tcpc, cc_res);
+	if (pd_port->pe_data.pd_connected && pd_check_rev30(pd_port) &&
+			cc_res == TYPEC_CC_VOLT_SNK_3_0)
+		pd_put_sink_tx_event(tcpc, cc_res);
 #endif	/* CONFIG_USB_PD_REV30 */
 
+	if (changed) {
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
 		if (!pd_port->pe_data.pd_connected)
 #endif	/* CONFIG_USB_POWER_DELIVERY */
@@ -1012,9 +1040,13 @@ static inline bool typec_handle_cc_changed_entry(struct tcpc_device *tcpc)
 
 static inline void typec_attach_wait_entry(struct tcpc_device *tcpc)
 {
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+    int rv = 0;
+    uint32_t chip_vid = 0;
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 	bool as_sink = tcpc_typec_is_act_as_sink_role(tcpc);
-	uint8_t cc_res = typec_get_cc_res();
 #if CONFIG_USB_PD_REV30
+	uint8_t cc_res = typec_get_cc_res();
 	struct pd_port *pd_port = &tcpc->pd_port;
 #endif	/* CONFIG_USB_PD_REV30 */
 
@@ -1035,11 +1067,6 @@ static inline void typec_attach_wait_entry(struct tcpc_device *tcpc)
 	case typec_attached_dbgacc_snk:
 #endif	/* CONFIG_TYPEC_CAP_DBGACC_SNK */
 	case typec_attached_custom_src:
-		if (cc_res == tcpc->typec_remote_rp_level) {
-			tcpc_reset_typec_debounce_timer(tcpc);
-			TYPEC_DBG("The Same RpLvl, Ignore cc_attach\n");
-			return;
-		}
 		TYPEC_INFO("RpLvl Alert\n");
 #if CONFIG_USB_PD_REV30
 		if (pd_port->pe_data.pd_connected && pd_check_rev30(pd_port) &&
@@ -1093,8 +1120,15 @@ static inline void typec_attach_wait_entry(struct tcpc_device *tcpc)
 	}
 
 	tcpci_notify_attachwait_state(tcpc, as_sink);
-	if (as_sink)
+	if (as_sink){
 		TYPEC_NEW_STATE(typec_attachwait_snk);
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+        rv = tcpci_get_chip_vid(tcpc, &chip_vid);
+        if (!(rv && chip_vid == SOUTHCHIP_PD_VID)) {
+            tcpci_set_cc(tcpc,TYPEC_CC_RD);
+        }
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
+	}
 	else {
 		TYPEC_NEW_STATE(typec_attachwait_src);
 		/* Advertise Rp level before Attached.SRC Ellisys 3.1.6359 */
@@ -1323,6 +1357,9 @@ int tcpc_typec_handle_cc_change(struct tcpc_device *tcpc)
 		typec_attach_wait_entry(tcpc);
 	} else {
 		typec_detach_wait_entry(tcpc);
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+        tcpc->int_invaild_cnt = 0;
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 	}
 
 	return 0;
@@ -1457,7 +1494,10 @@ static inline int typec_handle_src_reach_vsafe0v(struct tcpc_device *tcpc)
 int tcpc_typec_handle_timeout(struct tcpc_device *tcpc, uint32_t timer_id)
 {
 	int ret = 0;
-
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+    uint32_t chip_vid;
+    tcpci_get_chip_vid(tcpc,&chip_vid);
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 	if (timer_id >= TYPEC_TIMER_START_ID &&
 	    tcpc_is_timer_active(tcpc, TYPEC_TIMER_START_ID, PD_TIMER_NR)) {
 		TYPEC_DBG("[Type-C] Ignore timer_evt\n");
@@ -1623,6 +1663,9 @@ static inline int typec_attached_snk_vbus_absent(struct tcpc_device *tcpc)
 
 static inline int typec_handle_vbus_absent(struct tcpc_device *tcpc)
 {
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+    int ret = 0;
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
 	if (tcpc->pd_wait_pr_swap_complete) {
 		TYPEC_DBG("[PR.Swap] Ignore vbus_absent\n");
@@ -1641,6 +1684,15 @@ static inline int typec_handle_vbus_absent(struct tcpc_device *tcpc)
 	default:
 		break;
 	}
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+    ret = tcpci_get_cc(tcpc);
+    if (ret < 0)
+        return ret;
+
+    if (!typec_is_cc_no_res()) {
+        tcpc_typec_handle_cc_change(tcpc);
+    }
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 
 	return 0;
 }

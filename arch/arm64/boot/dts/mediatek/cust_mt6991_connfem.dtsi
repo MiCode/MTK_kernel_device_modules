@@ -118,6 +118,32 @@
 							<0x25>;	/* TxH */
 					};
 				};
+				/* RxH support */
+				qm45655_rxh: qm45655-rxh {
+					fem = <&qm45655>;
+					cat-names = "cat-iso", "cat-rx", "cat-tx-lf";
+					cat-iso {
+						cat-id = <0x00>;
+						states =
+							<0x00>;	/* ISO */
+					};
+					cat-rx {
+						cat-id = <0x01>;
+						states =
+							<0x10>,	/* BYP */
+							<0x12>;	/* RxH */
+					};
+					cat-tx-lf {
+						cat-id = <0x02>;
+						states =
+							<0x20>,	/* TxL */
+							<0x21>,	/* TxML */
+							<0x22>,	/* TxM */
+							<0x23>,	/* TxMH */
+							<0x24>,	/* TxHE */
+							<0x25>;	/* TxH */
+					};
+				};
 			};
 		};
 
@@ -201,13 +227,13 @@
 				<0x21 0x04>,	/* TxML 5G - WIFI_TX_LF_G1 */
 				<0x22 0x05>,	/* TxM 5G - WIFI_TX_LF_G2 */
 				<0x23 0x03>,	/* TxMH 5G - WIFI_TX_LF_G3 */
-				<0x24 0x06>,	/* TxHE 5G - WIFI_TX_LF_G4 */
+				<0x24 0x06>,	/* TxHE 5G & 6G - WIFI_TX_LF_G4 */
 				<0x25 0x01>,	/* TxH 5G - WIFI_TX_LF_G5 */
 				<0x30 0x07>,	/* TxL 6G - WIFI_TX_HF_G0 */
 				<0x31 0x0c>,	/* TxML 6G - WIFI_TX_HF_G1 */
 				<0x32 0x0d>,	/* TxM 6G - WIFI_TX_HF_G2 */
 				<0x33 0x0b>,	/* TxMH 6G - WIFI_TX_HF_G3 */
-				<0x34 0x0e>,	/* TxHE 6G - WIFI_TX_HF_G4 */
+				<0x34 0x06>,	/* TxHE 5G & 6G - WIFI_TX_HF_G4 */
 				<0x35 0x09>;	/* TxH 6G - WIFI_TX_HF_G5 */
 
 			states-set {
@@ -409,6 +435,188 @@
 				<0x90 0x07>,	/* TxL - BT_TX_G0 */
 				<0x91 0x05>;	/* TxH - BT_TX_G1 */
 		};
+
+		sky85732: sky85732 {
+			vid = <0x01>;
+			pid = <0x03>;
+			flag = <0x00000000>;
+
+			/* [0] 0x07: PA_EN
+			 * [1] 0x09: LNA_EN
+			 */
+			pins = <0x07 0x09>;
+
+			truth-table =
+				<0x00 0x00>,	/* ISO - ISO */
+				<0x10 0x03>,	/* BYP - WIFI_RX_BYP */
+				<0x11 0x02>,	/* RxL - WIFI_RX_G0 */
+				<0x20 0x01>;	/* TxL - WIFI_TX_LF_G0 */
+
+			states-set {
+				sky85732_default: sky85732-default {
+					fem = <&sky85732>;
+					cat-names = "cat-iso", "cat-rx", "cat-tx-lf";
+					cat-iso {
+						cat-id = <0x00>;
+						states =
+							<0x00>;	/* ISO */
+					};
+					cat-rx {
+						cat-id = <0x01>;
+						states =
+							<0x10>,	/* BYP */
+							<0x11>;	/* RxL */
+					};
+					cat-tx-lf {
+						cat-id = <0x02>;
+						states =
+							<0x20>;	/* TxL */
+					};
+				};
+			};
+		};
+
+		vc536421: vc536421 {
+			vid = <0x05>;
+			pid = <0x03>;
+			flag = <0x00000000>;
+
+			/* [0] 0x03: SEL1/PAEN
+			 * [1] 0x02: SEL2/LNAEN
+			 * [2] 0x04: SEL3/BTEN
+			 * [3] 0x0e: SEL4
+			 */
+			pins = <0x03 0x02 0x04 0x0e>;
+
+			truth-table =
+				<0x00 0x08>,	/* ISO - ISO */
+				<0x10 0x00>,	/* BYP - WIFI_RX_BYP */
+				<0x11 0x0a>,	/* RxL - WIFI_RX_G0 */
+				<0x12 0x02>,	/* RxH - WIFI_RX_G1 */
+				<0x20 0x0f>,	/* TXBYP - WIFI_TX_LF_G0 */
+				<0x21 0x07>,	/* TxL - WIFI_TX_LF_G1 */
+				<0x22 0x09>,	/* TxML - WIFI_TX_LF_G2 */
+				<0x23 0x05>,	/* TxM - WIFI_TX_LF_G3 */
+				<0x24 0x0b>,	/* TxMH - WIFI_TX_LF_G4 */
+				<0x25 0x03>,	/* TxHE2 - WIFI_TX_LF_G5 */
+				<0x26 0x0d>,	/* TxHE1 - WIFI_TX_LF_G6 */
+				<0x27 0x01>,	/* TxH - WIFI_TX_LF_G7 */
+				<0x9f 0x0c>,	/* BTBYP - BT_TX_BYP */
+				<0x90 0x04>,	/* BTL - BT_TX_G0 */
+				<0x91 0x0e>,	/* BTM - BT_TX_G1 */
+				<0x92 0x06>;	/* BTH - BT_TX_G2 */
+
+			states-set {
+				vc536421_rxl: vc536421-rxl {
+					fem = <&vc536421>;
+					cat-names = "cat-iso", "cat-rx", "cat-tx-lf";
+					cat-iso {
+						cat-id = <0x00>;
+						states =
+							<0x10>;	/* BYP */
+					};
+					cat-rx {
+						cat-id = <0x01>;
+						states =
+							<0x10>,	/* BYP */
+							<0x11>;	/* RxL */
+					};
+					cat-tx-lf {
+						cat-id = <0x02>;
+						states =
+							<0x20>, /* TxBYP */
+							<0x21>,	/* TxL */
+							<0x22>,	/* TxML */
+							<0x23>,	/* TxM */
+							<0x24>,	/* TxMH */
+							<0x25>,	/* TxHE2 */
+							<0x26>,	/* TxHE1 */
+							<0x27>;	/* TxH */
+					};
+				};
+			};
+		};
+
+		vc576821: vc576821 {
+			vid = <0x05>;
+			pid = <0x04>;
+			flag = <0x00000000>;
+
+			/* [0] 0x0a: SEL1/PAEN
+			 * [1] 0x0b: SEL2/LNAEN
+			 * [2] 0x0c: SEL3
+			 * [3] 0x01: SEL4
+			 */
+			pins = <0x0a 0x0b 0x0c 0x01>;
+
+			truth-table =
+				<0x00 0x00>,	/* ISO - ISO */
+				<0x10 0x0a>,	/* BYP - WIFI_RX_BYP */
+				<0x11 0x08>,	/* RxL - WIFI_RX_G0 */
+				<0x12 0x02>,	/* RxH - WIFI_RX_G1 */
+				<0x20 0x07>,	/* TxL - WIFI_TX_LF_G1 */
+				<0x21 0x04>,	/* TxML - WIFI_TX_LF_G2 */
+				<0x22 0x05>,	/* TxM - WIFI_TX_LF_G3 */
+				<0x23 0x03>,	/* TxMH - WIFI_TX_LF_G4 */
+				<0x24 0x06>,	/* TxHE - WIFI_TX_LF_G5 */
+				<0x25 0x01>,	/* TxH - WIFI_TX_LF_G6 */
+				<0x90 0x0f>,	/* BTL - BT_TX_G0 */
+				<0x91 0x03>;	/* BTH - BT_TX_G1 */
+
+			states-set {
+				vc576821_rxl: vc576821-rxl {
+					fem = <&vc576821>;
+					cat-names = "cat-iso", "cat-rx", "cat-tx-lf";
+					cat-iso {
+						cat-id = <0x00>;
+						states =
+							<0x00>;	/* ISO */
+					};
+					cat-rx {
+						cat-id = <0x01>;
+						states =
+							<0x10>,	/* BYP */
+							<0x11>;	/* RxL */
+					};
+					cat-tx-lf {
+						cat-id = <0x02>;
+						states =
+							<0x20>,	/* TxL */
+							<0x21>,	/* TxML */
+							<0x22>,	/* TxM */
+							<0x23>,	/* TxMH */
+							<0x24>,	/* TxHE */
+							<0x25>;	/* TxH */
+					};
+				};
+				/* RxH support */
+				vc576821_rxh: vc576821-rxh {
+					fem = <&vc576821>;
+					cat-names = "cat-iso", "cat-rx", "cat-tx-lf";
+					cat-iso {
+						cat-id = <0x00>;
+						states =
+							<0x00>;	/* ISO */
+					};
+					cat-rx {
+						cat-id = <0x01>;
+						states =
+							<0x10>,	/* BYP */
+							<0x12>;	/* RxH */
+					};
+					cat-tx-lf {
+						cat-id = <0x02>;
+						states =
+							<0x20>,	/* TxL */
+							<0x21>,	/* TxML */
+							<0x22>,	/* TxM */
+							<0x23>,	/* TxMH */
+							<0x24>,	/* TxHE */
+							<0x25>;	/* TxH */
+					};
+				};
+			};
+		};
 	};
 
 	layouts {
@@ -449,6 +657,26 @@
 			band-path-wifi = <0x01>; /* G-WF1 */
 			band-path-bt = <0x51>;	/* G-BT1 */
 			fem = <&sky55208>;
+			mapping = <18 0x03 0>,	/* Antsel 18 <-> SEL1 0x03 */
+				  <19 0x02 0>,	/* Antsel 19 <-> SEL2 0x02 */
+				  <20 0x04 0>,	/* Antsel 20 <-> SEL3 0x04 */
+				  <21 0x0e 0>;	/* Antsel 21 <-> SEL4 0x0e */
+		};
+
+		g_wf0_bt0_vc536421: g-wf0-bt0-vc536421 {
+			band-path-wifi = <0x00>; /* G-WF0 */
+			band-path-bt = <0x50>;	/* G-BT0 */
+			fem = <&vc536421>;
+			mapping = <4 0x03 0>, /* Antsel 4 <-> SEL1 0x03 */
+				  <5 0x02 0>, /* Antsel 5 <-> SEL2 0x02 */
+				  <6 0x04 0>, /* Antsel 6 <-> SEL3 0x04 */
+				  <7 0x0e 0>; /* Antsel 7 <-> SEL4 0x0e */
+		};
+
+		g_wf1_bt1_vc536421: g-wf1-bt1-vc536421 {
+			band-path-wifi = <0x01>; /* G-WF1 */
+			band-path-bt = <0x51>;	/* G-BT1 */
+			fem = <&vc536421>;
 			mapping = <18 0x03 0>,	/* Antsel 18 <-> SEL1 0x03 */
 				  <19 0x02 0>,	/* Antsel 19 <-> SEL2 0x02 */
 				  <20 0x04 0>,	/* Antsel 20 <-> SEL3 0x04 */
@@ -508,6 +736,26 @@
 				  <17 0x01 0>;	/* Antsel 17 <-> SEL4 0x01 */
 		};
 
+		a_wf0_vc576821: a-wf0-vc576821 {
+			band-path-wifi = <0x10>; /* A-WF0 */
+			band-path-bt = <0xff>;	/* NONE */
+			fem = <&vc576821>;
+			mapping = <8  0x0a 0>,	/* Antsel 8  <-> SEL1 0x0a */
+				  <9  0x0b 0>,	/* Antsel 9  <-> SEL2 0x0b */
+				  <10 0x0c 0>,	/* Antsel 10 <-> SEL3 0x0c */
+				  <11 0x01 0>;	/* Antsel 11 <-> SEL4 0x01 */
+		};
+
+		a_wf1_vc576821: a-wf1-vc576821 {
+			band-path-wifi = <0x11>; /* A-WF1 */
+			band-path-bt = <0xff>;	/* NONE */
+			fem = <&vc576821>;
+			mapping = <14 0x0a 0>,	/* Antsel 14 <-> SEL1 0x0a */
+				  <15 0x0b 0>,	/* Antsel 15 <-> SEL2 0x0b */
+				  <16 0x0c 0>,	/* Antsel 16 <-> SEL3 0x0c */
+				  <17 0x01 0>;	/* Antsel 17 <-> SEL4 0x01 */
+		};
+
 		/***************************************************************
 		 * [LAYOUT] Band2
 		 **************************************************************/
@@ -525,6 +773,24 @@
 			band-path-wifi = <0x12>; /* A-WF2 */
 			band-path-bt = <0x60>;	/* A-BT0 */
 			fem = <&sky55714>;
+			mapping = <0 0x0a 0>,	/* Antsel 0 <-> SEL1 0x0a */
+				  <1 0x0b 0>,	/* Antsel 1 <-> SEL2 0x0b */
+				  <2 0x0c 0>,	/* Antsel 2 <-> SEL3 0x0c */
+				  <3 0x01 0>;	/* Antsel 3 <-> SEL4 0x01 */
+		};
+
+		a_wf2_bt0_sky85732: a-wf2-bt0-sky85732 {
+			band-path-wifi = <0x12>; /* A-WF2 */
+			band-path-bt = <0x60>;	/* A-BT0 */
+			fem = <&sky85732>;
+			mapping = <0 0x07 0>,	/* Antsel 0 <-> SEL1 0x07 */
+				  <1 0x09 0>;	/* Antsel 1 <-> SEL2 0x09 */
+		};
+
+		a_wf2_bt0_vc576821: a-wf2-bt0-vc576821 {
+			band-path-wifi = <0x12>; /* A-WF2 */
+			band-path-bt = <0x60>;	/* A-BT0 */
+			fem = <&vc576821>;
 			mapping = <0 0x0a 0>,	/* Antsel 0 <-> SEL1 0x0a */
 				  <1 0x0b 0>,	/* Antsel 1 <-> SEL2 0x0b */
 				  <2 0x0c 0>,	/* Antsel 2 <-> SEL3 0x0c */

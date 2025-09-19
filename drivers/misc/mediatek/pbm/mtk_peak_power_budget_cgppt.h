@@ -16,6 +16,7 @@ struct ppb_cgppt_dbg_operation {
 	int (*get_cpucb_cnt)(int idx);
 	int (*get_gpucb_cnt)(int idx);
 	int (*get_cg_bgt)(void);
+	int (*get_cg_freq)(u32 *cb_lf, u32 *cm_lf, u32 *cl_lf, u32 *gpu_lf);
 };
 
 extern int register_ppb_cgppt_cb(struct ppb_cgppt_dbg_operation *ops);

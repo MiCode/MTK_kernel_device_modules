@@ -176,7 +176,9 @@ enum vow_control_cmd_t {
 	VOWControlCmd_Mic_Single,
 	VOWControlCmd_Mic_Dual,
 	VOWControlCmd_Speaker_Single,
-	VOWControlCmd_Speaker_Dual
+	VOWControlCmd_Speaker_Dual,
+	VOWControlCmd_Oneshot_Enable,
+	VOWControlCmd_Oneshot_Disable
 };
 
 enum vow_ipi_msgid_t {
@@ -206,6 +208,7 @@ enum vow_ipi_msgid_t {
 	IPIMSG_VOW_HAL_REBOOT = 29,
 	//IPIMSG_VOW_FLUSH = 30,
 	IPIMSG_VOW_SCP_BARGE_IN_RESUME = 31,
+	IPIMSG_VOW_ONESHOT_SUPPORT = 32,
 	/*------ sound_soc-vow-kernel ------*/
 	IPIMSG_VOW_PCM_HWFREE = 100
 };

@@ -33,7 +33,7 @@
 	chosen: chosen {
 		bootargs = "console=tty0 root=/dev/ram \
 			vmalloc=400M swiotlb=noforce transparent_hugepage=never \
-			initcall_debug=1 \
+			initcall_debug=0 \
 			8250.nr_uarts=2 \
 			firmware_class.path=/vendor/firmware \
 			loop.max_part=7";
@@ -891,7 +891,7 @@
 		vsram_chk_gpio = <&pio 200 0x0>;
 
 		pmic = <&main_pmic>;
-		dvfsrc-opp-num = <4>;
+		dvfsrc-opp-num = <5>;
 		dvfs-opp =
 			/* vcore    vsram   uv       rc  spm    freq    mux */
 			< 600000    850000  0xff    0x0 0x8     125     0>,
@@ -907,9 +907,10 @@
 		gpio-feature = "gpio-mode";
 		gpio-feature-cfg = <1>;
 		gpio-mode-reg = <0x410 0x7 24 1>;
-		/*dvfsrc-vscp-supply = <&dvfsrc_vscp>;*/
+		dvfsrc-vscp-supply = <&dvfsrc_vscp>;
 		sshub-vcore-supply = <&mt_pmic_vcore_buck_reg>;
 		sshub-vsram-supply = <&mt_pmic_vsram_others_ldo_reg>;
+		legacy-support-v2;
 	};
 
 	iocfg_lt: iocfg_lt@10002000 {
@@ -2654,13 +2655,15 @@
 			compatible = "mediatek,mt6781-vcodec-dec";
 			mediatek,platform = "platform:mt6781";
 			mediatek,ipm = <1>;
-			reg = <0 0x1602f000 0 0x1000>,		/* VDEC_SYS */
+			reg = <0 0x16000000 0 0x1000>,		/* VDEC_BASE */
+				<0 0x1602f000 0 0x1000>,		/* VDEC_SYS */
 				<0 0x16029800 0 0x400>,                /* VDEC_UFO */
 				<0 0x16020000 0 0x400>,		/* VDEC_VLD */
 				<0 0x16021000 0 0x1000>,               /* VDEC_MC */
 				<0 0x16023000 0 0x1000>,               /* VDEC_MV */
 				<0 0x16025000 0 0x1000>;		/* VDEC_MISC */
 			reg-names =
+				"VDEC_BASE",
 				"VDEC_SYS",
 				"VDEC_UFO",
 				"VDEC_VLD",
@@ -2873,31 +2876,48 @@
 				<875967048 10 780 780 364000000 117>, /* 2K30, LP */
 				<875967048 17 1148 1148 450000000 157>, /* others, LP */
 				/* HEVC */
-				<1129727304 0 1148 1148 364000000 88>, /* 720p30, LP */
-				<1129727304 0 860 860 364000000 88>, /* 1080p30, LP */
-				<1129727304 2 780 780 450000000 157>, /* 1080p60, LP */
+				<1129727304 1 1148 1148 364000000 88>, /* 720p30, LP */
+				<1129727304 2 860 860 364000000 88>, /* 1080p30, LP */
+				<1129727304 3 780 780 450000000 157>, /* 1080p60, LP */
 				<1129727304 10 780 780 364000000 117>, /* 2K30, LP */
 				<1129727304 17 1148 1148 450000000 157>, /* others, LP */
 				/* H.265 */
-				<892744264 0 1148 1148 364000000 88>, /* 720p30, LP */
-				<892744264 0 860 860 364000000 88>, /* 1080p30, LP */
-				<892744264 2 780 780 450000000 157>, /* 1080p60, LP */
+				<892744264 1 1148 1148 364000000 88>, /* 720p30, LP */
+				<892744264 2 860 860 364000000 88>, /* 1080p30, LP */
+				<892744264 3 780 780 450000000 157>, /* 1080p60, LP */
 				<892744264 10 780 780 364000000 117>, /* 2K30, LP */
 				<892744264 17 1148 1148 450000000 157>, /* others, LP */
 				/* HEIF */
-				<1179206984 0 1148 1148 364000000 88>, /* 720p30, LP */
-				<1179206984 0 860 860 364000000 88>, /* 1080p30, LP */
-				<1179206984 2 780 780 450000000 157>, /* 1080p60, LP */
+				<1179206984 1 1148 1148 364000000 88>, /* 720p30, LP */
+				<1179206984 2 860 860 364000000 88>, /* 1080p30, LP */
+				<1179206984 3 780 780 450000000 157>, /* 1080p60, LP */
 				<1179206984 10 780 780 364000000 117>, /* 2K30, LP */
 				<1179206984 17 1148 1148 450000000 157>; /* others, LP */
-			config-table =
-				<875967048 432000 1 1>, /* H264 720p 30fps */
-				<875967048 432000 2 2>, /* H264 1080p 30fps */
-				<875967048 486000 3 3>, /* H264 1080p 60fps */
-				<1129727304 486000 2 2>, /* HEVC 1080p 60fps */
-				<892744264 486000 2 2>, /* H265 1080p 60fps */
-				<1179206984 486000 0 0>, /* HEIF 1080p 30fps*/
-				<1179206984 4294967295 10 10>;
+			config-table = /* codec, mb/s, normal config, high quality config*/
+				/* H.264 */
+				<875967048 108000 1 1>, /* 720p30 */
+				<875967048 261120 2 2>, /* 1080p30 */
+				<875967048 522240 3 3>, /* 1080p60 */
+				<875967048 432000 10 10>, /* 2560x1440@30 */
+				<875967048 4294967295 17 17>, /* others */
+				/* HEVC */
+				<1129727304 108000 1 1>, /* 720p30 */
+				<1129727304 261120 2 2>, /* 1080p30 */
+				<1129727304 522240 3 3>, /* 1080p60 */
+				<1129727304 432000 10 10>, /* 2560x1440@30 */
+				<1129727304 4294967295 17 17>, /* others */
+				/* H.265 */
+				<892744264 108000 1 1>, /* 720p30 */
+				<892744264 261120 2 2>, /* 1080p30 */
+				<892744264 522240 3 3>, /* 1080p60 */
+				<892744264 432000 10 10>, /* 2560x1440@30 */
+				<892744264 4294967295 17 17>, /* others */
+				/* HEIF */
+				<1179206984 108000 1 1>, /* 720p30 */
+				<1179206984 261120 2 2>, /* 1080p30 */
+				<1179206984 522240 3 3>, /* 1080p60 */
+				<1179206984 432000 10 10>, /* 2560x1440@30 */
+				<1179206984 4294967295 17 17>; /* others */
 			bandwidth-table =
 				<7 2 0>,
 				<7 1 150>,
@@ -4004,10 +4024,14 @@
 			"mbox4";
 	};
 
-	adsp_common: adsp_common@10600000 {
-		compatible = "mediatek,adsp_common";
-		reg = <0 0x10001000 0 0x1000>,  /* infracfg_ao */
+	adspsys: adspsys@10600000 {
+		compatible = "mediatek,mt6781-adspsys";
+		reg = <0 0x10600000 0 0x10000>, /* CFG */
+		    <0 0x10001000 0 0x1000>,  /* infracfg_ao */
 			<0 0x10003000 0 0x1000>;  /* pericfg */
+		reg-names = "cfg",
+			"infracfg_ao",
+			"pericfg";
 		clocks = <&infracfg_ao INFRACFG_AO_FADSP_26M_CG>,  /* subsys_cg */
 			<&infracfg_ao INFRACFG_AO_FADSP_32K_CG>,  /* subsys_cg */
 			<&infracfg_ao INFRACFG_AO_FADSP_CG>,  /* subsys_cg */
@@ -4020,6 +4044,7 @@
 			"clk_top_adsp_sel",
 			"clk_adsp_clk26m",
 			"clk_top_adsppll_ck";
+		core-num = <1>;    /* core number */
 		adsp-rsv-ipidma-a = <0x200000>;
 		adsp-rsv-logger-a = <0x80000>;
 		adsp-rsv-dbg-dump-a = <0x80000>;
@@ -4028,13 +4053,13 @@
 	};
 
 	adsp_core0: adsp_core0@10610000 {
-		compatible = "mediatek,adsp_core_0";
-		reg = <0 0x10600000 0 0x10000>, /* CFG */
-			<0 0x10630000 0 0x9000>, /* ITCM */
+		compatible = "mediatek,mt6781-adsp_core_0";
+		reg = <0 0x10630000 0 0x9000>, /* ITCM */
 			<0 0x10610000 0 0x8000>; /* DTCM */
 		system = <0 0x56000000 0 0x700000>;
-		interrupts = <GIC_SPI 240 IRQ_TYPE_LEVEL_HIGH 0>, /* ADSP_WDT0_IRQ_BIT */
-			     <GIC_SPI 239 IRQ_TYPE_LEVEL_HIGH 0>; /* ADSP_CIRQ_C0_IRQ_BIT */
+		interrupts = <GIC_SPI 239 IRQ_TYPE_LEVEL_HIGH 0>, /* ADSP_CIRQ_C0_IRQ_BIT */
+			     <GIC_SPI 240 IRQ_TYPE_LEVEL_HIGH 0>; /* ADSP_WDT0_IRQ_BIT */
+		feature-control-bits = /bits/ 64 <0xffffffffffffffff>;
 	};
 
 	imp_iic_wrap: imp_iic_wrap@11017000 {
@@ -4596,6 +4621,13 @@
 		disable_write_silence = <1>;
 	};
 
+	speech_usip_mem: speech-usip-mem {
+		compatible = "mediatek,speech-usip-mem";
+		adsp-phone-call-enh-enable = <0x1>;
+		adsp-phone-call-hwif = <0x0>;
+		adsp-ble-phone-call-enable = <0x0>;
+	};
+
 	mt-soc-offload-common {
 		compatible = "mediatek,mt-soc-offload-common";
 	};
@@ -4603,23 +4635,23 @@
 	/* feature : $enable $dl_mem $ul_mem $ref_mem $size */
 	snd_audio_dsp: snd-audio-dsp {
 		compatible = "mediatek,snd-audio-dsp";
-		mtk-dsp-voip = <0x0 0xffffffff 0xffffffff 0xffffffff 0x30000>;
-		mtk-dsp-primary = <0x0 0xffffffff 0xffffffff 0xffffffff 0x30000>;
+		mtk-dsp-voip = <0x5 0xffffffff 0xffffffff 0xffffffff 0x30000>;
+		mtk-dsp-primary = <0x5 0xffffffff 0xffffffff 0xffffffff 0x30000>;
 		mtk-dsp-offload = <0x0 0xffffffff 0xffffffff 0xffffffff 0x400000>;
-		mtk-dsp-deep = <0x0 0xffffffff 0xffffffff 0xffffffff 0x30000>;
-		mtk-dsp-playback = <0x0 0x4 0xffffffff 0x13 0x30000>;
-		mtk-dsp-music = <0x0 0xffffffff 0xffffffff 0xffffffff 0x0>;
+		mtk-dsp-deep = <0x5 0xffffffff 0xffffffff 0xffffffff 0x30000>;
+		mtk-dsp-playback = <0x1 0x4 0xffffffff 0x13 0x30000>;
+		mtk-dsp-music = <0x1 0xffffffff 0xffffffff 0xffffffff 0x0>;
 		mtk-dsp-capture1 = <0x0 0xffffffff 0xc 0x12 0x20000>;
 		mtk-dsp-a2dp = <0x0 0xffffffff 0xffffffff 0xffffffff 0x40000>;
 		mtk-dsp-dataprovider = <0x0 0xffffffff 0xf 0xffffffff 0x30000>;
-		mtk-dsp-call-final = <0x0 0x4 0xf 0x13 0x18000>;
-		mtk-dsp-fast = <0x0 0xffffffff 0xffffffff 0xffffffff 0x5000>;
-		mtk-dsp-ktv = <0x0 0x8 0x11 0xffffffff 0x10000>;
+		mtk-dsp-call-final = <0x5 0x4 0xf 0x13 0x18000>;
+		mtk-dsp-fast = <0x5 0xffffffff 0xffffffff 0xffffffff 0x5000>;
+		mtk-dsp-ktv = <0x1 0x8 0x11 0xffffffff 0x10000>;
 		mtk-dsp-capture-raw = <0x0 0xffffffff 0xffffffff 0xffffffff 0x20000>;
-		mtk-dsp-fm = <0x0 0xffffffff 0xf 0xffffffff 0x10000>;
+		mtk-dsp-fm = <0x1 0xffffffff 0xf 0xffffffff 0x10000>;
 		mtk-dsp-ver = <0x1>;
-		swdsp-smartpa-process-enable = <0x0>;
-		mtk-dsp-mem-afe = <0x0 0x40000>; /* always enable */
+		swdsp-smartpa-process-enable = <0x5>;
+		mtk-dsp-mem-afe = <0x1 0x40000>; /* always enable */
 	};
 
 
@@ -4779,6 +4811,7 @@
 		multipoint = <1>;
 		num_eps = <16>;
 		pericfg= <&pericfg>;
+		infracg= <&infracfg_ao>;
 		interrupt-names = "mc";
 		phys = <&u2port0 PHY_TYPE_USB2>;
 		dr_mode = "otg";
@@ -4870,9 +4903,14 @@
 		reg = <0 0x0e700000 0 0x100000>;
 	};
 
+	mgm: mgm {
+		compatible = "arm,physical-memory-group-manager";
+	};
+
 	mali: mali@13000000 {
 		compatible = "mediatek,mali", "arm,mali-valhall";
 		reg = <0 0x13000000 0 0x4000>;
+		physical-memory-group-manager = <&mgm>;
 		interrupts =
 			<GIC_SPI 274 IRQ_TYPE_LEVEL_HIGH 0>,
 			<GIC_SPI 275 IRQ_TYPE_LEVEL_HIGH 0>,
@@ -4886,6 +4924,12 @@
 			"EVENT",
 			"PWR";
 		ged-supply = <&ged>;
+		gpu-frame-base-optimize = <1>;
+	};
+
+	gpu_dvfs_prefence: gpu-prefence {
+		compatible = "mediatek,gpu_prefence";
+		dvfs-prefence-enable = <1>;
 	};
 
 	gpufreq: gpufreq {
@@ -6546,6 +6590,10 @@
 };
 
 &mt_pmic_vio28_ldo_reg {
+	regulator-always-on;
+};
+
+&mt_pmic_vsram_others_ldo_reg {
 	regulator-always-on;
 };
 

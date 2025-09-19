@@ -10,6 +10,9 @@
 #include <linux/slab.h>
 #include <linux/tee_drv.h>
 #include <linux/types.h>
+#ifndef USER_BUILD_KERNEL
+#include <asm/cpufeature.h>
+#endif
 #include "optee_private.h"
 
 #define MAX_ARG_PARAM_COUNT	6
@@ -487,6 +490,11 @@ static bool is_normal_memory(pgprot_t p)
 	return (((pgprot_val(p) & L_PTE_MT_MASK) == L_PTE_MT_WRITEALLOC) ||
 		((pgprot_val(p) & L_PTE_MT_MASK) == L_PTE_MT_WRITEBACK));
 #elif defined(CONFIG_ARM64)
+#ifndef USER_BUILD_KERNEL
+	if (system_supports_mte())
+		return (((pgprot_val(p) & PTE_ATTRINDX_MASK) == PTE_ATTRINDX(MT_NORMAL)) ||
+			((pgprot_val(p) & PTE_ATTRINDX_MASK) == PTE_ATTRINDX(MT_NORMAL_TAGGED)));
+#endif
 	return (pgprot_val(p) & PTE_ATTRINDX_MASK) == PTE_ATTRINDX(MT_NORMAL);
 #else
 #error "Unsupported architecture"

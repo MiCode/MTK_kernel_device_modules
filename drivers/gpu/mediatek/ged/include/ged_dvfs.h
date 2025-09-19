@@ -237,6 +237,7 @@ bool ged_gpu_predict_apo_notify(void);
 unsigned int ged_get_apo_autosuspend_delay_ms(void);
 int ged_get_apo_autosuspend_delay_ref_count(void);
 void ged_set_apo_autosuspend_delay_ctrl(int ctrl);
+int ged_get_apo_autosuspend_delay_ctrl(void);
 int ged_get_apo_autosuspend_delay_target_ref_count(void);
 void ged_set_apo_autosuspend_delay_target_ref_count(int apo_autosuspend_delay_target_ref_count);
 void ged_set_apo_autosuspend_delay_ms_ref_idletime_nolock(long long idle_time);

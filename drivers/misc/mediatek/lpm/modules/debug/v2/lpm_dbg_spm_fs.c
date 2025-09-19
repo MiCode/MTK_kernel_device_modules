@@ -410,7 +410,7 @@ static const struct mtk_lp_sysfs_op vsram_lp_volt_fops = {
 	.fs_write = vsram_lp_volt_write,
 };
 
-unsigned int is_lp_blocked_threshold = 10;
+unsigned int is_lp_blocked_threshold = 1;
 unsigned int lpm_get_lp_blocked_threshold(void)
 {
 	return is_lp_blocked_threshold;

@@ -30,6 +30,8 @@
 
 #define clk_warn(fmt, args...)	pr_notice(TAG fmt, ##args)
 
+static unsigned int suspend_cnt;
+
 #if !CLKDBG_CCF_API_4_4
 
 /* backward compatible */
@@ -351,6 +353,21 @@ static struct pvd_msk *get_pvd_pwr_mask(void)
 //#endif
 //}
 
+static bool is_suspend_retry_stop(bool reset_cnt)
+{
+	if (reset_cnt == true) {
+		suspend_cnt = 0;
+		return true;
+	}
+
+	suspend_cnt++;
+	pr_notice("%s: suspend cnt: %d\n", __func__, suspend_cnt);
+
+	if (suspend_cnt < 2)
+		return false;
+
+	return true;
+}
 
 /*
  * init functions
@@ -368,10 +385,13 @@ static struct clkchk_ops clkchk_mt6761_ops = {
 #if IS_ENABLED(CONFIG_MTK_DEVAPC)
 	.devapc_dump = devapc_dump,
 #endif
+	.is_suspend_retry_stop = is_suspend_retry_stop,
 };
 
 static int clk_chk_mt6761_probe(struct platform_device *pdev)
 {
+	suspend_cnt = 0;
+
 	init_regbase();
 
 	set_clkchk_notify();

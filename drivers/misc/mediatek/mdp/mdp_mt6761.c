@@ -1405,6 +1405,31 @@ u32 mdp_engine_base_count(void)
 	return (u32)ENGBASE_COUNT;
 }
 
+static u32 mdp_get_poll_gpr(u16 engine, u32 reg_addr)
+{
+	u32 gpr;
+
+	switch (engine) {
+	case ENGBASE_MDP_RDMA0:
+	case ENGBASE_MDP_RSZ0:
+	case ENGBASE_MDP_WROT0:
+	case ENGBASE_MDP_TDSHP0:
+	case ENGBASE_MDP_COLOR0:
+	case ENGBASE_MDP_CCORR0:
+		gpr = CMDQ_GPR_R14;
+		break;
+	case ENGBASE_MDP_WDMA:
+	case ENGBASE_MDP_RSZ1:
+		gpr = CMDQ_GPR_R12;
+		break;
+	default:
+		gpr = CMDQ_GPR_R14;
+		break;
+	}
+
+	return gpr;
+}
+
 void cmdq_mdp_compose_readback(struct cmdqRecStruct *handle,
 	u16 engine, dma_addr_t addr, u32 param)
 {
@@ -1459,6 +1484,7 @@ void cmdq_mdp_platform_function_setting(void)
 	/* related mdp debug */
 	pFunc->mdpIsModuleSuspend = mdp_is_mod_suspend;
 	pFunc->mdpDumpEngineUsage = mdp_dump_engine_usage;
+	pFunc->mdpGetPollGpr = mdp_get_poll_gpr;
 
 	pFunc->mdpIsMtee = mdp_is_mtee;
 	pFunc->mdpIsIspImg = mdp_is_isp_img;

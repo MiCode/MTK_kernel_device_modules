@@ -517,7 +517,7 @@ static int get_charger_type(struct mtk_charger_type *info)
 		}
 	}
 
-	if (type != POWER_SUPPLY_USB_TYPE_DCP)
+	if (info->psy_desc.type != POWER_SUPPLY_TYPE_USB_DCP)
 		hw_bc11_done(info);
 	else
 		pr_info("charger type: skip bc11 release for BC12 DCP SPEC\n");

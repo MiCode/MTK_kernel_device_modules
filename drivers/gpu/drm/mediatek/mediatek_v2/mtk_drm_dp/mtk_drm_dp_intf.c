@@ -221,6 +221,10 @@ static void mtk_dpi_enable(struct mtk_dpi *dpi)
 
 static void mtk_dpi_disable(struct mtk_dpi *dpi)
 {
+	mtk_dpi_mask(dpi, DPI_INTEN, 0, (INT_UNDERFLOW_EN |
+						INT_VDE_EN |
+						INT_VSYNC_EN));
+	mtk_dpi_mask(dpi, DPI_INTSTA, 0, 0xf);
 	mtk_dpi_mask(dpi, DPI_EN, 0, EN);
 }
 
@@ -678,9 +682,12 @@ static int mtk_dpi_set_display_mode(struct mtk_dpi *dpi,
 	 * pixels for each iteration: divide the clock by this number and
 	 * adjust the display porches accordingly.
 	 */
-	hsync.sync_width = vm.hsync_len / dpi->conf->pixels_per_iter;
-	hsync.back_porch = vm.hback_porch / dpi->conf->pixels_per_iter;
-	hsync.front_porch = vm.hfront_porch / dpi->conf->pixels_per_iter;
+	hsync.sync_width = ((vm.hsync_len / dpi->conf->pixels_per_iter) == 0) ?
+		1 : (vm.hsync_len / dpi->conf->pixels_per_iter);
+	hsync.back_porch = ((vm.hback_porch / dpi->conf->pixels_per_iter) == 0) ?
+		1 : (vm.hback_porch / dpi->conf->pixels_per_iter);
+	hsync.front_porch = ((vm.hfront_porch / dpi->conf->pixels_per_iter) == 0) ?
+		1 : (vm.hfront_porch / dpi->conf->pixels_per_iter);
 
 	hsync.shift_half_line = false;
 	vsync_lodd.sync_width = vm.vsync_len;
@@ -851,6 +858,10 @@ static void mtk_dpi_bridge_mode_set(struct drm_bridge *bridge,
 static void mtk_dpi_bridge_disable(struct drm_bridge *bridge)
 {
 	struct mtk_dpi *dpi = bridge_to_dpi(bridge);
+	struct drm_crtc *crtc = dpi->encoder.crtc;
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+
+	mtk_drm_crtc_wait_blank(mtk_crtc);
 
 	mtk_dpi_power_off(dpi);
 

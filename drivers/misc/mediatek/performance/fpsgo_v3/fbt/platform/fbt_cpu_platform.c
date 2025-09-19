@@ -16,6 +16,14 @@
 #include "fpsgo_base.h"
 #include "fbt_cpu_platform.h"
 #include <common.h>
+#if IS_ENABLED(CONFIG_MTK_SPM_V4)
+#if IS_ENABLED(CONFIG_MTK_PMQOS)
+#include "mtk-pm-qos.h"
+static struct mtk_pm_qos_request fpsgo_dram_opp_request;
+#else
+#include "mtk_vcorefs_manager.h"
+#endif
+#endif
 
 static int mask_int[FPSGO_PREFER_TOTAL];
 static struct cpumask mask[FPSGO_PREFER_TOTAL];
@@ -52,6 +60,9 @@ static int platform_fpsgo_probe(struct platform_device *pdev)
 #if IS_ENABLED(CONFIG_MTK_DVFSRC)
 		peak_bw = dvfsrc_get_required_opp_peak_bw(node, 0);
 #endif /* CONFIG_MTK_DVFSRC */
+#if IS_ENABLED(CONFIG_MTK_SPM_V4) && IS_ENABLED(CONFIG_MTK_PMQOS)
+		mtk_pm_qos_add_request(&fpsgo_dram_opp_request, MTK_PM_QOS_DDR_OPP, MTK_PM_QOS_DDR_OPP_DEFAULT_VALUE);
+#endif
 
 	ret = of_property_read_u32(node,
 			 "gcc-enable", &retval);
@@ -77,6 +88,9 @@ static int platform_fpsgo_probe(struct platform_device *pdev)
 static int platform_fpsgo_remove(struct platform_device *pdev)
 {
 	icc_put(bw_path);
+#if IS_ENABLED(CONFIG_MTK_SPM_V4) && IS_ENABLED(CONFIG_MTK_PMQOS)
+	mtk_pm_qos_remove_request(&fpsgo_dram_opp_request);
+#endif
 
 	return 0;
 }
@@ -140,10 +154,17 @@ void fbt_boost_dram(int boost)
 
 #if IS_ENABLED(CONFIG_MTK_SPM_V4)
 	if (plat_dram_boost_enable == 1) {
+#if IS_ENABLED(CONFIG_MTK_PMQOS)
+		if (boost)
+			mtk_pm_qos_update_request(&fpsgo_dram_opp_request, 0);
+		else
+			mtk_pm_qos_update_request(&fpsgo_dram_opp_request, MTK_PM_QOS_DDR_OPP_DEFAULT_VALUE);
+#else
 		if (boost)
 			vcorefs_request_dvfs_opp(KIR_FBT, 0);
 		else
 			vcorefs_request_dvfs_opp(KIR_FBT, -1);
+#endif
 	}
 #endif
 	fpsgo_systrace_c_fbt_debug(-100, 0, boost, "boost_dram");

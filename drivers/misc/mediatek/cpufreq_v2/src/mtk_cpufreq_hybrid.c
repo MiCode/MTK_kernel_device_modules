@@ -1580,6 +1580,12 @@ void cpuhvfs_pvt_tbl_create(void)
 {
 	int i;
 	unsigned int lv = _mt_cpufreq_get_cpu_level();
+
+	if(lv >= NUM_CPU_LEVEL) {
+		lv = 0;
+		tag_pr_info("cpu level out of bounds using level 0 as default\n");
+	}
+
 #ifdef IMAX_ENABLE
 	unsigned int imax_state = IMAX_INIT_STATE;
 #ifdef ENABLE_DOE

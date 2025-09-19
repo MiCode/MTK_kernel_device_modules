@@ -29,6 +29,7 @@
 #include <thermal_interface.h>
 #include <eas/eas_plus.h>
 #include "core_ctl.h"
+#include "common.h"
 #include <mtk_cpu_power_throttling.h>
 
 #if IS_ENABLED(CONFIG_MTK_PLAT_POWER_6893)
@@ -94,6 +95,13 @@ struct cpu_data {
 	unsigned int cpu_util_pct;
 	unsigned int is_busy;
 	struct cluster_data *cluster;
+	unsigned int cpu_loading[10];
+	unsigned int window_idx;
+	unsigned int cpu_util[10];
+	u64 cur_wall_time;
+	u64 cur_idle_time;
+	u64 prev_wall_time;
+	u64 prev_idle_time;
 };
 
 #define ENABLE		1
@@ -109,6 +117,7 @@ struct cpu_data {
 #define MAX_BTASK_THRESH	100
 #define MAX_CPU_TJ_DEGREE	100000
 #define BIG_TASK_AVG_THRESHOLD	25
+#define WINDOW_SIZE 10
 
 #define for_each_cluster(cluster, idx) \
 	for ((cluster) = &cluster_state[idx]; (idx) < num_clusters;\
@@ -129,6 +138,7 @@ static DEFINE_SPINLOCK(core_ctl_pause_lock);
 static DEFINE_RWLOCK(core_ctl_policy_lock);
 static bool initialized;
 static unsigned int default_min_cpus[MAX_CLUSTERS] = {4, 2, 0};
+static unsigned int default_busy_up_thres[MAX_CLUSTERS] = {60, 80, 80};
 ATOMIC_NOTIFIER_HEAD(core_ctl_notifier);
 static bool debug_enable;
 module_param_named(debug_enable, debug_enable, bool, 0600);
@@ -549,6 +559,81 @@ static int set_up_thres(struct cluster_data *cluster, unsigned int val)
 	return ret;
 }
 
+static void set_cpu_busy_up_thres(struct cluster_data *cluster, unsigned int val)
+{
+	unsigned int old_thresh;
+	unsigned long flags;
+
+	spin_lock_irqsave(&core_ctl_state_lock, flags);
+	old_thresh = cluster->cpu_busy_up_thres;
+	if (old_thresh != val) {
+		cluster->cpu_busy_up_thres = val;
+		cluster->cpu_busy_down_thres = val > 20 ? val - 20 : 0;
+	}
+	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
+}
+
+/*
+ * get_cpu_loading - Calculates the CPU loading for each CPU
+ *
+ * This function iterates over each possible CPU and calculates its loading
+ * based on the difference between total wall time and idle time since the last
+ * measurement. It stores the calculated CPU loading in the provided cpu_info
+ * structure.
+ *
+ * The CPU loading is calculated as a percentage value representing the
+ * proportion of non-idle time(active time) over the total measured wall time for each CPU.
+ *
+ * Return: 0 on success, negative error code on failure
+ */
+static int get_cpu_loading(void)
+{
+	int cpu;
+	unsigned int cpu_loading, idx, cpu_util;
+	struct cpu_data *cpu_stat;
+	u64 wall_time, idle_time;
+
+	if (!initialized)
+		return 0;
+
+	for_each_possible_cpu(cpu) {
+		cpu_stat = &per_cpu(cpu_state, cpu);
+		cpu_loading = 0;
+		wall_time = 0;
+		idle_time = 0;
+
+		cpu_stat->prev_wall_time = cpu_stat->cur_wall_time;
+		cpu_stat->prev_idle_time = cpu_stat->cur_idle_time;
+
+		/* update both wall & idle time, and idle time include iowait */
+		cpu_stat->cur_idle_time = get_cpu_idle_time(cpu, &cpu_stat->cur_wall_time, 1);
+
+		if (cpu_active(cpu)) {
+			wall_time = cpu_stat->cur_wall_time - cpu_stat->prev_wall_time;
+			idle_time = cpu_stat->cur_idle_time - cpu_stat->prev_idle_time;
+		}
+
+		if (wall_time > 0 && wall_time > idle_time)
+			cpu_loading = div_u64(((wall_time - idle_time)*100),
+							wall_time);
+
+		idx = cpu_stat->window_idx;
+		if (idx >= 0 && idx < WINDOW_SIZE)
+			cpu_stat->cpu_loading[idx] = cpu_loading;
+		else
+			cpu_stat->cpu_loading[idx] = 0;
+
+		cpu_util = mtk_cpu_util_cfs_boost(cpu);
+		cpu_util = mtk_cpu_util(cpu, cpu_util, FREQUENCY_UTIL,
+				(struct task_struct *)UINTPTR_MAX, 0, SCHED_CAPACITY_SCALE);
+		cpu_stat->cpu_util[idx] = cpu_util;
+
+		cpu_stat->window_idx = ((idx + 1) % WINDOW_SIZE);
+	}
+
+	return 0;
+}
+
 /* ==================== export function ======================== */
 
 int core_ctl_set_min_cpus(unsigned int cid, unsigned int min)
@@ -764,7 +849,7 @@ int core_ctl_force_pause_cpu(unsigned int cpu, bool is_pause)
 		ret = core_ctl_resume_cpu(cpu);
 
 	/* error occurs */
-	if (ret)
+	if (ret < 0)
 		goto print_out;
 
 	/* Update cpu state */
@@ -835,17 +920,13 @@ static ssize_t store_thermal_up_thres(struct cluster_data *state,
  */
 int core_ctl_set_cpu_busy_thres(unsigned int cid, unsigned int pct)
 {
-	unsigned long flags;
 	struct cluster_data *cluster;
 
 	if (pct > 100 || cid > 2)
 		return -EINVAL;
 
-	spin_lock_irqsave(&core_ctl_state_lock, flags);
 	cluster = &cluster_state[cid];
-	cluster->cpu_busy_up_thres = pct;
-	cluster->cpu_busy_down_thres = pct > 20 ? pct - 20 : 0;
-	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
+	set_cpu_busy_up_thres(cluster, pct);
 	return 0;
 }
 EXPORT_SYMBOL(core_ctl_set_cpu_busy_thres);
@@ -1033,6 +1114,25 @@ static ssize_t show_thermal_up_thres(const struct cluster_data *state, char *buf
 	return scnprintf(buf, PAGE_SIZE, "%u\n", state->thermal_up_thres);
 }
 
+static ssize_t store_cpu_busy_up_thres(struct cluster_data *state,
+		const char *buf, size_t count)
+{
+	unsigned int val;
+
+	if (sscanf(buf, "%u\n", &val) != 1)
+		return -EINVAL;
+
+	/* No need to change up_thres for the last cluster */
+	if (state->cluster_id >= num_clusters-1)
+		return -EINVAL;
+
+	if (val > MAX_BTASK_THRESH)
+		val = MAX_BTASK_THRESH;
+
+	set_cpu_busy_up_thres(state, val);
+	return count;
+}
+
 static ssize_t show_cpu_busy_up_thres(const struct cluster_data *state, char *buf)
 {
 	return scnprintf(buf, PAGE_SIZE, "%u\n", state->cpu_busy_up_thres);
@@ -1114,7 +1214,7 @@ core_ctl_attr_rw(core_ctl_boost);
 core_ctl_attr_rw(enable);
 core_ctl_attr_ro(global_state);
 core_ctl_attr_rw(thermal_up_thres);
-core_ctl_attr_ro(cpu_busy_up_thres);
+core_ctl_attr_rw(cpu_busy_up_thres);
 
 static struct attribute *default_attrs[] = {
 	&min_cpus.attr,
@@ -1448,6 +1548,7 @@ void core_ctl_tick(void *data, struct rq *rq)
 	read_lock(&core_ctl_policy_lock);
 	if (enable_policy) {
 		read_unlock(&core_ctl_policy_lock);
+		get_cpu_loading();
 		core_ctl_main_algo();
 	} else
 		read_unlock(&core_ctl_policy_lock);
@@ -1489,6 +1590,7 @@ static struct cpumask try_to_pause(struct cluster_data *cluster, int need)
 	bool check_busy = true;
 	int ret = 0;
 	struct cpumask cpu_pause_res;
+	unsigned int i;
 
 	cpumask_clear(&cpu_pause_res);
 
@@ -1520,6 +1622,18 @@ again:
 
 		if (cluster->active_cpus == need)
 			break;
+
+		if (cpu == nr_cpu_ids-1) {
+			bool load_flag = false, util_flag = false;
+			for (i=0; i<WINDOW_SIZE; i++) {
+				if (c->cpu_loading[i] > 95)
+					load_flag = true;
+				if (c->cpu_util[i] > 820)
+					util_flag = true;
+			}
+			if (load_flag && util_flag)
+				break;
+		}
 
 		/*
 		 * Pause only the not_preferred CPUs.
@@ -1944,10 +2058,15 @@ static int cluster_init(const struct cpumask *mask)
 		state = &per_cpu(cpu_state, cpu);
 		state->cluster = cluster;
 		state->cpu = cpu;
+		state->cur_wall_time = 0;
+		state->cur_idle_time = 0;
+		state->prev_wall_time = 0;
+		state->prev_idle_time = 0;
+		state->window_idx = 0;
 	}
 
-	cluster->cpu_busy_up_thres = 80;
-	cluster->cpu_busy_down_thres = 60;
+	cluster->cpu_busy_up_thres = default_busy_up_thres[cluster->cluster_id];
+	cluster->cpu_busy_down_thres = cluster->cpu_busy_up_thres > 20 ? cluster->cpu_busy_up_thres - 20 : 0;
 
 	cluster->next_offline_time =
 		ktime_to_ms(ktime_get()) + cluster->offline_throttle_ms;

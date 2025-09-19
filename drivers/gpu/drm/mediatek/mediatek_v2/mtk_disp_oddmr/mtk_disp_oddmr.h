@@ -272,6 +272,7 @@ struct mtk_drm_dbi_share_info {
 	unsigned int panel_height;
 	unsigned int curr_fps;
 	unsigned int curr_bl;
+	unsigned int curr_temp;
 	struct mtk_drm_dbi_rg_backup backup;
 	struct mtk_drm_dbi_counting_info counting_info;
 	unsigned int lifecycle_addr_pa;
@@ -423,6 +424,7 @@ struct mtk_disp_oddmr {
 	int od_enable_req;
 	int od_enable;
 	int od_enable_last;
+	int od_update_sram;
 	int od_force_off;
 	int dmr_enable_req;
 	int dmr_enable;
@@ -436,6 +438,8 @@ struct mtk_disp_oddmr {
 	uint32_t last_qos_srt_dmrr;
 	uint32_t qos_srt_dbir;
 	uint32_t last_qos_srt_dbir;
+	uint32_t srt_delay_dbi;
+	uint32_t last_cal_srt_dbi;
 	uint32_t qos_srt_odr;
 	uint32_t last_qos_srt_odr;
 	uint32_t qos_srt_odw;
@@ -481,7 +485,7 @@ struct mtk_disp_oddmr {
 };
 
 bool mtk_drm_dbi_backup(struct drm_crtc *crtc, void *get_phys, void *get_virt,
-	void *get_size, unsigned int curr_fps, unsigned int curr_bl);
+	void *get_size, unsigned int curr_bl,unsigned int curr_fps, int curr_temp);
 int mtk_drm_ioctl_oddmr_load_param(struct drm_device *dev, void *data,
 		struct drm_file *file_priv);
 int mtk_drm_ioctl_oddmr_ctl(struct drm_device *dev, void *data,
