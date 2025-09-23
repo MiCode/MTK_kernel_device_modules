@@ -30,7 +30,7 @@
 static char bl_tb0[] = {0x51, 0xf, 0xff};
 static int current_fps = 144;
 #define SUPPORT_90Hz 0
-#define PREFETCH_TIME 150
+#define PREFETCH_TIME 0
 
 struct panel_desc {
 	const struct drm_display_mode *modes;
@@ -161,19 +161,516 @@ static void tianma_panel_init(struct tianma *ctx)
 	gpiod_set_value(ctx->reset_gpio, 1);
 	usleep_range(10 * 1000, 15 * 1000);
 
+	tianma_dcs_write_seq_static(ctx, 0xFF, 0x20);
+	tianma_dcs_write_seq_static(ctx, 0xFB, 0x01);
+	tianma_dcs_write_seq_static(ctx, 0x01, 0x55);
+	tianma_dcs_write_seq_static(ctx, 0x02, 0x55);
+	tianma_dcs_write_seq_static(ctx, 0x08, 0x2D);
+	tianma_dcs_write_seq_static(ctx, 0x0D, 0x43);
+	tianma_dcs_write_seq_static(ctx, 0x31, 0x07);
+	tianma_dcs_write_seq_static(ctx, 0x32, 0x77);
+	tianma_dcs_write_seq_static(ctx, 0x44, 0x02);
+	tianma_dcs_write_seq_static(ctx, 0x65, 0xCC);
+	tianma_dcs_write_seq_static(ctx, 0x69, 0xDD);
+	tianma_dcs_write_seq_static(ctx, 0x6D, 0xCC);
+	tianma_dcs_write_seq_static(ctx, 0x78, 0x93);
+	tianma_dcs_write_seq_static(ctx, 0x89, 0x70);
+	tianma_dcs_write_seq_static(ctx, 0x8A, 0x70);
+	tianma_dcs_write_seq_static(ctx, 0x8D, 0x70);
+	tianma_dcs_write_seq_static(ctx, 0x9D, 0x0F);
+	tianma_dcs_write_seq_static(ctx, 0x9E, 0x0F);
+	tianma_dcs_write_seq_static(ctx, 0xEC, 0x4B, 0x4B, 0x4B, 0x4B, 0x5A, 0x5A, 0x5A,
+			0x5A, 0xE1, 0xE1, 0xE1, 0xE1);
+
+	tianma_dcs_write_seq_static(ctx, 0xFF, 0x21);
+	tianma_dcs_write_seq_static(ctx, 0xFB, 0x01);
+	tianma_dcs_write_seq_static(ctx, 0xBC, 0x00);
+
+	tianma_dcs_write_seq_static(ctx, 0xFF, 0x23);
+	tianma_dcs_write_seq_static(ctx, 0xFB, 0x01);
+	tianma_dcs_write_seq_static(ctx, 0x75, 0x03);
+	tianma_dcs_write_seq_static(ctx, 0x76, 0x07);
+	tianma_dcs_write_seq_static(ctx, 0x77, 0x03);
+	tianma_dcs_write_seq_static(ctx, 0x78, 0x01, 0x02);
+	tianma_dcs_write_seq_static(ctx, 0x7A, 0xCD);
+	tianma_dcs_write_seq_static(ctx, 0x7B, 0xA0, 0x70);
+	tianma_dcs_write_seq_static(ctx, 0x7C, 0x2D, 0x32);
+	tianma_dcs_write_seq_static(ctx, 0x7E, 0x00, 0x10);
+	tianma_dcs_write_seq_static(ctx, 0xBA, 0x3C, 0x7C);
+	tianma_dcs_write_seq_static(ctx, 0xBB, 0x3B, 0x7E);
+	tianma_dcs_write_seq_static(ctx, 0xBC, 0x01, 0x00, 0x3C);
+
+	tianma_dcs_write_seq_static(ctx, 0xFF, 0x24);
+	tianma_dcs_write_seq_static(ctx, 0xFB, 0x01);
+	tianma_dcs_write_seq_static(ctx, 0x00, 0x03, 0x03, 0x03, 0x03, 0x03, 0x04, 0x26,
+			0x26, 0x0F, 0x0D, 0x0E, 0x0C, 0x27, 0x21, 0x22, 0x23);
+	tianma_dcs_write_seq_static(ctx, 0x01, 0x03, 0x03, 0x2E, 0x2C, 0x03, 0x03, 0x03,
+			0x03);
+	tianma_dcs_write_seq_static(ctx, 0x02, 0x03, 0x03, 0x03, 0x03, 0x03, 0x04, 0x26,
+			0x26, 0x0F, 0x0D, 0x0E, 0x0C, 0x27, 0x21, 0x24, 0x25);
+	tianma_dcs_write_seq_static(ctx, 0x03, 0x03, 0x03, 0x2E, 0x2C, 0x03, 0x03, 0x03,
+			0x03);
+	tianma_dcs_write_seq_static(ctx, 0x1C, 0x80);
+	tianma_dcs_write_seq_static(ctx, 0x30, 0x02);
+	tianma_dcs_write_seq_static(ctx, 0x31, 0x02);
+	tianma_dcs_write_seq_static(ctx, 0x32, 0x03);
+	tianma_dcs_write_seq_static(ctx, 0x33, 0x04);
+	tianma_dcs_write_seq_static(ctx, 0x34, 0x03);
+	tianma_dcs_write_seq_static(ctx, 0x35, 0x06);
+	tianma_dcs_write_seq_static(ctx, 0x36, 0x07);
+	tianma_dcs_write_seq_static(ctx, 0x37, 0x42);
+	tianma_dcs_write_seq_static(ctx, 0x3A, 0x3E);
+	tianma_dcs_write_seq_static(ctx, 0x3B, 0x10);
+	tianma_dcs_write_seq_static(ctx, 0x3D, 0x02);
+	tianma_dcs_write_seq_static(ctx, 0x4B, 0x61);
+	tianma_dcs_write_seq_static(ctx, 0x51, 0x12);
+	tianma_dcs_write_seq_static(ctx, 0x52, 0x34);
+	tianma_dcs_write_seq_static(ctx, 0x56, 0x04);
+	tianma_dcs_write_seq_static(ctx, 0x58, 0x10);
+	tianma_dcs_write_seq_static(ctx, 0x59, 0x10);
+	tianma_dcs_write_seq_static(ctx, 0x5A, 0x02);
+	tianma_dcs_write_seq_static(ctx, 0x5B, 0x54);
+	tianma_dcs_write_seq_static(ctx, 0x5E, 0x00, 0x04);
+	tianma_dcs_write_seq_static(ctx, 0x60, 0x71, 0x70);
+	tianma_dcs_write_seq_static(ctx, 0x61, 0x30);
+	tianma_dcs_write_seq_static(ctx, 0x72, 0x80);
+	tianma_dcs_write_seq_static(ctx, 0x92, 0x68, 0x01, 0x1F);
+	tianma_dcs_write_seq_static(ctx, 0x93, 0x38, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0x94, 0xBC, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0x95, 0x09);
+	tianma_dcs_write_seq_static(ctx, 0x96, 0x80, 0x8C, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0x98, 0x80);
+	tianma_dcs_write_seq_static(ctx, 0x9A, 0x0A);
+	tianma_dcs_write_seq_static(ctx, 0xA5, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0xAA, 0x8F, 0x8F, 0x23);
+	tianma_dcs_write_seq_static(ctx, 0xAB, 0x42);
+	tianma_dcs_write_seq_static(ctx, 0xAE, 0x71);
+	tianma_dcs_write_seq_static(ctx, 0xB6, 0x08, 0x08, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0xBC, 0x00, 0x00, 0x43, 0x22);
+	tianma_dcs_write_seq_static(ctx, 0xC2, 0xC4, 0x00, 0x01);
+	tianma_dcs_write_seq_static(ctx, 0xC4, 0x2A);
+	tianma_dcs_write_seq_static(ctx, 0xC5, 0x03);
+	tianma_dcs_write_seq_static(ctx, 0xC7, 0x08);
+	tianma_dcs_write_seq_static(ctx, 0xC8, 0x03);
+	tianma_dcs_write_seq_static(ctx, 0xC9, 0x08);
+	tianma_dcs_write_seq_static(ctx, 0xCA, 0x03);
+	tianma_dcs_write_seq_static(ctx, 0xD4, 0x03);
+	tianma_dcs_write_seq_static(ctx, 0xD6, 0x46);
+	tianma_dcs_write_seq_static(ctx, 0xD7, 0x35);
+	tianma_dcs_write_seq_static(ctx, 0xD8, 0x25);
+	tianma_dcs_write_seq_static(ctx, 0xD9, 0x12);
+	tianma_dcs_write_seq_static(ctx, 0xDA, 0x04);
+	tianma_dcs_write_seq_static(ctx, 0xDB, 0x08);
+	tianma_dcs_write_seq_static(ctx, 0xDD, 0x45);
+	tianma_dcs_write_seq_static(ctx, 0xDE, 0x09);
+	tianma_dcs_write_seq_static(ctx, 0xDF, 0x08);
+	tianma_dcs_write_seq_static(ctx, 0xE1, 0x08);
+	tianma_dcs_write_seq_static(ctx, 0xE3, 0x08);
+	tianma_dcs_write_seq_static(ctx, 0xE5, 0x08);
+	tianma_dcs_write_seq_static(ctx, 0xE9, 0x08);
+	tianma_dcs_write_seq_static(ctx, 0xEB, 0x08);
+	tianma_dcs_write_seq_static(ctx, 0xEF, 0x08);
+	tianma_dcs_write_seq_static(ctx, 0xF1, 0x23);
+	tianma_dcs_write_seq_static(ctx, 0xF2, 0x23);
+	tianma_dcs_write_seq_static(ctx, 0xF3, 0x23);
+	tianma_dcs_write_seq_static(ctx, 0xF4, 0x22);
+	tianma_dcs_write_seq_static(ctx, 0xF5, 0x23);
+	tianma_dcs_write_seq_static(ctx, 0xF6, 0x23);
+
+	tianma_dcs_write_seq_static(ctx, 0xFF, 0x25);
+	tianma_dcs_write_seq_static(ctx, 0xFB, 0x01);
+	tianma_dcs_write_seq_static(ctx, 0x05, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0x0F, 0x20);
+	tianma_dcs_write_seq_static(ctx, 0x14, 0x3E);
+	tianma_dcs_write_seq_static(ctx, 0x15, 0x01);
+	tianma_dcs_write_seq_static(ctx, 0x16, 0xDE);
+	tianma_dcs_write_seq_static(ctx, 0x1F, 0x02);
+	tianma_dcs_write_seq_static(ctx, 0x20, 0x54);
+	tianma_dcs_write_seq_static(ctx, 0x23, 0x09);
+	tianma_dcs_write_seq_static(ctx, 0x24, 0x1E);
+	tianma_dcs_write_seq_static(ctx, 0x26, 0x02);
+	tianma_dcs_write_seq_static(ctx, 0x27, 0x54);
+	tianma_dcs_write_seq_static(ctx, 0x2A, 0x09);
+	tianma_dcs_write_seq_static(ctx, 0x2B, 0x1E);
+	tianma_dcs_write_seq_static(ctx, 0x33, 0x02);
+	tianma_dcs_write_seq_static(ctx, 0x34, 0x54);
+	tianma_dcs_write_seq_static(ctx, 0x37, 0x09);
+	tianma_dcs_write_seq_static(ctx, 0x38, 0x1E);
+	tianma_dcs_write_seq_static(ctx, 0x39, 0x0A);
+	tianma_dcs_write_seq_static(ctx, 0x3B, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0x3F, 0x20);
+	tianma_dcs_write_seq_static(ctx, 0x40, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0x42, 0x05);
+	tianma_dcs_write_seq_static(ctx, 0x44, 0x3E);
+	tianma_dcs_write_seq_static(ctx, 0x45, 0x10);
+	tianma_dcs_write_seq_static(ctx, 0x47, 0x61);
+	tianma_dcs_write_seq_static(ctx, 0x48, 0x02);
+	tianma_dcs_write_seq_static(ctx, 0x49, 0x54);
+	tianma_dcs_write_seq_static(ctx, 0x4C, 0x09);
+	tianma_dcs_write_seq_static(ctx, 0x4D, 0x1E);
+	tianma_dcs_write_seq_static(ctx, 0x4E, 0x0A);
+	tianma_dcs_write_seq_static(ctx, 0x50, 0x02);
+	tianma_dcs_write_seq_static(ctx, 0x51, 0x54);
+	tianma_dcs_write_seq_static(ctx, 0x54, 0x09);
+	tianma_dcs_write_seq_static(ctx, 0x55, 0x1E);
+	tianma_dcs_write_seq_static(ctx, 0x56, 0x0A);
+	tianma_dcs_write_seq_static(ctx, 0x5B, 0xA0);
+	tianma_dcs_write_seq_static(ctx, 0x5D, 0x3E);
+	tianma_dcs_write_seq_static(ctx, 0x5E, 0x10);
+	tianma_dcs_write_seq_static(ctx, 0x60, 0x61);
+	tianma_dcs_write_seq_static(ctx, 0x61, 0x02);
+	tianma_dcs_write_seq_static(ctx, 0x62, 0x54);
+	tianma_dcs_write_seq_static(ctx, 0x65, 0x09);
+	tianma_dcs_write_seq_static(ctx, 0x66, 0x1E);
+	tianma_dcs_write_seq_static(ctx, 0x67, 0x0A);
+	tianma_dcs_write_seq_static(ctx, 0x68, 0x04);
+	tianma_dcs_write_seq_static(ctx, 0x6A, 0x04);
+	tianma_dcs_write_seq_static(ctx, 0x6B, 0x40);
+	tianma_dcs_write_seq_static(ctx, 0x8D, 0xAA);
+	tianma_dcs_write_seq_static(ctx, 0xC0, 0x0C);
+	tianma_dcs_write_seq_static(ctx, 0xC1, 0x46);
+	tianma_dcs_write_seq_static(ctx, 0xD5, 0x86);
+	tianma_dcs_write_seq_static(ctx, 0xD6, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0xDC, 0x8F);
+	tianma_dcs_write_seq_static(ctx, 0xDD, 0x02);
+	tianma_dcs_write_seq_static(ctx, 0xDE, 0x21);
+	tianma_dcs_write_seq_static(ctx, 0xEE, 0x2A);
+
+	tianma_dcs_write_seq_static(ctx, 0xFF, 0x26);
+	tianma_dcs_write_seq_static(ctx, 0xFB, 0x01);
+	tianma_dcs_write_seq_static(ctx, 0x04, 0x75);
+	tianma_dcs_write_seq_static(ctx, 0x0A, 0x05);
+	tianma_dcs_write_seq_static(ctx, 0x0C, 0x0C);
+	tianma_dcs_write_seq_static(ctx, 0x0D, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0x0F, 0x03);
+	tianma_dcs_write_seq_static(ctx, 0x13, 0xC6);
+	tianma_dcs_write_seq_static(ctx, 0x14, 0xD1);
+	tianma_dcs_write_seq_static(ctx, 0x16, 0x10);
+	tianma_dcs_write_seq_static(ctx, 0x19, 0x1C, 0x1D, 0x16, 0x0F);
+	tianma_dcs_write_seq_static(ctx, 0x1A, 0xDB, 0xB1, 0xA4, 0x85);
+	tianma_dcs_write_seq_static(ctx, 0x1B, 0x1A, 0x1C, 0x1C, 0x1C);
+	tianma_dcs_write_seq_static(ctx, 0x1C, 0x9B, 0x3F, 0x3F, 0x3F);
+	tianma_dcs_write_seq_static(ctx, 0x1D, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0x1E, 0x68);
+	tianma_dcs_write_seq_static(ctx, 0x1F, 0x68);
+	tianma_dcs_write_seq_static(ctx, 0x24, 0x01);
+	tianma_dcs_write_seq_static(ctx, 0x25, 0x68);
+	tianma_dcs_write_seq_static(ctx, 0x2A, 0x1C, 0x1D, 0x16, 0x0F);
+	tianma_dcs_write_seq_static(ctx, 0x2B, 0xD3, 0xA9, 0x9C, 0x7C);
+	tianma_dcs_write_seq_static(ctx, 0x2D, 0x00, 0x00, 0x00, 0x0E, 0x00, 0xC0, 0x0F,
+			0x04,0x00);
+	tianma_dcs_write_seq_static(ctx, 0x2F, 0x04);
+	tianma_dcs_write_seq_static(ctx, 0x30, 0x68);
+	tianma_dcs_write_seq_static(ctx, 0x32, 0x68);
+	tianma_dcs_write_seq_static(ctx, 0x33, 0x22);
+	tianma_dcs_write_seq_static(ctx, 0x34, 0x78);
+	tianma_dcs_write_seq_static(ctx, 0x35, 0x66);
+	tianma_dcs_write_seq_static(ctx, 0x36, 0x66);
+	tianma_dcs_write_seq_static(ctx, 0x37, 0x66);
+	tianma_dcs_write_seq_static(ctx, 0x38, 0x06);
+	tianma_dcs_write_seq_static(ctx, 0x39, 0x04);
+	tianma_dcs_write_seq_static(ctx, 0x3A, 0x68);
+	tianma_dcs_write_seq_static(ctx, 0x3D, 0x00, 0x80, 0x28, 0x20);
+	tianma_dcs_write_seq_static(ctx, 0x3F, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0x40, 0x63);
+	tianma_dcs_write_seq_static(ctx, 0x41, 0x63);
+	tianma_dcs_write_seq_static(ctx, 0x42, 0x63);
+	tianma_dcs_write_seq_static(ctx, 0x43, 0x01);
+	tianma_dcs_write_seq_static(ctx, 0x44, 0x63);
+	tianma_dcs_write_seq_static(ctx, 0x45, 0x04);
+	tianma_dcs_write_seq_static(ctx, 0x46, 0x63);
+	tianma_dcs_write_seq_static(ctx, 0x48, 0x63);
+	tianma_dcs_write_seq_static(ctx, 0x49, 0x04);
+	tianma_dcs_write_seq_static(ctx, 0x4A, 0x63);
+	tianma_dcs_write_seq_static(ctx, 0x4D, 0x51);
+	tianma_dcs_write_seq_static(ctx, 0x4E, 0x10);
+	tianma_dcs_write_seq_static(ctx, 0x4F, 0x02);
+	tianma_dcs_write_seq_static(ctx, 0x50, 0x61);
+	tianma_dcs_write_seq_static(ctx, 0x51, 0x02);
+	tianma_dcs_write_seq_static(ctx, 0x52, 0x5F);
+	tianma_dcs_write_seq_static(ctx, 0x53, 0x02);
+	tianma_dcs_write_seq_static(ctx, 0x54, 0x72);
+	tianma_dcs_write_seq_static(ctx, 0x56, 0x02);
+	tianma_dcs_write_seq_static(ctx, 0x58, 0x5F);
+	tianma_dcs_write_seq_static(ctx, 0x5B, 0x02);
+	tianma_dcs_write_seq_static(ctx, 0x5C, 0x5F);
+	tianma_dcs_write_seq_static(ctx, 0x60, 0x02);
+	tianma_dcs_write_seq_static(ctx, 0x61, 0x5F);
+	tianma_dcs_write_seq_static(ctx, 0x64, 0x02);
+	tianma_dcs_write_seq_static(ctx, 0x65, 0x5F);
+	tianma_dcs_write_seq_static(ctx, 0x69, 0x02);
+	tianma_dcs_write_seq_static(ctx, 0x6A, 0x5F);
+	tianma_dcs_write_seq_static(ctx, 0x6E, 0x51);
+	tianma_dcs_write_seq_static(ctx, 0x6F, 0x10);
+	tianma_dcs_write_seq_static(ctx, 0x70, 0x02);
+	tianma_dcs_write_seq_static(ctx, 0x71, 0x61);
+	tianma_dcs_write_seq_static(ctx, 0x72, 0x02);
+	tianma_dcs_write_seq_static(ctx, 0x73, 0x5F);
+	tianma_dcs_write_seq_static(ctx, 0x74, 0x02);
+	tianma_dcs_write_seq_static(ctx, 0x75, 0x72);
+	tianma_dcs_write_seq_static(ctx, 0x7B, 0x51);
+	tianma_dcs_write_seq_static(ctx, 0x7C, 0x10);
+	tianma_dcs_write_seq_static(ctx, 0x7E, 0x02);
+	tianma_dcs_write_seq_static(ctx, 0x7F, 0x61);
+	tianma_dcs_write_seq_static(ctx, 0x80, 0xFF);
+	tianma_dcs_write_seq_static(ctx, 0x81, 0xFF);
+	tianma_dcs_write_seq_static(ctx, 0x82, 0x00, 0x4C, 0x4C, 0x4C);
+	tianma_dcs_write_seq_static(ctx, 0x84, 0x24, 0x24, 0x24);
+	tianma_dcs_write_seq_static(ctx, 0x8B, 0x8C);
+	tianma_dcs_write_seq_static(ctx, 0x8C, 0x04);
+	tianma_dcs_write_seq_static(ctx, 0x8D, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0x8F, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0x92, 0x51);
+	tianma_dcs_write_seq_static(ctx, 0x93, 0x4A);
+	tianma_dcs_write_seq_static(ctx, 0x94, 0xC2);
+	tianma_dcs_write_seq_static(ctx, 0x96, 0x11);
+	tianma_dcs_write_seq_static(ctx, 0x97, 0x00, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0x99, 0x15, 0x1E, 0x04, 0x0F);
+	tianma_dcs_write_seq_static(ctx, 0x9A, 0x30, 0x94, 0x3B, 0x9C);
+	tianma_dcs_write_seq_static(ctx, 0x9B, 0x15, 0x1E, 0x08, 0x18);
+	tianma_dcs_write_seq_static(ctx, 0x9C, 0x4F, 0x14, 0xE4, 0x15);
+	tianma_dcs_write_seq_static(ctx, 0x9D, 0x15, 0x1E, 0x04, 0x0F);
+	tianma_dcs_write_seq_static(ctx, 0x9E, 0x2A, 0x8C, 0x00, 0x9C);
+	tianma_dcs_write_seq_static(ctx, 0xA7, 0x06);
+	tianma_dcs_write_seq_static(ctx, 0xC9, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0xCD, 0x4A, 0x69);
+	tianma_dcs_write_seq_static(ctx, 0xCE, 0x48, 0x6B);
+	tianma_dcs_write_seq_static(ctx, 0xCF, 0x01, 0x00, 0x33);
+	tianma_dcs_write_seq_static(ctx, 0xD0, 0x00, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0xD1, 0x00, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0xD2, 0x2D);
+	tianma_dcs_write_seq_static(ctx, 0xD6, 0x01);
+	tianma_dcs_write_seq_static(ctx, 0xD7, 0x02);
+	tianma_dcs_write_seq_static(ctx, 0xD8, 0x03);
+	tianma_dcs_write_seq_static(ctx, 0xD9, 0x04);
+	tianma_dcs_write_seq_static(ctx, 0xDA, 0x05);
+	tianma_dcs_write_seq_static(ctx, 0xDB, 0x06);
+	tianma_dcs_write_seq_static(ctx, 0xDC, 0x07);
+	tianma_dcs_write_seq_static(ctx, 0xDD, 0x08);
+	tianma_dcs_write_seq_static(ctx, 0xDE, 0x09);
+	tianma_dcs_write_seq_static(ctx, 0xDF, 0x0A);
+	tianma_dcs_write_seq_static(ctx, 0xE0, 0x0B);
+	tianma_dcs_write_seq_static(ctx, 0xE1, 0x0C);
+	tianma_dcs_write_seq_static(ctx, 0xE2, 0x0D);
+	tianma_dcs_write_seq_static(ctx, 0xE3, 0x0E);
+	tianma_dcs_write_seq_static(ctx, 0xE4, 0x0F);
+	tianma_dcs_write_seq_static(ctx, 0xE5, 0x10);
+	tianma_dcs_write_seq_static(ctx, 0xE6, 0x11);
+	tianma_dcs_write_seq_static(ctx, 0xE7, 0x12);
+	tianma_dcs_write_seq_static(ctx, 0xE8, 0x13);
+	tianma_dcs_write_seq_static(ctx, 0xE9, 0x14);
+	tianma_dcs_write_seq_static(ctx, 0xEA, 0x15);
+	tianma_dcs_write_seq_static(ctx, 0xEB, 0x16);
+	tianma_dcs_write_seq_static(ctx, 0xEC, 0x17);
+	tianma_dcs_write_seq_static(ctx, 0xED, 0x18);
+	tianma_dcs_write_seq_static(ctx, 0xEE, 0x19);
+	tianma_dcs_write_seq_static(ctx, 0xEF, 0x1A);
+	tianma_dcs_write_seq_static(ctx, 0xF0, 0x1B);
+	tianma_dcs_write_seq_static(ctx, 0xF1, 0x1C);
+	tianma_dcs_write_seq_static(ctx, 0xF2, 0x1D);
+
+	tianma_dcs_write_seq_static(ctx, 0xFF, 0x27);
+	tianma_dcs_write_seq_static(ctx, 0xFB, 0x01);
+	tianma_dcs_write_seq_static(ctx, 0x13, 0x06);
+	tianma_dcs_write_seq_static(ctx, 0x14, 0x11);
+	tianma_dcs_write_seq_static(ctx, 0x50, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0x58, 0x80);
+	tianma_dcs_write_seq_static(ctx, 0x59, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0x5A, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0x5B, 0xBA);
+	tianma_dcs_write_seq_static(ctx, 0x5C, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0x5D, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0x5E, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0x5F, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0x60, 0x00, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0x61, 0x00, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0x62, 0x00, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0x63, 0x00, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0x64, 0x00, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0x65, 0x00, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0x66, 0x00, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0x67, 0x00, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0x68, 0x00, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0x69, 0x80);
+	tianma_dcs_write_seq_static(ctx, 0x76, 0x80);
+	tianma_dcs_write_seq_static(ctx, 0x77, 0x23, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0x78, 0x80);
+	tianma_dcs_write_seq_static(ctx, 0x79, 0xE2);
+	tianma_dcs_write_seq_static(ctx, 0x7A, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0x7B, 0xBA);
+	tianma_dcs_write_seq_static(ctx, 0x7D, 0x04);
+	tianma_dcs_write_seq_static(ctx, 0x7E, 0x52);
+	tianma_dcs_write_seq_static(ctx, 0x7F, 0x04);
+	tianma_dcs_write_seq_static(ctx, 0x80, 0x0A, 0x08);
+	tianma_dcs_write_seq_static(ctx, 0x81, 0x2D, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0x82, 0x74, 0x40);
+	tianma_dcs_write_seq_static(ctx, 0x83, 0x13, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0x84, 0x38, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0x85, 0x28, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0x86, 0x74, 0x40);
+	tianma_dcs_write_seq_static(ctx, 0x87, 0x13, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0x88, 0x38, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0x89, 0x80);
+	tianma_dcs_write_seq_static(ctx, 0x96, 0x80);
+	tianma_dcs_write_seq_static(ctx, 0x97, 0x23, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0xC0, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0xC1, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0xD1, 0x04);
+	tianma_dcs_write_seq_static(ctx, 0xD2, 0x3C);
+
+	tianma_dcs_write_seq_static(ctx, 0xFF, 0x2A);
+	tianma_dcs_write_seq_static(ctx, 0xFB, 0x01);
+	tianma_dcs_write_seq_static(ctx, 0x00, 0x23);
+	tianma_dcs_write_seq_static(ctx, 0x01, 0x08);
+	tianma_dcs_write_seq_static(ctx, 0x02, 0x88);
+	tianma_dcs_write_seq_static(ctx, 0x03, 0x08);
+	tianma_dcs_write_seq_static(ctx, 0x05, 0x08);
+	tianma_dcs_write_seq_static(ctx, 0x07, 0x7F);
+	tianma_dcs_write_seq_static(ctx, 0x08, 0x08);
+	tianma_dcs_write_seq_static(ctx, 0x0A, 0x08);
+	tianma_dcs_write_seq_static(ctx, 0x0C, 0x08);
+	tianma_dcs_write_seq_static(ctx, 0x0E, 0x23);
+	tianma_dcs_write_seq_static(ctx, 0x0F, 0x23);
+	tianma_dcs_write_seq_static(ctx, 0x10, 0x23);
+	tianma_dcs_write_seq_static(ctx, 0x11, 0x23);
+	tianma_dcs_write_seq_static(ctx, 0x12, 0x23);
+	tianma_dcs_write_seq_static(ctx, 0x13, 0x23);
+	tianma_dcs_write_seq_static(ctx, 0x14, 0x09);
+	tianma_dcs_write_seq_static(ctx, 0x15, 0x09);
+	tianma_dcs_write_seq_static(ctx, 0x16, 0x24);
+	tianma_dcs_write_seq_static(ctx, 0x17, 0x09);
+	tianma_dcs_write_seq_static(ctx, 0x18, 0x24);
+	tianma_dcs_write_seq_static(ctx, 0x19, 0x09);
+	tianma_dcs_write_seq_static(ctx, 0x1A, 0x24);
+	tianma_dcs_write_seq_static(ctx, 0x1B, 0x09);
+	tianma_dcs_write_seq_static(ctx, 0x1C, 0x24);
+	tianma_dcs_write_seq_static(ctx, 0x1D, 0x0A);
+	tianma_dcs_write_seq_static(ctx, 0x1E, 0x09);
+	tianma_dcs_write_seq_static(ctx, 0x1F, 0x09);
+	tianma_dcs_write_seq_static(ctx, 0x25, 0x15);
+	tianma_dcs_write_seq_static(ctx, 0x27, 0x5F);
+	tianma_dcs_write_seq_static(ctx, 0x28, 0x78);
+	tianma_dcs_write_seq_static(ctx, 0x2F, 0x44, 0x21, 0x02);
+	tianma_dcs_write_seq_static(ctx, 0x30, 0x02);
+	tianma_dcs_write_seq_static(ctx, 0x32, 0x84);
+	tianma_dcs_write_seq_static(ctx, 0x33, 0xA7);
+	tianma_dcs_write_seq_static(ctx, 0x35, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0x4B, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0x64, 0x16);
+	tianma_dcs_write_seq_static(ctx, 0x67, 0x16);
+	tianma_dcs_write_seq_static(ctx, 0x68, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0x69, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0x6A, 0x26);
+	tianma_dcs_write_seq_static(ctx, 0x6C, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0x76, 0x1E);
+	tianma_dcs_write_seq_static(ctx, 0x77, 0x03);
+	tianma_dcs_write_seq_static(ctx, 0x79, 0x92);
+	tianma_dcs_write_seq_static(ctx, 0x7C, 0x26);
+	tianma_dcs_write_seq_static(ctx, 0x7F, 0x96);
+	tianma_dcs_write_seq_static(ctx, 0x82, 0x26);
+	tianma_dcs_write_seq_static(ctx, 0x85, 0x1E);
+	tianma_dcs_write_seq_static(ctx, 0x86, 0x03);
+	tianma_dcs_write_seq_static(ctx, 0x88, 0x06);
+	tianma_dcs_write_seq_static(ctx, 0x89, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0x8A, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0x8B, 0x16);
+	tianma_dcs_write_seq_static(ctx, 0x8C, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0x8D, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0x8E, 0x16);
+	tianma_dcs_write_seq_static(ctx, 0x8F, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0x90, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0x91, 0x2E);
+	tianma_dcs_write_seq_static(ctx, 0x92, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0x93, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0x94, 0x06);
+	tianma_dcs_write_seq_static(ctx, 0x99, 0x91);
+	tianma_dcs_write_seq_static(ctx, 0x9A, 0x0A);
+	tianma_dcs_write_seq_static(ctx, 0xA4, 0x0F);
+	tianma_dcs_write_seq_static(ctx, 0xA5, 0xC0);
+	tianma_dcs_write_seq_static(ctx, 0xB1, 0x00, 0x01);
+	tianma_dcs_write_seq_static(ctx, 0xB7, 0xFF);
+	tianma_dcs_write_seq_static(ctx, 0xB8, 0x40);
+	tianma_dcs_write_seq_static(ctx, 0xB9, 0x98, 0x00, 0x6F, 0x00, 0xCB, 0xB7, 0x14,
+			0x5F, 0x41);
+	tianma_dcs_write_seq_static(ctx, 0xBA, 0xAA, 0xAA, 0xA5, 0xA5, 0xE1, 0xE1, 0xFF,
+			0xFF);
+	tianma_dcs_write_seq_static(ctx, 0xBB, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0x55, 0xAA,
+			0x55, 0x38, 0xC7, 0x38, 0xC7, 0xFF, 0xFF, 0xFF, 0xFF);
+	tianma_dcs_write_seq_static(ctx, 0xBC, 0x66, 0x06);
+	tianma_dcs_write_seq_static(ctx, 0xC4, 0x20);
+	tianma_dcs_write_seq_static(ctx, 0xC5, 0x09);
+	tianma_dcs_write_seq_static(ctx, 0xC6, 0x1E);
+	tianma_dcs_write_seq_static(ctx, 0xC8, 0x0A);
+	tianma_dcs_write_seq_static(ctx, 0xCA, 0x01);
+	tianma_dcs_write_seq_static(ctx, 0xCB, 0x10, 0x00, 0x00, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0xCC, 0xA5, 0x5A, 0x00, 0xA5, 0x5A, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0xD0, 0x04);
+	tianma_dcs_write_seq_static(ctx, 0xD1, 0x01);
+	tianma_dcs_write_seq_static(ctx, 0xE8, 0x0A);
+	tianma_dcs_write_seq_static(ctx, 0xF4, 0x91);
+	tianma_dcs_write_seq_static(ctx, 0xF5, 0x0A);
+
+	tianma_dcs_write_seq_static(ctx, 0xFF, 0x23);
+	tianma_dcs_write_seq_static(ctx, 0xFB, 0x01);
+	tianma_dcs_write_seq_static(ctx, 0x76, 0x07, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0x77, 0x03, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0x7A, 0xCD, 0x00);
+
+	tianma_dcs_write_seq_static(ctx, 0xFF, 0x24);
+	tianma_dcs_write_seq_static(ctx, 0xFB, 0x01);
+	tianma_dcs_write_seq_static(ctx, 0x2F, 0x04);
+	tianma_dcs_write_seq_static(ctx, 0x5C, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0x5D, 0x00);
+
+	tianma_dcs_write_seq_static(ctx, 0xFF, 0x25);
+	tianma_dcs_write_seq_static(ctx, 0xFB, 0x01);
+	tianma_dcs_write_seq_static(ctx, 0x13, 0x02);
+	tianma_dcs_write_seq_static(ctx, 0xDB, 0x02);
+
+	tianma_dcs_write_seq_static(ctx, 0xFF, 0x26);
+	tianma_dcs_write_seq_static(ctx, 0xFB, 0x01);
+	tianma_dcs_write_seq_static(ctx, 0x06, 0x01);
+
+	tianma_dcs_write_seq_static(ctx, 0xFF, 0x27);
+	tianma_dcs_write_seq_static(ctx, 0xFB, 0x01);
+	tianma_dcs_write_seq_static(ctx, 0xD1, 0x04);
+
+	tianma_dcs_write_seq_static(ctx, 0xFF, 0x2A);
+	tianma_dcs_write_seq_static(ctx, 0xFB, 0x01);
+	tianma_dcs_write_seq_static(ctx, 0xE4, 0x01);
+	tianma_dcs_write_seq_static(ctx, 0xE5, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0xE6, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0xE7, 0x00);
+
+	tianma_dcs_write_seq_static(ctx, 0xFF, 0x24);
+	tianma_dcs_write_seq_static(ctx, 0xFB, 0x01);
+	tianma_dcs_write_seq_static(ctx, 0xDA, 0x01);
+	tianma_dcs_write_seq_static(ctx, 0xDE, 0x04);
+
+	tianma_dcs_write_seq_static(ctx, 0xFF, 0x26);
+	tianma_dcs_write_seq_static(ctx, 0xFB, 0x01);
+	tianma_dcs_write_seq_static(ctx, 0x84, 0x25, 0x25, 0x25);
+
+	tianma_dcs_write_seq_static(ctx, 0xFF, 0x20);
+	tianma_dcs_write_seq_static(ctx, 0xFB, 0x01);
+	tianma_dcs_write_seq_static(ctx, 0x2D, 0x08);
+
+	tianma_dcs_write_seq_static(ctx, 0xFF, 0x25);
+	tianma_dcs_write_seq_static(ctx, 0xFB, 0x01);
+	tianma_dcs_write_seq_static(ctx, 0xDE, 0x2C);
+
 	tianma_dcs_write_seq_static(ctx, 0xFF, 0x10);
 	tianma_dcs_write_seq_static(ctx, 0xFB, 0x01);
-	tianma_dcs_write_seq_static(ctx, 0x35, 0x00);
-	tianma_dcs_write_seq_static(ctx, 0x3B, 0x03, 0xB8, 0x1A, 0x0A, 0x0A, 0x00);
+	tianma_dcs_write_seq_static(ctx, 0x3B, 0x03, 0xBC, 0x3E, 0x0A, 0x0A, 0x00);
 	tianma_dcs_write_seq_static(ctx, 0x90, 0x03);
-	tianma_dcs_write_seq_static(ctx, 0x91, 0x89, 0x28, 0x00, 0x14, 0xD2, 0x00, 0x00, 0x00,
-		0x02, 0x19, 0x00, 0x0A, 0x05, 0x7A, 0x03, 0xAC);
-	tianma_dcs_write_seq_static(ctx, 0x92, 0x10,0xD0);
+	tianma_dcs_write_seq_static(ctx, 0x91, 0x89, 0x28, 0x00, 0x14, 0xD2, 0x00, 0x00,
+			0x00, 0x02, 0x19, 0x00, 0x0A, 0x05, 0x7A, 0x03, 0xAC);
+	tianma_dcs_write_seq_static(ctx, 0x92, 0x10, 0xD0);
 	tianma_dcs_write_seq_static(ctx, 0x9D, 0x01);
 	tianma_dcs_write_seq_static(ctx, 0xB2, 0x80);
 	tianma_dcs_write_seq_static(ctx, 0xB3, 0x00);
-	//tianma_dcs_write_seq_static(ctx, 0xB2, 0x91);
-	//tianma_dcs_write_seq_static(ctx, 0xB3, 0x40);
+
 	tianma_dcs_write_seq_static(ctx, 0x11);
 	msleep(120);
 	tianma_dcs_write_seq_static(ctx, 0x29);
@@ -308,72 +805,72 @@ static int tianma_enable(struct drm_panel *panel)
 
 /* 144hz */
 static const struct drm_display_mode default_mode = {
-	.clock = 902131,
+	.clock = 903782,
 	.hdisplay = 2944,
-	.hsync_start = 2944 + 80,
-	.hsync_end = 2944 + 80 + 12,
-	.htotal = 2944 + 80 + 12 + 20,
+	.hsync_start = 2944 + 25,
+	.hsync_end = 2944 + 25 + 10,
+	.htotal = 2944 + 25 + 10 + 24,
 	.vdisplay = 1840,
-	.vsync_start = 1840 + 26,
-	.vsync_end = 1840 + 26 + 2,
-	.vtotal = 1840 + 26 + 2 + 182,
+	.vsync_start = 1840 + 62,
+	.vsync_end = 1840 + 62 + 2,
+	.vtotal = 1840 + 62 + 2 + 186,
 };
 
 #if SUPPORT_90Hz
 static const struct drm_display_mode performance_mode_90hz = {
-	.clock = 902131,
+	.clock = 903782,
 	.hdisplay = 2944,
-	.hsync_start = 2944 + 80,
-	.hsync_end = 2944 + 80 + 12,
-	.htotal = 2944 + 80 + 12 + 20,
+	.hsync_start = 2944 + 25,
+	.hsync_end = 2944 + 25 + 10,
+	.htotal = 2944 + 25 + 10 + 24,
 	.vdisplay = 1840,
-	.vsync_start = 1840 + 1256,
-	.vsync_end = 1840 + 1256 + 2,
-	.vtotal = 1840 + 1256 + 2 + 182,
+	.vsync_start = 1840 + 1316,
+	.vsync_end = 1840 + 1316 + 2,
+	.vtotal = 1840 + 1316 + 2 + 186,
 };
 #endif
 
 static const struct drm_display_mode performance_mode_120hz = {
-	.clock = 781542,
+	.clock = 780991,
 	.hdisplay = 2944,
-	.hsync_start = 2944 + 201,
-	.hsync_end = 2944 + 201 + 12,
-	.htotal = 2944 + 201 + 12 + 20,
+	.hsync_start = 2944 + 80,
+	.hsync_end = 2944 + 80 + 10,
+	.htotal = 2944 + 80 + 10 + 80,
 	.vdisplay = 1840,
-	.vsync_start = 1840 + 26,
-	.vsync_end = 1840 + 26 + 2,
-	.vtotal = 1840 + 26 + 2 + 182,
+	.vsync_start = 1840 + 62,
+	.vsync_end = 1840 + 62 + 2,
+	.vtotal = 1840 + 62 + 2 + 186,
 };
 
 static const struct drm_display_mode performance_mode_60hz = {
-	.clock = 781542,
+	.clock = 780991,
 	.hdisplay = 2944,
-	.hsync_start = 2944 + 201,
-	.hsync_end = 2944 + 201 + 12,
-	.htotal = 2944 + 201 + 12 + 20,
+	.hsync_start = 2944 + 80,
+	.hsync_end = 2944 + 80 + 10,
+	.htotal = 2944 + 80 + 10 + 80,
 	.vdisplay = 1840,
-	.vsync_start = 1840 + 2076,
-	.vsync_end = 1840 + 2076 + 2,
-	.vtotal = 1840 + 2076 + 2 + 182,
+	.vsync_start = 1840 + 2152,
+	.vsync_end = 1840 + 2152 + 2,
+	.vtotal = 1840 + 2152 + 2 + 186,
 };
 
 static const struct drm_display_mode performance_mode_30hz = {
-	.clock = 781542,
+	.clock = 780991,
 	.hdisplay = 2944,
-	.hsync_start = 2944 + 201,
-	.hsync_end = 2944 + 201 + 12,
-	.htotal = 2944 + 201 + 12 + 20,
+	.hsync_start = 2944 + 80,
+	.hsync_end = 2944 + 80 + 10,
+	.htotal = 2944 + 80 + 10 + 80,
 	.vdisplay = 1840,
-	.vsync_start = 1840 + 6176,
-	.vsync_end = 1840 + 6176 + 2,
-	.vtotal = 1840 + 6176 + 2 + 182,
+	.vsync_start = 1840 + 6332,
+	.vsync_end = 1840 + 6332 + 2,
+	.vtotal = 1840 + 6332 + 2 + 186,
 };
 
 #if defined(CONFIG_MTK_PANEL_EXT)
 static struct mtk_panel_params ext_params = {
-	.pll_clk = 534,
-	.data_rate = 1068,
-	.data_rate_khz = 1068178,
+	.pll_clk = 498,
+	.data_rate = 996,
+	.data_rate_khz = 995178,
 	.physical_width_um = 278020,
 	.physical_height_um = 179060,
 	.output_mode = MTK_PANEL_DUAL_PORT,
@@ -442,16 +939,17 @@ static struct mtk_panel_params ext_params = {
 	},
 	.dyn = {
 		.switch_en = 1,
-		.vfp = 26,
-		.hfp = 80,
+		.vfp = 62,
+		.hfp = 25,
+		.hbp = 24,
 	},
 };
 
 #if SUPPORT_90Hz
 static struct mtk_panel_params ext_params_90hz = {
-	.pll_clk = 534,
-	.data_rate = 1068,
-	.data_rate_khz = 1068178,
+	.pll_clk = 498,
+	.data_rate = 996,
+	.data_rate_khz = 995178,
 	.physical_width_um = 278020,
 	.physical_height_um = 179060,
 	.output_mode = MTK_PANEL_DUAL_PORT,
@@ -520,17 +1018,18 @@ static struct mtk_panel_params ext_params_90hz = {
 	},
 	.dyn = {
 		.switch_en = 1,
-		.vfp = 1256,
-		.hfp = 80,
+		.vfp = 1316,
+		.hfp = 25,
+		.hbp = 24,
 	},
 };
 #endif
 
 static struct mtk_panel_params ext_params_120hz = {
-	.pll_clk = 534,
-	.data_rate = 1068,
-	.data_rate_khz = 1068178,
-	.vfp_low_power = 2076, //60Hz
+	.pll_clk = 498,
+	.data_rate = 996,
+	.data_rate_khz = 995178,
+	.vfp_low_power = 2152, //60Hz
 	.physical_width_um = 278020,
 	.physical_height_um = 179060,
 	.output_mode = MTK_PANEL_DUAL_PORT,
@@ -599,15 +1098,16 @@ static struct mtk_panel_params ext_params_120hz = {
 	},
 	.dyn = {
 		.switch_en = 1,
-		.vfp = 26,
-		.hfp = 201,
+		.vfp = 62,
+		.hfp = 80,
+		.hbp = 80,
 	},
 };
 
 static struct mtk_panel_params ext_params_60hz = {
-	.pll_clk = 534,
-	.data_rate = 1068,
-	.data_rate_khz = 1068178,
+	.pll_clk = 498,
+	.data_rate = 996,
+	.data_rate_khz = 995178,
 	.physical_width_um = 278020,
 	.physical_height_um = 179060,
 	.output_mode = MTK_PANEL_DUAL_PORT,
@@ -676,15 +1176,16 @@ static struct mtk_panel_params ext_params_60hz = {
 	},
 	.dyn = {
 		.switch_en = 1,
-		.vfp = 2076,
-		.hfp = 201,
+		.vfp = 2152,
+		.hfp = 80,
+		.hbp = 80,
 	},
 };
 
 static struct mtk_panel_params ext_params_30hz = {
-	.pll_clk = 534,
-	.data_rate = 1068,
-	.data_rate_khz = 1068178,
+	.pll_clk = 498,
+	.data_rate = 996,
+	.data_rate_khz = 995178,
 	.physical_width_um = 278020,
 	.physical_height_um = 179060,
 	.output_mode = MTK_PANEL_DUAL_PORT,
@@ -753,8 +1254,9 @@ static struct mtk_panel_params ext_params_30hz = {
 	},
 	.dyn = {
 		.switch_en = 1,
-		.vfp = 6176,
-		.hfp = 201,
+		.vfp = 6332,
+		.hfp = 80,
+		.hbp = 80,
 	},
 };
 

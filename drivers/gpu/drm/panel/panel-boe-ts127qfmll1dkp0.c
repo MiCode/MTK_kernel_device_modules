@@ -85,7 +85,7 @@ static enum RES_SWITCH_TYPE res_switch_type = RES_SWITCH_ON_AP;
 
 static int current_fps = 144;
 #define SUPPORT_90Hz 0
-#define PREFETCH_TIME 150
+#define PREFETCH_TIME 0
 
 struct panel_desc {
 	const struct drm_display_mode *modes;
@@ -219,6 +219,7 @@ static void boe_panel_init(struct boe *ctx)
 	boe_dcs_write_seq_static(ctx, 0xFF, 0x20);
 	boe_dcs_write_seq_static(ctx, 0xFB, 0x01);
 	boe_dcs_write_seq_static(ctx, 0x08, 0x23);
+	boe_dcs_write_seq_static(ctx, 0x0D, 0x43);
 	boe_dcs_write_seq_static(ctx, 0x10, 0x46);
 	boe_dcs_write_seq_static(ctx, 0x44, 0x02);
 	boe_dcs_write_seq_static(ctx, 0x65, 0xEE);
@@ -316,17 +317,22 @@ static void boe_panel_init(struct boe *ctx)
 
 	boe_dcs_write_seq_static(ctx, 0xFF, 0x23);
 	boe_dcs_write_seq_static(ctx, 0xFB, 0x01);
-	boe_dcs_write_seq_static(ctx, 0x75, 0x03, 0x00);
-	boe_dcs_write_seq_static(ctx, 0x76, 0x07, 0x02);
+	boe_dcs_write_seq_static(ctx, 0x75, 0x02, 0x00);
+	boe_dcs_write_seq_static(ctx, 0x75, 0x03);
+	boe_dcs_write_seq_static(ctx, 0x76, 0x01, 0x02);
+	boe_dcs_write_seq_static(ctx, 0x76, 0x07);
 	boe_dcs_write_seq_static(ctx, 0x77, 0x03, 0x05);
+	boe_dcs_write_seq_static(ctx, 0x77, 0x03);
 	boe_dcs_write_seq_static(ctx, 0x78, 0x01, 0x02);
-	boe_dcs_write_seq_static(ctx, 0x7A, 0xCD, 0x63);
+	boe_dcs_write_seq_static(ctx, 0x7A, 0x63, 0x63);
+	boe_dcs_write_seq_static(ctx, 0x7A, 0xCD);
 	boe_dcs_write_seq_static(ctx, 0x7B, 0xA0, 0x70);
 	boe_dcs_write_seq_static(ctx, 0x7C, 0x2D, 0x32);
 	boe_dcs_write_seq_static(ctx, 0x7E, 0x00, 0x10);
-	boe_dcs_write_seq_static(ctx, 0xBA, 0x3A, 0x7A);
-	boe_dcs_write_seq_static(ctx, 0xBB, 0x39, 0x7C);
-	boe_dcs_write_seq_static(ctx, 0xBC, 0x04, 0x00, 0x3C);
+	boe_dcs_write_seq_static(ctx, 0xBA, 0x3C, 0x7C);
+	boe_dcs_write_seq_static(ctx, 0xBB, 0x3B, 0x7E);
+	boe_dcs_write_seq_static(ctx, 0xBC, 0x01, 0x00, 0x3D);
+	boe_dcs_write_seq_static(ctx, 0xBC, 0x01, 0x00, 0x3C);
 
 	boe_dcs_write_seq_static(ctx, 0xFF, 0x24);
 	boe_dcs_write_seq_static(ctx, 0xFB, 0x01);
@@ -366,14 +372,14 @@ static void boe_panel_init(struct boe *ctx)
 	boe_dcs_write_seq_static(ctx, 0x60, 0x71, 0x70);
 	boe_dcs_write_seq_static(ctx, 0x61, 0x30);
 	boe_dcs_write_seq_static(ctx, 0x72, 0x80);
-	boe_dcs_write_seq_static(ctx, 0x92, 0x66, 0x01, 0x24);
-	boe_dcs_write_seq_static(ctx, 0x93, 0x1A, 0x00);
-	boe_dcs_write_seq_static(ctx, 0x94, 0xB8, 0x00);
+	boe_dcs_write_seq_static(ctx, 0x92, 0x65, 0x01, 0x1F);
+	boe_dcs_write_seq_static(ctx, 0x93, 0x3E, 0x00);
+	boe_dcs_write_seq_static(ctx, 0x94, 0xBC, 0x00);
 	boe_dcs_write_seq_static(ctx, 0x95, 0x09);
 	boe_dcs_write_seq_static(ctx, 0x96, 0x80, 0xBA, 0x00);
 	boe_dcs_write_seq_static(ctx, 0x9A, 0x0B);
 	boe_dcs_write_seq_static(ctx, 0xA5, 0x00);
-	boe_dcs_write_seq_static(ctx, 0xAA, 0x92, 0x92, 0x24);
+	boe_dcs_write_seq_static(ctx, 0xAA, 0x8F, 0x8F, 0x23);
 	boe_dcs_write_seq_static(ctx, 0xAB, 0x22);
 	boe_dcs_write_seq_static(ctx, 0xC2, 0xC4, 0x00, 0x01);
 	boe_dcs_write_seq_static(ctx, 0xC4, 0x2A);
@@ -405,10 +411,11 @@ static void boe_panel_init(struct boe *ctx)
 
 	boe_dcs_write_seq_static(ctx, 0xFF, 0x25);
 	boe_dcs_write_seq_static(ctx, 0xFB, 0x01);
+	boe_dcs_write_seq_static(ctx, 0x05, 0x04);
 	boe_dcs_write_seq_static(ctx, 0x05, 0x00);
-	boe_dcs_write_seq_static(ctx, 0x14, 0x49);
+	boe_dcs_write_seq_static(ctx, 0x14, 0x3E);
 	boe_dcs_write_seq_static(ctx, 0x15, 0x01);
-	boe_dcs_write_seq_static(ctx, 0x16, 0xE7);
+	boe_dcs_write_seq_static(ctx, 0x16, 0xDE);
 	boe_dcs_write_seq_static(ctx, 0x1F, 0x05);
 	boe_dcs_write_seq_static(ctx, 0x20, 0x63);
 	boe_dcs_write_seq_static(ctx, 0x23, 0x09);
@@ -461,9 +468,9 @@ static void boe_panel_init(struct boe *ctx)
 	boe_dcs_write_seq_static(ctx, 0x81, 0x77);
 	boe_dcs_write_seq_static(ctx, 0x83, 0x00);
 	boe_dcs_write_seq_static(ctx, 0xC6, 0x10);
-	boe_dcs_write_seq_static(ctx, 0xDC, 0x9B);
+	boe_dcs_write_seq_static(ctx, 0xDC, 0x8F);
 	boe_dcs_write_seq_static(ctx, 0xDD, 0x02);
-	boe_dcs_write_seq_static(ctx, 0xDE, 0x2C);
+	boe_dcs_write_seq_static(ctx, 0xDE, 0x21);
 
 	boe_dcs_write_seq_static(ctx, 0xFF, 0x26);
 	boe_dcs_write_seq_static(ctx, 0xFB, 0x01);
@@ -472,42 +479,47 @@ static void boe_panel_init(struct boe *ctx)
 	boe_dcs_write_seq_static(ctx, 0x0C, 0x08);
 	boe_dcs_write_seq_static(ctx, 0x0D, 0x00);
 	boe_dcs_write_seq_static(ctx, 0x0F, 0x03);
-	boe_dcs_write_seq_static(ctx, 0x13, 0xC8);
-	boe_dcs_write_seq_static(ctx, 0x14, 0xCD);
+	boe_dcs_write_seq_static(ctx, 0x13, 0xC6);
+	boe_dcs_write_seq_static(ctx, 0x14, 0xD1);
 	boe_dcs_write_seq_static(ctx, 0x16, 0x10);
-	boe_dcs_write_seq_static(ctx, 0x19, 0x1C, 0x1D, 0x16, 0x1D);
-	boe_dcs_write_seq_static(ctx, 0x1A, 0xDB, 0xB1, 0xA4, 0xB1);
-	boe_dcs_write_seq_static(ctx, 0x1B, 0x1B, 0x1C, 0x1C, 0x1C);
-	boe_dcs_write_seq_static(ctx, 0x1C, 0xFB, 0xD1, 0xD1, 0xD1);
+	boe_dcs_write_seq_static(ctx, 0x19, 0x1B, 0x1C, 0x1C, 0x1C);
+	boe_dcs_write_seq_static(ctx, 0x19, 0x1C, 0x1D, 0x16);
+	boe_dcs_write_seq_static(ctx, 0x1A, 0x12, 0xD7, 0xD7, 0xD7);
+	boe_dcs_write_seq_static(ctx, 0x1A, 0xDB, 0xB1, 0xA4);
+	boe_dcs_write_seq_static(ctx, 0x1B, 0x1A, 0x1B, 0x1B, 0x1B);
+	boe_dcs_write_seq_static(ctx, 0x1C, 0x33, 0xF7, 0xF7, 0xF7);
 	boe_dcs_write_seq_static(ctx, 0x1D, 0x00);
-	boe_dcs_write_seq_static(ctx, 0x1E, 0x88);
-	boe_dcs_write_seq_static(ctx, 0x1F, 0x66);
+	boe_dcs_write_seq_static(ctx, 0x1E, 0x65);
+	boe_dcs_write_seq_static(ctx, 0x1F, 0x65);
 	boe_dcs_write_seq_static(ctx, 0x24, 0x01);
-	boe_dcs_write_seq_static(ctx, 0x25, 0x4A);
-	boe_dcs_write_seq_static(ctx, 0x2A, 0x1C, 0x1D, 0x16, 0x1D);
-	boe_dcs_write_seq_static(ctx, 0x2B, 0xD3, 0xA9, 0x9C, 0xA9);
+	boe_dcs_write_seq_static(ctx, 0x25, 0x65);
+	boe_dcs_write_seq_static(ctx, 0x2A, 0x1B, 0x1C, 0x1C, 0x1C);
+	boe_dcs_write_seq_static(ctx, 0x2A, 0x1C, 0x1D, 0x16);
+	boe_dcs_write_seq_static(ctx, 0x2B, 0x0B, 0xCF, 0xCF, 0xCF);
+	boe_dcs_write_seq_static(ctx, 0x2B, 0xD3, 0xA9, 0x9C);
 	boe_dcs_write_seq_static(ctx, 0x2D, 0x00, 0x00, 0x00, 0x0E, 0x00, 0xC0, 0x0F,
 			0x04, 0x00);
 	boe_dcs_write_seq_static(ctx, 0x2F, 0x0B);
-	boe_dcs_write_seq_static(ctx, 0x30, 0x66);
-	boe_dcs_write_seq_static(ctx, 0x32, 0x66);
-	boe_dcs_write_seq_static(ctx, 0x34, 0x11);
-	boe_dcs_write_seq_static(ctx, 0x35, 0x11);
-	boe_dcs_write_seq_static(ctx, 0x36, 0x91);
+	boe_dcs_write_seq_static(ctx, 0x30, 0x65);
+	boe_dcs_write_seq_static(ctx, 0x32, 0x65);
+	boe_dcs_write_seq_static(ctx, 0x33, 0x22);
+	boe_dcs_write_seq_static(ctx, 0x34, 0x92);
+	boe_dcs_write_seq_static(ctx, 0x35, 0x78);
+	boe_dcs_write_seq_static(ctx, 0x36, 0x96);
 	boe_dcs_write_seq_static(ctx, 0x37, 0x78);
 	boe_dcs_write_seq_static(ctx, 0x38, 0x06);
-	boe_dcs_write_seq_static(ctx, 0x3A, 0x66);
+	boe_dcs_write_seq_static(ctx, 0x3A, 0x65);
 	boe_dcs_write_seq_static(ctx, 0x3D, 0x00, 0x80, 0x28, 0x20);
 	boe_dcs_write_seq_static(ctx, 0x3F, 0x00);
-	boe_dcs_write_seq_static(ctx, 0x40, 0x64);
-	boe_dcs_write_seq_static(ctx, 0x41, 0x86);
-	boe_dcs_write_seq_static(ctx, 0x42, 0x64);
+	boe_dcs_write_seq_static(ctx, 0x40, 0x62);
+	boe_dcs_write_seq_static(ctx, 0x41, 0x62);
+	boe_dcs_write_seq_static(ctx, 0x42, 0x62);
 	boe_dcs_write_seq_static(ctx, 0x43, 0x01);
-	boe_dcs_write_seq_static(ctx, 0x44, 0x4C);
+	boe_dcs_write_seq_static(ctx, 0x44, 0x62);
 	boe_dcs_write_seq_static(ctx, 0x45, 0x0B);
-	boe_dcs_write_seq_static(ctx, 0x46, 0x64);
-	boe_dcs_write_seq_static(ctx, 0x48, 0x64);
-	boe_dcs_write_seq_static(ctx, 0x4A, 0x64);
+	boe_dcs_write_seq_static(ctx, 0x46, 0x62);
+	boe_dcs_write_seq_static(ctx, 0x48, 0x62);
+	boe_dcs_write_seq_static(ctx, 0x4A, 0x62);
 	boe_dcs_write_seq_static(ctx, 0x4E, 0x61);
 	boe_dcs_write_seq_static(ctx, 0x4F, 0x02);
 	boe_dcs_write_seq_static(ctx, 0x50, 0x61);
@@ -544,17 +556,21 @@ static void boe_panel_init(struct boe *ctx)
 	boe_dcs_write_seq_static(ctx, 0x94, 0xC2);
 	boe_dcs_write_seq_static(ctx, 0x96, 0x11);
 	boe_dcs_write_seq_static(ctx, 0x97, 0x00, 0x00);
-	boe_dcs_write_seq_static(ctx, 0x99, 0x15, 0x1E, 0x04, 0x18);
-	boe_dcs_write_seq_static(ctx, 0x9A, 0x30, 0x94, 0x3B, 0x29);
-	boe_dcs_write_seq_static(ctx, 0x9B, 0x14, 0x1D, 0x07, 0x17);
-	boe_dcs_write_seq_static(ctx, 0x9C, 0x52, 0xB4, 0x06, 0x4A);
-	boe_dcs_write_seq_static(ctx, 0x9D, 0x15, 0x1E, 0x04, 0x18);
-	boe_dcs_write_seq_static(ctx, 0x9E, 0x2A, 0x8C, 0x00, 0x22);
-	boe_dcs_write_seq_static(ctx, 0xA7, 0x05);
+	boe_dcs_write_seq_static(ctx, 0x99, 0x14, 0x1E, 0x07, 0x17);
+	boe_dcs_write_seq_static(ctx, 0x99, 0x15, 0x1E, 0x04);
+	boe_dcs_write_seq_static(ctx, 0x9A, 0xC7, 0x06, 0xAF, 0xB4);
+	boe_dcs_write_seq_static(ctx, 0x9A, 0x30, 0x94, 0x3B);
+	boe_dcs_write_seq_static(ctx, 0x9B, 0x13, 0x1D, 0x06, 0x16);
+	boe_dcs_write_seq_static(ctx, 0x9C, 0xE9, 0x26, 0xD5, 0xD5);
+	boe_dcs_write_seq_static(ctx, 0x9D, 0x14, 0x1D, 0x07, 0x17);
+	boe_dcs_write_seq_static(ctx, 0x9D, 0x15, 0x1E, 0x04);
+	boe_dcs_write_seq_static(ctx, 0x9E, 0xC1, 0xFE, 0xAD, 0xAD);
+	boe_dcs_write_seq_static(ctx, 0x9E, 0x2A, 0x8C, 0x00);
+	boe_dcs_write_seq_static(ctx, 0xA7, 0x07);
 	boe_dcs_write_seq_static(ctx, 0xC9, 0x00);
 	boe_dcs_write_seq_static(ctx, 0xCD, 0x4A, 0x69);
 	boe_dcs_write_seq_static(ctx, 0xCE, 0x48, 0x6B);
-	boe_dcs_write_seq_static(ctx, 0xCF, 0x01, 0x00, 0x32);
+	boe_dcs_write_seq_static(ctx, 0xCF, 0x01, 0x00, 0x33);
 	boe_dcs_write_seq_static(ctx, 0xD0, 0x00, 0x00);
 	boe_dcs_write_seq_static(ctx, 0xD1, 0x00, 0x00);
 	boe_dcs_write_seq_static(ctx, 0xD2, 0x2D);
@@ -595,7 +611,7 @@ static void boe_panel_init(struct boe *ctx)
 	boe_dcs_write_seq_static(ctx, 0x58, 0x80);
 	boe_dcs_write_seq_static(ctx, 0x59, 0x00);
 	boe_dcs_write_seq_static(ctx, 0x5A, 0x00);
-	boe_dcs_write_seq_static(ctx, 0x5B, 0xB5);
+	boe_dcs_write_seq_static(ctx, 0x5B, 0xBA);
 	boe_dcs_write_seq_static(ctx, 0x5C, 0x00);
 	boe_dcs_write_seq_static(ctx, 0x5D, 0x00);
 	boe_dcs_write_seq_static(ctx, 0x5E, 0x00);
@@ -615,7 +631,7 @@ static void boe_panel_init(struct boe *ctx)
 	boe_dcs_write_seq_static(ctx, 0x78, 0x80);
 	boe_dcs_write_seq_static(ctx, 0x79, 0xE9);
 	boe_dcs_write_seq_static(ctx, 0x7A, 0x00);
-	boe_dcs_write_seq_static(ctx, 0x7B, 0xB6);
+	boe_dcs_write_seq_static(ctx, 0x7B, 0xBA);
 	boe_dcs_write_seq_static(ctx, 0x7D, 0x04);
 	boe_dcs_write_seq_static(ctx, 0x7E, 0x53);
 	boe_dcs_write_seq_static(ctx, 0x7F, 0x04);
@@ -670,8 +686,8 @@ static void boe_panel_init(struct boe *ctx)
 	boe_dcs_write_seq_static(ctx, 0x28, 0x78);
 	boe_dcs_write_seq_static(ctx, 0x2F, 0x44, 0x21, 0x02);
 	boe_dcs_write_seq_static(ctx, 0x30, 0x02);
-	boe_dcs_write_seq_static(ctx, 0x32, 0x86);
-	boe_dcs_write_seq_static(ctx, 0x33, 0xAB);
+	boe_dcs_write_seq_static(ctx, 0x32, 0x84);
+	boe_dcs_write_seq_static(ctx, 0x33, 0xA7);
 	boe_dcs_write_seq_static(ctx, 0x35, 0x00);
 	boe_dcs_write_seq_static(ctx, 0x4B, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 			0x00, 0x00, 0x00, 0x00, 0x00, 0x00);
@@ -731,14 +747,26 @@ static void boe_panel_init(struct boe *ctx)
 	boe_dcs_write_seq_static(ctx, 0xF4, 0x91);
 	boe_dcs_write_seq_static(ctx, 0xF5, 0x0A);
 
+	boe_dcs_write_seq_static(ctx, 0xFF, 0x25);
+	boe_dcs_write_seq_static(ctx, 0xFB, 0x01);
+	boe_dcs_write_seq_static(ctx, 0x13, 0x02);
+	boe_dcs_write_seq_static(ctx, 0x8D, 0x00);
+	boe_dcs_write_seq_static(ctx, 0xDB, 0x02);
+
+	boe_dcs_write_seq_static(ctx, 0xFF, 0x25);
+	boe_dcs_write_seq_static(ctx, 0xFB, 0x01);
+	boe_dcs_write_seq_static(ctx, 0xDE, 0x98);
+
 	boe_dcs_write_seq_static(ctx, 0xFF, 0x10);
 	boe_dcs_write_seq_static(ctx, 0xFB, 0x01);
-	boe_dcs_write_seq_static(ctx, 0x3B, 0x03, 0xB8, 0x1A, 0x0A, 0x0A, 0x00);
+	boe_dcs_write_seq_static(ctx, 0x3B, 0x03, 0xBC, 0x3E, 0x0A, 0x0A, 0x00);
 	boe_dcs_write_seq_static(ctx, 0x90, 0x03);
 	boe_dcs_write_seq_static(ctx, 0x91, 0x89, 0x28, 0x00, 0x14, 0xD2, 0x00, 0x00,
 			0x00, 0x02, 0x19, 0x00, 0x0A, 0x05, 0x7A, 0x03, 0xAC);
 	boe_dcs_write_seq_static(ctx, 0x92, 0x10, 0xD0);
 	boe_dcs_write_seq_static(ctx, 0x9D, 0x01);
+	boe_dcs_write_seq_static(ctx, 0xB2, 0x91);
+	boe_dcs_write_seq_static(ctx, 0xB3, 0x40);
 	boe_dcs_write_seq_static(ctx, 0xB2, 0x80);
 	boe_dcs_write_seq_static(ctx, 0xB3, 0x00);
 
@@ -913,65 +941,65 @@ static int boe_enable(struct drm_panel *panel)
 }
 
 static const struct drm_display_mode default_mode = {
-	.clock = 886486,
+	.clock = 903782,
 	.hdisplay = 2944,
 	.hsync_start = 2944 + 25,
 	.hsync_end = 2944 + 25 + 10,
 	.htotal = 2944 + 25 + 10 + 24,
 	.vdisplay = 1840,
-	.vsync_start = 1840 + 26,
-	.vsync_end = 1840 + 26 + 2,
-	.vtotal = 1840 + 26 + 2 + 182,
+	.vsync_start = 1840 + 62,
+	.vsync_end = 1840 + 62 + 2,
+	.vtotal = 1840 + 62 + 2 + 186,
 };
 
 #if SUPPORT_90Hz
 static const struct drm_display_mode performance_mode_90hz = {
-	.clock = 886486,
+	.clock = 903782,
 	.hdisplay = 2944,
 	.hsync_start = 2944 + 25,
 	.hsync_end = 2944 + 25 + 10,
 	.htotal = 2944 + 25 + 10 + 24,
 	.vdisplay = 1840,
-	.vsync_start = 1840 + 1256,
-	.vsync_end = 1840 + 1256 + 2,
-	.vtotal = 1840 + 1256 + 2 + 182,
+	.vsync_start = 1840 + 1316,
+	.vsync_end = 1840 + 1316 + 2,
+	.vtotal = 1840 + 1316 + 2 + 186,
 };
 #endif
 
 static const struct drm_display_mode performance_mode_120hz = {
-	.clock = 766044,
+	.clock = 780991,
 	.hdisplay = 2944,
 	.hsync_start = 2944 + 80,
 	.hsync_end = 2944 + 80 + 10,
 	.htotal = 2944 + 80 + 10 + 80,
 	.vdisplay = 1840,
-	.vsync_start = 1840 + 26,
-	.vsync_end = 1840 + 26 + 2,
-	.vtotal = 1840 + 26 + 2 + 182,
+	.vsync_start = 1840 + 62,
+	.vsync_end = 1840 + 62 + 2,
+	.vtotal = 1840 + 62 + 2 + 186,
 };
 
 static const struct drm_display_mode performance_mode_60hz = {
-	.clock = 766044,
+	.clock = 780991,
 	.hdisplay = 2944,
 	.hsync_start = 2944 + 80,
 	.hsync_end = 2944 + 80 + 10,
 	.htotal = 2944 + 80 + 10 + 80,
 	.vdisplay = 1840,
-	.vsync_start = 1840 + 2076,
-	.vsync_end = 1840 + 2076 + 2,
-	.vtotal = 1840 + 2076 + 2 + 182,
+	.vsync_start = 1840 + 2152,
+	.vsync_end = 1840 + 2152 + 2,
+	.vtotal = 1840 + 2152 + 2 + 186,
 };
 
 static const struct drm_display_mode performance_mode_30hz = {
-	.clock = 766044,
+	.clock = 780991,
 	.hdisplay = 2944,
 	.hsync_start = 2944 + 80,
 	.hsync_end = 2944 + 80 + 10,
 	.htotal = 2944 + 80 + 10 + 80,
 	.vdisplay = 1840,
-	.vsync_start = 1840 + 6176,
-	.vsync_end = 1840 + 6176 + 2,
-	.vtotal = 1840 + 6176 + 2 + 182,
+	.vsync_start = 1840 + 6332,
+	.vsync_end = 1840 + 6332 + 2,
+	.vtotal = 1840 + 6332 + 2 + 186,
 };
 
 #ifdef AP_RESOLUTION_SWITCH
@@ -1041,9 +1069,9 @@ static const struct drm_display_mode fhd_mode_30 = {
 
 #if defined(CONFIG_MTK_PANEL_EXT)
 static struct mtk_panel_params ext_params = {
-	.pll_clk = 491,
-	.data_rate = 982,
-	.data_rate_khz = 976137,
+	.pll_clk = 498,
+	.data_rate = 996,
+	.data_rate_khz = 995178,
 	.physical_width_um = 273615,
 	.physical_height_um = 171009,
 	.output_mode = MTK_PANEL_DUAL_PORT,
@@ -1112,7 +1140,7 @@ static struct mtk_panel_params ext_params = {
 	},
 	.dyn = {
 		.switch_en = 1,
-		.vfp = 26,
+		.vfp = 62,
 		.hfp = 25,
 		.hbp = 24,
 	},
@@ -1120,9 +1148,9 @@ static struct mtk_panel_params ext_params = {
 
 #if SUPPORT_90Hz
 static struct mtk_panel_params ext_params_90hz = {
-	.pll_clk = 491,
-	.data_rate = 982,
-	.data_rate_khz = 976137,
+	.pll_clk = 498,
+	.data_rate = 996,
+	.data_rate_khz = 995178,
 	.physical_width_um = 273615,
 	.physical_height_um = 171009,
 	.output_mode = MTK_PANEL_DUAL_PORT,
@@ -1191,7 +1219,7 @@ static struct mtk_panel_params ext_params_90hz = {
 	},
 	.dyn = {
 		.switch_en = 1,
-		.vfp = 1256,
+		.vfp = 1316,
 		.hfp = 25,
 		.hbp = 24,
 	},
@@ -1199,10 +1227,10 @@ static struct mtk_panel_params ext_params_90hz = {
 #endif
 
 static struct mtk_panel_params ext_params_120hz = {
-	.pll_clk = 491,
-	.data_rate = 982,
-	.data_rate_khz = 976137,
-	.vfp_low_power = 2076, //60Hz
+	.pll_clk = 498,
+	.data_rate = 996,
+	.data_rate_khz = 995178,
+	.vfp_low_power = 2152, //60Hz
 	.physical_width_um = 273615,
 	.physical_height_um = 171009,
 	.output_mode = MTK_PANEL_DUAL_PORT,
@@ -1271,16 +1299,16 @@ static struct mtk_panel_params ext_params_120hz = {
 	},
 	.dyn = {
 		.switch_en = 1,
-		.vfp = 26,
+		.vfp = 62,
 		.hfp = 80,
 		.hbp = 80,
 	},
 };
 
 static struct mtk_panel_params ext_params_60hz = {
-	.pll_clk = 491,
-	.data_rate = 982,
-	.data_rate_khz = 976137,
+	.pll_clk = 498,
+	.data_rate = 996,
+	.data_rate_khz = 995178,
 	.physical_width_um = 273615,
 	.physical_height_um = 171009,
 	.output_mode = MTK_PANEL_DUAL_PORT,
@@ -1348,16 +1376,16 @@ static struct mtk_panel_params ext_params_60hz = {
 	},
 	.dyn = {
 		.switch_en = 1,
-		.vfp = 2076,
+		.vfp = 2152,
 		.hfp = 80,
 		.hbp = 80,
 	},
 };
 
 static struct mtk_panel_params ext_params_30hz = {
-	.pll_clk = 491,
-	.data_rate = 982,
-	.data_rate_khz = 976137,
+	.pll_clk = 498,
+	.data_rate = 996,
+	.data_rate_khz = 995178,
 	.physical_width_um = 273615,
 	.physical_height_um = 171009,
 	.output_mode = MTK_PANEL_DUAL_PORT,
@@ -1426,7 +1454,7 @@ static struct mtk_panel_params ext_params_30hz = {
 	},
 	.dyn = {
 		.switch_en = 1,
-		.vfp = 6176,
+		.vfp = 6332,
 		.hfp = 80,
 		.hbp = 80,
 	},
