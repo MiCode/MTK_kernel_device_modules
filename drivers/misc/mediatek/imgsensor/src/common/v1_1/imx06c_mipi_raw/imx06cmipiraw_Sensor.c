@@ -344,24 +344,11 @@ static struct SET_PD_BLOCK_INFO_T imgsensor_pd_info_binning = {
 		    {0, 384}, {0, 0}, {0, 0}, {0, 0}, {0, 0} },
 };
 
-static kal_uint16 imx06c_QSC_setting[3072 * 2];
-
-/* TODO: measure the delay */
-static struct SEAMLESS_SYS_DELAY seamless_sys_delays[] = {
-	{ MSDK_SCENARIO_ID_CAMERA_PREVIEW, MSDK_SCENARIO_ID_CUSTOM4, 1 },
-	{ MSDK_SCENARIO_ID_CAMERA_PREVIEW, MSDK_SCENARIO_ID_CUSTOM2, 1 },
-	{ MSDK_SCENARIO_ID_CUSTOM4, MSDK_SCENARIO_ID_CAMERA_PREVIEW, 1 },
-	{ MSDK_SCENARIO_ID_CUSTOM4, MSDK_SCENARIO_ID_CUSTOM2, 1 },
-	{ MSDK_SCENARIO_ID_CUSTOM2, MSDK_SCENARIO_ID_CAMERA_PREVIEW, 1 },
-	{ MSDK_SCENARIO_ID_CUSTOM2, MSDK_SCENARIO_ID_CUSTOM4, 1 },
-};
-
 static struct IMGSENSOR_I2C_CFG *get_i2c_cfg(void)
 {
 	return &(((struct IMGSENSOR_SENSOR_INST *)
 		  (imgsensor.psensor_func->psensor_inst))->i2c_cfg);
 }
-
 
 static int write_cmos_sensor(kal_uint16 addr, kal_uint16 para)
 {
@@ -428,35 +415,6 @@ static void imx06c_set_pdaf_reg_setting(MUINT32 regNum, kal_uint16 *regDa)
 		write_cmos_sensor_8(regDa[idx], regDa[idx + 1]);
 		LOG_INF("%x %x", regDa[idx], regDa[idx+1]);
 	}
-}
-
-static kal_uint16 read_cmos_eeprom_8(kal_uint16 addr)
-{
-	kal_uint16 get_byte = 0;
-	char pusendcmd[2] = {(char)(addr >> 8), (char)(addr & 0xFF) };
-
-	iReadRegI2C(pusendcmd, 2, (u8 *)&get_byte, 1, 0xA0);
-	return get_byte;
-}
-
-static void read_sensor_Cali(void)
-{
-	kal_uint16 idx = 0, addr_qsc = 0x2451, sensor_lrc = 0xC000;
-
-	LOG_INF("get qsc data, size:3072\n");
-	for (idx = 0; idx < 3072; idx++) {
-		addr_qsc = 0x2451 + idx;
-		sensor_lrc = 0xC000 + idx;
-		imx06c_QSC_setting[2 * idx] = sensor_lrc;
-		imx06c_QSC_setting[2 * idx + 1] =
-			read_cmos_eeprom_8(addr_qsc);
-	}
-}
-
-static void write_sensor_QSC(void)
-{
-		imx06c_table_write_cmos_sensor(imx06c_QSC_setting,
-		sizeof(imx06c_QSC_setting) / sizeof(kal_uint16));
 }
 
 static void set_dummy(void)
@@ -2819,7 +2777,7 @@ static kal_uint16 imx06c_preview_setting[] = {
 	/* Other Setting */
 	0x3104, 0x01,
 	0x3205, 0x00,
-	0x3206, 0x01,
+	0x3206, 0x00,
 	0x3211, 0x01,
 	0x3855, 0x00,
 	0x39AC, 0x01,
@@ -2959,7 +2917,7 @@ static kal_uint16 imx06c_capture_setting[] = {
 	/* Other Setting */
 	0x3104, 0x01,
 	0x3205, 0x00,
-	0x3206, 0x01,
+	0x3206, 0x00,
 	0x3211, 0x01,
 	0x3855, 0x00,
 	0x39AC, 0x01,
@@ -3099,7 +3057,7 @@ static kal_uint16 imx06c_normal_video_setting[] = {
 	/* Other Setting */
 	0x3104, 0x01,
 	0x3205, 0x00,
-	0x3206, 0x01,
+	0x3206, 0x00,
 	0x3211, 0x01,
 	0x3855, 0x00,
 	0x39AC, 0x01,
@@ -3379,7 +3337,7 @@ static kal_uint16 imx06c_slim_video_setting[] = {
 	/* Other Setting */
 	0x3104, 0x01,
 	0x3205, 0x00,
-	0x3206, 0x01,
+	0x3206, 0x00,
 	0x3211, 0x01,
 	0x3855, 0x00,
 	0x39AC, 0x01,
@@ -3519,7 +3477,7 @@ static kal_uint16 imx06c_custom1_setting[] = {
 	/* Other Setting */
 	0x3104, 0x01,
 	0x3205, 0x00,
-	0x3206, 0x01,
+	0x3206, 0x00,
 	0x3211, 0x01,
 	0x3855, 0x00,
 	0x39AC, 0x01,
@@ -3660,7 +3618,7 @@ static kal_uint16 imx06c_custom2_setting[] = {
 	/* Other Setting */
 	0x3104, 0x01,
 	0x3205, 0x00,
-	0x3206, 0x01,
+	0x3206, 0x00,
 	0x3211, 0x01,
 	0x3855, 0x00,
 	0x39AC, 0x01,
@@ -3800,7 +3758,7 @@ static kal_uint16 imx06c_custom3_setting[] = {
 	/* Other Setting */
 	0x3104, 0x01,
 	0x3205, 0x01,
-	0x3206, 0x01,
+	0x3206, 0x00,
 	0x3211, 0x01,
 	0x3855, 0x01,
 	0x39AC, 0x01,
@@ -3940,7 +3898,7 @@ static kal_uint16 imx06c_custom4_setting[] = {
 	/* Other Setting */
 	0x3104, 0x01,
 	0x3205, 0x01,
-	0x3206, 0x01,
+	0x3206, 0x00,
 	0x3211, 0x01,
 	0x3855, 0x01,
 	0x39AC, 0x01,
@@ -4029,23 +3987,33 @@ static void sensor_init(void)
 
 static void preview_setting(void)
 {
-	LOG_INF("[%s] E!\n", __func__);
+	int _length = 0;
 
-	imx06c_table_write_cmos_sensor(imx06c_preview_setting,
-		sizeof(imx06c_preview_setting)/sizeof(kal_uint16));
+	_length = sizeof(imx06c_preview_setting)/sizeof(kal_uint16);
 
-	LOG_DEBUG("X!\n");
-}  /* preview_setting */
+	if (!imx06c_is_seamless)
+		imx06c_table_write_cmos_sensor(imx06c_preview_setting, _length);
+	else {
+		LOG_INF("%s imx06c_is_seamless %d, imx06c_size_to_write %d\n",
+			__func__, imx06c_is_seamless, imx06c_size_to_write);
+		if (imx06c_size_to_write + _length > _I2C_BUF_SIZE) {
+			LOG_INF("_too much i2c data for fast siwtch %d\n",
+				imx06c_size_to_write + _length);
+			return;
+		}
+		memcpy((void *) (imx06c_i2c_data + imx06c_size_to_write),
+			imx06c_preview_setting,
+			sizeof(imx06c_preview_setting));
+		imx06c_size_to_write += _length;
+	}
+}
 
-
-/*full size 30fps*/
-static void capture_setting(kal_uint16 currefps)
+static void capture_setting(void)
 {
 	int _length = 0;
 
 	_length = sizeof(imx06c_capture_setting)/sizeof(kal_uint16);
-	LOG_INF("[%s] E! 30 fps, currefps:%d\n", __func__, currefps);
-	/*************MIPI output setting************/
+
 	if (!imx06c_is_seamless)
 		imx06c_table_write_cmos_sensor(imx06c_capture_setting, _length);
 	else {
@@ -4061,8 +4029,6 @@ static void capture_setting(kal_uint16 currefps)
 			sizeof(imx06c_capture_setting));
 		imx06c_size_to_write += _length;
 	}
-
-	LOG_INF("[%s] X! 30 fps\n", __func__);
 }
 
 static void normal_video_setting(kal_uint16 currefps)
@@ -4105,38 +4071,76 @@ static void custom1_setting(void)
 	LOG_DEBUG("X!\n");
 }
 
-
 static void custom2_setting(void)
 {
-	LOG_INF("[%s] E! DCG-4096*3072@30fps\n", __func__);
+	int _length = 0;
 
-	imx06c_table_write_cmos_sensor(imx06c_custom2_setting,
-		sizeof(imx06c_custom2_setting)/sizeof(kal_uint16));
+	_length = sizeof(imx06c_custom2_setting)/sizeof(kal_uint16);
 
-	LOG_DEBUG("X!\n");
+	if (!imx06c_is_seamless)
+		imx06c_table_write_cmos_sensor(imx06c_custom2_setting, _length);
+	else {
+		LOG_INF("%s imx06c_is_seamless %d, imx06c_size_to_write %d\n",
+			__func__, imx06c_is_seamless, imx06c_size_to_write);
+		if (imx06c_size_to_write + _length > _I2C_BUF_SIZE) {
+			LOG_INF("_too much i2c data for fast siwtch %d\n",
+				imx06c_size_to_write + _length);
+			return;
+		}
+		memcpy((void *) (imx06c_i2c_data + imx06c_size_to_write),
+			imx06c_custom2_setting,
+			sizeof(imx06c_custom2_setting));
+		imx06c_size_to_write += _length;
+	}
 }
 
 static void custom3_setting(void)
 {
+	int _length = 0;
+
 	LOG_INF("[%s] E! ISZ-4096*3072@30fps\n", __func__);
+	_length = sizeof(imx06c_custom3_setting)/sizeof(kal_uint16);
 
-	imx06c_table_write_cmos_sensor(imx06c_custom3_setting,
-		sizeof(imx06c_custom3_setting)/sizeof(kal_uint16));
-
-	LOG_DEBUG("X!\n");
+	if (!imx06c_is_seamless)
+		imx06c_table_write_cmos_sensor(imx06c_custom3_setting, _length);
+	else {
+		LOG_INF("%s imx06c_is_seamless %d, imx06c_size_to_write %d\n",
+			__func__, imx06c_is_seamless, imx06c_size_to_write);
+		if (imx06c_size_to_write + _length > _I2C_BUF_SIZE) {
+			LOG_INF("_too much i2c data for fast siwtch %d\n",
+				imx06c_size_to_write + _length);
+			return;
+		}
+		memcpy((void *) (imx06c_i2c_data + imx06c_size_to_write),
+			imx06c_custom3_setting,
+			sizeof(imx06c_custom3_setting));
+		imx06c_size_to_write += _length;
+	}
 }
-
 
 static void custom4_setting(void)
 {
+	int _length = 0;
+
 	LOG_INF("[%s] E! ISZ+DCG-4096*3072@24fps\n", __func__);
+	_length = sizeof(imx06c_custom4_setting)/sizeof(kal_uint16);
 
-	imx06c_table_write_cmos_sensor(imx06c_custom4_setting,
-		sizeof(imx06c_custom4_setting)/sizeof(kal_uint16));
-
-	LOG_DEBUG("X!\n");
+	if (!imx06c_is_seamless)
+		imx06c_table_write_cmos_sensor(imx06c_custom4_setting, _length);
+	else {
+		LOG_INF("%s imx06c_is_seamless %d, imx06c_size_to_write %d\n",
+			__func__, imx06c_is_seamless, imx06c_size_to_write);
+		if (imx06c_size_to_write + _length > _I2C_BUF_SIZE) {
+			LOG_INF("_too much i2c data for fast siwtch %d\n",
+				imx06c_size_to_write + _length);
+			return;
+		}
+		memcpy((void *) (imx06c_i2c_data + imx06c_size_to_write),
+			imx06c_custom4_setting,
+			sizeof(imx06c_custom4_setting));
+		imx06c_size_to_write += _length;
+	}
 }
-
 
 /*************************************************************************
  * FUNCTION
@@ -4176,12 +4180,9 @@ static kal_uint32 get_imgsensor_id(UINT32 *sensor_id)
 				read_cmos_sensor_8(0x0017),
 				*sensor_id,
 				imgsensor_info.sensor_id);
-			// *sensor_id = 0x06C;
-			// *sensor_id = imgsensor_info.sensor_id;
 			if (*sensor_id == imgsensor_info.sensor_id) {
 				LOG_INF("[%s] i2c write id: 0x%X, sensor id: 0x%X\n",
 					__func__, imgsensor.i2c_write_id, *sensor_id);
-				read_sensor_Cali();
 				return ERROR_NONE;
 			}
 			LOG_INF("Read sensor id fail, id: 0x%x\n",
@@ -4335,9 +4336,7 @@ static kal_uint32 preview(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	imgsensor.min_frame_length = imgsensor_info.pre.framelength;
 	imgsensor.autoflicker_en = KAL_FALSE;
 	spin_unlock(&imgsensor_drv_lock);
-
 	preview_setting();
-
 	LOG_DEBUG("X!\n");
 	return ERROR_NONE;
 } /* preview */
@@ -4376,8 +4375,7 @@ static kal_uint32 capture(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	imgsensor.min_frame_length = imgsensor_info.cap.framelength;
 	imgsensor.autoflicker_en = KAL_FALSE;
 	spin_unlock(&imgsensor_drv_lock);
-	capture_setting(imgsensor.current_fps);
-	set_mirror_flip(imgsensor.mirror);
+	capture_setting();
 	LOG_DEBUG("X!\n");
 	return ERROR_NONE;
 }	/* capture() */
@@ -4395,7 +4393,6 @@ static kal_uint32 normal_video(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	imgsensor.autoflicker_en = KAL_FALSE;
 	spin_unlock(&imgsensor_drv_lock);
 	normal_video_setting(imgsensor.current_fps);
-	set_mirror_flip(imgsensor.mirror);
 	LOG_DEBUG("X!\n");
 	return ERROR_NONE;
 }	/*	normal_video   */
@@ -4418,8 +4415,6 @@ static kal_uint32 hs_video(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	imgsensor.autoflicker_en = KAL_FALSE;
 	spin_unlock(&imgsensor_drv_lock);
 	hs_video_setting();
-	set_mirror_flip(imgsensor.mirror);
-
 	LOG_DEBUG("X!\n");
 	return ERROR_NONE;
 }	/*	hs_video   */
@@ -4442,7 +4437,6 @@ static kal_uint32 slim_video(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	imgsensor.autoflicker_en = KAL_FALSE;
 	spin_unlock(&imgsensor_drv_lock);
 	slim_video_setting();
-	set_mirror_flip(imgsensor.mirror);
 	LOG_DEBUG("X!\n");
 	return ERROR_NONE;
 }	/* slim_video */
@@ -4465,7 +4459,6 @@ static kal_uint32 Custom1(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	imgsensor.autoflicker_en = KAL_FALSE;
 	spin_unlock(&imgsensor_drv_lock);
 	custom1_setting();
-	set_mirror_flip(imgsensor.mirror);
 	LOG_DEBUG("X!\n");
 	return ERROR_NONE;
 }	/* custom1 */
@@ -4489,7 +4482,6 @@ static kal_uint32 Custom2(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	imgsensor.autoflicker_en = KAL_FALSE;
 	spin_unlock(&imgsensor_drv_lock);
 	custom2_setting();
-	set_mirror_flip(imgsensor.mirror);
 	LOG_DEBUG("X!\n");
 	return ERROR_NONE;
 }	/* custom2 */
@@ -4513,8 +4505,6 @@ static kal_uint32 Custom3(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	imgsensor.autoflicker_en = KAL_FALSE;
 	spin_unlock(&imgsensor_drv_lock);
 	custom3_setting();
-	write_sensor_QSC();
-	set_mirror_flip(imgsensor.mirror);
 	LOG_DEBUG("X!\n");
 	return ERROR_NONE;
 }	/* custom2 */
@@ -4537,8 +4527,6 @@ static kal_uint32 Custom4(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	imgsensor.autoflicker_en = KAL_FALSE;
 	spin_unlock(&imgsensor_drv_lock);
 	custom4_setting();
-	write_sensor_QSC();
-	set_mirror_flip(imgsensor.mirror);
 	LOG_DEBUG("X!\n");
 	return ERROR_NONE;
 }	/* custom2 */
@@ -4879,14 +4867,18 @@ static kal_uint32 seamless_switch(enum MSDK_SCENARIO_ID_ENUM scenario_id,
 		shutter_2ndframe, gain_2ndframe,
 		sizeof(imx06c_i2c_data));
 
-	if (scenario_id != MSDK_SCENARIO_ID_CAMERA_CAPTURE_JPEG &&
-		scenario_id != MSDK_SCENARIO_ID_CUSTOM4 &&
-		scenario_id != MSDK_SCENARIO_ID_CUSTOM3)
+	if (scenario_id != MSDK_SCENARIO_ID_CAMERA_PREVIEW &&
+		scenario_id != MSDK_SCENARIO_ID_CAMERA_CAPTURE_JPEG &&
+		scenario_id != MSDK_SCENARIO_ID_CUSTOM2 &&
+		scenario_id != MSDK_SCENARIO_ID_CUSTOM3 &&
+		scenario_id != MSDK_SCENARIO_ID_CUSTOM4)
 		return ERROR_INVALID_SCENARIO_ID;
 
 
 	imx06c_i2c_data[imx06c_size_to_write++] = 0x0104;
 	imx06c_i2c_data[imx06c_size_to_write++] = 0x01;
+	imx06c_i2c_data[imx06c_size_to_write++] = 0x3010;
+	imx06c_i2c_data[imx06c_size_to_write++] = 0x02;
 
 	control(scenario_id, NULL, NULL);
 	if (shutter != 0)
@@ -5725,34 +5717,33 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 			return ERROR_INVALID_SCENARIO_ID;
 		}
 		switch (*feature_data) {
-		case MSDK_SCENARIO_ID_CAMERA_CAPTURE_JPEG:
-			*pScenarios = MSDK_SCENARIO_ID_CUSTOM3;
-			*(pScenarios + 1) = MSDK_SCENARIO_ID_CUSTOM4;
-			break;
 		case MSDK_SCENARIO_ID_CAMERA_PREVIEW:
-		case MSDK_SCENARIO_ID_VIDEO_PREVIEW:
-		case MSDK_SCENARIO_ID_SLIM_VIDEO:
-		case MSDK_SCENARIO_ID_HIGH_SPEED_VIDEO:
+		case MSDK_SCENARIO_ID_CAMERA_CAPTURE_JPEG:
+			*pScenarios = MSDK_SCENARIO_ID_CUSTOM2;
+			*(pScenarios + 1) = MSDK_SCENARIO_ID_CUSTOM3;
+			*(pScenarios + 2) = MSDK_SCENARIO_ID_CUSTOM4;
+			break;
+		case MSDK_SCENARIO_ID_CUSTOM2:
+			*pScenarios = MSDK_SCENARIO_ID_CAMERA_PREVIEW;
+			*(pScenarios + 1) = MSDK_SCENARIO_ID_CUSTOM3;
+			*(pScenarios + 2) = MSDK_SCENARIO_ID_CUSTOM4;
+			break;
+		case MSDK_SCENARIO_ID_CUSTOM3:
+			*pScenarios = MSDK_SCENARIO_ID_CUSTOM2;
+			*(pScenarios + 1) = MSDK_SCENARIO_ID_CAMERA_PREVIEW;
+			*(pScenarios + 2) = MSDK_SCENARIO_ID_CUSTOM4;
+			break;
+		case MSDK_SCENARIO_ID_CUSTOM4:
+			*pScenarios = MSDK_SCENARIO_ID_CUSTOM2;
+			*(pScenarios + 1) = MSDK_SCENARIO_ID_CUSTOM3;
+			*(pScenarios + 2) = MSDK_SCENARIO_ID_CAMERA_PREVIEW;
+			break;
 		default:
 			*pScenarios = 0xff;
 			break;
 		}
 		LOG_INF("SENSOR_FEATURE_GET_SEAMLESS_SCENARIOS %llu %d\n",
 		*feature_data, *pScenarios);
-		break;
-	}
-	case SENSOR_FEATURE_GET_SEAMLESS_SYSTEM_DELAY:
-	{
-		*(feature_data + 2) = 0;
-		for (int i = 0;
-			i < sizeof(seamless_sys_delays) / sizeof(struct SEAMLESS_SYS_DELAY);
-			i++) {
-			if (*feature_data == seamless_sys_delays[i].source_scenario &&
-		    *(feature_data + 1) == seamless_sys_delays[i].target_scenario) {
-				*(feature_data + 2) = seamless_sys_delays[i].sys_delay;
-				break;
-			}
-		}
 		break;
 	}
 	case SENSOR_FEATURE_SET_HDR_SHUTTER://for 2EXP
@@ -5923,6 +5914,44 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 			break;
 		}
 		LOG_INF("[%s][SENSOR_FEATURE_GET_DCG_GAIN_MODE_BY_SCENARIO] mode(%llu) gain_mode(%d)\n",
+			__func__, *feature_data, *(MUINT32 *)(uintptr_t)(*(feature_data + 1)));
+		break;
+	}
+	case SENSOR_FEATURE_GET_SEAMLESS_GROUP_BY_SCENARIO:
+	{
+		switch (*feature_data) {
+		case MSDK_SCENARIO_ID_CUSTOM2:
+		case MSDK_SCENARIO_ID_CUSTOM3:
+		case MSDK_SCENARIO_ID_CUSTOM4:
+		case MSDK_SCENARIO_ID_CAMERA_PREVIEW:
+		case MSDK_SCENARIO_ID_CAMERA_CAPTURE_JPEG:
+			*(MUINT32 *)(uintptr_t)(*(feature_data + 1))
+				= 1;
+			break;
+		default:
+			*(MUINT32 *)(uintptr_t)(*(feature_data + 1))
+				= 0;
+			break;
+		}
+		LOG_INF("[%s][SENSOR_FEATURE_GET_SEAMLESS_GROUP_BY_SCENARIO] mode(%llu) group(%d)\n",
+			__func__, *feature_data, *(MUINT32 *)(uintptr_t)(*(feature_data + 1)));
+		break;
+	}
+	case SENSOR_FEATURE_GET_HDR_TYPE_BY_SCENARIO:
+	{
+		switch (*feature_data) {
+		case MSDK_SCENARIO_ID_CUSTOM1:
+		case MSDK_SCENARIO_ID_CUSTOM2:
+		case MSDK_SCENARIO_ID_CUSTOM4:
+			*(MUINT32 *)(uintptr_t)(*(feature_data + 1))
+				= HDR_RAW_DCG_COMPOSE_RAW12;
+			break;
+		default:
+			*(MUINT32 *)(uintptr_t)(*(feature_data + 1))
+				= HDR_NONE;
+			break;
+		}
+		LOG_INF("[%s][SENSOR_FEATURE_GET_HDR_TYPE_BY_SCENARIO] mode(%llu) hdr_type(%d)\n",
 			__func__, *feature_data, *(MUINT32 *)(uintptr_t)(*(feature_data + 1)));
 		break;
 	}
