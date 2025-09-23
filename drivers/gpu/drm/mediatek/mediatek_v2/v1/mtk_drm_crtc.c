@@ -15044,7 +15044,7 @@ void mtk_crtc_prepare_instr(struct drm_crtc *crtc)
 		mtk_crtc_exec_atf_prebuilt_instr(mtk_crtc, handle);
 		if (mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_IDLEMGR_ASYNC)) {
-			mtk_drm_idle_async_flush(crtc, USER_ATF_INSTR, handle);
+			ret = mtk_drm_idle_async_flush(crtc, USER_ATF_INSTR, handle);
 			if ((priv->data->mmsys_id == MMSYS_MT6878) && (ret < 0)) {
 				DDPINFO("%s crtc:%d cmdq_prepare_instr -\n",
 					__func__, drm_crtc_index(crtc));
