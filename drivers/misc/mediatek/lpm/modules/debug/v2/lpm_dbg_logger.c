@@ -751,7 +751,7 @@ void log_md_sleep_info(void)
 			(after_md_sleep_status.nr_sleep_time -
 				before_md_sleep_status.nr_sleep_time) / 1000000,
 			(after_md_sleep_status.nr_sleep_time -
-				before_md_sleep_status.nr_sleep_time) % 10000000 / 1000);
+				before_md_sleep_status.nr_sleep_time) % 1000000 / 1000);
 
 		WARN_ON(strlen(log_buf) >= LOG_BUF_SIZE);
 		pr_info("[name:spm&][SPM] %s", log_buf);
