@@ -33,6 +33,8 @@
 #include <lpm_sys_res.h>
 #endif
 
+#include "clkchk-mt6993.h"
+
 #define PCM_32K_TICKS_PER_SEC		(32768)
 #define PCM_TICK_TO_SEC(TICK)	(TICK / PCM_32K_TICKS_PER_SEC)
 
@@ -1234,12 +1236,21 @@ end:
 	return wr;
 }
 
+static void lpm_clkchk_dump(void)
+{
+	/* dump all CLK_EN_*PLL registers */
+	print_subsys_reg_mt6993_with_range(cksys_vlp, 0x02f0, 0x030c);
+	print_subsys_reg_mt6993_with_range(cksys_top, 0x02f0, 0x0310);
+	print_subsys_reg_mt6993_with_range(cksys_mm, 0x02f0, 0x0318);
+}
+
 static struct lpm_dbg_plat_ops dbg_ops = {
 	.lpm_show_message = lpm_show_message,
 	.lpm_save_sleep_info = lpm_save_sleep_info,
 	.lpm_get_spm_wakesrc_irq = NULL,
 	.lpm_get_wakeup_status = lpm_get_wakeup_status,
 	.lpm_log_common_status = lpm_log_common_info,
+	.lpm_clkchk_dump = lpm_clkchk_dump,
 };
 
 static struct lpm_dbg_plat_info dbg_info = {

@@ -377,6 +377,8 @@ static u32 is_blocked_cnt;
 	dump_hw_cg_status();
 	dump_peri_cg_status();
 	dump_lp_sw_request();
+	if (_lpm_dbg_plat_ops.lpm_clkchk_dump)
+		_lpm_dbg_plat_ops.lpm_clkchk_dump();
 }
 EXPORT_SYMBOL(lpm_dbg_spm_rsc_req_check);
 
@@ -422,6 +424,7 @@ int lpm_dbg_plat_ops_register(struct lpm_dbg_plat_ops *lpm_dbg_plat_ops)
 	_lpm_dbg_plat_ops.lpm_get_spm_wakesrc_irq = lpm_dbg_plat_ops->lpm_get_spm_wakesrc_irq;
 	_lpm_dbg_plat_ops.lpm_get_wakeup_status = lpm_dbg_plat_ops->lpm_get_wakeup_status;
 	_lpm_dbg_plat_ops.lpm_log_common_status = lpm_dbg_plat_ops->lpm_log_common_status;
+	_lpm_dbg_plat_ops.lpm_clkchk_dump = lpm_dbg_plat_ops->lpm_clkchk_dump;
 	return 0;
 }
 EXPORT_SYMBOL(lpm_dbg_plat_ops_register);
