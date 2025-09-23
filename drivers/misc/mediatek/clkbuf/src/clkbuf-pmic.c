@@ -25,6 +25,15 @@ struct match_pmic {
 			struct device_node *clkbuf_node, int nums);
 };
 
+static void aac_udelay(u32 aac_settle_us, u32 hard_code_us)
+{
+	pr_notice("%s %u %u\n", __func__, aac_settle_us, hard_code_us);
+	if (aac_settle_us)
+		udelay(aac_settle_us);
+	else
+		udelay(hard_code_us);
+}
+
 static int read_with_ofs(struct clkbuf_hw *hw, struct reg_t *reg, u32 *val,
 			 u32 ofs)
 {
@@ -597,13 +606,13 @@ static int set_capid_pre1(void *data)
 	reg = com_regs->_aac_fpm_swen;
 
 	ret |= pmic_write(&hw, &reg, 0);
-	mdelay(1);
+	aac_udelay(com_regs->aac_settle_us_0, 1000);
 	ret |= pmic_write(&hw, &reg, 1);
 	if (ret) {
 		CLKBUF_DBG("set aac fpm swen failed\n");
 		return ret;
 	}
-	mdelay(5);
+	aac_udelay(com_regs->aac_settle_us_1, 5000);
 
 	return ret;
 }

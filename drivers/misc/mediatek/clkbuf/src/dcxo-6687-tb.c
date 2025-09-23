@@ -502,6 +502,8 @@ static struct auxout_reg_t mt6687_debug_auxouts[] = {
 static struct common_regs com_regs = {
 	.mode_num = 3,
 	.spmi_mask = 0xffffffff,
+	.aac_settle_us_0 = 100,
+	.aac_settle_us_1 = 32000,
 	SET_REG_BY_NAME(static_aux_sel, XO_STATIC_AUXOUT_SEL)
 	SET_REG_BY_NAME(static_aux_out_l, XO_STATIC_AUXOUT_L)
 	SET_REG_BY_NAME(static_aux_out_h, XO_STATIC_AUXOUT_H)

@@ -44,6 +44,8 @@ struct common_regs {
 	u32 mode_num;
 	/*restrict to 16bits when write*/
 	u32 spmi_mask;
+	u32 aac_settle_us_0;
+	u32 aac_settle_us_1;
 	//struct mutex lock;
 	struct reg_t _static_aux_sel;
 	struct reg_t _static_aux_out_h;
@@ -59,6 +61,7 @@ struct common_regs {
 	struct reg_t _idac_fpm;
 	struct reg_t _aac_fpm_swen;
 	struct reg_t _heater_sel;
+	struct reg_t _osc_isel_fpm_m;
 };
 
 struct plat_xodata {
