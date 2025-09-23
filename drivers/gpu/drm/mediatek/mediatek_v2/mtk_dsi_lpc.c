@@ -491,6 +491,26 @@ void mtk_dsi_lpc_resync_ts(unsigned long long *resync_ts, struct mtk_drm_crtc *m
 	drm_trace_tag_value("lpc_resync_timestamp1", ts1);
 	drm_trace_tag_value("lpc_resync_timestamp", *resync_ts);
 }
+
+int mtk_dsi_lpc_mipi_err_irq_enable(struct mtk_drm_crtc *mtk_crtc,
+	struct cmdq_pkt *cmdq_handle, struct mtk_ddp_comp *comp, bool en)
+{
+	struct mtk_dsi_lpc *lpc = comp_to_dsi_lpc(comp);
+	int index = 0;
+
+	index = mtk_dsi_lpc_unit(mtk_crtc);
+	if (index < 0) {
+		DDPMSG("%s lpc unit error\n", __func__);
+		return -EINVAL;
+	}
+
+	if (cmdq_handle)
+		cmdq_pkt_write(cmdq_handle, comp->cmdq_base,
+			comp->regs_pa+ DSI_LPC_INTEN(index), en, MIPI_ERROR_FLAG_INT_EN);
+
+	return 0;
+}
+
 int mtk_dsi_lpc_interrupt_enable(struct mtk_drm_crtc *mtk_crtc,
 	struct mtk_ddp_comp *comp, bool en)
 {
@@ -780,6 +800,13 @@ static int mtk_dsi_lpc_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle
 		return mtk_dsi_lpc_interrupt_enable(mtk_crtc, comp, en);
 	}
 		break;
+	case DSI_LPC_INT_MIPI_ERR:
+		{
+			bool *en = (bool *)params;
+
+			mtk_dsi_lpc_mipi_err_irq_enable(mtk_crtc, handle, comp, en);
+		}
+		break;
 	case DSI_LPC_PANEL_PARAMS:
 	{
 		struct mtk_panel_params *panel_params = (struct mtk_panel_params *)params;
@@ -859,6 +886,7 @@ static irqreturn_t mtk_dsi_lpc_irq_handler(int irq, void *dev_id)
 	struct mtk_ddp_comp *comp = NULL;
 	struct mtk_drm_crtc *mtk_crtc = NULL;
 	unsigned int status = 0;
+	unsigned int lpc_inten = 0;
 	unsigned int ret = 0;
 	int index = 0;
 
@@ -927,6 +955,17 @@ static irqreturn_t mtk_dsi_lpc_irq_handler(int irq, void *dev_id)
 			DDPPR_ERR("DSI LPC DDIC ERROR\n");
 			DRM_MMP_MARK(dsi_lpc0, status, 0xFFFF);
 			drm_trace_tag_mark("lpc_ddic_error_irq");
+
+			/* As a large number of interrupts can cause HWT */
+			/* Only monitor once ddic error until next enable */
+			lpc_inten = readl(comp->regs + DSI_LPC_INTEN(index));
+			if (!lpc_inten) {
+				drm_trace_tag_mark("lpc_irq_handler error 6");
+				ret = IRQ_NONE;
+				goto out;
+			}
+			lpc_inten &= (0xFFFFFFFF & (~MIPI_ERROR_FLAG_INT_EN));
+			writel(lpc_inten, comp->regs + DSI_LPC_INTEN(index));
 		}
 	}
 

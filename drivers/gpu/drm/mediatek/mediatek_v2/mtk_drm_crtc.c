@@ -14286,6 +14286,8 @@ skip_prete:
 		if (debug_trigger_loop & BIT(3))
 			mtk_disp_dbg_cmdq_use_mutex(mtk_crtc, cmdq_handle, 6);
 		if ((priv->data->mmsys_id == MMSYS_MT6993) && (crtc_id == 0)) {
+			struct mtk_ddp_comp *lpc_comp = NULL;
+
 			/* For HRT urgent WA */
 			mtk_dbgtp_dsi_gce_event_config(mtk_crtc, cmdq_handle);
 			DDPINFO("FIFO mon: Wait gce event fifo level down\n");
@@ -14293,6 +14295,12 @@ skip_prete:
 			if (profile_trig && (crtc_id == 0))
 				mtk_crtc_backup_tpr_to_slot(mtk_crtc, cmdq_handle, DISP_SLOT_TRIG_TICK(3));
 			cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base, 0x03E730300, 0, BIT(1) | BIT(3));
+
+			/* Enable LPC MIPI ERR interrupt per frame */
+			lpc_comp = mtk_ddp_comp_request_output_lpc(mtk_crtc);
+			if (lpc_comp)
+				mtk_ddp_comp_io_cmd(lpc_comp, cmdq_handle, DSI_LPC_INT_MIPI_ERR, true);
+
 			if (priv->mtk_dbgtp_sta.fifo_mon_en[0]) {
 				/* For dbgtp fifo mon WA */
 				lop.reg = true;
