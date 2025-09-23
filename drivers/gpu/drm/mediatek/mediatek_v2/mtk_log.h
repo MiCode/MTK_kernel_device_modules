@@ -150,6 +150,12 @@ int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...);
 			pr_info("[DISP][DBGTP]" pr_fmt(fmt), ##arg);     \
 	} while (0)
 
+#define DDPBIF(fmt, arg...)                                                 \
+	do {		\
+		MME_INFO(MME_MODULE_DISP, MME_BUFFER_INDEX_2, fmt, ##arg);      \
+		if (g_bif_log || g_mobile_log)                                              \
+			pr_info("[DISP][BIF]" pr_fmt(fmt), ##arg);     \
+	} while (0)
 
 #define DDPIRQ(fmt, arg...)                                                    \
 	MME_INFO(MME_MODULE_DISP, MME_BUFFER_INDEX_4, fmt, ##arg)
@@ -256,8 +262,9 @@ int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...);
 	} while (0)
 #define DDPBIF(fmt, arg...)                                                    \
 	do {								   \
-		if (g_bif_log || g_mobile_log)	   \
-			mtk_dprec_logger_pr(DPREC_LOGGER_DEBUG, fmt, ##arg);   \
+		mtk_dprec_logger_pr(DPREC_LOGGER_DEBUG, fmt, ##arg);           \
+		if (g_bif_log || g_mobile_log)                                              \
+			pr_info("[DISP][BIF]" pr_fmt(fmt), ##arg);     \
 	} while (0)
 
 #endif

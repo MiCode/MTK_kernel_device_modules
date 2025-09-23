@@ -1128,7 +1128,19 @@ static void mtk_drm_cmd_mode_enter_idle(struct drm_crtc *crtc)
 	if (count > 0)
 		mtk_drm_adjust_cpu_freq(crtc, false, cpus, count);
 }
+static void vdo_leave_idle_cb(struct cmdq_cb_data data)
+{
+	struct mtk_cmdq_cb_data *cb_data = data.data;
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(cb_data->crtc);
 
+	if (mtk_crtc->bif_info->sram_en)
+		mtk_crtc_bif_slbc_request(mtk_crtc, false);
+
+	CRTC_MMP_MARK(0, leave_idle, 0xFFFFFFFF, (unsigned long)cb_data->cmdq_handle);
+
+	cmdq_pkt_destroy(cb_data->cmdq_handle);
+	kfree(cb_data);
+}
 static void mtk_drm_vdo_mode_leave_idle(struct drm_crtc *crtc)
 {
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
@@ -1179,19 +1191,25 @@ static void mtk_drm_vdo_mode_leave_idle(struct drm_crtc *crtc)
 	}
 
 	if (bif_enabled(crtc) == BIF_HS_IDLE) {
+		struct mtk_cmdq_cb_data *cb_data;
+
 		mtk_crtc_wait_frame_done(mtk_crtc, handle, DDP_FIRST_PATH, 0);
 
 		if (priv->data->bif_path_remove)
 			priv->data->bif_path_remove(mtk_crtc, handle);
 
 		mtk_crtc_bif_restore_path_mutex(mtk_crtc, handle);
+
+		cb_data = kmalloc(sizeof(*cb_data), GFP_KERNEL);
+		if (cb_data) {
+			cb_data->cmdq_handle = handle;
+			cb_data->crtc = crtc;
+			cmdq_pkt_flush_threaded(handle, vdo_leave_idle_cb, cb_data);
+		}
+	} else {
+		cmdq_pkt_flush(handle);
+		cmdq_pkt_destroy(handle);
 	}
-
-	cmdq_pkt_flush(handle);
-	cmdq_pkt_destroy(handle);
-
-	if ((bif_enabled(crtc) == BIF_HS_IDLE) && mtk_crtc->bif_info->sram_en)
-		mtk_crtc_bif_slbc_request(mtk_crtc, false);
 
 	if (perf) {
 		end_time = local_clock();
