@@ -15528,10 +15528,10 @@ static void mtk_dsi_vdo_timing_change(struct mtk_dsi *dsi,
 
 		if (dsi->ext && dsi->ext->params &&
 			dsi->ext->params->prefetch_time) {
-			//cmdq_pkt_clear_event(handle,
-			//	mtk_crtc->gce_obj.event[EVENT_OVLSYS_DISP_OVL0_SOF]);
-			//cmdq_pkt_wfe(handle,
-			//	mtk_crtc->gce_obj.event[EVENT_OVLSYS_DISP_OVL0_SOF]);
+			cmdq_pkt_clear_event(handle,
+				mtk_crtc->gce_obj.event[EVENT_OVLSYS_DISP_OVL0_SOF]);
+			cmdq_pkt_wfe(handle,
+				mtk_crtc->gce_obj.event[EVENT_OVLSYS_DISP_OVL0_SOF]);
 			/* disable DSI pre-fetch */
 			cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + DSI_TIME_CON1(dsi->driver_data), 0x0, 0x80000000);

@@ -30,7 +30,7 @@
 static char bl_tb0[] = {0x51, 0xf, 0xff};
 static int current_fps = 144;
 #define SUPPORT_90Hz 0
-#define PREFETCH_TIME 0
+#define PREFETCH_TIME 150
 
 struct panel_desc {
 	const struct drm_display_mode *modes;
