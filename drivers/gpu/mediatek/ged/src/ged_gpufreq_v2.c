@@ -1106,7 +1106,7 @@ unsigned int ged_gpufreq_get_gpufreq_ready(void)
 #if IS_ENABLED(CONFIG_MTK_GPU_LEGACY)
 	return 1;
 #else
-	return gpufreq_wrapper_ready();
+	return gpufreq_wrapper_ready() && gpufreq_get_core_num();
 #endif
 }
 
