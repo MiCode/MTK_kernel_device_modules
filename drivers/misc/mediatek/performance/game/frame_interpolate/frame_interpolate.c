@@ -400,9 +400,12 @@ void fpsgo_fi_receive_q2q_cb(unsigned long cmd, struct render_frame_info *iter)
 			fpsgo_other2comp_user_create(iter_thr->frame_info.tgid, iter_thr->frame_info.pid,
 				iter_thr->frame_info.buffer_id, NULL, 0, 0);
 			iter_thr->is_fpsgo_render_created = 1;
-		} else { // render thread changed.
-			if (iter->pid != iter_thr->frame_info.pid ||
-				iter->buffer_id != iter_thr->old_buffer_id) {
+		} else {
+			// The render thread is changed and we only detect at queue start
+			// to avoid the different mfrc deq task resets the render info.
+			if (test_bit(GET_FPSGO_QUEUE_START, &cmd) &&
+				(iter->pid != iter_thr->frame_info.pid ||
+				iter->buffer_id != iter_thr->old_buffer_id)) {
 				fpsgo_other2fstb_set_target(1, iter_thr->frame_info.pid, 0, 2, 0, 0,
 				iter_thr->frame_info.buffer_id);
 				fpsgo_other2comp_user_close(iter_thr->frame_info.tgid, iter_thr->frame_info.pid,
