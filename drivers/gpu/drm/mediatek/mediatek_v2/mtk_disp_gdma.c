@@ -144,12 +144,25 @@ static void mtk_disp_gdma_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handl
 	struct iommu_domain *domain;
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
+	struct mtk_bif_info *bif_info = mtk_crtc->bif_info;
 	dma_addr_t addr = 0;
 	int ret = 0;
 
 	if (!comp) {
 		DDPPR_ERR("find comp fail\n");
 		return;
+	}
+
+	if (bif_enabled(&mtk_crtc->base) && mtk_crtc->bif_info->read_comp) {
+		addr = bif_info->sram_pa;
+		domain = iommu_get_domain_for_dev(mtk_smmu_get_shared_device(comp->dev));
+
+		if (domain == NULL)
+			DDPPR_ERR("%s, iommu_get_domain fail\n", __func__);
+
+		ret = iommu_unmap(domain, addr, bif_info->sram_size);
+		if (ret < 0)
+			DDPPR_ERR("%s,iommu_unmap fail\n", __func__);
 	}
 
 	mtk_ddp_write_mask(comp, 0, DISP_REG_GDMA_EN, ~0, handle);
@@ -173,6 +186,59 @@ static void
 mtk_disp_gdma_config(struct mtk_ddp_comp *comp, struct mtk_ddp_config *cfg, struct cmdq_pkt *handle)
 {
 	DDPFUNC();
+}
+static void
+mtk_disp_gdma_bif_read_config(struct mtk_ddp_comp *comp, struct mtk_ddp_config *cfg, struct cmdq_pkt *handle)
+{
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
+	struct mtk_bif_info *bif_info = mtk_crtc->bif_info;
+	dma_addr_t addr = bif_info->sram_pa;
+	int width = bif_info->src_roi.width;
+	int height = bif_info->src_roi.height;
+	unsigned int fmt = DRM_FORMAT_RGB888;
+	unsigned int hact = 0, vtotal = 0, vact = 0, vrefresh = 0;
+	unsigned int bpp = mtk_get_format_bpp(fmt);
+	unsigned int mem_len = height*width*bpp;
+	unsigned long long bw_base = 0;
+	struct iommu_domain *domain;
+	int ret = 0;
+
+	domain = iommu_get_domain_for_dev(mtk_smmu_get_shared_device(comp->dev));
+	if (domain == NULL) {
+		DDPPR_ERR("%s, iommu_get_domain fail\n", __func__);
+		bif_info->bif_enable = BIF_DISABLE;
+		return;
+	}
+	ret = iommu_map(domain,
+		ROUNDUP(addr, PAGE_SIZE),
+		ROUNDUP(addr, PAGE_SIZE),
+		ROUNDUP(bif_info->sram_size, PAGE_SIZE),
+		IOMMU_READ | IOMMU_WRITE, GFP_KERNEL);
+	if (ret < 0) {
+		DDPPR_ERR("%s,iommu_map fail\n", __func__);
+		bif_info->bif_enable = BIF_DISABLE;
+		return;
+	}
+
+	/* bw setting*/
+	hact = mtk_crtc->base.state->adjusted_mode.hdisplay;
+	vtotal = mtk_crtc->base.state->adjusted_mode.vtotal;
+	vact = mtk_crtc->base.state->adjusted_mode.vdisplay;
+	vrefresh = drm_mode_vrefresh(&mtk_crtc->base.state->adjusted_mode);
+	bw_base = div_u64((unsigned long long)vact * hact * vrefresh * bpp, 1000);
+	bw_base = div_u64(bw_base, 1000) * 2;
+	mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_HRT_BW, &bw_base);
+
+	//cmdq_pkt_write(handle, comp->cmdq_base,
+		//comp->larb_cons[0], GENMASK(19, 16), GENMASK(19, 16));
+
+	mtk_ddp_write_relaxed(comp, addr, DISP_GDMA_MEM_ADDR, handle);
+	mtk_ddp_write_relaxed(comp, mem_len, DISP_GDMA_MEM_LENGTH, handle);
+
+	DDPBIF("%s,addr:0x%lx,cfg(%d,%d),roi(%u,%u),mem_len:%u,larb_cons:0x%pa\n", __func__,
+			(unsigned long)addr, cfg->w, cfg->h, width, height, mem_len, comp->larb_cons);
+
 }
 static int mtk_disp_gdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			  enum mtk_ddp_io_cmd cmd, void *params)
@@ -315,6 +381,7 @@ static const struct mtk_ddp_comp_funcs mtk_disp_gdma_funcs = {
 	.unprepare = mtk_disp_gdma_unprepare,
 	.config = mtk_disp_gdma_config,
 	.io_cmd = mtk_disp_gdma_io_cmd,
+	.bif_read_config = mtk_disp_gdma_bif_read_config,
 };
 static int mtk_disp_gdma_bind(struct device *dev, struct device *master,
 			     void *data)

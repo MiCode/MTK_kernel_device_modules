@@ -31576,6 +31576,74 @@ void mtk_disp_dbg_cmdq_use_mutex(struct mtk_drm_crtc *mtk_crtc,
 			ddp->sys_b_side_regs_pa + DISP_REG_MUTEX_INTEN, val, val);
 	}
 }
+void mtk_crtc_bif_resource_control_MT6993(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle, bool en)
+{
+	mtk_vidle_bif_resource_ctrl(en, handle);
+}
+void mtk_disp_bif_keep_read_mutex_MT6993(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle)
+{
+	struct mtk_disp_mutex *mutex = NULL;
+	struct mtk_ddp *ddp = NULL;
+	resource_size_t regs_pa = {0};
+	resource_size_t ovlsys_regs_pa = {0};
+	unsigned int mutex_id = 0;
+
+	mutex = mtk_crtc->mutex[mutex_id];
+	ddp = container_of(mutex, struct mtk_ddp, mutex[mutex->id]);
+
+	if (&ddp->mutex[mutex->id] != mutex)
+		DDPAEE("%s:%d, invalid mutex:(%p,%p) id:%d\n",
+			__func__, __LINE__,
+			&ddp->mutex[mutex->id], mutex, mutex->id);
+
+/* keep dispsys1 read path
+ * #define MT6993_MUTEX1_MOD1_DISP_GDMA0			(BIT(19) | BIT(31))
+ * #define MT6993_MUTEX1_MOD1_DISP_SPLITTER1		(BIT(13) | BIT(31))
+ * #define MT6993_MUTEX1_MOD1_DISP_DSI0_MAC0		(BIT(0) | BIT(31))
+ */
+	if (handle) {
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			ddp->side_regs_pa + DISP_REG_MUTEX_MOD(0, ddp->data, mutex->id),
+			0, ~0);
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			ddp->side_regs_pa + DISP_REG_MUTEX_MOD(1, ddp->data, mutex->id),
+			BIT(0) | BIT(13) | BIT(19), ~0);
+
+		/* remove ovlsys/dispsys0 sof*/
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			ddp->regs_pa + DISP_REG_MUTEX_MOD(0, ddp->data, mutex->id),
+			0, ~0);
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			ddp->regs_pa + DISP_REG_MUTEX_MOD(1, ddp->data, mutex->id),
+			0, ~0);
+
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			ddp->ovlsys0_regs_pa + DISP_REG_MUTEX_MOD(0, ddp->data, mutex->id),
+			0, ~0);
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			ddp->ovlsys0_regs_pa + DISP_REG_MUTEX_MOD(1, ddp->data, mutex->id),
+			0, ~0);
+
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			ddp->ovlsys1_regs_pa + DISP_REG_MUTEX_MOD(0, ddp->data, mutex->id),
+			0, ~0);
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			ddp->ovlsys1_regs_pa + DISP_REG_MUTEX_MOD(1, ddp->data, mutex->id),
+			0, ~0);
+	} else {
+		writel_relaxed(BIT(23), ddp->side_regs + DISP_REG_MUTEX_MOD(0, ddp->data, mutex->id));
+		writel_relaxed(BIT(12) | BIT(20),ddp->side_regs + DISP_REG_MUTEX_MOD(1, ddp->data, mutex->id));
+
+		writel_relaxed(0, ddp->regs + DISP_REG_MUTEX_MOD(0, ddp->data, mutex->id));
+		writel_relaxed(0, ddp->regs + DISP_REG_MUTEX_MOD(1, ddp->data, mutex->id));
+
+		writel_relaxed(0, ddp->ovlsys0_regs + DISP_REG_MUTEX_MOD(0, ddp->data, mutex->id));
+		writel_relaxed(0, ddp->ovlsys0_regs + DISP_REG_MUTEX_MOD(1, ddp->data, mutex->id));
+
+		writel_relaxed(0, ddp->ovlsys1_regs + DISP_REG_MUTEX_MOD(0, ddp->data, mutex->id));
+		writel_relaxed(0, ddp->ovlsys1_regs + DISP_REG_MUTEX_MOD(1, ddp->data, mutex->id));
+	}
+}
 void mtk_crtc_bif_resource_control_MT6991(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle, bool en)
 {
 	struct drm_crtc *crtc = &mtk_crtc->base;
@@ -36031,7 +36099,57 @@ void mtk_ddp_remove_dsc_prim_MT6993(struct mtk_drm_crtc *mtk_crtc,
 			mtk_crtc->side_config_regs_pa + addr, value, ~0);
 	}
 }
+void mtk_ddp_insert_bif_racing_MT6993(struct mtk_drm_crtc *mtk_crtc,
+	struct cmdq_pkt *handle)
+{
+	unsigned int addr = 0, value = 0;
 
+	/* DDP_COMPONENT_POSTALIGN0 to DDP_COMPONENT_SPLITTER0 */
+	addr = MT6993_SPLITTER_IN_CB9_MOUT_EN;
+	value = MT6993_DISP_SPLITTER_IN_CB_TO_SPLITTER0;
+	cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+		mtk_crtc->side_config_regs_pa + addr, value, ~0);
+	/* clr DDP_COMPONENT_DSC0 to DDP_COMPONENT_DSI0 */
+	addr = MT6993_SPLITTER_OUT_CB0_MOUT_EN;
+	value = 0;
+	cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+		mtk_crtc->side_config_regs_pa + addr, value, ~0);
+	addr = MT6993_COMP_OUT_CB6_MOUT_EN;
+	value = 0;
+	cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+		mtk_crtc->side_config_regs_pa + addr, value, ~0);
+	/* gdma to dsi */
+	addr = MT6993_COMP_OUT_CB4_MOUT_EN;
+	value = MT6993_DISP_COMP_OUT_CB_TO_MERGE_OUT_CB0;
+	cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+		mtk_crtc->side_config_regs_pa + addr, value, ~0);
+}
+void mtk_ddp_remove_bif_racing_MT6993(struct mtk_drm_crtc *mtk_crtc,
+	struct cmdq_pkt *handle)
+{
+	unsigned int addr = 0, value = 0;
+
+	/* DDP_COMPONENT_POSTALIGN0 to default */
+	addr = MT6993_SPLITTER_IN_CB9_MOUT_EN;
+	value = MT6993_DISP_SPLITTER_IN_CB_TO_SPLITTER_OUT_CB0;
+	cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+		mtk_crtc->side_config_regs_pa + addr, value, ~0);
+	/* restore DDP_COMPONENT_DSC0 */
+	addr = MT6993_SPLITTER_OUT_CB0_MOUT_EN;
+	value = MT6993_DISP_SPLITTER_OUT_CB_TO_DSC0_0;
+	cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+		mtk_crtc->side_config_regs_pa + addr, value, ~0);
+	addr = MT6993_COMP_OUT_CB6_MOUT_EN;
+	value = MT6993_DISP_COMP_OUT_CB_TO_MERGE_OUT_CB0;
+	cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+		mtk_crtc->side_config_regs_pa + addr, value, ~0);
+
+	/* remove gdma to dsi */
+	addr = MT6993_COMP_OUT_CB4_MOUT_EN;
+	value = 0;
+	cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+		mtk_crtc->side_config_regs_pa + addr, value, ~0);
+}
 void mtk_ddp_insert_dsc_prim_mt6897(struct mtk_drm_crtc *mtk_crtc,
 	struct cmdq_pkt *handle)
 {

@@ -443,6 +443,7 @@ static const struct of_device_id mtk_disp_merge_driver_dt_match[] = {
 	{.compatible = "mediatek,mt6985-disp-merge", },
 	{.compatible = "mediatek,mt6897-disp-merge", },
 	{.compatible = "mediatek,mt6991-disp-merge", },
+	{.compatible = "mediatek,mt6993-disp-merge", },
 	{},
 };
 MODULE_DEVICE_TABLE(of, mtk_disp_merge_driver_dt_match);

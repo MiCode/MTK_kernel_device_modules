@@ -1822,7 +1822,23 @@ static void dpc_dsi_pll_set_v2(const u32 value)
 		writel(g_priv->dsi_ck_keep_mask, dpc_base + g_priv->mtcmos_cfg[DPC_SUBSYS_DIS1].cfg);
 	}
 }
+static void dpc_bif_resource_ctrl_mt6993(const bool en, struct cmdq_pkt *pkt)
+{
+	if (g_priv == NULL) {
+		DPCERR("g_priv null\n");
+		return;
+	}
 
+	if (en) {
+		writel(0x0, dpc_base + DISP_REG_DPC_DDREN_ACK_SEL);
+		writel(0x0D0D0D0D, dpc_base + DISP_REG_DPC_DISP_DDRSRC_EMIREQ_CFG);
+		writel(0x0D0D0D0D, dpc_base + DISP_REG_DPC_MML_DDRSRC_EMIREQ_CFG);
+	} else {
+		writel(0xfff, dpc_base + DISP_REG_DPC_DDREN_ACK_SEL);
+		writel(0x05050D05, dpc_base + DISP_REG_DPC_DISP_DDRSRC_EMIREQ_CFG);
+		writel(0x05050D05, dpc_base + DISP_REG_DPC_MML_DDRSRC_EMIREQ_CFG);
+	}
+}
 static void dpc_apsrc_enable(bool en, const enum mtk_vidle_voter_user user)
 {
 	s32 cnt = 0;
@@ -4019,6 +4035,7 @@ static struct dpc_funcs funcs_v3 = {
 	.dpc_mminfra_on_off = dpc_mminfra_on_off,
 	.dpc_monitor_config = dpc_monitor_config,
 	.dpc_buck_status = dpc_buck_status,
+	.dpc_bif_resource_ctrl = dpc_bif_resource_ctrl_mt6993,
 	/* others will be assigned during probe */
 };
 

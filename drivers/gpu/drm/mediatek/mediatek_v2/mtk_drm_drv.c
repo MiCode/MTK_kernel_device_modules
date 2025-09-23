@@ -3838,6 +3838,20 @@ static const enum mtk_ddp_comp_id mt6991_mtk_ddp_main_bringup[] = {
 	DDP_COMPONENT_CHIST0,	DDP_COMPONENT_CHIST1,
 #endif
 };
+static const enum mtk_ddp_comp_id mt6993_mtk_ddp_main_bif_write_path[] = {
+	DDP_COMPONENT_SPLITTER0,
+	DDP_COMPONENT_DSC1,
+	DDP_COMPONENT_MERGE0,
+	DDP_COMPONENT_WDMA0,
+	DDP_COMPONENT_SPLITTER0_OUT_CB7, // for 2 splitter
+	DDP_COMPONENT_COMP0_OUT_CB5,
+	DDP_COMPONENT_MERGE0_OUT_CB7,
+};
+static const enum mtk_ddp_comp_id mt6993_mtk_ddp_main_bif_read_path[] = {
+	DDP_COMPONENT_GDMA0,
+	DDP_COMPONENT_SPLITTER1,
+	DDP_COMPONENT_COMP0_OUT_CB4,
+};
 static const enum mtk_ddp_comp_id mt6991_mtk_ddp_main_bif_write_path[] = {
 	DDP_COMPONENT_SPLITTER0,
 	DDP_COMPONENT_DSC1,
@@ -6451,8 +6465,10 @@ static const struct mtk_crtc_path_data mt6993_mtk_main_path_data = {
 	.dual_ovl_path_len[0] = ARRAY_SIZE(mt6993_mtk_ovlsys_dual_main_bringup),
 	.dual_path[0] = mt6993_mtk_ddp_dual_main_bringup,
 	.dual_path_len[0] = ARRAY_SIZE(mt6993_mtk_ddp_dual_main_bringup),
-//	.wb_path[DDP_MAJOR] = mt6983_mtk_ddp_main_wb_path,
-//	.wb_path_len[DDP_MAJOR] = ARRAY_SIZE(mt6983_mtk_ddp_main_wb_path),
+	.bif_write_path[DDP_MAJOR] = mt6993_mtk_ddp_main_bif_write_path,
+	.bif_write_path_len[DDP_MAJOR] = ARRAY_SIZE(mt6993_mtk_ddp_main_bif_write_path),
+	.bif_read_path[DDP_MAJOR] = mt6993_mtk_ddp_main_bif_read_path,
+	.bif_read_path_len[DDP_MAJOR] = ARRAY_SIZE(mt6993_mtk_ddp_main_bif_read_path),
 	.addon_data = mt6993_addon_main,
 	.addon_data_dual = mt6993_addon_main_dual,
 	.scaling_data = mt6993_scaling_main,
@@ -7680,6 +7696,14 @@ static const struct mtk_mmsys_driver_data mt6993_mmsys_driver_data = {
 	//.get_channel_idx = mtk_disp_get_channel_idx_MT6993,
 	.get_dispsys_reg = mtk_disp_get_dispsys_reg_mt6993,
 	.get_ovlsys_reg = mtk_disp_get_ovlsys_reg_mt6993,
+	.support_bif = true,
+	.bif_wdma_limit = 16,
+	.bif_diff_thr = 16,
+	.bif_racing_config = mtk_disp_bif_racing_config_MT6991,
+	.bif_read_path_mutex = mtk_disp_bif_keep_read_mutex_MT6993,
+	.bif_path_insert = mtk_ddp_insert_bif_racing_MT6993,
+	.bif_path_remove = mtk_ddp_remove_bif_racing_MT6993,
+	.bif_resource_ctrl = mtk_crtc_bif_resource_control_MT6993,
 };
 
 static const struct mtk_mmsys_driver_data mt6897_mmsys_driver_data = {
