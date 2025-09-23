@@ -24,7 +24,8 @@ static void setup_hvc_call(void)
 
 static int init_hvc_call(void)
 {
-	int ret;
+	int ret, idx;
+	struct device_node *node = NULL;
 	u32 gpu_mpu_data_size = 0;
 	u32 slot_size = 0;
 	u32 ipi_id = 0;
@@ -38,9 +39,6 @@ static int init_hvc_call(void)
 	u64 arg_1, arg_2, arg_3, arg_4, arg_5;
 
 	do {
-		struct device_node *node = NULL;
-		int idx;
-
 		node = of_find_compatible_node(NULL, NULL, "mediatek,gpueb");
 		if (!node) {
 			pr_info("gpueb node not found\n");
@@ -134,7 +132,9 @@ static int init_hvc_call(void)
 			pr_info("gpu-mpu-support not found, ret=%d\n", ret);
 			break;
 		}
-	} while(0);
+	} while (0);
+	if (node)
+		of_node_put(node);
 
 	pr_info("gpu_mpu_support=%u gpu_mpu_data_size=0x%x slot_size=%u ipi_id=%u send_size=%u gpueb_base=0x%x gpueb_size=0x%x gpueb_gpr_base=0x%x mbox0_set=0x%x mbox0_send=0x%x\n",
 			gpu_mpu_support, gpu_mpu_data_size,
