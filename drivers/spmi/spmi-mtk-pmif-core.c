@@ -18,9 +18,7 @@
 #include <linux/irq.h>
 #include <linux/timer.h>
 #include <linux/jiffies.h>
-#if IS_ENABLED(CONFIG_MTK_SPMI_NACK_DEBUG)
 #include "../mfd/mtk-spmi-pmic-debug.h"
-#endif
 #include "mt-plat/mtk_ccci_common.h"
 #include "spmi-mtk.h"
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
@@ -1901,7 +1899,6 @@ static void dump_spmi_pmic_dbg_rg(struct pmif *arb, unsigned int nack_0, unsigne
 	}
 }
 
-#if IS_ENABLED(CONFIG_MTK_SPMI_NACK_DEBUG)
 static void enable_nack_irq_handler(struct timer_list *t)
 {
 	int err;
@@ -1937,11 +1934,9 @@ static void enable_nack_irq_handler(struct timer_list *t)
 	}
 	pr_notice("%s, Unmask SPMI NACK IRQ\n", __func__);
 }
-#endif
 
 static int nack_type_check(struct pmif *arb, int spmi_nack_0, int spmi_nack_1, int spmi_nack_2)
 {
-#if IS_ENABLED(CONFIG_MTK_SPMI_NACK_DEBUG)
 	u32 cclp_sts = 0;
 	int ret = 0;
 	unsigned int current_nack_bus = 0;
@@ -1981,10 +1976,6 @@ static int nack_type_check(struct pmif *arb, int spmi_nack_0, int spmi_nack_1, i
 	}
 
 	return ret;
-#else
-	pr_notice("%s, user load does not support SPMI PMIC debug\n", __func__);
-	return -1;
-#endif
 }
 
 static irqreturn_t spmi_nack_irq_handler(int irq, void *data)
