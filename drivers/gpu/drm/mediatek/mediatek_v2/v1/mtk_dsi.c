@@ -8078,7 +8078,7 @@ static void mtk_dsi_config_trigger(struct mtk_ddp_comp *comp,
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			       comp->regs_pa + dsi->driver_data->reg_cmdq0_ofs,
 			       0x002c3909, ~0);
-		DDPMSG("dsi test dummy reg 0x154:0x%x, 0x3FC:0x%x\n",
+		DDPINFO("dsi test dummy reg 0x154:0x%x, 0x3FC:0x%x\n",
 			readl(dsi->regs + 0x154),
 			readl(dsi->regs + 0x3FC));
 		/* Dummy test reg , need to remove*/

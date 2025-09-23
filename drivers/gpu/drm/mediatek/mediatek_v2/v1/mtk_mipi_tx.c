@@ -3155,7 +3155,7 @@ unsigned int _dsi_get_pcw_khz(unsigned long data_rate_khz,
 	 * PCW bit 0~7 = (pcw*256*256 - floor(pcw)*256*256)*256
 	 */
 	if (data_rate_khz == (data_rate_khz / 1000 * 1000)) {
-		pr_info("[%s]Error: this function only used for khz, used _dsi_get_pcw!!\n");
+		DDPINFO("[%s]Error: this function only used for khz, used _dsi_get_pcw!!\n",__func__);
 		return _dsi_get_pcw(data_rate_khz / 1000, pcw_ratio);
 	}
 
