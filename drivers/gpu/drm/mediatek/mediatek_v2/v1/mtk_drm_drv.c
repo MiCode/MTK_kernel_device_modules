@@ -6498,8 +6498,8 @@ static const struct mtk_crtc_path_data mt6881_mtk_main_path_data = {
 	.path_len[DDP_MAJOR][0] = ARRAY_SIZE(mt6881_mtk_ddp_main),
 	.path_req_hrt[DDP_MAJOR][0] = true,
 #if IS_ENABLED(CONFIG_MTK_DISPLAY_DUAL_PIPE_DUAL_PORT_SUPPORT)
-	.dual_path[0] = mt6881_mtk_ddp_dual_main,
-	.dual_path_len[0] = ARRAY_SIZE(mt6881_mtk_ddp_dual_main),
+	// .dual_path[0] = mt6881_mtk_ddp_dual_main,
+	// .dual_path_len[0] = ARRAY_SIZE(mt6881_mtk_ddp_dual_main),
 #endif
 	.addon_data = mt6881_addon_main,
 	.scaling_data = mt6985_scaling_main,
