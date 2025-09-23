@@ -12605,6 +12605,8 @@ static int mtk_drm_probe(struct platform_device *pdev)
 	else
 		disp_helper_set_stage(DISP_HELPER_STAGE_BRING_UP);
 
+	private->dsi_cmd_v2_support = of_property_read_bool(dev->of_node, "dsi-cmd-v2-support");
+
 	if (of_property_read_bool(dev->of_node, "is-tablet")) {
 		private->is_tablet = true;
 		DDPFUNC("is tablet!\n");

@@ -18005,8 +18005,11 @@ static int mtk_dsi_bind(struct device *dev, struct device *master, void *data)
 			DDPMSG("%s, helper set opt MIPI  fail\n", __func__);
 	}
 
-	if (priv->data->mmsys_id == MMSYS_MT6993) { /* mt6993 only support cmd mode */
-		if (mtk_dsi_is_cmd_mode(&dsi->ddp_comp) && dsi->driver_data->dsi_cmd_v2_en)
+	/* mt6993 only support cmd mode, mt6993 plus support cmd and vdo mode */
+	if (priv->data->mmsys_id == MMSYS_MT6993) {
+		if (mtk_dsi_is_cmd_mode(&dsi->ddp_comp))
+			dsi_cmd_ver = DSI_CMD_V2;
+		else if (!mtk_dsi_is_cmd_mode(&dsi->ddp_comp) && priv->dsi_cmd_v2_support)
 			dsi_cmd_ver = DSI_CMD_V2;
 		else
 			dsi_cmd_ver = DSI_CMD_V1;
@@ -18021,7 +18024,7 @@ static int mtk_dsi_bind(struct device *dev, struct device *master, void *data)
 		mtk_dsi_mask(dsi, DSI_RX_CON(dsi->driver_data), RX_DATA_SRAM_MODE, RX_DATA_SRAM_MODE);
 
 	drm_dev = drm;
-	DDPMSG("%s-, dsi_cmd_ver=%d\n", __func__, dsi_cmd_ver);
+	DDPMSG("%s-, v2_support:%d, dsi_cmd_ver:%d\n", __func__, priv->dsi_cmd_v2_support, dsi_cmd_ver);
 	return 0;
 
 err_unregister:

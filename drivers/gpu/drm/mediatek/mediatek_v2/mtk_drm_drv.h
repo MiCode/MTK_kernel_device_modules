@@ -385,7 +385,7 @@ struct mtk_drm_private {
 	 * Prime display always uses OVL0,Virtual display always uses OVL0_2L.
 	 */
 	bool secure_static_path_switch;
-
+	bool dsi_cmd_v2_support; /* only for mt6993 usage */
 	struct mml_drm_ctx *mml_ctx;
 	atomic_t need_recover;
 
