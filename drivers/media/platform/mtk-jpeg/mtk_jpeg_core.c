@@ -989,6 +989,11 @@ static int mtk_jpeg_qbuf(struct file *file, void *priv, struct v4l2_buffer *buf)
 	}
 
 	vq = v4l2_m2m_get_vq(fh->m2m_ctx, buf->type);
+	if (vq == NULL) {
+		pr_info("%s %d vq\n", __func__, __LINE__);
+		return -EINVAL;
+	}
+
 	if (buf->index >= vq->max_num_buffers) {
 		pr_info("%s %d buf num is over %d\n", __func__, __LINE__, buf->index);
 		return -EINVAL;
@@ -1358,8 +1363,11 @@ static void mtk_jpeg_dec_buf_queue(struct vb2_buffer *vb)
 
 		mtk_jpeg_queue_src_chg_event(ctx);
 		mtk_jpeg_set_queue_data(ctx, param);
-		ctx->state = vb2_is_streaming(dst_vq) ?
+		if (dst_vq != NULL)
+			ctx->state = vb2_is_streaming(dst_vq) ?
 				MTK_JPEG_SOURCE_CHANGE : MTK_JPEG_RUNNING;
+		else
+			pr_info("%s %d null dst_vq\n",__func__, __LINE__);
 	}
 end:
 	v4l2_m2m_buf_queue(ctx->fh.m2m_ctx, to_vb2_v4l2_buffer(vb));
@@ -2370,6 +2378,8 @@ err_req_irq:
 static void mtk_jpeg_remove(struct platform_device *pdev)
 {
 	struct mtk_jpeg_dev *jpeg = platform_get_drvdata(pdev);
+
+	pr_info("%s %d\n", __func__, __LINE__);
 	if (jpeg->is_ccf_one_step == false)
 		pm_runtime_disable(&pdev->dev);
 	video_unregister_device(jpeg->vdev);
