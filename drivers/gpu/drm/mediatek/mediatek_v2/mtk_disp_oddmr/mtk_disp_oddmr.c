@@ -11613,7 +11613,7 @@ static int mtk_oddmr_dbi_init(struct mtk_ddp_comp *comp, struct mtk_drm_dbi_cfg_
 	struct mtk_oddmr_panelid expect_panel_id = {0};
 	struct mtk_drm_dbi_cfg_info *dbi_cfg_data;
 	struct mtk_drm_dbi_cfg_info *dbi_cfg_data_tb1;
-	void *data[30] = {0};
+	void *data[32] = {0};
 	unsigned int size;
 	unsigned int index = 0;
 	int i;
@@ -12032,6 +12032,35 @@ static int mtk_oddmr_dbi_init(struct mtk_ddp_comp *comp, struct mtk_drm_dbi_cfg_
 			goto fail;
 		}
 		dbi_cfg_data->dbv_change_cfg.reg_value= (uint32_t *)data[index];
+		index++;
+	}
+
+	if(dbi_cfg_data->remap_param.remap_dbv_targetcode_curve.num) {
+		size = sizeof(uint32_t) * dbi_cfg_data->remap_param.remap_dbv_targetcode_curve.num;
+		data[index] = vmalloc(size);
+		if (!data[index]) {
+			PC_ERR("%s:%d dbi count init fail\n", __func__, __LINE__);
+			goto fail;
+		}
+		if (copy_from_user(data[index],
+			dbi_cfg_data->remap_param.remap_dbv_targetcode_curve.x, size)) {
+			PC_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
+			goto fail;
+		}
+		dbi_cfg_data->remap_param.remap_dbv_targetcode_curve.x = (uint32_t *)data[index];
+		index++;
+
+		data[index] = vmalloc(size);
+		if (!data[index]) {
+			PC_ERR("%s:%d dbi count init fail\n", __func__, __LINE__);
+			goto fail;
+		}
+		if (copy_from_user(data[index],
+			dbi_cfg_data->remap_param.remap_dbv_targetcode_curve.y, size)) {
+			PC_ERR("%s:%d, copy_from_user fail\n", __func__, __LINE__);
+			goto fail;
+		}
+		dbi_cfg_data->remap_param.remap_dbv_targetcode_curve.y = (uint32_t *)data[index];
 		index++;
 	}
 
@@ -13358,6 +13387,7 @@ static void mtk_oddmr_dbi_change_remap_gain(struct mtk_ddp_comp *comp,
 	uint32_t remap_gain;
 	uint32_t dmr_remap_gain;
 	int dmr_remap_en;
+	uint32_t target_code;
 
 	if (oddmr_data->primary_data->dbi_state < ODDMR_INIT_DONE) {
 		ODDMRLOW_LOG("dbi off remap_gain_target_code %u\n", dbi_cfg_data->fps_dbv_node.remap_gain_target_code);
@@ -13379,6 +13409,14 @@ static void mtk_oddmr_dbi_change_remap_gain(struct mtk_ddp_comp *comp,
 			dbi_cfg_data->fps_dbv_node.remap_dbv_gain_value, cur_dbv, frac_bit);
 
 		remap_gain_target_code = (dbi_cfg_data->fps_dbv_node.remap_gain_target_code<<16);
+		if(dbi_cfg_data->remap_param.remap_dbv_targetcode_curve.num
+			&& (!oddmr_data->dbi_data.remap_target_manual)){
+			target_code =
+				mtk_dbi_curve_interpolate_signed(&dbi_cfg_data->remap_param.remap_dbv_targetcode_curve,
+				cur_dbv);
+			remap_gain_target_code = target_code <<8;
+		}
+
 		remap_gain = MIN((((remap_gain_target_code - (cur_offset * cur_dbv_gain)) / 255) >> 4), 4096);
 
 		ODDMRLOW_LOG("remap gain:0x%x, remap offset:0x%x, remap DBV gain:0x%x\n",
@@ -14398,6 +14436,7 @@ static int mtk_oddmr_pq_ioctl_transact(struct mtk_ddp_comp *comp,
 		target_code = params;
 		oddmr_data->primary_data->dbi_cfg_info.fps_dbv_node.remap_gain_target_code = *target_code;
 		mutex_unlock(&oddmr_data->primary_data->dbi_data_lock);
+		oddmr_data->dbi_data.remap_target_manual = 1;
 		mtk_oddmr_remap_update(comp);
 		DDPMSG("%s, PQ_DBI_REMAP_TARGET remap_gain_target_code:%d\n",
 			__func__, oddmr_data->primary_data->dbi_cfg_info.fps_dbv_node.remap_gain_target_code);

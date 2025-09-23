@@ -456,6 +456,9 @@ enum DBIChannel{
 	DBI_CHANNEL_NUM = 3
 };
 
+struct mtk_oddmr_dbi_remap_param {
+	struct mtk_dbi_curve_2d remap_dbv_targetcode_curve;
+};
 
 struct mtk_drm_dbi_cfg_info {
 	struct mtk_drm_dmr_basic_info basic_info;
@@ -464,6 +467,7 @@ struct mtk_drm_dbi_cfg_info {
 	struct mtk_drm_dmr_fps_dbv_change_cfg fps_dbv_change_cfg;
 	struct mtk_drm_oddmr_dbv_node dbv_node;
 	struct mtk_drm_oddmr_dbv_chg_cfg dbv_change_cfg;
+	struct mtk_oddmr_dbi_remap_param remap_param;
 
 /*dbi count*/
 	struct mtk_dbi_count_helper count_helper;
@@ -678,6 +682,8 @@ struct mtk_disp_oddmr_dbi_data {
 	void *scp_lifecycle;
 	unsigned int scp_lifecycle_size;
 	void __iomem *spm_base;
+
+	unsigned int remap_target_manual;
 };
 
 

@@ -122,5 +122,7 @@ void mtk_oddmr_dbi_count_clk_off(struct mtk_ddp_comp *comp,
 struct dbi_count_block_info mtk_dbi_count_get_block_info(uint32_t block_h, uint32_t block_v);
 void mtk_dbi_idle_count_insert_wb_fence(struct mtk_drm_crtc *mtk_crtc, unsigned int fence);
 void mtk_dbi_idle_count_update_wb_fence(struct mtk_drm_crtc *mtk_crtc);
+int mtk_dbi_curve_interpolate_signed(struct mtk_dbi_curve_2d *curve, int x);
+
 
 #endif
