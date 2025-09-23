@@ -96,7 +96,7 @@
 			    disable_dma32=on \
 			    transparent_hugepage=never \
 			    kvm-arm.protected_prefault=9 \
-			    kvm-arm.protected_modules=pkvm_mgmt,pkvm_hypmmu,pkvm_tmem,pkvm_mkp";
+			    kvm-arm.protected_modules=pkvm_mgmt,pkvm_hypmmu,pkvm_tmem,pkvm_mkp,pkvm_seninf_6858";
 	};
 
 	cpus {
