@@ -2748,12 +2748,10 @@ static int ext_layer_grouping(struct drm_device *dev,
 			is_ext_layer = !is_continuous_ext_layer_overlap(crtc,
 				disp_info->input_config[disp_idx], i);
 
-			if (disp_info->layer_num[disp_idx] > PRIMARY_OVL_LAYER_NUM) {
-				if (total_ext_layer_cnt >= max_ext_layer_cnt) {
-					DDPINFO("total_ext_layer_cnt %d, max_ext_layer_cnt %d\n",
-						total_ext_layer_cnt, max_ext_layer_cnt);
-					is_ext_layer = false;
-				}
+			if (total_ext_layer_cnt >= max_ext_layer_cnt) {
+				DDPINFO("total_ext_layer_cnt %d, max_ext_layer_cnt %d\n",
+					total_ext_layer_cnt, max_ext_layer_cnt);
+				is_ext_layer = false;
 			}
 
 			/*
