@@ -154,6 +154,7 @@ struct uart_info {
 	unsigned int rpt_reg_a;
 	unsigned int trans_len_a;
 	unsigned int vff_dbg_reg_a;
+	unsigned int new_vff_dbg;
 };
 
 struct mtk_uart_apdmacomp {
@@ -529,14 +530,16 @@ void mtk_uart_apdma_data_dump(struct dma_chan *chan)
 			c->rec_info[idx].irq_cur_comm);
 
 		pr_info("[%s] [%s] idx=%d, total=%llu, wpt=0x%x, rpt=0x%x, len=%d, poll_cnt_rx=%d, "
-			"vff_dbg=0x%x, copy_wpt=0x%x, wpt_a=0x%x, rpt_a=0x%x, vff_dbg_a=0x%x, len_a=0x%x\n",
+			"vff_dbg=0x%x, copy_wpt=0x%x, wpt_a=0x%x, rpt_a=0x%x, vff_dbg_a=0x%x, "
+			" len_a=0x%x, new_dbg=0x%x \n",
 			__func__, c->dir == DMA_DEV_TO_MEM ? "dma_rx" : "dma_tx",
 			idx, c->rec_total,
 			c->rec_info[idx].wpt_reg, c->rec_info[idx].rpt_reg,
 			c->rec_info[idx].trans_len, c->rec_info[idx].poll_cnt_rx,
 			c->rec_info[idx].vff_dbg_reg, c->rec_info[idx].copy_wpt_reg,
 			c->rec_info[idx].wpt_reg_a, c->rec_info[idx].rpt_reg_a,
-			c->rec_info[idx].vff_dbg_reg_a, c->rec_info[idx].trans_len_a);
+			c->rec_info[idx].vff_dbg_reg_a, c->rec_info[idx].trans_len_a,
+			c->rec_info[idx].new_vff_dbg);
 #ifdef CONFIG_UART_DMA_DATA_RECORD
 		if (len <= UART_RECORD_MAXLEN) {
 			if (len > 256)
@@ -1224,7 +1227,7 @@ static int mtk_uart_apdma_tx_handler(struct mtk_chan *c)
 static int mtk_uart_apdma_rx_handler(struct mtk_chan *c)
 {
 	struct mtk_uart_apdma_desc *d = c->desc;
-	unsigned int len, wg, rg, left_data;
+	unsigned int len, wg, rg, left_data, new_dbg;
 	int cnt;
 	unsigned int idx = 0;
 	unsigned long long wait_apdma_time = 0;
@@ -1242,6 +1245,10 @@ static int mtk_uart_apdma_rx_handler(struct mtk_chan *c)
 		mtk_uart_set_apdma_rx_state(true);
 	}
 #endif
+	new_dbg = mtk_uart_apdma_read(c, VFF_DEBUG_STATUS);
+	flag_state = mtk_uart_apdma_read(c, VFF_INT_FLAG);
+	mtk_uart_apdma_write(c, VFF_INT_FLAG, VFF_RX_INT_CLR_B);
+
 	left_data = mtk_uart_apdma_read(c, VFF_DEBUG_STATUS);
 	wait_apdma_time = ktime_get_ns();
 	while (((left_data & DBG_STAT_WD_ACT) == DBG_STAT_WD_ACT) &&
@@ -1253,8 +1260,6 @@ static int mtk_uart_apdma_rx_handler(struct mtk_chan *c)
 	else
 		c->rx_chan_retry = 0;
 
-	flag_state = mtk_uart_apdma_read(c, VFF_INT_FLAG);
-	mtk_uart_apdma_write(c, VFF_INT_FLAG, VFF_RX_INT_CLR_B);
 	//Read VFF_VALID_FLAG value
 	mb();
 
@@ -1292,6 +1297,7 @@ static int mtk_uart_apdma_rx_handler(struct mtk_chan *c)
 	c->rec_total++;
 
 	c->rec_info[idx].vff_dbg_reg = left_data;
+	c->rec_info[idx].new_vff_dbg = new_dbg;
 	c->rec_info[idx].wpt_reg = wg;
 	c->rec_info[idx].rpt_reg = rg;
 	c->rec_info[idx].trans_len = cnt;
