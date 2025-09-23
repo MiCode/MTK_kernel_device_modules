@@ -695,14 +695,6 @@ static int mmdvfs_v5_dbg_ftrace_thread(void *data)
 {
 	int i, j, retry = 0;
 
-	if (!SRAM_BASE) {
-		MMDVFS_DBG("mmdvfs_v5 SRAM_BASE not ready");
-		ftrace_v5_ena = false;
-		return 0;
-	}
-
-	MMDVFS_DBG("mmdvfs_v5 SRAM_BASE ready");
-	ftrace_v5_ena = true;
 	while (!kthread_should_stop()) {
 		//sram
 		mtk_mmdvfs_enable_vcp(true, user ? user[0].id : 0);
@@ -741,7 +733,6 @@ static int mmdvfs_v5_dbg_ftrace_thread(void *data)
 		msleep(1);
 	}
 
-	ftrace_v5_ena = false;
 	MMDVFS_DBG("kthread mmdvfs-dbg-ftrace-v5 end");
 	return 0;
 }
@@ -768,6 +759,10 @@ static int mmdvfs_debug_v5_set_ftrace(const char *val,
 	}
 
 #if IS_ENABLED(CONFIG_MTK_MMDVFS_VCP)
+	MMDVFS_DBG("ver:%hhu ena:%hhu SRAM_BASE:%d", ver, ena, SRAM_BASE ? true : false);
+	if (!SRAM_BASE)
+		return 0;
+
 	if (ena) {
 		if (ftrace_v5_ena)
 			MMDVFS_DBG("kthread mmdvfs-dbg-ftrace-v5 already created");
@@ -776,6 +771,8 @@ static int mmdvfs_debug_v5_set_ftrace(const char *val,
 				mmdvfs_v5_dbg_ftrace_thread, NULL, "mmdvfs-dbg-ftrace-v5");
 			if (IS_ERR(kthr_v5))
 				MMDVFS_DBG("create kthread mmdvfs-dbg-ftrace-v5 failed");
+			else
+				ftrace_v5_ena = true;
 		}
 	} else {
 		if (ftrace_v5_ena) {
