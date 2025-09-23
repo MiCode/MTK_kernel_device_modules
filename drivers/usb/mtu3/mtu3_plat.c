@@ -384,6 +384,54 @@ void ssusb_set_ldm_resp_delay(struct ssusb_mtk *ssusb)
 	}
 }
 
+static int ssusb_repeater_verison_parse(struct ssusb_mtk *ssusb,
+				struct device_node *dn)
+{
+	struct of_phandle_args args;
+	struct platform_device *pdev;
+	struct regmap *regmap;
+	u32 reg, mask;
+	int ret;
+
+	/* eusb2 is optional */
+	if (!of_property_read_bool(dn, "mediatek,eusb2-repeater"))
+		return 0;
+
+	ret = of_parse_phandle_with_fixed_args(dn,
+		"mediatek,eusb2-repeater", 3, 0, &args);
+	if (ret) {
+		dev_info(ssusb->dev, "fail to parse mediatek,eusb2-repeater\n");
+		return ret;
+	}
+
+	pdev = of_find_device_by_node(args.np);
+	of_node_put(args.np);
+	if (!pdev) {
+		dev_info(ssusb->dev, "fail to find repeater device\n");
+		return -ENODEV;
+	}
+
+	regmap = dev_get_regmap(pdev->dev.parent, NULL);
+	if (!regmap) {
+		dev_info(ssusb->dev, "fail to get regmap\n");
+		return -ENODEV;
+	}
+
+	reg = args.args[0];
+	mask = args.args[1];
+	ssusb->eusb2_id = args.args[2];
+
+	if (ssusb->eusb2_id == 6379) {
+		regmap_read(regmap, reg, &ssusb->eusb2_rev);
+		ssusb->eusb2_rev &= mask;
+	}
+
+	dev_info(ssusb->dev, "reg:0x%x, mask:0x%x, id:%d, rev:%d\n",
+		reg, mask, ssusb->eusb2_id, ssusb->eusb2_rev);
+
+	return 0;
+}
+
 void ssusb_vsvoter_set(struct ssusb_mtk *ssusb)
 {
 	u32 reg, msk, val;
@@ -1462,6 +1510,10 @@ get_phy:
 	ret = ssusb_ao_cfg_of_property_parse(ssusb, node);
 	if (ret)
 		dev_info(dev, "failed to parse usb ao cfg\n");
+
+	ret = ssusb_repeater_verison_parse(ssusb, node);
+	if (ret)
+		dev_info(dev, "failed to parse eusb2 version\n");
 
 	ssusb->wakeup_irq = platform_get_irq_byname_optional(pdev, "wakeup");
 	if (ssusb->wakeup_irq == -EPROBE_DEFER)

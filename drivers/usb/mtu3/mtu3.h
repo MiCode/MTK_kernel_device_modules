@@ -438,6 +438,8 @@ struct ssusb_mtk {
 	struct device_link *genpd_dl_u3;
 	bool use_multi_genpd;
 	u32 eusb2_cm_l1;
+	u32 eusb2_id;
+	u32 eusb2_rev;
 	u32 ux_exit_lfps;
 	u32 ux_exit_lfps_gen2;
 	u32 polling_scdlfps_time;

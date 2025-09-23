@@ -1300,7 +1300,8 @@ int ssusb_gadget_init(struct ssusb_mtk *ssusb)
 	dev_info(dev, "max_speed_host: %s\n", usb_speed_string(mtu->max_speed_host));
 
 	of_property_read_u32(dev->of_node, "mediatek,u2-lpm-quirks", &mtu->u2_lpm_quirks);
-	if (of_device_is_compatible(mtu->dev->of_node, "mediatek,mt6991-mtu3"))
+	if (of_device_is_compatible(mtu->dev->of_node, "mediatek,mt6991-mtu3") ||
+	    (ssusb->eusb2_id == 6379 && ssusb->eusb2_rev <= 4))
 		mtu->u2_lpm_quirks |= MTU3_U2_LPM_SW_MODE;
 
 	dev_info(dev, "u2_lpm_quirks: 0x%x\n", mtu->u2_lpm_quirks);
