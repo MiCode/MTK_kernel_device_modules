@@ -6632,7 +6632,7 @@ void mtk_oddmr_dbv_mode_chg(struct mtk_ddp_comp *comp,
 
 	ODDMRAPI_LOG("dbv_mode %u\n", dbv_mode);
 	if(dbv_mode >= MAX_DBV_MODE_NUM) {
-		ODDMRFLOW_LOG("%s: dbv_mode:%d is invalid\n", __func__, dbv_mode);
+		PC_ERR("%s: dbv_mode:%d is invalid\n", __func__, dbv_mode);
 		return;
 	}
 
@@ -6651,7 +6651,7 @@ void mtk_oddmr_binset_chg(struct mtk_ddp_comp *comp,
 
 	ODDMRAPI_LOG("binset index %u\n", binset_idx);
 	if(binset_idx >= MAX_BINSET_NUM) {
-		ODDMRFLOW_LOG("%s: binset_idx:%d is invalid\n", __func__, binset_idx);
+		PC_ERR("%s: binset_idx:%d is invalid\n", __func__, binset_idx);
 		return;
 	}
 
@@ -7322,8 +7322,12 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		unsigned int cur_binset, cur_bin_idx, new_bin_idx;
 		unsigned int bl_level, vrefresh, dbv_mode, binset_idx;
 		unsigned int dmr_timing_state = 0;
+		unsigned int cus_setting_state;
 
 		if (!oddmr_data->primary_data->dmr_support)
+			break;
+
+		if (!oddmr_data->dmr_enable)
 			break;
 
 		/* get current binset idx, dvb, fps and dbv_mode */
@@ -7336,18 +7340,32 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 
 		mutex_lock(&oddmr_data->primary_data->dmr_data_lock);
 		if (oddmr_data->dmr_data.dmr_bl_level != bl_level) {
+			DDPINFO("dmr_bl_level change from %d to %d\n",
+				oddmr_data->dmr_data.dmr_bl_level, bl_level);
 			oddmr_data->dmr_data.dmr_bl_level = bl_level;
 			dmr_timing_state = 1;
 		}
 		if (oddmr_data->dmr_data.dmr_vrefresh != vrefresh) {
+			DDPINFO("dmr_vrefresh change from %d to %d\n",
+				oddmr_data->dmr_data.dmr_vrefresh, vrefresh);
 			oddmr_data->dmr_data.dmr_vrefresh = vrefresh;
 			dmr_timing_state = 1;
 		}
 		if (oddmr_data->dmr_data.dmr_dbv_mode != dbv_mode) {
-			oddmr_data->dmr_data.dmr_dbv_mode = dbv_mode;
-			dmr_timing_state = 1;
+			cus_setting_state = atomic_read(&oddmr_data->dmr_data.cus_setting_state);
+			if (cus_setting_state == 1 &&
+				dbv_mode > oddmr_data->primary_data->dmr_cus_setting_info.dbv_mode_num) {
+				PC_ERR("%s: dbv_mode:%d is invalid\n", __func__, dbv_mode);
+			} else {
+				DDPINFO("dmr_dbv_mode change from %d to %d\n",
+					oddmr_data->dmr_data.dmr_dbv_mode, dbv_mode);
+				oddmr_data->dmr_data.dmr_dbv_mode = dbv_mode;
+				dmr_timing_state = 1;
+			}
 		}
 		if (oddmr_data->dmr_data.dmr_binset_idx != binset_idx) {
+			DDPINFO("dmr_binset_idx change from %d to %d\n",
+				oddmr_data->dmr_data.dmr_binset_idx, binset_idx);
 			oddmr_data->dmr_data.dmr_binset_idx = binset_idx;
 			dmr_timing_state = 1;
 		}
