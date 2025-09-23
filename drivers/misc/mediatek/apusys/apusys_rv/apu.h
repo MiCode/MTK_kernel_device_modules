@@ -233,6 +233,7 @@ struct mtk_apu {
 	bool bypass_aee;
 	bool pwr_on_polling_dbg_mode;
 	bool ce_dbg_polling_dump_mode;
+	bool pwr_profile_polling_mode;
 	bool apusys_rv_trace_on;
 	wait_queue_head_t ack_wq; /* for waiting for ipi ack */
 	struct timespec64 ipi_top_ts_begin;
