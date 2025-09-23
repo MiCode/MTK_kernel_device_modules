@@ -273,7 +273,7 @@ static struct slbc_config p_config[] = {
 	SLBC_ENTRY(UID_MM_VENC,     1,   0,   0,   0, 0x0,   0x300, 0),
 	SLBC_ENTRY(UID_MM_VENC_EXT, 2,   0,   0,   0, 0x0,   0x080, 0),
 	SLBC_ENTRY(UID_AOV_APU,     3,   0,   0,   0, 0x0,   0x003, 0),
-	SLBC_ENTRY(UID_BIF,         4,   0,   0,   0, 0x0,   0x030, 0),
+	SLBC_ENTRY(UID_BIF,         4,   0,   0,   0, 0x0,   0x00f, 0),
 };
 
 #ifdef SLBC_CB
