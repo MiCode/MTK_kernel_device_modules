@@ -1,0 +1,16 @@
+config MTK_PMQOS
+	tristate "MediaTek PMQOS Framework support"
+	help
+	  Say yes here to support for the MediaTek PMQOS framework
+	  driver. Driver can register the Qos class notify and receive
+	  from the devices request to adjust qos policy for power
+	  and performance.
+
+config MTK_DVFSRC_V1
+	tristate "MTK DVFSRC_V1 Support"
+	help
+	  This kernel config can be used to enable MediaTek DVFSRC (dynamic
+	  voltage and frequency scaling resource collector) on MT6771.
+	  Dynamic Vcore voltage and DRAM frequency adjustments optimize power
+	  efficiency and performance.
+	  If unsure, say N.
