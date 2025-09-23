@@ -168,7 +168,7 @@ struct TzInfo vcore_sensor[] = {
 #define TASK_INIT_DURATION       2000
 #define HINT_DURATION_LONG       3000
 #define HINT_DURATION_SHORT       500
-#define LOG_DURATION            10000
+#define LOG_DURATION             3000
 #define DEFAULT_HINT_SOC_TEMP  100000
 #define KERNEL_HINT_EN_C_FREQ  600000
 #define KERNEL_HINT_DIS_C_FREQ 800000
@@ -465,6 +465,26 @@ static void therm_intf_write_apu_mbox(unsigned int val, int offset)
 	if (thermal_apu_mbox_base)
 		writel(val, (void __iomem *)(thermal_apu_mbox_base + offset));
 }
+
+
+int get_cpu_cooler_dbg(int id)
+{
+	int val = 0;
+
+	if (id >= 0 && id < 16) {
+		if (tm_data.is_cputcm) {
+			if (id < 8)
+				val = therm_intf_read_cputcm_s32(CPU_COOLER_DBG_TCM_OFFSET + 4 * id);
+			else
+				val = therm_intf_read_cputcm_s32(CPU_COOLER_DBG2_TCM_OFFSET + 4 * (id - 8));
+		} else
+			pr_info("[cpu_cooler_dbg] is_cputcm is false, %d\n", id);
+	} else
+		pr_info("[cpu_cooler_dbg] invalid id %d\n", id);
+
+	return val;
+}
+EXPORT_SYMBOL(get_cpu_cooler_dbg);
 
 int get_thermal_headroom(enum headroom_id id)
 {
@@ -2251,6 +2271,22 @@ static ssize_t boot_status_show(struct kobject *kobj,
 	return len;
 }
 
+static ssize_t cpu_cooler_dbg_show(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	int i;
+	int len = 0;
+
+	for (i = 0; i < 16; i++) {
+		if (i == 15)
+			len += snprintf(buf + len, PAGE_SIZE - len, "%d\n", get_cpu_cooler_dbg(i));
+		else
+			len += snprintf(buf + len, PAGE_SIZE - len, "%d,", get_cpu_cooler_dbg(i));
+	}
+
+	return len;
+}
+
 static ssize_t gpt_show(struct kobject *kobj,
 	struct kobj_attribute *attr, char *buf)
 {
@@ -2351,7 +2387,7 @@ static struct kobj_attribute lvts_info3_attr = __ATTR_RO(lvts_info3);
 static struct kobj_attribute thermal_hint_attr = __ATTR_RW(thermal_hint);
 static struct kobj_attribute boot_status_attr = __ATTR_RO(boot_status);
 static struct kobj_attribute gpt_attr = __ATTR_RW(gpt);
-
+static struct kobj_attribute cpu_cooler_dbg_attr = __ATTR_RO(cpu_cooler_dbg);
 
 
 static struct attribute *thermal_attrs[] = {
@@ -2398,6 +2434,7 @@ static struct attribute *thermal_attrs[] = {
 	&thermal_hint_attr.attr,
 	&boot_status_attr.attr,
 	&gpt_attr.attr,
+	&cpu_cooler_dbg_attr.attr,
 	NULL
 };
 static struct attribute_group thermal_attr_group = {
@@ -2889,6 +2926,11 @@ static void __used dump_thermal_log(void)
 	pr_info("[thermal][C(l)(c)][G(l)(c)][A(l)(c)][TH][D]=[(%d/%d/%d)(%d/%d/%d)][(%d)(%d)][(%d)(%d)][%d][%d]\n",
 		cl0/1000, cl1/1000, cl2/1000, cc0/1000, cc1/1000, cc2/1000, gl/1000, gc/1000,
 		al, ac, thermal_hint, dram_data_rate);
+	pr_info("[thermal][cl_dbg]=[%d,%d,%d,%d/%d,%d,%d,%d/%d,%d,%d,%d/%d,%d,%d,%d]\n",
+		get_cpu_cooler_dbg(0), get_cpu_cooler_dbg(1), get_cpu_cooler_dbg(2), get_cpu_cooler_dbg(3),
+		get_cpu_cooler_dbg(4), get_cpu_cooler_dbg(5), get_cpu_cooler_dbg(6), get_cpu_cooler_dbg(7),
+		get_cpu_cooler_dbg(8), get_cpu_cooler_dbg(9), get_cpu_cooler_dbg(10), get_cpu_cooler_dbg(11),
+		get_cpu_cooler_dbg(12), get_cpu_cooler_dbg(13), get_cpu_cooler_dbg(14), get_cpu_cooler_dbg(15));
 }
 
 static void __used kernel_thermal_hint(unsigned int *next_polling_duration)
