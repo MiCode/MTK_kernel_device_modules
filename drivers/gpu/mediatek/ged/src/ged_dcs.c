@@ -278,9 +278,9 @@ int dcs_set_core_mask(unsigned int core_mask, unsigned int core_num, int commit_
 	if ((!g_dcs_enable || g_cur_core_num == core_num) && !g_setting_dirty)
 		goto done_unlock;
 
-	if (!g_core_mask_table) {
+	if (!g_core_mask_table || !g_dcs_init) {
 		ret = GED_ERROR_FAIL;
-		GED_LOGE("null core mask table");
+		GED_LOGE("null core mask table %u", g_dcs_init);
 		goto done_unlock;
 	}
 
@@ -343,9 +343,9 @@ int dcs_set_fix_num(unsigned int core_num)
 		if (!g_core_mask_table)
 			_dcs_init_core_mask_table();
 
-		if (!g_core_mask_table) {
+		if (!g_core_mask_table|| !g_dcs_init) {
 			ret = GED_ERROR_FAIL;
-			pr_info("init core mask table fail");
+			pr_info("init core mask table fail %u", g_dcs_init);
 			goto done_unlock;
 		}
 
@@ -427,6 +427,19 @@ int dcs_restore_max_core_mask(void)
 		goto done_unlock;
 	}
 
+	/* kasan bug */
+	if (!g_dcs_init) {
+		ret = GED_ERROR_FAIL;
+		GED_LOGE("g_dcs_init fail");
+		goto done_unlock;
+	}
+
+	if (!g_core_mask_table[0].mask) {
+		ret = GED_ERROR_FAIL;
+		GED_LOGE("core mask[0] is 0");
+		goto done_unlock;
+	}
+
 	if (g_fix_core_num > 0)
 		ged_dvfs_set_gpu_core_mask(g_fix_core_mask);
 	else
@@ -450,10 +463,11 @@ int is_dcs_enable(void)
 void dcs_enable(int enable)
 {
 	if (g_core_mask_table == NULL || !g_dcs_init) {
-		GED_LOGE("dcs_enable fail");
+		GED_LOGE("%s fail", __func__);
 		return;
 	}
 
+	GED_LOGI("dcs_enable %d", enable);
 	mutex_lock(&g_DCS_lock);
 
 	g_setting_dirty = true;
@@ -632,7 +646,7 @@ void dcs_set_gov_enable(unsigned int enable, unsigned int src)
 
 	if (dcs_get_gov_enable()) {
 
-		if (g_core_mask_table == NULL)
+		if (g_core_mask_table == NULL || !g_dcs_init)
 			return;
 
 		mutex_lock(&g_DCS_lock);
@@ -688,7 +702,7 @@ int dcs_get_lowpwr(void)
 
 void dcs_set_lowpwr(int enable)
 {
-	if (g_core_mask_table == NULL)
+	if (g_core_mask_table == NULL || !g_dcs_init)
 		return;
 
 	if (g_avail_mask_table == NULL)
