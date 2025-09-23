@@ -4782,6 +4782,52 @@ void print_subsys_reg_mt6993(enum chk_sys_id id_arr[])
 }
 EXPORT_SYMBOL_GPL(print_subsys_reg_mt6993);
 
+void print_subsys_reg_mt6993_with_range(enum chk_sys_id id, uint32_t start_ofs, uint32_t end_ofs)
+{
+	struct regbase *rb_dump;
+	const struct regname *rns;
+	int pwr_idx;
+	int i;
+
+	if (id >= chk_sys_num)
+		return;
+
+	pwr_idx = PD_NULL;
+
+	for (i = 0; i < ARRAY_SIZE(pvd_pwr_data); i++) {
+		if (pvd_pwr_data[i].id == id) {
+			pwr_idx = i;
+			break;
+		}
+	}
+
+	rb_dump = &rb[id];
+
+	for (i = 0, rns = &rn[0]; i < ARRAY_SIZE(rn) - 1 && rns->base != NULL; i++, rns++) {
+
+		if (!is_valid_reg(ADDR(rns)))
+			continue;
+
+		/* filter out the subsys that we don't want */
+		if (rns->base != rb_dump)
+			continue;
+
+		if ((rns->ofs < start_ofs) || (rns->ofs > end_ofs))
+			continue;
+
+		if ((pwr_idx != PD_NULL && !pwr_hw_is_on(PWR_CON_STA, pwr_idx))) {
+			pr_chk("pvd_pwr_data[%d] mtcmos off\n", pwr_idx);
+			break;
+		}
+
+		//pr_chk("pvd_pwr_data[%d] mtcmos on\n", pwr_idx);
+		pr_chk("%-18s: [0x%08x] = 0x%08x\n",
+				rns->name, PHYSADDR(rns), clk_readl(ADDR(rns)));
+
+	}
+}
+EXPORT_SYMBOL_GPL(print_subsys_reg_mt6993_with_range);
+
 static enum chk_sys_id pm_dump_id[] = {
 	spm_pbus,
 	mmpc_ao_pm,

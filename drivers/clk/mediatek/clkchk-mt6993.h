@@ -340,6 +340,7 @@ extern int get_sw_req_vcore_opp(void);
 #endif
 
 extern void print_subsys_reg_mt6993(enum chk_sys_id id[]);
+extern void print_subsys_reg_mt6993_with_range(enum chk_sys_id id, uint32_t start_ofs, uint32_t end_ofs);
 extern void set_subsys_reg_dump_mt6993(enum chk_sys_id id[]);
 extern void get_subsys_reg_dump_mt6993(void);
 extern u32 get_mt6993_reg_value(u32 id, u32 ofs);
