@@ -139,6 +139,21 @@ void (*binder_stop_vip_inherit_hook)(int, int) = NULL;
 EXPORT_SYMBOL(binder_stop_vip_inherit_hook);
 #endif
 
+enum {
+	DEBUG_DISABLE = 0,
+	DEBUG_ENABLE,
+	DEBUG_MODE_CNT
+};
+
+static int loom_debug_mode = DEBUG_DISABLE;
+module_param_named(loom_debug_mode, loom_debug_mode, int, 0600);
+
+#define loom_debug(x...)		\
+	do {				\
+		if (loom_debug_mode == DEBUG_ENABLE)	\
+			pr_info(x);	\
+	} while (0)
+
 struct devinfo_tag {
 	u32 data_size;
 	u32 data[300];
@@ -2151,7 +2166,7 @@ static int loom_unset_affinity_buf(unsigned int index)
 	if (cpu != LOOM_NO_AFFINITY) {
 		ret = core_ctl_force_pause_request(cpu, false, LOOM_FORCE_PAUSE);
 		if (ret < 0) {
-			pr_info("%s: Fail to reset buffer[%u] with force resume CPU#%d.",
+			loom_debug("%s: Fail to reset buffer[%u] with force resume CPU#%d.",
 				__func__, index, cpu);
 			return ret;
 		}
@@ -2160,7 +2175,7 @@ static int loom_unset_affinity_buf(unsigned int index)
 	if (pid != LOOM_NO_TASK) {
 		ret = loom_set_affinity(pid, LOOM_NO_AFFINITY);
 		if (ret < 0) {
-			pr_info("%s: Fail to reset buffer[%u] with pid=%d affinity.",
+			loom_debug("%s: Fail to reset buffer[%u] with pid=%d affinity.",
 				__func__, index, pid);
 			return ret;
 		}
@@ -2196,10 +2211,10 @@ static int loom_update_affinity_buf(int pid, int aff_cpu)
 		loom_rec_buffer[now_update_idx].pid = LOOM_NO_TASK;
 		loom_rec_buffer[now_update_idx].aff_cpu = LOOM_NO_AFFINITY;
 		spin_unlock_irqrestore(&loom_affinity_lock, flags);
-		pr_info("%s: Fail to set pid=%d into record buffer[%u] with CPU#%d, reset it.\n",
+		loom_debug("%s: Fail to set pid=%d into record buffer[%u] with CPU#%d, reset it.\n",
 			__func__ , pid, now_update_idx, aff_cpu);
 	} else {
-		pr_info("%s: Success to set pid=%d into record buffer[%u] with CPU#%d\n",
+		loom_debug("%s: Success to set pid=%d into record buffer[%u] with CPU#%d\n",
 			__func__ , pid, now_update_idx, aff_cpu);
 	}
 
@@ -2236,7 +2251,7 @@ static int loom_specify_pause(int pid, int aff_cpu)
 				break;
 			}
 
-			pr_info("%s: CPU#%d is already bound to pid=%d\n",
+			loom_debug("%s: CPU#%d is already bound to pid=%d\n",
 				__func__, tmp_aff_cpu, tmp_pid);
 			ret = -EINVAL;
 			break;
@@ -2297,7 +2312,7 @@ int loom_ctask_cpu_dedicated(int pid, int aff_cpu)
 	/* rollback force pause */
 	if (ret < 0) {
 		loom_specify_pause(pid, LOOM_NO_AFFINITY);
-		pr_info("%s: Pause CPU#%d success, but bound affinity pid=%d fail.\n",
+		loom_debug("%s: Pause CPU#%d success, but bound affinity pid=%d fail.\n",
 			__func__ , aff_cpu, pid);
 	}
 
@@ -2336,9 +2351,9 @@ int loom_force_pause(int cpu, bool is_pause)
 	if (is_pause) {
 		ret = loom_update_affinity_buf(LOOM_NO_TASK, cpu);
 		if (ret == 0)
-			pr_info("%s: Loom force pause success with CPU#%d\n", __func__ , cpu);
+			loom_debug("%s: Loom force pause success with CPU#%d\n", __func__ , cpu);
 	} else
-		pr_info("%s: Loom force resume success with CPU#%d\n", __func__ , cpu);
+		loom_debug("%s: Loom force resume success with CPU#%d\n", __func__ , cpu);
 
 	return ret;
 }
