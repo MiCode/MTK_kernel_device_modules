@@ -46,6 +46,15 @@ static int mtk_rtc_write_trigger(struct mt6685_rtc *rtc);
 
 static int counter;
 
+static const struct rtc_time default_alm = {
+	.tm_year = 1970 - RTC_MIN_YEAR,
+	.tm_mon = 1,
+	.tm_mday = 1,
+	.tm_hour = 0,
+	.tm_min = 0,
+	.tm_sec = 0,
+};
+
 static int rtc_is_shutdown;
 static struct rtc_wkalrm p_alm;
 
@@ -1203,6 +1212,37 @@ err_exit:
 	return ret;
 }
 
+static int mtk_rtc_set_default_alarm(struct mt6685_rtc *rtc, const struct rtc_time *alm_time)
+{
+	u16 data[RTC_OFFSET_COUNT];
+	int ret = 0;
+
+	ret = rtc_bulk_read(rtc, rtc->addr_base + RTC_AL_SEC,
+				data, RTC_OFFSET_COUNT * 2);
+	if (ret < 0)
+		goto exit;
+
+	data[RTC_OFFSET_SEC] = ((data[RTC_OFFSET_SEC] & ~(RTC_AL_SEC_MASK)) |
+				(alm_time->tm_sec & RTC_AL_SEC_MASK));
+	data[RTC_OFFSET_MIN] = ((data[RTC_OFFSET_MIN] & ~(RTC_AL_MIN_MASK)) |
+				(alm_time->tm_min & RTC_AL_MIN_MASK));
+	data[RTC_OFFSET_HOUR] = ((data[RTC_OFFSET_HOUR] & ~(RTC_AL_HOU_MASK)) |
+				(alm_time->tm_hour & RTC_AL_HOU_MASK));
+	data[RTC_OFFSET_DOM] = ((data[RTC_OFFSET_DOM] & ~(RTC_AL_DOM_MASK)) |
+				(alm_time->tm_mday & RTC_AL_DOM_MASK));
+	data[RTC_OFFSET_MTH] = ((data[RTC_OFFSET_MTH] & ~(RTC_AL_MTH_MASK)) |
+				(alm_time->tm_mon & RTC_AL_MTH_MASK));
+	data[RTC_OFFSET_YEAR] = ((data[RTC_OFFSET_YEAR] & ~(RTC_AL_YEA_MASK)) |
+				(alm_time->tm_year & RTC_AL_YEA_MASK));
+
+	rtc_bulk_write(rtc, rtc->addr_base + RTC_AL_SEC,
+			data, RTC_OFFSET_COUNT * 2);
+
+	mtk_rtc_write_trigger(rtc);
+exit:
+	return ret;
+}
+
 static int mtk_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alm)
 {
 	struct rtc_time *tm = &alm->time;
@@ -1637,7 +1677,7 @@ static void mtk_rtc_shutdown(struct platform_device *pdev)
 
 	/* disable PWREN */
 	power_on_mclk(rtc);
-	bbpu = RTC_BBPU_KEY;
+	bbpu = RTC_BBPU_KEY | RTC_BBPU_RESET_AL;
 	ret = rtc_write(rtc, rtc->addr_base + RTC_BBPU, bbpu);
 
 	if (ret < 0)
@@ -1649,7 +1689,9 @@ static void mtk_rtc_shutdown(struct platform_device *pdev)
 	if (ret < 0)
 		dev_info(rtc->rtc_dev->dev.parent, "%s: %d error\n",
 							__func__, __LINE__);
+
 	mtk_rtc_write_trigger(rtc);
+	mtk_rtc_set_default_alarm(rtc, &default_alm);
 	power_down_mclk(rtc);
 
 #ifdef SUPPORT_PWR_OFF_ALARM
