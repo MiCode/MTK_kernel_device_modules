@@ -11170,7 +11170,7 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 				priv->usage[i] = DISP_ENABLE;
 				CRTC_MMP_MARK(i, crtc_usage, priv->usage[i], 1);
 			}
-			DDPMSG("%s priv->usage[%d] = %d\n", __func__, i, priv->usage[i]);
+			DDPDBG("%s priv->usage[%d] = %d\n", __func__, i, priv->usage[i]);
 		}
 	}
 
