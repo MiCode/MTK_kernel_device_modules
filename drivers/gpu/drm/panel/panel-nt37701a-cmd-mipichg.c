@@ -762,8 +762,6 @@ static struct mtk_panel_params ext_params = {
 	.physical_width_um = 69540,
 	.physical_height_um = 154584,
 	.dsc_param_load_mode = 1, //0: default flow; 1: key param only; 2: full control
-	.cmd_null_pkt_en = 1,
-	.cmd_null_pkt_len = 650,
 	.output_mode = MTK_PANEL_DSC_SINGLE_PORT,
 	.dsc_params = {
 		.enable = 1,
@@ -802,7 +800,7 @@ static struct mtk_panel_params ext_params = {
 		},
 	.data_rate = DATA_RATE1,
 	.dyn_fps = {
-		.data_rate = DATA_RATE1,
+		.data_rate = 420,
 	},
 	/*Msync 2.0*/
 	.msync2_enable = 1,
@@ -846,8 +844,6 @@ static struct mtk_panel_params ext_params_90hz = {
 	.physical_width_um = 69540,
 	.physical_height_um = 154584,
 	.dsc_param_load_mode = 1, //0: default flow; 1: key param only; 2: full control
-	.cmd_null_pkt_en = 1,
-	.cmd_null_pkt_len = 240,
 	.output_mode = MTK_PANEL_DSC_SINGLE_PORT,
 	.dsc_params = {
 		.enable = 1,
@@ -886,7 +882,7 @@ static struct mtk_panel_params ext_params_90hz = {
 		},
 	.data_rate = DATA_RATE1,
 	.dyn_fps = {
-		.data_rate = DATA_RATE1,
+		.data_rate = 646,
 	},
 	/*Msync 2.0*/
 	.msync2_enable = 1,
@@ -930,8 +926,6 @@ static struct mtk_panel_params ext_params_120hz = {
 	.physical_width_um = 69540,
 	.physical_height_um = 154584,
 	.dsc_param_load_mode = 1, //0: default flow; 1: key param only; 2: full control
-	.cmd_null_pkt_en = 1,
-	.cmd_null_pkt_len = 105,
 	.output_mode = MTK_PANEL_DSC_SINGLE_PORT,
 	.dsc_params = {
 		.enable = 1,
@@ -970,7 +964,7 @@ static struct mtk_panel_params ext_params_120hz = {
 		},
 	.data_rate = DATA_RATE1,
 	.dyn_fps = {
-		.data_rate = DATA_RATE1,
+		.data_rate = 884,
 	},
 	/*Msync 2.0*/
 	.msync2_enable = 1,
@@ -2359,7 +2353,7 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
 	int ret;
 	unsigned int res_switch;
 
-	pr_info("%s nt37701a cmd +\n", __func__);
+	pr_info("%s nt37701a cmd mipichg +\n", __func__);
 
 	dsi_node = of_get_parent(dev->of_node);
 	if (dsi_node) {
@@ -2470,7 +2464,7 @@ static void lcm_remove(struct mipi_dsi_device *dsi)
 }
 
 static const struct of_device_id lcm_of_match[] = {
-	{ .compatible = "nt37701a_cmd,lcm", },
+	{ .compatible = "nt37701a_cmd,mipichg,lcm", },
 	{ }
 };
 
@@ -2480,7 +2474,7 @@ static struct mipi_dsi_driver lcm_driver = {
 	.probe = lcm_probe,
 	.remove = lcm_remove,
 	.driver = {
-		.name = "nt37701a_cmd,lcm",
+		.name = "nt37701a_cmd,mipichg,lcm",
 		.owner = THIS_MODULE,
 		.of_match_table = lcm_of_match,
 	},
@@ -2488,6 +2482,6 @@ static struct mipi_dsi_driver lcm_driver = {
 
 module_mipi_dsi_driver(lcm_driver);
 
-MODULE_AUTHOR("Yonggang Yu <yonggang.yu@mediatek.com>");
-MODULE_DESCRIPTION("nt37701a_cmd oled panel driver");
+MODULE_AUTHOR("Kai Shi <kai.shi@mediatek.com>");
+MODULE_DESCRIPTION("nt37701a_cmd_mipichg oled panel driver");
 MODULE_LICENSE("GPL");
