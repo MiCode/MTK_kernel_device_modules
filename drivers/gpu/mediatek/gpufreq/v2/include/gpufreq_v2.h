@@ -762,6 +762,7 @@ extern void (*ged_notify_dcs_fix_opp_fp)(int gpu_opp, int stack_opp);
 /* Common */
 unsigned int gpufreq_bringup(void);
 unsigned int gpufreq_wrapper_ready(void);
+unsigned int gpufreq_driver_ready(void);
 unsigned int gpufreq_power_ctrl_enable(void);
 unsigned int gpufreq_active_sleep_ctrl_enable(void);
 unsigned int gpufreq_get_power_state(void);

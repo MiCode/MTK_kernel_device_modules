@@ -83,7 +83,8 @@ static struct gpufreq_ipi_data g_recv_msg;
 static struct gpufreq_shared_status *g_shared_status;
 static phys_addr_t g_shared_mem_pa;
 static int g_ipi_channel;
-static unsigned int g_gpufreq_ready;
+static unsigned int g_gpufreq_wrapper_ready;
+static unsigned int g_gpufreq_platform_ready;
 static unsigned int g_dual_buck;
 static unsigned int g_gpueb_support;
 static unsigned int g_gpufreq_bringup;
@@ -137,8 +138,6 @@ struct devapc_excep_callbacks bus_tracker_cb = {
  */
 /***********************************************************************************
  * Function Name      : gpufreq_bringup
- * Inputs             : -
- * Outputs            : -
  * Returns            : status - Current status of bring-up
  * Description        : Check GPUFREQ bring-up status
  *                      If it's bring-up status, GPUFREQ is out-of-function
@@ -151,16 +150,25 @@ EXPORT_SYMBOL(gpufreq_bringup);
 
 /***********************************************************************************
  * Function Name      : gpufreq_wrapper_ready
- * Inputs             : -
- * Outputs            : -
- * Returns            : status - Current status of driver probe
- * Description        : Check GPUFREQ bring-up status
+ * Returns            : status - Status of wrapper driver probe
+ * Description        : Check GPUFREQ wrapper probe status
  ***********************************************************************************/
 unsigned int gpufreq_wrapper_ready(void)
 {
-	return g_gpufreq_ready;
+	return g_gpufreq_wrapper_ready;
 }
 EXPORT_SYMBOL(gpufreq_wrapper_ready);
+
+/***********************************************************************************
+ * Function Name      : gpufreq_driver_ready
+ * Returns            : status - Status of wrapper and platform driver probe
+ * Description        : Check GPUFREQ wrapper and platform probe status
+ ***********************************************************************************/
+unsigned int gpufreq_driver_ready(void)
+{
+	return g_gpufreq_wrapper_ready && g_gpufreq_platform_ready;
+}
+EXPORT_SYMBOL(gpufreq_driver_ready);
 
 /***********************************************************************************
  * Function Name      : gpufreq_power_ctrl_enable
@@ -614,7 +622,7 @@ unsigned int gpufreq_get_freq_by_idx(enum gpufreq_target target, int oppidx)
 		goto done;
 
 	/* implement on EB */
-	if (g_gpueb_support && g_gpufreq_ready) {
+	if (g_gpueb_support && g_gpufreq_wrapper_ready) {
 		raw_spin_lock_irqsave(&gpufreq_ipi_lock, g_ipi_irq_flags);
 		send_msg.cmd_id = CMD_GET_FREQ_BY_IDX;
 		send_msg.target = target;
@@ -656,7 +664,7 @@ unsigned int gpufreq_get_power_by_idx(enum gpufreq_target target, int oppidx)
 		goto done;
 
 	/* implement on EB */
-	if (g_gpueb_support && g_gpufreq_ready) {
+	if (g_gpueb_support && g_gpufreq_wrapper_ready) {
 		raw_spin_lock_irqsave(&gpufreq_ipi_lock, g_ipi_irq_flags);
 		send_msg.cmd_id = CMD_GET_POWER_BY_IDX;
 		send_msg.target = target;
@@ -698,7 +706,7 @@ int gpufreq_get_oppidx_by_freq(enum gpufreq_target target, unsigned int freq)
 		goto done;
 
 	/* implement on EB */
-	if (g_gpueb_support && g_gpufreq_ready) {
+	if (g_gpueb_support && g_gpufreq_wrapper_ready) {
 		raw_spin_lock_irqsave(&gpufreq_ipi_lock, g_ipi_irq_flags);
 		send_msg.cmd_id = CMD_GET_OPPIDX_BY_FREQ;
 		send_msg.target = target;
@@ -740,7 +748,7 @@ unsigned int gpufreq_get_leakage_power(enum gpufreq_target target, unsigned int 
 		goto done;
 
 	/* implement on EB */
-	if (g_gpueb_support && g_gpufreq_ready) {
+	if (g_gpueb_support && g_gpufreq_wrapper_ready) {
 		raw_spin_lock_irqsave(&gpufreq_ipi_lock, g_ipi_irq_flags);
 		send_msg.cmd_id = CMD_GET_LEAKAGE_POWER;
 		send_msg.target = target;
@@ -841,7 +849,7 @@ int gpufreq_power_control(enum gpufreq_power_state power)
 	raw_spin_lock_irqsave(&gpufreq_power_lock, g_pwr_irq_flags);
 
 	/* implement on EB */
-	if (g_gpueb_support && g_gpufreq_ready) {
+	if (g_gpueb_support && g_gpufreq_wrapper_ready) {
 		raw_spin_lock_irqsave(&gpufreq_ipi_lock, g_ipi_irq_flags);
 		send_msg.cmd_id = CMD_POWER_CONTROL;
 		send_msg.u.power_state = power;
@@ -899,7 +907,7 @@ int gpufreq_active_sleep_control(enum gpufreq_power_state power)
 	}
 
 	/* implement on EB */
-	if (g_gpueb_support && g_gpufreq_ready) {
+	if (g_gpueb_support && g_gpufreq_wrapper_ready) {
 		raw_spin_lock_irqsave(&gpufreq_ipi_lock, g_ipi_irq_flags);
 		send_msg.cmd_id = CMD_ACTIVE_SLEEP_CONTROL;
 		send_msg.u.power_state = power;
@@ -954,7 +962,7 @@ int gpufreq_commit(enum gpufreq_target target, int oppidx)
 		goto done;
 
 	/* implement on EB */
-	if (g_gpueb_support && g_gpufreq_ready) {
+	if (g_gpueb_support && g_gpufreq_wrapper_ready) {
 		raw_spin_lock_irqsave(&gpufreq_ipi_lock, g_ipi_irq_flags);
 		send_msg.cmd_id = CMD_COMMIT;
 		send_msg.target = target;
@@ -1006,7 +1014,7 @@ int gpufreq_dual_commit(int gpu_oppidx, int stack_oppidx)
 	GPUFREQ_TRACE_START("gpu_oppidx=%d, stack_oppidx=%d", gpu_oppidx, stack_oppidx);
 
 	/* implement on EB */
-	if (g_gpueb_support && g_gpufreq_ready) {
+	if (g_gpueb_support && g_gpufreq_wrapper_ready) {
 		raw_spin_lock_irqsave(&gpufreq_ipi_lock, g_ipi_irq_flags);
 		send_msg.cmd_id = CMD_DUAL_COMMIT;
 		send_msg.u.dual_commit.gpu_oppidx = gpu_oppidx;
@@ -1068,7 +1076,7 @@ int gpufreq_set_limit(enum gpufreq_target target,
 		goto done;
 
 	/* implement on EB */
-	if (g_gpueb_support && g_gpufreq_ready) {
+	if (g_gpueb_support && g_gpufreq_wrapper_ready) {
 		raw_spin_lock_irqsave(&gpufreq_ipi_lock, g_ipi_irq_flags);
 		send_msg.cmd_id = CMD_SET_LIMIT;
 		send_msg.target = target;
@@ -1227,7 +1235,7 @@ void gpufreq_pdca_config(enum gpufreq_power_state power)
 	int ret = GPUFREQ_SUCCESS;
 
 	/* implement on EB */
-	if (g_gpueb_support && g_gpufreq_ready) {
+	if (g_gpueb_support && g_gpufreq_wrapper_ready) {
 		raw_spin_lock_irqsave(&gpufreq_ipi_lock, g_ipi_irq_flags);
 		send_msg.cmd_id = CMD_PDCA_CONFIG;
 		send_msg.u.power = power;
@@ -1270,7 +1278,7 @@ int gpufreq_update_debug_opp_info(void)
 	int ret = GPUFREQ_SUCCESS;
 
 	/* implement on EB */
-	if (g_gpueb_support && g_gpufreq_ready) {
+	if (g_gpueb_support && g_gpufreq_wrapper_ready) {
 		raw_spin_lock_irqsave(&gpufreq_ipi_lock, g_ipi_irq_flags);
 		send_msg.cmd_id = CMD_UPDATE_DEBUG_OPP_INFO;
 
@@ -1327,7 +1335,7 @@ int gpufreq_switch_limit(enum gpufreq_target target,
 		goto done;
 
 	/* implement on EB */
-	if (g_gpueb_support && g_gpufreq_ready) {
+	if (g_gpueb_support && g_gpufreq_wrapper_ready) {
 		raw_spin_lock_irqsave(&gpufreq_ipi_lock, g_ipi_irq_flags);
 		send_msg.cmd_id = CMD_SWITCH_LIMIT;
 		send_msg.target = target;
@@ -1382,7 +1390,7 @@ int gpufreq_fix_target_oppidx(enum gpufreq_target target, int oppidx)
 		ged_notify_dcs_fix_opp_fp(oppidx, oppidx);
 
 	/* implement on EB */
-	if (g_gpueb_support && g_gpufreq_ready) {
+	if (g_gpueb_support && g_gpufreq_wrapper_ready) {
 		raw_spin_lock_irqsave(&gpufreq_ipi_lock, g_ipi_irq_flags);
 		send_msg.cmd_id = CMD_FIX_TARGET_OPPIDX;
 		send_msg.target = target;
@@ -1436,7 +1444,7 @@ int gpufreq_fix_dual_target_oppidx(int gpu_oppidx, int stack_oppidx)
 		ged_notify_dcs_fix_opp_fp(gpu_oppidx, stack_oppidx);
 
 	/* implement on EB */
-	if (g_gpueb_support && g_gpufreq_ready) {
+	if (g_gpueb_support && g_gpufreq_wrapper_ready) {
 		raw_spin_lock_irqsave(&gpufreq_ipi_lock, g_ipi_irq_flags);
 		send_msg.cmd_id = CMD_FIX_DUAL_TARGET_OPPIDX;
 		send_msg.u.dual_commit.gpu_oppidx = gpu_oppidx;
@@ -1489,7 +1497,7 @@ int gpufreq_fix_custom_freq_volt(enum gpufreq_target target,
 		goto done;
 
 	/* implement on EB */
-	if (g_gpueb_support && g_gpufreq_ready) {
+	if (g_gpueb_support && g_gpufreq_wrapper_ready) {
 		raw_spin_lock_irqsave(&gpufreq_ipi_lock, g_ipi_irq_flags);
 		send_msg.cmd_id = CMD_FIX_CUSTOM_FREQ_VOLT;
 		send_msg.target = target;
@@ -1541,7 +1549,7 @@ int gpufreq_fix_dual_custom_freq_volt(unsigned int fgpu, unsigned int vgpu,
 	GPUFREQ_TRACE_START("fgpu=%d, vgpu=%d, fstack=%d, vstack=%d", fgpu, vgpu, fstack, vstack);
 
 	/* implement on EB */
-	if (g_gpueb_support && g_gpufreq_ready) {
+	if (g_gpueb_support && g_gpufreq_wrapper_ready) {
 		raw_spin_lock_irqsave(&gpufreq_ipi_lock, g_ipi_irq_flags);
 		send_msg.cmd_id = CMD_FIX_DUAL_CUSTOM_FREQ_VOLT;
 		send_msg.u.dual_custom.fgpu = fgpu;
@@ -1589,7 +1597,7 @@ int gpufreq_set_mfgsys_config(enum gpufreq_config_target target, enum gpufreq_co
 	int ret = GPUFREQ_SUCCESS;
 
 	/* implement on EB */
-	if (g_gpueb_support && g_gpufreq_ready && target < CONFIG_AP_IMPL_BOUNDARY) {
+	if (g_gpueb_support && g_gpufreq_wrapper_ready && target < CONFIG_AP_IMPL_BOUNDARY) {
 		raw_spin_lock_irqsave(&gpufreq_ipi_lock, g_ipi_irq_flags);
 		send_msg.cmd_id = CMD_SET_MFGSYS_CONFIG;
 		send_msg.u.mfg_cfg.target = target;
@@ -1622,7 +1630,7 @@ int gpufreq_mssv_commit(unsigned int target, unsigned int val)
 	int ret = GPUFREQ_SUCCESS;
 
 	/* implement only on EB */
-	if (g_gpueb_support && g_gpufreq_ready) {
+	if (g_gpueb_support && g_gpufreq_wrapper_ready) {
 		raw_spin_lock_irqsave(&gpufreq_ipi_lock, g_ipi_irq_flags);
 		send_msg.cmd_id = CMD_MSSV_COMMIT;
 		send_msg.u.mssv.target = target;
@@ -1855,6 +1863,8 @@ void gpufreq_register_gpuppm_fp(struct gpuppm_platform_fp *platform_fp)
 
 	/* init gpufreq debug */
 	gpufreq_debug_init(g_dual_buck, g_gpueb_support, g_shared_status);
+
+	g_gpufreq_platform_ready = true;
 }
 EXPORT_SYMBOL(gpufreq_register_gpuppm_fp);
 
@@ -2034,7 +2044,7 @@ static int gpufreq_wrapper_pdrv_probe(struct platform_device *pdev)
 		g_dual_buck ? "true" : "false",
 		g_gpueb_support ? "on" : "off");
 
-	g_gpufreq_ready = true;
+	g_gpufreq_wrapper_ready = true;
 
 done:
 	return ret;
