@@ -213,6 +213,10 @@
 		mml-mutex1 = &mml2_mutex0;
 		mml-wrot0 = &mml2_wrot0;
 		mml-wrot1 = &mml2_wrot1;
+		merge0 = &disp_merge0;
+		splitter0 = &disp1_splitter0;
+		splitter1 = &disp1_splitter1;
+		gdma0 = &disp_gdma0;
 	};
 
 	aov: aov {
@@ -10946,6 +10950,40 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x32900000 0 0x1000>;
 		};
 
+		disp_merge0: disp-merge0@3e830000 {
+			compatible = "mediatek,disp_merge0", "mediatek,mt6993-disp-merge";
+			reg = <0 0x3e830000 0 0x1000>;
+			clocks = <&dispsys1_config_clk MM1_DISP_MERGE0_DISP>;
+			status = "disabled";
+		};
+		disp1_splitter0: disp1-splitter0@3e7d0000 {
+			compatible = "mediatek,disp1_splitter0", "mediatek,mt6993-disp-splitter";
+			reg = <0 0x3e7d0000 0 0x1000>;
+			clocks = <&dispsys1_config_clk MM1_DISP_SPLITTER0_DISP>;
+			status = "disabled";
+		};
+		disp1_splitter1: disp1-splitter1@3e7e0000 {
+			compatible = "mediatek,disp1_splitter1", "mediatek,mt6993-disp-splitter";
+			reg = <0 0x3e7e0000 0 0x1000>;
+			clocks = <&dispsys1_config_clk MM1_DISP_SPLITTER1_DISP>;
+			status = "disabled";
+		};
+		disp_gdma0: disp1-gdma0@3e820000{
+			compatible = "mediatek,disp_gdma0",
+					"mediatek,mt6993-disp-gdma";
+			reg = <0 0x3e820000 0 0x1000>;
+			interrupts = <GIC_SPI 458 IRQ_TYPE_LEVEL_HIGH 0>;
+			clocks = <&dispsys1_config_clk MM1_DISP_GDMA0_DISP>;
+			mediatek,larb = <&smi_larb33 SMMU_L33_P2_DISP_GDMA0>;
+			mediatek,smi-id = <33>;
+			mtk,smmu-shared = <&mm_smmu_disp>;
+			mtk,smmu-shared-sec = <&mm_smmu_svp_disp>;
+			interconnects =
+				<&mmqos MASTER_LARB_PORT(SMMU_L33_P2_DISP_GDMA0)
+					&mmqos SLAVE_COMMON(0)>;
+			interconnect-names = "DDP_COMPONENT_GDMA0_hrt_qos";
+			status = "disabled";
+		};
 		disp_dvo1: disp-dvo1@3e950000 {
 			compatible = "mediatek,disp_dvo0",
 						"mediatek,mt6993-dvo";
