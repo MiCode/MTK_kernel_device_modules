@@ -14,6 +14,7 @@
 #include <linux/sched/clock.h>
 #include <linux/delay.h>
 #include <linux/ratelimit.h>
+#include <aed.h>
 
 #include "mtk-mml-core.h"
 #include "mtk-mml-buf.h"
@@ -2227,6 +2228,7 @@ static void core_taskdump(struct mml_task *task, u32 pipe, int err)
 	struct mml_frame_config *cfg = task->config;
 	const struct mml_topology_path *path = cfg->path[pipe];
 	int cnt;
+	static bool fatal_dumped;
 
 	if (err == -EBUSY) {
 		/* inline rotate case self trigger, mark mmp and do nothing */
@@ -2270,7 +2272,15 @@ static void core_taskdump(struct mml_task *task, u32 pipe, int err)
 		mml_timeout_dump = false;
 	}
 #endif
-
+	/* trigger fatal AEE for customer */
+	if (!fatal_dumped) {
+		fatal_dumped = true;
+		if (aee_get_mode() == AEE_MODE_CUSTOMER_USER)
+			mml_fatal("mml", "force trigger fatal AEE");
+		else if(aee_get_mode() == AEE_MODE_CUSTOMER_ENG)
+			mml_exception("mml", "force trigger exception AEE");
+		// else : no need, warn db is enough
+	}
 }
 
 static void core_taskdump0_cb(struct cmdq_cb_data data)

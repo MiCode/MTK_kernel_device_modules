@@ -157,10 +157,14 @@ do { \
 
 #ifdef MML_FPGA
 #define _aee_api(...)
+#define _exception_api(...)
 #define _fatal_api(...)
 #else
 #define _aee_api(opt, tag, fmt, args...) \
 	(aee_kernel_warning_api(__FILE__, __LINE__, opt, tag, fmt, ##args))
+
+#define _exception_api(opt, tag, fmt, args...) \
+	(aee_kernel_exception_api(__FILE__, __LINE__, opt, tag, fmt, ##args))
 
 #define _fatal_api(opt, tag, fmt, args...) \
 	(aee_kernel_fatal_api(__FILE__, __LINE__, opt, tag, fmt, ##args))
@@ -178,6 +182,17 @@ do { \
 		cmdq_aee(fmt, ##args); \
 		cmdq_util_error_save("[mml][aee] "fmt"\n", ##args); \
 		_aee_api(DB_OPT_MML, tag, fmt, ##args); \
+	} while (0)
+
+#define mml_exception(key, fmt, args...) \
+	do { \
+		char tag[LINK_MAX]; \
+		int len = snprintf(tag, LINK_MAX, "CRDISPATCH_KEY:%s", key); \
+		if (len >= LINK_MAX) \
+			pr_debug("%s %d len:%d over max:%d\n", \
+				__func__, __LINE__, len, LINK_MAX); \
+		_mml_log("[err][exception]" fmt, ##args); \
+		_exception_api(DB_OPT_MML, tag, fmt, ##args); \
 	} while (0)
 
 #define mml_fatal(key, fmt, args...) \
@@ -204,6 +219,7 @@ do { \
 		cmdq_util_error_save("[mml][aee] "fmt"\n", ##args); \
 	} while (0)
 
+#define mml_exception(args...) mml_aee(##args)
 #define mml_fatal(args...) mml_aee(##args)
 
 #endif

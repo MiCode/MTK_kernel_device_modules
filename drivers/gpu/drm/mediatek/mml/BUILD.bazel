@@ -125,6 +125,7 @@ define_mgk_ddk_ko(
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/slbc/",
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi/",
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/tinysys_scmi/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/aee/aed",
     ],
 
     ko_deps = [
