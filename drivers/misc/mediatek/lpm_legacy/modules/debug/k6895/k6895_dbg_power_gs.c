@@ -12,7 +12,7 @@
 #include <lpm_call_type.h>
 #include <gs/lpm_pwr_gs.h>
 #include <gs/v1/lpm_power_gs.h>
-#define MTK_LPM_GS_PLAT_CLK_DUMP_SUPPORT
+
 int mt6895_pwr_gs_set(unsigned int type, const struct lpm_data *val)
 {
 	int ret = 0;
