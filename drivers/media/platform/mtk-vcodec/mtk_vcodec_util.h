@@ -44,6 +44,7 @@
 #define mem_slot_range (100*1024ULL) //100KB
 
 #define CODEC_ALLOCATE_MAX_BUFFER_SIZE 0x20000000UL /*512MB, sync with mtk_vcodec_mem.h*/
+#define MTK_VCODEC_HISTORY_CNT 8
 
 #define LOG_PARAM_INFO_SIZE 64
 #define LOG_PROPERTY_SIZE 1024
@@ -51,7 +52,10 @@
 #define CEIL_DIV(x, y) ((y) ? (((x) + (y) - 1) / (y)) : 0)
 #define ABS(x) (((x) >= 0) ? (x) : -(x))
 #define NS_TO_MS(X) (div_u64(X, NSEC_PER_MSEC))
+#define NS_TO_US(X) (div_u64(X, NSEC_PER_USEC))
 #define NS_MOD_MS(X) ({u64 __X = (X); do_div(__X, NSEC_PER_MSEC);})
+#define US_TO_S(X) (div_u64(X, USEC_PER_SEC))
+#define US_MOD_S(X) ({u64 __X = (X); do_div(__X, USEC_PER_SEC);})
 #define MS_TO_NS(X) ((X) * NSEC_PER_MSEC)
 // FOURCC_STR: fourcc to string
 #define FOURCC_STR(x) ((const char[]){(x) & 0xFF, ((x) >> 8) & 0xFF, ((x) >> 16) & 0xFF, ((x) >> 24) & 0xFF, 0})
@@ -97,6 +101,17 @@ enum mtk_chipid_sw_ver {
 	MTK_CHIP_SW_VER_E1 = 0x00,
 	MTK_CHIP_SW_VER_E2 = 0x01,
 	MTK_CHIP_SW_VER_MAX
+};
+
+struct vcodec_ipi_history_entry {
+	u64 time;
+	u32 ctx_id;
+	u32 msg_id;
+};
+
+struct vocdec_ipi_history {
+	struct vcodec_ipi_history_entry list[MTK_VCODEC_HISTORY_CNT];
+	unsigned int next_index;
 };
 
 /**
@@ -412,6 +427,10 @@ void mtk_vcodec_set_dev(struct mtk_vcodec_dev *dev, enum mtk_instance_type type)
 int mtk_vcodec_get_chipid(struct mtk_chipid *chip_id);
 bool mtk_vcodec_is_vcp(int type);
 unsigned int mtk_vcodec_sem_getvalue(struct semaphore *sem);
+
+void mtk_vcodec_record_ipi_history(struct mtk_vcodec_ctx *ctx, struct vocdec_ipi_history *history, u32 msg_id);
+void mtk_vcodec_dump_ipi_history(struct mtk_vcodec_dev *dev, unsigned int log_level);
+
 bool mtk_vcodec_is_state(struct mtk_vcodec_ctx *ctx, int state);
 bool mtk_vcodec_state_in_range(struct mtk_vcodec_ctx *ctx, int state_a, int state_b);
 int mtk_vcodec_get_state(struct mtk_vcodec_ctx *ctx);

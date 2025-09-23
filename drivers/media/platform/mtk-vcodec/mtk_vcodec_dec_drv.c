@@ -85,6 +85,18 @@ static struct kernel_param_ops vcodec_vcp_prop_param_ops = {
 };
 module_param_cb(mtk_vdec_property, &vcodec_vcp_prop_param_ops, &mtk_vdec_property, 0644);
 
+int mtk_vdec_ipi_dump;
+static int dump_ipi_history_cb(const char *val, const struct kernel_param *kp)
+{
+	mtk_vcodec_dump_ipi_history(dev_ptr, 0);
+	return 0;
+}
+static const struct kernel_param_ops vdec_dump_ipi_param_ops = {
+	.set = dump_ipi_history_cb,
+};
+module_param_cb(mtk_vdec_ipi_dump, &vdec_dump_ipi_param_ops, &mtk_vdec_ipi_dump, 0644);
+
+
 static int fops_vcodec_open(struct file *file)
 {
 	struct mtk_vcodec_dev *dev = video_drvdata(file);
@@ -445,6 +457,7 @@ static int mtk_vcodec_dec_probe(struct platform_device *pdev)
 	if (!dev)
 		return -ENOMEM;
 
+	dev->type = MTK_INST_DECODER;
 	// init list head, mutex, spin_lock, atomic, etc.
 	INIT_LIST_HEAD(&dev->ctx_list);
 	for (i = 0; i < MTK_VDEC_HW_NUM; i++) {

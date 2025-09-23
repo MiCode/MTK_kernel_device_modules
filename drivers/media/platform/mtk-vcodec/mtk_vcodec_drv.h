@@ -918,6 +918,7 @@ struct vdec_vp_mode_buf {
  * @enc_capability: used to identify encode capability
  */
 struct mtk_vcodec_dev {
+	enum mtk_instance_type type;
 	struct v4l2_device v4l2_dev;
 	struct video_device *vfd_dec;
 	struct video_device *vfd_enc;
@@ -1043,6 +1044,10 @@ struct mtk_vcodec_dev {
 	int venc_port_idx[MTK_VENC_HW_NUM];
 	struct mtk_tf_info *tf_info;
 	struct mtk_vio_info *vio_info;
+	struct vocdec_ipi_history ipi_send_history;
+	struct vocdec_ipi_history ipi_res_send_history;
+	struct vocdec_ipi_history ipi_recv_history;
+
 	struct vcodec_perf *vdec_tput;
 	struct vcodec_perf *venc_tput;
 	//struct vcodec_config *vdec_cfg;

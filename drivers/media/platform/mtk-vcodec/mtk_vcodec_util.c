@@ -13,6 +13,7 @@
 #include <uapi/linux/dma-heap.h>
 #include <mtk_heap.h>
 #include <linux/sched.h>
+#include <linux/sched/clock.h>
 #include <uapi/linux/sched/types.h>
 #include <linux/vmalloc.h>
 
@@ -255,6 +256,63 @@ unsigned int mtk_vcodec_sem_getvalue(struct semaphore *sem)
 	return cnt;
 }
 EXPORT_SYMBOL_GPL(mtk_vcodec_sem_getvalue);
+
+void mtk_vcodec_record_ipi_history(struct mtk_vcodec_ctx *ctx, struct vocdec_ipi_history *history, u32 msg_id)
+{
+	history->list[history->next_index].ctx_id = ctx->id;
+	history->list[history->next_index].msg_id = msg_id;
+	history->list[history->next_index].time = NS_TO_US(local_clock());
+	history->next_index = (history->next_index + 1) % MTK_VCODEC_HISTORY_CNT;
+}
+EXPORT_SYMBOL_GPL(mtk_vcodec_record_ipi_history);
+
+static void print_ipi_history(
+	struct mtk_vcodec_dev *dev, struct vocdec_ipi_history *history, char *debug_name, unsigned int log_level)
+{
+	unsigned int i, j, idx[4];
+
+	mtk_v4l2_debug(log_level, "%s %s history:", INST_TYPE_STR(dev->type), debug_name);
+	// print from new to old (next_index-1 -> next_index-2 -> ... -> next_index)
+	for (i = 0; i < MTK_VCODEC_HISTORY_CNT; i += 4) {
+		for (j = 0; j < 4; j++)
+			idx[j] = (history->next_index + MTK_VCODEC_HISTORY_CNT - (i + j + 1)) % MTK_VCODEC_HISTORY_CNT;
+		mtk_v4l2_debug(log_level, "\t%llu.%06u [%u] 0x%x, %llu.%06u [%u] 0x%x, %llu.%06u [%u] 0x%x, %llu.%06u [%u] 0x%x",
+			US_TO_S(history->list[idx[0]].time), US_MOD_S(history->list[idx[0]].time),
+			history->list[idx[0]].ctx_id, history->list[idx[0]].msg_id,
+			US_TO_S(history->list[idx[1]].time), US_MOD_S(history->list[idx[1]].time),
+			history->list[idx[1]].ctx_id, history->list[idx[1]].msg_id,
+			US_TO_S(history->list[idx[2]].time), US_MOD_S(history->list[idx[2]].time),
+			history->list[idx[2]].ctx_id, history->list[idx[2]].msg_id,
+			US_TO_S(history->list[idx[3]].time), US_MOD_S(history->list[idx[3]].time),
+			history->list[idx[3]].ctx_id, history->list[idx[3]].msg_id);
+	}
+}
+
+static void dump_msgq(struct mtk_vcodec_dev *dev, unsigned int log_level)
+{
+	unsigned long flags;
+	struct mtk_vcodec_msg_node *mq_node = NULL;
+	struct vdec_ap_ipi_cmd_indp *msg; // MSG_PREFIX only and same for vdec & venc
+
+	spin_lock_irqsave(&dev->mq.lock, flags);
+	mtk_v4l2_debug(log_level, "%s ipi msgq dump: ml_cnt %d", INST_TYPE_STR(dev->type), atomic_read(&dev->mq.cnt));
+	list_for_each_entry(mq_node, &dev->mq.head, list) {
+		msg = (struct vdec_ap_ipi_cmd_indp *)&mq_node->ipi_data.share_buf;
+		mtk_v4l2_debug(log_level, "\t[%d] msg_id 0x%x, addr 0x%lx, status %d",
+			msg->ctx_id, msg->msg_id, (unsigned long)msg->ap_inst_addr, msg->status);
+	}
+	spin_unlock_irqrestore(&dev->mq.lock, flags);
+}
+
+void mtk_vcodec_dump_ipi_history(struct mtk_vcodec_dev *dev, unsigned int log_level)
+{
+	dump_msgq(dev, log_level);
+	print_ipi_history(dev, &dev->ipi_send_history, "ipi send", log_level);
+	if (dev->type == MTK_INST_DECODER)
+		print_ipi_history(dev, &dev->ipi_res_send_history, "res ipi send", log_level);
+	print_ipi_history(dev, &dev->ipi_recv_history, "ipi recv", log_level);
+}
+EXPORT_SYMBOL_GPL(mtk_vcodec_dump_ipi_history);
 
 /* for check if ctx state is in specific state range, params means:
  * state_a & state_b != MTK_STATE_NULL: check if state_a <= ctx state = state_b,

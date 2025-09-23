@@ -260,6 +260,7 @@ static int venc_vcp_ipi_send(struct venc_inst *inst, void *msg, int len,
 		mtk_vcodec_err(inst, "[%d] vcp_get_ipidev(VENC_FEATURE_ID) get NULL", inst->ctx->id);
 		goto ipi_err_wait_and_unlock;
 	}
+	mtk_vcodec_record_ipi_history(inst->ctx, &inst->ctx->dev->ipi_send_history, msg_ap->msg_id);
 	ret = mtk_ipi_send(ipidev, IPI_OUT_VENC_0, ipi_wait_type, &obj,
 		ipi_size, IPI_SEND_TIMEOUT_MS);
 
@@ -330,6 +331,7 @@ wait_ack:
 ipi_err_wait_and_unlock:
 	timeout = 0;
 	vcodec_trace_end();
+	mtk_vcodec_dump_ipi_history(inst->ctx->dev, 0);
 	if (inst->vcu_inst.daemon_pid == vcp_cmd_ex(VENC_FEATURE_ID, VCP_GET_GEN, "venc_srv")) {
 		vcp_cmd_ex(VENC_FEATURE_ID, VCP_SET_HALT, "venc_srv");
 		while (inst->vcu_inst.daemon_pid == vcp_cmd_ex(VENC_FEATURE_ID, VCP_GET_GEN, "venc_srv")) {
@@ -671,6 +673,7 @@ int vcp_enc_ipi_handler(void *arg)
 		}
 		inst = container_of(vcu, struct venc_inst, vcu_inst);
 
+		mtk_vcodec_record_ipi_history(ctx, &dev->ipi_recv_history, msg->msg_id);
 		mtk_v4l2_debug(2, "[%d] pop msg_id %X, ml_cnt %d, vcu %lx, status %d", vcu->ctx->id,
 			msg->msg_id, atomic_read(&dev->mq.cnt), (unsigned long)vcu, msg->status);
 
