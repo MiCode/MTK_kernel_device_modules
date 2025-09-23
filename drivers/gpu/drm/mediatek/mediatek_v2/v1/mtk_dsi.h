@@ -88,6 +88,7 @@ struct mtk_dsi_driver_data {
 	bool non_block_urgent_wa;
 	bool disable_te_timeout_by_set_cnt;
 	bool vm_rgb_time_interval; /* RGB or HBP interval */
+	bool esd_poll_microp;
 	u32 max_vfp;
 	u32 dsi0_pa;
 	u32 dsi1_pa;
@@ -95,6 +96,7 @@ struct mtk_dsi_driver_data {
 		struct mtk_drm_crtc *mtk_crtc, unsigned int en);
 	const unsigned int bubble_rate;
 	const enum DSI_N_Version n_verion;
+	const u32 reg_up_intsta;
 	const u32 reg_phy_base;
 	const u32 reg_20_ofs;
 	const u32 reg_30_ofs;
