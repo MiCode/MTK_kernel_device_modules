@@ -927,8 +927,12 @@ static int mml_m2m_s_ctrl(struct v4l2_ctrl *ctrl)
 		ctx->param.secure = ctrl->val;
 		mmu_dev = mml_get_mmu_dev(ctx->ctx.mml, ctrl->val);
 		src_vq = v4l2_m2m_get_vq(ctx->m2m_ctx, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE);
+		if (unlikely(!src_vq))
+			return -EINVAL;
 		src_vq->dev = mmu_dev;
 		dst_vq = v4l2_m2m_get_vq(ctx->m2m_ctx, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE);
+		if (unlikely(!dst_vq))
+			return -EINVAL;
 		dst_vq->dev = mmu_dev;
 		mml_msg("[m2m]%s set secure: %d", __func__, ctx->param.secure);
 		break;
@@ -1281,7 +1285,7 @@ static int mml_m2m_s_fmt_mplane(struct file *file, void *fh,
 		return -EINVAL;
 
 	vq = v4l2_m2m_get_vq(ctx->m2m_ctx, f->type);
-	if (vb2_is_busy(vq))
+	if (unlikely(!vq) || vb2_is_busy(vq))
 		return -EBUSY;
 
 	frame->format = *f;
@@ -1750,11 +1754,19 @@ static s32 m2m_set_submit(struct mml_m2m_ctx *mctx, struct mml_submit *submit)
 	mmu_dev = mml_get_mmu_dev(mctx->ctx.mml, param->secure);
 	submit->info.src.secure = param->secure;
 	src_vq = v4l2_m2m_get_vq(mctx->m2m_ctx, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE);
+	if (unlikely(!src_vq)) {
+		ret = -EINVAL;
+		goto unlock_param;
+	}
 	src_vq->dev = mmu_dev;
 
 	dest->pq_config = param->pq_submit.pq_config;
 	dest->data.secure = param->secure;
 	dst_vq = v4l2_m2m_get_vq(mctx->m2m_ctx, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE);
+	if (unlikely(!dst_vq)) {
+		ret = -EINVAL;
+		goto unlock_param;
+	}
 	dst_vq->dev = mmu_dev;
 	submit->info.dest_cnt = 1;
 	submit->info.mode = MML_MODE_MML_DECOUPLE2;
