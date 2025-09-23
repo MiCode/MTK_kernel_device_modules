@@ -909,12 +909,16 @@ static int layering_get_valid_hrt(struct drm_crtc *crtc,
 
 				tmp += priv->pre_defined_bw[i];
 			}
+#ifndef CONFIG_FPGA_EARLY_PORTING
 			query_bw = mtk_mmqos_get_avail_hrt_bw(HRT_DISP);
+#endif
 			already_query = true;
 			avail_bw = query_bw;
 		}
 	} else {
+#ifndef CONFIG_FPGA_EARLY_PORTING
 		query_bw = mtk_mmqos_get_avail_hrt_bw(HRT_DISP);
+#endif
 		already_query = true;
 		avail_bw = query_bw;
 	}
@@ -958,7 +962,9 @@ static int layering_get_valid_hrt(struct drm_crtc *crtc,
 	if (dvfs_bw < 200) {
 		// disp_aee_print("avail BW less than 2 layers, BW: %llu\n",
 		//	dvfs_bw);
+#ifndef CONFIG_FPGA_EARLY_PORTING
 		cam_bw = mtk_mmqos_get_cam_hrt();
+#endif
 		DDPPR_ERR("disp %u avail BW < 2 layers\n", disp_idx);
 		DDPPR_ERR("dvfsbw:%llu, availbw:%llu, querybw(%d):%llu, tmp=%llu, cambw=%llu\n",
 			dvfs_bw, avail_bw, already_query, query_bw, tmp, cam_bw);

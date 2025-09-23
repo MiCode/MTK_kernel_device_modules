@@ -1772,9 +1772,11 @@ int mtk_disp_hrt_cond_init(struct drm_crtc *crtc)
 		mtk_crtc->qos_ctx->last_channel_write_req[i] = 0;
 	}
 
+#ifndef CONFIG_FPGA_EARLY_PORTING
 	if (drm_crtc_index(crtc) == 0 && mtk_drm_helper_get_opt(priv->helper_opt,
 			MTK_DRM_OPT_MMQOS_SUPPORT))
 		mtk_mmqos_register_bw_throttle_notifier(&pmqos_hrt_notifier);
+#endif
 
 	return 0;
 }
@@ -1804,7 +1806,9 @@ static void mtk_drm_enable_ap_ccf(bool en, struct drm_crtc *crtc, bool mode_swit
 		priv = ap_crtc->dev->dev_private;
 		if (priv && mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_MMDVFS_MODE_SWITCH)) {
+#ifndef CONFIG_FPGA_EARLY_PORTING
 			set_disp_freq_by_regulator(false); //mmqos do mminfra dvfs request
+#endif
 
 			if (mode_switch)
 				mtk_drm_mmdvfs_mode_switch(ap_crtc, true);
@@ -1880,7 +1884,9 @@ void mtk_drm_mmdvfs_enable_vcp(struct drm_crtc *crtc, bool en)
 	}
 
 	DDPMSG("%s, en:%d\n", __func__, en);
+#ifndef CONFIG_FPGA_EARLY_PORTING
 	ret = mtk_mmdvfs_enable_vcp(en, VCP_PWR_USR_DISP);
+#endif
 
 	if (en) {
 		vcp_state = mtk_drm_get_mmdvfs_state();
@@ -1964,9 +1970,11 @@ void mtk_drm_mmdvfs_init(struct device *dev, bool mmdvfs_switch)
 		DDPMSG("%s, MMDVFS init of regulator mode done\n", __func__);
 
 		mutex_init(&mmdvfs_lock);
+#ifndef CONFIG_FPGA_EARLY_PORTING
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 		mmdvfs_rc_enable_set_fp(&mtk_disp_mmdvfs_notifier);
 		DDPMSG("%s, register MMDVFS callback\n", __func__);
+#endif
 #endif
 		return;
 	}
@@ -2129,8 +2137,10 @@ void mtk_drm_set_mmclk(struct drm_crtc *crtc, int level, bool lp_mode,
 			if (ret)
 				DDPPR_ERR("%s:regulator_set_voltage:%d fail, ret:%d\n",
 					__func__, volt, ret);
+#ifndef CONFIG_FPGA_EARLY_PORTING
 			else
 				set_disp_freq_by_regulator(true); //mmqos skip mminfra dvfs request
+#endif
 		}
 		mtk_drm_put_mmdvfs_state();
 		return;

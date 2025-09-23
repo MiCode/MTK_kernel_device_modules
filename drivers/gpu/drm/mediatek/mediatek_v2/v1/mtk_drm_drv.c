@@ -1564,7 +1564,9 @@ static enum mml_mode _mtk_atomic_mml_plane(struct drm_device *dev,
 	if (ret)
 		submit_kernel->info.disp_done_event = ret;
 
+#ifndef CONFIG_FPGA_EARLY_PORTING
 	mml_drm_split_info(submit_kernel, submit_pq);
+#endif
 
 	mtk_drm_idlemgr_kick(__func__, crtc, false); /* power on dsi */
 	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
@@ -1630,7 +1632,9 @@ static enum mml_mode _mtk_atomic_mml_plane(struct drm_device *dev,
 	}
 
 	submit_kernel->disp_id = (u32)crtc_state->prop_val[CRTC_PROP_PRES_FENCE_IDX];
+#ifndef CONFIG_FPGA_EARLY_PORTING
 	ret = mml_drm_submit(mml_ctx, submit_kernel, &(mtk_crtc->mml_cb));
+#endif
 	if (ret) {
 		DDPPR_ERR("%s:err_submit\n", __func__);
 		goto err_submit;
@@ -9640,7 +9644,9 @@ void mtk_drm_wait_mml_submit_done(struct mtk_mml_cb_para *cb_para)
 
 	if (ret == 0) {
 		DDPMSG("%s timeout\n", __func__);
+#ifndef CONFIG_FPGA_EARLY_PORTING
 		mml_drm_submit_timeout();
+#endif
 	}
 
 	atomic_set(&(cb_para->mml_job_submit_done), 0);
@@ -9670,7 +9676,9 @@ struct mml_drm_ctx *mtk_drm_get_mml_drm_ctx(struct drm_device *dev,
 		goto err_handle_mtk_drm_get_mml_drm_ctx;
 	}
 
+#ifndef CONFIG_FPGA_EARLY_PORTING
 	mml_pdev = mml_get_plat_device(plat_dev);
+#endif
 	if (!mml_pdev) {
 		DDPPR_ERR("mtk_drm_ioctl_mml_gem_submit mml_get_plat_device open fail\n");
 		goto err_handle_mtk_drm_get_mml_drm_ctx;
@@ -9684,7 +9692,9 @@ struct mml_drm_ctx *mtk_drm_get_mml_drm_ctx(struct drm_device *dev,
 	disp_param.kick_idle_cb = mtk_drm_mmlsys_kick_idle_cb;
 	disp_param.disp_crtc = (void *)crtc;
 
+#ifndef CONFIG_FPGA_EARLY_PORTING
 	mml_ctx = mml_drm_get_context(mml_pdev, &disp_param, NULL);
+#endif
 	if (IS_ERR_OR_NULL(mml_ctx)) {
 		DDPPR_ERR("mml_drm_get_context fail. mml_ctx:%p\n", mml_ctx);
 		goto err_handle_mtk_drm_get_mml_drm_ctx;
@@ -9697,10 +9707,12 @@ struct mml_drm_ctx *mtk_drm_get_mml_drm_ctx(struct drm_device *dev,
 		u32 panel_w = mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_GET_VIRTUAL_WIDTH, NULL);
 		u32 panel_h = mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_GET_VIRTUAL_HEIGH, NULL);
 
+#ifndef CONFIG_FPGA_EARLY_PORTING
 		if (panel_w) {
 			mml_drm_set_panel_pixel(mml_ctx, panel_w, panel_h);
 			DDPMSG("%s set panel pixels %ux%u\n", __func__, panel_w, panel_h);
 		}
+#endif
 	}
 
 	return priv->mml_ctx;
@@ -10175,11 +10187,13 @@ static void mtk_drm_kms_deinit(struct drm_device *drm)
 	disp_dbg_deinit();
 	PanelMaster_Deinit();
 
+#ifndef CONFIG_FPGA_EARLY_PORTING
 	if (private->mml_ctx) {
 		mml_drm_kick_done(private->mml_ctx);
 		mml_drm_put_context(private->mml_ctx);
 		private->mml_ctx = NULL;
 	}
+#endif
 }
 
 static struct mutex se_lock;
@@ -10728,13 +10742,17 @@ static int mtk_drm_mml_ctrl_caps(struct mtk_drm_mml_caps_info *mml_caps, struct 
 		return 0;
 	}
 
+#ifndef CONFIG_FPGA_EARLY_PORTING
 	mml_pdev = mml_get_plat_device(plat_dev);
+#endif
 	if (!mml_pdev) {
 		DDPMSG("%s mml_get_plat_device open fail\n", __func__);
 		return -ENXIO;
 	}
 
+#ifndef CONFIG_FPGA_EARLY_PORTING
 	ret = mml_drm_get_hw_caps(&mode_caps, &mml_caps->hw_caps);
+#endif
 	if (ret < 0)
 		return ret;
 
@@ -10764,7 +10782,9 @@ static int mtk_drm_mml_ctrl_query_hw_support(struct mtk_drm_mml_query_hw_support
 		return -EINVAL;
 	}
 
+#ifndef CONFIG_FPGA_EARLY_PORTING
 	query->support = mml_drm_query_hw_support(&info);
+#endif
 
 	return 0;
 }

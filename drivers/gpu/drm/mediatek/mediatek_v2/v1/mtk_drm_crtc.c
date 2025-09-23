@@ -147,7 +147,9 @@ static unsigned int cmdq_client_num;
 
 struct timespec64 atomic_flush_tval;
 struct timespec64 rdma_sof_tval;
+#ifndef CONFIG_FPGA_EARLY_PORTING
 static void mmqos_hrt_dump(void);
+#endif
 
 bool hdr_en;
 static const char * const crtc_gce_client_str[] = {
@@ -651,6 +653,9 @@ void mtk_drm_crtc_exdma_ovl_path(struct mtk_drm_crtc *mtk_crtc,
 	resource_size_t config_regs_pa = 0;
 	enum mtk_ddp_comp_id next_blender = blender_id;
 	int crtc_id = drm_crtc_index(&mtk_crtc->base);
+#ifdef DRM_CMDQ_DISABLE
+	unsigned int reg = 0;
+#endif
 
 	/* exdma to blender */
 	if (mtk_ddp_comp_get_type(comp->id) != MTK_OVL_EXDMA) {
@@ -727,6 +732,9 @@ void mtk_drm_crtc_blender_ovl_path(struct mtk_drm_crtc *mtk_crtc,
 	resource_size_t config_regs_pa = 0;
 	int crtc_id = drm_crtc_index(&mtk_crtc->base);
 	enum mtk_ddp_comp_id out_proc = 0;
+#ifdef DRM_CMDQ_DISABLE
+	unsigned int reg = 0;
+#endif
 
 	DDPDBG("%s, comp:%s, reset_flag:%d\n",
 		__func__, mtk_dump_comp_str_id(comp->id), reset_flag);
@@ -890,6 +898,9 @@ void mtk_drm_crtc_exdma_ovl_path_out(struct mtk_drm_crtc *mtk_crtc,
 	struct mtk_ddp_comp *last_blender;
 	int crtc_id = drm_crtc_index(&mtk_crtc->base);
 	//unsigned int addr_begin, addr_end, offset, i = 0;
+#ifdef DRM_CMDQ_DISABLE
+	unsigned int reg = 0;
+#endif
 
 	/**
 	 * if (mtk_crtc->last_blender == NULL) {
@@ -4174,9 +4185,11 @@ void mtk_crtc_prepare_dual_pipe(struct mtk_drm_crtc *mtk_crtc)
 		comp->mtk_crtc = mtk_crtc;
 	}
 
+#ifndef CONFIG_FPGA_EARLY_PORTING
 	if (drm_crtc_index(&mtk_crtc->base) == 0 &&
 		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMQOS_SUPPORT))
 		mtk_mmqos_is_dualpipe_enable(mtk_crtc->is_dual_pipe);
+#endif
 }
 
 static void user_cmd_cmdq_cb(struct cmdq_cb_data data)
@@ -9164,7 +9177,9 @@ static int _mtk_crtc_cmdq_smi_info_dump(void *data)
 			DDPPR_ERR("wait %s fail, ret=%d\n", __func__, ret);
 
 		mtk_smi_dbg_hang_detect("disp_underrun");
+#ifndef CONFIG_FPGA_EARLY_PORTING
 		mmqos_hrt_dump();
+#endif
 		mmdvfs_debug_status_dump(NULL);
 		atomic_set(&mtk_crtc->smi_info_dump_event, 0);
 
@@ -9181,14 +9196,14 @@ static void mtk_crtc_cmdq_timeout_cb(struct cmdq_cb_data data)
 	struct mtk_drm_private *priv = NULL;
 	int id;
 
-#ifndef DRM_CMDQ_DISABLE
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct cmdq_client *client = mtk_crtc->gce_obj.client[CLIENT_CFG];
+#ifndef DRM_CMDQ_DISABLE
 	struct cmdq_client *cl;
 	dma_addr_t trig_pc;
 	u64 *inst;
-	static DEFINE_RATELIMIT_STATE(timeout_rate, 30 * HZ, 1);
 #endif
+	static DEFINE_RATELIMIT_STATE(timeout_rate, 30 * HZ, 1);
 
 	if (!crtc) {
 		DDPPR_ERR("%s find crtc fail\n", __func__);
@@ -10777,6 +10792,31 @@ void mtk_bwm_get_compress_ratio(struct drm_crtc *crtc,
 	return;
 }
 
+#else
+void mtk_bwm_calc_hrt_bw(struct drm_crtc *crtc,
+	struct drm_atomic_state *state)
+{
+}
+
+void mtk_bwm_get_compress_ratio(struct drm_crtc *crtc,
+	struct mtk_drm_private *priv, struct cmdq_pkt *cmdq_handle)
+{
+}
+
+void mtk_crtc_start_bwm_ratio_loop(struct drm_crtc *crtc)
+{
+}
+
+void mtk_crtc_stop_bwm_ratio_loop(struct drm_crtc *crtc)
+{
+}
+
+void update_layer_cap_for_bwm(struct drm_crtc *crtc,
+				struct drm_crtc_state *old_crtc_state,
+				unsigned int partial_enable)
+{
+}
+
 #endif
 
 int mtk_crtc_fill_fb_para(struct mtk_drm_crtc *mtk_crtc)
@@ -10822,10 +10862,10 @@ static void mtk_crtc_enable_iommu(struct mtk_drm_crtc *mtk_crtc,
 	}
 }
 
-#ifndef DRM_CMDQ_DISABLE
 void mtk_crtc_exec_atf_prebuilt_instr(struct mtk_drm_crtc *mtk_crtc,
 			   struct cmdq_pkt *handle)
 {
+#ifndef DRM_CMDQ_DISABLE
 	/*note: put the prebuilt instr into cmdq_inst_disp_va[] in cmdq-prebuilt.h*/
 
 	/*set DISP_VA_START event to atf*/
@@ -10838,8 +10878,8 @@ void mtk_crtc_exec_atf_prebuilt_instr(struct mtk_drm_crtc *mtk_crtc,
 
 	//SMC Call
 	cmdq_util_enable_disp_va();
-}
 #endif
+}
 
 void mtk_crtc_enable_iommu_runtime(struct mtk_drm_crtc *mtk_crtc,
 			   struct cmdq_pkt *handle)
@@ -11598,6 +11638,7 @@ void mtk_crtc_start_sodi_loop(struct drm_crtc *crtc)
 
 void mtk_crtc_start_event_loop(struct drm_crtc *crtc)
 {
+#ifndef DRM_CMDQ_DISABLE
 /****************************************************************************/
 /* dsi_check : from TE to dsi_check                                         */
 /* v_idle    : from v_idle to pf (prefetch)                                 */
@@ -11831,6 +11872,7 @@ void mtk_crtc_start_event_loop(struct drm_crtc *crtc)
 	cmdq_pkt_finalize_loop(cmdq_handle);
 
 	cmdq_pkt_flush_async(cmdq_handle, event_done_cb, (void *)crtc_id);
+#endif
 }
 
 #ifndef DRM_CMDQ_DISABLE
@@ -14750,8 +14792,10 @@ skip:
 		mtk_crtc_free_sram(mtk_crtc);
 		refcount_set(&mtk_crtc->mml_ir_sram.ref.refcount, 0);
 	}
+#ifndef CONFIG_FPGA_EARLY_PORTING
 	if ((crtc_id == 0) && priv && priv->mml_ctx)
 		mml_drm_kick_done(priv->mml_ctx);
+#endif
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt,
 			MTK_DRM_OPT_IDLEMGR_ASYNC)) {
@@ -16733,10 +16777,12 @@ void mtk_drm_crtc_disable(struct drm_crtc *crtc, bool need_wait)
 		}
 	}
 
+#ifndef CONFIG_FPGA_EARLY_PORTING
 	if ((crtc_id == 0) && priv && priv->mml_ctx && mml_drm_ctx_idle(priv->mml_ctx)) {
 		mml_drm_put_context(priv->mml_ctx);
 		priv->mml_ctx = NULL;
 	}
+#endif
 
 	/* for dbi idle count timer */
 	mtk_dbi_count_timer_disable(crtc);
@@ -16991,8 +17037,10 @@ void mml_cmdq_pkt_init(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle)
 			cmdq_pkt_wfe(cmdq_handle,
 					mtk_crtc->gce_obj.event[EVENT_DPC_DISP1_PRETE]);
 		}
+#ifndef CONFIG_FPGA_EARLY_PORTING
 		mml_drm_racing_config_sync(mml_ctx, cmdq_handle,
 			(u32)mtk_crtc_state->prop_val[CRTC_PROP_PRES_FENCE_IDX]);
+#endif
 		break;
 	case MML_DC_ENTERING:
 		if (mtk_vidle_is_ff_enabled()) {
@@ -19350,6 +19398,7 @@ static void mtk_drm_wb_cb(struct cmdq_cb_data data)
 void mtk_drm_atomic_gce_delay(struct cmdq_pkt *pkt, struct mtk_drm_crtc *mtk_crtc,
 			unsigned int diff)
 {
+#ifndef DRM_CMDQ_DISABLE
 	struct cmdq_operand lop, rop;
 	unsigned int TPR_CPU = 0;
 	unsigned int thrd_id = 0;
@@ -19527,6 +19576,7 @@ void mtk_drm_atomic_gce_delay(struct cmdq_pkt *pkt, struct mtk_drm_crtc *mtk_crt
 
 	// for debug
 	//cmdq_pkt_dump_buf(pkt, 0);
+#endif
 }
 
 int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
@@ -21822,6 +21872,13 @@ unsigned int *mtk_get_gce_backup_slot_va(struct mtk_drm_crtc *mtk_crtc,
 			DDPPR_ERR("%s invalid cmdq_buffer\n", __func__);
 			return NULL;
 		}
+
+#ifdef DRM_CMDQ_DISABLE
+		if (cmdq_buf->va_base == NULL) {
+			DDPPR_ERR("%s error, cmdq_buf->va_base is null\n", __func__);
+			return NULL;
+		}
+#endif
 
 		return (cmdq_buf->va_base + slot_index);
 	}
@@ -25514,7 +25571,9 @@ void mtk_crtc_mml_racing_resubmit(struct drm_crtc *crtc, struct cmdq_pkt *_cmdq_
 		DDPMSG("%s !mml_ctx or !is_mml\n", __func__);
 		return;
 	}
+#ifndef CONFIG_FPGA_EARLY_PORTING
 	mml_drm_submit(mml_ctx, mtk_crtc->mml_cfg, &(mtk_crtc->mml_cb));
+#endif
 
 	if (_cmdq_handle) {
 		cmdq_handle = _cmdq_handle;
@@ -25535,8 +25594,10 @@ void mtk_crtc_mml_racing_resubmit(struct drm_crtc *crtc, struct cmdq_pkt *_cmdq_
 		mtk_disp_mutex_add_comp_with_cmdq(mtk_crtc, id[i], false, cmdq_handle, 0);
 	}
 	/* prepare racing packet */
+#ifndef CONFIG_FPGA_EARLY_PORTING
 	mml_drm_racing_config_sync(mml_ctx, cmdq_handle,
 		(u32)state->prop_val[CRTC_PROP_PRES_FENCE_IDX]);
+#endif
 
 	/* blocking wait until mml submit is flushed */
 	mtk_drm_wait_mml_submit_done(&(mtk_crtc->mml_cb));
@@ -25572,10 +25633,12 @@ void mtk_crtc_mml_racing_stop_sync(struct drm_crtc *crtc, struct cmdq_pkt *_cmdq
 		return;
 	}
 
+#ifndef CONFIG_FPGA_EARLY_PORTING
 	if (force && mtk_crtc->mml_cfg)
 		mml_drm_stop(mml_ctx, mtk_crtc->mml_cfg, false);
 	else
 		mml_drm_racing_stop_sync(mml_ctx, cmdq_handle);
+#endif
 
 	if (flush) {
 		cmdq_pkt_flush(cmdq_handle);

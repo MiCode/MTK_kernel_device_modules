@@ -4551,7 +4551,9 @@ static enum MTK_LAYERING_CAPS query_MML(struct drm_device *dev, struct drm_crtc 
 
 	mml_ctx = mtk_drm_get_mml_drm_ctx(dev, crtc);
 	if (mml_ctx != NULL) {
+#ifndef CONFIG_FPGA_EARLY_PORTING
 		mode = mml_drm_query_cap(mml_ctx, mml_info);
+#endif
 		DDPINFO("%s,q:%d,mml_drm_query_cap mode:%d\n", __func__, query_mode, mode);
 	} else
 		return ret;
@@ -4713,7 +4715,9 @@ static void check_is_mml_layer(const int disp_idx,
 			vfree(multi_mml_info);
 			return;
 		}
+#ifndef CONFIG_FPGA_EARLY_PORTING
 		mml_drm_query_multi_layer(mml_ctx, multi_mml_info, mml_cnt, mml_duration);
+#endif
 	}
 
 	for (i = 0; i < disp_info->layer_num[disp_idx]; i++) {

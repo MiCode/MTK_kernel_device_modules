@@ -497,7 +497,9 @@ static struct mtk_drm_property mtk_connector_property[CONNECTOR_PROP_MAX] = {
 
 static u32 underrun_cnt;
 module_param(underrun_cnt, uint, 0644);
+#ifndef DRM_CMDQ_DISABLE
 static struct drm_device *drm_dev;
+#endif
 static enum dsi_cmd_verion dsi_cmd_ver;
 
 struct mtk_panel_ext *mtk_dsi_get_panel_ext(struct mtk_ddp_comp *comp);

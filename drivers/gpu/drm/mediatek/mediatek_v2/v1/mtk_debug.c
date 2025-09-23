@@ -2453,8 +2453,12 @@ void mtk_wakeup_pf_wq(unsigned int m_id)
 
 	if (drm_priv &&
 		mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base)) {
-		pf_idx = readl(mtk_get_gce_backup_slot_va(mtk_crtc,
-			DISP_SLOT_PRESENT_FENCE(crtc_idx)));
+		unsigned int *p_present_fence = NULL;
+
+		p_present_fence = mtk_get_gce_backup_slot_va(mtk_crtc,
+			DISP_SLOT_PRESENT_FENCE(crtc_idx));
+		if (p_present_fence)
+			pf_idx = readl(p_present_fence);
 		atomic_set(&drm_priv->crtc_rel_present[crtc_idx], pf_idx);
 
 		atomic_set(&mtk_crtc->pf_event, 1);
