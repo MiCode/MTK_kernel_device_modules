@@ -119,7 +119,7 @@
 &disp_wdma0 {
 	mtk,smmu-shared = <&mm_smmu_disp>;
 	mtk,smmu-shared-sec = <&mm_smmu_svp_disp>;
-}
+};
 
 &dispsys_config {
 	pinctrl-names = "mode_te_te";
