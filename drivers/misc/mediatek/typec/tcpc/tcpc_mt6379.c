@@ -127,9 +127,7 @@
 #define MT6379_REG_WD2VOLCMP	(0x529)
 
 /* MT6379 */
-#define MT6379_REG_IRQ_IND	0x10B
-#define MT6379_MASK_PD_IND_EVT	BIT(2)
-#define MT6379_REG_SPMI_TXDRV2	0x12B
+#define MT6379_REG_SPMI_TXDRV2	0x12B	/* True RG: 0x2B */
 #define MT6379_MASK_RCS_INT_DONE BIT(0)
 
 /* Mask & Shift */
@@ -2312,7 +2310,7 @@ static int mt6379_tcpc_post_irq_handler(void *data)
 	struct mt6379_tcpc_data *ddata = data;
 
 	/* MT6379 do retrigger */
-	return regmap_write(ddata->rmap, MT6379_REG_SPMI_TXDRV2, MT6379_MASK_RCS_INT_DONE);
+	return mt6379_write8(ddata, MT6379_REG_SPMI_TXDRV2, MT6379_MASK_RCS_INT_DONE);
 }
 
 static irqreturn_t mt6379_pd_evt_handler(int irq, void *data)
