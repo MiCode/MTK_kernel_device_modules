@@ -14373,7 +14373,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<&opp_table_mminfra>, <&opp_table_venc>, <&opp_table_venc_mdp>;
 			mediatek,vcore-level =	/bits/ 8 <1 2 3 4 5 6>; //mapping to mmdvfs vcore dfs level
 			mediatek,step-idx = /bits/ 8 <MMDVFS_VCP_CAM>;
-			mediatek,dpsw-thres = <1>;
+			mediatek,dpsw-thres = <2>;
 			mediatek,mmup-sram;
 			mmdebug-supply = <&mmdebug>;
 			vcp-supply = <&vcp>;
@@ -14388,7 +14388,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mux-offset	= /bits/ 16 <0x0010 0x0020 0x0030 0x0040 0x0060 0x0330 0x0270>;
 			fmeter-id	= /bits/ 8 <116 117 109 110 111 112 113 105 107 108 106 126>;
 			fmeter-type	= /bits/ 8 < 6 6 6 6 6 6 6 6 6 6 6 6>;
-			mediatek,dpsw-thres = <1>;
+			mediatek,dpsw-thres = <2>;
 			mediatek,met-freerun;
 			mmdvfs-mux-supply = <&mmdvfs_mux>;
 		};
