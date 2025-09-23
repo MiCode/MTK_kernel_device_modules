@@ -1253,6 +1253,18 @@ static void scp_write_reset_register_with_retry(int cpu_id)
 
 void scp_wdt_reset(int cpu_id)
 {
+	int ret;
+	struct scpctl_cmd_s cmd;
+	char *prompt = "[SCPCTL]:";
+
+	cmd.type = SCPCTL_DEBUG_LOGIN;
+	cmd.op = SCP_DEBUG_MAGIC_PATTERN;
+	ret = mtk_ipi_send(&scp_ipidev, IPI_OUT_SCPCTL_1, 0, &cmd,
+			PIN_OUT_SIZE_SCPCTL_1, 0);
+	if (ret != IPI_ACTION_DONE)
+		pr_notice("%s failed, %d\n", prompt, ret);
+	mdelay(10);
+
 	/* Need to awawke scp avoid peri off */
 	if (scp_awake_lock((void *)SCP_A_ID) == -1) {
 		pr_notice("[SCP] %s: awake scp fail\n", __func__);
@@ -1291,20 +1303,10 @@ static ssize_t wdt_reset_store(struct device *dev
 		, struct device_attribute *attr, const char *buf, size_t count)
 {
 	unsigned int value = 0;
-	int ret;
-	struct scpctl_cmd_s cmd;
-	char *prompt = "[SCPCTL]:";
 
 	if (!buf || count == 0)
 		return count;
 	pr_notice("[SCP] %s: %8s\n", __func__, buf);
-	cmd.type = SCPCTL_DEBUG_LOGIN;
-	cmd.op = SCP_DEBUG_MAGIC_PATTERN;
-	ret = mtk_ipi_send(&scp_ipidev, IPI_OUT_SCPCTL_1, 0, &cmd,
-			PIN_OUT_SIZE_SCPCTL_1, 0);
-	if (ret != IPI_ACTION_DONE)
-		pr_notice("%s failed, %d\n", prompt, ret);
-	mdelay(10);
 
 	if (kstrtouint(buf, 10, &value) == 0) {
 		if (value == 666)
