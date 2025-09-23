@@ -23,6 +23,7 @@
 #include <linux/of_fdt.h>
 #include <linux/ioport.h>
 #include <linux/io.h>
+#include <mtk-adspscp-external.h>
 
 #include <audio_ipi_queue.h>
 
@@ -663,7 +664,7 @@ static int __init audio_ipi_init(void)
 #endif
 
 	if (is_audio_scp_support())
-		scp_A_register_notify(&audio_ctrl_notifier_scp);
+		scp_A_register_notify_wrap(&audio_ctrl_notifier_scp);
 
 	for (task_id = 0; task_id < TASK_SCENE_SIZE; task_id++) {
 		task_info = &g_audio_task_info[task_id];

@@ -59,6 +59,7 @@
 #include "scp_hwvoter_dbg.h"
 
 #include "mtk-afe-external.h"
+#include "mtk-adspscp-external.h"
 #include "sap.h"
 
 /* scp chre manager header */
@@ -3486,6 +3487,21 @@ static struct notifier_block scp_semaphore_init_notifier = {
 	.notifier_call = notify_scp_semaphore_event,
 };
 
+static void reg_scp_cb_func(void)
+{
+	int ret = 0;
+	static struct scp_system_callback_op scp_op;
+
+	scp_op.scp_awake_lock_cb = scp_awake_lock;
+	scp_op.scp_awake_unlock_cb = scp_awake_unlock;
+	scp_op.scp_clr_spm_reg_cb = scp_clr_spm_reg;
+	scp_op.is_scp_ready_cb = is_scp_ready;
+	scp_op.scp_A_register_notify_cb = scp_A_register_notify;
+	ret = scp_system_cb_init(&scp_op);
+	if (ret)
+		pr_notice("scp_system_cb_init error ret = %d\n", ret);
+}
+
 /*
  * driver initialization entry point
  */
@@ -3636,6 +3652,7 @@ static int __init scp_init(void)
 		scp_init_vcore_request();
 
 	register_3way_semaphore_notifier(&scp_semaphore_init_notifier);
+	reg_scp_cb_func();
 
 	/* Enable mbrain profile for low power debug  */
 	if(scpreg.mbrain)

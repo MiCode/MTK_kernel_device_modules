@@ -9,6 +9,7 @@
 #include "scp.h"
 #include "audio_mbox.h"
 #include "scp_audio_ipi.h"
+#include "mtk-adspscp-external.h"
 
 #define SHARE_BUF_SIZE  256
 
@@ -60,14 +61,14 @@ int scp_send_message_with_wakelock(unsigned int id, void *buf, unsigned int len,
 	int ret;
 
 	/* leave without doing scp_awake_unlock, since the function trigger warning */
-	if (scp_awake_lock((void *)SCP_A_ID)) {
+	if (scp_awake_lock_wrap((void *)SCP_A_ID)) {
 		pr_info("%s, scp awake lock fail", __func__);
 		return MBOX_PIN_BUSY;
 	}
 
 	ret = scp_send_message(id, buf, len, wait, cid);
 
-	scp_awake_unlock((void *)SCP_A_ID);
+	scp_awake_unlock_wrap((void *)SCP_A_ID);
 
 	return ret;
 }
@@ -75,7 +76,7 @@ EXPORT_SYMBOL_GPL(scp_send_message_with_wakelock);
 
 bool is_scp_audio_ready(void)
 {
-	return is_audio_mbox_init_done() && is_scp_ready(SCP_A_ID);
+	return is_audio_mbox_init_done() && is_scp_ready_wrap(SCP_A_ID);
 }
 EXPORT_SYMBOL_GPL(is_scp_audio_ready);
 

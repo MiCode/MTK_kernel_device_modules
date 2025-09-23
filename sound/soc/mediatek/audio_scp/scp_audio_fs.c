@@ -12,6 +12,7 @@
 #include <linux/kfifo.h>
 #include "adsp_helper.h"
 #include "scp_audio_ipi.h"
+#include <mtk-adspscp-external.h>
 
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
 #include "scp.h"
@@ -54,7 +55,7 @@ static long adspscp_driver_ioctl(
 			break;
 		}
 
-		t.cmd1.flag = is_scp_ready(SCP_A_ID);
+		t.cmd1.flag = is_scp_ready_wrap(SCP_A_ID);
 
 		if (copy_to_user((void __user *)arg, &t, sizeof(t))) {
 			ret = -EFAULT;
@@ -182,9 +183,9 @@ int scp_audio_debug_cmds_init(void)
 				   scp_audio_dbg_init_handler,
 				   "dbg init");
 
-	scp_A_register_notify(&audio_dbg_ctrl_notifier_scp);
+	scp_A_register_notify_wrap(&audio_dbg_ctrl_notifier_scp);
 
-	if (is_scp_ready(SCP_A_ID))
+	if (is_scp_ready_wrap(SCP_A_ID))
 		ret = scp_audio_debug_cmds_init_message();
 
 	pr_info("%s, done ret:%d", __func__, ret);

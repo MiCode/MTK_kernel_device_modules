@@ -10,6 +10,7 @@
 #include <linux/module.h>
 #include <linux/miscdevice.h>
 #include <linux/platform_device.h>
+#include <mtk-adspscp-external.h>
 #include "adsp_helper.h"
 #include "scp_audio_ipi.h"
 #include "scp_audio_logger.h"
@@ -264,7 +265,7 @@ int scp_audio_logger_init(struct platform_device *pdev)
 				   scp_audio_logger_init_handler,
 				   "logger init");
 
-	if (is_scp_ready(SCP_A_ID))
+	if (is_scp_ready_wrap(SCP_A_ID))
 		scp_audio_logger_init_message();
 
 	ret = misc_register(&mdev);

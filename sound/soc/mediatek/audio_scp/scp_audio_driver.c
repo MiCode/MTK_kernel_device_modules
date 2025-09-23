@@ -15,6 +15,7 @@
 #include "adsp_feature_define.h"
 #include "adsp_helper.h"
 #include "audio_mbox.h"
+#include <mtk-adspscp-external.h>
 
 #include "scp_audio_driver.h"
 #include "scp_audio_logger.h"
@@ -186,7 +187,7 @@ static int scp_audio_drv_probe(struct platform_device *pdev)
 		   scp_audio_lock_clk_source);
 	if (ret)
 		pr_info("%s, init adsp feature control fail (ret=%d)\n", __func__, ret);
-	scp_A_register_notify(&scp_audio_ctrl_notifier);
+	scp_A_register_notify_wrap(&scp_audio_ctrl_notifier);
 
 	/* register misc driver for ioctl and debug */
 	ret = misc_register(&scp_audio_fs_mdev);
@@ -337,6 +338,8 @@ static void __exit scp_audio_driver_exit(void)
 {
 	platform_unregister_drivers(drivers, ARRAY_SIZE(drivers));
 }
+
+MODULE_SOFTDEP("pre: scp");
 
 module_init(scp_audio_driver_init);
 module_exit(scp_audio_driver_exit);

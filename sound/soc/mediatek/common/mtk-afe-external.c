@@ -4,7 +4,9 @@
  */
 
 #include "mtk-afe-external.h"
+#include "mtk-adspscp-external.h"
 #include <linux/module.h>
+#include <linux/errno.h>
 
 static RAW_NOTIFIER_HEAD(afe_mem_init_noitify_chain);
 static ATOMIC_NOTIFIER_HEAD(semaphore_noitify_chain);
@@ -145,6 +147,83 @@ void register_get_power_scene_callback(void* (*callback)(void))
 	afe_get_power_scenario = callback;
 }
 EXPORT_SYMBOL_GPL(register_get_power_scene_callback);
+
+static struct scp_system_callback_op scp_sys_op = {0};
+int scp_system_cb_init(struct scp_system_callback_op *sys_callback)
+{
+	if (sys_callback) {
+		scp_sys_op.scp_awake_lock_cb = sys_callback->scp_awake_lock_cb;
+		scp_sys_op.scp_awake_unlock_cb = sys_callback->scp_awake_unlock_cb;
+		scp_sys_op.scp_clr_spm_reg_cb = sys_callback->scp_clr_spm_reg_cb;
+		scp_sys_op.is_scp_ready_cb = sys_callback->is_scp_ready_cb;
+		scp_sys_op.scp_A_register_notify_cb = sys_callback->scp_A_register_notify_cb;
+		return 0;
+	} else
+		return -EPERM;
+}
+EXPORT_SYMBOL_GPL(scp_system_cb_init);
+
+
+int scp_awake_lock_wrap(void *scp_id)
+{
+	int ret;
+
+	if (scp_sys_op.scp_awake_lock_cb != NULL) {
+		ret = scp_sys_op.scp_awake_lock_cb(scp_id);
+		return ret;
+	} else
+		return -EPERM;
+}
+EXPORT_SYMBOL_GPL(scp_awake_lock_wrap);
+
+int scp_awake_unlock_wrap(void *scp_id)
+{
+	int ret;
+
+	if (scp_sys_op.scp_awake_unlock_cb != NULL) {
+		ret = scp_sys_op.scp_awake_unlock_cb(scp_id);
+		return ret;
+	} else
+		return -EPERM;
+}
+EXPORT_SYMBOL_GPL(scp_awake_unlock_wrap);
+
+int scp_clr_spm_reg_cb_wrap(void *__unused)
+{
+	int ret;
+
+	if (scp_sys_op.scp_clr_spm_reg_cb != NULL) {
+		ret = scp_sys_op.scp_clr_spm_reg_cb(NULL);
+		return ret;
+	} else
+		return -EPERM;
+}
+EXPORT_SYMBOL_GPL(scp_clr_spm_reg_cb_wrap);
+
+unsigned int is_scp_ready_wrap(int id)
+{
+	unsigned int ret;
+
+	if (scp_sys_op.is_scp_ready_cb != NULL) {
+		ret = scp_sys_op.is_scp_ready_cb(id);
+		return ret;
+	} else
+		return 0;
+}
+EXPORT_SYMBOL_GPL(is_scp_ready_wrap);
+
+void scp_A_register_notify_wrap(struct notifier_block *nb)
+{
+	if (scp_sys_op.scp_A_register_notify_cb != NULL)
+		scp_sys_op.scp_A_register_notify_cb(nb);
+}
+EXPORT_SYMBOL_GPL(scp_A_register_notify_wrap);
+
+struct scp_system_callback_op *get_scp_system_op(void)
+{
+	return &scp_sys_op;
+}
+EXPORT_SYMBOL_GPL(get_scp_system_op);
 
 MODULE_SOFTDEP("post: mediatek-drm");
 

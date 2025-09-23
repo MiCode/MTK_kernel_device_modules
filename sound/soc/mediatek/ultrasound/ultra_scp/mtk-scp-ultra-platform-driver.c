@@ -21,6 +21,8 @@
 #include "mtk-scp-ultra-common.h"
 #include "mtk-base-afe.h"
 #include "ultra_ipi.h"
+#include <mtk-adspscp-external.h>
+
 #ifdef ULTRA_PCM_DUMP
 #include "mtk-scp-ultra_dump.h"
 #endif
@@ -880,7 +882,7 @@ static int mtk_scp_ultra_pcm_new(struct snd_soc_component *component)
 	ultra_dump_init();
 #endif
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
-	scp_A_register_notify(&usnd_scp_recover_notifier);
+	scp_A_register_notify_wrap(&usnd_scp_recover_notifier);
 #endif
 	ultra_suspend_lock = aud_wake_lock_init(NULL, "ultra wakelock");
 	pcm_dump_switch = false;

@@ -13,6 +13,7 @@
 #include <linux/platform_device.h>
 #include <linux/dma-mapping.h>
 #include <linux/notifier.h>
+#include <mtk-adspscp-external.h>
 
 #include <mt-plat/mtk_ccci_common.h>
 #include "audio_messenger_ipi.h"
@@ -594,7 +595,7 @@ static int __init usip_init(void)
 #endif
 #if IS_ENABLED(CONFIG_MTK_SCP_AUDIO)
 	if (is_audio_scp_support())
-		scp_A_register_notify(&audio_call_notifier_scp);
+		scp_A_register_notify_wrap(&audio_call_notifier_scp);
 #endif
 	ret = platform_driver_register(&speech_usip_mem);
 

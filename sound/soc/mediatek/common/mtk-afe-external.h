@@ -3,8 +3,8 @@
  * Copyright (C) 2018 MediaTek Inc.
  */
 
-#ifndef MTK_MEM_ALLOCATION_CONTROL_H_
-#define MTK_MEM_ALLOCATION_CONTROL_H_
+#ifndef MTK_AFE_EXTERNAL_H_
+#define MTK_AFE_EXTERNAL_H_
 #include <linux/notifier.h>
 
 enum {

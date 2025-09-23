@@ -35,9 +35,8 @@
 
 #include <scp_helper.h>
 #include <scp_audio_ipi.h>
-
 #include <audio_messenger_ipi.h>
-
+#include <mtk-adspscp-external.h>
 
 
 /*
@@ -1274,7 +1273,7 @@ static int dsp_send_msg_to_dsp(
 
 	if (is_audio_use_scp(dsp_id)) {
 		for (try_wake_cnt = 0; try_wake_cnt < k_max_try_wake_cnt; try_wake_cnt++) {
-			ret = scp_awake_lock((void *)SCP_A_ID);
+			ret = scp_awake_lock_wrap((void *)SCP_A_ID);
 
 			if (ret == 0)
 				break;
@@ -1368,7 +1367,7 @@ static int dsp_send_msg_to_dsp(
 	}
 
 	if (is_audio_use_scp(dsp_id))
-		scp_awake_unlock((void *)SCP_A_ID);
+		scp_awake_unlock_wrap((void *)SCP_A_ID);
 
 EXIT:
 	if (retry_flag == true || try_send_cnt >= k_max_try_send_cnt ||

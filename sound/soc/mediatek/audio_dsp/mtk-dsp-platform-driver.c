@@ -13,6 +13,7 @@
 #include <linux/pm_wakeup.h>
 #include <linux/mutex.h>
 #include <linux/vmalloc.h>
+#include <mtk-adspscp-external.h>
 
 #include <adsp_helper.h>
 #include <audio_ipi_platform.h>
@@ -1237,7 +1238,7 @@ void mtk_dsp_handler(struct mtk_base_dsp *dsp,
 int wait_scp_ready(void)
 {
 	/* should not call this in atomic or interrupt level */
-	if (!wait_event_timeout(scp_waitq, scp_standby_flag == 0 && is_scp_ready(SCP_A_ID),
+	if (!wait_event_timeout(scp_waitq, scp_standby_flag == 0 && is_scp_ready_wrap(SCP_A_ID),
 				msecs_to_jiffies(1000)))
 		return -EBUSY;
 	return 0;
@@ -2074,8 +2075,8 @@ static int mtk_dsp_probe(struct snd_soc_component *component)
 	if (get_adsp_type() == ADSP_TYPE_IN_SCP) {
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
 		init_waitqueue_head(&scp_waitq);
-		scp_A_register_notify(&scp_audio_notifier);
-		scp_A_register_notify(&scp_audio_uevent_notifier);
+		scp_A_register_notify_wrap(&scp_audio_notifier);
+		scp_A_register_notify_wrap(&scp_audio_uevent_notifier);
 #endif
 	}
 

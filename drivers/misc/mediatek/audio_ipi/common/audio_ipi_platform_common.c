@@ -7,7 +7,7 @@
 
 #include <linux/printk.h>
 #include <linux/bug.h>
-
+#include <mtk-adspscp-external.h>
 
 #include <scp_audio_ipi.h>
 #include <scp_helper.h>
@@ -224,7 +224,7 @@ bool is_audio_dsp_ready(const uint32_t dsp_id)
 		ret = (is_adsp_ready(ipi_dsp_id_to_adsp_cid(dsp_id)) == 1);
 #endif
 	} else if (is_audio_use_scp(dsp_id)) {
-		ret = (is_scp_ready(ipi_dsp_id_to_scp_cid(dsp_id)) == 1);
+		ret = (is_scp_ready_wrap(ipi_dsp_id_to_scp_cid(dsp_id)) == 1);
 	} else
 		pr_notice("dsp_id %u not support!!", dsp_id);
 

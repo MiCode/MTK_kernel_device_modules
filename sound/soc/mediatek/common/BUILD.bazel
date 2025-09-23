@@ -53,6 +53,7 @@ define_mgk_ddk_ko(
     ],
     header_deps = [
         "//kernel_device_modules-{}/sound/soc/mediatek/ultrasound/ultra_common:ddk_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/scp/include:scp_public_headers".format(kernel_version),
     ],
     copts = [
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
@@ -66,6 +67,13 @@ define_mgk_ddk_ko(
     srcs = [
         "mtk-afe-external.c",
         "mtk-afe-external.h",
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/sound/soc/mediatek/common:ddk_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/scp/include:scp_public_headers".format(kernel_version),
+    ],
+    includes = [
+        ".",
     ],
 )
 

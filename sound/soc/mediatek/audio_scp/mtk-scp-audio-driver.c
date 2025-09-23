@@ -13,6 +13,7 @@
 #include "mtk-scp-audio-base.h"
 #include "mtk-scp-audio-pcm.h"
 #include "mtk-scp-audio-mem-control.h"
+#include <mtk-adspscp-external.h>
 
 #define SND_SCP_AUDIO_DTS_SIZE (4)
 #define MTK_PCM_RATES (SNDRV_PCM_RATE_8000_48000 |\
@@ -158,8 +159,8 @@ static int scp_audio_dev_probe(struct platform_device *pdev)
 		return -1;
 	}
 
-	scp_A_register_notify(&scp_audio_recover_notifier);
-	scp_A_register_notify(&scp_uevent_notifier);
+	scp_A_register_notify_wrap(&scp_audio_recover_notifier);
+	scp_A_register_notify_wrap(&scp_uevent_notifier);
 
 	pr_info("%s done, ret:%d\n", __func__, ret);
 	return 0;

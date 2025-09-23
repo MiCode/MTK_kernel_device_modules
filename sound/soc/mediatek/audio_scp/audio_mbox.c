@@ -9,6 +9,8 @@
 #include "audio_mbox.h"
 #include "scp_audio_logger.h"
 #include "adsp_helper.h"
+#include "mtk-afe-external.h"
+#include "mtk-adspscp-external.h"
 
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
 #include "scp_ipi_pin.h"
@@ -18,6 +20,7 @@
 
 static u32 audio_mbox_pin_buf[AUDIO_MBOX_RECV_SLOT_SIZE];
 static bool mbox_init_done;
+static struct scp_system_callback_op *scp_system_op;
 
 struct mtk_mbox_info audio_mbox_table[AUDIO_TOTAL_MBOX] = {
 	{ .opt = MBOX_OPT_QUEUE_DIR, .is64d = true},
@@ -53,7 +56,7 @@ struct mtk_mbox_device audio_mboxdev = {
 	.recv_count = AUDIO_TOTAL_RECV_PIN,
 	.send_count = AUDIO_TOTAL_SEND_PIN,
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
-	.post_cb = (mbox_rx_cb_t)scp_clr_spm_reg,
+	.post_cb = NULL,
 #endif
 };
 
@@ -150,6 +153,12 @@ int audio_mbox_init(struct platform_device *pdev)
 	int ret = -1;
 	uint32_t idx;
 	struct mtk_mbox_device *mbdev = &audio_mboxdev;
+	scp_system_op = get_scp_system_op();
+
+	if (!scp_system_op)
+		pr_warn("%s, get_scp_system_op fail\n", __func__);
+
+	audio_mboxdev.post_cb = (mbox_rx_cb_t)(scp_system_op->scp_clr_spm_reg_cb);
 
 	/* Setup mbox info for different set of mbox channels */
 	if (!audio_mbox_table_init(&audio_mboxdev, pdev)) {
