@@ -501,8 +501,12 @@ void init_pkt_mmp_event(void)
 			pkt_mmp_root, "pkt_info_req");
 		g_PKT_MMP_Events[i].pkt_info_rel = mmprofile_register_event(
 			pkt_mmp_root, "pkt_info_rel");
+		g_PKT_MMP_Events[i].pkt_info_buf_cnt = mmprofile_register_event(
+			pkt_mmp_root, "pkt_info_buf_cnt");
 		g_PKT_MMP_Events[i].pkt_pool = mmprofile_register_event(
 			pkt_mmp_root, "pkt_pool");
+		g_PKT_MMP_Events[i].pkt_pool_buf_cnt = mmprofile_register_event(
+			pkt_mmp_root, "pkt_pool_buf_cnt");
 	}
 }
 

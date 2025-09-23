@@ -228,7 +228,9 @@ struct PKT_MMP_Events {
 	mmp_event pkt_info_new;
 	mmp_event pkt_info_req;
 	mmp_event pkt_info_rel;
+	mmp_event pkt_info_buf_cnt;
 	mmp_event pkt_pool;
+	mmp_event pkt_pool_buf_cnt;
 };
 
 struct DRM_MMP_Events *get_drm_mmp_events(void);

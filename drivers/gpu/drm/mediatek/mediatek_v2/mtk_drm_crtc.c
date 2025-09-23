@@ -19525,17 +19525,16 @@ create_new_pkt:
 		return pkt_info;
 	}
 
+	DDPINFO("%s: new pkt(id:%u), pool(size:%u)\n",
+		__func__, pkt_info->id, pkt_pool->size);
 	/* dump DB when pool size too much */
-	if (pkt_pool->size == 1000) {
-#if IS_ENABLED(CONFIG_ARM64)
-		DDPAEE_EXCEPTION("%s: pkt pool size too much", __func__);
-#else
+	if (pkt_pool->size == 1000)
 		DDPAEE("%s: pkt pool size too much", __func__);
-#endif
-	}
 
 	pkt_info->reuse_counter = 0;
 	INIT_LIST_HEAD(&pkt_info->list);
+	INIT_LIST_HEAD(&pkt_info->list_all);
+	list_add_tail(&pkt_info->list_all, &pkt_pool->list_all);
 
 	PKT_MMP_MARK(crtc_index, pkt_info_new, pkt_info->id, pkt_info->pf_idx);
 	PKT_MMP_MARK(crtc_index, pkt_pool, pkt_pool->list_len, pkt_pool->size);
@@ -19551,6 +19550,8 @@ void mtk_crtc_release_cmdq_pkt(struct mtk_cmdq_pkt_info *pkt_info)
 	struct mtk_drm_private *priv = NULL;
 	struct mtk_cmdq_pkt_pool *pkt_pool = NULL;
 	int crtc_index;
+	unsigned int all_buf_cnt = 0;
+	struct mtk_cmdq_pkt_info *tmp_pkt_info = NULL;
 
 	if (pkt_info == NULL)
 		return;
@@ -19580,6 +19581,17 @@ void mtk_crtc_release_cmdq_pkt(struct mtk_cmdq_pkt_info *pkt_info)
 		return;
 	}
 
+	mutex_lock(&pkt_pool->lock);
+
+	PKT_MMP_MARK(crtc_index, pkt_info_rel, pkt_info->id, pkt_info->pf_idx);
+	PKT_MMP_MARK(crtc_index, pkt_info_buf_cnt, pkt_info->id, pkt_info->cmdq_handle->buf_cnt);
+	DDPINFO("%s: pkt(id:%u, buf_cnt:%u), pool(size:%u, buf_cnt:%u)\n",
+		__func__, pkt_info->id, pkt_info->cmdq_handle->buf_cnt,
+		pkt_pool->size, all_buf_cnt);
+
+	mtk_drm_trace_begin("rel_pkt_info_id %u but_cnt %u pf_idx %u",
+		pkt_info->id, pkt_info->cmdq_handle->buf_cnt, pkt_info->pf_idx);
+
 	/* reset to release buffers */
 	cmdq_pkt_reset(pkt_info->cmdq_handle);
 
@@ -19587,19 +19599,25 @@ void mtk_crtc_release_cmdq_pkt(struct mtk_cmdq_pkt_info *pkt_info)
 	pkt_info->cmdq_handle->err_cb.cb = mtk_crtc_cmdq_timeout_cb;
 	pkt_info->cmdq_handle->err_cb.data = &pkt_info->mtk_crtc->base;
 
-	mutex_lock(&pkt_pool->lock);
-
-	mtk_drm_trace_begin("rel_pkt_info_id %u pf_idx %u",
-		pkt_info->id, pkt_info->pf_idx);
-
 	pkt_info->reuse_counter = 2;
 	list_add_tail(&pkt_info->list, &pkt_pool->list);
 	pkt_pool->list_len++;
 
-	PKT_MMP_MARK(crtc_index, pkt_info_rel, pkt_info->id, pkt_info->pf_idx);
 	PKT_MMP_MARK(crtc_index, pkt_pool, pkt_pool->list_len, pkt_pool->size);
-	mtk_drm_trace_end();
 	drm_trace_tag_value_state_byid("pkt_pool_list_len", pkt_pool->list_len, crtc_index);
+	drm_trace_tag_value_state_byid("pkt_pool_size", pkt_pool->size, crtc_index);
+
+	if (!list_empty(&pkt_pool->list_all))
+		list_for_each_entry(tmp_pkt_info, &pkt_pool->list_all, list_all)
+			all_buf_cnt += tmp_pkt_info->cmdq_handle->buf_cnt;
+	PKT_MMP_MARK(crtc_index, pkt_pool_buf_cnt, all_buf_cnt, 0);
+	drm_trace_tag_value_state_byid("pkt_pool_buf_cnt", all_buf_cnt, crtc_index);
+
+	/* dump DB when pool buf_cnt too much */
+	if (all_buf_cnt >= 300)
+		DDPAEE("%s: pkt pool buf_cnt %d too much", __func__, all_buf_cnt);
+
+	mtk_drm_trace_end();
 
 	if (pkt_pool->list_len > pkt_pool->size) {
 		drm_trace_tag_value_state_byid("pkt_pool_size", pkt_pool->size, crtc_index);
@@ -24531,6 +24549,7 @@ static void mtk_crtc_init_gce_obj(struct drm_device *drm_dev,
 		}
 		mutex_init(&mtk_crtc->gce_obj.pkt_pool[i]->lock);
 		INIT_LIST_HEAD(&mtk_crtc->gce_obj.pkt_pool[i]->list);
+		INIT_LIST_HEAD(&mtk_crtc->gce_obj.pkt_pool[i]->list_all);
 		mtk_crtc->gce_obj.pkt_pool[i]->mtk_crtc = mtk_crtc;
 		mtk_crtc->gce_obj.pkt_pool[i]->size = 0;
 		mtk_crtc->gce_obj.pkt_pool[i]->list_len = 0;

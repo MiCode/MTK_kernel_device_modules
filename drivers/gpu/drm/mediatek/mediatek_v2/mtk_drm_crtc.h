@@ -865,7 +865,10 @@ struct mtk_cmdq_pkt_pool {
 	unsigned int size;
 	/* list_len change when request/release pkt from pool */
 	unsigned int list_len;
+	/* free pkt list */
 	struct list_head list;
+	/* total pkt list */
+	struct list_head list_all;
 };
 
 struct mtk_cmdq_pkt_info {
@@ -873,7 +876,10 @@ struct mtk_cmdq_pkt_info {
 	struct mtk_cmdq_pkt_pool *pkt_pool;
 	struct cmdq_pkt *cmdq_handle;
 	struct mtk_cmdq_cb_data *cb_data;
+	/* free pkt list */
 	struct list_head list;
+	/* total pkt list */
+	struct list_head list_all;
 	unsigned int pf_idx;
 	unsigned int id;
 	/* reuse_counter record pkt reused times
