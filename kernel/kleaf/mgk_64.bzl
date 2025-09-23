@@ -1610,6 +1610,7 @@ mgk_64_kleaf_platform_modules = {
     "//vendor/mediatek/kernel_modules/mtkcam/mtk-pda:pda_drv_mt6993":"mt6993",
 
     "//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/isp8s:imgsys_8s":"mt6993",
+    "//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/isp8s:imgsys_8s_mt6881":"mt6881",
     "//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/isp8:imgsys_8":"mt6991",
     "//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/isp7sp:imgsys_7sp":"mt6858",
     "//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/isp71:imgsys_71":"mt6983 mt6879 mt6896 mt6895",
@@ -1617,6 +1618,7 @@ mgk_64_kleaf_platform_modules = {
     "//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/cmdq/legacy:imgsys_cmdq":"mt6858",
     "//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/cmdq/isp8:imgsys_cmdq_isp8":"mt6991",
     "//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/cmdq/isp8s:imgsys_cmdq_isp8s":"mt6993",
+    "//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/cmdq/isp8s:imgsys_cmdq_isp8s_mt6881":"mt6881",
     "//vendor/mediatek/kernel_modules/mtkcam/mtk-hcp/isp8s:mtk-hcp-isp8s":"mt6993",
     "//vendor/mediatek/kernel_modules/mtkcam/mtk-hcp/isp8:mtk-hcp-isp8":"mt6991",
     "//vendor/mediatek/kernel_modules/mtkcam/mtk-hcp/legacy:mtk-hcp":"mt6858",
