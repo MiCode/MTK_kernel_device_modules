@@ -51,11 +51,13 @@
 #define MTK_WAIT_GHWV_IRQ_DONE_CNT    10000
 #define MTK_WAIT_GHWV_IRQ_DONE_US     1
 
-/* VMM voting bits (10~22) */
+/* VMM voting bits (10~13) */
 #define VMM_VOTE_VAL			(0x3C00)
 /* VMM mtcmos chk bits */
 #define VMM_MTCMOS0_ACK_MASK		(0x10004)
 #define VMM_MTCMOS1_ACK_MASK		(0x2)
+/* VMM voting bits (18~22) */
+#define VMM_DBG_VOTE_VAL		(0x7C0000)
 
 #define MMUP_CORE_R_GPR11_ADDR (0x31a041ec)
 static void __iomem *__infra2hfrp_base, *__CORE_R_GPR11_reg;
@@ -1021,6 +1023,23 @@ static int _v1_hwccf_irq_voter_wait_done(struct regmap *regmap, uint32_t setclr_
 		udelay(100);
 	}
 
+	if (!is_set) {
+		if (vote_val & VMM_DBG_VOTE_VAL) {
+			for (i = 0; i <= MTK_WAIT_GHWV_MTCMOS_DONE_CNT; i++) {
+				val = hwccf_read(regmap, all_en_ofs);
+				udelay(MTK_WAIT_GHWV_MTCMOS_DONE_US);
+
+				if (IS_MASK_CLR(val, done_ack_msk))
+					break;
+
+				if (i == MTK_WAIT_GHWV_MTCMOS_DONE_CNT) {
+					HWCCF_ERR("%s check bit18~22 unvote timeout\n", is_set ? "set" : "clr");
+					ret = -HWV_SET_TIMEOUT;
+					goto ERR;
+				}
+			}
+		}
+	}
 
 	// Polling sta
 	ret = regmap_read_poll_timeout_atomic(regmap, sta_ofs, val,
