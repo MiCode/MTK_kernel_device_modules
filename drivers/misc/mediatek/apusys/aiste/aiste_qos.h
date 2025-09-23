@@ -11,6 +11,7 @@
 #define MAX_THREAD_NUM_PER_QOS 32
 
 struct qos_entry {
+	uint64_t id;
 	uint16_t ddr_boost_value;
 	uint16_t cpu_boost_value;
 	uint16_t thread_count; // Input: number of threads

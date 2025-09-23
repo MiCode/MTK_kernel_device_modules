@@ -32,9 +32,9 @@ struct aiste_ioctl_request {
 	struct aiste_ioctl_qos qos;
 };
 
-#define AISTE_IOCTL_CREATE_QOS _IOWR(AISTE_MAGIC, 0, struct aiste_ioctl_id)
+#define AISTE_IOCTL_CREATE_QOS _IOR(AISTE_MAGIC, 0, struct aiste_ioctl_id)
 #define AISTE_IOCTL_REQUEST_QOS _IOWR(AISTE_MAGIC, 1, struct aiste_ioctl_request)
-#define AISTE_IOCTL_DELETE_QOS _IOWR(AISTE_MAGIC, 2, struct aiste_ioctl_id)
+#define AISTE_IOCTL_DELETE_QOS _IOW(AISTE_MAGIC, 2, struct aiste_ioctl_id)
 
 struct miscdevice *aiste_get_misc_dev(void);
 

@@ -7,6 +7,8 @@
 #include <linux/list.h> // for list_head
 #include <linux/uaccess.h> // for copy_from_user
 #include <linux/string.h> // for memcmp
+#include <linux/random.h>
+#include <linux/jiffies.h>
 
 #include "aiste_qos.h"
 #include "aiste_scmi.h"
@@ -93,7 +95,7 @@ struct qos_entry *validate_and_get_qos_entry(uint64_t qos_id)
 	struct qos_entry *entry = NULL;
 
 	list_for_each_entry(entry, &qos_list, list) {
-		if (entry->used && (uint64_t)entry == qos_id)
+		if (entry->used && entry->id == qos_id)
 			return entry;
 	}
 	aiste_err("%s: invalid qos_id: %llx\n", __func__, qos_id);
@@ -130,6 +132,14 @@ int aiste_qos_deinit(void)
 	return 0;
 }
 
+static uint64_t generate_unique_id(void)
+{
+	uint64_t random_part = get_random_u64();
+	uint64_t time_part = (uint64_t)jiffies;
+
+	return (random_part ^ time_part);
+}
+
 /* return the id of the newly created qos entry. */
 uint64_t aiste_create_qos(void)
 {
@@ -157,7 +167,8 @@ uint64_t aiste_create_qos(void)
 	list_add_tail(&entry->list, &qos_list);
 
 FIND_ENTRY:
-	return (uint64_t)entry;
+	entry->id = generate_unique_id();
+	return entry->id;
 }
 
 int aiste_delete_qos(struct qos_entry *entry)
