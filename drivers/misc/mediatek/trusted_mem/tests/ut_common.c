@@ -37,8 +37,8 @@
 #include "tests/ut_common.h"
 #include "ssmr/memory_ssmr.h"
 
-#define ONE_STRESS_THREAD (1)
-#define MAX_ALLOC (100)
+#define ONE_STRESS_THREAD (2)
+#define MAX_ALLOC (1000)
 #define MAXORDER (9) //page order: 0~8
 #define KEEPORDER (5)
 #define MAX_STRESS_THREAD (16)
@@ -357,14 +357,9 @@ int ut_multi_thread_mtkSecHeap(void *from)
 	int i;
 	int loop;
 	u64 size;
-	u64 align;
-	u64 upper;
-	u32 remainder;
 
 	strcpy(sec_heap_name, "mtk_svp_page-uncached");
-	align = 0x1000;
 	loop = MAX_ALLOC;
-	upper = 0x1000000;
 
 	for (i = 0; i < loop; i++) {
 		dma_heap = dma_heap_find(sec_heap_name);
@@ -372,7 +367,7 @@ int ut_multi_thread_mtkSecHeap(void *from)
 			pr_info("heap_find fail\n");
 			goto sec_out1;
 		}
-		size = get_random_u64() % (upper / align) * align + 0x1000;
+		size = get_random_u64() % 0x100000;
 		ut_dmabuf = dma_heap_buffer_alloc(dma_heap, size,
 						  O_RDWR | O_CLOEXEC,
 						  DMA_HEAP_VALID_HEAP_FLAGS);
@@ -387,10 +382,8 @@ int ut_multi_thread_mtkSecHeap(void *from)
 
 sec_out1:
 
-	strcpy(sec_heap_name, "mtk_sapu_page-uncached");
-	align = 0x1000;
+	strscpy(sec_heap_name, "mtk_prot_page-uncached");
 	loop = MAX_ALLOC;
-	upper = 0x1000000;
 
 	for (i = 0; i < loop; i++) {
 		dma_heap = dma_heap_find(sec_heap_name);
@@ -398,7 +391,7 @@ sec_out1:
 			pr_info("heap_find fail\n");
 			goto sec_out2;
 		}
-		size = get_random_u64() % (upper / align) * align + 0x1000;
+		size = get_random_u64() % 0x200000;
 		ut_dmabuf = dma_heap_buffer_alloc(dma_heap, size,
 						  O_RDWR | O_CLOEXEC,
 						  DMA_HEAP_VALID_HEAP_FLAGS);
@@ -413,10 +406,8 @@ sec_out1:
 
 sec_out2:
 
-	strscpy(sec_heap_name, "mtk_tee_page-uncached", sizeof(sec_heap_name));
-	align = 0x1000;
+	strscpy(sec_heap_name, "mtk_wfd_page-uncached", sizeof(sec_heap_name));
 	loop = MAX_ALLOC;
-	upper = 0x1000000;
 
 	for (i = 0; i < loop; i++) {
 		dma_heap = dma_heap_find(sec_heap_name);
@@ -424,9 +415,7 @@ sec_out2:
 			pr_info("heap_find fail\n");
 			goto sec_out3;
 		}
-		//size = get_random_u64() % (upper / align) * align + 0x1000;
-		div_u64_rem( get_random_u64(), (upper / align) * align, &remainder);
-		size = remainder + 0x1000;
+		size = get_random_u64() % 0x5000;
 		ut_dmabuf = dma_heap_buffer_alloc(dma_heap, size,
 						  O_RDWR | O_CLOEXEC,
 						  DMA_HEAP_VALID_HEAP_FLAGS);
