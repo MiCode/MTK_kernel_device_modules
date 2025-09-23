@@ -2968,6 +2968,7 @@ static int vidioc_vdec_s_fmt(struct file *file, void *priv,
 	struct mtk_vcodec_ctx *ctx = fh_to_ctx(priv);
 	struct v4l2_pix_format_mplane *pix_mp;
 	struct mtk_q_data *q_data;
+	struct vb2_queue *vq;
 	int ret = 0;
 	struct mtk_video_fmt *fmt;
 
@@ -2982,8 +2983,14 @@ static int vidioc_vdec_s_fmt(struct file *file, void *priv,
 	if (!q_data)
 		return -EINVAL;
 
+	vq = v4l2_m2m_get_vq(ctx->m2m_ctx, f->type);
+	if (!vq) {
+		mtk_v4l2_err("no vb2 queue for type=%d", f->type);
+		return -EINVAL;
+	}
+
 	pix_mp = &f->fmt.pix_mp;
-	if (vb2_is_busy(v4l2_m2m_get_vq(ctx->m2m_ctx, f->type))) {
+	if (vb2_is_busy(vq)) {
 		mtk_v4l2_err("%s_q_ctx buffers already requested",
 			V4L2_TYPE_IS_OUTPUT(f->type) ? "out" : "cap");
 		ret = -EBUSY;
@@ -3191,6 +3198,8 @@ static int vidioc_vdec_g_fmt(struct file *file, void *priv,
 	}
 
 	q_data = mtk_vdec_get_q_data(ctx, f->type);
+	if (!q_data)
+		return -EINVAL;
 
 	pix_mp->field = V4L2_FIELD_NONE;
 	pix_mp->colorspace = ctx->colorspace;
