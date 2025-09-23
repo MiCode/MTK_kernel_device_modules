@@ -24416,6 +24416,10 @@ static void mtk_crtc_get_event_name(struct mtk_drm_crtc *mtk_crtc, char *buf,
 	case EVENT_DBI_COUNT_EOF:
 		len = snprintf(buf, buf_len, "disp_dbi_count_eof");
 		break;
+	case EVENT_OVLSYS_DISP_OVL0_SOF:
+		len = snprintf(buf, buf_len, "disp_ovlsys0_sof%d",
+					drm_crtc_index(&mtk_crtc->base));
+		break;
 	default:
 		DDPPR_ERR("%s invalid event_id:%d\n", __func__, event_id);
 		memset(output_comp, 0, sizeof(output_comp));
