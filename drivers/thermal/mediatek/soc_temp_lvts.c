@@ -5194,7 +5194,6 @@ enum mt6895_lvts_sensor_enum {
 	MT6895_TS5_0,
 	MT6895_TS5_1,
 	MT6895_TS6_0,
-	MT6895_TS6_1,
 	MT6895_TS6_2,
 	MT6895_TS7_0,
 	MT6895_TS7_1,
@@ -5206,7 +5205,6 @@ enum mt6895_lvts_sensor_enum {
 	MT6895_TS9_1,
 	MT6895_TS9_2,
 	MT6895_NUM_TS
-
 };
 
 enum mt6895_lvts_controller_enum {
@@ -5380,9 +5378,9 @@ static struct tc_settings mt6895_tc_settings[] = {
 	[MT6895_LVTS_AP_CTRL1] = {
 		.domain_index = MT6895_AP_DOMAIN,
 		.addr_offset = 0x100,
-		.num_sensor = 3,
-		.sensor_map = {MT6895_TS6_0, MT6895_TS6_1, MT6895_TS6_2},
-		.sensor_on_off = {SEN_ON, SEN_OFF, SEN_ON},
+		.num_sensor = 2,
+		.sensor_map = {MT6895_TS6_0, MT6895_TS6_2},
+		.sensor_on_off = {SEN_ON, SEN_ON},
 		.tc_speed = SET_TC_SPEED_IN_US(4816, 4816, 4816, 4816),
 		.hw_filter = LVTS_FILTER_1,
 		.dominator_sensing_point = SENSING_POINT0,
