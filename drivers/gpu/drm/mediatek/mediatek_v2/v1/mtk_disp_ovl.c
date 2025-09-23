@@ -6981,6 +6981,35 @@ static const struct mtk_disp_ovl_data mt6878_ovl_driver_data = {
 	.ovl_phy_mapping = &mtk_ovl_phy_mapping_MT6878,
 };
 
+static const struct mtk_disp_ovl_data mt6881_ovl_driver_data = {
+	.addr = DISP_REG_OVL_ADDR_BASE,
+	.el_addr_offset = 0x10,
+	.el_hdr_addr = 0xfb4,
+	.el_hdr_addr_offset = 0x10,
+	.fmt_rgb565_is_0 = true,
+	.fmt_uyvy = 4U << 12,
+	.fmt_yuyv = 5U << 12,
+	.compr_info = &compr_info_mt6878,
+	.support_shadow = false,
+	.need_bypass_shadow = true,
+	.preultra_th_dc = 0xe0,
+	.fifo_size = 288,
+	.issue_req_th_dl = 191,
+	.issue_req_th_dc = 15,
+	.issue_req_th_urg_dl = 95,
+	.issue_req_th_urg_dc = 15,
+	.greq_num_dl = 0x5555,
+	.is_support_34bits = true,
+	.aid_sel_mapping = &mtk_ovl_aid_sel_MT6878,
+	.aid_per_layer_setting = false,
+	.mmsys_mapping = &mtk_ovl_mmsys_mapping_MT6878,
+	.source_bpc = 10,
+	/* mt6881 not support pq self loop ??? */
+	/* but can set pq out and input back to ufod in to constant lye */
+	.pqout_ufodin_loop = true,
+	.ovl_phy_mapping = &mtk_ovl_phy_mapping_MT6878,
+};
+
 static const struct mtk_disp_ovl_data mt8173_ovl_driver_data = {
 	.addr = DISP_REG_OVL_ADDR_MT8173,
 	.el_addr_offset = 0x04,
@@ -7044,6 +7073,8 @@ static const struct of_device_id mtk_disp_ovl_driver_dt_match[] = {
 	 .data = &mt6858_ovl_driver_data},
 	{.compatible = "mediatek,mt6878-disp-ovl",
 	 .data = &mt6878_ovl_driver_data},
+	{.compatible = "mediatek,mt6881-disp-ovl",
+	 .data = &mt6881_ovl_driver_data},
 	{},
 };
 MODULE_DEVICE_TABLE(of, mtk_disp_ovl_driver_dt_match);

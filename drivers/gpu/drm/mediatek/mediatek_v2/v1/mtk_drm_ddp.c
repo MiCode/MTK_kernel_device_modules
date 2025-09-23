@@ -10276,6 +10276,16 @@ static const struct mtk_disp_ddp_data mt6878_ddp_driver_data = {
 	.wakeup_esd_wq = 1,
 };
 
+static const struct mtk_disp_ddp_data mt6881_ddp_driver_data = {
+	.mutex_mod = mt6878_mutex_mod,
+	.mutex_sof = mt6878_mutex_sof,
+	.mutex_mod_reg = MT6878_DISP_MUTEX0_MOD0,
+	.mutex_sof_reg = MT6878_DISP_MUTEX0_SOF,
+	.dispsys_map = mt6878_dispsys_map,
+	.wakeup_pf_wq = 1,
+	.wakeup_esd_wq = 1,
+};
+
 const struct mtk_mmsys_reg_data mt2701_mmsys_reg_data = {
 	.ovl0_mout_en = MT2701_DISP_OVL0_MOUT_EN,
 };
@@ -10426,6 +10436,11 @@ const struct mtk_mmsys_reg_data mt6858_mmsys_reg_data = {
 };
 
 const struct mtk_mmsys_reg_data mt6878_mmsys_reg_data = {
+	// To-Do
+	.dispsys_map = mt6878_dispsys_map,
+};
+
+const struct mtk_mmsys_reg_data mt6881_mmsys_reg_data = {
 	// To-Do
 	.dispsys_map = mt6878_dispsys_map,
 };
@@ -35137,6 +35152,44 @@ void mtk_ddp_add_comp_to_path(struct mtk_drm_crtc *mtk_crtc,
 
 		break;
 
+	case MMSYS_MT6881:
+		addr = MT6878_DISPSYS_BYPASS_MUX_SHADOW;
+		reg = 0x01;
+		addr1 = MT6878_MMSYS_CROSSBAR_CON;
+		reg1 = 0xFF0000;
+
+		reg = readl_relaxed(config_regs +
+			addr) | reg;
+		writel_relaxed(reg, config_regs + addr);
+
+		reg1 = readl_relaxed(config_regs +
+			addr1) | reg1;
+		writel_relaxed(reg1, config_regs + addr1);
+
+		value = mtk_ddp_ovl_con_MT6878(cur, next, &addr);
+		if (value >= 0) {
+			reg = readl_relaxed(config_regs + addr) |
+					(unsigned int)value;
+			writel_relaxed(reg, config_regs + addr);
+		}
+
+		value = mtk_ddp_mout_en_MT6878(reg_data, cur, next, &addr);
+		if (value >= 0) {
+			reg = readl_relaxed(config_regs + addr) |
+					(unsigned int)value;
+			writel_relaxed(reg, config_regs + addr);
+		}
+
+		value = mtk_ddp_sout_sel_MT6878(reg_data, cur, next, &addr);
+		if (value >= 0)
+			writel_relaxed(value, config_regs + addr);
+
+		value = mtk_ddp_sel_in_MT6878(reg_data, cur, next, &addr);
+		if (value >= 0)
+			writel_relaxed(value, config_regs + addr);
+
+		break;
+
 	default:
 		DDPINFO("%s mtk drm not support mmsys id %d\n",
 			__func__, priv->data->mmsys_id);
@@ -35999,6 +36052,43 @@ void mtk_ddp_add_comp_to_path_with_cmdq(struct mtk_drm_crtc *mtk_crtc,
 
 		break;
 
+	case MMSYS_MT6881:
+		addr = MT6878_DISPSYS_BYPASS_MUX_SHADOW;
+		reg = 0x01;
+		addr1 = MT6878_MMSYS_CROSSBAR_CON;
+		reg1 = 0xFF0000;
+
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			config_regs_pa + addr, reg, ~0);
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			config_regs_pa + addr1, reg1, reg1);
+
+		value = mtk_ddp_ovl_con_MT6878(cur, next, &addr);
+		if (value >= 0)
+			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+				config_regs_pa
+				+ addr, value, value);
+
+		value = mtk_ddp_mout_en_MT6878(reg_data, cur, next, &addr);
+		if (value >= 0)
+			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+				config_regs_pa
+				+ addr, value, value);
+
+		value = mtk_ddp_sout_sel_MT6878(reg_data, cur, next, &addr);
+		if (value >= 0)
+			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+				config_regs_pa
+				+ addr, value, ~0);
+
+		value = mtk_ddp_sel_in_MT6878(reg_data, cur, next, &addr);
+		if (value >= 0)
+			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+				config_regs_pa
+				+ addr, value, ~0);
+
+		break;
+
 	default:
 		DDPINFO("%s mtk drm not support mmsys id %d\n",
 			__func__, priv->data->mmsys_id);
@@ -36406,6 +36496,24 @@ void mtk_ddp_remove_comp_from_path(struct mtk_drm_crtc *mtk_crtc,
 			writel_relaxed(reg, config_regs + addr);
 		}
 		break;
+	case MMSYS_MT6881:
+		if (!reg_data) {
+			DDPPR_ERR("%s failed with NULL reg_data or dispsys_map\n", __func__);
+			break;
+		}
+
+		value = mtk_ddp_ovl_con_MT6878(cur, next, &addr);
+		if (value >= 0) {
+			reg = readl_relaxed(config_regs + addr) & ~(unsigned int)value;
+			writel_relaxed(reg, config_regs + addr);
+		}
+
+		value = mtk_ddp_mout_en_MT6878(reg_data, cur, next, &addr);
+		if (value >= 0) {
+			reg = readl_relaxed(config_regs + addr) & ~(unsigned int)value;
+			writel_relaxed(reg, config_regs + addr);
+		}
+		break;
 	default:
 		DDPINFO("%s mtk drm not support mmsys id %d\n",
 			__func__, priv->data->mmsys_id);
@@ -36790,6 +36898,19 @@ void mtk_ddp_remove_comp_from_path_with_cmdq(struct mtk_drm_crtc *mtk_crtc,
 					   ~(unsigned int)value, value);
 		break;
 	case MMSYS_MT6878:
+		value = mtk_ddp_ovl_con_MT6878(cur, next, &addr);
+		if (value >= 0)
+			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+					   config_regs_pa + addr,
+					   ~(unsigned int)value, value);
+
+		value = mtk_ddp_mout_en_MT6878(reg_data, cur, next, &addr);
+		if (value >= 0)
+			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+					   config_regs_pa + addr,
+					   ~(unsigned int)value, value);
+		break;
+	case MMSYS_MT6881:
 		value = mtk_ddp_ovl_con_MT6878(cur, next, &addr);
 		if (value >= 0)
 			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
@@ -39377,6 +39498,9 @@ mtk_ddp_get_mmsys_reg_data(enum mtk_mmsys_id mmsys_id)
 		break;
 	case MMSYS_MT6878:
 		data = &mt6878_mmsys_reg_data;
+		break;
+	case MMSYS_MT6881:
+		data = &mt6881_mmsys_reg_data;
 		break;
 	default:
 		DDPPR_ERR("mtk drm not support mmsys id %d\n", mmsys_id);
@@ -48083,6 +48207,8 @@ static const struct of_device_id ddp_driver_dt_match[] = {
 	 .data = &mt6855_ddp_driver_data},
 	{.compatible = "mediatek,mt6878-disp-mutex",
 	 .data = &mt6878_ddp_driver_data},
+	{.compatible = "mediatek,mt6881-disp-mutex",
+	 .data = &mt6881_ddp_driver_data},
 	{.compatible = "mediatek,mt8173-disp-mutex",
 	 .data = &mt8173_ddp_driver_data},
 	{.compatible = "mediatek,mt6858-disp-mutex",

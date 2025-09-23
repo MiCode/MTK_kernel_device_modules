@@ -1827,7 +1827,8 @@ unsigned int mtk_dsi_default_rate(struct mtk_dsi *dsi)
 		priv->data->mmsys_id == MMSYS_MT6789 ||
 		priv->data->mmsys_id == MMSYS_MT6855 ||
 		priv->data->mmsys_id == MMSYS_MT6858 ||
-		priv->data->mmsys_id == MMSYS_MT6878) &&
+		priv->data->mmsys_id == MMSYS_MT6878 ||
+		priv->data->mmsys_id == MMSYS_MT6881) &&
 		(dsi->d_rate != 0)) {
 		data_rate = dsi->d_rate;
 		DDPMSG("%s, data rate=%d\n", __func__, data_rate);
@@ -2882,7 +2883,8 @@ static int mtk_dsi_calculate_rw_times(struct mtk_dsi *dsi,
 			priv->data->mmsys_id == MMSYS_MT6991 ||
 			priv->data->mmsys_id == MMSYS_MT6993 ||
 			priv->data->mmsys_id == MMSYS_MT6858 ||
-			priv->data->mmsys_id == MMSYS_MT6878))
+			priv->data->mmsys_id == MMSYS_MT6878 ||
+			priv->data->mmsys_id == MMSYS_MT6881))
 		in_width = DSI_IPM_1_8_0_0_IN_WIDTH;
 	else
 		in_width = DSI_IPM_1_6_0_1_IN_WIDTH;
@@ -3030,7 +3032,8 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 		}
 	} else if (!IS_ERR_OR_NULL(priv) && !IS_ERR_OR_NULL(priv->data)
 		&& priv->data->mmsys_id == MMSYS_MT6858 ||
-		   priv->data->mmsys_id == MMSYS_MT6878) {
+		   priv->data->mmsys_id == MMSYS_MT6878 ||
+		   priv->data->mmsys_id == MMSYS_MT6881) {
 		if ((comp->id == DDP_COMPONENT_DSI0) || (comp->id == DDP_COMPONENT_DSI1))
 			buf_con = 1554;
 		else
@@ -8073,7 +8076,8 @@ static void mtk_dsi_config_trigger(struct mtk_ddp_comp *comp,
 			&& priv->data->mmsys_id != MMSYS_MT6993
 			&& priv->data->mmsys_id != MMSYS_MT6765
 			&& priv->data->mmsys_id != MMSYS_MT6858
-			&& priv->data->mmsys_id != MMSYS_MT6878)
+			&& priv->data->mmsys_id != MMSYS_MT6878
+			&& priv->data->mmsys_id != MMSYS_MT6881)
 			cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->mtk_crtc->config_regs_pa + 0xF0, 0x1, 0x1);
 
@@ -16948,6 +16952,36 @@ static const struct mtk_dsi_driver_data mt6878_dsi_driver_data = {
 	.bubble_rate = 115,
 };
 
+static const struct mtk_dsi_driver_data mt6881_dsi_driver_data = {
+	.reg_cmdq0_ofs = 0xd00,
+	.reg_cmdq1_ofs = 0xd04,
+	.reg_vm_cmd_con_ofs = 0x200,
+	.reg_vm_cmd_data0_ofs = 0x208,
+	.reg_vm_cmd_data10_ofs = 0x218,
+	.reg_vm_cmd_data20_ofs = 0x228,
+	.reg_vm_cmd_data30_ofs = 0x238,
+	.reg_shadow_ofs = 0xc00,
+	.poll_for_idle = mtk_dsi_poll_for_idle,
+	.irq_handler = mtk_dsi_irq_status,
+	.esd_eint_compat = "mediatek, DSI_TE-eint",
+	.support_shadow = false,
+	.need_bypass_shadow = true,
+	.need_wait_fifo = false,
+	.dsi_buffer = true,
+	.support_pre_urgent = true,
+	.vm_rgb_time_interval = true,
+	.disable_te_timeout_by_set_cnt = true,
+	.buffer_unit = 32,
+	.sram_unit = 32,
+	.urgent_lo_fifo_us = 14,
+	.urgent_hi_fifo_us = 15,
+	.max_vfp = 0x7ffe,
+	.dsi0_pa = 0x1401a000,
+	.dsi1_pa = 0x1401b000,
+	.mmclk_by_datarate = mtk_dsi_set_mmclk_by_datarate_V2,
+	.n_verion = VER_N4,
+};
+
 static const struct mtk_dsi_driver_data mt2701_dsi_driver_data = {
 	.reg_cmdq0_ofs = 0x180, .irq_handler = mtk_dsi_irq,
 	.reg_cmdq1_ofs = 0x204,
@@ -16992,6 +17026,7 @@ static const struct of_device_id mtk_dsi_of_match[] = {
 	{.compatible = "mediatek,mt6835-dsi", .data = &mt6835_dsi_driver_data},
 	{.compatible = "mediatek,mt6858-dsi", .data = &mt6858_dsi_driver_data},
 	{.compatible = "mediatek,mt6878-dsi", .data = &mt6878_dsi_driver_data},
+	{.compatible = "mediatek,mt6881-dsi", .data = &mt6881_dsi_driver_data},
 	{},
 };
 

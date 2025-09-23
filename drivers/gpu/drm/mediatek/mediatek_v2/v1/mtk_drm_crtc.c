@@ -1587,6 +1587,9 @@ void mtk_drm_crtc_mini_dump(struct drm_crtc *crtc)
 	case MMSYS_MT6878:
 		mmsys_config_dump_reg_mt6878(mtk_crtc->config_regs);
 		break;
+	case MMSYS_MT6881:
+		mmsys_config_dump_reg_mt6878(mtk_crtc->config_regs);
+		break;
 
 	default:
 		DDPPR_ERR("%s mtk drm not support mmsys id %d\n",
@@ -1823,6 +1826,10 @@ void mtk_drm_crtc_dump(struct drm_crtc *crtc)
 		mutex_dump_reg_mt6858(mtk_crtc->mutex[0]);
 		break;
 	case MMSYS_MT6878:
+		mmsys_config_dump_reg_mt6878(mtk_crtc->config_regs);
+		mutex_dump_reg_mt6878(mtk_crtc->mutex[0]);
+		break;
+	case MMSYS_MT6881:
 		mmsys_config_dump_reg_mt6878(mtk_crtc->config_regs);
 		mutex_dump_reg_mt6878(mtk_crtc->mutex[0]);
 		break;
@@ -2236,6 +2243,11 @@ void mtk_drm_crtc_mini_analysis(struct drm_crtc *crtc)
 		// mmsys_config_dump_analysis_mt6878(mtk_crtc->config_regs);
 		mmsys_config_dump_analysis_mt6878(crtc);
 		break;
+	case MMSYS_MT6881:
+		DDPDUMP("== DUMP DISP pipe-0 ANALYSIS:0x%pa ==\n",
+			&mtk_crtc->config_regs_pa);
+		mmsys_config_dump_analysis_mt6878(crtc);
+		break;
 	case MMSYS_MT6873:
 	case MMSYS_MT6853:
 	case MMSYS_MT6833:
@@ -2574,6 +2586,19 @@ void mtk_drm_crtc_analysis(struct drm_crtc *crtc)
 				mtk_dump_reg(comp);
 			}
 		}
+		break;
+	case MMSYS_MT6881:
+		mmsys_config_dump_analysis_mt6878(crtc);
+		mutex_dump_analysis_mt6878(mtk_crtc->mutex[0]);
+		// mtk_vidle_dpc_analysis();
+		// if (mtk_crtc->is_dual_pipe) {
+			// DDPDUMP("anlysis dual pipe\n");
+			// mtk_ddp_dual_pipe_dump(mtk_crtc);
+			// for_each_comp_in_dual_pipe(comp, mtk_crtc, i, j) {
+				// mtk_dump_analysis(comp);
+				// mtk_dump_reg(comp);
+			// }
+		// }
 		break;
 	default:
 		DDPPR_ERR("%s mtk drm not support mmsys id %d\n",
@@ -6822,6 +6847,9 @@ unsigned int dual_pipe_comp_mapping(unsigned int mmsys_id, unsigned int comp_id)
 		ret = dual_comp_map_mt6991(comp_id);
 		break;
 	case MMSYS_MT6878:
+		ret = dual_comp_map_mt6878(comp_id);
+		break;
+	case MMSYS_MT6881:
 		ret = dual_comp_map_mt6878(comp_id);
 		break;
 	default:
@@ -13016,6 +13044,9 @@ static void mtk_crtc_addon_connector_disconnect(struct drm_crtc *crtc,
 		case MMSYS_MT6878:
 			mtk_ddp_remove_dsc_prim_mt6878(mtk_crtc, handle);
 			break;
+		case MMSYS_MT6881:
+			mtk_ddp_remove_dsc_prim_mt6878(mtk_crtc, handle);
+			break;
 		default:
 			DDPINFO("%s mtk drm not support mmsys id %d\n",
 				__func__, priv->data->mmsys_id);
@@ -13190,6 +13221,9 @@ void mtk_crtc_addon_connector_connect(struct drm_crtc *crtc,
 			mtk_ddp_insert_dsc_prim_mt6858(mtk_crtc, handle);
 			break;
 		case MMSYS_MT6878:
+			mtk_ddp_insert_dsc_prim_mt6878(mtk_crtc, handle);
+			break;
+		case MMSYS_MT6881:
 			mtk_ddp_insert_dsc_prim_mt6878(mtk_crtc, handle);
 			break;
 		default:
@@ -21976,6 +22010,7 @@ u16 mtk_get_gpr(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle)
 	case MMSYS_MT6855:
 	case MMSYS_MT6858:
 	case MMSYS_MT6878:
+	case MMSYS_MT6881:
 		if (handle->cl == (void *)client_dsi)
 			return ((drm_crtc_index(crtc) == 0) ? CMDQ_GPR_R03 : CMDQ_GPR_R05);
 		else
