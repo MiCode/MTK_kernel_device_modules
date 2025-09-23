@@ -142,10 +142,10 @@ SENINF_RETURN seninf_auth(SENINF_TEE_REG *preg)
 	ApiISPGetSecureState(&cam_state);
 
 #ifdef SENINF_UT //def SENINF_UT
-	uint32_t *pregister = (uint32_t *)preg;
+	// uint32_t *pregister = (uint32_t *)preg;
 
-	for (int i = 0; i < sizeof(SENINF_TEE_REG) / sizeof(uint32_t); i++)
-		MOD_PUTS2(PFX "{i, reg} =", i, pregister[i]);
+	// for (int i = 0; i < sizeof(SENINF_TEE_REG) / sizeof(uint32_t); i++)
+	//	MOD_PUTS2(PFX "{i, reg} =", i, pregister[i]);
 
 	for (int i = 0; i < SENINF_AUTH_CAM_NUM; i++)
 		MOD_PUTS2(PFX "{i, SecTG} =", i, cam_state.cam_info[i].SecTG);

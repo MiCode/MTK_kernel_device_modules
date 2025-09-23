@@ -15,10 +15,6 @@
 #include "seninf_tee_reg.h"
 #include "sensor_cfg_sec.h"
 
-#ifdef memset
-#undef memset
-#endif
-
 const struct pkvm_module_ops *pkvm_seninf_ops;
 
 static SENINF_RETURN seninf_checkpipe(void);
