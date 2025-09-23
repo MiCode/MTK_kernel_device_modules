@@ -582,6 +582,7 @@ inline void update_thermal_pressure_capacity(bool update_all, int this_cpu)
 	struct cpumask *cpus;
 	unsigned int freq_thermal, last_th_freq;
 	int wl = get_curr_wl(), r_o = is_dpt_v2_support() ? 1 : 0;
+	int dbg[16];
 
 	for (gear_id = 0; gear_id < num_sched_clusters; gear_id++) {
 		cpus = get_gear_cpumask(gear_id);
@@ -591,7 +592,9 @@ inline void update_thermal_pressure_capacity(bool update_all, int this_cpu)
 
 		freq_thermal = get_cpu_ceiling_freq(gear_id);
 		last_th_freq = READ_ONCE(per_cpu(thermal_freq, first_cpu));
-		trace_sched_frequency_limits(first_cpu, freq_thermal);
+		for (int i=0; i<16; i++)
+			dbg[i] = get_cpu_cooler_dbg(i);
+		trace_sched_frequency_limits(first_cpu, freq_thermal, dbg);
 
 
 		thermal_max_capacity = pd_freq2util(first_cpu, freq_thermal, true, wl, NULL, r_o);
