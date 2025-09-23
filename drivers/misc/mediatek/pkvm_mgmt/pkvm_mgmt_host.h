@@ -17,5 +17,9 @@ void kvm_nvhe_sym(hyp_pmm_kvm_secure_pages)(u32 *pmm_ipc, u32 count, u8 attr);
 void kvm_nvhe_sym(hyp_pmm_kvm_unsecure_pages)(u32 *pmm_ipc, u32 count, u8 attr);
 
 typedef int TZ_RESULT;
+TZ_RESULT kvm_nvhe_sym(APC_ImgsensorProtEnable)(void);
+TZ_RESULT kvm_nvhe_sym(APC_ImgsensorProtDisable)(void);
+TZ_RESULT kvm_nvhe_sym(APC_CamIspProtEnable)(uint32_t param);
+TZ_RESULT kvm_nvhe_sym(APC_CamIspProtDisable)(uint32_t param);
 TZ_RESULT kvm_nvhe_sym(SECIO_WRITE)(uint32_t io_type, uint32_t reg_offset, uint32_t write_val);
 TZ_RESULT kvm_nvhe_sym(SECIO_READ)(uint32_t io_type, uint32_t reg_offset, uint32_t *read_val);

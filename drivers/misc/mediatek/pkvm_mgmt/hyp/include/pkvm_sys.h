@@ -71,6 +71,11 @@ enum SECIO_TYPE {
 	SECIO_MAX = 55,
 };
 
+TZ_RESULT APC_ImgsensorProtEnable(void);
+TZ_RESULT APC_ImgsensorProtDisable(void);
+TZ_RESULT APC_CamIspProtEnable(uint32_t param);
+TZ_RESULT APC_CamIspProtDisable(uint32_t param);
+
 TZ_RESULT SECIO_WRITE(uint32_t io_type, uint32_t reg_offset, uint32_t write_val);
 TZ_RESULT SECIO_READ(uint32_t io_type, uint32_t reg_offset, uint32_t *read_val);
 
