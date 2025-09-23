@@ -1215,9 +1215,7 @@ static int ammu_appendix_cb_process(enum apu_appendix_cb_type type,
 	}
 
 	switch (type) {
-	case APU_APPENDIX_CB_CREATE:
-		break;
-	case APU_APPENDIX_CB_PREPROCESS: {
+	case APU_APPENDIX_CB_CREATE: {
 		void *tbl_kva;
 		uint32_t tbl_size;
 
@@ -1229,6 +1227,8 @@ static int ammu_appendix_cb_process(enum apu_appendix_cb_type type,
 		memcpy(va, tbl_kva, size);
 		break;
 	}
+	case APU_APPENDIX_CB_PREPROCESS:
+		break;
 	case APU_APPENDIX_CB_POSTPROCESS:
 		break;
 	case APU_APPENDIX_CB_POSTPROCESS_LATE:

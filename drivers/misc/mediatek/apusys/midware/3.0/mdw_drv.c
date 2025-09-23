@@ -330,7 +330,7 @@ static void mdw_rpmsg_remove(struct rpmsg_device *rpdev)
 static const struct of_device_id mdw_rpmsg_of_match[] = {
 	{ .compatible = "mediatek,apu-mdw-rpmsg-v2", .data = &mdw_plat_func_v2},
 	{ .compatible = "mediatek,apu-mdw-rpmsg-v3", .data = &mdw_plat_func_v6},
-	{ .compatible = "mediatek,apu-mdw-rpmsg-v4", .data = &mdw_plat_func_v6},
+	{ .compatible = "mediatek,apu-mdw-rpmsg-v4", .data = &mdw_plat_func_v4},
 	{ .compatible = "mediatek,apu-mdw-rpmsg-v5", .data = &mdw_plat_func_v6},
 	{ .compatible = "mediatek,apu-mdw-rpmsg", .data = &mdw_plat_func_v6},
 	{ },
