@@ -2587,7 +2587,7 @@ static void mtk_oddmr_dmr_srt_cal(struct mtk_ddp_comp *comp, int en)
 	oddmr_data = comp_to_oddmr(comp);
 	mtk_crtc = comp->mtk_crtc;
 	cur_bin_idx = atomic_read(&oddmr_data->dmr_data.cur_bin_idx);
-	if (en) {
+	if (en && cur_bin_idx >= 0) {
 		dmr_cfg_data = &oddmr_data->primary_data->dmr_multi_bin[cur_bin_idx];
 		table_size = dmr_cfg_data->table_index.table_byte_num + DMR_LN_OFFSET;
 		srt = table_size;
@@ -8401,6 +8401,31 @@ int mtk_oddmr_get_dbi_enable(struct mtk_ddp_comp *comp)
 	return oddmr_data->dbi_enable;
 }
 
+static void mtk_oddmr_dmr_bypass(struct mtk_ddp_comp *comp, int bypass,
+		int caller, struct cmdq_pkt *handle)
+{
+	ODDMRAPI_LOG("+\n");
+	struct mtk_disp_oddmr *oddmr_data = comp_to_oddmr(comp);
+	bool dmr_support = oddmr_data->primary_data->dbi_support;
+	int cur_bin_idx;
+
+	if (!(dmr_support && handle != NULL))
+		return;
+
+	mutex_lock(&oddmr_data->primary_data->dmr_data_lock);
+	cur_bin_idx = atomic_read(&oddmr_data->dmr_data.cur_bin_idx);
+	if (oddmr_data->dmr_bypass != bypass) {
+		oddmr_data->dmr_bypass = bypass;
+		if (bypass == 1)
+			mtk_oddmr_set_dmr_enable(comp, 0, handle);
+		else if (oddmr_data->dmr_enable && cur_bin_idx >= 0)
+			mtk_oddmr_set_dmr_enable(comp, 1, handle);
+		DDPINFO("dmr_bypass %d, caller: 0x%x, dmr_enable %d, cur_bin_idx %d\n",
+			oddmr_data->dmr_bypass, caller, oddmr_data->dmr_enable, cur_bin_idx);
+	}
+	mutex_unlock(&oddmr_data->primary_data->dmr_data_lock);
+}
+
 static void mtk_oddmr_bypass(struct mtk_ddp_comp *comp, int bypass,
 		int caller, struct cmdq_pkt *handle)
 {
@@ -8410,6 +8435,18 @@ static void mtk_oddmr_bypass(struct mtk_ddp_comp *comp, int bypass,
 
 	if (oddmr_data->is_right_pipe)
 		return;
+
+	switch (caller) {
+	case PQ_FEATURE_KRN_DOZE:
+	{
+		mtk_oddmr_dmr_bypass(comp, bypass, caller, handle);
+		return;
+	}
+		break;
+	default:
+		ODDMRFLOW_LOG("invalid caller: %d\n", caller);
+	}
+
 	od_support = oddmr_data->primary_data->od_support;
 	if (od_support && (oddmr_data->pq_od_bypass != bypass)) {
 		oddmr_data->pq_od_bypass = bypass;
@@ -8503,7 +8540,7 @@ static void mtk_oddmr_set_dmr_enable(struct mtk_ddp_comp *comp, uint32_t enable,
 	}
 	CRTC_MMP_MARK(0, oddmr_dmr_hw_enable, enable, 0);
 	DDPINFO("oddmr_dmr_hw_enable:%d\n", enable);
-	if (enable) {
+	if (enable && oddmr_data->dmr_bypass == 0) {
 		if (oddmr_data->data->dbi_version == MTK_DBI_V3) {
 			//0.reg_dmr_swt_rst 1->0
 			value = 0;mask = 0;

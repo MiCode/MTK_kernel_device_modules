@@ -828,6 +828,7 @@ struct mtk_disp_oddmr {
 	bool od_force_off_last;
 	int dmr_enable_req;
 	int dmr_enable;
+	uint32_t dmr_bypass;
 	atomic_t reg_tuning_en;
 	int dbi_enable_req;
 	int dbi_enable;
