@@ -395,7 +395,6 @@ apusys_rv_common_srcs_list = glob([
 
 apusys_rv_plat_srcs_list=\
 (["apusys_rv/1.0/mt6893_plat.c"] if glob(["apusys_rv/1.0/mt6893_plat.c"]) else []) +\
-(["apusys_rv/2.0/mt6878_plat.c"] if glob(["apusys_rv/2.0/mt6878_plat.c"]) else []) +\
 (["apusys_rv/2.0/mt6879_plat.c"] if glob(["apusys_rv/2.0/mt6879_plat.c"]) else []) +\
 (["apusys_rv/2.0/mt6886_plat.c"] if glob(["apusys_rv/2.0/mt6886_plat.c"]) else []) +\
 (["apusys_rv/2.0/mt6895_plat.c"] if glob(["apusys_rv/2.0/mt6895_plat.c"]) else []) +\
@@ -403,13 +402,13 @@ apusys_rv_plat_srcs_list=\
 (["apusys_rv/2.0/mt6983_plat.c"] if glob(["apusys_rv/2.0/mt6983_plat.c"]) else []) +\
 (["apusys_rv/2.0/mt6985_plat.c"] if glob(["apusys_rv/2.0/mt6985_plat.c"]) else []) +\
 (["apusys_rv/2.0/mt8188_plat.c"] if glob(["apusys_rv/2.0/mt8188_plat.c"]) else []) +\
+(["apusys_rv/3.0/mt6878_plat.c"] if glob(["apusys_rv/3.0/mt6878_plat.c"]) else []) +\
 (["apusys_rv/3.0/mt6989_plat.c"] if glob(["apusys_rv/3.0/mt6989_plat.c"]) else []) +\
 (["apusys_rv/3.0/mt6991_plat.c"] if glob(["apusys_rv/3.0/mt6991_plat.c"]) else []) +\
 (["apusys_rv/4.0/mt6993_plat.c"] if glob(["apusys_rv/4.0/mt6993_plat.c"]) else [])
 
 apusys_rv_local_define_list=\
 (["MT6893_APUSYS_RV_PLAT_DATA"] if glob(["apusys_rv/1.0/mt6893_plat.c"]) else []) +\
-(["MT6878_APUSYS_RV_PLAT_DATA"] if glob(["apusys_rv/2.0/mt6878_plat.c"]) else []) +\
 (["MT6879_APUSYS_RV_PLAT_DATA"] if glob(["apusys_rv/2.0/mt6879_plat.c"]) else []) +\
 (["MT6886_APUSYS_RV_PLAT_DATA"] if glob(["apusys_rv/2.0/mt6886_plat.c"]) else []) +\
 (["MT6895_APUSYS_RV_PLAT_DATA"] if glob(["apusys_rv/2.0/mt6895_plat.c"]) else []) +\
@@ -417,6 +416,7 @@ apusys_rv_local_define_list=\
 (["MT6983_APUSYS_RV_PLAT_DATA"] if glob(["apusys_rv/2.0/mt6983_plat.c"]) else []) +\
 (["MT6985_APUSYS_RV_PLAT_DATA"] if glob(["apusys_rv/2.0/mt6985_plat.c"]) else []) +\
 (["MT8188_APUSYS_RV_PLAT_DATA"] if glob(["apusys_rv/2.0/mt8188_plat.c"]) else []) +\
+(["MT6878_APUSYS_RV_PLAT_DATA"] if glob(["apusys_rv/3.0/mt6878_plat.c"]) else []) +\
 (["MT6989_APUSYS_RV_PLAT_DATA"] if glob(["apusys_rv/3.0/mt6989_plat.c"]) else []) +\
 (["MT6991_APUSYS_RV_PLAT_DATA"] if glob(["apusys_rv/3.0/mt6991_plat.c"]) else []) +\
 (["MT6993_APUSYS_RV_PLAT_DATA"] if glob(["apusys_rv/4.0/mt6993_plat.c"]) else [])
