@@ -2150,6 +2150,8 @@ def get_overlay_modules_list():
         mgk_64_device_modules.append("drivers/thermal/mediatek/fan_cooling.ko")
         mgk_64_device_modules.append("sound/soc/codecs/ak7709/snd-soc-ak7709.ko")
         mgk_64_device_modules.append("sound/soc/codecs/hfda80x/snd-soc-hfda80x.ko")
+        mgk_64_kleaf_device_modules.append("//kernel_device_modules-{}/drivers/gpu/drm/mediatek/disp_sync:mtk_disp_sync".format(kernel_version))
+        mgk_64_kleaf_device_modules.append("//kernel_device_modules-{}/drivers/gpu/drm/mediatek/virtio_disp:mtk_drm_virtio_disp".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/vow/ver02:mtk-vow".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/sound/soc/mediatek/audio_dsp:mtk-soc-offload-common".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/sound/soc/mediatek/audio_scp:mtk-scp-audiocommon".format(kernel_version))
