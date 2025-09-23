@@ -12558,7 +12558,12 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 {
 	struct mtk_cmdq_cb_data *cb_data = data.data;
 	struct drm_crtc_state *crtc_state = cb_data->state;
-	struct drm_crtc *crtc = crtc_state->crtc;
+	struct drm_crtc *crtc;
+
+	if (cb_data->is_retrig)
+		crtc = cb_data->crtc;
+	else
+		crtc = crtc_state->crtc;
 
 	/* debug log */
 	DDPINFO("%s +\n", __func__);
@@ -12573,10 +12578,10 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 #endif
 {
 	struct mtk_cmdq_cb_data *cb_data = data.data;
-	struct drm_crtc_state *crtc_state = cb_data->state;
-	struct drm_atomic_state *atomic_state = crtc_state->state;
-	struct drm_crtc *crtc = crtc_state->crtc;
-	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct drm_crtc_state *crtc_state;
+	struct drm_atomic_state *atomic_state;
+	struct drm_crtc *crtc;
+	struct mtk_drm_crtc *mtk_crtc;
 	struct mtk_drm_private *priv = NULL;
 	bool use_frame_submit = false;
 	struct drm_crtc_state *old_crtc_state;
@@ -12591,7 +12596,18 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 	unsigned int _dsi_state_dbg7 = 0;
 	unsigned int _dsi_state_dbg7_2 = 0;
 	unsigned int *addr;
-	int crtc_state_stylus = to_mtk_crtc_state(crtc_state)->prop_val[CRTC_PROP_STYLUS];
+	int crtc_state_stylus;
+
+	if (cb_data->is_retrig){
+		crtc = cb_data->crtc;
+		mtk_crtc = to_mtk_crtc(crtc);
+	} else {
+		crtc_state = cb_data->state;
+		atomic_state = crtc_state->state;
+		crtc = crtc_state->crtc;
+		mtk_crtc = to_mtk_crtc(crtc);
+		crtc_state_stylus = to_mtk_crtc_state(crtc_state)->prop_val[CRTC_PROP_STYLUS];
+	}
 
 	if (unlikely(!mtk_crtc)) {
 		DDPPR_ERR("%s:%d invalid pointer mtk_crtc\n",
