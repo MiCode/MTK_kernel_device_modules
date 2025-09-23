@@ -48,6 +48,7 @@ define_mgk_ddk_ko(
     srcs = [
         "isp6/pkvm_seninf_host.c",
         "isp6/pkvm_seninf_host.h",
+        "isp6/pkvm_seninf_ioctl.h",
     ],
     out = "pkvm_seninf_6858.ko",
     copts = [

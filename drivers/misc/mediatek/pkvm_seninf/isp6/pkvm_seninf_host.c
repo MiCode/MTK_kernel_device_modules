@@ -7,23 +7,58 @@
 #include <linux/arm-smccc.h>
 #include <linux/init.h>
 #include <linux/kernel.h>
+#include <linux/miscdevice.h>
 #include <linux/module.h>
 #include <pkvm_mgmt/pkvm_mgmt.h>
 
 #include "pkvm_seninf_host.h"
+#include "pkvm_seninf_ioctl.h"
+
+static int seninf_checkpipe_hvc;
+static int seninf_free_hvc;
+
+static long seninf_ioctl(struct file *filep, unsigned int cmd, unsigned long arg)
+{
+	int ret;
+
+	pr_info(PFX "%s: cmd = %d\n", __func__, cmd);
+
+	switch(cmd) {
+	case IOCTL_ID_PKVM_SENINF_IS_ENABLED:
+		ret = 0;
+		break;
+	case IOCTL_ID_PKVM_SENINF_CHECKPIPE:
+		pkvm_el2_mod_call(seninf_checkpipe_hvc);
+		ret = 0;
+		break;
+	case IOCTL_ID_PKVM_SENINF_FREE:
+		pkvm_el2_mod_call(seninf_free_hvc);
+		ret = 0;
+		break;
+	default:
+		pr_info(PFX "%s: no such ioctl cmd\n", __func__);
+		ret = -1;
+		break;
+	}
+
+	return ret;
+}
+
+static const struct file_operations fops = {
+	.owner = THIS_MODULE,
+	.unlocked_ioctl = seninf_ioctl,
+};
+
+static struct miscdevice seninf_dev = {
+	.minor = MISC_DYNAMIC_MINOR,
+	.name = PKVM_SENINF_DEV_NAME,
+	.fops = &fops
+};
 
 static int seninf_hvc_register(unsigned long token)
 {
-	struct arm_smccc_res res;
-	int ret;
-
-	ret = pkvm_register_el2_mod_call(kvm_nvhe_sym(seninf_hyp_checkpipe), token);
-	arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_ADD_HVC,
-		SMC_ID_MTK_PKVM_SENINF_CHECKPIPE, ret, 0, 0, 0, 0, &res);
-
-	ret = pkvm_register_el2_mod_call(kvm_nvhe_sym(seninf_hyp_free), token);
-	arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_ADD_HVC,
-		SMC_ID_MTK_PKVM_SENINF_FREE, ret, 0, 0, 0, 0, &res);
+	seninf_checkpipe_hvc = pkvm_register_el2_mod_call(kvm_nvhe_sym(seninf_hyp_checkpipe), token);
+	seninf_free_hvc = pkvm_register_el2_mod_call(kvm_nvhe_sym(seninf_hyp_free), token);
 
 	return 0;
 }
@@ -47,6 +82,12 @@ static int __init seninf_nvhe_init(void)
 	ret = seninf_hvc_register(token);
 	if (ret) {
 		pr_info(PFX "%s: failed to register seninf hvc, ret %d\n", __func__, ret);
+		return ret;
+	}
+
+	ret = misc_register(&seninf_dev);
+	if (ret) {
+		pr_info(PFX "%s: failed to register seninf dev, ret %d\n", __func__, ret);
 		return ret;
 	}
 
