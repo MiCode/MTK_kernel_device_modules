@@ -471,16 +471,12 @@ int get_cpu_cooler_dbg(int id)
 {
 	int val = 0;
 
-	if (id >= 0 && id < 16) {
-		if (tm_data.is_cputcm) {
-			if (id < 8)
-				val = therm_intf_read_cputcm_s32(CPU_COOLER_DBG_TCM_OFFSET + 4 * id);
-			else
-				val = therm_intf_read_cputcm_s32(CPU_COOLER_DBG2_TCM_OFFSET + 4 * (id - 8));
-		} else
-			pr_info("[cpu_cooler_dbg] is_cputcm is false, %d\n", id);
-	} else
-		pr_info("[cpu_cooler_dbg] invalid id %d\n", id);
+	if (tm_data.is_cputcm) {
+		if (id >= 0 && id < 8)
+			val = therm_intf_read_cputcm_s32(CPU_COOLER_DBG_TCM_OFFSET + 4 * id);
+		else if (id >= 8 && id < 16)
+			val = therm_intf_read_cputcm_s32(CPU_COOLER_DBG2_TCM_OFFSET + 4 * (id - 8));
+	}
 
 	return val;
 }
