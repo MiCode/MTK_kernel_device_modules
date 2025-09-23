@@ -7,6 +7,7 @@
 #define __LINUX_MT6360_H
 
 #include "std_tcpci_v10.h"
+#include "std_tcpci_v10_reg.h"
 #include "pd_dbg_info.h"
 
 struct mt6360_tcpc_platform_data {

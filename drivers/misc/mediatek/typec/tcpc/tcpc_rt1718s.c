@@ -16,6 +16,7 @@
 #include "inc/tcpci.h"
 #include "inc/tcpci_typec.h"
 #include "inc/std_tcpci_v10.h"
+#include "inc/std_tcpci_v10_reg.h"
 
 #define RT1718S_DRV_VERSION	"1.0.1_G"
 

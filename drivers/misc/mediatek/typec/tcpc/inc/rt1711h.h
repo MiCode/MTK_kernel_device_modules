@@ -7,6 +7,7 @@
 #define __LINUX_RT1711H_H
 
 #include "std_tcpci_v10.h"
+#include "std_tcpci_v10_reg.h"
 #include "pd_dbg_info.h"
 
 /*show debug message or not */

@@ -15,6 +15,7 @@
 #include "inc/tcpci_typec.h"
 #include "inc/tcpci_core.h"
 #include "inc/std_tcpci_v10.h"
+#include "inc/std_tcpci_v10_reg.h"
 
 #define MT6375_INFO_EN		1
 #define MT6375_DBGINFO_EN	0
