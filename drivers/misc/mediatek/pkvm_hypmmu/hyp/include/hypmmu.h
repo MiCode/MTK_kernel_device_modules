@@ -10,6 +10,8 @@
 
 #include "include/mod_debug.h"
 
+#define CALL_FROM_OPS(fn, ...) mod_ops->fn(__VA_ARGS__)
+
 #define MAX_CPUS (8)
 
 #ifdef memset
