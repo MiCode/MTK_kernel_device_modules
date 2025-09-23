@@ -4124,6 +4124,8 @@ int mtk_drm_switch_spr(struct drm_crtc *crtc, unsigned int en,
 				goto out;
 			}
 
+			mtk_vidle_user_power_keep_by_gce(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle,
+				mtk_get_gpr(mtk_crtc, cmdq_handle));
 			mtk_crtc->spr_is_on = en;
 			mtk_drm_spr_notify(crtc, cmdq_handle, en);
 			mtk_crtc->spr_switch_type = params->spr_params.spr_switch_type;
@@ -4150,6 +4152,7 @@ int mtk_drm_switch_spr(struct drm_crtc *crtc, unsigned int en,
 				cmdq_pkt_set_event(cmdq_handle,
 					mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
 			}
+			mtk_vidle_user_power_release_by_gce(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle);
 
 			cb_data->crtc = crtc;
 			cb_data->cmdq_handle = cmdq_handle;
