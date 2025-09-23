@@ -70,6 +70,18 @@ enum venc_ipi_msg_id {
 	VCU_ASYNCIPIMSG_ENC_PUT_FRAME_BUFFER = VCU_IPIMSG_VENC_SEND_ASYNC_BASE
 };
 
+enum mtk_venc_codec_type {
+	VENC_UNKNOWN = 0,
+	VENC_H264,
+	VENC_H265,
+	VENC_HEIF,
+	VENC_VP8,
+	VENC_MPEG4,
+	VENC_HYBRID_H264,
+	VENC_H263,
+	VENC_CODEC_MAX
+};
+
 /* enum venc_get_param_type - The type of set parameter used in
  *                            venc_if_get_param()
  * GET_PARAM_VENC_CAP_SUPPORTED_FORMATS: get codec supported format capability

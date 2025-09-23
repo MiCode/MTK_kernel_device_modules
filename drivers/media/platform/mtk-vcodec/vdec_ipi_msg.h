@@ -110,6 +110,24 @@ enum vdec_ipi_msg_id {
 	VCU_ASYNCIPIMSG_DEC_PUT_FRAME_BUFFER = VCU_IPIMSG_VDEC_SEND_ASYNC_BASE,
 };
 
+enum mtk_vdec_codec_type {
+	VDEC_UNKNOWN = 0,
+	VDEC_H264,
+	VDEC_H265,
+	VDEC_HEIF,
+	VDEC_H266,
+	VDEC_VP8,
+	VDEC_VP9,
+	VDEC_MPEG4,
+	VDEC_H263,
+	VDEC_MPEG12,
+	VDEC_WMV,
+	VDEC_RV30,
+	VDEC_RV40,
+	VDEC_AV1,
+	VDEC_CODEC_MAX
+};
+
 enum vdec_flush_type {
 	FLUSH_BITSTREAM = (1 << 0),
 	FLUSH_FRAME     = (1 << 1),

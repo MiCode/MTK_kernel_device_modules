@@ -132,7 +132,7 @@ static bool mtk_dec_tput_init(struct mtk_vcodec_dev *dev)
 	mtk_vcodec_dvfs_qos_log(false, "[VDEC] max-op-rate table elements %u, %d per line",
 			cnt, op_item_num);
 
-	if (dev->vdec_op_rate_cnt > 0 && dev->vdec_op_rate_cnt < VDEC_VENC_MAX) {
+	if (dev->vdec_op_rate_cnt > 0 && dev->vdec_op_rate_cnt < VDEC_CODEC_MAX) {
 		dev->vdec_dflt_op_rate = vzalloc(sizeof(struct vcodec_op_rate) * dev->vdec_op_rate_cnt);
 
 		mtk_vcodec_dvfs_qos_log(false, "[VDEC] vzalloc %zu x %d res %p",
@@ -197,7 +197,7 @@ static bool mtk_dec_tput_init(struct mtk_vcodec_dev *dev)
 
 	mtk_vcodec_dvfs_qos_log(false, "[VDEC] tput table elements %u, %d per line",
 			cnt, tp_item_num);
-	if (dev->vdec_tput_cnt > 0 && dev->vdec_tput_cnt < VDEC_VENC_MAX) {
+	if (dev->vdec_tput_cnt > 0 && dev->vdec_tput_cnt < VDEC_CODEC_MAX) {
 		dev->vdec_tput = vzalloc(sizeof(struct vcodec_perf) * dev->vdec_tput_cnt);
 		mtk_vcodec_dvfs_qos_log(false, "[VDEC] vzalloc %zu x %d res %p",
 			sizeof(struct vcodec_perf), dev->vdec_tput_cnt, dev->vdec_tput);
