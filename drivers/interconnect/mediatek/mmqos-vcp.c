@@ -142,6 +142,7 @@ int mmqos_vcp_ipi_send(const u8 func, const u8 idx, u32 *data)
 	if (!ret)
 		writel(val & ~readl(MEM_IPI_SYNC_DATA), MEM_IPI_SYNC_FUNC);
 	else if (gen == vcp_cmd_ex(MMQOS_FEATURE_ID, VCP_GET_GEN, "mmqos_ipi_task")) {
+		dump_vcp_irq_status_ex();
 		if (!times) {
 			MMQOS_ERR("VCP_SET_HALT");
 			vcp_cmd_ex(MMQOS_FEATURE_ID, VCP_SET_HALT, "mmqos_ipi_task");

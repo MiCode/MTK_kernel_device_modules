@@ -70,7 +70,7 @@ enable_mmup_end:
 int mmqos_mmup_ipi_send(const u8 func, u32 data)
 {
 	struct mmqos_mmup_ipi_data slot = { func, 0, 0, data };
-	int ret = 0, retry = 0;
+	int ret = 0, retry = 0, gen;
 	struct mtk_ipi_device *mmup_ipi_dev;
 
 	if (func >= FUNC_MMUP_NUM) {
@@ -93,6 +93,7 @@ int mmqos_mmup_ipi_send(const u8 func, u32 data)
 	}
 
 	mutex_lock(&mmqos_mmup_ipi_mutex);
+	gen = vcp_cmd_ex(MMQOS_MMUP_FEATURE_ID, VCP_GET_GEN, "mmqos_mmup_ipi");
 	mmup_ipi_dev = vcp_get_ipidev(MMQOS_MMUP_FEATURE_ID);
 	if (!mmup_ipi_dev) {
 		MMQOS_ERR("mmup_ipi_dev is null");
@@ -103,6 +104,9 @@ int mmqos_mmup_ipi_send(const u8 func, u32 data)
 	mmup_ipi_ack_data = 0;
 	ret = mtk_ipi_send_compl(mmup_ipi_dev, IPI_OUT_MMQOS_MMUP, IPI_SEND_WAIT,
 		&slot, PIN_OUT_SIZE_MMQOS, IPI_TIMEOUT_MS);
+	if ((ret != IPI_ACTION_DONE) &&
+		(gen == vcp_cmd_ex(MMQOS_MMUP_FEATURE_ID, VCP_GET_GEN, "mmqos_mmup_ipi")))
+		dump_vcp_irq_status_ex();
 	if (!ret && !mmup_ipi_ack_data)
 		ret = -EFAULT;
 
