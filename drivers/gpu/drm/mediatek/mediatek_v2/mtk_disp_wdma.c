@@ -180,6 +180,9 @@
 #define DISP_REG_UFBC_WDMA_ADDR0_MSB 0xf08
 #define DISP_REG_UFBC_WDMA_ADDR1_MSB 0xf0c
 
+#define DISP_REG_WDMA_DDREN_CTRL 0xf3c
+#define DISP_DDREN_REQ_DISABLE	BIT(0)
+
 /* AID offset in mmsys config */
 #define MT6983_OVL1_2L_NWCG	0x1401B000
 #define MT6983_OVL_DUMMY_REG	(0x200UL)
@@ -864,6 +867,11 @@ static void mtk_wdma_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 		if (data->sodi_config)
 			data->sodi_config(comp->mtk_crtc->base.dev, comp->id, handle, &en);
 	}
+
+	if (!wdma->data->ddr_config) {
+		if (bif_enabled(&comp->mtk_crtc->base) && comp->mtk_crtc->bif_info->wb_comp)
+			mtk_ddp_write_relaxed(comp, DISP_DDREN_REQ_DISABLE, DISP_REG_WDMA_DDREN_CTRL, handle);
+	}
 }
 
 static void mtk_wdma_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
@@ -936,7 +944,7 @@ static void mtk_wdma_calc_golden_setting(struct golden_setting_context *gsc,
 {
 	struct mtk_disp_wdma *wdma = comp_to_wdma(comp);
 	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
-	unsigned int format = comp->fb->format->format;
+	unsigned int format = (comp->fb)?comp->fb->format->format:DRM_FORMAT_RGB888;
 	unsigned int preultra_low_us = 7, preultra_high_us = 6;
 	unsigned int ultra_low_us = 6, ultra_high_us = 4;
 	unsigned int dvfs_offset = 2;
@@ -1879,6 +1887,91 @@ golden_setting:
 	cfg_info->fmt = comp->fb->format->format;
 }
 
+static void mtk_wdma_bif_write_config(struct mtk_ddp_comp *comp,
+				struct mtk_ddp_config *cfg, struct cmdq_pkt *handle)
+{
+	struct mtk_disp_wdma *wdma = comp_to_wdma(comp);
+	struct mtk_wdma_cfg_info *cfg_info = &wdma->cfg_info;
+	struct golden_setting_context *gsc;
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
+	struct mtk_bif_info *bif_info = mtk_crtc->bif_info;
+	resource_size_t mmsys_reg = priv->config_regs_pa;
+	dma_addr_t addr = 0;
+	unsigned int size = 0;
+	unsigned int con = 0;
+	uint32_t format = DRM_FORMAT_RGB888;
+	int crtc_idx = drm_crtc_index(&comp->mtk_crtc->base);
+	int src_w, src_h, clip_w, clip_h, clip_x, clip_y, pitch;
+	bool is_secure;
+	unsigned long long bw_base;
+	int hact, vtotal, vact, vrefresh, bpp;
+
+	src_w = bif_info->src_roi.width;
+	src_h = bif_info->src_roi.height;
+	pitch = bif_info->src_roi.width*mtk_get_format_bpp(DRM_FORMAT_RGB888);
+	is_secure = false;
+	addr = bif_info->sram_pa;
+
+	//cmdq_pkt_write(handle, comp->cmdq_base,
+		//comp->larb_cons[0], GENMASK(19, 16), GENMASK(19, 16));
+
+	clip_x = 0;
+	clip_y = 0;
+	clip_w = src_w;
+	clip_h = src_h;
+
+	DDPBIF("%s,comp:%s, addr:0x%lx,cfg(%d,%d),roi(%u,%u),pitches:%u,0x%pa\n", __func__, mtk_dump_comp_str(comp),
+		(unsigned long)addr, cfg->w, cfg->h, src_w, src_h, pitch, comp->larb_cons);
+
+	mtk_ddp_comp_iommu_enable(comp, handle);
+
+	write_dst_addr(comp, handle, 0, addr);
+
+	con = wdma_fmt_convert(format);
+
+	size = (src_w & 0x3FFFU) + ((src_h << 16U) & 0x3FFF0000U);
+	mtk_ddp_write_relaxed(comp, size, DISP_REG_WDMA_SRC_SIZE, handle);
+	mtk_ddp_write_relaxed(comp, (clip_y << 16) | clip_x,
+		DISP_REG_WDMA_CLIP_COORD, handle);
+	mtk_ddp_write_relaxed(comp, (clip_h << 16) | clip_w,
+		DISP_REG_WDMA_CLIP_SIZE, handle);
+	mtk_ddp_write_mask(comp, con, DISP_REG_WDMA_CFG,
+		WDMA_OUT_FMT | WDMA_CON_SWAP, handle);
+
+	mtk_ddp_write_mask(comp, 0,
+			DISP_REG_WDMA_CFG, WDMA_UFO_DCP_ENABLE, handle);
+	mtk_ddp_write_mask(comp, 0,
+			DISP_REG_WDMA_CFG, WDMA_CT_EN, handle);
+
+	/* Debug WDMA status */
+	mtk_ddp_write_mask(comp, 0xe0000000,
+			DISP_REG_WDMA_CFG, WDMA_DEBUG_SEL, handle);
+
+	mtk_ddp_write_relaxed(comp, pitch,
+		DISP_REG_WDMA_DST_WIN_BYTE, handle);
+
+	/* WDMA secure memory buffer config */
+	if (wdma->data->sec_aid_config)
+		wdma->data->sec_aid_config(comp, handle, is_secure);
+	// format: DRM_FORMAT_RGB888
+	mtk_ddp_write_mask(comp, 0, DISP_REG_WDMA_ALPHA, WDMA_A_Sel, handle);
+
+golden_setting:
+	gsc = cfg->p_golden_setting_context;
+	gsc->dst_width = src_w;
+	mtk_wdma_golden_setting(comp, gsc, handle);
+	if (wdma->data->ddr_config)
+		wdma->data->ddr_config(comp, gsc, handle);
+
+	DDPBIF("%s:config addr:0x%lx, roi:(%d,%d,%d,%d)\n", __func__,
+		(unsigned long)addr, clip_x, clip_y, clip_w, clip_h);
+	cfg_info->addr = addr;
+	cfg_info->width = clip_w;
+	cfg_info->height = clip_h;
+	cfg_info->fmt = format;
+}
+
 void mtk_wdma_dump_golden_setting(struct mtk_ddp_comp *comp)
 {
 	struct mtk_disp_wdma *wdma = comp_to_wdma(comp);
@@ -2531,6 +2624,7 @@ static int mtk_wdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 static const struct mtk_ddp_comp_funcs mtk_disp_wdma_funcs = {
 	.config = mtk_wdma_config,
 	.addon_config = mtk_wdma_addon_config,
+	.bif_write_config = mtk_wdma_bif_write_config,
 	.start = mtk_wdma_start,
 	.stop = mtk_wdma_stop,
 	.prepare = mtk_wdma_prepare,

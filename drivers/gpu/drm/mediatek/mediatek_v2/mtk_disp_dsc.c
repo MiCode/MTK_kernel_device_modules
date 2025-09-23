@@ -1820,6 +1820,7 @@ static int mtk_dsc_set_partial_update(struct mtk_ddp_comp *comp,
 
 static const struct mtk_ddp_comp_funcs mtk_disp_dsc_funcs = {
 	.config = mtk_dsc_config,
+	.bif_write_config = mtk_dsc_config,
 	.start = mtk_dsc_start,
 	.stop = mtk_dsc_stop,
 	.prepare = mtk_dsc_prepare,

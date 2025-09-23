@@ -1017,6 +1017,11 @@ static void mtk_drm_vdo_mode_enter_idle(struct drm_crtc *crtc)
 	struct mtk_ddp_comp *comp;
 	unsigned int avail_bw = 0, bw_base = 0;
 	unsigned int req_bw = avail_bw + 1;
+	struct mtk_drm_idlemgr_perf *perf = mtk_crtc->idlemgr->perf;
+	u64 start_time = 0, end_time = 0, cost = 0;
+
+	if (perf)
+		start_time = local_clock();
 
 	mtk_crtc_pkt_create(&handle, crtc, client);
 
@@ -1049,6 +1054,26 @@ static void mtk_drm_vdo_mode_enter_idle(struct drm_crtc *crtc)
 		}
 	}
 
+	if (bif_enabled(crtc)== BIF_HS_IDLE) {
+		mtk_crtc_bif_backup_path_mutex(mtk_crtc);
+
+		if (!mtk_crtc->bif_info->sram_en)
+			mtk_crtc_bif_slbc_request(mtk_crtc, true);
+
+		if (mtk_crtc->bif_info->sram_en) {
+			mtk_crtc_wait_frame_done(mtk_crtc, handle, DDP_FIRST_PATH, 0);
+			mtk_crtc_bif_enable_racing(mtk_crtc, handle);
+
+			cmdq_pkt_clear_event(handle, mtk_crtc->bif_info->wb_frame_done_event);
+			cmdq_pkt_wfe(handle, mtk_crtc->bif_info->wb_frame_done_event);
+			mtk_crtc_wait_frame_done(mtk_crtc, handle, DDP_FIRST_PATH, 0);
+			mtk_crtc_bif_keep_read_path(crtc, handle);
+		} else {
+			mtk_crtc->bif_info->bif_enable = BIF_DISABLE;
+			CRTC_MMP_MARK(0, bif_src_ctrl, 0xFFFFFFFF, 0xFFFFFFFF);
+		}
+	}
+
 	if (mtk_drm_helper_get_opt(priv->helper_opt,
 				   MTK_DRM_OPT_IDLEMGR_DISABLE_ROUTINE_IRQ)) {
 		mtk_disp_mutex_inten_disable_cmdq(mtk_crtc->mutex[0], handle);
@@ -1068,6 +1093,19 @@ static void mtk_drm_vdo_mode_enter_idle(struct drm_crtc *crtc)
 
 	cmdq_pkt_flush(handle);
 	cmdq_pkt_destroy(handle);
+
+	if (bif_enabled(crtc) == BIF_HS_IDLE) {
+		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMQOS_SUPPORT))
+			mtk_disp_set_hrt_bw(mtk_crtc, 0);
+		mtk_crtc_bif_apsrc_ddren_control(mtk_crtc, NULL, false);
+	}
+
+	if (perf) {
+		end_time = local_clock();
+		cost = div_u64((end_time - start_time), 1000);
+
+		mtk_drm_idlemgr_perf_update(crtc, true, cost);
+	}
 }
 
 static void mtk_drm_cmd_mode_enter_idle(struct drm_crtc *crtc)
@@ -1100,6 +1138,17 @@ static void mtk_drm_vdo_mode_leave_idle(struct drm_crtc *crtc)
 	struct cmdq_client *client = mtk_crtc->gce_obj.client[CLIENT_CFG];
 	struct mtk_ddp_comp *comp;
 	unsigned int *trace;
+	struct mtk_drm_idlemgr_perf *perf = mtk_crtc->idlemgr->perf;
+	u64 start_time = 0, end_time = 0, cost = 0;
+
+	if (perf)
+		start_time = local_clock();
+
+	if (bif_enabled(crtc) == BIF_HS_IDLE) {
+		mtk_crtc_bif_apsrc_ddren_control(mtk_crtc, NULL, true);
+		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMQOS_SUPPORT))
+			mtk_disp_set_hrt_bw(mtk_crtc, mtk_crtc->qos_ctx->last_hrt_req);
+	}
 
 	mtk_crtc_pkt_create(&handle, crtc, client);
 
@@ -1128,8 +1177,28 @@ static void mtk_drm_vdo_mode_leave_idle(struct drm_crtc *crtc)
 		trace = mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_IDLEMGR_BY_WB_TRACE);
 		*trace |= BIT(31);
 	}
+
+	if (bif_enabled(crtc) == BIF_HS_IDLE) {
+		mtk_crtc_wait_frame_done(mtk_crtc, handle, DDP_FIRST_PATH, 0);
+
+		if (priv->data->bif_path_remove)
+			priv->data->bif_path_remove(mtk_crtc, handle);
+
+		mtk_crtc_bif_restore_path_mutex(mtk_crtc, handle);
+	}
+
 	cmdq_pkt_flush(handle);
 	cmdq_pkt_destroy(handle);
+
+	if ((bif_enabled(crtc) == BIF_HS_IDLE) && mtk_crtc->bif_info->sram_en)
+		mtk_crtc_bif_slbc_request(mtk_crtc, false);
+
+	if (perf) {
+		end_time = local_clock();
+		cost = div_u64((end_time - start_time), 1000);
+
+		mtk_drm_idlemgr_perf_update(crtc, false, cost);
+	}
 }
 
 static void mtk_drm_cmd_mode_leave_idle(struct drm_crtc *crtc)

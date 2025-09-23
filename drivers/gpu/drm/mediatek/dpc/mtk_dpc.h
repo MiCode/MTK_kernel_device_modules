@@ -264,6 +264,8 @@ struct dpc_funcs {
 	void (*dpc_power_clean_up_by_gce)(struct cmdq_client *client);
 	void (*dpc_apsrc_enable)(bool en, const enum mtk_vidle_voter_user user);
 
+	void (*dpc_bif_resource_ctrl)(const bool en, struct cmdq_pkt *pkt);
+
 	/* V1 ONLY */
 	void (*dpc_dc_force_enable)(const bool en);
 	void (*dpc_init_panel_type)(enum mtk_panel_type);

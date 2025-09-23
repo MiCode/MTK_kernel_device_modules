@@ -449,6 +449,7 @@ void ovlsys_config_dump_reg_mt6993(void __iomem *config_regs);
 void mmsys_config_dump_analysis_mt6993(void __iomem *config_regs, int sys_id);
 void ovlsys_config_dump_analysis_mt6993(void __iomem *config_regs, bool rg_dump);
 
+void mtk_crtc_dump_bif_info(struct mtk_drm_crtc *mtk_crtc, void __iomem *config_regs);
 void mtk_ddp_insert_dsc_prim_MT6885(struct mtk_drm_crtc *mtk_crtc,
 	struct cmdq_pkt *handle);
 void mtk_ddp_remove_dsc_prim_MT6885(struct mtk_drm_crtc *mtk_crtc,
@@ -583,5 +584,11 @@ int mtk_ddp_exdma_mout_reset_MT6993(enum mtk_ddp_comp_type type, int *offset,
 
 void mtk_gce_event_config_MT6991(struct drm_device *drm);
 void mtk_gce_event_config_MT6993(struct drm_device *drm);
+
+void mtk_disp_bif_racing_config_MT6991(struct cmdq_pkt *handle, struct mtk_drm_crtc *mtk_crtc, bool racing);
+void mtk_disp_bif_keep_read_mutex_MT6991(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle);
+void mtk_ddp_insert_bif_racing_MT6991(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle);
+void mtk_ddp_remove_bif_racing_MT6991(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle);
+void mtk_crtc_bif_resource_control_MT6991(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle, bool en);
 
 #endif /* MTK_DRM_DDP_H */

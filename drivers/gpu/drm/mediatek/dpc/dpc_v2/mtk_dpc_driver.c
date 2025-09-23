@@ -1071,7 +1071,19 @@ void dpc_mtcmos_auto(const u32 subsys, const enum mtk_dpc_mtcmos_mode mode)
 	g_priv->set_mtcmos(subsys, mode);
 	spin_unlock_irqrestore(&g_priv->mtcmos_cfg_lock, flags);
 }
+static void dpc_bif_resource_ctrl_mt6991(const bool en, struct cmdq_pkt *pkt)
+{
+	bool force_en = !en;// true:keep:0x0D, off:release:0x5
 
+	if (g_priv == NULL) {
+		DPCERR("g_priv null\n");
+		return;
+	}
+
+	dpc_ddr_force_enable(DPC_SUBSYS_DISP, force_en);
+	dpc_ddr_force_enable(DPC_SUBSYS_MML, force_en);
+
+}
 static void dpc_dsi_pll_set(const u32 value)
 {
 	if (g_priv == NULL) {
@@ -2132,6 +2144,7 @@ static const struct dpc_funcs funcs = {
 	.dpc_channel_bw_set_by_idx = dpc_channel_bw_set_by_idx,
 	.dpc_analysis = dpc_analysis,
 	.dpc_debug_cmd = process_dbg_opt,
+	.dpc_bif_resource_ctrl = dpc_bif_resource_ctrl_mt6991,
 };
 
 static struct mtk_dpc mt6989_dpc_driver_data = {

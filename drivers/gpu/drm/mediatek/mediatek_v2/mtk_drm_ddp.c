@@ -2501,7 +2501,12 @@
 #define MT6991_DISP_MUTEX0_MOD2	0x38
 #define MT6991_DISP_MUTEX0_SOF	0x30
 #define MT6991_DISP_MUTEX_RST	0x2C
-
+#define MT6991_DISP1_BIF_CON	0x3D0
+#define RG_BIF_EN			BIT(31)
+#define RG_BIF_TIFF_THR		REG_FLD_MSB_LSB(28, 24)
+#define RG_BIF_BUFFER_SIZE	REG_FLD_MSB_LSB(23, 0)
+#define MT6991_DISP1_BIF_OFFSET_ADDR	0x3D4
+#define MT6991_SMI_LARB_CON_SEC_CON	0x380
 
 #define MT6991_OVLSYS_BYPASS_MUX_SHADOW	0xCA0
 #define MT6991_OVLSYS_CROSSBAR_CON 0xCAC
@@ -31571,6 +31576,160 @@ void mtk_disp_dbg_cmdq_use_mutex(struct mtk_drm_crtc *mtk_crtc,
 			ddp->sys_b_side_regs_pa + DISP_REG_MUTEX_INTEN, val, val);
 	}
 }
+void mtk_crtc_bif_resource_control_MT6991(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle, bool en)
+{
+	struct drm_crtc *crtc = &mtk_crtc->base;
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
+	struct mtk_crtc_state *mtk_crtc_state = to_mtk_crtc_state(crtc->state);
+	struct mtk_ddp_comp *comp = NULL;
+	int i = 0, j = 0, tgt_comp = 0;
+
+	for_each_comp_in_crtc_path_bound(comp, mtk_crtc, i, j, 1)
+		mtk_ddp_comp_ddren_config(comp, en, handle);
+
+	if (priv->data->ovl_exdma_rule && mtk_crtc_state->lye_state.rpo_lye) {
+		mtk_addon_get_comp(crtc, mtk_crtc_state->lye_state.rpo_lye, &tgt_comp, NULL);
+		mtk_ddp_comp_ddren_config(priv->ddp_comp[tgt_comp], en, handle);
+	}
+
+	if (priv->data->ovl_exdma_rule && mtk_crtc_state->lye_state.mml_dl_lye) {
+		mtk_addon_get_comp(crtc, mtk_crtc_state->lye_state.mml_dl_lye, &tgt_comp, NULL);
+		mtk_ddp_comp_ddren_config(priv->ddp_comp[tgt_comp], en, handle);
+	}
+
+	mtk_vidle_bif_resource_ctrl(en, handle);
+}
+void mtk_disp_bif_keep_read_mutex_MT6991(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle)
+{
+	struct mtk_disp_mutex *mutex = NULL;
+	struct mtk_ddp *ddp = NULL;
+	resource_size_t regs_pa = {0};
+	resource_size_t ovlsys_regs_pa = {0};
+	unsigned int mutex_id = 0;
+
+	mutex = mtk_crtc->mutex[mutex_id];
+	ddp = container_of(mutex, struct mtk_ddp, mutex[mutex->id]);
+
+	if (&ddp->mutex[mutex->id] != mutex)
+		DDPAEE("%s:%d, invalid mutex:(%p,%p) id:%d\n",
+			__func__, __LINE__,
+			&ddp->mutex[mutex->id], mutex, mutex->id);
+
+/* keep dispsys1 read path
+ * #define MT6991_MUTEX1_MOD0_DISP_DSI0_MAC0		BIT(23)
+ * #define MT6991_MUTEX1_MOD1_DISP_SPLITTER1		(BIT(12) | BIT(31))
+ * #define MT6991_MUTEX1_MOD1_DISP_MDP_RDMA1		(BIT(20) | BIT(31))
+ */
+	if (handle) {
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			ddp->side_regs_pa + DISP_REG_MUTEX_MOD(0, ddp->data, mutex->id),
+			BIT(23), ~0);
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			ddp->side_regs_pa + DISP_REG_MUTEX_MOD(1, ddp->data, mutex->id),
+			BIT(12) | BIT(20), ~0);
+
+		/* remove ovlsys/dispsys0 sof*/
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			ddp->regs_pa + DISP_REG_MUTEX_MOD(0, ddp->data, mutex->id),
+			0, ~0);
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			ddp->regs_pa + DISP_REG_MUTEX_MOD(1, ddp->data, mutex->id),
+			0, ~0);
+
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			ddp->ovlsys0_regs_pa + DISP_REG_MUTEX_MOD(0, ddp->data, mutex->id),
+			0, ~0);
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			ddp->ovlsys0_regs_pa + DISP_REG_MUTEX_MOD(1, ddp->data, mutex->id),
+			0, ~0);
+
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			ddp->ovlsys1_regs_pa + DISP_REG_MUTEX_MOD(0, ddp->data, mutex->id),
+			0, ~0);
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			ddp->ovlsys1_regs_pa + DISP_REG_MUTEX_MOD(1, ddp->data, mutex->id),
+			0, ~0);
+	} else {
+		writel_relaxed(BIT(23), ddp->side_regs + DISP_REG_MUTEX_MOD(0, ddp->data, mutex->id));
+		writel_relaxed(BIT(12) | BIT(20),ddp->side_regs + DISP_REG_MUTEX_MOD(1, ddp->data, mutex->id));
+
+		writel_relaxed(0, ddp->regs + DISP_REG_MUTEX_MOD(0, ddp->data, mutex->id));
+		writel_relaxed(0, ddp->regs + DISP_REG_MUTEX_MOD(1, ddp->data, mutex->id));
+
+		writel_relaxed(0, ddp->ovlsys0_regs + DISP_REG_MUTEX_MOD(0, ddp->data, mutex->id));
+		writel_relaxed(0, ddp->ovlsys0_regs + DISP_REG_MUTEX_MOD(1, ddp->data, mutex->id));
+
+		writel_relaxed(0, ddp->ovlsys1_regs + DISP_REG_MUTEX_MOD(0, ddp->data, mutex->id));
+		writel_relaxed(0, ddp->ovlsys1_regs + DISP_REG_MUTEX_MOD(1, ddp->data, mutex->id));
+	}
+}
+
+void mtk_disp_bif_racing_config_MT6991(struct cmdq_pkt *handle, struct mtk_drm_crtc *mtk_crtc, bool racing)
+{
+	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
+	struct cmdq_base *cmdq_base = mtk_crtc->gce_obj.base;
+	struct mtk_bif_info *bif_info = NULL;
+	unsigned int bif_con = 0;
+
+	if (!priv) {
+		DDPPR_ERR("error,%s,priv null\n", __func__);
+		return;
+	}
+
+	if (!mtk_crtc->bif_info) {
+		DDPPR_ERR("error,%s,bif_info null\n", __func__);
+		return;
+	}
+
+	bif_info = mtk_crtc->bif_info;
+
+	if (bif_info->racing_en == racing)
+		return;
+
+	bif_info->racing_en = racing;
+
+	if (!bif_info->sram_en)
+		goto none_racing_config;
+	else {
+		if (racing) {
+			if (priv->side_config_regs) {
+				bif_con = bif_info->sram_size;
+				bif_con |= (priv->data->bif_diff_thr << 24);
+				bif_con |= RG_BIF_EN;
+
+				if (handle) {
+					cmdq_pkt_write(handle, cmdq_base,
+						priv->side_config_regs_pa + MT6991_DISP1_BIF_CON, bif_con, ~0);
+					cmdq_pkt_write(handle, cmdq_base,
+						priv->side_config_regs_pa + MT6991_DISP1_BIF_OFFSET_ADDR,
+								bif_info->sram_pa, ~0);
+				} else {
+					writel_relaxed(bif_con, priv->side_config_regs + MT6991_DISP1_BIF_CON);
+					writel_relaxed(bif_info->sram_pa,
+						priv->side_config_regs + MT6991_DISP1_BIF_OFFSET_ADDR);
+				}
+			}
+			DDPBIF("%s,sram_en:%d,racing:%d,sram_addr:0x%llx,sz:%llx,BIF_CON:0x%x\n", __func__,
+				bif_info->sram_en, racing, bif_info->sram_pa, bif_info->sram_size, bif_con);
+
+			return;
+		}
+	}
+none_racing_config:
+	if (priv->side_config_regs) {
+		if (handle) {
+			cmdq_pkt_write(handle, cmdq_base,
+				priv->side_config_regs_pa + MT6991_DISP1_BIF_CON, 0, ~0);
+			cmdq_pkt_write(handle, cmdq_base,
+				priv->side_config_regs_pa + MT6991_DISP1_BIF_OFFSET_ADDR, 0, ~0);
+		} else {
+			writel_relaxed(0, priv->side_config_regs + MT6991_DISP1_BIF_CON);
+			writel_relaxed(0, priv->side_config_regs + MT6991_DISP1_BIF_OFFSET_ADDR);
+
+		}
+	}
+	DDPBIF("%s,sram_en:%d,racing:%d\n", __func__, bif_info->sram_en, racing);
+}
 
 void mtk_gce_event_config_MT6991(struct drm_device *drm)
 {
@@ -35696,7 +35855,74 @@ void mtk_ddp_remove_dsc_prim_MT6989(struct mtk_drm_crtc *mtk_crtc,
 	cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
 		       mtk_crtc->side_config_regs_pa + addr, value, ~0);
 }
+void mtk_ddp_insert_bif_racing_MT6991(struct mtk_drm_crtc *mtk_crtc,
+	struct cmdq_pkt *handle)
+{
+	unsigned int addr = 0, value = 0;
 
+	if (mtk_crtc->path_data->is_bypass_pc_path) {
+		/* DDP_COMPONENT_DLI_ASYNC21 to DDP_COMPONENT_SPLITTER0 */
+		addr = MT6991_SPLITTER_IN_CB1_MOUT_EN;
+		value = MT6991_DISP_SPLITTER_IN_CB_TO_SPLITTER0;
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			mtk_crtc->side_config_regs_pa + addr, value, ~0);
+	} else {
+		/* DDP_COMPONENT_POSTALIGN0 to DDP_COMPONENT_SPLITTER0 */
+		addr = MT6991_SPLITTER_IN_CB0_MOUT_EN;
+		value = MT6991_DISP_SPLITTER_IN_CB_TO_SPLITTER0;
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			mtk_crtc->side_config_regs_pa + addr, value, ~0);
+	}
+	/* clr DDP_COMPONENT_DSC0 to DDP_COMPONENT_DSI0 */
+	addr = MT6991_COMP_OUT_CB1_MOUT_EN;
+	value = 0;
+	cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+		mtk_crtc->side_config_regs_pa + addr, value, ~0);
+	addr = MT6991_SPLITTER_OUT_CB9_MOUT_EN;
+	value = 0;
+	cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+		mtk_crtc->side_config_regs_pa + addr, value, ~0);
+	/* DDP_COMPONENT_COMP0_OUT_CB8 to DDP_COMPONENT_MERGE0_OUT_CB0 */
+	addr = MT6991_COMP_OUT_CB8_MOUT_EN;
+	value = MT6991_DISP_COMP_OUT_CB_TO_MERGE_OUT_CB0;
+	cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+		mtk_crtc->side_config_regs_pa + addr, value, ~0);
+
+}
+void mtk_ddp_remove_bif_racing_MT6991(struct mtk_drm_crtc *mtk_crtc,
+	struct cmdq_pkt *handle)
+{
+	unsigned int addr = 0, value = 0;
+
+	if (mtk_crtc->path_data->is_bypass_pc_path) {
+		/* DDP_COMPONENT_DLI_ASYNC21 to DDP_COMPONENT_SPLITTER0_OUT_CB9 */
+		addr = MT6991_SPLITTER_IN_CB1_MOUT_EN;
+		value = MT6991_DISP_SPLITTER_IN_CB_TO_SPLITTER_OUT_CB9;
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			mtk_crtc->side_config_regs_pa + addr, value, ~0);
+	} else {
+		/* DDP_COMPONENT_POSTALIGN0 to DDP_COMPONENT_SPLITTER0_OUT_CB9 */
+		addr = MT6991_SPLITTER_IN_CB0_MOUT_EN;
+		value = MT6991_DISP_SPLITTER_IN_CB_TO_SPLITTER_OUT_CB9;
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			mtk_crtc->side_config_regs_pa + addr, value, ~0);
+	}
+	/* DDP_COMPONENT_DSC0 to DDP_COMPONENT_COMP0_OUT_CB1 */
+	addr = MT6991_COMP_OUT_CB1_MOUT_EN;
+	value = MT6991_DISP_COMP_OUT_CB_TO_MERGE_OUT_CB0;
+	cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+		mtk_crtc->side_config_regs_pa + addr, value, ~0);
+	addr = MT6991_SPLITTER_OUT_CB9_MOUT_EN;
+	value = MT6991_DISP_SPLITTER_OUT_CB_TO_DSC0_0;
+	cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+		mtk_crtc->side_config_regs_pa + addr, value, ~0);
+
+	/* clr DDP_COMPONENT_COMP0_OUT_CB8 to DDP_COMPONENT_MERGE0_OUT_CB0 */
+	addr = MT6991_COMP_OUT_CB8_MOUT_EN;
+	value = 0;
+	cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+		mtk_crtc->side_config_regs_pa + addr, value, ~0);
+}
 void mtk_ddp_insert_dsc_prim_MT6991(struct mtk_drm_crtc *mtk_crtc,
 	struct cmdq_pkt *handle)
 {
@@ -40295,7 +40521,7 @@ void mmsys_config_dump_reg_mt6991(void __iomem *config_regs)
 	for (off = 0x650; off <= 0x670; off += 0x10)
 		mtk_serial_dump_reg(config_regs, off, 4);
 
-	for (off = 0xA00; off <= 0xB24; off += 0x10)
+	for (off = 0xA00; off <= 0xB40; off += 0x10)
 		mtk_serial_dump_reg(config_regs, off, 4);
 
 	for (off = 0xC30; off <= 0xC40; off += 0x10)
@@ -42142,8 +42368,17 @@ void ovlsys_config_dump_analysis_mt6989(void __iomem *config_regs)
 	}
 #endif
 }
+void mtk_crtc_dump_bif_info(struct mtk_drm_crtc *mtk_crtc, void __iomem *config_regs)
+{
+	struct mtk_bif_info *bif_info = mtk_crtc->bif_info;
+	int ret = 0;
 
+	if (!bif_info)
+		return;
 
+	DDPFENCE("bif_enabled(%d)addr:0x%llx,sz:%llx (%dx%d)\n", bif_enabled(&mtk_crtc->base),
+		bif_info->sram_pa, bif_info->sram_size, bif_info->src_roi.width, bif_info->src_roi.height);
+}
 void mmsys_config_dump_analysis_mt6991(void __iomem *config_regs, int sys_id)
 {
 	unsigned int idx = 0, bit = 0;

@@ -122,6 +122,8 @@ bool g_vidle_apsrc_debug;
 EXPORT_SYMBOL(g_vidle_apsrc_debug);
 bool g_dbgtp_log;
 EXPORT_SYMBOL(g_dbgtp_log);
+bool g_bif_log;
+EXPORT_SYMBOL(g_bif_log);
 bool g_profile_log;
 bool g_qos_log;
 bool g_irq_log;

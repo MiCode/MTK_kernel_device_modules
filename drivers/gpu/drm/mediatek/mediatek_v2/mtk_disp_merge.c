@@ -52,6 +52,8 @@
 #define DISP_REG_VPP_MERGE_CFG_26		(0x078)
 #define DISP_REG_VPP_MERGE_CFG_27		(0x07c)
 
+#define DISP_REG_VPP_MERGE_MUTE_0		(0xf00)
+
 struct mtk_merge_config_struct {
 	unsigned short width_right;
 	unsigned short width_left;
@@ -81,18 +83,14 @@ static void mtk_merge_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 		priv = comp->mtk_crtc->base.dev->dev_private;
 
 	if (priv && priv->data && (priv->data->mmsys_id == MMSYS_MT6985 ||
-		priv->data->mmsys_id == MMSYS_MT6897)) {
-		cmdq_pkt_write(handle, comp->cmdq_base,
-				   comp->regs_pa + DISP_REG_VPP_MERGE_ENABLE, 0x1, ~0);
+		priv->data->mmsys_id == MMSYS_MT6897 || bif_enabled(&comp->mtk_crtc->base))) {
+		mtk_ddp_write_relaxed(comp, 0x1, DISP_REG_VPP_MERGE_ENABLE, handle);
 	} else {
 		if (comp->mtk_crtc && comp->mtk_crtc->is_dual_pipe == false) {
 			/* bypass merge function */
-			cmdq_pkt_write(handle, comp->cmdq_base,
-					comp->regs_pa + DISP_REG_MERGE_CTRL, 0x100, ~0);
-		} else {
-			cmdq_pkt_write(handle, comp->cmdq_base,
-					comp->regs_pa + DISP_REG_MERGE_CTRL, 0x1, ~0);
-		}
+			mtk_ddp_write_relaxed(comp, 0x100, DISP_REG_MERGE_CTRL, handle);
+		} else
+			mtk_ddp_write_relaxed(comp, 0x1, DISP_REG_MERGE_CTRL, handle);
 	}
 }
 
@@ -124,7 +122,29 @@ static int mtk_merge_check_params(struct mtk_merge_config_struct *merge_config)
 			  merge_config->width_right, merge_config->height);
 	return 0;
 }
+static void mtk_merge_bif_write_config(struct mtk_ddp_comp *comp,
+				struct mtk_ddp_config *cfg,
+		       struct cmdq_pkt *handle)
+{
+	int width = cfg->w/3;
+	int height = cfg->h;
+	int offset = comp->mtk_crtc->bif_info->wdma_offset;
 
+	DDPBIF("%s,comp:%s,(%dx%d)offset:%d\n", __func__,
+		mtk_dump_comp_str(comp), width, height, offset);
+
+	mtk_ddp_write_relaxed(comp, (height << 16) | width, DISP_REG_VPP_MERGE_CFG_0, handle);
+	mtk_ddp_write_relaxed(comp, (height << 16) | offset, DISP_REG_VPP_MERGE_CFG_1, handle);
+	mtk_ddp_write_relaxed(comp, (height << 16) | (width+offset), DISP_REG_VPP_MERGE_CFG_4, handle);
+	mtk_ddp_write_relaxed(comp, 0, DISP_REG_VPP_MERGE_CFG_5, handle);
+	mtk_ddp_write_relaxed(comp, 0x18, DISP_REG_VPP_MERGE_CFG_12, handle);
+	mtk_ddp_write_relaxed(comp, (height << 16) | width, DISP_REG_VPP_MERGE_CFG_24, handle);
+	mtk_ddp_write_relaxed(comp, (height << 16) | offset, DISP_REG_VPP_MERGE_CFG_25, handle);
+	mtk_ddp_write_relaxed(comp, (height << 16) | width, DISP_REG_VPP_MERGE_CFG_26, handle);
+	mtk_ddp_write_relaxed(comp, (height << 16) | offset, DISP_REG_VPP_MERGE_CFG_27, handle);
+	mtk_ddp_write_relaxed(comp, 0, DISP_REG_VPP_MERGE_MUTE_0, handle);
+	mtk_ddp_write_relaxed(comp, 0x1, DISP_REG_VPP_MERGE_ENABLE, handle);
+}
 static void mtk_merge_config(struct mtk_ddp_comp *comp,
 				struct mtk_ddp_config *cfg,
 		       struct cmdq_pkt *handle)
@@ -329,6 +349,7 @@ static const struct mtk_ddp_comp_funcs mtk_disp_merge_funcs = {
 	.start = mtk_merge_start,
 	.stop = mtk_merge_stop,
 	.config = mtk_merge_config,
+	.bif_write_config = mtk_merge_bif_write_config,
 	.prepare = mtk_merge_prepare,
 	.unprepare = mtk_merge_unprepare,
 };
@@ -421,6 +442,7 @@ static const struct of_device_id mtk_disp_merge_driver_dt_match[] = {
 	{.compatible = "mediatek,mt6895-disp-merge", },
 	{.compatible = "mediatek,mt6985-disp-merge", },
 	{.compatible = "mediatek,mt6897-disp-merge", },
+	{.compatible = "mediatek,mt6991-disp-merge", },
 	{},
 };
 MODULE_DEVICE_TABLE(of, mtk_disp_merge_driver_dt_match);

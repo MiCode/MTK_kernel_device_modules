@@ -254,6 +254,12 @@ int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...);
 		if (g_irq_log)                                                 \
 			mtk_dprec_logger_pr(DPREC_LOGGER_DEBUG, fmt, ##arg);   \
 	} while (0)
+#define DDPBIF(fmt, arg...)                                                    \
+	do {								   \
+		if (g_bif_log || g_mobile_log)	   \
+			mtk_dprec_logger_pr(DPREC_LOGGER_DEBUG, fmt, ##arg);   \
+	} while (0)
+
 #endif
 
 #define DDPFUNC(fmt, arg...)		\
@@ -493,6 +499,7 @@ extern bool g_profile_log;
 extern bool g_qos_log;
 extern bool g_y2r_en;
 extern bool g_dbgtp_log;
+extern bool g_bif_log;
 extern unsigned long long g_pf_time;
 extern bool g_dump_prop_log;
 extern unsigned int g_pq_test_flag;

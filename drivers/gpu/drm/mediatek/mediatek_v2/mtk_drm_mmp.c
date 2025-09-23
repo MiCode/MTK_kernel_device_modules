@@ -441,6 +441,8 @@ void init_crtc_mmp_event(void)
 			mmprofile_register_event(crtc_mmp_root, "dsi_ltpo_vsync");
 		g_CRTC_MMP_Events[i].arp_te =
 			mmprofile_register_event(crtc_mmp_root, "arp_te");
+		g_CRTC_MMP_Events[i].bif_src_ctrl = mmprofile_register_event(
+					crtc_mmp_root, "bif_src_ctrl");
 		g_CRTC_MMP_Events[i].enter_idle = mmprofile_register_event(
 			crtc_mmp_root, "enter_HS_idle");
 		g_CRTC_MMP_Events[i].leave_idle = mmprofile_register_event(

@@ -1544,6 +1544,11 @@ struct mtk_exdma_srt_bw {
 struct mtk_ddp_comp_funcs {
 	void (*config)(struct mtk_ddp_comp *comp, struct mtk_ddp_config *cfg,
 		       struct cmdq_pkt *handle);
+	void (*bif_write_config)(struct mtk_ddp_comp *comp, struct mtk_ddp_config *cfg,
+		       struct cmdq_pkt *handle);
+	void (*bif_read_config)(struct mtk_ddp_comp *comp, struct mtk_ddp_config *cfg,
+		       struct cmdq_pkt *handle);
+	void (*ddren_config)(struct mtk_ddp_comp *comp, bool en, struct cmdq_pkt *handle);
 	void (*prepare)(struct mtk_ddp_comp *comp);
 	void (*unprepare)(struct mtk_ddp_comp *comp);
 	void (*start)(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle);
@@ -1677,7 +1682,25 @@ static inline void mtk_ddp_comp_config(struct mtk_ddp_comp *comp,
 	if (comp && comp->funcs && comp->funcs->config && !comp->blank_mode)
 		comp->funcs->config(comp, cfg, handle);
 }
-
+static inline void mtk_ddp_comp_bif_read_config(struct mtk_ddp_comp *comp,
+					   struct mtk_ddp_config *cfg,
+					   struct cmdq_pkt *handle)
+{
+	if (comp && comp->funcs && comp->funcs->bif_read_config && !comp->blank_mode)
+		comp->funcs->bif_read_config(comp, cfg, handle);
+}
+static inline void mtk_ddp_comp_bif_write_config(struct mtk_ddp_comp *comp,
+				       struct mtk_ddp_config *cfg,
+				       struct cmdq_pkt *handle)
+{
+	if (comp && comp->funcs && comp->funcs->bif_write_config && !comp->blank_mode)
+		comp->funcs->bif_write_config(comp, cfg, handle);
+}
+static inline void mtk_ddp_comp_ddren_config(struct mtk_ddp_comp *comp, bool en, struct cmdq_pkt *handle)
+{
+	if (comp && comp->funcs && comp->funcs->ddren_config && !comp->blank_mode)
+		comp->funcs->ddren_config(comp, en, handle);
+}
 static inline void mtk_ddp_comp_prepare(struct mtk_ddp_comp *comp)
 {
 	if (comp && comp->funcs && comp->funcs->prepare && !comp->blank_mode)

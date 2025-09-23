@@ -886,7 +886,11 @@ void mtk_vidle_dsi_pll_set(const u32 value)
 	if (disp_dpc_driver.dpc_dsi_pll_set)
 		disp_dpc_driver.dpc_dsi_pll_set(value);
 }
-
+void mtk_vidle_bif_resource_ctrl(const bool en, struct cmdq_pkt *pkt)
+{
+	if (disp_dpc_driver.dpc_bif_resource_ctrl)
+		disp_dpc_driver.dpc_bif_resource_ctrl(en, pkt);
+}
 u32 mtk_vidle_hint_update(enum mtk_vidle_hint_type type)
 {
 	unsigned long flags = 0;

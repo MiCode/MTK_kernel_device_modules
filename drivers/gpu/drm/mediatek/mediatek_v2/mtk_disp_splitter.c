@@ -97,6 +97,44 @@ mtk_splitter_config(struct mtk_ddp_comp *comp, struct mtk_ddp_config *cfg, struc
 	cmdq_pkt_write(handle, comp->cmdq_base,	comp->regs_pa + DISP_REG_SPLITTER_CTL,
 		       0x10000, ~0);
 }
+static void
+mtk_splitter_bif_write_config(struct mtk_ddp_comp *comp, struct mtk_ddp_config *cfg, struct cmdq_pkt *handle)
+{
+	int width = cfg->w;
+	int height = cfg->h;
+	int value = 0;
+	int offset = comp->mtk_crtc->bif_info->wdma_offset;
+
+	DDPBIF("%s,comp:%s,(%dx%d)offset:%d\n", __func__, mtk_dump_comp_str(comp), width, height, offset);
+
+	value = SPLITTER_ENABLE | SPLITTER_CONFIG_OUT_TH;
+	mtk_ddp_write_mask(comp, value, DISP_REG_SPLITTER_CTL, value,  handle);
+
+	value = (height << 16) | width;
+	mtk_ddp_write_relaxed(comp, value, DISP_REG_SPLITTER_SRC_SIZE, handle);
+	mtk_ddp_write_relaxed(comp, value, DISP_REG_SPLITTER_OUT0_SIZE, handle);
+	mtk_ddp_write_relaxed(comp, 0, DISP_REG_SPLITTER_OUT0_OFFSET, handle);
+	value = width - offset;
+	mtk_ddp_write_relaxed(comp, value, DISP_REG_SPLITTER_OUT1_OFFSET, handle);
+	value = (height << 16) | offset;
+	mtk_ddp_write_relaxed(comp, value, DISP_REG_SPLITTER_OUT1_SIZE, handle);
+}
+static void
+mtk_splitter_bif_read_config(struct mtk_ddp_comp *comp, struct mtk_ddp_config *cfg, struct cmdq_pkt *handle)
+{
+	int width = cfg->w/3;
+	int height = cfg->h;
+	int offset = comp->mtk_crtc->bif_info->wdma_offset;
+
+	DDPBIF("%s,comp:%s,(%dx%d)offset:%d\n", __func__, mtk_dump_comp_str(comp), width, height, offset);
+
+	mtk_ddp_write_mask(comp,SPLITTER_ENABLE | SPLITTER_OUT1_DIS, DISP_REG_SPLITTER_CTL,
+			SPLITTER_ENABLE | SPLITTER_OUT1_DIS,  handle);
+	mtk_ddp_write_relaxed(comp, (height << 16) | (width + offset), DISP_REG_SPLITTER_SRC_SIZE, handle);
+	mtk_ddp_write_relaxed(comp, 0, DISP_REG_SPLITTER_OUT0_OFFSET, handle);
+	mtk_ddp_write_relaxed(comp, (height << 16) | width, DISP_REG_SPLITTER_OUT0_SIZE, handle);
+}
+
 static void mtk_splitter_prepare(struct mtk_ddp_comp *comp)
 {
 	DDPFUNC();
@@ -113,6 +151,8 @@ static const struct mtk_ddp_comp_funcs mtk_disp_splitter_funcs = {
 	.start = mtk_splitter_start,
 	.stop = mtk_splitter_stop,
 	.config = mtk_splitter_config,
+	.bif_write_config = mtk_splitter_bif_write_config,
+	.bif_read_config = mtk_splitter_bif_read_config,
 	.prepare = mtk_splitter_prepare,
 	.unprepare = mtk_splitter_unprepare,
 };
@@ -196,6 +236,7 @@ static void mtk_disp_splitter_remove(struct platform_device *pdev)
 }
 
 static const struct of_device_id mtk_disp_splitter_driver_dt_match[] = {
+	{.compatible = "mediatek,mt6991-disp-splitter", },
 	{.compatible = "mediatek,mt6993-disp-splitter", },
 	{},
 };

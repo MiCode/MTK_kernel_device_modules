@@ -87,6 +87,8 @@ module_param(debug_postmask_bw, int, 0644);
 #define PAUSE_REGION_FLD_RDMA_PAUSE_END REG_FLD_MSB_LSB(27, 16)
 #define PAUSE_REGION_FLD_RDMA_PAUSE_START REG_FLD_MSB_LSB(11, 0)
 #define DISP_POSTMASK_MEM_ADDR_MSB 0x114
+#define DISP_POSTMASK_BANK_CON 0x128
+#define DDREN_REQ_DIS	BIT(5)
 #define DISP_POSTMASK_RDMA_GREQ_NUM 0x130
 #define GREQ_FLD_IOBUF_FLUSH_ULTRA REG_FLD_MSB_LSB(31, 31)
 #define GREQ_FLD_IOBUF_FLUSH_PREULTRA REG_FLD_MSB_LSB(30, 30)
@@ -165,6 +167,7 @@ struct mtk_disp_postmask_tile_overhead_v {
 
 struct mtk_disp_postmark_tile_overhead postmark_tile_overhead = { 0 };
 struct mtk_disp_postmask_tile_overhead_v postmask_tile_overhead_v = { 0 };
+static void mtk_postmask_ddren(struct mtk_ddp_comp *comp, bool en, struct cmdq_pkt *handle);
 
 static inline struct mtk_disp_postmask *comp_to_postmask(struct mtk_ddp_comp *comp)
 {
@@ -505,12 +508,14 @@ static void mtk_postmask_config(struct mtk_ddp_comp *comp,
 #endif
 		/* config relay mode */
 	} else {
+		postmask->postmask_force_relay = 1;
 		value = (REG_FLD_VAL((CFG_FLD_RELAY_MODE), 1) |
 			 REG_FLD_VAL((CFG_FLD_DRAM_MODE), 1) |
 			 REG_FLD_VAL((CFG_FLD_BGCLR_IN_SEL), 1) |
 			 REG_FLD_VAL((CFG_FLD_GCLAST_EN), 1) |
 			 REG_FLD_VAL((CFG_FLD_STALL_CG_ON), 1));
 		mtk_ddp_write_relaxed(comp, value, DISP_POSTMASK_CFG, handle);
+		mtk_postmask_ddren(comp, 0, handle);
 	}
 }
 
@@ -593,6 +598,8 @@ int mtk_postmask_analysis(struct mtk_ddp_comp *comp)
 static int mtk_postmask_io_cmd(struct mtk_ddp_comp *comp,
 			       struct cmdq_pkt *handle,
 			       enum mtk_ddp_io_cmd io_cmd, void *params);
+static void mtk_postmask_bypass(struct mtk_ddp_comp *comp, int bypass,
+	int caller, struct cmdq_pkt *handle);
 
 static void mtk_postmask_start(struct mtk_ddp_comp *comp,
 			       struct cmdq_pkt *handle)
@@ -619,7 +626,22 @@ static void mtk_postmask_stop(struct mtk_ddp_comp *comp,
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		       comp->regs_pa + DISP_POSTMASK_INTSTA, 0, ~0);
 }
+static void mtk_postmask_ddren(struct mtk_ddp_comp *comp, bool en, struct cmdq_pkt *handle)
+{
+	struct mtk_disp_postmask *postmask = comp_to_postmask(comp);
 
+	DDPDBG("%s,comp:%s,en:%d,relay:%d\n", __func__,
+		mtk_dump_comp_str(comp), en, postmask->postmask_force_relay);
+
+	/* relay mode set ddren disable */
+	if (postmask->postmask_force_relay)
+		en = 0;
+
+	if (en)
+		mtk_ddp_write_mask(comp, 0x0, DISP_POSTMASK_BANK_CON, DDREN_REQ_DIS, handle);
+	else
+		mtk_ddp_write_mask(comp, DDREN_REQ_DIS, DISP_POSTMASK_BANK_CON, DDREN_REQ_DIS, handle);
+}
 static void mtk_postmask_bypass(struct mtk_ddp_comp *comp, int bypass,
 	int caller, struct cmdq_pkt *handle)
 {
@@ -1137,6 +1159,7 @@ static const struct mtk_ddp_comp_funcs mtk_disp_postmask_funcs = {
 	.config_overhead = mtk_disp_postmark_config_overhead,
 	.config_overhead_v = mtk_disp_postmask_config_overhead_v,
 	.partial_update = mtk_postmask_set_partial_update,
+	.ddren_config = mtk_postmask_ddren,
 };
 
 static const struct component_ops mtk_disp_postmask_component_ops = {

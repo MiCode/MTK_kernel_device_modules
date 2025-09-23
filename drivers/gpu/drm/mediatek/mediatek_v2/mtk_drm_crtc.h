@@ -560,6 +560,20 @@ enum EVENT_TRIGGER_PT {
 			->wb_path[p_mode][__i], 1);       \
 			(__i)++)
 
+#define for_each_bif_read_comp_id_in_path_data(comp_id, path_data, __i, p_mode)      \
+	for ((p_mode) = 0; (p_mode) < DDP_MODE_NR; (p_mode)++)		  \
+		for ((__i) = 0;						\
+			(((__i) < ((path_data)->bif_read_path_len[p_mode])) &&  \
+			(((comp_id) = ((path_data)->bif_read_path[p_mode][__i])), 1));		\
+			(__i)++)
+
+#define for_each_bif_write_comp_id_in_path_data(comp_id, path_data, __i, p_mode)      \
+	for ((p_mode) = 0; (p_mode) < DDP_MODE_NR; (p_mode)++)		  \
+		for ((__i) = 0; 					\
+			(((__i) < ((path_data)->bif_write_path_len[p_mode])) &&	\
+			(((comp_id) = ((path_data)->bif_write_path[p_mode][__i])), 1));		\
+			(__i)++)
+
 enum MTK_CRTC_PROP {
 	CRTC_PROP_OVERLAP_LAYER_NUM,
 	CRTC_PROP_LYE_IDX,
@@ -818,6 +832,7 @@ struct mtk_crtc_path_data {
 	bool is_fake_path;
 	bool is_discrete_path;
 	bool is_exdma_dual_layer;
+	bool is_bypass_pc_path;
 	const enum mtk_ddp_comp_id *ovl_path[DDP_MODE_NR][DDP_PATH_NR];
 	unsigned int ovl_path_len[DDP_MODE_NR][DDP_PATH_NR];
 	const enum mtk_ddp_comp_id *path[DDP_MODE_NR][DDP_PATH_NR];
@@ -825,6 +840,10 @@ struct mtk_crtc_path_data {
 	bool path_req_hrt[DDP_MODE_NR][DDP_PATH_NR];
 	const enum mtk_ddp_comp_id *wb_path[DDP_MODE_NR];
 	unsigned int wb_path_len[DDP_MODE_NR];
+	const enum mtk_ddp_comp_id *bif_write_path[DDP_MODE_NR];
+	unsigned int bif_write_path_len[DDP_MODE_NR];
+	const enum mtk_ddp_comp_id *bif_read_path[DDP_MODE_NR];
+	unsigned int bif_read_path_len[DDP_MODE_NR];
 	const struct mtk_addon_scenario_data *addon_data;
 	const enum mtk_ddp_comp_id *scaling_data;
 	//for dual path
@@ -894,6 +913,10 @@ struct mtk_crtc_ddp_ctx {
 	bool req_hrt[DDP_PATH_NR];
 	unsigned int wb_comp_nr;
 	struct mtk_ddp_comp **wb_comp;
+	unsigned int bif_write_comp_nr;
+	struct mtk_ddp_comp **bif_write_comp;
+	unsigned int bif_read_comp_nr;
+	struct mtk_ddp_comp **bif_read_comp;
 	struct drm_framebuffer *wb_fb;
 	struct drm_framebuffer *dc_fb;
 	unsigned int dc_fb_idx;
@@ -994,6 +1017,31 @@ struct mtk_cwb_info {
 	void *user_buffer;
 	enum CWB_BUFFER_TYPE type;
 	const struct mtk_cwb_funcs *funcs;
+};
+enum BIF_EN_MODE {
+	BIF_DISABLE = 0,
+	BIF_HS_IDLE = 1,
+	BIF_ALL_SCN = 2,
+};
+
+struct mtk_bif_info {
+	int bif_enable;
+	bool racing_en;
+	int lcm_width;
+	int lcm_height;
+	struct mtk_ddp_comp *wb_comp;
+	struct mtk_ddp_comp *read_comp;
+	int wb_frame_done_event;
+	struct mtk_rect src_roi;
+	int wdma_offset;
+	unsigned int sram_en;
+	struct slbc_data sram_data;
+	u64 sram_pa;
+	u64 sram_size;
+	u32 ovlsys_0[2];
+	u32 ovlsys_1[2];
+	u32 dispsys_0[2];
+	u32 dispsys_1[2];
 };
 
 struct mtk_crtc_static_plane {
@@ -1479,6 +1527,9 @@ struct mtk_drm_crtc {
 
 	int bg_bld_id;
 	unsigned int bg_code;
+
+	/* bif data */
+	struct mtk_bif_info *bif_info;
 };
 
 /* one exdma may have both compr and uncompr layers(because ext layer).
@@ -1844,6 +1895,7 @@ bool msync_is_on(struct mtk_drm_private *priv, struct mtk_panel_params *params,
 struct mtk_cmdq_pkt_info *mtk_crtc_request_cmdq_pkt(struct mtk_drm_crtc *mtk_crtc,
 	unsigned int client_type, unsigned int pf_idx);
 void mtk_crtc_release_cmdq_pkt(struct mtk_cmdq_pkt_info *pkt_info);
+int bif_enabled(struct drm_crtc *crtc);
 
 /* ********************* Legacy DISP API *************************** */
 unsigned int DISP_GetScreenWidth(void);
@@ -1924,6 +1976,14 @@ void mtk_crtc_gce_event_config(struct drm_crtc *crtc);
 void mtk_crtc_vdisp_ao_config(struct drm_crtc *crtc);
 enum mtk_ddp_comp_id mtk_addon_path_get_cmp(struct drm_crtc *crtc, unsigned int path,
 	enum addon_scenario scn, enum mtk_ddp_comp_type type);
+void mtk_crtc_bif_enable_racing(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle);
+void mtk_crtc_bif_restore_path_mutex(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle);
+void mtk_crtc_bif_backup_path_mutex(struct mtk_drm_crtc *mtk_crtc);
+bool mtk_crtc_bif_slbc_request(struct mtk_drm_crtc *mtk_crtc, bool en);
+void mtk_crtc_bif_keep_read_path(struct drm_crtc *crtc, struct cmdq_pkt *handle);
+void mtk_crtc_bif_path_prepare(struct mtk_drm_crtc *mtk_crtc);
+void mtk_crtc_bif_apsrc_ddren_control(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle, bool en);
+void mtk_crtc_update_bif_roi(struct mtk_drm_crtc *mtk_crtc);
 
 void mtk_bwm_calc_hrt_bw(struct drm_crtc *crtc, struct drm_atomic_state *state);
 void mtk_bwm_get_compress_ratio(struct drm_crtc *crtc,

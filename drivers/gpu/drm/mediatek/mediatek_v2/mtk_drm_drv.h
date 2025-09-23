@@ -135,6 +135,14 @@ struct mtk_mmsys_driver_data {
 	bool first_dma_from_lk;
 	bool real_srt_ostdl;
 	bool skip_trans;
+	bool support_bif;
+	const int bif_wdma_limit;
+	const int bif_diff_thr;
+	void (*bif_racing_config)(struct cmdq_pkt *handle, struct mtk_drm_crtc *mtk_crtc, bool racing);
+	void (*bif_read_path_mutex)(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle);
+	void (*bif_path_insert)(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle);
+	void (*bif_path_remove)(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle);
+	void (*bif_resource_ctrl)(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle, bool en);
 	void (*update_channel_hrt)(struct mtk_drm_crtc *mtk_crtc,
 			unsigned int bw_base, unsigned int channel_bw[]);
 	void (*update_channel_hrt_write)(struct mtk_drm_crtc *mtk_crtc,
@@ -394,6 +402,8 @@ struct mtk_drm_private {
 
 	/* debug top status */
 	struct mtk_dbgtp mtk_dbgtp_sta;
+
+	unsigned int enable_bif;
 };
 
 struct mtk_drm_property {

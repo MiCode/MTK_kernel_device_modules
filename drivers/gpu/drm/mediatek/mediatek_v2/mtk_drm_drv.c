@@ -2305,6 +2305,8 @@ static void mtk_atomic_check_res_switch(struct mtk_drm_private *private,
 
 			/*store total overhead data*/
 			mtk_crtc_store_total_overhead(mtk_crtc, cfg.tile_overhead);
+
+			mtk_crtc_update_bif_roi(mtk_crtc);
 		}
 	}
 }
@@ -3836,7 +3838,20 @@ static const enum mtk_ddp_comp_id mt6991_mtk_ddp_main_bringup[] = {
 	DDP_COMPONENT_CHIST0,	DDP_COMPONENT_CHIST1,
 #endif
 };
-
+static const enum mtk_ddp_comp_id mt6991_mtk_ddp_main_bif_write_path[] = {
+	DDP_COMPONENT_SPLITTER0,
+	DDP_COMPONENT_DSC1,
+	DDP_COMPONENT_MERGE0,
+	DDP_COMPONENT_WDMA1,
+	DDP_COMPONENT_SPLITTER0_OUT_CB1, // for 2 splitter
+	DDP_COMPONENT_COMP0_OUT_CB7,
+	DDP_COMPONENT_MERGE0_OUT_CB12,
+};
+static const enum mtk_ddp_comp_id mt6991_mtk_ddp_main_bif_read_path[] = {
+	DDP_COMPONENT_MDP_RDMA1,
+	DDP_COMPONENT_SPLITTER1,
+	DDP_COMPONENT_COMP0_OUT_CB8,
+};
 static const enum mtk_ddp_comp_id mt6991_mtk_ddp_mem_dp_wo_tdshp[] = {
 	DDP_COMPONENT_OVL1_EXDMA6,
 	DDP_COMPONENT_OVL1_BLENDER5,
@@ -6335,6 +6350,10 @@ static const struct mtk_crtc_path_data mt6991_mtk_main_path_data = {
 //	.dual_path_len[0] = ARRAY_SIZE(mt6989_mtk_ddp_dual_main_bringup),
 //	.wb_path[DDP_MAJOR] = mt6983_mtk_ddp_main_wb_path,
 //	.wb_path_len[DDP_MAJOR] = ARRAY_SIZE(mt6983_mtk_ddp_main_wb_path),
+//	.bif_read_path[DDP_MAJOR] = mt6991_mtk_ddp_main_bif_write_path,
+//	.bif_read_path_len[DDP_MAJOR] = ARRAY_SIZE(mt6991_mtk_ddp_main_bif_write_path),
+//	.bif_read_path[DDP_MAJOR] = mt6991_mtk_ddp_main_bif_read_path,
+//	.bif_read_path_len[DDP_MAJOR] = ARRAY_SIZE(mt6991_mtk_ddp_main_bif_read_path),
 	.addon_data = mt6991_addon_main,
 //	.addon_data_dual = mt6989_addon_main_dual,
 	.scaling_data = mt6991_scaling_main,
@@ -7599,7 +7618,14 @@ static const struct mtk_mmsys_driver_data mt6991_mmsys_driver_data = {
 //	.ct_wiat_cmdq_event = true,
 	.get_dispsys_reg = mtk_disp_get_dispsys_reg_mt6991,
 	.get_ovlsys_reg = mtk_disp_get_ovlsys_reg_mt6991,
-
+	.support_bif = false,
+	.bif_wdma_limit = 16,
+	.bif_diff_thr = 16,
+	.bif_racing_config = mtk_disp_bif_racing_config_MT6991,
+	.bif_read_path_mutex = mtk_disp_bif_keep_read_mutex_MT6991,
+	.bif_path_insert = mtk_ddp_insert_bif_racing_MT6991,
+	.bif_path_remove = mtk_ddp_remove_bif_racing_MT6991,
+	.bif_resource_ctrl = mtk_crtc_bif_resource_control_MT6991,
 };
 
 static const struct mtk_mmsys_driver_data mt6993_mmsys_driver_data = {
@@ -13097,6 +13123,10 @@ static int mtk_drm_probe(struct platform_device *pdev)
 		private->is_tablet = true;
 		DDPFUNC("is tablet!\n");
 	}
+
+	if (!of_property_read_u32(dev->of_node, "bif-enable", &private->enable_bif))
+		DDPFUNC("enable_bif: %d\n", private->enable_bif);
+
 	init_secure_static_path_switch(dev, private);
 	if (private->secure_static_path_switch == true)
 		mtk_drm_helper_set_opt_by_name(private->helper_opt, "MTK_DRM_OPT_RPO", 0);
