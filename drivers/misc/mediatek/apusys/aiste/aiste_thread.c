@@ -20,10 +20,17 @@ struct mutex thread_record_lock;
 
 //TODO: Implement different CPU configurations for different platforms.
 const struct CpuBoostConfig cpuBoostConfigs[] = {
-	{.threshold = 0,   .uclamp_min = 0,   .uclamp_max = 1024}, // Default CPU boost
-	{.threshold = 25,  .uclamp_min = 0,   .uclamp_max = 512},  // Sustained CPU boost
-	{.threshold = 50,  .uclamp_min = 256, .uclamp_max = 768},  // Moderate CPU boost
-	{.threshold = 75,  .uclamp_min = 512, .uclamp_max = 1024}  // Performance CPU boost
+	{.threshold = 0,   .uclamp_min = 0,     .uclamp_max = 1024},
+	{.threshold = 1,   .uclamp_min = 64,    .uclamp_max = 64},
+	{.threshold = 10,  .uclamp_min = 128,   .uclamp_max = 128},
+	{.threshold = 20,  .uclamp_min = 128,   .uclamp_max = 256},
+	{.threshold = 30,  .uclamp_min = 256,   .uclamp_max = 256},
+	{.threshold = 40,  .uclamp_min = 384,   .uclamp_max = 384},
+	{.threshold = 50,  .uclamp_min = 512,   .uclamp_max = 512},
+	{.threshold = 60,  .uclamp_min = 640,   .uclamp_max = 640},
+	{.threshold = 75,  .uclamp_min = 768,   .uclamp_max = 768},
+	{.threshold = 90,  .uclamp_min = 768,   .uclamp_max = 1024},
+	{.threshold = 100, .uclamp_min = 1024,  .uclamp_max = 1024},
 };
 
 static void aiste_thread_set_uclamp(pid_t tid, uint16_t cpu_boost)
@@ -56,6 +63,12 @@ static void aiste_thread_set_uclamp(pid_t tid, uint16_t cpu_boost)
 		}
 	}
 
+	/* Apply the user configuration from debugfs */
+	if (g_uclamp_min != 0)
+		attr.sched_util_min = g_uclamp_min;
+	if (g_uclamp_max != 1024)
+		attr.sched_util_max = g_uclamp_max;
+
 	if (sched_setattr_nocheck(p, &attr) != 0)
 		aiste_err("%s: set %d uclamp fail\n", __func__, p->pid);
 	aiste_qos_debug("%s: tid=%d cur_min=%d cur_max=%d\n",
@@ -86,7 +99,6 @@ static int aiste_thread_get_record(pid_t tid)
 		if (thread_record[i].tid == tid)
 			return i;
 	}
-	aiste_qos_debug("%s: No record for tid %d\n", __func__, tid);
 	return -1;
 }
 
@@ -120,7 +132,7 @@ uint16_t aiste_thread_get_cpu_boost(pid_t tid)
 	return cpu_boost;
 }
 
-void aiste_thread_update_record(pid_t tid, uint16_t cpu_boost, bool is_aiste_supported)
+void aiste_thread_update_record(pid_t tid, uint16_t cpu_boost)
 {
 	int index_to_update = -1;
 	struct RecordEntry *temp = NULL;
@@ -160,10 +172,7 @@ void aiste_thread_update_record(pid_t tid, uint16_t cpu_boost, bool is_aiste_sup
 			__func__, record_count, tid, cpu_boost);
 		record_count++;
 	}
-	if (is_aiste_supported)
-		aiste_thread_set_uclamp(tid, cpu_boost);
-	else
-		aiste_err("AISTE is not supported on this platform\n");
+	aiste_thread_set_uclamp(tid, cpu_boost);
 
 	if (cpu_boost == 0)
 		aiste_thread_delete_reord(tid);

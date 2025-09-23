@@ -26,5 +26,5 @@ void aiste_thread_deinit(void);
 void aiste_thread_update(pid_t thread_id, uint16_t cpu_boost_value);
 
 uint16_t aiste_thread_get_cpu_boost(pid_t tid);
-void aiste_thread_update_record(pid_t tid, uint16_t cpu_boost, bool is_aiste_supported);
+void aiste_thread_update_record(pid_t tid, uint16_t cpu_boost);
 #endif /* __AISTE_THREAD_H__ */

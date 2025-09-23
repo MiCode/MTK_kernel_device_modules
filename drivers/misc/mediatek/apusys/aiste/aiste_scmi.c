@@ -16,10 +16,10 @@ static int feature_id;
 
 //TODO: Implement different DDR configurations for different platforms.
 const struct DdrBoostConfig ddrBoostConfigs[] = {
-	{.threshold = 0,   .performance_level = AISTE_PERFORMANCE_OFF}, // Default DDR boost
-	{.threshold = 25,  .performance_level = AISTE_PERFORMANCE_L3_ON},
-	{.threshold = 50,  .performance_level = AISTE_PERFORMANCE_L2_ON},
-	{.threshold = 75,  .performance_level = AISTE_PERFORMANCE_L1_ON}
+	{.threshold = 0,   .performance_level = AISTE_OFF}, // Default DDR boost
+	{.threshold = 25,  .performance_level = AISTE_Perf_L3},
+	{.threshold = 50,  .performance_level = AISTE_Perf_L2},
+	{.threshold = 75,  .performance_level = AISTE_Bench_Perf}
 };
 
 void aiste_scmi_init(unsigned int g_aiste_addr, unsigned int g_aiste_size)
@@ -62,7 +62,7 @@ void aiste_scmi_init(unsigned int g_aiste_addr, unsigned int g_aiste_size)
 int aiste_scmi_set(uint16_t ddr_boost)
 {
 	int err = 0;
-	int performance_level = AISTE_PERFORMANCE_OFF;
+	int performance_level = AISTE_OFF;
 
 	/* Find matching configuration based on ddr_boost level */
 	for (int i = ARRAY_SIZE(ddrBoostConfigs) - 1; i >= 0; --i) {

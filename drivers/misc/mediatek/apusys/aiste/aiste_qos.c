@@ -53,10 +53,7 @@ static void update_system_ddr_boost(bool delete, uint16_t oldDdrBoostValue)
 
 	if (maxDdrBoost != system_ddr_boost_value) {
 		system_ddr_boost_value = maxDdrBoost;
-		if (is_aiste_supported)
-			aiste_scmi_set(system_ddr_boost_value);
-		else
-			aiste_err("AISTE is not supported on this platform\n");
+		aiste_scmi_set(system_ddr_boost_value);
 	}
 }
 
@@ -87,9 +84,8 @@ static void update_thread_cpu_boost(bool delete, pid_t tid, uint16_t oldCpuBoost
 			maxCpuBoost = entry->cpu_boost_value;
 	}
 
-	// aiste_qos_debug("%s: maxCpuBoost=%d, curCpuBoost=%d\n", __func__, maxCpuBoost, curCpuBoost);
 	if (maxCpuBoost != curCpuBoost)
-		aiste_thread_update_record(tid, maxCpuBoost, is_aiste_supported);
+		aiste_thread_update_record(tid, maxCpuBoost);
 }
 
 struct qos_entry *validate_and_get_qos_entry(uint64_t qos_id)
@@ -139,6 +135,11 @@ uint64_t aiste_create_qos(void)
 {
 	struct qos_entry *entry = NULL;
 
+	if(!is_aiste_supported) {
+		aiste_err("AISTE is not supported on this platform\n");
+		return 0;
+	}
+
 	/* Find an unused entry in the pool */
 	list_for_each_entry(entry, &qos_list, list) {
 		if (!entry->used) {
@@ -156,7 +157,6 @@ uint64_t aiste_create_qos(void)
 	list_add_tail(&entry->list, &qos_list);
 
 FIND_ENTRY:
-	aiste_qos_debug("%s: qos_id=%llx\n", __func__, (uint64_t)entry);
 	return (uint64_t)entry;
 }
 
@@ -169,8 +169,6 @@ int aiste_delete_qos(struct qos_entry *entry)
 
 	if (!entry)
 		return -EINVAL;
-
-	aiste_qos_debug("%s: qos_id=%llx\n", __func__, (uint64_t)entry);
 
 	old_ddr_boost = entry->ddr_boost_value;
 	old_cpu_boost = entry->cpu_boost_value;

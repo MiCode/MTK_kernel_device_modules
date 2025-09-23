@@ -12,11 +12,16 @@
 #include "tinysys-scmi.h"
 
 enum {
-	AISTE_INIT,
-	AISTE_PERFORMANCE_L1_ON,
-	AISTE_PERFORMANCE_L2_ON,
-	AISTE_PERFORMANCE_L3_ON,
-	AISTE_PERFORMANCE_OFF,
+	AISTE_INIT = 0,
+	AISTE_OFF,
+	AISTE_Power_Saving,
+	AISTE_Perf_L1,
+	AISTE_Bench_Perf,
+	AISTE_LLM_Qwen_25_3B_Perf,
+	AISTE_Perf_L2,
+	AISTE_Perf_L3,
+	AISTE_Low_Power_High,
+	AISTE_Low_Power,
 	AISTE_MAX,
 };
 

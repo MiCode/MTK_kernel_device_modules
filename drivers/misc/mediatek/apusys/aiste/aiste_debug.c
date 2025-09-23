@@ -20,7 +20,7 @@ int aiste_procfs_init(void)
 
 	g_uclamp_min = 0;
 	g_uclamp_max = 1024;
-	g_klog = AISTE_DBG_ALL;
+	g_klog = 0;
 	debugfs_create_u32("uclamp_min", 0644, aiste_debug_root, &g_uclamp_min);
 	debugfs_create_u32("uclamp_max", 0644, aiste_debug_root, &g_uclamp_max);
 	debugfs_create_u32("klog", 0644, aiste_debug_root, &g_klog);
