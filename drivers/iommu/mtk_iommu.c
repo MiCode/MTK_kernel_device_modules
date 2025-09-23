@@ -236,6 +236,7 @@
 #define PM_DOMAIN_SKIP			BIT(27)
 #define CHECK_MMINFRA_POWER		BIT(28)
 #define ENABLE_TLB_FLUSH_GZVM		BIT(29)
+#define APU_SEMPHONE_POWER		BIT(30)
 
 #define POWER_ON_STA		1
 #define POWER_OFF_STA		0
@@ -1049,6 +1050,19 @@ static bool mtk_iommu_mm_power_get(struct mtk_iommu_data *data, int *pm_sta)
 
 	return false;
 }
+
+static bool mtk_iommu_apu_power_get(struct mtk_iommu_data *data, int *pm_sta)
+{
+	if (MTK_IOMMU_HAS_FLAG(data->plat_data, APU_SEMPHONE_POWER))
+		return mtk_iommu_hw_sem_power_get(data->plat_data->iommu_type,
+						  data->plat_data->iommu_id);
+
+	*pm_sta = pm_runtime_get_if_in_use(data->dev);
+	if (*pm_sta <= 0 && apu_pm_sta[data->plat_data->iommu_id] == POWER_OFF_STA)
+		return false;
+	return true;
+}
+
 /**
  * mtk_iommu_power_get - Get iommu power status,
  * conditionally call pm_runtime_get_if_in_use.
@@ -1069,8 +1083,7 @@ static __maybe_unused bool mtk_iommu_power_get(struct mtk_iommu_data *data, int 
 	if ((data->plat_data->iommu_type == MM_IOMMU &&
 	     mtk_iommu_mm_power_get(data, pm_sta) == POWER_OFF_STA) ||
 	     (data->plat_data->iommu_type != MM_IOMMU &&
-	     (*pm_sta = pm_runtime_get_if_in_use(data->dev)) <= 0 &&
-	     apu_pm_sta[data->plat_data->iommu_id] == POWER_OFF_STA)) {
+	     mtk_iommu_apu_power_get(data, pm_sta) == POWER_OFF_STA)) {
 		return false;
 	}
 
@@ -1093,8 +1106,12 @@ static __maybe_unused void mtk_iommu_power_put(struct mtk_iommu_data *data, int 
 	if (!has_pm || MTK_IOMMU_HAS_FLAG(data->plat_data, IOMMU_CLK_AO_EN))
 		return;
 
-	if (data->plat_data->iommu_type != MM_IOMMU && pm_sta > 0) {
-		pm_runtime_put(data->dev);
+	if (data->plat_data->iommu_type != MM_IOMMU) {
+		if (MTK_IOMMU_HAS_FLAG(data->plat_data, APU_SEMPHONE_POWER))
+			mtk_iommu_hw_sem_power_put(data->plat_data->iommu_type,
+						   data->plat_data->iommu_id);
+		else if (pm_sta > 0)
+			pm_runtime_put(data->dev);
 		return;
 	}
 
@@ -3962,7 +3979,7 @@ static const struct mtk_iommu_plat_data mt6878_data_disp = {
 static const struct mtk_iommu_plat_data mt6878_data_apu0 = {
 	.m4u_plat	= M4U_MT6878,
 	.flags          = TLB_SYNC_EN | IOMMU_SEC_EN | PGTABLE_PA_35_EN |
-			  GET_DOM_ID_LEGACY | IOVA_34_EN | LINK_WITH_APU |
+			  GET_DOM_ID_LEGACY | IOVA_34_EN | APU_SEMPHONE_POWER |
 			  PM_OPS_SKIP,
 	.hw_list        = &apu_iommu_list,
 	.inv_sel_reg    = REG_MMU_INV_SEL_GEN2,

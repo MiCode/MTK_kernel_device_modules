@@ -55,6 +55,8 @@ enum iommu_atf_cmd {
 	DUMP_BANK_BASE,
 	DUMP_BANK_VAL,
 #endif
+	HW_SEM_POWER_GET,
+	HW_SEM_POWER_PUT,
 	CMD_NUM
 };
 
@@ -246,6 +248,38 @@ int mtk_iommu_secure_bk_tf_dump(uint32_t type, uint32_t id, uint32_t bank,
 	return SMC_IOMMU_SUCCESS;
 }
 EXPORT_SYMBOL_GPL(mtk_iommu_secure_bk_tf_dump);
+
+bool mtk_iommu_hw_sem_power_get(uint32_t type, uint32_t id)
+{
+	int ret;
+	unsigned long cmd = IOMMU_ATF_SET_CMD(type, id, IOMMU_BK0, HW_SEM_POWER_GET);
+
+	ret = mtk_iommu_atf_call(type, id, BANK_IGNORE, cmd, 0, 0, 0, 0, 0, 0);
+	if (ret) {
+		pr_err("%s, iommu call is fail, type:%u, id:%u, bk:%u, cmd:0x%lx\n",
+			__func__, type, id, IOMMU_BK0, cmd);
+		return false;
+	}
+
+	return true;
+}
+EXPORT_SYMBOL_GPL(mtk_iommu_hw_sem_power_get);
+
+bool mtk_iommu_hw_sem_power_put(uint32_t type, uint32_t id)
+{
+	int ret;
+	unsigned long cmd = IOMMU_ATF_SET_CMD(type, id, IOMMU_BK0, HW_SEM_POWER_PUT);
+
+	ret = mtk_iommu_atf_call(type, id, BANK_IGNORE, cmd, 0, 0, 0, 0, 0, 0);
+	if (ret) {
+		pr_err("%s, iommu call is fail, type:%u, id:%u, bk:%u, cmd:0x%lx\n",
+			__func__, type, id, IOMMU_BK0, cmd);
+		return false;
+	}
+
+	return true;
+}
+EXPORT_SYMBOL_GPL(mtk_iommu_hw_sem_power_put);
 
 #if IS_ENABLED(CONFIG_MTK_IOMMU_DEBUG)
 void mtk_iommu_dump_bank_base(void)
