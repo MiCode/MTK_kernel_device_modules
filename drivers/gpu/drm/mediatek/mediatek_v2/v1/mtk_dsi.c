@@ -8160,7 +8160,7 @@ bool mtk_dsi_is_cmd_mode(struct mtk_ddp_comp *comp)
 	if (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_WDMA)
 		return true;
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 	if(mtk_ddp_comp_get_type(comp->id) != MTK_DSI) {
 		DDPMSG("[W]%s comp %s is not dsi type\n", __func__, mtk_dump_comp_str(comp));
 		return false;

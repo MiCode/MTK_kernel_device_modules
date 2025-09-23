@@ -9,8 +9,11 @@
 #include "mmprofile.h"
 #include "mmprofile_function.h"
 #include "mtk_drm_ddp.h"
-
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
+#define MMP_CRTC_NUM MAX_CRTC
+#else
 #define MMP_CRTC_NUM 4
+#endif
 
 /* if changed, need to update init_drm_mmp_event() */
 struct DRM_MMP_Events {

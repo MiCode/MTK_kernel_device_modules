@@ -19,6 +19,10 @@
 
 #include "mtk_drm_ddp.h"
 #include "mtk_drm_crtc.h"
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
+#include "mtk_drm_crtc_auto.h"
+#include "mtk_drm_ddp_auto.h"
+#endif
 #include "mtk_drm_drv.h"
 #include "mtk_drm_ddp_comp.h"
 #include "mtk_dump.h"
@@ -26797,10 +26801,17 @@ static int mtk_ddp_ovl_rsz_in_cb_MT6991(enum mtk_ddp_comp_id cur, enum mtk_ddp_c
 	case DDP_COMPONENT_OVLSYS1_DLI_ASYNC3:
 		*addr = MT6991_OVL_RSZ_IN_CROSSBAR0_MOUT_EN;
 		break;
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 	case DDP_COMPONENT_OVL_EXDMA2:
 	case DDP_COMPONENT_OVL1_EXDMA2:
 		*addr = MT6991_OVL_RSZ_IN_CROSSBAR1_MOUT_EN;	// OVL_MOUT = 0x1
 		break;
+#else
+	case DDP_COMPONENT_OVL_EXDMA2:
+	case DDP_COMPONENT_OVL1_EXDMA2:
+		*addr = MT6991_OVL_RSZ_IN_CROSSBAR2_MOUT_EN;	// OVL_MOUT = 0x1
+		break;
+#endif
 	case DDP_COMPONENT_OVLSYS_RELAY0:
 	case DDP_COMPONENT_OVLSYS1_RELAY0:
 		*addr = MT6991_OVL_RSZ_IN_CROSSBAR3_MOUT_EN;
@@ -28156,6 +28167,13 @@ static int mtk_ddp_mout_en_MT6991(const struct mtk_mmsys_reg_data *data,
 	value = mtk_ddp_disp0_pq_in_cb_MT6991(cur, next, addr);
 	if (value > 0)
 		return value;
+
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
+	if (mtk_ddp_comp_get_type(cur) == MTK_DISP_MDP_RSZ) {
+		value = mtk_ddp_pq_path_sel_MT6991(cur, next, addr);
+		return value;
+	}
+#endif
 
 	/* dispsys0 pq_out_cb */
 	value = mtk_ddp_disp0_pq_out_cb_MT6991(cur, next, addr);
@@ -34293,7 +34311,7 @@ void mtk_gce_event_config_MT6991(struct drm_device *drm)
 	writel(MT6991_DISP1_GCE_FRAME_DONE_SEL7_WDMA4_FRAME_DONE,
 		priv->side_config_regs + MT6991_DISP1_GCE_FRAME_DONE_SEL7);
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 	writel(MT6991_DISP1_GCE_FRAME_DONE_SEL6_DSI2_FRAME_DONE,
 		priv->side_config_regs + MT6991_DISP1_GCE_FRAME_DONE_SEL6);
 
@@ -40517,6 +40535,9 @@ static irqreturn_t mtk_disp_mutex_irq_handler(int irq, void *dev_id)
 				for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
 					mtk_ddp_comp_mutex_eof_irq(comp, irq_time, &irq_time_index);
 				}
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_HOST)
+				mtk_drm_crtc_wakeup_logo_layer_thread(mtk_crtc);
+#endif
 			}
 		}
 		if (val & (0x1 << m_id)) {

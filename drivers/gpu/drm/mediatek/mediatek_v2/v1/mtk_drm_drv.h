@@ -19,8 +19,8 @@
 #include "mtk_drm_helper.h"
 #include "../mml/mtk-mml-drm-adaptor.h"
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
-#define MAX_CONNECTOR 7
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
+#define MAX_CONNECTOR MAX_CRTC
 #else
 #define MAX_CONNECTOR 3
 #endif
@@ -105,7 +105,7 @@ struct mtk_mmsys_driver_data {
 	const struct mtk_crtc_path_data *third_path_data_wo_tdshp;
 	const struct mtk_crtc_path_data *fourth_path_data_secondary;
 	const struct mtk_crtc_path_data *fourth_path_data_discrete;
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 	const struct mtk_crtc_path_data *fifth_path_data;
 	const struct mtk_crtc_path_data *sixth_path_data;
 	const struct mtk_crtc_path_data *seventh_path_data;
@@ -240,7 +240,7 @@ struct mtk_drm_private {
 	struct device *dpc_dev;
 	struct device *dsi_phy0_dev;
 	struct device *dsi_phy1_dev;
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 	struct device *dsi_phy2_dev;
 #endif
 
@@ -595,6 +595,9 @@ extern struct mtk_drm_disp_mtee_cb disp_mtee_cb;
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_EDPTX_AUTO_SUPPORT)
 extern struct platform_driver mtk_dp_phy_driver;
 extern struct platform_driver mtk_dvo_driver;
+#endif
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
+extern struct platform_driver mtk_virt_driver;
 #endif
 
 /* For overlay bandwidth monitor */

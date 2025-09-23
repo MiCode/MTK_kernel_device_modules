@@ -33,9 +33,21 @@
 #include "slbc_ops.h"
 #include "mtk_disp_pq_helper.h"
 
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
+enum logo_layer_state {
+	LOGO_INIT,
+	LOGO_LAYER_OFF,
+	LOGO_FB_FREE,
+	LOGO_STATE_INVALID
+};
+typedef void (*mtk_virt_hotplug_cb)(unsigned int evt);
+#endif
+
 #if IS_ENABLED(CONFIG_ARM64)
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
-#define MAX_CRTC 7
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
+#ifndef MAX_CRTC
+#define MAX_CRTC LYE_CRTC
+#endif
 #else
 #define MAX_CRTC 4
 #endif
@@ -781,6 +793,13 @@ struct mtk_crtc_path_data {
 	bool is_fake_path;
 	bool is_discrete_path;
 	bool is_exdma_dual_layer;
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
+	bool is_path_enable;
+	bool is_first_path;
+	bool is_shared_device;
+	bool is_dual_ovl;
+	uint32_t host_crtc_id;
+#endif
 	const enum mtk_ddp_comp_id *ovl_path[DDP_MODE_NR][DDP_PATH_NR];
 	unsigned int ovl_path_len[DDP_MODE_NR][DDP_PATH_NR];
 	const enum mtk_ddp_comp_id *path[DDP_MODE_NR][DDP_PATH_NR];
@@ -1236,6 +1255,22 @@ struct mtk_drm_crtc {
 	wait_queue_head_t sf_present_fence_wq;
 	struct task_struct *sf_pf_release_thread;
 	atomic_t sf_pf_event;
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
+	/*thread of fence monitor*/
+	struct mutex layer_fence_lock;
+	unsigned int layer_f_count;
+	wait_queue_head_t fence_monitor_wq;
+	struct task_struct *fence_monitor_thread;
+	atomic_t monitor_event;
+	struct list_head fence_monitor_head;
+
+	struct mutex pf_fence_lock;
+	unsigned int pre_f_count;
+	wait_queue_head_t pf_fence_monitor_wq;
+	struct task_struct *pf_fence_monitor_thread;
+	atomic_t pf_monitor_event;
+	struct list_head pf_fence_monitor_head;
+#endif
 
 	/*thread of dump SMI log (SMI larb, sub common, common: OSTDL, bw throttle)*/
 	wait_queue_head_t smi_info_dump_wq;
@@ -1346,24 +1381,42 @@ struct mtk_drm_crtc {
 
 	struct mtk_tui_ovl_stat tui_ovl_stat;
 
-	bool virtual_path;
-	void *phys_mtk_crtc;
-	unsigned int panel_offset;
-	unsigned int mutex_id;
-	unsigned int offset_x;
-	unsigned int offset_y;
-
-	int se_panel;	/* 1 << */
-	int sideband_layer;
-	struct mtk_crtc_static_plane static_plane;
-	struct mtk_crtc_se_plane se_plane[MTK_FB_SE_NUM];
-	enum DISP_SE_STATE se_state;
-
 	bool is_plane0_updated;
 
 	bool reset_path;
 
 	struct dbi_count_data dbi_data;
+
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_HOST)
+	int se_panel;	/* 1 << */
+	int sideband_layer;
+	struct mtk_crtc_static_plane static_plane;
+	struct mtk_crtc_se_plane se_plane[MTK_FB_SE_NUM];
+	enum DISP_SE_STATE se_state;
+	struct mutex sol_lock;
+#endif
+
+	bool virtual_path;
+	unsigned int offset_x;
+	unsigned int offset_y;
+
+	struct mtk_drm_crtc *p_mtk_crtc; //physical crtc for vitural crtc
+	unsigned int enable_cnt; //for multi-card suspend&resume count
+	struct drm_crtc *crtc_p;
+
+	enum logo_layer_state logo_state;
+	struct task_struct *logo_layer_task;
+	wait_queue_head_t logo_layer_wq;
+	atomic_t logo_layer_task_active;
+	mtk_virt_hotplug_cb cb;
+#endif
+
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
+	/* virtual display */
+	bool is_virtio_path;
+	bool is_shared_device;
+#endif
 };
 
 enum BL_GAMMA_GAIN {
@@ -1784,10 +1837,6 @@ void mtk_bwm_calc_hrt_bw(struct drm_crtc *crtc, struct drm_atomic_state *state);
 void mtk_bwm_get_compress_ratio(struct drm_crtc *crtc,
 	struct mtk_drm_private *priv, struct cmdq_pkt *cmdq_handle);
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
-struct mtk_ddp_comp *mtk_crtc_get_comp_with_index(struct mtk_drm_crtc *mtk_crtc,
-						  struct mtk_plane_state *plane_state);
-#endif
 struct mtk_ddp_comp *mtk_disp_get_wdma_comp_by_scn(struct drm_crtc *crtc, enum addon_scenario scn);
 enum addon_scenario mtk_crtc_wb_get_scn(struct mtk_crtc_state *state);
 #endif /* MTK_DRM_CRTC_H */

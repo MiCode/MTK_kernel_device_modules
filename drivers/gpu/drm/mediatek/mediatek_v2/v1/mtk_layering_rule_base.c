@@ -49,6 +49,11 @@
 
 #include <linux/module.h>
 
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
+#include "mtk_drm_crtc_auto.h"
+#include "mtk_layering_rule_base_auto.h"
+#endif
+
 int skip_mdp;
 module_param(skip_mdp, int, 0644);
 
@@ -3047,6 +3052,7 @@ static int mtk_lye_get_comp_id(int disp_idx, int disp_list, struct drm_device *d
 	return DDP_COMPONENT_OVL2_2L;
 }
 
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
 static int mtk_lye_get_exdma_comp_id(int disp_idx, int layer_idx,
 	struct drm_device *drm_dev, int fun_lye, int rsz_lye)
 {
@@ -3151,6 +3157,7 @@ static int mtk_lye_get_exdma_comp_id(int disp_idx, int layer_idx,
 	DDPPR_ERR("Invalid disp_idx:%d\n", disp_idx);
 	return DDP_COMPONENT_OVL_EXDMA3;
 }
+#endif
 
 static int mtk_lye_get_blender_comp_id(int disp_idx, int layer_idx,
 	struct drm_device *drm_dev, int blender_lye)
@@ -4657,8 +4664,13 @@ static void check_is_mml_layer(const int disp_idx,
 					down_scale_cnt++;
 			}
 
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
+			if (disp_info->disp_idx != 0)
+				c->layer_caps = MTK_MML_DISP_DECOUPLE_LAYER;
+#else
 			if (disp_info->disp_idx != 0)
 				c->layer_caps = query_transition_mode(mml_decouple2);
+#endif
 		}
 	}
 
@@ -5262,6 +5274,11 @@ static int layering_rule_start(struct drm_mtk_layering_info *disp_info_user,
 
 	dispatch_gles_range(&layering_info, dev);
 	check_gles_change(&dbg_gles, __LINE__, false);
+
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
+	clear_layer_for_two_android_layer(&layering_info, dev);
+	check_gles_change(&dbg_gles, __LINE__, true);
+#endif
 
 	clear_layer(&layering_info, &scn_decision_flag, dev);
 	check_gles_change(&dbg_gles, __LINE__, true);

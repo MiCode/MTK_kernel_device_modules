@@ -95,7 +95,6 @@ define_mgk_ddk_ko(
         "mtk_disp_ovl_exdma.c",
         "mtk_disp_ovl_blender.c",
         "mtk_disp_ovl_outproc.c",
-        "mtk_disp_vdisp_ao.c",
         "mtk_dp_intf.c",
         "mtk_dp.c",
         "mtk_dp_hal.c",
@@ -169,6 +168,9 @@ define_mgk_ddk_ko(
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/extcon",
         "-I$(DEVICE_MODULES_PATH)/drivers/clk/mediatek",
+	"-I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/virtio_disp",
+        "-I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mediatek_v2/mtk_drm_auto",
+	"-I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mediatek_v2",
         "-Wno-unused-but-set-parameter",
         "-Wno-dangling-else",
         "-Wno-unused-variable",
@@ -267,6 +269,36 @@ define_mgk_ddk_ko(
                 "mtk_drm_edp/mtk_dvo.c",
                 "mtk_drm_edp/mtk_drm_edp_phy.c",
             ],
+        },
+		"CONFIG_DRM_MEDIATEK_AUTO": {
+			True: [
+				"mtk_drm_auto/mtk_drm_crtc_auto.c",
+				"mtk_drm_auto/mtk_drm_drv_auto.c",
+				"mtk_drm_auto/mtk_drm_ddp_comp_auto.c",
+				"mtk_drm_auto/mtk_drm_ddp_auto.c",
+			],
+			False: [
+				"mtk_disp_vdisp_ao.c",
+			],
+        },
+		"CONFIG_DRM_MEDIATEK_AUTO_HOST": {
+			True: [
+				"mtk_drm_auto/mtk_virt_output_host.c",
+				"mtk_drm_auto/mtk_disp_vdisp_ao_host.c",
+				"mtk_drm_auto/mtk_drm_plane_auto.c",
+				"mtk_drm_auto/mtk_drm_se.c",
+				"mtk_drm_auto/mtk_drm_sysfs.c",
+				"mtk_drm_auto/mtk_virtio_disp.c",
+			],
+        },
+		"CONFIG_DRM_MEDIATEK_AUTO_GUEST": {
+			True: [
+				"mtk_drm_auto/mtk_drm_crtc_auto_guest.c",
+				"mtk_drm_auto/mtk_drm_drv_auto_guest.c",
+				"mtk_drm_auto/mtk_disp_vdisp_ao_guest.c",
+				"mtk_drm_auto/mtk_virt_output_guest.c",
+				"mtk_drm_auto/mtk_layering_rule_base_auto.c",
+			],
         },
     },
 )

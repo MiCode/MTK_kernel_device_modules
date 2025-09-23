@@ -32,6 +32,10 @@ extern u32 *disp_perfs;
 #include <soc/mediatek/dramc.h>
 #endif
 
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
+#include "mtk_drm_ddp_comp_auto.h"
+#endif
+
 #include <linux/module.h>
 int debug_vidle_bw;
 module_param(debug_vidle_bw, int, 0644);
@@ -51,8 +55,8 @@ module_param(debug_deteriorate, int, 0644);
 int debug_channel_overlap = 1;
 module_param(debug_channel_overlap, int, 0644);
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
-#define CRTC_NUM		7
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
+#define CRTC_NUM		MAX_CRTC
 #else
 #define CRTC_NUM		4
 #endif
@@ -264,6 +268,14 @@ void __mtk_disp_set_module_hrt(struct icc_path *request, int comp_id,
 		icc = MTK_MMQOS_MAX_BW;
 	else if (debug_deteriorate)
 		icc = 0;
+
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
+	if ((icc < MTK_MMQOS_MAX_BW) && mtk_ddp_comp_is_rdma_by_id(comp_id)) {
+		DDPQOS("%s change icc 0x%x -> 0x%x\n",
+			__func__, icc, MTK_MMQOS_MAX_BW - 1);
+		icc = MTK_MMQOS_MAX_BW - 1;
+	}
+#endif
 
 	mtk_icc_set_bw(request, 0, icc);
 	if (debug_mmqos || respective_ostdl)

@@ -6,6 +6,8 @@ else ifeq (y, $(filter y, $(CONFIG_DRM_MEDIATEK_V2)))
 obj-$(CONFIG_DEVICE_MODULES_DRM_MEDIATEK) += mediatek_v2/
 obj-$(CONFIG_DEVICE_MODULES_DRM_MEDIATEK) += mediatek_v2/v1/
 obj-$(CONFIG_DEVICE_MODULES_DRM_MEDIATEK) += mml/
+obj-$(CONFIG_MTK_DISP_SYNC) += disp_sync/
+obj-$(CONFIG_MTK_VIRTIO_DISP) += virtio_disp/
 else
 
 mediatek-drm-y := mtk_disp_aal.o \

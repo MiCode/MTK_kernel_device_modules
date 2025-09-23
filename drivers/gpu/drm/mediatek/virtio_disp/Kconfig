@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: GPL-2.0-only
+config MTK_VIRTIO_DISP
+	tristate "MTK Virtual Display Sync Control"
+	help
+		MTK Virtual Display Sync Control is used for virtual
+		display that sent to yocto wayland client. For virtual
+		display, no drm driver involved, but it still need fence
+		control and display vsync information.

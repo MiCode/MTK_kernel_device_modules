@@ -41,7 +41,7 @@ static const u32 formats[] = {
 	DRM_FORMAT_Y410,
 };
 
-#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 unsigned int to_crtc_plane_index(unsigned int plane_index)
 {
 	if (plane_index < OVL_LAYER_NR)
@@ -54,13 +54,6 @@ unsigned int to_crtc_plane_index(unsigned int plane_index)
 		return plane_index - OVL_LAYER_NR - EXTERNAL_INPUT_LAYER_NR - MEMORY_INPUT_LAYER_NR;
 	else
 		return 0;
-}
-#else
-unsigned int to_crtc_plane_index(unsigned int plane_index)
-{
-	DDPINFO("%s plane index %d local_index 0\n", __func__, plane_index);
-
-	return 0;
 }
 #endif
 
@@ -196,7 +189,11 @@ static void mtk_plane_reset(struct drm_plane *plane)
 
 	/* Linux alpha property use 16 bit to convey alpha value, so set default to 0xFFFF */
 	plane->state->alpha = DRM_BLEND_ALPHA_OPAQUE;
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 	plane->state->pixel_blend_mode = DRM_MODE_BLEND_PIXEL_NONE;
+#else
+	plane->state->pixel_blend_mode = DRM_MODE_BLEND_PREMULTI;
+#endif
 
 	state->base.plane = plane;
 	state->pending.format = DRM_FORMAT_RGB565;
@@ -567,7 +564,11 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 		mtk_plane_state->pending.size = mtk_fb_get_size(fb);
 		mtk_plane_state->pending.src_x = (plane->state->src.x1 >> 16);
 		mtk_plane_state->pending.src_y = (plane->state->src.y1 >> 16);
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
+		mtk_plane_state->pending.dst_x = dst_x + mtk_crtc->offset_x;
+#else
 		mtk_plane_state->pending.dst_x = dst_x;
+#endif
 		mtk_plane_state->pending.dst_y = dst_y;
 		mtk_plane_state->pending.width = dst_w;
 		mtk_plane_state->pending.height = dst_h;
@@ -580,8 +581,14 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 							   crtc_state->rsz_dst_roi.height << 16;
 			mtk_plane_state->pending.offset = crtc_state->rsz_dst_roi.x |
 							  crtc_state->rsz_dst_roi.y << 16;
-		} else
+		} else {
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
+			mtk_plane_state->pending.offset =
+				mtk_plane_state->pending.dst_x | dst_y << 16;
+#else
 			mtk_plane_state->pending.offset = dst_x | dst_y << 16;
+#endif
+		}
 	}
 
 

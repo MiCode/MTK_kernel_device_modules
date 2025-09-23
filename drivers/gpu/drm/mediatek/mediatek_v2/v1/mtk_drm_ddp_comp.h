@@ -210,6 +210,7 @@ enum mtk_ddp_comp_type {
 	MTK_DISP_B_DLO_ASYNC,
 	MTK_DISP_B_DLI_ASYNC,
 	MTK_DISP_RELAY,
+	MTK_DISP_VIRT_OUTPUT,
 	MTK_DDP_COMP_TYPE_MAX,
 };
 
@@ -1210,6 +1211,13 @@ enum mtk_ddp_comp_type {
 	EXPR(DDP_COMPONENT_SYS_B_MERGE0_OUT_CB11)			\
 	EXPR(DDP_COMPONENT_SYS_B_MERGE0_OUT_CB12)			\
 /*995*/	EXPR(DDP_COMPONENT_SYS_B_RSZ0)			\
+	EXPR(DDP_COMPONENT_DSI0_VIRTUAL)		\
+	EXPR(DDP_COMPONENT_DSI1_VIRTUAL)		\
+	EXPR(DDP_COMPONENT_DSI2_VIRTUAL)		\
+	EXPR(DDP_COMPONENT_DPI0_VIRTUAL)		\
+/*1000*/	EXPR(DDP_COMPONENT_DPI1_VIRTUAL)		\
+	EXPR(DDP_COMPONENT_DVO_VIRTUAL)			\
+	EXPR(DDP_COMPONENT_DSI2_1_VIRTUAL)		\
 	EXPR(DDP_COMPONENT_ID_MAX)
 
 #define DECLARE_NUM(ENUM) ENUM,
@@ -1418,6 +1426,9 @@ enum mtk_ddp_io_cmd {
 	MTK_IO_CMD_BWM_CALC_RATIO,
 	MTK_IO_CMD_BWM_ENABLE,
 	SET_DSI_GOLDEN_SETTING,
+	SET_CRTC_ID,
+	GET_DEVICE_TYPE,
+	UPDATE_DP_CONNECT_STATE,
 };
 
 enum mtk_ddp_comp_apsrc_crtc_id {
@@ -1556,6 +1567,7 @@ struct mtk_ddp_comp_funcs {
 	int (*partial_update)(struct mtk_ddp_comp *comp,
 			struct cmdq_pkt *handle, struct mtk_rect partial_roi, unsigned int enable);
 	int (*first_layer)(struct mtk_ddp_comp *comp);
+	irqreturn_t (*irq_handle)(int irq, void *dev_id);
 };
 
 #define MTK_IRQ_TS_MAX 20
@@ -1664,6 +1676,9 @@ struct mtk_ddp_comp {
 	bool blender_hold;
 	int pm_ret;
 	u32 doze_bypass;
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
+	bool comp_status;
+#endif
 };
 
 static inline void mtk_ddp_comp_config_overhead(struct mtk_ddp_comp *comp,
@@ -1966,9 +1981,6 @@ bool mtk_dsi_is_cmd_mode(struct mtk_ddp_comp *comp);
 enum mtk_ddp_comp_id mtk_dsi_get_comp_id(struct drm_connector *c);
 bool mtk_ddp_comp_is_output(struct mtk_ddp_comp *comp);
 bool mtk_ddp_comp_is_output_by_id(enum mtk_ddp_comp_id id);
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
-bool mtk_ddp_comp_is_rdma(struct mtk_ddp_comp *comp);
-#endif
 void mtk_ddp_comp_get_name(struct mtk_ddp_comp *comp, char *buf, int buf_len);
 int mtk_ovl_layer_num(struct mtk_ddp_comp *comp);
 void mtk_ddp_write(struct mtk_ddp_comp *comp, unsigned int value,

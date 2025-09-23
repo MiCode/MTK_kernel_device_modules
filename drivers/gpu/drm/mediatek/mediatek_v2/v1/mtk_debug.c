@@ -796,6 +796,7 @@ int mtk_drm_get_conn_obj_id_from_idx(unsigned int disp_idx, int flag)
 	}
 
 	drm_for_each_encoder(encoder, drm_dev) {
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
 		struct mtk_dsi *mtk_dsi;
 
 		if (encoder->encoder_type != DRM_MODE_ENCODER_DSI)
@@ -807,8 +808,22 @@ int mtk_drm_get_conn_obj_id_from_idx(unsigned int disp_idx, int flag)
 		if (mtk_dsi && disp_idx == i)
 			conn_obj_id = mtk_dsi->conn.base.id;
 
+#else
+		struct mtk_virt *mtk_virt;
+
+		if (encoder->encoder_type != DRM_MODE_ENCODER_DSI)
+			continue;
+
+		mtk_virt = container_of(encoder, struct mtk_virt, encoder);
+
+		/* there's not strong binding to disp_idx and DSI connector_obj_id */
+		if (mtk_virt && (BIT(disp_idx) & encoder->possible_crtcs))
+			conn_obj_id = mtk_virt->connector.base.id;
+#endif
 		++i;
 	}
+
+	DDPMSG("%s disp_idx %u conn_obj_id %d\n", __func__, disp_idx, conn_obj_id);
 
 	return conn_obj_id;
 }

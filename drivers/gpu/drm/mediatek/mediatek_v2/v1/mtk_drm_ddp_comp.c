@@ -37,6 +37,10 @@
 #include <soc/mediatek/smi.h>
 #endif
 
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
+#include "mtk_drm_ddp_comp_auto.h"
+#endif
+
 #define DISP_OD_EN 0x0000
 #define DISP_OD_INTEN 0x0008
 #define DISP_OD_INTSTA 0x000c
@@ -397,8 +401,10 @@ static const char *const mtk_ddp_comp_stem[MTK_DDP_COMP_TYPE_MAX] = {
 	[MTK_OVL_2_DLI_ASYNC] = "ovl2-dli-async",
 	[MTK_DISP_B_DLO_ASYNC] = "dlo-async-b",
 	[MTK_DISP_B_DLI_ASYNC] = "dli-async-b",
+	[MTK_DISP_VIRT_OUTPUT] = "virt-out",
 };
 
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 struct mtk_ddp_comp_match {
 	enum mtk_ddp_comp_id index;
 	enum mtk_ddp_comp_type type;
@@ -689,11 +695,7 @@ static const struct mtk_ddp_comp_match mtk_ddp_matches[DDP_COMPONENT_ID_MAX] = {
 	{DDP_COMPONENT_OVLSYS_DLO_ASYNC4, MTK_OVL_0_DLO_ASYNC, 4, NULL, 0},
 	{DDP_COMPONENT_OVLSYS_DLO_ASYNC5, MTK_OVL_0_DLO_ASYNC, 5, NULL, 0},
 /* 280 */	{DDP_COMPONENT_OVLSYS_DLO_ASYNC6, MTK_OVL_0_DLO_ASYNC, 6, NULL, 0},
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
-	{DDP_COMPONENT_OVLSYS_DLO_ASYNC7, MTK_DISP_VIRTUAL, 15, NULL, 0},
-#else
 	{DDP_COMPONENT_OVLSYS_DLO_ASYNC7, MTK_OVL_0_DLO_ASYNC, 7, NULL, 0},
-#endif
 	{DDP_COMPONENT_OVLSYS_DLO_ASYNC8, MTK_OVL_0_DLO_ASYNC, 8, NULL, 0},
 	{DDP_COMPONENT_OVLSYS_DLO_ASYNC9, MTK_OVL_0_DLO_ASYNC, 9, NULL, 0},
 	{DDP_COMPONENT_OVLSYS_DLO_ASYNC10, MTK_OVL_0_DLO_ASYNC, 10, NULL, 0},
@@ -957,15 +959,9 @@ static const struct mtk_ddp_comp_match mtk_ddp_matches[DDP_COMPONENT_ID_MAX] = {
 	{DDP_COMPONENT_OVLSYS1_DLO_ASYNC3, MTK_OVL_1_DLO_ASYNC, 3, NULL, 0},
 	{DDP_COMPONENT_OVLSYS1_DLO_ASYNC4, MTK_OVL_1_DLO_ASYNC, 4, NULL, 0},
 	{DDP_COMPONENT_OVLSYS1_DLO_ASYNC5, MTK_OVL_1_DLO_ASYNC, 5, NULL, 0},
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
-	{DDP_COMPONENT_OVLSYS1_DLO_ASYNC6, MTK_DISP_VIRTUAL, 27, NULL, 0},
-	{DDP_COMPONENT_OVLSYS1_DLO_ASYNC7, MTK_DISP_VIRTUAL, 28, NULL, 0},
-	{DDP_COMPONENT_OVLSYS1_DLO_ASYNC8, MTK_DISP_VIRTUAL, 29, NULL, 0},
-#else
 	{DDP_COMPONENT_OVLSYS1_DLO_ASYNC6, MTK_OVL_1_DLO_ASYNC, 6, NULL, 0},
 	{DDP_COMPONENT_OVLSYS1_DLO_ASYNC7, MTK_OVL_1_DLO_ASYNC, 7, NULL, 0},
 	{DDP_COMPONENT_OVLSYS1_DLO_ASYNC8, MTK_OVL_1_DLO_ASYNC, 8, NULL, 0},
-#endif
 	{DDP_COMPONENT_OVLSYS1_DLO_ASYNC9, MTK_OVL_1_DLO_ASYNC, 9, NULL, 0},
 	{DDP_COMPONENT_OVLSYS1_DLO_ASYNC10, MTK_OVL_1_DLO_ASYNC, 10, NULL, 0},
 /* 550 */	{DDP_COMPONENT_OVLSYS1_DLO_ASYNC11, MTK_OVL_1_DLO_ASYNC, 11, NULL, 0},
@@ -1415,6 +1411,7 @@ static const struct mtk_ddp_comp_match mtk_ddp_matches[DDP_COMPONENT_ID_MAX] = {
 	{DDP_COMPONENT_SYS_B_MERGE0_OUT_CB12, MTK_DISP_VIRTUAL, -1, NULL, 0},
 /*995*/	{DDP_COMPONENT_SYS_B_RSZ0, MTK_DISP_RSZ, 6, NULL, 0},
 };
+#endif
 
 void mtk_irq_time_handle(struct work_struct *data)
 {
@@ -1504,16 +1501,6 @@ bool mtk_ddp_comp_is_output_by_id(enum mtk_ddp_comp_id id)
 
 	return mtk_ddp_matches[id].is_output;
 }
-
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
-bool mtk_ddp_comp_is_rdma(struct mtk_ddp_comp *comp)
-{
-	if (mtk_ddp_comp_get_type(comp->id) == MTK_OVL_EXDMA)
-		return true;
-
-	return false;
-}
-#endif
 
 void mtk_ddp_comp_get_name(struct mtk_ddp_comp *comp, char *buf, int buf_len)
 {
@@ -1914,20 +1901,7 @@ unsigned int mtk_drm_find_possible_crtc_by_comp(struct drm_device *drm,
 	} else if (mtk_drm_find_comp_in_ddp(
 			ddp_comp, private->data->fourth_path_data_discrete) == true) {
 		ret = BIT(3);
-	}
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
-	else if (mtk_drm_find_comp_in_ddp(
-			   ddp_comp, private->data->fifth_path_data) == true) {
-		ret = BIT(4);
-	} else if (mtk_drm_find_comp_in_ddp(
-			   ddp_comp, private->data->sixth_path_data) == true) {
-		ret = BIT(5);
-	} else if (mtk_drm_find_comp_in_ddp(
-			   ddp_comp, private->data->seventh_path_data) == true) {
-		ret = BIT(6);
-	}
-#endif
-	else {
+	} else {
 		DRM_INFO("Failed to find comp in ddp table\n");
 		ret = 0;
 	}
@@ -2057,7 +2031,15 @@ int mtk_ddp_comp_init(struct device *dev, struct device_node *node,
 	}
 
 	if (comp_id == DDP_COMPONENT_BLS ||
-		comp_id == DDP_COMPONENT_PWM0) {
+		comp_id == DDP_COMPONENT_PWM0 ||
+		comp_id == DDP_COMPONENT_DSI0_VIRTUAL ||
+		comp_id == DDP_COMPONENT_DSI1_VIRTUAL ||
+		comp_id == DDP_COMPONENT_DSI2_VIRTUAL ||
+		comp_id == DDP_COMPONENT_DSI2_1_VIRTUAL ||
+		comp_id == DDP_COMPONENT_DPI0_VIRTUAL ||
+		comp_id == DDP_COMPONENT_DPI1_VIRTUAL ||
+		comp_id == DDP_COMPONENT_DVO_VIRTUAL
+		) {
 		comp->regs_pa = 0;
 		comp->regs = NULL;
 		comp->irq = 0;
@@ -2226,12 +2208,17 @@ void mtk_ddp_comp_clk_prepare(struct mtk_ddp_comp *comp)
 		}
 	}
 
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
 	if (comp->clk) {
 		ret = clk_prepare_enable(comp->clk);
 		if (ret)
 			DDPPR_ERR("clk prepare enable failed:%s\n",
 				mtk_dump_comp_str(comp));
 	}
+#else
+	comp->comp_status = true;
+	ret = 0;
+#endif
 
 	if (comp->mtk_crtc)
 		index = drm_crtc_index(&comp->mtk_crtc->base);
@@ -2247,9 +2234,12 @@ void mtk_ddp_comp_clk_unprepare(struct mtk_ddp_comp *comp)
 	if (comp == NULL)
 		return;
 
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
 	if (comp->clk)
 		clk_disable_unprepare(comp->clk);
-
+#else
+	comp->comp_status = false;
+#endif
 
 	mtk_ddp_comp_larb_put(comp, comp->larb_dev);
 	if (comp->larb_devs) {
@@ -4092,6 +4082,7 @@ void mt6991_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 	} else
 		return;
 
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 	if (handle == NULL) {
 		if (priv->ovlsys1_regs) {
 			val = 0;
@@ -4132,6 +4123,7 @@ void mt6991_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 			cmdq_pkt_write(handle, NULL, priv->side_config_regs_pa +
 				MMSYS1_BUF_UNDERRUN_ID0, 0x17, ~0);
 	}
+#endif
 }
 
 void mt6993_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,

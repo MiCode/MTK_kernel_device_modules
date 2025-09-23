@@ -193,7 +193,10 @@ disp_get_session_sync_info(unsigned int session_id);
 void mtk_release_session_fence(unsigned int session_id);
 struct mtk_fence_info *mtk_fence_get_layer_info(unsigned int session_id,
 						unsigned int timeline_id);
-
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
+struct mtk_fence_info *_disp_sync_get_sync_info(unsigned int session_id,
+						unsigned int timeline_id);
+#endif
 #ifdef __cplusplus
 } /* extern C */
 #endif

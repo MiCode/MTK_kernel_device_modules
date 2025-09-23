@@ -41,6 +41,10 @@
 #include "mtk_drm_gem.h"
 #include "platform/mtk_drm_platform.h"
 
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
+#include "mtk_drm_ddp_comp_auto.h"
+#endif
+
 #include "slbc_ops.h"
 #include "../mml/mtk-mml.h"
 #include <soc/mediatek/smi.h>
@@ -1254,7 +1258,7 @@ static void mtk_ovl_exdma_layer_off(struct mtk_ddp_comp *comp, unsigned int idx,
 
 	}
 
-#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 	if (comp->bind_comp && !comp->layer_idx_bit) {
 		mtk_drm_crtc_exdma_ovl_path(comp->mtk_crtc, comp, comp->bind_comp->id, handle, true, false);
 		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_EN],
@@ -2535,7 +2539,7 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 	if (state->comp_state.layer_caps & (MTK_DISP_RSZ_LAYER))
 		rpo_check_flag = true;
 
-#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 	if (blender_id)
 		mtk_drm_crtc_exdma_ovl_path(mtk_crtc, comp, blender_id, handle, false, rpo_check_flag);
 	else
@@ -4232,6 +4236,10 @@ static int mtk_ovl_exdma_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 			if (bw_val && usage_ovl_compr)
 				hdr_bw_val = (bw_val > 32) ? (bw_val / 32) : 1;
 
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
+			hdr_bw_val = hdr_bw_val ? hdr_bw_val : 1;
+#endif
+
 			if (hdr_bw_val > comp->last_hdr_bw) {
 				DDPDBG("%s hdr_bw fast up %u -> %u\n",
 					mtk_dump_comp_str_id(comp->id), comp->last_hdr_bw, hdr_bw_val);
@@ -5351,11 +5359,15 @@ static irqreturn_t mtk_disp_ovl_exdma_irq_handler(int irq, void *dev_id)
 	}
 	if (val & (1 << 3))
 		DDPIRQ("[IRQ] %s: sw reset done!\n", mtk_dump_comp_str(ovl));
-
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
+	if (mtk_crtc->virtual_path && (val & (1 << 1)))
+		mtk_crtc_vblank_irq(&mtk_crtc->base);
+#else
 	if (drv_priv && (!mtk_drm_helper_get_opt(drv_priv->helper_opt,
 						 MTK_DRM_OPT_COMMIT_NO_WAIT_VBLANK))) {
 		mtk_crtc_vblank_irq(&mtk_crtc->base);
 	}
+#endif
 
 	ret = IRQ_HANDLED;
 

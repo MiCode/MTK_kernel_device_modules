@@ -88,7 +88,7 @@ static DEFINE_MUTEX(g_mtcmos_cnt_lock);
 static struct dpc_funcs disp_dpc_driver;
 struct wakeup_source *g_vdisp_wake_lock;
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 atomic_t g_vdisp_wakelock_cnt;
 #endif
 
@@ -448,7 +448,7 @@ static int mtk_vdisp_link_parent_power(bool to_link)
 	return ret;
 }
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 static void mtk_vdisp_wk_lock(u32 crtc_index, bool get, const char *func, int line)
 {
 	if (get) {
@@ -476,7 +476,7 @@ static int genpd_event_notifier(struct notifier_block *nb,
 		mutex_lock(&g_mtcmos_cnt_lock);
 
 		if (priv->pd_id == DISP_PD_DISP_VCORE) {
-#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 			__pm_stay_awake(g_vdisp_wake_lock);
 #endif
 			vdisp_set_aod_scp_semaphore(1); //protect AOD SCP flow
@@ -582,7 +582,7 @@ static int genpd_event_notifier(struct notifier_block *nb,
 		mminfra_hwv_pwr_ctrl(priv, false);
 		if (priv->pd_id == DISP_PD_DISP_VCORE) {
 			vdisp_set_aod_scp_semaphore(0); //protect AOD SCP flow
-#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 			__pm_relax(g_vdisp_wake_lock);
 #endif
 			if (!atomic_dec_and_test(&g_mtcmos_cnt)) {
@@ -641,7 +641,7 @@ static const struct mtk_vdisp_funcs funcs = {
 	.set_clk = mtk_vdisp_set_clk,
 	.query_aging_val = mtk_vdisp_query_aging_val,
 	.debug_mtcmos_ctrl = mtk_vdisp_debug_mtcmos_ctrl,
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 	.wk_lock = mtk_vdisp_wk_lock,
 #endif
 };
